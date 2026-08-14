@@ -1,0 +1,197 @@
+:root {
+  --night: #1B0F2B;
+  --plum: #3A1D50;
+  --berry: #7A3563;
+  --caramel: #C9743E;
+  --crust: #EFA657;
+  --dough: #F3C173;
+  --mint: #4ECDC4;
+  --mint-lite: #8DF3EA;
+  --danger: #FF5C6E;
+  --cream: #FFF3E2;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+
+body {
+  background:
+    radial-gradient(120% 80% at 50% 0%, #4A2760 0%, var(--night) 60%),
+    var(--night);
+  color: var(--cream);
+  font-family: "IBM Plex Sans Thai", "Mitr", system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.shell { width: min(980px, 100%); }
+
+/* ── หัวเรื่อง ─────────────────────────────── */
+.titlebar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+.titlebar h1 {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(18px, 3.4vw, 26px);
+  letter-spacing: .01em;
+}
+.titlebar span {
+  font-size: 12px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #B99BD4;
+  font-weight: 500;
+}
+
+/* ── เวที ──────────────────────────────────── */
+.stage {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,243,226,.09) inset;
+  background: var(--plum);
+  touch-action: none;
+}
+canvas { display: block; width: 100%; height: auto; }
+
+/* ── แผงเมนู ───────────────────────────────── */
+.panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(27,15,43,.72), rgba(27,15,43,.92));
+  backdrop-filter: blur(3px);
+  transition: opacity .25s ease, visibility .25s;
+}
+.panel.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.panel h2 {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(24px, 5vw, 40px);
+  line-height: 1.25;
+}
+.panel p {
+  max-width: 44ch;
+  color: #D9C4EC;
+  font-size: clamp(13px, 2.4vw, 15px);
+  line-height: 1.7;
+}
+
+.keys { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 2px; }
+.key {
+  border: 1px solid rgba(255,243,226,.22);
+  border-radius: 10px;
+  padding: 7px 13px;
+  font-size: 13px;
+  color: var(--cream);
+  background: rgba(255,243,226,.05);
+}
+.key b { color: var(--mint-lite); font-weight: 600; }
+
+.btn {
+  margin-top: 6px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: 17px;
+  color: #1B0F2B;
+  background: var(--mint);
+  border: none;
+  border-radius: 999px;
+  padding: 13px 34px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #2E9C95, 0 12px 24px rgba(78,205,196,.28);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2E9C95; }
+.btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+/* ── สรุปคะแนน ─────────────────────────────── */
+.final { display: flex; gap: 26px; justify-content: center; margin: 2px 0 4px; }
+.final div { min-width: 96px; }
+.final .lbl {
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #A98BC4;
+}
+.final .val {
+  font-family: "Mitr", sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--cream);
+}
+.final .val.mint { color: var(--mint-lite); }
+
+/* ── ปุ่มปิดเสียง ──────────────────────────── */
+.mute {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 5;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,243,226,.2);
+  background: rgba(27,15,43,.5);
+  color: var(--cream);
+  font-size: 16px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.mute:active { background: rgba(78,205,196,.28); }
+.mute:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+
+/* ── ปุ่มสำหรับมือถือ ──────────────────────── */
+.touchpad {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: none;
+  justify-content: space-between;
+  padding: 14px;
+  gap: 14px;
+}
+.touchpad button {
+  flex: 1;
+  height: 64px;
+  border-radius: 16px;
+  cursor: pointer;
+  border: 1px solid rgba(255,243,226,.2);
+  background: rgba(255,243,226,.09);
+  color: var(--cream);
+  font-family: "Mitr", sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+.touchpad button:active { background: rgba(78,205,196,.28); }
+
+@media (hover: none) and (pointer: coarse) {
+  .touchpad { display: flex; }
+}
+
+.footnote {
+  margin-top: 12px;
+  padding-left: 4px;
+  font-size: 12.5px;
+  color: #9C81B8;
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { transition: none; }
+}

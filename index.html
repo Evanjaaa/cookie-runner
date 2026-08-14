@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Midnight Bakery — Runner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="shell">
+
+    <div class="titlebar">
+      <h1>Midnight Bakery</h1>
+      <span>endless runner</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <canvas id="game" width="960" height="420"></canvas>
+
+      <button class="mute" id="btnMute" aria-label="ปิดเสียง">🔊</button>
+
+      <div class="panel" id="startPanel">
+        <h2>วิ่งให้ไกลที่สุด<br>ก่อนเตาจะปิด</h2>
+        <p>คุกกี้วิ่งเองอัตโนมัติ หน้าที่คุณคือกระโดดข้ามหลุมกับหนาม แล้วหมอบลอดใต้คาน เก็บเจลลี่มิ้นต์ระหว่างทางเพื่อเพิ่มคะแนน และมองหาวงแหวนโล่ที่ช่วยกันตายได้หนึ่งครั้ง</p>
+        <div class="keys">
+          <span class="key"><b>Space</b> / <b>↑</b> กระโดด (กดซ้ำ = กระโดดสองชั้น)</span>
+          <span class="key">กดค้าง <b>↓</b> หมอบ</span>
+        </div>
+        <button class="btn" id="startBtn">เริ่มวิ่ง</button>
+      </div>
+
+      <div class="panel hidden" id="overPanel">
+        <h2 id="overTitle">เตาปิดแล้ว</h2>
+        <div class="final">
+          <div><div class="lbl">คะแนน</div><div class="val" id="finalScore">0</div></div>
+          <div><div class="lbl">ระยะทาง</div><div class="val" id="finalDist">0 ม.</div></div>
+          <div><div class="lbl">สถิติสูงสุด</div><div class="val mint" id="bestScore">0</div></div>
+        </div>
+        <p>ยิ่งวิ่งนาน ความเร็วยิ่งเพิ่ม — ลองจำจังหวะของแต่ละแพตเทิร์นดู</p>
+        <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
+      </div>
+
+      <div class="touchpad">
+        <button id="btnSlide">หมอบ</button>
+        <button id="btnJump">กระโดด</button>
+      </div>
+    </div>
+
+    <p class="footnote">
+      ทุกอย่างในหน้านี้วาดด้วย Canvas 2D และเสียงสังเคราะห์ด้วย Web Audio — ไม่มีไฟล์ asset สักไฟล์
+    </p>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
