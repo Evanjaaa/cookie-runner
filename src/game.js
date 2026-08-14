@@ -1,5 +1,5 @@
 // src/game.js
-import { VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD } from './config.js';
+import { VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH } from './config.js';
 import { rectHit } from './utils.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
@@ -12,7 +12,7 @@ import {
 } from './render/entities.js';
 import { drawHUD } from './render/hud.js';
 
-export const STATE = { READY: 0, RUN: 1, DEAD: 2 };
+export const STATE = { READY: 0, RUN: 1, DEAD: 2, PAUSE: 3 };
 
 export class Game {
   constructor({ onGameOver } = {}) {
@@ -35,6 +35,8 @@ export class Game {
     this.tick = 0;
     this.shielded = false;
     this.invuln = 0;
+    this.hp = HEALTH.max;
+    this.hurtFlash = 0;
     this.player.reset();
     this.level.reset();
     this.particles.clear();
@@ -65,12 +67,32 @@ export class Game {
     this.player.setSlide(on);
   }
 
+  // ── หยุด/เล่นต่อ ───────────────────────────────────────────
+  // update() มี `if (this.state !== STATE.RUN) return` อยู่แล้ว
+  // แค่เปลี่ยน state เกมก็หยุดเอง ส่วน draw() ยังวาดเฟรมค้างไว้ตามปกติ
+
+  pause() {
+    if (this.state !== STATE.RUN) return false;
+    this.state = STATE.PAUSE;
+    return true;
+  }
+
+  resume() {
+    if (this.state !== STATE.PAUSE) return false;
+    this.state = STATE.RUN;
+    // ปล่อยหมอบทิ้ง เพราะถ้าปล่อยนิ้ว/คีย์ตอนหยุดอยู่ setSlide จะถูกบล็อก
+    // ไม่งั้นกลับมาเล่นต่อแล้วแมวหมอบค้างโดยไม่ได้กดอะไร
+    this.player.setSlide(false);
+    return true;
+  }
+
   // ── ลูปอัปเดต ──────────────────────────────────────────────
 
   update(dt) {
     if (this.state === STATE.DEAD) {
       this.player.updateDead(dt);
       this.shake *= 0.88;
+      this.hurtFlash = Math.max(0, this.hurtFlash - 0.06 * dt);
       this.particles.update(dt);
       return;
     }
@@ -78,6 +100,14 @@ export class Game {
 
     this.tick += dt;
     if (this.invuln > 0) this.invuln -= dt;
+    this.hurtFlash = Math.max(0, this.hurtFlash - 0.06 * dt);
+
+    // พลังไหลลงตลอด ไม่ว่าจะหลบเก่งแค่ไหน — นี่คือตัวกำหนดความยาวของรอบ
+    this.hp -= HEALTH.drain * dt;
+    if (this.hp <= 0) {
+      this.hp = 0;
+      return this.die();
+    }
 
     // ความเร็วเพิ่มเรื่อย ๆ = ความยากที่ไม่ต้องออกแบบด่านเพิ่ม
     this.speed = Math.min(SPEED.max, this.speed + SPEED.gain * dt);
@@ -108,9 +138,13 @@ export class Game {
           sfx.shieldBreak();
           break;
         }
-        return this.die();
+        this.takeHit(bx + b.w / 2, b.y + b.h / 2);
+        break;
       }
     }
+
+    // takeHit อาจทำให้พลังหมดแล้วตายไปแล้ว ต้องหยุดก่อนไปเก็บของ
+    if (this.state !== STATE.RUN) return;
 
     const cx = bx + b.w / 2;
     const cy = b.y + b.h / 2;
@@ -121,6 +155,7 @@ export class Game {
       if (Math.hypot(cx - c.x, cy - c.y) < c.r + 22) {
         c.got = true;
         this.jelly++;
+        this.hp = Math.min(HEALTH.max, this.hp + HEALTH.jellyHeal);
         this.particles.burst(c.x, c.y, 7, 'mint');
         sfx.coin();
       }
@@ -146,6 +181,21 @@ export class Game {
 
     this.particles.update(dt);
     this.shake *= 0.9;
+  }
+
+  /** ชนแล้วเจ็บ ไม่ตายทันที — ตายก็ต่อเมื่อพลังหมดเกลี้ยง */
+  takeHit(x, y) {
+    this.hp -= HEALTH.hitDamage;
+    this.invuln = HEALTH.invulnAfterHit;
+    this.shake = 12;
+    this.hurtFlash = 1;
+    this.particles.burst(x, y, 14, 'crumb', 6);
+    sfx.hurt();
+
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.die();
+    }
   }
 
   die() {
@@ -180,9 +230,14 @@ export class Game {
     drawCoins(ctx, this.level.coins, this.camera);
     drawShields(ctx, this.level.shields, this.camera);
     this.particles.draw(ctx, this.camera);
-    drawPlayer(ctx, this.player, this.state === STATE.DEAD);
 
-    if (this.state !== STATE.DEAD && (this.shielded || this.invuln > 0)) {
+    // กะพริบตอนอมตะหลังโดนชน ให้เห็นชัดว่าช่วงนี้ยังชนไม่ได้
+    // เช็ค RUN ด้วย ไม่งั้นตอนตาย tick หยุดเดิน แล้วตัวละครอาจค้างสถานะซ่อน
+    const blinking =
+      this.state === STATE.RUN && this.invuln > 0 && Math.floor(this.tick / 4) % 2 === 0;
+    if (!blinking) drawPlayer(ctx, this.player, this.state === STATE.DEAD);
+
+    if (this.state !== STATE.DEAD && this.shielded) {
       drawShieldRing(ctx, this.player, this.tick);
     }
 

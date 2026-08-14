@@ -25,6 +25,13 @@ body {
   justify-content: center;
   padding: 16px;
   overflow: hidden;
+
+  /* หน้านี้เป็นเกม ไม่มีอะไรให้เลือกคัดลอก
+     touch-callout คนละตัวกับ user-select — ตัวนี้กันเมนู "คัดลอก" ที่ iOS
+     เด้งตอนกดค้าง ซึ่งเป็นท่าที่จำเป็นสำหรับปุ่มหมอบ */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .shell { width: min(980px, 100%); }
@@ -120,6 +127,19 @@ canvas { display: block; width: 100%; height: auto; }
 .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2E9C95; }
 .btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 
+/* ปุ่มรอง — ใช้กับ "เริ่มใหม่" ที่ไม่ควรเด่นเท่า "เล่นต่อ" */
+.btn.ghost {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid rgba(255,243,226,.32);
+  box-shadow: none;
+}
+.btn.ghost:active {
+  transform: translateY(2px);
+  background: rgba(255,243,226,.08);
+  box-shadow: none;
+}
+
 /* ── สรุปคะแนน ─────────────────────────────── */
 .final { display: flex; gap: 26px; justify-content: center; margin: 2px 0 4px; }
 .final div { min-width: 96px; }
@@ -137,51 +157,115 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .final .val.mint { color: var(--mint-lite); }
 
-/* ── ปุ่มปิดเสียง ──────────────────────────── */
-.mute {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 5;
+/* ── ปุ่มหยุดชั่วคราว + ปิดเสียง ───────────── */
+/* อยู่ในแถบหัวเรื่องเหนือเวที ไม่ทับ HUD ที่วาดตัวนับเจลลี่ไว้มุมขวาบนของ canvas */
+.hudbtns {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  gap: 8px;
+}
+.hudbtns button {
   width: 38px;
   height: 38px;
   border-radius: 12px;
   border: 1px solid rgba(255,243,226,.2);
-  background: rgba(27,15,43,.5);
+  background: rgba(255,243,226,.08);
   color: var(--cream);
   font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   backdrop-filter: blur(4px);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
-.mute:active { background: rgba(78,205,196,.28); }
-.mute:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+.hudbtns button:active { background: rgba(78,205,196,.28); }
+.hudbtns button:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
 
 /* ── ปุ่มสำหรับมือถือ ──────────────────────── */
+/* วางใต้เวที ไม่ทับจอเกม — แนวตั้งเวทีสูงราว 150px ถ้าทับจะบังพื้นที่เล่นครึ่งนึง */
+/* แยกซ้าย-ขวาสุด ให้นิ้วโป้งสองข้างเอื้อมถึงพอดีตอนถือสองมือ */
 .touchpad {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
   display: none;
   justify-content: space-between;
-  padding: 14px;
-  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 0 6px;
 }
 .touchpad button {
-  flex: 1;
-  height: 64px;
-  border-radius: 16px;
+  flex: 0 0 auto;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  border: 1px solid rgba(255,243,226,.2);
+  border: 1px solid rgba(255,243,226,.22);
   background: rgba(255,243,226,.09);
   color: var(--cream);
   font-family: "Mitr", sans-serif;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 500;
+  line-height: 1;
+  /* ย้ำอีกรอบบนปุ่มเอง เพราะ Safari ไม่ยอมให้ค่าพวกนี้ตกทอดลงมาที่ <button> */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;     /* กันนิ้วลากแล้วจอเลื่อนหรือซูม */
   backdrop-filter: blur(4px);
+  transition: transform .06s ease, background .06s ease;
 }
-.touchpad button:active { background: rgba(78,205,196,.28); }
+.touchpad button:active {
+  background: rgba(78,205,196,.3);
+  transform: scale(.93);
+}
 
 @media (hover: none) and (pointer: coarse) {
   .touchpad { display: flex; }
+  .keys { display: none; }   /* ฮินต์คีย์บอร์ดไม่มีความหมายบนจอสัมผัส เอาที่ว่างไปให้ปุ่มเริ่ม */
+}
+
+/* ── จอแคบ = เวทีเตี้ย ─────────────────────── */
+/* เวทีล็อกสัดส่วน 960:420 พอจอกว้าง 390 เวทีจึงสูงแค่ ~156px
+   ถ้าไม่บีบพาเนล ปุ่ม "เริ่มวิ่ง" จะล้นออกนอกเวทีแล้วโดน overflow:hidden ตัดหาย */
+@media (max-width: 560px) {
+  .panel { padding: 10px 14px; gap: 6px; }
+  .panel h2 { font-size: 20px; line-height: 1.2; }
+  .panel p { display: none; }
+  .btn {
+    margin-top: 2px;
+    font-size: 14px;
+    padding: 9px 26px;
+    box-shadow: 0 4px 0 #2E9C95, 0 8px 16px rgba(78,205,196,.24);
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #2E9C95; }
+  .final { gap: 16px; margin: 0; }
+  .final div { min-width: 62px; }
+  .final .lbl { font-size: 9.5px; letter-spacing: .1em; }
+  .final .val { font-size: 22px; }
+  .titlebar { margin-bottom: 8px; }
+  .titlebar span { display: none; }   /* เปิดที่ให้ปุ่มบนแถวเดียวกัน ไม่ให้ตกบรรทัด */
+  .hudbtns { gap: 6px; }
+  .hudbtns button { width: 34px; height: 34px; font-size: 15px; }
+}
+
+/* มือถือแนวนอน: จอเตี้ย ต้องซ่อนหัวเรื่องกับคำอธิบายเพื่อเปิดที่ให้ปุ่ม */
+@media (pointer: coarse) and (max-height: 520px) {
+  body { padding: 8px; }
+  /* ซ่อนแค่ตัวหนังสือ แถบยังต้องอยู่เพราะปุ่มหยุด/เสียงอยู่ในนั้น */
+  .titlebar h1, .titlebar span, .footnote { display: none; }
+  .titlebar { margin-bottom: 6px; }
+  .hudbtns button { width: 32px; height: 32px; font-size: 14px; }
+  .touchpad { margin-top: 8px; }
+  .touchpad button { width: 64px; height: 64px; font-size: 14px; }
+
+  /* บีบเวทีตามความสูงจอ ไม่งั้นแนวนอนเวทีสูงเกินจนปุ่มโดน overflow ตัดหาย
+     2.28 = อัตราส่วน canvas (960/420)
+     126px = แถบปุ่มบน 32+6 + ปุ่มล่าง 64+8 + padding บนล่าง 16 */
+  .shell { width: min(980px, 100%, calc((100vh - 126px) * 2.28)); }
+  .shell { width: min(980px, 100%, calc((100dvh - 126px) * 2.28)); }
 }
 
 .footnote {

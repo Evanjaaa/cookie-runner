@@ -21,6 +21,8 @@ window.addEventListener('resize', fitDPR);
 
 const startPanel = document.getElementById('startPanel');
 const overPanel = document.getElementById('overPanel');
+const pausePanel = document.getElementById('pausePanel');
+const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
 
@@ -39,7 +41,29 @@ function startRun() {
   game.start();
   startPanel.classList.add('hidden');
   overPanel.classList.add('hidden');
+  pausePanel.classList.add('hidden');
+  pauseBtn.textContent = '⏸';
 }
+
+// ── หยุด / เล่นต่อ ─────────────────────────────────────────
+
+function setPaused(on) {
+  // pause()/resume() คืน false ถ้าสถานะไม่เข้าเงื่อนไข เช่นกด Esc ตอนตายอยู่
+  // เช็คก่อนแตะ UI ไม่งั้นพาเนลกับสถานะเกมจะหลุดจากกัน
+  if (on ? !game.pause() : !game.resume()) return;
+  pausePanel.classList.toggle('hidden', !on);
+  pauseBtn.textContent = on ? '▶' : '⏸';
+  pauseBtn.setAttribute('aria-label', on ? 'เล่นต่อ' : 'หยุดชั่วคราว');
+}
+
+pauseBtn.addEventListener('click', () => setPaused(game.state === STATE.RUN));
+document.getElementById('resumeBtn').addEventListener('click', () => setPaused(false));
+document.getElementById('restartBtn').addEventListener('click', startRun);
+
+// สลับแท็บหรือสลับแอปแล้วหยุดให้เอง จะได้ไม่กลับมาเจอว่าตายไปแล้ว
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) setPaused(true);
+});
 
 // ปุ่มเดียวทำได้ 3 อย่าง ขึ้นกับสถานะเกม
 function confirm() {
@@ -52,6 +76,7 @@ setupInput(document.getElementById('stage'), {
   onConfirm: confirm,
   onSlideStart: () => game.setSlide(true),
   onSlideEnd: () => game.setSlide(false),
+  onTogglePause: () => setPaused(game.state === STATE.RUN),
 });
 
 document.getElementById('startBtn').addEventListener('click', startRun);

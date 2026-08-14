@@ -62,5 +62,6 @@ export const sfx = {
     setTimeout(() => tone(1320, null, 0.08, 'triangle', 0.11), 45);
   },
   shieldBreak: () => tone(700, 160, 0.28, 'sawtooth', 0.13),
+  hurt: () => tone(400, 110, 0.2, 'sawtooth', 0.14),
   die: () => tone(320, 60, 0.55, 'sawtooth', 0.16),
 };

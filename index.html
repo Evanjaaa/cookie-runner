@@ -14,21 +14,29 @@
     <div class="titlebar">
       <h1>Midnight Bakery</h1>
       <span>endless runner</span>
+      <div class="hudbtns">
+        <button id="btnPause" aria-label="หยุดชั่วคราว">⏸</button>
+        <button id="btnMute" aria-label="ปิดเสียง">🔊</button>
+      </div>
     </div>
 
     <div class="stage" id="stage">
       <canvas id="game" width="960" height="420"></canvas>
 
-      <button class="mute" id="btnMute" aria-label="ปิดเสียง">🔊</button>
-
       <div class="panel" id="startPanel">
         <h2>วิ่งให้ไกลที่สุด<br>ก่อนเตาจะปิด</h2>
-        <p>คุกกี้วิ่งเองอัตโนมัติ หน้าที่คุณคือกระโดดข้ามหลุมกับหนาม แล้วหมอบลอดใต้คาน เก็บเจลลี่มิ้นต์ระหว่างทางเพื่อเพิ่มคะแนน และมองหาวงแหวนโล่ที่ช่วยกันตายได้หนึ่งครั้ง</p>
+        <p>แมวน้อยวิ่งเองอัตโนมัติ หน้าที่คุณคือกระโดดข้ามหนามกับหมอบลอดใต้คาน <b>หลอดพลังไหลลงตลอดเวลา</b> ชนเข้าก็เสียพลังก้อนใหญ่ เก็บเจลลี่มิ้นต์เพื่อเพิ่มคะแนนและเติมพลังคืนนิดหน่อย ส่วนวงแหวนโล่กันได้เต็มๆ หนึ่งครั้ง — ระวังหลุม ตกลงไปคือจบทันที</p>
         <div class="keys">
           <span class="key"><b>Space</b> / <b>↑</b> กระโดด (กดซ้ำ = กระโดดสองชั้น)</span>
           <span class="key">กดค้าง <b>↓</b> หมอบ</span>
         </div>
         <button class="btn" id="startBtn">เริ่มวิ่ง</button>
+      </div>
+
+      <div class="panel hidden" id="pausePanel">
+        <h2>พักก่อน</h2>
+        <button class="btn" id="resumeBtn">เล่นต่อ</button>
+        <button class="btn ghost" id="restartBtn">เริ่มใหม่</button>
       </div>
 
       <div class="panel hidden" id="overPanel">
@@ -42,10 +50,12 @@
         <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
       </div>
 
-      <div class="touchpad">
-        <button id="btnSlide">หมอบ</button>
-        <button id="btnJump">กระโดด</button>
-      </div>
+    </div>
+
+    <!-- อยู่นอก .stage เพราะจอมือถือแนวตั้งเวทีเตี้ยมาก ถ้าวางทับจะบังพื้นที่เล่น -->
+    <div class="touchpad">
+      <button id="btnJump">กระโดด</button>
+      <button id="btnSlide">หมอบ</button>
     </div>
 
     <p class="footnote">
