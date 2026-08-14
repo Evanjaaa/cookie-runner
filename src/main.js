@@ -27,10 +27,10 @@ const pauseBtn = document.getElementById('btnPause');
 const game = new Game({ onGameOver: showGameOver });
 
 function showGameOver() {
-  document.getElementById('finalScore').textContent = game.score;
+  document.getElementById('finalScore').textContent = game.score.toLocaleString('en-US');
   document.getElementById('finalDist').textContent =
     Math.floor(game.distance / SCORING.pxPerMeter) + ' ม.';
-  document.getElementById('bestScore').textContent = game.best;
+  document.getElementById('bestScore').textContent = game.best.toLocaleString('en-US');
   document.getElementById('overTitle').textContent =
     game.score >= game.best && game.score > 0 ? 'สถิติใหม่!' : 'เตาปิดแล้ว';
   overPanel.classList.remove('hidden');

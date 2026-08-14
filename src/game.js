@@ -1,5 +1,5 @@
 // src/game.js
-import { VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH } from './config.js';
+import { VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION } from './config.js';
 import { rectHit } from './utils.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
@@ -8,7 +8,7 @@ import { loadBest, saveBest } from './storage.js';
 import { sfx } from './audio.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
 import {
-  drawObstacles, drawCoins, drawPlayer, drawShields, drawShieldRing,
+  drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
 } from './render/entities.js';
 import { drawHUD } from './render/hud.js';
 
@@ -27,9 +27,10 @@ export class Game {
   reset() {
     this.state = STATE.READY;
     this.camera = 0;
-    this.speed = SPEED.start;
+    this.speed = SPEED.run;   // คงที่ตลอดรอบ ระยะกระโดดจึงเท่าเดิมเสมอ
     this.distance = 0;
-    this.jelly = 0;
+    // สะสมคะแนนตรง ๆ ไม่นับจำนวนเม็ด เพราะของเก็บมีหลายราคาแล้ว
+    this.treat = 0;
     this.score = 0;
     this.shake = 0;
     this.tick = 0;
@@ -37,6 +38,8 @@ export class Game {
     this.invuln = 0;
     this.hp = HEALTH.max;
     this.hurtFlash = 0;
+    this.nextPotionAt = POTION.everyFrames;   // ขวดแรกที่นาทีที่ 1
+    this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
     this.player.reset();
     this.level.reset();
     this.particles.clear();
@@ -100,6 +103,7 @@ export class Game {
 
     this.tick += dt;
     if (this.invuln > 0) this.invuln -= dt;
+    if (this.notice > 0) this.notice -= dt;
     this.hurtFlash = Math.max(0, this.hurtFlash - 0.06 * dt);
 
     // พลังไหลลงตลอด ไม่ว่าจะหลบเก่งแค่ไหน — นี่คือตัวกำหนดความยาวของรอบ
@@ -109,8 +113,6 @@ export class Game {
       return this.die();
     }
 
-    // ความเร็วเพิ่มเรื่อย ๆ = ความยากที่ไม่ต้องออกแบบด่านเพิ่ม
-    this.speed = Math.min(SPEED.max, this.speed + SPEED.gain * dt);
     this.camera += this.speed * dt;
     this.distance += this.speed * dt;
 
@@ -149,15 +151,28 @@ export class Game {
     const cx = bx + b.w / 2;
     const cy = b.y + b.h / 2;
 
-    // เก็บเจลลี่
-    for (const c of this.level.coins) {
-      if (c.got || c.x < this.camera - 40) continue;
-      if (Math.hypot(cx - c.x, cy - c.y) < c.r + 22) {
-        c.got = true;
-        this.jelly++;
-        this.hp = Math.min(HEALTH.max, this.hp + HEALTH.jellyHeal);
-        this.particles.burst(c.x, c.y, 7, 'mint');
-        sfx.coin();
+    // เก็บของกิน — คะแนนล้วน ไม่ฟื้นพลัง พลังมาจากขวดยาอย่างเดียว
+    for (const f of this.level.fishes) {
+      if (f.got || f.x < this.camera - 40) continue;
+      if (Math.hypot(cx - f.x, cy - f.y) < f.r + 22) {
+        f.got = true;
+        const isKibble = f.kind === 'kibble';
+        this.treat += isKibble ? SCORING.pointsPerKibble : SCORING.pointsPerFish;
+        this.particles.burst(f.x, f.y, isKibble ? 10 : 7, isKibble ? 'kibble' : 'mint');
+        if (isKibble) sfx.kibble();
+        else sfx.fish();
+      }
+    }
+
+    // เก็บขวดพลัง
+    for (const p of this.level.potions) {
+      if (p.got || p.x < this.camera - 40) continue;
+      if (Math.hypot(cx - p.x, cy - p.y) < POTION.pickR) {
+        p.got = true;
+        this.hp = Math.min(HEALTH.max, this.hp + POTION.heal);
+        this.particles.burst(p.x, p.y, 20, 'crumb', 6);
+        this.notice = 0;   // เก็บได้แล้ว ข้อความเตือนไม่ต้องค้างต่อ
+        sfx.potion();
       }
     }
 
@@ -168,16 +183,23 @@ export class Game {
         s.got = true;
         this.shielded = true;
         this.particles.burst(s.x, s.y, 12, 'dust', 5);
-        sfx.coin();
+        sfx.shield();
       }
     }
 
     this.level.cull(this.camera);
     this.level.ensureAhead(this.camera);
 
+    // ขวดพลังโผล่ตามเวลา ไม่ใช่ตามระยะทาง — วางหลัง ensureAhead เสมอ
+    // เพราะ spawnPotion ต้องอ่านหนาม/หลุมข้างหน้าเพื่อหาจุดโล่ง
+    if (this.tick >= this.nextPotionAt) {
+      this.level.spawnPotion(this.camera + VIEW.W + 120);
+      this.nextPotionAt += POTION.everyFrames;
+      this.notice = POTION.noticeFrames;
+    }
+
     this.score =
-      Math.floor(this.distance / SCORING.pxPerScorePoint) +
-      this.jelly * SCORING.pointsPerJelly;
+      Math.floor(this.distance / SCORING.pxPerScorePoint) + this.treat;
 
     this.particles.update(dt);
     this.shake *= 0.9;
@@ -227,7 +249,8 @@ export class Game {
     drawHills(ctx, this.camera);
     drawGround(ctx, this.level.pits, this.camera);
     drawObstacles(ctx, this.level.obstacles, this.camera);
-    drawCoins(ctx, this.level.coins, this.camera);
+    drawTreats(ctx, this.level.fishes, this.camera);
+    drawPotions(ctx, this.level.potions, this.camera, this.tick);
     drawShields(ctx, this.level.shields, this.camera);
     this.particles.draw(ctx, this.camera);
 

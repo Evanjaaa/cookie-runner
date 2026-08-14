@@ -70,7 +70,13 @@ export class Player {
 
     let justLanded = false;
 
-    if (!overPit && this.y >= GROUND_Y) {
+    // ต้อง "เพิ่งข้ามเส้นพื้นในเฟรมนี้" ถึงจะยืนได้ (ต้นเฟรมยังอยู่เหนือพื้น)
+    // ถ้าเช็คแค่ y >= GROUND_Y แมวที่ร่วงลงหลุมไปลึกแล้วจะเด้งกลับขึ้นมายืน
+    // บนขอบหลุมฝั่งตรงข้ามทันทีที่พ้นช่วง x ของหลุม หลุมแคบจึงไม่อันตรายเลย
+    // เทียบกับ vy เพราะ y ต้นเฟรมคือ y ปัจจุบันลบระยะที่เพิ่งตกไปในเฟรมนี้
+    const crossedGroundNow = this.y - this.vy * dt <= GROUND_Y;
+
+    if (!overPit && this.y >= GROUND_Y && crossedGroundNow) {
       if (!this.onGround) justLanded = true;
       this.y = GROUND_Y;
       this.vy = 0;

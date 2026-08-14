@@ -9,9 +9,46 @@ export function drawObstacles(ctx, obstacles, camera) {
   for (const o of obstacles) {
     const x = o.x - camera;
     if (x > W + 40 || x + o.w < -40) continue;
-    if (o.bar) drawBar(ctx, x, o.y, o.w, o.h);
+    if (o.kind === 'bar') drawBar(ctx, x, o.y, o.w, o.h);
+    else if (o.kind === 'crate') drawCrateStack(ctx, x, o.y, o.w, o.h, o.rows);
     else drawSpike(ctx, x, o.y, o.w, o.h);
   }
+}
+
+// ── กล่องลัง ─────────────────────────────────────────────────
+// ใช้โทนไม้อ่อน (dough) ตัดขอบเข้ม ไม่ใช้ crust/crustTop เพราะเป็นสีเดียว
+// กับแถบพื้น กล่องจะจมหายไปกับพื้นจนมองไม่ออกว่ามีสิ่งกีดขวางอยู่
+
+function drawCrateStack(ctx, x, y, w, h, rows = 1) {
+  const rh = h / rows;
+  for (let i = 0; i < rows; i++) drawCrate(ctx, x, y + i * rh, w, rh);
+}
+
+function drawCrate(ctx, x, y, w, h) {
+  ctx.fillStyle = C.dough;
+  ctx.fillRect(x, y, w, h);
+
+  // ขอบบนสว่าง ให้ดูมีความหนา
+  ctx.fillStyle = '#FFE6B0';
+  ctx.fillRect(x, y, w, 4);
+
+  // ไม้ตีขวางบนล่าง
+  ctx.fillStyle = C.doughDark;
+  ctx.fillRect(x + 3, y + 6, w - 6, 5);
+  ctx.fillRect(x + 3, y + h - 11, w - 6, 5);
+
+  // ไม้ค้ำกากบาท
+  ctx.strokeStyle = C.doughDark;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y + 10); ctx.lineTo(x + w - 5, y + h - 10);
+  ctx.moveTo(x + w - 5, y + 10); ctx.lineTo(x + 5, y + h - 10);
+  ctx.stroke();
+
+  // กรอบนอก วาดท้ายสุดให้ทับปลายไม้ทุกเส้น
+  ctx.strokeStyle = C.choc;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
 }
 
 function drawSpike(ctx, x, y, w, h) {
@@ -48,31 +85,168 @@ function drawBar(ctx, x, y, w, h) {
   ctx.fillRect(x + w - 22, 0, 12, y);
 }
 
-// ── เจลลี่ ───────────────────────────────────────────────────
+// ── เม็ดอาหารแมวรูปปลา ───────────────────────────────────────
+// ทุกสัดส่วนคูณจาก r เพื่อให้ตัวเดียวกันนี้ใช้ได้ทั้งในด่านและบน HUD
+// หันหน้าไปทางขวา (ทิศที่แมววิ่ง) หางอยู่ซ้าย
 
-export function drawJelly(ctx, x, y, r) {
+export function drawFish(ctx, x, y, r) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // เรืองแสงรอบตัว วาดลำตัวกับหางในรอบเดียวกันเพื่อให้ได้ขอบเรืองรูปปลา
   ctx.save();
   ctx.shadowColor = 'rgba(78,205,196,.85)';
-  ctx.shadowBlur = 14;
-  ctx.fillStyle = C.mint;
+  ctx.shadowBlur = 12;
+
+  ctx.fillStyle = C.fishFin;
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.moveTo(-r * 0.7, 0);
+  ctx.lineTo(-r * 1.38, -r * 0.64);
+  ctx.lineTo(-r * 1.38, r * 0.64);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = C.fish;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  ctx.fillStyle = C.mintLite;
+  // ครีบบน วาดหลังลำตัวเพื่อให้โคนครีบถูกกลบ
+  ctx.fillStyle = C.fishFin;
   ctx.beginPath();
-  ctx.arc(x - r * 0.28, y - r * 0.32, r * 0.34, 0, Math.PI * 2);
+  ctx.moveTo(-r * 0.2, -r * 0.6);
+  ctx.lineTo(r * 0.16, -r * 1.02);
+  ctx.lineTo(r * 0.4, -r * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // พุงสีอ่อน เยื้องไปทางหัวเล็กน้อย
+  ctx.fillStyle = C.fishLite;
+  ctx.beginPath();
+  ctx.ellipse(r * 0.12, r * 0.22, r * 0.6, r * 0.38, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ตากลมโต = ตัวชี้ขาดความน่ารัก
+  ctx.fillStyle = C.catInk;
+  ctx.beginPath();
+  ctx.arc(r * 0.46, -r * 0.14, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.95)';
+  ctx.beginPath();
+  ctx.arc(r * 0.53, -r * 0.23, r * 0.075, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ── เม็ดกลม ──────────────────────────────────────────────────
+
+export function drawKibble(ctx, x, y, r) {
+  const rr = r * 0.86;   // เล็กกว่าปลาเล็กน้อย แต่รัศมี "เก็บ" ยังเท่าเดิม
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,140,58,.9)';
+  ctx.shadowBlur = 13;
+  ctx.fillStyle = C.kibble;
+  ctx.beginPath();
+  ctx.arc(x, y, rr, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // เงาขอบล่าง ทำให้ดูกลมมีน้ำหนักแทนที่จะเป็นจานแบน
+  ctx.strokeStyle = C.kibbleDark;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.arc(x, y, rr - 0.9, 0.12 * Math.PI, 0.88 * Math.PI);
+  ctx.stroke();
+
+  ctx.fillStyle = C.kibbleLite;
+  ctx.beginPath();
+  ctx.arc(x - rr * 0.3, y - rr * 0.34, rr * 0.34, 0, Math.PI * 2);
   ctx.fill();
 }
 
-export function drawCoins(ctx, coins, camera) {
-  for (const c of coins) {
-    if (c.got) continue;
-    const x = c.x - camera;
+/** วาดของเก็บทั้งแนว ทั้งปลาและเม็ดกลมอยู่ใน array เดียวกัน แยกด้วย kind */
+export function drawTreats(ctx, treats, camera) {
+  for (const t of treats) {
+    if (t.got) continue;
+    const x = t.x - camera;
     if (x > W + 30 || x < -30) continue;
-    drawJelly(ctx, x, c.y + Math.sin(camera * 0.02 + c.x * 0.01) * 3, c.r);
+    const y = t.y + Math.sin(camera * 0.02 + t.x * 0.01) * 3;
+    if (t.kind === 'kibble') drawKibble(ctx, x, y, t.r);
+    else drawFish(ctx, x, y, t.r);
   }
+}
+
+// ── ขวดพลังใหญ่ ──────────────────────────────────────────────
+
+export function drawPotions(ctx, potions, camera, tick) {
+  for (const p of potions) {
+    if (p.got) continue;
+    const x = p.x - camera;
+    if (x > W + 60 || x < -60) continue;
+    drawPotion(ctx, x, p.y + Math.sin(tick * 0.05 + p.x * 0.01) * 5, tick);
+  }
+}
+
+function drawPotion(ctx, x, y, tick) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1 + Math.sin(tick * 0.09) * 0.06, 1 + Math.sin(tick * 0.09) * 0.06);
+
+  // แสงเรืองสีแดง มองเห็นได้แต่ไกลตั้งแต่ยังไม่เข้าจอเต็มตัว
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,92,110,.9)';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = 'rgba(255,243,226,.3)';
+  ctx.beginPath();
+  ctx.arc(0, 6, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // น้ำยาข้างใน — clip เป็นวงกลมแล้วเทสี่เหลี่ยมทับ จะได้ผิวน้ำเป็นเส้นตรง
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 6, 12.5, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = C.danger;
+  ctx.fillRect(-14, -1, 28, 24);
+  ctx.fillStyle = 'rgba(255,255,255,.28)';
+  ctx.fillRect(-14, -1, 28, 3);
+  ctx.restore();
+
+  // คอขวดกับจุกไม้
+  ctx.fillStyle = 'rgba(255,243,226,.5)';
+  ctx.fillRect(-4.5, -12, 9, 10);
+  ctx.fillStyle = C.crustTop;
+  ctx.beginPath();
+  ctx.roundRect(-6, -18.5, 12, 7, 3);
+  ctx.fill();
+
+  // ขอบแก้ว
+  ctx.strokeStyle = 'rgba(255,243,226,.85)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 6, 13.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // ไฮไลต์แสงสะท้อนบนแก้ว
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  ctx.beginPath();
+  ctx.ellipse(-6, 1.5, 2.4, 4.4, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // หัวใจ บอกว่านี่คือของฟื้นพลัง ไม่ใช่ไอเทมอย่างอื่น
+  ctx.fillStyle = C.cream;
+  ctx.beginPath();
+  ctx.moveTo(0, 11);
+  ctx.bezierCurveTo(-7.2, 5.9, -2.8, 1.4, 0, 5.1);
+  ctx.bezierCurveTo(2.8, 1.4, 7.2, 5.9, 0, 11);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
 }
 
 // ── โล่ ──────────────────────────────────────────────────────
