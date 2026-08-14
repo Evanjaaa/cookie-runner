@@ -57,6 +57,9 @@ export const COLORS = {
   hillFar: '#4E2A63', hillMid: '#6B3560', hillNear: '#93445F',
   ground: '#8E4A2C', crust: '#C9743E', crustTop: '#EFA657',
   dough: '#F3C173', doughDark: '#D89A4C', choc: '#5B3018',
+  // แมวน้อยสีส้ม: cat = ขนหลัก / catDark = ลายกับขา / catCream = พุงกับปลายหาง
+  cat: '#F2913D', catDark: '#C96A1E', catCream: '#FFE7C4',
+  catPink: '#FF9BB0', catInk: '#3A1B08',
   mint: '#4ECDC4', mintLite: '#8DF3EA',
   danger: '#FF5C6E', cream: '#FFF3E2',
 };

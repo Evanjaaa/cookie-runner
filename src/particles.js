@@ -4,7 +4,7 @@ import { COLORS } from './config.js';
 const TINT = {
   dust: 'rgba(255,243,226,.5)',
   mint: COLORS.mintLite,
-  crumb: COLORS.dough,
+  crumb: COLORS.cat,
 };
 
 export class Particles {

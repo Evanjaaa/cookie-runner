@@ -121,13 +121,15 @@ export function drawShieldRing(ctx, player, tick) {
   ctx.restore();
 }
 
-// ── ตัวละคร ──────────────────────────────────────────────────
+// ── ตัวละคร: แมวน้อยสีส้ม ────────────────────────────────────
+// จุด (0,0) ของทุกฟังก์ชันข้างล่างคือ "กลางกล่องชน"
+// ท่ายืน: เท้าอยู่ y=+23 หัวสุด y=-23  |  ท่าหมอบ: พื้นอยู่ y=+13
+// ตัวเลขพวกนี้มาจาก BODY ใน config.js ถ้าแก้ที่นั่นต้องมาขยับที่นี่ด้วย
 
 export function drawPlayer(ctx, player, isDead) {
   const b = player.box;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
-  const sliding = player.sliding;
 
   ctx.save();
 
@@ -154,73 +156,185 @@ export function drawPlayer(ctx, player, isDead) {
   }
 
   const swing = Math.sin(player.runPhase * 2) * (player.onGround ? 1 : 0.25);
-
-  // ขา
-  ctx.strokeStyle = C.doughDark;
-  ctx.lineWidth = 7;
   ctx.lineCap = 'round';
-  if (sliding) {
-    ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(24, 12); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(2, 9); ctx.lineTo(22, 4); ctx.stroke();
-  } else {
-    ctx.beginPath(); ctx.moveTo(-4, 12); ctx.lineTo(-4 + swing * 10, 24); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(6, 12); ctx.lineTo(6 - swing * 10, 24); ctx.stroke();
-  }
 
-  // แขน
+  if (player.sliding) drawCatSlide(ctx, isDead);
+  else drawCatStand(ctx, swing, player.runPhase, isDead);
+
+  ctx.restore();
+}
+
+function drawCatStand(ctx, swing, phase, isDead) {
+  // หางสะบัดสวนจังหวะขา วาดก่อนลำตัวเพื่อให้อยู่ข้างหลัง
+  drawTail(ctx, -11, 8, Math.sin(phase * 2 + 0.9));
+
+  // ขาหลัง
+  ctx.strokeStyle = C.catDark;
+  ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.moveTo(-4, 13); ctx.lineTo(-4 + swing * 10, 24); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(6, 13); ctx.lineTo(6 - swing * 10, 24); ctx.stroke();
+
+  // ขาหน้า
   ctx.lineWidth = 6;
-  if (sliding) {
-    ctx.beginPath(); ctx.moveTo(-6, -2); ctx.lineTo(-22, 6); ctx.stroke();
-  } else {
-    ctx.beginPath(); ctx.moveTo(-10, -2); ctx.lineTo(-18, -2 - swing * 8); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(10, -2); ctx.lineTo(18, -2 + swing * 8); ctx.stroke();
-  }
+  ctx.beginPath(); ctx.moveTo(-8, 3); ctx.lineTo(-16, 3 - swing * 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(8, 3); ctx.lineTo(16, 3 + swing * 8); ctx.stroke();
 
-  // ลำตัวคุกกี้
-  ctx.fillStyle = C.dough;
+  // ลำตัว
+  ctx.fillStyle = C.cat;
+  ctx.beginPath(); ctx.ellipse(0, 6, 14, 13, 0, 0, Math.PI * 2); ctx.fill();
+
+  // พุงสีครีม
+  ctx.fillStyle = C.catCream;
+  ctx.beginPath(); ctx.ellipse(1, 9, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ลายบนหลัง
+  ctx.strokeStyle = C.catDark;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.moveTo(-10, -2); ctx.lineTo(-11, 3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-7, 1); ctx.stroke();
+
+  drawCatHead(ctx, 1, -12, isDead);
+}
+
+function drawCatSlide(ctx, isDead) {
+  // หางลากยาวไปข้างหลัง
+  ctx.strokeStyle = C.cat;
+  ctx.lineWidth = 6.5;
   ctx.beginPath();
-  if (sliding) ctx.ellipse(0, 0, 24, 14, -0.12, 0, Math.PI * 2);
-  else ctx.ellipse(0, -2, 19, 21, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(168,94,46,.55)';
-  ctx.lineWidth = 2.5;
+  ctx.moveTo(-15, 2);
+  ctx.quadraticCurveTo(-27, 1, -31, -7);
   ctx.stroke();
+  ctx.fillStyle = C.catCream;
+  ctx.beginPath(); ctx.arc(-31, -7, 3.4, 0, Math.PI * 2); ctx.fill();
 
-  // ช็อกชิป
-  ctx.fillStyle = C.choc;
-  const chips = sliding
-    ? [[-12, -3], [6, -6], [13, 3]]
-    : [[-11, -12], [9, -9], [-6, 7], [11, 6]];
-  for (const [dx, dy] of chips) {
+  // ขาหลังเหยียดไปหลัง
+  ctx.strokeStyle = C.catDark;
+  ctx.lineWidth = 6.5;
+  ctx.beginPath(); ctx.moveTo(-6, 5); ctx.lineTo(-23, 9); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-4, 8); ctx.lineTo(-21, 12); ctx.stroke();
+
+  // ลำตัวแบนราบ
+  ctx.fillStyle = C.cat;
+  ctx.beginPath(); ctx.ellipse(-2, 2, 19, 10, -0.08, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.catCream;
+  ctx.beginPath(); ctx.ellipse(0, 6, 12, 5, -0.05, 0, Math.PI * 2); ctx.fill();
+
+  // ลายบนหลัง
+  ctx.strokeStyle = C.catDark;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-12, -1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-3, -6); ctx.lineTo(-5, -2); ctx.stroke();
+
+  // ขาหน้าเหยียดไปข้างหน้า
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(7, 5); ctx.lineTo(22, 9); ctx.stroke();
+
+  drawCatHead(ctx, 12, -4, isDead, 0.82, true);
+}
+
+/**
+ * หัวแมวพร้อมหู หน้า หนวด — วาดรอบจุด (hx,hy) ที่ส่งเข้ามา
+ * earsBack: ตอนหมอบต้องลู่หูไปหลัง ไม่งั้นปลายหูโผล่ทะลุคานตอนลอด
+ */
+function drawCatHead(ctx, hx, hy, isDead, scale = 1, earsBack = false) {
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.scale(scale, scale);
+
+  // [โคนซ้าย, โคนขวา, ปลาย] ของหูสองข้าง
+  const ears = earsBack
+    ? [[[-11, -4], [-5, -9], [-23, -9]], [[3, -8], [9, -10], [-8, -16]]]
+    : [[[-13, -8], [-3, -8], [-14, -20]], [[3, -8], [13, -8], [14, -20]]];
+
+  // หูนอก วาดก่อนหัวเพื่อให้โคนหูถูกกลบ
+  ctx.fillStyle = C.cat;
+  for (const [a, b, tip] of ears) {
     ctx.beginPath();
-    ctx.arc(dx, dy, 2.8, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(b[0], b[1]);
+    ctx.closePath(); ctx.fill();
   }
 
-  // หน้า
+  // หูชั้นใน ย่อเข้าหาจุดกึ่งกลางของหูแต่ละข้าง
+  ctx.fillStyle = C.catPink;
+  for (const [a, b, tip] of ears) {
+    const mx = (a[0] + b[0] + tip[0]) / 3;
+    const my = (a[1] + b[1] + tip[1]) / 3;
+    ctx.beginPath();
+    for (const [px, py] of [a, tip, b]) {
+      ctx.lineTo(mx + (px - mx) * 0.55, my + (py - my) * 0.55);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+
+  // หัว
+  ctx.fillStyle = C.cat;
+  ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+
+  // ลายบนหน้าผาก
+  ctx.strokeStyle = C.catDark;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-5, -11); ctx.lineTo(-4, -6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(1, -12); ctx.lineTo(2, -7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(7, -10); ctx.lineTo(7, -6); ctx.stroke();
+
+  // ปากสีครีม
+  ctx.fillStyle = C.catCream;
+  ctx.beginPath(); ctx.ellipse(1, 5, 7.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ตา
   if (isDead) {
-    ctx.strokeStyle = C.choc;
+    ctx.strokeStyle = C.catInk;
     ctx.lineWidth = 2.2;
-    for (const [ex, ey] of [[-6, -6], [7, -6]]) {
+    for (const ex of [-5, 7]) {
       ctx.beginPath();
-      ctx.moveTo(ex - 3, ey - 3); ctx.lineTo(ex + 3, ey + 3);
-      ctx.moveTo(ex + 3, ey - 3); ctx.lineTo(ex - 3, ey + 3);
+      ctx.moveTo(ex - 3, -4); ctx.lineTo(ex + 3, 2);
+      ctx.moveTo(ex + 3, -4); ctx.lineTo(ex - 3, 2);
       ctx.stroke();
     }
   } else {
-    ctx.fillStyle = C.choc;
-    ctx.beginPath();
-    ctx.arc(sliding ? 4 : -6, sliding ? -3 : -7, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(sliding ? 14 : 7, sliding ? -4 : -7, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = C.choc;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(sliding ? 9 : 0, sliding ? -1 : -2, 5, 0.2 * Math.PI, 0.8 * Math.PI);
-    ctx.stroke();
+    ctx.fillStyle = C.catInk;
+    ctx.beginPath(); ctx.arc(-5, -1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)';   // ประกายตา
+    ctx.beginPath(); ctx.arc(-3.9, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(8.1, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
   }
 
+  // จมูก
+  ctx.fillStyle = C.catPink;
+  ctx.beginPath();
+  ctx.moveTo(-2, 2.5); ctx.lineTo(4, 2.5); ctx.lineTo(1, 5.5);
+  ctx.closePath(); ctx.fill();
+
+  // ปากรูป ω
+  ctx.strokeStyle = C.catInk;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(-1.4, 6, 2.6, 0, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(3.4, 6, 2.6, 0, Math.PI); ctx.stroke();
+
+  // หนวด
+  ctx.strokeStyle = 'rgba(255,243,226,.7)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(-7, 4); ctx.lineTo(-16, 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-7, 6.5); ctx.lineTo(-16, 7.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(9, 4); ctx.lineTo(18, 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(9, 6.5); ctx.lineTo(18, 7.5); ctx.stroke();
+
   ctx.restore();
+}
+
+/** หางโค้งพร้อมปลายครีม wag = -1..1 คุมการสะบัด */
+function drawTail(ctx, x, y, wag) {
+  const tipX = x - 19;
+  const tipY = y - 12 + wag * 7;
+
+  ctx.strokeStyle = C.cat;
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x - 17, y + 3 + wag * 5, tipX, tipY);
+  ctx.stroke();
+
+  ctx.fillStyle = C.catCream;
+  ctx.beginPath(); ctx.arc(tipX, tipY, 3.6, 0, Math.PI * 2); ctx.fill();
 }
