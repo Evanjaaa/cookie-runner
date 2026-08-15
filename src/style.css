@@ -140,6 +140,123 @@ canvas { display: block; width: 100%; height: auto; }
   box-shadow: none;
 }
 
+/* สองปุ่มเรียงแถวเดียว — จอมือถือเตี้ยมาก ถ้าซ้อนกันปุ่มล่างจะโดนตัดหาย */
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ── หน้าแรก ───────────────────────────────── */
+/* ครึ่งซ้ายต้องโปร่ง เพราะแมวถูกวาดอยู่บน canvas ที่อยู่ใต้แผงนี้
+   จึงห้ามใส่ backdrop-filter หรือพื้นทึบคลุมทั้งแผงเด็ดขาด */
+.panel.home {
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0;
+  text-align: left;
+  background: none;
+  backdrop-filter: none;
+}
+.home-stage { flex: 1 1 auto; pointer-events: none; }
+
+.home-menu {
+  flex: 0 0 auto;
+  width: min(48%, 430px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 13px;
+  padding: 20px 26px;
+  /* ไล่จากโปร่งฝั่งซ้ายไปทึบฝั่งขวา ตัวอักษรจึงอ่านออกโดยไม่บังตัวละคร */
+  background: linear-gradient(90deg,
+    rgba(27,15,43,0) 0%, rgba(27,15,43,.7) 20%, rgba(27,15,43,.93) 48%);
+}
+.home-menu h2 {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(19px, 3.3vw, 31px);
+  line-height: 1.15;
+}
+.home-sub {
+  margin-top: 4px;
+  color: #C7AEE0;
+  font-size: clamp(12px, 2vw, 14.5px);
+  line-height: 1.5;
+}
+.home-best { font-size: 13px; color: #A98BC4; }
+.home-best b {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--mint-lite);
+}
+
+/* ── รายการเมนู ────────────────────────────── */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,243,226,.18);
+  background: rgba(255,243,226,.07);
+  color: var(--cream);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .08s ease;
+}
+.menu-item:hover { background: rgba(255,243,226,.13); border-color: rgba(255,243,226,.32); }
+.menu-item:active { transform: scale(.98); }
+.menu-item:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+/* ทับกฎ canvas ทั่วไปที่สั่ง width:100% ไว้สำหรับจอเกม */
+.menu-ico {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: rgba(27,15,43,.5);
+  box-shadow: inset 0 0 0 1px rgba(255,243,226,.14);
+}
+.menu-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.menu-text b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 16px; }
+.menu-text small { font-size: 12px; color: #B99BD4; }
+.menu-arrow { margin-left: auto; font-size: 26px; line-height: 1; color: #B99BD4; }
+
+/* ── เลือกตัวละคร ──────────────────────────── */
+.skin-title { font-size: clamp(20px, 4vw, 30px); }
+.skin-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+
+.skin-card {
+  width: 136px;
+  padding: 12px 10px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,243,226,.18);
+  background: rgba(255,243,226,.06);
+  color: var(--cream);
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: background .12s ease, border-color .12s ease, transform .08s ease;
+}
+.skin-card:hover { background: rgba(255,243,226,.12); }
+.skin-card:active { transform: scale(.97); }
+.skin-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+.skin-card canvas { width: 96px; height: 96px; }
+.skin-card b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 15px; }
+.skin-card small { font-size: 11.5px; color: #B99BD4; }
+
+.skin-card.on {
+  border-color: var(--mint);
+  background: rgba(78,205,196,.14);
+  box-shadow: 0 8px 22px rgba(78,205,196,.2);
+}
+.skin-card.on small { color: var(--mint-lite); }
+
 /* ── สรุปคะแนน ─────────────────────────────── */
 .final { display: flex; gap: 26px; justify-content: center; margin: 2px 0 4px; }
 .final div { min-width: 96px; }
@@ -249,6 +366,31 @@ canvas { display: block; width: 100%; height: auto; }
   .titlebar span { display: none; }   /* เปิดที่ให้ปุ่มบนแถวเดียวกัน ไม่ให้ตกบรรทัด */
   .hudbtns { gap: 6px; }
   .hudbtns button { width: 34px; height: 34px; font-size: 15px; }
+}
+
+/* ── เวทีเตี้ย ──────────────────────────────── */
+/* เข้าเงื่อนไขได้สองทาง: จอแคบแนวตั้ง (เวทีสูง ~157px) หรือมือถือแนวนอน
+   (เวทีสูง ~263px) ทั้งสองกรณีแผงหน้าแรกกับหน้าเลือกแมวสูงเกินเวที
+   แล้วปุ่มล่างสุดจะหลุดออกไปโดน overflow:hidden ของ .stage ตัดหาย
+   วัดจากของจริงแล้ว: หน้าเลือกแมวขนาดเต็มสูง ~273px ซึ่งเกินทั้งสองแบบ */
+@media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
+  .home-menu { width: 56%; padding: 8px 12px; gap: 6px; }
+  .home-menu h2 { font-size: 15px; line-height: 1.15; }
+  .home-sub, .home-best { display: none; }
+  .menu-item { padding: 6px 9px; gap: 8px; border-radius: 12px; }
+  .menu-ico { width: 34px; height: 34px; border-radius: 10px; }
+  .menu-text b { font-size: 12.5px; }
+  .menu-text small { font-size: 10px; }
+  .menu-arrow { font-size: 18px; }
+
+  #skinPanel { padding: 6px 10px; gap: 4px; }
+  .skin-title { font-size: 14px; line-height: 1.2; }
+  .skin-grid { gap: 6px; }
+  .skin-card { width: 78px; padding: 4px 4px 6px; gap: 1px; border-radius: 11px; }
+  .skin-card canvas { width: 44px; height: 44px; }
+  .skin-card b { font-size: 11px; }
+  .skin-card small { display: none; }
+  #skinBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
 }
 
 /* มือถือแนวนอน: จอเตี้ย ต้องซ่อนหัวเรื่องกับคำอธิบายเพื่อเปิดที่ให้ปุ่ม */

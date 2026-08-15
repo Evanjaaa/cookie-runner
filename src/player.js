@@ -1,6 +1,11 @@
 // src/player.js
 import { GROUND_Y, PLAYER_X, PHYSICS, BODY, VIEW } from './config.js';
 
+/** เอียงเกือบ 90° = นอนตะแคง ไม่เอาให้ถึง 90 เป๊ะเพราะดูแข็งเกินไป */
+const FAINT_TILT = Math.PI / 2 * 0.94;
+/** ระยะที่ตัวต้องจมลงตอนล้มสุด เพื่อให้ลำตัวแนบพื้นแทนที่จะลอย */
+const FAINT_DROP = 9;
+
 // ─────────────────────────────────────────────────────────────
 // สำคัญ: this.y คือ "ตำแหน่งเท้า" ไม่ใช่ขอบบนของตัว
 // เพราะเท้าอยู่ที่เดิมเสมอไม่ว่าจะยืนหรือหมอบ
@@ -21,6 +26,22 @@ export class Player {
     this.slideHeld = false;
     this.runPhase = 0;
     this.tilt = 0;
+    this.fainting = false;
+    this.faintV = 0;
+  }
+
+  /**
+   * ท่าเป็นลม: ล้มพับลงนอนกับพื้นตรงจุดที่ยืนอยู่
+   * ใช้ตอนพลังหมด ต่างจากตอนตกหลุมที่ต้องปลิวหมุนตกจอไป
+   */
+  faint() {
+    this.fainting = true;
+    this.sliding = false;   // ถ้ากดหมอบค้างอยู่ ท่าหมอบหมุนแล้วดูประหลาด
+    this.slideHeld = false;
+    this.vy = 0;
+    this.y = GROUND_Y;
+    this.tilt = 0;
+    this.faintV = 0;
   }
 
   get width() { return this.sliding ? BODY.slideW : BODY.standW; }
@@ -88,13 +109,28 @@ export class Player {
     }
 
     // หมอบได้เฉพาะตอนแตะพื้น แต่กดค้างรอไว้ตั้งแต่กลางอากาศได้
+    const wasSliding = this.sliding;
     this.sliding = this.slideHeld && this.onGround;
 
-    return { justLanded, fellOut: this.y > VIEW.H + 100 };
+    // ยิงเฉพาะจังหวะที่ "เริ่มหมอบจริง" ไม่ใช่ทุกเฟรมที่กดค้าง
+    // และไม่ใช่ตอนกดกลางอากาศ ซึ่งยังหมอบไม่ได้จนกว่าจะแตะพื้น
+    const justSlid = this.sliding && !wasSliding;
+
+    return { justLanded, justSlid, fellOut: this.y > VIEW.H + 100 };
   }
 
-  /** ตอนตาย: ปลิวขึ้นแล้วหมุนตกจอ */
   updateDead(dt) {
+    if (this.fainting) {
+      // ล้มแบบเร่งความเร็ว เหมือนของที่เสียหลักแล้วล้มจริง ไม่ใช่หมุนคงที่
+      this.faintV = Math.min(0.34, this.faintV + 0.022 * dt);
+      this.tilt = Math.min(FAINT_TILT, this.tilt + this.faintV * dt);
+      // ยิ่งเอียงยิ่งจมลง ให้ลำตัวไปแนบพื้นพอดีตอนเอียงสุด
+      // ต้องชดเชยเพราะการหมุนใช้กลางกล่องชนเป็นแกน ถ้าไม่ขยับจะลอยเหนือพื้น
+      this.y = GROUND_Y + (this.tilt / FAINT_TILT) * FAINT_DROP;
+      return;
+    }
+
+    // ตกหลุม: ปลิวขึ้นแล้วหมุนตกจอไป
     this.vy += PHYSICS.gravity * dt;
     this.y += this.vy * dt;
     this.tilt += 0.09 * dt;

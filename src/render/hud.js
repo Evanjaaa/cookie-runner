@@ -1,6 +1,6 @@
 // src/render/hud.js
 import { VIEW, SCORING, HEALTH, COLORS as C } from '../config.js';
-import { drawFish, drawKibble } from './entities.js';
+import { drawFish } from './entities.js';
 
 const { W, H } = VIEW;
 
@@ -40,9 +40,11 @@ export function drawHUD(ctx, game) {
 
   // วัดความกว้างด้วยฟอนต์เดียวกับที่เพิ่งวาด แล้วเอาไอคอนไปวางชิดซ้ายของตัวเลข
   // โชว์ทั้งสองชนิด ให้เห็นว่าเลขนี้นับรวมทั้งปลาและเม็ดกลม
-  const iconX = W - 40 - ctx.measureText(treatText).width;
-  drawKibble(ctx, iconX, 47, 10);
-  drawFish(ctx, iconX - 25, 47, 10);
+  // กุ้งวาดที่ขนาดปกติตรงนี้ ไม่ต้องคูณ SHRIMP.scale เหมือนในด่าน
+  // เพราะแถวไอคอนต้องดูสูงเท่ากันหมด ไม่ใช่โชว์ขนาดจริง
+  // ไอคอนเดียวพอ — เลขนี้คือคะแนนรวมของกินทุกชนิด ไม่ใช่จำนวนปลา
+  // ใช้ปลาเป็นตัวแทนเพราะเป็นของที่เจอบ่อยที่สุดและสีตัดกับพื้นหลังชัดที่สุด
+  drawFish(ctx, W - 40 - ctx.measureText(treatText).width, 47, 10);
 
   ctx.textAlign = 'left';
 

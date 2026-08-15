@@ -5,6 +5,7 @@ const TINT = {
   dust: 'rgba(255,243,226,.5)',
   mint: COLORS.mintLite,
   kibble: COLORS.kibbleLite,
+  shrimp: COLORS.shrimpLite,
   crumb: COLORS.cat,
 };
 

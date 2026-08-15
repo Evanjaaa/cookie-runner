@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Midnight Bakery — Runner</title>
+  <title>Speed Cat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
   <div class="shell">
 
     <div class="titlebar">
-      <h1>Midnight Bakery</h1>
+      <h1>Speed Cat</h1>
       <span>endless runner</span>
       <div class="hudbtns">
         <button id="btnPause" aria-label="หยุดชั่วคราว">⏸</button>
@@ -23,31 +23,59 @@
     <div class="stage" id="stage">
       <canvas id="game" width="960" height="420"></canvas>
 
-      <div class="panel" id="startPanel">
-        <h2>วิ่งให้ไกลที่สุด<br>ก่อนเตาจะปิด</h2>
-        <p>แมวน้อยวิ่งเองอัตโนมัติ หน้าที่คุณคือกระโดดข้ามหนามกับหมอบลอดใต้คาน <b>หลอดพลังไหลลงตลอดเวลา</b> ชนเข้าก็เสียพลังก้อนใหญ่ เก็บ<b>เม็ดอาหารรูปปลา</b>ได้เม็ดละ 1,000 คะแนน ส่วน<b>เม็ดกลมสีส้ม</b>หายากกว่า ได้เม็ดละ 2,500 — แต่ของกินไม่เติมพลังนะ พลังมาจาก<b>ขวดยาใหญ่ที่โผล่ทุกๆ 1 นาที</b> อย่าพลาดเด็ดขาด ส่วนวงแหวนโล่กันได้เต็มๆ หนึ่งครั้ง — ระวังหลุม ตกลงไปคือจบทันที</p>
-        <div class="keys">
-          <span class="key"><b>Space</b> / <b>↑</b> กระโดด (กล่องลังซ้อนสูง = ต้องกดซ้ำกลางอากาศ)</span>
-          <span class="key">กดค้าง <b>↓</b> หมอบ</span>
+      <!-- หน้าแรก: ครึ่งซ้ายเว้นว่างให้เห็นแมวที่วาดบน canvas ครึ่งขวาเป็นเมนู -->
+      <div class="panel home" id="startPanel">
+        <div class="home-stage" aria-hidden="true"></div>
+
+        <div class="home-menu">
+          <div class="home-head">
+            <h2>Speed Cat</h2>
+            <p class="home-sub">วิ่งให้ไกลที่สุดเท่าที่แรงจะไหว</p>
+          </div>
+
+          <button class="menu-item" id="btnSkins">
+            <canvas class="menu-ico" id="skinIcon" width="76" height="76"></canvas>
+            <span class="menu-text">
+              <b>แมวน้อย</b>
+              <small id="skinName">ส้มน้อย</small>
+            </span>
+            <span class="menu-arrow" aria-hidden="true">›</span>
+          </button>
+
+          <button class="btn" id="startBtn">เริ่มวิ่ง</button>
+
+          <p class="home-best">สถิติสูงสุด <b id="homeBest">0</b></p>
         </div>
-        <button class="btn" id="startBtn">เริ่มวิ่ง</button>
+      </div>
+
+      <!-- หน้าเลือกตัวละคร ปุ่มแต่ละใบมี canvas วาดแมวตัวนั้นจริง ๆ -->
+      <div class="panel hidden" id="skinPanel">
+        <h2 class="skin-title">เลือกแมวน้อย</h2>
+        <div class="skin-grid" id="skinGrid"></div>
+        <button class="btn ghost" id="skinBack">กลับ</button>
       </div>
 
       <div class="panel hidden" id="pausePanel">
         <h2>พักก่อน</h2>
         <button class="btn" id="resumeBtn">เล่นต่อ</button>
-        <button class="btn ghost" id="restartBtn">เริ่มใหม่</button>
+        <div class="btnrow">
+          <button class="btn ghost" id="restartBtn">เริ่มใหม่</button>
+          <button class="btn ghost" id="quitBtn">เลิกเล่น</button>
+        </div>
       </div>
 
       <div class="panel hidden" id="overPanel">
-        <h2 id="overTitle">เตาปิดแล้ว</h2>
+        <h2 id="overTitle">หมดแรงแล้ว</h2>
         <div class="final">
           <div><div class="lbl">คะแนน</div><div class="val" id="finalScore">0</div></div>
           <div><div class="lbl">ระยะทาง</div><div class="val" id="finalDist">0 ม.</div></div>
           <div><div class="lbl">สถิติสูงสุด</div><div class="val mint" id="bestScore">0</div></div>
         </div>
         <p>ความเร็วคงที่ตลอด ระยะกระโดดจึงเท่าเดิมเสมอ — กดกระโดดตรงปลาเม็ดแรก แล้วจะเก็บครบทั้งเส้นพร้อมข้ามพ้นพอดี</p>
-        <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
+        <div class="btnrow">
+          <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
+          <button class="btn ghost" id="homeBtn">กลับหน้าแรก</button>
+        </div>
       </div>
 
     </div>
