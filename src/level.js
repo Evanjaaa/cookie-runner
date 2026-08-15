@@ -1,6 +1,7 @@
 // src/level.js
 import {
-  GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET,
+  GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
+  SPEEDUP,
 } from './config.js';
 
 const { spike, bar, crate, fishR, chunkW } = LEVEL;
@@ -417,60 +418,46 @@ export const PATTERNS = [
 ];
 
 // ─────────────────────────────────────────────────────────────
-// ด่าน — ลำดับท่อนที่ล็อกไว้ตายตัว เล่นกี่รอบก็เจอเหมือนเดิมเป๊ะ
+// ลำดับท่อนของแต่ละด่านอยู่ใน stages.js ไม่ได้อยู่ที่นี่
+// ไฟล์นี้รู้แค่ "วิธีสร้างท่อน" ส่วน "จะสร้างท่อนไหนตามลำดับใด" เป็นเรื่องของด่าน
+// แยกกันแบบนี้เพื่อให้เพิ่มด่านใหม่ได้โดยไม่ต้องแตะไฟล์นี้เลย
 //
-// เดิมสุ่มท่อนทุกครั้ง ซึ่งมีปัญหาสองข้อ:
-//   1. ผู้เล่นจำเส้นทางไม่ได้ ทำสถิติแข่งกับตัวเองไม่ได้
-//   2. จูนความยากไม่ได้เลย เพราะแต่ละรอบไม่เหมือนกัน วัดผลการแก้ไม่ได้
-//
-// จังหวะของด่านออกแบบเป็น: อุ่นเครื่อง → ไต่ระดับ → จุดพีค → พัก → วนใหม่
-// ของเสริมทุกชิ้นระบุตรงนี้หมด ไม่มีอะไรสุ่มอีกแล้ว
-//
+// รูปแบบของแต่ละรายการใน route:
 //   p       = ดัชนีแพตเทิร์นใน PATTERNS
 //   kibble  = 'cluster' | 'alternate' ใส่เม็ดกลมแบบไหน
 //   shrimp  = วางกุ้งทอง (ทับ kibble ถ้าใส่พร้อมกัน)
 //   shield  = วางโล่กลางท่อน
-//   magnet  = วางแม่เหล็ก — ใส่เฉพาะท่อนที่อาหารเยอะจริง ๆ เท่านั้น
-//             ไม่งั้นจะกลายเป็นของธรรมดาที่เจอเรื่อย ๆ จนไม่รู้สึกว่าได้ของดี
+//   magnet  = วางแม่เหล็ก
 // ─────────────────────────────────────────────────────────────
-export const STAGE = [
-  { p: 0 },                                  // 1. ทางเรียบ ให้จับจังหวะกดกระโดด
-  { p: 9, kibble: 'alternate' },             // 2. แถวตรงยาว เก็บเพลิน ๆ
-  { p: 1 },                                  // 3. หนามเดี่ยว ของจริงเริ่มตรงนี้
-  { p: 10, kibble: 'cluster' },              // 4. แถวคลื่น พักสายตา
-  { p: 3, shield: true },                    // 5. หลุมเดี่ยว + โล่กันพลาด
-  { p: 12, kibble: 'alternate' },            // 6. สองชั้น เริ่มต้องเลือกแล้ว
-  { p: 2 },                                  // 7. คานหมอบ เปลี่ยนท่าบ้าง
-  { p: 6, shrimp: true },                    // 8. หนามคู่ + กุ้งทองที่ยอดโค้ง
-  { p: 11 },                                 // 9. แถวตรงต่อโค้งข้ามหนาม
-  { p: 7 },                                  // 10. กล่องซ้อน บังคับกระโดดสองชั้น
-  { p: 13, kibble: 'alternate', magnet: true }, // 11. จุดพีค อาหารเยอะสุด 85 เม็ด
-  { p: 4, shield: true },                    // 12. หนาม+คาน สลับสองท่าติด
-  { p: 8, shrimp: true },                    // 13. กล่องเรียงสามใบ เป็นจังหวะ
-  { p: 5 },                                  // 14. สองหลุมติด บทสรุปความยาก
-  { p: 9, kibble: 'cluster' },               // 15. แถวยาวปิดท้าย พักก่อนวนใหม่
-];
-
 export class Level {
-  constructor() {
+  constructor(route = []) {
+    this.route = route;
+    // Game เป็นคนบอกว่าตัวอักษรถัดไปคือตัวไหน คืน null = ไม่ต้องวาง
+    this.nextLetter = () => null;
     this.reset();
   }
 
-  reset() {
+  /** ส่ง route ใหม่เข้ามาเมื่อเปลี่ยนด่าน ไม่ส่งก็ใช้ของเดิม */
+  reset(route) {
+    if (route) this.route = route;
     this.obstacles = [];
     this.fishes = [];
     this.pits = [];
     this.shields = [];
     this.potions = [];
     this.magnets = [];
+    this.letters = [];
+    this.nips = [];
     this.nextChunkX = 900;   // เว้นที่ว่างตอนเริ่มเกม
     this.chunkIndex = 0;
   }
 
   spawnChunk() {
+    if (!this.route.length) return;   // ยังไม่ได้ตั้งด่าน อย่าสร้างอะไรทั้งนั้น
+
     // วนด่านซ้ำเมื่อจบลำดับ — endless runner จึงยังวิ่งต่อได้ไม่รู้จบ
     // แต่เส้นทางเหมือนเดิมทุกรอบ ผู้เล่นจำได้และทำสถิติแข่งกับตัวเองได้
-    const step = STAGE[this.chunkIndex % STAGE.length];
+    const step = this.route[this.chunkIndex % this.route.length];
 
     const c = PATTERNS[step.p](this.nextChunkX);
     // แพตเทิร์นยาว ๆ ประกาศ width เองได้ ไม่งั้นเนื้อหาจะล้นไปทับท่อนถัดไป
@@ -497,6 +484,8 @@ export class Level {
     // ต้องเรียกหลัง push obstacles/pits/fishes แล้วเท่านั้น
     // ไม่งั้น spawnMagnet จะหาที่โล่งจากข้อมูลที่ยังว่างอยู่แล้วได้จุดผิด
     if (step.magnet) this.spawnMagnet(this.nextChunkX, w);
+    if (step.letter) this.spawnLetter(this.nextChunkX, w);
+    if (step.nip) this.spawnNip(this.nextChunkX, w);
 
     this.nextChunkX += w;
     this.chunkIndex++;
@@ -504,6 +493,8 @@ export class Level {
 
   /** เติมท่อนล่วงหน้าเสมอ ไม่ให้ผู้เล่นวิ่งไปเจอที่ว่าง */
   ensureAhead(camera) {
+    // กันลูปไม่รู้จบ: ถ้าไม่มี route แล้ว spawnChunk ไม่ขยับ nextChunkX เลย
+    if (!this.route.length) return;
     while (this.nextChunkX < camera + VIEW.W + chunkW) this.spawnChunk();
   }
 
@@ -565,6 +556,33 @@ export class Level {
   }
 
   /**
+   * วางตัวอักษรหนึ่งตัวในท่อน
+   *
+   * ดัชนีตัวอักษรมาจาก nextLetter() ที่ Game ส่งเข้ามา ไม่ได้นับเองในนี้
+   * เพราะ "ตัวถัดไปที่ต้องเก็บ" เป็นข้อมูลของรอบเล่น ไม่ใช่ของด่าน
+   * ถ้านับเองจะเดินหน้าเรื่อย ๆ แม้ผู้เล่นเก็บไม่ทัน แล้วเก็บครบไม่ได้เลย
+   */
+  /** ต้นหญ้าแมว — หาที่โล่งเหมือนแม่เหล็ก แต่เริ่มไล่จากคนละจุดกันไม่ให้ทับกัน */
+  spawnNip(from, w) {
+    for (let x = from + 200; x < from + w - 100; x += 20) {
+      if (!this.isClearSpot(x, SPEEDUP.clearance)) continue;
+      this.nips.push({ x, y: SPEEDUP.y, r: SPEEDUP.r, got: false });
+      return;
+    }
+  }
+
+  spawnLetter(from, w) {
+    const idx = this.nextLetter();
+    if (idx === null) return;   // เก็บครบแล้ว หรือกำลังอยู่ในโบนัส
+
+    for (let x = from + 120; x < from + w - 120; x += 20) {
+      if (!this.isClearSpot(x, LETTER.clearance)) continue;
+      this.letters.push({ x, y: LETTER.y, r: LETTER.r, idx, got: false });
+      return;
+    }
+  }
+
+  /**
    * ทิ้งของที่หลุดจอไปแล้ว
    * ถ้าไม่ทำ array จะโตไม่หยุดจน FPS ตกภายใน 1-2 นาที
    */
@@ -576,6 +594,8 @@ export class Level {
     this.shields = this.shields.filter((s) => s.x > cut);
     this.potions = this.potions.filter((p) => p.x > cut);
     this.magnets = this.magnets.filter((m) => m.x > cut);
+    this.letters = this.letters.filter((l) => l.x > cut);
+    this.nips = this.nips.filter((n) => n.x > cut);
   }
 
   isOverPit(worldX) {

@@ -1,17 +1,169 @@
 // src/render/entities.js
-import { VIEW, GROUND_Y, BODY, SHRIMP, COLORS as C } from '../config.js';
+import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, COLORS as C } from '../config.js';
 
 const { W } = VIEW;
 
 // ── สิ่งกีดขวาง ──────────────────────────────────────────────
 
-export function drawObstacles(ctx, obstacles, camera) {
+/**
+ * theme เปลี่ยนได้แค่ "ภาพ" ที่วาด — กล่องชนที่ส่งเข้ามาเหมือนกันทุกด่านเสมอ
+ * เพราะระยะกระโดดกับตำแหน่งอาหารทั้งเกมคำนวณจากขนาดพวกนั้น
+ * ถ้าธีมไหนวาดใหญ่กว่ากล่องชนจริง ผู้เล่นจะรู้สึกว่า "ชนทั้งที่ยังไม่โดน"
+ */
+export function drawObstacles(ctx, obstacles, camera, theme = 'bakery') {
+  const garden = theme === 'garden';
   for (const o of obstacles) {
     const x = o.x - camera;
     if (x > W + 40 || x + o.w < -40) continue;
-    if (o.kind === 'bar') drawBar(ctx, x, o.y, o.w, o.h);
-    else if (o.kind === 'crate') drawCrateStack(ctx, x, o.y, o.w, o.h, o.rows);
-    else drawSpike(ctx, x, o.y, o.w, o.h);
+    if (o.kind === 'bar') (garden ? drawFlowerArch : drawBar)(ctx, x, o.y, o.w, o.h);
+    else if (o.kind === 'crate') (garden ? drawGiftStack : drawCrateStack)(ctx, x, o.y, o.w, o.h, o.rows);
+    else (garden ? drawCactus : drawSpike)(ctx, x, o.y, o.w, o.h);
+  }
+}
+
+// ── ชุดภาพธีมสวนกลางวัน ──────────────────────────────────────
+// กินพื้นที่เท่ากับหนาม/คาน/กล่องลังของธีมกลางคืนทุกมิติ
+
+/** กระบองเพชร แทนหนาม — w32 h38 ยืนบนพื้น */
+function drawCactus(ctx, x, y, w, h) {
+  const cx = x + w / 2;
+
+  ctx.fillStyle = '#3E8E52';
+  // แขนสองข้าง วาดก่อนลำต้นเพื่อให้โคนแขนถูกกลบ
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + h * 0.42, w * 0.26, h * 0.3, 4);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + w - 1 - w * 0.26, y + h * 0.34, w * 0.26, h * 0.34, 4);
+  ctx.fill();
+
+  // ลำต้น
+  ctx.fillStyle = '#4CA862';
+  ctx.beginPath();
+  ctx.roundRect(cx - w * 0.24, y + h * 0.06, w * 0.48, h * 0.94, 6);
+  ctx.fill();
+
+  // ร่องกลางลำต้น
+  ctx.strokeStyle = 'rgba(30,90,48,.5)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(cx, y + h * 0.2);
+  ctx.lineTo(cx, y + h * 0.86);
+  ctx.stroke();
+
+  // หนามเล็ก ๆ — ตัวบอกว่าแตะไม่ได้
+  ctx.strokeStyle = '#E8F5D8';
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < 3; i++) {
+    const sy = y + h * (0.28 + i * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.24, sy); ctx.lineTo(cx - w * 0.36, sy - 2);
+    ctx.moveTo(cx + w * 0.24, sy); ctx.lineTo(cx + w * 0.36, sy - 2);
+    ctx.stroke();
+  }
+
+  // ดอกชมพูบนยอด
+  ctx.fillStyle = '#FF7EA8';
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * 4, y + 3 + Math.sin(a) * 4, 3.4, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#FFE071';
+  ctx.beginPath(); ctx.arc(cx, y + 3, 2.6, 0, Math.PI * 2); ctx.fill();
+
+  // เงาที่โคน ทำให้ดูตั้งอยู่บนพื้นจริง
+  ctx.fillStyle = 'rgba(38,72,44,.28)';
+  ctx.fillRect(x - 2, y + h - 4, w + 4, 5);
+}
+
+/** ซุ้มดอกไม้ แทนคาน — ต้องหมอบลอด ขอบล่างต้องอ่านว่า "อันตราย" */
+function drawFlowerArch(ctx, x, y, w, h) {
+  // คานไม้
+  ctx.fillStyle = '#A9713F';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,.18)';
+  ctx.fillRect(x, y, w, 5);
+
+  // ใบไม้เลื้อยคลุมคาน
+  ctx.fillStyle = '#4CA862';
+  for (let i = 0; i < w; i += 17) {
+    ctx.beginPath();
+    ctx.ellipse(x + i + 8, y + 12, 9, 6, i % 34 ? 0.4 : -0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // แถวดอกไม้ตรงขอบล่าง = เส้นที่ห้ามแตะ ตำแหน่งเดียวกับแถบแดงของธีมกลางคืน
+  ctx.fillStyle = '#F2565F';
+  ctx.fillRect(x, y + h - 8, w, 8);
+  for (let i = 0; i < w; i += 22) {
+    const fx = x + i + 11;
+    ctx.fillStyle = '#FFD36E';
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(fx + Math.cos(a) * 4.2, y + h - 4 + Math.sin(a) * 4.2, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#FF8FB0';
+    ctx.beginPath(); ctx.arc(fx, y + h - 4, 2.8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // เสาค้ำขึ้นไปนอกจอ
+  ctx.fillStyle = '#8C5A31';
+  ctx.fillRect(x + 10, 0, 12, y);
+  ctx.fillRect(x + w - 22, 0, 12, y);
+}
+
+/** กล่องของขวัญซ้อน แทนกล่องลัง — สีสลับชั้นให้เห็นว่าซ้อนกี่ใบ */
+const GIFT_COLORS = [
+  ['#FF8FB0', '#FFD36E'],   // ชมพู + ริบบิ้นเหลือง
+  ['#7FD1F0', '#FF8FB0'],
+  ['#FFD36E', '#7FD1F0'],
+];
+
+function drawGiftStack(ctx, x, y, w, h, rows = 1) {
+  const rh = h / rows;
+  for (let i = 0; i < rows; i++) {
+    // ไล่สีจากล่างขึ้นบน กล่องบนสุดได้โบว์
+    const [box, ribbon] = GIFT_COLORS[(rows - 1 - i) % GIFT_COLORS.length];
+    drawGift(ctx, x, y + i * rh, w, rh, box, ribbon, i === 0);
+  }
+}
+
+function drawGift(ctx, x, y, w, h, box, ribbon, topBox) {
+  ctx.fillStyle = box;
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + 1, w - 2, h - 2, 5);
+  ctx.fill();
+
+  // เงาด้านล่างให้ดูมีปริมาตร
+  ctx.fillStyle = 'rgba(0,0,0,.13)';
+  ctx.fillRect(x + 1, y + h - 7, w - 2, 6);
+
+  // ริบบิ้นกากบาท
+  ctx.fillStyle = ribbon;
+  ctx.fillRect(x + w / 2 - 4, y + 1, 8, h - 2);
+  ctx.fillRect(x + 1, y + h / 2 - 4, w - 2, 8);
+
+  ctx.strokeStyle = 'rgba(255,255,255,.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 4);
+  ctx.stroke();
+
+  if (topBox) {
+    // โบว์บนกล่องใบบนสุด วาดล้นขึ้นไปเล็กน้อยได้ เพราะเป็นแค่ภาพ
+    ctx.fillStyle = ribbon;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2 - 7, y - 1, 6, 4.5, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2 + 7, y - 1, 6, 4.5, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = box;
+    ctx.beginPath(); ctx.arc(x + w / 2, y, 3.4, 0, Math.PI * 2); ctx.fill();
   }
 }
 
@@ -92,6 +244,23 @@ function drawBar(ctx, x, y, w, h) {
 export function drawFish(ctx, x, y, r) {
   ctx.save();
   ctx.translate(x, y);
+
+  // ขอบเข้ม — วาดเงาร่างเดียวกันขยาย 15% ไว้ข้างใต้
+  // จำเป็นตั้งแต่มีด่านกลางวัน เพราะปลาสีมิ้นต์ทับเนินหญ้าเขียวแล้วกลืนกันสนิท
+  // แสงเรืองช่วยไม่ได้เลยเมื่อพื้นหลังสว่างพอ ๆ กับตัวปลา ต้องใช้ขอบเข้มเท่านั้น
+  ctx.save();
+  ctx.scale(1.15, 1.15);
+  ctx.fillStyle = 'rgba(14,36,32,.5)';
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.7, 0);
+  ctx.lineTo(-r * 1.38, -r * 0.64);
+  ctx.lineTo(-r * 1.38, r * 0.64);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
   // เรืองแสงรอบตัว วาดลำตัวกับหางในรอบเดียวกันเพื่อให้ได้ขอบเรืองรูปปลา
   ctx.save();
@@ -377,6 +546,249 @@ export function drawSuction(ctx, player, tick) {
   ctx.restore();
 }
 
+// ── เม็ดที่โปรยลงมาตอนใช้ความสามารถ ──────────────────────────
+// สีมาจากสกิน แมวส้มโปรยเม็ดส้มแดง แมวขาวโปรยเม็ดขาวเทา
+
+export function drawRain(ctx, drops, camera, skin, t) {
+  const [main, lite, dark] = skin.rain;
+
+  for (const d of drops) {
+    if (d.got) continue;
+    const x = d.x - camera;
+    if (x > W + 40 || x < -40) continue;
+    const r = SKILL.rainR;
+
+    ctx.save();
+    ctx.shadowColor = main;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = main;
+    ctx.beginPath();
+    ctx.arc(x, d.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // ขอบล่างเข้ม ทำให้ดูกลมมีน้ำหนักแทนที่จะเป็นจานแบน
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, d.y, r - 1, 0.12 * Math.PI, 0.88 * Math.PI);
+    ctx.stroke();
+
+    ctx.fillStyle = lite;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.3, d.y - r * 0.34, r * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/**
+ * หลอดความสามารถลอยเหนือหัวแมว
+ * เต็มแล้วเปลี่ยนเป็นแถบเรืองแสงกะพริบ ให้รู้ทันทีว่ากำลังออกฤทธิ์อยู่
+ */
+export function drawSkillGauge(ctx, player, ratio, active, t) {
+  const b = player.box;
+  const x = b.x + b.w / 2 - SKILL.gaugeW / 2;
+  const y = b.y - SKILL.gaugeUp;
+  const w = SKILL.gaugeW;
+  const h = SKILL.gaugeH;
+
+  ctx.save();
+
+  // ราง
+  ctx.fillStyle = 'rgba(20,10,32,.62)';
+  ctx.beginPath();
+  ctx.roundRect(x - 2, y - 2, w + 4, h + 4, (h + 4) / 2);
+  ctx.fill();
+
+  if (active) {
+    // ออกฤทธิ์: เต็มหลอดตลอด แต่กะพริบเพื่อบอกว่าเป็นสถานะพิเศษ
+    // ต้องบังคับเป็น 1 เพราะ charge ถูกรีเซ็ตเป็น 0 ตอนความสามารถติด
+    // ถ้าใช้ ratio ตรง ๆ หลอดจะว่างเปล่าตลอดช่วงที่กำลังออกฤทธิ์
+    // ต่ำสุด 0.72 ไม่ใช่ 0.30 — ขาวจาง ๆ ทับรางเข้มแล้วกลายเป็นเทา
+    // มองไม่ออกว่าหลอดเต็ม ซึ่งเป็นข้อมูลชิ้นเดียวที่หลอดนี้มีหน้าที่บอก
+    ctx.globalAlpha = 0.86 + Math.sin(t * 0.35) * 0.14;
+    ctx.fillStyle = C.glint;
+  } else {
+    ctx.fillStyle = ratio >= 1 ? C.glint : C.mintLite;
+  }
+  const fw = (active ? 1 : Math.max(0, Math.min(1, ratio))) * w;
+  if (fw > 0.5) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, fw, h, h / 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// ── ต้นหญ้าแมว ───────────────────────────────────────────────
+
+/** ช่อใบเขียวบนก้าน — เรืองเขียวสดให้แยกจากกระบองเพชรของด่านสวนได้ */
+export function drawNip(ctx, x, y, r, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  // โยกโดยหมุนรอบโคนต้น ไม่ใช่รอบกลางต้น ไม่งั้นโคนจะเลื่อนหลุดพื้น
+  ctx.translate(0, r * 0.9);
+  ctx.rotate(Math.sin(t * 0.06) * 0.12);
+  ctx.translate(0, -r * 0.9);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(95,211,90,.95)';
+  ctx.shadowBlur = 16;
+
+  // ก้าน
+  ctx.strokeStyle = C.nipDark;
+  ctx.lineWidth = r * 0.16;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0, r * 0.9);
+  ctx.lineTo(0, -r * 0.5);
+  ctx.stroke();
+
+  // ใบสามคู่ ไล่เล็กลงไปทางยอด
+  // ตีเส้นขอบเขียวเข้มด้วย มิฉะนั้นใบจะกลืนกับเนินหญ้าของด่านสวนจนมองไม่เห็น
+  // (ปัญหาเดียวกับปลามินต์ที่เคยแก้ด้วยการเติมขอบเข้ม)
+  ctx.fillStyle = C.nip;
+  ctx.strokeStyle = C.nipDark;
+  ctx.lineWidth = r * 0.09;
+  for (let i = 0; i < 3; i++) {
+    const ly = r * (0.5 - i * 0.5);
+    const s = 1 - i * 0.22;
+    for (const dir of [-1, 1]) {
+      ctx.save();
+      ctx.translate(dir * r * 0.1, ly);
+      ctx.rotate(dir * 0.7);
+      ctx.beginPath();
+      ctx.ellipse(dir * r * 0.42 * s, 0, r * 0.44 * s, r * 0.2 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+
+  // เส้นกลางใบคู่ล่าง ให้ดูเป็นใบไม้จริงไม่ใช่วงรีเปล่า
+  ctx.strokeStyle = C.nipDark;
+  ctx.lineWidth = 1.2;
+  for (const dir of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(dir * r * 0.14, r * 0.46);
+    ctx.lineTo(dir * r * 0.7, r * 0.16);
+    ctx.stroke();
+  }
+
+  // ช่อดอกม่วงบนยอด — เป็นทั้งของจริงตามพฤกษศาสตร์และตัวแยกสีจากพื้นหลังเขียว
+  ctx.save();
+  ctx.shadowColor = 'rgba(199,125,255,.9)';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = C.nipBloom;
+  for (const [ox, oy, or_] of [[0, -0.78, 0.26], [-0.3, -0.55, 0.19], [0.3, -0.55, 0.19]]) {
+    ctx.beginPath();
+    ctx.arc(ox * r, oy * r, or_ * r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // จุดสว่างกลางดอกบนสุด ให้ดอกดูมีมิติไม่ใช่วงกลมแบน
+  ctx.fillStyle = C.nipBloomLite;
+  ctx.beginPath();
+  ctx.arc(-r * 0.07, -r * 0.85, r * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+export function drawNips(ctx, nips, camera, tick) {
+  for (const n of nips) {
+    if (n.got) continue;
+    const x = n.x - camera;
+    if (x > W + 50 || x < -50) continue;
+    // ไม่ลอยขึ้นลงเหมือนไอเท็มอื่น เพราะต้นไม้งอกติดพื้น มีแค่โยกตามลมในตัว drawNip
+    drawNip(ctx, x, n.y, n.r, tick);
+  }
+}
+
+// ── ตัวอักษร SPEEDCAT ────────────────────────────────────────
+
+/** เหรียญตัวอักษรหนึ่งตัว — วงกลมม่วงมีอักษรตรงกลาง */
+export function drawLetterCoin(ctx, x, y, r, ch, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  // หมุนแกว่งเบา ๆ เหมือนเหรียญห้อยอยู่ ไม่ใช่ป้ายติดกลางอากาศ
+  ctx.rotate(Math.sin(t * 0.045 + x * 0.01) * 0.14);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(199,125,255,.95)';
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = C.letter;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = C.letterLite;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = C.letter;
+  ctx.lineWidth = r * 0.13;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = C.letterInk;
+  ctx.font = `700 ${Math.round(r * 1.12)}px Mitr, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(ch, 0, r * 0.06);
+
+  ctx.restore();
+}
+
+export function drawLetters(ctx, letters, camera, tick) {
+  for (const l of letters) {
+    if (l.got) continue;
+    const x = l.x - camera;
+    if (x > W + 50 || x < -50) continue;
+    drawLetterCoin(ctx, x, l.y + Math.sin(tick * 0.05 + l.x * 0.01) * 5, l.r, WORD[l.idx], tick);
+  }
+}
+
+// ── ก้อนเมฆในโหมดโบนัส ───────────────────────────────────────
+// สามชั้นเลื่อนคนละความเร็ว ให้รู้สึกว่าอยู่สูงจริง ไม่ใช่ฉากแบน
+const CLOUD_LAYERS = [
+  { speed: 0.10, y: 70, scale: 1.5, alpha: 0.34, gap: 520 },
+  { speed: 0.24, y: 168, scale: 1.1, alpha: 0.6, gap: 430 },
+  { speed: 0.46, y: 292, scale: 1.7, alpha: 0.9, gap: 610 },
+];
+
+function puff(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, 46 * s, 24 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(x - 34 * s, y + 6 * s, 28 * s, 17 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + 32 * s, y + 7 * s, 32 * s, 18 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(x - 6 * s, y - 14 * s, 26 * s, 18 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+export function drawClouds(ctx, camera, pal) {
+  ctx.save();
+  for (const L of CLOUD_LAYERS) {
+    ctx.globalAlpha = L.alpha;
+    // สีเมฆมาจากด่าน — เมฆขาวโปร่งบนฟ้ากลางคืนสีม่วงจะกลายเป็นเทาหม่น
+    // ด่านกลางคืนจึงต้องใช้ขาวอมม่วงที่สว่างกว่า ไม่ใช่ขาวล้วนจาง ๆ
+    ctx.fillStyle = L.alpha > 0.7 ? pal.cloud : pal.cloudSoft;
+    const off = (camera * L.speed) % L.gap;
+    for (let i = -1; i * L.gap - off < W + L.gap; i++) {
+      const x = i * L.gap - off;
+      // เลื่อน y ตามดัชนีนิดหน่อย ไม่ให้เมฆเรียงเป็นแถวตรงจนดูเป็นลาย
+      puff(ctx, x, L.y + ((i * 37) % 26) - 13, L.scale);
+    }
+  }
+  ctx.restore();
+}
+
 /** วาดของเก็บทั้งแนว ทุกชนิดอยู่ใน array เดียวกัน แยกด้วย kind */
 export function drawTreats(ctx, treats, camera, tick = 0) {
   for (const t of treats) {
@@ -514,7 +926,7 @@ export function drawShieldRing(ctx, player, tick) {
 // ทุกฟังก์ชันรับ `s` = ชุดสีจาก skins.js ไม่มีสีแมวฝังตายในโค้ดวาดเลย
 // แมวทุกตัวจึงใช้โครงเดียวกัน เพิ่มตัวใหม่ = เพิ่มจานสี ไม่ต้องวาดใหม่
 
-export function drawPlayer(ctx, player, isDead, s, mouthOpen = false) {
+export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0) {
   const b = player.box;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
@@ -532,15 +944,16 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false) {
     ctx.globalAlpha = 1;
   }
 
-  ctx.translate(cx, cy);
+  // ท่าเต้นตอนใช้ความสามารถ: ส่ายตัวแรงขึ้นและเด้งขึ้นลง
+  // ทับลงบนท่าวิ่งเดิม ไม่ได้เขียนท่าใหม่ทั้งชุด จังหวะขาจึงยังตรงกับความเร็ววิ่ง
+  ctx.translate(cx, cy - (dance ? Math.abs(Math.sin(dance * 0.3)) * 7 : 0));
   if (isDead) {
     ctx.rotate(player.tilt);
   } else {
-    ctx.rotate(
-      player.onGround
-        ? Math.sin(player.runPhase * 2) * 0.04
-        : Math.max(-0.3, Math.min(0.3, player.vy * 0.016))
-    );
+    const base = player.onGround
+      ? Math.sin(player.runPhase * 2) * 0.04
+      : Math.max(-0.3, Math.min(0.3, player.vy * 0.016));
+    ctx.rotate(base + (dance ? Math.sin(dance * 0.24) * 0.28 : 0));
   }
 
   const swing = Math.sin(player.runPhase * 2) * (player.onGround ? 1 : 0.25);

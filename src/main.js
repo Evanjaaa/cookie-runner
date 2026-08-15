@@ -6,7 +6,10 @@ import { setupInput } from './input.js';
 import { unlockAudio, toggleMute, sfx } from './audio.js';
 import { startMusic, setMusicMuted } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
-import { drawCatPose, drawCatFace } from './render/entities.js';
+import { STAGES, getStage, setStage } from './stages.js';
+import { loadBest } from './storage.js';
+import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
+import { drawSky, drawHills, drawGround } from './render/background.js';
 
 const { W, H } = VIEW;
 const canvas = document.getElementById('game');
@@ -26,6 +29,7 @@ const startPanel = document.getElementById('startPanel');
 const overPanel = document.getElementById('overPanel');
 const pausePanel = document.getElementById('pausePanel');
 const skinPanel = document.getElementById('skinPanel');
+const stagePanel = document.getElementById('stagePanel');
 const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
@@ -47,11 +51,76 @@ function paintMini(canvas, logical, draw) {
   draw(c);
 }
 
+/**
+ * ภาพตัวอย่างด่าน — ใช้ฟังก์ชันวาดฉากตัวจริงย่อส่วนลงมา ไม่ได้วาดภาพจำลองใหม่
+ * ที่ทำแบบนี้เพราะภาพจำลองจะเพี้ยนจากของจริงทันทีที่มีคนแก้สีในด่าน
+ * ฟังก์ชันพวกนี้อ้างขนาด 960x420 ตายตัว จึงต้อง scale เอาที่ ctx
+ */
+function paintStageScene(canvas, stage, logicalW) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const logicalH = Math.round((logicalW * 420) / 960);
+  canvas.width = logicalW * dpr;
+  canvas.height = logicalH * dpr;
+
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.scale(logicalW / 960, logicalH / 420);
+
+  drawSky(c, 0, stage.palette);
+  drawHills(c, 0, stage.palette);
+  drawGround(c, [], 0, stage.palette);
+  // วางสิ่งกีดขวางสองชิ้นให้เห็นว่าธีมนี้หน้าตาแบบไหน
+  drawObstacles(c, [
+    { x: 300, y: 320 - 38, w: 32, h: 38, kind: 'spike' },
+    { x: 600, y: 320 - 88, w: 46, h: 88, rows: 2, kind: 'crate' },
+  ], 0, stage.theme);
+}
+
 function refreshHome() {
   const s = getSkin();
+  const st = getStage();
   document.getElementById('skinName').textContent = s.name;
+  document.getElementById('stageName').textContent = st.name;
   document.getElementById('homeBest').textContent = game.best.toLocaleString('en-US');
   paintMini(document.getElementById('skinIcon'), 76, (c) => drawCatFace(c, 38, 44, 1.8, s));
+  paintStageScene(document.getElementById('stageIcon'), st, 210);
+}
+
+function buildStageGrid() {
+  const grid = document.getElementById('stageGrid');
+  grid.innerHTML = '';
+
+  for (const st of STAGES) {
+    const on = st.id === getStage().id;
+
+    const card = document.createElement('button');
+    card.className = 'stage-card' + (on ? ' on' : '');
+    card.innerHTML =
+      '<canvas></canvas>' +
+      '<span class="row"><b></b><small></small></span>' +
+      '<span class="best">สถิติ <b></b></span>';
+    card.querySelector('b').textContent = st.name;
+    card.querySelector('small').textContent = on ? 'กำลังเล่น' : st.note;
+    card.querySelector('.best b').textContent = loadBest(st.id).toLocaleString('en-US');
+    paintStageScene(card.querySelector('canvas'), st, 232);
+
+    card.addEventListener('click', () => {
+      if (st.id === getStage().id) return showStages(false);
+      setStage(st.id);
+      unlockAudio();
+      sfx.potion();
+      game.reset();     // โหลดจานสีกับเส้นทางของด่านใหม่ ฉากหน้าแรกเปลี่ยนตามทันที
+      buildStageGrid();
+      refreshHome();
+    });
+
+    grid.appendChild(card);
+  }
+}
+
+function showStages(on) {
+  stagePanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
 }
 
 function buildSkinGrid() {
@@ -93,6 +162,7 @@ function goHome() {
   overPanel.classList.add('hidden');
   pausePanel.classList.add('hidden');
   skinPanel.classList.add('hidden');
+  stagePanel.classList.add('hidden');
   startPanel.classList.remove('hidden');
   // คืนปุ่มบนแถบหัวเรื่องให้ตรงกับสถานะจริง ไม่งั้นถ้าเลิกเล่นตอนหยุดอยู่
   // ปุ่มจะค้างเป็น "▶ เล่นต่อ" ทั้งที่ไม่มีรอบเล่นให้เล่นต่อแล้ว
@@ -102,10 +172,18 @@ function goHome() {
 }
 
 document.getElementById('btnSkins').addEventListener('click', () => {
+  // แตะเมนูก็นับเป็น gesture แล้ว เพลงหน้าแรกจึงเริ่มได้โดยไม่ต้องกดเริ่มวิ่งก่อน
+  unlockAudio(); startMusic();
   buildSkinGrid();
   showSkins(true);
 });
 document.getElementById('skinBack').addEventListener('click', () => showSkins(false));
+document.getElementById('btnStages').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  buildStageGrid();
+  showStages(true);
+});
+document.getElementById('stageBack').addEventListener('click', () => showStages(false));
 document.getElementById('homeBtn').addEventListener('click', goHome);
 
 // เลิกเล่นกลางคัน: เก็บสถิติก่อน แล้วค่อยทิ้งรอบเล่น
@@ -134,6 +212,7 @@ function startRun() {
   overPanel.classList.add('hidden');
   pausePanel.classList.add('hidden');
   skinPanel.classList.add('hidden');
+  stagePanel.classList.add('hidden');
   pauseBtn.textContent = '⏸';
 }
 
@@ -162,6 +241,7 @@ function confirm() {
   if (game.state === STATE.RUN) return game.jump();
   // อยู่ในหน้าเลือกตัวละคร: กด Space ต้องไม่กระโดดข้ามไปเริ่มเกม
   if (!skinPanel.classList.contains('hidden')) return;
+  if (!stagePanel.classList.contains('hidden')) return;
   if (game.state === STATE.READY) startRun();
   else if (!overPanel.classList.contains('hidden')) startRun();
 }

@@ -224,6 +224,59 @@ canvas { display: block; width: 100%; height: auto; }
 .menu-text small { font-size: 12px; color: #B99BD4; }
 .menu-arrow { margin-left: auto; font-size: 26px; line-height: 1; color: #B99BD4; }
 
+/* ภาพตัวอย่างด่านเป็นแนวนอน อัตราส่วนเดียวกับจอเกม (960:420) */
+.menu-ico.wide { width: 92px; height: 40px; border-radius: 9px; }
+
+/* ── เลือกด่าน ─────────────────────────────── */
+.stage-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+
+.stage-card {
+  width: 232px;
+  padding: 10px 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,243,226,.18);
+  background: rgba(255,243,226,.06);
+  color: var(--cream);
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  transition: background .12s ease, border-color .12s ease, transform .08s ease;
+}
+.stage-card:hover { background: rgba(255,243,226,.12); }
+.stage-card:active { transform: scale(.98); }
+.stage-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+.stage-card canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 420;
+  border-radius: 10px;
+  display: block;
+}
+.stage-card .row { display: flex; align-items: baseline; gap: 8px; }
+.stage-card b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 15px; }
+.stage-card small { font-size: 11.5px; color: #B99BD4; margin-left: auto; }
+.stage-card .best {
+  font-size: 12px;
+  color: #A98BC4;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.stage-card .best b {
+  font-family: "Mitr", sans-serif;
+  font-size: 14px;
+  color: var(--mint-lite);
+}
+.stage-card.on {
+  border-color: var(--mint);
+  background: rgba(78,205,196,.14);
+  box-shadow: 0 8px 22px rgba(78,205,196,.2);
+}
+.stage-card.on small { color: var(--mint-lite); }
+
 /* ── เลือกตัวละคร ──────────────────────────── */
 .skin-title { font-size: clamp(20px, 4vw, 30px); }
 .skin-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
@@ -382,6 +435,16 @@ canvas { display: block; width: 100%; height: auto; }
   .menu-text b { font-size: 12.5px; }
   .menu-text small { font-size: 10px; }
   .menu-arrow { font-size: 18px; }
+
+  .menu-ico.wide { width: 62px; height: 27px; border-radius: 7px; }
+  #stagePanel { padding: 6px 10px; gap: 4px; }
+  .stage-grid { gap: 7px; }
+  .stage-card { width: 132px; padding: 5px 6px 7px; gap: 4px; border-radius: 11px; }
+  .stage-card b { font-size: 11.5px; }
+  .stage-card small { font-size: 9.5px; }
+  .stage-card .best { font-size: 9.5px; }
+  .stage-card .best b { font-size: 11px; }
+  #stageBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
 
   #skinPanel { padding: 6px 10px; gap: 4px; }
   .skin-title { font-size: 14px; line-height: 1.2; }
