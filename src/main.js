@@ -626,6 +626,59 @@ setupInput(document.getElementById('stage'), {
   onTogglePause: () => setPaused(game.state === STATE.RUN),
 });
 
+// ── เต็มจอ ─────────────────────────────────────────────────
+
+/** ข้อความสั้น ๆ ลอยขึ้นมาแล้วหายไปเอง */
+function toast(html, ms = 5200) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 320);
+  }, ms);
+}
+
+const fullBtn = document.getElementById('btnFull');
+const root = document.documentElement;
+
+// Safari รุ่นเก่ายังใช้ชื่อแบบมี webkit นำหน้า ต้องเช็คทั้งสองแบบ
+const canFull = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+function syncFullBtn() {
+  const on = isFull();
+  // ไม่เปลี่ยนสัญลักษณ์ เพราะตัวที่สื่อว่า 'ออกจากเต็มจอ' ไม่มีตัวไหน
+  // ที่ทุกฟอนต์บนมือถือรองรับแน่ ๆ ใช้ไฮไลต์บอกสถานะแทนซึ่งชัดกว่าและไม่พัง
+  fullBtn.classList.toggle('on', on);
+  fullBtn.setAttribute('aria-label', on ? 'ออกจากเต็มจอ' : 'เต็มจอ');
+}
+
+fullBtn.addEventListener('click', () => {
+  // iPhone ไม่รองรับ Fullscreen API เลย (iPad รองรับ) บอกทางที่ใช้ได้จริงแทน
+  // ดีกว่าซ่อนปุ่มทิ้ง เพราะผู้เล่นจะไม่มีทางรู้เลยว่าเล่นเต็มจอได้
+  if (!canFull) {
+    toast('เครื่องนี้เข้าเต็มจอจากปุ่มไม่ได้<br>' +
+      'กด <b>ปุ่มแชร์</b> ด้านล่าง แล้วเลือก <b>เพิ่มไปยังหน้าจอโฮม</b><br>' +
+      'เปิดจากไอคอนนั้นจะได้เต็มจอไม่มีแถบบัง');
+    return;
+  }
+
+  if (isFull()) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+  }
+});
+
+// ผู้เล่นออกจากเต็มจอด้วยปุ่มย้อนกลับหรือปัดจอได้ ไอคอนต้องตามสถานะจริง
+for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+  document.addEventListener(ev, syncFullBtn);
+}
+syncFullBtn();
+
 document.getElementById('startBtn').addEventListener('click', startRun);
 document.getElementById('retryBtn').addEventListener('click', startRun);
 

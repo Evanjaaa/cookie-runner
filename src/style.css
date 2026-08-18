@@ -468,7 +468,18 @@ canvas { display: block; width: 100%; height: auto; }
   user-select: none;
   -webkit-touch-callout: none;
 }
+/* ปุ่มเต็มจอมีไว้ให้มือถือเท่านั้น บนคอมย่อ/ขยายหน้าต่างเองได้อยู่แล้ว */
+#btnFull { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  #btnFull { display: block; }
+}
+
 .hudbtns button:active { background: rgba(78,205,196,.28); }
+/* กำลังเปิดใช้อยู่ — ใช้กับปุ่มเต็มจอ */
+.hudbtns button.on {
+  background: rgba(78,205,196,.3);
+  border-color: rgba(141,243,234,.7);
+}
 .hudbtns button:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
 
 /* ── ปุ่มสำหรับมือถือ ──────────────────────── */
@@ -560,6 +571,35 @@ canvas { display: block; width: 100%; height: auto; }
   .coin::after { inset: 4px 5px; }
   .hudbtns { gap: 6px; }
   .hudbtns button { width: 34px; height: 34px; font-size: 15px; }
+}
+
+/* ── ข้อความแจ้งชั่วคราว ────────────────────── */
+/* สร้างจาก JS ตอนต้องบอกอะไรสั้น ๆ ที่ไม่คุ้มจะทำเป็นแผงเต็มจอ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translate(-50%, 0);
+  z-index: 200;
+  max-width: min(88vw, 430px);
+  padding: 11px 18px;
+  border-radius: 14px;
+  background: rgba(27,15,43,.95);
+  border: 1px solid rgba(255,243,226,.24);
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.65;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  animation: toastIn .25s ease backwards;
+}
+.toast b { color: var(--mint-lite); font-weight: 600; }
+.toast.out { opacity: 0; transition: opacity .3s ease; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
 }
 
 /* ── ตู้กาช่า ───────────────────────────────── */

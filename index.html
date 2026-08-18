@@ -2,7 +2,13 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- iPhone ไม่รองรับ Fullscreen API ทางเดียวที่เล่นเต็มจอได้จริงคือ
+       "เพิ่มไปยังหน้าจอโฮม" แล้วเปิดจากไอคอน สองแท็กนี้ทำให้เปิดแบบนั้นแล้ว
+       ไม่มีแถบที่อยู่เว็บกับแถบล่างของ Safari มาบัง -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Speed Cat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +26,7 @@
       </div>
 
       <div class="hudbtns">
+        <button id="btnFull" aria-label="เต็มจอ">⛶</button>
         <button id="btnPause" aria-label="หยุดชั่วคราว">⏸</button>
         <button id="btnMute" aria-label="ปิดเสียง">🔊</button>
       </div>
