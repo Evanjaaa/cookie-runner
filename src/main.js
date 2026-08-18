@@ -358,6 +358,8 @@ function revealPull() {
   else sfx.kibble();
 
   showPullResults(results);
+  // เก็บประวัติขึ้นคลาวด์ถ้าต่ออยู่ — ล้มเหลวก็ไม่กระทบการเล่น
+  import('./net/sync.js').then((m) => m.recordPulls(results)).catch(() => {});
   // ทองที่เพิ่งได้ต้องขึ้นแถบบนทันทีพร้อมการ์ด ไม่ใช่รอเปิดพาเนลใหม่
   refreshGacha();
   refreshHome();

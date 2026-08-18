@@ -5,3 +5,6 @@ dist
 *.local
 
 .vercel
+
+# คีย์จริง ห้ามขึ้น git (ใช้ .env.example เป็นแบบ)
+.env

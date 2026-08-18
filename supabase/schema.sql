@@ -1,0 +1,166 @@
+-- supabase/schema.sql
+-- ─────────────────────────────────────────────────────────────
+-- โครงฐานข้อมูลของ Speed Cat
+--
+-- วิธีใช้: เปิด Supabase Dashboard → SQL Editor → New query
+--          วางไฟล์นี้ทั้งไฟล์แล้วกด Run ครั้งเดียวจบ
+--          รันซ้ำได้ ไม่พัง (ทุกคำสั่งเช็ค if not exists / or replace)
+--
+-- ก่อนรัน ต้องเปิด Anonymous sign-ins ก่อน:
+--   Authentication → Sign In / Providers → Anonymous Sign-Ins → เปิด
+--
+-- หลักคิดเรื่องความปลอดภัย:
+--   anon key ฝังอยู่ในโค้ดฝั่งผู้เล่น ใครก็อ่านได้ จึงห้ามพึ่งว่า
+--   "ไคลเอนต์คงไม่ทำอะไรแปลก ๆ" ทุกตารางเปิด RLS และผูกสิทธิ์กับ auth.uid()
+--   ผู้เล่นจึงแก้ได้เฉพาะแถวของตัวเอง แตะของคนอื่นไม่ได้เลย
+-- ─────────────────────────────────────────────────────────────
+
+-- ── ตารางผู้เล่น ─────────────────────────────────────────────
+-- หนึ่งแถวต่อหนึ่งบัญชี เก็บทุกอย่างที่เดิมอยู่ใน localStorage
+create table if not exists public.players (
+  id          uuid primary key references auth.users on delete cascade,
+  name        text        not null default 'แมวนิรนาม',
+  gold        bigint      not null default 999999,
+  owned       text[]      not null default '{}',      -- id ชุดที่สุ่มได้แล้ว
+  outfit      text        not null default 'none',
+  skin        text        not null default 'orange',
+  stage       text        not null default 'night',
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.players enable row level security;
+
+drop policy if exists "อ่านได้เฉพาะของตัวเอง" on public.players;
+create policy "อ่านได้เฉพาะของตัวเอง" on public.players
+  for select using (auth.uid() = id);
+
+drop policy if exists "แก้ได้เฉพาะของตัวเอง" on public.players;
+create policy "แก้ได้เฉพาะของตัวเอง" on public.players
+  for update using (auth.uid() = id) with check (auth.uid() = id);
+
+drop policy if exists "สร้างได้เฉพาะของตัวเอง" on public.players;
+create policy "สร้างได้เฉพาะของตัวเอง" on public.players
+  for insert with check (auth.uid() = id);
+
+-- ── สถิติสูงสุดแยกตามด่าน ────────────────────────────────────
+create table if not exists public.best_scores (
+  player_id   uuid        not null references public.players on delete cascade,
+  stage_id    text        not null,
+  score       bigint      not null default 0,
+  distance    integer     not null default 0,
+  updated_at  timestamptz not null default now(),
+  primary key (player_id, stage_id)
+);
+
+alter table public.best_scores enable row level security;
+
+-- อ่านได้หมดเพราะต้องเอาไปทำกระดานคะแนน แต่เขียนได้เฉพาะของตัวเอง
+drop policy if exists "ใครอ่านก็ได้" on public.best_scores;
+create policy "ใครอ่านก็ได้" on public.best_scores for select using (true);
+
+drop policy if exists "เขียนได้เฉพาะของตัวเอง" on public.best_scores;
+create policy "เขียนได้เฉพาะของตัวเอง" on public.best_scores
+  for all using (auth.uid() = player_id) with check (auth.uid() = player_id);
+
+create index if not exists best_scores_rank on public.best_scores (stage_id, score desc);
+
+-- ── ประวัติการสุ่มกาช่า ──────────────────────────────────────
+create table if not exists public.pulls (
+  id          bigserial   primary key,
+  player_id   uuid        not null references public.players on delete cascade,
+  outfit_id   text,
+  rarity      text,
+  gold_won    integer     not null default 0,
+  is_new      boolean     not null default false,
+  created_at  timestamptz not null default now()
+);
+
+alter table public.pulls enable row level security;
+
+drop policy if exists "ดูประวัติตัวเอง" on public.pulls;
+create policy "ดูประวัติตัวเอง" on public.pulls
+  for select using (auth.uid() = player_id);
+
+drop policy if exists "บันทึกประวัติตัวเอง" on public.pulls;
+create policy "บันทึกประวัติตัวเอง" on public.pulls
+  for insert with check (auth.uid() = player_id);
+
+create index if not exists pulls_by_player on public.pulls (player_id, created_at desc);
+
+-- ── สร้างแถวผู้เล่นให้อัตโนมัติตอนสมัคร ──────────────────────
+-- ทำที่ฐานข้อมูลไม่ใช่ที่ไคลเอนต์ ผู้เล่นจึงมีแถวเสมอแม้ปิดเว็บหนีตอนโหลด
+create or replace function public.on_user_created()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.players (id) values (new.id) on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.on_user_created();
+
+-- ── อัปเดต updated_at ให้เอง ─────────────────────────────────
+create or replace function public.touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists players_touch on public.players;
+create trigger players_touch before update on public.players
+  for each row execute function public.touch_updated_at();
+
+-- ── ส่งคะแนน ─────────────────────────────────────────────────
+-- ให้ฐานข้อมูลเป็นคนตัดสินว่าคะแนนใหม่สูงกว่าเดิมมั้ย
+-- ถ้าปล่อยให้ไคลเอนต์เขียนทับตรง ๆ ผู้เล่นจะเผลอ (หรือจงใจ) ลดสถิติตัวเองได้
+create or replace function public.submit_score(
+  p_stage text, p_score bigint, p_distance integer
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'ต้องเข้าสู่ระบบก่อน';
+  end if;
+
+  insert into public.best_scores (player_id, stage_id, score, distance)
+  values (auth.uid(), p_stage, greatest(p_score, 0), greatest(p_distance, 0))
+  on conflict (player_id, stage_id) do update
+    set score      = greatest(public.best_scores.score, excluded.score),
+        distance   = case
+                       when excluded.score > public.best_scores.score
+                       then excluded.distance
+                       else public.best_scores.distance
+                     end,
+        updated_at = now();
+end;
+$$;
+
+-- ── กระดานคะแนนรวม ──────────────────────────────────────────
+-- ใช้ view เพื่อให้เห็นชื่อผู้เล่นได้โดยไม่ต้องเปิดตาราง players ทั้งตาราง
+-- (ในนั้นมีจำนวนทองซึ่งไม่ควรให้คนอื่นเห็น)
+create or replace view public.leaderboard
+with (security_invoker = off) as
+  select
+    b.stage_id,
+    p.name,
+    b.score,
+    b.distance,
+    b.updated_at
+  from public.best_scores b
+  join public.players p on p.id = b.player_id;
+
+grant select on public.leaderboard to anon, authenticated;

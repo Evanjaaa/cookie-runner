@@ -942,7 +942,7 @@ export class Game {
   bankBest() {
     if (this.score > this.best) {
       this.best = this.score;
-      saveBest(this.stage.id, this.best);
+      saveBest(this.stage.id, this.best, Math.floor(this.distance / SCORING.pxPerMeter));
     }
   }
 
@@ -967,7 +967,7 @@ export class Game {
     sfx.die();
 
     this.best = Math.max(this.best, this.score);
-    saveBest(this.stage.id, this.best);
+    saveBest(this.stage.id, this.best, Math.floor(this.distance / SCORING.pxPerMeter));
 
     setTimeout(() => this.onGameOver(), 750);
   }
