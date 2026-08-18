@@ -28,6 +28,12 @@
     <div class="stage" id="stage">
       <canvas id="game" width="960" height="420"></canvas>
 
+      <!-- วางก่อนแผงเมนูทั้งหมด แผงจึงบังปุ่มได้เวลาเปิดหน้าเลือกอะไรอยู่ -->
+      <div class="touchpad">
+        <button id="btnJump">กระโดด</button>
+        <button id="btnSlide">หมอบ</button>
+      </div>
+
       <!-- หน้าแรก: ครึ่งซ้ายเว้นว่างให้เห็นแมวที่วาดบน canvas ครึ่งขวาเป็นเมนู -->
       <div class="panel home" id="startPanel">
         <div class="home-stage" aria-hidden="true"></div>
@@ -152,12 +158,6 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- อยู่นอก .stage เพราะจอมือถือแนวตั้งเวทีเตี้ยมาก ถ้าวางทับจะบังพื้นที่เล่น -->
-    <div class="touchpad">
-      <button id="btnJump">กระโดด</button>
-      <button id="btnSlide">หมอบ</button>
     </div>
 
     <p class="footnote">
