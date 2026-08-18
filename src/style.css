@@ -191,18 +191,27 @@ canvas { display: block; width: 100%; height: auto; }
 }
 
 /* ── รายการเมนู ────────────────────────────── */
+/* ตาราง 2 คอลัมน์ ไม่ใช่สี่แถวยาว — สี่แถวสูงราว 224px พอรวมหัวเรื่อง
+   กับปุ่มเริ่มแล้วเกินความสูงเวที หัวเรื่อง "Speed Cat" จึงถูกดันหลุดจอ */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
 .menu-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 3px;
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 16px;
+  padding: 8px 6px;
+  border-radius: 14px;
   border: 1px solid rgba(255,243,226,.18);
   background: rgba(255,243,226,.07);
   color: var(--cream);
   font-family: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: background .12s ease, border-color .12s ease, transform .08s ease;
 }
@@ -212,20 +221,35 @@ canvas { display: block; width: 100%; height: auto; }
 
 /* ทับกฎ canvas ทั่วไปที่สั่ง width:100% ไว้สำหรับจอเกม */
 .menu-ico {
-  width: 54px;
-  height: 54px;
+  width: 38px;
+  height: 38px;
   flex: 0 0 auto;
   border-radius: 14px;
   background: rgba(27,15,43,.5);
   box-shadow: inset 0 0 0 1px rgba(255,243,226,.14);
 }
-.menu-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.menu-text b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 16px; }
-.menu-text small { font-size: 12px; color: #B99BD4; }
-.menu-arrow { margin-left: auto; font-size: 26px; line-height: 1; color: #B99BD4; }
+.menu-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  max-width: 100%;
+}
+.menu-text b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 14px; }
+.menu-text small {
+  font-size: 10.5px;
+  color: #B99BD4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* ลูกศรใช้ไม่ได้กับช่องแนวตั้ง ทิศทางมันชี้ผิดที่ */
+.menu-arrow { display: none; }
 
 /* ภาพตัวอย่างด่านเป็นแนวนอน อัตราส่วนเดียวกับจอเกม (960:420) */
-.menu-ico.wide { width: 92px; height: 40px; border-radius: 9px; }
+.menu-ico.wide { width: 76px; height: 34px; border-radius: 8px; }
 
 /* ── เลือกด่าน ─────────────────────────────── */
 .stage-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
@@ -281,6 +305,21 @@ canvas { display: block; width: 100%; height: auto; }
 .skin-title { font-size: clamp(20px, 4vw, 30px); }
 .skin-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 
+/* ตารางยาวต้องเลื่อนในตัวเอง ไม่ใช่ดันปุ่มล่างหลุดออกนอกเวที
+   min-height:0 จำเป็น ไม่งั้น flex item ไม่ยอมหดต่ำกว่าความสูงเนื้อหา
+   touch-action ต้องปลด เพราะ .stage ปิด touch ไว้ทั้งหมดกันนิ้วลากตอนเล่น */
+.panel .skin-grid,
+.panel .stage-grid {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 3px;
+  scrollbar-width: none;
+}
+.panel .skin-grid::-webkit-scrollbar,
+.panel .stage-grid::-webkit-scrollbar { display: none; }
+
 .skin-card {
   width: 136px;
   padding: 12px 10px 14px;
@@ -327,10 +366,50 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .final .val.mint { color: var(--mint-lite); }
 
+/* ── แถบเหรียญทองบนสุด ─────────────────────── */
+/* อยู่บนแถบหัวเรื่อง เห็นได้ตลอดทั้งตอนอยู่หน้าแรกและตอนเล่น
+   ไม่ต้องเข้าตู้กาช่าถึงจะรู้ว่ามีทองเท่าไหร่ */
+.goldbar {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 13px 4px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,201,60,.34);
+  background: rgba(255,201,60,.12);
+}
+.goldbar b {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
+  color: #FFD97A;
+}
+
+/* เหรียญวาดด้วย CSS ล้วน จะได้คมทุกความละเอียดโดยไม่ต้องมีไฟล์ภาพ
+   ::after คือขีดกลางเหรียญ ตัวที่ทำให้อ่านออกว่าเป็นเหรียญไม่ใช่จุดกลม */
+.coin {
+  position: relative;
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #FFEDB4 0%, #FFC93C 52%, #C2851A 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.4), 0 1px 3px rgba(0,0,0,.35);
+}
+.coin::after {
+  content: '';
+  position: absolute;
+  inset: 5px 6.5px;
+  border-radius: 1.5px;
+  background: rgba(150,96,16,.6);
+}
+
 /* ── ปุ่มหยุดชั่วคราว + ปิดเสียง ───────────── */
 /* อยู่ในแถบหัวเรื่องเหนือเวที ไม่ทับ HUD ที่วาดตัวนับเจลลี่ไว้มุมขวาบนของ canvas */
 .hudbtns {
-  margin-left: auto;
   align-self: center;
   display: flex;
   gap: 8px;
@@ -417,8 +496,95 @@ canvas { display: block; width: 100%; height: auto; }
   .final .val { font-size: 22px; }
   .titlebar { margin-bottom: 8px; }
   .titlebar span { display: none; }   /* เปิดที่ให้ปุ่มบนแถวเดียวกัน ไม่ให้ตกบรรทัด */
+  .goldbar { gap: 5px; padding: 3px 9px 3px 4px; }
+  .goldbar b { font-size: 12px; }
+  .coin { width: 15px; height: 15px; }
+  .coin::after { inset: 4px 5px; }
   .hudbtns { gap: 6px; }
   .hudbtns button { width: 34px; height: 34px; font-size: 15px; }
+}
+
+/* ── ตู้กาช่า ───────────────────────────────── */
+/* สามช่อง: ผลสุ่มซ้าย ตู้กลาง ข้อมูลขวา
+   ช่องซ้ายกับขวากว้างเท่ากันด้วย flex:1 1 0 ตู้จึงอยู่กึ่งกลางจริง
+   ไม่ใช่แค่ดูเหมือนกลาง — และผลสุ่มไปอยู่ช่องซ้ายแทนที่จะต่อท้าย
+   เพราะต่อท้ายแล้วความสูงรวมเกินเวที ปุ่มล่างจะโดนตัดหาย */
+.gacha-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 0;
+}
+.gacha-side { flex: 1 1 0; min-width: 0; }
+#gachaMachine { width: 176px; height: 199px; flex: 0 0 auto; }
+.gacha-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  text-align: left;
+}
+.gacha-gold { display: flex; align-items: center; gap: 8px; }
+.gacha-gold .coin { width: 24px; height: 24px; }
+.gacha-gold .coin::after { inset: 6px 8px; }
+.gacha-gold b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: 24px; color: #FFC93C; }
+.gacha-rate { font-size: 11.5px; color: #B99BD4; line-height: 1.65; }
+.gacha-rate .hi { color: #FFC93C; }
+.gacha-owned { font-size: 12px; color: #B99BD4; }
+.gacha-owned b { color: var(--mint-lite); font-weight: 600; }
+#gachaPanel .btn { margin-top: 0; font-size: 15px; padding: 10px 20px; }
+#gachaPanel .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.gacha-result {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+}
+
+.got-card {
+  width: 76px;
+  padding: 6px 4px 8px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid rgba(255,243,226,.2);
+  background: rgba(255,243,226,.07);
+}
+.got-card canvas { width: 56px; height: 56px; }
+.got-card b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 11px; color: var(--cream); }
+.got-card small { font-size: 9.5px; letter-spacing: .04em; }
+/* ระดับสูงต้องอ่านออกทันทีว่าได้ของดี ไม่ต้องไปหาว่าเขียนว่าอะไร */
+.got-card.high {
+  border-color: #FFC93C;
+  background: rgba(255,201,60,.12);
+  box-shadow: 0 0 16px rgba(255,201,60,.35);
+}
+.got-card.dupe { opacity: .6; }
+
+/* เด้งเข้าทีละใบ --d ตั้งจาก JS ให้เหลื่อมกันตามลำดับที่สุ่มได้ */
+@keyframes gotPop {
+  0%   { opacity: 0; transform: scale(.3) rotate(-16deg); }
+  55%  { opacity: 1; transform: scale(1.14) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes highGlow {
+  0%, 100% { box-shadow: 0 0 12px rgba(255,201,60,.32); }
+  50%      { box-shadow: 0 0 30px rgba(255,201,60,.85); }
+}
+.got-card {
+  animation: gotPop .44s cubic-bezier(.2,.9,.3,1.5) var(--d, 0s) backwards;
+}
+/* ระดับสูงเรืองแสงวนต่อหลังเด้งจบ หน่วงเท่ากับความยาวของ gotPop พอดี */
+.got-card.high {
+  animation:
+    gotPop .44s cubic-bezier(.2,.9,.3,1.5) var(--d, 0s) backwards,
+    highGlow 1.5s ease-in-out calc(var(--d, 0s) + .44s) infinite;
 }
 
 /* ── เวทีเตี้ย ──────────────────────────────── */
@@ -427,16 +593,29 @@ canvas { display: block; width: 100%; height: auto; }
    แล้วปุ่มล่างสุดจะหลุดออกไปโดน overflow:hidden ของ .stage ตัดหาย
    วัดจากของจริงแล้ว: หน้าเลือกแมวขนาดเต็มสูง ~273px ซึ่งเกินทั้งสองแบบ */
 @media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
-  .home-menu { width: 56%; padding: 8px 12px; gap: 6px; }
+  /* สามเมนู + ปุ่มเริ่ม รวมแล้วสูงราว 232px แต่เวทีแนวตั้งสูงแค่ ~157px
+     ย่อให้พอดีต้องเหลือไอคอนราว 19px ซึ่งเล็กจนกดพลาด จึงให้เลื่อนแทน
+     safe center = ยังจัดกลางเมื่อมีที่พอ แต่ไม่ตัดหัวทิ้งเมื่อล้น
+     touch-action ต้องปลดเป็น pan-y เพราะ .stage ปิด touch ไว้หมดกันนิ้วลากตอนเล่น */
+  .home-menu {
+    width: 56%;
+    padding: 8px 12px;
+    gap: 5px;
+    overflow-y: auto;
+    touch-action: pan-y;
+    justify-content: safe center;
+    scrollbar-width: none;
+  }
+  .home-menu::-webkit-scrollbar { display: none; }
   .home-menu h2 { font-size: 15px; line-height: 1.15; }
   .home-sub, .home-best { display: none; }
-  .menu-item { padding: 6px 9px; gap: 8px; border-radius: 12px; }
-  .menu-ico { width: 34px; height: 34px; border-radius: 10px; }
-  .menu-text b { font-size: 12.5px; }
-  .menu-text small { font-size: 10px; }
-  .menu-arrow { font-size: 18px; }
+  .home-grid { gap: 6px; }
+  .menu-item { padding: 5px 4px; gap: 1px; border-radius: 11px; }
+  .menu-ico { width: 30px; height: 30px; border-radius: 9px; }
+  .menu-text b { font-size: 11.5px; }
+  .menu-text small { font-size: 9px; }
 
-  .menu-ico.wide { width: 62px; height: 27px; border-radius: 7px; }
+  .menu-ico.wide { width: 58px; height: 26px; border-radius: 6px; }
   #stagePanel { padding: 6px 10px; gap: 4px; }
   .stage-grid { gap: 7px; }
   .stage-card { width: 132px; padding: 5px 6px 7px; gap: 4px; border-radius: 11px; }
@@ -446,14 +625,55 @@ canvas { display: block; width: 100%; height: auto; }
   .stage-card .best b { font-size: 11px; }
   #stageBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
 
-  #skinPanel { padding: 6px 10px; gap: 4px; }
+  /* กาช่ามีของเยอะที่สุดในบรรดาพาเนล ย่อแล้วยังล้นได้ จึงให้เลื่อนด้วย */
+  #gachaPanel {
+    padding: 6px 10px;
+    gap: 5px;
+    overflow-y: auto;
+    touch-action: pan-y;
+    justify-content: safe center;
+    scrollbar-width: none;
+  }
+  #gachaPanel::-webkit-scrollbar { display: none; }
+  /* จอเตี้ยวางสามช่องข้างกันไม่พอ เรียงลงล่างแล้วให้พาเนลเลื่อนแทน */
+  .gacha-stage { flex-direction: column; gap: 8px; }
+  .gacha-side { flex: 0 0 auto; width: 100%; }
+  .gacha-info { align-items: center; text-align: center; }
+  #gachaMachine { width: 92px; height: 104px; }
+  .gacha-info { gap: 4px; }
+  .gacha-gold { font-size: 11px; }
+  .gacha-gold b { font-size: 16px; }
+  .gacha-rate { font-size: 9px; line-height: 1.5; }
+  .gacha-owned { font-size: 9.5px; }
+  #gachaPanel .btn { font-size: 11px; padding: 6px 11px; }
+  .got-card { width: 56px; padding: 3px 3px 5px; border-radius: 9px; }
+  .got-card canvas { width: 36px; height: 36px; }
+  .got-card b { font-size: 9px; }
+  .got-card small { font-size: 8px; }
+  #gachaBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
+
+  #skinPanel, #outfitPanel { padding: 6px 10px; gap: 4px; }
   .skin-title { font-size: 14px; line-height: 1.2; }
   .skin-grid { gap: 6px; }
   .skin-card { width: 78px; padding: 4px 4px 6px; gap: 1px; border-radius: 11px; }
   .skin-card canvas { width: 44px; height: 44px; }
   .skin-card b { font-size: 11px; }
   .skin-card small { display: none; }
-  #skinBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
+  #skinBack, #outfitBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
+}
+
+/* จอแคบแนวตั้ง: เวทีสูงแค่ ~157px ตาราง 2x2 ยังสูงเกิน
+   คลี่เป็นแถวเดียวสี่ช่องแล้วให้เมนูกินเต็มความกว้าง จึงลดจากสองแถวเหลือแถวเดียว
+   แลกกับการบังแมวหน้าแรก ซึ่งบนจอแคบก็เล็กจนแทบไม่เห็นอยู่แล้ว */
+@media (max-width: 560px) {
+  .home-menu {
+    width: 100%;
+    background: linear-gradient(180deg,
+      rgba(27,15,43,.45) 0%, rgba(27,15,43,.88) 42%, rgba(27,15,43,.94) 100%);
+  }
+  .home-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .menu-item { padding: 5px 3px; }
+  .menu-text small { font-size: 8.5px; }
 }
 
 /* มือถือแนวนอน: จอเตี้ย ต้องซ่อนหัวเรื่องกับคำอธิบายเพื่อเปิดที่ให้ปุ่ม */
@@ -483,4 +703,5 @@ canvas { display: block; width: 100%; height: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .panel { transition: none; }
+  .got-card, .got-card.high { animation: none; }
 }

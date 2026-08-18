@@ -7,6 +7,8 @@ import { unlockAudio, toggleMute, sfx } from './audio.js';
 import { startMusic, setMusicMuted } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
 import { STAGES, getStage, setStage } from './stages.js';
+import { RARITY, wearable, setOutfit, pullPool, ownedCount } from './outfits.js';
+import { getGold, pull, MULTI_PULLS } from './gacha.js';
 import { loadBest } from './storage.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
@@ -30,6 +32,8 @@ const overPanel = document.getElementById('overPanel');
 const pausePanel = document.getElementById('pausePanel');
 const skinPanel = document.getElementById('skinPanel');
 const stagePanel = document.getElementById('stagePanel');
+const outfitPanel = document.getElementById('outfitPanel');
+const gachaPanel = document.getElementById('gachaPanel');
 const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
@@ -80,10 +84,273 @@ function refreshHome() {
   const s = getSkin();
   const st = getStage();
   document.getElementById('skinName').textContent = s.name;
+  document.getElementById('outfitName').textContent = s.outfit.name;
   document.getElementById('stageName').textContent = st.name;
   document.getElementById('homeBest').textContent = game.best.toLocaleString('en-US');
   paintMini(document.getElementById('skinIcon'), 76, (c) => drawCatFace(c, 38, 44, 1.8, s));
+  // ไอคอนชุดใช้ตัวเต็ม ไม่ใช่แค่หัว เพราะเสื้อกับกระโปรงอยู่ที่ลำตัว
+  paintMini(document.getElementById('outfitIcon'), 76, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
   paintStageScene(document.getElementById('stageIcon'), st, 210);
+  paintBox(document.getElementById('gachaIcon'), 76, 76, (c) => {
+    c.save(); c.scale(76 / 150, 76 / 170); drawGachaMachine(c); c.restore();
+  });
+  // ทองย้ายไปอยู่แถบบนแล้ว ป้ายตรงนี้บอกความคืบหน้าแทนจะมีประโยชน์กว่า
+  document.getElementById('gachaSub').textContent =
+    'ปลดล็อก ' + ownedCount() + '/' + pullPool().length;
+  refreshGold();
+}
+
+/** แถบทองบนสุดกับตัวเลขในพาเนลกาช่า อัปเดตพร้อมกันจากที่เดียว */
+function refreshGold() {
+  const text = getGold().toLocaleString('en-US');
+  document.getElementById('goldTop').textContent = text;
+  document.getElementById('goldAmount').textContent = text;
+}
+
+// ── ตู้กาช่า ───────────────────────────────────────────────
+
+/** เหมือน paintMini แต่ไม่บังคับสี่เหลี่ยมจัตุรัส ตู้กาช่าเป็นทรงสูง */
+function paintBox(canvas, w, h, draw) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, w, h);
+  draw(c);
+}
+
+const CAPSULE_COLORS = ['#FF7FAE', '#FFC93C', '#8FE8FF', '#9DE86F', '#C77DFF', '#FF8A5C'];
+
+// ตู้วาดในพิกัด 150x170 เสมอ แล้วค่อยขยายที่ ctx
+// พิกัดทุกจุดในฟังก์ชันวาดจึงไม่ต้องแก้ตามขนาดที่แสดงจริง
+const MACHINE_W = 200;
+const MACHINE_H = 226;
+
+// ── สถานะแอนิเมชันเปิดกาช่า ────────────────────────────────
+// pullProgress เดินจาก 0 ถึง 1 ตลอดช่วงเปิด แล้วค้างที่ 0 ตอนไม่ได้สุ่ม
+// เก็บผลไว้ใน pending ก่อน ค่อยโชว์ตอนแคปซูลแตก — ไม่งั้นเห็นของก่อนเปิด
+// ซึ่งทำให้แอนิเมชันไม่มีความหมาย
+const PULL_FRAMES = 62;
+let gachaShake = 0;
+let pullProgress = 0;
+let pullPending = null;
+let spinT = 0;
+
+/**
+ * ตู้กาช่าหน้าตาแมว ๆ วาดในกรอบ 150x170
+ * shake 0-1 = แรงสั่นตอนเพิ่งกดสุ่ม ลดลงเองทุกเฟรม
+ */
+function drawGachaMachine(c, t = 0, shake = 0, anim = 0) {
+  const cx = 75;
+  c.save();
+  if (shake > 0) {
+    c.translate((Math.random() - 0.5) * shake * 8, (Math.random() - 0.5) * shake * 6);
+  }
+
+  // หูแมวบนโดม วาดก่อนโดมเพื่อให้โคนหูถูกกลบ
+  for (const dir of [-1, 1]) {
+    c.fillStyle = '#F2913D';
+    c.beginPath();
+    c.moveTo(cx + dir * 20, 34); c.lineTo(cx + dir * 34, 6); c.lineTo(cx + dir * 41, 36);
+    c.closePath(); c.fill();
+    c.fillStyle = '#FF9BB0';
+    c.beginPath();
+    c.moveTo(cx + dir * 25, 31); c.lineTo(cx + dir * 33, 15); c.lineTo(cx + dir * 36.5, 32);
+    c.closePath(); c.fill();
+  }
+
+  // โดมแก้ว
+  c.fillStyle = 'rgba(190,235,255,.25)';
+  c.beginPath(); c.arc(cx, 62, 44, 0, Math.PI * 2); c.fill();
+
+  // แคปซูลข้างใน ลอยหมุนช้า ๆ
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + t * 0.014;
+    const rad = 11 + (i % 3) * 11;
+    const bx = cx + Math.cos(a) * rad;
+    const by = 62 + Math.sin(a) * rad * 0.82 + Math.sin(t * 0.05 + i) * 2;
+    c.fillStyle = CAPSULE_COLORS[i % CAPSULE_COLORS.length];
+    c.beginPath(); c.arc(bx, by, 7.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.55)';
+    c.beginPath(); c.arc(bx - 2.4, by - 2.7, 2.2, 0, Math.PI * 2); c.fill();
+  }
+
+  // ขอบโดมกับแสงสะท้อน วาดทับแคปซูลให้ดูเหมือนอยู่หลังกระจก
+  c.strokeStyle = 'rgba(255,243,226,.5)';
+  c.lineWidth = 2.5;
+  c.beginPath(); c.arc(cx, 62, 44, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.2)';
+  c.beginPath(); c.ellipse(cx - 17, 45, 11, 18, -0.5, 0, Math.PI * 2); c.fill();
+
+  // ตัวตู้
+  c.fillStyle = '#E8637F';
+  c.beginPath(); c.roundRect(cx - 46, 99, 92, 64, 14); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.16)';
+  c.beginPath(); c.roundRect(cx - 46, 99, 92, 8, 6); c.fill();
+
+  // ช่องรับของ
+  c.fillStyle = '#5A1B2E';
+  c.beginPath(); c.roundRect(cx - 20, 132, 40, 24, 8); c.fill();
+
+  // ปุ่มหมุน เข็มหมุนตามเวลาและสะบัดแรงตอนสั่น
+  c.fillStyle = '#FFD97A';
+  c.beginPath(); c.arc(cx, 118, 10.5, 0, Math.PI * 2); c.fill();
+  c.save();
+  c.translate(cx, 118);
+  c.rotate(t * 0.02 + shake * 7);
+  c.strokeStyle = '#A9701A';
+  c.lineWidth = 3.4;
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-6, 0); c.lineTo(6, 0); c.stroke();
+  c.restore();
+
+  // หัวใจสองข้าง
+  c.fillStyle = 'rgba(255,255,255,.45)';
+  for (const dx of [-33, 33]) {
+    c.beginPath();
+    c.arc(cx + dx - 2.7, 116, 2.9, 0, Math.PI * 2);
+    c.arc(cx + dx + 2.7, 116, 2.9, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.moveTo(cx + dx - 5.4, 117.6); c.lineTo(cx + dx, 124); c.lineTo(cx + dx + 5.4, 117.6);
+    c.closePath(); c.fill();
+  }
+
+  if (anim > 0) drawCapsuleDrop(c, cx, anim);
+
+  c.restore();
+}
+
+/** แคปซูลหนึ่งลูก split 0 = ปิดสนิท 1 = สองซีกแยกจากกันสุด */
+function drawCapsule(c, x, y, r, split) {
+  const gap = split * 10;
+  c.fillStyle = '#FFC93C';
+  c.beginPath(); c.arc(x, y - gap, r, Math.PI, 0); c.fill();
+  c.fillStyle = '#FF7FAE';
+  c.beginPath(); c.arc(x, y + gap, r, 0, Math.PI); c.fill();
+  if (split < 0.25) {
+    c.fillStyle = 'rgba(255,255,255,.6)';
+    c.beginPath(); c.arc(x - r * 0.32, y - r * 0.38, r * 0.28, 0, Math.PI * 2); c.fill();
+  }
+}
+
+/**
+ * ไทม์ไลน์การเปิด p = 0 ถึง 1
+ *   0.00-0.34 ยังไม่โผล่ ตู้กำลังหมุนปั่นแคปซูลอยู่ข้างบน
+ *   0.34-0.70 แคปซูลหล่นลงช่อง เร่งความเร็วแบบของตกจริง (k กำลังสอง)
+ *   0.70-1.00 ฝาแยกออก พร้อมวงแสงระเบิดกับประกายกระจาย
+ */
+function drawCapsuleDrop(c, cx, p) {
+  if (p < 0.34) return;
+
+  if (p < 0.7) {
+    const k = (p - 0.34) / 0.36;
+    drawCapsule(c, cx, 96 + k * k * 48, 9, 0);
+    return;
+  }
+
+  const k = (p - 0.7) / 0.3;
+  drawCapsule(c, cx, 144, 9, k);
+
+  c.save();
+  c.globalAlpha = (1 - k) * 0.9;
+  c.strokeStyle = '#FFF6D8';
+  c.lineWidth = 3.5 * (1 - k) + 1;
+  c.beginPath(); c.arc(cx, 144, 9 + k * 42, 0, Math.PI * 2); c.stroke();
+
+  c.fillStyle = '#FFE9A8';
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + 0.3;
+    const rad = 10 + k * 34;
+    const sr = (1 - k) * 3.2;
+    c.beginPath();
+    c.arc(cx + Math.cos(a) * rad, 144 + Math.sin(a) * rad * 0.7, sr, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.restore();
+}
+
+function refreshGacha() {
+  const gold = getGold();
+  refreshGold();
+  document.getElementById('ownedCount').textContent = ownedCount();
+  document.getElementById('totalCount').textContent = pullPool().length;
+  document.getElementById('pull1').disabled = gold < 5000;
+  document.getElementById('pull5').disabled = gold < 5000 * MULTI_PULLS;
+}
+
+/** การ์ดผลสุ่ม — ชุดใส่ได้ทุกสีขน จึงพรีวิวบนแมวตัวที่เลือกอยู่ */
+function showPullResults(results) {
+  const box = document.getElementById('gachaResult');
+  box.innerHTML = '';
+
+  for (const r of results) {
+    const o = r.outfit;
+    const tier = RARITY[o.rarity];
+
+    const card = document.createElement('div');
+    card.className = 'got-card' + (o.rarity === 'high' ? ' high' : '') + (r.isNew ? '' : ' dupe');
+    card.innerHTML = '<canvas width="56" height="56"></canvas><b></b><small></small>';
+    card.querySelector('b').textContent = o.name;
+
+    const tag = card.querySelector('small');
+    tag.textContent = r.isNew ? tier.name : 'ซ้ำ +1,200';
+    tag.style.color = r.isNew ? tier.color : '#B99BD4';
+
+    // เหลื่อมกันทีละใบ ใบระดับสูงจะได้มีจังหวะให้สังเกตเห็นว่าเรืองแสง
+    card.style.setProperty('--d', (box.children.length * 0.11).toFixed(2) + 's');
+
+    paintMini(card.querySelector('canvas'), 56,
+      (c) => drawCatPose(c, 30, 52, 0.82, { ...getSkin(), outfit: o }, 60));
+
+    box.appendChild(card);
+  }
+}
+
+function doPull(times) {
+  if (pullProgress > 0) return;   // กันกดรัวระหว่างแอนิเมชันยังไม่จบ
+
+  const res = pull(times);
+  if (!res.ok) return;
+
+  unlockAudio();
+  sfx.potion();                   // เสียงตอนหมุนตู้ เสียงของรางวัลมาทีหลัง
+  gachaShake = 1;
+  pullProgress = 0.0001;          // ต้องมากกว่า 0 ให้ลูปรู้ว่ากำลังเปิดอยู่
+  pullPending = res.results;
+
+  document.getElementById('gachaResult').innerHTML = '';
+  refreshGacha();
+  refreshHome();
+}
+
+/** เรียกตอนแคปซูลแตกพอดี — เสียงกับการ์ดจึงมาพร้อมกับภาพ */
+function revealPull() {
+  const results = pullPending;
+  pullPending = null;
+  if (!results) return;
+
+  // ได้ของระดับสูงอย่างน้อยหนึ่งชิ้น = เสียงใหญ่ ไม่งั้นเสียงเก็บของธรรมดา
+  if (results.some((r) => r.outfit.rarity === 'high')) sfx.bonus();
+  else sfx.kibble();
+
+  showPullResults(results);
+}
+
+function showGacha(on) {
+  gachaPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (on) {
+    document.getElementById('gachaResult').innerHTML = '';
+    refreshGacha();
+  } else {
+    // ปิดพาเนลกลางแอนิเมชัน: ล้างสถานะทิ้ง ไม่งั้นเปิดกลับมาเจอผลเก่าเด้งขึ้นเอง
+    // ของที่สุ่มได้ถูกบันทึกไปตั้งแต่ตอนกดแล้ว จึงไม่มีอะไรหาย
+    pullProgress = 0;
+    pullPending = null;
+    gachaShake = 0;
+  }
 }
 
 function buildStageGrid() {
@@ -157,12 +424,60 @@ function showSkins(on) {
   startPanel.classList.toggle('hidden', on);
 }
 
+// ชุดที่กดเลือกไว้แต่ยังไม่กดยืนยัน — null = ยังไม่ได้เปิดหน้านี้
+let pendingOutfit = null;
+
+function buildOutfitGrid() {
+  const grid = document.getElementById('outfitGrid');
+  grid.innerHTML = '';
+
+  const s = getSkin();
+  if (pendingOutfit === null) pendingOutfit = s.outfit.id;
+
+  for (const o of wearable()) {
+    const on = o.id === pendingOutfit;
+
+    const card = document.createElement('button');
+    card.className = 'skin-card' + (on ? ' on' : '');
+    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small></small>';
+    card.querySelector('b').textContent = o.name;
+    card.querySelector('small').textContent =
+      on ? (o.id === s.outfit.id ? 'กำลังใส่' : 'เลือกไว้') : o.note;
+
+    // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
+    paintMini(card.querySelector('canvas'), 96,
+      (c) => drawCatPose(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
+
+    // กดการ์ดแค่ "เลือกไว้" ยังไม่เปลี่ยนจริง ต้องกดยืนยันอีกที
+    // ผู้เล่นจึงลองไล่ดูได้ทั้งหน้าโดยไม่เผลอเปลี่ยนชุดที่ใส่อยู่ทิ้ง
+    card.addEventListener('click', () => {
+      if (pendingOutfit === o.id) return;
+      pendingOutfit = o.id;
+      unlockAudio();
+      sfx.fish();
+      buildOutfitGrid();
+    });
+
+    grid.appendChild(card);
+  }
+}
+
+function showOutfits(on) {
+  outfitPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  // ล้างตัวเลือกค้างตอนปิด ไม่งั้นเปิดกลับมาเจอใบที่เคยกดไว้ยังไฮไลต์อยู่
+  // ทั้งที่ตอนนั้นกดยกเลิกไปแล้ว
+  if (!on) pendingOutfit = null;
+}
+
 function goHome() {
   game.reset();   // กลับสู่สถานะ READY ฉากหน้าแรกจึงถูกวาดแทนฉากเล่น
   overPanel.classList.add('hidden');
   pausePanel.classList.add('hidden');
   skinPanel.classList.add('hidden');
   stagePanel.classList.add('hidden');
+  outfitPanel.classList.add('hidden');
+  gachaPanel.classList.add('hidden');
   startPanel.classList.remove('hidden');
   // คืนปุ่มบนแถบหัวเรื่องให้ตรงกับสถานะจริง ไม่งั้นถ้าเลิกเล่นตอนหยุดอยู่
   // ปุ่มจะค้างเป็น "▶ เล่นต่อ" ทั้งที่ไม่มีรอบเล่นให้เล่นต่อแล้ว
@@ -184,6 +499,26 @@ document.getElementById('btnStages').addEventListener('click', () => {
   showStages(true);
 });
 document.getElementById('stageBack').addEventListener('click', () => showStages(false));
+document.getElementById('btnOutfits').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  pendingOutfit = getSkin().outfit.id;
+  buildOutfitGrid();
+  showOutfits(true);
+});
+document.getElementById('outfitApply').addEventListener('click', () => {
+  if (!pendingOutfit) return showOutfits(false);   // กันเคสกดยืนยันทั้งที่ยังไม่ได้เลือกอะไร
+  setOutfit(pendingOutfit);
+  refreshHome();
+  showOutfits(false);
+});
+document.getElementById('outfitBack').addEventListener('click', () => showOutfits(false));
+document.getElementById('btnGacha').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  showGacha(true);
+});
+document.getElementById('gachaBack').addEventListener('click', () => showGacha(false));
+document.getElementById('pull1').addEventListener('click', () => doPull(1));
+document.getElementById('pull5').addEventListener('click', () => doPull(MULTI_PULLS));
 document.getElementById('homeBtn').addEventListener('click', goHome);
 
 // เลิกเล่นกลางคัน: เก็บสถิติก่อน แล้วค่อยทิ้งรอบเล่น
@@ -213,6 +548,8 @@ function startRun() {
   pausePanel.classList.add('hidden');
   skinPanel.classList.add('hidden');
   stagePanel.classList.add('hidden');
+  outfitPanel.classList.add('hidden');
+  gachaPanel.classList.add('hidden');
   pauseBtn.textContent = '⏸';
 }
 
@@ -242,6 +579,8 @@ function confirm() {
   // อยู่ในหน้าเลือกตัวละคร: กด Space ต้องไม่กระโดดข้ามไปเริ่มเกม
   if (!skinPanel.classList.contains('hidden')) return;
   if (!stagePanel.classList.contains('hidden')) return;
+  if (!outfitPanel.classList.contains('hidden')) return;
+  if (!gachaPanel.classList.contains('hidden')) return;
   if (game.state === STATE.READY) startRun();
   else if (!overPanel.classList.contains('hidden')) startRun();
 }
@@ -278,6 +617,27 @@ function loop(now) {
 
   game.update(dt);
   game.draw(ctx);
+
+  // ตู้กาช่าวาดใหม่เฉพาะตอนเปิดพาเนลอยู่ ไม่ต้องเสียเฟรมทิ้งตอนเล่นเกม
+  if (!gachaPanel.classList.contains('hidden')) {
+    // เร่งการหมุนตอนกำลังเปิด แต่สะสมต่อจากค่าเดิม ไม่ใช่คูณเวลาจริง
+    // ไม่งั้นเฟสจะกระโดดตอนเริ่มและจบแอนิเมชัน
+    spinT += dt * (pullProgress > 0 ? 4.5 : 1);
+    gachaShake = Math.max(0, gachaShake - 0.05 * dt);
+
+    if (pullProgress > 0) {
+      pullProgress += dt / PULL_FRAMES;
+      // แตกที่ 0.7 ตรงกับจังหวะฝาแยกใน drawCapsuleDrop
+      if (pullPending && pullProgress >= 0.7) revealPull();
+      if (pullProgress >= 1) pullProgress = 0;
+    }
+
+    paintBox(document.getElementById('gachaMachine'), MACHINE_W, MACHINE_H, (c) => {
+      c.scale(MACHINE_W / 150, MACHINE_H / 170);
+      drawGachaMachine(c, spinT, gachaShake, pullProgress);
+    });
+  }
+
   requestAnimationFrame(loop);
 }
 

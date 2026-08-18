@@ -14,6 +14,7 @@ import { drawSky, drawHills, drawGround } from './render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
+  drawBonusSparkle,
   drawRain, drawSkillGauge, drawNips,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
@@ -335,15 +336,15 @@ export class Game {
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
         f.got = true;
         if (f.kind === 'shrimp') {
-          this.treat += SCORING.pointsPerShrimp;
+          this.treat += SCORING.pointsPerShrimp + this.foodBonus;
           this.particles.burst(f.x, f.y, 22, 'shrimp', 7);
           sfx.shrimp();
         } else if (f.kind === 'kibble') {
-          this.treat += SCORING.pointsPerKibble;
+          this.treat += SCORING.pointsPerKibble + this.foodBonus;
           this.particles.burst(f.x, f.y, 10, 'kibble');
           sfx.kibble();
         } else {
-          this.treat += SCORING.pointsPerFish;
+          this.treat += SCORING.pointsPerFish + this.foodBonus;
           this.particles.burst(f.x, f.y, 7, 'mint');
           sfx.fish();
         }
@@ -508,7 +509,7 @@ export class Game {
 
       if (dist < SKILL.pickR) {
         d.got = true;
-        this.treat += SCORING.pointsPerRain;
+        this.treat += SCORING.pointsPerRain + this.foodBonus;
         this.particles.burst(d.x, d.y, 9, 'kibble');
         sfx.kibble();
       }
@@ -593,9 +594,10 @@ export class Game {
       if (f.got) continue;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + 24) {
         f.got = true;
-        if (f.kind === 'shrimp') { this.treat += SCORING.pointsPerShrimp; sfx.shrimp(); }
-        else if (f.kind === 'kibble') { this.treat += SCORING.pointsPerKibble; sfx.kibble(); }
-        else { this.treat += SCORING.pointsPerFish; sfx.fish(); }
+        const b0 = this.foodBonus;
+        if (f.kind === 'shrimp') { this.treat += SCORING.pointsPerShrimp + b0; sfx.shrimp(); }
+        else if (f.kind === 'kibble') { this.treat += SCORING.pointsPerKibble + b0; sfx.kibble(); }
+        else { this.treat += SCORING.pointsPerFish + b0; sfx.fish(); }
         this.particles.burst(f.x, f.y, 8, f.kind === 'kibble' ? 'kibble' : 'mint');
       }
     }
@@ -623,16 +625,29 @@ export class Game {
     }
   }
 
+  /** โบนัสคะแนนต่ออาหารหนึ่งเม็ด มาจากระดับของชุดที่ใส่อยู่ */
+  get foodBonus() {
+    return getSkin().outfit.foodBonus || 0;
+  }
+
   /** ฉากโบนัส — ฟ้ากับเมฆ ไม่มีพื้นไม่มีสิ่งกีดขวาง */
   drawBonus(ctx) {
+    // ชุดระดับสูงเปลี่ยนสีฟ้าโบนัสได้ — ผสมทับจานสีของด่านเฉพาะคีย์ที่ชุดกำหนด
+    // ไม่ได้แทนทั้งจาน เพราะยังต้องใช้สี HUD กับสีของกินจากด่านเดิม
+    const skin = getSkin();
+    const pal = skin.outfit.bonus ? { ...this.pal, ...skin.outfit.bonus } : this.pal;
+
     // ฟ้าเต็มจอทุกเฟส ไม่ต้องแยกช่วงขึ้น/ลงอีกแล้ว
     // เพราะแสงวาบกลบรอยต่อทั้งขาไปและขากลับให้หมด
-    drawSky(ctx, this.camera, this.pal, true);
-    drawClouds(ctx, this.camera, this.pal);
+    drawSky(ctx, this.camera, pal, true);
+    drawClouds(ctx, this.camera, pal);
+    if (skin.outfit.bonus?.sparkle) {
+      drawBonusSparkle(ctx, this.tick, skin.outfit.bonus.sparkle);
+    }
 
     drawTreats(ctx, this.bonusTreats, this.camera, this.tick);
     this.particles.draw(ctx, this.camera);
-    drawPlayer(ctx, this.player, false, getSkin(), this.magnet > 0);
+    drawPlayer(ctx, this.player, false, skin, this.magnet > 0);
     drawHUD(ctx, this);
     this.drawFlash(ctx);
   }

@@ -627,10 +627,8 @@ export function drawSkillGauge(ctx, player, ratio, active, t) {
 export function drawNip(ctx, x, y, r, t = 0) {
   ctx.save();
   ctx.translate(x, y);
-  // โยกโดยหมุนรอบโคนต้น ไม่ใช่รอบกลางต้น ไม่งั้นโคนจะเลื่อนหลุดพื้น
-  ctx.translate(0, r * 0.9);
-  ctx.rotate(Math.sin(t * 0.06) * 0.12);
-  ctx.translate(0, -r * 0.9);
+  // ลอยอยู่แล้ว จึงหมุนรอบกลางช่อ ไม่ใช่รอบโคนแบบตอนที่ยังงอกติดพื้น
+  ctx.rotate(Math.sin(t * 0.06) * 0.1);
 
   ctx.save();
   ctx.shadowColor = 'rgba(95,211,90,.95)';
@@ -641,7 +639,7 @@ export function drawNip(ctx, x, y, r, t = 0) {
   ctx.lineWidth = r * 0.16;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(0, r * 0.9);
+  ctx.moveTo(0, r * 0.6);
   ctx.lineTo(0, -r * 0.5);
   ctx.stroke();
 
@@ -703,8 +701,8 @@ export function drawNips(ctx, nips, camera, tick) {
     if (n.got) continue;
     const x = n.x - camera;
     if (x > W + 50 || x < -50) continue;
-    // ไม่ลอยขึ้นลงเหมือนไอเท็มอื่น เพราะต้นไม้งอกติดพื้น มีแค่โยกตามลมในตัว drawNip
-    drawNip(ctx, x, n.y, n.r, tick);
+    // ลอยขึ้นลงเฟสเดียวกับแม่เหล็กและตัวอักษร ให้อ่านออกว่าเป็นไอเทมชุดเดียวกัน
+    drawNip(ctx, x, n.y + Math.sin(tick * 0.05 + n.x * 0.01) * 5, n.r, tick);
   }
 }
 
@@ -770,6 +768,30 @@ function puff(ctx, x, y, s) {
   ctx.ellipse(x + 32 * s, y + 7 * s, 32 * s, 18 * s, 0, 0, Math.PI * 2);
   ctx.ellipse(x - 6 * s, y - 14 * s, 26 * s, 18 * s, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/**
+ * ประกายวิ๊บวั๊บเต็มฟ้าในโหมดโบนัส เปิดใช้เฉพาะชุดระดับสูงที่กำหนดสีไว้
+ * กระจายด้วย 137.5 องศา (มุมทองคำ) จุดจึงไม่เรียงเป็นลายให้เห็น
+ */
+export function drawBonusSparkle(ctx, t, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  for (let i = 0; i < 26; i++) {
+    const x = ((i * 137.5 + t * 0.6) % (W + 60)) - 30;
+    const y = 26 + ((i * 91) % 262);
+    const pulse = Math.abs(Math.sin(t * 0.06 + i * 1.3));
+    const r = 1.6 + pulse * 2.6;
+    ctx.globalAlpha = 0.14 + pulse * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.quadraticCurveTo(x, y, x, y + r);
+    ctx.quadraticCurveTo(x, y, x - r, y);
+    ctx.quadraticCurveTo(x, y, x, y - r);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 export function drawClouds(ctx, camera, pal) {
@@ -994,6 +1016,8 @@ export function drawCatFace(ctx, x, y, scale, s) {
 }
 
 function drawCatStand(ctx, s, { swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false } = {}) {
+  s.outfit?.back?.(ctx, s, 'stand');
+
   // หางสะบัดสวนจังหวะขา วาดก่อนลำตัวเพื่อให้อยู่ข้างหลัง
   drawTail(ctx, -11, 8, wag, s);
 
@@ -1023,10 +1047,14 @@ function drawCatStand(ctx, s, { swing = 0, wag = 0, isDead = false, blink = fals
     ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-7, 1); ctx.stroke();
   }
 
+  s.outfit?.body?.(ctx, s, 'stand');
+
   drawCatHead(ctx, 1, -12, s, { isDead, blink, mouthOpen });
 }
 
 function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
+  s.outfit?.back?.(ctx, s, 'slide');
+
   // หางลากยาวไปข้างหลัง
   ctx.strokeStyle = s.cat;
   ctx.lineWidth = 6.5;
@@ -1059,6 +1087,8 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
   // ขาหน้าเหยียดไปข้างหน้า
   ctx.lineWidth = 6;
   ctx.beginPath(); ctx.moveTo(7, 5); ctx.lineTo(22, 9); ctx.stroke();
+
+  s.outfit?.body?.(ctx, s, 'slide');
 
   drawCatHead(ctx, 12, -4, s, { isDead, scale: 0.82, earsBack: true, mouthOpen });
 }
@@ -1177,6 +1207,9 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   ctx.beginPath(); ctx.moveTo(-7, 6.5); ctx.lineTo(-16, 7.5); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(9, 4); ctx.lineTo(18, 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(9, 6.5); ctx.lineTo(18, 7.5); ctx.stroke();
+
+  // ของสวมหัว (หมวก โบว์ แว่น) วาดท้ายสุดเพื่อให้ทับได้ทั้งหน้าและหู
+  s.outfit?.head?.(ctx, s, { earsBack, scale });
 
   ctx.restore();
 }

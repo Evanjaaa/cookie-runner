@@ -14,6 +14,11 @@
     <div class="titlebar">
       <h1>Speed Cat</h1>
       <span>endless runner</span>
+      <div class="goldbar" aria-label="เหรียญทอง">
+        <span class="coin" aria-hidden="true"></span>
+        <b id="goldTop">0</b>
+      </div>
+
       <div class="hudbtns">
         <button id="btnPause" aria-label="หยุดชั่วคราว">⏸</button>
         <button id="btnMute" aria-label="ปิดเสียง">🔊</button>
@@ -33,6 +38,7 @@
             <p class="home-sub">วิ่งให้ไกลที่สุดเท่าที่แรงจะไหว</p>
           </div>
 
+          <div class="home-grid">
           <button class="menu-item" id="btnStages">
             <canvas class="menu-ico wide" id="stageIcon" width="210" height="92"></canvas>
             <span class="menu-text">
@@ -50,6 +56,25 @@
             </span>
             <span class="menu-arrow" aria-hidden="true">›</span>
           </button>
+
+          <button class="menu-item" id="btnOutfits">
+            <canvas class="menu-ico" id="outfitIcon" width="76" height="76"></canvas>
+            <span class="menu-text">
+              <b>ชุด</b>
+              <small id="outfitName">ขนล้วน</small>
+            </span>
+            <span class="menu-arrow" aria-hidden="true">›</span>
+          </button>
+
+          <button class="menu-item" id="btnGacha">
+            <canvas class="menu-ico" id="gachaIcon" width="76" height="76"></canvas>
+            <span class="menu-text">
+              <b>ตู้กาช่า</b>
+              <small id="gachaSub">สุ่มชุดใหม่</small>
+            </span>
+            <span class="menu-arrow" aria-hidden="true">›</span>
+          </button>
+          </div>
 
           <button class="btn" id="startBtn">เริ่มวิ่ง</button>
 
@@ -69,6 +94,39 @@
         <h2 class="skin-title">เลือกแมวน้อย</h2>
         <div class="skin-grid" id="skinGrid"></div>
         <button class="btn ghost" id="skinBack">กลับ</button>
+      </div>
+
+      <!-- หน้าเลือกชุด ชุดผูกกับตัวแมว จึงโชว์เฉพาะชุดของตัวที่เลือกอยู่ -->
+      <div class="panel hidden" id="outfitPanel">
+        <h2 class="skin-title">เลือกชุด</h2>
+        <div class="skin-grid" id="outfitGrid"></div>
+        <div class="btnrow">
+          <button class="btn" id="outfitApply">เลือกชุดนี้</button>
+          <button class="btn ghost" id="outfitBack">ยกเลิก</button>
+        </div>
+      </div>
+
+      <!-- ตู้กาช่า สุ่มชุดด้วยเหรียญทอง -->
+      <div class="panel hidden" id="gachaPanel">
+        <h2 class="skin-title">ตู้กาช่า</h2>
+
+        <div class="gacha-stage">
+          <div class="gacha-side gacha-result" id="gachaResult"></div>
+          <canvas id="gachaMachine" width="200" height="226"></canvas>
+          <div class="gacha-side gacha-info">
+            <p class="gacha-gold"><span class="coin" aria-hidden="true"></span><b id="goldAmount">0</b></p>
+            <p class="gacha-rate"><span class="hi">ระดับสูง 20%</span><br>ระดับกลาง 80%</p>
+            <p class="gacha-rate">ได้ชุดซ้ำ คืนทอง 1,200</p>
+            <p class="gacha-owned">ปลดล็อก <b id="ownedCount">0</b> / <span id="totalCount">0</span> ชุด</p>
+          </div>
+        </div>
+
+        <div class="btnrow">
+          <button class="btn" id="pull1">สุ่ม 1 · 5,000</button>
+          <button class="btn ghost" id="pull5">สุ่ม 5 · 25,000</button>
+        </div>
+
+        <button class="btn ghost" id="gachaBack">กลับ</button>
       </div>
 
       <div class="panel hidden" id="pausePanel">

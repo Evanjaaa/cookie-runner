@@ -9,6 +9,7 @@
 // ไม่ใช่เทากลาง ๆ ซึ่งจะจมหายไปกับฉากหลัง
 // ─────────────────────────────────────────────────────────────
 import { loadSkin, saveSkin } from './storage.js';
+import { getOutfit } from './outfits.js';
 
 export const SKINS = [
   {
@@ -52,8 +53,23 @@ export function skinById(id) {
 
 let current = skinById(loadSkin());
 
+/**
+ * คืนสกินที่ผนวก "ชุดที่ใส่อยู่" เข้าไปแล้ว
+ *
+ * ทุกจุดที่วาดแมวรับ s ตัวเดียวกันนี้อยู่แล้ว การแนบชุดมากับ s
+ * จึงทำให้ไม่ต้องแก้ signature ของฟังก์ชันวาดสักตัว
+ *
+ * จำผลไว้เพราะ getSkin() ถูกเรียกหลายครั้งต่อเฟรม ถ้าสร้างอ็อบเจกต์ใหม่ทุกครั้ง
+ * จะกลายเป็นขยะให้ GC เก็บ 200+ ก้อนต่อวินาทีโดยไม่จำเป็น
+ */
+let view = null;
+
 export function getSkin() {
-  return current;
+  const outfit = getOutfit();
+  if (!view || view.id !== current.id || view.outfit !== outfit) {
+    view = { ...current, outfit };
+  }
+  return view;
 }
 
 export function setSkin(id) {
