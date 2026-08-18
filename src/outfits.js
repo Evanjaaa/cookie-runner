@@ -21,6 +21,7 @@
 // เพื่อไม่ให้ค่าของชุดระดับเดียวกันเพี้ยนกันเองเวลามีคนเพิ่มชุดใหม่
 // ─────────────────────────────────────────────────────────────
 import { loadOutfit, saveOutfit, loadOwned, saveOwned } from './storage.js';
+import { star4 } from './render/entities.js';
 
 export const RARITY = {
   high: {
@@ -29,7 +30,7 @@ export const RARITY = {
     short: 'SS',
     color: '#FFC93C',
     foodBonus: 1000,   // บวกต่ออาหารหนึ่งเม็ด
-    rate: 0.2,         // โอกาสออกจากตู้กาช่า
+    rate: 0.1,         // โอกาสออกจากตู้กาช่า
   },
   normal: {
     key: 'normal',
@@ -37,7 +38,7 @@ export const RARITY = {
     short: 'S',
     color: '#8DF3EA',
     foodBonus: 500,
-    rate: 0.8,
+    rate: 0.6,   // ส่วนที่เหลือจาก 100% เป็นเหรียญทอง ดู GOLD_RATE ใน gacha.js
   },
 };
 
@@ -231,39 +232,122 @@ function crown(ctx, spikes, main, gem, lift = 0) {
   ctx.beginPath(); ctx.arc(0, lift - 10.4, 2.2, 0, Math.PI * 2); ctx.fill();
 }
 
-/** ประกายสี่แฉก */
-function star4(ctx, x, y, r) {
+/** ใบไม้หนึ่งใบ โคนอยู่ที่ (x,y) ปลายชี้ไปตามมุม rot */
+function leaf(ctx, x, y, len, wid, rot, fill, vein) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.fillStyle = fill;
   ctx.beginPath();
-  ctx.moveTo(x, y - r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.quadraticCurveTo(x, y, x, y + r);
-  ctx.quadraticCurveTo(x, y, x - r, y);
-  ctx.quadraticCurveTo(x, y, x, y - r);
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(len * 0.5, -wid, len, 0);
+  ctx.quadraticCurveTo(len * 0.5, wid, 0, 0);
   ctx.fill();
+  if (vein) {
+    ctx.strokeStyle = vein;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(len - 1.5, 0); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** อัญมณีทรงข้าวหลามตัดพร้อมจุดสะท้อนแสง */
+function gem(ctx, x, y, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.72, y);
+  ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.72, y);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.65)';
+  ctx.beginPath(); ctx.arc(x - r * 0.2, y - r * 0.3, r * 0.22, 0, Math.PI * 2); ctx.fill();
+}
+
+/** แปลงสี #RRGGBB เป็น rgba() เพื่อใช้กับไล่เฉดที่ต้องจางไปจนใส */
+function fade(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
 /**
- * ออร่าประกายรอบตัว — เครื่องหมายของชุดระดับสูง
+ * ออร่ารอบตัว — เครื่องหมายของชุดระดับสูง ประกอบด้วย 5 ชั้น
+ *   1 แสงนวลก้อนใหญ่หลังตัว   — ตัวที่ให้ความรู้สึก "อลังการ" มากที่สุด
+ *   2 ธารแสงลากไปข้างหลัง     — บอกทิศทางที่วิ่งมา
+ *   3 วงแหวนประกายสองชั้น     — หมุนสวนทางกัน ตาจึงจับได้ว่ามีมิติ
+ *   4 ละอองลอยขึ้น            — กันไม่ให้ทุกอย่างหมุนรอบจุดเดียวจนดูตาย
+ *   5 ประกายใหญ่วาบเป็นจังหวะ  — จุดพีคที่ดึงสายตาเป็นระยะ
+ *
+ * ชั้น 2-5 ใช้บวกสีทั้งหมด แสงจึงซ้อนกันแล้วสว่างขึ้นเหมือนแสงจริง
+ * และไปเข้าทางแสงฟุ้งของ post.js ต่ออีกชั้น
  *
  * ใช้ performance.now() แทนการรับ tick เข้ามา เพราะ hook พวกนี้ถูกเรียก
  * จากหลายเส้นทาง (ในเกม หน้าแรก การ์ดตัวอย่างในเมนู) ซึ่งบางเส้นทางไม่มี
  * เวลาเกมให้ส่ง การผูกกับนาฬิกาจริงทำให้กะพริบเหมือนกันทุกที่โดยไม่ต้อง
  * แก้ signature ของฟังก์ชันวาดสักตัว และเป็นเอฟเฟกต์ประดับล้วน ไม่กระทบกติกา
  */
-function sparkleAura(ctx, pose, color) {
+function sparkleAura(ctx, pose, main, lite = '#FFFFFF') {
   const t = performance.now() * 0.005;
   const cx = pose === 'slide' ? -2 : 0;
   const cy = pose === 'slide' ? 2 : 4;
 
   ctx.save();
-  ctx.fillStyle = color;
-  for (let i = 0; i < 7; i++) {
-    const a = t * 0.55 + (i / 7) * Math.PI * 2;
-    const rad = 25 + Math.sin(t * 1.3 + i) * 5;
-    const pulse = Math.abs(Math.sin(t * 2 + i * 1.7));
-    ctx.globalAlpha = 0.35 + pulse * 0.6;
-    star4(ctx, cx + Math.cos(a) * rad, cy + Math.sin(a) * rad * 0.74, 1.5 + pulse * 2);
+
+  // 1 แสงนวลก้อนใหญ่ ใช้ทับสีปกติ ไม่งั้นจะกลบตัวละครที่วาดทีหลัง
+  const breathe = 1 + Math.sin(t * 1.1) * 0.09;
+  const halo = 44 * breathe;
+  const grad = ctx.createRadialGradient(cx, cy, 3, cx, cy, halo);
+  grad.addColorStop(0, fade(main, 0.32));
+  grad.addColorStop(0.5, fade(main, 0.12));
+  grad.addColorStop(1, fade(main, 0));
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx, cy, halo, 0, Math.PI * 2); ctx.fill();
+
+  ctx.globalCompositeOperation = 'lighter';
+
+  // 2 ธารแสงลากหลัง จางลงเรื่อย ๆ ตามระยะ
+  for (let i = 1; i <= 4; i++) {
+    ctx.globalAlpha = 0.15 / i;
+    ctx.fillStyle = main;
+    ctx.beginPath();
+    ctx.ellipse(cx - i * 11, cy + Math.sin(t * 1.6 + i) * 2,
+      13 - i * 1.7, 10 - i * 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
+
+  // 3 วงแหวนประกายสองชั้น หมุนสวนทางกัน
+  for (const [count, rad, spin, size, col] of [
+    [7, 26, 0.55, 2.0, main],
+    [5, 39, -0.36, 1.3, lite],
+  ]) {
+    ctx.fillStyle = col;
+    for (let i = 0; i < count; i++) {
+      const a = t * spin + (i / count) * Math.PI * 2;
+      const r = rad + Math.sin(t * 1.3 + i) * 5;
+      const pulse = Math.abs(Math.sin(t * 2 + i * 1.7));
+      ctx.globalAlpha = 0.3 + pulse * 0.6;
+      star4(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.74, size * (0.6 + pulse));
+    }
+  }
+
+  // 4 ละอองลอยขึ้นแล้วจางหาย วนใหม่คนละเฟส
+  ctx.fillStyle = lite;
+  for (let i = 0; i < 6; i++) {
+    const k = (t * 0.2 + i / 6) % 1;
+    const soft = Math.sin(k * Math.PI);
+    ctx.globalAlpha = soft * 0.62;
+    star4(ctx, cx + Math.sin(i * 2.3 + t * 0.4) * 21, cy + 22 - k * 54, 0.9 + soft * 1.5);
+  }
+
+  // 5 ประกายใหญ่วาบ ทีละจุดสลับมุมไปเรื่อย ๆ
+  const cycle = (t * 0.42) % 1;
+  if (cycle < 0.38) {
+    const k = cycle / 0.38;
+    const spot = Math.floor(t * 0.42) % 3;
+    const [sx, sy] = [[17, -20], [-19, -13], [13, 17]][spot];
+    ctx.globalAlpha = Math.sin(k * Math.PI) * 0.8;
+    ctx.fillStyle = lite;
+    star4(ctx, cx + sx, cy + sy, 2.5 + Math.sin(k * Math.PI) * 5);
+  }
+
   ctx.restore();
 }
 
@@ -285,15 +369,19 @@ const LIST = [
     note: 'หมวกสูงกับเสื้อกั๊กแดงทอง',
     // โบนัสไทม์เปลี่ยนเป็นฟ้าทองอุ่น ๆ เข้ากับชุด
     bonus: {
-      sky: ['#5B3A12', '#C98A2E', '#FFD98A'],
-      glow: 'rgba(255,214,120,.6)',
-      speck: 'rgba(255,236,180,.9)',
-      cloud: '#FFF0C9',
-      cloudSoft: '#E8C489',
-      sparkle: '#FFD86B',
+      sky: ['#33210A', '#8A5C1E', '#C99A52'],
+      glow: 'rgba(210,165,80,.34)',
+      speck: 'rgba(228,200,140,.62)',
+      cloud: '#D8C08A',
+      cloudSoft: '#9C7C46',
+      sparkle: '#E8C46B',
     },
+    // เม็ดที่โปรยลงมาเปลี่ยนเป็นทอง และของกินทั้งจอมีประกายทองวิบวับ
+    rain: ['#FFC93C', '#FFF0BC', '#A5701A'],
+    rainShape: 'coin',
+    glow: '#FFE9A8',
     back(ctx, s, pose) {
-      sparkleAura(ctx, pose, '#FFD86B');
+      sparkleAura(ctx, pose, '#FFD86B', '#FFF3C4');
     },
     body(ctx, s, pose) {
       fullSuit(ctx, pose, '#F5F1E6');            // เชิ้ตขาว
@@ -337,15 +425,18 @@ const LIST = [
     note: 'มงกุฎใหญ่กับชุดราตรีฟ้า',
     // ฟ้าฟรุ้ง ๆ วิ๊บวั๊บตามที่สั่ง
     bonus: {
-      sky: ['#2C6FA8', '#7FD3F5', '#DFF6FF'],
-      glow: 'rgba(150,230,255,.62)',
-      speck: 'rgba(235,251,255,.95)',
-      cloud: '#FFFFFF',
-      cloudSoft: '#CDEBFB',
-      sparkle: '#8FE8FF',
+      sky: ['#123B60', '#3F82AC', '#8FBDD4'],
+      glow: 'rgba(120,190,225,.34)',
+      speck: 'rgba(200,232,245,.62)',
+      cloud: '#C8DFEC',
+      cloudSoft: '#7FA6BC',
+      sparkle: '#7FD8F0',
     },
+    rain: ['#6FD4FF', '#DEF7FF', '#2E7EA8'],
+    rainShape: 'snow',
+    glow: '#BFEEFF',
     back(ctx, s, pose) {
-      sparkleAura(ctx, pose, '#8FE8FF');
+      sparkleAura(ctx, pose, '#8FE8FF', '#E4FAFF');
       // ผ้าคลุมยาวสยายไปข้างหลัง วาดใน back จึงอยู่หลังตัวจริง ๆ
       ctx.save();
       ctx.fillStyle = 'rgba(120,205,245,.85)';
@@ -381,6 +472,61 @@ const LIST = [
       ctx.fillStyle = '#5FD0FF';
       ctx.beginPath(); ctx.arc(-12, 4, 1.8, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(14, 4, 1.8, 0, Math.PI * 2); ctx.fill();
+    },
+  },
+
+  {
+    id: 'dryad',
+    rarity: 'high',
+    name: 'นางไม้มรกต',
+    note: 'มงกุฎใบไม้กับปีกใบไม้',
+    // ป่าลึกยามเช้า เขียวมรกตตัดทอง
+    bonus: {
+      sky: ['#0A2818', '#256B3E', '#7FAE86'],
+      glow: 'rgba(130,205,150,.32)',
+      speck: 'rgba(196,232,192,.6)',
+      cloud: '#B8D8B4',
+      cloudSoft: '#6E9670',
+      sparkle: '#7FDC96',
+    },
+    rain: ['#5FD35A', '#D6FFC9', '#256B3E'],
+    rainShape: 'leaf',
+    glow: '#B6F5A8',
+    back(ctx, s, pose) {
+      sparkleAura(ctx, pose, '#8FF0A8', '#DFFFE0');
+      // ปีกใบไม้คู่ ชี้ไปข้างหลัง (มุมราว π = ทางซ้าย)
+      const bx = pose === 'slide' ? -5 : -4;
+      const by = pose === 'slide' ? 0 : 2;
+      leaf(ctx, bx, by, 21, 8.5, Math.PI + 0.52, 'rgba(126,224,140,.75)', 'rgba(37,104,64,.65)');
+      leaf(ctx, bx, by, 18, 7, Math.PI - 0.24, 'rgba(95,211,90,.72)', 'rgba(37,104,64,.65)');
+    },
+    body(ctx, s, pose) {
+      fullSuit(ctx, pose, '#2F7C4E');
+      skirt(ctx, pose, '#3E9E62', '#9CF0AE');
+      clipBody(ctx, pose, () => {
+        // เข็มขัดเถาวัลย์ทอง
+        ctx.strokeStyle = '#E8C86B';
+        ctx.lineWidth = 2.2;
+        const by = pose === 'slide' ? 3 : 7;
+        ctx.beginPath(); ctx.moveTo(-22, by); ctx.lineTo(22, by); ctx.stroke();
+      });
+      // ใบไม้บนบ่า วาดนอก clip ให้ล้นพ้นไหล่ออกมาได้นิดหน่อย
+      leaf(ctx, pose === 'slide' ? 1 : -6, pose === 'slide' ? -5 : -3, 11, 4.4, -2.35,
+        '#5FD35A', '#2F7C4E');
+      collar(ctx, pose, '#E8C86B', 3, (x, y) => gem(ctx, x, y, 3.6, '#2BE0A8'));
+    },
+    head(ctx) {
+      // วงเถาวัลย์รอบหัว แล้วปักใบไม้เรียงบนวง
+      ctx.strokeStyle = '#2F7C4E';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(0, 0, 12, Math.PI * 1.18, Math.PI * 1.82); ctx.stroke();
+
+      leaf(ctx, -8.5, -8.6, 8, 3.2, -2.55, '#5FD35A', '#2F7C4E');
+      leaf(ctx, -3, -11.8, 9.5, 3.8, -2.0, '#7BE07A', '#2F7C4E');
+      leaf(ctx, 3, -11.8, 9.5, 3.8, -1.14, '#5FD35A', '#2F7C4E');
+      leaf(ctx, 8.5, -8.6, 8, 3.2, -0.59, '#7BE07A', '#2F7C4E');
+
+      gem(ctx, 0, -9.6, 3.4, '#2BE0A8');
     },
   },
 

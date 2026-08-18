@@ -87,8 +87,9 @@ export class Player {
     this.runPhase += game.speed * dt * 0.06;
 
     const centerWorldX = PLAYER_X + BODY.standW / 2 + game.camera;
-    // ระหว่างใช้ความสามารถ ถือว่ามีพื้นตลอด เดินข้ามหลุมได้เหมือนไม่มีหลุม
-    const overPit = !game.skillOn && game.level.isOverPit(centerWorldX);
+    // ระหว่างใช้ความสามารถหรือติดสปีด ถือว่ามีพื้นตลอด วิ่งข้ามหลุมได้เหมือนไม่มีหลุม
+    // ถามผ่าน pitsSolid จุดเดียว ตัวละครจึงไม่ต้องรู้ว่ามีกี่อย่างที่ทำให้หลุมหาย
+    const overPit = !game.pitsSolid && game.level.isOverPit(centerWorldX);
 
     let justLanded = false;
 

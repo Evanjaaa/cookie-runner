@@ -10,14 +10,36 @@ const { W } = VIEW;
  * เพราะระยะกระโดดกับตำแหน่งอาหารทั้งเกมคำนวณจากขนาดพวกนั้น
  * ถ้าธีมไหนวาดใหญ่กว่ากล่องชนจริง ผู้เล่นจะรู้สึกว่า "ชนทั้งที่ยังไม่โดน"
  */
+function drawOneObstacle(ctx, o, x, y, garden) {
+  if (o.kind === 'bar') (garden ? drawFlowerArch : drawBar)(ctx, x, y, o.w, o.h);
+  else if (o.kind === 'crate') (garden ? drawGiftStack : drawCrateStack)(ctx, x, y, o.w, o.h, o.rows);
+  else (garden ? drawCactus : drawSpike)(ctx, x, y, o.w, o.h);
+}
+
 export function drawObstacles(ctx, obstacles, camera, theme = 'bakery') {
   const garden = theme === 'garden';
   for (const o of obstacles) {
     const x = o.x - camera;
-    if (x > W + 40 || x + o.w < -40) continue;
-    if (o.kind === 'bar') (garden ? drawFlowerArch : drawBar)(ctx, x, o.y, o.w, o.h);
-    else if (o.kind === 'crate') (garden ? drawGiftStack : drawCrateStack)(ctx, x, o.y, o.w, o.h, o.rows);
-    else (garden ? drawCactus : drawSpike)(ctx, x, o.y, o.w, o.h);
+    // เผื่อขอบกว้างกว่าเดิม ชิ้นที่กระเด็นอยู่จะได้ไม่หายวับตอนยังเห็นได้
+    if (x > W + 130 || x + o.w < -130) continue;
+
+    if (!o.smashed) {
+      drawOneObstacle(ctx, o, x, o.y, garden);
+      continue;
+    }
+
+    // ชิ้นที่ถูกชน: หมุนรอบจุดกึ่งกลางตัวเอง แล้วจางหายไป
+    //
+    // ส่ง y = 0 เข้าไปแทนพิกัดจริง ซึ่งทำให้เสาค้ำของคานหายไปเองพอดี
+    // (เสาวาดจาก y=0 ลงมาถึงตัวคาน พอ y เป็น 0 ความสูงเสาจึงเป็น 0)
+    // คานที่ปลิวอยู่กลางอากาศจะได้ไม่ลากเสาติดไปด้วย
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, o.life / 20));
+    ctx.translate(x + o.w / 2, o.y + o.h / 2);
+    ctx.rotate(o.rot);
+    ctx.translate(-o.w / 2, -o.h / 2);
+    drawOneObstacle(ctx, o, 0, 0, garden);
+    ctx.restore();
   }
 }
 
@@ -516,7 +538,7 @@ export function drawMagnets(ctx, magnets, camera, tick) {
     if (m.got) continue;
     const x = m.x - camera;
     if (x > W + 50 || x < -50) continue;
-    drawMagnet(ctx, x, m.y + Math.sin(tick * 0.05 + m.x * 0.01) * 5, m.r, tick);
+    drawMagnet(ctx, x, floatY(m, tick), m.r, tick);
   }
 }
 
@@ -549,8 +571,155 @@ export function drawSuction(ctx, player, tick) {
 // ── เม็ดที่โปรยลงมาตอนใช้ความสามารถ ──────────────────────────
 // สีมาจากสกิน แมวส้มโปรยเม็ดส้มแดง แมวขาวโปรยเม็ดขาวเทา
 
+// ── ทรงของเม็ดที่โปรยลงมา ────────────────────────────────────
+// ชุดระดับสูงเปลี่ยนได้ทั้งสีและทรง ชุดอื่นใช้ลูกกลมสีประจำสีขนตามเดิม
+// ทุกทรงหมุน/พลิกด้วยเฟสที่อิงพิกัด x ของตัวเอง เม็ดที่ตกพร้อมกัน
+// จึงไม่หมุนพร้อมกันเป๊ะจนดูเป็นของชิ้นเดียวถูกก๊อบวาง
+
+/** ลูกกลมแบบเดิม */
+function rainBall(ctx, x, y, r, t, main, lite, dark) {
+  ctx.save();
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = main;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // ขอบล่างเข้ม ทำให้ดูกลมมีน้ำหนักแทนที่จะเป็นจานแบน
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x, y, r - 1, 0.12 * Math.PI, 0.88 * Math.PI); ctx.stroke();
+
+  ctx.fillStyle = lite;
+  ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.34, r * 0.34, 0, Math.PI * 2); ctx.fill();
+}
+
+/** ใบไม้กับดอกไม้สลับกันไป เลือกจากพิกัดจึงคงที่ตลอดอายุของเม็ดนั้น */
+function rainLeaf(ctx, x, y, r, t, main, lite, dark) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(t * 0.035 + x * 0.02) * 0.55);
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 12;
+
+  if (Math.floor(Math.abs(x) / 7) % 2) {
+    // ใบไม้ — สองซีกโค้งบรรจบกันที่ปลายทั้งสองข้าง
+    ctx.fillStyle = main;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.1);
+    ctx.quadraticCurveTo(r * 0.92, -r * 0.08, 0, r * 1.1);
+    ctx.quadraticCurveTo(-r * 0.92, -r * 0.08, 0, -r * 1.1);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -r * 0.9); ctx.lineTo(0, r * 0.9); ctx.stroke();
+    for (const k of [-0.4, 0.05, 0.5]) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * k); ctx.lineTo(r * 0.46, r * (k + 0.3));
+      ctx.moveTo(0, r * k); ctx.lineTo(-r * 0.46, r * (k + 0.3));
+      ctx.stroke();
+    }
+  } else {
+    // ดอกไม้ห้ากลีบ
+    ctx.fillStyle = main;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6,
+        r * 0.5, r * 0.34, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = lite;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.17, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** เกล็ดหิมะหกแฉก แต่ละแฉกมีกิ่งย่อยสองข้าง */
+function rainSnow(ctx, x, y, r, t, main, lite, dark) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 0.018 + x * 0.01);
+  ctx.lineCap = 'round';
+
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = lite;
+  ctx.lineWidth = r * 0.26;
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(-Math.cos(a) * r, -Math.sin(a) * r);
+    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = main;
+  ctx.lineWidth = r * 0.16;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const bx = Math.cos(a) * r * 0.6;
+    const by = Math.sin(a) * r * 0.6;
+    for (const s of [-0.62, 0.62]) {
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + Math.cos(a + s) * r * 0.36, by + Math.sin(a + s) * r * 0.36);
+      ctx.stroke();
+    }
+  }
+
+  ctx.fillStyle = lite;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/** เหรียญทองพลิกหมุน — บีบความกว้างตามโคไซน์ เหมือนหมุนรอบแกนตั้งจริง */
+function rainCoin(ctx, x, y, r, t, main, lite, dark) {
+  const flip = Math.max(0.13, Math.abs(Math.cos(t * 0.05 + x * 0.03)));
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 13;
+  ctx.fillStyle = main;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * flip, r, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * flip, r, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // ลายกลางเหรียญโผล่เฉพาะตอนหันหน้าเข้าหาเรา ตอนพลิกข้างจะบางจนไม่มีที่วาด
+  if (flip > 0.42) {
+    ctx.strokeStyle = lite;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * flip * 0.68, r * 0.68, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.scale(flip, 1);
+    ctx.fillStyle = lite;
+    star4(ctx, 0, 0, r * 0.4);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin };
+
 export function drawRain(ctx, drops, camera, skin, t) {
-  const [main, lite, dark] = skin.rain;
+  // ชุดระดับสูงเปลี่ยนทั้งสีและทรง ชุดอื่นใช้ลูกกลมสีประจำสีขนตามเดิม
+  const [main, lite, dark] = skin.outfit?.rain || skin.rain;
+  const glow = skin.outfit?.glow;
+  const shape = RAIN_SHAPES[skin.outfit?.rainShape] || rainBall;
 
   for (const d of drops) {
     if (d.got) continue;
@@ -558,26 +727,8 @@ export function drawRain(ctx, drops, camera, skin, t) {
     if (x > W + 40 || x < -40) continue;
     const r = SKILL.rainR;
 
-    ctx.save();
-    ctx.shadowColor = main;
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = main;
-    ctx.beginPath();
-    ctx.arc(x, d.y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // ขอบล่างเข้ม ทำให้ดูกลมมีน้ำหนักแทนที่จะเป็นจานแบน
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, d.y, r - 1, 0.12 * Math.PI, 0.88 * Math.PI);
-    ctx.stroke();
-
-    ctx.fillStyle = lite;
-    ctx.beginPath();
-    ctx.arc(x - r * 0.3, d.y - r * 0.34, r * 0.34, 0, Math.PI * 2);
-    ctx.fill();
+    shape(ctx, x, d.y, r, t, main, lite, dark);
+    if (glow) twinkle(ctx, x, d.y, r, t, glow);
   }
 }
 
@@ -702,7 +853,7 @@ export function drawNips(ctx, nips, camera, tick) {
     const x = n.x - camera;
     if (x > W + 50 || x < -50) continue;
     // ลอยขึ้นลงเฟสเดียวกับแม่เหล็กและตัวอักษร ให้อ่านออกว่าเป็นไอเทมชุดเดียวกัน
-    drawNip(ctx, x, n.y + Math.sin(tick * 0.05 + n.x * 0.01) * 5, n.r, tick);
+    drawNip(ctx, x, floatY(n, tick), n.r, tick);
   }
 }
 
@@ -749,8 +900,150 @@ export function drawLetters(ctx, letters, camera, tick) {
     if (l.got) continue;
     const x = l.x - camera;
     if (x > W + 50 || x < -50) continue;
-    drawLetterCoin(ctx, x, l.y + Math.sin(tick * 0.05 + l.x * 0.01) * 5, l.r, WORD[l.idx], tick);
+    drawLetterCoin(ctx, x, floatY(l, tick), l.r, WORD[l.idx], tick);
   }
+}
+
+// ── ปลาทองตัวใหญ่ที่พาไปโบนัส ────────────────────────────────
+
+const FISH_BODY = '#FF9A3C';
+const FISH_LITE = '#FFC983';
+const FISH_BELLY = '#FFE3B8';
+const FISH_FIN = 'rgba(255,176,102,.82)';
+const FISH_FIN_EDGE = 'rgba(255,214,160,.9)';
+const FISH_INK = '#7A3410';
+
+/** หัวใจหนึ่งดวง ใช้เป็นตาของปลา */
+function heartShape(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.9);
+  ctx.bezierCurveTo(x - s * 1.5, y - s * 0.35, x - s * 0.55, y - s * 1.15, x, y - s * 0.32);
+  ctx.bezierCurveTo(x + s * 0.55, y - s * 1.15, x + s * 1.5, y - s * 0.35, x, y + s * 0.9);
+  ctx.fill();
+}
+
+/**
+ * ปลาทองตัวใหญ่ วาดรอบจุด (x,y) = กลางลำตัว
+ * r = ครึ่งความยาวลำตัว
+ * dir = ทิศที่หันหน้า 1 คือขวา -1 คือซ้าย ส่งค่าทศนิยมได้ด้วย
+ *       ค่าระหว่าง -1 ถึง 1 จะเห็นเป็นปลากำลังหมุนตัวกลับ
+ */
+export function drawBigFish(ctx, x, y, r, dir, t) {
+  const wag = Math.sin(t * 0.1);
+  // กันไม่ให้ scale เป็น 0 พอดี ซึ่งจะทำให้ path ทั้งก้อนยุบหายไปเฉย ๆ
+  const face = Math.abs(dir) < 0.08 ? 0.08 * (dir < 0 ? -1 : 1) : dir;
+
+  ctx.save();
+  ctx.translate(x, y + Math.sin(t * 0.05) * r * 0.05);
+  ctx.scale(face, 1);
+  ctx.lineJoin = 'round';
+
+  // ── หางพัด สะบัดตามจังหวะว่าย ──
+  ctx.save();
+  ctx.translate(-r * 0.76, 0);
+  ctx.rotate(wag * 0.3);
+  ctx.fillStyle = FISH_FIN;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-r * 0.45, s * r * 0.3, -r * 1.02, s * r * 0.8);
+    ctx.quadraticCurveTo(-r * 0.66, s * r * 0.16, 0, 0);
+    ctx.fill();
+  }
+  ctx.strokeStyle = FISH_FIN_EDGE;
+  ctx.lineWidth = r * 0.035;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.08, 0);
+    ctx.quadraticCurveTo(-r * 0.55, s * r * 0.26, -r * 0.92, s * r * 0.68);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── ครีบหลัง ──
+  ctx.fillStyle = FISH_FIN;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.3, -r * 0.5);
+  ctx.quadraticCurveTo(-r * 0.05, -r * 1.02, r * 0.32, -r * 0.52);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── ครีบท้อง โบกช้ากว่าหางนิดหน่อย ──
+  ctx.save();
+  ctx.rotate(wag * 0.18);
+  ctx.fillStyle = FISH_FIN;
+  ctx.beginPath();
+  ctx.ellipse(r * 0.06, r * 0.52, r * 0.3, r * 0.15, 0.45, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // ── ลำตัว ──
+  ctx.fillStyle = FISH_BODY;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r, r * 0.66, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ท้องสว่าง วางเยื้องลงล่างเพื่อให้อ่านเป็นแสงจากด้านบน
+  ctx.fillStyle = FISH_BELLY;
+  ctx.beginPath();
+  ctx.ellipse(r * 0.1, r * 0.24, r * 0.7, r * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // เกล็ดเป็นส่วนโค้งซ้อนกัน ไม่ใช่จุดกลม จะได้อ่านเป็นเกล็ดจริง
+  ctx.strokeStyle = 'rgba(210,105,30,.32)';
+  ctx.lineWidth = r * 0.035;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(-r * (0.12 + i * 0.26), 0, r * 0.34, -Math.PI * 0.42, Math.PI * 0.42);
+    ctx.stroke();
+  }
+
+  // ครีบข้างลำตัว วาดทับตัวเพื่อให้ดูอยู่ด้านหน้า
+  ctx.save();
+  ctx.rotate(wag * 0.22);
+  ctx.fillStyle = 'rgba(255,196,132,.9)';
+  ctx.beginPath();
+  ctx.ellipse(r * 0.26, r * 0.2, r * 0.26, r * 0.13, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // ── หน้า ──
+  // แก้มชมพู วาดก่อนตาให้อยู่ชั้นล่างสุด
+  ctx.fillStyle = 'rgba(255,120,150,.45)';
+  ctx.beginPath();
+  ctx.ellipse(r * 0.52, r * 0.14, r * 0.15, r * 0.09, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ตาหัวใจ — ตัวที่ทำให้อ่านออกทันทีว่าปลาดีใจ
+  ctx.fillStyle = '#FF4D6D';
+  heartShape(ctx, r * 0.44, -r * 0.16, r * 0.17);
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath();
+  ctx.arc(r * 0.38, -r * 0.24, r * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ยิ้มแฉ่ง ปลายปากงอนขึ้นทั้งสองข้าง
+  ctx.strokeStyle = FISH_INK;
+  ctx.lineWidth = r * 0.06;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(r * 0.62, r * 0.02, r * 0.25, Math.PI * 0.12, Math.PI * 0.62);
+  ctx.stroke();
+
+  // ── ประกายรอบตัว บอกว่านี่คือของวิเศษไม่ใช่ปลาธรรมดา ──
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = FISH_LITE;
+  for (let i = 0; i < 5; i++) {
+    const a = t * 0.03 + (i / 5) * Math.PI * 2;
+    const rad = r * (1.15 + Math.sin(t * 0.06 + i) * 0.12);
+    const pulse = Math.abs(Math.sin(t * 0.07 + i * 1.6));
+    ctx.globalAlpha = 0.25 + pulse * 0.6;
+    star4(ctx, x + Math.cos(a) * rad, y + Math.sin(a) * rad * 0.62, r * (0.04 + pulse * 0.07));
+  }
+  ctx.restore();
 }
 
 // ── ก้อนเมฆในโหมดโบนัส ───────────────────────────────────────
@@ -776,13 +1069,16 @@ function puff(ctx, x, y, s) {
  */
 export function drawBonusSparkle(ctx, t, color) {
   ctx.save();
+  // บวกสีแทนทับสี ประกายที่ซ้อนกันจึงสว่างขึ้นเหมือนแสงจริง ไม่ใช่ทับกันทึบ
+  ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = color;
   for (let i = 0; i < 26; i++) {
     const x = ((i * 137.5 + t * 0.6) % (W + 60)) - 30;
     const y = 26 + ((i * 91) % 262);
     const pulse = Math.abs(Math.sin(t * 0.06 + i * 1.3));
-    const r = 1.6 + pulse * 2.6;
-    ctx.globalAlpha = 0.14 + pulse * 0.7;
+    const r = 1.4 + pulse * 2.1;
+    // บวกสีแล้วยังโดนแสงฟุ้งซ้ำอีกชั้น ค่าเดิม 0.14+0.7 เลยสว่างจนฟ้าขาววอก
+    ctx.globalAlpha = 0.07 + pulse * 0.3;
     ctx.beginPath();
     ctx.moveTo(x, y - r);
     ctx.quadraticCurveTo(x, y, x + r, y);
@@ -812,12 +1108,65 @@ export function drawClouds(ctx, camera, pal) {
 }
 
 /** วาดของเก็บทั้งแนว ทุกชนิดอยู่ใน array เดียวกัน แยกด้วย kind */
+/**
+ * ความสูงที่ควรวาดของชิ้นหนึ่ง — ลอยขึ้นลงเบา ๆ ตอนอยู่เฉย ๆ
+ * แต่หยุดลอยทันทีที่ถูกแรงดูดจับ
+ *
+ * ถ้าไม่หยุด การสั่น 4-5px จะไปบวกทับเส้นทางโค้งที่คำนวณมาอย่างดี
+ * ผลคือของที่กำลังพุ่งเข้าหาตัวสั่นยิบ ๆ ตลอดทาง ซึ่งเป็นสาเหตุหลัก
+ * ที่ทำให้การดูดดู "ไม่สมูท" ทั้งที่เส้นทางจริงเรียบอยู่แล้ว
+ *
+ * mvx มีค่าเมื่อไหร่ = ชิ้นนั้นเข้าสู่การถูกดูดแล้ว (ตั้งโดย seek ใน utils.js)
+ */
+function floatY(item, t, amp = 5, rate = 0.05) {
+  return item.mvx === undefined
+    ? item.y + Math.sin(t * rate + item.x * 0.01) * amp
+    : item.y;
+}
+
+/** ประกายสี่แฉก — ของกลาง ใช้ทั้งของกิน เม็ดที่โปรยลงมา และออร่าชุด */
+export function star4(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.quadraticCurveTo(x, y, x, y + r);
+  ctx.quadraticCurveTo(x, y, x - r, y);
+  ctx.quadraticCurveTo(x, y, x, y - r);
+  ctx.fill();
+}
+
+/**
+ * ประกายวิบวับ ใช้กับเม็ดที่โปรยลงมาจากฟ้าตอนใช้ความสามารถเท่านั้น
+ *
+ * ตั้งใจไม่ใส่ให้ของกินในด่าน เพราะของในด่านมีเยอะและอยู่เต็มจอตลอดเวลา
+ * ประกายทุกเม็ดจะกลายเป็นสัญญาณรบกวนแทนที่จะเป็นของพิเศษ
+ * ส่วนเม็ดที่โปรยลงมามีเป็นช่วง ๆ ประกายจึงยังรู้สึกเป็นเหตุการณ์พิเศษอยู่
+ *
+ * เฟสคำนวณจากพิกัด x ของแต่ละเม็ด ไม่ใช่จากเวลาอย่างเดียว
+ * ไม่งั้นของทั้งจอจะวิบพร้อมกันหมดจนดูเป็นไฟกะพริบ ไม่ใช่ประกาย
+ */
+function twinkle(ctx, x, y, r, t, color) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = color;
+  for (let i = 0; i < 2; i++) {
+    const p = (t * 0.028 + x * 0.021 + i * 0.5) % 1;
+    const soft = Math.sin(p * Math.PI);
+    if (soft <= 0.03) continue;
+    const a = x * 0.7 + i * 2.6;
+    const d = r * (1.15 + i * 0.55);
+    ctx.globalAlpha = soft * 0.8;
+    star4(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d * 0.8, 0.9 + soft * 2.1);
+  }
+  ctx.restore();
+}
+
 export function drawTreats(ctx, treats, camera, tick = 0) {
   for (const t of treats) {
     if (t.got) continue;
     const x = t.x - camera;
     if (x > W + 50 || x < -50) continue;
-    const y = t.y + Math.sin(camera * 0.02 + t.x * 0.01) * 3;
+    const y = floatY(t, camera, 3, 0.02);
     if (t.kind === 'shrimp') drawShrimp(ctx, x, y, t.r * SHRIMP.scale, tick);
     else if (t.kind === 'kibble') drawKibble(ctx, x, y, t.r);
     else drawFish(ctx, x, y, t.r);
@@ -831,7 +1180,7 @@ export function drawPotions(ctx, potions, camera, tick) {
     if (p.got) continue;
     const x = p.x - camera;
     if (x > W + 60 || x < -60) continue;
-    drawPotion(ctx, x, p.y + Math.sin(tick * 0.05 + p.x * 0.01) * 5, tick);
+    drawPotion(ctx, x, floatY(p, tick), tick);
   }
 }
 
@@ -902,7 +1251,7 @@ export function drawShields(ctx, shields, camera) {
     if (s.got) continue;
     const x = s.x - camera;
     if (x > W + 40 || x < -40) continue;
-    const y = s.y + Math.sin(camera * 0.02 + s.x * 0.01) * 4;
+    const y = floatY(s, camera, 4, 0.02);
 
     ctx.save();
     ctx.shadowColor = 'rgba(255,243,226,.9)';
@@ -1035,6 +1384,9 @@ function drawCatStand(ctx, s, { swing = 0, wag = 0, isDead = false, blink = fals
   // ลำตัว
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.ellipse(0, 6, 14, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,252,240,.26)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, 6, 13, 12, 0, -Math.PI * 0.52, Math.PI * 0.08); ctx.stroke();
 
   // พุงสีครีม
   ctx.fillStyle = s.cream;
@@ -1130,6 +1482,12 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // หัว
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+
+  // ขอบแสงด้านบนขวา รับกับแสงเรืองที่ขอบฟ้าซึ่งอยู่ทางขวาของจอ
+  // ทำให้หัวหลุดออกจากพื้นหลังโดยไม่ต้องตีเส้นขอบทึบซึ่งจะดูเป็นการ์ตูนแบน
+  ctx.strokeStyle = 'rgba(255,252,240,.32)';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(0, 0, 11.9, -Math.PI * 0.6, Math.PI * 0.06); ctx.stroke();
 
   if (s.stripes) {
     ctx.strokeStyle = s.dark;

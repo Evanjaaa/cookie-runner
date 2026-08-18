@@ -8,10 +8,11 @@ import { startMusic, setMusicMuted } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
 import { STAGES, getStage, setStage } from './stages.js';
 import { RARITY, wearable, setOutfit, pullPool, ownedCount } from './outfits.js';
-import { getGold, pull, MULTI_PULLS } from './gacha.js';
+import { getGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest } from './storage.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
+import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
 const canvas = document.getElementById('game');
@@ -271,11 +272,21 @@ function drawCapsuleDrop(c, cx, p) {
   c.restore();
 }
 
+const pct = (n) => Math.round(n * 100) + '%';
+
 function refreshGacha() {
   const gold = getGold();
   refreshGold();
   document.getElementById('ownedCount').textContent = ownedCount();
   document.getElementById('totalCount').textContent = pullPool().length;
+
+  // สร้างจากค่าจริงเสมอ ไม่เขียนตัวเลขค้างไว้ใน HTML
+  // ไม่งั้นวันที่แก้อัตราแล้วลืมแก้ข้อความ ผู้เล่นจะโดนบอกอัตราผิด
+  document.getElementById('gachaOdds').innerHTML =
+    '<span class="hi">ระดับสูง ' + pct(RARITY.high.rate) + '</span><br>' +
+    'ระดับกลาง ' + pct(RARITY.normal.rate) + '<br>' +
+    'เหรียญทอง ' + pct(GOLD_RATE);
+
   document.getElementById('pull1').disabled = gold < 5000;
   document.getElementById('pull5').disabled = gold < 5000 * MULTI_PULLS;
 }
@@ -286,24 +297,35 @@ function showPullResults(results) {
   box.innerHTML = '';
 
   for (const r of results) {
-    const o = r.outfit;
-    const tier = RARITY[o.rarity];
-
     const card = document.createElement('div');
-    card.className = 'got-card' + (o.rarity === 'high' ? ' high' : '') + (r.isNew ? '' : ' dupe');
-    card.innerHTML = '<canvas width="56" height="56"></canvas><b></b><small></small>';
-    card.querySelector('b').textContent = o.name;
 
-    const tag = card.querySelector('small');
-    tag.textContent = r.isNew ? tier.name : 'ซ้ำ +1,200';
-    tag.style.color = r.isNew ? tier.color : '#B99BD4';
+    if (r.kind === 'gold') {
+      card.className = 'got-card gold';
+      card.innerHTML =
+        '<span class="coin big" aria-hidden="true"></span><b></b><small></small>';
+      card.querySelector('b').textContent = '+' + r.gold.toLocaleString('en-US');
+      const tag = card.querySelector('small');
+      tag.textContent = 'เหรียญทอง';
+      tag.style.color = '#B99BD4';
+    } else {
+      const o = r.outfit;
+      const tier = RARITY[o.rarity];
+
+      card.className =
+        'got-card' + (o.rarity === 'high' ? ' high' : '') + (r.isNew ? '' : ' dupe');
+      card.innerHTML = '<canvas width="56" height="56"></canvas><b></b><small></small>';
+      card.querySelector('b').textContent = o.name;
+
+      const tag = card.querySelector('small');
+      tag.textContent = r.isNew ? tier.name : 'ซ้ำ +' + DUPE_REFUND.toLocaleString('en-US');
+      tag.style.color = r.isNew ? tier.color : '#B99BD4';
+
+      paintMini(card.querySelector('canvas'), 56,
+        (c) => drawCatPose(c, 30, 52, 0.82, { ...getSkin(), outfit: o }, 60));
+    }
 
     // เหลื่อมกันทีละใบ ใบระดับสูงจะได้มีจังหวะให้สังเกตเห็นว่าเรืองแสง
     card.style.setProperty('--d', (box.children.length * 0.11).toFixed(2) + 's');
-
-    paintMini(card.querySelector('canvas'), 56,
-      (c) => drawCatPose(c, 30, 52, 0.82, { ...getSkin(), outfit: o }, 60));
-
     box.appendChild(card);
   }
 }
@@ -332,10 +354,13 @@ function revealPull() {
   if (!results) return;
 
   // ได้ของระดับสูงอย่างน้อยหนึ่งชิ้น = เสียงใหญ่ ไม่งั้นเสียงเก็บของธรรมดา
-  if (results.some((r) => r.outfit.rarity === 'high')) sfx.bonus();
+  if (results.some((r) => r.kind === 'outfit' && r.outfit.rarity === 'high')) sfx.bonus();
   else sfx.kibble();
 
   showPullResults(results);
+  // ทองที่เพิ่งได้ต้องขึ้นแถบบนทันทีพร้อมการ์ด ไม่ใช่รอเปิดพาเนลใหม่
+  refreshGacha();
+  refreshHome();
 }
 
 function showGacha(on) {
@@ -438,11 +463,20 @@ function buildOutfitGrid() {
     const on = o.id === pendingOutfit;
 
     const card = document.createElement('button');
-    card.className = 'skin-card' + (on ? ' on' : '');
+    card.className =
+      'skin-card' + (on ? ' on' : '') + (o.rarity === 'high' ? ' high' : '');
     card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small></small>';
     card.querySelector('b').textContent = o.name;
     card.querySelector('small').textContent =
       on ? (o.id === s.outfit.id ? 'กำลังใส่' : 'เลือกไว้') : o.note;
+
+    // "ขนล้วน" ไม่มีระดับ จึงไม่ติดป้าย
+    if (o.rarity) {
+      const badge = document.createElement('span');
+      badge.className = 'tier-badge ' + o.rarity;
+      badge.textContent = RARITY[o.rarity].name;
+      card.appendChild(badge);
+    }
 
     // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
     paintMini(card.querySelector('canvas'), 96,
@@ -644,6 +678,8 @@ function loop(now) {
 // ช่องสำหรับเครื่องมือตอนพัฒนา เช่นสคริปต์วาดแผนที่ด่านทั้งด่าน
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle
 if (import.meta.env.DEV) window.__game = game;
+
+setupDebug(game);   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 requestAnimationFrame(loop);
 game.draw(ctx);

@@ -415,6 +415,82 @@ export const PATTERNS = [
       width: 150 + 40 * 34 + 170,
     };
   },
+  // 14 — หนามสามตัวเรียงจังหวะเท่ากัน
+  //      เหมือนท่อน 8 แต่เป็นหนามซึ่งเตี้ยกว่ากล่อง กระโดดเดี่ยวพอ
+  //      เว้น JUMP_SPAN + 80 คือลงพื้นแล้วมีเวลาตั้งหลักราว 12 เฟรม
+  (x) => {
+    const step = JUMP_SPAN + 80;
+    const js = [0, 1, 2].map((i) => x + 140 + step * i);
+    return {
+      obs: js.map((j) => groundSpike(j + HALF - spike.w / 2)),
+      pit: [],
+      fish: [...fishRunTo(x + 20, js[0]), ...js.flatMap((j) => fishJump(j, 9))],
+      jumps: js,
+      width: step * 2 + JUMP_SPAN + 380,
+    };
+  },
+
+  // 15 — คานสองอันเรียงติด ต้องหมอบค้างยาวลอดทีเดียวทั้งคู่
+  //      ช่องว่างระหว่างคาน 90px = 13 เฟรม สั้นเกินกว่าจะลุกแล้วหมอบใหม่ทัน
+  //      ท่อนนี้จึงสอนว่าปุ่มหมอบเอาไว้ "กดค้าง" ไม่ใช่กดเป็นจังหวะ
+  (x) => {
+    const b1 = x + 250;
+    const b2 = b1 + bar.w + 90;
+    return {
+      obs: [lowBar(b1), lowBar(b2)],
+      pit: [],
+      fish: [
+        ...fishRunTo(x + 40, x + 220),
+        ...fishLow(b1 + 8, 6, 32),
+        ...fishLow(b2 + 8, 6, 32),
+      ],
+      jumps: [],
+      width: (b2 - x) + bar.w + 240,
+    };
+  },
+
+  // 16 — หนามแล้วต่อด้วยหลุมทันที กระโดดสองจังหวะคนละแบบ
+  //      จังหวะแรกข้ามของสูง จังหวะสองข้ามของกว้าง ระยะกดไม่เท่ากัน
+  (x) => {
+    const j1 = x + 180;
+    const j2 = j1 + JUMP_SPAN + 110;
+    return {
+      obs: [groundSpike(j1 + HALF - spike.w / 2)],
+      pit: [{ x: j2 + HALF - 60, w: 120 }],
+      fish: [...fishRunTo(x + 30, j1), ...fishJump(j1, 10), ...fishJump(j2, 10)],
+      jumps: [j1, j2],
+      width: (j2 - x) + JUMP_SPAN + 260,
+    };
+  },
+
+  // 17 — กล่องซ้อนสองชั้นแล้วคาน กระโดดข้ามแล้วรีบหมอบ
+  //      สองชั้นสูง 88px ยังต่ำกว่าเพดานกระโดดเดี่ยว (134px) จึงไม่ต้องกระโดดสองชั้น
+  (x) => {
+    const j = x + 200;
+    const barX = j + JUMP_SPAN + 150;
+    return {
+      obs: [crateStack(j + HALF - crate.w / 2, 2), lowBar(barX)],
+      pit: [],
+      fish: [...fishRunTo(x + 30, j), ...fishJump(j, 10), ...fishLow(barX + 8, 7, 32)],
+      jumps: [j],
+      width: (barX - x) + bar.w + 260,
+    };
+  },
+
+  // 18 — คานแล้วหนาม สลับจากหมอบเป็นกระโดด
+  //      ตรงข้ามกับท่อน 4 ที่กระโดดก่อนแล้วค่อยหมอบ
+  //      ช่วงพักระหว่างสองท่า 120px = 18 เฟรม พอให้ลุกแล้วกดกระโดดทัน
+  (x) => {
+    const barX = x + 220;
+    const j = barX + bar.w + 120;
+    return {
+      obs: [lowBar(barX), groundSpike(j + HALF - spike.w / 2)],
+      pit: [],
+      fish: [...fishLow(barX + 8, 7, 32), ...fishJump(j, 10)],
+      jumps: [j],
+      width: (j - x) + JUMP_SPAN + 260,
+    };
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -435,6 +511,20 @@ export class Level {
     // Game เป็นคนบอกว่าตัวอักษรถัดไปคือตัวไหน คืน null = ไม่ต้องวาง
     this.nextLetter = () => null;
     this.reset();
+  }
+
+  /**
+   * ทุกกองของที่แรงดูดจับได้ — จุดเดียวที่ต้องแก้เวลาเพิ่มไอเทมชนิดใหม่
+   *
+   * ก่อนหน้านี้ฝั่งเกมไล่ชื่อกองเอง (fishes กับ letters) ซึ่งแปลว่าทุกครั้ง
+   * ที่เพิ่มไอเทมใหม่ ต้องไปนึกออกเองว่าต้องกลับมาเติมชื่อตรงนั้นด้วย
+   * ย้ายมาไว้ที่นี่แล้วของใหม่จะถูกดูดตามไปเองโดยอัตโนมัติ
+   */
+  get pullables() {
+    return [
+      this.fishes, this.letters, this.nips,
+      this.magnets, this.shields, this.potions,
+    ];
   }
 
   /** ส่ง route ใหม่เข้ามาเมื่อเปลี่ยนด่าน ไม่ส่งก็ใช้ของเดิม */
@@ -588,7 +678,11 @@ export class Level {
    */
   cull(camera) {
     const cut = camera - 200;
-    this.obstacles = this.obstacles.filter((o) => o.x + o.w > cut);
+    // ชิ้นที่ถูกชนกระเด็นไม่ใช้เส้น cut ปกติ เพราะมันลอยสวนทางไปข้างหน้าได้
+    // ต้องรอให้หมดอายุหรือร่วงพ้นจอล่างแทน
+    this.obstacles = this.obstacles.filter((o) => (o.smashed
+      ? o.life > 0 && o.y < VIEW.H + 180
+      : o.x + o.w > cut));
     this.fishes = this.fishes.filter((f) => f.x > cut);
     this.pits = this.pits.filter((p) => p.x + p.w > cut);
     this.shields = this.shields.filter((s) => s.x > cut);

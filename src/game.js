@@ -1,9 +1,9 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL,
 } from './config.js';
-import { rectHit } from './utils.js';
+import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { Particles } from './particles.js';
@@ -14,12 +14,14 @@ import { drawSky, drawHills, drawGround } from './render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
+  drawBigFish,
   drawBonusSparkle,
   drawRain, drawSkillGauge, drawNips,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage } from './stages.js';
 import { drawHUD } from './render/hud.js';
+import { postProcess } from './render/post.js';
 
 export const STATE = { READY: 0, RUN: 1, DEAD: 2, PAUSE: 3 };
 
@@ -48,6 +50,26 @@ function buildBonusField(startX, span) {
       const kind = n % 17 === 8 ? 'shrimp' : (n % 4 === 2 ? 'kibble' : 'fish');
       out.push({ x, y, r: LEVEL.fishR, got: false, kind });
     }
+  }
+  return out;
+}
+
+/**
+ * โปรยแม่เหล็กทั่วสนามโบนัส
+ * catX = ตำแหน่งตัวแมวในพิกัดโลก ณ วินาทีที่เริ่มโบนัส
+ */
+function buildBonusMagnets(catX, span, speed) {
+  const lanes = [118, 186, 254];   // ระดับเดียวกับสามเลนของแนวอาหาร
+
+  // ลูกแรกอยู่ถัดจากจุดเริ่มลอยเล็กน้อย ไม่ใช่ระหว่างช่วงทะยานขึ้นแล้ว
+  // คำนวณจากค่าใน BONUS ตรง ๆ เผื่อมีคนไปปรับจังหวะฉากแล้วลืมแก้ตรงนี้
+  const firstAt = (BONUS.catchFrames + BONUS.riseFrames) * speed + BONUS_MAGNET.afterFly;
+  const out = [{ x: catX + firstAt, y: lanes[1], r: BONUS_MAGNET.r, got: false }];
+
+  let i = 0;
+  const from = catX + firstAt + BONUS_MAGNET.gap;
+  for (let x = from; x < catX + span; x += BONUS_MAGNET.gap, i++) {
+    out.push({ x, y: lanes[i % 3], r: BONUS_MAGNET.r, got: false });
   }
   return out;
 }
@@ -94,6 +116,25 @@ export class Game {
   }
 
   /**
+   * ตอนนี้เหยียบหลุมได้เหมือนพื้นแข็งรึยัง
+   *
+   * มีสองอย่างที่ทำให้หลุมหาย: ความสามารถประจำตัว กับไอเทมสปีด
+   * รวมไว้ที่เดียวเพื่อให้ player.js ถามคำถามเดียว ไม่ต้องไล่เช็คทีละแหล่ง
+   * เพิ่มของใหม่ที่ทำให้ข้ามหลุมได้ในอนาคต ก็มาต่อเงื่อนไขที่นี่ที่เดียว
+   */
+  /**
+   * กำลังอยู่ในฉากฟ้าหรือยัง — ของที่ปูไว้บนฟ้าวาดได้เฉพาะตอนนี้เท่านั้น
+   * ช่วงปลารับตัวกับพาลงเป็นฉากพื้น ถ้าเผลอวาดของบนฟ้าตอนนั้นจะทับกันสองชั้น
+   */
+  get skyScene() {
+    return this.bonusPhase === 'fly';
+  }
+
+  get pitsSolid() {
+    return this.skillOn || this.boost > 0;
+  }
+
+  /**
    * จุดตัดสินใจเดียวว่าตอนนี้ควรเล่นเพลงอะไร
    *
    * เดิมสั่ง setMusicTrack กระจายอยู่หลายจุด ซึ่งชนกันแน่เมื่อสถานะซ้อนกัน
@@ -131,6 +172,12 @@ export class Game {
     this.bonus = 0;       // เฟรมที่เหลือของโหมดโบนัส (0 = ไม่ได้อยู่ในโบนัส)
     this.bonusPhase = '';
     this.bonusTreats = [];
+    this.bonusMagnets = [];
+    // ตำแหน่งปลาเก็บเป็นพิกัดจอ ไม่ใช่พิกัดโลก เพราะมันเกาะอยู่กับตัวแมว
+    // ซึ่งตรึงอยู่ที่ PLAYER_X ตลอด ไม่ต้องแปลงกลับไปกลับมาให้ยุ่ง
+    this.fishX = VIEW.W + 140;
+    this.fishY = GROUND_Y - 60;
+    this.fishDir = -1;
     this.flash = 0;        // ความเข้มแสงวาบตอนสลับฉาก 0-1
     this.flashInk = false; // true = วาบดำ (ขากลับ) / false = วาบขาว (ขาขึ้น)
 
@@ -275,11 +322,29 @@ export class Game {
     const b = this.player.box;
     const bx = b.x + this.camera;
 
+    // ชิ้นที่ถูกชนไปแล้ว: ปลิวตามแรงที่ได้รับ หมุนไปด้วย แล้วจางหาย
+    // อัปเดตก่อนเช็คชน จะได้ไม่มีเฟรมไหนที่มันยังอยู่ที่เดิมแต่ชนไม่ได้
+    for (const o of this.level.obstacles) {
+      if (!o.smashed) continue;
+      o.x += o.vx * dt;
+      o.y += o.vy * dt;
+      o.vy += SPEEDUP.smash.gravity * dt;
+      o.rot += o.spin * dt;
+      o.life -= dt;
+    }
+
     // ชนสิ่งกีดขวาง
     for (const o of this.level.obstacles) {
+      // ต้องข้ามก่อนบรรทัด break ข้างล่าง ชิ้นที่ปลิวไปข้างหน้าจะได้ไม่ไปตัดลูป
+      // ทิ้งทั้งที่ยังมีสิ่งกีดขวางจริงรออยู่ถัดไป
+      if (o.smashed) continue;
       if (o.x + o.w < this.camera - 60) continue;
       if (o.x > this.camera + VIEW.W) break;
       if (rectHit(bx, b.y, b.w, b.h, o.x, o.y, o.w, o.h)) {
+        if (this.boost > 0) {                  // ติดสปีดอยู่ พุ่งชนกระเด็น
+          this.smashObstacle(o);
+          continue;
+        }
         if (this.skillOn) break;               // ความสามารถทำงาน ทะลุผ่านได้เลย
         if (this.invuln > 0) break;            // กำลังอมตะ ผ่านได้
         if (this.shielded) {                   // มีโล่ → โล่แตกแทนที่จะตาย
@@ -312,19 +377,34 @@ export class Game {
     // ระยะของความสามารถแคบกว่าไอเทมนิดหน่อย ไอเทมที่ต้องออกแรงเก็บจึงยังคุ้มกว่า
     if (this.magnet > 0 || this.skill > 0) {
       const range = this.magnet > 0 ? MAGNET.range : SKILL.magnetRange;
-      // ดูดตัวอักษรด้วย ไม่ใช่แค่ของกิน — ตัวอักษรคือของที่พลาดแล้วเสียดายที่สุด
-      // เพราะพลาดหนึ่งตัวคือเลื่อนโบนัสออกไปอีกสิบวินาที
-      for (const f of [...this.level.fishes, ...this.level.letters]) {
-        if (f.got) continue;
-        const dx = cx - f.x;
-        const dy = cy - f.y;
-        const d = Math.hypot(dx, dy);
-        if (d > range || d < 1) continue;
-        // ยิ่งใกล้ยิ่งเร็ว แต่มีพื้นความเร็วขั้นต่ำเสมอ
-        // ไม่งั้นของที่อยู่ข้างหลังจะวิ่งตามกล้องไม่ทันแล้วโดนตัดทิ้งไปเฉย ๆ
-        const speed = Math.max(MAGNET.minPull, d * MAGNET.pull) * dt;
-        f.x += (dx / d) * speed;
-        f.y += (dy / d) * speed;
+      // สร้างครั้งเดียวนอกลูป ของในระยะมีได้หลายสิบชิ้นต่อเฟรม
+      const cfg = {
+        range,
+        base: MAGNET.minPull,
+        rush: MAGNET.rush,
+        turn: MAGNET.turn,
+        ease: MAGNET.ease,
+        swirl: MAGNET.swirl,
+        vary: MAGNET.vary,
+      };
+      // ความสามารถประจำตัว = ดูดได้ทุกอย่างในสนาม ทั้งไอเทมสปีด แม่เหล็ก
+      // โล่ ขวดยา และของชนิดใหม่ที่จะเพิ่มทีหลัง (ดู Level.pullables)
+      //
+      // ส่วนไอเทมแม่เหล็กที่เก็บมาดูดได้แค่ของกินกับตัวอักษร ตั้งใจให้ต่างกัน
+      // ของที่ได้จากความสามารถของตัวเองควรคุ้มกว่าของที่เก็บได้ทั่วไป
+      const lists = this.skill > 0
+        ? this.level.pullables
+        : [this.level.fishes, this.level.letters];
+
+      for (const list of lists) {
+        for (const f of list) {
+          if (f.got) continue;
+          const dx = cx - f.x;
+          const dy = cy - f.y;
+          const d = Math.hypot(dx, dy);
+          if (d > range || d < 1) continue;
+          seek(f, cx, cy, d, cfg, dt);
+        }
       }
     }
 
@@ -391,6 +471,14 @@ export class Game {
       this.particles.burst(bx + 4, b.y + b.h * 0.7, 3, 'nip', 3);
     }
 
+    // วิ่งข้ามปากหลุมอยู่: โปรยประกายใต้เท้าตรงที่ควรจะไม่มีพื้น
+    // ถ้าไม่มีสัญญาณอะไรเลย ภาพที่เห็นคือแมวลอยอยู่เหนือช่องว่าง
+    // ซึ่งอ่านเป็นบั๊กมากกว่าอ่านเป็น "เร็วจนไม่ตก"
+    if (this.boost > 0 && this.player.onGround
+      && this.level.isOverPit(bx + b.w / 2)) {
+      this.particles.burst(bx + b.w / 2, GROUND_Y - 2, 3, 'nip', 4);
+    }
+
     // เก็บตัวอักษร SPEEDCAT
     for (const l of this.level.letters) {
       if (l.got || l.x < this.camera - 40) continue;
@@ -431,6 +519,30 @@ export class Game {
 
     this.particles.update(dt);
     this.shake *= 0.9;
+  }
+
+  /**
+   * พุ่งชนสิ่งกีดขวางตอนติดสปีด — ไม่เจ็บ ได้คะแนน แล้วชิ้นนั้นปลิวออกไป
+   * สุ่มแรงในช่วงที่ตั้งไว้ ชิ้นที่โดนชนติด ๆ กันจึงไม่ปลิวทางเดียวกันเป๊ะ
+   */
+  smashObstacle(o) {
+    const s = SPEEDUP.smash;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+
+    o.smashed = true;
+    o.vx = rnd(s.vx[0], s.vx[1]);
+    o.vy = rnd(s.vy[0], s.vy[1]);
+    o.rot = 0;
+    // สุ่มทิศหมุน แต่บังคับความเร็วขั้นต่ำไว้ 35% ของเพดาน
+    // ถ้าปล่อยให้สุ่มได้ทั้งช่วง บางชิ้นจะได้ค่าใกล้ศูนย์แล้วปลิวไปแบบไม่หมุนเลย
+    // ซึ่งดูเหมือนของค้างกลางอากาศมากกว่าของที่เพิ่งโดนชน
+    o.spin = (Math.random() < 0.5 ? -1 : 1) * rnd(s.spin * 0.35, s.spin);
+    o.life = s.life;
+
+    this.treat += SCORING.pointsPerSmash;
+    this.shake = 9;
+    this.particles.burst(o.x + o.w / 2, o.y + o.h / 2, 18, 'nip', 7);
+    sfx.smash();
   }
 
   /** ชนแล้วเจ็บ ไม่ตายทันที — ตายก็ต่อเมื่อพลังหมดเกลี้ยง */
@@ -493,16 +605,27 @@ export class Game {
     }
 
     // เม็ดที่โปรยแล้ว: ร่วงลงมาก่อน พอเข้าระยะก็พุ่งเข้าตัวเอง
+    const rainCfg = {
+      range: SKILL.pullRange,
+      base: SKILL.minPull,
+      rush: SKILL.rush,
+      turn: SKILL.turn,
+      ease: SKILL.ease,
+    };
     for (const d of this.rain) {
       if (d.got) continue;
       const dx = cx - d.x;
       const dy = cy - d.y;
       const dist = Math.hypot(dx, dy);
 
-      if (dist < SKILL.pullRange) {
-        const sp = Math.max(SKILL.minPull, dist * SKILL.pull) * dt;
-        d.x += (dx / dist) * sp;
-        d.y += (dy / dist) * sp;
+      if (dist < SKILL.pullRange && dist > 1) {
+        // สืบทอดความเร็วที่กำลังร่วงอยู่มาเป็นความเร็วตั้งต้น
+        // เม็ดจึงโค้งจากแนวดิ่งเข้าหาตัว แทนที่จะหักศอกทันทีที่เข้าระยะ
+        if (d.mvx === undefined) {
+          d.mvx = 0;
+          d.mvy = d.vy;
+        }
+        seek(d, cx, cy, dist, rainCfg, dt);
       } else {
         d.y += d.vy * dt;
       }
@@ -531,26 +654,66 @@ export class Game {
    */
   startBonus() {
     this.bonus = BONUS.frames;
-    this.bonusPhase = 'rise';
+    this.bonusPhase = 'catch';
     this.syncMusic();      // เพลงบนฟ้าต้องมาแทนเพลงเต้นทันที ถ้าความสามารถกำลังทำงานอยู่
     this.letters = 0;              // เริ่มสะสมคำใหม่หลังจบโบนัส
 
-    // แสงวาบขาวกลบรอยต่อตอนสลับจากฉากพื้นเป็นฉากฟ้า
-    // ถ้าไม่มี ฉากจะเปลี่ยนกึกกักในเฟรมเดียวจนดูเหมือนภาพค้าง
-    this.flash = 1;
-    this.flashInk = false;
-
+    // ยังไม่วาบตอนนี้ — ฉากยังเป็นพื้นอยู่ ปลาต้องว่ายเข้ามาให้เห็นก่อน
+    // แสงวาบจะมาตอนตัดเข้าฉากฟ้าจริง ๆ ท้ายช่วง rise
     this.player.sliding = false;
     this.player.slideHeld = false;
-    this.player.onGround = false;
     this.player.vy = 0;
-    this.riseFrom = this.player.y;
+    this.riseFrom = GROUND_Y;
 
-    this.bonusTreats = buildBonusField(
-      this.camera + VIEW.W * 0.8,
-      this.speed * BONUS.frames + VIEW.W
-    );
+    this.fishX = VIEW.W + 140;     // เริ่มนอกจอฝั่งขวา
+    this.fishY = GROUND_Y - 74;
+    this.fishDir = -1;             // หันซ้าย เพราะกำลังว่ายเข้าหาแมว
+
+    const span = this.speed * BONUS.frames + VIEW.W;
+    // แนวอาหารเริ่มหลังจบช่วงทะยาน ไม่งั้นของแถวแรกจะไหลผ่านไปตอนยังอยู่ฉากพื้น
+    const flyFrom = (BONUS.catchFrames + BONUS.riseFrames) * this.speed;
+    this.bonusTreats = buildBonusField(this.camera + flyFrom + 200, span);
+    this.bonusMagnets = buildBonusMagnets(this.camera + PLAYER_X, span, this.speed);
     sfx.bonus();
+  }
+
+  /**
+   * ปลาไล่ตามความสูงเป้าหมายแบบหน่วง แล้วบีบไม่ให้ห่างเกิน 9px
+   * หน่วงอย่างเดียวไม่พอ ตอนผู้เล่นตีปีกรัว ๆ แมวขึ้นเร็วกว่าปลาไล่ทัน
+   * วัดจริงแล้วห่างได้ถึง 12.6px ซึ่งเห็นชัดว่าแมวลอยหลุดจากหลัง
+   */
+  followFish(ideal, dt) {
+    const y = this.fishY + (ideal - this.fishY) * Math.min(1, 0.3 * dt);
+    return Math.max(ideal - 9, Math.min(ideal + 9, y));
+  }
+
+  /** หันหัวปลาทีละนิด ค่ากลางระหว่าง -1 กับ 1 จะเห็นเป็นปลากำลังหมุนตัวกลับ */
+  turnFish(to, dt) {
+    this.fishDir += (to - this.fishDir) * Math.min(1, 0.14 * dt);
+  }
+
+  /** งานที่ทำครั้งเดียวตอนเปลี่ยนช่วงฉาก */
+  enterBonusPhase(to) {
+    // ขาววาบตอนตัดขึ้นฟ้า ดำวาบตอนปิดฉากกลับลงพื้น
+    if (to === 'fly' || to === 'fall') {
+      this.flash = 1;
+      this.flashInk = to === 'fall';
+    }
+
+    if (to === 'fall') {
+      // ทิ้งของบนฟ้าให้หมดก่อนฉากพื้นจะกลับมา
+      //
+      // สนามโบนัสถูกปูไว้ยาวกว่าที่กล้องวิ่งจริงในช่วงลอย ของแถวท้าย ๆ
+      // จึงยังค้างอยู่ข้างหน้าตอนเริ่มร่อนลง ถ้าไม่ทิ้ง มันจะถูกวาดทับ
+      // ซ้อนกับด่านจริงเป็นภาพสองชั้น — เก็บก็ไม่ได้เพราะพ้นช่วง fly แล้ว
+      this.bonusTreats = [];
+      this.bonusMagnets = [];
+
+      // ระหว่างลอยอยู่บนฟ้า กล้องวิ่งไปไกลมากโดยไม่มีใครสร้างด่านรอไว้
+      // ต้องไล่สร้างให้ทันก่อนฉากพื้นจะกลับมาให้เห็น ไม่งั้นจะโผล่มาเจอที่ว่าง
+      this.level.cull(this.camera);
+      this.level.ensureAhead(this.camera);
+    }
   }
 
   updateBonus(dt, gdt = dt) {
@@ -560,37 +723,120 @@ export class Game {
 
     const p = this.player;
     const elapsed = BONUS.frames - this.bonus;
+    const carry = BONUS.carryUp;
+    const restX = PLAYER_X - 6;      // ตำแหน่งจอที่ปลาลอยอยู่ใต้เท้าแมว
 
-    if (elapsed < BONUS.riseFrames) {
-      // ทะยานขึ้น — คุมไม่ได้ ให้ดูเป็นการ "ถูกยกขึ้นฟ้า"
-      // ปล่อยฝุ่นไล่ตามข้างหลังให้เห็นทิศทางว่ากำลังพุ่งขึ้น
-      this.bonusPhase = 'rise';
-      const t = Math.min(1, elapsed / BONUS.riseFrames);
-      p.y = this.riseFrom + (BONUS.flyY - this.riseFrom) * (1 - (1 - t) * (1 - t));
+    // เลือกช่วงฉากจากเวลา แล้วค่อยยิงงาน "ตอนเข้าช่วง" ทีหลัง
+    // แยกสองขั้นแบบนี้เพื่อให้แสงวาบกับการไล่สร้างด่านเกิดครั้งเดียวจริง ๆ
+    const prev = this.bonusPhase;
+    let phase;
+    if (elapsed < BONUS.catchFrames) phase = 'catch';
+    else if (elapsed < BONUS.catchFrames + BONUS.riseFrames) phase = 'rise';
+    else if (this.bonus < BONUS.leaveFrames) phase = 'leave';
+    else if (this.bonus < BONUS.leaveFrames + BONUS.fallFrames) phase = 'fall';
+    else phase = 'fly';
+    this.bonusPhase = phase;
+    if (prev !== phase) this.enterBonusPhase(phase);
+
+    if (phase === 'catch') {
+      // ปลาว่ายเข้ามาจากขอบขวา ชะลอตอนใกล้ถึงตัว (ease-out กำลังสาม)
+      const k = Math.min(1, elapsed / BONUS.catchFrames);
+      const e = 1 - Math.pow(1 - k, 3);
+      this.fishX = (VIEW.W + 140) + (restX - (VIEW.W + 140)) * e;
+      this.fishY = (GROUND_Y - 74) + (GROUND_Y - 18 - (GROUND_Y - 74)) * e;
+      this.turnFish(-1, dt);
+
+      // ช้อนขึ้นเฉพาะ 30% สุดท้าย ก่อนหน้านั้นแมวยังวิ่งอยู่บนพื้นตามปกติ
+      const lift = Math.max(0, (k - 0.7) / 0.3);
+      const smooth = lift * lift * (3 - 2 * lift);
+      p.y = GROUND_Y + ((this.fishY - carry) - GROUND_Y) * smooth;
       p.vy = 0;
-      if (elapsed % 4 < dt) {
-        this.particles.burst(PLAYER_X + this.camera, p.y + 26, 4, 'mint', 3);
+      if (k > 0.7 && elapsed % 3 < dt) {
+        this.particles.burst(PLAYER_X + this.camera, GROUND_Y, 3, 'mint', 3);
       }
-    } else if (this.bonus < BONUS.fallFrames) {
-      // ร่อนลง — เข้าหาพื้นแบบ ease ไม่ต้องจำตำแหน่งตั้งต้น
-      this.bonusPhase = 'fall';
-      p.y += (GROUND_Y - p.y) * Math.min(1, 0.11 * dt);
+    } else if (phase === 'rise') {
+      // ทะยานขึ้น — คุมไม่ได้ ให้ดูเป็นการ "ถูกปลาพาขึ้นฟ้า"
+      const t = Math.min(1, (elapsed - BONUS.catchFrames) / BONUS.riseFrames);
+      const e = 1 - (1 - t) * (1 - t);
+      const from = GROUND_Y - 18;
+      this.fishX += (restX - this.fishX) * Math.min(1, 0.2 * dt);
+      this.fishY = from + (BONUS.flyY + carry - from) * e;
+      p.y = this.fishY - carry;
       p.vy = 0;
-    } else {
-      this.bonusPhase = 'fly';
+      this.turnFish(1, dt);   // หมุนตัวกลับไปหันทางที่วิ่ง
+      if (elapsed % 4 < dt) {
+        this.particles.burst(PLAYER_X + this.camera, p.y + 30, 4, 'mint', 3);
+      }
+    } else if (phase === 'fly') {
       p.vy += BONUS.gravity * dt;
       p.y += p.vy * dt;
       if (p.y < BONUS.topY) { p.y = BONUS.topY; p.vy = 0; }
       if (p.y > BONUS.floorY) { p.y = BONUS.floorY; p.vy = 0; }
+      // ปลาตามช้ากว่าแมวนิดหน่อย ได้ความรู้สึกว่ามีน้ำหนักจริง ไม่ใช่ติดกาว
+      // แต่ต้องคุมเพดานความห่างไว้ ไม่งั้นตอนตีปีกรัว ๆ แมวจะลอยหลุดจากหลังปลา
+      this.fishY = this.followFish(p.y + carry, dt);
+      this.fishX += (restX - this.fishX) * Math.min(1, 0.2 * dt);
+      this.turnFish(1, dt);
+    } else if (phase === 'fall') {
+      // ร่อนลง — เข้าหาพื้นแบบ ease ไม่ต้องจำตำแหน่งตั้งต้น
+      p.y += (GROUND_Y - p.y) * Math.min(1, 0.085 * dt);
+      p.vy = 0;
+      this.fishY = this.followFish(p.y + carry, dt);
+      this.fishX += (restX - this.fishX) * Math.min(1, 0.2 * dt);
+      this.turnFish(1, dt);
+    } else {
+      // ปล่อยแมวลงจุดเดิม แล้วว่ายออกไปทางซ้าย
+      p.y = GROUND_Y;
+      p.vy = 0;
+      this.turnFish(-1, dt);
+      // ถอยลงนิดหน่อยก่อนเร่งออก ให้เห็นจังหวะ "วางแล้วค่อยไป"
+      const gone = 1 - this.bonus / BONUS.leaveFrames;
+      this.fishX -= BONUS.leaveSpeed * gone * dt;
+      this.fishY += ((GROUND_Y - 52) - this.fishY) * Math.min(1, 0.08 * dt);
     }
-    p.onGround = false;
+
+    // แมวยืนบนหลังปลาตลอด ท่าวิ่งจึงถูกกว่าท่าลอยกลางอากาศ
+    p.onGround = true;
     p.runPhase += this.speed * dt * 0.06;
+
+    // ฉากพื้นถูกวาดในทุกช่วงยกเว้นตอนลอย จึงต้องมีด่านรออยู่จริง
+    if (phase !== 'fly') this.level.ensureAhead(this.camera);
 
     const b = p.box;
     const cx = b.x + this.camera + b.w / 2;
     const cy = b.y + b.h / 2;
 
-    for (const f of this.bonusTreats) {
+    // เก็บของได้เฉพาะตอนอยู่ฉากฟ้า ช่วงเปิดกับปิดแมวอยู่ในมือปลา
+    // ตอนนี้ของบนฟ้าทุกชิ้นก็อยู่ในช่วงนี้ทั้งหมดแล้ว จึงไม่มีอะไรตกหล่น
+    const collecting = phase === 'fly';
+
+    // เก็บแม่เหล็กก่อนดูด ลูกที่เพิ่งแตะจะได้ออกฤทธิ์ในเฟรมเดียวกันเลย
+    if (collecting) for (const m of this.bonusMagnets) {
+      if (m.got) continue;
+      if (Math.hypot(cx - m.x, cy - m.y) < BONUS_MAGNET.pickR) {
+        m.got = true;
+        this.magnet = MAGNET.frames;
+        this.particles.burst(m.x, m.y, 16, 'mint', 5);
+        sfx.magnet();
+      }
+    }
+
+    // ตัวจับเวลาแม่เหล็กต้องเดินตอนอยู่บนฟ้าด้วย ไม่งั้นลูกที่เก็บมาก่อนเข้าโบนัส
+    // จะค้างเวลาไว้แล้วไปหมดอายุทีเดียวตอนกลับลงพื้น
+    if (this.magnet > 0) this.magnet -= dt;
+
+    if (this.magnet > 0 && collecting) {
+      for (const f of this.bonusTreats) {
+        if (f.got) continue;
+        const dx = cx - f.x;
+        const dy = cy - f.y;
+        const d = Math.hypot(dx, dy);
+        if (d > BONUS_PULL.range || d < 1) continue;
+        seek(f, cx, cy, d, BONUS_PULL, dt);
+      }
+    }
+
+    if (collecting) for (const f of this.bonusTreats) {
       if (f.got) continue;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + 24) {
         f.got = true;
@@ -607,14 +853,12 @@ export class Game {
     this.shake *= 0.9;
 
     if (this.bonus <= 0) {
-      // แสงวาบดำกลบรอยต่อขากลับ แล้วโผล่มาวิ่งต่อที่พื้นเหมือนเดิม
-      this.flash = 1;
-      this.flashInk = true;
-
-      // กลับสู่พื้นให้สนิท แล้วปล่อยให้ด่านไล่สร้างตามกล้องที่วิ่งไปไกลแล้ว
+      // ไม่ต้องวาบตรงนี้แล้ว ฉากพื้นโผล่มาตั้งแต่ช่วง fall
+      // ตอนนี้แค่คืนการควบคุมให้ผู้เล่นเงียบ ๆ ปลาว่ายพ้นจอไปแล้ว
       this.bonus = 0;
       this.bonusPhase = '';
       this.bonusTreats = [];
+      this.bonusMagnets = [];
       this.syncMusic();    // กลับไปเพลงเต้นถ้าความสามารถยังเหลือเวลา ไม่งั้นเพลงหลัก
       p.y = GROUND_Y;
       p.vy = 0;
@@ -630,24 +874,53 @@ export class Game {
     return getSkin().outfit.foodBonus || 0;
   }
 
-  /** ฉากโบนัส — ฟ้ากับเมฆ ไม่มีพื้นไม่มีสิ่งกีดขวาง */
+  /**
+   * ฉากโบนัส — มีสองหน้าตา สลับกันด้วยแสงวาบขาว
+   *   ช่วง fly        = ฟ้าเปิดโล่ง ไม่มีพื้นไม่มีสิ่งกีดขวาง
+   *   ช่วงอื่นทั้งหมด = ฉากพื้นปกติ เพราะปลากำลังรับ/ส่งแมวอยู่ที่ระดับพื้น
+   */
   drawBonus(ctx) {
-    // ชุดระดับสูงเปลี่ยนสีฟ้าโบนัสได้ — ผสมทับจานสีของด่านเฉพาะคีย์ที่ชุดกำหนด
-    // ไม่ได้แทนทั้งจาน เพราะยังต้องใช้สี HUD กับสีของกินจากด่านเดิม
     const skin = getSkin();
-    const pal = skin.outfit.bonus ? { ...this.pal, ...skin.outfit.bonus } : this.pal;
+    const sky = this.skyScene;
 
-    // ฟ้าเต็มจอทุกเฟส ไม่ต้องแยกช่วงขึ้น/ลงอีกแล้ว
-    // เพราะแสงวาบกลบรอยต่อทั้งขาไปและขากลับให้หมด
-    drawSky(ctx, this.camera, pal, true);
-    drawClouds(ctx, this.camera, pal);
-    if (skin.outfit.bonus?.sparkle) {
-      drawBonusSparkle(ctx, this.tick, skin.outfit.bonus.sparkle);
+    if (sky) {
+      // ชุดระดับสูงเปลี่ยนสีฟ้าโบนัสได้ — ผสมทับจานสีของด่านเฉพาะคีย์ที่ชุดกำหนด
+      // ไม่ได้แทนทั้งจาน เพราะยังต้องใช้สี HUD กับสีของกินจากด่านเดิม
+      const pal = skin.outfit.bonus ? { ...this.pal, ...skin.outfit.bonus } : this.pal;
+      drawSky(ctx, this.camera, pal, true);
+      drawClouds(ctx, this.camera, pal);
+      if (skin.outfit.bonus?.sparkle) {
+        drawBonusSparkle(ctx, this.tick, skin.outfit.bonus.sparkle);
+      }
+    } else {
+      drawSky(ctx, this.camera, this.pal);
+      drawHills(ctx, this.camera, this.pal);
+      drawGround(ctx, this.level.pits, this.camera, this.pal);
+      drawObstacles(ctx, this.level.obstacles, this.camera, this.stage.theme);
+      drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     }
 
-    drawTreats(ctx, this.bonusTreats, this.camera, this.tick);
+    // ของบนฟ้าทั้งหมดวาดเฉพาะตอนอยู่ฉากฟ้าเท่านั้น
+    //
+    // แนวเริ่มที่ราว 1,356px จากจุดเข้าโบนัส แต่จอกว้าง 960px ขอบขวาของจอ
+    // จึงไปถึงแนวตั้งแต่เฟรมที่ 58 ซึ่งยังอยู่ช่วงปลาว่ายเข้ามารับด้วยซ้ำ
+    // ถ้าไม่กันไว้ จะเห็นกำแพงปลาลอยทับฉากพื้นก่อนจะขึ้นฟ้าจริง
+    //
+    // ไม่ต้องกลัวว่ามันจะโผล่มาแบบกะทันหันตอนเข้าฉากฟ้า เพราะจังหวะนั้น
+    // แสงขาววาบเต็มจอกลบรอยต่อให้อยู่แล้ว
+    if (sky) {
+      drawMagnets(ctx, this.bonusMagnets, this.camera, this.tick);
+      drawTreats(ctx, this.bonusTreats, this.camera, this.tick);
+    }
+
     this.particles.draw(ctx, this.camera);
+
+    // ปลาก่อนแมว แมวจึงนั่งทับอยู่บนหลังปลาไม่ใช่จมอยู่ข้างใน
+    drawBigFish(ctx, this.fishX, this.fishY, BONUS.fishR, this.fishDir, this.tick);
     drawPlayer(ctx, this.player, false, skin, this.magnet > 0);
+    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick);
+
+    postProcess(ctx);
     drawHUD(ctx, this);
     this.drawFlash(ctx);
   }
@@ -752,6 +1025,7 @@ export class Game {
     }
 
     ctx.restore();
+    postProcess(ctx);
     drawHUD(ctx, this);
     this.drawFlash(ctx);
   }
@@ -793,5 +1067,6 @@ export class Game {
     ctx.restore();
 
     drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t);
+    postProcess(ctx);
   }
 }

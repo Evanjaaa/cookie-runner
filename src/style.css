@@ -321,6 +321,7 @@ canvas { display: block; width: 100%; height: auto; }
 .panel .stage-grid::-webkit-scrollbar { display: none; }
 
 .skin-card {
+  position: relative;   /* ยึดป้ายระดับไว้ที่มุมการ์ด */
   width: 136px;
   padding: 12px 10px 14px;
   border-radius: 18px;
@@ -348,6 +349,44 @@ canvas { display: block; width: 100%; height: auto; }
   box-shadow: 0 8px 22px rgba(78,205,196,.2);
 }
 .skin-card.on small { color: var(--mint-lite); }
+
+/* ── ป้ายบอกระดับความหายาก ─────────────────── */
+/* วางทับมุมบนขวาของรูป ไม่ใช่ต่อท้ายข้อความ เพราะต้องอ่านออกตั้งแต่กวาดตา
+   ยังไม่ทันอ่านชื่อชุด ก็ต้องรู้แล้วว่าใบไหนของดี */
+.tier-badge {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: 9.5px;
+  line-height: 1.55;
+  letter-spacing: .01em;
+  pointer-events: none;
+}
+.tier-badge.high {
+  background: linear-gradient(180deg, #FFDF8A, #F5B31E);
+  color: #3E2600;
+  box-shadow: 0 0 12px rgba(255,201,60,.55);
+}
+.tier-badge.normal {
+  background: rgba(141,243,234,.92);
+  color: #0B3B37;
+}
+
+/* การ์ดระดับสูงเรืองขอบทองไว้ตลอด แยกออกจากใบอื่นตั้งแต่ยังไม่ได้กด */
+.skin-card.high {
+  border-color: rgba(255,201,60,.5);
+  background: rgba(255,201,60,.08);
+}
+.skin-card.high:hover { background: rgba(255,201,60,.15); }
+/* แต่ถ้ากำลังเลือกใบนี้อยู่ สีมิ้นต์ต้องชนะ ไม่งั้นดูไม่ออกว่าเลือกใบไหน */
+.skin-card.high.on {
+  border-color: var(--mint);
+  background: rgba(78,205,196,.14);
+}
 
 /* ── สรุปคะแนน ─────────────────────────────── */
 .final { display: flex; gap: 26px; justify-content: center; margin: 2px 0 4px; }
@@ -567,6 +606,12 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .got-card.dupe { opacity: .6; }
 
+/* การ์ดรางวัลเหรียญ ใช้เหรียญ CSS ตัวเดียวกับแถบบน แค่ขยาย */
+.got-card.gold { border-color: rgba(255,201,60,.45); background: rgba(255,201,60,.1); }
+.got-card .coin.big { width: 42px; height: 42px; margin: 7px 0 4px; }
+.got-card .coin.big::after { inset: 11px 14px; border-radius: 2px; }
+.got-card.gold b { color: #FFD97A; font-size: 13px; }
+
 /* เด้งเข้าทีละใบ --d ตั้งจาก JS ให้เหลื่อมกันตามลำดับที่สุ่มได้ */
 @keyframes gotPop {
   0%   { opacity: 0; transform: scale(.3) rotate(-16deg); }
@@ -658,6 +703,7 @@ canvas { display: block; width: 100%; height: auto; }
   .skin-card { width: 78px; padding: 4px 4px 6px; gap: 1px; border-radius: 11px; }
   .skin-card canvas { width: 44px; height: 44px; }
   .skin-card b { font-size: 11px; }
+  .tier-badge { top: 3px; right: 3px; padding: 1px 5px; font-size: 7.5px; }
   .skin-card small { display: none; }
   #skinBack, #outfitBack { margin-top: 0; font-size: 12px; padding: 6px 22px; }
 }
