@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/render-icons.ps1 && node tools/make-ico.mjs"
+    "assets": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/render-icons.ps1 && powershell -NoProfile -ExecutionPolicy Bypass -File tools/render-bg.ps1 && node tools/make-ico.mjs"
   },
   "devDependencies": {
     "vite": "^7.0.0"

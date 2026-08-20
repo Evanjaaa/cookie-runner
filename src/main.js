@@ -7,7 +7,9 @@ import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
 import { startMusic } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
 import { STAGES, getStage, setStage } from './stages.js';
-import { RARITY, wearable, setOutfit, pullPool, ownedCount } from './outfits.js';
+import {
+  RARITY, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
+} from './outfits.js';
 import { getGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest } from './storage.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
@@ -18,15 +20,31 @@ const { W, H } = VIEW;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-// รองรับจอความละเอียดสูง ไม่งั้นภาพจะเบลอบน Retina
+/**
+ * ตั้งความละเอียดจริงของ canvas ให้เท่ากับจำนวนพิกเซลที่จอมีให้ตรงนั้น
+ *
+ * เดิมคูณด้วย DPR อย่างเดียว ซึ่งพลาดตอนกรอบเกมถูกขยายให้ใหญ่กว่า 960 จริง ๆ
+ * เช่นจอ 1080p (DPR 1) ที่กรอบกว้าง 1560px — คูณ DPR ได้บัฟเฟอร์แค่ 960
+ * แล้วโดนยืดขึ้นมา 1.6 เท่า = ภาพแตกทั้งที่จอไม่ได้ความละเอียดสูงด้วยซ้ำ
+ *
+ * คิดจากความกว้างที่โชว์จริงคูณ DPR แทน จึงพอดีกับจอเสมอไม่ว่ากรอบจะใหญ่แค่ไหน
+ * เพดาน 2 เท่ายังอยู่ เพราะเอฟเฟกต์แสงฟุ้งทำงานกับทั้งเฟรมทุกเฟรม
+ * ปล่อยให้โตเกินนั้นเฟรมจะตกบนเครื่องที่ไม่แรง
+ */
 function fitDPR() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const dpr = window.devicePixelRatio || 1;
+  const shown = canvas.clientWidth || W;   // 0 ได้ตอน CSS ยังไม่ทันมา
+  const scale = Math.min(2, Math.max(1, (shown * dpr) / W));
+
+  canvas.width = Math.round(W * scale);
+  canvas.height = Math.round(H * scale);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 fitDPR();
-window.addEventListener('resize', fitDPR);
+
+// resize อย่างเดียวไม่พอ — กรอบเกมเปลี่ยนขนาดได้จากหลายทางที่ไม่ยิง resize
+// เช่นเข้า/ออกเต็มจอ หรือแถบที่อยู่ของเบราว์เซอร์มือถือหด แล้ว dvh ขยับ
+new ResizeObserver(fitDPR).observe(canvas);
 
 const startPanel = document.getElementById('startPanel');
 const overPanel = document.getElementById('overPanel');
@@ -103,11 +121,14 @@ function refreshHome() {
   refreshGold();
 }
 
-/** แถบทองบนสุดกับตัวเลขในพาเนลกาช่า อัปเดตพร้อมกันจากที่เดียว */
+/**
+ * แถบทองมุมขวาบน
+ *
+ * เคยมีตัวเลขทองซ้ำอีกที่ในหน้ากาช่า ซึ่งบอกเรื่องเดียวกันสองรอบในจอเดียว
+ * เหลือที่เดียวแล้ว แถบบนโชว์อยู่ตลอดตอนเปิดพาเนลอยู่แล้ว (ดู .hud-top ใน style.css)
+ */
 function refreshGold() {
-  const text = getGold().toLocaleString('en-US');
-  document.getElementById('goldTop').textContent = text;
-  document.getElementById('goldAmount').textContent = text;
+  document.getElementById('goldTop').textContent = getGold().toLocaleString('en-US');
 }
 
 // ── ตู้กาช่า ───────────────────────────────────────────────
@@ -276,6 +297,104 @@ function drawCapsuleDrop(c, cx, p) {
 
 const pct = (n) => Math.round(n * 100) + '%';
 
+// ── ชั้นวางชุดกับช่องส่อง ──────────────────────────────────
+//
+// จุดประสงค์: ให้เห็นทั้งกระดานว่าตู้นี้มีอะไรบ้าง ได้ไปแล้วกี่ตัว และตัวที่ยังขาด
+// หน้าตาเป็นยังไง — ตัวที่ยังไม่ได้จึงต้องโชว์เป็นเงาดำ ไม่ใช่ซ่อนหรือเว้นว่าง
+// ถ้าซ่อน ผู้เล่นจะไม่มีทางรู้ว่ายังเหลืออะไรให้ลุ้น ซึ่งเป็นเหตุผลเดียวที่จะสุ่มต่อ
+
+let heroId = null;   // ชุดที่กำลังส่องอยู่ในช่องใหญ่
+
+/**
+ * ทับสิ่งที่วาดไปแล้วให้กลายเป็นเงาทึบ
+ *
+ * ใช้ source-atop แทน ctx.filter เพราะ filter ยังไม่มีใน Safari รุ่นก่อน 16.4
+ * ซึ่งถ้าไม่รองรับมันจะ "เงียบ ๆ ไม่ทำอะไร" แปลว่าชุดที่ยังไม่ได้จะโชว์เต็มสี
+ * บนเครื่องพวกนั้น — เฉลยของที่ควรปิดไว้ทั้งหมดโดยไม่มีใครรู้ตัว
+ * ส่วน source-atop เป็นของพื้นฐานที่มีมาตั้งแต่ต้น และให้เงาที่คมกว่าด้วย
+ */
+function silhouette(c, w, h) {
+  c.save();
+  c.globalCompositeOperation = 'source-atop';
+  c.fillStyle = 'rgba(24,10,38,.93)';
+  c.fillRect(0, 0, w, h);
+  c.restore();
+}
+
+/** วาดชุดที่เลือกส่องลงช่องใหญ่ พร้อมป้ายระดับและสถานะว่าได้แล้วหรือยัง */
+function drawHero() {
+  const pool = pullPool();
+  if (!pool.length) return;
+
+  const o = pool.find((x) => x.id === heroId) || pool[0];
+  heroId = o.id;
+
+  const got = isOwned(o.id);
+  const tier = RARITY[o.rarity];
+
+  const box = document.getElementById('gachaHero');
+  box.classList.toggle('locked', !got);
+  paintBox(box, 150, 150, (c) => {
+    drawCatPose(c, 75, 138, 2.05, { ...getSkin(), outfit: o }, 60);
+    if (!got) silhouette(c, 150, 150);
+  });
+
+  const badge = document.getElementById('heroTier');
+  badge.className = 'tier-badge ' + (o.rarity || '');
+  badge.textContent = tier ? tier.name : '';
+  badge.style.display = o.rarity ? '' : 'none';
+
+  document.getElementById('heroName').textContent = got ? o.name : '???';
+
+  // ค่าที่ชุดให้จริง ๆ — อ่านจาก foodBonus ของชุดตรง ๆ ไม่ได้เขียนค้างไว้
+  // ตัวเลขนี้คือเหตุผลเดียวที่ระดับสูงมีค่ากว่าระดับกลาง จึงต้องเห็นตั้งแต่ก่อนสุ่ม
+  // ไม่ใช่ไปรู้เอาตอนใส่แล้ว โชว์แม้ยังไม่ได้ชุด เพราะเป็นข้อมูลที่ใช้ตัดสินใจว่าจะลุ้นไหม
+  const bonus = document.getElementById('heroBonus');
+  bonus.textContent = o.foodBonus > 0
+    ? '+' + o.foodBonus.toLocaleString('en-US') + ' ต่อของกิน 1 ชิ้น'
+    : '';
+  bonus.style.display = o.foodBonus > 0 ? '' : 'none';
+
+  const state = document.getElementById('heroState');
+  state.textContent = got ? o.note : 'ยังไม่ได้ชุดนี้';
+  state.classList.toggle('locked', !got);
+}
+
+/** แถบชุดทั้งหมดด้านล่าง กดเลือกเพื่อส่องตัวใหญ่ */
+function buildShelf() {
+  const shelf = document.getElementById('gachaShelf');
+  shelf.innerHTML = '';
+
+  for (const o of pullPool()) {
+    const got = isOwned(o.id);
+
+    const cell = document.createElement('button');
+    cell.className = 'shelf-cell ' + (o.rarity || '')
+      + (got ? '' : ' locked') + (o.id === heroId ? ' on' : '');
+    cell.innerHTML = '<canvas width="52" height="52"></canvas>';
+    cell.setAttribute('aria-label', got ? o.name : 'ยังไม่ได้ชุดนี้');
+
+    paintMini(cell.querySelector('canvas'), 52, (c) => {
+      drawCatPose(c, 30, 48, 0.76, { ...getSkin(), outfit: o }, 60);
+      if (!got) silhouette(c, 52, 52);
+    });
+
+    cell.addEventListener('click', () => {
+      if (heroId === o.id) return;
+      heroId = o.id;
+      unlockAudio();
+      sfx.fish();
+      drawHero();
+      // ทาสีเฉพาะกรอบที่เลือก ไม่วาดใหม่ทั้งแถบ — วาดแมว 13 ตัวใหม่ทุกครั้งที่แตะ
+      // จะกระตุกบนมือถือ ทั้งที่ภาพในช่องไม่ได้เปลี่ยนอะไรเลย
+      [...shelf.children].forEach((el) => el.classList.remove('on'));
+      cell.classList.add('on');
+    });
+
+    shelf.appendChild(cell);
+  }
+}
+
 function refreshGacha() {
   const gold = getGold();
   refreshGold();
@@ -284,19 +403,49 @@ function refreshGacha() {
 
   // สร้างจากค่าจริงเสมอ ไม่เขียนตัวเลขค้างไว้ใน HTML
   // ไม่งั้นวันที่แก้อัตราแล้วลืมแก้ข้อความ ผู้เล่นจะโดนบอกอัตราผิด
-  document.getElementById('gachaOdds').innerHTML =
-    '<span class="hi">ระดับสูง ' + pct(RARITY.high.rate) + '</span><br>' +
-    'ระดับกลาง ' + pct(RARITY.normal.rate) + '<br>' +
-    'เหรียญทอง ' + pct(GOLD_RATE);
+  //
+  // จุดสีนำหน้าแต่ละแถวใช้สีเดียวกับป้ายระดับบนการ์ดชุด ผู้เล่นจึงโยงได้ทันที
+  // ว่าไอ้ 10% ที่เขียนไว้ตรงนี้คือการ์ดขอบทองที่เพิ่งเห็นในหน้าเลือกชุด
+  const oddsRow = (cls, label, value) =>
+    '<div class="odds-row ' + cls + '"><i></i><span>' + label + '</span><b>' + value + '</b></div>';
 
-  document.getElementById('pull1').disabled = gold < 5000;
-  document.getElementById('pull5').disabled = gold < 5000 * MULTI_PULLS;
+  document.getElementById('gachaOdds').innerHTML =
+    oddsRow('high', 'ระดับสูง', pct(RARITY.high.rate))
+    + oddsRow('normal', 'ระดับกลาง', pct(RARITY.normal.rate))
+    + oddsRow('gold', 'เหรียญทอง', pct(GOLD_RATE))
+    + '<div class="odds-note">ได้ชุดซ้ำ คืนทอง '
+    + DUPE_REFUND.toLocaleString('en-US') + '</div>';
+
+  // ราคาบนปุ่มมาจากค่าจริง ไม่ได้พิมพ์ค้างไว้ใน HTML
+  const p1 = document.getElementById('pull1');
+  const p5 = document.getElementById('pull5');
+  p1.querySelector('b').textContent = OUTFIT_COST.toLocaleString('en-US');
+  p5.querySelector('b').textContent = (OUTFIT_COST * MULTI_PULLS).toLocaleString('en-US');
+  p5.querySelector('small').textContent = MULTI_PULLS + ' ครั้ง!';
+  p1.disabled = gold < OUTFIT_COST;
+  p5.disabled = gold < OUTFIT_COST * MULTI_PULLS;
+
+  buildShelf();
+  drawHero();
 }
 
 /** การ์ดผลสุ่ม — ชุดใส่ได้ทุกสีขน จึงพรีวิวบนแมวตัวที่เลือกอยู่ */
+/** ปิดกล่องผลสุ่มแล้วล้างของเก่าทิ้ง ใช้ทุกทางที่ต้องเลิกโชว์ผล */
+function closeResult() {
+  document.getElementById('gachaResult').classList.add('hidden');
+  document.getElementById('gotRow').innerHTML = '';
+}
+
 function showPullResults(results) {
-  const box = document.getElementById('gachaResult');
+  const box = document.getElementById('gotRow');
   box.innerHTML = '';
+
+  // หัวเรื่องบอกผลรวมในบรรทัดเดียว ผู้เล่นจึงรู้ทันทีว่ารอบนี้คุ้มไหม
+  // ก่อนจะไล่ดูทีละใบ — ห้าใบเรียงกันอ่านทีละใบใช้เวลานานเกินไป
+  const fresh = results.filter((r) => r.kind === 'outfit' && r.isNew).length;
+  document.getElementById('gotTitle').textContent =
+    fresh > 0 ? 'ได้ชุดใหม่ ' + fresh + ' ชิ้น!' : 'ได้รับ!';
+  document.getElementById('gachaResult').classList.remove('hidden');
 
   for (const r of results) {
     const card = document.createElement('div');
@@ -304,26 +453,30 @@ function showPullResults(results) {
     if (r.kind === 'gold') {
       card.className = 'got-card gold';
       card.innerHTML =
-        '<span class="coin big" aria-hidden="true"></span><b></b><small></small>';
+        '<span class="coin big" aria-hidden="true"></span><b></b><small>เหรียญทอง</small>';
       card.querySelector('b').textContent = '+' + r.gold.toLocaleString('en-US');
-      const tag = card.querySelector('small');
-      tag.textContent = 'เหรียญทอง';
-      tag.style.color = '#B99BD4';
     } else {
       const o = r.outfit;
       const tier = RARITY[o.rarity];
 
       card.className =
-        'got-card' + (o.rarity === 'high' ? ' high' : '') + (r.isNew ? '' : ' dupe');
-      card.innerHTML = '<canvas width="56" height="56"></canvas><b></b><small></small>';
-      card.querySelector('b').textContent = o.name;
+        'got-card ' + o.rarity + (r.isNew ? '' : ' dupe');
+      card.innerHTML =
+        '<span class="tier-badge"></span><canvas width="72" height="72"></canvas>'
+        + '<b></b><small></small>';
 
+      // ป้ายระดับติดมุมบนเหมือนการ์ดในหน้าเลือกชุด สายตาจึงหาที่เดิมได้
+      const badge = card.querySelector('.tier-badge');
+      badge.className = 'tier-badge ' + o.rarity;
+      badge.textContent = tier.short;
+
+      card.querySelector('b').textContent = o.name;
       const tag = card.querySelector('small');
-      tag.textContent = r.isNew ? tier.name : 'ซ้ำ +' + DUPE_REFUND.toLocaleString('en-US');
+      tag.textContent = r.isNew ? 'ใหม่!' : 'ซ้ำ +' + DUPE_REFUND.toLocaleString('en-US');
       tag.style.color = r.isNew ? tier.color : '#B99BD4';
 
-      paintMini(card.querySelector('canvas'), 56,
-        (c) => drawCatPose(c, 30, 52, 0.82, { ...getSkin(), outfit: o }, 60));
+      paintMini(card.querySelector('canvas'), 72,
+        (c) => drawCatPose(c, 38, 66, 1.05, { ...getSkin(), outfit: o }, 60));
     }
 
     // เหลื่อมกันทีละใบ ใบระดับสูงจะได้มีจังหวะให้สังเกตเห็นว่าเรืองแสง
@@ -344,7 +497,7 @@ function doPull(times) {
   pullProgress = 0.0001;          // ต้องมากกว่า 0 ให้ลูปรู้ว่ากำลังเปิดอยู่
   pullPending = res.results;
 
-  document.getElementById('gachaResult').innerHTML = '';
+  closeResult();
   refreshGacha();
   refreshHome();
 }
@@ -359,6 +512,11 @@ function revealPull() {
   if (results.some((r) => r.kind === 'outfit' && r.outfit.rarity === 'high')) sfx.bonus();
   else sfx.kibble();
 
+  // ได้ของใหม่ก็เด้งช่องส่องไปที่ตัวล่าสุดเลย ผู้เล่นจะได้เห็นเต็มตัวทันที
+  // ว่าที่เพิ่งปลดล็อกไปหน้าตาเป็นยังไง ไม่ต้องไปไล่หาเองในแถบล่าง
+  const fresh = results.filter((r) => r.kind === 'outfit' && r.isNew).pop();
+  if (fresh) heroId = fresh.outfit.id;
+
   showPullResults(results);
   // เก็บประวัติขึ้นคลาวด์ถ้าต่ออยู่ — ล้มเหลวก็ไม่กระทบการเล่น
   import('./net/sync.js').then((m) => m.recordPulls(results)).catch(() => {});
@@ -371,7 +529,13 @@ function showGacha(on) {
   gachaPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
   if (on) {
-    document.getElementById('gachaResult').innerHTML = '';
+    closeResult();
+    // เปิดมาให้ส่องตัวที่ยังไม่ได้เป็นตัวแรก — นั่นคือของที่ยังต้องลุ้น
+    // ถ้าได้ครบแล้วก็โชว์ตัวแรกไปตามปกติ
+    if (heroId === null) {
+      const pool = pullPool();
+      heroId = (pool.find((o) => !isOwned(o.id)) || pool[0] || {}).id ?? null;
+    }
     refreshGacha();
   } else {
     // ปิดพาเนลกลางแอนิเมชัน: ล้างสถานะทิ้ง ไม่งั้นเปิดกลับมาเจอผลเก่าเด้งขึ้นเอง
@@ -379,6 +543,7 @@ function showGacha(on) {
     pullProgress = 0;
     pullPending = null;
     gachaShake = 0;
+    document.getElementById('oddsPop').classList.add('hidden');
   }
 }
 
@@ -719,6 +884,25 @@ document.getElementById('btnGacha').addEventListener('click', () => {
   showGacha(true);
 });
 document.getElementById('gachaBack').addEventListener('click', () => showGacha(false));
+
+// อัตราการสุ่มซ่อนอยู่ใต้ปุ่ม ! — เปิดค้างไว้ไม่ได้ เพราะมันบังชั้นวางชุดข้างล่าง
+const oddsPop = document.getElementById('oddsPop');
+const showOdds = (on) => oddsPop.classList.toggle('hidden', !on);
+document.getElementById('oddsBtn').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  showOdds(oddsPop.classList.contains('hidden'));
+});
+document.getElementById('oddsClose').addEventListener('click', () => showOdds(false));
+
+// กล่องผลสุ่มคลุมทั้งการ์ดไว้ ปิดไม่ได้ = ค้างจนต้องรีเฟรชหน้า
+// จึงรับทั้งปุ่ม "ตกลง" และการแตะที่ไหนก็ได้บนกล่อง เผื่อผู้เล่นแตะมั่ว ๆ ก่อน
+const gotBox = document.getElementById('gachaResult');
+gotBox.addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  closeResult();
+});
 document.getElementById('btnRank').addEventListener('click', () => {
   unlockAudio(); startMusic();
   showRank(true);
@@ -829,19 +1013,24 @@ async function goImmersive() {
   if (!isFull()) {
     // Safari รุ่นเก่ายังใช้ชื่อแบบมี webkit นำหน้า
     const req = root.requestFullscreen || root.webkitRequestFullscreen;
-    if (!req) return;            // iPhone ไม่มี API นี้เลย ป้ายขอให้หมุนจอรับช่วงต่อ
-    try {
-      await req.call(root);
-    } catch {
-      return;                    // ยังไม่ได้ ไว้แตะครั้งหน้าค่อยลองใหม่
+    if (req) {
+      try {
+        await req.call(root);
+      } catch {
+        /* ไม่ได้ก็ไม่เป็นไร ยังลองล็อกแนวจอต่อได้ บางเบราว์เซอร์ยอมโดยไม่ต้องเต็มจอ */
+      }
     }
   }
 
-  // ล็อกแนวจอทำได้เฉพาะตอนอยู่เต็มจอแล้ว และมีแต่ Android ที่รองรับจริง
+  // ล็อกเป็น 'landscape' เฉย ๆ ไม่ใช่ landscape-primary — ผู้เล่นจึงยังพลิกเครื่อง
+  // กลับหัวไปมาระหว่างแนวนอนสองทางได้ ติดแค่แนวตั้งที่ถูกกันไว้
+  //
+  // เครื่องที่กดปฏิเสธหรือไม่รองรับ (iPhone ทุกรุ่น) ป้ายขอให้หมุนจอรับช่วงต่อ
+  // และเพราะไม่ได้ตั้งธง "ทำไปแล้ว" ค้างไว้ การแตะครั้งถัดไปก็จะลองใหม่เองเรื่อย ๆ
   try {
     await screen.orientation?.lock?.('landscape');
   } catch {
-    /* iOS ไม่รองรับ / เครื่องล็อกแนวจอไว้เอง — ป้ายขอให้หมุนจอรับช่วงต่อ */
+    /* ไม่รองรับ / เครื่องล็อกแนวจอไว้เอง */
   }
 }
 

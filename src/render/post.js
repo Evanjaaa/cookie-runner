@@ -67,8 +67,16 @@ function darkenEdges(ctx) {
   ctx.fillRect(0, 0, W, H);
 }
 
-export function postProcess(ctx) {
+/**
+ * @param {object} [opts]
+ * @param {boolean} [opts.edges] false = ไม่ต้องหรี่ขอบ
+ *
+ * ตอนเล่นจริงขอบมืดช่วยดึงสายตาเข้ากลางจอที่ตัวละครวิ่งอยู่
+ * แต่หน้าแรกเป็นภาพวาดเต็มกรอบ ปราสาทกับกำแพงอยู่ริมสองข้างพอดี
+ * หรี่ขอบตรงนั้นเลยกลายเป็นคราบดำฟุ้ง ๆ ทับรูป ไม่ได้ช่วยอะไร
+ */
+export function postProcess(ctx, { edges = true } = {}) {
   if (!POST.on) return;
   if (POST.bloomStrength > 0) bloom(ctx);
-  if (POST.vignette > 0) darkenEdges(ctx);
+  if (edges && POST.vignette > 0) darkenEdges(ctx);
 }

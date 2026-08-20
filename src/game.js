@@ -83,6 +83,42 @@ const HOME_DECO = [
   { dx: 152, dy: -104 },
 ];
 
+/**
+ * แต่งแสงฉากหลังหน้าแรก
+ *
+ * เรียกก่อนวาดตัวละคร ทุกอย่างในนี้จึงลงบน "ฉากหลัง" อย่างเดียว
+ * ตัวน้องแมวที่วาดทีหลังยังสว่างเต็มที่เสมอ
+ *
+ * ครั้งแรกเคยไล่สีให้ขอบซ้าย-ขวา-บนมืด แล้วมันอ่านเป็นคราบดำฟุ้งทับรูป เลยถอดออกไป
+ * รอบนี้กลับมาใหม่แต่คนละทรง — ถ่วงน้ำหนักไปทางล่างแทนที่จะมืดเท่ากันทุกด้าน
+ * ซึ่งเป็นทิศทางที่ตาคนอ่านว่า "แสงมาจากข้างบน" ไม่ใช่ "รูปเปื้อน"
+ * และช่วยให้ปุ่มเล่นกับปุ่มกระโดด/หมอบที่ลอยอยู่มุมล่างมีพื้นเข้มรองรับ
+ */
+function dimForUi(ctx) {
+  const { W, H } = VIEW;
+  const INK = '18,7,30';
+
+  // 1) หรี่เรียบบาง ๆ ทั้งผืน แค่พอกลบความจัดของสีให้เข้ากับโทนม่วงของเกม
+  ctx.fillStyle = `rgba(${INK},.08)`;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2) ขอบมืดนุ่ม — ยกจุดศูนย์กลางขึ้นไปเหนือกลางจอ (0.34H)
+  //    ขอบล่างจึงอยู่ไกลจากศูนย์กลางกว่าขอบบน แล้วมืดกว่าเองโดยไม่ต้องวาดแยก
+  const edge = ctx.createRadialGradient(W / 2, H * 0.34, H * 0.30, W / 2, H * 0.34, H * 1.15);
+  edge.addColorStop(0, `rgba(${INK},0)`);
+  edge.addColorStop(0.62, `rgba(${INK},.10)`);
+  edge.addColorStop(1, `rgba(${INK},.46)`);
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, 0, W, H);
+
+  // 3) แถบล่างอีกชั้น เริ่มจากครึ่งจอลงไป ให้พื้นจมหายเข้าไปในกรอบแทนที่จะโดนตัดห้วน ๆ
+  const floor = ctx.createLinearGradient(0, H * 0.52, 0, H);
+  floor.addColorStop(0, `rgba(${INK},0)`);
+  floor.addColorStop(1, `rgba(${INK},.42)`);
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, 0, W, H);
+}
+
 export class Game {
   constructor({ onGameOver } = {}) {
     this.player = new Player();
@@ -1036,15 +1072,17 @@ export class Game {
    */
   drawHome(ctx) {
     const t = this.homeTick;
-    // เดิมอยู่ 0.31 เพราะเมนูกินครึ่งขวาทั้งแถบ ตอนนี้ปุ่มเกาะขอบสองข้าง
-    // ตรงกลางจึงว่าง ขยับมา 0.47 (เยื้องซ้ายจากกลางนิดหน่อยเพื่อถ่วงกับปุ่มเล่นมุมขวาล่าง)
-    const x = VIEW.W * 0.47;
+    // ตรงกลางเป๊ะ ๆ เพราะฉากหลังมีเก้าอี้อยู่กลางภาพ และน้องต้องยืนอยู่บนเบาะพอดี
+    // (เคยเยื้องซ้ายไป 0.47 เพื่อถ่วงกับปุ่มเล่นมุมขวาล่าง แต่การยืนตรงกับเก้าอี้สำคัญกว่า)
+    // ถ้าเปลี่ยนฉากหลังใหม่ ต้องปรับ $FOCUS ใน tools/render-bg.ps1 ให้เบาะมาอยู่ที่ GROUND_Y ด้วย
+    const x = VIEW.W * 0.5;
 
-    drawSky(ctx, 0, this.pal);
-    drawHills(ctx, 0, this.pal);
-    drawGround(ctx, [], 0, this.pal);
+    // ฉากหลังเป็น background ของ .stage ใน CSS (ดูเหตุผลในไฟล์นั้น)
+    // ตรงนี้จึงต้องล้างให้โปร่งก่อน ไม่งั้นฉากของรอบเล่นที่แล้วจะค้างทับภาพอยู่
+    ctx.clearRect(0, 0, VIEW.W, VIEW.H);
+    dimForUi(ctx);
 
-    // สปอตไลต์นุ่ม ๆ ดันตัวละครให้เด่นออกจากฉากหลังม่วง
+    // สปอตไลต์นุ่ม ๆ ดันตัวละครให้เด่นออกจากฉากหลัง
     const glow = ctx.createRadialGradient(x, GROUND_Y - 60, 10, x, GROUND_Y - 60, 175);
     glow.addColorStop(0, 'rgba(255,214,150,.22)');
     glow.addColorStop(1, 'rgba(255,214,150,0)');
@@ -1069,6 +1107,6 @@ export class Game {
     ctx.restore();
 
     drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t);
-    postProcess(ctx);
+    postProcess(ctx, { edges: false });
   }
 }
