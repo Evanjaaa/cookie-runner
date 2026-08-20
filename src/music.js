@@ -13,7 +13,7 @@
 // เพลงใหม่จะเริ่มดังช้าถึง 15 วินาที ซึ่งยาวกว่าช่วงพิเศษบางช่วงทั้งช่วง
 // จึงต้องเก็บอ้างอิงโน้ตที่จองไว้ แล้วยกเลิกตัวที่ "ยังไม่เริ่มเล่น" ตอนสลับ
 // ─────────────────────────────────────────────────────────────
-import { audioCtx, isMuted } from './audio.js';
+import { audioCtx, audioOut } from './audio.js';
 
 const BPM = 128;
 const BEAT = 60 / BPM;
@@ -231,9 +231,11 @@ export function startMusic() {
   const ac = audioCtx();
   if (ac.state === 'suspended') return;   // ยังไม่ได้ปลดล็อกเสียง ค่อยมาใหม่
 
+  // MUSIC_VOL คือระดับเพลง "เทียบกับเสียงเอฟเฟกต์" ส่วนระดับเสียงรวม
+  // อยู่ที่ปมของ audio.js ปลายทาง จึงไม่ต้องรู้เรื่องปิดเสียงตรงนี้เลย
   master = ac.createGain();
-  master.gain.value = isMuted() ? 0 : MUSIC_VOL;
-  master.connect(ac.destination);
+  master.gain.value = MUSIC_VOL;
+  master.connect(audioOut());
 
   loopStart = ac.currentTime + 0.15;
   pump();
@@ -264,10 +266,5 @@ export function setMusicTrack(name) {
   pump();
 }
 
-/** ปิดเสียงเพลงทันที ไม่ใช่แค่หยุดจองโน้ตใหม่ */
-export function setMusicMuted(m) {
-  if (!master) return;
-  const ac = audioCtx();
-  master.gain.cancelScheduledValues(ac.currentTime);
-  master.gain.setTargetAtTime(m ? 0 : MUSIC_VOL, ac.currentTime, 0.05);
-}
+/* setMusicMuted ถูกถอดออกแล้ว — ปิดเสียงคือ setVolume(0) ที่ปมรวมใน audio.js
+   ซึ่งหรี่ทั้งเพลงและเอฟเฟกต์พร้อมกัน ไม่ต้องมีสองทางให้หลุดจากกัน */

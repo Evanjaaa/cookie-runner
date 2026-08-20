@@ -17,6 +17,7 @@ import {
 } from './cloud.js';
 
 const GOLD_KEY = 'cookie-runner:gold';
+export const NAME_KEY = 'cookie-runner:name';
 const OWNED_KEY = 'cookie-runner:owned';
 const GOLD_START = 999999;
 
@@ -75,6 +76,7 @@ function readLocalBests() {
 function writeLocal(row) {
   set(GOLD_KEY, String(Math.max(0, Math.floor(Number(row.gold) || 0))));
   set(OWNED_KEY, JSON.stringify(Array.isArray(row.owned) ? row.owned : []));
+  if (row.name) set(NAME_KEY, row.name);
   if (row.outfit) set(KEYS.outfit, row.outfit);
   if (row.skin) set(KEYS.skin, row.skin);
   if (row.stage) set(KEYS.stage, row.stage);

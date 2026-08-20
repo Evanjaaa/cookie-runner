@@ -9,28 +9,26 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Speed Cat</title>
+  <!-- ชื่อใต้ไอคอนตอนเพิ่มลงหน้าจอโฮมของ iPhone -->
+  <meta name="apple-mobile-web-app-title" content="meow sing">
+  <title>meow sing</title>
+
+  <!-- โลโก้ — ต้นฉบับคือ tools/logo_meowsing.jpg
+       ไฟล์ข้างล่างทุกไฟล์ถูกย่อมาจากรูปนั้นด้วย tools/render-icons.ps1
+       เปลี่ยนโลโก้: เอารูปใหม่ทับต้นฉบับ แล้วรัน npm run icons ทีเดียวได้ครบ -->
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <!-- iOS ไม่อ่าน manifest จึงต้องบอกไอคอนหน้าโฮมแยกอีกแท็ก และรับแต่ PNG -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#421268">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="shell">
-
-    <div class="titlebar">
-      <h1>Speed Cat</h1>
-      <span>endless runner</span>
-      <div class="goldbar" aria-label="เหรียญทอง">
-        <span class="coin" aria-hidden="true"></span>
-        <b id="goldTop">0</b>
-      </div>
-
-      <div class="hudbtns">
-        <button id="btnFull" aria-label="เต็มจอ">⛶</button>
-        <button id="btnPause" aria-label="หยุดชั่วคราว">⏸</button>
-        <button id="btnMute" aria-label="ปิดเสียง">🔊</button>
-      </div>
-    </div>
 
     <div class="stage" id="stage">
       <canvas id="game" width="960" height="420"></canvas>
@@ -43,56 +41,46 @@
 
       <!-- หน้าแรก: ครึ่งซ้ายเว้นว่างให้เห็นแมวที่วาดบน canvas ครึ่งขวาเป็นเมนู -->
       <div class="panel home" id="startPanel">
-        <div class="home-stage" aria-hidden="true"></div>
-
-        <div class="home-menu">
-          <div class="home-head">
-            <h2>Speed Cat</h2>
-            <p class="home-sub">วิ่งให้ไกลที่สุดเท่าที่แรงจะไหว</p>
-          </div>
-
-          <div class="home-grid">
-          <button class="menu-item" id="btnStages">
-            <canvas class="menu-ico wide" id="stageIcon" width="210" height="92"></canvas>
-            <span class="menu-text">
-              <b>ด่าน</b>
-              <small id="stageName">ครัวกลางคืน</small>
-            </span>
-            <span class="menu-arrow" aria-hidden="true">›</span>
-          </button>
-
-          <button class="menu-item" id="btnSkins">
-            <canvas class="menu-ico" id="skinIcon" width="76" height="76"></canvas>
-            <span class="menu-text">
-              <b>แมวน้อย</b>
-              <small id="skinName">ส้มน้อย</small>
-            </span>
-            <span class="menu-arrow" aria-hidden="true">›</span>
-          </button>
-
-          <button class="menu-item" id="btnOutfits">
-            <canvas class="menu-ico" id="outfitIcon" width="76" height="76"></canvas>
-            <span class="menu-text">
-              <b>ชุด</b>
-              <small id="outfitName">ขนล้วน</small>
-            </span>
-            <span class="menu-arrow" aria-hidden="true">›</span>
-          </button>
-
-          <button class="menu-item" id="btnGacha">
-            <canvas class="menu-ico" id="gachaIcon" width="76" height="76"></canvas>
-            <span class="menu-text">
-              <b>ตู้กาช่า</b>
-              <small id="gachaSub">สุ่มชุดใหม่</small>
-            </span>
-            <span class="menu-arrow" aria-hidden="true">›</span>
-          </button>
-          </div>
-
-          <button class="btn" id="startBtn">เริ่มวิ่ง</button>
-
-          <p class="home-best">สถิติด่านนี้ <b id="homeBest">0</b></p>
+        <!-- โลโก้กลางบน แมวถูกวาดอยู่บน canvas ข้างหลังตรงกลางจอ -->
+        <div class="home-logo">
+          <h2>meow sing</h2>
+          <p>endless runner</p>
         </div>
+
+        <div class="home-bubble">มาวิ่งกันเถอะ!</div>
+
+        <div class="lobby left">
+          <button class="lobby-btn" id="btnGacha">
+            <canvas id="gachaIcon" width="76" height="76"></canvas>
+            <b>ตู้กาช่า</b>
+            <small id="gachaSub">สุ่มชุดใหม่</small>
+          </button>
+          <button class="lobby-btn" id="btnSkins">
+            <canvas id="skinIcon" width="76" height="76"></canvas>
+            <b>แมวน้อย</b>
+            <small id="skinName">ส้มน้อย</small>
+          </button>
+          <button class="lobby-btn" id="btnOutfits">
+            <canvas id="outfitIcon" width="76" height="76"></canvas>
+            <b>ชุด</b>
+            <small id="outfitName">ขนล้วน</small>
+          </button>
+        </div>
+
+        <div class="lobby right">
+          <button class="lobby-btn" id="btnStages">
+            <canvas id="stageIcon" width="210" height="92"></canvas>
+            <b>ด่าน</b>
+            <small id="stageName">ครัวกลางคืน</small>
+          </button>
+          <button class="lobby-btn" id="btnRank">
+            <canvas id="rankIcon" width="76" height="76"></canvas>
+            <b>อันดับ</b>
+            <small id="rankSub">คะแนนรวม</small>
+          </button>
+        </div>
+
+        <button class="btn play" id="startBtn">เล่น!</button>
       </div>
 
       <!-- หน้าเลือกด่าน ภาพตัวอย่างคือฉากจริงของด่านนั้นย่อส่วนลงมา -->
@@ -142,6 +130,17 @@
         <button class="btn ghost" id="gachaBack">กลับ</button>
       </div>
 
+      <!-- กระดานคะแนนรวม ดึงจาก Supabase ตอนเปิดหน้านี้ -->
+      <div class="panel hidden" id="rankPanel">
+        <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
+        <div class="rank-list" id="rankList"></div>
+        <div class="rank-me">
+          <input id="rankName" maxlength="16" placeholder="ตั้งชื่อที่จะโชว์บนกระดาน">
+          <button class="btn ghost" id="rankSave">บันทึกชื่อ</button>
+        </div>
+        <button class="btn ghost" id="rankBack">กลับ</button>
+      </div>
+
       <div class="panel hidden" id="pausePanel">
         <h2>พักก่อน</h2>
         <button class="btn" id="resumeBtn">เล่นต่อ</button>
@@ -149,6 +148,18 @@
           <button class="btn ghost" id="restartBtn">เริ่มใหม่</button>
           <button class="btn ghost" id="quitBtn">เลิกเล่น</button>
         </div>
+      </div>
+
+      <div class="panel hidden" id="settingsPanel">
+        <h2>ตั้งค่า</h2>
+        <div class="setrow">
+          <span class="setlabel">เสียง</span>
+          <button class="stepbtn" id="volDown" aria-label="ลดเสียง">−</button>
+          <div class="volbar" id="volBar"></div>
+          <button class="stepbtn" id="volUp" aria-label="เพิ่มเสียง">+</button>
+          <b class="volnum" id="volNum">80%</b>
+        </div>
+        <button class="btn ghost" id="settingsBack">กลับ</button>
       </div>
 
       <div class="panel hidden" id="overPanel">
@@ -165,6 +176,38 @@
         </div>
       </div>
 
+      <!-- แถบบนในจอ วางท้ายสุดเพื่อให้อยู่เหนือแผงเมนูทุกอัน
+           ทองกับปุ่มหยุดสลับกันโชว์ตามสถานะ ดูกฎใน style.css -->
+      <div class="hud-top">
+        <div class="goldbar" aria-label="เหรียญทอง">
+          <span class="coin" aria-hidden="true"></span>
+          <b id="goldTop">0</b>
+        </div>
+        <div class="hudbtns">
+          <!-- ทั้งสองปุ่มไม่มีตัวหนังสือข้างใน รูปวาดด้วย CSS กับ SVG ในตัว
+               อีโมจิ ⏸ 🔊 หน้าตาไม่เหมือนกันเลยระหว่าง iOS/Android/Windows
+               และบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
+          <button id="btnPause" aria-label="หยุดชั่วคราว"></button>
+          <button id="btnSettings" aria-label="ตั้งค่า">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="3.1"/>
+              <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+                <path d="M12 1.7v3.1M12 19.2v3.1M1.7 12h3.1M19.2 12h3.1
+                         M4.7 4.7l2.2 2.2M17.1 17.1l2.2 2.2M19.3 4.7l-2.2 2.2M6.9 17.1l-2.2 2.2"/>
+              </g>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- จอสัมผัสที่ยังตั้งแนวตั้งอยู่ จะเห็นแค่ป้ายนี้จนกว่าจะหมุนเป็นแนวนอน
+         โชว์/ซ่อนด้วย media query ล้วน ๆ ไม่มี JS มาเกี่ยว -->
+    <div class="rotate-hint">
+      <div class="phone" aria-hidden="true"></div>
+      <b>หมุนโทรศัพท์เป็นแนวนอน</b>
+      <small>ถ้าหมุนแล้วจอไม่เปลี่ยน ให้ปิดล็อกหมุนจอในเครื่องก่อน</small>
     </div>
 
     <p class="footnote">

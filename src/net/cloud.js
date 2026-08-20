@@ -158,6 +158,24 @@ export async function pushPulls(rows) {
   }
 }
 
+/**
+ * เปลี่ยนชื่อที่โชว์บนกระดานคะแนน
+ * ใช้ update ไม่ใช่ upsert เพราะ upsert ที่ส่งมาแค่ชื่อ ถ้าบังเอิญยังไม่มีแถว
+ * จะสร้างแถวใหม่แล้วรีเซ็ตทองกับชุดกลับเป็นค่าเริ่มต้นทั้งหมด
+ */
+export async function pushName(name) {
+  const c = await client();
+  if (!c || !uid) return false;
+  try {
+    const { error } = await c.from('players').update({ name }).eq('id', uid);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('[cloud] เปลี่ยนชื่อไม่ได้', e.message || e);
+    return false;
+  }
+}
+
 /** กระดานคะแนนของด่านหนึ่ง เรียงมากไปน้อย */
 export async function fetchLeaderboard(stageId, limit = 20) {
   const c = await client();

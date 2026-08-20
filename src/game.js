@@ -58,7 +58,7 @@ function buildBonusField(startX, span) {
  * โปรยแม่เหล็กทั่วสนามโบนัส
  * catX = ตำแหน่งตัวแมวในพิกัดโลก ณ วินาทีที่เริ่มโบนัส
  */
-function buildBonusMagnets(catX, span, speed) {
+export function buildBonusMagnets(catX, span, speed) {
   const lanes = [118, 186, 254];   // ระดับเดียวกับสามเลนของแนวอาหาร
 
   // ลูกแรกอยู่ถัดจากจุดเริ่มลอยเล็กน้อย ไม่ใช่ระหว่างช่วงทะยานขึ้นแล้ว
@@ -1036,7 +1036,9 @@ export class Game {
    */
   drawHome(ctx) {
     const t = this.homeTick;
-    const x = VIEW.W * 0.31;
+    // เดิมอยู่ 0.31 เพราะเมนูกินครึ่งขวาทั้งแถบ ตอนนี้ปุ่มเกาะขอบสองข้าง
+    // ตรงกลางจึงว่าง ขยับมา 0.47 (เยื้องซ้ายจากกลางนิดหน่อยเพื่อถ่วงกับปุ่มเล่นมุมขวาล่าง)
+    const x = VIEW.W * 0.47;
 
     drawSky(ctx, 0, this.pal);
     drawHills(ctx, 0, this.pal);

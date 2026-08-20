@@ -29,7 +29,6 @@ export const STAGES = [
       pitFill: 'rgba(18,9,30,.72)', pitDeep: 'rgba(10,5,18,.95)',
       // สีตัวอักษรบน HUD — ฟ้าคนละโทนกันทำให้ครีมอ่านออกหรือไม่ออกต่างกันมาก
       ink: '#FFF3E2', inkSoft: '#D9C4EC', accent: '#B4F7F0',
-      rail: 'rgba(255,243,226,.14)', railBack: 'rgba(27,15,43,.55)',
       noticeBg: 'rgba(27,15,43,.72)',
       cloud: '#EFE2FA', cloudSoft: '#C6AFE0',
     },
@@ -78,7 +77,6 @@ export const STAGES = [
       pitFill: 'rgba(28,48,32,.7)', pitDeep: 'rgba(12,22,15,.95)',
       // ฟ้าสว่างทำให้ตัวอักษรครีมอ่านไม่ออก ต้องสลับเป็นหมึกเข้ม
       ink: '#22402F', inkSoft: '#3E6B4F', accent: '#0E7A5F',
-      rail: 'rgba(34,64,47,.18)', railBack: 'rgba(255,255,255,.55)',
       noticeBg: 'rgba(255,255,255,.85)',
       cloud: '#FFFFFF', cloudSoft: '#E8F4FF',
     },

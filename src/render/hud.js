@@ -1,8 +1,13 @@
 // src/render/hud.js
-import { VIEW, SCORING, HEALTH, WORD, COLORS as C } from '../config.js';
-import { drawFish } from './entities.js';
+import { VIEW, HEALTH, WORD, COLORS as C } from '../config.js';
+import { drawFish, drawCatFace } from './entities.js';
+import { getSkin } from '../skins.js';
 
 const { W, H } = VIEW;
+
+// จุดยึดของ HUD แถวบน รวมไว้ที่เดียวจะได้ตรวจว่าไม่ทับกันได้โดยไม่ต้องไล่อ่านทั้งไฟล์
+const TREAT_TOP = 58;    // ค่าขนมเปียก ขวาริม ใต้ปุ่มหยุด/เสียงที่เป็น DOM
+const WORD_TOP = 22;     // แถวตัวอักษรสะสม ซ้ายบนสุด
 
 export function drawHUD(ctx, game) {
   // ทุกสีตัวอักษรมาจากจานสีของด่าน — ฟ้ากลางวันสว่างจนครีมอ่านไม่ออก
@@ -11,22 +16,17 @@ export function drawHUD(ctx, game) {
   ctx.save();
   ctx.textBaseline = 'top';
 
-  ctx.globalAlpha = 0.62;
-  ctx.font = "500 11px 'IBM Plex Sans Thai', sans-serif";
-  ctx.fillStyle = pal.ink;
-  ctx.fillText('คะแนน', 24, 22);
-  ctx.fillText('ระยะทาง', 150, 22);
-  ctx.globalAlpha = 1;
-
-  // เม็ดละ 1000 คะแนนแล้ว เลขโตเร็วมาก ใส่คอมมาไม่งั้นอ่านไม่ทันตอนวิ่ง
-  ctx.font = '600 24px Mitr, sans-serif';
-  ctx.fillText(game.score.toLocaleString('en-US'), 24, 36);
-
-  ctx.font = '600 20px Mitr, sans-serif';
-  ctx.fillText(Math.floor(game.distance / SCORING.pxPerMeter) + ' ม.', 150, 39);
-
-  // ค่าขนมเปียก — คะแนนสะสมจากของกินทุกชนิดรวมกัน ไม่ใช่จำนวนเม็ด
-  // ชิดขวาเพราะตัวเลขยาวขึ้นเรื่อย ๆ ถ้าชิดซ้ายจะงอกไปทับหลอดพลังกลางจอ
+  // ค่าขนมเปียกเป็นตัวเลขเดียวที่โชว์ระหว่างวิ่ง
+  //
+  // คะแนนกับระยะทางถูกถอดออก — ทั้งคู่เป็นตัวเลขที่ดูตอนวิ่งไม่ทันอยู่ดี
+  // และสรุปให้ครบอยู่แล้วบนหน้าจบรอบ การมีสามตัวเลขแข่งกันอยู่มุมเดียว
+  // ทำให้ไม่มีตัวไหนอ่านออกสักตัว เหลือตัวเดียวจึงอ่านได้จริงตอนกำลังวิ่ง
+  //
+  // ชิดขวาริมและอยู่ใต้แถวปุ่มหยุด/เสียง (ปุ่มเป็น DOM ทับอยู่ราว y12–50)
+  // TREAT_TOP จึงเริ่มที่ 58 — ถ้าไปแก้ขนาดปุ่มใน .hudbtns ต้องขยับค่านี้ตาม
+  //
+  // ไอคอนเดียวพอ — เลขนี้คือคะแนนรวมของกินทุกชนิด ไม่ใช่จำนวนปลา
+  // ใช้ปลาเป็นตัวแทนเพราะเป็นของที่เจอบ่อยที่สุดและสีตัดกับพื้นหลังชัดที่สุด
   const treatText = game.treat.toLocaleString('en-US');
 
   ctx.textAlign = 'right';
@@ -34,20 +34,15 @@ export function drawHUD(ctx, game) {
   ctx.globalAlpha = 0.62;
   ctx.font = "500 11px 'IBM Plex Sans Thai', sans-serif";
   ctx.fillStyle = pal.ink;
-  ctx.fillText('ค่าขนมเปียก', W - 24, 22);
+  ctx.fillText('ค่าขนมเปียก', W - 24, TREAT_TOP);
   ctx.globalAlpha = 1;
 
-  ctx.font = '600 20px Mitr, sans-serif';
+  ctx.font = '600 22px Mitr, sans-serif';
   ctx.fillStyle = pal.accent;
-  ctx.fillText(treatText, W - 24, 37);
+  ctx.fillText(treatText, W - 24, TREAT_TOP + 15);
 
-  // วัดความกว้างด้วยฟอนต์เดียวกับที่เพิ่งวาด แล้วเอาไอคอนไปวางชิดซ้ายของตัวเลข
-  // โชว์ทั้งสองชนิด ให้เห็นว่าเลขนี้นับรวมทั้งปลาและเม็ดกลม
-  // กุ้งวาดที่ขนาดปกติตรงนี้ ไม่ต้องคูณ SHRIMP.scale เหมือนในด่าน
-  // เพราะแถวไอคอนต้องดูสูงเท่ากันหมด ไม่ใช่โชว์ขนาดจริง
-  // ไอคอนเดียวพอ — เลขนี้คือคะแนนรวมของกินทุกชนิด ไม่ใช่จำนวนปลา
-  // ใช้ปลาเป็นตัวแทนเพราะเป็นของที่เจอบ่อยที่สุดและสีตัดกับพื้นหลังชัดที่สุด
-  drawFish(ctx, W - 40 - ctx.measureText(treatText).width, 47, 10);
+  // วัดด้วยฟอนต์เดียวกับที่เพิ่งวาด แล้ววางไอคอนชิดซ้ายของตัวเลข
+  drawFish(ctx, W - 38 - ctx.measureText(treatText).width, TREAT_TOP + 27, 11);
 
   ctx.textAlign = 'left';
 
@@ -69,7 +64,7 @@ export function drawHUD(ctx, game) {
 }
 
 /**
- * แถบสะสมตัวอักษร SPEEDCAT — วางชิดซ้ายใต้คะแนน เหมือนที่คุกกี้รันทำ
+ * แถบสะสมตัวอักษร MEOWSING — ซ้ายบนสุด เป็นของชิ้นเดียวที่อยู่มุมนั้น
  * ตัวที่ยังไม่ได้เก็บวาดเป็นโครงจาง ๆ ไม่ใช่ซ่อนไว้
  * เพราะผู้เล่นต้องเห็นตั้งแต่ต้นว่าเป้าหมายคือกี่ตัว ไม่งั้นไม่รู้ว่าต้องเก็บอะไรอยู่
  */
@@ -78,7 +73,7 @@ function drawWord(ctx, game) {
   const size = 19;
   const gap = 3.5;
   const x0 = 24;
-  const y = 68;
+  const y = WORD_TOP;
 
   ctx.save();
   ctx.textAlign = 'center';
@@ -129,11 +124,11 @@ function drawBonusBanner(ctx, game) {
 
   ctx.fillStyle = 'rgba(59,17,85,.82)';
   ctx.beginPath();
-  ctx.roundRect((W - w) / 2, 62, w, 30, 15);
+  ctx.roundRect((W - w) / 2, 78, w, 30, 15);
   ctx.fill();
 
   ctx.fillStyle = C.letterLite;
-  ctx.fillText(label, W / 2, 68);
+  ctx.fillText(label, W / 2, 84);
   ctx.restore();
 }
 
@@ -157,22 +152,49 @@ function drawNotice(ctx, game) {
 
   ctx.fillStyle = game.pal.noticeBg;
   ctx.beginPath();
-  ctx.roundRect((W - w) / 2, 66, w, 26, 13);
+  ctx.roundRect((W - w) / 2, 80, w, 26, 13);
   ctx.fill();
 
   ctx.fillStyle = C.danger;
-  ctx.fillText(label, W / 2, 71);
+  ctx.fillText(label, W / 2, 85);
 
   ctx.restore();
 }
 
 /** หลอดพลังกลางจอบน — ตัวเดียวที่ผู้เล่นต้องจ้องตลอดเวลา เลยวางไว้กลาง */
+/** เหรียญหน้าแมวที่หัวหลอด — วาดจานก่อน แล้วทับด้วยหน้าแมว หูจึงพาดขอบจานพอดี */
+function drawCatBadge(ctx, cx, cy, r) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(30,8,18,.92)';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = C.hpCase;
+  ctx.lineWidth = 3.4;
+  ctx.beginPath(); ctx.arc(cx, cy, r - 1.6, 0, Math.PI * 2); ctx.stroke();
+
+  // เยื้องลง 4 เพราะจุดกึ่งกลางของหัวอยู่ที่วงหน้า ไม่ใช่รวมหู
+  // ถ้าวางกลางจานตรง ๆ หูจะโผล่เกินจนดูหัวลอยขึ้นข้างบน
+  drawCatFace(ctx, cx, cy + 4, 1, getSkin());
+  ctx.restore();
+}
+
+/**
+ * ขวดพลังกลางบน พร้อมเหรียญหน้าแมวที่หัวหลอด
+ *
+ * 320x20 — ใหญ่กว่าของเดิม (300x16) พอให้อ่านออกโดยไม่ต้องเพ่ง
+ * แต่ไม่ถึงกับกินแถบบนทั้งแถบเหมือนรอบที่ลองไว้ 400x26
+ *
+ * สีเป็นชุดตายตัวไม่อิงจานสีของด่าน — หลอดต้องอ่านออกเท่ากันทั้งด่านกลางคืน
+ * และด่านกลางวัน ถ้าอิงจานสีจะมีด่านหนึ่งที่หลอดกลืนพื้นหลังเสมอ
+ */
 function drawHealthBar(ctx, game) {
-  const pal = game.pal;
-  const w = 300;
-  const h = 16;
-  const x = (W - w) / 2;
-  const y = 38;
+  const w = 320;
+  const h = 20;
+  const badgeR = 16;
+
+  // เหรียญเกยหัวหลอดเข้าไป 6 ทั้งชุด (เหรียญ+ขวด) จึงกว้าง w+30
+  // คำนวณ x จากตรงนั้นย้อนกลับ เพื่อให้ "ทั้งชุด" อยู่กลางจอ ไม่ใช่แค่ตัวขวด
+  const x = Math.round((W - w + 22) / 2);
+  const y = 34;
   const p = Math.max(0, Math.min(1, game.hp / HEALTH.max));
   const low = p <= HEALTH.lowAt;
 
@@ -180,36 +202,44 @@ function drawHealthBar(ctx, game) {
   ctx.textBaseline = 'top';
   ctx.textAlign = 'center';
 
-  ctx.globalAlpha = 0.62;
-  ctx.font = "500 11px 'IBM Plex Sans Thai', sans-serif";
-  ctx.fillStyle = pal.ink;
-  ctx.fillText('พลัง', W / 2, 22);
-  ctx.globalAlpha = 1;
-
-  // ขอบนอกกับราง
-  ctx.fillStyle = pal.railBack;
-  ctx.beginPath(); ctx.roundRect(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.fill();
-  ctx.fillStyle = pal.rail;
+  // ตัวขวด — วงนอกหนาให้ดูเป็นภาชนะจริง ไม่ใช่แถบสีลอย ๆ
+  ctx.fillStyle = C.hpCase;
+  ctx.beginPath(); ctx.roundRect(x - 4, y - 4, w + 8, h + 8, (h + 8) / 2); ctx.fill();
+  ctx.fillStyle = C.hpTrack;
   ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill();
 
   const fw = w * p;
   if (fw > 0.5) {
     // กะพริบเฉพาะตอนใกล้หมด ให้รู้ตัวโดยไม่ต้องละสายตาจากตัวละคร
     ctx.globalAlpha = low ? 0.55 + Math.sin(game.tick * 0.28) * 0.45 : 1;
-    ctx.fillStyle = low ? C.danger : C.mint;
+
+    if (low) {
+      ctx.fillStyle = C.hpLow;
+    } else {
+      // ไล่สีตามความยาวน้ำที่เหลือจริง ไม่ใช่ตามความยาวขวด
+      // หลอดสั้นลงก็ยังเห็นส้ม→แดงครบ ไม่ใช่เหลือแต่ปลายส้มด้านเดียว
+      const g = ctx.createLinearGradient(x, 0, x + fw, 0);
+      g.addColorStop(0, C.hpWarm);
+      g.addColorStop(1, C.hpHot);
+      ctx.fillStyle = g;
+    }
+
     ctx.beginPath();
     ctx.roundRect(x, y, fw, h, Math.min(h / 2, fw / 2));
     ctx.fill();
 
-    // ไฮไลต์บนให้ดูเป็นหลอดแก้วแทนที่จะเป็นแถบแบน
-    if (fw > 10) {
-      ctx.globalAlpha *= 0.32;
+    // ไฮไลต์บนให้ดูเป็นแก้วมีน้ำอยู่ข้างใน แทนที่จะเป็นแถบแบน
+    if (fw > 14) {
+      ctx.globalAlpha *= 0.34;
       ctx.fillStyle = '#FFF';
       ctx.beginPath();
-      ctx.roundRect(x + 4, y + 3.5, fw - 8, 4, 2);
+      ctx.roundRect(x + 5, y + 4, fw - 10, 5, 2.5);
       ctx.fill();
     }
   }
+
+  ctx.globalAlpha = 1;
+  drawCatBadge(ctx, x - 10, y + h / 2, badgeR);
 
   ctx.restore();
 }

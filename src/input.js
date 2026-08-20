@@ -28,9 +28,19 @@ export function setupInput(stageEl, handlers) {
     if (SLIDE_KEYS.includes(e.code)) onSlideEnd();
   });
 
-  // แตะที่จอ = กระโดด (ยกเว้นตอนแตะบนแผงเมนูหรือปุ่มมือถือ)
+  // จอสัมผัสมีปุ่มกระโดด/หมอบลอยอยู่ในจอให้อยู่แล้ว จึงไม่รับการแตะที่พื้นจอ
+  // ไม่งั้นนิ้วที่วางพักไว้ หรือแตะเพื่อจะกดปุ่มอื่น กลายเป็นสั่งกระโดดทั้งหมด
+  //
+  // ใช้เงื่อนไขเดียวกับกฎที่โชว์ .touchpad ใน style.css เป๊ะ ๆ — ถ้าเครื่องไหน
+  // เห็นปุ่ม เครื่องนั้นต้องแตะพื้นจอไม่ได้ ทั้งสองอย่างจึงเปิดปิดพร้อมกันเสมอ
+  // เช็คตอนเกิดอีเวนต์ ไม่ใช่ตอนโหลด เผื่อเสียบเมาส์เข้ากับแท็บเล็ตกลางคัน
+  const touchpadShown = window.matchMedia('(hover: none) and (pointer: coarse)');
+
+  // .hud-top คือแถบทอง/ปุ่มหยุด/เสียง ที่ย้ายเข้ามาอยู่ในเวทีแล้ว
+  // ถ้าไม่กันไว้ คลิกปุ่มหยุดบนคอมจะเด้งขึ้นมาถึง stage แล้วสั่งกระโดดพ่วงไปด้วย
   stageEl.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.panel, .touchpad')) return;
+    if (touchpadShown.matches) return;
+    if (e.target.closest('.panel, .touchpad, .hud-top')) return;
     onConfirm();
   });
 

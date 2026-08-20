@@ -3,8 +3,8 @@ import './style.css';
 import { VIEW, SCORING } from './config.js';
 import { Game, STATE } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, toggleMute, sfx } from './audio.js';
-import { startMusic, setMusicMuted } from './music.js';
+import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
+import { startMusic } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
 import { STAGES, getStage, setStage } from './stages.js';
 import { RARITY, wearable, setOutfit, pullPool, ownedCount } from './outfits.js';
@@ -35,6 +35,8 @@ const skinPanel = document.getElementById('skinPanel');
 const stagePanel = document.getElementById('stagePanel');
 const outfitPanel = document.getElementById('outfitPanel');
 const gachaPanel = document.getElementById('gachaPanel');
+const rankPanel = document.getElementById('rankPanel');
+const settingsPanel = document.getElementById('settingsPanel');
 const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
@@ -87,11 +89,11 @@ function refreshHome() {
   document.getElementById('skinName').textContent = s.name;
   document.getElementById('outfitName').textContent = s.outfit.name;
   document.getElementById('stageName').textContent = st.name;
-  document.getElementById('homeBest').textContent = game.best.toLocaleString('en-US');
   paintMini(document.getElementById('skinIcon'), 76, (c) => drawCatFace(c, 38, 44, 1.8, s));
   // ไอคอนชุดใช้ตัวเต็ม ไม่ใช่แค่หัว เพราะเสื้อกับกระโปรงอยู่ที่ลำตัว
   paintMini(document.getElementById('outfitIcon'), 76, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
   paintStageScene(document.getElementById('stageIcon'), st, 210);
+  paintMini(document.getElementById('rankIcon'), 76, drawTrophy);
   paintBox(document.getElementById('gachaIcon'), 76, 76, (c) => {
     c.save(); c.scale(76 / 150, 76 / 170); drawGachaMachine(c); c.restore();
   });
@@ -380,6 +382,167 @@ function showGacha(on) {
   }
 }
 
+/** ถ้วยรางวัลบนแท่นสามขั้น ใช้เป็นไอคอนปุ่มอันดับ */
+function drawTrophy(c) {
+  c.fillStyle = '#FFC93C';
+  // ตัวถ้วย
+  c.beginPath();
+  c.moveTo(26, 16);
+  c.lineTo(50, 16);
+  c.quadraticCurveTo(48, 42, 38, 44);
+  c.quadraticCurveTo(28, 42, 26, 16);
+  c.fill();
+  // หูจับสองข้าง
+  c.strokeStyle = '#FFC93C';
+  c.lineWidth = 3.4;
+  c.beginPath(); c.arc(24, 23, 7, Math.PI * 0.55, Math.PI * 1.5); c.stroke();
+  c.beginPath(); c.arc(52, 23, 7, Math.PI * 1.5, Math.PI * 0.45); c.stroke();
+  // ก้านกับฐาน
+  c.fillStyle = '#E0A82A';
+  c.fillRect(35, 43, 6, 8);
+  c.beginPath(); c.roundRect(28, 50, 20, 5, 2); c.fill();
+  // แท่นสามขั้น บอกว่าเป็นเรื่องอันดับไม่ใช่แค่รางวัล
+  c.fillStyle = 'rgba(255,243,226,.5)';
+  c.beginPath(); c.roundRect(12, 62, 16, 8, 2); c.fill();
+  c.fillStyle = 'rgba(255,243,226,.8)';
+  c.beginPath(); c.roundRect(30, 57, 16, 13, 2); c.fill();
+  c.fillStyle = 'rgba(255,243,226,.35)';
+  c.beginPath(); c.roundRect(48, 65, 16, 5, 2); c.fill();
+}
+
+// ── กระดานคะแนน ────────────────────────────────────────────
+
+function rankNote(html) {
+  document.getElementById('rankList').innerHTML =
+    '<p class="rank-note">' + html + '</p>';
+}
+
+async function buildRank() {
+  const st = getStage();
+  document.getElementById('rankStage').textContent = st.name;
+  rankNote('กำลังโหลด…');
+
+  // นำเข้าแบบไดนามิก ไม่งั้น SDK ของ Supabase จะถูกมัดรวมมากับตัวเกม
+  // ทั้งที่คนไม่เปิดหน้านี้ก็ต้องโหลด
+  let mod;
+  try {
+    mod = await import('./net/cloud.js');
+  } catch {
+    rankNote('โหลดระบบอันดับไม่สำเร็จ');
+    return;
+  }
+
+  if (!mod.cloudReady) {
+    rankNote('ยังไม่ได้ต่อฐานข้อมูล<br>สถิติเก็บอยู่ในเครื่องนี้เท่านั้น');
+    return;
+  }
+
+  const rows = await mod.fetchLeaderboard(st.id, 20);
+  if (!rows.length) {
+    rankNote('ยังไม่มีใครทำคะแนนในด่านนี้<br>ไปเป็นคนแรกกันเถอะ!');
+    return;
+  }
+
+  const list = document.getElementById('rankList');
+  list.innerHTML = '';
+  rows.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'rank-row' + (i < 3 ? ' top' + (i + 1) : '');
+    row.innerHTML = '<span class="no"></span><span class="who"></span><span class="pts"></span>';
+    row.querySelector('.no').textContent = i + 1;
+    row.querySelector('.who').textContent = r.name || 'แมวนิรนาม';
+    row.querySelector('.pts').textContent = Number(r.score).toLocaleString('en-US');
+    list.appendChild(row);
+  });
+}
+
+const NAME_KEY = 'cookie-runner:name';
+
+/** ชื่อที่โชว์บนกระดาน เก็บสำเนาไว้ในเครื่องด้วย จะได้เติมช่องได้ทันทีไม่ต้องรอเน็ต */
+function localName() {
+  try {
+    return localStorage.getItem(NAME_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+async function saveName() {
+  const input = document.getElementById('rankName');
+  const name = input.value.trim().slice(0, 16);
+  if (!name) return;
+
+  try {
+    localStorage.setItem(NAME_KEY, name);
+  } catch {
+    /* เซฟในเครื่องไม่ได้ก็ยังส่งขึ้นคลาวด์ได้ */
+  }
+
+  const btn = document.getElementById('rankSave');
+  btn.disabled = true;
+  try {
+    const { pushName } = await import('./net/cloud.js');
+    await pushName(name);
+    await buildRank();       // อันดับต้องโชว์ชื่อใหม่ทันที ไม่ต้องกดกลับแล้วเข้าใหม่
+  } catch {
+    /* ต่อไม่ได้ก็ยังเก็บชื่อไว้ในเครื่อง เดี๋ยวคราวหน้าค่อยส่ง */
+  }
+  btn.disabled = false;
+}
+
+// ── ตั้งค่า ────────────────────────────────────────────────
+
+const VOL_STEP = 0.1;
+
+function drawVolume() {
+  const v = getVolume();
+  const lit = Math.round(v * 10);
+
+  const bar = document.getElementById('volBar');
+  if (bar.children.length !== 10) {
+    bar.innerHTML = '<i></i>'.repeat(10);
+  }
+  [...bar.children].forEach((el, i) => el.classList.toggle('on', i < lit));
+
+  document.getElementById('volNum').textContent = Math.round(v * 100) + '%';
+  // ปิดปุ่มที่กดไปก็ไม่มีอะไรเกิดขึ้น ดีกว่าปล่อยให้กดแล้วเงียบไม่รู้ว่าสุดแล้ว
+  document.getElementById('volDown').disabled = v <= 0;
+  document.getElementById('volUp').disabled = v >= 1;
+}
+
+function stepVolume(dir) {
+  setVolume(getVolume() + dir * VOL_STEP);
+  drawVolume();
+  // ให้ได้ยินระดับใหม่ทันทีตอนกด ไม่ต้องออกไปลองในเกมแล้วค่อยกลับมาปรับ
+  sfx.fish();
+}
+
+// จำว่าเปิดมาจากแผงไหน แล้วคืนกลับไปที่เดิมตอนกดกลับ
+// เข้าได้ทั้งจากหน้าแรกและจากหน้าหยุดชั่วคราวกลางรอบเล่น ซึ่งคนละที่กัน
+let settingsFrom = [];
+
+function showSettings(on) {
+  if (on) {
+    settingsFrom = [...document.querySelectorAll('.panel:not(.hidden)')];
+    settingsFrom.forEach((p) => p.classList.add('hidden'));
+    settingsPanel.classList.remove('hidden');
+    drawVolume();
+  } else {
+    settingsPanel.classList.add('hidden');
+    settingsFrom.forEach((p) => p.classList.remove('hidden'));
+    settingsFrom = [];
+  }
+}
+
+function showRank(on) {
+  rankPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (on) {
+    document.getElementById('rankName').value = localName();
+    buildRank();
+  }
+}
+
 function buildStageGrid() {
   const grid = document.getElementById('stageGrid');
   grid.innerHTML = '';
@@ -514,10 +677,13 @@ function goHome() {
   stagePanel.classList.add('hidden');
   outfitPanel.classList.add('hidden');
   gachaPanel.classList.add('hidden');
+  rankPanel.classList.add('hidden');
+  settingsPanel.classList.add('hidden');
+  settingsFrom = [];
   startPanel.classList.remove('hidden');
-  // คืนปุ่มบนแถบหัวเรื่องให้ตรงกับสถานะจริง ไม่งั้นถ้าเลิกเล่นตอนหยุดอยู่
-  // ปุ่มจะค้างเป็น "▶ เล่นต่อ" ทั้งที่ไม่มีรอบเล่นให้เล่นต่อแล้ว
-  pauseBtn.textContent = '⏸';
+  // คืนปุ่มบนแถบในจอให้ตรงกับสถานะจริง ไม่งั้นถ้าเลิกเล่นตอนหยุดอยู่
+  // ปุ่มจะค้างเป็นสามเหลี่ยม "เล่นต่อ" ทั้งที่ไม่มีรอบเล่นให้เล่นต่อแล้ว
+  pauseBtn.classList.remove('playing');
   pauseBtn.setAttribute('aria-label', 'หยุดชั่วคราว');
   refreshHome();
 }
@@ -553,6 +719,16 @@ document.getElementById('btnGacha').addEventListener('click', () => {
   showGacha(true);
 });
 document.getElementById('gachaBack').addEventListener('click', () => showGacha(false));
+document.getElementById('btnRank').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  showRank(true);
+});
+document.getElementById('rankBack').addEventListener('click', () => showRank(false));
+document.getElementById('rankSave').addEventListener('click', saveName);
+document.getElementById('rankName').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveName();
+  e.stopPropagation();   // กันไม่ให้ปุ่ม Space/ลูกศรตอนพิมพ์ไปสั่งกระโดด
+});
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
 document.getElementById('pull5').addEventListener('click', () => doPull(MULTI_PULLS));
 document.getElementById('homeBtn').addEventListener('click', goHome);
@@ -586,7 +762,10 @@ function startRun() {
   stagePanel.classList.add('hidden');
   outfitPanel.classList.add('hidden');
   gachaPanel.classList.add('hidden');
-  pauseBtn.textContent = '⏸';
+  rankPanel.classList.add('hidden');
+  settingsPanel.classList.add('hidden');
+  settingsFrom = [];
+  pauseBtn.classList.remove('playing');
 }
 
 // ── หยุด / เล่นต่อ ─────────────────────────────────────────
@@ -596,7 +775,7 @@ function setPaused(on) {
   // เช็คก่อนแตะ UI ไม่งั้นพาเนลกับสถานะเกมจะหลุดจากกัน
   if (on ? !game.pause() : !game.resume()) return;
   pausePanel.classList.toggle('hidden', !on);
-  pauseBtn.textContent = on ? '▶' : '⏸';
+  pauseBtn.classList.toggle('playing', on);
   pauseBtn.setAttribute('aria-label', on ? 'เล่นต่อ' : 'หยุดชั่วคราว');
 }
 
@@ -617,6 +796,8 @@ function confirm() {
   if (!stagePanel.classList.contains('hidden')) return;
   if (!outfitPanel.classList.contains('hidden')) return;
   if (!gachaPanel.classList.contains('hidden')) return;
+  if (!rankPanel.classList.contains('hidden')) return;
+  if (!settingsPanel.classList.contains('hidden')) return;
   if (game.state === STATE.READY) startRun();
   else if (!overPanel.classList.contains('hidden')) startRun();
 }
@@ -628,70 +809,55 @@ setupInput(document.getElementById('stage'), {
   onTogglePause: () => setPaused(game.state === STATE.RUN),
 });
 
-// ── เต็มจอ ─────────────────────────────────────────────────
-
-/** ข้อความสั้น ๆ ลอยขึ้นมาแล้วหายไปเอง */
-function toast(html, ms = 5200) {
-  document.querySelector('.toast')?.remove();
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.innerHTML = html;
-  document.body.appendChild(el);
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 320);
-  }, ms);
-}
-
-const fullBtn = document.getElementById('btnFull');
 const root = document.documentElement;
 
-// Safari รุ่นเก่ายังใช้ชื่อแบบมี webkit นำหน้า ต้องเช็คทั้งสองแบบ
-const canFull = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+// ── เต็มจอ + ล็อกแนวนอนอัตโนมัติ ─────────────────────────────
+//
+// ปุ่มเต็มจอถูกถอดออกแล้ว เกมพาตัวเองเข้าเต็มจอให้เลย แต่เบราว์เซอร์ทุกตัว
+// ยอมให้สั่งเต็มจอได้เฉพาะในจังหวะที่ผู้เล่นเพิ่งแตะจอเท่านั้น สั่งตอนโหลดหน้า
+// จะถูกปฏิเสธทุกครั้ง จึงต้องผูกไว้กับการแตะแทน
+//
+// ไม่ตั้งธง "ทำไปแล้ว" ค้างไว้ เพราะครั้งแรกอาจไม่สำเร็จ (ผู้ใช้กดปฏิเสธ หรือ
+// แตะโดนตรงที่เบราว์เซอร์ไม่นับเป็น gesture) ปล่อยให้ลองใหม่ทุกครั้งที่ยังไม่
+// เต็มจอ ซึ่งราคาถูกมากเพราะ isFull() ตัดจบให้ตั้งแต่บรรทัดแรก
+const coarse = window.matchMedia('(hover: none) and (pointer: coarse)');
 const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 
-function syncFullBtn() {
-  const on = isFull();
-  // ไม่เปลี่ยนสัญลักษณ์ เพราะตัวที่สื่อว่า 'ออกจากเต็มจอ' ไม่มีตัวไหน
-  // ที่ทุกฟอนต์บนมือถือรองรับแน่ ๆ ใช้ไฮไลต์บอกสถานะแทนซึ่งชัดกว่าและไม่พัง
-  fullBtn.classList.toggle('on', on);
-  fullBtn.setAttribute('aria-label', on ? 'ออกจากเต็มจอ' : 'เต็มจอ');
-}
+async function goImmersive() {
+  if (!coarse.matches) return;   // บนคอมย่อ/ขยายหน้าต่างเองได้อยู่แล้ว
 
-fullBtn.addEventListener('click', () => {
-  // iPhone ไม่รองรับ Fullscreen API เลย (iPad รองรับ) บอกทางที่ใช้ได้จริงแทน
-  // ดีกว่าซ่อนปุ่มทิ้ง เพราะผู้เล่นจะไม่มีทางรู้เลยว่าเล่นเต็มจอได้
-  if (!canFull) {
-    toast('เครื่องนี้เข้าเต็มจอจากปุ่มไม่ได้<br>' +
-      'กด <b>ปุ่มแชร์</b> ด้านล่าง แล้วเลือก <b>เพิ่มไปยังหน้าจอโฮม</b><br>' +
-      'เปิดจากไอคอนนั้นจะได้เต็มจอไม่มีแถบบัง');
-    return;
+  if (!isFull()) {
+    // Safari รุ่นเก่ายังใช้ชื่อแบบมี webkit นำหน้า
+    const req = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!req) return;            // iPhone ไม่มี API นี้เลย ป้ายขอให้หมุนจอรับช่วงต่อ
+    try {
+      await req.call(root);
+    } catch {
+      return;                    // ยังไม่ได้ ไว้แตะครั้งหน้าค่อยลองใหม่
+    }
   }
 
-  if (isFull()) {
-    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  } else {
-    (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+  // ล็อกแนวจอทำได้เฉพาะตอนอยู่เต็มจอแล้ว และมีแต่ Android ที่รองรับจริง
+  try {
+    await screen.orientation?.lock?.('landscape');
+  } catch {
+    /* iOS ไม่รองรับ / เครื่องล็อกแนวจอไว้เอง — ป้ายขอให้หมุนจอรับช่วงต่อ */
   }
-});
-
-// ผู้เล่นออกจากเต็มจอด้วยปุ่มย้อนกลับหรือปัดจอได้ ไอคอนต้องตามสถานะจริง
-for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
-  document.addEventListener(ev, syncFullBtn);
 }
-syncFullBtn();
+
+document.addEventListener('pointerdown', goImmersive);
 
 document.getElementById('startBtn').addEventListener('click', startRun);
 document.getElementById('retryBtn').addEventListener('click', startRun);
 
 // ปุ่มปิด/เปิดเสียง
-const muteBtn = document.getElementById('btnMute');
-muteBtn.addEventListener('click', () => {
-  const muted = toggleMute();
-  setMusicMuted(muted);   // เสียงเอฟเฟกต์เช็ค flag เอง แต่เพลงต้องสั่งหรี่โดยตรง
-  muteBtn.textContent = muted ? '🔇' : '🔊';
-  muteBtn.setAttribute('aria-label', muted ? 'เปิดเสียง' : 'ปิดเสียง');
+document.getElementById('btnSettings').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  showSettings(true);
 });
+document.getElementById('settingsBack').addEventListener('click', () => showSettings(false));
+document.getElementById('volDown').addEventListener('click', () => stepVolume(-1));
+document.getElementById('volUp').addEventListener('click', () => stepVolume(1));
 
 // ── ลูปหลัก ────────────────────────────────────────────────
 

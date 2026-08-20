@@ -6,11 +6,65 @@
 //   dur   — สั้นลง = กระชับขึ้น
 
 let ac = null;
-let muted = false;
+let bus = null;
+
+// ระดับเสียงรวม 0–1 เก็บไว้ในเครื่องอย่างเดียว ไม่ซิงก์ขึ้นคลาวด์
+// เพราะเป็นค่าของ "เครื่องนี้" ไม่ใช่ของผู้เล่น — ต่อหูฟังกับเปิดลำโพงคนละระดับกัน
+const VOL_KEY = 'cookie-runner:vol';
+const VOL_DEFAULT = 0.8;   // เว้นหัวไว้ให้เพิ่มได้ ไม่ใช่เปิดมาสุดแล้วปุ่ม + กดไม่ขึ้น
+
+let volume = (() => {
+  try {
+    const raw = localStorage.getItem(VOL_KEY);
+    // ต้องเช็ค null ก่อนแปลงเป็นตัวเลข — Number(null) ได้ 0 ซึ่งผ่านทุกเงื่อนไข
+    // ข้างล่างหมด กลายเป็นว่าคนเปิดเกมครั้งแรกเจอเกมเงียบสนิทโดยไม่รู้สาเหตุ
+    if (raw === null || raw === "") return VOL_DEFAULT;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : VOL_DEFAULT;
+  } catch {
+    return VOL_DEFAULT;   // โหมดส่วนตัวอ่านไม่ได้
+  }
+})();
 
 function ctx() {
   if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
   return ac;
+}
+
+/**
+ * ทางออกเสียงเดียวของทั้งเกม — ทั้งเอฟเฟกต์และเพลงต้องต่อผ่านตัวนี้
+ *
+ * เดิมทุกเสียงต่อเข้า destination ตรง ๆ แล้วใช้ธง muted เช็คทีละจุด
+ * ซึ่งปรับระดับเสียงไม่ได้เลย ทำได้แค่เปิดกับปิด พอมีปมรวมจุดเดียวแล้ว
+ * ระดับเสียงกลายเป็นตัวเลขตัวเดียว และ "ปิดเสียง" ก็คือระดับ 0 ไม่ต้องมีธงแยก
+ */
+export function audioOut() {
+  const a = ctx();
+  if (!bus) {
+    bus = a.createGain();
+    bus.gain.value = volume;
+    bus.connect(a.destination);
+  }
+  return bus;
+}
+
+export function getVolume() {
+  return volume;
+}
+
+/** คืนค่าที่ตั้งได้จริงหลังตัดให้อยู่ในช่วง 0–1 */
+export function setVolume(v) {
+  volume = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+  try {
+    localStorage.setItem(VOL_KEY, String(volume));
+  } catch {
+    /* เซฟไม่ได้ก็ยังใช้ได้ในรอบนี้ */
+  }
+  if (bus) {
+    // ไล่ไปหาค่าใหม่แทนการกระโดด ไม่งั้นได้เสียง "ป๊อก" ทุกครั้งที่กดปุ่ม
+    bus.gain.setTargetAtTime(volume, ctx().currentTime, 0.03);
+  }
+  return volume;
 }
 
 /**
@@ -22,22 +76,13 @@ export function unlockAudio() {
   if (a.state === 'suspended') a.resume();
 }
 
-export function toggleMute() {
-  muted = !muted;
-  return muted;
-}
-
-export function isMuted() {
-  return muted;
-}
-
 /** ให้โมดูลเพลงใช้ context เดียวกัน ไม่งั้นจะได้ AudioContext ซ้อนสองตัว */
 export function audioCtx() {
   return ctx();
 }
 
 function tone(from, to, dur, type = 'square', vol = 0.12) {
-  if (muted) return;
+  if (volume <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -53,7 +98,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);  // fade out กันเสียง "ป๊อก"
 
   osc.connect(gain);
-  gain.connect(a.destination);
+  gain.connect(audioOut());
   osc.start(t);
   osc.stop(t + dur + 0.02);
 }
@@ -70,7 +115,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
  * ยิ่ง end ต่ำกว่า start มาก ยิ่งฟังอ้อน ๆ น่าสงสาร
  */
 function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
-  if (muted) return;
+  if (volume <= 0) return;
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -104,7 +149,7 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
 
   osc.connect(filt);
   filt.connect(gain);
-  gain.connect(a.destination);
+  gain.connect(audioOut());
 
   osc.start(t);
   lfo.start(t);
