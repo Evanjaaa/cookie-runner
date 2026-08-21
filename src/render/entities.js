@@ -1357,7 +1357,7 @@ const IDLE_SHAPE = {
   stand: {},
   yawn: { mouth: 1, shut: 1, tilt: -0.1 },
   sit: { sit: 1 },
-  groom: { sit: 1, paw: 1, tilt: 0.16 },
+  groom: { sit: 1, paw: 1, tilt: 0.16, lick: 1 },
   loaf: { loaf: 1, shut: 1 },
 };
 
@@ -1368,7 +1368,13 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const sit = (shape.sit || 0) * k;
   const loaf = (shape.loaf || 0) * k;
   const paw = (shape.paw || 0) * k;
-  const tilt = (shape.tilt || 0) * k;
+
+  // จังหวะเลีย — หัวก้มลงหาเท้าแล้วเงยขึ้น วนราวสองครั้งต่อวินาที
+  //
+  // ท่าอื่นเป็นท่า "พัก" ยกค้างไว้เฉย ๆ ก็ยังอ่านออกว่ากำลังพักอยู่
+  // แต่ท่านี้เป็นท่า "กำลังทำอะไรอยู่" ถ้าไม่ขยับเลยมันจะอ่านเป็นภาพค้างทันที
+  const lick = shape.lick ? Math.sin(t * 0.22) * k : 0;
+  const tilt = (shape.tilt || 0) * k + lick * 0.05;
   const mouth = (shape.mouth || 0) * k;
   const shut = (shape.shut || 0) * k;
 
@@ -1388,6 +1394,7 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
     loaf,
     paw,
     tilt,
+    lick,
   });
   ctx.restore();
 }
@@ -1404,7 +1411,7 @@ export function drawCatFace(ctx, x, y, scale, s) {
 
 function drawCatStand(ctx, s, {
   swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
-  sit = 0, loaf = 0, paw = 0, tilt = 0,
+  sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0,
 } = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
@@ -1535,12 +1542,16 @@ function drawCatStand(ctx, s, {
     ctx.strokeStyle = s.dark;
     ctx.lineWidth = 6;
     ctx.lineCap = 'round';
+    // ปลายเท้าขยับสวนทางกับหัวเล็กน้อย จึงดูเหมือนเลียไปมาจริง ๆ
+    // ถ้าขยับทางเดียวกันทั้งคู่ มันจะอ่านเป็น "ทั้งตัวสั่น" แทน
+    const px = hx + 5 - lick * 1.2;
+    const py = hy + 7 - lick * 2.6;
     ctx.beginPath();
     ctx.moveTo(7, cy + 6);
-    ctx.quadraticCurveTo(11, cy - 1, hx + 5, hy + 7);
+    ctx.quadraticCurveTo(11, cy - 1, px, py);
     ctx.stroke();
     ctx.fillStyle = s.cream;
-    ctx.beginPath(); ctx.arc(hx + 5, hy + 7, 3.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, 3.8, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 }
