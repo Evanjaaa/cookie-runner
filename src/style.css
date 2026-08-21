@@ -820,6 +820,68 @@ canvas { display: block; width: 100%; height: auto; }
    จะโชว์ภาพปราสาทแปะอยู่ข้างฉากในเกม ซึ่งอ่านเป็นภาพหลุด ไม่ใช่การตกแต่ง */
 .stage:not(:has(.panel:not(.hidden))) { background-image: none; }
 
+/* ฉากห้องก่อนเริ่มวิ่ง — สลับแค่ "ภาพพื้นหลังของเวที" ไม่ได้วาดห้องลง canvas
+   ตัวแมวจึงยังเป็นตัวเดิมที่วาดบน canvas เหมือนหน้าแรกทุกอย่าง
+   และได้ความคมระดับเดียวกับฉากหน้าแรกฟรี ๆ (ดูเหตุผลที่ .stage ข้างบน) */
+.stage:has(#introPanel:not(.hidden)) { background-image: url('/room-bg.jpg'); }
+
+/* ── กล่องคำพูดของน้อง ───────────────────────
+   แผงนี้ต้องโปร่ง ไม่งั้นมันจะบังตัวแมวที่วาดอยู่บน canvas ข้างหลัง */
+#introPanel {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  display: block;
+  padding: 0;
+}
+#introPanel::before { display: none; }   /* ไม่เอาการ์ดของแผงทั่วไป */
+
+.intro-bubble {
+  position: absolute;
+  /* วางให้หางกล่องจบเหนือหูน้องพอดี — น้องยืนกลางจอ หัวอยู่ราว 50% ของความสูง
+     ถ้าลอยสูงกว่านี้ หางจะชี้ไปที่อากาศ อ่านไม่ออกว่าใครพูด */
+  left: 53%;
+  top: 35%;
+  max-width: 38%;
+  padding: clamp(8px, 1.8dvh, 16px) clamp(12px, 2.4vw, 22px);
+  border-radius: 18px;
+  background: rgba(255,246,230,.97);
+  color: #4A2B12;
+  font-size: clamp(11px, 2.1dvh, 19px);
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  animation: bubblePop .32s cubic-bezier(.2,.85,.3,1.3) backwards;
+}
+/* หางกล่องชี้ลงซ้ายไปหาตัวแมวที่ยืนอยู่กลางจอ */
+.intro-bubble::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: -11px;
+  border: 12px solid transparent;
+  border-top-color: rgba(255,246,230,.97);
+  border-bottom: 0;
+}
+@keyframes bubblePop {
+  from { opacity: 0; transform: scale(.8) translateY(8px); }
+}
+
+.intro-skip {
+  position: absolute;
+  right: 4%;
+  bottom: 6%;
+  font-size: clamp(9px, 1.5dvh, 13px);
+  color: rgba(255,243,226,.75);
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-bubble { animation: none; }
+}
+
 /* ── บังคับแนวนอนบนจอสัมผัส ───────────────────
    Android ล็อกแนวจอได้จริงผ่าน screen.orientation.lock() ใน main.js
    แต่ Safari บน iPhone ไม่มี API นั้นเลย ป้ายนี้คือทางเดียวที่เหลือ

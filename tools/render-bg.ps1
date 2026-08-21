@@ -14,8 +14,8 @@
 # ใหญ่กว่า 1920x840 ก็ไม่ได้ประโยชน์ เพราะ fitDPR() ตัดเพดานที่ 2 เท่าอยู่ดี
 # แถมเบราว์เซอร์ต้องย่อให้ใหม่ทุกเฟรม ตอนนี้พอดีเป๊ะ drawImage จึงเป็นการก๊อปพิกเซลตรง ๆ
 #
-# ต้นฉบับอยู่นอก public/ ตั้งใจ ไม่งั้นมันจะติดไปกับ dist/ ทั้ง 2.9MB โดยไม่มีใครเรียก
-# เปลี่ยนฉากหลัง: วางไฟล์ใหม่ใน tools/ แล้วแก้ $SRC_NAME บรรทัดล่างนี้ จากนั้นรัน npm run assets
+# ต้นฉบับอยู่นอก public/ ตั้งใจ ไม่งั้นมันจะติดไปกับ dist/ ทั้งก้อนโดยไม่มีใครเรียก
+# เปลี่ยนฉากหลัง: วางไฟล์ใหม่ใน tools/ แล้วแก้ตาราง $SCENES ข้างล่าง จากนั้นรัน npm run assets
 #
 #   powershell -File tools/render-bg.ps1
 # -------------------------------------------------------------
@@ -35,56 +35,65 @@ $OUT_H = 1232
 # ของ canvas พอดี เพราะน้องยืนเท้าติดเส้นนั้นตายตัว (GROUND_Y ใน config.js)
 # เลื่อนขึ้นแล้วแมวจะลอย เลื่อนลงแล้วจะจมหายเข้าไปในพื้น
 #
-# 0.58 วัดจากของจริงแล้วเท้าลงกลางพรมพอดี และยังเห็นปราสาทกับท้องฟ้าครบ
 # วิธีวัด: scratchpad/tryfocus.ps1 เรนเดอร์หลายค่าแล้ววาดกรอบขนาดตัวแมวทับให้ดู
-$FOCUS = 0.58
+#
+# ฉากหลังทุกอันในเกมอยู่ในตารางนี้ ทุกอันมีน้องแมวยืนอยู่ตรงกลางเหมือนกัน
+# จึงต้องจูน focus แยกกันให้พื้นของแต่ละภาพมาอยู่ที่เส้นเท้าเดียวกัน
+$SCENES = @(
+  @{ src = 'BG_meowsing5.jpg';    out = 'home-bg.jpg'; focus = 0.58 },   # หน้าแรก — เท้าลงกลางพรมหน้าปราสาท
+  @{ src = 'BG_meowsingroom.jpg'; out = 'room-bg.jpg'; focus = 1.00 }    # ฉากห้องก่อนเริ่มวิ่ง — เท้าลงบนพรมหัวใจ
+)
 
-$src = New-Object System.Windows.Media.Imaging.BitmapImage
-$src.BeginInit()
-$src.UriSource = New-Object System.Uri($srcPath)
-$src.CacheOption = 'OnLoad'
-$src.EndInit()
-$src.Freeze()
+foreach ($scene in $SCENES) {
+  $srcPath = Join-Path $root ("tools\\" + $scene.src)
+  if (-not (Test-Path $srcPath)) { throw "ไม่พบไฟล์ต้นฉบับ: $srcPath" }
 
-$sw = [double]$src.PixelWidth
-$sh = [double]$src.PixelHeight
-$target = $OUT_W / $OUT_H
+  $src = New-Object System.Windows.Media.Imaging.BitmapImage
+  $src.BeginInit()
+  $src.UriSource = New-Object System.Uri($srcPath)
+  $src.CacheOption = "OnLoad"
+  $src.EndInit()
+  $src.Freeze()
 
-# ครอบเต็มกรอบ (cover) — ตัดด้านที่ยาวเกิน ไม่ใช่บีบภาพให้เพี้ยน
-if ($sw / $sh -gt $target) {
-  $cropH = $sh
-  $cropW = $sh * $target
-} else {
-  $cropW = $sw
-  $cropH = $sw / $target
+  $sw = [double]$src.PixelWidth
+  $sh = [double]$src.PixelHeight
+  $target = $OUT_W / $OUT_H
+
+  # ครอบเต็มกรอบ (cover) — ตัดด้านที่ยาวเกิน ไม่ใช่บีบภาพให้เพี้ยน
+  if ($sw / $sh -gt $target) {
+    $cropH = $sh
+    $cropW = $sh * $target
+  } else {
+    $cropW = $sw
+    $cropH = $sw / $target
+  }
+  $cropX = ($sw - $cropW) / 2
+  $cropY = ($sh - $cropH) * [double]$scene.focus
+
+  $crop = New-Object System.Windows.Media.Imaging.CroppedBitmap(
+    $src, (New-Object System.Windows.Int32Rect([int]$cropX, [int]$cropY, [int]$cropW, [int]$cropH)))
+
+  $visual = New-Object System.Windows.Media.DrawingVisual
+  [System.Windows.Media.RenderOptions]::SetBitmapScalingMode(
+    $visual, [System.Windows.Media.BitmapScalingMode]::HighQuality)
+  $dc = $visual.RenderOpen()
+  $dc.DrawImage($crop, (New-Object System.Windows.Rect(0, 0, $OUT_W, $OUT_H)))
+  $dc.Close()
+
+  $bmp = New-Object System.Windows.Media.Imaging.RenderTargetBitmap(
+    $OUT_W, $OUT_H, 96, 96, [System.Windows.Media.PixelFormats]::Pbgra32)
+  $bmp.Render($visual)
+
+  # JPEG ไม่ใช่ PNG — ภาพวาดไล่สีแบบนี้ PNG จะใหญ่กว่าหลายเท่าโดยตาดูไม่ออกว่าต่างกัน
+  $enc = New-Object System.Windows.Media.Imaging.JpegBitmapEncoder
+  $enc.QualityLevel = 80
+  $enc.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create($bmp))
+  $out = Join-Path $root ("public\\" + $scene.out)
+  $fs = [System.IO.File]::Create($out)
+  $enc.Save($fs)
+  $fs.Close()
+
+  $kb = [math]::Round((Get-Item $out).Length / 1KB)
+  Write-Output ("  {0} -> {1}  {2}x{3} focus {4}  {5} KB" -f
+    $scene.src, $scene.out, $OUT_W, $OUT_H, $scene.focus, $kb)
 }
-$cropX = ($sw - $cropW) / 2
-$cropY = ($sh - $cropH) * $FOCUS
-Write-Output ("ต้นฉบับ {0}x{1} → ตัดเอา {2}x{3} ที่ ({4},{5})" -f
-  $sw, $sh, [int]$cropW, [int]$cropH, [int]$cropX, [int]$cropY)
-
-$crop = New-Object System.Windows.Media.Imaging.CroppedBitmap(
-  $src, (New-Object System.Windows.Int32Rect([int]$cropX, [int]$cropY, [int]$cropW, [int]$cropH)))
-
-$visual = New-Object System.Windows.Media.DrawingVisual
-[System.Windows.Media.RenderOptions]::SetBitmapScalingMode(
-  $visual, [System.Windows.Media.BitmapScalingMode]::HighQuality)
-$dc = $visual.RenderOpen()
-$dc.DrawImage($crop, (New-Object System.Windows.Rect(0, 0, $OUT_W, $OUT_H)))
-$dc.Close()
-
-$bmp = New-Object System.Windows.Media.Imaging.RenderTargetBitmap(
-  $OUT_W, $OUT_H, 96, 96, [System.Windows.Media.PixelFormats]::Pbgra32)
-$bmp.Render($visual)
-
-# JPEG ไม่ใช่ PNG — ภาพวาดไล่สีแบบนี้ PNG จะใหญ่กว่าหลายเท่าโดยตาดูไม่ออกว่าต่างกัน
-$enc = New-Object System.Windows.Media.Imaging.JpegBitmapEncoder
-$enc.QualityLevel = 80   # ที่ 1920 กว้าง คุณภาพ 84 ตาดูไม่ออกว่าต่างจาก 95 แต่ไฟล์เล็กกว่าครึ่ง
-$enc.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create($bmp))
-$out = Join-Path $root 'public\home-bg.jpg'
-$fs = [System.IO.File]::Create($out)
-$enc.Save($fs)
-$fs.Close()
-
-$kb = [math]::Round((Get-Item $out).Length / 1KB)
-Write-Output ("เขียน public/home-bg.jpg {0}x{1} — {2} KB" -f $OUT_W, $OUT_H, $kb)

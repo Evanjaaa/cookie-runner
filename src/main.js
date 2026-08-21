@@ -55,6 +55,7 @@ const outfitPanel = document.getElementById('outfitPanel');
 const gachaPanel = document.getElementById('gachaPanel');
 const rankPanel = document.getElementById('rankPanel');
 const settingsPanel = document.getElementById('settingsPanel');
+const introPanel = document.getElementById('introPanel');
 const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
@@ -835,6 +836,8 @@ function showOutfits(on) {
 }
 
 function goHome() {
+  clearTimeout(introTimer);   // เผลอกดกลับกลางฉากห้อง เกมต้องไม่เริ่มเองทีหลัง
+  game.inRoom = false;
   game.reset();   // กลับสู่สถานะ READY ฉากหน้าแรกจึงถูกวาดแทนฉากเล่น
   overPanel.classList.add('hidden');
   pausePanel.classList.add('hidden');
@@ -935,20 +938,76 @@ function showGameOver() {
   overPanel.classList.remove('hidden');
 }
 
-function startRun() {
+// ── ฉากห้องก่อนเริ่มวิ่ง ────────────────────────────────────
+//
+// กดเล่นแล้วไม่เข้าเกมทันที — น้องยืนพูดอะไรสักอย่างในห้องก่อนสามวินาที
+// แล้วค่อยเริ่มวิ่ง เหมือนจังหวะก่อนออกตัวของเกมวิ่งทั่วไป
+const INTRO_MS = 3000;
+
+/** คำพูดของน้อง สุ่มมาตาละประโยค */
+const INTRO_LINES = [
+  'หนูหิวเเล้ว...เก็บค่าเปียกให้หนูเยอะๆนะ >.<',
+  'อาหารเม็ดก็อร่อยนะเเต่เปียกอร่อยกว่าง่ะ',
+  'ทำไมมนุดต้องทำให้เเมวอย่างพวกเราอ้วนด้วยนะ',
+  'อยากกินปลาจางง่ะ นุดดด',
+  'อยากจกพุงเรามั้ยนุด',
+  'วันนี้หนูยังไม่ได้กินขนมเลยนะ...หรือว่ากินไปแล้วหว่าา',
+  'หนูไม่ได้อ้วนซะหน่อย...แค่ขนฟูไปนิดเดียวเองงง >w<',
+  'นุดรักหนูที่สุดใช่ม้ายย ถ้ารักก็เอาเปียกมาเลยยย!',
+];
+
+// จำประโยคล่าสุดไว้ เพื่อไม่ให้สุ่มได้ตัวเดิมซ้ำติดกัน
+// สุ่มล้วน ๆ มีโอกาส 1 ใน 8 ที่จะซ้ำ ซึ่งพอเจอจริงจะรู้สึกเหมือนระบบสุ่มเสีย
+let lastLine = -1;
+let introTimer = null;
+
+function pickLine() {
+  let i = Math.floor(Math.random() * INTRO_LINES.length);
+  if (i === lastLine) i = (i + 1) % INTRO_LINES.length;
+  lastLine = i;
+  return INTRO_LINES[i];
+}
+
+function showIntro() {
   unlockAudio();   // ต้องเรียกตอนผู้ใช้กดปุ่ม ไม่งั้นเบราว์เซอร์บล็อกเสียง
   startMusic();    // ต้องอยู่หลัง unlockAudio เพราะ context ยังถูกระงับอยู่ก่อนหน้านั้น
-  game.start();
-  startPanel.classList.add('hidden');
-  overPanel.classList.add('hidden');
-  pausePanel.classList.add('hidden');
-  skinPanel.classList.add('hidden');
-  stagePanel.classList.add('hidden');
-  outfitPanel.classList.add('hidden');
-  gachaPanel.classList.add('hidden');
-  rankPanel.classList.add('hidden');
-  settingsPanel.classList.add('hidden');
+
+  closeAllPanels();
+  game.reset();          // กลับไปสถานะ READY ตัวแมวจะได้ยืนรอไม่ใช่วิ่งอยู่
+  game.inRoom = true;
+  introPanel.classList.remove('hidden');
+  document.getElementById('introLine').textContent = pickLine();
+  sfx.jump();            // เสียงร้องทักทายให้รู้ว่าน้องกำลังพูด
+
+  clearTimeout(introTimer);
+  introTimer = setTimeout(startRun, INTRO_MS);
+}
+
+/** ข้ามฉากห้องไปเริ่มวิ่งเลย — คนเล่นซ้ำ ๆ ไม่ต้องรอสามวินาทีทุกรอบ */
+function skipIntro() {
+  if (introPanel.classList.contains('hidden')) return;
+  clearTimeout(introTimer);
+  startRun();
+}
+
+/**
+ * ปิดแผงทุกอันในเวที
+ *
+ * ไล่จาก DOM ไม่ใช่ไล่ชื่อตัวแปร — แผงที่เพิ่มทีหลังจึงถูกปิดด้วยเองอัตโนมัติ
+ * ของเดิมเขียนรายชื่อไว้สามที่ในไฟล์ ทุกครั้งที่เพิ่มแผงต้องไปเติมให้ครบทั้งสาม
+ */
+function closeAllPanels() {
+  document.querySelectorAll('.stage .panel').forEach((el) => el.classList.add('hidden'));
   settingsFrom = [];
+}
+
+function startRun() {
+  clearTimeout(introTimer);
+  game.inRoom = false;
+  unlockAudio();
+  startMusic();
+  game.start();
+  closeAllPanels();
   pauseBtn.classList.remove('playing');
 }
 
@@ -965,7 +1024,7 @@ function setPaused(on) {
 
 pauseBtn.addEventListener('click', () => setPaused(game.state === STATE.RUN));
 document.getElementById('resumeBtn').addEventListener('click', () => setPaused(false));
-document.getElementById('restartBtn').addEventListener('click', startRun);
+document.getElementById('restartBtn').addEventListener('click', showIntro);
 
 // สลับแท็บหรือสลับแอปแล้วหยุดให้เอง จะได้ไม่กลับมาเจอว่าตายไปแล้ว
 document.addEventListener('visibilitychange', () => {
@@ -975,6 +1034,8 @@ document.addEventListener('visibilitychange', () => {
 // ปุ่มเดียวทำได้ 3 อย่าง ขึ้นกับสถานะเกม
 function confirm() {
   if (game.state === STATE.RUN) return game.jump();
+  // อยู่ในฉากห้อง: กดอะไรก็ข้ามไปเริ่มวิ่ง ไม่ใช่สั่งเริ่มซ้อนอีกรอบ
+  if (!introPanel.classList.contains('hidden')) return skipIntro();
   // อยู่ในหน้าเลือกตัวละคร: กด Space ต้องไม่กระโดดข้ามไปเริ่มเกม
   if (!skinPanel.classList.contains('hidden')) return;
   if (!stagePanel.classList.contains('hidden')) return;
@@ -982,8 +1043,8 @@ function confirm() {
   if (!gachaPanel.classList.contains('hidden')) return;
   if (!rankPanel.classList.contains('hidden')) return;
   if (!settingsPanel.classList.contains('hidden')) return;
-  if (game.state === STATE.READY) startRun();
-  else if (!overPanel.classList.contains('hidden')) startRun();
+  if (game.state === STATE.READY) showIntro();
+  else if (!overPanel.classList.contains('hidden')) showIntro();
 }
 
 setupInput(document.getElementById('stage'), {
@@ -1036,8 +1097,12 @@ async function goImmersive() {
 
 document.addEventListener('pointerdown', goImmersive);
 
-document.getElementById('startBtn').addEventListener('click', startRun);
-document.getElementById('retryBtn').addEventListener('click', startRun);
+document.getElementById('startBtn').addEventListener('click', showIntro);
+document.getElementById('retryBtn').addEventListener('click', showIntro);
+
+// แตะที่ไหนก็ได้ตอนอยู่ในห้อง = ข้ามไปเริ่มวิ่งเลย
+// ผูกที่ตัวแผงเอง ไม่ใช่ทั้งจอ จะได้ไม่ไปกินการแตะของหน้าอื่น
+introPanel.addEventListener('pointerdown', skipIntro);
 
 // ปุ่มปิด/เปิดเสียง
 document.getElementById('btnSettings').addEventListener('click', () => {

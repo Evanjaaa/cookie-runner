@@ -158,6 +158,10 @@ export class Game {
     this.idleAt = 0;      // ท่าถัดไปในตาราง
     this.idleWait = 0;    // ยืนเฉย ๆ มากี่เฟรมแล้ว
     this.idleT = -1;      // เฟรมในท่าปัจจุบัน (-1 = ยังไม่ได้ทำท่าอะไร)
+
+    // ฉากห้องก่อนเริ่มวิ่ง — เป็นแค่ "โหมดวาด" ไม่ใช่สถานะเกม
+    // สถานะยังเป็น READY อยู่ ระบบหยุด/นับคะแนน/อินพุตจึงไม่ต้องรู้จักมันเลย
+    this.inRoom = false;
   }
 
   /**
@@ -1045,7 +1049,7 @@ export class Game {
   // ── ลูปวาด ─────────────────────────────────────────────────
 
   draw(ctx) {
-    if (this.state === STATE.READY) return this.drawHome(ctx);
+    if (this.state === STATE.READY) return this.inRoom ? this.drawRoom(ctx) : this.drawHome(ctx);
     if (this.bonus > 0) return this.drawBonus(ctx);
 
     ctx.save();
@@ -1134,6 +1138,43 @@ export class Game {
     // นุ่มขึ้นด้วย smoothstep — เข้า-ออกแบบเส้นตรงจะเห็นหัวท้ายกระตุกเป็นจังหวะ
     const e = Math.max(0, Math.min(1, k));
     return { pose: act.pose, k: e * e * (3 - 2 * e) };
+  }
+
+  /**
+   * ฉากห้องก่อนเริ่มวิ่ง — น้องยืนอยู่กลางห้องรอพูดจบ
+   *
+   * ภาพห้องเป็น background ของ .stage ที่ CSS สลับให้ (ดู .stage:has(#introPanel...))
+   * ตรงนี้จึงล้าง canvas ให้โปร่งแล้ววาดแค่ตัวแมว เหมือนที่หน้าแรกทำ
+   * ต่างกันแค่ไม่มีของกินลอยรอบตัวกับไม่มีท่าว่าง — ฉากนี้สั้นแค่สามวินาที
+   * ถ้าใส่ท่าว่างเข้าไปด้วยจะได้แค่ท่าที่ทำค้างไว้ครึ่งเดียวแล้วตัดจบ
+   */
+  drawRoom(ctx) {
+    const t = this.homeTick;
+    const x = VIEW.W * 0.5;
+
+    ctx.clearRect(0, 0, VIEW.W, VIEW.H);
+
+    // หรี่บาง ๆ ให้กล่องคำพูดสีครีมกับตัวแมวเด้งออกจากห้องที่สีอุ่นใกล้กัน
+    ctx.fillStyle = 'rgba(24,10,38,.14)';
+    ctx.fillRect(0, 0, VIEW.W, VIEW.H);
+
+    // สปอตไลต์ใต้เท้า ดันตัวละครให้เด่นออกจากพรม
+    const glow = ctx.createRadialGradient(x, GROUND_Y - 40, 10, x, GROUND_Y - 40, 165);
+    glow.addColorStop(0, 'rgba(255,214,150,.26)');
+    glow.addColorStop(1, 'rgba(255,214,150,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - 180, GROUND_Y - 215, 360, 275);
+
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(x, GROUND_Y + 5, 44 - Math.sin(t * 0.045) * 2.5, 8.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t);
+    postProcess(ctx, { edges: false });
   }
 
   drawHome(ctx) {
