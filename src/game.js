@@ -74,6 +74,25 @@ export function buildBonusMagnets(catX, span, speed) {
   return out;
 }
 
+/**
+ * ท่าว่างของแมวหน้าแรก — ยืนเฉย ๆ ครบ IDLE_GAP แล้วทำท่าหนึ่งท่า วนไปเรื่อย ๆ
+ *
+ * เรียงตามลำดับ ไม่สุ่ม เพราะสุ่มแล้วมีโอกาสออกท่าเดิมซ้ำติดกัน
+ * ซึ่งอ่านเป็น "ค้าง" ไม่ใช่ "ทำท่า" ส่วนการวนตามลำดับรับประกันว่าเห็นครบทุกท่า
+ *
+ * hold นับรวมช่วงเปลี่ยนท่าเข้า-ออกด้วย จึงต้องมากกว่า IDLE_EASE * 2 เสมอ
+ * ไม่งั้นท่าจะยังไม่ทันเข้าเต็มที่ก็ต้องคลายกลับแล้ว
+ */
+const IDLE_GAP = 180;    // 3 วินาทีที่ยืนเฉย ๆ ก่อนจะทำท่าถัดไป
+const IDLE_EASE = 26;    // เฟรมที่ใช้ค่อย ๆ เข้าและออกจากท่า
+const IDLE_HOLD = 300;   // ค้างท่าละ 5 วินาที (รวมช่วงเข้า-ออกแล้ว)
+const IDLE_ACTS = [
+  { pose: 'yawn', hold: IDLE_HOLD },    // หาว
+  { pose: 'sit', hold: IDLE_HOLD },     // นั่ง
+  { pose: 'groom', hold: IDLE_HOLD },   // นั่งเลียอุ้งเท้า
+  { pose: 'loaf', hold: IDLE_HOLD },    // หมอบเป็นก้อนขนมปัง
+];
+
 /** ของกินตกแต่งบนหน้าแรก พิกัดวัดจากเท้าตัวละคร (dx ไปขวา, dy ขึ้นบนเป็นลบ) */
 const HOME_DECO = [
   { dx: -180, dy: -62 },
@@ -131,6 +150,12 @@ export class Game {
     // นาฬิกาของหน้าแรกโดยเฉพาะ แยกจาก tick ของรอบเล่น
     // เพราะ tick หยุดเดินตอนไม่ได้อยู่ในสถานะ RUN แต่แมวหน้าแรกต้องขยับตลอด
     this.homeTick = 0;
+
+    // คิวท่าว่าง — อยู่ในตัว Game ไม่ใช่ในฟังก์ชันวาด เพราะมันคือ "สถานะ"
+    // ที่ต้องเดินต่อทุกเฟรม ส่วนฟังก์ชันวาดควรอ่านอย่างเดียวไม่จำอะไร
+    this.idleAt = 0;      // ท่าถัดไปในตาราง
+    this.idleWait = 0;    // ยืนเฉย ๆ มากี่เฟรมแล้ว
+    this.idleT = -1;      // เฟรมในท่าปัจจุบัน (-1 = ยังไม่ได้ทำท่าอะไร)
   }
 
   /**
@@ -230,6 +255,10 @@ export class Game {
     this.hurtFlash = 0;
     this.nextPotionAt = POTION.everyFrames;   // ขวดแรกที่นาทีที่ 1
     this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
+    // เข้าหน้าแรกใหม่ให้ยืนตั้งหลักก่อนเสมอ ไม่ใช่โผล่มากลางท่าที่ค้างจากรอบก่อน
+    this.idleWait = 0;
+    this.idleT = -1;
+
     this.player.reset();
     this.particles.clear();
     this.level.ensureAhead(this.camera);
@@ -302,7 +331,10 @@ export class Game {
       this.particles.update(dt);
       return;
     }
-    if (this.state === STATE.READY) this.homeTick += dt;
+    if (this.state === STATE.READY) {
+      this.homeTick += dt;
+      this.stepIdle(dt);
+    }
     if (this.state !== STATE.RUN) return;
 
     this.tick += dt;
@@ -1070,6 +1102,38 @@ export class Game {
    * ฉากหน้าแรก — ไม่มี HUD ไม่มีด่าน มีแค่แมวตัวที่เลือกไว้ยืนรออยู่
    * ตัวละครวางไว้ราว 31% จากซ้าย เพื่อเปิดครึ่งขวาให้แผงเมนู HTML ที่ทับอยู่
    */
+  /**
+   * เดินคิวท่าว่างไปทีละเฟรม
+   * แยกจาก drawHome() เพราะการวาดอาจถูกข้ามได้ (เฟรมตก) แต่เวลาต้องเดินตรงเสมอ
+   */
+  stepIdle(dt) {
+    if (this.idleT < 0) {
+      this.idleWait += dt;
+      if (this.idleWait >= IDLE_GAP) {
+        this.idleWait = 0;
+        this.idleT = 0;
+        this.idleAt = (this.idleAt + 1) % IDLE_ACTS.length;
+      }
+      return;
+    }
+
+    this.idleT += dt;
+    if (this.idleT >= IDLE_ACTS[this.idleAt].hold) this.idleT = -1;   // กลับไปยืนเฉย ๆ
+  }
+
+  /**
+   * ท่าที่ต้องวาดตอนนี้ — null = ยืนปกติ
+   * k คือน้ำหนักของท่า 0→1→0 ทำให้เข้าและออกจากท่าแบบค่อยเป็นค่อยไป
+   */
+  get idlePose() {
+    if (this.idleT < 0) return null;
+    const act = IDLE_ACTS[this.idleAt];
+    const k = Math.min(1, this.idleT / IDLE_EASE, (act.hold - this.idleT) / IDLE_EASE);
+    // นุ่มขึ้นด้วย smoothstep — เข้า-ออกแบบเส้นตรงจะเห็นหัวท้ายกระตุกเป็นจังหวะ
+    const e = Math.max(0, Math.min(1, k));
+    return { pose: act.pose, k: e * e * (3 - 2 * e) };
+  }
+
   drawHome(ctx) {
     const t = this.homeTick;
     // ตรงกลางเป๊ะ ๆ เพราะฉากหลังมีเก้าอี้อยู่กลางภาพ และน้องต้องยืนอยู่บนเบาะพอดี
@@ -1106,7 +1170,7 @@ export class Game {
     ctx.fill();
     ctx.restore();
 
-    drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t);
+    drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t, this.idlePose);
     postProcess(ctx, { edges: false });
   }
 }

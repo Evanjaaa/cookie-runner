@@ -1341,15 +1341,53 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0)
  * หายใจขึ้นลง หางแกว่งช้า ๆ แล้วกะพริบตาเป็นระยะ — ไม่ใช่ภาพนิ่ง
  * x คือกึ่งกลางตัว ส่วน feetY คือระดับที่เท้าเหยียบ
  */
-export function drawCatPose(ctx, x, feetY, scale, s, t = 0) {
+/**
+ * ท่าว่างของแมวหน้าแรก
+ *
+ * ทุกท่าเป็น "การบิดท่ายืน" ด้วยตัวเลข 0–1 ไม่ใช่ฟังก์ชันวาดแยกกันคนละชุด
+ * ข้อดีคือเปลี่ยนท่าแล้วลื่นเองโดยไม่ต้องเขียนแอนิเมชันเชื่อม แค่ไล่ค่าจาก 0 ไป 1
+ * ถ้าแยกเป็นฟังก์ชันละท่า การสลับจะเป็นการตัดภาพซึ่งดูเป็นของเสียทันที
+ *
+ *   sit   ทรุดก้นลงนั่ง ขาหน้าตั้งตรง ขาหลังพับ
+ *   loaf  หมอบราบเป็นก้อนขนมปัง ขาหุบหายใต้ตัว
+ *   paw   ยกอุ้งเท้าขวาขึ้นมาเลีย
+ *   yawn  อ้าปากหาว หลับตา หัวเงยนิด ๆ
+ */
+const IDLE_SHAPE = {
+  stand: {},
+  yawn: { mouth: 1, shut: 1, tilt: -0.1 },
+  sit: { sit: 1 },
+  groom: { sit: 1, paw: 1, tilt: 0.16 },
+  loaf: { loaf: 1, shut: 1 },
+};
+
+export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
+  const shape = IDLE_SHAPE[idle?.pose] || IDLE_SHAPE.stand;
+  const k = idle ? Math.max(0, Math.min(1, idle.k)) : 0;   // 0 = ยืนปกติ, 1 = เข้าท่าเต็มที่
+
+  const sit = (shape.sit || 0) * k;
+  const loaf = (shape.loaf || 0) * k;
+  const paw = (shape.paw || 0) * k;
+  const tilt = (shape.tilt || 0) * k;
+  const mouth = (shape.mouth || 0) * k;
+  const shut = (shape.shut || 0) * k;
+
   ctx.save();
-  ctx.translate(x, feetY - (BODY.standH / 2) * scale + Math.sin(t * 0.045) * 1.8);
+  // ตอนนั่ง/หมอบ ตัวลงไปติดพื้นแล้ว การหายใจขึ้นลงต้องเบาลงตาม ไม่งั้นดูเหมือนลอย
+  const breath = Math.sin(t * 0.045) * 1.8 * (1 - sit * 0.5 - loaf * 0.75);
+  ctx.translate(x, feetY - (BODY.standH / 2) * scale + breath);
   ctx.scale(scale, scale);
   ctx.lineCap = 'round';
   drawCatStand(ctx, s, {
     swing: 0,
-    wag: Math.sin(t * 0.038),
-    blink: t % 200 < 9,   // กะพริบสั้น ๆ ทุก ~3.3 วินาที
+    // หางแกว่งช้าลงเวลาพัก และแกว่งแรงขึ้นตอนหาว (เหมือนแมวยืดตัว)
+    wag: Math.sin(t * (0.038 - loaf * 0.02)) * (1 - loaf * 0.45),
+    blink: shut > 0.5 || t % 200 < 9,   // กะพริบสั้น ๆ ทุก ~3.3 วินาที
+    mouthOpen: mouth > 0.5,
+    sit,
+    loaf,
+    paw,
+    tilt,
   });
   ctx.restore();
 }
@@ -1364,44 +1402,147 @@ export function drawCatFace(ctx, x, y, scale, s) {
   ctx.restore();
 }
 
-function drawCatStand(ctx, s, { swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false } = {}) {
+function drawCatStand(ctx, s, {
+  swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
+  sit = 0, loaf = 0, paw = 0, tilt = 0,
+} = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
-  // หางสะบัดสวนจังหวะขา วาดก่อนลำตัวเพื่อให้อยู่ข้างหลัง
-  drawTail(ctx, -11, 8, wag, s);
+  // ── ตัวเลขของท่า ────────────────────────────
+  // ทุกค่าเริ่มจากท่ายืนแล้วบวกส่วนต่างตามน้ำหนักของ sit/loaf
+  // เขียนแบบนี้เพื่อให้ค่ากลางทางยังเป็นท่าที่ดูได้ ไม่ใช่แค่สองปลายเท่านั้นที่ถูก
+  //
+  // มุมมองเป็นหน้าตรง ท่านั่ง/หมอบจึงต้องอ่านจาก "รูปเงา" ล้วน ๆ:
+  //   นั่ง  = สามเหลี่ยม บ่าแคบ ก้นผายออกสองข้าง ขาหน้าตั้งตรงกลาง
+  //   หมอบ = เนินเตี้ยแบนกว้าง ไม่มีขา เหลือแค่อุ้งเท้าโผล่หน้า
+  const rest = Math.max(sit, loaf);           // กำลังพักอยู่แค่ไหน (รวมทุกท่าพัก)
+  const cy = 6 + sit * 3 + loaf * 9;          // จุดกลางลำตัว — ยิ่งพัก ยิ่งลงไปติดพื้น
+  const rx = 14 + sit * 1 + loaf * 4;         // ก้นผายตอนนั่ง แผ่กว้างตอนหมอบ
+  const ry = 13 + sit * 0.5 - loaf * 4.5;     // หมอบแล้วแบนลง
+  const hx = 1 + loaf * 2;
+  const hy = -12 + sit * 2 + loaf * 10.5;     // หัวลงตามตัว
 
-  // ขาหลัง
-  ctx.strokeStyle = s.dark;
-  ctx.lineWidth = 7;
-  ctx.beginPath(); ctx.moveTo(-4, 13); ctx.lineTo(-4 + swing * 10, 24); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(6, 13); ctx.lineTo(6 - swing * 10, 24); ctx.stroke();
+  // ── หาง ─────────────────────────────────────
+  // โคนหางเลื่อนลงตามตัว ตอนหมอบขดมาข้างลำตัวแทนที่จะชี้ออกไปหลัง
+  drawTail(ctx, -11 - loaf * 3, 8 + sit * 4 + loaf * 10, wag * (1 - loaf * 0.5), s);
 
-  // ขาหน้า
-  ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.moveTo(-8, 3); ctx.lineTo(-16, 3 - swing * 8); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(8, 3); ctx.lineTo(16, 3 + swing * 8); ctx.stroke();
+  // ── ก้นตอนนั่ง ──────────────────────────────
+  // วาดก่อนลำตัวเพื่อให้กลืนเป็นก้อนเดียวกัน ไม่ใช่ก้อนกลมแปะอยู่ข้าง ๆ
+  if (sit > 0.02) {
+    ctx.fillStyle = s.cat;
+    for (const sx of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(sx * (10 + sit), cy + 8 * sit, 7.5 * sit, 7 * sit, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
-  // ลำตัว
+  // ── ขาตอนยืน ────────────────────────────────
+  // ไม่ได้แค่จางหาย แต่ "เคลื่อนไปหา" ตำแหน่งของขาท่าพักด้วย
+  //
+  // ถ้าจางอย่างเดียว ครึ่งทางจะเห็นแขนกางออกข้างเป็นแท่งจาง ๆ ค้างอยู่กลางอากาศ
+  // พร้อมกับขานั่งที่โผล่มาอีกชุด = เห็นขาสี่ข้างพร้อมกัน
+  // พอให้มันเดินเข้าหากันก่อน สองชุดจะทับกันสนิทตอนสลับ จนมองไม่ออกว่ามีการสลับ
+  if (rest < 0.98) {
+    ctx.save();
+    ctx.globalAlpha *= 1 - rest;
+
+    ctx.strokeStyle = s.dark;
+    ctx.lineWidth = 7;
+    const hy0 = 13 + rest * 4;
+    const hy1 = 24 - rest * 2;
+    ctx.beginPath(); ctx.moveTo(-4, hy0); ctx.lineTo(-4 + swing * 10 * (1 - rest), hy1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, hy0); ctx.lineTo(6 - swing * 10 * (1 - rest), hy1); ctx.stroke();
+
+    // แขนหุบเข้าและลดลงหาพื้น จนไปจบที่เดียวกับขาหน้าของท่านั่งพอดี
+    ctx.lineWidth = 6;
+    const ax0 = 8 - rest * 1.5;
+    const ay0 = 3 + rest * 8;
+    const ax1 = 16 - rest * 9;
+    const ay1 = 3 + rest * 17;
+    ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(-ax1, ay1 - swing * 8 * (1 - rest)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(ax1, ay1 + swing * 8 * (1 - rest)); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // ── ลำตัว ───────────────────────────────────
   ctx.fillStyle = s.cat;
-  ctx.beginPath(); ctx.ellipse(0, 6, 14, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(255,252,240,.26)';
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(0, 6, 13, 12, 0, -Math.PI * 0.52, Math.PI * 0.08); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, cy, rx - 1, ry - 1, 0, -Math.PI * 0.52, Math.PI * 0.08); ctx.stroke();
 
   // พุงสีครีม
   ctx.fillStyle = s.cream;
-  ctx.beginPath(); ctx.ellipse(1, 9, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(1, cy + 2.5 - loaf * 2, 8 - loaf * 0.5, 8 - loaf * 4, 0, 0, Math.PI * 2); ctx.fill();
 
   if (s.stripes) {
     ctx.strokeStyle = s.dark;
     ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(-10, -2); ctx.lineTo(-11, 3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-7, 1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10, cy - 8); ctx.lineTo(-11, cy - 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, cy - 10); ctx.lineTo(-7, cy - 5); ctx.stroke();
   }
 
   s.outfit?.body?.(ctx, s, 'stand');
 
-  drawCatHead(ctx, 1, -12, s, { isDead, blink, mouthOpen });
+  // ── ขาตอนพัก ────────────────────────────────
+  // ต้องวาด "หลัง" ลำตัว เพราะแมวหันหน้าเข้าหาคนดู ขาหน้าจึงอยู่หน้าอก
+  // ถ้าวาดก่อนลำตัวเหมือนท่ายืน มันจะหายเข้าไปในตัวจนท่าอ่านไม่ออกเลย
+  if (rest > 0.02) {
+    ctx.save();
+    // ยกกำลังสองเพื่อให้ขาโผล่ช่วงท้ายของการเปลี่ยนท่า ตอนที่ตัวทรุดลงไปแล้ว
+    // ถ้าจางเข้าเป็นเส้นตรง ครึ่งทางจะได้เส้นทึบครึ่งจางพาดกลางพุงเหมือนรอยเปื้อน
+    ctx.globalAlpha *= rest * rest;
+    ctx.strokeStyle = s.dark;
+    ctx.lineCap = 'round';
+
+    if (sit > 0.02) {
+      // นั่ง: ขาหน้าตั้งตรงลงพื้นสองข้าง ปลายจบที่ระดับเท้าพอดี
+      ctx.lineWidth = 6;
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(sx * 6.5, cy + 5);
+        ctx.lineTo(sx * 7, 23);
+        ctx.stroke();
+      }
+    }
+
+    if (loaf > 0.02) {
+      // หมอบ: ไม่มีขา เหลือแค่อุ้งเท้าสองข้างโผล่หน้าตัว
+      ctx.fillStyle = s.cream;
+      ctx.strokeStyle = s.dark;
+      ctx.lineWidth = 1.6;
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(sx * 9, cy + ry - 0.5, 5, 3.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();   // ตีเส้นขอบบาง ๆ ให้แยกออกจากพุงที่เป็นสีครีมเหมือนกัน
+      }
+    }
+
+    ctx.restore();
+  }
+
+  drawCatHead(ctx, hx, hy, s, { isDead, blink, mouthOpen, tilt });
+
+  // ── ยกอุ้งเท้าขึ้นเลีย ───────────────────────
+  // ต้องวาด "หลังหัว" ไม่ใช่ก่อน เพราะปลายเท้าไปจบตรงปาก ซึ่งอยู่ในวงหัวพอดี
+  // วาดก่อนหัวเมื่อไหร่ หัวจะทับจนไม่เหลือร่องรอยว่ายกเท้าอยู่เลย
+  if (paw > 0.02) {
+    ctx.save();
+    ctx.globalAlpha *= paw;
+    ctx.strokeStyle = s.dark;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(7, cy + 6);
+    ctx.quadraticCurveTo(11, cy - 1, hx + 5, hy + 7);
+    ctx.stroke();
+    ctx.fillStyle = s.cream;
+    ctx.beginPath(); ctx.arc(hx + 5, hy + 7, 3.8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
@@ -1449,9 +1590,15 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
  * หัวแมวพร้อมหู หน้า หนวด — วาดรอบจุด (hx,hy) ที่ส่งเข้ามา
  * earsBack: ตอนหมอบต้องลู่หูไปหลัง ไม่งั้นปลายหูโผล่ทะลุคานตอนลอด
  */
-function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false } = {}) {
+function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0 } = {}) {
   ctx.save();
   ctx.translate(hx, hy);
+  // เอียงหัวรอบ "โคนคอ" ไม่ใช่กลางหัว ไม่งั้นหัวจะลอยหลุดจากตัวเวลาเอียงเยอะ ๆ
+  if (tilt) {
+    ctx.translate(0, 12);
+    ctx.rotate(tilt);
+    ctx.translate(0, -12);
+  }
   ctx.scale(scale, scale);
 
   // [โคนซ้าย, โคนขวา, ปลาย] ของหูสองข้าง
