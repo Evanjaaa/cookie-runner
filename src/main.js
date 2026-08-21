@@ -12,6 +12,12 @@ import {
 } from './outfits.js';
 import { getGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest } from './storage.js';
+// นำเข้าแบบธรรมดาได้ ไม่ลาก SDK ของ Supabase ตามมา — cloud.js เองก็ import
+// ตัว SDK แบบไดนามิกอยู่ข้างใน มันจึงถูกแยกเป็นไฟล์ต่างหากไม่ว่าใครจะเรียกยังไง
+import {
+  cloudReady, userId, currentAccount, pushName, fetchLeaderboard,
+  sendLoginCode, verifyLoginCode, sendLinkCode, verifyLinkCode, signOut,
+} from './net/cloud.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
@@ -56,6 +62,10 @@ const gachaPanel = document.getElementById('gachaPanel');
 const rankPanel = document.getElementById('rankPanel');
 const settingsPanel = document.getElementById('settingsPanel');
 const introPanel = document.getElementById('introPanel');
+const titlePanel = document.getElementById('titlePanel');
+const authPanel = document.getElementById('authPanel');
+const namePanel = document.getElementById('namePanel');
+const mailPanel = document.getElementById('mailPanel');
 const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
@@ -588,22 +598,12 @@ async function buildRank() {
   document.getElementById('rankStage').textContent = st.name;
   rankNote('กำลังโหลด…');
 
-  // นำเข้าแบบไดนามิก ไม่งั้น SDK ของ Supabase จะถูกมัดรวมมากับตัวเกม
-  // ทั้งที่คนไม่เปิดหน้านี้ก็ต้องโหลด
-  let mod;
-  try {
-    mod = await import('./net/cloud.js');
-  } catch {
-    rankNote('โหลดระบบอันดับไม่สำเร็จ');
-    return;
-  }
-
-  if (!mod.cloudReady) {
+  if (!cloudReady) {
     rankNote('ยังไม่ได้ต่อฐานข้อมูล<br>สถิติเก็บอยู่ในเครื่องนี้เท่านั้น');
     return;
   }
 
-  const rows = await mod.fetchLeaderboard(st.id, 20);
+  const rows = await fetchLeaderboard(st.id, 20);
   if (!rows.length) {
     rankNote('ยังไม่มีใครทำคะแนนในด่านนี้<br>ไปเป็นคนแรกกันเถอะ!');
     return;
@@ -633,28 +633,329 @@ function localName() {
   }
 }
 
-async function saveName() {
-  const input = document.getElementById('rankName');
-  const name = input.value.trim().slice(0, 16);
-  if (!name) return;
-
+/**
+ * เก็บชื่อลงเครื่องก่อนเสมอ แล้วค่อยส่งขึ้นคลาวด์
+ * ใช้ร่วมกันระหว่างหน้าตั้งชื่อตอนสมัครกับช่องแก้ชื่อในหน้าอันดับ
+ * ส่งไม่สำเร็จก็ไม่เป็นไร ชื่อในเครื่องยังอยู่ เดี๋ยวรอบหน้าค่อยส่งใหม่
+ */
+async function storeName(name) {
   try {
     localStorage.setItem(NAME_KEY, name);
   } catch {
     /* เซฟในเครื่องไม่ได้ก็ยังส่งขึ้นคลาวด์ได้ */
   }
+  if (!cloudReady) return;
+  try {
+    await pushName(name);
+  } catch {
+    /* ต่อไม่ได้ก็ยังเก็บชื่อไว้ในเครื่อง */
+  }
+}
+
+async function saveName() {
+  const input = document.getElementById('rankName');
+  const name = input.value.trim().slice(0, 16);
+  if (!name) return;
 
   const btn = document.getElementById('rankSave');
   btn.disabled = true;
-  try {
-    const { pushName } = await import('./net/cloud.js');
-    await pushName(name);
-    await buildRank();       // อันดับต้องโชว์ชื่อใหม่ทันที ไม่ต้องกดกลับแล้วเข้าใหม่
-  } catch {
-    /* ต่อไม่ได้ก็ยังเก็บชื่อไว้ในเครื่อง เดี๋ยวคราวหน้าค่อยส่ง */
-  }
+  await storeName(name);
+  await buildRank();       // อันดับต้องโชว์ชื่อใหม่ทันที ไม่ต้องกดกลับแล้วเข้าใหม่
   btn.disabled = false;
 }
+
+// ── ลำดับหน้าเข้าเกม ───────────────────────────────────────
+//
+//   ชื่อเกม → เข้าสู่ระบบ → ตั้งชื่อตัวละคร → ล็อบบี้
+//
+// สองหน้ากลางโผล่เฉพาะคนที่ยังไม่มีบัญชี ใครเคยเข้าแล้วกด "เข้าเกม" ทีเดียว
+// ถึงล็อบบี้เลย — การถามซ้ำทุกครั้งที่เปิดเกมคือด่านที่ทำให้คนเลิกเล่นก่อนได้เล่น
+//
+// การสร้างบัญชีเกิดตอนกดปุ่มเท่านั้น ไม่ใช่ตอนเปิดหน้า (ดูเหตุผลใน cloud.js)
+
+/** ค่าเริ่มต้นจากฐานข้อมูล — ไม่ใช่ชื่อที่ผู้เล่นตั้งเอง จึงยังต้องผ่านหน้าตั้งชื่อ */
+const DEFAULT_NAME = 'แมวนิรนาม';
+
+function chosenName() {
+  const n = localName();
+  return n && n !== DEFAULT_NAME ? n : '';
+}
+
+/**
+ * มีบัญชีแล้วหรือยัง
+ *
+ * ต่อคลาวด์ได้ → ยึด user id เป็นคำตอบ
+ * ไม่ได้ตั้งคีย์ → ไม่มี id ให้ยึด ใช้ "เคยตั้งชื่อรึยัง" แทน เพราะหน้าตั้งชื่อ
+ *                 คือขั้นสุดท้ายของการสมัคร มีชื่อ = ผ่านมาครบแล้ว
+ */
+function hasAccount() {
+  return cloudReady ? Boolean(userId()) : Boolean(chosenName());
+}
+
+/** ข้อความสถานะใต้ฟอร์ม — เปลี่ยนเป็นสีเตือนเมื่อเป็นความผิดพลาด */
+function setMsg(el, text, bad = false) {
+  el.textContent = text || '';
+  el.classList.toggle('bad', Boolean(bad));
+}
+
+/** โชว์แผงเดียว ปิดที่เหลือทั้งหมด */
+function showPanel(panel) {
+  closeAllPanels();
+  panel.classList.remove('hidden');
+}
+
+function enterGame() {
+  // แตะปุ่มนี้คือ gesture แรกของผู้เล่น เพลงกับเสียงจึงเริ่มได้ตั้งแต่ตรงนี้
+  unlockAudio();
+  startMusic();
+  if (!hasAccount()) return showAuth();
+  if (!chosenName()) return showNameStep();
+  goHome();
+}
+
+function showAuth() {
+  setMsg(document.getElementById('authMsg'), '');
+  document.getElementById('guestBtn').disabled = false;
+  document.getElementById('authLead').textContent = cloudReady
+    ? 'เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้'
+    : 'ยังไม่ได้ต่อฐานข้อมูล เล่นได้ปกติแต่ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น';
+  showPanel(authPanel);
+}
+
+/** warn = คำเตือนที่ตามมาจากหน้าก่อน เช่นสร้างบัญชีไม่สำเร็จแต่ยังให้เล่นต่อ */
+function showNameStep(warn = '') {
+  document.getElementById('nameInput').value = chosenName();
+  // โชว์แมวตัวที่เลือกอยู่จริง ๆ ให้เห็นว่ากำลังตั้งชื่อให้ใคร
+  paintMini(document.getElementById('nameCat'), 120,
+    (c) => drawCatPose(c, 60, 110, 1.85, getSkin(), 60));
+  setMsg(document.getElementById('nameMsg'), warn, Boolean(warn));
+  showPanel(namePanel);
+}
+
+async function doGuest() {
+  const btn = document.getElementById('guestBtn');
+  const msg = document.getElementById('authMsg');
+  btn.disabled = true;
+  unlockAudio();
+  sfx.potion();
+
+  let warn = 'ยังไม่ได้ตั้งค่าฐานข้อมูล — ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น';
+  if (cloudReady) {
+    setMsg(msg, 'กำลังสร้างบัญชี…');
+    try {
+      const { startGuest } = await import('./net/sync.js');
+      const r = await startGuest();
+      warn = r.ok ? '' : r.error + ' — เล่นต่อได้ แต่ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น';
+    } catch {
+      warn = 'ต่อฐานข้อมูลไม่ได้ — เล่นต่อได้ แต่ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น';
+    }
+  }
+
+  btn.disabled = false;
+  setMsg(msg, '');
+  // ต่อคลาวด์ไม่ได้ก็ต้องเล่นได้อยู่ดี คำเตือนจึงตามไปโชว์ที่หน้าตั้งชื่อ
+  // ไม่ใช่ค้างผู้เล่นไว้ที่หน้านี้จนไปต่อไม่ได้
+  showNameStep(warn);
+}
+
+async function saveCharacterName() {
+  const msg = document.getElementById('nameMsg');
+  const name = document.getElementById('nameInput').value.trim().slice(0, 16);
+  if (!name) return setMsg(msg, 'ตั้งชื่อก่อนนะ', true);
+
+  const btn = document.getElementById('nameSave');
+  btn.disabled = true;
+  await storeName(name);
+  btn.disabled = false;
+  unlockAudio();
+  sfx.potion();
+  goHome();
+}
+
+// ── อีเมล: เข้าสู่ระบบ / ผูกกับบัญชีที่เล่นอยู่ ──────────────
+//
+// ทั้งสองงานมีขั้นตอนเดียวกันเป๊ะ (กรอกอีเมล → รับรหัส 6 หลัก → ยืนยัน)
+// ต่างแค่ API ที่เรียกกับข้อความ จึงใช้แผงเดียวกันแล้วสลับโหมดเอา
+//
+// ใช้รหัส 6 หลักไม่ใช่ลิงก์ในเมล เพราะบนมือถือลิงก์จะเปิดในเบราว์เซอร์ของ
+// แอปเมล ซึ่งเป็นคนละที่กับแท็บที่เปิดเกมค้างไว้ แล้ว session จะไปลงผิดที่
+
+let mailMode = 'login';   // 'login' = เข้าด้วยอีเมล | 'link' = ผูกกับบัญชีที่เล่นอยู่
+let mailFrom = null;      // แผงต้นทาง กดกลับแล้วคืนที่เดิม
+let mailAddr = '';        // อีเมลที่ส่งรหัสไป ตอนยืนยันต้องส่งตัวเดิมกลับไปด้วย
+
+const MAIL_TEXT = {
+  login: {
+    title: 'เข้าด้วยอีเมล',
+    lead: 'กรอกอีเมลที่เคยผูกไว้ เดี๋ยวส่งรหัส 6 หลักไปให้ — '
+        + 'ข้อมูลของผู้มาเยือนในเครื่องนี้จะถูกแทนที่ด้วยข้อมูลของบัญชีนั้น '
+        + 'ถ้าอยากเก็บของที่เล่นมา ให้ใช้ "เชื่อมอีเมล" ในหน้าตั้งค่าแทน',
+  },
+  link: {
+    title: 'เชื่อมอีเมล',
+    lead: 'ผูกอีเมลไว้กันข้อมูลหาย ทอง ชุด และสถิติอยู่ครบเหมือนเดิมทุกอย่าง '
+        + 'เพราะยังเป็นบัญชีเดิม แค่กู้คืนได้เวลาเปลี่ยนเครื่องหรือล้างเบราว์เซอร์',
+  },
+};
+
+function showMail(mode, from) {
+  mailMode = mode;
+  mailFrom = from;
+  mailAddr = '';
+  document.getElementById('mailTitle').textContent = MAIL_TEXT[mode].title;
+  document.getElementById('mailLead').textContent = MAIL_TEXT[mode].lead;
+  document.getElementById('mailInput').value = '';
+  document.getElementById('codeInput').value = '';
+  document.getElementById('mailStep2').classList.add('hidden');
+  setMsg(document.getElementById('mailMsg'), '');
+
+  // สลับเองทีละใบ ไม่ใช้ showPanel() — closeAllPanels() ข้างในจะล้าง settingsFrom
+  // ทิ้ง แล้วปุ่มกลับของหน้าตั้งค่าจะพากลับไปที่ "ไม่มีแผงไหนเปิดเลย"
+  from.classList.add('hidden');
+  mailPanel.classList.remove('hidden');
+}
+
+function closeMail() {
+  mailPanel.classList.add('hidden');
+  (mailFrom || authPanel).classList.remove('hidden');
+  mailFrom = null;
+}
+
+async function sendCode() {
+  const msg = document.getElementById('mailMsg');
+  const email = document.getElementById('mailInput').value.trim();
+  if (!email) return setMsg(msg, 'กรอกอีเมลก่อนนะ', true);
+
+  const btn = document.getElementById('mailSend');
+  btn.disabled = true;
+  setMsg(msg, 'กำลังส่งรหัส…');
+
+  const r = mailMode === 'link' ? await sendLinkCode(email) : await sendLoginCode(email);
+  btn.disabled = false;
+  if (!r.ok) return setMsg(msg, r.error, true);
+
+  mailAddr = email;
+  document.getElementById('mailStep2').classList.remove('hidden');
+  setMsg(msg, 'ส่งรหัสไปที่ ' + email + ' แล้ว เช็คโฟลเดอร์สแปมด้วยนะ');
+}
+
+async function verifyCode() {
+  const msg = document.getElementById('mailMsg');
+  const token = document.getElementById('codeInput').value.trim();
+  if (token.length < 6) return setMsg(msg, 'กรอกรหัส 6 หลักให้ครบ', true);
+
+  const btn = document.getElementById('codeVerify');
+  btn.disabled = true;
+  setMsg(msg, 'กำลังตรวจรหัส…');
+
+  const r = mailMode === 'link'
+    ? await verifyLinkCode(mailAddr, token)
+    : await verifyLoginCode(mailAddr, token);
+  btn.disabled = false;
+  if (!r.ok) return setMsg(msg, r.error, true);
+
+  if (mailMode === 'link') {
+    // บัญชีเดิม user id เดิม ของในเครื่องยังตรงอยู่ทุกอย่าง ไม่ต้องโหลดหน้าใหม่
+    setMsg(msg, 'ผูกอีเมลเรียบร้อย! ล้างเบราว์เซอร์แล้วก็กู้คืนได้แล้ว');
+    document.getElementById('mailStep2').classList.add('hidden');
+    refreshAccount();
+    return;
+  }
+
+  // เข้าด้วยอีเมล = สลับไปอีกบัญชี ของในเครื่องเป็นของบัญชีเก่าทั้งหมด ต้องล้างก่อน
+  // แล้วโหลดหน้าใหม่ ให้ boot.js ดึงของบัญชีนี้ลงมาก่อนโมดูลเกมจะอ่าน localStorage
+  setMsg(msg, 'เข้าสู่ระบบแล้ว กำลังโหลดข้อมูล…');
+  const { clearLocalProgress } = await import('./net/sync.js');
+  clearLocalProgress();
+  location.reload();
+}
+
+// ── แถวบัญชีในหน้าตั้งค่า ───────────────────────────────────
+
+// ออกจากระบบต้องกดสองครั้ง — พลาดทีเดียวคือหลุดออกจากบัญชีกลางเกม
+let signOutArmed = false;
+
+/** สองสถานะที่ผู้เล่นต้องแยกออก: ผูกอีเมลแล้ว (กู้คืนได้) กับยังไม่ผูก (หายแล้วหายเลย) */
+function refreshAccount() {
+  const state = document.getElementById('accState');
+  const btn = document.getElementById('accBtn');
+  setMsg(document.getElementById('accMsg'), '');
+  signOutArmed = false;
+
+  if (!cloudReady) {
+    state.textContent = 'เก็บในเครื่องนี้';
+    btn.textContent = 'เชื่อมอีเมล';
+    btn.disabled = true;
+    return;
+  }
+
+  btn.disabled = false;
+  const acc = currentAccount();
+  if (!acc) {
+    state.textContent = 'ยังไม่ได้เข้าสู่ระบบ';
+    btn.textContent = 'เข้าสู่ระบบ';
+  } else if (acc.email) {
+    state.textContent = acc.email;
+    btn.textContent = 'ออกจากระบบ';
+  } else {
+    state.textContent = 'ผู้มาเยือน';
+    btn.textContent = 'เชื่อมอีเมล';
+  }
+}
+
+async function accountAction() {
+  const acc = cloudReady ? currentAccount() : null;
+  if (!acc) return showMail('login', settingsPanel);
+  if (!acc.email) return showMail('link', settingsPanel);
+
+  const btn = document.getElementById('accBtn');
+  if (!signOutArmed) {
+    signOutArmed = true;
+    btn.textContent = 'กดอีกครั้งเพื่อยืนยัน';
+    setMsg(document.getElementById('accMsg'),
+      'ข้อมูลอยู่บนคลาวด์ครบ กลับเข้ามาด้วยอีเมลเดิมได้เสมอ');
+    return;
+  }
+
+  btn.disabled = true;
+  await signOut();
+  // ของในเครื่องเป็นของบัญชีที่เพิ่งออกไป ถ้าไม่ล้าง คนถัดไปที่กดเล่นแบบ
+  // ผู้มาเยือนจะได้ทองกับชุดของเจ้าของเครื่องติดไปด้วย
+  const { clearLocalProgress } = await import('./net/sync.js');
+  clearLocalProgress();
+  location.reload();
+}
+
+// ── ผูกปุ่มของทั้งสี่หน้า ────────────────────────────────────
+
+/**
+ * ช่องกรอกทุกช่องต้องกันอีเวนต์ไม่ให้ทะลุขึ้นไปถึง window
+ * ไม่งั้นการเคาะ Space ตอนพิมพ์ชื่อจะกลายเป็นสั่งกระโดด (input.js ดัก keydown ที่ window)
+ */
+function typable(id, onEnter) {
+  document.getElementById(id).addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') onEnter();
+  });
+}
+
+typable('nameInput', saveCharacterName);
+typable('mailInput', sendCode);
+typable('codeInput', verifyCode);
+
+document.getElementById('enterBtn').addEventListener('click', enterGame);
+document.getElementById('authBack').addEventListener('click', () => showPanel(titlePanel));
+document.getElementById('guestBtn').addEventListener('click', doGuest);
+document.getElementById('loginMailBtn').addEventListener('click', () => showMail('login', authPanel));
+document.getElementById('nameSave').addEventListener('click', saveCharacterName);
+document.getElementById('mailSend').addEventListener('click', sendCode);
+document.getElementById('codeVerify').addEventListener('click', verifyCode);
+document.getElementById('mailBack').addEventListener('click', closeMail);
+document.getElementById('accBtn').addEventListener('click', accountAction);
+
+// ป้ายใต้ปุ่มบอกล่วงหน้าว่าข้อมูลจะไปเก็บที่ไหน ดีกว่าปล่อยให้ไปเจอเอาตอนเล่นไปแล้ว
+document.getElementById('titleNote').textContent = cloudReady
+  ? '' : 'ยังไม่ได้ต่อฐานข้อมูล — เล่นได้ปกติ แต่ข้อมูลอยู่ในเครื่องนี้เท่านั้น';
 
 // ── ตั้งค่า ────────────────────────────────────────────────
 
@@ -693,6 +994,7 @@ function showSettings(on) {
     settingsFrom.forEach((p) => p.classList.add('hidden'));
     settingsPanel.classList.remove('hidden');
     drawVolume();
+    refreshAccount();
   } else {
     settingsPanel.classList.add('hidden');
     settingsFrom.forEach((p) => p.classList.remove('hidden'));
@@ -839,15 +1141,8 @@ function goHome() {
   clearTimeout(introTimer);   // เผลอกดกลับกลางฉากห้อง เกมต้องไม่เริ่มเองทีหลัง
   game.inRoom = false;
   game.reset();   // กลับสู่สถานะ READY ฉากหน้าแรกจึงถูกวาดแทนฉากเล่น
-  overPanel.classList.add('hidden');
-  pausePanel.classList.add('hidden');
-  skinPanel.classList.add('hidden');
-  stagePanel.classList.add('hidden');
-  outfitPanel.classList.add('hidden');
-  gachaPanel.classList.add('hidden');
-  rankPanel.classList.add('hidden');
-  settingsPanel.classList.add('hidden');
-  settingsFrom = [];
+  // ไล่ปิดจาก DOM ไม่ใช่ไล่ชื่อตัวแปร แผงที่เพิ่มทีหลังจึงถูกปิดเองอัตโนมัติ
+  closeAllPanels();
   startPanel.classList.remove('hidden');
   // คืนปุ่มบนแถบในจอให้ตรงกับสถานะจริง ไม่งั้นถ้าเลิกเล่นตอนหยุดอยู่
   // ปุ่มจะค้างเป็นสามเหลี่ยม "เล่นต่อ" ทั้งที่ไม่มีรอบเล่นให้เล่นต่อแล้ว
@@ -912,10 +1207,7 @@ document.getElementById('btnRank').addEventListener('click', () => {
 });
 document.getElementById('rankBack').addEventListener('click', () => showRank(false));
 document.getElementById('rankSave').addEventListener('click', saveName);
-document.getElementById('rankName').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') saveName();
-  e.stopPropagation();   // กันไม่ให้ปุ่ม Space/ลูกศรตอนพิมพ์ไปสั่งกระโดด
-});
+typable('rankName', saveName);
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
 document.getElementById('pull5').addEventListener('click', () => doPull(MULTI_PULLS));
 document.getElementById('homeBtn').addEventListener('click', goHome);
@@ -1036,13 +1328,12 @@ function confirm() {
   if (game.state === STATE.RUN) return game.jump();
   // อยู่ในฉากห้อง: กดอะไรก็ข้ามไปเริ่มวิ่ง ไม่ใช่สั่งเริ่มซ้อนอีกรอบ
   if (!introPanel.classList.contains('hidden')) return skipIntro();
-  // อยู่ในหน้าเลือกตัวละคร: กด Space ต้องไม่กระโดดข้ามไปเริ่มเกม
-  if (!skinPanel.classList.contains('hidden')) return;
-  if (!stagePanel.classList.contains('hidden')) return;
-  if (!outfitPanel.classList.contains('hidden')) return;
-  if (!gachaPanel.classList.contains('hidden')) return;
-  if (!rankPanel.classList.contains('hidden')) return;
-  if (!settingsPanel.classList.contains('hidden')) return;
+
+  // มีแผงเมนูเปิดค้างอยู่: กด Space ต้องไม่ทะลุไปสั่งเริ่มเกม
+  // ไล่จาก DOM เหมือน closeAllPanels() แผงที่เพิ่มทีหลังจึงกันตัวเองอัตโนมัติ
+  // ยกเว้นหน้าจบรอบ ที่ตั้งใจให้กดปุ่มเดียวแล้ววิ่งรอบใหม่ได้เลย
+  if (document.querySelector('.stage .panel:not(.home):not(.hidden):not(#overPanel)')) return;
+
   if (game.state === STATE.READY) showIntro();
   else if (!overPanel.classList.contains('hidden')) showIntro();
 }

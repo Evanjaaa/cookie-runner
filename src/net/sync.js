@@ -13,7 +13,8 @@
 // ─────────────────────────────────────────────────────────────
 import { KEYS, onStorageWrite } from '../storage.js';
 import {
-  cloudReady, signIn, fetchPlayer, fetchBests, pushPlayer, pushScore, pushPulls,
+  cloudReady, restoreSession, signInGuest,
+  fetchPlayer, fetchBests, pushPlayer, pushScore, pushPulls,
 } from './cloud.js';
 
 const GOLD_KEY = 'cookie-runner:gold';
@@ -129,14 +130,39 @@ export function recordPulls(results) {
 }
 
 /**
- * เรียกครั้งเดียวก่อนโหลดตัวเกม
- * คืน true ถ้าต่อคลาวด์ได้จริง เพื่อให้ผู้เรียกเอาไปแสดงสถานะได้
+ * ล้างความคืบหน้าในเครื่องทิ้งทั้งหมด
+ *
+ * ใช้ตอนสลับบัญชี (เข้าด้วยอีเมล / ออกจากระบบ) เท่านั้น — คีย์ในเครื่องมีชุดเดียว
+ * ใช้ร่วมกันทุกบัญชี ถ้าไม่ล้างก่อน ของบัญชีเก่าจะค้างปนกับของบัญชีใหม่
+ * แล้วถูกดันขึ้นคลาวด์ตามหลังจนข้อมูลสองบัญชีปนกัน
  */
-export async function connect() {
-  if (!cloudReady) return false;
+export function clearLocalProgress() {
+  // ปิดการดันขึ้นคลาวด์ก่อนล้าง ไม่งั้นคิวที่ค้างอยู่ (หรือตัว pagehide ตอนโหลด
+  // หน้าใหม่) จะดันของว่าง ๆ ขึ้นไปทับข้อมูลของบัญชีที่เพิ่งเข้ามาจนหายเกลี้ยง
+  online = false;
+  clearTimeout(timer);
+  timer = null;
 
-  const id = await signIn();
-  if (!id) return false;
+  try {
+    const doomed = [GOLD_KEY, OWNED_KEY, NAME_KEY, KEYS.outfit, KEYS.skin, KEYS.stage];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(KEYS.bestPrefix)) doomed.push(k);
+    }
+    doomed.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* ลบไม่ได้ก็ปล่อย ไม่ใช่เหตุให้เข้าสู่ระบบไม่สำเร็จ */
+  }
+}
+
+// เข้าได้ทางเดียวเท่านั้นต่อการเปิดหน้าหนึ่งครั้ง — resume() ล้มเหลวแล้วผู้เล่น
+// ค่อยกด startGuest() ทีหลังได้ แต่ห้ามผูก onStorageWrite ซ้ำสองรอบ
+let hydrated = false;
+
+/** งานหลังรู้แล้วว่าเข้าสู่ระบบสำเร็จ — เหมือนกันทั้งกู้ session เดิมและเพิ่งล็อกอิน */
+async function hydrate() {
+  if (hydrated) return true;
+  hydrated = true;
 
   const [row, bests] = await Promise.all([fetchPlayer(), fetchBests()]);
   const local = readLocal();
@@ -180,4 +206,33 @@ export async function connect() {
   }
 
   return true;
+}
+
+/**
+ * เรียกครั้งเดียวตอนเปิดหน้า ก่อนโหลดตัวเกม
+ *
+ * กู้เฉพาะ session ที่มีอยู่แล้ว ไม่สร้างบัญชีใหม่ให้ — คนที่ยังไม่เคยเข้าสู่ระบบ
+ * จะได้ false แล้วไปเจอหน้าเข้าสู่ระบบใน main.js
+ * คืน true เมื่อดึงข้อมูลจากคลาวด์ลงเครื่องเรียบร้อยแล้ว
+ */
+export async function resume() {
+  if (!cloudReady) return false;
+  const id = await restoreSession();
+  if (!id) return false;
+  return hydrate();
+}
+
+/**
+ * ผู้เล่นกดปุ่ม "เล่นแบบผู้มาเยือน" — สร้างบัญชีแล้วซิงก์ให้เลย
+ *
+ * บัญชีที่เพิ่งสร้างยังไม่มีข้อมูลอะไรบนคลาวด์ hydrate() จึงเข้าทาง "ดันของ
+ * ในเครื่องขึ้นไป" ไม่ใช่ "เทลงมาทับ" — โมดูลเกมที่อ่าน localStorage ไปแล้ว
+ * ตั้งแต่ตอนโหลดจึงไม่มีทางถือค่าเก่าค้าง ไม่ต้องโหลดหน้าใหม่
+ */
+export async function startGuest() {
+  if (!cloudReady) return { ok: false, error: 'ยังไม่ได้ตั้งค่าฐานข้อมูล' };
+  const r = await signInGuest();
+  if (!r.ok) return r;
+  await hydrate();
+  return { ok: true };
 }

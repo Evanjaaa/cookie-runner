@@ -1468,6 +1468,125 @@ canvas { display: block; width: 100%; height: auto; }
   .touchpad button { width: 72px; height: 72px; font-size: 15px; }
 }
 
+/* ── หน้าเข้าเกม: ชื่อเกม / เข้าสู่ระบบ / ตั้งชื่อ / อีเมล ──
+   สามหน้าหลังใช้ทรงการ์ดเหมือนแผงเมนูอื่นทุกอย่าง มีแค่หน้าชื่อเกมที่ต้องพิเศษ
+   เพราะมันคือภาพแรกที่คนเห็น — ถ้าเอาการ์ดมาบัง แมวกับฉากที่วาดบน canvas
+   จะถูกกลบหมด เหลือแต่กล่องสี่เหลี่ยมกลางจอ */
+.panel.title {
+  gap: 0;
+  /* โลโก้เกาะบน ปุ่มเกาะล่าง เว้นกลางจอไว้ให้แมวที่วาดบน canvas
+     ถ้าจัดกลางแบบแผงอื่น ปุ่มจะไปนั่งทับหน้าแมวพอดี */
+  justify-content: flex-start;
+  padding: clamp(14px, 4.5dvh, 38px) 24px clamp(16px, 5dvh, 40px);
+  /* ม่านไล่จากบนลงล่าง แทนแผ่นทึบเต็มจอ ตัวอักษรอ่านออกแต่ยังเห็นฉากทะลุ */
+  background: linear-gradient(180deg, rgba(27,15,43,.82) 0%, rgba(27,15,43,.25) 45%, rgba(27,15,43,.86) 100%);
+  backdrop-filter: none;
+}
+/* ไม่เอาการ์ดของ .panel:not(.home) มาซ้อนทับฉาก */
+.panel.title::before { display: none; }
+
+.title-logo { text-align: center; white-space: nowrap; }
+.title-logo h2 {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(30px, 7vw, 62px);
+  line-height: 1;
+  color: #FFF6E6;
+  /* ขอบเข้ม + เรืองอ่อน ชุดเดียวกับโลโก้ในล็อบบี้ ให้เป็นของชิ้นเดียวกัน */
+  text-shadow: 0 4px 0 rgba(58,29,80,.9), 0 0 30px rgba(199,125,255,.6);
+  /* หัวเรื่องของแผงอื่นมีขีดใต้ ตรงนี้ไม่เอา มันแข่งกับโลโก้ */
+  padding-bottom: 0;
+  background: none;
+}
+.title-logo p {
+  margin-top: 6px;
+  font-size: clamp(9px, 1.7vw, 13px);
+  letter-spacing: .38em;
+  text-transform: uppercase;
+  color: #C9AEE8;
+  text-shadow: 0 2px 6px rgba(0,0,0,.6);
+  max-width: none;
+}
+
+/* auto = ดันตัวเองไปสุดล่างของแผง ป้ายใต้ปุ่มจึงตามลงไปด้วยเป็นกลุ่มเดียวกัน */
+.btn.big {
+  margin-top: auto;
+  font-size: clamp(17px, 3vw, 24px);
+  padding: 14px 54px;
+}
+
+.title-note {
+  margin-top: 14px;
+  max-width: 40ch;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #C9AEE8;
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+}
+.title-note:empty { display: none; }
+
+/* ── ฟอร์มในแผง ───────────────────────────── */
+/* ช่องกรอก + ปุ่มเรียงแถวเดียว ทรงเดียวกับช่องตั้งชื่อในหน้าอันดับ */
+.form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.form-row.hidden { display: none; }
+.form-row input {
+  width: clamp(150px, 42vw, 230px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.28);
+  background: rgba(255,243,226,.07);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+  /* ช่องกรอกเป็นที่เดียวในเกมที่ต้องเลือกข้อความได้ ต้องปลดจากกฎรวมของ body */
+  -webkit-user-select: text;
+  user-select: text;
+}
+.form-row input::placeholder { color: #8E76A8; }
+.form-row input:focus { outline: none; border-color: var(--mint); }
+.form-row .btn { margin-top: 0; font-size: 14px; padding: 10px 22px; }
+
+#codeInput { letter-spacing: .3em; font-family: "Mitr", sans-serif; }
+
+/* บรรทัดสถานะใต้ฟอร์ม — จองที่ไว้ตลอดด้วย min-height ไม่งั้นทั้งแผงจะกระตุก
+   ขยับขึ้นลงทุกครั้งที่ข้อความโผล่มาหรือหายไป */
+.form-msg {
+  min-height: 1.2em;
+  max-width: 40ch;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #B99BD4;
+}
+.form-msg.bad { color: var(--danger); }
+
+#nameCat { width: 120px; height: 120px; }
+
+/* หน้าเข้าสู่ระบบมีสองปุ่มซ้อนกัน ปุ่มรองไม่ควรห่างจากปุ่มหลักเท่าช่องไฟปกติ */
+#authPanel .btn.ghost { margin-top: 0; font-size: 14px; padding: 10px 22px; }
+
+/* ── แถวบัญชีในหน้าตั้งค่า ─────────────────── */
+.setval {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--mint-lite);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn.tiny { margin-top: 0; font-size: 12px; padding: 7px 15px; }
+
+@media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
+  .form-row input { width: clamp(130px, 46vw, 200px); padding: 8px 12px; font-size: 13px; }
+  .form-row .btn { font-size: 13px; padding: 8px 18px; }
+  .form-msg { font-size: 11px; }
+  #nameCat { width: 84px; height: 84px; }
+  .btn.big { padding: 11px 40px; }
+  .title-note { margin-top: 9px; font-size: 10.5px; }
+}
+
 .footnote {
   margin-top: 12px;
   padding-left: 4px;

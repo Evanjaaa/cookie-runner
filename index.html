@@ -39,8 +39,72 @@
         <button id="btnSlide">หมอบ</button>
       </div>
 
+      <!-- ── ลำดับหน้าเข้าเกม ───────────────────────────────────
+           ชื่อเกม → เข้าสู่ระบบ → ตั้งชื่อตัวละคร → ล็อบบี้
+           ใครมีบัญชีอยู่แล้วจะข้ามสองหน้ากลางไปล็อบบี้ทันทีที่กด "เข้าเกม" -->
+
+      <!-- หน้าชื่อเกม แผงนี้โปร่งกว่าแผงอื่นเพื่อให้เห็นแมวที่วาดบน canvas ข้างหลัง -->
+      <div class="panel title" id="titlePanel">
+        <div class="title-logo">
+          <h2>meow sing</h2>
+          <p>endless runner</p>
+        </div>
+        <button class="btn big" id="enterBtn">เข้าเกม</button>
+        <small class="title-note" id="titleNote"></small>
+      </div>
+
+      <div class="panel hidden" id="authPanel">
+        <h2 class="skin-title">เข้าสู่ระบบ</h2>
+        <p id="authLead">เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้</p>
+        <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
+        <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
+        <small class="form-msg" id="authMsg"></small>
+        <button class="backbtn" id="authBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- หน้าตั้งชื่อ โชว์แมวตัวที่เลือกอยู่จริง ๆ ให้รู้ว่ากำลังตั้งชื่อให้ใคร -->
+      <div class="panel hidden" id="namePanel">
+        <h2 class="skin-title">ตั้งชื่อตัวละคร</h2>
+        <canvas id="nameCat" width="120" height="120"></canvas>
+        <div class="form-row">
+          <input id="nameInput" maxlength="16" placeholder="ชื่อที่จะโชว์บนกระดาน">
+        </div>
+        <small class="form-msg" id="nameMsg"></small>
+        <button class="btn" id="nameSave">เริ่มเล่น</button>
+      </div>
+
+      <!-- หน้าอีเมล ใช้ร่วมกันสองงาน: เข้าด้วยอีเมล กับ ผูกอีเมลกับบัญชีที่เล่นอยู่
+           ขั้นตอนเหมือนกันเป๊ะ (กรอกอีเมล → รับรหัส 6 หลัก → ยืนยัน)
+           ต่างแค่ API ที่เรียกกับข้อความ จึงไม่คุ้มที่จะแยกเป็นสองแผง -->
+      <div class="panel hidden" id="mailPanel">
+        <h2 class="skin-title" id="mailTitle">เข้าด้วยอีเมล</h2>
+        <p id="mailLead"></p>
+        <div class="form-row" id="mailStep1">
+          <input id="mailInput" type="email" inputmode="email"
+                 autocomplete="email" placeholder="you@example.com">
+          <button class="btn ghost" id="mailSend">ส่งรหัส</button>
+        </div>
+        <div class="form-row hidden" id="mailStep2">
+          <input id="codeInput" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="6" placeholder="รหัส 6 หลัก">
+          <button class="btn ghost" id="codeVerify">ยืนยัน</button>
+        </div>
+        <small class="form-msg" id="mailMsg"></small>
+        <button class="backbtn" id="mailBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
       <!-- หน้าแรก: ครึ่งซ้ายเว้นว่างให้เห็นแมวที่วาดบน canvas ครึ่งขวาเป็นเมนู -->
-      <div class="panel home" id="startPanel">
+      <div class="panel home hidden" id="startPanel">
         <!-- โลโก้กลางบน แมวถูกวาดอยู่บน canvas ข้างหลังตรงกลางจอ -->
         <div class="home-logo">
           <h2>meow sing</h2>
@@ -223,6 +287,14 @@
           <button class="stepbtn" id="volUp" aria-label="เพิ่มเสียง">+</button>
           <b class="volnum" id="volNum">80%</b>
         </div>
+        <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
+             ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
+        <div class="setrow">
+          <span class="setlabel">บัญชี</span>
+          <b class="setval" id="accState">—</b>
+          <button class="btn ghost tiny" id="accBtn">เชื่อมอีเมล</button>
+        </div>
+        <small class="form-msg" id="accMsg"></small>
         <button class="backbtn" id="settingsBack" aria-label="กลับ">
           <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
             <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
