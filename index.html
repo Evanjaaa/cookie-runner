@@ -58,70 +58,75 @@
       </div>
 
       <div class="panel hidden" id="authPanel">
-        <h2 class="skin-title">เข้าสู่ระบบ</h2>
-        <p id="authLead">เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้</p>
-        <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
-        <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
-        <small class="form-msg" id="authMsg"></small>
-        <button class="backbtn" id="authBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div class="pop">
+          <h2 class="skin-title">เข้าสู่ระบบ</h2>
+          <p id="authLead">เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้</p>
+          <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
+          <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
+          <small class="form-msg" id="authMsg"></small>
+          <button class="backbtn" id="authBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- หน้าตั้งชื่อ โชว์แมวตัวที่เลือกอยู่จริง ๆ ให้รู้ว่ากำลังตั้งชื่อให้ใคร -->
       <div class="panel hidden" id="namePanel">
-        <h2 class="skin-title">ตั้งชื่อตัวละคร</h2>
-        <canvas id="nameCat" width="120" height="120"></canvas>
-        <div class="form-row">
-          <input id="nameInput" maxlength="16" placeholder="ชื่อที่จะโชว์บนกระดาน">
+        <div class="pop">
+          <h2 class="skin-title">ตั้งชื่อตัวละคร</h2>
+          <canvas id="nameCat" width="120" height="120"></canvas>
+          <div class="form-row">
+            <input id="nameInput" maxlength="16" placeholder="ชื่อที่จะโชว์บนกระดาน">
+          </div>
+          <small class="form-msg" id="nameMsg"></small>
+          <button class="btn" id="nameSave">เริ่มเล่น</button>
         </div>
-        <small class="form-msg" id="nameMsg"></small>
-        <button class="btn" id="nameSave">เริ่มเล่น</button>
       </div>
 
       <!-- หน้าอีเมล ใช้ร่วมกันสองงาน: เข้าด้วยอีเมล กับ ผูกอีเมลกับบัญชีที่เล่นอยู่
            ขั้นตอนเหมือนกันเป๊ะ (กรอกอีเมล → รับรหัส 6 หลัก → ยืนยัน)
            ต่างแค่ API ที่เรียกกับข้อความ จึงไม่คุ้มที่จะแยกเป็นสองแผง -->
       <div class="panel hidden" id="mailPanel">
-        <h2 class="skin-title" id="mailTitle">เข้าด้วยอีเมล</h2>
-        <p id="mailLead"></p>
-        <div class="form-row" id="mailStep1">
-          <input id="mailInput" type="email" inputmode="email"
-                 autocomplete="email" placeholder="you@example.com">
-          <button class="btn ghost" id="mailSend">ส่งรหัส</button>
+        <div class="pop">
+          <h2 class="skin-title" id="mailTitle">เข้าด้วยอีเมล</h2>
+          <p id="mailLead"></p>
+          <div class="form-row" id="mailStep1">
+            <input id="mailInput" type="email" inputmode="email"
+                   autocomplete="email" placeholder="you@example.com">
+            <button class="btn ghost" id="mailSend">ส่งรหัส</button>
+          </div>
+          <div class="form-row hidden" id="mailStep2">
+            <input id="codeInput" inputmode="numeric" autocomplete="one-time-code"
+                   maxlength="6" placeholder="รหัส 6 หลัก">
+            <button class="btn ghost" id="codeVerify">ยืนยัน</button>
+          </div>
+          <small class="form-msg" id="mailMsg"></small>
+          <button class="backbtn" id="mailBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-        <div class="form-row hidden" id="mailStep2">
-          <input id="codeInput" inputmode="numeric" autocomplete="one-time-code"
-                 maxlength="6" placeholder="รหัส 6 หลัก">
-          <button class="btn ghost" id="codeVerify">ยืนยัน</button>
-        </div>
-        <small class="form-msg" id="mailMsg"></small>
-        <button class="backbtn" id="mailBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <!-- หน้าแรก: ครึ่งซ้ายเว้นว่างให้เห็นแมวที่วาดบน canvas ครึ่งขวาเป็นเมนู -->
       <div class="panel home hidden" id="startPanel">
-        <!-- โลโก้กลางบน แมวถูกวาดอยู่บน canvas ข้างหลังตรงกลางจอ
-             ป้ายชื่อใช้ทรงเดียวกับหน้าชื่อเกม (.logo-plate) ให้เป็นของชิ้นเดียวกัน -->
-        <div class="home-logo logo-plate">
-          <span class="plate-ear left" aria-hidden="true"></span>
-          <span class="plate-ear right" aria-hidden="true"></span>
-          <h2>meow sing</h2>
-          <p>endless runner</p>
-        </div>
+        <!-- ไม่มีป้ายชื่อเกมในล็อบบี้แล้ว — คนที่มาถึงหน้านี้ผ่านหน้าชื่อเกมมาแล้ว
+             จึงรู้อยู่แล้วว่าเล่นเกมอะไรอยู่ ป้ายซ้ำอีกทีมีแต่บังฉากกับบังหัวน้องแมว
+             (ป้ายตัวจริงยังอยู่ที่ #titlePanel เหมือนเดิม) -->
 
         <!-- การ์ดบัญชีมุมซ้ายบน — รูปแมว ชื่อ เลเวล และหลอดความคืบหน้า
              รูปโปรไฟล์ตอนนี้ผูกกับสีขนที่เลือกอยู่ วันหลังเปลี่ยนเป็นรูปอื่นได้
              โดยแก้แค่ฟังก์ชัน paintAvatar() ใน main.js ที่เดียว -->
         <div class="profile" id="profileCard">
+          <!-- ชั้นดาวกับแสงเรืองของทรงนี้ (Uiverse by StealthWorm)
+               อยู่หลังเนื้อหาทั้งหมด ไม่มีข้อความ ไม่ต้องให้โปรแกรมอ่านหน้าจออ่าน -->
+          <span class="pf-stars" aria-hidden="true"><i></i></span>
+          <span class="pf-glow" aria-hidden="true"><i></i><i></i></span>
           <span class="pf-face">
             <canvas id="pfAvatar" width="96" height="96"></canvas>
             <b class="pf-lv" id="pfLv">1</b>
@@ -171,244 +176,363 @@
 
       <!-- หน้าเลือกด่าน ภาพตัวอย่างคือฉากจริงของด่านนั้นย่อส่วนลงมา -->
       <div class="panel hidden" id="stagePanel">
-        <h2 class="skin-title">เลือกด่าน</h2>
-        <div class="stage-grid" id="stageGrid"></div>
-        <!-- ทางเข้าหน้าติดตั้งสมบัติ อยู่ตรงนี้เพราะเป็นสิ่งสุดท้ายที่ควรเช็ค
-             ก่อนลงเล่น — เลือกด่านเสร็จแล้วค่อยจัดของที่จะพกไป -->
-        <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
-        <button class="backbtn" id="stageBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div class="pop">
+          <h2 class="skin-title">เลือกด่าน</h2>
+          <div class="stage-grid" id="stageGrid"></div>
+          <!-- ทางเข้าหน้าติดตั้งสมบัติ อยู่ตรงนี้เพราะเป็นสิ่งสุดท้ายที่ควรเช็ค
+               ก่อนลงเล่น — เลือกด่านเสร็จแล้วค่อยจัดของที่จะพกไป -->
+          <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
+          <button class="backbtn" id="stageBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- หน้าเลือกตัวละคร ปุ่มแต่ละใบมี canvas วาดแมวตัวนั้นจริง ๆ -->
       <div class="panel hidden" id="skinPanel">
-        <h2 class="skin-title">เลือกแมวน้อย</h2>
-        <div class="skin-grid" id="skinGrid"></div>
-        <button class="backbtn" id="skinBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div class="pop">
+          <h2 class="skin-title">เลือกแมวน้อย</h2>
+          <div class="skin-grid" id="skinGrid"></div>
+          <button class="backbtn" id="skinBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- หน้าเลือกชุด ชุดผูกกับตัวแมว จึงโชว์เฉพาะชุดของตัวที่เลือกอยู่ -->
       <div class="panel hidden" id="outfitPanel">
-        <h2 class="skin-title">เลือกชุด</h2>
-        <div class="skin-grid" id="outfitGrid"></div>
-        <!-- ไม่มีปุ่มยืนยันแล้ว — แตะการ์ดคือใส่เลย เหมือนหน้าเลือกแมวกับเลือกด่าน
-             ทั้งสามหน้าจึงทำงานเหมือนกันหมด ไม่ต้องจำว่าหน้าไหนต้องกดยืนยัน -->
-        <button class="backbtn" id="outfitBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div class="pop">
+          <!-- หัวเรื่องกับแถบกรองอยู่แถวเดียวกัน ดู .panel-head ใน style.css -->
+          <div class="panel-head">
+          <h2 class="skin-title">เลือกชุด</h2>
+          <div class="filterbar" id="outfitFilter">
+            <div class="fsort" role="group" aria-label="เรียงลำดับ">
+              <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
+              <button type="button" class="fchip" data-sort="rarity">หายาก</button>
+            </div>
+            <label class="fonly">
+              <input type="checkbox" id="outfitOnly">
+              <span>ดูเฉพาะสิ่งที่มี</span>
+            </label>
+          </div>
+          </div>
+          <div class="skin-grid" id="outfitGrid"></div>
+          <small class="form-msg" id="outfitMsg"></small>
+          <!-- ไม่มีปุ่มยืนยันแล้ว — แตะการ์ดคือใส่เลย เหมือนหน้าเลือกแมวกับเลือกด่าน
+               ทั้งสามหน้าจึงทำงานเหมือนกันหมด ไม่ต้องจำว่าหน้าไหนต้องกดยืนยัน -->
+          <button class="backbtn" id="outfitBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── กล่องจดหมาย ────────────────────────────────────
+           รายการ → อ่านฉบับเดียว   ของขวัญกดรับได้จากทั้งสองหน้า -->
+      <div class="panel hidden" id="inboxPanel">
+        <div class="pop">
+          <div class="panel-head"><h2 class="skin-title">กล่องจดหมาย</h2></div>
+          <div class="mail-list" id="mailList"></div>
+          <div class="btnrow">
+            <button class="btn" id="mailClaimAll">รับของขวัญทั้งหมด</button>
+          </div>
+          <small class="form-msg" id="inboxMsg"></small>
+          <button class="backbtn" id="inboxBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- อ่านจดหมายทีละฉบับ -->
+      <div class="panel hidden" id="mailReadPanel">
+        <div class="pop">
+          <div class="panel-head"><h2 class="skin-title" id="mrTitle">จดหมาย</h2></div>
+          <p class="mail-meta" id="mrMeta"></p>
+          <div class="mail-body" id="mrBody"></div>
+          <div class="mail-gift hidden" id="mrGift">
+            <span class="mail-gift-lead">ของขวัญแนบมาด้วย</span>
+            <div class="mail-rewards" id="mrRewards"></div>
+          </div>
+          <div class="btnrow">
+            <button class="btn" id="mrClaim">รับของขวัญ</button>
+          </div>
+          <small class="form-msg" id="mrMsg"></small>
+          <button class="backbtn" id="mrBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- รายละเอียดชุด — เข้าจากการ์ดในหน้าเลือกชุด
+           การ์ดในกริดเลยเหลือแค่รูปกับชื่อ ข้อมูลที่เคยเบียดอยู่บนการ์ดมาอยู่ที่นี่
+           น้องแมวใส่ชุดนี้ยืนหายใจกะพริบตาอยู่จริง ไม่ใช่รูปนิ่ง -->
+      <div class="panel hidden" id="odPanel">
+        <div class="pop">
+          <div class="panel-head"><h2 class="skin-title" id="odName">ชุด</h2></div>
+          <div class="odetail">
+            <div class="odetail-show">
+              <canvas id="odCat" width="200" height="200"></canvas>
+              <span class="tier-badge" id="odTier"></span>
+            </div>
+            <div class="odetail-info">
+              <p class="odetail-bonus" id="odBonus"></p>
+              <p class="odetail-sub" id="odSub"></p>
+              <p class="odetail-text" id="odText"></p>
+            </div>
+          </div>
+          <div class="btnrow">
+            <button class="btn" id="odWear">ใส่ชุดนี้</button>
+          </div>
+          <small class="form-msg" id="odMsg"></small>
+          <button class="backbtn" id="odBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- ── ระบบสมบัติ: 4 หน้าที่ต่อกันเป็นสาย ──────────────────
            รายการ → รายละเอียด → ตีบวก   และ   รายการ → ตู้สุ่ม
            แต่ละหน้าจำว่ามาจากไหน ปุ่มกลับจึงพากลับที่เดิมเสมอ -->
       <div class="panel hidden" id="treasurePanel">
-        <h2 class="skin-title">สมบัติ</h2>
-        <div class="skin-grid" id="treasureGrid"></div>
-        <button class="btn" id="tgachaOpen">
-          <span class="price"><span class="gem" aria-hidden="true"></span><b>สุ่มสมบัติ</b></span>
-        </button>
-        <button class="backbtn" id="treasureBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div class="pop">
+          <div class="panel-head">
+          <h2 class="skin-title">สมบัติ</h2>
+          <div class="filterbar" id="treasureFilter">
+            <div class="fsort" role="group" aria-label="เรียงลำดับ">
+              <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
+              <button type="button" class="fchip" data-sort="level">เลเวล</button>
+              <button type="button" class="fchip" data-sort="rarity">หายาก</button>
+            </div>
+            <label class="fonly">
+              <input type="checkbox" id="treasureOnly">
+              <span>ดูเฉพาะสิ่งที่มี</span>
+            </label>
+          </div>
+          </div>
+          <div class="skin-grid" id="treasureGrid"></div>
+          <button class="btn" id="tgachaOpen">
+            <span class="price"><span class="gem" aria-hidden="true"></span><b>สุ่มสมบัติ</b></span>
+          </button>
+          <button class="backbtn" id="treasureBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- รายละเอียดสมบัติหนึ่งชิ้น -->
       <div class="panel hidden" id="tDetailPanel">
-        <div class="tdetail">
-          <div class="tdetail-face">
-            <span class="tdetail-emoji" id="tdEmoji">🍊</span>
-            <span class="tier-badge" id="tdTier"></span>
-          </div>
-          <div class="tdetail-body">
-            <b class="tdetail-name" id="tdName"></b>
-            <span class="tdetail-stars" id="tdStars"></span>
-            <span class="hero-bonus" id="tdEffect"></span>
-            <small class="tdetail-when" id="tdWhen"></small>
-            <p class="tdetail-text" id="tdText"></p>
-            <div class="btnrow">
-              <button class="btn" id="tdEquip">ติดตั้ง</button>
-              <button class="btn ghost" id="tdUpgrade">อัพเกรด</button>
+        <div class="pop">
+          <div class="tdetail">
+            <div class="tdetail-face">
+              <span class="tdetail-emoji" id="tdEmoji">🍊</span>
+              <span class="tier-badge" id="tdTier"></span>
             </div>
-            <small class="form-msg" id="tdMsg"></small>
+            <div class="tdetail-body">
+              <b class="tdetail-name" id="tdName"></b>
+              <span class="tdetail-stars" id="tdStars"></span>
+              <span class="hero-bonus" id="tdEffect"></span>
+              <small class="tdetail-when" id="tdWhen"></small>
+              <p class="tdetail-text" id="tdText"></p>
+              <div class="btnrow">
+                <button class="btn" id="tdEquip">ติดตั้ง</button>
+                <button class="btn ghost" id="tdUpgrade">อัพเกรด</button>
+              </div>
+              <small class="form-msg" id="tdMsg"></small>
+            </div>
           </div>
+          <button class="backbtn" id="tdBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-        <button class="backbtn" id="tdBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <!-- หน้าตีบวก — ใช้ทองอย่างเดียว ไม่เกี่ยวกับเพชร -->
       <div class="panel hidden" id="upPanel">
-        <h2 class="skin-title">ตีบวกสมบัติ</h2>
-        <div class="up-box">
-          <span class="up-emoji" id="upEmoji">🍊</span>
-          <b class="up-name" id="upName"></b>
-          <span class="up-step" id="upStep"></span>
-          <div class="up-arrow" id="upArrow"></div>
-          <div class="up-odds" id="upOdds"></div>
-          <div class="up-result hidden" id="upResult"></div>
-          <button class="btn" id="upGo">
-            <span class="price"><span class="coin" aria-hidden="true"></span><b id="upCost">2,000</b></span>
-            <small id="upGoLabel">ตีบวก</small>
+        <div class="pop">
+          <h2 class="skin-title">ตีบวกสมบัติ</h2>
+          <div class="up-box">
+            <span class="up-emoji" id="upEmoji">🍊</span>
+            <b class="up-name" id="upName"></b>
+            <span class="up-step" id="upStep"></span>
+            <div class="up-arrow" id="upArrow"></div>
+            <div class="up-odds" id="upOdds"></div>
+            <div class="up-result hidden" id="upResult"></div>
+            <button class="btn" id="upGo">
+              <span class="price"><span class="coin" aria-hidden="true"></span><b id="upCost">2,000</b></span>
+              <small id="upGoLabel">ตีบวก</small>
+            </button>
+          </div>
+          <button class="backbtn" id="upBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </button>
         </div>
-        <button class="backbtn" id="upBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <!-- ตู้สุ่มสมบัติ — ใช้เพชรชมพู -->
       <div class="panel hidden" id="tgachaPanel">
-        <h2 class="skin-title">สุ่มสมบัติ</h2>
-        <p class="tg-lead" id="tgOdds"></p>
+        <div class="pop">
+          <h2 class="skin-title">สุ่มสมบัติ</h2>
+          <p class="tg-lead" id="tgOdds"></p>
 
-        <!-- ที่ว่างกลางแผงเดิมโล่งจนหน้าดูเหมือนโหลดไม่ขึ้น
-             หีบยืนอยู่ตรงนั้นตอนยังไม่ได้สุ่ม พอสุ่มแล้วการ์ดมาแทนที่ในกรอบเดียวกัน
-             จึงไม่มีจังหวะไหนที่ตรงกลางแผงว่างเปล่า -->
-        <div class="tg-stage">
-          <div class="tg-chest" id="tgChestWrap">
-            <canvas id="tgChest" width="200" height="184"></canvas>
-            <small class="tg-hint" id="tgHint">เปิดหีบด้วยเพชรชมพู</small>
+          <!-- ที่ว่างกลางแผงเดิมโล่งจนหน้าดูเหมือนโหลดไม่ขึ้น
+               หีบยืนอยู่ตรงนั้นตอนยังไม่ได้สุ่ม พอสุ่มแล้วการ์ดมาแทนที่ในกรอบเดียวกัน
+               จึงไม่มีจังหวะไหนที่ตรงกลางแผงว่างเปล่า -->
+          <div class="tg-stage">
+            <div class="tg-chest" id="tgChestWrap">
+              <canvas id="tgChest" width="200" height="184"></canvas>
+              <small class="tg-hint" id="tgHint">เปิดหีบด้วยเพชรชมพู</small>
+            </div>
+            <div class="got-row" id="tgRow"></div>
           </div>
-          <div class="got-row" id="tgRow"></div>
-        </div>
 
-        <div class="buyrow">
-          <button class="btn pull" id="tgPull1">
-            <span class="price"><span class="gem" aria-hidden="true"></span><b>150</b></span>
-            <small>1 ครั้ง</small>
-          </button>
-          <button class="btn pull five" id="tgPull3">
-            <span class="price"><span class="gem" aria-hidden="true"></span><b>450</b></span>
-            <small>3 ครั้ง!</small>
-          </button>
-        </div>
+          <div class="buyrow">
+            <button class="btn pull" id="tgPull1">
+              <span class="price"><span class="gem" aria-hidden="true"></span><b>150</b></span>
+              <small>1 ครั้ง</small>
+            </button>
+            <button class="btn pull five" id="tgPull3">
+              <span class="price"><span class="gem" aria-hidden="true"></span><b>450</b></span>
+              <small>3 ครั้ง!</small>
+            </button>
+          </div>
 
-        <div class="tg-foot">
-          <p class="tg-owned">เก็บแล้ว <b id="tgOwned">0</b> / <span id="tgTotal">0</span></p>
-          <small class="form-msg" id="tgMsg"></small>
+          <div class="tg-foot">
+            <p class="tg-owned">เก็บแล้ว <b id="tgOwned">0</b> / <span id="tgTotal">0</span></p>
+            <small class="form-msg" id="tgMsg"></small>
+          </div>
+          <button class="backbtn" id="tgBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-        <button class="backbtn" id="tgBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <!-- ติดตั้งสมบัติก่อนลงเล่น เข้าจากหน้าเลือกด่าน -->
       <div class="panel hidden" id="loadoutPanel">
-        <h2 class="skin-title">ติดตั้งสมบัติ</h2>
-        <div class="slots" id="slotRow"></div>
-        <div class="skin-grid" id="loadoutGrid"></div>
-        <small class="form-msg" id="loadMsg"></small>
-        <button class="backbtn" id="loadBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <div class="pop">
+          <h2 class="skin-title">ติดตั้งสมบัติ</h2>
+          <div class="slots" id="slotRow"></div>
+          <div class="skin-grid" id="loadoutGrid"></div>
+          <small class="form-msg" id="loadMsg"></small>
+          <button class="backbtn" id="loadBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- ตู้กาช่า สุ่มชุดด้วยเหรียญทอง -->
       <div class="panel hidden" id="gachaPanel">
-        <h2 class="skin-title">ตู้กาช่า</h2>
+        <div class="pop">
+          <h2 class="skin-title">ตู้กาช่า</h2>
 
-        <div class="gacha-body">
-          <!-- ซ้าย: ชุดที่กำลังส่องอยู่ ตัวใหญ่เต็มตา -->
-          <div class="gacha-show">
-            <canvas id="gachaHero" width="190" height="190"></canvas>
-            <div class="hero-meta">
-              <span class="tier-badge" id="heroTier"></span>
-              <b class="hero-name" id="heroName"></b>
-              <span class="hero-bonus" id="heroBonus"></span>
-              <small class="hero-state" id="heroState"></small>
+          <div class="gacha-body">
+            <!-- ซ้าย: ชุดที่กำลังส่องอยู่ ตัวใหญ่เต็มตา -->
+            <div class="gacha-show">
+              <canvas id="gachaHero" width="190" height="190"></canvas>
+              <div class="hero-meta">
+                <span class="tier-badge" id="heroTier"></span>
+                <b class="hero-name" id="heroName"></b>
+                <span class="hero-bonus" id="heroBonus"></span>
+                <small class="hero-state" id="heroState"></small>
+              </div>
+            </div>
+
+            <!-- ขวา: ตัวตู้กับปุ่มสุ่ม -->
+            <div class="gacha-right">
+              <canvas id="gachaMachine" width="200" height="226"></canvas>
+              <div class="buyrow">
+                <button class="btn pull" id="pull1">
+                  <span class="price"><span class="coin" aria-hidden="true"></span><b>5,000</b></span>
+                  <small>1 ครั้ง</small>
+                </button>
+                <button class="btn pull five" id="pull5">
+                  <span class="price"><span class="coin" aria-hidden="true"></span><b>25,000</b></span>
+                  <small>5 ครั้ง!</small>
+                </button>
+              </div>
+              <div class="gacha-foot">
+                <p class="gacha-owned">ปลดล็อก <b id="ownedCount">0</b> / <span id="totalCount">0</span></p>
+                <button class="info-btn" id="oddsBtn" aria-label="ดูอัตราการสุ่ม">!</button>
+              </div>
             </div>
           </div>
 
-          <!-- ขวา: ตัวตู้กับปุ่มสุ่ม -->
-          <div class="gacha-right">
-            <canvas id="gachaMachine" width="200" height="226"></canvas>
-            <div class="buyrow">
-              <button class="btn pull" id="pull1">
-                <span class="price"><span class="coin" aria-hidden="true"></span><b>5,000</b></span>
-                <small>1 ครั้ง</small>
-              </button>
-              <button class="btn pull five" id="pull5">
-                <span class="price"><span class="coin" aria-hidden="true"></span><b>25,000</b></span>
-                <small>5 ครั้ง!</small>
-              </button>
-            </div>
-            <div class="gacha-foot">
-              <p class="gacha-owned">ปลดล็อก <b id="ownedCount">0</b> / <span id="totalCount">0</span></p>
-              <button class="info-btn" id="oddsBtn" aria-label="ดูอัตราการสุ่ม">!</button>
-            </div>
+          <!-- อัตราออกซ่อนไว้ใต้ปุ่ม ! — เป็นข้อมูลที่ดูครั้งเดียวแล้วจำได้
+               ไม่ควรกินที่ถาวรแข่งกับของที่ผู้เล่นมาดูจริง ๆ คือชุดกับปุ่มสุ่ม
+               แถวข้างในสร้างจาก JS ตัวเลขจึงมาจากค่าจริงเสมอ -->
+          <div class="odds-pop hidden" id="oddsPop">
+            <b>อัตราการสุ่ม</b>
+            <div class="odds" id="gachaOdds"></div>
+            <button class="btn ghost" id="oddsClose">ปิด</button>
           </div>
+
+          <!-- ชั้นวางชุดทั้งหมด — ได้แล้วเห็นเต็มสี ยังไม่ได้เป็นเงาดำ -->
+          <div class="gacha-shelf" id="gachaShelf"></div>
+
+          <!-- ผลที่เพิ่งสุ่ม ลอยทับทั้งหน้า
+               ต้องมีทางปิดของตัวเองเสมอ เพราะมันคลุมทั้งการ์ดจนกดปุ่มอะไรข้างใต้ไม่ได้ -->
+          <div class="gacha-result hidden" id="gachaResult">
+            <b class="got-title" id="gotTitle">ได้รับ!</b>
+            <div class="got-row" id="gotRow"></div>
+            <button class="btn" id="gotClose">ตกลง</button>
+          </div>
+
+          <button class="backbtn" id="gachaBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-
-        <!-- อัตราออกซ่อนไว้ใต้ปุ่ม ! — เป็นข้อมูลที่ดูครั้งเดียวแล้วจำได้
-             ไม่ควรกินที่ถาวรแข่งกับของที่ผู้เล่นมาดูจริง ๆ คือชุดกับปุ่มสุ่ม
-             แถวข้างในสร้างจาก JS ตัวเลขจึงมาจากค่าจริงเสมอ -->
-        <div class="odds-pop hidden" id="oddsPop">
-          <b>อัตราการสุ่ม</b>
-          <div class="odds" id="gachaOdds"></div>
-          <button class="btn ghost" id="oddsClose">ปิด</button>
-        </div>
-
-        <!-- ชั้นวางชุดทั้งหมด — ได้แล้วเห็นเต็มสี ยังไม่ได้เป็นเงาดำ -->
-        <div class="gacha-shelf" id="gachaShelf"></div>
-
-        <!-- ผลที่เพิ่งสุ่ม ลอยทับทั้งหน้า
-             ต้องมีทางปิดของตัวเองเสมอ เพราะมันคลุมทั้งการ์ดจนกดปุ่มอะไรข้างใต้ไม่ได้ -->
-        <div class="gacha-result hidden" id="gachaResult">
-          <b class="got-title" id="gotTitle">ได้รับ!</b>
-          <div class="got-row" id="gotRow"></div>
-          <button class="btn" id="gotClose">ตกลง</button>
-        </div>
-
-        <button class="backbtn" id="gachaBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <!-- กระดานคะแนนรวม ดึงจาก Supabase ตอนเปิดหน้านี้ -->
       <div class="panel hidden" id="rankPanel">
-        <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
-        <div class="rank-list" id="rankList"></div>
-        <div class="rank-me">
-          <input id="rankName" maxlength="16" placeholder="ตั้งชื่อที่จะโชว์บนกระดาน">
-          <button class="btn ghost" id="rankSave">บันทึกชื่อ</button>
+        <div class="pop">
+          <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
+          <div class="rank-list" id="rankList"></div>
+          <div class="rank-me">
+            <input id="rankName" maxlength="16" placeholder="ตั้งชื่อที่จะโชว์บนกระดาน">
+            <button class="btn ghost" id="rankSave">บันทึกชื่อ</button>
+          </div>
+          <button class="backbtn" id="rankBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-        <button class="backbtn" id="rankBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <!-- ฉากห้องก่อนเริ่มวิ่ง — น้องยืนพูดอะไรสักอย่างแล้วค่อยเข้าเกม
@@ -419,53 +543,59 @@
       </div>
 
       <div class="panel hidden" id="pausePanel">
-        <h2>พักก่อน</h2>
-        <button class="btn" id="resumeBtn">เล่นต่อ</button>
-        <div class="btnrow">
-          <button class="btn ghost" id="restartBtn">เริ่มใหม่</button>
-          <button class="btn ghost" id="quitBtn">เลิกเล่น</button>
+        <div class="pop">
+          <h2>พักก่อน</h2>
+          <button class="btn" id="resumeBtn">เล่นต่อ</button>
+          <div class="btnrow">
+            <button class="btn ghost" id="restartBtn">เริ่มใหม่</button>
+            <button class="btn ghost" id="quitBtn">เลิกเล่น</button>
+          </div>
         </div>
       </div>
 
       <div class="panel hidden" id="settingsPanel">
-        <h2>ตั้งค่า</h2>
-        <div class="setrow">
-          <span class="setlabel">เสียง</span>
-          <button class="stepbtn" id="volDown" aria-label="ลดเสียง">−</button>
-          <div class="volbar" id="volBar"></div>
-          <button class="stepbtn" id="volUp" aria-label="เพิ่มเสียง">+</button>
-          <b class="volnum" id="volNum">80%</b>
+        <div class="pop">
+          <h2>ตั้งค่า</h2>
+          <div class="setrow">
+            <span class="setlabel">เสียง</span>
+            <button class="stepbtn" id="volDown" aria-label="ลดเสียง">−</button>
+            <div class="volbar" id="volBar"></div>
+            <button class="stepbtn" id="volUp" aria-label="เพิ่มเสียง">+</button>
+            <b class="volnum" id="volNum">80%</b>
+          </div>
+          <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
+               ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
+          <div class="setrow">
+            <span class="setlabel">บัญชี</span>
+            <b class="setval" id="accState">—</b>
+            <button class="btn ghost tiny" id="accBtn">เชื่อมอีเมล</button>
+          </div>
+          <small class="form-msg" id="accMsg"></small>
+          <button class="backbtn" id="settingsBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-        <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
-             ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
-        <div class="setrow">
-          <span class="setlabel">บัญชี</span>
-          <b class="setval" id="accState">—</b>
-          <button class="btn ghost tiny" id="accBtn">เชื่อมอีเมล</button>
-        </div>
-        <small class="form-msg" id="accMsg"></small>
-        <button class="backbtn" id="settingsBack" aria-label="กลับ">
-          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <div class="panel hidden" id="overPanel">
-        <h2 id="overTitle">หมดแรงแล้ว</h2>
-        <div class="final">
-          <div><div class="lbl">คะแนน</div><div class="val" id="finalScore">0</div></div>
-          <div><div class="lbl">ระยะทาง</div><div class="val" id="finalDist">0 ม.</div></div>
-          <div><div class="lbl">สถิติสูงสุด</div><div class="val mint" id="bestScore">0</div></div>
-        </div>
-        <!-- XP ที่เพิ่งได้จากตานี้ ต้องโชว์ตรงนี้เพราะเป็นที่เดียวที่ผู้เล่นเห็น
-             ผลของตาที่เพิ่งจบ ถ้าไปโผล่แต่บนการ์ดในล็อบบี้จะไม่มีใครสังเกตว่าได้เพิ่ม -->
-        <div class="xp-gain hidden" id="xpGain"></div>
-        <p>ความเร็วคงที่ตลอด ระยะกระโดดจึงเท่าเดิมเสมอ — กดกระโดดตรงปลาเม็ดแรก แล้วจะเก็บครบทั้งเส้นพร้อมข้ามพ้นพอดี</p>
-        <div class="btnrow">
-          <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
-          <button class="btn ghost" id="homeBtn">กลับหน้าแรก</button>
+        <div class="pop">
+          <h2 id="overTitle">หมดแรงแล้ว</h2>
+          <div class="final">
+            <div><div class="lbl">คะแนน</div><div class="val" id="finalScore">0</div></div>
+            <div><div class="lbl">ระยะทาง</div><div class="val" id="finalDist">0 ม.</div></div>
+            <div><div class="lbl">สถิติสูงสุด</div><div class="val mint" id="bestScore">0</div></div>
+          </div>
+          <!-- XP ที่เพิ่งได้จากตานี้ ต้องโชว์ตรงนี้เพราะเป็นที่เดียวที่ผู้เล่นเห็น
+               ผลของตาที่เพิ่งจบ ถ้าไปโผล่แต่บนการ์ดในล็อบบี้จะไม่มีใครสังเกตว่าได้เพิ่ม -->
+          <div class="xp-gain hidden" id="xpGain"></div>
+          <p>ความเร็วคงที่ตลอด ระยะกระโดดจึงเท่าเดิมเสมอ — กดกระโดดตรงปลาเม็ดแรก แล้วจะเก็บครบทั้งเส้นพร้อมข้ามพ้นพอดี</p>
+          <div class="btnrow">
+            <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
+            <button class="btn ghost" id="homeBtn">กลับหน้าแรก</button>
+          </div>
         </div>
       </div>
 
@@ -476,19 +606,34 @@
              (แถวตัวอักษรสะสมอยู่ตรงนั้น) และให้ฉากหลังหน้าแรกโล่ง ๆ -->
         <!-- เพชรชมพูอยู่ซ้ายของเหรียญทอง เป็นเงินคนละกระเป๋ากัน
              ทอง = ตู้ชุด + ตีบวกสมบัติ / เพชร = ตู้สมบัติอย่างเดียว -->
-        <div class="gembar" aria-label="เพชรชมพู">
-          <span class="gem" aria-hidden="true"></span>
-          <b id="gemTop">0</b>
-        </div>
-        <div class="goldbar" aria-label="เหรียญทอง">
-          <span class="coin" aria-hidden="true"></span>
-          <b id="goldTop">0</b>
+        <!-- เพชรกับทองอยู่ในกล่องเดียวกัน จะได้ชิดกันเป็นกระเป๋าเงินก้อนเดียว
+             ส่วนช่องไฟกับปุ่มตั้งค่ามาจาก gap ของ .hud-top ซึ่งกว้างกว่า -->
+        <div class="wallet">
+          <div class="gembar" aria-label="เพชรชมพู">
+            <span class="gem" aria-hidden="true"></span>
+            <b id="gemTop">0</b>
+          </div>
+          <div class="goldbar" aria-label="เหรียญทอง">
+            <span class="coin" aria-hidden="true"></span>
+            <b id="goldTop">0</b>
+          </div>
         </div>
         <div class="hudbtns">
           <!-- ทั้งสองปุ่มไม่มีตัวหนังสือข้างใน รูปวาดด้วย CSS กับ SVG ในตัว
                อีโมจิ ⏸ 🔊 หน้าตาไม่เหมือนกันเลยระหว่าง iOS/Android/Windows
                และบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
           <button id="btnPause" aria-label="หยุดชั่วคราว"></button>
+          <!-- กล่องจดหมายอยู่ซ้ายของปุ่มตั้งค่า จุดแดงโผล่เมื่อมีของค้างรับหรือยังไม่อ่าน
+               ซองวาดด้วย SVG ในตัว ไม่ใช้อีโมจิ ✉ เพราะหน้าตาต่างกันทุกระบบ -->
+          <button id="btnMail" aria-label="กล่องจดหมาย">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <rect x="2.4" y="5" width="19.2" height="14" rx="2.6"
+                    fill="none" stroke="currentColor" stroke-width="2.2"/>
+              <path d="M3.6 7.2 12 13.2l8.4-6" fill="none" stroke="currentColor"
+                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <i class="dot hidden" id="mailDot" aria-hidden="true"></i>
+          </button>
           <button id="btnSettings" aria-label="ตั้งค่า">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" stroke-width="3.1"/>

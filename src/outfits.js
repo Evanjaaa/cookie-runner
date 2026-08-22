@@ -819,6 +819,17 @@ export function ownedCount() {
   return owned.size;
 }
 
+/**
+ * รายการ id เรียงตามลำดับที่ได้มา ตัวแรกคือชิ้นที่ได้มานานที่สุด
+ *
+ * Set ใน JS จำลำดับที่ใส่เข้าไป และ grantOutfit() มีแต่เพิ่มไม่มีลบ
+ * ลำดับนี้จึงเท่ากับลำดับที่สุ่มได้จริง ใช้กับตัวกรอง "ล่าสุด" ได้เลย
+ * โดยไม่ต้องเก็บเวลาที่ได้เพิ่มอีกช่อง
+ */
+export function ownedOrder() {
+  return [...owned];
+}
+
 /** เฉพาะชุดที่ปลดล็อกแล้ว ใช้กับเมนูเลือกชุด */
 export function wearable() {
   return OUTFITS.filter((o) => isOwned(o.id));

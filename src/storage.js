@@ -165,6 +165,29 @@ const GEM_KEY = 'cookie-runner:gems';
 const TRE_KEY = 'cookie-runner:treasures';
 const EQUIP_KEY = 'cookie-runner:equip';
 
+// ── ค่าตั้งเล็ก ๆ ของหน้าจอ ──────────────────────────────────
+// พวกตัวเลือกที่ไม่ใช่ "ความคืบหน้าในเกม" เช่น เรียงการ์ดแบบไหน ติ๊กกรองไว้ไหม
+// ใช้ฟังก์ชันกลางคู่เดียวแทนการเขียน load/save แยกทีละอัน เพราะของกลุ่มนี้
+// จะงอกเพิ่มเรื่อย ๆ ทุกครั้งที่มีหน้าใหม่ ถ้าแยกทีละคู่ไฟล์นี้จะบวมโดยไม่ได้อะไร
+//
+// พังแล้วไม่ต้องกู้ — เสียอย่างมากคือกลับไปเรียงแบบตั้งต้น ไม่ใช่ของหาย
+export function loadPref(key, fallback) {
+  try {
+    const raw = localStorage.getItem('cookie-runner:pref:' + key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+export function savePref(key, value) {
+  try {
+    localStorage.setItem('cookie-runner:pref:' + key, JSON.stringify(value));
+  } catch {
+    /* เซฟไม่ได้ก็แค่ไม่จำข้ามรอบ ไม่ใช่เหตุให้กดไม่ได้ */
+  }
+}
+
 // เพชรตั้งต้น พอสุ่มได้สองครั้งพอดี ให้ได้ลองระบบก่อนโดยไม่ต้องรอกิจกรรม
 // (ยังไม่มีทางหาเพชรในเกม — จะมาพร้อมระบบเควสทีหลัง)
 const GEM_START = 300;
