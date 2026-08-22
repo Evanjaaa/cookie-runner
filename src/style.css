@@ -1,4 +1,11 @@
 ﻿:root {
+  /* ความสูงของทุกอย่างบนแถบมุมขวาบน — แถบเพชร แถบทอง และปุ่มตั้งค่า
+     ผูกไว้ตัวเดียวกันเพื่อให้ "สูงเท่ากัน" เป็นจริงโดยโครงสร้าง ไม่ใช่บังเอิญตรงกัน
+     ปุ่มยังกลมอยู่เพราะกว้างเท่าสูงเป๊ะแล้วมี border-radius 50% */
+  --hud-h: clamp(26px, 4.4dvh, 32px);
+  /* ระยะที่การ์ดพื้นหลังของแผง (.panel::before) เว้นจากขอบแผง
+     ของที่วางลอยในแผงต้องอ้างค่านี้ ไม่งั้นจะไปโผล่นอกการ์ด */
+  --card-inset: 3.5%;
   --night: #1B0F2B;
   --plum: #3A1D50;
   --berry: #7A3563;
@@ -22,6 +29,11 @@
   --plate-face: linear-gradient(180deg, rgba(146,94,196,.94), rgba(96,53,148,.96));
   --plate-top: rgba(146,94,196,.96);   /* เฉดบนสุดของ face — ใช้กับชิ้นที่ต้องต่อเนื่องกับขอบบน */
   --plate-line: rgba(255,243,226,.44);
+  /* ขอบไล่สีของกรอบในหน้าแรก (ท่าตาม Uiverse by adamgiebl)
+     สว่างที่ขอบบน เข้มที่ขอบล่าง = อ่านเป็นแผ่นนูนรับแสงจากด้านบน
+     ใช้ม่วงตระกูลเดียวกับ --plate-face ไม่ได้เอาสีม่วงจากต้นฉบับมา
+     เพราะทั้งหน้าแรกใช้ชุดสีนี้อยู่แล้ว เปลี่ยนสีจะกลายเป็นของหลุดชุด */
+  --plate-rim: linear-gradient(to top, #4A2374 0%, #6B3E9E 45%, #C79BEA 100%);
   --plate-lift:
     0 4px 0 rgba(20,8,32,.5),
     0 10px 22px rgba(0,0,0,.42),
@@ -122,11 +134,25 @@ canvas { display: block; width: 100%; height: auto; }
      ถ้าไม่มีบรรทัดนี้ z-index ติดลบจะทะลุลงไปอยู่หลังพื้นพาเนลจนมองไม่เห็นการ์ดเลย */
   isolation: isolate;
 }
-.panel:not(.home)::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset: 3.5%;
+/* ── การ์ดป๊อปอัพ ─────────────────────────────
+   เดิมการ์ดเป็น ::before ที่ inset ตายตัว 93% ของเวที ไม่ว่าเนื้อหาจะสั้นแค่ไหน
+   วัดจริงบนมือถือแล้วบางหน้าเหลือที่ว่างบน+ล่างรวมเกือบ 200px จาก 363
+   คือเกินครึ่งการ์ดเป็นที่ว่างเปล่า ๆ
+
+   เปลี่ยนมาเป็นกล่องจริง (.pop) ที่ห่อเนื้อหาไว้ การ์ดจึงหดตามเนื้อหาเอง
+   หน้าที่มีของน้อยก็ได้การ์ดเล็ก หน้าที่มีกริดยาวก็ได้การ์ดใหญ่ตามที่ต้องใช้ */
+.panel:not(.home) { padding: 0; }
+
+.pop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.6dvh, 14px);
+  /* ไม่เกินเท่านี้ = ขอบเขตสูงสุด ส่วนขนาดจริงหดตามเนื้อหา */
+  max-width: calc(100% - var(--card-inset) * 2);
+  max-height: calc(100% - var(--card-inset) * 2);
+  padding: clamp(12px, 3dvh, 30px) clamp(16px, 3.4vw, 40px);
   border-radius: clamp(16px, 3vw, 28px);
   background: linear-gradient(180deg, rgba(96,47,131,.94), rgba(35,16,55,.97));
   border: 1px solid rgba(255,243,226,.2);
@@ -134,6 +160,15 @@ canvas { display: block; width: 100%; height: auto; }
     0 22px 55px rgba(0,0,0,.6),
     inset 0 1px 0 rgba(255,255,255,.16),
     inset 0 -2px 0 rgba(0,0,0,.28);
+  /* เนื้อหายาวเกินการ์ดให้เลื่อนในการ์ด ไม่ใช่ดันการ์ดจนล้นเวที */
+  overflow: hidden;
+}
+
+/* หน้าที่มีปุ่มกลับต้องเว้นที่ให้มันทั้งสองข้างเท่ากัน
+   เว้นข้างเดียวจะดันหัวเรื่องที่จัดกลางให้เยื้องไปทางขวาแทนที่จะอยู่กลางการ์ด */
+.pop:has(.backbtn) {
+  padding-left: calc(var(--backbtn) + clamp(14px, 2.4vw, 26px));
+  padding-right: calc(var(--backbtn) + clamp(14px, 2.4vw, 26px));
 }
 
 /* ── เข้าฉาก ─────────────────────────────────
@@ -145,20 +180,27 @@ canvas { display: block; width: 100%; height: auto; }
 @keyframes cardRise {
   from { opacity: 0; transform: translateY(14px); }
 }
-.panel:not(.home):not(.hidden)::before {
+/* การ์ดย่อเข้ามา แล้วของข้างในไล่ขึ้นทีละชิ้น
+   ตอนการ์ดยังเป็น ::before ตัวเลือกชี้ที่ ::before กับลูกของ .panel
+   ตอนนี้การ์ดคือ .pop จริง ๆ ลูกที่ต้องไล่ขึ้นจึงเป็นลูกของ .pop ไม่ใช่ของ .panel
+   (ถ้าไม่ย้าย ทั้งการ์ดจะเลื่อนขึ้นทั้งใบแทนที่จะเป็นของข้างในไล่กันขึ้น) */
+.panel:not(.home):not(.hidden) > .pop {
   animation: cardIn .3s cubic-bezier(.2,.85,.3,1.06) backwards;
 }
-.panel:not(.home):not(.hidden) > * {
+.panel:not(.home):not(.hidden) > .pop > * {
   animation: cardRise .34s cubic-bezier(.2,.85,.3,1.06) backwards;
 }
-.panel:not(.home):not(.hidden) > *:nth-child(2) { animation-delay: .05s; }
-.panel:not(.home):not(.hidden) > *:nth-child(3) { animation-delay: .1s; }
-.panel:not(.home):not(.hidden) > *:nth-child(4) { animation-delay: .15s; }
+.panel:not(.home):not(.hidden) > .pop > *:nth-child(2) { animation-delay: .05s; }
+.panel:not(.home):not(.hidden) > .pop > *:nth-child(3) { animation-delay: .1s; }
+.panel:not(.home):not(.hidden) > .pop > *:nth-child(4) { animation-delay: .15s; }
 
 .panel h2 {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(24px, 5vw, 40px);
+  /* ย่อลงจาก clamp(24px, 5vw, 40px) — หัวเรื่องเดิมกินความสูงไปมากจนการ์ด
+     ข้างล่างเหลือที่น้อย โดยเฉพาะจอเตี้ย และหน้าพวกนี้คนเข้ามาดูของ
+     ไม่ได้เข้ามาอ่านหัวเรื่อง มันแค่ต้องบอกได้ว่าอยู่หน้าไหน */
+  font-size: clamp(19px, 3.1vw, 27px);
   line-height: 1.25;
   /* ขีดใต้หัวเรื่องสั้น ๆ แทนเส้นเต็มความกว้าง — บอกว่าเป็นหัวข้อโดยไม่ตัดหน้าเป็นสองท่อน */
   padding-bottom: 7px;
@@ -207,13 +249,19 @@ canvas { display: block; width: 100%; height: auto; }
    ซึ่งบนมือถือแนวนอนที่สูงแค่ ~390px ถือว่าเยอะ
 
    ทรงเดียวกับปุ่มบนแถบในจอ (.hudbtns button) เพื่อให้เป็นภาษาเดียวกันทั้งเกม */
+/* ด้านของปุ่มกลับ ประกาศไว้ที่เดียวเพราะแถบกรองต้องใช้ค่านี้ไปคำนวณ
+   ระยะเยื้องขวา ถ้าแยกกันเขียน วันหนึ่งเปลี่ยนขนาดปุ่มแล้วแถบกรองจะทับปุ่ม */
+:root { --backbtn: clamp(30px, 6.5dvh, 46px); }
+
 .backbtn {
   position: absolute;
-  left: 5%;
-  top: 6%;
+  /* เกาะมุมการ์ด (.pop) ไม่ใช่มุมเวที — พอการ์ดหดตามเนื้อหา ปุ่มต้องหดตามไปด้วย
+     ใช้ px ไม่ใช่ % เพราะการ์ดแต่ละหน้ากว้างไม่เท่ากัน ถ้าใช้ % ปุ่มจะเยื้องไม่เท่ากันทุกหน้า */
+  left: clamp(8px, 1.4vw, 16px);
+  top: clamp(8px, 1.4dvh, 16px);
   z-index: 5;
-  width: clamp(30px, 6.5dvh, 46px);
-  height: clamp(30px, 6.5dvh, 46px);
+  width: var(--backbtn);
+  height: var(--backbtn);
   padding: 0;
   border-radius: 50%;
   border: 2px solid rgba(255,243,226,.44);
@@ -234,6 +282,133 @@ canvas { display: block; width: 100%; height: auto; }
   box-shadow: 0 0 0 rgba(20,8,32,.65), 0 3px 9px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.22);
 }
 .backbtn:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
+
+/* ── แถบเรียง/กรองการ์ด ──────────────────────
+   เกาะมุมซ้ายบนต่อจากปุ่มกลับ ไม่ได้อยู่ในสายไหลของแผง เพราะถ้าเอาไปต่อ
+   ใต้หัวเรื่อง มันจะดันกริดการ์ดลงมาอีกแถวหนึ่งบนจอมือถือที่เตี้ยอยู่แล้ว
+
+   เยื้องขวาเท่าปุ่มกลับพอดีด้วย var(--backbtn) จึงไม่มีทางทับกันไม่ว่าจอขนาดไหน */
+/* ── แถวหัวเรื่อง ─────────────────────────────
+   หัวเรื่องกับแถบกรองอยู่ในกล่องเดียวกัน แถบจึงอยู่ "บรรทัดเดียวกับหัวเรื่อง" จริง
+   ไม่ใช่เดา top เป็นเปอร์เซ็นต์แล้วหวังว่าจะตรง ซึ่งเพี้ยนทันทีที่ขนาดฟอนต์เปลี่ยน
+   หัวเรื่องยังอยู่กลางแผงเป๊ะเพราะแถบถูกถอดออกจากสายไหลด้วย position: absolute */
+.panel-head {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filterbar {
+  position: absolute;
+  /* ชิดขวา ไม่ใช่ซ้าย — ฝั่งซ้ายมีปุ่มกลับจองไว้แล้ว พอเอาแถบไปต่อข้าง ๆ
+     มุมซ้ายบนเลยแน่นจนอ่านยาก ส่วนมุมขวาบนของแผงย่อยว่างอยู่แล้ว
+     (แถบทอง/เพชรซ่อนตัวเองเวลามีแผงย่อยเปิด ดูกฎที่ .hud-top) */
+  /* เว้นเท่าที่การ์ดพื้นหลังเว้น — เดิมใช้ right: 0 ซึ่งเป็นขอบ "กล่องเนื้อหาของแผง"
+     ไม่ใช่ขอบการ์ด ช่องติ๊กเลยยื่นพ้นการ์ดออกไป 18-20px (วัดจริงทั้งคอมและมือถือ) */
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  /* ตกบรรทัดเมื่อไหร่ให้ไหลชิดขวาตาม ไม่ใช่กลับไปชิดซ้ายจนขอบไม่ตรงกัน */
+  justify-content: flex-end;
+  gap: clamp(5px, 1.2vw, 12px);
+  flex-wrap: wrap;
+}
+
+.fsort {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.16);
+  background: rgba(27,15,43,.62);
+}
+.fchip {
+  padding: clamp(3px, 0.7dvh, 6px) clamp(8px, 1.6vw, 14px);
+  border-radius: 999px;
+  border: none;
+  background: none;
+  color: #B99BD4;
+  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-size: clamp(9px, 1.5dvh, 12px);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background .12s ease, color .12s ease;
+}
+.fchip:hover { color: var(--cream); }
+/* ตัวที่เลือกอยู่ต้องต่างทั้งสีพื้นและสีตัวอักษร ไม่ใช่ต่างแค่สีเดียว
+   บนจอมือถือกลางแดดความต่างของสีตัวอักษรอย่างเดียวแทบมองไม่ออก */
+.fchip.on {
+  background: linear-gradient(180deg, #7A3563, #47215F);
+  color: var(--cream);
+  box-shadow: 0 1px 0 rgba(20,8,32,.6), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.fchip:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+
+.fonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: clamp(3px, 0.7dvh, 6px) clamp(7px, 1.4vw, 12px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.16);
+  background: rgba(27,15,43,.62);
+  color: #B99BD4;
+  font-size: clamp(9px, 1.5dvh, 12px);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* ช่องติ๊กวาดเอง ไม่ใช้ของเบราว์เซอร์ — ของเดิมเป็นสี่เหลี่ยมสีระบบ
+   ซึ่งหน้าตาคนละโลกกับทุกอย่างในเกมนี้ และบน iOS ย่อขนาดไม่ได้ */
+.fonly input {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  width: clamp(12px, 2dvh, 16px);
+  height: clamp(12px, 2dvh, 16px);
+  border-radius: 4px;
+  border: 1.5px solid rgba(255,243,226,.4);
+  background: rgba(27,15,43,.8);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.fonly input::after {
+  content: '';
+  width: 55%;
+  height: 30%;
+  border-left: 2px solid #1B0F2B;
+  border-bottom: 2px solid #1B0F2B;
+  transform: rotate(-45deg) translate(6%, -18%);
+  opacity: 0;
+}
+.fonly input:checked {
+  background: var(--mint);
+  border-color: var(--mint-lite);
+}
+.fonly input:checked::after { opacity: 1; }
+.fonly:has(input:checked) { color: var(--cream); border-color: rgba(78,205,196,.5); }
+.fonly input:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+
+/* ไม่มีอะไรเหลือหลังกรอง — ต้องบอกว่าทำไม ไม่ใช่ปล่อยกริดว่างเปล่า
+   ซึ่งอ่านได้ว่า "เกมพัง" พอ ๆ กับอ่านได้ว่า "ยังไม่มีของ" */
+.grid-empty {
+  color: #B99BD4;
+  font-size: clamp(10px, 1.7dvh, 13px);
+  padding: clamp(10px, 3dvh, 26px) 8px;
+  text-align: center;
+}
 
 /* ปุ่มรอง — ใช้กับ "เริ่มใหม่" ที่ไม่ควรเด่นเท่า "เล่นต่อ" */
 .btn.ghost {
@@ -266,49 +441,15 @@ canvas { display: block; width: 100%; height: auto; }
   /* ── ขนาดการ์ดบัญชี ประกาศไว้ที่แผง ไม่ใช่ที่ตัวการ์ด ──────
    * เพราะแถวปุ่มเมนูต้องอ่านค่านี้ด้วย เพื่อรู้ว่าต้องเริ่มต่ำแค่ไหนถึงจะไม่ไปทับ
    * ถ้าเก็บไว้ในตัวการ์ด .lobby จะมองไม่เห็นเลย */
-  --pf: clamp(34px, 7.5dvh, 58px);
+  /* ขยายจาก clamp(34px, 7.5dvh, 58px) — การ์ดเดิมเล็กจนรูปแมวกับหลอดเลเวล
+     อ่านยาก ทั้งที่เป็นของชิ้นแรกที่คนมองตอนเข้าล็อบบี้
+     ทุกขนาดในการ์ดผูกกับตัวนี้ตัวเดียว และ --pf-clear ก็คำนวณต่อจากมัน
+     แถวปุ่มฝั่งซ้ายจึงถอยลงตามเองโดยไม่ต้องไปแก้ที่อื่น */
+  --pf: clamp(40px, 9.2dvh, 72px);
   --pf-top: 3.5%;
   /* ขอบล่างของการ์ดบวกช่องไฟ — 1.34 คืออัตราส่วนความสูงการ์ดต่อ --pf ที่วัดจากของจริง
      (การ์ด 78px ตอน --pf 58) บวก 12px กันเผื่อฟอนต์เรนเดอร์ต่างกันในแต่ละเครื่อง */
   --pf-clear: calc(var(--pf-top) + var(--pf) * 1.34 + 12px);
-}
-
-.home-logo {
-  position: absolute;
-  /* ลดจาก 4.5% เพราะ .logo-plate เผื่อที่ให้หัวแมวด้วย margin-top เป็น em แล้ว
-     ถ้ายังใช้ 4.5% อยู่ ป้ายจะถูกดันลงมาสองต่อจนต่ำเกินไปบนจอใหญ่ */
-  top: 1.5%;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  pointer-events: none;
-  white-space: nowrap;
-  /* หน่วยตั้งต้นของทั้งป้าย — ของข้างในวัดเป็น em จึงโตตามกันเองหมด
-     ย้ายขนาดตัวอักษรมาไว้ตรงนี้ ตัว h2 ข้างล่างจึงเป็น 1em เฉย ๆ */
-  font-size: clamp(17px, 4vw, 35px);
-}
-.home-logo h2 {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: 1em;
-  line-height: 1;
-  letter-spacing: .01em;
-  color: #FFF6E6;
-  /* ขอบเข้มรอบตัวอักษรกันจมกับฉากหลังที่สีไม่แน่นอน แล้วเรืองอ่อน ๆ อีกชั้น */
-  text-shadow:
-    0 3px 0 rgba(58,29,80,.9),
-    0 0 22px rgba(199,125,255,.55);
-}
-.home-logo p {
-  margin-top: 3px;
-  /* ปลด max-width: 44ch ที่ตกทอดมาจาก .panel p — ในป้ายมันจะบีบบรรทัดนี้
-     ให้แคบกว่าป้ายแล้วไปกองอยู่ชิดซ้ายแทนที่จะอยู่กลาง */
-  max-width: none;
-  font-size: clamp(8px, 1.5vw, 12px);
-  letter-spacing: .34em;
-  text-transform: uppercase;
-  color: #C9AEE8;
-  text-shadow: 0 2px 6px rgba(0,0,0,.6);
 }
 
 /* ── ป้ายชื่อเกม พร้อมแมวโผล่หัวสองข้าง ───────
@@ -322,10 +463,9 @@ canvas { display: block; width: 100%; height: auto; }
  * --plate = หน่วยตั้งต้นของทั้งป้าย ผูกกับขนาดตัวอักษรของแต่ละหน้า
  * ทุกอย่างข้างในวัดเป็น em จึงย่อขยายตามกันเองหมดโดยไม่ต้องเขียน media query ซ้ำ */
 .logo-plate {
-  /* ห้ามใส่ position ตรงนี้ — กฎนี้อยู่ทีหลัง .home-logo และความจำเพาะเท่ากัน
-     มันจะไปทับ position:absolute ของอันนั้นทิ้ง แล้วป้ายในล็อบบี้จะกลายเป็น
-     บล็อกเต็มความกว้างเวทีทันที ทั้งสองที่ที่ใช้คลาสนี้ตั้ง position เองอยู่แล้ว
-     (.home-logo = absolute, .title-logo = relative) ซึ่งพอเป็นที่ยึดให้แมวแล้ว */
+  /* ห้ามใส่ position ตรงนี้ — ที่ที่ใช้คลาสนี้ตั้ง position เองอยู่แล้ว
+     (.title-logo = relative) ซึ่งพอเป็นที่ยึดให้หูแมวแล้ว
+     ถ้าเขียนตรงนี้ทับลงไป จะไปลบค่าของที่นั่นทิ้งเพราะกฎนี้อยู่ทีหลังและจำเพาะเท่ากัน */
 
   /* สร้าง stacking context ให้แมว (z-index -1) จมอยู่หลังพื้นป้าย
      ไม่งั้นมันจะทะลุลงไปอยู่หลังฉากทั้งหมดจนมองไม่เห็น */
@@ -413,11 +553,98 @@ canvas { display: block; width: 100%; height: auto; }
   gap: calc(var(--pf) * .2);
   padding: calc(var(--pf) * .14) calc(var(--pf) * .3) calc(var(--pf) * .14) calc(var(--pf) * .14);
   border-radius: 999px;
-  border: 2px solid var(--plate-line);
-  background: var(--plate-face);
+  /* ── กรอบแบบ "SPACE" (Uiverse by StealthWorm) ──
+     ขอบคู่ไล่สีรุ้งที่เลื่อนไปมา + สนามดาวกับแสงเรืองอยู่ข้างใน
+
+     ต่างจากต้นฉบับสองจุด ทั้งคู่จำเป็น ไม่ใช่ความชอบส่วนตัว:
+
+     1. ต้นฉบับใช้ background-clip: content-box, border-box
+        ได้ผลเพราะปุ่มต้นฉบับไม่มี padding เลย (จัดกลางด้วย flex + ขนาดตายตัว)
+        การ์ดนี้มี padding จริงเพื่อวางรูปกับชื่อ ถ้าใช้ content-box
+        วงแหวนไล่สีจะกินพื้นที่ padding ทั้งวงจนกลายเป็นกรอบหนาเตอะ
+        ใช้ padding-box แทน สีรุ้งจึงอยู่แค่เส้นขอบ 4px ตามที่ตั้งใจ
+
+     2. ต้นฉบับพื้นในเป็น #212121 (เทาเข้ม) — คงไว้ตามโค้ดที่ให้มา
+        พื้นต้องเข้มจริงไม่งั้นดาวขาวกับแสงเรืองจะจมหายไปหมด */
+  border: 4px double transparent;
+  background:
+    linear-gradient(#212121, #212121) padding-box,
+    linear-gradient(137.48deg, #ffdb3b 10%, #fe53bb 45%, #8f51ea 67%, #0044ff 87%) border-box;
+  background-size: 300% 300%;
+  animation: pfGradient 5s ease infinite;
   box-shadow: var(--plate-lift);
+  /* ตัดดาวกับแสงที่ล้นออกนอกทรงแคปซูลทิ้ง */
+  overflow: hidden;
   /* ยังกดไม่ได้ — เผื่อไว้ให้เปลี่ยนรูปโปรไฟล์ทีหลัง ค่อยเปลี่ยนเป็น auto */
   pointer-events: none;
+}
+
+/* เนื้อหาต้องลอยเหนือชั้นดาวกับแสง ไม่งั้นโดนกลบ */
+.profile > .pf-face,
+.profile > .pf-info { position: relative; z-index: 2; }
+
+/* ── สนามดาว ──
+   จุดขาวเรียงเป็นตารางแล้วเลื่อนขึ้นช้า ๆ อ่านเป็นดาวไหลผ่าน
+   ต้นฉบับใช้กล่อง 200rem เพราะปุ่มมันเล็กและต้องการดาวเยอะ ๆ ไหลผ่าน
+   การ์ดนี้เตี้ยกว่ามาก ใช้ 400% ของการ์ดพอ ไม่งั้นเบราว์เซอร์ต้องวาดพื้นที่
+   ใหญ่กว่าที่เห็นจริงหลายสิบเท่าโดยเปล่าประโยชน์ */
+.pf-stars {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.pf-stars i {
+  position: absolute;
+  left: -50%;
+  top: 0;
+  width: 200%;
+  height: 400%;
+  background-image: radial-gradient(#ffffff 1px, transparent 1%);
+  background-size: 34px 34px;
+  opacity: .55;
+  animation: pfStars 26s linear infinite;
+}
+
+/* ── แสงเรืองสองก้อน ──
+   เบลอจัดจนไม่เห็นเป็นวงกลม เหลือแค่ไอสีชมพู-ม่วงเต้นอยู่หลังเนื้อหา */
+.pf-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.pf-glow i {
+  flex: 1 1 0;
+  height: 45%;
+  filter: blur(1.6rem);
+  animation: pfPulse 4s infinite;
+}
+.pf-glow i:nth-child(1) { background: rgba(254, 83, 186, .64); }
+.pf-glow i:nth-child(2) { background: rgba(142, 81, 234, .70); }
+
+@keyframes pfGradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes pfStars {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-75%); }
+}
+@keyframes pfPulse {
+  0%   { transform: scale(.75); }
+  70%  { transform: scale(1); }
+  100% { transform: scale(.75); }
+}
+/* เครื่องที่ตั้งค่าลดการเคลื่อนไหวไว้ ต้องหยุดทั้งสามอย่าง ไม่ใช่แค่ตัวใดตัวหนึ่ง */
+@media (prefers-reduced-motion: reduce) {
+  .profile { animation: none; }
+  .pf-stars i, .pf-glow i { animation: none; }
 }
 
 /* ── รูปโปรไฟล์ ── */
@@ -555,21 +782,35 @@ canvas { display: block; width: 100%; height: auto; }
    ให้เลื่อนเอาแทน ไม่งั้นไอคอนจะแบนจนดูผิดรูป */
 .lobby > * { pointer-events: auto; flex: 0 0 auto; }
 .lobby.left { left: 2.2%; }
-.lobby.right { right: 2.2%; }
+/* ฝั่งขวาต้องหยุดเหนือปุ่มเล่น ไม่ใช่ไหลลงไปถึง 4% เหมือนฝั่งซ้าย
+   ปุ่มเล่นอยู่มุมขวาล่างฝั่งเดียวกันพอดี พอปุ่มโตขึ้นรอบที่แล้วมันเลยไปชนกัน
+   ตัวเลขนี้ = ความสูงปุ่มเล่นที่วัดจริง (77px คอม / 69px มือถือ) + ระยะ bottom 6% + ช่องไฟ
+   ฝั่งซ้ายไม่ต้องหลบ เพราะไม่มีอะไรอยู่มุมซ้ายล่าง */
+.lobby.right { right: 2.2%; bottom: clamp(96px, 24dvh, 132px); }
 
 /* ใช้ทรงแผ่นม่วงนูนชุดเดียวกับป้ายชื่อเกมและการ์ดบัญชี (ดู --plate-* ใน :root) */
 .lobby-btn {
   /* ย่อลงจาก 78px ได้เพราะบรรทัดคำอธิบายใต้ชื่อถูกถอดออกแล้ว
-     ความกว้างเดิมถูกกำหนดโดยข้อความยาว ๆ อย่าง "ครัวกลางคืน" ไม่ใช่ตัวไอคอน */
-  width: 60px;
-  padding: 6px 4px 7px;
+     ความกว้างเดิมถูกกำหนดโดยข้อความยาว ๆ อย่าง "ครัวกลางคืน" ไม่ใช่ตัวไอคอน
+
+     ── ทำไมต้องล็อกความสูงด้วย ──
+     ชื่อปุ่มยาวไม่เท่ากัน ("ชุด" กับ "ตู้กาช่า") และไอคอนด่านเป็นแนวนอน
+     ถ้าปล่อยให้สูงตามเนื้อหา ปุ่มในคอลัมน์เดียวกันจะสูงไม่เท่ากันทีละนิด
+     แล้วทั้งแถวดูเบี้ยว ล็อกความสูงแล้วจัดกลางข้างในแทน ทุกใบจึงตรงกันเป๊ะ */
+  width: 62px;
+  height: 62px;
+  justify-content: center;
+  padding: 5px 4px;
   border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  border: 2px solid var(--plate-line);
-  background: var(--plate-face);
+  /* ขอบไล่สีแทนเส้นทึบสีเดียว — ใช้ border-box/padding-box ซ้อนกันสองชั้น
+     ท่านี้ไม่กิน padding ของปุ่ม ต่างจากการเอา padding มาทำเป็นความหนาของขอบ
+     ซึ่งจะไปบีบไอคอนกับชื่อข้างในจนต้องมาไล่แก้ระยะใหม่ทั้งหมด */
+  border: 2px solid transparent;
+  background: var(--plate-face) padding-box, var(--plate-rim) border-box;
   color: var(--cream);
   font-family: inherit;
   cursor: pointer;
@@ -591,9 +832,10 @@ canvas { display: block; width: 100%; height: auto; }
    ช่องไอคอนต้องเข้มกว่าตัวปุ่ม ไม่งั้นรูปที่วาดด้วยสีอ่อน (แมวขาว ถ้วยรางวัล)
    จะจมหายไปกับพื้นม่วงอ่อนของปุ่ม */
 .lobby-btn canvas {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
+  flex: 0 0 auto;
   background: rgba(34,14,54,.62);
   box-shadow: inset 0 1px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,243,226,.16);
 }
@@ -601,27 +843,105 @@ canvas { display: block; width: 100%; height: auto; }
    เตี้ยกว่าไอคอนสี่เหลี่ยมของใบอื่น 15px จึงเว้นขอบบนล่างชดเชยให้กินที่เท่ากัน
    ปุ่มทั้งห้าใบจะได้สูงเท่ากันพอดี ไม่ใช่มีใบหนึ่งเตี้ยกว่าเพื่อน */
 .lobby-btn #stageIcon {
-  width: 48px;
-  height: 21px;
+  width: 46px;
+  height: 20px;
   border-radius: 6px;
-  margin-block: 7.5px;
+  /* เว้นบน-ล่างชดเชยให้กินความสูงเท่าไอคอนสี่เหลี่ยม (34px) พอดี
+     ปุ่มด่านจึงสูงเท่าปุ่มอื่นทั้งที่ภาพข้างในเป็นคนละอัตราส่วน */
+  margin-block: 7px;
 }
 
 .lobby-btn b {
   font-family: "Mitr", sans-serif;
   font-weight: 500;
-  font-size: 11px;
-  line-height: 1.2;
+  font-size: 10.5px;
+  line-height: 1.15;
+  /* ชื่อยาวเกินปุ่มต้องหด ไม่ใช่ดันปุ่มให้กว้างขึ้นจนไม่เท่าใบอื่น */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ปุ่มเล่นมุมขวาล่าง ตัวเด่นที่สุดในหน้า */
+/* ── ปุ่มเล่นมุมขวาล่าง ────────────────────────
+   ทรงม่วงนูนตามแบบที่ขอมา (Uiverse by vinodjangid07)
+   ขนาดยังเท่าของเดิมทุกอย่าง เปลี่ยนแค่หน้าตา ปุ่มจึงไม่ขยับที่และยังกดโดนเท่าเดิม
+
+   เงาสามชั้นคือหัวใจของทรงนี้:
+     inset บน   = แสงตกกระทบขอบบน ทำให้ดูโค้งนูน
+     เงานอก     = ยกปุ่มลอยจากฉาก
+     inset ล่าง = เงาในตัวปุ่มด้านล่าง ทำให้ก้นปุ่มดูหนา */
 .btn.play {
   position: absolute;
   right: 3%;
   bottom: 6%;
   margin: 0;
-  font-size: clamp(15px, 2.8vw, 24px);
-  padding: 11px 44px;
+  font-size: clamp(19px, 3.7vw, 31px);
+  font-weight: 600;
+  padding: 14px 54px;
+  border-radius: 999px;
+  border: none;
+  /* กลับมาใช้เขียวมิ้นต์สีเดิมของเกม ส่วนทรงนูนยังเป็นแบบใหม่ทุกอย่าง
+     สามสีนี้ต้องมาจากตระกูลเดียวกัน ไม่งั้นปุ่มจะดูเหมือนแปะสีทับ ไม่ใช่วัสดุชิ้นเดียว:
+       พื้น    = --mint สีเดิมของปุ่มเล่น
+       inset บน = มิ้นต์อ่อนกว่าพื้น ทำหน้าที่เป็นแสงตกกระทบขอบบน
+       inset ล่าง = มิ้นต์เข้ม (#2E9C95) ตัวเดียวกับที่ปุ่ม .btn เดิมใช้เป็นเงาความหนา */
+  background-color: #4ECDC4;
+  /* ── ตัวอักษรขาวบนพื้นมิ้นต์ ──
+     ขาวล้วนบนมิ้นต์ได้คอนทราสต์แค่ 1.7:1 ซึ่งต่ำกว่ามาตรฐานอ่านออก (4.5:1) มาก
+     แก้ด้วยการตีขอบเข้มรอบตัวอักษรแทนการเปลี่ยนสี — ตัวหนังสือยังขาวตามที่ขอ
+     แต่มี "พื้นของตัวเอง" ให้ตัดกับพื้นปุ่ม เป็นท่ามาตรฐานของตัวอักษรในเกม
+     ใช้ text-shadow สี่ทิศแทน -webkit-text-stroke เพราะ stroke กินเข้าไปในตัวอักษร
+     ทำให้เส้นบางลงจนดูผอม ส่วนเงาสี่ทิศเพิ่มขอบออกด้านนอกอย่างเดียว */
+  color: #FFFFFF;
+  text-shadow:
+    0 2px 0 #12463C,
+    2px 0 0 #12463C, -2px 0 0 #12463C, 0 -2px 0 #12463C,
+    1.4px 1.4px 0 #12463C, -1.4px 1.4px 0 #12463C,
+    1.4px -1.4px 0 #12463C, -1.4px -1.4px 0 #12463C,
+    0 4px 10px rgba(10,50,44,.45);
+  box-shadow:
+    0 10px 10px rgb(190, 245, 240) inset,
+    0 5px 10px rgba(5, 5, 5, .212),
+    0 -10px 10px #2E9C95 inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ขีดแสงบางบนล่าง ทำให้ผิวปุ่มดูมันวาว */
+.btn.play::before,
+.btn.play::after {
+  content: '';
+  position: absolute;
+  width: 70%;
+  height: 2px;
+  border-radius: 50%;
+  filter: blur(1px);
+  pointer-events: none;
+}
+.btn.play::before { top: 8px; background-color: rgba(255, 255, 255, .62); }
+.btn.play::after { bottom: 8px; background-color: rgba(255, 255, 255, .16); }
+
+.btn.play:hover { animation: jello-horizontal .9s both; }
+/* ทับกฎกดของ .btn ที่ยุบลง 4px ตามเงาเขียว ซึ่งทรงนี้ไม่มีแล้ว */
+.btn.play:active { transform: scale3d(.96, .96, 1); box-shadow:
+    0 10px 10px rgb(190, 245, 240) inset,
+    0 2px 5px rgba(5, 5, 5, .212),
+    0 -10px 10px #2E9C95 inset; }
+
+@keyframes jello-horizontal {
+  0%   { transform: scale3d(1, 1, 1); }
+  30%  { transform: scale3d(1.25, .75, 1); }
+  40%  { transform: scale3d(.75, 1.25, 1); }
+  50%  { transform: scale3d(1.15, .85, 1); }
+  65%  { transform: scale3d(.95, 1.05, 1); }
+  75%  { transform: scale3d(1.05, .95, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn.play:hover { animation: none; }
 }
 
 /* ── กระดานคะแนน ──────────────────────────── */
@@ -738,7 +1058,9 @@ canvas { display: block; width: 100%; height: auto; }
 .stage-card.on small { color: var(--mint-lite); }
 
 /* ── เลือกตัวละคร ──────────────────────────── */
-.skin-title { font-size: clamp(20px, 4vw, 30px); }
+/* ต้องเขียนคู่กับ .panel h2 เสมอ — .skin-title เดี่ยว ๆ (0,1,0) แพ้ .panel h2 (0,1,1)
+   เขียนไว้อันเดียวจะไม่มีผลอะไรเลยและหลอกให้คิดว่าปรับแล้ว */
+.panel h2.skin-title, .skin-title { font-size: clamp(17px, 2.7vw, 24px); }
 .skin-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 
 /* ตารางยาวต้องเลื่อนในตัวเอง ไม่ใช่ดันปุ่มล่างหลุดออกนอกเวที
@@ -891,10 +1213,37 @@ canvas { display: block; width: 100%; height: auto; }
 .t-emoji { font-size: 40px; line-height: 1.1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
 .t-emoji.big { font-size: 46px; }
 
-/* การ์ดที่ยังไม่ได้ — เห็นระดับความหายากแต่ไม่เห็นว่าเป็นชิ้นไหน
-   เหลืออะไรให้ลุ้น ซึ่งเป็นเหตุผลเดียวที่จะกดสุ่มต่อ */
-.t-card.locked { opacity: .62; }
-.t-card.locked .t-emoji { filter: grayscale(1) brightness(.7); }
+/* ── การ์ดสมบัติเล็กกว่าการ์ดชุด ────────────────
+   การ์ดชุดต้องกว้าง 124px เพราะมีช่องรูปแมวขนาด 86px อยู่ข้างใน
+   ส่วนสมบัติเป็นอิโมจิตัวเดียว ความกว้างเท่ากันจึงเหลือที่ว่างรอบ ๆ เยอะเกิน
+   จนดูเป็นการ์ดข้อมูลมากกว่าช่องเก็บของ ย่อลงให้พอดีกับสิ่งที่อยู่ข้างในจริง
+
+   ชื่อจองที่ไว้สองบรรทัดเหมือนเดิม การ์ดในแถวเดียวกันจะได้สูงเท่ากัน
+   ไม่ว่าชื่อจะยาวตกบรรทัดหรือไม่ */
+.t-card {
+  width: 92px;
+  padding: 8px 6px 9px;
+  border-radius: 14px;
+  gap: 3px;
+}
+.t-card .t-emoji { font-size: 34px; }
+.t-card b { font-size: 11.5px; line-height: 1.2; min-height: 2.4em; }
+
+/* ── การ์ดที่ยังไม่ได้ ────────────────────────
+   เห็นว่าเป็นชิ้นไหนและทำอะไรได้ แต่เป็นขาวดำ
+   ก่อนหน้านี้ซ่อนเป็น ❓/??? ไว้ให้ลุ้น แต่ผลคือคนไม่รู้ว่ามีอะไรให้ตามเก็บบ้าง
+   ซึ่งลดแรงจูงใจมากกว่าจะเพิ่ม — เห็นของแล้วอยากได้ ดีกว่าเห็นเครื่องหมายคำถาม
+
+   ใช้กฎเดียวกันกับการ์ดชุด ทั้งสองหน้าจึงสื่อ "ยังไม่มี" ด้วยภาษาภาพเดียวกัน */
+.t-card.locked, .skin-card.locked { opacity: .55; }
+.t-card.locked .t-emoji { filter: grayscale(1) brightness(.72); }
+.skin-card.locked canvas { filter: grayscale(1) brightness(.72); }
+/* ป้ายระดับห้ามจาง — เป็นข้อมูลชิ้นเดียวที่บอกว่าชิ้นนี้คุ้มค่าตามเก็บแค่ไหน */
+.t-card.locked .tier-badge, .skin-card.locked .tier-badge { opacity: 1; }
+
+/* หน้ารายละเอียดของชิ้นที่ยังไม่มี — ไอคอนใหญ่ต้องขาวดำเหมือนบนการ์ด
+   ไม่งั้นกดจากการ์ดขาวดำเข้ามาแล้วเจอไอคอนสีสด จะอ่านผิดว่า "มีแล้ว" */
+#tDetailPanel.locked .tdetail-emoji { filter: grayscale(1) brightness(.72); }
 
 /* กรอบสีตามระดับ ใช้ชุดเดียวกับป้ายระดับ กวาดตาทีเดียวรู้ว่าชิ้นไหนของดี */
 .t-card.legend { border-color: rgba(255,143,176,.75); box-shadow: var(--plate-lift), 0 0 16px rgba(255,143,176,.36); }
@@ -1089,6 +1438,234 @@ canvas { display: block; width: 100%; height: auto; }
 .got-card.epic { border-color: rgba(199,125,255,.7); background: linear-gradient(180deg, rgba(199,125,255,.2), rgba(199,125,255,.06)); }
 .got-card.rare { border-color: rgba(141,243,234,.5); }
 
+/* ── กล่องจดหมาย ─────────────────────────────
+   ปุ่มอยู่ในแถว .hudbtns จึงได้ทรงกลมกับขนาด --hud-h มาเองเหมือนปุ่มตั้งค่า */
+#btnMail { position: relative; overflow: visible; }
+
+/* จุดแดงบอกว่ามีของค้าง — เกาะมุมขวาบนของปุ่ม ล้นออกนอกวงได้นิดหน่อย
+   ขอบสีเดียวกับพื้นปุ่มทำให้จุดดูลอยแยกจากตัวปุ่ม ไม่ใช่รอยเปื้อนบนปุ่ม */
+#btnMail .dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 38%;
+  height: 38%;
+  min-width: 9px;
+  min-height: 9px;
+  border-radius: 50%;
+  background: #E8434F;
+  border: 2px solid #3A1D50;
+  box-shadow: 0 0 8px rgba(232,67,79,.85);
+  animation: mailPulse 1.6s ease-in-out infinite;
+}
+#btnMail .dot.hidden { display: none; }
+@keyframes mailPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #btnMail .dot { animation: none; }
+}
+
+.mail-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.1dvh, 10px);
+  width: min(94%, 620px);
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.mail-list::-webkit-scrollbar { display: none; }
+
+.mail-item {
+  display: flex;
+  align-items: center;
+  gap: clamp(7px, 1.6vw, 13px);
+  width: 100%;
+  padding: clamp(6px, 1.3dvh, 11px) clamp(9px, 1.8vw, 15px);
+  border-radius: 14px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+  color: var(--cream);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: filter .12s ease, transform .07s ease;
+}
+.mail-item:hover { filter: brightness(1.12); }
+.mail-item:active { transform: translateY(3px); box-shadow: var(--plate-press); }
+.mail-item:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+
+/* อ่านแล้วให้จางลง แต่ไม่จางจนหาย — ยังต้องกดกลับเข้าไปอ่านซ้ำได้ */
+.mail-item.read { opacity: .62; }
+.mail-item.read .mail-title { font-weight: 400; }
+
+.mail-icon {
+  flex: 0 0 auto;
+  width: clamp(26px, 4.6dvh, 38px);
+  height: clamp(26px, 4.6dvh, 38px);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(34,14,54,.55);
+  box-shadow: inset 0 0 0 1px rgba(255,243,226,.16);
+  font-size: clamp(15px, 2.6dvh, 21px);
+}
+.mail-main { flex: 1 1 auto; min-width: 0; }
+.mail-title {
+  display: block;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 1.9dvh, 15px);
+  line-height: 1.3;
+  /* หัวข้อยาวต้องหด ไม่ใช่ดันการ์ดให้กว้างจนแถวไม่เท่ากัน */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mail-sub {
+  display: block;
+  font-size: clamp(9px, 1.4dvh, 11.5px);
+  color: #B99BD4;
+  margin-top: 1px;
+}
+/* ป้ายบอกสถานะฝั่งขวา — ของค้างรับต้องเด่นกว่าคำว่ารับแล้ว */
+.mail-tag {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: clamp(8.5px, 1.4dvh, 11px);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mail-tag.gift { background: linear-gradient(180deg, #FFDF8A, #F5B31E); color: #4A3000; }
+.mail-tag.done { background: rgba(255,243,226,.1); color: #9C81B8; }
+
+/* ── หน้าอ่านจดหมาย ────────────────────────── */
+.mail-meta {
+  margin: 0;
+  font-size: clamp(9.5px, 1.5dvh, 12px);
+  color: #B99BD4;
+}
+.panel p.mail-meta { display: block; }
+.mail-body {
+  width: min(92%, 560px);
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: clamp(9px, 1.8dvh, 16px) clamp(11px, 2.2vw, 20px);
+  border-radius: 14px;
+  background: rgba(20,9,34,.42);
+  box-shadow: inset 0 0 0 1px rgba(255,243,226,.12);
+  color: #E4D4F5;
+  font-size: clamp(10.5px, 1.7dvh, 14px);
+  line-height: 1.75;
+  text-align: left;
+  /* เนื้อจดหมายมีขึ้นบรรทัดจริงในข้อความ ต้องเคารพมัน ไม่งั้นย่อหน้าหายหมด */
+  white-space: pre-wrap;
+}
+.mail-body::-webkit-scrollbar { display: none; }
+
+.mail-gift {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.mail-gift.hidden { display: none; }
+.mail-gift-lead {
+  font-size: clamp(9px, 1.4dvh, 11.5px);
+  letter-spacing: .06em;
+  color: #B99BD4;
+}
+.mail-rewards { display: flex; gap: clamp(6px, 1.4vw, 12px); flex-wrap: wrap; justify-content: center; }
+.mail-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: clamp(3px, 0.7dvh, 6px) clamp(9px, 1.8vw, 15px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.2);
+  background: rgba(27,15,43,.62);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(11px, 1.9dvh, 15px);
+  color: var(--cream);
+}
+.mail-reward .coin, .mail-reward .gem { width: 1.15em; height: 1.15em; }
+
+/* ── หน้ารายละเอียดชุด ───────────────────────
+   การ์ดในกริดเหลือแค่รูปกับชื่อ ข้อมูลทั้งหมดย้ายมาอยู่ที่นี่
+   แลกการกดเพิ่มหนึ่งครั้งกับกริดที่เห็นชุดได้มากกว่าเดิมเกือบเท่าตัว */
+.odetail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.6vw, 30px);
+  flex-wrap: wrap;
+  max-width: 92%;
+}
+.odetail-show {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  border: 2px solid var(--plate-line);
+  background: rgba(34,14,54,.55);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.12);
+}
+.odetail-show canvas {
+  display: block;
+  width: clamp(96px, 24dvh, 200px);
+  height: clamp(96px, 24dvh, 200px);
+}
+.odetail-show .tier-badge { top: 6px; right: 6px; }
+
+.odetail-info {
+  flex: 1 1 190px;
+  min-width: 0;
+  max-width: 34ch;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, 0.9dvh, 8px);
+}
+/* ตัวเลขโบนัสคือเหตุผลเดียวที่ชุดหนึ่งมีค่ากว่าอีกชุด ต้องเด่นที่สุดในหน้า */
+.odetail-bonus {
+  margin: 0;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(14px, 2.6dvh, 21px);
+  color: #FFD97A;
+  line-height: 1.3;
+}
+.odetail-sub {
+  margin: 0;
+  font-size: clamp(10px, 1.6dvh, 13px);
+  color: #B99BD4;
+  line-height: 1.5;
+}
+.odetail-text {
+  margin: 0;
+  font-size: clamp(10.5px, 1.7dvh, 14px);
+  color: #E4D4F5;
+  line-height: 1.65;
+}
+/* .panel p ถูกซ่อนทิ้งบนจอแคบเพื่อเอาที่ไปให้ปุ่ม แต่สามบรรทัดนี้คือเนื้อหาหลัก
+   ของทั้งหน้า ถ้าหายไปด้วยจะเหลือแค่รูปแมวกับปุ่ม ซึ่งไม่ได้บอกอะไรเลย */
+.panel p.odetail-bonus, .panel p.odetail-sub, .panel p.odetail-text { display: block; }
+
+/* ── การ์ดชุดในกริด ──────────────────────────
+   ถอดป้ายโบนัสกับบรรทัดคำอธิบายออก เหลือรูปกับชื่อ การ์ดจึงเตี้ยลงมาก
+   เหมือนที่ทำกับการ์ดสมบัติ ทั้งสองหน้าใช้ภาษาภาพเดียวกัน */
+.outfit-card { width: 96px; padding: 7px 6px 8px; border-radius: 14px; gap: 3px; }
+.outfit-card canvas { width: 68px; height: 68px; border-radius: 11px; }
+.outfit-card b { font-size: 11.5px; line-height: 1.2; min-height: 2.4em; }
+
 /* ── หน้าติดตั้งสมบัติ ─────────────────────── */
 .slots { display: flex; gap: clamp(7px, 2vw, 16px); justify-content: center; }
 .slot {
@@ -1157,7 +1734,9 @@ canvas { display: block; width: 100%; height: auto; }
   left: 0;
   right: 0;
   display: flex;
-  align-items: flex-start;
+  /* จัดกลางแนวตั้ง ไม่ใช่ชิดบน — แถบเงินเตี้ยกว่าปุ่มกลม พอชิดบนแล้วสองอย่าง
+     ไม่ได้อยู่บรรทัดเดียวกันจริง มันแค่เริ่มที่ขอบบนพร้อมกันเฉย ๆ */
+  align-items: center;
   justify-content: flex-end;
   /* เว้นขอบขวาให้มากกว่าขอบซ้าย ทั้งกลุ่มจึงไม่ไปอัดติดมุมจอ */
   padding: 12px clamp(14px, 2.4vw, 30px) 12px 14px;
@@ -1168,6 +1747,16 @@ canvas { display: block; width: 100%; height: auto; }
   pointer-events: none;
 }
 .hud-top > * { pointer-events: auto; }
+
+/* กระเป๋าเงิน — เพชรติดกับทอง ช่องไฟแคบกว่าที่ .hud-top ใช้กับปุ่มตั้งค่ามาก
+   สองอันนี้เป็นเงินเหมือนกัน ควรอ่านเป็นกลุ่มเดียว ไม่ใช่ของสองชิ้นที่บังเอิญ
+   วางใกล้กัน ส่วนปุ่มตั้งค่าเป็นคนละเรื่อง จึงต้องห่างออกไปให้เห็นว่าแยกกลุ่ม */
+.wallet {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.8vw, 9px);
+}
+.stage:not(:has(.panel:not(.hidden))) .wallet { display: none; }
 
 /* ── ใครโผล่บนแถบบนตอนไหน ─────────────────────
    สามสถานะเท่านั้น:
@@ -1181,11 +1770,15 @@ canvas { display: block; width: 100%; height: auto; }
 .stage:has(.panel:not(.home):not(.hidden)) .hud-top { display: none; }
 
 .stage:has(.panel:not(.hidden)) #btnPause { display: none; }
-/* เพชรต้องอยู่ในรายการนี้ด้วย — ตอนวิ่งใช้เพชรไม่ได้เหมือนกับทอง
-   ตอนเพิ่มแถบเพชรทีหลังลืมมาเติมตรงนี้ เลขเพชรเลยค้างอยู่มุมขวาบนทั้งเกม */
-.stage:not(:has(.panel:not(.hidden))) .goldbar,
-.stage:not(:has(.panel:not(.hidden))) .gembar,
-.stage:not(:has(.panel:not(.hidden))) #btnSettings { display: none; }
+/* ── ของที่โผล่เฉพาะตอนอยู่หน้าแรก ──
+   ตอนวิ่งใช้เงินไม่ได้ อ่านจดหมายไม่ได้ เปิดตั้งค่าก็ไม่ควร เหลือแค่ปุ่มหยุด
+   ซ่อน .wallet ทีเดียวได้ทั้งเพชรและทอง ไม่ต้องไล่ชื่อทีละแถบ
+   (ตอนเพิ่มแถบเพชรทีหลังก็ลืมมาเติมตรงนี้มาแล้วครั้งหนึ่ง)
+
+   กฎ: ของใหม่ที่เพิ่มลงหน้าแรกต้องมาเติมชื่อในรายการนี้ด้วยเสมอ
+   ไม่งั้นมันจะไปโผล่ทับจอตอนกำลังวิ่ง ซึ่งไม่มีใครอยากได้ */
+.stage:not(:has(.panel:not(.hidden))) #btnSettings,
+.stage:not(:has(.panel:not(.hidden))) #btnMail { display: none; }
 
 .goldbar {
   /* ไปอยู่มุมขวาบนคู่กับปุ่ม ไม่ใช่มุมซ้าย — ซ้ายบนต้องเว้นไว้ให้แถวตัวอักษรสะสม
@@ -1194,7 +1787,8 @@ canvas { display: block; width: 100%; height: auto; }
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 4px 13px 4px 6px;
+  height: var(--hud-h);
+  padding: 0 13px 0 4px;
   border-radius: 999px;
   border: 1px solid rgba(255,201,60,.44);
   /* พื้นทึบของตัวเอง ไม่ฝากความอ่านออกไว้กับม่านมืดที่ทาทับฉากหลัง
@@ -1236,7 +1830,8 @@ canvas { display: block; width: 100%; height: auto; }
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 4px 13px 4px 6px;
+  height: var(--hud-h);
+  padding: 0 13px 0 4px;
   border-radius: 999px;
   border: 1px solid rgba(255,143,176,.5);
   background: linear-gradient(rgba(255,143,176,.18), rgba(255,143,176,.18)), rgba(27,15,43,.62);
@@ -1282,8 +1877,9 @@ canvas { display: block; width: 100%; height: auto; }
    เป็นภาษาเดียวกับปุ่ม .btn ของแผงเมนู จะได้ดูเป็นเกมเดียวกัน */
 .hudbtns button {
   position: relative;
-  width: 42px;
-  height: 42px;
+  /* สูงเท่าแถบเหรียญเป๊ะ ๆ ด้วยโทเคนร่วม และกว้างเท่าสูงเพื่อให้ยังกลมอยู่ */
+  width: var(--hud-h);
+  height: var(--hud-h);
   border-radius: 50%;
   border: 2px solid rgba(255,243,226,.44);
   background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
@@ -1615,12 +2211,11 @@ canvas { display: block; width: 100%; height: auto; }
       จาก dvh ในบล็อกจอสัมผัสข้างบนจนปุ่มไม่ยอมโตตาม) */
   .touchpad { --tp: clamp(58px, 26dvh, 96px); padding: 0 8px 8px; }
   .touchpad button { border-width: 1.5px; }
-  .goldbar, .gembar { gap: 5px; padding: 3px 9px 3px 4px; }
+  .goldbar, .gembar { gap: 5px; padding: 0 9px 0 3px; }
   .goldbar b, .gembar b { font-size: 12px; }
   .coin, .gem { width: 15px; height: 15px; }
   .coin::after { inset: 4px 5px; }
   .hudbtns { gap: 6px; }
-  .hudbtns button { width: 34px; height: 34px; }
   .hudbtns button svg { width: 17px; height: 17px; }
   #btnPause::before, #btnPause::after { height: 13px; width: 4px; }
   #btnPause::before { margin-left: -3.8px; }
@@ -2084,10 +2679,11 @@ canvas { display: block; width: 100%; height: auto; }
   /* ปุ่มล็อบบี้ย่อลง แต่ยังเป็นสี่เหลี่ยมกดง่าย ไม่ใช่แถวยาวแบบเดิม */
   .lobby { gap: 5px; }
   .lobby-btn { width: 48px; padding: 4px 3px 5px; border-radius: 11px; }
-  .lobby-btn canvas { width: 28px; height: 28px; border-radius: 8px; }
-  .lobby-btn #stageIcon { width: 38px; height: 17px; border-radius: 5px; margin-block: 5.5px; }
+  .lobby-btn { width: 52px; height: 52px; padding: 4px 3px; }
+  .lobby-btn canvas { width: 27px; height: 27px; border-radius: 8px; }
+  .lobby-btn #stageIcon { width: 38px; height: 17px; border-radius: 5px; margin-block: 5px; }
   .lobby-btn b { font-size: 9px; }
-  .btn.play { padding: 8px 24px; }
+  .btn.play { padding: 10px 30px; }
   .rank-list { width: 92%; }
   .rank-row { padding: 5px 9px; font-size: 11px; gap: 7px; }
   .rank-row .no { width: 20px; }
@@ -2120,6 +2716,14 @@ canvas { display: block; width: 100%; height: auto; }
   .skin-card { width: 78px; padding: 4px 4px 6px; gap: 2px; border-radius: 11px; }
   .skin-card canvas { width: 44px; height: 44px; border-radius: 8px; }
   .skin-card b { font-size: 11px; }
+  /* ต้องย่อ .t-card ในทุกบล็อกที่ย่อ .t-card เอง ไม่งั้นกฎ .skin-card ที่อยู่
+     ทีหลังในไฟล์จะชนะ (จำเพาะเท่ากัน 0,1,0) แล้วการ์ดสมบัติกลับไปกว้างเท่าการ์ดชุด */
+  .t-card { width: 60px; padding: 3px 3px 5px; gap: 1px; border-radius: 10px; }
+  .t-card .t-emoji { font-size: 24px; }
+  .t-card b { font-size: 9px; min-height: 2.4em; }
+  .outfit-card { width: 64px; padding: 4px 3px 5px; gap: 1px; border-radius: 10px; }
+  .outfit-card canvas { width: 44px; height: 44px; border-radius: 8px; }
+  .outfit-card b { font-size: 9px; min-height: 2.4em; }
   .tier-badge { top: 3px; right: 3px; padding: 1px 5px; font-size: 7.5px; }
   /* บรรทัดคำอธิบายตัดออกได้ แต่ป้ายโบนัสห้ามตัด — เป็นข้อมูลที่ใช้ตัดสินใจ
      ย่อให้เล็กลงแทน และตัดคำว่า "/ ชิ้น" ทิ้งด้วย ::after ไม่ได้ จึงย่อฟอนต์เอา */
@@ -2136,16 +2740,12 @@ canvas { display: block; width: 100%; height: auto; }
   .lobby-btn canvas { width: 30px; height: 30px; border-radius: 8px; }
   .lobby-btn #stageIcon { width: 30px; height: 14px; margin-block: 8px; }
   .lobby-btn b { display: none; }
-  .home-logo { top: 2%; }
-  .home-logo h2 { font-size: 19px; }
-  .home-logo p { display: none; }
-  .btn.play { padding: 7px 18px; font-size: 13px; bottom: 5%; }
+  .btn.play { padding: 9px 24px; font-size: 15px; bottom: 5%; }
 }
 
 /* มือถือแนวนอน: จอเตี้ย ปุ่มต้องเล็กลงไม่ให้กินพื้นที่เล่น
    ขนาดเวทีไม่ต้องคุมตรงนี้แล้ว บล็อกเต็มจอข้างบนคุมให้ครบทุกกรณี */
 @media (pointer: coarse) and (max-height: 520px) {
-  .hudbtns button { width: 34px; height: 34px; }
   .hudbtns button svg { width: 17px; height: 17px; }
   #btnPause::before, #btnPause::after { height: 13px; width: 4px; }
   #btnPause::before { margin-left: -3.8px; }
@@ -2181,6 +2781,12 @@ canvas { display: block; width: 100%; height: auto; }
   .skin-card { width: 108px; padding: 7px 7px 9px; gap: 3px; border-radius: 14px; }
   .skin-card canvas { width: 66px; height: 66px; border-radius: 11px; }
   .skin-card b { font-size: 12.5px; min-height: 2.4em; }
+  .t-card { width: 80px; padding: 6px 5px 7px; gap: 2px; border-radius: 12px; }
+  .t-card .t-emoji { font-size: 30px; }
+  .t-card b { font-size: 10.5px; min-height: 2.4em; }
+  .outfit-card { width: 82px; padding: 5px 4px 6px; gap: 2px; border-radius: 12px; }
+  .outfit-card canvas { width: 56px; height: 56px; border-radius: 10px; }
+  .outfit-card b { font-size: 10px; min-height: 2.4em; }
   .card-bonus { font-size: 10.5px; padding: 1px 8px; }
   .tier-badge { top: 4px; right: 4px; padding: 1px 6px; font-size: 8.5px; }
   .skin-grid { gap: 9px; }
@@ -2214,7 +2820,7 @@ canvas { display: block; width: 100%; height: auto; }
 /* ไม่เอาการ์ดของ .panel:not(.home) มาซ้อนทับฉาก */
 .panel.title::before { display: none; }
 
-/* หน่วยตั้งต้นของป้าย เหมือน .home-logo แค่ใหญ่กว่าเพราะเป็นภาพแรกที่คนเห็น
+/* หน่วยตั้งต้นของป้าย — ใหญ่กว่าปกติเพราะเป็นภาพแรกที่คนเห็น
    relative ตรงนี้คือที่ยึดของแมวสองตัวที่ลอย absolute อยู่ในป้าย */
 .title-logo {
   position: relative;
@@ -2335,6 +2941,6 @@ canvas { display: block; width: 100%; height: auto; }
   .panel { transition: none; }
   .got-card, .got-card.high { animation: none; }
   #gachaMachine { animation: none; }
-  .panel:not(.home):not(.hidden)::before,
-  .panel:not(.home):not(.hidden) > * { animation: none; }
+  .panel:not(.home):not(.hidden) > .pop,
+  .panel:not(.home):not(.hidden) > .pop > * { animation: none; }
 }

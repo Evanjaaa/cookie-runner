@@ -52,6 +52,17 @@ export function ownedCount() {
   return Object.keys(owned).length;
 }
 
+/**
+ * id เรียงตามลำดับที่ได้มา ตัวแรกคือชิ้นที่ได้มานานที่สุด
+ *
+ * อาศัยกฎของ JS ที่ว่า key ชนิดข้อความในอ็อบเจกต์เรียงตามลำดับที่ใส่เข้าไป
+ * และ JSON.parse ก็รักษาลำดับนั้นไว้ ส่วน grant() มีแต่เพิ่มไม่เคยลบ
+ * ลำดับนี้จึงเท่ากับลำดับที่สุ่มได้จริง — ไม่ต้องเพิ่มช่องเก็บเวลาแล้วมาแปลงเซฟเก่า
+ */
+export function ownedOrder() {
+  return Object.keys(owned);
+}
+
 /** เฉพาะชิ้นที่มีแล้ว เรียงตามลำดับในตาราง ไม่ใช่ตามลำดับที่สุ่มได้ */
 export function ownedTreasures() {
   return TREASURES.filter((t) => ownsTreasure(t.id));

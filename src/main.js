@@ -8,14 +8,16 @@ import { startMusic } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
 import { STAGES, getStage, setStage } from './stages.js';
 import {
-  RARITY, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
+  RARITY, OUTFITS, outfitById, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
+  ownedOrder as outfitOrder,
 } from './outfits.js';
-import { getGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
-import { loadBest } from './storage.js';
+import { getGold, addGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
+import { loadBest, loadPref, savePref } from './storage.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
-  getGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
+  getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
   pullTreasure, upgradeTreasure, getEquipped, isEquipped, toggleEquip,
+  ownedOrder as treasureOrder,
 } from './vault.js';
 import {
   TREASURES, treasureById, T_RARITY, UPGRADE, GACHA as T_GACHA, SLOTS,
@@ -30,6 +32,7 @@ import {
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
 import { drawChest, CHEST } from './render/chest.js';
+import { loadInbox, mailById, badgeCount, markRead, claimMail, claimAll } from './mail.js';
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
@@ -193,6 +196,7 @@ function refreshProfile() {
 }
 
 function refreshHome() {
+  refreshMailDot();   // จุดแดงต้องตรงกับของจริงทุกครั้งที่กลับมาล็อบบี้
   const s = getSkin();
   const st = getStage();
   refreshProfile();
@@ -787,6 +791,19 @@ function showPanel(panel) {
   panel.classList.remove('hidden');
 }
 
+/**
+ * รายชื่อแผงที่โชว์อยู่ตอนนี้ เรียงตามลำดับใน DOM
+ *
+ * ใช้เป็น "ภาพถ่ายสถานะจอ" ก่อนงานที่ต้อง await แล้วค่อยเปลี่ยนหน้า
+ * เทียบก่อน-หลังแล้วรู้ได้ว่าผู้เล่นเดินไปไหนต่อระหว่างที่รอเน็ตหรือเปล่า
+ */
+function visiblePanels() {
+  return [...document.querySelectorAll('.stage .panel')]
+    .filter((p) => !p.classList.contains('hidden'))
+    .map((p) => p.id)
+    .join(',');
+}
+
 function enterGame() {
   // แตะปุ่มนี้คือ gesture แรกของผู้เล่น เพลงกับเสียงจึงเริ่มได้ตั้งแต่ตรงนี้
   unlockAudio();
@@ -848,10 +865,25 @@ async function saveCharacterName() {
 
   const btn = document.getElementById('nameSave');
   btn.disabled = true;
+
+  // จำไว้ว่าตอนเริ่มยิงคลาวด์ จอโชว์อะไรอยู่
+  const before = visiblePanels();
+
   await storeName(name);
   btn.disabled = false;
   unlockAudio();
   sfx.potion();
+
+  // ── กันคลาวด์ตอบช้าแล้วมาปิดหน้าที่ผู้เล่นเปิดอยู่ ──
+  // storeName() ยิงขึ้นคลาวด์ ซึ่งบนเน็ตช้ากินเวลาได้หลายวินาที
+  // goHome() ข้างล่างเรียก closeAllPanels() ซึ่งปิดทุกแผงทิ้งหมด
+  // ถ้าระหว่างรอมีแผงอื่นถูกเปิดขึ้นมา การเด้งกลับล็อบบี้ตอนนั้นคือการ
+  // ลากผู้เล่นออกจากหน้าที่เขากำลังดูอยู่โดยที่เขาไม่ได้กดอะไรเลย
+  //
+  // ตามทางกดปกติเข้าเงื่อนไขนี้ไม่ได้ เพราะแผงตั้งชื่อคลุมเต็มจอและปุ่มถูกปิดไว้
+  // แต่กันไว้เพราะมันคือกฎที่ควรใช้กับทุกงานที่ "await แล้วค่อยไปเปลี่ยนหน้า"
+  // ไม่ใช่เฉพาะที่นี่ — และเสียแค่บรรทัดเดียว
+  if (visiblePanels() !== before) return;
   goHome();
 }
 
@@ -1132,6 +1164,104 @@ function showStages(on) {
   startPanel.classList.toggle('hidden', on);
 }
 
+// ── แถบเรียง/กรองการ์ด ─────────────────────────────────────
+//
+// ตัวเดียวใช้ได้ทั้งหน้าสมบัติและหน้าชุด เพราะสองหน้าต่างกันแค่
+// "มีตัวเลือกเรียงกี่แบบ" กับ "อะไรนับว่ามีแล้ว" ที่เหลือเหมือนกันหมด
+//
+// เลือกไว้แบบไหนจำข้ามรอบ — คนที่ชอบเรียงตามความหายากมักชอบทุกครั้ง
+// ไม่ใช่ครั้งเดียว การให้มารีเซ็ตเป็นค่าตั้งต้นทุกครั้งที่เข้าหน้าคือความรำคาญ
+
+/** ยิ่งหายากยิ่งขึ้นก่อน — เลขน้อยมาก่อน */
+const T_RANK = { legend: 0, epic: 1, rare: 2 };
+const O_RANK = { high: 0, normal: 1 };
+
+/**
+ * @param opts.key    ชื่อที่ใช้จำค่าใน localStorage
+ * @param opts.bar    id ของแถบกรอง
+ * @param opts.box    id ของช่องติ๊ก
+ * @param opts.redraw ฟังก์ชันวาดกริดใหม่
+ */
+function setupFilterBar({ key, bar, box, redraw }) {
+  const el = document.getElementById(bar);
+  const chips = [...el.querySelectorAll('.fchip')];
+  const only = document.getElementById(box);
+
+  // ค่าที่จำไว้อาจเป็นชื่อการเรียงที่ถูกถอดออกไปแล้ว ต้องเช็คว่ายังมีปุ่มนั้นอยู่จริง
+  const saved = loadPref(key + '-sort', null);
+  const valid = chips.some((c) => c.dataset.sort === saved);
+  filterState[key] = {
+    sort: valid ? saved : chips[0].dataset.sort,
+    only: loadPref(key + '-only', false) === true,
+  };
+
+  const paint = () => {
+    for (const c of chips) c.classList.toggle('on', c.dataset.sort === filterState[key].sort);
+    only.checked = filterState[key].only;
+  };
+
+  for (const c of chips) {
+    c.addEventListener('click', () => {
+      if (filterState[key].sort === c.dataset.sort) return;   // กดอันเดิมซ้ำ ไม่ต้องวาดใหม่
+      filterState[key].sort = c.dataset.sort;
+      savePref(key + '-sort', c.dataset.sort);
+      unlockAudio();
+      sfx.fish();
+      paint();
+      redraw();
+    });
+  }
+
+  only.addEventListener('change', () => {
+    filterState[key].only = only.checked;
+    savePref(key + '-only', only.checked);
+    unlockAudio();
+    sfx.fish();
+    redraw();
+  });
+
+  paint();
+}
+
+const filterState = {};
+
+/**
+ * เรียงและกรองรายการตามที่แถบกรองตั้งไว้
+ *
+ * รับ owned/rank/order มาเป็นฟังก์ชัน เพื่อให้ใช้ได้กับทั้งสมบัติและชุด
+ * โดยไม่ต้องรู้ว่าของสองอย่างนี้เก็บสถานะกันคนละแบบ
+ */
+function applyFilter(key, list, { owned, rank, order, level }) {
+  const st = filterState[key];
+  const items = st.only ? list.filter((x) => owned(x)) : list.slice();
+
+  // ลำดับเดิมในตาราง ใช้เป็นตัวตัดสินสุดท้ายเสมอ ผลจึงคงที่ ไม่สลับไปมาเอง
+  const base = new Map(list.map((x, i) => [x.id, i]));
+  const gotAt = new Map(order().map((id, i) => [id, i]));
+
+  const cmp = {
+    // ได้มาล่าสุดขึ้นก่อน ของที่ยังไม่มีไปต่อท้าย (ไม่มีวันได้มา จึงไม่มีลำดับ)
+    recent: (a, b) => {
+      const ga = gotAt.has(a.id), gb = gotAt.has(b.id);
+      if (ga !== gb) return ga ? -1 : 1;
+      if (ga && gb) return gotAt.get(b.id) - gotAt.get(a.id);
+      return base.get(a.id) - base.get(b.id);
+    },
+    rarity: (a, b) => (rank(a) - rank(b)) || (base.get(a.id) - base.get(b.id)),
+    level: (a, b) => (level(b) - level(a)) || (rank(a) - rank(b)) || (base.get(a.id) - base.get(b.id)),
+  };
+
+  return items.sort(cmp[st.sort] || cmp.recent);
+}
+
+/** ข้อความแทนกริดว่าง บอกเหตุผลว่าทำไมไม่มีอะไรให้ดู */
+function emptyNote(grid, text) {
+  const p = document.createElement('p');
+  p.className = 'grid-empty';
+  p.textContent = text;
+  grid.appendChild(p);
+}
+
 function buildSkinGrid() {
   const grid = document.getElementById('skinGrid');
   grid.innerHTML = '';
@@ -1173,29 +1303,34 @@ function buildOutfitGrid() {
 
   const s = getSkin();
 
-  for (const o of wearable()) {
-    const on = o.id === s.outfit.id;
+  // โชว์ทุกชุดไม่ใช่เฉพาะที่ปลดล็อก ชุดที่ยังไม่ได้เป็นขาวดำ
+  // คนเล่นจึงเห็นว่ามีอะไรให้ตามเก็บ ซึ่งเป็นเหตุผลที่จะกดตู้กาช่าต่อ
+  // ติ๊ก "ดูเฉพาะสิ่งที่มี" เมื่อไหร่ก็กลับไปเห็นแค่ของตัวเองเหมือนเดิม
+  const list = applyFilter('outfit', OUTFITS, {
+    owned: (o) => isOwned(o.id),
+    rank: (o) => (o.rarity ? O_RANK[o.rarity] : 9),
+    order: outfitOrder,
+    level: () => 0,
+  });
+
+  if (!list.length) {
+    emptyNote(grid, 'ยังไม่มีชุดเลย ไปสุ่มที่ตู้กาช่าก่อนนะ');
+    markScrollable(grid);
+    return;
+  }
+
+  for (const o of list) {
+    const got = isOwned(o.id);
+    const on = got && o.id === s.outfit.id;
 
     const card = document.createElement('button');
     card.className =
-      'skin-card outfit-card' + (on ? ' on' : '') + (o.rarity === 'high' ? ' high' : '');
-    card.innerHTML =
-      '<canvas width="96" height="96"></canvas><b></b>'
-      + '<span class="card-bonus"></span><small></small>';
+      'skin-card outfit-card' + (on ? ' on' : '') + (got ? '' : ' locked')
+      + (o.rarity === 'high' ? ' high' : '');
+    // เหลือแค่รูปกับชื่อ — ป้ายโบนัสกับบรรทัดคำอธิบายย้ายไปหน้ารายละเอียด
+    // การ์ดจึงเตี้ยลงมาก และกริดโชว์ชุดได้มากกว่าเดิมเกือบเท่าตัวในที่เท่าเดิม
+    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
     card.querySelector('b').textContent = o.name;
-
-    // โบนัสคือเหตุผลเดียวที่ชุดหนึ่งมีค่ากว่าอีกชุด ต้องเห็นตั้งแต่ตอนเลือก
-    // ไม่ใช่ไปรู้เอาตอนใส่แล้ววิ่งจริง — อ่านจาก foodBonus ของชุดตรง ๆ
-    // ไม่ได้เขียนตัวเลขค้างไว้ แก้อัตราใน outfits.js แล้วตรงนี้เปลี่ยนตามเอง
-    const bonus = card.querySelector('.card-bonus');
-    if (o.foodBonus > 0) {
-      bonus.textContent = '+' + o.foodBonus.toLocaleString('en-US') + ' / ชิ้น';
-    } else {
-      bonus.classList.add('none');
-      bonus.textContent = 'ไม่มีโบนัส';
-    }
-
-    card.querySelector('small').textContent = on ? 'กำลังใส่' : o.note;
 
     // "ขนล้วน" ไม่มีระดับ จึงไม่ติดป้าย
     if (o.rarity) {
@@ -1209,21 +1344,285 @@ function buildOutfitGrid() {
     paintMini(card.querySelector('canvas'), 96,
       (c) => drawCatPose(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
 
-    // แตะแล้วใส่เลย ไม่มีขั้นยืนยัน — ท่าเดียวกับหน้าเลือกแมวและเลือกด่าน
-    // แตะใบที่ใส่อยู่แล้วซ้ำ = ปิดหน้านี้ ซึ่งเป็นทางออกที่นิ้วอยู่ตรงนั้นพอดี
+    // แตะแล้วเข้าหน้ารายละเอียด ไม่ใช่ใส่ทันทีเหมือนเดิม
+    // เพราะข้อมูลที่ใช้ตัดสินใจ (โบนัสเท่าไหร่ ระดับอะไร) ไม่ได้อยู่บนการ์ดแล้ว
+    // จะให้เลือกโดยไม่ได้เห็นข้อมูลไม่ได้ ปุ่มใส่จริงอยู่ในหน้านั้น
     card.addEventListener('click', () => {
-      if (o.id === getSkin().outfit.id) return showOutfits(false);
-      setOutfit(o.id);
       unlockAudio();
       sfx.fish();
-      buildOutfitGrid();
-      refreshHome();
+      openOutfitDetail(o.id);
     });
 
     grid.appendChild(card);
   }
   markScrollable(grid);
 }
+
+// ── กล่องจดหมาย ────────────────────────────────────────────
+//
+// สองหน้า: รายการ → อ่านทีละฉบับ กดรับของขวัญได้จากทั้งสองหน้า
+// ของขวัญจ่ายผ่านระบบเจ้าของเงินเสมอ (addGold ของ gacha.js / addGems ของ vault.js)
+// ห้ามเขียน localStorage ตรง ๆ ไม่งั้นตัวเลขบนจอไม่ขยับและรอบหน้าโดนเขียนทับ
+
+const inboxPanel = document.getElementById('inboxPanel');
+const mailReadPanel = document.getElementById('mailReadPanel');
+let mrCurrent = null;
+
+/** จุดแดงบนไอคอน — โผล่เมื่อยังไม่อ่าน หรือยังมีของค้างรับ */
+function refreshMailDot() {
+  document.getElementById('mailDot').classList.toggle('hidden', badgeCount() === 0);
+}
+
+/** แถวของขวัญ ใช้ทั้งในรายการและหน้าอ่าน */
+function rewardChips(reward) {
+  if (!reward) return '';
+  const out = [];
+  if (reward.gold) {
+    out.push(`<span class="mail-reward"><span class="coin" aria-hidden="true"></span>`
+      + `${reward.gold.toLocaleString('en-US')}</span>`);
+  }
+  if (reward.gems) {
+    out.push(`<span class="mail-reward"><span class="gem" aria-hidden="true"></span>`
+      + `${reward.gems.toLocaleString('en-US')}</span>`);
+  }
+  return out.join('');
+}
+
+/** จ่ายของขวัญจริง — ที่เดียวที่แตะเงิน จะได้ไม่ลืมเส้นทางไหน */
+function payReward(reward) {
+  if (!reward) return;
+  if (reward.gold) addGold(reward.gold);
+  if (reward.gems) addGems(reward.gems);
+  refreshGold();
+  refreshProfile();
+}
+
+function buildMailList() {
+  const list = document.getElementById('mailList');
+  list.innerHTML = '';
+  const mails = loadInbox();
+
+  if (!mails.length) {
+    emptyNote(list, 'ยังไม่มีจดหมายเลย');
+  }
+
+  for (const m of mails) {
+    const waiting = Boolean(m.reward) && !m.claimed;
+    const item = document.createElement('button');
+    item.className = 'mail-item' + (m.read && !waiting ? ' read' : '');
+    item.innerHTML =
+      `<span class="mail-icon">${waiting ? '🎁' : m.read ? '📭' : '✉️'}</span>`
+      + '<span class="mail-main"><b class="mail-title"></b><small class="mail-sub"></small></span>'
+      + (waiting ? '<span class="mail-tag gift">มีของขวัญ</span>'
+        : m.reward ? '<span class="mail-tag done">รับแล้ว</span>' : '');
+    item.querySelector('.mail-title').textContent = m.title;
+    item.querySelector('.mail-sub').textContent = m.from + (m.at ? ' · ' + m.at : '');
+    item.addEventListener('click', () => {
+      unlockAudio();
+      sfx.fish();
+      openMail(m.id);
+    });
+    list.appendChild(item);
+  }
+
+  const anyLeft = mails.some((m) => m.reward && !m.claimed);
+  const all = document.getElementById('mailClaimAll');
+  all.disabled = !anyLeft;
+  all.textContent = anyLeft ? 'รับของขวัญทั้งหมด' : 'รับของขวัญครบแล้ว';
+  markScrollable(list);
+  refreshMailDot();
+}
+
+function paintMailRead() {
+  const m = mailById(mrCurrent);
+  if (!m) return;
+  document.getElementById('mrTitle').textContent = m.title;
+  document.getElementById('mrMeta').textContent = 'จาก ' + m.from + (m.at ? ' · ' + m.at : '');
+  document.getElementById('mrBody').textContent = m.body;
+
+  const gift = document.getElementById('mrGift');
+  gift.classList.toggle('hidden', !m.reward);
+  if (m.reward) document.getElementById('mrRewards').innerHTML = rewardChips(m.reward);
+
+  const claim = document.getElementById('mrClaim');
+  claim.classList.toggle('hidden', !m.reward);
+  claim.disabled = !m.reward || m.claimed;
+  claim.textContent = !m.reward ? '' : m.claimed ? 'รับไปแล้ว' : 'รับของขวัญ';
+}
+
+function openMail(id) {
+  mrCurrent = id;
+  markRead(id);            // เปิดอ่านแล้วจุดแดงต้องหาย ไม่ต้องรอให้กดรับของ
+  setMsg(document.getElementById('mrMsg'), '');
+  paintMailRead();
+  swapPanel(inboxPanel, mailReadPanel);
+  refreshMailDot();
+}
+
+function showInbox(on) {
+  if (on) {
+    setMsg(document.getElementById('inboxMsg'), '');
+    buildMailList();
+    showPanel(inboxPanel);
+  } else {
+    inboxPanel.classList.add('hidden');
+    startPanel.classList.remove('hidden');
+  }
+}
+
+document.getElementById('btnMail').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  showInbox(true);
+});
+document.getElementById('inboxBack').addEventListener('click', () => {
+  unlockAudio();
+  showInbox(false);
+});
+document.getElementById('mrBack').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  swapPanel(mailReadPanel, inboxPanel);
+  buildMailList();
+});
+
+document.getElementById('mrClaim').addEventListener('click', () => {
+  const r = claimMail(mrCurrent);
+  unlockAudio();
+  if (!r.ok) {
+    sfx.shieldBreak();
+    return setMsg(document.getElementById('mrMsg'), r.reason, true);
+  }
+  payReward(r.reward);
+  sfx.potion();
+  paintMailRead();
+  refreshMailDot();
+  setMsg(document.getElementById('mrMsg'), 'รับของขวัญแล้ว!');
+});
+
+document.getElementById('mailClaimAll').addEventListener('click', () => {
+  const r = claimAll();
+  unlockAudio();
+  if (!r.count) {
+    sfx.shieldBreak();
+    return setMsg(document.getElementById('inboxMsg'), 'ไม่มีของขวัญค้างอยู่แล้ว', true);
+  }
+  payReward({ gold: r.gold, gems: r.gems });
+  sfx.bonus();
+  buildMailList();
+  const bits = [];
+  if (r.gold) bits.push(r.gold.toLocaleString('en-US') + ' ทอง');
+  if (r.gems) bits.push(r.gems.toLocaleString('en-US') + ' เพชร');
+  setMsg(document.getElementById('inboxMsg'),
+    `รับครบ ${r.count} ฉบับ ได้ ${bits.join(' และ ')}`);
+});
+
+// ── หน้ารายละเอียดชุด ──────────────────────────────────────
+//
+// น้องแมวใส่ชุดนี้ยืนอยู่จริงและขยับ — หายใจกับกะพริบตาเท่านั้น
+// ไม่เอาคิวท่าว่างแบบหน้าแรก (นั่ง เลียขน) เพราะที่นี่คนมาดู "ชุด"
+// ท่าที่ตัวหมุนไปมาจะบังเสื้อผ้าซึ่งเป็นสิ่งเดียวที่ต้องดูให้ชัด
+// drawCatPose() ที่ไม่ส่ง idle เข้าไปให้พอดีแบบนั้นอยู่แล้ว
+
+const odPanel = document.getElementById('odPanel');
+let odCurrent = null;
+let odTick = 0;
+let odRAF = 0;
+
+function paintOdCat() {
+  const o = outfitById(odCurrent);
+  if (!o) return;
+  const s = getSkin();
+  paintMini(document.getElementById('odCat'), 200,
+    (c) => drawCatPose(c, 100, 176, 3, { ...s, outfit: o }, odTick));
+}
+
+function odLoop() {
+  odTick++;
+  paintOdCat();
+  odRAF = requestAnimationFrame(odLoop);
+}
+
+// วาดเฉพาะตอนแผงเปิด ปิดแล้วหยุดทันที ไม่แย่งเฟรมกับตัวเกม
+function stopOdCat() {
+  cancelAnimationFrame(odRAF);
+  odRAF = 0;
+}
+
+function paintOutfitDetail() {
+  const o = outfitById(odCurrent);
+  if (!o) return;
+  const got = isOwned(o.id);
+  const on = got && o.id === getSkin().outfit.id;
+  const tier = o.rarity ? RARITY[o.rarity] : null;
+
+  document.getElementById('odName').textContent = o.name;
+
+  const badge = document.getElementById('odTier');
+  badge.className = 'tier-badge ' + (o.rarity || '');
+  badge.textContent = tier ? tier.name : 'พื้นฐาน';
+
+  // บอกทั้ง "ต่อชิ้นเท่าไหร่" และ "แปลว่าอะไรเมื่อเทียบกับของที่เก็บได้จริง"
+  //
+  // ตั้งใจเทียบกับค่าปลาซึ่งเป็นของกินที่เจอบ่อยที่สุด แทนที่จะเดาว่าตาหนึ่ง
+  // เก็บได้กี่ชิ้น — ตัวเลขนั้นแกว่งตามฝีมือคนเล่นกับด่านที่เลือก เขียนตายตัวลงไป
+  // ก็เป็นได้แค่ตัวเลขลอย ๆ ที่ไม่มีอะไรรับประกัน
+  // ส่วนค่าปลาอ่านจาก SCORING ตรง ๆ แก้สมดุลที่ config แล้วบรรทัดนี้เปลี่ยนตามเอง
+  const bonus = document.getElementById('odBonus');
+  const sub = document.getElementById('odSub');
+  if (o.foodBonus > 0) {
+    const base = SCORING.pointsPerFish;
+    bonus.textContent = '+' + o.foodBonus.toLocaleString('en-US') + ' คะแนน / ของกิน 1 ชิ้น';
+    sub.textContent = 'ปลา 1 ตัวปกติได้ ' + base.toLocaleString('en-US')
+      + ' คะแนน ใส่ชุดนี้เป็น ' + (base + o.foodBonus).toLocaleString('en-US')
+      + ' (+' + Math.round((o.foodBonus / base) * 100) + '%) และบวกให้ของกินทุกชนิด';
+  } else {
+    bonus.textContent = 'ไม่มีโบนัสคะแนน';
+    sub.textContent = 'ชุดติดตัวมาแต่แรก ใส่ได้ตลอดโดยไม่ต้องสุ่ม';
+  }
+
+  document.getElementById('odText').textContent = o.note || '';
+
+  odPanel.classList.toggle('locked', !got);
+  const wear = document.getElementById('odWear');
+  wear.disabled = !got || on;
+  wear.textContent = !got ? 'ยังไม่มีชุดนี้' : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
+  wear.classList.toggle('ghost', on);
+
+  setMsg(document.getElementById('odMsg'),
+    got ? '' : 'ไปสุ่มที่ตู้กาช่าเพื่อปลดล็อกชุดนี้');
+  paintOdCat();
+}
+
+function openOutfitDetail(id) {
+  odCurrent = id;
+  odTick = 0;
+  paintOutfitDetail();
+  swapPanel(outfitPanel, odPanel);
+  if (!odRAF) odLoop();
+}
+
+function closeOutfitDetail() {
+  stopOdCat();
+  swapPanel(odPanel, outfitPanel);
+  buildOutfitGrid();
+}
+
+document.getElementById('odBack').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  closeOutfitDetail();
+});
+
+document.getElementById('odWear').addEventListener('click', () => {
+  const o = outfitById(odCurrent);
+  if (!o || !isOwned(o.id)) return;
+  unlockAudio();
+  setOutfit(o.id);
+  sfx.potion();
+  paintOutfitDetail();
+  refreshHome();
+});
 
 function showOutfits(on) {
   outfitPanel.classList.toggle('hidden', !on);
@@ -1277,7 +1676,20 @@ function buildTreasureGrid() {
   const grid = document.getElementById('treasureGrid');
   grid.innerHTML = '';
 
-  for (const t of TREASURES) {
+  const list = applyFilter('treasure', TREASURES, {
+    owned: (t) => ownsTreasure(t.id),
+    rank: (t) => T_RANK[t.rarity],
+    order: treasureOrder,
+    level: (t) => treasureLevel(t.id),
+  });
+
+  if (!list.length) {
+    emptyNote(grid, 'ยังไม่มีสมบัติเลย กดสุ่มสมบัติข้างล่างได้เลย');
+    markScrollable(grid);
+    return;
+  }
+
+  for (const t of list) {
     const got = ownsTreasure(t.id);
     const lv = treasureLevel(t.id);
     const tier = T_RARITY[t.rarity];
@@ -1285,30 +1697,26 @@ function buildTreasureGrid() {
     const card = document.createElement('button');
     card.className = 'skin-card t-card ' + t.rarity + (got ? '' : ' locked')
       + (isEquipped(t.id) ? ' on' : '');
+    // ไม่มีป้ายบอกคะแนนบนการ์ดแล้ว — หน้านี้คือ "ตู้โชว์ของที่มี" ไม่ใช่หน้าเทียบสเปก
+    // ตัวเลขฤทธิ์เต็ม ๆ อยู่ในหน้ารายละเอียดซึ่งห่างไปแค่แตะเดียว
+    // เอาป้ายออกแล้วการ์ดเตี้ยลงเห็น ๆ และดูเป็นช่องเก็บของมากกว่าเป็นแถวข้อมูล
     card.innerHTML =
       '<span class="t-emoji"></span><b></b>'
-      + '<span class="card-bonus"></span>'
       + '<span class="t-stars"></span>'
       + `<span class="tier-badge ${t.rarity}"></span>`;
 
-    // ยังไม่ได้ = ไม่บอกชื่อกับฤทธิ์ ให้เหลืออะไรให้ลุ้น แต่ยังเห็นระดับความหายาก
-    card.querySelector('.t-emoji').textContent = got ? t.emoji : '❓';
-    card.querySelector('b').textContent = got ? t.name : '???';
+    // ยังไม่ได้ก็เห็นว่าเป็นชิ้นไหน แค่เป็นขาวดำ (ดู .t-card.locked ใน style.css)
+    // เดิมซ่อนเป็น ❓/??? ไว้ให้ลุ้น แต่ผลคือไม่รู้ว่ามีอะไรให้ตามเก็บบ้าง
+    card.querySelector('.t-emoji').textContent = t.emoji;
+    card.querySelector('b').textContent = t.name;
     card.querySelector('.tier-badge').textContent = tier.short;
-
-    const bonus = card.querySelector('.card-bonus');
-    if (got) {
-      bonus.textContent = effectText(t, lv);
-    } else {
-      bonus.classList.add('none');
-      bonus.textContent = 'ยังไม่ได้';
-    }
     card.querySelector('.t-stars').innerHTML = got ? starRow(lv) : '';
 
+    // กดดูรายละเอียดได้ทั้งที่มีและยังไม่มี — หน้ารายละเอียดคือที่ที่บอกว่า
+    // สมบัติชิ้นนี้ทำอะไรได้ ซึ่งเป็นข้อมูลที่คนยังไม่มีต้องการมากกว่าคนที่มีแล้วด้วยซ้ำ
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
-      if (!got) return;          // ยังไม่มี ก็ไม่มีรายละเอียดให้ดู
       openDetail(t.id, treasurePanel);
     });
 
@@ -1341,13 +1749,20 @@ function paintDetail() {
   document.getElementById('tdWhen').textContent = 'เงื่อนไข: ' + triggerText(t);
   document.getElementById('tdText').textContent = t.detail;
 
+  // เข้าหน้านี้ได้ทั้งที่มีและยังไม่มี — ที่ยังไม่มีให้ดูได้ว่าทำอะไรได้บ้าง
+  // แต่ติดตั้งกับตีบวกไม่ได้ ปิดปุ่มไปเลยดีกว่าปล่อยให้กดแล้วเด้งข้อความปฏิเสธ
+  const got = ownsTreasure(t.id);
+  document.getElementById('tDetailPanel').classList.toggle('locked', !got);
+
   const eq = document.getElementById('tdEquip');
-  eq.textContent = isEquipped(t.id) ? 'ถอดออก' : 'ติดตั้ง';
-  eq.classList.toggle('ghost', isEquipped(t.id));
+  eq.disabled = !got;
+  eq.textContent = !got ? 'ยังไม่มีชิ้นนี้' : isEquipped(t.id) ? 'ถอดออก' : 'ติดตั้ง';
+  eq.classList.toggle('ghost', got && isEquipped(t.id));
 
   const up = document.getElementById('tdUpgrade');
-  up.disabled = lv >= UPGRADE.maxLevel;
-  up.textContent = lv >= UPGRADE.maxLevel ? 'ตีบวกสูงสุดแล้ว' : 'อัพเกรด';
+  up.disabled = !got || lv >= UPGRADE.maxLevel;
+  up.textContent = !got ? 'ไปสุ่มก่อน'
+    : lv >= UPGRADE.maxLevel ? 'ตีบวกสูงสุดแล้ว' : 'อัพเกรด';
 }
 
 function openDetail(id, from) {
@@ -1603,11 +2018,11 @@ function paintLoadout() {
     const lv = treasureLevel(t.id);
     const card = document.createElement('button');
     card.className = 'skin-card t-card ' + t.rarity + (on ? ' on' : '');
-    card.innerHTML = '<span class="t-emoji"></span><b></b>'
-      + '<span class="card-bonus"></span><span class="t-stars"></span>';
+    // ไม่มีป้ายคะแนนเหมือนกับหน้ารายการ ทั้งสองหน้าใช้การ์ดใบเดียวกัน
+    // ถ้าหน้าหนึ่งมีป้ายอีกหน้าไม่มี การ์ดจะสูงไม่เท่ากันทั้งที่หน้าตาเหมือนกัน
+    card.innerHTML = '<span class="t-emoji"></span><b></b><span class="t-stars"></span>';
     card.querySelector('.t-emoji').textContent = t.emoji;
     card.querySelector('b').textContent = t.name;
-    card.querySelector('.card-bonus').textContent = effectText(t, lv);
     card.querySelector('.t-stars').innerHTML = starRow(lv);
 
     card.addEventListener('click', () => {
@@ -1667,6 +2082,7 @@ document.getElementById('btnStages').addEventListener('click', () => {
 document.getElementById('stageBack').addEventListener('click', () => showStages(false));
 document.getElementById('btnOutfits').addEventListener('click', () => {
   unlockAudio(); startMusic();
+  setMsg(document.getElementById('outfitMsg'), '');   // ข้อความเตือนจากรอบก่อนต้องไม่ค้าง
   buildOutfitGrid();
   showOutfits(true);
 });
@@ -2009,6 +2425,15 @@ function loop(now) {
 }
 
 // ช่องสำหรับเครื่องมือตอนพัฒนา เช่นสคริปต์วาดแผนที่ด่านทั้งด่าน
+// แถบเรียง/กรองของสองหน้า ต้องผูกหลังจากประกาศฟังก์ชันวาดกริดครบแล้ว
+// (setupFilterBar เรียก redraw ทันทีไม่ได้ แต่ตัวมันเองอ้างถึงฟังก์ชันนั้นไว้)
+setupFilterBar({
+  key: 'treasure', bar: 'treasureFilter', box: 'treasureOnly', redraw: buildTreasureGrid,
+});
+setupFilterBar({
+  key: 'outfit', bar: 'outfitFilter', box: 'outfitOnly', redraw: buildOutfitGrid,
+});
+
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle
 if (import.meta.env.DEV) window.__game = game;
 
