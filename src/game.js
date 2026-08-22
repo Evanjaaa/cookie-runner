@@ -1,7 +1,7 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -9,7 +9,7 @@ import { Level } from './level.js';
 import { Particles } from './particles.js';
 import { loadBest, saveBest } from './storage.js';
 import { sfx } from './audio.js';
-import { setMusicTrack } from './music.js';
+import { setMusicTrack, SILENT } from './music.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
@@ -20,6 +20,9 @@ import {
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage } from './stages.js';
+import { TreasureRun, catAnchor } from './treasure-run.js';
+import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treasure-fx.js';
+import { drawTreasureSlots } from './render/treasure-hud.js';
 import { drawHUD } from './render/hud.js';
 import { postProcess } from './render/post.js';
 
@@ -145,6 +148,7 @@ export class Game {
     this.player = new Player();
     this.level = new Level();
     this.particles = new Particles();
+    this.treasures = new TreasureRun();
     this.onGameOver = onGameOver || (() => {});
     this.stage = getStage();
     this.best = loadBest(this.stage.id);
@@ -210,8 +214,11 @@ export class Game {
    * ลำดับความสำคัญ: บนฟ้า > ความสามารถ > ปกติ
    */
   syncMusic() {
-    if (this.state === STATE.READY) setMusicTrack('home');
-    else if (this.bonus > 0) setMusicTrack(this.stage.bonusTrack);
+    if (this.state === STATE.READY) {
+      // ฉากห้องก่อนเริ่มวิ่งต้องเงียบสนิท เหลือแค่เสียงน้องแมวร้องตอนพูด
+      // เพลงหน้าแรกดังทับเสียงร้องจนฟังไม่ออกว่าน้องส่งเสียงอะไร
+      setMusicTrack(this.inRoom ? SILENT : 'home');
+    } else if (this.bonus > 0) setMusicTrack(this.stage.bonusTrack);
     else if (this.skill > 0) setMusicTrack('dance');
     else setMusicTrack('main');
   }
@@ -267,6 +274,8 @@ export class Game {
 
     this.player.reset();
     this.particles.clear();
+    // อ่านสมบัติที่ติดตั้งไว้ใหม่ทุกตา ผู้เล่นอาจเพิ่งสลับชุดจากหน้าเลือกด่าน
+    this.treasures.reset();
     this.level.ensureAhead(this.camera);
   }
 
@@ -299,6 +308,12 @@ export class Game {
       sfx.jump();
     } else if (kind === 'double') {
       this.particles.burst(PLAYER_X + 20 + this.camera, this.player.y - 10, 8, 'mint', 3);
+      sfx.double();
+    } else if (this.treasures.tryExtraJump(this)) {
+      // กระโดดหมดสิทธิ์แล้ว แต่ลูกโป่งพร้อมใช้ — ยกให้อีกครั้ง
+      // ทำที่นี่ไม่ใช่ใน player.js เพื่อให้ตัวละครไม่ต้องรู้จักระบบสมบัติเลย
+      this.player.vy = PHYSICS.doubleJumpV;
+      this.particles.burst(PLAYER_X + 20 + this.camera, this.player.y - 10, 10, 'letter', 4);
       sfx.double();
     }
   }
@@ -489,19 +504,24 @@ export class Game {
       const pad = f.kind === 'shrimp' ? SHRIMP.pickPad : 22;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
         f.got = true;
+        // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
+        // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
+        const m = this.treasures.treatMult;
         if (f.kind === 'shrimp') {
-          this.treat += SCORING.pointsPerShrimp + this.foodBonus;
+          this.treat += Math.round((SCORING.pointsPerShrimp + this.foodBonus) * m);
           this.particles.burst(f.x, f.y, 22, 'shrimp', 7);
           sfx.shrimp();
         } else if (f.kind === 'kibble') {
-          this.treat += SCORING.pointsPerKibble + this.foodBonus;
+          this.treat += Math.round((SCORING.pointsPerKibble + this.foodBonus) * m);
           this.particles.burst(f.x, f.y, 10, 'kibble');
           sfx.kibble();
         } else {
-          this.treat += SCORING.pointsPerFish + this.foodBonus;
+          this.treat += Math.round((SCORING.pointsPerFish + this.foodBonus) * m);
           this.particles.burst(f.x, f.y, 7, 'mint');
           sfx.fish();
         }
+        // นับให้สมบัติที่ผูกกับการเก็บของ — midAir ตัดสินจากเท้าลอยพ้นพื้นจริง ๆ
+        this.treasures.onTreat(this, !this.player.onGround);
       }
     }
 
@@ -588,6 +608,9 @@ export class Game {
       this.notice = POTION.noticeFrames;
     }
 
+    // เดินเวลาของสมบัติหลังเก็บของครบแล้ว ตัวนับในเฟรมนี้จึงถูกนับก่อนเช็คเงื่อนไข
+    this.treasures.update(dt, this);
+
     this.score =
       Math.floor(this.distance / SCORING.pxPerScorePoint) + this.treat;
 
@@ -621,6 +644,16 @@ export class Game {
 
   /** ชนแล้วเจ็บ ไม่ตายทันที — ตายก็ต่อเมื่อพลังหมดเกลี้ยง */
   takeHit(x, y) {
+    // นมวิเศษรับไว้ให้ครั้งแรกของตา — ไม่เสียพลังเลย แถมได้โล่ต่อ
+    // เช็คก่อนหักพลังเสมอ ไม่งั้นจะเจ็บไปแล้วค่อยรู้ว่ากันได้
+    if (this.treasures.onHit(this)) {
+      this.invuln = HEALTH.invulnAfterHit;
+      this.shake = 8;
+      this.particles.burst(x, y, 14, 'dust', 6);
+      sfx.shield();
+      return;
+    }
+
     this.hp -= HEALTH.hitDamage;
     this.invuln = HEALTH.invulnAfterHit;
     this.shake = 12;
@@ -1098,9 +1131,25 @@ export class Game {
       drawShieldRing(ctx, this.player, this.tick);
     }
 
+    // ── ฤทธิ์สมบัติ ──
+    // วาดหลังตัวละครเพื่อให้เอฟเฟกต์ครอบทับตัวได้ (ฟองนม วงประกาย)
+    // แต่ยังอยู่ใน ctx.save() ของการสั่นจอ จะได้สั่นไปพร้อมกับฉาก
+    const anchor = catAnchor(this);
+    if (this.treasures.shielded) drawMilkBubble(ctx, anchor, this.tick);
+    drawTreasureShows(ctx, this.treasures.shows, anchor);
+    drawScorePops(ctx, this.treasures.pops, anchor);
+
     ctx.restore();
     postProcess(ctx);
     drawHUD(ctx, this);
+
+    // ช่องสมบัติอยู่นอก ctx.save() ของการสั่นจอโดยตั้งใจ — ตัวเลขนับถอยหลัง
+    // ที่สั่นตามจอตอนโดนชนอ่านไม่ทันพอดีในจังหวะที่ต้องการอ่านที่สุด
+    // ซ่อนตอนตายเพราะไม่มีอะไรให้รอแล้ว เหมือนหลอดความสามารถ
+    if (this.state !== STATE.DEAD) {
+      drawTreasureSlots(ctx, this.treasures.gauges(), this.tick);
+    }
+
     this.drawFlash(ctx);
   }
 

@@ -1,4 +1,4 @@
-// src/main.js
+﻿// src/main.js
 import './style.css';
 import { VIEW, SCORING } from './config.js';
 import { Game, STATE } from './game.js';
@@ -12,6 +12,15 @@ import {
 } from './outfits.js';
 import { getGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest } from './storage.js';
+import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
+import {
+  getGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
+  pullTreasure, upgradeTreasure, getEquipped, isEquipped, toggleEquip,
+} from './vault.js';
+import {
+  TREASURES, treasureById, T_RARITY, UPGRADE, GACHA as T_GACHA, SLOTS,
+  effectText, triggerText,
+} from './treasures.js';
 // นำเข้าแบบธรรมดาได้ ไม่ลาก SDK ของ Supabase ตามมา — cloud.js เองก็ import
 // ตัว SDK แบบไดนามิกอยู่ข้างใน มันจึงถูกแยกเป็นไฟล์ต่างหากไม่ว่าใครจะเรียกยังไง
 import {
@@ -20,6 +29,7 @@ import {
 } from './net/cloud.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
+import { drawChest, CHEST } from './render/chest.js';
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
@@ -73,6 +83,21 @@ const game = new Game({ onGameOver: showGameOver });
 // ── หน้าแรกกับการเลือกตัวละคร ──────────────────────────────
 
 /**
+ * ติดคลาส .scrolls ให้ช่องที่เนื้อหาล้นจริงเท่านั้น
+ *
+ * CSS มองไม่เห็นว่ามีอะไรล้นหรือเปล่า เลยต้องให้ JS บอก — ไม่งั้นเงาจางที่ขอบล่าง
+ * จะไปกินตัวหนังสือของแถวสุดท้ายในหน้าที่ของน้อยจนไม่ต้องเลื่อนเลย
+ *
+ * เรียกหลังใส่การ์ดครบแล้ว และต้องรอให้เบราว์เซอร์จัดหน้าเสร็จก่อนถึงจะวัดได้
+ */
+function markScrollable(el) {
+  if (!el) return;
+  requestAnimationFrame(() => {
+    el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 2);
+  });
+}
+
+/**
  * วาดลงแคนวาสเล็กในเมนู
  * ต้องคูณ DPR เอง เพราะ fitDPR() ดูแลเฉพาะจอเกมหลัก
  * ขนาดที่แสดงจริงคุมด้วย CSS ส่วนตรงนี้คุมแค่ความละเอียด
@@ -112,23 +137,78 @@ function paintStageScene(canvas, stage, logicalW) {
   ], 0, stage.theme);
 }
 
+// หูแมวบนป้ายชื่อเกมวาดด้วย CSS ล้วน (.plate-ear ใน style.css)
+// จึงไม่มีอะไรต้องวาดจากฝั่ง JS เลย — ไม่มี canvas ไม่มีการวาดซ้ำทุกครั้งที่รีเฟรชหน้า
+
+/**
+ * รูปโปรไฟล์บนการ์ดบัญชี
+ *
+ * ตอนนี้ผูกกับสีขนที่เลือกอยู่ เปลี่ยนแมวปุ๊บรูปเปลี่ยนตามทันที
+ * วันหลังถ้าอยากให้เลือกรูปได้เอง แก้แค่ฟังก์ชันนี้ที่เดียว — ที่เหลือทั้งการ์ด
+ * ไม่รู้เลยว่ารูปมาจากไหน
+ */
+function paintAvatar() {
+  paintMini(document.getElementById('pfAvatar'), 96,
+    (c) => drawCatFace(c, 48, 56, 2.5, getSkin()));
+}
+
+/**
+ * ไอคอนปุ่มสมบัติในล็อบบี้ — โชว์สมบัติที่ติดตั้งอยู่ ไม่ใช่รูปนิ่ง
+ *
+ * ยังไม่ได้ติดตั้งอะไรเลยจะขึ้นเป็นหีบเปล่า พอติดตั้งแล้วเห็นของที่พกไปทันที
+ * ตั้งแต่หน้าล็อบบี้โดยไม่ต้องกดเข้าไปดู
+ */
+function paintTreasureIcon() {
+  const eq = getEquipped().filter(Boolean).map((id) => treasureById(id));
+  paintMini(document.getElementById('treasureIcon'), 76, (c) => {
+    if (!eq.length) {
+      c.font = '40px serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.globalAlpha = 0.45;
+      c.fillText('🎁', 38, 42);
+      return;
+    }
+    // เรียงเหลื่อมกันเล็กน้อย ให้อ่านออกว่ามีหลายชิ้นแม้กรอบจะเล็ก
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    const step = eq.length > 1 ? 40 / (eq.length - 1) : 0;
+    eq.forEach((t, i) => {
+      c.font = (eq.length > 2 ? 26 : 32) + 'px serif';
+      c.fillText(t.emoji, 19 + (eq.length > 1 ? i * step : 19), 42);
+    });
+  });
+}
+
+/** การ์ดบัญชีมุมซ้ายบน — ชื่อ รูป เลเวล และหลอดความคืบหน้า */
+function refreshProfile() {
+  const st = levelFromXp(loadXp());
+  paintAvatar();
+  document.getElementById('pfName').textContent = localName() || 'แมวนิรนาม';
+  document.getElementById('pfLv').textContent = st.level;
+  document.getElementById('pfFill').style.width = Math.round(st.ratio * 100) + '%';
+  document.getElementById('pfXp').textContent = st.maxed
+    ? 'เลเวลสูงสุดแล้ว'
+    : st.into.toLocaleString('en-US') + ' / ' + st.need.toLocaleString('en-US');
+}
+
 function refreshHome() {
   const s = getSkin();
   const st = getStage();
-  document.getElementById('skinName').textContent = s.name;
-  document.getElementById('outfitName').textContent = s.outfit.name;
-  document.getElementById('stageName').textContent = st.name;
+  refreshProfile();
+  // ปุ่มล็อบบี้เหลือแค่ไอคอนกับชื่อ ไม่มีบรรทัดคำอธิบายให้เขียนแล้ว
+  // (ชื่อสกิน/ชุด/ด่าน ยังโชว์อยู่บนการ์ดที่เลือกอยู่ตอนเปิดแผงนั้น)
   paintMini(document.getElementById('skinIcon'), 76, (c) => drawCatFace(c, 38, 44, 1.8, s));
   // ไอคอนชุดใช้ตัวเต็ม ไม่ใช่แค่หัว เพราะเสื้อกับกระโปรงอยู่ที่ลำตัว
   paintMini(document.getElementById('outfitIcon'), 76, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
   paintStageScene(document.getElementById('stageIcon'), st, 210);
+  paintTreasureIcon();
+  refreshEquipCount();
   paintMini(document.getElementById('rankIcon'), 76, drawTrophy);
   paintBox(document.getElementById('gachaIcon'), 76, 76, (c) => {
     c.save(); c.scale(76 / 150, 76 / 170); drawGachaMachine(c); c.restore();
   });
-  // ทองย้ายไปอยู่แถบบนแล้ว ป้ายตรงนี้บอกความคืบหน้าแทนจะมีประโยชน์กว่า
-  document.getElementById('gachaSub').textContent =
-    'ปลดล็อก ' + ownedCount() + '/' + pullPool().length;
+  // ความคืบหน้ากาช่าเคยโชว์ตรงนี้ ย้ายไปดูในแผงกาช่าอย่างเดียวแล้ว (.gacha-owned)
   refreshGold();
 }
 
@@ -140,6 +220,8 @@ function refreshHome() {
  */
 function refreshGold() {
   document.getElementById('goldTop').textContent = getGold().toLocaleString('en-US');
+  // เพชรชมพูอยู่แถบเดียวกัน อัปเดตพร้อมกันเสมอ จะได้ไม่มีทางที่ตัวเลขสองช่องหลุดจากกัน
+  document.getElementById('gemTop').textContent = getGems().toLocaleString('en-US');
 }
 
 // ── ตู้กาช่า ───────────────────────────────────────────────
@@ -620,6 +702,7 @@ async function buildRank() {
     row.querySelector('.pts').textContent = Number(r.score).toLocaleString('en-US');
     list.appendChild(row);
   });
+  markScrollable(list);
 }
 
 const NAME_KEY = 'cookie-runner:name';
@@ -1041,6 +1124,7 @@ function buildStageGrid() {
 
     grid.appendChild(card);
   }
+  markScrollable(grid);
 }
 
 function showStages(on) {
@@ -1075,6 +1159,7 @@ function buildSkinGrid() {
 
     grid.appendChild(card);
   }
+  markScrollable(grid);
 }
 
 function showSkins(on) {
@@ -1082,26 +1167,35 @@ function showSkins(on) {
   startPanel.classList.toggle('hidden', on);
 }
 
-// ชุดที่กดเลือกไว้แต่ยังไม่กดยืนยัน — null = ยังไม่ได้เปิดหน้านี้
-let pendingOutfit = null;
-
 function buildOutfitGrid() {
   const grid = document.getElementById('outfitGrid');
   grid.innerHTML = '';
 
   const s = getSkin();
-  if (pendingOutfit === null) pendingOutfit = s.outfit.id;
 
   for (const o of wearable()) {
-    const on = o.id === pendingOutfit;
+    const on = o.id === s.outfit.id;
 
     const card = document.createElement('button');
     card.className =
-      'skin-card' + (on ? ' on' : '') + (o.rarity === 'high' ? ' high' : '');
-    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small></small>';
+      'skin-card outfit-card' + (on ? ' on' : '') + (o.rarity === 'high' ? ' high' : '');
+    card.innerHTML =
+      '<canvas width="96" height="96"></canvas><b></b>'
+      + '<span class="card-bonus"></span><small></small>';
     card.querySelector('b').textContent = o.name;
-    card.querySelector('small').textContent =
-      on ? (o.id === s.outfit.id ? 'กำลังใส่' : 'เลือกไว้') : o.note;
+
+    // โบนัสคือเหตุผลเดียวที่ชุดหนึ่งมีค่ากว่าอีกชุด ต้องเห็นตั้งแต่ตอนเลือก
+    // ไม่ใช่ไปรู้เอาตอนใส่แล้ววิ่งจริง — อ่านจาก foodBonus ของชุดตรง ๆ
+    // ไม่ได้เขียนตัวเลขค้างไว้ แก้อัตราใน outfits.js แล้วตรงนี้เปลี่ยนตามเอง
+    const bonus = card.querySelector('.card-bonus');
+    if (o.foodBonus > 0) {
+      bonus.textContent = '+' + o.foodBonus.toLocaleString('en-US') + ' / ชิ้น';
+    } else {
+      bonus.classList.add('none');
+      bonus.textContent = 'ไม่มีโบนัส';
+    }
+
+    card.querySelector('small').textContent = on ? 'กำลังใส่' : o.note;
 
     // "ขนล้วน" ไม่มีระดับ จึงไม่ติดป้าย
     if (o.rarity) {
@@ -1115,26 +1209,433 @@ function buildOutfitGrid() {
     paintMini(card.querySelector('canvas'), 96,
       (c) => drawCatPose(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
 
-    // กดการ์ดแค่ "เลือกไว้" ยังไม่เปลี่ยนจริง ต้องกดยืนยันอีกที
-    // ผู้เล่นจึงลองไล่ดูได้ทั้งหน้าโดยไม่เผลอเปลี่ยนชุดที่ใส่อยู่ทิ้ง
+    // แตะแล้วใส่เลย ไม่มีขั้นยืนยัน — ท่าเดียวกับหน้าเลือกแมวและเลือกด่าน
+    // แตะใบที่ใส่อยู่แล้วซ้ำ = ปิดหน้านี้ ซึ่งเป็นทางออกที่นิ้วอยู่ตรงนั้นพอดี
     card.addEventListener('click', () => {
-      if (pendingOutfit === o.id) return;
-      pendingOutfit = o.id;
+      if (o.id === getSkin().outfit.id) return showOutfits(false);
+      setOutfit(o.id);
       unlockAudio();
       sfx.fish();
       buildOutfitGrid();
+      refreshHome();
     });
 
     grid.appendChild(card);
   }
+  markScrollable(grid);
 }
 
 function showOutfits(on) {
   outfitPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
-  // ล้างตัวเลือกค้างตอนปิด ไม่งั้นเปิดกลับมาเจอใบที่เคยกดไว้ยังไฮไลต์อยู่
-  // ทั้งที่ตอนนั้นกดยกเลิกไปแล้ว
-  if (!on) pendingOutfit = null;
+}
+
+// ── ระบบสมบัติ ─────────────────────────────────────────────
+//
+// สี่หน้าต่อกันเป็นสาย: รายการ → รายละเอียด → ตีบวก / รายการ → ตู้สุ่ม
+// เก็บ "มาจากหน้าไหน" ไว้ใน tFrom เพื่อให้ปุ่มกลับพากลับที่เดิมได้เสมอ
+// ไม่ใช่เดาจากลำดับ ซึ่งจะพังทันทีที่มีทางเข้าหน้าเดียวกันมากกว่าหนึ่งทาง
+// (หน้าติดตั้งเข้าได้จากหน้าเลือกด่าน ส่วนรายละเอียดเข้าได้จากรายการ)
+
+const treasurePanel = document.getElementById('treasurePanel');
+const tDetailPanel = document.getElementById('tDetailPanel');
+const upPanel = document.getElementById('upPanel');
+const tgachaPanel = document.getElementById('tgachaPanel');
+const loadoutPanel = document.getElementById('loadoutPanel');
+
+let tCurrent = null;   // id ของสมบัติที่กำลังดูรายละเอียด/ตีบวกอยู่
+let tFrom = null;      // แผงที่เปิดหน้านี้มา
+
+/** สลับแผงแบบจำทางกลับ — ไม่ใช้ showPanel() เพราะอันนั้นล้างที่มาทิ้ง */
+function swapPanel(from, to) {
+  from.classList.add('hidden');
+  to.classList.remove('hidden');
+}
+
+/**
+ * ตัวเลข "กี่ชิ้น/3" ที่โผล่สองที่ — ปุ่มในหน้าเลือกด่าน กับหัวหน้าติดตั้ง
+ *
+ * ต้องเรียกทุกครั้งที่จำนวนที่ติดตั้งเปลี่ยน ไม่ว่าจะเปลี่ยนจากหน้าไหน
+ * เคยอัปเดตแค่ใน refreshHome() กับ paintSlots() แล้วพบว่าติดตั้งจากหน้ารายละเอียด
+ * ตัวเลขบนปุ่มหน้าเลือกด่านค้างเป็นค่าเก่าจนกว่าจะกลับไปล็อบบี้
+ */
+function refreshEquipCount() {
+  document.getElementById('loadoutCount').textContent =
+    getEquipped().filter(Boolean).length + '/' + SLOTS;
+}
+
+/** ดาวบอกขั้นตีบวก — เต็มเท่าขั้นที่ได้ ที่เหลือเป็นดวงจาง */
+function starRow(level) {
+  let s = '';
+  for (let i = 0; i < UPGRADE.maxLevel; i++) {
+    s += `<i class="${i < level ? 'on' : ''}"></i>`;
+  }
+  return s;
+}
+
+function buildTreasureGrid() {
+  const grid = document.getElementById('treasureGrid');
+  grid.innerHTML = '';
+
+  for (const t of TREASURES) {
+    const got = ownsTreasure(t.id);
+    const lv = treasureLevel(t.id);
+    const tier = T_RARITY[t.rarity];
+
+    const card = document.createElement('button');
+    card.className = 'skin-card t-card ' + t.rarity + (got ? '' : ' locked')
+      + (isEquipped(t.id) ? ' on' : '');
+    card.innerHTML =
+      '<span class="t-emoji"></span><b></b>'
+      + '<span class="card-bonus"></span>'
+      + '<span class="t-stars"></span>'
+      + `<span class="tier-badge ${t.rarity}"></span>`;
+
+    // ยังไม่ได้ = ไม่บอกชื่อกับฤทธิ์ ให้เหลืออะไรให้ลุ้น แต่ยังเห็นระดับความหายาก
+    card.querySelector('.t-emoji').textContent = got ? t.emoji : '❓';
+    card.querySelector('b').textContent = got ? t.name : '???';
+    card.querySelector('.tier-badge').textContent = tier.short;
+
+    const bonus = card.querySelector('.card-bonus');
+    if (got) {
+      bonus.textContent = effectText(t, lv);
+    } else {
+      bonus.classList.add('none');
+      bonus.textContent = 'ยังไม่ได้';
+    }
+    card.querySelector('.t-stars').innerHTML = got ? starRow(lv) : '';
+
+    card.addEventListener('click', () => {
+      unlockAudio();
+      sfx.fish();
+      if (!got) return;          // ยังไม่มี ก็ไม่มีรายละเอียดให้ดู
+      openDetail(t.id, treasurePanel);
+    });
+
+    grid.appendChild(card);
+  }
+  markScrollable(grid);
+}
+
+function showTreasures(on) {
+  treasurePanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (on) buildTreasureGrid();
+}
+
+// ── หน้ารายละเอียด ──────────────────────────────────────────
+
+function paintDetail() {
+  const t = treasureById(tCurrent);
+  if (!t) return;
+  const lv = treasureLevel(t.id);
+  const tier = T_RARITY[t.rarity];
+
+  document.getElementById('tdEmoji').textContent = t.emoji;
+  const badge = document.getElementById('tdTier');
+  badge.className = 'tier-badge ' + t.rarity;
+  badge.textContent = tier.name;
+  document.getElementById('tdName').textContent = t.name;
+  document.getElementById('tdStars').innerHTML = starRow(lv);
+  document.getElementById('tdEffect').textContent = effectText(t, lv);
+  document.getElementById('tdWhen').textContent = 'เงื่อนไข: ' + triggerText(t);
+  document.getElementById('tdText').textContent = t.detail;
+
+  const eq = document.getElementById('tdEquip');
+  eq.textContent = isEquipped(t.id) ? 'ถอดออก' : 'ติดตั้ง';
+  eq.classList.toggle('ghost', isEquipped(t.id));
+
+  const up = document.getElementById('tdUpgrade');
+  up.disabled = lv >= UPGRADE.maxLevel;
+  up.textContent = lv >= UPGRADE.maxLevel ? 'ตีบวกสูงสุดแล้ว' : 'อัพเกรด';
+}
+
+function openDetail(id, from) {
+  tCurrent = id;
+  tFrom = from;
+  setMsg(document.getElementById('tdMsg'), '');
+  paintDetail();
+  swapPanel(from, tDetailPanel);
+}
+
+// ── หน้าตีบวก ───────────────────────────────────────────────
+
+function paintUpgrade() {
+  const t = treasureById(tCurrent);
+  if (!t) return;
+  const lv = treasureLevel(t.id);
+  const maxed = lv >= UPGRADE.maxLevel;
+
+  document.getElementById('upEmoji').textContent = t.emoji;
+  document.getElementById('upName').textContent = t.name;
+  document.getElementById('upStep').innerHTML = starRow(lv);
+  document.getElementById('upCost').textContent = UPGRADE.cost.toLocaleString('en-US');
+
+  // โชว์ว่าตีสำเร็จแล้วฤทธิ์จะขึ้นจากเท่าไหร่เป็นเท่าไหร่ ไม่ใช่แค่บอกว่า +10%
+  document.getElementById('upArrow').innerHTML = maxed
+    ? `<b>${effectText(t, lv)}</b>`
+    : `<span>${effectText(t, lv)}</span><i>→</i><b>${effectText(t, lv + 1)}</b>`;
+
+  document.getElementById('upOdds').innerHTML = maxed
+    ? 'ตีบวกถึงขั้นสูงสุดแล้ว'
+    : `โอกาสสำเร็จ <b>${Math.round(UPGRADE.chance * 100)}%</b> · ล้มเหลวเสียแต่ทอง ขั้นไม่ลด`;
+
+  document.getElementById('upGo').disabled = maxed;
+  document.getElementById('upGoLabel').textContent = maxed ? 'ตันแล้ว' : 'ตีบวก';
+}
+
+function openUpgrade() {
+  document.getElementById('upResult').classList.add('hidden');
+  paintUpgrade();
+  swapPanel(tDetailPanel, upPanel);
+}
+
+function doUpgrade() {
+  const r = upgradeTreasure(tCurrent);
+  const box = document.getElementById('upResult');
+  box.classList.remove('hidden');
+
+  if (!r.ok) {
+    box.className = 'up-result fail';
+    box.innerHTML = `<b>${r.reason}</b>`
+      + (r.need ? `<small>ขาดอีก ${r.need.toLocaleString('en-US')} ทอง</small>` : '');
+    return;
+  }
+
+  unlockAudio();
+  if (r.win) {
+    sfx.bonus();
+    box.className = 'up-result win';
+    box.innerHTML = `<b>สำเร็จ!</b><small>ขั้น ${r.from} → ${r.to}</small>`;
+  } else {
+    // ตามที่สั่ง: บอกว่าไม่สำเร็จ เสียทองไปแล้ว แล้วถามว่าจะลองอีกไหม
+    // ปุ่มตีบวกยังอยู่ที่เดิม กดต่อได้ทันทีโดยไม่ต้องออกไปแล้วเข้ามาใหม่
+    sfx.shieldBreak();
+    box.className = 'up-result fail';
+    box.innerHTML = `<b>ไม่สำเร็จ</b>`
+      + `<small>เสียไป ${r.spent.toLocaleString('en-US')} ทอง · ขั้นยังเท่าเดิม</small>`
+      + `<em>ตีบวกอีกรอบไหม?</em>`;
+  }
+
+  paintUpgrade();
+  refreshGold();
+}
+
+// ── ตู้สุ่มสมบัติ ────────────────────────────────────────────
+
+// ── หีบกลางแผง ──
+// วาดต่อเนื่องเฉพาะตอนแผงเปิดอยู่เท่านั้น ปิดแผงแล้วหยุดลูปทันที
+// ถ้าปล่อยให้วิ่งตลอด มันจะแย่งเฟรมกับตัวเกมตอนกำลังวิ่งโดยไม่มีใครเห็นผลงาน
+let chestTick = 0;
+let chestOpen = 0;      // 0 = ปิด, 1 = เปิดสุด
+let chestTarget = 0;
+let chestRAF = 0;
+let chestTimer = 0;     // จับเวลาช่วง "ฝากำลังเปิด" ก่อนการ์ดจะโผล่
+
+const CHEST_OPEN_MS = 430;
+
+function paintChest() {
+  const cv = document.getElementById('tgChest');
+  if (!cv) return;
+  paintBox(cv, CHEST.W, CHEST.H, (c) => drawChest(c, chestOpen, chestTick));
+}
+
+function chestLoop() {
+  chestTick++;
+  // ไล่เข้าหาเป้าหมายแบบนุ่ม ๆ แทนการสลับค่าทันที ฝาจึงค่อย ๆ เปิด
+  chestOpen += (chestTarget - chestOpen) * 0.13;
+  paintChest();
+  chestRAF = requestAnimationFrame(chestLoop);
+}
+
+function startChest() {
+  if (!chestRAF) chestLoop();
+}
+
+function stopChest() {
+  cancelAnimationFrame(chestRAF);
+  chestRAF = 0;
+  // ออกจากหน้าไปตอนฝากำลังเปิด ต้องยกเลิกคิวด้วย ไม่งั้นการ์ดจะไปโผล่
+  // ในแผงที่ปิดไปแล้ว แล้วค้างอยู่อย่างนั้นจนกว่าจะเข้ามาใหม่
+  clearTimeout(chestTimer);
+  chestTimer = 0;
+}
+
+/** สลับระหว่างหีบกับแถวการ์ดที่สุ่มได้ — สองอันอยู่ในกรอบเดียวกัน */
+function showChest(on) {
+  document.getElementById('tgChestWrap').classList.toggle('hidden', !on);
+  document.getElementById('tgRow').classList.toggle('hidden', on);
+  if (on) {
+    // กลับมาหน้านี้ใหม่ต้องเห็นหีบปิด ไม่ใช่ค้างเปิดจากรอบก่อน
+    chestOpen = 0;
+    chestTarget = 0;
+  }
+}
+
+/**
+ * เปิดฝาหีบให้เห็นก่อน แล้วค่อยเอาการ์ดมาแทน
+ *
+ * เคยสลับเป็นการ์ดทันทีที่กด ซึ่งทำให้แอนิเมชันเปิดฝาไม่มีใครได้เห็นสักเฟรม
+ * ทั้งที่มันคือเหตุผลเดียวที่หีบมีอยู่ — ต้องรู้สึกว่า "เปิดหีบ" ไม่ใช่ "กดปุ่มแล้วมีของ"
+ */
+function openChestThen(fn) {
+  chestTarget = 1;
+  clearTimeout(chestTimer);
+  chestTimer = setTimeout(() => {
+    chestTimer = 0;
+    fn();
+  }, CHEST_OPEN_MS);
+}
+
+function paintTGacha() {
+  document.getElementById('tgOdds').innerHTML =
+    Object.values(T_RARITY).map((r) =>
+      `<span class="odds-chip ${r.key}"><i></i>${r.name} ${Math.round(r.rate * 100)}%</span>`).join('')
+    + `<span class="odds-chip dupe">ได้ซ้ำคืน ${T_GACHA.dupeGems} เพชร</span>`;
+
+  document.getElementById('tgOwned').textContent = treasureCount();
+  document.getElementById('tgTotal').textContent = TREASURES.length;
+
+  const g = getGems();
+  document.getElementById('tgPull1').disabled = g < T_GACHA.cost;
+  document.getElementById('tgPull3').disabled = g < T_GACHA.cost * T_GACHA.multi;
+  refreshGold();
+}
+
+function doTPull(times) {
+  // ฝายังเปิดอยู่ = ยังไม่จบรอบก่อน กดซ้ำตอนนี้จะหักเพชรสองรอบแต่เห็นผลรอบเดียว
+  if (chestTimer) return;
+
+  const msg = document.getElementById('tgMsg');
+  const row = document.getElementById('tgRow');
+  const r = pullTreasure(times);
+
+  if (!r.ok) {
+    setMsg(msg, 'เพชรไม่พอ ขาดอีก ' + r.need.toLocaleString('en-US'), true);
+    return;
+  }
+
+  unlockAudio();
+  sfx.potion();
+  setMsg(msg, r.back ? 'ได้ซ้ำ คืนเพชร ' + r.back.toLocaleString('en-US') : '');
+
+  // ปิดปุ่มไว้ระหว่างฝากำลังเปิด แล้วให้ paintTGacha() ตอนจบเป็นคนตัดสินใหม่
+  // ว่าเปิดปุ่มไหนได้บ้างตามเพชรที่เหลือจริง
+  document.getElementById('tgPull1').disabled = true;
+  document.getElementById('tgPull3').disabled = true;
+
+  openChestThen(() => {
+    showChest(false);
+
+    row.innerHTML = '';
+    for (const g of r.results) {
+      const t = g.treasure;
+      const card = document.createElement('div');
+      card.className = 'got-card ' + t.rarity + (g.isNew ? '' : ' dupe');
+      card.innerHTML =
+        `<span class="tier-badge ${t.rarity}">${T_RARITY[t.rarity].short}</span>`
+        + `<span class="t-emoji big"></span><b></b><small></small>`;
+      card.querySelector('.t-emoji').textContent = t.emoji;
+      card.querySelector('b').textContent = t.name;
+      card.querySelector('small').textContent = g.isNew ? 'ใหม่!' : '+' + g.gems + ' เพชร';
+      card.style.setProperty('--d', (row.children.length * 0.1).toFixed(2) + 's');
+      row.appendChild(card);
+    }
+
+    if (r.results.some((x) => x.isNew && x.treasure.rarity === 'legend')) sfx.bonus();
+    paintTGacha();
+  });
+}
+
+function showTGacha(on) {
+  if (on) {
+    document.getElementById('tgRow').innerHTML = '';
+    setMsg(document.getElementById('tgMsg'), '');
+    showChest(true);
+    paintTGacha();
+    swapPanel(treasurePanel, tgachaPanel);
+    startChest();
+  } else {
+    stopChest();
+    swapPanel(tgachaPanel, treasurePanel);
+    buildTreasureGrid();
+  }
+}
+
+// ── หน้าติดตั้ง ─────────────────────────────────────────────
+
+function paintSlots() {
+  const row = document.getElementById('slotRow');
+  row.innerHTML = '';
+  for (const id of getEquipped()) {
+    const t = id ? treasureById(id) : null;
+    const cell = document.createElement('button');
+    cell.className = 'slot' + (t ? ' filled ' + t.rarity : ' empty');
+    cell.innerHTML = t
+      ? `<span class="t-emoji"></span><small></small>`
+      : '<span class="slot-plus">+</span>';
+    if (t) {
+      cell.querySelector('.t-emoji').textContent = t.emoji;
+      cell.querySelector('small').textContent = t.name;
+      cell.addEventListener('click', () => {
+        unlockAudio(); sfx.fish();
+        toggleEquip(t.id);
+        paintLoadout();
+      });
+    }
+    row.appendChild(cell);
+  }
+  refreshEquipCount();
+}
+
+function paintLoadout() {
+  paintSlots();
+  const grid = document.getElementById('loadoutGrid');
+  grid.innerHTML = '';
+
+  const mine = TREASURES.filter((t) => ownsTreasure(t.id));
+  if (!mine.length) {
+    setMsg(document.getElementById('loadMsg'), 'ยังไม่มีสมบัติเลย ไปสุ่มที่หน้าสมบัติก่อนนะ');
+  }
+
+  for (const t of mine) {
+    const on = isEquipped(t.id);
+    const lv = treasureLevel(t.id);
+    const card = document.createElement('button');
+    card.className = 'skin-card t-card ' + t.rarity + (on ? ' on' : '');
+    card.innerHTML = '<span class="t-emoji"></span><b></b>'
+      + '<span class="card-bonus"></span><span class="t-stars"></span>';
+    card.querySelector('.t-emoji').textContent = t.emoji;
+    card.querySelector('b').textContent = t.name;
+    card.querySelector('.card-bonus').textContent = effectText(t, lv);
+    card.querySelector('.t-stars').innerHTML = starRow(lv);
+
+    card.addEventListener('click', () => {
+      unlockAudio();
+      const r = toggleEquip(t.id);
+      if (!r.ok) {
+        sfx.shieldBreak();
+        setMsg(document.getElementById('loadMsg'), r.reason, true);
+        return;
+      }
+      sfx.fish();
+      setMsg(document.getElementById('loadMsg'), '');
+      paintLoadout();
+    });
+    grid.appendChild(card);
+  }
+  markScrollable(grid);
+}
+
+function showLoadout(on) {
+  if (on) {
+    setMsg(document.getElementById('loadMsg'), '');
+    paintLoadout();
+    swapPanel(stagePanel, loadoutPanel);
+  } else {
+    swapPanel(loadoutPanel, stagePanel);
+    paintSlots();   // ตัวเลข 0/3 บนปุ่มในหน้าเลือกด่านต้องตรงกับที่เพิ่งจัดไป
+  }
 }
 
 function goHome() {
@@ -1166,17 +1667,63 @@ document.getElementById('btnStages').addEventListener('click', () => {
 document.getElementById('stageBack').addEventListener('click', () => showStages(false));
 document.getElementById('btnOutfits').addEventListener('click', () => {
   unlockAudio(); startMusic();
-  pendingOutfit = getSkin().outfit.id;
   buildOutfitGrid();
   showOutfits(true);
 });
-document.getElementById('outfitApply').addEventListener('click', () => {
-  if (!pendingOutfit) return showOutfits(false);   // กันเคสกดยืนยันทั้งที่ยังไม่ได้เลือกอะไร
-  setOutfit(pendingOutfit);
-  refreshHome();
-  showOutfits(false);
-});
 document.getElementById('outfitBack').addEventListener('click', () => showOutfits(false));
+
+// ── ปุ่มของระบบสมบัติ ──────────────────────────────────────
+document.getElementById('btnTreasures').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  showTreasures(true);
+});
+document.getElementById('treasureBack').addEventListener('click', () => showTreasures(false));
+
+document.getElementById('tdBack').addEventListener('click', () => {
+  swapPanel(tDetailPanel, tFrom || treasurePanel);
+  if (tFrom === treasurePanel) buildTreasureGrid();
+  else paintLoadout();
+});
+document.getElementById('tdEquip').addEventListener('click', () => {
+  unlockAudio();
+  const r = toggleEquip(tCurrent);
+  if (!r.ok) {
+    sfx.shieldBreak();
+    setMsg(document.getElementById('tdMsg'), r.reason, true);
+    return;
+  }
+  sfx.fish();
+  setMsg(document.getElementById('tdMsg'), r.equipped ? 'ติดตั้งแล้ว' : 'ถอดออกแล้ว');
+  paintDetail();
+  // ตัวเลขบนปุ่มหน้าเลือกด่านกับไอคอนในล็อบบี้ต้องตามทันที
+  // ไม่ใช่รอจนกลับไปล็อบบี้แล้วค่อยอัปเดต
+  refreshEquipCount();
+  paintTreasureIcon();
+});
+document.getElementById('tdUpgrade').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  openUpgrade();
+});
+
+document.getElementById('upBack').addEventListener('click', () => {
+  swapPanel(upPanel, tDetailPanel);
+  paintDetail();   // ขั้นอาจเพิ่งขึ้น ต้องวาดใหม่ ไม่ใช่โชว์ค่าเก่า
+});
+document.getElementById('upGo').addEventListener('click', doUpgrade);
+
+document.getElementById('tgachaOpen').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  showTGacha(true);
+});
+document.getElementById('tgBack').addEventListener('click', () => showTGacha(false));
+document.getElementById('tgPull1').addEventListener('click', () => doTPull(1));
+document.getElementById('tgPull3').addEventListener('click', () => doTPull(T_GACHA.multi));
+
+document.getElementById('loadoutOpen').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  showLoadout(true);
+});
+document.getElementById('loadBack').addEventListener('click', () => showLoadout(false));
 document.getElementById('btnGacha').addEventListener('click', () => {
   unlockAudio(); startMusic();
   showGacha(true);
@@ -1227,6 +1774,22 @@ function showGameOver() {
   document.getElementById('bestScore').textContent = game.best.toLocaleString('en-US');
   document.getElementById('overTitle').textContent =
     game.score >= game.best && game.score > 0 ? 'สถิติใหม่!' : 'หมดแรงแล้ว';
+
+  // บวก XP ตรงนี้ที่เดียว — เป็นจุดเดียวที่การันตีว่า "หนึ่งตาจบแล้วจริง"
+  // ถ้าไปบวกใน die() จะโดนนับซ้ำได้ เพราะ die() ถูกเรียกจากหลายทาง
+  const run = awardRun(game.score);
+  const box = document.getElementById('xpGain');
+  box.classList.toggle('up', run.leveledUp);
+  box.innerHTML = run.leveledUp
+    ? `<b>เลเวลอัพ!</b> ${run.before} → <b>${run.after}</b>`
+      + (run.after >= LEVEL_CAP ? ' · สูงสุดแล้ว' : ` · +${run.gained.toLocaleString('en-US')} XP`)
+    : `ได้รับ <b>+${run.gained.toLocaleString('en-US')} XP</b>`;
+  // ตาที่ไม่ได้ XP เลย (ตายทันทีจนคะแนนไม่ถึงพัน) ไม่ต้องโชว์อะไร
+  box.classList.toggle('hidden', run.gained <= 0 && !run.leveledUp);
+
+  // การ์ดในล็อบบี้ต้องอัปเดตด้วย ไม่งั้นกดกลับหน้าแรกแล้วเลเวลยังเป็นของเก่า
+  refreshProfile();
+
   overPanel.classList.remove('hidden');
 }
 
@@ -1267,6 +1830,10 @@ function showIntro() {
   closeAllPanels();
   game.reset();          // กลับไปสถานะ READY ตัวแมวจะได้ยืนรอไม่ใช่วิ่งอยู่
   game.inRoom = true;
+  // ต้องเรียกซ้ำหลังตั้ง inRoom — reset() ข้างบนรันตอนที่ยังเป็น false อยู่
+  // จึงไปสั่งเพลงหน้าแรกมา ทั้งที่ฉากนี้ต้องเงียบ
+  game.syncMusic();
+
   introPanel.classList.remove('hidden');
   document.getElementById('introLine').textContent = pickLine();
   sfx.jump();            // เสียงร้องทักทายให้รู้ว่าน้องกำลังพูด
@@ -1445,7 +2012,15 @@ function loop(now) {
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle
 if (import.meta.env.DEV) window.__game = game;
 
-setupDebug(game);   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
+// แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
+// ปุ่มเสกเพชรต้องวาดแถบบนใหม่เอง และถ้าตู้สุ่มเปิดค้างอยู่ก็ต้องปลดล็อกปุ่มสุ่มด้วย
+// ไม่งั้นเพชรเข้าแล้วแต่ปุ่มยังเทาอยู่จนกว่าจะออกไปเข้าใหม่
+setupDebug(game, {
+  refreshCurrency: () => {
+    if (!tgachaPanel.classList.contains('hidden')) paintTGacha();
+    else refreshGold();
+  },
+});
 
 requestAnimationFrame(loop);
 game.draw(ctx);

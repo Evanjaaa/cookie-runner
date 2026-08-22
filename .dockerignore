@@ -1,0 +1,19 @@
+# ยิ่งส่งไฟล์เข้า Docker น้อย build ยิ่งเร็ว
+# node_modules สำคัญที่สุด — ของบน Windows ใช้ในคอนเทนเนอร์ Linux ไม่ได้
+node_modules
+dist
+.git
+.github
+.vercel
+
+# คีย์จริงห้ามติดไปในภาพ — ตอน build ส่งผ่าน build args แทน (ดู Dockerfile)
+.env
+*.local
+
+# ไฟล์ต้นฉบับของรูป ใหญ่และไม่มีใครเรียกใช้ตอนรัน
+tools
+
+# เอกสารกับสคริปต์ฐานข้อมูล ไม่เกี่ยวกับการ build เว็บ
+README.md
+supabase
+.DS_Store

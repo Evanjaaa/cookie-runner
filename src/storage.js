@@ -156,6 +156,82 @@ export function saveOutfit(id) {
   }
 }
 
+// ── ระบบสมบัติ ──────────────────────────────────────────────
+// เพชรชมพู = เงินของตู้สมบัติ คนละกระเป๋ากับเหรียญทองที่ใช้กับตู้ชุด
+// เก็บสมบัติเป็น { id: ขั้นตีบวก } ไม่ใช่แค่รายการ id เพราะขั้นตีบวกเป็นของ
+// ติดตัวสมบัติชิ้นนั้น ไม่ใช่ของผู้เล่นรวม ๆ
+
+const GEM_KEY = 'cookie-runner:gems';
+const TRE_KEY = 'cookie-runner:treasures';
+const EQUIP_KEY = 'cookie-runner:equip';
+
+// เพชรตั้งต้น พอสุ่มได้สองครั้งพอดี ให้ได้ลองระบบก่อนโดยไม่ต้องรอกิจกรรม
+// (ยังไม่มีทางหาเพชรในเกม — จะมาพร้อมระบบเควสทีหลัง)
+const GEM_START = 300;
+
+export function loadGems() {
+  try {
+    const raw = localStorage.getItem(GEM_KEY);
+    if (raw === null) {
+      localStorage.setItem(GEM_KEY, String(GEM_START));
+      return GEM_START;
+    }
+    return Math.max(0, Number(raw) || 0);
+  } catch {
+    return GEM_START;
+  }
+}
+
+export function saveGems(n) {
+  try {
+    localStorage.setItem(GEM_KEY, String(Math.max(0, Math.floor(n))));
+    wrote('gems');
+  } catch {
+    /* ไม่ทำอะไร */
+  }
+}
+
+/** คืน { id: level } — level 0 คือมีแล้วแต่ยังไม่ได้ตีบวก */
+export function loadTreasures() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(TRE_KEY));
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const out = {};
+    for (const [k, v] of Object.entries(raw)) out[k] = Math.max(0, Number(v) || 0);
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function saveTreasures(map) {
+  try {
+    localStorage.setItem(TRE_KEY, JSON.stringify(map));
+    wrote('treasures');
+  } catch {
+    /* ไม่ทำอะไร */
+  }
+}
+
+/** รายการ id ที่ติดตั้งอยู่ เรียงตามช่อง — ช่องว่างเก็บเป็น null */
+export function loadEquip() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EQUIP_KEY));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveEquip(list) {
+  try {
+    localStorage.setItem(EQUIP_KEY, JSON.stringify(list));
+    wrote('equip');
+  } catch {
+    /* ไม่ทำอะไร */
+  }
+}
+
 /** คืนค่าว่าง ๆ ถ้าไม่เคยเลือก ให้ฝั่ง skins.js ตัดสินใจว่าตัวไหนคือค่าเริ่มต้น */
 export function loadSkin() {
   try {

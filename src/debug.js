@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────
 import { SKILL } from './config.js';
 import { STATE } from './game.js';
+import { addGems, getGems } from './vault.js';
 
 // false = โผล่เฉพาะตอนรัน dev server ส่วนเว็บที่ deploy จริงจะไม่มี
 // และ Vite ตัดโค้ดทั้งก้อนทิ้งตอน build ผู้เล่นจึงงัดมาใช้ไม่ได้เลย
@@ -90,6 +91,34 @@ const CSS = `
 }
 .dbg-body button:active { background: rgba(78,205,196,.3); }
 .dbg-body button.no { border-color: #FF5C6E; color: #FF9BA6; }
+
+/* ป้ายบอกผล — z-index สูงกว่าทุกอย่างในเกม เพราะจุดประสงค์เดียวคือ
+   "ต้องเห็นแน่ ๆ" ไม่ว่ากำลังเปิดหน้าไหนค้างอยู่ */
+.dbg-toast {
+  position: fixed;
+  left: 50%;
+  top: 14%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,143,176,.65);
+  background: rgba(27,15,43,.94);
+  color: #FFE3EF;
+  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-size: 15px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 22px rgba(0,0,0,.45);
+
+  /* ตั้งใจไม่ใส่แอนิเมชันค่อย ๆ จาง — งานเดียวของป้ายนี้คือ "ต้องเห็นแน่ ๆ"
+     เคยใส่ @keyframes ที่เริ่มจาก opacity 0 แล้วเจอว่าถ้าแอนิเมชันไม่เดิน
+     (แท็บอยู่หลัง เครื่องไม่วาดภาพ) ป้ายจะค้างที่เฟรมแรกคือ opacity 0
+     และค่าจากแอนิเมชันชนะค่าปกติที่เขียนไว้ตรงนี้ด้วย ใส่ opacity: 1 ก็ไม่ช่วย
+     ผลคือป้ายอยู่ครบทุกอย่างในหน้าเว็บแต่มองไม่เห็นเลย ซึ่งแย่กว่าไม่มีป้าย
+     เพราะทำให้เข้าใจผิดว่าเสกไม่ติด แลกความสวยกับความแน่นอนไม่คุ้ม */
+  opacity: 1;
+}
 `;
 
 /** กะพริบแดงสั้น ๆ บอกว่ากดตอนนี้ยังไม่ได้ */
@@ -98,12 +127,66 @@ function reject(btn) {
   setTimeout(() => btn.classList.remove('no'), 280);
 }
 
-export function setupDebug(game) {
+const GEM_GOAL = 999999;
+
+/**
+ * ป้ายบอกผลกลางจอ — ของแผงทดสอบเอง ไม่ใช้ระบบข้อความของเกม
+ *
+ * มีไว้เพราะแถบเพชรโผล่แค่ตอนอยู่หน้าแรก (ดู .hud-top ใน style.css)
+ * ถ้าเสกตอนอยู่หน้าอื่นจะไม่เห็นอะไรขยับเลย แล้วแยกไม่ออกว่า
+ * "เสกไม่ติด" หรือ "เสกติดแล้วแต่มองไม่เห็นตัวเลข" ซึ่งคนละเรื่องกัน
+ */
+function toast(text) {
+  const el = document.createElement('div');
+  el.className = 'dbg-toast';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+/**
+ * เสกเพชรให้ครบ GEM_GOAL พอดี ไม่ใช่บวกเพิ่มทุกครั้งที่เรียก
+ * คืน false ถ้ามีครบอยู่แล้ว เพื่อให้ปุ่มกะพริบแดงบอกว่าไม่ต้องกดซ้ำ
+ */
+function fillGems(hooks) {
+  const need = GEM_GOAL - getGems();
+  if (need <= 0) {
+    toast('💎 มีครบ ' + getGems().toLocaleString('en-US') + ' อยู่แล้ว');
+    return false;
+  }
+  addGems(need);
+  hooks.refreshCurrency?.();
+  toast('💎 เสกเพชรแล้ว ' + getGems().toLocaleString('en-US'));
+  return true;
+}
+
+/**
+ * @param game  ตัวเกม
+ * @param hooks { refreshCurrency } — ให้ main.js ส่งฟังก์ชันวาดแถบทอง/เพชรใหม่มา
+ *              ไม่ใช้ก็ได้ ปุ่มยังทำงาน แค่ตัวเลขบนจอจะรอรอบวาดถัดไป
+ */
+export function setupDebug(game, hooks = {}) {
   if (!SHOW_ON_LIVE && !import.meta.env.DEV) return;
 
   const style = document.createElement('style');
   style.textContent = CSS;
   document.head.appendChild(style);
+
+  // ── ทางลัดผ่าน URL: เปิด ?gems ก็ได้เพชรเลย ──
+  // มีทางนี้เพราะปุ่มในแผงต้องกดถูกที่ ซึ่งบนมือถือแผงพับอยู่และปุ่มเล็กมาก
+  // ส่วนลิงก์แค่เปิดก็จบ ใช้ได้ทุกเครื่องโดยไม่ต้องหาปุ่ม
+  //
+  // ต้องอยู่หลังใส่ CSS เสมอ — toast() ใช้คลาสในนั้น ถ้าเรียกก่อนจะได้
+  // ป้ายเปล่า ๆ ไม่มีสไตล์ กลืนไปกับพื้นหลังจนนึกว่าไม่ทำงาน
+  //
+  // ลบ ?gems ออกจากแถบที่อยู่หลังทำงานเสร็จ ไม่งั้นกดรีเฟรชทีก็เสกซ้ำทุกที
+  // จนแยกไม่ออกว่าตัวเลขที่เห็นมาจากการเล่นจริงหรือมาจากทางลัด
+  if (new URLSearchParams(location.search).has('gems')) {
+    fillGems(hooks);
+    const clean = new URL(location.href);
+    clean.searchParams.delete('gems');
+    history.replaceState(null, '', clean);
+  }
 
   const box = document.createElement('div');
   box.className = 'dbg';
@@ -118,11 +201,14 @@ export function setupDebug(game) {
   body.className = 'dbg-body';
   box.appendChild(body);
 
-  let open = true;
+  // ตั้งต้นเป็น "พับไว้" — ตอนกางอยู่มันทับปุ่มเมนูในล็อบบี้ (แมวน้อย) จนกดไม่ได้
+  // ซึ่งเป็นปัญหาจริงเวลาไล่เทสหน้าล็อบบี้ ไม่ใช่แค่บังตา
+  // อยากกางค้างไว้ก็กดครั้งเดียว มันจำให้ข้ามการรีเฟรชอยู่แล้ว
+  let open = false;
   try {
-    open = localStorage.getItem(OPEN_KEY) !== '0';
+    open = localStorage.getItem(OPEN_KEY) === '1';
   } catch {
-    /* อ่านไม่ได้ก็ถือว่ากางไว้ */
+    /* อ่านไม่ได้ก็ถือว่าพับไว้ */
   }
 
   function paint() {
@@ -173,6 +259,9 @@ export function setupDebug(game) {
     game.startBonus();
     return true;
   });
+
+  // ── เพชรชมพู ──
+  add('💎 เพชร 999,999', () => fillGems(hooks));
 
   paint();
   document.body.appendChild(box);
