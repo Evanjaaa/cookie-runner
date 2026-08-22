@@ -45,7 +45,11 @@
 
       <!-- หน้าชื่อเกม แผงนี้โปร่งกว่าแผงอื่นเพื่อให้เห็นแมวที่วาดบน canvas ข้างหลัง -->
       <div class="panel title" id="titlePanel">
-        <div class="title-logo">
+        <!-- ป้ายชื่อเกมมีหูแมวโผล่สองข้าง = ตัวป้ายทำหน้าที่เป็น "หัวแมว" เอง
+             วาดด้วย CSS ล้วน ไม่มีทั้งไฟล์รูปและ canvas -->
+        <div class="title-logo logo-plate">
+          <span class="plate-ear left" aria-hidden="true"></span>
+          <span class="plate-ear right" aria-hidden="true"></span>
           <h2>meow sing</h2>
           <p>endless runner</p>
         </div>
@@ -105,27 +109,49 @@
 
       <!-- หน้าแรก: ครึ่งซ้ายเว้นว่างให้เห็นแมวที่วาดบน canvas ครึ่งขวาเป็นเมนู -->
       <div class="panel home hidden" id="startPanel">
-        <!-- โลโก้กลางบน แมวถูกวาดอยู่บน canvas ข้างหลังตรงกลางจอ -->
-        <div class="home-logo">
+        <!-- โลโก้กลางบน แมวถูกวาดอยู่บน canvas ข้างหลังตรงกลางจอ
+             ป้ายชื่อใช้ทรงเดียวกับหน้าชื่อเกม (.logo-plate) ให้เป็นของชิ้นเดียวกัน -->
+        <div class="home-logo logo-plate">
+          <span class="plate-ear left" aria-hidden="true"></span>
+          <span class="plate-ear right" aria-hidden="true"></span>
           <h2>meow sing</h2>
           <p>endless runner</p>
         </div>
 
+        <!-- การ์ดบัญชีมุมซ้ายบน — รูปแมว ชื่อ เลเวล และหลอดความคืบหน้า
+             รูปโปรไฟล์ตอนนี้ผูกกับสีขนที่เลือกอยู่ วันหลังเปลี่ยนเป็นรูปอื่นได้
+             โดยแก้แค่ฟังก์ชัน paintAvatar() ใน main.js ที่เดียว -->
+        <div class="profile" id="profileCard">
+          <span class="pf-face">
+            <canvas id="pfAvatar" width="96" height="96"></canvas>
+            <b class="pf-lv" id="pfLv">1</b>
+          </span>
+          <span class="pf-info">
+            <b class="pf-name" id="pfName">แมวนิรนาม</b>
+            <span class="pf-bar"><i id="pfFill"></i></span>
+            <small class="pf-xp" id="pfXp">0 / 270</small>
+          </span>
+        </div>
+
         <div class="lobby left">
+          <!-- บรรทัดคำอธิบายใต้ชื่อถูกถอดออกแล้ว ข้อมูลที่เคยอยู่ตรงนี้ยังดูได้ครบ
+               ตอนเปิดแผงนั้น ๆ (ความคืบหน้ากาช่าอยู่ใน .gacha-owned / ชื่อชุดกับ
+               ชื่อด่านอยู่บนการ์ดที่เลือกอยู่) จึงไม่มีข้อมูลไหนหายไปจริง ๆ -->
           <button class="lobby-btn" id="btnGacha">
             <canvas id="gachaIcon" width="76" height="76"></canvas>
             <b>ตู้กาช่า</b>
-            <small id="gachaSub">สุ่มชุดใหม่</small>
           </button>
           <button class="lobby-btn" id="btnSkins">
             <canvas id="skinIcon" width="76" height="76"></canvas>
             <b>แมวน้อย</b>
-            <small id="skinName">ส้มน้อย</small>
           </button>
           <button class="lobby-btn" id="btnOutfits">
             <canvas id="outfitIcon" width="76" height="76"></canvas>
             <b>ชุด</b>
-            <small id="outfitName">ขนล้วน</small>
+          </button>
+          <button class="lobby-btn" id="btnTreasures">
+            <canvas id="treasureIcon" width="76" height="76"></canvas>
+            <b>สมบัติ</b>
           </button>
         </div>
 
@@ -133,12 +159,10 @@
           <button class="lobby-btn" id="btnStages">
             <canvas id="stageIcon" width="210" height="92"></canvas>
             <b>ด่าน</b>
-            <small id="stageName">ครัวกลางคืน</small>
           </button>
           <button class="lobby-btn" id="btnRank">
             <canvas id="rankIcon" width="76" height="76"></canvas>
             <b>อันดับ</b>
-            <small id="rankSub">คะแนนรวม</small>
           </button>
         </div>
 
@@ -149,6 +173,9 @@
       <div class="panel hidden" id="stagePanel">
         <h2 class="skin-title">เลือกด่าน</h2>
         <div class="stage-grid" id="stageGrid"></div>
+        <!-- ทางเข้าหน้าติดตั้งสมบัติ อยู่ตรงนี้เพราะเป็นสิ่งสุดท้ายที่ควรเช็ค
+             ก่อนลงเล่น — เลือกด่านเสร็จแล้วค่อยจัดของที่จะพกไป -->
+        <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
         <button class="backbtn" id="stageBack" aria-label="กลับ">
           <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
             <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
@@ -173,13 +200,135 @@
       <div class="panel hidden" id="outfitPanel">
         <h2 class="skin-title">เลือกชุด</h2>
         <div class="skin-grid" id="outfitGrid"></div>
-        <button class="backbtn" id="outfitBack" aria-label="ยกเลิก">
+        <!-- ไม่มีปุ่มยืนยันแล้ว — แตะการ์ดคือใส่เลย เหมือนหน้าเลือกแมวกับเลือกด่าน
+             ทั้งสามหน้าจึงทำงานเหมือนกันหมด ไม่ต้องจำว่าหน้าไหนต้องกดยืนยัน -->
+        <button class="backbtn" id="outfitBack" aria-label="กลับ">
           <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
             <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                   stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="btn" id="outfitApply">เลือกชุดนี้</button>
+      </div>
+
+      <!-- ── ระบบสมบัติ: 4 หน้าที่ต่อกันเป็นสาย ──────────────────
+           รายการ → รายละเอียด → ตีบวก   และ   รายการ → ตู้สุ่ม
+           แต่ละหน้าจำว่ามาจากไหน ปุ่มกลับจึงพากลับที่เดิมเสมอ -->
+      <div class="panel hidden" id="treasurePanel">
+        <h2 class="skin-title">สมบัติ</h2>
+        <div class="skin-grid" id="treasureGrid"></div>
+        <button class="btn" id="tgachaOpen">
+          <span class="price"><span class="gem" aria-hidden="true"></span><b>สุ่มสมบัติ</b></span>
+        </button>
+        <button class="backbtn" id="treasureBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- รายละเอียดสมบัติหนึ่งชิ้น -->
+      <div class="panel hidden" id="tDetailPanel">
+        <div class="tdetail">
+          <div class="tdetail-face">
+            <span class="tdetail-emoji" id="tdEmoji">🍊</span>
+            <span class="tier-badge" id="tdTier"></span>
+          </div>
+          <div class="tdetail-body">
+            <b class="tdetail-name" id="tdName"></b>
+            <span class="tdetail-stars" id="tdStars"></span>
+            <span class="hero-bonus" id="tdEffect"></span>
+            <small class="tdetail-when" id="tdWhen"></small>
+            <p class="tdetail-text" id="tdText"></p>
+            <div class="btnrow">
+              <button class="btn" id="tdEquip">ติดตั้ง</button>
+              <button class="btn ghost" id="tdUpgrade">อัพเกรด</button>
+            </div>
+            <small class="form-msg" id="tdMsg"></small>
+          </div>
+        </div>
+        <button class="backbtn" id="tdBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- หน้าตีบวก — ใช้ทองอย่างเดียว ไม่เกี่ยวกับเพชร -->
+      <div class="panel hidden" id="upPanel">
+        <h2 class="skin-title">ตีบวกสมบัติ</h2>
+        <div class="up-box">
+          <span class="up-emoji" id="upEmoji">🍊</span>
+          <b class="up-name" id="upName"></b>
+          <span class="up-step" id="upStep"></span>
+          <div class="up-arrow" id="upArrow"></div>
+          <div class="up-odds" id="upOdds"></div>
+          <div class="up-result hidden" id="upResult"></div>
+          <button class="btn" id="upGo">
+            <span class="price"><span class="coin" aria-hidden="true"></span><b id="upCost">2,000</b></span>
+            <small id="upGoLabel">ตีบวก</small>
+          </button>
+        </div>
+        <button class="backbtn" id="upBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- ตู้สุ่มสมบัติ — ใช้เพชรชมพู -->
+      <div class="panel hidden" id="tgachaPanel">
+        <h2 class="skin-title">สุ่มสมบัติ</h2>
+        <p class="tg-lead" id="tgOdds"></p>
+
+        <!-- ที่ว่างกลางแผงเดิมโล่งจนหน้าดูเหมือนโหลดไม่ขึ้น
+             หีบยืนอยู่ตรงนั้นตอนยังไม่ได้สุ่ม พอสุ่มแล้วการ์ดมาแทนที่ในกรอบเดียวกัน
+             จึงไม่มีจังหวะไหนที่ตรงกลางแผงว่างเปล่า -->
+        <div class="tg-stage">
+          <div class="tg-chest" id="tgChestWrap">
+            <canvas id="tgChest" width="200" height="184"></canvas>
+            <small class="tg-hint" id="tgHint">เปิดหีบด้วยเพชรชมพู</small>
+          </div>
+          <div class="got-row" id="tgRow"></div>
+        </div>
+
+        <div class="buyrow">
+          <button class="btn pull" id="tgPull1">
+            <span class="price"><span class="gem" aria-hidden="true"></span><b>150</b></span>
+            <small>1 ครั้ง</small>
+          </button>
+          <button class="btn pull five" id="tgPull3">
+            <span class="price"><span class="gem" aria-hidden="true"></span><b>450</b></span>
+            <small>3 ครั้ง!</small>
+          </button>
+        </div>
+
+        <div class="tg-foot">
+          <p class="tg-owned">เก็บแล้ว <b id="tgOwned">0</b> / <span id="tgTotal">0</span></p>
+          <small class="form-msg" id="tgMsg"></small>
+        </div>
+        <button class="backbtn" id="tgBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- ติดตั้งสมบัติก่อนลงเล่น เข้าจากหน้าเลือกด่าน -->
+      <div class="panel hidden" id="loadoutPanel">
+        <h2 class="skin-title">ติดตั้งสมบัติ</h2>
+        <div class="slots" id="slotRow"></div>
+        <div class="skin-grid" id="loadoutGrid"></div>
+        <small class="form-msg" id="loadMsg"></small>
+        <button class="backbtn" id="loadBack" aria-label="กลับ">
+          <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+            <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
 
       <!-- ตู้กาช่า สุ่มชุดด้วยเหรียญทอง -->
@@ -310,6 +459,9 @@
           <div><div class="lbl">ระยะทาง</div><div class="val" id="finalDist">0 ม.</div></div>
           <div><div class="lbl">สถิติสูงสุด</div><div class="val mint" id="bestScore">0</div></div>
         </div>
+        <!-- XP ที่เพิ่งได้จากตานี้ ต้องโชว์ตรงนี้เพราะเป็นที่เดียวที่ผู้เล่นเห็น
+             ผลของตาที่เพิ่งจบ ถ้าไปโผล่แต่บนการ์ดในล็อบบี้จะไม่มีใครสังเกตว่าได้เพิ่ม -->
+        <div class="xp-gain hidden" id="xpGain"></div>
         <p>ความเร็วคงที่ตลอด ระยะกระโดดจึงเท่าเดิมเสมอ — กดกระโดดตรงปลาเม็ดแรก แล้วจะเก็บครบทั้งเส้นพร้อมข้ามพ้นพอดี</p>
         <div class="btnrow">
           <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
@@ -322,6 +474,12 @@
       <div class="hud-top">
         <!-- ทองกับปุ่มอยู่มุมขวาบนด้วยกัน ซ้ายบนเว้นว่างให้ HUD ตอนวิ่ง
              (แถวตัวอักษรสะสมอยู่ตรงนั้น) และให้ฉากหลังหน้าแรกโล่ง ๆ -->
+        <!-- เพชรชมพูอยู่ซ้ายของเหรียญทอง เป็นเงินคนละกระเป๋ากัน
+             ทอง = ตู้ชุด + ตีบวกสมบัติ / เพชร = ตู้สมบัติอย่างเดียว -->
+        <div class="gembar" aria-label="เพชรชมพู">
+          <span class="gem" aria-hidden="true"></span>
+          <b id="gemTop">0</b>
+        </div>
         <div class="goldbar" aria-label="เหรียญทอง">
           <span class="coin" aria-hidden="true"></span>
           <b id="goldTop">0</b>
@@ -353,8 +511,12 @@
       <small>เกมจะหมุนให้เอง ถ้าไม่หมุน ให้ปิดล็อกหมุนจอในเครื่องแล้วหมุนเอง</small>
     </div>
 
+    <!-- ข้อความนี้เคยเขียนว่า "ไม่มีไฟล์ asset สักไฟล์" ซึ่งไม่จริงมาตั้งแต่มีภาพฉากหลัง
+         และยิ่งไม่จริงเมื่อเพิ่มเพลงหน้าแรกเป็นไฟล์ mp3 แก้ให้ตรงกับของจริงแล้ว -->
     <p class="footnote">
-      ทุกอย่างในหน้านี้วาดด้วย Canvas 2D และเสียงสังเคราะห์ด้วย Web Audio — ไม่มีไฟล์ asset สักไฟล์
+      ตัวละคร ฉากในเกม และเสียงเอฟเฟกต์ทั้งหมดสร้างด้วยโค้ด (Canvas 2D + Web Audio)
+      ส่วนภาพฉากหลังกับเพลงหน้าแรกเป็นไฟล์ —
+      เพลง <em>Love You - Singing Kitten [Japanese Ver.]</em> โดย tideblue จาก Pixabay
     </p>
   </div>
 
