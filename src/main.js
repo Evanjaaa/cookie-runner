@@ -32,7 +32,11 @@ import {
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
 import { drawChest, CHEST } from './render/chest.js';
-import { loadInbox, mailById, badgeCount, markRead, claimMail, claimAll } from './mail.js';
+import {
+  loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail,
+} from './mail.js';
+import { recordRun, recordPulls, recordUpgrade } from './stats.js';
+import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
@@ -161,25 +165,29 @@ function paintAvatar() {
  * ยังไม่ได้ติดตั้งอะไรเลยจะขึ้นเป็นหีบเปล่า พอติดตั้งแล้วเห็นของที่พกไปทันที
  * ตั้งแต่หน้าล็อบบี้โดยไม่ต้องกดเข้าไปดู
  */
+/**
+ * ไอคอนปุ่มสมบัติ — หีบสมบัติใบเดียวกับที่อยู่ในตู้สุ่ม
+ *
+ * เดิมเป็นกล่องของขวัญตอนยังไม่ติดตั้ง แล้วสลับเป็นอิโมจิของที่ติดตั้งอยู่
+ * ซึ่งอ่านไม่ออกว่าปุ่มนี้คือ "สมบัติ" ถ้ายังไม่เคยกดเข้าไปดู
+ * (และกล่องของขวัญตอนนี้ถูกยกไปเป็นไอคอนปุ่มกิจกรรมแล้ว)
+ *
+ * ฝาเปิดเมื่อมีของติดตั้งอยู่ ปิดเมื่อยังไม่ได้ติดตั้ง — บอกสถานะด้วยท่าของหีบเอง
+ * โดยไม่ต้องมีป้ายตัวเลขมาเบียดในกรอบ 76px
+ */
 function paintTreasureIcon() {
-  const eq = getEquipped().filter(Boolean).map((id) => treasureById(id));
-  paintMini(document.getElementById('treasureIcon'), 76, (c) => {
-    if (!eq.length) {
-      c.font = '40px serif';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.globalAlpha = 0.45;
-      c.fillText('🎁', 38, 42);
-      return;
-    }
-    // เรียงเหลื่อมกันเล็กน้อย ให้อ่านออกว่ามีหลายชิ้นแม้กรอบจะเล็ก
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    const step = eq.length > 1 ? 40 / (eq.length - 1) : 0;
-    eq.forEach((t, i) => {
-      c.font = (eq.length > 2 ? 26 : 32) + 'px serif';
-      c.fillText(t.emoji, 19 + (eq.length > 1 ? i * step : 19), 42);
-    });
+  const equipped = getEquipped().filter(Boolean).length;
+  paintBox(document.getElementById('treasureIcon'), 76, 76, (c) => {
+    // หีบวาดในกรอบ 200x184 แต่ตัวหีบจริงกินแค่ราว x 22-178 y 38-170
+    // ย่อจากขนาดกรอบตรง ๆ จะได้หีบจิ๋วลอยกลางที่ว่าง จึงย่อจาก "ขนาดของหีบ" แทน
+    // แล้วเลื่อนให้กล่องที่วัดได้นั้นมาอยู่กลางกรอบ 76 พอดี
+    const box = { x: 22, y: 38, w: 156, h: 132 };
+    const k = 76 / box.w;
+    c.save();
+    c.translate(-box.x * k, (76 - box.h * k) / 2 - box.y * k);
+    c.scale(k, k);
+    drawChest(c, equipped ? 1 : 0, chestTick);
+    c.restore();
   });
 }
 
@@ -207,6 +215,8 @@ function refreshHome() {
   paintMini(document.getElementById('outfitIcon'), 76, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
   paintStageScene(document.getElementById('stageIcon'), st, 210);
   paintTreasureIcon();
+  paintQuestIcon();
+  refreshQuestDot();
   refreshEquipCount();
   paintMini(document.getElementById('rankIcon'), 76, drawTrophy);
   paintBox(document.getElementById('gachaIcon'), 76, 76, (c) => {
@@ -232,6 +242,11 @@ function refreshGold() {
   // ของตัวเองอีกชุด — เขียนพร้อมกันตรงนี้ที่เดียว ไม่งั้นสองที่จะหลุดจากกันแน่นอน
   document.getElementById('goldGacha').textContent = gold;
   document.getElementById('gemGacha').textContent = gems;
+  // หน้าตีบวกก็ต้องเห็นทองด้วย เพราะมันคือหน้าที่จ่ายทองถี่ที่สุดในเกม
+  // (ใช้ทองอย่างเดียว จึงไม่มีช่องเพชรให้เขียน)
+  document.getElementById('goldUp').textContent = gold;
+  document.getElementById('goldQuest').textContent = gold;
+  document.getElementById('gemQuest').textContent = gems;
 }
 
 // ── ตู้กาช่า ───────────────────────────────────────────────
@@ -567,6 +582,9 @@ function refreshGacha() {
 function closeResult() {
   document.getElementById('gachaResult').classList.add('hidden');
   document.getElementById('gotRow').innerHTML = '';
+  // ริบบิ้นต้องล้างด้วย ไม่งั้นชิ้นที่ยังตกไม่จบจะค้างอยู่ในกล่องที่ปิดไปแล้ว
+  // แล้วโผล่ค้างกลางอากาศตอนเปิดกล่องรอบหน้า
+  document.getElementById('gotConfetti').innerHTML = '';
 }
 
 /** ใส่การ์ดลงกล่องผล เหลื่อมกันทีละใบให้ใบหายากมีจังหวะให้สังเกตว่าเรืองแสง */
@@ -579,6 +597,38 @@ function pushGotCard(box, cls, html, fill) {
   box.appendChild(card);
 }
 
+// สีริบบิ้น — ชุดเดียวกับแคปซูลในตู้กาช่า กล่องผลจึงดูเป็นของที่ออกมาจากตู้ใบนั้นจริง ๆ
+const CONFETTI = ['#FFC93C', '#FF8FB0', '#8DF3EA', '#C77DFF', '#9DE86F', '#FF8A5C'];
+
+/**
+ * โปรยริบบิ้นฉลองหนึ่งชุด
+ *
+ * สร้างชิ้นใหม่ทุกครั้งแทนการรีสตาร์ตแอนิเมชันของชิ้นเดิม เพราะการรีสตาร์ต
+ * ต้องถอดคลาสแล้วบังคับ reflow แล้วใส่กลับ ซึ่งพลาดง่ายและได้ผลไม่เหมือนกันทุกเบราว์เซอร์
+ * ส่วนนี่ทิ้งของเก่าแล้วขึ้นใหม่หมด จึงเริ่มจากศูนย์เสมอแน่นอน
+ *
+ * ค่าสุ่มทุกตัวส่งผ่าน custom property ให้ CSS เป็นคนใช้ ตัว JS จึงไม่ต้องรู้จัก
+ * ท่าแอนิเมชันเลย อยากเปลี่ยนทางตกหรือความเร็วก็แก้ที่ @keyframes ที่เดียว
+ */
+function burstConfetti(boxId = 'gotConfetti') {
+  const box = document.getElementById(boxId);
+  box.innerHTML = '';
+
+  for (let i = 0; i < 26; i++) {
+    const bit = document.createElement('i');
+    bit.style.background = CONFETTI[i % CONFETTI.length];
+    bit.style.setProperty('--x', (Math.random() * 100).toFixed(1) + '%');
+    bit.style.setProperty('--sx', (Math.random() * 60 - 30).toFixed(0) + 'px');
+    bit.style.setProperty('--r', Math.floor(Math.random() * 360) + 'deg');
+    // หน่วงไม่เท่ากันเป็นเหตุผลเดียวที่มันดูเป็นการโปรย ไม่ใช่แถบสีที่ร่วงพร้อมกันทั้งแถว
+    bit.style.setProperty('--d', (Math.random() * 0.55).toFixed(2) + 's');
+    bit.style.setProperty('--t', (1.4 + Math.random() * 1.1).toFixed(2) + 's');
+    bit.style.setProperty('--w', (5 + Math.random() * 5).toFixed(1) + 'px');
+    bit.style.setProperty('--h', (9 + Math.random() * 8).toFixed(1) + 'px');
+    box.appendChild(bit);
+  }
+}
+
 /** หัวเรื่องบอกผลรวมในบรรทัดเดียว ผู้เล่นจึงรู้ทันทีว่ารอบนี้คุ้มไหมก่อนไล่ดูทีละใบ */
 function openResult(fresh, word) {
   const box = document.getElementById('gotRow');
@@ -586,6 +636,13 @@ function openResult(fresh, word) {
   document.getElementById('gotTitle').textContent =
     fresh > 0 ? 'ได้' + word + 'ใหม่ ' + fresh + ' ชิ้น!' : 'ได้รับ!';
   document.getElementById('gachaResult').classList.remove('hidden');
+  burstConfetti();
+  // เสียงดีใจมาคู่กับริบบิ้นเสมอ ทั้งสองอย่างคือ "การฉลอง" ก้อนเดียวกัน
+  //
+  // หน่วงไว้นิดเพราะผู้เรียกเพิ่งยิงเสียงบอกระดับของที่ได้ (bonus/kibble) ไปหมาด ๆ
+  // ถ้าออกพร้อมกันจะกลายเป็นเสียงก้อนเดียวที่ฟังไม่ออกว่าเป็นอะไร
+  // เว้นให้หัวเสียงแรกผ่านไปก่อน แล้วเสียงแมวจึงอ่านเป็น "ปฏิกิริยาดีใจ" ต่อจากนั้น
+  setTimeout(() => sfx.cheer(), 200);
   return box;
 }
 
@@ -659,6 +716,7 @@ function doTPull(times) {
     setMsg(msg, 'เพชรไม่พอ ขาดอีก ' + r.need.toLocaleString('en-US'), true);
     return;
   }
+  recordPulls(times);   // นับหลังหักเพชรสำเร็จ ไม่ใช่ตอนกด — กดแล้วเพชรไม่พอไม่นับ
 
   unlockAudio();
   sfx.potion();
@@ -699,6 +757,7 @@ function doOPull(times) {
       'ทองไม่พอ ขาดอีก ' + res.need.toLocaleString('en-US'), true);
     return;
   }
+  recordPulls(times);
 
   unlockAudio();
   sfx.potion();                   // เสียงตอนหมุนตู้ เสียงของรางวัลมาทีหลัง
@@ -1611,6 +1670,68 @@ function payReward(reward) {
   refreshProfile();
 }
 
+// ── กล่องฉลองตอนได้ของ ──────────────────────────────────────
+//
+// ใช้ร่วมกันระหว่างกล่องจดหมายกับหน้ากิจกรรม (ตู้กาช่ามีของตัวเองอยู่ในการ์ด
+// เพราะมันต้องเล่นต่อจากแอนิเมชันเปิดหีบ/แคปซูลในกรอบเดียวกัน)
+//
+// เปิดทับแผงที่ค้างอยู่ข้างหลัง ไม่ได้สลับแผง — คนกดรับของยังอยู่ที่หน้าเดิม
+// พอปิดกล่องจึงกลับมาเจอรายการที่ค้างไว้ทันที ไม่ต้องกดกลับเข้าไปใหม่
+
+const rewardPanel = document.getElementById('rewardPanel');
+
+/** การ์ดของรางวัลหนึ่งใบ — ทองกับเพชรใช้ทรงเดียวกับการ์ดผลสุ่มในตู้กาช่า */
+function rewardCard(kind, amount, label) {
+  const card = document.createElement('div');
+  card.className = 'got-card ' + kind;
+  card.innerHTML = `<span class="${kind === 'gold' ? 'coin' : 'gem'} big" aria-hidden="true"></span>`
+    + '<b></b><small></small>';
+  card.querySelector('b').textContent = '+' + amount.toLocaleString('en-US');
+  card.querySelector('small').textContent = label;
+  return card;
+}
+
+/**
+ * โชว์กล่องฉลองพร้อมริบบิ้นกับเสียง
+ * @param title   หัวเรื่อง เช่น "รับของขวัญแล้ว!"
+ * @param reward  { gold, gems } — ช่องที่เป็นศูนย์จะไม่ขึ้นการ์ด
+ */
+function showReward(title, reward) {
+  const row = document.getElementById('rewardRow');
+  row.innerHTML = '';
+  document.getElementById('rewardTitle').textContent = title;
+
+  const cards = [];
+  if (reward.gems) cards.push(rewardCard('gem', reward.gems, 'เพชรชมพู'));
+  if (reward.gold) cards.push(rewardCard('gold', reward.gold, 'เหรียญทอง'));
+  cards.forEach((card, i) => {
+    card.style.setProperty('--d', (i * 0.12).toFixed(2) + 's');
+    row.appendChild(card);
+  });
+
+  rewardPanel.classList.remove('hidden');
+  burstConfetti('rewardConfetti');
+  unlockAudio();
+  sfx.bonus();
+  setTimeout(() => sfx.cheer(), 220);
+}
+
+function closeReward() {
+  rewardPanel.classList.add('hidden');
+  document.getElementById('rewardRow').innerHTML = '';
+  // ริบบิ้นที่ยังตกไม่จบต้องล้างด้วย ไม่งั้นค้างกลางอากาศตอนเปิดกล่องรอบหน้า
+  document.getElementById('rewardConfetti').innerHTML = '';
+}
+
+document.getElementById('rewardClose').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  closeReward();
+});
+// กล่องคลุมทั้งจอ กดตรงไหนก็ปิดได้ เผื่อแตะมั่วก่อนหาปุ่มเจอ
+rewardPanel.addEventListener('click', (e) => {
+  if (e.target === rewardPanel) closeReward();
+});
+
 function buildMailList() {
   const list = document.getElementById('mailList');
   list.innerHTML = '';
@@ -1708,10 +1829,10 @@ document.getElementById('mrClaim').addEventListener('click', () => {
     return setMsg(document.getElementById('mrMsg'), r.reason, true);
   }
   payReward(r.reward);
-  sfx.potion();
   paintMailRead();
   refreshMailDot();
-  setMsg(document.getElementById('mrMsg'), 'รับของขวัญแล้ว!');
+  setMsg(document.getElementById('mrMsg'), '');
+  showReward('รับของขวัญแล้ว!', r.reward);
 });
 
 document.getElementById('mailClaimAll').addEventListener('click', () => {
@@ -1722,14 +1843,123 @@ document.getElementById('mailClaimAll').addEventListener('click', () => {
     return setMsg(document.getElementById('inboxMsg'), 'ไม่มีของขวัญค้างอยู่แล้ว', true);
   }
   payReward({ gold: r.gold, gems: r.gems });
-  sfx.bonus();
   buildMailList();
-  const bits = [];
-  if (r.gold) bits.push(r.gold.toLocaleString('en-US') + ' ทอง');
-  if (r.gems) bits.push(r.gems.toLocaleString('en-US') + ' เพชร');
-  setMsg(document.getElementById('inboxMsg'),
-    `รับครบ ${r.count} ฉบับ ได้ ${bits.join(' และ ')}`);
+  setMsg(document.getElementById('inboxMsg'), '');
+  showReward(`รับของขวัญครบ ${r.count} ฉบับ!`, { gold: r.gold, gems: r.gems });
 });
+
+// ── ล้างจดหมาย ──
+// ลบเฉพาะฉบับที่อ่านแล้วและไม่มีของค้าง กติกาอยู่ใน clearReadMail()
+document.getElementById('mailClear').addEventListener('click', () => {
+  unlockAudio();
+  const removed = clearReadMail();
+  if (!removed) {
+    sfx.shieldBreak();
+    return setMsg(document.getElementById('inboxMsg'),
+      'ยังไม่มีฉบับไหนที่ล้างได้ (ต้องอ่านแล้วและไม่มีของค้างรับ)', true);
+  }
+  sfx.fish();
+  buildMailList();
+  setMsg(document.getElementById('inboxMsg'), `ล้างไป ${removed} ฉบับแล้ว`);
+});
+
+// ── หน้ากิจกรรม ────────────────────────────────────────────
+//
+// รายการสร้างจาก QUESTS ตรง ๆ เพิ่มภารกิจใหม่ = เติมอ็อบเจกต์ใน quests.js พอ
+// ไฟล์นี้ไม่รู้จักภารกิจข้อไหนเป็นการเฉพาะเลยสักข้อ
+
+const questPanel = document.getElementById('questPanel');
+
+/** จุดแดงบนปุ่มกิจกรรม — ขึ้นเมื่อมีข้อที่ทำครบแล้วแต่ยังไม่ได้กดรับ */
+function refreshQuestDot() {
+  document.getElementById('questDot').classList.toggle('hidden', claimableCount() === 0);
+}
+
+/** ไอคอนปุ่มกิจกรรม — กล่องของขวัญ ตัวเดิมที่เคยอยู่บนปุ่มสมบัติ */
+function paintQuestIcon() {
+  paintMini(document.getElementById('questIcon'), 76, (c) => {
+    c.font = '46px serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('🎁', 38, 42);
+  });
+}
+
+function buildQuestList() {
+  const list = document.getElementById('questList');
+  list.innerHTML = '';
+
+  for (const { q, st } of questList()) {
+    const row = document.createElement('div');
+    row.className = 'quest-row' + (st.claimed ? ' done' : st.done ? ' ready' : '');
+    row.innerHTML =
+      '<span class="quest-ico"></span>'
+      + '<div class="quest-info">'
+      + '<b class="quest-name"></b>'
+      + '<small class="quest-note"></small>'
+      + '<span class="quest-bar"><i></i></span>'
+      + '</div>'
+      + '<div class="quest-side">'
+      + '<span class="quest-prize"></span>'
+      + '<button type="button" class="btn quest-get"></button>'
+      + '</div>';
+
+    row.querySelector('.quest-ico').textContent = q.icon;
+    row.querySelector('.quest-name').textContent = q.name;
+
+    // ความคืบหน้าเขียนด้วยหน่วยที่คนอ่านรู้เรื่อง (วินาที → นาที) ไม่ใช่ค่าดิบ
+    const shown = q.show ? q.show(st.cur) : st.cur;
+    const goal = q.show ? q.show(q.goal) : q.goal;
+    row.querySelector('.quest-note').textContent =
+      q.note + ' · ' + shown.toLocaleString('en-US') + '/' + goal.toLocaleString('en-US')
+      + (q.unit ? ' ' + q.unit : '');
+    row.querySelector('.quest-bar i').style.width = Math.round(st.ratio * 100) + '%';
+
+    const bits = [];
+    if (q.reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + q.reward.gems.toLocaleString('en-US'));
+    if (q.reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + q.reward.gold.toLocaleString('en-US'));
+    row.querySelector('.quest-prize').innerHTML = bits.join('');
+
+    const get = row.querySelector('.quest-get');
+    get.textContent = st.claimed ? 'รับแล้ว' : st.done ? 'รับรางวัล' : 'ยังไม่ครบ';
+    get.disabled = !st.done || st.claimed;
+    get.addEventListener('click', () => doClaimQuest(q.id));
+
+    list.appendChild(row);
+  }
+  markScrollable(list);
+  refreshQuestDot();
+}
+
+function doClaimQuest(id) {
+  const r = claimQuest(id);
+  unlockAudio();
+  if (!r.ok) {
+    sfx.shieldBreak();
+    return setMsg(document.getElementById('questMsg'), r.reason, true);
+  }
+  payReward(r.reward);
+  setMsg(document.getElementById('questMsg'), '');
+  buildQuestList();
+  showReward('สำเร็จ: ' + r.quest.name, r.reward);
+}
+
+function showQuests(on) {
+  questPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (on) {
+    setMsg(document.getElementById('questMsg'), '');
+    refreshGold();
+    buildQuestList();
+  }
+}
+
+document.getElementById('btnQuests').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  showQuests(true);
+});
+document.getElementById('questBack').addEventListener('click', () => showQuests(false));
 
 // ── หน้ารายละเอียดชุด ──────────────────────────────────────
 //
@@ -1798,13 +2028,19 @@ function paintOutfitDetail() {
   document.getElementById('odText').textContent = o.note || '';
 
   odPanel.classList.toggle('locked', !got);
+
+  // ยังไม่มีชุดนี้ = ปุ่มไม่ได้ตายแล้วบอกว่า "ยังไม่มีชุดนี้" เฉย ๆ อีกต่อไป
+  //
+  // การบอกว่ากดไม่ได้ไม่ได้ช่วยอะไรเลย เพราะคนที่เปิดหน้านี้เห็นชุดขาวดำอยู่แล้ว
+  // รู้อยู่แล้วว่ายังไม่มี สิ่งที่เขาต้องการคือ "แล้วจะได้มายังไง" ปุ่มจึงกลายเป็น
+  // ทางลัดไปตู้กาช่าแทน (ดู odWear ข้างล่าง) — จุดที่ตอบคำถามนั้นได้จริง
   const wear = document.getElementById('odWear');
-  wear.disabled = !got || on;
-  wear.textContent = !got ? 'ยังไม่มีชุดนี้' : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
+  wear.disabled = on;
+  wear.textContent = !got ? 'ไปสุ่มกาช่ากัน!' : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
   wear.classList.toggle('ghost', on);
 
   setMsg(document.getElementById('odMsg'),
-    got ? '' : 'ไปสุ่มที่ตู้กาช่าเพื่อปลดล็อกชุดนี้');
+    got ? '' : 'ชุดนี้ลุ้นได้ที่ตู้กาช่า');
   paintOdCat();
 }
 
@@ -1830,8 +2066,20 @@ document.getElementById('odBack').addEventListener('click', () => {
 
 document.getElementById('odWear').addEventListener('click', () => {
   const o = outfitById(odCurrent);
-  if (!o || !isOwned(o.id)) return;
+  if (!o) return;
   unlockAudio();
+
+  // ยังไม่มีชุดนี้: พาไปตู้กาช่าช่องสุ่มสกินเลย ไม่ใช่กดแล้วเงียบ
+  // ปิดหน้ารายละเอียดเองแทนการเรียก closeOutfitDetail() เพราะอันนั้นพากลับไป
+  // หน้ารายการชุด ซึ่งจะโผล่ค้างอยู่ใต้หน้าตู้กาช่าที่กำลังจะเปิด
+  if (!isOwned(o.id)) {
+    sfx.fish();
+    stopOdCat();
+    odPanel.classList.add('hidden');
+    showGacha(true, 'skin');
+    return;
+  }
+
   setOutfit(o.id);
   sfx.potion();
   paintOutfitDetail();
@@ -1972,8 +2220,11 @@ function paintDetail() {
   eq.textContent = !got ? 'ยังไม่มีชิ้นนี้' : isEquipped(t.id) ? 'ถอดออก' : 'ติดตั้ง';
   eq.classList.toggle('ghost', got && isEquipped(t.id));
 
+  // ยังไม่มีชิ้นนี้ = ปุ่มยังกดได้ แต่เปลี่ยนหน้าที่เป็นทางลัดไปตู้สุ่มสมบัติ
+  // ท่าเดียวกับปุ่มในหน้ารายละเอียดชุด — ปุ่มที่บอกว่า "ไปสุ่มก่อน" แล้วกดไม่ได้
+  // คือการบอกทางแล้วปิดทางในประโยคเดียวกัน
   const up = document.getElementById('tdUpgrade');
-  up.disabled = !got || lv >= UPGRADE.maxLevel;
+  up.disabled = got && lv >= UPGRADE.maxLevel;
   up.textContent = !got ? 'ไปสุ่มก่อน'
     : lv >= UPGRADE.maxLevel ? 'ตีบวกสูงสุดแล้ว' : 'อัพเกรด';
 }
@@ -2014,16 +2265,58 @@ function paintUpgrade() {
 
 function openUpgrade() {
   document.getElementById('upResult').classList.add('hidden');
+  resetUpgradeAnim();
+  refreshGold();   // ยอดเหรียญบนหัวหน้านี้ต้องตรงตั้งแต่วินาทีที่เปิด ไม่ใช่รอกดตีบวกก่อน
   paintUpgrade();
   swapPanel(tDetailPanel, upPanel);
 }
 
+// ── จังหวะของการตีบวก ──
+//
+// ผลออกมาแล้วตั้งแต่วินาทีที่กด (upgradeTreasure สุ่มทันที) แต่ยังไม่บอก
+// เว้นช่วงชาร์จพลังไว้ก่อนเกือบวินาที เพราะการลุ้นคือทั้งหมดที่ระบบนี้ขายอยู่
+// ถ้าเฉลยทันทีที่กด มันจะเหลือแค่ "กดแล้วตัวเลขเปลี่ยน" ซึ่งไม่มีใครอยากกดซ้ำ
+const CHARGE_MS = 900;
+
+let upBusy = false;
+let upTimer = 0;
+
+/** ประกายกระเด็นออกจากกลางเวที — ชิ้นส่วนสร้างใหม่ทุกครั้งด้วยเหตุผลเดียวกับริบบิ้นกาช่า */
+function burstSparks(win) {
+  const box = document.getElementById('upSpark');
+  box.innerHTML = '';
+
+  // สำเร็จโปรยเยอะและไกลกว่า ความต่างของ "ปริมาณ" อ่านออกก่อนอ่านสีด้วยซ้ำ
+  const count = win ? 18 : 10;
+  for (let i = 0; i < count; i++) {
+    const bit = document.createElement('i');
+    bit.style.setProperty('--a', Math.round((i / count) * 360 + Math.random() * 16) + 'deg');
+    bit.style.setProperty('--r', Math.round((win ? 52 : 34) + Math.random() * 44) + 'px');
+    bit.style.setProperty('--d', (Math.random() * 0.1).toFixed(2) + 's');
+    box.appendChild(bit);
+  }
+}
+
+/** ล้างสถานะแอนิเมชันทิ้ง ใช้ทั้งตอนเปิดหน้าใหม่และตอนออกกลางคัน */
+function resetUpgradeAnim() {
+  clearTimeout(upTimer);
+  upTimer = 0;
+  upBusy = false;
+  document.getElementById('upBox').classList.remove('charging', 'win', 'fail');
+  document.getElementById('upSpark').innerHTML = '';
+}
+
 function doUpgrade() {
+  // กดรัวระหว่างยังชาร์จอยู่ = หักทองหลายรอบแต่เห็นผลรอบเดียว
+  if (upBusy) return;
+
   const r = upgradeTreasure(tCurrent);
   const box = document.getElementById('upResult');
-  box.classList.remove('hidden');
+  const stage = document.getElementById('upBox');
 
+  // ทองไม่พอหรือตันแล้ว ไม่ใช่ผลของการตีบวก จึงไม่ต้องเล่นแอนิเมชันให้รอเก้อ
   if (!r.ok) {
+    box.classList.remove('hidden');
     box.className = 'up-result fail';
     box.innerHTML = `<b>${r.reason}</b>`
       + (r.need ? `<small>ขาดอีก ${r.need.toLocaleString('en-US')} ทอง</small>` : '');
@@ -2031,22 +2324,47 @@ function doUpgrade() {
   }
 
   unlockAudio();
-  if (r.win) {
-    sfx.bonus();
-    box.className = 'up-result win';
-    box.innerHTML = `<b>สำเร็จ!</b><small>ขั้น ${r.from} → ${r.to}</small>`;
-  } else {
-    // ตามที่สั่ง: บอกว่าไม่สำเร็จ เสียทองไปแล้ว แล้วถามว่าจะลองอีกไหม
-    // ปุ่มตีบวกยังอยู่ที่เดิม กดต่อได้ทันทีโดยไม่ต้องออกไปแล้วเข้ามาใหม่
-    sfx.shieldBreak();
-    box.className = 'up-result fail';
-    box.innerHTML = `<b>ไม่สำเร็จ</b>`
-      + `<small>เสียไป ${r.spent.toLocaleString('en-US')} ทอง · ขั้นยังเท่าเดิม</small>`
-      + `<em>ตีบวกอีกรอบไหม?</em>`;
-  }
+  upBusy = true;
+  box.classList.add('hidden');           // ผลรอบก่อนต้องหายไปก่อน ไม่ใช่ค้างอยู่ระหว่างลุ้นรอบใหม่
+  document.getElementById('upGo').disabled = true;
+  stage.classList.remove('win', 'fail');
+  stage.classList.add('charging');
+  sfx.forge();
 
-  paintUpgrade();
-  refreshGold();
+  upTimer = setTimeout(() => {
+    upTimer = 0;
+    upBusy = false;
+    stage.classList.remove('charging');
+    stage.classList.add(r.win ? 'win' : 'fail');
+    burstSparks(r.win);
+
+    box.classList.remove('hidden');
+    if (r.win) {
+      recordUpgrade();
+      sfx.upWin();
+      setTimeout(() => sfx.cheer(), 300);   // แมวดีใจตามหลังระฆัง ไม่ใช่พร้อมกันจนฟังไม่ออก
+      box.className = 'up-result win';
+      box.innerHTML = `<b>✨ สำเร็จ!</b><small>ขั้น ${r.from} → ${r.to}</small>`;
+    } else {
+      // บอกแค่ว่าไม่สำเร็จกับเสียอะไรไป ไม่ต้องถามว่าจะลองอีกไหม
+      // ปุ่มตีบวกยังอยู่ตรงนั้นให้กดต่อได้เลยอยู่แล้ว การถามซ้ำเป็นการทวงให้จ่ายอีก
+      // ซึ่งอ่านไม่น่ารักเท่าปล่อยให้ตัดสินใจเอง
+      sfx.upFail();
+      box.className = 'up-result fail';
+      box.innerHTML = `<b>😿 ไม่สำเร็จ</b>`
+        + `<small>เสียไป ${r.spent.toLocaleString('en-US')} ทอง · ขั้นยังเท่าเดิม</small>`;
+    }
+
+    paintUpgrade();
+    refreshGold();
+
+    // ดาวดวงที่เพิ่งได้มาต้องเด้งให้เห็น ไม่งั้นมันโผล่เพิ่มมาเงียบ ๆ
+    // ทั้งที่เป็นสิ่งเดียวที่ผู้เล่นจ่ายทองไปเพื่อมัน
+    if (r.win) {
+      const stars = document.querySelectorAll('#upStep i.on');
+      if (stars.length) stars[stars.length - 1].classList.add('just');
+    }
+  }, CHARGE_MS);
 }
 // ── หน้าติดตั้ง ─────────────────────────────────────────────
 
@@ -2189,10 +2507,23 @@ document.getElementById('tdEquip').addEventListener('click', () => {
 });
 document.getElementById('tdUpgrade').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
+
+  // ยังไม่มีชิ้นนี้: พาไปตู้กาช่าช่องสุ่มสมบัติเลย
+  // ปิดหน้ารายละเอียดเองแทน swapPanel เพราะหน้าที่เปิดมันมา (รายการสมบัติ
+  // หรือหน้าติดตั้ง) จะโผล่ค้างอยู่ใต้หน้าตู้กาช่าที่กำลังจะเปิด
+  if (!ownsTreasure(tCurrent)) {
+    tDetailPanel.classList.add('hidden');
+    showGacha(true, 'treasure');
+    return;
+  }
+
   openUpgrade();
 });
 
 document.getElementById('upBack').addEventListener('click', () => {
+  // ออกกลางช่วงชาร์จ: ต้องยกเลิกคิวด้วย ไม่งั้นผลจะไปเด้งในแผงที่ปิดไปแล้ว
+  // แล้วค้างรออยู่อย่างนั้นจนกว่าจะเข้ามาใหม่ (ทองหักไปแล้วตั้งแต่ตอนกด ไม่มีอะไรหาย)
+  resetUpgradeAnim();
   swapPanel(upPanel, tDetailPanel);
   paintDetail();   // ขั้นอาจเพิ่งขึ้น ต้องวาดใหม่ ไม่ใช่โชว์ค่าเก่า
 });
@@ -2274,6 +2605,14 @@ function showGameOver() {
 
   // บวก XP ตรงนี้ที่เดียว — เป็นจุดเดียวที่การันตีว่า "หนึ่งตาจบแล้วจริง"
   // ถ้าไปบวกใน die() จะโดนนับซ้ำได้ เพราะ die() ถูกเรียกจากหลายทาง
+  // บันทึกสถิติสะสมที่จุดเดียวกับที่บวก XP — จุดเดียวที่การันตีว่าตาหนึ่งจบแล้วจริง
+  // (die() ถูกเรียกจากหลายทาง ถ้าไปนับตรงนั้นจะโดนนับซ้ำ)
+  recordRun({
+    seconds: game.tick / 60,
+    meters: game.distance / SCORING.pxPerMeter,
+    score: game.score,
+  });
+
   const run = awardRun(game.score);
   const box = document.getElementById('xpGain');
   box.classList.toggle('up', run.leveledUp);

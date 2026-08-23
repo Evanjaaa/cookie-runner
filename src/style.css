@@ -167,8 +167,11 @@ canvas { display: block; width: 100%; height: auto; }
 /* หน้าที่มีปุ่มกลับต้องเว้นที่ให้มันทั้งสองข้างเท่ากัน
    เว้นข้างเดียวจะดันหัวเรื่องที่จัดกลางให้เยื้องไปทางขวาแทนที่จะอยู่กลางการ์ด */
 .pop:has(.backbtn) {
-  padding-left: calc(var(--backbtn) + clamp(14px, 2.4vw, 26px));
-  padding-right: calc(var(--backbtn) + clamp(14px, 2.4vw, 26px));
+  /* เว้นทั้งขนาดปุ่มและระยะเยื้องจากขอบ ไม่ใช่แค่ขนาดปุ่ม
+     ถ้าเว้นแค่ขนาด ที่จองไว้จะสั้นกว่าที่ปุ่มกินจริงเท่ากับระยะเยื้องพอดี
+     แล้วหัวเรื่องที่ชิดซ้าย (หน้ากิจกรรม/หน้าตีบวก) จะโดนปุ่มทับบนจอแคบ */
+  padding-left: calc(var(--backbtn-x) + var(--backbtn) + clamp(10px, 1.8vw, 20px));
+  padding-right: calc(var(--backbtn-x) + var(--backbtn) + clamp(10px, 1.8vw, 20px));
 }
 
 /* ── เข้าฉาก ─────────────────────────────────
@@ -225,21 +228,51 @@ canvas { display: block; width: 100%; height: auto; }
 .key b { color: var(--mint-lite); font-weight: 600; }
 
 .btn {
+  position: relative;
   margin-top: 6px;
   font-family: "Mitr", sans-serif;
-  font-weight: 500;
-  font-size: 17px;
-  color: #1B0F2B;
-  background: var(--mint);
-  border: none;
+  font-weight: 600;
+  font-size: 15.5px;
+  /* เข้มขึ้นจากม่วงดำเป็นเขียวเข้ม — สีตัวอักษรควรเป็นญาติกับสีพื้นของปุ่มเอง
+     ไม่ใช่สีที่ยืมมาจากพื้นหลังหน้า ซึ่งทำให้ตัวหนังสือดูเหมือนวางทับ ไม่ใช่พิมพ์ลงไป */
+  color: #0E3B2E;
+  /* ย่อลงจาก 17px/13-34 — ทรงใหม่ที่มีขอบ ไฮไลต์ และเงาหนา "กินพื้นที่สายตา"
+     มากกว่าแผ่นสีแบนของเดิมที่ขนาดเท่ากัน ต้องลดตัวเลขลงถึงจะรู้สึกเท่าเดิม */
+  /* ไล่สีสามขั้นแทนสีเดียวแบน ๆ: สว่างบน กลางกลาง เข้มล่าง = ทรงนูนที่ตาอ่านออกเอง
+     ใช้สูตรเดียวกับปุ่มสุ่มในตู้กาช่า (.btn.pull) ทั้งเกมจึงเป็นวัสดุชุดเดียวกัน */
+  background: linear-gradient(180deg, #8FF0E4 0%, var(--mint) 52%, #35B0A6 100%);
+  border: 1px solid rgba(255,255,255,.45);
   border-radius: 999px;
-  padding: 13px 34px;
+  padding: 10px 26px;
   cursor: pointer;
-  box-shadow: 0 6px 0 #2E9C95, 0 12px 24px rgba(78,205,196,.28);
-  transition: transform .08s ease, box-shadow .08s ease;
+  overflow: hidden;
+  box-shadow:
+    0 6px 0 #2E9C95,
+    0 12px 24px rgba(78,205,196,.3),
+    inset 0 1px 0 rgba(255,255,255,.6);
+  transition: transform .08s ease, box-shadow .08s ease, filter .12s ease;
 }
-.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2E9C95; }
+/* ไฮไลต์แก้วพาดครึ่งบน ตัวที่ทำให้ปุ่มดูเป็นลูกอมไม่ใช่แถบสี
+   เว้นปุ่มเล่นกับปุ่มสุ่มไว้ เพราะสองตัวนั้นมี ::before ของตัวเองอยู่แล้ว */
+.btn:not(.play):not(.pull)::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 55% 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.4), transparent);
+  pointer-events: none;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2E9C95, inset 0 1px 0 rgba(255,255,255,.6); }
 .btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+/* ปุ่มที่กดไม่ได้ต้อง "ดู" กดไม่ได้ด้วย เดิมหน้าตาเหมือนปุ่มปกติเป๊ะ
+   คนเล่นจึงกดแล้วงงว่าทำไมไม่มีอะไรเกิดขึ้น แทนที่จะเห็นตั้งแต่แรกว่ายังกดไม่ได้ */
+.btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(.5);
+  opacity: .6;
+  transform: none;
+  box-shadow: 0 3px 0 rgba(0,0,0,.3);
+}
 
 /* ── ปุ่มย้อนกลับ ────────────────────────────
    ลูกศรกลมมุมซ้ายบนของแผง แทนปุ่ม "กลับ" ที่เคยต่อท้ายเนื้อหาด้านล่าง
@@ -251,13 +284,20 @@ canvas { display: block; width: 100%; height: auto; }
    ทรงเดียวกับปุ่มบนแถบในจอ (.hudbtns button) เพื่อให้เป็นภาษาเดียวกันทั้งเกม */
 /* ด้านของปุ่มกลับ ประกาศไว้ที่เดียวเพราะแถบกรองต้องใช้ค่านี้ไปคำนวณ
    ระยะเยื้องขวา ถ้าแยกกันเขียน วันหนึ่งเปลี่ยนขนาดปุ่มแล้วแถบกรองจะทับปุ่ม */
-:root { --backbtn: clamp(30px, 6.5dvh, 46px); }
+/* ประกาศทั้งด้านและระยะเยื้องไว้เป็นโทเคน เพราะมีสองที่ที่ต้องรู้ค่าเดียวกัน:
+   ตัวปุ่มเอง กับ padding ของการ์ดที่ต้องจองที่ให้มัน
+   เคยแยกกันเขียนแล้วบล็อกมือถือไปแก้ขนาดปุ่มเป็น 40px โดยไม่ได้แก้โทเคน
+   ที่จองไว้จึงเหลือ 23px ส่วนปุ่มกิน 40px แล้วมันก็ทับหัวเรื่อง */
+:root {
+  --backbtn: clamp(30px, 6.5dvh, 46px);
+  --backbtn-x: clamp(8px, 1.4vw, 16px);
+}
 
 .backbtn {
   position: absolute;
   /* เกาะมุมการ์ด (.pop) ไม่ใช่มุมเวที — พอการ์ดหดตามเนื้อหา ปุ่มต้องหดตามไปด้วย
      ใช้ px ไม่ใช่ % เพราะการ์ดแต่ละหน้ากว้างไม่เท่ากัน ถ้าใช้ % ปุ่มจะเยื้องไม่เท่ากันทุกหน้า */
-  left: clamp(8px, 1.4vw, 16px);
+  left: var(--backbtn-x);
   top: clamp(8px, 1.4dvh, 16px);
   z-index: 5;
   width: var(--backbtn);
@@ -291,26 +331,36 @@ canvas { display: block; width: 100%; height: auto; }
 /* ── แถวหัวเรื่อง ─────────────────────────────
    หัวเรื่องกับแถบกรองอยู่ในกล่องเดียวกัน แถบจึงอยู่ "บรรทัดเดียวกับหัวเรื่อง" จริง
    ไม่ใช่เดา top เป็นเปอร์เซ็นต์แล้วหวังว่าจะตรง ซึ่งเพี้ยนทันทีที่ขนาดฟอนต์เปลี่ยน
-   หัวเรื่องยังอยู่กลางแผงเป๊ะเพราะแถบถูกถอดออกจากสายไหลด้วย position: absolute */
+
+   ── ทำไมแถบกรองต้องอยู่ในสายไหล ──
+   เดิมแถบเป็น position: absolute เพื่อให้หัวเรื่องอยู่กลางการ์ดเป๊ะ ๆ
+   แต่ของที่ absolute ไม่นับความกว้างเข้าไปในกล่อง การ์ดจึงกว้างตามกริดข้างล่าง
+   อย่างเดียว พอติ๊ก "ดูเฉพาะสิ่งที่มี" แล้วเหลือการ์ดไม่กี่ใบ กริดหดจนการ์ดแคบกว่า
+   หัวเรื่อง+แถบรวมกัน แถบก็ทับหัวเรื่องทันที (เจอจริงตอนมีสมบัติ 5 ชิ้น)
+
+   สามคอลัมน์ 1fr auto 1fr แก้ทั้งสองเรื่องพร้อมกัน: หัวเรื่องนั่งคอลัมน์กลาง
+   จึงอยู่กลางเป๊ะตราบใดที่ที่ยังพอ และเมื่อไม่พอ คอลัมน์จะดันการ์ดให้กว้างขึ้น
+   แทนที่จะปล่อยให้ทับกัน — ไม่มีทางซ้อนกันได้เลยไม่ว่ากริดจะเหลือกี่ใบ */
 .panel-head {
   position: relative;
-  width: 100%;
-  display: flex;
+  /* stretch ไม่ใช่ width:100% — width:100% อ้างอิงความกว้างที่คนอื่นกำหนดไว้แล้ว
+     กล่องนี้จึงไม่มีสิทธิ์ดันการ์ดให้กว้างขึ้นตามเนื้อหาของตัวเอง */
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: center;
+  gap: clamp(6px, 1.4vw, 14px);
 }
+.panel-head > h2 { grid-column: 2; }
 
 .filterbar {
-  position: absolute;
   /* ชิดขวา ไม่ใช่ซ้าย — ฝั่งซ้ายมีปุ่มกลับจองไว้แล้ว พอเอาแถบไปต่อข้าง ๆ
      มุมซ้ายบนเลยแน่นจนอ่านยาก ส่วนมุมขวาบนของแผงย่อยว่างอยู่แล้ว
      (แถบทอง/เพชรซ่อนตัวเองเวลามีแผงย่อยเปิด ดูกฎที่ .hud-top) */
   /* เว้นเท่าที่การ์ดพื้นหลังเว้น — เดิมใช้ right: 0 ซึ่งเป็นขอบ "กล่องเนื้อหาของแผง"
      ไม่ใช่ขอบการ์ด ช่องติ๊กเลยยื่นพ้นการ์ดออกไป 18-20px (วัดจริงทั้งคอมและมือถือ) */
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
   /* ตกบรรทัดเมื่อไหร่ให้ไหลชิดขวาตาม ไม่ใช่กลับไปชิดซ้ายจนขอบไม่ตรงกัน */
@@ -411,16 +461,30 @@ canvas { display: block; width: 100%; height: auto; }
 }
 
 /* ปุ่มรอง — ใช้กับ "เริ่มใหม่" ที่ไม่ควรเด่นเท่า "เล่นต่อ" */
+/* ปุ่มรอง — ลูกอมม่วงทรงเดียวกับปุ่มหลัก ต่างแค่สี
+   เดิมเป็นแค่ขอบบาง ๆ บนพื้นโปร่ง ซึ่งบนการ์ดม่วงอ่านเป็น "ข้อความที่มีกรอบ"
+   มากกว่าเป็นปุ่ม โดยเฉพาะปุ่มติดตั้งสมบัติที่ไปนั่งอยู่กลางหน้าเลือกด่าน */
 .btn.ghost {
-  background: transparent;
-  color: var(--cream);
-  border: 1px solid rgba(255,243,226,.32);
-  box-shadow: none;
+  color: #F6ECFF;
+  background: linear-gradient(180deg, #B77DEC 0%, #8C4FCE 52%, #6E36AC 100%);
+  border: 1px solid rgba(255,255,255,.36);
+  box-shadow:
+    0 6px 0 #4E2280,
+    0 12px 24px rgba(110,54,172,.34),
+    inset 0 1px 0 rgba(255,255,255,.45);
 }
 .btn.ghost:active {
-  transform: translateY(2px);
-  background: rgba(255,243,226,.08);
-  box-shadow: none;
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #4E2280, inset 0 1px 0 rgba(255,255,255,.45);
+}
+/* ตัวเลข 0/3 บนปุ่มติดตั้งสมบัติ — เป็นข้อมูล ไม่ใช่ชื่อปุ่ม จึงใส่กรอบแยกให้อ่านเป็นป้าย */
+.btn.ghost b {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(27,15,43,.32);
+  font-weight: 600;
 }
 
 /* สองปุ่มเรียงแถวเดียว — จอมือถือเตี้ยมาก ถ้าซ้อนกันปุ่มล่างจะโดนตัดหาย */
@@ -1259,21 +1323,34 @@ canvas { display: block; width: 100%; height: auto; }
 .tier-badge.epic { background: linear-gradient(180deg, #E0BBFF, #C77DFF); color: #2E0B4A; }
 .tier-badge.rare { background: rgba(141,243,234,.92); color: #0B3B37; }
 
-/* ── แถวดาวบอกขั้นตีบวก ────────────────────── */
-.t-stars, .up-step, .tdetail-stars { display: flex; gap: 3px; justify-content: center; }
+/* ── แถวดาวบอกขั้นตีบวก ──────────────────────
+   เดิมเป็นสี่เหลี่ยมหมุน 45° ซึ่งอ่านเป็น "ข้าวหลามตัด" ไม่ใช่ดาว
+   ตัดเป็นดาวห้าแฉกจริงด้วย clip-path แล้วไล่สีทองในตัว บวกออร่าเรืองรอบดวง
+
+   ออร่าต้องใช้ filter: drop-shadow ไม่ใช่ box-shadow — box-shadow เกาะกล่อง
+   สี่เหลี่ยมของอิลิเมนต์เสมอ ไม่สนใจ clip-path ผลคือได้เงาเป็นสี่เหลี่ยมรอบดาว
+   ส่วน drop-shadow เกาะรูปทรงจริงหลังตัดแล้ว แสงจึงฟุ้งออกตามแฉก */
+/* ชิดกันเกือบติด — ดาวห้าแฉกมีที่ว่างในกล่องของตัวเองอยู่แล้วตรงร่องระหว่างแฉก
+   ช่องไฟจริงที่ตาเห็นจึงกว้างกว่าค่า gap เสมอ ตั้งไว้เท่าหน้าอื่นแล้วจะดูห่างกว่า */
+.t-stars, .up-step, .tdetail-stars { display: flex; gap: clamp(0px, .25vw, 2px); justify-content: center; align-items: center; }
 .t-stars i, .up-step i, .tdetail-stars i {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  transform: rotate(45deg);
-  background: rgba(255,243,226,.18);
-  box-shadow: inset 0 0 0 1px rgba(255,243,226,.25);
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: rgba(255,243,226,.2);
+}
+/* ออร่าหายใจช้า ๆ — ของที่เรืองแสงนิ่งสนิทจะอ่านเป็นรูปวาด
+   พอมันขยับเบา ๆ ถึงจะอ่านเป็นพลังที่ยังทำงานอยู่ */
+@keyframes starAura {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(255,201,60,.85)) drop-shadow(0 0 9px rgba(255,160,40,.4)); }
+  50%      { filter: drop-shadow(0 0 6px rgba(255,228,130,1)) drop-shadow(0 0 15px rgba(255,160,40,.72)); }
 }
 .t-stars i.on, .up-step i.on, .tdetail-stars i.on {
-  background: linear-gradient(180deg, #FFDF8A, #F5B31E);
-  box-shadow: 0 0 7px rgba(255,201,60,.7);
+  background: linear-gradient(155deg, #FFF6D0 0%, #FFD25A 46%, #F0A017 100%);
+  animation: starAura 2.4s ease-in-out infinite;
 }
-.up-step i, .tdetail-stars i { width: 12px; height: 12px; }
+.up-step i, .tdetail-stars i { width: clamp(13px, 2.4dvh, 19px); height: clamp(13px, 2.4dvh, 19px); }
 
 /* ── หน้ารายละเอียดสมบัติ ──────────────────── */
 .tdetail {
@@ -1304,11 +1381,25 @@ canvas { display: block; width: 100%; height: auto; }
   text-align: left;
   min-width: 0;
 }
-.tdetail-name { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(15px, 3dvh, 24px); }
+/* ของที่อ่านคู่กันอยู่แถวเดียวกัน: ชื่อ+ดาว / ป้ายคะแนน+เงื่อนไข
+   ตกบรรทัดได้เองเมื่อการ์ดแคบ จึงไม่ต้องมีกฎแยกสำหรับจอเล็ก */
+.tdetail-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(7px, 1.4vw, 15px);
+}
+.tdetail-name {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(15px, 3dvh, 24px);
+}
 .tdetail-when { font-size: clamp(10px, 1.7dvh, 13px); color: #EBDCF8; }
 .tdetail-text {
   max-width: 46ch;
-  font-size: clamp(10px, 1.7dvh, 13.5px);
+  /* ใหญ่ขึ้นจากเดิม — เป็นส่วนที่คนเปิดหน้านี้มาอ่านจริง ๆ
+     ความสูงที่ได้คืนมาจากการยุบสี่บรรทัดบนเหลือสองแถวถูกยกมาให้ตรงนี้ */
+  font-size: clamp(11px, 2dvh, 16px);
   line-height: 1.6;
   color: #D9C4EC;
   /* คำอธิบายยาว ปล่อยให้เลื่อนในตัวเองดีกว่าดันปุ่มหลุดกรอบ */
@@ -1320,7 +1411,158 @@ canvas { display: block; width: 100%; height: auto; }
 .tdetail .btnrow { margin-top: 2px; }
 .tdetail .btn { margin-top: 0; font-size: clamp(12px, 2dvh, 15px); padding: 8px 20px; }
 
-/* ── หน้าตีบวก ─────────────────────────────── */
+/* ── หน้ากิจกรรม ──────────────────────────────
+   หัวเรื่องซ้าย กระเป๋าเงินขวา ท่าเดียวกับหน้าตู้กาช่ากับหน้าตีบวก
+   เพราะเป็นอีกหน้าที่ตัวเลขเงินเปลี่ยนต่อหน้า จึงต้องเห็นมันตอนกดรับ */
+.quest-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(8px, 2vw, 20px);
+}
+.quest-head h2 { padding-bottom: 0; }
+.quest-wallet { flex: 0 0 auto; }
+
+/* รายการภารกิจ เลื่อนในตัวเองเมื่อยาวเกิน ไม่ดันการ์ดจนล้นเวที
+   (เงาขอบล่างมาจากคลาส .scrolls ที่ markScrollable ใส่ให้เฉพาะตอนล้นจริง) */
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1dvh, 9px);
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.quest-list::-webkit-scrollbar { display: none; }
+
+/* ── ภารกิจหนึ่งแถว ──
+   ไอคอน | ชื่อ+คำอธิบาย+หลอด | รางวัล+ปุ่ม
+   แถวเดียวจบเพราะบนมือถือแนวนอนความสูงแพงกว่าความกว้างเสมอ */
+.quest-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vw, 16px);
+  padding: clamp(6px, 1.1dvh, 11px) clamp(10px, 1.8vw, 18px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,243,226,.14);
+  background: rgba(255,243,226,.05);
+  text-align: left;
+}
+/* ทำครบแล้วยังไม่ได้กดรับ = เรืองขอบทองให้สะดุดตาก่อนข้ออื่นทั้งแถบ
+   นี่คือข้อเดียวในหน้าที่ต้องการให้ผู้เล่นทำอะไรต่อ */
+.quest-row.ready {
+  border-color: rgba(255,201,60,.75);
+  background: linear-gradient(180deg, rgba(255,201,60,.16), rgba(255,201,60,.04));
+  box-shadow: 0 0 18px rgba(255,201,60,.3);
+}
+.quest-row.done { opacity: .5; }
+
+.quest-ico {
+  flex: 0 0 auto;
+  font-size: clamp(20px, 3.6dvh, 30px);
+  line-height: 1;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.45));
+}
+.quest-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.quest-name {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 2dvh, 16px);
+  color: var(--cream);
+}
+.quest-note { font-size: clamp(9px, 1.5dvh, 12px); color: #C0A6DC; line-height: 1.35; }
+
+/* หลอดความคืบหน้า — บอกว่า "อีกนิดเดียว" ได้เร็วกว่าตัวเลขเสมอ */
+.quest-bar {
+  display: block;
+  height: clamp(4px, .8dvh, 7px);
+  margin-top: 2px;
+  border-radius: 999px;
+  background: rgba(27,15,43,.6);
+  overflow: hidden;
+}
+.quest-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6FD98F, #8DF3EA);
+  transition: width .3s ease;
+}
+.quest-row.ready .quest-bar i { background: linear-gradient(90deg, #FFD25A, #FFF3C4); }
+
+.quest-side {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.2vw, 12px);
+}
+/* ป้ายรางวัล — ไอคอนกับตัวเลขติดกัน อ่านเป็นก้อนเดียวว่า "ได้อะไรเท่าไหร่" */
+.quest-prize {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(11px, 1.9dvh, 15px);
+  color: #FFE9B0;
+  white-space: nowrap;
+}
+.quest-prize .gem, .quest-prize .coin {
+  width: clamp(13px, 2.2dvh, 18px);
+  height: clamp(13px, 2.2dvh, 18px);
+}
+.btn.quest-get {
+  margin-top: 0;
+  font-size: clamp(10px, 1.7dvh, 14px);
+  padding: clamp(5px, 1dvh, 9px) clamp(12px, 2vw, 22px);
+  white-space: nowrap;
+}
+
+/* ── กล่องฉลองตอนได้ของ (ใช้ร่วมจดหมาย+กิจกรรม) ──
+   ทรงเดียวกับกล่องผลสุ่มในตู้กาช่า ต่างแค่มันเป็นการ์ดลอยกลางจอ
+   ไม่ได้คลุมทับการ์ดของหน้าใดหน้าหนึ่ง เพราะเรียกจากได้หลายหน้า */
+.pop.reward-pop {
+  position: relative;
+  overflow: hidden;
+  gap: clamp(8px, 1.8dvh, 16px);
+  padding: clamp(16px, 3.4dvh, 34px) clamp(24px, 5vw, 54px);
+  background:
+    radial-gradient(64% 52% at 50% 30%, rgba(255,201,60,.24), transparent 70%),
+    radial-gradient(94% 76% at 50% 106%, rgba(199,125,255,.42), transparent 72%),
+    linear-gradient(180deg, #7C40A9 0%, #4B2075 56%, #2E1149 100%);
+  border: 1px solid rgba(255,243,226,.28);
+}
+.reward-pop .got-title, .reward-pop .got-row, .reward-pop .btn { position: relative; z-index: 2; }
+/* การ์ดในกล่องนี้ไม่มี --gs ของหน้ากาช่ามาคุมความกว้าง ต้องตั้งของตัวเอง */
+.reward-pop .got-card { width: clamp(84px, 15dvh, 124px); }
+.got-card.gem {
+  border-color: rgba(255,143,176,.6);
+  background: linear-gradient(180deg, rgba(255,143,176,.24), rgba(255,143,176,.07));
+}
+.got-card.gem b { color: #FFB3CC; }
+.got-card .gem.big {
+  width: 52%;
+  height: auto;
+  aspect-ratio: 1;
+  margin: 8% 0 4%;
+}
+
+/* ── หน้าตีบวก ───────────────────────────────
+   หัวเรื่องซ้าย ยอดเหรียญขวา ใช้ผังเดียวกับหัวหน้าตู้กาช่า (.gacha-head)
+   สองหน้านี้คือ "หน้าที่จ่ายเงิน" เหมือนกัน จึงควรอ่านเป็นหน้าตระกูลเดียวกัน */
+.up-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(8px, 2vw, 20px);
+}
+.up-head h2 { padding-bottom: 0; }
+.up-wallet { flex: 0 0 auto; }
+
 .up-box {
   display: flex;
   flex-direction: column;
@@ -1331,7 +1573,148 @@ canvas { display: block; width: 100%; height: auto; }
   border: 1px solid rgba(255,243,226,.14);
   background: radial-gradient(62% 58% at 50% 34%, rgba(255,201,60,.14), transparent 72%), rgba(255,243,226,.05);
 }
+/* ── เวทีตีบวก ────────────────────────────────
+   ทุกชั้นอยู่ในช่องกริดเดียวกัน จึงทับกันกลางเวทีพอดีโดยไม่ต้องคำนวณตำแหน่ง
+   และเวทีสูงคงที่ ชั้นไหนขยายตัวก็ไม่ดันของข้างล่างให้ขยับ */
+.up-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(74px, 15dvh, 118px);
+  height: clamp(74px, 15dvh, 118px);
+}
+.up-stage > * { grid-area: 1 / 1; }
+
+/* แสงสะสมพลัง — โตขึ้นเรื่อย ๆ ตลอดช่วงชาร์จ แล้วระเบิดออกตอนรู้ผล */
+.up-glow {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(255,201,60,.6), transparent 68%);
+  pointer-events: none;
+}
+.up-box.charging .up-glow { animation: upCharge .9s ease-in forwards; }
+.up-box.win .up-glow { animation: upBlast .62s ease-out forwards; }
+.up-box.fail .up-glow {
+  background: radial-gradient(circle, rgba(255,92,110,.55), transparent 68%);
+  animation: upBlast .45s ease-out forwards;
+}
+
+/* วงแหวนหดเข้าหาใจกลางซ้ำ ๆ — ภาษาภาพของ "พลังกำลังถูกดูดเข้ามา"
+   ต่างจากวงที่ขยายออก ซึ่งอ่านเป็น "ปล่อยพลังออกไปแล้ว" คนละความหมายกัน */
+.up-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(255,201,60,.9);
+  opacity: 0;
+  pointer-events: none;
+}
+.up-box.charging .up-ring { animation: upRing .3s linear 3; }
+
+/* ประกายกระเด็น — หมุนไปตามมุมที่สุ่มมาแล้วค่อยพุ่งออกตามแนวนั้น
+   ท่านี้ทำให้ทุกเม็ดออกจากใจกลางจริง ๆ โดยไม่ต้องคำนวณ x/y ทีละเม็ดใน JS */
+.up-spark { position: absolute; inset: 0; pointer-events: none; }
+.up-spark i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #FFE9A8;
+  box-shadow: 0 0 8px rgba(255,201,60,.9);
+  /* ต้องเป็น both ไม่ใช่ backwards เฉย ๆ
+     backwards คุมแค่ช่วง "ก่อน" แอนิเมชันเริ่ม พอเล่นจบแล้วชิ้นส่วนจะเด้งกลับไป
+     เป็นสไตล์ปกติของมันเอง คือทึบเต็มที่และอยู่กลางเวที = จุดสีค้างอยู่บนจอ
+     forwards (ที่รวมอยู่ใน both) สั่งให้ค้างสถานะสุดท้ายไว้แทน ซึ่งคือโปร่งใสหมด */
+  animation: sparkOut .6s cubic-bezier(.15,.7,.35,1) var(--d) both;
+}
+.up-box.fail .up-spark i { background: #FF8A96; box-shadow: 0 0 8px rgba(255,92,110,.8); }
+
+@keyframes upCharge {
+  from { opacity: 0; transform: scale(.45); }
+  to   { opacity: 1; transform: scale(1.15); }
+}
+@keyframes upBlast {
+  0%   { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+@keyframes upRing {
+  from { opacity: .95; transform: scale(1.85); }
+  to   { opacity: 0; transform: scale(.7); }
+}
+@keyframes sparkOut {
+  from { opacity: 1; transform: rotate(var(--a)) translateX(6px) scale(1); }
+  to   { opacity: 0; transform: rotate(var(--a)) translateX(var(--r)) scale(.25); }
+}
+
+/* ── ปุ่มตีบวก ────────────────────────────────
+   เหรียญ ราคา และคำว่า "ตีบวก" อยู่บรรทัดเดียวกัน = อ่านจบในสายตาเดียว
+   ว่าจ่ายอะไรเพื่อทำอะไร
+
+   ต้องสั่ง flex ที่ตัวปุ่มเอง เพราะ .coin วาดด้วย width/height ล้วน ๆ
+   ซึ่ง "ไม่มีผลกับกล่อง inline" — เดิม .price เป็น inline เหรียญจึงกว้าง 0
+   คือมีอยู่ในหน้าแต่มองไม่เห็น (ปุ่มสุ่มในตู้กาช่าไม่เจอปัญหานี้
+   เพราะมันมีกฎ .btn.pull .price สั่ง flex ของตัวเองอยู่แล้ว) */
+#upGo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1.1vw, 10px);
+  padding: clamp(10px, 1.9dvh, 15px) clamp(26px, 4vw, 42px);
+}
+#upGo .price { display: inline-flex; align-items: center; gap: clamp(5px, .9vw, 8px); }
+#upGo .coin {
+  width: clamp(17px, 2.7dvh, 23px);
+  height: clamp(17px, 2.7dvh, 23px);
+}
+#upGo .coin::after { inset: 27% 34%; }
+#upGo b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(15px, 2.5dvh, 20px); line-height: 1; }
+#upGo small { font-size: clamp(13px, 2.1dvh, 17px); font-weight: 600; line-height: 1; }
+
+/* ตัวสมบัติ: สั่นถี่ตอนชาร์จ เด้งโตตอนสำเร็จ สะบัดตอนพลาด */
+@keyframes upShiver {
+  from { transform: translate(-2px, 1px) rotate(-2.5deg); }
+  to   { transform: translate(2px, -1px) rotate(2.5deg); }
+}
+@keyframes upPop {
+  0%   { transform: scale(.72); }
+  45%  { transform: scale(1.38); }
+  100% { transform: scale(1); }
+}
+@keyframes upBonk {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20%      { transform: translateX(-9px) rotate(-9deg); }
+  48%      { transform: translateX(8px) rotate(7deg); }
+  74%      { transform: translateX(-4px) rotate(-3deg); }
+}
+/* ทั้งกล่องสะเทือนตอนพลาด — ความรู้สึก "พัง" ต้องไปถึงกรอบ ไม่ใช่แค่ตัวของ */
+@keyframes upQuake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  60%      { transform: translateX(5px); }
+  85%      { transform: translateX(-2px); }
+}
+.up-box.fail { animation: upQuake .4s ease-out; }
+
 .up-emoji { font-size: clamp(38px, 9dvh, 60px); filter: drop-shadow(0 3px 7px rgba(0,0,0,.5)); }
+.up-box.charging .up-emoji { animation: upShiver .08s steps(2) infinite; }
+.up-box.win .up-emoji { animation: upPop .6s cubic-bezier(.2,.9,.3,1.25); }
+.up-box.fail .up-emoji { animation: upBonk .5s ease-out; }
+
+/* ดาวดวงที่เพิ่งได้มา — เด้งโตแล้วเรืองแสงค้างไว้แป๊บหนึ่ง
+   เป็นสิ่งเดียวที่ผู้เล่นจ่ายทองไปเพื่อมัน จึงต้องเห็นว่ามันเพิ่มมา ไม่ใช่โผล่เงียบ ๆ */
+@keyframes starPop {
+  0%   { transform: scale(0) rotate(-50deg); }
+  55%  { transform: scale(2) rotate(12deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+/* ต้องเขียนออร่าต่อท้ายด้วย ไม่งั้นกฎนี้ (มาทีหลัง) จะทับ animation ของ .on ทิ้ง
+   แล้วดาวดวงที่เพิ่งได้มาจะกลายเป็นดวงเดียวในแถวที่ไม่เรืองแสง */
+.up-step i.just { animation: starPop .55s cubic-bezier(.2,.9,.3,1.4) backwards, starAura 2.4s ease-in-out infinite; }
 .up-name { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(13px, 2.3dvh, 18px); }
 /* ฤทธิ์ตอนนี้ → ฤทธิ์ถ้าสำเร็จ บอกให้เห็นว่าจ่ายทองไปแล้วได้อะไรเพิ่ม */
 .up-arrow { display: flex; align-items: center; gap: 9px; font-size: clamp(11px, 1.9dvh, 14px); color: #C9AEE8; }
@@ -1340,23 +1723,52 @@ canvas { display: block; width: 100%; height: auto; }
 .up-odds { font-size: clamp(9.5px, 1.6dvh, 12.5px); color: #B99BD4; }
 .up-odds b { color: #FFD97A; }
 
+/* ── ป้ายบอกผล ────────────────────────────────
+   เป็นคำตอบของสิ่งที่ผู้เล่นเพิ่งจ่ายทองไปลุ้น จึงต้องเด่นที่สุดในหน้าตอนมันโผล่
+   เดิมเป็นกล่องสี่เหลี่ยมสีจาง ๆ ที่กลืนไปกับพื้นการ์ด อ่านเป็นหมายเหตุมากกว่าผลลัพธ์
+
+   เด้งเข้ามาเกินขนาดจริงนิดหนึ่งก่อนหดกลับ (60% ที่ 1.08) — จังหวะนี้ทำให้รู้สึกว่า
+   ป้าย "ปรากฏขึ้น" ไม่ใช่ "ถูกเปลี่ยนค่า" ซึ่งเป็นความต่างที่รู้สึกได้แต่บอกไม่ถูกว่าทำไม */
+@keyframes resultIn {
+  0%   { opacity: 0; transform: scale(.5) translateY(10px); }
+  60%  { opacity: 1; transform: scale(1.08) translateY(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
 .up-result {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 7px 20px;
-  border-radius: 14px;
+  gap: 1px;
+  padding: clamp(7px, 1.3dvh, 11px) clamp(20px, 3.4vw, 34px);
+  border-radius: 16px;
   font-size: clamp(10px, 1.7dvh, 13px);
-  animation: cardIn .22s cubic-bezier(.2,.85,.3,1.06) backwards;
+  animation: resultIn .42s cubic-bezier(.2,.9,.3,1.35) backwards;
 }
 .up-result.hidden { display: none; }
-.up-result b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(13px, 2.3dvh, 18px); }
+.up-result b {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(15px, 2.8dvh, 23px);
+  line-height: 1.2;
+  letter-spacing: .01em;
+}
 .up-result small { color: inherit; opacity: .82; }
 /* คำถามชวนตีต่อ เน้นให้เห็นชัดว่ากดปุ่มเดิมได้เลย ไม่ต้องออกไปแล้วเข้ามาใหม่ */
 .up-result em { font-style: normal; font-weight: 600; margin-top: 3px; color: #FFE9A8; }
-.up-result.win { background: rgba(78,205,196,.16); border: 1px solid rgba(141,243,234,.5); color: var(--mint-lite); }
-.up-result.fail { background: rgba(255,92,110,.14); border: 1px solid rgba(255,92,110,.45); color: #FFB3BC; }
+.up-result.win {
+  background: linear-gradient(180deg, rgba(141,243,234,.32), rgba(78,205,196,.1));
+  border: 1px solid rgba(141,243,234,.8);
+  color: var(--mint-lite);
+  box-shadow: 0 0 26px rgba(78,205,196,.45), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.up-result.win b { color: #C6FFF8; text-shadow: 0 0 16px rgba(141,243,234,.95); }
+.up-result.fail {
+  background: linear-gradient(180deg, rgba(255,92,110,.28), rgba(255,92,110,.07));
+  border: 1px solid rgba(255,122,138,.62);
+  color: #FFC2C9;
+  box-shadow: 0 0 18px rgba(255,92,110,.3), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.up-result.fail b { color: #FFDBDF; }
 
 /* ── ตู้สุ่มสมบัติ ──────────────────────────── */
 /* อัตราออกของช่องสมบัติเคยกางเป็นชิปอยู่กลางหน้าตลอดเวลา ย้ายไปซ่อนใต้ปุ่ม !
@@ -1378,27 +1790,31 @@ canvas { display: block; width: 100%; height: auto; }
 
 /* จุดแดงบอกว่ามีของค้าง — เกาะมุมขวาบนของปุ่ม ล้นออกนอกวงได้นิดหน่อย
    ขอบสีเดียวกับพื้นปุ่มทำให้จุดดูลอยแยกจากตัวปุ่ม ไม่ใช่รอยเปื้อนบนปุ่ม */
-#btnMail .dot {
+/* จุดแดง "มีของค้าง" ใช้ร่วมกันระหว่างปุ่มจดหมายบนแถบกับปุ่มกิจกรรมในล็อบบี้
+   เดิมผูกไว้กับ #btnMail อย่างเดียว พอเอาไปแปะปุ่มอื่นจึงไม่มีสไตล์ตามไปด้วย
+   ขนาดคิดเป็น % ของปุ่มไม่ได้แล้ว เพราะสองปุ่มขนาดต่างกันมาก (32px กับ 70px)
+   ล็อกเป็น px แทน จุดจึงเท่ากันทั้งสองที่ */
+#btnMail .dot, .lobby-btn .dot {
   position: absolute;
   top: -3px;
   right: -3px;
-  width: 38%;
-  height: 38%;
-  min-width: 9px;
-  min-height: 9px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #E8434F;
   border: 2px solid #3A1D50;
   box-shadow: 0 0 8px rgba(232,67,79,.85);
   animation: mailPulse 1.6s ease-in-out infinite;
 }
-#btnMail .dot.hidden { display: none; }
+#btnMail .dot.hidden, .lobby-btn .dot.hidden { display: none; }
+/* ปุ่มล็อบบี้ไม่ได้ position: relative มาแต่แรก จุดจะไปเกาะมุมเวทีแทนมุมปุ่ม */
+.lobby-btn { position: relative; }
 @keyframes mailPulse {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.18); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #btnMail .dot { animation: none; }
+  #btnMail .dot, .lobby-btn .dot { animation: none; }
 }
 
 .mail-list {
@@ -1811,9 +2227,14 @@ canvas { display: block; width: 100%; height: auto; }
    เป็นภาษาเดียวกับปุ่ม .btn ของแผงเมนู จะได้ดูเป็นเกมเดียวกัน */
 .hudbtns button {
   position: relative;
-  /* สูงเท่าแถบเหรียญเป๊ะ ๆ ด้วยโทเคนร่วม และกว้างเท่าสูงเพื่อให้ยังกลมอยู่ */
-  width: var(--hud-h);
-  height: var(--hud-h);
+  /* โตกว่าแถบเหรียญนิดหน่อย ไม่ใช่เท่ากันเป๊ะเหมือนเดิม
+     สองอย่างนี้ทำคนละหน้าที่: แถบเหรียญมีไว้อ่าน ส่วนพวกนี้มีไว้กด
+     ของที่ต้องกดควรใหญ่กว่าของที่ต้องอ่านอยู่แล้ว และวงกลมด้านเท่ากับความสูง
+     ของแถบยาว ๆ จะดูเล็กกว่าที่เป็นจริงเสมอ เพราะตาเทียบจากพื้นที่ ไม่ใช่ด้าน
+
+     ยังผูกกับ --hud-h อยู่ ทั้งแถวจึงโตตามจอไปด้วยกันเหมือนเดิม แค่เยื้องขึ้นมาหน่อย */
+  width: calc(var(--hud-h) + clamp(4px, .8dvh, 8px));
+  height: calc(var(--hud-h) + clamp(4px, .8dvh, 8px));
   border-radius: 50%;
   border: 2px solid rgba(255,243,226,.44);
   background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
@@ -1830,7 +2251,9 @@ canvas { display: block; width: 100%; height: auto; }
   user-select: none;
   -webkit-touch-callout: none;
 }
-.hudbtns button svg { display: block; }
+/* คุมเป็นสัดส่วนของปุ่ม ไม่ใช่ px ตายตัวที่ติดมากับแท็ก <svg> ใน HTML
+   ปุ่มโตขึ้นเมื่อไหร่รูปข้างในจึงโตตามเอง ไม่ต้องไล่แก้สองที่ */
+.hudbtns button svg { display: block; width: 56%; height: 56%; }
 .hudbtns button:active {
   transform: translateY(3px);
   box-shadow:
@@ -2257,6 +2680,7 @@ canvas { display: block; width: 100%; height: auto; }
 .gacha-main {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: clamp(5px, 1.2dvh, 12px);
@@ -2291,13 +2715,17 @@ canvas { display: block; width: 100%; height: auto; }
    ตัวเลขทั้งสองช่องเขียนพร้อมกันใน refreshGold() จึงไม่มีทางหลุดจากกัน */
 .gacha-wallet { flex: 0 0 auto; }
 
-/* ── สามคอลัมน์ ─────────────────────────────── */
+/* ── สามคอลัมน์ ───────────────────────────────
+   flex + min-height:0 ไล่ลงไปทุกชั้นตั้งแต่ .pop จนถึงกรอบรูป เพื่อให้
+   "ความสูงที่เหลือจริง" ส่งต่อกันได้ ถ้าขาดชั้นไหนไป ชั้นนั้นจะกลายเป็น
+   ความสูงตามเนื้อหา แล้วของข้างล่างจะทะลุออกนอกการ์ดโดยที่ไม่มีใครย่อให้ */
 .gacha-body {
   display: flex;
   align-items: stretch;
   justify-content: center;
   gap: clamp(8px, 2vw, 24px);
   width: 100%;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
@@ -2358,6 +2786,8 @@ canvas { display: block; width: 100%; height: auto; }
   gap: clamp(4px, .9dvh, 9px);
   padding: clamp(8px, 1.6dvh, 16px) clamp(8px, 1.6vw, 18px);
   border-radius: 20px;
+  min-height: 0;
+  overflow: hidden;
   background:
     radial-gradient(62% 52% at 50% 40%, rgba(199,125,255,.26), transparent 74%),
     rgba(255,243,226,.05);
@@ -2365,11 +2795,25 @@ canvas { display: block; width: 100%; height: auto; }
 }
 
 /* กรอบรูป — ป้ายระดับเกาะมุมบนซ้ายยื่นออกนอกกรอบ เหมือนสติกเกอร์แปะไว้ */
+/* ── ทำไมกรอบรูปต้องย่อได้ ──
+   เดิมล็อกด้าน = --gs ตายตัว ซึ่งคิดมาจาก "ของที่ไม่ย่อตาม ~210px" ที่เดาไว้
+   ตัวเลขนั้นถูกเฉพาะบนคอม พอขึ้นมือถือแนวนอน (สูง 460) แถบเลือกช่องเด้งขึ้นไป
+   เป็นแถวบนอีกก้อน ของที่ไม่ย่อจึงกลายเป็น ~320 แล้วกรอบก็ยังยืนยัน 236
+   ผลคือชื่อของ ปุ่มสุ่ม บรรทัดปลดล็อก ทะลุออกนอกการ์ดไป 110px แล้วโดนตัดหาย
+
+   เปลี่ยนเป็น --gs = "ใหญ่ได้ไม่เกินเท่านี้" แล้วปล่อยให้ flex ย่อลงเองเมื่อที่ไม่พอ
+   ที่เหลือเท่าไหร่ก็ได้เท่านั้นจริง ๆ ไม่ต้องมีใครมาเดาแทน
+   width:auto + aspect-ratio ทำให้ด้านกว้างวิ่งตามด้านสูงที่ถูกย่อ กรอบจึงยังเป็นจัตุรัส */
 .show-face {
   position: relative;
-  width: var(--gs);
   height: var(--gs);
-  flex: 0 0 auto;
+  width: auto;
+  aspect-ratio: 1;
+  max-width: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
+  /* ให้ขนาดอิโมจิข้างในวัดจากกรอบที่ย่อแล้วจริง ๆ ไม่ใช่จาก --gs ที่ย่อไม่ตาม */
+  container-type: size;
   display: grid;
   place-items: center;
   border-radius: 18px;
@@ -2388,7 +2832,8 @@ canvas { display: block; width: 100%; height: auto; }
 .show-face.locked { border-style: dashed; box-shadow: none; }
 .show-face canvas { width: 92%; height: 92%; }
 .show-face .show-emoji {
-  font-size: calc(var(--gs) * 0.52);
+  font-size: calc(var(--gs) * 0.52);   /* กันเบราว์เซอร์เก่าที่ไม่รู้จัก cqmin */
+  font-size: 52cqmin;
   line-height: 1;
 }
 .show-face.locked .show-emoji { filter: grayscale(1); opacity: .5; }
@@ -2473,6 +2918,8 @@ canvas { display: block; width: 100%; height: auto; }
   gap: clamp(3px, .8dvh, 9px);
   padding: clamp(8px, 1.6dvh, 16px) clamp(8px, 1.6vw, 18px);
   border-radius: 20px;
+  min-height: 0;
+  overflow: hidden;
   background: rgba(255,243,226,.05);
   border: 1px solid rgba(255,243,226,.13);
 }
@@ -2502,17 +2949,27 @@ canvas { display: block; width: 100%; height: auto; }
    อันที่สูงกว่าโดยอัตโนมัติ — สลับช่องแล้วปุ่มข้างล่างไม่กระโดด */
 .gacha-stage {
   display: grid;
-  place-items: center;
+  /* แถวเดียวที่สูงเท่ากรอบพอดี ไม่ใช่ auto
+     ถ้าเป็น auto แถวจะสูงตามขนาดจริงของ canvas (184px) แล้ว height:100%
+     ของตัว canvas จะไปอ้างอิงแถวนั้นแทนกรอบ = ย่อไม่ลงสักที ทั้งที่กรอบย่อไปแล้ว */
+  grid-template-rows: minmax(0, 1fr);
+  justify-items: center;
+  align-items: stretch;
   width: 100%;
-  min-height: calc(var(--gs) * 1.05);
+  /* ด้วยเหตุผลเดียวกับ .show-face — เป็นเพดาน ไม่ใช่ความสูงตายตัว */
+  height: calc(var(--gs) * 1.05);
+  flex: 0 1 auto;
+  min-height: 0;
 }
 .gacha-stage > * { grid-area: 1 / 1; }
 .gacha-stage > .hidden { display: none; }
 .gacha-stage canvas {
   width: auto;
   /* ผูกความสูงไว้กับกรอบ ไม่ใช่ตั้งความกว้างเป็น px — แผงนี้เตี้ยลงตามจอ
-     ถ้าคุมด้วยความกว้าง ตู้จะล้นออกนอกกรอบทันทีที่จอเตี้ย */
-  height: calc(var(--gs) * 1.05);
+     ถ้าคุมด้วยความกว้าง ตู้จะล้นออกนอกกรอบทันทีที่จอเตี้ย
+     100% ของกรอบที่ย่อแล้ว ไม่ใช่ --gs ตรง ๆ ไม่งั้นตู้จะยื่นพ้นกรอบตอนถูกย่อ */
+  height: 100%;
+  max-width: 100%;
 }
 #tgChest { aspect-ratio: 200 / 184; }
 
@@ -2529,7 +2986,24 @@ canvas { display: block; width: 100%; height: auto; }
   50%      { transform: translateY(-7px) rotate(-1.6deg); }
 }
 
+/* ── ทำไมบรรทัดล่างของสองการ์ดต้องปักไว้ที่พื้น ──
+   การ์ดสองใบสูงเท่ากันแต่เนื้อหาข้างในสูงไม่เท่ากัน พอทั้งคู่จัดกลางแนวตั้ง
+   บรรทัดล่างสุดของแต่ละใบจึงไปจบคนละระดับ แล้วสายตาอ่านว่า "วางไม่ตรงกัน"
+   ระยะเหลื่อมยังเปลี่ยนไปตามขนาดจอด้วย เพราะแต่ละชิ้นย่อไม่เท่ากัน
+
+   ปักบรรทัดสุดท้ายของทั้งสองใบไว้ห่างจากก้นการ์ดเท่ากันแทน (margin-top: auto
+   กินที่ว่างที่เหลือทั้งหมด) สองบรรทัดนี้จึงตรงกันเป๊ะทุกจอโดยไม่ต้องเดาตัวเลขชดเชย
+
+   ใส่ auto ไว้ที่ชิ้น "แรกของกลุ่มล่าง" ไม่ใช่ชิ้นสุดท้าย เพราะถ้าใส่ที่ชิ้นสุดท้าย
+   ที่ว่างจะไปแทรกกลางกลุ่ม แล้วป้ายคะแนนจะหลุดลอยห่างจากชื่อกับคำอธิบายของมันเอง
+   ใส่ที่ชิ้นแรกแทน ทั้งกลุ่มจึงเลื่อนลงไปติดก้นการ์ดพร้อมกันโดยยังเกาะกลุ่มกันอยู่ */
+.gacha-show > .show-name,
+.gacha-right > .tg-hint { margin-top: auto; }
+
+/* แถวข้อความเตือนตอนว่างต้องไม่กินที่เลย ไม่งั้นมันดันแถวปลดล็อกให้ลอยขึ้นจากก้นการ์ด
+   ทั้งที่ไม่มีตัวหนังสือให้อ่านสักตัว (ตัว gap ของ flex ก็ยังนับให้อยู่ดี) */
 #gachaPanel .form-msg { min-height: 1em; }
+#gachaPanel .form-msg:empty { display: none; }
 
 .buyrow { display: flex; gap: clamp(6px, 1.4vw, 12px); }
 
@@ -2617,6 +3091,26 @@ canvas { display: block; width: 100%; height: auto; }
 .info-btn:active { background: rgba(78,205,196,.3); transform: translateY(1px); }
 .info-btn:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
 
+/* ── ทำไมปุ่ม ! ในแถวปลดล็อกต้องเล็กเป็นพิเศษ ──
+   แถวนี้ต้องอ่านเป็นบรรทัดเดียวกับป้าย "+คะแนน" ของการ์ดอีกฝั่ง
+   ก้นกล่องสองแถวตรงกันแล้ว (ดู margin-top: auto) แต่ถ้าปุ่มสูงกว่าตัวหนังสือมาก
+   กล่องจะสูงตามปุ่ม แล้วตัวหนังสือที่จัดกลางในกล่องนั้นจะลอยขึ้นไปสูงกว่าป้ายอีกฝั่ง
+   ทั้งที่กล่องตรงกันแล้ว — สิ่งที่ตาเทียบคือบรรทัดตัวหนังสือ ไม่ใช่ขอบกล่อง
+
+   ย่อตัวปุ่มให้พอ ๆ กับตัวหนังสือ แล้วขยายพื้นที่รับแตะกลับมาด้วย ::after
+   ซึ่งไม่กินที่ในผัง นิ้วจึงยังกดโดนเท่าเดิมโดยที่แถวไม่สูงขึ้น */
+.gacha-foot .info-btn {
+  width: clamp(17px, 2.6dvh, 22px);
+  height: clamp(17px, 2.6dvh, 22px);
+  font-size: clamp(11px, 1.7dvh, 14px);
+}
+.gacha-foot .info-btn::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+}
+
 /* ── ตารางอัตราออก โผล่ตอนกดปุ่ม ! ─────────── */
 #gachaPanel .odds-pop {
   position: absolute;
@@ -2682,9 +3176,12 @@ canvas { display: block; width: 100%; height: auto; }
 #gachaPanel .gacha-result.hidden { display: none; }
 #gachaPanel .gacha-result {
   position: absolute;
-  inset: 3.5%;
+  /* เต็มกรอบการ์ดพอดี ไม่ใช่เว้นเข้ามา 3.5% — เดิมเห็นเป็นกล่องเล็กลอยอยู่บนการ์ดอีกที
+     ซึ่งอ่านเป็น "หน้าต่างซ้อนหน้าต่าง" ทั้งที่มันคือหน้าเดียวกันที่เปลี่ยนเนื้อหา
+     .pop เป็น overflow:hidden อยู่แล้ว มุมจึงถูกตัดตามการ์ดให้เองโดยไม่ต้องคำนวณ */
+  inset: 0;
   z-index: 8;
-  border-radius: clamp(16px, 3vw, 28px);
+  border-radius: inherit;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2692,11 +3189,48 @@ canvas { display: block; width: 100%; height: auto; }
   gap: clamp(6px, 1.6dvh, 14px);
   padding: clamp(8px, 2dvh, 20px);
   cursor: pointer;
+  /* สดใสกว่าพื้นการ์ดปกติ ไม่ใช่มืดกว่า — จังหวะนี้คือการฉลอง ไม่ใช่การเตือน
+     แสงทองจากบนลงมาที่ของ + ม่วงสว่างฟุ้งจากขอบล่าง ให้รู้สึกเหมือนไฟเวทีส่องลงมา */
   background:
-    radial-gradient(60% 55% at 50% 44%, rgba(120,58,168,.5), transparent 72%),
-    rgba(10,4,20,.93);
+    radial-gradient(64% 52% at 50% 34%, rgba(255,201,60,.22), transparent 70%),
+    radial-gradient(94% 76% at 50% 104%, rgba(199,125,255,.4), transparent 72%),
+    linear-gradient(180deg, #7C40A9 0%, #4B2075 56%, #2E1149 100%);
   animation: cardIn .26s cubic-bezier(.2,.85,.3,1.06) backwards;
 }
+
+/* ── ริบบิ้นโปรยฉลอง ─────────────────────────
+   ชิ้นส่วนสร้างจาก JS ทุกรอบ (burstConfetti) ค่าสุ่มส่งมาทาง custom property
+   ท่าตกทั้งหมดอยู่ที่นี่ที่เดียว JS จึงไม่ต้องรู้จักแอนิเมชันเลย
+
+   ตกด้วยการไล่ค่า top เป็น % ไม่ใช่ translateY — เพราะ % ของ translate อ้างอิง
+   ความสูงของตัวริบบิ้นเอง (สิบกว่าพิกเซล) ไม่ใช่ของกล่อง มันจึงตกไม่พ้นหัวการ์ด */
+.confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  left: var(--x);
+  top: -8%;
+  width: var(--w);
+  height: var(--h);
+  border-radius: 2px;
+  opacity: 0;
+  animation: confettiFall var(--t) linear var(--d) forwards;
+}
+@keyframes confettiFall {
+  0%   { opacity: 0; top: -8%; transform: translateX(0) rotate(var(--r)); }
+  12%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; top: 106%; transform: translateX(var(--sx)) rotate(calc(var(--r) + 540deg)); }
+}
+
+/* เนื้อหาต้องอยู่เหนือริบบิ้น ไม่งั้นชิ้นที่ตกผ่านจะพาดทับชื่อของที่เพิ่งได้ */
+.got-title, .got-row, .gacha-result .btn { position: relative; z-index: 2; }
 .got-title {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
@@ -2805,21 +3339,33 @@ canvas { display: block; width: 100%; height: auto; }
   /* เคยให้ทั้งพาเนลเลื่อนได้ ตอนที่ของเรียงกองลงล่างจนสูงเกินจอ
      พอกลับมาเรียงสามคอลัมน์แล้วสูงรวมเหลือราว 240px บนจอ 390px จึงไม่ต้องเลื่อน
      และต้องไม่เลื่อนด้วย เพราะการ์ดพื้นหลัง (.panel::before) จะไถตามเนื้อหาไป */
+  /* ── หน้าตีบวกบนจอเตี้ย ──────────────────────
+   * ของเรียงลงล่างเจ็ดชั้น (เวที · ชื่อ · ดาว · ฤทธิ์ · โอกาส · ป้ายผล · ปุ่ม)
+   * จึงชนเพดานความสูงง่ายกว่าหน้าอื่นที่มีสองสามชั้น โดยเฉพาะตอนป้ายผลโผล่ขึ้นมา
+   * ซึ่งเป็นชั้นที่เพิ่มเข้ามาทีหลังตอนกดแล้ว ไม่ได้อยู่ตั้งแต่เปิดหน้า
+   * บีบช่องไฟกับเวทีลงมาเผื่อไว้ให้ชั้นนั้นตั้งแต่แรก */
+  .up-box { gap: 4px; padding: 8px clamp(14px, 3vw, 26px); }
+  .up-stage { width: clamp(58px, 13dvh, 92px); height: clamp(58px, 13dvh, 92px); }
+  .up-result { padding: 5px 18px; }
+
   #gachaPanel { padding: 6px 10px; gap: 5px; }
-  /* ขนาดในหน้ากาช่าคุมด้วย --gs ที่อิง dvh อยู่แล้ว ไม่ต้องไล่ย่อทีละชิ้นตรงนี้
-     เหลือแค่จัดผังใหม่: สามคอลัมน์ไม่พอกว้าง แถบเลือกช่องจึงขึ้นไปเป็นแถวบนสุด
-     แล้วเหลือสองคอลัมน์ให้ของที่ส่องกับตัวตู้ ซึ่งยังต้องเห็นพร้อมกัน
-     (ถ้าดันตู้ลงไปอีกแถว ปุ่มสุ่มจะหลุดออกนอกการ์ดบนจอเตี้ย) */
-  .gacha-body { gap: 8px; flex-wrap: wrap; }
-  .gacha-tabs {
-    order: -1;
-    flex-basis: 100%;
-    flex-direction: row;
-    justify-content: center;
-    padding: 0 0 5px;
-    border-right: 0;
-    border-bottom: 1px solid rgba(255,243,226,.16);
-  }
+  /* ── ผังหน้ากาช่าบนมือถือ ──────────────────────
+   * ใช้สามคอลัมน์ชุดเดียวกับคอม (แถบเลือกช่อง | ของที่ส่อง | ตัวตู้) ไม่ต้องจัดใหม่
+   *
+   * เคยดันแถบเลือกช่องขึ้นไปเป็นแถวบนสุด เพราะคิดว่ามือถือไม่พอกว้างสำหรับสามคอลัมน์
+   * ซึ่งไม่จริง — มือถือแนวนอนกว้างราว 1000px การ์ดสองใบเหลือที่ว่างข้างในเพียบ
+   * แถบกินแค่ราว 130px บีบการ์ดเข้าหน่อยก็พอ แล้วยังได้ความสูงคืนมาอีกแถวหนึ่ง
+   * ให้รูปกับตัวตู้ด้วย
+   *
+   * ที่เคยล้นออกนอกการ์ดตอนนั้นไม่ได้มาจากผัง แต่มาจาก --gs ที่ย่อไม่ได้
+   * ซึ่งแก้ที่ .show-face / .gacha-stage ไปแล้ว (ดูคอมเมนต์ตรงนั้น)
+   *
+   * เหลือแค่บีบช่องไฟกับแถบเลือกช่องให้แคบลง จะได้เหลือที่ให้การ์ดมากที่สุด */
+  .gacha-body { gap: 10px; }
+  .gacha-cards { gap: 10px; }
+  .gacha-tabs { gap: 8px; padding-right: 10px; }
+  .gtab { padding: 10px 14px; font-size: 13px; gap: 8px; }
+
   /* กระเป๋าเงินย่อลงให้พอดีกับหัวเรื่องที่ย่อไปแล้ว ไม่งั้นมันสูงกว่าชื่อหน้า */
   .gacha-wallet .gembar, .gacha-wallet .goldbar { height: 24px; padding: 0 9px 0 3px; gap: 5px; }
   .gacha-wallet b { font-size: 11px; }
@@ -2830,7 +3376,14 @@ canvas { display: block; width: 100%; height: auto; }
   /* ต้องเขียนเป็น .panel h2 ไม่ใช่ .skin-title เฉย ๆ
      .panel h2 (คลาส+ชนิด = 0,1,1) จำเพาะกว่า .skin-title (0,1,0) กฎย่อจึงแพ้ตลอด
      ผลคือหัวเรื่องยังเป็น 40px กินไป 57px จากจอสูง 390px ทั้งที่ตั้งใจย่อไว้ 14px */
-  .panel h2, .panel h2.skin-title { font-size: 15px; line-height: 1.2; padding-bottom: 4px; }
+  /* หัวเรื่องเคยย่อเหลือ 15px ตอนที่กลัวว่าจะกินความสูงจนของข้างล่างไม่พอ
+     พอทุกหน้าย่อของตัวเองลงไปแล้ว 3px ที่ได้คืนมาไม่ได้ทำให้อะไรล้น
+     แต่ทำให้ชื่อหน้าอ่านเป็น "หัวข้อ" แทนที่จะเป็นตัวหนังสือบรรทัดหนึ่ง */
+  .panel h2, .panel h2.skin-title { font-size: 18px; line-height: 1.2; padding-bottom: 4px; }
+  /* ชื่อหน้าตู้กาช่าไม่ได้อยู่กลางการ์ดเหมือนหน้าอื่น แต่ไปนั่งเป็นป้ายชื่อมุมซ้ายบน
+     ของคอลัมน์เนื้อหา ตำแหน่งแบบนั้นต้องตัวใหญ่กว่าถึงจะยังอ่านเป็นหัวเรื่อง
+     ต้องเขียนซ้ำในบล็อกนี้ เพราะกฎ .panel h2 ข้างบนจำเพาะเท่ากันแต่อยู่ก่อนหน้า */
+  .gacha-head h2 { font-size: 21px; }
   .skin-grid { gap: 6px; }
   .skin-card { width: 78px; padding: 4px 4px 6px; gap: 2px; border-radius: 11px; }
   .skin-card canvas { width: 44px; height: 44px; border-radius: 8px; }
@@ -2865,6 +3418,37 @@ canvas { display: block; width: 100%; height: auto; }
 /* มือถือแนวนอน: จอเตี้ย ปุ่มต้องเล็กลงไม่ให้กินพื้นที่เล่น
    ขนาดเวทีไม่ต้องคุมตรงนี้แล้ว บล็อกเต็มจอข้างบนคุมให้ครบทุกกรณี */
 @media (pointer: coarse) and (max-height: 520px) {
+  /* ── ปุ่มล็อบบี้บนมือถือ ──────────────────────
+   * บล็อก (max-width:560px) ข้างบนย่อไว้ 52px ซึ่งเป็นค่าที่คิดมาสำหรับ
+   * จอแคบแนวตั้ง พอมาโดนใช้กับมือถือแนวนอน (กว้าง ~1000 สูง ~460)
+   * ปุ่มกลายเป็นจุดเล็ก ๆ ริมจอที่แตะพลาดง่าย ทั้งที่ที่ว่างเหลือเพียบ
+   *
+   * วัดจากความสูงจอ (ด้านสั้น = ด้านที่จำกัดจริง) เหมือนที่ .touchpad ทำ
+   * 15dvh ≈ 69px บนมือถือแนวนอนทั่วไป — สี่ปุ่มเรียงกันยังไม่ชนการ์ดโปรไฟล์
+   * เพดาน 74px กันแท็บเล็ตจอใหญ่ได้ปุ่มโตจนบังฉาก */
+  .lobby { gap: clamp(5px, 1.5dvh, 10px); }
+  .lobby-btn {
+    width: clamp(52px, 15dvh, 74px);
+    height: clamp(52px, 15dvh, 74px);
+    padding: 5px 4px;
+    border-radius: 14px;
+  }
+  .lobby-btn canvas {
+    width: clamp(28px, 8.4dvh, 42px);
+    height: clamp(28px, 8.4dvh, 42px);
+    border-radius: 9px;
+  }
+  /* ไอคอนด่านเป็นแนวนอน (210x92) จึงคุมด้วยความกว้างแล้วให้สูงตามสัดส่วน
+     ไม่งั้นมันจะถูกยืดจนภาพตัวอย่างด่านผิดรูป */
+  .lobby-btn #stageIcon {
+    width: clamp(38px, 11dvh, 56px);
+    height: auto;
+    aspect-ratio: 210 / 92;
+    border-radius: 6px;
+    margin-block: 4px;
+  }
+  .lobby-btn b { font-size: clamp(9px, 2.4dvh, 12px); }
+
   .hudbtns button svg { width: 17px; height: 17px; }
   #btnPause::before, #btnPause::after { height: 13px; width: 4px; }
   #btnPause::before { margin-left: -3.8px; }
@@ -2887,9 +3471,43 @@ canvas { display: block; width: 100%; height: auto; }
    * ปุ่มพวกนี้เคยเล็กกว่า 32px ซึ่งแตะพลาดบ่อยด้วยนิ้วโป้ง
    * ขยายเป็น 40px ทั้งชุด — ยังเล็กกว่าปุ่มกระโดดในเกม (72px) มาก
    * แต่พอให้กดติดตั้งแต่ครั้งแรก */
+  /* ปุ่มเล่นคือปุ่มที่ถูกกดบ่อยที่สุดในเกม และเป็นปุ่มเดียวที่ต้องกดได้ทั้งที่
+     ยังไม่ทันมองหน้าจอ บนมือถือจึงควรใหญ่กว่าปุ่มอื่นชัด ๆ ไม่ใช่แค่พอ ๆ กัน
+     วัดจากความสูงจอเหมือนปุ่มกระโดด (ดู .touchpad) เพราะเล่นแนวนอนเสมอ */
+  .btn.play {
+    font-size: clamp(24px, 7.4dvh, 38px);
+    padding: clamp(12px, 2.9dvh, 20px) clamp(38px, 6.6vw, 72px);
+  }
+
   .stepbtn { width: 40px; height: 40px; font-size: 20px; }
-  .backbtn { width: 40px; height: 40px; left: 3.5%; top: 5%; }
+  /* แก้ที่โทเคน ไม่ใช่ที่ตัวปุ่ม — ที่จองใน .pop:has(.backbtn) จะได้ขยับตามเอง */
+  :root { --backbtn: 40px; --backbtn-x: 10px; }
+  .backbtn { top: 5%; }
+  /* บีบช่องไฟหลังปุ่มลงบนจอเตี้ย — ที่จองสองข้างกินความกว้างไปเท่าตัว
+     พอกว้างขึ้นข้างละสิบกว่าพิกเซล เนื้อหาบางหน้าจะตกบรรทัดแล้วสูงเกินการ์ดทันที */
+  .pop:has(.backbtn) {
+    padding-left: calc(var(--backbtn-x) + var(--backbtn) + clamp(6px, 1vw, 12px));
+    padding-right: calc(var(--backbtn-x) + var(--backbtn) + clamp(6px, 1vw, 12px));
+  }
   .info-btn { width: 32px; height: 32px; font-size: 15px; }
+
+  /* ── หน้ากาช่าบนมือถือแนวนอน ──────────────────
+   * จอสูงราว 460 แต่แถบเลือกช่องเด้งขึ้นไปเป็นแถวบน (ดูบล็อกจอแคบข้างบน)
+   * กินความสูงไปอีกก้อนที่คอมไม่มี ที่เหลือให้การ์ดสองใบจึงราว 270 เท่านั้น
+   *
+   * ตัวย่อจริงเป็นหน้าที่ของ flex (ดู .show-face) ตรงนี้แค่ตั้งเพดานให้ต่ำลง
+   * เพื่อให้กรอบซ้าย-ขวาจบที่ขนาดใกล้กัน ไม่ใช่ฝั่งหนึ่งเต็มอีกฝั่งถูกย่อจนเล็กกว่ากันมาก */
+  /* แถบเลือกช่องกลับไปอยู่คอลัมน์ซ้ายแล้ว ได้ความสูงคืนมาอีกแถวหนึ่ง
+     เพดานจึงดันขึ้นได้ตาม ที่เหลือจริงเท่าไหร่ flex ย่อให้เองอยู่แล้ว (ดู .show-face) */
+  #gachaPanel { --gs: clamp(64px, 42dvh, 190px); }
+  /* แถวข้อความเตือนจองที่ไว้ 1 บรรทัดตลอดเวลาเพื่อกันผังกระตุกตอนมีข้อความโผล่
+     บนมือถือความสูงมีค่ากว่าการกระตุกครั้งเดียวตอนเพชรไม่พอ จองไว้ทั้งหน้าไม่คุ้ม */
+  #gachaPanel .form-msg { min-height: 0; }
+  /* คำอธิบายเหลือบรรทัดเดียว — สองบรรทัดกินความสูงที่ควรเป็นของรูปไปเปล่า ๆ
+     ข้อความเต็มยังอ่านได้ในหน้ารายการที่กดจากปุ่ม "ดูอื่นๆ" */
+  .show-note { -webkit-line-clamp: 1; }
+  .tg-hint { font-size: 10px; }
+  .more-btn { font-size: 10px; padding: 4px 9px; }
 
   /* ── การ์ดในหน้าย่อย ──────────────────────────
    * มือถือแนวนอนกว้าง 844 แต่สูงแค่ 390 — คนละโจทย์กับจอแคบแนวตั้ง
@@ -2920,6 +3538,21 @@ canvas { display: block; width: 100%; height: auto; }
   /* มือถือแนวนอน = กรณีที่คนเล่นจริงเจอ ปุ่มต้องใหญ่พอกดด้วยนิ้วโป้งโดยไม่ต้องเล็ง
      ปล่อยให้ --tp จากบล็อกจอสัมผัสข้างบนคุมขนาดไปเลย ไม่ทับด้วยเลขตายตัวอีก */
   .touchpad { padding: 0 clamp(10px, 3dvh, 20px) clamp(10px, 3dvh, 20px); }
+}
+
+/* จอเตี้ยมาก (สูงไม่ถึง 400): ฝั่งขวามีของประจำที่มากกว่าฝั่งซ้ายอยู่แล้ว
+   (บรรทัดบอกสกุลเงิน + ปุ่มสุ่มสองใบ + บรรทัดปลดล็อก + ปุ่ม !) ที่เหลือให้ตัวตู้จึงน้อยกว่า
+   ถ้าปล่อยเพดาน --gs ไว้เท่าเดิม กรอบซ้ายจะใหญ่เต็มเพดานส่วนตู้ขวาโดนย่อจนเล็กกว่ากันเห็นชัด
+   กดเพดานลงมาให้ทั้งสองฝั่งจบที่ขนาดใกล้กันแทน แล้วบีบของประจำที่ฝั่งขวาลงอีกนิด */
+@media (pointer: coarse) and (max-height: 400px) {
+  #gachaPanel { --gs: clamp(64px, 38dvh, 150px); }
+  .up-box { gap: 3px; padding: 6px 14px; }
+  .up-stage { width: clamp(50px, 11.5dvh, 66px); height: clamp(50px, 11.5dvh, 66px); }
+  .up-emoji { font-size: clamp(28px, 7dvh, 38px); }
+  .up-result { padding: 4px 14px; }
+  #upGo { padding: 7px 20px; }
+  .info-btn { width: 26px; height: 26px; font-size: 13px; }
+  .gtab { padding: 6px 12px; }
 }
 
 /* ── หน้าเข้าเกม: ชื่อเกม / เข้าสู่ระบบ / ตั้งชื่อ / อีเมล ──
@@ -3059,6 +3692,16 @@ canvas { display: block; width: 100%; height: auto; }
 @media (prefers-reduced-motion: reduce) {
   .panel { transition: none; }
   .got-card, .got-card.high { animation: none; }
+  /* ริบบิ้นโปรยคือการเคลื่อนไหวล้วน ๆ ไม่มีข้อมูลอยู่ในนั้นเลย ตัดทิ้งได้ทั้งก้อน */
+  .confetti { display: none; }
+  /* เวทีตีบวกเหมือนกัน — ผลลัพธ์อยู่ที่กล่องข้อความกับแถวดาว ไม่ได้อยู่ที่แสงกับประกาย
+     ปิดหมดแล้วยังเล่นได้ครบทุกอย่าง แค่ไม่มีของหวือหวา */
+  .up-glow, .up-ring, .up-spark { display: none; }
+  .up-box.fail,
+  .up-box.charging .up-emoji,
+  .up-box.win .up-emoji,
+  .up-box.fail .up-emoji,
+  .up-step i.just { animation: none; }
   #gachaMachine { animation: none; }
   .panel:not(.home):not(.hidden) > .pop,
   .panel:not(.home):not(.hidden) > .pop > * { animation: none; }
