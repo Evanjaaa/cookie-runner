@@ -327,9 +327,6 @@
           </div>
           </div>
           <div class="skin-grid" id="treasureGrid"></div>
-          <button class="btn" id="tgachaOpen">
-            <span class="price"><span class="gem" aria-hidden="true"></span><b>สุ่มสมบัติ</b></span>
-          </button>
           <button class="backbtn" id="treasureBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
@@ -394,47 +391,6 @@
         </div>
       </div>
 
-      <!-- ตู้สุ่มสมบัติ — ใช้เพชรชมพู -->
-      <div class="panel hidden" id="tgachaPanel">
-        <div class="pop">
-          <h2 class="skin-title">สุ่มสมบัติ</h2>
-          <p class="tg-lead" id="tgOdds"></p>
-
-          <!-- ที่ว่างกลางแผงเดิมโล่งจนหน้าดูเหมือนโหลดไม่ขึ้น
-               หีบยืนอยู่ตรงนั้นตอนยังไม่ได้สุ่ม พอสุ่มแล้วการ์ดมาแทนที่ในกรอบเดียวกัน
-               จึงไม่มีจังหวะไหนที่ตรงกลางแผงว่างเปล่า -->
-          <div class="tg-stage">
-            <div class="tg-chest" id="tgChestWrap">
-              <canvas id="tgChest" width="200" height="184"></canvas>
-              <small class="tg-hint" id="tgHint">เปิดหีบด้วยเพชรชมพู</small>
-            </div>
-            <div class="got-row" id="tgRow"></div>
-          </div>
-
-          <div class="buyrow">
-            <button class="btn pull" id="tgPull1">
-              <span class="price"><span class="gem" aria-hidden="true"></span><b>150</b></span>
-              <small>1 ครั้ง</small>
-            </button>
-            <button class="btn pull five" id="tgPull3">
-              <span class="price"><span class="gem" aria-hidden="true"></span><b>450</b></span>
-              <small>3 ครั้ง!</small>
-            </button>
-          </div>
-
-          <div class="tg-foot">
-            <p class="tg-owned">เก็บแล้ว <b id="tgOwned">0</b> / <span id="tgTotal">0</span></p>
-            <small class="form-msg" id="tgMsg"></small>
-          </div>
-          <button class="backbtn" id="tgBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
       <!-- ติดตั้งสมบัติก่อนลงเล่น เข้าจากหน้าเลือกด่าน -->
       <div class="panel hidden" id="loadoutPanel">
         <div class="pop">
@@ -451,56 +407,102 @@
         </div>
       </div>
 
-      <!-- ตู้กาช่า สุ่มชุดด้วยเหรียญทอง -->
-      <div class="panel hidden" id="gachaPanel">
-        <div class="pop">
-          <h2 class="skin-title">ตู้กาช่า</h2>
+      <!-- ── ตู้กาช่า — ตู้เดียวสองช่อง ────────────────────────
+           สมบัติ (เพชร) กับสกิน (ทอง) อยู่หน้าเดียวกัน สลับด้วยแถบซ้าย
+           เดิมแยกเป็นสองหน้าคนละทางเข้า ผู้เล่นจึงไม่รู้ว่ามีตู้ที่สอง
+           ทั้งที่มันคือกิจกรรมเดียวกัน ต่างแค่ใช้เงินคนละกระเป๋า
 
+           ช่องส่องโชว์ทีละชิ้น ไม่ใช่กางทั้งชั้นวาง — อยากดูตัวอื่นกดปุ่ม
+           "ดูอื่นๆ" ที่มุมขวาบนของกรอบตู้ ซึ่งพาไปหน้ารายการเต็ม -->
+      <div class="panel hidden" id="gachaPanel">
+        <div class="pop gacha-pop">
           <div class="gacha-body">
-            <!-- ซ้าย: ชุดที่กำลังส่องอยู่ ตัวใหญ่เต็มตา -->
-            <div class="gacha-show">
-              <canvas id="gachaHero" width="190" height="190"></canvas>
-              <div class="hero-meta">
-                <span class="tier-badge" id="heroTier"></span>
-                <b class="hero-name" id="heroName"></b>
-                <span class="hero-bonus" id="heroBonus"></span>
-                <small class="hero-state" id="heroState"></small>
-              </div>
+            <!-- ซ้าย: เลือกว่าจะสุ่มตู้ไหน — อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
+            <div class="gacha-tabs" role="tablist" aria-label="เลือกตู้">
+              <button type="button" class="gtab on" id="tabTreasure" role="tab">
+                <span class="gtab-ico" aria-hidden="true">🧰</span>สุ่มสมบัติ
+              </button>
+              <button type="button" class="gtab" id="tabSkin" role="tab">
+                <span class="gtab-ico" aria-hidden="true">👕</span>สุ่มสกิน
+              </button>
             </div>
 
-            <!-- ขวา: ตัวตู้กับปุ่มสุ่ม -->
-            <div class="gacha-right">
-              <canvas id="gachaMachine" width="200" height="226"></canvas>
-              <div class="buyrow">
-                <button class="btn pull" id="pull1">
-                  <span class="price"><span class="coin" aria-hidden="true"></span><b>5,000</b></span>
-                  <small>1 ครั้ง</small>
-                </button>
-                <button class="btn pull five" id="pull5">
-                  <span class="price"><span class="coin" aria-hidden="true"></span><b>25,000</b></span>
-                  <small>5 ครั้ง!</small>
-                </button>
+            <!-- ขวาของเส้นคั่นคือเนื้อหาทั้งหมด: หัวเรื่อง + กระเป๋าเงิน แล้วค่อยเป็นการ์ดสองใบ
+                 หัวเรื่องต้องอยู่ในคอลัมน์นี้ ไม่ใช่พาดเต็มการ์ด ไม่งั้นมันจะไปเบียด
+                 ปุ่มกลับที่มุมซ้ายบน แล้วเส้นคั่นก็จะไม่ตรงกับขอบซ้ายของเนื้อหา -->
+            <div class="gacha-main">
+              <!-- แถบเงินบนจอ (.hud-top) ซ่อนตัวเองตอนมีแผงเปิด จึงต้องมีของตัวเองตรงนี้
+                   ไม่งั้นหน้าที่ใช้เงินมากที่สุดกลับเป็นหน้าเดียวที่ไม่เห็นเงิน -->
+              <div class="gacha-head">
+                <h2 class="skin-title">ตู้กาช่า</h2>
+                <div class="wallet gacha-wallet">
+                  <div class="gembar" aria-label="เพชรชมพู">
+                    <span class="gem" aria-hidden="true"></span>
+                    <b id="gemGacha">0</b>
+                  </div>
+                  <div class="goldbar" aria-label="เหรียญทอง">
+                    <span class="coin" aria-hidden="true"></span>
+                    <b id="goldGacha">0</b>
+                  </div>
+                </div>
               </div>
-              <div class="gacha-foot">
-                <p class="gacha-owned">ปลดล็อก <b id="ownedCount">0</b> / <span id="totalCount">0</span></p>
-                <button class="info-btn" id="oddsBtn" aria-label="ดูอัตราการสุ่ม">!</button>
-              </div>
+
+              <div class="gacha-cards">
+                <!-- กลาง: ของที่กำลังส่อง ทีละชิ้นเท่านั้น -->
+                <div class="gacha-show">
+                  <div class="show-face">
+                    <span class="tier-badge" id="showTier"></span>
+                    <canvas id="showCat" width="190" height="190"></canvas>
+                    <span class="show-emoji" id="showEmoji" aria-hidden="true"></span>
+                  </div>
+                  <b class="show-name" id="showName"></b>
+                  <small class="show-note" id="showNote"></small>
+                  <span class="hero-bonus" id="showBonus"></span>
+                </div>
+
+                <!-- ขวา: ตัวตู้กับปุ่มสุ่ม -->
+                <div class="gacha-right">
+                  <button type="button" class="more-btn" id="gachaMore">ดูสมบัติอื่นๆ</button>
+
+                  <!-- หีบกับตู้หมุนซ้อนอยู่ในกรอบเดียวกัน โผล่ทีละอันตามช่องที่เลือก
+                       กรอบจึงสูงเท่ากันทั้งสองช่อง ปุ่มข้างล่างไม่ขยับตอนสลับ -->
+                  <div class="gacha-stage">
+                    <canvas id="tgChest" width="200" height="184"></canvas>
+                    <canvas id="gachaMachine" class="hidden" width="200" height="226"></canvas>
+                  </div>
+                  <small class="tg-hint" id="gachaHint">เปิดหีบด้วยเพชรชมพู</small>
+
+                  <div class="buyrow">
+                    <button class="btn pull" id="pull1">
+                      <span class="price"><span class="cur gem" aria-hidden="true"></span><b>150</b></span>
+                      <small>1 ครั้ง</small>
+                    </button>
+                    <button class="btn pull five" id="pull5">
+                      <span class="price"><span class="cur gem" aria-hidden="true"></span><b>450</b></span>
+                      <small>3 ครั้ง!</small>
+                    </button>
+                  </div>
+
+                  <div class="gacha-foot">
+                    <p class="gacha-owned">ปลดล็อก <b id="ownedCount">0</b> / <span id="totalCount">0</span></p>
+                    <button class="info-btn" id="oddsBtn" aria-label="ดูอัตราการสุ่ม">!</button>
+                  </div>
+                  <small class="form-msg" id="gachaMsg"></small>
+                </div>
+                  </div>
             </div>
           </div>
 
-          <!-- อัตราออกซ่อนไว้ใต้ปุ่ม ! — เป็นข้อมูลที่ดูครั้งเดียวแล้วจำได้
-               ไม่ควรกินที่ถาวรแข่งกับของที่ผู้เล่นมาดูจริง ๆ คือชุดกับปุ่มสุ่ม
-               แถวข้างในสร้างจาก JS ตัวเลขจึงมาจากค่าจริงเสมอ -->
+          <!-- อัตราออกซ่อนไว้ใต้ปุ่ม ! ทั้งสองช่อง — เป็นข้อมูลที่ดูครั้งเดียวแล้วจำได้
+               ไม่ควรกินที่ถาวรแข่งกับของที่ผู้เล่นมาดูจริง ๆ คือของกับปุ่มสุ่ม
+               แถวข้างในสร้างจาก JS ตัวเลขจึงมาจากค่าจริงของช่องที่เปิดอยู่เสมอ -->
           <div class="odds-pop hidden" id="oddsPop">
             <b>อัตราการสุ่ม</b>
             <div class="odds" id="gachaOdds"></div>
             <button class="btn ghost" id="oddsClose">ปิด</button>
           </div>
 
-          <!-- ชั้นวางชุดทั้งหมด — ได้แล้วเห็นเต็มสี ยังไม่ได้เป็นเงาดำ -->
-          <div class="gacha-shelf" id="gachaShelf"></div>
-
-          <!-- ผลที่เพิ่งสุ่ม ลอยทับทั้งหน้า
+          <!-- ผลที่เพิ่งสุ่ม ลอยทับทั้งหน้า ใช้ร่วมกันทั้งสองช่อง
                ต้องมีทางปิดของตัวเองเสมอ เพราะมันคลุมทั้งการ์ดจนกดปุ่มอะไรข้างใต้ไม่ได้ -->
           <div class="gacha-result hidden" id="gachaResult">
             <b class="got-title" id="gotTitle">ได้รับ!</b>
@@ -509,6 +511,23 @@
           </div>
 
           <button class="backbtn" id="gachaBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- รายการของทั้งตู้ — เข้าจากปุ่ม "ดูอื่นๆ" ในหน้าตู้กาช่า
+           ที่ยังไม่ได้โชว์เป็นเงา/ขาวดำ ไม่ใช่ซ่อนทิ้ง ผู้เล่นจึงเห็นว่าเหลืออะไรให้ลุ้น
+           แตะใบไหนก็พากลับไปส่องใบนั้นในหน้าตู้ทันที -->
+      <div class="panel hidden" id="gListPanel">
+        <div class="pop">
+          <div class="panel-head"><h2 class="skin-title" id="glTitle">สมบัติในตู้นี้</h2></div>
+          <div class="skin-grid" id="glGrid"></div>
+          <p class="gacha-owned">ปลดล็อก <b id="glOwned">0</b> / <span id="glTotal">0</span></p>
+          <button class="backbtn" id="glBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>

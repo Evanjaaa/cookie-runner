@@ -1359,81 +1359,15 @@ canvas { display: block; width: 100%; height: auto; }
 .up-result.fail { background: rgba(255,92,110,.14); border: 1px solid rgba(255,92,110,.45); color: #FFB3BC; }
 
 /* ── ตู้สุ่มสมบัติ ──────────────────────────── */
-.tg-lead { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 90%; }
-.odds-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: clamp(9px, 1.5dvh, 12px);
-  background: rgba(255,243,226,.07);
-  border: 1px solid rgba(255,243,226,.14);
-  color: #D9C4EC;
-}
-.odds-chip i { width: 8px; height: 8px; border-radius: 2px; transform: rotate(45deg); }
-.odds-chip.legend i { background: #FF8FB0; box-shadow: 0 0 7px rgba(255,143,176,.8); }
-.odds-chip.epic i { background: #C77DFF; }
-.odds-chip.rare i { background: #8DF3EA; }
-.odds-chip.dupe { color: #9C81B8; }
-.odds-chip.dupe i { display: none; }
-.btn.pull .gem { width: clamp(13px, 2.2vh, 20px); height: clamp(13px, 2.2vh, 20px); }
-
-/* ── เวทีกลางแผง ─────────────────────────────
-   หีบกับแถวการ์ดที่สุ่มได้ใช้กรอบเดียวกัน สลับกันโชว์ ไม่ได้ต่อกันลงมา
-   ซ้อนด้วย grid ช่องเดียว (ไม่ใช่ position:absolute) ความสูงของกรอบจึงเป็น
-   ความสูงของอันที่สูงกว่าโดยอัตโนมัติ — พอสลับกันแล้วปุ่มข้างล่างไม่กระโดด */
-.tg-stage {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  min-height: clamp(100px, 30dvh, 252px);
-}
-.tg-stage > * { grid-area: 1 / 1; }
-.tg-stage > .hidden { display: none; }
-
-.tg-chest {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(2px, 0.8dvh, 7px);
-}
-.tg-chest canvas {
-  width: auto;
-  /* ผูกความสูงไว้กับเวที ไม่ใช่ตั้งความกว้างเป็น px — แผงนี้เตี้ยลงตามจอ
-     ถ้าคุมด้วยความกว้าง หีบจะล้นออกนอกกรอบทันทีที่จอเตี้ย */
-  height: clamp(76px, 23dvh, 206px);
-  aspect-ratio: 200 / 184;
-}
+/* อัตราออกของช่องสมบัติเคยกางเป็นชิปอยู่กลางหน้าตลอดเวลา ย้ายไปซ่อนใต้ปุ่ม !
+   ท่าเดียวกับช่องชุดแล้ว (.odds-row) ชิปกับแถบนำจึงไม่มีใครใช้อีก */
+.btn.pull .cur { width: clamp(14px, 2.7dvh, 24px); height: clamp(14px, 2.7dvh, 24px); }
 .tg-hint {
   font-size: clamp(8.5px, 1.4dvh, 11px);
   letter-spacing: .04em;
   color: #B99BD4;
 }
 
-#tgachaPanel .got-row { align-items: center; margin: 0; }
-
-/* ── แถวล่าง: ความคืบหน้า + ข้อความเตือน ────
-   ความคืบหน้าบอกว่ายังขาดอีกกี่ชิ้น ซึ่งเป็นเหตุผลเดียวที่คนกดสุ่มต่อ
-   เดิมหน้านี้ไม่มีตัวเลขนี้เลย ทั้งที่หน้าตู้ชุดมี */
-.tg-foot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-height: clamp(26px, 5dvh, 38px);
-}
-.tg-owned {
-  font-size: clamp(9.5px, 1.6dvh, 12.5px);
-  color: #C9AEE4;
-  margin: 0;
-}
-.tg-owned b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: 1.24em;
-  color: var(--cream);
-}
 .got-card.legend { border-color: #FF8FB0; background: linear-gradient(180deg, rgba(255,143,176,.24), rgba(255,143,176,.07)); box-shadow: 0 0 18px rgba(255,143,176,.42); }
 .got-card.epic { border-color: rgba(199,125,255,.7); background: linear-gradient(180deg, rgba(199,125,255,.2), rgba(199,125,255,.06)); }
 .got-card.rare { border-color: rgba(141,243,234,.5); }
@@ -2186,13 +2120,11 @@ canvas { display: block; width: 100%; height: auto; }
   .panel { padding: 10px 14px; gap: 6px; }
   .panel h2 { font-size: 20px; line-height: 1.2; }
   /* ตัดคำอธิบายยาว ๆ ทิ้งเพื่อเอาที่ไปให้ปุ่ม แต่ไม่ใช่ <p> ทุกตัวในเว็บ
-     สองอันนี้เป็นข้อมูลที่ต้องใช้ตัดสินใจ ไม่ใช่คำบรรยายประกอบ:
-       .tg-lead  = อัตราการออกของแต่ละระดับ
-       .tg-owned = เก็บไปแล้วกี่ชิ้นจากทั้งหมด
+     .gacha-owned เป็นข้อมูลที่ต้องใช้ตัดสินใจ ไม่ใช่คำบรรยายประกอบ —
+     มันบอกว่ายังขาดอีกกี่ชิ้น ซึ่งเป็นเหตุผลเดียวที่คนจะกดสุ่มต่อ
      ถ้าหายไปด้วย หน้าสุ่มจะเหลือแค่ปุ่มโดยไม่บอกอะไรเลยว่ากดแล้วได้อะไร */
   .panel p { display: none; }
-  .panel p.tg-lead { display: flex; }
-  .panel p.tg-owned { display: block; }
+  .panel p.gacha-owned { display: block; }
   .btn {
     margin-top: 2px;
     font-size: 14px;
@@ -2276,18 +2208,16 @@ canvas { display: block; width: 100%; height: auto; }
   color: var(--mint-lite);
 }
 
-/* ── ตู้กาช่า ───────────────────────────────── */
-/* ซ้าย = ชุดที่ส่องอยู่ (ของที่มาดู)  ขวา = ตู้กับปุ่มสุ่ม (ของที่มากด)
-   ล่าง = ชั้นวางชุดทั้งกอง
-   ขนาดทุกชิ้นคุมด้วยตัวแปรเดียว --gs ที่ปรับตามความสูงจอ ทั้งคอมและมือถือ
-   จึงย่อขยายไปพร้อมกันทั้งหน้า ไม่ต้องไล่แก้ทีละชิ้นในแต่ละ media query */
-/* ── ความสูงจริงของเวที ───────────────────────
- * ของทุกชิ้นในหน้ากาช่าต้องวัดจากค่านี้ ไม่ใช่จาก dvh ของหน้าต่าง
+/* ── หน้าตู้กาช่า ─────────────────────────────
  *
- * เดิมใช้ min(42dvh, 19vw) ซึ่งวัดจาก "หน้าต่างเบราว์เซอร์" แต่แผงกาช่า
- * อยู่ในเวทีที่ล็อกอัตราส่วน 960:420 ไว้ สองอย่างนี้ไม่ได้โตตามกัน
- * บนจอใหญ่ (1536x864) เวทีสูง 658 ซึ่งพอดี แต่พอหน้าต่างเตี้ยลง
- * เวทีหดเร็วกว่า dvh มาก ตู้กาช่าจึงสูงเกินช่องที่มีแล้วทะลุลงไปทับชั้นวางชุด
+ * หน้าเดียวสองช่อง (สมบัติ/สกิน) วางเป็นสามคอลัมน์: แถบเลือกช่อง | ของที่ส่อง | ตัวตู้
+ * ทั้งสองช่องใช้โครงเดียวกันทุกชิ้น ต่างแค่ของที่ใส่เข้าไป — ตอนสลับช่อง
+ * จึงไม่มีอะไรกระโดด เพราะกล่องทุกใบยังเป็นใบเดิมที่ตำแหน่งเดิม
+ *
+ * ── ที่มาของ --stage-h ──
+ * ความสูงที่ใช้ได้จริงมาจาก .stage ซึ่งล็อกอัตราส่วน 960:420 ไว้ ไม่ใช่ 100dvh
+ * บนจอกว้างที่เตี้ย (โน้ตบุ๊ก 16:9 ที่ย่อหน้าต่าง) เวทีหดเร็วกว่า dvh มาก
+ * ตู้กาช่าจึงสูงเกินช่องที่มีแล้วทะลุออกนอกการ์ด
  * นี่คือเหตุผลที่หน้าเดียวกันดูดีบนเครื่องหนึ่งแต่ย่นบนอีกเครื่อง
  *
  * สูตรนี้คือความสูงของ .stage ที่คำนวณย้อนจาก .shell ตรง ๆ:
@@ -2296,16 +2226,13 @@ canvas { display: block; width: 100%; height: auto; }
  * หารเข้าไปทั้งสามพจน์แล้วได้ min() ข้างล่าง (1/2.2857 = 0.4375) */
 #gachaPanel {
   --stage-h: min(682px, calc((100vw - 32px) * 0.4375), calc(100dvh - 104px));
-  /* ด้านของช่องส่องชุด ใช้เป็นหน่วยตั้งต้นของทุกชิ้นในหน้านี้
+  /* ด้านของกรอบรูปที่ส่องอยู่ ใช้เป็นหน่วยตั้งต้นของทุกชิ้นในหน้านี้
    *
-   * คิดย้อนจากช่องที่มีจริง ไม่ใช่คูณอัตราส่วนตรง ๆ:
-   *   .gacha-body ได้ความสูงราว 0.56 ของเวที (วัดจริงได้ 0.563-0.59 ทุกขนาด)
-   *   ในนั้นมีตู้สูง 1.07 เท่าของ --gs และของที่ "ไม่ย่อตาม" อีกราว 85px
-   *   (ปุ่มสุ่มสองใบ + บรรทัดปลดล็อก + ช่องไฟ ซึ่งชนพื้นของ clamp ไปแล้ว)
-   *
-   * เคยลองคูณอัตราส่วนเดียวทั้งหมด (0.38) แล้วพังที่หน้าต่างเล็ก
-   * เพราะ 85px ก้อนนั้นกินสัดส่วนมากขึ้นเรื่อย ๆ เมื่อเวทีเตี้ยลง ต้องหักออกก่อนหาร */
-  --gs: clamp(80px, calc((var(--stage-h) * 0.56 - 85px) / 1.07), 300px);
+   * คิดย้อนจากช่องที่มีจริง ไม่ใช่คูณอัตราส่วนตรง ๆ: ฝั่งขวามีของที่ "ไม่ย่อตาม"
+   * อยู่ราว 210px (หัวการ์ด + ปุ่มดูอื่นๆ + ปุ่มสุ่มสองใบ + บรรทัดปลดล็อก + ช่องไฟ
+   * ซึ่งชนพื้นของ clamp ไปแล้ว) ต้องหักออกก่อนหาร ไม่งั้นพอเวทีเตี้ยลง
+   * ก้อนคงที่นั้นจะกินสัดส่วนมากขึ้นเรื่อย ๆ จนล้นการ์ด */
+  --gs: clamp(64px, calc((var(--stage-h) - 210px) / 1.05), 236px);
   gap: clamp(5px, 1.4dvh, 12px);
 }
 
@@ -2314,81 +2241,286 @@ canvas { display: block; width: 100%; height: auto; }
   #gachaPanel { --stage-h: 100dvh; }
 }
 
-.gacha-body {
+/* การ์ดของหน้านี้กว้างกว่าหน้าอื่น เพราะต้องวางสามคอลัมน์ให้จบในแถวเดียว
+   และไม่ต้องเว้นซ้ายให้ปุ่มกลับเท่าหน้าอื่น (.pop:has(.backbtn)) เพราะของที่อยู่
+   ซ้ายสุดคือคอลัมน์แถบเลือกช่อง ซึ่งนั่งอยู่ "ใต้" ปุ่มกลับ ไม่ใช่ข้าง ๆ มัน
+   ถ้าเว้นเท่าหน้าอื่น เส้นคั่นจะถูกดันเข้ามากลางการ์ดจนผังเบี้ยวทั้งหน้า */
+.gacha-pop {
+  width: 100%;
+  padding-left: clamp(10px, 1.6vw, 20px);
+  padding-right: clamp(12px, 2vw, 26px);
+}
+
+/* ── หัวเรื่อง + กระเป๋าเงิน ─────────────────
+   อยู่ในคอลัมน์ขวาของเส้นคั่น ไม่ได้พาดเต็มการ์ด — ขอบซ้ายของหัวเรื่องจึงตรง
+   กับขอบซ้ายของการ์ดสองใบข้างล่างพอดี และไม่ไปเบียดปุ่มกลับที่มุมซ้ายบน */
+.gacha-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.2dvh, 12px);
+}
+.gacha-head {
+  width: 100%;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: clamp(8px, 2vw, 20px);
+}
+.gacha-head h2 {
+  padding-bottom: 0;
+  /* ใหญ่กว่าหัวเรื่องหน้าอื่น เพราะหน้านี้หัวเรื่องไม่ได้อยู่กลางการ์ด
+     แต่ไปนั่งเป็นป้ายชื่อมุมซ้ายบนของคอลัมน์เนื้อหา ถ้าเล็กเท่าหน้าอื่น
+     มันจะอ่านเป็นคำอธิบายบรรทัดหนึ่งแทนที่จะเป็นชื่อหน้า */
+  font-size: clamp(17px, 3.6dvh, 30px);
+}
+
+/* การ์ดสองใบกินความสูงที่เหลือทั้งหมดหลังหักหัวเรื่อง */
+.gacha-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
   justify-content: center;
-  gap: clamp(12px, 4vw, 46px);
+  gap: clamp(8px, 2vw, 24px);
+}
+
+/* กระเป๋าเงินของหน้านี้เอง — แถบบนในจอซ่อนตัวเองตอนมีแผงย่อยเปิด (ดู .hud-top)
+   หน้าที่ใช้เงินมากที่สุดจึงกลายเป็นหน้าเดียวที่มองไม่เห็นเงินตัวเอง
+   ตัวเลขทั้งสองช่องเขียนพร้อมกันใน refreshGold() จึงไม่มีทางหลุดจากกัน */
+.gacha-wallet { flex: 0 0 auto; }
+
+/* ── สามคอลัมน์ ─────────────────────────────── */
+.gacha-body {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(8px, 2vw, 24px);
   width: 100%;
   min-height: 0;
 }
 
-/* ── ซ้าย: ชุดที่กำลังส่อง ────────────────────
-   ใหญ่ที่สุดในหน้า เพราะเป็นคำถามเดียวที่ผู้เล่นมาหาคำตอบ: หน้าตามันเป็นยังไง */
-.gacha-show {
+/* ── ซ้าย: เลือกว่าจะสุ่มตู้ไหน ────────────────
+   อยู่นอกกรอบการ์ดทั้งสองใบ และมีเส้นคั่นกับเนื้อหา จึงอ่านเป็น "สารบัญของหน้า"
+   ไม่ใช่ปุ่มอีกสองใบที่ต้องมาแข่งความสนใจกับปุ่มสุ่ม */
+.gacha-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(6px, 1.4dvh, 12px);
+  padding-right: clamp(8px, 1.8vw, 20px);
+  border-right: 1px solid rgba(255,243,226,.16);
+}
+.gtab {
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1.6vw, 16px);
-  flex: 0 0 auto;
-  padding: clamp(6px, 1.4vh, 14px) clamp(10px, 2vw, 22px);
-  border-radius: 22px;
+  /* ชิดซ้ายไม่ใช่กลาง — สองใบกว้างเท่ากัน (คอลัมน์ยืดให้) ถ้าจัดกลาง
+     ไอคอนของสองใบจะไม่ตรงคอลัมน์เดียวกันเพราะชื่อยาวไม่เท่ากัน */
+  justify-content: flex-start;
+  gap: clamp(6px, 1vw, 11px);
+  padding: clamp(8px, 1.9dvh, 16px) clamp(13px, 1.9vw, 24px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.18);
+  background: rgba(255,243,226,.07);
+  color: #D9C4EC;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 2.5dvh, 21px);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform .1s ease, background .12s ease, border-color .12s ease;
+}
+.gtab-ico { font-size: 1.4em; line-height: 1; }
+.gtab:active { transform: translateY(2px); }
+.gtab:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+/* ช่องที่เปิดอยู่สว่างขึ้นทั้งใบ ไม่ใช่แค่ขีดเส้นใต้ — ต้องอ่านออกจากหางตา
+   ว่ากำลังดูตู้ไหนอยู่ ตอนที่สายตาไปจับอยู่ที่ปุ่มสุ่มอีกฝั่งของหน้า */
+.gtab.on {
+  background: linear-gradient(180deg, #C48FF3 0%, #9C5EDC 100%);
+  border-color: rgba(255,255,255,.4);
+  color: #FFF6E8;
+  box-shadow: 0 4px 12px rgba(123,63,190,.45), inset 0 1px 0 rgba(255,255,255,.4);
+}
+
+/* ── กลาง: ของที่กำลังส่อง ทีละชิ้น ────────────
+   ใหญ่ที่สุดในหน้า เพราะเป็นคำถามเดียวที่ผู้เล่นมาหาคำตอบ: กำลังลุ้นอะไรอยู่
+   ของทั้งตู้ย้ายไปหน้ารายการแล้ว หน้านี้จึงไม่มีชั้นวางกางอยู่ข้างล่างอีก */
+.gacha-show {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, .9dvh, 9px);
+  padding: clamp(8px, 1.6dvh, 16px) clamp(8px, 1.6vw, 18px);
+  border-radius: 20px;
   background:
-    radial-gradient(62% 58% at 34% 46%, rgba(199,125,255,.3), transparent 72%),
+    radial-gradient(62% 52% at 50% 40%, rgba(199,125,255,.26), transparent 74%),
     rgba(255,243,226,.05);
   border: 1px solid rgba(255,243,226,.13);
 }
-#gachaHero {
+
+/* กรอบรูป — ป้ายระดับเกาะมุมบนซ้ายยื่นออกนอกกรอบ เหมือนสติกเกอร์แปะไว้ */
+.show-face {
+  position: relative;
   width: var(--gs);
   height: var(--gs);
-  display: block;
   flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  border: 2px solid rgba(255,243,226,.2);
+  background: rgba(27,15,43,.55);
 }
-.hero-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  text-align: left;
-  max-width: clamp(84px, 20vw, 190px);
+/* สีกรอบบอกระดับ กวาดตาทีเดียวรู้ว่ากำลังส่องของหายากแค่ไหนก่อนอ่านป้ายด้วยซ้ำ
+   ใช้สีชุดเดียวกับป้ายระดับกับการ์ดผลสุ่ม จึงโยงกันได้ทั้งเกม */
+.show-face.legend { border-color: #FF8FB0; box-shadow: 0 0 22px rgba(255,143,176,.4); }
+.show-face.epic { border-color: rgba(199,125,255,.8); }
+.show-face.rare { border-color: rgba(141,243,234,.6); }
+.show-face.high { border-color: rgba(255,201,60,.75); box-shadow: 0 0 22px rgba(255,201,60,.34); }
+.show-face.normal { border-color: rgba(141,243,234,.5); }
+/* ยังไม่ได้ชิ้นนี้ = กรอบเส้นประกับรูปที่จางลง ไม่ใช่ซ่อนชื่อทิ้ง
+   ชื่อกับฤทธิ์คือข้อมูลที่คนยังไม่มีต้องใช้ตัดสินใจว่าจะลุ้นต่อไหม */
+.show-face.locked { border-style: dashed; box-shadow: none; }
+.show-face canvas { width: 92%; height: 92%; }
+.show-face .show-emoji {
+  font-size: calc(var(--gs) * 0.52);
+  line-height: 1;
 }
-.gacha-show .tier-badge { position: static; }
-.hero-name {
+.show-face.locked .show-emoji { filter: grayscale(1); opacity: .5; }
+.show-face > .hidden { display: none; }
+
+/* ป้ายระดับกลม ใช้กับสมบัติที่ป้ายเป็นตัวย่อตัวเดียว (L/E/R)
+   ป้ายของชุดเป็นคำเต็ม ("ระดับสูง") จึงยังเป็นทรงแคปซูลตามเดิม
+
+   ต้องล้าง right ที่กฎ .tier-badge ตั้งไว้ (top:7px right:7px) ด้วย
+   ไม่งั้นการตั้ง left เพิ่มเข้าไปจะกลายเป็นตรึงทั้งซ้ายและขวา แล้วป้ายจะยืด
+   พาดเต็มความกว้างกรอบแทนที่จะหดตามตัวหนังสือ */
+.show-face .tier-badge {
+  position: absolute;
+  top: clamp(-13px, -2dvh, -7px);
+  left: clamp(-11px, -1.7dvh, -6px);
+  right: auto;
+  z-index: 2;
+  padding: 2px clamp(7px, 1.1vw, 12px);
+  font-size: clamp(9px, 1.5dvh, 13px);
+  white-space: nowrap;
+}
+.tier-badge.round {
+  display: grid;
+  place-items: center;
+  width: clamp(22px, 4dvh, 34px);
+  height: clamp(22px, 4dvh, 34px);
+  padding: 0;
+  border-radius: 50%;
+  font-size: clamp(11px, 2dvh, 17px);
+}
+
+/* ชื่อกับคำอธิบายเป็นป้ายมนบนพื้นเข้ม ไม่ใช่ตัวหนังสือลอย ๆ
+   กรอบรูปด้านบนมีพื้นของตัวเองอยู่แล้ว ถ้าสองบรรทัดนี้ลอยเปล่า
+   ครึ่งล่างของการ์ดจะดูโหวงเหมือนยังโหลดไม่เสร็จ */
+.show-name {
   font-family: "Mitr", sans-serif;
   font-weight: 500;
-  font-size: clamp(12px, 2.4vh, 20px);
+  font-size: clamp(12px, 2.3dvh, 20px);
   line-height: 1.25;
+  text-align: center;
+  padding: 2px clamp(9px, 1.4vw, 16px);
+  border-radius: 999px;
+  background: rgba(27,15,43,.42);
 }
-/* ค่าที่ชุดให้จริง ๆ — ตัวเลขนี้คือเหตุผลเดียวที่ระดับสูงมีค่ากว่าระดับกลาง
-   จึงต้องเด่นพอ ๆ กับชื่อชุด ไม่ใช่ซ่อนอยู่ในบรรทัดคำอธิบาย */
+.show-note {
+  font-size: clamp(8.5px, 1.5dvh, 12.5px);
+  color: #C9AEE4;
+  padding: 2px clamp(8px, 1.2vw, 14px);
+  border-radius: 999px;
+  background: rgba(27,15,43,.42);
+  line-height: 1.35;
+  text-align: center;
+  /* คำอธิบายยาวไม่เท่ากันทุกชิ้น ตัดที่สองบรรทัดเพื่อไม่ให้กรอบสูงไม่เท่ากัน
+     ตอนสลับของ ซึ่งจะทำให้ทั้งแถวขยับตามทุกครั้งที่กดดูชิ้นถัดไป */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* ค่าที่ของชิ้นนี้ให้จริง ๆ — เด่นพอ ๆ กับชื่อ ไม่ใช่ซ่อนในบรรทัดคำอธิบาย */
 .hero-bonus {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(10px, 1.9vh, 15px);
+  font-size: clamp(10px, 1.9dvh, 15px);
   color: var(--mint-lite);
-  padding: 2px 9px;
+  padding: 2px 11px;
   border-radius: 999px;
   background: rgba(78,205,196,.15);
   border: 1px solid rgba(141,243,234,.35);
+  white-space: nowrap;
 }
-.hero-state { font-size: clamp(8.5px, 1.5vh, 12px); color: #B99BD4; line-height: 1.4; }
-.hero-state.locked { color: #8E76A8; }
 
-/* ── ขวา: ตู้กับปุ่มสุ่ม ──────────────────────── */
+/* ── ขวา: ตัวตู้กับปุ่มสุ่ม ──────────────────── */
 .gacha-right {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(5px, 1.2vh, 11px);
-  flex: 0 0 auto;
+  justify-content: center;
+  gap: clamp(3px, .8dvh, 9px);
+  padding: clamp(8px, 1.6dvh, 16px) clamp(8px, 1.6vw, 18px);
+  border-radius: 20px;
+  background: rgba(255,243,226,.05);
+  border: 1px solid rgba(255,243,226,.13);
 }
+
+/* ปุ่มไปหน้ารายการ — เกาะมุมขวาบนของกรอบตู้ ไม่ได้อยู่ในสายไหล
+   ถ้าเอาไปต่อเป็นแถวหนึ่ง มันจะเบียดความสูงของหีบซึ่งเป็นพระเอกของกรอบนี้ */
+.more-btn {
+  position: absolute;
+  top: clamp(6px, 1.2dvh, 12px);
+  right: clamp(6px, 1vw, 12px);
+  z-index: 3;
+  padding: clamp(3px, .7dvh, 6px) clamp(8px, 1.2vw, 14px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.22);
+  background: rgba(27,15,43,.72);
+  color: #E7D8F6;
+  font-size: clamp(8.5px, 1.5dvh, 12px);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform .1s ease, background .12s ease;
+}
+.more-btn:active { transform: translateY(2px); background: rgba(78,205,196,.28); }
+.more-btn:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+
+/* หีบกับตู้หมุนซ้อนอยู่ในช่องกริดเดียวกัน ความสูงของกรอบจึงเป็นความสูงของ
+   อันที่สูงกว่าโดยอัตโนมัติ — สลับช่องแล้วปุ่มข้างล่างไม่กระโดด */
+.gacha-stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: calc(var(--gs) * 1.05);
+}
+.gacha-stage > * { grid-area: 1 / 1; }
+.gacha-stage > .hidden { display: none; }
+.gacha-stage canvas {
+  width: auto;
+  /* ผูกความสูงไว้กับกรอบ ไม่ใช่ตั้งความกว้างเป็น px — แผงนี้เตี้ยลงตามจอ
+     ถ้าคุมด้วยความกว้าง ตู้จะล้นออกนอกกรอบทันทีที่จอเตี้ย */
+  height: calc(var(--gs) * 1.05);
+}
+#tgChest { aspect-ratio: 200 / 184; }
 
 /* ตู้ส่ายเบา ๆ ตลอดเวลา — ของที่ขยับได้เองบอกว่า "กดได้" โดยไม่ต้องมีป้ายบอก
    ตอนกดสุ่ม ตัวสั่นแรง ๆ วาดอยู่บน canvas อีกชั้น (gachaShake ใน main.js)
    สองอย่างนี้ไม่ชนกันเพราะอันหนึ่งขยับกล่อง อีกอันขยับรูปข้างใน */
 #gachaMachine {
-  width: calc(var(--gs) * 0.95);
-  height: calc(var(--gs) * 1.07);
-  flex: 0 0 auto;
+  aspect-ratio: 200 / 226;
   animation: machineBob 3.4s ease-in-out infinite;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
 }
@@ -2396,6 +2528,8 @@ canvas { display: block; width: 100%; height: auto; }
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50%      { transform: translateY(-7px) rotate(-1.6deg); }
 }
+
+#gachaPanel .form-msg { min-height: 1em; }
 
 .buyrow { display: flex; gap: clamp(6px, 1.4vw, 12px); }
 
@@ -2409,8 +2543,8 @@ canvas { display: block; width: 100%; height: auto; }
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: clamp(5px, 1.1vh, 10px) clamp(10px, 2vw, 20px) clamp(4px, .9vh, 8px);
-  border-radius: 16px;
+  padding: clamp(6px, 1.5dvh, 13px) clamp(13px, 2.6vw, 30px) clamp(5px, 1.2dvh, 11px);
+  border-radius: 18px;
   border: 1px solid rgba(255,255,255,.35);
   background: linear-gradient(180deg, #6FD98F 0%, #4CBB79 52%, #35945D 100%);
   box-shadow:
@@ -2439,16 +2573,18 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .btn.pull.five:active { transform: translateY(3px); box-shadow: 0 2px 0 #5B2C90, inset 0 1px 0 rgba(255,255,255,.5); }
 .btn.pull .price { display: flex; align-items: center; gap: 5px; }
-.btn.pull .coin { width: clamp(13px, 2.2vh, 20px); height: clamp(13px, 2.2vh, 20px); }
+/* ไอคอนสกุลเงินบนปุ่มสลับระหว่างเหรียญกับเพชรตามช่องที่เปิดอยู่
+   จึงตั้งขนาดที่คลาสร่วม .cur (ดูกฎข้างบน) ไม่ใช่ตั้งแยกทีละสกุล
+   ที่เหลือตรงนี้คือรายละเอียดเฉพาะของเหรียญเท่านั้น */
 .btn.pull .coin::after { inset: 28% 34%; }
 .btn.pull b {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(12px, 2.3vh, 19px);
+  font-size: clamp(13px, 2.9dvh, 24px);
   line-height: 1;
 }
 .btn.pull small {
-  font-size: clamp(8px, 1.5vh, 12px);
+  font-size: clamp(8.5px, 1.8dvh, 14px);
   font-weight: 600;
   letter-spacing: .02em;
   padding: 1px 8px;
@@ -2458,7 +2594,7 @@ canvas { display: block; width: 100%; height: auto; }
 .btn.pull:disabled { opacity: .4; box-shadow: none; transform: none; cursor: not-allowed; }
 
 .gacha-foot { display: flex; align-items: center; gap: 8px; }
-.gacha-owned { font-size: clamp(9px, 1.6vh, 13px); color: #B99BD4; }
+.gacha-owned { margin: 0; font-size: clamp(9.5px, 1.9dvh, 15px); color: #B99BD4; }
 .gacha-owned b { color: var(--mint-lite); font-weight: 600; }
 
 /* ปุ่มเครื่องหมายตกใจ — เปิดตารางอัตราออก */
@@ -2528,47 +2664,16 @@ canvas { display: block; width: 100%; height: auto; }
 .odds-row.normal b { color: var(--mint-lite); }
 .odds-row.gold i { background: linear-gradient(180deg, #FFEDB4, #C2851A); }
 .odds-row.gold b { color: #FFD97A; }
+/* ระดับของสมบัติ — สีชุดเดียวกับ T_RARITY ใน treasures.js กับป้ายบนการ์ด
+   ตารางอัตรากับการ์ดที่เพิ่งสุ่มได้จึงพูดภาษาสีเดียวกัน */
+.odds-row.legend { border-color: rgba(255,143,176,.45); background: rgba(255,143,176,.1); }
+.odds-row.legend i { background: #FF8FB0; box-shadow: 0 0 8px rgba(255,143,176,.8); }
+.odds-row.legend b { color: #FF8FB0; }
+.odds-row.epic i { background: #C77DFF; }
+.odds-row.epic b { color: #C77DFF; }
+.odds-row.rare i { background: #8DF3EA; }
+.odds-row.rare b { color: #8DF3EA; }
 .odds-note { font-size: clamp(8.5px, 1.4vh, 11.5px); color: #9C81B8; text-align: left; padding-left: 10px; }
-
-/* ── ชั้นวางชุดทั้งหมด ───────────────────────
-   ตัวที่ยังไม่ได้โชว์เป็นเงาดำ ไม่ใช่ซ่อนทิ้ง — ถ้าซ่อน ผู้เล่นจะไม่มีทางรู้ว่า
-   ยังเหลืออะไรให้ลุ้น ซึ่งเป็นเหตุผลเดียวที่จะกดสุ่มต่อ
-   กรอบสีบอกระดับ จึงกวาดตาทีเดียวรู้ว่าที่ยังขาดเป็นของหายากหรือของธรรมดา */
-.gacha-shelf {
-  display: flex;
-  gap: clamp(4px, .8vw, 8px);
-  max-width: 100%;
-  padding: 3px 2px;
-  overflow-x: auto;
-  overscroll-behavior: contain;
-  touch-action: pan-x;
-  scrollbar-width: none;
-}
-.gacha-shelf::-webkit-scrollbar { display: none; }
-.shelf-cell {
-  flex: 0 0 auto;
-  width: calc(var(--gs) * 0.31);
-  height: calc(var(--gs) * 0.31);
-  padding: 0;
-  border-radius: 12px;
-  border: 2px solid rgba(255,243,226,.16);
-  background: rgba(27,15,43,.6);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: transform .1s ease, border-color .12s ease;
-}
-.shelf-cell canvas { width: 88%; height: 88%; }
-.shelf-cell.high { border-color: rgba(255,201,60,.6); background: rgba(255,201,60,.12); }
-.shelf-cell.normal { border-color: rgba(141,243,234,.4); }
-.shelf-cell.locked { border-style: dashed; opacity: .75; }
-.shelf-cell.on {
-  border-color: var(--cream);
-  transform: translateY(-3px) scale(1.06);
-  box-shadow: 0 6px 14px rgba(0,0,0,.45);
-}
-.shelf-cell.on.high { box-shadow: 0 6px 16px rgba(255,201,60,.45); }
-.shelf-cell:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
 
 /* ── ผลที่เพิ่งสุ่มได้ ────────────────────────
    ลอยทับทั้งหน้าเฉพาะตอนมีของ ว่างอยู่ก็ไม่กินที่แม้แต่พิกเซลเดียว
@@ -2702,9 +2807,23 @@ canvas { display: block; width: 100%; height: auto; }
      และต้องไม่เลื่อนด้วย เพราะการ์ดพื้นหลัง (.panel::before) จะไถตามเนื้อหาไป */
   #gachaPanel { padding: 6px 10px; gap: 5px; }
   /* ขนาดในหน้ากาช่าคุมด้วย --gs ที่อิง dvh อยู่แล้ว ไม่ต้องไล่ย่อทีละชิ้นตรงนี้
-     เหลือแค่บีบช่องไฟระหว่างสองฝั่งให้แคบลงบนจอเตี้ย */
-  .gacha-body { gap: 12px; }
-  .shelf-cell { border-radius: 10px; }
+     เหลือแค่จัดผังใหม่: สามคอลัมน์ไม่พอกว้าง แถบเลือกช่องจึงขึ้นไปเป็นแถวบนสุด
+     แล้วเหลือสองคอลัมน์ให้ของที่ส่องกับตัวตู้ ซึ่งยังต้องเห็นพร้อมกัน
+     (ถ้าดันตู้ลงไปอีกแถว ปุ่มสุ่มจะหลุดออกนอกการ์ดบนจอเตี้ย) */
+  .gacha-body { gap: 8px; flex-wrap: wrap; }
+  .gacha-tabs {
+    order: -1;
+    flex-basis: 100%;
+    flex-direction: row;
+    justify-content: center;
+    padding: 0 0 5px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255,243,226,.16);
+  }
+  /* กระเป๋าเงินย่อลงให้พอดีกับหัวเรื่องที่ย่อไปแล้ว ไม่งั้นมันสูงกว่าชื่อหน้า */
+  .gacha-wallet .gembar, .gacha-wallet .goldbar { height: 24px; padding: 0 9px 0 3px; gap: 5px; }
+  .gacha-wallet b { font-size: 11px; }
+  .gacha-wallet .gem, .gacha-wallet .coin { width: 14px; height: 14px; }
   #gachaPanel .btn { font-size: 11px; padding: 6px 11px; }
 
   #skinPanel, #outfitPanel { padding: 6px 10px; gap: 4px; }
