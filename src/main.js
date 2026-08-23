@@ -223,9 +223,15 @@ function refreshHome() {
  * เหลือที่เดียวแล้ว แถบบนโชว์อยู่ตลอดตอนเปิดพาเนลอยู่แล้ว (ดู .hud-top ใน style.css)
  */
 function refreshGold() {
-  document.getElementById('goldTop').textContent = getGold().toLocaleString('en-US');
+  const gold = getGold().toLocaleString('en-US');
+  const gems = getGems().toLocaleString('en-US');
+  document.getElementById('goldTop').textContent = gold;
   // เพชรชมพูอยู่แถบเดียวกัน อัปเดตพร้อมกันเสมอ จะได้ไม่มีทางที่ตัวเลขสองช่องหลุดจากกัน
-  document.getElementById('gemTop').textContent = getGems().toLocaleString('en-US');
+  document.getElementById('gemTop').textContent = gems;
+  // แถบบนซ่อนตัวเองตอนมีแผงย่อยเปิด (ดูกฎที่ .hud-top) หน้าตู้กาช่าจึงมีกระเป๋า
+  // ของตัวเองอีกชุด — เขียนพร้อมกันตรงนี้ที่เดียว ไม่งั้นสองที่จะหลุดจากกันแน่นอน
+  document.getElementById('goldGacha').textContent = gold;
+  document.getElementById('gemGacha').textContent = gems;
 }
 
 // ── ตู้กาช่า ───────────────────────────────────────────────
@@ -394,13 +400,19 @@ function drawCapsuleDrop(c, cx, p) {
 
 const pct = (n) => Math.round(n * 100) + '%';
 
-// ── ชั้นวางชุดกับช่องส่อง ──────────────────────────────────
+// ── ตู้กาช่า — ตู้เดียวสองช่อง ──────────────────────────────
 //
-// จุดประสงค์: ให้เห็นทั้งกระดานว่าตู้นี้มีอะไรบ้าง ได้ไปแล้วกี่ตัว และตัวที่ยังขาด
-// หน้าตาเป็นยังไง — ตัวที่ยังไม่ได้จึงต้องโชว์เป็นเงาดำ ไม่ใช่ซ่อนหรือเว้นว่าง
-// ถ้าซ่อน ผู้เล่นจะไม่มีทางรู้ว่ายังเหลืออะไรให้ลุ้น ซึ่งเป็นเหตุผลเดียวที่จะสุ่มต่อ
+// จุดประสงค์ของหน้านี้คือ "ตัดสินใจว่าจะสุ่มไหม" ไม่ใช่ "ดูของทั้งตู้"
+// จึงโชว์ทีละชิ้นตัวใหญ่ ๆ ให้เห็นชัดว่ากำลังลุ้นอะไรอยู่ ส่วนกระดานรวมว่า
+// ตู้นี้มีอะไรบ้างแยกไปหน้ารายการ (#gListPanel) ซึ่งเข้าจากปุ่ม "ดูอื่นๆ"
+//
+// สองช่องใช้ทั้งกรอบส่อง ปุ่มสุ่ม ตารางอัตรา และกล่องผลร่วมกันหมด
+// ต่างกันแค่ "แหล่งข้อมูล" กับ "กระเป๋าเงิน" — ทุกฟังก์ชันในบล็อกนี้จึงอ่าน gTab
+// แล้วแตกสองทางในที่เดียว ไม่ใช่ก๊อปหน้าทั้งหน้าไปเป็นชุดที่สอง
 
-let heroId = null;   // ชุดที่กำลังส่องอยู่ในช่องใหญ่
+let gTab = 'treasure';   // ช่องที่เปิดอยู่: 'treasure' | 'skin'
+let heroId = null;       // ชุดที่กำลังส่อง (ช่องสกิน)
+let tHeroId = null;      // สมบัติที่กำลังส่อง (ช่องสมบัติ)
 
 /**
  * ทับสิ่งที่วาดไปแล้วให้กลายเป็นเงาทึบ
@@ -418,178 +430,279 @@ function silhouette(c, w, h) {
   c.restore();
 }
 
-/** วาดชุดที่เลือกส่องลงช่องใหญ่ พร้อมป้ายระดับและสถานะว่าได้แล้วหรือยัง */
-function drawHero() {
-  const pool = pullPool();
-  if (!pool.length) return;
+// ── ข้อมูลของช่องที่เปิดอยู่ ──
+// ทุกที่ที่ต้อง "รู้ว่าตอนนี้กำลังพูดถึงสมบัติหรือชุด" ให้ผ่านตัวช่วยพวกนี้เท่านั้น
+// ถ้าปล่อยให้แต่ละฟังก์ชันเช็ค gTab เองแล้วไปเรียกของโมดูลตรง ๆ
+// วันที่เพิ่มช่องที่สามจะต้องไล่แก้ทุกจุดในไฟล์แทนที่จะแก้แค่ตรงนี้
+const gIsT = () => gTab === 'treasure';
+const gPool = () => (gIsT() ? TREASURES : pullPool());
+const gGot = (id) => (gIsT() ? ownsTreasure(id) : isOwned(id));
+const gHeroId = () => (gIsT() ? tHeroId : heroId);
 
-  const o = pool.find((x) => x.id === heroId) || pool[0];
-  heroId = o.id;
-
-  const got = isOwned(o.id);
-  const tier = RARITY[o.rarity];
-
-  const box = document.getElementById('gachaHero');
-  box.classList.toggle('locked', !got);
-  paintBox(box, 150, 150, (c) => {
-    drawCatPose(c, 75, 138, 2.05, { ...getSkin(), outfit: o }, 60);
-    if (!got) silhouette(c, 150, 150);
-  });
-
-  const badge = document.getElementById('heroTier');
-  badge.className = 'tier-badge ' + (o.rarity || '');
-  badge.textContent = tier ? tier.name : '';
-  badge.style.display = o.rarity ? '' : 'none';
-
-  document.getElementById('heroName').textContent = got ? o.name : '???';
-
-  // ค่าที่ชุดให้จริง ๆ — อ่านจาก foodBonus ของชุดตรง ๆ ไม่ได้เขียนค้างไว้
-  // ตัวเลขนี้คือเหตุผลเดียวที่ระดับสูงมีค่ากว่าระดับกลาง จึงต้องเห็นตั้งแต่ก่อนสุ่ม
-  // ไม่ใช่ไปรู้เอาตอนใส่แล้ว โชว์แม้ยังไม่ได้ชุด เพราะเป็นข้อมูลที่ใช้ตัดสินใจว่าจะลุ้นไหม
-  const bonus = document.getElementById('heroBonus');
-  bonus.textContent = o.foodBonus > 0
-    ? '+' + o.foodBonus.toLocaleString('en-US') + ' ต่อของกิน 1 ชิ้น'
-    : '';
-  bonus.style.display = o.foodBonus > 0 ? '' : 'none';
-
-  const state = document.getElementById('heroState');
-  state.textContent = got ? o.note : 'ยังไม่ได้ชุดนี้';
-  state.classList.toggle('locked', !got);
+function setHeroId(id) {
+  if (gIsT()) tHeroId = id;
+  else heroId = id;
 }
 
-/** แถบชุดทั้งหมดด้านล่าง กดเลือกเพื่อส่องตัวใหญ่ */
-function buildShelf() {
-  const shelf = document.getElementById('gachaShelf');
-  shelf.innerHTML = '';
+/** ราคาต่อครั้ง จำนวนครั้งของปุ่มใบที่สอง และกระเป๋าที่จ่าย — คนละช่องคนละกระเป๋า */
+const gCost = () => (gIsT() ? T_GACHA.cost : OUTFIT_COST);
+const gMulti = () => (gIsT() ? T_GACHA.multi : MULTI_PULLS);
+const gWallet = () => (gIsT() ? getGems() : getGold());
 
-  for (const o of pullPool()) {
-    const got = isOwned(o.id);
+/** วาดของชิ้นที่กำลังส่องลงกรอบซ้าย ทีละชิ้นเท่านั้น */
+function drawShow() {
+  const pool = gPool();
+  if (!pool.length) return;
 
-    const cell = document.createElement('button');
-    cell.className = 'shelf-cell ' + (o.rarity || '')
-      + (got ? '' : ' locked') + (o.id === heroId ? ' on' : '');
-    cell.innerHTML = '<canvas width="52" height="52"></canvas>';
-    cell.setAttribute('aria-label', got ? o.name : 'ยังไม่ได้ชุดนี้');
+  const item = pool.find((x) => x.id === gHeroId()) || pool[0];
+  setHeroId(item.id);
 
-    paintMini(cell.querySelector('canvas'), 52, (c) => {
-      drawCatPose(c, 30, 48, 0.76, { ...getSkin(), outfit: o }, 60);
-      if (!got) silhouette(c, 52, 52);
+  const got = gGot(item.id);
+  const badge = document.getElementById('showTier');
+  const cat = document.getElementById('showCat');
+  const emoji = document.getElementById('showEmoji');
+  const bonus = document.getElementById('showBonus');
+
+  // ชื่อกับคำอธิบายโชว์แม้ยังไม่ได้ — เป็นข้อมูลที่คนยังไม่มีต้องใช้ตัดสินใจ
+  // ว่าจะลุ้นต่อไหม ส่วนที่ปิดไว้คือ "ได้แล้วหรือยัง" ซึ่งบอกด้วยความจางของรูป
+  document.getElementById('showName').textContent = item.name;
+  document.getElementById('showNote').textContent = item.note;
+
+  cat.classList.toggle('hidden', gIsT());
+  emoji.classList.toggle('hidden', !gIsT());
+  // กรอบรูปเปลี่ยนสีตามระดับ ผู้เล่นจึงรู้ว่ากำลังส่องของหายากแค่ไหนตั้งแต่ยังไม่อ่านป้าย
+  document.querySelector('.show-face').className =
+    'show-face ' + (item.rarity || '') + (got ? '' : ' locked');
+
+  if (gIsT()) {
+    emoji.textContent = item.emoji;
+
+    // ป้ายสมบัติใช้ตัวย่อ (L/E/R) เหมือนการ์ดในหน้าสมบัติ สายตาจึงหาที่เดิมได้
+    badge.className = 'tier-badge round ' + item.rarity;
+    badge.textContent = T_RARITY[item.rarity].short;
+    badge.style.display = '';
+
+    // ฤทธิ์คิดจากขั้นที่ตีบวกไว้จริง ไม่ใช่ขั้น 0 ตายตัว
+    // ไม่งั้นคนที่ตีบวกไปแล้วจะเห็นตัวเลขต่ำกว่าที่ตัวเองได้จริง
+    bonus.textContent = effectText(item, treasureLevel(item.id));
+    bonus.style.display = '';
+  } else {
+    paintBox(cat, 150, 150, (c) => {
+      drawCatPose(c, 75, 138, 2.05, { ...getSkin(), outfit: item }, 60);
+      if (!got) silhouette(c, 150, 150);
     });
 
-    cell.addEventListener('click', () => {
-      if (heroId === o.id) return;
-      heroId = o.id;
-      unlockAudio();
-      sfx.fish();
-      drawHero();
-      // ทาสีเฉพาะกรอบที่เลือก ไม่วาดใหม่ทั้งแถบ — วาดแมว 13 ตัวใหม่ทุกครั้งที่แตะ
-      // จะกระตุกบนมือถือ ทั้งที่ภาพในช่องไม่ได้เปลี่ยนอะไรเลย
-      [...shelf.children].forEach((el) => el.classList.remove('on'));
-      cell.classList.add('on');
-    });
+    badge.className = 'tier-badge ' + (item.rarity || '');
+    badge.textContent = item.rarity ? RARITY[item.rarity].name : '';
+    badge.style.display = item.rarity ? '' : 'none';
 
-    shelf.appendChild(cell);
+    // ค่าที่ชุดให้จริง ๆ — อ่านจาก foodBonus ของชุดตรง ๆ ไม่ได้เขียนค้างไว้
+    // ตัวเลขนี้คือเหตุผลเดียวที่ระดับสูงมีค่ากว่าระดับกลาง จึงต้องเห็นตั้งแต่ก่อนสุ่ม
+    bonus.textContent = item.foodBonus > 0
+      ? '+' + item.foodBonus.toLocaleString('en-US') + ' ต่อของกิน 1 ชิ้น'
+      : '';
+    bonus.style.display = item.foodBonus > 0 ? '' : 'none';
   }
 }
 
-function refreshGacha() {
-  const gold = getGold();
-  refreshGold();
-  document.getElementById('ownedCount').textContent = ownedCount();
-  document.getElementById('totalCount').textContent = pullPool().length;
-
-  // สร้างจากค่าจริงเสมอ ไม่เขียนตัวเลขค้างไว้ใน HTML
-  // ไม่งั้นวันที่แก้อัตราแล้วลืมแก้ข้อความ ผู้เล่นจะโดนบอกอัตราผิด
-  //
-  // จุดสีนำหน้าแต่ละแถวใช้สีเดียวกับป้ายระดับบนการ์ดชุด ผู้เล่นจึงโยงได้ทันที
-  // ว่าไอ้ 10% ที่เขียนไว้ตรงนี้คือการ์ดขอบทองที่เพิ่งเห็นในหน้าเลือกชุด
-  const oddsRow = (cls, label, value) =>
+/**
+ * ตารางอัตราออกใต้ปุ่ม ! — สร้างจากค่าจริงของช่องที่เปิดอยู่เสมอ
+ *
+ * เดิมอัตราของตู้สมบัติกางเป็นชิปอยู่กลางหน้าตลอดเวลา ซึ่งเป็นข้อมูลที่ดูครั้งเดียว
+ * แล้วจำได้ ไม่ควรกินที่ถาวรแข่งกับของที่ผู้เล่นมาดูจริง ๆ คือของกับปุ่มสุ่ม
+ * ย้ายมาซ่อนใต้ปุ่ม ! ท่าเดียวกับตู้ชุด สองช่องจึงหาอัตราได้จากที่เดียวกัน
+ */
+function buildOdds() {
+  const row = (cls, label, value) =>
     '<div class="odds-row ' + cls + '"><i></i><span>' + label + '</span><b>' + value + '</b></div>';
 
-  document.getElementById('gachaOdds').innerHTML =
-    oddsRow('high', 'ระดับสูง', pct(RARITY.high.rate))
-    + oddsRow('normal', 'ระดับกลาง', pct(RARITY.normal.rate))
-    + oddsRow('gold', 'เหรียญทอง', pct(GOLD_RATE))
-    + '<div class="odds-note">ได้ชุดซ้ำ คืนทอง '
-    + DUPE_REFUND.toLocaleString('en-US') + '</div>';
-
-  // ราคาบนปุ่มมาจากค่าจริง ไม่ได้พิมพ์ค้างไว้ใน HTML
-  const p1 = document.getElementById('pull1');
-  const p5 = document.getElementById('pull5');
-  p1.querySelector('b').textContent = OUTFIT_COST.toLocaleString('en-US');
-  p5.querySelector('b').textContent = (OUTFIT_COST * MULTI_PULLS).toLocaleString('en-US');
-  p5.querySelector('small').textContent = MULTI_PULLS + ' ครั้ง!';
-  p1.disabled = gold < OUTFIT_COST;
-  p5.disabled = gold < OUTFIT_COST * MULTI_PULLS;
-
-  buildShelf();
-  drawHero();
+  document.getElementById('gachaOdds').innerHTML = gIsT()
+    ? Object.values(T_RARITY).map((r) => row(r.key, r.name, pct(r.rate))).join('')
+      + '<div class="odds-note">ได้ซ้ำ คืนเพชร ' + T_GACHA.dupeGems + '</div>'
+    : row('high', 'ระดับสูง', pct(RARITY.high.rate))
+      + row('normal', 'ระดับกลาง', pct(RARITY.normal.rate))
+      + row('gold', 'เหรียญทอง', pct(GOLD_RATE))
+      + '<div class="odds-note">ได้ชุดซ้ำ คืนทอง '
+      + DUPE_REFUND.toLocaleString('en-US') + '</div>';
 }
 
-/** การ์ดผลสุ่ม — ชุดใส่ได้ทุกสีขน จึงพรีวิวบนแมวตัวที่เลือกอยู่ */
-/** ปิดกล่องผลสุ่มแล้วล้างของเก่าทิ้ง ใช้ทุกทางที่ต้องเลิกโชว์ผล */
+function refreshGacha() {
+  refreshGold();
+
+  const t = gIsT();
+  document.getElementById('tabTreasure').classList.toggle('on', t);
+  document.getElementById('tabSkin').classList.toggle('on', !t);
+  document.getElementById('gachaMore').textContent = t ? 'ดูสมบัติอื่นๆ' : 'ดูสกินอื่นๆ';
+  document.getElementById('gachaHint').textContent =
+    t ? 'เปิดหีบด้วยเพชรชมพู' : 'หมุนตู้ด้วยเหรียญทอง';
+
+  // หีบกับตู้หมุนอยู่ในกรอบเดียวกัน โผล่ทีละอันตามช่องที่เลือก
+  document.getElementById('tgChest').classList.toggle('hidden', !t);
+  document.getElementById('gachaMachine').classList.toggle('hidden', t);
+
+  document.getElementById('ownedCount').textContent = t ? treasureCount() : ownedCount();
+  document.getElementById('totalCount').textContent = gPool().length;
+
+  // ราคากับสกุลเงินบนปุ่มมาจากค่าจริง ไม่ได้พิมพ์ค้างไว้ใน HTML
+  const cost = gCost();
+  const multi = gMulti();
+  const money = gWallet();
+  const p1 = document.getElementById('pull1');
+  const p5 = document.getElementById('pull5');
+
+  for (const btn of [p1, p5]) btn.querySelector('.cur').className = 'cur ' + (t ? 'gem' : 'coin');
+  p1.querySelector('b').textContent = cost.toLocaleString('en-US');
+  p5.querySelector('b').textContent = (cost * multi).toLocaleString('en-US');
+  p5.querySelector('small').textContent = multi + ' ครั้ง!';
+  p1.disabled = money < cost;
+  p5.disabled = money < cost * multi;
+
+  buildOdds();
+  drawShow();
+}
+
+// ── กล่องผลสุ่ม ──
+// ใช้ร่วมกันทั้งสองช่อง คลุมทั้งการ์ดไว้ จึงต้องมีทางปิดของตัวเองเสมอ
+
 function closeResult() {
   document.getElementById('gachaResult').classList.add('hidden');
   document.getElementById('gotRow').innerHTML = '';
 }
 
-function showPullResults(results) {
+/** ใส่การ์ดลงกล่องผล เหลื่อมกันทีละใบให้ใบหายากมีจังหวะให้สังเกตว่าเรืองแสง */
+function pushGotCard(box, cls, html, fill) {
+  const card = document.createElement('div');
+  card.className = 'got-card ' + cls;
+  card.innerHTML = html;
+  fill(card);
+  card.style.setProperty('--d', (box.children.length * 0.11).toFixed(2) + 's');
+  box.appendChild(card);
+}
+
+/** หัวเรื่องบอกผลรวมในบรรทัดเดียว ผู้เล่นจึงรู้ทันทีว่ารอบนี้คุ้มไหมก่อนไล่ดูทีละใบ */
+function openResult(fresh, word) {
   const box = document.getElementById('gotRow');
   box.innerHTML = '';
-
-  // หัวเรื่องบอกผลรวมในบรรทัดเดียว ผู้เล่นจึงรู้ทันทีว่ารอบนี้คุ้มไหม
-  // ก่อนจะไล่ดูทีละใบ — ห้าใบเรียงกันอ่านทีละใบใช้เวลานานเกินไป
-  const fresh = results.filter((r) => r.kind === 'outfit' && r.isNew).length;
   document.getElementById('gotTitle').textContent =
-    fresh > 0 ? 'ได้ชุดใหม่ ' + fresh + ' ชิ้น!' : 'ได้รับ!';
+    fresh > 0 ? 'ได้' + word + 'ใหม่ ' + fresh + ' ชิ้น!' : 'ได้รับ!';
   document.getElementById('gachaResult').classList.remove('hidden');
+  return box;
+}
+
+function showOutfitResults(results) {
+  const box = openResult(results.filter((r) => r.kind === 'outfit' && r.isNew).length, 'ชุด');
 
   for (const r of results) {
-    const card = document.createElement('div');
-
     if (r.kind === 'gold') {
-      card.className = 'got-card gold';
-      card.innerHTML =
-        '<span class="coin big" aria-hidden="true"></span><b></b><small>เหรียญทอง</small>';
-      card.querySelector('b').textContent = '+' + r.gold.toLocaleString('en-US');
-    } else {
-      const o = r.outfit;
-      const tier = RARITY[o.rarity];
-
-      card.className =
-        'got-card ' + o.rarity + (r.isNew ? '' : ' dupe');
-      card.innerHTML =
-        '<span class="tier-badge"></span><canvas width="72" height="72"></canvas>'
-        + '<b></b><small></small>';
-
-      // ป้ายระดับติดมุมบนเหมือนการ์ดในหน้าเลือกชุด สายตาจึงหาที่เดิมได้
-      const badge = card.querySelector('.tier-badge');
-      badge.className = 'tier-badge ' + o.rarity;
-      badge.textContent = tier.short;
-
-      card.querySelector('b').textContent = o.name;
-      const tag = card.querySelector('small');
-      tag.textContent = r.isNew ? 'ใหม่!' : 'ซ้ำ +' + DUPE_REFUND.toLocaleString('en-US');
-      tag.style.color = r.isNew ? tier.color : '#B99BD4';
-
-      paintMini(card.querySelector('canvas'), 72,
-        (c) => drawCatPose(c, 38, 66, 1.05, { ...getSkin(), outfit: o }, 60));
+      pushGotCard(box, 'gold',
+        '<span class="coin big" aria-hidden="true"></span><b></b><small>เหรียญทอง</small>',
+        (card) => {
+          card.querySelector('b').textContent = '+' + r.gold.toLocaleString('en-US');
+        });
+      continue;
     }
 
-    // เหลื่อมกันทีละใบ ใบระดับสูงจะได้มีจังหวะให้สังเกตเห็นว่าเรืองแสง
-    card.style.setProperty('--d', (box.children.length * 0.11).toFixed(2) + 's');
-    box.appendChild(card);
+    const o = r.outfit;
+    const tier = RARITY[o.rarity];
+    pushGotCard(box, o.rarity + (r.isNew ? '' : ' dupe'),
+      '<span class="tier-badge"></span><canvas width="72" height="72"></canvas><b></b><small></small>',
+      (card) => {
+        // ป้ายระดับติดมุมบนเหมือนการ์ดในหน้าเลือกชุด สายตาจึงหาที่เดิมได้
+        const badge = card.querySelector('.tier-badge');
+        badge.className = 'tier-badge ' + o.rarity;
+        badge.textContent = tier.short;
+
+        card.querySelector('b').textContent = o.name;
+        const tag = card.querySelector('small');
+        tag.textContent = r.isNew ? 'ใหม่!' : 'ซ้ำ +' + DUPE_REFUND.toLocaleString('en-US');
+        tag.style.color = r.isNew ? tier.color : '#B99BD4';
+
+        paintMini(card.querySelector('canvas'), 72,
+          (c) => drawCatPose(c, 38, 66, 1.05, { ...getSkin(), outfit: o }, 60));
+      });
   }
 }
 
-function doPull(times) {
+function showTreasureResults(results) {
+  const box = openResult(results.filter((r) => r.isNew).length, 'สมบัติ');
+
+  for (const g of results) {
+    const t = g.treasure;
+    pushGotCard(box, t.rarity + (g.isNew ? '' : ' dupe'),
+      '<span class="tier-badge ' + t.rarity + '">' + T_RARITY[t.rarity].short + '</span>'
+      + '<span class="t-emoji big"></span><b></b><small></small>',
+      (card) => {
+        card.querySelector('.t-emoji').textContent = t.emoji;
+        card.querySelector('b').textContent = t.name;
+        card.querySelector('small').textContent = g.isNew ? 'ใหม่!' : '+' + g.gems + ' เพชร';
+      });
+  }
+}
+
+// ── หีบสมบัติ ──
+// ฝาค่อย ๆ เปิดก่อน แล้วการ์ดค่อยโผล่ ไม่งั้นแอนิเมชันเปิดฝาไม่มีใครได้เห็นสักเฟรม
+// ทั้งที่มันคือเหตุผลเดียวที่หีบมีอยู่ — ต้องรู้สึกว่า "เปิดหีบ" ไม่ใช่ "กดปุ่มแล้วมีของ"
+const CHEST_OPEN_MS = 430;
+let chestTick = 0;
+let chestOpen = 0;      // 0 = ปิด, 1 = เปิดสุด
+let chestTarget = 0;
+let chestTimer = 0;     // จับเวลาช่วง "ฝากำลังเปิด" ก่อนการ์ดจะโผล่
+
+/** สุ่มสมบัติด้วยเพชร */
+function doTPull(times) {
+  // ฝายังเปิดอยู่ = ยังไม่จบรอบก่อน กดซ้ำตอนนี้จะหักเพชรสองรอบแต่เห็นผลรอบเดียว
+  if (chestTimer) return;
+
+  const msg = document.getElementById('gachaMsg');
+  const r = pullTreasure(times);
+  if (!r.ok) {
+    setMsg(msg, 'เพชรไม่พอ ขาดอีก ' + r.need.toLocaleString('en-US'), true);
+    return;
+  }
+
+  unlockAudio();
+  sfx.potion();
+  setMsg(msg, r.back ? 'ได้ซ้ำ คืนเพชร ' + r.back.toLocaleString('en-US') : '');
+  closeResult();
+
+  // ปิดปุ่มไว้ระหว่างฝากำลังเปิด แล้วให้ refreshGacha() ตอนจบเป็นคนตัดสินใหม่
+  // ว่าเปิดปุ่มไหนได้บ้างตามเพชรที่เหลือจริง
+  document.getElementById('pull1').disabled = true;
+  document.getElementById('pull5').disabled = true;
+
+  chestTarget = 1;
+  clearTimeout(chestTimer);
+  chestTimer = setTimeout(() => {
+    chestTimer = 0;
+    chestTarget = 0;   // ฝาปิดกลับเอง พร้อมรับรอบถัดไปโดยไม่ต้องออกจากหน้า
+
+    if (r.results.some((x) => x.isNew && x.treasure.rarity === 'legend')) sfx.bonus();
+    else sfx.kibble();
+
+    // ได้ของใหม่ก็เด้งกรอบส่องไปที่ชิ้นล่าสุด ผู้เล่นจะได้เห็นเต็มตาทันที
+    const fresh = r.results.filter((x) => x.isNew).pop();
+    if (fresh) tHeroId = fresh.treasure.id;
+
+    showTreasureResults(r.results);
+    refreshGacha();
+    refreshHome();
+  }, CHEST_OPEN_MS);
+}
+
+/** สุ่มชุดด้วยเหรียญทอง — ผลรอจนแคปซูลแตกถึงจะโผล่ (ดู revealPull) */
+function doOPull(times) {
   if (pullProgress > 0) return;   // กันกดรัวระหว่างแอนิเมชันยังไม่จบ
 
   const res = pull(times);
-  if (!res.ok) return;
+  if (!res.ok) {
+    setMsg(document.getElementById('gachaMsg'),
+      'ทองไม่พอ ขาดอีก ' + res.need.toLocaleString('en-US'), true);
+    return;
+  }
 
   unlockAudio();
   sfx.potion();                   // เสียงตอนหมุนตู้ เสียงของรางวัลมาทีหลัง
+  setMsg(document.getElementById('gachaMsg'), '');
   gachaShake = 1;
   pullProgress = 0.0001;          // ต้องมากกว่า 0 ให้ลูปรู้ว่ากำลังเปิดอยู่
   pullPending = res.results;
@@ -597,6 +710,11 @@ function doPull(times) {
   closeResult();
   refreshGacha();
   refreshHome();
+}
+
+function doPull(times) {
+  if (gIsT()) doTPull(times);
+  else doOPull(times);
 }
 
 /** เรียกตอนแคปซูลแตกพอดี — เสียงกับการ์ดจึงมาพร้อมกับภาพ */
@@ -609,12 +727,12 @@ function revealPull() {
   if (results.some((r) => r.kind === 'outfit' && r.outfit.rarity === 'high')) sfx.bonus();
   else sfx.kibble();
 
-  // ได้ของใหม่ก็เด้งช่องส่องไปที่ตัวล่าสุดเลย ผู้เล่นจะได้เห็นเต็มตัวทันที
-  // ว่าที่เพิ่งปลดล็อกไปหน้าตาเป็นยังไง ไม่ต้องไปไล่หาเองในแถบล่าง
+  // ได้ของใหม่ก็เด้งกรอบส่องไปที่ตัวล่าสุดเลย ผู้เล่นจะได้เห็นเต็มตัวทันที
+  // ว่าที่เพิ่งปลดล็อกไปหน้าตาเป็นยังไง ไม่ต้องไปไล่หาเองในหน้ารายการ
   const fresh = results.filter((r) => r.kind === 'outfit' && r.isNew).pop();
   if (fresh) heroId = fresh.outfit.id;
 
-  showPullResults(results);
+  showOutfitResults(results);
   // เก็บประวัติขึ้นคลาวด์ถ้าต่ออยู่ — ล้มเหลวก็ไม่กระทบการเล่น
   import('./net/sync.js').then((m) => m.recordPulls(results)).catch(() => {});
   // ทองที่เพิ่งได้ต้องขึ้นแถบบนทันทีพร้อมการ์ด ไม่ใช่รอเปิดพาเนลใหม่
@@ -622,25 +740,121 @@ function revealPull() {
   refreshHome();
 }
 
-function showGacha(on) {
+/** เลิกทุกอย่างที่ค้างอยู่กลางคัน — ใช้ทั้งตอนสลับช่องและตอนปิดหน้า */
+function resetGachaAnim() {
+  pullProgress = 0;
+  pullPending = null;
+  gachaShake = 0;
+  clearTimeout(chestTimer);
+  chestTimer = 0;
+  chestOpen = 0;
+  chestTarget = 0;
+  closeResult();
+  document.getElementById('oddsPop').classList.add('hidden');
+}
+
+function setTab(tab) {
+  if (gTab === tab) return;
+  gTab = tab;
+  // ของที่ค้างจากช่องก่อนต้องไม่ตามข้ามมา ไม่งั้นแคปซูลจะไปแตกอยู่บนหีบ
+  resetGachaAnim();
+  setMsg(document.getElementById('gachaMsg'), '');
+  refreshGacha();
+}
+
+/** ชิ้นที่เปิดมาแล้วควรส่องก่อน คือชิ้นที่ยังไม่ได้ — นั่นคือของที่ยังต้องลุ้น */
+function pickFirstHero(tab) {
+  const keep = gTab;
+  gTab = tab;
+  if (gHeroId() === null) {
+    const pool = gPool();
+    setHeroId((pool.find((x) => !gGot(x.id)) || pool[0] || {}).id ?? null);
+  }
+  gTab = keep;
+}
+
+function showGacha(on, tab) {
   gachaPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
   if (on) {
-    closeResult();
-    // เปิดมาให้ส่องตัวที่ยังไม่ได้เป็นตัวแรก — นั่นคือของที่ยังต้องลุ้น
-    // ถ้าได้ครบแล้วก็โชว์ตัวแรกไปตามปกติ
-    if (heroId === null) {
-      const pool = pullPool();
-      heroId = (pool.find((o) => !isOwned(o.id)) || pool[0] || {}).id ?? null;
-    }
+    if (tab) gTab = tab;
+    resetGachaAnim();
+    setMsg(document.getElementById('gachaMsg'), '');
+    pickFirstHero('treasure');
+    pickFirstHero('skin');
     refreshGacha();
   } else {
     // ปิดพาเนลกลางแอนิเมชัน: ล้างสถานะทิ้ง ไม่งั้นเปิดกลับมาเจอผลเก่าเด้งขึ้นเอง
     // ของที่สุ่มได้ถูกบันทึกไปตั้งแต่ตอนกดแล้ว จึงไม่มีอะไรหาย
-    pullProgress = 0;
-    pullPending = null;
-    gachaShake = 0;
-    document.getElementById('oddsPop').classList.add('hidden');
+    resetGachaAnim();
+  }
+}
+
+// ── หน้ารายการของทั้งตู้ ────────────────────────────────────
+//
+// ตอบคำถาม "ตู้นี้มีอะไรบ้าง" ซึ่งกรอบส่องทีละชิ้นตอบไม่ได้
+// ที่ยังไม่ได้โชว์เป็นเงา/ขาวดำ ไม่ใช่ซ่อนทิ้ง — ถ้าซ่อน ผู้เล่นจะไม่มีทางรู้ว่า
+// ยังเหลืออะไรให้ลุ้น ซึ่งเป็นเหตุผลเดียวที่จะกดสุ่มต่อ
+
+const gListPanel = document.getElementById('gListPanel');
+
+function buildGList() {
+  const grid = document.getElementById('glGrid');
+  grid.innerHTML = '';
+
+  const t = gIsT();
+  document.getElementById('glTitle').textContent = t ? 'สมบัติในตู้นี้' : 'สกินในตู้นี้';
+  document.getElementById('glOwned').textContent = t ? treasureCount() : ownedCount();
+  document.getElementById('glTotal').textContent = gPool().length;
+
+  for (const item of gPool()) {
+    const got = gGot(item.id);
+    const card = document.createElement('button');
+    card.className = 'skin-card ' + (got ? '' : 'locked ')
+      + (item.id === gHeroId() ? 'on ' : '')
+      + (t ? 't-card ' + item.rarity : 'outfit-card' + (item.rarity === 'high' ? ' high' : ''));
+
+    if (t) {
+      card.innerHTML = '<span class="t-emoji"></span><b></b>'
+        + '<span class="tier-badge ' + item.rarity + '"></span>';
+      card.querySelector('.t-emoji').textContent = item.emoji;
+      card.querySelector('.tier-badge').textContent = T_RARITY[item.rarity].short;
+    } else {
+      card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
+      // "ขนล้วน" ไม่มีระดับ จึงไม่ติดป้าย
+      if (item.rarity) {
+        const badge = document.createElement('span');
+        badge.className = 'tier-badge ' + item.rarity;
+        badge.textContent = RARITY[item.rarity].name;
+        card.appendChild(badge);
+      }
+      // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
+      paintMini(card.querySelector('canvas'), 96,
+        (c) => drawCatPose(c, 55, 88, 1.5, { ...getSkin(), outfit: item }, 60));
+    }
+    card.querySelector('b').textContent = item.name;
+
+    // แตะแล้วพากลับไปส่องใบนั้นในหน้าตู้ทันที — หน้านี้มีไว้ "เลือกดู" อย่างเดียว
+    // ส่วนติดตั้งสมบัติกับใส่ชุด ยังอยู่ในหน้าสมบัติกับหน้าชุดเหมือนเดิม
+    card.addEventListener('click', () => {
+      unlockAudio();
+      sfx.fish();
+      setHeroId(item.id);
+      showGList(false);
+    });
+
+    grid.appendChild(card);
+  }
+  markScrollable(grid);
+}
+
+function showGList(on) {
+  if (on) {
+    buildGList();
+    swapPanel(gachaPanel, gListPanel);
+  } else {
+    swapPanel(gListPanel, gachaPanel);
+    refreshGacha();
   }
 }
 
@@ -1639,7 +1853,6 @@ function showOutfits(on) {
 const treasurePanel = document.getElementById('treasurePanel');
 const tDetailPanel = document.getElementById('tDetailPanel');
 const upPanel = document.getElementById('upPanel');
-const tgachaPanel = document.getElementById('tgachaPanel');
 const loadoutPanel = document.getElementById('loadoutPanel');
 
 let tCurrent = null;   // id ของสมบัติที่กำลังดูรายละเอียด/ตีบวกอยู่
@@ -1684,7 +1897,7 @@ function buildTreasureGrid() {
   });
 
   if (!list.length) {
-    emptyNote(grid, 'ยังไม่มีสมบัติเลย กดสุ่มสมบัติข้างล่างได้เลย');
+    emptyNote(grid, 'ยังไม่มีสมบัติเลย ไปสุ่มที่ตู้กาช่าก่อนนะ');
     markScrollable(grid);
     return;
   }
@@ -1835,148 +2048,6 @@ function doUpgrade() {
   paintUpgrade();
   refreshGold();
 }
-
-// ── ตู้สุ่มสมบัติ ────────────────────────────────────────────
-
-// ── หีบกลางแผง ──
-// วาดต่อเนื่องเฉพาะตอนแผงเปิดอยู่เท่านั้น ปิดแผงแล้วหยุดลูปทันที
-// ถ้าปล่อยให้วิ่งตลอด มันจะแย่งเฟรมกับตัวเกมตอนกำลังวิ่งโดยไม่มีใครเห็นผลงาน
-let chestTick = 0;
-let chestOpen = 0;      // 0 = ปิด, 1 = เปิดสุด
-let chestTarget = 0;
-let chestRAF = 0;
-let chestTimer = 0;     // จับเวลาช่วง "ฝากำลังเปิด" ก่อนการ์ดจะโผล่
-
-const CHEST_OPEN_MS = 430;
-
-function paintChest() {
-  const cv = document.getElementById('tgChest');
-  if (!cv) return;
-  paintBox(cv, CHEST.W, CHEST.H, (c) => drawChest(c, chestOpen, chestTick));
-}
-
-function chestLoop() {
-  chestTick++;
-  // ไล่เข้าหาเป้าหมายแบบนุ่ม ๆ แทนการสลับค่าทันที ฝาจึงค่อย ๆ เปิด
-  chestOpen += (chestTarget - chestOpen) * 0.13;
-  paintChest();
-  chestRAF = requestAnimationFrame(chestLoop);
-}
-
-function startChest() {
-  if (!chestRAF) chestLoop();
-}
-
-function stopChest() {
-  cancelAnimationFrame(chestRAF);
-  chestRAF = 0;
-  // ออกจากหน้าไปตอนฝากำลังเปิด ต้องยกเลิกคิวด้วย ไม่งั้นการ์ดจะไปโผล่
-  // ในแผงที่ปิดไปแล้ว แล้วค้างอยู่อย่างนั้นจนกว่าจะเข้ามาใหม่
-  clearTimeout(chestTimer);
-  chestTimer = 0;
-}
-
-/** สลับระหว่างหีบกับแถวการ์ดที่สุ่มได้ — สองอันอยู่ในกรอบเดียวกัน */
-function showChest(on) {
-  document.getElementById('tgChestWrap').classList.toggle('hidden', !on);
-  document.getElementById('tgRow').classList.toggle('hidden', on);
-  if (on) {
-    // กลับมาหน้านี้ใหม่ต้องเห็นหีบปิด ไม่ใช่ค้างเปิดจากรอบก่อน
-    chestOpen = 0;
-    chestTarget = 0;
-  }
-}
-
-/**
- * เปิดฝาหีบให้เห็นก่อน แล้วค่อยเอาการ์ดมาแทน
- *
- * เคยสลับเป็นการ์ดทันทีที่กด ซึ่งทำให้แอนิเมชันเปิดฝาไม่มีใครได้เห็นสักเฟรม
- * ทั้งที่มันคือเหตุผลเดียวที่หีบมีอยู่ — ต้องรู้สึกว่า "เปิดหีบ" ไม่ใช่ "กดปุ่มแล้วมีของ"
- */
-function openChestThen(fn) {
-  chestTarget = 1;
-  clearTimeout(chestTimer);
-  chestTimer = setTimeout(() => {
-    chestTimer = 0;
-    fn();
-  }, CHEST_OPEN_MS);
-}
-
-function paintTGacha() {
-  document.getElementById('tgOdds').innerHTML =
-    Object.values(T_RARITY).map((r) =>
-      `<span class="odds-chip ${r.key}"><i></i>${r.name} ${Math.round(r.rate * 100)}%</span>`).join('')
-    + `<span class="odds-chip dupe">ได้ซ้ำคืน ${T_GACHA.dupeGems} เพชร</span>`;
-
-  document.getElementById('tgOwned').textContent = treasureCount();
-  document.getElementById('tgTotal').textContent = TREASURES.length;
-
-  const g = getGems();
-  document.getElementById('tgPull1').disabled = g < T_GACHA.cost;
-  document.getElementById('tgPull3').disabled = g < T_GACHA.cost * T_GACHA.multi;
-  refreshGold();
-}
-
-function doTPull(times) {
-  // ฝายังเปิดอยู่ = ยังไม่จบรอบก่อน กดซ้ำตอนนี้จะหักเพชรสองรอบแต่เห็นผลรอบเดียว
-  if (chestTimer) return;
-
-  const msg = document.getElementById('tgMsg');
-  const row = document.getElementById('tgRow');
-  const r = pullTreasure(times);
-
-  if (!r.ok) {
-    setMsg(msg, 'เพชรไม่พอ ขาดอีก ' + r.need.toLocaleString('en-US'), true);
-    return;
-  }
-
-  unlockAudio();
-  sfx.potion();
-  setMsg(msg, r.back ? 'ได้ซ้ำ คืนเพชร ' + r.back.toLocaleString('en-US') : '');
-
-  // ปิดปุ่มไว้ระหว่างฝากำลังเปิด แล้วให้ paintTGacha() ตอนจบเป็นคนตัดสินใหม่
-  // ว่าเปิดปุ่มไหนได้บ้างตามเพชรที่เหลือจริง
-  document.getElementById('tgPull1').disabled = true;
-  document.getElementById('tgPull3').disabled = true;
-
-  openChestThen(() => {
-    showChest(false);
-
-    row.innerHTML = '';
-    for (const g of r.results) {
-      const t = g.treasure;
-      const card = document.createElement('div');
-      card.className = 'got-card ' + t.rarity + (g.isNew ? '' : ' dupe');
-      card.innerHTML =
-        `<span class="tier-badge ${t.rarity}">${T_RARITY[t.rarity].short}</span>`
-        + `<span class="t-emoji big"></span><b></b><small></small>`;
-      card.querySelector('.t-emoji').textContent = t.emoji;
-      card.querySelector('b').textContent = t.name;
-      card.querySelector('small').textContent = g.isNew ? 'ใหม่!' : '+' + g.gems + ' เพชร';
-      card.style.setProperty('--d', (row.children.length * 0.1).toFixed(2) + 's');
-      row.appendChild(card);
-    }
-
-    if (r.results.some((x) => x.isNew && x.treasure.rarity === 'legend')) sfx.bonus();
-    paintTGacha();
-  });
-}
-
-function showTGacha(on) {
-  if (on) {
-    document.getElementById('tgRow').innerHTML = '';
-    setMsg(document.getElementById('tgMsg'), '');
-    showChest(true);
-    paintTGacha();
-    swapPanel(treasurePanel, tgachaPanel);
-    startChest();
-  } else {
-    stopChest();
-    swapPanel(tgachaPanel, treasurePanel);
-    buildTreasureGrid();
-  }
-}
-
 // ── หน้าติดตั้ง ─────────────────────────────────────────────
 
 function paintSlots() {
@@ -2127,14 +2198,6 @@ document.getElementById('upBack').addEventListener('click', () => {
 });
 document.getElementById('upGo').addEventListener('click', doUpgrade);
 
-document.getElementById('tgachaOpen').addEventListener('click', () => {
-  unlockAudio(); sfx.fish();
-  showTGacha(true);
-});
-document.getElementById('tgBack').addEventListener('click', () => showTGacha(false));
-document.getElementById('tgPull1').addEventListener('click', () => doTPull(1));
-document.getElementById('tgPull3').addEventListener('click', () => doTPull(T_GACHA.multi));
-
 document.getElementById('loadoutOpen').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
   showLoadout(true);
@@ -2146,7 +2209,24 @@ document.getElementById('btnGacha').addEventListener('click', () => {
 });
 document.getElementById('gachaBack').addEventListener('click', () => showGacha(false));
 
-// อัตราการสุ่มซ่อนอยู่ใต้ปุ่ม ! — เปิดค้างไว้ไม่ได้ เพราะมันบังชั้นวางชุดข้างล่าง
+// ── สลับช่องสมบัติ/สกิน ──
+document.getElementById('tabTreasure').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  setTab('treasure');
+});
+document.getElementById('tabSkin').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  setTab('skin');
+});
+
+// หน้ารายการของทั้งตู้ — เข้าจากปุ่ม "ดูอื่นๆ" มุมขวาบนของกรอบตู้
+document.getElementById('gachaMore').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  showGList(true);
+});
+document.getElementById('glBack').addEventListener('click', () => showGList(false));
+
+// อัตราการสุ่มซ่อนอยู่ใต้ปุ่ม ! — เปิดค้างไว้ไม่ได้ เพราะมันบังปุ่มสุ่มข้างใต้
 const oddsPop = document.getElementById('oddsPop');
 const showOdds = (on) => oddsPop.classList.toggle('hidden', !on);
 document.getElementById('oddsBtn').addEventListener('click', () => {
@@ -2171,8 +2251,9 @@ document.getElementById('btnRank').addEventListener('click', () => {
 document.getElementById('rankBack').addEventListener('click', () => showRank(false));
 document.getElementById('rankSave').addEventListener('click', saveName);
 typable('rankName', saveName);
+// จำนวนครั้งของปุ่มใบที่สองต่างกันคนละช่อง (สมบัติ 3 / ชุด 5) จึงถามจากช่องที่เปิดอยู่
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
-document.getElementById('pull5').addEventListener('click', () => doPull(MULTI_PULLS));
+document.getElementById('pull5').addEventListener('click', () => doPull(gMulti()));
 document.getElementById('homeBtn').addEventListener('click', goHome);
 
 // เลิกเล่นกลางคัน: เก็บสถิติก่อน แล้วค่อยทิ้งรอบเล่น
@@ -2402,23 +2483,36 @@ function loop(now) {
   game.draw(ctx);
 
   // ตู้กาช่าวาดใหม่เฉพาะตอนเปิดพาเนลอยู่ ไม่ต้องเสียเฟรมทิ้งตอนเล่นเกม
+  // หีบกับตู้หมุนวาดคนละช่อง จึงเสียเฟรมให้ตัวที่โผล่อยู่ตัวเดียว
+  //
+  // เดิมหีบมีลูป requestAnimationFrame ของตัวเองอีกอัน ซึ่งต้องคอยสั่งเริ่ม/หยุด
+  // ให้ตรงกับจังหวะเปิดปิดพาเนลเอง พอย้ายมาอยู่ในลูปเดียวกันนี้ เงื่อนไข
+  // "พาเนลเปิดอยู่ไหม" ก็ตอบให้ทั้งสองตัวพร้อมกัน ไม่มีทางค้างวิ่งทิ้งไว้อีก
   if (!gachaPanel.classList.contains('hidden')) {
-    // เร่งการหมุนตอนกำลังเปิด แต่สะสมต่อจากค่าเดิม ไม่ใช่คูณเวลาจริง
-    // ไม่งั้นเฟสจะกระโดดตอนเริ่มและจบแอนิเมชัน
-    spinT += dt * (pullProgress > 0 ? 4.5 : 1);
-    gachaShake = Math.max(0, gachaShake - 0.05 * dt);
+    if (gIsT()) {
+      chestTick += dt;
+      // ไล่เข้าหาเป้าหมายแบบนุ่ม ๆ แทนการสลับค่าทันที ฝาจึงค่อย ๆ เปิด
+      chestOpen += (chestTarget - chestOpen) * Math.min(1, 0.13 * dt);
+      paintBox(document.getElementById('tgChest'), CHEST.W, CHEST.H,
+        (c) => drawChest(c, chestOpen, chestTick));
+    } else {
+      // เร่งการหมุนตอนกำลังเปิด แต่สะสมต่อจากค่าเดิม ไม่ใช่คูณเวลาจริง
+      // ไม่งั้นเฟสจะกระโดดตอนเริ่มและจบแอนิเมชัน
+      spinT += dt * (pullProgress > 0 ? 4.5 : 1);
+      gachaShake = Math.max(0, gachaShake - 0.05 * dt);
 
-    if (pullProgress > 0) {
-      pullProgress += dt / PULL_FRAMES;
-      // แตกที่ 0.7 ตรงกับจังหวะฝาแยกใน drawCapsuleDrop
-      if (pullPending && pullProgress >= 0.7) revealPull();
-      if (pullProgress >= 1) pullProgress = 0;
+      if (pullProgress > 0) {
+        pullProgress += dt / PULL_FRAMES;
+        // แตกที่ 0.7 ตรงกับจังหวะฝาแยกใน drawCapsuleDrop
+        if (pullPending && pullProgress >= 0.7) revealPull();
+        if (pullProgress >= 1) pullProgress = 0;
+      }
+
+      paintBox(document.getElementById('gachaMachine'), MACHINE_W, MACHINE_H, (c) => {
+        c.scale(MACHINE_W / 150, MACHINE_H / 170);
+        drawGachaMachine(c, spinT, gachaShake, pullProgress);
+      });
     }
-
-    paintBox(document.getElementById('gachaMachine'), MACHINE_W, MACHINE_H, (c) => {
-      c.scale(MACHINE_W / 150, MACHINE_H / 170);
-      drawGachaMachine(c, spinT, gachaShake, pullProgress);
-    });
   }
 
   requestAnimationFrame(loop);
@@ -2442,7 +2536,7 @@ if (import.meta.env.DEV) window.__game = game;
 // ไม่งั้นเพชรเข้าแล้วแต่ปุ่มยังเทาอยู่จนกว่าจะออกไปเข้าใหม่
 setupDebug(game, {
   refreshCurrency: () => {
-    if (!tgachaPanel.classList.contains('hidden')) paintTGacha();
+    if (!gachaPanel.classList.contains('hidden')) refreshGacha();
     else refreshGold();
   },
 });
