@@ -1800,6 +1800,8 @@ canvas { display: block; width: 100%; height: auto; }
   right: -3px;
   width: 11px;
   height: 11px;
+  /* ค่าข้างบนคือทรง "จุดเปล่า" ของกล่องจดหมาย ส่วนป้ายที่มีตัวเลขทับค่าพวกนี้
+     ด้วยกฎ :not(:empty) ข้างล่าง — จุดกับป้ายจึงเป็นของชิ้นเดียวกันที่โตตามเนื้อหา */
   border-radius: 50%;
   background: #E8434F;
   border: 2px solid #3A1D50;
@@ -1807,6 +1809,28 @@ canvas { display: block; width: 100%; height: auto; }
   animation: mailPulse 1.6s ease-in-out infinite;
 }
 #btnMail .dot.hidden, .lobby-btn .dot.hidden { display: none; }
+
+/* ── ป้ายแดงแบบมีตัวเลข ──
+   ใช้กฎเดียวกับจุดเปล่าทุกอย่าง ต่างแค่โตพอให้ตัวเลขอยู่ได้
+   min-width เท่ากับ height เพื่อให้เลขหลักเดียวยังเป็นวงกลมกลม ไม่ใช่แคปซูลแบน */
+.dot:not(:empty) {
+  width: auto;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-family: "Mitr", sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 10.5px;
+  line-height: 1;
+  color: #FFF3E2;
+  display: grid;
+  place-items: center;
+  /* ตัวเลขบนพื้นแดงต้องอ่านออกบนพื้นหลังทุกแบบที่ปุ่มไปนั่งอยู่
+     เงาเข้มบาง ๆ ทำให้ขอบป้ายไม่จมกับปุ่มม่วงข้างหลัง */
+  text-shadow: 0 1px 1px rgba(0,0,0,.45);
+}
 /* ปุ่มล็อบบี้ไม่ได้ position: relative มาแต่แรก จุดจะไปเกาะมุมเวทีแทนมุมปุ่ม */
 .lobby-btn { position: relative; }
 @keyframes mailPulse {
@@ -3073,6 +3097,12 @@ canvas { display: block; width: 100%; height: auto; }
 
 /* ปุ่มเครื่องหมายตกใจ — เปิดตารางอัตราออก */
 .info-btn {
+  /* ── ห้ามลบบรรทัดนี้ ──
+     กฎ .gacha-foot .info-btn::after ขยายพื้นที่รับแตะด้วย position:absolute + inset ติดลบ
+     ซึ่งอ้างอิง "บรรพบุรุษที่ positioned ตัวที่ใกล้ที่สุด" ถ้าตัวปุ่มเองไม่ positioned
+     มันจะข้ามไปเกาะ .gacha-right แทน แล้วกลายเป็นแผ่นใสคลุมทั้งการ์ดฝั่งขวา
+     ทับปุ่มสุ่มทั้งสองใบจนกดไม่ได้เลย (เจอมาแล้ว ทั้งตู้สมบัติและตู้สกิน) */
+  position: relative;
   width: clamp(18px, 3vh, 24px);
   height: clamp(18px, 3vh, 24px);
   border-radius: 50%;

@@ -22,6 +22,9 @@
   <!-- iOS ไม่อ่าน manifest จึงต้องบอกไอคอนหน้าโฮมแยกอีกแท็ก และรับแต่ PNG -->
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
+  <!-- รูปหัวน้องแมวบนหน้าโหลด — ต้องขอตั้งแต่ตอนอ่าน <head> ไม่ใช่ตอนเจอ <img>
+       ไม่งั้นหน้าโหลดจะขึ้นมาเป็นช่องว่างรอรูปอยู่พักหนึ่ง ซึ่งเป็นภาพแรกที่ผู้เล่นเห็นพอดี -->
+  <link rel="preload" as="image" href="/icon-512.png">
   <meta name="theme-color" content="#421268">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,37 +82,27 @@
     }
 
     /* ── น้องแมว ──
-       ทั้งตัวเด้งขึ้นลงช้า ๆ เป็นจังหวะหายใจ ส่วนหูกับหางขยับคนละคาบ
-       ถ้าทุกชิ้นขยับคาบเดียวกันจะดูเป็นรูปเดียวที่ถูกขยับ ไม่ใช่ตัวที่มีชีวิต */
+       ใช้โลโก้ตัวจริงของเกม (public/icon-512.png) ตัวเดียวกับไอคอนบนหน้าจอโฮม
+       และแท็บเบราว์เซอร์ หน้าโหลดจึงยืนยันให้คนที่กดไอคอนเข้ามาว่ามาถูกเกมแล้ว
+
+       เด้งขึ้นลงช้า ๆ เป็นจังหวะหายใจ พร้อมแสงเรืองที่หายใจคนละคาบกัน
+       ถ้าสองอย่างคาบเดียวกันจะอ่านเป็นรูปที่ถูกขยับ ไม่ใช่ของที่มีชีวิตอยู่ */
     .sp-cat {
       position: relative;
-      width: clamp(150px, 30dvh, 240px);
+      width: clamp(132px, 27dvh, 210px);
       height: auto;
       display: block;
-      animation: spBob 2.6s ease-in-out infinite;
-      filter: drop-shadow(0 14px 26px rgba(12,4,24,.55));
+      /* มุมโค้งมากับตัวรูปอยู่แล้ว ตรงนี้แค่กันขอบแข็งโผล่ตอนเบราว์เซอร์ย่อรูป */
+      border-radius: 23%;
+      animation: spBob 2.6s ease-in-out infinite, spHalo 3.7s ease-in-out infinite;
     }
     @keyframes spBob {
-      0%, 100% { transform: translateY(0) rotate(-1deg); }
-      50%      { transform: translateY(-10px) rotate(1deg); }
+      0%, 100% { transform: translateY(0) rotate(-1.2deg); }
+      50%      { transform: translateY(-11px) rotate(1.2deg); }
     }
-    .sp-ear-l, .sp-ear-r { transform-box: fill-box; transform-origin: bottom center; }
-    .sp-ear-l { animation: spEarL 3.1s ease-in-out infinite; }
-    .sp-ear-r { animation: spEarR 3.4s ease-in-out infinite; }
-    @keyframes spEarL { 0%, 70%, 100% { transform: rotate(0deg); } 80% { transform: rotate(-11deg); } }
-    @keyframes spEarR { 0%, 60%, 100% { transform: rotate(0deg); } 72% { transform: rotate(12deg); } }
-
-    /* กะพริบตา: หรี่เร็ว ๆ แค่ช่วงสั้นของคาบ ที่เหลือลืมตาปกติ
-       ตาที่กะพริบถี่จะดูตกใจ ไม่ใช่ง่วง จึงเว้นให้ห่างเกือบสี่วินาที */
-    .sp-eyes { transform-box: fill-box; transform-origin: center; animation: spBlink 3.8s infinite; }
-    @keyframes spBlink {
-      0%, 92%, 100% { transform: scaleY(1); }
-      95%           { transform: scaleY(.08); }
-    }
-    .sp-tail { transform-box: fill-box; transform-origin: left center; animation: spTail 2.2s ease-in-out infinite; }
-    @keyframes spTail {
-      0%, 100% { transform: rotate(-7deg); }
-      50%      { transform: rotate(9deg); }
+    @keyframes spHalo {
+      0%, 100% { filter: drop-shadow(0 12px 24px rgba(12,4,24,.6)) drop-shadow(0 0 16px rgba(255,201,60,.3)); }
+      50%      { filter: drop-shadow(0 12px 24px rgba(12,4,24,.6)) drop-shadow(0 0 34px rgba(255,201,60,.6)); }
     }
 
     .sp-logo {
@@ -164,8 +157,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .sp-cat, .sp-ear-l, .sp-ear-r, .sp-eyes, .sp-tail,
-      .sp-float i, .sp-bar, .sp-tip::after { animation: none; }
+      .sp-cat, .sp-float i, .sp-bar, .sp-tip::after { animation: none; }
     }
   </style>
 </head>
@@ -184,64 +176,11 @@
       <i style="--s:17px;--d:6.8s;--t:11.5s;--r:55deg;left:92%">🐾</i>
     </div>
 
-    <!-- น้องแมวส้ม ใช้สีชุดเดียวกับสกิน 'ส้มน้อย' ใน skins.js ทุกเฉด
-         (cat #F2913D / dark #C96A1E / cream #FFE7C4 / pink #FF9BB0 / ink #3A1B08)
-         หน้าโหลดกับตัวละครในเกมจึงเป็นแมวตัวเดียวกันจริง ๆ ไม่ใช่แมวคนละตัวที่สีคล้ายกัน -->
-    <svg class="sp-cat" viewBox="0 0 220 210" role="img" aria-label="น้องแมวส้มกำลังรอ">
-      <!-- หาง โผล่จากหลังตัว แกว่งไปมา -->
-      <path class="sp-tail" d="M166 182 q36 -4 32 -34 q-3 -22 -23 -21 q-15 1 -13 16 q1 11 12 10"
-            fill="none" stroke="#C96A1E" stroke-width="13" stroke-linecap="round"/>
-
-      <!-- ตัว -->
-      <ellipse cx="110" cy="182" rx="58" ry="30" fill="#F2913D"/>
-      <ellipse cx="110" cy="190" rx="33" ry="20" fill="#FFE7C4"/>
-
-      <!-- หู วาดก่อนหัวเพื่อให้โคนหูถูกหัวกลบ -->
-      <g class="sp-ear-l">
-        <path d="M56 62 L64 16 L96 46 Z" fill="#F2913D"/>
-        <path d="M65 56 L70 30 L86 47 Z" fill="#FF9BB0"/>
-      </g>
-      <g class="sp-ear-r">
-        <path d="M164 62 L156 16 L124 46 Z" fill="#F2913D"/>
-        <path d="M155 56 L150 30 L134 47 Z" fill="#FF9BB0"/>
-      </g>
-
-      <!-- หัว -->
-      <ellipse cx="110" cy="96" rx="66" ry="58" fill="#F2913D"/>
-
-      <!-- ลายบนหน้าผาก — สกินส้มตั้ง stripes: true ไว้ -->
-      <g stroke="#C96A1E" stroke-width="7" stroke-linecap="round">
-        <path d="M92 48 L88 62"/>
-        <path d="M110 44 L110 59"/>
-        <path d="M128 48 L132 62"/>
-      </g>
-
-      <!-- แก้มชมพู -->
-      <ellipse cx="62" cy="112" rx="15" ry="10" fill="#FF9BB0" opacity=".55"/>
-      <ellipse cx="158" cy="112" rx="15" ry="10" fill="#FF9BB0" opacity=".55"/>
-
-      <!-- ตา — กะพริบพร้อมกันทั้งคู่ จึงรวมไว้ในกลุ่มเดียว -->
-      <g class="sp-eyes">
-        <ellipse cx="85" cy="96" rx="10" ry="13" fill="#3A1B08"/>
-        <ellipse cx="135" cy="96" rx="10" ry="13" fill="#3A1B08"/>
-        <circle cx="88.5" cy="91" r="3.6" fill="#FFF3E2"/>
-        <circle cx="138.5" cy="91" r="3.6" fill="#FFF3E2"/>
-      </g>
-
-      <!-- ปาก -->
-      <ellipse cx="110" cy="126" rx="26" ry="17" fill="#FFE7C4"/>
-      <path d="M104 120 L116 120 L110 127 Z" fill="#FF9BB0"/>
-      <path d="M110 127 q-7 9 -13 1 M110 127 q7 9 13 1"
-            fill="none" stroke="#3A1B08" stroke-width="3.4" stroke-linecap="round"/>
-
-      <!-- หนวด -->
-      <g stroke="rgba(255,243,226,.72)" stroke-width="3" stroke-linecap="round">
-        <path d="M74 116 L38 110"/>
-        <path d="M74 124 L38 126"/>
-        <path d="M146 116 L182 110"/>
-        <path d="M146 124 L182 126"/>
-      </g>
-    </svg>
+    <!-- หัวน้องแมว — รูปเดียวกับไอคอนหน้าจอโฮมและแท็บเบราว์เซอร์ (public/icon-512.png)
+         ถ้าเปลี่ยนโลโก้ ให้ทับ tools/logo_meowsing.jpg แล้วรัน npm run icons
+         รูปนี้จะเปลี่ยนตามเองพร้อมไอคอนที่เหลือทั้งชุด ไม่ต้องมาแก้ไฟล์นี้อีก -->
+    <img class="sp-cat" src="/icon-512.png" width="512" height="512"
+         alt="น้องแมวส้มกำลังรอ" decoding="async" fetchpriority="high">
 
     <b class="sp-logo">meow sing</b>
 
