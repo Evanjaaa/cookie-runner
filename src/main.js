@@ -1870,9 +1870,18 @@ document.getElementById('mailClear').addEventListener('click', () => {
 
 const questPanel = document.getElementById('questPanel');
 
-/** จุดแดงบนปุ่มกิจกรรม — ขึ้นเมื่อมีข้อที่ทำครบแล้วแต่ยังไม่ได้กดรับ */
+/**
+ * ป้ายแดงบนปุ่มกิจกรรม — บอกจำนวนข้อที่ทำครบแล้วแต่ยังไม่ได้กดรับ
+ *
+ * ใส่ตัวเลขไปเลย ไม่ใช่จุดเปล่าแบบกล่องจดหมาย เพราะกิจกรรมเสร็จพร้อมกันได้หลายข้อ
+ * "มีของค้าง" กับ "มีของค้างหกข้อ" ต่างกันตรงที่อย่างหลังบอกว่าคุ้มที่จะกดเข้าไปแค่ไหน
+ */
 function refreshQuestDot() {
-  document.getElementById('questDot').classList.toggle('hidden', claimableCount() === 0);
+  const n = claimableCount();
+  const dot = document.getElementById('questDot');
+  // เกิน 9 ใส่ 9+ แทนตัวเลขจริง ไม่งั้นป้ายจะยืดจนเบียดชื่อปุ่ม
+  dot.textContent = n > 9 ? '9+' : n;
+  dot.classList.toggle('hidden', n === 0);
 }
 
 /** ไอคอนปุ่มกิจกรรม — กล่องของขวัญ ตัวเดิมที่เคยอยู่บนปุ่มสมบัติ */
