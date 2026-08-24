@@ -17,9 +17,13 @@ import {
   fetchPlayer, fetchBests, pushPlayer, pushScore, pushPulls,
 } from './cloud.js';
 
-const GOLD_KEY = 'cookie-runner:gold';
-export const NAME_KEY = 'cookie-runner:name';
-const OWNED_KEY = 'cookie-runner:owned';
+// ชื่อคีย์ทุกตัวมาจาก storage.js ที่เดียว เคยประกาศซ้ำที่นี่แล้วเสี่ยงเพี้ยนจากกัน
+const GOLD_KEY = KEYS.gold;
+export const NAME_KEY = KEYS.name;
+const OWNED_KEY = KEYS.owned;
+
+// ค่าตั้งต้นของสองกระเป๋าเงิน ใช้ตัดสินว่า "แถวนี้ยังไม่เคยถูกแตะ" หรือยัง
+const GEM_START = 300;
 const GOLD_START = 999999;
 
 const PUSH_DELAY = 900;   // ms รอรวมการเขียนหลาย ๆ ครั้งให้เป็นครั้งเดียว
@@ -41,20 +45,39 @@ const set = (k, v) => {
 };
 
 /** รวบข้อมูลผู้เล่นทั้งหมดจากเครื่อง ให้อยู่ในรูปเดียวกับคอลัมน์ในตาราง */
-function readLocal() {
-  let owned = [];
+/** อ่าน JSON จากเครื่อง — พังเมื่อไหร่ก็คืนค่าตั้งต้น ไม่ปล่อยให้ throw ขึ้นไป */
+function readJson(key, fallback) {
   try {
-    const raw = JSON.parse(get(OWNED_KEY, '[]'));
-    if (Array.isArray(raw)) owned = raw;
+    const raw = JSON.parse(get(key, ''));
+    if (raw === null || typeof raw !== 'object') return fallback;
+    if (Array.isArray(fallback) !== Array.isArray(raw)) return fallback;
+    return raw;
   } catch {
-    owned = [];
+    return fallback;
   }
+}
+
+/**
+ * รวบทุกอย่างที่ต้องขึ้นคลาวด์จากเครื่อง ให้อยู่ในรูปเดียวกับคอลัมน์ในตาราง
+ *
+ * เพิ่มระบบใหม่เมื่อไหร่ต้องมาเติมที่นี่ด้วย ไม่งั้นของนั้นจะอยู่แต่ในเครื่อง
+ * แล้วหายตอนผู้เล่นล้างข้อมูลเบราว์เซอร์ ทั้งที่ล็อกอินไว้แล้ว
+ */
+function readLocal() {
   return {
     gold: Number(get(GOLD_KEY, String(GOLD_START))) || 0,
-    owned,
+    owned: readJson(OWNED_KEY, []),
     outfit: get(KEYS.outfit, 'none') || 'none',
     skin: get(KEYS.skin, 'orange') || 'orange',
     stage: get(KEYS.stage, 'night') || 'night',
+
+    gems: Number(get(KEYS.gems, String(GEM_START))) || 0,
+    treasures: readJson(KEYS.treasures, {}),
+    equip: readJson(KEYS.equip, []),
+    xp: Number(get(KEYS.xp, '0')) || 0,
+    stats: readJson(KEYS.pref('stats'), {}),
+    quests_claimed: readJson(KEYS.pref('questsClaimed'), []),
+    mail: readJson(KEYS.pref('inbox'), []),
   };
 }
 
@@ -74,6 +97,16 @@ function readLocalBests() {
   return out;
 }
 
+/**
+ * เทข้อมูลจากคลาวด์ลงเครื่อง
+ *
+ * เขียนผ่าน set() ดิบ ๆ ไม่ใช่ผ่าน saveGems/saveTreasures ของ storage.js
+ * โดยตั้งใจ — ตัวพวกนั้นจะปลุก onStorageWrite แล้วดันของที่เพิ่งดึงลงมา
+ * กลับขึ้นไปทันที กลายเป็นเขียนวนฟรี ๆ ทุกครั้งที่เปิดเกม
+ *
+ * เขียนเฉพาะคอลัมน์ที่คลาวด์มีจริง (!= null) เผื่อฐานข้อมูลยังไม่ได้รัน
+ * ALTER TABLE ตัวใหม่ — จะได้ไม่ล้างของในเครื่องทิ้งด้วยค่าว่างจากคอลัมน์ที่ไม่มี
+ */
 function writeLocal(row) {
   set(GOLD_KEY, String(Math.max(0, Math.floor(Number(row.gold) || 0))));
   set(OWNED_KEY, JSON.stringify(Array.isArray(row.owned) ? row.owned : []));
@@ -81,6 +114,16 @@ function writeLocal(row) {
   if (row.outfit) set(KEYS.outfit, row.outfit);
   if (row.skin) set(KEYS.skin, row.skin);
   if (row.stage) set(KEYS.stage, row.stage);
+
+  if (row.gems != null) set(KEYS.gems, String(Math.max(0, Math.floor(Number(row.gems) || 0))));
+  if (row.xp != null) set(KEYS.xp, String(Math.max(0, Math.floor(Number(row.xp) || 0))));
+  if (row.treasures != null) set(KEYS.treasures, JSON.stringify(row.treasures));
+  if (Array.isArray(row.equip)) set(KEYS.equip, JSON.stringify(row.equip));
+  if (row.stats != null) set(KEYS.pref('stats'), JSON.stringify(row.stats));
+  if (Array.isArray(row.quests_claimed)) {
+    set(KEYS.pref('questsClaimed'), JSON.stringify(row.quests_claimed));
+  }
+  if (Array.isArray(row.mail)) set(KEYS.pref('inbox'), JSON.stringify(row.mail));
 }
 
 /**
@@ -89,16 +132,39 @@ function writeLocal(row) {
  * ใช้ตัดสินตอนเปิดครั้งแรกว่าจะ "ดึงลง" หรือ "ดันขึ้น" — ถ้าดึงลงมั่ว ๆ
  * คนที่เล่นมานานในเครื่องก่อนมีระบบคลาวด์จะโดนล้างความคืบหน้าทิ้งทันที
  */
+/**
+ * แถวบนคลาวด์ยังเป็นของใหม่เอี่ยมรึเปล่า
+ *
+ * ต้องนับระบบใหม่ด้วย ไม่งั้นบัญชีที่มีแต่สมบัติ (ยังไม่เคยได้ชุดหรือทำสถิติ)
+ * จะถูกตัดสินว่า "ว่าง" แล้วโดนของในเครื่องดันทับจนสมบัติบนคลาวด์หายหมด
+ */
 function cloudUntouched(row, bests) {
-  return (!row.owned || row.owned.length === 0)
+  const empty = (v) => !v || (Array.isArray(v) ? v.length : Object.keys(v).length) === 0;
+  return empty(row.owned)
     && Number(row.gold) === GOLD_START
-    && Object.keys(bests).length === 0;
+    && Object.keys(bests).length === 0
+    && (row.gems == null || Number(row.gems) === GEM_START)
+    && empty(row.treasures)
+    && empty(row.quests_claimed)
+    && !Number(row.xp);
 }
 
+/**
+ * เครื่องนี้มีความคืบหน้าที่ยังไม่ได้ขึ้นคลาวด์ไหม
+ *
+ * ต้องนับระบบใหม่ด้วยเหมือนกัน ไม่งั้นคนที่เล่นแบบไม่ล็อกอินจนได้สมบัติมาเพียบ
+ * (แต่ทองยังเป็นค่าตั้งต้นเพราะไม่ได้สุ่มชุด) พอล็อกอินครั้งแรกจะถูกมองว่า
+ * "ไม่มีอะไร" แล้วโดนคลาวด์เทค่าว่างลงมาทับ ของหายทั้งหมด
+ */
 function localHasProgress(local, bests) {
   return local.owned.length > 0
     || local.gold !== GOLD_START
-    || Object.values(bests).some((v) => v > 0);
+    || Object.values(bests).some((v) => v > 0)
+    || local.gems !== GEM_START
+    || Object.keys(local.treasures).length > 0
+    || local.quests_claimed.length > 0
+    || local.xp > 0
+    || Object.values(local.stats).some((v) => Number(v) > 0);
 }
 
 // ── ดันข้อมูลขึ้น แบบหน่วงรวบ ────────────────────────────────
@@ -144,7 +210,13 @@ export function clearLocalProgress() {
   timer = null;
 
   try {
-    const doomed = [GOLD_KEY, OWNED_KEY, NAME_KEY, KEYS.outfit, KEYS.skin, KEYS.stage];
+    // ต้องล้างของใหม่ด้วย ไม่งั้นสมบัติกับเพชรของบัญชีก่อนหน้าจะค้างอยู่
+    // แล้วถูกดันขึ้นไปทับบัญชีที่เพิ่งเข้ามา
+    const doomed = [
+      GOLD_KEY, OWNED_KEY, NAME_KEY, KEYS.outfit, KEYS.skin, KEYS.stage,
+      KEYS.gems, KEYS.treasures, KEYS.equip, KEYS.xp,
+      KEYS.pref('stats'), KEYS.pref('questsClaimed'), KEYS.pref('inbox'),
+    ];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.startsWith(KEYS.bestPrefix)) doomed.push(k);

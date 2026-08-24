@@ -73,26 +73,12 @@ export function xpFromScore(score) {
 }
 
 // ── เก็บใน localStorage ──────────────────────────────────────
-// ยังไม่ซิงก์ขึ้นคลาวด์ เพราะตาราง players ยังไม่มีคอลัมน์ xp
-// เพิ่มเมื่อไหร่ต้องรัน ALTER TABLE ในฐานข้อมูลก่อน ไม่งั้นเขียนขึ้นไปแล้ว error
+// การอ่าน/เขียนจริงอยู่ใน storage.js เพราะที่นั่นมีตะขอ onStorageWrite
+// ที่ปลุกชั้นซิงก์ให้ดันขึ้นคลาวด์ ไฟล์นี้รับผิดชอบแค่ "สูตรคำนวณเลเวล"
+import { loadXp, saveXp } from './storage.js';
 
-const XP_KEY = 'cookie-runner:xp';
-
-export function loadXp() {
-  try {
-    return Math.max(0, Number(localStorage.getItem(XP_KEY)) || 0);
-  } catch {
-    return 0;
-  }
-}
-
-function saveXp(n) {
-  try {
-    localStorage.setItem(XP_KEY, String(Math.max(0, Math.floor(n))));
-  } catch {
-    /* โหมดส่วนตัวเขียนไม่ได้ ปล่อยผ่าน — เลเวลหายดีกว่าเกมพัง */
-  }
-}
+// ส่งต่อให้คนที่เคย import loadXp จากไฟล์นี้ ไม่ต้องไล่แก้ที่เรียกทุกจุด
+export { loadXp };
 
 /**
  * จบหนึ่งตาแล้วบวก XP
