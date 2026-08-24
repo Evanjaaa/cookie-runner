@@ -230,7 +230,10 @@ export async function fetchPlayer() {
   try {
     const { data, error } = await c
       .from('players')
-      .select('gold, owned, outfit, skin, stage, name')
+      .select(
+        'gold, owned, outfit, skin, stage, name, '
+        + 'gems, treasures, equip, xp, stats, quests_claimed, mail',
+      )
       .eq('id', uid)
       .maybeSingle();
     if (error) throw error;

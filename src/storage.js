@@ -22,12 +22,29 @@ const OUTFIT_KEY = 'cookie-runner:outfit';
  * สถิติเดิมของผู้เล่นจะหายทันที จึงย้ายค่าเก่าไปเป็นของด่านแรกให้ครั้งเดียว
  * แล้วลบคีย์เก่าทิ้ง เพื่อไม่ให้ย้ายซ้ำทับสถิติใหม่ที่ทำได้ทีหลัง
  */
+/**
+ * ชื่อคีย์ทั้งหมดอยู่ที่นี่ที่เดียว
+ *
+ * ชั้นซิงก์ (net/sync.js) ต้องอ่าน/เขียนคีย์พวกนี้ตรง ๆ เพื่อ "เท" ข้อมูลจาก
+ * คลาวด์ลงเครื่องโดยไม่ให้ไปกระตุ้น onStorageWrite (ไม่งั้นจะดันกลับขึ้นไปทันที
+ * ที่เพิ่งดึงลงมา) จึงต้องรู้จักชื่อคีย์ — ให้รู้จักผ่านที่นี่ ไม่ใช่ประกาศซ้ำ
+ * ซึ่งเคยเป็นแบบนั้นแล้วมีโอกาสเพี้ยนจากกันเงียบ ๆ ตอนใครไปแก้ข้างเดียว
+ */
 export const KEYS = {
   skin: SKIN_KEY,
   stage: STAGE_KEY,
   outfit: OUTFIT_KEY,
   bestPrefix: 'cookie-runner:best:',
   best: bestKey,
+  gold: 'cookie-runner:gold',
+  owned: 'cookie-runner:owned',
+  gems: 'cookie-runner:gems',
+  treasures: 'cookie-runner:treasures',
+  equip: 'cookie-runner:equip',
+  xp: 'cookie-runner:xp',
+  name: 'cookie-runner:name',
+  /** ค่าที่เก็บผ่าน loadPref/savePref — stats, questsClaimed, inbox */
+  pref: (k) => 'cookie-runner:pref:' + k,
 };
 
 let writeHook = null;
@@ -99,9 +116,30 @@ export function loadOutfit() {
   }
 }
 
-const OWNED_KEY = 'cookie-runner:owned';
-const GOLD_KEY = 'cookie-runner:gold';
+const OWNED_KEY = KEYS.owned;
+const GOLD_KEY = KEYS.gold;
 const GOLD_START = 999999;
+
+// ── ค่าประสบการณ์ ────────────────────────────────────────────
+// อยู่ที่นี่ไม่ใช่ใน progress.js เพราะทุกอย่างที่ต้องขึ้นคลาวด์ต้องผ่าน wrote()
+// ส่วน progress.js รับผิดชอบ "สูตรคำนวณเลเวล" ซึ่งไม่เกี่ยวกับการเก็บลงเครื่อง
+
+export function loadXp() {
+  try {
+    return Math.max(0, Number(localStorage.getItem(KEYS.xp)) || 0);
+  } catch {
+    return 0;
+  }
+}
+
+export function saveXp(n) {
+  try {
+    localStorage.setItem(KEYS.xp, String(Math.max(0, Math.floor(n))));
+    wrote('xp');
+  } catch {
+    /* โหมดส่วนตัวเขียนไม่ได้ ปล่อยผ่าน — เลเวลหายดีกว่าเกมพัง */
+  }
+}
 
 export function loadOwned() {
   try {
@@ -173,7 +211,7 @@ const EQUIP_KEY = 'cookie-runner:equip';
 // พังแล้วไม่ต้องกู้ — เสียอย่างมากคือกลับไปเรียงแบบตั้งต้น ไม่ใช่ของหาย
 export function loadPref(key, fallback) {
   try {
-    const raw = localStorage.getItem('cookie-runner:pref:' + key);
+    const raw = localStorage.getItem(KEYS.pref(key));
     return raw === null ? fallback : JSON.parse(raw);
   } catch {
     return fallback;
@@ -182,7 +220,11 @@ export function loadPref(key, fallback) {
 
 export function savePref(key, value) {
   try {
-    localStorage.setItem('cookie-runner:pref:' + key, JSON.stringify(value));
+    localStorage.setItem(KEYS.pref(key), JSON.stringify(value));
+    // ของกลุ่มนี้ไม่ได้มีแต่ค่าตั้งหน้าจอแล้ว — stats/questsClaimed/inbox
+    // คือความคืบหน้าจริงที่ต้องขึ้นคลาวด์ จึงต้องปลุกชั้นซิงก์ด้วย
+    // ตัวที่เป็นค่าตั้งจอจริง ๆ ก็แค่ถูกดันขึ้นไปฟรี ๆ ซึ่งไม่เสียหายอะไร
+    wrote('pref', key);
   } catch {
     /* เซฟไม่ได้ก็แค่ไม่จำข้ามรอบ ไม่ใช่เหตุให้กดไม่ได้ */
   }
