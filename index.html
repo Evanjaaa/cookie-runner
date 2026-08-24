@@ -203,15 +203,33 @@
            ชื่อเกม → เข้าสู่ระบบ → ตั้งชื่อตัวละคร → ล็อบบี้
            ใครมีบัญชีอยู่แล้วจะข้ามสองหน้ากลางไปล็อบบี้ทันทีที่กด "เข้าเกม" -->
 
-      <!-- หน้าชื่อเกม แผงนี้โปร่งกว่าแผงอื่นเพื่อให้เห็นแมวที่วาดบน canvas ข้างหลัง -->
+      <!-- หน้าชื่อเกม แผงนี้ไม่มีม่านคลุมเลย เพื่อให้เห็นฉากปราสาทกับแมวเต็ม ๆ
+           โลโก้เกาะซ้ายบน ปุ่มเกาะขวาล่าง เว้นกลางจอไว้ให้แมวที่วาดบน canvas -->
       <div class="panel title" id="titlePanel">
-        <!-- ป้ายชื่อเกมมีหูแมวโผล่สองข้าง = ตัวป้ายทำหน้าที่เป็น "หัวแมว" เอง
-             วาดด้วย CSS ล้วน ไม่มีทั้งไฟล์รูปและ canvas -->
+        <!-- ป้ายชื่อเกมเป็นทรงโล่ปลายแหลม มีหูแมวโผล่สองข้าง = ตัวป้ายเป็น "หัวแมว" เอง
+             ทั้งป้าย รอยตีน และปลา วาดด้วย CSS กับ SVG ในตัว ไม่มีไฟล์รูปสักไฟล์ -->
         <div class="title-logo logo-plate">
           <span class="plate-ear left" aria-hidden="true"></span>
           <span class="plate-ear right" aria-hidden="true"></span>
+          <!-- รอยตีนแมวเหนือชื่อ — วาดเป็น SVG เหมือนไอคอนอื่นในเกม (ปุ่มกลับ/ซองจดหมาย)
+               ไม่ใช้อีโมจิ 🐾 เพราะหน้าตาต่างกันทุกระบบปฏิบัติการ -->
+          <svg class="logo-paw" viewBox="0 0 100 92" aria-hidden="true">
+            <ellipse cx="50" cy="64" rx="27" ry="23"/>
+            <ellipse cx="20" cy="34" rx="11" ry="14" transform="rotate(-22 20 34)"/>
+            <ellipse cx="41" cy="19" rx="11" ry="15"/>
+            <ellipse cx="63" cy="19" rx="11" ry="15"/>
+            <ellipse cx="83" cy="34" rx="11" ry="14" transform="rotate(22 83 34)"/>
+          </svg>
           <h2>MeowZing</h2>
-          <p>endless runner</p>
+          <!-- ใช้ span ไม่ใช่ p — กฎ .panel p ซ่อนย่อหน้าทิ้งทั้งหมดบนจอแคบ
+               ซึ่งจะทำให้ริบบิ้นหายไปแล้วทรงโล่พังทั้งป้าย -->
+          <span class="logo-ribbon">endless runner</span>
+          <!-- ปลาห้อยที่ปลายแหลมของโล่ -->
+          <svg class="logo-fish" viewBox="0 0 104 58" aria-hidden="true">
+            <ellipse class="fish-body" cx="46" cy="29" rx="33" ry="20"/>
+            <path class="fish-tail" d="M75 29 L102 11 L102 47 Z"/>
+            <circle class="fish-eye" cx="28" cy="23" r="4.2"/>
+          </svg>
         </div>
         <button class="btn big" id="enterBtn">เข้าเกม</button>
         <small class="title-note" id="titleNote"></small>
