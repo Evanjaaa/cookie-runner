@@ -465,6 +465,10 @@ canvas { display: block; width: 100%; height: auto; }
    เดิมเป็นแค่ขอบบาง ๆ บนพื้นโปร่ง ซึ่งบนการ์ดม่วงอ่านเป็น "ข้อความที่มีกรอบ"
    มากกว่าเป็นปุ่ม โดยเฉพาะปุ่มติดตั้งสมบัติที่ไปนั่งอยู่กลางหน้าเลือกด่าน */
 .btn.ghost {
+  /* เดิมใช้ขนาดเดียวกับ .btn หลัก (15.5px / 10px 26px) ซึ่งใหญ่เกินไปสำหรับ
+     ปุ่มรองอย่าง "ติดตั้งสมบัติ" — ย่อเฉพาะปุ่มสีม่วงกลุ่มนี้ลงทั้งชุด */
+  font-size: 13.5px;
+  padding: 8px 20px;
   color: #F6ECFF;
   background: linear-gradient(180deg, #B77DEC 0%, #8C4FCE 52%, #6E36AC 100%);
   border: 1px solid rgba(255,255,255,.36);
@@ -480,8 +484,8 @@ canvas { display: block; width: 100%; height: auto; }
 /* ตัวเลข 0/3 บนปุ่มติดตั้งสมบัติ — เป็นข้อมูล ไม่ใช่ชื่อปุ่ม จึงใส่กรอบแยกให้อ่านเป็นป้าย */
 .btn.ghost b {
   display: inline-block;
-  margin-left: 6px;
-  padding: 1px 8px;
+  margin-left: 5px;
+  padding: 1px 7px;
   border-radius: 999px;
   background: rgba(27,15,43,.32);
   font-weight: 600;
@@ -516,63 +520,92 @@ canvas { display: block; width: 100%; height: auto; }
   --pf-clear: calc(var(--pf-top) + var(--pf) * 1.34 + 12px);
 }
 
-/* ── ป้ายชื่อเกม พร้อมแมวโผล่หัวสองข้าง ───────
- *
- * ใช้ร่วมกันทั้งหน้าชื่อเกมกับล็อบบี้ ชื่อเกมจึงเป็นของชิ้นเดียวกันทั้งสองหน้า
+/* ── ป้ายชื่อเกม ทรงโล่ปลายแหลม พร้อมหูแมวสองข้าง ───────
  *
  * ทำไมต้องมีป้าย: ฉากหลังเป็นภาพปราสาทที่มีทั้งส่วนสว่างและส่วนเข้มปนกัน
  * ตัวอักษรที่ลอยอยู่เฉย ๆ จะอ่านออกบ้างไม่ออกบ้างแล้วแต่ว่าไปทับตรงไหนพอดี
  * เงาตัวอักษรอย่างเดียวช่วยไม่พอ ต้องมีพื้นของตัวเองถึงจะอ่านออกเท่ากันทุกจุด
  *
- * --plate = หน่วยตั้งต้นของทั้งป้าย ผูกกับขนาดตัวอักษรของแต่ละหน้า
+ * ── ทำไมพื้นป้ายเป็น ::before/::after ไม่ใช่ background ของตัวเอง ──
+ * ทรงโล่ทำด้วย clip-path ซึ่ง "ตัดลูกทุกตัว" ที่อยู่ในอิลิเมนต์เดียวกันด้วย
+ * ถ้าใส่ clip-path ที่ตัวป้ายตรง ๆ หูแมวที่โผล่พ้นขอบบนจะโดนตัดหายทันที
+ * ย้ายรูปทรงไปไว้ในชั้นพื้นหลังสองชั้นแทน ตัวป้ายจึงไม่มี clip-path เลย
+ * หูกับปลาที่ยื่นออกนอกกรอบจึงรอด
+ *
+ * สองชั้นซ้อนกัน (ท่าเดียวกับหู): ::before = สีขอบครีม, ::after = สีพื้นย่อเข้ามา
+ * ใช้ border ตรง ๆ ไม่ได้ เพราะ clip-path ตัดเส้น border ทิ้งตามแนวเฉียง
+ *
  * ทุกอย่างข้างในวัดเป็น em จึงย่อขยายตามกันเองหมดโดยไม่ต้องเขียน media query ซ้ำ */
 .logo-plate {
   /* ห้ามใส่ position ตรงนี้ — ที่ที่ใช้คลาสนี้ตั้ง position เองอยู่แล้ว
      (.title-logo = relative) ซึ่งพอเป็นที่ยึดให้หูแมวแล้ว
      ถ้าเขียนตรงนี้ทับลงไป จะไปลบค่าของที่นั่นทิ้งเพราะกฎนี้อยู่ทีหลังและจำเพาะเท่ากัน */
 
-  /* สร้าง stacking context ให้แมว (z-index -1) จมอยู่หลังพื้นป้าย
+  /* สร้าง stacking context ให้พื้นป้ายกับหู (z-index ติดลบ) จมอยู่หลังตัวหนังสือ
      ไม่งั้นมันจะทะลุลงไปอยู่หลังฉากทั้งหมดจนมองไม่เห็น */
   isolation: isolate;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .04em;
 
   /* เผื่อที่ให้หูที่โผล่พ้นขอบบน — ต้องเป็น em เท่านั้น ห้ามใช้ %
      ความสูงที่หูโผล่ขึ้นไปวัดเป็น em (ผูกกับขนาดตัวอักษร) ส่วน % ผูกกับ
      ความสูงเวที สองอย่างนี้ไม่ได้โตตามกัน ใช้ % แล้วจอบางขนาดหูจะโดนตัด */
-  margin-top: .74em;
-  padding: .28em .8em .24em;
-  border-radius: .46em;
+  /* ต้องมากกว่าระยะที่หูโผล่ขึ้นไป (top: -1.02em) ไม่งั้นปลายหูจะโดนขอบเวทีตัด */
+  margin-top: 1.12em;
+  /* ล่างหนากว่าบนมาก เพราะครึ่งล่างของกรอบคือส่วนที่สอบเข้าเป็นปลายแหลม
+     ถ้าเว้นเท่ากันทุกด้าน ริบบิ้นจะไปนั่งคร่อมตรงที่ทรงเริ่มสอบพอดี */
+  padding: .46em 1.05em 1.02em;
+}
+/* ชั้นขอบครีม — ทรงโล่เต็มใบ */
+.logo-plate::before,
+.logo-plate::after {
+  content: '';
+  position: absolute;
+  /* ปลายแหลมกินความสูงราวหนึ่งในสามของใบ ด้านบนเป็นสี่เหลี่ยมมุมมนตามปกติ */
+  clip-path: polygon(0 0, 100% 0, 100% 66%, 50% 100%, 0 66%);
+  border-radius: .3em;
+  pointer-events: none;
+}
+.logo-plate::before {
+  inset: 0;
+  z-index: -2;
+  background: #FFF3E2;
+  /* clip-path ตัด box-shadow ทิ้งด้วย เงาจึงต้องเป็น filter ที่เกาะรูปทรงจริงหลังตัด */
+  filter: drop-shadow(0 7px 0 rgba(20,8,32,.5)) drop-shadow(0 14px 30px rgba(0,0,0,.5));
+}
+/* ชั้นพื้นป้าย ย่อเข้ามาให้เหลือขอบครีมโผล่เป็นเส้นรอบรูป */
+.logo-plate::after {
+  inset: .075em;
+  z-index: -1;
   background: var(--plate-face);
-  border: 2px solid var(--plate-line);
-  /* ป้ายเป็นชิ้นที่ใหญ่ที่สุดในชุด เงาจึงลึกกว่า --plate-lift นิดหน่อย
-     ไม่งั้นแผ่นใหญ่ขนาดนี้จะดูแบนติดฉากทั้งที่ปุ่มเล็ก ๆ ยังดูนูน */
-  box-shadow:
-    0 6px 0 rgba(20,8,32,.55),
-    0 14px 34px rgba(0,0,0,.5),
-    inset 0 2px 0 rgba(255,255,255,.2),
-    inset 0 -3px 0 rgba(0,0,0,.28);
 }
 
 /* ── หูแมวสองข้างบนป้าย ───────────────────────
  * ตัวป้ายทำหน้าที่เป็น "หัวแมว" เอง หูจึงงอกจากขอบบนแทนที่จะเป็นหัวมาแปะ
  *
- * ซ้อนสามชั้นเพื่อให้ได้หูที่มีขอบเหมือนตัวป้าย — clip-path ตัดเส้น border ทิ้ง
- * ตามแนวเฉียง ใช้ border ตรง ๆ ไม่ได้ ต้องวางสามเหลี่ยมซ้อนกันเอา:
+ * ซ้อนสามชั้นด้วยเหตุผลเดียวกับตัวป้าย — clip-path ตัด border ทิ้ง
+ * ต้องวางสามเหลี่ยมซ้อนกันเอา:
  *   ตัว span     สีขอบครีม (สามเหลี่ยมใหญ่สุด)
  *   ::before     สีป้าย ย่อเข้ามาให้เหลือขอบครีมโผล่เป็นเส้น
  *   ::after      ชมพูในหู เล็กและอยู่ล่าง เหมือนหูแมวจริง
  *
- * z-index -1 ทำให้โคนหูจมอยู่หลังพื้นป้าย เห็นแค่ส่วนที่โผล่พ้นขอบบน */
+ * z-index -3 ทำให้โคนหูจมอยู่หลังพื้นป้ายทั้งสองชั้น เห็นแค่ส่วนที่โผล่พ้นขอบบน */
 .logo-plate .plate-ear {
   position: absolute;
-  z-index: -1;
-  width: 1.15em;
-  height: .95em;
+  z-index: -3;
+  width: 1.32em;
+  height: 1.42em;
   /* ยึดจากขอบบนของป้ายเป็น em คงที่ ไม่ใช่ % ของความสูงป้าย
-     ความสูงป้ายเปลี่ยนตามว่าบรรทัด endless runner ถูกซ่อนหรือเปล่า (จอแคบ)
-     ถ้าใช้ % ระยะที่หูโผล่จะเปลี่ยนตามไปด้วยจนคุมไม่ได้ */
-  top: -.66em;
+     ถ้าใช้ % ระยะที่หูโผล่จะเปลี่ยนตามความสูงป้ายจนคุมไม่ได้
+     โผล่ขึ้นไปราวหนึ่งในสี่ของความสูงป้าย หูถึงจะอ่านเป็นหูแมว ไม่ใช่ติ่งสามเหลี่ยม */
+  top: -1.02em;
   pointer-events: none;
-  background: rgba(255, 243, 226, .42);
+  /* ทึบล้วน ไม่ใช่ครีมโปร่ง — หูโผล่พ้นขอบป้ายไปอยู่บนท้องฟ้าสว่างของฉากหลัง
+     สีโปร่งตรงนั้นจะจางจนอ่านไม่ออกว่าเป็นหู เห็นเป็นแค่คราบสามเหลี่ยม */
+  background: #FFF3E2;
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 .logo-plate .plate-ear::before,
@@ -581,24 +614,70 @@ canvas { display: block; width: 100%; height: auto; }
   position: absolute;
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
-/* ใช้เฉดบนสุดของป้ายผ่านตัวแปรร่วม หูจึงต่อเนื่องเป็นก้อนเดียวกับป้ายเสมอ
-   ไม่ต้องกลับมาแก้ตามทุกครั้งที่เปลี่ยนสีป้ายอีกแล้ว */
+/* สีทึบตระกูลเดียวกับเฉดบนสุดของป้าย (--plate-top) แต่ไม่มีอัลฟา
+   ด้วยเหตุผลเดียวกับตัวหู — ตรงนี้อยู่บนท้องฟ้า ไม่ได้อยู่บนพื้นป้าย */
 .logo-plate .plate-ear::before {
   inset: .1em .09em 0;
-  background: var(--plate-top);
+  background: #8E5AC2;
 }
 /* ชมพูในหู สีเดียวกับหูแมวในเกม (COLORS.catPink) */
 .logo-plate .plate-ear::after {
   left: 50%;
   bottom: 0;
-  width: 44%;
-  height: 54%;
+  width: 46%;
+  height: 56%;
   transform: translateX(-50%);
   background: #FF9BB0;
 }
-/* กางออกคนละทางเหมือนหูแมวจริง ข้างขวากางน้อยกว่านิดหน่อยจะได้ไม่สมมาตรเป๊ะจนดูแข็ง */
-.logo-plate .plate-ear.left { left: .5em; transform: rotate(-16deg); }
-.logo-plate .plate-ear.right { right: .5em; transform: rotate(14deg); }
+/* กางออกคนละทางเหมือนหูแมวจริง ข้างขวากางน้อยกว่านิดหน่อยจะได้ไม่สมมาตรเป๊ะจนดูแข็ง
+   ชิดขอบซ้าย-ขวาของป้าย ไม่ใช่กลาง เพื่อให้ทั้งใบอ่านเป็นหัวแมวกว้าง ๆ */
+.logo-plate .plate-ear.left { left: .6em; transform: rotate(-13deg); }
+.logo-plate .plate-ear.right { right: .6em; transform: rotate(11deg); }
+
+/* รอยตีนแมวเหนือชื่อ */
+.logo-paw {
+  width: .62em;
+  height: auto;
+  fill: #FFC2D2;
+  filter: drop-shadow(0 .04em 0 rgba(58,29,80,.5));
+}
+
+/* ริบบิ้นส้มใต้ชื่อ — แถบเดียวในป้ายที่ไม่ใช่โทนม่วง จึงเป็นตัวดึงสายตา
+   สีชุดเดียวกับหลอดโหลดในหน้าโหลด (#F2913D → #FFC93C) ให้เป็นเกมเดียวกัน */
+.logo-ribbon {
+  align-self: stretch;
+  margin-top: .12em;
+  padding: .1em .5em .13em;
+  border-radius: 999px;
+  border: .045em solid rgba(255,243,226,.55);
+  background: linear-gradient(180deg, #FBA85A 0%, #F08A2E 55%, #D9701C 100%);
+  box-shadow: inset 0 .05em 0 rgba(255,255,255,.45), 0 .06em 0 rgba(120,52,10,.45);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: .235em;
+  letter-spacing: .3em;
+  /* letter-spacing ใส่ช่องไฟไว้ "ท้ายตัวสุดท้าย" ด้วย ข้อความจึงเบี้ยวไปทางซ้าย
+     ดันกลับมาครึ่งหนึ่งของช่องไฟ ตัวหนังสือถึงจะอยู่กลางริบบิ้นจริง ๆ */
+  text-indent: .3em;
+  text-transform: uppercase;
+  color: #FFF6E6;
+  text-shadow: 0 .06em 0 rgba(140,62,12,.75);
+  white-space: nowrap;
+}
+
+/* ปลาห้อยที่ปลายแหลม — absolute เพราะมันต้องยื่นลงไปในส่วนที่ทรงสอบเข้าแล้ว
+   ถ้าปล่อยอยู่ในสายไหลปกติ มันจะไปดันให้ป้ายสูงขึ้นแล้วปลายแหลมยาวเกินจริง */
+.logo-fish {
+  position: absolute;
+  left: 50%;
+  bottom: .16em;
+  transform: translateX(-50%);
+  width: .72em;
+  height: auto;
+  filter: drop-shadow(0 .05em .08em rgba(20,8,32,.55));
+}
+.logo-fish .fish-body, .logo-fish .fish-tail { fill: #F2913D; }
+.logo-fish .fish-eye { fill: #3A1D50; }
 
 /* ── การ์ดบัญชีมุมซ้ายบน ──────────────────────
  * รูปแมว + ชื่อ + เลเวล + หลอดความคืบหน้า
@@ -874,7 +953,9 @@ canvas { display: block; width: 100%; height: auto; }
      ท่านี้ไม่กิน padding ของปุ่ม ต่างจากการเอา padding มาทำเป็นความหนาของขอบ
      ซึ่งจะไปบีบไอคอนกับชื่อข้างในจนต้องมาไล่แก้ระยะใหม่ทั้งหมด */
   border: 2px solid transparent;
-  background: var(--plate-face) padding-box, var(--plate-rim) border-box;
+  /* เอาพื้นทึบสีม่วง (--plate-face) ออก เหลือแค่กรอบไล่สีที่โผล่ผ่านขอบใส
+     ด้านในโปร่งให้เห็นฉากหลังลอดผ่าน เหลือแค่กรอบ ไอคอน กับชื่อหัวข้อ */
+  background: var(--plate-rim) border-box;
   color: var(--cream);
   font-family: inherit;
   cursor: pointer;
@@ -925,6 +1006,9 @@ canvas { display: block; width: 100%; height: auto; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* ตอนนี้พื้นหลังปุ่มโปร่งแล้ว ตัวหนังสือจึงลอยอยู่บนฉากเกมตรง ๆ
+     เงาดำช่วยให้อ่านออกไม่ว่าฉากหลังตรงนั้นจะสว่างหรือมืด */
+  text-shadow: 0 1px 3px rgba(0,0,0,.65), 0 0 8px rgba(0,0,0,.4);
 }
 
 /* ปุ่มเล่นมุมขวาล่าง ตัวเด่นที่สุดในหน้า */
@@ -1078,8 +1162,11 @@ canvas { display: block; width: 100%; height: auto; }
   width: 232px;
   padding: 10px 10px 12px;
   border-radius: 16px;
-  border: 1px solid rgba(255,243,226,.18);
+  /* กรอบม่วงสดใสชุดเดียวกับแท็บที่เลือกอยู่ในตู้กาช่า (.gtab.on) ทุกใบมีกรอบ
+     เห็นชัดตั้งแต่ยังไม่ได้เลือก ส่วนใบที่เลือกอยู่แล้วยังชนะด้วยสีมิ้นต์ (.stage-card.on) */
+  border: 2px solid rgba(196,143,243,.5);
   background: rgba(255,243,226,.06);
+  box-shadow: 0 0 16px rgba(156,94,220,.24);
   color: var(--cream);
   font-family: inherit;
   cursor: pointer;
@@ -1447,8 +1534,11 @@ canvas { display: block; width: 100%; height: auto; }
   gap: clamp(8px, 1.6vw, 16px);
   padding: clamp(6px, 1.1dvh, 11px) clamp(10px, 1.8vw, 18px);
   border-radius: 16px;
-  border: 1px solid rgba(255,243,226,.14);
+  /* กรอบม่วงสดใสชุดเดียวกับหน้าเลือกด่าน (.stage-card) — ข้อที่ทำครบแล้ว
+     ยังชนะด้วยกรอบทองอยู่ดี (.quest-row.ready) */
+  border: 1.5px solid rgba(196,143,243,.45);
   background: rgba(255,243,226,.05);
+  box-shadow: 0 0 12px rgba(156,94,220,.16);
   text-align: left;
 }
 /* ทำครบแล้วยังไม่ได้กดรับ = เรืองขอบทองให้สะดุดตาก่อนข้ออื่นทั้งแถบ
@@ -2836,6 +2926,8 @@ canvas { display: block; width: 100%; height: auto; }
   max-width: 100%;
   flex: 0 1 auto;
   min-height: 0;
+  /* ขยับกรอบลงจากขอบบนของการ์ดเล็กน้อย ไม่ให้ป้ายระดับที่ยื่นออกไปชนขอบการ์ดพอดี */
+  margin-top: clamp(4px, 1.2dvh, 14px);
   /* ให้ขนาดอิโมจิข้างในวัดจากกรอบที่ย่อแล้วจริง ๆ ไม่ใช่จาก --gs ที่ย่อไม่ตาม */
   container-type: size;
   display: grid;
@@ -2895,19 +2987,16 @@ canvas { display: block; width: 100%; height: auto; }
 .show-name {
   font-family: "Mitr", sans-serif;
   font-weight: 500;
-  font-size: clamp(12px, 2.3dvh, 20px);
+  /* ไม่มีพื้นหลังเป็นแผ่นอีกแล้ว ต้องใหญ่ขึ้นเองถึงจะยังเด่นพอ */
+  font-size: clamp(14px, 2.6dvh, 23px);
   line-height: 1.25;
   text-align: center;
-  padding: 2px clamp(9px, 1.4vw, 16px);
-  border-radius: 999px;
-  background: rgba(27,15,43,.42);
+  padding: 0 clamp(9px, 1.4vw, 16px);
 }
 .show-note {
-  font-size: clamp(8.5px, 1.5dvh, 12.5px);
+  font-size: clamp(10px, 1.8dvh, 14.5px);
   color: #C9AEE4;
-  padding: 2px clamp(8px, 1.2vw, 14px);
-  border-radius: 999px;
-  background: rgba(27,15,43,.42);
+  padding: 0 clamp(8px, 1.2vw, 14px);
   line-height: 1.35;
   text-align: center;
   /* คำอธิบายยาวไม่เท่ากันทุกชิ้น ตัดที่สองบรรทัดเพื่อไม่ให้กรอบสูงไม่เท่ากัน
@@ -2917,16 +3006,20 @@ canvas { display: block; width: 100%; height: auto; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* ค่าที่ของชิ้นนี้ให้จริง ๆ — เด่นพอ ๆ กับชื่อ ไม่ใช่ซ่อนในบรรทัดคำอธิบาย */
+/* ค่าที่ของชิ้นนี้ให้จริง ๆ — เด่นพอ ๆ กับชื่อ ไม่ใช่ซ่อนในบรรทัดคำอธิบาย
+   เปลี่ยนจากแผ่นใสจาง ๆ เป็นป้ายทึบไล่สีชุดเดียวกับ .card-bonus ในหน้าเลือกชุด
+   จะได้อ่านเป็น "ป้ายรางวัล" จริง ๆ ไม่ใช่ตัวหนังสือแปะขอบบาง ๆ ที่จมกับพื้นหลังมืด */
 .hero-bonus {
   font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: clamp(10px, 1.9dvh, 15px);
-  color: var(--mint-lite);
-  padding: 2px 11px;
+  font-weight: 700;
+  /* ใหญ่เท่าชื่อสกินแล้วหนักไปหน่อย ลดลงมาขั้นหนึ่งแต่ยังหนากว่าเดิมชัดเจน */
+  font-size: clamp(11.5px, 2.1dvh, 17px);
+  line-height: 1.3;
+  color: #0B3B37;
+  padding: 2px clamp(10px, 1.5vw, 16px);
   border-radius: 999px;
-  background: rgba(78,205,196,.15);
-  border: 1px solid rgba(141,243,234,.35);
+  background: linear-gradient(180deg, #A9F5EC 0%, #6FD9CE 100%);
+  box-shadow: 0 2px 0 rgba(11,59,55,.3), 0 5px 12px rgba(78,205,196,.35);
   white-space: nowrap;
 }
 
@@ -2955,12 +3048,12 @@ canvas { display: block; width: 100%; height: auto; }
   top: clamp(6px, 1.2dvh, 12px);
   right: clamp(6px, 1vw, 12px);
   z-index: 3;
-  padding: clamp(3px, .7dvh, 6px) clamp(8px, 1.2vw, 14px);
+  padding: clamp(5px, 1.1dvh, 9px) clamp(11px, 1.7vw, 18px);
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.22);
   background: rgba(27,15,43,.72);
   color: #E7D8F6;
-  font-size: clamp(8.5px, 1.5dvh, 12px);
+  font-size: clamp(10.5px, 1.9dvh, 15px);
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
@@ -3537,7 +3630,7 @@ canvas { display: block; width: 100%; height: auto; }
      ข้อความเต็มยังอ่านได้ในหน้ารายการที่กดจากปุ่ม "ดูอื่นๆ" */
   .show-note { -webkit-line-clamp: 1; }
   .tg-hint { font-size: 10px; }
-  .more-btn { font-size: 10px; padding: 4px 9px; }
+  .more-btn { font-size: 11.5px; padding: 5px 12px; }
 
   /* ── การ์ดในหน้าย่อย ──────────────────────────
    * มือถือแนวนอนกว้าง 844 แต่สูงแค่ 390 — คนละโจทย์กับจอแคบแนวตั้ง
@@ -3591,24 +3684,42 @@ canvas { display: block; width: 100%; height: auto; }
    จะถูกกลบหมด เหลือแต่กล่องสี่เหลี่ยมกลางจอ */
 .panel.title {
   gap: 0;
-  /* โลโก้เกาะบน ปุ่มเกาะล่าง เว้นกลางจอไว้ให้แมวที่วาดบน canvas
-     ถ้าจัดกลางแบบแผงอื่น ปุ่มจะไปนั่งทับหน้าแมวพอดี */
+  /* โลโก้เกาะซ้ายบน ปุ่มเกาะขวาล่าง กลางจอเว้นว่างไว้ให้แมวที่วาดบน canvas
+     ทั้งสองชิ้นจึงอยู่คนละมุมทแยง ไม่มีอะไรไปทับหน้าแมวเลย */
   justify-content: flex-start;
-  padding: clamp(14px, 4.5dvh, 38px) 24px clamp(16px, 5dvh, 40px);
-  /* ม่านไล่จากบนลงล่าง แทนแผ่นทึบเต็มจอ ตัวอักษรอ่านออกแต่ยังเห็นฉากทะลุ */
-  background: linear-gradient(180deg, rgba(27,15,43,.82) 0%, rgba(27,15,43,.25) 45%, rgba(27,15,43,.86) 100%);
+  align-items: flex-start;
+  padding: clamp(10px, 3.4dvh, 30px) clamp(14px, 2.6vw, 40px) clamp(12px, 4dvh, 34px);
+  /* ไม่มีม่านคลุมแล้ว — ฉากปราสาทเป็นภาพเดียวที่ขายเกมได้ ปิดมันไว้ไม่คุ้ม
+     ตัวหนังสือทุกชิ้นในหน้านี้มีพื้นของตัวเอง (ป้ายโล่ / ปุ่มลูกอม) จึงอ่านออกอยู่แล้ว */
+  background: none;
   backdrop-filter: none;
 }
 /* ไม่เอาการ์ดของ .panel:not(.home) มาซ้อนทับฉาก */
 .panel.title::before { display: none; }
 
 /* หน่วยตั้งต้นของป้าย — ใหญ่กว่าปกติเพราะเป็นภาพแรกที่คนเห็น
-   relative ตรงนี้คือที่ยึดของแมวสองตัวที่ลอย absolute อยู่ในป้าย */
+   relative ตรงนี้คือที่ยึดของหูแมวกับปลาที่ลอย absolute อยู่ในป้าย
+   ผุดขึ้นมาแล้วลอยขึ้นลงช้า ๆ ต่อ — ภาพแรกที่คนเห็นควรรู้สึกว่า "มีชีวิต"
+   ไม่ใช่ป้ายนิ่ง ๆ ที่แปะไว้เฉย ๆ */
 .title-logo {
   position: relative;
   text-align: center;
   white-space: nowrap;
-  font-size: clamp(23px, 5.3vw, 47px);
+  font-size: clamp(26px, 5.6vw, 52px);
+}
+.title-logo.logo-plate {
+  /* ลอยขึ้นลงแทนการเรืองแสง — พื้นป้ายเป็น clip-path ซึ่ง box-shadow ใช้ไม่ได้
+     (โดนตัดทิ้งไปกับรูปทรง) ส่วน transform ทำงานกับทั้งกล่องตามปกติ */
+  animation:
+    logoPop .55s cubic-bezier(.34, 1.56, .64, 1) both,
+    logoBob 4.2s ease-in-out .55s infinite;
+}
+@keyframes logoPop {
+  from { opacity: 0; transform: scale(.75) translateY(-14px); }
+}
+@keyframes logoBob {
+  0%, 100% { transform: translateY(0) rotate(-.35deg); }
+  50%      { transform: translateY(-.14em) rotate(.35deg); }
 }
 .title-logo h2 {
   font-family: "Mitr", sans-serif;
@@ -3622,29 +3733,36 @@ canvas { display: block; width: 100%; height: auto; }
   padding-bottom: 0;
   background: none;
 }
-.title-logo p {
-  margin-top: 6px;
-  font-size: clamp(9px, 1.7vw, 13px);
-  letter-spacing: .38em;
-  text-transform: uppercase;
-  color: #C9AEE8;
-  text-shadow: 0 2px 6px rgba(0,0,0,.6);
-  max-width: none;
-}
-
-/* auto = ดันตัวเองไปสุดล่างของแผง ป้ายใต้ปุ่มจึงตามลงไปด้วยเป็นกลุ่มเดียวกัน */
+/* auto = ดันตัวเองไปสุดล่างของแผง, flex-end = ชิดขวา
+   ป้ายใต้ปุ่มจึงตามลงไปมุมเดียวกันเป็นกลุ่มเดียวกัน */
 .btn.big {
   margin-top: auto;
-  font-size: clamp(17px, 3vw, 24px);
-  padding: 14px 54px;
+  align-self: flex-end;
+  font-size: clamp(17px, 3.1vw, 26px);
+  padding: clamp(11px, 1.9dvh, 16px) clamp(38px, 6vw, 62px);
+  /* หายใจเรือง ๆ ตลอดเวลา — ปุ่มเดียวบนหน้านี้ที่กดได้ ต้องเรียกสายตาแม้ยืนเฉย ๆ */
+  animation: enterPulse 2.4s ease-in-out infinite;
+}
+/* หยุดแอนิเมชันตอนกดค้าง ไม่งั้นภาพเงาที่ไล่อยู่จะไปทับเงา "ยุบตัว" ของ .btn:active
+   ปุ่มจะดูเหมือนไม่ยุบตอนกด ทั้งที่มันขยับจริง (ดู .btn:active ด้านบน) */
+.btn.big:active { animation: none; }
+@keyframes enterPulse {
+  0%, 100% { box-shadow: 0 6px 0 #2E9C95, 0 12px 24px rgba(78,205,196,.3), inset 0 1px 0 rgba(255,255,255,.6); }
+  50%      { box-shadow: 0 6px 0 #2E9C95, 0 14px 40px rgba(78,205,196,.62), inset 0 1px 0 rgba(255,255,255,.6); }
 }
 
+/* ตามปุ่มไปมุมขวาล่าง และมีพื้นของตัวเองเพราะไม่มีม่านคลุมฉากแล้ว
+   บรรทัดนี้โผล่เฉพาะตอนยังไม่ได้ต่อฐานข้อมูล (ดู titleNote ใน main.js) */
 .title-note {
-  margin-top: 14px;
+  align-self: flex-end;
+  margin-top: 10px;
   max-width: 40ch;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(27,15,43,.72);
   font-size: 11.5px;
   line-height: 1.6;
-  color: #C9AEE8;
+  color: #E4D4F5;
   text-shadow: 0 2px 6px rgba(0,0,0,.7);
 }
 .title-note:empty { display: none; }
@@ -3707,8 +3825,10 @@ canvas { display: block; width: 100%; height: auto; }
   .form-row .btn { font-size: 13px; padding: 8px 18px; }
   .form-msg { font-size: 11px; }
   #nameCat { width: 84px; height: 84px; }
-  .btn.big { padding: 11px 40px; }
-  .title-note { margin-top: 9px; font-size: 10.5px; }
+  .btn.big { padding: 10px 32px; }
+  .title-note { margin-top: 8px; font-size: 10.5px; padding: 3px 10px; }
+  /* จอเตี้ยต้องบีบป้ายลง ไม่งั้นโล่กับปลากินความสูงจนไปชนปุ่มที่มุมล่าง */
+  .title-logo { font-size: clamp(20px, 6.4vw, 34px); }
 }
 
 .footnote {
@@ -3735,4 +3855,8 @@ canvas { display: block; width: 100%; height: auto; }
   #gachaMachine { animation: none; }
   .panel:not(.home):not(.hidden) > .pop,
   .panel:not(.home):not(.hidden) > .pop > * { animation: none; }
+  /* หน้าเข้าเกม: ป้ายลอยขึ้นลง กับปุ่มเรืองแสง — ทั้งคู่เป็นแอนิเมชันประดับล้วน ๆ
+     ปิดแล้วยังกดเข้าเกมได้ปกติ */
+  .title-logo.logo-plate { animation: none; }
+  .btn.big { animation: none; }
 }
