@@ -1,4 +1,4 @@
-# 🍪 Midnight Bakery Runner
+# 🐱 MeowZing
 
 เกม endless runner วาดด้วย Canvas 2D ล้วน ไม่มีไฟล์ asset สักไฟล์ — กราฟิกวาดด้วยโค้ด เสียงสังเคราะห์ด้วย Web Audio API
 
