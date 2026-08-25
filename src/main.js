@@ -87,6 +87,20 @@ const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver });
 
+// ── ตัวเลขไล่ขึ้นในหน้าสรุป ──────────────────────────────────
+//
+// ตัวเลขที่โผล่มาเป็นค่าสุดท้ายเลยจะถูกอ่านผ่านในเสี้ยววินาทีแล้วจบ
+// พอมันไล่ขึ้น ตาจะอยู่กับมันจนสุด — ซึ่งเป็นช่วงเดียวที่หน้าสรุปมีอะไรให้ดู
+//
+// รุ่นของการนับ (countGen) กันตัวเลขของตาเก่าไล่ค้างมาทับตาใหม่
+// เกิดได้จริงตอน ตาย → วิ่งอีกรอบ → ตายอีกเร็ว ๆ ก่อนรอบก่อนจะไล่จบ
+//
+// ประกาศไว้บนสุดคู่กับ game เพราะ closeAllPanels() แตะตัวแปรนี้ และมันถูกเรียก
+// จากหลายที่ตั้งแต่ตอนเปิดเกม ถ้าประกาศไว้ล่างไฟล์จะติด TDZ ตอนบูตทันทีที่มี
+// ใครสักคนเรียกมันก่อนบรรทัดประกาศ
+let countGen = 0;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
 // ── หน้าแรกกับการเลือกตัวละคร ──────────────────────────────
 
 /**
@@ -117,6 +131,58 @@ function paintMini(canvas, logical, draw) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, logical, logical);
   draw(c);
+}
+
+/** หากล่องที่พิกเซลทึบกินจริงในผ้าใบ — คืน null ถ้าวาดแล้วว่างเปล่า */
+function alphaBounds(c, w, h) {
+  const d = c.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      // ข้ามพิกเซลจาง ๆ (เงาฟุ้ง ขอบ antialias) ไม่งั้นกล่องจะกว้างกว่าตัวรูปจริง
+      // แล้วรูปที่ขยายออกมาจะเล็กกว่าที่ควรเป็น
+      if (d[(y * w + x) * 4 + 3] > 24) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+/**
+ * วาดไอคอนให้เต็มกรอบ โดยวัด "กล่องที่รูปกินจริง" เอาเองจากพิกเซล
+ *
+ * ไอคอนแต่ละใบตั้งสเกลตายตัวไว้คนละที คนละเวลา บางใบจึงเหลือขอบว่างรอบรูป
+ * เยอะกว่าเพื่อนมาก (ไอคอนชุดเหลือเกือบครึ่งกรอบ ส่วนสมบัติเต็มพอดีเพราะใบนั้น
+ * วัดกล่องของหีบไว้เองด้วยมือ) แทนที่จะไล่จูนตัวเลขทีละใบ — ซึ่งจะเพี้ยนอีกทันที
+ * ที่มีใครแก้รูป — ให้มันวัดเองแล้วขยายจนเต็มกรอบเท่ากันทุกใบ
+ *
+ * วาดสองรอบ: รอบแรกลงผ้าใบชั่วคราวเพื่อวัดขอบ รอบสองวาดจริงตามสเกลที่ได้
+ * ทำเฉพาะตอนรีเฟรชล็อบบี้ ไม่ได้อยู่ในลูปเกม จึงไม่ต้องห่วงเรื่องความเร็ว
+ *
+ * @param fill สัดส่วนของกรอบที่ยอมให้รูปกิน เว้นขอบไว้นิดหน่อยกันดูอึดอัด
+ */
+function paintFitted(canvas, logical, fill, draw) {
+  const probe = document.createElement('canvas');
+  probe.width = logical;
+  probe.height = logical;
+  const pc = probe.getContext('2d', { willReadFrequently: true });
+  draw(pc);
+  const box = alphaBounds(pc, logical, logical);
+
+  paintMini(canvas, logical, (c) => {
+    if (!box) return draw(c);   // ไม่มีพิกเซลให้วัด วาดตามเดิมไปก่อน
+    const k = Math.min((logical * fill) / box.w, (logical * fill) / box.h);
+    c.translate(
+      (logical - box.w * k) / 2 - box.x * k,
+      (logical - box.h * k) / 2 - box.y * k,
+    );
+    c.scale(k, k);
+    draw(c);
+  });
 }
 
 /**
@@ -210,16 +276,18 @@ function refreshHome() {
   refreshProfile();
   // ปุ่มล็อบบี้เหลือแค่ไอคอนกับชื่อ ไม่มีบรรทัดคำอธิบายให้เขียนแล้ว
   // (ชื่อสกิน/ชุด/ด่าน ยังโชว์อยู่บนการ์ดที่เลือกอยู่ตอนเปิดแผงนั้น)
-  paintMini(document.getElementById('skinIcon'), 76, (c) => drawCatFace(c, 38, 44, 1.8, s));
+  // ── ไอคอนพวกนี้ขยายให้เต็มกรอบเท่ากันหมดด้วย paintFitted ──
+  // ยกเว้นสมบัติ (วัดกล่องหีบไว้เองอยู่แล้ว) กับด่าน (เป็นภาพฉากเต็มกรอบ ไม่ใช่ไอคอน)
+  paintFitted(document.getElementById('skinIcon'), 76, 0.96, (c) => drawCatFace(c, 38, 44, 1.8, s));
   // ไอคอนชุดใช้ตัวเต็ม ไม่ใช่แค่หัว เพราะเสื้อกับกระโปรงอยู่ที่ลำตัว
-  paintMini(document.getElementById('outfitIcon'), 76, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
+  paintFitted(document.getElementById('outfitIcon'), 76, 0.96, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
   paintStageScene(document.getElementById('stageIcon'), st, 210);
   paintTreasureIcon();
   paintQuestIcon();
   refreshQuestDot();
   refreshEquipCount();
-  paintMini(document.getElementById('rankIcon'), 76, drawTrophy);
-  paintBox(document.getElementById('gachaIcon'), 76, 76, (c) => {
+  paintFitted(document.getElementById('rankIcon'), 76, 0.96, drawTrophy);
+  paintFitted(document.getElementById('gachaIcon'), 76, 0.96, (c) => {
     c.save(); c.scale(76 / 150, 76 / 170); drawGachaMachine(c); c.restore();
   });
   // ความคืบหน้ากาช่าเคยโชว์ตรงนี้ ย้ายไปดูในแผงกาช่าอย่างเดียวแล้ว (.gacha-owned)
@@ -1349,6 +1417,11 @@ document.getElementById('titleNote').textContent = cloudReady
 
 const VOL_STEP = 0.1;
 
+// ระดับก่อนกดปิดเสียง เอาไว้คืนให้ตอนกดเปิดกลับ
+// เก็บในตัวแปรเฉย ๆ ไม่ต้องเซฟลงเครื่อง — ถ้าปิดเสียงค้างไว้แล้วปิดเกมไป
+// รอบหน้ากดเปิดจะได้ค่าเริ่มต้นแทน ซึ่งดีกว่าเงียบต่อโดยไม่รู้ว่าทำไม
+let volBeforeMute = 0.8;
+
 function drawVolume() {
   const v = getVolume();
   const lit = Math.round(v * 10);
@@ -1363,6 +1436,14 @@ function drawVolume() {
   // ปิดปุ่มที่กดไปก็ไม่มีอะไรเกิดขึ้น ดีกว่าปล่อยให้กดแล้วเงียบไม่รู้ว่าสุดแล้ว
   document.getElementById('volDown').disabled = v <= 0;
   document.getElementById('volUp').disabled = v >= 1;
+
+  // ปุ่มลำโพงบอกสถานะ "ตอนนี้" ไม่ใช่บอกว่ากดแล้วจะเกิดอะไร
+  // เงียบอยู่ = ลำโพงมีกากบาท, ดังอยู่ = ลำโพงมีคลื่นเสียง
+  const mute = document.getElementById('volMute');
+  const muted = v <= 0;
+  mute.classList.toggle('muted', muted);
+  mute.setAttribute('aria-label', muted ? 'เปิดเสียง' : 'ปิดเสียง');
+  mute.setAttribute('aria-pressed', String(muted));
 }
 
 function stepVolume(dir) {
@@ -1370,6 +1451,19 @@ function stepVolume(dir) {
   drawVolume();
   // ให้ได้ยินระดับใหม่ทันทีตอนกด ไม่ต้องออกไปลองในเกมแล้วค่อยกลับมาปรับ
   sfx.fish();
+}
+
+function toggleMute() {
+  const v = getVolume();
+  if (v > 0) {
+    volBeforeMute = v;
+    setVolume(0);
+    drawVolume();
+    return;   // ปิดเสียงแล้วไม่ต้องเล่นเสียงยืนยัน มันจะไม่ได้ยินอยู่ดี
+  }
+  setVolume(volBeforeMute > 0 ? volBeforeMute : 0.8);
+  drawVolume();
+  sfx.fish();   // ดังขึ้นมาแล้ว ให้ได้ยินทันทีว่าดังแค่ไหน
 }
 
 // จำว่าเปิดมาจากแผงไหน แล้วคืนกลับไปที่เดิมตอนกดกลับ
@@ -1643,7 +1737,13 @@ let mrCurrent = null;
 
 /** จุดแดงบนไอคอน — โผล่เมื่อยังไม่อ่าน หรือยังมีของค้างรับ */
 function refreshMailDot() {
-  document.getElementById('mailDot').classList.toggle('hidden', badgeCount() === 0);
+  const n = badgeCount();
+  const dot = document.getElementById('mailDot');
+  // โชว์จำนวนฉบับที่ค้างอยู่ ไม่ใช่จุดเปล่า — "มีของค้าง 1 ฉบับ" กับ "ค้าง 8 ฉบับ"
+  // เป็นคนละเรื่องกันสำหรับคนตัดสินใจว่าจะเปิดดูตอนนี้หรือไว้ทีหลัง
+  // เกิน 9 ใส่ 9+ แทนเลขจริง ไม่งั้นป้ายจะยืดจนล้นออกนอกปุ่ม (กฎเดียวกับปุ่มกิจกรรม)
+  dot.textContent = n > 9 ? '9+' : n;
+  dot.classList.toggle('hidden', n === 0);
 }
 
 /** แถวของขวัญ ใช้ทั้งในรายการและหน้าอ่าน */
@@ -1682,9 +1782,16 @@ const rewardPanel = document.getElementById('rewardPanel');
 
 /** การ์ดของรางวัลหนึ่งใบ — ทองกับเพชรใช้ทรงเดียวกับการ์ดผลสุ่มในตู้กาช่า */
 function rewardCard(kind, amount, label) {
+  const isGold = kind === 'gold';
   const card = document.createElement('div');
-  card.className = 'got-card ' + kind;
-  card.innerHTML = `<span class="${kind === 'gold' ? 'coin' : 'gem'} big" aria-hidden="true"></span>`
+  // ── ทำไมการ์ดเพชรใช้คลาส 'gems' ไม่ใช่ 'gem' ──
+  // '.gem' คือคลาสของ "ไอคอนเพชร" ซึ่งวาดรูปทรงด้วย width/height 19px
+  // บวก clip-path ข้าวหลามตัด ถ้าเอาชื่อเดียวกันมาใส่ที่ตัวการ์ดด้วย การ์ดจะโดน
+  // กฎนั้นบีบเหลือสูง 19px แล้วถูก clip เป็นข้าวหลามตัดจนไอคอน ตัวเลข และป้าย
+  // ข้างในหายไปทั้งใบ — เห็นเป็นขีดแบน ๆ แทนที่จะเป็นการ์ดรางวัล
+  // ฝั่งทองไม่โดนเพราะคลาสการ์ดคือ 'gold' ส่วนคลาสไอคอนคือ 'coin' คนละชื่อกันอยู่แล้ว
+  card.className = 'got-card ' + (isGold ? 'gold' : 'gems');
+  card.innerHTML = `<span class="${isGold ? 'coin' : 'gem'} big" aria-hidden="true"></span>`
     + '<b></b><small></small>';
   card.querySelector('b').textContent = '+' + amount.toLocaleString('en-US');
   card.querySelector('small').textContent = label;
@@ -1886,7 +1993,7 @@ function refreshQuestDot() {
 
 /** ไอคอนปุ่มกิจกรรม — กล่องของขวัญ ตัวเดิมที่เคยอยู่บนปุ่มสมบัติ */
 function paintQuestIcon() {
-  paintMini(document.getElementById('questIcon'), 76, (c) => {
+  paintFitted(document.getElementById('questIcon'), 76, 0.96, (c) => {
     c.font = '46px serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
@@ -2268,12 +2375,17 @@ function paintUpgrade() {
     ? 'ตีบวกถึงขั้นสูงสุดแล้ว'
     : `โอกาสสำเร็จ <b>${Math.round(UPGRADE.chance * 100)}%</b> · ล้มเหลวเสียแต่ทอง ขั้นไม่ลด`;
 
-  document.getElementById('upGo').disabled = maxed;
+  // ระหว่างตีรัวอยู่ ปุ่มตีทีละครั้งต้องกดไม่ได้ ไม่งั้นทองจะถูกหักซ้อนกันสองทาง
+  document.getElementById('upGo').disabled = maxed || autoOn;
   document.getElementById('upGoLabel').textContent = maxed ? 'ตันแล้ว' : 'ตีบวก';
+  // ตันแล้วก็ไม่มีอะไรให้ตีรัวต่อ แต่ตอนกำลังรัวอยู่ปุ่มต้องกดได้ เพราะมันคือปุ่ม "หยุด"
+  document.getElementById('upAuto').disabled = maxed && !autoOn;
+  paintAutoBtn();
 }
 
 function openUpgrade() {
   document.getElementById('upResult').classList.add('hidden');
+  stopAuto();
   resetUpgradeAnim();
   refreshGold();   // ยอดเหรียญบนหัวหน้านี้ต้องตรงตั้งแต่วินาทีที่เปิด ไม่ใช่รอกดตีบวกก่อน
   paintUpgrade();
@@ -2315,9 +2427,121 @@ function resetUpgradeAnim() {
   document.getElementById('upSpark').innerHTML = '';
 }
 
+// ── ตีบวกรัวจนตัน ──────────────────────────────────────────
+//
+// ตีซ้ำให้เองจนขั้นเต็มหรือทองไม่พอ ระหว่างนั้นกดปุ่มเดิมซ้ำเพื่อหยุดได้ตลอด
+//
+// เร็วกว่าการตีทีละครั้ง (900ms) แต่ต้องช้าพอให้ตาอ่านทัน
+// เคยตั้งไว้ 260ms ซึ่งเร็วจนดาวกับตัวเลขกระพริบผ่านไปเฉย ๆ อ่านไม่ทันสักครั้ง
+// ผลคือเห็นแค่ผลสรุปตอนจบ ซึ่งเสียอรรถรสของการดูมันไล่ขึ้นทีละขั้นไปหมด
+const AUTO_MS = 720;
+
+let autoOn = false;
+let autoTimer = 0;
+let autoTries = 0;
+let autoSpent = 0;
+
+function paintAutoBtn() {
+  const btn = document.getElementById('upAuto');
+  btn.classList.toggle('stopping', autoOn);
+  btn.querySelector('.up-auto-ico').textContent = autoOn ? '■' : '⚡';
+  document.getElementById('upAutoLabel').textContent = autoOn ? 'หยุด' : 'ตีจนกว่าจะตัน';
+}
+
+/** หยุดรอบตีรัว — เรียกได้ตลอด ปลอดภัยแม้ตอนไม่ได้รัวอยู่ */
+function stopAuto() {
+  autoOn = false;
+  clearTimeout(autoTimer);
+  autoTimer = 0;
+  paintAutoBtn();
+}
+
+/** สรุปผลตอนจบรอบ แล้วคืนปุ่มให้กดได้ตามปกติ */
+function finishAuto(head, note, win) {
+  stopAuto();
+  const box = document.getElementById('upResult');
+  box.classList.remove('hidden');
+  box.className = 'up-result ' + (win ? 'win' : 'fail');
+  box.innerHTML = `<b>${head}</b><small>${note}</small>`;
+  if (win) setTimeout(() => sfx.cheer(), 200);
+  paintUpgrade();
+  refreshGold();
+}
+
+function autoStep() {
+  if (!autoOn) return;
+
+  const r = upgradeTreasure(tCurrent);
+  if (!r.ok) {
+    // ยังไม่ได้ตีสักครั้ง = กดมาแล้วติดตั้งแต่แรก บอกเหตุผลตรง ๆ ดีกว่าสรุปยอดศูนย์
+    if (!autoTries) {
+      return finishAuto(r.reason,
+        r.need ? `ขาดอีก ${r.need.toLocaleString('en-US')} ทอง` : 'ไม่มีอะไรให้ตีต่อแล้ว', false);
+    }
+    return finishAuto('😿 ทองหมดก่อน',
+      `ตีไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง · หยุดที่ขั้น ${treasureLevel(tCurrent)}/${UPGRADE.maxLevel}`,
+      false);
+  }
+
+  autoTries++;
+  autoSpent += r.spent;
+  if (r.win) { recordUpgrade(); sfx.upWin(); } else { sfx.upFail(); }
+
+  // เล่นแอนิเมชันเวทีซ้ำได้ทุกครั้ง ต้องถอดคลาสแล้วบังคับ reflow ก่อนใส่กลับ
+  // ไม่งั้นเบราว์เซอร์มองว่าคลาสไม่เปลี่ยน แล้วแอนิเมชันจะเล่นแค่ครั้งแรกครั้งเดียว
+  const stage = document.getElementById('upBox');
+  stage.classList.remove('win', 'fail');
+  void stage.offsetWidth;
+  stage.classList.add(r.win ? 'win' : 'fail');
+  burstSparks(r.win);
+
+  const lv = treasureLevel(tCurrent);
+  const box = document.getElementById('upResult');
+  box.classList.remove('hidden');
+  box.className = 'up-result ' + (r.win ? 'win' : 'fail');
+  box.innerHTML = `<b>${r.win ? '✨ สำเร็จ!' : '😿 ไม่สำเร็จ'}</b>`
+    + `<small>ครั้งที่ ${autoTries} · ขั้น ${lv}/${UPGRADE.maxLevel}`
+    + ` · ใช้ไป ${autoSpent.toLocaleString('en-US')} ทอง</small>`;
+
+  paintUpgrade();
+  refreshGold();
+
+  if (r.win) {
+    const stars = document.querySelectorAll('#upStep i.on');
+    if (stars.length) stars[stars.length - 1].classList.add('just');
+  }
+
+  if (lv >= UPGRADE.maxLevel) {
+    return finishAuto('🏆 ตีบวกจนตันแล้ว!',
+      `ใช้ไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง`, true);
+  }
+  autoTimer = setTimeout(autoStep, AUTO_MS);
+}
+
+function toggleAuto() {
+  // กดซ้ำระหว่างรัว = หยุด ปุ่มเดียวทำสองหน้าที่ จะได้ไม่ต้องหาปุ่มหยุดที่อื่น
+  if (autoOn) {
+    stopAuto();
+    return finishAuto('หยุดแล้ว',
+      autoTries
+        ? `ตีไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง · ขั้น ${treasureLevel(tCurrent)}/${UPGRADE.maxLevel}`
+        : 'ยังไม่ได้ตีสักครั้ง',
+      false);
+  }
+  // ตีทีละครั้งค้างอยู่ ต้องรอให้รอบนั้นเฉลยก่อน ไม่งั้นผลสองรอบจะทับกัน
+  if (upBusy) return;
+
+  unlockAudio();
+  autoOn = true;
+  autoTries = 0;
+  autoSpent = 0;
+  paintUpgrade();
+  autoStep();
+}
+
 function doUpgrade() {
   // กดรัวระหว่างยังชาร์จอยู่ = หักทองหลายรอบแต่เห็นผลรอบเดียว
-  if (upBusy) return;
+  if (upBusy || autoOn) return;
 
   const r = upgradeTreasure(tCurrent);
   const box = document.getElementById('upResult');
@@ -2532,11 +2756,15 @@ document.getElementById('tdUpgrade').addEventListener('click', () => {
 document.getElementById('upBack').addEventListener('click', () => {
   // ออกกลางช่วงชาร์จ: ต้องยกเลิกคิวด้วย ไม่งั้นผลจะไปเด้งในแผงที่ปิดไปแล้ว
   // แล้วค้างรออยู่อย่างนั้นจนกว่าจะเข้ามาใหม่ (ทองหักไปแล้วตั้งแต่ตอนกด ไม่มีอะไรหาย)
+  // รอบตีรัวต้องหยุดด้วยเหตุผลเดียวกัน แต่หนักกว่า — มันจะหักทองต่อไปเรื่อย ๆ
+  // ทั้งที่ผู้เล่นออกจากหน้าไปแล้วและมองไม่เห็นว่ากำลังเสียทองอยู่
+  stopAuto();
   resetUpgradeAnim();
   swapPanel(upPanel, tDetailPanel);
   paintDetail();   // ขั้นอาจเพิ่งขึ้น ต้องวาดใหม่ ไม่ใช่โชว์ค่าเก่า
 });
 document.getElementById('upGo').addEventListener('click', doUpgrade);
+document.getElementById('upAuto').addEventListener('click', toggleAuto);
 
 document.getElementById('loadoutOpen').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
@@ -2596,21 +2824,77 @@ document.getElementById('pull1').addEventListener('click', () => doPull(1));
 document.getElementById('pull5').addEventListener('click', () => doPull(gMulti()));
 document.getElementById('homeBtn').addEventListener('click', goHome);
 
-// เลิกเล่นกลางคัน: เก็บสถิติก่อน แล้วค่อยทิ้งรอบเล่น
+// ── เลิกเล่น = จบตานั้นจริง ๆ ไม่ใช่ทิ้ง ──
+//
+// เดิมกดแล้วเด้งกลับหน้าแรกเลย ตาที่เพิ่งเล่นจึงหายไปเงียบ ๆ ทั้งที่เล่นจบแล้ว
+// ไม่ได้ XP ไม่ได้นับสถิติ และไม่มีหน้าสรุปให้ดูว่าทำได้เท่าไหร่
+//
+// ตอนนี้เดินทางเดียวกับตอนตาย: ปิดหน้าหยุด → ปิดรอบเล่น → เปิดหน้าสรุป
+// ซึ่ง showGameOver() เป็นคนนับ XP กับสถิติให้เองอยู่แล้ว
+//
+// ต่างจากปุ่ม "เริ่มใหม่" ที่ยังไม่ตายแล้วกดทิ้งตานั้น — อันนั้นไม่ผ่านหน้านี้
+// จึงไม่นับ ตามที่ตั้งใจ
 document.getElementById('quitBtn').addEventListener('click', () => {
   game.bankBest();
-  goHome();
+  pausePanel.classList.add('hidden');
+  // ปุ่มบนแถบในจอต้องกลับเป็นรูปหยุด ไม่งั้นค้างเป็นสามเหลี่ยม "เล่นต่อ"
+  // ทั้งที่ไม่มีรอบเล่นให้เล่นต่อแล้ว
+  pauseBtn.classList.remove('playing');
+  pauseBtn.setAttribute('aria-label', 'หยุดชั่วคราว');
+  // ปิดรอบเล่นให้เรียบร้อยก่อนสรุป ไม่งั้นเกมยังค้างสถานะ "หยุดอยู่"
+  // แล้วกด Space ในหน้าสรุปจะไปสั่งเล่นต่อรอบที่จบไปแล้ว
+  game.state = STATE.DEAD;
+  showGameOver(true);
 });
 
 refreshHome();
 
-function showGameOver() {
-  document.getElementById('finalScore').textContent = game.score.toLocaleString('en-US');
-  document.getElementById('finalDist').textContent =
-    Math.floor(game.distance / SCORING.pxPerMeter) + ' ม.';
-  document.getElementById('bestScore').textContent = game.best.toLocaleString('en-US');
+function countUp(el, target, ms, suffix = '') {
+  const show = (n) => { el.textContent = n.toLocaleString('en-US') + suffix; };
+  if (reduceMotion.matches || target <= 0) return show(target);
+
+  const gen = countGen;
+  const t0 = performance.now();
+  const step = (now) => {
+    if (gen !== countGen) return;   // มีหน้าสรุปรอบใหม่มาแล้ว รอบนี้ทิ้ง
+    const p = Math.min(1, (now - t0) / ms);
+    // ช้าลงตอนท้าย ตัวเลขจึงดู "ไต่เข้าหาค่าจริง" ไม่ใช่วิ่งเท่ากันหมดแล้วหยุดกึก
+    show(Math.round(target * (1 - Math.pow(1 - p, 3))));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/**
+ * @param quit true = มาจากปุ่ม "เลิกเล่น" (เลือกจบเอง)
+ *             false/ไม่ส่ง = ตายคาสนาม — onGameOver ของ game เรียกแบบไม่ส่งอาร์กิวเมนต์
+ *             จึงตกมาที่ค่าปริยายนี้เอง
+ */
+function showGameOver(quit = false) {
+  const dist = Math.floor(game.distance / SCORING.pxPerMeter);
+  const isBest = game.score >= game.best && game.score > 0;
+
+  countGen++;   // ยกเลิกการนับของตาก่อนหน้าที่อาจยังไล่ค้างอยู่
+  countUp(document.getElementById('finalScore'), game.score, 900);
+  countUp(document.getElementById('finalDist'), dist, 700, ' ม.');
+  countUp(document.getElementById('bestScore'), game.best, 1100);
+
+  // สถิติใหม่ชนะทุกกรณี ส่วนที่เหลือบอกตามจริงว่าจบเพราะอะไร
+  // "หมดแรงแล้ว" ใช้กับตอนตายเท่านั้น คนที่กดเลิกเองไม่ได้หมดแรง
   document.getElementById('overTitle').textContent =
-    game.score >= game.best && game.score > 0 ? 'สถิติใหม่!' : 'หมดแรงแล้ว';
+    isBest ? 'สถิติใหม่!' : quit ? 'จบรอบแล้ว' : 'หมดแรงแล้ว';
+
+  // ป้ายสถิติใหม่โผล่ตามหลังตัวเลขที่ไล่จบ ไม่ใช่ขึ้นมาพร้อมกันตั้งแต่แรก
+  // ถ้าขึ้นพร้อมกัน มันจะเฉลยผลก่อนที่ตัวเลขจะไล่ถึง แล้วการไล่ก็ไม่เหลือความหมาย
+  const badge = document.getElementById('bestBadge');
+  badge.classList.add('hidden');
+  if (isBest) {
+    setTimeout(() => {
+      badge.classList.remove('hidden');
+      burstConfetti('overConfetti');
+      sfx.cheer();
+    }, reduceMotion.matches ? 0 : 950);
+  }
 
   // บวก XP ตรงนี้ที่เดียว — เป็นจุดเดียวที่การันตีว่า "หนึ่งตาจบแล้วจริง"
   // ถ้าไปบวกใน die() จะโดนนับซ้ำได้ เพราะ die() ถูกเรียกจากหลายทาง
@@ -2702,6 +2986,14 @@ function skipIntro() {
  */
 function closeAllPanels() {
   document.querySelectorAll('.stage .panel').forEach((el) => el.classList.add('hidden'));
+  // รอบตีบวกรัวเป็นลูปที่ "หักทองเอง" ทุก ๆ ไม่กี่ร้อยมิลลิวินาที ปิดแค่แผงไม่พอ
+  // ถ้าไม่หยุดตรงนี้ด้วย ผู้เล่นที่กดกลับหน้าแรกหรือกดเล่นกลางคันจะเสียทองต่อไป
+  // เรื่อย ๆ ทั้งที่มองไม่เห็นหน้านั้นแล้ว
+  stopAuto();
+  // ริบบิ้นที่ยังตกไม่จบต้องล้างด้วย ไม่งั้นชิ้นที่ค้างอยู่จะโผล่กลางอากาศ
+  // ตอนเปิดหน้าสรุปรอบหน้า (กฎเดียวกับกล่องรางวัลกับตู้กาช่า)
+  document.getElementById('overConfetti').innerHTML = '';
+  countGen++;   // หยุดตัวเลขที่กำลังไล่อยู่ ไม่ให้ไล่ต่อในหน้าที่ปิดไปแล้ว
   settingsFrom = [];
 }
 
@@ -2815,6 +3107,7 @@ document.getElementById('btnSettings').addEventListener('click', () => {
 document.getElementById('settingsBack').addEventListener('click', () => showSettings(false));
 document.getElementById('volDown').addEventListener('click', () => stepVolume(-1));
 document.getElementById('volUp').addEventListener('click', () => stepVolume(1));
+document.getElementById('volMute').addEventListener('click', () => { unlockAudio(); toggleMute(); });
 
 // ── ลูปหลัก ────────────────────────────────────────────────
 

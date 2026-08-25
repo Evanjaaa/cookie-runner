@@ -239,8 +239,13 @@
         <div class="pop">
           <h2 class="skin-title">เข้าสู่ระบบ</h2>
           <p id="authLead">เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้</p>
-          <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
-          <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
+          <!-- ห่อปุ่มไว้ในกล่องของตัวเอง เพื่อคุมช่องไฟด้วย gap แทน margin ของ .btn
+               ซึ่งเดิมทำให้สองปุ่มเกือบติดกันจนอ่านเป็นก้อนเดียว ไม่ใช่สองทางเลือก -->
+          <div class="auth-actions">
+            <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
+            <span class="auth-or"><i></i>หรือ<i></i></span>
+            <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
+          </div>
           <small class="form-msg" id="authMsg"></small>
           <button class="backbtn" id="authBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
@@ -592,10 +597,18 @@
             <div class="up-arrow" id="upArrow"></div>
             <div class="up-odds" id="upOdds"></div>
             <div class="up-result hidden" id="upResult"></div>
-            <button class="btn" id="upGo">
-              <span class="price"><span class="coin" aria-hidden="true"></span><b id="upCost">2,000</b></span>
-              <small id="upGoLabel">ตีบวก</small>
-            </button>
+            <!-- สองปุ่มอยู่แถวเดียวกัน: ตีทีละครั้ง (ลุ้นเอง) กับตีรัวจนตัน (ข้ามการลุ้น)
+                 ปุ่มซ้ายเป็นตัวเอกจึงได้สีมิ้นต์ ปุ่มขวาเป็นทางเลือกจึงเป็นม่วงรอง -->
+            <div class="up-buttons">
+              <button class="btn" id="upGo">
+                <span class="price"><span class="coin" aria-hidden="true"></span><b id="upCost">2,000</b></span>
+                <small id="upGoLabel">ตีบวก</small>
+              </button>
+              <button class="btn ghost" id="upAuto">
+                <span class="up-auto-ico" aria-hidden="true">⚡</span>
+                <small id="upAutoLabel">ตีจนกว่าจะตัน</small>
+              </button>
+            </div>
           </div>
           <button class="backbtn" id="upBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
@@ -795,6 +808,22 @@
         <div class="pop">
           <h2>ตั้งค่า</h2>
           <div class="setrow">
+            <!-- ปุ่มลำโพงเป็นสวิตช์ปิด/เปิดเสียงในตัว กดทีเดียวเงียบ กดซ้ำได้ระดับเดิมคืน
+                 ต่างจากปุ่ม − ที่ต้องกดสิบทีกว่าจะเงียบ แล้วกดกลับอีกสิบที
+                 รูปลำโพงวาดเป็น SVG เหมือนไอคอนอื่นในเกม ไม่ใช้อีโมจิ 🔊 ที่หน้าตา
+                 ต่างกันทุกระบบและบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
+            <button class="stepbtn mutebtn" id="volMute" aria-label="ปิดเสียง">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                <g class="wave" fill="none" stroke-linecap="round">
+                  <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                  <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                </g>
+                <g class="cross" fill="none" stroke-linecap="round">
+                  <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                </g>
+              </svg>
+            </button>
             <span class="setlabel">เสียง</span>
             <button class="stepbtn" id="volDown" aria-label="ลดเสียง">−</button>
             <div class="volbar" id="volBar"></div>
@@ -818,18 +847,39 @@
         </div>
       </div>
 
+      <!-- ── หน้าสรุปคะแนน ────────────────────────────────────
+           เปิดตอนตาย และตอนกด "เลิกเล่น" ในหน้าหยุด — ทั้งสองทางคือ "ตาจบแล้วจริง"
+           ส่วนปุ่ม "เริ่มใหม่" ระหว่างยังไม่ตายคือทิ้งตานั้น จึงไม่ผ่านหน้านี้และไม่นับ
+
+           ตัวเลขทุกตัวไล่ขึ้นจากศูนย์ (ดู countUp ใน main.js) แทนที่จะโผล่มาเป็นค่าจบ
+           ระหว่างที่มันไล่ ตาจะจับอยู่กับตัวเลขเอง ซึ่งเป็นสิ่งเดียวที่หน้านี้มีให้ดู -->
       <div class="panel hidden" id="overPanel">
-        <div class="pop">
+        <div class="pop over-pop">
+          <div class="confetti" id="overConfetti" aria-hidden="true"></div>
           <h2 id="overTitle">หมดแรงแล้ว</h2>
-          <div class="final">
-            <div><div class="lbl">คะแนน</div><div class="val" id="finalScore">0</div></div>
-            <div><div class="lbl">ระยะทาง</div><div class="val" id="finalDist">0 ม.</div></div>
-            <div><div class="lbl">สถิติสูงสุด</div><div class="val mint" id="bestScore">0</div></div>
+
+          <!-- คะแนนของตาที่เพิ่งจบเป็นพระเอกของหน้า จึงแยกออกมาตัวใหญ่เดี่ยว ๆ
+               ส่วนระยะทางกับสถิติสูงสุดเป็นข้อมูลประกอบ อยู่เป็นการ์ดเล็กข้างล่าง -->
+          <div class="over-hero">
+            <span class="lbl">คะแนน</span>
+            <b class="over-score" id="finalScore">0</b>
+            <span class="best-badge hidden" id="bestBadge">★ สถิติใหม่</span>
           </div>
+
+          <div class="final">
+            <div class="fstat">
+              <div class="lbl">ระยะทาง</div>
+              <div class="val" id="finalDist">0 ม.</div>
+            </div>
+            <div class="fstat">
+              <div class="lbl">สถิติสูงสุด</div>
+              <div class="val mint" id="bestScore">0</div>
+            </div>
+          </div>
+
           <!-- XP ที่เพิ่งได้จากตานี้ ต้องโชว์ตรงนี้เพราะเป็นที่เดียวที่ผู้เล่นเห็น
                ผลของตาที่เพิ่งจบ ถ้าไปโผล่แต่บนการ์ดในล็อบบี้จะไม่มีใครสังเกตว่าได้เพิ่ม -->
           <div class="xp-gain hidden" id="xpGain"></div>
-          <p>ความเร็วคงที่ตลอด ระยะกระโดดจึงเท่าเดิมเสมอ — กดกระโดดตรงปลาเม็ดแรก แล้วจะเก็บครบทั้งเส้นพร้อมข้ามพ้นพอดี</p>
           <div class="btnrow">
             <button class="btn" id="retryBtn">วิ่งอีกรอบ</button>
             <button class="btn ghost" id="homeBtn">กลับหน้าแรก</button>

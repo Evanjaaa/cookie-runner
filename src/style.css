@@ -254,7 +254,7 @@ canvas { display: block; width: 100%; height: auto; }
 }
 /* ไฮไลต์แก้วพาดครึ่งบน ตัวที่ทำให้ปุ่มดูเป็นลูกอมไม่ใช่แถบสี
    เว้นปุ่มเล่นกับปุ่มสุ่มไว้ เพราะสองตัวนั้นมี ::before ของตัวเองอยู่แล้ว */
-.btn:not(.play):not(.pull)::before {
+.btn:not(.play):not(.pull):not(.big)::before {
   content: '';
   position: absolute;
   inset: 0 0 55% 0;
@@ -915,6 +915,18 @@ canvas { display: block; width: 100%; height: auto; }
   overflow-y: auto;
   scrollbar-width: none;
 
+  /* ── ทำไมต้องมี padding คู่กับ margin ติดลบ ──
+     overflow-y: auto ทำให้ overflow-x กลายเป็น auto ตามไปด้วยเสมอ (ตามสเปก
+     แกนที่เป็น visible คู่กับแกนที่ไม่ visible จะถูกบังคับเป็น auto)
+     กล่องนี้จึงตัดทั้งสองแกน แล้วป้ายแดงที่เกาะมุมปุ่มยื่นออกไป 3px ก็โดนเฉือนหาย
+     — เห็นเป็นป้ายแหว่งอย่างที่เจอบนมือถือ
+
+     เว้น padding ให้ป้ายมีที่ยืน แล้วดึงกล่องออกด้วย margin ติดลบเท่ากันเป๊ะ
+     ตัวปุ่มจึงยังอยู่ตำแหน่งเดิมทุกพิกเซล ได้มาแค่ที่ว่างสำหรับส่วนที่ยื่น
+     (ขยายกล่องเฉย ๆ ไม่ได้ เพราะ .lobby ยึดขอบด้วย top/bottom/left/right) */
+  padding: 9px;
+  margin: -9px;
+
   /* ตัวแถบสูงเกือบเต็มเวที ที่ว่างเหนือ-ใต้ปุ่มจึงคร่อมปุ่ม "เล่น!" มุมขวาล่างอยู่
      ถ้าไม่ปิดการรับคลิก ที่ว่างเปล่า ๆ ตรงนั้นจะกินการกดปุ่มเล่นไป
      (ใช้ท่าเดียวกับ .hud-top กับ .touchpad ที่คร่อมของอื่นเหมือนกัน) */
@@ -974,15 +986,15 @@ canvas { display: block; width: 100%; height: auto; }
 .lobby-btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 
 /* ทับกฎ canvas ทั่วไปที่สั่ง width:100% ไว้สำหรับจอเกม
-   ช่องไอคอนต้องเข้มกว่าตัวปุ่ม ไม่งั้นรูปที่วาดด้วยสีอ่อน (แมวขาว ถ้วยรางวัล)
-   จะจมหายไปกับพื้นม่วงอ่อนของปุ่ม */
+   ไม่มีช่องสี่เหลี่ยมเข้มรองไอคอนแล้ว — เหลือแค่ตัวปุ่มม่วงอ่อน ไอคอน และชื่อ
+   ไอคอนที่วาดด้วยสีอ่อน (แมวขาว ถ้วยรางวัล) ใช้เงาใต้รูปแทนช่องเข้ม
+   drop-shadow เกาะรูปทรงจริงในภาพ ไม่ใช่กรอบสี่เหลี่ยมของ canvas
+   จึงได้ความคมชัดกลับมาโดยไม่ต้องมีแผ่นรองให้เกะกะ */
 .lobby-btn canvas {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
   flex: 0 0 auto;
-  background: rgba(34,14,54,.62);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,243,226,.16);
+  filter: drop-shadow(0 2px 3px rgba(20,8,32,.55));
 }
 /* ภาพตัวอย่างด่านเป็นแนวนอน อัตราส่วนเดียวกับจอเกม (960:420)
    เตี้ยกว่าไอคอนสี่เหลี่ยมของใบอื่น 15px จึงเว้นขอบบนล่างชดเชยให้กินที่เท่ากัน
@@ -1020,14 +1032,22 @@ canvas { display: block; width: 100%; height: auto; }
      inset บน   = แสงตกกระทบขอบบน ทำให้ดูโค้งนูน
      เงานอก     = ยกปุ่มลอยจากฉาก
      inset ล่าง = เงาในตัวปุ่มด้านล่าง ทำให้ก้นปุ่มดูหนา */
+/* ที่วางกับขนาดเป็นของปุ่มเล่นในล็อบบี้อย่างเดียว ไม่ใช่ส่วนของ "ทรง" */
 .btn.play {
   position: absolute;
   right: 3%;
   bottom: 6%;
   margin: 0;
   font-size: clamp(19px, 3.7vw, 31px);
-  font-weight: 600;
   padding: 14px 54px;
+}
+
+/* ── ทรงลูกอมนูน ──────────────────────────────
+   ใช้ร่วมกันระหว่างปุ่ม "เล่น!" ในล็อบบี้ กับปุ่ม "เข้าเกม" ในหน้าชื่อเกม
+   สองปุ่มนี้ทำหน้าที่เดียวกัน คือปุ่มที่พาเข้าเกม จึงควรเป็นวัสดุชิ้นเดียวกัน
+   ต่างกันแค่ที่วางกับขนาด ซึ่งแยกไว้ในกฎของแต่ละใบเอง */
+.btn.play, .btn.big {
+  font-weight: 600;
   border-radius: 999px;
   border: none;
   /* กลับมาใช้เขียวมิ้นต์สีเดิมของเกม ส่วนทรงนูนยังเป็นแบบใหม่ทุกอย่าง
@@ -1059,8 +1079,8 @@ canvas { display: block; width: 100%; height: auto; }
 }
 
 /* ขีดแสงบางบนล่าง ทำให้ผิวปุ่มดูมันวาว */
-.btn.play::before,
-.btn.play::after {
+.btn.play::before, .btn.big::before,
+.btn.play::after, .btn.big::after {
   content: '';
   position: absolute;
   width: 70%;
@@ -1069,12 +1089,12 @@ canvas { display: block; width: 100%; height: auto; }
   filter: blur(1px);
   pointer-events: none;
 }
-.btn.play::before { top: 8px; background-color: rgba(255, 255, 255, .62); }
-.btn.play::after { bottom: 8px; background-color: rgba(255, 255, 255, .16); }
+.btn.play::before, .btn.big::before { top: 8px; background-color: rgba(255, 255, 255, .62); }
+.btn.play::after, .btn.big::after { bottom: 8px; background-color: rgba(255, 255, 255, .16); }
 
-.btn.play:hover { animation: jello-horizontal .9s both; }
+.btn.play:hover, .btn.big:hover { animation: jello-horizontal .9s both; }
 /* ทับกฎกดของ .btn ที่ยุบลง 4px ตามเงาเขียว ซึ่งทรงนี้ไม่มีแล้ว */
-.btn.play:active { transform: scale3d(.96, .96, 1); box-shadow:
+.btn.play:active, .btn.big:active { transform: scale3d(.96, .96, 1); box-shadow:
     0 10px 10px rgb(190, 245, 240) inset,
     0 2px 5px rgba(5, 5, 5, .212),
     0 -10px 10px #2E9C95 inset; }
@@ -1089,7 +1109,7 @@ canvas { display: block; width: 100%; height: auto; }
   100% { transform: scale3d(1, 1, 1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .btn.play:hover { animation: none; }
+  .btn.play:hover, .btn.big:hover { animation: none; }
 }
 
 /* ── กระดานคะแนน ──────────────────────────── */
@@ -1628,11 +1648,14 @@ canvas { display: block; width: 100%; height: auto; }
 .reward-pop .got-title, .reward-pop .got-row, .reward-pop .btn { position: relative; z-index: 2; }
 /* การ์ดในกล่องนี้ไม่มี --gs ของหน้ากาช่ามาคุมความกว้าง ต้องตั้งของตัวเอง */
 .reward-pop .got-card { width: clamp(84px, 15dvh, 124px); }
-.got-card.gem {
+/* ชื่อคลาสต้องเป็น .gems ไม่ใช่ .gem — .gem เป็นคลาสของไอคอนเพชรซึ่งมี
+   width/height กับ clip-path ข้าวหลามตัดติดมาด้วย เอามาใส่ที่การ์ดแล้วการ์ดจะโดนตัดหาย
+   (คู่กับกฎที่ rewardCard ใน main.js) */
+.got-card.gems {
   border-color: rgba(255,143,176,.6);
   background: linear-gradient(180deg, rgba(255,143,176,.24), rgba(255,143,176,.07));
 }
-.got-card.gem b { color: #FFB3CC; }
+.got-card.gems b { color: #FFB3CC; }
 .got-card .gem.big {
   width: 52%;
   height: auto;
@@ -1749,12 +1772,25 @@ canvas { display: block; width: 100%; height: auto; }
    ซึ่ง "ไม่มีผลกับกล่อง inline" — เดิม .price เป็น inline เหรียญจึงกว้าง 0
    คือมีอยู่ในหน้าแต่มองไม่เห็น (ปุ่มสุ่มในตู้กาช่าไม่เจอปัญหานี้
    เพราะมันมีกฎ .btn.pull .price สั่ง flex ของตัวเองอยู่แล้ว) */
-#upGo {
+/* สองปุ่มอยู่แถวเดียวกัน ปุ่มเอกซ้าย ปุ่มรองขวา
+   wrap ไว้เผื่อจอแคบมาก ๆ ที่สองปุ่มเรียงกันแล้วล้นออกนอกการ์ด */
+.up-buttons {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: clamp(6px, 1.2vw, 12px);
+  margin-top: clamp(4px, .9dvh, 8px);
+}
+/* ปุ่มทั้งคู่สูงเท่ากันและไม่มี margin-top ของ .btn มาดันให้เหลื่อมกัน */
+.up-buttons .btn { margin-top: 0; }
+
+#upGo, #upAuto {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: clamp(6px, 1.1vw, 10px);
-  padding: clamp(10px, 1.9dvh, 15px) clamp(26px, 4vw, 42px);
+  padding: clamp(10px, 1.9dvh, 15px) clamp(20px, 3.2vw, 34px);
 }
 #upGo .price { display: inline-flex; align-items: center; gap: clamp(5px, .9vw, 8px); }
 #upGo .coin {
@@ -1763,7 +1799,34 @@ canvas { display: block; width: 100%; height: auto; }
 }
 #upGo .coin::after { inset: 27% 34%; }
 #upGo b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(15px, 2.5dvh, 20px); line-height: 1; }
-#upGo small { font-size: clamp(13px, 2.1dvh, 17px); font-weight: 600; line-height: 1; }
+#upGo small, #upAuto small { font-size: clamp(13px, 2.1dvh, 17px); font-weight: 600; line-height: 1; }
+
+/* ── ปุ่มตีจนกว่าจะตัน ────────────────────────
+   สายฟ้าบอก "รัวเอง" ตอนกำลังรัวจะสลับเป็นสี่เหลี่ยมหยุด ปุ่มเดียวทำสองหน้าที่ */
+.up-auto-ico {
+  font-size: clamp(14px, 2.3dvh, 19px);
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+}
+/* กำลังรัวอยู่ = ปุ่มเปลี่ยนเป็นสีแดงเตือน เพราะตอนนี้มันคือปุ่ม "หยุด" ไม่ใช่ปุ่ม "เริ่ม"
+   ต้องเขียนคู่กับ .btn.ghost ให้ชนะกฎสีม่วงที่ความจำเพาะเท่ากันแต่มาก่อน */
+.btn.ghost.stopping {
+  background: linear-gradient(180deg, #FF8A96 0%, #F2555F 52%, #C4303C 100%);
+  box-shadow:
+    0 6px 0 #8E1F28,
+    0 12px 24px rgba(196,48,60,.36),
+    inset 0 1px 0 rgba(255,255,255,.45);
+}
+.btn.ghost.stopping:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #8E1F28, inset 0 1px 0 rgba(255,255,255,.45);
+}
+/* เต้นเบา ๆ ตอนกำลังรัว บอกว่ายังทำงานอยู่ ไม่ได้ค้าง */
+.btn.ghost.stopping .up-auto-ico { animation: autoBlink .7s ease-in-out infinite; }
+@keyframes autoBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .55; transform: scale(.86); }
+}
 
 /* ตัวสมบัติ: สั่นถี่ตอนชาร์จ เด้งโตตอนสำเร็จ สะบัดตอนพลาด */
 @keyframes upShiver {
@@ -1825,40 +1888,66 @@ canvas { display: block; width: 100%; height: auto; }
   100% { opacity: 1; transform: scale(1); }
 }
 .up-result {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: clamp(7px, 1.3dvh, 11px) clamp(20px, 3.4vw, 34px);
-  border-radius: 16px;
+  gap: 2px;
+  /* กว้างขั้นต่ำเท่ากันทั้งสำเร็จและพลาด กรอบจึงไม่หดขยายไปมาตอนตีรัว
+     ซึ่งเป็นจังหวะที่ข้อความเปลี่ยนทุก ๆ ไม่กี่ร้อยมิลลิวินาที */
+  min-width: min(100%, 20ch);
+  padding: clamp(9px, 1.6dvh, 14px) clamp(22px, 3.8vw, 38px);
+  border-radius: 18px;
   font-size: clamp(10px, 1.7dvh, 13px);
   animation: resultIn .42s cubic-bezier(.2,.9,.3,1.35) backwards;
 }
+/* แสงพาดเฉียงบนครึ่งบนของกรอบ ตัวที่ทำให้อ่านเป็นแผ่นวัสดุมีผิว
+   ไม่ใช่กล่องสีทึบ — ใช้สูตรเดียวกับไฮไลต์บนปุ่มลูกอมทั้งเกม */
+.up-result::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 58% 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.28), transparent);
+  pointer-events: none;
+}
 .up-result.hidden { display: none; }
 .up-result b {
+  position: relative;
   font-family: "Mitr", sans-serif;
   font-weight: 600;
   font-size: clamp(15px, 2.8dvh, 23px);
   line-height: 1.2;
   letter-spacing: .01em;
 }
-.up-result small { color: inherit; opacity: .82; }
+.up-result small {
+  position: relative;
+  color: inherit;
+  opacity: .88;
+  line-height: 1.45;
+}
 /* คำถามชวนตีต่อ เน้นให้เห็นชัดว่ากดปุ่มเดิมได้เลย ไม่ต้องออกไปแล้วเข้ามาใหม่ */
 .up-result em { font-style: normal; font-weight: 600; margin-top: 3px; color: #FFE9A8; }
 .up-result.win {
-  background: linear-gradient(180deg, rgba(141,243,234,.32), rgba(78,205,196,.1));
-  border: 1px solid rgba(141,243,234,.8);
+  background: linear-gradient(180deg, rgba(141,243,234,.36), rgba(78,205,196,.12));
+  border: 1.5px solid rgba(141,243,234,.85);
   color: var(--mint-lite);
-  box-shadow: 0 0 26px rgba(78,205,196,.45), inset 0 1px 0 rgba(255,255,255,.35);
+  box-shadow:
+    0 0 30px rgba(78,205,196,.5),
+    0 6px 16px rgba(0,0,0,.4),
+    inset 0 1px 0 rgba(255,255,255,.4);
 }
-.up-result.win b { color: #C6FFF8; text-shadow: 0 0 16px rgba(141,243,234,.95); }
+.up-result.win b { color: #EAFFFC; text-shadow: 0 2px 0 rgba(8,60,55,.55), 0 0 18px rgba(141,243,234,.95); }
 .up-result.fail {
-  background: linear-gradient(180deg, rgba(255,92,110,.28), rgba(255,92,110,.07));
-  border: 1px solid rgba(255,122,138,.62);
+  background: linear-gradient(180deg, rgba(255,92,110,.3), rgba(255,92,110,.09));
+  border: 1.5px solid rgba(255,122,138,.7);
   color: #FFC2C9;
-  box-shadow: 0 0 18px rgba(255,92,110,.3), inset 0 1px 0 rgba(255,255,255,.18);
+  box-shadow:
+    0 0 22px rgba(255,92,110,.34),
+    0 6px 16px rgba(0,0,0,.4),
+    inset 0 1px 0 rgba(255,255,255,.22);
 }
-.up-result.fail b { color: #FFDBDF; }
+.up-result.fail b { color: #FFEAEC; text-shadow: 0 2px 0 rgba(92,16,26,.5); }
 
 /* ── ตู้สุ่มสมบัติ ──────────────────────────── */
 /* อัตราออกของช่องสมบัติเคยกางเป็นชิปอยู่กลางหน้าตลอดเวลา ย้ายไปซ่อนใต้ปุ่ม !
@@ -1884,35 +1973,66 @@ canvas { display: block; width: 100%; height: auto; }
    เดิมผูกไว้กับ #btnMail อย่างเดียว พอเอาไปแปะปุ่มอื่นจึงไม่มีสไตล์ตามไปด้วย
    ขนาดคิดเป็น % ของปุ่มไม่ได้แล้ว เพราะสองปุ่มขนาดต่างกันมาก (32px กับ 70px)
    ล็อกเป็น px แทน จุดจึงเท่ากันทั้งสองที่ */
+/* ── ขนาดป้ายผูกกับปุ่มที่มันเกาะอยู่ ──
+   สองปุ่มนี้ต่างกันเกือบเท่าตัว: ปุ่มบนแถบในจอราว 30px ส่วนปุ่มล็อบบี้ 62px
+   ตอนยังเป็นจุดเปล่า 11px ล็อกเป็น px เดียวกันได้ แต่พอมีตัวเลขแล้วป้ายต้องโต
+   ขึ้นเป็น 17px ซึ่งกินเกินครึ่งด้านของปุ่มเล็ก จนบังซองจดหมายที่อยู่ข้างใน
+   ทั้งที่บนปุ่มล็อบบี้ขนาดเท่ากันนี้ดูพอดี — ต้องแยกขนาดตามปุ่ม ไม่ใช่ค่าเดียวทั้งเกม */
+#btnMail { --badge: 14px; }
+.lobby-btn { --badge: 18px; }
+/* ความหนาขอบกับระยะขอบในของป้าย — ประกาศไว้ที่เดียวเพราะกฎ :not(:empty)
+   ข้างล่างต้องเอาไปลบออกจากขนาดรวม เพื่อคำนวณ "เนื้อที่ตัวอักษร" ให้ถูก */
+#btnMail .dot, .lobby-btn .dot {
+  --badge-bd: max(1.5px, calc(var(--badge) * .11));
+  --badge-px: calc(var(--badge) * .18);
+}
+
 #btnMail .dot, .lobby-btn .dot {
   position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 11px;
-  height: 11px;
-  /* ค่าข้างบนคือทรง "จุดเปล่า" ของกล่องจดหมาย ส่วนป้ายที่มีตัวเลขทับค่าพวกนี้
-     ด้วยกฎ :not(:empty) ข้างล่าง — จุดกับป้ายจึงเป็นของชิ้นเดียวกันที่โตตามเนื้อหา */
+  /* เยื้องออกครึ่งหนึ่งของตัวป้าย ป้ายจึงคร่อมขอบปุ่มพอดีทั้งปุ่มกลมและปุ่มมุมมน
+     ผูกกับ --badge ด้วย ไม่งั้นเปลี่ยนขนาดป้ายทีต้องมาไล่แก้ระยะเยื้องอีกที */
+  top: calc(var(--badge) * -0.22);
+  right: calc(var(--badge) * -0.22);
+  width: var(--badge);
+  height: var(--badge);
+  /* ค่าข้างบนคือทรง "จุดเปล่า" ส่วนป้ายที่มีตัวเลขทับค่าพวกนี้ด้วยกฎ
+     :not(:empty) ข้างล่าง — จุดกับป้ายจึงเป็นของชิ้นเดียวกันที่โตตามเนื้อหา */
   border-radius: 50%;
   background: #E8434F;
-  border: 2px solid #3A1D50;
+  /* ขอบหนาตามขนาดป้าย ไม่ใช่ 2px ตายตัว — 2px บนป้าย 14px คือขอบหนา 29%
+     ของตัวป้าย ซึ่งทำให้มันดูเป็นก้อนตันมากกว่าป้ายที่มีตัวเลขอยู่ข้างใน */
+  border: var(--badge-bd) solid #3A1D50;
   box-shadow: 0 0 8px rgba(232,67,79,.85);
   animation: mailPulse 1.6s ease-in-out infinite;
 }
 #btnMail .dot.hidden, .lobby-btn .dot.hidden { display: none; }
 
 /* ── ป้ายแดงแบบมีตัวเลข ──
-   ใช้กฎเดียวกับจุดเปล่าทุกอย่าง ต่างแค่โตพอให้ตัวเลขอยู่ได้
+   ใช้กฎเดียวกับจุดเปล่าทุกอย่าง ต่างแค่กว้างได้ตามเนื้อหาเมื่อเป็น "9+"
    min-width เท่ากับ height เพื่อให้เลขหลักเดียวยังเป็นวงกลมกลม ไม่ใช่แคปซูลแบน */
-.dot:not(:empty) {
-  width: auto;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
+/* ── ทำไมต้องสลับเป็น content-box เฉพาะตรงนี้ ──
+   ทั้งเกมตั้ง * { box-sizing: border-box } ไว้ ซึ่งแปลว่า width หมายถึง "กล่องนอก"
+   พอสั่ง width: max-content มันจึงเอาความกว้างของตัวหนังสือไปเป็นขนาดกล่องนอก
+   แล้วไม่เหลือที่ให้ padding กับ border — วัดจริงได้เนื้อที่ตัวอักษร 6.96px
+   ขณะที่ "9+" ต้องใช้ 12px ตัว + จึงล้นออกไปนอกวงแดงจนดูเหมือนโดนตัด
+
+   สลับมาคุมจาก "เนื้อที่ตัวอักษร" ตรง ๆ แล้วบวก padding/border เอง ขนาดรวมจึง
+   เท่ากับ --badge เป๊ะตอนเป็นเลขหลักเดียว และยืดออกเป็นแคปซูลเองตอนเป็น "9+" */
+/* ต้องเขียนคู่กับตัวเลือกเดิมทั้งสองตัว — `.dot:not(:empty)` เดี่ยว ๆ (0,2,0)
+   แพ้ `#btnMail .dot` (1,1,0) ที่ตั้ง width/height ไว้ กฎนี้จะไม่มีผลอะไรเลย
+   แล้วป้ายจะเอาขนาดวงกลมมาเป็น "เนื้อที่ตัวอักษร" จนบวมเกินขนาดที่ตั้งใจ
+   (กับดักเดียวกับ .skin-title ที่ต้องเขียนคู่กับ .panel h2 เสมอ) */
+#btnMail .dot:not(:empty), .lobby-btn .dot:not(:empty) {
+  box-sizing: content-box;
+  width: max-content;
+  min-width: calc(var(--badge) - var(--badge-px) * 2 - var(--badge-bd) * 2);
+  height: calc(var(--badge) - var(--badge-bd) * 2);
+  padding: 0 var(--badge-px);
   border-radius: 999px;
   font-family: "Mitr", sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 10.5px;
+  font-size: calc(var(--badge) * .63);
   line-height: 1;
   color: #FFF3E2;
   display: grid;
@@ -2167,19 +2287,101 @@ canvas { display: block; width: 100%; height: auto; }
 #loadoutPanel .btn { margin-top: 0; }
 
 /* ── สรุปคะแนน ─────────────────────────────── */
-.final { display: flex; gap: 26px; justify-content: center; margin: 2px 0 4px; }
-.final div { min-width: 96px; }
+/* ต้องเป็นที่ยึดของริบบิ้นที่โปรยอยู่ข้างใน และตัดส่วนที่ตกพ้นการ์ดทิ้ง
+   (กฎเดียวกับกล่องรางวัลกับกล่องผลสุ่มในตู้กาช่า) */
+.pop.over-pop {
+  position: relative;
+  overflow: hidden;
+  gap: clamp(6px, 1.3dvh, 12px);
+  padding: clamp(14px, 3dvh, 30px) clamp(26px, 5vw, 58px);
+  background:
+    radial-gradient(70% 54% at 50% 4%, rgba(255,201,60,.16), transparent 72%),
+    linear-gradient(180deg, rgba(96,47,131,.95), rgba(35,16,55,.97));
+}
+/* ทุกชั้นในการ์ดต้องลอยเหนือริบบิ้น ไม่งั้นริบบิ้นจะตกทับตัวเลข */
+.over-pop > * { position: relative; z-index: 2; }
+.over-pop > .confetti { z-index: 1; }
+
+/* ── คะแนนของตาที่เพิ่งจบ = พระเอกของหน้า ──
+   แยกออกมาตัวใหญ่เดี่ยว ๆ เพราะเป็นตัวเลขเดียวที่คนเปิดหน้านี้มาหาคำตอบ
+   ของเดิมวางสามช่องเท่ากันหมด สายตาจึงไม่รู้ว่าควรอ่านช่องไหนก่อน */
+.over-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: clamp(6px, 1.2dvh, 12px) clamp(22px, 4vw, 44px) clamp(7px, 1.4dvh, 13px);
+  border-radius: 20px;
+  border: 1px solid rgba(255,243,226,.2);
+  background: linear-gradient(180deg, rgba(255,243,226,.13), rgba(255,243,226,.04));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 18px rgba(0,0,0,.35);
+}
+.over-hero .lbl {
+  font-size: clamp(9px, 1.4dvh, 11.5px);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #B99BD4;
+}
+.over-score {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(30px, 6.6dvh, 54px);
+  line-height: 1.06;
+  color: var(--cream);
+  /* ตัวเลขไล่ขึ้นทีละหลัก ถ้าความกว้างตัวเลขไม่เท่ากันทั้งแถวจะกระตุกซ้ายขวาตลอด */
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 3px 0 rgba(58,29,80,.85), 0 0 26px rgba(255,201,60,.42);
+}
+
+/* ป้ายสถิติใหม่ — โผล่ตามหลังตัวเลขที่ไล่จบ (ดู showGameOver ใน main.js) */
+.best-badge {
+  margin-top: 4px;
+  padding: 2px 13px;
+  border-radius: 999px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(10px, 1.6dvh, 13px);
+  letter-spacing: .04em;
+  color: #3E2600;
+  background: linear-gradient(180deg, #FFE49B, #F5B31E);
+  box-shadow: 0 0 16px rgba(255,201,60,.6), 0 2px 0 rgba(120,72,6,.4);
+  animation: badgePop .45s cubic-bezier(.2,.9,.3,1.5) backwards;
+}
+.best-badge.hidden { display: none; }
+@keyframes badgePop {
+  0%   { opacity: 0; transform: scale(.4) rotate(-10deg); }
+  60%  { opacity: 1; transform: scale(1.15) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* ── สองช่องรอง: ระยะทาง กับ สถิติสูงสุด ── */
+.final {
+  display: flex;
+  gap: clamp(8px, 1.6vw, 14px);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.fstat {
+  min-width: clamp(96px, 17vw, 132px);
+  padding: clamp(5px, 1dvh, 9px) clamp(10px, 1.8vw, 18px);
+  border-radius: 14px;
+  border: 1px solid rgba(255,243,226,.14);
+  background: rgba(255,243,226,.055);
+}
 .final .lbl {
-  font-size: 11px;
-  letter-spacing: .14em;
+  font-size: clamp(8.5px, 1.3dvh, 10.5px);
+  letter-spacing: .13em;
   text-transform: uppercase;
   color: #A98BC4;
 }
 .final .val {
   font-family: "Mitr", sans-serif;
-  font-size: 30px;
+  font-size: clamp(17px, 3dvh, 24px);
   font-weight: 600;
+  line-height: 1.25;
   color: var(--cream);
+  font-variant-numeric: tabular-nums;
 }
 .final .val.mint { color: var(--mint-lite); }
 
@@ -2669,10 +2871,13 @@ canvas { display: block; width: 100%; height: auto; }
     box-shadow: 0 4px 0 #2E9C95, 0 8px 16px rgba(78,205,196,.24);
   }
   .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #2E9C95; }
-  .final { gap: 16px; margin: 0; }
-  .final div { min-width: 62px; }
-  .final .lbl { font-size: 9.5px; letter-spacing: .1em; }
-  .final .val { font-size: 22px; }
+  .final { gap: 7px; margin: 0; }
+  .fstat { min-width: 78px; padding: 4px 10px; border-radius: 11px; }
+  .final .lbl { font-size: 8.5px; letter-spacing: .1em; }
+  .final .val { font-size: 15px; }
+  .over-hero { padding: 4px 18px 6px; border-radius: 15px; }
+  .over-score { font-size: clamp(26px, 7.4dvh, 40px); }
+  .pop.over-pop { padding: 12px 20px; }
   .hud-top { padding: 8px 9px; gap: 7px; }
   /* จอแคบมาก — ปุ่มยังต้องกดโดนอยู่ แต่ห้ามกินจอจนมองไม่เห็นทางวิ่ง
      ปรับผ่าน --tp ตัวเดียว ขนาดตัวหนังสือกับด้านของปุ่มจึงขยับตามกันเสมอ
@@ -2692,16 +2897,54 @@ canvas { display: block; width: 100%; height: auto; }
 }
 
 /* ── แผงตั้งค่า ─────────────────────────────── */
+#settingsPanel .pop { gap: clamp(8px, 1.8dvh, 15px); }
+/* แถวตั้งค่ากว้างเท่ากันทุกแถว ไม่ใช่หดตามเนื้อหาจนขอบขวาเยื้องกันเป็นขั้นบันได */
+#settingsPanel .setrow { width: min(100%, 420px); }
+
 .setrow {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: rgba(255,243,226,.07);
-  border: 1px solid rgba(255,243,226,.16);
+  padding: 11px 16px;
+  border-radius: 18px;
+  /* ไล่สีอ่อน ๆ บนลงล่างแทนแผ่นสีเดียว อ่านเป็นแถบวัสดุมีผิว ไม่ใช่กล่องใสจาง ๆ */
+  background: linear-gradient(180deg, rgba(255,243,226,.11), rgba(255,243,226,.045));
+  border: 1px solid rgba(255,243,226,.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 3px 10px rgba(0,0,0,.28);
 }
-.setlabel { font-size: 13px; color: #D9C4EC; }
+/* ดันทุกอย่างที่อยู่หลังป้ายไปชิดขวา "พร้อมกันทั้งกลุ่ม"
+   ใส่ที่ป้ายชื่อแถวจุดเดียว ไม่ใช่ไปใส่ margin-left:auto ที่ตัวควบคุมสักตัว
+   ไม่งั้นช่องว่างจะไปแทรกกลางกลุ่ม แล้วปุ่ม − จะหลุดออกจากแถบเสียงของมันเอง */
+.setlabel {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  color: #E4D4F5;
+  flex: 0 0 auto;
+  margin-right: auto;
+}
+
+/* ── ปุ่มลำโพงปิด/เปิดเสียง ───────────────────
+   ใช้ทรงเดียวกับปุ่ม − / + (.stepbtn) แต่ไอคอนเป็น SVG จึงต้องจัดกลางเอง */
+.mutebtn {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.mutebtn svg { width: 58%; height: 58%; }
+.mutebtn .spk { fill: currentColor; }
+.mutebtn .wave, .mutebtn .cross { stroke: currentColor; stroke-width: 2; }
+/* ดังอยู่ = คลื่นเสียง / เงียบอยู่ = กากบาท โชว์ทีละชุด */
+.mutebtn .cross { display: none; }
+.mutebtn.muted .wave { display: none; }
+.mutebtn.muted .cross { display: block; }
+/* ตอนปิดเสียงปุ่มเปลี่ยนเป็นแดงจาง ๆ — อ่านออกจากหางตาว่าเกมกำลังเงียบอยู่
+   ไม่ต้องเพ่งดูว่าไอคอนมีกากบาทหรือเปล่า */
+.mutebtn.muted {
+  border-color: rgba(255,122,138,.6);
+  background: linear-gradient(180deg, #7A2E3C 0%, #4A1B28 100%);
+  color: #FFC2C9;
+}
 
 /* ปุ่ม − / + กลมเล็ก กดแล้วยุบเหมือนปุ่มบน */
 .stepbtn {
@@ -3673,7 +3916,9 @@ canvas { display: block; width: 100%; height: auto; }
   .up-stage { width: clamp(50px, 11.5dvh, 66px); height: clamp(50px, 11.5dvh, 66px); }
   .up-emoji { font-size: clamp(28px, 7dvh, 38px); }
   .up-result { padding: 4px 14px; }
-  #upGo { padding: 7px 20px; }
+  #upGo, #upAuto { padding: 7px 14px; gap: 6px; }
+  #upGo small, #upAuto small { font-size: 12px; }
+  .up-buttons { gap: 6px; margin-top: 2px; }
   .info-btn { width: 26px; height: 26px; font-size: 13px; }
   .gtab { padding: 6px 12px; }
 }
@@ -3733,22 +3978,34 @@ canvas { display: block; width: 100%; height: auto; }
   padding-bottom: 0;
   background: none;
 }
-/* auto = ดันตัวเองไปสุดล่างของแผง, flex-end = ชิดขวา
+/* ทรงกับสีมาจาก .btn.play (ดูบล็อก "ทรงลูกอมนูน") ตรงนี้เหลือแค่ที่วางกับขนาด
+   auto = ดันตัวเองไปสุดล่างของแผง, flex-end = ชิดขวา
    ป้ายใต้ปุ่มจึงตามลงไปมุมเดียวกันเป็นกลุ่มเดียวกัน */
 .btn.big {
   margin-top: auto;
   align-self: flex-end;
-  font-size: clamp(17px, 3.1vw, 26px);
-  padding: clamp(11px, 1.9dvh, 16px) clamp(38px, 6vw, 62px);
-  /* หายใจเรือง ๆ ตลอดเวลา — ปุ่มเดียวบนหน้านี้ที่กดได้ ต้องเรียกสายตาแม้ยืนเฉย ๆ */
+  font-size: clamp(19px, 3.4vw, 29px);
+  padding: clamp(12px, 2dvh, 17px) clamp(40px, 6.4vw, 66px);
+  /* หายใจเรือง ๆ ตลอดเวลา — ปุ่มเดียวบนหน้านี้ที่กดได้ ต้องเรียกสายตาแม้ยืนเฉย ๆ
+     เงาสามชั้นแรกต้องเป็นชุดเดียวกับ .btn.play เป๊ะ ไม่งั้นพอแอนิเมชันเริ่มเล่น
+     มันจะทับเงาของทรงลูกอมทิ้ง แล้วปุ่มจะแบนลงทันทีที่โหลดหน้าเสร็จ */
   animation: enterPulse 2.4s ease-in-out infinite;
 }
-/* หยุดแอนิเมชันตอนกดค้าง ไม่งั้นภาพเงาที่ไล่อยู่จะไปทับเงา "ยุบตัว" ของ .btn:active
-   ปุ่มจะดูเหมือนไม่ยุบตอนกด ทั้งที่มันขยับจริง (ดู .btn:active ด้านบน) */
+/* หยุดทั้งตอนชี้และตอนกด — ตอนชี้ให้ jello ของทรงลูกอมทำงานแทน
+   ส่วนตอนกดต้องไม่มีเงาที่ไล่อยู่มาทับเงา "ยุบตัว" ของ :active */
+.btn.big:hover, .btn.big:active { animation-name: jello-horizontal; }
 .btn.big:active { animation: none; }
 @keyframes enterPulse {
-  0%, 100% { box-shadow: 0 6px 0 #2E9C95, 0 12px 24px rgba(78,205,196,.3), inset 0 1px 0 rgba(255,255,255,.6); }
-  50%      { box-shadow: 0 6px 0 #2E9C95, 0 14px 40px rgba(78,205,196,.62), inset 0 1px 0 rgba(255,255,255,.6); }
+  0%, 100% { box-shadow:
+    0 10px 10px rgb(190, 245, 240) inset,
+    0 5px 10px rgba(5, 5, 5, .212),
+    0 -10px 10px #2E9C95 inset,
+    0 0 0 rgba(78,205,196,0); }
+  50%      { box-shadow:
+    0 10px 10px rgb(190, 245, 240) inset,
+    0 5px 10px rgba(5, 5, 5, .212),
+    0 -10px 10px #2E9C95 inset,
+    0 0 34px rgba(78,205,196,.62); }
 }
 
 /* ตามปุ่มไปมุมขวาล่าง และมีพื้นของตัวเองเพราะไม่มีม่านคลุมฉากแล้ว
@@ -3804,8 +4061,43 @@ canvas { display: block; width: 100%; height: auto; }
 
 #nameCat { width: 120px; height: 120px; }
 
-/* หน้าเข้าสู่ระบบมีสองปุ่มซ้อนกัน ปุ่มรองไม่ควรห่างจากปุ่มหลักเท่าช่องไฟปกติ */
-#authPanel .btn.ghost { margin-top: 0; font-size: 14px; padding: 10px 22px; }
+/* ── หน้าเข้าสู่ระบบ ──────────────────────────
+   สองปุ่มนี้คือทางแยกแรกของเกม ต้องอ่านออกว่าเป็น "คนละทางเลือก"
+   เดิมมันเกือบชนกันจนดูเป็นก้อนเดียว เพราะช่องไฟมาจาก margin ของ .btn
+   ที่ถูกล้างทิ้งไปข้างหนึ่ง — ย้ายมาคุมด้วย gap ของกล่องห่อแทน ระยะจึงแน่นอน */
+#authPanel .pop { gap: clamp(9px, 2dvh, 18px); }
+#authPanel #authLead {
+  max-width: 34ch;
+  line-height: 1.65;
+  color: #D9C4EC;
+}
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(10px, 2.1dvh, 18px);
+  width: min(100%, 320px);
+  margin-top: clamp(2px, .8dvh, 8px);
+}
+/* ทั้งคู่กว้างเท่ากันเต็มกล่อง จะได้อ่านเป็นรายการทางเลือก ไม่ใช่ปุ่มลอยสองใบคนละขนาด */
+.auth-actions .btn { margin-top: 0; width: 100%; }
+#authPanel #guestBtn { font-size: 15px; padding: 12px 22px; }
+#authPanel .btn.ghost { font-size: 13.5px; padding: 10px 20px; }
+
+/* เส้นคั่น "หรือ" — ตัวที่บอกว่าสองปุ่มนี้เลือกอย่างใดอย่างหนึ่ง ไม่ใช่ทำตามลำดับ */
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  letter-spacing: .08em;
+  color: #9C81B8;
+}
+.auth-or i {
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,243,226,.28), transparent);
+}
 
 /* ── แถวบัญชีในหน้าตั้งค่า ─────────────────── */
 .setval {
