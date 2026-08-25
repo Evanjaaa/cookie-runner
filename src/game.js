@@ -1,7 +1,7 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -19,7 +19,8 @@ import {
   drawRain, drawSkillGauge, drawNips,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
-import { getStage } from './stages.js';
+import { getStage, sceneAt } from './stages.js';
+import { mixPalette } from './render/palette.js';
 import { TreasureRun, catAnchor } from './treasure-run.js';
 import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treasure-fx.js';
 import { drawTreasureSlots } from './render/treasure-hud.js';
@@ -218,17 +219,26 @@ export class Game {
       // ฉากห้องก่อนเริ่มวิ่งต้องเงียบสนิท เหลือแค่เสียงน้องแมวร้องตอนพูด
       // เพลงหน้าแรกดังทับเสียงร้องจนฟังไม่ออกว่าน้องส่งเสียงอะไร
       setMusicTrack(this.inRoom ? SILENT : 'home');
-    } else if (this.bonus > 0) setMusicTrack(this.stage.bonusTrack);
+    } else if (this.bonus > 0) setMusicTrack(this.scene.bonusTrack);
     else if (this.skill > 0) setMusicTrack('dance');
     else setMusicTrack('main');
   }
 
   reset() {
     // อ่านด่านใหม่ทุกครั้งที่รีเซ็ต ผู้เล่นอาจเพิ่งเลือกด่านอื่นจากหน้าแรก
+    // ด่านที่เลือกจากหน้าแรก = "ฉากเริ่มต้น" ของตานี้ ไม่ใช่ฉากเดียวทั้งตา
+    // ครบเวลาแล้วจะไล่ไปฉากถัดไปเอง (ดู updateScene)
     this.stage = getStage();
+    this.sceneIndex = 0;
+    this.scene = this.stage;          // ฉากที่กำลังวิ่งอยู่จริง
+    this.nextScene = null;            // ฉากปลายทางระหว่างไล่สี (null = ไม่ได้กำลังเปลี่ยน)
+    this.fade = 0;                    // เฟรมที่ไล่สีไปแล้ว
+    this.nextSceneAt = SCENE.frames;  // ครบเมื่อไหร่ถึงเปลี่ยนฉาก
+    this.clearedScenes = 0;           // ผ่านด่านย่อยไปกี่ฉากแล้วในตานี้
+
     this.pal = this.stage.palette;
     this.best = loadBest(this.stage.id);
-    this.level.reset(this.stage.route);
+    this.level.reset(this.stage.route, this.stage.theme);
     this.level.nextLetter = () => this.nextLetterIndex();
 
     this.state = STATE.READY;
@@ -266,8 +276,8 @@ export class Game {
     this.invuln = 0;
     this.hp = HEALTH.max;
     this.hurtFlash = 0;
-    this.nextPotionAt = POTION.everyFrames;   // ขวดแรกที่นาทีที่ 1
     this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
+    this.noticeText = '';                     // ข้อความที่จะโชว์ (ขวดพลัง / ผ่านด่าน)
     // เข้าหน้าแรกใหม่ให้ยืนตั้งหลักก่อนเสมอ ไม่ใช่โผล่มากลางท่าที่ค้างจากรอบก่อน
     this.idleWait = 0;
     this.idleT = -1;
@@ -600,13 +610,9 @@ export class Game {
     this.level.cull(this.camera);
     this.level.ensureAhead(this.camera);
 
-    // ขวดพลังโผล่ตามเวลา ไม่ใช่ตามระยะทาง — วางหลัง ensureAhead เสมอ
-    // เพราะ spawnPotion ต้องอ่านหนาม/หลุมข้างหน้าเพื่อหาจุดโล่ง
-    if (this.tick >= this.nextPotionAt) {
-      this.level.spawnPotion(this.camera + VIEW.W + 120);
-      this.nextPotionAt += POTION.everyFrames;
-      this.notice = POTION.noticeFrames;
-    }
+    // ต้องอยู่หลัง ensureAhead เสมอ เพราะ spawnPotion อ่านหนาม/หลุมข้างหน้า
+    // เพื่อหาจุดโล่ง ถ้าเรียกก่อนจะได้จุด "โล่ง" ปลอมที่พอวิ่งถึงจริงกลับมีหนามอยู่
+    this.updateScene(dt);
 
     // เดินเวลาของสมบัติหลังเก็บของครบแล้ว ตัวนับในเฟรมนี้จึงถูกนับก่อนเช็คเงื่อนไข
     this.treasures.update(dt, this);
@@ -665,6 +671,52 @@ export class Game {
       this.hp = 0;
       this.die();
     }
+  }
+
+  // ── ด่านย่อย ───────────────────────────────────────────────
+
+  /**
+   * เดินเวลาของฉาก แล้วสลับไปฉากถัดไปเมื่อครบเวลา
+   *
+   * ── ลำดับที่เกิดขึ้นตอนครบเวลาหนึ่งฉาก ──
+   *   1. ปล่อยขวดพลังใหญ่ไว้ข้างหน้า = รางวัลผ่านด่าน (ที่เดียวที่ขวดโผล่แล้ว)
+   *   2. สลับลำดับท่อนกับธีมภาพเป็นของฉากถัดไป — ท่อนที่วางไว้แล้วยังเป็นของเดิม
+   *   3. เริ่มไล่สีจานสีเก่าไปใหม่ ใช้เวลา SCENE.fadeFrames
+   *
+   * จานสีถูกคำนวณใหม่ทุกเฟรมระหว่างไล่สีเท่านั้น จบแล้วชี้ไปที่จานสีจริงของฉาก
+   * ไม่ต้องผสมทิ้งทุกเฟรมตลอดทั้งตา
+   */
+  updateScene(dt) {
+    if (this.nextScene) {
+      this.fade += dt;
+      const t = Math.min(1, this.fade / SCENE.fadeFrames);
+      this.pal = mixPalette(this.scene.palette, this.nextScene.palette, t);
+      if (t >= 1) {
+        // ถึงปลายทางแล้ว เลิกผสมสีทุกเฟรม กลับไปใช้จานสีจริงของฉากใหม่
+        this.scene = this.nextScene;
+        this.pal = this.scene.palette;
+        this.nextScene = null;
+        this.fade = 0;
+      }
+      return;   // ระหว่างไล่สียังไม่เริ่มนับเวลาฉากใหม่ กันเปลี่ยนซ้อนกัน
+    }
+
+    if (this.tick < this.nextSceneAt) return;
+
+    this.sceneIndex++;
+    this.clearedScenes++;
+    const next = sceneAt(this.stage.id, this.sceneIndex);
+
+    // รางวัลผ่านด่าน — ขวดเดียวกับของเดิมทุกอย่าง ต่างแค่เงื่อนไขที่ทำให้มันโผล่
+    this.level.spawnPotion(this.camera + VIEW.W + 120);
+    this.noticeText = 'ผ่านด่าน! กำลังเข้า' + next.name;
+    this.notice = SCENE.noticeFrames;
+    sfx.bonus();
+
+    this.level.switchRoute(next.route, next.theme);
+    this.nextScene = next;
+    this.fade = 0;
+    this.nextSceneAt = this.tick + SCENE.frames + SCENE.fadeFrames;
   }
 
   // ── ความสามารถประจำตัว ─────────────────────────────────────
@@ -1003,7 +1055,7 @@ export class Game {
       drawSky(ctx, this.camera, this.pal);
       drawHills(ctx, this.camera, this.pal);
       drawGround(ctx, this.level.pits, this.camera, this.pal);
-      drawObstacles(ctx, this.level.obstacles, this.camera, this.stage.theme);
+      drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
       drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     }
 
@@ -1096,7 +1148,7 @@ export class Game {
     drawSky(ctx, this.camera, this.pal);
     drawHills(ctx, this.camera, this.pal);
     drawGround(ctx, this.level.pits, this.camera, this.pal);
-    drawObstacles(ctx, this.level.obstacles, this.camera, this.stage.theme);
+    drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
     drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     drawPotions(ctx, this.level.potions, this.camera, this.tick);
     drawMagnets(ctx, this.level.magnets, this.camera, this.tick);

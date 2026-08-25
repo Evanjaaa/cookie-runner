@@ -369,11 +369,28 @@
       <div class="panel hidden" id="stagePanel">
         <div class="pop">
           <h2 class="skin-title">เลือกด่าน</h2>
+          <p class="stage-lead">หนึ่งตาวิ่งผ่านหลายฉากต่อกัน — ด่านที่เลือกคือฉากเริ่มต้น</p>
           <div class="stage-grid" id="stageGrid"></div>
           <!-- ทางเข้าหน้าติดตั้งสมบัติ อยู่ตรงนี้เพราะเป็นสิ่งสุดท้ายที่ควรเช็ค
                ก่อนลงเล่น — เลือกด่านเสร็จแล้วค่อยจัดของที่จะพกไป -->
           <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
           <button class="backbtn" id="stageBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- รายละเอียดด่าน — บอกว่าเริ่มจากฉากนี้แล้วจะไปเจอฉากอะไรต่อบ้าง
+           เข้าจากปุ่ม ⓘ บนการ์ดในหน้าเลือกด่าน รายการสร้างจาก journeyOf() -->
+      <div class="panel hidden" id="stageInfoPanel">
+        <div class="pop">
+          <div class="panel-head"><h2 class="skin-title" id="siTitle">รายละเอียดด่าน</h2></div>
+          <p class="stage-lead" id="siLead"></p>
+          <div class="scene-list" id="siList"></div>
+          <button class="backbtn" id="siBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>

@@ -1228,6 +1228,110 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .stage-card.on small { color: var(--mint-lite); }
 
+/* ── ปุ่ม ⓘ บนการ์ดด่าน ───────────────────────
+   ซ้อนอยู่บนการ์ดซึ่งเป็น <button> อยู่แล้ว จึงเป็น <i> ไม่ใช่ <button>
+   (ปุ่มซ้อนในปุ่มเป็น HTML ที่ไม่ถูกต้อง เบราว์เซอร์บางตัวจะดึงตัวในออกมาไว้ข้างนอกให้เอง)
+   ส่วนการกดกันไม่ให้ทะลุไปเลือกด่าน ทำด้วย stopPropagation ในฝั่ง JS */
+.stage-info {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,243,226,.5);
+  background: rgba(27,15,43,.78);
+  color: var(--cream);
+  font-family: "Mitr", sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .08s ease, background .12s ease;
+}
+.stage-info:hover { background: rgba(78,205,196,.5); }
+.stage-info:active { transform: scale(.9); }
+.stage-info:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+/* การ์ดต้องเป็นที่ยึดของปุ่ม ไม่งั้นมันจะไปเกาะมุมเวทีแทนมุมการ์ด */
+.stage-card { position: relative; }
+
+.stage-lead {
+  max-width: 46ch;
+  font-size: clamp(10px, 1.6dvh, 13px);
+  line-height: 1.55;
+  color: #C0A6DC;
+}
+
+/* ── รายการฉากในหน้ารายละเอียดด่าน ───────────── */
+.scene-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.3dvh, 11px);
+  width: min(96%, 560px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.scene-list::-webkit-scrollbar { display: none; }
+.scene-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(9px, 1.8vw, 15px);
+  padding: clamp(6px, 1.2dvh, 10px) clamp(10px, 2vw, 16px);
+  border-radius: 15px;
+  border: 1.5px solid rgba(196,143,243,.45);
+  background: linear-gradient(180deg, rgba(255,243,226,.1), rgba(255,243,226,.04));
+  text-align: left;
+}
+/* ฉากแรกคือฉากที่กดเลือก เน้นให้ต่างจากฉากที่จะไปเจอทีหลัง */
+.scene-row.first {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 1px rgba(78,205,196,.4), 0 0 16px rgba(78,205,196,.22);
+}
+.scene-no {
+  flex: 0 0 auto;
+  width: clamp(20px, 3.4dvh, 26px);
+  height: clamp(20px, 3.4dvh, 26px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(27,15,43,.62);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(10px, 1.6dvh, 13px);
+  color: #D9C4EC;
+}
+.scene-row.first .scene-no { background: var(--mint); color: #0E3B2E; }
+.scene-pic {
+  flex: 0 0 auto;
+  width: clamp(64px, 13vw, 96px);
+  height: auto;
+  aspect-ratio: 960 / 420;
+  border-radius: 8px;
+  display: block;
+}
+.scene-main { flex: 1 1 auto; min-width: 0; }
+.scene-main b {
+  display: block;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 1.9dvh, 15px);
+  color: var(--cream);
+}
+.scene-main small {
+  display: block;
+  margin-top: 2px;
+  font-size: clamp(9px, 1.4dvh, 11.5px);
+  color: #B99BD4;
+  line-height: 1.4;
+}
+
 /* ── เลือกตัวละคร ──────────────────────────── */
 /* ต้องเขียนคู่กับ .panel h2 เสมอ — .skin-title เดี่ยว ๆ (0,1,0) แพ้ .panel h2 (0,1,1)
    เขียนไว้อันเดียวจะไม่มีผลอะไรเลยและหลอกให้คิดว่าปรับแล้ว */

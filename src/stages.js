@@ -104,7 +104,71 @@ export const STAGES = [
       { p: 9, kibble: 'alternate', nip: true },
     ],
   },
+
+  {
+    id: 'cavern',
+    name: 'ถ้ำคริสตัล',
+    note: 'ลึกใต้ดิน',
+    theme: 'cavern',        // หินงอก / เพดานหินย้อย / กองคริสตัล
+    bonusTrack: 'skyNight', // ใต้ดินมืด ใช้เพลงชุดกลางคืนให้เข้าโทน
+    palette: {
+      // ฟ้าถูกแทนด้วย "เพดานถ้ำ" — เข้มที่สุดด้านบน สว่างขึ้นตรงแนวสายตา
+      sky: ['#0E1430', '#1E2450', '#3A3670'],
+      glow: 'rgba(127,232,255,.34)',    // แสงเรืองจากสายแร่ ไม่ใช่ไฟเตาอบหรือแดด
+      speck: 'rgba(190,240,255,.6)',    // ละอองแร่วาววับแทนเกล็ดน้ำตาล
+      // ชั้นหินไล่จากไกลไปใกล้ ใกล้สุดต้องเข้มพอให้ปลาสีมิ้นต์ลอยเด่น
+      hills: ['#3A3260', '#2C2650', '#221C40'],
+      ground: '#4A3B60', crust: '#6E5A87', crustTop: '#8E79A8',
+      crumb: 'rgba(30,20,50,.5)',
+      pitEdge: 'rgba(14,20,48,.45)',
+      pitFill: 'rgba(10,14,34,.74)', pitDeep: 'rgba(5,7,20,.95)',
+      // เพดานถ้ำเข้ม ตัวอักษรครีมอ่านออกอยู่แล้ว ไม่ต้องสลับเป็นหมึกเข้มแบบสวนกลางวัน
+      ink: '#EAF6FF', inkSoft: '#A9C4DE', accent: '#7FE8FF',
+      noticeBg: 'rgba(14,20,48,.78)',
+      cloud: '#C9DFF0', cloudSoft: '#94B4CE',
+    },
+    // จังหวะแน่นกว่าสองด่านแรก เจอของเร็วตั้งแต่ต้นแล้วพักยาวช่วงท้าย
+    // (ด่านนี้มาเป็นฉากที่สามของตา ผู้เล่นอุ่นเครื่องมาแล้วจากสองฉากก่อน)
+    route: [
+      { p: 2 },
+      { p: 11, kibble: 'cluster', letter: true },
+      { p: 15, nip: true },
+      { p: 7 },
+      { p: 13, kibble: 'alternate', shield: true },
+      { p: 4, letter: true },
+      { p: 17, magnet: true },
+      { p: 9 },
+      { p: 12, kibble: 'cluster', nip: true },
+      { p: 5, shrimp: true },
+      { p: 18, letter: true },
+      { p: 1 },
+      { p: 14, kibble: 'alternate', shield: true },
+      { p: 8, letter: true },
+      { p: 16, nip: true },
+      { p: 3 },
+      { p: 10, shrimp: true },
+      { p: 6, magnet: true },
+      { p: 0, letter: true },
+      { p: 12, kibble: 'cluster' },
+    ],
+  },
 ];
+
+/**
+ * ลำดับด่านย่อยของหนึ่งตา — เริ่มจากด่านที่ผู้เล่นเลือก แล้วไล่วนไปจนครบทุกด่าน
+ *
+ * วนกลับมาที่ด่านแรกเมื่อครบ เพื่อให้ยังเป็น endless runner เหมือนเดิม
+ * คนที่วิ่งเก่งจนผ่านครบทุกฉากจึงยังวิ่งต่อได้ ไม่ใช่จบเกมกลางคัน
+ */
+export function sceneAt(startId, index) {
+  const start = STAGES.findIndex((s) => s.id === startId);
+  return STAGES[((start < 0 ? 0 : start) + index) % STAGES.length];
+}
+
+/** รายชื่อด่านย่อยเรียงตามที่จะเจอจริง ใช้โชว์ในหน้ารายละเอียดด่าน */
+export function journeyOf(startId) {
+  return STAGES.map((_, i) => sceneAt(startId, i));
+}
 
 export function stageById(id) {
   return STAGES.find((s) => s.id === id) || STAGES[0];

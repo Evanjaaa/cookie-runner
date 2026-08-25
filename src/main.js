@@ -6,7 +6,7 @@ import { setupInput } from './input.js';
 import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
 import { startMusic } from './music.js';
 import { SKINS, getSkin, setSkin } from './skins.js';
-import { STAGES, getStage, setStage } from './stages.js';
+import { STAGES, getStage, setStage, journeyOf } from './stages.js';
 import {
   RARITY, OUTFITS, outfitById, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
   ownedOrder as outfitOrder,
@@ -74,6 +74,7 @@ const overPanel = document.getElementById('overPanel');
 const pausePanel = document.getElementById('pausePanel');
 const skinPanel = document.getElementById('skinPanel');
 const stagePanel = document.getElementById('stagePanel');
+const stageInfoPanel = document.getElementById('stageInfoPanel');
 const outfitPanel = document.getElementById('outfitPanel');
 const gachaPanel = document.getElementById('gachaPanel');
 const rankPanel = document.getElementById('rankPanel');
@@ -1505,7 +1506,8 @@ function buildStageGrid() {
     card.innerHTML =
       '<canvas></canvas>' +
       '<span class="row"><b></b><small></small></span>' +
-      '<span class="best">สถิติ <b></b></span>';
+      '<span class="best">สถิติ <b></b></span>' +
+      '<i class="stage-info" role="button" tabindex="0" aria-label="รายละเอียดด่าน">i</i>';
     card.querySelector('b').textContent = st.name;
     card.querySelector('small').textContent = on ? 'กำลังเล่น' : st.note;
     card.querySelector('.best b').textContent = loadBest(st.id).toLocaleString('en-US');
@@ -1521,6 +1523,20 @@ function buildStageGrid() {
       refreshHome();
     });
 
+    // ปุ่ม ⓘ ซ้อนอยู่บนการ์ดซึ่งเป็นปุ่มอยู่แล้ว ต้องกัน event ไม่ให้ทะลุขึ้นไป
+    // ไม่งั้นกดดูรายละเอียดแล้วจะกลายเป็นเลือกด่านนั้นไปด้วย
+    const info = card.querySelector('.stage-info');
+    const openInfo = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      unlockAudio(); sfx.fish();
+      showStageInfo(st);
+    };
+    info.addEventListener('click', openInfo);
+    info.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') openInfo(e);
+    });
+
     grid.appendChild(card);
   }
   markScrollable(grid);
@@ -1529,6 +1545,43 @@ function buildStageGrid() {
 function showStages(on) {
   stagePanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
+}
+
+// ── รายละเอียดด่าน ─────────────────────────────────────────
+//
+// หนึ่งตาไม่ได้อยู่ฉากเดียวอีกแล้ว หน้านี้จึงมีไว้ตอบคำถามเดียว:
+// "เลือกด่านนี้แล้วจะได้เจออะไรบ้าง" — เรียงตามลำดับที่จะเจอจริง
+
+/** ชื่อสิ่งกีดขวางของแต่ละธีม ใช้บอกว่าฉากนั้นหน้าตาอุปสรรคเป็นแบบไหน */
+const THEME_OBSTACLES = {
+  bakery: 'หนามน้ำตาล · คานเตาอบ · กล่องลัง',
+  garden: 'กระบองเพชร · ซุ้มดอกไม้ · กล่องของขวัญ',
+  cavern: 'หินงอก · เพดานหินย้อย · กองคริสตัล',
+};
+
+function showStageInfo(stage) {
+  document.getElementById('siTitle').textContent = stage.name;
+  document.getElementById('siLead').textContent =
+    'เริ่มจากฉากนี้ แล้วไล่ไปฉากถัดไปทุก 1 นาที · จบแต่ละฉากได้ขวดพลังใหญ่';
+
+  const list = document.getElementById('siList');
+  list.innerHTML = '';
+  journeyOf(stage.id).forEach((sc, i) => {
+    const row = document.createElement('div');
+    row.className = 'scene-row' + (i === 0 ? ' first' : '');
+    row.innerHTML =
+      '<span class="scene-no"></span>'
+      + '<canvas class="scene-pic"></canvas>'
+      + '<span class="scene-main"><b></b><small></small></span>';
+    row.querySelector('.scene-no').textContent = i + 1;
+    row.querySelector('b').textContent = sc.name;
+    row.querySelector('small').textContent = THEME_OBSTACLES[sc.theme] || sc.note;
+    paintStageScene(row.querySelector('.scene-pic'), sc, 150);
+    list.appendChild(row);
+  });
+  markScrollable(list);
+
+  swapPanel(stagePanel, stageInfoPanel);
 }
 
 // ── แถบเรียง/กรองการ์ด ─────────────────────────────────────
@@ -2705,6 +2758,9 @@ document.getElementById('btnStages').addEventListener('click', () => {
   showStages(true);
 });
 document.getElementById('stageBack').addEventListener('click', () => showStages(false));
+document.getElementById('siBack').addEventListener('click', () => {
+  swapPanel(stageInfoPanel, stagePanel);
+});
 document.getElementById('btnOutfits').addEventListener('click', () => {
   unlockAudio(); startMusic();
   setMsg(document.getElementById('outfitMsg'), '');   // ข้อความเตือนจากรอบก่อนต้องไม่ค้าง
