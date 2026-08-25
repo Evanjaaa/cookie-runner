@@ -152,6 +152,148 @@ export const STAGES = [
       { p: 12, kibble: 'cluster' },
     ],
   },
+
+  {
+    id: 'beach',
+    name: 'ชายหาดยามเย็น',
+    note: 'แดดร่มลมทะเล',
+    theme: 'beach',         // ปะการัง / ผ้าใบร่มชายหาด / ปราสาททราย
+    bonusTrack: 'skyDay',
+    palette: {
+      // ฟ้าพระอาทิตย์ตก ส้มเข้มบน → ชมพู → เหลืองทองตรงขอบฟ้า
+      sky: ['#4A2A63', '#E86A5C', '#FFC978'],
+      glow: 'rgba(255,180,90,.6)',      // ดวงอาทิตย์ใกล้ลับขอบฟ้า
+      speck: 'rgba(255,240,214,.7)',    // ละอองน้ำทะเลสะท้อนแสง
+      // เนินคือคลื่นทะเลไล่เข้าฝั่ง ใกล้สุดเข้มพอให้ปลาสีมิ้นต์ลอยเด่น
+      hills: ['#5E8FA8', '#3E6B87', '#2A4E68'],
+      ground: '#D9A96A', crust: '#E8C08A', crustTop: '#F7DDB2',
+      crumb: 'rgba(150,104,54,.45)',
+      pitEdge: 'rgba(120,80,50,.4)',
+      pitFill: 'rgba(70,48,34,.7)', pitDeep: 'rgba(34,22,16,.95)',
+      // ขอบฟ้าสว่างมาก ตัวอักษรครีมอ่านไม่ออก ต้องสลับเป็นหมึกเข้มเหมือนสวนกลางวัน
+      ink: '#452436', inkSoft: '#6E4356', accent: '#0E6E7A',
+      noticeBg: 'rgba(255,246,232,.88)',
+      cloud: '#FFE2C4', cloudSoft: '#F2B79A',
+    },
+    // เจอของถี่ช่วงต้นแล้วผ่อนกลางฉาก ปิดท้ายด้วยพีคยาว
+    route: [
+      { p: 1 },
+      { p: 12, kibble: 'alternate', letter: true },
+      { p: 6, nip: true },
+      { p: 16 },
+      { p: 3, kibble: 'cluster', shield: true },
+      { p: 10, letter: true },
+      { p: 8 },
+      { p: 14, magnet: true },
+      { p: 2, shrimp: true },
+      { p: 17, letter: true },
+      { p: 5 },
+      { p: 11, kibble: 'alternate', nip: true },
+      { p: 7, letter: true },
+      { p: 18, shield: true },
+      { p: 4 },
+      { p: 13, kibble: 'cluster', magnet: true },
+      { p: 9, shrimp: true },
+      { p: 15, letter: true },
+      { p: 0 },
+      { p: 10, kibble: 'alternate', nip: true },
+    ],
+  },
+
+  {
+    id: 'space',
+    name: 'ห้วงอวกาศ',
+    note: 'ไร้แรงโน้มถ่วง',
+    theme: 'space',         // สะเก็ดดาว / แผงโซลาร์ / ลังขนส่ง
+    bonusTrack: 'skyNight',
+    palette: {
+      // อวกาศลึก ดำอมม่วงตลอด สว่างขึ้นนิดเดียวตรงเนบิวลาแนวสายตา
+      sky: ['#07060F', '#191036', '#3A1F5C'],
+      glow: 'rgba(157,255,107,.3)',     // แสงนีออนจากสถานี ไม่ใช่ดวงอาทิตย์
+      speck: 'rgba(255,255,255,.95)',   // ดาวเต็มฟ้า จุดคมและสว่างที่สุดในเกม
+      hills: ['#241A44', '#1A1234', '#120C26'],
+      ground: '#2C2947', crust: '#4A4668', crustTop: '#6E6A90',
+      crumb: 'rgba(20,16,40,.5)',
+      pitEdge: 'rgba(7,6,15,.5)',
+      pitFill: 'rgba(5,4,12,.8)', pitDeep: 'rgba(0,0,4,.98)',
+      ink: '#EAFFE2', inkSoft: '#A8C49E', accent: '#9DFF6B',
+      noticeBg: 'rgba(7,6,15,.82)',
+      cloud: '#B9AEE0', cloudSoft: '#7C6EA8',
+    },
+    // ฉากท้าย ๆ ของตา — แน่นสุดในบรรดาหกฉาก พักสั้นและน้อยครั้ง
+    route: [
+      { p: 13 },
+      { p: 17, kibble: 'cluster', letter: true },
+      { p: 9, nip: true },
+      { p: 15, shield: true },
+      { p: 11, kibble: 'alternate' },
+      { p: 18, letter: true },
+      { p: 6, magnet: true },
+      { p: 14, nip: true },
+      { p: 2, shrimp: true },
+      { p: 16, kibble: 'cluster', letter: true },
+      { p: 10 },
+      { p: 12, shield: true },
+      { p: 7, letter: true },
+      { p: 3 },
+      { p: 15, kibble: 'alternate', magnet: true },
+      { p: 8, nip: true },
+      { p: 17, shrimp: true },
+      { p: 5, letter: true },
+      { p: 1 },
+      { p: 11, kibble: 'cluster', nip: true },
+    ],
+  },
+
+  {
+    id: 'snow',
+    name: 'ทุ่งหิมะ',
+    note: 'ป่าไผ่หน้าหนาว',
+    theme: 'snow',          // แท่งน้ำแข็ง / กิ่งไผ่มีหิมะ / ก้อนน้ำแข็ง
+    bonusTrack: 'skyDay',
+    palette: {
+      // ฟ้าหน้าหนาว ฟ้าอมเทาจาง ๆ ไล่ลงไปขาวตรงขอบฟ้า
+      sky: ['#7FA8C9', '#B8D4E8', '#EAF4FA'],
+      glow: 'rgba(255,255,255,.6)',     // แดดอ่อนผ่านเมฆ
+      speck: 'rgba(255,255,255,.95)',   // เกล็ดหิมะปลิว
+      // เนินคือแนวป่าไผ่ไกล ๆ ต้องเข้มพอให้ปลาสีมิ้นต์ไม่จมกับหิมะขาว
+      hills: ['#7E9E8E', '#54756A', '#36524C'],
+      // ground ถมเต็มพื้นที่ใต้เส้นพื้น ส่วน crust/crustTop เป็นแถบผิวบนบาง ๆ
+      // ถ้าตั้งให้อ่อนทั้งสามชั้น ครึ่งล่างของจอจะกลายเป็นแผ่นขาวเรียบไม่มีความลึก
+      // ชั้นล่างจึงต้องเป็นน้ำเงินเทาชัด ๆ ให้ตัดกับหิมะขาวด้านบน
+      ground: '#8FB6CE', crust: '#EAF6FC', crustTop: '#FFFFFF',
+      crumb: 'rgba(110,150,175,.5)',
+      pitEdge: 'rgba(90,130,155,.4)',
+      pitFill: 'rgba(60,95,120,.68)', pitDeep: 'rgba(28,48,66,.95)',
+      // ฉากสว่างที่สุดในเกม ต้องใช้หมึกเข้มสุดด้วย ไม่งั้นอ่านอะไรไม่ออกเลย
+      ink: '#1E3A46', inkSoft: '#436270', accent: '#0F6E86',
+      noticeBg: 'rgba(255,255,255,.9)',
+      cloud: '#FFFFFF', cloudSoft: '#D6E8F2',
+    },
+    // ฉากพักหายใจ — โล่งกว่าเพื่อน เว้นช่วงยาวให้เก็บของ
+    route: [
+      { p: 0 },
+      { p: 8, kibble: 'cluster', letter: true },
+      { p: 4 },
+      { p: 12, shield: true },
+      { p: 1, kibble: 'alternate' },
+      { p: 9, letter: true },
+      { p: 15, nip: true },
+      { p: 5, shrimp: true },
+      { p: 2 },
+      { p: 13, kibble: 'cluster', magnet: true },
+      { p: 7, letter: true },
+      { p: 3 },
+      { p: 16, shield: true },
+      { p: 10, kibble: 'alternate', letter: true },
+      { p: 6 },
+      { p: 14, nip: true },
+      { p: 11, shrimp: true },
+      { p: 18, letter: true },
+      { p: 2 },
+      { p: 8, kibble: 'cluster', magnet: true },
+    ],
+  },
 ];
 
 /**

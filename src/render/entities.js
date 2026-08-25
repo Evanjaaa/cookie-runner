@@ -21,6 +21,9 @@ const THEME_ART = {
   bakery: { bar: drawBar, crate: drawCrateStack, spike: drawSpike },
   garden: { bar: drawFlowerArch, crate: drawGiftStack, spike: drawCactus },
   cavern: { bar: drawRockArch, crate: drawCrystalStack, spike: drawStalagmite },
+  beach: { bar: drawAwning, crate: drawSandCastle, spike: drawCoral },
+  space: { bar: drawSolarPanel, crate: drawCargoPod, spike: drawAsteroid },
+  snow: { bar: drawSnowBranch, crate: drawIceBlockStack, spike: drawIcicle },
 };
 
 function drawOneObstacle(ctx, o, x, y, theme) {
@@ -430,6 +433,317 @@ function drawCrystalBlock(ctx, x, y, w, h, topBlock) {
     ctx.lineTo(x + w / 2 + 6, y - 6);
     ctx.lineTo(x + w / 2 + 10, y);
     ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// ── ชุดภาพธีมชายหาดยามเย็น ───────────────────────────────────
+// กินพื้นที่เท่ากับหนาม/คาน/กล่องลังของธีมกลางคืนทุกมิติ ตามกฎในหัว stages.js
+
+/** ปะการัง แทนหนาม — w32 h38 ยืนบนพื้น แตกกิ่งสามแฉก */
+function drawCoral(ctx, x, y, w, h) {
+  const cx = x + w / 2;
+
+  ctx.strokeStyle = '#FF7E6B';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // ลำต้นกลาง
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(cx, y + h);
+  ctx.lineTo(cx, y + h * 0.3);
+  ctx.stroke();
+
+  // กิ่งซ้าย-ขวา แยกจากลำต้นคนละระดับ ให้ดูเป็นปะการังไม่ใช่ส้อม
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(cx, y + h * 0.62);
+  ctx.lineTo(x + w * 0.14, y + h * 0.3);
+  ctx.moveTo(cx, y + h * 0.48);
+  ctx.lineTo(x + w * 0.88, y + h * 0.12);
+  ctx.stroke();
+
+  // ปลายกิ่งสีอ่อน = ส่วนที่รับแสงอาทิตย์ตก
+  ctx.fillStyle = '#FFC0A8';
+  for (const p of [[cx, y + h * 0.3], [x + w * 0.14, y + h * 0.3], [x + w * 0.88, y + h * 0.12]]) {
+    ctx.beginPath(); ctx.arc(p[0], p[1], 4.4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // เงาที่โคน
+  ctx.fillStyle = 'rgba(90,40,60,.3)';
+  ctx.fillRect(x - 3, y + h - 4, w + 6, 5);
+}
+
+/** ผ้าใบร่มชายหาด แทนคาน — w170 h54 ห้อยจากขอบบน ต้องหมอบลอด */
+function drawAwning(ctx, x, y, w, h) {
+  // เสาค้ำขึ้นไปนอกจอ ตำแหน่งเดียวกับธีมอื่นเป๊ะ
+  ctx.fillStyle = 'rgba(120,72,44,.92)';
+  ctx.fillRect(x + 10, 0, 12, y);
+  ctx.fillRect(x + w - 22, 0, 12, y);
+
+  // ผ้าใบลายทางส้ม-ครีม
+  const stripe = 6;
+  for (let i = 0; i * stripe < w; i++) {
+    ctx.fillStyle = i % 2 ? '#FFF1DC' : '#FF8A5C';
+    ctx.fillRect(x + i * stripe, y, Math.min(stripe, w - i * stripe), h - 12);
+  }
+  // ขอบบนเข้มให้ดูเป็นผ้าที่ขึงตึง
+  ctx.fillStyle = 'rgba(120,60,36,.35)';
+  ctx.fillRect(x, y, w, 5);
+
+  // ชายผ้าหยักเป็นคลื่น = เส้นบอกความต่ำ (แทนแถบแดงของธีมเดิม)
+  ctx.fillStyle = '#E2603C';
+  const teeth = 10;
+  for (let i = 0; i < teeth; i++) {
+    const tw = w / teeth;
+    const tx = x + i * tw;
+    ctx.beginPath();
+    ctx.moveTo(tx, y + h - 12);
+    ctx.lineTo(tx + tw, y + h - 12);
+    ctx.lineTo(tx + tw / 2, y + h - 1);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** ปราสาททราย แทนกล่องลัง — ชั้นละ w46 h44 ซ้อนได้หลายชั้น */
+function drawSandCastle(ctx, x, y, w, h, rows = 1) {
+  const rh = h / rows;
+  for (let i = 0; i < rows; i++) drawSandBlock(ctx, x, y + i * rh, w, rh, i === 0);
+}
+
+function drawSandBlock(ctx, x, y, w, h, topBlock) {
+  ctx.fillStyle = '#E8C08A';
+  ctx.fillRect(x, y, w, h);
+  // ผิวบนสว่าง = ทรายที่โดนแดด
+  ctx.fillStyle = '#F7DDB2';
+  ctx.fillRect(x, y, w, 5);
+  // ร่องอิฐทราย
+  ctx.strokeStyle = 'rgba(150,104,54,.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + h * 0.45); ctx.lineTo(x + w, y + h * 0.45);
+  ctx.moveTo(x + w / 2, y + h * 0.45); ctx.lineTo(x + w / 2, y + h);
+  ctx.stroke();
+  // กรอบนอก
+  ctx.strokeStyle = '#A87A42';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+
+  if (topBlock) {
+    // ใบเสาธงบนยอด วาดล้นขึ้นไปได้เพราะเป็นแค่ภาพ
+    ctx.fillStyle = '#8A5A2E';
+    ctx.fillRect(x + w / 2 - 1.5, y - 11, 3, 12);
+    ctx.fillStyle = '#FF7E6B';
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 + 1.5, y - 11);
+    ctx.lineTo(x + w / 2 + 13, y - 7.5);
+    ctx.lineTo(x + w / 2 + 1.5, y - 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// ── ชุดภาพธีมห้วงอวกาศ ───────────────────────────────────────
+
+/** สะเก็ดดาว แทนหนาม — w32 h38 ปลายแหลมมีขอบเรืองนีออน */
+function drawAsteroid(ctx, x, y, w, h) {
+  const cx = x + w / 2;
+
+  ctx.fillStyle = '#3E3A5C';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.06, y + h);
+  ctx.lineTo(x + w * 0.24, y + h * 0.36);
+  ctx.lineTo(cx, y);
+  ctx.lineTo(x + w * 0.8, y + h * 0.44);
+  ctx.lineTo(x + w * 0.96, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // ด้านรับแสงซ้าย
+  ctx.fillStyle = '#57527E';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.24, y + h * 0.36);
+  ctx.lineTo(cx, y);
+  ctx.lineTo(cx, y + h);
+  ctx.lineTo(x + w * 0.2, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // ขอบเรืองนีออนตามสันบน = ตัวบอกอันตราย
+  ctx.strokeStyle = '#9DFF6B';
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.24, y + h * 0.36);
+  ctx.lineTo(cx, y);
+  ctx.lineTo(x + w * 0.8, y + h * 0.44);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(10,8,26,.45)';
+  ctx.fillRect(x - 3, y + h - 4, w + 6, 5);
+}
+
+/** แผงโซลาร์สถานีอวกาศ แทนคาน — w170 h54 */
+function drawSolarPanel(ctx, x, y, w, h) {
+  // เสายึดขึ้นไปนอกจอ
+  ctx.fillStyle = 'rgba(58,54,86,.95)';
+  ctx.fillRect(x + 10, 0, 12, y);
+  ctx.fillRect(x + w - 22, 0, 12, y);
+
+  // โครงโลหะ
+  ctx.fillStyle = '#4A4668';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.fillRect(x, y, w, 4);
+
+  // ช่องเซลล์สุริยะสีน้ำเงิน
+  const cols = 7;
+  const pad = 4;
+  const cw = (w - pad * (cols + 1)) / cols;
+  for (let i = 0; i < cols; i++) {
+    ctx.fillStyle = '#2E5BD8';
+    ctx.fillRect(x + pad + i * (cw + pad), y + 8, cw, h - 26);
+    ctx.fillStyle = 'rgba(150,200,255,.35)';
+    ctx.fillRect(x + pad + i * (cw + pad), y + 8, cw, 3);
+  }
+
+  // แถบไฟนีออนใต้แผง = เส้นบอกความต่ำ
+  ctx.fillStyle = '#9DFF6B';
+  ctx.fillRect(x, y + h - 12, w, 3);
+  ctx.fillStyle = 'rgba(157,255,107,.28)';
+  ctx.fillRect(x, y + h - 9, w, 6);
+}
+
+/** ลังขนส่งอวกาศ แทนกล่องลัง — ชั้นละ w46 h44 */
+function drawCargoPod(ctx, x, y, w, h, rows = 1) {
+  const rh = h / rows;
+  for (let i = 0; i < rows; i++) drawPod(ctx, x, y + i * rh, w, rh);
+}
+
+function drawPod(ctx, x, y, w, h) {
+  ctx.fillStyle = '#565274';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#6E6A90';
+  ctx.fillRect(x, y, w, 5);
+
+  // แถบนีออนกลางลัง
+  ctx.fillStyle = '#9DFF6B';
+  ctx.fillRect(x + 4, y + h / 2 - 3, w - 8, 6);
+  ctx.fillStyle = 'rgba(157,255,107,.25)';
+  ctx.fillRect(x + 4, y + h / 2 - 7, w - 8, 14);
+
+  // หมุดยึดสี่มุม
+  ctx.fillStyle = '#39355A';
+  for (const [px, py] of [[6, 7], [w - 6, 7], [6, h - 7], [w - 6, h - 7]]) {
+    ctx.beginPath(); ctx.arc(x + px, y + py, 2.4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.strokeStyle = '#2C2947';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+}
+
+// ── ชุดภาพธีมทุ่งหิมะ ────────────────────────────────────────
+
+/** แท่งน้ำแข็ง แทนหนาม — w32 h38 ปลายแหลมขึ้น */
+function drawIcicle(ctx, x, y, w, h) {
+  const cx = x + w / 2;
+
+  ctx.fillStyle = '#8FD4F5';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.1, y + h);
+  ctx.lineTo(cx, y);
+  ctx.lineTo(x + w * 0.9, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // เหลี่ยมสว่างด้านซ้าย
+  ctx.fillStyle = '#D6F1FF';
+  ctx.beginPath();
+  ctx.moveTo(cx, y);
+  ctx.lineTo(cx, y + h);
+  ctx.lineTo(x + w * 0.32, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // ขอบเงาขวาให้ดูเป็นแท่งไม่ใช่สามเหลี่ยมแบน
+  ctx.fillStyle = 'rgba(70,130,175,.45)';
+  ctx.beginPath();
+  ctx.moveTo(cx, y);
+  ctx.lineTo(x + w * 0.9, y + h);
+  ctx.lineTo(x + w * 0.68, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(60,100,140,.28)';
+  ctx.fillRect(x - 3, y + h - 4, w + 6, 5);
+}
+
+/** กิ่งไผ่มีหิมะเกาะ แทนคาน — w170 h54 */
+function drawSnowBranch(ctx, x, y, w, h) {
+  // เสาไผ่ขึ้นไปนอกจอ
+  ctx.fillStyle = 'rgba(92,116,84,.95)';
+  ctx.fillRect(x + 10, 0, 12, y);
+  ctx.fillRect(x + w - 22, 0, 12, y);
+
+  // ลำไผ่แนวนอน
+  ctx.fillStyle = '#7C9A66';
+  ctx.fillRect(x, y + 10, w, h - 22);
+  // ข้อไผ่
+  ctx.fillStyle = 'rgba(60,80,52,.5)';
+  for (let i = 1; i < 5; i++) ctx.fillRect(x + (w / 5) * i, y + 10, 3, h - 22);
+
+  // หิมะกองบนลำไผ่ ขอบล่างหยักเหมือนหิมะเกาะจริง
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.moveTo(x, y + 12);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + 12);
+  for (let i = 10; i >= 0; i--) {
+    const bx = x + (w / 10) * i;
+    ctx.quadraticCurveTo(bx + w / 20, y + 18, bx, y + 12);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // แถบน้ำแข็งใต้กิ่ง = เส้นบอกความต่ำ
+  ctx.fillStyle = '#6FC9EE';
+  ctx.fillRect(x, y + h - 12, w, 3);
+}
+
+/** ก้อนน้ำแข็ง แทนกล่องลัง — ชั้นละ w46 h44 */
+function drawIceBlockStack(ctx, x, y, w, h, rows = 1) {
+  const rh = h / rows;
+  for (let i = 0; i < rows; i++) drawIceBlock(ctx, x, y + i * rh, w, rh, i === 0);
+}
+
+function drawIceBlock(ctx, x, y, w, h, topBlock) {
+  ctx.fillStyle = '#A8DCF2';
+  ctx.fillRect(x, y, w, h);
+  // ผิวบนขาวเหมือนหิมะเกาะ
+  ctx.fillStyle = '#EAF8FF';
+  ctx.fillRect(x, y, w, 6);
+  // รอยแตกในเนื้อน้ำแข็ง
+  ctx.strokeStyle = 'rgba(255,255,255,.65)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.28, y + 8); ctx.lineTo(x + w * 0.46, y + h * 0.55);
+  ctx.lineTo(x + w * 0.3, y + h - 6);
+  ctx.moveTo(x + w * 0.62, y + 10); ctx.lineTo(x + w * 0.74, y + h * 0.6);
+  ctx.stroke();
+  // กรอบนอก
+  ctx.strokeStyle = '#5E9EBE';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+
+  if (topBlock) {
+    // กองหิมะเล็กบนก้อนบนสุด
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y, w * 0.3, 5, 0, Math.PI, Math.PI * 2);
     ctx.fill();
   }
 }
