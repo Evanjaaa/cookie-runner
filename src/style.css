@@ -1536,7 +1536,7 @@ canvas { display: block; width: 100%; height: auto; }
 .quest-list {
   display: flex;
   flex-direction: column;
-  gap: clamp(5px, 1dvh, 9px);
+  gap: clamp(7px, 1.5dvh, 13px);
   width: 100%;
   min-height: 0;
   overflow-y: auto;
@@ -1551,8 +1551,8 @@ canvas { display: block; width: 100%; height: auto; }
 .quest-row {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 1.6vw, 16px);
-  padding: clamp(6px, 1.1dvh, 11px) clamp(10px, 1.8vw, 18px);
+  gap: clamp(10px, 2vw, 18px);
+  padding: clamp(8px, 1.6dvh, 14px) clamp(12px, 2.2vw, 20px);
   border-radius: 16px;
   /* กรอบม่วงสดใสชุดเดียวกับหน้าเลือกด่าน (.stage-card) — ข้อที่ทำครบแล้ว
      ยังชนะด้วยกรอบทองอยู่ดี (.quest-row.ready) */
@@ -2004,7 +2004,6 @@ canvas { display: block; width: 100%; height: auto; }
   box-shadow: 0 0 8px rgba(232,67,79,.85);
   animation: mailPulse 1.6s ease-in-out infinite;
 }
-#btnMail .dot.hidden, .lobby-btn .dot.hidden { display: none; }
 
 /* ── ป้ายแดงแบบมีตัวเลข ──
    ใช้กฎเดียวกับจุดเปล่าทุกอย่าง ต่างแค่กว้างได้ตามเนื้อหาเมื่อเป็น "9+"
@@ -2040,6 +2039,13 @@ canvas { display: block; width: 100%; height: auto; }
      เงาเข้มบาง ๆ ทำให้ขอบป้ายไม่จมกับปุ่มม่วงข้างหลัง */
   text-shadow: 0 1px 1px rgba(0,0,0,.45);
 }
+
+/* ── ต้องอยู่ "หลัง" กฎป้ายมีตัวเลขเสมอ ──
+   สองกฎนี้ความจำเพาะเท่ากันเป๊ะ (1,2,0) ตัวที่มาทีหลังจึงชนะ
+   ถ้าย้ายกฎนี้ขึ้นไปไว้ข้างบน display:grid ของป้ายมีตัวเลขจะทับ display:none ทิ้ง
+   แล้วป้ายจะโผล่ค้างอยู่ทั้งที่ไม่มีอะไรให้กดรับ — ซึ่งเคยเกิดมาแล้วจริง ๆ */
+#btnMail .dot.hidden, .lobby-btn .dot.hidden { display: none; }
+
 /* ปุ่มล็อบบี้ไม่ได้ position: relative มาแต่แรก จุดจะไปเกาะมุมเวทีแทนมุมปุ่ม */
 .lobby-btn { position: relative; }
 @keyframes mailPulse {
@@ -2053,7 +2059,7 @@ canvas { display: block; width: 100%; height: auto; }
 .mail-list {
   display: flex;
   flex-direction: column;
-  gap: clamp(5px, 1.1dvh, 10px);
+  gap: clamp(7px, 1.5dvh, 13px);
   width: min(94%, 620px);
   max-height: 100%;
   min-height: 0;
@@ -2066,10 +2072,10 @@ canvas { display: block; width: 100%; height: auto; }
 .mail-item {
   display: flex;
   align-items: center;
-  gap: clamp(7px, 1.6vw, 13px);
+  gap: clamp(9px, 1.9vw, 15px);
   width: 100%;
-  padding: clamp(6px, 1.3dvh, 11px) clamp(9px, 1.8vw, 15px);
-  border-radius: 14px;
+  padding: clamp(8px, 1.7dvh, 14px) clamp(11px, 2.2vw, 18px);
+  border-radius: 15px;
   border: 2px solid var(--plate-line);
   background: var(--plate-face);
   box-shadow: var(--plate-lift);
@@ -2114,12 +2120,12 @@ canvas { display: block; width: 100%; height: auto; }
   display: block;
   font-size: clamp(9px, 1.4dvh, 11.5px);
   color: #B99BD4;
-  margin-top: 1px;
+  margin-top: 3px;
 }
 /* ป้ายบอกสถานะฝั่งขวา — ของค้างรับต้องเด่นกว่าคำว่ารับแล้ว */
 .mail-tag {
   flex: 0 0 auto;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
   font-size: clamp(8.5px, 1.4dvh, 11px);
   font-weight: 600;
@@ -2127,6 +2133,10 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .mail-tag.gift { background: linear-gradient(180deg, #FFDF8A, #F5B31E); color: #4A3000; }
 .mail-tag.done { background: rgba(255,243,226,.1); color: #9C81B8; }
+
+/* เว้นแถวปุ่มให้ห่างจากรายการ ไม่งั้นปุ่มจะดูเหมือนเป็นรายการใบสุดท้ายของลิสต์
+   (สองหน้านี้เป็นลิสต์ยาวเหมือนกัน จึงเว้นเท่ากันทั้งคู่) */
+#inboxPanel .btnrow, #questPanel .btnrow { margin-top: clamp(3px, .8dvh, 8px); }
 
 /* ── หน้าอ่านจดหมาย ────────────────────────── */
 .mail-meta {
