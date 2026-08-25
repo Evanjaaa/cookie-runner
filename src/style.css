@@ -1797,7 +1797,6 @@ canvas { display: block; width: 100%; height: auto; }
   width: clamp(17px, 2.7dvh, 23px);
   height: clamp(17px, 2.7dvh, 23px);
 }
-#upGo .coin::after { inset: 27% 34%; }
 #upGo b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(15px, 2.5dvh, 20px); line-height: 1; }
 #upGo small, #upAuto small { font-size: clamp(13px, 2.1dvh, 17px); font-weight: 600; line-height: 1; }
 
@@ -2469,23 +2468,50 @@ canvas { display: block; width: 100%; height: auto; }
   color: #FFD97A;
 }
 
-/* เหรียญวาดด้วย CSS ล้วน จะได้คมทุกความละเอียดโดยไม่ต้องมีไฟล์ภาพ
-   ::after คือขีดกลางเหรียญ ตัวที่ทำให้อ่านออกว่าเป็นเหรียญไม่ใช่จุดกลม */
+/* ── เหรียญทอง ────────────────────────────────
+   วาดด้วย CSS ล้วน จะได้คมทุกความละเอียดโดยไม่ต้องมีไฟล์ภาพ ซ้อนสามชั้น:
+     ตัว span  ขอบเหรียญ — ไล่สีทแยงจากทองอ่อนบนซ้ายไปทองเข้มล่างขวา
+                (แสงมาจากบนซ้ายเหมือนของทุกชิ้นในเกม)
+     ::before  หน้าเหรียญที่ยุบต่ำกว่าขอบ มีเงาในตัวช่วยให้อ่านเป็นโลหะหนา
+     ::after   รอยตีนแมวนูนกลางเหรียญ
+
+   ── ทำไมรอยตีนอยู่ในชั้นเดียว ──
+   มีแค่ ::before/::after ให้ใช้ และ ::before ถูกหน้าเหรียญจองไปแล้ว
+   นิ้วสี่นิ้วกับอุ้งเท้าจึงต้องรวมอยู่ใน ::after ชั้นเดียว ทำได้ด้วยการซ้อน
+   radial-gradient ห้าก้อนในพร็อพเพอร์ตี้ background เดียว
+   ── ทุกระยะเป็น % ไม่ใช่ px ──
+   ของเดิมขีดกลางเหรียญวาง inset เป็น px ซึ่งไม่ย่อตามขนาดเหรียญ ทุกที่ที่เหรียญ
+   ขนาดต่างจากค่าเริ่มต้นจึงต้องเขียนกฎทับระยะนั้นใหม่ (มีอยู่สี่ที่) พอเปลี่ยนมาเป็น %
+   ทั้งหมด รอยตีนย่อขยายตามเหรียญเอง กฎทับทั้งสี่ที่จึงถูกลบทิ้งไปพร้อมกัน */
 .coin {
   position: relative;
   flex: 0 0 auto;
   width: 19px;
   height: 19px;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #FFEDB4 0%, #FFC93C 52%, #C2851A 100%);
-  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.4), 0 1px 3px rgba(0,0,0,.35);
+  background: linear-gradient(145deg, #FFE79A 0%, #E9A227 48%, #9E6412 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.coin::before {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 27%, #FFF8DC 0%, #FFD960 36%, #F0AC26 70%, #C07C18 100%);
+  box-shadow: inset 0 -1px 2px rgba(130,80,10,.55);
 }
 .coin::after {
   content: '';
   position: absolute;
-  inset: 5px 6.5px;
-  border-radius: 1.5px;
-  background: rgba(150,96,16,.6);
+  inset: 0;
+  border-radius: 50%;
+  --m: rgba(146,90,12,.6);
+  background:
+    radial-gradient(ellipse 8% 7% at 33% 42%, var(--m) 99%, transparent 100%),
+    radial-gradient(ellipse 7.5% 7% at 44% 34%, var(--m) 99%, transparent 100%),
+    radial-gradient(ellipse 7.5% 7% at 56% 34%, var(--m) 99%, transparent 100%),
+    radial-gradient(ellipse 8% 7% at 67% 42%, var(--m) 99%, transparent 100%),
+    radial-gradient(ellipse 15% 12% at 50% 60%, var(--m) 99%, transparent 100%);
 }
 
 /* ── แถบเพชรชมพู ─────────────────────────────
@@ -2510,23 +2536,42 @@ canvas { display: block; width: 100%; height: auto; }
   color: #FFB3CC;
 }
 
-/* เพชรทรงข้าวหลามตัดวาดด้วย CSS ล้วน จะได้คมทุกความละเอียดโดยไม่ต้องมีไฟล์ภาพ
-   ::after คือเหลี่ยมสะท้อนแสงด้านบน ตัวที่ทำให้อ่านออกว่าเป็นเพชรไม่ใช่สี่เหลี่ยมเอียง */
+/* ── เพชรชมพู ─────────────────────────────────
+   วาดด้วย CSS ล้วน จะได้คมทุกความละเอียดโดยไม่ต้องมีไฟล์ภาพ
+
+   ── ทำไมพื้นเป็น conic-gradient ไม่ใช่ linear ──
+   ของเดิมไล่สีเส้นตรงทแยงเดียว ซึ่งอ่านเป็น "สี่เหลี่ยมเอียงที่ไล่สี" มากกว่า
+   อัญมณีเจียระไน conic ที่กระจายออกจากจุดใต้หน้าตัดบนทำให้เกิดแถบสว่าง-เข้ม
+   สลับกันรอบเม็ด = เหลี่ยมเจียระไนที่ตาอ่านออกทันทีแม้ที่ขนาด 13px
+
+   สามชั้นซ้อนกัน: ตัว span = เหลี่ยมรอบเม็ด / ::before = หน้าตัดบน (table)
+   ที่สว่างที่สุด / ::after = ประกายเหลี่ยมซ้ายล่าง
+   clip-path ของตัว span ตัดลูกทั้งสองให้อยู่ในทรงข้าวหลามตัดตามไปเองด้วย */
 .gem {
   position: relative;
   flex: 0 0 auto;
   width: 19px;
   height: 19px;
-  background: linear-gradient(155deg, #FFD3E4 0%, #FF8FB0 46%, #D14E86 100%);
   clip-path: polygon(50% 0%, 100% 36%, 50% 100%, 0% 36%);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.4));
+  background: conic-gradient(from 200deg at 50% 36%,
+    #FFA8CB 0deg, #FF7FAE 70deg, #FF5C98 140deg, #E84A87 200deg,
+    #FF6FA4 260deg, #FFA0C6 310deg, #FFA8CB 360deg);
+  /* เงาให้ลอย + เรืองชมพูอ่อน ๆ ให้ดูเป็นของมีค่า ไม่ใช่รูปทรงแบน ๆ */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)) drop-shadow(0 0 4px rgba(255,110,165,.65));
+}
+.gem::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 9%, 72% 34%, 50% 44%, 28% 34%);
+  background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.32));
 }
 .gem::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 52%);
-  clip-path: polygon(50% 6%, 82% 36%, 50% 52%, 18% 36%);
+  clip-path: polygon(28% 34%, 50% 44%, 44% 62%);
+  background: rgba(255,255,255,.34);
 }
 
 /* ── ปุ่มหยุดชั่วคราว + ปิดเสียง ───────────── */
@@ -2888,7 +2933,6 @@ canvas { display: block; width: 100%; height: auto; }
   .goldbar, .gembar { gap: 5px; padding: 0 9px 0 3px; }
   .goldbar b, .gembar b { font-size: 12px; }
   .coin, .gem { width: 15px; height: 15px; }
-  .coin::after { inset: 4px 5px; }
   .hudbtns { gap: 6px; }
   .hudbtns button svg { width: 17px; height: 17px; }
   #btnPause::before, #btnPause::after { height: 13px; width: 4px; }
@@ -3410,7 +3454,6 @@ canvas { display: block; width: 100%; height: auto; }
 /* ไอคอนสกุลเงินบนปุ่มสลับระหว่างเหรียญกับเพชรตามช่องที่เปิดอยู่
    จึงตั้งขนาดที่คลาสร่วม .cur (ดูกฎข้างบน) ไม่ใช่ตั้งแยกทีละสกุล
    ที่เหลือตรงนี้คือรายละเอียดเฉพาะของเหรียญเท่านั้น */
-.btn.pull .coin::after { inset: 28% 34%; }
 .btn.pull b {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
@@ -3654,7 +3697,6 @@ canvas { display: block; width: 100%; height: auto; }
 }
 .got-card.gold b { color: #FFD97A; }
 .got-card .coin.big { width: 52%; height: auto; aspect-ratio: 1; margin: 8% 0 4%; }
-.got-card .coin.big::after { inset: 26% 33%; border-radius: 2px; }
 
 @keyframes gotPop {
   0%   { opacity: 0; transform: scale(.3) rotate(-16deg); }
