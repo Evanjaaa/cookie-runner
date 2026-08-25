@@ -147,7 +147,9 @@ function drawNotice(ctx, game) {
   ctx.globalAlpha = a;
 
   ctx.font = "600 15px 'IBM Plex Sans Thai', sans-serif";
-  const label = 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';
+  // ข้อความมาจากฝั่งเกม เพราะตอนนี้แถบนี้ใช้บอกได้สองเรื่อง
+  // (ผ่านด่านย่อย / ขวดพลังมาแล้ว) ไม่ใช่เรื่องเดียวเหมือนเดิม
+  const label = game.noticeText || 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';
   const w = ctx.measureText(label).width + 28;
 
   ctx.fillStyle = game.pal.noticeBg;

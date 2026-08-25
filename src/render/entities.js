@@ -10,21 +10,42 @@ const { W } = VIEW;
  * เพราะระยะกระโดดกับตำแหน่งอาหารทั้งเกมคำนวณจากขนาดพวกนั้น
  * ถ้าธีมไหนวาดใหญ่กว่ากล่องชนจริง ผู้เล่นจะรู้สึกว่า "ชนทั้งที่ยังไม่โดน"
  */
-function drawOneObstacle(ctx, o, x, y, garden) {
-  if (o.kind === 'bar') (garden ? drawFlowerArch : drawBar)(ctx, x, y, o.w, o.h);
-  else if (o.kind === 'crate') (garden ? drawGiftStack : drawCrateStack)(ctx, x, y, o.w, o.h, o.rows);
-  else (garden ? drawCactus : drawSpike)(ctx, x, y, o.w, o.h);
+/**
+ * ทะเบียนภาพสิ่งกีดขวางแยกตามธีม
+ *
+ * เดิมเป็นบูลีน `theme === 'garden'` ซึ่งรองรับได้แค่สองธีม พอจะเพิ่มด่านที่สาม
+ * ต้องไล่แก้ ?: ทุกบรรทัด ย้ายมาเป็นตารางแทน — เพิ่มธีมใหม่ = เติมคีย์เดียว
+ * ไม่ต้องแตะฟังก์ชันที่วาดอยู่แล้วเลย
+ */
+const THEME_ART = {
+  bakery: { bar: drawBar, crate: drawCrateStack, spike: drawSpike },
+  garden: { bar: drawFlowerArch, crate: drawGiftStack, spike: drawCactus },
+  cavern: { bar: drawRockArch, crate: drawCrystalStack, spike: drawStalagmite },
+};
+
+function drawOneObstacle(ctx, o, x, y, theme) {
+  const art = THEME_ART[theme] || THEME_ART.bakery;
+  if (o.kind === 'bar') art.bar(ctx, x, y, o.w, o.h);
+  else if (o.kind === 'crate') art.crate(ctx, x, y, o.w, o.h, o.rows);
+  else art.spike(ctx, x, y, o.w, o.h);
 }
 
+/**
+ * แต่ละชิ้นจำธีมของตัวเองไว้ตอนถูกสร้าง (o.theme) ไม่ได้ใช้ธีมของด่านปัจจุบัน
+ *
+ * จำเป็นเพราะตอนเปลี่ยนฉากกลางตา สิ่งกีดขวางที่ถูกวางล่วงหน้าไปแล้วยังเป็นของ
+ * ฉากเก่า ถ้าวาดด้วยธีมปัจจุบันทั้งหมด ของที่อยู่บนจอจะเปลี่ยนหน้าตาพรึบทั้งแถว
+ * พอแยกตามชิ้น ภาพที่ได้คือ "วิ่งออกจากฉากเก่าเข้าฉากใหม่" ซึ่งตรงกับที่เกิดขึ้นจริง
+ */
 export function drawObstacles(ctx, obstacles, camera, theme = 'bakery') {
-  const garden = theme === 'garden';
   for (const o of obstacles) {
     const x = o.x - camera;
     // เผื่อขอบกว้างกว่าเดิม ชิ้นที่กระเด็นอยู่จะได้ไม่หายวับตอนยังเห็นได้
     if (x > W + 130 || x + o.w < -130) continue;
 
+    const t = o.theme || theme;
     if (!o.smashed) {
-      drawOneObstacle(ctx, o, x, o.y, garden);
+      drawOneObstacle(ctx, o, x, o.y, t);
       continue;
     }
 
@@ -38,7 +59,7 @@ export function drawObstacles(ctx, obstacles, camera, theme = 'bakery') {
     ctx.translate(x + o.w / 2, o.y + o.h / 2);
     ctx.rotate(o.rot);
     ctx.translate(-o.w / 2, -o.h / 2);
-    drawOneObstacle(ctx, o, 0, 0, garden);
+    drawOneObstacle(ctx, o, 0, 0, t);
     ctx.restore();
   }
 }
@@ -257,6 +278,160 @@ function drawBar(ctx, x, y, w, h) {
   ctx.fillStyle = 'rgba(58,29,80,.9)';
   ctx.fillRect(x + 10, 0, 12, y);
   ctx.fillRect(x + w - 22, 0, 12, y);
+}
+
+// ── ชุดภาพธีมถ้ำคริสตัล ──────────────────────────────────────
+// กินพื้นที่เท่ากับหนาม/คาน/กล่องลังของธีมกลางคืนทุกมิติ ตามกฎในหัว stages.js
+// โทนหินม่วงเทา + คริสตัลฟ้าเรืองแสง ต่างจากทั้งครัวกลางคืนและสวนกลางวันชัดเจน
+
+/** หินงอก แทนหนาม — w32 h38 ยืนบนพื้น ปลายแหลมเอียงเล็กน้อยให้ดูเป็นหินธรรมชาติ */
+function drawStalagmite(ctx, x, y, w, h) {
+  const cx = x + w / 2;
+
+  // ตัวหิน — ฐานกว้างสอบขึ้นไปหายอดที่เยื้องขวานิดหนึ่ง
+  ctx.fillStyle = '#6E5A87';
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x + w * 0.22, y + h * 0.42);
+  ctx.lineTo(cx + w * 0.06, y);
+  ctx.lineTo(x + w * 0.82, y + h * 0.5);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // ด้านรับแสงซ้าย
+  ctx.fillStyle = '#8E79A8';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.22, y + h * 0.42);
+  ctx.lineTo(cx + w * 0.06, y);
+  ctx.lineTo(cx - w * 0.02, y + h);
+  ctx.lineTo(x + w * 0.3, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // แร่คริสตัลเรืองแสงฝังอยู่ ตัวที่บอกว่า "อันตราย" แทนสีแดงของหนาม
+  ctx.fillStyle = '#7FE8FF';
+  ctx.beginPath();
+  ctx.moveTo(cx + w * 0.04, y + h * 0.16);
+  ctx.lineTo(cx + w * 0.2, y + h * 0.44);
+  ctx.lineTo(cx + w * 0.02, y + h * 0.66);
+  ctx.lineTo(cx - w * 0.12, y + h * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.beginPath();
+  ctx.moveTo(cx + w * 0.04, y + h * 0.16);
+  ctx.lineTo(cx + w * 0.12, y + h * 0.42);
+  ctx.lineTo(cx + w * 0.02, y + h * 0.46);
+  ctx.closePath();
+  ctx.fill();
+
+  // เงาที่โคน ให้ยืนติดพื้นไม่ลอย
+  ctx.fillStyle = 'rgba(20,10,32,.4)';
+  ctx.fillRect(x - 3, y + h - 4, w + 6, 5);
+}
+
+/** เพดานหินย้อย แทนคาน — w170 h54 ห้อยลงมาจากขอบบนจอ ต้องหมอบลอด */
+function drawRockArch(ctx, x, y, w, h) {
+  // เนื้อหินของคาน
+  ctx.fillStyle = '#5B4A73';
+  ctx.fillRect(x, y, w, h);
+  // ขอบบนสว่าง ให้ดูเป็นก้อนหนา
+  ctx.fillStyle = 'rgba(200,180,225,.22)';
+  ctx.fillRect(x, y, w, 5);
+
+  // หินย้อยห้อยจากใต้คาน — ความสูงต่างกันให้ดูเป็นธรรมชาติ
+  // วาดอยู่ในความสูง h เท่านั้น ไม่ยื่นต่ำกว่ากล่องชน
+  ctx.fillStyle = '#4A3B60';
+  const tips = [0.1, 0.26, 0.42, 0.58, 0.74, 0.9];
+  const drop = [0.5, 0.8, 0.36, 0.7, 0.46, 0.62];
+  for (let i = 0; i < tips.length; i++) {
+    const tx = x + w * tips[i];
+    ctx.beginPath();
+    ctx.moveTo(tx - 9, y + h - 10);
+    ctx.lineTo(tx + 9, y + h - 10);
+    ctx.lineTo(tx, y + h - 10 + drop[i] * 10);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // แถบคริสตัลเรืองใต้คาน = เส้นเตือนว่าต่ำแค่ไหน (แทนแถบแดงของธีมเดิม)
+  ctx.fillStyle = 'rgba(127,232,255,.85)';
+  ctx.fillRect(x, y + h - 13, w, 3);
+
+  // เสาหินค้ำขึ้นไปนอกจอ ตำแหน่งเดียวกับธีมอื่นเป๊ะ
+  ctx.fillStyle = 'rgba(38,28,54,.9)';
+  ctx.fillRect(x + 10, 0, 12, y);
+  ctx.fillRect(x + w - 22, 0, 12, y);
+}
+
+/** กองคริสตัล แทนกล่องลัง — ชั้นละ w46 h44 ซ้อนได้หลายชั้น */
+function drawCrystalStack(ctx, x, y, w, h, rows = 1) {
+  const rh = h / rows;
+  for (let i = 0; i < rows; i++) drawCrystalBlock(ctx, x, y + i * rh, w, rh, i === 0);
+}
+
+function drawCrystalBlock(ctx, x, y, w, h, topBlock) {
+  // ก้อนหินหุ้ม — ตัดมุมบนสองข้างให้ดูเป็นผลึกไม่ใช่กล่องเหลี่ยม
+  ctx.fillStyle = '#5F4E7A';
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y);
+  ctx.lineTo(x + w - 6, y);
+  ctx.lineTo(x + w, y + 9);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + 9);
+  ctx.closePath();
+  ctx.fill();
+
+  // แกนคริสตัลกลางก้อน
+  ctx.fillStyle = '#4FC9E8';
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y + 6);
+  ctx.lineTo(x + w - 10, y + h / 2);
+  ctx.lineTo(x + w / 2, y + h - 6);
+  ctx.lineTo(x + 10, y + h / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // เหลี่ยมรับแสงซ้ายบน
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y + 6);
+  ctx.lineTo(x + w / 2, y + h / 2);
+  ctx.lineTo(x + 10, y + h / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // ขอบก้อน วาดท้ายสุดให้ทับปลายทุกเหลี่ยม
+  ctx.strokeStyle = '#392C4E';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y);
+  ctx.lineTo(x + w - 6, y);
+  ctx.lineTo(x + w, y + 9);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + 9);
+  ctx.closePath();
+  ctx.stroke();
+
+  if (topBlock) {
+    // ผลึกเล็กงอกบนก้อนบนสุด วาดล้นขึ้นไปได้เพราะเป็นแค่ภาพ
+    ctx.fillStyle = '#7FE8FF';
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 - 7, y);
+    ctx.lineTo(x + w / 2 - 3, y - 9);
+    ctx.lineTo(x + w / 2 + 1, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 + 2, y);
+    ctx.lineTo(x + w / 2 + 6, y - 6);
+    ctx.lineTo(x + w / 2 + 10, y);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 // ── เม็ดอาหารแมวรูปปลา ───────────────────────────────────────

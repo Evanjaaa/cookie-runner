@@ -527,9 +527,27 @@ export class Level {
     ];
   }
 
+  /**
+   * สลับไปลำดับท่อนของด่านย่อยถัดไป "กลางตา" โดยไม่ล้างของที่วางไว้แล้ว
+   *
+   * ห้ามใช้ reset() แทน — reset ล้างสิ่งกีดขวาง อาหาร และหลุมทิ้งทั้งหมด
+   * ซึ่งกลางตาแปลว่าของที่แมวกำลังวิ่งเข้าหาจะหายวับต่อหน้า
+   * ท่อนที่วางล่วงหน้าไปแล้วต้องอยู่ต่อจนวิ่งผ่านไปเอง ท่อนใหม่ค่อยเป็นของด่านใหม่
+   *
+   * chunkIndex กลับไปนับหนึ่งใหม่ ด่านใหม่จึงเริ่มจากท่อนอุ่นเครื่องของตัวเอง
+   * ไม่ใช่โผล่กลางช่วงพีคของด่านก่อนหน้า
+   */
+  switchRoute(route, theme) {
+    if (!route || !route.length) return;
+    this.route = route;
+    this.theme = theme;
+    this.chunkIndex = 0;
+  }
+
   /** ส่ง route ใหม่เข้ามาเมื่อเปลี่ยนด่าน ไม่ส่งก็ใช้ของเดิม */
-  reset(route) {
+  reset(route, theme) {
     if (route) this.route = route;
+    if (theme) this.theme = theme;
     this.obstacles = [];
     this.fishes = [];
     this.pits = [];
@@ -557,6 +575,10 @@ export class Level {
     // ไม่งั้นของเด่นสองอย่างอยู่ในแนวเดียวกันแล้วแย่งสายตากันเอง
     if (step.shrimp) c.fish = makeShrimp(c.fish);   // คืน array ใหม่ที่ตัดเม็ดใกล้กุ้งออกแล้ว
     else if (step.kibble) makeKibble(c.fish, step.kibble);
+
+    // ติดธีมไว้กับชิ้นตั้งแต่ตอนเกิด ไม่ใช่ให้ตอนวาดไปอ่านธีมของด่านปัจจุบัน
+    // ชิ้นที่เกิดก่อนเปลี่ยนฉากจึงยังเป็นหน้าตาของฉากเดิมจนวิ่งผ่านไปเอง
+    if (this.theme) for (const o of c.obs) o.theme = this.theme;
 
     this.obstacles.push(...c.obs);
     this.pits.push(...c.pit);
