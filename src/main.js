@@ -1741,8 +1741,10 @@ function refreshMailDot() {
   const dot = document.getElementById('mailDot');
   // โชว์จำนวนฉบับที่ค้างอยู่ ไม่ใช่จุดเปล่า — "มีของค้าง 1 ฉบับ" กับ "ค้าง 8 ฉบับ"
   // เป็นคนละเรื่องกันสำหรับคนตัดสินใจว่าจะเปิดดูตอนนี้หรือไว้ทีหลัง
+  // ไม่มีของค้าง = ไม่ใส่ตัวหนังสือเลย ไม่ใช่ใส่ "0" แล้วค่อยซ่อนด้วยคลาส
+  // ป้ายจึงว่างจริง ๆ ถ้าวันหลังกฎซ่อนพลาดไป อย่างมากก็เห็นจุดเปล่า ไม่ใช่เลข 0
   // เกิน 9 ใส่ 9+ แทนเลขจริง ไม่งั้นป้ายจะยืดจนล้นออกนอกปุ่ม (กฎเดียวกับปุ่มกิจกรรม)
-  dot.textContent = n > 9 ? '9+' : n;
+  dot.textContent = n === 0 ? '' : n > 9 ? '9+' : n;
   dot.classList.toggle('hidden', n === 0);
 }
 
@@ -1986,8 +1988,9 @@ const questPanel = document.getElementById('questPanel');
 function refreshQuestDot() {
   const n = claimableCount();
   const dot = document.getElementById('questDot');
+  // ไม่มีอะไรให้กดรับ = ไม่ใส่ตัวหนังสือเลย (เหตุผลเดียวกับ refreshMailDot)
   // เกิน 9 ใส่ 9+ แทนตัวเลขจริง ไม่งั้นป้ายจะยืดจนเบียดชื่อปุ่ม
-  dot.textContent = n > 9 ? '9+' : n;
+  dot.textContent = n === 0 ? '' : n > 9 ? '9+' : n;
   dot.classList.toggle('hidden', n === 0);
 }
 
