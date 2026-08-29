@@ -27,6 +27,11 @@ import { drawTreasureSlots } from './render/treasure-hud.js';
 import { drawHUD } from './render/hud.js';
 import { postProcess } from './render/post.js';
 
+/* จอสัมผัสหรือเปล่า — ใช้เกณฑ์เดียวกับ input.js กับ main.js และตรงกับ
+   @media (pointer: coarse) ใน style.css ที่บีบปุ่มล็อบบี้เข้ามาจากขอบจอ
+   พอที่ว่างกลางจอกว้างขึ้น น้องขนาดเดิมเลยดูเล็กไปเมื่อเทียบกับของรอบตัว */
+const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
+
 export const STATE = { READY: 0, RUN: 1, DEAD: 2, PAUSE: 3 };
 
 /**
@@ -1306,15 +1311,22 @@ export class Game {
     });
 
     // เงาใต้เท้าหดขยายสวนจังหวะหายใจ ทำให้ตัวละครดูมีน้ำหนัก
+    /* น้องยืนบนเบาะพอดีเพราะ drawCatPose วัดจาก "ตำแหน่งเท้า" ไม่ใช่กลางตัว
+       ตัวโตขึ้นจึงงอกขึ้นข้างบนอย่างเดียว เท้ายังอยู่ที่ GROUND_Y เท่าเดิม
+       ไม่ต้องไปยุ่งกับ $FOCUS ใน tools/render-bg.ps1 */
+    const catScale = coarsePointer.matches ? 3 : 2.6;
+    const shadowK = catScale / 2.6;   // เงาต้องโตตามตัว ไม่งั้นน้องจะดูลอยเหนือพื้น
+
     ctx.save();
     ctx.globalAlpha = 0.3;
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(x, GROUND_Y + 5, 44 - Math.sin(t * 0.045) * 2.5, 8.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, GROUND_Y + 5, (44 - Math.sin(t * 0.045) * 2.5) * shadowK,
+                8.5 * shadowK, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t, this.idlePose);
+    drawCatPose(ctx, x, GROUND_Y, catScale, getSkin(), t, this.idlePose);
     postProcess(ctx, { edges: false });
   }
 }

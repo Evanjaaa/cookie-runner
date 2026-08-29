@@ -314,8 +314,6 @@ function refreshGold() {
   // หน้าตีบวกก็ต้องเห็นทองด้วย เพราะมันคือหน้าที่จ่ายทองถี่ที่สุดในเกม
   // (ใช้ทองอย่างเดียว จึงไม่มีช่องเพชรให้เขียน)
   document.getElementById('goldUp').textContent = gold;
-  document.getElementById('goldQuest').textContent = gold;
-  document.getElementById('gemQuest').textContent = gems;
 }
 
 // ── ตู้กาช่า ───────────────────────────────────────────────

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MeowZing — หลังบ้าน</title>
+
+  <!-- หน้านี้ไม่ควรโผล่ในผลค้นหา ไม่ได้กันคนเข้า (กันด้วย RLS ที่ฐานข้อมูล)
+       แค่ไม่มีเหตุผลให้มันไปอยู่ใน Google -->
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ── หน้าเข้าสู่ระบบ ──────────────────────────────
+       ใช้รหัส 6 หลักทางอีเมลเหมือนตัวเกม ไม่ใช่รหัสผ่าน
+       จะได้ไม่ต้องมีรหัสผ่านอีกชุดให้ดูแลและให้หลุด -->
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <h1>MeowZing <span>หลังบ้าน</span></h1>
+
+      <div id="gateStep1">
+        <p class="lead">เข้าด้วยอีเมลของแอดมิน ระบบจะส่งรหัส 6 หลักไปให้</p>
+        <div class="field">
+          <input id="email" type="email" inputmode="email" autocomplete="email"
+                 placeholder="you@example.com">
+          <button class="btn" id="sendCode">ส่งรหัส</button>
+        </div>
+      </div>
+
+      <div id="gateStep2" class="hidden">
+        <p class="lead">กรอกรหัส 6 หลักที่ส่งไปที่ <b id="sentTo"></b></p>
+        <div class="field">
+          <input id="code" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="6" placeholder="123456">
+          <button class="btn" id="verifyCode">ยืนยัน</button>
+        </div>
+        <button class="linkbtn" id="backToEmail">ใช้อีเมลอื่น</button>
+      </div>
+
+      <p class="msg" id="gateMsg"></p>
+    </div>
+  </div>
+
+  <!-- ── ตัวแอป ─────────────────────────────────────── -->
+  <div class="app hidden" id="app">
+    <header class="top">
+      <div class="brand">MeowZing <span>หลังบ้าน</span></div>
+      <nav class="tabs" id="tabs">
+        <button class="tab on" data-page="overview">ภาพรวม</button>
+        <button class="tab" data-page="players">ผู้เล่น</button>
+        <button class="tab" data-page="scores">คะแนน</button>
+        <button class="tab" data-page="pulls">กาช่า</button>
+        <button class="tab" data-page="audit">ตรวจผิดปกติ</button>
+      </nav>
+      <div class="who">
+        <span id="whoEmail"></span>
+        <button class="linkbtn" id="signOut">ออก</button>
+      </div>
+    </header>
+
+    <main class="page" id="page"></main>
+
+    <!-- ลิ้นชักรายละเอียดผู้เล่น เลื่อนเข้ามาจากขวาตอนกดแถวในตาราง
+         ใช้ลิ้นชักแทนหน้าใหม่ เพราะแอดมินมักต้องกลับไปดูตารางต่อทันที
+         ถ้าเปลี่ยนหน้าจะเสียตำแหน่งที่เลื่อนกับคำค้นทุกครั้ง -->
+    <aside class="drawer hidden" id="drawer">
+      <div class="drawer-head">
+        <b id="drawerTitle">ผู้เล่น</b>
+        <button class="iconbtn" id="drawerClose" aria-label="ปิด">✕</button>
+      </div>
+      <div class="drawer-body" id="drawerBody"></div>
+    </aside>
+    <div class="scrim hidden" id="scrim"></div>
+
+    <!-- แถบแจ้งผลมุมล่าง บอกว่าบันทึก/ลบสำเร็จหรือพัง -->
+    <div class="toast hidden" id="toast"></div>
+  </div>
+
+  <script type="module" src="/src/admin/main.js"></script>
+</body>
+</html>
