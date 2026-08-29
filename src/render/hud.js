@@ -9,6 +9,88 @@ const { W, H } = VIEW;
 const TREAT_TOP = 58;    // ค่าขนมเปียก ขวาริม ใต้ปุ่มหยุด/เสียงที่เป็น DOM
 const WORD_TOP = 22;     // แถวตัวอักษรสะสม ซ้ายบนสุด
 
+/**
+ * ระยะขั้นต่ำจากขอบจอ สำหรับเครื่องที่ไม่รายงานเขตปลอดภัยมาให้
+ *
+ * เดิม 24 ซึ่งพอบนคอมที่ canvas มีขอบจอเป็นกรอบให้อยู่แล้ว แต่บนมือถือ
+ * canvas ยืดเต็มจอ (ดู .stage > canvas) และหน้าเว็บตั้ง viewport-fit=cover
+ * ขอบจริงของเครื่องจึงกินเข้ามาถึงตรงนั้น
+ */
+const EDGE_MIN = 31;
+
+/**
+ * สัดส่วนของระยะปลอดภัยที่ยอมเว้นจริงสำหรับของที่อยู่ "แถวบนสุด"
+ *
+ * env(safe-area-inset-*) เผื่อไว้เท่ากันตลอดด้าน แต่บนมือถือแนวนอนรอยบาก
+ * (หรือ Dynamic Island) อยู่กลางด้านข้าง ไม่ได้กินขึ้นไปถึงมุมบน ของที่เกาะ
+ * แถวบนสุดอย่างแถวตัวอักษรกับค่าขนมเปียกจึงกินเข้าไปในระยะนั้นได้บางส่วน
+ * โดยไม่โดนบัง — สิ่งที่ต้องพ้นจริง ๆ ตรงมุมคือความโค้งของมุมจอเท่านั้น
+ *
+ * 0.6 คือจุดที่ยังพ้นมุมโค้งของเครื่องที่โค้งลึกที่สุด แต่ไม่เสียที่ไปกับ
+ * ระยะที่เผื่อไว้สำหรับรอยบากซึ่งอยู่คนละที่กับของพวกนี้
+ * ถ้าเครื่องไหนยังโดนบัง ให้ขยับค่านี้ขึ้น (0.8 / 1.0 = เว้นเต็มระยะปลอดภัย)
+ */
+const SAFE_RATIO = 0.6;
+
+/**
+ * ระยะที่ควรเว้นจากขอบจอจริง — เอาค่าที่มากกว่า ไม่ใช่บวกกัน
+ *
+ * เคยเขียนเป็น EDGE_MIN + safe ซึ่งผิด เพราะสองค่านี้แก้ปัญหาเดียวกันคนละวิธี
+ * safe คือระยะที่เครื่องรายงานว่าพ้นรอยบากแน่นอน ส่วน EDGE_MIN คือค่าที่เดาไว้
+ * เผื่อเครื่องที่ไม่รายงานอะไรมาเลย พอบวกกันบนเครื่องที่มีรอยบากจริงจะเว้นซ้ำซ้อน
+ *
+ * EDGE_MIN = 31 ตรงกับ 3.2% ของความกว้าง ซึ่งเป็นค่าเดียวกับที่แถบบนฝั่ง DOM
+ * ใช้ใน style.css ปุ่มหยุดกับค่าขนมเปียกจึงเรียงเป็นคอลัมน์เดียวกันพอดี
+ */
+function edgeInset(safeSide) {
+  return Math.max(EDGE_MIN, safeSide * SAFE_RATIO);
+}
+
+/** ช่องไฟระหว่างไอคอนปลากับตัวเลข */
+const TREAT_ICON_GAP = 14;
+
+/* ── ระยะปลอดภัยของจอ (รอยบาก / มุมโค้ง / แถบ home) ──────────────
+ *
+ * ค่าคงที่ข้างบนอย่างเดียวไม่พอ เพราะแต่ละเครื่องกินขอบไม่เท่ากัน
+ * iPhone ที่มี Dynamic Island ตอนแนวนอนกินฝั่งรอยบากถึงราว 59px
+ * ซึ่งมากกว่าระยะที่เผื่อไว้ ตัวหนังสือจึงยังไปนอนอยู่ใต้รอยบากเหมือนเดิม
+ *
+ * CSS มีค่าให้อยู่แล้วคือ env(safe-area-inset-*) แต่ HUD วาดบน canvas
+ * ซึ่งอ่าน CSS ไม่ได้ จึงต้องทำ "ตัวตรวจ" เป็น div ซ่อนไว้ที่เอา env() มาใส่
+ * เป็น padding แล้วอ่านค่ากลับออกมาเป็นตัวเลข
+ *
+ * อ่านทีเดียวตอนขนาด canvas เปลี่ยน (= ตอนหมุนจอ/เปลี่ยนขนาดหน้าต่าง)
+ * ไม่ใช่อ่านทุกเฟรม เพราะ getComputedStyle บังคับให้เบราว์เซอร์คำนวณเลย์เอาต์ใหม่
+ */
+let probe = null;
+let insetCache = { cssW: -1, left: 0, right: 0 };
+
+function readSafeInsets() {
+  if (!probe) {
+    probe = document.createElement('div');
+    probe.style.cssText =
+      'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+      'padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)';
+    document.body.appendChild(probe);
+  }
+  const cs = getComputedStyle(probe);
+  return { left: parseFloat(cs.paddingLeft) || 0, right: parseFloat(cs.paddingRight) || 0 };
+}
+
+/**
+ * ระยะปลอดภัย แปลงจากพิกเซล CSS เป็นหน่วยพิกัดของ canvas แล้ว
+ * (canvas วาดด้วยระบบพิกัด 960x420 ของตัวเอง ไม่ใช่พิกเซลจริงบนจอ)
+ */
+function safeInsets(ctx) {
+  const cssW = ctx.canvas.clientWidth || W;
+  if (cssW !== insetCache.cssW) {
+    const px = readSafeInsets();
+    const k = W / cssW;
+    insetCache = { cssW, left: px.left * k, right: px.right * k };
+  }
+  return insetCache;
+}
+
 export function drawHUD(ctx, game) {
   // ทุกสีตัวอักษรมาจากจานสีของด่าน — ฟ้ากลางวันสว่างจนครีมอ่านไม่ออก
   const pal = game.pal;
@@ -28,21 +110,35 @@ export function drawHUD(ctx, game) {
   // ไอคอนเดียวพอ — เลขนี้คือคะแนนรวมของกินทุกชนิด ไม่ใช่จำนวนปลา
   // ใช้ปลาเป็นตัวแทนเพราะเป็นของที่เจอบ่อยที่สุดและสีตัดกับพื้นหลังชัดที่สุด
   const treatText = game.treat.toLocaleString('en-US');
+  const safe = safeInsets(ctx);
+  const treatX = W - edgeInset(safe.right);
 
-  ctx.textAlign = 'right';
+  // ยึดซ้ายแล้ววัดความกว้างเอง แทนการใช้ textAlign 'right'
+  //
+  // 'right' ยึดที่ "จุดที่เคอร์เซอร์เดินจบ" ไม่ใช่ขอบหมึกจริง ตัวท้ายของคำไทย
+  // จึงล้ำพ้นจุดนั้นออกไปได้ ผลคือป้ายกับตัวเลขที่ควรชิดขอบขวาตรงกัน
+  // กลับยื่นไม่เท่ากันข้างละไม่กี่พิกเซล ซึ่งพอสองบรรทัดวางซ้อนกันแล้วเห็นชัดว่าเบี้ยว
+  ctx.textAlign = 'left';
 
-  ctx.globalAlpha = 0.62;
-  ctx.font = "500 11px 'IBM Plex Sans Thai', sans-serif";
+  // ── สัดส่วนสองบรรทัดนี้ ──
+  // เดิมป้าย 11px คู่กับตัวเลข 22px = ต่างกันเท่าตัวพอดี ซึ่งห่างเกินไป
+  // ป้ายเล็กจนอ่านเป็นเศษฝุ่น ส่วนตัวเลขใหญ่จนดูลอยไม่มีอะไรถ่วง
+  // 13/20 (ต่างกัน 1.5 เท่า) ทั้งคู่อ่านออกและอ่านเป็นของชิ้นเดียวกัน
+  ctx.globalAlpha = 0.72;
+  ctx.font = "500 13px 'IBM Plex Sans Thai', sans-serif";
   ctx.fillStyle = pal.ink;
-  ctx.fillText('ค่าขนมเปียก', W - 24, TREAT_TOP);
+  ctx.fillText('ค่าขนมเปียก', treatX - textWidth(ctx, 'ค่าขนมเปียก'), TREAT_TOP);
   ctx.globalAlpha = 1;
 
-  ctx.font = '600 22px Mitr, sans-serif';
+  ctx.font = '600 20px Mitr, sans-serif';
   ctx.fillStyle = pal.accent;
-  ctx.fillText(treatText, W - 24, TREAT_TOP + 15);
+  const treatW = textWidth(ctx, treatText);
+  ctx.fillText(treatText, treatX - treatW, TREAT_TOP + 16);
 
-  // วัดด้วยฟอนต์เดียวกับที่เพิ่งวาด แล้ววางไอคอนชิดซ้ายของตัวเลข
-  drawFish(ctx, W - 38 - ctx.measureText(treatText).width, TREAT_TOP + 27, 11);
+  // ไอคอนกับตัวเลขอยู่บรรทัดเดียวกันเสมอ ไม่ว่าเลขจะกี่หลัก เพราะวางไอคอน
+  // จากขอบซ้ายของตัวเลขที่วัดมาแล้ว ส่วน y คือกึ่งกลางแนวตั้งของตัวเลข
+  // (วาดแบบ baseline 'top' ฟอนต์ 20px กลางจึงอยู่ราว +10 จากขอบบน)
+  drawFish(ctx, treatX - treatW - TREAT_ICON_GAP, TREAT_TOP + 26, 10);
 
   ctx.textAlign = 'left';
 
@@ -70,15 +166,19 @@ export function drawHUD(ctx, game) {
  */
 function drawWord(ctx, game) {
   const pal = game.pal;
-  const size = 19;
-  const gap = 3.5;
-  const x0 = 24;
+  // 19 -> 23 ให้สมส่วนกับหลอดพลังกับค่าขนมเปียกที่อยู่แถวเดียวกัน
+  // เพดานอยู่ที่หลอดพลังซึ่งเริ่มที่ x=331 — แปดตัวอักษรที่ขนาดนี้จบราว 277
+  // ยังเหลือช่องไฟก่อนถึงหลอด ถ้าจะขยายอีกต้องขยับหลอดด้วย
+  const size = 23;
+  const gap = 4;
+  // ฝั่งซ้ายเจอรอยบากได้เหมือนกันเวลาหมุนจอกลับด้าน จึงคิดระยะขอบด้วยกฎเดียวกัน
+  const x0 = edgeInset(safeInsets(ctx).left);
   const y = WORD_TOP;
 
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '600 12px Mitr, sans-serif';
+  ctx.font = '600 14px Mitr, sans-serif';
 
   for (let i = 0; i < WORD.length; i++) {
     const x = x0 + i * (size + gap);
@@ -90,7 +190,7 @@ function drawWord(ctx, game) {
     if (got) {
       ctx.fillStyle = C.letter;
       ctx.beginPath();
-      ctx.roundRect(-size / 2, -size / 2, size, size, 6);
+      ctx.roundRect(-size / 2, -size / 2, size, size, 7);
       ctx.fill();
       ctx.fillStyle = C.letterLite;
       ctx.fillText(WORD[i], 0, 0.5);
@@ -99,7 +199,7 @@ function drawWord(ctx, game) {
       ctx.strokeStyle = pal.ink;
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.roundRect(-size / 2, -size / 2, size, size, 6);
+      ctx.roundRect(-size / 2, -size / 2, size, size, 7);
       ctx.stroke();
       ctx.fillStyle = pal.ink;
       ctx.fillText(WORD[i], 0, 0.5);
@@ -120,16 +220,59 @@ function drawBonusBanner(ctx, game) {
 
   ctx.font = "700 17px Mitr, sans-serif";
   const label = `BONUS TIME  ${secs}`;
-  const w = ctx.measureText(label).width + 34;
+  drawLabelPill(ctx, label, 78, 30, 18, 'rgba(59,17,85,.82)', C.letterLite, 6);
+  ctx.restore();
+}
 
-  ctx.fillStyle = 'rgba(59,17,85,.82)';
+/**
+ * ความกว้างที่ข้อความกินจริง
+ *
+ * เอาค่ามากสุดระหว่าง advance width (ระยะที่เคอร์เซอร์เดิน) กับกรอบหมึกจริง
+ * เพราะภาษาไทยมีสระบนล่างกับวรรณยุกต์ที่ยื่นพ้นระยะที่เคอร์เซอร์เดินได้
+ * ถ้าใช้ advance อย่างเดียว ตัวท้ายจะล้ำออกไปจากที่คำนวณไว้เล็กน้อยเสมอ
+ */
+function textWidth(ctx, str) {
+  const m = ctx.measureText(str);
+  const ink = (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || 0);
+  return Math.max(m.width, ink);
+}
+
+/**
+ * วาดป้ายข้อความกลางจอ: กล่องพื้นหลัง + ข้อความข้างใน
+ *
+ * ── ทำไมต้องวางเองทั้งคู่ ไม่ใช้ textAlign 'center' ──
+ * เคยเขียนแบบวาดกล่องกลางจอ แล้วให้ข้อความจัดกลางด้วย textAlign 'center'
+ * ซึ่งดูควรจะตรงกันเอง แต่บนมือถือจริงมันเหลื่อมกัน — กล่องเหลือที่ว่างข้างหนึ่ง
+ * ส่วนข้อความไปเบียดอีกข้าง
+ *
+ * ต้นเหตุคือ measureText กับ textAlign ตกลงกันไม่ได้ว่า "จุดอ้างอิง" อยู่ตรงไหน
+ * ค่า actualBoundingBoxLeft/Right ที่ควรวัดจากจุดจัดกลาง บางเบราว์เซอร์กลับ
+ * รายงานโดยอ้างอิงหัวข้อความแทน พอเอาไปคำนวณขอบกล่องทีละข้างจึงเพี้ยนคนละทาง
+ *
+ * เลิกเดาว่าเบราว์เซอร์ยึดอะไร แล้วยึดซ้ายอย่างเดียวทั้งกล่องและข้อความ:
+ * วัดความกว้าง -> คำนวณกล่องให้อยู่กลางจอ -> วางข้อความเยื้องจากขอบซ้ายกล่อง
+ * เท่ากับ pad พอดี ทั้งสองอย่างจึงอ้างอิงตัวเลขชุดเดียวกันและยึดขอบเดียวกัน
+ * ไม่มีทางเหลื่อมกันได้อีกไม่ว่าฟอนต์จะโหลดทันหรือไม่
+ *
+ * ความกว้างเอาค่ามากสุดระหว่าง advance width กับกรอบหมึกจริง เพราะภาษาไทย
+ * มีสระบนล่างกับวรรณยุกต์ที่ยื่นพ้นระยะที่เคอร์เซอร์เดินได้
+ */
+function drawLabelPill(ctx, label, y, h, padX, bg, fg, textDy) {
+  const boxW = textWidth(ctx, label) + padX * 2;
+  const boxX = Math.round((W - boxW) / 2);
+
+  const align = ctx.textAlign;
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = bg;
   ctx.beginPath();
-  ctx.roundRect((W - w) / 2, 78, w, 30, 15);
+  ctx.roundRect(boxX, y, boxW, h, h / 2);
   ctx.fill();
 
-  ctx.fillStyle = C.letterLite;
-  ctx.fillText(label, W / 2, 84);
-  ctx.restore();
+  ctx.fillStyle = fg;
+  ctx.fillText(label, boxX + padX, y + textDy);
+
+  ctx.textAlign = align;
 }
 
 /**
@@ -150,15 +293,7 @@ function drawNotice(ctx, game) {
   // ข้อความมาจากฝั่งเกม เพราะตอนนี้แถบนี้ใช้บอกได้สองเรื่อง
   // (ผ่านด่านย่อย / ขวดพลังมาแล้ว) ไม่ใช่เรื่องเดียวเหมือนเดิม
   const label = game.noticeText || 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';
-  const w = ctx.measureText(label).width + 28;
-
-  ctx.fillStyle = game.pal.noticeBg;
-  ctx.beginPath();
-  ctx.roundRect((W - w) / 2, 80, w, 26, 13);
-  ctx.fill();
-
-  ctx.fillStyle = C.danger;
-  ctx.fillText(label, W / 2, 85);
+  drawLabelPill(ctx, label, 80, 26, 17, game.pal.noticeBg, C.danger, 5);
 
   ctx.restore();
 }

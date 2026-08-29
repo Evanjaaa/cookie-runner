@@ -1,0 +1,636 @@
+// src/admin/main.js
+// ─────────────────────────────────────────────────────────────
+// หน้าหลังบ้าน — ดู/แก้/ลบข้อมูลผู้เล่น
+//
+// ── สิ่งที่ต้องเข้าใจก่อนแก้ไฟล์นี้ ──
+// หน้านี้ไม่ได้ "มีสิทธิ์" อะไรเป็นพิเศษเลย มันใช้ anon key ตัวเดียวกับตัวเกม
+// ซึ่งฝังอยู่ในโค้ดฝั่งผู้เล่นและใครก็อ่านได้ สิ่งที่ทำให้แอดมินเห็นข้อมูลคนอื่น
+// คือ RLS policy ในฐานข้อมูล (ดู supabase/admin.sql) ที่เช็คว่า auth.uid()
+// อยู่ในตาราง admins หรือเปล่า
+//
+// แปลว่า:
+//   - ใครเปิด /admin.html ก็เปิดได้ แต่จะไม่เห็นข้อมูลสักแถวถ้าไม่ใช่แอดมิน
+//   - การเช็คสิทธิ์ในไฟล์นี้มีไว้เพื่อ "บอกผู้ใช้ว่าเข้าไม่ได้" เท่านั้น
+//     ไม่ใช่กลไกความปลอดภัย ห้ามย้ายตรรกะสิทธิ์อะไรมาไว้ที่นี่เด็ดขาด
+// ─────────────────────────────────────────────────────────────
+import './admin.css';
+
+const URL_ = import.meta.env.VITE_SUPABASE_URL;
+const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const $ = (id) => document.getElementById(id);
+const el = (sel, root = document) => root.querySelector(sel);
+
+let sb = null;
+let me = null;          // { id, email } ของแอดมินที่ล็อกอินอยู่
+let pendingEmail = '';
+
+/** โหลด SDK ตอนใช้จริง เหมือนที่ตัวเกมทำ จะได้ไม่ลากมาตอนโหลดหน้า */
+async function client() {
+  if (!sb) {
+    const { createClient } = await import('@supabase/supabase-js');
+    sb = createClient(URL_, ANON, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    });
+  }
+  return sb;
+}
+
+// ── ตัวช่วยเล็ก ๆ ────────────────────────────────────────────
+
+/** ตัวเลขใหญ่มาจากฐานข้อมูลเป็น string (bigint เกินช่วงที่ JS เก็บได้แม่น) */
+const num = (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('en-US'));
+
+const esc = (s) =>
+  String(s ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/** วันเวลาแบบสั้น อ่านง่ายกว่า ISO ตอนกวาดสายตาทั้งตาราง */
+function when(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = Date.now();
+  const mins = Math.round((now - d.getTime()) / 60000);
+  if (mins < 1) return 'เมื่อกี้';
+  if (mins < 60) return `${mins} นาทีที่แล้ว`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} ชม.ที่แล้ว`;
+  const days = Math.round(hrs / 24);
+  if (days < 30) return `${days} วันที่แล้ว`;
+  return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+let toastTimer = 0;
+function toast(text, kind = '') {
+  const t = $('toast');
+  t.textContent = text;
+  t.className = 'toast ' + kind;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+function gateMsg(text, kind = '') {
+  const m = $('gateMsg');
+  m.textContent = text;
+  m.className = 'msg ' + kind;
+}
+
+// ── เข้าสู่ระบบ ──────────────────────────────────────────────
+//
+// ใช้รหัส 6 หลักทางอีเมลเหมือนตัวเกม ไม่มีรหัสผ่านให้ดูแลและให้หลุด
+// shouldCreateUser: false โดยตั้งใจ — หน้านี้ต้องไม่เป็นช่องทางสมัครบัญชีใหม่
+// ใครกรอกอีเมลมั่วจะไม่ได้อะไรเลย และไม่มีบัญชีขยะเกิดขึ้นในระบบ
+
+async function sendCode() {
+  const email = $('email').value.trim();
+  if (!email) return gateMsg('ใส่อีเมลก่อน', 'bad');
+
+  $('sendCode').disabled = true;
+  gateMsg('กำลังส่ง…');
+  const c = await client();
+  const { error } = await c.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  $('sendCode').disabled = false;
+
+  if (error) return gateMsg(errText(error), 'bad');
+  pendingEmail = email;
+  $('sentTo').textContent = email;
+  $('gateStep1').classList.add('hidden');
+  $('gateStep2').classList.remove('hidden');
+  gateMsg('ส่งแล้ว เช็คกล่องจดหมาย', 'good');
+  $('code').focus();
+}
+
+async function verifyCode() {
+  const token = $('code').value.trim();
+  if (token.length < 6) return gateMsg('รหัสมี 6 หลัก', 'bad');
+
+  $('verifyCode').disabled = true;
+  gateMsg('กำลังตรวจ…');
+  const c = await client();
+  const { data, error } = await c.auth.verifyOtp({ email: pendingEmail, token, type: 'email' });
+  $('verifyCode').disabled = false;
+
+  if (error) return gateMsg(errText(error), 'bad');
+  await afterSignIn(data.user);
+}
+
+/** ข้อความ error ของ Supabase เป็นภาษาอังกฤษ แปลเฉพาะอันที่เจอบ่อย */
+function errText(error) {
+  const m = String(error?.message || '');
+  if (/signups not allowed|Signups not allowed/i.test(m)) return 'ไม่มีบัญชีนี้ในระบบ';
+  if (/Invalid login|Token has expired|invalid/i.test(m)) return 'รหัสไม่ถูกหรือหมดอายุแล้ว';
+  if (/rate limit|too many/i.test(m)) return 'ขอรหัสถี่เกินไป รออีกสักครู่';
+  return m || 'ไม่สำเร็จ';
+}
+
+/**
+ * ตรวจว่าเป็นแอดมินจริงมั้ย แล้วค่อยเปิดแอป
+ *
+ * ถ้าไม่ใช่ ต้อง signOut ทิ้งด้วย ไม่ใช่แค่ไม่โชว์หน้า — ไม่งั้น session
+ * ของคนที่ไม่ใช่แอดมินจะค้างอยู่ในเบราว์เซอร์เครื่องนั้นโดยไม่มีอะไรบอก
+ */
+async function afterSignIn(user) {
+  const c = await client();
+  const { data: ok, error } = await c.rpc('is_admin');
+
+  if (error) {
+    gateMsg('เช็คสิทธิ์ไม่ได้: ' + errText(error), 'bad');
+    return;
+  }
+  if (!ok) {
+    await c.auth.signOut();
+    gateMsg('บัญชีนี้ไม่มีสิทธิ์แอดมิน', 'bad');
+    return;
+  }
+
+  me = { id: user.id, email: user.email };
+  $('whoEmail').textContent = user.email || '';
+  $('gate').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  go('overview');
+}
+
+async function signOut() {
+  const c = await client();
+  await c.auth.signOut();
+  location.reload();
+}
+
+// ── ตัวจัดการหน้า ────────────────────────────────────────────
+
+const PAGES = {};
+let current = '';
+
+function go(name) {
+  current = name;
+  [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.page === name));
+  closeDrawer();
+  PAGES[name]();
+}
+
+/** โครงตารางแบบเดียวกันทุกหน้า จะได้ไม่ต้องเขียนซ้ำห้ารอบ */
+function tableHTML(cols, rows, opts = {}) {
+  if (!rows.length) return `<div class="tablewrap"><div class="empty">${opts.empty || 'ไม่มีข้อมูล'}</div></div>`;
+  const head = cols.map((c) => `<th class="${c.num ? 'num ' : ''}nosort">${esc(c.label)}</th>`).join('');
+  const body = rows
+    .map((r, i) => {
+      const tds = cols.map((c) => `<td class="${c.num ? 'num' : ''}">${c.cell(r)}</td>`).join('');
+      return `<tr class="${opts.onRow ? 'clickable' : ''}" data-i="${i}">${tds}</tr>`;
+    })
+    .join('');
+  return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+// ── หน้า 1: ภาพรวม ──────────────────────────────────────────
+
+PAGES.overview = async () => {
+  $('page').innerHTML = '<h2>ภาพรวม</h2><p class="sub">กำลังโหลด…</p>';
+  const c = await client();
+  const { data, error } = await c.rpc('admin_overview');
+  if (error) return fail(error);
+
+  const d = data || {};
+  const card = (lbl, val, cls = '', note = '') =>
+    `<div class="card"><div class="lbl">${lbl}</div><div class="val ${cls}">${val}</div>${
+      note ? `<div class="note">${note}</div>` : ''
+    }</div>`;
+
+  $('page').innerHTML = `
+    <h2>ภาพรวม</h2>
+    <p class="sub">ตัวเลขทั้งชุดนี้อ่านมาจากฐานข้อมูลในคำสั่งเดียว จึงเป็นภาพ ณ เวลาเดียวกันทั้งหมด</p>
+    <div class="cards">
+      ${card('ผู้เล่นทั้งหมด', num(d.players_total), 'violet')}
+      ${card('เข้าด้วยอีเมล', num(d.emails), 'mint', 'ข้ามเครื่องได้ ข้อมูลไม่หาย')}
+      ${card('ผู้มาเยือน', num(d.guests), '', 'ล้างเบราว์เซอร์แล้วข้อมูลหาย')}
+      ${card('สมัครใหม่ 24 ชม.', num(d.new_24h))}
+      ${card('สมัครใหม่ 7 วัน', num(d.new_7d))}
+      ${card('เล่นใน 24 ชม.', num(d.active_24h), 'mint')}
+      ${card('เล่นใน 7 วัน', num(d.active_7d))}
+      ${card('ทองรวมทั้งระบบ', num(d.gold_total), 'gold')}
+      ${card('เพชรรวมทั้งระบบ', num(d.gems_total), 'violet')}
+      ${card('รอบวิ่งสะสม', num(d.runs_total))}
+      ${card('สุ่มกาช่าทั้งหมด', num(d.pulls_total))}
+      ${card('คะแนนสูงสุด', num(d.top_score), 'gold')}
+    </div>
+    <p class="sub">
+      "เล่นใน 24 ชม." นับจาก updated_at ของแถวผู้เล่น ซึ่งขยับทุกครั้งที่เกมซิงก์ข้อมูลขึ้นคลาวด์
+      — ผู้เล่นที่เปิดเกมแบบออฟไลน์ล้วนจะไม่ถูกนับ
+    </p>`;
+};
+
+// ── หน้า 2: ผู้เล่น ─────────────────────────────────────────
+
+const PAGE_SIZE = 50;
+let playersState = { q: '', kind: 'all', sort: 'updated_at', page: 0, rows: [], total: 0 };
+
+PAGES.players = async () => {
+  $('page').innerHTML = `
+    <h2>ผู้เล่น</h2>
+    <p class="sub">กดที่แถวเพื่อดูรายละเอียด แก้ไข หรือลบ</p>
+    <div class="toolbar">
+      <input class="grow" id="q" type="text" placeholder="ค้นชื่อหรืออีเมล" value="${esc(playersState.q)}">
+      <select id="kind">
+        <option value="all">ทุกประเภท</option>
+        <option value="email">เข้าด้วยอีเมล</option>
+        <option value="guest">ผู้มาเยือน</option>
+      </select>
+      <select id="sort">
+        <option value="updated_at">เล่นล่าสุด</option>
+        <option value="created_at">สมัครล่าสุด</option>
+        <option value="gold">ทองมากสุด</option>
+        <option value="gems">เพชรมากสุด</option>
+        <option value="best_score">คะแนนสูงสุด</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
+    <div id="list"></div>
+    <div class="pager">
+      <button class="btn ghost" id="prev">ก่อนหน้า</button>
+      <span id="pageNo"></span>
+      <button class="btn ghost" id="next">ถัดไป</button>
+    </div>`;
+
+  $('kind').value = playersState.kind;
+  $('sort').value = playersState.sort;
+
+  const reload = () => loadPlayers();
+  let t = 0;
+  $('q').addEventListener('input', (e) => {
+    playersState.q = e.target.value;
+    playersState.page = 0;
+    clearTimeout(t);
+    t = setTimeout(reload, 250);   // หน่วงไว้ ไม่ยิงฐานข้อมูลทุกตัวอักษร
+  });
+  $('kind').addEventListener('change', (e) => { playersState.kind = e.target.value; playersState.page = 0; reload(); });
+  $('sort').addEventListener('change', (e) => { playersState.sort = e.target.value; playersState.page = 0; reload(); });
+  $('prev').addEventListener('click', () => { if (playersState.page > 0) { playersState.page--; reload(); } });
+  $('next').addEventListener('click', () => {
+    if ((playersState.page + 1) * PAGE_SIZE < playersState.total) { playersState.page++; reload(); }
+  });
+
+  loadPlayers();
+};
+
+async function loadPlayers() {
+  const s = playersState;
+  $('list').innerHTML = '<div class="tablewrap"><div class="empty">กำลังโหลด…</div></div>';
+
+  const c = await client();
+  let q = c.from('admin_players').select('*', { count: 'exact' });
+
+  if (s.q.trim()) {
+    // or() ของ postgrest ต้องหนีคอมมากับวงเล็บในคำค้น ไม่งั้นมันไปแยกเป็นเงื่อนไขใหม่
+    const term = s.q.trim().replace(/[(),]/g, ' ');
+    q = q.or(`name.ilike.%${term}%,email.ilike.%${term}%`);
+  }
+  if (s.kind === 'guest') q = q.is('email', null);
+  if (s.kind === 'email') q = q.not('email', 'is', null);
+
+  const from = s.page * PAGE_SIZE;
+  const { data, error, count } = await q
+    .order(s.sort, { ascending: false, nullsFirst: false })
+    .range(from, from + PAGE_SIZE - 1);
+
+  if (error) return fail(error);
+
+  s.rows = data || [];
+  s.total = count || 0;
+  $('count').textContent = `${num(s.total)} คน`;
+  $('pageNo').textContent = `${s.page + 1} / ${Math.max(1, Math.ceil(s.total / PAGE_SIZE))}`;
+  $('prev').disabled = s.page === 0;
+  $('next').disabled = (s.page + 1) * PAGE_SIZE >= s.total;
+
+  const cols = [
+    { label: 'ชื่อ', cell: (r) => esc(r.name) },
+    { label: 'บัญชี', cell: (r) =>
+        r.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>'
+                   : `<span class="pill email">${esc(r.email)}</span>` },
+    { label: 'ทอง', num: true, cell: (r) => num(r.gold) },
+    { label: 'เพชร', num: true, cell: (r) => num(r.gems) },
+    { label: 'คะแนนสูงสุด', num: true, cell: (r) => num(r.best_score) },
+    { label: 'รอบวิ่ง', num: true, cell: (r) => num(r.stats?.runs ?? 0) },
+    { label: 'เล่นล่าสุด', cell: (r) => esc(when(r.updated_at)) },
+    { label: 'สมัครเมื่อ', cell: (r) => esc(when(r.created_at)) },
+  ];
+
+  $('list').innerHTML = tableHTML(cols, s.rows, { onRow: true, empty: 'ไม่เจอผู้เล่นที่ตรงกับที่ค้น' });
+  el('tbody', $('list'))?.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-i]');
+    if (tr) openPlayer(s.rows[+tr.dataset.i]);
+  });
+}
+
+// ── ลิ้นชักรายละเอียดผู้เล่น ────────────────────────────────
+
+function openDrawer(title, html) {
+  $('drawerTitle').textContent = title;
+  $('drawerBody').innerHTML = html;
+  $('drawer').classList.remove('hidden');
+  $('scrim').classList.remove('hidden');
+}
+function closeDrawer() {
+  $('drawer').classList.add('hidden');
+  $('scrim').classList.add('hidden');
+}
+
+function openPlayer(p) {
+  const jsonBox = (v) => `<div class="json">${esc(JSON.stringify(v ?? null, null, 2))}</div>`;
+
+  openDrawer(p.name || 'ผู้เล่น', `
+    <div class="formrow">
+      <label>รหัสผู้เล่น (แก้ไม่ได้)</label>
+      <div class="readonly">${esc(p.id)}</div>
+    </div>
+    <div class="formrow">
+      <label>บัญชี</label>
+      <div class="readonly">${p.is_guest ? 'ผู้มาเยือน — ไม่มีอีเมลผูกไว้' : esc(p.email)}</div>
+    </div>
+    <div class="row2">
+      <div class="formrow"><label>เข้าครั้งล่าสุด</label><div class="readonly">${esc(when(p.last_sign_in_at))}</div></div>
+      <div class="formrow"><label>ซิงก์ล่าสุด</label><div class="readonly">${esc(when(p.updated_at))}</div></div>
+    </div>
+
+    <div class="sect">แก้ไขได้</div>
+    <div class="formrow"><label>ชื่อที่โชว์</label><input id="f_name" type="text" value="${esc(p.name)}" maxlength="16"></div>
+    <div class="row2">
+      <div class="formrow"><label>ทอง</label><input id="f_gold" type="number" value="${p.gold ?? 0}"></div>
+      <div class="formrow"><label>เพชร</label><input id="f_gems" type="number" value="${p.gems ?? 0}"></div>
+    </div>
+    <div class="row2">
+      <div class="formrow"><label>XP</label><input id="f_xp" type="number" value="${p.xp ?? 0}"></div>
+      <div class="formrow"><label>ด่านที่เลือก</label><input id="f_stage" type="text" value="${esc(p.stage)}"></div>
+    </div>
+    <div class="row2">
+      <div class="formrow"><label>สีขน</label><input id="f_skin" type="text" value="${esc(p.skin)}"></div>
+      <div class="formrow"><label>ชุดที่ใส่</label><input id="f_outfit" type="text" value="${esc(p.outfit)}"></div>
+    </div>
+
+    <div class="sect">ข้อมูลดิบ (อ่านอย่างเดียว)</div>
+    <div class="formrow"><label>สถิติสะสม</label>${jsonBox(p.stats)}</div>
+    <div class="formrow"><label>สมบัติกับขั้นตีบวก</label>${jsonBox(p.treasures)}</div>
+    <div class="formrow"><label>ชุดที่สุ่มได้แล้ว (${(p.owned || []).length} ชิ้น)</label>${jsonBox(p.owned)}</div>
+    <div class="formrow"><label>สมบัติที่ติดตั้ง</label>${jsonBox(p.equip)}</div>
+    <div class="formrow"><label>กิจกรรมที่กดรับแล้ว</label>${jsonBox(p.quests_claimed)}</div>
+
+    <div class="drawer-actions">
+      <button class="btn" id="save">บันทึก</button>
+      <button class="btn ghost" id="cancel">ปิด</button>
+      <button class="btn danger" id="del">ลบข้อมูลเกม</button>
+    </div>
+    <p class="sub" style="margin-top:14px">
+      "ลบข้อมูลเกม" ลบแถวผู้เล่น คะแนน และประวัติกาช่าทั้งหมดของคนนี้
+      แต่ <b>ไม่ได้ลบบัญชีเข้าสู่ระบบ</b> — การลบบัญชีต้องทำที่ Supabase Dashboard
+      → Authentication → Users เพราะต้องใช้สิทธิ์ระดับที่ห้ามอยู่ในหน้าเว็บ
+      <br><br>
+      และถ้าเจ้าของบัญชียังมีข้อมูลค้างในเครื่อง เกมจะดันขึ้นมาใหม่ตอนเปิดครั้งถัดไป
+      (ชั้นซิงก์ใช้ upsert) การลบนี้จึงล้างฝั่งคลาวด์ ไม่ใช่ลบให้หายจากโลก
+    </p>`);
+
+  $('cancel').addEventListener('click', closeDrawer);
+  $('save').addEventListener('click', () => savePlayer(p));
+  $('del').addEventListener('click', () => deletePlayer(p));
+}
+
+async function savePlayer(p) {
+  const patch = {
+    name: $('f_name').value.trim() || 'แมวนิรนาม',
+    gold: Math.max(0, Math.floor(+$('f_gold').value || 0)),
+    gems: Math.max(0, Math.floor(+$('f_gems').value || 0)),
+    xp: Math.max(0, Math.floor(+$('f_xp').value || 0)),
+    stage: $('f_stage').value.trim(),
+    skin: $('f_skin').value.trim(),
+    outfit: $('f_outfit').value.trim(),
+  };
+
+  $('save').disabled = true;
+  const c = await client();
+  const { error } = await c.from('players').update(patch).eq('id', p.id);
+  $('save').disabled = false;
+
+  if (error) return toast('บันทึกไม่สำเร็จ: ' + errText(error), 'bad');
+  toast('บันทึกแล้ว', 'good');
+  closeDrawer();
+  loadPlayers();
+}
+
+/**
+ * ลบข้อมูลเกมของผู้เล่นหนึ่งคน
+ *
+ * ให้พิมพ์ชื่อยืนยันแทนกล่อง "แน่ใจมั้ย?" ธรรมดา เพราะกล่องยืนยันแบบกดปุ่มเดียว
+ * คนกดผ่านโดยไม่อ่านเสมอเมื่อทำงานซ้ำ ๆ การต้องพิมพ์ชื่อบังคับให้ต้องมองว่า
+ * กำลังลบของใครอยู่จริง ๆ ซึ่งเป็นจุดที่พลาดบ่อยที่สุดของงานแบบนี้
+ */
+async function deletePlayer(p) {
+  const typed = prompt(
+    `ลบข้อมูลเกมของ "${p.name}" ทั้งหมด (คะแนนและประวัติกาช่าหายตามด้วย)\n\n` +
+    `การกระทำนี้ย้อนกลับไม่ได้ — พิมพ์ชื่อผู้เล่นเพื่อยืนยัน:`
+  );
+  if (typed === null) return;
+  if (typed.trim() !== (p.name || '').trim()) return toast('ชื่อไม่ตรง ยกเลิกแล้ว', 'bad');
+
+  const c = await client();
+  const { error } = await c.from('players').delete().eq('id', p.id);
+  if (error) return toast('ลบไม่สำเร็จ: ' + errText(error), 'bad');
+
+  toast('ลบข้อมูลเกมแล้ว', 'good');
+  closeDrawer();
+  loadPlayers();
+}
+
+// ── หน้า 3: คะแนน ───────────────────────────────────────────
+
+PAGES.scores = async () => {
+  $('page').innerHTML = `
+    <h2>คะแนน</h2>
+    <p class="sub">สถิติสูงสุดของแต่ละคนแยกตามด่าน — ลบได้ทีละแถวเมื่อเจอคะแนนที่ไม่น่าเป็นไปได้</p>
+    <div class="toolbar">
+      <input class="grow" id="sq" type="text" placeholder="ค้นชื่อผู้เล่น">
+      <span class="count" id="scount"></span>
+    </div>
+    <div id="slist"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
+
+  let t = 0;
+  $('sq').addEventListener('input', () => { clearTimeout(t); t = setTimeout(loadScores, 250); });
+  loadScores();
+};
+
+async function loadScores() {
+  const term = $('sq').value.trim().replace(/[(),]/g, ' ');
+  const c = await client();
+  let q = c.from('admin_scores').select('*', { count: 'exact' });
+  if (term) q = q.ilike('name', `%${term}%`);
+
+  const { data, error, count } = await q.order('score', { ascending: false }).range(0, 199);
+  if (error) return fail(error);
+
+  const rows = data || [];
+  $('scount').textContent = `${num(count || 0)} แถว (โชว์สูงสุด 200)`;
+
+  const cols = [
+    { label: 'ชื่อ', cell: (r) => esc(r.name) },
+    { label: 'บัญชี', cell: (r) => r.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>' : `<span class="pill email">${esc(r.email)}</span>` },
+    { label: 'ด่าน', cell: (r) => esc(r.stage_id) },
+    { label: 'คะแนน', num: true, cell: (r) => num(r.score) },
+    { label: 'ระยะทาง', num: true, cell: (r) => num(r.distance) + ' ม.' },
+    { label: 'เมื่อ', cell: (r) => esc(when(r.updated_at)) },
+    { label: '', cell: () => '<button class="btn danger" data-act="del">ลบ</button>' },
+  ];
+
+  $('slist').innerHTML = tableHTML(cols, rows, { empty: 'ยังไม่มีคะแนน' });
+  el('tbody', $('slist'))?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-act="del"]');
+    if (!btn) return;
+    const r = rows[+btn.closest('tr').dataset.i];
+    if (!confirm(`ลบคะแนน ${num(r.score)} ของ "${r.name}" ด่าน ${r.stage_id}?`)) return;
+
+    const { error: e2 } = await c
+      .from('best_scores').delete()
+      .eq('player_id', r.player_id).eq('stage_id', r.stage_id);
+    if (e2) return toast('ลบไม่สำเร็จ: ' + errText(e2), 'bad');
+    toast('ลบคะแนนแล้ว', 'good');
+    loadScores();
+  });
+}
+
+// ── หน้า 4: กาช่า ───────────────────────────────────────────
+
+PAGES.pulls = async () => {
+  $('page').innerHTML = `
+    <h2>ประวัติกาช่า</h2>
+    <p class="sub">200 รายการล่าสุด พร้อมสัดส่วนความหายากที่ออกจริง — เอาไว้เทียบกับอัตราที่ตั้งไว้ในเกม</p>
+    <div id="pstats" class="cards"></div>
+    <div id="plist"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
+
+  const c = await client();
+  const { data, error } = await c.from('admin_pulls').select('*').order('created_at', { ascending: false }).range(0, 199);
+  if (error) return fail(error);
+
+  const rows = data || [];
+
+  // สัดส่วนความหายากจากที่ออกจริง — ตัวเลขนี้ควรใกล้อัตราที่ตั้งไว้ในเกม
+  // ถ้าเพี้ยนไปมากแปลว่าสูตรสุ่มมีปัญหา หรือมีคนยิง API ตรงเข้ามาเขียนเอง
+  const byRarity = {};
+  rows.forEach((r) => { byRarity[r.rarity || '—'] = (byRarity[r.rarity || '—'] || 0) + 1; });
+  $('pstats').innerHTML = Object.entries(byRarity)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `<div class="card"><div class="lbl">${esc(k)}</div><div class="val violet">${v}</div>
+        <div class="note">${rows.length ? ((v / rows.length) * 100).toFixed(1) : 0}% ของที่โชว์</div></div>`)
+    .join('') || '<div class="card"><div class="lbl">ยังไม่มีการสุ่ม</div></div>';
+
+  const cols = [
+    { label: 'ชื่อ', cell: (r) => esc(r.name) },
+    { label: 'ได้ชุด', cell: (r) => esc(r.outfit_id || '—') },
+    { label: 'ความหายาก', cell: (r) => esc(r.rarity || '—') },
+    { label: 'ทองที่ได้', num: true, cell: (r) => num(r.gold_won) },
+    { label: 'ของใหม่', cell: (r) => (r.is_new ? '<span class="pill email">ใหม่</span>' : '—') },
+    { label: 'เมื่อ', cell: (r) => esc(when(r.created_at)) },
+  ];
+  $('plist').innerHTML = tableHTML(cols, rows, { empty: 'ยังไม่มีใครสุ่มกาช่า' });
+};
+
+// ── หน้า 5: ตรวจผิดปกติ ────────────────────────────────────
+//
+// หน้านี้คือเหตุผลหลักที่หน้าหลังบ้านคุ้มค่าที่จะมี — ตารางเปล่า ๆ บอกได้แค่
+// "มีอะไรบ้าง" แต่หน้านี้ตอบว่า "มีอะไรที่ควรไปดู" ซึ่งเป็นสิ่งที่คนดูแลเกม
+// ต้องการจริง ๆ เกณฑ์ปรับได้ เพราะค่าที่ถือว่าปกติจะขยับตามที่เกมโตขึ้น
+
+PAGES.audit = async () => {
+  $('page').innerHTML = `
+    <h2>ตรวจผิดปกติ</h2>
+    <p class="sub">ไล่หาบัญชีที่ตัวเลขไม่น่าเป็นไปได้ ปรับเกณฑ์ได้ตามใจ</p>
+    <div class="toolbar">
+      <label class="count">ทองเกิน <input id="tGold" type="number" value="5000000" style="width:130px"></label>
+      <label class="count">เพชรเกิน <input id="tGems" type="number" value="100000" style="width:120px"></label>
+      <label class="count">คะแนนเกิน <input id="tScore" type="number" value="1000000" style="width:130px"></label>
+      <button class="btn" id="runAudit">ตรวจ</button>
+    </div>
+    <div id="alist"></div>`;
+
+  $('runAudit').addEventListener('click', runAudit);
+  runAudit();
+};
+
+async function runAudit() {
+  $('alist').innerHTML = '<div class="tablewrap"><div class="empty">กำลังตรวจ…</div></div>';
+  const tGold = +$('tGold').value || Infinity;
+  const tGems = +$('tGems').value || Infinity;
+  const tScore = +$('tScore').value || Infinity;
+
+  const c = await client();
+  const { data, error } = await c.from('admin_players').select('*').limit(2000);
+  if (error) return fail(error);
+
+  const flagged = [];
+  (data || []).forEach((p) => {
+    const why = [];
+    if (Number(p.gold) > tGold) why.push(`ทอง ${num(p.gold)}`);
+    if (Number(p.gems) > tGems) why.push(`เพชร ${num(p.gems)}`);
+    if (Number(p.best_score) > tScore) why.push(`คะแนน ${num(p.best_score)}`);
+
+    // คะแนนสูงแต่วิ่งน้อย = สัญญาณที่ตรงที่สุดว่าคะแนนไม่ได้มาจากการเล่นจริง
+    // เพราะสองตัวเลขนี้มาคนละทาง (คะแนนผ่าน submit_score / รอบวิ่งผ่านการซิงก์)
+    const runs = Number(p.stats?.runs ?? 0);
+    if (Number(p.best_score) > 100000 && runs < 5) {
+      why.push(`คะแนน ${num(p.best_score)} แต่วิ่งแค่ ${runs} รอบ`);
+    }
+    if (why.length) flagged.push({ ...p, why });
+  });
+
+  const cols = [
+    { label: 'ชื่อ', cell: (r) => esc(r.name) },
+    { label: 'บัญชี', cell: (r) => r.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>' : `<span class="pill email">${esc(r.email)}</span>` },
+    { label: 'เหตุที่สะดุดตา', cell: (r) => r.why.map((w) => `<span class="pill warn">${esc(w)}</span>`).join(' ') },
+    { label: 'เล่นล่าสุด', cell: (r) => esc(when(r.updated_at)) },
+  ];
+
+  $('alist').innerHTML =
+    `<p class="sub">ตรวจ ${num((data || []).length)} บัญชี เจอที่น่าดู ${num(flagged.length)} บัญชี</p>` +
+    tableHTML(cols, flagged, { onRow: true, empty: 'ไม่เจออะไรผิดปกติตามเกณฑ์นี้' });
+
+  el('tbody', $('alist'))?.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-i]');
+    if (tr) openPlayer(flagged[+tr.dataset.i]);
+  });
+}
+
+// ── error กลาง ──────────────────────────────────────────────
+function fail(error) {
+  $('page').innerHTML =
+    `<h2>โหลดข้อมูลไม่ได้</h2><p class="sub">${esc(errText(error))}</p>
+     <p class="sub">ถ้าขึ้นว่าไม่เจอตารางหรือ view แปลว่ายังไม่ได้รัน
+     <b>supabase/admin.sql</b> ใน SQL Editor ของ Supabase</p>`;
+}
+
+// ── เริ่มทำงาน ──────────────────────────────────────────────
+
+async function boot() {
+  if (!URL_ || !ANON) {
+    gateMsg('ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL กับ VITE_SUPABASE_ANON_KEY', 'bad');
+    return;
+  }
+
+  $('sendCode').addEventListener('click', sendCode);
+  $('verifyCode').addEventListener('click', verifyCode);
+  $('email').addEventListener('keydown', (e) => e.key === 'Enter' && sendCode());
+  $('code').addEventListener('keydown', (e) => e.key === 'Enter' && verifyCode());
+  $('backToEmail').addEventListener('click', () => {
+    $('gateStep2').classList.add('hidden');
+    $('gateStep1').classList.remove('hidden');
+    gateMsg('');
+  });
+  $('signOut').addEventListener('click', signOut);
+  $('drawerClose').addEventListener('click', closeDrawer);
+  $('scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => e.key === 'Escape' && closeDrawer());
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-page]');
+    if (b) go(b.dataset.page);
+  });
+
+  // เปิดหน้ามาแล้วยังมี session ค้างอยู่ = เข้าได้เลย ไม่ต้องขอรหัสใหม่ทุกครั้ง
+  const c = await client();
+  const { data } = await c.auth.getSession();
+  if (data?.session?.user) await afterSignIn(data.session.user);
+}
+
+boot();
