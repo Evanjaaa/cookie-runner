@@ -242,6 +242,7 @@ PAGES.players = async () => {
         <option value="best_score">คะแนนสูงสุด</option>
       </select>
       <span class="count" id="count"></span>
+      <button class="btn danger" id="purge">เคลียร์ผู้มาเยือน</button>
     </div>
     <div id="list"></div>
     <div class="pager">
@@ -263,6 +264,7 @@ PAGES.players = async () => {
   });
   $('kind').addEventListener('change', (e) => { playersState.kind = e.target.value; playersState.page = 0; reload(); });
   $('sort').addEventListener('change', (e) => { playersState.sort = e.target.value; playersState.page = 0; reload(); });
+  $('purge').addEventListener('click', openPurge);
   $('prev').addEventListener('click', () => { if (playersState.page > 0) { playersState.page--; reload(); } });
   $('next').addEventListener('click', () => {
     if ((playersState.page + 1) * PAGE_SIZE < playersState.total) { playersState.page++; reload(); }
@@ -291,7 +293,7 @@ async function loadPlayers() {
     .order(s.sort, { ascending: false, nullsFirst: false })
     .range(from, from + PAGE_SIZE - 1);
 
-  if (error) return fail(error);
+  if (error) return failInto('list', error);
 
   s.rows = data || [];
   s.total = count || 0;
@@ -375,15 +377,14 @@ function openPlayer(p) {
     <div class="drawer-actions">
       <button class="btn" id="save">บันทึก</button>
       <button class="btn ghost" id="cancel">ปิด</button>
-      <button class="btn danger" id="del">ลบข้อมูลเกม</button>
+      <button class="btn danger" id="del">ลบบัญชีนี้</button>
     </div>
     <p class="sub" style="margin-top:14px">
-      "ลบข้อมูลเกม" ลบแถวผู้เล่น คะแนน และประวัติกาช่าทั้งหมดของคนนี้
-      แต่ <b>ไม่ได้ลบบัญชีเข้าสู่ระบบ</b> — การลบบัญชีต้องทำที่ Supabase Dashboard
-      → Authentication → Users เพราะต้องใช้สิทธิ์ระดับที่ห้ามอยู่ในหน้าเว็บ
+      ลบทั้งบัญชีเข้าสู่ระบบและข้อมูลเกมทุกอย่าง (คะแนน ประวัติกาช่า สมบัติ ชุด)
+      ในคำสั่งเดียว ย้อนกลับไม่ได้
       <br><br>
-      และถ้าเจ้าของบัญชียังมีข้อมูลค้างในเครื่อง เกมจะดันขึ้นมาใหม่ตอนเปิดครั้งถัดไป
-      (ชั้นซิงก์ใช้ upsert) การลบนี้จึงล้างฝั่งคลาวด์ ไม่ใช่ลบให้หายจากโลก
+      ต้องลบให้ขาดแบบนี้ ไม่ใช่ลบแค่ข้อมูลเกม — เพราะถ้าบัญชียังอยู่และเจ้าของ
+      ยังมีข้อมูลค้างในเครื่อง เกมจะ upsert ดันขึ้นคลาวด์ใหม่ทันทีที่เปิด = ลบไม่ขาด
     </p>`);
 
   $('cancel').addEventListener('click', closeDrawer);
@@ -414,27 +415,124 @@ async function savePlayer(p) {
 }
 
 /**
- * ลบข้อมูลเกมของผู้เล่นหนึ่งคน
+ * ลบบัญชีผู้เล่นหนึ่งคนให้ขาด
  *
- * ให้พิมพ์ชื่อยืนยันแทนกล่อง "แน่ใจมั้ย?" ธรรมดา เพราะกล่องยืนยันแบบกดปุ่มเดียว
+ * เรียก admin_delete_user() ในฐานข้อมูล ไม่ได้ลบจากหน้าเว็บตรง ๆ เพราะบัญชี
+ * อยู่ใน auth.users ซึ่งไคลเอนต์แตะไม่ได้ (เหตุผลเต็มอยู่ใน supabase/admin.sql)
+ *
+ * ให้พิมพ์ชื่อยืนยันแทนกล่อง "แน่ใจมั้ย?" ธรรมดา เพราะกล่องที่กดปุ่มเดียวจบ
  * คนกดผ่านโดยไม่อ่านเสมอเมื่อทำงานซ้ำ ๆ การต้องพิมพ์ชื่อบังคับให้ต้องมองว่า
  * กำลังลบของใครอยู่จริง ๆ ซึ่งเป็นจุดที่พลาดบ่อยที่สุดของงานแบบนี้
  */
 async function deletePlayer(p) {
   const typed = prompt(
-    `ลบข้อมูลเกมของ "${p.name}" ทั้งหมด (คะแนนและประวัติกาช่าหายตามด้วย)\n\n` +
-    `การกระทำนี้ย้อนกลับไม่ได้ — พิมพ์ชื่อผู้เล่นเพื่อยืนยัน:`
+`ลบบัญชีของ "${p.name}" ทั้งหมด — ทั้งบัญชีเข้าสู่ระบบ คะแนน และประวัติกาช่า
+
+ย้อนกลับไม่ได้ — พิมพ์ชื่อผู้เล่นเพื่อยืนยัน:`
   );
   if (typed === null) return;
   if (typed.trim() !== (p.name || '').trim()) return toast('ชื่อไม่ตรง ยกเลิกแล้ว', 'bad');
 
   const c = await client();
-  const { error } = await c.from('players').delete().eq('id', p.id);
+  const { error } = await c.rpc('admin_delete_user', { p_id: p.id });
   if (error) return toast('ลบไม่สำเร็จ: ' + errText(error), 'bad');
 
-  toast('ลบข้อมูลเกมแล้ว', 'good');
+  toast('ลบบัญชีแล้ว', 'good');
   closeDrawer();
   loadPlayers();
+}
+
+/**
+ * เคลียร์บัญชีผู้มาเยือนทีละหลายบัญชี
+ *
+ * บังคับให้กด "ดูก่อน" จนได้ตัวเลขก่อนเสมอ ปุ่มลบถึงจะกดได้ — คำสั่งลบเป็นชุด
+ * คือสิ่งที่พลาดแล้วเจ็บที่สุดในเครื่องมือแบบนี้ การเห็นตัวเลขก่อนคือด่านเดียว
+ * ที่จะจับได้ว่าตั้งเงื่อนไขผิด (เช่นเผลอใส่ 0 วัน แล้วมันจะกวาดทั้งหมด)
+ *
+ * ตัวเลขที่พรีวิวกับที่ลบมาจากฟังก์ชันเดียวกันในฐานข้อมูล ต่างกันแค่ธง dry run
+ * จึงเป็นไปไม่ได้ที่เงื่อนไขสองอันจะหลุดจากกัน
+ */
+function openPurge() {
+  openDrawer('เคลียร์ผู้มาเยือน', `
+    <p class="sub">
+      ผู้มาเยือนคือบัญชีที่ไม่มีอีเมลผูกไว้ เกิดใหม่ทุกครั้งที่มีคนกด
+      "เล่นแบบผู้มาเยือน" บนเครื่องใหม่หรือหลังล้างเบราว์เซอร์ นานไปจึงมีบัญชีร้างสะสม
+    </p>
+
+    <div class="formrow">
+      <label>ไม่ได้เล่นมานานเกิน (วัน) — ใส่ 0 = ไม่สนเรื่องวัน</label>
+      <input id="pg_days" type="number" value="3" min="0">
+    </div>
+    <div class="formrow">
+      <label><input id="pg_idle" type="checkbox" checked style="width:auto"> เฉพาะคนที่ไม่เคยวิ่งจบสักรอบและไม่มีคะแนน</label>
+    </div>
+
+    <div class="drawer-actions">
+      <button class="btn ghost" id="pg_preview">ดูว่าจะลบกี่บัญชี</button>
+      <button class="btn danger" id="pg_go" disabled>ลบเลย</button>
+    </div>
+
+    <p class="msg" id="pg_msg"></p>
+
+    <p class="sub" style="margin-top:14px">
+      บัญชีของคุณเอง บัญชีแอดมินคนอื่น และบัญชีที่ผูกอีเมลไว้แล้ว จะไม่โดนลบ
+      ไม่ว่าตั้งเงื่อนไขยังไง — กันไว้ในฝั่งฐานข้อมูล ไม่ใช่แค่ในหน้าเว็บ
+    </p>`);
+
+  let previewed = -1;
+
+  const args = () => ({
+    p_days: Math.max(0, Math.floor(+$('pg_days').value || 0)),
+    p_idle_only: $('pg_idle').checked,
+  });
+
+  // เปลี่ยนเงื่อนไขเมื่อไหร่ ตัวเลขที่ดูไว้ก็ใช้ไม่ได้แล้ว ต้องกดดูใหม่
+  const invalidate = () => {
+    previewed = -1;
+    $('pg_go').disabled = true;
+    $('pg_msg').textContent = '';
+    $('pg_msg').className = 'msg';
+  };
+  $('pg_days').addEventListener('input', invalidate);
+  $('pg_idle').addEventListener('change', invalidate);
+
+  $('pg_preview').addEventListener('click', async () => {
+    const c = await client();
+    const { data, error } = await c.rpc('admin_purge_guests', { ...args(), p_dry_run: true });
+    if (error) {
+      $('pg_msg').textContent = errText(error);
+      $('pg_msg').className = 'msg bad';
+      return;
+    }
+    previewed = data ?? 0;
+    $('pg_go').disabled = previewed === 0;
+    $('pg_msg').textContent = previewed === 0
+      ? 'ไม่มีบัญชีไหนเข้าเงื่อนไขนี้'
+      : 'จะลบ ' + num(previewed) + ' บัญชี';
+    $('pg_msg').className = 'msg ' + (previewed === 0 ? '' : 'good');
+  });
+
+  $('pg_go').addEventListener('click', async () => {
+    if (previewed <= 0) return;
+    const typed = prompt(
+`กำลังจะลบ ${previewed} บัญชีถาวร ย้อนกลับไม่ได้
+
+พิมพ์เลข ${previewed} เพื่อยืนยัน:`
+    );
+    if (typed === null) return;
+    if (typed.trim() !== String(previewed)) return toast('เลขไม่ตรง ยกเลิกแล้ว', 'bad');
+
+    $('pg_go').disabled = true;
+    const c = await client();
+    const { data, error } = await c.rpc('admin_purge_guests', { ...args(), p_dry_run: false });
+    if (error) {
+      $('pg_go').disabled = false;
+      return toast('ลบไม่สำเร็จ: ' + errText(error), 'bad');
+    }
+    toast('ลบไปแล้ว ' + num(data ?? 0) + ' บัญชี', 'good');
+    closeDrawer();
+    loadPlayers();
+  });
 }
 
 // ── หน้า 3: คะแนน ───────────────────────────────────────────
@@ -461,7 +559,7 @@ async function loadScores() {
   if (term) q = q.ilike('name', `%${term}%`);
 
   const { data, error, count } = await q.order('score', { ascending: false }).range(0, 199);
-  if (error) return fail(error);
+  if (error) return failInto('slist', error);
 
   const rows = data || [];
   $('scount').textContent = `${num(count || 0)} แถว (โชว์สูงสุด 200)`;
@@ -503,7 +601,7 @@ PAGES.pulls = async () => {
 
   const c = await client();
   const { data, error } = await c.from('admin_pulls').select('*').order('created_at', { ascending: false }).range(0, 199);
-  if (error) return fail(error);
+  if (error) return failInto('plist', error);
 
   const rows = data || [];
 
@@ -558,7 +656,7 @@ async function runAudit() {
 
   const c = await client();
   const { data, error } = await c.from('admin_players').select('*').limit(2000);
-  if (error) return fail(error);
+  if (error) return failInto('alist', error);
 
   const flagged = [];
   (data || []).forEach((p) => {
@@ -594,11 +692,30 @@ async function runAudit() {
 }
 
 // ── error กลาง ──────────────────────────────────────────────
+
+function failHTML(error) {
+  return `<div class="tablewrap"><div class="empty">
+    <b>โหลดข้อมูลไม่ได้</b><br>${esc(errText(error))}<br><br>
+    ถ้าขึ้นว่าไม่เจอตารางหรือ view แปลว่ายังไม่ได้รัน
+    <b>supabase/admin.sql</b> ใน SQL Editor ของ Supabase
+  </div></div>`;
+}
+
+/** ทั้งหน้าโหลดไม่ได้ — ใช้กับหน้าที่ไม่มีแถบเครื่องมือให้รักษาไว้ */
 function fail(error) {
-  $('page').innerHTML =
-    `<h2>โหลดข้อมูลไม่ได้</h2><p class="sub">${esc(errText(error))}</p>
-     <p class="sub">ถ้าขึ้นว่าไม่เจอตารางหรือ view แปลว่ายังไม่ได้รัน
-     <b>supabase/admin.sql</b> ใน SQL Editor ของ Supabase</p>`;
+  $('page').innerHTML = `<h2>โหลดข้อมูลไม่ได้</h2>` + failHTML(error);
+}
+
+/**
+ * เฉพาะกล่องผลลัพธ์โหลดไม่ได้ ไม่แตะส่วนอื่นของหน้า
+ *
+ * ต้องแยกจาก fail() เพราะหน้าที่มีแถบค้นหา/ตัวกรอง ถ้าเขียนทับทั้งหน้าเวลา query พัง
+ * แถบเครื่องมือจะหายไปด้วย แล้วผู้ใช้จะไม่มีทางแก้เงื่อนไขแล้วลองใหม่ได้เลย
+ * นอกจากรีโหลดหน้าทิ้ง — ซึ่งเป็นสิ่งที่เจอตอนทดสอบจริง
+ */
+function failInto(id, error) {
+  const box = $(id);
+  if (box) box.innerHTML = failHTML(error);
 }
 
 // ── เริ่มทำงาน ──────────────────────────────────────────────
