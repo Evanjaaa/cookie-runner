@@ -1,7 +1,7 @@
 // src/level.js
 import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
-  SPEEDUP,
+  SPEEDUP, FALLER,
 } from './config.js';
 
 const { spike, bar, crate, fishR, chunkW } = LEVEL;
@@ -491,7 +491,172 @@ export const PATTERNS = [
       width: (j - x) + JUMP_SPAN + 260,
     };
   },
+
+  // ── 19-22 · ชุดถ้ำคริสตัล: อุโมงค์เพดานต่ำ ──────────────────
+  //
+  // กริยาหลักของถ้ำคือ "หมอบค้าง" ไม่ใช่ "หมอบทีละครั้ง" แบบท่อน 2
+  // ทำได้ด้วยการวางคานติดกันเป็นแนวยาว ช่องใต้คานสูง 34px เท่าเดิมทุกใบ
+  // (bar.top 232 + h 54 = 286 / GROUND_Y 320) กล่องชนจึงไม่เปลี่ยนเลย
+  // สิ่งที่เปลี่ยนคือ "ต้องกดค้างนานแค่ไหน" ซึ่งเป็นอินพุตคนละแบบกับแมพอื่น
+  //
+  // ผู้เล่นลุกกลางอุโมงค์ไม่ได้ ต้องหมอบยาวจนพ้น จึงต้องโรยปลาไว้ใต้คานตลอดแนว
+  // ให้เห็นว่า "ยังไม่จบ อย่าเพิ่งลุก"
+
+  // 19 — อุโมงค์สั้น สองใบติด (~340px ≈ 50 เฟรม) ใช้สอนก่อนเจอของยาว
+  (x) => {
+    const a = x + 240;
+    return {
+      obs: [lowBar(a), lowBar(a + bar.w)],
+      pit: [],
+      fish: [...fishRunTo(x + 40, a), ...fishLow(a + 10, 10, 32)],
+      jumps: [],
+      width: (a - x) + bar.w * 2 + 240,
+    };
+  },
+
+  // 20 — อุโมงค์ยาว สามใบติด (~510px ≈ 75 เฟรม) หมอบค้างจริงจัง
+  (x) => {
+    const a = x + 220;
+    return {
+      obs: [lowBar(a), lowBar(a + bar.w), lowBar(a + bar.w * 2)],
+      pit: [],
+      fish: [...fishRunTo(x + 40, a), ...fishLow(a + 10, 15, 32)],
+      jumps: [],
+      width: (a - x) + bar.w * 3 + 260,
+    };
+  },
+
+  // 21 — อุโมงค์คั่นช่องหายใจ: สองใบ → เว้น 150px → สองใบ
+  //      ช่องกลางกว้างพอให้ลุกหายใจหนึ่งจังหวะ แต่ไม่พอให้กระโดด
+  //      เป็นท่อนที่หลอกให้ลุกแล้วต้องรีบหมอบใหม่
+  (x) => {
+    const a = x + 210;
+    const b = a + bar.w * 2 + 150;
+    return {
+      obs: [lowBar(a), lowBar(a + bar.w), lowBar(b), lowBar(b + bar.w)],
+      pit: [],
+      fish: [
+        ...fishRunTo(x + 40, a),
+        ...fishLow(a + 10, 10, 32),
+        ...fishLow(b + 10, 10, 32),
+      ],
+      jumps: [],
+      width: (b - x) + bar.w * 2 + 240,
+    };
+  },
+
+  // 22 — หนามก่อนปากอุโมงค์ ต้องกระโดดข้ามแล้วลงมาหมอบทันที
+  //      ระยะจากจุดลงถึงปากอุโมงค์ = 110px ≈ 16 เฟรม พอให้เปลี่ยนท่าทัน
+  (x) => {
+    const j = x + 190;
+    const a = j + JUMP_SPAN + 110;
+    return {
+      obs: [groundSpike(j + HALF - spike.w / 2), lowBar(a), lowBar(a + bar.w)],
+      pit: [],
+      fish: [...fishRunTo(x + 30, j), ...fishJump(j, 10), ...fishLow(a + 10, 10, 32)],
+      jumps: [j],
+      width: (a - x) + bar.w * 2 + 240,
+    };
+  },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// ชนิดกับความยากของแต่ละท่อน — ใช้ให้ตัวประกอบเส้นทางเลือกได้อย่างมีกฎ
+//
+// ทำไมต้องมี: ของเดิม route ของแต่ละด่านเป็นลำดับที่เขียนมือตายตัว 20 ท่อน
+// ทุกตาจึงเจอเส้นทางเดิมเป๊ะ และการจะทำให้ด่านหนึ่ง "ยากขึ้นเรื่อย ๆ" ต้องนั่งเรียงเอง
+//
+// kind ใช้ตอบว่าท่อนนี้ทำหน้าที่อะไรในจังหวะของด่าน:
+//   safe      พื้นโล่ง ให้หายใจ ไม่มีอะไรต้องหลบ
+//   obstacle  ของขวางมาตรฐาน หนึ่งจังหวะ
+//   challenge ต้องต่อสองท่าขึ้นไป หรือพลาดแล้วเจ็บแน่
+//   recovery  มีของให้เก็บเยอะ ไว้ต่อหลังท่อนโหด
+// diff 1-5 ใช้คุมเส้นความยากของทั้งฉาก
+// ─────────────────────────────────────────────────────────────
+export const PATTERN_META = [
+  { kind: 'safe', diff: 1 },        // 0  ทางเรียบ
+  { kind: 'obstacle', diff: 2 },    // 1  หนามเดี่ยว
+  { kind: 'obstacle', diff: 2 },    // 2  คานเตี้ย
+  { kind: 'obstacle', diff: 2 },    // 3  หลุมเดี่ยว
+  { kind: 'challenge', diff: 4 },   // 4  กระโดดแล้วหมอบ
+  { kind: 'challenge', diff: 4 },   // 5  สองหลุมติด
+  { kind: 'obstacle', diff: 3 },    // 6  หนามคู่
+  { kind: 'obstacle', diff: 3 },    // 7
+  { kind: 'obstacle', diff: 3 },    // 8
+  { kind: 'recovery', diff: 2 },    // 9
+  { kind: 'obstacle', diff: 3 },    // 10
+  { kind: 'challenge', diff: 4 },   // 11
+  { kind: 'recovery', diff: 2 },    // 12
+  { kind: 'obstacle', diff: 3 },    // 13
+  { kind: 'challenge', diff: 4 },   // 14
+  { kind: 'challenge', diff: 5 },   // 15
+  { kind: 'obstacle', diff: 3 },    // 16
+  { kind: 'challenge', diff: 4 },   // 17
+  { kind: 'challenge', diff: 4 },   // 18
+  { kind: 'obstacle', diff: 2 },    // 19 อุโมงค์สั้น
+  { kind: 'challenge', diff: 4 },   // 20 อุโมงค์ยาว
+  { kind: 'challenge', diff: 5 },   // 21 อุโมงค์คั่นช่องหายใจ
+  { kind: 'challenge', diff: 5 },   // 22 กระโดดแล้วเข้าอุโมงค์
+];
+
+/**
+ * ประกอบเส้นทางหนึ่งฉากจาก "โควตาชนิดท่อน" แทนการเขียนลำดับมือ
+ *
+ * กฎกันด่านโหด — สามข้อนี้คือเหตุผลที่ต้องมีตัวประกอบ ไม่ใช่สุ่มดิบ ๆ:
+ *   1. ท่อนแรกเป็น safe เสมอ ผู้เล่นต้องได้ตั้งหลักก่อนเจอของ
+ *   2. challenge ติดกันได้ไม่เกินสองท่อน ท่อนที่สามต้องเป็นอย่างอื่น
+ *   3. หลัง challenge ทุกครั้งต้องมี recovery หรือ safe ตามมาอย่างน้อยหนึ่งท่อน
+ *
+ * @param pool   ดัชนีแพตเทิร์นที่ด่านนี้ใช้ได้ (แต่ละด่านมีคลังของตัวเอง)
+ * @param count  จำนวนท่อนที่ต้องการ
+ * @param rnd    ฟังก์ชันสุ่ม 0-1 ส่งเข้ามาได้เพื่อให้เทสซ้ำได้
+ */
+export function composeRoute(pool, count = 20, rnd = Math.random) {
+  const byKind = (k) => pool.filter((p) => PATTERN_META[p].kind === k);
+  const safe = byKind('safe');
+  const recovery = byKind('recovery');
+  const obstacle = byKind('obstacle');
+  const challenge = byKind('challenge');
+
+  // ด่านที่คลังไม่ครบทุกชนิด ให้ยืมชนิดที่ใกล้เคียงแทนการล้ม
+  const pick = (arr, fallback) => {
+    const src = arr.length ? arr : fallback;
+    return src[Math.floor(rnd() * src.length)];
+  };
+  const anyOf = pool;
+
+  // ท่อนพักใช้ recovery กับ safe รวมกัน — ถ้านับเฉพาะ recovery ท่อนโล่งจะโผล่
+  // แค่ท่อนแรกท่อนเดียวตลอดทั้งฉาก (วัดแล้วได้ safe 1 ต่อ 20 ท่อน) ซึ่งแน่นเกินไป
+  const breather = [...recovery, ...safe];
+
+  const out = [];
+  let streak = 0;      // challenge ติดกันมากี่ท่อนแล้ว
+  let owed = false;    // ค้างท่อนพักอยู่หรือเปล่า
+
+  for (let i = 0; i < count; i++) {
+    let p;
+    if (i === 0) {
+      p = pick(safe, anyOf);                       // กฎ 1
+    } else if (owed) {
+      p = pick(breather, anyOf);                   // กฎ 3
+    } else if (streak >= 2) {
+      p = pick(obstacle.length ? obstacle : breather, anyOf);   // กฎ 2
+    } else {
+      // ไต่ความยากตามตำแหน่งในฉาก ต้นฉากเจอของเบา ท้ายฉากเจอของหนัก
+      // แทรกท่อนพักเป็นระยะด้วย ไม่งั้นทั้งฉากเป็นของขวางล้วนจนไม่มีจังหวะหายใจ
+      const t = i / count;
+      if (rnd() < 0.18) p = pick(breather, anyOf);
+      else if (rnd() < 0.25 + t * 0.45) p = pick(challenge, obstacle);
+      else p = pick(obstacle, anyOf);
+    }
+
+    const kind = PATTERN_META[p].kind;
+    streak = kind === 'challenge' ? streak + 1 : 0;
+    owed = kind === 'challenge' && streak >= 2;
+    out.push({ p });
+  }
+  return out;
+}
 
 // ─────────────────────────────────────────────────────────────
 // ลำดับท่อนของแต่ละด่านอยู่ใน stages.js ไม่ได้อยู่ที่นี่
@@ -544,6 +709,17 @@ export class Level {
     this.chunkIndex = 0;
   }
 
+  /**
+   * ลำดับท่อนของฉากหนึ่ง — ด่านที่ประกาศ pool ไว้จะได้เส้นทางสุ่มใหม่ทุกครั้ง
+   * ส่วนด่านที่ยังเขียน route มือไว้ก็ใช้ของเดิมต่อไปเหมือนเดิมทุกประการ
+   *
+   * แยกเป็นเมธอดเพราะทั้ง reset() (ฉากแรกของตา) และ switchRoute() (ฉากถัดไป)
+   * ต้องถามคำถามเดียวกันว่า "ด่านนี้ใช้เส้นทางแบบไหน"
+   */
+  static routeFor(stage) {
+    return stage.pool ? composeRoute(stage.pool, stage.segments || 20) : stage.route;
+  }
+
   /** ส่ง route ใหม่เข้ามาเมื่อเปลี่ยนด่าน ไม่ส่งก็ใช้ของเดิม */
   reset(route, theme) {
     if (route) this.route = route;
@@ -556,6 +732,7 @@ export class Level {
     this.magnets = [];
     this.letters = [];
     this.nips = [];
+    this.fallers = [];       // ของร่วงจากเพดาน เป็นอันตราย ไม่ใช่ของเก็บ
     this.nextChunkX = 900;   // เว้นที่ว่างตอนเริ่มเกม
     this.chunkIndex = 0;
   }
@@ -625,6 +802,53 @@ export class Level {
     }
     // ด่านแน่นจนไม่มีจุดโล่งเลย — ยังต้องให้ขวด ไม่งั้นผู้เล่นตายโดยไม่มีทางแก้
     this.potions.push({ x: limit, y: POTION.y, got: false });
+  }
+
+  /**
+   * ของร่วงจากเพดาน — ชิ้นส่วนใช้ซ้ำได้ทุกแมพ (คริสตัลถ้ำ / อุกกาบาต / น้ำแข็ง)
+   *
+   * มีสองช่วงเสมอ: เตือนก่อน แล้วค่อยร่วง
+   * ช่วงเตือนวาดเงาบนพื้นให้เห็นว่าจะตกตรงไหน ผู้เล่นจึงมีเวลาขยับ
+   * — ถ้าร่วงทันทีโดยไม่เตือน มันคือความตายที่หลบไม่ได้ ซึ่งผิดกฎ "ห้ามสร้างแพตเทิร์นที่หลบไม่ได้"
+   *
+   * ── ทำไมต้องเลี่ยงจุดที่อยู่ใต้คาน ──
+   * ใต้คานผู้เล่น "ต้องหมอบ" ลุกไม่ได้ ถ้าหย่อนของร่วงลงตรงนั้นก็คือหลบไม่ได้เหมือนกัน
+   * isClearSpot() เช็คให้แล้วว่าห่างจากคานและหลุมพอ จึงใช้ตัวเดียวกับที่วางขวดพลัง
+   */
+  spawnFaller(fromX, warnFrames) {
+    const limit = fromX + chunkW;
+    for (let x = fromX; x < limit; x += 24) {
+      if (this.isClearSpot(x)) {
+        this.fallers.push({
+          x,
+          y: -40,
+          w: FALLER.w,
+          h: FALLER.h,
+          warn: warnFrames,   // นับถอยหลังช่วงเตือน 0 = เริ่มร่วง
+          vy: 0,
+          dead: false,
+        });
+        return;
+      }
+    }
+    // ท่อนนี้แน่นจนไม่มีจุดปลอดภัย — ไม่หย่อนดีกว่าหย่อนลงจุดที่หลบไม่ได้
+  }
+
+  /** เดินของร่วงหนึ่งเฟรม — คืน true ถ้ามีชิ้นไหนเพิ่งกระแทกพื้น (ไว้ให้เกมสั่นจอ) */
+  updateFallers(dt) {
+    let landed = false;
+    for (const f of this.fallers) {
+      if (f.warn > 0) { f.warn -= dt; continue; }
+      f.vy += FALLER.gravity * dt;
+      f.y += f.vy * dt;
+      if (f.y + f.h >= GROUND_Y) {
+        f.y = GROUND_Y - f.h;
+        f.dead = true;
+        landed = true;
+      }
+    }
+    this.fallers = this.fallers.filter((f) => !f.dead);
+    return landed;
   }
 
   /** จุดที่ห่างจากหนาม คาน และหลุมพอที่จะกระโดดเก็บได้โดยไม่โดนอะไร */
