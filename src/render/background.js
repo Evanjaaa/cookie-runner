@@ -128,6 +128,165 @@ const PROP_ART = {
     ctx.fill();
   },
 
+  /** ดาวเคราะห์ลอยไกล ๆ — ชิ้นใหญ่ที่สุดในฉาก บอกว่านี่คืออวกาศตั้งแต่แวบแรก */
+  planet(ctx, x, y, s, pal, tick, seed) {
+    const r = (26 + hash(seed) * 34) * s;
+    // สีสลับสองโทนตามชิ้น ไม่งั้นดาวทุกดวงหน้าตาเหมือนกันหมดทั้งฉาก
+    ctx.fillStyle = hash(seed + 2) > 0.5 ? pal.hills[0] : pal.cloudSoft;
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    // แถบเมฆพาดกลางดวง ตัดด้วย clip ให้อยู่ในวงเสมอ
+    ctx.save();
+    ctx.clip();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = pal.cloud;
+    ctx.fillRect(x - r, y - r * 0.22, r * 2, r * 0.2);
+    ctx.fillRect(x - r, y + r * 0.3, r * 2, r * 0.13);
+    ctx.restore();
+    // วงแหวนบางดวง
+    if (hash(seed + 5) > 0.62) {
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = pal.accent;
+      ctx.lineWidth = 2.5 * s;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 1.55, r * 0.34, -0.32, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  },
+
+  /**
+   * สถานีอวกาศ — ของที่ "มนุษย์สร้าง" ชิ้นเดียวในฉาก ตัดกับดาวกับหินที่เหลือ
+   *
+   * สีลำตัวต้องมาจาก cloudSoft ไม่ใช่ hills — hills ของอวกาศเข้มเกือบเท่าท้องฟ้า
+   * (#1A1234 บนฟ้า #191036) ลำตัวจะจมหายจนเหลือแต่แผงโซลาร์ลอยเป็นสี่เหลี่ยมสองอัน
+   */
+  station(ctx, x, y, s, pal, tick, seed) {
+    const w = 66 * s;
+    const h = 14 * s;
+
+    // เสายึดแผงกับลำตัว วาดก่อนให้ทุกอย่างต่อกันเป็นชิ้นเดียว ไม่ใช่ของสามชิ้นลอย
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = pal.cloudSoft;
+    ctx.lineWidth = 2.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(x - w * 0.62, y);
+    ctx.lineTo(x + w * 0.62, y);
+    ctx.stroke();
+
+    // แผงโซลาร์สองข้าง เอียงเล็กน้อยให้ดูรับแสง
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = pal.accent;
+    for (const dir of [-1, 1]) {
+      ctx.save();
+      ctx.translate(x + dir * w * 0.56, y);
+      ctx.rotate(dir * 0.12);
+      ctx.fillRect(-w * 0.13, -h * 0.95, w * 0.26, h * 1.9);
+      ctx.restore();
+    }
+
+    // ลำตัว วาดทับเสาตรงกลาง
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = pal.cloudSoft;
+    ctx.beginPath();
+    ctx.roundRect(x - w * 0.3, y - h / 2, w * 0.6, h, h / 2);
+    ctx.fill();
+    // ช่องหน้าต่างแถวเดียว บอกสเกลว่าเป็นของใหญ่ที่อยู่ไกล
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = pal.cloud;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.arc(x + i * w * 0.14, y, 1.8 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ไฟกะพริบที่ปลาย บอกว่ายังทำงานอยู่
+    ctx.globalAlpha = 0.35 + Math.abs(Math.sin(tick * 0.05 + seed)) * 0.65;
+    ctx.fillStyle = pal.accent;
+    ctx.beginPath();
+    ctx.arc(x + w * 0.3, y - h * 0.5, 2.4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  },
+
+  /** ฝุ่นดาวลอยผ่าน — ชั้นใกล้สุด เลื่อนเร็ว ให้รู้สึกว่ากำลังเคลื่อนที่เร็วจริง */
+  spaceDust(ctx, x, y, s, pal, tick, seed) {
+    ctx.globalAlpha = 0.25 + hash(seed) * 0.35;
+    ctx.fillStyle = pal.speck;
+    const len = (10 + hash(seed + 4) * 26) * s;
+    ctx.fillRect(x, y + (hash(seed + 8) - 0.5) * 120, len, 1.6 * s);
+    ctx.globalAlpha = 1;
+  },
+
+  /** ยอดเขาหิมะไกล ๆ — ชั้นไกลสุดของทุ่งหิมะ ให้ฉากมีเส้นขอบฟ้าที่ไม่ใช่เนินไซน์ */
+  snowPeak(ctx, x, y, s, pal, tick, seed) {
+    const w = (120 + hash(seed) * 90) * s;
+    const h = (70 + hash(seed + 3) * 60) * s;
+    ctx.fillStyle = pal.hills[0];
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    ctx.lineTo(x, y - h);
+    ctx.lineTo(x + w / 2, y);
+    ctx.closePath();
+    ctx.fill();
+    // หิมะบนยอด — สามเหลี่ยมเล็กสีขาวซ้อนบนยอดเดียวกัน
+    const k = 0.36;
+    ctx.fillStyle = pal.cloud;
+    ctx.beginPath();
+    ctx.moveTo(x - (w / 2) * k, y - h * (1 - k));
+    ctx.lineTo(x, y - h);
+    ctx.lineTo(x + (w / 2) * k, y - h * (1 - k));
+    ctx.closePath();
+    ctx.fill();
+  },
+
+  /** ต้นสนมีหิมะเกาะ — ชั้นกลาง เป็นของที่บอกสเกลว่าภูเขาอยู่ไกลแค่ไหน */
+  snowPine(ctx, x, y, s, pal, tick, seed) {
+    const h = (44 + hash(seed) * 26) * s;
+    const w = h * 0.52;
+    ctx.fillStyle = pal.hills[2];
+    // สามชั้นซ้อนจากล่างขึ้นบน แต่ละชั้นแคบลง
+    for (let i = 0; i < 3; i++) {
+      const t = i / 3;
+      const cw = w * (1 - t * 0.42);
+      const cy = y - h * t * 0.72;
+      ctx.beginPath();
+      ctx.moveTo(x - cw / 2, cy);
+      ctx.lineTo(x, cy - h * 0.46);
+      ctx.lineTo(x + cw / 2, cy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // หิมะเกาะยอด
+    ctx.fillStyle = pal.cloud;
+    ctx.beginPath();
+    ctx.arc(x, y - h * 1.44 + 3 * s, 3 * s, 0, Math.PI * 2);
+    ctx.fill();
+  },
+
+  /**
+   * เกล็ดหิมะตก — ชั้นใกล้สุด
+   * ร่วงลงพร้อมส่ายซ้ายขวา ใช้ตำแหน่งโลกเป็นเฟส เกล็ดแต่ละเม็ดจึงไม่ตกพร้อมกัน
+   * y ที่ส่งเข้ามาถูกมองข้าม เพราะเกล็ดต้องวนรอบความสูงจอเองไม่งั้นจะตกครั้งเดียวแล้วหาย
+   */
+  snowFall(ctx, x, y, s, pal, tick, seed) {
+    for (let i = 0; i < 3; i++) {
+      const ph = hash(seed + i * 13);
+      const fall = (tick * (0.5 + ph * 0.7) + ph * 400) % 420;
+      const fy = fall - 40;
+      const sway = Math.sin(tick * 0.02 + ph * 9) * 12;
+      const r = (1.6 + ph * 1.8) * s;
+      ctx.globalAlpha = 0.35 + ph * 0.45;
+      ctx.fillStyle = pal.cloud;
+      ctx.beginPath();
+      ctx.arc(x + sway + i * 26, fy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+
   /** หมอกลอยในถ้ำ — ลอยช้ากว่าทุกอย่าง ทำให้ระยะลึกอ่านออกโดยไม่ต้องมีของเพิ่ม */
   caveFog(ctx, x, y, s, pal, tick, seed) {
     const drift = Math.sin(tick * 0.004 + seed * 0.01) * 26;
@@ -139,6 +298,178 @@ const PROP_ART = {
     ctx.ellipse(x + drift, y, w / 2, h / 2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
+  },
+
+  // ── ครัวกลางคืน ────────────────────────────────────────────
+
+  /** ชั้นวางของ — เส้นแนวนอนยาวที่ทำให้ห้องอ่านออกว่าเป็นในอาคาร ไม่ใช่กลางแจ้ง */
+  shelf(ctx, x, y, s, pal, tick, seed) {
+    const w = 220 * s;
+    ctx.fillStyle = pal.hills[1];
+    ctx.fillRect(x, y, w, 9 * s);
+    ctx.fillStyle = pal.hills[0];
+    ctx.fillRect(x, y + 9 * s, w, 4 * s);
+    // ขวดเครื่องปรุงเรียงบนชั้น สูงไม่เท่ากันตาม seed
+    for (let i = 0; i < 4; i++) {
+      const h = (16 + hash(seed + i * 7) * 20) * s;
+      const bw = 13 * s;
+      ctx.fillStyle = i % 2 ? pal.cloudSoft : pal.cloud;
+      ctx.globalAlpha = 0.75;
+      ctx.fillRect(x + (26 + i * 48) * s, y - h, bw, h);
+      ctx.globalAlpha = 1;
+    }
+  },
+
+  /** เตาอบ — ช่องไฟส้มเรืองเป็นจังหวะ บอกล่วงหน้าว่าแมพนี้เกี่ยวกับไฟ */
+  ovenBox(ctx, x, y, s, pal, tick, seed) {
+    const w = 130 * s, h = 96 * s;
+    // ตัวเตาใช้สีเข้มคงที่ ไม่ใช้ pal.hills เพราะจะกลืนไปกับเนินเขาที่อยู่หลังจนอ่านไม่ออก
+    ctx.fillStyle = '#3B2A46';
+    ctx.fillRect(x, y - h, w, h);
+    ctx.fillStyle = '#57406A';
+    ctx.fillRect(x + 4 * s, y - h + 4 * s, w - 8 * s, 8 * s);
+    // ช่องกระจกเตา — เต้นช้ากว่าไฟจริงมาก จะได้ไม่ดึงสายตาไปจากพื้นเกม
+    const glow = 0.28 + Math.sin(tick * 0.03 + seed) * 0.12;
+    ctx.globalAlpha = glow;
+    ctx.fillStyle = '#FF8A3C';
+    ctx.fillRect(x + 16 * s, y - h + 26 * s, w - 32 * s, h - 46 * s);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = pal.cloudSoft;
+    ctx.lineWidth = 2 * s;
+    ctx.strokeRect(x + 16 * s, y - h + 26 * s, w - 32 * s, h - 46 * s);
+  },
+
+  /** ท่อใต้เพดาน — ห้อยลงมาจากขอบบน ปิดพื้นที่ว่างด้านบนของจอ */
+  pipe(ctx, x, y, s, pal, tick, seed) {
+    const len = (40 + hash(seed) * 46) * s;
+    const w = 20 * s;
+    ctx.fillStyle = pal.hills[1];
+    ctx.fillRect(x, 0, w, len);
+    // ปลอกรัดท่อ ทำให้ไม่ใช่แค่แท่งสี่เหลี่ยมเปล่า
+    ctx.fillStyle = pal.hills[0];
+    ctx.fillRect(x - 3 * s, len - 10 * s, w + 6 * s, 8 * s);
+  },
+
+  /** สะเก็ดไฟลอย — ลอยขึ้นตรงข้ามกับหิมะที่ตกลง ให้สองแมพต่างกันแม้ใช้โครงเดียวกัน */
+  ember(ctx, x, y, s, pal, tick, seed) {
+    for (let i = 0; i < 3; i++) {
+      const ph = hash(seed + i * 11);
+      const rise = (tick * (0.6 + ph * 0.8) + ph * 400) % 400;
+      const fy = GROUND_Y - rise;
+      const sway = Math.sin(tick * 0.03 + ph * 7) * 14;
+      ctx.globalAlpha = Math.max(0, 0.55 - rise / 400) + 0.1;
+      ctx.fillStyle = i % 2 ? '#FFC46B' : '#FF8A3C';
+      ctx.beginPath();
+      ctx.arc(x + sway + i * 24, fy, (1.4 + ph * 1.6) * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+
+  // ── สวนดอกไม้ ──────────────────────────────────────────────
+
+  /** ก้อนเมฆนุ่ม — วางไว้สูงสุด เคลื่อนช้าสุด เป็นตัวบอกว่าเป็นกลางแจ้งตอนกลางวัน */
+  cloudPuff(ctx, x, y, s, pal, tick, seed) {
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = pal.cloud;
+    for (let i = 0; i < 3; i++) {
+      const r = (18 + hash(seed + i * 5) * 14) * s;
+      ctx.beginPath();
+      ctx.arc(x + i * 26 * s, y + hash(seed + i) * 8 * s, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+
+  /** ต้นไม้ — พุ่มสามก้อนกับลำต้น ใช้ตัวเดียวกันสองชั้นแต่คนละขนาด/ความลึก */
+  tree(ctx, x, y, s, pal, tick, seed) {
+    const th = (52 + hash(seed) * 26) * s;
+    ctx.fillStyle = pal.hills[1];
+    ctx.fillRect(x - 5 * s, y - th, 10 * s, th);
+    ctx.fillStyle = pal.hills[0];
+    const sway = Math.sin(tick * 0.012 + seed * 0.02) * 3 * s;
+    for (let i = 0; i < 3; i++) {
+      const r = (20 + hash(seed + i * 9) * 12) * s;
+      ctx.beginPath();
+      ctx.arc(x + sway + (i - 1) * 17 * s, y - th - 6 * s + hash(seed + i) * 10 * s, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  },
+
+  /** กลีบดอกปลิว — ร่วงเฉียงไปข้างหน้า ต่างจากหิมะที่ร่วงตรง */
+  petal(ctx, x, y, s, pal, tick, seed) {
+    for (let i = 0; i < 3; i++) {
+      const ph = hash(seed + i * 17);
+      const fall = (tick * (0.4 + ph * 0.5) + ph * 420) % 420;
+      const fy = fall - 40;
+      const drift = Math.sin(tick * 0.025 + ph * 8) * 20 - fall * 0.18;
+      ctx.globalAlpha = 0.5 + ph * 0.4;
+      ctx.fillStyle = ph > 0.5 ? '#FFC0D4' : '#FFE1EC';
+      ctx.save();
+      ctx.translate(x + drift + i * 28, fy);
+      ctx.rotate(tick * 0.03 + ph * 6);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 4.5 * s, 2.4 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  },
+
+  // ── ชายหาด ─────────────────────────────────────────────────
+
+  /** ดวงอาทิตย์ตก — ชิ้นเดียวโผล่นาน ๆ ครั้ง เป็นจุดสนใจของฉาก */
+  sunDisc(ctx, x, y, s, pal, tick, seed) {
+    const r = 56 * s;
+    const g = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 2);
+    g.addColorStop(0, 'rgba(255,196,120,.55)');
+    g.addColorStop(1, 'rgba(255,196,120,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD79A';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  },
+
+  /** คลื่น — ซัดเข้าฝั่งเป็นจังหวะ ชั้นใกล้ขยับแรงกว่าชั้นไกลจึงเห็นระยะลึก */
+  seaWave(ctx, x, y, s, pal, tick, seed) {
+    const w = 150 * s;
+    const swell = Math.sin(tick * 0.035 + seed * 0.03) * 5 * s;
+    // สีน้ำทะเลคงที่ ไม่ใช้ pal.hills เพราะคลื่นต้องแยกออกจากเนินทรายให้เห็น
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = '#3E86A8';
+    ctx.beginPath();
+    ctx.moveTo(x, y + 10 * s);
+    ctx.quadraticCurveTo(x + w / 2, y - 8 * s + swell, x + w, y + 10 * s);
+    ctx.lineTo(x + w, y + 18 * s);
+    ctx.lineTo(x, y + 18 * s);
+    ctx.closePath();
+    ctx.fill();
+    // ยอดคลื่นขาว — เห็นชัดว่าน้ำกำลังเคลื่อน ไม่ใช่แถบสีนิ่ง
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = pal.cloud;
+    ctx.lineWidth = 2.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(x + 10 * s, y + 8 * s);
+    ctx.quadraticCurveTo(x + w / 2, y - 6 * s + swell, x + w - 10 * s, y + 8 * s);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  },
+
+  /** ร่มชายหาด — ทรงสามเหลี่ยมที่ไม่ซ้ำกับอะไรในแมพอื่น อ่านออกทันทีว่าเป็นหาด */
+  umbrella(ctx, x, y, s, pal, tick, seed) {
+    const h = 62 * s, r = 34 * s;
+    // เสาต้องเป็นสีเข้มคงที่ ถ้าใช้สีเนินเขาจะจมหายไปกับเนินที่อยู่ข้างหลังพอดี
+    ctx.fillStyle = '#6B4A3A';
+    ctx.fillRect(x - 2 * s, y - h, 4 * s, h);
+    const cols = ['#FF8A72', '#FFF1DC'];
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = cols[i % 2];
+      ctx.beginPath();
+      ctx.moveTo(x, y - h);
+      ctx.arc(x, y - h, r, Math.PI + (i * Math.PI) / 4, Math.PI + ((i + 1) * Math.PI) / 4);
+      ctx.closePath();
+      ctx.fill();
+    }
   },
 };
 

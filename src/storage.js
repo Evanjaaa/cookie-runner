@@ -30,8 +30,11 @@ const OUTFIT_KEY = 'cookie-runner:outfit';
  * ที่เพิ่งดึงลงมา) จึงต้องรู้จักชื่อคีย์ — ให้รู้จักผ่านที่นี่ ไม่ใช่ประกาศซ้ำ
  * ซึ่งเคยเป็นแบบนั้นแล้วมีโอกาสเพี้ยนจากกันเงียบ ๆ ตอนใครไปแก้ข้างเดียว
  */
+const SKINS_OWNED_KEY = 'cookie-runner:skinsOwned';
+
 export const KEYS = {
   skin: SKIN_KEY,
+  skinsOwned: SKINS_OWNED_KEY,
   stage: STAGE_KEY,
   outfit: OUTFIT_KEY,
   bestPrefix: 'cookie-runner:best:',
@@ -310,6 +313,30 @@ export function saveSkin(id) {
   try {
     localStorage.setItem(SKIN_KEY, id);
     wrote('skin');
+  } catch {
+    /* ไม่ทำอะไร */
+  }
+}
+
+/**
+ * รายชื่อแมวที่ปลดล็อกแล้ว — เก็บเฉพาะตัวที่ต้องซื้อ
+ *
+ * ตัวที่แจกฟรีตั้งแต่แรกไม่ต้องอยู่ในนี้ ฝั่ง skins.js ดูจาก cost เอาเอง
+ * เก็บแบบนี้เพื่อให้เพิ่มแมวฟรีตัวใหม่ได้โดยไม่ต้องไปแก้ข้อมูลเก่าของผู้เล่น
+ */
+export function loadSkinsOwned() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SKINS_OWNED_KEY));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveSkinsOwned(list) {
+  try {
+    localStorage.setItem(SKINS_OWNED_KEY, JSON.stringify(list));
+    wrote('skinsOwned');
   } catch {
     /* ไม่ทำอะไร */
   }

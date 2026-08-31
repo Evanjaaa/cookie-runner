@@ -5,7 +5,7 @@ import { Game, STATE } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
 import { startMusic } from './music.js';
-import { SKINS, getSkin, setSkin } from './skins.js';
+import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin } from './skins.js';
 import { STAGES, getStage, setStage, journeyOf } from './stages.js';
 import {
   RARITY, OUTFITS, outfitById, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
@@ -33,7 +33,7 @@ import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
-  loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail,
+  loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail, syncMail,
 } from './mail.js';
 import { recordRun, recordPulls, recordUpgrade } from './stats.js';
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
@@ -1688,21 +1688,39 @@ function buildSkinGrid() {
   grid.innerHTML = '';
 
   for (const s of SKINS) {
-    const on = s.id === getSkin().id;
+    const owned = ownsSkin(s.id);
+    const on = owned && s.id === getSkin().id;
 
     const card = document.createElement('button');
-    card.className = 'skin-card' + (on ? ' on' : '');
+    card.className = 'skin-card' + (on ? ' on' : '') + (owned ? '' : ' locked');
     card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small></small>';
     card.querySelector('b').textContent = s.name;
     card.querySelector('small').textContent = on ? 'กำลังใช้' : s.note;
+
+    if (!owned) {
+      const lock = document.createElement('span');
+      lock.className = 'lock-badge';
+      lock.textContent = '🔒';
+      card.appendChild(lock);
+
+      // ราคาแปะทับรูป ไม่ได้ต่อท้ายเป็นอีกบรรทัด
+      // เพราะบรรทัดคำบรรยายถูกซ่อนไว้ในจอมือถือ ถ้าใส่เป็นบรรทัดจริงการ์ดใบนี้
+      // จะสูงกว่าใบอื่น 21px อยู่ใบเดียว แล้วแถวการ์ดจะเบี้ยว
+      const tag = document.createElement('span');
+      tag.className = 'price-tag';
+      tag.innerHTML = '<span class="coin" aria-hidden="true"></span>'
+        + s.cost.toLocaleString('en-US');
+      card.appendChild(tag);
+    }
 
     // t=60 ไม่ใช่ 0 เพราะที่ t=0 แมวกำลังหลับตาพอดี รูปตัวอย่างจะดูเหมือนหลับ
     paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5, s, 60));
 
     card.addEventListener('click', () => {
+      unlockAudio();
+      if (!owned) return buySkin(s);
       if (s.id === getSkin().id) return showSkins(false);
       setSkin(s.id);
-      unlockAudio();
       sfx.fish();
       buildSkinGrid();
       refreshHome();
@@ -1713,7 +1731,124 @@ function buildSkinGrid() {
   markScrollable(grid);
 }
 
+/**
+ * กล่องยืนยันแบบใช้ซ้ำได้ คืน Promise<boolean>
+ *
+ * ── ทำไมไม่ใช้ confirm() ของเบราว์เซอร์ ──
+ * มันบล็อกทั้งหน้า หน้าตาไม่เข้ากับเกม และบนมือถือบางตัวขึ้นชื่อโดเมนกำกับ
+ * ซึ่งทำให้ดูเหมือนป๊อปอัปแปลกปลอมจนคนกดยกเลิกทิ้งทั้งที่ตั้งใจจะซื้อ
+ *
+ * เปิดซ้อนบนแผงที่เปิดค้างอยู่ ไม่ได้ปิดแผงเดิม ผู้เล่นจึงยังเห็นว่ายืนยันจากหน้าไหน
+ *
+ * @param opts.art  ฟังก์ชันวาดรูปตัวอย่างลงบน canvas ถ้าไม่ส่งมาจะซ่อนช่องรูป
+ * @param opts.cost ราคา ถ้าไม่ส่งมาจะซ่อนแถบราคา (ใช้กับกล่องยืนยันที่ไม่ใช่การซื้อได้)
+ */
+let cancelConfirm = null;
+
+function confirmBox(opts) {
+  // ปิดกล่องเก่าที่ยังค้างอยู่ก่อนเสมอ
+  // ถ้าไม่ทำ listener ของรอบเก่าจะยังเกาะปุ่มเดิมอยู่ พอกดยืนยันรอบใหม่
+  // handler ทั้งสองรอบจะทำงานพร้อมกัน = จ่ายเงินซ้ำสองครั้งจากการกดครั้งเดียว
+  if (cancelConfirm) cancelConfirm();
+
+  const panel = document.getElementById('confirmPanel');
+  const art = document.getElementById('confirmArt');
+  const cost = document.getElementById('confirmCost');
+
+  document.getElementById('confirmTitle').textContent = opts.title || '';
+  document.getElementById('confirmBody').textContent = opts.body || '';
+  document.getElementById('confirmYes').textContent = opts.okText || 'ยืนยัน';
+  document.getElementById('confirmNo').textContent = opts.cancelText || 'ยกเลิก';
+
+  cost.classList.toggle('hidden', !opts.cost);
+  if (opts.cost) {
+    document.getElementById('confirmPrice').textContent = opts.cost.toLocaleString('en-US');
+  }
+
+  const after = document.getElementById('confirmAfter');
+  after.textContent = opts.after || '';
+  after.classList.toggle('bad', Boolean(opts.afterBad));
+
+  art.hidden = !opts.art;
+  if (opts.art) paintMini(art, 96, opts.art);
+
+  panel.classList.remove('hidden');
+
+  return new Promise((resolve) => {
+    const done = (ok) => {
+      cancelConfirm = null;
+      panel.classList.add('hidden');
+      // ต้องถอด listener ทุกครั้ง ไม่งั้นเปิดกล่องรอบหน้าจะมีตัวเก่าค้างอยู่
+      // แล้ว resolve ของรอบเก่าจะยิงซ้ำ (Promise ที่ resolve แล้วเงียบ แต่ handler ยังทำงาน)
+      yes.removeEventListener('click', onYes);
+      no.removeEventListener('click', onNo);
+      panel.removeEventListener('click', onBackdrop);
+      resolve(ok);
+    };
+    const onYes = () => { unlockAudio(); sfx.fish(); done(true); };
+    const onNo = () => { unlockAudio(); sfx.fish(); done(false); };
+    // กดพื้นหลังนอกกล่อง = ยกเลิก ทางออกที่คนคาดหวังจากกล่องแบบนี้
+    const onBackdrop = (e) => { if (e.target === panel) onNo(); };
+
+    const yes = document.getElementById('confirmYes');
+    const no = document.getElementById('confirmNo');
+    yes.addEventListener('click', onYes);
+    no.addEventListener('click', onNo);
+    panel.addEventListener('click', onBackdrop);
+
+    // ปิดจากทางอื่น (กดเล่น กดกลับหน้าแรก) ต้องนับเป็น "ยกเลิก" ไม่ใช่ค้างไว้เฉย ๆ
+    cancelConfirm = () => done(false);
+  });
+}
+
+/**
+ * ซื้อแมวที่ยังล็อกอยู่
+ *
+ * หักทองก่อนแล้วค่อยปลดล็อก ลำดับนี้สำคัญ — ถ้าปลดล็อกก่อนแล้วหักทองพลาด
+ * ผู้เล่นจะได้ของฟรี ส่วนลำดับนี้กรณีแย่สุดคือเสียทองแล้วไม่ได้ของ
+ * ซึ่งกู้คืนได้เพราะรู้ยอดที่หักไป
+ *
+ * ซื้อแล้วสวมให้เลย ไม่ต้องกดอีกที — คนกดซื้อคือคนที่อยากใส่อยู่แล้ว
+ */
+async function buySkin(s) {
+  const msg = document.getElementById('skinMsg');
+  const gold = getGold();
+
+  if (gold < s.cost) {
+    sfx.upFail();
+    setMsg(msg, 'ทองไม่พอ ขาดอีก ' + (s.cost - gold).toLocaleString('en-US'), true);
+    return;
+  }
+
+  const ok = await confirmBox({
+    title: 'ปลดล็อก ' + s.name + '?',
+    body: s.note,
+    cost: s.cost,
+    after: 'ทองคงเหลือหลังซื้อ ' + (gold - s.cost).toLocaleString('en-US'),
+    okText: 'ซื้อเลย',
+    art: (c) => drawCatPose(c, 55, 88, 1.5, s, 60),
+  });
+  if (!ok) return;
+
+  // อ่านยอดใหม่หลังกล่องปิด เผื่อมีอย่างอื่นหักทองไประหว่างที่กล่องเปิดค้างอยู่
+  // (เช่นซิงก์จากเครื่องอื่น) ถ้าเชื่อยอดที่อ่านไว้ตอนแรกจะติดลบได้
+  if (getGold() < s.cost) {
+    sfx.upFail();
+    setMsg(msg, 'ทองไม่พอแล้ว ลองใหม่อีกครั้ง', true);
+    return;
+  }
+
+  addGold(-s.cost);
+  unlockSkin(s.id);
+  setSkin(s.id);
+  sfx.upWin();
+  buildSkinGrid();
+  refreshHome();
+  setMsg(msg, 'ปลดล็อก ' + s.name + ' แล้ว ใส่ให้เรียบร้อย');
+}
+
 function showSkins(on) {
+  if (on) setMsg(document.getElementById('skinMsg'), '');
   skinPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
 }
@@ -1968,10 +2103,18 @@ function showInbox(on) {
   }
 }
 
-document.getElementById('btnMail').addEventListener('click', () => {
+document.getElementById('btnMail').addEventListener('click', async () => {
   unlockAudio(); startMusic();
   sfx.fish();
+  // เปิดกล่องด้วยของที่มีอยู่ก่อนเลย ไม่ต้องรอเน็ต
+  // แล้วค่อยเติมฉบับใหม่จากคลาวด์เข้ามาทีหลังถ้ามี
+  // ถ้ารอให้ดึงเสร็จก่อนค่อยเปิด คนที่เน็ตช้าจะกดแล้วเหมือนปุ่มไม่ทำงาน
   showInbox(true);
+  const added = await syncMail();
+  if (!added) return;
+  // ผู้เล่นอาจกดออกจากกล่องไปแล้วระหว่างรอเน็ต อย่าวาดทับหน้าที่เขาอยู่ตอนนี้
+  if (!inboxPanel.classList.contains('hidden')) buildMailList();
+  refreshMailDot();
 });
 document.getElementById('inboxBack').addEventListener('click', () => {
   unlockAudio();
@@ -1984,8 +2127,14 @@ document.getElementById('mrBack').addEventListener('click', () => {
   buildMailList();
 });
 
-document.getElementById('mrClaim').addEventListener('click', () => {
-  const r = claimMail(mrCurrent);
+document.getElementById('mrClaim').addEventListener('click', async () => {
+  // ฉบับจากคลาวด์ต้องรอเซิร์ฟเวอร์ตอบ ระหว่างนั้นต้องกันกดซ้ำ
+  // ไม่งั้นกดรัว ๆ จะยิงคำขอซ้อนกันหลายอัน แล้วขึ้นกล่องรางวัลซ้อนกันหลายใบ
+  const btn = document.getElementById('mrClaim');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const r = await claimMail(mrCurrent);
+  btn.disabled = false;
   unlockAudio();
   if (!r.ok) {
     sfx.shieldBreak();
@@ -1998,8 +2147,12 @@ document.getElementById('mrClaim').addEventListener('click', () => {
   showReward('รับของขวัญแล้ว!', r.reward);
 });
 
-document.getElementById('mailClaimAll').addEventListener('click', () => {
-  const r = claimAll();
+document.getElementById('mailClaimAll').addEventListener('click', async () => {
+  const btn = document.getElementById('mailClaimAll');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const r = await claimAll();
+  btn.disabled = false;
   unlockAudio();
   if (!r.count) {
     sfx.shieldBreak();
@@ -3045,6 +3198,9 @@ function skipIntro() {
  * ของเดิมเขียนรายชื่อไว้สามที่ในไฟล์ ทุกครั้งที่เพิ่มแผงต้องไปเติมให้ครบทั้งสาม
  */
 function closeAllPanels() {
+  // ยกเลิกก่อนซ่อน ไม่งั้นกล่องยืนยันจะหายไปจากจอโดยที่ Promise ยังค้าง
+  // แล้ว listener ของมันจะเกาะปุ่มอยู่ข้ามรอบ
+  if (cancelConfirm) cancelConfirm();
   document.querySelectorAll('.stage .panel').forEach((el) => el.classList.add('hidden'));
   // รอบตีบวกรัวเป็นลูปที่ "หักทองเอง" ทุก ๆ ไม่กี่ร้อยมิลลิวินาที ปิดแค่แผงไม่พอ
   // ถ้าไม่หยุดตรงนี้ด้วย ผู้เล่นที่กดกลับหน้าแรกหรือกดเล่นกลางคันจะเสียทองต่อไป

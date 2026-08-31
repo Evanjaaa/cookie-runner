@@ -1,7 +1,7 @@
 // src/level.js
 import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
-  SPEEDUP, FALLER,
+  SPEEDUP, FALLER, HAZARD, PLAYER_X,
 } from './config.js';
 
 const { spike, bar, crate, fishR, chunkW } = LEVEL;
@@ -187,6 +187,17 @@ function fishRunTo(x, endX, gap = 34) {
 const arcMid = (x, count) => fishAbove(JUMP, x, count, 48);
 /** ชั้นบนสุด — ต้องกระโดดสองชั้นเท่านั้น clearance สูงพอให้แยกจากชั้นกลางชัด */
 const arcHigh = (x, count) => fishAbove(JUMP_DBL, x, count, 132);
+
+/**
+ * ความกว้างหลุมของด่านอวกาศ — ต้อง "กระโดดเดี่ยวไม่พ้นแน่นอน" แต่ "สองชั้นพ้นสบาย"
+ *
+ * กวาดค่าดูแล้วเลือก 256 เพราะสองเงื่อนไขนี้ดึงกันคนละทาง:
+ *   230 → กระโดดเดี่ยวข้ามได้ 8px ผิดวัตถุประสงค์ของด่านทั้งด่าน
+ *   240 → เดี่ยวพลาดแค่ 2px ซึ่งเฉียดจนผู้เล่นรู้สึกว่า "น่าจะรอด" = ไม่แฟร์
+ *   256 → เดี่ยวพลาด 18px (เห็นชัดว่าไม่ถึง) หน้าต่างกดสองชั้นยังกว้าง 9.4 เฟรม
+ *   280 → หน้าต่างเหลือ 5.8 เฟรม ซึ่งใกล้ค่าที่เคยลองแล้วบันทึกไว้ว่าเล่นไม่สนุก
+ */
+const GAP_W = 256;
 
 const groundSpike = (x) => ({ x, y: GROUND_Y - spike.h, w: spike.w, h: spike.h, kind: 'spike' });
 const lowBar = (x) => ({ x, y: bar.top, w: bar.w, h: bar.h, kind: 'bar' });
@@ -558,6 +569,135 @@ export const PATTERNS = [
       width: (a - x) + bar.w * 2 + 240,
     };
   },
+
+  // ── 23-25 · ชุดห้วงอวกาศ: ช่องว่างที่กระโดดชั้นเดียวไม่พอ ──────
+  //
+  // กริยาหลักของอวกาศคือ "บริหารเวลาลอย" — ทุกหลุมกว้างเกินกระโดดเดี่ยว
+  // ผู้เล่นจึงต้องกดสองครั้งทุกครั้ง และครั้งที่สองต้องกดให้ตรงจังหวะด้วย
+  //
+  // ── ตัวเลขที่ใช้ตัดสินความกว้าง ──
+  //   กระโดดเดี่ยว  ข้ามได้ 238px
+  //   กระโดดสองชั้น ข้ามได้ 320px
+  // เลือก 240 เพราะเกินกระโดดเดี่ยวแน่นอน (ต่อให้กดตรงเป๊ะก็ไม่ถึง)
+  // แต่ยังเหลือระยะเผื่อหัวท้ายข้างละ 40px สำหรับกระโดดสองชั้น
+  // กว้างกว่านี้ระยะเผื่อจะหายจนต้องกดเป๊ะทั้งสองจังหวะ ซึ่งไม่สนุก
+  //
+  // ปลาเรียงตามเส้นโค้งกระโดดสองชั้น (fishDouble) เม็ดที่ลอยสูงกว่าแนวปกติ
+  // คือสัญญาณบอกในตัวว่า "หลุมนี้ต้องกดสองที" ไม่ต้องมีป้ายบอก
+
+  // 23 — หลุมกว้างเดี่ยว ท่อนสอนของอวกาศ
+  (x) => {
+    const j = x + 230;
+    return {
+      obs: [],
+      pit: [{ x: j + (DBL_SPAN - GAP_W) / 2, w: GAP_W }],
+      fish: [...fishRunTo(x + 40, j), ...fishDouble(j, 12)],
+      jumps: [j],
+      width: (j - x) + DBL_SPAN + 260,
+    };
+  },
+
+  // 24 — หลุมกว้างสองหลุมติด ต้องกดสองชั้นสองรอบต่อเนื่อง
+  //      เว้นพื้นระหว่างหลุม 150px ≈ 22 เฟรม พอให้ตั้งหลักกดรอบใหม่
+  (x) => {
+    const j1 = x + 190;
+    const j2 = j1 + DBL_SPAN + 150;
+    return {
+      obs: [],
+      pit: [
+        { x: j1 + (DBL_SPAN - GAP_W) / 2, w: GAP_W },
+        { x: j2 + (DBL_SPAN - GAP_W) / 2, w: GAP_W },
+      ],
+      fish: [...fishRunTo(x + 30, j1), ...fishDouble(j1, 11), ...fishDouble(j2, 11)],
+      jumps: [j1, j2],
+      width: (j2 - x) + DBL_SPAN + 260,
+    };
+  },
+
+  // 25 — หลุมกว้างแล้วต่อด้วยคานเตี้ยทันที ลงจากอากาศแล้วต้องหมอบเลย
+  //      ระยะจากขอบหลุมถึงคาน 150px ≈ 22 เฟรม พอให้เปลี่ยนท่าทัน
+  (x) => {
+    const j = x + 200;
+    const barX = j + DBL_SPAN + 150;
+    return {
+      obs: [lowBar(barX)],
+      pit: [{ x: j + (DBL_SPAN - GAP_W) / 2, w: GAP_W }],
+      fish: [...fishRunTo(x + 30, j), ...fishDouble(j, 11), ...fishLow(barX + 8, 7, 32)],
+      jumps: [j],
+      width: (barX - x) + bar.w + 240,
+    };
+  },
+
+  // ── 26-28 · ชุดทุ่งหิมะ: สลับท่าเร็ว ───────────────────────────
+  //
+  // กริยาหลักของหิมะคือ "สลับกระโดด↔หมอบถี่ ๆ" ต่างจากถ้ำที่หมอบค้างยาว
+  // และต่างจากอวกาศที่กระโดดอย่างเดียว — เป็นแมพที่นิ้วต้องขยับมากที่สุด
+  //
+  // ระยะระหว่างของแต่ละชิ้นใช้ 130px ≈ 19 เฟรม ซึ่งอยู่ในช่วงที่โค้ดเดิม
+  // พิสูจน์แล้วว่าเปลี่ยนท่าทัน (ท่อน 4 ใช้ 140 / ท่อน 18 ใช้ 120)
+  // สั้นกว่านี้จะกลายเป็นบังคับให้กดถูกตั้งแต่ครั้งแรกโดยไม่มีเวลาแก้ตัว
+
+  // 26 — กระโดด → หมอบ → กระโดด
+  (x) => {
+    const j1 = x + 170;
+    const barX = j1 + JUMP_SPAN + 130;
+    const j2 = barX + bar.w + 130;
+    return {
+      obs: [
+        groundSpike(j1 + HALF - spike.w / 2),
+        lowBar(barX),
+        groundSpike(j2 + HALF - spike.w / 2),
+      ],
+      pit: [],
+      fish: [
+        ...fishRunTo(x + 30, j1), ...fishJump(j1, 9),
+        ...fishLow(barX + 8, 6, 32), ...fishJump(j2, 9),
+      ],
+      jumps: [j1, j2],
+      width: (j2 - x) + JUMP_SPAN + 240,
+    };
+  },
+
+  // 27 — หมอบ → กระโดด → หมอบ (สลับขั้วจากท่อน 26)
+  (x) => {
+    const b1 = x + 230;
+    const j = b1 + bar.w + 130;
+    const b2 = j + JUMP_SPAN + 130;
+    return {
+      obs: [lowBar(b1), groundSpike(j + HALF - spike.w / 2), lowBar(b2)],
+      pit: [],
+      fish: [
+        ...fishRunTo(x + 30, b1), ...fishLow(b1 + 8, 6, 32),
+        ...fishJump(j, 9), ...fishLow(b2 + 8, 6, 32),
+      ],
+      jumps: [j],
+      width: (b2 - x) + bar.w + 240,
+    };
+  },
+
+  // 28 — สลับสี่จังหวะรวด ท่อนที่หนักที่สุดของหิมะ
+  (x) => {
+    const j1 = x + 160;
+    const b1 = j1 + JUMP_SPAN + 130;
+    const j2 = b1 + bar.w + 130;
+    const b2 = j2 + JUMP_SPAN + 130;
+    return {
+      obs: [
+        groundSpike(j1 + HALF - spike.w / 2),
+        lowBar(b1),
+        groundSpike(j2 + HALF - spike.w / 2),
+        lowBar(b2),
+      ],
+      pit: [],
+      fish: [
+        ...fishRunTo(x + 24, j1), ...fishJump(j1, 8),
+        ...fishLow(b1 + 8, 6, 32), ...fishJump(j2, 8),
+        ...fishLow(b2 + 8, 6, 32),
+      ],
+      jumps: [j1, j2],
+      width: (b2 - x) + bar.w + 240,
+    };
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -597,6 +737,12 @@ export const PATTERN_META = [
   { kind: 'challenge', diff: 4 },   // 20 อุโมงค์ยาว
   { kind: 'challenge', diff: 5 },   // 21 อุโมงค์คั่นช่องหายใจ
   { kind: 'challenge', diff: 5 },   // 22 กระโดดแล้วเข้าอุโมงค์
+  { kind: 'obstacle', diff: 3 },    // 23 หลุมกว้างเดี่ยว (ท่อนสอนของอวกาศ)
+  { kind: 'challenge', diff: 5 },   // 24 หลุมกว้างสองหลุมติด
+  { kind: 'challenge', diff: 4 },   // 25 หลุมกว้างแล้วต่อคาน
+  { kind: 'challenge', diff: 4 },   // 26 กระโดด-หมอบ-กระโดด
+  { kind: 'challenge', diff: 4 },   // 27 หมอบ-กระโดด-หมอบ
+  { kind: 'challenge', diff: 5 },   // 28 สลับสี่จังหวะรวด
 ];
 
 /**
@@ -655,7 +801,48 @@ export function composeRoute(pool, count = 20, rnd = Math.random) {
     owed = kind === 'challenge' && streak >= 2;
     out.push({ p });
   }
+
+  sprinklePickups(out, rnd);
   return out;
+}
+
+/**
+ * โรยของเก็บลงบนลำดับท่อนที่สุ่มมาแล้ว
+ *
+ * ── ทำไมต้องมีขั้นนี้แยกต่างหาก ──
+ * ตอนที่ยังเขียน route ด้วยมือ ของเก็บติดมากับแต่ละบรรทัดอยู่แล้ว
+ * ({ p: 9, kibble: 'alternate', letter: true }) พอเปลี่ยนมาสุ่มลำดับท่อนเอง
+ * ผลลัพธ์เหลือแค่ { p } ล้วน ๆ ของเก็บทั้งหมดจึงหายไปเงียบ ๆ ทั้งเกม —
+ * ไม่มีตัวอักษร ไม่มีโล่ ไม่มีแม่เหล็ก ไม่มีเม็ดขนม กุ้ง หรือหญ้าเร่งสปีดเลย
+ * ขั้นนี้คือขั้นที่เอากลับมา โดยคุมความถี่ให้เท่ากับของเดิมที่เคยปรับจนลงตัวแล้ว
+ *
+ * ความถี่ต่อ 20 ท่อน (นับจาก route เดิม): ตัวอักษร 5 / เม็ดขนม 5 / หญ้า 3
+ * โล่ 2 / กุ้ง 2 / แม่เหล็ก 2
+ */
+function sprinklePickups(out, rnd) {
+  const n = out.length;
+  const isChallenge = (i) => PATTERN_META[out[i].p].kind === 'challenge';
+
+  // เว้นท่อนแรกไว้เสมอ เป็นท่อนเปิดฉากที่ต้องโล่ง ๆ ให้ตั้งตัว
+  const place = (every, set, avoidChallenge = false) => {
+    for (let i = 1 + Math.floor(rnd() * 2); i < n; i += every) {
+      let at = Math.min(n - 1, i + (rnd() < 0.5 ? 0 : 1));
+      // ตัวอักษรกับของสำคัญไม่ควรไปตกอยู่กลางท่อนยาก ๆ จนเก็บไม่ได้จริง
+      if (avoidChallenge && isChallenge(at)) {
+        const alt = [at - 1, at + 1].find((k) => k > 0 && k < n && !isChallenge(k));
+        if (alt !== undefined) at = alt;
+      }
+      set(out[at], at);
+    }
+  };
+
+  place(4, (st) => { st.letter = true; }, true);
+  place(4, (st, i) => { st.kibble = i % 2 ? 'cluster' : 'alternate'; });
+  place(7, (st) => { st.nip = true; }, true);
+  place(10, (st) => { st.shield = true; }, true);
+  place(10, (st) => { st.magnet = true; }, true);
+  // กุ้งเขียนทับเม็ดขนมใน spawnChunk จึงไม่วางซ้อนท่อนเดียวกัน จะได้ได้ของครบทั้งสองอย่าง
+  place(10, (st) => { if (!st.kibble) st.shrimp = true; });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -733,6 +920,7 @@ export class Level {
     this.letters = [];
     this.nips = [];
     this.fallers = [];       // ของร่วงจากเพดาน เป็นอันตราย ไม่ใช่ของเก็บ
+    this.hazards = [];       // อันตรายที่ขยับได้ (ไฟ / ผึ้ง / ลูกบอล)
     this.nextChunkX = 900;   // เว้นที่ว่างตอนเริ่มเกม
     this.chunkIndex = 0;
   }
@@ -849,6 +1037,106 @@ export class Level {
     }
     this.fallers = this.fallers.filter((f) => !f.dead);
     return landed;
+  }
+
+  /**
+   * วางอันตรายที่ขยับได้หนึ่งชิ้น — ชิ้นส่วนกลางของครัว/สวน/ชายหาด
+   *
+   * วางเฉพาะจุดโล่งด้วยเหตุผลเดียวกับของร่วง: ถ้าไปซ้อนกับคานหรือหลุม
+   * ผู้เล่นจะเจอสองอย่างพร้อมกันโดยมีทางออกเดียวซึ่งอาจไม่มีอยู่จริง
+   */
+  spawnHazard(kind, fromX, camera) {
+    const limit = fromX + chunkW;
+    for (let x = fromX; x < limit; x += 24) {
+      if (!this.isClearSpot(x)) continue;
+
+      if (kind === 'flame') {
+        const f = HAZARD.flame;
+        this.hazards.push({
+          kind, x, w: f.w,
+          // เริ่มที่ช่วงดับเสมอ ผู้เล่นจึงเห็นมันก่อนที่มันจะติดครั้งแรก
+          phase: 'off', t: f.offFrames,
+          // สุ่มว่ารอบแรกจะติดที่พื้นหรือเพดาน เฟสจึงไม่ซ้ำกันทุกต้น
+          at: Math.random() < 0.5 ? 'ground' : 'ceil',
+        });
+      } else if (kind === 'bee') {
+        const b = HAZARD.bee;
+        this.hazards.push({
+          kind, x, w: b.w, h: b.h,
+          t: Math.random() * Math.PI * 2,   // เฟสแกว่งไม่ตรงกันทุกตัว
+          y: b.midY,
+        });
+      } else if (kind === 'ball') {
+        const b = HAZARD.ball;
+        // ลูกบอลเป็นชนิดเดียวที่ "เคลื่อนที่หลังเกิด" จุดโล่งตอนเกิดจึงไม่พอ
+        // มันกลิ้งสวนมาเรื่อย ๆ ถ้าไปหยุดอยู่ใต้คานพอดี ผู้เล่นจะต้องหมอบ (ลุกไม่ได้)
+        // แล้วโดนบอลชนโดยไม่มีทางเลี่ยง = แพตเทิร์นที่หลบไม่ได้ ซึ่งผิดกฎ
+        // จึงต้องเช็คว่า "ทางที่มันจะกลิ้งผ่าน" โล่งด้วย ไม่ใช่แค่จุดที่มันเกิด
+        if (!this.isBallLaneClear(x, camera)) continue;
+        this.hazards.push({ kind, x, w: b.r * 2, h: b.r * 2, y: GROUND_Y - b.r * 2, spin: 0 });
+      }
+      return;
+    }
+  }
+
+  /**
+   * ทางที่ลูกบอลจะกลิ้งผ่านก่อนเจอผู้เล่น โล่งตลอดหรือไม่
+   *
+   * ── ทำไมต้องคำนวณจากจุดเกิดจริง ไม่ใช่ค่าคงที่ ──
+   * spawnHazard ไล่หาจุดโล่งไปทางขวาเรื่อย ๆ จุดเกิดจริงจึงเลื่อนออกไปได้ไกล
+   * ยิ่งเกิดไกล ยิ่งใช้เวลานานกว่าจะเจอผู้เล่น และยิ่งกลิ้งได้ไกลขึ้นตาม
+   * ถ้าใช้ระยะตายตัวจะตรวจไม่ครบ แล้วมีบอลหลุดไปติดใต้คานอยู่ดี
+   *
+   *   เวลาที่ใช้จนเจอกัน = ระยะห่าง / (ความเร็วฉาก + ความเร็วบอล)
+   *   ระยะที่บอลกลิ้งเอง = เวลานั้น x ความเร็วบอล
+   */
+  isBallLaneClear(x, camera) {
+    const px = camera + PLAYER_X;
+    const roll = ((x - px) / (SPEED.run + HAZARD.ball.speed)) * HAZARD.ball.speed;
+    // เผื่อความกว้างของบอลกับคาน เพราะ isClearSpot ตรวจทีละจุด ไม่ได้ตรวจทั้งกล่อง
+    const lane = roll + HAZARD.ball.r * 2 + 60;
+    for (let d = 0; d <= lane; d += 20) {
+      if (!this.isClearSpot(x - d)) return false;
+    }
+    return true;
+  }
+
+  /** เดินอันตรายที่ขยับได้หนึ่งเฟรม แล้วทิ้งชิ้นที่พ้นจอไปแล้ว */
+  updateHazards(dt, camera) {
+    for (const h of this.hazards) {
+      if (h.kind === 'flame') {
+        const f = HAZARD.flame;
+        h.t -= dt;
+        if (h.t <= 0) {
+          if (h.phase === 'off') { h.phase = 'on'; h.t = f.onFrames; }
+          // ดับแล้วสลับข้าง รอบหน้าจึงเป็นท่าตรงข้าม
+          else { h.phase = 'off'; h.t = f.offFrames; h.at = h.at === 'ground' ? 'ceil' : 'ground'; }
+        }
+      } else if (h.kind === 'bee') {
+        const b = HAZARD.bee;
+        h.t += b.speed * dt;
+        h.y = b.midY + Math.sin(h.t) * b.amp;
+      } else if (h.kind === 'ball') {
+        h.x -= HAZARD.ball.speed * dt;   // กลิ้งสวนทางที่แมววิ่ง
+        h.spin -= 0.12 * dt;
+      }
+    }
+    this.hazards = this.hazards.filter((h) => h.x + h.w > camera - 120);
+  }
+
+  /**
+   * กล่องชนของอันตรายชิ้นหนึ่ง — คืน null ถ้าตอนนี้ยังไม่อันตราย
+   * แยกออกมาเพราะไฟมีช่วงดับ และรูปทรงต่างกันตามชนิด
+   */
+  hazardBox(h) {
+    if (h.kind === 'flame') {
+      if (h.phase !== 'on') return null;              // ช่วงดับ ผ่านได้
+      const f = HAZARD.flame;
+      return h.at === 'ground'
+        ? { x: h.x, y: GROUND_Y - f.groundH, w: f.w, h: f.groundH }
+        : { x: h.x, y: 0, w: f.w, h: f.ceilH };
+    }
+    return { x: h.x, y: h.y, w: h.w, h: h.h };
   }
 
   /** จุดที่ห่างจากหนาม คาน และหลุมพอที่จะกระโดดเก็บได้โดยไม่โดนอะไร */

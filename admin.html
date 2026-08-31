@@ -54,6 +54,7 @@
         <button class="tab" data-page="players">ผู้เล่น</button>
         <button class="tab" data-page="scores">คะแนน</button>
         <button class="tab" data-page="pulls">กาช่า</button>
+        <button class="tab" data-page="mail">จดหมาย</button>
         <button class="tab" data-page="audit">ตรวจผิดปกติ</button>
       </nav>
       <div class="who">
@@ -78,6 +79,30 @@
 
     <!-- แถบแจ้งผลมุมล่าง บอกว่าบันทึก/ลบสำเร็จหรือพัง -->
     <div class="toast hidden" id="toast"></div>
+
+    <!-- ── กล่องยืนยันของหน้านี้เอง ────────────────────────────
+         แทน confirm()/prompt() ของเบราว์เซอร์ ซึ่งมีปัญหาสามอย่างกับงานแบบนี้:
+           1. หน้าตาเป็นของระบบปฏิบัติการ ไม่เข้ากับหน้าเว็บเลย
+           2. จัดรูปแบบข้อความไม่ได้ ตัวเลขสำคัญกับคำเตือนเน้นไม่ได้
+           3. บล็อกทั้งหน้าจนเบราว์เซอร์บางตัวขึ้นช่องให้ติ๊ก "ไม่ต้องแสดงอีก"
+              ซึ่งถ้าผู้ใช้ติ๊ก การยืนยันจะหายไปเงียบ ๆ — อันตรายมากกับปุ่มลบ
+
+         โครงเดียวใช้ได้ทั้งแบบกดยืนยันเฉย ๆ และแบบต้องพิมพ์ข้อความยืนยัน
+         ช่องพิมพ์จะซ่อนไว้เมื่อไม่ได้ขอให้พิมพ์ -->
+    <div class="modal hidden" id="modal">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <b class="modal-title" id="modalTitle"></b>
+        <div class="modal-body" id="modalBody"></div>
+        <label class="modal-field hidden" id="modalField">
+          <span id="modalLabel"></span>
+          <input type="text" id="modalInput" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="modal-actions">
+          <button class="btn ghost" id="modalCancel">ยกเลิก</button>
+          <button class="btn danger" id="modalOk">ยืนยัน</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/admin/main.js"></script>

@@ -299,8 +299,163 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .toast.bad { border-color: var(--danger); color: var(--danger); }
 .toast.good { border-color: var(--mint); color: var(--mint); }
 
+/* ── กล่องยืนยัน ────────────────────────────────
+   z-index สูงกว่า drawer (30) กับ toast (40) เพราะกล่องนี้เปิดทับลิ้นชัก
+   ตอนกดลบจากในลิ้นชัก ถ้าอยู่ต่ำกว่าจะโดนลิ้นชักบังจนกดไม่ได้ */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(10, 7, 16, .72);
+}
+.modal-box {
+  width: min(100%, 440px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+  animation: modalIn .16s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-box { animation: none; }
+}
+.modal-title {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+/* ตัวเลข/ชื่อที่กำลังจะโดนลบต้องเด่นกว่าคำอธิบายรอบตัว
+   เพราะเป็นสิ่งเดียวที่ต้องอ่านจริงก่อนกดยืนยัน */
+.modal-body {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.modal-body b { color: var(--ink); }
+.modal-body .warn { color: var(--danger); }
+.modal-field {
+  display: block;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--dim);
+}
+.modal-field input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+}
+.modal-field input:focus {
+  outline: none;
+  border-color: var(--violet);
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 @media (max-width: 640px) {
   .top { gap: 10px; padding: 10px 12px; }
   .page { padding: 12px; }
   .row2 { grid-template-columns: 1fr; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions .btn { width: 100%; }
+}
+
+/* ── หน้าส่งจดหมาย ─────────────────────────────────────────── */
+.mailform {
+  display: grid;
+  gap: 14px;
+  max-width: 620px;
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--card, #171528);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.fld { display: grid; gap: 6px; }
+.fld > span { font-size: 12.5px; color: #A99CC4; }
+.fld input, .fld textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.28);
+  color: #EFE9FA;
+  font: inherit;
+  font-size: 13.5px;
+}
+.fld textarea { resize: vertical; line-height: 1.55; }
+.fld input:focus, .fld textarea:focus { outline: 2px solid #7C5BD6; outline-offset: 1px; }
+
+/* ปุ่มสลับโหมดผู้รับ — สองปุ่มติดกันเป็นชุดเดียว อ่านออกทันทีว่าเลือกได้อย่างเดียว */
+.modes { display: flex; gap: 0; width: max-content; border-radius: 9px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.14); }
+.mode {
+  padding: 7px 16px;
+  border: 0;
+  background: rgba(0,0,0,.28);
+  color: #A99CC4;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mode + .mode { border-left: 1px solid rgba(255,255,255,.14); }
+.mode:hover { color: #EFE9FA; }
+/* โหมดที่เลือกอยู่ต้องต่างชัด เพราะกดผิดโหมดแล้วส่งทั้งเซิร์ฟคือเรื่องใหญ่ */
+.mode.on { background: #7C5BD6; color: #fff; font-weight: 600; }
+
+.pickrow { display: flex; gap: 8px; }
+.pickrow input { flex: 1; }
+
+/* รายชื่อที่ค้นเจอ — จำกัดความสูงไว้ ไม่ให้ดันฟอร์มที่อยู่ล่างหายไปจากจอ */
+.found { display: grid; gap: 4px; max-height: 210px; overflow-y: auto; }
+.found:empty { display: none; }
+.foundrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: #EFE9FA;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.foundrow:hover { background: rgba(124,91,214,.24); border-color: rgba(124,91,214,.5); }
+.foundrow span { color: #A99CC4; font-size: 12px; }
+
+.picked { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+
+/* ทองกับเพชรอยู่แถวเดียวกัน เพราะเป็นของชนิดเดียวกันที่ต้องกรอกคู่กันเสมอ */
+.giftrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.sendrow { display: flex; align-items: center; gap: 12px; }
+
+.mailsent { margin: 26px 0 10px; font-size: 15px; }
+
+@media (max-width: 560px) {
+  .giftrow { grid-template-columns: 1fr; }
 }

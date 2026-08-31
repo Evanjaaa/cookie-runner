@@ -1397,6 +1397,9 @@ canvas { display: block; width: 100%; height: auto; }
 /* ใช้ทรงแผ่นม่วงนูนชุดเดียวกับปุ่มล็อบบี้ การ์ดบัญชี และป้ายชื่อเกม */
 .skin-card {
   position: relative;   /* ยึดป้ายระดับไว้ที่มุมการ์ด */
+  /* ขอบล่างของรูป = padding-top + ความสูงรูป ป้ายราคาเกาะค่านี้
+     ทุกเบรกพอยต์ที่ย่อการ์ดต้องอัปเดตค่านี้ด้วย ไม่งั้นป้ายจะลอยผิดที่ */
+  --thumb-bottom: 96px;
   width: 124px;
   padding: 10px 9px 11px;
   border-radius: 16px;
@@ -1435,7 +1438,18 @@ canvas { display: block; width: 100%; height: auto; }
   display: grid;
   place-items: center;
 }
-.skin-card small { font-size: 11px; color: #EBDCF8; line-height: 1.3; }
+.skin-card small {
+  font-size: 11px;
+  color: #EBDCF8;
+  line-height: 1.3;
+  /* ตรึงความสูงบรรทัดนี้ ไม่งั้นการ์ดที่โชว์ราคา (มีไอคอนเหรียญ) จะสูงกว่าการ์ดที่เป็น
+     ข้อความเปล่าอยู่ 16px แล้วแถวการ์ดจะสูงไม่เท่ากันเวลาขึ้นบรรทัดใหม่ */
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
 
 /* ── ป้ายโบนัสคะแนนบนการ์ดชุด ─────────────────
    ตัวเลขนี้คือเหตุผลเดียวที่ชุดระดับสูงมีค่ากว่าระดับกลาง จึงต้องเด่นพอ ๆ กับชื่อ
@@ -1540,6 +1554,53 @@ canvas { display: block; width: 100%; height: auto; }
 .skin-card.locked canvas { filter: grayscale(1) brightness(.72); }
 /* ป้ายระดับห้ามจาง — เป็นข้อมูลชิ้นเดียวที่บอกว่าชิ้นนี้คุ้มค่าตามเก็บแค่ไหน */
 .t-card.locked .tier-badge, .skin-card.locked .tier-badge { opacity: 1; }
+
+/* กุญแจล็อกบนการ์ดแมวที่ยังไม่ได้ซื้อ
+   วางมุมบนขวาที่เดียวกับป้ายระดับ เพราะเป็นข้อมูล "สถานะการ์ด" เหมือนกัน
+   ห้ามจางตาม .locked เพราะเป็นตัวบอกเหตุผลว่าทำไมการ์ดถึงจาง */
+.skin-card .lock-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(24,12,40,.82);
+  border: 1.5px solid rgba(255,255,255,.28);
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+.skin-card.locked .lock-badge { opacity: 1; }
+
+/* ราคาแปะทับขอบล่างของรูป — วางแบบ absolute จึงไม่กินความสูงของการ์ด
+   การ์ดที่ล็อกกับไม่ล็อกเลยสูงเท่ากันทุกจอ
+   ห้ามจางตาม .locked เพราะราคาคือข้อมูลที่ต้องอ่านออกที่สุดบนการ์ดใบนั้น */
+.skin-card .price-tag {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(var(--thumb-bottom) - 9px);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 4px;
+  border-radius: 999px;
+  background: rgba(24,12,40,.9);
+  border: 1.5px solid rgba(255,228,155,.5);
+  color: #FFE49B;
+  font-family: "Mitr", sans-serif;
+  font-weight: 700;
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 1;
+}
+.skin-card.locked .price-tag { opacity: 1; }
+.skin-card .price-tag .coin { width: 11px; height: 11px; flex: none; }
 
 /* หน้ารายละเอียดของชิ้นที่ยังไม่มี — ไอคอนใหญ่ต้องขาวดำเหมือนบนการ์ด
    ไม่งั้นกดจากการ์ดขาวดำเข้ามาแล้วเจอไอคอนสีสด จะอ่านผิดว่า "มีแล้ว" */
@@ -3094,6 +3155,10 @@ canvas { display: block; width: 100%; height: auto; }
      ถ้าหายไปด้วย หน้าสุ่มจะเหลือแค่ปุ่มโดยไม่บอกอะไรเลยว่ากดแล้วได้อะไร */
   .panel p { display: none; }
   .panel p.gacha-owned { display: block; }
+  /* ยอดคงเหลือหลังจ่ายก็เข้าข่ายเดียวกับ .gacha-owned — เป็นตัวเลขที่ใช้ตัดสินใจ
+     ไม่ใช่คำบรรยาย ถ้าซ่อนไป กล่องยืนยันจะบอกแค่ราคาโดยไม่บอกว่าจ่ายแล้วเหลือเท่าไหร่
+     ส่วน .confirm-body เป็นคำโปรยของแมว ปล่อยให้ซ่อนตามเดิมได้ */
+  .panel p.confirm-after { display: block; }
   .btn {
     margin-top: 2px;
     font-size: 14px;
@@ -3978,7 +4043,7 @@ canvas { display: block; width: 100%; height: auto; }
      ต้องเขียนซ้ำในบล็อกนี้ เพราะกฎ .panel h2 ข้างบนจำเพาะเท่ากันแต่อยู่ก่อนหน้า */
   .gacha-head h2 { font-size: 21px; }
   .skin-grid { gap: 6px; }
-  .skin-card { width: 78px; padding: 4px 4px 6px; gap: 2px; border-radius: 11px; }
+  .skin-card { width: 78px; padding: 4px 4px 6px; gap: 2px; border-radius: 11px; --thumb-bottom: 48px; }
   .skin-card canvas { width: 44px; height: 44px; border-radius: 8px; }
   .skin-card b { font-size: 11px; }
   /* ต้องย่อ .t-card ในทุกบล็อกที่ย่อ .t-card เอง ไม่งั้นกฎ .skin-card ที่อยู่
@@ -4172,7 +4237,7 @@ canvas { display: block; width: 100%; height: auto; }
    * บนจอกว้างขนาดนี้การ์ดเล็กแบบนั้นลอยเป็นจุดเล็ก ๆ กลางแผงว่างเปล่า
    *
    * ขยายตามความกว้างที่มีจริง แต่คุมความสูงไว้ให้ยังเหลือที่ให้เลื่อนดูแถวสอง */
-  .skin-card { width: 108px; padding: 7px 7px 9px; gap: 3px; border-radius: 14px; }
+  .skin-card { width: 108px; padding: 7px 7px 9px; gap: 3px; border-radius: 14px; --thumb-bottom: 73px; }
   .skin-card canvas { width: 66px; height: 66px; border-radius: 11px; }
   .skin-card b { font-size: 12.5px; min-height: 2.4em; }
   .t-card { width: 80px; padding: 6px 5px 7px; gap: 2px; border-radius: 12px; }
@@ -4465,3 +4530,51 @@ canvas { display: block; width: 100%; height: auto; }
   .title-logo.logo-plate { animation: none; }
   .btn.big { animation: none; }
 }
+
+/* ── กล่องยืนยัน ───────────────────────────────────────────
+   ใช้ทรง .pop เดียวกับแผงอื่น ต่างแค่แคบกว่าและมีปุ่มสองอัน
+   แคบกว่าตั้งใจ เพราะกล่องยืนยันต้องอ่านจบในสายตาเดียว ไม่ใช่หน้าที่ต้องกวาดอ่าน */
+.confirm-pop { width: min(340px, 100%); gap: 10px; }
+
+.confirm-art {
+  width: 84px;
+  height: 84px;
+  border-radius: 14px;
+  background: rgba(34,14,54,.55);
+  border: 1px solid rgba(255,243,226,.16);
+}
+
+.confirm-title {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(15px, 2.4vw, 18px);
+  color: var(--cream);
+  line-height: 1.35;
+}
+
+.confirm-body { margin: 0; font-size: 12.5px; color: #E4D4F5; line-height: 1.5; }
+
+/* ราคาเป็นตัวเลขใหญ่สุดในกล่อง — เป็นสิ่งเดียวที่ผู้เล่นต้องเห็นก่อนกดยืนยัน */
+.confirm-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 16px 6px 11px;
+  border-radius: 999px;
+  background: rgba(24,12,40,.75);
+  border: 1.5px solid rgba(255,228,155,.45);
+  color: #FFE49B;
+  font-family: "Mitr", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.4;
+}
+.confirm-cost .coin { width: 21px; height: 21px; }
+
+/* บรรทัดบอกยอดคงเหลือหลังจ่าย จางกว่าราคาหนึ่งขั้น เป็นข้อมูลประกอบไม่ใช่ตัวตัดสิน */
+.confirm-after { margin: 0; font-size: 11.5px; color: #C6B2DE; line-height: 1.4; }
+.confirm-after.bad { color: #FF9BB0; }
+
+.confirm-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+/* ปุ่มยกเลิกต้องไม่เล็กกว่าปุ่มยืนยัน ไม่งั้นกลายเป็นบังคับให้กดซื้อ */
+.confirm-btns .btn { min-width: 116px; }

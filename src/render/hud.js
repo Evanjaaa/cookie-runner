@@ -1,5 +1,5 @@
 // src/render/hud.js
-import { VIEW, HEALTH, WORD, COLORS as C } from '../config.js';
+import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
 
@@ -188,11 +188,20 @@ function drawWord(ctx, game) {
     ctx.translate(x + size / 2, y + size / 2);
 
     if (got) {
-      ctx.fillStyle = C.letter;
+      // ใช้สีประจำตัวเดียวกับลูกอมในฉาก ผู้เล่นจึงโยงได้ทันทีว่าเก็บตัวไหนไปแล้ว
+      // ถ้าช่องที่เก็บแล้วเป็นสีเดียวกันหมด แถบนี้จะบอกได้แค่ "จำนวน" ไม่ได้บอก "ตัวไหน"
+      const col = LETTER_COLORS[i % LETTER_COLORS.length];
+      ctx.fillStyle = col.main;
       ctx.beginPath();
       ctx.roundRect(-size / 2, -size / 2, size, size, 7);
       ctx.fill();
-      ctx.fillStyle = C.letterLite;
+      // เส้นขอบอ่อนด้านบน ทำให้ช่องดูนูนเข้าชุดกับลูกอม
+      ctx.strokeStyle = col.lite;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(-size / 2 + 0.7, -size / 2 + 0.7, size - 1.4, size - 1.4, 6);
+      ctx.stroke();
+      ctx.fillStyle = col.lite;
       ctx.fillText(WORD[i], 0, 0.5);
     } else {
       ctx.globalAlpha = 0.36;

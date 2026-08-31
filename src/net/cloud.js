@@ -244,6 +244,71 @@ export async function fetchPlayer() {
   }
 }
 
+// ── จดหมายจากแอดมิน ─────────────────────────────────────────
+//
+// อยู่คนละตารางกับ players.mail โดยตั้งใจ — ดู supabase/mail.sql
+// ฝั่งนี้ทำได้แค่อ่านกับกดรับ เขียนเองไม่ได้เลย ของขวัญจึงปลอมไม่ได้
+
+/**
+ * จดหมายที่ส่งถึงเราจากแอดมิน พร้อมสถานะว่ารับของไปแล้วหรือยัง
+ *
+ * ยิงสองคำขอแล้วประกบกันเอง แทนที่จะ join ในฐานข้อมูล
+ * เพราะ RLS ของสองตารางคนละเงื่อนไขกัน (ฉบับส่งทั้งเซิร์ฟไม่มี player_id)
+ * การ join ข้ามเงื่อนไขแบบนั้นเขียนให้ถูกยากกว่าประกบสองรายการสั้น ๆ ตรงนี้
+ */
+export async function fetchMail() {
+  const c = await client();
+  if (!c || !uid) return [];
+  try {
+    const [box, claims] = await Promise.all([
+      c.from('mail_outbox')
+        .select('id, sender, title, body, gold, gems, sent_at')
+        .order('sent_at', { ascending: false })
+        .limit(50),
+      c.from('mail_claims').select('mail_id'),
+    ]);
+    if (box.error) throw box.error;
+
+    // อ่านสถานะรับของไม่ได้ ไม่ใช่เหตุให้ซ่อนจดหมาย — ให้ถือว่ายังไม่รับไว้ก่อน
+    // ถ้ากดรับซ้ำ ฝั่งฐานข้อมูลกันให้อยู่แล้ว จึงไม่มีทางได้ของเกินจากตรงนี้
+    const got = new Set((claims.error ? [] : claims.data || []).map((r) => r.mail_id));
+
+    return (box.data || []).map((m) => ({
+      id: m.id,
+      from: m.sender,
+      title: m.title,
+      body: m.body,
+      at: (m.sent_at || '').slice(0, 10),
+      reward: (m.gold || m.gems) ? { gold: m.gold || 0, gems: m.gems || 0 } : null,
+      claimed: got.has(m.id),
+      cloud: true,          // บอก mail.js ว่าฉบับนี้ต้องกดรับผ่านคลาวด์
+    }));
+  } catch (e) {
+    console.warn('[cloud] อ่านจดหมายไม่ได้', e.message || e);
+    return [];
+  }
+}
+
+/**
+ * กดรับของขวัญหนึ่งฉบับ
+ *
+ * การบวกทองกับเพชรเกิดขึ้นฝั่งฐานข้อมูล ไม่ใช่ที่นี่ — ดูเหตุผลใน mail.sql
+ * คืน { ok, gold, gems } โดย ok=false แปลว่าเคยรับไปแล้ว ไม่ใช่ว่าพัง
+ */
+export async function claimMail(mailId) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, offline: true };
+  try {
+    const { data, error } = await c.rpc('claim_mail', { p_mail_id: mailId });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { ok: Boolean(row && row.claimed), gold: row?.gold || 0, gems: row?.gems || 0 };
+  } catch (e) {
+    console.warn('[cloud] กดรับของขวัญไม่ได้', e.message || e);
+    return { ok: false, offline: true };
+  }
+}
+
 /** อ่านสถิติสูงสุดทุกด่านของตัวเอง คืนเป็น { stageId: score } */
 export async function fetchBests() {
   const c = await client();
