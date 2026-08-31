@@ -1,5 +1,5 @@
 // src/render/entities.js
-import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, COLORS as C } from '../config.js';
+import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, LETTER_COLORS, COLORS as C } from '../config.js';
 
 const { W } = VIEW;
 
@@ -502,6 +502,132 @@ const FALLER_TINT = {
   space:  { body: '#9DFF6B', lit: 'rgba(255,255,255,.6)', warn: 'rgba(157,255,107,.8)' },
   snow:   { body: '#A8DCF2', lit: 'rgba(255,255,255,.85)', warn: 'rgba(110,150,175,.8)' },
 };
+
+// ── อันตรายที่ขยับได้ ────────────────────────────────────────
+//
+// สามชนิดใช้ระบบเดียวกัน (ดู HAZARD ใน config.js) ต่างกันแค่ภาพกับการเคลื่อนที่
+// สิ่งที่ทุกชนิดต้องมีเหมือนกันคือ "อ่านสถานะได้ก่อนถึงตัว"
+export function drawHazards(ctx, hazards, camera, tick, pal) {
+  for (const h of hazards) {
+    const x = h.x - camera;
+    if (x > W + 120 || x + h.w < -120) continue;
+
+    if (h.kind === 'flame') drawFlame(ctx, h, x, tick);
+    else if (h.kind === 'bee') drawBee(ctx, h, x, tick);
+    else drawBall(ctx, h, x, pal);
+  }
+}
+
+/**
+ * ไฟเตาอบ — สลับติดที่พื้น (ต้องกระโดด) กับที่เพดาน (ต้องหมอบ)
+ *
+ * ช่วงดับยังต้องวาดหัวฉีดค้างไว้ ไม่ใช่หายไปเลย ผู้เล่นจึงเห็นว่า
+ * "ตรงนี้มีไฟ และรอบหน้าจะพ่นจากทางไหน" ตั้งแต่ยังวิ่งมาไม่ถึง
+ */
+function drawFlame(ctx, h, x, tick) {
+  const F = { w: 44, groundH: 54, ceilH: 88 };
+  const fromGround = h.at === 'ground';
+  const nozzleY = fromGround ? GROUND_Y - 6 : 0;
+
+  // หัวฉีดโลหะ — อยู่ตลอดเวลาไม่ว่าไฟติดหรือดับ
+  ctx.fillStyle = '#5A4A3A';
+  ctx.fillRect(x - 3, fromGround ? GROUND_Y - 10 : 0, F.w + 6, 10);
+
+  if (h.phase !== 'on') {
+    // ช่วงดับ — เรืองอ่อน ๆ บอกว่ากำลังจะติด และติดจากทางไหน
+    const warm = 0.25 + Math.sin(tick * 0.2) * 0.12;
+    ctx.globalAlpha = warm;
+    ctx.fillStyle = '#FF8A3C';
+    ctx.fillRect(x + 4, fromGround ? GROUND_Y - 16 : 8, F.w - 8, 8);
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  // ไฟติด — เปลวสามชั้นซ้อน ยิ่งในยิ่งสว่าง ขอบวูบตามเวลา
+  const len = fromGround ? F.groundH : F.ceilH;
+  const layers = [
+    { c: '#FF5C2E', k: 1.0 },
+    { c: '#FFA23C', k: 0.72 },
+    { c: '#FFE28A', k: 0.4 },
+  ];
+  for (const L of layers) {
+    const w = F.w * L.k;
+    const cx = x + F.w / 2;
+    const flick = 1 + Math.sin(tick * 0.55 + L.k * 4) * 0.08;
+    const tipY = fromGround ? nozzleY - len * L.k * flick : nozzleY + len * L.k * flick;
+    ctx.fillStyle = L.c;
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2, nozzleY);
+    ctx.quadraticCurveTo(cx - w * 0.28, (nozzleY + tipY) / 2, cx, tipY);
+    ctx.quadraticCurveTo(cx + w * 0.28, (nozzleY + tipY) / 2, cx + w / 2, nozzleY);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** ผึ้ง — แกว่งขึ้นลง ปีกกระพือถี่ให้รู้ว่าเป็นของมีชีวิตที่ขยับเอง */
+function drawBee(ctx, h, x, tick) {
+  const cx = x + h.w / 2;
+  const cy = h.y + h.h / 2;
+
+  // ปีกใส กระพือเร็วกว่าการแกว่งมาก
+  // ปีกขาวโปร่งล้วนจะจมหายไปกับฟ้าสว่างของสวน ต้องตีเส้นขอบเข้มไว้ด้วย
+  const flap = Math.abs(Math.sin(tick * 0.7)) * 5 + 3;
+  ctx.strokeStyle = 'rgba(60,50,20,.45)';
+  ctx.lineWidth = 1.2;
+  for (const dx of [-6, 6]) {
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.ellipse(cx + dx, cy - 9, 7, flap, dx < 0 ? -0.4 : 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.stroke();
+  }
+
+  // ตัว
+  ctx.fillStyle = '#F5B31E';
+  ctx.beginPath(); ctx.ellipse(cx, cy, h.w / 2, h.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+  // ลายขวางสองเส้น ตัดด้วย clip ให้อยู่ในลำตัว
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = '#3A2A12';
+  ctx.fillRect(cx - 4, cy - h.h, 5, h.h * 2);
+  ctx.fillRect(cx + 5, cy - h.h, 5, h.h * 2);
+  ctx.restore();
+  // ตา
+  ctx.fillStyle = '#2A1E0C';
+  ctx.beginPath(); ctx.arc(cx - h.w * 0.3, cy - 2, 2.6, 0, Math.PI * 2); ctx.fill();
+}
+
+/** ลูกบอลชายหาด — หมุนตามที่กลิ้ง ผู้เล่นจึงเห็นว่ามันเคลื่อนที่เข้าหาจริง ๆ */
+function drawBall(ctx, h, x, pal) {
+  const r = h.w / 2;
+  const cx = x + r;
+  const cy = h.y + r;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(h.spin);
+  // เสี้ยวสลับสี — ตัวที่ทำให้เห็นการหมุน ถ้าเป็นวงกลมสีเดียวจะดูเหมือนลอยนิ่ง
+  const cols = ['#FF7E6B', '#FFF1DC', '#4FC9E8', '#FFF1DC'];
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = cols[i];
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, (i * Math.PI) / 2, ((i + 1) * Math.PI) / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = 'rgba(90,40,60,.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  // เงาบนพื้น ให้อ่านว่ากลิ้งอยู่บนพื้นไม่ใช่ลอย
+  ctx.fillStyle = 'rgba(90,50,30,.28)';
+  ctx.beginPath();
+  ctx.ellipse(cx, GROUND_Y - 2, r * 0.9, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
 
 // ── ชุดภาพธีมชายหาดยามเย็น ───────────────────────────────────
 // กินพื้นที่เท่ากับหนาม/คาน/กล่องลังของธีมกลางคืนทุกมิติ ตามกฎในหัว stages.js
@@ -1415,37 +1541,88 @@ export function drawNips(ctx, nips, camera, tick) {
 // ── ตัวอักษร SPEEDCAT ────────────────────────────────────────
 
 /** เหรียญตัวอักษรหนึ่งตัว — วงกลมม่วงมีอักษรตรงกลาง */
-export function drawLetterCoin(ctx, x, y, r, ch, t = 0) {
-  ctx.save();
-  ctx.translate(x, y);
-  // หมุนแกว่งเบา ๆ เหมือนเหรียญห้อยอยู่ ไม่ใช่ป้ายติดกลางอากาศ
-  ctx.rotate(Math.sin(t * 0.045 + x * 0.01) * 0.14);
+/**
+ * ตัวอักษรโบนัสหนึ่งตัว — ลูกอมเคลือบเงา สีประจำตัวของมันเอง
+ *
+ * ── ทำไมเป็นสี่เหลี่ยมมนไม่ใช่วงกลม ──
+ * ในจอมีของกลม ๆ เยอะแล้ว (ปลา ขนม ลูกบอล) ตัวอักษรต้องแยกออกจากพวกนั้นทันที
+ * สี่เหลี่ยมมนยังตรงกับช่องสะสมบน HUD ด้วย ผู้เล่นจึงโยงได้เองว่าเก็บแล้วไปโผล่ตรงไหน
+ *
+ * ── ทำไมต้องมีขอบขาว ──
+ * ฉากมี 6 แบบ สีพื้นหลังต่างกันมาก ถ้าใช้แค่สีลูกอมล้วน ตัวเหลืองจะจมหายไปกับ
+ * ฟ้าสว่างของสวน และตัวม่วงจะจมไปกับถ้ำ ขอบขาวทำให้ทุกสีลอยออกมาเท่ากันทุกฉาก
+ *
+ * idx = ลำดับตัวอักษรใน WORD ใช้เลือกสี ถ้าไม่ส่งมาจะหาเอาจากตัวอักษร
+ */
+export function drawLetterCoin(ctx, x, y, r, ch, t = 0, idx = -1) {
+  const i = idx >= 0 ? idx : Math.max(0, WORD.indexOf(ch));
+  const col = LETTER_COLORS[i % LETTER_COLORS.length];
+  const d = r * 2;
+  const rad = r * 0.52;                       // มุมมนเยอะ ๆ ให้ดูเป็นลูกอมไม่ใช่ป้าย
 
   ctx.save();
-  ctx.shadowColor = 'rgba(199,125,255,.95)';
-  ctx.shadowBlur = 16;
-  ctx.fillStyle = C.letter;
+  ctx.translate(x, y);
+  // แกว่งเบา ๆ เหมือนห้อยอยู่ ไม่ใช่ป้ายติดตายกลางอากาศ
+  ctx.rotate(Math.sin(t * 0.045 + x * 0.01) * 0.14);
+  // เต้นตุ้บ ๆ เบามาก พอให้รู้สึกว่ามีชีวิต แต่ไม่รบกวนการกะระยะกระโดด
+  const pop = 1 + Math.sin(t * 0.09 + i) * 0.035;
+  ctx.scale(pop, pop);
+
+  // ── เรืองแสงสีตัวเอง ──
+  ctx.save();
+  ctx.shadowColor = col.main;
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = col.main;
   ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.roundRect(-r, -r, d, d, rad);
   ctx.fill();
   ctx.restore();
 
-  ctx.fillStyle = C.letterLite;
+  // ── ขอบขาว ──
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = r * 0.17;
+  ctx.lineJoin = 'round';
   ctx.beginPath();
-  ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = C.letter;
-  ctx.lineWidth = r * 0.13;
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+  ctx.roundRect(-r, -r, d, d, rad);
   ctx.stroke();
 
-  ctx.fillStyle = C.letterInk;
-  ctx.font = `700 ${Math.round(r * 1.12)}px Mitr, sans-serif`;
+  // ── ตัวลูกอม ไล่สีจากอ่อนด้านบนไปเข้มด้านล่าง ให้ดูนูน ──
+  const g = ctx.createLinearGradient(0, -r, 0, r);
+  g.addColorStop(0, col.lite);
+  g.addColorStop(0.45, col.main);
+  g.addColorStop(1, col.main);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(-r * 0.87, -r * 0.87, r * 1.74, r * 1.74, rad * 0.85);
+  ctx.fill();
+
+  // ── แสงสะท้อนมุมบนซ้าย ทำให้ผิวดูเคลือบเงา ──
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.3, -r * 0.46, r * 0.34, r * 0.2, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // ── ตัวอักษร ──
+  ctx.fillStyle = col.ink;
+  ctx.font = `700 ${Math.round(r * 1.08)}px Mitr, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(ch, 0, r * 0.06);
+  ctx.fillText(ch, 0, r * 0.08);
+
+  // ── ประกายวิบ ๆ มุมบนขวา วนคนละจังหวะกันแต่ละตัว ──
+  const tw = Math.sin(t * 0.12 + i * 1.7);
+  if (tw > 0) {
+    const k = tw * r * 0.3;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.62, -r * 0.62 - k);
+    ctx.quadraticCurveTo(r * 0.62, -r * 0.62, r * 0.62 + k, -r * 0.62);
+    ctx.quadraticCurveTo(r * 0.62, -r * 0.62, r * 0.62, -r * 0.62 + k);
+    ctx.quadraticCurveTo(r * 0.62, -r * 0.62, r * 0.62 - k, -r * 0.62);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
@@ -1455,7 +1632,7 @@ export function drawLetters(ctx, letters, camera, tick) {
     if (l.got) continue;
     const x = l.x - camera;
     if (x > W + 50 || x < -50) continue;
-    drawLetterCoin(ctx, x, floatY(l, tick), l.r, WORD[l.idx], tick);
+    drawLetterCoin(ctx, x, floatY(l, tick), l.r, WORD[l.idx], tick, l.idx);
   }
 }
 

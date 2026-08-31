@@ -412,6 +412,7 @@
         <div class="pop">
           <h2 class="skin-title">เลือกแมวน้อย</h2>
           <div class="skin-grid" id="skinGrid"></div>
+          <p class="form-msg" id="skinMsg"></p>
           <button class="backbtn" id="skinBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
@@ -943,6 +944,24 @@
           <b class="got-title" id="rewardTitle">ได้รับของขวัญ!</b>
           <div class="got-row" id="rewardRow"></div>
           <button class="btn" id="rewardClose">ตกลง</button>
+        </div>
+      </div>
+
+      <!-- กล่องยืนยัน วางหลังแผงอื่นทุกอันเพื่อให้ทับด้านบนได้โดยไม่ต้องใช้ z-index
+           ต้องซ้อนบนแผงที่เปิดค้างอยู่ ไม่ใช่แทนที่ — ผู้เล่นจะได้เห็นว่ากำลังยืนยันจากหน้าไหน -->
+      <div class="panel hidden" id="confirmPanel">
+        <div class="pop confirm-pop">
+          <canvas class="confirm-art" id="confirmArt" width="96" height="96" hidden></canvas>
+          <b class="confirm-title" id="confirmTitle"></b>
+          <p class="confirm-body" id="confirmBody"></p>
+          <div class="confirm-cost hidden" id="confirmCost">
+            <span class="coin" aria-hidden="true"></span><span id="confirmPrice"></span>
+          </div>
+          <p class="confirm-after" id="confirmAfter"></p>
+          <div class="confirm-btns">
+            <button class="btn ghost" id="confirmNo">ยกเลิก</button>
+            <button class="btn" id="confirmYes">ยืนยัน</button>
+          </div>
         </div>
       </div>
 

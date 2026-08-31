@@ -1,7 +1,7 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -16,7 +16,7 @@ import {
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
   drawBigFish,
   drawBonusSparkle,
-  drawRain, drawSkillGauge, drawNips, drawFallers,
+  drawRain, drawSkillGauge, drawNips, drawFallers, drawHazards,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage, sceneAt } from './stages.js';
@@ -284,6 +284,7 @@ export class Game {
     this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
     this.noticeText = '';                     // ข้อความที่จะโชว์ (ขวดพลัง / ผ่านด่าน)
     this.nextFallerAt = FALLER.everyFrames;   // ของร่วงชิ้นแรกของฉาก
+    this.nextHazardAt = HAZARD.everyFrames;   // อันตรายที่ขยับได้ชิ้นแรก
     // เข้าหน้าแรกใหม่ให้ยืนตั้งหลักก่อนเสมอ ไม่ใช่โผล่มากลางท่าที่ค้างจากรอบก่อน
     this.idleWait = 0;
     this.idleT = -1;
@@ -620,6 +621,7 @@ export class Game {
     // เพื่อหาจุดโล่ง ถ้าเรียกก่อนจะได้จุด "โล่ง" ปลอมที่พอวิ่งถึงจริงกลับมีหนามอยู่
     this.updateScene(dt);
     this.updateFallers(dt, cx, cy);
+    this.updateHazards(dt, cx, cy);
 
     // เดินเวลาของสมบัติหลังเก็บของครบแล้ว ตัวนับในเฟรมนี้จึงถูกนับก่อนเช็คเงื่อนไข
     this.treasures.update(dt, this);
@@ -743,6 +745,45 @@ export class Game {
         break;
       }
       f.dead = true;
+      this.takeHit(cx, cy);
+      break;
+    }
+  }
+
+  /**
+   * เดินอันตรายที่ขยับได้ แล้วเช็คว่าโดนแมวไหม
+   *
+   * ฉากที่ไม่ได้ประกาศ hazard ไว้จะไม่มีอะไรเกิดขึ้นเลย — เป็นของประจำแมพ
+   * กติกาการโดนใช้ชุดเดียวกับสิ่งกีดขวางทุกข้อ (สปีด/สกิล/อมตะ/โล่)
+   * ผู้เล่นจึงไม่ต้องเรียนรู้ข้อยกเว้นใหม่
+   */
+  updateHazards(dt, cx, cy) {
+    const cfg = this.scene.hazard;
+    if (!cfg) return;
+
+    if (this.tick >= this.nextHazardAt) {
+      this.level.spawnHazard(cfg.kind, this.camera + VIEW.W + 90, this.camera);
+      this.nextHazardAt = this.tick + (cfg.every || HAZARD.everyFrames);
+    }
+
+    this.level.updateHazards(dt, this.camera);
+
+    const b = this.player.box;
+    const bx = b.x + this.camera;
+    for (const h of this.level.hazards) {
+      const box = this.level.hazardBox(h);
+      if (!box) continue;                        // ไฟกำลังดับอยู่
+      if (!rectHit(bx, b.y, b.w, b.h, box.x, box.y, box.w, box.h)) continue;
+
+      if (this.skillOn || this.invuln > 0) break;
+      if (this.boost > 0) break;                 // ติดสปีด พุ่งผ่านได้
+      if (this.shielded) {
+        this.shielded = false;
+        this.invuln = SHIELD.invulnFrames;
+        this.shake = 10;
+        sfx.shieldBreak();
+        break;
+      }
       this.takeHit(cx, cy);
       break;
     }
@@ -1134,6 +1175,7 @@ export class Game {
       drawGround(ctx, this.level.pits, this.camera, this.pal);
       drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
       drawFallers(ctx, this.level.fallers, this.camera, this.scene.theme);
+      drawHazards(ctx, this.level.hazards, this.camera, this.tick, this.pal);
       drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     }
 
@@ -1230,6 +1272,7 @@ export class Game {
     drawGround(ctx, this.level.pits, this.camera, this.pal);
     drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
     drawFallers(ctx, this.level.fallers, this.camera, this.scene.theme);
+      drawHazards(ctx, this.level.hazards, this.camera, this.tick, this.pal);
     drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     drawPotions(ctx, this.level.potions, this.camera, this.tick);
     drawMagnets(ctx, this.level.magnets, this.camera, this.tick);

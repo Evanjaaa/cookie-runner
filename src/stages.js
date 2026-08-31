@@ -33,27 +33,21 @@ export const STAGES = [
       cloud: '#EFE2FA', cloudSoft: '#C6AFE0',
     },
     // ลำดับที่อนุมัติแล้ว — อุ่นเครื่อง → ไต่ระดับ → พีคท่อน 11 → พัก
-    route: [
-      { p: 0 },
-      { p: 9, kibble: 'alternate', letter: true },
-      { p: 1 },
-      { p: 10, kibble: 'cluster', nip: true },
-      { p: 14, shield: true },
-      { p: 3 },
-      { p: 12, kibble: 'alternate', letter: true },
-      { p: 2 },
-      { p: 15, nip: true },
-      { p: 6, shrimp: true },
-      { p: 11, letter: true },
-      { p: 16, magnet: true },
-      { p: 7, letter: true },
-      { p: 13, kibble: 'alternate', shield: true },
-      { p: 17 },
-      { p: 4 },
-      { p: 8, shrimp: true },
-      { p: 18, nip: true },
-      { p: 5, letter: true },
-      { p: 9, kibble: 'cluster', magnet: true },
+    // ── กริยาหลัก: อ่านสถานะแล้วเลือกท่า ──
+    // ไฟเตาอบสลับพ่นจากพื้น (ต้องกระโดด) กับจากเพดาน (ต้องหมอบ) มีช่วงดับคั่นเสมอ
+    // เฟสของไฟตอนวิ่งไปถึงไม่เท่ากันทุกครั้ง ผู้เล่นจึงจำท่าล่วงหน้าไม่ได้
+    // ต้องมองว่าตอนนี้ไฟอยู่ทางไหนแล้วค่อยตัดสินใจ — เป็นแมพเดียวที่ "ดูก่อนกด"
+    //
+    // คลังเลือกท่อนที่โล่ง ๆ เป็นหลัก เพราะไฟเป็นตัวสร้างความยากอยู่แล้ว
+    // ถ้าใส่ท่อนแน่นด้วยจะกลายเป็นสองอย่างพร้อมกันจนหลบไม่ทัน
+    pool: [0, 1, 2, 3, 9, 12, 6, 10, 16],
+    segments: 20,
+    hazard: { kind: 'flame', every: 260 },
+    layers: [
+      { art: 'shelf',   depth: 0.12, every: 460, y: 96,  size: 1.2,  band: 'far' },
+      { art: 'ovenBox', depth: 0.24, every: 620, y: 320, size: 1,    band: 'far' },
+      { art: 'pipe',    depth: 0.40, every: 380, y: 0,   size: 1,    band: 'far' },
+      { art: 'ember',   depth: 0.72, every: 210, y: 0,   size: 1,    band: 'near' },
     ],
   },
 
@@ -81,27 +75,20 @@ export const STAGES = [
       cloud: '#FFFFFF', cloudSoft: '#E8F4FF',
     },
     // จังหวะคนละแบบกับด่านแรก: เจอสิ่งกีดขวางเร็วกว่า พีคอยู่ท่อน 12
-    route: [
-      { p: 0 },
-      { p: 10, kibble: 'cluster', letter: true },
-      { p: 8 },
-      { p: 16, nip: true },
-      { p: 9, kibble: 'alternate', shield: true },
-      { p: 6 },
-      { p: 12, kibble: 'alternate', magnet: true },
-      { p: 2, letter: true },
-      { p: 14 },
-      { p: 5 },
-      { p: 11, shrimp: true },
-      { p: 18, letter: true },
-      { p: 7, letter: true },
-      { p: 4, shield: true },
-      { p: 15, nip: true },
-      { p: 13, kibble: 'cluster', magnet: true },
-      { p: 3 },
-      { p: 17, shrimp: true },
-      { p: 1, letter: true },
-      { p: 9, kibble: 'alternate', nip: true },
+    // ── กริยาหลัก: อ่านการเคลื่อนที่ ──
+    // ผึ้งแกว่งขึ้นลงตลอดเวลา ตำแหน่งตอนนี้ไม่ใช่ตำแหน่งตอนวิ่งไปถึง
+    // ผู้เล่นต้องเผื่อล่วงหน้าแทนการกดตามที่เห็น ซึ่งไม่มีแมพอื่นบังคับ
+    //
+    // วงแกว่งของผึ้งตั้งไว้ให้ "หมอบลอดได้เสมอ" ต่อให้อ่านจังหวะพลาด
+    // จึงยังมีทางออกที่ปลอดภัยอยู่หนึ่งทางเสมอ ไม่ใช่ตายลูกเดียว
+    pool: [0, 3, 5, 9, 12, 1, 6, 8, 10, 16],
+    segments: 20,
+    hazard: { kind: 'bee', every: 215 },
+    layers: [
+      { art: 'cloudPuff', depth: 0.07, every: 420, y: 82,  size: 1.3, band: 'far' },
+      { art: 'tree',      depth: 0.22, every: 300, y: 288, size: 1,   band: 'far' },
+      { art: 'tree',      depth: 0.40, every: 240, y: 306, size: 1.4, band: 'far' },
+      { art: 'petal',     depth: 0.68, every: 170, y: 0,   size: 1,   band: 'near' },
     ],
   },
 
@@ -176,27 +163,21 @@ export const STAGES = [
       cloud: '#FFE2C4', cloudSoft: '#F2B79A',
     },
     // เจอของถี่ช่วงต้นแล้วผ่อนกลางฉาก ปิดท้ายด้วยพีคยาว
-    route: [
-      { p: 1 },
-      { p: 12, kibble: 'alternate', letter: true },
-      { p: 6, nip: true },
-      { p: 16 },
-      { p: 3, kibble: 'cluster', shield: true },
-      { p: 10, letter: true },
-      { p: 8 },
-      { p: 14, magnet: true },
-      { p: 2, shrimp: true },
-      { p: 17, letter: true },
-      { p: 5 },
-      { p: 11, kibble: 'alternate', nip: true },
-      { p: 7, letter: true },
-      { p: 18, shield: true },
-      { p: 4 },
-      { p: 13, kibble: 'cluster', magnet: true },
-      { p: 9, shrimp: true },
-      { p: 15, letter: true },
-      { p: 0 },
-      { p: 10, kibble: 'alternate', nip: true },
+    // ── กริยาหลัก: ของที่วิ่งเข้าหา ──
+    // ลูกบอลกลิ้งสวนมา ความเร็วเข้าหารวม 9.2 px/เฟรม (ฉาก 6.8 + บอล 2.4)
+    // เร็วกว่าปกติ 35% จังหวะกดที่ชินจากแมพอื่นจึงใช้ไม่ได้ ต้องกดเร็วขึ้น
+    //
+    // แผนเดิมคือ "คลื่นซัดแล้วขึ้นไปยืนบนปราสาททราย" แต่เอนจินให้แมวลงพื้นได้
+    // ที่ GROUND_Y อย่างเดียว ยืนบนสิ่งกีดขวางไม่ได้ จึงเปลี่ยนมาใช้ของกลิ้งแทน
+    // ส่วนคลื่นย้ายไปเป็นฉากหลังที่ซัดเข้าฝั่งตามจังหวะ
+    pool: [0, 1, 3, 9, 12, 6, 2, 10, 16, 5],
+    segments: 20,
+    hazard: { kind: 'ball', every: 230 },
+    layers: [
+      { art: 'sunDisc',  depth: 0.04, every: 1400, y: 210, size: 1,   band: 'far' },
+      { art: 'seaWave',  depth: 0.18, every: 220,  y: 250, size: 1,   band: 'far' },
+      { art: 'umbrella', depth: 0.42, every: 420,  y: 306, size: 1,   band: 'far' },
+      { art: 'seaWave',  depth: 0.60, every: 180,  y: 300, size: 1.3, band: 'near' },
     ],
   },
 
@@ -220,28 +201,20 @@ export const STAGES = [
       noticeBg: 'rgba(7,6,15,.82)',
       cloud: '#B9AEE0', cloudSoft: '#7C6EA8',
     },
-    // ฉากท้าย ๆ ของตา — แน่นสุดในบรรดาหกฉาก พักสั้นและน้อยครั้ง
-    route: [
-      { p: 13 },
-      { p: 17, kibble: 'cluster', letter: true },
-      { p: 9, nip: true },
-      { p: 15, shield: true },
-      { p: 11, kibble: 'alternate' },
-      { p: 18, letter: true },
-      { p: 6, magnet: true },
-      { p: 14, nip: true },
-      { p: 2, shrimp: true },
-      { p: 16, kibble: 'cluster', letter: true },
-      { p: 10 },
-      { p: 12, shield: true },
-      { p: 7, letter: true },
-      { p: 3 },
-      { p: 15, kibble: 'alternate', magnet: true },
-      { p: 8, nip: true },
-      { p: 17, shrimp: true },
-      { p: 5, letter: true },
-      { p: 1 },
-      { p: 11, kibble: 'cluster', nip: true },
+    // ── กริยาหลัก: บริหารเวลาลอย ──
+    // คลังเอียงไปทางหลุมทั้งหมด โดยเฉพาะท่อน 23-25 ที่กว้างเกินกระโดดเดี่ยว
+    // ผู้เล่นจึงต้องกดสองครั้งแทบทุกหลุม ซึ่งเป็นอินพุตที่ไม่มีแมพอื่นบังคับ
+    // ตัดคานออกเกือบหมด เพราะการหมอบขัดจังหวะการบริหารเวลาลอยกลางอากาศ
+    pool: [0, 23, 24, 25, 3, 5, 16, 9, 12, 25, 23],
+    segments: 20,
+    // อุกกาบาตร่วง — ใช้ระบบเดียวกับคริสตัลถ้ำ เปลี่ยนแค่สีตามธีม (FALLER_TINT)
+    // ถี่กว่าถ้ำเล็กน้อยเพราะฉากนี้พื้นโล่งกว่า มีที่ให้หลบเยอะกว่า
+    faller: { every: 165 },
+    layers: [
+      { art: 'planet',    depth: 0.06, every: 620, y: 96,  size: 1.15, band: 'far' },
+      { art: 'station',   depth: 0.18, every: 700, y: 172, size: 1.35, band: 'far' },
+      { art: 'planet',    depth: 0.28, every: 760, y: 210, size: 0.55, band: 'far' },
+      { art: 'spaceDust', depth: 0.80, every: 190, y: 170, size: 1,    band: 'near' },
     ],
   },
 
@@ -270,28 +243,20 @@ export const STAGES = [
       noticeBg: 'rgba(255,255,255,.9)',
       cloud: '#FFFFFF', cloudSoft: '#D6E8F2',
     },
-    // ฉากพักหายใจ — โล่งกว่าเพื่อน เว้นช่วงยาวให้เก็บของ
-    route: [
-      { p: 0 },
-      { p: 8, kibble: 'cluster', letter: true },
-      { p: 4 },
-      { p: 12, shield: true },
-      { p: 1, kibble: 'alternate' },
-      { p: 9, letter: true },
-      { p: 15, nip: true },
-      { p: 5, shrimp: true },
-      { p: 2 },
-      { p: 13, kibble: 'cluster', magnet: true },
-      { p: 7, letter: true },
-      { p: 3 },
-      { p: 16, shield: true },
-      { p: 10, kibble: 'alternate', letter: true },
-      { p: 6 },
-      { p: 14, nip: true },
-      { p: 11, shrimp: true },
-      { p: 18, letter: true },
-      { p: 2 },
-      { p: 8, kibble: 'cluster', magnet: true },
+    // ── กริยาหลัก: สลับท่าเร็ว ──
+    // ท่อน 26-28 บังคับสลับกระโดด↔หมอบต่อเนื่อง 3-4 จังหวะ เป็นแมพที่นิ้วขยับมากสุด
+    // ต่างจากถ้ำที่หมอบค้างยาว และต่างจากอวกาศที่กระโดดอย่างเดียว
+    // ตัดหลุมออกทั้งหมด เพราะหลุมกินจังหวะที่ควรใช้สลับท่า
+    pool: [0, 26, 27, 28, 4, 18, 2, 1, 9, 12, 26],
+    segments: 20,
+    // แท่งน้ำแข็งร่วง — ระบบเดียวกับคริสตัลถ้ำ เปลี่ยนแค่สี (FALLER_TINT.snow)
+    // ห่างกว่าแมพอื่นเพราะท่อนสลับท่าใช้สมาธิเต็มที่อยู่แล้ว
+    faller: { every: 240 },
+    layers: [
+      { art: 'snowPeak', depth: 0.08, every: 340, y: 268, size: 1.15, band: 'far' },
+      { art: 'snowPine', depth: 0.26, every: 210, y: 292, size: 1,    band: 'far' },
+      { art: 'snowPine', depth: 0.44, every: 260, y: 308, size: 1.35, band: 'far' },
+      { art: 'snowFall', depth: 0.70, every: 150, y: 0,   size: 1,    band: 'near' },
     ],
   },
 ];

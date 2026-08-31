@@ -75,6 +75,73 @@ function gateMsg(text, kind = '') {
   m.className = 'msg ' + kind;
 }
 
+// ── กล่องยืนยันของหน้านี้เอง ─────────────────────────────────
+//
+// แทน confirm()/prompt() ของเบราว์เซอร์ทั้งหมด เหตุผลเต็มอยู่ใน admin.html
+// ที่สำคัญที่สุดคือเบราว์เซอร์บางตัวขึ้นช่อง "ไม่ต้องแสดงอีก" ให้ผู้ใช้ติ๊ก
+// ซึ่งถ้าติ๊กแล้ว การยืนยันจะหายไปเงียบ ๆ — อันตรายมากกับปุ่มที่ลบข้อมูลถาวร
+//
+// คืน Promise: ยืนยัน = คืนข้อความที่พิมพ์ (หรือ true ถ้าไม่ได้ขอให้พิมพ์)
+//              ยกเลิก = คืน null  ผู้เรียกจึงเช็คแบบเดียวกับ prompt() เดิม
+//
+// @param opts.title   หัวข้อ
+// @param opts.body    HTML ของเนื้อความ (ใช้ <b> เน้นชื่อ/ตัวเลขที่จะโดนลบ)
+// @param opts.expect  ถ้าใส่ = ต้องพิมพ์ให้ตรงค่านี้ถึงจะกดยืนยันได้
+// @param opts.label   ป้ายเหนือช่องพิมพ์
+// @param opts.okText  ข้อความบนปุ่มยืนยัน
+function ask({ title, body = '', expect = null, label = '', okText = 'ยืนยัน' }) {
+  const box = $('modal');
+  const input = $('modalInput');
+  const ok = $('modalOk');
+  const cancel = $('modalCancel');
+  const field = $('modalField');
+
+  $('modalTitle').textContent = title;
+  $('modalBody').innerHTML = body;
+  $('modalLabel').textContent = label;
+  ok.textContent = okText;
+
+  const needType = expect !== null;
+  field.classList.toggle('hidden', !needType);
+  input.value = '';
+  // ปุ่มยืนยันเปิดใช้ได้ก็ต่อเมื่อพิมพ์ตรงแล้วเท่านั้น ไม่ใช่กดได้แล้วค่อยด่า
+  // ผู้ใช้จึงเห็นว่ายังไม่ตรงตั้งแต่ก่อนกด แทนที่จะกดแล้วเจอ toast ว่าผิด
+  ok.disabled = needType;
+
+  box.classList.remove('hidden');
+  (needType ? input : ok).focus();
+
+  return new Promise((resolve) => {
+    const done = (val) => {
+      box.classList.add('hidden');
+      input.removeEventListener('input', onType);
+      input.removeEventListener('keydown', onKey);
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      box.removeEventListener('mousedown', onBackdrop);
+      document.removeEventListener('keydown', onEsc);
+      resolve(val);
+    };
+    const onType = () => { ok.disabled = input.value.trim() !== String(expect).trim(); };
+    const onOk = () => { if (!ok.disabled) done(needType ? input.value.trim() : true); };
+    const onCancel = () => done(null);
+    // Enter ในช่องพิมพ์ = กดยืนยัน แต่ยังติดเงื่อนไขว่าต้องพิมพ์ตรงเหมือนเดิม
+    const onKey = (e) => { if (e.key === 'Enter') onOk(); };
+    // คลิกนอกกล่อง = ยกเลิก แต่ต้องเช็คว่าคลิกโดนฉากหลังจริง ไม่ใช่ลากเมาส์
+    // ออกมาจากในกล่อง ซึ่งถ้าไม่เช็คจะปิดทิ้งทั้งที่ผู้ใช้แค่ลากเลือกข้อความ
+    const onBackdrop = (e) => { if (e.target === box) done(null); };
+    const onEsc = (e) => { if (e.key === 'Escape') done(null); };
+
+    input.addEventListener('input', onType);
+    input.addEventListener('keydown', onKey);
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    box.addEventListener('mousedown', onBackdrop);
+    document.addEventListener('keydown', onEsc);
+  });
+}
+
+
 // ── เข้าสู่ระบบ ──────────────────────────────────────────────
 //
 // ใช้รหัส 6 หลักทางอีเมลเหมือนตัวเกม ไม่มีรหัสผ่านให้ดูแลและให้หลุด
@@ -425,13 +492,17 @@ async function savePlayer(p) {
  * กำลังลบของใครอยู่จริง ๆ ซึ่งเป็นจุดที่พลาดบ่อยที่สุดของงานแบบนี้
  */
 async function deletePlayer(p) {
-  const typed = prompt(
-`ลบบัญชีของ "${p.name}" ทั้งหมด — ทั้งบัญชีเข้าสู่ระบบ คะแนน และประวัติกาช่า
-
-ย้อนกลับไม่ได้ — พิมพ์ชื่อผู้เล่นเพื่อยืนยัน:`
-  );
+  const name = (p.name || '').trim();
+  const typed = await ask({
+    title: 'ลบบัญชีผู้เล่น',
+    body: `กำลังจะลบบัญชีของ <b>${esc(name)}</b> ทั้งหมด —
+           ทั้งบัญชีเข้าสู่ระบบ คะแนน และประวัติกาช่า<br>
+           <span class="warn">ย้อนกลับไม่ได้</span>`,
+    expect: name,
+    label: 'พิมพ์ชื่อผู้เล่นเพื่อยืนยัน',
+    okText: 'ลบบัญชีนี้',
+  });
   if (typed === null) return;
-  if (typed.trim() !== (p.name || '').trim()) return toast('ชื่อไม่ตรง ยกเลิกแล้ว', 'bad');
 
   const c = await client();
   const { error } = await c.rpc('admin_delete_user', { p_id: p.id });
@@ -514,13 +585,15 @@ function openPurge() {
 
   $('pg_go').addEventListener('click', async () => {
     if (previewed <= 0) return;
-    const typed = prompt(
-`กำลังจะลบ ${previewed} บัญชีถาวร ย้อนกลับไม่ได้
-
-พิมพ์เลข ${previewed} เพื่อยืนยัน:`
-    );
+    const typed = await ask({
+      title: 'เคลียร์บัญชีผู้มาเยือน',
+      body: `กำลังจะลบ <b>${num(previewed)} บัญชี</b> ถาวร<br>
+             <span class="warn">ย้อนกลับไม่ได้</span>`,
+      expect: previewed,
+      label: `พิมพ์เลข ${previewed} เพื่อยืนยัน`,
+      okText: 'ลบทั้งหมด',
+    });
     if (typed === null) return;
-    if (typed.trim() !== String(previewed)) return toast('เลขไม่ตรง ยกเลิกแล้ว', 'bad');
 
     $('pg_go').disabled = true;
     const c = await client();
@@ -579,7 +652,16 @@ async function loadScores() {
     const btn = e.target.closest('[data-act="del"]');
     if (!btn) return;
     const r = rows[+btn.closest('tr').dataset.i];
-    if (!confirm(`ลบคะแนน ${num(r.score)} ของ "${r.name}" ด่าน ${r.stage_id}?`)) return;
+    // คะแนนแถวเดียวลบแล้วสร้างใหม่ได้ด้วยการเล่น ไม่ต้องให้พิมพ์ยืนยัน
+    // เก็บการพิมพ์ไว้ใช้เฉพาะของที่ลบแล้วหายถาวรจริง ๆ (บัญชี) ไม่งั้นจะกลายเป็น
+    // พิธีกรรมที่คนพิมพ์ผ่านโดยไม่อ่าน แล้วการยืนยันก็หมดความหมายทุกที่
+    const okDel = await ask({
+      title: 'ลบคะแนนนี้',
+      body: `คะแนน <b>${num(r.score)}</b> ของ <b>${esc(r.name)}</b><br>
+             ด่าน <b>${esc(r.stage_id)}</b>`,
+      okText: 'ลบคะแนน',
+    });
+    if (!okDel) return;
 
     const { error: e2 } = await c
       .from('best_scores').delete()
@@ -631,6 +713,221 @@ PAGES.pulls = async () => {
 // หน้านี้คือเหตุผลหลักที่หน้าหลังบ้านคุ้มค่าที่จะมี — ตารางเปล่า ๆ บอกได้แค่
 // "มีอะไรบ้าง" แต่หน้านี้ตอบว่า "มีอะไรที่ควรไปดู" ซึ่งเป็นสิ่งที่คนดูแลเกม
 // ต้องการจริง ๆ เกณฑ์ปรับได้ เพราะค่าที่ถือว่าปกติจะขยับตามที่เกมโตขึ้น
+
+// ── ส่งจดหมายกับของขวัญ ─────────────────────────────────────
+//
+// จดหมายที่ส่งจากที่นี่ลงตาราง mail_outbox ไม่ได้เขียนทับ players.mail
+// เหตุผลอยู่ในหัวไฟล์ supabase/mail.sql — สรุปสั้น ๆ คือถ้าเขียนลงแถวผู้เล่น
+// ตอนที่เจ้าของออนไลน์อยู่ การซิงก์ครั้งถัดไปของเขาจะทับของขวัญหายไปเงียบ ๆ
+
+const mailState = { to: null, all: false, rows: [], found: [] };
+
+PAGES.mail = async () => {
+  $('page').innerHTML = `
+    <h2>ส่งจดหมายและของขวัญ</h2>
+    <p class="sub">ของขวัญจะเข้ากล่องจดหมายในเกม ผู้เล่นต้องกดรับเอง ทองกับเพชรบวกให้ตอนกดรับ ไม่ใช่ตอนส่ง</p>
+
+    <div class="mailform">
+      <div class="fld">
+        <span>ส่งถึง</span>
+        <div class="modes">
+          <button class="mode on" id="mModeOne" type="button">เลือกทีละคน</button>
+          <button class="mode" id="mModeAll" type="button">ทั้งเซิร์ฟ</button>
+        </div>
+        <div id="mOne">
+          <div class="pickrow">
+            <input id="mTo" type="search" placeholder="พิมพ์ชื่อหรืออีเมลเพื่อค้นหา" autocomplete="off">
+            <button class="btn ghost" id="mClear" type="button">ล้าง</button>
+          </div>
+          <div id="mFound" class="found"></div>
+        </div>
+        <div id="mPicked" class="picked"></div>
+      </div>
+
+      <label class="fld"><span>หัวข้อ</span>
+        <input id="mTitle" maxlength="80" placeholder="เช่น ขอโทษที่เซิร์ฟล่ม"></label>
+
+      <label class="fld"><span>ข้อความ</span>
+        <textarea id="mBody" rows="5" maxlength="1000" placeholder="พิมพ์ข้อความถึงผู้เล่น เว้นบรรทัดได้"></textarea></label>
+
+      <div class="giftrow">
+        <label class="fld"><span>เหรียญทอง</span>
+          <input id="mGold" type="number" min="0" max="9999999" step="100" value="0"></label>
+        <label class="fld"><span>อัญมณีสีชมพู</span>
+          <input id="mGems" type="number" min="0" max="9999999" step="10" value="0"></label>
+      </div>
+
+      <div class="sendrow">
+        <button class="btn" id="mSend" type="button" disabled>ส่งจดหมาย</button>
+        <span id="mHint" class="note">เลือกผู้รับก่อน</span>
+      </div>
+    </div>
+
+    <h3 class="mailsent">จดหมายที่ส่งไปแล้ว</h3>
+    <div id="mList"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
+
+  const to = $('mTo');
+  let timer = null;
+
+  // ค้นแบบหน่วงไว้ ไม่ยิงทุกตัวอักษรที่พิมพ์
+  to.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(searchPlayers, 260);
+  });
+  $('mClear').addEventListener('click', () => {
+    mailState.to = null;
+    to.value = '';
+    $('mFound').innerHTML = '';
+    renderPicked();
+  });
+  $('mModeOne').addEventListener('click', () => setMode(false));
+  $('mModeAll').addEventListener('click', () => setMode(true));
+  $('mSend').addEventListener('click', sendMail);
+
+  setMode(false);
+  loadSentMail();
+};
+
+async function searchPlayers() {
+  const term = $('mTo').value.trim();
+  const box = $('mFound');
+  if (term.length < 2) return (box.innerHTML = '');
+
+  const c = await client();
+  const safe = term.replace(/[(),]/g, ' ');
+  const { data, error } = await c
+    .from('admin_players')
+    .select('id, name, email')
+    .or(`name.ilike.%${safe}%,email.ilike.%${safe}%`)
+    .limit(8);
+
+  if (error) return (box.innerHTML = `<div class="empty">ค้นหาไม่ได้: ${esc(errText(error))}</div>`);
+
+  mailState.found = data || [];
+  if (!mailState.found.length) return (box.innerHTML = '<div class="empty">ไม่เจอผู้เล่นที่ตรงกับคำค้น</div>');
+
+  box.innerHTML = mailState.found
+    .map((p, i) => `<button class="foundrow" data-i="${i}" type="button">
+        <b>${esc(p.name)}</b>
+        <span>${p.email ? esc(p.email) : 'ผู้มาเยือน'}</span>
+      </button>`)
+    .join('');
+
+  box.querySelectorAll('.foundrow').forEach((el) => {
+    el.addEventListener('click', () => {
+      mailState.to = mailState.found[Number(el.dataset.i)];
+      $('mTo').value = '';
+      box.innerHTML = '';
+      renderPicked();
+    });
+  });
+}
+
+/** สลับระหว่างส่งทีละคนกับส่งทั้งเซิร์ฟ */
+function setMode(all) {
+  mailState.all = all;
+  // ล้างคนที่เลือกไว้ทุกครั้งที่สลับโหมด ไม่ให้เหลือค้างแล้วส่งผิดคน
+  mailState.to = null;
+  $('mTo').value = '';
+  $('mFound').innerHTML = '';
+  $('mOne').classList.toggle('hidden', all);
+  $('mModeOne').classList.toggle('on', !all);
+  $('mModeAll').classList.toggle('on', all);
+  renderPicked();
+}
+
+function renderPicked() {
+  if (mailState.all) {
+    // บอกให้ชัดตรงนี้เลยว่าใครจะได้บ้าง เพราะ "ทั้งเซิร์ฟ" ตีความได้หลายแบบ
+    // ฉบับที่ส่งทั้งเซิร์ฟเก็บเป็นแถวเดียวที่ไม่ระบุผู้รับ ใครเปิดเกมมาก็เห็น
+    // คนที่สมัครทีหลังจึงได้ด้วย
+    $('mPicked').innerHTML = '<span class="pill email">ผู้เล่นทุกคน</span> '
+      + '<span class="note">รวมคนที่สมัครใหม่ทีหลัง</span>';
+    $('mSend').disabled = false;
+    $('mHint').textContent = '';
+    return;
+  }
+
+  const p = mailState.to;
+  $('mPicked').innerHTML = p
+    ? `<span class="pill email">${esc(p.name)}</span> <span class="note">${p.email ? esc(p.email) : 'ผู้มาเยือน'}</span>`
+    : '<span class="note">ยังไม่ได้เลือกผู้รับ</span>';
+  $('mSend').disabled = !p;
+  $('mHint').textContent = p ? '' : 'เลือกผู้รับก่อน';
+}
+
+async function sendMail() {
+  const all = mailState.all;
+  const p = mailState.to;
+  if (!all && !p) return;
+
+  const title = $('mTitle').value.trim();
+  const body = $('mBody').value;
+  const gold = Math.max(0, Math.floor(Number($('mGold').value) || 0));
+  const gems = Math.max(0, Math.floor(Number($('mGems').value) || 0));
+
+  if (!title) return toast('ใส่หัวข้อก่อน', 'bad');
+
+  // ให้ทวนของที่จะส่งอีกรอบ เพราะพิมพ์ศูนย์เกินตัวเดียวก็แจกเกินสิบเท่าแล้ว
+  const gift = gold || gems
+    ? `ทอง ${num(gold)} • เพชร ${num(gems)}`
+    : 'ไม่มีของขวัญแนบ (ข้อความอย่างเดียว)';
+  // ask() ใส่ body ด้วย innerHTML จึงต้อง esc ก่อน — หัวข้อมาจากช่องพิมพ์
+  // ถ้าไม่ esc คนที่พิมพ์แท็กลงไปจะทำให้กล่องยืนยันแสดงผลเพี้ยน
+  // ส่งทั้งเซิร์ฟถอนคืนไม่ได้และกระทบทุกคน จึงบังคับพิมพ์ยืนยันก่อน
+  // ต่างจากส่งทีละคนที่กดยืนยันเฉย ๆ พอ เพราะพลาดแล้วแก้ได้ด้วยการคุยกับคนเดียว
+  const ok = await ask({
+    title: all ? 'ส่งให้ผู้เล่นทุกคน?' : 'ส่งจดหมายถึง ' + p.name + '?',
+    body: `หัวข้อ: ${esc(title)}<br>${esc(gift)}`
+      + (all ? '<br><br>ทุกคนที่เปิดเกมจะได้รับ รวมคนที่สมัครใหม่ทีหลัง และถอนคืนไม่ได้' : ''),
+    expect: all ? 'ทั้งเซิร์ฟ' : null,
+    label: all ? 'พิมพ์ว่า ทั้งเซิร์ฟ เพื่อยืนยัน' : '',
+    okText: 'ส่งเลย',
+  });
+  if (!ok) return;
+
+  $('mSend').disabled = true;
+  const c = await client();
+  const { error } = await c.from('mail_outbox').insert({
+    // null = ส่งทั้งเซิร์ฟ ใช้แถวเดียวไม่ว่าจะมีผู้เล่นกี่คน
+    to_player: all ? null : p.id,
+    title, body, gold, gems,
+    sent_by: (await c.auth.getUser()).data.user?.id ?? null,
+  });
+  $('mSend').disabled = false;
+
+  if (error) return toast('ส่งไม่สำเร็จ: ' + errText(error), 'bad');
+
+  toast(all ? 'ส่งให้ผู้เล่นทุกคนแล้ว' : 'ส่งให้ ' + p.name + ' แล้ว', 'good');
+  $('mTitle').value = '';
+  $('mBody').value = '';
+  $('mGold').value = '0';
+  $('mGems').value = '0';
+  loadSentMail();
+}
+
+async function loadSentMail() {
+  const c = await client();
+  const { data, error } = await c.from('admin_mail').select('*').limit(100);
+  if (error) return failInto('mList', error);
+
+  mailState.rows = data || [];
+  const cols = [
+    { label: 'ถึง', cell: (r) => esc(r.to_name) },
+    { label: 'หัวข้อ', cell: (r) => esc(r.title) },
+    { label: 'ทอง', num: true, cell: (r) => num(r.gold) },
+    { label: 'เพชร', num: true, cell: (r) => num(r.gems) },
+    // ฉบับที่ส่งทั้งเซิร์ฟมีผู้รับหลายคน ตัวเลขนี้จึงบอกว่ากดรับไปแล้วกี่คน
+    // ฉบับทั้งเซิร์ฟมีผู้รับหลายคน ตัวเลขจำนวนคนที่กดรับจึงมีความหมาย
+    // ส่วนฉบับที่ส่งทีละคนมีได้แค่ 0 กับ 1 บอกเป็นสถานะอ่านง่ายกว่าบอกเป็นเลข
+    { label: 'รับแล้ว', cell: (r) => (r.to_player === null
+        ? `<span class="pill email">${num(r.claims)} คน</span>`
+        : r.claims ? '<span class="pill email">รับแล้ว</span>'
+                   : '<span class="pill guest">ยังไม่รับ</span>') },
+    { label: 'ส่งเมื่อ', cell: (r) => esc(when(r.sent_at)) },
+  ];
+  $('mList').innerHTML = tableHTML(cols, mailState.rows, { empty: 'ยังไม่เคยส่งจดหมาย' });
+}
 
 PAGES.audit = async () => {
   $('page').innerHTML = `
