@@ -437,6 +437,72 @@ function drawCrystalBlock(ctx, x, y, w, h, topBlock) {
   }
 }
 
+// ── ของร่วงจากเพดาน ──────────────────────────────────────────
+//
+// วาดสองช่วงคนละแบบ:
+//   warn > 0  เงาวงรีบนพื้นที่เข้มขึ้นเรื่อย ๆ = "ตรงนี้กำลังจะมีของตก"
+//   warn = 0  ตัวของจริงที่กำลังร่วง พร้อมเงาใต้ตัวที่หดลงตามระยะใกล้พื้น
+//
+// เงาต้องอยู่ "บนพื้น" ไม่ใช่ใต้ตัวของ ผู้เล่นจึงรู้จุดตกตั้งแต่ของยังอยู่นอกจอ
+export function drawFallers(ctx, fallers, camera, theme = 'cavern') {
+  const tint = FALLER_TINT[theme] || FALLER_TINT.cavern;
+
+  for (const f of fallers) {
+    const x = f.x - camera;
+    if (x > W + 80 || x + f.w < -80) continue;
+
+    if (f.warn > 0) {
+      // เงาเตือน — เข้มขึ้นเมื่อใกล้ถึงเวลาตก
+      const t = 1 - f.warn / 45;
+      ctx.save();
+      ctx.globalAlpha = 0.25 + t * 0.5;
+      ctx.fillStyle = tint.warn;
+      ctx.beginPath();
+      ctx.ellipse(x + f.w / 2, GROUND_Y - 3, f.w * (0.5 + t * 0.5), 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      continue;
+    }
+
+    // เงาใต้ตัวขณะร่วง — ยิ่งใกล้พื้นยิ่งเล็กและเข้ม
+    const near = Math.max(0, Math.min(1, (f.y + f.h) / GROUND_Y));
+    ctx.save();
+    ctx.globalAlpha = 0.2 + near * 0.4;
+    ctx.fillStyle = tint.warn;
+    ctx.beginPath();
+    ctx.ellipse(x + f.w / 2, GROUND_Y - 3, f.w * (0.75 - near * 0.25), 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // ตัวของ — ผลึกหัวแหลมลงล่าง สื่อว่ากำลังพุ่งลง
+    ctx.fillStyle = tint.body;
+    ctx.beginPath();
+    ctx.moveTo(x + f.w / 2, f.y + f.h);
+    ctx.lineTo(x + f.w, f.y + f.h * 0.3);
+    ctx.lineTo(x + f.w * 0.72, f.y);
+    ctx.lineTo(x + f.w * 0.28, f.y);
+    ctx.lineTo(x, f.y + f.h * 0.3);
+    ctx.closePath();
+    ctx.fill();
+
+    // เหลี่ยมรับแสงด้านซ้าย
+    ctx.fillStyle = tint.lit;
+    ctx.beginPath();
+    ctx.moveTo(x + f.w / 2, f.y + f.h);
+    ctx.lineTo(x + f.w * 0.28, f.y);
+    ctx.lineTo(x + f.w * 0.5, f.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** สีของของร่วงตามธีม — ชิ้นส่วนเดียวกัน เปลี่ยนแค่สีให้เข้าแมพ */
+const FALLER_TINT = {
+  cavern: { body: '#4FC9E8', lit: 'rgba(255,255,255,.7)', warn: 'rgba(127,232,255,.85)' },
+  space:  { body: '#9DFF6B', lit: 'rgba(255,255,255,.6)', warn: 'rgba(157,255,107,.8)' },
+  snow:   { body: '#A8DCF2', lit: 'rgba(255,255,255,.85)', warn: 'rgba(110,150,175,.8)' },
+};
+
 // ── ชุดภาพธีมชายหาดยามเย็น ───────────────────────────────────
 // กินพื้นที่เท่ากับหนาม/คาน/กล่องลังของธีมกลางคืนทุกมิติ ตามกฎในหัว stages.js
 

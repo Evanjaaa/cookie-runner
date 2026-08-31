@@ -1,7 +1,7 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -10,13 +10,13 @@ import { Particles } from './particles.js';
 import { loadBest, saveBest } from './storage.js';
 import { sfx } from './audio.js';
 import { setMusicTrack, SILENT } from './music.js';
-import { drawSky, drawHills, drawGround } from './render/background.js';
+import { drawSky, drawHills, drawGround, drawProps } from './render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
   drawBigFish,
   drawBonusSparkle,
-  drawRain, drawSkillGauge, drawNips,
+  drawRain, drawSkillGauge, drawNips, drawFallers,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage, sceneAt } from './stages.js';
@@ -238,7 +238,7 @@ export class Game {
 
     this.pal = this.stage.palette;
     this.best = loadBest(this.stage.id);
-    this.level.reset(this.stage.route, this.stage.theme);
+    this.level.reset(Level.routeFor(this.stage), this.stage.theme);
     this.level.nextLetter = () => this.nextLetterIndex();
 
     this.state = STATE.READY;
@@ -278,6 +278,7 @@ export class Game {
     this.hurtFlash = 0;
     this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
     this.noticeText = '';                     // ข้อความที่จะโชว์ (ขวดพลัง / ผ่านด่าน)
+    this.nextFallerAt = FALLER.everyFrames;   // ของร่วงชิ้นแรกของฉาก
     // เข้าหน้าแรกใหม่ให้ยืนตั้งหลักก่อนเสมอ ไม่ใช่โผล่มากลางท่าที่ค้างจากรอบก่อน
     this.idleWait = 0;
     this.idleT = -1;
@@ -613,6 +614,7 @@ export class Game {
     // ต้องอยู่หลัง ensureAhead เสมอ เพราะ spawnPotion อ่านหนาม/หลุมข้างหน้า
     // เพื่อหาจุดโล่ง ถ้าเรียกก่อนจะได้จุด "โล่ง" ปลอมที่พอวิ่งถึงจริงกลับมีหนามอยู่
     this.updateScene(dt);
+    this.updateFallers(dt, cx, cy);
 
     // เดินเวลาของสมบัติหลังเก็บของครบแล้ว ตัวนับในเฟรมนี้จึงถูกนับก่อนเช็คเงื่อนไข
     this.treasures.update(dt, this);
@@ -673,6 +675,74 @@ export class Game {
     }
   }
 
+  /**
+   * ของประกอบฉากของแมพที่กำลังวิ่งอยู่
+   *
+   * ระหว่างเปลี่ยนฉาก จานสีไล่ทีละเฟรมอยู่แล้ว แต่ของประกอบฉากเป็นรูปทรงคนละชุด
+   * ไล่สีให้ไม่ได้ — ถ้าสลับดื้อ ๆ ตอนไล่สีจบ หินย้อยทั้งจอจะโผล่พรึบในเฟรมเดียว
+   * จึงค่อย ๆ จางของเก่าออกพร้อมจางของใหม่เข้า ใช้ตัวเดียวกับที่คุมการไล่สี
+   */
+  drawProps(ctx, band) {
+    const t = this.nextScene ? Math.min(1, this.fade / SCENE.fadeFrames) : 0;
+
+    if (t < 1 && this.scene.layers) {
+      ctx.save();
+      ctx.globalAlpha = 1 - t;
+      drawProps(ctx, this.camera, this.scene.layers, band, this.pal, this.tick);
+      ctx.restore();
+    }
+    if (t > 0 && this.nextScene?.layers) {
+      ctx.save();
+      ctx.globalAlpha = t;
+      drawProps(ctx, this.camera, this.nextScene.layers, band, this.pal, this.tick);
+      ctx.restore();
+    }
+  }
+
+  // ── ของร่วงจากเพดาน ────────────────────────────────────────
+
+  /**
+   * เดินของร่วง แล้วเช็คว่าโดนแมวไหม
+   *
+   * ฉากที่ไม่ได้ประกาศ faller ไว้จะไม่มีอะไรเกิดขึ้นเลย — ของชิ้นนี้เป็น
+   * "ของประจำแมพ" ไม่ใช่ของกลางที่ทุกแมพต้องเจอ
+   *
+   * กติกาการโดนใช้ชุดเดียวกับสิ่งกีดขวางทุกข้อ (สปีด/สกิล/อมตะ/โล่)
+   * ไม่ได้เขียนกฎใหม่ ผู้เล่นจึงไม่ต้องเรียนรู้ข้อยกเว้นเพิ่ม
+   */
+  updateFallers(dt, cx, cy) {
+    const cfg = this.scene.faller;
+    if (!cfg) return;
+
+    if (this.tick >= this.nextFallerAt) {
+      this.level.spawnFaller(this.camera + VIEW.W + 80, FALLER.warnFrames);
+      this.nextFallerAt = this.tick + (cfg.every || FALLER.everyFrames);
+    }
+
+    if (this.level.updateFallers(dt)) this.shake = Math.max(this.shake, 5);
+
+    const b = this.player.box;   // getter ไม่ใช่เมธอด
+    const bx = b.x + this.camera;
+    for (const f of this.level.fallers) {
+      if (f.warn > 0) continue;                   // ยังไม่ร่วง ยังไม่อันตราย
+      if (!rectHit(bx, b.y, b.w, b.h, f.x, f.y, f.w, f.h)) continue;
+
+      if (this.skillOn || this.invuln > 0) break;
+      if (this.boost > 0) { f.dead = true; break; }   // ติดสปีด พุ่งชนแตก
+      if (this.shielded) {
+        this.shielded = false;
+        this.invuln = SHIELD.invulnFrames;
+        this.shake = 10;
+        f.dead = true;
+        sfx.shieldBreak();
+        break;
+      }
+      f.dead = true;
+      this.takeHit(cx, cy);
+      break;
+    }
+  }
+
   // ── ด่านย่อย ───────────────────────────────────────────────
 
   /**
@@ -713,7 +783,7 @@ export class Game {
     this.notice = SCENE.noticeFrames;
     sfx.bonus();
 
-    this.level.switchRoute(next.route, next.theme);
+    this.level.switchRoute(Level.routeFor(next), next.theme);
     this.nextScene = next;
     this.fade = 0;
     this.nextSceneAt = this.tick + SCENE.frames + SCENE.fadeFrames;
@@ -1053,9 +1123,12 @@ export class Game {
       }
     } else {
       drawSky(ctx, this.camera, this.pal);
+      this.drawProps(ctx, 'far');
       drawHills(ctx, this.camera, this.pal);
+      this.drawProps(ctx, 'near');
       drawGround(ctx, this.level.pits, this.camera, this.pal);
       drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
+      drawFallers(ctx, this.level.fallers, this.camera, this.scene.theme);
       drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     }
 
@@ -1146,9 +1219,12 @@ export class Game {
     }
 
     drawSky(ctx, this.camera, this.pal);
+    this.drawProps(ctx, 'far');
     drawHills(ctx, this.camera, this.pal);
+    this.drawProps(ctx, 'near');
     drawGround(ctx, this.level.pits, this.camera, this.pal);
     drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
+    drawFallers(ctx, this.level.fallers, this.camera, this.scene.theme);
     drawTreats(ctx, this.level.fishes, this.camera, this.tick);
     drawPotions(ctx, this.level.potions, this.camera, this.tick);
     drawMagnets(ctx, this.level.magnets, this.camera, this.tick);
