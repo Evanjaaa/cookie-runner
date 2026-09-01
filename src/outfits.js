@@ -488,9 +488,11 @@ const LIST = [
       cloudSoft: '#C9705E',
       sparkle: '#FFE07A',
     },
-    // เม็ดที่โปรยลงมากลายเป็นผลไม้ลูกกลม ๆ
+    // เม็ดที่โปรยลงมาเป็นผลไม้จริง ๆ ห้าชนิดสลับกัน (ดู rainFruit ใน entities.js)
+    // สีในอาเรย์นี้ไม่ได้ใช้กับตัวผลไม้ เพราะแต่ละชนิดมีสีของตัวเองอยู่แล้ว
+    // แต่ยังใช้กับอนุภาคที่กระเด็นตอนเก็บ จึงตั้งเป็นโทนผลไม้รวมไว้
     rain: ['#FF5C5C', '#FFE07A', '#3FBF6A'],
-    rainShape: 'coin',
+    rainShape: 'fruit',
     glow: '#FFC46B',
     back(ctx, s, pose) {
       sparkleAura(ctx, pose, '#FF7A5C', '#FFE9B0');
@@ -571,8 +573,10 @@ const LIST = [
       cloudSoft: '#9A6BC8',
       sparkle: '#FFFFFF',
     },
+    // หยดน้ำใสไล่แปดสี (ดู DROP_COLORS ใน entities.js) — สีในอาเรย์นี้ใช้กับ
+    // อนุภาคตอนเก็บเท่านั้น ตัวหยดเลือกสีเองจากพิกัดเพื่อให้ไล่โทนต่อเนื่อง
     rain: ['#FF5C7A', '#FFF3B0', '#4FC9E8'],
-    rainShape: 'coin',
+    rainShape: 'drop',
     glow: '#E9C8FF',
     back(ctx, s, pose) {
       sparkleAura(ctx, pose, '#B06CE8', '#FFFFFF');
