@@ -226,7 +226,9 @@ export class Game {
       setMusicTrack(this.inRoom ? SILENT : 'home');
     } else if (this.bonus > 0) setMusicTrack(this.scene.bonusTrack);
     else if (this.skill > 0) setMusicTrack('dance');
-    else setMusicTrack('main');
+    // เพลงประจำแมพ — ด่านที่ยังไม่ได้ประกาศ track ไว้ใช้เพลงกลางเหมือนเดิม
+    // ปล่อยให้ตกกลับไป 'main' แทนที่จะบังคับให้ทุกด่านต้องมีเพลงของตัวเอง
+    else setMusicTrack(this.scene.track || 'main');
   }
 
   reset() {
@@ -239,6 +241,10 @@ export class Game {
     this.nextScene = null;            // ฉากปลายทางระหว่างไล่สี (null = ไม่ได้กำลังเปลี่ยน)
     this.fade = 0;                    // เฟรมที่ไล่สีไปแล้ว
     this.nextSceneAt = SCENE.frames;  // ครบเมื่อไหร่ถึงเปลี่ยนฉาก
+    // ทางเชื่อมระหว่างฉาก — ตั้งเป็น -Infinity แปลว่า "ตอนนี้ไม่ได้อยู่บนทางเชื่อม"
+    // ใช้ค่านี้แทน null เพราะ onBridge เทียบด้วย < ตรง ๆ ได้เลยโดยไม่ต้องเช็ค null ก่อน
+    this.bridgeAt = -Infinity;
+    this.bridgeEnd = -Infinity;
     this.clearedScenes = 0;           // ผ่านด่านย่อยไปกี่ฉากแล้วในตานี้
 
     this.pal = this.stage.palette;
@@ -390,7 +396,14 @@ export class Game {
     if (this.bonus > 0) return this.updateBonus(dt, gdt);
 
     // พลังไหลลงตลอด ไม่ว่าจะหลบเก่งแค่ไหน — นี่คือตัวกำหนดความยาวของรอบ
-    this.hp -= HEALTH.drain * dt;
+    //
+    // ยิ่งฉากลึก ยิ่งไหลเร็ว (ดูเหตุผลใน HEALTH) ฉากแรกไหลน้อยกว่าที่ขวดฟื้นให้
+    // ผู้เล่นจึงมีพลังเหลือไว้พลาดได้บ้างตอนต้น แล้วโดนบีบขึ้นเรื่อย ๆ ตอนท้าย
+    //
+    // หารด้วย SCENE.frames ตรงนี้ ค่าที่ตั้งไว้จึงเป็น "พลังต่อฉาก" เสมอ
+    // เปลี่ยนความยาวฉากเมื่อไหร่ สมดุลก็ยังเท่าเดิมโดยไม่ต้องแก้ตัวเลขตาม
+    const perScene = HEALTH.drainFirstScene + HEALTH.drainPerScene * this.sceneIndex;
+    this.hp -= (perScene / SCENE.frames) * dt;
     if (this.hp <= 0) {
       this.hp = 0;
       return this.die();
@@ -689,18 +702,38 @@ export class Game {
    * ไล่สีให้ไม่ได้ — ถ้าสลับดื้อ ๆ ตอนไล่สีจบ หินย้อยทั้งจอจะโผล่พรึบในเฟรมเดียว
    * จึงค่อย ๆ จางของเก่าออกพร้อมจางของใหม่เข้า ใช้ตัวเดียวกับที่คุมการไล่สี
    */
+  /**
+   * ของประดับฉากหลัง ระหว่างเปลี่ยนฉากต้อง "ผลัดกัน" ไม่ใช่ "ทับกัน"
+   *
+   * ── ทำไมจางไขว้พร้อมกันไม่ได้ ──
+   * เดิมวาดฉากเก่าที่ alpha 1-t และฉากใหม่ที่ alpha t พร้อมกัน
+   * ตรงกลางทางจึงเป็นของสองชุดซ้อนกันชุดละครึ่งจาง มองทะลุกันไปมา
+   * ชั้นวางกับเตาอบของครัวลอยทับก้อนเมฆกับต้นไม้ของสวน อ่านไม่ออกว่าอะไรเป็นอะไร
+   *
+   * ปัญหาไม่ได้อยู่ที่ค่า alpha แต่อยู่ที่ "ของทึบสองชิ้นอยู่ที่เดียวกันพร้อมกัน"
+   * ลดความจางแค่ไหนก็ยังซ้อนอยู่ดี ต้องไม่ให้มันอยู่พร้อมกันตั้งแต่แรก
+   *
+   * ครึ่งแรกจึงจางฉากเก่าออกจนหมดก่อน แล้วครึ่งหลังค่อยจางฉากใหม่เข้ามา
+   * ช่วงรอยต่อจะเหลือแค่ฟ้ากับเนินเขา ซึ่งยังไล่สีต่อเนื่องอยู่ตลอดผ่าน mixPalette
+   * ภาพที่ได้จึงเป็น "ที่เดิมสลายไป แล้วที่ใหม่ก่อตัวขึ้น" ไม่ใช่ภาพซ้อน
+   */
   drawProps(ctx, band) {
     const t = this.nextScene ? Math.min(1, this.fade / SCENE.fadeFrames) : 0;
 
-    if (t < 1 && this.scene.layers) {
+    // ครึ่งแรก: 1 -> 0   ครึ่งหลัง: 0 ตลอด
+    const oldA = Math.max(0, 1 - t / 0.5);
+    // ครึ่งแรก: 0 ตลอด   ครึ่งหลัง: 0 -> 1
+    const newA = Math.max(0, (t - 0.5) / 0.5);
+
+    if (oldA > 0 && this.scene.layers) {
       ctx.save();
-      ctx.globalAlpha = 1 - t;
+      ctx.globalAlpha = oldA;
       drawProps(ctx, this.camera, this.scene.layers, band, this.pal, this.tick);
       ctx.restore();
     }
-    if (t > 0 && this.nextScene?.layers) {
+    if (newA > 0 && this.nextScene?.layers) {
       ctx.save();
-      ctx.globalAlpha = t;
+      ctx.globalAlpha = newA;
       drawProps(ctx, this.camera, this.nextScene.layers, band, this.pal, this.tick);
       ctx.restore();
     }
@@ -722,7 +755,8 @@ export class Game {
     if (!cfg) return;
 
     if (this.tick >= this.nextFallerAt) {
-      this.level.spawnFaller(this.camera + VIEW.W + 80, FALLER.warnFrames);
+      // กติกาเดียวกับของประจำแมพชนิดอื่น — ทางเชื่อมต้องโล่งจริง (ดู updateHazards)
+      if (!this.onBridge) this.level.spawnFaller(this.camera + VIEW.W + 80, FALLER.warnFrames);
       this.nextFallerAt = this.tick + (cfg.every || FALLER.everyFrames);
     }
 
@@ -762,8 +796,14 @@ export class Game {
     if (!cfg) return;
 
     if (this.tick >= this.nextHazardAt) {
-      this.level.spawnHazard(cfg.kind, this.camera + VIEW.W + 90, this.camera);
-      this.nextHazardAt = this.tick + (cfg.every || HAZARD.everyFrames);
+      // ทางเชื่อมต้องโล่งจริง — เลื่อนนัดหน้าออกไปแทนที่จะปล่อยของ
+      // ถ้าแค่ข้ามเฉย ๆ นัดจะค้างอยู่ในอดีต แล้วพอพ้นทางเชื่อมจะโผล่รัวติดกันทันที
+      if (this.onBridge) {
+        this.nextHazardAt = this.tick + (cfg.every || HAZARD.everyFrames);
+      } else {
+        this.level.spawnHazard(cfg.kind, this.camera + VIEW.W + 90, this.camera);
+        this.nextHazardAt = this.tick + (cfg.every || HAZARD.everyFrames);
+      }
     }
 
     this.level.updateHazards(dt, this.camera);
@@ -802,8 +842,23 @@ export class Game {
    * จานสีถูกคำนวณใหม่ทุกเฟรมระหว่างไล่สีเท่านั้น จบแล้วชี้ไปที่จานสีจริงของฉาก
    * ไม่ต้องผสมทิ้งทุกเฟรมตลอดทั้งตา
    */
+  /**
+   * กำลังวิ่งอยู่บนทางโล่งที่คั่นระหว่างฉากหรือเปล่า
+   *
+   * ช่วงนี้ต้องไม่มีของประจำแมพโผล่ (ดู updateFallers / updateHazards)
+   * ไม่งั้นทางเชื่อมที่ตั้งใจให้เป็นจังหวะพักจะกลายเป็นด่านอีกด่านหนึ่ง
+   */
+  get onBridge() {
+    return this.camera + PLAYER_X < this.bridgeEnd;
+  }
+
   updateScene(dt) {
     if (this.nextScene) {
+      // ยังวิ่งไม่ถึงทางเชื่อม = ยังไม่เริ่มไล่สี
+      // ผู้เล่นจะได้อยู่กับฉากเก่าจนวิ่งพ้นของที่วางไว้แล้วจริง ๆ
+      // ถ้าไล่สีทันทีตอนครบเวลา ฉากจะเปลี่ยนตั้งแต่ยังหลบหนามของฉากเดิมอยู่
+      if (this.camera + PLAYER_X < this.bridgeAt) return;
+
       this.fade += dt;
       const t = Math.min(1, this.fade / SCENE.fadeFrames);
       this.pal = mixPalette(this.scene.palette, this.nextScene.palette, t);
@@ -813,6 +868,8 @@ export class Game {
         this.pal = this.scene.palette;
         this.nextScene = null;
         this.fade = 0;
+        this.syncMusic();                       // เพลงประจำแมพใหม่เริ่มตรงนี้
+        this.nextSceneAt = this.tick + SCENE.frames;
       }
       return;   // ระหว่างไล่สียังไม่เริ่มนับเวลาฉากใหม่ กันเปลี่ยนซ้อนกัน
     }
@@ -823,16 +880,27 @@ export class Game {
     this.clearedScenes++;
     const next = sceneAt(this.stage.id, this.sceneIndex);
 
-    // รางวัลผ่านด่าน — ขวดเดียวกับของเดิมทุกอย่าง ต่างแค่เงื่อนไขที่ทำให้มันโผล่
-    this.level.spawnPotion(this.camera + VIEW.W + 120);
+    // ── ต่อทางโล่งคั่นก่อนเข้าฉากใหม่ ──
+    // ท่อนที่ 0 คือทางเรียบล้วน ไม่มีหนามไม่มีหลุม มีแต่ปลาให้เก็บ
+    // ต่อไว้หน้าเส้นทางของฉากใหม่ ผู้เล่นจึงวิ่งยาว ๆ เก็บขวดได้ก่อนเจอของจริง
+    const bridge = Array.from({ length: SCENE.bridgeChunks }, () => ({ p: 0 }));
+    this.level.switchRoute([...bridge, ...Level.routeFor(next)], next.theme);
+
+    // nextChunkX คือจุดที่ท่อนถัดไปจะไปวาง = จุดเริ่มของทางเชื่อมพอดี
+    // ของที่วางไว้ล่วงหน้าแล้วยังเป็นของฉากเก่า ทางเชื่อมจึงเริ่มหลังจากนั้น
+    this.bridgeAt = this.level.nextChunkX;
+    this.bridgeEnd = this.bridgeAt + SCENE.bridgeChunks * LEVEL.chunkW;
+
+    // รางวัลผ่านด่าน — วางไว้ "ในทางเชื่อม" ไม่ใช่ที่ระยะคงที่หน้าจอแบบเดิม
+    // เดิมวางที่ camera+VIEW.W+120 ซึ่งตกอยู่กลางของฉากเก่าที่ยังมีหนามอยู่
+    this.level.spawnPotion(this.bridgeAt + 240);
+
     this.noticeText = 'ผ่านด่าน! กำลังเข้า' + next.name;
     this.notice = SCENE.noticeFrames;
     sfx.bonus();
 
-    this.level.switchRoute(Level.routeFor(next), next.theme);
     this.nextScene = next;
     this.fade = 0;
-    this.nextSceneAt = this.tick + SCENE.frames + SCENE.fadeFrames;
   }
 
   // ── ความสามารถประจำตัว ─────────────────────────────────────
