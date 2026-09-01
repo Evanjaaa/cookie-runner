@@ -474,6 +474,196 @@ const LIST = [
       ctx.beginPath(); ctx.arc(14, 4, 1.8, 0, Math.PI * 2); ctx.fill();
     },
   },
+  {
+    id: 'fruit',
+    rarity: 'high',
+    name: 'ปาร์ตี้ผลไม้รวม',
+    note: 'ชุดผลไม้สดใส หวานฉ่ำทั้งตัว',
+    // ฟ้าโบนัสเป็นส้มอมชมพูแบบน้ำผลไม้ปั่น
+    bonus: {
+      sky: ['#3A1220', '#A83C4E', '#FF9A5C'],
+      glow: 'rgba(255,150,90,.34)',
+      speck: 'rgba(255,220,150,.66)',
+      cloud: '#FFD9A8',
+      cloudSoft: '#C9705E',
+      sparkle: '#FFE07A',
+    },
+    // เม็ดที่โปรยลงมากลายเป็นผลไม้ลูกกลม ๆ
+    rain: ['#FF5C5C', '#FFE07A', '#3FBF6A'],
+    rainShape: 'coin',
+    glow: '#FFC46B',
+    back(ctx, s, pose) {
+      sparkleAura(ctx, pose, '#FF7A5C', '#FFE9B0');
+    },
+    body(ctx, s, pose) {
+      // เสื้อขาวครีมเป็นพื้น ให้ผลไม้สีจัดลอยเด่นขึ้นมา
+      fullSuit(ctx, pose, '#FFF6E4');
+      clipBody(ctx, pose, () => {
+        // ผลไม้เรียงพาดกลางอก เลือกสีตามผลไม้จริง ไม่ได้สุ่มสี
+        const fruits = [
+          ['#FF4D4D', '#FF9A9A'],   // สตรอว์เบอร์รี่
+          ['#FFB627', '#FFD98A'],   // ส้ม
+          ['#8BD44E', '#C6EFA0'],   // กีวี
+          ['#B06CE8', '#DCB6FF'],   // องุ่น
+        ];
+        // ── ทำไมต้องวางต่ำขนาดนี้ ──
+        // เดิมวางไว้ที่ y ราว -4 ซึ่งเป็นระดับอก แต่ระดับนั้นโดนหัวแมวกับปลอกคอ
+        // บังจนเห็นแค่ขอบผลไม้โผล่นิดเดียว ต้องลงมาที่พุงถึงจะมีที่ว่างให้เห็นเต็มลูก
+        const y0 = pose === 'slide' ? 2 : 9;
+        fruits.forEach(([main, lite], k) => {
+          // เรียงโค้งตามพุงแทนที่จะเรียงเป็นเส้นตรง จะได้ดูเหมือนติดอยู่บนตัวจริง ๆ
+          const fx = -12 + k * 8;
+          const fy = y0 + Math.abs(k - 1.5) * 1.8;
+          ctx.fillStyle = main;
+          ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.fill();
+          // ไฮไลต์มุมบนซ้ายทุกลูก ทำให้ดูฉ่ำเหมือนผลไม้จริง ไม่ใช่วงกลมสีแบน
+          ctx.fillStyle = lite;
+          ctx.beginPath(); ctx.arc(fx - 1.6, fy - 1.8, 1.9, 0, Math.PI * 2); ctx.fill();
+        });
+      });
+      // ปลอกคอเปลือกส้ม พร้อมจี้เชอร์รี่ห้อยใต้คาง
+      collar(ctx, pose, '#FF8A3C', 3.4, (cx, cy) => {
+        ctx.fillStyle = '#E23B4E';
+        ctx.beginPath(); ctx.arc(cx, cy + 1.5, 3.2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#3FBF6A';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(cx, cy - 1.4); ctx.lineTo(cx + 2.5, cy - 5); ctx.stroke();
+      });
+    },
+    head(ctx) {
+      // หมวกแตงโม — เปลือกเขียว ขอบขาว เนื้อแดงมีเมล็ด
+      ctx.fillStyle = '#2FA858';
+      ctx.beginPath(); ctx.arc(0, -9, 13, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#EAF7E4';
+      ctx.beginPath(); ctx.arc(0, -9, 11, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#FF5566';
+      ctx.beginPath(); ctx.arc(0, -9, 9.4, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#3A1010';
+      for (const sx of [-5, 0, 5]) {
+        ctx.beginPath(); ctx.ellipse(sx, -12.5, 0.9, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      // เชอร์รี่คู่บนยอดหมวก เด้งเบา ๆ ให้ชุดดูมีชีวิตแม้ตอนยืนนิ่ง
+      const t = performance.now() * 0.004;
+      const bob = Math.sin(t) * 1.2;
+      ctx.strokeStyle = '#3FBF6A';
+      ctx.lineWidth = 1.3;
+      for (const dx of [-4, 4]) {
+        ctx.beginPath();
+        ctx.moveTo(0, -20); ctx.quadraticCurveTo(dx * 0.6, -25, dx, -26 + bob);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#E23B4E';
+      for (const dx of [-4, 4]) {
+        ctx.beginPath(); ctx.arc(dx, -26 + bob, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+    },
+  },
+  {
+    id: 'rainbow',
+    rarity: 'high',
+    name: 'สายรุ้งเจ็ดสี',
+    note: 'ชุดสายรุ้งเปล่งประกายทั้งตัว',
+    bonus: {
+      sky: ['#1B1040', '#5B3AA8', '#C86BD8'],
+      glow: 'rgba(180,120,255,.36)',
+      speck: 'rgba(255,220,255,.7)',
+      cloud: '#F2D8FF',
+      cloudSoft: '#9A6BC8',
+      sparkle: '#FFFFFF',
+    },
+    rain: ['#FF5C7A', '#FFF3B0', '#4FC9E8'],
+    rainShape: 'coin',
+    glow: '#E9C8FF',
+    back(ctx, s, pose) {
+      sparkleAura(ctx, pose, '#B06CE8', '#FFFFFF');
+
+      // ── โค้งสายรุ้งหลังตัว ──
+      // วาดในชั้น back จึงอยู่หลังตัวแมว อ่านเป็นรัศมี/ปีก ไม่ใช่แถบพาดบังหน้า
+      const t = performance.now() * 0.003;
+      const cx = pose === 'slide' ? -2 : 0;
+      const cy = pose === 'slide' ? 4 : 6;
+      const cols = ['#FF4D6D', '#FF9A3C', '#FFE04D', '#4FD97A', '#4FC9E8', '#7A6BFF', '#C86BD8'];
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      cols.forEach((c, k) => {
+        // แต่ละสีเต้นคนละจังหวะ วงจึงกระเพื่อมเป็นคลื่น ไม่ใช่ขยายพร้อมกันทั้งก้อน
+        const r = 26 + k * 3.4 + Math.sin(t + k * 0.5) * 1.6;
+        ctx.globalAlpha = 0.42 - k * 0.025;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.stroke();
+      });
+      ctx.restore();
+    },
+    body(ctx, s, pose) {
+      clipBody(ctx, pose, () => {
+        // ไล่เจ็ดสีจากบนลงล่างด้วย gradient ไม่ใช่แถบแยกชิ้น สีจึงไหลต่อเนื่อง
+        const g = ctx.createLinearGradient(0, -14, 0, 26);
+        const cols = ['#FF4D6D', '#FF9A3C', '#FFE04D', '#4FD97A', '#4FC9E8', '#7A6BFF', '#C86BD8'];
+        cols.forEach((c, k) => g.addColorStop(k / (cols.length - 1), c));
+        ctx.fillStyle = g;
+        ctx.fillRect(-28, -14, 56, 40);
+
+        // แถบประกายวิ่งพาดเสื้อเป็นจังหวะ ทำให้ผ้าดูเป็นมันวาว ไม่ใช่สีทึบนิ่ง ๆ
+        const t = performance.now() * 0.0016;
+        const sweep = ((t % 1) * 76) - 38;
+        const sg = ctx.createLinearGradient(sweep - 12, 0, sweep + 12, 0);
+        sg.addColorStop(0, 'rgba(255,255,255,0)');
+        sg.addColorStop(0.5, 'rgba(255,255,255,.5)');
+        sg.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = sg;
+        ctx.fillRect(-28, -14, 56, 40);
+      });
+      collar(ctx, pose, '#FFFFFF', 3, (cx, cy) => {
+        ctx.save();
+        ctx.translate(cx, cy + 2);
+        // แสงนวลรองข้างหลังก่อน ดาวขาวบนเสื้อสีจัดจะได้ไม่จมหายไปกับพื้นหลัง
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 9);
+        g.addColorStop(0, 'rgba(255,243,176,.85)');
+        g.addColorStop(1, 'rgba(255,243,176,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.rotate(performance.now() * 0.002);
+        star4(ctx, 0, 0, 5.6, '#FFFFFF');
+        ctx.restore();
+      });
+    },
+    head(ctx) {
+      const t = performance.now() * 0.004;
+
+      // ── มงกุฎสายรุ้งลอยเหนือหัว ──
+      // เดิมวาดเป็นเส้นพุ่งออกจากกลางหัว ซึ่งทับหูแมวพอดีจนอ่านเป็นตะเกียบปักหัว
+      // เปลี่ยนเป็นวงโค้งที่ "คร่อมอยู่เหนือทุกอย่าง" แทน — จุดศูนย์กลางอยู่ต่ำ
+      // แต่รัศมีใหญ่กว่าหัว เส้นจึงลอยพ้นปลายหูทั้งสองข้างโดยไม่แตะอะไรเลย
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      const cols = ['#FF4D6D', '#FF9A3C', '#FFE04D', '#4FD97A', '#4FC9E8', '#7A6BFF', '#C86BD8'];
+      cols.forEach((c, k) => {
+        const r = 20 + k * 1.9 + Math.sin(t * 1.2 + k * 0.6) * 0.8;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 1.9;
+        ctx.globalAlpha = 0.9 - k * 0.06;
+        ctx.beginPath();
+        ctx.arc(0, -4, r, Math.PI * 1.16, Math.PI * 1.84);
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // ดาวประกายลอยรอบหัว หมุนคนละความเร็วกับมงกุฎ ตาจึงจับได้ว่ามีสองชั้น
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.6 + k * 2.1;
+        const r = 15 + Math.sin(t + k) * 2;
+        const tw = 0.5 + Math.abs(Math.sin(t * 1.7 + k * 1.3)) * 0.5;
+        ctx.globalAlpha = tw;
+        star4(ctx, Math.cos(a) * r, Math.sin(a) * r - 4, 2.6 + tw * 1.4, '#FFFFFF');
+      }
+      ctx.globalAlpha = 1;
+    },
+  },
 
   {
     id: 'dryad',
