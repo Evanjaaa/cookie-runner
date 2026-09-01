@@ -1394,7 +1394,176 @@ function rainCoin(ctx, x, y, r, t, main, lite, dark) {
   ctx.restore();
 }
 
-const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin };
+/**
+ * ผลไม้ห้าชนิดสลับกัน — แตงโม มะม่วง องุ่น ส้ม กล้วย
+ *
+ * เลือกชนิดจากพิกัด x ไม่ใช่สุ่มทุกเฟรม เม็ดหนึ่งลูกจึงเป็นผลไม้ชนิดเดิม
+ * ตลอดที่มันร่วงลงมา ถ้าสุ่มใหม่ทุกเฟรมมันจะกระพริบเปลี่ยนชนิดกลางอากาศ
+ *
+ * ที่รัศมี 12px รายละเอียดเล็ก ๆ มองไม่เห็นอยู่แล้ว แต่ละชนิดจึงต้องแยกกันได้
+ * ด้วย "เงาร่างกับสี" เป็นหลัก — สามเหลี่ยม/รี/พวง/กลม/เสี้ยว คนละทรงกันหมด
+ */
+function rainFruit(ctx, x, y, r, t, main, lite, dark) {
+  const kind = Math.floor(Math.abs(x) / 7) % 5;
+
+  ctx.save();
+  ctx.translate(x, y);
+  // แกว่งเบา ๆ ตอนร่วง ให้ดูเหมือนของจริงที่ตกลงมา ไม่ใช่ภาพนิ่งเลื่อนลง
+  ctx.rotate(Math.sin(t * 0.03 + x * 0.02) * 0.35);
+
+  if (kind === 0) {
+    // ── แตงโม: เสี้ยวสามเหลี่ยม เนื้อแดง เปลือกเขียวอยู่ขอบโค้งด้านล่าง
+    ctx.shadowColor = '#FF4D5E'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#FF4D5E';
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.92, r * 0.62);
+    ctx.lineTo(-r * 0.92, r * 0.62);
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#2FA858';
+    ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.92, r * 0.62); ctx.lineTo(r * 0.92, r * 0.62);
+    ctx.stroke();
+    ctx.fillStyle = '#3A1010';
+    for (const sx of [-0.32, 0.32]) {
+      ctx.beginPath(); ctx.ellipse(r * sx, r * 0.16, 1.1, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (kind === 1) {
+    // ── มะม่วง: ทรงรีเอียง ไล่สีเหลืองไปส้ม มีขั้วเขียวสั้น ๆ
+    ctx.shadowColor = '#FFB627'; ctx.shadowBlur = 12;
+    const g = ctx.createLinearGradient(-r, -r, r, r);
+    g.addColorStop(0, '#FFE27A');
+    g.addColorStop(1, '#FF9A2E');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.72, r, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#3FBF6A';
+    ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(r * 0.3, -r * 0.78); ctx.lineTo(r * 0.5, -r * 1.14); ctx.stroke();
+  } else if (kind === 2) {
+    // ── องุ่น: พวงลูกกลมเล็กซ้อนกัน ทรงสามเหลี่ยมคว่ำ
+    ctx.shadowColor = '#B06CE8'; ctx.shadowBlur = 12;
+    const beads = [[0, -r * 0.6], [-r * 0.46, -r * 0.1], [r * 0.46, -r * 0.1],
+                   [-r * 0.24, r * 0.42], [r * 0.24, r * 0.42], [0, r * 0.9]];
+    beads.forEach(([bx, by], i) => {
+      ctx.fillStyle = i % 2 ? '#9B54D6' : '#B672F0';
+      ctx.beginPath(); ctx.arc(bx, by, r * 0.36, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#3FBF6A';
+    ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -r * 0.9); ctx.lineTo(r * 0.2, -r * 1.2); ctx.stroke();
+  } else if (kind === 3) {
+    // ── ส้ม: ลูกกลมสีส้ม มีใบเขียวบนขั้ว
+    ctx.shadowColor = '#FF8A2E'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#FF8A2E';
+    ctx.beginPath(); ctx.arc(0, r * 0.1, r * 0.88, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // ร่องกลีบจาง ๆ ทำให้อ่านเป็นส้มไม่ใช่ลูกบอลสีส้ม
+    ctx.strokeStyle = 'rgba(180,80,10,.35)';
+    ctx.lineWidth = 1.2;
+    for (const a of [-0.5, 0.5]) {
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.1, r * 0.34, r * 0.86, a, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#FFC46B';
+    ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.24, r * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3FBF6A';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.26, -r * 0.86, r * 0.34, r * 0.17, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // ── กล้วย: เสี้ยวโค้ง ปลายทั้งสองข้างเข้ม
+    ctx.shadowColor = '#FFD93C'; ctx.shadowBlur = 12;
+    // เสี้ยวต้องหนาพอ ๆ กับผลไม้ชนิดอื่น ไม่งั้นมวลของภาพจะเล็กกว่าเพื่อนมาก
+    // จนดูเหมือนเป็นเศษอะไรสักอย่างที่ตกมาแทนที่จะเป็นผลไม้อีกลูกหนึ่ง
+    ctx.fillStyle = '#FFD93C';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.86, -r * 0.6);
+    ctx.quadraticCurveTo(r * 0.24, r * 1.32, r * 0.9, -r * 0.42);
+    ctx.quadraticCurveTo(r * 0.18, r * 0.5, -r * 0.86, -r * 0.6);
+    ctx.fill();
+    // แถบเงาด้านในโค้ง ให้เห็นว่าเป็นผลทรงกระบอกโค้ง ไม่ใช่แผ่นเสี้ยวแบน
+    ctx.fillStyle = 'rgba(190,150,20,.35)';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.7, -r * 0.5);
+    ctx.quadraticCurveTo(r * 0.2, r * 0.92, r * 0.78, -r * 0.36);
+    ctx.quadraticCurveTo(r * 0.16, r * 0.62, -r * 0.7, -r * 0.5);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#8A6A18';
+    ctx.beginPath(); ctx.arc(-r * 0.8, -r * 0.5, r * 0.14, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.84, -r * 0.32, r * 0.14, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// แปดสีของหยดน้ำสายรุ้ง เรียงไล่โทนต่อเนื่อง ม่วง -> ชมพู
+// วนกลับมาที่ม่วงพอดี เม็ดที่ร่วงติด ๆ กันจึงไล่สีต่อเนื่องไม่สะดุด
+const DROP_COLORS = [
+  '#A96BFF',  // ม่วง
+  '#5BC8FF',  // ฟ้า
+  '#3A7BFF',  // น้ำเงิน
+  '#3FD98A',  // เขียว
+  '#FFE04D',  // เหลือง
+  '#FF9A3C',  // ส้ม
+  '#FF4D5E',  // แดง
+  '#FF7ABF',  // ชมพู
+];
+
+/**
+ * หยดน้ำใสไล่แปดสี
+ *
+ * ── ทำไมต้องโปร่งแสง ไม่ใช่ทึบ ──
+ * หยดน้ำอ่านออกว่าเป็น "น้ำ" เพราะมองทะลุได้ ถ้าทึบจะกลายเป็นหยดสีเฉย ๆ
+ * จึงวาดเป็นสามชั้น: เนื้อในโปร่ง -> ขอบเข้มกว่า -> ไฮไลต์ขาวจุดเดียว
+ * ชั้นไฮไลต์คือตัวที่ทำให้ดูเป็นผิวโค้งมันวาว ขาดไปเมื่อไหร่จะแบนทันที
+ */
+function rainDrop(ctx, x, y, r, t, main, lite, dark) {
+  const col = DROP_COLORS[Math.floor(Math.abs(x) / 7) % DROP_COLORS.length];
+
+  ctx.save();
+  ctx.translate(x, y);
+  // แกว่งน้อยกว่าผลไม้มาก หยดน้ำที่ส่ายแรงจะดูเหมือนของแข็ง
+  ctx.rotate(Math.sin(t * 0.025 + x * 0.02) * 0.16);
+
+  // ทรงหยดน้ำ: ปลายแหลมด้านบน ท้องกลมด้านล่าง
+  const drop = () => {
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.15);
+    ctx.bezierCurveTo(r * 0.62, -r * 0.3, r * 0.86, r * 0.28, 0, r * 0.98);
+    ctx.bezierCurveTo(-r * 0.86, r * 0.28, -r * 0.62, -r * 0.3, 0, -r * 1.15);
+    ctx.closePath();
+  };
+
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 14;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = col;
+  drop(); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // ขอบเข้มกว่าเนื้อใน ทำให้เห็นรูปทรงชัดบนพื้นหลังทุกสี
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1.8;
+  drop(); ctx.stroke();
+
+  // ไฮไลต์ผิวโค้ง — จุดใหญ่ที่ท้องหยด กับขีดบางที่ไหล่
+  ctx.globalAlpha = 0.92;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.ellipse(-r * 0.26, r * 0.2, r * 0.2, r * 0.28, -0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath(); ctx.ellipse(r * 0.24, -r * 0.16, r * 0.1, r * 0.2, 0.4, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rainFruit, drop: rainDrop };
 
 export function drawRain(ctx, drops, camera, skin, t) {
   // ชุดระดับสูงเปลี่ยนทั้งสีและทรง ชุดอื่นใช้ลูกกลมสีประจำสีขนตามเดิม
