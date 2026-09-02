@@ -4460,7 +4460,9 @@ canvas { display: block; width: 100%; height: auto; }
 .auth-opt {
   display: flex;
   flex-direction: column;
-  gap: clamp(6px, 1.2dvh, 10px);
+  /* ช่องไฟระหว่างปุ่มกับคำอธิบายแคบกว่าช่องไฟรอบนอกของกล่องเสมอ
+     ตาจึงอ่านสองชิ้นนี้เป็นก้อนเดียวกัน ไม่ใช่ของสองชิ้นที่บังเอิญอยู่ในกรอบเดียวกัน */
+  gap: clamp(3px, .6dvh, 6px);
   padding: clamp(9px, 1.6dvh, 14px);
   border-radius: 16px;
   background: rgba(255,243,226,.055);
