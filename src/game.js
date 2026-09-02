@@ -266,6 +266,7 @@ export class Game {
     this.letters = 0;     // เก็บตัวอักษร SPEEDCAT ได้กี่ตัวแล้ว
     this.bonus = 0;       // เฟรมที่เหลือของโหมดโบนัส (0 = ไม่ได้อยู่ในโบนัส)
     this.bonusPhase = '';
+    this.catMood = '';
     this.bonusTreats = [];
     this.bonusMagnets = [];
     // ตำแหน่งปลาเก็บเป็นพิกัดจอ ไม่ใช่พิกัดโลก เพราะมันเกาะอยู่กับตัวแมว
@@ -286,6 +287,7 @@ export class Game {
     this.syncMusic();      // เผื่อรอบก่อนจบตอนกำลังออกฤทธิ์หรืออยู่บนฟ้า
     this.invuln = 0;
     this.hp = HEALTH.max;
+    this.dying = 0;   // นับเฟรมที่พลังแตะศูนย์แล้วแต่ยังไม่ตาย
     this.hurtFlash = 0;
     this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
     this.noticeText = '';                     // ข้อความที่จะโชว์ (ขวดพลัง / ผ่านด่าน)
@@ -406,7 +408,14 @@ export class Game {
     this.hp -= (perScene / SCENE.frames) * dt;
     if (this.hp <= 0) {
       this.hp = 0;
-      return this.die();
+      // ── ยังไม่ตายทันที ──
+      // ปล่อยให้เฟรมนี้เดินต่อจนจบก่อน เพราะการเก็บตัวอักษร (ซึ่งเป็นตัวจุดโบนัส)
+      // อยู่ "ท้ายเฟรม" หลังจุดนี้ ถ้าคืนค่าออกไปเลย คนที่กำลังจะแตะตัวที่ 8 พอดี
+      // จะตายทั้งที่โบนัสควรมารับไปแล้ว
+      this.dying += dt;
+      if (this.dying > HEALTH.graceFrames) return this.die();
+    } else {
+      this.dying = 0;
     }
 
     // เดินโลกด้วยก้าวขนาด 1 เฟรมอ้างอิงเป๊ะ ๆ เศษที่เหลือเก็บไว้เฟรมถัดไป
@@ -494,13 +503,28 @@ export class Game {
     // ดูดของในแมพเข้าหาตัว — เกิดได้สองทาง: เก็บไอเทมแม่เหล็ก
     // หรือกำลังใช้ความสามารถประจำตัว (ซึ่งมีแม่เหล็กติดตัวอยู่ในนั้น)
     // ระยะของความสามารถแคบกว่าไอเทมนิดหน่อย ไอเทมที่ต้องออกแรงเก็บจึงยังคุ้มกว่า
-    if (this.magnet > 0 || this.skill > 0) {
-      const range = this.magnet > 0 ? MAGNET.range : SKILL.magnetRange;
+    // แรงแม่เหล็กติดตัวจากสมบัติ (ดอกไม้ม่วง) — อ่อนกว่าไอเทมเสมอ
+    // ใช้เฉพาะตอนไม่มีไอเทมและไม่ได้ใช้ความสามารถ ของแรงกว่าจึงชนะเสมอ
+    // ไม่ได้บวกทับกัน ไม่งั้นคนที่พกดอกไม้จะได้แม่เหล็กแรงกว่าคนที่เก็บไอเทมมาได้
+    const petal = this.treasures.magnetPull;
+    if (this.magnet > 0 || this.skill > 0 || petal > 0) {
+      // ── ตัวคูณความอ่อนของแม่เหล็กดอกไม้ ──
+      // ไม่ได้เอา petal มาคูณตรง ๆ เพราะ 0.4 x 420 = 168px ซึ่งสั้นกว่าครึ่งจอ
+      // ของที่อยู่ข้างหลังเกินนั้นไม่ถูกแตะเลย วัดแล้วดูดอะไรไม่ได้จริงสักชิ้น
+      // และ 0.4 x 17 = 6.8 ซึ่งเท่ากับความเร็วกล้องพอดี = ของไม่มีวันตามทัน
+      //
+      // แมป petal 0.4-0.6 ไปเป็น 0.67-0.78 แทน ได้ระยะ 281-328px
+      // กับความเร็วพื้น 11.4-13.3 (กล้อง 6.8) ซึ่งอ่อนกว่าไอเทมชัดเจนแต่ใช้งานได้จริง
+      // และไม่ว่าตีบวกถึงขั้นไหนก็ไม่มีทางแตะ 1.0 ไอเทมในด่านจึงยังคุ้มกว่าเสมอ
+      const weak = this.magnet > 0 || this.skill > 0 ? 1 : 0.45 + petal * 0.55;
+      const range = this.magnet > 0 ? MAGNET.range
+        : this.skill > 0 ? SKILL.magnetRange
+        : MAGNET.range * weak;
       // สร้างครั้งเดียวนอกลูป ของในระยะมีได้หลายสิบชิ้นต่อเฟรม
       const cfg = {
         range,
-        base: MAGNET.minPull,
-        rush: MAGNET.rush,
+        base: MAGNET.minPull * weak,
+        rush: MAGNET.rush * weak,
         turn: MAGNET.turn,
         ease: MAGNET.ease,
         swirl: MAGNET.swirl,
@@ -922,6 +946,10 @@ export class Game {
           x: this.camera + 120 + Math.random() * (VIEW.W - 140),
           y: -20 - Math.random() * 90,
           vy: SKILL.fallV * (0.8 + Math.random() * 0.5),
+          // เลขประจำเม็ด สุ่มครั้งเดียวตอนเกิดแล้วไม่เปลี่ยนอีกเลย
+          // ใช้เลือกว่าเม็ดนี้เป็นผลไม้ชนิดไหน / หยดน้ำสีอะไร (ดู drawRain)
+          // ห้ามคำนวณจากตำแหน่ง เพราะตำแหน่งขยับทุกเฟรมทั้งจากกล้องและจากแรงดูด
+          seed: Math.random(),
           got: false,
         });
       }
@@ -996,6 +1024,13 @@ export class Game {
    * โดน cull ทิ้งเอง จึงไม่มีรอยต่อให้ต้องจัดการเป็นพิเศษ
    */
   startBonus() {
+    // เข้าโบนัสได้ทั้งที่พลังแตะศูนย์ไปแล้ว = โบนัสมารับทันพอดี
+    // ต้องคืนพลังให้ด้วย ไม่งั้นพอจบโบนัสก็ตายทันทีในเฟรมแรก การรอดจะไม่มีความหมาย
+    // คืนไม่เต็มหลอด เพราะเป็นการรอดแบบเฉียดฉิว ไม่ใช่รางวัล
+    if (this.dying > 0) {
+      this.hp = HEALTH.max * 0.4;
+      this.dying = 0;
+    }
     this.bonus = BONUS.frames;
     this.bonusPhase = 'catch';
     this.syncMusic();      // เพลงบนฟ้าต้องมาแทนเพลงเต้นทันที ถ้าความสามารถกำลังทำงานอยู่
@@ -1014,7 +1049,11 @@ export class Game {
 
     const span = this.speed * BONUS.frames + VIEW.W;
     // แนวอาหารเริ่มหลังจบช่วงทะยาน ไม่งั้นของแถวแรกจะไหลผ่านไปตอนยังอยู่ฉากพื้น
-    const flyFrom = (BONUS.catchFrames + BONUS.riseFrames) * this.speed;
+    //
+    // นับเฉพาะ riseFrames — ช่วง catch กล้องไม่เลื่อนแล้ว (ดู worldMoves ใน updateBonus)
+    // ถ้ายังบวก catchFrames อยู่ ของแถวแรกจะถูกวางล้ำไปข้างหน้าเกินจริง
+    // แล้วผู้เล่นจะบินผ่านที่ว่างอยู่พักหนึ่งก่อนเจอของชิ้นแรก
+    const flyFrom = BONUS.riseFrames * this.speed;
     this.bonusTreats = buildBonusField(this.camera + flyFrom + 200, span);
     this.bonusMagnets = buildBonusMagnets(this.camera + PLAYER_X, span, this.speed);
     sfx.bonus();
@@ -1054,15 +1093,21 @@ export class Game {
 
       // ระหว่างลอยอยู่บนฟ้า กล้องวิ่งไปไกลมากโดยไม่มีใครสร้างด่านรอไว้
       // ต้องไล่สร้างให้ทันก่อนฉากพื้นจะกลับมาให้เห็น ไม่งั้นจะโผล่มาเจอที่ว่าง
-      this.level.cull(this.camera);
+      // ── ปูทางโล่งรอไว้ตรงจุดที่ปลาจะพาลงมาส่ง ──
+      // ท่อนที่ 0 คือทางเรียบล้วน ไม่มีหนามไม่มีหลุม (ชุดเดียวกับทางเชื่อมระหว่างฉาก)
+      // เริ่มจากขอบจอซ้ายพอดี ทั้งจอที่ผู้เล่นเห็นตอนลงมาจึงว่างเปล่าแน่นอน
+      // ตัดท่อนแรกของเส้นทางทิ้ง เพราะ composeRoute บังคับให้มันเป็นท่อนปลอดภัยอยู่แล้ว
+      // ถ้าไม่ตัด จะได้ทางโล่งซ้อนกันสองท่อน = วิ่ง 4.1 วินาทีกว่าจะเจอของชิ้นแรก
+      // ตัดแล้วเหลือ 2.3 วินาที ซึ่งตรงกับจังหวะที่ต้องการ
+      const clear = Array.from({ length: BONUS.landingChunks }, () => ({ p: 0 }));
+      const rest = Level.routeFor(this.scene).slice(1);
+      this.level.restartAt(this.camera, [...clear, ...rest], this.scene.theme);
       this.level.ensureAhead(this.camera);
     }
   }
 
   updateBonus(dt, gdt = dt) {
     this.bonus -= dt;
-    this.camera += this.speed * gdt;
-    this.distance += this.speed * gdt;
 
     const p = this.player;
     const elapsed = BONUS.frames - this.bonus;
@@ -1081,6 +1126,23 @@ export class Game {
     this.bonusPhase = phase;
     if (prev !== phase) this.enterBonusPhase(phase);
 
+    // ── โลกหยุดนิ่งในสามช่วงที่ผู้เล่นทำอะไรไม่ได้ ──
+    // catch = ปลากำลังว่ายเข้ามารับ / fall = ปลากำลังพาร่อนลง / leave = ปลาวางแล้วว่ายจากไป
+    //
+    // เดิมกล้องเลื่อนตลอดทุกช่วง ภาพที่ได้คือฉากไหลผ่านไปเรื่อย ๆ ทั้งที่แมว
+    // ไม่ได้วิ่งเอง กำลังยืนรอปลาอยู่ ซึ่งอ่านไม่ออกว่าเป็นคัตซีนหรือยังเล่นอยู่
+    // หยุดกล้องแล้วจังหวะจะชัดขึ้นมาก: หยุด -> ดูปลามารับ -> ขึ้นฟ้า -> ลง -> วิ่งต่อ
+    const worldMoves = phase === 'rise' || phase === 'fly';
+    if (worldMoves) {
+      this.camera += this.speed * gdt;
+      this.distance += this.speed * gdt;
+    }
+
+    // อารมณ์บนหน้าแมว — ดีใจตอนปลามารับ เศร้าตอนต้องกลับลงพื้น
+    this.catMood = phase === 'catch' ? 'happy'
+      : (phase === 'fall' || phase === 'leave') ? 'sad'
+      : '';
+
     if (phase === 'catch') {
       // ปลาว่ายเข้ามาจากขอบขวา ชะลอตอนใกล้ถึงตัว (ease-out กำลังสาม)
       const k = Math.min(1, elapsed / BONUS.catchFrames);
@@ -1089,10 +1151,14 @@ export class Game {
       this.fishY = (GROUND_Y - 74) + (GROUND_Y - 18 - (GROUND_Y - 74)) * e;
       this.turnFish(-1, dt);
 
-      // ช้อนขึ้นเฉพาะ 30% สุดท้าย ก่อนหน้านั้นแมวยังวิ่งอยู่บนพื้นตามปกติ
+      // ช้อนขึ้นเฉพาะ 30% สุดท้าย ก่อนหน้านั้นแมวยืนรออยู่กับที่
       const lift = Math.max(0, (k - 0.7) / 0.3);
       const smooth = lift * lift * (3 - 2 * lift);
-      p.y = GROUND_Y + ((this.fishY - carry) - GROUND_Y) * smooth;
+      // กระโดดดีใจอยู่กับที่ระหว่างรอ แล้วจางหายไปตอนถูกช้อนขึ้น
+      // ใช้ค่าสัมบูรณ์ของ sin เพราะอยากได้ "เด้งขึ้นแล้วแตะพื้น" ซ้ำ ๆ
+      // ถ้าใช้ sin ตรง ๆ แมวจะจมลงไปใต้พื้นครึ่งรอบ
+      const hop = Math.abs(Math.sin(elapsed * 0.26)) * 15 * (1 - smooth);
+      p.y = GROUND_Y - hop + ((this.fishY - carry) - GROUND_Y) * smooth;
       p.vy = 0;
       if (k > 0.7 && elapsed % 3 < dt) {
         this.particles.burst(PLAYER_X + this.camera, GROUND_Y, 3, 'mint', 3);
@@ -1140,7 +1206,9 @@ export class Game {
 
     // แมวยืนบนหลังปลาตลอด ท่าวิ่งจึงถูกกว่าท่าลอยกลางอากาศ
     p.onGround = true;
-    p.runPhase += this.speed * dt * 0.06;
+    // ขาสับเฉพาะตอนโลกยังเลื่อนอยู่ — ช่วงที่หยุดนิ่งแล้วขายังสับ
+    // จะอ่านเป็นแมววิ่งอยู่กับที่ ซึ่งขัดกับภาพที่ฉากหลังหยุดสนิท
+    if (worldMoves) p.runPhase += this.speed * dt * 0.06;
 
     // ฉากพื้นถูกวาดในทุกช่วงยกเว้นตอนลอย จึงต้องมีด่านรออยู่จริง
     if (phase !== 'fly') this.level.ensureAhead(this.camera);
@@ -1200,6 +1268,7 @@ export class Game {
       // ตอนนี้แค่คืนการควบคุมให้ผู้เล่นเงียบ ๆ ปลาว่ายพ้นจอไปแล้ว
       this.bonus = 0;
       this.bonusPhase = '';
+      this.catMood = '';
       this.bonusTreats = [];
       this.bonusMagnets = [];
       this.syncMusic();    // กลับไปเพลงเต้นถ้าความสามารถยังเหลือเวลา ไม่งั้นเพลงหลัก
@@ -1264,7 +1333,10 @@ export class Game {
 
     // ปลาก่อนแมว แมวจึงนั่งทับอยู่บนหลังปลาไม่ใช่จมอยู่ข้างใน
     drawBigFish(ctx, this.fishX, this.fishY, BONUS.fishR, this.fishDir, this.tick);
-    drawPlayer(ctx, this.player, false, skin, this.magnet > 0);
+    // ต้องส่ง catMood ตรงนี้ด้วย — นี่คือเส้นทางวาดของ "ตอนอยู่ในโบนัส" ซึ่งเป็น
+    // ช่วงเดียวที่อารมณ์ถูกใช้จริง (ดีใจตอนปลามารับ เศร้าตอนกลับลงพื้น)
+    // เส้นทางวาดตอนวิ่งปกติเป็นคนละบรรทัดกัน แก้ที่นั่นอย่างเดียวจึงไม่มีผลอะไรเลย
+    drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood);
     if (this.magnet > 0) drawSuction(ctx, this.player, this.tick);
 
     postProcess(ctx);
@@ -1362,7 +1434,7 @@ export class Game {
     const skillFlicker = this.skillBlink > 0 && Math.floor(this.tick / 5) % 2 === 0;
     if (!blinking && !skillFlicker) {
       drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking,
-        this.skill > 0 ? this.tick : 0);
+        this.skill > 0 ? this.tick : 0, this.catMood);
     }
     if (sucking) drawSuction(ctx, this.player, this.tick);
 

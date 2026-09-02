@@ -631,7 +631,10 @@ const LIST = [
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
         ctx.rotate(performance.now() * 0.002);
-        star4(ctx, 0, 0, 5.6, '#FFFFFF');
+        // star4 ใช้ fillStyle ปัจจุบัน ไม่ได้รับสีเป็นพารามิเตอร์
+        // ต้องตั้งทับก่อน ไม่งั้นดาวจะถูกวาดด้วย gradient ของแสงนวลข้างบนแล้วจางหาย
+        ctx.fillStyle = '#FFFFFF';
+        star4(ctx, 0, 0, 5.6);
         ctx.restore();
       });
     },
@@ -663,7 +666,8 @@ const LIST = [
         const r = 15 + Math.sin(t + k) * 2;
         const tw = 0.5 + Math.abs(Math.sin(t * 1.7 + k * 1.3)) * 0.5;
         ctx.globalAlpha = tw;
-        star4(ctx, Math.cos(a) * r, Math.sin(a) * r - 4, 2.6 + tw * 1.4, '#FFFFFF');
+        ctx.fillStyle = '#FFFFFF';
+        star4(ctx, Math.cos(a) * r, Math.sin(a) * r - 4, 2.6 + tw * 1.4);
       }
       ctx.globalAlpha = 1;
     },

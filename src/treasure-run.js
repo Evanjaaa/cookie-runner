@@ -64,6 +64,20 @@ export class TreasureRun {
     return m;
   }
 
+  /**
+   * แรงแม่เหล็กติดตัวจากสมบัติ — 0 คือไม่มี, 1 คือแรงเท่าไอเทมแม่เหล็กเต็ม ๆ
+   *
+   * ใช้ค่าที่แรงที่สุดชิ้นเดียว ไม่ได้บวกทับกัน เผื่อวันหลังมีสมบัติแนวนี้หลายชิ้น
+   * ถ้าบวกกันจะทะลุแรงของไอเทมจริงได้ ซึ่งทำให้ไอเทมในด่านหมดความหมาย
+   */
+  get magnetPull() {
+    let best = 0;
+    for (const s of this.slots) {
+      if (s.t.effect.type === 'magnet') best = Math.max(best, s.value);
+    }
+    return best;
+  }
+
   /** กำลังมีโล่จากนมอยู่ไหม — เกมเอาไปใช้ตัดสินว่าชนแล้วเจ็บหรือเปล่า */
   get shielded() {
     return this.guardFrames > 0;

@@ -1,5 +1,5 @@
 // src/render/entities.js
-import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, LETTER_COLORS, COLORS as C } from '../config.js';
+import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, POTION, LETTER_COLORS, COLORS as C } from '../config.js';
 
 const { W } = VIEW;
 
@@ -1275,15 +1275,15 @@ function rainBall(ctx, x, y, r, t, main, lite, dark) {
   ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.34, r * 0.34, 0, Math.PI * 2); ctx.fill();
 }
 
-/** ใบไม้กับดอกไม้สลับกันไป เลือกจากพิกัดจึงคงที่ตลอดอายุของเม็ดนั้น */
-function rainLeaf(ctx, x, y, r, t, main, lite, dark) {
+/** ใบไม้กับดอกไม้สลับกันไป เลือกจาก seed ประจำเม็ดจึงคงที่ตลอดอายุของมัน */
+function rainLeaf(ctx, x, y, r, t, main, lite, dark, seed = 0) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(Math.sin(t * 0.035 + x * 0.02) * 0.55);
   ctx.shadowColor = main;
   ctx.shadowBlur = 12;
 
-  if (Math.floor(Math.abs(x) / 7) % 2) {
+  if (seed < 0.5) {
     // ใบไม้ — สองซีกโค้งบรรจบกันที่ปลายทั้งสองข้าง
     ctx.fillStyle = main;
     ctx.beginPath();
@@ -1397,14 +1397,14 @@ function rainCoin(ctx, x, y, r, t, main, lite, dark) {
 /**
  * ผลไม้ห้าชนิดสลับกัน — แตงโม มะม่วง องุ่น ส้ม กล้วย
  *
- * เลือกชนิดจากพิกัด x ไม่ใช่สุ่มทุกเฟรม เม็ดหนึ่งลูกจึงเป็นผลไม้ชนิดเดิม
- * ตลอดที่มันร่วงลงมา ถ้าสุ่มใหม่ทุกเฟรมมันจะกระพริบเปลี่ยนชนิดกลางอากาศ
+ * เลือกชนิดจาก seed ประจำเม็ด ซึ่งสุ่มครั้งเดียวตอนเกิดแล้วไม่เปลี่ยนอีก
+ * เม็ดหนึ่งลูกจึงเป็นผลไม้ชนิดเดิมตลอดที่มันร่วงลงมา
  *
  * ที่รัศมี 12px รายละเอียดเล็ก ๆ มองไม่เห็นอยู่แล้ว แต่ละชนิดจึงต้องแยกกันได้
  * ด้วย "เงาร่างกับสี" เป็นหลัก — สามเหลี่ยม/รี/พวง/กลม/เสี้ยว คนละทรงกันหมด
  */
-function rainFruit(ctx, x, y, r, t, main, lite, dark) {
-  const kind = Math.floor(Math.abs(x) / 7) % 5;
+function rainFruit(ctx, x, y, r, t, main, lite, dark, seed = 0) {
+  const kind = Math.min(4, Math.floor(seed * 5));
 
   ctx.save();
   ctx.translate(x, y);
@@ -1518,13 +1518,16 @@ const DROP_COLORS = [
 /**
  * หยดน้ำใสไล่แปดสี
  *
+ * สีเลือกจาก seed ประจำเม็ด ไม่ใช่จากพิกัด — เม็ดหนึ่งลูกจึงเป็นสีเดิมตลอด
+ *
  * ── ทำไมต้องโปร่งแสง ไม่ใช่ทึบ ──
  * หยดน้ำอ่านออกว่าเป็น "น้ำ" เพราะมองทะลุได้ ถ้าทึบจะกลายเป็นหยดสีเฉย ๆ
  * จึงวาดเป็นสามชั้น: เนื้อในโปร่ง -> ขอบเข้มกว่า -> ไฮไลต์ขาวจุดเดียว
  * ชั้นไฮไลต์คือตัวที่ทำให้ดูเป็นผิวโค้งมันวาว ขาดไปเมื่อไหร่จะแบนทันที
  */
-function rainDrop(ctx, x, y, r, t, main, lite, dark) {
-  const col = DROP_COLORS[Math.floor(Math.abs(x) / 7) % DROP_COLORS.length];
+function rainDrop(ctx, x, y, r, t, main, lite, dark, seed = 0) {
+  const col = DROP_COLORS[Math.min(DROP_COLORS.length - 1,
+    Math.floor(seed * DROP_COLORS.length))];
 
   ctx.save();
   ctx.translate(x, y);
@@ -1565,6 +1568,17 @@ function rainDrop(ctx, x, y, r, t, main, lite, dark) {
 
 const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rainFruit, drop: rainDrop };
 
+/**
+ * เม็ดที่โปรยลงมาตอนใช้ความสามารถ
+ *
+ * ── ทำไมต้องส่ง seed เข้าไปด้วย ──
+ * ทรงที่มีหลายแบบ (ผลไม้ ใบไม้ หยดน้ำ) ต้องเลือกแบบจาก "ตัวเม็ด" เท่านั้น
+ * เคยเลือกจากพิกัด x ซึ่งผิด เพราะ x ที่ส่งเข้าไปเป็นพิกัดบนจอ = d.x - camera
+ * กล้องเลื่อน 6.8px ทุกเฟรม แถมเม็ดยังถูกดูดเข้าหาแมวอีก ค่าจึงเปลี่ยนตลอด
+ * ผลคือผลไม้ลูกเดียวสลับชนิดไปมาทุกเฟรมจนดูเหมือนกระพริบ
+ *
+ * seed สุ่มครั้งเดียวตอนเม็ดเกิดแล้วไม่เปลี่ยนอีก ลูกไหนเป็นส้มก็เป็นส้มจนหายไป
+ */
 export function drawRain(ctx, drops, camera, skin, t) {
   // ชุดระดับสูงเปลี่ยนทั้งสีและทรง ชุดอื่นใช้ลูกกลมสีประจำสีขนตามเดิม
   const [main, lite, dark] = skin.outfit?.rain || skin.rain;
@@ -1577,7 +1591,8 @@ export function drawRain(ctx, drops, camera, skin, t) {
     if (x > W + 40 || x < -40) continue;
     const r = SKILL.rainR;
 
-    shape(ctx, x, d.y, r, t, main, lite, dark);
+    // เม็ดเก่าที่เกิดก่อนจะมี seed ไม่ได้ ให้ตกกลับไปใช้ 0 แทนที่จะพัง
+    shape(ctx, x, d.y, r, t, main, lite, dark, d.seed || 0);
     if (glow) twinkle(ctx, x, d.y, r, t, glow);
   }
 }
@@ -2088,12 +2103,14 @@ export function drawPotions(ctx, potions, camera, tick) {
 function drawPotion(ctx, x, y, tick) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(1 + Math.sin(tick * 0.09) * 0.06, 1 + Math.sin(tick * 0.09) * 0.06);
+  // ขยายทั้งชิ้นด้วยตัวคูณเดียว (ดู POTION.drawScale) แล้วค่อยคูณจังหวะเต้นทับ
+  const pulse = 1 + Math.sin(tick * 0.09) * 0.06;
+  ctx.scale(POTION.drawScale * pulse, POTION.drawScale * pulse);
 
   // แสงเรืองสีแดง มองเห็นได้แต่ไกลตั้งแต่ยังไม่เข้าจอเต็มตัว
   ctx.save();
-  ctx.shadowColor = 'rgba(255,92,110,.9)';
-  ctx.shadowBlur = 20;
+  ctx.shadowColor = 'rgba(255,92,110,.95)';
+  ctx.shadowBlur = 26;
   ctx.fillStyle = 'rgba(255,243,226,.3)';
   ctx.beginPath();
   ctx.arc(0, 6, 14, 0, Math.PI * 2);
@@ -2198,7 +2215,7 @@ export function drawShieldRing(ctx, player, tick) {
 // ทุกฟังก์ชันรับ `s` = ชุดสีจาก skins.js ไม่มีสีแมวฝังตายในโค้ดวาดเลย
 // แมวทุกตัวจึงใช้โครงเดียวกัน เพิ่มตัวใหม่ = เพิ่มจานสี ไม่ต้องวาดใหม่
 
-export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0) {
+export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0, mood = '') {
   const b = player.box;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
@@ -2232,7 +2249,7 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0)
   ctx.lineCap = 'round';
 
   if (player.sliding) drawCatSlide(ctx, s, { isDead });
-  else drawCatStand(ctx, s, { swing, wag: Math.sin(player.runPhase * 2 + 0.9), isDead });
+  else drawCatStand(ctx, s, { swing, wag: Math.sin(player.runPhase * 2 + 0.9), isDead, mood });
 
   ctx.restore();
 }
@@ -2312,7 +2329,7 @@ export function drawCatFace(ctx, x, y, scale, s) {
 
 function drawCatStand(ctx, s, {
   swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
-  sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0,
+  sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '',
 } = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
@@ -2432,7 +2449,7 @@ function drawCatStand(ctx, s, {
     ctx.restore();
   }
 
-  drawCatHead(ctx, hx, hy, s, { isDead, blink, mouthOpen, tilt });
+  drawCatHead(ctx, hx, hy, s, { isDead, blink, mouthOpen, tilt, mood });
 
   // ── ยกอุ้งเท้าขึ้นเลีย ───────────────────────
   // ต้องวาด "หลังหัว" ไม่ใช่ก่อน เพราะปลายเท้าไปจบตรงปาก ซึ่งอยู่ในวงหัวพอดี
@@ -2502,7 +2519,7 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
  * หัวแมวพร้อมหู หน้า หนวด — วาดรอบจุด (hx,hy) ที่ส่งเข้ามา
  * earsBack: ตอนหมอบต้องลู่หูไปหลัง ไม่งั้นปลายหูโผล่ทะลุคานตอนลอด
  */
-function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0 } = {}) {
+function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '' } = {}) {
   ctx.save();
   ctx.translate(hx, hy);
   // เอียงหัวรอบ "โคนคอ" ไม่ใช่กลางหัว ไม่งั้นหัวจะลอยหลุดจากตัวเวลาเอียงเยอะ ๆ
@@ -2587,6 +2604,47 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     for (const ex of [-5, 7]) {
       ctx.beginPath(); ctx.arc(ex, 0, 3.2, Math.PI, 0, true); ctx.stroke();
     }
+  } else if (mood === 'happy') {
+    // ── ตาเป็นประกาย ──
+    // ตาโตกว่าปกติ ไฮไลต์สองจุดคนละขนาด แล้วมีดาวประกายวิบอยู่มุมตา
+    // สองจุดไม่เท่ากันสำคัญมาก ถ้าเท่ากันจะอ่านเป็นตากลมธรรมดาที่มีจุดขาว
+    // ไม่ใช่ตาเป็นประกายแบบการ์ตูน
+    const tw = performance.now() * 0.008;
+    ctx.fillStyle = s.ink;
+    ctx.beginPath(); ctx.arc(-5, -1, 3.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -1, 3.9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    for (const ex of [-5, 7]) {
+      ctx.beginPath(); ctx.arc(ex + 1.3, -2.4, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex - 1.5, 0.7, 0.85, 0, Math.PI * 2); ctx.fill();
+    }
+    // ดาวสี่แฉกวิบ ๆ เหนือหางตาทั้งสองข้าง เต้นคนละจังหวะกัน
+    // star4 ใช้ fillStyle ปัจจุบัน จึงต้องตั้งสีเองก่อนเรียก
+    ctx.fillStyle = '#FFF3B0';
+    for (const [ex, ph] of [[-9, 0], [11, 1.9]]) {
+      const k = 0.45 + Math.abs(Math.sin(tw + ph)) * 0.55;
+      star4(ctx, ex, -6, 2.2 * k);
+    }
+  } else if (mood === 'sad') {
+    // ── ตาเศร้า ──
+    // เปลือกตาบนกดลงมาปิดตาครึ่งบน อ่านเป็น "ตาปรือ" ซึ่งคือสัญญาณเศร้าที่ชัดที่สุด
+    // ในหน้าที่ไม่มีคิ้วให้ขยับ
+    ctx.fillStyle = s.ink;
+    ctx.beginPath(); ctx.arc(-5, 0, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, 0, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.arc(-3.9, -1.1, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(8.1, -1.1, 1, 0, Math.PI * 2); ctx.fill();
+    // เปลือกตาใช้สีขนทับลงไป จึงกลืนกับหน้าโดยไม่ต้องรู้ว่าสกินไหนสีอะไร
+    ctx.fillStyle = s.cat;
+    ctx.beginPath(); ctx.moveTo(-9, -4.4); ctx.lineTo(-1, -2.6); ctx.lineTo(-9, -0.6); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(11, -4.4); ctx.lineTo(3, -2.6); ctx.lineTo(11, -0.6); ctx.fill();
+    // หยดน้ำตาที่หางตาขวา ไหลลงช้า ๆ วนซ้ำ
+    const fall = (performance.now() * 0.0016) % 1;
+    ctx.globalAlpha = 1 - fall * 0.75;
+    ctx.fillStyle = '#8FD6FF';
+    ctx.beginPath(); ctx.ellipse(9.6, 2 + fall * 7, 1.3, 1.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
   } else {
     ctx.fillStyle = s.ink;
     ctx.beginPath(); ctx.arc(-5, -1, 3, 0, Math.PI * 2); ctx.fill();
@@ -2609,6 +2667,18 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.ellipse(1, 7.5, 6.8, 5.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = s.pink;
     ctx.beginPath(); ctx.ellipse(1, 10, 4.2, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (mood === 'happy') {
+    // ยิ้มกว้างอ้าปาก — โค้งเดียวยาว ๆ แทนปาก ω สองโค้ง
+    ctx.fillStyle = s.ink;
+    ctx.beginPath(); ctx.ellipse(1, 7.6, 5, 4, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = s.pink;
+    ctx.beginPath(); ctx.ellipse(1, 10.2, 2.8, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (mood === 'sad') {
+    // ปากคว่ำ — โค้งกลับด้านกับปากปกติ
+    ctx.strokeStyle = s.ink;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(1, 10.4, 3.4, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
   } else {
     // ปากรูป ω
     ctx.strokeStyle = s.ink;

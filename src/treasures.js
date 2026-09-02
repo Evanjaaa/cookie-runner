@@ -141,6 +141,22 @@ export const TREASURES = [
     color: '#FF8FB0',
   },
   {
+    id: 'flower',
+    name: 'ดอกไม้ม่วงนำโชค',
+    emoji: '🪻',
+    rarity: 'epic',
+    note: 'มีพลังแม่เหล็กติดตัวตลอดตา',
+    detail: 'กลีบดอกสีม่วงเรืองแสงอ่อน ๆ รอบตัวน้องแมว ดูดของกินเข้าหาตัวตลอดทั้งตา '
+      + 'ไม่ต้องรอเงื่อนไขอะไรเลย แต่แรงดูดอ่อนกว่าไอเทมแม่เหล็กที่เก็บได้ในด่านมาก '
+      + 'เก็บไอเทมแม่เหล็กได้เมื่อไหร่ แรงของไอเทมจะมาแทนที่ชั่วคราว ไม่ได้บวกทับกัน',
+    trigger: { type: 'passive' },
+    // pull = สัดส่วนของแรงแม่เหล็กเต็ม ๆ (ดู applyMagnet ใน game.js)
+    // 0.4 ที่ขั้น 0 -> 0.6 ที่ขั้น 5 ยังต่ำกว่าไอเทมจริงเสมอ ไม่ว่าจะตีบวกแค่ไหน
+    // ถ้าปล่อยให้แตะ 1.0 ได้ ไอเทมแม่เหล็กในด่านจะกลายเป็นของไร้ความหมายทันที
+    effect: { type: 'magnet', pull: 0.4 },
+    color: '#B06CE8',
+  },
+  {
     id: 'cake',
     name: 'เค้กแห่งความสุข',
     emoji: '🍰',
@@ -172,6 +188,7 @@ export function effectValue(t, level) {
   if (e.type === 'guard') return Math.round(e.frames * m);
   if (e.type === 'spawn') return Math.round(e.count * m);
   if (e.type === 'jump') return Math.round(e.cooldown / m);   // ยิ่งขั้นสูง คูลดาวน์ยิ่งสั้น
+  if (e.type === 'magnet') return e.pull * m;                 // 0.4 -> 0.6 ที่ขั้น 5
   return 0;
 }
 
@@ -184,6 +201,7 @@ export function effectText(t, level) {
   if (e.type === 'guard') return 'กันตาย 1 ครั้ง + โล่ ' + (v / 60).toFixed(1) + ' วิ';
   if (e.type === 'spawn') return 'เสกของกิน ' + v + ' ชิ้น';
   if (e.type === 'jump') return 'กระโดดเพิ่ม 1 ครั้ง (รอ ' + (v / 60).toFixed(0) + ' วิ)';
+  if (e.type === 'magnet') return 'แม่เหล็กติดตัว แรง ' + Math.round(v * 100) + '% ของไอเทม';
   return '';
 }
 
