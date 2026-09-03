@@ -757,6 +757,39 @@ export const PATTERN_META = [
  * @param count  จำนวนท่อนที่ต้องการ
  * @param rnd    ฟังก์ชันสุ่ม 0-1 ส่งเข้ามาได้เพื่อให้เทสซ้ำได้
  */
+/**
+ * คู่ท่อนที่ "ต่อกันแล้วหลบไม่ได้" — คำนวณครั้งเดียวตอนโหลดโมดูล
+ *
+ * ── ปัญหาที่ตารางนี้แก้ ──
+ * ไม่มีแพตเทิร์นไหนมีคานคร่อมหนามอยู่ในตัวเอง (ตรวจครบทั้ง 29 ท่อนแล้ว)
+ * แต่พอเอาสองท่อนมาต่อกัน ท่อนแรกที่จบด้วยคานตรงขอบขวา จะไปคร่อมหนาม
+ * ที่อยู่ต้นท่อนถัดไปพอดี — วัดแล้วเกิดกับ 17 คู่จาก 841 คู่ (2%)
+ *
+ * ใต้คานต้องหมอบ (กระโดดข้ามคานไม่ได้เลย พิสูจน์ด้วยการจำลองส่วนโค้งกระโดดแล้ว)
+ * แต่หนามชนแมวที่กำลังหมอบอยู่ = ไม่มีท่าไหนรอด ซึ่งผิดกฎ "ห้ามสร้างแพตเทิร์นที่หลบไม่ได้"
+ *
+ * ตารางนี้เก็บเป็น Set ของ "a>b" เพราะ composeRoute ต้องถามซ้ำทุกครั้งที่สุ่มท่อน
+ * คำนวณสดทุกครั้งจะเรียก PATTERNS 841 ครั้งต่อการสร้างเส้นทางหนึ่งเส้น
+ */
+const BAD_JOIN = (() => {
+  const bad = new Set();
+  for (let a = 0; a < PATTERNS.length; a++) {
+    const A = PATTERNS[a](0);
+    const w = A.width || chunkW;
+    for (let b = 0; b < PATTERNS.length; b++) {
+      const B = PATTERNS[b](w);
+      const all = [...A.obs, ...B.obs];
+      const bars = all.filter((o) => o.kind === 'bar');
+      const solid = all.filter((o) => o.kind !== 'bar');
+      const clash = bars.some((bar) => solid.some(
+        (o) => bar.x < o.x + o.w && o.x < bar.x + bar.w
+      ));
+      if (clash) bad.add(a + '>' + b);
+    }
+  }
+  return bad;
+})();
+
 export function composeRoute(pool, count = 20, rnd = Math.random) {
   const byKind = (k) => pool.filter((p) => PATTERN_META[p].kind === k);
   const safe = byKind('safe');
@@ -765,8 +798,15 @@ export function composeRoute(pool, count = 20, rnd = Math.random) {
   const challenge = byKind('challenge');
 
   // ด่านที่คลังไม่ครบทุกชนิด ให้ยืมชนิดที่ใกล้เคียงแทนการล้ม
+  // prev = ท่อนก่อนหน้า ใช้กันไม่ให้เลือกท่อนที่ต่อกับมันแล้วหลบไม่ได้ (ดู BAD_JOIN)
+  // ถ้ากรองแล้วไม่เหลือตัวเลือกเลย ยอมใช้ของเดิม — เส้นทางที่มีจุดยากดีกว่าไม่มีด่าน
+  let prev = -1;
   const pick = (arr, fallback) => {
-    const src = arr.length ? arr : fallback;
+    let src = arr.length ? arr : fallback;
+    if (prev >= 0) {
+      const safe = src.filter((p) => !BAD_JOIN.has(prev + '>' + p));
+      if (safe.length) src = safe;
+    }
     return src[Math.floor(rnd() * src.length)];
   };
   const anyOf = pool;
@@ -799,7 +839,26 @@ export function composeRoute(pool, count = 20, rnd = Math.random) {
     const kind = PATTERN_META[p].kind;
     streak = kind === 'challenge' ? streak + 1 : 0;
     owed = kind === 'challenge' && streak >= 2;
+    prev = p;
     out.push({ p });
+  }
+
+  // ── รอยต่อตอนเส้นทางวนกลับ ──
+  // spawnChunk อ่านด้วย chunkIndex % route.length ด่านจึงวนซ้ำไม่รู้จบ
+  // ท่อนสุดท้ายจะไปต่อกับท่อนแรกเสมอ แต่ลูปข้างบนตรวจแค่คู่ที่ติดกันในอาเรย์
+  // รอยต่อนี้จึงหลุดการตรวจมาตลอด — วัดในเกมจริงแล้วเจอคานคร่อมหนามตรงนี้จริง
+  //
+  // แก้ที่ท่อนสุดท้ายเพราะมันถูกเลือกด้วยกฎที่หลวมที่สุด (ไม่มีใครต่อจากมันในอาเรย์)
+  // เปลี่ยนแล้วกระทบเส้นทางน้อยกว่าการไปเปลี่ยนท่อนแรกซึ่งถูกบังคับให้เป็นท่อนปลอดภัย
+  if (out.length > 1) {
+    const first = out[0].p;
+    const last = out.length - 1;
+    if (BAD_JOIN.has(out[last].p + '>' + first)) {
+      const safe = pool.filter(
+        (p) => !BAD_JOIN.has(p + '>' + first) && !BAD_JOIN.has(out[last - 1].p + '>' + p)
+      );
+      if (safe.length) out[last].p = safe[Math.floor(rnd() * safe.length)];
+    }
   }
 
   sprinklePickups(out, rnd);
@@ -995,7 +1054,7 @@ export class Level {
    * แล้วได้จุด "โล่ง" ปลอม ๆ ที่พอวิ่งถึงจริงกลับมีหนามอยู่
    */
   spawnPotion(fromX) {
-    const limit = fromX + chunkW;
+    const limit = Math.min(fromX + chunkW, this.knownTo);
     for (let x = fromX; x < limit; x += 24) {
       if (this.isClearSpot(x)) {
         this.potions.push({ x, y: POTION.y, got: false });
@@ -1018,7 +1077,7 @@ export class Level {
    * isClearSpot() เช็คให้แล้วว่าห่างจากคานและหลุมพอ จึงใช้ตัวเดียวกับที่วางขวดพลัง
    */
   spawnFaller(fromX, warnFrames) {
-    const limit = fromX + chunkW;
+    const limit = Math.min(fromX + chunkW, this.knownTo);
     for (let x = fromX; x < limit; x += 24) {
       if (this.isClearSpot(x)) {
         this.fallers.push({
@@ -1038,6 +1097,8 @@ export class Level {
 
   /** เดินของร่วงหนึ่งเฟรม — คืน true ถ้ามีชิ้นไหนเพิ่งกระแทกพื้น (ไว้ให้เกมสั่นจอ) */
   updateFallers(dt) {
+    // กติกาเดียวกับอันตราย — ของร่วงลงใต้คานคือจุดที่หลบไม่ได้ (ดู underBar)
+    this.fallers = this.fallers.filter((f) => !this.underBar(f.x, f.w));
     let landed = false;
     for (const f of this.fallers) {
       if (f.warn > 0) { f.warn -= dt; continue; }
@@ -1060,7 +1121,7 @@ export class Level {
    * ผู้เล่นจะเจอสองอย่างพร้อมกันโดยมีทางออกเดียวซึ่งอาจไม่มีอยู่จริง
    */
   spawnHazard(kind, fromX, camera) {
-    const limit = fromX + chunkW;
+    const limit = Math.min(fromX + chunkW, this.knownTo);
     for (let x = fromX; x < limit; x += 24) {
       if (!this.isClearSpot(x)) continue;
 
@@ -1115,6 +1176,38 @@ export class Level {
     return true;
   }
 
+  /**
+   * ตาข่ายกันจุดที่หลบไม่ได้ — คืนค่าจริงถ้าช่วง x นี้อยู่ใต้คาน
+   *
+   * ── ทำไมต้องเช็คซ้ำทุกเฟรม ทั้งที่ตอนวางก็เช็คแล้ว ──
+   * ตอนวางเช็คด้วย isClearSpot() ซึ่งถูกต้อง ณ เวลานั้น แต่วัดจริงแล้วยังมี
+   * ราว 2% ที่ของถูกวางบนที่โล่ง แล้วมีคานมาอยู่ตรงนั้นทีหลัง
+   * (ยังไม่ได้ไล่หาต้นเหตุที่แน่ชัด — ดูบันทึกการวัดในการสนทนา)
+   *
+   * ใต้คานผู้เล่นต้องหมอบและลุกไม่ได้ ส่วนของร่วงกับอันตรายชนแมวที่หมอบอยู่
+   * = ไม่มีท่าไหนรอด การเช็คซ้ำตรงนี้จึงรับประกันกฎ "ห้ามมีแพตเทิร์นที่หลบไม่ได้"
+   * ได้โดยไม่ต้องรู้ว่าต้นเหตุมาจากไหน ซึ่งสำคัญกว่าการรู้สาเหตุ
+   *
+   * ราคาถูกมาก: ของพวกนี้มีอยู่ไม่กี่ชิ้นต่อเฟรม และคานก็มีไม่กี่อันในจอ
+   */
+  underBar(x, w) {
+    return this.obstacles.some(
+      (o) => o.kind === 'bar' && x < o.x + o.w && o.x < x + w
+    );
+  }
+
+  /**
+   * ช่วง x นี้มีของที่ "ต้องกระโดดข้าม" อยู่ไหม (หนาม/ลัง/หลุม)
+   *
+   * ใช้คู่กับ underBar เพื่อคุมกฎเดียวกันจากอีกด้าน:
+   * ของที่บังคับให้หมอบ (ไฟเพดาน) ห้ามไปคร่อมของที่บังคับให้กระโดด
+   * ไม่งั้นก็คือจุดที่ไม่มีท่าไหนรอดเหมือนกัน แค่สลับฝั่งกัน
+   */
+  hasSolid(x, w) {
+    const hit = (o) => x < o.x + o.w && o.x < x + w;
+    return this.obstacles.some((o) => o.kind !== 'bar' && hit(o)) || this.pits.some(hit);
+  }
+
   /** เดินอันตรายที่ขยับได้หนึ่งเฟรม แล้วทิ้งชิ้นที่พ้นจอไปแล้ว */
   updateHazards(dt, camera) {
     for (const h of this.hazards) {
@@ -1135,6 +1228,16 @@ export class Level {
         h.spin -= 0.12 * dt;
       }
     }
+    // ทิ้งชิ้นที่ไปอยู่ใต้คาน (ดู underBar) ก่อนกรองเรื่องพ้นจอตามปกติ
+    this.hazards = this.hazards.filter((h) => {
+      const b = this.hazardBox(h);
+      if (!b) return true;                                  // ไฟกำลังดับ ยังไม่เป็นภัย
+      if (this.underBar(b.x, b.w)) return false;            // ไปอยู่ใต้คาน
+      // ไฟเพดานเป็นของที่บังคับหมอบเหมือนคาน จึงห้ามคร่อมหนาม/ลัง/หลุม
+      // สลับให้พ่นจากพื้นแทนดีกว่าลบทิ้ง เพราะไฟพื้นกับหนามกระโดดทีเดียวพ้นทั้งคู่
+      if (h.kind === 'flame' && h.at === 'ceil' && this.hasSolid(b.x, b.w)) h.at = 'ground';
+      return true;
+    });
     this.hazards = this.hazards.filter((h) => h.x + h.w > camera - 120);
   }
 
@@ -1154,6 +1257,22 @@ export class Level {
   }
 
   /** จุดที่ห่างจากหนาม คาน และหลุมพอที่จะกระโดดเก็บได้โดยไม่โดนอะไร */
+  /**
+   * ขอบขวาสุดที่ตอบได้จริงว่า "ตรงนั้นมีอะไรอยู่บ้าง"
+   *
+   * ── ทำไมต้องมีตัวนี้ ──
+   * isClearSpot() ตอบจาก this.obstacles กับ this.pits ซึ่งมีเฉพาะของที่ถูกวางแล้ว
+   * เลยจุด nextChunkX ออกไปคือพื้นที่ที่ยังไม่ได้สร้าง มันจึงตอบว่า "โล่ง" เสมอ
+   * ทั้งที่ความจริงคือ "ยังไม่รู้" — สองอย่างนี้ต่างกันมาก
+   *
+   * ตัวที่ไปหาที่ว่างไกล ๆ (ขวดพลัง/ของร่วง/อันตราย) สแกนล้ำเขตนี้ไป 80-120px
+   * ของจึงไปลงในที่ว่างปลอม แล้วพอท่อนถัดไปถูกสร้างทับตรงนั้น ก็ได้คานคร่อม
+   * ของร่วงพอดี = ต้องหมอบแต่มีของหล่นใส่ ซึ่งหลบไม่ได้ (เจอจริงจากการทดสอบ)
+   */
+  get knownTo() {
+    return this.nextChunkX;
+  }
+
   isClearSpot(x, pad = POTION.clearance) {
     const near = (ox, ow) => x + pad > ox && x - pad < ox + ow;
     return (

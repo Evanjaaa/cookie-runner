@@ -262,6 +262,35 @@ function gem(ctx, x, y, r, color) {
   ctx.beginPath(); ctx.arc(x - r * 0.2, y - r * 0.3, r * 0.22, 0, Math.PI * 2); ctx.fill();
 }
 
+/**
+ * พระจันทร์เสี้ยว — วาดเป็นรูปเดียวจบด้วยกฎ evenodd
+ *
+ * ── ทำไมไม่ใช้ destination-out ──
+ * วิธีนั้นคือ "ลบพิกเซล" ซึ่งลบทะลุทุกอย่างที่วาดไว้ก่อนหน้าในผืนเดียวกัน
+ * ไม่ใช่แค่ตัดวงกลมของตัวเอง ผลคือเจาะรูโปร่งทะลุท้องฟ้ากับฉากหลังไปเลย
+ * เห็นเป็นวงขาวโบ๋กลางจอ (ทดสอบแล้วเป็นแบบนั้นจริง)
+ *
+ * evenodd เติมเฉพาะพื้นที่ "อยู่ในวงนอกแต่ไม่อยู่ในวงใน" จึงได้เสี้ยวจริง ๆ
+ * โดยไม่แตะอะไรที่วาดไว้ก่อนเลย
+ *
+ * cut = ระยะเยื้องของวงที่มาบัง ยิ่งมากเสี้ยวยิ่งหนา
+ */
+function crescent(ctx, x, y, r, color, cut = 0.47) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.arc(x + r * cut, y - r * 0.24, r * 0.87, 0, Math.PI * 2);
+  ctx.fill('evenodd');
+}
+
+/** ชายผ้าหยักครึ่งวงกลมเรียงติดกัน — อ่านเป็นระบายผ้า/ไอซิ่ง ไม่ใช่ขอบตรงธรรมดา */
+function scallop(ctx, x0, x1, y, step, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let x = x0; x <= x1; x += step) { ctx.moveTo(x, y); ctx.arc(x, y, r, 0, Math.PI); }
+  ctx.fill();
+}
+
 /** แปลงสี #RRGGBB เป็น rgba() เพื่อใช้กับไล่เฉดที่ต้องจางไปจนใส */
 function fade(hex, a) {
   const n = parseInt(hex.slice(1), 16);
@@ -362,6 +391,58 @@ const LIST = [
   },
 
   // ══ ระดับสูง ═══════════════════════════════════════════════
+  //
+  // ┌───────────────────────────────────────────────────────┐
+  // │  แบบฟอร์มของชุดระดับสูง — ชุดใหม่ต้องมีครบทุกข้อ         │
+  // └───────────────────────────────────────────────────────┘
+  //
+  // ตัวตรวจท้ายไฟล์จะฟ้องตอนเปิดเกมโหมด dev ถ้าขาดข้อไหนไป
+  // ไม่ต้องจำเอง แค่ทำตามชุดที่มีอยู่แล้วเป็นตัวอย่าง
+  //
+  // ── ช่องข้อมูลที่ต้องมี ──
+  //   bonus      จานสีฟ้าตอนโบนัส 6 ค่า (sky[3] / glow / speck / cloud / cloudSoft / sparkle)
+  //   rain       สีเม็ดที่โปรยตอนใช้สกิล 3 สี [หลัก, สว่าง, เข้ม]
+  //   rainShape  ทรงของเม็ดนั้น — ต้องมีอยู่ใน RAIN_SHAPES (render/entities.js)
+  //   glow       สีประกายวิบบนเม็ดที่โปรย
+  //   trail      หางเม็ดที่ทิ้งไว้ข้างหลังตอนวิ่ง (ดูกติกาข้างล่าง)
+  //
+  // ── hook ที่ต้องมีครบสามตัว ──
+  //   back()     ออร่ารอบตัว + ของชิ้นเด่นประจำชุดที่ลอยอยู่ข้างหลัง
+  //   body()     เสื้อผ้าผ่าน clipBody/fullSuit + ปลอกคอที่มีจี้
+  //   head()     เครื่องประดับหัว
+  //
+  // ── กติกาที่เคยพลาดมาแล้วจริง อย่าทำซ้ำ ──
+  //
+  //   1. ห้ามใช้ destination-out เจาะรูปทรง
+  //      มันลบทะลุทุกอย่างที่วาดไว้ก่อนในผืนเดียวกัน ไม่ใช่แค่ตัดรูปตัวเอง
+  //      ผลคือเจาะรูโปร่งทะลุท้องฟ้าเห็นเป็นวงขาวโบ๋ ใช้ fill('evenodd') แทน
+  //      (ดู crescent() เป็นตัวอย่าง)
+  //
+  //   2. star4() ไม่รับสีเป็นพารามิเตอร์ ต้องตั้ง ctx.fillStyle ก่อนเรียกเสมอ
+  //      เคยส่งสีเป็นอาร์กิวเมนต์ที่สี่แล้วมันถูกทิ้ง ดาวเลยถูกวาดด้วยสีที่ค้างอยู่
+  //
+  //   3. ของประดับบนอกต้องวางที่ "พุง" ไม่ใช่ระดับอก
+  //      ระดับอกโดนหัวแมวกับปลอกคอบังจนเห็นแค่ขอบโผล่นิดเดียว
+  //
+  //   4. ผ้าคลุม/ชั้นเสื้อต้องต่างค่าความสว่างจากชุดด้านในอย่างน้อยหนึ่งขั้น
+  //      สีใกล้กันเกินไปจะกลืนเป็นก้อนเดียวจนอ่านไม่ออกว่ามีผ้าคลุม
+  //
+  //   5. เครื่องประดับที่พุ่งออกจากหัวต้องอ้อมพ้นปลายหู
+  //      เส้นรัศมีจากกลางหัวจะทับหูพอดีจนอ่านเป็นตะเกียบปักหัว
+  //      ใช้วงโค้งที่จุดศูนย์กลางอยู่ต่ำแต่รัศมีใหญ่กว่าหัวแทน
+  //
+  // ── กติกาของ trail ──
+  //   ทรงต้องต่างจากชุดอื่นที่ "เงาร่าง" ไม่ใช่ที่ลวดลาย
+  //     เม็ดวาดที่รัศมี 2-5px รายละเอียดข้างในมองไม่เห็นอยู่แล้ว
+  //     ที่แยกออกจากกันได้จริงคือโครงร่างล้วน ๆ: แฉก/เหลี่ยม/ซี่/หยด/รี
+  //   ต้องจางหายก่อนตกถึงพื้น (คุมด้วย life กับ gravity)
+  //     ถ้าตกถึงพื้นแล้วค้าง มันจะไปทับหนามกับปากหลุมจนอ่านผิดว่าตรงนั้นปลอดภัย
+  //   every x life ต้องให้มีอยู่ราว 8-10 เม็ดพร้อมกัน
+  //     มากกว่านั้นจะบังของที่ต้องหลบ น้อยกว่านั้นจะไม่เห็นเป็นหาง
+  //   ทรงที่ต้องหมุน (ใบไม้/เกล็ดหิมะ) ใส่ spin
+  //     มุมหมุนสุ่มครั้งเดียวตอนเม็ดเกิด ห้ามคำนวณจากตำแหน่งเด็ดขาด
+  //     เคยพลาดมาแล้วกับผลไม้: ตำแหน่งเปลี่ยนทุกเฟรมเพราะกล้องเลื่อน
+  //     ผลไม้ลูกเดียวจึงสลับชนิดทุกเฟรมจนเห็นเป็นกระพริบ
   {
     id: 'noble',
     rarity: 'high',
@@ -380,13 +461,71 @@ const LIST = [
     rain: ['#FFC93C', '#FFF0BC', '#A5701A'],
     rainShape: 'coin',
     glow: '#FFE9A8',
+
+    // เกล็ดทองร่วง — หนักที่สุดในบรรดาหางเม็ดทั้งหมด (gravity 0.075)
+    // ทองควรรู้สึกมีน้ำหนัก ไม่ใช่ลอยเหมือนแสง
+    trail: {
+      every: 5, shape: 'diamond',
+      colors: ['#FFE9A8', '#FFC93C', '#FFF0BC'],
+      r: [2.2, 4], life: 44, gravity: 0.075, drift: -0.5,
+    },
     back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      const cx = pose === 'slide' ? -2 : 0;
+      const cy = pose === 'slide' ? 2 : 4;
+
+
+      // ── ตราประจำตระกูลลอยหลังหัว ──
+      // โล่ทองกับดาวตรงกลาง เป็นของชิ้นเด่นที่ทำให้ชุดนี้จำได้จากเงาร่างอย่างเดียว
+      ctx.save();
+      ctx.translate(cx - 21, cy - 27);
+      ctx.rotate(Math.sin(t * 0.6) * 0.06);
+      ctx.shadowColor = '#FFE9A8';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#F0C55C';
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(8.5, -6); ctx.lineTo(8.5, 3);
+      ctx.quadraticCurveTo(8.5, 9, 0, 12);
+      ctx.quadraticCurveTo(-8.5, 9, -8.5, 3);
+      ctx.lineTo(-8.5, -6);
+      ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#7A2430';
+      ctx.beginPath();
+      ctx.moveTo(0, -7);
+      ctx.lineTo(6, -4); ctx.lineTo(6, 2);
+      ctx.quadraticCurveTo(6, 6.5, 0, 8.8);
+      ctx.quadraticCurveTo(-6, 6.5, -6, 2);
+      ctx.lineTo(-6, -4);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#FFE9A8';
+      star4(ctx, 0, 0.5, 4);
+      ctx.restore();
+
       sparkleAura(ctx, pose, '#FFD86B', '#FFF3C4');
+
+      // เกล็ดทองลอยรอบตัว
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.5 + k * 2.1;
+        const r = 36 + k * 5;
+        const tw = 0.35 + Math.abs(Math.sin(t * 1.6 + k * 1.7)) * 0.65;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = k === 1 ? '#FFF3C4' : '#FFD86B';
+        star4(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.72, 1.7 + tw * 1.8);
+      }
+      ctx.restore();
     },
     body(ctx, s, pose) {
       fullSuit(ctx, pose, '#F5F1E6');            // เชิ้ตขาว
       clipBody(ctx, pose, () => {
-        ctx.fillStyle = '#1E1A26';               // เสื้อคลุมดำคลุมไหล่
+        // ไล่สีเสื้อคลุมจากดำอมม่วงไปดำสนิท ผ้าจึงดูมีความลึกแทนที่จะเป็นแผ่นสีเดียว
+        const cg = ctx.createLinearGradient(0, -14, 0, 26);
+        cg.addColorStop(0, '#33283F');
+        cg.addColorStop(1, '#17131F');
+        ctx.fillStyle = cg;
         if (pose === 'slide') {
           ctx.fillRect(-24, -12, 15, 28);
           ctx.fillRect(9, -12, 17, 28);
@@ -394,18 +533,52 @@ const LIST = [
           ctx.fillRect(-18, -10, 9, 32);
           ctx.fillRect(9, -10, 12, 32);
         }
-        ctx.fillStyle = '#C42B3A';               // เสื้อกั๊กแดงกลางอก
+        // เสื้อกั๊กแดงไล่สี พร้อมขอบทองสองข้าง
+        const vg = ctx.createLinearGradient(0, 0, 0, 24);
+        vg.addColorStop(0, '#D8404E');
+        vg.addColorStop(1, '#8E1C28');
+        ctx.fillStyle = vg;
         if (pose === 'slide') ctx.fillRect(-9, 0, 18, 16);
         else ctx.fillRect(-9, 2, 18, 20);
+        ctx.fillStyle = '#FFC93C';
+        if (pose === 'slide') { ctx.fillRect(-9.8, 0, 1.4, 16); ctx.fillRect(8.4, 0, 1.4, 16); }
+        else { ctx.fillRect(-9.8, 2, 1.4, 20); ctx.fillRect(8.4, 2, 1.4, 20); }
         ctx.fillStyle = '#FFC93C';               // กระดุมทอง
         for (const gy of pose === 'slide' ? [3, 8] : [5, 11]) {
           ctx.beginPath(); ctx.arc(pose === 'slide' ? 0 : 0, gy, 1.5, 0, Math.PI * 2); ctx.fill();
         }
       });
-      // หูกระต่ายแดงใต้คาง
+      // ── ผ้าคลุมไหล่แดงขอบทอง ──
+      // ชั้นที่สามที่ชุดนี้เคยขาดไป — ชุดใหม่ ๆ มีผ้าคลุมกันหมด ตัวนี้เลยดูแบนกว่าเพื่อน
+      const sway = Math.sin(performance.now() * 0.0033) * 1.4;
+      const capeY = pose === 'slide' ? -10 : -12;
+      // ── ทำไมผ้าคลุมเป็นม่วงไม่ใช่แดง ──
+      // ลองแดงก่อนแล้วมันไปกลืนกับเสื้อกั๊กแดงที่อยู่ใต้พอดี เห็นเป็นก้อนแดงก้อนเดียว
+      // ไม่ใช่สามชั้น (โค้ทดำ / ผ้าคลุม / เสื้อกั๊ก) ซึ่งคือทั้งหมดที่เพิ่มชั้นนี้เข้ามาเพื่อ
+      // ม่วงเข้มอมน้ำเงินต่างจากทั้งโค้ทดำและกั๊กแดง ชั้นทั้งสามจึงแยกกันได้ด้วยตาเปล่า
+      const mg = ctx.createLinearGradient(0, capeY, 0, capeY + 16);
+      mg.addColorStop(0, '#4A2A72');
+      mg.addColorStop(1, '#2E1A4E');
+      ctx.fillStyle = mg;
+      ctx.beginPath();
+      ctx.moveTo(-15, capeY);
+      ctx.quadraticCurveTo(-20 + sway, capeY + 10, -12 + sway, capeY + 15);
+      ctx.lineTo(12 - sway, capeY + 15);
+      ctx.quadraticCurveTo(20 - sway, capeY + 10, 15, capeY);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#FFC93C';
+      ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-15, capeY);
+      ctx.quadraticCurveTo(-20 + sway, capeY + 10, -12 + sway, capeY + 15);
+      ctx.lineTo(12 - sway, capeY + 15);
+      ctx.quadraticCurveTo(20 - sway, capeY + 10, 15, capeY);
+      ctx.stroke();
+
+      // หูกระต่ายแดงใต้คาง — เลื่อนลงให้พ้นชายผ้าคลุม
       const bx = pose === 'slide' ? 7 : 1;
-      const by = pose === 'slide' ? 5 : 4;
-      bowKnot(ctx, bx, by, 4.2, '#C42B3A', '#FFC93C');
+      const by = pose === 'slide' ? 8 : 9;
+      bowKnot(ctx, bx, by, 4.6, '#C42B3A', '#FFC93C');
     },
     head(ctx) {
       topHat(ctx, '#1E1A26', '#C42B3A', '#FFC93C');
@@ -435,11 +608,72 @@ const LIST = [
     rain: ['#6FD4FF', '#DEF7FF', '#2E7EA8'],
     rainShape: 'snow',
     glow: '#BFEEFF',
+
+    // เกล็ดหิมะ — เบาที่สุด แทบไม่ตก (gravity 0.012) และหมุนช้า ๆ ระหว่างลอย
+    // อายุยาวกว่าชุดอื่นเพราะหิมะที่หายเร็วจะดูเหมือนประกายมากกว่าหิมะ
+    trail: {
+      every: 6, shape: 'flake',
+      colors: ['#DEF7FF', '#BFEEFF', '#8FE0FF'],
+      r: [2.4, 4.4], life: 58, gravity: 0.012, drift: -0.4, spin: 0.06,
+    },
     back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      const cx = pose === 'slide' ? -2 : 0;
+      const cy = pose === 'slide' ? 2 : 4;
+
+
+      // ── เกล็ดหิมะยักษ์ลอยหลังหัว ──
+      // ของชิ้นเด่นประจำชุด หมุนช้ามาก (0.18 รอบต่อวินาที) ให้รู้สึกเย็นและนิ่ง
+      // ไม่ใช่หมุนติ้ว ๆ ซึ่งจะอ่านเป็นของเล่นมากกว่าเวทมนตร์น้ำแข็ง
+      ctx.save();
+      ctx.translate(cx - 21, cy - 27);
+      ctx.rotate(t * 0.18);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(214,244,255,.92)';
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI) / 3;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(-Math.cos(a) * 12, -Math.sin(a) * 12);
+        ctx.lineTo(Math.cos(a) * 12, Math.sin(a) * 12);
+        ctx.stroke();
+        // ซี่แขนงเล็กที่ปลายแต่ละแฉก ทำให้อ่านเป็นเกล็ดหิมะไม่ใช่ดาวกระจาย
+        ctx.lineWidth = 1.6;
+        for (const sgn of [-1, 1]) {
+          const ex = Math.cos(a) * 12 * sgn, ey = Math.sin(a) * 12 * sgn;
+          for (const off of [-0.6, 0.6]) {
+            ctx.beginPath();
+            ctx.moveTo(ex * 0.62, ey * 0.62);
+            ctx.lineTo(ex * 0.62 + Math.cos(a + off) * 4.6 * sgn, ey * 0.62 + Math.sin(a + off) * 4.6 * sgn);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+
       sparkleAura(ctx, pose, '#8FE8FF', '#E4FAFF');
+
+      // ละอองน้ำแข็งลอยรอบตัว
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.45 + k * 2.1;
+        const r = 36 + k * 5;
+        const tw = 0.35 + Math.abs(Math.sin(t * 1.5 + k * 1.7)) * 0.65;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = k === 1 ? '#FFFFFF' : '#A8E8FF';
+        star4(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.72, 1.7 + tw * 1.8);
+      }
+      ctx.restore();
+
       // ผ้าคลุมยาวสยายไปข้างหลัง วาดใน back จึงอยู่หลังตัวจริง ๆ
       ctx.save();
-      ctx.fillStyle = 'rgba(120,205,245,.85)';
+      // ไล่สีจากฟ้าเข้มตรงไหล่ไปจางที่ปลาย ผ้าจึงดูบางลงตรงชายแทนที่จะทึบเท่ากันทั้งผืน
+      const rg = ctx.createLinearGradient(0, 0, -30, 18);
+      rg.addColorStop(0, 'rgba(140,215,250,.92)');
+      rg.addColorStop(1, 'rgba(190,236,255,.42)');
+      ctx.fillStyle = rg;
       ctx.beginPath();
       if (pose === 'slide') {
         ctx.moveTo(-6, -6); ctx.quadraticCurveTo(-26, -4, -34, 6);
@@ -453,17 +687,34 @@ const LIST = [
     },
     body(ctx, s, pose) {
       fullSuit(ctx, pose, '#BEE6FA');
-      skirt(ctx, pose, '#6FC2EA', '#FFFFFF');
+      clipBody(ctx, pose, () => {
+        // กระโปรงไล่สีจากฟ้าอ่อนไปฟ้าเข้ม แทนสีเดียวแบน ๆ ของเดิม
+        const sg = ctx.createLinearGradient(0, pose === 'slide' ? 3 : 7, 0, 26);
+        sg.addColorStop(0, '#8FD6F4');
+        sg.addColorStop(1, '#4C9CCC');
+        ctx.fillStyle = sg;
+        ctx.fillRect(-26, pose === 'slide' ? 3 : 7, 52, 28);
+      });
+      // ชายกระโปรงหยักเป็นน้ำแข็ง — ขอบตรงของเดิมทำให้ดูเป็นกระโปรงธรรมดา
+      clipBody(ctx, pose, () => {
+        scallop(ctx, -24, 24, pose === 'slide' ? 9 : 15, 6, 3.4, '#EAF8FF');
+      });
       clipBody(ctx, pose, () => {
         // ลายเกล็ดบนชายกระโปรง
-        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
         for (const px of [-9, -1, 7]) {
-          ctx.beginPath(); ctx.arc(px, pose === 'slide' ? 7 : 13, 1.5, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(px, pose === 'slide' ? 6 : 11, 1.5, 0, Math.PI * 2); ctx.fill();
         }
       });
       collar(ctx, pose, '#4EA8D8', 3.4, (x, y) => {
-        ctx.fillStyle = '#8FE8FF';
-        star4(ctx, x, y, 3.4);
+        // แสงนวลรองหลังดาว ไม่งั้นดาวฟ้าบนผ้าฟ้าค่าใกล้กันเกินจนจม
+        const gg = ctx.createRadialGradient(x, y, 0, x, y, 8);
+        gg.addColorStop(0, 'rgba(224,248,255,.8)');
+        gg.addColorStop(1, 'rgba(224,248,255,0)');
+        ctx.fillStyle = gg;
+        ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        star4(ctx, x, y, 4);
       });
     },
     head(ctx) {
@@ -494,6 +745,15 @@ const LIST = [
     rain: ['#FF5C5C', '#FFE07A', '#3FBF6A'],
     rainShape: 'fruit',
     glow: '#FFC46B',
+
+    // เม็ดกลมสีผลไม้ — ใช้ทรงกลมล้วนโดยตั้งใจ
+    // ทรงผลไม้จริงมีรายละเอียดเยอะเกินกว่าจะอ่านออกที่รัศมี 3px
+    // ย่อลงมาแล้วจะกลายเป็นก้อนสีมั่ว ๆ สู้ใช้กลมแล้วให้ "สี" เป็นตัวบอกธีมดีกว่า
+    trail: {
+      every: 5, shape: 'dot',
+      colors: ['#FF4D4D', '#FFB627', '#8BD44E', '#B06CE8'],
+      r: [2.2, 4], life: 42, gravity: 0.06, drift: -0.6,
+    },
     back(ctx, s, pose) {
       sparkleAura(ctx, pose, '#FF7A5C', '#FFE9B0');
     },
@@ -561,6 +821,358 @@ const LIST = [
     },
   },
   {
+    id: 'sweet',
+    rarity: 'high',
+    name: 'เหมียวขนมหวานมหัศจรรย์',
+    note: 'ผู้พิทักษ์แห่งอาณาจักรขนมหวาน',
+    // ฟ้าโบนัสเป็นชมพูพาสเทลไล่ไปครีม เหมือนท้องฟ้าในร้านขนม
+    bonus: {
+      sky: ['#4A2246', '#B0567E', '#FFC6B0'],
+      glow: 'rgba(255,170,205,.34)',
+      speck: 'rgba(255,235,245,.72)',
+      cloud: '#FFE3F0',
+      cloudSoft: '#C87FA8',
+      sparkle: '#FFF0F7',
+    },
+    rain: ['#FF8FC0', '#FFF3DC', '#A8DCFF'],
+    rainShape: 'sweet',
+    glow: '#FFD3E8',
+
+    // หัวใจกับดาวลอยสลับกัน — ตรงกับ "ดาวเล็ก ๆ และหัวใจลอยออกมาขณะเคลื่อนไหว"
+    // ตกช้า (gravity 0.03) ให้ลอยขึ้นค้างอยู่พักหนึ่งก่อนจางหาย ดูเป็นเวทมนตร์
+    // ไม่ใช่ของหล่นธรรมดา — 9 เม็ดพร้อมกัน เบาพอที่จะไม่บังหนามที่ต้องหลบ
+    trail: {
+      every: 5, shape: ['heart', 'star'],
+      colors: ['#FFB3D1', '#A8DCFF', '#FFF3DC', '#D6BBFF'],
+      r: [2.2, 4], life: 46, gravity: 0.03, drift: -0.55,
+    },
+
+    back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      const cx = pose === 'slide' ? -2 : 0;
+      const cy = pose === 'slide' ? 2 : 4;
+
+      sparkleAura(ctx, pose, '#FF9EC8', '#FFF0F7');
+
+      // ── ประกายสามสีลอยรอบตัว ──
+      // ชมพู/ฟ้า/ขาว ตามสเปก คนละวงโคจร คนละจังหวะวิบ
+      // ใช้ดาวสี่แฉกล้วน ไม่ปนหัวใจ เพราะหัวใจไปอยู่ในหางเม็ดแล้ว
+      // ถ้าใส่ทั้งสองที่จะกลายเป็นหัวใจเต็มจอจนรก
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const cols = ['#FFB3D1', '#A8DCFF', '#FFFFFF'];
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.55 + k * 2.1;
+        const r = 30 + k * 5;
+        const tw = 0.35 + Math.abs(Math.sin(t * 1.7 + k * 1.5)) * 0.65;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = cols[k];
+        star4(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.72, 1.8 + tw * 2);
+      }
+      ctx.restore();
+    },
+
+    body(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+
+      // ── ชุดครีม ──
+      fullSuit(ctx, pose, '#FFF3DC');
+      // กระโปรงชมพูพาสเทลครึ่งล่าง ชายเป็นครีมขาว
+      skirt(ctx, pose, '#FFB3D1', '#FFFFFF');
+
+      clipBody(ctx, pose, () => {
+        // ── ลายน้ำตาลไอซิ่งหยดจากคอลงมา ──
+        // ครึ่งวงกลมเรียงติดกันเป็นแถบหยัก คือลายที่อ่านเป็น "ไอซิ่ง" ได้ทันที
+        // วาดเป็นแถบตรงจะกลายเป็นเสื้อลายขวางธรรมดาแทน
+        // ต้องต่ำกว่าชายผ้าคลุม (capeY + 17 = 6) ไม่งั้นโดนคลุมทับจนไม่เห็นเลย
+        // ตรงนี้พอดีกับขอบบนของกระโปรง จึงอ่านเป็นไอซิ่งที่หยดลงมาบนกระโปรง
+        const icingY = pose === 'slide' ? 5 : 10;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.moveTo(-28, icingY - 8);
+        ctx.lineTo(28, icingY - 8);
+        ctx.lineTo(28, icingY);
+        for (let x = 24; x >= -28; x -= 8) {
+          ctx.arc(x, icingY, 4, 0, Math.PI);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // เม็ดลูกกวาดโรยบนกระโปรง — วางครึ่งล่างเพราะครึ่งบนโดนผ้าคลุมกับหัวบัง
+        const dots = pose === 'slide'
+          ? [[-12, 6], [-1, 9], [10, 6]]
+          : [[-9, 13], [1, 17], [9, 13], [-3, 20]];
+        const dc = ['#A8DCFF', '#D6BBFF', '#FF8FC0'];
+        dots.forEach(([dx, dy], k) => {
+          ctx.fillStyle = dc[k % 3];
+          ctx.beginPath(); ctx.ellipse(dx, dy, 2.4, 1.7, 0.4, 0, Math.PI * 2); ctx.fill();
+        });
+      });
+
+      // ── ผ้าคลุมสั้นลายเค้กสองชั้น ──
+      // ม่วงอ่อนทับชุดครีม ต่างค่าความสว่างชัด ไม่งั้นกลืนเป็นก้อนเดียว
+      const sway = Math.sin(t * 1.2) * 1.5;
+      const capeY = pose === 'slide' ? -9 : -11;
+      ctx.fillStyle = '#D6BBFF';
+      ctx.beginPath();
+      ctx.moveTo(-16, capeY);
+      ctx.quadraticCurveTo(-21 + sway, capeY + 11, -13 + sway, capeY + 17);
+      ctx.lineTo(13 - sway, capeY + 17);
+      ctx.quadraticCurveTo(21 - sway, capeY + 11, 16, capeY);
+      ctx.closePath(); ctx.fill();
+      // ชายผ้าเป็นครีมหยัก ให้อ่านเป็นชั้นเค้กไม่ใช่ผ้าคลุมเฉย ๆ
+      ctx.fillStyle = '#FFF8EC';
+      ctx.beginPath();
+      for (let x = -13; x <= 13; x += 6.5) {
+        ctx.moveTo(x + sway * 0.5, capeY + 17);
+        ctx.arc(x + sway * 0.5, capeY + 17, 3.2, 0, Math.PI);
+      }
+      ctx.fill();
+
+      // ── ปลอกคอริบบิ้นพร้อมจี้หัวใจลูกกวาด ──
+      collar(ctx, pose, '#FF8FC0', 3.4, (cx, cy) => {
+        // โบว์ใหญ่ขึ้นและเลื่อนลง — ที่ตำแหน่งเดิมมันอยู่ใต้ผ้าคลุมพอดีจนมองไม่เห็น
+        // ชมพูเข้ม ไม่ใช่ชมพูพาสเทล — โบว์ไปนั่งอยู่บนแถบไอซิ่งสีขาวพอดี
+        // สีอ่อนกับพื้นขาวค่าใกล้กันเกินจนโบว์หายไปทั้งชิ้น (ลองแล้วเป็นแบบนั้นจริง)
+        bowKnot(ctx, cx, cy + 5, 5.4, '#FF6FA8', '#FFD3E8');
+        // หัวใจห้อยใต้โบว์
+        ctx.fillStyle = '#FF6FA8';
+        const hy = cy + 13, hr = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(cx, hy + hr * 0.95);
+        ctx.bezierCurveTo(cx - hr * 1.6, hy - hr * 0.35, cx - hr * 0.6, hy - hr * 1.2, cx, hy - hr * 0.35);
+        ctx.bezierCurveTo(cx + hr * 0.6, hy - hr * 1.2, cx + hr * 1.6, hy - hr * 0.35, cx, hy + hr * 0.95);
+        ctx.fill();
+      });
+    },
+
+    head(ctx) {
+      const t = performance.now() * 0.004;
+
+      // ── มงกุฎครีมกับลูกกวาด ──
+      // ยอดแหลมสามยอดต่ำ ๆ อยู่ระหว่างหูทั้งสอง จึงไม่ไปทับหูเหมือนเครื่องประดับ
+      // ที่พุ่งออกจากกลางหัว (กติกาข้อ 5 ที่หัวหมวด)
+      ctx.fillStyle = '#FFF8EC';
+      ctx.beginPath();
+      ctx.moveTo(-7, -9);
+      ctx.lineTo(-4.5, -15); ctx.lineTo(-2, -10.5);
+      ctx.lineTo(0, -16.5); ctx.lineTo(2, -10.5);
+      ctx.lineTo(4.5, -15); ctx.lineTo(7, -9);
+      ctx.closePath(); ctx.fill();
+      // ฐานมงกุฎเป็นครีมหยัก
+      ctx.beginPath();
+      for (const bx of [-5, -1.5, 2, 5.5]) { ctx.moveTo(bx, -9); ctx.arc(bx, -9, 2.2, 0, Math.PI); }
+      ctx.fill();
+
+      // ลูกกวาดบนยอดมงกุฎ วิบสลับกัน
+      const beads = [[-4.5, -16, '#A8DCFF'], [0, -17.6, '#FF8FC0'], [4.5, -16, '#D6BBFF']];
+      beads.forEach(([bx, by, col], k) => {
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(bx, by, 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.4 + Math.abs(Math.sin(t + k * 1.4)) * 0.6;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(bx - 0.7, by - 0.8, 0.8, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+
+      // ดาวจิ๋ววิบข้างมงกุฎ
+      for (const [dx, ph] of [[-10, 0], [10, 1.7]]) {
+        const k = 0.4 + Math.abs(Math.sin(t * 1.2 + ph)) * 0.6;
+        ctx.globalAlpha = k;
+        ctx.fillStyle = '#FFF0F7';
+        star4(ctx, dx, -12, 1.3 + k * 1.1);
+      }
+      ctx.globalAlpha = 1;
+    },
+  },
+  {
+    id: 'lunar',
+    rarity: 'high',
+    name: 'จันทราแมวรัตติกาล',
+    note: 'ผู้พิทักษ์แห่งแสงจันทร์',
+    // ฟ้าโบนัสเป็นคืนเดือนหงาย กรมท่าไล่ไปม่วง จบด้วยเงินอมฟ้าตรงขอบฟ้า
+    bonus: {
+      sky: ['#0A1030', '#2A1E5C', '#6A5AA8'],
+      glow: 'rgba(150,180,255,.34)',
+      speck: 'rgba(226,236,255,.75)',
+      cloud: '#C9D4F5',
+      cloudSoft: '#5A5490',
+      sparkle: '#EAF2FF',
+    },
+    rain: ['#8FA8F0', '#EAF2FF', '#3A3A72'],
+    rainShape: 'star',
+    glow: '#BFD2FF',
+
+    // ── หางดาวที่ทิ้งไว้ข้างหลังตอนวิ่ง ──
+    // every 5 + life 42 = มีอยู่ราว 8 เม็ดพร้อมกัน เบาพอที่จะไม่บังหนามที่ต้องหลบ
+    // gravity ต่ำ (0.045) กับ life สั้น ทำให้เม็ดจางหายก่อนตกถึงพื้นเสมอ
+    // ถ้าปล่อยให้ตกถึงพื้นแล้วค้าง มันจะไปทับหนามกับปากหลุมจนอ่านผิดว่าตรงนั้นปลอดภัย
+    trail: {
+      every: 5,
+      shape: 'star',
+      colors: ['#EAF2FF', '#BFD2FF', '#8FA8F0'],
+      r: [2.4, 4.4],
+      life: 48,
+      gravity: 0.045,
+      drift: -0.7,
+    },
+
+    back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      const cx = pose === 'slide' ? -2 : 0;
+      const cy = pose === 'slide' ? 2 : 4;
+
+      // ── วงแสงจันทร์หลังตัว ──
+      // วาดก่อนออร่า เพื่อให้ออร่าฟุ้งทับขอบวงอีกชั้น ขอบจึงนุ่มไม่ใช่เส้นคม
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      // รัศมี 42 — อยู่ระหว่างของเดิม (34 ซึ่งแนบตัวเกินจนไม่เห็นเป็นวง)
+      // กับที่เคยลองขยายไว้ (50 ซึ่งใหญ่จนกินพื้นที่รอบตัวมากไป)
+      const ring = 42 + Math.sin(t * 0.9) * 2;
+      // แถบสว่างต้องบางลงตามรัศมีที่โตขึ้น ไม่งั้นวงจะกลายเป็นก้อนฟุ้งทึบแทนที่จะเป็นวง
+      const g = ctx.createRadialGradient(cx, cy, ring * 0.78, cx, cy, ring);
+      g.addColorStop(0, 'rgba(150,180,255,0)');
+      // จางลงจาก .52 -> .32 ให้เป็นแสงเรืองบาง ๆ ไม่ใช่วงสีทึบที่แย่งสายตาไปจากตัวละคร
+      g.addColorStop(0.62, 'rgba(176,200,255,.32)');
+      g.addColorStop(1, 'rgba(150,180,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, ring, 0, Math.PI * 2); ctx.fill();
+
+      // ── พระจันทร์เสี้ยวเงินลอยหลังหัว ──
+      // ปิดชั้น lighter ของวงแสงก่อน ไม่งั้นเสี้ยวจะถูกบวกสีจนกลายเป็นก้อนขาวล้วน
+      ctx.restore();
+      ctx.save();
+      ctx.translate(cx - 22, cy - 28);
+      ctx.rotate(-0.35 + Math.sin(t * 0.7) * 0.05);
+      ctx.globalAlpha = 0.95;
+      ctx.shadowColor = '#CFE0FF';
+      ctx.shadowBlur = 12;
+      crescent(ctx, 0, 0, 11, '#E8EEFF');
+      ctx.restore();
+
+      sparkleAura(ctx, pose, '#8FA8F0', '#EAF2FF');
+
+      // ── ดาวเล็ก ๆ ลอยรอบตัว ──
+      // สามดวงคนละวงโคจร คนละจังหวะวิบ ตาจึงจับได้ว่าลอยอยู่จริงไม่ใช่แปะติดที่
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.5 + k * 2.1;
+        const r = 37 + k * 5;   // เกาะขอบวงแสง ดาวจึงลอยอยู่แถวขอบ ไม่ใช่กองอยู่ในวง
+        const tw = 0.35 + Math.abs(Math.sin(t * 1.6 + k * 1.7)) * 0.65;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = k === 1 ? '#EAF2FF' : '#BFD2FF';
+        star4(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.7, 1.8 + tw * 1.8);
+      }
+      ctx.restore();
+    },
+
+    body(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+
+      // ── ชุดคลุมโทนกรมท่า ──
+      fullSuit(ctx, pose, '#1E2450');
+      clipBody(ctx, pose, () => {
+        // ครึ่งล่างเป็นม่วงเข้ม ไล่ต่อจากกรมท่าด้านบน ได้ผ้าที่ดูมีความลึก
+        const g = ctx.createLinearGradient(0, -14, 0, 26);
+        g.addColorStop(0, '#232A5C');
+        g.addColorStop(1, '#3B2560');
+        ctx.fillStyle = g;
+        ctx.fillRect(-28, -14, 56, 40);
+
+        // แถบเงินคาดกลางตัว
+        ctx.fillStyle = '#C8D4F0';
+        ctx.fillRect(-28, pose === 'slide' ? 6 : 9, 56, 2.2);
+
+        // ดาวเล็ก ๆ ประดับบนผ้า วิบเบา ๆ คนละจังหวะ
+        ctx.fillStyle = '#DCE6FF';
+        // วางเฉพาะครึ่งล่าง เพราะครึ่งบนโดนผ้าคลุมทับจนมองไม่เห็นเลย
+        const dots = pose === 'slide'
+          ? [[-13, 5], [-2, 8], [9, 5], [16, 8]]
+          : [[-9, 12], [0, 16], [9, 12], [-4, 19], [6, 19]];
+        dots.forEach(([dx, dy], k) => {
+          ctx.globalAlpha = 0.5 + Math.abs(Math.sin(t * 1.3 + k * 1.4)) * 0.5;
+          star4(ctx, dx, dy, 1.5);
+        });
+        ctx.globalAlpha = 1;
+      });
+
+      // ── ผ้าคลุมสั้นพาดไหล่ ──
+      // ชายผ้าขยับตามเวลาเล็กน้อย ให้รู้สึกว่าเป็นผ้าไม่ใช่แผ่นแข็ง
+      // วาดนอก clipBody เพราะผ้าคลุมต้องล้นออกนอกลำตัวได้ ไม่งั้นจะดูเป็นเสื้อกล้าม
+      const sway = Math.sin(t * 1.1) * 1.6;
+      const capeY = pose === 'slide' ? -9 : -11;
+      // สว่างกว่าชุดด้านในหนึ่งขั้น ไม่งั้นผ้าคลุมกับชุดกลืนเป็นก้อนเดียว
+      // แล้วอ่านไม่ออกว่ามีผ้าคลุมอยู่ (ลองสีเดียวกันแล้วหายไปเลยจริง ๆ)
+      const cg = ctx.createLinearGradient(0, capeY, 0, capeY + 20);
+      cg.addColorStop(0, '#5B4AA8');
+      cg.addColorStop(1, '#3A2B7A');
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.moveTo(-17, capeY);
+      ctx.quadraticCurveTo(-22 + sway, capeY + 13, -14 + sway, capeY + 20);
+      ctx.lineTo(14 - sway, capeY + 20);
+      ctx.quadraticCurveTo(22 - sway, capeY + 13, 17, capeY);
+      ctx.closePath(); ctx.fill();
+      // ขอบเงินตามชายผ้า
+      ctx.strokeStyle = '#CBD8F5';
+      ctx.lineWidth = 1.7;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-17, capeY);
+      ctx.quadraticCurveTo(-22 + sway, capeY + 13, -14 + sway, capeY + 20);
+      ctx.lineTo(14 - sway, capeY + 20);
+      ctx.quadraticCurveTo(22 - sway, capeY + 13, 17, capeY);
+      ctx.stroke();
+
+      // ── ปลอกคอเครื่องรางเวทมนตร์ + เข็มกลัดพระจันทร์เสี้ยวที่หน้าอก ──
+      collar(ctx, pose, '#3A3A78', 3.6, (cx, cy) => {
+        // แสงนวลรองข้างหลังเข็มกลัด ให้เงินไม่จมไปกับผ้าสีเข้ม
+        const gg = ctx.createRadialGradient(cx, cy + 2, 0, cx, cy + 2, 7);
+        gg.addColorStop(0, 'rgba(190,214,255,.5)');
+        gg.addColorStop(1, 'rgba(190,214,255,0)');
+        ctx.fillStyle = gg;
+        ctx.beginPath(); ctx.arc(cx, cy + 2, 9, 0, Math.PI * 2); ctx.fill();
+
+        // เข็มกลัดเสี้ยว — เจาะแบบเดียวกับดวงจันทร์ด้านหลัง
+        ctx.save();
+        ctx.translate(cx, cy + 2);
+        ctx.rotate(-0.4);
+        crescent(ctx, 0, 0, 4.8, '#EAF0FF');
+        ctx.restore();
+
+        // อัญมณีรูปดาวเม็ดเล็กห้อยใต้เข็มกลัด
+        gem(ctx, cx, cy + 9, 2.6, '#8FA8F0');
+      });
+    },
+
+    head(ctx) {
+      const t = performance.now() * 0.004;
+
+      // ── มงกุฎแถบเงินคาดหน้าผาก ──
+      headBand(ctx, -9, 3.4, '#2B2F63', '#C8D4F0');
+
+      // ── พระจันทร์เสี้ยวเงินบนหน้าผาก ──
+      ctx.save();
+      ctx.translate(0, -12.5);
+      ctx.rotate(-0.3);
+      ctx.shadowColor = '#CFE0FF';
+      ctx.shadowBlur = 7;
+      crescent(ctx, 0, 0, 5.6, '#EDF2FF');
+      ctx.restore();
+
+      // อัญมณีดาวเม็ดจิ๋วสองข้างของเสี้ยว วิบสลับกัน
+      for (const [dx, ph] of [[-8, 0], [8, 1.6]]) {
+        const k = 0.4 + Math.abs(Math.sin(t + ph)) * 0.6;
+        ctx.globalAlpha = k;
+        ctx.fillStyle = '#DCE6FF';
+        star4(ctx, dx, -10, 1.4 + k * 1.1);
+      }
+      ctx.globalAlpha = 1;
+    },
+  },
+  {
     id: 'rainbow',
     rarity: 'high',
     name: 'สายรุ้งเจ็ดสี',
@@ -578,6 +1190,13 @@ const LIST = [
     rain: ['#FF5C7A', '#FFF3B0', '#4FC9E8'],
     rainShape: 'drop',
     glow: '#E9C8FF',
+
+    // หยดน้ำเจ็ดสี — ใช้ชุดสีเดียวกับเม็ดที่โปรยตอนสกิล หางกับเม็ดโปรยจึงเป็นเรื่องเดียวกัน
+    trail: {
+      every: 4, shape: 'drop',
+      colors: ['#A96BFF', '#5BC8FF', '#3FD98A', '#FFE04D', '#FF9A3C', '#FF4D5E', '#FF7ABF'],
+      r: [2, 3.6], life: 40, gravity: 0.07, drift: -0.6,
+    },
     back(ctx, s, pose) {
       sparkleAura(ctx, pose, '#B06CE8', '#FFFFFF');
 
@@ -690,8 +1309,53 @@ const LIST = [
     rain: ['#5FD35A', '#D6FFC9', '#256B3E'],
     rainShape: 'leaf',
     glow: '#B6F5A8',
+
+    // ใบไม้ปลิว — หมุนแรงที่สุด (spin 0.09) และตกช้า ให้เห็นเป็นใบที่ร่วงหมุนคว้าง
+    trail: {
+      every: 6, shape: 'leaf',
+      colors: ['#8BE87F', '#D6FFC9', '#5FD35A'],
+      r: [2.4, 4.2], life: 52, gravity: 0.03, drift: -0.5, spin: 0.09,
+    },
     back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      const cx = pose === 'slide' ? -2 : 0;
+      const cy = pose === 'slide' ? 2 : 4;
+
+
+      // ── พวงมาลัยใบไม้ลอยหลังหัว ──
+      // วงใบไม้เรียงรอบ เป็นของชิ้นเด่นประจำชุดแบบเดียวกับพระจันทร์ของชุดจันทรา
+      ctx.save();
+      ctx.translate(cx - 21, cy - 27);
+      ctx.rotate(Math.sin(t * 0.5) * 0.08);
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2 + t * 0.12;
+        ctx.save();
+        ctx.translate(Math.cos(a) * 10, Math.sin(a) * 10);
+        ctx.rotate(a + Math.PI / 2);
+        ctx.fillStyle = i % 2 ? '#7EE08C' : '#4FBF63';
+        ctx.beginPath(); ctx.ellipse(0, 0, 5.2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      // ดอกไม้เม็ดกลางวง
+      ctx.fillStyle = '#FFE7A8';
+      ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
       sparkleAura(ctx, pose, '#8FF0A8', '#DFFFE0');
+
+      // ละอองเกสรลอยรอบตัว
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.5 + k * 2.1;
+        const r = 36 + k * 5;
+        const tw = 0.35 + Math.abs(Math.sin(t * 1.6 + k * 1.7)) * 0.65;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = k === 1 ? '#FFE7A8' : '#B6F5A8';
+        star4(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.72, 1.6 + tw * 1.7);
+      }
+      ctx.restore();
+
       // ปีกใบไม้คู่ ชี้ไปข้างหลัง (มุมราว π = ทางซ้าย)
       const bx = pose === 'slide' ? -5 : -4;
       const by = pose === 'slide' ? 0 : 2;
@@ -700,7 +1364,18 @@ const LIST = [
     },
     body(ctx, s, pose) {
       fullSuit(ctx, pose, '#2F7C4E');
-      skirt(ctx, pose, '#3E9E62', '#9CF0AE');
+      clipBody(ctx, pose, () => {
+        // ไล่สีจากเขียวสว่างลงไปเขียวเข้ม ผ้าจึงมีความลึกแทนที่จะเป็นแผ่นเดียว
+        const sg = ctx.createLinearGradient(0, pose === 'slide' ? 3 : 7, 0, 26);
+        sg.addColorStop(0, '#57B877');
+        sg.addColorStop(1, '#2A6E45');
+        ctx.fillStyle = sg;
+        ctx.fillRect(-26, pose === 'slide' ? 3 : 7, 52, 28);
+      });
+      // ชายกระโปรงหยักเป็นใบไม้
+      clipBody(ctx, pose, () => {
+        scallop(ctx, -24, 24, pose === 'slide' ? 9 : 15, 6, 3.4, '#9CF0AE');
+      });
       clipBody(ctx, pose, () => {
         // เข็มขัดเถาวัลย์ทอง
         ctx.strokeStyle = '#E8C86B';
@@ -1054,4 +1729,57 @@ export function setOutfit(id) {
   chosen = o.id;
   saveOutfit(o.id);
   return o;
+}
+
+// ─────────────────────────────────────────────────────────────
+// ตัวตรวจแบบฟอร์มของชุดระดับสูง — ทำงานเฉพาะตอน dev
+//
+// มีไว้เพราะข้อกำหนดที่เป็นคอมเมนต์อย่างเดียวไม่มีใครบังคับ
+// คนเพิ่มชุดใหม่ลืมช่องใดช่องหนึ่งแล้วจะไม่รู้ตัวจนกว่าจะไปเจอเองในเกม
+// (เช่นลืม trail แล้วชุดนั้นไม่มีหางเม็ดอยู่ชุดเดียว ซึ่งสังเกตยากมาก)
+//
+// Vite แทน import.meta.env.DEV ด้วย false ตอน build จริง บล็อกนี้จึงถูกตัดทิ้งทั้งก้อน
+// ไม่มีต้นทุนอะไรเลยกับเกมที่ deploy ออกไป
+// ─────────────────────────────────────────────────────────────
+if (import.meta.env.DEV) {
+  const BONUS_KEYS = ['sky', 'glow', 'speck', 'cloud', 'cloudSoft', 'sparkle'];
+  const TRAIL_KEYS = ['every', 'shape', 'colors', 'r', 'life', 'gravity'];
+
+  for (const o of OUTFITS) {
+    if (o.rarity !== 'high') continue;
+    const miss = [];
+
+    for (const k of ['back', 'body', 'head']) {
+      if (typeof o[k] !== 'function') miss.push(k + '()');
+    }
+    for (const k of ['rain', 'rainShape', 'glow', 'trail', 'bonus']) {
+      if (!o[k]) miss.push(k);
+    }
+    if (o.rain && o.rain.length !== 3) miss.push('rain ต้องมี 3 สี');
+    if (o.bonus) {
+      for (const k of BONUS_KEYS) if (!o.bonus[k]) miss.push('bonus.' + k);
+      if (o.bonus.sky && o.bonus.sky.length !== 3) miss.push('bonus.sky ต้องมี 3 สี');
+    }
+    if (o.trail) {
+      for (const k of TRAIL_KEYS) if (o.trail[k] === undefined) miss.push('trail.' + k);
+      // ตรวจว่าหางจางหายก่อนตกถึงพื้นจริงไหม — คิดระยะตกจาก s = ½at²
+      const t = o.trail;
+      if (t.life && t.gravity) {
+        const fall = 0.5 * t.gravity * t.life * t.life;
+        if (fall > 120) miss.push(`trail ตกไกล ${Math.round(fall)}px ก่อนหมดอายุ (เกิน 120 จะไปทับหนามกับปากหลุม)`);
+      }
+      // จำนวนเม็ดที่มีอยู่พร้อมกัน ต้องอยู่ในช่วงที่อ่านออกแต่ไม่บังทาง
+      if (t.every && t.life) {
+        const alive = Math.round(t.life / t.every);
+        if (alive < 6 || alive > 14) miss.push(`trail มี ${alive} เม็ดพร้อมกัน (ควรอยู่ราว 8-10)`);
+      }
+    }
+
+    if (miss.length) {
+      console.warn(
+        `[ชุดระดับสูง] "${o.name}" ยังไม่ครบแบบฟอร์ม — ขาด: ${miss.join(', ')}\n`
+        + 'ดูข้อกำหนดที่หัวหมวด "ระดับสูง" ใน src/outfits.js'
+      );
+    }
+  }
 }

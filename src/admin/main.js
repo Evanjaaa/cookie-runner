@@ -422,8 +422,18 @@ function openPlayer(p) {
     <div class="sect">แก้ไขได้</div>
     <div class="formrow"><label>ชื่อที่โชว์</label><input id="f_name" type="text" value="${esc(p.name)}" maxlength="16"></div>
     <div class="row2">
-      <div class="formrow"><label>ทอง</label><input id="f_gold" type="number" value="${p.gold ?? 0}"></div>
-      <div class="formrow"><label>เพชร</label><input id="f_gems" type="number" value="${p.gems ?? 0}"></div>
+      <div class="formrow"><label>ทอง</label>
+        <input id="f_gold" type="number" value="${p.gold ?? 0}" disabled></div>
+      <div class="formrow"><label>เพชร</label>
+        <input id="f_gems" type="number" value="${p.gems ?? 0}" disabled></div>
+      <p class="fieldnote">
+        แก้ทองกับเพชรตรงนี้ไม่ได้ เพราะแก้แล้วหายเงียบ ๆ —
+        ตัวเกมของผู้เล่นดันข้อมูลทั้งแถวขึ้นมาทับทุกครั้งที่มีอะไรเปลี่ยนในเครื่อง
+        ค่าที่เพิ่งตั้งจึงถูกเขียนทับด้วยค่าเดิมของเขาภายในไม่กี่วินาทีถ้าเขาเปิดเกมอยู่
+        <br>
+        <b>ใช้แท็บ "จดหมาย" ส่งเป็นของขวัญแทน</b> — ของขวัญอยู่คนละตารางที่ตัวเกมเขียนไม่ได้
+        จึงไม่มีวันถูกทับ และผู้เล่นได้รับแน่นอนไม่ว่าตอนส่งเขาจะออนไลน์อยู่หรือเปล่า
+      </p>
     </div>
     <div class="row2">
       <div class="formrow"><label>XP</label><input id="f_xp" type="number" value="${p.xp ?? 0}"></div>
@@ -459,11 +469,27 @@ function openPlayer(p) {
   $('del').addEventListener('click', () => deletePlayer(p));
 }
 
+/**
+ * บันทึกข้อมูลผู้เล่นหนึ่งคน
+ *
+ * ── ทำไมไม่มีทองกับเพชรใน patch ──
+ * เขียนลง players ตรง ๆ ได้ก็จริง แต่มัน "ไม่อยู่" — ตัวเกมของผู้เล่นเก็บค่าพวกนี้
+ * ไว้ในเครื่องแล้วดันขึ้นมาทับทั้งแถวทุกครั้งที่มีอะไรเปลี่ยน (pushPlayer ใน net/sync.js
+ * ส่ง readLocal() ทั้งก้อน) ส่วนขาดึงลงจากคลาวด์ทำครั้งเดียวตอนเปิดเกม
+ *
+ * ผลคือถ้าผู้เล่นเปิดเกมอยู่ตอนที่แอดมินกดบันทึก ค่าที่เพิ่งตั้งจะโดนทับหายภายใน
+ * ไม่กี่วินาที แต่ถ้าเขาปิดเกมอยู่ค่าจะติด — อาการที่เห็นจึงเป็น "เพิ่มให้คนนี้ขึ้น
+ * อีกคนไม่ขึ้น" ทั้งที่ทำเหมือนกันทุกอย่าง ซึ่งหาสาเหตุยากมากถ้าไม่รู้เรื่องนี้
+ *
+ * ของขวัญผ่านแท็บจดหมายไม่มีปัญหานี้ เพราะอยู่คนละตารางที่ไคลเอนต์เขียนไม่ได้เลย
+ * (ดูเหตุผลเต็มที่หัวไฟล์ supabase/mail.sql)
+ *
+ * ช่องอื่น (ชื่อ/ด่าน/สกิน/ชุด/XP) ยังแก้ได้ตามปกติ เพราะเป็นค่าที่แอดมินใช้แก้
+ * ตอนผู้เล่นติดปัญหา ซึ่งมักเป็นตอนที่เขาไม่ได้เปิดเกมอยู่แล้ว
+ */
 async function savePlayer(p) {
   const patch = {
     name: $('f_name').value.trim() || 'แมวนิรนาม',
-    gold: Math.max(0, Math.floor(+$('f_gold').value || 0)),
-    gems: Math.max(0, Math.floor(+$('f_gems').value || 0)),
     xp: Math.max(0, Math.floor(+$('f_xp').value || 0)),
     stage: $('f_stage').value.trim(),
     skin: $('f_skin').value.trim(),

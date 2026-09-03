@@ -666,8 +666,27 @@ export class Game {
     this.score =
       Math.floor(this.distance / SCORING.pxPerScorePoint) + this.treat;
 
+    this.emitTrail(dt);
     this.particles.update(dt);
     this.shake *= 0.9;
+  }
+
+  /**
+   * หางเม็ดประจำชุด — ชุดที่ไม่ได้ประกาศ trail ไว้จะไม่มีอะไรเกิดขึ้นเลย
+   *
+   * ปล่อยจากท้ายตัวแมว ไม่ใช่กลางตัว เม็ดจะได้โผล่จาก "ข้างหลัง" ตั้งแต่เฟรมแรก
+   * ไม่ใช่โผล่ทับตัวแล้วค่อยไหลออกมา ซึ่งจะเห็นเป็นเม็ดผุดกลางตัวละคร
+   */
+  emitTrail(dt) {
+    const cfg = getSkin().outfit?.trail;
+    if (!cfg) return;
+
+    this.trailTick = (this.trailTick || 0) + dt;
+    if (this.trailTick < cfg.every) return;
+    this.trailTick = 0;
+
+    const b = this.player.box;
+    this.particles.trail(b.x + this.camera + b.w * 0.25, b.y + b.h * 0.55, cfg);
   }
 
   /**
