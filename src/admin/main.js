@@ -22,7 +22,6 @@ const $ = (id) => document.getElementById(id);
 const el = (sel, root = document) => root.querySelector(sel);
 
 let sb = null;
-let me = null;          // { id, email } ของแอดมินที่ล็อกอินอยู่
 let pendingEmail = '';
 
 /** โหลด SDK ตอนใช้จริง เหมือนที่ตัวเกมทำ จะได้ไม่ลากมาตอนโหลดหน้า */
@@ -210,7 +209,6 @@ async function afterSignIn(user) {
     return;
   }
 
-  me = { id: user.id, email: user.email };
   $('whoEmail').textContent = user.email || '';
   $('gate').classList.add('hidden');
   $('app').classList.remove('hidden');
@@ -226,10 +224,8 @@ async function signOut() {
 // ── ตัวจัดการหน้า ────────────────────────────────────────────
 
 const PAGES = {};
-let current = '';
 
 function go(name) {
-  current = name;
   [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.page === name));
   closeDrawer();
   PAGES[name]();
@@ -971,6 +967,20 @@ PAGES.audit = async () => {
   runAudit();
 };
 
+/**
+ * เพดานจำนวนบัญชีที่ดึงมาตรวจในรอบเดียว
+ *
+ * การตรวจทำที่ฝั่งเบราว์เซอร์ จึงต้องดึงข้อมูลมาทั้งก้อนก่อน ซึ่งมีเพดานเสมอ
+ * ตัวเลขนี้ไม่ใช่ปัญหาตอนนี้ แต่วันที่ผู้เล่นเกินเพดาน จะมีบัญชีที่ไม่เคยถูกตรวจ
+ * เลยโดยหน้าเว็บไม่บอกอะไร — ซึ่งแย่กว่าไม่มีหน้านี้ เพราะมันสร้างความมั่นใจผิด ๆ
+ * ว่า "ตรวจแล้วไม่เจออะไร"
+ *
+ * จึงเรียงตามคนที่เล่นล่าสุดก่อน (คนที่ยังเล่นอยู่คือคนที่ต้องรู้ก่อน) แล้ว
+ * บอกให้ชัดเมื่อผลชนเพดาน ทางแก้ระยะยาวคือย้ายการกรองไปทำในฐานข้อมูล
+ * แล้วส่งกลับมาเฉพาะแถวที่เข้าเกณฑ์
+ */
+const AUDIT_LIMIT = 2000;
+
 async function runAudit() {
   $('alist').innerHTML = '<div class="tablewrap"><div class="empty">กำลังตรวจ…</div></div>';
   const tGold = +$('tGold').value || Infinity;
@@ -978,7 +988,11 @@ async function runAudit() {
   const tScore = +$('tScore').value || Infinity;
 
   const c = await client();
-  const { data, error } = await c.from('admin_players').select('*').limit(2000);
+  const { data, error } = await c
+    .from('admin_players')
+    .select('*')
+    .order('updated_at', { ascending: false, nullsFirst: false })
+    .limit(AUDIT_LIMIT);
   if (error) return failInto('alist', error);
 
   const flagged = [];
@@ -1004,8 +1018,15 @@ async function runAudit() {
     { label: 'เล่นล่าสุด', cell: (r) => esc(when(r.updated_at)) },
   ];
 
+  const scanned = (data || []).length;
+  const capped = scanned >= AUDIT_LIMIT;
+
   $('alist').innerHTML =
-    `<p class="sub">ตรวจ ${num((data || []).length)} บัญชี เจอที่น่าดู ${num(flagged.length)} บัญชี</p>` +
+    `<p class="sub">ตรวจ ${num(scanned)} บัญชี เจอที่น่าดู ${num(flagged.length)} บัญชี</p>` +
+    (capped
+      ? `<p class="sub warn">ชนเพดาน ${num(AUDIT_LIMIT)} บัญชีต่อรอบ —
+         ตรวจเฉพาะคนที่เล่นล่าสุด ${num(AUDIT_LIMIT)} คน ยังมีบัญชีเก่ากว่านั้นที่ยังไม่ได้ตรวจ</p>`
+      : '') +
     tableHTML(cols, flagged, { onRow: true, empty: 'ไม่เจออะไรผิดปกติตามเกณฑ์นี้' });
 
   el('tbody', $('alist'))?.addEventListener('click', (e) => {
@@ -1061,7 +1082,16 @@ async function boot() {
   $('signOut').addEventListener('click', signOut);
   $('drawerClose').addEventListener('click', closeDrawer);
   $('scrim').addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', (e) => e.key === 'Escape' && closeDrawer());
+  // Escape ปิดทีละชั้น ไม่ใช่ปิดหมดทีเดียว
+  //
+  // ask() ดัก Escape ของกล่องยืนยันไว้เองอยู่แล้ว ถ้าตรงนี้ปิดลิ้นชักด้วย
+  // การกดครั้งเดียวจะยกเลิกกล่อง "และ" ปิดลิ้นชักข้างหลังไปพร้อมกัน
+  // ทั้งที่ผู้ใช้ตั้งใจแค่ถอยออกจากกล่องยืนยันเพื่อกลับไปแก้ค่าในลิ้นชักต่อ
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!$('modal').classList.contains('hidden')) return;   // กล่องเปิดอยู่ ให้มันจัดการเอง
+    closeDrawer();
+  });
   $('tabs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-page]');
     if (b) go(b.dataset.page);

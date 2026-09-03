@@ -1,7 +1,7 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -16,7 +16,7 @@ import {
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
   drawBigFish,
   drawBonusSparkle,
-  drawRain, drawSkillGauge, drawNips, drawFallers, drawHazards,
+  drawRain, drawSkillGauge, drawNips, drawCans, drawFallers, drawHazards,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage, sceneAt } from './stages.js';
@@ -208,7 +208,20 @@ export class Game {
   }
 
   get pitsSolid() {
-    return this.skillOn || this.boost > 0;
+    return this.skillOn || this.boost > 0 || this.big > 0;
+  }
+
+  /**
+   * ความ "โตเต็มที่" ตอนนี้ 0-1 — ใช้ทั้งขนาดตัวและจังหวะขา
+   *
+   * ค่อย ๆ ขยายตอนกินและค่อย ๆ ยุบก่อนหมดฤทธิ์ ไม่ใช่สลับขนาดทันที
+   * ช่วงยุบสำคัญกว่าช่วงขยาย เพราะมันคือสัญญาณเดียวที่บอกว่า "กำลังจะหมดแล้ว"
+   * ถ้าหดวูบตอนหมดพอดี ผู้เล่นที่กำลังพุ่งใส่สิ่งกีดขวางจะตายโดยไม่ทันตั้งตัว
+   */
+  get bigK() {
+    if (this.big <= 0) return 0;
+    const g = BIGCAN.grow;
+    return Math.max(0, Math.min(1, Math.min((BIGCAN.frames - this.big) / g, this.big / g)));
   }
 
   /**
@@ -283,6 +296,7 @@ export class Game {
     this.skillBlink = 0;   // เฟรมที่เหลือของช่วงกะพริบ (ยังอมตะ)
     this.rain = [];        // เม็ดที่โปรยลงมา
     this.boost = 0;        // เฟรมที่เหลือของสปีดจากต้นหญ้าแมว
+    this.big = 0;          // เฟรมที่เหลือของช่วงตัวโตจากอาหารกระป๋อง
     this.stepAcc = 0;      // เศษเวลาที่ยังไม่ครบหนึ่งก้าวฟิสิกส์
     this.syncMusic();      // เผื่อรอบก่อนจบตอนกำลังออกฤทธิ์หรืออยู่บนฟ้า
     this.invuln = 0;
@@ -393,6 +407,7 @@ export class Game {
     // ตัวจับเวลาทุกตัว (พลัง ความสามารถ แม่เหล็ก โบนัส สปีด) ยังเดินด้วย dt จริง
     // ไม่งั้นของดีที่เก็บมาจะหมดอายุเร็วขึ้นตามไปด้วย กลายเป็นโทษแทนรางวัล
     if (this.boost > 0) this.boost -= dt;
+    if (this.big > 0) this.big -= dt;
     const gdt = dt * (this.boost > 0 ? SPEEDUP.mult : 1);
 
     if (this.bonus > 0) return this.updateBonus(dt, gdt);
@@ -474,6 +489,7 @@ export class Game {
           continue;
         }
         if (this.skillOn) break;               // ความสามารถทำงาน ทะลุผ่านได้เลย
+        if (this.big > 0) break;               // ตัวโตอยู่ เดินทับผ่านไปเลย
         if (this.invuln > 0) break;            // กำลังอมตะ ผ่านได้
         if (this.shielded) {                   // มีโล่ → โล่แตกแทนที่จะตาย
           this.shielded = false;
@@ -509,12 +525,12 @@ export class Game {
     const petal = this.treasures.magnetPull;
     if (this.magnet > 0 || this.skill > 0 || petal > 0) {
       // ── ตัวคูณความอ่อนของแม่เหล็กดอกไม้ ──
-      // ไม่ได้เอา petal มาคูณตรง ๆ เพราะ 0.4 x 420 = 168px ซึ่งสั้นกว่าครึ่งจอ
-      // ของที่อยู่ข้างหลังเกินนั้นไม่ถูกแตะเลย วัดแล้วดูดอะไรไม่ได้จริงสักชิ้น
-      // และ 0.4 x 17 = 6.8 ซึ่งเท่ากับความเร็วกล้องพอดี = ของไม่มีวันตามทัน
+      // ไม่ได้เอา petal มาคูณตรง ๆ เพราะ 0.26 x 17 = 4.4 px/เฟรม ซึ่งช้ากว่า
+      // ความเร็วกล้อง (6.8) = ของที่อยู่ข้างหลังไม่มีวันตามทัน ดูดไม่ได้สักชิ้น
       //
-      // แมป petal 0.4-0.6 ไปเป็น 0.67-0.78 แทน ได้ระยะ 281-328px
-      // กับความเร็วพื้น 11.4-13.3 (กล้อง 6.8) ซึ่งอ่อนกว่าไอเทมชัดเจนแต่ใช้งานได้จริง
+      // แมป petal 0.26-0.39 ไปเป็น 0.59-0.66 แทน ได้ระยะ 249-279px
+      // กับความเร็วพื้น 10.1-11.3 (หักกล้อง 6.8 แล้วเหลือ 3.3-4.5 px/เฟรม)
+      // ซึ่งดูดของที่วิ่งผ่านใกล้ตัวเข้ามาได้ แต่ไม่กวาดทั้งจอเหมือนไอเทมจริง
       // และไม่ว่าตีบวกถึงขั้นไหนก็ไม่มีทางแตะ 1.0 ไอเทมในด่านจึงยังคุ้มกว่าเสมอ
       const weak = this.magnet > 0 || this.skill > 0 ? 1 : 0.45 + petal * 0.55;
       const range = this.magnet > 0 ? MAGNET.range
@@ -612,6 +628,24 @@ export class Game {
         this.particles.burst(n.x, n.y, 18, 'nip', 6);
         sfx.nip();
       }
+    }
+
+    // เก็บอาหารกระป๋อง — เก็บซ้ำระหว่างที่ยังโตอยู่ = ต่อเวลาใหม่เต็ม
+    // ซ้อนกับสปีดหรือความสามารถได้ เพราะเป็นคนละตัวจับเวลากัน
+    for (const k of this.level.cans) {
+      if (k.got || k.x < this.camera - 40) continue;
+      if (Math.hypot(cx - k.x, cy - k.y) < BIGCAN.pickR) {
+        k.got = true;
+        this.big = BIGCAN.frames;
+        this.particles.burst(k.x, k.y, 18, 'dust', 6);
+        sfx.nip();
+      }
+    }
+
+    // ฝุ่นใต้เท้าตอนตัวโตเหยียบพื้น — ตัวใหญ่ต้องรู้สึกหนัก ไม่ใช่แค่ภาพใหญ่ขึ้น
+    if (this.big > 0 && this.player.onGround
+        && Math.floor(this.tick) % BIGCAN.trailEvery === 0) {
+      this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 2);
     }
 
     // ประกายเขียวตามหลังตอนติดสปีด ปล่อยจากด้านหลังตัวเพื่อให้อ่านเป็น "เส้นทางที่ผ่านมา"
@@ -811,7 +845,7 @@ export class Game {
       if (f.warn > 0) continue;                   // ยังไม่ร่วง ยังไม่อันตราย
       if (!rectHit(bx, b.y, b.w, b.h, f.x, f.y, f.w, f.h)) continue;
 
-      if (this.skillOn || this.invuln > 0) break;
+      if (this.skillOn || this.invuln > 0 || this.big > 0) break;
       if (this.boost > 0) { f.dead = true; break; }   // ติดสปีด พุ่งชนแตก
       if (this.shielded) {
         this.shielded = false;
@@ -858,7 +892,7 @@ export class Game {
       if (!box) continue;                        // ไฟกำลังดับอยู่
       if (!rectHit(bx, b.y, b.w, b.h, box.x, box.y, box.w, box.h)) continue;
 
-      if (this.skillOn || this.invuln > 0) break;
+      if (this.skillOn || this.invuln > 0 || this.big > 0) break;
       if (this.boost > 0) break;                 // ติดสปีด พุ่งผ่านได้
       if (this.shielded) {
         this.shielded = false;
@@ -1437,6 +1471,7 @@ export class Game {
     drawMagnets(ctx, this.level.magnets, this.camera, this.tick);
     drawLetters(ctx, this.level.letters, this.camera, this.tick);
     drawNips(ctx, this.level.nips, this.camera, this.tick);
+    drawCans(ctx, this.level.cans, this.camera, this.tick);
     drawShields(ctx, this.level.shields, this.camera);
     this.particles.draw(ctx, this.camera);
 
@@ -1452,8 +1487,12 @@ export class Game {
     // กะพริบสองกรณี: หลังโดนชน กับตอนความสามารถใกล้หมดฤทธิ์
     const skillFlicker = this.skillBlink > 0 && Math.floor(this.tick / 5) % 2 === 0;
     if (!blinking && !skillFlicker) {
+      // ตัวโตอยู่ = ยิ้มสะใจ ทับอารมณ์อื่นที่อาจตั้งค้างไว้จากโบนัส
+      // เพราะตอนนั้นแมวกำลังเดินทับทุกอย่างโดยไม่เจ็บ ซึ่งเป็นจังหวะที่สะใจที่สุดในเกม
+      const k = this.bigK;
       drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking,
-        this.skill > 0 ? this.tick : 0, this.catMood);
+        this.skill > 0 ? this.tick : 0, this.big > 0 ? 'smug' : this.catMood,
+        1 + (BIGCAN.scale - 1) * k, 1 + (BIGCAN.gait - 1) * k);
     }
     if (sucking) drawSuction(ctx, this.player, this.tick);
 

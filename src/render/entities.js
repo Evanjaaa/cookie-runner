@@ -1779,6 +1779,76 @@ export function drawNip(ctx, x, y, r, t = 0) {
   ctx.restore();
 }
 
+/**
+ * อาหารกระป๋อง — ไอเทมที่กินแล้วตัวโต
+ *
+ * ── ทำไมเป็นทรงกระบอก ไม่ใช่วงกลมเหมือนไอเทมอื่น ──
+ * ของลอยในด่านตอนนี้กลมหมดทุกชิ้น (แม่เหล็ก โล่ ขวดยา) ต่างกันแค่สี
+ * ซึ่งพอวิ่งเร็ว ๆ สีอย่างเดียวแยกไม่ทัน ทรงที่ต่างไปเลยอ่านออกได้ในพริบตาเดียว
+ * และสีส้มยังเป็นสีที่เหลืออยู่สีเดียวที่ไม่ชนกับไอเทมอื่นในเกม
+ */
+export function drawCan(ctx, x, y, r, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(t * 0.05) * 0.08);
+
+  const w = r * 1.5;
+  const h = r * 1.7;
+  const lid = r * 0.32;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,170,64,.95)';
+  ctx.shadowBlur = 16;
+
+  // ตัวกระป๋อง ไล่สีซ้าย-ขวาให้อ่านเป็นทรงกระบอก ไม่ใช่สี่เหลี่ยมแบน
+  const g = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+  g.addColorStop(0, '#B85F1E');
+  g.addColorStop(0.38, '#FFB44E');
+  g.addColorStop(1, '#A8531A');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, r * 0.2);
+  ctx.fill();
+  ctx.restore();
+
+  // ฝาบนพร้อมห่วงดึง
+  ctx.fillStyle = '#F0E2CB';
+  ctx.beginPath(); ctx.ellipse(0, -h / 2, w / 2, lid, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#7A4A18';
+  ctx.lineWidth = r * 0.08;
+  ctx.beginPath(); ctx.ellipse(0, -h / 2, w / 2, lid, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, -h / 2, w * 0.2, lid * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // แถบฉลากสีครีม ตัดกับตัวกระป๋องส้มให้เห็นหน้าแมวชัด
+  ctx.fillStyle = '#FFF3E2';
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h * 0.06, w, h * 0.44, r * 0.08);
+  ctx.fill();
+
+  // หน้าแมวจิ๋วบนฉลาก — บอกว่าเป็นอาหารแมวโดยไม่ต้องมีตัวหนังสือ
+  // (ตัวหนังสือขนาดนี้อ่านไม่ออกอยู่แล้วตอนวิ่ง และต้องแปลตามภาษาอีก)
+  ctx.fillStyle = '#43291A';
+  ctx.beginPath(); ctx.arc(-r * 0.26, h * 0.09, r * 0.085, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r * 0.26, h * 0.09, r * 0.085, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#43291A';
+  ctx.lineWidth = r * 0.06;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(-r * 0.1, h * 0.19, r * 0.1, 0, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(r * 0.1, h * 0.19, r * 0.1, 0, Math.PI); ctx.stroke();
+
+  ctx.restore();
+}
+
+export function drawCans(ctx, cans, camera, tick) {
+  for (const c of cans) {
+    if (c.got) continue;
+    const x = c.x - camera;
+    if (x > W + 50 || x < -50) continue;
+    // ลอยเฟสเดียวกับไอเทมอื่น อ่านออกว่าเป็นของชุดเดียวกันที่เก็บได้
+    drawCan(ctx, x, floatY(c, tick), c.r, tick);
+  }
+}
+
 export function drawNips(ctx, nips, camera, tick) {
   for (const n of nips) {
     if (n.got) continue;
@@ -2282,7 +2352,11 @@ export function drawShieldRing(ctx, player, tick) {
 // ทุกฟังก์ชันรับ `s` = ชุดสีจาก skins.js ไม่มีสีแมวฝังตายในโค้ดวาดเลย
 // แมวทุกตัวจึงใช้โครงเดียวกัน เพิ่มตัวใหม่ = เพิ่มจานสี ไม่ต้องวาดใหม่
 
-export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0, mood = '') {
+/**
+ * @param scale ตัวคูณขนาดตัว (อาหารกระป๋องทำให้เป็น 1.75)
+ * @param gait  ตัวคูณจังหวะขา — ต่ำกว่า 1 = ก้าวช้าลงโดยความเร็วในเกมไม่เปลี่ยน
+ */
+export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0, mood = '', scale = 1, gait = 1) {
   const b = player.box;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
@@ -2295,7 +2369,8 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
     ctx.globalAlpha = Math.max(0, 0.32 - air / 500);
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(cx, GROUND_Y + 4, 22 - air * 0.02, 5, 0, 0, Math.PI * 2);
+    // เงาโตตามตัวด้วย ไม่งั้นแมวตัวใหญ่จะดูลอยอยู่เหนือเงาของแมวตัวเล็ก
+    ctx.ellipse(cx, GROUND_Y + 4, (22 - air * 0.02) * scale, 5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -2303,20 +2378,34 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
   // ท่าเต้นตอนใช้ความสามารถ: ส่ายตัวแรงขึ้นและเด้งขึ้นลง
   // ทับลงบนท่าวิ่งเดิม ไม่ได้เขียนท่าใหม่ทั้งชุด จังหวะขาจึงยังตรงกับความเร็ววิ่ง
   ctx.translate(cx, cy - (dance ? Math.abs(Math.sin(dance * 0.3)) * 7 : 0));
+
+  // จังหวะขาแยกออกจาก runPhase จริง เพื่อให้ชะลอท่าเดินได้โดยไม่แตะความเร็วเกม
+  const ph = player.runPhase * gait;
+
   if (isDead) {
     ctx.rotate(player.tilt);
   } else {
     const base = player.onGround
-      ? Math.sin(player.runPhase * 2) * 0.04
+      ? Math.sin(ph * 2) * 0.04
       : Math.max(-0.3, Math.min(0.3, player.vy * 0.016));
     ctx.rotate(base + (dance ? Math.sin(dance * 0.24) * 0.28 : 0));
   }
 
-  const swing = Math.sin(player.runPhase * 2) * (player.onGround ? 1 : 0.25);
+  // ── ขยายรอบ "เท้า" ไม่ใช่รอบกลางตัว ──
+  // ถ้าขยายรอบจุดกึ่งกลาง ครึ่งล่างจะจมลงไปใต้พื้นเท่ากับที่ครึ่งบนโผล่ขึ้น
+  // เห็นเป็นแมวยืนจมดิน ต้องตรึงเท้าไว้แล้วให้ตัวโตขึ้นไปทางหัวอย่างเดียว
+  if (scale !== 1) {
+    const feet = b.h / 2;
+    ctx.translate(0, feet);
+    ctx.scale(scale, scale);
+    ctx.translate(0, -feet);
+  }
+
+  const swing = Math.sin(ph * 2) * (player.onGround ? 1 : 0.25);
   ctx.lineCap = 'round';
 
   if (player.sliding) drawCatSlide(ctx, s, { isDead });
-  else drawCatStand(ctx, s, { swing, wag: Math.sin(player.runPhase * 2 + 0.9), isDead, mood });
+  else drawCatStand(ctx, s, { swing, wag: Math.sin(ph * 2 + 0.9), isDead, mood });
 
   ctx.restore();
 }
@@ -2692,6 +2781,19 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
       const k = 0.45 + Math.abs(Math.sin(tw + ph)) * 0.55;
       star4(ctx, ex, -6, 2.2 * k);
     }
+  } else if (mood === 'smug') {
+    // ── ตาหยีแบบมั่นใจ ──
+    // เปลือกตากดลงเหมือน sad แต่กดตื้นกว่าและไม่มีน้ำตา
+    // ตาทำหน้าที่แค่ "ลดความตื่นเต้น" ให้ดูสบาย ๆ ส่วนอารมณ์สะใจจริง ๆ อยู่ที่ปาก
+    ctx.fillStyle = s.ink;
+    ctx.beginPath(); ctx.arc(-5, -0.5, 3.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -0.5, 3.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.arc(-3.9, -1.6, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(8.1, -1.6, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = s.cat;
+    ctx.beginPath(); ctx.moveTo(-9, -4.6); ctx.lineTo(-1, -3.5); ctx.lineTo(-9, -2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(11, -4.6); ctx.lineTo(3, -3.5); ctx.lineTo(11, -2); ctx.fill();
   } else if (mood === 'sad') {
     // ── ตาเศร้า ──
     // เปลือกตาบนกดลงมาปิดตาครึ่งบน อ่านเป็น "ตาปรือ" ซึ่งคือสัญญาณเศร้าที่ชัดที่สุด
@@ -2740,6 +2842,22 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.ellipse(1, 7.6, 5, 4, 0, 0, Math.PI); ctx.fill();
     ctx.fillStyle = s.pink;
     ctx.beginPath(); ctx.ellipse(1, 10.2, 2.8, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (mood === 'smug') {
+    // ── ยิ้มมุมเดียว ──
+    // ปากสมมาตรอ่านเป็น "ดีใจ" ส่วนปากที่ยกขึ้นข้างเดียวอ่านเป็น "สะใจ"
+    // ซึ่งเป็นคนละอารมณ์กัน และเป็นอันที่ตรงกับจังหวะพุ่งชนทุกอย่างได้โดยไม่เจ็บ
+    ctx.strokeStyle = s.ink;
+    ctx.lineWidth = 1.7;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-3.4, 6.2);
+    ctx.quadraticCurveTo(1.4, 9.8, 6.2, 5);
+    ctx.stroke();
+    // เขี้ยวเล็ก ๆ โผล่ที่มุมปากที่ยกขึ้น เติมความกวนอีกนิด
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(4.4, 6.2); ctx.lineTo(6.4, 6); ctx.lineTo(5.2, 8.2);
+    ctx.closePath(); ctx.fill();
   } else if (mood === 'sad') {
     // ปากคว่ำ — โค้งกลับด้านกับปากปกติ
     ctx.strokeStyle = s.ink;
