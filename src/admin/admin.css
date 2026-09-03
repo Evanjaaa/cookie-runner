@@ -154,6 +154,10 @@ input:focus, select:focus { outline: 2px solid var(--violet); outline-offset: -1
 .page { padding: 20px; max-width: 1400px; }
 .page h2 { margin: 0 0 4px; font-size: 18px; }
 .page .sub { color: var(--dim); margin: 0 0 18px; }
+/* คำเตือนที่ต้องเห็นแม้กำลังกวาดสายตาอ่านตัวเลขในตาราง
+   ใช้กับกรณีที่ผลลัพธ์ไม่ครบ ซึ่งอันตรายกว่าไม่มีผลลัพธ์เลย
+   เพราะมันสร้างความมั่นใจผิด ๆ ว่าตรวจแล้วไม่เจออะไร */
+.page .sub.warn { color: var(--danger); }
 
 /* ── การ์ดตัวเลขภาพรวม ─────────────────────────── */
 .cards {

@@ -1,7 +1,7 @@
 // src/level.js
 import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
-  SPEEDUP, FALLER, HAZARD, PLAYER_X,
+  SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X,
 } from './config.js';
 
 const { spike, bar, crate, fishR, chunkW } = LEVEL;
@@ -898,6 +898,10 @@ function sprinklePickups(out, rnd) {
   place(4, (st) => { st.letter = true; }, true);
   place(4, (st, i) => { st.kibble = i % 2 ? 'cluster' : 'alternate'; });
   place(7, (st) => { st.nip = true; }, true);
+  // กระป๋องออกถี่กว่าโล่กับแม่เหล็กเล็กน้อย แต่บางกว่าสปีด
+  // เพราะฤทธิ์มันแรงที่สุดในกลุ่มไอเทม (ทะลุได้ทุกอย่าง 5 วินาที)
+  // เจอบ่อยกว่านี้แล้วด่านจะไม่มีช่วงที่ต้องหลบจริง ๆ เหลืออยู่เลย
+  place(9, (st) => { st.can = true; }, true);
   place(10, (st) => { st.shield = true; }, true);
   place(10, (st) => { st.magnet = true; }, true);
   // กุ้งเขียนทับเม็ดขนมใน spawnChunk จึงไม่วางซ้อนท่อนเดียวกัน จะได้ได้ของครบทั้งสองอย่าง
@@ -933,7 +937,7 @@ export class Level {
    */
   get pullables() {
     return [
-      this.fishes, this.letters, this.nips,
+      this.fishes, this.letters, this.nips, this.cans,
       this.magnets, this.shields, this.potions,
     ];
   }
@@ -978,6 +982,7 @@ export class Level {
     this.magnets = [];
     this.letters = [];
     this.nips = [];
+    this.cans = [];          // อาหารกระป๋อง กินแล้วตัวโต
     this.fallers = [];       // ของร่วงจากเพดาน เป็นอันตราย ไม่ใช่ของเก็บ
     this.hazards = [];       // อันตรายที่ขยับได้ (ไฟ / ผึ้ง / ลูกบอล)
     this.nextChunkX = 900;   // เว้นที่ว่างตอนเริ่มเกม
@@ -1036,6 +1041,7 @@ export class Level {
     if (step.magnet) this.spawnMagnet(this.nextChunkX, w);
     if (step.letter) this.spawnLetter(this.nextChunkX, w);
     if (step.nip) this.spawnNip(this.nextChunkX, w);
+    if (step.can) this.spawnCan(this.nextChunkX, w);
 
     this.nextChunkX += w;
     this.chunkIndex++;
@@ -1328,6 +1334,23 @@ export class Level {
     }
   }
 
+  /**
+   * อาหารกระป๋อง — วิธีหาที่เหมือนต้นหญ้าแมว แต่ไล่จากท้ายท่อนเข้ามา
+   *
+   * ไล่คนละทิศกับ spawnNip เพราะสองอย่างนี้ลงท่อนเดียวกันได้ (ทุก 7 กับทุก 9
+   * ไปตรงกันเป็นระยะ) ถ้าไล่จากหัวท่อนเหมือนกันทั้งคู่ มันจะเจอที่โล่งจุดแรก
+   * ที่เดียวกันแล้ววางทับกันสนิทจนเหลือให้เห็นแค่ชิ้นเดียว
+   */
+  spawnCan(from, w) {
+    for (let x = from + w - 140; x > from + 180; x -= 20) {
+      if (!this.isClearSpot(x, BIGCAN.clearance)) continue;
+      // อย่าไปนั่งทับต้นหญ้าแมวที่เพิ่งวางในท่อนเดียวกัน
+      if (this.nips.some((n) => Math.abs(n.x - x) < BIGCAN.clearance)) continue;
+      this.cans.push({ x, y: BIGCAN.y, r: BIGCAN.r, got: false });
+      return;
+    }
+  }
+
   spawnLetter(from, w) {
     const idx = this.nextLetter();
     if (idx === null) return;   // เก็บครบแล้ว หรือกำลังอยู่ในโบนัส
@@ -1357,6 +1380,7 @@ export class Level {
     this.magnets = this.magnets.filter((m) => m.x > cut);
     this.letters = this.letters.filter((l) => l.x > cut);
     this.nips = this.nips.filter((n) => n.x > cut);
+    this.cans = this.cans.filter((c) => c.x > cut);
   }
 
   isOverPit(worldX) {
