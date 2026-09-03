@@ -20,6 +20,15 @@ import { fetchMail, claimMail as claimOnCloud } from './net/cloud.js';
 
 const KEY = 'inbox';
 
+// ── ทำไมต้องจำว่าล้างฉบับไหนไปแล้ว ──
+// ฉบับที่มาจากคลาวด์ยังอยู่ในตาราง mail_outbox ตลอดไป การลบออกจากกล่องในเครื่อง
+// จึงไม่ได้ทำให้มันหายจากต้นทาง พอ syncMail() ทำงานรอบถัดไปมันจะไม่เจอฉบับนั้น
+// ในกล่องแล้วเติมกลับเข้ามาใหม่ — และเติมกลับมาในสถานะ "ยังไม่อ่าน" พร้อมจุดแดง
+// ทั้งที่ผู้เล่นเพิ่งกดล้างไปเอง
+//
+// เก็บเฉพาะ id ไม่ได้เก็บทั้งฉบับ รายการนี้จึงเล็กมากแม้ผ่านไปนาน
+const GONE_KEY = 'mailGone';
+
 /**
  * จดหมายตั้งต้น — ใส่ให้ครั้งเดียวตอนเปิดเกมครั้งแรกเท่านั้น
  *
@@ -179,6 +188,12 @@ export function clearReadMail() {
   const removed = list.length - keep.length;
   if (!removed) return 0;
 
+  // จดฉบับที่มาจากคลาวด์ไว้ว่าล้างไปแล้ว ไม่งั้น syncMail() รอบหน้าจะเติมกลับมา
+  const keepIds = new Set(keep.map((m) => m.id));
+  const gone = new Set(loadPref(GONE_KEY, []));
+  for (const m of list) if (m.cloud && !keepIds.has(m.id)) gone.add(m.id);
+  savePref(GONE_KEY, [...gone]);
+
   // แก้อาเรย์ตัวเดิมในที่ ไม่ใช่สร้างใหม่ — ตัวแปร inbox ถูกอ้างถึงจากหลายที่แล้ว
   // ถ้าชี้ไปก้อนใหม่ ที่อื่นจะยังถือก้อนเก่าที่มีของที่ลบไปแล้วอยู่
   list.length = 0;
@@ -205,6 +220,7 @@ export async function syncMail() {
 
   const box = loadInbox();
   const byId = new Map(box.map((m) => [m.id, m]));
+  const gone = new Set(loadPref(GONE_KEY, []));
   let added = 0;
 
   for (const raw of list) {
@@ -214,6 +230,8 @@ export async function syncMail() {
       if (raw.claimed && !cur.claimed) cur.claimed = true;
       continue;
     }
+    // ผู้เล่นเคยล้างฉบับนี้ทิ้งไปแล้ว อย่าเติมกลับมาให้เขาเห็นจุดแดงอีก
+    if (gone.has(String(raw.id))) continue;
     box.push(normalize(raw));
     added++;
   }

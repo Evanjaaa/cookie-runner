@@ -1566,7 +1566,74 @@ function rainDrop(ctx, x, y, r, t, main, lite, dark, seed = 0) {
   ctx.restore();
 }
 
-const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rainFruit, drop: rainDrop };
+/**
+ * ดาวเงิน — ใช้กับชุดจันทราแมวรัตติกาล
+ *
+ * ดาวสี่แฉกซ้อนสองชั้น ชั้นนอกใหญ่จางเป็นแสงฟุ้ง ชั้นในเล็กทึบเป็นตัวดาว
+ * หมุนช้า ๆ ตาม seed ประจำเม็ด ดาวแต่ละดวงจึงเอียงไม่เท่ากันตลอดอายุของมัน
+ */
+function rainStar(ctx, x, y, r, t, main, lite, dark, seed = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(seed * Math.PI * 2 + t * 0.02);
+
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 16;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = main;
+  star4(ctx, 0, 0, r * 1.15);
+  ctx.shadowBlur = 0;
+
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = lite;
+  star4(ctx, 0, 0, r * 0.7);
+  ctx.restore();
+}
+
+/**
+ * ลูกกวาดกับหัวใจสลับกัน — ใช้กับชุดเหมียวขนมหวานมหัศจรรย์
+ *
+ * เลือกทรงจาก seed ประจำเม็ด (กฎเดียวกับผลไม้กับหยดน้ำ)
+ * ห้ามเลือกจากพิกัด เพราะพิกัดเปลี่ยนทุกเฟรมตามกล้อง เม็ดจะกระพริบสลับทรง
+ */
+function rainSweet(ctx, x, y, r, t, main, lite, dark, seed = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(t * 0.03 + seed * 9) * 0.4);
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 14;
+
+  if (seed < 0.5) {
+    // หัวใจชมพู
+    ctx.fillStyle = '#FF8FC0';
+    ctx.beginPath();
+    ctx.moveTo(0, r * 0.95);
+    ctx.bezierCurveTo(-r * 1.5, -r * 0.3, -r * 0.55, -r * 1.15, 0, -r * 0.3);
+    ctx.bezierCurveTo(r * 0.55, -r * 1.15, r * 1.5, -r * 0.3, 0, r * 0.95);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,.72)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.4, -r * 0.34, r * 0.22, r * 0.32, -0.5, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // ลูกกวาดห่อบิด — วงกลมกลางกับปีกสามเหลี่ยมสองข้าง
+    ctx.fillStyle = '#A8DCFF';
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.3, -r * 0.62); ctx.lineTo(-r * 0.5, 0); ctx.lineTo(-r * 1.3, r * 0.62);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(r * 1.3, -r * 0.62); ctx.lineTo(r * 0.5, 0); ctx.lineTo(r * 1.3, r * 0.62);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFF3DC';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#FF8FC0';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0.2, 3.4); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rainFruit, drop: rainDrop, star: rainStar, sweet: rainSweet };
 
 /**
  * เม็ดที่โปรยลงมาตอนใช้ความสามารถ

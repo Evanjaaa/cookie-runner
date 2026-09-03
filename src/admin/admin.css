@@ -459,3 +459,21 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 560px) {
   .giftrow { grid-template-columns: 1fr; }
 }
+
+/* หมายเหตุใต้ช่องกรอกที่ถูกปิดไว้ — ต้องอธิบายว่าทำไมปิด ไม่ใช่ปิดเฉย ๆ
+   ช่องที่กรอกไม่ได้โดยไม่บอกเหตุผลจะถูกอ่านว่าเป็นบั๊ค แล้วมีคนมาแก้ให้กรอกได้อีก */
+.fieldnote {
+  margin: -4px 0 14px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border-left: 3px solid #E0A33A;
+  background: rgba(224,163,58,.1);
+  color: #D8CBEA;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.fieldnote b { color: #FFD98A; }
+.formrow input:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
