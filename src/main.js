@@ -1,6 +1,6 @@
 ﻿// src/main.js
 import './style.css';
-import { VIEW, SCORING } from './config.js';
+import { VIEW, SCORING, REVIVE } from './config.js';
 import { Game, STATE } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
@@ -13,6 +13,7 @@ import {
 } from './outfits.js';
 import { getGold, addGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest, loadPref, savePref } from './storage.js';
+import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
@@ -86,7 +87,7 @@ const namePanel = document.getElementById('namePanel');
 const mailPanel = document.getElementById('mailPanel');
 const pauseBtn = document.getElementById('btnPause');
 
-const game = new Game({ onGameOver: showGameOver });
+const game = new Game({ onGameOver: showGameOver, onPitFall: askRevive });
 
 // ── ตัวเลขไล่ขึ้นในหน้าสรุป ──────────────────────────────────
 //
@@ -285,6 +286,7 @@ function refreshHome() {
   paintStageScene(document.getElementById('stageIcon'), st, 210);
   paintTreasureIcon();
   paintQuestIcon();
+  refreshFaceIcon();
   refreshQuestDot();
   refreshEquipCount();
   paintFitted(document.getElementById('rankIcon'), 76, 0.96, drawTrophy);
@@ -2923,6 +2925,217 @@ document.getElementById('btnOutfits').addEventListener('click', () => {
 });
 document.getElementById('outfitBack').addEventListener('click', () => showOutfits(false));
 
+// ══ ใส่รูปเป็นหน้าน้องแมว (Game Face) ══════════════════════
+//
+// ── ทำไมตัดรูปเก็บไว้ แทนที่จะเก็บรูปเต็มแล้วค่อยตัดตอนวาด ──
+// หัวแมวในเกมกว้างแค่ 26px และถูกวาดใหม่ทุกเฟรม ถ้าเก็บรูปจากมือถือขนาด
+// 4000x3000 ไว้ทั้งใบ เบราว์เซอร์ต้องย่อภาพนั้นลง 150 เท่าทุกเฟรมทุกที่ที่มีแมว
+// ตัดเหลือ 256x256 ครั้งเดียวตอนบันทึก ที่เหลือคือการวาดสี่เหลี่ยมเล็ก ๆ
+//
+// ── ทำไมเก็บตำแหน่งเป็น "จุดบนรูปที่อยู่กึ่งกลางวง" ไม่ใช่มุมซ้ายบน ──
+// เก็บเป็นมุมซ้ายบนก็ได้ แต่พอซูมแล้วสิ่งที่ผู้เล่นเล็งไว้จะเลื่อนหนีออกจากวง
+// เพราะการซูมขยายออกจากมุม เก็บเป็นจุดกึ่งกลางแล้วซูมเข้า-ออกรอบจุดเดิมได้เลย
+
+const facePanel = document.getElementById('facePanel');
+const faceCropBox = document.getElementById('faceCrop');
+const faceCanvas = document.getElementById('faceCanvas');
+const faceZoom = document.getElementById('faceZoom');
+const faceSaveBtn = document.getElementById('faceSave');
+
+/** รูปต้นฉบับที่ผู้เล่นเพิ่งเลือก (ยังไม่ได้ตัด) */
+let faceSrc = null;
+/** จุดบนรูปต้นฉบับที่อยู่กึ่งกลางวงกลม หน่วยเป็นพิกเซลของรูปต้นฉบับ */
+let faceCx = 0;
+let faceCy = 0;
+/** ตัวคูณซูม 1 = ด้านสั้นของรูปพอดีวงกลม */
+let faceK = 1;
+
+/** ผ้าใบที่ถือรูปตัดแล้ว ใช้ทั้งเป็นตัวอย่างสด ๆ และเป็นตัวที่จะบันทึกลงเครื่อง */
+const faceOut = document.createElement('canvas');
+faceOut.width = FACE_SIZE;
+faceOut.height = FACE_SIZE;
+
+/**
+ * กันรูปเลื่อนจนหลุดออกนอกวง — ผู้เล่นจึงไม่มีทางตัดติดพื้นที่ว่างเปล่ามาได้
+ * คิดทุกอย่างเป็นพิกเซลของรูปต้นฉบับ เพราะ faceCx/faceCy อยู่ในหน่วยนั้น
+ */
+function clampFace() {
+  if (!faceSrc) return;
+  const short = Math.min(faceSrc.naturalWidth, faceSrc.naturalHeight);
+  const half = short / faceK / 2;
+  faceCx = Math.max(half, Math.min(faceSrc.naturalWidth - half, faceCx));
+  faceCy = Math.max(half, Math.min(faceSrc.naturalHeight - half, faceCy));
+}
+
+/** วาดรูปที่ตัดแล้ว แล้วสะท้อนไปทั้งกรอบตัด ตัวอย่าง และตัวน้องทุกที่ในเกม */
+function paintFace() {
+  const c = faceOut.getContext('2d');
+  c.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+  if (faceSrc) {
+    clampFace();
+    const short = Math.min(faceSrc.naturalWidth, faceSrc.naturalHeight);
+    const src = short / faceK;
+    c.drawImage(faceSrc, faceCx - src / 2, faceCy - src / 2, src, src, 0, 0, FACE_SIZE, FACE_SIZE);
+  }
+
+  const cc = faceCanvas.getContext('2d');
+  cc.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+  if (faceSrc) cc.drawImage(faceOut, 0, 0, faceCanvas.width, faceCanvas.height);
+
+  // ให้น้องทุกที่ในเกมลองใส่รูปนี้ให้ดูทันที โดยยังไม่บันทึกลงเครื่อง
+  setDraft(faceSrc ? faceOut : null);
+
+  paintMini(document.getElementById('facePreview'), 132,
+    (x) => drawCatPose(x, 66, 116, 2, getSkin(), 60));
+  refreshFaceIcon();
+
+  faceCropBox.classList.toggle('has-img', Boolean(faceSrc));
+  faceSaveBtn.disabled = !faceSrc;
+  faceZoom.disabled = !faceSrc;
+}
+
+function refreshFaceIcon() {
+  paintFitted(document.getElementById('faceIcon'), 76, 0.96,
+    (c) => drawCatFace(c, 38, 44, 1.8, getSkin()));
+}
+
+/** โหลดไฟล์ที่เลือก แล้วตั้งค่าเริ่มต้นเป็น "เต็มวง จัดกลาง" */
+function loadFaceFile(file) {
+  const msg = document.getElementById('faceMsg');
+  if (!file) return;
+  if (!/^image\//.test(file.type)) {
+    setMsg(msg, 'ไฟล์นี้ไม่ใช่รูปภาพ', true);
+    return;
+  }
+  setMsg(msg, 'กำลังเปิดรูป...');
+  const url = URL.createObjectURL(file);
+  const el = new Image();
+  el.onload = () => {
+    // ปล่อย URL ทันทีที่รูปเข้าหน่วยความจำแล้ว ไม่งั้นทุกรูปที่ลองจะค้างอยู่หมด
+    URL.revokeObjectURL(url);
+    faceSrc = el;
+    faceK = 1;
+    faceCx = el.naturalWidth / 2;
+    faceCy = el.naturalHeight / 2;
+    faceZoom.value = '100';
+    setMsg(msg, 'ลากรูปเพื่อเลื่อน เลื่อนแถบเพื่อซูม แล้วกด "ใช้รูปนี้"');
+    paintFace();
+  };
+  el.onerror = () => {
+    URL.revokeObjectURL(url);
+    setMsg(msg, 'เปิดรูปนี้ไม่ได้ ลองรูปอื่นดูนะ', true);
+  };
+  el.src = url;
+}
+
+// ── ลากเพื่อเลื่อนรูป ──
+// pointer event ตัวเดียวคุมทั้งเมาส์และนิ้ว ไม่ต้องเขียนสองชุด
+let faceDrag = null;
+faceCropBox.addEventListener('pointerdown', (e) => {
+  if (!faceSrc) return;
+  faceCropBox.setPointerCapture(e.pointerId);
+  faceCropBox.classList.add('dragging');
+  faceDrag = { x: e.clientX, y: e.clientY };
+});
+faceCropBox.addEventListener('pointermove', (e) => {
+  if (!faceDrag || !faceSrc) return;
+  // แปลงระยะที่นิ้วลากบนจอ เป็นระยะบนรูปต้นฉบับ
+  // ตัวคูณคือ "กี่พิกเซลจอต่อหนึ่งพิกเซลรูป" ซึ่งเปลี่ยนตามทั้งซูมและขนาดกรอบจริง
+  const short = Math.min(faceSrc.naturalWidth, faceSrc.naturalHeight);
+  const perPx = faceCropBox.clientWidth / (short / faceK);
+  faceCx -= (e.clientX - faceDrag.x) / perPx;
+  faceCy -= (e.clientY - faceDrag.y) / perPx;
+  faceDrag = { x: e.clientX, y: e.clientY };
+  paintFace();
+});
+for (const ev of ['pointerup', 'pointercancel']) {
+  faceCropBox.addEventListener(ev, () => {
+    faceDrag = null;
+    faceCropBox.classList.remove('dragging');
+  });
+}
+
+faceZoom.addEventListener('input', () => {
+  faceK = Math.max(1, Number(faceZoom.value) / 100);
+  paintFace();
+});
+
+document.getElementById('faceOpen').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  document.getElementById('facePick').click();
+});
+document.getElementById('facePick').addEventListener('change', (e) => {
+  loadFaceFile(e.target.files[0]);
+  // ล้างค่าไว้ ไม่งั้นเลือกไฟล์ชื่อเดิมซ้ำอีกรอบจะไม่ยิง change ให้
+  e.target.value = '';
+});
+
+document.getElementById('faceSave').addEventListener('click', () => {
+  const msg = document.getElementById('faceMsg');
+  if (!faceSrc) return;
+  unlockAudio();
+  // JPEG ไม่ใช่ PNG — รูปถ่ายเป็นภาพต่อเนื่อง PNG จะใหญ่กว่าราว 8-10 เท่า
+  // โดยได้ช่องโปร่งใสมาซึ่งเราไม่ใช้ (ตัดเป็นวงกลมตอนวาดอยู่แล้ว)
+  const url = faceOut.toDataURL('image/jpeg', 0.86);
+  if (saveFace(url)) {
+    setDraft(null);   // ของจริงถูกบันทึกแล้ว ตัวอย่างไม่ต้องค้างทับอีก
+    sfx.upWin();
+    setMsg(msg, 'ใส่รูปให้น้องเรียบร้อย!');
+  } else {
+    sfx.upFail();
+    setMsg(msg, 'ที่เก็บในเครื่องเต็ม ลองล้างข้อมูลเว็บก่อนนะ', true);
+  }
+  paintFace();
+  refreshHome();
+});
+
+document.getElementById('faceOff').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  faceSrc = null;
+  setDraft(null);
+  clearFace();
+  faceZoom.value = '100';
+  setMsg(document.getElementById('faceMsg'), 'เอารูปออกแล้ว น้องกลับมาหน้าเดิม');
+  paintFace();
+  refreshHome();
+});
+
+/**
+ * เปิด/ปิดหน้าใส่รูป
+ *
+ * ปิดเมื่อไหร่ต้องล้างตัวอย่างที่ยังไม่บันทึกทุกครั้ง ไม่งั้นน้องจะค้างรูปที่
+ * ผู้เล่นเลือกแล้วเปลี่ยนใจ แล้วรูปนั้นจะหายไปเองตอนรีเฟรชหน้าเพราะไม่ได้ถูกเก็บ
+ * ซึ่งอ่านเป็นบั๊คมากกว่าเป็นการยกเลิก
+ */
+function showFace(on) {
+  faceSrc = null;
+  // สลับกับหน้าล็อบบี้โดยตรง ใช้ท่าเดียวกับหน้าสมบัติ/ชุด
+  //
+  // เคยใช้ showPanel() ซึ่งเรียก closeAllPanels() ที่ปิด "ทุกแผงรวมทั้งล็อบบี้"
+  // ตอนเปิดจึงไม่มีปัญหา แต่ตอนกดกลับมันแค่ซ่อนหน้านี้ ไม่มีใครเปิดล็อบบี้คืนให้
+  // ผลคือเหลือแต่ฉากหน้าแรกเปล่า ๆ ไม่มีปุ่มอะไรเลย และปุ่มหยุดก็กดไม่ติด
+  // เพราะเกมยังเป็นสถานะ READY ซึ่งไม่มีรอบเล่นให้หยุด
+  if (!on) setDraft(null);
+  facePanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+
+  if (on) {
+    faceZoom.value = '100';
+    setMsg(document.getElementById('faceMsg'),
+      hasFace() ? 'ตอนนี้น้องใส่รูปอยู่ เลือกรูปใหม่เพื่อเปลี่ยนได้เลย' : '');
+    paintFace();
+  } else {
+    paintFace();
+    refreshHome();
+  }
+}
+
+document.getElementById('btnFace').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  showFace(true);
+});
+document.getElementById('faceBack').addEventListener('click', () => showFace(false));
+
 // ── ปุ่มของระบบสมบัติ ──────────────────────────────────────
 document.getElementById('btnTreasures').addEventListener('click', () => {
   unlockAudio(); startMusic();
@@ -3083,6 +3296,54 @@ function countUp(el, target, ms, suffix = '') {
  *             false/ไม่ส่ง = ตายคาสนาม — onGameOver ของ game เรียกแบบไม่ส่งอาร์กิวเมนต์
  *             จึงตกมาที่ค่าปริยายนี้เอง
  */
+/**
+ * น้องตกหลุม — ถามก่อนว่าจ่ายทองดึงขึ้นมาไหม
+ *
+ * ── ทำไมทองไม่พอแล้วข้ามไปเลย ไม่ขึ้นกล่องให้ดู ──
+ * กล่องที่กดยืนยันไม่ได้คือทางตัน ผู้เล่นที่เพิ่งตายต้องกดปิดอีกทีเปล่า ๆ
+ * ก่อนจะได้เห็นหน้าสรุป ยอดทองอยู่บนหน้าแรกอยู่แล้ว ไม่ต้องมาบอกซ้ำตอนนี้
+ *
+ * ── ทำไมต้องอ่านยอดทองใหม่หลังกล่องปิด ──
+ * เหตุผลเดียวกับ buySkin() — ระหว่างกล่องเปิดค้าง การซิงก์จากเครื่องอื่น
+ * อาจหักทองไปแล้ว ถ้าเชื่อยอดที่อ่านไว้ตอนแรกจะหักจนติดลบได้
+ */
+async function askRevive() {
+  if (getGold() < REVIVE.cost) return showGameOver();
+
+  const ok = await confirmBox({
+    title: 'น้องตกหลุม!',
+    body: 'ดึงน้องขึ้นมาวิ่งต่อจากตรงนี้ไหม คะแนน ระยะทาง และของที่เก็บไว้ยังอยู่ครบ',
+    cost: REVIVE.cost,
+    after: 'ทองคงเหลือหลังใช้ ' + (getGold() - REVIVE.cost).toLocaleString('en-US'),
+    okText: 'ดึงน้องขึ้นมา',
+    cancelText: 'ไม่ดีกว่าเเง้',
+    art: (c) => drawCatPose(c, 55, 88, 1.5, getSkin(), 60),
+  });
+  // เช็คว่ายังตายอยู่จริงก่อนเปิดหน้าสรุป
+  // startRun() สั่ง game.start() ก่อนแล้วค่อย closeAllPanels() ซึ่งไปยกเลิกกล่องนี้
+  // ถ้าไม่กัน คนที่กดเล่นใหม่ระหว่างกล่องเปิดค้างจะได้หน้าสรุปทับตาที่เพิ่งเริ่ม
+  if (!ok) {
+    if (game.state === STATE.DEAD) showGameOver();
+    return;
+  }
+
+  if (getGold() < REVIVE.cost) {
+    if (game.state === STATE.DEAD) showGameOver();
+    return;
+  }
+
+  addGold(-REVIVE.cost);
+  refreshProfile();   // ยอดทองบนการ์ดล็อบบี้ต้องตรงตั้งแต่ตอนนี้ ไม่ใช่รอจบตา
+  // revive() คืน false ถ้าไม่ได้อยู่ในสถานะตายแล้ว (เช่นกดเริ่มใหม่ระหว่างกล่องเปิดค้าง)
+  // กรณีนั้นทองถูกหักไปแล้วแต่ไม่มีตาให้ต่อ จึงต้องคืนให้
+  if (!game.revive()) {
+    addGold(REVIVE.cost);
+    refreshProfile();
+    return;
+  }
+  sfx.upWin();
+}
+
 function showGameOver(quit = false) {
   const dist = Math.floor(game.distance / SCORING.pxPerMeter);
   const isBest = game.score >= game.best && game.score > 0;
@@ -3201,6 +3462,9 @@ function closeAllPanels() {
   // ยกเลิกก่อนซ่อน ไม่งั้นกล่องยืนยันจะหายไปจากจอโดยที่ Promise ยังค้าง
   // แล้ว listener ของมันจะเกาะปุ่มอยู่ข้ามรอบ
   if (cancelConfirm) cancelConfirm();
+  // รูปที่เลือกไว้แต่ยังไม่ได้กดบันทึก ต้องไม่ติดหน้าน้องข้ามหน้าไป
+  // (showFace(false) ล้างให้อยู่แล้ว แต่ยังออกจากหน้านี้ได้ทางอื่น เช่นกดปุ่มเล่น)
+  setDraft(null);
   document.querySelectorAll('.stage .panel').forEach((el) => el.classList.add('hidden'));
   // รอบตีบวกรัวเป็นลูปที่ "หักทองเอง" ทุก ๆ ไม่กี่ร้อยมิลลิวินาที ปิดแค่แผงไม่พอ
   // ถ้าไม่หยุดตรงนี้ด้วย ผู้เล่นที่กดกลับหน้าแรกหรือกดเล่นกลางคันจะเสียทองต่อไป
