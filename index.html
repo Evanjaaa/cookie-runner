@@ -350,6 +350,10 @@
             <canvas id="outfitIcon" width="76" height="76"></canvas>
             <b>ชุด</b>
           </button>
+          <button class="lobby-btn" id="btnFace">
+            <canvas id="faceIcon" width="76" height="76"></canvas>
+            <b>หน้าน้อง</b>
+          </button>
           <button class="lobby-btn" id="btnTreasures">
             <canvas id="treasureIcon" width="76" height="76"></canvas>
             <b>สมบัติ</b>
@@ -954,6 +958,51 @@
 
       <!-- กล่องยืนยัน วางหลังแผงอื่นทุกอันเพื่อให้ทับด้านบนได้โดยไม่ต้องใช้ z-index
            ต้องซ้อนบนแผงที่เปิดค้างอยู่ ไม่ใช่แทนที่ — ผู้เล่นจะได้เห็นว่ากำลังยืนยันจากหน้าไหน -->
+      <!-- ── ใส่รูปเป็นหน้าน้องแมว (Game Face) ──
+           รูปอยู่ในเครื่องนี้เท่านั้น ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ (ดู src/face.js) -->
+      <div class="panel hidden" id="facePanel">
+        <div class="pop face-pop">
+          <div class="panel-head"><h2 class="skin-title">หน้าน้องแมว</h2></div>
+
+          <!-- ซ้าย = กรอบตัด + แถบซูม  /  ขวา = ตัวอย่างน้อง
+               คำอธิบายถูกย้ายออกมาเป็นบรรทัดของตัวเองข้างล่าง เพราะข้อความยาว
+               ทำให้คอลัมน์ขวากว้างขึ้นจนสองฝั่งพับลงมาซ้อนกัน -->
+          <div class="face-work">
+            <div class="face-main">
+              <!-- ลากเพื่อเลื่อนรูป -->
+              <div class="face-crop" id="faceCrop">
+                <canvas id="faceCanvas" width="300" height="300"></canvas>
+                <div class="face-ring" aria-hidden="true"></div>
+                <span class="face-empty" id="faceEmpty">ยังไม่มีรูป<br><small>กดปุ่ม "เลือกรูป" ข้างล่าง</small></span>
+              </div>
+              <input class="face-zoom" type="range" id="faceZoom" min="100" max="400" value="100"
+                     disabled aria-label="ย่อ หรือ ขยายรูป">
+            </div>
+
+            <div class="face-side">
+              <canvas id="facePreview" width="132" height="132"></canvas>
+              <small class="face-cap">น้องจะหน้าตาแบบนี้</small>
+
+              <input type="file" id="facePick" accept="image/*" hidden>
+              <div class="btnrow">
+                <button class="btn ghost" id="faceOpen">เลือกรูป</button>
+                <button class="btn" id="faceSave" disabled>ใช้รูปนี้</button>
+                <button class="btn ghost" id="faceOff">ลบรูป</button>
+              </div>
+              <small class="form-msg" id="faceMsg"></small>
+              <p class="face-note">รูปเก็บไว้ในเครื่องนี้เท่านั้น ไม่ได้ส่งขึ้นเซิร์ฟเวอร์ และไม่ไปกับบัญชี</p>
+            </div>
+          </div>
+
+          <button class="backbtn" id="faceBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <div class="panel hidden" id="confirmPanel">
         <div class="pop confirm-pop">
           <canvas class="confirm-art" id="confirmArt" width="96" height="96" hidden></canvas>

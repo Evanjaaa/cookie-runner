@@ -1,5 +1,6 @@
 // src/render/entities.js
 import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, POTION, LETTER_COLORS, COLORS as C } from '../config.js';
+import { getFace } from '../face.js';
 
 const { W } = VIEW;
 
@@ -1228,10 +1229,35 @@ export function drawMagnets(ctx, magnets, camera, tick) {
  * วาดเป็นส่วนโค้งเปิดไปข้างหน้า ไล่ออกจากปากแล้วจางหาย
  * บอกทั้งว่า "กำลังดูดอยู่" และ "ดูดไปทางไหน" ในภาพเดียว
  */
-export function drawSuction(ctx, player, tick) {
+/**
+ * จุดอ้างอิงของตัวแมวที่ "ตาเห็นจริง" หลังถูกขยายด้วยอาหารกระป๋อง
+ *
+ * ── ทำไมต้องมีตัวนี้ ──
+ * กล่องชน (player.box) ไม่โตตามตอนตัวใหญ่ มันคงขนาดเดิมเสมอ (BODY.standH = 46)
+ * ของทุกอย่างที่เกาะตัวแมวจึงคำนวณจากกล่องเดิมแล้วไปโผล่ผิดที่ตอนตัวโต
+ * วงโล่รัศมี 32px เคยกลายเป็นวงเล็ก ๆ ที่ผ่ากลางพุงแมวตัวสูง 106px
+ *
+ * ── ทำไม y ต้องเลื่อนขึ้น ไม่ใช่แค่คูณรัศมี ──
+ * drawPlayer ขยายรอบ "เท้า" ไม่ใช่รอบกลางกล่อง (ไม่งั้นครึ่งล่างจะจมดิน)
+ * กลางตัวที่ตาเห็นจึงลอยสูงขึ้นเท่ากับครึ่งหนึ่งของส่วนสูงที่เพิ่มมา
+ *
+ * @returns x กลางตัว | y กลางตัวที่ตาเห็น | top หัวสุดที่ตาเห็น | s ตัวคูณขนาด
+ */
+export function catView(player, scale = 1) {
   const b = player.box;
-  const cx = b.x + b.w / 2 + 14;
-  const cy = b.y + b.h / 2 - 6;
+  const half = b.h / 2;
+  return {
+    x: b.x + b.w / 2,
+    y: b.y + half + half * (1 - scale),
+    top: b.y + b.h * (1 - scale),
+    s: scale,
+  };
+}
+
+export function drawSuction(ctx, player, tick, scale = 1) {
+  const v = catView(player, scale);
+  const cx = v.x + 14 * v.s;
+  const cy = v.y - 6 * v.s;
 
   ctx.save();
   ctx.strokeStyle = C.mintLite;
@@ -1239,9 +1265,9 @@ export function drawSuction(ctx, player, tick) {
   for (let i = 0; i < 3; i++) {
     // แต่ละคลื่นวิ่งเข้าหาปากแล้ววนใหม่ เฟสห่างกันหนึ่งในสาม
     const p = ((tick * 0.035 + i / 3) % 1);
-    const rad = 16 + p * 30;
+    const rad = (16 + p * 30) * v.s;
     ctx.globalAlpha = (1 - p) * 0.55;
-    ctx.lineWidth = 2.6 * (1 - p * 0.5);
+    ctx.lineWidth = 2.6 * (1 - p * 0.5) * v.s;
     ctx.beginPath();
     ctx.arc(cx, cy, rad, -0.62, 0.62);
     ctx.stroke();
@@ -1668,10 +1694,14 @@ export function drawRain(ctx, drops, camera, skin, t) {
  * หลอดความสามารถลอยเหนือหัวแมว
  * เต็มแล้วเปลี่ยนเป็นแถบเรืองแสงกะพริบ ให้รู้ทันทีว่ากำลังออกฤทธิ์อยู่
  */
-export function drawSkillGauge(ctx, player, ratio, active, t) {
-  const b = player.box;
-  const x = b.x + b.w / 2 - SKILL.gaugeW / 2;
-  const y = b.y - SKILL.gaugeUp;
+export function drawSkillGauge(ctx, player, ratio, active, t, scale = 1) {
+  // เกาะ "หัวที่ตาเห็น" ไม่ใช่ขอบบนของกล่องชนซึ่งไม่โตตามตัว
+  // ตอนตัวใหญ่ หัวสูงขึ้นราว 60px ถ้ายังยึดกล่องเดิม หลอดจะจมอยู่กลางหน้าแมว
+  // ตัวหลอดไม่ขยายตาม เพราะมันคือข้อมูล ไม่ใช่ส่วนหนึ่งของตัวละคร
+  const v = catView(player, scale);
+  const x = v.x - SKILL.gaugeW / 2;
+  // ไม่ให้หลุดขอบบนจอตอนตัวโตแล้วกระโดดสองชั้น (ดู SKILL.gaugeMinY)
+  const y = Math.max(SKILL.gaugeMinY, v.top - SKILL.gaugeUp);
   const w = SKILL.gaugeW;
   const h = SKILL.gaugeH;
 
@@ -2326,20 +2356,20 @@ export function drawShields(ctx, shields, camera) {
 }
 
 /** วงแหวนหมุนรอบตัวละครตอนมีโล่ */
-export function drawShieldRing(ctx, player, tick) {
-  const b = player.box;
-  const cx = b.x + b.w / 2;
-  const cy = b.y + b.h / 2;
-  const pulse = 1 + Math.sin(tick * 0.12) * 0.06;
+export function drawShieldRing(ctx, player, tick, scale = 1) {
+  // โตตามตัวทั้งวง ทั้งเส้น ทั้งจังหวะประ — สัดส่วนที่ตาเห็นจึงเท่าเดิมทุกขนาด
+  // ถ้าคูณแค่รัศมี เส้นบาง ๆ รอบแมวตัวสูงเมตรนึงจะดูเป็นวงลวดแทนที่จะเป็นโล่
+  const v = catView(player, scale);
+  const pulse = (1 + Math.sin(tick * 0.12) * 0.06) * v.s;
 
   ctx.save();
   ctx.globalAlpha = 0.85;
   ctx.strokeStyle = C.cream;
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([9, 7]);
-  ctx.lineDashOffset = -tick * 0.9;
+  ctx.lineWidth = 2.5 * v.s;
+  ctx.setLineDash([9 * v.s, 7 * v.s]);
+  ctx.lineDashOffset = -tick * 0.9 * v.s;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, 32 * pulse, 34 * pulse, 0, 0, Math.PI * 2);
+  ctx.ellipse(v.x, v.y, 32 * pulse, 34 * pulse, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
@@ -2870,6 +2900,28 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(-1.4, 6, 2.6, 0, Math.PI); ctx.stroke();
     ctx.beginPath(); ctx.arc(3.4, 6, 2.6, 0, Math.PI); ctx.stroke();
+  }
+
+  // ── รูปหน้าที่ผู้เล่นอัปโหลด (Game Face) ────────────────────
+  //
+  // วาด "ทับ" หน้าเดิมทั้งชุด (ปากครีม แก้ม ตา จมูก ปาก) แทนที่จะไปใส่เงื่อนไข
+  // ข้ามทีละบล็อก — รูปทึบและถูกตัดเป็นวงกลมรัศมีเท่าหัวพอดี ของที่อยู่ใต้มัน
+  // จึงถูกกลบหมดอยู่แล้ว ข้อดีคือเพิ่มอารมณ์ใหม่ในอนาคตได้โดยไม่ต้องแตะโหมดรูปเลย
+  // (เสียแรงวาดของที่มองไม่เห็นไปนิดหน่อย ซึ่งเป็นแค่วงรีไม่กี่วงต่อเฟรม)
+  //
+  // วางไว้ก่อนหนวดโดยตั้งใจ หนวดกับของสวมหัวจึงยังอยู่บนสุด
+  // นั่นคือสิ่งที่ทำให้ยังอ่านออกว่าเป็น "น้องแมว" ไม่ใช่รูปคนกลม ๆ ลอยมา
+  const face = getFace();
+  if (face) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.clip();
+    // รูปที่บันทึกไว้เป็นสี่เหลี่ยมจัตุรัสอยู่แล้ว ยัดเต็มกรอบ 26x26 จึงพอดีวงกลมเป๊ะ
+    ctx.drawImage(face, -13, -13, 26, 26);
+    ctx.restore();
+    // ขอบแสงต้องตีซ้ำ เพราะรูปเพิ่งทับของเดิมไป ถ้าไม่ตี หัวจะแบนเป็นสติกเกอร์กลม
+    ctx.strokeStyle = 'rgba(255,252,240,.32)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, 0, 11.9, -Math.PI * 0.6, Math.PI * 0.06); ctx.stroke();
   }
 
   // หนวด — สีมาจากสกิน เพราะหนวดครีมบนหน้าแมวขาวจะมองไม่เห็นเลย

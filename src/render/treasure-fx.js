@@ -334,7 +334,9 @@ export function drawMilkBubble(ctx, cat, t) {
 }
 
 function bubble(ctx, cat, k, t = 0) {
-  const pulse = 1 + Math.sin((t || k * 40) * 0.12) * 0.04;
+  // โตตามตัวแมวด้วย ไม่งั้นฟองรัศมี 46px จะจมอยู่ในตัวแมวตอนกินกระป๋องแล้วตัวโต
+  // cat.s ไม่มีมาก็ถือว่าขนาดปกติ (ตัวเรียกเก่าบางที่ส่งมาแค่ x/y)
+  const pulse = (1 + Math.sin((t || k * 40) * 0.12) * 0.04) * (cat.s || 1);
   ctx.save();
   ctx.globalAlpha = 0.5 + Math.sin((t || k * 40) * 0.09) * 0.12;
   const g = ctx.createRadialGradient(cat.x, cat.y, 8, cat.x, cat.y, 46 * pulse);
@@ -344,10 +346,13 @@ function bubble(ctx, cat, k, t = 0) {
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(cat.x, cat.y, 46 * pulse, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,.8)';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * (cat.s || 1);
   ctx.beginPath(); ctx.arc(cat.x, cat.y, 46 * pulse, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.75)';
-  ctx.beginPath(); ctx.ellipse(cat.x - 20, cat.y - 24, 7, 11, -0.6, 0, Math.PI * 2); ctx.fill();
+  // แสงสะท้อนต้องเกาะผิวฟอง ไม่ใช่ค้างที่ระยะเดิมตอนฟองขยาย
+  ctx.beginPath();
+  ctx.ellipse(cat.x - 20 * pulse, cat.y - 24 * pulse, 7 * pulse, 11 * pulse, -0.6, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 

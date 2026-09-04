@@ -1,7 +1,7 @@
 // src/game.js
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
-  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD,
+  LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD, REVIVE,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -150,12 +150,16 @@ function dimForUi(ctx) {
 }
 
 export class Game {
-  constructor({ onGameOver } = {}) {
+  constructor({ onGameOver, onPitFall } = {}) {
     this.player = new Player();
     this.level = new Level();
     this.particles = new Particles();
     this.treasures = new TreasureRun();
     this.onGameOver = onGameOver || (() => {});
+    // ตกหลุมแล้วมีคนรับช่วงต่อไหม — ผู้เรียกจะถามผู้เล่นว่าจ่ายทองดึงขึ้นมาไหม
+    // แล้วตัดสินใจเองว่าจะเรียก revive() หรือ onGameOver()
+    // Game ไม่รู้จักทองและไม่รู้จักกล่องยืนยัน มันแค่บอกว่า "ตายด้วยการตกหลุมนะ"
+    this.onPitFall = onPitFall || null;
     this.stage = getStage();
     this.best = loadBest(this.stage.id);
     this.reset();
@@ -212,6 +216,16 @@ export class Game {
   }
 
   /**
+   * ตัวคูณขนาดตัวตอนนี้ — 1 = ปกติ, สูงสุด BIGCAN.scale ตอนโตเต็มที่
+   *
+   * ทุกอย่างที่เกาะตัวแมว (วงโล่ คลื่นดูด หลอดความสามารถ ฤทธิ์สมบัติ) ต้องอ่านค่านี้
+   * ไม่งั้นมันจะยึดกล่องชนซึ่งไม่โตตามตัว แล้วไปโผล่ผ่ากลางตัวแมวตอนตัวใหญ่
+   */
+  get catScale() {
+    return 1 + (BIGCAN.scale - 1) * this.bigK;
+  }
+
+  /**
    * ความ "โตเต็มที่" ตอนนี้ 0-1 — ใช้ทั้งขนาดตัวและจังหวะขา
    *
    * ค่อย ๆ ขยายตอนกินและค่อย ๆ ยุบก่อนหมดฤทธิ์ ไม่ใช่สลับขนาดทันที
@@ -221,7 +235,12 @@ export class Game {
   get bigK() {
     if (this.big <= 0) return 0;
     const g = BIGCAN.grow;
-    return Math.max(0, Math.min(1, Math.min((BIGCAN.frames - this.big) / g, this.big / g)));
+    // ── ขาขยายนับจาก "เวลาที่โตมาแล้ว" ไม่ใช่จาก (frames - big) ──
+    // สูตรเดิมอ่านความคืบหน้าจากตัวจับเวลาที่เหลือ พอเก็บกระป๋องซ้ำตอนยังโตอยู่
+    // big ถูกตั้งกลับเป็นเต็ม ค่าที่คำนวณได้จึงเด้งกลับไปเป็น 0 = ตัวยุบเล็กวูบ
+    // แล้วค่อยขยายใหม่ ทั้งที่ควรจะโตค้างไว้เฉย ๆ แล้วแค่ต่อเวลา
+    // (กระป๋องเกิดห่างกันน้อยสุด 3.7 วินาที ส่วนฤทธิ์อยู่ 5 วินาที จึงเจอได้จริง)
+    return Math.max(0, Math.min(1, this.bigGrow / g, this.big / g));
   }
 
   /**
@@ -297,6 +316,7 @@ export class Game {
     this.rain = [];        // เม็ดที่โปรยลงมา
     this.boost = 0;        // เฟรมที่เหลือของสปีดจากต้นหญ้าแมว
     this.big = 0;          // เฟรมที่เหลือของช่วงตัวโตจากอาหารกระป๋อง
+    this.bigGrow = 0;      // โตมาแล้วกี่เฟรม ใช้คุมขาขยาย (ดู bigK)
     this.stepAcc = 0;      // เศษเวลาที่ยังไม่ครบหนึ่งก้าวฟิสิกส์
     this.syncMusic();      // เผื่อรอบก่อนจบตอนกำลังออกฤทธิ์หรืออยู่บนฟ้า
     this.invuln = 0;
@@ -407,7 +427,10 @@ export class Game {
     // ตัวจับเวลาทุกตัว (พลัง ความสามารถ แม่เหล็ก โบนัส สปีด) ยังเดินด้วย dt จริง
     // ไม่งั้นของดีที่เก็บมาจะหมดอายุเร็วขึ้นตามไปด้วย กลายเป็นโทษแทนรางวัล
     if (this.boost > 0) this.boost -= dt;
-    if (this.big > 0) this.big -= dt;
+    if (this.big > 0) {
+      this.big -= dt;
+      this.bigGrow = Math.min(BIGCAN.grow, this.bigGrow + dt);
+    }
     const gdt = dt * (this.boost > 0 ? SPEEDUP.mult : 1);
 
     if (this.bonus > 0) return this.updateBonus(dt, gdt);
@@ -484,12 +507,17 @@ export class Game {
       if (o.x + o.w < this.camera - 60) continue;
       if (o.x > this.camera + VIEW.W) break;
       if (rectHit(bx, b.y, b.w, b.h, o.x, o.y, o.w, o.h)) {
-        if (this.boost > 0) {                  // ติดสปีดอยู่ พุ่งชนกระเด็น
+        // ติดสปีด หรือตัวโตจากกระป๋อง = พุ่งชนกระเด็น ไม่ใช่ทะลุผ่านเฉย ๆ
+        //
+        // ── ทำไมตัวโตต้องชนให้กระเด็น ไม่ใช่ผ่านทะลุ ──
+        // ทะลุผ่านแบบไม่มีอะไรเกิดขึ้นเลยอ่านเป็น "ชนไม่โดน" ซึ่งดูเหมือนบั๊ค
+        // มากกว่าดูเหมือนพลัง ทั้งที่ภาพบนจอคือแมวตัวเท่าบ้านเดินชนหนามอยู่
+        // ให้ของกระเด็นออกไปแทน ภาพกับความรู้สึกจึงตรงกัน และได้คะแนนพุ่งชนด้วย
+        if (this.boost > 0 || this.big > 0) {
           this.smashObstacle(o);
           continue;
         }
         if (this.skillOn) break;               // ความสามารถทำงาน ทะลุผ่านได้เลย
-        if (this.big > 0) break;               // ตัวโตอยู่ เดินทับผ่านไปเลย
         if (this.invuln > 0) break;            // กำลังอมตะ ผ่านได้
         if (this.shielded) {                   // มีโล่ → โล่แตกแทนที่จะตาย
           this.shielded = false;
@@ -525,17 +553,21 @@ export class Game {
     const petal = this.treasures.magnetPull;
     if (this.magnet > 0 || this.skill > 0 || petal > 0) {
       // ── ตัวคูณความอ่อนของแม่เหล็กดอกไม้ ──
-      // ไม่ได้เอา petal มาคูณตรง ๆ เพราะ 0.26 x 17 = 4.4 px/เฟรม ซึ่งช้ากว่า
-      // ความเร็วกล้อง (6.8) = ของที่อยู่ข้างหลังไม่มีวันตามทัน ดูดไม่ได้สักชิ้น
       //
-      // แมป petal 0.26-0.39 ไปเป็น 0.59-0.66 แทน ได้ระยะ 249-279px
-      // กับความเร็วพื้น 10.1-11.3 (หักกล้อง 6.8 แล้วเหลือ 3.3-4.5 px/เฟรม)
-      // ซึ่งดูดของที่วิ่งผ่านใกล้ตัวเข้ามาได้ แต่ไม่กวาดทั้งจอเหมือนไอเทมจริง
-      // และไม่ว่าตีบวกถึงขั้นไหนก็ไม่มีทางแตะ 1.0 ไอเทมในด่านจึงยังคุ้มกว่าเสมอ
-      const weak = this.magnet > 0 || this.skill > 0 ? 1 : 0.45 + petal * 0.55;
+      // แยกตัวคูณ "ระยะ" ออกจาก "ความเร็ว" เพราะสองอย่างนี้มีข้อจำกัดคนละแบบ:
+      //
+      //   ความเร็ว มีพื้นตายตัวที่ 6.8 (ความเร็วกล้อง) ต่ำกว่านั้นของที่อยู่ข้างหลัง
+      //            ไม่มีวันตามทัน = ดูดไม่ได้สักชิ้น จึงลดได้แค่ในกรอบแคบ ๆ
+      //   ระยะ     ไม่มีพื้น ลดได้เต็มที่ตามต้องการ
+      //
+      // เดิมใช้ตัวคูณเดียวกันทั้งคู่ (0.45 + petal x 0.55) ซึ่งถูกพื้นของความเร็ว
+      // ดึงให้ระยะลดตามไม่ได้ — ลด pull จาก 0.26 ลงไปถึง 0.08 ระยะขยับแค่ 249->207px
+      // แยกออกจากกันแล้วจึงลดพลังได้จริงโดยที่ยังดูดของเข้ามาได้อยู่
+      const weak = this.magnet > 0 || this.skill > 0 ? 1 : 0.5 + petal * 0.55;
+      const reach = this.magnet > 0 || this.skill > 0 ? 1 : 0.3 + petal * 0.6;
       const range = this.magnet > 0 ? MAGNET.range
         : this.skill > 0 ? SKILL.magnetRange
-        : MAGNET.range * weak;
+        : MAGNET.range * reach;
       // สร้างครั้งเดียวนอกลูป ของในระยะมีได้หลายสิบชิ้นต่อเฟรม
       const cfg = {
         range,
@@ -636,6 +668,9 @@ export class Game {
       if (k.got || k.x < this.camera - 40) continue;
       if (Math.hypot(cx - k.x, cy - k.y) < BIGCAN.pickR) {
         k.got = true;
+        // เก็บซ้ำตอนยังโตอยู่ = ต่อเวลาเฉย ๆ ไม่ต้องเริ่มขาขยายใหม่
+        // ถ้ารีเซ็ต bigGrow ทุกครั้ง ตัวจะยุบวูบแล้วโตใหม่ทั้งที่ควรโตค้างไว้
+        if (this.big <= 0) this.bigGrow = 0;
         this.big = BIGCAN.frames;
         this.particles.burst(k.x, k.y, 18, 'dust', 6);
         sfx.nip();
@@ -845,8 +880,9 @@ export class Game {
       if (f.warn > 0) continue;                   // ยังไม่ร่วง ยังไม่อันตราย
       if (!rectHit(bx, b.y, b.w, b.h, f.x, f.y, f.w, f.h)) continue;
 
-      if (this.skillOn || this.invuln > 0 || this.big > 0) break;
-      if (this.boost > 0) { f.dead = true; break; }   // ติดสปีด พุ่งชนแตก
+      if (this.skillOn || this.invuln > 0) break;
+      // ของร่วงเป็นก้อนแข็งเหมือนสิ่งกีดขวาง ตัวโตจึงต้องทุบแตกด้วยกติกาเดียวกัน
+      if (this.boost > 0 || this.big > 0) { f.dead = true; break; }
       if (this.shielded) {
         this.shielded = false;
         this.invuln = SHIELD.invulnFrames;
@@ -1441,7 +1477,44 @@ export class Game {
     this.best = Math.max(this.best, this.score);
     saveBest(this.stage.id, this.best, Math.floor(this.distance / SCORING.pxPerMeter));
 
-    setTimeout(() => this.onGameOver(), 750);
+    // ตกหลุมยังมีทางกลับ — ส่งต่อให้ผู้เรียกถามก่อนว่าจะจ่ายทองดึงขึ้นมาไหม
+    // ถ้าไม่มีใครรับช่วง (เช่นในเทสต์) ก็ตกไปทางเดิมคือจบตาเลย
+    //
+    // หน่วงเท่ากันทั้งสองทาง เพราะ 750ms คือเวลาที่แอนิเมชันตกใช้จริง
+    // ถ้าถามเร็วกว่านั้น กล่องจะเด้งทับภาพน้องที่ยังร่วงไม่พ้นจอ
+    setTimeout(() => (cause === 'fall' && this.onPitFall ? this.onPitFall() : this.onGameOver()), 750);
+  }
+
+  /**
+   * ดึงน้องขึ้นมาจากหลุมแล้ววิ่งต่อ — คะแนน ระยะทาง สมบัติ ตัวอักษร คงเดิมทั้งหมด
+   *
+   * ผู้เรียกต้องหักทองมาก่อนแล้ว ที่นี่ไม่ยุ่งกับกระเป๋าเงินเลย
+   * เรียกได้เฉพาะตอนตายอยู่จริง ๆ กันกดซ้ำจากกล่องที่ค้างอยู่
+   */
+  revive() {
+    if (this.state !== STATE.DEAD) return false;
+
+    // ปูทางเรียบรอไว้ตรงจุดที่น้องจะกลับมายืน
+    // ตรงที่ตกคือปากหลุม วางกลับที่เดิมเฉย ๆ จะร่วงซ้ำทันทีในเฟรมถัดไป
+    // วิธีเดียวกับตอนปลาพาลงมาส่งหลังโบนัส (ดู enterBonusPhase('fall'))
+    const clear = Array.from({ length: REVIVE.clearChunks }, () => ({ p: 0 }));
+    this.level.restartAt(this.camera, [...clear, ...Level.routeFor(this.scene).slice(1)], this.scene.theme);
+    this.level.ensureAhead(this.camera);
+
+    this.player.reset();
+    this.state = STATE.RUN;
+    this.dying = 0;
+    this.invuln = REVIVE.invulnFrames;
+    this.hp = Math.max(this.hp, HEALTH.max * REVIVE.hpFloor);
+    this.shake = 0;
+    this.hurtFlash = 0;
+    this.notice = 90;
+    this.noticeText = 'ดึงน้องขึ้นมาแล้ว!';
+
+    this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 12);
+    sfx.land();
+    this.syncMusic();   // เพลงหยุดไปตอนตาย ต้องสั่งเล่นใหม่เอง
+    return true;
   }
 
   // ── ลูปวาด ─────────────────────────────────────────────────
@@ -1486,23 +1559,28 @@ export class Game {
     const sucking = this.state === STATE.RUN && (this.magnet > 0 || this.skill > 0);
     // กะพริบสองกรณี: หลังโดนชน กับตอนความสามารถใกล้หมดฤทธิ์
     const skillFlicker = this.skillBlink > 0 && Math.floor(this.tick / 5) % 2 === 0;
+    const catS = this.catScale;
+
+    // ── วงโล่วาดก่อนตัว ──
+    // ตอนขนาดปกติวงกว้างกว่าตัวทุกด้านอยู่แล้ว วาดหน้าหรือหลังจึงเห็นเหมือนกันเป๊ะ
+    // แต่ตอนตัวใหญ่ ชุดระดับสูงมีผ้าคลุมกับเอฟเฟกต์ยื่นออกนอกกล่องชน
+    // วางไว้ข้างหลังจึงการันตีว่าวงจะไม่มีวันพาดทับหน้าหรือชุดของน้อง
+    if (this.state !== STATE.DEAD && this.shielded) {
+      drawShieldRing(ctx, this.player, this.tick, catS);
+    }
+
     if (!blinking && !skillFlicker) {
       // ตัวโตอยู่ = ยิ้มสะใจ ทับอารมณ์อื่นที่อาจตั้งค้างไว้จากโบนัส
       // เพราะตอนนั้นแมวกำลังเดินทับทุกอย่างโดยไม่เจ็บ ซึ่งเป็นจังหวะที่สะใจที่สุดในเกม
-      const k = this.bigK;
       drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking,
         this.skill > 0 ? this.tick : 0, this.big > 0 ? 'smug' : this.catMood,
-        1 + (BIGCAN.scale - 1) * k, 1 + (BIGCAN.gait - 1) * k);
+        catS, 1 + (BIGCAN.gait - 1) * this.bigK);
     }
-    if (sucking) drawSuction(ctx, this.player, this.tick);
+    if (sucking) drawSuction(ctx, this.player, this.tick, catS);
 
     // หลอดความสามารถ ซ่อนตอนตายเพราะไม่มีความหมายแล้ว
     if (this.state !== STATE.DEAD) {
-      drawSkillGauge(ctx, this.player, this.charge / SKILL.chargeFrames, this.skillOn, this.tick);
-    }
-
-    if (this.state !== STATE.DEAD && this.shielded) {
-      drawShieldRing(ctx, this.player, this.tick);
+      drawSkillGauge(ctx, this.player, this.charge / SKILL.chargeFrames, this.skillOn, this.tick, catS);
     }
 
     // ── ฤทธิ์สมบัติ ──
