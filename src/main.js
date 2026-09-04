@@ -135,6 +135,55 @@ function paintMini(canvas, logical, draw) {
   draw(c);
 }
 
+/**
+ * รูปประจำระดับชุด — ไฟล์จริงใน public/ ไม่ได้วาดด้วยโค้ดเหมือนของอย่างอื่นในเกม
+ *
+ * ── ทำไมแยกเป็นตารางแทนที่จะต่อสตริงเอาตอนใช้ ──
+ * ชื่อไฟล์เป็นข้อมูล ไม่ใช่กฎ ระดับใหม่ในอนาคตอาจใช้ชื่ออื่นที่ไม่เข้าแพตเทิร์น
+ * ตารางบอกได้ทันทีว่ามีรูปของระดับไหนบ้าง โดยไม่ต้องไปไล่ดูในโฟลเดอร์
+ *
+ * ── ทำไมเป็น .png ทั้งที่ต้นฉบับเป็น .svg ──
+ * ไฟล์ svg ที่ได้มาเป็นภาพ raster ฝัง base64 อยู่ข้างใน ขนาดรวมกัน 59MB
+ * ตัดขอบแล้วย่อเป็น png ได้ภาพเดิมเป๊ะที่ 176KB
+ *
+ * ── ทำไมประกาศไว้บนสุดของไฟล์ ──
+ * ถูกใช้ทั้งในหน้าเลือกชุด หน้ารายละเอียด และการ์ดผลสุ่มในตู้กาช่า
+ * ประกาศไว้ใกล้ที่ใช้ที่ใดที่หนึ่งจะกลายเป็น "ของของหน้านั้น" ทั้งที่ใช้ร่วมกันสามที่
+ */
+const TIER_ART = {
+  // ระดับของ "ชุด"
+  high:   { sign: 'sign-s.png', cat: 'cat-gold.png' },
+  normal: { sign: 'sign-a.png', cat: 'cat-silver.png' },
+  // ระดับของ "สมบัติ" — คนละสเกลกับชุด แต่ใช้ตารางเดียวกันได้
+  // เพราะชื่อระดับไม่ชนกันเลย (high/normal กับ legend/epic/rare)
+  legend: { sign: 'sign-l.png' },
+  epic:   { sign: 'sign-e.png' },
+  rare:   { sign: 'sign-r.png' },
+};
+
+/**
+ * ป้ายระดับ — รูปตราจริง (S/A ของชุด, L/E/R ของสมบัติ) ไม่ใช่แคปซูลตัวหนังสือ
+ *
+ * คืน null สำหรับของที่ไม่มีระดับ ("ขนล้วน") ผู้เรียกจึงเช็คค่าเดียวจบ
+ * ไม่ต้องรู้ว่าระดับไหนมีรูปบ้าง
+ *
+ * ── ทำไมเป็นฟังก์ชันกลาง ไม่ใช่ก๊อปโค้ดไปทีละที่ ──
+ * ป้ายนี้โผล่เจ็ดที่ (เลือกชุด / เลือกสมบัติ / รายละเอียดสมบัติ / ผลสุ่มสองแบบ /
+ * ตัวอย่างในตู้กาช่า / หน้าสะสม) เคยเป็นแคปซูลตัวหนังสือที่เขียนแยกกันทุกที่
+ * พอเปลี่ยนเป็นรูปจึงต้องไล่แก้ครบ รวมไว้ที่เดียวแล้วรอบหน้าแก้ที่นี่ที่เดียวจบ
+ *
+ * ชื่อระดับอ่านจากตารางของฝั่งที่ตรงกับ rarity นั้น — ไม่ก้าวก่ายกันเพราะชื่อไม่ชน
+ */
+function tierSign(rarity) {
+  const art = TIER_ART[rarity];
+  if (!art) return null;
+  const img = document.createElement('img');
+  img.className = 'tier-sign';
+  img.src = import.meta.env.BASE_URL + art.sign;
+  img.alt = (RARITY[rarity] || T_RARITY[rarity]).name;
+  return img;
+}
+
 /** หากล่องที่พิกเซลทึบกินจริงในผ้าใบ — คืน null ถ้าวาดแล้วว่างเปล่า */
 function alphaBounds(c, w, h) {
   const d = c.getImageData(0, 0, w, h).data;
@@ -561,9 +610,10 @@ function drawShow() {
   if (gIsT()) {
     emoji.textContent = item.emoji;
 
-    // ป้ายสมบัติใช้ตัวย่อ (L/E/R) เหมือนการ์ดในหน้าสมบัติ สายตาจึงหาที่เดิมได้
-    badge.className = 'tier-badge round ' + item.rarity;
-    badge.textContent = T_RARITY[item.rarity].short;
+    // ป้ายสมบัติเป็นรูปตราเหมือนการ์ดในหน้าสมบัติ สายตาจึงหาที่เดิมได้
+    // ใช้ element เดียวกับสาขาชุดข้างล่าง แค่ยัดรูปคนละใบ
+    badge.className = 'tier-badge as-sign ' + item.rarity;
+    badge.replaceChildren(tierSign(item.rarity));
     badge.style.display = '';
 
     // ฤทธิ์คิดจากขั้นที่ตีบวกไว้จริง ไม่ใช่ขั้น 0 ตายตัว
@@ -576,9 +626,14 @@ function drawShow() {
       if (!got) silhouette(c, 150, 150);
     });
 
-    badge.className = 'tier-badge ' + (item.rarity || '');
-    badge.textContent = item.rarity ? RARITY[item.rarity].name : '';
-    badge.style.display = item.rarity ? '' : 'none';
+    // ป้ายของชุดเป็น "รูปตรา" ส่วนป้ายของสมบัติ (อีกสาขาของ if ข้างบน) ยังเป็นตัวย่อ
+    // ใช้ element เดียวกันได้เพราะสองสาขาเขียนทับลูกของมันคนละแบบเสมอ
+    // (สาขาสมบัติใช้ textContent ซึ่งล้างลูกเดิมให้อยู่แล้ว)
+    // .as-sign ถอดทรงแคปซูลทิ้ง เหลือแค่รูปลอย
+    const sign = tierSign(item.rarity);
+    badge.className = 'tier-badge as-sign ' + (item.rarity || '');
+    badge.replaceChildren(...(sign ? [sign] : []));
+    badge.style.display = sign ? '' : 'none';
 
     // ค่าที่ชุดให้จริง ๆ — อ่านจาก foodBonus ของชุดตรง ๆ ไม่ได้เขียนค้างไว้
     // ตัวเลขนี้คือเหตุผลเดียวที่ระดับสูงมีค่ากว่าระดับกลาง จึงต้องเห็นตั้งแต่ก่อนสุ่ม
@@ -731,12 +786,11 @@ function showOutfitResults(results) {
     const o = r.outfit;
     const tier = RARITY[o.rarity];
     pushGotCard(box, o.rarity + (r.isNew ? '' : ' dupe'),
-      '<span class="tier-badge"></span><canvas width="72" height="72"></canvas><b></b><small></small>',
+      '<canvas width="72" height="72"></canvas><b></b><small></small>',
       (card) => {
         // ป้ายระดับติดมุมบนเหมือนการ์ดในหน้าเลือกชุด สายตาจึงหาที่เดิมได้
-        const badge = card.querySelector('.tier-badge');
-        badge.className = 'tier-badge ' + o.rarity;
-        badge.textContent = tier.short;
+        const sign = tierSign(o.rarity);
+        if (sign) card.appendChild(sign);
 
         card.querySelector('b').textContent = o.name;
         const tag = card.querySelector('small');
@@ -755,9 +809,9 @@ function showTreasureResults(results) {
   for (const g of results) {
     const t = g.treasure;
     pushGotCard(box, t.rarity + (g.isNew ? '' : ' dupe'),
-      '<span class="tier-badge ' + t.rarity + '">' + T_RARITY[t.rarity].short + '</span>'
-      + '<span class="t-emoji big"></span><b></b><small></small>',
+      '<span class="t-emoji big"></span><b></b><small></small>',
       (card) => {
+        card.appendChild(tierSign(t.rarity));
         card.querySelector('.t-emoji').textContent = t.emoji;
         card.querySelector('b').textContent = t.name;
         card.querySelector('small').textContent = g.isNew ? 'ใหม่!' : '+' + g.gems + ' เพชร';
@@ -943,19 +997,14 @@ function buildGList() {
       + (t ? 't-card ' + item.rarity : 'outfit-card' + (item.rarity === 'high' ? ' high' : ''));
 
     if (t) {
-      card.innerHTML = '<span class="t-emoji"></span><b></b>'
-        + '<span class="tier-badge ' + item.rarity + '"></span>';
+      card.innerHTML = '<span class="t-emoji"></span><b></b>';
       card.querySelector('.t-emoji').textContent = item.emoji;
-      card.querySelector('.tier-badge').textContent = T_RARITY[item.rarity].short;
+      card.appendChild(tierSign(item.rarity));
     } else {
       card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
-      // "ขนล้วน" ไม่มีระดับ จึงไม่ติดป้าย
-      if (item.rarity) {
-        const badge = document.createElement('span');
-        badge.className = 'tier-badge ' + item.rarity;
-        badge.textContent = RARITY[item.rarity].name;
-        card.appendChild(badge);
-      }
+      // "ขนล้วน" ไม่มีระดับ tierSign() จึงคืน null แล้วการ์ดใบนั้นไม่มีป้าย
+      const sign = tierSign(item.rarity);
+      if (sign) card.appendChild(sign);
       // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
       paintMini(card.querySelector('canvas'), 96,
         (c) => drawCatPose(c, 55, 88, 1.5, { ...getSkin(), outfit: item }, 60));
@@ -1158,7 +1207,9 @@ function enterGame() {
 function showAuth() {
   setMsg(document.getElementById('authMsg'), '');
   document.getElementById('guestBtn').disabled = false;
-  document.getElementById('authLead').textContent = cloudReady
+  // เขียนลง <span> ข้างใน ไม่ใช่ตัว <p> — ตัว <p> มีปุ่ม ! เป็นลูกอยู่ด้วย
+  // เขียนทับที่ <p> เมื่อไหร่ ปุ่มหายทันที (ดูคอมเมนต์ที่ #authLead ใน index.html)
+  document.getElementById('authLeadText').textContent = cloudReady
     ? 'เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้'
     : 'ยังไม่ได้ต่อฐานข้อมูล เล่นได้ปกติแต่ข้อมูลจะอยู่ในเครื่องนี้เท่านั้น';
   showPanel(authPanel);
@@ -1890,13 +1941,9 @@ function buildOutfitGrid() {
     card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
     card.querySelector('b').textContent = o.name;
 
-    // "ขนล้วน" ไม่มีระดับ จึงไม่ติดป้าย
-    if (o.rarity) {
-      const badge = document.createElement('span');
-      badge.className = 'tier-badge ' + o.rarity;
-      badge.textContent = RARITY[o.rarity].name;
-      card.appendChild(badge);
-    }
+    // "ขนล้วน" ไม่มีระดับ tierSign() จึงคืน null แล้วการ์ดใบนั้นไม่มีป้าย
+    const sign = tierSign(o.rarity);
+    if (sign) card.appendChild(sign);
 
     // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
     paintMini(card.querySelector('canvas'), 96,
@@ -2321,18 +2368,65 @@ function stopOdCat() {
   odRAF = 0;
 }
 
+/**
+ * รายการ "ของที่ได้จากชุดนี้" — อ่านจากตัวชุดจริง ไม่ได้เขียนข้อความค้างไว้ทีละชุด
+ *
+ * ชุดระดับสูงทุกตัวมีครบสามอย่าง (rain / bonus / trail) จึงได้สามบรรทัดเสมอ
+ * ชุดระดับกลางไม่มีเอฟเฟกต์อะไรเลย เหลือแค่ตัวชุดกับโบนัสคะแนน = สองบรรทัด
+ * เพิ่มเอฟเฟกต์ใหม่ให้ชุดไหนในอนาคต บรรทัดก็โผล่มาเองโดยไม่ต้องมาแก้ที่นี่
+ */
+function outfitPerks(o) {
+  const list = [];
+  if (o.rain || o.rainShape) list.push('เอฟเฟคเม็ดโปรยประจำชุด');
+  if (o.bonus) list.push('ฉากโบนัสไทม์ประจำชุด');
+  if (o.trail) list.push('เอฟเฟคประกายโปรยตามตัว');
+  // ชุดที่ไม่มีเอฟเฟกต์ ต้องมีบรรทัดแรกเป็นของตัวเอง
+  // ห้ามใช้ o.note ซ้ำ เพราะมันไปเป็นป้ายชื่อเล่นด้านบนอยู่แล้ว อ่านแล้วเหมือนพูดซ้ำ
+  if (!list.length && o.rarity) list.push('ชุดพิเศษที่ลุ้นได้จากตู้กาช่า');
+  if (o.foodBonus > 0) list.push('ค่าขนมเปียกเพิ่มขึ้น');
+  // ชุดพื้นฐานคืนรายการว่าง ตั้งใจ — มันไม่มีอะไรให้ลิสต์ และย่อหน้าข้างบน
+  // ก็บอกไปแล้วว่า "ชุดติดตัวมาแต่แรก ใส่ได้ตลอดโดยไม่ต้องสุ่ม"
+  // ใส่บรรทัดซ้ำลงไปอีกจะกลายเป็นข้อความลอย ๆ ที่ไม่มีหัวแมวนำหน้าด้วย
+  return list;
+}
+
 function paintOutfitDetail() {
   const o = outfitById(odCurrent);
   if (!o) return;
   const got = isOwned(o.id);
   const on = got && o.id === getSkin().outfit.id;
   const tier = o.rarity ? RARITY[o.rarity] : null;
+  const art = TIER_ART[o.rarity];
 
   document.getElementById('odName').textContent = o.name;
 
-  const badge = document.getElementById('odTier');
-  badge.className = 'tier-badge ' + (o.rarity || '');
-  badge.textContent = tier ? tier.name : 'พื้นฐาน';
+  // ป้ายระดับเป็นรูปจริง ชุดพื้นฐานไม่มีระดับจึงไม่มีป้าย (ซ่อนทั้งอัน)
+  const sign = document.getElementById('odSign');
+  sign.hidden = !art;
+  if (art) {
+    sign.src = import.meta.env.BASE_URL + art.sign;
+    sign.alt = tier.name;
+  }
+
+  // ป้ายชื่อเล่นของชุด — ชื่อชุดจริงอยู่บนหัวเรื่องแล้ว ตรงนี้จึงเป็นคำบรรยายสั้น ๆ
+  const tag = document.getElementById('odTag');
+  tag.textContent = o.note || (tier ? tier.name : 'ชุดพื้นฐาน');
+
+  const perks = document.getElementById('odPerks');
+  perks.innerHTML = '';
+  for (const text of outfitPerks(o)) {
+    const li = document.createElement('li');
+    if (art) {
+      const icon = document.createElement('img');
+      icon.src = import.meta.env.BASE_URL + art.cat;
+      icon.alt = '';
+      li.appendChild(icon);
+    }
+    const span = document.createElement('span');
+    span.textContent = text;
+    li.appendChild(span);
+    perks.appendChild(li);
+  }
 
   // บอกทั้ง "ต่อชิ้นเท่าไหร่" และ "แปลว่าอะไรเมื่อเทียบกับของที่เก็บได้จริง"
   //
@@ -2352,8 +2446,6 @@ function paintOutfitDetail() {
     bonus.textContent = 'ไม่มีโบนัสคะแนน';
     sub.textContent = 'ชุดติดตัวมาแต่แรก ใส่ได้ตลอดโดยไม่ต้องสุ่ม';
   }
-
-  document.getElementById('odText').textContent = o.note || '';
 
   odPanel.classList.toggle('locked', !got);
 
@@ -2481,8 +2573,6 @@ function buildTreasureGrid() {
   for (const t of list) {
     const got = ownsTreasure(t.id);
     const lv = treasureLevel(t.id);
-    const tier = T_RARITY[t.rarity];
-
     const card = document.createElement('button');
     card.className = 'skin-card t-card ' + t.rarity + (got ? '' : ' locked')
       + (isEquipped(t.id) ? ' on' : '');
@@ -2491,14 +2581,13 @@ function buildTreasureGrid() {
     // เอาป้ายออกแล้วการ์ดเตี้ยลงเห็น ๆ และดูเป็นช่องเก็บของมากกว่าเป็นแถวข้อมูล
     card.innerHTML =
       '<span class="t-emoji"></span><b></b>'
-      + '<span class="t-stars"></span>'
-      + `<span class="tier-badge ${t.rarity}"></span>`;
+      + '<span class="t-stars"></span>';
+    card.appendChild(tierSign(t.rarity));
 
     // ยังไม่ได้ก็เห็นว่าเป็นชิ้นไหน แค่เป็นขาวดำ (ดู .t-card.locked ใน style.css)
     // เดิมซ่อนเป็น ❓/??? ไว้ให้ลุ้น แต่ผลคือไม่รู้ว่ามีอะไรให้ตามเก็บบ้าง
     card.querySelector('.t-emoji').textContent = t.emoji;
     card.querySelector('b').textContent = t.name;
-    card.querySelector('.tier-badge').textContent = tier.short;
     card.querySelector('.t-stars').innerHTML = got ? starRow(lv) : '';
 
     // กดดูรายละเอียดได้ทั้งที่มีและยังไม่มี — หน้ารายละเอียดคือที่ที่บอกว่า
@@ -2526,12 +2615,11 @@ function paintDetail() {
   const t = treasureById(tCurrent);
   if (!t) return;
   const lv = treasureLevel(t.id);
-  const tier = T_RARITY[t.rarity];
-
   document.getElementById('tdEmoji').textContent = t.emoji;
+  // ป้ายเป็นรูปตรา element เดิมทำหน้าที่เป็นแค่กรอบอุ้มรูป (.as-sign ถอดทรงแคปซูล)
   const badge = document.getElementById('tdTier');
-  badge.className = 'tier-badge ' + t.rarity;
-  badge.textContent = tier.name;
+  badge.className = 'tier-badge as-sign ' + t.rarity;
+  badge.replaceChildren(tierSign(t.rarity));
   document.getElementById('tdName').textContent = t.name;
   document.getElementById('tdStars').innerHTML = starRow(lv);
   document.getElementById('tdEffect').textContent = effectText(t, lv);
@@ -3343,6 +3431,29 @@ async function askRevive() {
   }
   sfx.upWin();
 }
+
+// ── ปุ่ม ! ท้ายคำนำหน้าเข้าสู่ระบบ ──
+// เด้งป๊อปอัพเล็กบอกอายุข้อมูลของการเล่นแบบผู้มาเยือน
+// aria-expanded เป็นแหล่งความจริงอันเดียว ทั้ง CSS และโปรแกรมอ่านจออ่านจากที่เดียวกัน
+function showGuestNote(on) {
+  document.getElementById('guestInfo').setAttribute('aria-expanded', on ? 'true' : 'false');
+  document.getElementById('guestNote').classList.toggle('hidden', !on);
+}
+
+document.getElementById('guestInfo').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  // กดปุ่มเดิมซ้ำตอนเปิดอยู่ = ปิด คนที่กดผิดจึงกดที่เดิมเพื่อถอยได้
+  showGuestNote(document.getElementById('guestInfo').getAttribute('aria-expanded') !== 'true');
+});
+document.getElementById('guestNoteOk').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  showGuestNote(false);
+});
+// กดพื้นหลังนอกฟองก็ปิด — ทางออกที่คนคาดหวังจากกล่องลอยแบบนี้
+// เทียบ target กับ currentTarget เพื่อไม่ให้การกดในฟองไหลออกมาปิดตัวเอง
+document.getElementById('guestNote').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) showGuestNote(false);
+});
 
 function showGameOver(quit = false) {
   const dist = Math.floor(game.distance / SCORING.pxPerMeter);
