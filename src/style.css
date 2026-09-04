@@ -1513,6 +1513,61 @@ canvas[hidden] { display: none; }
   color: #0B3B37;
 }
 
+/* ── ป้ายระดับของ "ชุด" เป็นรูปตรา (S ทอง / A ม่วง) ──
+   วางที่เดิมกับป้ายแคปซูลเป๊ะ (top/right 7px) สายตาจึงหาที่เดิมได้
+   แต่ยื่นออกนอกกรอบนิดหน่อยเพื่อให้อ่านเป็นตราที่ "แปะทับ" การ์ด ไม่ใช่ไอคอนในการ์ด
+
+   ── ทำไมไม่ใช้ .tier-badge แล้วใส่ background-image ──
+   ป้ายของสมบัติ (L/E/R) ยังเป็นแคปซูลตัวหนังสืออยู่ ใช้คลาสเดียวกันแล้วต้องมาไล่
+   ล้าง padding/background/box-shadow ทีละอันในทุก override ที่มีอยู่แล้ว 6 จุด
+   คลาสใหม่เริ่มจากศูนย์ ไม่ต้องล้างอะไรเลย */
+.tier-sign {
+  position: absolute;
+  /* ── ทำไมอยู่ "ใน" การ์ด ไม่ยื่นออกนอกขอบ ──
+     การ์ดทุกใบอยู่ในช่องที่เลื่อนได้ (.skin-grid / .got-row) ซึ่งมี overflow
+     ตั้งไว้ — และ overflow-y: auto บังคับให้ overflow-x กลายเป็น auto ตามไปด้วย
+     เสมอตามสเปก ช่องพวกนั้นจึงตัดทั้งสองแกน ป้ายที่ยื่นออกนอกการ์ดจะโดนเฉือน
+     มุมหายไปทุกใบที่อยู่แถวบนหรือริมขวา (เห็นชัดในหน้าผลสุ่ม)
+
+     เว้นระยะให้ช่องเลื่อนพอไม่ได้ เพราะช่องเดียวกันถูกใช้กับการ์ดหลายแบบ
+     วางไว้ในกรอบเลยจึงไม่มีทางโดนตัด ไม่ว่าจะอยู่ในช่องแบบไหน */
+  top: 2px;
+  right: 2px;
+  width: 30px;
+  height: auto;
+  aspect-ratio: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 5px rgba(12,4,24,.6));
+}
+/* ── ป้ายบนการ์ดผลสุ่ม วัดเป็น % ของการ์ด ไม่ใช่ px ตายตัว ──
+   การ์ดผลไม่ได้กว้างคงที่ — มันอิง --gs ซึ่งคำนวณจากความสูงเวที การ์ดจึงกว้าง
+   ได้ตั้งแต่ราว 40px (จอเตี้ยมาก) ถึง 146px (จอใหญ่) ป้าย px ตายตัวจะกินหน้าการ์ด
+   ไปครึ่งใบบนจอเล็ก และเล็กจนมองไม่เห็นบนจอใหญ่
+   มีพื้นกับเพดานกันไม่ให้เลยเถิดทั้งสองทาง */
+.got-card .tier-sign {
+  width: 30%;
+  min-width: 20px;
+  max-width: 34px;
+  top: 2px;
+  right: 2px;
+}
+
+/* ตัวอย่างชุดในตู้กาช่า — ตัวถือป้ายยังเป็น .tier-badge ตัวเดิม (ใช้ร่วมกับสมบัติ)
+   .as-sign จึงต้องถอดทรงแคปซูลทิ้งให้หมด เหลือแค่กรอบเปล่าที่อุ้มรูปไว้
+   เขียนให้ชนะ .show-face .tier-badge (0,2,0) ด้วยการเติมคลาสที่สาม (0,3,0) */
+.show-face .tier-badge.as-sign,
+.tier-badge.as-sign {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border: 0;
+}
+.tier-badge.as-sign .tier-sign {
+  position: static;
+  display: block;
+  width: clamp(30px, 5.2dvh, 46px);
+}
+
 /* การ์ดระดับสูงเรืองขอบทองไว้ตลอด แยกออกจากใบอื่นตั้งแต่ยังไม่ได้กด */
 .skin-card.high {
   border-color: rgba(255,201,60,.72);
@@ -2405,64 +2460,184 @@ canvas[hidden] { display: none; }
 .mail-reward .coin, .mail-reward .gem { width: 1.15em; height: 1.15em; }
 
 /* ── หน้ารายละเอียดชุด ───────────────────────
-   การ์ดในกริดเหลือแค่รูปกับชื่อ ข้อมูลทั้งหมดย้ายมาอยู่ที่นี่
-   แลกการกดเพิ่มหนึ่งครั้งกับกริดที่เห็นชุดได้มากกว่าเดิมเกือบเท่าตัว */
+   สองคอลัมน์: ซ้ายเป็นรูป ขวาเป็นข้อมูล
+   การ์ดของเกมนี้ "กว้างแต่เตี้ย" เสมอ (เวทีถูกบังคับสัดส่วน 960:420)
+   เรียงลงมาเป็นแถวเดียวจึงเปลืองความสูงที่ไม่มี และทิ้งความกว้างที่มีเหลือเฟือ */
 .odetail {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(10px, 2.6vw, 30px);
-  flex-wrap: wrap;
-  max-width: 92%;
+  gap: clamp(12px, 2.8vw, 34px);
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
 }
+
+/* คอลัมน์ซ้าย: กรอบรูป แล้วบรรทัดโบนัสอยู่ใต้กรอบ ไม่ใช่ไปปนอยู่ในกล่องข้อมูล
+   เพราะมันคือ "ค่าของชุดนี้" ซึ่งควรอ่านคู่กับรูปในสายตาเดียว */
+.odetail-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.4dvh, 12px);
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  justify-content: center;
+}
+
 .odetail-show {
   position: relative;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  /* พื้นขั้นต่ำของกรอบรูป — ต่ำกว่านี้ตัวน้องเล็กจนดูไม่ออกว่าใส่อะไรอยู่ */
+  min-height: 88px;
+  aspect-ratio: 1;
   border-radius: 20px;
   border: 2px solid var(--plate-line);
   background: rgba(34,14,54,.55);
   box-shadow: inset 0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.12);
 }
+/* ผ้าใบเต็มกรอบ ความสูงมาจาก flex แล้ว aspect-ratio คำนวณความกว้างตาม
+   (กฎเดียวกับกรอบตัดรูปในหน้าใส่รูป — ห้ามวัดของใหญ่จาก dvh เพราะ dvh คือ
+   ความสูงหน้าต่าง ไม่ใช่ความสูงการ์ด สองค่านี้ต่างกันได้เกินเท่าตัว) */
 .odetail-show canvas {
   display: block;
-  width: clamp(96px, 24dvh, 200px);
-  height: clamp(96px, 24dvh, 200px);
+  width: 100%;
+  height: 100%;
+  max-width: 220px;
+  max-height: 220px;
 }
-.odetail-show .tier-badge { top: 6px; right: 6px; }
+
+/* ── ป้ายระดับ (sign-s / sign-a) ──
+   เกาะมุมบนขวาแล้วยื่นออกนอกกรอบครึ่งตัว ให้อ่านเป็นตราที่ "แปะทับ" กรอบ
+   ไม่ใช่ไอคอนที่วางอยู่ข้างในกรอบเฉย ๆ */
+.od-sign {
+  position: absolute;
+  top: -9%;
+  right: -9%;
+  width: 38%;
+  max-width: 86px;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(12,4,24,.6));
+}
+.od-sign[hidden] { display: none; }
 
 .odetail-info {
-  flex: 1 1 190px;
-  min-width: 0;
-  max-width: 34ch;
-  text-align: left;
   display: flex;
   flex-direction: column;
-  gap: clamp(3px, 0.9dvh, 8px);
+  justify-content: center;
+  gap: clamp(5px, 1.2dvh, 11px);
+  /* ── ทำไม basis ต้องเล็กกว่าที่ตาเห็นว่าควรเป็น ──
+     กล่องนี้อยู่แถวเดียวกับกรอบรูป ซึ่งเป็นจัตุรัสที่ความกว้างมาจากความสูง
+     ถ้ากล่องนี้ขอที่ไว้เยอะ (basis 300 + min-width กว้าง) บนการ์ดแคบมันจะกินไปหมด
+     เหลือให้กรอบรูปแค่ 52px — ซึ่งเล็กจนมองไม่ออกว่าชุดหน้าตายังไง
+     ทั้งที่ "ดูชุด" คือเหตุผลเดียวที่คนเปิดหน้านี้
+     ยอมให้กล่องนี้แคบแล้วเลื่อนอ่านเอา (overflow-y ข้างล่าง) ดีกว่าให้รูปหาย */
+  flex: 1 1 230px;
+  min-width: 170px;
+  max-width: 360px;
+  height: 100%;
+  min-height: 0;
+  text-align: left;
+  padding: clamp(10px, 2dvh, 18px) clamp(11px, 1.8vw, 20px);
+  border-radius: 18px;
+  background: rgba(255,243,226,.07);
+  border: 1px solid rgba(255,243,226,.1);
+  /* รายการของที่ได้ยาวไม่เท่ากันในแต่ละชุด ให้เลื่อนในกล่องเมื่อยาวเกิน
+     ดีกว่าดันกล่องจนล้นการ์ดแล้วโดน overflow:hidden ของ .pop เฉือนหาย */
+  overflow-y: auto;
+  scrollbar-width: none;
 }
-/* ตัวเลขโบนัสคือเหตุผลเดียวที่ชุดหนึ่งมีค่ากว่าอีกชุด ต้องเด่นที่สุดในหน้า */
-.odetail-bonus {
-  margin: 0;
+.odetail-info::-webkit-scrollbar { display: none; }
+
+/* ป้ายชื่อเล่นของชุด — เม็ดม่วงเข้มที่เป็นบรรทัดแรกสุดของกล่อง
+   ใช้ชื่อเล่น (note) ไม่ใช่ชื่อชุด เพราะชื่อชุดอยู่บนหัวเรื่องของหน้าแล้ว */
+.od-tag {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: clamp(4px, .9dvh, 7px) clamp(11px, 1.6vw, 16px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #B85CE0, #8A2BBE);
+  border: 1px solid rgba(255,243,226,.28);
+  box-shadow: 0 3px 10px rgba(90,20,130,.45);
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(14px, 2.6dvh, 21px);
-  color: #FFD97A;
-  line-height: 1.3;
+  font-size: clamp(12px, 2.1dvh, 16px);
+  line-height: 1.35;
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(48,10,72,.6);
 }
+
 .odetail-sub {
   margin: 0;
-  font-size: clamp(10px, 1.6dvh, 13px);
-  color: #B99BD4;
-  line-height: 1.5;
-}
-.odetail-text {
-  margin: 0;
-  font-size: clamp(10.5px, 1.7dvh, 14px);
+  font-size: clamp(10px, 1.6dvh, 13.5px);
   color: #E4D4F5;
-  line-height: 1.65;
+  line-height: 1.6;
 }
-/* .panel p ถูกซ่อนทิ้งบนจอแคบเพื่อเอาที่ไปให้ปุ่ม แต่สามบรรทัดนี้คือเนื้อหาหลัก
+
+/* ── รายการของที่ชุดนี้ให้ ──
+   หัวแมวทอง (ระดับสูง) / เงิน (ระดับกลาง) นำหน้าทุกบรรทัด
+   ใช้ ::marker ไม่ได้เพราะต้องเป็นรูป จึงวาดด้วย img จริงในแต่ละ li */
+.od-perks:empty { display: none; }
+.od-perks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 1dvh, 9px);
+}
+.od-perks li {
+  display: flex;
+  align-items: center;
+  gap: clamp(7px, 1.1vw, 12px);
+  font-size: clamp(11px, 2dvh, 15px);
+  line-height: 1.4;
+  color: #F3E7FF;
+}
+.od-perks img {
+  flex: 0 0 auto;
+  width: clamp(22px, 4dvh, 32px);
+  height: auto;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 2px 3px rgba(12,4,24,.5));
+}
+
+/* บรรทัดโบนัสใต้กรอบรูป — ตัวเลขคือเหตุผลเดียวที่ชุดหนึ่งมีค่ากว่าอีกชุด */
+.odetail-bonus {
+  margin: 0;
+  flex: 0 0 auto;
+  text-align: center;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(11px, 2dvh, 16px);
+  color: #FFD97A;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+/* .panel p ถูกซ่อนทิ้งบนจอแคบเพื่อเอาที่ไปให้ปุ่ม แต่สองบรรทัดนี้คือเนื้อหาหลัก
    ของทั้งหน้า ถ้าหายไปด้วยจะเหลือแค่รูปแมวกับปุ่ม ซึ่งไม่ได้บอกอะไรเลย */
-.panel p.odetail-bonus, .panel p.odetail-sub, .panel p.odetail-text { display: block; }
+.panel p.odetail-bonus, .panel p.odetail-sub { display: block; }
+
+/* หน้านี้ต้องให้แถวเนื้อหากินที่ที่เหลือทั้งหมด กรอบรูปจึงโตได้เต็มการ์ด */
+#odPanel .pop { justify-content: center; }
+#odPanel .pop > .panel-head { margin-bottom: clamp(6px, 1.4dvh, 14px); }
+#odPanel .btnrow { flex: 0 0 auto; }
+#odPanel .form-msg { min-height: 0; flex: 0 0 auto; }
+#odPanel .form-msg:empty { display: none; }
+
+/* ── จอเตี้ย: ตัดบรรทัดโบนัสใต้กรอบทิ้ง ──
+   ตัวเลขเดียวกันอยู่ในย่อหน้าข้าง ๆ อยู่แล้ว ("ใส่ชุดนี้เป็น 2,000 (+100%)")
+   ไม่ได้เสียข้อมูลอะไรไป แต่ได้ความสูงคืนมาให้กรอบรูปซึ่งเป็นของชิ้นเดียว
+   ที่แทนด้วยตัวหนังสือไม่ได้ — ไม่งั้นบรรทัดนี้จะถูกดันทะลุลงไปทับปุ่ม */
+@media (max-height: 430px) {
+  /* ต้องเขียนเป็น .panel p.odetail-bonus ให้เท่ากับกฎที่บังคับ display:block ไว้ข้างบน
+     (0,2,1 ต่อ 0,2,1 — ตัวหลังชนะ) เขียนสั้นเป็น .odetail-bonus เฉย ๆ จะแพ้แล้วไม่มีผลเลย */
+  .panel p.odetail-bonus { display: none; }
+  #odPanel .pop > .panel-head { margin-bottom: 4px; }
+}
 
 /* ── การ์ดชุดในกริด ──────────────────────────
    ถอดป้ายโบนัสกับบรรทัดคำอธิบายออก เหลือรูปกับชื่อ การ์ดจึงเตี้ยลงมาก
@@ -3168,6 +3343,11 @@ canvas[hidden] { display: none; }
      ไม่ใช่คำบรรยาย ถ้าซ่อนไป กล่องยืนยันจะบอกแค่ราคาโดยไม่บอกว่าจ่ายแล้วเหลือเท่าไหร่
      ส่วน .confirm-body เป็นคำโปรยของแมว ปล่อยให้ซ่อนตามเดิมได้ */
   .panel p.confirm-after { display: block; }
+  /* คำนำหน้าเข้าสู่ระบบต้องไม่หายไปด้วย — ปุ่ม ! ที่เก็บเงื่อนไขอายุข้อมูลไว้
+     อยู่ท้ายบรรทัดนั้น ถ้าซ่อนทั้งย่อหน้า ปุ่มจะหายไปด้วย แปลว่าบนจอแคบ
+     ไม่มีทางอ่านได้เลยว่าเล่นแบบผู้มาเยือนแล้วข้อมูลอยู่แค่ 3 วัน
+     ย่อให้เล็กลงแทนการซ่อน ยังกินที่น้อยกว่าเดิมแต่ข้อมูลไม่หาย */
+  .panel p#authLead { display: block; font-size: 11.5px; line-height: 1.45; }
   .btn {
     margin-top: 2px;
     font-size: 14px;
@@ -4093,6 +4273,7 @@ canvas[hidden] { display: none; }
   .outfit-card canvas { width: 44px; height: 44px; border-radius: 8px; }
   .outfit-card b { font-size: 9px; min-height: 2.4em; }
   .tier-badge { top: 3px; right: 3px; padding: 1px 5px; font-size: 7.5px; }
+  .tier-sign { width: 22px; top: 2px; right: 2px; }
   /* บรรทัดคำอธิบายตัดออกได้ แต่ป้ายโบนัสห้ามตัด — เป็นข้อมูลที่ใช้ตัดสินใจ
      ย่อให้เล็กลงแทน และตัดคำว่า "/ ชิ้น" ทิ้งด้วย ::after ไม่ได้ จึงย่อฟอนต์เอา */
   .skin-card small { display: none; }
@@ -4286,6 +4467,7 @@ canvas[hidden] { display: none; }
   .outfit-card b { font-size: 10px; min-height: 2.4em; }
   .card-bonus { font-size: 10.5px; padding: 1px 8px; }
   .tier-badge { top: 4px; right: 4px; padding: 1px 6px; font-size: 8.5px; }
+  .tier-sign { width: 25px; top: 2px; right: 2px; }
   .skin-grid { gap: 9px; }
 
   .stage-card { width: 176px; padding: 7px 8px 9px; gap: 5px; border-radius: 13px; }
@@ -4469,12 +4651,21 @@ canvas[hidden] { display: none; }
    การ์ดจึงถูกดันให้กว้างตามชิ้นที่ยาวที่สุด (หมายเหตุ) แล้วปุ่มกับคำนำที่แคบกว่า
    ก็ลอยอยู่กลาง ๆ โดยขอบไม่ตรงกับอะไรเลยสักอย่าง — ตาจับได้ทันทีว่าไม่เป็นระเบียบ
    ตรึงการ์ดไว้ค่าเดียว แล้วให้ทุกชิ้นข้างในกว้างเต็มการ์ด ขอบซ้ายขวาจึงตรงกันหมด */
+/* กางคำอธิบายแล้วการ์ดสูงขึ้น บนเวทีเตี้ยอาจไม่พอ — ให้เลื่อนในการ์ด
+   ดีกว่าโดน overflow:hidden ของ .pop เฉือนปุ่ม "เข้าด้วยอีเมล" หายไปเงียบ ๆ */
+#authPanel .pop { position: relative; overflow-y: auto; scrollbar-width: none; }
+#authPanel .pop::-webkit-scrollbar { display: none; }
+
 #authPanel .pop {
   gap: clamp(9px, 2dvh, 18px);
-  /* 440 ไม่ใช่เลขสุ่ม — วัดแล้วเป็นความกว้างแคบที่สุดที่คำนำ
-     "เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้" ยังจบในบรรทัดเดียว
-     (ที่ 420 ลงมาจะตกเป็นสองบรรทัด ซึ่งดันหัวการ์ดให้สูงขึ้นโดยไม่ได้อะไรกลับมา) */
-  width: min(100%, 440px);
+  /* ── ทำไมกว้างขึ้นจาก 440 ──
+     เวทีเกมถูกบังคับสัดส่วน 960:420 การ์ดจึง "กว้างแต่เตี้ย" เสมอ
+     ที่ 440 การ์ดกินความกว้างไปแค่ราว 46% ของเวที เหลือข้างละ 27% เป็นที่ว่างเปล่า
+     ขณะที่แนวตั้งแน่นจนต้องเลื่อน — เอาที่ที่มีมาใช้ ปุ่มก็ยาวขึ้นกดง่ายขึ้นด้วย
+
+     ยังต้องมีเพดาน ไม่ปล่อยเต็มเวที เพราะปุ่มที่ยาวเกิน 600px อ่านเป็นแถบยาว
+     ไม่ใช่ปุ่ม และคำนำที่ยาวเป็นบรรทัดเดียวข้ามจอกวาดตาลำบาก */
+  width: min(100%, 600px);
 }
 #authPanel #authLead {
   width: 100%;
@@ -4489,59 +4680,126 @@ canvas[hidden] { display: none; }
   width: 100%;
   margin-top: clamp(2px, .8dvh, 8px);
 }
-/* ทั้งคู่กว้างเท่ากันเต็มกล่อง จะได้อ่านเป็นรายการทางเลือก ไม่ใช่ปุ่มลอยสองใบคนละขนาด */
-.auth-actions .btn { margin-top: 0; width: 100%; }
-#authPanel #guestBtn { font-size: 15px; padding: 12px 22px; }
+/* ทั้งคู่กว้างเท่ากัน จะได้อ่านเป็นรายการทางเลือก ไม่ใช่ปุ่มลอยสองใบคนละขนาด
+   มีเพดาน ไม่เต็มการ์ด — การ์ดกว้าง 600 แล้ว ปุ่มที่ยาวเท่านั้นอ่านเป็นแถบยาวไม่ใช่ปุ่ม */
+.auth-actions { align-items: center; }
+.auth-actions .btn { margin-top: 0; width: min(100%, 400px); }
+/* ── ปุ่มสองใบต้องเท่ากันทุกมิติ ──
+   เขียนเป็นกฎเดียวคุมทั้งคู่ ไม่ใช่ตั้งค่าแยกกันสองที่แล้วหวังว่าจะตรงกัน
+   (เดิมแยกกันอยู่ ปุ่มผู้มาเยือน 15px/12px ส่วนปุ่มอีเมล 13.5px/10px
+    ผลคือใบบนสูงกว่าใบล่างราว 5px และตัวหนังสือใหญ่กว่าอย่างเห็นได้ชัด)
 
-/* กล่องของทางเลือก "ผู้มาเยือน" — ปุ่มกับคำอธิบายอยู่ด้วยกันเป็นก้อนเดียว
-   พื้นจาง ๆ กับขอบมนทำให้เห็นขอบเขตว่าคำอธิบายนี้เป็นของปุ่มนี้ ไม่ใช่ของทั้งหน้า */
-.auth-opt {
-  display: flex;
-  flex-direction: column;
-  /* ── ช่องไฟระหว่างปุ่มกับคำอธิบาย ──
-     กฎเดิมยังอยู่: ต้องแคบกว่าช่องไฟรอบนอกของกล่อง (padding ข้างล่าง)
-     ตาจึงอ่านสองชิ้นนี้เป็นก้อนเดียวกัน ไม่ใช่ของสองชิ้นที่บังเอิญอยู่ในกรอบเดียวกัน
+   ความต่างระหว่าง "ปุ่มหลัก" กับ "ปุ่มรอง" สื่อด้วยสีอยู่แล้ว —
+   เขียวมิ้นต์ทึบ กับ ม่วงโปร่ง — ไม่ต้องใช้ขนาดมาช่วยบอกอีก */
+#authPanel .auth-actions .btn { font-size: 14.5px; padding: 11px 22px; }
 
-     แต่ 6px แคบเกินไปจริง ปุ่มผู้มาเยือนเป็นปุ่มสูง 45px สีสด ตัวหนังสือใหญ่
-     บรรทัดจาง ๆ ที่อยู่ห่างแค่ 6px จากขอบล่างของมันเลยอ่านเหมือนไปเบียดใต้ปุ่ม
-     ขยับเป็นราว 12px ซึ่งยังต่ำกว่า padding (14px) อยู่ กฎข้างบนจึงไม่เสีย */
-  gap: clamp(7px, 1.3dvh, 12px);
-  padding: clamp(9px, 1.6dvh, 14px);
-  border-radius: 16px;
-  background: rgba(255,243,226,.055);
-  border: 1px solid rgba(255,243,226,.1);
+/* ── เวทีเตี้ย: บีบแนวตั้งให้พอดีการ์ดโดยไม่ต้องเลื่อน ──
+   การ์ดกว้าง 600 แล้วก็จริง แต่ความสูงมาจากเวทีซึ่งเตี้ยลงตามความกว้างหน้าต่าง
+   (เวทีถูกบังคับสัดส่วน 960:420) หน้านี้จึงต้องผอมลงในแนวตั้งเป็นพิเศษ
+
+   ย่อคำนำแทนที่จะซ่อน — ปุ่ม ! อยู่ท้ายบรรทัดนั้น ซ่อนคำนำแล้วปุ่มหายไปด้วย
+   ซึ่งแปลว่าไม่มีทางอ่านเงื่อนไขอายุข้อมูลได้เลยบนจอเตี้ย */
+@media (max-height: 430px) {
+  #authPanel #authLead { font-size: 12px; line-height: 1.5; }
+  #authPanel .pop { gap: 6px; padding: 9px clamp(16px, 3.4vw, 40px); }
+  #authPanel .pop > .panel-head { margin-bottom: 5px; }
+  .auth-actions { gap: 7px; margin-top: 0; }
+  #authPanel .auth-actions .btn { font-size: 13px; padding: 8px 18px; }
+  .auth-info { width: 21px; height: 21px; font-size: 13px; margin-left: 6px; }
+  /* .form-msg จองที่ไว้ 1.2em ตลอดเวลาเพื่อกันแผงกระตุกตอนข้อความโผล่
+     บนเวทีเตี้ยที่ไม่กระตุกก็ไม่พออยู่ดี ยอมให้ขยับดีกว่าให้ปุ่มโดนเฉือน */
+  #authPanel .form-msg { min-height: 0; }
+  #authPanel .form-msg:empty { display: none; }
 }
-/* หมายเหตุใต้ปุ่มผู้มาเยือน — ต้องอ่านออกแต่ต้องไม่แย่งความสนใจไปจากปุ่ม
-   จึงเล็กกว่าและจางกว่า แต่ประโยคสุดท้าย (ทางออก) เน้นด้วย <b> ให้สะดุดตากลับมา
-   margin ติดลบด้านบนดึงให้ไปเกาะใต้ปุ่มเป็นก้อนเดียวกัน แทนที่จะลอยห่างเท่า gap */
-.auth-note {
-  display: block;
-  color: #B99BD4;
-  font-size: clamp(10.5px, 1.6dvh, 12.5px);
-  line-height: 1.55;
-  text-align: center;
-  /* ขึ้นบรรทัดเองด้วย <br> ไม่ปล่อยให้เบราว์เซอร์ตัดคำ
-     เพราะภาษาไทยไม่มีช่องว่างระหว่างคำ เบราว์เซอร์จึงตัดตรงไหนก็ได้
-     แล้วมักเหลือคำเดียวโดดอยู่บรรทัดสุดท้าย ซึ่งอ่านสะดุด
-     ไม่ต้องมี max-width แล้ว เพราะการ์ดถูกตรึงความกว้างไว้ตั้งแต่ต้น */
-}
-.auth-note b { color: #D9C4EC; font-weight: 600; }
-#authPanel .btn.ghost { font-size: 13.5px; padding: 10px 20px; }
 
-/* เส้นคั่น "หรือ" — ตัวที่บอกว่าสองปุ่มนี้เลือกอย่างใดอย่างหนึ่ง ไม่ใช่ทำตามลำดับ */
-.auth-or {
+/* ── ปุ่ม ! ท้ายคำนำ ──
+   อยู่ในบรรทัดเดียวกับคำนำ จึงอ่านออกว่าขยายความประโยคนั้น ไม่ใช่ของทั้งหน้า
+
+   vertical-align: middle เพราะมันเป็น inline element ที่อยู่ในกระแสตัวหนังสือจริง
+   ถ้าไม่ตั้ง มันจะนั่งบนเส้นฐานแล้วดูจมลงไปครึ่งตัวเมื่อเทียบกับตัวอักษรไทย */
+.auth-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 8px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,243,226,.5);
+  background: linear-gradient(180deg, #B85CE0, #7C2BAE);
+  color: #FFF6E6;
+  font-family: "Mitr", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  /* เรืองม่วงรอบตัวนิด ๆ ให้มันอ่านเป็น "ของที่กดได้" ไม่ใช่เครื่องหมายวรรคตอน
+     ที่บังเอิญอยู่ท้ายประโยค — 24px เปล่า ๆ เล็กเกินกว่าจะสังเกตเห็นในบรรทัดข้อความ */
+  box-shadow: 0 3px 8px rgba(20,6,36,.5), 0 0 12px rgba(199,125,255,.55);
+  transition: transform .12s ease, filter .12s ease;
+}
+.auth-info:hover { filter: brightness(1.15); }
+.auth-info:active { transform: scale(.9); }
+.auth-info:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+/* เปิดอยู่ = ปุ่มเปลี่ยนสี ให้เห็นว่ามันคือตัวที่เปิดกล่องนั้นค้างไว้ */
+.auth-info[aria-expanded="true"] {
+  background: linear-gradient(180deg, #6FE9DA, #35B8AA);
+  color: #0B3B37;
+}
+
+
+/* ── ป๊อปอัพเล็กของปุ่ม ! ──
+   ── ทำไมลอยทับการ์ด ไม่ใช่กางแทรกอยู่ในสายเนื้อหา ──
+   กางในสายจะดันปุ่มลงไปทุกครั้งที่กด ซึ่งบนเวทีเตี้ย (การ์ดสูงราว 240px)
+   แปลว่าปุ่ม "เข้าด้วยอีเมล" หลุดขอบการ์ดทันทีที่กดดูคำอธิบาย
+
+   ── ทำไมฟองอยู่กลางการ์ด ไม่เกาะตำแหน่งปุ่ม ──
+   ปุ่มอยู่ท้ายคำนำที่จัดกลาง ตำแหน่งจึงขยับตามความยาวข้อความและขนาดจอ
+   ฟองที่เกาะตามจะหลุดขอบการ์ดได้ง่าย ส่วนกลางการ์ดอยู่ในกรอบเสมอทุกขนาด */
+.auth-pop {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 11.5px;
-  letter-spacing: .08em;
-  color: #9C81B8;
+  justify-content: center;
+  padding: 12px;
+  border-radius: inherit;
+  background: rgba(18,8,32,.55);
+  backdrop-filter: blur(2px);
+  animation: fadeIn .14s ease;
 }
-.auth-or i {
-  flex: 1 1 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,243,226,.28), transparent);
+.auth-pop.hidden { display: none; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.auth-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  max-width: min(300px, 100%);
+  padding: clamp(11px, 2dvh, 17px) clamp(14px, 2.4vw, 22px);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #6B33A0, #331555);
+  border: 1px solid rgba(255,243,226,.26);
+  box-shadow: 0 14px 34px rgba(0,0,0,.55);
+  animation: cardIn .2s cubic-bezier(.2,.85,.3,1.06) backwards;
 }
+.auth-bubble p {
+  margin: 0;
+  max-width: none;
+  text-align: center;
+  font-size: clamp(11px, 1.8dvh, 13px);
+  line-height: 1.6;
+  color: #E4D4F5;
+}
+.auth-bubble b { color: #FFE9B0; font-weight: 600; }
+.auth-bubble .btn { margin-top: 0; }
+/* .panel p ถูกซ่อนบนจอแคบเพื่อเอาที่ไปให้ปุ่ม แต่นี่คือเนื้อหาทั้งหมดของป๊อปอัพ
+   ถ้าหายไปจะเหลือฟองเปล่ากับปุ่มปิด ซึ่งไม่ได้บอกอะไรเลย */
+.panel .auth-bubble p { display: block; }
 
 /* ── แถวบัญชีในหน้าตั้งค่า ─────────────────── */
 .setval {
@@ -4769,18 +5027,20 @@ canvas[hidden] { display: none; }
   min-height: 0;
   height: 100%;
 }
-/* รูปตัวอย่างหดตามความสูงที่เหลือเหมือนกรอบตัด ไม่งั้นบนการ์ดเตี้ยมันจะดัน
-   ปุ่มกับคำอธิบายทะลุออกนอกคอลัมน์ */
+/* ── รูปตัวอย่างต้องเป็นจัตุรัสเสมอ ──
+   ── ทำไมเคยบี้ ──
+   เดิมตั้ง height: 100% (ความสูงชัดเจน) คู่กับ max-width: 108px (ความกว้างก็ชัดเจน)
+   พอทั้งสองด้านถูกกำหนดพร้อมกัน เบราว์เซอร์จะ "ไม่สนใจ aspect-ratio" ตามสเปก
+   บนมือถือแนวนอนที่คอลัมน์นี้สูงกว่า 108px น้องจึงถูกยืดเป็นแมวผอมสูง
+
+   วิธีนี้กำหนดด้านเดียว (ความกว้าง = เต็มคอลัมน์) แล้วให้ aspect-ratio คิดความสูงเอง
+   ไม่มีทางขัดกันเองได้อีก ไม่ว่าคอลัมน์จะสูงเท่าไหร่
+   และ flex: 0 0 auto กัน flex บีบความสูงลงทีหลังจนเบี้ยวซ้ำ */
 .face-side > canvas {
-  flex: 0 1 auto;
-  /* พื้นขั้นต่ำสำคัญกว่าที่คิด — ตัวอย่างคือของชิ้นเดียวที่บอกว่าตัดรูปได้สวยหรือยัง
-     ถ้าปล่อยให้หดตามที่เหลือล้วน ๆ บนการ์ดเตี้ยมันจะเหลือ 30px ซึ่งดูอะไรไม่ออกเลย
-     ต่ำสุด 64px = หัวน้องยังใหญ่พอให้เห็นว่ารูปไปอยู่ตรงไหนของหน้า */
-  min-height: 64px;
-  height: 100%;
-  width: auto;
+  flex: 0 0 auto;
+  width: min(100%, 112px);
+  height: auto;
   aspect-ratio: 1;
-  max-width: 108px;
 }
 .face-cap {
   flex: 0 0 auto;

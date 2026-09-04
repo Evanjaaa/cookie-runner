@@ -238,28 +238,46 @@
       <div class="panel hidden" id="authPanel">
         <div class="pop">
           <h2 class="skin-title">เข้าสู่ระบบ</h2>
-          <p id="authLead">เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้</p>
+          <!-- ── ทำไมปุ่ม ! อยู่ต่อท้ายคำนำในบรรทัดเดียวกัน ──
+               คำนำบอกว่า "เล่นได้เลยไม่ต้องกรอกอะไร" ส่วนข้อความหลังปุ่มนี้คือ
+               เงื่อนไขของประโยคนั้น (เล่นได้เลยก็จริง แต่ข้อมูลอยู่แค่ 3 วัน)
+               วางติดกันจึงอ่านออกทันทีว่ามันขยายความประโยคไหน ไม่ใช่ของทั้งหน้า
+
+               ปุ่มเป็น <button> จริง ไม่ใช่ <span> ที่ใส่ onclick — จะได้กดด้วย
+               คีย์บอร์ดและโปรแกรมอ่านจอได้เหมือนปุ่มอื่นทั้งหน้าโดยไม่ต้องทำอะไรเพิ่ม -->
+          <!-- ── ทำไมข้อความต้องอยู่ใน <span> ของตัวเอง ──
+               showAuth() เขียนข้อความลงไปใหม่ทุกครั้งที่เปิดหน้านี้ (ข้อความต่างกัน
+               ตามว่าต่อฐานข้อมูลได้ไหม) ถ้าเขียนลง .textContent ของ <p> ตรง ๆ
+               ลูกทุกตัวใน <p> จะถูกล้างทิ้ง — รวมถึงปุ่ม ! ที่อยู่ข้างในด้วย
+               ปุ่มจึงหายไปตั้งแต่วินาทีแรกที่หน้านี้เปิด โดยไม่มีร่องรอยใน CSS เลย -->
+          <p id="authLead"><span id="authLeadText">เล่นได้เลยไม่ต้องกรอกอะไร ค่อยผูกอีเมลทีหลังก็ได้</span><button
+              class="auth-info" id="guestInfo" type="button"
+              aria-expanded="false" aria-controls="guestNote"
+              aria-label="ข้อมูลของการเล่นแบบผู้มาเยือน">!</button></p>
+
           <!-- ห่อปุ่มไว้ในกล่องของตัวเอง เพื่อคุมช่องไฟด้วย gap แทน margin ของ .btn
                ซึ่งเดิมทำให้สองปุ่มเกือบติดกันจนอ่านเป็นก้อนเดียว ไม่ใช่สองทางเลือก -->
           <div class="auth-actions">
-            <!-- ปุ่มกับคำอธิบายของมันอยู่ในกล่องเดียวกัน เพราะคำอธิบายนี้พูดถึง
-                 "ทางเลือกผู้มาเยือน" อย่างเดียว ไม่ได้พูดถึงทั้งหน้า
-                 ถ้าปล่อยลอยอยู่ระหว่างสองปุ่ม จะอ่านไม่ออกว่าอธิบายปุ่มไหน -->
-            <div class="auth-opt">
-              <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
-              <!-- บอกอายุข้อมูลตรงนี้ ไม่ใช่ไปซ่อนในหน้าตั้งค่า — จุดนี้คือตอนที่
-                   ผู้เล่นกำลังเลือกอยู่พอดี บอกทีหลังก็สายไปแล้ว
-                   เขียนให้จบด้วยทางออก ไม่ใช่จบด้วยคำขู่ คนอ่านจะได้รู้ว่าต้องทำอะไร -->
-              <small class="auth-note">
-                เก็บข้อมูลไว้ 3 วันจากที่เล่นครั้งล่าสุด<br>
-                หลังจากนั้นความคืบหน้าจะถูกล้าง<br>
-                <b>ผูกอีเมลไว้ ข้อมูลจะอยู่ถาวร</b>
-              </small>
-            </div>
-            <span class="auth-or"><i></i>หรือ<i></i></span>
+            <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
             <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
           </div>
           <small class="form-msg" id="authMsg"></small>
+
+          <!-- ── ป๊อปอัพเล็กของปุ่ม ! ──
+               ลอยทับทั้งการ์ด ไม่ได้แทรกอยู่ในสายเนื้อหา — กางในสายจะดันปุ่มลงไป
+               ทุกครั้งที่กด ซึ่งบนเวทีเตี้ยแปลว่าปุ่มหลุดขอบการ์ดทันที
+               กดพื้นหลังตรงไหนก็ปิดได้ เป็นทางออกที่คนคาดหวังจากกล่องแบบนี้ -->
+          <div class="auth-pop hidden" id="guestNote">
+            <div class="auth-bubble" role="dialog" aria-modal="false"
+                 aria-label="ข้อมูลของการเล่นแบบผู้มาเยือน">
+              <p>
+                เก็บข้อมูลไว้ 3 วันจากที่เล่นครั้งล่าสุด<br>
+                หลังจากนั้นความคืบหน้าจะถูกล้าง<br>
+                <b>ผูกอีเมลไว้ ข้อมูลจะอยู่ถาวร</b>
+              </p>
+              <button class="btn tiny" id="guestNoteOk" type="button">เข้าใจแล้ว</button>
+            </div>
+          </div>
           <button class="backbtn" id="authBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
@@ -512,15 +530,22 @@
       <div class="panel hidden" id="odPanel">
         <div class="pop">
           <div class="panel-head"><h2 class="skin-title" id="odName">ชุด</h2></div>
+          <!-- ซ้าย = รูปน้องในกรอบ + ป้ายระดับเกาะมุมบนขวา + บรรทัดโบนัสใต้กรอบ
+               ขวา = กล่องข้อมูล (ป้ายชื่อเล่นชุด + คำอธิบายโบนัส + รายการของที่ได้)
+               ป้ายระดับกับหัวแมวหน้ารายการเป็นไฟล์รูปใน public/ ไม่ได้วาดด้วยโค้ด -->
           <div class="odetail">
-            <div class="odetail-show">
-              <canvas id="odCat" width="200" height="200"></canvas>
-              <span class="tier-badge" id="odTier"></span>
-            </div>
-            <div class="odetail-info">
+            <div class="odetail-left">
+              <div class="odetail-show">
+                <canvas id="odCat" width="200" height="200"></canvas>
+                <img class="od-sign" id="odSign" alt="" aria-hidden="true">
+              </div>
               <p class="odetail-bonus" id="odBonus"></p>
+            </div>
+
+            <div class="odetail-info">
+              <span class="od-tag" id="odTag"></span>
               <p class="odetail-sub" id="odSub"></p>
-              <p class="odetail-text" id="odText"></p>
+              <ul class="od-perks" id="odPerks"></ul>
             </div>
           </div>
           <div class="btnrow">
