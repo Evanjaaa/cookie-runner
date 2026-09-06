@@ -1487,6 +1487,15 @@ canvas[hidden] { display: none; }
 }
 .skin-card.on small { color: var(--mint-lite); font-weight: 600; }
 
+/* ── การ์ดที่ "กำลังเลือกดู" ในคลังน้อง ──
+   ต่างจาก .on ซึ่งแปลว่า "ใส่อยู่/ติดตั้งอยู่" คนละความหมายกันจึงต้องดูต่างกัน
+   ใช้เส้นรอบนอกแทนการเปลี่ยนสีขอบ การ์ดใบเดียวจึงเป็นทั้งสองอย่างพร้อมกันได้
+   (ชุดที่ใส่อยู่และกำลังเลือกดูอยู่ = ขอบมิ้นต์ + เส้นรอบนอก) */
+.skin-card.sel {
+  outline: 2px solid var(--cream);
+  outline-offset: 2px;
+}
+
 /* ── ป้ายบอกระดับความหายาก ─────────────────── */
 /* วางทับมุมบนขวาของรูป ไม่ใช่ต่อท้ายข้อความ เพราะต้องอ่านออกตั้งแต่กวาดตา
    ยังไม่ทันอ่านชื่อชุด ก็ต้องรู้แล้วว่าใบไหนของดี */
@@ -2514,10 +2523,12 @@ canvas[hidden] { display: none; }
    ไม่ใช่ไอคอนที่วางอยู่ข้างในกรอบเฉย ๆ */
 .od-sign {
   position: absolute;
-  top: -9%;
-  right: -9%;
-  width: 38%;
-  max-width: 86px;
+  top: -7%;
+  right: -7%;
+  /* 38% ทำให้ตราใหญ่เกือบเท่าหัวน้องในกรอบ แย่งสายตาไปจากตัวชุดซึ่งเป็นพระเอก
+     ของหน้า 29% ยังอ่านตัวอักษรบนตราออกสบายแต่ไม่ข่มรูป */
+  width: 29%;
+  max-width: 62px;
   height: auto;
   pointer-events: none;
   filter: drop-shadow(0 3px 6px rgba(12,4,24,.6));
@@ -2538,7 +2549,12 @@ canvas[hidden] { display: none; }
   flex: 1 1 230px;
   min-width: 170px;
   max-width: 360px;
-  height: 100%;
+  /* ── สูงเท่าเนื้อหา ไม่ใช่ยืดเต็มความสูงเสมอ ──
+     ชุดระดับ A มีของแถมสองบรรทัด ส่วนระดับ S มีสี่ ถ้าบังคับ height:100%
+     ทั้งคู่ กล่องของ A จะเหลือที่ว่างค้างอยู่ครึ่งกล่องโดยไม่มีอะไรอยู่
+     ปล่อยให้หดตามเนื้อหาแล้วมันจะจัดกลางคู่กับกรอบรูปเอง (.odetail align-items: center) */
+  height: auto;
+  max-height: 100%;
   min-height: 0;
   text-align: left;
   padding: clamp(10px, 2dvh, 18px) clamp(11px, 1.8vw, 20px);
@@ -2564,15 +2580,25 @@ canvas[hidden] { display: none; }
   box-shadow: 0 3px 10px rgba(90,20,130,.45);
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(12px, 2.1dvh, 16px);
+  /* ป้ายนี้คือบรรทัดแรกของกล่องและเป็นคำโปรยของชุด ต้องเป็นตัวที่ใหญ่ที่สุด
+     ในกล่อง พื้น 15 ไม่ใช่ 12 เพราะบนจอแนวนอน dvh ตกไปชนพื้นเสมอ
+     ค่าพื้นจึงเป็นตัวที่ใช้จริง ไม่ใช่ค่ากลาง */
+  font-size: clamp(15px, 2.6dvh, 19px);
   line-height: 1.35;
   color: #FFFFFF;
   text-shadow: 0 1px 2px rgba(48,10,72,.6);
 }
 
-.odetail-sub {
+/* ── ทำไมต้องเขียนเป็น .panel p.odetail-sub ──
+   กฎ .panel p (0,1,1) จำเพาะกว่า .odetail-sub เฉย ๆ (0,1,0) ขนาดที่ตั้งไว้ตรงนี้
+   จึงแพ้ตลอด แล้วย่อหน้านี้ไปใช้ clamp(13px, 2.4vw, 15px) ของ .panel p แทน
+   ผลคือมันใหญ่ 15px ขณะที่รายการข้างล่างได้แค่ 11px (dvh ตกพื้นบนจอแนวนอน)
+   — ย่อหน้าคำอธิบายเลยเด่นกว่ารายการของที่ได้ ทั้งที่ควรเป็นน้ำหนักเดียวกัน
+   (กับดักเดียวกับ .mail-meta ที่เคยเจอ) */
+.panel p.odetail-sub {
   margin: 0;
-  font-size: clamp(10px, 1.6dvh, 13.5px);
+  /* ใช้สูตรเดียวกับ .od-perks li เป๊ะ ๆ สองก้อนนี้จะได้ขนาดเท่ากันทุกจอ */
+  font-size: clamp(11px, 2dvh, 15px);
   color: #E4D4F5;
   line-height: 1.6;
 }
@@ -3581,7 +3607,8 @@ canvas[hidden] { display: none; }
   padding-right: clamp(8px, 1.8vw, 20px);
   border-right: 1px solid rgba(255,243,226,.16);
 }
-.gtab {
+.gtab,
+.stab {
   display: flex;
   align-items: center;
   /* ชิดซ้ายไม่ใช่กลาง — สองใบกว้างเท่ากัน (คอลัมน์ยืดให้) ถ้าจัดกลาง
@@ -3601,12 +3628,16 @@ canvas[hidden] { display: none; }
   white-space: nowrap;
   transition: transform .1s ease, background .12s ease, border-color .12s ease;
 }
-.gtab-ico { font-size: 1.4em; line-height: 1; }
-.gtab:active { transform: translateY(2px); }
-.gtab:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+.gtab-ico,
+.stab-ico { font-size: 1.4em; line-height: 1; }
+.gtab:active,
+.stab:active { transform: translateY(2px); }
+.gtab:focus-visible,
+.stab:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
 /* ช่องที่เปิดอยู่สว่างขึ้นทั้งใบ ไม่ใช่แค่ขีดเส้นใต้ — ต้องอ่านออกจากหางตา
    ว่ากำลังดูตู้ไหนอยู่ ตอนที่สายตาไปจับอยู่ที่ปุ่มสุ่มอีกฝั่งของหน้า */
-.gtab.on {
+.gtab.on,
+.stab.on {
   background: linear-gradient(180deg, #C48FF3 0%, #9C5EDC 100%);
   border-color: rgba(255,255,255,.4);
   color: #FFF6E8;
@@ -3664,14 +3695,20 @@ canvas[hidden] { display: none; }
 }
 /* สีกรอบบอกระดับ กวาดตาทีเดียวรู้ว่ากำลังส่องของหายากแค่ไหนก่อนอ่านป้ายด้วยซ้ำ
    ใช้สีชุดเดียวกับป้ายระดับกับการ์ดผลสุ่ม จึงโยงกันได้ทั้งเกม */
-.show-face.legend { border-color: #FF8FB0; box-shadow: 0 0 22px rgba(255,143,176,.4); }
-.show-face.epic { border-color: rgba(199,125,255,.8); }
-.show-face.rare { border-color: rgba(141,243,234,.6); }
-.show-face.high { border-color: rgba(255,201,60,.75); box-shadow: 0 0 22px rgba(255,201,60,.34); }
-.show-face.normal { border-color: rgba(141,243,234,.5); }
+.show-face.legend,
+.stash-face.legend { border-color: #FF8FB0; box-shadow: 0 0 22px rgba(255,143,176,.4); }
+.show-face.epic,
+.stash-face.epic { border-color: rgba(199,125,255,.8); }
+.show-face.rare,
+.stash-face.rare { border-color: rgba(141,243,234,.6); }
+.show-face.high,
+.stash-face.high { border-color: rgba(255,201,60,.75); box-shadow: 0 0 22px rgba(255,201,60,.34); }
+.show-face.normal,
+.stash-face.normal { border-color: rgba(141,243,234,.5); }
 /* ยังไม่ได้ชิ้นนี้ = กรอบเส้นประกับรูปที่จางลง ไม่ใช่ซ่อนชื่อทิ้ง
    ชื่อกับฤทธิ์คือข้อมูลที่คนยังไม่มีต้องใช้ตัดสินใจว่าจะลุ้นต่อไหม */
-.show-face.locked { border-style: dashed; box-shadow: none; }
+.show-face.locked,
+.stash-face.locked { border-style: dashed; box-shadow: none; }
 .show-face canvas { width: 92%; height: 92%; }
 .show-face .show-emoji {
   font-size: calc(var(--gs) * 0.52);   /* กันเบราว์เซอร์เก่าที่ไม่รู้จัก cqmin */
@@ -4899,9 +4936,30 @@ canvas[hidden] { display: none; }
 .confirm-after { margin: 0; font-size: 11.5px; color: #C6B2DE; line-height: 1.4; }
 .confirm-after.bad { color: #FF9BB0; }
 
-.confirm-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+/* ── ปุ่มสองใบต้องอยู่บรรทัดเดียวเสมอ ──
+   เดิมใช้ flex-wrap: wrap คู่กับ min-width: 116px ซึ่งรวมกับข้อความยาว ๆ อย่าง
+   "ไม่ดีกว่าเเง้" กับ "ดึงน้องขึ้นมา" แล้วเกินความกว้างการ์ด (ราว 300px) จึงตกบรรทัด
+   กลายเป็นปุ่มเรียงซ้อนกันสองชั้น ซึ่งดันกล่องสูงจนบนมือถือแนวนอนล้นจอ
+
+   nowrap คู่กับ flex: 1 1 0 ทำให้สองปุ่มแบ่งความกว้างเท่ากันเสมอ ไม่ใช่ยาวตาม
+   ความยาวข้อความของแต่ละใบ ซึ่งได้ผลพลอยได้คือปุ่มสองใบดูสมดุลกันด้วย */
+.confirm-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  justify-content: center;
+  width: 100%;
+}
 /* ปุ่มยกเลิกต้องไม่เล็กกว่าปุ่มยืนยัน ไม่งั้นกลายเป็นบังคับให้กดซื้อ */
-.confirm-btns .btn { min-width: 116px; }
+.confirm-btns .btn {
+  flex: 1 1 0;
+  /* ปลด min-width เดิมออก มันคือตัวที่ดันให้ล้นจนต้องตกบรรทัด
+     min-width: 0 จำเป็นด้วย เพราะค่าตั้งต้นของ flex item คือ auto
+     ซึ่งไม่ยอมหดต่ำกว่าความกว้างข้อความ = ล้นออกนอกการ์ดแทนที่จะหด */
+  min-width: 0;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
 
 /* ══ ใส่รูปเป็นหน้าน้องแมว (Game Face) ══════════════════════
    ── ทำไมเป็นสองคอลัมน์ ไม่ใช่เรียงลงมาเป็นแถว ──
@@ -5093,3 +5151,367 @@ canvas[hidden] { display: none; }
   .face-note { display: none; }
   #facePanel .pop { gap: clamp(4px, 1dvh, 9px); }
 }
+
+
+/* ═══ คลังน้อง — ชุดกับสมบัติในแผงเดียว ═══════════════════════
+   โครงเดียวกับตู้กาช่า: แถบเลือกหมวดซ้าย เนื้อหาขวา คั่นด้วยเส้นตั้ง
+   ทำให้ผู้เล่นที่เคยใช้ตู้กาช่าอ่านหน้านี้ออกทันทีโดยไม่ต้องเรียนรู้ใหม่ */
+.stash-pop {
+  width: 100%;
+  padding-left: clamp(10px, 1.6vw, 20px);
+  padding-right: clamp(12px, 2vw, 26px);
+}
+.stash-body {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(8px, 2vw, 24px);
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.stash-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(6px, 1.4dvh, 12px);
+  padding-right: clamp(8px, 1.8vw, 20px);
+  border-right: 1px solid rgba(255,243,226,.16);
+}
+.stash-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.2dvh, 12px);
+}
+
+/* ── สองคอลัมน์: ของที่เลือกอยู่ | ชั้นวางของทั้งหมด ──
+   ของที่เลือกกว้างคงที่ ไม่ยืดตามจอ เพราะมันคือรูปสี่เหลี่ยมจัตุรัสกับปุ่มสองใบ
+   ยืดไปก็ไม่ได้ข้อมูลเพิ่ม ที่ว่างที่เหลือควรไปอยู่กับชั้นวางซึ่งยิ่งกว้างยิ่งเห็นของเยอะ */
+.stash-cols {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(8px, 1.6vw, 18px);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.stash-show {
+  flex: 0 0 auto;
+  /* 36% ของคอลัมน์เนื้อหา ตามสัดส่วนในแบบที่วางไว้ (ราว 40% ของช่วงซ้าย-ขวา)
+     26% ที่ลองไว้ก่อนหน้าแคบเกินจนรูปโดนบีบจนดูของไม่ออก ซึ่งเป็นหน้าที่เดียว
+     ของช่องนี้ */
+  width: clamp(150px, 36%, 320px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1dvh, 10px);
+  /* ขอบล่างมากกว่าขอบบน — ปุ่มเป็นของชิ้นสุดท้ายในคอลัมน์ ถ้าเว้นเท่ากันทุกด้าน
+     มันจะดูเหมือนชนขอบ เพราะเงานูนของปุ่มกินที่ลงไปอีกหลายพิกเซล */
+  padding: clamp(8px, 1.8dvh, 16px) clamp(6px, 1vw, 12px) clamp(13px, 2.8dvh, 24px);
+  border-radius: 18px;
+  background: rgba(255,243,226,.06);
+  border: 1px solid rgba(255,243,226,.14);
+}
+.stash-face {
+  position: relative;
+  /* ── ให้ความสูงเป็นตัวขับ ไม่ใช่ความกว้าง ──
+     ตั้ง width:100% คู่กับ aspect-ratio:1 แล้วเจอ max-height ตัด กรอบจะกลายเป็น
+     สี่เหลี่ยมผืนผ้าเตี้ย ๆ (max-height ชนะ aspect-ratio) แล้วรูปข้างในที่วัดจาก
+     ด้านสั้นก็เล็กลงตาม — ซึ่งคือที่มาของรูปจิ๋วลอยกลางกรอบกว้าง
+     ท่าเดียวกับ .show-face ของตู้กาช่าที่แก้เรื่องนี้ไปแล้ว */
+  height: min(58%, 100%);
+  width: auto;
+  aspect-ratio: 1;
+  max-width: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  border: 2px solid rgba(255,243,226,.2);
+  background: rgba(27,15,43,.55);
+  /* ให้อิโมจิข้างในวัดขนาดจากกรอบจริงที่ย่อแล้ว ไม่ใช่จากความกว้างคอลัมน์ */
+  container-type: size;
+}
+.stash-face canvas { width: 92%; height: 92%; }
+.stash-emoji {
+  /* 76 ไม่ใช่ 52 แบบกรอบส่องของตู้กาช่า — ตัวอิโมจิจริงกินแค่ราว 60% ของ em box
+     ที่เหลือเป็นช่องว่างรอบตัวอักษร ตั้ง 52 แล้วรูปจริงเหลือแค่ ~31% ของกรอบ
+     เห็นเป็นรูปจิ๋วลอยกลางกรอบใหญ่ ซึ่งไม่ตรงกับแบบที่วางไว้ */
+  font-size: 76cqmin;
+  line-height: 1;
+}
+.stash-face.locked .stash-emoji { filter: grayscale(1); opacity: .5; }
+/* ── ของที่คลังน้องสลับซ่อน/โชว์ ──
+   สไตล์ชีตนี้ไม่มีกฎ .hidden กลาง มีแต่กฎเฉพาะที่ (ดู .xp-gain.hidden เป็นต้น)
+   ของที่ตั้ง display เองไว้แล้วจึงต้องประกาศคู่ของตัวเอง ไม่งั้นติดคลาสไปก็ไม่หาย
+   — ตอนแรกลืมข้อนี้ แถบกรองสองชุดเลยโผล่ซ้อนกันทั้งคู่ */
+.filterbar.hidden,
+.skin-grid.hidden,
+.stash-face .tier-badge.hidden,
+.stash-face > .hidden { display: none; }
+/* ป้ายระดับเกาะมุมบนขวาแบบในแบบที่ออกไว้ ยื่นพ้นกรอบออกไปนิดให้ดูลอยขึ้นมา */
+.stash-face .tier-badge {
+  position: absolute;
+  top: clamp(-12px, -1.8dvh, -7px);
+  right: clamp(-10px, -1.5dvh, -6px);
+  left: auto;
+  z-index: 2;
+}
+.stash-name {
+  font-family: "Mitr", sans-serif;
+  /* เว้นจากกรอบรูปมากกว่า gap ปกติของคอลัมน์ ไม่งั้นชื่อไปแปะติดขอบกรอบ
+     อ่านเป็นป้ายที่ติดอยู่บนกรอบ ไม่ใช่ชื่อของสิ่งที่อยู่ในกรอบ */
+  margin-top: clamp(6px, 1.7dvh, 15px);
+  /* พื้น 16 ไม่ใช่ 13 — บนจอมือถือแนวนอน (สูงราว 460) ค่า dvh ตกไปชนพื้นเสมอ
+     พื้นจึงเป็นตัวที่ใช้จริงเกือบตลอด ไม่ใช่ค่ากลาง ตั้ง 13 แล้วชื่อเล็กกว่า
+     ตัวหนังสือบนปุ่มข้างล่างด้วยซ้ำ ทั้งที่มันคือหัวข้อของทั้งช่อง */
+  font-size: clamp(16px, 2.7dvh, 21px);
+  color: var(--cream);
+  text-align: center;
+  line-height: 1.25;
+  /* ขีดใต้ชื่อชุดเดียวกับหัวเรื่องแผง ให้อ่านเป็น "ชื่อของชิ้นนี้" ไม่ใช่คำอธิบาย */
+  padding-bottom: 5px;
+  background: linear-gradient(90deg, transparent, rgba(199,125,255,.85), transparent)
+    bottom / 78% 2px no-repeat;
+}
+/* ปุ่มสองใบเรียงบรรทัดเดียว แบ่งความกว้างเท่ากัน ไม่ยาวตามความยาวข้อความ
+   (เหตุผลเดียวกับ .confirm-btns — ข้อความไทยยาวไม่เท่ากันจนตกบรรทัด) */
+.stash-btns {
+  display: flex;
+  gap: clamp(5px, 0.8vw, 9px);
+  width: 100%;
+  /* เว้นจากชื่อมากกว่า gap ปกติของคอลัมน์ — ชื่อมีขีดใต้ ถ้าปุ่มขึ้นมาชิด
+     ขีดนั้นจะดูเหมือนเส้นขอบบนของปุ่มแทนที่จะเป็นเส้นใต้ชื่อ */
+  margin-top: clamp(5px, 1.2dvh, 11px);
+}
+.stash-btns .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-top: 0;
+  padding-inline: 8px;
+  font-size: clamp(10px, 1.9dvh, 15px);
+  white-space: nowrap;
+}
+/* ── สี่ใบต่อแถวเสมอ ไม่ว่าจอกว้างแค่ไหน ──
+   .skin-grid เดิมเป็น flex-wrap คู่กับการ์ดความกว้างคงที่ = จำนวนใบต่อแถว
+   เปลี่ยนไปตามความกว้างที่เหลือ บางเครื่องได้ 4 บางเครื่องได้ 3 คุมไม่ได้เลย
+
+   เปลี่ยนเป็นกริด 4 คอลัมน์แล้วให้การ์ดยืดเต็มช่อง จำนวนใบต่อแถวจึงคงที่
+   ส่วนขนาดการ์ดเป็นตัวที่ยืดหดตามจอแทน ซึ่งเป็นสิ่งที่ควรยืดหดอยู่แล้ว */
+.stash-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  justify-items: center;
+}
+/* ข้อความ "ยังไม่มีของเลย" ต้องพาดเต็มแถว ไม่ใช่ไปเบียดอยู่ในช่องแรกช่องเดียว */
+.stash-grid .grid-empty { grid-column: 1 / -1; }
+
+/* ── การ์ดในคลังน้องเล็กกว่าตอนเป็นสองหน้าแยก ──
+   ตอนแยกกันอยู่ กริดได้ความกว้างทั้งการ์ด แต่ตอนนี้ต้องแบ่งกับช่องพรีวิว
+   ถ้าใช้ขนาดเดิม (ชุด 124 / สมบัติ 92) จะเหลือแค่ 2-3 ใบต่อแถว ต้องเลื่อนตลอด
+   ย่อลงแล้วได้ 4 ใบต่อแถวตามแบบที่วางไว้ โดยรูปยังใหญ่พอดูออกว่าเป็นชุดอะไร */
+.stash-grid .skin-card {
+  /* ยืดเต็มช่องกริด แต่ไม่โตเกินขนาดที่อ่านสบายบนจอใหญ่ */
+  width: 100%;
+  max-width: 116px;
+  padding: 7px 6px 8px;
+  border-radius: 13px;
+  gap: 3px;
+}
+.stash-grid .skin-card canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 10px;
+}
+.stash-grid .skin-card b { font-size: clamp(9px, 1.5dvh, 12px); }
+/* ป้ายระดับวัดเป็น % ของการ์ด ไม่ใช่ 30px ตายตัวเหมือนที่อื่น
+   การ์ดในคลังน้องยืดหดตามจอ (กริด 4 คอลัมน์) ป้ายขนาดคงที่จึงกินหน้าการ์ด
+   ไปเกือบครึ่งใบบนจอแคบ ใช้กฎเดียวกับป้ายบนการ์ดผลสุ่ม (.got-card .tier-sign) */
+.stash-grid .tier-sign {
+  width: 27%;
+  min-width: 15px;
+  max-width: 26px;
+}
+.stash-grid .t-card .t-emoji { font-size: clamp(21px, 4dvh, 32px); }
+
+/* ── หัวเรื่องชิดซ้าย ไม่ใช่จัดกลาง ──
+   ต่างจากแผงอื่นเพราะแผงนี้ไม่มีอะไรอยู่มุมซ้ายบนให้หลบ (ปุ่มกลับอยู่นอกคอลัมน์
+   เนื้อหา ถัดจากเส้นคั่นไปทางซ้าย) หัวเรื่องจึงเริ่มที่ขอบซ้ายของเนื้อหาได้เลย
+   ตามแบบที่วางไว้ — และได้ผลพลอยได้สำคัญกว่านั้น:
+
+   กริด 1fr auto 1fr ของ .panel-head เดิมให้แถบกรองแค่ 1 ส่วนจากสามส่วน
+   ซึ่งไม่พอสำหรับหมวดสมบัติที่มีชิป 3 อัน + ช่องติ๊ก ช่องติ๊กเลยตกลงไปบรรทัดล่าง
+   เปลี่ยนเป็น auto 1fr แล้วแถบกรองได้ที่ที่เหลือทั้งหมด อยู่บรรทัดเดียวได้ทั้งสองหมวด */
+.stash-main > .panel-head { grid-template-columns: auto 1fr; }
+.stash-main > .panel-head > h2 { grid-column: 1; justify-self: start; }
+.stash-main > .panel-head .filterbar { grid-column: 2; flex-wrap: nowrap; }
+
+/* จอเตี้ย/แคบ: วางของที่เลือกไว้บนหัวชั้นวางแทนที่จะเรียงข้างกัน
+   สองคอลัมน์บนจอแคบทำให้ทั้งคู่แคบจนใช้ไม่ได้สักอัน */
+@media (max-width: 560px) {
+  .stash-cols { flex-direction: column; }
+  .stash-show { width: 100%; flex-direction: row; justify-content: flex-start; }
+  .stash-face { width: clamp(56px, 22vw, 90px); max-height: none; }
+  .stash-name { flex: 1 1 auto; text-align: left; background-position: bottom left; }
+  .stash-btns { width: auto; flex: 0 0 auto; }
+}
+
+/* ── ระบายสีน้อง ──────────────────────────────────────────────
+   ใช้โครงคอลัมน์แบบเดียวกับ .stash-cols คือรูปน้องอยู่ซ้าย เครื่องมืออยู่ขวา
+   เพราะจอเล่นเป็นแนวนอนเตี้ย ๆ วางบน-ล่างแล้วทั้งสองฝั่งจะเหลือที่ไม่พอทั้งคู่ */
+.paint-cols {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: clamp(8px, 1.6vw, 18px);
+}
+.paint-stage {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1dvh, 9px);
+  min-width: 0;
+}
+/* ผ้าใบสูงเต็มช่องแล้วให้ความกว้างตามไปเอง ตัวน้องจะได้ใหญ่ที่สุดเท่าที่จอให้
+   ถ้าคุมด้วยความกว้างแทน บนจอเตี้ยน้องจะเล็กจนแตะจมูกไม่โดน */
+#paintCat {
+  height: min(100%, 60dvh);
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border-radius: clamp(12px, 2.4vw, 20px);
+  background: rgba(255, 252, 246, .07);
+  border: 1px solid rgba(255, 246, 230, .14);
+  touch-action: none;   /* ไม่งั้นลากพู่กันแล้วหน้าจะเลื่อนตาม */
+  cursor: crosshair;
+}
+.paint-hint {
+  color: rgba(255, 246, 230, .62);
+  font-size: clamp(10px, 1.8dvh, 14px);
+  text-align: center;
+}
+
+.paint-side {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.2dvh, 11px);
+}
+/* min-height:0 คือตัวที่ทำให้กล่องนี้ยอมเตี้ยกว่าเนื้อหาแล้วเลื่อนแทนการดันพี่น้อง
+   ให้ล้นออกนอกแผง — ไม่มีบรรทัดนี้ ปุ่มข้างล่างจะถูกดันหลุดขอบเหมือนเดิม */
+.paint-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.2dvh, 11px);
+}
+
+.paint-tools { display: flex; gap: clamp(4px, .8vw, 8px); }
+.ptool {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: clamp(4px, 1dvh, 9px) 2px;
+  border-radius: clamp(9px, 1.6vw, 14px);
+  border: 2px solid transparent;
+  background: rgba(255, 252, 246, .09);
+  color: var(--cream);
+  font: inherit;
+  cursor: pointer;
+}
+.ptool span { font-size: clamp(15px, 2.8dvh, 22px); line-height: 1; }
+.ptool i { font-style: normal; font-size: clamp(9px, 1.5dvh, 12px); opacity: .82; }
+.ptool.on { background: rgba(255, 232, 190, .22); border-color: var(--cream); }
+
+/* แม่สีเรียงหกช่องสองแถว ตรงกับที่ประกาศไว้ 12 สีพอดี */
+.paint-swatches {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(3px, .7vw, 7px);
+}
+@media (max-height: 460px) {
+  /* จอเตี้ยเรียงแม่สีเป็นแถวเดียวสิบสองช่อง ได้ความสูงคืนมาเต็มหนึ่งแถว */
+  .paint-swatches { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+}
+.pswatch {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid rgba(12, 6, 20, .35);
+  cursor: pointer;
+  padding: 0;
+}
+/* วงที่เลือกอยู่ใช้เส้นรอบนอกแทนการเปลี่ยนขอบ เพราะขอบเข้มมีหน้าที่ทำให้
+   สีขาวยังเห็นเป็นวงบนพื้นสว่าง ถ้าเอาไปใช้บอกการเลือกด้วยจะเสียหน้าที่เดิม */
+.pswatch.on { outline: 3px solid var(--cream); outline-offset: 2px; }
+
+.paint-free {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--cream);
+  font-size: clamp(10px, 1.8dvh, 14px);
+}
+.paint-free input {
+  width: clamp(30px, 6vw, 44px);
+  height: clamp(20px, 3.4dvh, 28px);
+  padding: 0;
+  border: 2px solid rgba(255, 246, 230, .3);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+
+.paint-parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(3px, .7vw, 6px);
+}
+.ppart {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: clamp(3px, .8dvh, 6px) clamp(3px, .7vw, 7px);
+  border-radius: clamp(7px, 1.3vw, 11px);
+  border: 2px solid transparent;
+  background: rgba(255, 252, 246, .08);
+  color: var(--cream);
+  font: inherit;
+  font-size: clamp(9px, 1.5dvh, 12px);
+  cursor: pointer;
+  min-width: 0;
+}
+.ppart i {
+  flex: 0 0 auto;
+  width: clamp(9px, 1.7dvh, 14px);
+  height: clamp(9px, 1.7dvh, 14px);
+  border-radius: 50%;
+  border: 1px solid rgba(12, 6, 20, .4);
+}
+.ppart span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppart.on { background: rgba(255, 232, 190, .22); border-color: var(--cream); }
+
+.paint-acts { display: flex; gap: clamp(4px, .8vw, 8px); }
+.paint-acts .btn { flex: 1 1 0; min-width: 0; margin-top: 0; padding-inline: 6px; }
+.paint-side > .btn { margin-top: 0; }
+
+/* แผงสร้างสรรค์ใช้หัวข้อชิดซ้ายเหมือนคลังน้อง ไม่ใช่กึ่งกลางแบบแผงอื่น */
+#createPanel .stash-main > .panel-head { grid-template-columns: 1fr; }
+#createPanel .stash-main > .panel-head > h2 { justify-self: start; }
+
+/* สองโหมดสลับกัน ต้องมี .hidden ของตัวเองเพราะสองคลาสนี้ตั้ง display ไว้เอง
+   (สไตล์ชีตนี้ไม่มีกฎ .hidden กลาง — ดูหมายเหตุเดียวกันที่ .filterbar.hidden) */
+.paint-cols.hidden, .face-work.hidden { display: none; }

@@ -1987,16 +1987,98 @@ export function drawLetters(ctx, letters, camera, tick) {
   }
 }
 
-// ── ปลาทองตัวใหญ่ที่พาไปโบนัส ────────────────────────────────
+// ── ปลาน้อยแฟนตาซีที่พาไปโบนัส ───────────────────────────────
+//
+// ตัวนี้เป็นตัวละครตัวเดียวในเกมที่ผู้เล่นได้ "หยุดมอง" จริง ๆ เพราะตอนขี่ปลา
+// ไม่มีอะไรให้หลบ กล้องนิ่ง และปลาอยู่กลางจอนานหลายวินาที
+// คุณภาพของการเคลื่อนไหวจึงสำคัญกว่าความประหยัดในการวาด ซึ่งต่างจากทุกตัวในเกม
+//
+// หลักการเดียวที่ทำให้มันอ่านเป็น "สัตว์ที่กำลังว่ายน้ำ" ไม่ใช่ "ภาพที่ถูกโยกไปมา"
+// คือ คลื่นลูกเดียววิ่งจากหัวไปหาง — ทุกส่วนใช้ความถี่เดียวกันหมด แต่รับคลื่น
+// ช้ากว่ากันเป็นทอด ๆ (phase) และแรงขึ้นเรื่อย ๆ ไปทางท้าย (amplitude)
+// ถ้าใช้คนละความถี่ มันจะหลุดจังหวะกันจนดูมั่ว ถ้าใช้ phase เท่ากันจะเป็นหุ่นยนต์
+// ส่วนครีบต่างหากที่ใช้คนละความถี่ได้ เพราะครีบไม่ได้อยู่บนเส้นคลื่นเดียวกับลำตัว
 
 const FISH_BODY = '#FF9A3C';
 const FISH_LITE = '#FFC983';
 const FISH_BELLY = '#FFE3B8';
-const FISH_FIN = 'rgba(255,176,102,.82)';
-const FISH_FIN_EDGE = 'rgba(255,214,160,.9)';
+const FISH_FIN = 'rgba(255,190,110,.94)';        // ครีบทึบ (หลัง ก้น ท้อง)
+const FISH_FIN_EDGE = 'rgba(255,247,224,.5)';    // ขอบรับแสง ใช้ทั้งขอบหางและสันหลัง
 const FISH_INK = '#7A3410';
+// สันหลังที่โดนแสงกับใต้ท้องที่แสงไม่ถึง — สองค่านี้ทำให้ตัวปลาเป็นทองแท่ง
+// ไม่ใช่วงรีสีส้มแบน ๆ ต่างกันพอสมควรได้ เพราะผิวปลาทองสะท้อนแสงแรงจริง ๆ
+const FISH_TOP = '#FFC96F';
+const FISH_DEEP = '#DE681B';
+const FISH_RAY = 'rgba(255,241,214,.42)';        // ก้านครีบ
 
-/** หัวใจหนึ่งดวง ใช้เป็นตาของปลา */
+// หางสี่ผืน วาดจากผืนหลังสุดมาผืนหน้าสุด
+//   len/spr  ขนาดเทียบกับครึ่งลำตัว
+//   tilt     กางออกจากแกนกลางกี่เรเดียน — ค่านี้สำคัญที่สุดในตาราง
+//   lag      รับคลื่นช้ากว่าโคนหางเท่าไหร่ ผืนนอกยิ่งช้า = คลื่นไหลออกไปทางปลาย
+//   amp      สะบัดแรงแค่ไหน
+//   alpha    ผืนหลังจางกว่า เพื่อให้อ่านเป็นผ้าซ้อนกันหลายผืน ไม่ใช่แผ่นเดียวหนา ๆ
+//
+// ── ทำไมต้องมี tilt ──
+// เวอร์ชันก่อนทุกผืนอยู่บนแกนเดียวกันแล้วย่อขนาดลงเรื่อย ๆ ผลคือมันซ้อนกัน
+// เป็นวงในวงเหมือนเปลือกหอย ไม่ใช่ผ้าหลายผืน พอกางออกคนละมุมถึงจะแยกออกจากกัน
+// แล้วอ่านเป็นหางพวงที่แต่ละผืนพลิ้วของมันเอง
+const FISH_TAIL = [
+  { len: 1.86, spr: 0.46, tilt: -0.42, lag: 2.35, amp: 0.26, alpha: 0.82, rays: false },
+  { len: 1.96, spr: 0.44, tilt: 0.35, lag: 2.1, amp: 0.29, alpha: 0.86, rays: false },
+  { len: 1.58, spr: 0.42, tilt: -0.14, lag: 1.75, amp: 0.21, alpha: 0.93, rays: true },
+  { len: 1.3, spr: 0.4, tilt: 0.17, lag: 1.4, amp: 0.17, alpha: 1, rays: true },
+];
+
+const BUBBLES = 7;
+
+/**
+ * ค่าการเคลื่อนไหวทั้งหมดของปลา ณ เฟรมนั้น
+ *
+ * แยกออกมาจากการวาดโดยตั้งใจ: ตรงนี้ตอบว่า "ตอนนี้ปลาอยู่ในท่าไหน"
+ * ส่วนโค้ดวาดข้างล่างแค่รับท่านั้นไปขึ้นรูป ไม่ต้องรู้เรื่องคลื่นเลยสักบรรทัด
+ * เวลาจะจูนความรู้สึกของการว่าย จะได้แก้ที่เดียวจบ ไม่ต้องไล่แก้ทุกจุดที่วาด
+ */
+function fishPose(t) {
+  const w = t * 0.115;                            // จังหวะว่ายหลัก
+  const wave = (lag, amp) => Math.sin(w - lag) * amp;
+  return {
+    // ลำตัว: หัวแทบไม่ขยับ กลางตัวขยับปานกลาง โคนหางขยับมากสุด
+    head: wave(0, 0.022),
+    mid: wave(0.6, 0.07),
+    root: wave(1.05, 0.15),
+    // หางแต่ละชั้น ใช้ความถี่เดียวกับลำตัวแต่ตามหลังไปเรื่อย ๆ
+    tail: FISH_TAIL.map((L) => wave(L.lag, L.amp)),
+    // ครีบมีจังหวะของตัวเอง จงใจให้หารกันไม่ลงตัวกับจังหวะลำตัว
+    // จะได้ไม่มีเฟรมไหนที่ทุกส่วนกลับมาขยับพร้อมกันเป๊ะ ๆ ซึ่งตาจับได้ทันทีว่าเป็นลูป
+    dorsal: Math.sin(w * 0.61 - 0.4) * 0.085,
+    anal: Math.sin(w * 0.73 - 0.9) * 0.13,
+    pelvic: Math.sin(w * 0.87 - 1.3) * 0.16,
+    pector: Math.sin(w * 1.31) * 0.4,             // ครีบข้างพัดถี่สุด เหมือนพยุงตัวอยู่
+    // ลอยขึ้นลงกับเอียงตัว — ทั้งคู่ต้องเบามาก เพราะแมวนั่งอยู่บนหลังแต่ไม่ได้ขยับตาม
+    // (เกมวางแมวไว้ที่ fishY - BONUS.carryUp ตายตัว) แรงกว่านี้แมวจะลอยหลุดจากหลังปลา
+    bob: Math.sin(t * 0.05) * 0.05,
+    lean: Math.sin(w * 0.47) * 0.03,
+  };
+}
+
+/**
+ * หางหนึ่งชั้น: พัดปลายมนที่ขอบท้ายเว้าเข้าตรงกลาง
+ * curl = ค่าคลื่นของชั้นนั้น ยิ่งมากปลายยิ่งถูกพัดไปข้างเดียวมากขึ้น
+ *
+ * ที่ปลายต้องมนเพราะเคยลองแบบปลายแหลม แล้วมันอ่านเป็นขนนกหรือฟาง ไม่ใช่ผ้า
+ */
+function tailLayer(ctx, L, S, curl) {
+  const c = curl * L * 0.5;       // ปลายผืนถูกพัดไปเท่าไหร่ โคนแทบไม่ขยับตาม
+  ctx.beginPath();
+  ctx.moveTo(0, -S * 0.62);
+  // ขอบบน ป่องออกกลางผืนแล้วเรียวเข้าหาปลาย
+  ctx.bezierCurveTo(-L * 0.34, -S * 1.02 + c * 0.3, -L * 0.72, -S * 0.98 + c * 0.75, -L, -S * 0.4 + c);
+  ctx.quadraticCurveTo(-L * 1.09, c * 1.06, -L * 0.93, S * 0.48 + c);   // ปลายมน
+  ctx.bezierCurveTo(-L * 0.64, S * 0.92 + c * 0.75, -L * 0.28, S * 0.88 + c * 0.3, 0, S * 0.62);
+  ctx.closePath();
+}
+
+/** หัวใจหนึ่งดวง ใช้เป็นประกายเล็ก ๆ รอบตัวปลา */
 function heartShape(ctx, x, y, s) {
   ctx.beginPath();
   ctx.moveTo(x, y + s * 0.9);
@@ -2006,128 +2088,317 @@ function heartShape(ctx, x, y, s) {
 }
 
 /**
- * ปลาทองตัวใหญ่ วาดรอบจุด (x,y) = กลางลำตัว
+ * ปลาน้อยแฟนตาซี วาดรอบจุด (x,y) = กลางลำตัว
  * r = ครึ่งความยาวลำตัว
  * dir = ทิศที่หันหน้า 1 คือขวา -1 คือซ้าย ส่งค่าทศนิยมได้ด้วย
  *       ค่าระหว่าง -1 ถึง 1 จะเห็นเป็นปลากำลังหมุนตัวกลับ
  */
 export function drawBigFish(ctx, x, y, r, dir, t) {
-  const wag = Math.sin(t * 0.1);
+  const a = fishPose(t);
   // กันไม่ให้ scale เป็น 0 พอดี ซึ่งจะทำให้ path ทั้งก้อนยุบหายไปเฉย ๆ
   const face = Math.abs(dir) < 0.08 ? 0.08 * (dir < 0 ? -1 : 1) : dir;
+  const cy = y + a.bob * r;
+
+  // ── แสงนวลรอบตัว ──
+  // วาดนอกกรอบที่พลิกซ้ายขวา เพราะมันสมมาตรอยู่แล้วและไม่ควรถูกบีบตอนปลาหมุนตัว
+  const glow = ctx.createRadialGradient(x, cy, r * 0.25, x, cy, r * 2.1);
+  glow.addColorStop(0, 'rgba(255,197,116,.2)');
+  glow.addColorStop(0.55, 'rgba(255,170,96,.08)');
+  glow.addColorStop(1, 'rgba(255,170,96,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, cy, r * 2.1, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.save();
-  ctx.translate(x, y + Math.sin(t * 0.05) * r * 0.05);
+  ctx.translate(x, cy);
   ctx.scale(face, 1);
+  ctx.rotate(a.lean);
   ctx.lineJoin = 'round';
 
-  // ── หางพัด สะบัดตามจังหวะว่าย ──
+  // ═══ หาง ═══════════════════════════════════════════════════
+  // วางที่โคนหางซึ่งขยับตามคลื่นลำตัว หางจึงไม่ได้ "ติดอยู่กับที่แล้วหมุนเอง"
+  // แต่ถูกลำตัวเหวี่ยงไปด้วย ซึ่งคือความต่างระหว่างหางที่มีชีวิตกับพัดที่ถูกโยก
   ctx.save();
-  ctx.translate(-r * 0.76, 0);
-  ctx.rotate(wag * 0.3);
-  ctx.fillStyle = FISH_FIN;
-  for (const s of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-r * 0.45, s * r * 0.3, -r * 1.02, s * r * 0.8);
-    ctx.quadraticCurveTo(-r * 0.66, s * r * 0.16, 0, 0);
+  ctx.translate(-r * 0.82, a.root * r);
+  ctx.rotate(a.root * 0.55);
+
+  // ไล่จางไปทางปลาย = ผ้าบางที่แสงลอดผ่าน
+  // แต่จางได้ถึงแค่ราว .6 เท่านั้น เพราะฉากหลังของเกมเป็นม่วงเข้ม
+  // สีอุ่นบาง ๆ ทับม่วงเข้มไม่ได้ "โปร่งแสง" แต่ได้สีน้ำตาลหม่น เคยจางถึง .13 แล้วหางออกมาเป็นสีฟาง
+  const veil = ctx.createLinearGradient(0, 0, -r * 1.7, 0);
+  veil.addColorStop(0, 'rgba(255,146,44,1)');
+  veil.addColorStop(0.55, 'rgba(255,170,80,1)');
+  veil.addColorStop(1, 'rgba(255,193,118,.93)');
+
+  // หลังไปหน้า ชั้นหน้าสุดจึงทับชั้นหลังได้ = อ่านเป็นความหนาของผ้าหลายผืน
+  for (let i = 0; i < FISH_TAIL.length; i++) {
+    const L = FISH_TAIL[i];
+    ctx.save();
+    ctx.rotate(L.tilt + a.tail[i] * 0.55);
+    ctx.globalAlpha = L.alpha;
+    tailLayer(ctx, r * L.len, r * L.spr, a.tail[i]);
+    ctx.fillStyle = veil;
     ctx.fill();
+    // ขอบต้องจาง ๆ พอให้แยกชั้นออกจากกันเท่านั้น เข้มกว่านี้ทุกชั้นจะเห็นเป็นหยัก
+    // แล้วหางทั้งก้อนอ่านเป็นเปลือกหอย ไม่ใช่ผ้าซ้อนกัน
+    ctx.strokeStyle = 'rgba(255,240,212,.34)';
+    ctx.lineWidth = r * 0.024;
+    ctx.stroke();
+
+    // ก้านครีบ แผ่จากโคนเดียวกัน ทำให้แผ่นสีอ่านเป็นครีบจริงไม่ใช่คราบสี
+    // โค้งตามคลื่นของชั้นตัวเองด้วย ไม่งั้นก้านจะแข็งค้างอยู่ขณะที่ผ้ารอบ ๆ พลิ้ว
+    // ขีดแค่สองชั้นหน้า ชั้นหลังถูกบังเกือบหมดอยู่แล้ว ขีดครบสี่ชั้นมีแต่จะรก
+    ctx.strokeStyle = FISH_RAY;
+    ctx.lineWidth = r * 0.024;
+    for (const f of L.rays ? [-0.5, 0, 0.5] : []) {
+      const c = a.tail[i] * L.len * r * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.04, r * L.spr * f * 0.6);
+      ctx.quadraticCurveTo(-r * L.len * 0.5, r * L.spr * f * 1.05 + c * 0.45,
+                           -r * L.len * 0.9, r * L.spr * f * 0.55 + c * 0.95);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
-  ctx.strokeStyle = FISH_FIN_EDGE;
-  ctx.lineWidth = r * 0.035;
-  for (const s of [-1, 1]) {
+  ctx.restore();
+
+  // ═══ ครีบที่อยู่หลังลำตัว ═══════════════════════════════════
+  // ── ครีบหลัง กระพือช้าที่สุดในบรรดาครีบทั้งหมด ──
+  // ยอดอยู่ที่ราว -r เท่านั้น สูงกว่านี้จะไปโผล่ทะลุตัวแมวที่นั่งอยู่บนหลัง
+  ctx.save();
+  ctx.rotate(a.dorsal);
+  const dorsalPath = () => {
     ctx.beginPath();
-    ctx.moveTo(-r * 0.08, 0);
-    ctx.quadraticCurveTo(-r * 0.55, s * r * 0.26, -r * 0.92, s * r * 0.68);
+    ctx.moveTo(r * 0.44, -r * 0.32);
+    ctx.bezierCurveTo(r * 0.18, -r * 0.94, -r * 0.16, -r * 1.02, -r * 0.54, -r * 0.66);
+    ctx.bezierCurveTo(-r * 0.36, -r * 0.5, -r * 0.02, -r * 0.4, r * 0.44, -r * 0.32);
+  };
+  dorsalPath();
+  ctx.fillStyle = FISH_FIN;
+  ctx.fill();
+  // ตัดด้วยรูปครีบก่อนขีดก้าน ไม่งั้นก้านจะทะลุออกไปเป็นเส้นลอยเหนือหัว
+  ctx.clip();
+  ctx.strokeStyle = FISH_RAY;
+  ctx.lineWidth = r * 0.026;
+  for (const f of [0.25, 0.5, 0.75]) {
+    ctx.beginPath();
+    ctx.moveTo(r * (0.4 - f * 0.8), -r * 0.36);
+    ctx.quadraticCurveTo(r * (0.28 - f * 0.7), -r * 0.72, r * (0.16 - f * 0.6), -r * 1.0);
     ctx.stroke();
   }
   ctx.restore();
 
-  // ── ครีบหลัง ──
-  ctx.fillStyle = FISH_FIN;
-  ctx.beginPath();
-  ctx.moveTo(-r * 0.3, -r * 0.5);
-  ctx.quadraticCurveTo(-r * 0.05, -r * 1.02, r * 0.32, -r * 0.52);
-  ctx.closePath();
-  ctx.fill();
-
-  // ── ครีบท้อง โบกช้ากว่าหางนิดหน่อย ──
+  // ── ครีบก้น พริ้วเบา ๆ ตามหลังหาง กันไม่ให้ท้ายลำตัวตัดจบห้วน ๆ ──
   ctx.save();
-  ctx.rotate(wag * 0.18);
+  ctx.rotate(a.anal);
   ctx.fillStyle = FISH_FIN;
   ctx.beginPath();
-  ctx.ellipse(r * 0.06, r * 0.52, r * 0.3, r * 0.15, 0.45, 0, Math.PI * 2);
+  ctx.moveTo(-r * 0.08, r * 0.44);
+  ctx.bezierCurveTo(-r * 0.32, r * 0.94, -r * 0.72, r * 1.02, -r * 0.92, r * 0.68);
+  ctx.bezierCurveTo(-r * 0.6, r * 0.68, -r * 0.3, r * 0.56, -r * 0.08, r * 0.44);
   ctx.fill();
   ctx.restore();
 
-  // ── ลำตัว ──
-  ctx.fillStyle = FISH_BODY;
+  // ── ครีบท้อง ──
+  ctx.save();
+  ctx.rotate(a.pelvic);
+  ctx.fillStyle = FISH_FIN;
   ctx.beginPath();
-  ctx.ellipse(0, 0, r, r * 0.66, 0, 0, Math.PI * 2);
+  ctx.moveTo(r * 0.24, r * 0.44);
+  ctx.quadraticCurveTo(r * 0.12, r * 0.86, -r * 0.16, r * 0.78);
+  ctx.quadraticCurveTo(-r * 0.02, r * 0.6, r * 0.24, r * 0.44);
+  ctx.fill();
+  ctx.restore();
+
+  // ═══ ลำตัว ═════════════════════════════════════════════════
+  // ไม่ใช่วงรีแล้ว แต่เป็นเส้นโค้งปิดที่จุดควบคุมขยับตามคลื่น
+  // ตัวปลาจึงบิดตัวจริง ๆ ไม่ใช่รูปทรงตายตัวที่ถูกหมุนไปมาทั้งก้อน
+  // หัวแทบนิ่ง (a.head) กลางตัวขยับบ้าง (a.mid) โคนหางขยับมากสุด (a.root)
+  const hy = a.head * r, my = a.mid * r, ry = a.root * r;
+  const gold = ctx.createLinearGradient(0, -r * 0.7, 0, r * 0.7);
+  gold.addColorStop(0, FISH_TOP);
+  gold.addColorStop(0.45, FISH_BODY);
+  gold.addColorStop(1, FISH_DEEP);
+
+  const bodyPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(r * 0.98, hy);
+    ctx.bezierCurveTo(r * 0.72, -r * 0.44, r * 0.3, -r * 0.7, -r * 0.16, -r * 0.62 + my);
+    ctx.bezierCurveTo(-r * 0.52, -r * 0.56 + my, -r * 0.78, -r * 0.34 + ry, -r * 0.86, ry);
+    ctx.bezierCurveTo(-r * 0.78, r * 0.34 + ry, -r * 0.52, r * 0.58 + my, -r * 0.16, r * 0.64 + my);
+    ctx.bezierCurveTo(r * 0.3, r * 0.72, r * 0.72, r * 0.46, r * 0.98, hy);
+    ctx.closePath();
+  };
+  bodyPath();
+  ctx.fillStyle = gold;
   ctx.fill();
 
-  // ท้องสว่าง วางเยื้องลงล่างเพื่อให้อ่านเป็นแสงจากด้านบน
-  ctx.fillStyle = FISH_BELLY;
-  ctx.beginPath();
-  ctx.ellipse(r * 0.1, r * 0.24, r * 0.7, r * 0.34, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // ทุกอย่างที่วาดบนตัวต้องอยู่ในขอบตัว ไม่งั้นเวลาลำตัวบิด เกล็ดกับท้องจะโผล่พ้นขอบ
+  ctx.save();
+  ctx.clip();
+
+  // ท้องสว่าง ไล่จางขึ้นมาจากใต้ท้อง ไม่ใช่วงรีทึบที่มีขอบคมพาดกลางตัว
+  // (เคยเป็นวงรี แล้วเส้นขอบของมันตัดลำตัวเป็นสองท่อนจนดูแข็ง ไม่ใช่ตัวนุ่ม ๆ)
+  // เติมเป็นสี่เหลี่ยมได้เลยเพราะตอนนี้ถูก clip ด้วยรูปลำตัวอยู่แล้ว
+  const bel = ctx.createLinearGradient(0, r * 0.08 + my * 0.5, 0, r * 0.8 + my * 0.5);
+  bel.addColorStop(0, 'rgba(255,227,184,0)');
+  bel.addColorStop(0.55, 'rgba(255,229,190,.58)');
+  bel.addColorStop(1, 'rgba(255,238,208,.94)');
+  ctx.fillStyle = bel;
+  ctx.fillRect(-r * 1.1, -r * 1.1, r * 2.2, r * 2.2);
 
   // เกล็ดเป็นส่วนโค้งซ้อนกัน ไม่ใช่จุดกลม จะได้อ่านเป็นเกล็ดจริง
-  ctx.strokeStyle = 'rgba(210,105,30,.32)';
+  ctx.strokeStyle = 'rgba(198,92,22,.3)';
   ctx.lineWidth = r * 0.035;
   for (let i = 0; i < 3; i++) {
     ctx.beginPath();
-    ctx.arc(-r * (0.12 + i * 0.26), 0, r * 0.34, -Math.PI * 0.42, Math.PI * 0.42);
+    ctx.arc(-r * (0.1 + i * 0.26), (my + ry) * 0.35, r * 0.34, -Math.PI * 0.42, Math.PI * 0.42);
     ctx.stroke();
   }
 
-  // ครีบข้างลำตัว วาดทับตัวเพื่อให้ดูอยู่ด้านหน้า
-  ctx.save();
-  ctx.rotate(wag * 0.22);
-  ctx.fillStyle = 'rgba(255,196,132,.9)';
+  // แผ่นปิดเหงือก ส่วนโค้งชุดเดียวกับเกล็ดแต่วางหน้ากว่าและเข้มกว่า
+  ctx.strokeStyle = 'rgba(198,92,22,.34)';
+  ctx.lineWidth = r * 0.045;
   ctx.beginPath();
-  ctx.ellipse(r * 0.26, r * 0.2, r * 0.26, r * 0.13, -0.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // ── หน้า ──
-  // แก้มชมพู วาดก่อนตาให้อยู่ชั้นล่างสุด
-  ctx.fillStyle = 'rgba(255,120,150,.45)';
-  ctx.beginPath();
-  ctx.ellipse(r * 0.52, r * 0.14, r * 0.15, r * 0.09, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ตาหัวใจ — ตัวที่ทำให้อ่านออกทันทีว่าปลาดีใจ
-  ctx.fillStyle = '#FF4D6D';
-  heartShape(ctx, r * 0.44, -r * 0.16, r * 0.17);
-  ctx.fillStyle = 'rgba(255,255,255,.85)';
-  ctx.beginPath();
-  ctx.arc(r * 0.38, -r * 0.24, r * 0.045, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ยิ้มแฉ่ง ปลายปากงอนขึ้นทั้งสองข้าง
-  ctx.strokeStyle = FISH_INK;
-  ctx.lineWidth = r * 0.06;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.arc(r * 0.62, r * 0.02, r * 0.25, Math.PI * 0.12, Math.PI * 0.62);
+  ctx.arc(r * 0.3, hy, r * 0.4, -Math.PI * 0.44, Math.PI * 0.44);
   ctx.stroke();
 
-  // ── ประกายรอบตัว บอกว่านี่คือของวิเศษไม่ใช่ปลาธรรมดา ──
+  // แถบสะท้อนบนสันหลัง เลื่อนตามคลื่นด้วย แสงจึงวิ่งไปตามตัวตอนปลาบิด
+  ctx.fillStyle = 'rgba(255,255,255,.32)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.06, -r * 0.4 + my * 0.7, r * 0.36, r * 0.09, -0.14, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 
+  // ขอบรับแสง เอาเฉพาะ "สันหลัง" ไม่ใช่รอบตัว
+  // เคยตีรอบตัวแล้วมันกลายเป็นเส้นขอบขาวรอบสติกเกอร์ ไม่ใช่แสงตกกระทบจากด้านบน
   ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = FISH_LITE;
-  for (let i = 0; i < 5; i++) {
-    const a = t * 0.03 + (i / 5) * Math.PI * 2;
-    const rad = r * (1.15 + Math.sin(t * 0.06 + i) * 0.12);
-    const pulse = Math.abs(Math.sin(t * 0.07 + i * 1.6));
-    ctx.globalAlpha = 0.25 + pulse * 0.6;
-    star4(ctx, x + Math.cos(a) * rad, y + Math.sin(a) * rad * 0.62, r * (0.04 + pulse * 0.07));
+  bodyPath();
+  ctx.clip();
+  ctx.strokeStyle = FISH_FIN_EDGE;
+  ctx.lineWidth = r * 0.13;
+  ctx.beginPath();
+  ctx.moveTo(r * 0.98, hy);
+  ctx.bezierCurveTo(r * 0.72, -r * 0.44, r * 0.3, -r * 0.7, -r * 0.16, -r * 0.62 + my);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── ครีบข้าง พัดถี่ที่สุด เหมือนกำลังพยุงตัวเองให้ลอยนิ่ง ──
+  // วาดทับลำตัวเพราะอยู่ด้านหน้า
+  ctx.save();
+  ctx.translate(r * 0.28, r * 0.08);
+  ctx.rotate(a.pector * 0.45);
+  ctx.fillStyle = 'rgba(255,214,158,.95)';
+  ctx.beginPath();
+  ctx.moveTo(r * 0.1, -r * 0.03);
+  ctx.bezierCurveTo(-r * 0.08, r * 0.22, -r * 0.3, r * 0.28, -r * 0.38, r * 0.11);
+  ctx.bezierCurveTo(-r * 0.22, r * 0.06, -r * 0.04, -r * 0.02, r * 0.1, -r * 0.03);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(222,104,27,.3)';
+  ctx.lineWidth = r * 0.022;
+  for (const f of [0.35, 0.7]) {
+    ctx.beginPath();
+    ctx.moveTo(r * 0.1, -r * 0.02);
+    ctx.quadraticCurveTo(-r * 0.18, r * (0.1 + f * 0.1), -r * (0.2 + f * 0.14), r * (0.12 + f * 0.12));
+    ctx.stroke();
   }
   ctx.restore();
+
+  // ═══ หน้า ══════════════════════════════════════════════════
+  // ทั้งหน้าขยับตามคลื่นหัว ไม่งั้นตากับปากจะค้างอยู่กับที่ขณะที่หัวส่ายเบา ๆ
+  ctx.save();
+  ctx.translate(0, hy);
+
+  // แก้มชมพู วาดก่อนตาให้อยู่ชั้นล่างสุด
+  ctx.fillStyle = 'rgba(255,120,150,.42)';
+  ctx.beginPath();
+  ctx.ellipse(r * 0.26, r * 0.22, r * 0.15, r * 0.085, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ตากลมโต: ขาวรอบนอก ดำตรงกลาง แล้วปิดด้วยประกายสองจุด
+  // จุดใหญ่บนซ้ายคือแสงหลัก จุดเล็กล่างขวาคือแสงสะท้อนกลับจากพื้นน้ำ
+  // สองจุดนี้แหละที่ทำให้ตาดู "ใส" แทนที่จะเป็นวงกลมดำเฉย ๆ
+  ctx.fillStyle = '#FFFDF6';
+  ctx.beginPath();
+  ctx.arc(r * 0.46, -r * 0.14, r * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4B2A16';
+  ctx.beginPath();
+  ctx.arc(r * 0.48, -r * 0.13, r * 0.135, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.95)';
+  ctx.beginPath();
+  ctx.arc(r * 0.42, -r * 0.2, r * 0.055, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.beginPath();
+  ctx.arc(r * 0.54, -r * 0.06, r * 0.028, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ปากยิ้ม โค้งหงายขึ้น ปลายสองข้างงอนขึ้นกว่ากลางปากนิดหน่อย
+  //
+  // ── ระวังทิศของส่วนโค้ง ──
+  // บนผืนผ้าใบแกน y ชี้ลง มุมช่วง π ถึง 2π จึงเป็นครึ่ง "บน" ของวงกลม
+  // ซึ่งวาดออกมาได้ปากคว่ำ ไม่ใช่ปากยิ้ม (เคยพลาดตรงนี้มาแล้ว)
+  // เขียนเป็นเส้นโค้งสองจุดแทน arc ไปเลย จะได้เห็นจากพิกัดตรง ๆ ว่าปากโค้งทางไหน
+  // และคุมให้ปลายปากงอนขึ้นได้ ซึ่ง arc ทำไม่ได้เพราะปลายมันอยู่ระดับเดียวกันเสมอ
+  ctx.strokeStyle = FISH_INK;
+  ctx.lineWidth = r * 0.045;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(r * 0.66, r * 0.03);
+  ctx.quadraticCurveTo(r * 0.79, r * 0.23, r * 0.91, r * 0.01);
+  ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+
+  // ═══ ฟองอากาศกับประกาย ═════════════════════════════════════
+  // ทั้งสองอย่างคำนวณจาก t ล้วน ๆ ไม่มีการเก็บสถานะข้ามเฟรม
+  // จำเป็นตรงนี้ เพราะ drawBigFish ถูกเรียกเฉพาะตอนอยู่ในโบนัส แล้วหยุดไปเป็นนาที
+  // ถ้าเก็บสถานะไว้ พอกลับเข้าโบนัสรอบหน้าฟองจะค้างอยู่ที่เดิมของเมื่อกี้
+  const side = dir < 0 ? 1 : -1;   // ฟองออกทางท้ายเสมอ ไม่ว่าปลาหันทางไหน
+  for (let i = 0; i < BUBBLES; i++) {
+    const ph = ((t * 0.011 + i / BUBBLES) % 1 + 1) % 1;   // 0 = เพิ่งเกิด, 1 = จางหมด
+    const spread = ((i * 37) % 11) / 11;
+    const bx = x + side * r * (0.95 + spread * 0.85);
+    const by = cy + r * 0.45 - ph * r * 2.3;
+    const rad = r * (0.03 + ((i * 53) % 7) / 7 * 0.045);
+    ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.45;
+    ctx.strokeStyle = '#FFF3DC';
+    ctx.lineWidth = r * 0.016;
+    ctx.beginPath();
+    ctx.arc(bx + Math.sin(t * 0.06 + i) * r * 0.05, by, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.beginPath();
+    ctx.arc(bx - rad * 0.3, by - rad * 0.32, rad * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // ประกาย: ไม่ได้ติดค้างตลอด แต่โผล่มาแล้วหายไปเป็นจังหวะ
+  // ใช้ครึ่งบนของ sine เป็นตัวคุมทั้งขนาดและความทึบ จึงได้ 0 → 1 → 0 แล้วเว้นช่วง
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 5; i++) {
+    const k = Math.sin(t * 0.045 + i * 1.9);
+    if (k <= 0) continue;                     // ครึ่งรอบที่เหลือคือช่วงที่ดวงนี้ยังไม่โผล่
+    const ang = t * 0.02 + (i / 5) * Math.PI * 2;
+    const rad = r * (1.2 + Math.sin(t * 0.05 + i) * 0.14);
+    ctx.globalAlpha = k * 0.75;
+    ctx.fillStyle = FISH_LITE;
+    star4(ctx, x + Math.cos(ang) * rad, cy + Math.sin(ang) * rad * 0.6, r * (0.03 + k * 0.075));
+  }
+  // หัวใจดวงเล็กลอยขึ้นเหนือหัวเป็นระยะ — ที่เหลือของตัวเป็นทองล้วน
+  // จุดสีชมพูจุดเดียวตรงนี้เลยเป็นตัวบอกว่าน้องกำลังดีใจ โดยไม่ต้องแตะหน้าน้องเลย
+  const hk = ((t * 0.008) % 1 + 1) % 1;
+  ctx.globalAlpha = Math.sin(hk * Math.PI) * 0.55;
+  ctx.fillStyle = '#FF7BA0';
+  heartShape(ctx, x + r * 0.35 * -side, cy - r * 0.9 - hk * r * 0.8, r * 0.11);
+  ctx.restore();
 }
+
 
 // ── ก้อนเมฆในโหมดโบนัส ───────────────────────────────────────
 // สามชั้นเลื่อนคนละความเร็ว ให้รู้สึกว่าอยู่สูงจริง ไม่ใช่ฉากแบน
@@ -2207,7 +2478,6 @@ function floatY(item, t, amp = 5, rate = 0.05) {
     : item.y;
 }
 
-/** ประกายสี่แฉก — ของกลาง ใช้ทั้งของกิน เม็ดที่โปรยลงมา และออร่าชุด */
 export function star4(ctx, x, y, r) {
   ctx.beginPath();
   ctx.moveTo(x, y - r);
@@ -2386,7 +2656,16 @@ export function drawShieldRing(ctx, player, tick, scale = 1) {
  * @param scale ตัวคูณขนาดตัว (อาหารกระป๋องทำให้เป็น 1.75)
  * @param gait  ตัวคูณจังหวะขา — ต่ำกว่า 1 = ก้าวช้าลงโดยความเร็วในเกมไม่เปลี่ยน
  */
-export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0, mood = '', scale = 1, gait = 1) {
+/**
+ * fx = สภาพของตัวละครที่ "ไม่ใช่ท่าทาง" แต่มีผลกับหน้าตาและการเคลื่อนไหว
+ *   tired  0..1  พลังใกล้หมด — หูลู่ หางตก ตาปรือ หายใจแรง
+ *   hurt   0..1  เพิ่งโดนชน — สะดุ้ง ตัวสะบัด ตาเบิก (เกมส่ง hurtFlash มาตรง ๆ)
+ * ส่งเป็นอ็อบเจกต์ไม่ใช่พารามิเตอร์เรียงต่อท้าย เพราะฟังก์ชันนี้มีพารามิเตอร์
+ * เรียงกันเก้าตัวอยู่แล้ว เติมตัวที่สิบสิบเอ็ดเข้าไปจะไม่มีใครอ่านลำดับออกอีกเลย
+ */
+export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0, mood = '', scale = 1, gait = 1, fx = {}) {
+  const tired = isDead ? 0 : Math.max(0, Math.min(1, fx.tired || 0));
+  const hurt = isDead ? 0 : Math.max(0, Math.min(1, fx.hurt || 0));
   const b = player.box;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
@@ -2418,24 +2697,43 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
     const base = player.onGround
       ? Math.sin(ph * 2) * 0.04
       : Math.max(-0.3, Math.min(0.3, player.vy * 0.016));
-    ctx.rotate(base + (dance ? Math.sin(dance * 0.24) * 0.28 : 0));
+    // สะบัดตัวตอนโดนชน — ความถี่สูงคูณกับแอมป์ที่ยุบลงเอง จึงสั่นถี่แล้วนิ่งเร็ว
+    // ไม่ต้องมีตัวจับเวลาแยก เพราะ hurt ที่เกมส่งมาก็ไล่จาก 1 ลง 0 อยู่แล้ว
+    const shake = hurt > 0 ? Math.sin(hurt * 34) * hurt * 0.26 : 0;
+    ctx.rotate(base + shake + (dance ? Math.sin(dance * 0.24) * 0.28 : 0));
   }
+  if (hurt > 0) ctx.translate(-hurt * 5, 0);   // ถูกผลักถอยหลังนิดหน่อย
 
   // ── ขยายรอบ "เท้า" ไม่ใช่รอบกลางตัว ──
   // ถ้าขยายรอบจุดกึ่งกลาง ครึ่งล่างจะจมลงไปใต้พื้นเท่ากับที่ครึ่งบนโผล่ขึ้น
   // เห็นเป็นแมวยืนจมดิน ต้องตรึงเท้าไว้แล้วให้ตัวโตขึ้นไปทางหัวอย่างเดียว
-  if (scale !== 1) {
+  //
+  // ยืด/แบน (squash & stretch) ใช้แกนเดียวกันด้วยเหตุผลเดียวกันเป๊ะ
+  // แบนแล้วต้องกว้างขึ้นพร้อมกัน ไม่งั้นอ่านเป็น "ตัวหดเล็กลง" ไม่ใช่ "ถูกอัด"
+  // และตอนเหนื่อยให้บวกจังหวะหายใจแรง ๆ ทับลงไปบนค่าเดียวกันนี้เลย
+  const puff = tired > 0 ? Math.sin(player.runPhase * 1.7) * tired * 0.05 : 0;
+  const sq = isDead ? 0 : player.squash || 0;
+  if (scale !== 1 || sq !== 0 || puff !== 0) {
     const feet = b.h / 2;
     ctx.translate(0, feet);
-    ctx.scale(scale, scale);
+    ctx.scale(scale * (1 + sq * 0.26 + puff), scale * (1 - sq * 0.3 + puff));
     ctx.translate(0, -feet);
   }
 
   const swing = Math.sin(ph * 2) * (player.onGround ? 1 : 0.25);
   ctx.lineCap = 'round';
 
-  if (player.sliding) drawCatSlide(ctx, s, { isDead });
-  else drawCatStand(ctx, s, { swing, wag: Math.sin(ph * 2 + 0.9), isDead, mood });
+  // อารมณ์ที่เกมสั่งมาโดยตรงต้องชนะเสมอ (เช่นสะใจตอนร่างยักษ์)
+  // เจ็บชนะเหนื่อย เพราะเจ็บเป็นเหตุการณ์ชั่วขณะ ส่วนเหนื่อยเป็นสภาพที่ค้างอยู่นาน
+  const look = mood || (hurt > 0.2 ? 'hurt' : tired > 0.5 ? 'tired' : '');
+  // หูลู่ตอนเหนื่อย — ตอนวิ่งปกติหูตั้งไว้ เพราะหูลู่ตลอดเวลาจะกลายเป็นบุคลิกถาวร
+  // แทนที่จะเป็นสัญญาณว่ากำลังแย่ ซึ่งเป็นหน้าที่เดียวที่เราต้องการจากมัน
+  const earLay = tired;
+  // หางตกลงและแกว่งน้อยลงตอนเหนื่อย — ค่าบวกคือปลายหางต่ำ (ดู drawTail)
+  const wag = player.tailLag * (1 - tired * 0.55) + tired * 0.85;
+
+  if (player.sliding) drawCatSlide(ctx, s, { isDead, mood: look });
+  else drawCatStand(ctx, s, { swing, wag, isDead, mood: look, tired, earLay });
 
   ctx.restore();
 }
@@ -2503,19 +2801,22 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
   ctx.restore();
 }
 
-/** เฉพาะหัว ใช้เป็นไอคอนในเมนู ซึ่งเล็กเกินกว่าจะเห็นรายละเอียดตัวเต็ม */
-export function drawCatFace(ctx, x, y, scale, s) {
+/**
+ * เฉพาะหัว ใช้เป็นไอคอนในเมนู ซึ่งเล็กเกินกว่าจะเห็นรายละเอียดตัวเต็ม
+ * opts ส่งต่อให้ drawCatHead ตรง ๆ — ที่ใช้จริงตรงนี้คือ noPhoto
+ */
+export function drawCatFace(ctx, x, y, scale, s, opts = {}) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
   ctx.lineCap = 'round';
-  drawCatHead(ctx, 0, 0, s, {});
+  drawCatHead(ctx, 0, 0, s, opts);
   ctx.restore();
 }
 
 function drawCatStand(ctx, s, {
   swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
-  sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '',
+  sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '', tired = 0, earLay = 0,
 } = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
@@ -2545,6 +2846,7 @@ function drawCatStand(ctx, s, {
       ctx.beginPath();
       ctx.ellipse(sx * (10 + sit), cy + 8 * sit, 7.5 * sit, 7 * sit, 0, 0, Math.PI * 2);
       ctx.fill();
+      catEdge(ctx, s); ctx.stroke();
     }
   }
 
@@ -2580,6 +2882,7 @@ function drawCatStand(ctx, s, {
   // ── ลำตัว ───────────────────────────────────
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.ellipse(0, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  catEdge(ctx, s); ctx.stroke();
   ctx.strokeStyle = 'rgba(255,252,240,.26)';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(0, cy, rx - 1, ry - 1, 0, -Math.PI * 0.52, Math.PI * 0.08); ctx.stroke();
@@ -2635,7 +2938,8 @@ function drawCatStand(ctx, s, {
     ctx.restore();
   }
 
-  drawCatHead(ctx, hx, hy, s, { isDead, blink, mouthOpen, tilt, mood });
+  // เหนื่อยแล้วหัวห้อยลงนิดหน่อย ทั้งตัวจึงดูหนักขึ้นโดยไม่ต้องแก้ท่าขา
+  drawCatHead(ctx, hx, hy + tired * 1.6, s, { isDead, blink, mouthOpen, tilt, mood, earLay });
 
   // ── ยกอุ้งเท้าขึ้นเลีย ───────────────────────
   // ต้องวาด "หลังหัว" ไม่ใช่ก่อน เพราะปลายเท้าไปจบตรงปาก ซึ่งอยู่ในวงหัวพอดี
@@ -2660,17 +2964,30 @@ function drawCatStand(ctx, s, {
   }
 }
 
-function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
+function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } = {}) {
   s.outfit?.back?.(ctx, s, 'slide');
 
   // หางลากยาวไปข้างหลัง
-  ctx.strokeStyle = s.cat;
-  ctx.lineWidth = 6.5;
+  // หางเป็นเส้น ไม่ใช่รูปปิด จะตีขอบตรง ๆ ไม่ได้ ต้องวาดเส้นเข้มที่หนากว่ารองไว้
+  // ข้างใต้แล้ววาดเส้นสีขนทับ ส่วนที่โผล่ออกมารอบ ๆ ก็คือขอบพอดี
+  ctx.lineWidth = 6.5 + CAT_EDGE * 2;
+  ctx.strokeStyle = s.line || s.dark;
   ctx.beginPath();
   ctx.moveTo(-15, 2);
   ctx.quadraticCurveTo(-27, 1, -31, -7);
   ctx.stroke();
-  ctx.fillStyle = s.cream;
+  if (s.points) {
+    const g = ctx.createLinearGradient(-15, 2, -31, -7);
+    g.addColorStop(0, s.cat);
+    g.addColorStop(0.34, s.dark);
+    g.addColorStop(1, s.dark);
+    ctx.strokeStyle = g;
+  } else {
+    ctx.strokeStyle = s.cat;
+  }
+  ctx.lineWidth = 6.5;
+  ctx.stroke();
+  ctx.fillStyle = s.points ? s.dark : s.cream;
   ctx.beginPath(); ctx.arc(-31, -7, 3.4, 0, Math.PI * 2); ctx.fill();
 
   // ขาหลังเหยียดไปหลัง
@@ -2682,6 +2999,7 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
   // ลำตัวแบนราบ
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.ellipse(-2, 2, 19, 10, -0.08, 0, Math.PI * 2); ctx.fill();
+  catEdge(ctx, s); ctx.stroke();
   ctx.fillStyle = s.cream;
   ctx.beginPath(); ctx.ellipse(0, 6, 12, 5, -0.05, 0, Math.PI * 2); ctx.fill();
 
@@ -2698,14 +3016,16 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false } = {}) {
 
   s.outfit?.body?.(ctx, s, 'slide');
 
-  drawCatHead(ctx, 12, -4, s, { isDead, scale: 0.82, earsBack: true, mouthOpen });
+  drawCatHead(ctx, 12, -4, s, { isDead, scale: 0.82, earsBack: true, mouthOpen, mood });
 }
 
 /**
  * หัวแมวพร้อมหู หน้า หนวด — วาดรอบจุด (hx,hy) ที่ส่งเข้ามา
  * earsBack: ตอนหมอบต้องลู่หูไปหลัง ไม่งั้นปลายหูโผล่ทะลุคานตอนลอด
  */
-function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '' } = {}) {
+// noPhoto = ไม่ต้องเอารูปที่ผู้เล่นอัปโหลดมาทับหน้า
+// มีไว้ให้ไอคอนที่ต้องเป็น "หน้าน้องมาตรฐาน" ตลอด ไม่ใช่หน้าที่ผู้เล่นตั้งไว้
+function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '', noPhoto = false, earLay = 0 } = {}) {
   ctx.save();
   ctx.translate(hx, hy);
   // เอียงหัวรอบ "โคนคอ" ไม่ใช่กลางหัว ไม่งั้นหัวจะลอยหลุดจากตัวเวลาเอียงเยอะ ๆ
@@ -2717,20 +3037,32 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   ctx.scale(scale, scale);
 
   // [โคนซ้าย, โคนขวา, ปลาย] ของหูสองข้าง
-  const ears = earsBack
+  const earsUp = earsBack
     ? [[[-11, -4], [-5, -9], [-23, -9]], [[3, -8], [9, -10], [-8, -16]]]
     : [[[-13, -8], [-3, -8], [-14, -20]], [[3, -8], [13, -8], [14, -20]]];
 
+  // ── หูลู่ ──
+  // ขยับเฉพาะ "ปลายหู" ไม่แตะโคน หูจึงพับลงจากโคนเหมือนหูจริง
+  // ถ้าเลื่อนทั้งใบ มันจะกลายเป็นหูหลุดออกจากหัวไปวางที่อื่น
+  // แมวตัวนี้เป็นมุมมองหน้าตรง หูจึงต้องแบะออก "คนละข้าง" ไม่ใช่พับไปทางเดียวกัน
+  const ears = earLay <= 0.01 ? earsUp : earsUp.map(([a, b, tip], i) => {
+    const out = i === 0 ? -1 : 1;
+    return [a, b, [tip[0] + out * earLay * 6.5, tip[1] + earLay * 10]];
+  });
+
   // หูนอก วาดก่อนหัวเพื่อให้โคนหูถูกกลบ
-  ctx.fillStyle = s.cat;
+  // แมวแต้มใช้สีปลายขน หูคือแต้มที่เห็นชัดที่สุดเวลามองจากไกล
+  ctx.fillStyle = s.points ? s.dark : s.cat;
   for (const [a, b, tip] of ears) {
     ctx.beginPath();
     ctx.moveTo(a[0], a[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(b[0], b[1]);
     ctx.closePath(); ctx.fill();
+    catEdge(ctx, s); ctx.stroke();
   }
 
   // หูชั้นใน ย่อเข้าหาจุดกึ่งกลางของหูแต่ละข้าง
-  ctx.fillStyle = s.pink;
+  // บนหูสีเข้มของแมวแต้ม ชมพูสดจะกระโดดออกมาเป็นจุดแหลม ต้องหรี่ลงให้จมไปกับหู
+  ctx.fillStyle = s.points ? fade(s.pink, 0.5) : s.pink;
   for (const [a, b, tip] of ears) {
     const mx = (a[0] + b[0] + tip[0]) / 3;
     const my = (a[1] + b[1] + tip[1]) / 3;
@@ -2744,9 +3076,10 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // หัว
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+  catEdge(ctx, s); ctx.stroke();
 
   // ขอบแสงด้านบนขวา รับกับแสงเรืองที่ขอบฟ้าซึ่งอยู่ทางขวาของจอ
-  // ทำให้หัวหลุดออกจากพื้นหลังโดยไม่ต้องตีเส้นขอบทึบซึ่งจะดูเป็นการ์ตูนแบน
+  // ทำหน้าที่คู่กับเส้นขอบเข้ม: เส้นเข้มไว้สู้ฉากสว่าง เส้นสว่างไว้สู้ฉากมืด
   ctx.strokeStyle = 'rgba(255,252,240,.32)';
   ctx.lineWidth = 2.2;
   ctx.beginPath(); ctx.arc(0, 0, 11.9, -Math.PI * 0.6, Math.PI * 0.06); ctx.stroke();
@@ -2763,19 +3096,50 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   ctx.fillStyle = s.cream;
   ctx.beginPath(); ctx.ellipse(1, 5, 7.5, 5, 0, 0, Math.PI * 2); ctx.fill();
 
-  // แก้มชมพู วาดก่อนตาเพื่อให้อยู่ชั้นล่างสุดของใบหน้า
-  if (s.blush) {
+  // ── หน้ากากของแมวแต้ม ──
+  // แต้มบนหน้าแมวจริงไม่มีขอบ มันฟุ้งจากรอบจมูกจางออกไปเรื่อย ๆ
+  // จึงใช้ไล่สีแบบวงกลมแทนการวาดรูปทรงทึบ ซึ่งจะได้แผ่นสีแปะหน้าแทนที่จะเป็นสีขน
+  //
+  // ต้องวาดก่อนตา ไม่งั้นหน้ากากจะคลุมทับตาจนสีฟ้าหม่นลง
+  // ซึ่งตาสีฟ้าคือจุดเด่นอีกอย่างของสายพันธุ์นี้ที่ห้ามเสีย
+  // และต้อง clip ด้วยวงหัว ไม่งั้นขอบฟุ้งจะล้นออกไปนอกหัวเป็นรัศมีสีน้ำตาล
+  if (s.points) {
     ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = s.pink;
-    ctx.beginPath(); ctx.ellipse(-9, 3, 3.6, 2.4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(11, 3, 3.6, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.clip();
+    const m = ctx.createRadialGradient(1, 4.5, 1.5, 1, 4.5, 11.5);
+    m.addColorStop(0, fade(s.dark, 0.82));
+    m.addColorStop(0.45, fade(s.dark, 0.5));
+    m.addColorStop(1, fade(s.dark, 0));
+    ctx.fillStyle = m;
+    ctx.beginPath(); ctx.arc(1, 4.5, 11.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
-  // ตา
+  // แก้มชมพู วาดก่อนตาเพื่อให้อยู่ชั้นล่างสุดของใบหน้า
+  //
+  // ตอนตาเป็นประกายให้ขึ้นทุกสกิน ไม่สนว่าสกินนั้นตั้ง blush ไว้ไหม และเข้มกว่าปกติ
+  // เพราะแก้มแดงคือครึ่งหนึ่งของอารมณ์ "ดีใจจนหน้าแดง" ถ้ามีแต่ตาประกายเฉย ๆ
+  // ส้มน้อยกับปลาสลิดจะได้หน้าที่จืดกว่าขาวมุกทั้งที่เป็นจังหวะเดียวกันของเกม
+  const glee = mood === 'starry';
+  if (s.blush || glee) {
+    ctx.save();
+    ctx.globalAlpha = glee ? 0.72 : 0.5;
+    ctx.fillStyle = s.pink;
+    const bw = glee ? 4.3 : 3.6;
+    ctx.beginPath(); ctx.ellipse(-9, 3, bw, 2.4 + (glee ? 0.5 : 0), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(11, 3, bw, 2.4 + (glee ? 0.5 : 0), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ── ตา ──
+  // ใช้ช่อง eye ไม่ใช่ ink เพราะสองอย่างนี้เคยเป็นช่องเดียวกัน แล้วมันพังตรงที่
+  // "สีตา" กับ "สีเส้นปาก" ไม่ควรเป็นสีเดียวกัน วิเชียรมาศตาฟ้าเลยได้ปากสีฟ้าไปด้วย
+  // และปลาสลิดตาเขียวก็ได้ปากเขียว ซึ่งไม่มีแมวตัวไหนในโลกเป็นแบบนั้น
+  //
+  // สำคัญกว่านั้นคือตอนเปิดให้ผู้เล่นระบายสีเอง ถ้ายังรวมกันอยู่ คนที่เลือกตาสีแดง
+  // จะได้ปากสีแดงตามไปด้วยโดยไม่ได้ตั้งใจ
   if (isDead) {
-    ctx.strokeStyle = s.ink;
+    ctx.strokeStyle = s.eye;
     ctx.lineWidth = 2.2;
     for (const ex of [-5, 7]) {
       ctx.beginPath();
@@ -2785,7 +3149,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     }
   } else if (blink) {
     // ตาหลับเป็นรูปโค้งคว่ำ อ่านเป็น "หลับตายิ้ม" ไม่ใช่หลับตาเฉย ๆ
-    ctx.strokeStyle = s.ink;
+    ctx.strokeStyle = s.eye;
     ctx.lineWidth = 2;
     for (const ex of [-5, 7]) {
       ctx.beginPath(); ctx.arc(ex, 0, 3.2, Math.PI, 0, true); ctx.stroke();
@@ -2796,7 +3160,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     // สองจุดไม่เท่ากันสำคัญมาก ถ้าเท่ากันจะอ่านเป็นตากลมธรรมดาที่มีจุดขาว
     // ไม่ใช่ตาเป็นประกายแบบการ์ตูน
     const tw = performance.now() * 0.008;
-    ctx.fillStyle = s.ink;
+    ctx.fillStyle = s.eye;
     ctx.beginPath(); ctx.arc(-5, -1, 3.9, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(7, -1, 3.9, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#FFFFFF';
@@ -2815,7 +3179,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     // ── ตาหยีแบบมั่นใจ ──
     // เปลือกตากดลงเหมือน sad แต่กดตื้นกว่าและไม่มีน้ำตา
     // ตาทำหน้าที่แค่ "ลดความตื่นเต้น" ให้ดูสบาย ๆ ส่วนอารมณ์สะใจจริง ๆ อยู่ที่ปาก
-    ctx.fillStyle = s.ink;
+    ctx.fillStyle = s.eye;
     ctx.beginPath(); ctx.arc(-5, -0.5, 3.1, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(7, -0.5, 3.1, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.9)';
@@ -2824,11 +3188,59 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.fillStyle = s.cat;
     ctx.beginPath(); ctx.moveTo(-9, -4.6); ctx.lineTo(-1, -3.5); ctx.lineTo(-9, -2); ctx.fill();
     ctx.beginPath(); ctx.moveTo(11, -4.6); ctx.lineTo(3, -3.5); ctx.lineTo(11, -2); ctx.fill();
+  } else if (mood === 'starry') {
+    // ── ตาเป็นประกาย ใช้ตอนลอยอยู่บนฟ้าช่วงโบนัส ──
+    //
+    // ต่างจาก happy สามอย่าง และทั้งสามอย่างจำเป็นหมด:
+    //   1. ตาโตขึ้นอีก (4.6 จาก 3.9) — ตาโตคือสัญญาณ "ตื่นเต้น" ที่อ่านได้ไวที่สุด
+    //   2. มีดาวอยู่ "ในตา" ไม่ใช่แค่ข้างตา — อันนี้แหละที่ทำให้อ่านเป็นตาเป็นประกาย
+    //      แทนที่จะเป็นตากลมโตที่บังเอิญมีดาวลอยอยู่ข้าง ๆ
+    //   3. ไฮไลต์สามจุดไล่ขนาดแทนสองจุด — จุดที่สามทำให้ตาดูฉ่ำเหมือนมีน้ำเคลือบ
+    const tw = performance.now() * 0.008;
+    ctx.fillStyle = s.eye;
+    ctx.beginPath(); ctx.arc(-5, -1, 4.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -1, 4.6, 0, Math.PI * 2); ctx.fill();
+    for (const ex of [-5, 7]) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(ex + 1.6, -2.8, 1.95, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex - 2, 0.9, 1.05, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.7)';
+      ctx.beginPath(); ctx.arc(ex + 2.7, 1.5, 0.6, 0, Math.PI * 2); ctx.fill();
+      // ดาวในตา เต้นคนละจังหวะกับดาวข้างตา จะได้ไม่วิบพร้อมกันทั้งหน้า
+      ctx.fillStyle = '#FFF6C8';
+      star4(ctx, ex - 0.7, -0.5, 1.45 + Math.abs(Math.sin(tw * 1.35)) * 0.55);
+    }
+    // ดาวรอบตาสี่ดวง คนละเฟสกันหมด หน้าจึงวิบวับตลอดโดยไม่มีจังหวะที่ดับพร้อมกัน
+    ctx.fillStyle = '#FFF3B0';
+    for (const [ex, ey, ph] of [[-10.5, -6.5, 0], [-8.5, 5.6, 2.4], [12.5, -6.5, 1.1], [10.5, 5.6, 3.3]]) {
+      const k = 0.35 + Math.abs(Math.sin(tw + ph)) * 0.65;
+      star4(ctx, ex, ey, 2.1 * k);
+    }
+  } else if (mood === 'hurt') {
+    // ── ตาเบิก ──
+    // ตกใจอ่านจาก "ขนาด" ล้วน ๆ ตาโตกว่าปกติหนึ่งเท่าครึ่งพร้อมตาขาวรอบนอก
+    // ตาขาวสำคัญมาก ตาดำโตเฉย ๆ อ่านเป็นตาแป๋วน่ารัก ไม่ใช่ตกใจ
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(-5, -1.5, 4.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -1.5, 4.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = s.eye;
+    ctx.beginPath(); ctx.arc(-5, -1, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -1, 2.6, 0, Math.PI * 2); ctx.fill();
+  } else if (mood === 'tired') {
+    // ── ตาปรือ ──
+    // เปลือกตาบนกดลงเกินครึ่ง ลึกกว่า sad เพราะอันนี้คือ "จะหลับแล้ว" ไม่ใช่ "เสียใจ"
+    // ไม่มีน้ำตา เพราะเหนื่อยกับเศร้าต้องแยกออกจากกันให้ได้ในหน้าเดียวกัน
+    ctx.fillStyle = s.eye;
+    ctx.beginPath(); ctx.arc(-5, 0.4, 2.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, 0.4, 2.9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = s.cat;
+    ctx.beginPath(); ctx.moveTo(-9, -4.2); ctx.lineTo(-1, -1.4); ctx.lineTo(-9, 0.4); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(11, -4.2); ctx.lineTo(3, -1.4); ctx.lineTo(11, 0.4); ctx.fill();
   } else if (mood === 'sad') {
     // ── ตาเศร้า ──
     // เปลือกตาบนกดลงมาปิดตาครึ่งบน อ่านเป็น "ตาปรือ" ซึ่งคือสัญญาณเศร้าที่ชัดที่สุด
     // ในหน้าที่ไม่มีคิ้วให้ขยับ
-    ctx.fillStyle = s.ink;
+    ctx.fillStyle = s.eye;
     ctx.beginPath(); ctx.arc(-5, 0, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(7, 0, 3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.9)';
@@ -2845,7 +3257,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.ellipse(9.6, 2 + fall * 7, 1.3, 1.9, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   } else {
-    ctx.fillStyle = s.ink;
+    ctx.fillStyle = s.eye;
     ctx.beginPath(); ctx.arc(-5, -1, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(7, -1, 3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.9)';   // ประกายตา
@@ -2853,8 +3265,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.arc(8.1, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
   }
 
-  // จมูก
-  ctx.fillStyle = s.pink;
+  // จมูก — สกินที่ไม่ได้ตั้ง nose ไว้ใช้ชมพูตามเดิม
+  ctx.fillStyle = s.nose || s.pink;
   ctx.beginPath();
   ctx.moveTo(-2, 2.5); ctx.lineTo(4, 2.5); ctx.lineTo(1, 5.5);
   ctx.closePath(); ctx.fill();
@@ -2866,12 +3278,25 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.ellipse(1, 7.5, 6.8, 5.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = s.pink;
     ctx.beginPath(); ctx.ellipse(1, 10, 4.2, 2.4, 0, 0, Math.PI * 2); ctx.fill();
-  } else if (mood === 'happy') {
+  } else if (mood === 'happy' || mood === 'starry') {
     // ยิ้มกว้างอ้าปาก — โค้งเดียวยาว ๆ แทนปาก ω สองโค้ง
+    // ตอนตาเป็นประกายอ้ากว้างกว่าอีกนิด ให้เข้ากับตาที่โตขึ้น
+    const w = mood === 'starry' ? 5.9 : 5;
     ctx.fillStyle = s.ink;
-    ctx.beginPath(); ctx.ellipse(1, 7.6, 5, 4, 0, 0, Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(1, 7.6, w, 4.2, 0, 0, Math.PI); ctx.fill();
     ctx.fillStyle = s.pink;
-    ctx.beginPath(); ctx.ellipse(1, 10.2, 2.8, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(1, 10.2, w * 0.56, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (mood === 'hurt') {
+    // อ้าปากกลมเล็ก ๆ แบบ "อุ๊ย" ไม่ใช่ปากกว้างแบบร้อง จะได้ยังน่ารักอยู่
+    ctx.fillStyle = s.ink;
+    ctx.beginPath(); ctx.ellipse(1, 7.4, 2.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (mood === 'tired') {
+    // ── หอบ ──
+    // ปากเปิดค้างพร้อมลิ้นห้อย เป็นภาพของ "หายใจไม่ทัน" ที่อ่านออกทันทีในหน้าสัตว์
+    ctx.fillStyle = s.ink;
+    ctx.beginPath(); ctx.ellipse(1, 7.4, 3.4, 2.6, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = s.pink;
+    ctx.beginPath(); ctx.ellipse(1, 9.4, 2, 2.4, 0, 0, Math.PI * 2); ctx.fill();
   } else if (mood === 'smug') {
     // ── ยิ้มมุมเดียว ──
     // ปากสมมาตรอ่านเป็น "ดีใจ" ส่วนปากที่ยกขึ้นข้างเดียวอ่านเป็น "สะใจ"
@@ -2911,7 +3336,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   //
   // วางไว้ก่อนหนวดโดยตั้งใจ หนวดกับของสวมหัวจึงยังอยู่บนสุด
   // นั่นคือสิ่งที่ทำให้ยังอ่านออกว่าเป็น "น้องแมว" ไม่ใช่รูปคนกลม ๆ ลอยมา
-  const face = getFace();
+  const face = noPhoto ? null : getFace();
   if (face) {
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.clip();
@@ -2938,18 +3363,69 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   ctx.restore();
 }
 
+/**
+ * แปลงสีทึบเป็นสีโปร่ง ใช้ทำขอบฟุ้งของหน้ากากแมวแต้ม
+ * จำผลไว้เพราะถูกเรียกทุกเฟรม และชุดสีที่ใช้จริงมีอยู่ไม่กี่ชุด
+ */
+const fadeCache = new Map();
+function fade(hex, a) {
+  const key = hex + a;
+  let v = fadeCache.get(key);
+  if (!v) {
+    const n = parseInt(hex.slice(1), 16);
+    v = `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    fadeCache.set(key, v);
+  }
+  return v;
+}
+
+// ── เส้นขอบตัวละคร ──
+// มีไว้เพราะวัดแล้วพบว่าไม่มีสีขนสีไหนอ่านออกได้ครบทุกฉาก
+// ฉากในเกมไล่ตั้งแต่เกือบดำถึงเกือบขาว สีเรียบสีเดียวสู้สองปลายพร้อมกันไม่ได้เลย
+// (รายละเอียดการวัดอยู่หัวไฟล์ skins.js)
+//
+// ── ความหนา ──
+// เริ่มที่ 1.4 แล้วลดลงมา เพราะหนาขนาดนั้นเส้นเด่นเกินจนตัดตัวละครออกเป็นชิ้น ๆ
+// หน้าที่ของเส้นนี้คือ "บอกขอบว่าตัวจบตรงไหน" เฉย ๆ ไม่ใช่ลุคการ์ตูนเส้นหนา
+// 0.85 ยังทำงานได้เพราะสีมันเข้มกว่าขนมาก (วัดไว้อย่างน้อย 1.9 เท่า ดูหัว skins.js)
+// ความคมของเส้นมาจากสีที่ต่างกันเยอะ ไม่ใช่จากความหนา
+const CAT_EDGE = 0.85;
+
+/** ตั้งค่าปากกาสำหรับตีขอบ แล้วให้ผู้เรียก stroke() เอง (path ปัจจุบันยังอยู่หลัง fill) */
+function catEdge(ctx, s) {
+  ctx.strokeStyle = s.line || s.dark;
+  ctx.lineWidth = CAT_EDGE;
+}
+
 /** หางโค้งพร้อมปลายครีม wag = -1..1 คุมการสะบัด */
 function drawTail(ctx, x, y, wag, s) {
   const tipX = x - 19;
   const tipY = y - 12 + wag * 7;
 
-  ctx.strokeStyle = s.cat;
-  ctx.lineWidth = 7;
+  // เส้นเข้มหนากว่ารองข้างใต้ = ขอบหาง (เหตุผลเดียวกับหางท่าหมอบ)
+  ctx.strokeStyle = s.line || s.dark;
+  ctx.lineWidth = 7 + CAT_EDGE * 2;
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.quadraticCurveTo(x - 17, y + 3 + wag * 5, tipX, tipY);
   ctx.stroke();
+  // ── หางของแมวแต้ม ──
+  // ไล่จากสีตัวตรงโคนไปหาสีปลายขนภายในหนึ่งในสามแรก ที่เหลือเข้มยาวจนสุดปลาย
+  // ต้องไล่ ไม่ใช่ตัดเป็นท่อน เพราะบนแมวจริงสีมัน "ซึม" เข้าหากัน ไม่มีเส้นแบ่ง
+  // ปลายหางก็ต้องเข้มด้วย ถ้าปล่อยเป็นครีมตามสกินอื่นจะได้หางเข้มที่จู่ ๆ ปลายสว่าง
+  if (s.points) {
+    const g = ctx.createLinearGradient(x, y, tipX, tipY);
+    g.addColorStop(0, s.cat);
+    g.addColorStop(0.34, s.dark);
+    g.addColorStop(1, s.dark);
+    ctx.strokeStyle = g;
+  } else {
+    ctx.strokeStyle = s.cat;
+  }
+  ctx.lineWidth = 7;
+  ctx.stroke();
 
-  ctx.fillStyle = s.cream;
+  ctx.fillStyle = s.points ? s.dark : s.cream;
   ctx.beginPath(); ctx.arc(tipX, tipY, 3.6, 0, Math.PI * 2); ctx.fill();
+  catEdge(ctx, s); ctx.stroke();
 }
