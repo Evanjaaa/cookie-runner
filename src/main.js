@@ -6,6 +6,10 @@ import { setupInput } from './input.js';
 import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
 import { startMusic } from './music.js';
 import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin } from './skins.js';
+import {
+  CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
+  pickSkin, regionAt, toSkin,
+} from './paint.js';
 import { STAGES, getStage, setStage, journeyOf } from './stages.js';
 import {
   RARITY, OUTFITS, outfitById, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
@@ -76,7 +80,14 @@ const pausePanel = document.getElementById('pausePanel');
 const skinPanel = document.getElementById('skinPanel');
 const stagePanel = document.getElementById('stagePanel');
 const stageInfoPanel = document.getElementById('stageInfoPanel');
-const outfitPanel = document.getElementById('outfitPanel');
+// ── คลังน้อง ──
+// ชุดกับสมบัติอยู่ในแผงเดียวกันแล้ว สองชื่อนี้จึงชี้ที่เดียวกันโดยตั้งใจ
+//
+// หน้ารายละเอียด (odPanel / tDetailPanel) ใช้ตัวแปรพวกนี้เป็น "แผงที่ต้องกลับไป"
+// อยู่แล้ว การให้ชี้คลังน้องทั้งคู่จึงทำให้ปุ่มกลับพากลับถูกที่เองโดยไม่ต้องแก้
+// เส้นทางไหนเพิ่มเลย และชื่อเดิมยังบอกได้ว่าโค้ดตรงนั้นทำงานกับหมวดไหนอยู่
+const stashPanel = document.getElementById('stashPanel');
+const outfitPanel = stashPanel;
 const gachaPanel = document.getElementById('gachaPanel');
 const rankPanel = document.getElementById('rankPanel');
 const settingsPanel = document.getElementById('settingsPanel');
@@ -292,18 +303,34 @@ function paintAvatar() {
  * ฝาเปิดเมื่อมีของติดตั้งอยู่ ปิดเมื่อยังไม่ได้ติดตั้ง — บอกสถานะด้วยท่าของหีบเอง
  * โดยไม่ต้องมีป้ายตัวเลขมาเบียดในกรอบ 76px
  */
-function paintTreasureIcon() {
+/**
+ * ไอคอนปุ่มคลังน้อง — หีบสมบัติกับน้องแมวใส่ชุดอยู่ในกรอบเดียว
+ *
+ * ปุ่มเดียวแทนสองปุ่มเดิม ไอคอนจึงต้องบอกให้ได้ว่าข้างในมีทั้งสองอย่าง
+ * ใช้ของจริงจากทั้งสองหมวดมาซ้อนกัน ไม่ใช่วาดไอคอนกล่องกลาง ๆ ขึ้นมาใหม่
+ * — น้องที่โผล่มาคือน้องที่ใส่ชุดอยู่จริง เปลี่ยนชุดแล้วไอคอนเปลี่ยนตาม
+ *
+ * หีบอยู่หลังขวาและเล็กกว่า น้องอยู่หน้าซ้าย จึงอ่านเป็น "น้องกับคลังของน้อง"
+ * ไม่ใช่ของสองชิ้นวางเรียงกันเฉย ๆ
+ */
+function paintStashIcon() {
   const equipped = getEquipped().filter(Boolean).length;
-  paintBox(document.getElementById('treasureIcon'), 76, 76, (c) => {
+  const s = getSkin();
+  paintBox(document.getElementById('stashIcon'), 76, 76, (c) => {
     // หีบวาดในกรอบ 200x184 แต่ตัวหีบจริงกินแค่ราว x 22-178 y 38-170
-    // ย่อจากขนาดกรอบตรง ๆ จะได้หีบจิ๋วลอยกลางที่ว่าง จึงย่อจาก "ขนาดของหีบ" แทน
-    // แล้วเลื่อนให้กล่องที่วัดได้นั้นมาอยู่กลางกรอบ 76 พอดี
+    // ย่อจาก "ขนาดของหีบ" ไม่ใช่ขนาดกรอบ ไม่งั้นจะได้หีบจิ๋วลอยกลางที่ว่าง
+    // หีบกินครึ่งขวาล่างของกรอบ ใหญ่พอให้อ่านออกว่าเป็นหีบ ไม่ใช่ก้อนสีน้ำตาล
     const box = { x: 22, y: 38, w: 156, h: 132 };
-    const k = 76 / box.w;
+    const k = 45 / box.w;
     c.save();
-    c.translate(-box.x * k, (76 - box.h * k) / 2 - box.y * k);
+    c.translate(31 - box.x * k, 33 - box.y * k);
     c.scale(k, k);
     drawChest(c, equipped ? 1 : 0, chestTick);
+    c.restore();
+
+    // น้องยืนหน้าหีบชิดซ้าย วาดทีหลังจึงบังหีบ = อ่านเป็นความลึก ไม่ใช่ของทับกัน
+    c.save();
+    drawCatPose(c, 27, 72, 0.98, s, 60);
     c.restore();
   });
 }
@@ -329,13 +356,17 @@ function refreshHome() {
   // (ชื่อสกิน/ชุด/ด่าน ยังโชว์อยู่บนการ์ดที่เลือกอยู่ตอนเปิดแผงนั้น)
   // ── ไอคอนพวกนี้ขยายให้เต็มกรอบเท่ากันหมดด้วย paintFitted ──
   // ยกเว้นสมบัติ (วัดกล่องหีบไว้เองอยู่แล้ว) กับด่าน (เป็นภาพฉากเต็มกรอบ ไม่ใช่ไอคอน)
-  paintFitted(document.getElementById('skinIcon'), 76, 0.96, (c) => drawCatFace(c, 38, 44, 1.8, s));
-  // ไอคอนชุดใช้ตัวเต็ม ไม่ใช่แค่หัว เพราะเสื้อกับกระโปรงอยู่ที่ลำตัว
-  paintFitted(document.getElementById('outfitIcon'), 76, 0.96, (c) => drawCatPose(c, 38, 68, 1.05, s, 60));
+  // ปุ่มนี้คือ "เลือกตัวน้อง" ไอคอนจึงต้องนิ่ง โชว์หน้าน้องมาตรฐานตามสีที่เลือกเท่านั้น
+  // ไม่เปลี่ยนตามชุดที่ใส่ (outfit) และไม่เปลี่ยนตามรูปที่ผู้เล่นอัปโหลด (noPhoto)
+  //
+  // ตอนที่มันเปลี่ยนตามทั้งสองอย่าง ปุ่มนี้กับปุ่มคลังน้องและปุ่มหน้าน้องจะโชว์ของ
+  // หน้าตาเหมือนกันหมดจนแยกไม่ออกว่ากดอันไหนแล้วได้อะไร
+  paintFitted(document.getElementById('skinIcon'), 76, 0.96,
+    (c) => drawCatFace(c, 38, 44, 1.8, { ...s, outfit: null }, { noPhoto: true }));
   paintStageScene(document.getElementById('stageIcon'), st, 210);
-  paintTreasureIcon();
+  paintStashIcon();
   paintQuestIcon();
-  refreshFaceIcon();
+  refreshCreateIcon();
   refreshQuestDot();
   refreshEquipCount();
   paintFitted(document.getElementById('rankIcon'), 76, 0.96, drawTrophy);
@@ -1949,13 +1980,14 @@ function buildOutfitGrid() {
     paintMini(card.querySelector('canvas'), 96,
       (c) => drawCatPose(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
 
-    // แตะแล้วเข้าหน้ารายละเอียด ไม่ใช่ใส่ทันทีเหมือนเดิม
-    // เพราะข้อมูลที่ใช้ตัดสินใจ (โบนัสเท่าไหร่ ระดับอะไร) ไม่ได้อยู่บนการ์ดแล้ว
-    // จะให้เลือกโดยไม่ได้เห็นข้อมูลไม่ได้ ปุ่มใส่จริงอยู่ในหน้านั้น
+    // แตะแล้ว "เลือก" ขึ้นมาโชว์ในช่องซ้าย ไม่ใช่เด้งไปหน้ารายละเอียดทันที
+    // ผู้เล่นจึงกวาดดูเทียบหลายชุดรวดเดียวได้ ปุ่ม "ดูเพิ่มเติม" ในช่องซ้าย
+    // คือทางไปหน้ารายละเอียดสำหรับคนที่อยากอ่านตัวเลขเต็ม ๆ ของชิ้นนั้น
+    if (o.id === stashSel.outfit) card.classList.add('sel');
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
-      openOutfitDetail(o.id);
+      selectStash('outfit', o.id);
     });
 
     grid.appendChild(card);
@@ -2474,8 +2506,8 @@ function openOutfitDetail(id) {
 
 function closeOutfitDetail() {
   stopOdCat();
-  swapPanel(odPanel, outfitPanel);
-  buildOutfitGrid();
+  swapPanel(odPanel, stashPanel);
+  refreshStash();
 }
 
 document.getElementById('odBack').addEventListener('click', () => {
@@ -2506,9 +2538,148 @@ document.getElementById('odWear').addEventListener('click', () => {
   refreshHome();
 });
 
-function showOutfits(on) {
-  outfitPanel.classList.toggle('hidden', !on);
+// ── คลังน้อง: สลับหมวด เลือกของ และช่องพรีวิว ─────────────
+//
+// สองหมวดใช้กริดกับแถบกรองคนละชุด (ดูเหตุผลใน index.html) ที่นี่จึงทำแค่
+// ซ่อน/โชว์ให้ถูกอัน แล้วเรียกตัวสร้างกริดเดิมของหมวดนั้นตามปกติ
+
+let stashTab = 'outfit';                       // หมวดที่เปิดอยู่
+const stashSel = { outfit: null, treasure: null };   // ของที่เลือกไว้ในแต่ละหมวด
+
+function showStash(on, tab = stashTab) {
+  stashPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
+  if (on) setStashTab(tab);
+}
+
+// ชื่อเดิมสองตัวนี้ยังมีที่เรียกอยู่หลายจุด เก็บไว้เป็นทางเข้าแบบระบุหมวด
+function showOutfits(on) { showStash(on, 'outfit'); }
+function showTreasures(on) { showStash(on, 'treasure'); }
+
+function setStashTab(tab) {
+  stashTab = tab;
+  const out = tab === 'outfit';
+
+  document.getElementById('tabStashOutfit').classList.toggle('on', out);
+  document.getElementById('tabStashTreasure').classList.toggle('on', !out);
+  document.getElementById('stashTitle').textContent = out ? 'เลือกชุด' : 'สมบัติ';
+  document.getElementById('outfitFilter').classList.toggle('hidden', !out);
+  document.getElementById('treasureFilter').classList.toggle('hidden', out);
+  document.getElementById('outfitGrid').classList.toggle('hidden', !out);
+  document.getElementById('treasureGrid').classList.toggle('hidden', out);
+  setMsg(document.getElementById('outfitMsg'), '');
+
+  refreshStash();
+}
+
+/** สร้างกริดของหมวดที่เปิดอยู่ใหม่ แล้ววาดช่องพรีวิวให้ตรงกัน */
+function refreshStash() {
+  // ต้องรู้ว่าเลือกชิ้นไหนอยู่ "ก่อน" สร้างกริด เพราะตัวสร้างการ์ดเป็นคนติดคลาส
+  // .sel ให้ใบที่ถูกเลือก ถ้าปล่อยให้ไปตั้งค่าทีหลังในช่องพรีวิว รอบแรกที่เปิดหน้ามา
+  // จะไม่มีการ์ดใบไหนถูกไฮไลต์เลย ทั้งที่ช่องซ้ายโชว์ของอยู่
+  if (!stashSel[stashTab]) stashSel[stashTab] = stashDefault(stashTab);
+  if (stashTab === 'outfit') buildOutfitGrid();
+  else buildTreasureGrid();
+  paintStashShow();
+}
+
+/**
+ * ของที่ควรถูกเลือกไว้ตอนเปิดหน้ามาครั้งแรก
+ *
+ * เลือก "ของที่ใส่อยู่ตอนนี้" เป็นค่าเริ่มต้น ไม่ใช่ชิ้นแรกของรายการ
+ * เพราะคำถามแรกที่คนเปิดคลังมาถามคือ "ตอนนี้ใส่อะไรอยู่" ไม่ใช่ "มีอะไรบ้าง"
+ */
+function stashDefault(tab) {
+  if (tab === 'outfit') return getSkin().outfit.id;
+  const eq = getEquipped().filter(Boolean);
+  return eq[0] || TREASURES[0].id;
+}
+
+function selectStash(tab, id) {
+  stashSel[tab] = id;
+  refreshStash();
+}
+
+let stashTick = 0;
+let stashRAF = 0;
+
+/** วาดเฉพาะตัวแมวในช่องพรีวิว — เรียกทุกเฟรมตอนอยู่หมวดชุด */
+function paintStashCat() {
+  const o = outfitById(stashSel.outfit);
+  if (!o) return;
+  paintMini(document.getElementById('stashCat'), 190,
+    (c) => drawCatPose(c, 95, 167, 2.85, { ...getSkin(), outfit: o }, stashTick));
+}
+
+/**
+ * ลูปวาดน้องในช่องพรีวิว
+ *
+ * เช็คเงื่อนไขหยุดที่หัวลูปเอง แทนการไล่เรียก stop ทุกทางออกของหน้า
+ * — หน้านี้ออกได้หลายทาง (ปุ่มกลับ / กดเล่น / สลับหมวด / เข้าหน้ารายละเอียด /
+ * ทางลัดไปตู้กาช่า) การไล่ปิดทีละทางพลาดง่ายมากเมื่อมีทางออกใหม่เพิ่มทีหลัง
+ * แล้วลูปที่ค้างอยู่จะแย่งเฟรมกับตัวเกมโดยไม่มีใครสังเกต
+ */
+function stashLoop() {
+  if (stashPanel.classList.contains('hidden') || stashTab !== 'outfit') {
+    stashRAF = 0;
+    return;
+  }
+  stashTick++;
+  paintStashCat();
+  stashRAF = requestAnimationFrame(stashLoop);
+}
+
+function paintStashShow() {
+  const face = stashPanel.querySelector('.stash-face');
+  const cat = document.getElementById('stashCat');
+  const emo = document.getElementById('stashEmoji');
+  const badge = document.getElementById('stashTier');
+  const name = document.getElementById('stashName');
+  const use = document.getElementById('stashUse');
+
+  if (!stashSel[stashTab]) stashSel[stashTab] = stashDefault(stashTab);
+
+  if (stashTab === 'outfit') {
+    const o = outfitById(stashSel.outfit) || OUTFITS[0];
+    stashSel.outfit = o.id;
+    const got = isOwned(o.id);
+    const on = got && o.id === getSkin().outfit.id;
+
+    face.className = 'stash-face ' + (o.rarity || 'normal') + (got ? '' : ' locked');
+    cat.classList.remove('hidden');
+    emo.classList.add('hidden');
+    paintStashCat();
+    if (!stashRAF) stashLoop();   // เริ่มลูปถ้ายังไม่เดิน (ลูปหยุดตัวเองตอนออกจากหมวด)
+
+    // "ขนล้วน" ไม่มีระดับ tierSign() คืน null ป้ายจึงว่างไปเลยไม่ใช่ป้ายเปล่า ๆ
+    const sign = tierSign(o.rarity);
+    badge.className = 'tier-badge as-sign ' + (o.rarity || '');
+    badge.replaceChildren(...(sign ? [sign] : []));
+    badge.classList.toggle('hidden', !sign);
+
+    name.textContent = o.name;
+    use.textContent = !got ? 'ไปสุ่มกาช่ากัน!' : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
+    use.disabled = on;
+    use.classList.toggle('ghost', on);
+  } else {
+    const t = treasureById(stashSel.treasure) || TREASURES[0];
+    stashSel.treasure = t.id;
+    const got = ownsTreasure(t.id);
+
+    face.className = 'stash-face ' + t.rarity + (got ? '' : ' locked');
+    cat.classList.add('hidden');
+    emo.classList.remove('hidden');
+    emo.textContent = t.emoji;
+
+    badge.className = 'tier-badge as-sign ' + t.rarity;
+    badge.replaceChildren(tierSign(t.rarity));
+    badge.classList.remove('hidden');
+
+    name.textContent = t.name;
+    use.textContent = !got ? 'ไปสุ่มกาช่ากัน!' : isEquipped(t.id) ? 'ถอดออก' : 'ติดตั้ง';
+    use.disabled = false;
+    use.classList.toggle('ghost', got && isEquipped(t.id));
+  }
 }
 
 // ── ระบบสมบัติ ─────────────────────────────────────────────
@@ -2518,7 +2689,7 @@ function showOutfits(on) {
 // ไม่ใช่เดาจากลำดับ ซึ่งจะพังทันทีที่มีทางเข้าหน้าเดียวกันมากกว่าหนึ่งทาง
 // (หน้าติดตั้งเข้าได้จากหน้าเลือกด่าน ส่วนรายละเอียดเข้าได้จากรายการ)
 
-const treasurePanel = document.getElementById('treasurePanel');
+const treasurePanel = stashPanel;   // ดูเหตุผลที่ตอนประกาศ stashPanel
 const tDetailPanel = document.getElementById('tDetailPanel');
 const upPanel = document.getElementById('upPanel');
 const loadoutPanel = document.getElementById('loadoutPanel');
@@ -2590,12 +2761,12 @@ function buildTreasureGrid() {
     card.querySelector('b').textContent = t.name;
     card.querySelector('.t-stars').innerHTML = got ? starRow(lv) : '';
 
-    // กดดูรายละเอียดได้ทั้งที่มีและยังไม่มี — หน้ารายละเอียดคือที่ที่บอกว่า
-    // สมบัติชิ้นนี้ทำอะไรได้ ซึ่งเป็นข้อมูลที่คนยังไม่มีต้องการมากกว่าคนที่มีแล้วด้วยซ้ำ
+    // แตะแล้วเลือกขึ้นมาโชว์ในช่องซ้าย เหตุผลเดียวกับการ์ดชุด
+    if (t.id === stashSel.treasure) card.classList.add('sel');
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
-      openDetail(t.id, treasurePanel);
+      selectStash('treasure', t.id);
     });
 
     grid.appendChild(card);
@@ -2603,11 +2774,7 @@ function buildTreasureGrid() {
   markScrollable(grid);
 }
 
-function showTreasures(on) {
-  treasurePanel.classList.toggle('hidden', !on);
-  startPanel.classList.toggle('hidden', on);
-  if (on) buildTreasureGrid();
-}
+
 
 // ── หน้ารายละเอียด ──────────────────────────────────────────
 
@@ -3005,13 +3172,67 @@ document.getElementById('stageBack').addEventListener('click', () => showStages(
 document.getElementById('siBack').addEventListener('click', () => {
   swapPanel(stageInfoPanel, stagePanel);
 });
-document.getElementById('btnOutfits').addEventListener('click', () => {
+document.getElementById('btnStash').addEventListener('click', () => {
   unlockAudio(); startMusic();
-  setMsg(document.getElementById('outfitMsg'), '');   // ข้อความเตือนจากรอบก่อนต้องไม่ค้าง
-  buildOutfitGrid();
-  showOutfits(true);
+  showStash(true);
 });
-document.getElementById('outfitBack').addEventListener('click', () => showOutfits(false));
+document.getElementById('stashBack').addEventListener('click', () => showStash(false));
+
+// ── ปุ่มสองใบในช่องพรีวิว ──
+document.getElementById('stashUse').addEventListener('click', () => {
+  unlockAudio();
+  if (stashTab === 'outfit') {
+    const o = outfitById(stashSel.outfit);
+    if (!o) return;
+    // ยังไม่มีชุดนี้ = ปุ่มเปลี่ยนหน้าที่เป็นทางลัดไปตู้กาช่า ไม่ใช่กดแล้วเงียบ
+    // (ท่าเดียวกับปุ่มในหน้ารายละเอียด — บอกทางแทนที่จะปิดทาง)
+    if (!isOwned(o.id)) {
+      sfx.fish();
+      stashPanel.classList.add('hidden');
+      showGacha(true, 'skin');
+      return;
+    }
+    setOutfit(o.id);
+    sfx.potion();
+    refreshHome();
+    refreshStash();
+    return;
+  }
+
+  const t = treasureById(stashSel.treasure);
+  if (!t) return;
+  if (!ownsTreasure(t.id)) {
+    sfx.fish();
+    stashPanel.classList.add('hidden');
+    showGacha(true, 'treasure');
+    return;
+  }
+  const r = toggleEquip(t.id);
+  if (!r.ok) {
+    sfx.shieldBreak();
+    setMsg(document.getElementById('outfitMsg'), r.reason, true);
+    return;
+  }
+  sfx.potion();
+  setMsg(document.getElementById('outfitMsg'), '');
+  refreshEquipCount();
+  paintStashIcon();
+  refreshStash();
+});
+
+document.getElementById('stashMore').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  if (stashTab === 'outfit') openOutfitDetail(stashSel.outfit);
+  else openDetail(stashSel.treasure, stashPanel);
+});
+
+document.getElementById('tabStashOutfit').addEventListener('click', () => {
+  unlockAudio(); sfx.fish(); setStashTab('outfit');
+});
+document.getElementById('tabStashTreasure').addEventListener('click', () => {
+  unlockAudio(); sfx.fish(); setStashTab('treasure');
+});
 
 // ══ ใส่รูปเป็นหน้าน้องแมว (Game Face) ══════════════════════
 //
@@ -3024,7 +3245,7 @@ document.getElementById('outfitBack').addEventListener('click', () => showOutfit
 // เก็บเป็นมุมซ้ายบนก็ได้ แต่พอซูมแล้วสิ่งที่ผู้เล่นเล็งไว้จะเลื่อนหนีออกจากวง
 // เพราะการซูมขยายออกจากมุม เก็บเป็นจุดกึ่งกลางแล้วซูมเข้า-ออกรอบจุดเดิมได้เลย
 
-const facePanel = document.getElementById('facePanel');
+const createPanel = document.getElementById('createPanel');
 const faceCropBox = document.getElementById('faceCrop');
 const faceCanvas = document.getElementById('faceCanvas');
 const faceZoom = document.getElementById('faceZoom');
@@ -3075,15 +3296,15 @@ function paintFace() {
 
   paintMini(document.getElementById('facePreview'), 132,
     (x) => drawCatPose(x, 66, 116, 2, getSkin(), 60));
-  refreshFaceIcon();
+  refreshCreateIcon();
 
   faceCropBox.classList.toggle('has-img', Boolean(faceSrc));
   faceSaveBtn.disabled = !faceSrc;
   faceZoom.disabled = !faceSrc;
 }
 
-function refreshFaceIcon() {
-  paintFitted(document.getElementById('faceIcon'), 76, 0.96,
+function refreshCreateIcon() {
+  paintFitted(document.getElementById('createIcon'), 76, 0.96,
     (c) => drawCatFace(c, 38, 44, 1.8, getSkin()));
 }
 
@@ -3204,7 +3425,7 @@ function showFace(on) {
   // ผลคือเหลือแต่ฉากหน้าแรกเปล่า ๆ ไม่มีปุ่มอะไรเลย และปุ่มหยุดก็กดไม่ติด
   // เพราะเกมยังเป็นสถานะ READY ซึ่งไม่มีรอบเล่นให้หยุด
   if (!on) setDraft(null);
-  facePanel.classList.toggle('hidden', !on);
+  createPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
 
   if (on) {
@@ -3212,28 +3433,316 @@ function showFace(on) {
     setMsg(document.getElementById('faceMsg'),
       hasFace() ? 'ตอนนี้น้องใส่รูปอยู่ เลือกรูปใหม่เพื่อเปลี่ยนได้เลย' : '');
     paintFace();
+    // เปิดมาเจอโหมดระบายสีก่อนเสมอ เพราะเป็นของใหม่และเป็นเหตุผลหลักที่แผงนี้มีอยู่
+    buildSwatches();
+    setCreateTab('paint');
+    refreshCreate();
   } else {
     paintFace();
     refreshHome();
   }
 }
 
-document.getElementById('btnFace').addEventListener('click', () => {
+document.getElementById('btnCreate').addEventListener('click', () => {
   unlockAudio(); startMusic();
   showFace(true);
 });
-document.getElementById('faceBack').addEventListener('click', () => showFace(false));
+document.getElementById('createBack').addEventListener('click', () => showFace(false));
+
+// ─────────────────────────────────────────────────────────────
+// ระบายสีน้อง
+//
+// ── ตรวจว่านิ้วแตะโดนส่วนไหน ──
+// วาดน้องอีกรอบลงผ้าใบที่ซ่อนไว้ ด้วยฟังก์ชันวาดตัวเดียวกับที่วาดน้องจริง
+// แต่ส่งจานสี "รหัสสี" เข้าไปแทนจานสีจริง แล้วอ่านพิกเซลตรงจุดที่แตะ
+//
+// ทำแบบนี้เพราะขอบเขตของแต่ละส่วนจะตรงกับรูปที่เห็นเป๊ะเสมอ ถ้าไปเขียนโค้ด
+// คำนวณขอบเขตเอง (วงกลมหัวรัศมีเท่านี้ วงรีตัวเท่านั้น) วันที่มีคนแก้ท่าน้อง
+// ขอบเขตจะเพี้ยนจากรูปทันทีโดยไม่มีใครรู้ตัว
+// ─────────────────────────────────────────────────────────────
+const paintCat = document.getElementById('paintCat');
+const paintHint = document.getElementById('paintHint');
+// ผ้าใบรหัสสี ไม่ได้ใส่ลง DOM — ไม่มีใครต้องเห็นมัน
+const pickCv = document.createElement('canvas');
+pickCv.width = paintCat.width;
+pickCv.height = paintCat.height;
+
+let paintTool = 'brush';
+let paintColor = SWATCHES[3];
+let paintPart = null;        // ส่วนที่เลือกจากรายชื่อ null = เล็งเอาจากที่แตะ
+
+// ── ทำไมน้องอยู่นิ่งในหน้านี้ที่เดียวในเกม ──
+// ตอนแรกให้หายใจกับกระดิกหางเหมือนหน้าอื่น แล้วเทสจริงพบว่าแตะจมูกกับตาไม่โดน
+// เพราะสองส่วนนั้นกว้างไม่กี่พิกเซล พอตัวขยับระหว่างที่นิ้วกำลังลง จุดที่แตะ
+// ก็เลื่อนไปโดนส่วนข้าง ๆ แทน — ระบายสีบนของที่ขยับอยู่มันทำไม่ได้จริง ๆ
+// เลขนี้คือเฟรมที่น้องลืมตาอยู่ (ที่ 0 น้องกำลังกะพริบตาพอดี)
+const PAINT_POSE = 60;
+// เก็บจานสีก่อนหน้าไว้ย้อนกลับ จำกัดไว้ 30 ขั้นก็พอสำหรับงานระบายสี
+const paintHistory = [];
+
+/** ท่าที่ใช้วาดน้องในหน้านี้ — ต้องเหมือนกันเป๊ะทั้งผ้าใบที่เห็นและผ้าใบรหัสสี */
+function paintPose(ctx, skin) {
+  const w = paintCat.width;
+  drawCatPose(ctx, w / 2, w - w * 0.14, w / 118, skin, PAINT_POSE);
+}
+
+function drawPaintCat() {
+  const c = paintCat.getContext('2d');
+  c.clearRect(0, 0, paintCat.width, paintCat.height);
+  paintPose(c, toSkin(palette()));
+}
+
+/**
+ * ผ้าใบรหัสสี — ท่าน้องนิ่ง จึงวาดครั้งเดียวตอนเปิดแผงก็พอ
+ * ไม่ต้องวาดใหม่ตอนระบาย เพราะการเปลี่ยนสีไม่ได้ทำให้รูปร่างขยับ
+ */
+function drawPickMap() {
+  const c = pickCv.getContext('2d');
+  c.clearRect(0, 0, pickCv.width, pickCv.height);
+  paintPose(c, pickSkin());
+}
+
+/** ส่วนที่อยู่ใต้จุดที่แตะ — คืน null ถ้าแตะนอกตัวน้อง */
+function regionUnder(ev) {
+  const r = paintCat.getBoundingClientRect();
+  const pt = ev.touches?.[0] || ev.changedTouches?.[0] || ev;
+  const x = Math.round((pt.clientX - r.left) / r.width * pickCv.width);
+  const y = Math.round((pt.clientY - r.top) / r.height * pickCv.height);
+  if (x < 0 || y < 0 || x >= pickCv.width || y >= pickCv.height) return null;
+  const d = pickCv.getContext('2d', { willReadFrequently: true })
+    .getImageData(x, y, 1, 1).data;
+  return regionAt(d[0], d[1], d[2], d[3]);
+}
+
+function pushHistory() {
+  paintHistory.push({ ...palette() });
+  if (paintHistory.length > 30) paintHistory.shift();
+}
+
+/**
+ * ลงสีหนึ่งครั้ง
+ * แต่ละเครื่องมือต่างกันแค่ "ลงกี่ส่วน" กับ "ลงสีอะไร" ไม่ได้ต่างกันที่วิธีวาด
+ */
+function applyPaint(region, snap) {
+  if (!region) return false;
+  const pal = palette();
+
+  if (paintTool === 'dropper') {
+    // ดูดสีจากส่วนที่แตะมาเป็นสีปัจจุบัน แล้วเด้งกลับไปเป็นพู่กันให้เลย
+    // ไม่งั้นต้องกดสลับเครื่องมือเองทุกครั้งซึ่งน่ารำคาญ
+    paintColor = pal[region.key];
+    document.getElementById('paintFree').value = paintColor;
+    setTool('brush');
+    refreshSwatches();
+    return false;
+  }
+
+  const want = paintTool === 'eraser' ? BLANK[region.key] : paintColor;
+
+  if (paintTool === 'bucket') {
+    // ถังสี = เทลงทุกส่วนที่ "สีเดียวกับส่วนที่แตะ" ในทีเดียว
+    // เป็นความต่างที่ทำให้ถังสีมีประโยชน์จริง ไม่ใช่พู่กันที่แตะทีละส่วนซ้ำ ๆ
+    const from = pal[region.key];
+    const hit = REGIONS.filter((r) => pal[r.key] === from);
+    if (hit.every((r) => pal[r.key] === want)) return false;
+    if (snap) pushHistory();
+    for (const r of hit) paint(r.key, want);
+    return true;
+  }
+
+  if (pal[region.key] === want) return false;
+  if (snap) pushHistory();
+  paint(region.key, want);
+  return true;
+}
+
+function paintAt(ev, snap) {
+  // เลือกส่วนจากรายชื่อไว้แล้วก็ใช้ส่วนนั้นเลย ไม่ต้องเล็งให้ตรง
+  const region = paintPart || regionUnder(ev);
+  if (applyPaint(region, snap)) {
+    drawPaintCat();
+    refreshParts();
+    refreshHome();
+  }
+}
+
+let painting = false;
+paintCat.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  unlockAudio();
+  painting = true;
+  // ลงสีก่อน ค่อยจับตัวชี้ทีหลัง และต้องครอบ try ไว้ด้วย
+  //
+  // setPointerCapture โยน NotFoundError ได้ถ้า id ของตัวชี้ไม่ใช่ตัวที่กดอยู่จริง
+  // ซึ่ง ?. กันไม่ได้เลย มันกันแค่กรณี "ไม่มีเมธอดนี้" ไม่ได้กันการโยน
+  // ตอนอยู่บรรทัดบน ข้อผิดพลาดตรงนี้ทำให้ไม่ได้ลงสีเลยสักครั้งโดยไม่มีอะไรฟ้อง
+  paintAt(e, true);
+  try { paintCat.setPointerCapture(e.pointerId); } catch { /* ลากต่อไม่ได้ก็ยังแตะได้ */ }
+});
+paintCat.addEventListener('pointermove', (e) => {
+  // ลากทาได้เฉพาะพู่กัน เครื่องมืออื่นเป็นการกดทีละครั้ง
+  if (painting && paintTool === 'brush') paintAt(e, false);
+});
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  paintCat.addEventListener(ev, () => { painting = false; });
+}
+
+function setTool(name) {
+  paintTool = name;
+  for (const b of document.querySelectorAll('#paintTools .ptool')) {
+    b.classList.toggle('on', b.dataset.tool === name);
+  }
+  paintHint.textContent = name === 'dropper' ? 'แตะส่วนที่อยากดูดสี'
+    : name === 'eraser' ? 'แตะส่วนที่อยากล้างสี'
+    : name === 'bucket' ? 'แตะเพื่อเทสีลงทุกส่วนที่สีเหมือนกัน'
+    : 'แตะหรือลากบนตัวน้องเพื่อลงสี';
+}
+document.getElementById('paintTools').addEventListener('click', (e) => {
+  const b = e.target.closest('.ptool');
+  if (b) { unlockAudio(); setTool(b.dataset.tool); }
+});
+
+function refreshSwatches() {
+  for (const b of document.querySelectorAll('#paintSwatches .pswatch')) {
+    b.classList.toggle('on', b.dataset.color.toLowerCase() === paintColor.toLowerCase());
+  }
+}
+
+function buildSwatches() {
+  const box = document.getElementById('paintSwatches');
+  box.innerHTML = '';
+  for (const hex of SWATCHES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pswatch';
+    b.dataset.color = hex;
+    b.style.background = hex;
+    b.setAttribute('aria-label', 'สี ' + hex);
+    b.addEventListener('click', () => {
+      unlockAudio();
+      paintColor = hex;
+      document.getElementById('paintFree').value = hex;
+      // หยิบสีแล้วต้องกลับมาเป็นพู่กัน ไม่งั้นเลือกสีทั้งทีแต่ยังค้างที่ยางลบอยู่
+      if (paintTool === 'eraser' || paintTool === 'dropper') setTool('brush');
+      refreshSwatches();
+    });
+    box.appendChild(b);
+  }
+  refreshSwatches();
+}
+
+document.getElementById('paintFree').addEventListener('input', (e) => {
+  paintColor = e.target.value;
+  if (paintTool === 'eraser' || paintTool === 'dropper') setTool('brush');
+  refreshSwatches();
+});
+
+/** รายชื่อส่วน พร้อมสีปัจจุบันของแต่ละส่วน — กดเพื่อล็อกเป้าไว้ */
+function refreshParts() {
+  const box = document.getElementById('paintParts');
+  const pal = palette();
+  if (box.children.length !== REGIONS.length) {
+    box.innerHTML = '';
+    for (const r of REGIONS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ppart';
+      b.dataset.key = r.key;
+      b.innerHTML = '<i></i><span></span>';
+      b.querySelector('span').textContent = r.name;
+      b.title = r.hint;
+      b.addEventListener('click', () => {
+        unlockAudio();
+        // กดซ้ำที่เดิม = ปลดล็อก กลับไปเล็งเอาจากที่แตะบนตัวน้อง
+        paintPart = paintPart && paintPart.key === r.key ? null : r;
+        refreshParts();
+      });
+      box.appendChild(b);
+    }
+  }
+  for (const b of box.children) {
+    const key = b.dataset.key;
+    b.querySelector('i').style.background = pal[key];
+    b.classList.toggle('on', !!paintPart && paintPart.key === key);
+  }
+}
+
+document.getElementById('paintUndo').addEventListener('click', () => {
+  unlockAudio();
+  const prev = paintHistory.pop();
+  if (!prev) return;
+  setPalette(prev);
+  drawPaintCat();
+  refreshParts();
+  refreshHome();
+});
+
+document.getElementById('paintRandom').addEventListener('click', () => {
+  unlockAudio();
+  pushHistory();
+  // สุ่มจากแม่สีที่ให้ไว้ ไม่ได้สุ่มจากทั้งวงล้อสี เพราะสุ่มอิสระแล้วได้แมวสีมั่ว
+  // เกือบทุกครั้ง ส่วนแม่สีชุดนี้ผสมกันยังไงก็ยังอ่านเป็นแมวอยู่
+  const pick = () => SWATCHES[Math.floor(Math.random() * SWATCHES.length)];
+  const next = {};
+  for (const r of REGIONS) next[r.key] = pick();
+  setPalette(next);
+  drawPaintCat();
+  refreshParts();
+  refreshHome();
+});
+
+document.getElementById('paintClear').addEventListener('click', () => {
+  unlockAudio();
+  pushHistory();
+  setPalette(BLANK);
+  drawPaintCat();
+  refreshParts();
+  refreshHome();
+});
+
+document.getElementById('paintUse').addEventListener('click', () => {
+  unlockAudio();
+  setSkin(CUSTOM_ID);
+  sfx.fish();
+  buildSkinGrid();
+  refreshHome();
+  refreshCreate();
+});
+
+/** ปุ่ม "ใช้น้องตัวนี้" ต้องบอกได้ว่าตอนนี้ใช้อยู่แล้วหรือยัง */
+function refreshCreate() {
+  const using = getSkin().id === CUSTOM_ID;
+  const btn = document.getElementById('paintUse');
+  btn.textContent = using ? 'กำลังใช้น้องตัวนี้อยู่' : 'ใช้น้องตัวนี้';
+  btn.disabled = using;
+  refreshParts();
+  refreshSwatches();
+  drawPaintCat();
+  drawPickMap();
+}
+
+// ── สลับสองโหมด ──
+function setCreateTab(which) {
+  const onPaint = which === 'paint';
+  document.getElementById('paintWrap').classList.toggle('hidden', !onPaint);
+  document.getElementById('faceWrap').classList.toggle('hidden', onPaint);
+  document.getElementById('tabPaint').classList.toggle('on', onPaint);
+  document.getElementById('tabFace').classList.toggle('on', !onPaint);
+  document.getElementById('createTitle').textContent = onPaint ? 'ระบายสีน้อง' : 'หน้าน้องแมว';
+  if (onPaint) { drawPaintCat(); drawPickMap(); }
+}
+document.getElementById('tabPaint').addEventListener('click', () => {
+  unlockAudio(); setCreateTab('paint');
+});
+document.getElementById('tabFace').addEventListener('click', () => {
+  unlockAudio(); setCreateTab('face');
+});
 
 // ── ปุ่มของระบบสมบัติ ──────────────────────────────────────
-document.getElementById('btnTreasures').addEventListener('click', () => {
-  unlockAudio(); startMusic();
-  showTreasures(true);
-});
-document.getElementById('treasureBack').addEventListener('click', () => showTreasures(false));
 
 document.getElementById('tdBack').addEventListener('click', () => {
-  swapPanel(tDetailPanel, tFrom || treasurePanel);
-  if (tFrom === treasurePanel) buildTreasureGrid();
+  swapPanel(tDetailPanel, tFrom || stashPanel);
+  if (tFrom === stashPanel) refreshStash();
   else paintLoadout();
 });
 document.getElementById('tdEquip').addEventListener('click', () => {
@@ -3250,7 +3759,7 @@ document.getElementById('tdEquip').addEventListener('click', () => {
   // ตัวเลขบนปุ่มหน้าเลือกด่านกับไอคอนในล็อบบี้ต้องตามทันที
   // ไม่ใช่รอจนกลับไปล็อบบี้แล้วค่อยอัปเดต
   refreshEquipCount();
-  paintTreasureIcon();
+  paintStashIcon();
 });
 document.getElementById('tdUpgrade').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
@@ -3396,16 +3905,25 @@ function countUp(el, target, ms, suffix = '') {
  * อาจหักทองไปแล้ว ถ้าเชื่อยอดที่อ่านไว้ตอนแรกจะหักจนติดลบได้
  */
 async function askRevive() {
-  if (getGold() < REVIVE.cost) return showGameOver();
+  // ราคาไต่ขึ้นทุกครั้งในตาเดียวกัน (ดู Game.reviveCost) จึงต้องอ่านจากเกม
+  // ไม่ใช่จาก REVIVE.cost ตรง ๆ ซึ่งเป็นแค่ราคาฐานของครั้งแรก
+  const cost = game.reviveCost;
+  if (getGold() < cost) return showGameOver();
 
+  // บอกว่าเป็นครั้งที่เท่าไหร่ตั้งแต่ครั้งที่สองเป็นต้นไป
+  // ไม่งั้นผู้เล่นจะเห็นแค่ราคาที่แพงขึ้นเฉย ๆ แล้วอ่านเป็นบั๊คมากกว่าเป็นกติกา
+  const nth = game.revives + 1;
   const ok = await confirmBox({
     title: 'น้องตกหลุม!',
-    body: 'ดึงน้องขึ้นมาวิ่งต่อจากตรงนี้ไหม คะแนน ระยะทาง และของที่เก็บไว้ยังอยู่ครบ',
-    cost: REVIVE.cost,
-    after: 'ทองคงเหลือหลังใช้ ' + (getGold() - REVIVE.cost).toLocaleString('en-US'),
+    body: 'ดึงน้องขึ้นมาวิ่งต่อจากตรงนี้ไหม คะแนน ระยะทาง และของที่เก็บไว้ยังอยู่ครบ'
+      + (nth > 1 ? ' — ครั้งที่ ' + nth + ' ของตานี้ ราคาขึ้นทุกครั้งที่ดึง' : ''),
+    cost,
+    after: 'ทองคงเหลือหลังใช้ ' + (getGold() - cost).toLocaleString('en-US'),
     okText: 'ดึงน้องขึ้นมา',
     cancelText: 'ไม่ดีกว่าเเง้',
-    art: (c) => drawCatPose(c, 55, 88, 1.5, getSkin(), 60),
+    // ไม่ส่ง art มาโดยตั้งใจ — รูปแมวตรงนี้เป็นตัวเดียวกับที่ผู้เล่นเพิ่งเห็นวิ่งอยู่
+    // มันไม่ได้บอกอะไรที่ยังไม่รู้ มีแต่ดันราคากับปุ่มให้เลื่อนต่ำลงไปอีก
+    // ต่างจากกล่องซื้อสกินที่รูปคือ "ของที่กำลังจะซื้อ" ซึ่งจำเป็นต้องเห็นก่อนจ่าย
   });
   // เช็คว่ายังตายอยู่จริงก่อนเปิดหน้าสรุป
   // startRun() สั่ง game.start() ก่อนแล้วค่อย closeAllPanels() ซึ่งไปยกเลิกกล่องนี้
@@ -3415,17 +3933,19 @@ async function askRevive() {
     return;
   }
 
-  if (getGold() < REVIVE.cost) {
+  if (getGold() < cost) {
     if (game.state === STATE.DEAD) showGameOver();
     return;
   }
 
-  addGold(-REVIVE.cost);
+  addGold(-cost);
   refreshProfile();   // ยอดทองบนการ์ดล็อบบี้ต้องตรงตั้งแต่ตอนนี้ ไม่ใช่รอจบตา
   // revive() คืน false ถ้าไม่ได้อยู่ในสถานะตายแล้ว (เช่นกดเริ่มใหม่ระหว่างกล่องเปิดค้าง)
   // กรณีนั้นทองถูกหักไปแล้วแต่ไม่มีตาให้ต่อ จึงต้องคืนให้
+  // ต้องคืนด้วย cost ตัวเดียวกับที่หัก ไม่ใช่ game.reviveCost ที่อ่านใหม่
+  // เพราะถ้า revive() สำเร็จไปแล้วบางส่วน ตัวนับอาจขยับจนราคาไม่ตรงกับที่จ่ายไป
   if (!game.revive()) {
-    addGold(REVIVE.cost);
+    addGold(cost);
     refreshProfile();
     return;
   }
@@ -3753,11 +4273,13 @@ function loop(now) {
 // ช่องสำหรับเครื่องมือตอนพัฒนา เช่นสคริปต์วาดแผนที่ด่านทั้งด่าน
 // แถบเรียง/กรองของสองหน้า ต้องผูกหลังจากประกาศฟังก์ชันวาดกริดครบแล้ว
 // (setupFilterBar เรียก redraw ทันทีไม่ได้ แต่ตัวมันเองอ้างถึงฟังก์ชันนั้นไว้)
+// redraw ชี้ที่ refreshStash ไม่ใช่ตัวสร้างกริดตรง ๆ เพราะเปลี่ยนตัวกรองแล้ว
+// ของที่เลือกไว้อาจหลุดออกจากรายการ ช่องพรีวิวจึงต้องวาดใหม่ตามไปด้วย
 setupFilterBar({
-  key: 'treasure', bar: 'treasureFilter', box: 'treasureOnly', redraw: buildTreasureGrid,
+  key: 'treasure', bar: 'treasureFilter', box: 'treasureOnly', redraw: refreshStash,
 });
 setupFilterBar({
-  key: 'outfit', bar: 'outfitFilter', box: 'outfitOnly', redraw: buildOutfitGrid,
+  key: 'outfit', bar: 'outfitFilter', box: 'outfitOnly', redraw: refreshStash,
 });
 
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle

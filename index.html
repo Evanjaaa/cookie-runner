@@ -364,17 +364,19 @@
             <canvas id="skinIcon" width="76" height="76"></canvas>
             <b>แมวน้อย</b>
           </button>
-          <button class="lobby-btn" id="btnOutfits">
-            <canvas id="outfitIcon" width="76" height="76"></canvas>
-            <b>ชุด</b>
+          <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
+               รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
+               ทำให้แถวปุ่มล็อบบี้ยาวจนต้องเลื่อนบนจอเตี้ย -->
+          <button class="lobby-btn" id="btnStash">
+            <canvas id="stashIcon" width="76" height="76"></canvas>
+            <b>คลังน้อง</b>
           </button>
-          <button class="lobby-btn" id="btnFace">
-            <canvas id="faceIcon" width="76" height="76"></canvas>
-            <b>หน้าน้อง</b>
-          </button>
-          <button class="lobby-btn" id="btnTreasures">
-            <canvas id="treasureIcon" width="76" height="76"></canvas>
-            <b>สมบัติ</b>
+          <!-- สร้างสรรค์ = ระบายสีน้อง + ใส่รูปหน้าน้อง สองโหมดในแผงเดียว
+               รวมเพราะทั้งคู่คือ "แต่งหน้าตาน้องด้วยตัวเอง" เหมือนกัน
+               ใช้โครงสองแท็บชุดเดียวกับคลังน้อง -->
+          <button class="lobby-btn" id="btnCreate">
+            <canvas id="createIcon" width="76" height="76"></canvas>
+            <b>สร้างสรรค์</b>
           </button>
         </div>
 
@@ -450,27 +452,82 @@
       </div>
 
       <!-- หน้าเลือกชุด ชุดผูกกับตัวแมว จึงโชว์เฉพาะชุดของตัวที่เลือกอยู่ -->
-      <div class="panel hidden" id="outfitPanel">
-        <div class="pop">
-          <!-- หัวเรื่องกับแถบกรองอยู่แถวเดียวกัน ดู .panel-head ใน style.css -->
-          <div class="panel-head">
-          <h2 class="skin-title">เลือกชุด</h2>
-          <div class="filterbar" id="outfitFilter">
-            <div class="fsort" role="group" aria-label="เรียงลำดับ">
-              <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
-              <button type="button" class="fchip" data-sort="rarity">หายาก</button>
+      <!-- ── คลังน้อง ────────────────────────────────────────
+           ชุดกับสมบัติอยู่ในแผงเดียว สลับหมวดด้วยแถบซ้าย ท่าเดียวกับตู้กาช่า
+
+           ── ทำไมเก็บกริดกับแถบกรองไว้สองชุด ไม่ใช้ชุดเดียวร่วมกัน ──
+           สองหมวดมีตัวเลือกเรียงไม่เหมือนกัน (สมบัติมี "เลเวล" ชุดไม่มี) และตัวการ์ด
+           ก็คนละทรงคนละข้อมูล ถ้ายุบเป็นชุดเดียวต้องเขียนตัวสร้างการ์ดใหม่ทั้งคู่
+           แล้วสถานะกรองของแต่ละหมวดก็จะทับกัน สลับหมวดทีค่ากรองก็หายไปด้วย
+
+           แยกไว้แล้วซ่อน/โชว์แทน ทำให้โค้ดเดิมของทั้งสองหน้าทำงานต่อได้ทั้งดุ้น
+           โดยไม่ต้องแตะเลยสักบรรทัด -->
+      <div class="panel hidden" id="stashPanel">
+        <div class="pop stash-pop">
+          <div class="stash-body">
+            <!-- ซ้าย: เลือกหมวด อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
+            <div class="stash-tabs" role="tablist" aria-label="เลือกหมวด">
+              <button type="button" class="stab on" id="tabStashOutfit" role="tab">
+                <span class="stab-ico" aria-hidden="true">👕</span>ชุดแมว
+              </button>
+              <button type="button" class="stab" id="tabStashTreasure" role="tab">
+                <span class="stab-ico" aria-hidden="true">🧰</span>สมบัติ
+              </button>
             </div>
-            <label class="fonly">
-              <input type="checkbox" id="outfitOnly">
-              <span>ดูเฉพาะสิ่งที่มี</span>
-            </label>
+
+            <div class="stash-main">
+              <div class="panel-head">
+                <h2 class="skin-title" id="stashTitle">เลือกชุด</h2>
+                <div class="filterbar" id="outfitFilter">
+                  <div class="fsort" role="group" aria-label="เรียงลำดับ">
+                    <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
+                    <button type="button" class="fchip" data-sort="rarity">หายาก</button>
+                  </div>
+                  <label class="fonly">
+                    <input type="checkbox" id="outfitOnly">
+                    <span>ดูเฉพาะสิ่งที่มี</span>
+                  </label>
+                </div>
+                <div class="filterbar hidden" id="treasureFilter">
+                  <div class="fsort" role="group" aria-label="เรียงลำดับ">
+                    <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
+                    <button type="button" class="fchip" data-sort="level">เลเวล</button>
+                    <button type="button" class="fchip" data-sort="rarity">หายาก</button>
+                  </div>
+                  <label class="fonly">
+                    <input type="checkbox" id="treasureOnly">
+                    <span>ดูเฉพาะสิ่งที่มี</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="stash-cols">
+                <!-- ซ้าย: ของชิ้นที่เลือกอยู่ แตะการ์ดในกริดแล้วมาโผล่ตรงนี้
+                     ไม่ใช่เด้งไปหน้ารายละเอียดทันทีเหมือนเดิม — ผู้เล่นจึงเทียบ
+                     ของหลายชิ้นได้โดยไม่ต้องเข้าออกหน้าทีละชิ้น -->
+                <div class="stash-show">
+                  <div class="stash-face">
+                    <span class="tier-badge as-sign" id="stashTier"></span>
+                    <canvas id="stashCat" width="190" height="190"></canvas>
+                    <span class="stash-emoji" id="stashEmoji" aria-hidden="true"></span>
+                  </div>
+                  <b class="stash-name" id="stashName"></b>
+                  <div class="stash-btns">
+                    <button class="btn" id="stashUse">ใส่ชุดนี้</button>
+                    <button class="btn ghost" id="stashMore">ดูเพิ่มเติม</button>
+                  </div>
+                </div>
+
+                <!-- ขวา: กริดของทั้งสองหมวด สลับโชว์ตามแถบซ้าย -->
+                <div class="skin-grid stash-grid" id="outfitGrid"></div>
+                <div class="skin-grid stash-grid hidden" id="treasureGrid"></div>
+              </div>
+
+              <small class="form-msg" id="outfitMsg"></small>
+            </div>
           </div>
-          </div>
-          <div class="skin-grid" id="outfitGrid"></div>
-          <small class="form-msg" id="outfitMsg"></small>
-          <!-- ไม่มีปุ่มยืนยันแล้ว — แตะการ์ดคือใส่เลย เหมือนหน้าเลือกแมวกับเลือกด่าน
-               ทั้งสามหน้าจึงทำงานเหมือนกันหมด ไม่ต้องจำว่าหน้าไหนต้องกดยืนยัน -->
-          <button class="backbtn" id="outfitBack" aria-label="กลับ">
+
+          <button class="backbtn" id="stashBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -564,32 +621,6 @@
       <!-- ── ระบบสมบัติ: 4 หน้าที่ต่อกันเป็นสาย ──────────────────
            รายการ → รายละเอียด → ตีบวก   และ   รายการ → ตู้สุ่ม
            แต่ละหน้าจำว่ามาจากไหน ปุ่มกลับจึงพากลับที่เดิมเสมอ -->
-      <div class="panel hidden" id="treasurePanel">
-        <div class="pop">
-          <div class="panel-head">
-          <h2 class="skin-title">สมบัติ</h2>
-          <div class="filterbar" id="treasureFilter">
-            <div class="fsort" role="group" aria-label="เรียงลำดับ">
-              <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
-              <button type="button" class="fchip" data-sort="level">เลเวล</button>
-              <button type="button" class="fchip" data-sort="rarity">หายาก</button>
-            </div>
-            <label class="fonly">
-              <input type="checkbox" id="treasureOnly">
-              <span>ดูเฉพาะสิ่งที่มี</span>
-            </label>
-          </div>
-          </div>
-          <div class="skin-grid" id="treasureGrid"></div>
-          <button class="backbtn" id="treasureBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
       <!-- รายละเอียดสมบัติหนึ่งชิ้น -->
       <div class="panel hidden" id="tDetailPanel">
         <div class="pop">
@@ -985,41 +1016,108 @@
            ต้องซ้อนบนแผงที่เปิดค้างอยู่ ไม่ใช่แทนที่ — ผู้เล่นจะได้เห็นว่ากำลังยืนยันจากหน้าไหน -->
       <!-- ── ใส่รูปเป็นหน้าน้องแมว (Game Face) ──
            รูปอยู่ในเครื่องนี้เท่านั้น ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ (ดู src/face.js) -->
-      <div class="panel hidden" id="facePanel">
-        <div class="pop face-pop">
-          <div class="panel-head"><h2 class="skin-title">หน้าน้องแมว</h2></div>
-
-          <!-- ซ้าย = กรอบตัด + แถบซูม  /  ขวา = ตัวอย่างน้อง
-               คำอธิบายถูกย้ายออกมาเป็นบรรทัดของตัวเองข้างล่าง เพราะข้อความยาว
-               ทำให้คอลัมน์ขวากว้างขึ้นจนสองฝั่งพับลงมาซ้อนกัน -->
-          <div class="face-work">
-            <div class="face-main">
-              <!-- ลากเพื่อเลื่อนรูป -->
-              <div class="face-crop" id="faceCrop">
-                <canvas id="faceCanvas" width="300" height="300"></canvas>
-                <div class="face-ring" aria-hidden="true"></div>
-                <span class="face-empty" id="faceEmpty">ยังไม่มีรูป<br><small>กดปุ่ม "เลือกรูป" ข้างล่าง</small></span>
-              </div>
-              <input class="face-zoom" type="range" id="faceZoom" min="100" max="400" value="100"
-                     disabled aria-label="ย่อ หรือ ขยายรูป">
+      <!-- ── สร้างสรรค์ ────────────────────────────────────────
+           โครงเดียวกับคลังน้องเป๊ะ ๆ (stash-pop / stash-tabs / stash-main)
+           ตั้งใจใช้คลาสชุดเดิมซ้ำ ไม่ได้ทำชุดใหม่ เพื่อให้สองแผงนี้ปรับขนาด
+           บนจอเตี้ยเหมือนกันเป๊ะโดยไม่ต้องไล่จูน dvh ซ้ำอีกรอบ -->
+      <div class="panel hidden" id="createPanel">
+        <div class="pop stash-pop">
+          <div class="stash-body">
+            <div class="stash-tabs" role="tablist" aria-label="เลือกโหมด">
+              <button type="button" class="stab on" id="tabPaint" role="tab">
+                <span class="stab-ico" aria-hidden="true">🎨</span>ระบายสี
+              </button>
+              <button type="button" class="stab" id="tabFace" role="tab">
+                <span class="stab-ico" aria-hidden="true">📷</span>หน้าน้อง
+              </button>
             </div>
 
-            <div class="face-side">
-              <canvas id="facePreview" width="132" height="132"></canvas>
-              <small class="face-cap">น้องจะหน้าตาแบบนี้</small>
-
-              <input type="file" id="facePick" accept="image/*" hidden>
-              <div class="btnrow">
-                <button class="btn ghost" id="faceOpen">เลือกรูป</button>
-                <button class="btn" id="faceSave" disabled>ใช้รูปนี้</button>
-                <button class="btn ghost" id="faceOff">ลบรูป</button>
+            <div class="stash-main">
+              <div class="panel-head">
+                <h2 class="skin-title" id="createTitle">ระบายสีน้อง</h2>
               </div>
-              <small class="form-msg" id="faceMsg"></small>
-              <p class="face-note">รูปเก็บไว้ในเครื่องนี้เท่านั้น ไม่ได้ส่งขึ้นเซิร์ฟเวอร์ และไม่ไปกับบัญชี</p>
+
+              <!-- ── โหมดระบายสี ── -->
+              <div class="paint-cols" id="paintWrap">
+                <div class="paint-stage">
+                  <!-- ผ้าใบที่เห็น กับผ้าใบรหัสสีที่ซ่อนไว้ ต้องขนาดเท่ากันเป๊ะ
+                       เพราะอ่านพิกเซลจากผ้าใบซ่อนที่พิกัดเดียวกับที่นิ้วแตะ -->
+                  <canvas id="paintCat" width="330" height="330"></canvas>
+                  <small class="paint-hint" id="paintHint">แตะตัวน้องเพื่อลงสี</small>
+                </div>
+
+                <div class="paint-side">
+                  <!-- เฉพาะกล่องนี้ที่เลื่อนได้ ปุ่มลงมือทั้งสองแถวอยู่นอกกล่อง
+                       เพื่อให้ "ใช้น้องตัวนี้" ไม่มีวันตกไปอยู่ใต้ขอบจอเตี้ย ๆ
+                       ซึ่งเคยเกิดจริงตอนทดสอบบนจอ 390px -->
+                  <div class="paint-scroll">
+                  <div class="paint-tools" id="paintTools" role="group" aria-label="เครื่องมือ">
+                    <button type="button" class="ptool on" data-tool="brush">
+                      <span aria-hidden="true">🖌️</span><i>พู่กัน</i>
+                    </button>
+                    <button type="button" class="ptool" data-tool="bucket">
+                      <span aria-hidden="true">🪣</span><i>ถังสี</i>
+                    </button>
+                    <button type="button" class="ptool" data-tool="dropper">
+                      <span aria-hidden="true">💧</span><i>ดูดสี</i>
+                    </button>
+                    <button type="button" class="ptool" data-tool="eraser">
+                      <span aria-hidden="true">🧽</span><i>ยางลบ</i>
+                    </button>
+                  </div>
+
+                  <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
+
+                  <label class="paint-free">
+                    <input type="color" id="paintFree" value="#FF8A3D" aria-label="เลือกสีเอง">
+                    <span>สีอื่น</span>
+                  </label>
+
+                  <!-- เลือกส่วนจากรายชื่อได้ด้วย ไม่ใช่แค่แตะบนตัวน้อง
+                       จำเป็นบนมือถือ เพราะจมูกกับตาเล็กเกินกว่าจะแตะให้ตรงด้วยนิ้ว -->
+                  <div class="paint-parts" id="paintParts" role="group" aria-label="เลือกส่วน"></div>
+                  </div>
+
+                  <div class="paint-acts">
+                    <button type="button" class="btn ghost" id="paintUndo">ย้อนกลับ</button>
+                    <button type="button" class="btn ghost" id="paintRandom">สุ่มสี</button>
+                    <button type="button" class="btn ghost" id="paintClear">ล้างสี</button>
+                  </div>
+                  <button type="button" class="btn" id="paintUse">ใช้น้องตัวนี้</button>
+                </div>
+              </div>
+
+              <!-- ── โหมดใส่รูปหน้าน้อง (ของเดิม ยกมาทั้งชุด ไม่ได้แก้ id ใดเลย
+                     เพื่อให้โค้ดตัดรูปที่มีอยู่ทำงานต่อได้โดยไม่ต้องแตะ) ── -->
+              <div class="face-work hidden" id="faceWrap">
+                <div class="face-main">
+                  <div class="face-crop" id="faceCrop">
+                    <canvas id="faceCanvas" width="300" height="300"></canvas>
+                    <div class="face-ring" aria-hidden="true"></div>
+                    <span class="face-empty" id="faceEmpty">ยังไม่มีรูป<br><small>กดปุ่ม "เลือกรูป" ข้างล่าง</small></span>
+                  </div>
+                  <input class="face-zoom" type="range" id="faceZoom" min="100" max="400" value="100"
+                         disabled aria-label="ย่อ หรือ ขยายรูป">
+                </div>
+
+                <div class="face-side">
+                  <canvas id="facePreview" width="132" height="132"></canvas>
+                  <small class="face-cap">น้องจะหน้าตาแบบนี้</small>
+
+                  <input type="file" id="facePick" accept="image/*" hidden>
+                  <div class="btnrow">
+                    <button class="btn ghost" id="faceOpen">เลือกรูป</button>
+                    <button class="btn" id="faceSave" disabled>ใช้รูปนี้</button>
+                    <button class="btn ghost" id="faceOff">ลบรูป</button>
+                  </div>
+                  <small class="form-msg" id="faceMsg"></small>
+                  <p class="face-note">รูปเก็บไว้ในเครื่องนี้เท่านั้น ไม่ได้ส่งขึ้นเซิร์ฟเวอร์ และไม่ไปกับบัญชี</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <button class="backbtn" id="faceBack" aria-label="กลับ">
+          <button class="backbtn" id="createBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>

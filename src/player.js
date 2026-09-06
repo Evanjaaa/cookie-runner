@@ -28,6 +28,13 @@ export class Player {
     this.tilt = 0;
     this.fainting = false;
     this.faintV = 0;
+
+    // ── ค่าสำหรับแอนิเมชันล้วน ๆ ไม่แตะฟิสิกส์หรือกล่องชนเลยสักตัว ──
+    // ต้องเก็บไว้ที่ตัวละคร ไม่ใช่คำนวณในโค้ดวาด เพราะทั้งสองค่านี้เป็น
+    // "ค่าที่ไล่ตามค่าเมื่อกี้" ซึ่งโค้ดวาดทำไม่ได้ มันถูกเรียกใหม่ทุกเฟรมโดยไม่มีความจำ
+    this.squash = 0;    // + = แบนกว้าง (ลงพื้น), - = ยืดสูง (ถีบขึ้น)
+    this.tailLag = 0;   // หางที่ไล่ตามตัวช้ากว่าจริง
+    this.gaitK = 1;     // ตัวคูณจังหวะเดิน เกมตั้งให้ตอนร่างยักษ์ที่เดินช้าลง
   }
 
   /**
@@ -66,11 +73,16 @@ export class Player {
       this.jumps = 1;
       this.onGround = false;
       this.sliding = false;
+      // ยืดตัวตอนถีบขึ้น — ไม่มีท่าย่อก่อนกระโดด (anticipation) โดยตั้งใจ
+      // เพราะท่าย่อต้องหน่วงการกระโดดจริงไว้สองสามเฟรม ซึ่งในเกมวิ่งหลบ
+      // คือการทำให้ปุ่มหนืด ผู้เล่นจะรู้สึกทันทีว่ากดแล้วไม่ขึ้น
+      this.squash = -0.9;
       return 'single';
     }
     if (this.jumps === 1) {
       this.vy = PHYSICS.doubleJumpV;
       this.jumps = 2;
+      this.squash = -0.7;   // ชั้นสองเบากว่า ยืดน้อยกว่าตามแรงที่น้อยกว่า
       return 'double';
     }
     return null;
@@ -82,9 +94,16 @@ export class Player {
   }
 
   update(dt, game) {
+    // เก็บความเร็วตกไว้ก่อน เพราะเดี๋ยวมันถูกล้างเป็นศูนย์ตอนแตะพื้น
+    // แต่เราต้องใช้มันวัดว่า "ลงแรงแค่ไหน" หลังจากนั้น
+    const impactV = this.vy;
+
     this.vy += PHYSICS.gravity * dt;
     this.y += this.vy * dt;
     this.runPhase += game.speed * dt * 0.06;
+
+    // สปริงคลายกลับหาศูนย์ทุกเฟรม ตัวดันให้ยืด/แบนคือ jump() กับจังหวะลงพื้น
+    this.squash += (0 - this.squash) * 0.16 * dt;
 
     const centerWorldX = PLAYER_X + BODY.standW / 2 + game.camera;
     // ระหว่างใช้ความสามารถหรือติดสปีด ถือว่ามีพื้นตลอด วิ่งข้ามหลุมได้เหมือนไม่มีหลุม
@@ -100,7 +119,11 @@ export class Player {
     const crossedGroundNow = this.y - this.vy * dt <= GROUND_Y;
 
     if (!overPit && this.y >= GROUND_Y && crossedGroundNow) {
-      if (!this.onGround) justLanded = true;
+      if (!this.onGround) {
+        justLanded = true;
+        // ตกแรงแค่ไหนแบนแค่นั้น มีเพดานกันไม่ให้ตกจากที่สูงมากแล้วแบนเป็นแพนเค้ก
+        this.squash = Math.min(0.85, 0.28 + impactV * 0.03);
+      }
       this.y = GROUND_Y;
       this.vy = 0;
       this.onGround = true;
@@ -117,6 +140,15 @@ export class Player {
     // ยิงเฉพาะจังหวะที่ "เริ่มหมอบจริง" ไม่ใช่ทุกเฟรมที่กดค้าง
     // และไม่ใช่ตอนกดกลางอากาศ ซึ่งยังหมอบไม่ได้จนกว่าจะแตะพื้น
     const justSlid = this.sliding && !wasSliding;
+
+    // ── หางไล่ตามตัว ──
+    // เป้าหมายคือคลื่นของท่าวิ่ง แต่หางวิ่งตามช้ากว่า พอตัวหยุดหางจึงยังแกว่งต่ออีกพัก
+    // (follow-through) นี่คือสิ่งที่ทำให้หางดูมีน้ำหนักของตัวเอง แทนที่จะติดแน่นกับก้น
+    // ตอนลอยอยู่กลางอากาศหางชี้สวนทางที่กำลังเคลื่อน = ใช้หางถ่วงสมดุล
+    const tailTarget = this.onGround
+      ? Math.sin(this.runPhase * this.gaitK * 2 + 0.9)
+      : Math.max(-1.4, Math.min(1.4, -this.vy * 0.05));
+    this.tailLag += (tailTarget - this.tailLag) * 0.2 * dt;
 
     return { justLanded, justSlid, fellOut: this.y > VIEW.H + 100 };
   }
