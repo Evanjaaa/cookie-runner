@@ -3436,7 +3436,7 @@ document.getElementById('facePick').addEventListener('change', (e) => {
 document.getElementById('faceSave').addEventListener('click', () => {
   const msg = document.getElementById('faceMsg');
   if (!faceSrc) return;
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   // JPEG ไม่ใช่ PNG — รูปถ่ายเป็นภาพต่อเนื่อง PNG จะใหญ่กว่าราว 8-10 เท่า
   // โดยได้ช่องโปร่งใสมาซึ่งเราไม่ใช้ (ตัดเป็นวงกลมตอนวาดอยู่แล้ว)
   const url = faceOut.toDataURL('image/jpeg', 0.86);
@@ -3483,6 +3483,9 @@ function showFace(on) {
   // ผลคือเหลือแต่ฉากหน้าแรกเปล่า ๆ ไม่มีปุ่มอะไรเลย และปุ่มหยุดก็กดไม่ติด
   // เพราะเกมยังเป็นสถานะ READY ซึ่งไม่มีรอบเล่นให้หยุด
   if (!on) setDraft(null);
+  // ปิดแผงแล้วต้องคืนจากโหมดเต็มจอเสมอ ไม่งั้นเปิดกลับมาครั้งหน้าจะค้างอยู่โหมดนั้น
+  // ทั้งที่ผู้เล่นตั้งใจกดเข้ามาดูหน้าปกติ
+  if (!on) createPanel.classList.remove('paint-full');
   createPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
 
@@ -3502,10 +3505,12 @@ function showFace(on) {
 }
 
 document.getElementById('btnCreate').addEventListener('click', () => {
-  unlockAudio(); startMusic();
+  unlockAudio(); sfx.fish(); startMusic();
   showFace(true);
 });
-document.getElementById('createBack').addEventListener('click', () => showFace(false));
+document.getElementById('createBack').addEventListener('click', () => {
+  unlockAudio(); sfx.fish(); showFace(false);
+});
 
 // ─────────────────────────────────────────────────────────────
 // ระบายสีน้อง
@@ -3751,6 +3756,8 @@ function brushAt(ev, first) {
 let painting = false;
 paintCat.addEventListener('pointerdown', (e) => {
   e.preventDefault();
+  // ไม่มีเสียงตรงนี้ต่างจากปุ่มอื่นในหน้า — การระบายเป็นการลาก ไม่ใช่การกดปุ่ม
+  // ถ้าดังทุกครั้งที่แตะจะรัวเป็นชุดจนน่ารำคาญ
   unlockAudio();
   painting = true;
   // ลงสีก่อน ค่อยจับตัวชี้ทีหลัง และต้องครอบ try ไว้ด้วย
@@ -3819,7 +3826,7 @@ function setTool(name) {
 }
 document.getElementById('paintTools').addEventListener('click', (e) => {
   const b = e.target.closest('.ptool');
-  if (b) { unlockAudio(); setTool(b.dataset.tool); }
+  if (b) { unlockAudio(); sfx.fish(); setTool(b.dataset.tool); }
 });
 
 function refreshSwatches() {
@@ -3840,7 +3847,7 @@ function buildSwatches() {
     b.style.background = hex;
     b.setAttribute('aria-label', 'สี ' + hex);
     b.addEventListener('click', () => {
-      unlockAudio();
+      unlockAudio(); sfx.fish();
       paintColor = hex;
       document.getElementById('paintFree').value = hex;
       // หยิบสีแล้วต้องกลับมาเป็นพู่กัน ไม่งั้นเลือกสีทั้งทีแต่ยังค้างที่ยางลบอยู่
@@ -3873,7 +3880,7 @@ function refreshParts() {
       b.querySelector('span').textContent = r.name;
       b.title = r.hint;
       b.addEventListener('click', () => {
-        unlockAudio();
+        unlockAudio(); sfx.fish();
         // กดซ้ำที่เดิม = ปลดล็อก กลับไปเล็งเอาจากที่แตะบนตัวน้อง
         paintPart = paintPart && paintPart.key === r.key ? null : r;
         refreshParts();
@@ -3889,7 +3896,7 @@ function refreshParts() {
 }
 
 document.getElementById('paintUndo').addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   const prev = paintHistory.pop();
   if (!prev) return;
   // ย้อนทั้งสองอย่างพร้อมกัน — จานสีกับรอยแปรงถูกเก็บคู่กันไว้ใน pushHistory()
@@ -3901,7 +3908,7 @@ document.getElementById('paintUndo').addEventListener('click', () => {
 });
 
 document.getElementById('paintRandom').addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   pushHistory();
   // สุ่มจากแม่สีที่ให้ไว้ ไม่ได้สุ่มจากทั้งวงล้อสี เพราะสุ่มอิสระแล้วได้แมวสีมั่ว
   // เกือบทุกครั้ง ส่วนแม่สีชุดนี้ผสมกันยังไงก็ยังอ่านเป็นแมวอยู่
@@ -3915,7 +3922,7 @@ document.getElementById('paintRandom').addEventListener('click', () => {
 });
 
 document.getElementById('paintClear').addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   pushHistory();
   setPalette(BLANK);
   // "ล้างสี" ต้องล้างรอยพู่กันด้วย ไม่งั้นกดล้างแล้วยังเหลือรอยเปื้อนอยู่เต็มตัว
@@ -3926,7 +3933,7 @@ document.getElementById('paintClear').addEventListener('click', () => {
 });
 
 document.getElementById('paintUse').addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   setSkin(CUSTOM_ID);
   sfx.fish();
   buildSkinGrid();
@@ -3949,6 +3956,8 @@ function refreshCreate() {
 // ── สลับสองโหมด ──
 function setCreateTab(which) {
   const onPaint = which === 'paint';
+  // โหมดเต็มจอทำไว้ให้ผ้าใบระบายสีโดยเฉพาะ ไปแท็บรูปเมื่อไหร่ต้องย่อกลับก่อน
+  if (!onPaint) createPanel.classList.remove('paint-full');
   document.getElementById('paintWrap').classList.toggle('hidden', !onPaint);
   document.getElementById('faceWrap').classList.toggle('hidden', onPaint);
   document.getElementById('tabPaint').classList.toggle('on', onPaint);
@@ -3956,11 +3965,37 @@ function setCreateTab(which) {
   document.getElementById('createTitle').textContent = onPaint ? 'ระบายสีน้อง' : 'หน้าน้องแมว';
   if (onPaint) { drawPaintCat(); drawPickMap(); }
 }
+// ── ขยายเต็มจอ ──
+// แค่ติดคลาสที่แผง ที่เหลือเป็นเรื่องของ CSS ล้วน ๆ ไม่ได้ย้าย DOM หรือสร้างหน้าใหม่
+// เครื่องมือทุกตัวจึงยังต่อสายเดิมอยู่ ไม่ต้องผูก event ซ้ำและไม่มีสถานะให้หลุด
+//
+// ต้องวาดผ้าใบใหม่หลังสลับ เพราะขนาดที่แสดงเปลี่ยนไป และผ้าใบรหัสสีที่ใช้ตรวจ
+// ว่านิ้วแตะโดนส่วนไหนต้องตรงกับที่ตาเห็นเสมอ ไม่งั้นจะแตะเหลื่อม
+function setPaintMax(on) {
+  createPanel.classList.toggle('paint-full', on);
+  const b = document.getElementById('paintMax');
+  b.textContent = on ? '⤡' : '⛶';
+  b.setAttribute('aria-label', on ? 'ย่อกลับ' : 'ขยายเต็มจอ');
+  b.title = b.getAttribute('aria-label');
+  requestAnimationFrame(() => { drawPaintCat(); drawPickMap(); });
+}
+document.getElementById('paintMax').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  setPaintMax(!createPanel.classList.contains('paint-full'));
+});
+
+document.getElementById('faceRotReset').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  const r = document.getElementById('faceRot');
+  r.value = '0';
+  r.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
 document.getElementById('tabPaint').addEventListener('click', () => {
-  unlockAudio(); setCreateTab('paint');
+  unlockAudio(); sfx.fish(); setCreateTab('paint');
 });
 document.getElementById('tabFace').addEventListener('click', () => {
-  unlockAudio(); setCreateTab('face');
+  unlockAudio(); sfx.fish(); setCreateTab('face');
 });
 
 // ── ปุ่มของระบบสมบัติ ──────────────────────────────────────
@@ -3971,7 +4006,7 @@ document.getElementById('tdBack').addEventListener('click', () => {
   else paintLoadout();
 });
 document.getElementById('tdEquip').addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   const r = toggleEquip(tCurrent);
   if (!r.ok) {
     sfx.shieldBreak();
@@ -4046,7 +4081,7 @@ document.getElementById('glBack').addEventListener('click', () => showGList(fals
 const oddsPop = document.getElementById('oddsPop');
 const showOdds = (on) => oddsPop.classList.toggle('hidden', !on);
 document.getElementById('oddsBtn').addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   sfx.fish();
   showOdds(oddsPop.classList.contains('hidden'));
 });
@@ -4056,7 +4091,7 @@ document.getElementById('oddsClose').addEventListener('click', () => showOdds(fa
 // จึงรับทั้งปุ่ม "ตกลง" และการแตะที่ไหนก็ได้บนกล่อง เผื่อผู้เล่นแตะมั่ว ๆ ก่อน
 const gotBox = document.getElementById('gachaResult');
 gotBox.addEventListener('click', () => {
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   sfx.fish();
   closeResult();
 });
@@ -4336,7 +4371,7 @@ function closeAllPanels() {
 function startRun() {
   clearTimeout(introTimer);
   game.inRoom = false;
-  unlockAudio();
+  unlockAudio(); sfx.fish();
   startMusic();
   game.start();
   closeAllPanels();

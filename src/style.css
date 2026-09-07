@@ -5426,7 +5426,10 @@ canvas[hidden] { display: none; }
   gap: clamp(8px, 1.6vw, 18px);
 }
 .paint-stage {
-  flex: 0 0 auto;
+  /* ยอมหดได้ ผ้าใบเล็กลงยังระบายได้ แต่ถ้าเครื่องมือถูกตัดหายคือใช้ไม่ได้เลย
+     ถ้าตั้ง shrink เป็น 0 ทั้งสองคอลัมน์ แถวจะล้นแล้วโดน .pop ตัดทิ้งเงียบ ๆ */
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -5437,9 +5440,13 @@ canvas[hidden] { display: none; }
 /* ผ้าใบสูงเต็มช่องแล้วให้ความกว้างตามไปเอง ตัวน้องจะได้ใหญ่ที่สุดเท่าที่จอให้
    ถ้าคุมด้วยความกว้างแทน บนจอเตี้ยน้องจะเล็กจนแตะจมูกไม่โดน */
 #paintCat {
-  height: min(100%, 60dvh);
+  /* จอใหญ่: แถวเตี้ยแต่กว้าง ความสูงจึงเป็นด้านที่บีบ ตั้งความสูงแล้วปล่อยความกว้าง auto
+     ห้ามใส่ max-width คู่กัน ไม่งั้นพอความกว้างถูกบีบ ความสูงจะไม่ลดตาม
+     แล้วได้ผ้าใบสี่เหลี่ยมผืนผ้าซึ่งทำให้รูปน้องถูกยืด (บัฟเฟอร์เป็น 440x440)
+     ส่วนมือถือกลับด้านกัน ดูกฎในบล็อก max-height: 460px */
+  height: 60dvh;
+  max-height: 100%;
   width: auto;
-  max-width: 100%;
   aspect-ratio: 1;
   border-radius: clamp(12px, 2.4vw, 20px);
   background: rgba(255, 252, 246, .07);
@@ -5576,14 +5583,9 @@ canvas[hidden] { display: none; }
    สีขาวยังเห็นเป็นวงบนพื้นสว่าง ถ้าเอาไปใช้บอกการเลือกด้วยจะเสียหน้าที่เดิม */
 .pswatch.on { outline: 3px solid var(--cream); outline-offset: 2px; }
 
+/* ตอนนี้เป็นช่องสีในแถบขนาดแปรง ไม่ใช่บรรทัดของตัวเองแล้ว */
 .paint-free {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--cream);
-  font-size: clamp(10px, 1.8dvh, 14px);
-}
-.paint-free input {
+  flex: 0 0 auto;
   width: clamp(30px, 6vw, 44px);
   height: clamp(20px, 3.4dvh, 28px);
   padding: 0;
@@ -5595,7 +5597,9 @@ canvas[hidden] { display: none; }
 
 .paint-parts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* หกส่วนลงสามคอลัมน์ = สองแถวพอดี ถ้าใช้สองคอลัมน์จะเป็นสามแถว
+     แล้วแถวสุดท้าย (จมูก/ตา) ตกใต้ขอบจนต้องเลื่อนหา ทั้งบนจอใหญ่และมือถือ */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(3px, .7vw, 6px);
 }
 .ppart {
@@ -5622,9 +5626,57 @@ canvas[hidden] { display: none; }
 .ppart span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ppart.on { background: rgba(255, 232, 190, .22); border-color: var(--cream); }
 
+/* ปุ่มขยายเต็มจอ ลอยมุมขวาบนของผ้าใบ ไม่กินที่ในแถวเครื่องมือ
+   ต้องเกาะกับ .paint-canvas ที่หดตามผ้าใบ ไม่ใช่ .paint-stage ที่ถูกยืดเต็มความสูงแถว */
+.paint-canvas {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+}
+.paint-max {
+  position: absolute;
+  top: clamp(4px, 1dvh, 9px);
+  right: clamp(4px, 1vw, 9px);
+  width: clamp(28px, 5dvh, 38px);
+  height: clamp(28px, 5dvh, 38px);
+  display: grid;
+  place-items: center;
+  border-radius: clamp(8px, 1.5vw, 12px);
+  border: 1px solid rgba(255, 246, 230, .22);
+  background: rgba(28, 14, 42, .55);
+  color: var(--cream);
+  font-size: clamp(13px, 2.4dvh, 18px);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
 .paint-acts { display: flex; gap: clamp(4px, .8vw, 8px); }
 .paint-acts .btn { flex: 1 1 0; min-width: 0; margin-top: 0; padding-inline: 6px; }
 .paint-side > .btn { margin-top: 0; }
+
+/* ── ป้ายกำกับแถบซูม/หมุนของหน้ารูป ──
+   เดิมเป็นแถบเปล่าสองอันเรียงกัน ไม่มีอะไรบอกว่าอันไหนทำอะไร */
+.fs-name {
+  flex: 0 0 auto;
+  color: var(--cream);
+  font-size: clamp(10px, 1.7dvh, 13px);
+  font-weight: 600;
+  opacity: .85;
+}
+.fs-reset {
+  flex: 0 0 auto;
+  padding: clamp(2px, .5dvh, 5px) clamp(6px, 1.2vw, 10px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 246, 230, .28);
+  background: rgba(255, 252, 246, .1);
+  color: var(--cream);
+  font: inherit;
+  font-size: clamp(9px, 1.5dvh, 12px);
+  cursor: pointer;
+}
 
 /* แผงสร้างสรรค์ใช้หัวข้อชิดซ้ายเหมือนคลังน้อง ไม่ใช่กึ่งกลางแบบแผงอื่น */
 #createPanel .stash-main > .panel-head { grid-template-columns: 1fr; }
@@ -5651,21 +5703,68 @@ canvas[hidden] { display: none; }
      ส่วนคอลัมน์ซ้ายกินความกว้างซึ่งเหลือเฟืออยู่แล้ว — ย้ายแล้วแย่ลง
      ที่ทำได้จริงคือตัดของที่กินความสูงข้างในทิ้ง (หัวเรื่อง คำใบ้ รายชื่อส่วน) */
   #createPanel .stash-tabs { padding-right: clamp(6px, 1.2vw, 12px); }
-  #createPanel .stab { font-size: 10.5px; padding: 6px 8px; }
+  /* แท็บใช้ขนาดเดียวกับกาช่า/คลังน้อง ไม่ย่อลงเป็นกรณีพิเศษอีกแล้ว
+     ปุ่มสองอันเตี้ยกว่าปุ่มหน้าอื่นทำให้หน้านี้ดูไม่เข้าชุดกับที่เหลือทั้งเกม */
   /* หัวเรื่องซ้ำกับปุ่มแท็บที่เพิ่งกดมา ตัดทิ้งได้ที่ว่างคืนมาเต็มบรรทัด */
   #createPanel .stash-main > .panel-head { display: none; }
-  .paint-parts { display: none; }
 
-  /* ผ้าใบกินความสูงที่เหลือทั้งหมด ไม่ต้องเว้นให้หัวเรื่องอีกแล้ว */
-  #paintCat { height: 100%; }
+  /* ── ผ้าใบเล็กลง เพื่อคืนที่ให้เครื่องมือ ──
+     ของเดิมผ้าใบกินความสูงทั้งหมดแล้วเบียดจนต้องซ่อนรายชื่อส่วนทิ้ง
+     ซึ่งทำให้เลือกจมูก/ตา/ขา ไม่ได้เลยบนมือถือ ทั้งที่เป็นส่วนที่แตะยากที่สุด */
+  #paintCat { width: 52dvh; max-width: 100%; height: auto; }
   .paint-hint { display: none; }
 
-  /* คอลัมน์ขวาต้องกว้างพอให้แม่สีเป็นวงที่นิ้วแตะได้จริง ไม่ใช่จุดเล็ก ๆ
-     190px = หกวงกว้าง 26px บวกช่องไฟ ซึ่งเป็นขนาดต่ำสุดที่ยังแตะไม่พลาด */
-  .paint-side { min-width: 190px; flex: 0 0 auto; }
+  /* คอลัมน์ขวากว้างขึ้นเพื่อให้รายชื่อส่วนอยู่ได้สองคอลัมน์โดยชื่อไม่ถูกตัด */
+  .paint-side { min-width: 212px; flex: 0 0 auto; }
   .paint-swatches { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .pswatch { min-width: 22px; }
+  /* สามคอลัมน์เหลือสองแถวแทนสามแถว คืนความสูงให้พอดีจนไม่ต้องเลื่อนหาแถวสุดท้าย */
+  .ppart { font-size: 10px; gap: 3px; }
+  /* บีบระยะทุกจุดในคอลัมน์เครื่องมือ เป้าหมายคือให้แถวเลือกส่วนอยู่ในสายตาตั้งแต่แรก
+     ไม่ต้องเลื่อนหา ซึ่งเป็นสาเหตุที่มันเคยถูกซ่อนทิ้งไปเลยในเวอร์ชันก่อน */
+  .paint-scroll { gap: 4px; }
+  .paint-swatches { gap: 4px; }
+  .ppart { padding: 2px 3px; }
+  .ptool { padding: 2px 2px; }
+  .ptool span { font-size: 15px; }
+  .ptool i { font-size: 9px; }
+  .pswatch { max-width: 26px; }
+  .paint-swatches { justify-content: start; }
+
+  /* หน้ารูป: ฝั่งขวาของเดิมเล็กจนตัวอย่างน้องเป็นรูปจิ๋ว ขยายให้สมส่วนกับกรอบตัดรูป */
+  .face-side { min-width: 210px; flex: 0 0 auto; }
+  /* 17dvh บนจอสูง 390px ได้แค่ 66px ซึ่งต่ำกว่าพื้น 84 เลยติดพื้นตลอด ไม่ได้ใหญ่ขึ้นจริง
+     30dvh ได้ 117px ซึ่งเต็มที่ว่างในคอลัมน์นี้พอดีโดยไม่ดันปุ่มตกขอบ */
+  #facePreview { width: clamp(104px, 30dvh, 168px); height: auto; aspect-ratio: 1; }
 }
+
+/* ══ โหมดขยายเต็มจอ ═══════════════════════════════════════
+   ซ่อนคอลัมน์แท็บกับหัวเรื่อง แล้วดันแผงให้เต็มจอ ได้ที่คืนมาทั้งสองแกน
+   ผ้าใบโตขึ้นราวเท่าตัวบนมือถือ ซึ่งคือจุดประสงค์เดียวของโหมดนี้ */
+#createPanel.paint-full .pop {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+}
+#createPanel.paint-full .stash-tabs { display: none; }
+#createPanel.paint-full .stash-main > .panel-head { display: none; }
+#createPanel.paint-full .stash-body { gap: 0; }
+/* ปุ่มกลับซ้อนกับปุ่มย่อในโหมดนี้ ซ่อนไปเลย — ปุ่มย่อพากลับมาหน้าปกติได้อยู่แล้ว */
+#createPanel.paint-full .backbtn { display: none; }
+/* เต็มจอ: ที่ว่างเป็นทรงนอน ความสูงเป็นตัวจำกัด จึงคุมด้วยความสูงแทน
+   แล้วให้ความกว้างเป็น auto ตาม aspect-ratio ซึ่งเป็นภาพกลับของกรณีปกติ */
+#createPanel.paint-full #paintCat {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: none;
+}
+#createPanel.paint-full .paint-canvas { height: 100%; }
+#createPanel.paint-full .paint-side { min-width: clamp(200px, 30vw, 320px); }
+/* เต็มจอมีที่พอให้รายชื่อส่วนเรียงสามคอลัมน์ เห็นครบหกส่วนในแถวเดียวสองบรรทัด */
+#createPanel.paint-full .paint-parts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* จอเตี้ยมาก ๆ: ปุ่มลงมือย่อลงอีกขั้นเพื่อไม่ให้ดันผ้าใบจนเล็ก */
 @media (max-height: 400px) {

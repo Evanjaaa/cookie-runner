@@ -1042,7 +1042,16 @@
                 <div class="paint-stage">
                   <!-- ผ้าใบที่เห็น กับผ้าใบรหัสสีที่ซ่อนไว้ ต้องขนาดเท่ากันเป๊ะ
                        เพราะอ่านพิกเซลจากผ้าใบซ่อนที่พิกัดเดียวกับที่นิ้วแตะ -->
-                  <canvas id="paintCat" width="440" height="440"></canvas>
+                  <!-- กล่องนี้หดตามผ้าใบพอดี ปุ่มขยายจึงเกาะมุมผ้าใบจริง
+                       ถ้าปล่อยให้ปุ่มอิงกับ .paint-stage ซึ่งถูกยืดเต็มความสูงแถว
+                       ปุ่มจะลอยอยู่เหนือผ้าใบ 18px (วัดแล้ว) -->
+                  <div class="paint-canvas">
+                    <canvas id="paintCat" width="440" height="440"></canvas>
+                    <!-- ขยายเต็มจอ: ซ่อนแท็บกับหัวเรื่อง ให้ผ้าใบกับเครื่องมือกินพื้นที่ทั้งแผง
+                         ใช้ DOM ชุดเดิมทั้งหมด ไม่ได้สร้างหน้าใหม่ เครื่องมือทุกตัวจึงยังต่อสายเดิม -->
+                    <button type="button" class="paint-max" id="paintMax"
+                            aria-label="ขยายเต็มจอ" title="ขยายเต็มจอ">⛶</button>
+                  </div>
                   <small class="paint-hint" id="paintHint">แตะตัวน้องเพื่อลงสี</small>
                 </div>
 
@@ -1074,14 +1083,14 @@
                     <span class="psize-dot" id="paintSizeDot" aria-hidden="true"></span>
                     <input type="range" id="paintSize" min="4" max="40" step="1" value="15"
                            aria-label="ขนาดหัวแปรง">
+                    <!-- ช่องเลือกสีอิสระมาอยู่ท้ายแถบนี้ ไม่ได้กินบรรทัดของตัวเองแล้ว
+                         เพราะบรรทัดเดิมเสียความสูงไปทั้งแถวเพื่อคำว่า "สีอื่น" คำเดียว
+                         ซึ่งทำให้แถวเลือกส่วนตกไปอยู่ใต้ขอบจนต้องเลื่อนหา -->
+                    <input type="color" id="paintFree" class="paint-free" value="#FF8A3D"
+                           aria-label="เลือกสีเอง" title="เลือกสีเอง">
                   </div>
 
                   <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
-
-                  <label class="paint-free">
-                    <input type="color" id="paintFree" value="#FF8A3D" aria-label="เลือกสีเอง">
-                    <span>สีอื่น</span>
-                  </label>
 
                   <!-- เลือกส่วนจากรายชื่อได้ด้วย ไม่ใช่แค่แตะบนตัวน้อง
                        จำเป็นบนมือถือ เพราะจมูกกับตาเล็กเกินกว่าจะแตะให้ตรงด้วยนิ้ว -->
@@ -1108,16 +1117,22 @@
                   </div>
                   <!-- สองแถบอยู่แถวเดียวกัน ไม่ซ้อนกันเป็นสองบรรทัด
                        เพราะความสูงในกรอบนี้เป็นของกรอบตัดรูปเป็นหลัก -->
+                  <!-- เดิมเป็นแถบเปล่าสองอันไม่มีป้าย มองไม่ออกว่าอันไหนซูมอันไหนหมุน
+                       ใส่ชื่อกำกับ และปุ่มคืนค่าไว้ท้ายแถบสำหรับตอนหมุนเพลินจนเอียงเกิน -->
                   <div class="face-sliders">
                     <label class="face-slide">
-                      <span aria-hidden="true">🔍</span>
+                      <span class="fs-ico" aria-hidden="true">🔍</span>
+                      <b class="fs-name">ซูม</b>
                       <input type="range" id="faceZoom" min="100" max="400" value="100"
                              disabled aria-label="ย่อ หรือ ขยายรูป">
                     </label>
                     <label class="face-slide">
-                      <span aria-hidden="true">⟳</span>
+                      <span class="fs-ico" aria-hidden="true">⟳</span>
+                      <b class="fs-name">หมุน</b>
                       <input type="range" id="faceRot" min="-180" max="180" step="1" value="0"
                              disabled aria-label="เอียงรูป">
+                      <button type="button" class="fs-reset" id="faceRotReset"
+                              aria-label="ตั้งรูปให้ตรง">ตรง</button>
                     </label>
                   </div>
                 </div>
