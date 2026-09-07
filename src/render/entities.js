@@ -1,6 +1,7 @@
 // src/render/entities.js
 import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, POTION, LETTER_COLORS, COLORS as C } from '../config.js';
 import { getFace } from '../face.js';
+import { LAYER } from '../paint.js';
 
 const { W } = VIEW;
 
@@ -2880,8 +2881,10 @@ function drawCatStand(ctx, s, {
   }
 
   // ── ลำตัว ───────────────────────────────────
+  // เก็บ path ไว้เป็นฟังก์ชัน เพราะต้องใช้สองรอบ: ตีขอบตอนนี้ แล้วตีซ้ำทับชุดทีหลัง
+  const bodyEdge = () => { ctx.beginPath(); ctx.ellipse(0, cy, rx, ry, 0, 0, Math.PI * 2); };
   ctx.fillStyle = s.cat;
-  ctx.beginPath(); ctx.ellipse(0, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  bodyEdge(); ctx.fill();
   catEdge(ctx, s); ctx.stroke();
   ctx.strokeStyle = 'rgba(255,252,240,.26)';
   ctx.lineWidth = 2;
@@ -2898,7 +2901,19 @@ function drawCatStand(ctx, s, {
     ctx.beginPath(); ctx.moveTo(-6, cy - 10); ctx.lineTo(-7, cy - 5); ctx.stroke();
   }
 
+  // รอยแปรงทับลำตัว วาดก่อนชุด — ชุดคือของที่ "ใส่ทับตัว" จึงต้องอยู่บนรอยแปรงเสมอ
+  paintOver(ctx, s, 'body', bodyEdge);
+
   s.outfit?.body?.(ctx, s, 'stand');
+
+  // ── ตีขอบซ้ำทับชุด ──
+  // เสื้อผ้าถูก clip ให้อยู่ในทรงลำตัวพอดี (clipBody ใน outfits.js) ขอบชุดจึงทับ
+  // เส้นขอบตัวจนหายไปเป็นช่วง ๆ — เห็นชัดที่สุดตรงไหล่กับสะโพกที่ชุดกินไปจนสุดขอบ
+  // ผลคือตัวละครดูเหมือน "ชุดลอยอยู่บนพื้นหลัง" ไม่ใช่ "น้องใส่ชุด"
+  //
+  // ตีซ้ำเส้นเดิมทับลงไปอีกที ขอบจึงปิดครบวงเสมอไม่ว่าชุดจะกินพื้นที่แค่ไหน
+  // ถูกกว่าการให้ทุกชุดไปเว้นขอบเอง ซึ่งต้องแก้ 18 ชุดและชุดใหม่ต้องจำกฎนี้ทุกครั้ง
+  if (s.outfit?.body) { catEdge(ctx, s); bodyEdge(); ctx.stroke(); }
 
   // ── ขาตอนพัก ────────────────────────────────
   // ต้องวาด "หลัง" ลำตัว เพราะแมวหันหน้าเข้าหาคนดู ขาหน้าจึงอยู่หน้าอก
@@ -2997,8 +3012,9 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } =
   ctx.beginPath(); ctx.moveTo(-4, 8); ctx.lineTo(-21, 12); ctx.stroke();
 
   // ลำตัวแบนราบ
+  const bodyEdge = () => { ctx.beginPath(); ctx.ellipse(-2, 2, 19, 10, -0.08, 0, Math.PI * 2); };
   ctx.fillStyle = s.cat;
-  ctx.beginPath(); ctx.ellipse(-2, 2, 19, 10, -0.08, 0, Math.PI * 2); ctx.fill();
+  bodyEdge(); ctx.fill();
   catEdge(ctx, s); ctx.stroke();
   ctx.fillStyle = s.cream;
   ctx.beginPath(); ctx.ellipse(0, 6, 12, 5, -0.05, 0, Math.PI * 2); ctx.fill();
@@ -3014,7 +3030,12 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } =
   ctx.lineWidth = 6;
   ctx.beginPath(); ctx.moveTo(7, 5); ctx.lineTo(22, 9); ctx.stroke();
 
+  paintOver(ctx, s, 'body', bodyEdge);
+
   s.outfit?.body?.(ctx, s, 'slide');
+
+  // ตีขอบซ้ำทับชุด — เหตุผลเดียวกับท่ายืน (ดูคอมเมนต์ใน drawCatStand)
+  if (s.outfit?.body) { catEdge(ctx, s); bodyEdge(); ctx.stroke(); }
 
   drawCatHead(ctx, 12, -4, s, { isDead, scale: 0.82, earsBack: true, mouthOpen, mood });
 }
@@ -3091,6 +3112,10 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.moveTo(1, -12); ctx.lineTo(2, -7); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(7, -10); ctx.lineTo(7, -6); ctx.stroke();
   }
+
+  // รอยแปรงบนหัว — ทับสีขนกับลาย แต่ยังอยู่ใต้ปาก/ตา/จมูก
+  // ถ้าวาดทับหน้าด้วย คนที่ระบายเลยขอบหน้าไปนิดเดียวจะได้แมวไม่มีตาทันที
+  paintOver(ctx, s, 'head', () => { ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); });
 
   // ปากสีครีม
   ctx.fillStyle = s.cream;
@@ -3387,9 +3412,37 @@ function fade(hex, a) {
 // ── ความหนา ──
 // เริ่มที่ 1.4 แล้วลดลงมา เพราะหนาขนาดนั้นเส้นเด่นเกินจนตัดตัวละครออกเป็นชิ้น ๆ
 // หน้าที่ของเส้นนี้คือ "บอกขอบว่าตัวจบตรงไหน" เฉย ๆ ไม่ใช่ลุคการ์ตูนเส้นหนา
-// 0.85 ยังทำงานได้เพราะสีมันเข้มกว่าขนมาก (วัดไว้อย่างน้อย 1.9 เท่า ดูหัว skins.js)
+// 0.62 ยังทำงานได้เพราะสีมันเข้มกว่าขนมาก (วัดไว้อย่างน้อย 1.9 เท่า ดูหัว skins.js)
 // ความคมของเส้นมาจากสีที่ต่างกันเยอะ ไม่ใช่จากความหนา
-const CAT_EDGE = 0.85;
+//
+// ลดจาก 0.85 อีกขั้น — บนตัวขาวที่มีชุดสีสด เส้น 0.85 ยังอ่านเป็น "เส้นวาด"
+// ไม่ใช่ "ขอบของตัว" โดยเฉพาะตรงที่เส้นวิ่งขนานกับขอบชุดจนเห็นเป็นสองเส้นคู่กัน
+const CAT_EDGE = 0.62;
+
+/**
+ * วาดรอยแปรงที่ผู้เล่นระบายเอง ทับลงบนชิ้นหนึ่งของตัวละคร
+ *
+ * ── ทำไมต้อง clip ──
+ * รอยแปรงถูกเก็บเป็นภาพสี่เหลี่ยมในพิกัดท้องถิ่นของชิ้นนั้น ถ้าวาดตรง ๆ สีจะล้นออก
+ * นอกรูปทรงกลายเป็นแผ่นสี่เหลี่ยมลอยรอบตัว ตัดตามรูปทรงจริงของชิ้นก่อนเสมอ
+ *
+ * ── ทำไมรับ path มาเป็นฟังก์ชัน ──
+ * แต่ละท่าตัวมีทรงไม่เท่ากัน (ยืนเป็นวงรีตั้ง หมอบเป็นวงรีแบน) ผู้เรียกรู้ทรงของ
+ * ท่าตัวเองดีที่สุด ส่งเข้ามาแล้วที่นี่ไม่ต้องรู้จักท่าเลยสักท่า
+ *
+ * @param key   'body' หรือ 'head'
+ * @param path  ฟังก์ชันที่ตั้ง path ของชิ้นนั้นไว้ (ยังไม่ต้อง fill/stroke)
+ */
+function paintOver(ctx, s, key, path) {
+  const img = s.paint?.[key];
+  if (!img || !img.width) return;
+  const box = LAYER[key];
+  ctx.save();
+  path();
+  ctx.clip();
+  ctx.drawImage(img, box.x, box.y, box.w, box.h);
+  ctx.restore();
+}
 
 /** ตั้งค่าปากกาสำหรับตีขอบ แล้วให้ผู้เรียก stroke() เอง (path ปัจจุบันยังอยู่หลัง fill) */
 function catEdge(ctx, s) {

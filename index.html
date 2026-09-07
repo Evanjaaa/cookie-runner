@@ -1042,7 +1042,7 @@
                 <div class="paint-stage">
                   <!-- ผ้าใบที่เห็น กับผ้าใบรหัสสีที่ซ่อนไว้ ต้องขนาดเท่ากันเป๊ะ
                        เพราะอ่านพิกเซลจากผ้าใบซ่อนที่พิกัดเดียวกับที่นิ้วแตะ -->
-                  <canvas id="paintCat" width="330" height="330"></canvas>
+                  <canvas id="paintCat" width="440" height="440"></canvas>
                   <small class="paint-hint" id="paintHint">แตะตัวน้องเพื่อลงสี</small>
                 </div>
 
@@ -1064,6 +1064,16 @@
                     <button type="button" class="ptool" data-tool="eraser">
                       <span aria-hidden="true">🧽</span><i>ยางลบ</i>
                     </button>
+                  </div>
+
+                  <!-- ── ขนาดหัวแปรง ──
+                       แถบเดียวคุมทั้งพู่กันและยางลบ แต่ "จำค่าแยกกัน" —
+                       คนตั้งพู่กันไว้เล็กเพื่อเก็บรายละเอียด แล้วสลับไปยางลบมักอยากได้อันใหญ่
+                       ถ้าใช้ค่าเดียวกันจะต้องมานั่งปรับกลับไปกลับมาทุกครั้งที่สลับเครื่องมือ -->
+                  <div class="paint-size" id="paintSizeRow">
+                    <span class="psize-dot" id="paintSizeDot" aria-hidden="true"></span>
+                    <input type="range" id="paintSize" min="4" max="40" step="1" value="15"
+                           aria-label="ขนาดหัวแปรง">
                   </div>
 
                   <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
@@ -1096,8 +1106,20 @@
                     <div class="face-ring" aria-hidden="true"></div>
                     <span class="face-empty" id="faceEmpty">ยังไม่มีรูป<br><small>กดปุ่ม "เลือกรูป" ข้างล่าง</small></span>
                   </div>
-                  <input class="face-zoom" type="range" id="faceZoom" min="100" max="400" value="100"
-                         disabled aria-label="ย่อ หรือ ขยายรูป">
+                  <!-- สองแถบอยู่แถวเดียวกัน ไม่ซ้อนกันเป็นสองบรรทัด
+                       เพราะความสูงในกรอบนี้เป็นของกรอบตัดรูปเป็นหลัก -->
+                  <div class="face-sliders">
+                    <label class="face-slide">
+                      <span aria-hidden="true">🔍</span>
+                      <input type="range" id="faceZoom" min="100" max="400" value="100"
+                             disabled aria-label="ย่อ หรือ ขยายรูป">
+                    </label>
+                    <label class="face-slide">
+                      <span aria-hidden="true">⟳</span>
+                      <input type="range" id="faceRot" min="-180" max="180" step="1" value="0"
+                             disabled aria-label="เอียงรูป">
+                    </label>
+                  </div>
                 </div>
 
                 <div class="face-side">

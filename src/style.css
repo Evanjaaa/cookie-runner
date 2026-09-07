@@ -4985,9 +4985,21 @@ canvas[hidden] { display: none; }
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  gap: clamp(12px, 2.6vw, 26px);
+  /* ── ช่องไฟระหว่างกรอบตัดกับคอลัมน์ขวา ──
+     26px แคบไป — กรอบตัดเป็นกล่องทึบขอบชัด ตัวอย่างน้องกับปุ่มที่อยู่ติดกันเลย
+     อ่านเป็นของกองเดียวกัน ทั้งที่เป็นคนละหน้าที่ (ฝั่งซ้ายคือของที่แก้ ฝั่งขวาคือผลกับปุ่ม) */
+  gap: clamp(18px, 4vw, 52px);
   align-items: center;
   justify-content: center;
+  /* ── ทำไมต้องบังคับความสูงขั้นต่ำ ──
+     การ์ดหดตามเนื้อหา แท็บรูปมีของน้อยกว่าแท็บระบายสี การ์ดจึงเตี้ยกว่าเอง
+     แล้วกรอบตัด (ซึ่งกินความสูงที่เหลือ) ก็เล็กตามไปด้วย — วัดได้ 283 เทียบกับ
+     ผ้าใบระบายสี 388 ทั้งที่ที่ว่างบนจอเท่ากัน สลับแท็บแล้วเห็นเป็นของหดลง
+     ตรึงความสูงด้วยสูตรเดียวกับผ้าใบระบายสี สองแท็บจึงสูงเท่ากันเสมอ */
+  /* 46dvh ไม่ใช่ 60 เหมือนผ้าใบระบายสี — แถวนี้มีแถบซูมใต้กรอบตัดอีกชั้น
+     และคอลัมน์ขวายังต้องใส่ปุ่มสามใบกับคำอธิบาย
+     ไล่วัดแล้ว: 60dvh การ์ดล้น 38px / 50dvh ล้น 21px / 46dvh ล้น 0 */
+  min-height: min(100%, 46dvh);
   /* ── ห้าม wrap ──
      flex เลือก "พับลงแถวใหม่" ก่อน "หดของเดิม" เสมอ พอเปิด wrap ไว้ กรอบตัดจะยึด
      ความกว้างเต็มเพดาน (230) แล้วดันคอลัมน์ขวาตกลงไปข้างล่างจนล้นการ์ด
@@ -5014,7 +5026,11 @@ canvas[hidden] { display: none; }
   position: relative;
   flex: 1 1 auto;
   min-height: 88px;
-  max-height: 230px;
+  /* ── เพดานเท่ากับผ้าใบหน้าระบายสี ──
+     สองแท็บอยู่ในกรอบเดียวกันและสลับไปมาได้ ถ้ากรอบตัดเล็กกว่าผ้าใบระบายสีมาก
+     การสลับแท็บจะเห็นเป็น "ของหดลง" ทั้งที่ที่ว่างเท่าเดิม
+     ผ้าใบระบายสีใช้ min(100%, 60dvh) — ใช้สูตรเดียวกัน สองแท็บจึงโตพร้อมกันเสมอ */
+  max-height: min(100%, 60dvh);
   aspect-ratio: 1;
   border-radius: 18px;
   overflow: hidden;
@@ -5057,14 +5073,31 @@ canvas[hidden] { display: none; }
 /* แถบซูมกว้างเท่ากรอบตัดพอดี จึงอ่านเป็นตัวควบคุมของกรอบนั้น ไม่ใช่ของทั้งหน้า
    ไม่มีป้ายกำกับเป็นข้อความ — ทรงของมันบอกหน้าที่ตัวเองอยู่แล้ว และป้ายเพิ่มอีก
    บรรทัดคือความสูงที่ต้องแย่งมาจากกรอบตัด (มี aria-label ให้โปรแกรมอ่านจอแทน) */
-.face-zoom {
+.face-sliders {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 16px);
   width: 100%;
-  margin: 0;
   flex: 0 0 auto;
+}
+.face-slide {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+  color: rgba(255, 246, 230, .7);
+}
+.face-slide input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   accent-color: #C77DFF;
   cursor: pointer;
 }
-.face-zoom:disabled { opacity: .35; cursor: default; }
+.face-slide input[type="range"]:disabled { opacity: .35; cursor: default; }
+.face-slide:has(input:disabled) { opacity: .55; }
 
 /* ── คอลัมน์ขวา: ตัวอย่าง + ปุ่ม + คำอธิบาย ── */
 .face-side {
@@ -5096,7 +5129,12 @@ canvas[hidden] { display: none; }
    และ flex: 0 0 auto กัน flex บีบความสูงลงทีหลังจนเบี้ยวซ้ำ */
 .face-side > canvas {
   flex: 0 0 auto;
-  width: min(100%, 112px);
+  /* โตขึ้นจาก 112 ให้สมส่วนกับกรอบตัดที่ใหญ่ขึ้น — คอลัมน์นี้กว้าง 232px อยู่แล้ว
+     กำหนดด้านเดียว (ความกว้าง) แล้วให้ aspect-ratio คิดความสูงเอง
+     ห้ามกำหนดทั้งสองด้าน ไม่งั้นเบราว์เซอร์ทิ้ง aspect-ratio แล้วรูปจะถูกยืด */
+  /* 140 ไม่ใช่ 168 — คอลัมน์นี้ยังต้องใส่คำบรรยาย ปุ่มสามใบ และคำอธิบายใต้ปุ่ม
+     วัดแล้วที่ 168 การ์ดล้นจนต้องเลื่อน 23px ทุกขนาดจอที่ทดสอบ */
+  width: min(100%, 140px);
   height: auto;
   aspect-ratio: 1;
 }
@@ -5113,14 +5151,21 @@ canvas[hidden] { display: none; }
   flex: 0 0 auto;
   margin: 0;
   max-width: 100%;
-  font-size: 10.5px;
+  font-size: 10px;
   line-height: 1.45;
   color: #9C86BC;
   text-align: center;
 }
 
-/* ปุ่มสามอันในคอลัมน์แคบ ต้องตัดบรรทัดได้ ไม่ใช่บีบจนอ่านไม่ออก */
-#facePanel .btnrow {
+/* ── ทำไมตัวเลือกเป็น .face-side ไม่ใช่ #facePanel ──
+   หน้าใส่รูปเคยเป็นแผงของตัวเอง (#facePanel) แล้วถูกย้ายมาเป็นแท็บใน #createPanel
+   กฎชุดนี้ยังชี้ไปที่ id เดิมซึ่งไม่มีอยู่ในหน้าแล้ว จึงไม่ทำงานเลยสักข้อ
+   ผลที่เห็นจริง: การ์ดกลับไปใช้ overflow:hidden ตามค่าเริ่มต้นของ .pop
+   แล้วแถบซูมกับแถบหมุนที่อยู่ใต้กรอบตัดถูกเฉือนหายไปทั้งคู่บนจอที่ไม่สูงพอ
+   — ผู้เล่นเห็นแต่กรอบรูป หาที่ซูมกับเอียงไม่เจอ
+
+   ผูกกับคลาสของตัวเนื้อหาแทน id ของแผง ย้ายไปอยู่แผงไหนกฎก็ตามไปด้วย */
+.face-side .btnrow {
   flex-wrap: wrap;
   justify-content: center;
   gap: 5px;
@@ -5131,25 +5176,35 @@ canvas[hidden] { display: none; }
    คอลัมน์ขวากว้างจริง 247px บนการ์ดที่แคบที่สุดที่วัดได้ (การ์ดต้องเว้นที่ให้ปุ่มกลับ
    ทั้งสองข้างด้วย) สามปุ่มที่ 80px บวกช่องไฟ = 252 ซึ่งเกินไป 5px พอดี
    แล้วปุ่มที่สามตกลงไปอีกแถว — 74px ทำให้ทั้งสามอยู่แถวเดียวได้ทุกขนาดจอที่วัด */
-#facePanel .btn { min-width: 74px; margin-top: 0; font-size: 12.5px; padding: 7px 10px; }
+.face-side .btn { min-width: 74px; margin-top: 0; font-size: 12.5px; padding: 7px 10px; }
 
 /* บรรทัดสถานะไม่ต้องจองที่ตลอดเวลาในหน้านี้ — คอลัมน์แคบและเตี้ยอยู่แล้ว
    ข้อความจะโผล่เฉพาะตอนมีอะไรจะบอกจริง ๆ */
-#facePanel .form-msg { min-height: 0; flex: 0 0 auto; text-align: center; font-size: 11px; }
-#facePanel .form-msg:empty { display: none; }
+.face-side .form-msg { min-height: 0; flex: 0 0 auto; text-align: center; font-size: 11px; }
+.face-side .form-msg:empty { display: none; }
 
-/* ตาข่ายกันตก — ถ้าจอเตี้ยมากจนย่อยังไงก็ไม่พอ ให้เลื่อนในการ์ด
-   ดีกว่าถูก overflow:hidden ของ .pop เฉือนปุ่มหายไปเงียบ ๆ */
-#facePanel .pop { overflow-y: auto; scrollbar-width: none; }
-#facePanel .pop::-webkit-scrollbar { display: none; }
-/* หัวเรื่องหน้านี้ไม่ต้องเว้นใต้เยอะเท่าหน้าอื่น ที่ที่ประหยัดได้ไปเป็นของกรอบตัด */
-#facePanel .pop > .panel-head { margin-bottom: clamp(6px, 1.4dvh, 12px); }
+/* ตาข่ายกันตก — ถ้าจอเตี้ยจนย่อยังไงก็ไม่พอ ให้เลื่อนในการ์ด
+   ดีกว่าถูก overflow:hidden ของ .pop เฉือนแถบเลื่อนกับปุ่มหายไปเงียบ ๆ
+   (ครอบทั้งสองแท็บ เพราะแท็บระบายสีก็มีรายการยาวเหมือนกัน) */
+#createPanel .pop { overflow-y: auto; scrollbar-width: none; }
+#createPanel .pop::-webkit-scrollbar { display: none; }
 
 /* การ์ดเตี้ยมาก: ตัดคำอธิบายทิ้งเพื่อเก็บที่ไว้ให้กรอบตัด
    (ข้อความเดิมยังอยู่ในโค้ด ไม่ได้หายไปจากหน้าอื่น) */
 @media (max-height: 430px) {
   .face-note { display: none; }
-  #facePanel .pop { gap: clamp(4px, 1dvh, 9px); }
+  /* แถบซูม/หมุนเหลือแค่ตัวเลื่อน ไอคอนกินความสูงที่กรอบตัดต้องใช้ */
+  .face-slide > span { display: none; }
+  .face-sliders { gap: 8px; }
+  /* คำบรรยายใต้รูปตัวอย่างซ้ำกับสิ่งที่ตาเห็นอยู่แล้ว ตัดได้ความสูงคืนมา */
+  .face-cap { display: none; }
+  /* แถวนี้มีแถบเลื่อนสองอันใต้กรอบตัด บนจอเตี้ยจึงต้องตั้งเพดานต่ำกว่าจอใหญ่
+     ไล่วัดที่ 844x390: 46dvh ล้น 48px / 38dvh ล้น 0 */
+  .face-work { min-height: min(100%, 38dvh); }
+  /* ตัวคุมความสูงจริงของแถวคือคอลัมน์ขวา (รูปตัวอย่าง + ปุ่มสามใบ) ไม่ใช่กรอบตัด
+     ย่อรูปตัวอย่างลงคือทางเดียวที่ตัดความสูงได้จริงบนจอเตี้ย */
+  .face-side > canvas { width: min(100%, 96px); }
+  #createPanel .pop { gap: clamp(4px, 1dvh, 9px); }
 }
 
 
@@ -5415,7 +5470,36 @@ canvas[hidden] { display: none; }
   display: flex;
   flex-direction: column;
   gap: clamp(5px, 1.2dvh, 11px);
+
+  /* ── ขยับแถบเลื่อนออกไปทางขวาให้พ้นเนื้อหา ──
+     แถบเลื่อนของเบราว์เซอร์เกาะขอบขวาของกล่องเสมอ ย้ายมันเองไม่ได้
+     ย้าย "กล่อง" แทน: ยืดขอบขวาออกไปกินขอบในของการ์ด (margin ติดลบ)
+     แล้วดันเนื้อหากลับเข้ามาเท่าเดิมบวกช่องไฟ (padding)
+     ผลคือแถบเลื่อนขยับไปขวาจริง และเนื้อหาไม่ไปเบียดมันอีก
+     ตัวเนื้อหาอยู่ที่เดิมทุกพิกเซล เพราะสองค่าหักล้างกันพอดี
+
+     scrollbar-gutter: stable จองที่ให้แถบไว้ตลอด แม้ตอนที่ยังไม่ต้องเลื่อน
+     ไม่งั้นเนื้อหาจะกระตุกไปมาทุกครั้งที่รายการยาวขึ้นหรือสั้นลง */
+  margin-right: calc(-1 * clamp(6px, 1vw, 12px));
+  padding-right: clamp(14px, 2.2vw, 24px);
+  scrollbar-gutter: stable;
+
+  /* แถบบางลงและจางลง — มันมีหน้าที่บอกว่า "ยังมีของอยู่ข้างล่าง" เฉย ๆ
+     ไม่ควรเด่นแข่งกับแม่สีซึ่งเป็นของที่คนมากดจริง */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 243, 226, .3) transparent;
 }
+.paint-scroll::-webkit-scrollbar { width: 9px; }
+.paint-scroll::-webkit-scrollbar-track { background: transparent; }
+.paint-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 243, 226, .26);
+  border-radius: 999px;
+  /* ขอบใสบีบให้แท่งผอมกว่าราง = มีช่องไฟรอบแท่งโดยไม่ต้องหดความกว้างราง
+     (รางแคบเกินไปจะจับยากบนจอสัมผัส) */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.paint-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 243, 226, .4); background-clip: content-box; }
 
 .paint-tools { display: flex; gap: clamp(4px, .8vw, 8px); }
 .ptool {
@@ -5438,6 +5522,40 @@ canvas[hidden] { display: none; }
 .ptool.on { background: rgba(255, 232, 190, .22); border-color: var(--cream); }
 
 /* แม่สีเรียงหกช่องสองแถว ตรงกับที่ประกาศไว้ 12 สีพอดี */
+/* ── แถบขนาดหัวแปรง ──
+   จุดตัวอย่างอยู่ซ้ายแถบ โตตามค่าที่เลื่อน คนจึงเห็นขนาดจริงก่อนลากลงตัวน้อง
+   ไม่ต้องลองผิดลองถูกบนตัวน้องแล้วกดย้อนกลับ */
+.paint-size {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.2vw, 12px);
+}
+.psize-dot {
+  flex: 0 0 auto;
+  width: clamp(22px, 4dvh, 34px);
+  height: clamp(22px, 4dvh, 34px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 252, 246, .09);
+  border: 1px solid rgba(255, 246, 230, .18);
+}
+/* วงในคือขนาดจริง คุมด้วยตัวแปรที่ JS เขียนให้ */
+.psize-dot::after {
+  content: '';
+  width: var(--dot, 8px);
+  height: var(--dot, 8px);
+  border-radius: 50%;
+  background: var(--dotc, #FF8A3D);
+  box-shadow: 0 0 0 1px rgba(12, 6, 20, .35);
+}
+.paint-size input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  accent-color: #C77DFF;
+}
+
 .paint-swatches {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -5515,3 +5633,42 @@ canvas[hidden] { display: none; }
 /* สองโหมดสลับกัน ต้องมี .hidden ของตัวเองเพราะสองคลาสนี้ตั้ง display ไว้เอง
    (สไตล์ชีตนี้ไม่มีกฎ .hidden กลาง — ดูหมายเหตุเดียวกันที่ .filterbar.hidden) */
 .paint-cols.hidden, .face-work.hidden { display: none; }
+
+/* ══ หน้าระบายสีบนจอเตี้ย (มือถือแนวนอน) ═══════════════════
+   ── ปัญหาที่วัดได้จริงที่ 844x390 ──
+   คอลัมน์แท็บซ้ายกินความกว้างไป 150px ทั้งที่มีแค่สองปุ่ม ทำให้ผ้าใบเหลือ 186px
+   (ตัวน้องกว้างจริงราว 150px) ซึ่งเล็กเกินกว่าจะลากพู่กันให้ตรงจุดได้
+   ส่วนคอลัมน์ขวาถูกบีบจนแม่สีเหลือจุดกว้าง 14px และรายชื่อส่วนหลุดออกนอกจอ
+
+   ── ทางแก้ ──
+   ย้ายแท็บขึ้นไปเป็นแถวบนสุด ได้ความกว้างคืนมาทั้งก้อนให้ผ้าใบกับเครื่องมือ
+   แล้วตัดรายชื่อส่วนทิ้ง — พู่กันลากตรงตัวน้องได้อยู่แล้ว และถังสีก็แตะเอาจากตัวได้
+   รายชื่อมีไว้เล็งให้แม่นบนจอใหญ่ ไม่ใช่ของที่ขาดไม่ได้ */
+@media (max-height: 460px) {
+  /* ── ทำไมแท็บยังเป็นคอลัมน์ซ้าย ไม่ย้ายขึ้นไปเป็นแถวบน ──
+     ลองย้ายขึ้นแถวบนแล้ววัด: ผ้าใบเล็กลงจาก 186 เหลือ 183px
+     เพราะบนจอแนวนอนเตี้ย ตัวจำกัดคือ "ความสูง" ไม่ใช่ความกว้าง แถวบนกินความสูง
+     ส่วนคอลัมน์ซ้ายกินความกว้างซึ่งเหลือเฟืออยู่แล้ว — ย้ายแล้วแย่ลง
+     ที่ทำได้จริงคือตัดของที่กินความสูงข้างในทิ้ง (หัวเรื่อง คำใบ้ รายชื่อส่วน) */
+  #createPanel .stash-tabs { padding-right: clamp(6px, 1.2vw, 12px); }
+  #createPanel .stab { font-size: 10.5px; padding: 6px 8px; }
+  /* หัวเรื่องซ้ำกับปุ่มแท็บที่เพิ่งกดมา ตัดทิ้งได้ที่ว่างคืนมาเต็มบรรทัด */
+  #createPanel .stash-main > .panel-head { display: none; }
+  .paint-parts { display: none; }
+
+  /* ผ้าใบกินความสูงที่เหลือทั้งหมด ไม่ต้องเว้นให้หัวเรื่องอีกแล้ว */
+  #paintCat { height: 100%; }
+  .paint-hint { display: none; }
+
+  /* คอลัมน์ขวาต้องกว้างพอให้แม่สีเป็นวงที่นิ้วแตะได้จริง ไม่ใช่จุดเล็ก ๆ
+     190px = หกวงกว้าง 26px บวกช่องไฟ ซึ่งเป็นขนาดต่ำสุดที่ยังแตะไม่พลาด */
+  .paint-side { min-width: 190px; flex: 0 0 auto; }
+  .paint-swatches { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .pswatch { min-width: 22px; }
+}
+
+/* จอเตี้ยมาก ๆ: ปุ่มลงมือย่อลงอีกขั้นเพื่อไม่ให้ดันผ้าใบจนเล็ก */
+@media (max-height: 400px) {
+  .paint-acts .btn { font-size: 11px; padding: 6px 4px; }
+  #paintUse { font-size: 13px; padding: 7px 16px; }
+}

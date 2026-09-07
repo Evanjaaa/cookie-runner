@@ -147,7 +147,200 @@ export function toSkin(p) {
     stripes: false,
     blush: true,
     points: false,
+    // ชั้นรอยแปรง — โค้ดวาดหยิบไปทับบนแต่ละชิ้นเอง (ดู paintOver ใน entities.js)
+    paint: layersReady ? layers : undefined,
   };
+}
+
+// ══ ชั้นสีที่ระบายด้วยพู่กัน ═══════════════════════════════
+//
+// ── ทำไมต้องมีชั้นนี้แยกจากจานสี ──
+// จานสีเปลี่ยนได้ทีละ "ส่วน" ทั้งส่วน (ขนทั้งตัว พุงทั้งอัน) ซึ่งคือถังสี
+// พู่กันต้องลงสีเฉพาะตรงที่นิ้วลากผ่านจริง ๆ ซึ่งจานสีเก็บไม่ได้เลย
+// ต้องเป็นภาพจริงที่จำ "รอยแปรง" ไว้
+//
+// ── ทำไมแยกเป็นสองชั้น หัวกับลำตัว ──
+// เกมวาดน้องหลายท่า (วิ่ง หมอบ กระโดด ลอยบนฟ้า) หัวกับลำตัวขยับสัมพัทธ์กันตลอด
+// ถ้าเก็บเป็นภาพเดียวทับทั้งตัว รอยแปรงบนหัวจะเลื่อนหลุดออกจากหัวทันทีที่หัวขยับ
+// เก็บแยกตามชิ้นที่ "แข็ง" ของมันเอง แล้ววาดทับแต่ละชิ้นที่ตำแหน่งของชิ้นนั้น
+// รอยแปรงจึงติดไปกับชิ้นนั้นทุกท่าโดยไม่ต้องรู้ว่าท่าไหนอยู่ตรงไหน
+//
+// ── ระบบพิกัด ──
+// เก็บในพิกัดท้องถิ่นของตัวละคร (หน่วยเดียวกับที่ drawCatStand ใช้)
+// ไม่ใช่พิกัดหน้าจอ ภาพเดียวจึงใช้ได้ทุกขนาดที่เกมวาดน้อง ตั้งแต่ไอคอน 34px
+// ไปจนถึงตัวใหญ่ในหน้าระบายสี
+export const LAYER = {
+  ppu: 9,                       // กี่พิกเซลต่อหนึ่งหน่วยพิกัดตัวละคร
+  body: { x: -22, y: -16, w: 44, h: 44 },   // กรอบที่ครอบลำตัวได้ทุกท่า
+  head: { x: -17, y: -17, w: 34, h: 34 },   // กรอบที่ครอบหัวได้ทุกท่า
+};
+
+const LAYER_KEYS = ['body', 'head'];
+const LAYER_STORE = 'myCatPaint';
+
+/** ผ้าใบของแต่ละชั้น สร้างครั้งเดียวแล้วใช้ตลอด */
+const layers = {};
+let layersReady = false;
+
+function makeLayer(k) {
+  const box = LAYER[k];
+  const c = document.createElement('canvas');
+  c.width = Math.round(box.w * LAYER.ppu);
+  c.height = Math.round(box.h * LAYER.ppu);
+  return c;
+}
+
+function ensureLayers() {
+  if (layersReady) return;
+  layersReady = true;
+  for (const k of LAYER_KEYS) layers[k] = makeLayer(k);
+
+  // โหลดของที่บันทึกไว้ — เป็น async เพราะ Image โหลดไม่ทันในเฟรมเดียว
+  // ระหว่างรอ น้องจะเป็นสีจานสีล้วนไปก่อน แล้วรอยแปรงค่อยโผล่ตามมา
+  let saved = null;
+  try { saved = loadPref(LAYER_STORE, null); } catch { /* อ่านไม่ได้ก็เริ่มจากว่าง */ }
+  if (!saved) return;
+  for (const k of LAYER_KEYS) {
+    const url = saved[k];
+    if (typeof url !== 'string' || !url.startsWith('data:image')) continue;
+    const img = new Image();
+    img.onload = () => { layers[k].getContext('2d').drawImage(img, 0, 0); bumpLayers(); };
+    img.src = url;
+  }
+}
+
+/**
+ * เลขรุ่นของชั้นสี — ขยับทุกครั้งที่มีการระบาย
+ * โค้ดวาดใช้เทียบว่าต้องล้างแคชอะไรไหม และ getSkin() ใช้รู้ว่าต้องประกอบสกินใหม่
+ */
+let layerRev = 0;
+function bumpLayers() {
+  layerRev++;
+  built = null;
+}
+export function layerVersion() { return layerRev; }
+
+export function paintLayers() {
+  ensureLayers();
+  return layers;
+}
+
+/** แปลงพิกัดท้องถิ่นของชิ้นนั้น เป็นพิกเซลบนผ้าใบของชั้นนั้น */
+export function toLayerPx(k, lx, ly) {
+  const box = LAYER[k];
+  return { x: (lx - box.x) * LAYER.ppu, y: (ly - box.y) * LAYER.ppu };
+}
+
+/** ป้ายสีหนึ่งจุด — ผู้เรียกส่งพิกัดท้องถิ่นมา ที่นี่ไม่รู้จักหน้าจอเลย */
+export function dab(k, lx, ly, hex, radius) {
+  ensureLayers();
+  const c = layers[k];
+  if (!c) return;
+  const p = toLayerPx(k, lx, ly);
+  const g = c.getContext('2d');
+  g.globalCompositeOperation = 'source-over';
+  g.fillStyle = hex;
+  g.beginPath();
+  g.arc(p.x, p.y, radius * LAYER.ppu, 0, Math.PI * 2);
+  g.fill();
+  bumpLayers();
+}
+
+/** ลากเส้นระหว่างสองจุด — กันรอยขาดเป็นจุด ๆ เวลานิ้วลากเร็ว */
+export function stroke(k, ax, ay, bx, by, hex, radius) {
+  ensureLayers();
+  const c = layers[k];
+  if (!c) return;
+  const a = toLayerPx(k, ax, ay), b = toLayerPx(k, bx, by);
+  const g = c.getContext('2d');
+  g.globalCompositeOperation = 'source-over';
+  g.strokeStyle = hex;
+  g.lineWidth = radius * 2 * LAYER.ppu;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(a.x, a.y);
+  g.lineTo(b.x, b.y);
+  g.stroke();
+  bumpLayers();
+}
+
+/** ลบรอยแปรงตรงที่ลาก (ยางลบของพู่กัน) */
+export function erase(k, ax, ay, bx, by, radius) {
+  ensureLayers();
+  const c = layers[k];
+  if (!c) return;
+  const a = toLayerPx(k, ax, ay), b = toLayerPx(k, bx, by);
+  const g = c.getContext('2d');
+  g.globalCompositeOperation = 'destination-out';
+  g.strokeStyle = '#000';
+  g.lineWidth = radius * 2 * LAYER.ppu;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(a.x, a.y);
+  g.lineTo(b.x, b.y);
+  g.stroke();
+  g.globalCompositeOperation = 'source-over';
+  bumpLayers();
+}
+
+export function clearLayers() {
+  ensureLayers();
+  for (const k of LAYER_KEYS) {
+    const c = layers[k];
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  }
+  bumpLayers();
+  saveLayers();
+}
+
+export function hasStrokes() {
+  ensureLayers();
+  for (const k of LAYER_KEYS) {
+    const c = layers[k];
+    const d = c.getContext('2d', { willReadFrequently: true })
+      .getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 8) return true;
+  }
+  return false;
+}
+
+/**
+ * บันทึกชั้นสีลงเครื่อง
+ *
+ * เรียกตอน "ปล่อยนิ้ว" เท่านั้น ไม่ใช่ทุกจุดที่ลาก — toDataURL กับ localStorage
+ * ทั้งคู่เป็นงานหนักที่บล็อกเธรดหลัก เรียกทุกเฟรมแล้วการลากจะกระตุกทันที
+ */
+export function saveLayers() {
+  ensureLayers();
+  const out = {};
+  for (const k of LAYER_KEYS) out[k] = layers[k].toDataURL('image/png');
+  try { savePref(LAYER_STORE, out); } catch { /* เต็มก็ปล่อย รอยยังอยู่จนกว่าจะปิดเกม */ }
+}
+
+/** สำเนาไว้ย้อนกลับ — คืนอ็อบเจกต์ที่เอาไป restoreLayers() ได้ */
+export function snapshotLayers() {
+  ensureLayers();
+  const out = {};
+  for (const k of LAYER_KEYS) {
+    const c = makeLayer(k);
+    c.getContext('2d').drawImage(layers[k], 0, 0);
+    out[k] = c;
+  }
+  return out;
+}
+
+export function restoreLayers(snap) {
+  ensureLayers();
+  for (const k of LAYER_KEYS) {
+    const c = layers[k];
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    if (snap && snap[k]) g.drawImage(snap[k], 0, 0);
+  }
+  bumpLayers();
+  saveLayers();
 }
 
 // ── จานสีที่ใช้อยู่ตอนนี้ ────────────────────────────────────
@@ -189,6 +382,7 @@ export function resetPalette() {
  * เพราะมันเทียบด้วยการอ้างอิงอ็อบเจกต์ ไม่ได้เทียบทีละช่อง
  */
 export function customSkin() {
+  ensureLayers();
   if (!built) built = toSkin(palette());
   return built;
 }
