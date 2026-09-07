@@ -1,6 +1,6 @@
 ﻿// src/main.js
 import './style.css';
-import { VIEW, SCORING, REVIVE } from './config.js';
+import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
@@ -9,6 +9,8 @@ import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin } from './skins.js';
 import {
   CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
   pickSkin, regionAt, toSkin,
+  stroke as strokeLayer, erase as eraseLayer, clearLayers, saveLayers,
+  snapshotLayers, restoreLayers, LAYER,
 } from './paint.js';
 import { STAGES, getStage, setStage, journeyOf } from './stages.js';
 import {
@@ -3258,6 +3260,9 @@ let faceCx = 0;
 let faceCy = 0;
 /** ตัวคูณซูม 1 = ด้านสั้นของรูปพอดีวงกลม */
 let faceK = 1;
+/** มุมเอียงของรูป (เรเดียน) — รูปจากมือถือที่ถ่ายตะแคงมาต้องหมุนกลับได้ */
+let faceRot = 0;
+const faceRotEl = document.getElementById('faceRot');
 
 /** ผ้าใบที่ถือรูปตัดแล้ว ใช้ทั้งเป็นตัวอย่างสด ๆ และเป็นตัวที่จะบันทึกลงเครื่อง */
 const faceOut = document.createElement('canvas');
@@ -3271,7 +3276,11 @@ faceOut.height = FACE_SIZE;
 function clampFace() {
   if (!faceSrc) return;
   const short = Math.min(faceSrc.naturalWidth, faceSrc.naturalHeight);
-  const half = short / faceK / 2;
+  // ── ทำไมต้องคูณด้วย |cos|+|sin| ──
+  // กรอบที่ตัดเป็นสี่เหลี่ยม พอหมุนแล้วมุมทั้งสี่กวาดออกไปไกลกว่าตอนไม่หมุน
+  // (ที่ 45 องศาไกลสุด = √2 เท่า) ถ้าไม่เผื่อ มุมรูปจะโผล่เป็นสามเหลี่ยมโปร่งใส
+  const spread = Math.abs(Math.cos(faceRot)) + Math.abs(Math.sin(faceRot));
+  const half = (short / faceK / 2) * spread;
   faceCx = Math.max(half, Math.min(faceSrc.naturalWidth - half, faceCx));
   faceCy = Math.max(half, Math.min(faceSrc.naturalHeight - half, faceCy));
 }
@@ -3284,7 +3293,18 @@ function paintFace() {
     clampFace();
     const short = Math.min(faceSrc.naturalWidth, faceSrc.naturalHeight);
     const src = short / faceK;
-    c.drawImage(faceSrc, faceCx - src / 2, faceCy - src / 2, src, src, 0, 0, FACE_SIZE, FACE_SIZE);
+    // ── ทำไมใช้ transform แทน drawImage แบบตัดชิ้น ──
+    // drawImage เก้าอาร์กิวเมนต์ตัดได้แค่สี่เหลี่ยมที่ตรงกับแกน หมุนไม่ได้
+    // ตั้ง transform ให้ "จุดที่ผู้เล่นเล็งไว้" ไปอยู่กลางผ้าใบผลลัพธ์พอดี
+    // แล้ววาดรูปทั้งใบลงไป ส่วนที่เกินกรอบถูกตัดทิ้งเองโดยขอบผ้าใบ
+    const k = FACE_SIZE / src;
+    c.save();
+    c.translate(FACE_SIZE / 2, FACE_SIZE / 2);
+    c.rotate(faceRot);
+    c.scale(k, k);
+    c.translate(-faceCx, -faceCy);
+    c.drawImage(faceSrc, 0, 0);
+    c.restore();
   }
 
   const cc = faceCanvas.getContext('2d');
@@ -3301,6 +3321,7 @@ function paintFace() {
   faceCropBox.classList.toggle('has-img', Boolean(faceSrc));
   faceSaveBtn.disabled = !faceSrc;
   faceZoom.disabled = !faceSrc;
+  faceRotEl.disabled = !faceSrc;
 }
 
 function refreshCreateIcon() {
@@ -3324,6 +3345,8 @@ function loadFaceFile(file) {
     URL.revokeObjectURL(url);
     faceSrc = el;
     faceK = 1;
+    faceRot = 0;
+    faceRotEl.value = '0';
     faceCx = el.naturalWidth / 2;
     faceCy = el.naturalHeight / 2;
     faceZoom.value = '100';
@@ -3352,8 +3375,14 @@ faceCropBox.addEventListener('pointermove', (e) => {
   // ตัวคูณคือ "กี่พิกเซลจอต่อหนึ่งพิกเซลรูป" ซึ่งเปลี่ยนตามทั้งซูมและขนาดกรอบจริง
   const short = Math.min(faceSrc.naturalWidth, faceSrc.naturalHeight);
   const perPx = faceCropBox.clientWidth / (short / faceK);
-  faceCx -= (e.clientX - faceDrag.x) / perPx;
-  faceCy -= (e.clientY - faceDrag.y) / perPx;
+  // ── ทำไมต้องหมุนทิศที่ลากด้วย ──
+  // รูปถูกหมุนก่อนแสดง การลากขึ้นบนบนหน้าจอจึงไม่ได้แปลว่า "ขึ้นบน" ของรูปต้นฉบับ
+  // ต้องหมุนเวกเตอร์การลากกลับด้วยมุมเดียวกัน ไม่งั้นลากซ้ายแล้วรูปเลื่อนเฉียง
+  const dx = (e.clientX - faceDrag.x) / perPx;
+  const dy = (e.clientY - faceDrag.y) / perPx;
+  const cs = Math.cos(faceRot), sn = Math.sin(faceRot);
+  faceCx -= dx * cs + dy * sn;
+  faceCy -= -dx * sn + dy * cs;
   faceDrag = { x: e.clientX, y: e.clientY };
   paintFace();
 });
@@ -3364,8 +3393,33 @@ for (const ev of ['pointerup', 'pointercancel']) {
   });
 }
 
+/**
+ * ซูมต่ำสุดที่ยังไม่เห็นมุมโหว่ ณ มุมเอียงปัจจุบัน
+ *
+ * กรอบตัดเป็นสี่เหลี่ยม พอหมุนแล้วมันกวาดพื้นที่กว้างกว่าเดิม (|cos|+|sin| เท่า,
+ * สูงสุด √2 ที่ 45 องศา) ถ้าซูมยังเป็น 1 อยู่ กรอบจะเลยขอบรูปไปทั้งสี่มุม
+ * แล้วได้สามเหลี่ยมโปร่งใสติดมาด้วย — วัดแล้วที่ 45 องศาโหว่ไป 29,874 พิกเซล
+ *
+ * บังคับซูมขึ้นให้พอดีแทนที่จะปล่อยให้โหว่ เป็นท่าเดียวกับแอปตัดรูปทั่วไป
+ */
+function minZoom() {
+  return Math.abs(Math.cos(faceRot)) + Math.abs(Math.sin(faceRot));
+}
+
+/** ตั้งซูมโดยไม่ให้ต่ำกว่าที่มุมเอียงตอนนี้ต้องการ แล้วซิงก์แถบเลื่อนให้ตรง */
+function setZoom(k) {
+  faceK = Math.max(minZoom(), k);
+  faceZoom.value = String(Math.round(faceK * 100));
+}
+
 faceZoom.addEventListener('input', () => {
-  faceK = Math.max(1, Number(faceZoom.value) / 100);
+  setZoom(Number(faceZoom.value) / 100);
+  paintFace();
+});
+
+faceRotEl.addEventListener('input', () => {
+  faceRot = Number(faceRotEl.value) * Math.PI / 180;
+  setZoom(faceK);   // เอียงมากขึ้นแล้วซูมเดิมอาจไม่พอ ดันขึ้นให้อัตโนมัติ
   paintFace();
 });
 
@@ -3404,6 +3458,8 @@ document.getElementById('faceOff').addEventListener('click', () => {
   setDraft(null);
   clearFace();
   faceZoom.value = '100';
+  faceRot = 0;
+  faceRotEl.value = '0';
   setMsg(document.getElementById('faceMsg'), 'เอารูปออกแล้ว น้องกลับมาหน้าเดิม');
   paintFace();
   refreshHome();
@@ -3418,6 +3474,8 @@ document.getElementById('faceOff').addEventListener('click', () => {
  */
 function showFace(on) {
   faceSrc = null;
+  faceRot = 0;
+  faceRotEl.value = '0';
   // สลับกับหน้าล็อบบี้โดยตรง ใช้ท่าเดียวกับหน้าสมบัติ/ชุด
   //
   // เคยใช้ showPanel() ซึ่งเรียก closeAllPanels() ที่ปิด "ทุกแผงรวมทั้งล็อบบี้"
@@ -3480,10 +3538,52 @@ const PAINT_POSE = 60;
 // เก็บจานสีก่อนหน้าไว้ย้อนกลับ จำกัดไว้ 30 ขั้นก็พอสำหรับงานระบายสี
 const paintHistory = [];
 
+// ── จัดน้องให้อยู่กลางกรอบพอดีและใหญ่ที่สุดเท่าที่กรอบให้ ──
+//
+// ── ทำไมต้องวัดเอา ไม่ตั้งตัวเลขไว้ตายตัว ──
+// ท่าน้องประกอบจากหลายส่วน (หู หาง แขน) ที่ยื่นออกไปคนละระยะ และเคยถูกแก้มาแล้ว
+// หลายรอบในเกมนี้ ตัวเลขที่ตั้งไว้วันนี้จะเพี้ยนทันทีที่มีใครขยับหางหรือหู
+// วัดกล่องที่พิกเซลทึบกินจริง แล้วขยับ/ย่อให้พอดีกรอบ = ถูกเสมอไม่ว่าท่าจะเปลี่ยนยังไง
+//
+// ── ทำไมเป็น transform ครอบ ไม่ใช่แก้อาร์กิวเมนต์ของ drawCatPose ──
+// ผ้าใบรหัสสีต้องวางน้องไว้ที่เดียวกับผ้าใบที่เห็น "เป๊ะทุกพิกเซล" ไม่งั้นแตะแล้วโดนผิดส่วน
+// ครอบ transform ไว้ที่ paintPose ที่เดียว ทั้งสองผ้าใบจึงใช้ค่าเดียวกันโดยอัตโนมัติ
+const PAINT_FILL = 0.9;   // ให้ตัวน้องกินกี่ส่วนของด้านกรอบ
+let paintFit = null;      // { k, tx, ty } — คำนวณครั้งเดียวตอนเปิดแผง
+
+/** ตำแหน่งฐานก่อนจัด — ค่าอะไรก็ได้ที่วาดน้องออกมาครบตัว เดี๋ยววัดแล้วขยับให้เอง */
+function paintBase(ctx, skin) {
+  const w = paintCat.width;
+  drawCatPose(ctx, w / 2, w * 0.86, w / 118, skin, PAINT_POSE);
+}
+
+function computePaintFit() {
+  const w = paintCat.width;
+  const probe = document.createElement('canvas');
+  probe.width = w;
+  probe.height = w;
+  const pc = probe.getContext('2d', { willReadFrequently: true });
+  paintBase(pc, toSkin(palette()));
+  const box = alphaBounds(pc, w, w);
+  if (!box) { paintFit = { k: 1, tx: 0, ty: 0 }; return; }
+
+  const k = (w * PAINT_FILL) / Math.max(box.w, box.h);
+  // ย้ายจุดกึ่งกลางของกล่องที่วัดได้ ไปไว้กลางผ้าใบพอดีหลังย่อ/ขยายแล้ว
+  paintFit = {
+    k,
+    tx: w / 2 - (box.x + box.w / 2) * k,
+    ty: w / 2 - (box.y + box.h / 2) * k,
+  };
+}
+
 /** ท่าที่ใช้วาดน้องในหน้านี้ — ต้องเหมือนกันเป๊ะทั้งผ้าใบที่เห็นและผ้าใบรหัสสี */
 function paintPose(ctx, skin) {
-  const w = paintCat.width;
-  drawCatPose(ctx, w / 2, w - w * 0.14, w / 118, skin, PAINT_POSE);
+  if (!paintFit) computePaintFit();
+  ctx.save();
+  ctx.translate(paintFit.tx, paintFit.ty);
+  ctx.scale(paintFit.k, paintFit.k);
+  paintBase(ctx, skin);
+  ctx.restore();
 }
 
 function drawPaintCat() {
@@ -3502,6 +3602,49 @@ function drawPickMap() {
   paintPose(c, pickSkin());
 }
 
+// ── พิกัดท้องถิ่นของตัวละคร ───────────────────────────────
+// รอยแปรงถูกเก็บในหน่วยเดียวกับที่ drawCatStand ใช้วาด (ไม่ใช่พิกเซลหน้าจอ)
+// ภาพเดียวจึงใช้ได้ทุกขนาดที่เกมวาดน้อง ตั้งแต่ไอคอนเล็ก ๆ ไปจนถึงตัวใหญ่ในหน้านี้
+//
+// ที่นี่ต้องถอด transform สองชั้นกลับ: ชั้นจัดกลาง (paintFit) กับชั้นของ drawCatPose
+// ตัวเลขต้องตรงกับ paintBase() เป๊ะ ถ้าแก้ที่นั่นต้องแก้ที่นี่ด้วย
+const HEAD_AT = { x: 1, y: -12 };   // ตำแหน่งหัวในท่ายืน (hx/hy ใน drawCatStand)
+const HEAD_R = 13;
+const BODY_AT = { x: 0, y: 6, rx: 14, ry: 13 };
+
+/** พิกัดท้องถิ่นของจุดที่นิ้วแตะ */
+function localAt(ev) {
+  if (!paintFit) computePaintFit();
+  const r = paintCat.getBoundingClientRect();
+  const pt = ev.touches?.[0] || ev.changedTouches?.[0] || ev;
+  // หน้าจอ → พิกเซลบนผ้าใบ
+  const cx = (pt.clientX - r.left) / r.width * paintCat.width;
+  const cy = (pt.clientY - r.top) / r.height * paintCat.height;
+  // ถอดชั้นจัดกลาง
+  const fx = (cx - paintFit.tx) / paintFit.k;
+  const fy = (cy - paintFit.ty) / paintFit.k;
+  // ถอด transform ของ drawCatPose (ต้องตรงกับ paintBase)
+  const w = paintCat.width;
+  const scale = w / 118;
+  const breath = Math.sin(PAINT_POSE * 0.045) * 1.8;
+  return {
+    x: (fx - w / 2) / scale,
+    y: (fy - (w * 0.86 - (BODY.standH / 2) * scale + breath)) / scale,
+  };
+}
+
+/**
+ * รอยแปรงลงชิ้นไหน — หัวมาก่อนลำตัวเพราะหัวทับลำตัวอยู่ตรงคอ
+ * คืน null ถ้าอยู่นอกทั้งสองชิ้น (แปรงจะไม่ทิ้งรอยลอยอยู่ข้างตัว)
+ */
+function layerAt(pt) {
+  const hx = pt.x - HEAD_AT.x, hy = pt.y - HEAD_AT.y;
+  if (hx * hx + hy * hy <= HEAD_R * HEAD_R) return { key: 'head', x: hx, y: hy };
+  const bx = (pt.x - BODY_AT.x) / BODY_AT.rx, by = (pt.y - BODY_AT.y) / BODY_AT.ry;
+  if (bx * bx + by * by <= 1) return { key: 'body', x: pt.x, y: pt.y };
+  return null;
+}
+
 /** ส่วนที่อยู่ใต้จุดที่แตะ — คืน null ถ้าแตะนอกตัวน้อง */
 function regionUnder(ev) {
   const r = paintCat.getBoundingClientRect();
@@ -3515,7 +3658,9 @@ function regionUnder(ev) {
 }
 
 function pushHistory() {
-  paintHistory.push({ ...palette() });
+  // เก็บทั้งจานสีและรอยแปรง เพราะ "ย้อนกลับ" ต้องย้อนได้ทั้งสองแบบ
+  // ไม่งั้นกดย้อนหลังจากลากพู่กันแล้วสีส่วนกลับ แต่รอยแปรงยังอยู่ ซึ่งงงมาก
+  paintHistory.push({ pal: { ...palette() }, layers: snapshotLayers() });
   if (paintHistory.length > 30) paintHistory.shift();
 }
 
@@ -3566,6 +3711,43 @@ function paintAt(ev, snap) {
   }
 }
 
+// ── พู่กัน: ลากเส้นจริงลงชั้นรอยแปรง ─────────────────────
+// ต่างจากถังสีตรงที่ลงเฉพาะตรงที่นิ้วผ่านจริง ไม่ได้เททั้งส่วน
+// จุดก่อนหน้าเก็บไว้เพื่อลากเป็นเส้นต่อกัน ไม่งั้นลากเร็ว ๆ จะได้รอยขาดเป็นจุด ๆ
+let brushPrev = null;
+
+// ── ขนาดหัวแปรง ──
+// เก็บเป็น "หน่วยพิกัดตัวละคร" ไม่ใช่พิกเซลหน้าจอ ขนาดที่เลือกไว้จึงให้ผลเท่าเดิม
+// ไม่ว่าจะระบายบนคอมจอใหญ่หรือมือถือจอเล็ก (ลำตัวกว้าง 28 หน่วย หัวกว้าง 26)
+//
+// จำแยกกันสองค่า — คนตั้งพู่กันเล็กไว้เก็บรายละเอียด พอสลับไปยางลบมักอยากได้อันใหญ่
+// ใช้ค่าเดียวกันจะต้องมานั่งปรับกลับไปกลับมาทุกครั้งที่สลับเครื่องมือ
+const SIZE_STEP = 10;   // ค่าบนแถบเลื่อนหารด้วยเท่านี้ = รัศมีจริง
+const brushSize = { brush: 1.5, eraser: 2.2 };
+
+/** รัศมีหัวแปรงของเครื่องมือที่ใช้อยู่ */
+function toolRadius() {
+  return brushSize[paintTool === 'eraser' ? 'eraser' : 'brush'];
+}
+
+function brushAt(ev, first) {
+  const pt = localAt(ev);
+  const hit = layerAt(pt);
+  // ออกนอกตัวแล้วตัดเส้น ไม่ใช่ลากข้ามอากาศไปโผล่อีกฝั่ง
+  if (!hit) { brushPrev = null; return; }
+  // ข้ามชิ้นกันไม่ได้ ต้องเริ่มเส้นใหม่ ไม่งั้นเส้นจะพุ่งข้ามจากหัวไปตัวเป็นทางยาว
+  if (brushPrev && brushPrev.key !== hit.key) brushPrev = null;
+
+  const from = brushPrev || hit;
+  const rad = toolRadius();
+  if (paintTool === 'eraser') eraseLayer(hit.key, from.x, from.y, hit.x, hit.y, rad);
+  else strokeLayer(hit.key, from.x, from.y, hit.x, hit.y, paintColor, rad);
+  brushPrev = hit;
+
+  drawPaintCat();
+  if (first) refreshHome();
+}
+
 let painting = false;
 paintCat.addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -3576,16 +3758,53 @@ paintCat.addEventListener('pointerdown', (e) => {
   // setPointerCapture โยน NotFoundError ได้ถ้า id ของตัวชี้ไม่ใช่ตัวที่กดอยู่จริง
   // ซึ่ง ?. กันไม่ได้เลย มันกันแค่กรณี "ไม่มีเมธอดนี้" ไม่ได้กันการโยน
   // ตอนอยู่บรรทัดบน ข้อผิดพลาดตรงนี้ทำให้ไม่ได้ลงสีเลยสักครั้งโดยไม่มีอะไรฟ้อง
-  paintAt(e, true);
+  pushHistory();
+  brushPrev = null;
+  if (paintTool === 'brush' || paintTool === 'eraser') brushAt(e, true);
+  else paintAt(e, false);
   try { paintCat.setPointerCapture(e.pointerId); } catch { /* ลากต่อไม่ได้ก็ยังแตะได้ */ }
 });
 paintCat.addEventListener('pointermove', (e) => {
-  // ลากทาได้เฉพาะพู่กัน เครื่องมืออื่นเป็นการกดทีละครั้ง
-  if (painting && paintTool === 'brush') paintAt(e, false);
+  // ลากได้เฉพาะพู่กันกับยางลบ ถังสี/หลอดดูดเป็นการกดทีละครั้ง
+  if (painting && (paintTool === 'brush' || paintTool === 'eraser')) brushAt(e, false);
 });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
-  paintCat.addEventListener(ev, () => { painting = false; });
+  paintCat.addEventListener(ev, () => {
+    if (painting && (paintTool === 'brush' || paintTool === 'eraser')) {
+      // บันทึกตอนปล่อยนิ้วครั้งเดียว ไม่ใช่ทุกจุดที่ลาก — toDataURL หนักพอที่จะ
+      // ทำให้การลากกระตุกถ้าเรียกทุกเฟรม (ดูคอมเมนต์ saveLayers ใน paint.js)
+      saveLayers();
+      refreshHome();
+    }
+    painting = false;
+    brushPrev = null;
+  });
 }
+
+/**
+ * ปรับหน้าตาแถบขนาดให้ตรงกับเครื่องมือที่ใช้อยู่
+ *
+ * ซ่อนทั้งแถบตอนใช้ถังสี/หลอดดูด เพราะสองอันนั้นไม่มี "หัวแปรง" ให้ปรับ
+ * แถบที่ปรับแล้วไม่มีอะไรเกิดขึ้นสร้างความสับสนมากกว่าไม่มีแถบเลย
+ */
+function refreshSize() {
+  const row = document.getElementById('paintSizeRow');
+  const on = paintTool === 'brush' || paintTool === 'eraser';
+  row.style.display = on ? '' : 'none';
+  if (!on) return;
+
+  const r = toolRadius();
+  document.getElementById('paintSize').value = String(Math.round(r * SIZE_STEP));
+  const dot = document.getElementById('paintSizeDot');
+  // จุดตัวอย่างโตตามค่าจริง แต่มีเพดานไม่ให้ล้นวงกรอบ
+  dot.style.setProperty('--dot', Math.min(26, 4 + r * 4.4).toFixed(1) + 'px');
+  dot.style.setProperty('--dotc', paintTool === 'eraser' ? 'rgba(255,246,230,.55)' : paintColor);
+}
+
+document.getElementById('paintSize').addEventListener('input', (e) => {
+  brushSize[paintTool === 'eraser' ? 'eraser' : 'brush'] = Number(e.target.value) / SIZE_STEP;
+  refreshSize();
+});
 
 function setTool(name) {
   paintTool = name;
@@ -3593,9 +3812,10 @@ function setTool(name) {
     b.classList.toggle('on', b.dataset.tool === name);
   }
   paintHint.textContent = name === 'dropper' ? 'แตะส่วนที่อยากดูดสี'
-    : name === 'eraser' ? 'แตะส่วนที่อยากล้างสี'
+    : name === 'eraser' ? 'ลากเพื่อลบรอยพู่กันที่ระบายไว้'
     : name === 'bucket' ? 'แตะเพื่อเทสีลงทุกส่วนที่สีเหมือนกัน'
-    : 'แตะหรือลากบนตัวน้องเพื่อลงสี';
+    : 'ลากบนตัวน้องเพื่อระบายสีตามรอยพู่กัน';
+  refreshSize();
 }
 document.getElementById('paintTools').addEventListener('click', (e) => {
   const b = e.target.closest('.ptool');
@@ -3606,6 +3826,7 @@ function refreshSwatches() {
   for (const b of document.querySelectorAll('#paintSwatches .pswatch')) {
     b.classList.toggle('on', b.dataset.color.toLowerCase() === paintColor.toLowerCase());
   }
+  refreshSize();   // จุดตัวอย่างขนาดหัวแปรงใช้สีปัจจุบัน ต้องเปลี่ยนตามด้วย
 }
 
 function buildSwatches() {
@@ -3671,7 +3892,9 @@ document.getElementById('paintUndo').addEventListener('click', () => {
   unlockAudio();
   const prev = paintHistory.pop();
   if (!prev) return;
-  setPalette(prev);
+  // ย้อนทั้งสองอย่างพร้อมกัน — จานสีกับรอยแปรงถูกเก็บคู่กันไว้ใน pushHistory()
+  setPalette(prev.pal);
+  restoreLayers(prev.layers);
   drawPaintCat();
   refreshParts();
   refreshHome();
@@ -3695,6 +3918,8 @@ document.getElementById('paintClear').addEventListener('click', () => {
   unlockAudio();
   pushHistory();
   setPalette(BLANK);
+  // "ล้างสี" ต้องล้างรอยพู่กันด้วย ไม่งั้นกดล้างแล้วยังเหลือรอยเปื้อนอยู่เต็มตัว
+  clearLayers();
   drawPaintCat();
   refreshParts();
   refreshHome();
