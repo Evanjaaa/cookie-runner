@@ -3533,6 +3533,8 @@ pickCv.height = paintCat.height;
 let paintTool = 'brush';
 let paintColor = SWATCHES[3];
 let paintPart = null;        // ส่วนที่เลือกจากรายชื่อ null = เล็งเอาจากที่แตะ
+// 'part' = ลงเฉพาะส่วนที่แตะ / 'all' = แตะทีเดียวลงทั้งแปดส่วนพร้อมกัน
+let paintScope = 'part';
 
 // ── ทำไมน้องอยู่นิ่งในหน้านี้ที่เดียวในเกม ──
 // ตอนแรกให้หายใจกับกระดิกหางเหมือนหน้าอื่น แล้วเทสจริงพบว่าแตะจมูกกับตาไม่โดน
@@ -3644,9 +3646,16 @@ function localAt(ev) {
  */
 function layerAt(pt) {
   const hx = pt.x - HEAD_AT.x, hy = pt.y - HEAD_AT.y;
-  if (hx * hx + hy * hy <= HEAD_R * HEAD_R) return { key: 'head', x: hx, y: hy };
-  const bx = (pt.x - BODY_AT.x) / BODY_AT.rx, by = (pt.y - BODY_AT.y) / BODY_AT.ry;
-  if (bx * bx + by * by <= 1) return { key: 'body', x: pt.x, y: pt.y };
+  // หัวเผื่อรัศมีให้ครอบหูด้วย ปลายหูอยู่สูงกว่าขอบวงกลมหัวราวแปดหน่วย
+  if (hx * hx + hy * hy <= (HEAD_R + 8) * (HEAD_R + 8)) return { key: 'head', x: hx, y: hy };
+  // ── ทำไมไม่เช็ควงรีลำตัวแล้ว ──
+  // ของเดิมรับเฉพาะในวงรี ทำให้ระบาย หาง ขา อุ้งเท้า ไม่ติดเลยสักจุด
+  // ตอนนี้รับทั้งกรอบของชั้นลำตัว แล้วปล่อยให้ตอนวาดเป็นคนตัดสินว่าสีไปโผล่ตรงไหน
+  // (paintOver ตัดตามทรงลำตัว ส่วน paintStroke ทาตามเส้นหางกับขา)
+  const b = LAYER.body;
+  if (pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h) {
+    return { key: 'body', x: pt.x, y: pt.y };
+  }
   return null;
 }
 
@@ -3688,6 +3697,17 @@ function applyPaint(region, snap) {
   }
 
   const want = paintTool === 'eraser' ? BLANK[region.key] : paintColor;
+
+  // ── ลงทั้งตัว ──
+  // ดักไว้ตรงนี้จุดเดียว เครื่องมือทุกตัวจึงได้พฤติกรรมนี้เหมือนกันหมด
+  // (ยางลบในโหมดนี้ = ล้างทั้งตัวกลับเป็นน้องโล้น ซึ่งตรงกับที่คนคาดหวัง)
+  if (paintScope === 'all') {
+    const same = REGIONS.every((r) => pal[r.key] === (paintTool === 'eraser' ? BLANK[r.key] : want));
+    if (same) return false;
+    if (snap) pushHistory();
+    for (const r of REGIONS) paint(r.key, paintTool === 'eraser' ? BLANK[r.key] : want);
+    return true;
+  }
 
   if (paintTool === 'bucket') {
     // ถังสี = เทลงทุกส่วนที่ "สีเดียวกับส่วนที่แตะ" ในทีเดียว
@@ -3735,11 +3755,31 @@ function toolRadius() {
   return brushSize[paintTool === 'eraser' ? 'eraser' : 'brush'];
 }
 
+// ส่วนที่ล็อกไว้ระหว่างลากหนึ่งเส้นในโหมดทีละส่วน
+// ล็อกจากจุดที่เริ่มลาก ไม่ใช่เช็คใหม่ทุกจุด ไม่งั้นลากออกนอกส่วนแล้ววกกลับ
+// มันจะเปลี่ยนเป้าหมายกลางคันโดยที่ผู้เล่นไม่ได้ตั้งใจ
+let strokeRegion = null;
+
 function brushAt(ev, first) {
   const pt = localAt(ev);
   const hit = layerAt(pt);
   // ออกนอกตัวแล้วตัดเส้น ไม่ใช่ลากข้ามอากาศไปโผล่อีกฝั่ง
   if (!hit) { brushPrev = null; return; }
+
+  // ── โหมดทีละส่วน: พู่กันทาได้เฉพาะในส่วนเป้าหมาย ──
+  // ลากผ่านส่วนอื่นก็แค่ไม่ติดสี ไม่ได้หยุดเส้น พอวกกลับมาส่วนเดิมทาต่อได้เลย
+  if (paintScope === 'part') {
+    const here = regionUnder(ev);
+    const want = paintPart || strokeRegion;
+    if (!want) {
+      if (!here) { brushPrev = null; return; }
+      strokeRegion = here;
+    } else if (!here || here.key !== want.key) {
+      brushPrev = null;
+      return;
+    }
+  }
+
   // ข้ามชิ้นกันไม่ได้ ต้องเริ่มเส้นใหม่ ไม่งั้นเส้นจะพุ่งข้ามจากหัวไปตัวเป็นทางยาว
   if (brushPrev && brushPrev.key !== hit.key) brushPrev = null;
 
@@ -3767,6 +3807,10 @@ paintCat.addEventListener('pointerdown', (e) => {
   // ตอนอยู่บรรทัดบน ข้อผิดพลาดตรงนี้ทำให้ไม่ได้ลงสีเลยสักครั้งโดยไม่มีอะไรฟ้อง
   pushHistory();
   brushPrev = null;
+  // ── สองโหมดนี้ต่างกันที่ "ขอบเขตของพู่กัน" ไม่ใช่ที่ "เทหรือทา" ──
+  // ทั้งคู่ใช้พู่กันลากเหมือนกัน ต่างกันตรงโหมดทีละส่วนจะทาไม่ข้ามออกนอกส่วนที่เล็งไว้
+  // ส่วนโหมดทั้งตัวละเลงข้ามส่วนได้อิสระ — ถังสียังอยู่ที่ปุ่มถังสีเหมือนเดิม
+  strokeRegion = null;
   if (paintTool === 'brush' || paintTool === 'eraser') brushAt(e, true);
   else paintAt(e, false);
   try { paintCat.setPointerCapture(e.pointerId); } catch { /* ลากต่อไม่ได้ก็ยังแตะได้ */ }
@@ -3777,6 +3821,7 @@ paintCat.addEventListener('pointermove', (e) => {
 });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   paintCat.addEventListener(ev, () => {
+    strokeRegion = null;
     if (painting && (paintTool === 'brush' || paintTool === 'eraser')) {
       // บันทึกตอนปล่อยนิ้วครั้งเดียว ไม่ใช่ทุกจุดที่ลาก — toDataURL หนักพอที่จะ
       // ทำให้การลากกระตุกถ้าเรียกทุกเฟรม (ดูคอมเมนต์ saveLayers ใน paint.js)
@@ -3813,17 +3858,46 @@ document.getElementById('paintSize').addEventListener('input', (e) => {
   refreshSize();
 });
 
+// คำใบ้ต้องบอกทั้งเครื่องมือและขอบเขต ไม่งั้นคนกด "ลงสีทั้งตัว" แล้วไม่รู้ว่าเปลี่ยนอะไรไป
+function refreshHint() {
+  if (paintScope === 'all' && (paintTool === 'brush' || paintTool === 'eraser')) {
+    paintHint.textContent = paintTool === 'eraser'
+      ? 'ลากลบได้ทั่วตัวน้อง ไม่จำกัดส่วน' : 'ลากระบายได้ทั่วตัวน้อง ไม่จำกัดส่วน';
+    return;
+  }
+  if (paintScope === 'part' && paintTool === 'brush') {
+    paintHint.textContent = 'ลากระบาย สีจะติดเฉพาะส่วนที่เริ่มลาก';
+    return;
+  }
+  paintHint.textContent = paintTool === 'dropper' ? 'แตะส่วนที่อยากดูดสี'
+    : paintTool === 'eraser' ? 'ลากเพื่อลบรอยพู่กันที่ระบายไว้'
+    : paintTool === 'bucket' ? 'แตะเพื่อเทสีลงทุกส่วนที่สีเหมือนกัน'
+    : 'ลากบนตัวน้องเพื่อระบายสีตามรอยพู่กัน';
+}
+
 function setTool(name) {
   paintTool = name;
   for (const b of document.querySelectorAll('#paintTools .ptool')) {
     b.classList.toggle('on', b.dataset.tool === name);
   }
-  paintHint.textContent = name === 'dropper' ? 'แตะส่วนที่อยากดูดสี'
-    : name === 'eraser' ? 'ลากเพื่อลบรอยพู่กันที่ระบายไว้'
-    : name === 'bucket' ? 'แตะเพื่อเทสีลงทุกส่วนที่สีเหมือนกัน'
-    : 'ลากบนตัวน้องเพื่อระบายสีตามรอยพู่กัน';
+  refreshHint();
   refreshSize();
 }
+function setScope(name) {
+  paintScope = name;
+  for (const b of document.querySelectorAll('#paintModes .pmode')) {
+    b.classList.toggle('on', b.dataset.mode === name);
+  }
+  // เลือกส่วนไว้แล้วสั่งทาทั้งตัวมันขัดกันเอง ปลดล็อกให้เลย
+  if (name === 'all') { paintPart = null; refreshParts(); }
+  strokeRegion = null;
+  refreshHint();
+}
+document.getElementById('paintModes').addEventListener('click', (e) => {
+  const b = e.target.closest('.pmode');
+  if (b) { unlockAudio(); sfx.fish(); setScope(b.dataset.mode); }
+});
+
 document.getElementById('paintTools').addEventListener('click', (e) => {
   const b = e.target.closest('.ptool');
   if (b) { unlockAudio(); sfx.fish(); setTool(b.dataset.tool); }
@@ -3883,6 +3957,8 @@ function refreshParts() {
         unlockAudio(); sfx.fish();
         // กดซ้ำที่เดิม = ปลดล็อก กลับไปเล็งเอาจากที่แตะบนตัวน้อง
         paintPart = paintPart && paintPart.key === r.key ? null : r;
+        // เลือกส่วนเจาะจง = ตั้งใจลงทีละส่วน เด้งออกจากโหมดทั้งตัวให้เลย
+        if (paintPart && paintScope === 'all') setScope('part');
         refreshParts();
       });
       box.appendChild(b);
@@ -3974,8 +4050,10 @@ function setCreateTab(which) {
 function setPaintMax(on) {
   createPanel.classList.toggle('paint-full', on);
   const b = document.getElementById('paintMax');
-  b.textContent = on ? '⤡' : '⛶';
-  b.setAttribute('aria-label', on ? 'ย่อกลับ' : 'ขยายเต็มจอ');
+  // ในโหมดเต็มจอปุ่มนี้ทำหน้าที่ "ปิด" ตามแบบที่วางไว้ ไม่ใช่ "ย่อ"
+  // เพราะโหมดเต็มจอซ่อนปุ่มกลับไปแล้ว มันจึงเป็นทางออกทางเดียวของหน้านี้
+  b.textContent = on ? '✕' : '⛶';
+  b.setAttribute('aria-label', on ? 'ปิดโหมดเต็มจอ' : 'ขยายเต็มจอ');
   b.title = b.getAttribute('aria-label');
   requestAnimationFrame(() => { drawPaintCat(); drawPickMap(); });
 }

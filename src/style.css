@@ -5444,9 +5444,9 @@ canvas[hidden] { display: none; }
      ห้ามใส่ max-width คู่กัน ไม่งั้นพอความกว้างถูกบีบ ความสูงจะไม่ลดตาม
      แล้วได้ผ้าใบสี่เหลี่ยมผืนผ้าซึ่งทำให้รูปน้องถูกยืด (บัฟเฟอร์เป็น 440x440)
      ส่วนมือถือกลับด้านกัน ดูกฎในบล็อก max-height: 460px */
-  height: 60dvh;
+  width: min(50dvh, 30vw);
+  height: auto;
   max-height: 100%;
-  width: auto;
   aspect-ratio: 1;
   border-radius: clamp(12px, 2.4vw, 20px);
   background: rgba(255, 252, 246, .07);
@@ -5460,45 +5460,11 @@ canvas[hidden] { display: none; }
   text-align: center;
 }
 
-.paint-side {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(5px, 1.2dvh, 11px);
-}
 /* min-height:0 คือตัวที่ทำให้กล่องนี้ยอมเตี้ยกว่าเนื้อหาแล้วเลื่อนแทนการดันพี่น้อง
    ให้ล้นออกนอกแผง — ไม่มีบรรทัดนี้ ปุ่มข้างล่างจะถูกดันหลุดขอบเหมือนเดิม */
-.paint-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(5px, 1.2dvh, 11px);
-
-  /* ── ขยับแถบเลื่อนออกไปทางขวาให้พ้นเนื้อหา ──
-     แถบเลื่อนของเบราว์เซอร์เกาะขอบขวาของกล่องเสมอ ย้ายมันเองไม่ได้
-     ย้าย "กล่อง" แทน: ยืดขอบขวาออกไปกินขอบในของการ์ด (margin ติดลบ)
-     แล้วดันเนื้อหากลับเข้ามาเท่าเดิมบวกช่องไฟ (padding)
-     ผลคือแถบเลื่อนขยับไปขวาจริง และเนื้อหาไม่ไปเบียดมันอีก
-     ตัวเนื้อหาอยู่ที่เดิมทุกพิกเซล เพราะสองค่าหักล้างกันพอดี
-
-     scrollbar-gutter: stable จองที่ให้แถบไว้ตลอด แม้ตอนที่ยังไม่ต้องเลื่อน
-     ไม่งั้นเนื้อหาจะกระตุกไปมาทุกครั้งที่รายการยาวขึ้นหรือสั้นลง */
-  margin-right: calc(-1 * clamp(6px, 1vw, 12px));
-  padding-right: clamp(14px, 2.2vw, 24px);
-  scrollbar-gutter: stable;
-
-  /* แถบบางลงและจางลง — มันมีหน้าที่บอกว่า "ยังมีของอยู่ข้างล่าง" เฉย ๆ
-     ไม่ควรเด่นแข่งกับแม่สีซึ่งเป็นของที่คนมากดจริง */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 243, 226, .3) transparent;
-}
-.paint-scroll::-webkit-scrollbar { width: 9px; }
-.paint-scroll::-webkit-scrollbar-track { background: transparent; }
-.paint-scroll::-webkit-scrollbar-thumb {
+.paint-tools-col::-webkit-scrollbar, .paint-color-col::-webkit-scrollbar { width: 9px; }
+.paint-tools-col::-webkit-scrollbar-track, .paint-color-col::-webkit-scrollbar-track { background: transparent; }
+.paint-tools-col::-webkit-scrollbar-thumb, .paint-color-col::-webkit-scrollbar-thumb {
   background: rgba(255, 243, 226, .26);
   border-radius: 999px;
   /* ขอบใสบีบให้แท่งผอมกว่าราง = มีช่องไฟรอบแท่งโดยไม่ต้องหดความกว้างราง
@@ -5506,7 +5472,7 @@ canvas[hidden] { display: none; }
   border: 2px solid transparent;
   background-clip: content-box;
 }
-.paint-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 243, 226, .4); background-clip: content-box; }
+.paint-tools-col::-webkit-scrollbar-thumb, .paint-color-col::-webkit-scrollbar-thumb:hover { background: rgba(255, 243, 226, .4); background-clip: content-box; }
 
 .paint-tools { display: flex; gap: clamp(4px, .8vw, 8px); }
 .ptool {
@@ -5516,7 +5482,9 @@ canvas[hidden] { display: none; }
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: clamp(4px, 1dvh, 9px) 2px;
+  /* ของเดิม 46x57 สูงกว่ากว้างเกือบ 25% ดูเป็นแท่งไม่ใช่ปุ่ม
+     ลดระยะบน-ล่างให้เข้าใกล้จัตุรัส ซึ่งเป็นสัดส่วนของปุ่มไอคอนที่เหลือทั้งเกม */
+  padding: clamp(3px, .6dvh, 6px) 2px;
   border-radius: clamp(9px, 1.6vw, 14px);
   border: 2px solid transparent;
   background: rgba(255, 252, 246, .09);
@@ -5524,18 +5492,21 @@ canvas[hidden] { display: none; }
   font: inherit;
   cursor: pointer;
 }
-.ptool span { font-size: clamp(15px, 2.8dvh, 22px); line-height: 1; }
-.ptool i { font-style: normal; font-size: clamp(9px, 1.5dvh, 12px); opacity: .82; }
+.ptool span { font-size: clamp(15px, 2.5dvh, 21px); line-height: 1; }
+/* ป้ายชื่อเครื่องมือใช้ฟอนต์ชุดเดียวกับทั้งหน้าเหมือนกัน */
+.ptool i { font-style: normal; font-size: var(--pfont); opacity: .85; }
 .ptool.on { background: rgba(255, 232, 190, .22); border-color: var(--cream); }
 
 /* แม่สีเรียงหกช่องสองแถว ตรงกับที่ประกาศไว้ 12 สีพอดี */
 /* ── แถบขนาดหัวแปรง ──
    จุดตัวอย่างอยู่ซ้ายแถบ โตตามค่าที่เลื่อน คนจึงเห็นขนาดจริงก่อนลากลงตัวน้อง
    ไม่ต้องลองผิดลองถูกบนตัวน้องแล้วกดย้อนกลับ */
+/* แถบขนาดหัวแปรงเว้นจากแถวเครื่องมือให้ชัด ไม่ใช่ติดกันเป็นก้อนเดียว */
 .paint-size {
   display: flex;
   align-items: center;
   gap: clamp(6px, 1.2vw, 12px);
+  margin-top: clamp(2px, 1dvh, 10px);
 }
 .psize-dot {
   flex: 0 0 auto;
@@ -5565,15 +5536,19 @@ canvas[hidden] { display: none; }
 
 .paint-swatches {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* สิบหกสีลงสี่คอลัมน์ = สี่แถวพอดีตามแบบ */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(3px, .7vw, 7px);
 }
-@media (max-height: 460px) {
-  /* จอเตี้ยเรียงแม่สีเป็นแถวเดียวสิบสองช่อง ได้ความสูงคืนมาเต็มหนึ่งแถว */
-  .paint-swatches { grid-template-columns: repeat(12, minmax(0, 1fr)); }
-}
+
 .pswatch {
   aspect-ratio: 1;
+  /* เพดาน 38px — วัดที่ 1366px แล้วได้ 47px ซึ่งใหญ่กว่าปุ่มเครื่องมือ (46px)
+     กลายเป็นของที่เด่นที่สุดในหน้าทั้งที่เป็นแค่จานสี
+     ต้องสั่ง width ก่อน: ปุ่มนี้ไม่มีเนื้อหาข้างใน ถ้าให้หดตามเนื้อหาจะเหลือแค่ขอบ 4px */
+  width: 100%;
+  max-width: 38px;
+  justify-self: center;
   border-radius: 50%;
   border: 2px solid rgba(12, 6, 20, .35);
   cursor: pointer;
@@ -5596,23 +5571,24 @@ canvas[hidden] { display: none; }
 }
 
 .paint-parts {
+  /* ดันลงไปชิดขอบล่างของคอลัมน์ ซึ่งเท่ากับขอบล่างของกรอบภาพน้องพอดี */
+  margin-top: auto;
   display: grid;
-  /* หกส่วนลงสามคอลัมน์ = สองแถวพอดี ถ้าใช้สองคอลัมน์จะเป็นสามแถว
-     แล้วแถวสุดท้าย (จมูก/ตา) ตกใต้ขอบจนต้องเลื่อนหา ทั้งบนจอใหญ่และมือถือ */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* แปดหมวดลงสองคอลัมน์ = สี่แถว ตามแบบที่วางไว้ */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(3px, .7vw, 6px);
 }
 .ppart {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: clamp(3px, .8dvh, 6px) clamp(3px, .7vw, 7px);
-  border-radius: clamp(7px, 1.3vw, 11px);
+  padding: clamp(4px, 1dvh, 8px) clamp(4px, .8vw, 9px);
+  border-radius: 999px;
   border: 2px solid transparent;
   background: rgba(255, 252, 246, .08);
   color: var(--cream);
   font: inherit;
-  font-size: clamp(9px, 1.5dvh, 12px);
+  font-size: var(--pfont);
   cursor: pointer;
   min-width: 0;
 }
@@ -5653,9 +5629,119 @@ canvas[hidden] { display: none; }
   padding: 0;
 }
 
-.paint-acts { display: flex; gap: clamp(4px, .8vw, 8px); }
-.paint-acts .btn { flex: 1 1 0; min-width: 0; margin-top: 0; padding-inline: 6px; }
-.paint-side > .btn { margin-top: 0; }
+/* ── ฟอนต์ชุดเดียวทั้งแผง ──
+   ยึดจากปุ่ม "ใช้น้องตัวนี้" ซึ่งเป็นปุ่มหลักของหน้า ทุกอย่างอ้างตัวแปรนี้ตัวเดียว
+   ของเดิมแต่ละกลุ่มตั้งขนาดเอง เลยกระจาย 11.5–15.5px ในคอลัมน์เดียวกัน
+   ป้ายชื่อเครื่องมือเป็นข้อยกเว้นเดียว เพราะต้องอยู่ในปุ่มไอคอนกว้าง ~57px */
+#createPanel { --pfont: clamp(11px, 1.15vw, 15.5px); }
+
+/* กล่องครอบสองคอลัมน์ขวา — เรียงข้างกันเป็นค่าตั้งต้น */
+.paint-side {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  gap: clamp(8px, 1.6vw, 18px);
+}
+
+/* ── สองคอลัมน์ขวา: อุปกรณ์ กับ สี ──
+   แยกเป็นคนละคอลัมน์ตามแบบที่วางไว้ แทนที่จะกองรวมกันเป็นคอลัมน์เดียวยาว ๆ
+   ข้อดีที่ได้จริงคือไม่ต้องเลื่อนหาอะไรอีกเลย เพราะของถูกแบ่งไปสองแกนแทนแกนเดียว */
+.paint-tools-col, .paint-color-col {
+  flex: 1 1 0;
+  /* ขั้นต่ำ 196px = ความกว้างที่ปุ่มลงมือ "สามใบเรียงแถวเดียว" ได้จริงตามแบบ
+     ที่ 172px มันพอสำหรับตัวอักษร แต่ไม่พอให้สามใบอยู่แถวเดียว มันเลยตกไปแถวสอง
+     แล้วดันปุ่ม "ใช้น้องตัวนี้" ตกใต้ขอบ — ผ้าใบยอมเล็กลงแทนได้ */
+  min-width: 196px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.2dvh, 11px);
+  overflow-y: auto;
+}
+.paint-color-col { justify-content: flex-start; }
+
+/* หัวข้อเป็นป้ายกลม ไม่ใช่ข้อความลอย จะได้ไม่ถูกอ่านสลับเป็นปุ่มกด */
+.pcol-head {
+  align-self: center;
+  padding: clamp(3px, .8dvh, 7px) clamp(12px, 2.4vw, 22px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #B478E8, #8B4FC9);
+  border: 1px solid rgba(255, 246, 230, .3);
+  color: #fff;
+  font-size: var(--pfont);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ปุ่มสองปุ่มนี้เว้นบน-ล่างให้หายใจ ของเดิมอัดติดกับแถบขนาดและตารางหมวด */
+.paint-modes {
+  display: flex;
+  gap: clamp(4px, .8vw, 8px);
+  margin-top: clamp(3px, 1.4dvh, 14px);
+}
+.pmode {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: clamp(4px, 1dvh, 8px) clamp(4px, 1vw, 10px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 246, 230, .28);
+  background: linear-gradient(180deg, #B478E8, #8B4FC9);
+  color: #fff;
+  font: inherit;
+  font-size: clamp(10px, 1.8dvh, 14px);
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1.25;
+  white-space: nowrap;
+  /* ชื่อยาวสุดคือ "ลงสีทั้งตัวน้อน" — ขนาดนี้พอดีสองปุ่มเรียงกันในคอลัมน์ที่แคบสุด
+     ที่วัดได้ (195px บนหน้าต่างเล็ก) โดยไม่ตกบรรทัด */
+  font-size: var(--pfont);
+  padding-inline: clamp(3px, .5vw, 9px);
+}
+/* ตัวที่เลือกอยู่ใช้สีฟ้าชุดเดียวกับปุ่มยืนยันหลักของเกม */
+.pmode.on {
+  background: linear-gradient(180deg, #6FE3D6, #3FBFB2);
+  border-color: rgba(255, 255, 255, .55);
+  color: #0C2E2B;
+}
+
+/* ช่องเลือกสีอิสระ อยู่ใต้จานสีตามแบบ */
+.paint-free-row {
+  /* ดันลงล่างทั้งก้อน (สีอื่น + ปุ่มลงมือ + ปุ่มหลัก) ให้จบพอดีขอบล่างกรอบภาพน้อง
+     ของเดิม margin-top:auto อยู่ที่แถวปุ่มลงมือ ทำให้ช่องสีอื่นค้างอยู่ติดจานสี
+     แล้วเหลือช่องว่างใหญ่คั่นกลาง */
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(6px, 1.2vw, 12px);
+  color: var(--cream);
+  font-size: var(--pfont);
+  font-weight: 600;
+}
+
+/* ตกไปแถวสองได้ตอนหน้าต่างแคบมาก ดีกว่าปล่อยให้ข้อความล้นออกนอกปุ่ม
+   บนหน้าต่างปกติทั้งสามใบยังอยู่แถวเดียวตามแบบ */
+.paint-acts {
+  margin-top: clamp(4px, 1.4dvh, 14px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(4px, .8vw, 8px);
+  /* เว้นจากปุ่มหลักให้ชัด ของเดิมห่างแค่ 9px จนดูเหมือนติดกันเป็นก้อนเดียว */
+  margin-bottom: clamp(2px, .6dvh, 6px);
+}
+.paint-acts .btn {
+  flex: 1 1 auto;
+  min-width: 56px;
+  margin-top: 0;
+  padding-inline: clamp(3px, .5vw, 9px);
+  white-space: nowrap;
+  font-size: var(--pfont);
+}
+.paint-color-col > .btn { margin-top: 0; flex: 0 0 auto; font-size: var(--pfont); }
+.paint-acts { flex: 0 0 auto; }
+.paint-tools-col > *, .paint-color-col > * { flex-shrink: 0; }
 
 /* ── ป้ายกำกับแถบซูม/หมุนของหน้ารูป ──
    เดิมเป็นแถบเปล่าสองอันเรียงกัน ไม่มีอะไรบอกว่าอันไหนทำอะไร */
@@ -5715,15 +5801,36 @@ canvas[hidden] { display: none; }
   .paint-hint { display: none; }
 
   /* คอลัมน์ขวากว้างขึ้นเพื่อให้รายชื่อส่วนอยู่ได้สองคอลัมน์โดยชื่อไม่ถูกตัด */
+  /* ── ตอนย่อบนมือถือ ซ้อนสองกลุ่มเป็นคอลัมน์เดียว ──
+     ที่ตรงนั้นเหลือกว้างราว 360px หักผ้าใบแล้วไม่พอให้สองคอลัมน์อยู่ข้างกัน
+     ผลคือชื่อปุ่มถูกตัดเป็น "เลือ..." กับ "ลงสี..." ซึ่งอ่านไม่ออกว่าปุ่มไหนทำอะไร
+     ส่วนป้ายหัวข้อซ่อนไปด้วย เพราะตอนซ้อนกันมันกินความสูงไปกลุ่มละแถวโดยไม่ได้บอกอะไรใหม่ */
+  #createPanel:not(.paint-full) .paint-side {
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 6px;
+  }
+  #createPanel:not(.paint-full) .paint-tools-col,
+  #createPanel:not(.paint-full) .paint-color-col {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  #createPanel:not(.paint-full) .pcol-head { display: none; }
+  /* ตอนย่อของทั้งหมดกองอยู่คอลัมน์เดียว บีบสองตารางให้เตี้ยลงหนึ่งแถวเต็ม ๆ
+     สิบหกสีลงหกช่อง = สามแถว (จากสี่) และแปดหมวดลงสามช่อง = สามแถว (จากสี่) */
+  #createPanel:not(.paint-full) .paint-swatches { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  #createPanel:not(.paint-full) .paint-parts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #createPanel:not(.paint-full) .paint-acts { margin-top: 0; }
   .paint-side { min-width: 212px; flex: 0 0 auto; }
-  .paint-swatches { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .pswatch { min-width: 22px; }
+  .pswatch { min-width: 20px; }
   /* สามคอลัมน์เหลือสองแถวแทนสามแถว คืนความสูงให้พอดีจนไม่ต้องเลื่อนหาแถวสุดท้าย */
   .ppart { font-size: 10px; gap: 3px; }
   /* บีบระยะทุกจุดในคอลัมน์เครื่องมือ เป้าหมายคือให้แถวเลือกส่วนอยู่ในสายตาตั้งแต่แรก
      ไม่ต้องเลื่อนหา ซึ่งเป็นสาเหตุที่มันเคยถูกซ่อนทิ้งไปเลยในเวอร์ชันก่อน */
-  .paint-scroll { gap: 4px; }
+  .paint-tools-col, .paint-color-col { gap: 4px; }
   .paint-swatches { gap: 4px; }
+  /* หมวดสองคอลัมน์ตามแบบ สี่แถวพอดีสำหรับแปดหมวด */
+  .paint-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ppart { padding: 2px 3px; }
   .ptool { padding: 2px 2px; }
   .ptool span { font-size: 15px; }
@@ -5753,6 +5860,18 @@ canvas[hidden] { display: none; }
 #createPanel.paint-full .stash-body { gap: 0; }
 /* ปุ่มกลับซ้อนกับปุ่มย่อในโหมดนี้ ซ่อนไปเลย — ปุ่มย่อพากลับมาหน้าปกติได้อยู่แล้ว */
 #createPanel.paint-full .backbtn { display: none; }
+/* ปุ่มปิดย้ายออกจากมุมผ้าใบไปอยู่มุมขวาบนของทั้งแผงตามแบบ
+   ต้องหลุดออกจาก .paint-canvas ที่มัน absolute อยู่ จึงตรึงกับ .pop แทน */
+#createPanel.paint-full .paint-canvas { position: static; }
+#createPanel.paint-full .paint-max {
+  position: absolute;
+  top: clamp(6px, 1.6dvh, 14px);
+  right: clamp(8px, 1.8vw, 18px);
+  width: clamp(32px, 5.4dvh, 44px);
+  height: clamp(32px, 5.4dvh, 44px);
+  border-radius: 50%;
+  z-index: 3;
+}
 /* เต็มจอ: ที่ว่างเป็นทรงนอน ความสูงเป็นตัวจำกัด จึงคุมด้วยความสูงแทน
    แล้วให้ความกว้างเป็น auto ตาม aspect-ratio ซึ่งเป็นภาพกลับของกรณีปกติ */
 #createPanel.paint-full #paintCat {
@@ -5762,9 +5881,11 @@ canvas[hidden] { display: none; }
   max-height: none;
 }
 #createPanel.paint-full .paint-canvas { height: 100%; }
-#createPanel.paint-full .paint-side { min-width: clamp(200px, 30vw, 320px); }
-/* เต็มจอมีที่พอให้รายชื่อส่วนเรียงสามคอลัมน์ เห็นครบหกส่วนในแถวเดียวสองบรรทัด */
-#createPanel.paint-full .paint-parts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#createPanel.paint-full .paint-tools-col,
+#createPanel.paint-full .paint-color-col { min-width: clamp(150px, 20vw, 260px); }
+/* สองคอลัมน์เหมือนกับตอนย่อ ตามแบบที่วางไว้ — แปดหมวดได้สี่แถวพอดี
+   (กฎเดิมตั้งสามคอลัมน์ไว้ตอนที่ยังมีแค่หกหมวด) */
+#createPanel.paint-full .paint-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 /* จอเตี้ยมาก ๆ: ปุ่มลงมือย่อลงอีกขั้นเพื่อไม่ให้ดันผ้าใบจนเล็ก */
 @media (max-height: 400px) {

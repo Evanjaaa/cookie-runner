@@ -1055,11 +1055,16 @@
                   <small class="paint-hint" id="paintHint">แตะตัวน้องเพื่อลงสี</small>
                 </div>
 
+                <!-- กล่องนี้เรียงสองคอลัมน์ข้างกันตอนเต็มจอ/จอใหญ่
+                     แต่ซ้อนเป็นคอลัมน์เดียวตอนย่อบนมือถือ ที่ตรงนั้นกว้างแค่ ~360px
+                     ซึ่งไม่พอให้สองคอลัมน์อยู่ข้างกันโดยที่ชื่อปุ่มไม่ถูกตัด -->
                 <div class="paint-side">
-                  <!-- เฉพาะกล่องนี้ที่เลื่อนได้ ปุ่มลงมือทั้งสองแถวอยู่นอกกล่อง
-                       เพื่อให้ "ใช้น้องตัวนี้" ไม่มีวันตกไปอยู่ใต้ขอบจอเตี้ย ๆ
-                       ซึ่งเคยเกิดจริงตอนทดสอบบนจอ 390px -->
-                  <div class="paint-scroll">
+                <!-- ── คอลัมน์อุปกรณ์ ──
+                     หัวข้อเป็นป้ายกลม ๆ เหมือนแบบที่วางไว้ ไม่ใช่ข้อความลอย
+                     เพื่อให้แยกออกจากปุ่มด้านล่างชัด ๆ ว่าอันไหนกดได้อันไหนเป็นหัวข้อ -->
+                <div class="paint-tools-col">
+                  <b class="pcol-head">อุปกรณ์น้อน</b>
+
                   <div class="paint-tools" id="paintTools" role="group" aria-label="เครื่องมือ">
                     <button type="button" class="ptool on" data-tool="brush">
                       <span aria-hidden="true">🖌️</span><i>พู่กัน</i>
@@ -1083,19 +1088,34 @@
                     <span class="psize-dot" id="paintSizeDot" aria-hidden="true"></span>
                     <input type="range" id="paintSize" min="4" max="40" step="1" value="15"
                            aria-label="ขนาดหัวแปรง">
-                    <!-- ช่องเลือกสีอิสระมาอยู่ท้ายแถบนี้ ไม่ได้กินบรรทัดของตัวเองแล้ว
-                         เพราะบรรทัดเดิมเสียความสูงไปทั้งแถวเพื่อคำว่า "สีอื่น" คำเดียว
-                         ซึ่งทำให้แถวเลือกส่วนตกไปอยู่ใต้ขอบจนต้องเลื่อนหา -->
-                    <input type="color" id="paintFree" class="paint-free" value="#FF8A3D"
-                           aria-label="เลือกสีเอง" title="เลือกสีเอง">
                   </div>
 
-                  <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
+                  <!-- ── ลงทีละส่วน หรือ ลงทั้งตัว ──
+                       สองปุ่มนี้เป็นคู่เลือกอย่างใดอย่างหนึ่ง ไม่ใช่ปุ่มสั่งงานสองปุ่ม
+                       "ทั้งตัว" มีไว้ตอนอยากเปลี่ยนสีพื้นของน้องรวดเดียว
+                       ซึ่งถ้าไม่มี ต้องไล่แตะทีละแปดส่วนกว่าจะครบ -->
+                  <div class="paint-modes" id="paintModes" role="group" aria-label="ขอบเขตการลงสี">
+                    <button type="button" class="pmode on" data-mode="part">เลือกลงสีน้อน</button>
+                    <button type="button" class="pmode" data-mode="all">ลงสีทั้งตัวน้อน</button>
+                  </div>
 
                   <!-- เลือกส่วนจากรายชื่อได้ด้วย ไม่ใช่แค่แตะบนตัวน้อง
                        จำเป็นบนมือถือ เพราะจมูกกับตาเล็กเกินกว่าจะแตะให้ตรงด้วยนิ้ว -->
                   <div class="paint-parts" id="paintParts" role="group" aria-label="เลือกส่วน"></div>
-                  </div>
+                </div>
+
+                <!-- ── คอลัมน์สี ── -->
+                <div class="paint-color-col">
+                  <b class="pcol-head">สีทาน้อน</b>
+
+                  <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
+
+                  <!-- ช่องเลือกสีอิสระอยู่ "ใต้จานสี" ตามแบบ ไม่ได้ไปแทรกอยู่ในแถบขนาดหัวแปรง -->
+                  <label class="paint-free-row">
+                    <span>เลือกสีอื่นๆให้น้อน</span>
+                    <input type="color" id="paintFree" class="paint-free" value="#FF8A3D"
+                           aria-label="เลือกสีเอง">
+                  </label>
 
                   <div class="paint-acts">
                     <button type="button" class="btn ghost" id="paintUndo">ย้อนกลับ</button>
@@ -1103,6 +1123,7 @@
                     <button type="button" class="btn ghost" id="paintClear">ล้างสี</button>
                   </div>
                   <button type="button" class="btn" id="paintUse">ใช้น้องตัวนี้</button>
+                </div>
                 </div>
               </div>
 

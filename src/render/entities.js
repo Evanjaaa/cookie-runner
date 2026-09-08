@@ -2877,6 +2877,18 @@ function drawCatStand(ctx, s, {
     ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(-ax1, ay1 - swing * 8 * (1 - rest)); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(ax1, ay1 + swing * 8 * (1 - rest)); ctx.stroke();
 
+    // รอยแปรงบนขากับแขน — อยู่นอกวงรีลำตัวเหมือนหาง
+    paintStroke(ctx, s, 'body', () => {
+      ctx.beginPath();
+      ctx.moveTo(-4, hy0); ctx.lineTo(-4 + swing * 10 * (1 - rest), hy1);
+      ctx.moveTo(6, hy0); ctx.lineTo(6 - swing * 10 * (1 - rest), hy1);
+    }, 7);
+    paintStroke(ctx, s, 'body', () => {
+      ctx.beginPath();
+      ctx.moveTo(-ax0, ay0); ctx.lineTo(-ax1, ay1 - swing * 8 * (1 - rest));
+      ctx.moveTo(ax0, ay0); ctx.lineTo(ax1, ay1 + swing * 8 * (1 - rest));
+    }, 6);
+
     ctx.restore();
   }
 
@@ -3094,6 +3106,16 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.closePath(); ctx.fill();
   }
 
+  // รอยแปรงบนหู — หูอยู่นอกวงกลมหัว ต้องทาแยกไม่งั้นระบายหูไม่ติด
+  // วาดก่อนหัวเพราะหูอยู่หลังหัว ลำดับเดียวกับตอนวาดหูจริง
+  paintOver(ctx, s, 'head', () => {
+    ctx.beginPath();
+    for (const [a, b, tip] of ears) {
+      ctx.moveTo(a[0], a[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(b[0], b[1]);
+      ctx.closePath();
+    }
+  });
+
   // หัว
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
@@ -3149,7 +3171,9 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   if (s.blush || glee) {
     ctx.save();
     ctx.globalAlpha = glee ? 0.72 : 0.5;
-    ctx.fillStyle = s.pink;
+    // ช่อง cheek แยกจาก pink เพื่อให้ระบายแก้มกับหูในคนละสีได้
+    // สกินติดเกมทั้งหกตัวไม่ได้ตั้ง cheek ไว้ จึงถอยไปใช้ pink เหมือนเดิมทุกประการ
+    ctx.fillStyle = s.cheek || s.pink;
     const bw = glee ? 4.3 : 3.6;
     ctx.beginPath(); ctx.ellipse(-9, 3, bw, 2.4 + (glee ? 0.5 : 0), 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(11, 3, bw, 2.4 + (glee ? 0.5 : 0), 0, 0, Math.PI * 2); ctx.fill();
@@ -3444,6 +3468,32 @@ function paintOver(ctx, s, key, path) {
   ctx.restore();
 }
 
+/**
+ * ทารอยแปรงลงบน "เส้น" เช่นหางกับขา
+ *
+ * ── ทำไมไม่ใช้ paintOver เหมือนลำตัว ──
+ * paintOver ตัดด้วย clip() ซึ่งรับได้แค่รูปปิด ส่วนหางกับขาเป็นเส้นที่มีความหนา
+ * ไม่ใช่รูปปิด จะ clip ตรง ๆ ไม่ได้ ต้องตีเส้นซ้ำด้วย "ลวดลาย" ที่สร้างจากภาพ
+ * ชั้นรอยแปรงแทน แล้วเลื่อนลวดลายให้ตรงกับพิกัดตัวละครพอดี สีจึงไปโผล่ตรงที่
+ * ผู้เล่นทาไว้จริง ๆ ไม่ใช่ทั้งเส้นเป็นสีเดียว
+ */
+function paintStroke(ctx, s, key, path, width) {
+  const img = s.paint?.[key];
+  if (!img || !img.width) return;
+  const box = LAYER[key];
+  const pat = ctx.createPattern(img, 'no-repeat');
+  if (!pat) return;
+  // ย่อภาพชั้นให้เท่ากรอบของชิ้น แล้วเลื่อนไปที่มุมกรอบ = ตรงกับที่ paintOver วาด
+  pat.setTransform(new DOMMatrix([box.w / img.width, 0, 0, box.h / img.height, box.x, box.y]));
+  ctx.save();
+  ctx.strokeStyle = pat;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  path();
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** ตั้งค่าปากกาสำหรับตีขอบ แล้วให้ผู้เรียก stroke() เอง (path ปัจจุบันยังอยู่หลัง fill) */
 function catEdge(ctx, s) {
   ctx.strokeStyle = s.line || s.dark;
@@ -3481,4 +3531,14 @@ function drawTail(ctx, x, y, wag, s) {
   ctx.fillStyle = s.points ? s.dark : s.cream;
   ctx.beginPath(); ctx.arc(tipX, tipY, 3.6, 0, Math.PI * 2); ctx.fill();
   catEdge(ctx, s); ctx.stroke();
+
+  // รอยแปรงบนหาง — หางอยู่นอกวงรีลำตัว ถ้าไม่ทาตรงนี้จะระบายหางไม่ติดเลย
+  paintStroke(ctx, s, 'body', () => {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x - 17, y + 3 + wag * 5, tipX, tipY);
+  }, 7);
+  paintStroke(ctx, s, 'body', () => {
+    ctx.beginPath(); ctx.arc(tipX, tipY, 3.6, 0, Math.PI * 2);
+  }, 7);
 }
