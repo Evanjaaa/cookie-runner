@@ -2951,6 +2951,8 @@ function drawCatStand(ctx, s, {
 
     if (loaf > 0.02) {
       // หมอบ: ไม่มีขา เหลือแค่อุ้งเท้าสองข้างโผล่หน้าตัว
+      // เก็บ path ไว้ใช้ซ้ำ ต้องทารอยแปรงทับอีกรอบด้วยเหตุผลเดียวกับปาก
+      const paws = [];
       ctx.fillStyle = s.cream;
       ctx.strokeStyle = s.dark;
       ctx.lineWidth = 1.6;
@@ -2959,7 +2961,13 @@ function drawCatStand(ctx, s, {
         ctx.ellipse(sx * 9, cy + ry - 0.5, 5, 3.6, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();   // ตีเส้นขอบบาง ๆ ให้แยกออกจากพุงที่เป็นสีครีมเหมือนกัน
+        paws.push([sx * 9, cy + ry - 0.5]);
       }
+      // ทารอยแปรงทับอุ้งเท้า เหตุผลเดียวกับปาก — เป็นแผ่นทึบที่วาดหลังรอยแปรง
+      paintOver(ctx, s, 'body', () => {
+        ctx.beginPath();
+        for (const [ex, ey] of paws) ctx.ellipse(ex, ey, 5, 3.6, 0, 0, Math.PI * 2);
+      });
     }
 
     ctx.restore();
@@ -3135,13 +3143,20 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.moveTo(7, -10); ctx.lineTo(7, -6); ctx.stroke();
   }
 
-  // รอยแปรงบนหัว — ทับสีขนกับลาย แต่ยังอยู่ใต้ปาก/ตา/จมูก
-  // ถ้าวาดทับหน้าด้วย คนที่ระบายเลยขอบหน้าไปนิดเดียวจะได้แมวไม่มีตาทันที
+  // รอยแปรงบนหัว — ทับสีขนกับลาย แต่ยังอยู่ใต้ตา/จมูก/หนวด
+  // ถ้าวาดทับของพวกนั้นด้วย คนที่ระบายเลยขอบหน้าไปนิดเดียวจะได้แมวไม่มีตาทันที
   paintOver(ctx, s, 'head', () => { ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); });
 
   // ปากสีครีม
+  const muzzle = () => { ctx.beginPath(); ctx.ellipse(1, 5, 7.5, 5, 0, 0, Math.PI * 2); };
   ctx.fillStyle = s.cream;
-  ctx.beginPath(); ctx.ellipse(1, 5, 7.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+  muzzle(); ctx.fill();
+
+  // ── ทารอยแปรงทับปากอีกรอบ ──
+  // ปากเป็นแผ่นทึบที่วาดหลังรอยแปรง คนที่ลากผ่านหน้าน้องจึงเห็นเป็นจุดขาวที่
+  // "ทายังไงก็ไม่ติด" กลางหน้าพอดี ซึ่งเป็นจุดที่คนสังเกตเห็นก่อนใครเพื่อน
+  // ทาซ้ำเฉพาะในวงปาก ตา/จมูก/หนวดที่วาดต่อจากนี้จึงยังอยู่บนสุดเหมือนเดิม
+  paintOver(ctx, s, 'head', muzzle);
 
   // ── หน้ากากของแมวแต้ม ──
   // แต้มบนหน้าแมวจริงไม่มีขอบ มันฟุ้งจากรอบจมูกจางออกไปเรื่อย ๆ

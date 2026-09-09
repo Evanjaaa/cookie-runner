@@ -4996,10 +4996,15 @@ canvas[hidden] { display: none; }
      แล้วกรอบตัด (ซึ่งกินความสูงที่เหลือ) ก็เล็กตามไปด้วย — วัดได้ 283 เทียบกับ
      ผ้าใบระบายสี 388 ทั้งที่ที่ว่างบนจอเท่ากัน สลับแท็บแล้วเห็นเป็นของหดลง
      ตรึงความสูงด้วยสูตรเดียวกับผ้าใบระบายสี สองแท็บจึงสูงเท่ากันเสมอ */
-  /* 46dvh ไม่ใช่ 60 เหมือนผ้าใบระบายสี — แถวนี้มีแถบซูมใต้กรอบตัดอีกชั้น
-     และคอลัมน์ขวายังต้องใส่ปุ่มสามใบกับคำอธิบาย
-     ไล่วัดแล้ว: 60dvh การ์ดล้น 38px / 50dvh ล้น 21px / 46dvh ล้น 0 */
-  min-height: min(100%, 46dvh);
+  /* ── ทำไมเลิกใช้ dvh ──
+     46dvh เคยวัดแล้วล้น 0 บนหน้าต่างหนึ่ง แต่ dvh คิดจากความสูงหน้าต่าง
+     ส่วนการ์ดล็อกสัดส่วน 960:420 ความสูงจริงจึงมาจากความกว้างหน้าต่างด้วย
+     บนจอ 1600x900 สูตรเดิมบังคับแถวสูง 414px ทั้งที่การ์ดมีให้ 383px
+     แถบซูมกับแถบหมุนจึงถูกดันหลุดออกนอกการ์ดไป 31px — ผู้เล่นหาที่ซูมไม่เจอ
+     (วัดแล้วเป็นแบบนี้มาก่อนหน้านี้แล้ว ไม่ใช่ของใหม่)
+
+     53 มาจากการวัดจริง: เป็นค่าสูงสุดที่ยังไม่ล้นทุกขนาดจอที่ทดสอบ */
+  min-height: min(100%, calc(var(--ph) * 53));
   /* ── ห้าม wrap ──
      flex เลือก "พับลงแถวใหม่" ก่อน "หดของเดิม" เสมอ พอเปิด wrap ไว้ กรอบตัดจะยึด
      ความกว้างเต็มเพดาน (230) แล้วดันคอลัมน์ขวาตกลงไปข้างล่างจนล้นการ์ด
@@ -5030,7 +5035,8 @@ canvas[hidden] { display: none; }
      สองแท็บอยู่ในกรอบเดียวกันและสลับไปมาได้ ถ้ากรอบตัดเล็กกว่าผ้าใบระบายสีมาก
      การสลับแท็บจะเห็นเป็น "ของหดลง" ทั้งที่ที่ว่างเท่าเดิม
      ผ้าใบระบายสีใช้ min(100%, 60dvh) — ใช้สูตรเดียวกัน สองแท็บจึงโตพร้อมกันเสมอ */
-  max-height: min(100%, 60dvh);
+  /* ผูกกับ --ph เหมือนกัน ไม่ใช่ dvh — เหตุผลเดียวกับ .face-work ข้างบน */
+  max-height: min(100%, calc(var(--ph) * 53));
   aspect-ratio: 1;
   border-radius: 18px;
   overflow: hidden;
@@ -5077,6 +5083,8 @@ canvas[hidden] { display: none; }
   display: flex;
   align-items: center;
   gap: clamp(8px, 1.4vw, 16px);
+  /* เว้นจากขอบล่างกรอบตัดรูป ไม่งั้นแถบเลื่อนดูเหมือนเป็นส่วนหนึ่งของกรอบ */
+  margin-top: clamp(3px, 1dvh, 9px);
   width: 100%;
   flex: 0 0 auto;
 }
@@ -5105,7 +5113,9 @@ canvas[hidden] { display: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 1dvh, 9px);
+  /* เดิม 9px ทำให้รูปตัวอย่าง คำบรรยาย ปุ่ม และคำอธิบาย เกาะกันเป็นก้อนเดียว
+     ยังมีที่เหลือในคอลัมน์อยู่แล้ว (วัดแล้วการ์ดไม่ต้องเลื่อน) */
+  gap: clamp(5px, 1.5dvh, 14px);
   /* 190px = ความกว้างที่ปุ่มสองใบเรียงกันยังไม่ตัดบรรทัด
      เพดาน 300 กันไม่ให้คอลัมน์นี้กินที่ของกรอบตัดบนการ์ดกว้าง ๆ */
   /* ── ทำไมพื้นขั้นต่ำเป็น 232 ──
@@ -5140,19 +5150,21 @@ canvas[hidden] { display: none; }
 }
 .face-cap {
   flex: 0 0 auto;
-  font-size: 10.5px;
+  font-size: clamp(10.5px, 1.05vw, 12.5px);
   letter-spacing: .03em;
   color: #B99BD4;
   text-align: center;
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 .face-note {
   flex: 0 0 auto;
   margin: 0;
   max-width: 100%;
-  font-size: 10px;
-  line-height: 1.45;
+  /* Mitr ตัวอักษรเตี้ยกว่า IBM Plex ที่ขนาดเท่ากัน สามบรรทัดนี้เลยดูเล็กลงกว่าเดิม
+     ถ้าคงไว้ที่ 10 — และบรรทัดชิดกันจนอ่านเป็นก้อนทึบ */
+  font-size: clamp(10px, .95vw, 11.5px);
+  line-height: 1.65;
   color: #9C86BC;
   text-align: center;
 }
@@ -5168,15 +5180,15 @@ canvas[hidden] { display: none; }
 .face-side .btnrow {
   flex-wrap: wrap;
   justify-content: center;
-  gap: 5px;
+  gap: clamp(5px, .9vw, 9px);
   flex: 0 0 auto;
-  margin-top: 2px;
+  margin-top: clamp(2px, .6dvh, 6px);
 }
 /* ── ทำไมปุ่มต้องแคบขนาดนี้ ──
    คอลัมน์ขวากว้างจริง 247px บนการ์ดที่แคบที่สุดที่วัดได้ (การ์ดต้องเว้นที่ให้ปุ่มกลับ
    ทั้งสองข้างด้วย) สามปุ่มที่ 80px บวกช่องไฟ = 252 ซึ่งเกินไป 5px พอดี
    แล้วปุ่มที่สามตกลงไปอีกแถว — 74px ทำให้ทั้งสามอยู่แถวเดียวได้ทุกขนาดจอที่วัด */
-.face-side .btn { min-width: 74px; margin-top: 0; font-size: 12.5px; padding: 7px 10px; }
+.face-side .btn { min-width: 74px; margin-top: 0; font-size: 12.5px; padding: clamp(7px, 1.2dvh, 10px) clamp(10px, 1.2vw, 14px); }
 
 /* บรรทัดสถานะไม่ต้องจองที่ตลอดเวลาในหน้านี้ — คอลัมน์แคบและเตี้ยอยู่แล้ว
    ข้อความจะโผล่เฉพาะตอนมีอะไรจะบอกจริง ๆ */
@@ -5434,7 +5446,7 @@ canvas[hidden] { display: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 1dvh, 9px);
+  gap: var(--stage-gap);
   min-width: 0;
 }
 /* ผ้าใบสูงเต็มช่องแล้วให้ความกว้างตามไปเอง ตัวน้องจะได้ใหญ่ที่สุดเท่าที่จอให้
@@ -5443,7 +5455,12 @@ canvas[hidden] { display: none; }
   /* จอใหญ่: แถวเตี้ยแต่กว้าง ความสูงจึงเป็นด้านที่บีบ ตั้งความสูงแล้วปล่อยความกว้าง auto
      ห้ามใส่ max-width คู่กัน ไม่งั้นพอความกว้างถูกบีบ ความสูงจะไม่ลดตาม
      แล้วได้ผ้าใบสี่เหลี่ยมผืนผ้าซึ่งทำให้รูปน้องถูกยืด (บัฟเฟอร์เป็น 440x440)
-     ส่วนมือถือกลับด้านกัน ดูกฎในบล็อก max-height: 460px */
+     ส่วนมือถือกลับด้านกัน ดูกฎในบล็อก max-height: 460px
+
+     เคยลองผูกเพดานกับ --ph เพื่อให้ผ้าใบโตเต็มความสูงแถว แล้ววัดได้ 469x460
+     ที่ 1920x1080 คือผ้าใบเบี้ยว เพราะ max-height ตัดความสูงโดยความกว้างไม่ลดตาม
+     พอกดเพดานลงจนไม่เบี้ยว ผ้าใบกลับเล็กกว่าเดิมและปุ่มลงมือตกสองแถวที่ 1366px
+     ค่าเดิมดีที่สุดแล้ว — การจัดแนวปุ่มล่างแก้ที่คอลัมน์ขวา ไม่ใช่ที่ผ้าใบ */
   width: min(50dvh, 30vw);
   height: auto;
   max-height: 100%;
@@ -5456,12 +5473,39 @@ canvas[hidden] { display: none; }
 }
 .paint-hint {
   color: rgba(255, 246, 230, .62);
-  font-size: clamp(10px, 1.8dvh, 14px);
+  font-size: var(--hint-fs);
+  line-height: 1.5;
   text-align: center;
 }
 
 /* min-height:0 คือตัวที่ทำให้กล่องนี้ยอมเตี้ยกว่าเนื้อหาแล้วเลื่อนแทนการดันพี่น้อง
    ให้ล้นออกนอกแผง — ไม่มีบรรทัดนี้ ปุ่มข้างล่างจะถูกดันหลุดขอบเหมือนเดิม */
+/* ── ทำไมเป็น ::after ที่ยุบได้ ไม่ใช่ padding-bottom ──
+   padding กันที่ไว้ตายตัว พอการ์ดเตี้ยจนเนื้อหาพอดีเป๊ะอยู่แล้ว มันจะดันให้ล้น
+   แล้วคอลัมน์งอกแถบเลื่อน ซึ่งแย่กว่าการที่ปุ่มไม่ตรงแนวเสียอีก
+
+   flex: 0 1 <ขนาด> แปลว่า "ขอที่เท่านี้ถ้ามีเหลือ แต่ยอมคืนจนหมดถ้าไม่มี"
+   ตอนมีที่เหลือ ตัวนี้กันแถบคำใบ้ไว้ ของที่เกาะขอบล่างจึงจบเสมอขอบกรอบรูป
+   ตอนที่ไม่พอ มันหดเป็นศูนย์เองเงียบ ๆ กลับไปเป็นเหมือนเดิม ไม่มีอะไรล้น
+
+   ลบ --pgap ออกเพราะช่องไฟของคอลัมน์แทรกอยู่ระหว่างของชิ้นสุดท้ายกับตัวนี้แล้ว
+   ถ้าไม่หัก ระยะจริงจะเกินแถบคำใบ้ไปหนึ่งช่องไฟ */
+.paint-tools-col::after,
+.paint-color-col::after {
+  content: '';
+  /* เขียนแยกทีละคุณสมบัติ ไม่ใช้ flex แบบย่อ — ตัวย่อไม่รับ calc()/max()
+     ทั้งบรรทัดจะถูกทิ้งเงียบ ๆ แล้วกลับไปใช้ค่าเริ่มต้นโดยไม่มีข้อความเตือน */
+  flex-grow: 0;
+  flex-shrink: 1;
+  flex-basis: var(--hint-band);
+  /* หักช่องไฟที่คอลัมน์แทรกไว้หน้าตัวนี้ออก
+     ตอนกางเต็ม: ช่องไฟ + แถบ - ช่องไฟ = แถบคำใบ้พอดี
+     ตอนยุบสุด: ช่องไฟ + 0 - ช่องไฟ = ศูนย์ ไม่เหลือร่องรอย
+     ถ้าไม่หัก จะมีช่องไฟค้างอยู่ตลอดแม้ตอนที่ไม่มีที่ให้กันแล้ว */
+  margin-top: calc(-1 * var(--pgap));
+  min-height: 0;
+}
+
 .paint-tools-col::-webkit-scrollbar, .paint-color-col::-webkit-scrollbar { width: 9px; }
 .paint-tools-col::-webkit-scrollbar-track, .paint-color-col::-webkit-scrollbar-track { background: transparent; }
 .paint-tools-col::-webkit-scrollbar-thumb, .paint-color-col::-webkit-scrollbar-thumb {
@@ -5474,17 +5518,18 @@ canvas[hidden] { display: none; }
 }
 .paint-tools-col::-webkit-scrollbar-thumb, .paint-color-col::-webkit-scrollbar-thumb:hover { background: rgba(255, 243, 226, .4); background-clip: content-box; }
 
-.paint-tools { display: flex; gap: clamp(4px, .8vw, 8px); }
+.paint-tools { display: flex; gap: clamp(5px, 1vw, 11px); }
 .ptool {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  /* ไอคอนกับชื่อเคยติดกันที่ 1px อ่านเป็นก้อนเดียว เว้นให้เห็นว่าเป็นสองชั้น */
+  gap: clamp(1px, calc(var(--ph) * .65), 4px);
   /* ของเดิม 46x57 สูงกว่ากว้างเกือบ 25% ดูเป็นแท่งไม่ใช่ปุ่ม
      ลดระยะบน-ล่างให้เข้าใกล้จัตุรัส ซึ่งเป็นสัดส่วนของปุ่มไอคอนที่เหลือทั้งเกม */
-  padding: clamp(3px, .6dvh, 6px) 2px;
+  padding: clamp(3px, calc(var(--ph) * 1.3), 9px) 2px;
   border-radius: clamp(9px, 1.6vw, 14px);
   border: 2px solid transparent;
   background: rgba(255, 252, 246, .09);
@@ -5492,9 +5537,14 @@ canvas[hidden] { display: none; }
   font: inherit;
   cursor: pointer;
 }
-.ptool span { font-size: clamp(15px, 2.5dvh, 21px); line-height: 1; }
-/* ป้ายชื่อเครื่องมือใช้ฟอนต์ชุดเดียวกับทั้งหน้าเหมือนกัน */
-.ptool i { font-style: normal; font-size: var(--pfont); opacity: .85; }
+.ptool span { font-size: clamp(13px, calc(var(--ph) * 3.2), 21px); line-height: 1; }
+/* ── ป้ายชื่อเครื่องมือ ──
+   ฟอนต์ชุดเดียวกับทั้งหน้า แต่เล็กกว่า var(--pfont)
+
+   ปุ่มสี่ใบเรียงกันในคอลัมน์ 195px เหลือที่ในปุ่มให้ข้อความแค่ 31px
+   คำที่ยาวสุดคือ "ยางลบ" ซึ่งที่ขนาดเต็มกิน 38px — ตัวอักษรจึงล้นออกไปทับ
+   เส้นคั่นคอลัมน์ให้เห็นในภาพหน้าจอ ขนาดนี้เป็นขนาดใหญ่สุดที่ยังไม่ล้น */
+.ptool i { font-style: normal; font-size: clamp(8.5px, .88vw, 11.5px); opacity: .85; }
 .ptool.on { background: rgba(255, 232, 190, .22); border-color: var(--cream); }
 
 /* แม่สีเรียงหกช่องสองแถว ตรงกับที่ประกาศไว้ 12 สีพอดี */
@@ -5506,12 +5556,12 @@ canvas[hidden] { display: none; }
   display: flex;
   align-items: center;
   gap: clamp(6px, 1.2vw, 12px);
-  margin-top: clamp(2px, 1dvh, 10px);
+  margin-top: clamp(2px, calc(var(--ph) * 1.3), 10px);
 }
 .psize-dot {
   flex: 0 0 auto;
-  width: clamp(22px, 4dvh, 34px);
-  height: clamp(22px, 4dvh, 34px);
+  width: clamp(18px, calc(var(--ph) * 5.1), 34px);
+  height: clamp(18px, calc(var(--ph) * 5.1), 34px);
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -5538,7 +5588,8 @@ canvas[hidden] { display: none; }
   display: grid;
   /* สิบหกสีลงสี่คอลัมน์ = สี่แถวพอดีตามแบบ */
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(3px, .7vw, 7px);
+  column-gap: clamp(3px, .7vw, 7px);
+  row-gap: clamp(2px, calc(var(--ph) * 1.3), 7px);
 }
 
 .pswatch {
@@ -5547,7 +5598,12 @@ canvas[hidden] { display: none; }
      กลายเป็นของที่เด่นที่สุดในหน้าทั้งที่เป็นแค่จานสี
      ต้องสั่ง width ก่อน: ปุ่มนี้ไม่มีเนื้อหาข้างใน ถ้าให้หดตามเนื้อหาจะเหลือแค่ขอบ 4px */
   width: 100%;
-  max-width: 38px;
+  /* ── ทำไมเพดานต้องคิดจากความสูงด้วย ──
+     สี่แถวของวงกลม 38px กิน 173px คงที่ ไม่ว่าการ์ดจะเตี้ยแค่ไหน เพราะขนาดเดิม
+     คิดจากความกว้างล้วน ๆ บนโน้ตบุ๊กจอเตี้ยมันจึงเบียดจนปุ่ม "ใช้น้องตัวนี้"
+     ตกออกนอกการ์ด ตัวคูณ 7 เลือกให้ได้ 38px พอดีที่ขนาดจอปกติ
+     จอใหญ่จึงไม่เปลี่ยนอะไรเลย ย่อเฉพาะตอนที่ไม่มีที่จริง ๆ */
+  max-width: min(38px, calc(var(--ph) * 7));
   justify-self: center;
   border-radius: 50%;
   border: 2px solid rgba(12, 6, 20, .35);
@@ -5571,18 +5627,20 @@ canvas[hidden] { display: none; }
 }
 
 .paint-parts {
-  /* ดันลงไปชิดขอบล่างของคอลัมน์ ซึ่งเท่ากับขอบล่างของกรอบภาพน้องพอดี */
-  margin-top: auto;
   display: grid;
   /* แปดหมวดลงสองคอลัมน์ = สี่แถว ตามแบบที่วางไว้ */
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(3px, .7vw, 6px);
+  /* ช่องไฟเดิม 6px ทุกด้าน ทำให้แปดเม็ดอ่านเป็นตารางทึบก้อนเดียว
+     แนวนอนกว้างได้เต็มที่เพราะคอลัมน์ยังมีที่เหลือ แต่แนวตั้งต้องประหยัด —
+     มีสี่แถว ทุก 1px ที่เพิ่มจึงคูณสามเข้าไปในความสูงที่แทบไม่เหลือแล้ว */
+  column-gap: clamp(5px, 1vw, 10px);
+  row-gap: clamp(3px, calc(var(--ph) * 1.3), 7px);
 }
 .ppart {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: clamp(4px, 1dvh, 8px) clamp(4px, .8vw, 9px);
+  gap: clamp(4px, .7vw, 7px);
+  padding: clamp(3px, calc(var(--ph) * 1.4), 9px) clamp(5px, .8vw, 10px);
   border-radius: 999px;
   border: 2px solid transparent;
   background: rgba(255, 252, 246, .08);
@@ -5594,8 +5652,8 @@ canvas[hidden] { display: none; }
 }
 .ppart i {
   flex: 0 0 auto;
-  width: clamp(9px, 1.7dvh, 14px);
-  height: clamp(9px, 1.7dvh, 14px);
+  width: clamp(10px, 1.8dvh, 14px);
+  height: clamp(10px, 1.8dvh, 14px);
   border-radius: 50%;
   border: 1px solid rgba(12, 6, 20, .4);
 }
@@ -5633,7 +5691,56 @@ canvas[hidden] { display: none; }
    ยึดจากปุ่ม "ใช้น้องตัวนี้" ซึ่งเป็นปุ่มหลักของหน้า ทุกอย่างอ้างตัวแปรนี้ตัวเดียว
    ของเดิมแต่ละกลุ่มตั้งขนาดเอง เลยกระจาย 11.5–15.5px ในคอลัมน์เดียวกัน
    ป้ายชื่อเครื่องมือเป็นข้อยกเว้นเดียว เพราะต้องอยู่ในปุ่มไอคอนกว้าง ~57px */
-#createPanel { --pfont: clamp(11px, 1.15vw, 15.5px); }
+/* ── ทำไมช่องไฟแนวตั้งในหน้านี้ห้ามใช้ dvh ──
+   เวทีล็อกอัตราส่วน 960:420 ไว้ ความสูงของการ์ดจึงมาจาก "ความกว้าง" หน้าต่าง
+   พอ ๆ กับความสูง บนโน้ตบุ๊กจอกว้างแต่เตี้ย การ์ดหดเร็วกว่า dvh มาก
+   ช่องไฟที่ผูกกับ dvh เลยยังกางเต็มที่ทั้งที่การ์ดเหลือที่นิดเดียว
+   ผลคือปุ่ม "ใช้น้องตัวนี้" ตกออกนอกการ์ดบนบางเครื่อง แต่ปกติดีบนอีกเครื่อง
+
+   สูตร --stage-h เป็นตัวเดียวกับที่หน้าตู้กาช่าใช้ คิดย้อนจาก .shell ตรง ๆ
+   --ph = หนึ่งเปอร์เซ็นต์ของความสูงเวทีจริง ใช้แทน dvh ทุกจุดในสองคอลัมน์
+   (วัดแล้วคอลัมน์สูงราว 76% ของ --stage-h เท่ากันทุกขนาดจอที่ทดสอบ) */
+#createPanel {
+  --pfont: clamp(11px, 1.15vw, 15.5px);
+  --stage-h: min(682px, calc((100vw - 32px) * 0.4375), calc(100dvh - 104px));
+  --ph: calc(var(--stage-h) / 100);
+
+  /* ── แถบคำใบ้ใต้กรอบรูป ──
+     คอลัมน์ซ้ายคือ กรอบรูป + ช่องไฟ + บรรทัด "แตะตัวน้องเพื่อลงสี"
+     ความสูงของแถวจึงถูกกำหนดโดยก้อนนี้ แล้วคอลัมน์ขวาถูกยืดตามไปด้วย
+     ของที่เกาะขอบล่าง (ตา/แก้ม กับ ใช้น้องตัวนี้) เลยไหลลงมาเสมอบรรทัดคำใบ้
+     ทั้งที่ควรจบเสมอขอบล่างของกรอบรูป
+
+     วัดขนาดแถบนี้ไว้เป็นตัวแปร แล้วให้คอลัมน์ขวากันที่ไว้เท่ากันเป๊ะ
+     ทุกค่าที่ประกอบกันเป็นแถบต้องอ้างตัวแปรชุดนี้ ไม่ใช่เขียนเลขซ้ำ
+     ไม่งั้นวันหลังแก้ขนาดคำใบ้แล้วการจัดแนวจะเพี้ยนเงียบ ๆ */
+  --pgap: clamp(4px, calc(var(--ph) * 1.5), 11px);
+  --stage-gap: clamp(4px, calc(var(--ph) * 1.5), 9px);
+  --hint-fs: clamp(10px, calc(var(--ph) * 2.3), 14px);
+  --hint-band: calc(var(--hint-fs) * 1.5 + var(--stage-gap));
+}
+
+/* บนจอสัมผัส .stage กินเต็มจอ ไม่ได้ล็อกอัตราส่วนแบบบนคอม */
+@media (hover: none) and (pointer: coarse) {
+  #createPanel { --stage-h: 100dvh; }
+}
+
+/* ── ฟอนต์ทั้งแผงเป็น Mitr ตัวเดียวกับหน้าแรก ──
+   เดิมมีแค่หัวเรื่อง ปุ่มแท็บ และปุ่มล่างที่เป็น Mitr ส่วนป้ายหัวข้อ ปุ่มเครื่องมือ
+   ปุ่มโหมด รายชื่อส่วน และคำใบ้ ตกไปใช้ IBM Plex Sans Thai ของ body
+   ในกรอบเดียวจึงมีฟอนต์สองแบบปนกัน — ตัวหนึ่งกลม ตัวหนึ่งเหลี่ยม เห็นชัดมาก
+
+   ต้องไล่ระบุ button/input ด้วย ไม่ใช่ตั้งที่แผงอย่างเดียว เพราะ form control
+   ไม่รับฟอนต์จากพ่อแม่เองตามค่าเริ่มต้นของเบราว์เซอร์ */
+#createPanel,
+#createPanel button,
+#createPanel input,
+#createPanel label,
+#createPanel b,
+#createPanel small,
+#createPanel p {
+  font-family: "Mitr", "IBM Plex Sans Thai", system-ui, sans-serif;
+}
 
 /* กล่องครอบสองคอลัมน์ขวา — เรียงข้างกันเป็นค่าตั้งต้น */
 .paint-side {
@@ -5641,7 +5748,9 @@ canvas[hidden] { display: none; }
   min-width: 0;
   min-height: 0;
   display: flex;
-  gap: clamp(8px, 1.6vw, 18px);
+  /* กว้างขึ้นจาก 18 — สองคอลัมน์นี้เป็นคนละหมวดกัน (อุปกรณ์ กับ สี)
+     ช่องไฟแคบทำให้อ่านเป็นตารางเดียวสี่คอลัมน์ แทนที่จะเป็นสองกลุ่ม */
+  gap: clamp(12px, 2.2vw, 28px);
 }
 
 /* ── สองคอลัมน์ขวา: อุปกรณ์ กับ สี ──
@@ -5656,48 +5765,73 @@ canvas[hidden] { display: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: clamp(5px, 1.2dvh, 11px);
+  gap: var(--pgap);
   overflow-y: auto;
 }
 .paint-color-col { justify-content: flex-start; }
 
 /* หัวข้อเป็นป้ายกลม ไม่ใช่ข้อความลอย จะได้ไม่ถูกอ่านสลับเป็นปุ่มกด */
+/* ── ทำไม 600 ไม่ใช่ 700 ──
+   Mitr ที่หน้าโหลดไว้มีแค่น้ำหนัก 400/500/600 ขอ 700 เบราว์เซอร์จะ "ปลอมตัวหนา"
+   ด้วยการรีดตัวอักษรให้อ้วนขึ้นเอง ซึ่งกับอักษรไทยที่มีสระบนล่างจะเละเห็นได้ชัด
+   600 เป็นน้ำหนักจริงที่มีไฟล์อยู่ และหนากว่าเนื้อความรอบข้างพออยู่แล้ว */
 .pcol-head {
   align-self: center;
-  padding: clamp(3px, .8dvh, 7px) clamp(12px, 2.4vw, 22px);
+  /* ป้ายในแบบที่วางไว้เป็นเม็ดอ้วน ๆ ไม่ใช่แถบบาง — เว้นบนล่างเพิ่มเกือบเท่าตัว
+     และเว้นใต้ป้ายก่อนถึงของชิ้นแรก ไม่งั้นหัวข้อติดกับเนื้อหาจนไม่เห็นว่าคุมอะไร */
+  margin-bottom: clamp(2px, var(--ph), 8px);
+  /* แนวตั้งหนาขึ้นได้ตามใจ แต่แนวนอนห้ามเกินนี้ — คอลัมน์กว้างจริงแค่ 200px
+     ตอนมีแถบเลื่อน ป้ายที่อ้วนกว่านี้จะดันให้เกิดแถบเลื่อนแนวนอนซ้อนขึ้นมาอีก */
+  padding: clamp(4px, calc(var(--ph) * 1.5), 10px) clamp(12px, 2.2vw, 22px);
   border-radius: 999px;
   background: linear-gradient(180deg, #B478E8, #8B4FC9);
   border: 1px solid rgba(255, 246, 230, .3);
   color: #fff;
   font-size: var(--pfont);
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 /* ปุ่มสองปุ่มนี้เว้นบน-ล่างให้หายใจ ของเดิมอัดติดกับแถบขนาดและตารางหมวด */
 .paint-modes {
   display: flex;
-  gap: clamp(4px, .8vw, 8px);
-  margin-top: clamp(3px, 1.4dvh, 14px);
+  gap: clamp(5px, 1vw, 11px);
+  margin-top: auto;
+  /* ── ทำไมชิดกับตารางหมวดหมู่ ──
+     ปุ่มคู่นี้เป็นตัวบอกว่า "จะลงสีเฉพาะหมวดที่เลือก" หรือ "ลงทั้งตัว"
+     มันคือหัวข้อของตารางข้างล่าง ไม่ใช่คำสั่งลอย ๆ
+     ที่ว่างจึงต้องอยู่เหนือปุ่มคู่นี้ (margin-top:auto) แล้วเว้นใต้แค่นิดเดียว
+     ให้อ่านเป็นก้อนเดียวกับตาราง — เดิม auto อยู่ที่ตาราง ที่ว่างเลยไปแทรกคั่นกลาง */
+  /* ── ทำไมเป็นค่าติดลบ ──
+     คอลัมน์เว้นช่องไฟ --pgap ให้ลูกทุกตัวเท่ากันหมด ปุ่มคู่นี้จึงห่างจากตาราง
+     เท่ากับที่ห่างจากแถบขนาดข้างบน ตาอ่านว่าเป็นของสามก้อนแยกกัน
+     หักช่องไฟใต้ออกเกือบหมด ปุ่มกับตารางจึงติดกันเป็นก้อนเดียว
+     ส่วนช่องไฟด้านบนยังอยู่ครบ บวกที่ว่างจาก margin-top:auto อีก
+     ระยะบนจึงมากกว่าระยะล่างชัดเจน = ปุ่มคู่นี้เป็นหัวข้อของตาราง */
+  margin-bottom: calc(var(--pgap) * -0.62);
 }
+/* ── ทำไมปุ่มคู่นี้ตัวอักษรเล็กกว่าเพื่อนในคอลัมน์เดียวกัน ──
+   "ลงสีทั้งตัวน้อง" เป็นข้อความยาวที่สุดในคอลัมน์นี้ ที่ขนาด var(--pfont) มันกิน
+   97px ในช่องที่คอลัมน์มีให้จริงแค่ 88px ตัวอักษรท้ายจึงถูกเฉือนหาย
+   แล้วยังดันให้คอลัมน์งอกแถบเลื่อนแนวนอนมาทับปุ่มแถวล่างอีกต่อหนึ่ง
+
+   กฎนี้เคยมี font-size ซ้อนกันสามค่าและ padding สองแหล่งจากการแก้หลายรอบ
+   ค่าที่ชนะคือค่าท้ายสุดเสมอ ทำให้แก้ตรงกลางแล้วไม่มีอะไรเกิดขึ้น — รวมเหลือชุดเดียว */
 .pmode {
   flex: 1 1 0;
   min-width: 0;
-  padding: clamp(4px, 1dvh, 8px) clamp(4px, 1vw, 10px);
+  padding-block: clamp(4px, calc(var(--ph) * 1.65), 11px);
+  padding-inline: clamp(3px, .5vw, 9px);
   border-radius: 999px;
   border: 1px solid rgba(255, 246, 230, .28);
   background: linear-gradient(180deg, #B478E8, #8B4FC9);
   color: #fff;
   font: inherit;
-  font-size: clamp(10px, 1.8dvh, 14px);
-  font-weight: 700;
+  font-size: clamp(9.5px, .98vw, 13px);
+  font-weight: 600;
   cursor: pointer;
   line-height: 1.25;
   white-space: nowrap;
-  /* ชื่อยาวสุดคือ "ลงสีทั้งตัวน้อน" — ขนาดนี้พอดีสองปุ่มเรียงกันในคอลัมน์ที่แคบสุด
-     ที่วัดได้ (195px บนหน้าต่างเล็ก) โดยไม่ตกบรรทัด */
-  font-size: var(--pfont);
-  padding-inline: clamp(3px, .5vw, 9px);
 }
 /* ตัวที่เลือกอยู่ใช้สีฟ้าชุดเดียวกับปุ่มยืนยันหลักของเกม */
 .pmode.on {
@@ -5708,10 +5842,11 @@ canvas[hidden] { display: none; }
 
 /* ช่องเลือกสีอิสระ อยู่ใต้จานสีตามแบบ */
 .paint-free-row {
-  /* ดันลงล่างทั้งก้อน (สีอื่น + ปุ่มลงมือ + ปุ่มหลัก) ให้จบพอดีขอบล่างกรอบภาพน้อง
-     ของเดิม margin-top:auto อยู่ที่แถวปุ่มลงมือ ทำให้ช่องสีอื่นค้างอยู่ติดจานสี
-     แล้วเหลือช่องว่างใหญ่คั่นกลาง */
-  margin-top: auto;
+  /* ── ทำไมไม่ดันลงล่างแล้ว ──
+     ช่องเลือกสีอิสระเป็นของชุดเดียวกับจานสี มันคือ "สีที่ 17" ที่เลือกเองได้
+     ตอนที่ margin-top:auto อยู่ตรงนี้ ที่ว่างทั้งหมดไปกองเหนือแถวนี้
+     แถวจึงหลุดจากจานสีไปเกาะปุ่มลงมือแทน อ่านเหมือนเป็นคำสั่งอีกชุดหนึ่ง
+     ย้าย auto ไปไว้ที่ .paint-acts ที่ว่างจึงไปอยู่ระหว่างสองกลุ่มตามที่ควรเป็น */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -5724,12 +5859,15 @@ canvas[hidden] { display: none; }
 /* ตกไปแถวสองได้ตอนหน้าต่างแคบมาก ดีกว่าปล่อยให้ข้อความล้นออกนอกปุ่ม
    บนหน้าต่างปกติทั้งสามใบยังอยู่แถวเดียวตามแบบ */
 .paint-acts {
-  margin-top: clamp(4px, 1.4dvh, 14px);
+  margin-top: auto;   /* ดันปุ่มลงมือกับปุ่มหลักลงชิดขอบล่าง — ดูเหตุผลที่ .paint-free-row */
   display: flex;
   flex-wrap: wrap;
+  /* ── ทำไมช่องไฟตรงนี้ห้ามกว้างกว่านี้ ──
+     สามปุ่มพอดีคอลัมน์แบบเฉียดฉิว ขยับเป็น 11px เมื่อไหร่ปุ่มที่สามตกลงไป
+     อีกแถวทันที ซึ่งกินความสูงเพิ่ม 40px แล้วปุ่ม "ใช้น้องตัวนี้" หลุดขอบการ์ด */
   gap: clamp(4px, .8vw, 8px);
   /* เว้นจากปุ่มหลักให้ชัด ของเดิมห่างแค่ 9px จนดูเหมือนติดกันเป็นก้อนเดียว */
-  margin-bottom: clamp(2px, .6dvh, 6px);
+  margin-bottom: clamp(2px, calc(var(--ph) * .7), 6px);
 }
 .paint-acts .btn {
   flex: 1 1 auto;
@@ -5883,6 +6021,12 @@ canvas[hidden] { display: none; }
 #createPanel.paint-full .paint-canvas { height: 100%; }
 #createPanel.paint-full .paint-tools-col,
 #createPanel.paint-full .paint-color-col { min-width: clamp(150px, 20vw, 260px); }
+/* ── คืนขนาดตัวอักษรปกติให้สองปุ่มนี้เฉพาะโหมดเต็มจอ ──
+   ป้ายเครื่องมือกับปุ่มโหมดถูกย่อไว้เพราะคอลัมน์ตอนย่อกว้างแค่ 194px
+   โหมดนี้คอลัมน์กว้าง 268px — วัดแล้วคำที่ยาวสุด ("ยางลบ" 38px, "ลงสีทั้งตัวน้อง" 85px)
+   ยังเหลือที่ว่างอีกเกินสิบพิกเซล ทั้งแผงจึงกลับมาใช้ขนาดเดียวกันหมดได้ */
+#createPanel.paint-full .ptool i,
+#createPanel.paint-full .pmode { font-size: var(--pfont); }
 /* สองคอลัมน์เหมือนกับตอนย่อ ตามแบบที่วางไว้ — แปดหมวดได้สี่แถวพอดี
    (กฎเดิมตั้งสามคอลัมน์ไว้ตอนที่ยังมีแค่หกหมวด) */
 #createPanel.paint-full .paint-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
