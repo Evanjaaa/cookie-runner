@@ -5938,28 +5938,58 @@ canvas[hidden] { display: none; }
   #paintCat { width: 52dvh; max-width: 100%; height: auto; }
   .paint-hint { display: none; }
 
-  /* คอลัมน์ขวากว้างขึ้นเพื่อให้รายชื่อส่วนอยู่ได้สองคอลัมน์โดยชื่อไม่ถูกตัด */
-  /* ── ตอนย่อบนมือถือ ซ้อนสองกลุ่มเป็นคอลัมน์เดียว ──
-     ที่ตรงนั้นเหลือกว้างราว 360px หักผ้าใบแล้วไม่พอให้สองคอลัมน์อยู่ข้างกัน
-     ผลคือชื่อปุ่มถูกตัดเป็น "เลือ..." กับ "ลงสี..." ซึ่งอ่านไม่ออกว่าปุ่มไหนทำอะไร
-     ส่วนป้ายหัวข้อซ่อนไปด้วย เพราะตอนซ้อนกันมันกินความสูงไปกลุ่มละแถวโดยไม่ได้บอกอะไรใหม่ */
+  /* ── สองคอลัมน์ข้างกัน เหมือนบนคอม ──
+     ของเดิมซ้อนเป็นคอลัมน์เดียวบนมือถือ เหตุผลตอนนั้นคือกลัวชื่อปุ่มถูกตัด
+     แต่ผลที่ได้แย่กว่า: ทุกอย่างต่อกันเป็นแถวยาวเส้นเดียว วัดแล้วต้องเลื่อนหา
+     ของอีก 142px ปุ่มครึ่งหนึ่งจึงอยู่นอกสายตาตั้งแต่เปิดหน้ามา
+
+     ตัวที่ทำให้แบ่งสองฝั่งไม่ได้จริง ๆ ไม่ใช่ความกว้างจอ แต่เป็น min-width: 196px
+     ที่ติดมาจากกฎหลัก คอลัมน์จึงไม่ยอมหดต่ำกว่านั้นไม่ว่าที่จะเหลือเท่าไหร่
+     (วัดที่วิวพอร์ต 699px: ผ้าใบถูกบีบเหลือ 4x4 เพราะฝั่งขวาไม่ยอมเสียที่)
+     ปลดพื้นนั้นออก แล้วให้ตัวอักษรกับระยะขอบย่อตามที่มีจริง */
   #createPanel:not(.paint-full) .paint-side {
-    flex-direction: column;
-    overflow-y: auto;
-    gap: 6px;
+    flex-direction: row;
+    gap: clamp(4px, 1.2vw, 10px);
   }
   #createPanel:not(.paint-full) .paint-tools-col,
   #createPanel:not(.paint-full) .paint-color-col {
-    flex: 0 0 auto;
-    overflow: visible;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-y: auto;
   }
-  #createPanel:not(.paint-full) .pcol-head { display: none; }
-  /* ตอนย่อของทั้งหมดกองอยู่คอลัมน์เดียว บีบสองตารางให้เตี้ยลงหนึ่งแถวเต็ม ๆ
-     สิบหกสีลงหกช่อง = สามแถว (จากสี่) และแปดหมวดลงสามช่อง = สามแถว (จากสี่) */
-  #createPanel:not(.paint-full) .paint-swatches { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  #createPanel:not(.paint-full) .paint-parts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  #createPanel:not(.paint-full) .paint-acts { margin-top: 0; }
-  .paint-side { min-width: 212px; flex: 0 0 auto; }
+  /* จานสีกลับไปสี่ช่องเหมือนบนคอม เพราะคอลัมน์แคบลงครึ่งหนึ่งแล้ว */
+  #createPanel:not(.paint-full) .paint-swatches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #createPanel:not(.paint-full) .paint-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .paint-side { min-width: 0; flex: 1 1 auto; }
+
+  /* ── ย่อทุกอย่างในสองคอลัมน์ให้พอดีที่แคบลง ──
+     ตัวเลขชุดนี้เลือกจากการวัด ไม่ใช่กะ: เป็นค่าใหญ่สุดที่ชื่อปุ่มยาวที่สุด
+     ("ลงสีทั้งตัวน้อน") ยังไม่ถูกตัดที่วิวพอร์ตแคบสุดที่ทดสอบ */
+  #createPanel { --pfont: 9.5px; }
+  .pcol-head { padding: 2px 8px; font-size: 9.5px; margin-bottom: 2px; }
+  /* ── ชื่อปุ่มโหมดยอมตกบรรทัดได้ ──
+     กฎหลักสั่ง nowrap ไว้ เพราะบนคอมคอลัมน์กว้างพอเสมอ
+     บนมือถือคอลัมน์เหลือราว 105px ซึ่ง "ลงสีทั้งตัวน้อน" ยังยาวเกิน
+     ตัดคำทิ้งแล้วอ่านไม่ออกว่าปุ่มไหนทำอะไร สองบรรทัดสั้น ๆ อ่านออกกว่า
+     และคอลัมน์ยังมีความสูงเหลือ (วัดแล้วไม่ต้องเลื่อนเลย) */
+  .pmode { font-size: 8.5px; padding-block: 4px; padding-inline: 3px;
+           white-space: normal; line-height: 1.15; }
+  .paint-acts .btn, .paint-color-col > .btn { font-size: 9.5px; padding: 4px 6px; min-width: 0; }
+  .paint-free-row { font-size: 9px; }
+  .psize-dot { width: 16px; height: 16px; }
+  /* เม็ดหมวดหมู่: จุดสีเล็กลงและระยะขอบแคบลง คืนที่ให้ชื่อจนไม่ต้องตัดคำ */
+  /* ชื่อยาวสุดคือ "หนวด" ผูกขนาดกับความกว้างจอ ไม่ใช่ค่าตายตัว
+     จอแคบลงคอลัมน์ก็แคบลงตาม ตัวอักษรต้องหดตามด้วยถึงจะไม่ถูกตัด */
+  .ppart { font-size: clamp(7px, .88vw, 9px); gap: 1px; padding: 3px 2px; }
+  /* ช่องไฟระหว่างสองคอลัมน์ของตาราง คืนที่ให้ชื่อโดยตรง */
+  #createPanel:not(.paint-full) .paint-parts { column-gap: 4px; }
+  .ppart i { width: 6px; height: 6px; }
+
+  /* ── คอลัมน์แท็บซ้ายผอมลง ──
+     วัดแล้วกว้าง 111px แต่ในนั้นมีแค่ปุ่มสองใบและที่ว่าง
+     บนจอแนวนอนของมือถือ ทุกพิกเซลแนวนอนคือที่ของผ้าใบกับเครื่องมือ */
+  #createPanel .stab { font-size: 10px; padding: 5px 7px; gap: 3px; }
+  #createPanel .stab-ico { font-size: 1.15em; }
   .pswatch { min-width: 20px; }
   /* สามคอลัมน์เหลือสองแถวแทนสามแถว คืนความสูงให้พอดีจนไม่ต้องเลื่อนหาแถวสุดท้าย */
   .ppart { font-size: 10px; gap: 3px; }
@@ -5970,11 +6000,24 @@ canvas[hidden] { display: none; }
   /* หมวดสองคอลัมน์ตามแบบ สี่แถวพอดีสำหรับแปดหมวด */
   .paint-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ppart { padding: 2px 3px; }
-  .ptool { padding: 2px 2px; }
+  /* ── ปุ่มเครื่องมือสี่ใบในคอลัมน์ 124px ──
+     ช่องไฟเดิม 9px กินไป 28px จากสี่ใบรวมกัน เหลือใบละ 24px
+     ซึ่งแคบกว่าคำว่า "ยางลบ" อยู่ 2px พอดี ผลคือคอลัมน์งอกแถบเลื่อนแนวนอน
+     มาพาดใต้ปุ่มแถวล่าง ส่วน "ถังสี" กับ "ดูดสี" ตกลงไปเป็นสองบรรทัด
+     บีบช่องไฟแล้วปุ่มโตขึ้นเป็น 29px ซึ่งพอสำหรับคำที่ยาวที่สุด */
+  .paint-tools { gap: 3px; }
+  .ptool { padding: 2px 1px; }
   .ptool span { font-size: 15px; }
-  .ptool i { font-size: 9px; }
+  .ptool i { font-size: 7.5px; white-space: nowrap; }
+
+  /* ตาข่ายกันตก: เศษหนึ่งพิกเซลจากการปัดเลขไม่ควรทำให้เกิดแถบเลื่อนแนวนอน
+     ซึ่งกินความสูงจริงและพาดทับปุ่มแถวล่าง */
+  .paint-tools-col, .paint-color-col { overflow-x: hidden; }
   .pswatch { max-width: 26px; }
   .paint-swatches { justify-content: start; }
+
+  /* บนมือถือคำใบ้ถูกซ่อนไปแล้ว จึงไม่มีแถบให้กันที่ไว้ */
+  .paint-tools-col::after, .paint-color-col::after { flex-basis: 0; margin-top: 0; }
 
   /* หน้ารูป: ฝั่งขวาของเดิมเล็กจนตัวอย่างน้องเป็นรูปจิ๋ว ขยายให้สมส่วนกับกรอบตัดรูป */
   .face-side { min-width: 210px; flex: 0 0 auto; }
@@ -6035,4 +6078,50 @@ canvas[hidden] { display: none; }
 @media (max-height: 400px) {
   .paint-acts .btn { font-size: 11px; padding: 6px 4px; }
   #paintUse { font-size: 13px; padding: 7px 16px; }
+}
+
+/* ══ โหมดเต็มจอบนมือถือ ═══════════════════════════════════
+   ต้องอยู่ "ท้ายไฟล์" ไม่ใช่ในบล็อกมือถือด้านบน — กฎ .paint-full หลักถูกประกาศ
+   หลังบล็อกนั้น และมีความจำเพาะเท่ากันเป๊ะ ตัวที่มาทีหลังจึงชนะเสมอ
+   (เคยวางไว้ข้างบนแล้ววัดได้ผ้าใบ 238x275 คือไม่มีผลอะไรเลย) */
+@media (max-height: 460px) {
+  /* 1. ผ้าใบเบี้ยว 189x275 — น้องถูกบีบผอมสูง
+     กฎหลักสั่ง height:100% แล้วปล่อยความกว้าง auto ซึ่งได้ผลบนคอมที่ความกว้างเหลือเฟือ
+     บนมือถือความกว้างไม่พอ max-width จึงเฉือนความกว้างลงโดยความสูงไม่ลดตาม
+     กลับด้านมาคุมด้วยความกว้างแทน แล้วให้ aspect-ratio คิดความสูงเอง
+     เพดาน 60dvh เลือกให้ต่ำกว่าความสูงแถวเสมอ max-height จึงไม่มีโอกาสทำงาน */
+  #createPanel.paint-full #paintCat {
+    /* ── ทำไมต้องมี align-self ──
+       .paint-canvas เป็นกล่อง flex และในโหมดเต็มจอมันถูกตั้งความสูงไว้ 100%
+       ผ้าใบซึ่งเป็นลูกจึงถูก "ยืดเต็มความสูง" ตามค่าเริ่มต้นของ flex (stretch)
+       ทับ aspect-ratio ทิ้งไปเลย นี่คือตัวที่ทำให้น้องถูกบีบเป็น 238x275
+       ไม่ใช่ max-height อย่างที่เดาไว้ตอนแรก */
+    align-self: center;
+    /* 62dvh คือใหญ่สุดที่ยังต่ำกว่าความสูงแถว (วัดได้ 64.4% ของวิวพอร์ต)
+       ถ้าเกิน max-height จะเข้ามาเฉือนความสูงแล้วน้องกลับไปเบี้ยวอีก */
+    width: min(62dvh, 44vw);
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  /* 2. คอลัมน์เครื่องมือไม่ยอมหดต่ำกว่า 150px ผ้าใบจึงไม่มีที่จะโต
+     ปลดพื้นออก สองคอลัมน์แบ่งที่ที่เหลือจากผ้าใบกันเอง */
+  #createPanel.paint-full .paint-tools-col,
+  #createPanel.paint-full .paint-color-col {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  /* 3. ของในคอลัมน์ถ่างไปชิดขอบบนกับขอบล่าง เหลือช่องว่างใหญ่คั่นกลาง
+     สาเหตุคือ margin-top:auto ที่ตั้งไว้ให้ปุ่มไปเกาะขอบล่างบนจอคอม
+     บนจอเตี้ยมันกลายเป็นการฉีกของออกจากกัน เปลี่ยนเป็นระยะคงที่
+     แล้วให้ justify-content:center รวบทั้งกลุ่มมาไว้กลางคอลัมน์ */
+  #createPanel.paint-full .paint-modes,
+  #createPanel.paint-full .paint-acts,
+  #createPanel.paint-full .paint-free-row { margin-top: clamp(3px, 1.2dvh, 9px); }
+
+  /* บนมือถือคำใบ้ถูกซ่อนไปแล้ว จึงไม่มีแถบให้กันที่ไว้ */
+  .paint-tools-col::after, .paint-color-col::after { flex-basis: 0; margin-top: 0; }
+
 }
