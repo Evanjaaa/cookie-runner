@@ -1,6 +1,6 @@
 // src/game.js
 import {
-  VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET,
+  VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET, BODY,
   LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD, REVIVE,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
@@ -17,6 +17,7 @@ import {
   drawBigFish,
   drawBonusSparkle,
   drawRain, drawSkillGauge, drawNips, drawCans, drawFallers, drawHazards,
+  drawHeart,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage, sceneAt } from './stages.js';
@@ -106,6 +107,89 @@ const IDLE_ACTS = [
   { pose: 'loaf', hold: IDLE_HOLD },    // หมอบเป็นก้อนขนมปัง
 ];
 
+/**
+ * ท่าตอบตอนผู้เล่นแตะตัวน้องบนหน้าแรก
+ *
+ * ── ทำไมไม่เอาไปรวมกับ IDLE_ACTS ──
+ * สองชุดนี้ตอบคนละคำถาม ท่าว่างตอบว่า "น้องทำอะไรอยู่ตอนไม่มีใครยุ่ง"
+ * จึงต้องเป็นท่าพักที่ค้างนาน ๆ แล้วยังดูเป็นธรรมชาติ ส่วนชุดนี้ตอบว่า
+ * "น้องตอบสนองคุณยังไง" จึงต้องมีการเคลื่อนไหวในตัวเองทุกท่า และต้องจบไว
+ * เพื่อให้แตะรัว ๆ ได้ ถ้ารวมกันจะได้ชุดที่ผิดทั้งสองงาน
+ *
+ * เรียงตามลำดับ ไม่สุ่ม ด้วยเหตุผลเดียวกับ IDLE_ACTS — สุ่มแล้วมีโอกาสออกท่าเดิม
+ * ซ้ำติดกัน ซึ่งอ่านเป็น "แตะแล้วไม่มีอะไรเกิดขึ้น" ทั้งที่ท่ามันเล่นอยู่จริง ๆ
+ *
+ * hold นับรวมช่วงเข้า-ออกแล้ว จึงต้องมากกว่า REACT_EASE * 2 เสมอ
+ * ท่าที่มีจังหวะซ้ำ ๆ ในตัว (นวดแป้ง ส่ายก้น) ตั้งยาวกว่า เพราะต้องเห็นอย่างน้อย
+ * สามรอบถึงจะอ่านออกว่ามันเป็นจังหวะ ไม่ใช่การกระตุกครั้งเดียว
+ */
+const REACT_EASE = 18;
+const REACT_ACTS = [
+  // โบกอุ้งเท้าทักทาย ตาเป็นประกาย ร้องทัก
+  { pose: 'wave', hold: 118, sound: 'trill' },
+  // นวดแป้งหน้าอก หลับตาเคลิ้ม — ท่าที่แมวทำตอนสบายใจที่สุด
+  { pose: 'knead', hold: 160, sound: 'purr' },
+  // ย่อตัวส่ายก้นเล็งเป้า หูลู่ — ท่าก่อนพุ่งตะครุบ
+  { pose: 'wiggle', hold: 132, sound: 'chirp' },
+  // ล้มตัวลงนอนตะแคงชูอุ้งเท้า = ยอมให้ลูบพุง ซึ่งแมวทำเฉพาะกับคนที่ไว้ใจ
+  { pose: 'roll', hold: 168, sound: 'slide' },
+  // ขนพองฟูทั้งตัวเพราะตกใจที่โดนแตะ แล้วค่อย ๆ ยุบ
+  { pose: 'puff', hold: 112, sound: 'double' },
+];
+
+/**
+ * น้ำหนักของท่า 0→1→0 ตามเวลาที่อยู่ในท่านั้น
+ *
+ * ใช้ร่วมกันระหว่างท่าว่างกับท่าตอบการแตะ เพราะสองชุดต้องเข้า-ออกเหมือนกันเป๊ะ
+ * เคยเขียนสูตรนี้ซ้ำสองที่ ซึ่งแปลว่าวันที่ใครไปจูนความนุ่มข้างเดียว
+ * ท่าสองชุดจะเข้าออกคนละแบบโดยไม่มีใครสังเกต
+ *
+ * smoothstep ท้ายสุดสำคัญ — เข้า-ออกแบบเส้นตรงจะเห็นหัวท้ายกระตุกเป็นจังหวะ
+ */
+function poseWeight(t, hold, ease) {
+  const k = Math.min(1, t / ease, (hold - t) / ease);
+  const e = Math.max(0, Math.min(1, k));
+  return e * e * (3 - 2 * e);
+}
+
+/**
+ * กรอบที่ถือว่า "แตะโดนตัวน้อง" ในพิกัดฉาก วัดจากจุดกึ่งกลางกรอบ
+ * กว้างพอคลุมทั้งหางด้านซ้ายและแขนที่ยกโบกด้านขวา ตอนน้องตัวโตสุด (สเกล 3)
+ * main.js เอาไปทำเป็นปุ่มใส ๆ ทับบน canvas — เหตุผลเดียวกับปุ่มหัวใจ
+ */
+export const CAT_TAP = { x: 480, y: 242, w: 124, h: 180 };
+
+/**
+ * ตำแหน่งปุ่มหัวใจในพิกัดฉาก 960x420 — จุดกึ่งกลางปุ่ม
+ *
+ * ── ทำไมตัวเลขต้องอยู่ที่นี่ ไม่ใช่ใน CSS ที่เดียว ──
+ * ปุ่มเป็น HTML (จะได้กดด้วยคีย์บอร์ด มีป้ายเวลา และหรี่ตัวเองตอนคูลดาวน์ได้ฟรี)
+ * แต่หัวใจที่ลอยออกจากปุ่มวาดบน canvas เพราะปลายทางคือหัวน้องซึ่งอยู่บน canvas
+ * ถ้าสองฝั่งถือตัวเลขคนละชุด หัวใจจะออกจากจุดที่ไม่ใช่ตัวปุ่มทันทีที่ใครแก้ข้างเดียว
+ *
+ * CSS อ่านค่านี้ผ่านตัวแปร --love-x / --love-y ที่ main.js เขียนลงไปตอนเริ่ม
+ * เวทีมีอัตราส่วน 960:420 ตายตัว เปอร์เซ็นต์จึงตรงกับพิกัดฉากแบบหารตรง ๆ ได้เลย
+ *
+ * ── ทำไมเยื้องขึ้นไปเสมอหัว ไม่ใช่ระดับกลางหัวพอดี ──
+ * ระดับกลางหัวคือระดับหนวด ซึ่งยื่นออกมาทางขวาไกลกว่าที่คิด และยื่นไกลขึ้นอีก
+ * บนจอสัมผัสที่น้องตัวโตกว่า (สเกล 3 แทน 2.6) ปุ่มจึงไปคาบเส้นหนวดพอดีบนมือถือ
+ * ทั้งที่บนคอมดูห่างดี เยื้องขึ้นมาระดับปลายหูแล้วพ้นทั้งสองขนาด
+ */
+export const LOVE_BTN = { x: 585, y: 182 };
+
+/**
+ * ลำดับเวลาของการให้หัวใจ หน่วยเป็นเฟรมที่ 60fps
+ *
+ * hold นับรวมช่วงเข้า-ออกจากท่าแล้ว เหมือนกติกาของ IDLE_ACTS ข้างบน
+ */
+const LOVE = {
+  fly: 32,     // หัวใจลอยจากปุ่มไปถึงหัวน้อง
+  ease: 20,    // เข้า/ออกจากท่าดีใจ
+  hold: 112,   // ช่วงที่น้องนั่งร้องเมี้ยว
+  jump: 26,    // กระโดดดีใจหนึ่งครั้งตอนหัวใจถึงตัว
+};
+const LOVE_TOTAL = LOVE.fly + LOVE.hold;
+
 /** ของกินตกแต่งบนหน้าแรก พิกัดวัดจากเท้าตัวละคร (dx ไปขวา, dy ขึ้นบนเป็นลบ) */
 const HOME_DECO = [
   { dx: -180, dy: -62 },
@@ -185,6 +269,10 @@ export class Game {
     this.idleAt = 0;      // ท่าถัดไปในตาราง
     this.idleWait = 0;    // ยืนเฉย ๆ มากี่เฟรมแล้ว
     this.idleT = -1;      // เฟรมในท่าปัจจุบัน (-1 = ยังไม่ได้ทำท่าอะไร)
+
+    // ท่าตอบตอนถูกแตะ — ตัวชี้ท่าถัดไปอยู่นอก this.react เพราะมันต้องจำข้าม
+    // การแตะแต่ละครั้ง ส่วน react เกิดใหม่ทุกครั้งที่แตะ
+    this.reactAt = 0;
 
     // ฉากห้องก่อนเริ่มวิ่ง — เป็นแค่ "โหมดวาด" ไม่ใช่สถานะเกม
     // สถานะยังเป็น READY อยู่ ระบบหยุด/นับคะแนน/อินพุตจึงไม่ต้องรู้จักมันเลย
@@ -298,6 +386,16 @@ export class Game {
     this.level.nextLetter = () => this.nextLetterIndex();
 
     this.state = STATE.READY;
+
+    // ลำดับ "ให้หัวใจ" ที่กำลังเล่นอยู่ — null คือไม่ได้เล่นอยู่
+    // ล้างที่นี่ด้วย เพราะคนกดเล่นระหว่างแอนิเมชันยังเล่นไม่จบได้เสมอ
+    // ถ้าไม่ล้าง หัวใจจะค้างลอยทับฉากด่านจริง แล้วท่านั่งจะทับท่าวิ่ง
+    // ส่วนของขวัญที่ค้างอยู่ไม่หาย — main.js จ่ายให้เองตอนเริ่มรอบ (ดู settleLove)
+    this.love = null;
+    // ท่าตอบตอนถูกแตะก็ต้องล้างด้วยเหตุผลเดียวกัน — ท่านอนตะแคงที่ค้างอยู่
+    // จะกลายเป็นน้องวิ่งตะแคงข้างไปทั้งด่าน
+    this.react = null;
+
     this.camera = 0;
     this.speed = SPEED.run;   // คงที่ตลอดรอบ ระยะกระโดดจึงเท่าเดิมเสมอ
     this.distance = 0;
@@ -427,6 +525,8 @@ export class Game {
     }
     if (this.state === STATE.READY) {
       this.homeTick += dt;
+      this.stepLove(dt);
+      this.stepReact(dt);
       this.stepIdle(dt);
     }
     if (this.state !== STATE.RUN) return;
@@ -843,6 +943,21 @@ export class Game {
    * สุ่มแรงในช่วงที่ตั้งไว้ ชิ้นที่โดนชนติด ๆ กันจึงไม่ปลิวทางเดียวกันเป๊ะ
    */
   smashObstacle(o) {
+    this.knockAway(o);
+    this.treat += SCORING.pointsPerSmash;
+    this.shake = 9;
+    this.particles.burst(o.x + o.w / 2, o.y + o.h / 2, 18, 'nip', 7);
+    sfx.smash();
+  }
+
+  /**
+   * ใส่แรงกระเด็นให้ของชิ้นหนึ่ง — ใช้ได้กับทั้งสิ่งกีดขวางและของอันตราย
+   *
+   * แยกออกมาจาก smashObstacle เพราะของอันตราย (ผึ้ง/ลูกบอล/ไฟ) ต้องกระเด็น
+   * ด้วยกติกาเดียวกันเป๊ะ ถ้าเขียนแยกกัน วันหนึ่งจะปรับแรงที่เดียวแล้วอีกฝั่งไม่ตาม
+   * แล้วผู้เล่นจะรู้สึกว่า "ชนของสองชนิดนี้ให้ผลไม่เหมือนกัน" โดยบอกไม่ถูกว่าทำไม
+   */
+  knockAway(o) {
     const s = SPEEDUP.smash;
     const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -855,10 +970,37 @@ export class Game {
     // ซึ่งดูเหมือนของค้างกลางอากาศมากกว่าของที่เพิ่งโดนชน
     o.spin = (Math.random() < 0.5 ? -1 : 1) * rnd(s.spin * 0.35, s.spin);
     o.life = s.life;
+  }
+
+  /**
+   * พุ่งชนของอันตรายตอนติดสปีดหรือตัวโต
+   *
+   * ── ทำไมต้องมี ──
+   * ของกีดขวางธรรมดาชนแล้วกระเด็นแตกมาตั้งแต่แรก (ดูเหตุผลที่ smashObstacle)
+   * แต่ของอันตรายกลับ "ทะลุผ่านเงียบ ๆ" ไม่มีอะไรเกิดขึ้นเลยสักอย่าง
+   * ซึ่งเป็นอาการเดียวกับที่คอมเมนต์ตรงนั้นบอกว่าอ่านเป็นบั๊คมากกว่าอ่านเป็นพลัง
+   * กติกาถูกเขียนไว้แล้วแต่ไม่เคยถูกเอามาใช้กับของกลุ่มนี้
+   *
+   * ── ไฟไม่กระเด็น แต่ดับ ──
+   * ผึ้งกับลูกบอลเป็นก้อนที่ปลิวได้ ส่วนไฟไม่มีตัวตนให้ปลิว
+   * ภาพที่ตรงกับความจริงคือ "พุ่งผ่านจนไฟดับ" ไม่ใช่เปลวไฟลอยหมุนติ้วออกไป
+   */
+  smashHazard(h) {
+    if (h.smashed) return;
+    const cx = h.x + h.w / 2;
+    const cy = h.kind === 'flame' ? GROUND_Y - 30 : h.y + h.h / 2;
+
+    if (h.kind === 'flame') {
+      h.smashed = true;
+      h.life = 18;                  // ไฟดับเร็วกว่าของที่ปลิว ไม่ต้องรอให้ตกพื้น
+      h.vx = 0; h.vy = 0; h.spin = 0; h.rot = 0;
+    } else {
+      this.knockAway(h);
+    }
 
     this.treat += SCORING.pointsPerSmash;
     this.shake = 9;
-    this.particles.burst(o.x + o.w / 2, o.y + o.h / 2, 18, 'nip', 7);
+    this.particles.burst(cx, cy, 18, 'nip', 7);
     sfx.smash();
   }
 
@@ -1001,19 +1143,37 @@ export class Game {
 
     this.level.updateHazards(dt, this.camera);
 
+    // ชิ้นที่โดนชนไปแล้ว ปลิวตามแรงที่ได้รับเหมือนสิ่งกีดขวางทุกประการ
+    for (const h of this.level.hazards) {
+      if (!h.smashed) continue;
+      h.x += h.vx * dt;
+      h.y += h.vy * dt;
+      h.vy += SPEEDUP.smash.gravity * dt;
+      h.rot += h.spin * dt;
+      h.life -= dt;
+    }
+
     const b = this.player.box;
     const bx = b.x + this.camera;
     for (const h of this.level.hazards) {
       const box = this.level.hazardBox(h);
-      if (!box) continue;                        // ไฟกำลังดับอยู่
+      if (!box) continue;                        // ไฟกำลังดับ หรือโดนชนไปแล้ว
       if (!rectHit(bx, b.y, b.w, b.h, box.x, box.y, box.w, box.h)) continue;
 
-      if (this.skillOn || this.invuln > 0 || this.big > 0) break;
-      if (this.boost > 0) break;                 // ติดสปีด พุ่งผ่านได้
+      // ตัวโตจากกระป๋องหรือติดสปีด = พุ่งชนให้กระเด็น ไม่ใช่ทะลุผ่านเฉย ๆ
+      // เงื่อนไขและผลลัพธ์ชุดเดียวกับสิ่งกีดขวาง ผู้เล่นจึงไม่ต้องเรียนรู้ข้อยกเว้นใหม่
+      if (this.boost > 0 || this.big > 0) {
+        this.smashHazard(h);
+        continue;
+      }
+      if (this.skillOn || this.invuln > 0) break;
       if (this.shielded) {
         this.shielded = false;
         this.invuln = SHIELD.invulnFrames;
         this.shake = 10;
+        // เดิมไม่มีเม็ดฝุ่นตรงนี้ ทั้งที่ตอนโล่แตกกับสิ่งกีดขวางมี
+        // โล่แตกสองแบบจึงให้ภาพไม่เท่ากันโดยไม่มีเหตุผล
+        this.particles.burst(bx + b.w / 2, b.y + b.h / 2, 16, 'dust', 6);
         sfx.shieldBreak();
         break;
       }
@@ -1724,6 +1884,11 @@ export class Game {
    * แยกจาก drawHome() เพราะการวาดอาจถูกข้ามได้ (เฟรมตก) แต่เวลาต้องเดินตรงเสมอ
    */
   stepIdle(dt) {
+    // ระหว่างให้หัวใจหรือกำลังตอบการแตะ คิวท่าว่างต้องหยุดสนิท
+    // ไม่ใช่แค่ถูกท่าอื่นทับตอนวาด ถ้าปล่อยให้เดินต่อ พอท่านั้นเล่นจบ
+    // น้องจะโผล่กลางท่าหาวหรือท่าเลียทันที เหมือนภาพกระโดดข้ามไปครึ่งท่า
+    if (this.love || this.react) return;
+
     if (this.idleT < 0) {
       this.idleWait += dt;
       if (this.idleWait >= IDLE_GAP) {
@@ -1743,12 +1908,209 @@ export class Game {
    * k คือน้ำหนักของท่า 0→1→0 ทำให้เข้าและออกจากท่าแบบค่อยเป็นค่อยไป
    */
   get idlePose() {
+    if (this.love) {
+      const k = this.love.k;
+      return k > 0.001 ? { pose: 'love', k } : null;
+    }
+    if (this.react) {
+      const act = REACT_ACTS[this.react.at];
+      return { pose: act.pose, k: poseWeight(this.react.t, act.hold, REACT_EASE) };
+    }
     if (this.idleT < 0) return null;
     const act = IDLE_ACTS[this.idleAt];
-    const k = Math.min(1, this.idleT / IDLE_EASE, (act.hold - this.idleT) / IDLE_EASE);
-    // นุ่มขึ้นด้วย smoothstep — เข้า-ออกแบบเส้นตรงจะเห็นหัวท้ายกระตุกเป็นจังหวะ
-    const e = Math.max(0, Math.min(1, k));
-    return { pose: act.pose, k: e * e * (3 - 2 * e) };
+    return { pose: act.pose, k: poseWeight(this.idleT, act.hold, IDLE_EASE) };
+  }
+
+  // ── แตะตัวน้อง ──────────────────────────────────────────────
+
+  /**
+   * ผู้เล่นแตะตัวน้อง — เล่นท่าถัดไปในตาราง แล้วเลื่อนตัวชี้ไปท่าต่อไป
+   *
+   * ── แตะซ้ำระหว่างท่ายังไม่จบ ──
+   * ไม่ตัดภาพไปท่าใหม่ทันที แต่จองท่าถัดไปไว้แล้วเร่งท่าปัจจุบันเข้าสู่ช่วงคลายออก
+   * น้องจึงกลับมายืนก่อนแล้วค่อยเข้าท่าใหม่ ซึ่งอ่านเป็น "เลิกทำอันเก่า
+   * ไปทำอันใหม่" ส่วนการตัดภาพจะเห็นตัวเปลี่ยนรูปกลางอากาศ
+   *
+   * เมินการแตะตอนหัวใจกำลังเล่น — ท่านั้นมีของขวัญผูกอยู่ท้ายแอนิเมชัน
+   * ถ้าตัดทิ้งกลางคัน กล่องของขวัญจะไม่มีวันเปิด (ดู settleLove ใน main.js)
+   *
+   * @returns true ถ้ารับการแตะไว้ (ใช้บอก UI ว่าควรตอบสนองไหม)
+   */
+  tapCat() {
+    if (this.state !== STATE.READY || this.inRoom || this.love) return false;
+
+    if (this.react) {
+      if (this.react.next != null) return false;   // จองไว้แล้ว รอท่าที่จองก่อน
+      this.react.next = this.reactAt;
+      this.reactAt = (this.reactAt + 1) % REACT_ACTS.length;
+      const out = REACT_ACTS[this.react.at].hold - REACT_EASE;
+      if (this.react.t < out) this.react.t = out;
+      return true;
+    }
+
+    this.startReact(this.reactAt);
+    this.reactAt = (this.reactAt + 1) % REACT_ACTS.length;
+    return true;
+  }
+
+  /** เข้าท่าที่ i ทันที พร้อมเสียงประจำท่า */
+  startReact(i) {
+    // ตัดท่าว่างที่ค้างอยู่ทิ้ง คนเพิ่งแตะต้องเห็นน้องตอบในเฟรมถัดไป
+    // ไม่ใช่รอครึ่งวินาทีให้ท่าหมอบคลายออกก่อน (เหตุผลเดียวกับ startLove)
+    this.idleT = -1;
+    this.idleWait = 0;
+    this.react = { at: i, t: 0, next: null };
+    sfx[REACT_ACTS[i].sound]?.();
+  }
+
+  /** เดินท่าตอบการแตะไปทีละเฟรม — แยกจากการวาดด้วยเหตุผลเดียวกับ stepIdle() */
+  stepReact(dt) {
+    const R = this.react;
+    if (!R) return;
+    R.t += dt;
+    if (R.t < REACT_ACTS[R.at].hold) return;
+    if (R.next != null) this.startReact(R.next);
+    else this.react = null;
+  }
+
+  // ── ให้หัวใจน้อง ────────────────────────────────────────────
+  //
+  // กติกา (ของขวัญ/คูลดาวน์) อยู่ใน src/pet.js ส่วนปุ่มอยู่ใน main.js
+  // ที่นี่รับผิดชอบอย่างเดียวคือ "ภาพที่เห็น" — หัวใจลอยไปหาน้อง แล้วน้องดีใจ
+
+  /**
+   * ตำแหน่งหัวน้องบนหน้าแรก ในพิกัดฉาก
+   *
+   * คำนวณจากตัวเลขชุดเดียวกับที่ drawHome() ใช้วางตัวละคร (จุดยืน + ครึ่งความสูง
+   * ตัวคูณสเกล + จุดหัวในพิกัดตัวแมวที่ -12) ถ้าวันหลังย้ายน้อง ต้องแก้ที่นี่ด้วย
+   * — ปลายทางของหัวใจจึงตามไปเอง ไม่ต้องจูนตัวเลขซ้ำอีกที่
+   */
+  homeHead() {
+    const scale = this.catScaleHome;
+    return {
+      x: VIEW.W * 0.5 + 1 * scale,
+      y: GROUND_Y - (BODY.standH / 2) * scale - 12 * scale,
+      r: 13 * scale,
+    };
+  }
+
+  /** ตัวคูณขนาดแมวบนหน้าแรก — จอสัมผัสกว้างกว่าเพราะปุ่มเมนูถูกบีบเข้ามาจากขอบ */
+  get catScaleHome() {
+    return coarsePointer.matches ? 3 : 2.6;
+  }
+
+  /**
+   * เริ่มลำดับให้หัวใจ
+   * @param onDone เรียกตอนแอนิเมชันจบ — ผู้เรียกค่อยเปิดกล่องของขวัญตรงนั้น
+   *               (Game ไม่รู้จักทองและไม่รู้จักกล่องของขวัญ เหมือนกรณีตกหลุม)
+   */
+  startLove(onDone = () => {}) {
+    if (this.love) return false;
+    // ท่าตอบการแตะที่ค้างอยู่ต้องหยุด — หัวใจเป็นท่าที่มีของขวัญผูกอยู่ท้าย
+    // จึงต้องได้เล่นจนจบเสมอ ปล่อยให้สองท่าแย่งตัวน้องกันไม่ได้
+    this.react = null;
+    // ตัดท่าว่างที่ค้างอยู่ทิ้งทันที ไม่ปล่อยให้คลายออกเอง — คนเพิ่งกดปุ่ม
+    // ต้องเห็นน้องตอบสนองในเฟรมถัดไป ไม่ใช่รอครึ่งวินาทีให้ท่าหมอบคลายก่อน
+    this.idleT = -1;
+    this.idleWait = 0;
+    this.love = { t: 0, k: 0, hop: 0, hearts: [], burst: false, done: onDone };
+    return true;
+  }
+
+  /** เดินลำดับให้หัวใจไปทีละเฟรม — แยกจากการวาดด้วยเหตุผลเดียวกับ stepIdle() */
+  stepLove(dt) {
+    const L = this.love;
+    if (!L) return;
+
+    L.t += dt;
+    const r = L.t - LOVE.fly;   // เวลาหลังหัวใจถึงตัวน้อง ติดลบ = ยังลอยอยู่
+
+    // น้ำหนักท่าดีใจ 0→1→0 สูตรเดียวกับ idlePose เป๊ะ ๆ จะได้นุ่มเท่ากัน
+    const raw = r < 0 ? 0 : Math.min(1, r / LOVE.ease, (LOVE.hold - r) / LOVE.ease);
+    const e = Math.max(0, Math.min(1, raw));
+    L.k = e * e * (3 - 2 * e);
+
+    // กระโดดดีใจหนึ่งครั้งตอนหัวใจถึงตัว แล้วค่อยทรุดลงนั่ง
+    // ครึ่งคลื่นไซน์เดียว ขึ้นแล้วลงจบในตัว ไม่ต้องมีตัวหน่วงแยก
+    L.hop = r >= 0 && r < LOVE.jump ? Math.sin((r / LOVE.jump) * Math.PI) * 15 : 0;
+
+    // หัวใจแตกกระจายตอนถึงตัว ครั้งเดียวต่อการกดหนึ่งครั้ง
+    if (!L.burst && r >= 0) {
+      L.burst = true;
+      for (let i = 0; i < 9; i++) {
+        const a = -Math.PI / 2 + (i / 8 - 0.5) * 2.4;
+        L.hearts.push({
+          x: 0, y: 0, vx: Math.cos(a) * (1.6 + Math.random() * 1.5),
+          vy: Math.sin(a) * (1.7 + Math.random() * 1.4),
+          r: 4 + Math.random() * 3.5, life: 40 + Math.random() * 22, age: 0,
+        });
+      }
+    }
+
+    // หัวใจดวงเล็กผุดขึ้นเรื่อย ๆ ระหว่างน้องดีใจ — หยุดก่อนท่าคลายออก
+    // ไม่งั้นจะยังมีหัวใจลอยอยู่ตอนน้องกลับไปยืนเฉย ซึ่งอ่านเป็นค้าง
+    if (r >= 0 && r < LOVE.hold - LOVE.ease && Math.floor(L.t) % 11 === 0) {
+      L.hearts.push({
+        x: (Math.random() - 0.5) * 26, y: 0,
+        vx: (Math.random() - 0.5) * 0.7, vy: -1.1 - Math.random() * 0.6,
+        r: 3.5 + Math.random() * 3, life: 52 + Math.random() * 20, age: 0,
+      });
+    }
+
+    for (const h of L.hearts) {
+      h.age += dt;
+      h.x += h.vx * dt;
+      h.y += h.vy * dt;
+      h.vy += 0.028 * dt;    // ลอยขึ้นแล้วช้าลง ไม่ใช่พุ่งขึ้นเป็นเส้นตรงตลอด
+      h.vx *= 0.985;
+    }
+    L.hearts = L.hearts.filter((h) => h.age < h.life);
+
+    if (L.t >= LOVE_TOTAL) {
+      this.love = null;
+      L.done();
+    }
+  }
+
+  /**
+   * วาดหัวใจที่กำลังลอยไปหาน้อง กับหัวใจที่ผุดรอบตัว
+   * เรียกจาก drawHome() หลังวาดตัวละคร หัวใจจึงลอยอยู่หน้าตัวเสมอ
+   */
+  drawLove(ctx) {
+    const L = this.love;
+    if (!L) return;
+    const head = this.homeHead();
+
+    // ── หัวใจดวงเล็กรอบหัว ──
+    // พิกัดของแต่ละดวงวัดจากหัว ไม่ใช่จากขอบจอ ย้ายน้องแล้วหัวใจตามไปเอง
+    for (const h of L.hearts) {
+      const k = 1 - h.age / h.life;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, k * 2.2);
+      drawHeart(ctx, head.x + h.x, head.y - head.r * 0.5 + h.y, h.r * (0.55 + k * 0.45));
+      ctx.restore();
+    }
+
+    if (L.t >= LOVE.fly) return;
+
+    // ── ดวงใหญ่ที่ลอยจากปุ่มมาหาน้อง ──
+    // โค้งขึ้นก่อนแล้วค่อยลง ไม่ใช่เส้นตรง — เส้นตรงอ่านเป็น "ของถูกลาก"
+    // ส่วนเส้นโค้งอ่านเป็น "ของถูกโยน" ซึ่งคือสิ่งที่กำลังเกิดขึ้นจริง
+    const p = L.t / LOVE.fly;
+    const ease = 1 - (1 - p) * (1 - p);          // ออกตัวเร็ว เข้าเป้าช้า
+    const x = LOVE_BTN.x + (head.x - LOVE_BTN.x) * ease;
+    const y = LOVE_BTN.y + (head.y - LOVE_BTN.y) * ease - Math.sin(p * Math.PI) * 46;
+
+    // เต้นเป็นจังหวะหัวใจระหว่างทาง แล้วพองขึ้นอีกทีตอนใกล้ถึง
+    const beat = 1 + Math.sin(L.t * 0.42) * 0.12 + p * p * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = 'rgba(255,120,170,.3)';
+    ctx.beginPath();
+    ctx.arc(x, y, 15 * beat, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    drawHeart(ctx, x, y, 11 * beat);
   }
 
   /**
@@ -1829,19 +2191,27 @@ export class Game {
     /* น้องยืนบนเบาะพอดีเพราะ drawCatPose วัดจาก "ตำแหน่งเท้า" ไม่ใช่กลางตัว
        ตัวโตขึ้นจึงงอกขึ้นข้างบนอย่างเดียว เท้ายังอยู่ที่ GROUND_Y เท่าเดิม
        ไม่ต้องไปยุ่งกับ $FOCUS ใน tools/render-bg.ps1 */
-    const catScale = coarsePointer.matches ? 3 : 2.6;
+    const catScale = this.catScaleHome;
     const shadowK = catScale / 2.6;   // เงาต้องโตตามตัว ไม่งั้นน้องจะดูลอยเหนือพื้น
 
+    // กระโดดดีใจตอนได้หัวใจ — ยกทั้งตัวขึ้นจากพื้น ไม่ใช่บิดท่า
+    // จึงบวกที่ "ระดับเท้า" ที่ส่งให้ drawCatPose ไม่ใช่ไปยุ่งกับตาราง IDLE_SHAPE
+    const hop = this.love?.hop || 0;
+
     ctx.save();
-    ctx.globalAlpha = 0.3;
+    // เงาหดลงตอนตัวลอย = สัญญาณเดียวที่บอกความสูงได้ในมุมมองหน้าตรง
+    // ถ้าเงาคงเดิม การกระโดดจะอ่านเป็น "ตัวยืดขึ้น" แทนที่จะเป็น "ตัวลอยขึ้น"
+    const hopK = 1 - Math.min(0.42, hop / 40);
+    ctx.globalAlpha = 0.3 * hopK;
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(x, GROUND_Y + 5, (44 - Math.sin(t * 0.045) * 2.5) * shadowK,
-                8.5 * shadowK, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, GROUND_Y + 5, (44 - Math.sin(t * 0.045) * 2.5) * shadowK * hopK,
+                8.5 * shadowK * hopK, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    drawCatPose(ctx, x, GROUND_Y, catScale, getSkin(), t, this.idlePose);
+    drawCatPose(ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    this.drawLove(ctx);
     postProcess(ctx, { edges: false });
   }
 }

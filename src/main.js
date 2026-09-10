@@ -1,7 +1,7 @@
 ﻿// src/main.js
 import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
-import { Game, STATE } from './game.js';
+import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
 import { startMusic } from './music.js';
@@ -44,6 +44,7 @@ import {
 } from './mail.js';
 import { recordRun, recordPulls, recordUpgrade } from './stats.js';
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
+import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
@@ -377,6 +378,7 @@ function refreshHome() {
   });
   // ความคืบหน้ากาช่าเคยโชว์ตรงนี้ ย้ายไปดูในแผงกาช่าอย่างเดียวแล้ว (.gacha-owned)
   refreshGold();
+  refreshLove();   // คูลดาวน์อาจหมดไปแล้วระหว่างที่เปิดแผงอื่นค้างไว้
 }
 
 /**
@@ -2074,13 +2076,23 @@ function rewardCard(kind, amount, label) {
 
 /**
  * โชว์กล่องฉลองพร้อมริบบิ้นกับเสียง
- * @param title   หัวเรื่อง เช่น "รับของขวัญแล้ว!"
- * @param reward  { gold, gems } — ช่องที่เป็นศูนย์จะไม่ขึ้นการ์ด
+ * @param title       หัวเรื่อง เช่น "รับของขวัญแล้ว!"
+ * @param reward      { gold, gems } — ช่องที่เป็นศูนย์จะไม่ขึ้นการ์ด
+ * @param opts.note   บรรทัดใต้การ์ด ใช้ตอนผลลัพธ์ไม่มีการ์ดให้โชว์
+ * @param opts.quiet  ไม่ต้องริบบิ้นกับเสียงเฉลิมฉลอง
+ *
+ * ── ทำไมมีโหมดเงียบ ──
+ * กล่องนี้ใช้กับผลลัพธ์ที่ "ไม่ได้ของ" ด้วย (ให้หัวใจแล้วน้องแค่มอง ดู src/pet.js)
+ * ริบบิ้นกับเสียงเย้ในจังหวะนั้นจะอ่านเป็นเสียดสี ไม่ใช่การฉลอง
  */
-function showReward(title, reward) {
+function showReward(title, reward, opts = {}) {
   const row = document.getElementById('rewardRow');
   row.innerHTML = '';
   document.getElementById('rewardTitle').textContent = title;
+
+  const note = document.getElementById('rewardNote');
+  note.textContent = opts.note || '';
+  note.classList.toggle('hidden', !opts.note);
 
   const cards = [];
   if (reward.gems) cards.push(rewardCard('gem', reward.gems, 'เพชรชมพู'));
@@ -2091,8 +2103,12 @@ function showReward(title, reward) {
   });
 
   rewardPanel.classList.remove('hidden');
-  burstConfetti('rewardConfetti');
   unlockAudio();
+  if (opts.quiet) {
+    sfx.fish();
+    return;
+  }
+  burstConfetti('rewardConfetti');
   sfx.bonus();
   setTimeout(() => sfx.cheer(), 220);
 }
@@ -2112,6 +2128,112 @@ document.getElementById('rewardClose').addEventListener('click', () => {
 rewardPanel.addEventListener('click', (e) => {
   if (e.target === rewardPanel) closeReward();
 });
+
+// ── ให้หัวใจน้อง ───────────────────────────────────────────
+//
+// ปุ่มหัวใจข้างหัวน้องในล็อบบี้ กดแล้วน้องดีใจแล้วให้ของขวัญ เว้นสองชั่วโมงต่อครั้ง
+//
+// หน้าที่แบ่งกันสามส่วน:
+//   src/pet.js   ตารางของขวัญ ระยะคูลดาวน์ และการจำเวลาที่กดล่าสุด
+//   src/game.js  แอนิเมชันบน canvas (หัวใจลอยไปหาน้อง แล้วน้องดีใจ)
+//   ที่นี่        ตัวปุ่ม ป้ายเวลา และการจ่ายของจริง
+
+const loveBtn = document.getElementById('btnLove');
+const loveTag = document.getElementById('loveTag');
+
+/**
+ * ของขวัญที่สุ่มได้แล้วแต่ยังไม่ได้จ่าย
+ *
+ * ── ทำไมต้องพักไว้ ไม่จ่ายทันทีตอนกด ──
+ * ตัวเลขทองมุมขวาบนโชว์อยู่ตลอด ถ้าจ่ายตอนกด ตัวเลขจะกระโดดขึ้นก่อนที่หัวใจ
+ * จะลอยไปถึงตัวน้องด้วยซ้ำ ผู้เล่นจึงรู้ผลก่อนดูแอนิเมชันจบ ซึ่งฆ่าการลุ้นทิ้งทั้งหมด
+ *
+ * ── แล้วถ้ากดเล่นระหว่างแอนิเมชันล่ะ ──
+ * ของไม่หาย showIntro() เรียก settleLove(false) ให้ก่อนทุกครั้ง — จ่ายเงียบ ๆ
+ * โดยไม่เปิดกล่อง คูลดาวน์ถูกตั้งไปตั้งแต่ตอนกดแล้ว จึงไม่มีทางกดซ้ำเอาของสองรอบ
+ */
+let pendingGift = null;
+
+/**
+ * จ่ายของขวัญที่ค้างอยู่
+ * @param show เปิดกล่องฉลองด้วยไหม (false = จ่ายเงียบ ๆ ตอนถูกขัดจังหวะ)
+ */
+function settleLove(show) {
+  if (!pendingGift) return;
+  const gift = pendingGift;
+  pendingGift = null;
+
+  if (gift.gold > 0) {
+    payReward({ gold: gift.gold });
+    if (show) showReward('น้องให้ของขวัญ!', { gold: gift.gold });
+    return;
+  }
+
+  // รอบที่ไม่ได้ทอง — ยังต้องมีกล่องสรุป ไม่งั้นคนกดจะไม่รู้ว่าจบแล้วหรือค้างอยู่
+  // แต่ปิดริบบิ้นกับเสียงเย้ทิ้ง เพราะไม่มีอะไรให้ฉลอง (ดูโหมดเงียบใน showReward)
+  if (show) {
+    showReward('น้องมองคุณตาแป๋ว', {}, {
+      quiet: true,
+      note: 'รอบนี้น้องไม่ได้ให้ของขวัญ แต่ดีใจมากที่คุณมาหา — อีก 2 ชั่วโมงมาเล่นกับน้องอีกนะ',
+    });
+  }
+}
+
+/** เขียนหน้าตาปุ่มให้ตรงกับคูลดาวน์ตอนนี้ */
+function refreshLove() {
+  const left = petLeftMs();
+  const ready = left === 0;
+  loveBtn.disabled = !ready;
+  loveTag.textContent = ready ? 'ให้หัวใจ' : petLeftText(left);
+  // ป้ายเป็น aria-hidden (มันคือของประดับตัวปุ่ม) ข้อความสำหรับโปรแกรมอ่านจอ
+  // จึงต้องอยู่ที่ตัวปุ่มเอง ไม่งั้นคนที่ใช้เสียงอ่านจะได้ยินแค่ "ให้หัวใจน้อง"
+  // ตลอดเวลา โดยไม่มีทางรู้เลยว่าตอนนี้กดไม่ได้เพราะอะไร
+  loveBtn.setAttribute('aria-label',
+    ready ? 'ให้หัวใจน้อง' : 'ให้หัวใจน้องได้อีกครั้งในอีก ' + petLeftText(left));
+}
+
+function doLove() {
+  if (!canPet() || game.love) return;
+
+  // ตั้งคูลดาวน์ก่อนเล่นแอนิเมชัน ไม่ใช่หลัง — ระหว่างสองวินาทีกว่าที่หัวใจลอยอยู่
+  // ปุ่มยังกดได้อยู่ถ้าไม่ตั้งตรงนี้ กดรัวก็จะได้ของหลายรอบจากคูลดาวน์เดียว
+  markPetted();
+  refreshLove();
+
+  pendingGift = rollPetGift();
+  unlockAudio();
+  sfx.love();
+  game.startLove(() => settleLove(true));
+}
+
+loveBtn.addEventListener('click', doLove);
+
+// ── แตะตัวน้อง ──
+// กดแล้วน้องทำท่าน่ารักท่าหนึ่งใน 5 ท่า วนไปเรื่อย ๆ (ตารางท่าอยู่ใน game.js)
+//
+// ที่นี่ทำแค่สองอย่าง: ปลดล็อกเสียง (ต้องเกิดในจังหวะที่ผู้ใช้กดจริง ไม่งั้น
+// เบราว์เซอร์บล็อก) แล้วส่งต่อให้เกม ส่วนจะเล่นท่าไหน เสียงอะไร แตะซ้ำแล้วยังไง
+// เป็นเรื่องของเกมทั้งหมด — หน้าจอไม่ควรรู้ว่าน้องมีกี่ท่า
+document.getElementById('btnPet').addEventListener('click', () => {
+  unlockAudio();
+  game.tapCat();
+});
+
+// ── ตำแหน่งปุ่ม ──
+// ตัวเลขจริงอยู่ที่ LOVE_BTN ใน game.js ที่เดียว เพราะหัวใจที่ลอยออกจากปุ่ม
+// วาดบน canvas และต้องออกจากจุดเดียวกับที่ CSS วางปุ่มไว้เป๊ะ ๆ
+// เวทีเป็นอัตราส่วน 960:420 ตายตัว เปอร์เซ็นต์จึงหารตรงจากพิกัดฉากได้เลย
+startPanel.style.setProperty('--love-x', ((LOVE_BTN.x / VIEW.W) * 100).toFixed(3) + '%');
+startPanel.style.setProperty('--love-y', ((LOVE_BTN.y / VIEW.H) * 100).toFixed(3) + '%');
+startPanel.style.setProperty('--cat-x', ((CAT_TAP.x / VIEW.W) * 100).toFixed(3) + '%');
+startPanel.style.setProperty('--cat-y', ((CAT_TAP.y / VIEW.H) * 100).toFixed(3) + '%');
+startPanel.style.setProperty('--cat-w', ((CAT_TAP.w / VIEW.W) * 100).toFixed(3) + '%');
+startPanel.style.setProperty('--cat-h', ((CAT_TAP.h / VIEW.H) * 100).toFixed(3) + '%');
+
+// เดินป้ายเวลาทุกวินาที — เขียนข้อความสองช่องต่อวินาที ถูกกว่าการไปผูกกับลูปเกม
+// ซึ่งจะกลายเป็นงานที่ต้องทำ 60 ครั้งต่อวินาทีเพื่อผลลัพธ์ที่เปลี่ยนวินาทีละครั้ง
+setInterval(refreshLove, 1000);
+refreshLove();
 
 function buildMailList() {
   const list = document.getElementById('mailList');
@@ -4419,6 +4541,10 @@ function pickLine() {
 }
 
 function showIntro() {
+  // ของขวัญที่ยังค้างอยู่ต้องจ่ายก่อน game.reset() ข้างล่างจะล้างแอนิเมชันทิ้ง
+  // ไม่งั้นคนที่กดเล่นระหว่างหัวใจยังลอยอยู่จะเสียของรอบนั้นไปฟรี ๆ
+  settleLove(false);
+
   unlockAudio();   // ต้องเรียกตอนผู้ใช้กดปุ่ม ไม่งั้นเบราว์เซอร์บล็อกเสียง
   startMusic();    // ต้องอยู่หลัง unlockAudio เพราะ context ยังถูกระงับอยู่ก่อนหน้านั้น
 
