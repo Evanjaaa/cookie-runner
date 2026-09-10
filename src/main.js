@@ -4055,6 +4055,11 @@ function setCreateTab(which) {
   document.getElementById('createTitle').textContent = onPaint ? 'ระบายสีน้อง' : 'หน้าน้องแมว';
   if (onPaint) { drawPaintCat(); drawPickMap(); }
 }
+/** ไอคอนกากบาท — เส้นหนาปลายมนชุดเดียวกับลูกศรย้อนกลับใน index.html */
+const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">'
+  + '<path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"'
+  + ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 // ── ขยายเต็มจอ ──
 // แค่ติดคลาสที่แผง ที่เหลือเป็นเรื่องของ CSS ล้วน ๆ ไม่ได้ย้าย DOM หรือสร้างหน้าใหม่
 // เครื่องมือทุกตัวจึงยังต่อสายเดิมอยู่ ไม่ต้องผูก event ซ้ำและไม่มีสถานะให้หลุด
@@ -4066,7 +4071,11 @@ function setPaintMax(on) {
   const b = document.getElementById('paintMax');
   // ในโหมดเต็มจอปุ่มนี้ทำหน้าที่ "ปิด" ตามแบบที่วางไว้ ไม่ใช่ "ย่อ"
   // เพราะโหมดเต็มจอซ่อนปุ่มกลับไปแล้ว มันจึงเป็นทางออกทางเดียวของหน้านี้
-  b.textContent = on ? '✕' : '⛶';
+  // ── ทำไมตอนเต็มจอเป็น SVG ไม่ใช่ตัวอักษร ──
+  // ปุ่มนี้ตอนเต็มจอใช้เทมเพลตเดียวกับปุ่มย้อนกลับ ซึ่งวาดไอคอนด้วยเส้น SVG
+  // หนา 3 หน่วย ปลายมน ตัวอักษร ✕ ของฟอนต์เส้นบางกว่าและปลายตัด
+  // วางคู่กันแล้วจะเห็นว่าเป็นไอคอนคนละชุด ทั้งที่ปุ่มหน้าตาเหมือนกันเป๊ะ
+  b.innerHTML = on ? CLOSE_ICON : '⛶';
   b.setAttribute('aria-label', on ? 'ปิดโหมดเต็มจอ' : 'ขยายเต็มจอ');
   b.title = b.getAttribute('aria-label');
   requestAnimationFrame(() => { drawPaintCat(); drawPickMap(); });

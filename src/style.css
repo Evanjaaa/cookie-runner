@@ -88,14 +88,18 @@ body {
  * ส่วน background ของ CSS เบราว์เซอร์ย่อ/ขยายให้ด้วยความละเอียดจริงของจอเสมอ
  * ไม่ติดเพดานใด ๆ และไม่ต้องวาดใหม่ทุกเฟรมด้วย — คมกว่าและเบากว่าพร้อมกัน
  *
- * ตอนเล่นจริง canvas วาดท้องฟ้าทึบทับเต็มพื้นที่ ภาพนี้จึงไม่โผล่มากวน
- * มีแต่หน้าแรกที่ drawHome() ล้าง canvas ให้โปร่ง ภาพจึงทะลุขึ้นมาให้เห็น */
+ * ── ตอนนี้ไม่มีหน้าไหนใช้ไฟล์ภาพเป็นฉากหลังแล้ว ──
+ * หน้าแรกวาดอาณาจักรเอง (render/kingdom/) หน้าห้องก่อนเริ่มวิ่งวาดห้องเอง
+ * (render/room/) เหลือไว้แค่สีพื้นเป็นฉากรองตอน canvas ยังไม่วาดเฟรมแรก */
 .stage {
   position: relative;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,243,226,.09) inset;
-  background: var(--plum) url('/home-bg.jpg') center / cover no-repeat;
+  /* ── ฉากหน้าแรกวาดด้วยโค้ดบน canvas แล้ว ไม่ใช่ไฟล์ภาพ ──
+     เหลือแต่สีพื้นไว้เป็นฉากรองตอน canvas ยังไม่วาดเฟรมแรก
+     (หน้าห้องก่อนเริ่มวิ่งยังใช้ภาพอยู่ ดู .stage:has(#introPanel...) ข้างล่าง) */
+  background: var(--plum);
   touch-action: none;
 }
 canvas { display: block; width: 100%; height: auto; }
@@ -322,7 +326,8 @@ canvas[hidden] { display: none; }
   --backbtn-x: clamp(8px, 1.4vw, 16px);
 }
 
-.backbtn {
+.backbtn,
+#createPanel.paint-full .paint-max {
   position: absolute;
   /* เกาะมุมการ์ด (.pop) ไม่ใช่มุมเวที — พอการ์ดหดตามเนื้อหา ปุ่มต้องหดตามไปด้วย
      ใช้ px ไม่ใช่ % เพราะการ์ดแต่ละหน้ากว้างไม่เท่ากัน ถ้าใช้ % ปุ่มจะเยื้องไม่เท่ากันทุกหน้า */
@@ -345,12 +350,15 @@ canvas[hidden] { display: none; }
     inset 0 1px 0 rgba(255,255,255,.22);
   transition: transform .06s ease, box-shadow .06s ease;
 }
-.backbtn svg { display: block; }
-.backbtn:active {
+.backbtn svg,
+#createPanel.paint-full .paint-max svg { display: block; }
+.backbtn:active,
+#createPanel.paint-full .paint-max:active {
   transform: translateY(3px);
   box-shadow: 0 0 0 rgba(20,8,32,.65), 0 3px 9px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.22);
 }
-.backbtn:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
+.backbtn:focus-visible,
+#createPanel.paint-full .paint-max:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
 
 /* ── แถบเรียง/กรองการ์ด ──────────────────────
    เกาะมุมซ้ายบนต่อจากปุ่มกลับ ไม่ได้อยู่ในสายไหลของแผง เพราะถ้าเอาไปต่อ
@@ -3236,10 +3244,11 @@ canvas[hidden] { display: none; }
    จะโชว์ภาพปราสาทแปะอยู่ข้างฉากในเกม ซึ่งอ่านเป็นภาพหลุด ไม่ใช่การตกแต่ง */
 .stage:not(:has(.panel:not(.hidden))) { background-image: none; }
 
-/* ฉากห้องก่อนเริ่มวิ่ง — สลับแค่ "ภาพพื้นหลังของเวที" ไม่ได้วาดห้องลง canvas
-   ตัวแมวจึงยังเป็นตัวเดิมที่วาดบน canvas เหมือนหน้าแรกทุกอย่าง
-   และได้ความคมระดับเดียวกับฉากหน้าแรกฟรี ๆ (ดูเหตุผลที่ .stage ข้างบน) */
-.stage:has(#introPanel:not(.hidden)) { background-image: url('/room-bg.jpg'); }
+/* ── ฉากห้องก่อนเริ่มวิ่งวาดด้วยโค้ดบน canvas แล้ว ──
+   เดิมตรงนี้มีกฎสลับ background ของเวทีไปเป็น room-bg.jpg (589 KB)
+   ตอนนี้ drawRoom() วาดห้องเองทั้งฉาก จึงไม่ต้องสลับภาพอีก
+   ตัวแมวยังเป็นตัวเดิมที่วาดบน canvas ทับลงไปเหมือนเดิมทุกอย่าง
+   (ดู src/render/room/) */
 
 /* ── กล่องคำพูดของน้อง ───────────────────────
    แผงนี้ต้องโปร่ง ไม่งั้นมันจะบังตัวแมวที่วาดอยู่บน canvas ข้างหลัง */
@@ -4460,7 +4469,8 @@ canvas[hidden] { display: none; }
   .stepbtn { width: 40px; height: 40px; font-size: 20px; }
   /* แก้ที่โทเคน ไม่ใช่ที่ตัวปุ่ม — ที่จองใน .pop:has(.backbtn) จะได้ขยับตามเอง */
   :root { --backbtn: 40px; --backbtn-x: 10px; }
-  .backbtn { top: 5%; }
+  .backbtn,
+  #createPanel.paint-full .paint-max { top: 5%; }
   /* บีบช่องไฟหลังปุ่มลงบนจอเตี้ย — ที่จองสองข้างกินความกว้างไปเท่าตัว
      พอกว้างขึ้นข้างละสิบกว่าพิกเซล เนื้อหาบางหน้าจะตกบรรทัดแล้วสูงเกินการ์ดทันที */
   .pop:has(.backbtn) {
@@ -6044,14 +6054,12 @@ canvas[hidden] { display: none; }
 /* ปุ่มปิดย้ายออกจากมุมผ้าใบไปอยู่มุมขวาบนของทั้งแผงตามแบบ
    ต้องหลุดออกจาก .paint-canvas ที่มัน absolute อยู่ จึงตรึงกับ .pop แทน */
 #createPanel.paint-full .paint-canvas { position: static; }
+/* หน้าตาทั้งหมดมาจากกฎเดียวกับ .backbtn ข้างบน (ปุ่มถูกเติมเข้าไปในรายชื่อตัวเลือกนั้น)
+   เหลือต่างกันแค่ "อยู่มุมขวา" แทนมุมซ้าย จึงต้องล้าง left ที่รับมาด้วย
+   ไม่งั้นปุ่มจะถูกตรึงสองด้านพร้อมกันแล้วยืดเต็มความกว้างการ์ด */
 #createPanel.paint-full .paint-max {
-  position: absolute;
-  top: clamp(6px, 1.6dvh, 14px);
-  right: clamp(8px, 1.8vw, 18px);
-  width: clamp(32px, 5.4dvh, 44px);
-  height: clamp(32px, 5.4dvh, 44px);
-  border-radius: 50%;
-  z-index: 3;
+  left: auto;
+  right: var(--backbtn-x);
 }
 /* เต็มจอ: ที่ว่างเป็นทรงนอน ความสูงเป็นตัวจำกัด จึงคุมด้วยความสูงแทน
    แล้วให้ความกว้างเป็น auto ตาม aspect-ratio ซึ่งเป็นภาพกลับของกรณีปกติ */

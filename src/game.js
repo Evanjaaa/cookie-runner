@@ -26,6 +26,8 @@ import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treas
 import { drawTreasureSlots } from './render/treasure-hud.js';
 import { drawHUD } from './render/hud.js';
 import { postProcess } from './render/post.js';
+import { drawKingdom } from './render/kingdom/index.js';
+import { drawRoomScene } from './render/room/index.js';
 
 /* จอสัมผัสหรือเปล่า — ใช้เกณฑ์เดียวกับ input.js กับ main.js และตรงกับ
    @media (pointer: coarse) ใน style.css ที่บีบปุ่มล็อบบี้เข้ามาจากขอบจอ
@@ -124,27 +126,38 @@ const HOME_DECO = [
  * ซึ่งเป็นทิศทางที่ตาคนอ่านว่า "แสงมาจากข้างบน" ไม่ใช่ "รูปเปื้อน"
  * และช่วยให้ปุ่มเล่นกับปุ่มกระโดด/หมอบที่ลอยอยู่มุมล่างมีพื้นเข้มรองรับ
  */
-function dimForUi(ctx) {
+/**
+ * หรี่ฉากหลังให้ UI อ่านออก
+ *
+ * @param k ความแรง 1 = เต็มที่ (ใช้กับภาพถ่าย)
+ *
+ * ── ทำไมต้องมีตัวคูณ ──
+ * ค่าเดิมถูกจูนไว้สำหรับ "ภาพถ่าย" ซึ่งคุมคอนทราสต์เองไม่ได้เลย จึงต้องกดแรง
+ * ฉากที่วาดด้วยโค้ดคุมได้ตั้งแต่ต้นทาง กดแรงเท่าเดิมแล้วสีจะจมหมด
+ * (วัดด้วยตาแล้ว: ขอบมืด 46% ทำให้พื้นทรายสีครีมกลายเป็นน้ำตาลโคลน)
+ */
+function dimForUi(ctx, k = 1) {
   const { W, H } = VIEW;
   const INK = '18,7,30';
+  const a = (v) => (v * k).toFixed(3);
 
   // 1) หรี่เรียบบาง ๆ ทั้งผืน แค่พอกลบความจัดของสีให้เข้ากับโทนม่วงของเกม
-  ctx.fillStyle = `rgba(${INK},.08)`;
+  ctx.fillStyle = `rgba(${INK},${a(0.08)})`;
   ctx.fillRect(0, 0, W, H);
 
   // 2) ขอบมืดนุ่ม — ยกจุดศูนย์กลางขึ้นไปเหนือกลางจอ (0.34H)
   //    ขอบล่างจึงอยู่ไกลจากศูนย์กลางกว่าขอบบน แล้วมืดกว่าเองโดยไม่ต้องวาดแยก
   const edge = ctx.createRadialGradient(W / 2, H * 0.34, H * 0.30, W / 2, H * 0.34, H * 1.15);
   edge.addColorStop(0, `rgba(${INK},0)`);
-  edge.addColorStop(0.62, `rgba(${INK},.10)`);
-  edge.addColorStop(1, `rgba(${INK},.46)`);
+  edge.addColorStop(0.62, `rgba(${INK},${a(0.10)})`);
+  edge.addColorStop(1, `rgba(${INK},${a(0.46)})`);
   ctx.fillStyle = edge;
   ctx.fillRect(0, 0, W, H);
 
   // 3) แถบล่างอีกชั้น เริ่มจากครึ่งจอลงไป ให้พื้นจมหายเข้าไปในกรอบแทนที่จะโดนตัดห้วน ๆ
   const floor = ctx.createLinearGradient(0, H * 0.52, 0, H);
   floor.addColorStop(0, `rgba(${INK},0)`);
-  floor.addColorStop(1, `rgba(${INK},.42)`);
+  floor.addColorStop(1, `rgba(${INK},${a(0.42)})`);
   ctx.fillStyle = floor;
   ctx.fillRect(0, 0, W, H);
 }
@@ -1741,16 +1754,21 @@ export class Game {
   /**
    * ฉากห้องก่อนเริ่มวิ่ง — น้องยืนอยู่กลางห้องรอพูดจบ
    *
-   * ภาพห้องเป็น background ของ .stage ที่ CSS สลับให้ (ดู .stage:has(#introPanel...))
-   * ตรงนี้จึงล้าง canvas ให้โปร่งแล้ววาดแค่ตัวแมว เหมือนที่หน้าแรกทำ
-   * ต่างกันแค่ไม่มีของกินลอยรอบตัวกับไม่มีท่าว่าง — ฉากนี้สั้นแค่สามวินาที
-   * ถ้าใส่ท่าว่างเข้าไปด้วยจะได้แค่ท่าที่ทำค้างไว้ครึ่งเดียวแล้วตัดจบ
+   * ── ฉากห้องวาดด้วยโค้ดแล้ว ไม่ใช่ไฟล์ภาพ ──
+   * ของเดิมเป็น room-bg.jpg (589 KB) แปะเป็น background ของ .stage แล้วตรงนี้
+   * ล้าง canvas ให้โปร่งเพื่อให้ภาพทะลุขึ้นมา ตอนนี้วาดเองทั้งห้อง
+   *
+   * ห้องนี้เป็นภาพนิ่งทั้งฉาก ต่างจากหน้าแรกที่ของในฉากขยับอยู่กับที่
+   * เพราะหน้านี้มีอยู่เพื่อให้อ่านคำพูดของน้องแล้วกดเริ่ม ของที่ขยับจะแย่งสายตา
+   * ไปจากสองอย่างนั้น (ดูเหตุผลเต็มใน render/room/index.js)
+   *
+   * ไม่มีท่าว่างเหมือนหน้าแรก — ฉากนี้สั้น ถ้าใส่ท่าว่างจะได้แค่ท่าที่ค้างครึ่งเดียว
    */
   drawRoom(ctx) {
     const t = this.homeTick;
     const x = VIEW.W * 0.5;
 
-    ctx.clearRect(0, 0, VIEW.W, VIEW.H);
+    drawRoomScene(ctx);
 
     // หรี่บาง ๆ ให้กล่องคำพูดสีครีมกับตัวแมวเด้งออกจากห้องที่สีอุ่นใกล้กัน
     ctx.fillStyle = 'rgba(24,10,38,.14)';
@@ -1782,10 +1800,15 @@ export class Game {
     // ถ้าเปลี่ยนฉากหลังใหม่ ต้องปรับ $FOCUS ใน tools/render-bg.ps1 ให้เบาะมาอยู่ที่ GROUND_Y ด้วย
     const x = VIEW.W * 0.5;
 
-    // ฉากหลังเป็น background ของ .stage ใน CSS (ดูเหตุผลในไฟล์นั้น)
-    // ตรงนี้จึงต้องล้างให้โปร่งก่อน ไม่งั้นฉากของรอบเล่นที่แล้วจะค้างทับภาพอยู่
-    ctx.clearRect(0, 0, VIEW.W, VIEW.H);
-    dimForUi(ctx);
+    // ── ฉากหลังวาดด้วยโค้ด ไม่ใช่ไฟล์ภาพแล้ว ──
+    // ของเดิมเป็น home-bg.jpg (576 KB) แปะเป็น background ของ .stage แล้วตรงนี้
+    // ล้าง canvas ให้โปร่งเพื่อให้ภาพทะลุขึ้นมา ข้อเสียคือมันเป็นภาพนิ่งใบเดียว
+    // ขยับไม่ได้ เปลี่ยนธีมไม่ได้ และชิ้นส่วนในภาพเอาไปใช้ในด่านไม่ได้เลย
+    //
+    // ตอนนี้วาดเองทั้งฉาก ใช้พิกัดชุดเดียวกับตัวเกม (960x420 พื้นอยู่ที่ GROUND_Y)
+    // น้องจึงยืนบนพื้นของฉากพอดีโดยไม่ต้องจูนตำแหน่งใหม่
+    drawKingdom(ctx, t);
+    dimForUi(ctx, 0.45);
 
     // สปอตไลต์นุ่ม ๆ ดันตัวละครให้เด่นออกจากฉากหลัง
     const glow = ctx.createRadialGradient(x, GROUND_Y - 60, 10, x, GROUND_Y - 60, 175);
