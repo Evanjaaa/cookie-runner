@@ -2875,6 +2875,37 @@ const IDLE_SHAPE = {
 };
 
 /**
+ * จังหวะอ้าปากของท่าที่ "กำลังร้อง" — เรเดียนต่อเฟรม
+ *
+ * เคยเร็วกว่านี้สามเท่า ซึ่งอ่านออกเป็นการสั่นปาก ไม่ใช่การร้อง
+ * และเร็วเกินกว่าที่เสียงจริงจะตามทัน — เสียงร้องหนึ่งครั้งกินเวลาราวหนึ่งในห้าวินาที
+ * รอบละ 0.7 วินาทีจึงเป็นจังหวะที่เสียงกับปากไปด้วยกันพอดี
+ */
+const CHIRP_RATE = 0.15;
+
+/** ความอ้าปากของท่าหนึ่ง ณ เวลาหนึ่ง — 0 คือหุบสนิท */
+function poseMouth(shape, t, k) {
+  const chirp = shape.chirp ? Math.max(0, Math.sin(t * CHIRP_RATE)) * k : 0;
+  return (shape.mouth || 0) * k + chirp;
+}
+
+/**
+ * ตอนนี้ปากอ้าอยู่ไหม — เกณฑ์เดียวกับที่โค้ดวาดใช้จริง
+ *
+ * มีไว้ให้ฝั่งเกมเล่นเสียงให้ตรงกับปากที่เห็นบนจอ ถ้าฝั่งนั้นคำนวณเอง
+ * วันที่ใครจูนจังหวะปากตรงนี้ เสียงจะหลุดจากปากทันทีโดยไม่มีอะไรฟ้อง
+ */
+export function poseMouthOpen(pose, t, k) {
+  return poseMouth(IDLE_SHAPE[pose] || IDLE_SHAPE.stand, t, Math.max(0, Math.min(1, k))) > 0.5;
+}
+
+/** ท่านี้มีจังหวะอ้าปากไหม — ถ้าไม่มี ผู้เรียกต้องเล่นเสียงตอนเริ่มท่าเอง */
+export function poseSpeaks(pose) {
+  const shape = IDLE_SHAPE[pose] || IDLE_SHAPE.stand;
+  return !!(shape.mouth || shape.chirp);
+}
+
+/**
  * ทรงลำตัว "ตอนยืน" ซึ่งเป็นทรงที่ชุดทุกชุดถูกวาดขึ้นมาให้พอดี
  * ต้องตรงกับวงรีใน clipBody() ของ src/outfits.js เป๊ะ ๆ
  */
@@ -2924,9 +2955,9 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
   // แต่ท่านี้เป็นท่า "กำลังทำอะไรอยู่" ถ้าไม่ขยับเลยมันจะอ่านเป็นภาพค้างทันที
   const lick = shape.lick ? Math.sin(t * 0.22) * k : 0;
 
-  // จังหวะร้อง — ปากอ้าราวสามครั้งต่อวินาที เร็วกว่าการเลียเพราะเป็นเสียงสั้น ๆ
-  // ใช้เฉพาะครึ่งบวกของคลื่น ปากจึงอ้าเป็นห้วง ๆ แล้วหุบสนิทระหว่างห้วง
-  const chirp = shape.chirp ? Math.max(0, Math.sin(t * 0.34)) * k : 0;
+  // จังหวะร้อง — อ้าแล้วหุบรอบละราว 0.7 วินาที ตามจังหวะที่เสียงร้องหนึ่งครั้งกินพอดี
+  // ใช้เฉพาะครึ่งบวกของคลื่น ปากจึงอ้าเป็นห้วง ๆ แล้วหุบสนิทระหว่างห้วง (ดู CHIRP_RATE)
+  const chirp = shape.chirp ? Math.max(0, Math.sin(t * CHIRP_RATE)) * k : 0;
 
   // ── จังหวะของท่าตอบตอนถูกแตะ ──
   // ทุกตัวคิดจาก t เหมือน lick/chirp ข้างบน ไม่ได้เก็บสถานะไว้ในตัวเอง
@@ -2949,7 +2980,7 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
 
   const tilt = (shape.tilt || 0) * k + lick * 0.05 + chirp * 0.06
     + waveT * 0.05 + sway * 0.06;
-  const mouth = (shape.mouth || 0) * k + chirp;
+  const mouth = poseMouth(shape, t, k);
   const shut = (shape.shut || 0) * k;
   const ear = (shape.ear || 0) * k;
 
@@ -3179,9 +3210,15 @@ function drawCatStand(ctx, s, {
   // ใส่ชุดอยู่ → ตีขอบหนาสองเท่าไว้ก่อน เดี๋ยวชุดจะกินครึ่งในไปเอง (ดู bodyEdgeUnder)
   bodyEdgeUnder(ctx, s);
   bodyEdge(); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,252,240,.26)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(0, cy, rx - 1, ry - 1, 0, -Math.PI * 0.52, Math.PI * 0.08); ctx.stroke();
+  // ── s.solid = วาดแบบทึบล้วน ──
+  // ใช้ตอนวาดน้องเป็น "แผนที่รหัสสี" เพื่อหาว่าพิกเซลไหนเป็นส่วนไหน (ดู pickSkin
+  // ใน paint.js) ขอบแสงเป็นสีขาวโปร่ง พอทับลงบนรหัสสีมันจะผสมจนอ่านออกมาเป็น
+  // รหัสของส่วนอื่น หรือเป็น "ไม่ใช่ส่วนไหนเลย" — เห็นเป็นเส้นที่ทาสีไม่ติดพาดกลางตัว
+  if (!s.solid) {
+    ctx.strokeStyle = 'rgba(255,252,240,.26)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(0, cy, rx - 1, ry - 1, 0, -Math.PI * 0.52, Math.PI * 0.08); ctx.stroke();
+  }
 
   // พุงสีครีม
   ctx.fillStyle = s.cream;
@@ -3280,7 +3317,12 @@ function drawCatStand(ctx, s, {
   }
 
   // เหนื่อยแล้วหัวห้อยลงนิดหน่อย ทั้งตัวจึงดูหนักขึ้นโดยไม่ต้องแก้ท่าขา
-  drawCatHead(ctx, hx, hy + tired * 1.6, s, { isDead, blink, mouthOpen, tilt, mood, earLay });
+  drawCatHead(ctx, hx, hy + tired * 1.6, s, {
+    isDead, blink, mouthOpen, tilt, mood, earLay,
+    // แผนที่รหัสสีต้องเห็นหน้าน้องตัวจริง ไม่ใช่รูปที่ผู้เล่นอัปโหลดมาทับ
+    // ไม่งั้นขอบเขตของทุกส่วนบนหัวจะกลายเป็นสีในรูปถ่าย
+    noPhoto: !!s.solid,
+  });
 
   // ── ยกอุ้งเท้าขึ้นเลีย ───────────────────────
   // ต้องวาด "หลังหัว" ไม่ใช่ก่อน เพราะปลายเท้าไปจบตรงปาก ซึ่งอยู่ในวงหัวพอดี
@@ -3437,9 +3479,12 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
 
   // ขอบแสงด้านบนขวา รับกับแสงเรืองที่ขอบฟ้าซึ่งอยู่ทางขวาของจอ
   // ทำหน้าที่คู่กับเส้นขอบเข้ม: เส้นเข้มไว้สู้ฉากสว่าง เส้นสว่างไว้สู้ฉากมืด
-  ctx.strokeStyle = 'rgba(255,252,240,.32)';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.arc(0, 0, 11.9, -Math.PI * 0.6, Math.PI * 0.06); ctx.stroke();
+  // ปิดตอนวาดแผนที่รหัสสี ด้วยเหตุผลเดียวกับขอบแสงของลำตัว (ดู s.solid ที่นั่น)
+  if (!s.solid) {
+    ctx.strokeStyle = 'rgba(255,252,240,.32)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, 0, 11.9, -Math.PI * 0.6, Math.PI * 0.06); ctx.stroke();
+  }
 
   if (s.stripes) {
     ctx.strokeStyle = s.dark;
@@ -3491,13 +3536,29 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   const glee = mood === 'starry';
   if (s.blush || glee) {
     ctx.save();
-    ctx.globalAlpha = glee ? 0.72 : 0.5;
+    // แก้มเป็นสีโปร่งบาง ๆ เพื่อให้ดูเป็นเลือดฝาด ไม่ใช่สติกเกอร์แปะหน้า
+    // แต่ตอนวาดแผนที่รหัสสีต้องทึบ ไม่งั้นรหัสแก้มจะผสมกับรหัสขนจนได้ค่ากลาง ๆ
+    // ที่อ่านออกมาเป็น "หูใน" — แตะแก้มแล้วไปโดนหูในแทน ซึ่งเป็นอาการที่ทักมา
+    ctx.globalAlpha = s.solid ? 1 : (glee ? 0.72 : 0.5);
     // ช่อง cheek แยกจาก pink เพื่อให้ระบายแก้มกับหูในคนละสีได้
     // สกินติดเกมทั้งหกตัวไม่ได้ตั้ง cheek ไว้ จึงถอยไปใช้ pink เหมือนเดิมทุกประการ
     ctx.fillStyle = s.cheek || s.pink;
     const bw = glee ? 4.3 : 3.6;
-    ctx.beginPath(); ctx.ellipse(-9, 3, bw, 2.4 + (glee ? 0.5 : 0), 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(11, 3, bw, 2.4 + (glee ? 0.5 : 0), 0, 0, Math.PI * 2); ctx.fill();
+    const bh = 2.4 + (glee ? 0.5 : 0);
+    ctx.beginPath(); ctx.ellipse(-9, 3, bw, bh, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(11, 3, bw, bh, 0, 0, Math.PI * 2); ctx.fill();
+
+    // ── รอยแปรงบนแก้ม ──
+    // อยู่ในวง save เดียวกับแก้ม จึงได้ความโปร่งเท่ากันโดยอัตโนมัติ
+    // แก้มที่ระบายเองจึงยังเป็นเลือดฝาดจาง ๆ ไม่ใช่แผ่นสีทึบแปะหน้า
+    //
+    // สองข้างอยู่ในพาธเดียวกันแต่ไม่ได้ทาพร้อมกัน — พู่กันทิ้งรอยเฉพาะตรงที่ลากผ่าน
+    // ระบายแก้มซ้ายข้างเดียวแล้วเว้นขวาไว้จึงทำได้
+    paintOver(ctx, s, 'head', () => {
+      ctx.beginPath();
+      ctx.ellipse(-9, 3, bw, bh, 0, 0, Math.PI * 2);
+      ctx.ellipse(11, 3, bw, bh, 0, 0, Math.PI * 2);
+    });
     ctx.restore();
   }
 
@@ -3630,9 +3691,13 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.fillStyle = s.eye;
     ctx.beginPath(); ctx.arc(-5, -1, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(7, -1, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.9)';   // ประกายตา
-    ctx.beginPath(); ctx.arc(-3.9, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(8.1, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
+    // ประกายตาเป็นจุดขาว — ข้ามตอนวาดแผนที่รหัสสี ไม่งั้นใจกลางตาทั้งสองข้าง
+    // จะกลายเป็น "ไม่ใช่ส่วนไหนเลย" แล้วแตะตรงนั้นจะไม่เลือกอะไรขึ้นมา
+    if (!s.solid) {
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.arc(-3.9, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(8.1, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   // จมูก — สกินที่ไม่ได้ตั้ง nose ไว้ใช้ชมพูตามเดิม
@@ -3720,12 +3785,24 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   }
 
   // หนวด — สีมาจากสกิน เพราะหนวดครีมบนหน้าแมวขาวจะมองไม่เห็นเลย
+  //
+  // สี่เส้นอยู่ในพาธเดียว ไม่ได้แยก stroke ทีละเส้นเหมือนเดิม — ผลบนจอเท่ากันเป๊ะ
+  // (แต่ละเส้นขึ้นต้นด้วย moveTo จึงไม่ต่อกัน) แต่ได้พาธก้อนเดียวไว้ส่งให้รอยแปรง
+  // ใช้ซ้ำ ถ้าเขียนแยกกันสองที่ วันที่ใครขยับหนวด รอยแปรงจะไปทาผิดที่ทันที
+  const whiskers = () => {
+    ctx.beginPath();
+    ctx.moveTo(-7, 4); ctx.lineTo(-16, 2);
+    ctx.moveTo(-7, 6.5); ctx.lineTo(-16, 7.5);
+    ctx.moveTo(9, 4); ctx.lineTo(18, 2);
+    ctx.moveTo(9, 6.5); ctx.lineTo(18, 7.5);
+  };
   ctx.strokeStyle = s.whisker;
   ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(-7, 4); ctx.lineTo(-16, 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-7, 6.5); ctx.lineTo(-16, 7.5); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(9, 4); ctx.lineTo(18, 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(9, 6.5); ctx.lineTo(18, 7.5); ctx.stroke();
+  whiskers(); ctx.stroke();
+
+  // รอยแปรงบนหนวด — ทาทับเส้นหนวดที่เพิ่งวาด ไม่ใช่ทาใต้มันเหมือนของอื่นบนหัว
+  // หนวดเป็นเส้นบาง ๆ ที่วาดทับทุกอย่างอยู่แล้ว ถ้าทาไว้ข้างใต้จะไม่มีวันโผล่ออกมา
+  paintStroke(ctx, s, 'head', whiskers, 1.4);
 
   // ของสวมหัว (หมวก โบว์ แว่น) วาดท้ายสุดเพื่อให้ทับได้ทั้งหน้าและหู
   s.outfit?.head?.(ctx, s, { earsBack, scale });

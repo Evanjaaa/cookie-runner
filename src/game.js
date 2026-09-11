@@ -17,7 +17,7 @@ import {
   drawBigFish,
   drawBonusSparkle,
   drawRain, drawSkillGauge, drawNips, drawCans, drawFallers, drawHazards,
-  drawHeart,
+  drawHeart, poseMouthOpen, poseSpeaks,
 } from './render/entities.js';
 import { getSkin } from './skins.js';
 import { getStage, sceneAt } from './stages.js';
@@ -101,10 +101,10 @@ const IDLE_HOLD = 300;   // ค้างท่าละ 5 วินาที (�
 const IDLE_ACTS = [
   // หาวสั้นกว่าท่าอื่น — ปากอ้าค้างนานกว่านี้อ่านเป็นภาพค้าง ไม่ใช่การหาว
   // ส่วนท่าอื่นเป็นท่าพักอยู่แล้ว ค้างนานเท่าไหร่ก็ยังดูเป็นธรรมชาติ
-  { pose: 'yawn', hold: 180 },          // หาว 3 วินาที
-  { pose: 'sit', hold: IDLE_HOLD },     // นั่ง
-  { pose: 'groom', hold: IDLE_HOLD },   // นั่งเลียอุ้งเท้า
-  { pose: 'loaf', hold: IDLE_HOLD },    // หมอบเป็นก้อนขนมปัง
+  { pose: 'yawn', hold: 180, voice: 'yawn' },            // หาว 3 วินาที
+  { pose: 'sit', hold: IDLE_HOLD, voice: 'mew' },        // นั่ง
+  { pose: 'groom', hold: IDLE_HOLD, voice: 'purr' },     // นั่งเลียอุ้งเท้า
+  { pose: 'loaf', hold: IDLE_HOLD, voice: 'snooze' },    // หมอบเป็นก้อนขนมปัง
 ];
 
 /**
@@ -125,17 +125,23 @@ const IDLE_ACTS = [
  */
 const REACT_EASE = 18;
 const REACT_ACTS = [
-  // โบกอุ้งเท้าทักทาย ตาเป็นประกาย ร้องทัก
-  { pose: 'wave', hold: 118, sound: 'trill' },
+  // โบกอุ้งเท้าทักทาย ตาเป็นประกาย ร้องทัก — ปากขยับ เสียงจึงตามปากทุกครั้งที่อ้า
+  { pose: 'wave', hold: 118, voice: 'trill' },
   // นวดแป้งหน้าอก หลับตาเคลิ้ม — ท่าที่แมวทำตอนสบายใจที่สุด
-  { pose: 'knead', hold: 160, sound: 'purr' },
+  { pose: 'knead', hold: 160, voice: 'purr' },
   // ย่อตัวส่ายก้นเล็งเป้า หูลู่ — ท่าก่อนพุ่งตะครุบ
-  { pose: 'wiggle', hold: 132, sound: 'chirp' },
+  { pose: 'wiggle', hold: 132, voice: 'chirp' },
   // ล้มตัวลงนอนตะแคงชูอุ้งเท้า = ยอมให้ลูบพุง ซึ่งแมวทำเฉพาะกับคนที่ไว้ใจ
-  { pose: 'roll', hold: 168, sound: 'slide' },
+  { pose: 'roll', hold: 168, voice: 'flop' },
   // ขนพองฟูทั้งตัวเพราะตกใจที่โดนแตะ แล้วค่อย ๆ ยุบ
-  { pose: 'puff', hold: 112, sound: 'double' },
+  { pose: 'puff', hold: 112, voice: 'startle' },
 ];
+
+/**
+ * ท่าดีใจตอนได้หัวใจ — ไม่ได้อยู่ในตารางไหนเพราะเล่นได้ทางเดียวคือกดปุ่มหัวใจ
+ * แต่ต้องมีช่อง voice เหมือนท่าอื่น ฝั่งเสียงจะได้ไม่ต้องรู้ว่าท่าไหนมาจากตารางไหน
+ */
+const LOVE_ACT = { pose: 'love', voice: 'mew' };
 
 /**
  * น้ำหนักของท่า 0→1→0 ตามเวลาที่อยู่ในท่านั้น
@@ -273,6 +279,8 @@ export class Game {
     // ท่าตอบตอนถูกแตะ — ตัวชี้ท่าถัดไปอยู่นอก this.react เพราะมันต้องจำข้าม
     // การแตะแต่ละครั้ง ส่วน react เกิดใหม่ทุกครั้งที่แตะ
     this.reactAt = 0;
+    // เฟรมก่อนปากอ้าอยู่ไหม — ใช้หาจังหวะที่ปากเพิ่งเปิด ซึ่งคือจังหวะที่ต้องออกเสียง
+    this.mouthWas = false;
 
     // ฉากห้องก่อนเริ่มวิ่ง — เป็นแค่ "โหมดวาด" ไม่ใช่สถานะเกม
     // สถานะยังเป็น READY อยู่ ระบบหยุด/นับคะแนน/อินพุตจึงไม่ต้องรู้จักมันเลย
@@ -395,6 +403,9 @@ export class Game {
     // ท่าตอบตอนถูกแตะก็ต้องล้างด้วยเหตุผลเดียวกัน — ท่านอนตะแคงที่ค้างอยู่
     // จะกลายเป็นน้องวิ่งตะแคงข้างไปทั้งด่าน
     this.react = null;
+    // ตัวจำสถานะปากต้องล้างด้วย ไม่งั้นรอบหน้าที่กลับมาล็อบบี้ จะค้างว่าปากยังอ้าอยู่
+    // แล้วกลืนเสียงแรกของท่าถัดไปหนึ่งครั้ง
+    this.mouthWas = false;
 
     this.camera = 0;
     this.speed = SPEED.run;   // คงที่ตลอดรอบ ระยะกระโดดจึงเท่าเดิมเสมอ
@@ -528,6 +539,7 @@ export class Game {
       this.stepLove(dt);
       this.stepReact(dt);
       this.stepIdle(dt);
+      this.stepVoice();
     }
     if (this.state !== STATE.RUN) return;
 
@@ -1895,6 +1907,7 @@ export class Game {
         this.idleWait = 0;
         this.idleT = 0;
         this.idleAt = (this.idleAt + 1) % IDLE_ACTS.length;
+        this.speakStart(IDLE_ACTS[this.idleAt]);
       }
       return;
     }
@@ -1907,19 +1920,59 @@ export class Game {
    * ท่าที่ต้องวาดตอนนี้ — null = ยืนปกติ
    * k คือน้ำหนักของท่า 0→1→0 ทำให้เข้าและออกจากท่าแบบค่อยเป็นค่อยไป
    */
-  get idlePose() {
+  /**
+   * ท่าที่กำลังเล่นอยู่ พร้อมข้อมูลของท่าเอง (ชื่อท่า ความยาว เสียงประจำท่า)
+   * null = ยืนเฉย ๆ ไม่ได้ทำท่าอะไร
+   *
+   * แยกจาก idlePose เพราะฝั่งเสียงต้องรู้ว่า "ท่าไหน" ไม่ใช่แค่ "รูปร่างไหน"
+   * ส่วนฝั่งวาดไม่ต้องรู้จักเสียงเลย
+   */
+  get activePose() {
     if (this.love) {
       const k = this.love.k;
-      return k > 0.001 ? { pose: 'love', k } : null;
+      return k > 0.001 ? { act: LOVE_ACT, k } : null;
     }
     if (this.react) {
       const act = REACT_ACTS[this.react.at];
-      return { pose: act.pose, k: poseWeight(this.react.t, act.hold, REACT_EASE) };
+      return { act, k: poseWeight(this.react.t, act.hold, REACT_EASE) };
     }
     if (this.idleT < 0) return null;
     const act = IDLE_ACTS[this.idleAt];
-    return { pose: act.pose, k: poseWeight(this.idleT, act.hold, IDLE_EASE) };
+    return { act, k: poseWeight(this.idleT, act.hold, IDLE_EASE) };
   }
+
+  get idlePose() {
+    const a = this.activePose;
+    return a ? { pose: a.act.pose, k: a.k } : null;
+  }
+
+  // ── เสียงพูดของน้อง ─────────────────────────────
+  //
+  // ทุกท่ามีเสียงประจำท่า อยู่ที่ช่อง voice ของตารางท่า
+  //
+  // ── ทำไมเสียงถึงต้องผูกกับปาก ไม่ใช่เล่นตอนเริ่มท่าเฉย ๆ ──
+  // ท่าที่ปากขยับเป็นจังหวะ (โบกอุ้งเท้า ดีใจตอนได้หัวใจ) อ้าปากหลายครั้งต่อหนึ่งท่า
+  // ถ้าเล่นเสียงครั้งเดียวตอนเริ่ม ปากที่อ้าอีกสองสามครั้งจะเงียบสนิท
+  // ซึ่งอ่านออกทันทีว่าเสียงไม่ได้มาจากตัวน้อง
+
+  /** เสียงตอนเริ่มท่า — เฉพาะท่าที่ปากไม่ขยับ ที่เหลือ stepVoice ดูแลให้ */
+  speakStart(act) {
+    if (act?.voice && !poseSpeaks(act.pose)) sfx[act.voice]?.();
+  }
+
+  /**
+   * เดินเสียงไปทีละเฟรม — ร้องทุกครั้งที่ปากเปลี่ยนจากหุบเป็นอ้า
+   *
+   * ถามฝั่งวาดว่าตอนนี้ปากอ้าอยู่ไหม ไม่ได้นับเวลาเอง
+   * ถ้านับเอง สองฝั่งจะเพี้ยนจากกันทันทีที่มีคนไปจูนจังหวะปากข้างเดียว
+   */
+  stepVoice() {
+    const a = this.activePose;
+    const open = !!a && poseMouthOpen(a.act.pose, this.homeTick, a.k);
+    if (open && !this.mouthWas && a.act.voice) sfx[a.act.voice]?.();
+    this.mouthWas = open;
+  }
+
 
   // ── แตะตัวน้อง ──────────────────────────────────────────────
 
@@ -1960,7 +2013,7 @@ export class Game {
     this.idleT = -1;
     this.idleWait = 0;
     this.react = { at: i, t: 0, next: null };
-    sfx[REACT_ACTS[i].sound]?.();
+    this.speakStart(REACT_ACTS[i]);
   }
 
   /** เดินท่าตอบการแตะไปทีละเฟรม — แยกจากการวาดด้วยเหตุผลเดียวกับ stepIdle() */

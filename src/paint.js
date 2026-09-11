@@ -19,22 +19,36 @@ import { loadPref, savePref } from './storage.js';
 /** ชื่อสกินของแมวที่ระบายเอง — ใช้เป็น id เดียวกับสกินอื่นเพื่อให้ระบบเดิมรองรับได้เลย */
 export const CUSTOM_ID = 'mine';
 
-// ── ส่วนที่ระบายได้ ────────────────────────────────────────
-// key ตรงกับชื่อช่องในอ็อบเจกต์จานสีเป๊ะ ๆ การระบายจึงเป็นแค่การเขียนค่าลงช่องนั้น
 //
-// pick คือสีที่ใช้ "ตอนตรวจว่าแตะโดนส่วนไหน" ไม่ใช่สีที่ผู้เล่นเห็น
-// วิธีตรวจคือวาดแมวอีกรอบลงผ้าใบที่ซ่อนไว้ โดยส่งจานสีปลอมที่ทุกช่องเป็นสีรหัส
-// แล้วอ่านพิกเซลตรงจุดที่นิ้วแตะว่าเป็นรหัสไหน — ได้ขอบเขตที่ตรงกับรูปจริงเป๊ะ
-// โดยไม่ต้องเขียนโค้ดคำนวณขอบเขตของแต่ละส่วนขึ้นมาใหม่ให้ผิดจากรูปจริง
+// ── ชื่อต้องบอกให้ครบว่ากดแล้วอะไรเปลี่ยนบ้าง ──
+// หลายช่องคุมของมากกว่าหนึ่งชิ้น เพราะโค้ดวาดใช้สีช่องเดียวกันหลายที่
+// ช่อง dark ทาทั้งขาและแขน ช่อง cream ทาทั้งพุงและปาก ชื่อที่บอกแค่ชิ้นเดียว
+// ทำให้คนกดแล้วเจอของอื่นเปลี่ยนตามโดยไม่รู้ล่วงหน้า — ชื่อจึงต้องรวมไว้ให้หมด
+// ส่วน hint คือรายการเต็มที่ไปโผล่ใต้ผ้าใบตอนเลือกส่วนนั้นอยู่
+//
+// flat = ส่วนที่พู่กันลากลงไปแล้วไม่มีวันโผล่ออกมา จึงลงสีทั้งส่วนรวดเดียวแทน
+//
+// ── ทำไมตากับจมูกถึงลากไม่ได้ ──
+// ชั้นรอยแปรงถูกวาดทับตัวน้องเป็นชั้น ๆ ตอนวาด (ดู paintOver ใน entities.js)
+// แล้วสองอย่างนี้ถูกวาดทับ "หลัง" ชั้นนั้น
+//
+// ตาย้ายขึ้นไปทับไม่ได้ เพราะรอยแปรงจะกลบทั้งตาดำและประกายในตาจนแบนเหลือเป็น
+// จุดสีเรียบ ๆ ส่วนจมูกเป็นสามเหลี่ยมกว้างหกหน่วย ทาติดก็ได้สีเรียบสีเดียวอยู่ดี
+// ลงทั้งส่วนรวดเดียวจึงให้ผลเหมือนกันโดยไม่ต้องแลกอะไรเลย
+//
+// แก้มกับหนวดเคยอยู่กลุ่มนี้ด้วย ตอนนี้ย้ายชั้นให้ทาติดแล้ว จึงลากทีละข้างได้
 export const REGIONS = [
-  { key: 'cat', name: 'ขน', hint: 'ขนหลักทั้งตัว หัว หู หาง', pick: '#140000' },
-  { key: 'cream', name: 'พุง', hint: 'พุง ปาก ปลายหาง อุ้งเท้า', pick: '#280000' },
-  { key: 'pink', name: 'หูใน', hint: 'หูชั้นใน', pick: '#500000' },
-  { key: 'nose', name: 'จมูก', hint: 'จมูกน้อง', pick: '#640000' },
-  { key: 'dark', name: 'ขา', hint: 'ขา ลาย และแต้มปลายขน', pick: '#3C0000' },
-  { key: 'whisker', name: 'หนวด', hint: 'หนวดน้อง', pick: '#8C0000' },
-  { key: 'eye', name: 'ตา', hint: 'ดวงตา', pick: '#780000' },
-  { key: 'cheek', name: 'แก้ม', hint: 'แก้มสองข้าง', pick: '#A00000' },
+  { key: 'cat', name: 'ขน', hint: 'ขนทั้งตัว หัว หูนอก และหาง', pick: '#140000' },
+  // พุงกับปากใช้สีครีมช่องเดียวกัน รวมปลายหางกับอุ้งเท้าด้วย
+  { key: 'cream', name: 'พุง+ปาก', hint: 'พุง ปาก ปลายหาง และอุ้งเท้า', pick: '#280000' },
+  { key: 'pink', name: 'หูใน', hint: 'หูชั้นในสองข้าง', pick: '#500000' },
+  { key: 'nose', name: 'จมูก', hint: 'จมูก — แตะแล้วลงสีทั้งส่วน', pick: '#640000', flat: true },
+  // น้องที่ระบายเองปิดลายกับแต้มปลายขนไว้ (ดู stripes/points ใน toSkin)
+  // ช่องนี้จึงเหลือแค่ขากับแขน ซึ่งโค้ดวาดตีเส้นด้วยสีช่องเดียวกันทั้งคู่
+  { key: 'dark', name: 'ขา+แขน', hint: 'ขาสองข้างและแขนสองข้าง', pick: '#3C0000' },
+  { key: 'whisker', name: 'หนวด', hint: 'หนวดสี่เส้น ลากทีละเส้นได้', pick: '#8C0000' },
+  { key: 'eye', name: 'ตา', hint: 'ดวงตา — แตะแล้วลงสีทั้งส่วน', pick: '#780000', flat: true },
+  { key: 'cheek', name: 'แก้ม', hint: 'แก้มสองข้าง ลากทีละข้างได้', pick: '#A00000' },
 ];
 
 /** ช่องที่ผู้เล่นระบายได้ เรียงตามลำดับใน REGIONS */
@@ -267,58 +281,98 @@ export function toLayerPx(k, lx, ly) {
   return { x: (lx - box.x) * LAYER.ppu, y: (ly - box.y) * LAYER.ppu };
 }
 
-/** ป้ายสีหนึ่งจุด — ผู้เรียกส่งพิกัดท้องถิ่นมา ที่นี่ไม่รู้จักหน้าจอเลย */
-export function dab(k, lx, ly, hex, radius) {
+// ── ตัดรอยแปรงให้อยู่แต่ในส่วนที่เลือก ────────────────────
+//
+// ── ปัญหาที่แก้ ──
+// หัวแปรงเป็นวงกลมกว้างกว่าของที่จะทาเกือบทุกครั้ง ทาพุงก็ล้นออกนอกวงพุง
+// ทาหนวดก็ได้ก้อนสีกลางหน้าแทนเส้นหนวด เพราะรอยถูกเก็บลงชั้นของ "ชิ้น"
+// (หัว/ลำตัว) ซึ่งไม่รู้เลยว่าในชิ้นนั้นตรงไหนเป็นพุง ตรงไหนเป็นหนวด
+//
+// ── ทำไมหน้ากากมาจากข้างนอก ไม่ได้สร้างที่นี่ ──
+// หน้ากากคือ "รูปร่างจริงของส่วนนั้น" ซึ่งต้องได้มาจากการวาดน้องอีกรอบ
+// ไฟล์นี้จงใจไม่มีโค้ดวาดแมวเลยสักบรรทัด (ดูเหตุผลหัวไฟล์) ผู้เรียกที่รู้จัก
+// ทั้งโค้ดวาดและผ้าใบรหัสสีอยู่แล้วเป็นคนสร้างแล้วส่งเข้ามา
+//
+// ── ทำไมต้องมีผ้าใบพัก ไม่ตัดที่ชั้นจริงตรง ๆ ──
+// destination-in ที่ชั้นจริงจะลบ "ทุกอย่างที่เคยทาไว้" นอกหน้ากากไปด้วย
+// ไม่ใช่แค่รอยที่เพิ่งลาก วาดรอยใหม่ลงผ้าใบเปล่าก่อน ตัดตรงนั้น แล้วค่อยแปะทับ
+const scratches = {};
+function scratchFor(k) {
+  let c = scratches[k];
+  if (!c) { c = scratches[k] = makeLayer(k); }
+  else c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  return c;
+}
+
+/**
+ * วาดรอยหนึ่งรอยลงชั้น k
+ * @param mask  ผ้าใบขนาดเท่าชั้น ที่ทึบเฉพาะตรงที่ยอมให้สีติด (null = ไม่จำกัด)
+ * @param wipe  true = ลบแทนทา (ยางลบ)
+ * @param draw  ฟังก์ชันที่วาดรอยลงคอนเท็กซ์ที่ส่งให้
+ */
+function inkLayer(k, mask, wipe, draw) {
   ensureLayers();
   const c = layers[k];
   if (!c) return;
-  const p = toLayerPx(k, lx, ly);
   const g = c.getContext('2d');
+
+  if (!mask) {
+    g.globalCompositeOperation = wipe ? 'destination-out' : 'source-over';
+    draw(g);
+    g.globalCompositeOperation = 'source-over';
+    bumpLayers();
+    return;
+  }
+
+  const sc = scratchFor(k);
+  const sg = sc.getContext('2d');
+  sg.globalCompositeOperation = 'source-over';
+  draw(sg);
+  // เหลือไว้เฉพาะส่วนที่หน้ากากยอม
+  sg.globalCompositeOperation = 'destination-in';
+  sg.drawImage(mask, 0, 0, sc.width, sc.height);
+  sg.globalCompositeOperation = 'source-over';
+
+  g.globalCompositeOperation = wipe ? 'destination-out' : 'source-over';
+  g.drawImage(sc, 0, 0);
   g.globalCompositeOperation = 'source-over';
-  g.fillStyle = hex;
-  g.beginPath();
-  g.arc(p.x, p.y, radius * LAYER.ppu, 0, Math.PI * 2);
-  g.fill();
   bumpLayers();
+}
+
+/** ป้ายสีหนึ่งจุด — ผู้เรียกส่งพิกัดท้องถิ่นมา ที่นี่ไม่รู้จักหน้าจอเลย */
+export function dab(k, lx, ly, hex, radius, mask = null) {
+  const p = toLayerPx(k, lx, ly);
+  inkLayer(k, mask, false, (g) => {
+    g.fillStyle = hex;
+    g.beginPath();
+    g.arc(p.x, p.y, radius * LAYER.ppu, 0, Math.PI * 2);
+    g.fill();
+  });
+}
+
+/** ตั้งปากกาแล้วลากเส้นหนึ่งเส้น — ใช้ร่วมกันทั้งพู่กันและยางลบ */
+function lineOn(g, a, b, radius) {
+  g.lineWidth = radius * 2 * LAYER.ppu;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(a.x, a.y);
+  g.lineTo(b.x, b.y);
+  g.stroke();
 }
 
 /** ลากเส้นระหว่างสองจุด — กันรอยขาดเป็นจุด ๆ เวลานิ้วลากเร็ว */
-export function stroke(k, ax, ay, bx, by, hex, radius) {
-  ensureLayers();
-  const c = layers[k];
-  if (!c) return;
+export function stroke(k, ax, ay, bx, by, hex, radius, mask = null) {
   const a = toLayerPx(k, ax, ay), b = toLayerPx(k, bx, by);
-  const g = c.getContext('2d');
-  g.globalCompositeOperation = 'source-over';
-  g.strokeStyle = hex;
-  g.lineWidth = radius * 2 * LAYER.ppu;
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-  g.beginPath();
-  g.moveTo(a.x, a.y);
-  g.lineTo(b.x, b.y);
-  g.stroke();
-  bumpLayers();
+  inkLayer(k, mask, false, (g) => { g.strokeStyle = hex; lineOn(g, a, b, radius); });
 }
 
 /** ลบรอยแปรงตรงที่ลาก (ยางลบของพู่กัน) */
-export function erase(k, ax, ay, bx, by, radius) {
-  ensureLayers();
-  const c = layers[k];
-  if (!c) return;
+export function erase(k, ax, ay, bx, by, radius, mask = null) {
   const a = toLayerPx(k, ax, ay), b = toLayerPx(k, bx, by);
-  const g = c.getContext('2d');
-  g.globalCompositeOperation = 'destination-out';
-  g.strokeStyle = '#000';
-  g.lineWidth = radius * 2 * LAYER.ppu;
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-  g.beginPath();
-  g.moveTo(a.x, a.y);
-  g.lineTo(b.x, b.y);
-  g.stroke();
-  g.globalCompositeOperation = 'source-over';
-  bumpLayers();
+  // ยางลบที่มีหน้ากากต้องวาดรอย "ทึบ" ลงผ้าใบพักก่อน แล้วค่อยเอาไปลบ
+  // ถ้าลบตรง ๆ ที่ชั้นจริง หน้ากากจะไม่มีผล เพราะ destination-out ไม่ผ่านผ้าใบพัก
+  inkLayer(k, mask, true, (g) => { g.strokeStyle = '#000'; lineOn(g, a, b, radius); });
 }
 
 export function clearLayers() {
@@ -432,7 +486,9 @@ export function customSkin() {
  */
 export function pickSkin() {
   // blush ต้องเปิด ไม่งั้นแก้มไม่ถูกวาดลงผ้าใบรหัสสี แล้วแตะแก้มจะไปโดนหัวแทน
-  const s = { id: CUSTOM_ID, stripes: false, blush: true, points: false };
+  // solid = บอกโค้ดวาดให้ข้ามของโปร่งแสงทุกชิ้น (ขอบแสง แก้มจาง รูปหน้าที่อัปโหลด)
+  // ของโปร่งผสมกับรหัสข้างล่างจนได้ค่ากลาง ๆ ที่อ่านออกมาเป็นรหัสของส่วนอื่น
+  const s = { id: CUSTOM_ID, stripes: false, blush: true, points: false, solid: true };
   for (const r of REGIONS) s[r.key] = r.pick;
   // เส้นขอบกับเส้นปากวาดทับอยู่ข้างบนสุด ถ้าให้เป็นสี "ไม่ใช่ส่วนไหน"
   // คนที่แตะโดนเส้นพวกนี้จะกดแล้วไม่เกิดอะไรขึ้นเลยโดยไม่รู้ว่าทำไม

@@ -934,12 +934,17 @@
       <div class="panel hidden" id="settingsPanel">
         <div class="pop">
           <h2>ตั้งค่า</h2>
+          <!-- ── เสียงสองช่อง ─────────────────────────────────
+               เพลงกับเอฟเฟกต์ทำหน้าที่คนละอย่าง เพลงคือบรรยากาศที่เปิดค้างไว้นาน
+               ส่วนเอฟเฟกต์คือสัญญาณว่าเกิดอะไรขึ้น คนที่เปิดเพลงของตัวเองอยู่
+               ยังต้องการได้ยินสัญญาณ จึงต้องหรี่และปิดแยกกันได้ทั้งคู่
+
+               แต่ละแถวมีปุ่มลำโพงของตัวเอง กดทีเดียวเงียบเฉพาะช่องนั้น กดซ้ำได้
+               ระดับเดิมคืน ต่างจากปุ่ม − ที่ต้องกดสิบทีกว่าจะเงียบ แล้วกดกลับอีกสิบที
+               รูปลำโพงวาดเป็น SVG เหมือนไอคอนอื่นในเกม ไม่ใช้อีโมจิลำโพงที่หน้าตา
+               ต่างกันทุกระบบและบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
           <div class="setrow">
-            <!-- ปุ่มลำโพงเป็นสวิตช์ปิด/เปิดเสียงในตัว กดทีเดียวเงียบ กดซ้ำได้ระดับเดิมคืน
-                 ต่างจากปุ่ม − ที่ต้องกดสิบทีกว่าจะเงียบ แล้วกดกลับอีกสิบที
-                 รูปลำโพงวาดเป็น SVG เหมือนไอคอนอื่นในเกม ไม่ใช้อีโมจิ 🔊 ที่หน้าตา
-                 ต่างกันทุกระบบและบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
-            <button class="stepbtn mutebtn" id="volMute" aria-label="ปิดเสียง">
+            <button class="stepbtn mutebtn" id="musicMute" aria-label="ปิดเสียงเพลง">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
                 <g class="wave" fill="none" stroke-linecap="round">
@@ -951,11 +956,30 @@
                 </g>
               </svg>
             </button>
-            <span class="setlabel">เสียง</span>
-            <button class="stepbtn" id="volDown" aria-label="ลดเสียง">−</button>
-            <div class="volbar" id="volBar"></div>
-            <button class="stepbtn" id="volUp" aria-label="เพิ่มเสียง">+</button>
-            <b class="volnum" id="volNum">80%</b>
+            <span class="setlabel">เพลง</span>
+            <button class="stepbtn" id="musicDown" aria-label="ลดเสียงเพลง">−</button>
+            <div class="volbar" id="musicBar"></div>
+            <button class="stepbtn" id="musicUp" aria-label="เพิ่มเสียงเพลง">+</button>
+            <b class="volnum" id="musicNum">80%</b>
+          </div>
+          <div class="setrow">
+            <button class="stepbtn mutebtn" id="sfxMute" aria-label="ปิดเสียงเอฟเฟกต์">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                <g class="wave" fill="none" stroke-linecap="round">
+                  <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                  <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                </g>
+                <g class="cross" fill="none" stroke-linecap="round">
+                  <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                </g>
+              </svg>
+            </button>
+            <span class="setlabel">เอฟเฟกต์</span>
+            <button class="stepbtn" id="sfxDown" aria-label="ลดเสียงเอฟเฟกต์">−</button>
+            <div class="volbar" id="sfxBar"></div>
+            <button class="stepbtn" id="sfxUp" aria-label="เพิ่มเสียงเอฟเฟกต์">+</button>
+            <b class="volnum" id="sfxNum">80%</b>
           </div>
           <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
                ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
@@ -1292,13 +1316,6 @@
 
     </div>
 
-    <!-- จอสัมผัสที่ยังตั้งแนวตั้งอยู่ จะเห็นแค่ป้ายนี้จนกว่าจะหมุนเป็นแนวนอน
-         โชว์/ซ่อนด้วย media query ล้วน ๆ ไม่มี JS มาเกี่ยว -->
-    <div class="rotate-hint">
-      <div class="phone" aria-hidden="true"></div>
-      <b>แตะจอเพื่อเล่นแนวนอน</b>
-      <small>เกมจะหมุนให้เอง ถ้าไม่หมุน ให้ปิดล็อกหมุนจอในเครื่องแล้วหมุนเอง</small>
-    </div>
 
     <!-- ข้อความนี้เคยเขียนว่า "ไม่มีไฟล์ asset สักไฟล์" ซึ่งไม่จริงมาตั้งแต่มีภาพฉากหลัง
          และยิ่งไม่จริงเมื่อเพิ่มเพลงหน้าแรกเป็นไฟล์ mp3 แก้ให้ตรงกับของจริงแล้ว -->
@@ -1307,6 +1324,46 @@
       ส่วนภาพฉากหลังกับเพลงหน้าแรกเป็นไฟล์ —
       เพลง <em>Love You - Singing Kitten [Japanese Ver.]</em> โดย tideblue จาก Pixabay
     </p>
+  </div>
+
+  <!-- ── จอสัมผัสที่ยังตั้งแนวตั้งอยู่ ───────────────────────
+       โชว์/ซ่อนด้วย media query ล้วน ๆ ไม่มี JS มาเกี่ยว
+
+       ── ต้องอยู่นอก .shell เท่านั้น ──
+       กฎแนวตั้งสั่ง .shell { display: none } เพื่อซ่อนตัวเกมทั้งก้อน
+       ถ้าป้ายนี้อยู่ข้างใน มันจะโดนซ่อนไปด้วย เหลือจอเปล่าล้วน ๆ
+       โดยไม่มีอะไรบอกว่าต้องทำอะไร — ซึ่งเป็นอาการที่ทักมา -->
+  <div class="rotate-hint">
+    <div class="rot-art" aria-hidden="true">
+      <!-- ลูกศรโค้งบอกทิศทางหมุน หมุนวนอยู่เหนือเครื่อง -->
+      <svg class="rot-arrow" viewBox="0 0 64 40">
+        <path d="M6 30a26 26 0 0 1 52 0" fill="none" stroke="currentColor"
+              stroke-width="4" stroke-linecap="round" stroke-dasharray="4 7"/>
+        <path d="M52 33l6-4 1 7z" fill="currentColor"/>
+      </svg>
+
+      <!-- เครื่องที่ค่อย ๆ ตะแคงไปเอง ส่วนหน้าน้องข้างในหมุนสวนกลับ
+           นี่คือจุดที่ทำให้มันอ่านออกว่า "หมุนเครื่องสิ น้องจะได้หัวตั้ง" -->
+      <div class="rot-phone">
+        <svg class="rot-cat" viewBox="0 0 48 46">
+          <g class="rc-line" stroke="#3A1D50" stroke-width="2.6" stroke-linejoin="round">
+            <path d="M9 17 L6.5 4 L20 10.5 Z" fill="#EFA657"/>
+            <path d="M39 17 L41.5 4 L28 10.5 Z" fill="#EFA657"/>
+            <ellipse cx="24" cy="26" rx="17" ry="15" fill="#EFA657"/>
+          </g>
+          <circle cx="18" cy="24" r="2.9" fill="#3A1D50"/>
+          <circle cx="30" cy="24" r="2.9" fill="#3A1D50"/>
+          <circle cx="19.1" cy="22.9" r="1" fill="#FFF3E2"/>
+          <circle cx="31.1" cy="22.9" r="1" fill="#FFF3E2"/>
+          <path d="M21.6 30h4.8L24 33z" fill="#E8768F"/>
+          <path d="M24 33q-2.6 2.8-4.8 0M24 33q2.6 2.8 4.8 0" fill="none"
+                stroke="#3A1D50" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <b>หมุนเครื่องเป็นแนวนอนก่อนนะ</b>
+    <small>น้องรอเล่นอยู่นี่ — ถ้าหมุนแล้วจอยังไม่เปลี่ยน<br>ให้ปิดล็อกหมุนจอในเครื่องก่อน</small>
   </div>
 
   <!-- boot.js ดึงข้อมูลจากคลาวด์ให้เสร็จก่อน แล้วค่อยโหลดตัวเกม -->

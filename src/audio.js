@@ -8,23 +8,42 @@
 let ac = null;
 let bus = null;
 
-// ระดับเสียงรวม 0–1 เก็บไว้ในเครื่องอย่างเดียว ไม่ซิงก์ขึ้นคลาวด์
-// เพราะเป็นค่าของ "เครื่องนี้" ไม่ใช่ของผู้เล่น — ต่อหูฟังกับเปิดลำโพงคนละระดับกัน
-const VOL_KEY = 'cookie-runner:vol';
+// ── ระดับเสียงสองช่อง ─────────────────────────────────────
+//
+// เก็บไว้ในเครื่องอย่างเดียว ไม่ซิงก์ขึ้นคลาวด์ เพราะเป็นค่าของ "เครื่องนี้"
+// ไม่ใช่ของผู้เล่น — ต่อหูฟังกับเปิดลำโพงคนละระดับกัน
+//
+// ── ทำไมแยกเพลงกับเอฟเฟกต์ ──
+// สองอย่างนี้ทำหน้าที่คนละอย่าง เพลงคือบรรยากาศที่เปิดค้างไว้นาน ส่วนเอฟเฟกต์
+// คือสัญญาณว่าเกิดอะไรขึ้น คนที่เปิดเพลงของตัวเองอยู่ยังต้องการได้ยินสัญญาณ
+// ตัวเลขเดียวคุมสองอย่างพร้อมกันจึงบังคับให้เลือกอย่างใดอย่างหนึ่งเสมอ
+const MIX_KEY = { music: 'cookie-runner:vol:music', sfx: 'cookie-runner:vol:sfx' };
+// คีย์ชุดเดิมสมัยยังมีระดับเดียว — ย้ายค่านั้นมาเป็นค่าตั้งต้นของทั้งสองช่อง
+// คนที่เคยหรี่เสียงไว้จึงกลับมาเจอระดับเดิม ไม่ใช่เกมที่ดังขึ้นมาเอง
+const LEGACY_VOL_KEY = 'cookie-runner:vol';
 const VOL_DEFAULT = 0.8;   // เว้นหัวไว้ให้เพิ่มได้ ไม่ใช่เปิดมาสุดแล้วปุ่ม + กดไม่ขึ้น
 
-let volume = (() => {
+function readVol(key, fallback) {
   try {
-    const raw = localStorage.getItem(VOL_KEY);
+    const raw = localStorage.getItem(key);
     // ต้องเช็ค null ก่อนแปลงเป็นตัวเลข — Number(null) ได้ 0 ซึ่งผ่านทุกเงื่อนไข
     // ข้างล่างหมด กลายเป็นว่าคนเปิดเกมครั้งแรกเจอเกมเงียบสนิทโดยไม่รู้สาเหตุ
-    if (raw === null || raw === "") return VOL_DEFAULT;
+    if (raw === null || raw === '') return fallback;
     const v = Number(raw);
-    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : VOL_DEFAULT;
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : fallback;
   } catch {
-    return VOL_DEFAULT;   // โหมดส่วนตัวอ่านไม่ได้
+    return fallback;   // โหมดส่วนตัวอ่านไม่ได้
   }
-})();
+}
+
+const legacyVol = readVol(LEGACY_VOL_KEY, VOL_DEFAULT);
+const level = {
+  music: readVol(MIX_KEY.music, legacyVol),
+  sfx: readVol(MIX_KEY.sfx, legacyVol),
+};
+
+/** ปมย่อยของแต่ละช่อง สร้างตอนถูกขอใช้ครั้งแรก */
+const subBus = { music: null, sfx: null };
 
 function ctx() {
   if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -32,39 +51,59 @@ function ctx() {
 }
 
 /**
- * ทางออกเสียงเดียวของทั้งเกม — ทั้งเอฟเฟกต์และเพลงต้องต่อผ่านตัวนี้
+ * ปมรวมของทั้งเกม — ทั้งเพลงและเอฟเฟกต์ไหลผ่านตัวนี้ก่อนออกลำโพง
  *
  * เดิมทุกเสียงต่อเข้า destination ตรง ๆ แล้วใช้ธง muted เช็คทีละจุด
- * ซึ่งปรับระดับเสียงไม่ได้เลย ทำได้แค่เปิดกับปิด พอมีปมรวมจุดเดียวแล้ว
- * ระดับเสียงกลายเป็นตัวเลขตัวเดียว และ "ปิดเสียง" ก็คือระดับ 0 ไม่ต้องมีธงแยก
+ * ซึ่งปรับระดับเสียงไม่ได้เลย ทำได้แค่เปิดกับปิด
+ *
+ * ตอนนี้ตัวมันเองไม่หรี่อะไร (คงที่ 1) หน้าที่หรี่ย้ายไปอยู่ที่ปมของแต่ละช่อง
+ * แต่ยังต้องมีอยู่ เพราะเป็นจุดเดียวที่รู้จัก destination — วันหลังจะใส่
+ * เอฟเฟกต์รวมอย่างลิมิตเตอร์ก็แทรกตรงนี้ที่เดียว ไม่ต้องไล่แก้ทุกช่อง
  */
 export function audioOut() {
   const a = ctx();
   if (!bus) {
     bus = a.createGain();
-    bus.gain.value = volume;
+    bus.gain.value = 1;
     bus.connect(a.destination);
   }
   return bus;
 }
 
-export function getVolume() {
-  return volume;
+/** ปมของช่องหนึ่ง — ทุกเสียงต้องต่อผ่านช่องของตัวเอง ไม่ต่อปมรวมตรง ๆ */
+function chanOut(ch) {
+  const a = ctx();
+  if (!subBus[ch]) {
+    const g = a.createGain();
+    g.gain.value = level[ch];
+    g.connect(audioOut());
+    subBus[ch] = g;
+  }
+  return subBus[ch];
 }
 
-/** คืนค่าที่ตั้งได้จริงหลังตัดให้อยู่ในช่วง 0–1 */
-export function setVolume(v) {
-  volume = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+export function musicOut() { return chanOut('music'); }
+export function sfxOut() { return chanOut('sfx'); }
+
+/** ระดับของช่องหนึ่ง 0–1 */
+export function getMix(ch) {
+  return level[ch] ?? 0;
+}
+
+/** ตั้งระดับของช่องหนึ่ง คืนค่าที่ตั้งได้จริงหลังตัดให้อยู่ในช่วง 0–1 */
+export function setMix(ch, v) {
+  if (!(ch in level)) return 0;
+  level[ch] = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
   try {
-    localStorage.setItem(VOL_KEY, String(volume));
+    localStorage.setItem(MIX_KEY[ch], String(level[ch]));
   } catch {
     /* เซฟไม่ได้ก็ยังใช้ได้ในรอบนี้ */
   }
-  if (bus) {
+  if (subBus[ch]) {
     // ไล่ไปหาค่าใหม่แทนการกระโดด ไม่งั้นได้เสียง "ป๊อก" ทุกครั้งที่กดปุ่ม
-    bus.gain.setTargetAtTime(volume, ctx().currentTime, 0.03);
+    subBus[ch].gain.setTargetAtTime(level[ch], ctx().currentTime, 0.03);
   }
-  return volume;
+  return level[ch];
 }
 
 /**
@@ -82,7 +121,7 @@ export function audioCtx() {
 }
 
 function tone(from, to, dur, type = 'square', vol = 0.12) {
-  if (volume <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
+  if (level.sfx <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -98,7 +137,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);  // fade out กันเสียง "ป๊อก"
 
   osc.connect(gain);
-  gain.connect(audioOut());
+  gain.connect(sfxOut());
   osc.start(t);
   osc.stop(t + dur + 0.02);
 }
@@ -115,7 +154,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
  * ยิ่ง end ต่ำกว่า start มาก ยิ่งฟังอ้อน ๆ น่าสงสาร
  */
 function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
-  if (volume <= 0) return;
+  if (level.sfx <= 0) return;
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -149,7 +188,7 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
 
   osc.connect(filt);
   filt.connect(gain);
-  gain.connect(audioOut());
+  gain.connect(sfxOut());
 
   osc.start(t);
   lfo.start(t);
@@ -300,6 +339,34 @@ export const sfx = {
   // สามเสียงล่างนี้ผูกกับท่าใน REACT_ACTS (src/game.js) ท่าละเสียง
   // ตั้งใจให้ต่างกันชัดเจน เพราะมันคือสิ่งเดียวที่บอกว่า "แตะแล้วได้ท่าใหม่จริง"
   // ในวินาทีแรก ก่อนที่ท่าจะเข้าเต็มที่พอให้ตาอ่านออก
+
+  // ── เสียงพูดประจำท่า ────────────────────────────────────────
+  // ทุกท่าที่น้องทำมีเสียงของตัวเอง ท่าไหนที่ปากขยับเป็นจังหวะจะร้องตามปากทุกครั้ง
+  // ที่อ้า ไม่ใช่ร้องทีเดียวตอนเริ่มท่า (ดู stepVoice ใน game.js)
+  //
+  // ── ทำไมเสียงของท่าว่างเบากว่าเสียงของท่าที่ผู้เล่นสั่ง ──
+  // ท่าว่างเล่นเองทุกไม่กี่วินาทีตลอดเวลาที่ค้างอยู่หน้าล็อบบี้ ถ้าดังเท่ากับเสียง
+  // ที่ตอบการกด มันจะกลายเป็นเสียงรบกวนที่ไม่มีทางปิด ไม่ใช่บรรยากาศ
+  // ระดับที่ตั้งไว้คือ "ได้ยินว่ามีน้องอยู่" ไม่ใช่ "น้องเรียก"
+
+  // หาว — ยาวที่สุดในชุด ไล่ลงต่ำเรื่อย ๆ จนจบ เหมือนลมที่หมดไปกลางคำ
+  // ขึ้นต้นสูงกว่าที่จบเกือบเท่าตัว ซึ่งเป็นรูปทรงของเสียงหาว ไม่ใช่เสียงเรียก
+  yawn: () => meow({ start: 520, peak: 640, end: 290, dur: 0.78, vol: 0.17, q: 5, wobble: 11 }),
+
+  // มิ้ว — สั้นและเบาที่สุด ใช้ตอนน้องนั่งลงเฉย ๆ กับตอนร้องรับหัวใจ
+  // สั้นระดับนี้ (0.13 วินาที) จำเป็น เพราะมันร้องซ้ำตามจังหวะปากได้หลายครั้งติดกัน
+  mew: () => meow({ start: 700, peak: 1010, end: 870, dur: 0.13, vol: 0.21, q: 4, wobble: 19 }),
+
+  // ครางตอนเคลิ้มจะหลับ — ต่ำและเบากว่า purr อีกขั้น ใช้ตอนหมอบเป็นก้อนขนมปัง
+  snooze: () => meow({ start: 232, peak: 258, end: 196, dur: 0.66, vol: 0.13, q: 6, wobble: 21 }),
+
+  // เสียงตอนล้มตัวลงนอน — สั้น ต่ำ กลม ๆ เหมือนถอนหายใจพอใจ
+  flop: () => meow({ start: 372, peak: 424, end: 322, dur: 0.28, vol: 0.23, q: 5.5, wobble: 25 }),
+
+  // สะดุ้ง — สั้นและสูงที่สุด พุ่งขึ้นเร็วมากแล้วตัดจบทันที
+  // ใช้ตอนขนพอง ซึ่งเป็นท่าเดียวที่เกิดจากความตกใจ ไม่ใช่ความสบายใจ
+  startle: () => meow({ start: 880, peak: 1560, end: 1180, dur: 0.11, vol: 0.29, q: 4, wobble: 9 }),
+
 
   // ทักทาย — เสียงรัวในลำคอที่แมวใช้ทักคนที่คุ้นเคย ไม่ใช่เสียงเมี้ยวเต็มเสียง
   // ความรัวมาจาก wobble ที่สูงกว่าเสียงอื่นเกือบเท่าตัว ตัวเสียงเองสั้นและลงท้ายสูง

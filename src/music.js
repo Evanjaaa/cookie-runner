@@ -13,7 +13,7 @@
 // เพลงใหม่จะเริ่มดังช้าถึง 15 วินาที ซึ่งยาวกว่าช่วงพิเศษบางช่วงทั้งช่วง
 // จึงต้องเก็บอ้างอิงโน้ตที่จองไว้ แล้วยกเลิกตัวที่ "ยังไม่เริ่มเล่น" ตอนสลับ
 // ─────────────────────────────────────────────────────────────
-import { audioCtx, audioOut } from './audio.js';
+import { audioCtx, musicOut } from './audio.js';
 
 const BPM = 128;
 const BEAT = 60 / BPM;
@@ -467,7 +467,7 @@ function ensureFileEl() {
   // เริ่มที่ศูนย์เสมอ แล้วค่อยหรี่ขึ้น — กันเสียงป๊อกตอนโน้ตแรกของเพลงดังขึ้นมา
   fileGain.gain.value = 0;
   ac.createMediaElementSource(fileEl).connect(fileGain);
-  fileGain.connect(audioOut());
+  fileGain.connect(musicOut());
   return fileEl;
 }
 
@@ -595,7 +595,7 @@ export function startMusic() {
   // อยู่ที่ปมของ audio.js ปลายทาง จึงไม่ต้องรู้เรื่องปิดเสียงตรงนี้เลย
   master = ac.createGain();
   master.gain.value = MUSIC_VOL;
-  master.connect(audioOut());
+  master.connect(musicOut());
 
   loopStart = ac.currentTime + 0.15;
   // เพลงตอนเปิดหน้าแรกเป็นไฟล์ ต้องสั่งเล่นตรงนี้ด้วย — setMusicTrack() ที่ถูกเรียก
@@ -646,7 +646,7 @@ export function setMusicTrack(name) {
   pump();
 }
 
-/* setMusicMuted ถูกถอดออกแล้ว — ปิดเสียงคือ setVolume(0) ที่ปมรวมใน audio.js
+/* setMusicMuted ถูกถอดออกแล้ว — ปิดเสียงเพลงคือ setMix('music', 0) ใน audio.js
    ซึ่งหรี่ทั้งเพลงและเอฟเฟกต์พร้อมกัน ไม่ต้องมีสองทางให้หลุดจากกัน */
 
 // ─────────────────────────────────────────────────────────────

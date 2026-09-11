@@ -3,7 +3,7 @@ import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getVolume, setVolume, sfx } from './audio.js';
+import { unlockAudio, getMix, setMix, sfx } from './audio.js';
 import { startMusic } from './music.js';
 import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin } from './skins.js';
 import {
@@ -1507,50 +1507,75 @@ const VOL_STEP = 0.1;
 // ระดับก่อนกดปิดเสียง เอาไว้คืนให้ตอนกดเปิดกลับ
 // เก็บในตัวแปรเฉย ๆ ไม่ต้องเซฟลงเครื่อง — ถ้าปิดเสียงค้างไว้แล้วปิดเกมไป
 // รอบหน้ากดเปิดจะได้ค่าเริ่มต้นแทน ซึ่งดีกว่าเงียบต่อโดยไม่รู้ว่าทำไม
-let volBeforeMute = 0.8;
+/** ระดับของแต่ละช่องก่อนกดปิดเสียง เก็บทีละช่องเพื่อคืนค่าเดิมได้ตรง */
+let volBeforeMute = {};
 
-function drawVolume() {
-  const v = getVolume();
+/** ช่องเสียงทั้งหมดที่ปรับได้ — เพิ่มช่องใหม่ก็เติมที่นี่ที่เดียว หน้าจอสร้างจากตัวนี้ */
+/** ช่องเสียงทั้งหมดที่ปรับได้ — เพิ่มช่องใหม่ก็เติมที่นี่ที่เดียว หน้าจอสร้างจากตัวนี้ */
+const MIX_ROWS = [
+  { ch: 'music', name: 'เพลง', bar: 'musicBar', num: 'musicNum',
+    down: 'musicDown', up: 'musicUp', mute: 'musicMute' },
+  { ch: 'sfx', name: 'เอฟเฟกต์', bar: 'sfxBar', num: 'sfxNum',
+    down: 'sfxDown', up: 'sfxUp', mute: 'sfxMute' },
+];
+
+/** วาดแถวเดียว — สิบขีดแทนสิบระดับ อ่านออกเร็วกว่าตัวเลขตอนกดปุ่มรัว ๆ */
+function drawMixRow(row) {
+  const v = getMix(row.ch);
   const lit = Math.round(v * 10);
 
-  const bar = document.getElementById('volBar');
-  if (bar.children.length !== 10) {
-    bar.innerHTML = '<i></i>'.repeat(10);
-  }
+  const bar = document.getElementById(row.bar);
+  if (bar.children.length !== 10) bar.innerHTML = '<i></i>'.repeat(10);
   [...bar.children].forEach((el, i) => el.classList.toggle('on', i < lit));
 
-  document.getElementById('volNum').textContent = Math.round(v * 100) + '%';
+  document.getElementById(row.num).textContent = Math.round(v * 100) + '%';
   // ปิดปุ่มที่กดไปก็ไม่มีอะไรเกิดขึ้น ดีกว่าปล่อยให้กดแล้วเงียบไม่รู้ว่าสุดแล้ว
-  document.getElementById('volDown').disabled = v <= 0;
-  document.getElementById('volUp').disabled = v >= 1;
+  document.getElementById(row.down).disabled = v <= 0;
+  document.getElementById(row.up).disabled = v >= 1;
 
   // ปุ่มลำโพงบอกสถานะ "ตอนนี้" ไม่ใช่บอกว่ากดแล้วจะเกิดอะไร
   // เงียบอยู่ = ลำโพงมีกากบาท, ดังอยู่ = ลำโพงมีคลื่นเสียง
-  const mute = document.getElementById('volMute');
+  const mute = document.getElementById(row.mute);
   const muted = v <= 0;
   mute.classList.toggle('muted', muted);
-  mute.setAttribute('aria-label', muted ? 'เปิดเสียง' : 'ปิดเสียง');
+  mute.setAttribute('aria-label', (muted ? 'เปิดเสียง' : 'ปิดเสียง') + row.name);
   mute.setAttribute('aria-pressed', String(muted));
 }
 
-function stepVolume(dir) {
-  setVolume(getVolume() + dir * VOL_STEP);
-  drawVolume();
-  // ให้ได้ยินระดับใหม่ทันทีตอนกด ไม่ต้องออกไปลองในเกมแล้วค่อยกลับมาปรับ
-  sfx.fish();
+function drawVolume() {
+  MIX_ROWS.forEach(drawMixRow);
 }
 
-function toggleMute() {
-  const v = getVolume();
-  if (v > 0) {
-    volBeforeMute = v;
-    setVolume(0);
+function stepMix(ch, dir) {
+  setMix(ch, getMix(ch) + dir * VOL_STEP);
+  drawVolume();
+  // ให้ได้ยินระดับใหม่ทันทีตอนกด ไม่ต้องออกไปลองในเกมแล้วค่อยกลับมาปรับ
+  //
+  // ── ทำไมช่องเพลงไม่ต้องเล่นอะไรตอนกด ──
+  // เพลงเล่นค้างอยู่แล้ว การหรี่จึงได้ยินผลทันทีจากเพลงที่กำลังเล่น
+  // ถ้ายิงเสียงเอฟเฟกต์ออกมาด้วย มันจะกลายเป็นการฟังระดับของ "อีกช่องหนึ่ง"
+  if (ch === 'sfx') sfx.fish();
+}
+
+/**
+ * ปิด/เปิดเสียงของช่องเดียว
+ *
+ * ── ทำไมจำระดับเดิมแยกทีละช่อง ──
+ * ถ้าเก็บเป็นตัวเลขเดียว คนที่ตั้งเพลงไว้ 30% กับเอฟเฟกต์ 90% แล้วกดปิดทั้งคู่
+ * จะได้ระดับเท่ากันทั้งสองช่องตอนเปิดกลับ ซึ่งไม่ใช่ค่าที่เขาตั้งไว้สักช่อง
+ */
+function toggleMute(ch) {
+  if (getMix(ch) > 0) {
+    volBeforeMute[ch] = getMix(ch);
+    setMix(ch, 0);
     drawVolume();
     return;   // ปิดเสียงแล้วไม่ต้องเล่นเสียงยืนยัน มันจะไม่ได้ยินอยู่ดี
   }
-  setVolume(volBeforeMute > 0 ? volBeforeMute : 0.8);
+  setMix(ch, volBeforeMute[ch] > 0 ? volBeforeMute[ch] : 0.8);
   drawVolume();
-  sfx.fish();   // ดังขึ้นมาแล้ว ให้ได้ยินทันทีว่าดังแค่ไหน
+  // ดังขึ้นมาแล้ว ให้ได้ยินทันทีว่าดังแค่ไหน — เฉพาะช่องเอฟเฟกต์
+  // เพราะเพลงเล่นค้างอยู่แล้ว จึงได้ยินผลจากเพลงที่กำลังเล่นทันทีอยู่ดี
+  if (ch === 'sfx') sfx.fish();
 }
 
 // จำว่าเปิดมาจากแผงไหน แล้วคืนกลับไปที่เดิมตอนกดกลับ
@@ -3762,6 +3787,90 @@ function localAt(ev) {
   };
 }
 
+// ── หน้ากากของแต่ละส่วน ในพิกัดของชั้นรอยแปรง ──────────────
+//
+// หัวแปรงเป็นวงกลม กว้างกว่าของที่จะทาเกือบทุกครั้ง ทาพุงจึงล้นออกนอกวงพุง
+// ทาหนวดก็ได้ก้อนสีกลางหน้า หน้ากากคือสิ่งที่บังคับให้สีติดเฉพาะในรูปร่างของส่วนนั้น
+//
+// ── ทำไมวาดน้องใหม่ในพิกัดของชั้น แทนที่จะย่อ/ขยายผ้าใบรหัสสีที่มีอยู่แล้ว ──
+// ผ้าใบรหัสสี (pickCv) อยู่ในพิกเซลของหน้าจอ ส่วนชั้นรอยแปรงอยู่ในพิกัดตัวละคร
+// การแปลงระหว่างสองอย่างต้องถอด transform สามชั้นซ้อนกัน ซึ่งจะเพี้ยนเงียบ ๆ
+// ทันทีที่ใครขยับตัวเลขใน paintBase — วาดใหม่ด้วยฟังก์ชันวาดตัวเดิมแต่ตั้ง
+// transform ให้ตรงกับที่ paintOver ใช้ตอนแปะชั้นกลับลงตัว จึงตรงกันโดยนิยาม
+//
+// ── ทำไมเก็บแคช ──
+// ท่าน้องในหน้านี้นิ่งสนิท (ดู PAINT_POSE) หน้ากากจึงไม่มีวันเปลี่ยน
+// สร้างครั้งเดียวต่อส่วนต่อชั้น แล้วใช้ตลอดอายุหน้า
+const maskCache = new Map();
+const pickData = {};
+
+/** ภาพรหัสสีของชิ้นหนึ่ง วาดในพิกัดพิกเซลของชั้นนั้นเป๊ะ ๆ */
+function layerPick(k) {
+  if (pickData[k]) return pickData[k];
+  const box = LAYER[k];
+  const w = Math.round(box.w * LAYER.ppu);
+  const h = Math.round(box.h * LAYER.ppu);
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const g = cv.getContext('2d', { willReadFrequently: true });
+
+  // ชั้นหัวเก็บพิกัดเทียบกับ "จุดกลางหัว" ไม่ใช่จุดกลางตัว (ดู layerAt)
+  const off = k === 'head' ? HEAD_AT : { x: 0, y: 0 };
+  g.setTransform(LAYER.ppu, 0, 0, LAYER.ppu,
+    (-box.x - off.x) * LAYER.ppu, (-box.y - off.y) * LAYER.ppu);
+
+  // ตั้ง feetY ให้ transform ภายในของ drawCatPose หักล้างกันพอดีเป็นศูนย์
+  // พิกัดที่วาดออกมาจึงเป็นพิกัดตัวละครดิบ ๆ ตรงกับที่ชั้นรอยแปรงใช้
+  const breath = Math.sin(PAINT_POSE * 0.045) * 1.8;
+  drawCatPose(g, 0, BODY.standH / 2 - breath, 1, pickSkin(), PAINT_POSE);
+
+  pickData[k] = g.getImageData(0, 0, w, h);
+  return pickData[k];
+}
+
+/**
+ * สร้างหน้ากากของส่วนหนึ่งไว้ล่วงหน้าทั้งสองชั้น
+ *
+ * การสร้างต้องวาดน้องใหม่แล้วไล่อ่านทีละพิกเซลราวสองแสนจุด ซึ่งกินเวลาพอที่จะ
+ * เห็นสะดุดถ้าไปเกิดตอนนิ้วเริ่มลาก เรียกตอน "กดเลือกส่วน" แทน ซึ่งเป็นจังหวะ
+ * ที่มือหยุดอยู่แล้ว งานเท่าเดิมแต่ไปตกในวินาทีที่ไม่มีใครรอ
+ */
+function warmMask(key) {
+  for (const k of ['body', 'head']) regionMask(k, key);
+}
+
+/**
+ * หน้ากากของส่วนหนึ่งบนชั้นหนึ่ง
+ * @param key ชื่อส่วน หรือ '^ชื่อส่วน' = ทุกที่ "ยกเว้น" ส่วนนั้น
+ */
+function regionMask(k, key) {
+  const id = k + '|' + key;
+  const got = maskCache.get(id);
+  if (got) return got;
+
+  const src = layerPick(k);
+  const cv = document.createElement('canvas');
+  cv.width = src.width;
+  cv.height = src.height;
+  const g = cv.getContext('2d');
+  const out = g.createImageData(src.width, src.height);
+  const a = src.data, b = out.data;
+  const flip = key.startsWith('^');
+  const want = flip ? key.slice(1) : key;
+  for (let i = 0; i < a.length; i += 4) {
+    const reg = regionAt(a[i], a[i + 1], a[i + 2], a[i + 3]);
+    const inside = !!reg && reg.key === want;
+    // แบบ "ยกเว้น" ต้องทึบนอกตัวน้องด้วย ไม่ใช่แค่ในตัว — มันคือหน้ากากที่มีไว้
+    // เจาะรูตรงส่วนเดียว ส่วนที่เหลือต้องปล่อยผ่านหมดเหมือนไม่มีหน้ากาก
+    if (flip ? inside : !inside) continue;
+    b[i] = b[i + 1] = b[i + 2] = b[i + 3] = 255;
+  }
+  g.putImageData(out, 0, 0);
+  maskCache.set(id, cv);
+  return cv;
+}
+
 /**
  * รอยแปรงลงชิ้นไหน — หัวมาก่อนลำตัวเพราะหัวทับลำตัวอยู่ตรงคอ
  * คืน null ถ้าอยู่นอกทั้งสองชิ้น (แปรงจะไม่ทิ้งรอยลอยอยู่ข้างตัว)
@@ -3845,17 +3954,16 @@ function applyPaint(region, snap) {
     return true;
   }
 
-  if (paintTool === 'bucket') {
-    // ถังสี = เทลงทุกส่วนที่ "สีเดียวกับส่วนที่แตะ" ในทีเดียว
-    // เป็นความต่างที่ทำให้ถังสีมีประโยชน์จริง ไม่ใช่พู่กันที่แตะทีละส่วนซ้ำ ๆ
-    const from = pal[region.key];
-    const hit = REGIONS.filter((r) => pal[r.key] === from);
-    if (hit.every((r) => pal[r.key] === want)) return false;
-    if (snap) pushHistory();
-    for (const r of hit) paint(r.key, want);
-    return true;
-  }
-
+  // ── ถังสี = เทลงเฉพาะส่วนที่เล็งไว้ส่วนเดียว ──
+  //
+  // ของเดิมเทลงทุกส่วนที่ "บังเอิญสีเดียวกับส่วนที่แตะ" พร้อมกัน ซึ่งพังตรงที่
+  // น้องโล้นตั้งแก้มกับหูในไว้สีเดียวกันพอดี (#F6DCDC ทั้งคู่) เทแก้มทีเดียว
+  // หูในจึงเปลี่ยนตามไปด้วยทุกครั้ง — เป็นอาการที่ทักมา
+  //
+  // และไม่ใช่แค่สองช่องนั้น กฎเดิมผูกส่วนที่ไม่เกี่ยวกันเข้าด้วยกันเองทุกครั้ง
+  // ที่ผู้เล่นบังเอิญเลือกสีซ้ำกัน โดยไม่มีอะไรบอกล่วงหน้าว่าจะโดนส่วนไหนบ้าง
+  // ถังสีเลยกลายเป็นเครื่องมือที่เดาผลไม่ได้ ทั้งที่งานของมันคือ "เทให้เต็มส่วน"
+  // ซึ่งต่างจากพู่กันที่ทาเฉพาะตรงที่ลากอยู่แล้ว ไม่ต้องพ่วงส่วนอื่นมาให้ด้วย
   if (pal[region.key] === want) return false;
   if (snap) pushHistory();
   paint(region.key, want);
@@ -3897,32 +4005,64 @@ function toolRadius() {
 let strokeRegion = null;
 
 function brushAt(ev, first) {
+  // ── โหมดทีละส่วน: ล็อกส่วนเป้าหมายไว้ตั้งแต่จุดแรกที่แตะโดนส่วนใดส่วนหนึ่ง ──
+  // ล็อกไว้ ไม่ได้เช็คใหม่ทุกจุด ไม่งั้นลากออกนอกส่วนแล้ววกกลับ มันจะเปลี่ยน
+  // เป้าหมายกลางคันโดยที่ผู้เล่นไม่ได้ตั้งใจ
+  if (paintScope === 'part' && !strokeRegion) {
+    strokeRegion = paintPart || regionUnder(ev);
+  }
+
+  // ── ตากับจมูก: ลงทั้งส่วนรวดเดียว ไม่ใช่ลากทีละรอย ──
+  // สองอย่างนี้ถูกวาดทับ "หลัง" ชั้นรอยแปรง รอยที่ลากลงไปจึงไม่มีวันโผล่ออกมา
+  // (ดูเหตุผลที่ flat ใน REGIONS) ถ้าปล่อยให้ลากไปเฉย ๆ คนเลือกแล้วลากจะไม่เห็น
+  // อะไรเกิดขึ้นเลย ซึ่งแย่กว่าตอนที่สีล้นเสียอีก
+  //
+  // เช็คก่อนหาว่าลงชิ้นไหน เพราะการลงทั้งส่วนไม่ต้องเล็งให้ตรง — กติกาเดียวกับ
+  // ถังสีตอนเลือกส่วนไว้แล้ว (applyPaint จะคืน false เองถ้าสีตรงกันอยู่แล้ว
+  // การลากยาว ๆ จึงเทสีแค่ครั้งเดียว ไม่ได้เทซ้ำทุกเฟรม)
+  if (paintScope === 'part' && strokeRegion?.flat) {
+    brushPrev = null;
+    if (applyPaint(strokeRegion, false)) {
+      drawPaintCat();
+      refreshParts();
+      refreshHome();
+    }
+    return;
+  }
+
   const pt = localAt(ev);
   const hit = layerAt(pt);
   // ออกนอกตัวแล้วตัดเส้น ไม่ใช่ลากข้ามอากาศไปโผล่อีกฝั่ง
   if (!hit) { brushPrev = null; return; }
 
-  // ── โหมดทีละส่วน: พู่กันทาได้เฉพาะในส่วนเป้าหมาย ──
-  // ลากผ่านส่วนอื่นก็แค่ไม่ติดสี ไม่ได้หยุดเส้น พอวกกลับมาส่วนเดิมทาต่อได้เลย
+  // ── สีติดได้เฉพาะในรูปร่างของส่วนเป้าหมาย ──
+  //
+  // บังคับด้วยหน้ากาก ไม่ใช่ด้วยการเช็คว่าปลายนิ้วอยู่ในส่วนไหน
+  // การเช็คปลายนิ้วบอกได้แค่ตำแหน่ง "จุดกึ่งกลางหัวแปรง" แต่หัวแปรงเป็นวงกลม
+  // ที่กว้างกว่านั้นมาก สีจึงล้นออกนอกส่วนไปเสมอ — ซึ่งคืออาการที่ทักมา
+  //
+  // ผลพลอยได้: ลากผ่านส่วนอื่นแล้ววกกลับมาได้โดยเส้นไม่ขาด เพราะช่วงที่อยู่
+  // นอกส่วนถูกหน้ากากกินทิ้งไปเอง ไม่ต้องตัดเส้นทิ้งเหมือนเดิม
+  let mask = null;
   if (paintScope === 'part') {
-    const here = regionUnder(ev);
-    const want = paintPart || strokeRegion;
-    if (!want) {
-      if (!here) { brushPrev = null; return; }
-      strokeRegion = here;
-    } else if (!here || here.key !== want.key) {
-      brushPrev = null;
-      return;
-    }
+    if (!strokeRegion) { brushPrev = null; return; }
+    mask = regionMask(hit.key, strokeRegion.key);
+  } else if (hit.key === 'head') {
+    // ── ลงสีทั้งตัว: ละเลงข้ามส่วนได้อิสระ ยกเว้นหนวด ──
+    // หนวดเป็นเส้นบางที่วาดทับหน้าอยู่ ถ้าโดนละเลงไปด้วย มันจะกลายเป็นสีเดียว
+    // กับหน้าแล้วหายไปทั้งชุด เหลือแมวหน้าเกลี้ยงที่อ่านไม่ออกว่าเป็นแมว
+    // เจาะรูไว้เฉพาะเส้นหนวด ที่เหลือปล่อยผ่านหมดเหมือนไม่มีหน้ากาก
+    mask = regionMask('head', '^whisker');
   }
+  // ชั้นลำตัวไม่มีหนวด จึงไม่ต้องใส่หน้ากากเลย
 
   // ข้ามชิ้นกันไม่ได้ ต้องเริ่มเส้นใหม่ ไม่งั้นเส้นจะพุ่งข้ามจากหัวไปตัวเป็นทางยาว
   if (brushPrev && brushPrev.key !== hit.key) brushPrev = null;
 
   const from = brushPrev || hit;
   const rad = toolRadius();
-  if (paintTool === 'eraser') eraseLayer(hit.key, from.x, from.y, hit.x, hit.y, rad);
-  else strokeLayer(hit.key, from.x, from.y, hit.x, hit.y, paintColor, rad);
+  if (paintTool === 'eraser') eraseLayer(hit.key, from.x, from.y, hit.x, hit.y, rad, mask);
+  else strokeLayer(hit.key, from.x, from.y, hit.x, hit.y, paintColor, rad, mask);
   brushPrev = hit;
 
   drawPaintCat();
@@ -4001,13 +4141,26 @@ function refreshHint() {
       ? 'ลากลบได้ทั่วตัวน้อง ไม่จำกัดส่วน' : 'ลากระบายได้ทั่วตัวน้อง ไม่จำกัดส่วน';
     return;
   }
-  if (paintScope === 'part' && paintTool === 'brush') {
-    paintHint.textContent = 'ลากระบาย สีจะติดเฉพาะส่วนที่เริ่มลาก';
+  if (paintScope === 'part' && (paintTool === 'brush' || paintTool === 'eraser')) {
+    // ── บอกชื่อของทุกชิ้นที่ส่วนนี้คุมอยู่ ──
+    // ชื่อบนปุ่มสั้นเพราะช่องแคบ ที่ว่างใต้ผ้าใบยาวพอจะกางรายการเต็มได้
+    // ไม่งั้นคนเลือก "ขา+แขน" ก็ยังไม่รู้ว่ามันคือขาสองข้างหรือสี่ข้าง
+    if (paintPart?.flat) {
+      paintHint.textContent = 'แตะเพื่อลงสี ' + paintPart.hint.split(' —')[0] + ' ทั้งส่วน';
+      return;
+    }
+    if (paintPart) {
+      paintHint.textContent = (paintTool === 'eraser' ? 'ลากลบได้เฉพาะ ' : 'ลากระบายได้เฉพาะ ')
+        + paintPart.hint;
+      return;
+    }
+    paintHint.textContent = paintTool === 'eraser'
+      ? 'ลากลบ เฉพาะในส่วนที่เริ่มลาก' : 'ลากระบาย สีจะติดเฉพาะในส่วนที่เริ่มลาก';
     return;
   }
   paintHint.textContent = paintTool === 'dropper' ? 'แตะส่วนที่อยากดูดสี'
     : paintTool === 'eraser' ? 'ลากเพื่อลบรอยพู่กันที่ระบายไว้'
-    : paintTool === 'bucket' ? 'แตะเพื่อเทสีลงทุกส่วนที่สีเหมือนกัน'
+    : paintTool === 'bucket' ? 'แตะเพื่อเทสีลงทั้งส่วนนั้น'
     : 'ลากบนตัวน้องเพื่อระบายสีตามรอยพู่กัน';
 }
 
@@ -4095,7 +4248,13 @@ function refreshParts() {
         paintPart = paintPart && paintPart.key === r.key ? null : r;
         // เลือกส่วนเจาะจง = ตั้งใจลงทีละส่วน เด้งออกจากโหมดทั้งตัวให้เลย
         if (paintPart && paintScope === 'all') setScope('part');
+        // ส่วนที่ค้างจากการลากรอบก่อนต้องทิ้ง ไม่งั้นการลากครั้งถัดไปยังเล็ง
+        // ส่วนเดิมอยู่ ทั้งที่เพิ่งกดเลือกส่วนใหม่ไปหมาด ๆ
+        strokeRegion = null;
+        // ส่วนแบนลงทั้งส่วนอยู่แล้ว ไม่ต้องใช้หน้ากาก
+        if (paintPart && !paintPart.flat) warmMask(paintPart.key);
         refreshParts();
+        refreshHint();
       });
       box.appendChild(b);
     }
@@ -4703,9 +4862,14 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   showSettings(true);
 });
 document.getElementById('settingsBack').addEventListener('click', () => showSettings(false));
-document.getElementById('volDown').addEventListener('click', () => stepVolume(-1));
-document.getElementById('volUp').addEventListener('click', () => stepVolume(1));
-document.getElementById('volMute').addEventListener('click', () => { unlockAudio(); toggleMute(); });
+for (const r of MIX_ROWS) {
+  document.getElementById(r.down).addEventListener('click', () => stepMix(r.ch, -1));
+  document.getElementById(r.up).addEventListener('click', () => stepMix(r.ch, 1));
+  document.getElementById(r.mute).addEventListener('click', () => {
+    unlockAudio();
+    toggleMute(r.ch);
+  });
+}
 
 // ── ลูปหลัก ────────────────────────────────────────────────
 
