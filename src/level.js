@@ -214,6 +214,22 @@ const crateStack = (x, rows = 1) => ({
 });
 
 // ─────────────────────────────────────────────────────────────
+// ชุดเครื่องมือสำหรับหน้าออกแบบด่าน (editor.html)
+//
+// หน้านั้นต้องวางของด้วย "ตัวเดียวกัน" กับที่ท่อนในไฟล์นี้ใช้ ไม่งั้นสิ่งที่เห็น
+// ในเครื่องมือจะไม่ตรงกับของที่ลงเกมจริง จึงปล่อยค่าชุดนี้ออกไปแทนการคัดลอกใหม่
+//
+// ทุกตัวในนี้ PATTERNS เรียกใช้อยู่แล้วทั้งหมด การปล่อยออกไปจึงไม่ได้
+// พาโค้ดเพิ่มเข้าก้อนเกม มีแค่อ็อบเจกต์หนึ่งตัวที่ชี้ไปหาของที่มีอยู่แล้ว
+// ─────────────────────────────────────────────────────────────
+export const AUTHOR = {
+  JUMP, JUMP_DBL, JUMP_SPAN, HALF, JUMP_PEAK, DBL_SPAN, DBL_PEAK, DOUBLE_AT,
+  RUN_Y, RUN_REACH, GAP_W,
+  fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
+  arcMid, arcHigh, groundSpike, lowBar, crateStack, makeShrimp, makeKibble,
+};
+
+// ─────────────────────────────────────────────────────────────
 // หัวใจของ endless runner
 // อย่าสุ่มสิ่งกีดขวางทีละชิ้น เพราะจะได้ด่านที่ผ่านไม่ได้
 // ให้ออกแบบ "ท่อน" ที่การันตีว่าผ่านได้ แล้วสุ่มเอาท่อนมาต่อกัน
@@ -593,7 +609,8 @@ export const PATTERNS = [
       obs: [],
       pit: [{ x: j + (DBL_SPAN - GAP_W) / 2, w: GAP_W }],
       fish: [...fishRunTo(x + 40, j), ...fishDouble(j, 12)],
-      jumps: [j],
+      // GAP_W กว้างเกินกระโดดเดี่ยวโดยตั้งใจ เฉลยจึงต้องเป็นการกดสองครั้ง
+      jumps: [j, j + DOUBLE_AT * SPEED.run],
       width: (j - x) + DBL_SPAN + 260,
     };
   },
@@ -610,7 +627,7 @@ export const PATTERNS = [
         { x: j2 + (DBL_SPAN - GAP_W) / 2, w: GAP_W },
       ],
       fish: [...fishRunTo(x + 30, j1), ...fishDouble(j1, 11), ...fishDouble(j2, 11)],
-      jumps: [j1, j2],
+      jumps: [j1, j1 + DOUBLE_AT * SPEED.run, j2, j2 + DOUBLE_AT * SPEED.run],
       width: (j2 - x) + DBL_SPAN + 260,
     };
   },
@@ -624,7 +641,7 @@ export const PATTERNS = [
       obs: [lowBar(barX)],
       pit: [{ x: j + (DBL_SPAN - GAP_W) / 2, w: GAP_W }],
       fish: [...fishRunTo(x + 30, j), ...fishDouble(j, 11), ...fishLow(barX + 8, 7, 32)],
-      jumps: [j],
+      jumps: [j, j + DOUBLE_AT * SPEED.run],
       width: (barX - x) + bar.w + 240,
     };
   },
@@ -1132,16 +1149,7 @@ export class Level {
     for (let x = fromX; x < limit; x += 24) {
       if (!this.isClearSpot(x)) continue;
 
-      if (kind === 'flame') {
-        const f = HAZARD.flame;
-        this.hazards.push({
-          kind, x, w: f.w,
-          // เริ่มที่ช่วงดับเสมอ ผู้เล่นจึงเห็นมันก่อนที่มันจะติดครั้งแรก
-          phase: 'off', t: f.offFrames,
-          // สุ่มว่ารอบแรกจะติดที่พื้นหรือเพดาน เฟสจึงไม่ซ้ำกันทุกต้น
-          at: Math.random() < 0.5 ? 'ground' : 'ceil',
-        });
-      } else if (kind === 'bee') {
+      if (kind === 'bee') {
         const b = HAZARD.bee;
         this.hazards.push({
           kind, x, w: b.w, h: b.h,
@@ -1199,14 +1207,6 @@ export class Level {
         top: HAZARD.bee.midY - HAZARD.bee.amp - 10, bot: 300,
       });
       this.fishes.push(...line);
-      return;
-    }
-
-    if (h.kind === 'flame') {
-      // ไฟสลับพื้น↔เพดานไปเรื่อย ๆ ทางที่ปลอดภัยจึงเปลี่ยนตลอด ปูเส้นเดียวไม่ได้
-      // ที่ทำได้คือ "เว้นช่องให้เห็น" — ของกินวิ่งมาถึงแล้วขาดตรงเสาไฟพอดี
-      // ช่องว่างนั้นคือตัวนำทางเอง จึงเป็นชนิดเดียวที่เก็บออกโดยไม่ปูอะไรกลับ
-      this.clearFishIn({ x: h.x - 26, w: h.w + 52, top: 0, bot: GROUND_Y });
       return;
     }
 
@@ -1306,15 +1306,7 @@ export class Level {
       // ชิ้นที่โดนพุ่งชนไปแล้ว ปลิวด้วยแรงที่ได้รับ (เดินฟิสิกส์ที่ game.js)
       // ไม่ต้องเดินท่าประจำตัวอีก ไม่งั้นผึ้งจะยังแกว่งอยู่ทั้งที่กำลังปลิว
       if (h.smashed) continue;
-      if (h.kind === 'flame') {
-        const f = HAZARD.flame;
-        h.t -= dt;
-        if (h.t <= 0) {
-          if (h.phase === 'off') { h.phase = 'on'; h.t = f.onFrames; }
-          // ดับแล้วสลับข้าง รอบหน้าจึงเป็นท่าตรงข้าม
-          else { h.phase = 'off'; h.t = f.offFrames; h.at = h.at === 'ground' ? 'ceil' : 'ground'; }
-        }
-      } else if (h.kind === 'bee') {
+      if (h.kind === 'bee') {
         const b = HAZARD.bee;
         h.t += b.speed * dt;
         h.y = b.midY + Math.sin(h.t) * b.amp;
@@ -1352,12 +1344,7 @@ export class Level {
     this.hazards = this.hazards.filter((h) => {
       // ชิ้นที่โดนชนไม่ต้องผ่านกฎเรื่องคาน/หนามอีก มันไม่ใช่ภัยแล้ว
       if (h.smashed) return h.life > 0 && h.y < VIEW.H + 180;
-      const b = this.hazardBox(h);
-      if (!b) return true;                                  // ไฟกำลังดับ ยังไม่เป็นภัย
-      if (this.underBar(b.x, b.w)) return false;            // ไปอยู่ใต้คาน
-      // ไฟเพดานเป็นของที่บังคับหมอบเหมือนคาน จึงห้ามคร่อมหนาม/ลัง/หลุม
-      // สลับให้พ่นจากพื้นแทนดีกว่าลบทิ้ง เพราะไฟพื้นกับหนามกระโดดทีเดียวพ้นทั้งคู่
-      if (h.kind === 'flame' && h.at === 'ceil' && this.hasSolid(b.x, b.w)) h.at = 'ground';
+      if (this.underBar(h.x, h.w)) return false;            // ไปอยู่ใต้คาน
       return true;
     });
     // ชิ้นที่ปลิวไปข้างหน้าได้ ต้องไม่โดนเส้นตัดท้ายจอเหมือนของที่อยู่กับที่
@@ -1365,18 +1352,12 @@ export class Level {
   }
 
   /**
-   * กล่องชนของอันตรายชิ้นหนึ่ง — คืน null ถ้าตอนนี้ยังไม่อันตราย
-   * แยกออกมาเพราะไฟมีช่วงดับ และรูปทรงต่างกันตามชนิด
+   * กล่องชนของอันตรายชิ้นหนึ่ง — คืน null ถ้าชิ้นนั้นไม่เป็นภัยแล้ว
+   * แยกเป็นเมธอดของตัวเอง เพราะฝั่งเกมต้องถามคำถามนี้ทุกเฟรม และกฎว่า
+   * "ชิ้นไหนยังเป็นภัย" เป็นเรื่องของด่าน ไม่ใช่ของตัวเกม
    */
   hazardBox(h) {
     if (h.smashed) return null;                       // โดนพุ่งชนไปแล้ว ไม่เป็นภัยอีก
-    if (h.kind === 'flame') {
-      if (h.phase !== 'on') return null;              // ช่วงดับ ผ่านได้
-      const f = HAZARD.flame;
-      return h.at === 'ground'
-        ? { x: h.x, y: GROUND_Y - f.groundH, w: f.w, h: f.groundH }
-        : { x: h.x, y: 0, w: f.w, h: f.ceilH };
-    }
     return { x: h.x, y: h.y, w: h.w, h: h.h };
   }
 

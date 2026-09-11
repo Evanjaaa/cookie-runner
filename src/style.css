@@ -755,9 +755,19 @@ canvas[hidden] { display: none; }
   box-shadow: var(--plate-lift);
   /* ตัดดาวกับแสงที่ล้นออกนอกทรงแคปซูลทิ้ง */
   overflow: hidden;
-  /* ยังกดไม่ได้ — เผื่อไว้ให้เปลี่ยนรูปโปรไฟล์ทีหลัง ค่อยเปลี่ยนเป็น auto */
-  pointer-events: none;
+  /* ── กดเข้าหน้าโปรไฟล์ได้แล้ว ──
+     เป็น <button> จริง ไม่ใช่ div ที่ใส่ onclick จะได้โฟกัสด้วยคีย์บอร์ดและ
+     อ่านออกเสียงได้เหมือนปุ่มอื่นทั้งเกมโดยไม่ต้องเขียนอะไรเพิ่ม
+     แต่ต้องล้างสไตล์ตั้งต้นของปุ่มทิ้งก่อน ไม่งั้นฟอนต์กับการจัดข้อความข้างใน
+     จะกลายเป็นของเบราว์เซอร์ ไม่ใช่ของเกม */
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
 }
+.profile:active { transform: translateY(2px); }
+.profile:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 
 /* เนื้อหาต้องลอยเหนือชั้นดาวกับแสง ไม่งั้นโดนกลบ */
 .profile > .pf-face,
@@ -1557,6 +1567,7 @@ canvas[hidden] { display: none; }
    จนบรรทัด "กำลังใส่" ใต้การ์ดหายไปครึ่งตัว ดูเหมือนหน้าเสีย */
 .panel .skin-grid.scrolls,
 .panel .stage-grid.scrolls,
+.panel .pf-side.scrolls,
 .panel .rank-list.scrolls {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
@@ -3676,6 +3687,271 @@ canvas[hidden] { display: none; }
   color: #E4D4F5;
   flex: 0 0 auto;
   margin-right: auto;
+}
+
+/* ── หน้าโปรไฟล์ ───────────────────────────────────────────
+ *
+ * สองคอลัมน์: ซ้ายคือน้องยืนโชว์ตัว ขวาคือสเตตัสกับข้อมูลสะสม
+ * ใช้โครงเดียวกับคลังน้อง (.stash-cols) เพราะสัดส่วนนั้นถูกจูนกับเวทีเตี้ย
+ * บนมือถือมาแล้ว การคิดสัดส่วนใหม่เองมีแต่จะได้ของที่พังบนจอเดิมที่เคยแก้ไปแล้ว
+ */
+.pf-pop {
+  width: 100%;
+  padding-left: clamp(12px, 2vw, 26px);
+  padding-right: clamp(12px, 2vw, 26px);
+}
+.pf-body {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(10px, 2vw, 24px);
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ── ซ้าย: แท่นโชว์ตัว ── */
+.pf-stand {
+  flex: 0 0 auto;
+  width: clamp(140px, 34%, 300px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, 0.8dvh, 8px);
+  min-height: 0;
+}
+/* แสงเรืองใต้เท้าดันตัวน้องออกจากพื้นการ์ดที่สีใกล้กัน — ท่าเดียวกับสปอตไลต์
+   ใต้เท้าในหน้าแรก ต่างกันแค่ที่นี่ทำด้วย CSS เพราะฉากหลังไม่ใช่ canvas */
+.pf-stage {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(58% 34% at 50% 78%, rgba(255,214,150,.22), transparent 72%);
+}
+/* ── ทำไมใช้ object-fit แทนการล็อกอัตราส่วนของตัวผ้าใบ ──
+   กล่องนี้สูงกว่ากว้าง (คอลัมน์ผอม การ์ดสูง) การสั่ง aspect-ratio คู่กับ
+   max-width จึงขัดกันเอง เบราว์เซอร์ยอมตามความสูงแล้วปล่อยความกว้างโดนบีบ
+   ได้น้องผอมสูงกว่าของจริง
+   ปล่อยให้ผ้าใบกินเต็มกล่องแล้วให้ภาพข้างในจัดตัวเองด้วย contain
+   ภาพจึงคงสัดส่วนเสมอไม่ว่ากล่องจะทรงไหน */
+.pf-stage canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.pf-show-name {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(14px, 2.2vw, 20px);
+  color: var(--cream);
+  text-align: center;
+  line-height: 1.3;
+  /* ชื่อยาว ๆ ต้องไม่ดันคอลัมน์ให้กว้างขึ้นจนภาพน้องโดนบีบ */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-show-sub {
+  font-size: clamp(9.5px, 1.25vw, 12px);
+  color: #C0A4DC;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── ขวา: สเตตัสกับข้อมูล ── */
+.pf-side {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  /* .panel จัดข้อความกลางทั้งแผง ซึ่งถูกสำหรับหัวเรื่องกับปุ่ม แต่ผิดสำหรับ
+     ข้อความยาวหลายบรรทัดกับตารางตัวเลข — สองอย่างนั้นอ่านจากขอบซ้ายเสมอ */
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2dvh, 12px);
+  /* เลื่อนได้ทั้งคอลัมน์ ไม่ใช่เลื่อนเฉพาะตารางข้อมูล — บนจอเตี้ยมาก
+     กล่องสเตตัสเองก็ยาวเกินจอได้ ถ้าล็อกมันไว้ ปุ่มบันทึกจะหลุดออกนอกจอ */
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* overflow-y: auto บังคับ overflow-x เป็น auto ตามไปด้วย เว้นที่ให้เงา
+     กับขอบที่ยื่นออกมา แล้วดึงกลับด้วย margin เท่ากันเป๊ะ */
+  padding: 4px;
+  margin: -4px;
+}
+.pf-side::-webkit-scrollbar { display: none; }
+
+/* ── แถบเลเวล ── */
+.pf-level {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+}
+.pf-level-num {
+  flex: 0 0 auto;
+  min-width: clamp(30px, 4.6vw, 42px);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FFD264, #E8973A);
+  color: #4A2374;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(12px, 1.7vw, 16px);
+  text-align: center;
+}
+.pf-level-bar {
+  flex: 1 1 auto;
+  height: clamp(7px, 1.1dvh, 11px);
+  border-radius: 999px;
+  background: rgba(20,8,32,.55);
+  border: 1px solid rgba(255,243,226,.22);
+  overflow: hidden;
+}
+.pf-level-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8DF3EA, #4ECDC4);
+  transition: width .3s ease;
+}
+.pf-level-xp {
+  flex: 0 0 auto;
+  font-size: clamp(9px, 1.2vw, 11.5px);
+  color: #C0A4DC;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── กล่องสเตตัส ── */
+.pf-status {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: clamp(7px, 1.3dvh, 12px) clamp(10px, 1.4vw, 15px);
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(255,243,226,.11), rgba(255,243,226,.045));
+  border: 1px solid rgba(255,243,226,.2);
+}
+.pf-status-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pf-status-label {
+  flex: 1 1 auto;
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(10.5px, 1.4vw, 13px);
+  color: #E4D4F5;
+}
+/* ── ทำไมข้อความสเตตัสใช้ pre-wrap ──
+   ผู้เล่นขึ้นบรรทัดใหม่ได้สามบรรทัด ถ้าใช้ normal บรรทัดที่เขาตั้งใจแยก
+   จะถูกยุบมาต่อกันหมด กลายเป็นย่อหน้าเดียวที่ไม่ใช่สิ่งที่เขาพิมพ์ */
+.pf-status-text {
+  margin: 0;
+  font-size: clamp(10.5px, 1.45vw, 13.5px);
+  line-height: 1.65;
+  color: var(--cream);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pf-status-text.empty { color: #9B82B8; font-style: italic; }
+/* ── ต้องประกาศเอง ไม่ใช่พึ่งคลาส .hidden กลาง ──
+   เกมนี้ไม่มีกฎ .hidden ตัวเดียวที่ใช้ได้ทั้งเว็บ แต่ละที่ประกาศของตัวเอง
+   (ดูที่อื่นใน style.css ที่เขียน .xxx.hidden { display: none } ไว้เหมือนกัน)
+   ถ้าไม่ประกาศ ตอนกดแก้ไขจะเห็นทั้งข้อความเดิมและกล่องพิมพ์ซ้อนกันสองก้อน */
+.pf-status-text.hidden { display: none; }
+.pf-status-edit { display: flex; flex-direction: column; gap: 6px; }
+.pf-status-edit.hidden { display: none; }
+.pf-status-edit textarea {
+  width: 100%;
+  resize: none;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,243,226,.28);
+  background: rgba(20,8,32,.5);
+  color: var(--cream);
+  font-family: "IBM Plex Sans Thai", sans-serif;
+  font-size: clamp(10.5px, 1.45vw, 13.5px);
+  line-height: 1.6;
+}
+.pf-status-edit textarea:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 1px;
+}
+.pf-status-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pf-count {
+  flex: 1 1 auto;
+  font-size: clamp(9px, 1.2vw, 11.5px);
+  color: #C0A4DC;
+  font-variant-numeric: tabular-nums;
+}
+.pf-count.full { color: var(--danger); }
+
+/* ── ตารางข้อมูลสะสม ──
+   สองช่องต่อแถวบนจอกว้าง หนึ่งช่องบนจอแคบ — ให้เบราว์เซอร์ตัดสินเองด้วย
+   auto-fill แทนการเขียน media query ไล่ทีละขนาด */
+.pf-facts {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(118px, 14vw, 168px), 1fr));
+  gap: clamp(5px, 0.9dvh, 9px);
+}
+.pf-fact {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: clamp(5px, 1dvh, 9px) 10px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(255,243,226,.1), rgba(255,243,226,.04));
+  border: 1px solid rgba(255,243,226,.16);
+  min-width: 0;
+}
+.pf-fact .ico {
+  flex: 0 0 auto;
+  font-size: clamp(13px, 1.8vw, 17px);
+  line-height: 1;
+}
+.pf-fact .txt { min-width: 0; display: flex; flex-direction: column; }
+/* ป้ายชื่อช่องตัดท้ายเมื่อยาวเกิน ไม่ใช่ขึ้นบรรทัดใหม่ — ขึ้นบรรทัดแล้วช่องนั้น
+   จะสูงกว่าเพื่อนทั้งแถว ส่วนตัวเลขข้างล่างสำคัญกว่าชื่อ จึงยอมให้ชื่อโดนตัดก่อน */
+.pf-fact .k {
+  font-size: clamp(8.5px, 1.1vw, 10.5px);
+  color: #B99BD4;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-fact .v {
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(11px, 1.5vw, 14px);
+  color: var(--cream);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── เวทีเตี้ยมาก (มือถือแนวนอน สูงราว 286px) ──
+   ที่ว่างแนวตั้งคือของหายากที่สุดตรงนี้ บีบทุกอย่างที่บีบได้โดยไม่เสียความอ่านออก
+   เพื่อให้เห็นช่องข้อมูลได้มากกว่าสองแถวก่อนต้องเลื่อน
+   เกณฑ์เดียวกับที่หน้าระบายสีใช้บีบแถวเครื่องมือ */
+@media (max-height: 460px) {
+  .pf-status { padding: 6px 9px; gap: 3px; border-radius: 12px; }
+  .pf-status-text { line-height: 1.45; }
+  .pf-fact { padding: 4px 8px; gap: 6px; border-radius: 11px; }
+  .pf-fact .k { line-height: 1.25; }
+  .pf-fact .v { line-height: 1.2; }
+  .pf-level-bar { height: 7px; }
 }
 
 /* ── ปุ่มลำโพงปิด/เปิดเสียง ───────────────────

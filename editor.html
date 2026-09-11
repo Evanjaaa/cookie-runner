@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MeowZing — โต๊ะออกแบบด่าน</title>
+
+  <!-- เครื่องมือของคนทำเกม ไม่ใช่หน้าสำหรับคนเล่น ไม่ต้องให้ค้นเจอ -->
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="bar">
+    <h1>MeowZing <span>โต๊ะออกแบบด่าน</span></h1>
+
+    <label class="pick">ท่อน
+      <select id="docPick"></select>
+    </label>
+    <button class="btn ghost" id="newDoc">+ ท่อนใหม่</button>
+    <button class="btn ghost" id="dupDoc">ทำสำเนา</button>
+    <button class="btn ghost danger" id="delDoc">ลบ</button>
+
+    <span class="sep"></span>
+
+    <label class="pick">ฉาก
+      <select id="stagePick"></select>
+    </label>
+    <label class="pick">ดูของเดิม
+      <select id="refPick"></select>
+    </label>
+
+    <span class="grow"></span>
+
+    <button class="btn ghost" id="dlJson">บันทึกไฟล์</button>
+    <button class="btn ghost" id="upJson">เปิดไฟล์</button>
+    <input type="file" id="fileIn" accept=".json,application/json" hidden>
+    <button class="btn" id="showCode">โค้ดสำหรับวางลงเกม</button>
+  </header>
+
+  <main class="wrap">
+    <!-- ── กล่องเครื่องมือซ้าย ───────────────────────────── -->
+    <aside class="side left">
+      <div class="panel">
+        <h2>ลากลงสนามได้เลย</h2>
+        <p class="tip">กดค้างที่ชิ้นแล้วลากลงสนาม หรือกดเฉย ๆ เพื่อวางกลางจอ</p>
+
+        <h3>จุดกด</h3>
+        <div class="kit" id="kitMark"></div>
+
+        <h3>สิ่งกีดขวาง</h3>
+        <div class="kit" id="kitObs"></div>
+
+        <h3>ของกิน (เทมเพลตสำเร็จ)</h3>
+        <div class="kit" id="kitFood"></div>
+      </div>
+
+      <div class="panel">
+        <h2>กติกาที่ควรรู้</h2>
+        <ul class="rules">
+          <li>วาง <b>จุดกด</b> ก่อนเสมอ แล้วค่อยเอาของไปเกาะ — ของที่เกาะจุดกดจะขยับตามเมื่อเลื่อนจุดกด</li>
+          <li>สิ่งกีดขวางควรอยู่ที่ <b>กลางโค้ง</b> หรือ <b>ยอดโค้ง</b> เพราะเป็นช่วงที่แมวลอยพ้นแน่นอน</li>
+          <li>ลัง 3 ชั้นสูงเกินกระโดดเดี่ยว ต้องมีจุดกดคู่ (กดสองชั้น)</li>
+          <li>ใต้คานต้องหมอบเท่านั้น กระโดดข้ามไม่ได้ ห้ามมีของแข็งซ้อนใต้คาน</li>
+          <li>อย่าให้ของล้นขอบท่อน ไม่งั้นจะไปชนกับท่อนถัดไปที่สุ่มมาต่อ</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- ── สนามตรงกลาง ─────────────────────────────────── -->
+    <section class="stage">
+      <div class="canvasbox">
+        <canvas id="view" width="960" height="420"></canvas>
+      </div>
+
+      <canvas id="strip" class="strip" width="1600" height="96"></canvas>
+
+      <div class="row toolrow">
+        <label class="chk"><input type="checkbox" id="optArc" checked> เส้นโค้งกระโดด</label>
+        <label class="chk"><input type="checkbox" id="optNext" checked> เงาท่อนถัดไป</label>
+        <label class="chk"><input type="checkbox" id="optGrid"> เส้นบอกระยะ</label>
+        <span class="grow"></span>
+        <button class="btn ghost" id="runCheck">ตรวจด่าน</button>
+        <button class="btn ghost" id="playBtn">▶ เล่นดู</button>
+        <input type="range" id="scrub" min="0" max="0" value="0" disabled>
+        <span class="readout" id="scrubTxt">—</span>
+      </div>
+
+      <div class="report" id="report">กด “ตรวจด่าน” เพื่อให้แมวจำลองวิ่งตามจุดกดที่วางไว้</div>
+    </section>
+
+    <!-- ── รายละเอียดชิ้นที่เลือก ขวา ───────────────────── -->
+    <aside class="side right">
+      <div class="panel">
+        <h2>ท่อนนี้</h2>
+        <label class="field">ชื่อ<input id="docName" type="text" maxlength="40"></label>
+        <label class="field">ความกว้าง (px)<input id="docWidth" type="number" min="400" max="3000" step="10"></label>
+        <div class="row">
+          <label class="field flex">ชนิด
+            <select id="docKind">
+              <option value="safe">safe — ทางโล่ง</option>
+              <option value="recovery">recovery — ช่วงพัก</option>
+              <option value="obstacle">obstacle — มีของให้หลบ</option>
+              <option value="challenge">challenge — ยาก</option>
+            </select>
+          </label>
+          <label class="field w70">ยาก
+            <input id="docDiff" type="number" min="1" max="5" step="1">
+          </label>
+        </div>
+        <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="docPartial"> ตั้งใจให้เก็บของไม่ครบในรอบเดียว</label>
+        <p class="tip" id="docCount">—</p>
+      </div>
+
+      <div class="panel" id="insp">
+        <h2>ชิ้นที่เลือก</h2>
+        <div id="inspBody"><p class="tip">ยังไม่ได้เลือกชิ้นไหน — คลิกที่ของในสนาม</p></div>
+      </div>
+
+      <div class="panel">
+        <h2>ปุ่มลัด</h2>
+        <ul class="rules small">
+          <li><b>ลาก</b> ที่ของ = ย้าย · <b>ลากพื้นหลัง</b> = เลื่อนจอ</li>
+          <li><b>← →</b> ขยับ 1px · <b>Shift+← →</b> 10px</li>
+          <li><b>Delete</b> ลบ · <b>Ctrl+D</b> ทำสำเนา · <b>Ctrl+Z</b> ย้อน</li>
+          <li>ลากใกล้จุดกด = ของจะ <b>ดูดเข้าเกาะ</b> เอง</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ── กล่องโค้ด ─────────────────────────────────────── -->
+  <div class="modal hidden" id="codeModal">
+    <div class="sheet">
+      <header>
+        <h2>วางสองก้อนนี้ลงไฟล์เกม</h2>
+        <button class="btn ghost" id="closeCode">ปิด</button>
+      </header>
+      <p class="tip" id="codeHint"></p>
+      <textarea id="codeOut" spellcheck="false" readonly></textarea>
+      <div class="row">
+        <button class="btn" id="copyCode">คัดลอกโค้ด</button>
+        <button class="btn ghost" id="copyJson">คัดลอกเป็น JSON (ส่งให้เคลาด์)</button>
+        <span class="readout" id="copyMsg"></span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/editor/main.js"></script>
+</body>
+</html>

@@ -42,7 +42,8 @@ import { drawChest, CHEST } from './render/chest.js';
 import {
   loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail, syncMail,
 } from './mail.js';
-import { recordRun, recordPulls, recordUpgrade } from './stats.js';
+import { recordRun, recordPulls, recordUpgrade, loadStats } from './stats.js';
+import { loadStatus, saveStatus, statusLength, STATUS_MAX } from './profile.js';
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
@@ -2499,6 +2500,203 @@ function doClaimQuest(id) {
   buildQuestList();
   showReward('สำเร็จ: ' + r.quest.name, r.reward);
 }
+
+// ── หน้าโปรไฟล์ ────────────────────────────────────────────
+//
+// รวมทุกอย่างที่ตอบคำถามว่า "ตัวเราในเกมนี้เป็นใคร" ไว้หน้าเดียว
+// ตัวน้องที่สะสมมา ชื่อ เลเวล สเตตัสที่เขียนเอง และสถิติสะสมทั้งหมด
+//
+// ── ทำไมไม่เอาเหรียญทองกับเพชรมาโชว์ด้วย ──
+// สองอย่างนั้นอยู่บนแถบบนของจอตลอดเวลาอยู่แล้ว (ดู .hud-top) การเอามาซ้ำ
+// ทำให้ตารางนี้ยาวขึ้นโดยไม่ได้บอกอะไรใหม่ ตารางนี้จึงเก็บเฉพาะของที่ไม่มีที่อื่น
+
+const profilePanel = document.getElementById('profilePanel');
+
+/**
+ * ตารางข้อมูลสะสม — เพิ่มช่องใหม่ก็เติมที่นี่ที่เดียว
+ *
+ * แต่ละช่องคำนวณเองจากของที่อ่านได้ตอนนั้น ไม่มีใครต้องส่งข้อมูลเข้ามา
+ * หน้าจึงอัปเดตถูกเสมอไม่ว่าจะเปิดจากทางไหน
+ */
+const PF_FACTS = [
+  { ico: '🏃', k: 'ลงสนาม', v: (s) => s.runs.toLocaleString('en-US') + ' ตา' },
+  { ico: '⏱', k: 'เวลาเล่นรวม', v: (s) => hoursText(s.seconds) },
+  { ico: '🐾', k: 'ระยะทางรวม', v: (s) => distText(s.meters) },
+  { ico: '⭐', k: 'คะแนนรวม', v: (s) => s.score.toLocaleString('en-US') },
+  // ชื่อด่านไปอยู่บนป้าย เพราะช่องค่ามีบรรทัดเดียว ถ้ายัดรวมกันตัวเลขจะโดนตัดทิ้ง
+  { ico: '🏆', k: () => bestWhere(), v: () => bestScoreText() },
+  { ico: '🐱', k: 'แมวที่มี', v: () => countText(SKINS.filter((x) => ownsSkin(x.id)).length, SKINS.length) },
+  { ico: '👕', k: 'ชุดที่มี', v: () => countText(ownedCount(), OUTFITS.length) },
+  { ico: '🧰', k: 'สมบัติที่มี', v: () => countText(treasureCount(), TREASURES.length) },
+  { ico: '🎰', k: 'สุ่มไปแล้ว', v: (s) => s.pulls.toLocaleString('en-US') + ' ครั้ง' },
+  { ico: '🔨', k: 'ตีบวกสำเร็จ', v: (s) => s.upgrades.toLocaleString('en-US') + ' ครั้ง' },
+];
+
+/** วินาทีดิบ → "3 ชม. 12 นาที" — ต่ำกว่าหนึ่งชั่วโมงไม่ต้องโชว์ช่องชั่วโมงให้รก */
+function hoursText(sec) {
+  const m = Math.floor(sec / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? h + ' ชม. ' + (m % 60) + ' นาที' : m + ' นาที';
+}
+
+/** เมตรดิบ → กิโลเมตรเมื่อเกินพัน ตัวเลขหกหลักอ่านไม่ทันในช่องแคบ ๆ */
+function distText(m) {
+  if (m < 1000) return Math.round(m).toLocaleString('en-US') + ' ม.';
+  const km = (m / 1000).toFixed(1);
+  return (km.endsWith('.0') ? km.slice(0, -2) : km) + ' กม.';
+}
+
+const countText = (have, all) => have + ' / ' + all;
+
+/** สถิติที่ดีที่สุดของทุกด่านรวมกัน คืนทั้งคะแนนและชื่อด่านที่ทำไว้ */
+function bestRun() {
+  let top = 0;
+  let where = '';
+  for (const st of STAGES) {
+    const b = loadBest(st.id);
+    if (b > top) { top = b; where = st.name; }
+  }
+  return { top, where };
+}
+
+const bestScoreText = () => {
+  const b = bestRun();
+  return b.top > 0 ? b.top.toLocaleString('en-US') : 'ยังไม่มี';
+};
+const bestWhere = () => {
+  const b = bestRun();
+  return b.top > 0 ? 'สถิติสูงสุด · ' + b.where : 'สถิติสูงสุด';
+};
+
+function buildFacts() {
+  const box = document.getElementById('pfFacts');
+  const s = loadStats();
+  box.innerHTML = '';
+  for (const f of PF_FACTS) {
+    const el = document.createElement('div');
+    el.className = 'pf-fact';
+    el.innerHTML = '<span class="ico" aria-hidden="true"></span>'
+      + '<span class="txt"><span class="k"></span><b class="v"></b></span>';
+    el.querySelector('.ico').textContent = f.ico;
+    // ชื่อช่องเป็นข้อความตรง ๆ หรือฟังก์ชันก็ได้ — บางช่องต้องเอาข้อมูลจริง
+    // มาต่อท้ายชื่อ (เช่นชื่อด่านที่ทำสถิติไว้)
+    el.querySelector('.k').textContent = typeof f.k === 'function' ? f.k() : f.k;
+    el.querySelector('.v').textContent = f.v(s);
+    box.appendChild(el);
+  }
+}
+
+// ── น้องยืนโชว์ตัว ──
+// ลูปของตัวเอง หยุดเองที่หัวลูปเมื่อหน้าถูกปิด ด้วยเหตุผลเดียวกับลูปในคลังน้อง:
+// หน้านี้ออกได้หลายทาง (ปุ่มกลับ / กดเล่น / กดปุ่มตั้งค่า) การไล่ปิดทีละทาง
+// พลาดง่ายมากเมื่อมีทางออกใหม่เพิ่มทีหลัง แล้วลูปที่ค้างอยู่จะแย่งเฟรมกับตัวเกม
+let pfTick = 0;
+let pfRAF = 0;
+
+function paintPfCat() {
+  paintMini(document.getElementById('pfShow'), 240,
+    (c) => drawCatPose(c, 120, 212, 3.6, getSkin(), pfTick));
+}
+
+function pfLoop() {
+  if (profilePanel.classList.contains('hidden')) { pfRAF = 0; return; }
+  pfTick++;
+  paintPfCat();
+  pfRAF = requestAnimationFrame(pfLoop);
+}
+
+/** ชื่อสีขนกับชื่อชุดที่ใส่อยู่ — บรรทัดเดียวใต้ชื่อผู้เล่น */
+function pfSubText() {
+  const s = getSkin();
+  const bits = [s.name || 'น้องของเรา'];
+  if (s.outfit?.name) bits.push(s.outfit.name);
+  return bits.join(' · ');
+}
+
+function refreshStatusView() {
+  const txt = loadStatus();
+  const el = document.getElementById('pfStatusText');
+  el.textContent = txt || 'ยังไม่ได้เขียนอะไรไว้ — แตะปุ่มแก้ไขเพื่อใส่ข้อความ';
+  el.classList.toggle('empty', !txt);
+}
+
+function pfEditing(on) {
+  const box = document.getElementById('pfStatusEdit');
+  box.classList.toggle('hidden', !on);
+  document.getElementById('pfStatusText').classList.toggle('hidden', on);
+  document.getElementById('pfEdit').disabled = on;
+
+  // กล่องพิมพ์สูงกว่าข้อความที่มันแทน คอลัมน์ขวาจึงล้นเพิ่มตอนเปิดและหดตอนปิด
+  // ต้องวัดใหม่ทุกครั้ง ไม่งั้นเงาจางขอบล่างจะค้างผิดสถานะไปทั้งรอบ
+  markScrollable(document.getElementById('pfSide'));
+  if (!on) return;
+
+  const input = document.getElementById('pfStatusInput');
+  input.value = loadStatus();
+  refreshCount();
+  input.focus();
+  // บนเวทีเตี้ย ปุ่มบันทึกอยู่ต่ำกว่าขอบล่างของคอลัมน์พอดี ถ้าไม่เลื่อนให้
+  // ผู้เล่นจะพิมพ์เสร็จแล้วหาปุ่มบันทึกไม่เจอ นึกว่าพิมพ์แล้วบันทึกไม่ได้
+  requestAnimationFrame(() => box.scrollIntoView({ block: 'nearest' }));
+}
+
+function refreshCount() {
+  const n = statusLength(document.getElementById('pfStatusInput').value);
+  const el = document.getElementById('pfCount');
+  el.textContent = n + ' / ' + STATUS_MAX;
+  el.classList.toggle('full', n >= STATUS_MAX);
+}
+
+function refreshProfilePage() {
+  const st = levelFromXp(loadXp());
+  document.getElementById('pfShowName').textContent = localName() || 'แมวนิรนาม';
+  document.getElementById('pfShowSub').textContent = pfSubText();
+  document.getElementById('pfBigLv').textContent = 'Lv ' + st.level;
+  document.getElementById('pfBigFill').style.width = Math.round(st.ratio * 100) + '%';
+  document.getElementById('pfBigXp').textContent = st.maxed
+    ? 'สูงสุดแล้ว'
+    : st.into.toLocaleString('en-US') + ' / ' + st.need.toLocaleString('en-US');
+  refreshStatusView();
+  buildFacts();
+  // จางขอบล่างให้รู้ว่าเลื่อนดูต่อได้ — เฉพาะตอนที่ล้นจริง
+  // (ท่าเดียวกับกริดชุดกับกระดานคะแนน ดู markScrollable)
+  markScrollable(document.getElementById('pfSide'));
+}
+
+function showProfile(on) {
+  profilePanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (!on) return;
+  pfEditing(false);
+  refreshProfilePage();
+  paintPfCat();
+  if (!pfRAF) pfRAF = requestAnimationFrame(pfLoop);
+}
+
+document.getElementById('profileCard').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  showProfile(true);
+});
+document.getElementById('pfBack').addEventListener('click', () => {
+  sfx.fish();
+  showProfile(false);
+});
+document.getElementById('pfEdit').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  pfEditing(true);
+});
+document.getElementById('pfCancel').addEventListener('click', () => {
+  sfx.fish();
+  pfEditing(false);
+});
+document.getElementById('pfSave').addEventListener('click', () => {
+  sfx.fish();
+  saveStatus(document.getElementById('pfStatusInput').value);
+  pfEditing(false);
+  refreshStatusView();
+});
+document.getElementById('pfStatusInput').addEventListener('input', refreshCount);
 
 function showQuests(on) {
   questPanel.classList.toggle('hidden', !on);

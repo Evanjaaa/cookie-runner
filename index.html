@@ -336,7 +336,7 @@
         <!-- การ์ดบัญชีมุมซ้ายบน — รูปแมว ชื่อ เลเวล และหลอดความคืบหน้า
              รูปโปรไฟล์ตอนนี้ผูกกับสีขนที่เลือกอยู่ วันหลังเปลี่ยนเป็นรูปอื่นได้
              โดยแก้แค่ฟังก์ชัน paintAvatar() ใน main.js ที่เดียว -->
-        <div class="profile" id="profileCard">
+        <button type="button" class="profile" id="profileCard" aria-label="ดูโปรไฟล์">
           <!-- ชั้นดาวกับแสงเรืองของทรงนี้ (Uiverse by StealthWorm)
                อยู่หลังเนื้อหาทั้งหมด ไม่มีข้อความ ไม่ต้องให้โปรแกรมอ่านหน้าจออ่าน -->
           <span class="pf-stars" aria-hidden="true"><i></i></span>
@@ -350,7 +350,7 @@
             <span class="pf-bar"><i id="pfFill"></i></span>
             <small class="pf-xp" id="pfXp">0 / 270</small>
           </span>
-        </div>
+        </button>
 
         <div class="lobby left">
           <!-- บรรทัดคำอธิบายใต้ชื่อถูกถอดออกแล้ว ข้อมูลที่เคยอยู่ตรงนี้ยังดูได้ครบ
@@ -1041,6 +1041,69 @@
       <!-- ── หน้ากิจกรรม ────────────────────────────────────
            ภารกิจสะสมที่ทำครบแล้วกดรับรางวัลได้ รายการสร้างจาก QUESTS ใน quests.js
            ตอนนี้ตั้งไว้คร่าว ๆ ก่อน เพิ่มข้อใหม่ = เติมอ็อบเจกต์ในไฟล์นั้นพอ -->
+      <!-- ── หน้าโปรไฟล์ ─────────────────────────────────────
+           เปิดจากการ์ดบัญชีมุมซ้ายบนของล็อบบี้ ซึ่งเป็นของชิ้นเดียวในเกมที่
+           แสดง "ตัวตนของผู้เล่น" อยู่แล้ว การกดมันแล้วได้หน้าเต็มของเรื่องเดียวกัน
+           จึงเป็นทางที่คนเดาถูกโดยไม่ต้องมีปุ่มใหม่ในแถวเมนูที่ยาวอยู่แล้ว
+
+           ── ทำไมน้องยืนโชว์ตัวเต็มตัว ไม่ใช่รูปหน้ากลม ๆ เหมือนบนการ์ด ──
+           การ์ดในล็อบบี้เล็กเกินกว่าจะเห็นชุดที่ใส่อยู่ หน้านี้คือที่เดียวที่ผู้เล่น
+           เห็นผลรวมของทุกอย่างที่สะสมมา (สีขน ชุด สมบัติ) พร้อมกันในภาพเดียว -->
+      <div class="panel hidden" id="profilePanel">
+        <div class="pop pf-pop">
+          <div class="pf-body">
+            <!-- ซ้าย: น้องยืนโชว์ตัวบนแท่น -->
+            <div class="pf-stand">
+              <div class="pf-stage">
+                <canvas id="pfShow" width="240" height="240"></canvas>
+              </div>
+              <b class="pf-show-name" id="pfShowName">แมวนิรนาม</b>
+              <small class="pf-show-sub" id="pfShowSub"></small>
+            </div>
+
+            <!-- ขวา: สเตตัสกับข้อมูลสะสม เลื่อนได้เมื่อจอเตี้ย -->
+            <div class="pf-side" id="pfSide">
+              <div class="pf-level">
+                <b class="pf-level-num" id="pfBigLv">1</b>
+                <div class="pf-level-bar"><i id="pfBigFill"></i></div>
+                <small class="pf-level-xp" id="pfBigXp">0 / 270</small>
+              </div>
+
+              <!-- ── สเตตัส ──
+                   โหมดอ่านกับโหมดพิมพ์เป็นคนละก้อน สลับซ่อน/โชว์
+                   ไม่ใช่ textarea ที่เปิดค้างไว้ตลอด — กล่องพิมพ์ที่เปิดค้าง
+                   ทำให้หน้าอ่านยากขึ้นทุกครั้งที่เปิดมาดูเฉย ๆ ซึ่งคือการใช้งาน
+                   ส่วนใหญ่ของหน้านี้ -->
+              <div class="pf-status">
+                <div class="pf-status-top">
+                  <span class="pf-status-label">สเตตัส</span>
+                  <button type="button" class="btn ghost tiny" id="pfEdit">แก้ไข</button>
+                </div>
+                <p class="pf-status-text" id="pfStatusText"></p>
+                <div class="pf-status-edit hidden" id="pfStatusEdit">
+                  <textarea id="pfStatusInput" rows="3" maxlength="100"
+                            placeholder="เขียนอะไรสักอย่างถึงน้อง"></textarea>
+                  <div class="pf-status-foot">
+                    <small class="pf-count" id="pfCount">0 / 100</small>
+                    <button type="button" class="btn ghost tiny" id="pfCancel">ยกเลิก</button>
+                    <button type="button" class="btn tiny" id="pfSave">บันทึก</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pf-facts" id="pfFacts"></div>
+            </div>
+          </div>
+
+          <button class="backbtn" id="pfBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <div class="panel hidden" id="questPanel">
         <div class="pop">
           <div class="quest-head">

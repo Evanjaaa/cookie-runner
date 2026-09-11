@@ -516,11 +516,9 @@ export function drawHazards(ctx, hazards, camera, tick, pal) {
     if (x > W + 130 || x + h.w < -130) continue;
 
     // ── ชิ้นที่โดนพุ่งชน ──
-    // ไฟไม่มีตัวตนให้ปลิว มันแค่ดับ จึงไม่วาดอะไรเลย (เม็ดที่ระเบิดออกทำหน้าที่แทน)
     // ผึ้งกับลูกบอลวาดจากพิกัดของตัวเองอยู่แล้ว จึงหมุนรอบจุดกึ่งกลางแล้วจางหายได้
     // ด้วยท่าเดียวกับสิ่งกีดขวาง
     if (h.smashed) {
-      if (h.kind === 'flame') continue;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, h.life / 20));
       ctx.translate(x + h.w / 2, h.y + h.h / 2);
@@ -532,56 +530,8 @@ export function drawHazards(ctx, hazards, camera, tick, pal) {
       continue;
     }
 
-    if (h.kind === 'flame') drawFlame(ctx, h, x, tick);
-    else if (h.kind === 'bee') drawBee(ctx, h, x, tick);
+    if (h.kind === 'bee') drawBee(ctx, h, x, tick);
     else drawBall(ctx, h, x, pal);
-  }
-}
-
-/**
- * ไฟเตาอบ — สลับติดที่พื้น (ต้องกระโดด) กับที่เพดาน (ต้องหมอบ)
- *
- * ช่วงดับยังต้องวาดหัวฉีดค้างไว้ ไม่ใช่หายไปเลย ผู้เล่นจึงเห็นว่า
- * "ตรงนี้มีไฟ และรอบหน้าจะพ่นจากทางไหน" ตั้งแต่ยังวิ่งมาไม่ถึง
- */
-function drawFlame(ctx, h, x, tick) {
-  const F = { w: 44, groundH: 54, ceilH: 88 };
-  const fromGround = h.at === 'ground';
-  const nozzleY = fromGround ? GROUND_Y - 6 : 0;
-
-  // หัวฉีดโลหะ — อยู่ตลอดเวลาไม่ว่าไฟติดหรือดับ
-  ctx.fillStyle = '#5A4A3A';
-  ctx.fillRect(x - 3, fromGround ? GROUND_Y - 10 : 0, F.w + 6, 10);
-
-  if (h.phase !== 'on') {
-    // ช่วงดับ — เรืองอ่อน ๆ บอกว่ากำลังจะติด และติดจากทางไหน
-    const warm = 0.25 + Math.sin(tick * 0.2) * 0.12;
-    ctx.globalAlpha = warm;
-    ctx.fillStyle = '#FF8A3C';
-    ctx.fillRect(x + 4, fromGround ? GROUND_Y - 16 : 8, F.w - 8, 8);
-    ctx.globalAlpha = 1;
-    return;
-  }
-
-  // ไฟติด — เปลวสามชั้นซ้อน ยิ่งในยิ่งสว่าง ขอบวูบตามเวลา
-  const len = fromGround ? F.groundH : F.ceilH;
-  const layers = [
-    { c: '#FF5C2E', k: 1.0 },
-    { c: '#FFA23C', k: 0.72 },
-    { c: '#FFE28A', k: 0.4 },
-  ];
-  for (const L of layers) {
-    const w = F.w * L.k;
-    const cx = x + F.w / 2;
-    const flick = 1 + Math.sin(tick * 0.55 + L.k * 4) * 0.08;
-    const tipY = fromGround ? nozzleY - len * L.k * flick : nozzleY + len * L.k * flick;
-    ctx.fillStyle = L.c;
-    ctx.beginPath();
-    ctx.moveTo(cx - w / 2, nozzleY);
-    ctx.quadraticCurveTo(cx - w * 0.28, (nozzleY + tipY) / 2, cx, tipY);
-    ctx.quadraticCurveTo(cx + w * 0.28, (nozzleY + tipY) / 2, cx + w / 2, nozzleY);
-    ctx.closePath();
-    ctx.fill();
   }
 }
 
