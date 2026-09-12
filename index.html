@@ -1193,6 +1193,11 @@
                      หัวข้อเป็นป้ายกลม ๆ เหมือนแบบที่วางไว้ ไม่ใช่ข้อความลอย
                      เพื่อให้แยกออกจากปุ่มด้านล่างชัด ๆ ว่าอันไหนกดได้อันไหนเป็นหัวข้อ -->
                 <div class="paint-tools-col">
+                  <!-- ปุ่มย่อแถบนี้โดยเฉพาะ — อีกปุ่มของฝั่งจานสีแยกกันคนละใบ
+                       คนที่เลือกสีไว้แล้วจะได้เก็บจานสีไว้และซ่อนแค่อุปกรณ์ได้ -->
+                  <button type="button" class="pcol-fold" id="foldTools"
+                          aria-expanded="true" aria-controls="paintTools"
+                          aria-label="ย่อแถบอุปกรณ์"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   <b class="pcol-head">อุปกรณ์น้อน</b>
 
                   <div class="paint-tools" id="paintTools" role="group" aria-label="เครื่องมือ">
@@ -1236,6 +1241,9 @@
 
                 <!-- ── คอลัมน์สี ── -->
                 <div class="paint-color-col">
+                  <button type="button" class="pcol-fold" id="foldColors"
+                          aria-expanded="true" aria-controls="paintSwatches"
+                          aria-label="ย่อแถบสี"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   <b class="pcol-head">สีทาน้อน</b>
 
                   <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
@@ -1408,20 +1416,10 @@
       <!-- เครื่องที่ค่อย ๆ ตะแคงไปเอง ส่วนหน้าน้องข้างในหมุนสวนกลับ
            นี่คือจุดที่ทำให้มันอ่านออกว่า "หมุนเครื่องสิ น้องจะได้หัวตั้ง" -->
       <div class="rot-phone">
-        <svg class="rot-cat" viewBox="0 0 48 46">
-          <g class="rc-line" stroke="#3A1D50" stroke-width="2.6" stroke-linejoin="round">
-            <path d="M9 17 L6.5 4 L20 10.5 Z" fill="#EFA657"/>
-            <path d="M39 17 L41.5 4 L28 10.5 Z" fill="#EFA657"/>
-            <ellipse cx="24" cy="26" rx="17" ry="15" fill="#EFA657"/>
-          </g>
-          <circle cx="18" cy="24" r="2.9" fill="#3A1D50"/>
-          <circle cx="30" cy="24" r="2.9" fill="#3A1D50"/>
-          <circle cx="19.1" cy="22.9" r="1" fill="#FFF3E2"/>
-          <circle cx="31.1" cy="22.9" r="1" fill="#FFF3E2"/>
-          <path d="M21.6 30h4.8L24 33z" fill="#E8768F"/>
-          <path d="M24 33q-2.6 2.8-4.8 0M24 33q2.6 2.8 4.8 0" fill="none"
-                stroke="#3A1D50" stroke-width="2" stroke-linecap="round"/>
-        </svg>
+        <!-- โลโก้ตัวจริงของเกม ฉบับตัดพื้นหลังม่วงออกแล้ว (public/logo-cat.png)
+             ทำจาก tools/logo_meowsing.jpg ตัวเดียวกับที่ไอคอนทุกขนาดใช้ หน้านี้จึงเป็นน้องตัวเดียวกับไอคอนบนหน้าจอโฮม -->
+        <img class="rot-cat" src="/logo-cat.png" width="256" height="256"
+             alt="" decoding="async">
       </div>
     </div>
 

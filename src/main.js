@@ -4564,6 +4564,33 @@ document.getElementById('paintMax').addEventListener('click', () => {
   setPaintMax(!createPanel.classList.contains('paint-full'));
 });
 
+// ── ย่อแถบข้าง ──
+// ทำงานทั้งโหมดธรรมดาและโหมดเต็มจอ เพราะคลาสติดที่แผง ไม่ได้อิงโหมด
+//
+// แยกสองปุ่มตามที่ออกแบบไว้ — สองฝั่งนี้ทำคนละหน้าที่ คนจึงอยากยุบคนละจังหวะ
+//
+// ต้องวาดใหม่หลังสลับ ด้วยเหตุผลเดียวกับ setPaintMax: ขนาดที่แสดงเปลี่ยน
+// และผ้าใบรหัสสีที่ใช้ตรวจว่านิ้วแตะส่วนไหนต้องตรงกับที่ตาเห็นเสมอ
+function setFold(which, on) {
+  const cls = which === 'tools' ? 'fold-tools' : 'fold-colors';
+  const btn = document.getElementById(which === 'tools' ? 'foldTools' : 'foldColors');
+  createPanel.classList.toggle(cls, on);
+  btn.setAttribute('aria-expanded', String(!on));
+  btn.setAttribute('aria-label', which === 'tools'
+    ? (on ? 'กางแถบอุปกรณ์' : 'ย่อแถบอุปกรณ์')
+    : (on ? 'กางแถบสี' : 'ย่อแถบสี'));
+  requestAnimationFrame(() => { drawPaintCat(); drawPickMap(); });
+}
+
+for (const which of ['tools', 'colors']) {
+  const id = which === 'tools' ? 'foldTools' : 'foldColors';
+  document.getElementById(id).addEventListener('click', () => {
+    unlockAudio(); sfx.fish();
+    const cls = which === 'tools' ? 'fold-tools' : 'fold-colors';
+    setFold(which, !createPanel.classList.contains(cls));
+  });
+}
+
 document.getElementById('faceRotReset').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
   const r = document.getElementById('faceRot');
@@ -4685,7 +4712,7 @@ typable('rankName', saveName);
 // จำนวนครั้งของปุ่มใบที่สองต่างกันคนละช่อง (สมบัติ 3 / ชุด 5) จึงถามจากช่องที่เปิดอยู่
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
 document.getElementById('pull5').addEventListener('click', () => doPull(gMulti()));
-document.getElementById('homeBtn').addEventListener('click', goHome);
+document.getElementById('homeBtn').addEventListener('click', () => { sfx.quit(); goHome(); });
 
 // ── เลิกเล่น = จบตานั้นจริง ๆ ไม่ใช่ทิ้ง ──
 //
@@ -4698,6 +4725,7 @@ document.getElementById('homeBtn').addEventListener('click', goHome);
 // ต่างจากปุ่ม "เริ่มใหม่" ที่ยังไม่ตายแล้วกดทิ้งตานั้น — อันนั้นไม่ผ่านหน้านี้
 // จึงไม่นับ ตามที่ตั้งใจ
 document.getElementById('quitBtn').addEventListener('click', () => {
+  sfx.quit();
   game.bankBest();
   pausePanel.classList.add('hidden');
   // ปุ่มบนแถบในจอต้องกลับเป็นรูปหยุด ไม่งั้นค้างเป็นสามเหลี่ยม "เล่นต่อ"
@@ -4864,6 +4892,24 @@ function showGameOver(quit = false) {
   // การ์ดในล็อบบี้ต้องอัปเดตด้วย ไม่งั้นกดกลับหน้าแรกแล้วเลเวลยังเป็นของเก่า
   refreshProfile();
 
+  // ── เสียงของหน้านี้ เรียงตามสิ่งที่ตาเห็น ──
+  //
+  // เปิดหน้าช้ากว่าภาพเล็กน้อยทั้งสองทาง เพราะมีเสียงมาก่อนหน้าเสมอและต้องปล่อยให้จบก่อน:
+  //   ตายคาสนาม  sfx.die() ยาวราว 1.1 วิ แต่หน้าสรุปเด้งที่ 750ms (ดู die() ใน game.js)
+  //   กดเลิกเล่น  sfx.quit() ยาวราว 0.5 วิ และเด้งทันที
+  // ถ้าไม่หน่วง ระฆังเปิดหน้าจะไปทับหางเสียงน้องพอดีจนฟังเป็นเสียงเดียวที่รกหู
+  const openAt = quit ? 260 : 420;
+  const landAt = reduceMotion.matches ? 0 : 900;   // ตรงกับเวลาไล่ตัวเลขของ countUp
+  const gen = countGen;
+  const alive = () => gen === countGen;            // กดเล่นใหม่ไปแล้ว เสียงที่ค้างต้องไม่ตามมา
+
+  setTimeout(() => { if (alive()) sfx.summary(); }, openAt);
+  // ตาที่ทำสถิติใหม่มี cheer กับริบบิ้นรออยู่ที่ 950ms อยู่แล้ว เสียงเคาะจะชนกันพอดี
+  // ตานั้นจึงข้ามไป ปล่อยให้ cheer เป็นตัวปิดตัวเลขแทน ซึ่งทำหน้าที่นั้นได้ดีกว่า
+  if (!isBest) setTimeout(() => { if (alive()) sfx.tally(); }, landAt);
+  // เลเวลอัพมาท้ายสุดเสมอ และถอยให้ cheer จบก่อนถ้ามีทั้งคู่ในตาเดียวกัน
+  if (run.leveledUp) setTimeout(() => { if (alive()) sfx.levelUp(); }, landAt + (isBest ? 800 : 400));
+
   overPanel.classList.remove('hidden');
 }
 
@@ -4968,6 +5014,9 @@ function setPaused(on) {
   // pause()/resume() คืน false ถ้าสถานะไม่เข้าเงื่อนไข เช่นกด Esc ตอนตายอยู่
   // เช็คก่อนแตะ UI ไม่งั้นพาเนลกับสถานะเกมจะหลุดจากกัน
   if (on ? !game.pause() : !game.resume()) return;
+  // หลังด่านกันสถานะแล้วเท่านั้น กดตอนที่กดไม่ได้จริง ๆ จึงต้องเงียบ
+  // ไม่งั้นเสียงจะบอกว่า "กดติด" ทั้งที่เกมไม่ได้เปลี่ยนอะไรเลย
+  sfx[on ? 'pause' : 'resume']();
   pausePanel.classList.toggle('hidden', !on);
   pauseBtn.classList.toggle('playing', on);
   pauseBtn.setAttribute('aria-label', on ? 'เล่นต่อ' : 'หยุดชั่วคราว');
@@ -4975,7 +5024,7 @@ function setPaused(on) {
 
 pauseBtn.addEventListener('click', () => setPaused(game.state === STATE.RUN));
 document.getElementById('resumeBtn').addEventListener('click', () => setPaused(false));
-document.getElementById('restartBtn').addEventListener('click', showIntro);
+document.getElementById('restartBtn').addEventListener('click', () => { sfx.restart(); showIntro(); });
 
 // สลับแท็บหรือสลับแอปแล้วหยุดให้เอง จะได้ไม่กลับมาเจอว่าตายไปแล้ว
 document.addEventListener('visibilitychange', () => {
@@ -5048,7 +5097,7 @@ async function goImmersive() {
 document.addEventListener('pointerdown', goImmersive);
 
 document.getElementById('startBtn').addEventListener('click', showIntro);
-document.getElementById('retryBtn').addEventListener('click', showIntro);
+document.getElementById('retryBtn').addEventListener('click', () => { sfx.restart(); showIntro(); });
 
 // แตะที่ไหนก็ได้ตอนอยู่ในห้อง = ข้ามไปเริ่มวิ่งเลย
 // ผูกที่ตัวแผงเอง ไม่ใช่ทั้งจอ จะได้ไม่ไปกินการแตะของหน้าอื่น

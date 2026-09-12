@@ -1,5 +1,5 @@
 // src/render/hud.js
-import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
+import { VIEW, HEALTH, SCENE, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
 
@@ -7,7 +7,10 @@ const { W, H } = VIEW;
 
 // จุดยึดของ HUD แถวบน รวมไว้ที่เดียวจะได้ตรวจว่าไม่ทับกันได้โดยไม่ต้องไล่อ่านทั้งไฟล์
 const TREAT_TOP = 58;    // ค่าขนมเปียก ขวาริม ใต้ปุ่มหยุด/เสียงที่เป็น DOM
+/** กึ่งกลางหมึกจริงของตัวเลข Mitr 600 20px นับจากจุดที่ fillText วาด (วัดด้วย measureText) */
+const TREAT_INK_MID = 17;
 const WORD_TOP = 22;     // แถวตัวอักษรสะสม ซ้ายบนสุด
+const RUN_TOP = 66;      // หลอดระยะในด่านย่อย ใต้หลอดพลัง (ขอบล่างหลอดพลังจบที่ 58)
 
 /**
  * ระยะขั้นต่ำจากขอบจอ สำหรับเครื่องที่ไม่รายงานเขตปลอดภัยมาให้
@@ -136,9 +139,18 @@ export function drawHUD(ctx, game) {
   ctx.fillText(treatText, treatX - treatW, TREAT_TOP + 16);
 
   // ไอคอนกับตัวเลขอยู่บรรทัดเดียวกันเสมอ ไม่ว่าเลขจะกี่หลัก เพราะวางไอคอน
-  // จากขอบซ้ายของตัวเลขที่วัดมาแล้ว ส่วน y คือกึ่งกลางแนวตั้งของตัวเลข
-  // (วาดแบบ baseline 'top' ฟอนต์ 20px กลางจึงอยู่ราว +10 จากขอบบน)
-  drawFish(ctx, treatX - treatW - TREAT_ICON_GAP, TREAT_TOP + 26, 10);
+  // จากขอบซ้ายของตัวเลขที่วัดมาแล้ว
+  //
+  // ── y มาจากไหน ──
+  // เคยใช้ +26 ซึ่งคือกึ่งกลางของ "กล่อง em" (74 + 20/2) แต่กล่อง em
+  // ไม่ใช่ขอบหมึกจริง ตัวเลขกินพื้นที่แค่ช่วงกลางของกล่องเท่านั้น
+  //
+  // วัดด้วย measureText จริง (Mitr 600 20px) หมึกของตัวเลขกินพื้นตั้งแต่ +9 ถึง +25
+  // จากจุดวาด กึ่งกลางที่ตาเห็นจริงจึงอยู่ที่ +17 ไม่ใช่ +10
+  // ปลาจึงลอยสูงกว่าเลขอยู่ 7px มาตลอด — บนมือถือที่ HUD ถูกขยายเต็มจอจึงเห็นชัด
+  //
+  // ถ้าเปลี่ยนฟอนต์หรือขนาดตัวเลข ต้องวัด actualBoundingBox ใหม่แล้วแก้ค่านี้ตาม
+  drawFish(ctx, treatX - treatW - TREAT_ICON_GAP, TREAT_TOP + 16 + TREAT_INK_MID, 10);
 
   ctx.textAlign = 'left';
 
@@ -148,6 +160,7 @@ export function drawHUD(ctx, game) {
 
   drawWord(ctx, game);
   drawHealthBar(ctx, game);
+  drawRunBar(ctx, game);
 
   if (game.notice > 0) drawNotice(ctx, game);
   if (game.bonus > 0) drawBonusBanner(ctx, game);
@@ -304,6 +317,84 @@ function drawNotice(ctx, game) {
   const label = game.noticeText || 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';
   drawLabelPill(ctx, label, 80, 26, 17, game.pal.noticeBg, C.danger, 5);
 
+  ctx.restore();
+}
+
+// ── หลอดบอกระยะในด่านย่อย ────────────────────────────────────
+//
+// ความเร็ววิ่งคงที่ "เวลาที่เหลือของฉาก" จึงเท่ากับ "ระยะที่เหลือ" เป๊ะ ๆ
+// เลยอ่านจากตัวนับฉากได้ตรง ๆ ไม่ต้องเก็บระยะทางแยกอีกชุดให้คลาดกัน
+//
+// ครบเวลาแล้วเกมยังไม่สลับฉากทันที มันรอให้วิ่งถึงทางเชื่อมก่อน (ดู updateScene)
+// ช่วงนั้นถือว่าเต็มหลอด ไม่ใช่ล้นหรือรีเซ็ต ผู้เล่นจะได้เห็นว่า "ถึงธงแล้ว กำลังเปลี่ยนฉาก"
+// ─────────────────────────────────────────────────────────────
+function drawRunBar(ctx, game) {
+  // ── ทำไมไม่ใช้ x ชุดเดียวกับหลอดพลัง ──
+  //
+  // หลอดพลังมีเหรียญหน้าแมวยื่นออกมาทางซ้าย และมันจัดให้ "ทั้งชุด" (เหรียญ+ขวด)
+  // อยู่กลางจอ ตัวขวดเปล่า ๆ จึงเยื้องไปทางขวาจากกลางจอ 11px (วัดจากพิกเซลจริงแล้ว)
+  //
+  // ถ้าหลอดนี้ไปอิง x ของขวด มันจะเยื้องขวาตามไปด้วย แล้วตาจะอ่านว่า
+  // "ไม่ตรงกลาง" เพราะตาเทียบกับชุดแดงทั้งชุด ไม่ได้เทียบกับตัวขวดอย่างเดียว
+  // จึงจัดกลางจอตรง ๆ แล้วทำให้สั้นกว่าขวด พอให้ปลายซ้ายพ้นเหรียญ
+  // และปลายขวารวมธงไม่เลยขอบขวด — ได้หลอดเล็กที่ร่วมจุดศูนย์กลางเดียวกันกับชุดแดง
+  const w = 290;
+  const h = 7;
+  const x = Math.round((W - w) / 2);
+  const y = RUN_TOP;
+
+  const left = game.nextSceneAt - game.tick;
+  const p = game.nextScene ? 1 : Math.max(0, Math.min(1, 1 - left / SCENE.frames));
+  const fw = w * p;
+
+  ctx.save();
+
+  ctx.fillStyle = C.runCase;
+  ctx.beginPath(); ctx.roundRect(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.fill();
+  ctx.fillStyle = C.runTrack;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill();
+
+  if (fw > 0.5) {
+    const g = ctx.createLinearGradient(x, 0, x + Math.max(fw, 1), 0);
+    g.addColorStop(0, C.runWarm);
+    g.addColorStop(1, C.runHot);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.roundRect(x, y, fw, h, Math.min(h / 2, fw / 2));
+    ctx.fill();
+  }
+
+  drawGoalFlag(ctx, x + w + 8, y + h / 2, game.nextScene ? game.tick : -1);
+
+  // หัวน้องวิ่งไปตามหลอด — หนีบไว้ในราง ไม่งั้นตอนเริ่มฉากมันจะไปทับ
+  // เหรียญหน้าแมวที่หัวหลอดพลังซึ่งอยู่เยื้องซ้ายขึ้นไปนิดเดียว
+  // 12 คือระยะที่วัดแล้วหัวน้องพ้นขอบเหรียญสนิทตอนหลอดยังว่าง
+  const mx = x + Math.max(12, Math.min(w - 8, fw));
+  drawCatFace(ctx, mx, y + h / 2, 0.4, getSkin());
+
+  ctx.restore();
+}
+
+/** ธงปลายทางของฉาก — โบกตอนถึงแล้ว เพื่อบอกว่ากำลังจะเปลี่ยนฉาก */
+function drawGoalFlag(ctx, x, y, wave) {
+  const sway = wave >= 0 ? Math.sin(wave * 0.22) * 1.5 : 0;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = C.cream;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 4);
+  ctx.lineTo(x, y - 9.5);
+  ctx.stroke();
+
+  ctx.fillStyle = C.runHot;
+  ctx.beginPath();
+  ctx.moveTo(x + 0.8, y - 9.5);
+  ctx.quadraticCurveTo(x + 4.6, y - 8.8 + sway, x + 8, y - 7);
+  ctx.quadraticCurveTo(x + 4.6, y - 5.2 + sway, x + 0.8, y - 4.6);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
