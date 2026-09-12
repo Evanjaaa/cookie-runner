@@ -120,6 +120,76 @@ export function audioCtx() {
   return ctx();
 }
 
+// ── ตัดเสียงเอฟเฟกต์กลางทาง ──────────────────────────────────
+//
+// เสียงเอฟเฟกต์ไม่ได้ดังจบในเฟรมที่สั่ง เสียงร้องของน้องยาวได้ถึง 0.9 วินาที
+// และเสียงหลายตัวเป็น "ชุด" ที่ทยอยออกทีละส่วนด้วยตัวจับเวลา (ดู later())
+//
+// เวลาหยุดเกม สองอย่างนี้จึงต้องถูกตัดพร้อมกัน:
+//   1. ตัวที่กำลังดังอยู่       — หรี่ปมขาออกลงให้เงียบ
+//   2. ตัวที่ตั้งเวลารอคิวอยู่  — ล้างตัวจับเวลาทิ้ง ไม่ให้มันเกิดขึ้นเลย
+// ถ้าตัดแค่ข้อแรก เสียงส่วนหลังของชุดจะโผล่มาดังในหน้าที่เกมหยุดไปแล้ว
+//
+// ── ทำไมเก็บ "ปมขาออก" ไม่ใช่ตัว oscillator ──
+// หยุด oscillator ตรง ๆ คือตัดคลื่นกลางลูก ได้เสียง "ป๊อก" ทุกครั้ง
+// หรี่ปมลงใน 25 มิลลิวินาทีแทน แล้วปล่อยให้ oscillator จบเองตามกำหนดเดิม
+// ซึ่งเป็นเหตุผลเดียวกับที่ tone() กับ meow() ทุกตัวมี fade out ปิดท้ายอยู่แล้ว
+// ─────────────────────────────────────────────────────────────
+
+/** ปมขาออกของเสียงที่ยังไม่จบ พร้อมเวลาที่มันจะจบ */
+let liveSfx = [];
+/** ตัวจับเวลาของเสียงชุดที่ยังไม่ออก */
+let sfxTimers = [];
+
+/**
+ * ตั้งเวลายิงเสียงส่วนถัดไปของชุดเดียวกัน — ใช้แทน setTimeout ทุกที่ในไฟล์นี้
+ * จำ id ไว้เพื่อให้ killSfx() ล้างได้ ถ้าใช้ setTimeout ตรง ๆ จะล้างไม่ได้เลย
+ */
+function later(fn, ms) {
+  const id = setTimeout(() => {
+    sfxTimers = sfxTimers.filter((t) => t !== id);
+    fn();
+  }, ms);
+  sfxTimers.push(id);
+  return id;
+}
+
+/** จำปมขาออกไว้ตัดทีหลัง พร้อมทิ้งตัวที่เล่นจบไปแล้วออกจากรายการ */
+function trackSfx(gain, endAt) {
+  const now = ctx().currentTime;
+  liveSfx = liveSfx.filter((s) => s.endAt > now);
+  liveSfx.push({ gain, endAt });
+}
+
+/**
+ * ทำให้เสียงเอฟเฟกต์เงียบทันที ทั้งตัวที่ดังอยู่และตัวที่รอคิว
+ *
+ * ไม่แตะระดับเสียงของช่อง เสียงที่สั่งขึ้นมา "หลัง" การตัดจึงดังปกติ
+ * ซึ่งจำเป็น เพราะเสียงปุ่มหยุดเองก็ออกหลังการตัด (ดู setPaused ใน main.js)
+ */
+export function killSfx() {
+  for (const id of sfxTimers) clearTimeout(id);
+  sfxTimers = [];
+  if (!ac) return;
+
+  const t = ac.currentTime;
+  for (const s of liveSfx) {
+    try {
+      const g = s.gain.gain;
+      // ค้างค่าปัจจุบันไว้ก่อนแล้วค่อยหรี่ ไม่งั้นคำสั่งที่จองไว้เดิมจะชนะ
+      // แล้วเสียงจะดังต่อเหมือนไม่ได้ตัดอะไรเลย
+      // ต้องกัน 0 ด้วย เพราะ exponential ramp ใช้กับศูนย์ไม่ได้ (โยน error)
+      const v = Math.max(0.0001, g.value);
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(v, t);
+      g.exponentialRampToValueAtTime(0.0001, t + 0.025);
+    } catch {
+      /* ปมถูกเก็บคืนไปแล้ว ไม่มีอะไรต้องตัด */
+    }
+  }
+  liveSfx = [];
+}
+
 function tone(from, to, dur, type = 'square', vol = 0.12) {
   if (level.sfx <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
   const a = ctx();
@@ -140,6 +210,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
   gain.connect(sfxOut());
   osc.start(t);
   osc.stop(t + dur + 0.02);
+  trackSfx(gain, t + dur + 0.02);
 }
 
 /**
@@ -194,6 +265,7 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
   lfo.start(t);
   osc.stop(t + dur + 0.05);
   lfo.stop(t + dur + 0.05);
+  trackSfx(gain, t + dur + 0.05);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -218,16 +290,16 @@ export const sfx = {
   // สั้นมากโดยตั้งใจ เพราะเก็บติด ๆ กันทีละหลายเม็ด ถ้ายาวกว่านี้จะทับกันเละ
   fish: () => {
     tone(1174, null, 0.055, 'sine', 0.10);
-    setTimeout(() => tone(1568, null, 0.05, 'sine', 0.10), 42);
-    setTimeout(() => tone(2093, null, 0.09, 'triangle', 0.075), 84);
+    later(() => tone(1568, null, 0.05, 'sine', 0.10), 42);
+    later(() => tone(2093, null, 0.09, 'triangle', 0.075), 84);
   },
 
   // เก็บเม็ดกลม — ต่ำกว่าเสียงปลาหนึ่งช่วง เสียง triangle อวบกว่า
   // และโน้ตท้ายค้างยาวกว่า ให้รู้สึกว่าได้ของใหญ่กว่าโดยไม่ต้องมองจอ
   kibble: () => {
     tone(784, null, 0.06, 'triangle', 0.11);
-    setTimeout(() => tone(1046, null, 0.06, 'triangle', 0.11), 50);
-    setTimeout(() => tone(1568, null, 0.14, 'sine', 0.09), 100);
+    later(() => tone(1046, null, 0.06, 'triangle', 0.11), 50);
+    later(() => tone(1568, null, 0.14, 'sine', 0.09), 100);
   },
 
   // เก็บกุ้งทอง — อาร์เพจจิโอเมเจอร์ไล่ขึ้น G-C-E-G แล้วปิดด้วยโน้ตสูงค้างยาว
@@ -235,60 +307,60 @@ export const sfx = {
   // ตั้งใจให้ยาวกว่าเสียงอื่นเกือบเท่าตัว เพราะนาน ๆ ได้ยินที ควรได้อวด
   shrimp: () => {
     [784, 1046, 1318, 1568].forEach((f, i) =>
-      setTimeout(() => tone(f, null, 0.13, 'triangle', 0.115), i * 58)
+      later(() => tone(f, null, 0.13, 'triangle', 0.115), i * 58)
     );
-    setTimeout(() => tone(2093, null, 0.34, 'sine', 0.105), 250);
-    setTimeout(() => tone(3136, null, 0.3, 'sine', 0.055), 310);
+    later(() => tone(2093, null, 0.34, 'sine', 0.105), 250);
+    later(() => tone(3136, null, 0.3, 'sine', 0.055), 310);
   },
 
   // เก็บขวดพลัง — อวดได้หน่อย เพราะนาน ๆ โผล่ที
   potion: () => {
     tone(523, 784, 0.16, 'triangle', 0.12);
-    setTimeout(() => tone(784, 1046, 0.18, 'sine', 0.11), 110);
-    setTimeout(() => tone(1046, 1568, 0.26, 'sine', 0.09), 240);
+    later(() => tone(784, 1046, 0.18, 'sine', 0.11), 110);
+    later(() => tone(1046, 1568, 0.26, 'sine', 0.09), 240);
   },
 
   // เก็บแม่เหล็ก — กวาดขึ้นยาว ๆ เหมือนเสียงชาร์จพลัง บอกว่า "เริ่มมีผลแล้ว"
   magnet: () => {
     tone(320, 1300, 0.3, 'square', 0.1);
-    setTimeout(() => tone(1046, 1568, 0.22, 'triangle', 0.1), 170);
+    later(() => tone(1046, 1568, 0.22, 'triangle', 0.1), 170);
   },
 
   // เก็บตัวอักษร — ไล่เสียงสูงขึ้นทีละตัว บอกความคืบหน้าโดยไม่ต้องมองจอ
   letter: (n) => {
     const base = 660 * Math.pow(1.09, n - 1);
     tone(base, null, 0.07, 'triangle', 0.12);
-    setTimeout(() => tone(base * 1.5, null, 0.11, 'sine', 0.1), 55);
+    later(() => tone(base * 1.5, null, 0.11, 'sine', 0.1), 55);
   },
 
   // เข้าโหมดโบนัส — แฟนแฟร์ไล่ขึ้นยาว ๆ ให้รู้ทันทีว่ามีอะไรใหญ่กำลังเกิด
   bonus: () => {
     [523, 659, 784, 1046, 1318].forEach((f, i) =>
-      setTimeout(() => tone(f, null, 0.16, 'triangle', 0.12), i * 90)
+      later(() => tone(f, null, 0.16, 'triangle', 0.12), i * 90)
     );
-    setTimeout(() => { tone(1568, null, 0.5, 'sine', 0.11); tone(2093, null, 0.45, 'sine', 0.06); }, 470);
+    later(() => { tone(1568, null, 0.5, 'sine', 0.11); tone(2093, null, 0.45, 'sine', 0.06); }, 470);
   },
   // ความสามารถติด — กวาดขึ้นแล้วปิดด้วยคอร์ดค้าง ให้รู้ว่าเข้าสถานะพิเศษแล้ว
   skill: () => {
     tone(392, 1046, 0.26, 'square', 0.1);
-    setTimeout(() => { tone(1046, null, 0.34, 'triangle', 0.11); tone(1568, null, 0.3, 'sine', 0.07); }, 190);
+    later(() => { tone(1046, null, 0.34, 'triangle', 0.11); tone(1568, null, 0.3, 'sine', 0.07); }, 190);
   },
 
   // เก็บต้นหญ้าแมว — กวาดขึ้นเร็วปรื๊ดแล้วปิดสั้น ให้รู้สึกว่า "ดีดออกไป"
   nip: () => {
     tone(420, 1600, 0.16, 'square', 0.11);
-    setTimeout(() => tone(1200, 1900, 0.12, 'triangle', 0.09), 90);
+    later(() => tone(1200, 1900, 0.12, 'triangle', 0.09), 90);
   },
 
   shield: () => {
     tone(880, null, 0.05, 'triangle', 0.11);
-    setTimeout(() => tone(1320, null, 0.08, 'triangle', 0.11), 45);
+    later(() => tone(1320, null, 0.08, 'triangle', 0.11), 45);
   },
   shieldBreak: () => tone(700, 160, 0.28, 'sawtooth', 0.13),
   // เสียงพุ่งชนกล่อง: ทุ้มหนักนำ แล้วตามด้วยเสียงแตกแหลม ๆ
   smash: () => {
     tone(210, 62, 0.15, 'sawtooth', 0.18);
-    setTimeout(() => tone(560, 170, 0.11, 'square', 0.11), 28);
+    later(() => tone(560, 170, 0.11, 'square', 0.11), 28);
   },
 
   // ── ตีบวกสมบัติ: สามเสียงที่ต้องฟังเป็นเรื่องเดียวกัน ──
@@ -307,9 +379,9 @@ export const sfx = {
   // สูงกว่าและยาวกว่า sfx.bonus ที่ใช้ตอนได้ของ เพราะตีบวกติดนาน ๆ ครั้ง
   upWin: () => {
     [659, 880, 1318].forEach((f, i) =>
-      setTimeout(() => tone(f, null, 0.3, 'triangle', 0.12), i * 70)
+      later(() => tone(f, null, 0.3, 'triangle', 0.12), i * 70)
     );
-    setTimeout(() => { tone(1760, null, 0.6, 'sine', 0.1); tone(2637, null, 0.5, 'sine', 0.05); }, 210);
+    later(() => { tone(1760, null, 0.6, 'sine', 0.1); tone(2637, null, 0.5, 'sine', 0.05); }, 210);
   },
 
   // ล้มเหลว — ของแตกแล้วเสียงร่วงลงต่ำ ปิดท้ายด้วยเสียงแมวอ้อน
@@ -317,8 +389,8 @@ export const sfx = {
   // ไม่ใช่ความผิดของคนเล่น เสียงอ้อนจึงอ่านเป็น "เสียดายจัง" ไม่ใช่ "คุณทำพลาด"
   upFail: () => {
     tone(520, 90, 0.36, 'sawtooth', 0.14);
-    setTimeout(() => tone(300, 70, 0.3, 'square', 0.085), 90);
-    setTimeout(() => meow({ start: 420, peak: 450, end: 150, dur: 0.5, vol: 0.2, q: 5, wobble: 22 }), 210);
+    later(() => tone(300, 70, 0.3, 'square', 0.085), 90);
+    later(() => meow({ start: 420, peak: 450, end: 150, dur: 0.5, vol: 0.2, q: 5, wobble: 22 }), 210);
   },
 
   // เย้! — แมวดีใจสองพยางค์ไล่ขึ้น แล้วปิดด้วยประกายระฆังสามเม็ด
@@ -329,9 +401,9 @@ export const sfx = {
   // ถ้าสองพยางค์เท่ากันจะฟังเป็นเสียงร้องเรียก ไม่ใช่เสียงดีใจ
   cheer: () => {
     meow({ start: 700, peak: 1180, end: 980, dur: 0.16, vol: 0.28, q: 4, wobble: 18 });
-    setTimeout(() => meow({ start: 900, peak: 1520, end: 1240, dur: 0.24, vol: 0.3, q: 4, wobble: 15 }), 150);
+    later(() => meow({ start: 900, peak: 1520, end: 1240, dur: 0.24, vol: 0.3, q: 4, wobble: 15 }), 150);
     [1568, 2093, 2637].forEach((f, i) =>
-      setTimeout(() => tone(f, null, 0.18, 'sine', 0.065), 340 + i * 70)
+      later(() => tone(f, null, 0.18, 'sine', 0.065), 340 + i * 70)
     );
   },
 
@@ -381,7 +453,7 @@ export const sfx = {
   // สั้นระดับ 0.06 วินาทีเพื่อให้ฟังเป็น "การกระตุก" ไม่ใช่โน้ตสามตัว
   chirp: () => {
     [0, 90, 180].forEach((ms, i) =>
-      setTimeout(() => meow({
+      later(() => meow({
         start: 820 + i * 90, peak: 1320 + i * 110, end: 1020 + i * 90,
         dur: 0.06, vol: 0.23, q: 5, wobble: 22,
       }), ms)
@@ -398,7 +470,7 @@ export const sfx = {
   // ส่วนเสียงเรียกหรือเสียงเจ็บจะลงต่ำกว่าจุดเริ่มเสมอ — ดู hurt กับ die ข้างล่าง
   love: () => {
     meow({ start: 560, peak: 900, end: 760, dur: 0.18, vol: 0.27, q: 4, wobble: 16 });
-    setTimeout(() => meow({ start: 640, peak: 1080, end: 980, dur: 0.34, vol: 0.29, q: 4, wobble: 13 }), 190);
+    later(() => meow({ start: 640, peak: 1080, end: 980, dur: 0.34, vol: 0.29, q: 4, wobble: 13 }), 190);
   },
 
   // ชนสิ่งกีดขวาง — ลากลงต่ำกว่าจุดเริ่มเยอะ ๆ กับสั่นถี่ = ฟังอ้อนน่าสงสาร
@@ -408,7 +480,7 @@ export const sfx = {
   // พลังหมด — เสียงเดียวกันแต่ยาวและจบต่ำกว่า เหมือนหมดแรงแล้วเสียงหายไป
   die: () => {
     meow({ start: 640, peak: 700, end: 155, dur: 0.9, vol: 0.38, q: 5.5, wobble: 26 });
-    setTimeout(() => meow({ start: 330, peak: 350, end: 130, dur: 0.7, vol: 0.22, q: 5.5, wobble: 20 }), 420);
+    later(() => meow({ start: 330, peak: 350, end: 130, dur: 0.7, vol: 0.22, q: 5.5, wobble: 20 }), 420);
   },
 
   // ── ปุ่มควบคุมรอบเล่น ───────────────────────────────────────
@@ -425,24 +497,24 @@ export const sfx = {
   // หยุดชั่วคราว — สองโน้ตวางลงนุ่ม ๆ เหมือนวางของ ปิดด้วยมิ้วเบา ๆ
   pause: () => {
     tone(880, null, 0.08, 'sine', 0.09);
-    setTimeout(() => tone(587, null, 0.15, 'sine', 0.09), 70);
-    setTimeout(() => meow({ start: 520, peak: 560, end: 415, dur: 0.17, vol: 0.15, q: 5, wobble: 18 }), 140);
+    later(() => tone(587, null, 0.15, 'sine', 0.09), 70);
+    later(() => meow({ start: 520, peak: 560, end: 415, dur: 0.17, vol: 0.15, q: 5, wobble: 18 }), 140);
   },
 
   // เล่นต่อ — กลับด้านของ pause เป๊ะ ๆ คู่โน้ตเดียวกันแต่ไล่ขึ้น แล้วมิ้วสดใสกว่า
   // ที่ต้องเป็นโน้ตคู่เดิมเพราะปุ่มเดียวกันสลับสองสถานะ หูจึงควรได้ยินว่าเป็นสวิตช์ตัวเดียว
   resume: () => {
     tone(587, null, 0.08, 'sine', 0.09);
-    setTimeout(() => tone(880, null, 0.13, 'sine', 0.09), 70);
-    setTimeout(() => meow({ start: 640, peak: 950, end: 870, dur: 0.15, vol: 0.17, q: 4, wobble: 16 }), 130);
+    later(() => tone(880, null, 0.13, 'sine', 0.09), 70);
+    later(() => meow({ start: 640, peak: 950, end: 870, dur: 0.15, vol: 0.17, q: 4, wobble: 16 }), 130);
   },
 
   // เริ่มใหม่ / วิ่งอีกรอบ — ดีดขึ้นเร็วปรื๊ดแล้วรัวทักทาย = "เอาใหม่!"
   // ใช้ wobble สูงแบบ trill เพราะเป็นเสียงที่ควรอ่านว่ากระตือรือร้น ไม่ใช่แค่ตอบรับ
   restart: () => {
     tone(523, 1046, 0.13, 'triangle', 0.095);
-    setTimeout(() => tone(1318, null, 0.12, 'sine', 0.08), 110);
-    setTimeout(() => meow({ start: 620, peak: 1090, end: 1010, dur: 0.2, vol: 0.21, q: 4, wobble: 31 }), 165);
+    later(() => tone(1318, null, 0.12, 'sine', 0.08), 110);
+    later(() => meow({ start: 620, peak: 1090, end: 1010, dur: 0.2, vol: 0.21, q: 4, wobble: 31 }), 165);
   },
 
   // เลิกเล่น / กลับหน้าแรก — ไล่ลงสามขั้นช้า ๆ ปิดด้วยเสียงอ้อนเบา ๆ
@@ -452,9 +524,9 @@ export const sfx = {
   // และปลายเสียงน้องลงต่ำแค่พอรู้ว่าเสียดาย ไม่ลงลึกเท่า hurt กับ die
   quit: () => {
     [784, 659, 523].forEach((f, i) =>
-      setTimeout(() => tone(f, null, 0.13, 'sine', 0.09), i * 75)
+      later(() => tone(f, null, 0.13, 'sine', 0.09), i * 75)
     );
-    setTimeout(() => meow({ start: 500, peak: 545, end: 355, dur: 0.3, vol: 0.17, q: 5, wobble: 20 }), 225);
+    later(() => meow({ start: 500, peak: 545, end: 355, dur: 0.3, vol: 0.17, q: 5, wobble: 20 }), 225);
   },
 
   // ── หน้าสรุปคะแนน ──────────────────────────────────────────
@@ -468,8 +540,8 @@ export const sfx = {
   // เบาที่สุดในสามก้อน เพราะเป็นแค่การเปิดฉาก ของจริงยังไม่มา
   summary: () => {
     tone(1046, null, 0.16, 'sine', 0.07);
-    setTimeout(() => tone(1568, null, 0.22, 'sine', 0.05), 120);
-    setTimeout(() => meow({ start: 560, peak: 770, end: 650, dur: 0.2, vol: 0.16, q: 5, wobble: 17 }), 225);
+    later(() => tone(1568, null, 0.22, 'sine', 0.05), 120);
+    later(() => meow({ start: 560, peak: 770, end: 650, dur: 0.2, vol: 0.16, q: 5, wobble: 17 }), 225);
   },
 
   // ตัวเลขไล่จนหยุด — เคาะเดียวสั้นใส ซ้อนคู่แปดเบา ๆ ให้ฟังเป็นระฆังไม่ใช่บี๊บ
@@ -483,13 +555,24 @@ export const sfx = {
   // ดังและยาวที่สุดของหน้านี้ เพราะนาน ๆ เกิดที ควรได้เป็นพระเอกของจังหวะนั้น
   levelUp: () => {
     [523, 659, 784, 1046].forEach((f, i) =>
-      setTimeout(() => tone(f, null, 0.16, 'triangle', 0.105), i * 70)
+      later(() => tone(f, null, 0.16, 'triangle', 0.105), i * 70)
     );
-    setTimeout(() => { tone(1568, null, 0.45, 'sine', 0.095); tone(2093, null, 0.4, 'sine', 0.045); }, 290);
-    setTimeout(() => meow({ start: 760, peak: 1290, end: 1130, dur: 0.26, vol: 0.25, q: 4, wobble: 14 }), 415);
+    later(() => { tone(1568, null, 0.45, 'sine', 0.095); tone(2093, null, 0.4, 'sine', 0.045); }, 290);
+    later(() => meow({ start: 760, peak: 1290, end: 1130, dur: 0.26, vol: 0.25, q: 4, wobble: 14 }), 415);
   },
 };
 
 // ช่องสำหรับวัดระดับเสียงตอนพัฒนา ใช้เทียบความดังระหว่างเสียงแต่ละตัว
 // Vite แทน import.meta.env.DEV ด้วย false ตอน build จริง บรรทัดนี้จึงถูกตัดทิ้งทั้งก้อน
-if (import.meta.env.DEV) window.__sfx = sfx;
+if (import.meta.env.DEV) {
+  window.__sfx = sfx;
+  // ── ช่องตรวจว่าเสียงเงียบจริงหรือแค่ดูเหมือนเงียบ ──
+  // ตัวเลขสองตัวบอกว่ายังมีอะไรค้างอยู่ ส่วน bus() ให้เอาไปต่อ AnalyserNode
+  // เพื่อวัดความดังจริงที่ออกลำโพง ซึ่งเป็นวิธีเดียวที่พิสูจน์ได้ว่าหยุดแล้วเงียบ
+  // (ปมพวกนี้ไม่อยู่ใน DOM หาจากหน้าเว็บไม่เจอ ต้องส่งออกมาทางนี้)
+  window.__sfxState = {
+    get live() { return liveSfx.length; },
+    get queued() { return sfxTimers.length; },
+    bus: audioOut,
+  };
+}

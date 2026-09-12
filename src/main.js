@@ -3,8 +3,8 @@ import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getMix, setMix, sfx } from './audio.js';
-import { startMusic } from './music.js';
+import { unlockAudio, getMix, setMix, sfx, killSfx } from './audio.js';
+import { startMusic, stopMusic } from './music.js';
 import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin } from './skins.js';
 import {
   CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
@@ -4844,6 +4844,11 @@ document.getElementById('guestNote').addEventListener('click', (e) => {
 });
 
 function showGameOver(quit = false) {
+  // มาจากปุ่ม "เลิกเล่น" ในหน้าหยุด = เพลงถูกหยุดไว้ตอนกดหยุด (ดู setPaused)
+  // ต้องเปิดคืนตรงนี้ ไม่งั้นหน้าสรุปเงียบสนิททั้งหน้า
+  // ทางที่มาจากการตายเพลงยังเล่นอยู่ startMusic() จึงไม่ทำอะไร เรียกซ้ำได้อยู่แล้ว
+  startMusic();
+
   const dist = Math.floor(game.distance / SCORING.pxPerMeter);
   const isBest = game.score >= game.best && game.score > 0;
 
@@ -5014,9 +5019,23 @@ function setPaused(on) {
   // pause()/resume() คืน false ถ้าสถานะไม่เข้าเงื่อนไข เช่นกด Esc ตอนตายอยู่
   // เช็คก่อนแตะ UI ไม่งั้นพาเนลกับสถานะเกมจะหลุดจากกัน
   if (on ? !game.pause() : !game.resume()) return;
+
+  // ── หยุดเกมแล้วต้องเงียบไปด้วยทั้งเพลงและเอฟเฟกต์ ──
+  //
+  // ตัดเสียงเอฟเฟกต์ก่อนเพลง เพราะตอนกดหยุดมักมีเสียงค้างอยู่กลางทาง
+  // (เสียงร้องยาวได้ถึง 0.9 วินาที และหลายเสียงเป็นชุดที่ทยอยออกทีละส่วน)
+  // ถ้าไม่ตัด เสียงพวกนั้นจะดังต่อในหน้าที่เกมหยุดไปแล้ว ซึ่งอ่านเป็นเกมค้าง
+  //
+  // ตัด "ก่อน" เสียงปุ่มของตัวเองด้วย เสียงปุ่มหยุดจึงยังดังอยู่ — มันออกหลัง
+  // การตัด และเป็นสิ่งเดียวที่ยืนยันว่ากดติดแล้ว ถ้าเงียบด้วยปุ่มจะเหมือนเสีย
+  //
+  // ทางออกอื่นจากหน้าหยุดเปิดเพลงคืนเองอยู่แล้ว — เริ่มใหม่ผ่าน showIntro()
+  // และเลิกเล่นผ่าน showGameOver() ทั้งคู่เรียก startMusic() ในตัว
+  if (on) { killSfx(); stopMusic(); }
   // หลังด่านกันสถานะแล้วเท่านั้น กดตอนที่กดไม่ได้จริง ๆ จึงต้องเงียบ
   // ไม่งั้นเสียงจะบอกว่า "กดติด" ทั้งที่เกมไม่ได้เปลี่ยนอะไรเลย
   sfx[on ? 'pause' : 'resume']();
+  if (!on) startMusic();
   pausePanel.classList.toggle('hidden', !on);
   pauseBtn.classList.toggle('playing', on);
   pauseBtn.setAttribute('aria-label', on ? 'เล่นต่อ' : 'หยุดชั่วคราว');

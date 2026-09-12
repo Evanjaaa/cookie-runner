@@ -526,6 +526,9 @@ function stopFile() {
   }, FADE_OUT * 1000 + 60);
 }
 
+/** เวลาที่ใช้หรี่ตอนสั่งหยุด — สั้นพอให้รู้สึกว่า "หยุดทันที" แต่ยังไม่มีเสียงป๊อก */
+const STOP_FADE = 0.06;
+
 let master = null;
 let timer = null;
 let loopStart = 0;      // เวลาของ AudioContext ที่ลูปรอบปัจจุบันเริ่ม
@@ -605,6 +608,43 @@ export function startMusic() {
   else stopFile();
   pump();
   timer = setInterval(pump, 2000);
+}
+
+/**
+ * หยุดเพลง — เรียกซ้ำได้ ครั้งที่สองเป็นต้นไปไม่ทำอะไร
+ *
+ * ── ทำไมต้องหยุดจริง ไม่ใช่หรี่ลงเป็นศูนย์ ──
+ * หรี่ไว้แล้วตัวจับจังหวะยังเดินต่อ มันจะจองโน้ตล่วงหน้าทุกสองวินาทีไปเรื่อย ๆ
+ * ทั้งที่ไม่มีใครได้ยิน แล้วตอนเปิดคืนเพลงจะอยู่กลางท่อนที่ไหนก็ไม่รู้
+ * หยุดจริงแล้ว startMusic() จะเริ่มลูปใหม่จากหัวเพลง ซึ่งเป็นจุดที่ฟังดีที่สุด
+ *
+ * ── ลำดับในนี้สำคัญ ──
+ * หรี่ก้อนรวมลงก่อนแล้วค่อยสั่ง oscillator หยุดตามหลัง ถ้าสั่งหยุดทันที
+ * มันจะตัดคลื่นกลางลูกแล้วได้เสียง "ป๊อก" พร้อมกันทุกเลเยอร์
+ * (เหตุผลเดียวกับที่ setMusicTrack ปล่อยโน้ตที่กำลังดังอยู่ให้จบเอง)
+ */
+export function stopMusic() {
+  if (timer) { clearInterval(timer); timer = null; }
+  stopFile();   // เพลงไฟล์หรี่ลงแล้ว pause ตัวเองอยู่แล้ว ไม่ต้องทำอะไรเพิ่ม
+
+  if (!master) { booked = []; return; }
+
+  const ac = audioCtx();
+  const t = ac.currentTime;
+  const dying = master;
+  const notes = booked;
+  // ตัดอ้างอิงทิ้งก่อนรอหรี่จบ ไม่งั้นถ้ามีคำสั่งเล่นแทรกเข้ามาระหว่างนี้
+  // โน้ตใหม่จะไปต่อกับก้อนที่กำลังจะตาย แล้วหายไปพร้อมกัน
+  master = null;
+  booked = [];
+
+  dying.gain.cancelScheduledValues(t);
+  dying.gain.setValueAtTime(Math.max(0.0001, dying.gain.value), t);
+  dying.gain.exponentialRampToValueAtTime(0.0001, t + STOP_FADE);
+  for (const b of notes) {
+    try { b.osc.stop(t + STOP_FADE + 0.02); } catch { /* หยุดไปแล้ว */ }
+  }
+  setTimeout(() => dying.disconnect(), (STOP_FADE + 0.15) * 1000);
 }
 
 /**
