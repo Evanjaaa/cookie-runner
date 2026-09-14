@@ -9,6 +9,9 @@ const TINT = {
   letter: COLORS.letterLite,
   nip: COLORS.nipLite,
   crumb: COLORS.cat,
+  // พรสวรรค์: ควันเงาม่วงเข้ม กับเศษกระจกฟ้าอ่อน
+  shadow: 'rgba(92,40,140,.62)',
+  mirror: '#DDF6FF',
 };
 
 export class Particles {

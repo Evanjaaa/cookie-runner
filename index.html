@@ -199,6 +199,19 @@
         <button id="btnSlide">หมอบ</button>
       </div>
 
+      <!-- ── ปุ่มท่าพิเศษของพรสวรรค์ ──
+           ปุ่มเดียว โผล่เฉพาะตอนวิ่งและติดพรสวรรค์ที่มีท่าพิเศษ/ชาร์จ (ดู updateSkillPad ใน main.js)
+           อยู่นอก .touchpad เพราะบนคอมก็ต้องเห็น (กดด้วยเมาส์ หรือปุ่ม E / X / Shift)
+           วงรอบปุ่มคือคูลดาวน์ อ่านได้จากหางตาโดยไม่ต้องมีตัวเลข -->
+      <div class="skillpad off" id="skillPad">
+        <button type="button" id="btnSkill" aria-label="ท่าพิเศษ">
+          <span class="sk-ring" aria-hidden="true"></span>
+          <span class="sk-ico" id="skIco" aria-hidden="true"></span>
+          <b class="sk-label" id="skLabel"></b>
+          <i class="sk-key" aria-hidden="true">E</i>
+        </button>
+      </div>
+
       <!-- ── ลำดับหน้าเข้าเกม ───────────────────────────────────
            ชื่อเกม → เข้าสู่ระบบ → ตั้งชื่อตัวละคร → ล็อบบี้
            ใครมีบัญชีอยู่แล้วจะข้ามสองหน้ากลางไปล็อบบี้ทันทีที่กด "เข้าเกม" -->
@@ -360,9 +373,11 @@
             <canvas id="gachaIcon" width="76" height="76"></canvas>
             <b>ตู้กาช่า</b>
           </button>
-          <button class="lobby-btn" id="btnSkins">
-            <canvas id="skinIcon" width="76" height="76"></canvas>
-            <b>แมวน้อย</b>
+          <!-- พรสวรรค์ — ที่เดิมของปุ่ม "แมวน้อย" ซึ่งย้ายไปเป็นหมวดแรกในคลังน้องแล้ว
+               เปิดหน้าพรสวรรค์ (#talentPanel) เลือกใบที่เปลี่ยนวิธีเคลื่อนที่ของน้อง -->
+          <button class="lobby-btn" id="btnTalent">
+            <canvas id="talentIcon" width="76" height="76"></canvas>
+            <b>พรสวรรค์</b>
           </button>
           <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
                รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
@@ -473,20 +488,6 @@
       </div>
 
       <!-- หน้าเลือกตัวละคร ปุ่มแต่ละใบมี canvas วาดแมวตัวนั้นจริง ๆ -->
-      <div class="panel hidden" id="skinPanel">
-        <div class="pop">
-          <h2 class="skin-title">เลือกแมวน้อย</h2>
-          <div class="skin-grid" id="skinGrid"></div>
-          <p class="form-msg" id="skinMsg"></p>
-          <button class="backbtn" id="skinBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
       <!-- หน้าเลือกชุด ชุดผูกกับตัวแมว จึงโชว์เฉพาะชุดของตัวที่เลือกอยู่ -->
       <!-- ── คลังน้อง ────────────────────────────────────────
            ชุดกับสมบัติอยู่ในแผงเดียว สลับหมวดด้วยแถบซ้าย ท่าเดียวกับตู้กาช่า
@@ -503,7 +504,12 @@
           <div class="stash-body">
             <!-- ซ้าย: เลือกหมวด อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
             <div class="stash-tabs" role="tablist" aria-label="เลือกหมวด">
-              <button type="button" class="stab on" id="tabStashOutfit" role="tab">
+              <!-- แมวน้อยอยู่บนสุด และเป็นหมวดที่เปิดขึ้นมาก่อนเสมอ
+                   เลือกตัวน้องก่อน แล้วค่อยแต่งชุดกับติดสมบัติให้ตัวนั้น — ลำดับเดียวกับที่คนคิด -->
+              <button type="button" class="stab on" id="tabStashSkin" role="tab">
+                <span class="stab-ico" aria-hidden="true">🐱</span>แมวน้อย
+              </button>
+              <button type="button" class="stab" id="tabStashOutfit" role="tab">
                 <span class="stab-ico" aria-hidden="true">👕</span>ชุดแมว
               </button>
               <button type="button" class="stab" id="tabStashTreasure" role="tab">
@@ -513,8 +519,20 @@
 
             <div class="stash-main">
               <div class="panel-head">
-                <h2 class="skin-title" id="stashTitle">เลือกชุด</h2>
-                <div class="filterbar" id="outfitFilter">
+                <h2 class="skin-title" id="stashTitle">เลือกแมวน้อย</h2>
+                <!-- แมวไม่มีระดับความหายาก ปุ่มที่สองจึงเป็น "ไม่ปลดล็อก" แทน
+                     ดันตัวที่ยังไม่ได้ขึ้นมาก่อน เรียงจากราคาถูกไปแพง = ตัวที่ใกล้ได้ที่สุดอยู่หน้าสุด -->
+                <div class="filterbar" id="skinFilter">
+                  <div class="fsort" role="group" aria-label="เรียงลำดับ">
+                    <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
+                    <button type="button" class="fchip" data-sort="locked">ไม่ปลดล็อก</button>
+                  </div>
+                  <label class="fonly">
+                    <input type="checkbox" id="skinOnly">
+                    <span>ดูเฉพาะสิ่งที่มี</span>
+                  </label>
+                </div>
+                <div class="filterbar hidden" id="outfitFilter">
                   <div class="fsort" role="group" aria-label="เรียงลำดับ">
                     <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
                     <button type="button" class="fchip" data-sort="rarity">หายาก</button>
@@ -554,8 +572,9 @@
                   </div>
                 </div>
 
-                <!-- ขวา: กริดของทั้งสองหมวด สลับโชว์ตามแถบซ้าย -->
-                <div class="skin-grid stash-grid" id="outfitGrid"></div>
+                <!-- ขวา: กริดของทั้งสามหมวด สลับโชว์ตามแถบซ้าย -->
+                <div class="skin-grid stash-grid" id="skinStashGrid"></div>
+                <div class="skin-grid stash-grid hidden" id="outfitGrid"></div>
                 <div class="skin-grid stash-grid hidden" id="treasureGrid"></div>
               </div>
 
@@ -564,6 +583,74 @@
           </div>
 
           <button class="backbtn" id="stashBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── พรสวรรค์ (Talent Card) ─────────────────────────────
+           ข้อมูลการ์ด: src/talents.js / หน้าจอ: src/talent-ui.js / ผลตอนวิ่ง: src/talent-run.js
+
+           โครงวางแนวนอนตามจอเกม: แถวหัว (ชื่อหน้า จำนวน ตัวกรอง) ข้างบน
+           ข้างล่างแบ่งซ้าย "ใบที่ใช้งานอยู่" กับขวา "กริดการ์ดทั้งหมด" ที่เลื่อนได้
+           หน้ารายละเอียดเปิดเป็นแผ่นซ้อนในการ์ดเดียวกัน ไม่ได้สลับไปอีกแผง -->
+      <div class="panel hidden" id="talentPanel">
+        <div class="pop tl-pop">
+          <div class="tl-head">
+            <div class="tl-titles">
+              <span class="tl-kicker" aria-hidden="true">TALENT</span>
+              <h2 class="skin-title">พรสวรรค์</h2>
+            </div>
+            <span class="tl-count" aria-label="สะสมแล้ว">
+              <b id="tlOwned">0</b><span class="tl-count-sep">/</span><span id="tlTotal">0</span>
+            </span>
+            <div class="fsort tl-filter" id="tlFilter" role="group" aria-label="กรองตามระดับ">
+              <button type="button" class="fchip on" data-rank="all" aria-pressed="true">ทั้งหมด</button>
+              <button type="button" class="fchip" data-rank="A" aria-pressed="false">A</button>
+              <button type="button" class="fchip" data-rank="S" aria-pressed="false">S</button>
+              <button type="button" class="fchip" data-rank="SS" aria-pressed="false">SS</button>
+            </div>
+          </div>
+
+          <div class="tl-body">
+            <aside class="tl-side">
+              <p class="tl-side-label">ใช้งานอยู่</p>
+              <button type="button" class="tl-equipped" id="tlEquipped"></button>
+              <p class="tl-side-note">ติดตั้งได้ทีละ 1 ใบ<br>มีผลตั้งแต่เริ่มวิ่งตาถัดไป</p>
+            </aside>
+            <div class="tl-grid" id="tlGrid" role="list" aria-label="พรสวรรค์ทั้งหมด"></div>
+          </div>
+
+          <!-- หน้ารายละเอียด: แผ่นซ้อนในการ์ด ปิดได้สามทาง (ปุ่มปิด / แตะพื้นมืด / ปุ่มกลับหรือ Esc) -->
+          <div class="tl-detail" id="tlDetail" aria-hidden="true">
+            <div class="tl-sheet" role="dialog" aria-modal="true" aria-labelledby="tldName">
+              <button type="button" class="tl-close" id="tldClose" aria-label="ปิดรายละเอียด">
+                <svg viewBox="0 0 24 24" width="55%" height="55%" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor"
+                        stroke-width="3" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <div class="tl-sheet-art" id="tldArt"></div>
+              <div class="tl-sheet-info">
+                <span class="tl-sheet-rank-label" id="tldRank"></span>
+                <h3 class="tl-sheet-name" id="tldName"></h3>
+                <div class="tl-meta" id="tldMeta"></div>
+                <p class="tl-sheet-desc" id="tldDesc"></p>
+                <div class="tl-effect">
+                  <b>ผลในเกม</b>
+                  <ul id="tldEffect"></ul>
+                  <p class="tl-how" id="tldHow"></p>
+                </div>
+                <p class="tl-status" id="tldStatus"></p>
+                <button type="button" class="btn" id="tldEquip">ติดตั้ง</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="backbtn" id="talentBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -983,6 +1070,12 @@
           </div>
           <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
                ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
+          <!-- คลิปเปิดเกม — ทางเดียวที่จะเปิดกลับได้หลังติ๊ก "ไม่ต้องแสดงอีก" ไปแล้ว -->
+          <div class="setrow">
+            <span class="setlabel">คลิปเปิดเกม</span>
+            <b class="setval" id="introState">แสดง</b>
+            <button class="btn ghost tiny" id="introToggle">ปิดคลิป</button>
+          </div>
           <div class="setrow">
             <span class="setlabel">บัญชี</span>
             <b class="setval" id="accState">—</b>
@@ -1181,6 +1274,12 @@
                          ใช้ DOM ชุดเดิมทั้งหมด ไม่ได้สร้างหน้าใหม่ เครื่องมือทุกตัวจึงยังต่อสายเดิม -->
                     <button type="button" class="paint-max" id="paintMax"
                             aria-label="ขยายเต็มจอ" title="ขยายเต็มจอ">⛶</button>
+                    <!-- ── ปุ่มย่อแถบเครื่องมือ ──
+                         เกาะริมขวาของกรอบระบายสี ไม่ใช่มุมจอ — ตำแหน่งจึงเดินตามกรอบทั้งตอนกางและตอนย่อ
+                         และอยู่ต่ำกว่าปุ่มปิดเสมอ เพราะกรอบเริ่มต่ำกว่าขอบบนของการ์ดอยู่แล้ว -->
+                    <button type="button" class="pcol-fold" id="foldSide"
+                            aria-expanded="true" aria-controls="paintTools paintSwatches"
+                            aria-label="ย่อแถบเครื่องมือกับจานสี"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   </div>
                   <small class="paint-hint" id="paintHint">แตะตัวน้องเพื่อลงสี</small>
                 </div>
@@ -1189,15 +1288,11 @@
                      แต่ซ้อนเป็นคอลัมน์เดียวตอนย่อบนมือถือ ที่ตรงนั้นกว้างแค่ ~360px
                      ซึ่งไม่พอให้สองคอลัมน์อยู่ข้างกันโดยที่ชื่อปุ่มไม่ถูกตัด -->
                 <div class="paint-side">
+
                 <!-- ── คอลัมน์อุปกรณ์ ──
                      หัวข้อเป็นป้ายกลม ๆ เหมือนแบบที่วางไว้ ไม่ใช่ข้อความลอย
                      เพื่อให้แยกออกจากปุ่มด้านล่างชัด ๆ ว่าอันไหนกดได้อันไหนเป็นหัวข้อ -->
                 <div class="paint-tools-col">
-                  <!-- ปุ่มย่อแถบนี้โดยเฉพาะ — อีกปุ่มของฝั่งจานสีแยกกันคนละใบ
-                       คนที่เลือกสีไว้แล้วจะได้เก็บจานสีไว้และซ่อนแค่อุปกรณ์ได้ -->
-                  <button type="button" class="pcol-fold" id="foldTools"
-                          aria-expanded="true" aria-controls="paintTools"
-                          aria-label="ย่อแถบอุปกรณ์"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   <b class="pcol-head">อุปกรณ์น้อน</b>
 
                   <div class="paint-tools" id="paintTools" role="group" aria-label="เครื่องมือ">
@@ -1241,9 +1336,6 @@
 
                 <!-- ── คอลัมน์สี ── -->
                 <div class="paint-color-col">
-                  <button type="button" class="pcol-fold" id="foldColors"
-                          aria-expanded="true" aria-controls="paintSwatches"
-                          aria-label="ย่อแถบสี"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   <b class="pcol-head">สีทาน้อน</b>
 
                   <div class="paint-swatches" id="paintSwatches" role="group" aria-label="แม่สี"></div>
@@ -1395,6 +1487,25 @@
       ส่วนภาพฉากหลังกับเพลงหน้าแรกเป็นไฟล์ —
       เพลง <em>Love You - Singing Kitten [Japanese Ver.]</em> โดย tideblue จาก Pixabay
     </p>
+  </div>
+
+  <!-- ── คลิปเปิดเกม ───────────────────────────────────────────
+       เล่นหลังเข้าสู่ระบบเสร็จ ก่อนถึงล็อบบี้ (ดู src/intro-video.js)
+       อยู่นอก .shell โดยตั้งใจ — ต้องคลุมเต็มจอจริง ไม่ใช่แค่กรอบเกม
+       และยังต้องอยู่ใต้ป้ายหมุนจอ (z-index น้อยกว่า) ถือแนวตั้งอยู่จึงเห็นป้ายบอกให้หมุนก่อน -->
+  <div class="intro-video off" id="introVideo" role="dialog" aria-label="คลิปเปิดเกม">
+    <video id="introClip" playsinline webkit-playsinline disablepictureinpicture
+           preload="none" aria-hidden="true"></video>
+    <!-- ช่องติ๊กมุมขวาบน: ติ๊กแล้วครั้งหน้าข้ามคลิปไปล็อบบี้เลย (เปิดกลับได้ในหน้าตั้งค่า) -->
+    <label class="iv-opt" id="ivOptOut">
+      <input type="checkbox" id="ivOptBox">
+      <span class="iv-box" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor"
+             stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span>ไม่ต้องแสดงคลิปนี้อีก</span>
+    </label>
+    <p class="iv-hint" id="ivHint">แตะที่หน้าจอเพื่อข้ามเข้าสู่เกม</p>
   </div>
 
   <!-- ── จอสัมผัสที่ยังตั้งแนวตั้งอยู่ ───────────────────────

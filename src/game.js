@@ -2,6 +2,7 @@
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET, BODY,
   LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD, REVIVE,
+  CAT_LOOK,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { Player } from './player.js';
@@ -25,6 +26,8 @@ import { mixPalette } from './render/palette.js';
 import { TreasureRun, catAnchor } from './treasure-run.js';
 import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treasure-fx.js';
 import { drawTreasureSlots } from './render/treasure-hud.js';
+import { TalentRun } from './talent-run.js';
+import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/talent-fx.js';
 import { drawHUD } from './render/hud.js';
 import { postProcess } from './render/post.js';
 import { drawKingdom } from './render/kingdom/index.js';
@@ -258,6 +261,8 @@ export class Game {
     this.level = new Level();
     this.particles = new Particles();
     this.treasures = new TreasureRun();
+    // พรสวรรค์ — เปลี่ยน "วิธีเคลื่อนที่" ของตัวน้อง คนละหน้าที่กับสมบัติ (ดู talent-run.js)
+    this.talents = new TalentRun();
     this.onGameOver = onGameOver || (() => {});
     // ตกหลุมแล้วมีคนรับช่วงต่อไหม — ผู้เรียกจะถามผู้เล่นว่าจ่ายทองดึงขึ้นมาไหม
     // แล้วตัดสินใจเองว่าจะเรียก revive() หรือ onGameOver()
@@ -321,7 +326,8 @@ export class Game {
   }
 
   get pitsSolid() {
-    return this.skillOn || this.boost > 0 || this.big > 0;
+    // แมวลอยไม่เคยแตะพื้น หลุมจึงไม่มีความหมายสำหรับมัน
+    return this.skillOn || this.boost > 0 || this.big > 0 || this.talents.floating;
   }
 
   /**
@@ -331,7 +337,9 @@ export class Game {
    * ไม่งั้นมันจะยึดกล่องชนซึ่งไม่โตตามตัว แล้วไปโผล่ผ่ากลางตัวแมวตอนตัวใหญ่
    */
   get catScale() {
-    return 1 + (BIGCAN.scale - 1) * this.bigK;
+    // ปกติเริ่มที่ CAT_LOOK แต่ตอนโตเต็มที่ยังจบที่ BIGCAN.scale เท่าเดิม
+    // ไม่คูณทับกัน — คูณแล้วได้ 2.65 ซึ่งเลยเพดานที่หัวเริ่มชนแถบ HUD ตอนกระโดดสูงสุด
+    return CAT_LOOK + (BIGCAN.scale - CAT_LOOK) * this.bigK;
   }
 
   /**
@@ -458,6 +466,8 @@ export class Game {
     this.particles.clear();
     // อ่านสมบัติที่ติดตั้งไว้ใหม่ทุกตา ผู้เล่นอาจเพิ่งสลับชุดจากหน้าเลือกด่าน
     this.treasures.reset();
+    // พรสวรรค์ก็อ่านใหม่ทุกตาด้วยเหตุผลเดียวกัน แล้วผูกตัวปรับการเคลื่อนที่เข้ากับตัวละครทันที
+    this.talents.reset(this.player);
     this.level.ensureAhead(this.camera);
   }
 
@@ -484,8 +494,16 @@ export class Game {
       return;
     }
 
+    // พรสวรรค์บางใบยืมปุ่มกระโดดไปทำอย่างอื่น (แมวลอยใช้เปลี่ยนระดับ)
+    if (this.talents.onJumpPress(this)) return;
+
     const kind = this.player.jump();
-    if (kind === 'single') {
+    if (kind === 'extra') {
+      // จังหวะที่เพิ่มมาจากพรสวรรค์ — ประกายสีทองคนละสีกับชั้นสอง ให้รู้ว่าเป็นของพิเศษ
+      const b = this.player.box;
+      this.particles.burst(b.x + this.camera + b.w / 2, this.player.y - 10, 12, 'letter', 4.5);
+      sfx.double();
+    } else if (kind === 'single') {
       this.particles.dust(PLAYER_X + 12 + this.camera, GROUND_Y, 6);
       sfx.jump();
     } else if (kind === 'double') {
@@ -502,7 +520,20 @@ export class Game {
 
   setSlide(on) {
     if (this.state !== STATE.RUN) return;
+    // แมวลอย: กดหมอบตอนอยู่สูง = ลดระดับ ไม่ใช่หมอบ
+    if (this.talents.onSlide(this, on)) return;
     this.player.setSlide(on);
+  }
+
+  /** ปล่อยปุ่มกระโดด — ใช้กับพรสวรรค์ที่ต้องกดค้าง (ร่อน / บังคับกลางอากาศ) */
+  jumpRelease() {
+    this.talents.onJumpRelease();
+  }
+
+  /** ปุ่มท่าพิเศษของพรสวรรค์ */
+  useTalent() {
+    if (this.state !== STATE.RUN) return false;
+    return this.talents.useSkill(this);
   }
 
   // ── หยุด/เล่นต่อ ───────────────────────────────────────────
@@ -521,6 +552,8 @@ export class Game {
     // ปล่อยหมอบทิ้ง เพราะถ้าปล่อยนิ้ว/คีย์ตอนหยุดอยู่ setSlide จะถูกบล็อก
     // ไม่งั้นกลับมาเล่นต่อแล้วแมวหมอบค้างโดยไม่ได้กดอะไร
     this.player.setSlide(false);
+    this.talents.onJumpRelease();
+    this.talents.slideHeld = false;
     return true;
   }
 
@@ -557,7 +590,9 @@ export class Game {
       this.big -= dt;
       this.bigGrow = Math.min(BIGCAN.grow, this.bigGrow + dt);
     }
-    const gdt = dt * (this.boost > 0 ? SPEEDUP.mult : 1);
+    // พรสวรรค์คูณเวลาโลกเพิ่มอีกชั้น (พุ่ง = เร็วขึ้นช่วงสั้น / หยุดจังหวะ = ช้าลง)
+    // ใช้กลไกเดียวกับสปีดจากต้นหญ้าแมว ตัวจับเวลาทุกตัวจึงยังเดินด้วยเวลาจริงเหมือนเดิม
+    const gdt = dt * (this.boost > 0 ? SPEEDUP.mult : 1) * this.talents.timeK;
 
     if (this.bonus > 0) return this.updateBonus(dt, gdt);
 
@@ -596,6 +631,9 @@ export class Game {
     // อยู่คนละจังหวะกับขาที่ค่อย ๆ ก้าว
     this.player.gaitK = 1 + (BIGCAN.gait - 1) * this.bigK;
 
+    // เดินพรสวรรค์ก่อนก้าวฟิสิกส์ ตัวปรับการเคลื่อนที่ของเฟรมนี้จึงมีผลทันเฟรมนี้เลย
+    this.talents.update(dt, this);
+
     let justLanded = false, justSlid = false, fellOut = false;
     for (this.stepAcc += gdt; this.stepAcc >= 1; this.stepAcc -= 1) {
       this.camera += this.speed;
@@ -606,8 +644,13 @@ export class Game {
       fellOut = fellOut || r.fellOut;
     }
     if (justLanded) {
-      this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 5);
+      this.particles.dust(PLAYER_X + this.player.ox + this.camera, GROUND_Y, 5);
       sfx.land();
+      // แมวหนัก: ลงพื้นทีจอสั่นนิด ๆ กับฝุ่นฟุ้งเพิ่ม — ความหนักต้อง "รู้สึก" ได้ ไม่ใช่แค่ตกเร็ว
+      if (this.talents.landShake) {
+        this.shake = Math.max(this.shake, this.talents.landShake);
+        this.particles.dust(PLAYER_X + this.player.ox + this.camera, GROUND_Y, 7);
+      }
     }
     if (justSlid) {
       this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 4);
@@ -648,6 +691,7 @@ export class Game {
           continue;
         }
         if (this.skillOn) break;               // ความสามารถทำงาน ทะลุผ่านได้เลย
+        if (this.talents.phasing) break;       // พรสวรรค์แมวเงา ทะลุผ่านได้
         if (this.invuln > 0) break;            // กำลังอมตะ ผ่านได้
         if (this.shielded) {                   // มีโล่ → โล่แตกแทนที่จะตาย
           this.shielded = false;
@@ -657,6 +701,8 @@ export class Game {
           sfx.shieldBreak();
           break;
         }
+        // แมวสะท้อน: เด้งกลับแทนการเจ็บ (มาหลังโล่ ของที่เก็บได้ในด่านจึงถูกใช้ก่อนเสมอ)
+        if (this.talents.tryReflect(this, bx + b.w / 2, b.y + b.h / 2)) break;
         this.takeHit(bx + b.w / 2, b.y + b.h / 2);
         break;
       }
@@ -792,31 +838,12 @@ export class Game {
     }
 
     // เก็บของกิน — คะแนนล้วน ไม่ฟื้นพลัง พลังมาจากขวดยาอย่างเดียว
-    for (const f of this.level.fishes) {
-      if (f.got || f.x < this.camera - 40) continue;
-      // กุ้งตัวใหญ่กว่า ระยะเก็บเลยกว้างกว่าให้สมกับที่ตาเห็น
-      const pad = f.kind === 'shrimp' ? SHRIMP.pickPad : 22;
-      if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
-        f.got = true;
-        // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
-        // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
-        const m = this.treasures.treatMult;
-        if (f.kind === 'shrimp') {
-          this.treat += Math.round((SCORING.pointsPerShrimp + this.foodBonus) * m);
-          this.particles.burst(f.x, f.y, 22, 'shrimp', 7);
-          sfx.shrimp();
-        } else if (f.kind === 'kibble') {
-          this.treat += Math.round((SCORING.pointsPerKibble + this.foodBonus) * m);
-          this.particles.burst(f.x, f.y, 10, 'kibble');
-          sfx.kibble();
-        } else {
-          this.treat += Math.round((SCORING.pointsPerFish + this.foodBonus) * m);
-          this.particles.burst(f.x, f.y, 7, 'mint');
-          sfx.fish();
-        }
-        // นับให้สมบัติที่ผูกกับการเก็บของ — midAir ตัดสินจากเท้าลอยพ้นพื้นจริง ๆ
-        this.treasures.onTreat(this, !this.player.onGround);
-      }
+    this.pickTreats(cx, cy, !this.player.onGround);
+    // แมวสองโลก: ร่างเงาเก็บของพร้อมกับตัวจริงด้วยกติกาเดียวกันทุกข้อ (คะแนน สมบัติ เสียง)
+    // นับเป็น "เก็บกลางอากาศ" เสมอ เพราะร่างเงาไม่เคยแตะพื้น
+    if (this.talents.twinCollects) {
+      const tc = this.talents.twinCenter;
+      this.pickTreats(tc.x + this.camera, tc.y, true);
     }
 
     // เก็บขวดพลัง
@@ -930,6 +957,41 @@ export class Game {
     this.emitTrail(dt);
     this.particles.update(dt);
     this.shake *= 0.9;
+  }
+
+  /**
+   * เก็บของกินรอบจุดหนึ่ง (พิกัดโลก)
+   *
+   * แยกออกมาจาก update() เพื่อให้ร่างเงาของแมวสองโลกเรียกใช้ซ้ำได้
+   * ถ้าก๊อปลูปไปอีกชุด วันหนึ่งจะมีคนแก้คะแนนหรือตัวคูณสมบัติที่เดียวแล้วอีกตัวไม่ตาม
+   */
+  pickTreats(cx, cy, midAir) {
+    for (const f of this.level.fishes) {
+      if (f.got || f.x < this.camera - 40) continue;
+      // กุ้งตัวใหญ่กว่า ระยะเก็บเลยกว้างกว่าให้สมกับที่ตาเห็น
+      const pad = f.kind === 'shrimp' ? SHRIMP.pickPad : 22;
+      if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
+        f.got = true;
+        // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
+        // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
+        const m = this.treasures.treatMult;
+        if (f.kind === 'shrimp') {
+          this.treat += Math.round((SCORING.pointsPerShrimp + this.foodBonus) * m);
+          this.particles.burst(f.x, f.y, 22, 'shrimp', 7);
+          sfx.shrimp();
+        } else if (f.kind === 'kibble') {
+          this.treat += Math.round((SCORING.pointsPerKibble + this.foodBonus) * m);
+          this.particles.burst(f.x, f.y, 10, 'kibble');
+          sfx.kibble();
+        } else {
+          this.treat += Math.round((SCORING.pointsPerFish + this.foodBonus) * m);
+          this.particles.burst(f.x, f.y, 7, 'mint');
+          sfx.fish();
+        }
+        // นับให้สมบัติที่ผูกกับการเก็บของ — midAir ตัดสินจากเท้าลอยพ้นพื้นจริง ๆ
+        this.treasures.onTreat(this, midAir);
+      }
+    }
   }
 
   /**
@@ -1095,7 +1157,8 @@ export class Game {
       this.nextFallerAt = this.tick + (cfg.every || FALLER.everyFrames);
     }
 
-    if (this.level.updateFallers(dt)) this.shake = Math.max(this.shake, 5);
+    const hdt = dt * Math.min(1, this.talents.timeK);
+    if (this.level.updateFallers(hdt)) this.shake = Math.max(this.shake, 5);
 
     const b = this.player.box;   // getter ไม่ใช่เมธอด
     const bx = b.x + this.camera;
@@ -1103,7 +1166,7 @@ export class Game {
       if (f.warn > 0) continue;                   // ยังไม่ร่วง ยังไม่อันตราย
       if (!rectHit(bx, b.y, b.w, b.h, f.x, f.y, f.w, f.h)) continue;
 
-      if (this.skillOn || this.invuln > 0) break;
+      if (this.skillOn || this.talents.phasing || this.invuln > 0) break;
       // ของร่วงเป็นก้อนแข็งเหมือนสิ่งกีดขวาง ตัวโตจึงต้องทุบแตกด้วยกติกาเดียวกัน
       if (this.boost > 0 || this.big > 0) { f.dead = true; break; }
       if (this.shielded) {
@@ -1114,6 +1177,7 @@ export class Game {
         sfx.shieldBreak();
         break;
       }
+      if (this.talents.tryReflect(this, cx, cy)) { f.dead = true; break; }
       f.dead = true;
       this.takeHit(cx, cy);
       break;
@@ -1142,7 +1206,7 @@ export class Game {
       }
     }
 
-    this.level.updateHazards(dt, this.camera);
+    this.level.updateHazards(dt * Math.min(1, this.talents.timeK), this.camera);
 
     // ชิ้นที่โดนชนไปแล้ว ปลิวตามแรงที่ได้รับเหมือนสิ่งกีดขวางทุกประการ
     for (const h of this.level.hazards) {
@@ -1167,7 +1231,7 @@ export class Game {
         this.smashHazard(h);
         continue;
       }
-      if (this.skillOn || this.invuln > 0) break;
+      if (this.skillOn || this.talents.phasing || this.invuln > 0) break;
       if (this.shielded) {
         this.shielded = false;
         this.invuln = SHIELD.invulnFrames;
@@ -1178,6 +1242,7 @@ export class Game {
         sfx.shieldBreak();
         break;
       }
+      if (this.talents.tryReflect(this, cx, cy)) break;
       this.takeHit(cx, cy);
       break;
     }
@@ -1363,6 +1428,8 @@ export class Game {
     }
     this.bonus = BONUS.frames;
     this.bonusPhase = 'catch';
+    // ท่าพิเศษที่กำลังออกฤทธิ์จบทันที โบนัสคุมตัวน้องด้วยกติกาของมันเอง
+    this.talents.onBonusStart(this);
     this.syncMusic();      // เพลงบนฟ้าต้องมาแทนเพลงเต้นทันที ถ้าความสามารถกำลังทำงานอยู่
     this.letters = 0;              // เริ่มสะสมคำใหม่หลังจบโบนัส
 
@@ -1691,8 +1758,8 @@ export class Game {
     // ต้องส่ง catMood ตรงนี้ด้วย — นี่คือเส้นทางวาดของ "ตอนอยู่ในโบนัส" ซึ่งเป็น
     // ช่วงเดียวที่อารมณ์ถูกใช้จริง (ดีใจตอนปลามารับ เศร้าตอนกลับลงพื้น)
     // เส้นทางวาดตอนวิ่งปกติเป็นคนละบรรทัดกัน แก้ที่นั่นอย่างเดียวจึงไม่มีผลอะไรเลย
-    drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood);
-    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick);
+    drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK);
+    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT_LOOK);
 
     postProcess(ctx);
     drawHUD(ctx, this);
@@ -1727,6 +1794,7 @@ export class Game {
   die(cause = 'faint') {
     if (this.state === STATE.DEAD) return;
     this.state = STATE.DEAD;
+    this.talents.onDeath();
 
     if (cause === 'faint') {
       this.shake = 8;   // เบากว่าตกหลุม เพราะเป็นการทรุดลง ไม่ใช่กระแทก
@@ -1787,6 +1855,8 @@ export class Game {
     this.level.ensureAhead(this.camera);
 
     this.player.reset();
+    // reset() ล้างระยะเลื่อนกับท่า แต่พรสวรรค์ยังเป็นใบเดิม — ผูกตัวปรับกลับเข้าไปใหม่
+    this.talents.attach(this.player);
     this.state = STATE.RUN;
     this.dying = 0;
     this.invuln = REVIVE.invulnFrames;
@@ -1854,7 +1924,15 @@ export class Game {
       drawShieldRing(ctx, this.player, this.tick, catS);
     }
 
+    // เอฟเฟกต์พรสวรรค์ชั้นหลังตัว (เมฆใต้ตัว ปีกร่อน เส้นพุ่ง ออร่าเงา)
+    if (this.state !== STATE.DEAD) drawTalentBack(ctx, this);
+
+    // แมวเงา: ตัวโปร่ง และกะพริบถี่ช่วงใกล้หมดฤทธิ์ ผู้เล่นจะได้ไม่พุ่งใส่ของตอนฤทธิ์หมดพอดี
+    const shadowFlicker = this.talents.shadowEnding && Math.floor(this.tick / 4) % 2 === 0;
+    const catAlpha = this.talents.phasing ? (shadowFlicker ? 0.8 : 0.5) : 1;
+
     if (!blinking && !skillFlicker) {
+      ctx.globalAlpha = catAlpha;
       // ตัวโตอยู่ = ยิ้มสะใจ ทับอารมณ์อื่นที่อาจตั้งค้างไว้จากโบนัส
       // เพราะตอนนั้นแมวกำลังเดินทับทุกอย่างโดยไม่เจ็บ ซึ่งเป็นจังหวะที่สะใจที่สุดในเกม
       // เหนื่อยเริ่มตั้งแต่แตะเส้นเตือน (HEALTH.lowAt) แล้วไล่แรงขึ้นจนถึงศูนย์
@@ -1865,8 +1943,10 @@ export class Game {
         this.skill > 0 ? this.tick : 0, this.big > 0 ? 'smug' : this.catMood,
         catS, 1 + (BIGCAN.gait - 1) * this.bigK,
         { tired: this.big > 0 ? 0 : lowK, hurt: this.hurtFlash });
+      ctx.globalAlpha = 1;
     }
     if (sucking) drawSuction(ctx, this.player, this.tick, catS);
+    if (this.state !== STATE.DEAD) drawTalentFront(ctx, this);
 
     // หลอดความสามารถ ซ่อนตอนตายเพราะไม่มีความหมายแล้ว
     if (this.state !== STATE.DEAD) {
@@ -1883,6 +1963,8 @@ export class Game {
 
     ctx.restore();
     postProcess(ctx);
+    // ฟิลเตอร์เต็มจอของพรสวรรค์ (โลกช้า / โหมดเงา) อยู่ใต้ HUD ตัวเลขจึงยังอ่านชัด
+    drawTalentScreen(ctx, this);
     drawHUD(ctx, this);
 
     // ช่องสมบัติอยู่นอก ctx.save() ของการสั่นจอโดยตั้งใจ — ตัวเลขนับถอยหลัง

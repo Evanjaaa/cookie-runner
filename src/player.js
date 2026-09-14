@@ -1,5 +1,6 @@
 // src/player.js
 import { GROUND_Y, PLAYER_X, PHYSICS, BODY, VIEW } from './config.js';
+import { NEUTRAL_MODS } from './talent-run.js';
 
 /** เอียงเกือบ 90° = นอนตะแคง ไม่เอาให้ถึง 90 เป๊ะเพราะดูแข็งเกินไป */
 const FAINT_TILT = Math.PI / 2 * 0.94;
@@ -14,6 +15,11 @@ const FAINT_DROP = 9;
 
 export class Player {
   constructor() {
+    // ── ตัวปรับการเคลื่อนที่จากพรสวรรค์ ──
+    // ตัวละครไม่รู้ว่าพรสวรรค์คืออะไร รู้แค่ตัวเลขในก้อนนี้ (ดู talent-run.js)
+    // ไม่ได้อยู่ใน reset() โดยตั้งใจ — ดึงขึ้นจากหลุมเรียก reset() กลางตา
+    // ถ้าล้างตรงนั้น พรสวรรค์จะหายไปทั้งที่ยังวิ่งตาเดิมอยู่
+    this.mods = NEUTRAL_MODS;
     this.reset();
   }
 
@@ -28,6 +34,10 @@ export class Player {
     this.tilt = 0;
     this.fainting = false;
     this.faintV = 0;
+    // ระยะเลื่อนแนวนอนจากจุดวิ่งปกติ (พิกัดจอ) — ปกติเป็น 0 ตลอด
+    // พรสวรรค์ที่พาตัวไปข้างหน้า/ถอยหลังกลางอากาศเป็นคนขยับค่านี้
+    this.ox = 0;
+    this.ovx = 0;
 
     // ── ค่าสำหรับแอนิเมชันล้วน ๆ ไม่แตะฟิสิกส์หรือกล่องชนเลยสักตัว ──
     // ต้องเก็บไว้ที่ตัวละคร ไม่ใช่คำนวณในโค้ดวาด เพราะทั้งสองค่านี้เป็น
@@ -59,7 +69,7 @@ export class Player {
     const w = this.width;
     const h = this.height;
     return {
-      x: PLAYER_X + (this.sliding ? BODY.slideOffsetX : 0),
+      x: PLAYER_X + this.ox + (this.sliding ? BODY.slideOffsetX : 0),
       y: this.y - h,
       w,
       h,
@@ -68,8 +78,11 @@ export class Player {
 
   /** คืน 'single' | 'double' | null เพื่อให้ผู้เรียกไปเล่นเสียง/เอฟเฟกต์ต่อ */
   jump() {
+    const m = this.mods;
+    // โหมดลอย: ปุ่มกระโดดถูกยืมไปเปลี่ยนระดับ (ตัวรันพรสวรรค์จัดการเอง) ไม่มีการกระโดดจริง
+    if (m.laneY !== null) return null;
     if (this.jumps === 0) {
-      this.vy = PHYSICS.jumpV;
+      this.vy = PHYSICS.jumpV * m.jump;
       this.jumps = 1;
       this.onGround = false;
       this.sliding = false;
@@ -80,16 +93,24 @@ export class Player {
       return 'single';
     }
     if (this.jumps === 1) {
-      this.vy = PHYSICS.doubleJumpV;
+      this.vy = PHYSICS.doubleJumpV * m.jump;
       this.jumps = 2;
       this.squash = -0.7;   // ชั้นสองเบากว่า ยืดน้อยกว่าตามแรงที่น้อยกว่า
       return 'double';
+    }
+    // จังหวะที่เพิ่มมาจากพรสวรรค์ — นับต่อจากสองชั้นปกติ
+    if (this.jumps < 2 + m.airJumps) {
+      this.vy = m.extraV * m.jump;
+      this.jumps++;
+      this.squash = -0.6;
+      return 'extra';
     }
     return null;
   }
 
   setSlide(on) {
     this.slideHeld = on;
+    if (this.mods.noFastFall) return;
     if (on && !this.onGround && this.vy < 0) this.vy = PHYSICS.fastFallV;
   }
 
@@ -97,15 +118,22 @@ export class Player {
     // เก็บความเร็วตกไว้ก่อน เพราะเดี๋ยวมันถูกล้างเป็นศูนย์ตอนแตะพื้น
     // แต่เราต้องใช้มันวัดว่า "ลงแรงแค่ไหน" หลังจากนั้น
     const impactV = this.vy;
+    const m = this.mods;
 
-    this.vy += PHYSICS.gravity * dt;
+    if (m.laneY !== null) return this.updateFloat(dt, game);
+
+    // ค้างความสูง (พุ่งกลางอากาศ) = ไม่มีแรงโน้มถ่วงชั่วคราว
+    if (m.hover) this.vy = 0;
+    else this.vy += PHYSICS.gravity * m.gravity * dt;
+    // เพดานความเร็วตก (ร่อน) — กันเฉพาะขาลง ขาขึ้นไม่แตะ
+    if (this.vy > m.maxFall) this.vy = m.maxFall;
     this.y += this.vy * dt;
     this.runPhase += game.speed * dt * 0.06;
 
     // สปริงคลายกลับหาศูนย์ทุกเฟรม ตัวดันให้ยืด/แบนคือ jump() กับจังหวะลงพื้น
     this.squash += (0 - this.squash) * 0.16 * dt;
 
-    const centerWorldX = PLAYER_X + BODY.standW / 2 + game.camera;
+    const centerWorldX = PLAYER_X + this.ox + BODY.standW / 2 + game.camera;
     // ระหว่างใช้ความสามารถหรือติดสปีด ถือว่ามีพื้นตลอด วิ่งข้ามหลุมได้เหมือนไม่มีหลุม
     // ถามผ่าน pitsSolid จุดเดียว ตัวละครจึงไม่ต้องรู้ว่ามีกี่อย่างที่ทำให้หลุมหาย
     const overPit = !game.pitsSolid && game.level.isOverPit(centerWorldX);
@@ -151,6 +179,39 @@ export class Player {
     this.tailLag += (tailTarget - this.tailLag) * 0.2 * dt;
 
     return { justLanded, justSlid, fellOut: this.y > VIEW.H + 100 };
+  }
+
+  /**
+   * โหมดลอย (แมวลอย) — ไม่มีแรงโน้มถ่วง ไม่ตกหลุม ตัวไหลเข้าหาความสูงที่เลือกไว้
+   *
+   * ใช้ vy เป็น "ความเร็วที่เห็น" ของการไหล ไม่ใช่ฟิสิกส์ — โค้ดวาดอ่าน vy ไปเอียงตัวกับหาง
+   * ตัวจึงเงยขึ้นตอนลอยขึ้น และก้มตอนลดระดับ ด้วยท่าเดียวกับตอนกระโดดปกติ
+   */
+  updateFloat(dt, game) {
+    const m = this.mods;
+    const prevY = this.y;
+    // โยกขึ้นลงเบา ๆ เหมือนนั่งบนเมฆ ยกเว้นระดับพื้นที่ต้องแนบพื้นจริงไว้หมอบลอดคานได้
+    const bob = m.laneY < GROUND_Y ? Math.sin(this.runPhase * 0.8) * 2 : 0;
+    const target = m.laneY + bob;
+    this.y += (target - this.y) * Math.min(1, m.laneEase * dt);
+    if (Math.abs(target - this.y) < 0.2) this.y = target;
+    this.vy = (this.y - prevY) / Math.max(dt, 0.001);
+    this.runPhase += game.speed * dt * 0.06;
+    this.squash += (0 - this.squash) * 0.16 * dt;
+
+    const wasGround = this.onGround;
+    this.onGround = m.laneY >= GROUND_Y && this.y >= GROUND_Y - 1;
+    this.jumps = 0;
+    const justLanded = this.onGround && !wasGround;
+    if (justLanded) this.squash = 0.35;
+
+    const wasSliding = this.sliding;
+    this.sliding = this.slideHeld && this.onGround;
+    const justSlid = this.sliding && !wasSliding;
+
+    const tailTarget = Math.max(-1.4, Math.min(1.4, -this.vy * 0.05 + Math.sin(this.runPhase * 2) * 0.3));
+    this.tailLag += (tailTarget - this.tailLag) * 0.2 * dt;
+    return { justLanded, justSlid, fellOut: false };
   }
 
   updateDead(dt) {

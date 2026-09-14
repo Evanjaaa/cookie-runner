@@ -121,9 +121,24 @@ canvas[hidden] { display: none; }
   padding: 24px;
   background: linear-gradient(180deg, rgba(27,15,43,.72), rgba(27,15,43,.92));
   backdrop-filter: blur(3px);
+  /* ── โผล่ทันที จางหายช้า ──
+     เดิมไล่ทั้งขาเข้าและขาออก พอสลับหน้าจึงมีจังหวะที่แผงเก่าจางไปครึ่ง
+     และแผงใหม่เข้ามาได้ครึ่งพร้อมกัน พื้นมืดของทั้งคู่จึงบางลงกว่าปกติ
+     ฉากหลังสว่างวาบขึ้นมาแว้ปรู๊ดหนึ่ง เห็นเป็นอาการกระพริบระหว่างสองหน้า
+
+     แก้โดยให้แผงใหม่ทึบเต็มทันที ส่วนแผงเก่าค่อยจางอยู่ข้างหลัง
+     พื้นมืดจึงทึบตลอด ไม่มีจังหวะไหนที่พื้นหลังโผล่ ส่วนความนุ่มมาจาก cardIn ของตัวการ์ดแทน */
+  transition: none;
+  z-index: 1;
+}
+.panel.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* จมอยู่ใต้แผงใหม่เสมอ ไม่งั้นเนื้อหาเก่าจะลอยค้างทับของใหม่ */
+  z-index: 0;
   transition: opacity .25s ease, visibility .25s;
 }
-.panel.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
 /* ── แผงเมนูเป็นการ์ดลอยอยู่บนฉากที่มัวลง ─────
    เดิมเนื้อหาลอยอยู่บนพื้นทึบเต็มจอ ซึ่งอ่านเป็น "หน้าเว็บที่มีตัวหนังสือ"
@@ -150,6 +165,22 @@ canvas[hidden] { display: none; }
    เปลี่ยนมาเป็นกล่องจริง (.pop) ที่ห่อเนื้อหาไว้ การ์ดจึงหดตามเนื้อหาเอง
    หน้าที่มีของน้อยก็ได้การ์ดเล็ก หน้าที่มีกริดยาวก็ได้การ์ดใหญ่ตามที่ต้องใช้ */
 .panel:not(.home) { padding: 0; }
+
+/* ── พื้นมืดของหน้าที่กำลังจางออก — ทิ้งทันทีเฉพาะตอนมีหน้าใหม่มารับช่วง ──
+   วัดแล้ว: ตอนสลับจากหน้าหนึ่งไปอีกหน้า ถ้าพื้นมืดของหน้าเก่ายังค้างอยู่
+   จะมีพื้นมืดสองชั้นทับกัน ความทึบพุ่งจาก 62% ไป 85.6% แล้วไหลกลับ — กลายเป็นวาบมืดแทน
+   ตัดพื้นมืดของหน้าเก่าทิ้งตั้งแต่เฟรมแรก เหลือชั้นเดียว ความทึบจึงนิ่งที่ 62% ทุกเฟรม
+   ส่วนเนื้อหาของหน้าเก่ายังค่อย ๆ จางตามเดิม ความนุ่มจึงอยู่ครบโดยที่ฉากหลังไม่ขยับเลย
+
+   แต่ตอนกลับหน้าล็อบบี้ หน้าใหม่โปร่งสนิท ไม่มีชั้นที่สองมาทับ จึงไม่มีทางวาบได้เลย
+   กรณีนั้นม่านต้องค่อย ๆ จาง ไม่ใช่หายวับ — ม่านทึบหายทันทีคืออีกอาการหนึ่งที่ไม่สวย
+
+   :has() จึงเป็นตัวแยกสองกรณีนี้: ถ้ามีแผงที่มีพื้นมืดโผล่อยู่ = มีตัวรับช่วงแล้ว ให้ทิ้งทันที
+   คลาสทั้งสองฝั่งเปลี่ยนในจังหวะเดียวกันเสมอ (swapPanel กับ showPanel ทำใน task เดียว) เงื่อนไขจึงตรงตั้งแต่เฟรมแรก */
+.stage:has(.panel:not(.home):not(.hidden)) .panel.hidden {
+  background: transparent;
+  backdrop-filter: none;
+}
 
 .pop {
   position: relative;
@@ -3010,6 +3041,12 @@ canvas[hidden] { display: none; }
   gap: clamp(10px, 2.4vw, 26px);
   /* ตัวแถบเองไม่รับคลิก ไม่งั้นจะไปกินพื้นที่แตะของแผงเมนูที่อยู่ข้างล่าง */
   pointer-events: none;
+  /* ── ต้องสูงกว่าแผงเมนูเสมอ ──
+     เดิมพึ่งการวางท้ายสุดใน DOM อย่างเดียว แต่แผงที่โผล่อยู่มี z-index: 1
+     (ให้หน้าใหม่ทับหน้าเก่าที่กำลังจางตอนสลับหน้า) ถ้าแถบนี้ไม่มีเลข
+     แผงล็อบบี้ที่โปร่งใสทั้งแผ่นจะลอยทับแถบ มองเห็นปุ่มครบแต่กดอะไรไม่ได้เลย
+     — ปุ่มจดหมายกับตั้งค่าเคยนิ่งสนิทเพราะเรื่องนี้ */
+  z-index: 2;
 }
 .hud-top > * { pointer-events: auto; }
 
@@ -5520,6 +5557,9 @@ canvas[hidden] { display: none; }
   line-height: 1.4;
 }
 .confirm-cost .coin { width: 21px; height: 21px; }
+/* .confirm-cost ตั้ง display ของตัวเอง คลาส hidden จึงไม่มีผลถ้าไม่ประกาศคู่ไว้
+   (สไตล์ชีตนี้ไม่มีกฎ .hidden กลาง) เดิมกล่องที่ไม่ส่งราคามาเลยโผล่ป้ายเหรียญเปล่า ๆ */
+.confirm-cost.hidden { display: none; }
 
 /* บรรทัดบอกยอดคงเหลือหลังจ่าย จางกว่าราคาหนึ่งขั้น เป็นข้อมูลประกอบไม่ใช่ตัวตัดสิน */
 .confirm-after { margin: 0; font-size: 11.5px; color: #C6B2DE; line-height: 1.4; }
@@ -5832,6 +5872,11 @@ canvas[hidden] { display: none; }
    ทำให้ผู้เล่นที่เคยใช้ตู้กาช่าอ่านหน้านี้ออกทันทีโดยไม่ต้องเรียนรู้ใหม่ */
 .stash-pop {
   width: 100%;
+  /* ── สูงเต็มขอบเขตเสมอ ไม่หดตามเนื้อหา ──
+     การ์ดทั่วไปหดตามของข้างใน แต่แผงนี้มีสามหมวดที่ของเยอะไม่เท่ากัน
+     หมวดแมวน้อยมีแค่สองแถว การ์ดจึงเตี้ยกว่าหมวดชุดที่เต็มจนต้องเลื่อน
+     สลับหมวดทีการ์ดหดขยายให้เห็น — ตรึงไว้ที่ความสูงสูงสุดทั้งสามหมวดจึงเท่ากันเป๊ะ */
+  height: calc(100% - var(--card-inset) * 2);
   padding-left: clamp(10px, 1.6vw, 20px);
   padding-right: clamp(12px, 2vw, 26px);
 }
@@ -6012,6 +6057,49 @@ canvas[hidden] { display: none; }
   max-width: 26px;
 }
 .stash-grid .t-card .t-emoji { font-size: clamp(21px, 4dvh, 32px); }
+/* กุญแจบนการ์ดแมวที่ยังไม่ได้ วัดเป็น % ของการ์ดด้วยเหตุผลเดียวกับป้ายระดับข้างบน
+   ขนาด 24px ตายตัวของหน้าแมวน้อยเดิมกินหน้าการ์ดไปเกือบครึ่งบนจอมือถือ */
+.stash-grid .lock-badge {
+  top: 5%;
+  right: 5%;
+  width: 24%;
+  height: auto;
+  min-width: 15px;
+  max-width: 24px;
+  aspect-ratio: 1;
+  font-size: clamp(8px, 1.5dvh, 12px);
+}
+/* หมวดแมวน้อยเหลือปุ่มเดียว ปุ่ม "ดูเพิ่มเติม" ต้องหายไปจริง ๆ ไม่ใช่แค่ถูกติด hidden
+   เพราะ .btn ตั้ง display ของตัวเองไว้ ทับ [hidden] ของเบราว์เซอร์ ปุ่มที่เหลือจึงยืดเต็มแถวเอง */
+.stash-btns .btn[hidden] { display: none; }
+
+/* ── ปุ่มซื้อด้วยทอง ──
+   วัสดุเดียวกับปุ่มเขียว (ไล่สามขั้น + เงาหนาข้างล่าง) แค่เปลี่ยนเป็นโทนเหรียญ
+   ปุ่มซื้อจึงยังเป็นปุ่มชุดเดียวกันทั้งเกม แต่แยกออกทันทีว่ากดแล้วจ่ายเงิน */
+.btn.buy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35em;
+  color: #5A3100;
+  background: linear-gradient(180deg, #FFF0A8 0%, #FFC93C 52%, #E49A1C 100%);
+  box-shadow:
+    0 6px 0 #B06F12,
+    0 12px 24px rgba(255,201,60,.3),
+    inset 0 1px 0 rgba(255,255,255,.7);
+}
+.btn.buy:active {
+  box-shadow: 0 2px 0 #B06F12, inset 0 1px 0 rgba(255,255,255,.7);
+}
+/* เหรียญบนพื้นทองจะกลืนกัน ต้องมีขอบน้ำตาลรอบอีกวงให้ตัดขอบออกมา */
+.btn.buy .coin {
+  width: 1.2em;
+  height: 1.2em;
+  box-shadow:
+    0 0 0 1.5px rgba(110,60,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.6);
+}
+.btn.buy b { font-weight: 700; }
 
 /* ── หัวเรื่องชิดซ้าย ไม่ใช่จัดกลาง ──
    ต่างจากแผงอื่นเพราะแผงนี้ไม่มีอะไรอยู่มุมซ้ายบนให้หลบ (ปุ่มกลับอยู่นอกคอลัมน์
@@ -6538,8 +6626,22 @@ canvas[hidden] { display: none; }
    เพราะสองฝั่งทำคนละหน้าที่: คนที่จัดสีไว้แล้วอยากไล่ลงสียาว ๆ จะเก็บแถบสีไว้
    ส่วนคนที่กำลังเลือกโทนสีจะอยากเห็นจานสีเต็ม ๆ โดยไม่สนอุปกรณ์
    ถ้ายุบรวมเป็นปุ่มเดียว จะไม่มีทางเลือกไหนตอบสองความต้องการนี้ได้เลย ── */
+/* ── ปุ่มย่อเกาะริมขวาของกรอบระบายสี ──
+   อยู่ในกรอบเดียวกับปุ่มขยายเต็มจอ ตำแหน่งจึงเดินตามกรอบทั้งตอนกางและตอนย่อ
+   ไม่ขึ้นกับว่าคอลัมน์ข้างยุบหรือไม่ — นี่คือสิ่งที่ทำให้มันเลิกกระโดดไปมาเสียที
+
+   กึ่งกลางแนวตั้งของกรอบอยู่ต่ำกว่าปุ่มปิดเสมอ เพราะกรอบเริ่มต่ำกว่าขอบบนของการ์ดอยู่แล้ว */
 .pcol-fold {
-  align-self: flex-end;
+  position: absolute;
+  /* ── อยู่ "ข้างกรอบ" ไม่ใช่ในกรอบ ──
+     ระยะติดลบดันปุ่มออกไปนอกขอบขวาของกรอบพอดี พื้นที่ระบายจึงไม่เสียไปแม้จุดเดียว
+
+     ส่วน top ใช้ระยะคงที่จากขอบบนของกรอบ ไม่ใช่ 50% — ตอนย่อกรอบสูงขึ้นมาก
+     จุดกึ่งกลางจะเลื่อนไปไกล ส่วนระยะคงทำให้มันเกาะขอบบนตลอด
+     ค่า clamp นี้ยังกันไม่ให้ขึ้นไปสูงกว่าปุ่มปิดตอนกรอบขยายจนขอบบนเกือบชนขอบจอ */
+  top: clamp(24px, 5dvh, 44px);
+  right: calc(-1 * (clamp(20px, 3.2dvh, 28px) + 7px));
+  z-index: 4;
   flex: 0 0 auto;
   width: clamp(20px, 3.2dvh, 28px);
   height: clamp(20px, 3.2dvh, 28px);
@@ -6776,87 +6878,957 @@ canvas[hidden] { display: none; }
 
 }
 
+/* ═══ จอสัมผัสที่สูง (iPad และแท็บเล็ตอื่น) ════════════
 
-/* ═══ สถานะย่อแถบข้างของหน้าระบายสี ═══════════════════
+   เพดาน 30vw ของผ้าใบจูนไว้สำหรับมือถือแนวนอนซึ่ง "กว้างมากแต่เตี้ย"
+   ด้านที่บีบจึงเป็นความสูง การกดความกว้างไว้จึงไม่เสียหายอะไร
 
-   ── ทำไมต้องอยู่ท้ายไฟล์ ──
-   กฎของโหมดเต็มจอ (#createPanel.paint-full .paint-tools-col ฯลฯ) มีน้ำหนักเท่ากันกับกฎที่นี่เป๊ะ
-   ตัวที่ชนะจึงเป็น "ตัวที่อยู่ทีหลังในไฟล์" ล้วน ๆ เคยวางก้อนนี้ไว้กลางไฟล์แล้ว
-   วัดได้ว่ากดย่อตอนอยู่โหมดเต็มจอแล้วคอลัมน์ไม่ยอมยุบ (กว้างค้าง 233px) จึงต้องย้ายมาไว้ท้ายสุด */
+   แต่ iPad แนวนอนสูง 768-820 ซึ่งสูงกว่ามือถือเกือบสองเท่า ด้านที่บีบจึงกลายเป็นความกว้างแทน
+   วัดที่ 1024x768 ได้ผ้าใบ 284px ทั้งที่แถวสูงเกิน 440 — เสียความสูงทิ้งไปเกือบครึ่ง
 
-/* ย่อแล้วเหลือแค่รางผอม ๆ กับปุ่มกางกลับ */
-#createPanel.fold-tools .paint-tools-col,
-#createPanel.fold-colors .paint-color-col {
-  position: relative;
-  flex: 0 0 clamp(24px, 3.8dvh, 34px);
-  width: auto;
-  min-width: 0;
-  overflow: hidden;
-  /* ── กุญแจของการ "ปุ่มไม่ขยับ" อยู่ตรงนี้ ──
-     ปล่อยให้ของข้างในกว้างตามธรรมชาติของมัน (flex-start) แทนการยืดเต็มราง
-     ถ้าปล่อยให้ยืดเต็มรางกว้าง 24px ตัวหนังสือจะตกบรรทัดจนของสูงขึ้นมาก
-     การจัดกลุ่มแนวตั้งของคอลัมน์จึงเปลี่ยน แล้วปุ่มก็ขยับตาม — นี่คือที่มาของการกระโดดทั้งขึ้นและลง
+   เกณฑ์ min-height: 620px คือตัวแยก: มือถือแนวนอนสูงราว 330-430
+   ส่วนแท็บเล็ตแนวนอนเริ่มที่ 768 จึงไม่มีทางชนกัน ══ */
+@media (pointer: coarse) and (min-height: 620px) {
+  /* ── บั๊กที่เจอบน iPad ──
+     คอลัมน์อุปกรณ์กับจานสีมีพื้น 196px ต่อใบ รวมกับช่องไฟและปุ่มย่อคือราว 440px
+     แต่แถวบน iPad 1024x768 มีให้แค่ 598px สองคอลัมน์จึงไม่ยอมหด
+     แล้วคอลัมน์สีถูกดันจนเหลือ 54px — จานสีกับปุ่มลงมือถูกเฉือนหายไปเกือบหมด
 
-     คงความกว้างไว้ ความสูงจึงเท่าเดิมเป๊ะ การจัดวางแนวตั้งของคอลัมน์จึงเหมือนตอนกางทุกประการ
-     ปุ่มเลยอยู่ที่เดิมเป๊ะ ส่วนที่ล้นออกนอกรางถูก overflow: hidden เฉือนทิ้ง และ opacity ทำให้มองไม่เห็น */
-  align-items: flex-start;
+     บล็อกมือถือแก้เรื่องนี้ด้วยการปลดพื้นอยู่แล้ว แต่มันผูกกับ max-height: 460px
+     ซึ่งแท็บเล็ตไม่เข้าเกณฑ์ จึงต้องปลดซ้ำที่นี่ด้วย พร้อมย่อตัวอักษรตามส่วน */
+  .paint-tools-col, .paint-color-col { min-width: 0; }
+  /* คอลัมน์กว้างราว 11% ของจอ ขนาดตัวอักษรจึงต้องผูกกับ vw ไม่ใช่ค่าตายตัว
+     (ที่ 1.35vw ตัวอักษรล้นคอลัมน์บน iPad 1024 — วัดแล้ว) */
+  #createPanel { --pfont: clamp(9px, 1.05vw, 13px); }
+  .ppart { font-size: clamp(8px, .95vw, 11.5px); }
+  .paint-swatches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .paint-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pmode { white-space: normal; line-height: 1.2; }
+
+  #paintCat { height: min(100%, 56dvh, 46vw); }
+  /* กรอบตัดรูค3ก็โตตามด้วย สองแท็บจะได้สูงเท่ากันเหมือนเดิม */
+  .face-work { min-height: min(100%, 52dvh); }
+  .face-crop { max-height: min(100%, 52dvh); }
 }
-/* ปุ่มต้องกลางรางเอง เพราะคอลัมน์เปลี่ยนเป็น flex-start แล้ว */
-#createPanel.fold-tools .paint-tools-col .pcol-fold,
-#createPanel.fold-colors .paint-color-col .pcol-fold { align-self: center; }
-/* จางออกแทนการหายวับ — display:none ไล่ไม่ได้ เลยใช้ความจางแล้วให้รางเฉือนทิ้ง
-   ปิดการรับนิ้วด้วย ไม่งั้นจะกดโดนของที่มองไม่เห็นได้ */
-#createPanel.fold-tools .paint-tools-col > :not(.pcol-fold),
-#createPanel.fold-colors .paint-color-col > :not(.pcol-fold) {
-  /* คงอยู่ในสายการจัดวางต่อ — ความสูงของกลุ่มจึงเท่าตอนกางเป๊ะ ปุ่มเลยไม่ขยับ
-     ใช้ opacity ไม่ใช้ display:none ด้วยสองเหตุผล: ยังต้องเห็นตอนจาง และยังต้องกินความสูงเท่าเดิม */
+
+/* แท็บเล็ตเล็ก (iPad 10-11") คอลัมน์เหลือราว 110-140px
+   แถวเครื่องมือสี่ปุ่มเรียงแถวเดียวจึงกว้างเกินจนล้นขอบ (วัดแล้ว scrollWidth เกิน)
+   พับเป็นสองแถวแทน — คอลัมน์มีความสูงเหลือเพียบพออยู่แล้วบนจอสูง 768+ */
+@media (pointer: coarse) and (min-height: 620px) and (max-width: 1250px) {
+  /* .paint-tools เป็น flex ไม่ใช่ grid — ต้องสั่งด้วย wrap กับ flex-basis */
+  .paint-tools { flex-wrap: wrap; }
+  .paint-tools .ptool { flex: 1 1 40%; }
+  /* ชื่อส่วนเหลือแค่ตัวแรกถ้าเรียงสองคอลัมน์ในกว้าง 109px
+     (เห็นเป็น "ข." "หู" แทน "ขา+แขน" "หูใน") เหลือแถวละชื่อแทน คอลัมน์มีความสูงเหลือเพียพอ */
+  .paint-parts { grid-template-columns: 1fr; }
+}
+
+/* ═══ ย่อแถบข้างของหน้าระบายสี ═════════════════════
+
+   ปุ่มเดียวยุบทั้งสองคอลัมน์พร้อมกัน และตัวปุ่มอยู่นอกคอลัมน์ที่ยุบ
+   ตำแหน่งของมันจึงไม่ขึ้นกับความสูงหรือการจัดวางของสิ่งที่หายไป — ซึ่งเป็นต้นเหตุของปัญหาก่อนหน้านี้ทั้งหมด
+
+   กฎชุดนี้ต้องอยู่ท้ายไฟล์ เพราะกฎของโหมดเต็มจอกับบล็อกมือถือมีน้ำหนักเท่ากันกับกฎที่นี่
+   ตัวที่อยู่ทีหลังในไฟล์จึงชนะ (เคยวางกลางไฟล์แล้วโหมดเต็มจอไม่ยอมยุบ) ══ */
+
+/* ── ปุ่มย่อมีเฉพาะโหมดเต็มจอ ──
+   หน้าปกติการ์ดเล็กอยู่แล้ว ย่อแถบไปก็ได้ผ้าใบเพิ่มมาไม่กี่สิบพิกเซล
+   แลกกับการเสียปุ่มหนึ่งใบกับสถานะอีกหนึ่งอย่างที่ต้องอธิบายแล้วไม่คุ้ม */
+#createPanel:not(.paint-full) .pcol-fold { display: none; }
+
+/* คอลัมน์ทั้งสองยุบจนหาย เหลือแค่ตัวปุ่ม */
+#createPanel.fold-side .paint-tools-col,
+#createPanel.fold-side .paint-color-col {
+  flex: 0 0 0;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .18s ease;
+  transition: flex-basis .26s ease, flex-grow .26s ease, min-width .26s ease, opacity .18s ease;
 }
-/* ตัวกันแถบคำใบ้ (::after) ต้องคงไว้ตอนย่อด้วย
-   ถ้าตัดทิ้ง ความสูงรวมของกลุ่มจะสั้นลง แล้วการจัดกึ่งกลางจะดันปุ่มขึ้นไป 14px (วัดแล้ว) */
-#createPanel.fold-tools .paint-tools-col .pcol-fold,
-#createPanel.fold-colors .paint-color-col .pcol-fold { align-self: center; }
-#createPanel.fold-tools .paint-tools-col .pcol-fold svg,
-#createPanel.fold-colors .paint-color-col .pcol-fold svg { transform: none; }
+/* ช่องไฟระหว่างสองคอลัมน์ต้องหายไปด้วย ไม่งั้นจะเหลือช่องว่างค้างอยู่ข้างปุ่ม */
+#createPanel.fold-side .paint-side { gap: 0; flex: 0 0 auto; }
 
-/* ผ้าใบไปอยู่กลางของที่ว่างที่คืนมา
-   ต้องปลด flex-grow ของกล่องขวาด้วย ไม่งั้นรางผอมสองเส้นยังกินส่วนแบ่งอยู่
-   แล้วผ้าใบค้างซ้ายกว่าที่ควร (วัดแล้วเยื้อง 116px ตอนย่อทั้งสองฝั่ง) */
-#createPanel.fold-tools .paint-stage,
-#createPanel.fold-colors .paint-stage { flex: 1 1 auto; }
-#createPanel.fold-tools .paint-side,
-#createPanel.fold-colors .paint-side { flex: 0 1 auto; }
+/* ผ้าใบกินที่ที่คืนมา และไปอยู่กลางของที่ว่าง
+   สั่งสองชั้นโดยตั้งใจ: ให้สนามกินที่ว่าง และสั่งจัดกึ่งกลางที่ตัวแถวอีกชั้น
+   ถ้าวันหลังมีกฎไหนมาทับ flex-grow ของสนาม ผ้าใบก็ยังอยู่กลางแถวอยู่ดี */
+#createPanel.fold-side .paint-stage { flex: 1 1 auto; min-width: 0; }
+/* บังคับให้แถวเต็มความกว้างของกล่องแม่
+   เดิมพึ่งให้มันยืดเองจาก align-items: stretch ซึ่งเป็นค่าปริยาย แต่ถ้ามีกฎไหนมาเปลี่ยน
+   แถวจะกว้างเท่าเนื้อหา สนามก็ไม่มีที่ว่างให้โต และผ้าใบจะค้างซ้ายแทนที่จะอยู่กลางการ์ด */
+#createPanel.fold-side .paint-cols {
+  width: 100%;
+  align-self: stretch;
+  justify-content: center;
+}
 
-/* ผ้าใบโตตามที่ว่างที่คืนมา — จอใหญ่คุมด้วยความสูง */
-/* โหมดเต็มจอไม่แตะขนาดผ้าใบ — ที่นั่นผ้าใบถูกความสูงของแถวบีบอยู่แล้ว
-   ที่ว่างแนวนอนที่คืนมาจึงช่วยอะไรไม่ได้กับสี่เหลี่ยมจตุรัส
-   ถ้าไปตั้งเพดาน dvh/vw ทับลงไป กลับทำให้ผ้าใบเล็กลง (วัดแล้ว 433 -> 283) */
-#createPanel.fold-tools:not(.paint-full) #paintCat,
-#createPanel.fold-colors:not(.paint-full) #paintCat { height: min(100%, 58dvh, 44vw); width: auto; }
-#createPanel.fold-tools.fold-colors:not(.paint-full) #paintCat { height: min(100%, 72dvh, 60vw); }
+/* ── โหมดเต็มจอก็ต้องโตตอนย่อ ──
+   เดิมกันโหมดนี้ไว้ เพราะวัดที่จอหนึ่งแล้วผ้าใบชนเพดานความสูงของแถวอยู่แล้ว
+   แต่บนจอที่เตี้ยกว่านั้น ตัวที่ชนคือ 30vw จากกฎหลัก — วัดบนจอ 943 ได้เพดานแค่ 283px
+   ทั้งที่แถวสูงเกือบ 400 การย่อจึงไม่ช่วยอะไรเลยบนเครื่องแบบนั้น
+   ตัด 30vw ออกตอนย่อ เหลือแค่ความสูงของแถวเป็นตัวคุม — ไม่มีทางเล็กลงกว่าเดิมได้ */
+#createPanel.fold-side.paint-full #paintCat {
+  width: auto;
+  height: min(100%, 92dvh);
+  max-width: 100%;
+}
 
-/* จอเตี้ยคุมด้วยความกว้างแทน (ดูเหตุผลที่กฎ #paintCat ในบล็อก max-height: 460px) */
+/* ลูกศรกลับทิศ = "กดเพื่อกางกลับ" */
+#createPanel.fold-side .pcol-fold svg { transform: none; }
+
+/* ขนาดผ้าใบตอนย่อ — โหมดเต็มจอไม่แตะ เพราะที่นั่นชนความสูงแถวอยู่แล้ว */
+#createPanel.fold-side:not(.paint-full) #paintCat {
+  width: auto;
+  height: min(100%, 72dvh, 60vw);
+  max-width: 100%;
+}
+
+/* จอเตี้ยคุมด้วยความกว้าง แต่ตอนย่อต้องกลับมาคุมด้วยความสูง
+   ไม่งั้น flex จะยืดความสูงจนผ้าใบไม่เป็นสี่เหลี่ยมจตุรัส แล้วตัวน้องจะถูกยืด */
 @media (max-height: 460px) {
-  /* ── ตอนย่อต้องกลับมาคุมด้วยความสูง ──
-     บล็อกมือถือคุมด้วยความกว้างและปล่อย height: auto ซึ่งใช้ได้ตอนไม่ย่อ
-     แต่พอย่อแล้ว .paint-stage ยืดเต็มความสูง ผ้าใบเลยโดน flex ยืดตาม
-     ได้สี่เหลี่ยมผืนผ้า 378x340 คือตัวน้องถูกยืด จึงกลับไปใช้ท่าเดียวกับกฎหลัก
-     คือคุมความสูงด้วย min() ที่มี 100% อยู่ด้วย ความกว้างจึงมาจาก aspect-ratio เสมอ */
-  #createPanel.fold-tools:not(.paint-full) #paintCat,
-  #createPanel.fold-colors:not(.paint-full) #paintCat {
+  #createPanel.fold-side:not(.paint-full) #paintCat {
     width: auto;
-    height: min(100%, 72dvh);
+    height: min(100%, 96dvh);
     max-width: 100%;
   }
-  #createPanel.fold-tools.fold-colors:not(.paint-full) #paintCat { height: min(100%, 96dvh); }
 }
-
 
 /* เครื่องที่สั่งลดการเคลื่อนไหวไว้ ต้องสลับทันที ไม่ใช่ไล่ช้า ๆ */
 @media (prefers-reduced-motion: reduce) {
   .paint-tools-col, .paint-color-col, #paintCat, .pcol-fold svg,
-  #createPanel.fold-tools .paint-tools-col > :not(.pcol-fold),
-  #createPanel.fold-colors .paint-color-col > :not(.pcol-fold) { transition: none; }
+  #createPanel.fold-side .paint-tools-col,
+  #createPanel.fold-side .paint-color-col { transition: none; }
+}
+
+/* ── ตอนย่อ ผ้าใบต้องอยู่กลางจอจริง ──
+   ถ้าปล่อยให้ปุ่มกินที่ในแถวต่อไป สนามจะเหลือแคบกว่าแถวอยู่เท่าความกว้างปุ่ม
+   ผ้าใบจึงเยื้องซ้ายจากกึ่งกลางจอเท่าครึ่งของปุ่ม ยกปุ่มออกจากแถวไปลอยมุมบนขวาแทน */
+#createPanel.paint-full.fold-side .paint-side { flex: 0 0 0; min-width: 0; }
+
+/* ── คืนกรอบผ้าใบให้เป็นจุดอ้างอิงในโหมดเต็มจอ ──
+   โหมดเต็มจอตั้ง position: static ไว้เพื่อให้ปุ่มปิดไปเกาะมุมการ์ดแทนมุมผ้าใบ
+   แต่ปุ่มย่อต้องเกาะริมผ้าใบ จึงต้องคืนจุดอ้างให้กรอบ แล้วเปลี่ยนปุ่มปิดเป็น fixed แทน
+   ซึ่งให้ตำแหน่งเดิมเป๊ะ เพราะโหมดนี้การ์ดกินเต็มจออยู่แล้ว มุมการ์ดกับมุมจอคือจุดเดียวกัน */
+#createPanel.paint-full .paint-canvas { position: relative; }
+#createPanel.paint-full .paint-max { position: fixed; }
+
+/* ═══ พรสวรรค์ (Talent Card) — ต้นแบบหน้าจอ ══════════════════════════
+
+   ใช้ของที่มีอยู่แล้วทั้งหมดเท่าที่ทำได้: การ์ด .pop / ปุ่มกลับ .backbtn / หัวเรื่อง .skin-title
+   ชิปกรอง .fsort .fchip / ปุ่ม .btn / ตราระดับ sign-*.png / สีมิ้นต์ = "ใช้งานอยู่" แบบเดียวกับชุดที่ใส่อยู่
+   คลาสใหม่ขึ้นต้นด้วย tl- ทุกตัว จะได้ไม่ไปชนกฎของหน้าอื่น
+
+   ── แอนิเมชันทั้งหมดใช้แค่ transform กับ opacity ──
+   สองอย่างนี้เบราว์เซอร์ยกไปทำบนการ์ดจอได้โดยไม่ต้องจัดหน้าใหม่
+   ลูปวาดเกมที่ยังวิ่งอยู่ข้างหลังจึงไม่โดนแย่งเฟรม
+   แสงเรืองของ SS ก็ทำด้วย opacity ของชั้นแสงแยก ไม่ไล่ค่า box-shadow ซึ่งต้องวาดใหม่ทุกเฟรม ══ */
+
+/* สูงเต็มขอบเขตเสมอ เหตุผลเดียวกับ .stash-pop — กรองเหลือไม่กี่ใบแล้วการ์ดต้องไม่หดตาม */
+.tl-pop {
+  width: 100%;
+  height: calc(100% - var(--card-inset) * 2);
+  align-items: stretch;
+  gap: clamp(6px, 1.4dvh, 12px);
+  padding-left: clamp(12px, 1.8vw, 22px);
+  padding-right: clamp(12px, 2vw, 26px);
+}
+
+/* ── แถวหัว ── เว้นซ้ายให้ปุ่มกลับที่เกาะมุมการ์ด */
+.tl-head {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 16px);
+  padding-left: calc(var(--backbtn) + clamp(6px, 1vw, 12px));
+  min-height: var(--backbtn);
+}
+.tl-titles { display: flex; flex-direction: column; line-height: 1; }
+.tl-kicker {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(8px, 1.3dvh, 10.5px);
+  letter-spacing: .22em;
+  color: #C9A9EC;
+}
+.tl-head .skin-title {
+  font-size: clamp(17px, 2.9dvh, 24px);
+  padding-bottom: 3px;
+  background-size: 100% 2px;
+  background-position: bottom left;
+}
+/* จำนวนที่สะสมได้ — แคปซูลเล็กข้างชื่อ อ่านเป็นข้อมูลรอง ไม่แย่งความเด่นจากหัวเรื่อง */
+.tl-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.18);
+  background: rgba(27,15,43,.62);
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(10px, 1.7dvh, 13px);
+  color: #C9AEE8;
+}
+.tl-count b { font-weight: 600; font-size: 1.2em; color: var(--cream); }
+.tl-count-sep { opacity: .6; }
+.tl-filter { margin-left: auto; }
+/* ชิปตัวอักษรระดับใช้ฟอนต์หัวเรื่อง ตัว A S SS จะอ่านเป็นตราระดับ ไม่ใช่คำธรรมดา */
+.tl-filter .fchip[data-rank]:not([data-rank="all"]) {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  min-width: 2.6em;
+}
+
+/* ── เนื้อหา: ซ้ายใบที่ใช้อยู่ ขวากริด ── */
+.tl-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: clamp(10px, 1.8vw, 22px);
+}
+.tl-side {
+  flex: 0 0 auto;
+  width: clamp(128px, 19%, 200px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(5px, 1.1dvh, 10px);
+  padding-right: clamp(10px, 1.8vw, 22px);
+  border-right: 1px solid rgba(255,243,226,.14);
+}
+/* ── ย่อหน้าในแผงนี้ต้องเขียนเป็น .panel p.xxx ──
+   กฎกลาง .panel p (0,1,1) ตั้งขนาด 13-15px สีกับความกว้างสูงสุดไว้ ชนะคลาสเดี่ยว (0,1,0) ทุกตัว
+   ตอนแรกเขียนคลาสเดี่ยวแล้วบรรทัดสถานะใหญ่กว่ารายการผลในเกมเกือบเท่าตัว (ท่าเดียวกับ .odetail-sub) */
+.panel p.tl-side-label,
+.panel p.tl-side-note,
+.panel p.tl-sheet-desc,
+.panel p.tl-status { max-width: none; }
+
+.panel p.tl-side-label {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.7dvh, 13px);
+  color: var(--mint-lite);
+  letter-spacing: .02em;
+}
+.panel p.tl-side-note {
+  margin-top: auto;
+  text-align: center;
+  font-size: clamp(10px, 1.6dvh, 12px);
+  line-height: 1.45;
+  color: #B99BD4;
+}
+
+/* ── กริด ── เลื่อนในตัวเองได้แบบเดียวกับ .skin-grid */
+.tl-grid {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  /* จำนวนใบต่อแถวปรับตามที่ว่างเอง: จอคอมได้ 5-6 ใบ มือถือแนวนอนได้ 4-5 ใบ
+     ความกว้างขั้นต่ำคือขนาดที่ชื่อสองบรรทัดยังอ่านออกและนิ้วแตะโดนสบาย */
+  grid-template-columns: repeat(auto-fill, minmax(clamp(88px, 10.5vw, 120px), 1fr));
+  align-content: start;
+  gap: clamp(7px, 1.3vw, 14px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  /* เว้นขอบให้การ์ดที่ยกตัวตอนชี้กับแสงเรืองของ SS ไม่โดนขอบช่องเลื่อนตัด */
+  padding: 6px 6px 16px;
+  scrollbar-width: none;
+}
+.tl-grid::-webkit-scrollbar { display: none; }
+.tl-grid.scrolls {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+.tl-grid .grid-empty { grid-column: 1 / -1; }
+
+/* ── การ์ดหนึ่งใบ ──
+   ลำดับความสำคัญจากบนลงล่าง: รูป+ตรา (ดูแวบเดียวรู้ว่าอะไร ระดับไหน) → ชื่อ → คำอธิบายสั้น */
+.tl-card,
+.tl-equipped {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(3px, 0.6dvh, 5px);
+  padding: clamp(7px, 1.3dvh, 10px) clamp(5px, 0.8vw, 8px) clamp(7px, 1.3dvh, 10px);
+  border-radius: 14px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+  color: var(--cream);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .16s cubic-bezier(.2,.85,.3,1.2), box-shadow .16s ease, border-color .16s ease;
+}
+.tl-card:focus-visible,
+.tl-equipped:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+/* เข้ามาทีละใบตอนเปิดหน้าหรือเปลี่ยนตัวกรอง (--i ตั้งจาก JS ตัดที่ 12) */
+.tl-card { animation: tlCardIn .34s cubic-bezier(.2,.85,.3,1.06) backwards; animation-delay: calc(var(--i, 0) * 26ms); }
+.tl-card.no-enter { animation: none; }
+@keyframes tlCardIn {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+}
+
+/* ช่องรูป — เข้มกว่าตัวการ์ดแบบเดียวกับการ์ดชุด รูปจะได้ไม่จมกับพื้นม่วง */
+.tl-card-art {
+  position: relative;
+  width: clamp(40px, 7.4dvh, 60px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(34,14,54,.6);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.14);
+  overflow: hidden;
+}
+.tl-ico {
+  font-size: clamp(22px, 4.2dvh, 34px);
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(12,4,24,.5));
+}
+.tl-ico-img { width: 82%; height: 82%; object-fit: contain; }
+
+/* ตราระดับเกาะมุมบนขวาในกรอบการ์ด (เหตุผลเดียวกับ .tier-sign — ช่องเลื่อนตัดของที่ยื่นออกนอก) */
+.tl-card-rank {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: clamp(18px, 3.4dvh, 26px);
+  height: auto;
+  aspect-ratio: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(12,4,24,.55));
+}
+.tl-card-name {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.75dvh, 13px);
+  line-height: 1.22;
+  /* จองสองบรรทัดเสมอ การ์ดในแถวเดียวกันจึงสูงเท่ากันไม่ว่าชื่อสั้นหรือยาว */
+  min-height: 2.44em;
+  display: grid;
+  place-items: center;
+}
+.tl-card-desc {
+  font-size: clamp(9.5px, 1.6dvh, 12px);
+  line-height: 1.3;
+  color: #E3D2F5;
+  min-height: 2.6em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── ระดับ: บอกด้วยขอบ + ลายพื้นรูป + ตรา + ตัวหนังสือ ไม่ใช่สีอย่างเดียว ── */
+/* S — ขอบทอง พื้นรูปมีแสงทองจาง ๆ มุมบน */
+.tl-card.rank-s,
+.tl-equipped.rank-s,
+.tl-sheet.rank-s { border-color: rgba(255,201,60,.72); }
+.rank-s .tl-card-art,
+.tl-sheet.rank-s .tl-sheet-art {
+  background:
+    radial-gradient(90% 70% at 50% 0%, rgba(255,201,60,.26), transparent 70%),
+    rgba(34,14,54,.6);
+}
+/* SS — ขอบไล่สีรุ้ง (ทำด้วยพื้นสองชั้น padding-box/border-box จึงยังโค้งมนตามการ์ด)
+   พื้นรูปมีจุดประกายเล็ก ๆ และชื่อเป็นตัวหนาขึ้น */
+.tl-card.rank-ss,
+.tl-equipped.rank-ss,
+.tl-sheet.rank-ss {
+  border-color: transparent;
+  background:
+    var(--plate-face) padding-box,
+    linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
+}
+.rank-ss .tl-card-art,
+.tl-sheet.rank-ss .tl-sheet-art {
+  background:
+    radial-gradient(circle at 22% 28%, rgba(255,246,200,.9) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 78% 20%, rgba(255,255,255,.8) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 70% 78%, rgba(255,246,200,.8) 0 1px, transparent 1.6px),
+    radial-gradient(90% 80% at 50% 40%, rgba(255,120,210,.24), transparent 70%),
+    rgba(34,14,54,.62);
+}
+.rank-ss .tl-card-name { font-weight: 600; }
+/* แสงเรืองของ SS — ชั้นแยกด้านหลัง เต้นด้วย opacity อย่างเดียว เบาและไม่รก */
+.tl-card.rank-ss::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: 0 0 16px rgba(255,120,210,.55), 0 0 4px rgba(255,228,155,.5);
+  opacity: .35;
+  animation: tlGlow 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes tlGlow { 50% { opacity: .85; } }
+/* ::before ติดลบต้องมีชั้นซ้อนของตัวเอง ไม่งั้นแสงจะจมลงไปอยู่หลังพื้นแผง */
+.tl-card { isolation: isolate; }
+
+/* ── ยังไม่ได้รับ ── เห็นว่าเป็นอะไร ระดับไหน แต่รูปเป็นขาวดำ (ภาษาเดียวกับการ์ดชุด/สมบัติ) */
+.tl-card.locked .tl-card-art > *,
+.tl-sheet.locked .tl-sheet-art > .tl-ico,
+.tl-sheet.locked .tl-sheet-art > .tl-ico-img { filter: grayscale(1) brightness(.7); opacity: .7; }
+.tl-card.locked .tl-card-name,
+.tl-card.locked .tl-card-desc { opacity: .62; }
+.tl-card.locked.rank-ss::before { animation: none; opacity: .15; }
+
+/* ── ป้ายสถานะมุมล่าง: ✓ ใช้งานอยู่ / 🔒 ยังไม่ได้รับ ──
+   แคปซูลเล็กทับขอบล่างของรูป ไม่กินความสูงการ์ด การ์ดทุกใบจึงสูงเท่ากัน */
+.tl-tag {
+  position: absolute;
+  /* ขอบล่างของรูปพอดี แล้วยกขึ้นอีกเท่าความสูงป้าย ป้ายจึงนั่งทับขอบล่างของรูป
+     ไม่ห้อยลงไปบังหัวชื่อ (เคยห้อยต่ำกว่านี้ 4px แล้วหัวตัวหนังสือชื่อโดนบัง) */
+  top: calc(clamp(7px, 1.3dvh, 10px) + clamp(40px, 7.4dvh, 60px) - 1.5em - 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(7.5px, 1.3dvh, 9.5px);
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tl-tag.on {
+  color: #0B3B37;
+  background: linear-gradient(180deg, #A9F5EC, #6FD9CE);
+  box-shadow: 0 1px 0 rgba(0,0,0,.25);
+}
+.tl-tag.lock {
+  color: #D9C6EE;
+  background: rgba(24,12,40,.9);
+  border: 1px solid rgba(255,243,226,.22);
+}
+
+/* ── สถานะของการ์ด ──
+   ใช้งานอยู่ = ขอบมิ้นต์ (ความหมายเดียวกับ "ชุดที่ใส่อยู่" ทั้งเกม)
+   เลือกดูอยู่ = เส้นครีมรอบนอก + ยกตัวค้าง — ต่างกันคนละแบบ ใบเดียวจึงเป็นทั้งสองอย่างได้ */
+.tl-card.equipped {
+  border-color: var(--mint);
+  box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.45), 0 6px 18px rgba(78,205,196,.28);
+}
+.tl-card.equipped.rank-ss {
+  background:
+    var(--plate-face) padding-box,
+    linear-gradient(135deg, #8DF3EA, #4ECDC4) border-box;
+}
+.tl-card.sel {
+  outline: 2px solid var(--cream);
+  outline-offset: 2px;
+  transform: translateY(-2px);
+}
+
+/* ── การตอบสนองตอนชี้/กด ──
+   ชี้: ยกขึ้นนิดขยายนิด เงาลึกขึ้น รูปโยกเบา ๆ — เฉพาะอุปกรณ์ที่ชี้ได้จริง
+   บนจอสัมผัส :hover ค้างหลังแตะ การ์ดจะลอยค้างทั้งที่นิ้วยกไปแล้ว */
+@media (hover: hover) {
+  .tl-card:hover,
+  .tl-equipped:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 8px 0 rgba(20,8,32,.45), 0 16px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .tl-card:hover .tl-ico { animation: tlWiggle .5s ease-in-out; }
+}
+.tl-card:active,
+.tl-equipped:active { transform: translateY(2px) scale(.98); box-shadow: var(--plate-press); }
+@keyframes tlWiggle {
+  30% { transform: rotate(-9deg) scale(1.08); }
+  65% { transform: rotate(6deg) scale(1.05); }
+}
+
+/* ── ช่อง "ใช้งานอยู่" ด้านซ้าย ── ทรงเดียวกับการ์ดแต่ใหญ่กว่า เป็นตัวเอกของหน้า */
+.tl-equipped {
+  border-color: var(--mint);
+  box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4), 0 8px 22px rgba(78,205,196,.26);
+  padding-block: clamp(9px, 1.8dvh, 14px);
+}
+.tl-equipped.rank-ss {
+  background:
+    var(--plate-face) padding-box,
+    linear-gradient(135deg, #8DF3EA, #4ECDC4) border-box;
+}
+.tl-equipped .tl-card-art { width: clamp(52px, 11dvh, 88px); border-radius: 14px; }
+.tl-equipped .tl-ico { font-size: clamp(30px, 6.4dvh, 52px); }
+.tl-equipped .tl-card-rank { width: clamp(22px, 4.2dvh, 32px); }
+.tl-equipped .tl-card-name { font-size: clamp(11px, 2dvh, 15px); }
+.tl-equipped.empty { cursor: default; border-style: dashed; box-shadow: none; }
+.tl-equipped-empty { padding: 20px 0; font-size: 12px; color: #B99BD4; }
+/* เด้งรับตอนเพิ่งติดตั้งใบใหม่ บอกว่า "เปลี่ยนแล้ว ตรงนี้" */
+.tl-equipped.bump { animation: tlBump .42s cubic-bezier(.2,.85,.3,1.3); }
+@keyframes tlBump {
+  0% { transform: scale(.9); }
+  60% { transform: scale(1.05); }
+}
+
+/* ── หน้ารายละเอียด: แผ่นซ้อนในการ์ด ──
+   พื้นมืดคลุมเฉพาะในการ์ด (ไม่ใช่ทั้งจอ) — ชั้นเดียว ไม่ซ้อนกับพื้นมืดของแผง
+   ไล่เข้าออกได้ทั้งสองทางโดยไม่มีจังหวะที่ฉากหลังของเกมโผล่วาบ */
+.tl-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: clamp(10px, 2.4dvh, 24px);
+  border-radius: inherit;
+  background: rgba(14,6,26,.62);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, visibility .2s;
+}
+.tl-detail.show { opacity: 1; visibility: visible; }
+/* ไม่รับแอนิเมชัน "ของในการ์ดไล่ขึ้น" ของแผงทั่วไป (.pop > *) — แผ่นนี้เป็นลูกของ .pop ก็จริง
+   แต่มันซ่อนอยู่ตอนเปิดหน้า และแอนิเมชันนั้นทับค่า opacity ของ transition ข้างบน
+   วัดแล้วถ้าไม่ตัด การเปิด/ปิดแผ่นในช่วงแรกหลังเข้าหน้าจะไม่มีการไล่จางเลย */
+.panel:not(.home):not(.hidden) > .pop > .tl-detail { animation: none; }
+.tl-sheet {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2.4vw, 26px);
+  padding: clamp(14px, 3dvh, 26px) clamp(16px, 3vw, 30px);
+  border-radius: 20px;
+  border: 2px solid var(--plate-line);
+  background: linear-gradient(180deg, rgba(110,58,152,.98), rgba(52,24,80,.99));
+  box-shadow: 0 22px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18);
+  transform: translateY(14px) scale(.96);
+  transition: transform .24s cubic-bezier(.2,.85,.3,1.1);
+}
+.tl-detail.show .tl-sheet { transform: none; }
+.tl-sheet.rank-ss {
+  background:
+    linear-gradient(180deg, rgba(110,58,152,.98), rgba(52,24,80,.99)) padding-box,
+    linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
+}
+.tl-sheet-art {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(92px, 24dvh, 170px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(34,14,54,.6);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.16);
+}
+.tl-sheet-art .tl-ico { font-size: clamp(50px, 13dvh, 96px); }
+.tl-detail.show .tl-sheet-art .tl-ico { animation: tlPop .44s .06s cubic-bezier(.2,.85,.3,1.35) backwards; }
+@keyframes tlPop { from { transform: scale(.55) rotate(-12deg); opacity: 0; } }
+.tl-sheet-rank {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: clamp(30px, 6.4dvh, 46px);
+  height: auto;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 3px 6px rgba(12,4,24,.6));
+}
+.tl-sheet-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(3px, 0.8dvh, 7px);
+  text-align: left;
+}
+.tl-sheet-rank-label {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(10px, 1.7dvh, 12.5px);
+  letter-spacing: .06em;
+  color: #D9BDF5;
+}
+.tl-sheet.rank-s .tl-sheet-rank-label { color: #FFE49B; }
+.tl-sheet.rank-ss .tl-sheet-rank-label { color: #FFB8E8; }
+.tl-sheet-name {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(17px, 3.3dvh, 25px);
+  line-height: 1.2;
+  color: var(--cream);
+}
+.panel p.tl-sheet-desc {
+  font-size: clamp(11px, 2dvh, 14.5px);
+  line-height: 1.5;
+  color: #EBDCF8;
+}
+.tl-effect {
+  align-self: stretch;
+  padding: clamp(5px, 1.1dvh, 9px) clamp(9px, 1.4vw, 13px);
+  border-radius: 12px;
+  background: rgba(27,15,43,.55);
+  border: 1px solid rgba(255,243,226,.12);
+}
+.tl-effect b {
+  display: block;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.7dvh, 12.5px);
+  color: var(--mint-lite);
+  margin-bottom: 2px;
+}
+.tl-effect ul { list-style: none; display: grid; gap: 1px; }
+.panel p.tl-how {
+  max-width: none;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255,243,226,.16);
+  font-size: clamp(10px, 1.75dvh, 13px);
+  line-height: 1.4;
+  color: #FFE49B;
+}
+.panel p.tl-how:empty { display: none; }
+/* แถบข้อมูลสั้นใต้ชื่อ: ประเภท / ระยะเวลา / คูลดาวน์ */
+.tl-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+.tl-meta-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: clamp(9px, 1.55dvh, 11.5px);
+  line-height: 1.6;
+  color: #E3D2F5;
+  background: rgba(27,15,43,.55);
+  border: 1px solid rgba(255,243,226,.14);
+}
+.tl-meta-chip.type { color: var(--mint-lite); border-color: rgba(141,243,234,.35); }
+/* คูลดาวน์บนการ์ด — มุมบนซ้าย คู่กับตราระดับที่มุมบนขวา */
+.tl-cool {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(7.5px, 1.3dvh, 9.5px);
+  line-height: 1.6;
+  color: #E3D2F5;
+  background: rgba(24,12,40,.78);
+  pointer-events: none;
+}
+.tl-effect li {
+  position: relative;
+  padding-left: 13px;
+  font-size: clamp(10.5px, 1.9dvh, 13.5px);
+  line-height: 1.45;
+  color: var(--cream);
+}
+.tl-effect li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: .62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--mint-lite);
+}
+.panel p.tl-status {
+  font-size: clamp(10.5px, 1.85dvh, 13.5px);
+  line-height: 1.45;
+  color: #C9AEE8;
+}
+.panel p.tl-status.on { color: var(--mint-lite); font-weight: 600; }
+.panel p.tl-status.swap b { color: var(--cream); font-weight: 600; }
+.panel p.tl-status.lock { color: #D9C6EE; }
+.tl-sheet-info .btn {
+  margin-top: clamp(2px, 0.6dvh, 6px);
+  min-width: clamp(120px, 20vw, 170px);
+  padding-block: clamp(6px, 1.3dvh, 10px);
+  font-size: clamp(11px, 2dvh, 15px);
+}
+.tl-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: clamp(26px, 5dvh, 34px);
+  height: clamp(26px, 5dvh, 34px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,243,226,.3);
+  background: rgba(27,15,43,.6);
+  color: var(--cream);
+  cursor: pointer;
+  z-index: 2;
+}
+.tl-close:active { transform: translateY(1px); }
+.tl-close:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+
+/* ── จอเตี้ย (มือถือแนวนอน) ── ตัดบรรทัดคำแนะนำทิ้ง แล้วบีบระยะให้กริดได้แถวเพิ่ม */
+@media (max-height: 460px) {
+  .tl-side-note { display: none; }
+  .tl-kicker { display: none; }
+  .tl-side { width: clamp(118px, 17%, 160px); }
+  .tl-sheet { padding-block: 12px; }
+}
+
+/* ── จอแคบ ── บีบให้กะทัดรัด แต่ไม่เรียงซ้อนบน-ล่าง
+   เวทีเกมคงสัดส่วนกว้าง 960:420 เสมอ หน้าต่างแคบจึงได้เวทีที่ "เตี้ยลง" ไม่ใช่ "ผอมสูง"
+   เคยลองวางใบที่ใช้อยู่ไว้บนหัวกริดแล้ว ที่ความกว้าง 560 เวทีสูงแค่ราว 230px
+   แถบนั้นกินที่จนกริดไม่เหลือให้เห็นเลย — เรียงข้างกันแบบเดิมแล้วย่อทุกอย่างลงใช้ได้จริงกว่า
+   (มือถือเล่นแนวนอนเสมอ แนวตั้งมีหน้าบอกให้หมุนจอ จึงไม่มีจอไหนได้ประโยชน์จากการซ้อน) */
+@media (max-width: 720px) {
+  .tl-kicker, .tl-side-note { display: none; }
+  .tl-side { width: clamp(96px, 20%, 130px); }
+  .tl-side-label { font-size: 10px; }
+  .tl-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+  .tl-card-desc { display: none; }
+  .tl-sheet-art { width: clamp(70px, 20dvh, 120px); }
+}
+
+/* เครื่องที่สั่งลดการเคลื่อนไหว: ตัดการไล่เข้า การโยก การเด้ง และแสงเต้นทิ้งหมด คงไว้แค่การเปลี่ยนสถานะ */
+@media (prefers-reduced-motion: reduce) {
+  .tl-card, .tl-card .tl-ico, .tl-equipped, .tl-equipped.bump,
+  .tl-detail.show .tl-sheet-art .tl-ico { animation: none !important; }
+  .tl-card.rank-ss::before { animation: none; opacity: .6; }
+  .tl-card, .tl-equipped, .tl-sheet { transition: none; }
+  .tl-card:hover, .tl-equipped:hover { transform: none; }
+}
+
+/* ═══ ปุ่มท่าพิเศษของพรสวรรค์ ══════════════════════════════════
+
+   ปุ่มเดียวทั้งเกม โผล่เฉพาะตอนวิ่งอยู่และติดพรสวรรค์ที่มีท่าพิเศษ (main.js ถอด .off ให้)
+   วางเหนือปุ่มหมอบบนจอสัมผัส (นิ้วโป้งขวาเอื้อมถึงโดยไม่ต้องย้ายมือ)
+   และมุมขวาล่างบนคอม ซึ่งไม่มีปุ่มจอสัมผัสอยู่แล้ว
+
+   วงรอบปุ่ม = ความพร้อม ใช้ conic-gradient อ่านจาก --p ตัวเดียว
+   ปุ่มจึงไม่ต้องวาดใหม่ทั้งปุ่มตอนคูลดาวน์เดิน แค่เปลี่ยนตัวแปรเดียว ══ */
+.skillpad {
+  position: absolute;
+  right: clamp(14px, 2.4vw, 26px);
+  bottom: clamp(14px, 3dvh, 26px);
+  z-index: 4;
+  --sk: clamp(58px, 11dvh, 78px);
+}
+.skillpad.off { display: none; }
+#btnSkill {
+  position: relative;
+  width: var(--sk);
+  height: var(--sk);
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0;
+  cursor: pointer;
+  color: #FFF6EA;
+  background: radial-gradient(circle at 50% 35%, rgba(122,53,99,.82), rgba(43,18,66,.84));
+  box-shadow: 0 4px 14px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.22);
+  font-family: "Mitr", sans-serif;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform .08s ease;
+}
+/* วงความพร้อม: ส่วนที่เต็มแล้วเป็นมิ้นต์ ส่วนที่ยังรอเป็นม่วงจาง
+   mask เจาะกลางออก เหลือเป็นขอบวงแหวน */
+.sk-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--mint-lite) var(--p, 100%), rgba(255,243,226,.18) 0);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%);
+  mask: radial-gradient(circle, transparent 60%, #000 62%);
+  pointer-events: none;
+}
+.sk-ico {
+  font-size: calc(var(--sk) * 0.36);
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.45));
+}
+.sk-label {
+  font-size: calc(var(--sk) * 0.17);
+  font-weight: 600;
+  line-height: 1.1;
+  text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
+/* ป้ายปุ่มคีย์บอร์ด — มีเฉพาะเครื่องที่มีเมาส์ จอสัมผัสไม่มีคีย์ E ให้กด */
+.sk-key {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+  color: #2B1242;
+  background: var(--cream);
+  box-shadow: 0 2px 0 rgba(0,0,0,.3);
+}
+@media (hover: none) and (pointer: coarse) {
+  .sk-key { display: none; }
+  /* เหนือปุ่มหมอบพอดี: ระยะขอบล่างเดิม + ความสูงปุ่มหมอบ + ช่องไฟ
+     แนวนอนจัดกลางตรงกับปุ่มหมอบ ด้วยสูตรเดียวกับที่ .touchpad ใช้วางปุ่ม */
+  .skillpad {
+    --sk: clamp(56px, 17dvh, 84px);
+    right: calc(clamp(10px, 2.2dvh, 22px) + (clamp(120px, 38dvh, 200px) - var(--sk)) / 2);
+    bottom: calc(clamp(10px, 2.2dvh, 22px) + clamp(68px, 22dvh, 112px) + 10px);
+  }
+  /* ปุ่มนี้ลอยอยู่เหนือทางที่ของพุ่งเข้ามาพอดี ต้องโปร่งแบบเดียวกับปุ่มกระโดด/หมอบ
+     (ดูเหตุผลที่ .touchpad button) ความชัดมาจากวงแหวนกับไอคอน ไม่ใช่จากพื้นทึบ */
+  #btnSkill {
+    background: radial-gradient(circle at 50% 35%, rgba(122,53,99,.42), rgba(43,18,66,.38));
+    border: 2px solid rgba(255,243,226,.55);
+  }
+  #btnSkill[data-state="active"] {
+    background: radial-gradient(circle at 50% 35%, rgba(255,211,107,.55), rgba(160,80,30,.45));
+  }
+}
+#btnSkill:active { transform: scale(.94); }
+
+/* พร้อมใช้: เรืองมิ้นต์เต้นเบา ๆ บอกว่ากดได้แล้ว (เต้นด้วย opacity ของชั้นแสงอย่างเดียว) */
+#btnSkill::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  box-shadow: 0 0 14px 2px rgba(141,243,234,.75);
+  opacity: 0;
+  pointer-events: none;
+}
+#btnSkill[data-state="ready"]::after { animation: skReady 1.6s ease-in-out infinite; }
+@keyframes skReady { 50% { opacity: 1; } }
+/* กำลังออกฤทธิ์: พื้นสว่างขึ้น วงเป็นสีทองไล่หมดตามเวลาที่เหลือ */
+#btnSkill[data-state="active"] {
+  background: radial-gradient(circle at 50% 35%, rgba(255,211,107,.9), rgba(160,80,30,.9));
+}
+#btnSkill[data-state="active"] .sk-ring {
+  background: conic-gradient(#FFE49B var(--p, 100%), rgba(255,243,226,.18) 0);
+}
+/* รอคูลดาวน์: ตัวไอคอนจางลง ให้เห็นว่ายังกดไม่ได้ */
+#btnSkill[data-state="cool"] .sk-ico,
+#btnSkill[data-state="cool"] .sk-label { opacity: .5; }
+/* ใบที่ทำงานเอง (ไม่มีอะไรให้กด) — ปุ่มเล็กลงและไม่รับการกด เป็นแค่ตัวบอกสถานะ */
+#btnSkill.passive { cursor: default; transform: scale(.82); pointer-events: none; }
+#btnSkill.passive .sk-key { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  #btnSkill[data-state="ready"]::after { animation: none; opacity: .7; }
+}
+
+/* ═══ คลิปเปิดเกม ══════════════════════════════════════════════════
+
+   คลุมเต็มจอจริง (position: fixed ไม่ใช่ absolute ในกรอบเกม)
+   z-index 280 — เหนือทุกอย่างในเกม แต่ต่ำกว่าป้ายหมุนจอ (300) คนถือแนวตั้งจึงเห็นป้ายก่อน
+
+   พื้นดำทึบตั้งแต่เฟรมแรก ตัวคลิปจางเข้ามาตอนภาพขึ้นจริงแล้วเท่านั้น (.playing)
+   ช่วงรอโหลดจึงเห็นเป็นจอดำนิ่ง ๆ ไม่ใช่ล็อบบี้โผล่แว้บแล้วคลิปมาทับ ══ */
+.intro-video {
+  position: fixed;
+  inset: 0;
+  z-index: 280;
+  background: #000;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  opacity: 1;
+  transition: opacity .32s ease;
+}
+.intro-video.off { display: none; }
+.intro-video.closing { opacity: 0; pointer-events: none; }
+
+/* cover = เต็มจอไม่มีขอบดำ — จอมือถือยาวกว่าคลิป 16:9 จึงเสียขอบบนล่างไปเล็กน้อย
+   ถ้าในคลิปมีตัวหนังสือชิดขอบแล้วโดนตัด เปลี่ยนเป็น contain ที่บรรทัดนี้บรรทัดเดียว */
+.intro-video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity .45s ease;
+  pointer-events: none;
+}
+.intro-video.playing video { opacity: 1; }
+
+/* ── ช่องติ๊ก "ไม่ต้องแสดงคลิปนี้อีก" มุมขวาบน ──
+   เว้นจากขอบตามรอยบาก/มุมโค้งของจอด้วย env() ไม่งั้นบน iPhone แนวนอนจะจมใต้รอยบาก */
+.iv-opt {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 8px;
+  border-radius: 999px;
+  background: rgba(20,8,32,.55);
+  border: 1px solid rgba(255,243,226,.28);
+  color: var(--cream);
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(12px, 2.6dvh, 15px);
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.iv-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.iv-box {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  border: 2px solid rgba(255,243,226,.75);
+  background: rgba(255,243,226,.08);
+  color: #0E3B2E;
+  transition: background .15s ease, border-color .15s ease;
+}
+.iv-box svg { width: 80%; height: 80%; opacity: 0; transform: scale(.6); transition: opacity .15s ease, transform .18s cubic-bezier(.2,.85,.3,1.4); }
+.iv-opt input:checked + .iv-box { background: var(--mint); border-color: var(--mint-lite); }
+.iv-opt input:checked + .iv-box svg { opacity: 1; transform: none; }
+.iv-opt input:focus-visible + .iv-box { outline: 2px solid var(--cream); outline-offset: 2px; }
+
+/* ── ข้อความบอกวิธีข้าม ── โผล่หลังคลิปเริ่มนิดหนึ่ง แล้วหายใจเบา ๆ ให้รู้ว่าแตะได้ */
+.iv-hint {
+  position: absolute;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 8px);
+  margin: 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(20,8,32,.5);
+  color: var(--cream);
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(12px, 2.8dvh, 16px);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,.7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s ease, transform .4s ease;
+}
+.intro-video.hinted .iv-hint {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  animation: ivBreathe 2.2s ease-in-out .4s infinite;
+}
+@keyframes ivBreathe { 50% { opacity: .55; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-video, .intro-video video, .iv-hint { transition: none; }
+  .intro-video.hinted .iv-hint { animation: none; }
 }

@@ -963,6 +963,74 @@ export function drawFish(ctx, x, y, r) {
   ctx.drawImage(s.cv, x - s.ox, y - s.oy, s.w, s.h);
 }
 
+// ── ออราของไอเทมที่เก็บได้ ────────────────────────────────────
+//
+// ปัญหาเดิม: ไอเทมพลังกลืนไปกับฉากและสิ่งกีดขวาง เช่นเหรียญตัวอักษรม่วงข้างกล่องแก้วม่วง
+// ตาต้องแยกเอาเองว่าอันไหนเก็บได้ อันไหนต้องหลบ
+//
+// แก้ด้วย "ภาษาภาพ" เดียวกันทั้งเกม: ไอเทมพลังทุกชิ้นมีวงแสงนุ่ม ๆ เต้นช้า ๆ อยู่ข้างหลัง
+// สิ่งกีดขวางไม่มีวันมีแสงนี้ ผู้เล่นจึงเรียนรู้ได้ในไม่กี่วินาทีว่า "เรือง = ของพิเศษ"
+//
+// ── ทำไมเป็นสไปรต์แคช ไม่วาดไล่สีสดทุกเฟรม ──
+// สร้าง radialGradient ใหม่ทุกชิ้นทุกเฟรมหนักเกินสำหรับมือถือ
+// วาดวงไล่สีครั้งเดียวต่อสีต่อขนาด แล้วแปะรูปซ้ำ = ถูกเท่าวาดรูปธรรมดา
+
+const AURA_SPRITE = new Map();
+const AURA_SS = 2;   // วาดละเอียดสองเท่า ขอบนุ่มไม่เป็นขั้นบนจอความละเอียดสูง
+
+function auraSprite(r, tint) {
+  const key = Math.round(r) + tint;
+  const hit = AURA_SPRITE.get(key);
+  if (hit) return hit;
+  if (AURA_SPRITE.size > 32) AURA_SPRITE.clear();
+
+  const R = Math.ceil(r);
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = R * 2 * AURA_SS;
+  const g = cv.getContext('2d');
+  g.scale(AURA_SS, AURA_SS);
+  const grad = g.createRadialGradient(R, R, 0, R, R, R);
+  // ใจกลางเป็นครีมเกือบขาว ยกตัวไอเทมให้ลอยพ้นฉากไม่ว่าฉากจะมืดหรือสว่าง
+  // ขอบนอกเป็นสีประจำไอเทม จึงยังบอกได้ว่าเป็นของชนิดไหนจากสีแสงอย่างเดียว
+  grad.addColorStop(0, 'rgba(255,250,236,.62)');
+  grad.addColorStop(0.42, tint.replace('A', '.42'));
+  grad.addColorStop(0.72, tint.replace('A', '.16'));
+  grad.addColorStop(1, tint.replace('A', '0'));
+  g.fillStyle = grad;
+  g.fillRect(0, 0, R * 2, R * 2);
+
+  const made = { cv, R };
+  AURA_SPRITE.set(key, made);
+  return made;
+}
+
+/**
+ * วงแสงหลังไอเทม — เรียกก่อนวาดตัวไอเทมเสมอ
+ *
+ * @param r     รัศมีของตัวไอเทม (วงแสงกว้างราว 2.3 เท่า)
+ * @param tint  สี rgba ที่มีตัว A แทนค่าความทึบ เช่น 'rgba(127,245,230,A)'
+ * @param phase เฟสจังหวะเต้น — ส่งพิกัดโลกมา ของที่เรียงเป็นแถวจึงเต้นไล่กันเป็นคลื่น
+ *              แทนที่จะกะพริบพร้อมกันทั้งแถวซึ่งดูเหมือนจอกะพริบ
+ */
+export function pickupAura(ctx, x, y, r, tint, tick, phase = 0) {
+  const k = Math.sin(tick * 0.08 + phase);
+  const size = r * 2.3 * (1 + k * 0.08);
+  const s = auraSprite(r * 2.3, tint);
+  ctx.save();
+  ctx.globalAlpha = 0.82 + k * 0.18;
+  ctx.drawImage(s.cv, x - size, y - size, size * 2, size * 2);
+  ctx.restore();
+}
+
+// สีแสงประจำไอเทม — รวมไว้ที่เดียว จะได้ปรับทั้งชุดให้เข้ากันได้ในที่เดียว
+//
+// ของกิน (ปลา ขนมเม็ด กุ้ง) ไม่มีออราโดยตั้งใจ มีเฉพาะไอเทมพลัง
+// ของกินมีบนจอทีละหลายสิบชิ้น ถ้าเรืองหมดทุกชิ้น แสงจะเต็มจอจนไอเทมพลังที่มีไม่กี่ชิ้น
+// กลับไม่เด่นอีก — ออราต้องหายากถึงจะมีความหมายว่า "ชิ้นนี้พิเศษ"
+const AURA = {
+  power: 'rgba(255,243,226,A)',
+};
+
 /** รูปปลาจริง ๆ วาดที่จุดกำเนิด — ถูกเรียกครั้งเดียวต่อรัศมีตอนสร้างแคช */
 function paintFish(ctx, r) {
   // ขอบเข้ม — วาดเงาร่างเดียวกันขยาย 15% ไว้ข้างใต้
@@ -1031,6 +1099,13 @@ function paintFish(ctx, r) {
 
 export function drawKibble(ctx, x, y, r) {
   const rr = r * 0.86;   // เล็กกว่าปลาเล็กน้อย แต่รัศมี "เก็บ" ยังเท่าเดิม
+
+  // ขอบเข้มรอบนอก — ขนมเม็ดสีส้มวางบนพื้นส้มแล้วเหลือแค่แสงเรือง ตัวเม็ดหายไปกับพื้น
+  // ท่าเดียวกับขอบเข้มของปลาที่ใส่ไว้ตอนมีด่านกลางวัน
+  ctx.fillStyle = 'rgba(70,28,4,.55)';
+  ctx.beginPath();
+  ctx.arc(x, y, rr + 2.2, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.save();
   ctx.shadowColor = 'rgba(255,140,58,.9)';
@@ -1234,6 +1309,7 @@ export function drawMagnets(ctx, magnets, camera, tick) {
     if (m.got) continue;
     const x = m.x - camera;
     if (x > W + 50 || x < -50) continue;
+    pickupAura(ctx, x, floatY(m, tick), m.r * 1.15, AURA.power, tick, m.x * 0.02);
     drawMagnet(ctx, x, floatY(m, tick), m.r, tick);
   }
 }
@@ -1889,6 +1965,7 @@ export function drawCans(ctx, cans, camera, tick) {
     const x = c.x - camera;
     if (x > W + 50 || x < -50) continue;
     // ลอยเฟสเดียวกับไอเทมอื่น อ่านออกว่าเป็นของชุดเดียวกันที่เก็บได้
+    pickupAura(ctx, x, floatY(c, tick), c.r * 1.15, AURA.power, tick, c.x * 0.02);
     drawCan(ctx, x, floatY(c, tick), c.r, tick);
   }
 }
@@ -1899,6 +1976,7 @@ export function drawNips(ctx, nips, camera, tick) {
     const x = n.x - camera;
     if (x > W + 50 || x < -50) continue;
     // ลอยขึ้นลงเฟสเดียวกับแม่เหล็กและตัวอักษร ให้อ่านออกว่าเป็นไอเทมชุดเดียวกัน
+    pickupAura(ctx, x, floatY(n, tick), n.r * 1.15, AURA.power, tick, n.x * 0.02);
     drawNip(ctx, x, floatY(n, tick), n.r, tick);
   }
 }
@@ -1997,6 +2075,7 @@ export function drawLetters(ctx, letters, camera, tick) {
     if (l.got) continue;
     const x = l.x - camera;
     if (x > W + 50 || x < -50) continue;
+    pickupAura(ctx, x, floatY(l, tick), l.r * 1.15, AURA.power, tick, l.x * 0.02);
     drawLetterCoin(ctx, x, floatY(l, tick), l.r, WORD[l.idx], tick, l.idx);
   }
 }
@@ -2568,6 +2647,7 @@ export function drawPotions(ctx, potions, camera, tick) {
     if (p.got) continue;
     const x = p.x - camera;
     if (x > W + 60 || x < -60) continue;
+    pickupAura(ctx, x, floatY(p, tick), 22 * POTION.drawScale, AURA.power, tick, p.x * 0.02);
     drawPotion(ctx, x, floatY(p, tick), tick);
   }
 }
@@ -2642,6 +2722,7 @@ export function drawShields(ctx, shields, camera) {
     const x = s.x - camera;
     if (x > W + 40 || x < -40) continue;
     const y = floatY(s, camera, 4, 0.02);
+    pickupAura(ctx, x, y, s.r, AURA.power, camera * 0.1, s.x * 0.02);
 
     ctx.save();
     ctx.shadowColor = 'rgba(255,243,226,.9)';
@@ -2707,16 +2788,23 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
 
   ctx.save();
 
+  // ── ความโปร่งที่ผู้เรียกตั้งมา ──
+  // ตัวที่ต้องโปร่ง (แมวเงา / ร่างเงา) ตั้ง globalAlpha ไว้ก่อนเรียกฟังก์ชันนี้
+  // เดิมบรรทัดเงาข้างล่างตั้งค่าทับแล้วคืนเป็น 1 ความโปร่งที่ตั้งมาจึงหายทิ้งทุกครั้ง
+  // ตัวน้องถูกวาดทึบเต็มทั้งที่ควรโปร่ง — เก็บค่าไว้แล้วคูณแทนการทับ
+  const baseAlpha = ctx.globalAlpha;
+
   // เงาใต้ตัว จางลงตามความสูง
   if (!isDead) {
     const air = Math.max(0, GROUND_Y - player.y);
-    ctx.globalAlpha = Math.max(0, 0.32 - air / 500);
+    ctx.globalAlpha = baseAlpha * Math.max(0, 0.32 - air / 500);
     ctx.fillStyle = '#000';
     ctx.beginPath();
     // เงาโตตามตัวด้วย ไม่งั้นแมวตัวใหญ่จะดูลอยอยู่เหนือเงาของแมวตัวเล็ก
-    ctx.ellipse(cx, GROUND_Y + 4, (22 - air * 0.02) * scale, 5 * scale, 0, 0, Math.PI * 2);
+    // มีพื้นที่ศูนย์ — ลอยสูงเกินราว 1,100px รัศมีติดลบแล้ว ellipse() โยน error จนลูปวาดหยุด
+    ctx.ellipse(cx, GROUND_Y + 4, Math.max(0, 22 - air * 0.02) * scale, 5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = baseAlpha;
   }
 
   // ท่าเต้นตอนใช้ความสามารถ: ส่ายตัวแรงขึ้นและเด้งขึ้นลง

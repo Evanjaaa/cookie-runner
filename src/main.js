@@ -5,7 +5,7 @@ import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getMix, setMix, sfx, killSfx } from './audio.js';
 import { startMusic, stopMusic } from './music.js';
-import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin } from './skins.js';
+import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin, skinById } from './skins.js';
 import {
   CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
   pickSkin, regionAt, toSkin,
@@ -18,7 +18,7 @@ import {
   ownedOrder as outfitOrder,
 } from './outfits.js';
 import { getGold, addGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
-import { loadBest, loadPref, savePref } from './storage.js';
+import { loadBest, loadPref, savePref, loadSkinsOwned } from './storage.js';
 import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
@@ -46,6 +46,10 @@ import { recordRun, recordPulls, recordUpgrade, loadStats } from './stats.js';
 import { loadStatus, saveStatus, statusLength, STATUS_MAX } from './profile.js';
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
+import { setupTalentUI } from './talent-ui.js';
+import {
+  playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled,
+} from './intro-video.js';   // หน้าพรสวรรค์ (ข้อมูลใน talents.js ผลตอนวิ่งใน talent-run.js)
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
@@ -81,7 +85,6 @@ new ResizeObserver(fitDPR).observe(canvas);
 const startPanel = document.getElementById('startPanel');
 const overPanel = document.getElementById('overPanel');
 const pausePanel = document.getElementById('pausePanel');
-const skinPanel = document.getElementById('skinPanel');
 const stagePanel = document.getElementById('stagePanel');
 const stageInfoPanel = document.getElementById('stageInfoPanel');
 // ── คลังน้อง ──
@@ -353,20 +356,15 @@ function refreshProfile() {
 
 function refreshHome() {
   refreshMailDot();   // จุดแดงต้องตรงกับของจริงทุกครั้งที่กลับมาล็อบบี้
-  const s = getSkin();
   const st = getStage();
   refreshProfile();
   // ปุ่มล็อบบี้เหลือแค่ไอคอนกับชื่อ ไม่มีบรรทัดคำอธิบายให้เขียนแล้ว
   // (ชื่อสกิน/ชุด/ด่าน ยังโชว์อยู่บนการ์ดที่เลือกอยู่ตอนเปิดแผงนั้น)
   // ── ไอคอนพวกนี้ขยายให้เต็มกรอบเท่ากันหมดด้วย paintFitted ──
   // ยกเว้นสมบัติ (วัดกล่องหีบไว้เองอยู่แล้ว) กับด่าน (เป็นภาพฉากเต็มกรอบ ไม่ใช่ไอคอน)
-  // ปุ่มนี้คือ "เลือกตัวน้อง" ไอคอนจึงต้องนิ่ง โชว์หน้าน้องมาตรฐานตามสีที่เลือกเท่านั้น
-  // ไม่เปลี่ยนตามชุดที่ใส่ (outfit) และไม่เปลี่ยนตามรูปที่ผู้เล่นอัปโหลด (noPhoto)
-  //
-  // ตอนที่มันเปลี่ยนตามทั้งสองอย่าง ปุ่มนี้กับปุ่มคลังน้องและปุ่มหน้าน้องจะโชว์ของ
-  // หน้าตาเหมือนกันหมดจนแยกไม่ออกว่ากดอันไหนแล้วได้อะไร
-  paintFitted(document.getElementById('skinIcon'), 76, 0.96,
-    (c) => drawCatFace(c, 38, 44, 1.8, { ...s, outfit: null }, { noPhoto: true }));
+  // พรสวรรค์เป็นไพ่สองใบ ไม่มีตัวน้องอยู่ในรูป — ปุ่มคลังน้องกับปุ่มสร้างสรรค์มีน้องอยู่แล้ว
+  // ถ้าอันนี้มีน้องด้วยอีกใบ สามปุ่มจะหน้าตาคล้ายกันจนแยกไม่ออกว่ากดอันไหนได้อะไร
+  paintFitted(document.getElementById('talentIcon'), 76, 0.96, drawTalentCards);
   paintStageScene(document.getElementById('stageIcon'), st, 210);
   paintStashIcon();
   paintQuestIcon();
@@ -1072,6 +1070,74 @@ function showGList(on) {
 }
 
 /** ถ้วยรางวัลบนแท่นสามขั้น ใช้เป็นไอคอนปุ่มอันดับ */
+/**
+ * ไอคอนพรสวรรค์ — ไพ่สองใบซ้อนเอียง ใบหน้ามีรอยเท้าแมว มีประกายดาวลอยข้าง ๆ
+ *
+ * วาดในกรอบ 76 แล้วให้ paintFitted ขยายเต็มกรอบเอง เหมือนไอคอนอื่นในแถว
+ * ใบหลังม่วง ใบหน้าชมพู — สองสีจึงอ่านเป็น "ไพ่หลายใบ" ไม่ใช่ป้ายแผ่นเดียว
+ */
+function drawTalentCards(c) {
+  // วาดตัวไพ่แล้วค้างพิกัดที่หมุนไว้ ให้คนเรียกวาดลายบนหน้าไพ่ต่อ แล้ว restore เอง
+  const card = (cx, cy, rot, top, bottom) => {
+    c.save();
+    c.translate(cx, cy);
+    c.rotate(rot);
+    const g = c.createLinearGradient(0, -24, 0, 24);
+    g.addColorStop(0, top);
+    g.addColorStop(1, bottom);
+    c.fillStyle = g;
+    c.strokeStyle = '#FFE49B';
+    c.lineWidth = 2.6;
+    c.beginPath();
+    c.roundRect(-16, -23, 32, 46, 6);
+    c.fill();
+    c.stroke();
+    // เส้นขอบในบาง ๆ ให้ดูเป็นไพ่ที่พิมพ์กรอบไว้ ไม่ใช่กระดาษเปล่า
+    c.strokeStyle = 'rgba(255,255,255,.45)';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.roundRect(-11.5, -18.5, 23, 37, 3.5);
+    c.stroke();
+  };
+
+  // ใบหลัง
+  card(29, 40, -0.26, '#B78CFF', '#6A3FC4');
+  c.fillStyle = 'rgba(255,255,255,.55)';
+  c.beginPath();
+  c.arc(0, 0, 4.2, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+
+  // ใบหน้า: รอยเท้าแมว อุ้งใหญ่หนึ่ง นิ้วเล็กสี่
+  card(45, 38, 0.2, '#FFB3D9', '#FF6FAE');
+  c.fillStyle = '#FFFFFF';
+  c.beginPath();
+  c.ellipse(0, 4, 6.2, 5.2, 0, 0, Math.PI * 2);
+  c.fill();
+  for (const [x, y] of [[-7, -3], [-2.6, -7.4], [2.6, -7.4], [7, -3]]) {
+    c.beginPath();
+    c.ellipse(x, y, 2.3, 2.8, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.restore();
+
+  // ประกายดาวสองดวง ลอยนอกไพ่ = "พลังพิเศษ"
+  const star = (x, y, r) => {
+    c.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const k = i % 2 ? r * 0.38 : r;
+      c.lineTo(x + Math.cos(a) * k, y + Math.sin(a) * k);
+    }
+    c.closePath();
+    c.fill();
+  };
+  c.fillStyle = '#FFE49B';
+  star(62, 14, 6.5);
+  c.fillStyle = 'rgba(255,243,226,.85)';
+  star(14, 62, 4.2);
+}
+
 function drawTrophy(c) {
   c.fillStyle = '#FFC93C';
   // ตัวถ้วย
@@ -1237,7 +1303,24 @@ function enterGame() {
   startMusic();
   if (!hasAccount()) return showAuth();
   if (!chosenName()) return showNameStep();
+  enterLobby();
+}
+
+/**
+ * ด่านสุดท้ายของการเข้าเกม — เข้าสู่ระบบครบแล้ว พาไปล็อบบี้พร้อมคลิปเปิดเกม
+ *
+ * แยกจาก goHome() เพราะ goHome ถูกเรียกจากทางอื่นด้วย (กลับหน้าแรกหลังจบตา)
+ * คลิปต้องโผล่เฉพาะตอน "เพิ่งเข้าเกม" ไม่ใช่ทุกครั้งที่กลับล็อบบี้
+ *
+ * สร้างล็อบบี้ไว้ข้างหลังก่อนเสมอ คลิปคลุมทับอยู่ พอปิดคลิปจึงเห็นล็อบบี้ทันทีไม่มีจอว่าง
+ */
+function enterLobby() {
   goHome();
+  playIntroVideo({
+    // เพลงหน้าแรกเงียบระหว่างคลิป ไม่งั้นเสียงคลิปกับเพลงตีกัน
+    onOpen: () => stopMusic(),
+    onDone: () => { unlockAudio(); startMusic(); },
+  });
 }
 
 function showAuth() {
@@ -1313,7 +1396,7 @@ async function saveCharacterName() {
   // แต่กันไว้เพราะมันคือกฎที่ควรใช้กับทุกงานที่ "await แล้วค่อยไปเปลี่ยนหน้า"
   // ไม่ใช่เฉพาะที่นี่ — และเสียแค่บรรทัดเดียว
   if (visiblePanels() !== before) return;
-  goHome();
+  enterLobby();
 }
 
 // ── อีเมล: เข้าสู่ระบบ / ผูกกับบัญชีที่เล่นอยู่ ──────────────
@@ -1488,6 +1571,23 @@ typable('mailInput', sendCode);
 typable('codeInput', verifyCode);
 
 document.getElementById('enterBtn').addEventListener('click', enterGame);
+
+// โหลดคลิปเปิดเกมรอไว้ตั้งแต่เปิดหน้า ไฟล์ใหญ่ ไปเริ่มโหลดตอนกดเข้าเกมจะเห็นจอดำรอ
+preloadIntroVideo();
+
+// ── ตั้งค่า: เปิด/ปิดคลิปเปิดเกม ──
+function paintIntroSetting() {
+  const on = introVideoEnabled();
+  document.getElementById('introState').textContent = on ? 'แสดง' : 'ไม่แสดง';
+  document.getElementById('introToggle').textContent = on ? 'ปิดคลิป' : 'เปิดคลิป';
+}
+document.getElementById('introToggle').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  setIntroVideoEnabled(!introVideoEnabled());
+  paintIntroSetting();
+});
+paintIntroSetting();
 document.getElementById('authBack').addEventListener('click', () => showPanel(titlePanel));
 document.getElementById('guestBtn').addEventListener('click', doGuest);
 document.getElementById('loginMailBtn').addEventListener('click', () => showMail('login', authPanel));
@@ -1590,6 +1690,7 @@ function showSettings(on) {
     settingsPanel.classList.remove('hidden');
     drawVolume();
     refreshAccount();
+    paintIntroSetting();
   } else {
     settingsPanel.classList.add('hidden');
     settingsFrom.forEach((p) => p.classList.remove('hidden'));
@@ -1783,6 +1884,9 @@ function applyFilter(key, list, { owned, rank, order, level }) {
       return base.get(a.id) - base.get(b.id);
     },
     rarity: (a, b) => (rank(a) - rank(b)) || (base.get(a.id) - base.get(b.id)),
+    // ตัวที่ยังไม่ได้ขึ้นก่อน แล้วเรียงตาม rank (ของแมวคือราคา) — ตัวที่ใกล้ได้ที่สุดอยู่หน้าสุด
+    locked: (a, b) => (Number(owned(a)) - Number(owned(b)))
+      || (rank(a) - rank(b)) || (base.get(a.id) - base.get(b.id)),
     level: (a, b) => (level(b) - level(a)) || (rank(a) - rank(b)) || (base.get(a.id) - base.get(b.id)),
   };
 
@@ -1797,47 +1901,56 @@ function emptyNote(grid, text) {
   grid.appendChild(p);
 }
 
-function buildSkinGrid() {
-  const grid = document.getElementById('skinGrid');
+/**
+ * กริดหมวดแมวน้อยในคลังน้อง
+ *
+ * ท่าเดียวกับกริดชุด: แตะการ์ด = เลือกขึ้นไปโชว์ในช่องซ้าย ไม่ใช่สวม/ซื้อทันที
+ * หน้าแมวน้อยเดิมแตะทีเดียวเปลี่ยนตัวเลย แต่พอมาอยู่ข้างช่องพรีวิวแล้ว
+ * คนจะแตะเพื่อ "ดู" ก่อน การเปลี่ยนตัวจึงย้ายไปอยู่ที่ปุ่ม "เลือกสีนี้" แทน
+ */
+function buildSkinStashGrid() {
+  const grid = document.getElementById('skinStashGrid');
   grid.innerHTML = '';
 
-  for (const s of SKINS) {
-    const owned = ownsSkin(s.id);
-    const on = owned && s.id === getSkin().id;
+  // ลำดับ "ได้มา" ของแมวคือลำดับที่ซื้อ ตัวฟรีไม่เคยถูกบันทึก จึงต่อท้ายตามลำดับในตาราง
+  const list = applyFilter('skin', SKINS, {
+    owned: (x) => ownsSkin(x.id),
+    rank: (x) => x.cost || 0,
+    order: () => loadSkinsOwned(),
+    level: () => 0,
+  });
+
+  if (!list.length) {
+    emptyNote(grid, 'ยังไม่มีแมวน้อยให้ดูในตัวกรองนี้');
+    markScrollable(grid);
+    return;
+  }
+
+  const using = getSkin().id;
+  for (const x of list) {
+    const got = ownsSkin(x.id);
+    const on = got && x.id === using;
 
     const card = document.createElement('button');
-    card.className = 'skin-card' + (on ? ' on' : '') + (owned ? '' : ' locked');
-    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small></small>';
-    card.querySelector('b').textContent = s.name;
-    card.querySelector('small').textContent = on ? 'กำลังใช้' : s.note;
+    card.className = 'skin-card outfit-card' + (on ? ' on' : '') + (got ? '' : ' locked');
+    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
+    card.querySelector('b').textContent = x.name;
 
-    if (!owned) {
+    if (!got) {
       const lock = document.createElement('span');
       lock.className = 'lock-badge';
       lock.textContent = '🔒';
       card.appendChild(lock);
-
-      // ราคาแปะทับรูป ไม่ได้ต่อท้ายเป็นอีกบรรทัด
-      // เพราะบรรทัดคำบรรยายถูกซ่อนไว้ในจอมือถือ ถ้าใส่เป็นบรรทัดจริงการ์ดใบนี้
-      // จะสูงกว่าใบอื่น 21px อยู่ใบเดียว แล้วแถวการ์ดจะเบี้ยว
-      const tag = document.createElement('span');
-      tag.className = 'price-tag';
-      tag.innerHTML = '<span class="coin" aria-hidden="true"></span>'
-        + s.cost.toLocaleString('en-US');
-      card.appendChild(tag);
     }
 
     // t=60 ไม่ใช่ 0 เพราะที่ t=0 แมวกำลังหลับตาพอดี รูปตัวอย่างจะดูเหมือนหลับ
-    paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5, s, 60));
+    paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5, x, 60));
 
+    if (x.id === stashSel.skin) card.classList.add('sel');
     card.addEventListener('click', () => {
       unlockAudio();
-      if (!owned) return buySkin(s);
-      if (s.id === getSkin().id) return showSkins(false);
-      setSkin(s.id);
       sfx.fish();
-      buildSkinGrid();
-      refreshHome();
+      selectStash('skin', x.id);
     });
 
     grid.appendChild(card);
@@ -1925,7 +2038,7 @@ function confirmBox(opts) {
  * ซื้อแล้วสวมให้เลย ไม่ต้องกดอีกที — คนกดซื้อคือคนที่อยากใส่อยู่แล้ว
  */
 async function buySkin(s) {
-  const msg = document.getElementById('skinMsg');
+  const msg = document.getElementById('outfitMsg');
   const gold = getGold();
 
   if (gold < s.cost) {
@@ -1956,15 +2069,9 @@ async function buySkin(s) {
   unlockSkin(s.id);
   setSkin(s.id);
   sfx.upWin();
-  buildSkinGrid();
   refreshHome();
+  refreshStash();
   setMsg(msg, 'ปลดล็อก ' + s.name + ' แล้ว ใส่ให้เรียบร้อย');
-}
-
-function showSkins(on) {
-  if (on) setMsg(document.getElementById('skinMsg'), '');
-  skinPanel.classList.toggle('hidden', !on);
-  startPanel.classList.toggle('hidden', on);
 }
 
 function buildOutfitGrid() {
@@ -2890,8 +2997,15 @@ document.getElementById('odWear').addEventListener('click', () => {
 // สองหมวดใช้กริดกับแถบกรองคนละชุด (ดูเหตุผลใน index.html) ที่นี่จึงทำแค่
 // ซ่อน/โชว์ให้ถูกอัน แล้วเรียกตัวสร้างกริดเดิมของหมวดนั้นตามปกติ
 
-let stashTab = 'outfit';                       // หมวดที่เปิดอยู่
-const stashSel = { outfit: null, treasure: null };   // ของที่เลือกไว้ในแต่ละหมวด
+let stashTab = 'skin';                         // หมวดที่เปิดอยู่
+const stashSel = { skin: null, outfit: null, treasure: null };   // ของที่เลือกไว้ในแต่ละหมวด
+
+// หัวเรื่อง / แถบกรอง / กริด ของแต่ละหมวด — สลับหมวดคือซ่อนทุกอันแล้วโชว์ของหมวดนั้น
+const STASH_TABS = {
+  skin: { title: 'เลือกแมวน้อย', tab: 'tabStashSkin', filter: 'skinFilter', grid: 'skinStashGrid' },
+  outfit: { title: 'เลือกชุด', tab: 'tabStashOutfit', filter: 'outfitFilter', grid: 'outfitGrid' },
+  treasure: { title: 'สมบัติ', tab: 'tabStashTreasure', filter: 'treasureFilter', grid: 'treasureGrid' },
+};
 
 function showStash(on, tab = stashTab) {
   stashPanel.classList.toggle('hidden', !on);
@@ -2905,15 +3019,14 @@ function showTreasures(on) { showStash(on, 'treasure'); }
 
 function setStashTab(tab) {
   stashTab = tab;
-  const out = tab === 'outfit';
 
-  document.getElementById('tabStashOutfit').classList.toggle('on', out);
-  document.getElementById('tabStashTreasure').classList.toggle('on', !out);
-  document.getElementById('stashTitle').textContent = out ? 'เลือกชุด' : 'สมบัติ';
-  document.getElementById('outfitFilter').classList.toggle('hidden', !out);
-  document.getElementById('treasureFilter').classList.toggle('hidden', out);
-  document.getElementById('outfitGrid').classList.toggle('hidden', !out);
-  document.getElementById('treasureGrid').classList.toggle('hidden', out);
+  for (const [key, t] of Object.entries(STASH_TABS)) {
+    const on = key === tab;
+    document.getElementById(t.tab).classList.toggle('on', on);
+    document.getElementById(t.filter).classList.toggle('hidden', !on);
+    document.getElementById(t.grid).classList.toggle('hidden', !on);
+  }
+  document.getElementById('stashTitle').textContent = STASH_TABS[tab].title;
   setMsg(document.getElementById('outfitMsg'), '');
 
   refreshStash();
@@ -2925,7 +3038,8 @@ function refreshStash() {
   // .sel ให้ใบที่ถูกเลือก ถ้าปล่อยให้ไปตั้งค่าทีหลังในช่องพรีวิว รอบแรกที่เปิดหน้ามา
   // จะไม่มีการ์ดใบไหนถูกไฮไลต์เลย ทั้งที่ช่องซ้ายโชว์ของอยู่
   if (!stashSel[stashTab]) stashSel[stashTab] = stashDefault(stashTab);
-  if (stashTab === 'outfit') buildOutfitGrid();
+  if (stashTab === 'skin') buildSkinStashGrid();
+  else if (stashTab === 'outfit') buildOutfitGrid();
   else buildTreasureGrid();
   paintStashShow();
 }
@@ -2937,6 +3051,7 @@ function refreshStash() {
  * เพราะคำถามแรกที่คนเปิดคลังมาถามคือ "ตอนนี้ใส่อะไรอยู่" ไม่ใช่ "มีอะไรบ้าง"
  */
 function stashDefault(tab) {
+  if (tab === 'skin') return getSkin().id;
   if (tab === 'outfit') return getSkin().outfit.id;
   const eq = getEquipped().filter(Boolean);
   return eq[0] || TREASURES[0].id;
@@ -2950,8 +3065,15 @@ function selectStash(tab, id) {
 let stashTick = 0;
 let stashRAF = 0;
 
-/** วาดเฉพาะตัวแมวในช่องพรีวิว — เรียกทุกเฟรมตอนอยู่หมวดชุด */
+/** วาดเฉพาะตัวแมวในช่องพรีวิว — เรียกทุกเฟรมตอนอยู่หมวดแมวน้อยหรือหมวดชุด */
 function paintStashCat() {
+  if (stashTab === 'skin') {
+    // โชว์สีขนล้วน ๆ ไม่ใส่ชุด — หมวดนี้เลือก "สี" ชุดจะบังสีจนเทียบกันไม่ออก
+    const x = skinById(stashSel.skin);
+    paintMini(document.getElementById('stashCat'), 190,
+      (c) => drawCatPose(c, 95, 167, 2.85, x, stashTick));
+    return;
+  }
   const o = outfitById(stashSel.outfit);
   if (!o) return;
   paintMini(document.getElementById('stashCat'), 190,
@@ -2967,7 +3089,7 @@ function paintStashCat() {
  * แล้วลูปที่ค้างอยู่จะแย่งเฟรมกับตัวเกมโดยไม่มีใครสังเกต
  */
 function stashLoop() {
-  if (stashPanel.classList.contains('hidden') || stashTab !== 'outfit') {
+  if (stashPanel.classList.contains('hidden') || stashTab === 'treasure') {
     stashRAF = 0;
     return;
   }
@@ -2986,7 +3108,46 @@ function paintStashShow() {
 
   if (!stashSel[stashTab]) stashSel[stashTab] = stashDefault(stashTab);
 
-  if (stashTab === 'outfit') {
+  // ปุ่ม "ดูเพิ่มเติม" มีเฉพาะชุดกับสมบัติ แมวไม่มีหน้ารายละเอียด ช่องซ้ายจึงเหลือปุ่มเดียว
+  document.getElementById('stashMore').hidden = stashTab === 'skin';
+  // ปุ่มทองมีแค่ตอนซื้อแมว ล้างทิ้งก่อนทุกครั้ง ไม่งั้นสลับไปหมวดอื่นแล้วปุ่มยังเป็นสีทองค้าง
+  use.classList.remove('buy');
+  use.removeAttribute('aria-label');
+
+  if (stashTab === 'skin') {
+    const x = skinById(stashSel.skin);
+    stashSel.skin = x.id;
+    const got = ownsSkin(x.id);
+    const on = got && x.id === getSkin().id;
+
+    face.className = 'stash-face normal' + (got ? '' : ' locked');
+    cat.classList.remove('hidden');
+    emo.classList.add('hidden');
+    badge.replaceChildren();
+    badge.classList.add('hidden');
+    paintStashCat();
+    if (!stashRAF) stashLoop();
+
+    name.textContent = x.name;
+    // ตัวที่ยังไม่ได้บอกราคาบนปุ่มเลย คนจะได้รู้ก่อนกดว่ากดแล้วต้องจ่าย
+    // (กดแล้วยังมีกล่องยืนยันอีกชั้น ไม่มีทางจ่ายโดยไม่ตั้งใจ)
+    // ปุ่มซื้อเป็นสีทองมีเหรียญ ต่างจากปุ่มเขียวของ "เลือกสีนี้" — ดูปุ่มก็รู้ว่ากดแล้วเสียเงิน
+    if (got) {
+      use.textContent = on ? 'กำลังใช้อยู่' : 'เลือกสีนี้';
+    } else {
+      use.classList.add('buy');
+      use.replaceChildren('ปลดล็อก');
+      const coin = document.createElement('span');
+      coin.className = 'coin';
+      coin.setAttribute('aria-hidden', 'true');
+      const price = document.createElement('b');
+      price.textContent = x.cost.toLocaleString('en-US');
+      use.append(coin, price);
+      use.setAttribute('aria-label', 'ปลดล็อก ' + x.cost.toLocaleString('en-US') + ' ทอง');
+    }
+    use.disabled = on;
+    use.classList.toggle('ghost', on);
+  } else if (stashTab === 'outfit') {
     const o = outfitById(stashSel.outfit) || OUTFITS[0];
     stashSel.outfit = o.id;
     const got = isOwned(o.id);
@@ -3503,13 +3664,27 @@ function goHome() {
   refreshHome();
 }
 
-document.getElementById('btnSkins').addEventListener('click', () => {
-  // แตะเมนูก็นับเป็น gesture แล้ว เพลงหน้าแรกจึงเริ่มได้โดยไม่ต้องกดเริ่มวิ่งก่อน
-  unlockAudio(); startMusic();
-  buildSkinGrid();
-  showSkins(true);
+// ── พรสวรรค์ ──
+// ตัวหน้าจออยู่ใน talent-ui.js ทั้งหมด ที่นี่แค่ส่งของที่มันต้องใช้ให้ แล้วสลับแผงกับล็อบบี้
+// ติดตั้งแล้วบันทึกทันที และมีผลตอนเริ่มวิ่งตาถัดไป (game.reset อ่านใบที่ติดตั้งใหม่ทุกตา)
+const talentPanel = document.getElementById('talentPanel');
+const talentUI = setupTalentUI({
+  panel: talentPanel,
+  sfx,
+  unlockAudio,
+  markScrollable,
+  onBack: () => {
+    talentPanel.classList.add('hidden');
+    startPanel.classList.remove('hidden');
+    refreshHome();
+  },
 });
-document.getElementById('skinBack').addEventListener('click', () => showSkins(false));
+document.getElementById('btnTalent').addEventListener('click', () => {
+  // แตะเมนูก็นับเป็น gesture แล้ว เพลงหน้าแรกจึงเริ่มได้โดยไม่ต้องกดเริ่มวิ่งก่อน
+  unlockAudio(); startMusic(); sfx.fish();
+  startPanel.classList.add('hidden');
+  talentUI.open();
+});
 document.getElementById('btnStages').addEventListener('click', () => {
   unlockAudio(); startMusic();
   buildStageGrid();
@@ -3521,13 +3696,23 @@ document.getElementById('siBack').addEventListener('click', () => {
 });
 document.getElementById('btnStash').addEventListener('click', () => {
   unlockAudio(); startMusic();
-  showStash(true);
+  // เปิดจากล็อบบี้ต้องเจอแมวน้อยก่อนเสมอ ไม่ใช่หมวดที่ค้างไว้รอบก่อน
+  showStash(true, 'skin');
 });
 document.getElementById('stashBack').addEventListener('click', () => showStash(false));
 
 // ── ปุ่มสองใบในช่องพรีวิว ──
 document.getElementById('stashUse').addEventListener('click', () => {
   unlockAudio();
+  if (stashTab === 'skin') {
+    const x = skinById(stashSel.skin);
+    if (!ownsSkin(x.id)) { buySkin(x); return; }
+    setSkin(x.id);
+    sfx.potion();
+    refreshHome();
+    refreshStash();
+    return;
+  }
   if (stashTab === 'outfit') {
     const o = outfitById(stashSel.outfit);
     if (!o) return;
@@ -3574,6 +3759,9 @@ document.getElementById('stashMore').addEventListener('click', () => {
   else openDetail(stashSel.treasure, stashPanel);
 });
 
+document.getElementById('tabStashSkin').addEventListener('click', () => {
+  unlockAudio(); sfx.fish(); setStashTab('skin');
+});
 document.getElementById('tabStashOutfit').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); setStashTab('outfit');
 });
@@ -4505,7 +4693,6 @@ document.getElementById('paintUse').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
   setSkin(CUSTOM_ID);
   sfx.fish();
-  buildSkinGrid();
   refreshHome();
   refreshCreate();
 });
@@ -4547,6 +4734,9 @@ const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidde
 // ว่านิ้วแตะโดนส่วนไหนต้องตรงกับที่ตาเห็นเสมอ ไม่งั้นจะแตะเหลื่อม
 function setPaintMax(on) {
   createPanel.classList.toggle('paint-full', on);
+  // ปุ่มย่อมีเฉพาะโหมดเต็มจอ ออกจากโหมดนี้แล้วต้องคืนแถบให้เสมอ
+  // ไม่งั้นจะค้างสถานะย่อโดยที่ไม่มีปุ่มให้กดกางกลับ — เครื่องมือหายไปทั้งแถบ
+  if (!on) setFold(false);
   const b = document.getElementById('paintMax');
   // ในโหมดเต็มจอปุ่มนี้ทำหน้าที่ "ปิด" ตามแบบที่วางไว้ ไม่ใช่ "ย่อ"
   // เพราะโหมดเต็มจอซ่อนปุ่มกลับไปแล้ว มันจึงเป็นทางออกทางเดียวของหน้านี้
@@ -4567,29 +4757,25 @@ document.getElementById('paintMax').addEventListener('click', () => {
 // ── ย่อแถบข้าง ──
 // ทำงานทั้งโหมดธรรมดาและโหมดเต็มจอ เพราะคลาสติดที่แผง ไม่ได้อิงโหมด
 //
-// แยกสองปุ่มตามที่ออกแบบไว้ — สองฝั่งนี้ทำคนละหน้าที่ คนจึงอยากยุบคนละจังหวะ
+// ปุ่มเดียวยุบทั้งสองคอลัมน์ — เคยแยกสองปุ่มแล้วกลายเป็นสิบหกกรณี
+// (สองสถานะ × สองโหมด × สองช่วงจอ) ซึ่งคุมตำแหน่งปุ่มให้ถูกทุกกรณีไม่ไหว
 //
 // ต้องวาดใหม่หลังสลับ ด้วยเหตุผลเดียวกับ setPaintMax: ขนาดที่แสดงเปลี่ยน
 // และผ้าใบรหัสสีที่ใช้ตรวจว่านิ้วแตะส่วนไหนต้องตรงกับที่ตาเห็นเสมอ
-function setFold(which, on) {
-  const cls = which === 'tools' ? 'fold-tools' : 'fold-colors';
-  const btn = document.getElementById(which === 'tools' ? 'foldTools' : 'foldColors');
-  createPanel.classList.toggle(cls, on);
+function setFold(on) {
+  const btn = document.getElementById('foldSide');
+  createPanel.classList.toggle('fold-side', on);
   btn.setAttribute('aria-expanded', String(!on));
-  btn.setAttribute('aria-label', which === 'tools'
-    ? (on ? 'กางแถบอุปกรณ์' : 'ย่อแถบอุปกรณ์')
-    : (on ? 'กางแถบสี' : 'ย่อแถบสี'));
+  btn.setAttribute('aria-label', on
+    ? 'กางแถบเครื่องมือกับจานสี'
+    : 'ย่อแถบเครื่องมือกับจานสี');
   requestAnimationFrame(() => { drawPaintCat(); drawPickMap(); });
 }
 
-for (const which of ['tools', 'colors']) {
-  const id = which === 'tools' ? 'foldTools' : 'foldColors';
-  document.getElementById(id).addEventListener('click', () => {
-    unlockAudio(); sfx.fish();
-    const cls = which === 'tools' ? 'fold-tools' : 'fold-colors';
-    setFold(which, !createPanel.classList.contains(cls));
-  });
-}
+document.getElementById('foldSide').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  setFold(!createPanel.classList.contains('fold-side'));
+});
 
 document.getElementById('faceRotReset').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
@@ -5052,6 +5238,8 @@ document.addEventListener('visibilitychange', () => {
 
 // ปุ่มเดียวทำได้ 3 อย่าง ขึ้นกับสถานะเกม
 function confirm() {
+  // คลิปเปิดเกมกำลังเล่น: ปุ่มกระโดด (ลูกศรขึ้น / W) ต้องไม่ทะลุไปเริ่มฉากห้องข้างหลัง
+  if (introVideoOpen()) return;
   if (game.state === STATE.RUN) return game.jump();
   // อยู่ในฉากห้อง: กดอะไรก็ข้ามไปเริ่มวิ่ง ไม่ใช่สั่งเริ่มซ้อนอีกรอบ
   if (!introPanel.classList.contains('hidden')) return skipIntro();
@@ -5070,7 +5258,45 @@ setupInput(document.getElementById('stage'), {
   onSlideStart: () => game.setSlide(true),
   onSlideEnd: () => game.setSlide(false),
   onTogglePause: () => setPaused(game.state === STATE.RUN),
+  onJumpEnd: () => game.jumpRelease(),
+  onSkill: () => { unlockAudio(); game.useTalent(); },
 });
+
+// ── ปุ่มท่าพิเศษของพรสวรรค์ ──
+//
+// อัปเดตจากลูปวาด แต่เขียน DOM เฉพาะตอนค่าที่เห็นเปลี่ยนจริง
+// เขียน style ทุกเฟรมโดยไม่เช็คจะบังคับให้เบราว์เซอร์คำนวณสไตล์ใหม่ 60 ครั้งต่อวินาทีเปล่า ๆ
+const skillPad = document.getElementById('skillPad');
+const skillBtn = document.getElementById('btnSkill');
+const skillShown = { on: null, id: null, state: null, pct: -1 };
+
+function updateSkillPad() {
+  const g = game.talents.gauge();
+  const on = !!g && game.state === STATE.RUN && game.bonus <= 0;
+  if (on !== skillShown.on) {
+    skillShown.on = on;
+    skillPad.classList.toggle('off', !on);
+  }
+  if (!on) return;
+
+  if (g.t.id !== skillShown.id) {
+    skillShown.id = g.t.id;
+    document.getElementById('skIco').textContent = g.t.icon;
+    // ใบที่ทำงานเอง (แมวสะท้อน) ไม่มีอะไรให้กด ป้ายจึงบอกสถานะแทนชื่อท่า
+    document.getElementById('skLabel').textContent = g.t.button || 'สะท้อน';
+    skillBtn.classList.toggle('passive', g.t.type !== 'active');
+    skillBtn.setAttribute('aria-label', g.t.type === 'active' ? 'ใช้ท่า ' + g.t.name : g.t.name);
+  }
+  if (g.state !== skillShown.state) {
+    skillShown.state = g.state;
+    skillBtn.dataset.state = g.state;
+  }
+  const pct = Math.round(g.ratio * 100);
+  if (pct !== skillShown.pct) {
+    skillShown.pct = pct;
+    skillBtn.style.setProperty('--p', pct + '%');
+  }
+}
 
 const root = document.documentElement;
 
@@ -5150,6 +5376,7 @@ function loop(now) {
 
   game.update(dt);
   game.draw(ctx);
+  updateSkillPad();
 
   // ตู้กาช่าวาดใหม่เฉพาะตอนเปิดพาเนลอยู่ ไม่ต้องเสียเฟรมทิ้งตอนเล่นเกม
   // หีบกับตู้หมุนวาดคนละช่อง จึงเสียเฟรมให้ตัวที่โผล่อยู่ตัวเดียว
@@ -5197,6 +5424,9 @@ setupFilterBar({
 });
 setupFilterBar({
   key: 'outfit', bar: 'outfitFilter', box: 'outfitOnly', redraw: refreshStash,
+});
+setupFilterBar({
+  key: 'skin', bar: 'skinFilter', box: 'skinOnly', redraw: refreshStash,
 });
 
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle

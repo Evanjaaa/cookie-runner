@@ -5,9 +5,16 @@
 const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW'];
 const SLIDE_KEYS = ['ArrowDown', 'KeyS'];
 const PAUSE_KEYS = ['Escape', 'KeyP'];
+// ท่าพิเศษของพรสวรรค์ — ปุ่มที่มือซ้ายเอื้อมถึงโดยไม่ต้องละจากลูกศร/Space
+const SKILL_KEYS = ['KeyE', 'KeyX', 'ShiftLeft', 'ShiftRight'];
 
 export function setupInput(stageEl, handlers) {
-  const { onConfirm, onSlideStart, onSlideEnd, onTogglePause = () => {} } = handlers;
+  const {
+    onConfirm, onSlideStart, onSlideEnd, onTogglePause = () => {},
+    // ปล่อยปุ่มกระโดด — พรสวรรค์ที่ต้องกดค้าง (ร่อน / บังคับกลางอากาศ) ต้องรู้ว่าปล่อยเมื่อไหร่
+    onJumpEnd = () => {},
+    onSkill = () => {},
+  } = handlers;
 
   window.addEventListener('keydown', (e) => {
     if (JUMP_KEYS.includes(e.code)) {
@@ -22,10 +29,12 @@ export function setupInput(stageEl, handlers) {
       e.preventDefault();
       if (!e.repeat) onTogglePause();
     }
+    if (SKILL_KEYS.includes(e.code) && !e.repeat) onSkill();
   });
 
   window.addEventListener('keyup', (e) => {
     if (SLIDE_KEYS.includes(e.code)) onSlideEnd();
+    if (JUMP_KEYS.includes(e.code)) onJumpEnd();
   });
 
   // จอสัมผัสมีปุ่มกระโดด/หมอบลอยอยู่ในจอให้อยู่แล้ว จึงไม่รับการแตะที่พื้นจอ
@@ -40,9 +49,11 @@ export function setupInput(stageEl, handlers) {
   // ถ้าไม่กันไว้ คลิกปุ่มหยุดบนคอมจะเด้งขึ้นมาถึง stage แล้วสั่งกระโดดพ่วงไปด้วย
   stageEl.addEventListener('pointerdown', (e) => {
     if (touchpadShown.matches) return;
-    if (e.target.closest('.panel, .touchpad, .hud-top')) return;
+    if (e.target.closest('.panel, .touchpad, .hud-top, .skillpad')) return;
     onConfirm();
   });
+  // ปล่อยคลิกที่ไหนก็ได้ = ปล่อยปุ่มกระโดด (ลากเมาส์ออกนอกเวทีแล้วปล่อยก็ต้องนับ)
+  window.addEventListener('pointerup', () => { if (!touchpadShown.matches) onJumpEnd(); });
 
   const hold = (id, down, up) => {
     const el = document.getElementById(id);
@@ -55,6 +66,7 @@ export function setupInput(stageEl, handlers) {
     el.addEventListener('contextmenu', (e) => e.preventDefault());
   };
 
-  hold('btnJump', onConfirm, () => {});
+  hold('btnJump', onConfirm, onJumpEnd);
   hold('btnSlide', onSlideStart, onSlideEnd);
+  hold('btnSkill', onSkill, () => {});
 }
