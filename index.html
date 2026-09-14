@@ -1496,6 +1496,8 @@
   <div class="intro-video off" id="introVideo" role="dialog" aria-label="คลิปเปิดเกม">
     <video id="introClip" playsinline webkit-playsinline disablepictureinpicture
            preload="none" aria-hidden="true"></video>
+    <!-- คลิปวาดด้วยโค้ด (src/intro-anim.js) — ใช้แทนวิดีโอเมื่อ CLIP = 'anim' ใน intro-video.js -->
+    <canvas id="introAnim" class="iv-anim" aria-hidden="true"></canvas>
     <!-- ช่องติ๊กมุมขวาบน: ติ๊กแล้วครั้งหน้าข้ามคลิปไปล็อบบี้เลย (เปิดกลับได้ในหน้าตั้งค่า) -->
     <label class="iv-opt" id="ivOptOut">
       <input type="checkbox" id="ivOptBox">

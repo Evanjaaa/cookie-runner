@@ -2979,8 +2979,21 @@ function outfitOnBody(ctx, s, cy, rx, ry) {
   ctx.restore();
 }
 
+/**
+ * idle = { pose, k } ท่าสำเร็จจาก IDLE_SHAPE ผสมกับท่ายืนตามน้ำหนัก k
+ *
+ * ── ช่องเสริมสำหรับงานกำกับท่าเอง (คลิปเปิดเกม) ──
+ *   shape  ใช้แทน IDLE_SHAPE[pose] — ก้อนค่าเดียวกัน (sit, loaf, knead, mouth ...)
+ *          ผู้เรียกผสมค่าระหว่างสองท่าเองได้ ไม่ต้องผ่านท่ายืนตรงกลาง
+ *          ถ้าไม่มีช่องนี้ การเปลี่ยนจากท่าหนึ่งไปอีกท่าต้องลด k ลงถึงศูนย์ก่อนเสมอ
+ *          ซึ่งทำให้น้องลุกยืนแว้บหนึ่งทุกครั้งที่เปลี่ยนท่า
+ *   mood   บังคับอารมณ์หน้า (เช่น 'tired' ตาปรือตอนงัวเงีย)
+ *   blink  บังคับหลับตา/ลืมตา แทนการกะพริบอัตโนมัติ
+ *   gaze   กลอกตา -1 = มองซ้ายสุด / 1 = มองขวาสุด
+ * ไม่ส่งช่องไหน = พฤติกรรมเดิมทุกประการ
+ */
 export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
-  const shape = IDLE_SHAPE[idle?.pose] || IDLE_SHAPE.stand;
+  const shape = idle?.shape || IDLE_SHAPE[idle?.pose] || IDLE_SHAPE.stand;
   const k = idle ? Math.max(0, Math.min(1, idle.k)) : 0;   // 0 = ยืนปกติ, 1 = เข้าท่าเต็มที่
 
   const sit = (shape.sit || 0) * k;
@@ -3064,9 +3077,10 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // 76 องศา ปลายหางจะเหวี่ยงลงไปอยู่ต่ำกว่าพื้นเกือบยี่สิบหน่วย
     // ของจริงแมวก็ขดหางเข้าหาตัวตอนล้มลงนอน ไม่ได้เหยียดค้างไว้
     tailShort: roll * 0.34,
-    blink: shut > 0.5 || t % 200 < 9,   // กะพริบสั้น ๆ ทุก ~3.3 วินาที
+    blink: idle?.blink ?? (shut > 0.5 || t % 200 < 9),   // กะพริบสั้น ๆ ทุก ~3.3 วินาที
     mouthOpen: mouth > 0.5,
-    mood: k > 0.45 ? (shape.mood || '') : '',
+    mood: idle?.mood ?? (k > 0.45 ? (shape.mood || '') : ''),
+    gaze: idle?.gaze || 0,
     sit,
     loaf,
     crouch,
@@ -3100,7 +3114,7 @@ function drawCatStand(ctx, s, {
   swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
   sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '', tired = 0, earLay = 0,
   wave = 0, waveT = 0, knead = 0, kneadT = 0, puff = 0, crouch = 0, tailShort = 0,
-  sprawlPads = 0,
+  sprawlPads = 0, gaze = 0,
 } = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
@@ -3356,10 +3370,12 @@ function drawCatStand(ctx, s, {
 
   // เหนื่อยแล้วหัวห้อยลงนิดหน่อย ทั้งตัวจึงดูหนักขึ้นโดยไม่ต้องแก้ท่าขา
   drawCatHead(ctx, hx, hy + tired * 1.6, s, {
-    isDead, blink, mouthOpen, tilt, mood, earLay,
+    isDead, blink, mouthOpen, tilt, mood, earLay, gaze,
     // แผนที่รหัสสีต้องเห็นหน้าน้องตัวจริง ไม่ใช่รูปที่ผู้เล่นอัปโหลดมาทับ
     // ไม่งั้นขอบเขตของทุกส่วนบนหัวจะกลายเป็นสีในรูปถ่าย
-    noPhoto: !!s.solid,
+    // s.noPhoto = ตัวละครที่ไม่ใช่ "น้องของผู้เล่น" เช่นน้องส้มในคลิปเปิดเกม
+    // ต้องหน้าเดิมเสมอ แต่ยังวาดแบบปกติ (ขอบแสง แก้มจาง) ซึ่ง solid ปิดทิ้งหมด
+    noPhoto: !!s.solid || !!s.noPhoto,
   });
 
   // ── ยกอุ้งเท้าขึ้นเลีย ───────────────────────
@@ -3452,7 +3468,9 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } =
  */
 // noPhoto = ไม่ต้องเอารูปที่ผู้เล่นอัปโหลดมาทับหน้า
 // มีไว้ให้ไอคอนที่ต้องเป็น "หน้าน้องมาตรฐาน" ตลอด ไม่ใช่หน้าที่ผู้เล่นตั้งไว้
-function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '', noPhoto = false, earLay = 0 } = {}) {
+function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '', noPhoto = false, earLay = 0, gaze = 0 } = {}) {
+  // ตาดำเลื่อนได้ไม่เกิน 1.7 หน่วย — มากกว่านั้นตาดำจะหลุดออกนอกรูปหน้า (ตากว้างแค่ 3)
+  const gx = Math.max(-1, Math.min(1, gaze)) * 1.7;
   ctx.save();
   ctx.translate(hx, hy);
   // เอียงหัวรอบ "โคนคอ" ไม่ใช่กลางหัว ไม่งั้นหัวจะลอยหลุดจากตัวเวลาเอียงเยอะ ๆ
@@ -3700,8 +3718,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     // เปลือกตาบนกดลงเกินครึ่ง ลึกกว่า sad เพราะอันนี้คือ "จะหลับแล้ว" ไม่ใช่ "เสียใจ"
     // ไม่มีน้ำตา เพราะเหนื่อยกับเศร้าต้องแยกออกจากกันให้ได้ในหน้าเดียวกัน
     ctx.fillStyle = s.eye;
-    ctx.beginPath(); ctx.arc(-5, 0.4, 2.9, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7, 0.4, 2.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-5 + gx, 0.4, 2.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7 + gx, 0.4, 2.9, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = s.cat;
     ctx.beginPath(); ctx.moveTo(-9, -4.2); ctx.lineTo(-1, -1.4); ctx.lineTo(-9, 0.4); ctx.fill();
     ctx.beginPath(); ctx.moveTo(11, -4.2); ctx.lineTo(3, -1.4); ctx.lineTo(11, 0.4); ctx.fill();
@@ -3727,14 +3745,14 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.globalAlpha = 1;
   } else {
     ctx.fillStyle = s.eye;
-    ctx.beginPath(); ctx.arc(-5, -1, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7, -1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-5 + gx, -1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7 + gx, -1, 3, 0, Math.PI * 2); ctx.fill();
     // ประกายตาเป็นจุดขาว — ข้ามตอนวาดแผนที่รหัสสี ไม่งั้นใจกลางตาทั้งสองข้าง
     // จะกลายเป็น "ไม่ใช่ส่วนไหนเลย" แล้วแตะตรงนั้นจะไม่เลือกอะไรขึ้นมา
     if (!s.solid) {
       ctx.fillStyle = 'rgba(255,255,255,.9)';
-      ctx.beginPath(); ctx.arc(-3.9, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(8.1, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-3.9 + gx, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(8.1 + gx, -2.1, 1.1, 0, Math.PI * 2); ctx.fill();
     }
   }
 

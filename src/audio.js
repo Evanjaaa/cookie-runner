@@ -268,6 +268,72 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
   trackSfx(gain, t + dur + 0.05);
 }
 
+/**
+ * เสียงท้องร้อง — "โครก~"
+ *
+ * ── สิ่งที่ทำให้ฟังเป็นท้อง ไม่ใช่เสียงคำราม ──
+ * เสียงท้องจริงคือแก๊สกับน้ำไหลผ่านลำไส้ มันจึงไม่ใช่เสียงต่อเนื่องเรียบ ๆ
+ * แต่เป็น "ฟองที่แตกเป็นห้วงถี่ ๆ" ซึ่งทำได้ด้วยสามอย่างรวมกัน:
+ *   1. sawtooth ต่ำ ๆ    — ให้เนื้อเสียงหนา ๆ ทุ้ม ๆ
+ *   2. bandpass ที่กวาดขึ้นลง — ให้มันฟังเป็นเสียงอู้อี้จากข้างใน ไม่ใช่ลำโพงตรง ๆ
+ *   3. กระพือความดังเร็ว ๆ (bubble) ด้วยความถี่ที่ไม่คงที่ — นี่คือส่วนที่ทำให้ฟังเป็น "โครก"
+ *      ถ้ากระพือด้วยจังหวะคงที่เป๊ะจะฟังเป็นมอเตอร์ ต้องให้มันเร่งแล้วช้าลงระหว่างทาง
+ *
+ * ระดับเสียงกวาดลงตอนท้ายเล็กน้อย เหมือนฟองสุดท้ายที่ค่อย ๆ หมดแรง
+ */
+function growl({ dur = 1.1, base = 92, vol = 0.34, bubble = 19 } = {}) {
+  if (level.sfx <= 0) return;
+  const a = ctx();
+  if (a.state === 'suspended') return;
+
+  const t = a.currentTime;
+  const osc = a.createOscillator();
+  const filt = a.createBiquadFilter();
+  const gain = a.createGain();
+  const trem = a.createGain();     // ตัวกระพือ — คูณทับบนเส้นความดังหลัก
+
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(base * 1.12, t);
+  osc.frequency.linearRampToValueAtTime(base * 0.86, t + dur * 0.45);
+  osc.frequency.linearRampToValueAtTime(base * 1.05, t + dur * 0.7);
+  osc.frequency.exponentialRampToValueAtTime(base * 0.7, t + dur);
+
+  filt.type = 'bandpass';
+  filt.Q.value = 2.6;
+  filt.frequency.setValueAtTime(base * 2.6, t);
+  filt.frequency.linearRampToValueAtTime(base * 4.2, t + dur * 0.35);
+  filt.frequency.linearRampToValueAtTime(base * 2.2, t + dur);
+
+  // เส้นความดังหลัก: เข้าเร็ว ค้างไว้ แล้วลากหาย
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(vol, t + 0.06);
+  gain.gain.setValueAtTime(vol, t + dur * 0.55);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+  // ฟอง: LFO แบบสี่เหลี่ยมกระพือความดัง ความถี่เร่งขึ้นช่วงกลางแล้วช้าลงตอนจบ
+  const lfo = a.createOscillator();
+  const depth = a.createGain();
+  lfo.type = 'square';
+  lfo.frequency.setValueAtTime(bubble * 0.6, t);
+  lfo.frequency.linearRampToValueAtTime(bubble, t + dur * 0.4);
+  lfo.frequency.linearRampToValueAtTime(bubble * 0.45, t + dur);
+  depth.gain.value = 0.42;
+  trem.gain.value = 0.58;          // 0.58 ± 0.42 = กระพือระหว่าง 0.16 ถึง 1
+  lfo.connect(depth);
+  depth.connect(trem.gain);
+
+  osc.connect(filt);
+  filt.connect(trem);
+  trem.connect(gain);
+  gain.connect(sfxOut());
+
+  osc.start(t);
+  lfo.start(t);
+  osc.stop(t + dur + 0.05);
+  lfo.stop(t + dur + 0.05);
+  trackSfx(gain, t + dur + 0.05);
+}
+
 // ─────────────────────────────────────────────────────────────
 // เรื่อง vol ของเสียงแมว: ตัวเลขเทียบกับ tone() ตรง ๆ ไม่ได้
 // bandpass ตัดพลังงานทิ้งไปราว 2.4 เท่า เสียงแมว vol 0.12 จึงดังจริง
@@ -592,6 +658,35 @@ export const sfx = {
     );
     later(() => { tone(1568, null, 0.45, 'sine', 0.095); tone(2093, null, 0.4, 'sine', 0.045); }, 290);
     later(() => meow({ start: 760, peak: 1290, end: 1130, dur: 0.26, vol: 0.25, q: 4, wobble: 14 }), 415);
+  },
+
+  // ── คลิปเปิดเกม ───────────────────────────────────────────
+  // ท้องร้องรอบแรก — ยาวและดัง ตามด้วยฟองเล็ก ๆ ปิดท้าย ให้ได้จังหวะ "โคร~ก ครืด"
+  tummy: () => {
+    growl({ dur: 1.15, base: 92, vol: 0.36, bubble: 19 });
+    later(() => growl({ dur: 0.32, base: 132, vol: 0.2, bubble: 26 }), 1020);
+  },
+  // ท้องร้องรอบสอง — สั้นกว่าและสูงกว่า อ่านเป็น "ยังหิวอยู่นะ" ไม่ใช่เสียงเดิมซ้ำ
+  tummySmall: () => growl({ dur: 0.5, base: 118, vol: 0.26, bubble: 24 }),
+
+  // ฟองจมูกแตก — ป๊อกสั้น ๆ สองชั้น: ตัวแตก (สูงขึ้นเร็ว) กับละอองที่ตกลง (ต่ำลง)
+  // ต้องสั้นมาก ถ้ายาวเกิน 0.1 วินาทีจะฟังเป็นเสียงนกหวีด ไม่ใช่ฟองแตก
+  bubblePop: () => {
+    tone(820, 1900, 0.05, 'sine', 0.13);
+    later(() => tone(1500, 700, 0.06, 'sine', 0.05), 35);
+  },
+
+  // เมี้ยวแบบถาม "หืม?" — ต่างจาก mew ตรงที่ปลายเสียง "ขึ้น" ไม่ใช่ลง
+  // ภาษาไหนก็ตามคำถามจบด้วยเสียงสูง หูจึงอ่านออกว่าสงสัยโดยไม่ต้องมีคำพูด
+  huh: () => meow({ start: 560, peak: 640, end: 1020, dur: 0.3, vol: 0.22, q: 4.5, wobble: 16 }),
+
+  // แสงขาวปิดคลิป — ประกายไล่ขึ้นห้าเม็ด แล้วค้างเสียงใสสูงไว้ให้หายไปพร้อมแสง
+  // เบาทุกเม็ด เพราะเป็นจังหวะส่งต่อเข้าหน้าแรก ไม่ใช่จุดพีคของคลิป
+  introShine: () => {
+    [1046, 1318, 1568, 2093, 2637].forEach((f, i) =>
+      later(() => tone(f, null, 0.42, 'sine', 0.06), i * 62)
+    );
+    later(() => { tone(3136, null, 1.1, 'sine', 0.035); tone(2093, null, 1.2, 'triangle', 0.03); }, 330);
   },
 };
 

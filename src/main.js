@@ -48,7 +48,7 @@ import { QUESTS, questList, questState, claimQuest, claimableCount } from './que
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI } from './talent-ui.js';
 import {
-  playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled,
+  playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
 } from './intro-video.js';   // หน้าพรสวรรค์ (ข้อมูลใน talents.js ผลตอนวิ่งใน talent-run.js)
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
@@ -5373,6 +5373,13 @@ function loop(now) {
   let dt = (now - last) / 16.667;
   last = now;
   dt = Math.min(dt, 3);   // กันการกระโดดข้ามเวลาตอนสลับแท็บ
+
+  // คลิปเปิดเกมคลุมจอทึบอยู่ = ไม่มีใครเห็นหน้าแรกข้างใต้ พักทั้งอัปเดตและวาด
+  // ให้คลิปได้เครื่องไปทั้งเครื่อง (ดู introCovering ใน intro-video.js)
+  if (introCovering()) {
+    requestAnimationFrame(loop);
+    return;
+  }
 
   game.update(dt);
   game.draw(ctx);

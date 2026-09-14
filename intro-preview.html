@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MeowZing — พรีวิวคลิปเปิดเกม (โค้ด)</title>
+  <!-- หน้าพรีวิวตอนพัฒนาเท่านั้น: ไม่อยู่ใน rollupOptions.input ของ vite.config.js
+       จึงไม่ถูก build และไม่ขึ้นเว็บจริง เปิดได้เฉพาะตอนรัน npm run dev -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .gate {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: rgba(0,0,0,.72); color: #FFF4DC; font: 600 22px Mitr, sans-serif;
+      cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: center;
+    }
+    .gate small { display: block; margin-top: 8px; font: 400 14px Mitr, sans-serif; opacity: .7; }
+    .gate[hidden] { display: none; }
+    .time {
+      position: fixed; left: 10px; bottom: 8px; color: rgba(255,244,220,.55);
+      font: 400 12px Mitr, sans-serif; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="cv"></canvas>
+  <div class="gate" id="gate">
+    <div>▶ แตะเพื่อเล่น<small>หลับ → ท้องร้อง → ตื่น → หาว → ลูบท้อง → มองหา → กระโดดออก → แสงขาว</small></div>
+  </div>
+  <div class="time" id="time"></div>
+
+  <script type="module">
+    import { playIntroAnim, INTRO_ANIM_LENGTH } from './src/intro-anim.js';
+    import { unlockAudio } from './src/audio.js';
+
+    const cv = document.getElementById('cv');
+    const gate = document.getElementById('gate');
+    const time = document.getElementById('time');
+    let started = 0;
+
+    function tick() {
+      if (started) time.textContent = Math.min((performance.now() - started) / 1000, INTRO_ANIM_LENGTH).toFixed(1) + ' / ' + INTRO_ANIM_LENGTH.toFixed(1) + ' วิ';
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    gate.addEventListener('click', async () => {
+      unlockAudio();   // ต้องเรียกตอนแตะจอ ไม่งั้นเบราว์เซอร์ปิดเสียง
+      gate.hidden = true;
+      // รอฟอนต์ก่อน ไม่งั้นตัวหนังสือ "โครก~" เฟรมแรกขึ้นเป็นฟอนต์ระบบแล้วค่อยกระโดดเปลี่ยน
+      try { await document.fonts.load('600 40px Mitr'); } catch { /* ใช้ฟอนต์สำรอง */ }
+      started = performance.now();
+      playIntroAnim(cv, {
+        onDone: () => {
+          gate.querySelector('div').innerHTML = '↻ เล่นอีกครั้ง<small>หลับ → ท้องร้อง → ตื่น → หาว → ลูบท้อง → มองหา → กระโดดออก → แสงขาว</small>';
+          gate.hidden = false;
+        },
+      });
+    });
+  </script>
+</body>
+</html>

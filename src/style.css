@@ -7743,19 +7743,49 @@ canvas[hidden] { display: none; }
 .intro-video.off { display: none; }
 .intro-video.closing { opacity: 0; pointer-events: none; }
 
-/* cover = เต็มจอไม่มีขอบดำ — จอมือถือยาวกว่าคลิป 16:9 จึงเสียขอบบนล่างไปเล็กน้อย
-   ถ้าในคลิปมีตัวหนังสือชิดขอบแล้วโดนตัด เปลี่ยนเป็น contain ที่บรรทัดนี้บรรทัดเดียว */
+/* ── contain = เห็นคลิปครบทุกขอบ ไม่ถูกตัดสักพิกเซล ──
+   เคยใช้ cover ให้เต็มจอไม่มีขอบดำ แต่จอมือถือแนวนอนยาวกว่าคลิป 16:9 มาก
+   (จอ 2000x920 = 2.17:1) cover จึงต้องขยายคลิปจนกว้างเต็มจอ แล้วเฉือนบนล่างทิ้ง
+   ไปราว 18% — หูน้องแมวกับของที่วางชิดขอบในคลิปหายไปจนภาพดูไม่สวย
+
+   contain ย่อคลิปให้พอดีจอทั้งใบแทน ที่เหลือด้านข้างเป็นพื้นดำของ .intro-video
+   ซึ่งดำอยู่แล้วตั้งแต่ก่อนคลิปขึ้น ขอบจึงกลืนไปกับจังหวะจางเข้าเหมือนจอโรงหนัง */
 .intro-video video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   opacity: 0;
   transition: opacity .45s ease;
   pointer-events: none;
 }
 .intro-video.playing video { opacity: 1; }
+
+/* ── คลิปวาดด้วยโค้ด ──
+   ผ้าใบเต็มจอ ไม่มีเรื่องตัดขอบหรือแถบดำ เพราะกล้องในคลิปเลือกกรอบเองตามสัดส่วนจอ
+   ซ่อนวิดีโอทิ้งตอนใช้แบบนี้ ไม่งั้นพื้นดำของวิดีโอว่างจะซ้อนอยู่ใต้ผ้าใบเปล่า ๆ */
+.intro-video .iv-anim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  pointer-events: none;
+}
+.intro-video.anim .iv-anim { display: block; }
+.intro-video.anim video { display: none; }
+
+/* ── จบคลิปด้วยแสงขาว แล้วหน้าแรกค่อย ๆ โผล่ ──
+   เฟรมสุดท้ายของคลิปโค้ดเป็นขาวล้วน การจางทั้งชั้นออกช้า ๆ จึงอ่านเป็น
+   "แสงขาวค่อย ๆ จางเผยหน้าแรก" — ช้ากว่าตอนกดข้ามเกือบสามเท่าโดยตั้งใจ
+   ตอนกดข้ามต้องเร็ว เพราะคนกดอยากเข้าเกม ส่วนตอนดูจนจบคือจังหวะส่งท้ายของคลิป
+   (ต้องตรงกับ FADE_WHITE_MS ใน intro-video.js) */
+.intro-video.closing-white {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .9s cubic-bezier(.4, 0, .2, 1);
+}
 
 /* ── ช่องติ๊ก "ไม่ต้องแสดงคลิปนี้อีก" มุมขวาบน ──
    เว้นจากขอบตามรอยบาก/มุมโค้งของจอด้วย env() ไม่งั้นบน iPhone แนวนอนจะจมใต้รอยบาก */
@@ -7827,6 +7857,17 @@ canvas[hidden] { display: none; }
   animation: ivBreathe 2.2s ease-in-out .4s infinite;
 }
 @keyframes ivBreathe { 50% { opacity: .55; } }
+
+/* แสงขาวของคลิปโค้ดเริ่มบาน — ป้ายสองอันจางหายก่อน จอขาวตอนส่งเข้าหน้าแรกจึงสะอาด
+   ต้องปิด animation ของคำใบ้ด้วย เพราะ animation ที่คุม opacity อยู่จะชนะค่าที่ตั้งตรงนี้
+   (วางหลังกฎ .hinted โดยตั้งใจ — น้ำหนักเท่ากัน ตัวที่อยู่ทีหลังชนะ) */
+.intro-video.ending .iv-hint,
+.intro-video.ending .iv-opt {
+  opacity: 0;
+  animation: none;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .intro-video, .intro-video video, .iv-hint { transition: none; }
