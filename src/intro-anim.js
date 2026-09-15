@@ -2,10 +2,18 @@
 //
 // ══ คลิปเปิดเกมที่วาดด้วยโค้ด ══════════════════════════════════════
 //
-// เรื่องย่อ (13.6 วินาที):
+// เรื่องย่อ (20.35 วินาที — ยาวเท่าเพลงประกอบพอดี):
+//
+//   องก์หนึ่ง ในปราสาท (0–13.4)
 //   น้องส้มหมอบหลับ ฟองจมูกพองยุบ → กล้องซูมเข้าท้อง ท้องร้อง
 //   → ฟองแตก ตื่นงัวเงีย ลุกขึ้น หาว → นั่งลูบท้อง → มองซ้าย มองขวา (?)
-//   → ปิ๊ง (!) ย่อตัวส่ายก้น → กระโดดออกนอกจอ → แสงขาวสว่างเต็มจอ แล้วส่งต่อเข้าหน้าแรก
+//   → ปิ๊ง (!) ย่อตัวส่ายก้น → กระโดดออกนอกจอ → แสงขาววาบเป็นรอยต่อ
+//
+//   องก์สอง นอกปราสาท (13.4–20.35)
+//   ออกมาเดินเรื่อย ๆ กล้องแพลนตามจังหวะเดิน → ปลาทองว่ายเข้ามาพร้อมของกิน
+//   → ยื่นให้ น้องดีใจ (!) → ปลาดึงคืน น้องเขย่งคว้าไม่ทัน (?)
+//   → ปลาทำท่าล้อแล้วพุ่งขึ้นฟ้าหายออกนอกจอไปเลย (กล้องอยู่กับน้อง ไม่แพลนตามปลา)
+//   → น้องไม่ยอมแพ้ วิ่งตามต่อ → แสงขาวสว่างเต็มจอ แล้วส่งต่อเข้าหน้าแรก
 //
 // ── ไม่มีตัวหนังสือในคลิปเลย ──
 // ทุกอารมณ์เล่าด้วยสัญลักษณ์ (~ ? !) กับท่าทางเท่านั้น คนไม่อ่านไทยก็ดูรู้เรื่อง
@@ -24,12 +32,14 @@
 //
 // หน่วยพิกัดของฉาก = หน่วยเดียวกับตัวเกม (VIEW 960x420) ของทุกชิ้นจึงหยิบมาวางได้เลย
 // ─────────────────────────────────────────────────────────────
-import { VIEW, GROUND_Y } from './config.js';
+import { VIEW, GROUND_Y, BODY } from './config.js';
 import { drawRoomScene } from './render/room/index.js';
-import { drawCatPose, star4 } from './render/entities.js';
+import { drawKingdom } from './render/kingdom/index.js';
+import { drawCatPose, drawPlayer, drawBigFish, drawShrimp, star4 } from './render/entities.js';
 import { SKINS } from './skins.js';
 import { REGIONS, pickSkin } from './paint.js';
-import { sfx } from './audio.js';
+import { sfx, playAudioFile, stopAudioFile, prepareAudioFile, setSfxRoute } from './audio.js';
+import { loadPref, savePref } from './storage.js';
 
 const { W, H } = VIEW;
 
@@ -39,6 +49,49 @@ const { W, H } = VIEW;
  * noPhoto กันรูปหน้าที่ผู้เล่นเคยอัปโหลด ไม่ให้ไปแปะทับหน้าน้องในคลิป
  */
 const HERO = { ...SKINS.find((s) => s.id === 'orange'), noPhoto: true };
+
+// ── ไฟล์เสียงของคลิป ────────────────────────────────────────
+//
+// สองไฟล์นี้เป็นเสียงที่อัดมา ต่างจากเสียงอื่นในเกมที่สังเคราะห์ด้วยโค้ดทั้งหมด
+// ต่อผ่านช่องเสียงปกติ (ดู playAudioFile ใน audio.js) จึงหรี่/ปิดตามหน้าตั้งค่าเหมือนกัน
+
+// ── เปิด/ปิดเสียงของคลิปทั้งก้อน ──
+//
+// แยกจากเสียงเพลงกับเอฟเฟกต์ของเกม (หน้าตั้งค่ามีสองอันนั้นอยู่แล้ว) เพราะเป็นคนละเรื่องกัน:
+// คนที่อยากเปิดเสียงเกมแต่ไม่อยากให้คลิปดังทุกครั้งที่เข้าเกม ต้องปิดได้เฉพาะคลิป
+// ปิดแล้วคลิปยังเล่นภาพตามปกติ แค่เงียบสนิททั้งเพลงและเสียงประกอบทุกจังหวะ
+const SOUND_PREF = 'introSound';
+
+export function introSoundEnabled() {
+  return loadPref(SOUND_PREF, true) !== false;
+}
+
+export function setIntroSoundEnabled(on) {
+  savePref(SOUND_PREF, !!on);
+}
+
+/** เพลงประกอบคลิป — ไฟล์ยาว 20.5 วินาที แต่คลิปยาว 13.6 จึงไม่ได้ฟังจนจบเพลง
+    เริ่มพร้อมเฟรมแรก แล้วหรี่จบพร้อมแสงขาวตอนปิดคลิป ไม่ได้ตัดห้วน */
+const MUSIC_SRC = import.meta.env.BASE_URL + 'Music.mp3';
+/** ดังพอได้ยินชัดแต่ไม่กลบเสียงน้อง — เสียงท้องร้องกับเสียงหาวต้องยังเด่นกว่าเพลง */
+const MUSIC_VOL = 0.5;
+
+/** เสียงท้องร้อง — ไฟล์ยาว 1.07 วินาที
+    จังหวะยาวในคลิป 1.35 วินาที (ไฟล์จบก่อนนิดหน่อย ปล่อยให้จบเอง)
+    จังหวะสั้น 0.55–0.6 วินาที (ไฟล์ยาวเกิน ต้องหรี่ตัดให้จบพร้อมภาพที่หยุดสั่น) */
+const HUNGRY_SRC = import.meta.env.BASE_URL + 'Hungry.mp3';
+const HUNGRY_VOL = 0.95;
+
+/**
+ * เสียงท้องร้องหนึ่งครั้ง
+ * ใช้ไฟล์จริงก่อน ถ้าเล่นไม่ได้ (ไฟล์หาย/ปิดเสียง/ยังไม่ปลดล็อก) ถอยไปใช้เสียงสังเคราะห์ตัวเดิม
+ * คลิปจึงไม่มีทางเงียบผิดจังหวะ ไม่ว่าไฟล์จะโหลดทันหรือไม่
+ */
+function growlSound(dur, small = false) {
+  if (playAudioFile(HUNGRY_SRC, { ch: 'intro', vol: small ? HUNGRY_VOL * 0.85 : HUNGRY_VOL, dur })) return;
+  if (small) sfx.tummySmall();
+  else sfx.tummy();
+}
 
 /** ตำแหน่งกับขนาดน้องบนพรม — ค่าเดียวกับที่เกมวาดน้องในห้อง (ดู drawRoom ใน game.js) */
 const CAT = { x: W * 0.5, feet: GROUND_Y, scale: 2.6 };
@@ -71,10 +124,71 @@ const T = {
   crouchAt: 12.05,      // ย่อตัวส่ายก้น
   jumpAt: 12.68,        // กระโดด
   jumpDur: 0.62,
-  shineAt: 12.95,       // แสงขาวเริ่มบาน
-  end: 13.6,            // ขาวเต็มจอ — ส่งต่อให้หน้าแรกจางออกจากสีขาว
+
+  // ── องก์สอง: นอกปราสาท ──
+  // flash = แสงขาวรอยต่อ (คนละดวงกับแสงปิดคลิปตอนจบ) ใช้กลบจังหวะเปลี่ยนฉากในบ้าน→นอกบ้าน
+  flash: 12.92,
+  outside: 13.38,       // ฉากนอกบ้านจางเข้าจากขาว เริ่มเดิน
+  fishIn: 15.9,         // ปลาทองว่ายเข้ามาจากขวา
+  offer: 16.75,         // ยื่นของกินให้
+  happy: 16.95,         // น้องดีใจ (!)
+  pull: 17.55,          // ปลาดึงของกินคืน
+  reach: 17.78,         // น้องเขย่งคว้า
+  miss: 18.05,          // คว้าไม่ทัน (?)
+  tease: 18.35,         // ปลาทำท่าล้อ
+  flee: 18.8,           // ปลาพุ่งขึ้นฟ้า กล้องแพลนตาม
+  chase: 19.38,         // น้องวิ่งตามต่อ
+  shineAt: 19.82,       // แสงขาวปิดคลิปเริ่มบาน
+  end: 20.35,           // ขาวเต็มจอ — ส่งต่อให้หน้าแรกจางออกจากสีขาว (เพลงยาว 20.47)
 };
 export const INTRO_ANIM_LENGTH = T.end;
+
+// ── องก์สอง ────────────────────────────────────────────────
+//
+// ฉากนอกบ้านใช้ "ฉากปราสาท" ชุดเดียวกับล็อบบี้ (drawKingdom) ซึ่งเลื่อนฉากได้ด้วย worldX
+// น้องจึงอยู่กับที่บนจอแล้วให้ฉากไหลผ่าน — ท่าเดียวกับตอนวิ่งจริงในเกม
+// กล้องที่ "แพลนตาม" จึงคือฉากที่เลื่อน ไม่ใช่กล้องที่ขยับจริง
+
+/** น้องยืนค้างที่นี่ตลอดองก์สอง เยื้องซ้ายไว้ให้เห็นทางข้างหน้าที่กำลังจะเดินไป */
+const OUT_CAT_X = 300;
+/** ตัวคูณขนาดของ drawPlayer — ให้ตัวโตใกล้เคียงกับตอนอยู่ในห้อง (CAT.scale 2.6) */
+const OUT_SCALE = 2.15;
+
+/**
+ * ระยะทางที่เดินไปแล้ว (หน่วยฉาก) — เป็นคีย์เฟรมแทนความเร็ว
+ *
+ * ── ทำไมเก็บเป็นระยะ ไม่ใช่ความเร็ว ──
+ * ถ้าเก็บความเร็วแล้วบวกสะสมทุกเฟรม เฟรมที่หายไปจะทำให้ระยะคลาดกันสะสม
+ * และกรอเวลาไปดูกลางคลิปไม่ได้ ระยะแบบคีย์เฟรมให้ภาพเดิมเสมอไม่ว่าจะมาถึงยังไง
+ *
+ * ช่วงราบ = หยุดยืนคุยกับปลา / ช่วงชัน = วิ่ง
+ */
+const WALK = [
+  [T.outside, 0],
+  [T.fishIn, 250],       // เดินเรื่อย ๆ
+  [T.offer, 288],        // ชะลอลงตอนปลาเข้ามา
+  [T.pull, 300],         // หยุดมองของกิน
+  [T.chase, 300],        // ค้างไว้ตลอดช่วงโดนแกล้ง
+  [T.end, 560],          // ออกวิ่งตามปลา
+];
+const walkDist = (t) => keys(t, WALK);
+
+/** เส้นทางของปลาทอง (พิกัดฉาก) — เข้าจากขวา ลอยอยู่หน้าน้อง แล้วพุ่งขึ้นฟ้าทางขวาบน */
+const FISH_X = [
+  [T.fishIn, 880], [T.offer, 470], [T.pull, 478], [T.tease, 466],
+  [T.flee, 486], [T.chase, 600], [T.end, 700],
+];
+// ── ลงมากวนให้ต่ำ แล้วหนีขึ้นให้พ้นจอไปเลย ──
+// ช่วงกวน: ลอยระดับหัวน้อง (หัวอยู่ราว y=221) จึงอ่านเป็น "มาหยอกถึงหน้า" ไม่ใช่ลอยอยู่ไกล ๆ
+// ช่วงหนี: พุ่งขึ้นเลยขอบบนของฉาก (y ติดลบ) หายออกนอกจอไปจริง ๆ ไม่ค้างเป็นจุดบนฟ้า
+const FISH_Y = [
+  [T.fishIn, 196], [T.offer, 222], [T.pull, 190], [T.tease, 200],
+  [T.flee, 196], [T.chase, -90], [T.end, -220],
+];
+/** ขนาดปลา — ตัวใหญ่เต็มตาตอนมากวน แล้วเล็กลงนิดเดียวตอนพุ่งหนี (หายเพราะพ้นจอ ไม่ใช่เพราะหด) */
+const FISH_R = [[T.fishIn, 42], [T.offer, 50], [T.flee, 50], [T.chase, 38], [T.end, 32]];
+
+export const INTRO_ACT2_AT = T.outside;
 
 // ─────────────────────────────────────────────────────────────
 // ตัวช่วยคณิต
@@ -335,6 +449,44 @@ function cameraAt(t, spot) {
   cam.shake = envelope(t, T.growl1, T.growl1Dur) + envelope(t, T.growl2, T.growl2Dur) * 0.55
     + envelope(t, T.rubGrowl, T.rubGrowlDur) * 0.3;
   return cam;
+}
+
+// ── กล้ององก์สอง ──
+// ช็อตกว้างกว่าในห้องทั้งหมด เพราะฉากนอกบ้านเล่าด้วย "ทาง" ไม่ใช่ด้วยรายละเอียดบนตัวน้อง
+// และต้องมีที่เหลือทางขวาให้ปลาว่ายเข้ามา กับที่เหลือด้านบนให้ปลาพุ่งหนีขึ้นฟ้า
+const OUT_WALK0 = { x: 430, y: 248, w: 700, h: 306 };   // เพิ่งออกมา
+const OUT_WALK1 = { x: 430, y: 243, w: 645, h: 282 };   // ค่อย ๆ ดันเข้าระหว่างเดิน
+const OUT_MEET = { x: 432, y: 236, w: 600, h: 262 };    // ตอนคุยกับปลา
+const OUT_RUN = { x: 420, y: 246, w: 660, h: 289 };     // ออกวิ่งต่อ
+
+/** ไล่กล้องจากกรอบหนึ่งไปอีกกรอบ */
+const camLerp = (a, b, k) => ({
+  x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k),
+});
+
+/**
+ * กล้ององก์สอง — อยู่กับน้องตลอด ไม่แพลนตามปลา
+ *
+ * ปลาพุ่งขึ้นแล้วหลุดออกนอกกรอบไปเอง ซึ่งเป็นการ "ออกฉาก" ที่อ่านง่ายกว่าการตามไปดู
+ * (ถ้ากล้องตามขึ้นไป น้องจะหลุดกรอบแทน แล้วคนดูจะขาดตัวเอกไปช่วงหนึ่ง)
+ */
+function outCamera(t) {
+  if (t < T.fishIn) return camLerp(OUT_WALK0, OUT_WALK1, easeInOut(span(t, T.outside, T.fishIn - T.outside)));
+  if (t < T.chase) return camLerp(OUT_WALK1, OUT_MEET, easeInOut(span(t, T.fishIn, 0.8)));
+  return camLerp(OUT_MEET, OUT_RUN, easeInOut(span(t, T.chase, 0.5)));
+}
+
+/** ยกตัวขึ้นเป็นเส้นโค้งครึ่งวงกลม ใช้กับท่ากระโดดดีใจและท่าเขย่งคว้า */
+const hop = (t, at, dur, h) => {
+  const p = span(t, at, dur);
+  return p <= 0 || p >= 1 ? 0 : Math.sin(p * Math.PI) * h;
+};
+
+/** แสงขาวรอยต่อระหว่างสองฉาก — ขึ้นเต็มตอนอยู่ในห้อง แล้วจางออกเมื่อฉากนอกบ้านมาแทน */
+function seamFlash(t) {
+  if (t < T.flash) return 0;
+  if (t < T.outside) return clamp01((t - T.flash) / 0.26);
+  return 1 - span(t, T.outside, 0.52);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -642,6 +794,154 @@ function drawShine(ctx, t, ox, oy, cw, ch, u) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// องก์สอง — นอกปราสาท
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * น้องในองก์สอง — ยืนอยู่กับที่บนจอ ให้ฉากไหลผ่าน (ท่าเดียวกับตอนวิ่งจริงในเกม)
+ * คืนก้อนที่มีแค่ค่าที่ drawPlayer อ่าน ไม่ใช่ Player จริง ไม่มีฟิสิกส์
+ */
+function outCat(t) {
+  const dist = walkDist(t);
+  const lift = hop(t, T.happy, 0.46, 28) + hop(t, T.reach, 0.52, 62);
+  const feet = GROUND_Y - lift;
+  return {
+    box: { x: OUT_CAT_X - BODY.standW / 2, y: feet - BODY.standH, w: BODY.standW, h: BODY.standH },
+    y: feet,
+    // vy ใช้แค่เอียงตัวตอนลอย — ส่งค่าจากทิศที่กำลังขึ้น/ลงพอ
+    vy: lift > 0.5 ? (t < T.reach + 0.26 && t > T.reach ? -6 : 4) : 0,
+    onGround: lift < 0.5,
+    sliding: false, tilt: 0, squash: 0,
+    // จังหวะขาเดินจากระยะทางที่เดินไปแล้ว — หยุดเดินเมื่อไหร่ขาก็หยุดเอง
+    runPhase: dist * 0.06,
+    tailLag: Math.sin(dist * 0.06 * 2 + 0.9),
+    gaitK: 1,
+    dist,
+    lift,
+  };
+}
+
+/** อารมณ์หน้าน้องในองก์สอง */
+function outMood(t) {
+  if (t >= T.chase) return 'happy';        // ไม่ยอมแพ้ วิ่งตาม
+  if (t >= T.miss) return '';              // งง ๆ ตอนคว้าไม่ทัน
+  if (t >= T.happy) return 'starry';       // ดีใจตาเป็นประกาย
+  return '';
+}
+
+/** ของกินที่ปลาถือมา — ติดอยู่กับตัวปลา ยื่นลงมาตอนให้ แล้วถูกดึงกลับขึ้นไป */
+function drawTreat(ctx, t, fx, fy, r, frames) {
+  if (t > T.chase) return;                 // พาหนีขึ้นฟ้าไปแล้ว ไกลจนไม่ต้องวาด
+  // ยื่นลงมาหาน้องตอนเสนอให้ แล้วหดกลับเข้าตัวปลาตอนดึงคืน
+  const out = keys(t, [[T.fishIn, 0.2], [T.offer, 1], [T.pull, 1], [T.pull + 0.3, 0.15], [T.end, 0.1]]);
+  const k = r / 34;
+  ctx.save();
+  // เยื้องลงซ้ายให้พ้นลำตัวปลา — วางใกล้กว่านี้แล้ววัดจากภาพจริง กุ้งจมหายไปในตัวปลา
+  // มองไม่ออกว่าปลาถืออะไรมาให้ ซึ่งเป็นใจความทั้งหมดของช็อตนี้
+  // ระยะคูณด้วย k ตามขนาดปลา ปลาโตขึ้นเมื่อไหร่กุ้งก็ถอยห่างตามเอง
+  ctx.translate(fx - 46 * k * out, fy + 34 * k * out);
+  ctx.scale(k, k);
+  drawShrimp(ctx, 0, 0, 17, frames);
+  ctx.restore();
+}
+
+function drawOutside(ctx, cw, ch, t) {
+  const cam = outCamera(t);
+  const z = fitZoom(cw, ch, cam.w, cam.h);
+  const hw = cw / (2 * z);
+  const hh = ch / (2 * z);
+  const cx = Math.max(hw, Math.min(W - hw, cam.x));
+  const cy = Math.max(hh, Math.min(H - hh, cam.y));
+  const u = ch / 420;
+  const toScreen = (x, y) => [(x - cx) * z + cw / 2, (y - cy) * z + ch / 2];
+  const frames = t * 60;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // ── ฉาก (หน่วยฉาก) ──
+  ctx.setTransform(z, 0, 0, z, cw / 2 - cx * z, ch / 2 - cy * z);
+  const cat = outCat(t);
+  // ฉากปราสาทชุดเดียวกับล็อบบี้ เลื่อนตามระยะที่น้องเดินไป = กล้องแพลนตามจังหวะเดิน
+  drawKingdom(ctx, frames, { worldX: cat.dist + 180 });
+
+  // ── ปลาทอง ──
+  const fx = keys(t, FISH_X);
+  const fy = keys(t, FISH_Y);
+  const fr = keys(t, FISH_R);
+  const dir = keys(t, [[T.fishIn, -1], [T.tease, -1], [T.flee, -0.5], [T.chase, 1], [T.end, 1]]);
+  // ท่าล้อ: สะบัดตัวไปมาถี่ ๆ ก่อนพุ่งหนี
+  const taunt = t >= T.tease && t < T.flee ? Math.sin((t - T.tease) * 26) * 9 : 0;
+  // พ้นขอบบนของฉากไปแล้วก็ไม่ต้องวาด — ปลาหายไปเพราะบินพ้นจอ ไม่ใช่เพราะจางหาย
+  const gone = fy < -fr * 2.2;
+  if (t >= T.fishIn && !gone) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, span(t, T.fishIn, 0.25));
+    drawBigFish(ctx, fx + taunt, fy, fr, dir, frames);
+    drawTreat(ctx, t, fx + taunt, fy, fr, frames);
+    ctx.restore();
+  }
+
+  // ── น้อง ──
+  drawPlayer(ctx, cat, false, HERO, false, 0, outMood(t), OUT_SCALE, 1, {});
+
+  // ฝุ่นตอนออกวิ่ง — ปล่อยจากใต้เท้าไล่ถอยหลัง
+  if (t >= T.chase) {
+    const p = span(t, T.chase, 0.5);
+    ctx.save();
+    for (let i = 0; i < 6; i++) {
+      const q = (i + 1) / 6;
+      const age = (p * 2.2 + q) % 1;
+      ctx.globalAlpha = (1 - age) * 0.5;
+      ctx.fillStyle = '#F6EAD6';
+      ctx.beginPath();
+      ctx.arc(OUT_CAT_X - 18 - age * 90, GROUND_Y - 4 - age * 12, 4 + age * 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── ของบนจอ (หน่วยจอ) ──
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const head = 13 * OUT_SCALE * z;
+  const [hx, hy] = toScreen(OUT_CAT_X + 8, cat.y - 86);
+  const markX = Math.max(head, Math.min(cw - head, hx + head * 1.1));
+  const markY = Math.max(head, hy - head * 1.6);
+  drawMark(ctx, t, '!', T.happy, T.pull - T.happy + 0.1, markX, markY, head * 1.4, -0.08, 0.5);
+  drawMark(ctx, t, '?', T.miss, T.tease - T.miss + 0.35, markX, markY, head * 1.3, 0.12);
+
+  // ประกายตอนปลาพุ่งหนี — ทิ้งไว้ตามทางที่มันพุ่งขึ้นไป
+  if (t >= T.flee) {
+    ctx.save();
+    for (let i = 0; i < 7; i++) {
+      const born = T.flee + i * 0.06;
+      const age = t - born;
+      if (age < 0 || age > 0.7) continue;
+      const q = span(born, T.flee, T.chase - T.flee);
+      const [sx2, sy2] = toScreen(keys(born, FISH_X), keys(born, FISH_Y));
+      ctx.globalAlpha = (1 - age / 0.7) * 0.9;
+      ctx.fillStyle = i % 2 ? '#FFF1B0' : '#FFFFFF';
+      star4(ctx, sx2 + Math.sin(i * 2.1) * 14, sy2 + age * 26 + Math.cos(i * 1.7) * 10,
+        u * (6 + (i % 3) * 3) * (1 - q * 0.4));
+    }
+    ctx.restore();
+  }
+
+  // แสงขาวปิดคลิป — บานจากจุดที่น้องวิ่งออกไปทางขวา
+  const [ex, ey] = toScreen(OUT_CAT_X + 210, GROUND_Y - 120);
+  drawShine(ctx, t, Math.max(cw * 0.1, Math.min(cw * 0.92, ex)),
+    Math.max(ch * 0.08, Math.min(ch * 0.9, ey)), cw, ch, u);
+
+  // แสงขาวรอยต่อกำลังจางออกตอนเพิ่งเข้าฉากนี้
+  const seam = seamFlash(t);
+  if (seam > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${seam})`;
+    ctx.fillRect(0, 0, cw, ch);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // เล่นคลิป
 // ─────────────────────────────────────────────────────────────
 
@@ -657,21 +957,42 @@ export function playIntroAnim(canvas, { onDone = () => {}, onShine = () => {} } 
   const spot = locateAll();
   const cues = [
     ...T.snore.map((at) => ({ at, fn: () => sfx.snooze() })),
-    { at: T.growl1, fn: () => sfx.tummy() },
-    { at: T.growl2, fn: () => sfx.tummySmall() },
+    { at: T.growl1, fn: () => growlSound(T.growl1Dur) },
+    { at: T.growl2, fn: () => growlSound(T.growl2Dur, true) },
     { at: T.pop, fn: () => sfx.bubblePop() },
     { at: T.yawnAt + 0.05, fn: () => sfx.yawn() },
-    { at: T.rubGrowl, fn: () => sfx.tummySmall() },
+    { at: T.rubGrowl, fn: () => growlSound(T.rubGrowlDur, true) },
     { at: T.lookAt + 0.05, fn: () => sfx.huh() },
     { at: T.ideaAt, fn: () => sfx.trill() },
     { at: T.jumpAt, fn: () => sfx.jump() },
+    // ── องก์สอง ──
+    { at: T.outside, fn: () => sfx.land() },        // ลงพื้นนอกปราสาท
+    // ยิงตอนตัวปลาเริ่มโผล่เข้ากรอบจริง ไม่ใช่ตอนมันยังอยู่นอกจอ
+    { at: T.fishIn + 0.2, fn: () => sfx.bonus() },  // ปลาทองมาแล้ว (เสียงเดียวกับตอนเข้าโบนัสในเกม)
+    { at: T.offer, fn: () => sfx.fish() },          // ยื่นของกินให้
+    { at: T.happy, fn: () => sfx.trill() },         // ดีใจ
+    { at: T.pull, fn: () => sfx.startle() },        // อ้าว ดึงคืน
+    { at: T.reach, fn: () => sfx.jump() },          // เขย่งคว้า
+    { at: T.miss, fn: () => sfx.huh() },            // คว้าไม่ทัน
+    { at: T.tease, fn: () => sfx.chirp() },         // ปลาล้อ
+    { at: T.flee, fn: () => sfx.dash() },           // พุ่งหนีขึ้นฟ้า
+    { at: T.chase, fn: () => sfx.mew() },           // ไม่ยอมแพ้ วิ่งตาม
     // onShine = บอกผู้เรียกว่าแสงขาวเริ่มแล้ว (เช่นให้ซ่อนปุ่มที่ลอยทับคลิปอยู่)
-    { at: T.shineAt, fn: () => { sfx.introShine(); onShine(); } },
+    // แสงขาวเริ่มบาน = เริ่มหรี่เพลงให้พอดีหมดตอนจอขาวเต็ม ไม่ใช่ตัดห้วนตอนคลิปจบ
+    { at: T.shineAt, fn: () => { sfx.introShine(); stopAudioFile(MUSIC_SRC, T.end - T.shineAt); } },
   ];
+
+  // ปิดเสียงคลิปไว้ = ข้ามคิวเสียงทั้งชุด (ภาพยังเล่นครบเหมือนเดิมทุกเฟรม)
+  // อ่านค่าครั้งเดียวตอนเริ่ม ไม่ใช่ทุกเฟรม — เปลี่ยนค่ากลางคลิปไม่ได้อยู่แล้ว
+  const soundOn = introSoundEnabled();
 
   let raf = 0;
   let stopped = false;
+  let shined = false;
   let shots = null;
+  // เข้าองก์สองแล้วไม่ใช้ภาพห้องอีก — ต้องมีธงไว้บอก fitCanvas ไม่ให้สร้างใหม่
+  // (ถ้าปล่อยให้มันเห็นว่า shots เป็น null มันจะวาดเก็บใหม่ทุกเฟรมจนคลิปหนืด)
+  let roomDone = false;
 
   /** ความละเอียดผ้าใบ = พิกเซลจริงของจอ — นี่คือเหตุผลที่คลิปนี้คมกว่าวิดีโอ */
   function fitCanvas() {
@@ -679,6 +1000,7 @@ export function playIntroAnim(canvas, { onDone = () => {}, onShine = () => {} } 
     const cw = Math.max(1, Math.round(canvas.clientWidth * dpr));
     const ch = Math.max(1, Math.round(canvas.clientHeight * dpr));
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+    if (roomDone) return [cw, ch];
     // จอหมุนหรือเปลี่ยนขนาด = ความละเอียดที่เก็บไว้ไม่ตรงแล้ว วาดเก็บใหม่
     if (!shots || shots.cw !== cw || shots.ch !== ch) {
       dropRoomShots(shots);
@@ -690,11 +1012,27 @@ export function playIntroAnim(canvas, { onDone = () => {}, onShine = () => {} } 
   // วาดเก็บก่อนเริ่มนับเวลา — ใช้เวลาเสี้ยววินาทีแรก ถ้าไปทำในเฟรมแรก
   // นาฬิกาจะเดินไปแล้วระหว่างนั้น จังหวะเสียงกับภาพช่วงต้นจะถูกกินไปฟรี ๆ
   fitCanvas();
+
+  if (soundOn) {
+    // ทุกเสียงในคลิปไปช่อง intro ของตัวเอง ไม่ปนกับช่องเพลง/เอฟเฟกต์ของเกม
+    // เสียงสังเคราะห์ (กรน หาว เสียงปลา) ตามไปด้วยผ่าน setSfxRoute
+    setSfxRoute('intro');
+    // เสียงท้องร้องดังครั้งแรกที่วินาทีที่ 3.5 — โหลดรอไว้ตั้งแต่ตอนนี้จะได้ดังตรงจังหวะ
+    prepareAudioFile(HUNGRY_SRC, 'intro');
+    // เพลงเริ่มพร้อมเฟรมแรกของคลิป ไล่ความดังขึ้นสั้น ๆ กันเสียงป๊อกตอนโน้ตแรก
+    playAudioFile(MUSIC_SRC, { ch: 'intro', vol: MUSIC_VOL, fadeIn: 0.35 });
+  }
+
   let start = performance.now();
   let last = start;
 
   function finish() {
     stopped = true;
+    // คืนเส้นทางเสียงเอฟเฟกต์ให้เกม ไม่งั้นเสียงในเกมทั้งหมดจะไปออกช่องของคลิปต่อ
+    setSfxRoute('sfx');
+    // กดข้ามกลางคลิป: หรี่เพลงลงเร็ว ๆ แล้วหยุด ไม่ให้ค้างเล่นต่อตอนเข้าหน้าแรก
+    // (ถ้าดูจนจบ เพลงหรี่หมดไปตั้งแต่ตอนแสงขาวแล้ว สั่งซ้ำตรงนี้ก็ไม่มีอะไรเกิดขึ้น)
+    stopAudioFile(MUSIC_SRC, 0.25);
     cancelAnimationFrame(raf);
     dropRoomShots(shots);
     shots = null;
@@ -710,8 +1048,19 @@ export function playIntroAnim(canvas, { onDone = () => {}, onShine = () => {} } 
     const t = (now - start) / 1000;
     const [cw, ch] = fitCanvas();
 
+    // เข้าฉากนอกบ้านแล้วไม่ต้องใช้ภาพห้องที่วาดเก็บไว้อีก คืนหน่วยความจำทันที
+    // (บนแท็บเล็ตภาพชุดนี้กินหลายสิบ MB ถ้าถือไว้จนจบคลิปก็เปลืองเปล่า ๆ)
+    if (!roomDone && t >= T.outside) {
+      roomDone = true;
+      dropRoomShots(shots);
+      shots = null;
+    }
+
     // เสียงยิงครั้งเดียวต่อจุด ตอนเวลาข้ามจุดนั้นไป ต่อให้เฟรมกระตุกก็ไม่ยิงซ้ำ
-    for (const c of cues) if (!c.done && t >= c.at) { c.done = true; c.fn(); }
+    if (soundOn) for (const c of cues) if (!c.done && t >= c.at) { c.done = true; c.fn(); }
+
+    // สัญญาณ "แสงขาวเริ่มแล้ว" ต้องยิงเสมอ ไม่เกี่ยวกับเสียง — มันคือตัวสั่งซ่อนป้ายบนคลิป
+    if (!shined && t >= T.shineAt) { shined = true; onShine(); }
 
     draw(ctx, cw, ch, Math.min(t, T.end), spot, shots);
 
@@ -735,6 +1084,9 @@ export function drawIntroFrame(ctx, cw, ch, t, { cached = false } = {}) {
 }
 
 function draw(ctx, cw, ch, t, spot, shots = null) {
+  // เลยรอยต่อไปแล้ว = ฉากนอกปราสาท (องก์สอง) คนละฉากคนละกล้องกันทั้งก้อน
+  if (t >= T.outside) return drawOutside(ctx, cw, ch, t);
+
   const cam = cameraAt(t, spot);
 
   // ── กรอบภาพ ──
@@ -872,6 +1224,13 @@ function draw(ctx, cw, ch, t, spot, shots = null) {
   const fade = 1 - span(t, 0, T.fadeIn);
   if (fade > 0) {
     ctx.fillStyle = `rgba(0,0,0,${fade})`;
+    ctx.fillRect(0, 0, cw, ch);
+  }
+
+  // แสงขาวรอยต่อ — กลบจังหวะตัดจากในห้องไปนอกปราสาท
+  const seam = seamFlash(t);
+  if (seam > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${seam})`;
     ctx.fillRect(0, 0, cw, ch);
   }
 }

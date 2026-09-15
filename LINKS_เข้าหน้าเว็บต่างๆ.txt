@@ -1,0 +1,112 @@
+═══════════════════════════════════════════════════════════════════════
+ MeowZing — รวมลิงก์ทั้งหมดของโปรเจกต์
+ ตรวจสอบล่าสุด: 15 กันยายน 2026   (วิธีตรวจซ้ำอยู่ท้ายไฟล์)
+═══════════════════════════════════════════════════════════════════════
+
+
+┌─ 1. เว็บจริง (ที่คนเล่นเข้าได้) ──────────────────────────────────────┐
+
+  หน้าเกม (หน้าบ้าน)      https://meowzing.vercel.app/
+  หลังบ้าน (แอดมิน)       https://meowzing.vercel.app/admin.html
+  โต๊ะออกแบบด่าน          https://meowzing.vercel.app/editor.html
+
+  * ทั้งสามหน้าเช็กแล้วเปิดได้จริง (ตอบ 200)
+  * cookie-runner.vercel.app ไม่ใช่ของเรา เป็นเว็บคนอื่นที่ชื่อชนกัน อย่าสับสน
+
+
+┌─ 2. ⚠ เว็บจริงยังเป็นเวอร์ชันเก่า ───────────────────────────────────┐
+
+  ของที่ขึ้นเว็บอยู่ตอนนี้เป็นของวันที่ 13 ก.ย. 2026 (ประมาณคอมมิต 38)
+  ยังไม่มี: ระบบพรสวรรค์ / คลิปเปิดเกม / ปุ่มท่าพิเศษ
+
+  โค้ดล่าสุด (คอมมิต 39, 40) push ขึ้น GitHub แล้ว แต่ Vercel ยังไม่ได้ deploy
+  แปลว่าโปรเจกต์นี้ deploy ด้วยมือ ไม่ได้ต่อ auto-deploy กับ GitHub ไว้
+
+  สั่ง deploy เอง:
+      npm run build
+      npx vercel --prod
+
+
+┌─ 3. รันในเครื่องตัวเอง ──────────────────────────────────────────────┐
+
+  npm install            ติดตั้งครั้งแรกครั้งเดียว
+  npm run dev            เปิด http://localhost:5173
+  npm run build          สร้างไฟล์จริงลงโฟลเดอร์ dist/
+  npm run preview        ลองของที่ build แล้ว (ควรทำก่อน deploy ทุกครั้ง)
+
+  เปิดจากมือถือในวง Wi-Fi เดียวกัน:
+      npm run dev -- --host
+      แล้วเปิด http://<ไอพีเครื่องคอม>:5173   (ไอพีเปลี่ยนได้เรื่อย ๆ ดูที่ ipconfig)
+
+  เปลี่ยนพอร์ต:
+      npm run dev -- --port 5199
+
+
+┌─ 4. หน้าต่าง ๆ ในเกม (ต่อท้าย URL ได้ทั้งเว็บจริงและ localhost) ─────┐
+
+  /                      หน้าเกมหลัก
+  /admin.html            หลังบ้าน — ดูผู้เล่น จดหมาย สถิติ
+  /editor.html           โต๊ะออกแบบด่าน — ลากวางสิ่งกีดขวางกับของกิน แล้วคัดลอกโค้ด
+  /intro-preview.html    พรีวิวคลิปเปิดเกม — เปิดได้เฉพาะตอน npm run dev เท่านั้น
+                         (ตั้งใจไม่ให้ขึ้นเว็บจริง ไม่ได้อยู่ใน vite.config.js)
+
+
+┌─ 5. โค้ด (GitHub) ───────────────────────────────────────────────────┐
+
+  รีโป                   https://github.com/Evanjaaa/cookie-runner
+  คอมมิตทั้งหมด          https://github.com/Evanjaaa/cookie-runner/commits/main
+  Actions (ตัว deploy)   https://github.com/Evanjaaa/cookie-runner/actions
+
+  ในรีโปมีไฟล์ .github/workflows/deploy.yml ที่ตั้งไว้ deploy ขึ้น GitHub Pages
+  แต่ตอนนี้ Pages ยังไม่เปิดใช้ (https://evanjaaa.github.io/cookie-runner/ ตอบ 404)
+  ของจริงใช้ Vercel แทน — ถ้าไม่ใช้ Pages แล้ว จะลบไฟล์ workflow ทิ้งก็ได้
+
+
+┌─ 6. Vercel (ที่เว็บอยู่) ────────────────────────────────────────────┐
+
+  แดชบอร์ด               https://vercel.com/dashboard
+  ชื่อโปรเจกต์            cookie-runner
+  โดเมนที่ใช้จริง          meowzing.vercel.app
+
+  ข้อมูลเชื่อมต่ออยู่ในไฟล์ .vercel/project.json (ไม่ต้องแก้เอง)
+
+
+┌─ 7. Supabase (ฐานข้อมูล บัญชีผู้เล่น อันดับ จดหมาย) ─────────────────┐
+
+  แดชบอร์ดโปรเจกต์        https://supabase.com/dashboard/project/lfbqbvzdgscipywmrexu
+  ตัว API ของโปรเจกต์      https://lfbqbvzdgscipywmrexu.supabase.co
+
+  ทางลัดในแดชบอร์ด:
+    ตาราง/ข้อมูล          https://supabase.com/dashboard/project/lfbqbvzdgscipywmrexu/editor
+    รัน SQL               https://supabase.com/dashboard/project/lfbqbvzdgscipywmrexu/sql
+    ผู้ใช้ที่สมัครไว้        https://supabase.com/dashboard/project/lfbqbvzdgscipywmrexu/auth/users
+    คีย์กับ URL           https://supabase.com/dashboard/project/lfbqbvzdgscipywmrexu/settings/api
+
+  ไฟล์ SQL ของโปรเจกต์ (เอาไปรันในหน้า SQL เวลาตั้งเครื่องใหม่):
+    supabase/schema.sql   ตารางหลัก
+    supabase/mail.sql     ระบบจดหมาย
+    supabase/admin.sql    สิทธิ์หลังบ้าน
+
+  ค่าที่ต้องตั้งในไฟล์ .env (ห้ามเอาขึ้น GitHub — .gitignore กันไว้แล้ว):
+    VITE_SUPABASE_URL
+    VITE_SUPABASE_ANON_KEY
+  ตัวอย่างหน้าตาไฟล์ดูได้ที่ .env.example
+  * ถ้าตั้ง Vercel ใหม่ ต้องไปใส่สองค่านี้ใน Environment Variables ของ Vercel ด้วย
+    ไม่งั้นเว็บจริงจะเล่นได้แต่ไม่มีบัญชีและไม่มีอันดับ
+
+
+┌─ 8. อยากตรวจเองว่าลิงก์ไหนยังใช้ได้ ────────────────────────────────┐
+
+  เช็กว่าเว็บเปิดได้ไหม (200 = ได้ / 404 = ไม่มี):
+      curl -s -o /dev/null -w "%{http_code}" https://meowzing.vercel.app/
+
+  เช็กว่าเว็บจริงอัปเดตหรือยัง (นับคำว่า พรสวรรค์ ถ้าได้ 0 = ยังเก่า):
+      curl -s https://meowzing.vercel.app/ | grep -c "พรสวรรค์"
+
+  เช็กว่าโค้ดในเครื่องตรงกับ GitHub ไหม (0 0 = ตรงกัน):
+      git rev-list --left-right --count origin/main...HEAD
+
+═══════════════════════════════════════════════════════════════════════
+ ไฟล์นี้เขียนด้วยมือ ไม่ได้อัปเดตตัวเอง
+ ถ้าเปลี่ยนโดเมน เปลี่ยนโปรเจกต์ หรือย้ายฐานข้อมูล อย่าลืมมาแก้ไฟล์นี้ด้วย
+═══════════════════════════════════════════════════════════════════════

@@ -755,10 +755,21 @@ canvas[hidden] { display: none; }
  *
  * ทุกขนาดผูกกับ --pf ตัวเดียว ย่อขยายทั้งการ์ดพร้อมกันโดยไม่ต้องไล่แก้ทีละชิ้น
  * ใช้ dvh เป็นตัวหลักเพราะการ์ดต้องไม่สูงเกินกรอบเกมซึ่งถูกความสูงจอกำหนด */
-.profile {
+/* ── แถวมุมซ้ายบน ──
+   เดิมการ์ดบัญชีลอยเองด้วย position: absolute พอมีปุ่มรางวัลเลเวลมาต่อข้าง ๆ
+   ปุ่มจะต้องรู้ว่าการ์ดกว้างเท่าไหร่ ซึ่งไม่คงที่เพราะชื่อผู้เล่นยาวไม่เท่ากัน
+   ย้ายการลอยมาไว้ที่แถวครอบแทน ของข้างในเรียงต่อกันเองตามปกติ */
+.pf-row {
   position: absolute;
   top: var(--pf-top);
   left: 2.2%;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--pf) * .22);
+}
+.profile {
+  /* ยังต้องเป็นจุดอ้างอิงของชั้นดาวกับแสงเรืองที่ absolute อยู่ข้างใน */
+  position: relative;
   display: flex;
   align-items: center;
   gap: calc(var(--pf) * .2);
@@ -798,6 +809,136 @@ canvas[hidden] { display: none; }
   pointer-events: auto;
 }
 .profile:active { transform: translateY(2px); }
+
+/* ── ปุ่มรางวัลเลเวล ─────────────────────────────
+   ขนาดผูกกับ --pf ตัวเดียวกับการ์ดบัญชี ปุ่มจึงสูงเท่าการ์ดเสมอทุกขนาดจอ
+   โดยไม่ต้องมี media query ของตัวเอง */
+.lvgift {
+  --lg: calc(var(--pf) * .92);
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--lg);
+  height: var(--lg);
+  display: grid;
+  place-items: center;
+  border-radius: 30%;
+  border: 2px solid rgba(255,243,226,.34);
+  background: linear-gradient(180deg, #7C40A9, #45206E);
+  box-shadow: var(--plate-lift);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.lvgift:active { transform: translateY(2px); box-shadow: var(--plate-press); }
+.lvgift:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+/* กล่องของขวัญ: ตัวกล่อง + ฝา + ริบบิ้นคาด + โบว์ ทั้งหมดเป็นสี่เหลี่ยมวงกลมธรรมดา
+   ไม่ใช้อีโมจิเพราะอีโมจิหน้าตาไม่เหมือนกันข้ามเครื่อง และสีไม่เข้ากับชุดสีของเกม */
+.lg-box {
+  position: relative;
+  width: 54%;
+  height: 50%;
+  margin-top: 8%;
+  border-radius: 3px 3px 4px 4px;
+  background: linear-gradient(180deg, #FF9ABF, #E4578C);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.18);
+}
+.lg-lid {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  top: -34%;
+  height: 40%;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #FFC93C, #F2A32A);
+  box-shadow: 0 1px 0 rgba(0,0,0,.25);
+}
+.lg-band {
+  position: absolute;
+  left: 40%;
+  right: 40%;
+  top: -34%;
+  bottom: 0;
+  background: rgba(255,246,230,.85);
+}
+.lg-bow {
+  position: absolute;
+  left: 50%;
+  top: -46%;
+  width: 42%;
+  height: 26%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #FFF6E6;
+  box-shadow: 0 0 0 2px rgba(226,120,60,.35) inset;
+}
+/* ── ปฏิทินฉีกบนปุ่มเช็คอิน ──
+   แผ่นขาว + แถบสีด้านบน + ห่วงสองวง + รอยตีนแมวตรงกลาง
+   ทุกชิ้นเป็นสี่เหลี่ยมมนกับวงกลมธรรมดา ไม่มีรูปภาพและไม่มีอีโมจิ */
+.lvgift.daily { background: linear-gradient(180deg, #E4578C, #9C2E60); }
+.dl-cal {
+  position: relative;
+  width: 62%;
+  height: 58%;
+  margin-top: 6%;
+  border-radius: 14%;
+  background: linear-gradient(180deg, #FFF8EC, #EFDFC9);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.14);
+}
+.dl-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34%;
+  border-radius: 14% 14% 0 0;
+  background: linear-gradient(180deg, #FFC93C, #F2A32A);
+}
+/* ห่วงสองวงบนหัวปฏิทิน — วาดด้วยกล่องเดียวโดยใช้เงาอีกวงเป็นวงที่สอง
+   ประหยัดกว่าใส่ <i> สองอันในแบบที่เห็นผลเหมือนกันเป๊ะ */
+.dl-ring {
+  position: absolute;
+  left: 22%;
+  top: -8%;
+  width: 14%;
+  height: 22%;
+  border-radius: 999px;
+  background: #F6E7D3;
+  box-shadow: 132% 0 0 #F6E7D3;
+  z-index: 2;
+}
+/* รอยตีนแมว: อุ้งเท้าหนึ่งก้อน + นิ้วสามนิ้วทำจากเงาสามวง
+   (ทั้งหมดอยู่ในกล่องเดียว ไม่ต้องมี element เพิ่มอีกสี่อัน) */
+.dl-paw {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: 26%;
+  height: 22%;
+  transform: translate(-50%, -50%);
+  border-radius: 50% 50% 46% 46%;
+  background: #E4578C;
+  box-shadow:
+    -128% -76% 0 -8% #E4578C,
+    0 -104% 0 -10% #E4578C,
+    128% -76% 0 -8% #E4578C;
+}
+
+/* ป้าย LV มุมล่างซ้าย = ตัวบอกว่ากล่องนี้เกี่ยวกับเลเวล ไม่ใช่ของขวัญทั่วไป */
+.lg-tag {
+  position: absolute;
+  left: -6%;
+  bottom: -8%;
+  padding: 0 calc(var(--lg) * .1);
+  border-radius: 999px;
+  border: 1.5px solid rgba(27,15,43,.7);
+  background: linear-gradient(180deg, #8DF3EA, #3BC3B4);
+  color: #10333A;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: calc(var(--lg) * .26);
+  line-height: 1.5;
+  letter-spacing: .04em;
+}
 .profile:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 
 /* เนื้อหาต้องลอยเหนือชั้นดาวกับแสง ไม่งั้นโดนกลบ */
@@ -2013,6 +2154,280 @@ canvas[hidden] { display: none; }
 }
 .quest-list::-webkit-scrollbar { display: none; }
 
+/* ── ปุ่มเลือกภาษาในหน้าตั้งค่า ──
+   ทรงเดียวกับชิปกรองในหน้าอื่น (.fsort/.fchip) เพราะเป็นงานเดียวกัน:
+   เลือกหนึ่งอย่างจากสองสามอย่างที่เห็นพร้อมกัน ไม่ใช่ปุ่มสั่งงาน */
+.langpick {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.16);
+  background: rgba(27,15,43,.62);
+}
+.langbtn {
+  padding: clamp(3px, .7dvh, 6px) clamp(10px, 2vw, 18px);
+  border-radius: 999px;
+  border: none;
+  background: none;
+  color: #B99BD4;
+  font-family: "Mitr", "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-size: clamp(10px, 1.7dvh, 14px);
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s ease, color .12s ease;
+}
+.langbtn:hover { color: var(--cream); }
+.langbtn.on {
+  background: linear-gradient(180deg, #7A3563, #47215F);
+  color: var(--cream);
+  box-shadow: 0 1px 0 rgba(20,8,32,.6), inset 0 1px 0 rgba(255,255,255,.16);
+}
+
+/* ══ หน้าเช็คอินรายวัน ════════════════════════════════════
+   เจ็ดใบในกริดเดียว ใบที่เจ็ดกินสองช่องเพราะเป็นวันปลายทางของทั้งรอบ
+   ต้องเห็นทั้งเจ็ดใบพร้อมกันโดยไม่ต้องเลื่อน ไม่งั้นมันไม่ใช่ "ปฏิทิน" แต่เป็นรายการ */
+.daily-pop { gap: clamp(4px, 1.2dvh, 12px); }
+.dl-head { grid-template-columns: auto auto 1fr; align-items: center; }
+.dl-head > h2 { grid-column: 1; justify-self: start; }
+.dl-head > .count-pill { grid-column: 2; justify-self: start; }
+.dl-lead {
+  margin: 0;
+  font-size: clamp(10px, 1.6dvh, 13px);
+  color: #C9AEE8;
+  text-align: center;
+}
+
+.dl-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(5px, 1.1vw, 11px);
+  width: 100%;
+  min-height: 0;
+}
+/* ใบที่เจ็ดกินสองช่องที่เหลือของแถวสอง = การ์ดแนวนอนใบใหญ่ปิดท้ายรอบ
+   ต้องเป็น 2 ไม่ใช่ 3 — กริดมีสี่ช่อง แถวสองถูกวันที่ 5 กับ 6 จองไปแล้วสองช่อง
+   ถ้าขอสามช่องมันจะไม่พอแล้วตกไปขึ้นแถวสามเอง กลายเป็นปฏิทินสามแถวที่มีบรรทัดสุดท้ายโดดเดี่ยว */
+.dl-card.big { grid-column: span 2; flex-direction: row; justify-content: center; gap: clamp(6px, 1.4vw, 14px); }
+
+.dl-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .6dvh, 5px);
+  min-width: 0;
+  padding: clamp(5px, 1.2dvh, 12px) clamp(3px, .8vw, 8px);
+  border-radius: 16px;
+  border: 1.5px solid rgba(196,143,243,.4);
+  background: rgba(255,243,226,.05);
+  text-align: center;
+}
+.dl-day {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(9px, 1.5dvh, 12px);
+  color: #C0A6DC;
+  line-height: 1;
+}
+.dl-prize {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(11px, 1.9dvh, 16px);
+  color: var(--cream);
+  line-height: 1;
+  white-space: nowrap;
+}
+.dl-prize .coin, .dl-prize .gem { flex: none; }
+.dl-card.big .dl-prize { font-size: clamp(12px, 2.2dvh, 19px); }
+.dl-card.big .dl-day { font-size: clamp(10px, 1.7dvh, 14px); }
+
+/* ── วันนี้ ──
+   เรืองทองเหมือนของที่กดรับได้ทุกที่ในเกม บวกเด้งเบา ๆ ให้ตาไปหยุดที่ใบนี้ก่อน */
+.dl-card.today {
+  border-color: rgba(255,201,60,.85);
+  background: linear-gradient(180deg, rgba(255,201,60,.18), rgba(255,201,60,.04));
+  box-shadow: 0 0 20px rgba(255,201,60,.34);
+  animation: dlBob 1.8s ease-in-out infinite;
+}
+@keyframes dlBob {
+  50% { transform: translateY(-3px); }
+}
+/* ── รับไปแล้ว ──
+   จางลงแล้วปั๊มรอยตีนทับ — เครื่องหมายถูกก็ได้ แต่รอยตีนเป็นภาษาของเกมนี้ */
+.dl-card.done { opacity: .5; }
+.dl-card.done::after {
+  content: '';
+  position: absolute;
+  right: 8%;
+  top: 8%;
+  width: clamp(12px, 2.2dvh, 19px);
+  height: clamp(10px, 1.9dvh, 16px);
+  border-radius: 50% 50% 46% 46%;
+  background: #8DF3EA;
+  box-shadow:
+    -128% -76% 0 -8% #8DF3EA,
+    0 -104% 0 -10% #8DF3EA,
+    128% -76% 0 -8% #8DF3EA;
+}
+.dl-card.soon { opacity: .76; border-color: rgba(196,143,243,.24); }
+
+/* ปุ่มรับใหญ่เต็มความกว้าง — ปุ่มเดียวของหน้านี้ ไม่ต้องให้หาว่าอยู่ไหน */
+.dl-get { margin-top: clamp(2px, .8dvh, 8px); min-width: clamp(150px, 26vw, 240px); }
+
+/* จอเตี้ย: ปฏิทินต้องยังเห็นครบเจ็ดใบ จึงบีบระยะแทนการปล่อยให้เลื่อน */
+@media (max-height: 460px) {
+  .dl-lead { display: none; }
+  .dl-card { padding: 4px 3px; border-radius: 12px; }
+  .dl-grid { gap: 5px; }
+}
+
+/* ══ หน้ารางวัลเลเวล ══════════════════════════════════════
+   โครงเดียวกับหน้ากิจกรรม (หัวเรื่อง + รายการที่เลื่อนได้ + หนึ่งแถวต่อหนึ่งรายการ)
+   ตั้งใจใช้ซ้ำ ไม่ได้ทำชุดใหม่ — สองหน้านี้คือ "ของที่รอให้กดรับ" เหมือนกัน
+   คนที่เคยใช้หน้ากิจกรรมจึงใช้หน้านี้เป็นทันทีโดยไม่ต้องเรียนรู้อะไรใหม่ */
+.lv-head { grid-template-columns: auto auto 1fr; align-items: center; }
+.lv-head > h2 { grid-column: 1; justify-self: start; }
+.lv-head > .count-pill { grid-column: 2; justify-self: start; }
+.lv-head > .btn { grid-column: 3; justify-self: end; margin-top: 0; }
+
+/* แถบสรุปเลเวลปัจจุบัน ติดอยู่บนสุดไม่เลื่อนหายไปกับรายการ */
+.lv-now {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.8vw, 16px);
+  margin-bottom: clamp(6px, 1.4dvh, 12px);
+  padding: clamp(6px, 1.3dvh, 12px) clamp(10px, 2vw, 18px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,243,226,.16);
+  background: rgba(27,15,43,.5);
+}
+.lv-now-badge {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 5.6dvh, 46px);
+  height: clamp(30px, 5.6dvh, 46px);
+  border-radius: 50%;
+  border: 2px solid rgba(255,201,60,.6);
+  background: linear-gradient(180deg, #FFD25A, #E7A51F);
+  color: #3A2500;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(13px, 2.4dvh, 20px);
+  line-height: 1;
+}
+.lv-now-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lv-now-text { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(12px, 2dvh, 16px); color: var(--cream); }
+.lv-now-xp { font-size: clamp(10px, 1.5dvh, 12px); color: #C0A6DC; }
+
+.lv-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2dvh, 11px);
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.lv-list::-webkit-scrollbar { display: none; }
+
+/* ── รางวัลหนึ่งเลเวล ──
+   ป้ายเลเวล | ของที่ได้ | ปุ่มรับ — แถวเดียวจบเหมือนหน้ากิจกรรม */
+.lv-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.8vw, 16px);
+  padding: clamp(6px, 1.3dvh, 12px) clamp(10px, 2vw, 18px);
+  border-radius: 14px;
+  border: 1.5px solid rgba(196,143,243,.4);
+  background: rgba(255,243,226,.05);
+  text-align: left;
+}
+/* ถึงเลเวลแล้วและยังไม่ได้กดรับ = เรืองทองเหมือนกิจกรรมที่ทำครบแล้ว
+   ภาษาสีเดียวกันทั้งเกม: ทองเรือง = "อันนี้แหละที่ต้องกด" */
+.lv-row.ready {
+  border-color: rgba(255,201,60,.75);
+  background: linear-gradient(180deg, rgba(255,201,60,.16), rgba(255,201,60,.04));
+  box-shadow: 0 0 18px rgba(255,201,60,.28);
+}
+.lv-row.done { opacity: .48; }
+/* ยังไปไม่ถึง — จางแต่ยังอ่านออก ครึ่งหนึ่งของคุณค่าหน้านี้คือ "รู้ว่ารออะไรอยู่" */
+.lv-row.locked { opacity: .72; border-color: rgba(196,143,243,.22); }
+/* เลเวลถัดไปที่กำลังไล่อยู่ — ขอบสว่างขึ้นหน่อยให้หาเจอทันทีที่เปิดหน้ามา */
+.lv-row.next { border-color: rgba(141,243,234,.6); background: rgba(141,243,234,.07); }
+
+.lv-tag {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: clamp(28px, 5dvh, 42px);
+  height: clamp(28px, 5dvh, 42px);
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,243,226,.24);
+  background: rgba(27,15,43,.55);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(12px, 2.1dvh, 17px);
+  line-height: 1;
+  color: var(--cream);
+}
+.lv-row.ready .lv-tag { border-color: rgba(255,201,60,.7); color: #FFE9B0; }
+
+.lv-prize { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lv-prize-main {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1vw, 9px);
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(12px, 1.9dvh, 16px);
+  color: var(--cream);
+}
+.lv-prize-main .coin, .lv-prize-main .gem { flex: none; }
+.lv-prize-note { font-size: clamp(10px, 1.45dvh, 12px); color: #C0A6DC; line-height: 1.35; }
+/* ของที่ยังไม่ได้กำหนด — กล่องปริศนา ไม่ใช่ช่องว่างเปล่า
+   ช่องว่างอ่านเป็น "ระบบพัง" ส่วนกล่องปริศนาอ่านเป็น "ยังไม่ประกาศ" ซึ่งตรงกับความจริง */
+.lv-prize.tbd .lv-prize-main { color: #C9AEE8; }
+.lv-qmark {
+  display: grid;
+  place-items: center;
+  width: clamp(18px, 3dvh, 26px);
+  height: clamp(18px, 3dvh, 26px);
+  border-radius: 8px;
+  border: 1.5px dashed rgba(255,243,226,.4);
+  color: #E3D2F5;
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(10px, 1.7dvh, 14px);
+  line-height: 1;
+}
+
+/* จอเตี้ย (มือถือแนวนอน): บีบระยะทุกจุดในหน้านี้ เป้าหมายคือให้เห็นรางวัลสามใบขึ้นไป
+   หน้าที่เห็นทีละสองใบอ่านไม่ออกว่าเป็น "เส้นทางรางวัล" มันดูเหมือนกล่องสองกล่องลอย ๆ */
+@media (max-height: 460px) {
+  .lv-now { padding: 4px clamp(8px, 1.6vw, 14px); margin-bottom: 5px; }
+  .lv-now-badge { width: 26px; height: 26px; font-size: 12px; }
+  .lv-row { padding: 4px clamp(8px, 1.6vw, 14px); border-radius: 12px; }
+  .lv-tag { width: 24px; height: 24px; border-radius: 9px; font-size: 11px; }
+  .lv-list { gap: 5px; }
+}
+
+.lv-get {
+  flex: 0 0 auto;
+  margin-top: 0;
+  min-width: clamp(64px, 11vw, 104px);
+  padding: clamp(4px, .9dvh, 8px) clamp(8px, 1.6vw, 16px);
+  font-size: clamp(10px, 1.7dvh, 14px);
+}
+
 /* ── ภารกิจหนึ่งแถว ──
    ไอคอน | ชื่อ+คำอธิบาย+หลอด | รางวัล+ปุ่ม
    แถวเดียวจบเพราะบนมือถือแนวนอนความสูงแพงกว่าความกว้างเสมอ */
@@ -2451,15 +2866,15 @@ canvas[hidden] { display: none; }
    "ป้ายคนละชนิด" ทั้งที่มันคือเรื่องเดียวกัน (มีของค้างให้กดกี่ชิ้น)
    ความสม่ำเสมอสำคัญกว่าการเบียดพื้นที่บนไอคอนไม่กี่พิกเซล
    17px เป็นค่ากลาง — เล็กลงจากปุ่มล็อบบี้นิดหน่อยเพื่อให้ปุ่มจดหมายไม่อึดอัด */
-#btnMail, .lobby-btn { --badge: 17px; }
+#btnMail, .lobby-btn, .lvgift { --badge: 17px; }
 /* ความหนาขอบกับระยะขอบในของป้าย — ประกาศไว้ที่เดียวเพราะกฎ :not(:empty)
    ข้างล่างต้องเอาไปลบออกจากขนาดรวม เพื่อคำนวณ "เนื้อที่ตัวอักษร" ให้ถูก */
-#btnMail .dot, .lobby-btn .dot {
+#btnMail .dot, .lobby-btn .dot, .lvgift .dot {
   --badge-bd: max(1.5px, calc(var(--badge) * .11));
   --badge-px: calc(var(--badge) * .18);
 }
 
-#btnMail .dot, .lobby-btn .dot {
+#btnMail .dot, .lobby-btn .dot, .lvgift .dot {
   position: absolute;
   /* เยื้องออกครึ่งหนึ่งของตัวป้าย ป้ายจึงคร่อมขอบปุ่มพอดีทั้งปุ่มกลมและปุ่มมุมมน
      ผูกกับ --badge ด้วย ไม่งั้นเปลี่ยนขนาดป้ายทีต้องมาไล่แก้ระยะเยื้องอีกที */
@@ -2493,7 +2908,7 @@ canvas[hidden] { display: none; }
    แพ้ `#btnMail .dot` (1,1,0) ที่ตั้ง width/height ไว้ กฎนี้จะไม่มีผลอะไรเลย
    แล้วป้ายจะเอาขนาดวงกลมมาเป็น "เนื้อที่ตัวอักษร" จนบวมเกินขนาดที่ตั้งใจ
    (กับดักเดียวกับ .skin-title ที่ต้องเขียนคู่กับ .panel h2 เสมอ) */
-#btnMail .dot:not(:empty), .lobby-btn .dot:not(:empty) {
+#btnMail .dot:not(:empty), .lobby-btn .dot:not(:empty), .lvgift .dot:not(:empty) {
   box-sizing: content-box;
   width: max-content;
   min-width: calc(var(--badge) - var(--badge-px) * 2 - var(--badge-bd) * 2);
@@ -2517,7 +2932,7 @@ canvas[hidden] { display: none; }
    สองกฎนี้ความจำเพาะเท่ากันเป๊ะ (1,2,0) ตัวที่มาทีหลังจึงชนะ
    ถ้าย้ายกฎนี้ขึ้นไปไว้ข้างบน display:grid ของป้ายมีตัวเลขจะทับ display:none ทิ้ง
    แล้วป้ายจะโผล่ค้างอยู่ทั้งที่ไม่มีอะไรให้กดรับ — ซึ่งเคยเกิดมาแล้วจริง ๆ */
-#btnMail .dot.hidden, .lobby-btn .dot.hidden { display: none; }
+#btnMail .dot.hidden, .lobby-btn .dot.hidden, .lvgift .dot.hidden { display: none; }
 
 /* ปุ่มล็อบบี้ไม่ได้ position: relative มาแต่แรก จุดจะไปเกาะมุมเวทีแทนมุมปุ่ม */
 .lobby-btn { position: relative; }
@@ -2526,7 +2941,7 @@ canvas[hidden] { display: none; }
   50%      { transform: scale(1.18); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #btnMail .dot, .lobby-btn .dot { animation: none; }
+  #btnMail .dot, .lobby-btn .dot, .lvgift .dot { animation: none; }
 }
 
 .mail-list {
@@ -4456,28 +4871,70 @@ canvas[hidden] { display: none; }
 #gachaPanel .form-msg { min-height: 1em; }
 #gachaPanel .form-msg:empty { display: none; }
 
-.buyrow { display: flex; gap: clamp(6px, 1.4vw, 12px); }
+/* ── ทำไมแถวนี้ต้องเว้นล่างเท่าความหนาฐานปุ่ม ──
+   ฐานสามมิติของปุ่มเป็นเงา ซึ่งไม่กินความสูงในการจัดหน้า ของชิ้นถัดไปจึงไม่รู้ว่ามันมีอยู่
+   วัดจริง: ช่องว่างใต้แถวเหลือ 3-8px แต่ฐานหนา 4.6-8px = ฐานไปนั่งทับบรรทัด
+   "ปลดล็อก x/y" พอดี จองที่ให้เท่าความหนาฐานตรงนี้ทีเดียว
+   ประกาศ --lift ที่แถว ไม่ใช่ที่ปุ่ม ตัวแปรจะได้ตกทอดลงไปถึงปุ่มด้วย (ค่าเดียวกันทั้งคู่เสมอ) */
+.buyrow {
+  --lift: clamp(4px, 1.1dvh, 8px);
+  display: flex;
+  gap: clamp(6px, 1.4vw, 12px);
+  margin-bottom: var(--lift);
+}
 
 /* ── ปุ่มสุ่ม ────────────────────────────────
    ทรงการ์ดมนพร้อมแถบไฮไลต์ด้านบน ราคาอยู่บรรทัดเดียวกับเหรียญ
    จำนวนครั้งอยู่แถบล่างในปุ่มเอง — เทียบสองตัวเลือกได้จบในตัวปุ่ม */
+/* ── ทำไมฐานเป็น box-shadow ไม่ใช่ border-bottom ──
+   แบบที่ยกมาใช้ border-bottom หนา ๆ แล้วตอนกดหดเหลือศูนย์ ซึ่งได้ภาพเดียวกันเป๊ะ
+   แต่ border นับเป็นความสูงของกล่องจริง ปุ่มจึง "สูงขึ้น/เตี้ยลง" ตอนกด
+   ของรอบตัวจะขยับตามทุกครั้งที่แตะ ซึ่งบนแถวนี้มีคำใบ้กับแถวปลดล็อกอยู่ใต้ปุ่มพอดี
+   เงาไม่กินความสูง เลยยุบลงไปนั่งกับพื้นได้โดยไม่มีอะไรรอบตัวขยับสักพิกเซล
+
+   --lift คือความหนาฐาน ผูกกับความสูงจอ: จอเตี้ยฐานบางลงเองไม่ให้ปุ่มกินที่
+   ระยะที่ยุบตอนกด = ความหนาฐานเป๊ะ ๆ ปุ่มจึงนั่งแนบพื้นจริง ไม่ใช่ยุบครึ่งเดียว
+   (ของเดิมฐาน 5px แต่ยุบ 3px เหลือขาลอย 2px ซึ่งอ่านเป็น "กดไม่สุด") */
 .btn.pull {
+  /* ค่าจริงมาจาก .buyrow (ดูเหตุผลที่นั่น) ตัวนี้เป็นค่าสำรองเผื่อปุ่มถูกใช้นอกแถวนั้น */
+  --lift: clamp(4px, 1.1dvh, 8px);
+  --base: #276B44;
+  --glow: rgba(53,148,93,.34);
   margin-top: 0;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  /* ── ทำไมไม่ใช่ 2px ตายตัว ──
+     ตัวเลขราคาตั้ง line-height: 1 ไว้ กล่องข้อความจึงรัดตัวอักษรพอดีจนไม่มีที่หายใจเลย
+     ป้ายจำนวนครั้งที่ตามมาเลยไปแนบกับหางตัวเลข อ่านเป็นก้อนเดียวกันแทนที่จะเป็นสองบรรทัด
+     ผูกกับความสูงจอเหมือนทุกระยะในปุ่มนี้ ช่องไฟจึงโตตามตัวอักษรที่โตขึ้นด้วย */
+  gap: clamp(3px, 0.95dvh, 8px);
   padding: clamp(6px, 1.5dvh, 13px) clamp(13px, 2.6vw, 30px) clamp(5px, 1.2dvh, 11px);
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.35);
-  background: linear-gradient(180deg, #6FD98F 0%, #4CBB79 52%, #35945D 100%);
+  /* ── มุมมนเกินครึ่งความสูง = อ่านเป็นเม็ดนุ่ม ไม่ใช่แผ่นป้าย ──
+     18px บนปุ่มสูง 59px คือมุมมนแบบ "การ์ด" ซึ่งยังมีด้านตรงยาว ๆ ให้เห็นว่าเป็นเหลี่ยม
+     ผูกกับความสูงจอเพื่อให้สัดส่วนความมนต่อความสูงคงที่ทุกขนาด ไม่ใช่มนเท่าเดิมบนปุ่มที่เล็กลง */
+  border-radius: clamp(16px, 4.1dvh, 30px);
+  /* ขอบสว่างแต่ไม่คม — ขอบทึบ 1px อ่านเป็นเส้นวาด ส่วนขอบจาง ๆ อ่านเป็นแสงที่ขอบของวัสดุ */
+  border: 1px solid rgba(255,255,255,.28);
+  /* ไล่สีทรงหมอน: แสงเป็นวงรีนุ่ม ๆ จากด้านบนแทนเส้นตรงพาดขวาง
+     นี่คือตัวที่ทำให้ตาอ่านว่าผิวมันโค้งออกมาหาเรา ไม่ใช่แผ่นแบนที่ไล่สีจากบนลงล่าง */
+  background:
+    radial-gradient(118% 92% at 50% -20%, rgba(255,255,255,.5), rgba(255,255,255,0) 64%),
+    linear-gradient(180deg, #74DC93 0%, #4CBB79 55%, #38A066 100%);
   box-shadow:
-    0 5px 0 #276B44,
-    0 11px 22px rgba(53,148,93,.34),
-    inset 0 1px 0 rgba(255,255,255,.55);
+    0 var(--lift) 0 var(--base),
+    /* เงาสีใต้ปุ่ม กว้างและฟุ้งกว่าเดิม ปุ่มจึงดูวางอยู่บนพื้นนุ่ม ๆ ไม่ใช่แปะติดพื้นแข็ง */
+    0 calc(var(--lift) + 8px) 26px var(--glow),
+    /* สามชั้นในนี้คือความ "นิ่ม" ทั้งหมด: แสงหนาที่ขอบบน เงานุ่มที่ก้น และรัศมีขอบจาง ๆ
+       ถ้าเหลือแค่เส้นไฮไลต์ 1px เหมือนเดิม ผิวจะกลับไปแบนทันที */
+    inset 0 2px 0 rgba(255,255,255,.6),
+    inset 0 -7px 14px rgba(0,0,0,.15),
+    inset 0 0 0 1px rgba(255,255,255,.14);
   color: #0E2C1C;
   overflow: hidden;
+  /* สั้นมากโดยตั้งใจ — ปุ่มแบบนี้ต้องรู้สึกว่า "คลิก" ไม่ใช่ "ค่อย ๆ จม" */
+  transition: transform .09s ease, box-shadow .09s ease, filter .12s ease;
 }
 /* ไฮไลต์แก้วพาดครึ่งบน ทำให้ปุ่มดูนูนโดยไม่ต้องพึ่งเงาอย่างเดียว */
 .btn.pull::before {
@@ -4487,16 +4944,75 @@ canvas[hidden] { display: none; }
   background: linear-gradient(180deg, rgba(255,255,255,.32), transparent);
   pointer-events: none;
 }
-.btn.pull:active { transform: translateY(3px); box-shadow: 0 2px 0 #276B44, inset 0 1px 0 rgba(255,255,255,.55); }
-.btn.pull.five {
-  background: linear-gradient(180deg, #C48FF3 0%, #9C5EDC 52%, #7B3FBE 100%);
+/* จุดแสงฟุ้งมุมซ้ายบน — ตัวเดียวที่ทำให้อ่านเป็น "พลาสติกมันเงา" ไม่ใช่แผ่นสีไล่เฉด
+   เบลอไว้เพื่อให้เป็นแสงสะท้อน ไม่ใช่ขีดขาวที่ดูเหมือนรอยขีดข่วน */
+.btn.pull::after {
+  content: '';
+  position: absolute;
+  top: 16%;
+  left: 13%;
+  width: 26%;
+  height: 16%;
+  border-radius: 999px;
+  background: rgba(255,255,255,.45);
+  filter: blur(2.5px);
+  pointer-events: none;
+}
+/* ── กดแล้วแบะออกนิดหนึ่ง ไม่ใช่แค่เลื่อนลง ──
+   ของนิ่มโดนกดจะเตี้ยลงและกว้างออก (squash) ตาเราอ่านสองอย่างนี้เป็น "วัสดุนุ่ม" อัตโนมัติ
+   ตัวเลขน้อยมากโดยตั้งใจ 4% — มากกว่านี้ตัวหนังสือจะเริ่มเห็นว่าโดนบีบ */
+.btn.pull:active {
+  transform: translateY(var(--lift)) scale(1.02, .96);
   box-shadow:
-    0 5px 0 #5B2C90,
-    0 11px 22px rgba(123,63,190,.36),
-    inset 0 1px 0 rgba(255,255,255,.5);
+    0 0 0 var(--base),
+    0 2px 6px var(--glow),
+    inset 0 2px 0 rgba(255,255,255,.4),
+    inset 0 -3px 10px rgba(0,0,0,.2);
+}
+/* เมาส์ชี้ = ยกขึ้นรับนิดหนึ่งพร้อมสว่างขึ้น เป็นคำเชิญให้กดก่อนจะกดจริง
+   เฉพาะเครื่องที่มีเมาส์ — บนจอสัมผัส :hover ค้างหลังปล่อยนิ้ว ปุ่มจะสว่างค้างไปเฉย ๆ */
+@media (hover: hover) {
+  .btn.pull:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 calc(var(--lift) + 2px) 0 var(--base),
+      0 calc(var(--lift) + 12px) 30px var(--glow),
+      inset 0 2px 0 rgba(255,255,255,.7),
+      inset 0 -7px 14px rgba(0,0,0,.13),
+      inset 0 0 0 1px rgba(255,255,255,.2);
+  }
+}
+/* วงแหวนตอนเลื่อนมาด้วยคีย์บอร์ด สีเดียวกับตัวปุ่มจึงไม่หลุดจากชุดสีของหน้า */
+.btn.pull:focus-visible {
+  outline: 3px solid var(--glow);
+  outline-offset: 3px;
+}
+.btn.pull.five {
+  --base: #5B2C90;
+  --glow: rgba(123,63,190,.36);
+  background:
+    radial-gradient(118% 92% at 50% -20%, rgba(255,255,255,.5), rgba(255,255,255,0) 64%),
+    linear-gradient(180deg, #C892F5 0%, #9C5EDC 55%, #8046C4 100%);
   color: #210E38;
 }
-.btn.pull.five:active { transform: translateY(3px); box-shadow: 0 2px 0 #5B2C90, inset 0 1px 0 rgba(255,255,255,.5); }
+
+/* ── เหรียญเต้นเบา ๆ ตอนกดได้ ──
+   เป็นตัวบอกว่าปุ่มยัง "มีชีวิต" โดยไม่ต้องมีข้อความเพิ่ม
+   หยุดสนิทตอนเงินไม่พอ (:disabled) ไม่งั้นจะเชิญชวนให้กดทั้งที่กดไม่ได้ */
+@keyframes pullCoin {
+  50% { transform: scale(1.14); filter: brightness(1.18); }
+}
+.btn.pull:not(:disabled) .cur { animation: pullCoin 1.9s ease-in-out infinite; }
+
+/* ── ปุ่มหายใจ ──
+   รัศมีสีรอบปุ่มค่อย ๆ อิ่มขึ้นแล้วจางลง ช้ากว่าจังหวะเหรียญเพื่อไม่ให้สองอย่างเต้นพร้อมกัน
+   ใช้ drop-shadow ไม่ใช่ box-shadow เพราะ box-shadow ถูกใช้เป็นฐานปุ่มกับเงาไปแล้ว
+   ถ้าเอาแอนิเมชันไปแตะมัน กฎของ :hover กับ :active จะแพ้แอนิเมชันที่กำลังเล่นอยู่
+   แล้วปุ่มจะไม่ตอบสนองตอนกดเลย — คนละคุณสมบัติกันจึงอยู่ด้วยกันได้โดยไม่ทับกัน */
+@keyframes pullBreathe {
+  50% { filter: drop-shadow(0 5px 12px var(--glow)); }
+}
+.btn.pull:not(:disabled) { animation: pullBreathe 2.8s ease-in-out infinite; }
 .btn.pull .price { display: flex; align-items: center; gap: 5px; }
 /* ไอคอนสกุลเงินบนปุ่มสลับระหว่างเหรียญกับเพชรตามช่องที่เปิดอยู่
    จึงตั้งขนาดที่คลาสร่วม .cur (ดูกฎข้างบน) ไม่ใช่ตั้งแยกทีละสกุล
@@ -4513,9 +5029,30 @@ canvas[hidden] { display: none; }
   letter-spacing: .02em;
   padding: 1px 8px;
   border-radius: 999px;
-  background: rgba(0,0,0,.2);
+  /* ── ขาวบนพื้นเข้ม แทนสีเข้มบนพื้นเข้ม ──
+     เดิมป้ายนี้รับสีตัวอักษรของปุ่ม (เขียวเข้ม/ม่วงเข้ม) มาอยู่บนพื้นดำจาง
+     ซึ่งเป็นเข้มบนเข้ม อ่านยากที่สุดในปุ่มทั้งใบทั้งที่เป็นข้อมูลสำคัญ (ได้กี่ครั้ง)
+     เพิ่มความเข้มพื้นป้ายอีกนิดด้วย ตัวอักษรขาวจะได้ไม่จมไปกับสีปุ่มที่สว่างอยู่แล้ว */
+  background: rgba(0,0,0,.26);
+  color: #FFF8EC;
 }
-.btn.pull:disabled { opacity: .4; box-shadow: none; transform: none; cursor: not-allowed; }
+/* ── เงินไม่พอ: ปุ่มต้องดู "นั่งอยู่กับพื้น" ไม่ใช่แค่จาง ──
+   ปุ่มที่ยังนูนอยู่แต่กดไม่ได้เป็นกับดักสายตา มือจะเอื้อมไปกดก่อนอ่านราคาเสมอ
+   ถอดฐานออกให้แบนราบ + ลดสีลง ตาจึงรู้ตั้งแต่ยังไม่ทันอ่านว่ากดไม่ได้ */
+.btn.pull:disabled {
+  opacity: .45;
+  filter: grayscale(.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+  transform: translateY(var(--lift));
+  cursor: not-allowed;
+}
+.btn.pull:disabled::after { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.pull { transition: none; }
+  .btn.pull:not(:disabled),
+  .btn.pull:not(:disabled) .cur { animation: none; }
+}
 
 .gacha-foot { display: flex; align-items: center; gap: 8px; }
 .gacha-owned { margin: 0; font-size: clamp(9.5px, 1.9dvh, 15px); color: #B99BD4; }
@@ -4954,7 +5491,7 @@ canvas[hidden] { display: none; }
    * เครื่องมีรอยบากใช้ระยะปลอดภัยที่เครื่องบอก ซึ่งเป็นตัวเดียวกับที่ canvas ใช้ */
   .lobby.left  { left: max(5%, env(safe-area-inset-left, 0px)); }
   .lobby.right { right: max(5%, env(safe-area-inset-right, 0px)); }
-  .profile     { left: max(5%, env(safe-area-inset-left, 0px)); }
+  .pf-row      { left: max(5%, env(safe-area-inset-left, 0px)); }
   .hud-top {
     padding-left: max(5%, env(safe-area-inset-left, 0px));
     padding-right: max(5%, env(safe-area-inset-right, 0px));
@@ -6584,7 +7121,13 @@ canvas[hidden] { display: none; }
 }
 .paint-acts .btn {
   flex: 1 1 auto;
-  min-width: 56px;
+  /* ── ทำไมศูนย์ ไม่ใช่ 56px ──
+     พื้น 56px คือตัวที่ทำให้ปุ่มตกแถวสอง ไม่ใช่ตัวหนังสือ: สามใบ 56 บวกช่องไฟ 8
+     สองช่อง = 184px ส่วนคอลัมน์กว้าง 182px ที่หน้าต่าง 1280x640 — เกินมาสองพิกเซล
+     ปุ่มใบที่สามเลยตกลงไปกินความสูงอีก 40px ทั้งที่ตัวหนังสือจริงกว้างแค่ 45-71px
+     (วัดที่ 1280x640 และ 1366x768: ปลดพื้นออกแล้วสามใบอยู่แถวเดียว ไม่มีคำไหนถูกตัด)
+     flex-grow ยืดปุ่มให้เต็มแถวอยู่แล้ว พื้นความกว้างจึงไม่ได้กันปุ่มเล็กเกินจริง */
+  min-width: 0;
   margin-top: 0;
   padding-inline: clamp(3px, .5vw, 9px);
   white-space: nowrap;
@@ -6730,6 +7273,47 @@ canvas[hidden] { display: none; }
   .pmode { font-size: 8.5px; padding-block: 4px; padding-inline: 3px;
            white-space: normal; line-height: 1.15; }
   .paint-acts .btn, .paint-color-col > .btn { font-size: 9.5px; padding: 4px 6px; min-width: 0; }
+  /* คอลัมน์บนจอเตี้ยเหลือ ~112px สามใบรวมตัวหนังสือ 81px จึงเหลือที่ให้ขอบกับช่องไฟ
+     แค่ 31px — ค่าเดิม (ขอบ 6px สองข้าง + ช่องไฟ 4px) กิน 44px เกินมา 13px
+     ใบที่สามเลยตกแถวสอง บีบสองค่านี้ลงแล้ววัดได้ 105px พอดีคอลัมน์ ไม่มีคำถูกตัด */
+  .paint-acts { gap: 3px; }
+  .paint-acts .btn { padding-inline: 4px; }
+
+  /* ── ตัวอักษรของปุ่มลงมือย่อตามความสูงจอ ──
+     ค่าคงที่ 9.5px พอดีคอลัมน์แบบเฉียดฉิว (ต้องการ 113px ได้ 113px) เครื่องไหน
+     คอลัมน์แคบกว่านั้นแค่ 5px ปุ่มใบที่สามก็ตกแถวสองทันที ซึ่งเกิดจริงบนเครื่องผู้เล่น
+
+     ทำไมผูกกับ dvh ทั้งที่ตัวจำกัดคือความกว้างคอลัมน์: บนจอแนวนอนของเกมนี้
+     กรอบเกมถูกจำกัดด้วยความสูงเสมอ ความกว้างทุกอย่างข้างในจึงเดินตามความสูงจอ
+     วัดจริงห้าขนาด: จอสูง 360/390/405/420/430 ได้คอลัมน์ 78/96/102/108/113px
+     = ราว 0.51 เท่าของความสูงจอ ลบ 106
+
+     ที่เหลือเป็นเลขคณิตจากการวัด: ตัวหนังสือสามคำรวมกันกว้าง 8.1px ต่อขนาดอักษร 1px
+     บวกขอบใน ช่องไฟ และเส้นขอบของสามใบอีก 36px ต้องไม่เกินความกว้างคอลัมน์
+     เผื่อไว้อีก 3-5px กันการปัดเลขและฟอนต์ที่กว้างไม่เท่ากันเป๊ะระหว่างเครื่อง
+     เพดาน 9.5px = ขนาดเดิมบนจอที่กว้างพอ พื้น 7px คือจุดที่เล็กกว่านี้แล้วอ่านไม่ออก
+     เตี้ยกว่านั้นจึงยอมให้ตกแถวสองเหมือนเดิม ดีกว่าบีบจนอ่านไม่ออก */
+  .paint-acts .btn { font-size: clamp(7px, calc(6.1dvh - 17.2px), 9.5px); }
+
+  /* ── เลิกดันของลงชิดขอบล่าง ──
+     กฎหลักดัน "เลือกลงสี/ลงทั้งตัว" กับปุ่มลงมือไปชิดล่างด้วย margin-top: auto
+     บนจอคอมที่คอลัมน์สูงและของเต็ม มันคือการจัดให้สองคอลัมน์จบเสมอกันพอดี
+     แต่บนจอเตี้ยของไม่เต็มคอลัมน์ ที่ว่างเลยไปกองเป็นช่องโหว่กลางคอลัมน์
+     (วัดที่ 932x430 และ 1180x450: ห่างจากแถบขนาดหัวแปรงถึงปุ่มโหมด 44-59px)
+     ตาอ่านว่าของสองก้อนนี้ไม่เกี่ยวกับหัวข้อข้างบนแล้ว ทั้งที่มันเป็นชุดเดียวกัน
+     จอเตี้ยจึงให้ทุกอย่างเกาะกลุ่มต่อจากหัวข้อของตัวเองไปเลย ไม่ต้องจัดให้จบเท่ากัน */
+  .paint-modes, .paint-acts { margin-top: 0; }
+
+  /* ── สองคอลัมน์ขวาอยู่กลางแนวตั้ง เท่ากับผ้าใบ ──
+     ผ้าใบถูกจัดกลางแถวมาตั้งแต่ต้น (.paint-stage ตั้ง justify-content: center)
+     ส่วนสองคอลัมน์นี้เกาะขอบบน พอของไม่เต็มความสูงแถวซึ่งเป็นเรื่องปกติบนจอเตี้ย
+     สองฝั่งเลยเริ่มคนละระดับ ฝั่งขวาลอยขึ้นไปอยู่เหนือกรอบระบายสี (วัดที่ 943x420:
+     ขอบบนห่างกัน 72px) อ่านเหมือนแถบเครื่องมือหลุดออกไปจากที่ระบายสีคนละชิ้น
+
+     safe center ไม่ใช่ center เฉย ๆ — พอจอเตี้ยลงไปอีกจนของล้นคอลัมน์
+     center จะดันของส่วนบนออกไปนอกกรอบแบบที่เลื่อนกลับขึ้นไปไม่ได้
+     safe สั่งให้ถอยไปชิดบนเองเมื่อที่ไม่พอ ซึ่งเป็นพฤติกรรมเดิมพอดี */
+  .paint-tools-col, .paint-color-col { justify-content: safe center; }
   .paint-free-row { font-size: 9px; }
   .psize-dot { width: 16px; height: 16px; }
   /* เม็ดหมวดหมู่: จุดสีเล็กลงและระยะขอบแคบลง คืนที่ให้ชื่อจนไม่ต้องตัดคำ */
@@ -6828,7 +7412,12 @@ canvas[hidden] { display: none; }
 
 /* จอเตี้ยมาก ๆ: ปุ่มลงมือย่อลงอีกขั้นเพื่อไม่ให้ดันผ้าใบจนเล็ก */
 @media (max-height: 400px) {
-  .paint-acts .btn { font-size: 11px; padding: 6px 4px; }
+  /* ── ทำไมไม่ตั้ง font-size ตรงนี้แล้ว ──
+     ค่าเดิมคือ 11px ซึ่ง "ใหญ่กว่า" 9.5px ที่บล็อกจอเตี้ยตั้งไว้ และบล็อกนี้มาทีหลัง
+     จึงชนะ ผลคือจอยิ่งเตี้ยตัวอักษรยิ่งโต แล้วปุ่มใบที่สามตกแถวสองที่จอสูง 390-400
+     (เลข 11px เป็นของตกค้างจากตอนที่ขนาดพื้นฐานยังใหญ่กว่านี้)
+     ปล่อยให้สูตรเดียวที่บล็อกจอเตี้ยคุมขนาดทั้งช่วงแทน จะได้ไม่มีขั้นที่โตสวนทาง */
+  .paint-acts .btn { padding-block: 6px; }
   #paintUse { font-size: 13px; padding: 7px 16px; }
 }
 
@@ -7534,6 +8123,12 @@ canvas[hidden] { display: none; }
   background: var(--mint-lite);
 }
 .panel p.tl-status {
+  /* ชิดขวาไปกับปุ่ม — บรรทัดนี้คือคำอธิบายของปุ่มที่อยู่ใต้มัน ("กดแล้วจะเกิดอะไร")
+     ไม่ใช่เนื้อหาของการ์ด ถ้าปล่อยชิดซ้ายตามคอลัมน์ มันจะอยู่คนละมุมกับปุ่มที่มันพูดถึง
+     text-align ด้วย ไม่ใช่แค่ align-self — ชื่อพรสวรรค์ที่ยาวจนตัดสองบรรทัด
+     จะได้เรียงขอบขวาตรงกับปุ่ม ไม่ใช่บรรทัดล่างลอยไปทางซ้าย */
+  align-self: flex-end;
+  text-align: right;
   font-size: clamp(10.5px, 1.85dvh, 13.5px);
   line-height: 1.45;
   color: #C9AEE8;
@@ -7542,6 +8137,12 @@ canvas[hidden] { display: none; }
 .panel p.tl-status.swap b { color: var(--cream); font-weight: 600; }
 .panel p.tl-status.lock { color: #D9C6EE; }
 .tl-sheet-info .btn {
+  /* ── ชิดขวา ไม่ใช่ชิดซ้ายตามคอลัมน์ ──
+     ทุกอย่างในคอลัมน์นี้เป็นของที่ "อ่าน" (ระดับ ชื่อ คำอธิบาย ผลในเกม) จึงเริ่มชิดซ้าย
+     ตามแนวการอ่าน ส่วนปุ่มเป็นของที่ "กด" และเป็นสิ่งสุดท้ายของหน้า
+     วางไว้ปลายทางสายตาพอดี — ล่างขวา ตรงมุมเดียวกับที่นิ้วโป้งอยู่ตอนถือเครื่องแนวนอน
+     ไม่ชิดขอบแผ่นจริง ๆ เพราะขอบในของแผ่นเว้นไว้ให้อยู่แล้ว (วัดได้ราว 30px) */
+  align-self: flex-end;
   margin-top: clamp(2px, 0.6dvh, 6px);
   min-width: clamp(120px, 20vw, 170px);
   padding-block: clamp(6px, 1.3dvh, 10px);
@@ -7723,15 +8324,20 @@ canvas[hidden] { display: none; }
 
 /* ═══ คลิปเปิดเกม ══════════════════════════════════════════════════
 
-   คลุมเต็มจอจริง (position: fixed ไม่ใช่ absolute ในกรอบเกม)
-   z-index 280 — เหนือทุกอย่างในเกม แต่ต่ำกว่าป้ายหมุนจอ (300) คนถือแนวตั้งจึงเห็นป้ายก่อน
+   ── อยู่ในกรอบเกม ไม่ใช่คลุมทั้งหน้าต่าง ──
+   เคยเป็น fixed เต็มจอ แล้วบนคอมกับไอแพดคลิปกินทั้งหน้าเว็บจนหลุดออกจากตัวเกม
+   อยู่ในเวทีแล้วได้สัดส่วนเดียวกับตอนเล่นทุกเครื่อง และมุมโค้งถูกกรอบตัดให้เอง
+   (.stage เป็น position: relative + overflow: hidden อยู่แล้ว ไม่ต้องทำอะไรเพิ่ม)
+
+   z-index 20 — เหนือทุกอย่างในเวที (แผงเมนู 0–1 / แถบบน 2 / ปุ่มจอสัมผัส 4)
+   ส่วนป้ายบอกให้หมุนจออยู่นอกเวทีที่ z 300 จึงยังทับคลิปได้ตามเดิม
 
    พื้นดำทึบตั้งแต่เฟรมแรก ตัวคลิปจางเข้ามาตอนภาพขึ้นจริงแล้วเท่านั้น (.playing)
    ช่วงรอโหลดจึงเห็นเป็นจอดำนิ่ง ๆ ไม่ใช่ล็อบบี้โผล่แว้บแล้วคลิปมาทับ ══ */
 .intro-video {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 280;
+  z-index: 20;
   background: #000;
   cursor: pointer;
   -webkit-user-select: none;
@@ -7787,12 +8393,13 @@ canvas[hidden] { display: none; }
   transition: opacity .9s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* ── ช่องติ๊ก "ไม่ต้องแสดงคลิปนี้อีก" มุมขวาบน ──
-   เว้นจากขอบตามรอยบาก/มุมโค้งของจอด้วย env() ไม่งั้นบน iPhone แนวนอนจะจมใต้รอยบาก */
+/* ── ช่องติ๊ก "ไม่ต้องแสดงคลิปนี้อีก" มุมขวาบนของกรอบเกม ──
+   เว้นจากขอบพอให้พ้นมุมโค้ง 20px ของกรอบ ไม่ต้องเผื่อรอยบากของเครื่องแล้ว
+   เพราะอยู่ในกรอบซึ่งเว้นจากขอบจอจริงอยู่แล้ว */
 .iv-opt {
   position: absolute;
-  top: max(14px, env(safe-area-inset-top));
-  right: max(16px, env(safe-area-inset-right));
+  top: clamp(10px, 2.4dvh, 18px);
+  right: clamp(12px, 2.2vw, 22px);
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -7836,7 +8443,7 @@ canvas[hidden] { display: none; }
 .iv-hint {
   position: absolute;
   left: 50%;
-  bottom: max(22px, env(safe-area-inset-bottom));
+  bottom: clamp(12px, 3dvh, 26px);
   transform: translate(-50%, 8px);
   margin: 0;
   padding: 8px 18px;
@@ -7872,4 +8479,127 @@ canvas[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .intro-video, .intro-video video, .iv-hint { transition: none; }
   .intro-video.hinted .iv-hint { animation: none; }
+}
+
+/* ═══ ความมีชีวิตของการ์ดทุกหน้า ═════════════════════════════════
+
+   ยกชุดเดียวกับหน้าพรสวรรค์มาใช้กับทุกหน้าที่มีกริดการ์ด (คลังน้อง เลือกด่าน
+   รายละเอียดด่าน กิจกรรม จดหมาย อันดับ โปรไฟล์) โดยไม่แตะโครงหรือสีของหน้าไหนเลย
+   เพิ่มแค่สามอย่าง: ไล่กันโผล่ตอนเปิด / ยกตัวตอนชี้ / ไอคอนเด้ง
+
+   ── ทำไมผูกกับ .just-open ──
+   คลังน้องสร้างการ์ดใหม่ทั้งกริดทุกครั้งที่กดเลือกของสักชิ้น ถ้าเล่นแอนิเมชันทุกครั้ง
+   ที่การ์ดเกิด หน้าจะกระพริบใหม่ทุกคลิก ผูกกับ "แผงเพิ่งเปิด" (main.js ติดคลาสให้ 0.6 วิ)
+   จึงเล่นเฉพาะตอนเข้าหน้าใหม่จริง ๆ ซึ่งเป็นจังหวะเดียวที่มันทำให้หน้าดูมีชีวิต
+
+   ── ลำดับ --i มาจากไหน ──
+   markScrollable() ใน main.js ใส่ให้ลูกทุกตัวของช่องที่เลื่อนได้ ซึ่งทุกหน้าเรียกอยู่แล้ว
+   หลังสร้างการ์ดเสร็จ จึงไม่ต้องไปแก้ตัวสร้างกริดของแต่ละหน้าเลยสักหน้า ══ */
+
+@keyframes cardPopIn {
+  from { opacity: 0; transform: translateY(15px) scale(.955); }
+}
+/* ไอคอนสะดุ้งขึ้นแล้วลงตัว — ใช้ตอนเอาเมาส์ชี้การ์ด */
+@keyframes iconBop {
+  30% { transform: translateY(-4px) scale(1.07) rotate(-4deg); }
+  62% { transform: translateY(0) scale(1.02) rotate(2deg); }
+}
+
+.panel.just-open .skin-card,
+.panel.just-open .stage-card,
+.panel.just-open .scene-row,
+.panel.just-open .quest-row,
+.panel.just-open .mail-item,
+.panel.just-open .rank-row,
+.panel.just-open .pf-fact {
+  animation: cardPopIn .34s cubic-bezier(.2,.85,.3,1.06) backwards;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+
+/* ── ชี้แล้วยกตัว ──
+   เฉพาะเครื่องที่ชี้ได้จริง บนจอสัมผัส :hover ค้างหลังแตะ การ์ดจะลอยค้างทั้งที่นิ้วยกไปแล้ว */
+@media (hover: hover) {
+  .skin-card, .stage-card, .quest-row, .mail-item, .scene-row {
+    transition: transform .16s cubic-bezier(.2,.85,.3,1.2), box-shadow .16s ease, filter .12s ease;
+  }
+  .skin-card:hover,
+  .stage-card:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 8px 0 rgba(20,8,32,.45), 0 16px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  /* แถวยาว ๆ ยกน้อยกว่าการ์ด และไม่ขยาย — ขยายแถวเต็มความกว้างแล้วขอบจะล้นช่องเลื่อน */
+  .quest-row:hover,
+  .mail-item:hover,
+  .scene-row:hover { transform: translateY(-2px); filter: brightness(1.08); }
+
+  /* ไอคอนในการ์ดเด้งรับ — รูปน้องบน canvas, อิโมจิสมบัติ, ภาพฉากของด่าน */
+  .skin-card:hover canvas,
+  .skin-card:hover .t-emoji,
+  .stage-card:hover canvas,
+  .scene-row:hover .scene-pic { animation: iconBop .5s ease; }
+}
+
+/* กดแล้วยุบ — ประกาศหลังกฎ :hover เสมอ ไม่งั้นตอนกดค้างจะยังลอยอยู่
+   (ของเดิมมี :active ของตัวเองอยู่แล้ว ที่นี่แค่ทำให้ชนะกฎ hover ข้างบน) */
+.skin-card:active { transform: translateY(2px) scale(.985); box-shadow: var(--plate-press); }
+.stage-card:active { transform: translateY(2px) scale(.985); }
+.quest-row:active, .mail-item:active, .scene-row:active { transform: translateY(1px); }
+
+/* ── ป้ายจำนวน "มีแล้ว/ทั้งหมด" ──
+   ทรงเดียวกับป้ายในหน้าพรสวรรค์ เพื่อให้ข้อมูลชนิดเดียวกันหน้าตาเหมือนกันทั้งเกม */
+.count-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.18);
+  background: rgba(27,15,43,.62);
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(9px, 1.6dvh, 12px);
+  line-height: 1.5;
+  color: #C9AEE8;
+  white-space: nowrap;
+}
+.count-pill b { font-weight: 600; font-size: 1.15em; color: var(--cream); }
+.count-sep { opacity: .6; }
+
+/* ── หัวเรื่องคลังน้อง: ชื่อ + ป้ายจำนวน ชิดซ้าย / แถบกรองชิดขวา ──
+
+   เปลี่ยนจากกริดเป็น flex เพราะกริดคอลัมน์ตายตัวรับของสามชิ้นบนจอแคบไม่ไหวสักทาง
+   วัดจริงมาแล้วทั้งสองทาง:
+     1fr เปล่า ๆ        → ช่องไม่ยอมหด แถบกรองล้นพ้นขอบการ์ดขวา 15–212px
+     minmax(0, 1fr)     → ช่องหดจนแคบกว่าแถบ แถบชิดขวาเลยล้นย้อนไปทับป้ายจำนวน
+   flex ให้ "หดก่อน ค่อยตกบรรทัดในตัวเอง" ซึ่งเป็นลำดับที่ถูก: ที่พอก็อยู่แถวเดียวกันหมด
+   ที่ไม่พอแถบกรองก็หดแล้วพับชิปลงบรรทัดสอง ไม่ทับใครและไม่ล้นขอบการ์ด
+
+   ตั้ง nowrap ที่ตัวหัวเรื่องเอง ไม่ใช่ที่กล่อง — ปล่อยให้ชื่อตัดบรรทัดแล้ว
+   คำว่า "เลือกแมวน้อย" กลายเป็นสามบรรทัดตั้งแต่จอ 800 ลงมา กินที่กว่าให้ชิปพับเสียอีก */
+.stash-main > .panel-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+.stash-main > .panel-head > h2 { white-space: nowrap; }
+/* แถบกรองชิดขวาด้วย margin auto (ซดที่ว่างที่เหลือ พอไม่เหลือก็เป็นศูนย์เอง)
+   min-width: 0 คือหัวใจ — ไม่งั้น flex item จะไม่ยอมหดต่ำกว่าเนื้อในของตัวเอง
+   แล้วกลับไปล้นขอบเหมือนเดิม ส่วน flex-wrap: wrap คืนสิทธิ์พับชิปลงบรรทัดสอง
+   (กฎเดิมตั้ง nowrap ไว้สมัยยังเป็นกริด เพราะตอนนั้นแถบได้ที่แค่ส่วนเดียวของสาม
+   ช่องติ๊กเลยพับทั้งที่ยังมีที่เหลือ — ตอนนี้แถบได้ที่ที่เหลือทั้งหมดก่อนเสมอ
+   จะพับก็ต่อเมื่อแคบจริง ซึ่งยังดีกว่ายื่นพ้นขอบการ์ด จอ 390 เคยล้น 178px) */
+.stash-main > .panel-head .filterbar { margin-left: auto; min-width: 0; flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel.just-open .skin-card,
+  .panel.just-open .stage-card,
+  .panel.just-open .scene-row,
+  .panel.just-open .quest-row,
+  .panel.just-open .mail-item,
+  .panel.just-open .rank-row,
+  .panel.just-open .pf-fact { animation: none; }
+  .skin-card:hover canvas,
+  .skin-card:hover .t-emoji,
+  .stage-card:hover canvas,
+  .scene-row:hover .scene-pic { animation: none; }
+  .skin-card, .stage-card, .quest-row, .mail-item, .scene-row { transition: none; }
 }

@@ -40,10 +40,16 @@ const legacyVol = readVol(LEGACY_VOL_KEY, VOL_DEFAULT);
 const level = {
   music: readVol(MIX_KEY.music, legacyVol),
   sfx: readVol(MIX_KEY.sfx, legacyVol),
+  // ── ช่องของคลิปเปิดเกม ──
+  // แยกจากสองช่องบนโดยตั้งใจ และ "ไม่" อ่านจากที่บันทึกไว้ของเกม
+  // คนที่หรี่เพลงกับเอฟเฟกต์ของเกมเป็น 0 ไว้ ต้องยังได้ยินคลิปถ้าเปิดเสียงคลิปไว้
+  // (เคยส่งเสียงคลิปผ่านสองช่องนั้น ผลคือปิดเสียงเกม = คลิปเงียบตามไปด้วย แยกกันไม่ได้จริง)
+  // เปิด/ปิดเสียงคลิปคุมที่ปุ่มลำโพงในหน้าตั้งค่า ซึ่งเป็นคนละค่ากับระดับช่องนี้
+  intro: 0.9,
 };
 
 /** ปมย่อยของแต่ละช่อง สร้างตอนถูกขอใช้ครั้งแรก */
-const subBus = { music: null, sfx: null };
+const subBus = { music: null, sfx: null, intro: null };
 
 function ctx() {
   if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -84,6 +90,23 @@ function chanOut(ch) {
 
 export function musicOut() { return chanOut('music'); }
 export function sfxOut() { return chanOut('sfx'); }
+
+/**
+ * เสียงเอฟเฟกต์กำลังถูกส่งไปช่องไหน
+ *
+ * ปกติคือช่อง sfx ของเกม แต่ระหว่างคลิปเปิดเกมจะสลับไปช่อง intro ทั้งชุด
+ * เสียงในคลิป (กรน ท้องร้อง หาว เสียงปลา) จึงไม่ขึ้นกับระดับเสียงเอฟเฟกต์ของเกมเลย
+ *
+ * ทำที่ชั้นนี้ชั้นเดียว ตัวเสียงแต่ละตัวจึงไม่ต้องรู้เรื่องคลิปเลยสักตัว
+ */
+let sfxRoute = 'sfx';
+export function setSfxRoute(ch) {
+  sfxRoute = ch in level ? ch : 'sfx';
+}
+/** ปมปลายทางของเสียงเอฟเฟกต์ ณ ตอนนี้ (เปลี่ยนตาม setSfxRoute) */
+function routeOut() { return chanOut(sfxRoute); }
+/** ระดับของช่องที่เสียงเอฟเฟกต์กำลังไป — ใช้ตัดตั้งแต่ต้นทางเวลาเงียบอยู่ */
+const routeLevel = () => level[sfxRoute];
 
 /** ระดับของช่องหนึ่ง 0–1 */
 export function getMix(ch) {
@@ -191,7 +214,7 @@ export function killSfx() {
 }
 
 function tone(from, to, dur, type = 'square', vol = 0.12) {
-  if (level.sfx <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
+  if (routeLevel() <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -207,7 +230,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);  // fade out กันเสียง "ป๊อก"
 
   osc.connect(gain);
-  gain.connect(sfxOut());
+  gain.connect(routeOut());
   osc.start(t);
   osc.stop(t + dur + 0.02);
   trackSfx(gain, t + dur + 0.02);
@@ -225,7 +248,7 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
  * ยิ่ง end ต่ำกว่า start มาก ยิ่งฟังอ้อน ๆ น่าสงสาร
  */
 function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
-  if (level.sfx <= 0) return;
+  if (routeLevel() <= 0) return;
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -259,7 +282,7 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
 
   osc.connect(filt);
   filt.connect(gain);
-  gain.connect(sfxOut());
+  gain.connect(routeOut());
 
   osc.start(t);
   lfo.start(t);
@@ -282,7 +305,7 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
  * ระดับเสียงกวาดลงตอนท้ายเล็กน้อย เหมือนฟองสุดท้ายที่ค่อย ๆ หมดแรง
  */
 function growl({ dur = 1.1, base = 92, vol = 0.34, bubble = 19 } = {}) {
-  if (level.sfx <= 0) return;
+  if (routeLevel() <= 0) return;
   const a = ctx();
   if (a.state === 'suspended') return;
 
@@ -325,7 +348,7 @@ function growl({ dur = 1.1, base = 92, vol = 0.34, bubble = 19 } = {}) {
   osc.connect(filt);
   filt.connect(trem);
   trem.connect(gain);
-  gain.connect(sfxOut());
+  gain.connect(routeOut());
 
   osc.start(t);
   lfo.start(t);
@@ -342,6 +365,104 @@ function growl({ dur = 1.1, base = 92, vol = 0.34, bubble = 19 } = {}) {
 // เพราะเป็น "เสียงตัวละคร" ควรเด่นกว่าเสียงไอเทม
 // ถ้าแก้ q ต้องวัดความดังใหม่ทุกครั้ง เพราะ q ยิ่งสูงยิ่งเบา
 // ─────────────────────────────────────────────────────────────
+// ── เล่นไฟล์เสียง ────────────────────────────────────────────
+//
+// เสียงในเกมสังเคราะห์เองทั้งหมด ยกเว้นคลิปเปิดเกมที่ใช้ไฟล์จริงสองไฟล์
+// (เพลงประกอบคลิป กับเสียงท้องร้อง) — ของสองอย่างนี้เป็นเสียงที่ "อัดมา" ไม่ใช่เสียงสังเคราะห์
+//
+// ต่อผ่านปมของช่องเดิม (music / sfx) เสียงจึงหรี่และปิดตามหน้าตั้งค่าเหมือนเสียงอื่นทุกตัว
+// ไม่ต้องเช็คการปิดเสียงเองเลยสักจุด
+//
+// ── ทำไมเก็บ element ไว้ใช้ซ้ำ ──
+// createMediaElementSource() ผูกกับ <audio> ตัวหนึ่งได้ครั้งเดียวตลอดอายุของมัน
+// สร้างใหม่ทุกครั้งที่เล่นจะได้ error ตั้งแต่ครั้งที่สอง และไฟล์ต้องโหลดใหม่ทุกครั้งด้วย
+
+const clips = new Map();
+
+function clipOf(src, ch) {
+  let c = clips.get(src);
+  if (c) return c;
+  const a = ctx();
+  const el = new Audio(src);
+  el.preload = 'auto';
+  const gain = a.createGain();
+  gain.gain.value = 0;
+  a.createMediaElementSource(el).connect(gain);
+  gain.connect(chanOut(ch));
+  c = { el, gain, ch, failed: false, timer: 0 };
+  // โหลดไม่ได้ (ไฟล์หาย/เน็ตพัง) ผู้เรียกจะได้รู้แล้วถอยไปใช้เสียงสังเคราะห์แทน
+  el.addEventListener('error', () => { c.failed = true; });
+  clips.set(src, c);
+  return c;
+}
+
+/**
+ * โหลดไฟล์รอไว้ล่วงหน้า
+ * ถ้าไปโหลดตอนถึงจังหวะที่ต้องใช้ เสียงจะดังช้ากว่าภาพที่มันควรตรงด้วย
+ */
+export function prepareAudioFile(src, ch = 'sfx') {
+  try {
+    clipOf(src, ch);
+  } catch {
+    /* เตรียมไม่ได้ก็ไม่เป็นไร ตอนเล่นจริงจะลองใหม่เอง */
+  }
+}
+
+/**
+ * เล่นไฟล์เสียงหนึ่งไฟล์ — คืน false ถ้าเล่นไม่ได้ (ปิดเสียงอยู่ / ยังไม่ปลดล็อก / ไฟล์เสีย)
+ * ผู้เรียกเอาค่านี้ไปตัดสินใจถอยไปใช้เสียงสังเคราะห์แทนได้
+ *
+ * @param dur    ถ้ามากกว่า 0 = ให้หรี่ลงแล้วหยุดเมื่อครบเวลานี้ (วินาที)
+ *               ใช้กับไฟล์ที่ยาวกว่าช่วงที่ต้องการ เช่นเสียงท้องร้องที่ต้องจบพร้อมจังหวะในคลิป
+ * @param fadeIn เวลาที่ใช้ไล่ความดังขึ้นตอนเริ่ม กันเสียง "ป๊อก" ตอนโน้ตแรก
+ */
+export function playAudioFile(src, { ch = 'sfx', vol = 0.9, dur = 0, fadeIn = 0, fade = 0.12 } = {}) {
+  if (level[ch] <= 0) return false;
+  const a = ctx();
+  if (a.state === 'suspended') return false;
+
+  let c;
+  try {
+    c = clipOf(src, ch);
+  } catch {
+    return false;
+  }
+  if (c.failed) return false;
+
+  const t = a.currentTime;
+  clearTimeout(c.timer);
+  c.gain.gain.cancelScheduledValues(t);
+  if (fadeIn > 0) {
+    c.gain.gain.setValueAtTime(0.0001, t);
+    c.gain.gain.exponentialRampToValueAtTime(vol, t + fadeIn);
+  } else {
+    c.gain.gain.setValueAtTime(vol, t);
+  }
+
+  try { c.el.currentTime = 0; } catch { /* ยังไม่มีข้อมูลไฟล์ ก็เล่นจากที่ค้างอยู่ */ }
+  c.el.play().catch(() => { c.failed = true; });
+
+  // หยุดเองเมื่อครบเวลาที่ขอ — หรี่ก่อนแล้วค่อย pause ไม่ตัดห้วน
+  if (dur > 0) {
+    c.timer = setTimeout(() => stopAudioFile(src, fade), Math.max(0, dur - fade) * 1000);
+  }
+  return true;
+}
+
+/** หรี่ลงจนเงียบแล้วหยุด — เรียกซ้ำได้ ไฟล์ที่ไม่ได้เล่นอยู่ก็ไม่มีอะไรเกิดขึ้น */
+export function stopAudioFile(src, fade = 0.3) {
+  const c = clips.get(src);
+  if (!c || c.el.paused) return;
+  const a = ctx();
+  const t = a.currentTime;
+  clearTimeout(c.timer);
+  c.gain.gain.cancelScheduledValues(t);
+  // ต้องตรึงค่าปัจจุบันไว้ก่อนไล่ลง ไม่งั้นมันจะกระโดดไปเริ่มไล่จากค่าที่ตั้งไว้ล่าสุดแทน
+  c.gain.gain.setValueAtTime(Math.max(0.0001, c.gain.gain.value), t);
+  c.gain.gain.exponentialRampToValueAtTime(0.0001, t + fade);
+  c.timer = setTimeout(() => c.el.pause(), fade * 1000 + 40);
+}
+
 export const sfx = {
   // กระโดด — เมี้ยวสั้นสดใส เสียงสูง
   jump: () => meow({ start: 620, peak: 990, end: 700, dur: 0.2, vol: 0.3, q: 4 }),

@@ -2,6 +2,7 @@
 import { VIEW, HEALTH, SCENE, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
+import { t } from '../i18n.js';
 
 const { W, H } = VIEW;
 
@@ -128,7 +129,8 @@ export function drawHUD(ctx, game) {
   ctx.globalAlpha = 0.72;
   ctx.font = "500 13px 'IBM Plex Sans Thai', sans-serif";
   ctx.fillStyle = pal.ink;
-  ctx.fillText('ค่าขนมเปียก', treatX - textWidth(ctx, 'ค่าขนมเปียก'), TREAT_TOP);
+  const treatLabel = t('ค่าขนมเปียก');
+  ctx.fillText(treatLabel, treatX - textWidth(ctx, treatLabel), TREAT_TOP);
   ctx.globalAlpha = 1;
 
   ctx.font = '600 20px Mitr, sans-serif';

@@ -22,6 +22,12 @@ import { loadBest, loadPref, savePref, loadSkinsOwned } from './storage.js';
 import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
+  FIRST_REWARD_LEVEL, rewardFor, isClaimed, canClaim, claim as claimLevel,
+  claimableCount as lvClaimableCount, claimAll as claimAllLevels,
+} from './level-rewards.js';
+import { CYCLE, rewardOfDay, dayState, claimToday as claimDaily } from './daily.js';
+import { getLang, setLang, applyLang, watchLang, onLang } from './i18n.js';
+import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
   pullTreasure, upgradeTreasure, getEquipped, isEquipped, toggleEquip,
   ownedOrder as treasureOrder,
@@ -49,6 +55,7 @@ import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.j
 import { setupTalentUI } from './talent-ui.js';
 import {
   playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
+  introSoundEnabled, setIntroSoundEnabled,
 } from './intro-video.js';   // หน้าพรสวรรค์ (ข้อมูลใน talents.js ผลตอนวิ่งใน talent-run.js)
 import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
@@ -133,6 +140,14 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
  */
 function markScrollable(el) {
   if (!el) return;
+
+  // ── เลขลำดับของการ์ดแต่ละใบ ──
+  // ใช้หน่วงแอนิเมชัน "ไล่กันโผล่" ตอนเปิดหน้า (ดู .just-open ใน style.css)
+  // ทำที่นี่ที่เดียวเพราะทุกหน้าที่มีกริดเรียกฟังก์ชันนี้อยู่แล้วหลังสร้างการ์ดเสร็จ
+  // ตัดที่ 14 ใบ ใบท้าย ๆ จะได้ไม่ต้องรอนานจนดูเหมือนหน้าค้าง
+  const kids = el.children;
+  for (let i = 0; i < kids.length; i++) kids[i].style.setProperty('--i', Math.min(i, 14));
+
   requestAnimationFrame(() => {
     el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 2);
   });
@@ -370,6 +385,8 @@ function refreshHome() {
   paintQuestIcon();
   refreshCreateIcon();
   refreshQuestDot();
+  refreshLvDot();
+  refreshDailyDot();
   refreshEquipCount();
   paintFitted(document.getElementById('rankIcon'), 76, 0.96, drawTrophy);
   paintFitted(document.getElementById('gachaIcon'), 76, 0.96, (c) => {
@@ -1319,7 +1336,7 @@ function enterLobby() {
   playIntroVideo({
     // เพลงหน้าแรกเงียบระหว่างคลิป ไม่งั้นเสียงคลิปกับเพลงตีกัน
     onOpen: () => stopMusic(),
-    onDone: () => { unlockAudio(); startMusic(); },
+    onDone: () => { unlockAudio(); startMusic(); maybePopDaily(); },
   });
 }
 
@@ -1575,16 +1592,31 @@ document.getElementById('enterBtn').addEventListener('click', enterGame);
 // โหลดคลิปเปิดเกมรอไว้ตั้งแต่เปิดหน้า ไฟล์ใหญ่ ไปเริ่มโหลดตอนกดเข้าเกมจะเห็นจอดำรอ
 preloadIntroVideo();
 
-// ── ตั้งค่า: เปิด/ปิดคลิปเปิดเกม ──
+// ── ตั้งค่า: เปิด/ปิดคลิปเปิดเกม และเสียงของคลิป ──
 function paintIntroSetting() {
   const on = introVideoEnabled();
   document.getElementById('introState').textContent = on ? 'แสดง' : 'ไม่แสดง';
   document.getElementById('introToggle').textContent = on ? 'ปิดคลิป' : 'เปิดคลิป';
+
+  // ปุ่มลำโพงบอกสถานะ "ตอนนี้" ไม่ใช่บอกว่ากดแล้วจะเกิดอะไร — กติกาเดียวกับสองแถวบน
+  // ปิดคลิปไปแล้วก็ไม่มีเสียงคลิปให้ตั้ง ปิดปุ่มไว้ดีกว่าปล่อยให้กดแล้วไม่มีผลอะไร
+  const snd = introSoundEnabled();
+  const mute = document.getElementById('introMute');
+  mute.classList.toggle('muted', !snd);
+  mute.disabled = !on;
+  mute.setAttribute('aria-label', (snd ? 'ปิด' : 'เปิด') + 'เสียงคลิปเปิดเกม');
+  mute.setAttribute('aria-pressed', String(!snd));
 }
 document.getElementById('introToggle').addEventListener('click', () => {
   unlockAudio();
   sfx.fish();
   setIntroVideoEnabled(!introVideoEnabled());
+  paintIntroSetting();
+});
+document.getElementById('introMute').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  setIntroSoundEnabled(!introSoundEnabled());
   paintIntroSetting();
 });
 paintIntroSetting();
@@ -2029,6 +2061,24 @@ function confirmBox(opts) {
 }
 
 /**
+ * การ์ดฉลองของแมวที่เพิ่งปลดล็อก
+ *
+ * ทรงเดียวกับการ์ดชุดในผลสุ่มตู้กาช่าเป๊ะ ๆ ทั้งขนาดผ้าใบและท่าที่น้องยืน
+ * ของที่ได้มาใหม่จึงหน้าตาเหมือนกันหมดไม่ว่าจะมาจากตู้สุ่ม จดหมาย หรือซื้อเอง
+ *
+ * วาดจาก getSkin() ไม่ใช่จากตัวสกินเปล่า ๆ — ตอนนี้น้องใส่ชุดที่สวมอยู่จริง
+ * การ์ดจึงเป็นรูป "น้องของเราตอนนี้" ไม่ใช่รูปตัวอย่างในแค็ตตาล็อก
+ */
+function skinGotCard(s) {
+  const card = document.createElement('div');
+  card.className = 'got-card legend';
+  card.innerHTML = '<canvas width="72" height="72"></canvas><b></b><small>แมวใหม่!</small>';
+  card.querySelector('b').textContent = s.name;
+  paintMini(card.querySelector('canvas'), 72, (c) => drawCatPose(c, 38, 66, 1.05, getSkin(), 60));
+  return card;
+}
+
+/**
  * ซื้อแมวที่ยังล็อกอยู่
  *
  * หักทองก่อนแล้วค่อยปลดล็อก ลำดับนี้สำคัญ — ถ้าปลดล็อกก่อนแล้วหักทองพลาด
@@ -2068,10 +2118,18 @@ async function buySkin(s) {
   addGold(-s.cost);
   unlockSkin(s.id);
   setSkin(s.id);
-  sfx.upWin();
   refreshHome();
   refreshStash();
   setMsg(msg, 'ปลดล็อก ' + s.name + ' แล้ว ใส่ให้เรียบร้อย');
+
+  // ── ฉลองเหมือนตอนได้ของขวัญ ──
+  // ใช้กล่องใบเดียวกับจดหมายและกิจกรรม (ริบบิ้นโปรย + เสียงเย้ มาพร้อมกล่อง)
+  // ไม่ได้ทำกล่องใหม่ เพราะ "ได้ของใหม่" ควรรู้สึกเหมือนกันทุกทางที่ได้มา
+  // กล่องนี้เป็น .panel จึงซ้อนทับหน้าคลังน้องที่เปิดค้างอยู่ได้เลย ไม่ต้องปิดหน้าเดิม
+  //
+  // เสียง upWin ของการซื้อถูกถอดออก — กล่องยิง bonus ตามด้วย cheer อยู่แล้ว
+  // สามเสียงซ้อนในครึ่งวินาทีฟังออกเป็นเสียงเดียวที่รกกว่าเดิม
+  showReward('ได้น้องใหม่!', {}, { cards: [skinGotCard(s)] });
 }
 
 function buildOutfitGrid() {
@@ -2212,6 +2270,8 @@ function rewardCard(kind, amount, label) {
  * @param title       หัวเรื่อง เช่น "รับของขวัญแล้ว!"
  * @param reward      { gold, gems } — ช่องที่เป็นศูนย์จะไม่ขึ้นการ์ด
  * @param opts.note   บรรทัดใต้การ์ด ใช้ตอนผลลัพธ์ไม่มีการ์ดให้โชว์
+ * @param opts.cards  การ์ดที่ผู้เรียกทำมาเอง วางก่อนการ์ดทองกับเพชร
+ *                    (ของที่ไม่ใช่สกุลเงิน เช่นแมวที่เพิ่งปลดล็อก ต้องวาดรูปเอง)
  * @param opts.quiet  ไม่ต้องริบบิ้นกับเสียงเฉลิมฉลอง
  *
  * ── ทำไมมีโหมดเงียบ ──
@@ -2227,7 +2287,7 @@ function showReward(title, reward, opts = {}) {
   note.textContent = opts.note || '';
   note.classList.toggle('hidden', !opts.note);
 
-  const cards = [];
+  const cards = opts.cards ? [...opts.cards] : [];
   if (reward.gems) cards.push(rewardCard('gem', reward.gems, 'เพชรชมพู'));
   if (reward.gold) cards.push(rewardCard('gold', reward.gold, 'เหรียญทอง'));
   cards.forEach((card, i) => {
@@ -2521,6 +2581,313 @@ document.getElementById('mailClear').addEventListener('click', () => {
 //
 // รายการสร้างจาก QUESTS ตรง ๆ เพิ่มภารกิจใหม่ = เติมอ็อบเจกต์ใน quests.js พอ
 // ไฟล์นี้ไม่รู้จักภารกิจข้อไหนเป็นการเฉพาะเลยสักข้อ
+
+// ── ภาษา ───────────────────────────────────────────────────
+//
+// ตัวระบบอยู่ใน src/i18n.js (กวาดแปลทั้ง DOM) และ src/i18n-en.js (พจนานุกรม)
+// ที่นี่มีแค่สองอย่าง: ปุ่มในหน้าตั้งค่า กับการบอกให้ของที่วาดบน canvas วาดใหม่
+
+function paintLangPick() {
+  const cur = getLang();
+  for (const [id, code] of [['langTh', 'th'], ['langEn', 'en']]) {
+    const b = document.getElementById(id);
+    b.classList.toggle('on', cur === code);
+    b.setAttribute('aria-pressed', String(cur === code));
+  }
+}
+
+for (const [id, code] of [['langTh', 'th'], ['langEn', 'en']]) {
+  document.getElementById(id).addEventListener('click', () => {
+    unlockAudio();
+    sfx.fish();
+    setLang(code);
+    paintLangPick();
+  });
+}
+
+// ของที่วาดด้วย canvas ไม่มีโหนดข้อความให้กวาด ต้องสั่งวาดใหม่เองเมื่อภาษาเปลี่ยน
+// (ไอคอนปุ่มล็อบบี้ การ์ดโปรไฟล์ และหน้าที่เปิดค้างอยู่ตอนกดเปลี่ยนภาษา)
+onLang(() => {
+  paintLangPick();
+  refreshHome();
+  // หน้าพรสวรรค์สร้างการ์ดใหม่ทุกครั้งที่เปิด สั่งเปิดซ้ำจึงเท่ากับวาดใหม่ทั้งหน้า
+  if (!talentPanel.classList.contains('hidden')) talentUI.open();
+});
+
+// แปลรอบแรกตอนเปิดเกม แล้วเฝ้าดูของที่ถูกสร้างใหม่ตลอดอายุการเล่น
+document.documentElement.lang = getLang() === 'en' ? 'en' : 'th';
+applyLang(document.body);
+watchLang(document.querySelector('.shell') || document.body);
+paintLangPick();
+
+// ── เช็คอินรายวัน ──────────────────────────────────────────
+//
+// src/daily.js  ตารางของเจ็ดวัน และจำว่ารับถึงวันไหนแล้ว
+// ไฟล์นี้        วาดปฏิทิน จ่ายของ และเปิดหน้าให้เองตอนเข้าล็อบบี้วันแรกของวัน
+
+const dailyPanel = document.getElementById('dailyPanel');
+
+/** จุดแดงบนปุ่มเช็คอิน — วันนี้ยังไม่ได้รับก็ขึ้นจุด (ไม่ต้องมีตัวเลข มีได้วันละชิ้นเดียว) */
+function refreshDailyDot() {
+  const dot = document.getElementById('dailyDot');
+  dot.textContent = '';
+  dot.classList.toggle('hidden', !dayState().ready);
+}
+
+/** ของรางวัลหนึ่งวันเขียนเป็นชิปสั้น ๆ */
+function dailyPrizeHtml(reward) {
+  const bits = [];
+  if (reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + reward.gold.toLocaleString('en-US'));
+  if (reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + reward.gems.toLocaleString('en-US'));
+  return bits.join('');
+}
+
+/**
+ * ปฏิทินเจ็ดใบ
+ *
+ * ใบที่ผ่านไปแล้วยังอยู่ครบ ไม่ได้ซ่อนทิ้ง — ปฏิทินที่เหลือแต่วันข้างหน้า
+ * ไม่ได้ให้ความรู้สึกว่า "มาต่อเนื่องมาหลายวันแล้ว" ซึ่งเป็นความรู้สึกเดียว
+ * ที่ทำให้คนอยากกลับมาพรุ่งนี้
+ */
+function buildDailyGrid() {
+  const grid = document.getElementById('dlGrid');
+  const st = dayState();
+  grid.innerHTML = '';
+
+  for (let n = 1; n <= CYCLE; n++) {
+    const reward = rewardOfDay(n);
+    const done = n <= st.day;
+    const today = st.ready && n === st.next;
+
+    const card = document.createElement('div');
+    card.className = 'dl-card'
+      + (reward.big ? ' big' : '')
+      + (done ? ' done' : today ? ' today' : n > st.next ? ' soon' : '');
+    card.innerHTML = '<span class="dl-day"></span><span class="dl-prize"></span>';
+    card.querySelector('.dl-day').textContent = today ? 'วันนี้' : 'วันที่ ' + n;
+    card.querySelector('.dl-prize').innerHTML = dailyPrizeHtml(reward);
+    grid.appendChild(card);
+  }
+
+  markScrollable(grid);
+  document.getElementById('dlCycle').textContent = st.cycles + 1;
+
+  const btn = document.getElementById('dlClaim');
+  btn.disabled = !st.ready;
+  btn.classList.toggle('ghost', !st.ready);
+  btn.textContent = st.ready ? 'รับของวันที่ ' + st.next : 'วันนี้รับไปแล้ว';
+  document.getElementById('dlLead').textContent = st.ready
+    ? 'แวะมาทักน้องทุกวันนะ มีของฝากให้ทุกวันเลย'
+    : 'วันนี้รับไปแล้ว พรุ่งนี้มาใหม่นะ น้องรออยู่';
+  refreshDailyDot();
+}
+
+function doClaimDaily() {
+  const got = claimDaily();
+  if (!got) return;
+  payReward(got.reward);
+  buildDailyGrid();
+  showReward(
+    got.finishedCycle ? 'ครบเจ็ดวันแล้ว!' : 'เช็คอินวันที่ ' + got.n + '!',
+    got.reward,
+    got.reward.note ? { note: got.reward.note } : {},
+  );
+}
+
+function showDaily(on) {
+  dailyPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (on) {
+    setMsg(document.getElementById('dlMsg'), '');
+    refreshGold();
+    buildDailyGrid();
+  }
+}
+
+document.getElementById('btnDaily').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  showDaily(true);
+});
+document.getElementById('dlBack').addEventListener('click', () => showDaily(false));
+document.getElementById('dlClaim').addEventListener('click', () => {
+  unlockAudio();
+  doClaimDaily();
+});
+
+/**
+ * เปิดหน้าเช็คอินให้เองตอนเข้าล็อบบี้ ถ้าวันนี้ยังไม่ได้รับ
+ *
+ * ── ทำไมต้องเด้งเอง ──
+ * ของชิ้นนี้คือ "รางวัลของการเข้ามา" ถ้ารอให้กดปุ่มเอง คนที่ไม่เคยสังเกตปุ่ม
+ * จะไม่ได้รับเลยสักวัน ทั้งที่เข้ามาทุกวัน ซึ่งกลับหัวกับจุดประสงค์ของระบบ
+ *
+ * เด้งครั้งเดียวต่อการเปิดเกมหนึ่งครั้ง (ไม่ใช่ทุกครั้งที่กลับหน้าแรก) และ
+ * รอให้คลิปเปิดเกมจบก่อนเสมอ — เด้งทับคลิปคือการขัดจังหวะ ไม่ใช่ของขวัญ
+ */
+let dailyPopped = false;
+function maybePopDaily() {
+  if (dailyPopped || !dayState().ready) return;
+  dailyPopped = true;
+  setTimeout(() => {
+    // ระหว่างรอ ผู้เล่นอาจกดเข้าหน้าอื่นหรือกดเล่นไปแล้ว — เด้งทับถือว่าแย่งมือ
+    if (startPanel.classList.contains('hidden')) return;
+    showDaily(true);
+  }, 650);
+}
+
+// ── รางวัลเลเวล ────────────────────────────────────────────
+//
+// หน้าที่แบ่งกันสองส่วนเหมือนระบบอื่นในเกม:
+//   src/level-rewards.js  ตารางของรางวัล และจำว่ากดรับเลเวลไหนไปแล้ว
+//   ไฟล์นี้                วาดหน้าจอ จ่ายของจริง และเล่นเสียง
+// ไฟล์นี้จึงไม่รู้ว่าเลเวลไหนได้อะไร และไฟล์นั้นก็ไม่รู้จักหน้าจอเลย
+
+const lvPanel = document.getElementById('lvPanel');
+
+/** เลเวลตอนนี้ — อ่านสด ๆ ทุกครั้ง เพราะ XP ขึ้นได้ระหว่างเปิดหน้าอื่นค้างอยู่ */
+function curLevel() {
+  return levelFromXp(loadXp()).level;
+}
+
+/** ป้ายแดงบนปุ่มรางวัลเลเวล — กติกาเดียวกับปุ่มกิจกรรม */
+function refreshLvDot() {
+  const n = lvClaimableCount(curLevel());
+  const dot = document.getElementById('lvDot');
+  dot.textContent = n === 0 ? '' : n > 9 ? '9+' : n;
+  dot.classList.toggle('hidden', n === 0);
+}
+
+/** แถบสรุปบนสุด: เลเวลปัจจุบันกับความคืบหน้าไปเลเวลถัดไป */
+function paintLvNow() {
+  const st = levelFromXp(loadXp());
+  document.getElementById('lvNowBadge').textContent = st.level;
+  document.getElementById('lvNowText').textContent =
+    st.maxed ? 'เลเวล ' + st.level + ' · สูงสุดแล้ว' : 'เลเวล ' + st.level;
+  document.getElementById('lvNowFill').style.width = Math.round(st.ratio * 100) + '%';
+  document.getElementById('lvNowXp').textContent = st.maxed
+    ? 'ไล่ครบทุกเลเวลแล้ว'
+    : st.into.toLocaleString('en-US') + ' / ' + st.need.toLocaleString('en-US') + ' XP'
+      + ' · อีก ' + (st.need - st.into).toLocaleString('en-US') + ' XP ถึงกล่องถัดไป';
+}
+
+/** ของรางวัลหนึ่งใบเขียนเป็นข้อความสั้น ๆ ในแถว */
+function lvPrizeHtml(reward) {
+  if (!reward) {
+    return '<span class="lv-qmark" aria-hidden="true">?</span><span>ยังไม่ประกาศของรางวัล</span>';
+  }
+  const bits = [];
+  if (reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + reward.gold.toLocaleString('en-US'));
+  if (reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + reward.gems.toLocaleString('en-US'));
+  return bits.join('');
+}
+
+/**
+ * รายการรางวัลทุกเลเวล
+ *
+ * สร้างครบทุกเลเวลตั้งแต่ 2 ถึงเลเวลสูงสุด ไม่ตัดเฉพาะที่ถึงแล้ว —
+ * ครึ่งหนึ่งของคุณค่าหน้านี้คือ "รู้ว่าข้างหน้ามีอะไรรออยู่" ถ้าโชว์แต่ที่ได้แล้ว
+ * มันจะกลายเป็นใบเสร็จ ไม่ใช่เป้าหมาย
+ */
+function buildLvList() {
+  const list = document.getElementById('lvList');
+  const level = curLevel();
+  list.innerHTML = '';
+
+  let firstReady = null;
+  for (let lv = FIRST_REWARD_LEVEL; lv <= LEVEL_CAP; lv++) {
+    const reward = rewardFor(lv);
+    const reached = lv <= level;
+    const claimed = isClaimed(lv);
+    const ready = canClaim(lv, level);
+
+    const row = document.createElement('div');
+    row.className = 'lv-row'
+      + (ready ? ' ready' : claimed ? ' done' : reached ? '' : ' locked')
+      + (lv === level + 1 ? ' next' : '');
+    row.innerHTML =
+      '<span class="lv-tag"></span>'
+      + '<div class="lv-prize"><span class="lv-prize-main"></span>'
+      + '<small class="lv-prize-note"></small></div>'
+      + '<button type="button" class="btn lv-get"></button>';
+
+    row.querySelector('.lv-tag').textContent = lv;
+    row.querySelector('.lv-prize-main').innerHTML = lvPrizeHtml(reward);
+    if (!reward) row.querySelector('.lv-prize').classList.add('tbd');
+    row.querySelector('.lv-prize-note').textContent =
+      reward && reward.note ? reward.note
+        : claimed ? 'รับไปแล้ว'
+        : reached ? 'ถึงเลเวลนี้แล้ว'
+        : 'ถึงเลเวล ' + lv + ' แล้วปลดล็อก';
+
+    const get = row.querySelector('.lv-get');
+    get.textContent = claimed ? 'รับแล้ว' : !reached ? 'ยังไม่ถึง' : reward ? 'รับรางวัล' : 'เร็ว ๆ นี้';
+    get.disabled = !ready;
+    get.classList.toggle('ghost', !ready);
+    get.addEventListener('click', () => doClaimLv(lv));
+
+    if (ready && firstReady === null) firstReady = row;
+    list.appendChild(row);
+  }
+
+  markScrollable(list);
+  paintLvNow();
+  paintLvCount(level);
+  refreshLvDot();
+
+  // เปิดหน้ามาแล้วเลื่อนไปที่ของที่กดรับได้ทันที ถ้าไม่มีก็ไปที่เลเวลถัดไปที่กำลังไล่อยู่
+  // ไม่งั้นคนเลเวล 40 ต้องเลื่อนผ่านแถวที่รับไปแล้วสี่สิบแถวกว่าจะเจอของจริง
+  const target = firstReady || list.children[Math.max(0, level - FIRST_REWARD_LEVEL)];
+  if (target) {
+    requestAnimationFrame(() => {
+      list.scrollTop = Math.max(0, target.offsetTop - list.clientHeight * 0.35);
+    });
+  }
+}
+
+/** ป้ายจำนวนข้างหัวเรื่อง: รับได้ตอนนี้กี่ใบ จากทั้งหมดกี่ใบ */
+function paintLvCount(level) {
+  document.getElementById('lvReady').textContent = lvClaimableCount(level);
+  document.getElementById('lvTotal').textContent = LEVEL_CAP - FIRST_REWARD_LEVEL + 1;
+  document.getElementById('lvClaimAll').disabled = lvClaimableCount(level) === 0;
+}
+
+function doClaimLv(lv) {
+  const reward = claimLevel(lv, curLevel());
+  if (!reward) return;   // กดซ้ำเร็ว ๆ หรือยังไม่ถึง — ไม่มีอะไรเกิดขึ้น
+  payReward(reward);
+  buildLvList();
+  showReward('รางวัลเลเวล ' + lv + '!', reward, reward.note ? { note: reward.note } : {});
+}
+
+function doClaimAllLv() {
+  const got = claimAllLevels(curLevel());
+  if (!got.count) return;
+  payReward(got);
+  buildLvList();
+  showReward('รับรางวัลครบ ' + got.count + ' เลเวล!', got);
+}
+
+function showLvPanel(on) {
+  lvPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+  if (on) {
+    setMsg(document.getElementById('lvMsg'), '');
+    refreshGold();
+    buildLvList();
+  }
+}
+
+document.getElementById('btnLvGift').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  showLvPanel(true);
+});
+document.getElementById('lvBack').addEventListener('click', () => showLvPanel(false));
+document.getElementById('lvClaimAll').addEventListener('click', () => {
+  unlockAudio();
+  doClaimAllLv();
+});
 
 const questPanel = document.getElementById('questPanel');
 
@@ -3027,9 +3394,25 @@ function setStashTab(tab) {
     document.getElementById(t.grid).classList.toggle('hidden', !on);
   }
   document.getElementById('stashTitle').textContent = STASH_TABS[tab].title;
+  paintStashCount(tab);
   setMsg(document.getElementById('outfitMsg'), '');
 
   refreshStash();
+}
+
+/**
+ * ป้าย "มีแล้วกี่ชิ้นจากทั้งหมด" ข้างหัวเรื่อง — ท่าเดียวกับหน้าพรสวรรค์
+ *
+ * ตอบคำถามที่คนเปิดคลังมาถามก่อนเสมอว่า "เก็บไปได้เท่าไหร่แล้ว"
+ * ซึ่งเดิมต้องนับการ์ดในกริดเอาเอง และนับไม่ได้เลยถ้ากริดยาวจนต้องเลื่อน
+ */
+function paintStashCount(tab) {
+  const got = tab === 'skin' ? SKINS.filter((x) => ownsSkin(x.id)).length
+    : tab === 'outfit' ? OUTFITS.filter((o) => isOwned(o.id)).length
+    : TREASURES.filter((t) => ownsTreasure(t.id)).length;
+  const all = tab === 'skin' ? SKINS.length : tab === 'outfit' ? OUTFITS.length : TREASURES.length;
+  document.getElementById('stashGot').textContent = got;
+  document.getElementById('stashAll').textContent = all;
 }
 
 /** สร้างกริดของหมวดที่เปิดอยู่ใหม่ แล้ววาดช่องพรีวิวให้ตรงกัน */
@@ -3041,6 +3424,7 @@ function refreshStash() {
   if (stashTab === 'skin') buildSkinStashGrid();
   else if (stashTab === 'outfit') buildOutfitGrid();
   else buildTreasureGrid();
+  paintStashCount(stashTab);
   paintStashShow();
 }
 
@@ -5082,6 +5466,8 @@ function showGameOver(quit = false) {
 
   // การ์ดในล็อบบี้ต้องอัปเดตด้วย ไม่งั้นกดกลับหน้าแรกแล้วเลเวลยังเป็นของเก่า
   refreshProfile();
+  // เลเวลขึ้น = อาจมีกล่องใหม่ให้กดรับ ป้ายแดงต้องรู้ตั้งแต่ยังอยู่หน้าสรุป
+  refreshLvDot();
 
   // ── เสียงของหน้านี้ เรียงตามสิ่งที่ตาเห็น ──
   //
@@ -5260,6 +5646,39 @@ setupInput(document.getElementById('stage'), {
   onTogglePause: () => setPaused(game.state === STATE.RUN),
   onJumpEnd: () => game.jumpRelease(),
   onSkill: () => { unlockAudio(); game.useTalent(); },
+});
+
+// ── แผงที่ "เพิ่งเปิด" ──────────────────────────────────────
+//
+// ติดคลาส just-open ให้แผงตอนเปลี่ยนจากซ่อนเป็นโชว์ แล้วถอดออกเองใน 0.6 วินาที
+// CSS เล่นแอนิเมชันไล่การ์ดเฉพาะช่วงนั้น
+//
+// ── ทำไมต้องแยกว่า "เพิ่งเปิด" ──
+// หน้าอย่างคลังน้องสร้างกริดใหม่ทุกครั้งที่กดเลือกของสักชิ้น ถ้าเล่นแอนิเมชันทุกครั้งที่สร้าง
+// การ์ดทั้งหน้าจะกระพริบใหม่ทุกคลิก ซึ่งน่ารำคาญกว่าไม่มีแอนิเมชันเลย
+//
+// ── ทำไมใช้ MutationObserver ──
+// แผงถูกเปิดจากหลายสิบที่ (showPanel / swapPanel / showStash / ปุ่มกลับ ฯลฯ)
+// ดักที่ "คลาสของแผงเปลี่ยน" จุดเดียวจึงครอบคลุมทุกทางโดยไม่ต้องไปแก้ทุกจุดที่เปิดแผง
+const panelShown = new WeakSet();
+const panelTimer = new WeakMap();
+new MutationObserver((records) => {
+  for (const r of records) {
+    const el = r.target;
+    if (!el.classList || !el.classList.contains('panel')) continue;
+    if (el.classList.contains('hidden')) {
+      panelShown.delete(el);
+      continue;
+    }
+    // เห็นว่าโผล่อยู่แล้วก็ข้าม — ไม่งั้นตอนเราถอด just-open ออกเองจะวนเรียกตัวเองไม่จบ
+    if (panelShown.has(el)) continue;
+    panelShown.add(el);
+    el.classList.add('just-open');
+    clearTimeout(panelTimer.get(el));
+    panelTimer.set(el, setTimeout(() => el.classList.remove('just-open'), 620));
+  }
+}).observe(document.getElementById('stage'), {
+  subtree: true, attributes: true, attributeFilter: ['class'],
 });
 
 // ── ปุ่มท่าพิเศษของพรสวรรค์ ──

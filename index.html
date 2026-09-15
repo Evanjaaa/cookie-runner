@@ -349,6 +349,11 @@
         <!-- การ์ดบัญชีมุมซ้ายบน — รูปแมว ชื่อ เลเวล และหลอดความคืบหน้า
              รูปโปรไฟล์ตอนนี้ผูกกับสีขนที่เลือกอยู่ วันหลังเปลี่ยนเป็นรูปอื่นได้
              โดยแก้แค่ฟังก์ชัน paintAvatar() ใน main.js ที่เดียว -->
+        <!-- แถวมุมซ้ายบน: การ์ดบัญชี + ปุ่มรางวัลเลเวล
+             ห่อสองอันไว้ด้วยกันเพราะปุ่มต้องเกาะข้างการ์ดเสมอ ซึ่งการ์ดกว้างไม่เท่ากัน
+             ทุกเครื่อง (ชื่อผู้เล่นยาวสั้นไม่เท่ากัน) ถ้าวางปุ่มด้วยระยะตายตัวจะทับกันเอง
+             ตำแหน่งมุมซ้ายบนย้ายมาอยู่ที่แถวนี้แล้ว การ์ดข้างในจึงไม่ลอยเองอีก -->
+        <div class="pf-row">
         <button type="button" class="profile" id="profileCard" aria-label="ดูโปรไฟล์">
           <!-- ชั้นดาวกับแสงเรืองของทรงนี้ (Uiverse by StealthWorm)
                อยู่หลังเนื้อหาทั้งหมด ไม่มีข้อความ ไม่ต้องให้โปรแกรมอ่านหน้าจออ่าน -->
@@ -364,6 +369,34 @@
             <small class="pf-xp" id="pfXp">0 / 270</small>
           </span>
         </button>
+
+        <!-- ── ปุ่มรางวัลเลเวล ──
+             กล่องของขวัญที่มีป้ายเลเวลติดอยู่ = "ขึ้นเลเวลแล้วได้ของ" อ่านออกตั้งแต่ยังไม่กด
+             กล่องวาดด้วย CSS ล้วน ไม่ใช่อีโมจิ จะได้เป็นวัสดุชุดเดียวกับปุ่มอื่นในเกม
+             จุดแดงใช้กฎ .dot ตัวเดียวกับปุ่มกิจกรรมและกล่องจดหมาย -->
+        <button type="button" class="lvgift" id="btnLvGift" aria-label="รางวัลเลเวล">
+          <span class="lg-box" aria-hidden="true">
+            <i class="lg-lid"></i>
+            <i class="lg-band"></i>
+            <i class="lg-bow"></i>
+          </span>
+          <b class="lg-tag" aria-hidden="true">LV</b>
+          <i class="dot hidden" id="lvDot" aria-hidden="true"></i>
+        </button>
+
+        <!-- ── ปุ่มเช็คอินรายวัน ──
+             ปฏิทินฉีกที่มีรอยตีนแมวปั๊มอยู่ = "แวะมาวันละครั้ง" อ่านออกโดยไม่ต้องมีคำอธิบาย
+             ใช้ทรงปุ่มร่วมกับปุ่มรางวัลเลเวล (.lvgift) ต่างกันแค่ของที่อยู่ข้างใน
+             สองปุ่มนี้เป็นของชุดเดียวกัน — "ของแจกที่รออยู่" จึงควรหน้าตาเป็นพี่น้องกัน -->
+        <button type="button" class="lvgift daily" id="btnDaily" aria-label="เช็คอินรายวัน">
+          <span class="dl-cal" aria-hidden="true">
+            <i class="dl-ring"></i>
+            <i class="dl-top"></i>
+            <b class="dl-paw"></b>
+          </span>
+          <i class="dot hidden" id="dailyDot" aria-hidden="true"></i>
+        </button>
+        </div>
 
         <div class="lobby left">
           <!-- บรรทัดคำอธิบายใต้ชื่อถูกถอดออกแล้ว ข้อมูลที่เคยอยู่ตรงนี้ยังดูได้ครบ
@@ -520,6 +553,10 @@
             <div class="stash-main">
               <div class="panel-head">
                 <h2 class="skin-title" id="stashTitle">เลือกแมวน้อย</h2>
+                <!-- มีแล้วกี่ชิ้นจากทั้งหมด — ท่าเดียวกับป้ายจำนวนในหน้าพรสวรรค์ -->
+                <span class="count-pill" aria-label="สะสมแล้ว">
+                  <b id="stashGot">0</b><span class="count-sep">/</span><span id="stashAll">0</span>
+                </span>
                 <!-- แมวไม่มีระดับความหายาก ปุ่มที่สองจึงเป็น "ไม่ปลดล็อก" แทน
                      ดันตัวที่ยังไม่ได้ขึ้นมาก่อน เรียงจากราคาถูกไปแพง = ตัวที่ใกล้ได้ที่สุดอยู่หน้าสุด -->
                 <div class="filterbar" id="skinFilter">
@@ -1030,6 +1067,17 @@
                ระดับเดิมคืน ต่างจากปุ่ม − ที่ต้องกดสิบทีกว่าจะเงียบ แล้วกดกลับอีกสิบที
                รูปลำโพงวาดเป็น SVG เหมือนไอคอนอื่นในเกม ไม่ใช้อีโมจิลำโพงที่หน้าตา
                ต่างกันทุกระบบและบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
+          <!-- ── ภาษา ──
+               อยู่บนสุดของหน้าตั้งค่าโดยตั้งใจ — คนที่อ่านไทยไม่ออกต้องหาแถวนี้เจอ
+               ก่อนจะเจอแถวอื่น และชื่อสองปุ่มเขียนด้วยภาษาของตัวเองเสมอ
+               ("ไทย" กับ "English") จึงอ่านออกไม่ว่าตอนนี้เกมเป็นภาษาอะไรอยู่ -->
+          <div class="setrow">
+            <span class="setlabel">ภาษา</span>
+            <div class="langpick" role="group" aria-label="เลือกภาษา">
+              <button type="button" class="langbtn on" id="langTh" lang="th">ไทย</button>
+              <button type="button" class="langbtn" id="langEn" lang="en">English</button>
+            </div>
+          </div>
           <div class="setrow">
             <button class="stepbtn mutebtn" id="musicMute" aria-label="ปิดเสียงเพลง">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1070,8 +1118,22 @@
           </div>
           <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
                ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
-          <!-- คลิปเปิดเกม — ทางเดียวที่จะเปิดกลับได้หลังติ๊ก "ไม่ต้องแสดงอีก" ไปแล้ว -->
+          <!-- คลิปเปิดเกม — ทางเดียวที่จะเปิดกลับได้หลังติ๊ก "ไม่ต้องแสดงอีก" ไปแล้ว
+               ปุ่มลำโพงหน้าแถว = ปิด/เปิดเฉพาะเสียงของคลิป (ภาพยังเล่นครบ)
+               ใช้ปุ่มทรงเดียวกับสองแถวบน คนจึงรู้ได้ทันทีว่ากดแล้วได้อะไร ไม่ต้องมีแถวแยกอีกแถว -->
           <div class="setrow">
+            <button class="stepbtn mutebtn" id="introMute" aria-label="ปิดเสียงคลิปเปิดเกม">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+              <g class="wave" fill="none" stroke-linecap="round">
+                <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+              </g>
+              <g class="cross" fill="none" stroke-linecap="round">
+                <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+              </g>
+            </svg>
+            </button>
             <span class="setlabel">คลิปเปิดเกม</span>
             <b class="setval" id="introState">แสดง</b>
             <button class="btn ghost tiny" id="introToggle">ปิดคลิป</button>
@@ -1189,6 +1251,68 @@
           </div>
 
           <button class="backbtn" id="pfBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── เช็คอินรายวัน ──────────────────────────────────
+           เจ็ดใบเรียงเป็นปฏิทินหนึ่งรอบ ใบที่รับแล้วปั๊มรอยตีน ใบของวันนี้เด้งรอให้กด
+           ใบที่เจ็ดใหญ่กว่าเพื่อนเพราะเป็นวันที่ทั้งรอบกำลังเดินไปหา -->
+      <div class="panel hidden" id="dailyPanel">
+        <div class="pop daily-pop">
+          <div class="panel-head dl-head">
+            <h2 class="skin-title">เช็คอินรายวัน</h2>
+            <span class="count-pill" aria-label="รอบที่">
+              <b id="dlCycle">1</b><span class="count-sep">รอบ</span>
+            </span>
+          </div>
+          <p class="dl-lead" id="dlLead">แวะมาทักน้องทุกวันนะ มีของฝากให้ทุกวันเลย</p>
+
+          <div class="dl-grid" id="dlGrid"></div>
+
+          <button class="btn dl-get" id="dlClaim">รับของวันนี้</button>
+          <small class="form-msg" id="dlMsg"></small>
+          <button class="backbtn" id="dlBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── รางวัลเลเวล ────────────────────────────────────
+           หนึ่งแถวต่อหนึ่งเลเวล ตั้งแต่เลเวล 2 ถึงเลเวลสูงสุด
+           แถวที่ยังไปไม่ถึงก็ยังเห็น เพราะครึ่งหนึ่งของคุณค่าหน้านี้คือ "รู้ว่ารออะไรอยู่"
+           ของรางวัลที่ยังไม่ได้กำหนดขึ้นเป็นกล่องปริศนา (ดูตาราง REWARDS ใน level-rewards.js) -->
+      <div class="panel hidden" id="lvPanel">
+        <div class="pop">
+          <div class="panel-head lv-head">
+            <h2 class="skin-title">รางวัลเลเวล</h2>
+            <span class="count-pill" aria-label="รับได้ตอนนี้">
+              <b id="lvReady">0</b><span class="count-sep">/</span><span id="lvTotal">0</span>
+            </span>
+            <button type="button" class="btn ghost tiny" id="lvClaimAll">รับทั้งหมด</button>
+          </div>
+
+          <!-- แถบสรุปเลเวลปัจจุบัน — ตอบคำถามแรกของคนเปิดหน้านี้ว่า
+               "ตอนนี้ถึงไหนแล้ว และอีกเท่าไหร่ถึงกล่องถัดไป" โดยไม่ต้องกลับไปดูการ์ดบัญชี -->
+          <div class="lv-now">
+            <b class="lv-now-badge" id="lvNowBadge">1</b>
+            <div class="lv-now-info">
+              <b class="lv-now-text" id="lvNowText">เลเวล 1</b>
+              <span class="pf-bar"><i id="lvNowFill"></i></span>
+              <small class="lv-now-xp" id="lvNowXp">0 / 270 XP</small>
+            </div>
+          </div>
+
+          <div class="lv-list" id="lvList"></div>
+          <small class="form-msg" id="lvMsg"></small>
+          <button class="backbtn" id="lvBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1477,6 +1601,29 @@
         </div>
       </div>
 
+      <!-- ── คลิปเปิดเกม ───────────────────────────────────────
+           เล่นหลังเข้าสู่ระบบเสร็จ ก่อนถึงล็อบบี้ (ดู src/intro-video.js)
+
+           อยู่ในกรอบเกม ไม่ใช่คลุมทั้งหน้าต่างเบราว์เซอร์ — คลิปจึงมีสัดส่วนเดียวกับ
+           ตัวเกมทุกเครื่อง ทั้งคอม ไอแพด และมือถือ
+           วางท้ายสุดในเวที จึงทับปุ่มกับแผงทุกอันที่อยู่ในกรอบเดียวกัน
+           ส่วนป้ายบอกให้หมุนจออยู่นอกเวที จึงยังทับคลิปได้ตามเดิมตอนถือแนวตั้ง -->
+      <div class="intro-video off" id="introVideo" role="dialog" aria-label="คลิปเปิดเกม">
+        <video id="introClip" playsinline webkit-playsinline disablepictureinpicture
+               preload="none" aria-hidden="true"></video>
+        <!-- คลิปวาดด้วยโค้ด (src/intro-anim.js) — ใช้แทนวิดีโอเมื่อ CLIP = 'anim' ใน intro-video.js -->
+        <canvas id="introAnim" class="iv-anim" aria-hidden="true"></canvas>
+        <!-- ช่องติ๊กมุมขวาบน: ติ๊กแล้วครั้งหน้าข้ามคลิปไปล็อบบี้เลย (เปิดกลับได้ในหน้าตั้งค่า) -->
+        <label class="iv-opt" id="ivOptOut">
+          <input type="checkbox" id="ivOptBox">
+          <span class="iv-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor"
+                 stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>ไม่ต้องแสดงคลิปนี้อีก</span>
+        </label>
+        <p class="iv-hint" id="ivHint">แตะที่หน้าจอเพื่อข้ามเข้าสู่เกม</p>
+      </div>
     </div>
 
 
@@ -1489,26 +1636,6 @@
     </p>
   </div>
 
-  <!-- ── คลิปเปิดเกม ───────────────────────────────────────────
-       เล่นหลังเข้าสู่ระบบเสร็จ ก่อนถึงล็อบบี้ (ดู src/intro-video.js)
-       อยู่นอก .shell โดยตั้งใจ — ต้องคลุมเต็มจอจริง ไม่ใช่แค่กรอบเกม
-       และยังต้องอยู่ใต้ป้ายหมุนจอ (z-index น้อยกว่า) ถือแนวตั้งอยู่จึงเห็นป้ายบอกให้หมุนก่อน -->
-  <div class="intro-video off" id="introVideo" role="dialog" aria-label="คลิปเปิดเกม">
-    <video id="introClip" playsinline webkit-playsinline disablepictureinpicture
-           preload="none" aria-hidden="true"></video>
-    <!-- คลิปวาดด้วยโค้ด (src/intro-anim.js) — ใช้แทนวิดีโอเมื่อ CLIP = 'anim' ใน intro-video.js -->
-    <canvas id="introAnim" class="iv-anim" aria-hidden="true"></canvas>
-    <!-- ช่องติ๊กมุมขวาบน: ติ๊กแล้วครั้งหน้าข้ามคลิปไปล็อบบี้เลย (เปิดกลับได้ในหน้าตั้งค่า) -->
-    <label class="iv-opt" id="ivOptOut">
-      <input type="checkbox" id="ivOptBox">
-      <span class="iv-box" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor"
-             stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </span>
-      <span>ไม่ต้องแสดงคลิปนี้อีก</span>
-    </label>
-    <p class="iv-hint" id="ivHint">แตะที่หน้าจอเพื่อข้ามเข้าสู่เกม</p>
-  </div>
 
   <!-- ── จอสัมผัสที่ยังตั้งแนวตั้งอยู่ ───────────────────────
        โชว์/ซ่อนด้วย media query ล้วน ๆ ไม่มี JS มาเกี่ยว
