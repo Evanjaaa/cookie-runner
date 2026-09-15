@@ -34,8 +34,12 @@
   <div class="time" id="time"></div>
 
   <script type="module">
-    import { playIntroAnim, INTRO_ANIM_LENGTH } from './src/intro-anim.js';
+    import { playIntroAnim, INTRO_ANIM_LENGTH, prepareIntroSound } from './src/intro-anim.js';
     import { unlockAudio } from './src/audio.js';
+
+    // โหลดไฟล์เสียงรอไว้ตั้งแต่เปิดหน้า เหมือนที่เกมจริงทำตอนเปิดเกม
+    // ไม่งั้นครั้งแรกที่ยังไม่มีไฟล์ในแคช เพลงจะดังช้ากว่าภาพหลายวินาที
+    prepareIntroSound();
 
     const cv = document.getElementById('cv');
     const gate = document.getElementById('gate');

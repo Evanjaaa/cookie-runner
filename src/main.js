@@ -5760,6 +5760,12 @@ async function goImmersive() {
 
 document.addEventListener('pointerdown', goImmersive);
 
+// ── ปลุกเสียงจากการแตะทุกครั้ง ──
+// บางเบราว์เซอร์ (ซาฟารีบน iPhone เป็นหลัก) ระงับเสียงคืนเองได้หลายจังหวะ
+// เช่นสลับแอปกลับมา หรือปฏิเสธ resume ครั้งแรกเพราะจังหวะยังไม่นับเป็นการกดของผู้ใช้
+// การกดครั้งไหนก็ได้จึงควรได้ลองปลุกซ้ำ — เรียกซ้ำไม่มีผลข้างเคียงถ้าตื่นอยู่แล้ว
+document.addEventListener('pointerdown', () => unlockAudio(), { passive: true });
+
 document.getElementById('startBtn').addEventListener('click', showIntro);
 document.getElementById('retryBtn').addEventListener('click', () => { sfx.restart(); showIntro(); });
 

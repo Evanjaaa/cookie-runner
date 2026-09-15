@@ -132,10 +132,29 @@ export function setMix(ch, v) {
 /**
  * เบราว์เซอร์บล็อกเสียงจนกว่าผู้ใช้จะกดอะไรสักอย่าง
  * ต้องเรียกฟังก์ชันนี้ตอนกดปุ่มครั้งแรก ไม่งั้นจะเงียบสนิท
+ *
+ * ── ทำไมต้องคืน Promise ──
+ * resume() ไม่ได้ตื่นทันทีที่เรียก มันคืนงานที่เสร็จอีกไม่กี่มิลลิวินาทีต่อมา
+ * ระหว่างนั้น state ยังเป็น 'suspended' อยู่ ใครที่เช็ค state แล้วเลิกทำไปเลย
+ * จะเงียบทั้งรอบโดยไม่มีใครมาลองใหม่ให้ — เป็นที่มาของบั๊ก "เพลงขึ้นบ้างไม่ขึ้นบ้าง"
+ * (เพลงถูกสั่งทันทีที่กดปุ่ม ส่วนเสียงเอฟเฟกต์ยิงทีหลังจึงรอดมาตลอด)
+ *
+ * คนที่ต้องการเสียง "ตอนนี้" จึงควรรอ Promise นี้ก่อน แทนการเช็ค state เอง
+ * เรียกซ้ำได้ ตื่นอยู่แล้วก็คืนงานที่เสร็จแล้วกลับไป
  */
+let waking = null;
 export function unlockAudio() {
   const a = ctx();
-  if (a.state === 'suspended') a.resume();
+  if (a.state === 'running') return Promise.resolve(true);
+  if (!waking) {
+    waking = a.resume().then(() => true).catch(() => false).finally(() => { waking = null; });
+  }
+  return waking;
+}
+
+/** รอจนเสียงพร้อมใช้จริง — true = ตื่นแล้ว / false = เบราว์เซอร์ยังไม่ยอม (ยังไม่มีการกด) */
+export function audioReady() {
+  return ctx().state === 'running' ? Promise.resolve(true) : unlockAudio();
 }
 
 /** ให้โมดูลเพลงใช้ context เดียวกัน ไม่งั้นจะได้ AudioContext ซ้อนสองตัว */
@@ -418,8 +437,6 @@ export function prepareAudioFile(src, ch = 'sfx') {
  */
 export function playAudioFile(src, { ch = 'sfx', vol = 0.9, dur = 0, fadeIn = 0, fade = 0.12 } = {}) {
   if (level[ch] <= 0) return false;
-  const a = ctx();
-  if (a.state === 'suspended') return false;
 
   let c;
   try {
@@ -429,6 +446,26 @@ export function playAudioFile(src, { ch = 'sfx', vol = 0.9, dur = 0, fadeIn = 0,
   }
   if (c.failed) return false;
 
+  // ── เสียงยังไม่ตื่น: รอแล้วเล่นเอง ไม่ใช่ยอมแพ้ ──
+  // เดิมคืน false ตรงนี้ ผลคือเพลงคลิปที่ถูกสั่งทันทีที่กดปุ่มไม่เคยได้เล่นเลย
+  // ทั้งที่อีกไม่กี่มิลลิวินาทีต่อมาเสียงก็พร้อมแล้ว (ดู unlockAudio)
+  // คืน true เพราะกำลังจะเล่นจริง ผู้เรียกจึงไม่ต้องถอยไปใช้เสียงสังเคราะห์
+  if (ctx().state !== 'running') {
+    c.pending = true;
+    unlockAudio().then((ok) => {
+      if (ok && c.pending) startClip(c, src, { vol, dur, fadeIn, fade });
+      c.pending = false;
+    });
+    return true;
+  }
+
+  startClip(c, src, { vol, dur, fadeIn, fade });
+  return true;
+}
+
+/** เริ่มเล่นจริง — แยกออกมาเพราะถูกเรียกได้สองทาง: ทันที กับ หลังรอเสียงตื่น */
+function startClip(c, src, { vol, dur, fadeIn, fade }) {
+  const a = ctx();
   const t = a.currentTime;
   clearTimeout(c.timer);
   c.gain.gain.cancelScheduledValues(t);
@@ -446,13 +483,16 @@ export function playAudioFile(src, { ch = 'sfx', vol = 0.9, dur = 0, fadeIn = 0,
   if (dur > 0) {
     c.timer = setTimeout(() => stopAudioFile(src, fade), Math.max(0, dur - fade) * 1000);
   }
-  return true;
 }
 
 /** หรี่ลงจนเงียบแล้วหยุด — เรียกซ้ำได้ ไฟล์ที่ไม่ได้เล่นอยู่ก็ไม่มีอะไรเกิดขึ้น */
 export function stopAudioFile(src, fade = 0.3) {
   const c = clips.get(src);
-  if (!c || c.el.paused) return;
+  if (!c) return;
+  // สั่งหยุดระหว่างที่ยังรอเสียงตื่นอยู่ = ยกเลิกคิวทิ้ง ไม่งั้นมันจะมาเริ่มเล่นทีหลัง
+  // ตอนที่คลิปจบไปแล้ว (เช่นกดข้ามคลิปก่อนเสียงจะทันได้เล่น)
+  c.pending = false;
+  if (c.el.paused) return;
   const a = ctx();
   const t = a.currentTime;
   clearTimeout(c.timer);
@@ -824,4 +864,12 @@ if (import.meta.env.DEV) {
     get queued() { return sfxTimers.length; },
     bus: audioOut,
   };
+  // ไฟล์เสียงของคลิปสร้างด้วย new Audio() จึงไม่ได้อยู่ใน DOM หาจากหน้าเว็บไม่เจอ
+  // ต้องส่งออกมาทางนี้ถึงจะตรวจได้ว่ามันเล่นจริงไหม ดังแค่ไหน และยังรอเสียงตื่นอยู่หรือเปล่า
+  window.__clips = () => [...clips].map(([src, c]) => ({
+    src, t: +c.el.currentTime.toFixed(2), paused: c.el.paused,
+    // readyState 4 = โหลดพอเล่นรวดเดียวจบแล้ว / 0 = ยังไม่มีข้อมูลเลย
+    ready: c.el.readyState,
+    gain: +c.gain.gain.value.toFixed(3), failed: c.failed, pending: !!c.pending,
+  }));
 }

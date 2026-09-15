@@ -19,7 +19,7 @@
 // ปุ่มข้าม ช่องติ๊ก "ไม่ต้องแสดงอีก" และสวิตช์ในหน้าตั้งค่า ใช้ร่วมกันทั้งสองแบบ
 
 import { loadPref, savePref } from './storage.js';
-import { playIntroAnim, introSoundEnabled, setIntroSoundEnabled } from './intro-anim.js';
+import { playIntroAnim, introSoundEnabled, setIntroSoundEnabled, prepareIntroSound } from './intro-anim.js';
 
 // ส่งต่อให้หน้าตั้งค่า — ค่าตัวจริงอยู่กับตัวคลิป (intro-anim.js) ซึ่งเป็นคนใช้มัน
 // แต่ทุกอย่างของ "คลิปเปิดเกม" ควรเรียกผ่านประตูเดียวกัน ไม่ต้องรู้ว่าข้างในแบ่งไฟล์ยังไง
@@ -43,8 +43,6 @@ export function setIntroVideoEnabled(on) {
 }
 
 let els = null;
-// เก็บ <audio> ที่ใช้อุ่นแคชไว้ในตัวแปรโมดูล ไม่งั้นถูกเก็บกวาดทิ้งก่อนโหลดเสร็จ
-let audioWarm = null;
 
 function dom() {
   if (els) return els;
@@ -67,17 +65,9 @@ function dom() {
 export function preloadIntroVideo() {
   if (!introVideoEnabled()) return;
   // คลิปโค้ดไม่มีไฟล์วิดีโอให้โหลด มีแต่ไฟล์เสียงสองตัว (รวมไม่ถึง 0.7 MB)
-  // ดึงไว้ในแคชของเบราว์เซอร์ก่อน เพลงจะได้ดังพร้อมเฟรมแรกจริง ๆ ไม่ใช่ดังช้ากว่าภาพ
-  // ใช้ <audio> ลอย ๆ ไม่ผูกกับ AudioContext เพราะตอนนี้ยังไม่มี gesture ของผู้เล่น
+  // โหลดรอไว้ด้วยตัวเล่นจริงเลย เพลงจะได้ดังพร้อมเฟรมแรกของคลิป (ดู prepareIntroSound)
   if (CLIP === 'anim') {
-    if (!audioWarm) {
-      audioWarm = ['Music.mp3', 'Hungry.mp3'].map((f) => {
-        const a = new Audio();
-        a.preload = 'auto';
-        a.src = import.meta.env.BASE_URL + f;
-        return a;
-      });
-    }
+    prepareIntroSound();
     return;
   }
   const { video } = dom();

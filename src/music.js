@@ -13,7 +13,7 @@
 // เพลงใหม่จะเริ่มดังช้าถึง 15 วินาที ซึ่งยาวกว่าช่วงพิเศษบางช่วงทั้งช่วง
 // จึงต้องเก็บอ้างอิงโน้ตที่จองไว้ แล้วยกเลิกตัวที่ "ยังไม่เริ่มเล่น" ตอนสลับ
 // ─────────────────────────────────────────────────────────────
-import { audioCtx, musicOut } from './audio.js';
+import { audioCtx, musicOut, unlockAudio } from './audio.js';
 
 const BPM = 128;
 const BEAT = 60 / BPM;
@@ -592,7 +592,13 @@ function pump() {
 export function startMusic() {
   if (timer) return;
   const ac = audioCtx();
-  if (ac.state === 'suspended') return;   // ยังไม่ได้ปลดล็อกเสียง ค่อยมาใหม่
+  // ── ยังไม่ตื่น: รอแล้วเริ่มเอง ──
+  // เดิมเลิกทำไปเฉย ๆ แล้วรอให้มีใครมาเรียกซ้ำ ซึ่งบางทีไม่มีใครเรียกอีกเลย
+  // เพลงจึงเริ่มช้าไปจนถึงหน้าถัดไป หรือไม่เริ่มเลย (ดู unlockAudio ใน audio.js)
+  if (ac.state !== 'running') {
+    unlockAudio().then((ok) => { if (ok) startMusic(); });
+    return;
+  }
 
   // MUSIC_VOL คือระดับเพลง "เทียบกับเสียงเอฟเฟกต์" ส่วนระดับเสียงรวม
   // อยู่ที่ปมของ audio.js ปลายทาง จึงไม่ต้องรู้เรื่องปิดเสียงตรงนี้เลย
