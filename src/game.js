@@ -1149,16 +1149,18 @@ export class Game {
    */
   updateFallers(dt, cx, cy) {
     const cfg = this.scene.faller;
-    if (!cfg) return;
+    // ฉากที่ไม่ได้ประกาศ faller ยังต้องเดินของร่วงที่ "ท่อน" วางมาเองด้วย
+    // ไม่งั้นของที่คนออกแบบวางไว้จะค้างอยู่บนเพดาน ไม่ร่วง ไม่ชน ไม่หายไปไหน
+    if (!cfg && !this.level.fallers.length) return;
 
-    if (this.tick >= this.nextFallerAt) {
+    if (cfg && this.tick >= this.nextFallerAt) {
       // กติกาเดียวกับของประจำแมพชนิดอื่น — ทางเชื่อมต้องโล่งจริง (ดู updateHazards)
       if (!this.onBridge) this.level.spawnFaller(this.camera + VIEW.W + 80, FALLER.warnFrames);
       this.nextFallerAt = this.tick + (cfg.every || FALLER.everyFrames);
     }
 
     const hdt = dt * Math.min(1, this.talents.timeK);
-    if (this.level.updateFallers(hdt)) this.shake = Math.max(this.shake, 5);
+    if (this.level.updateFallers(hdt, this.camera)) this.shake = Math.max(this.shake, 5);
 
     const b = this.player.box;   // getter ไม่ใช่เมธอด
     const bx = b.x + this.camera;
@@ -1193,9 +1195,10 @@ export class Game {
    */
   updateHazards(dt, cx, cy) {
     const cfg = this.scene.hazard;
-    if (!cfg) return;
+    // เหตุผลเดียวกับของร่วง — ท่อนวางผึ้ง/ลูกบอลเองได้แม้ฉากไม่ได้ประกาศไว้
+    if (!cfg && !this.level.hazards.length) return;
 
-    if (this.tick >= this.nextHazardAt) {
+    if (cfg && this.tick >= this.nextHazardAt) {
       // ทางเชื่อมต้องโล่งจริง — เลื่อนนัดหน้าออกไปแทนที่จะปล่อยของ
       // ถ้าแค่ข้ามเฉย ๆ นัดจะค้างอยู่ในอดีต แล้วพอพ้นทางเชื่อมจะโผล่รัวติดกันทันที
       if (this.onBridge) {

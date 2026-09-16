@@ -4181,25 +4181,138 @@ canvas[hidden] { display: none; }
 .pf-body {
   display: flex;
   align-items: stretch;
-  gap: clamp(10px, 2vw, 24px);
+  gap: clamp(8px, 1.6vw, 20px);
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/* ── ซ้าย: แท่นโชว์ตัว ── */
-.pf-stand {
+/* ── การ์ดสองใบ ──
+   ซ้ายเป็นที่ของตัวน้อง ขวาเป็นที่ของตัวเลข แบ่งชัดเจนตามแบบที่วางไว้
+   ทั้งคู่ใช้ทรงเดียวกัน ต่างกันแค่สีพื้นกับขอบ */
+.pf-card {
+  position: relative;
+  border-radius: clamp(16px, 2.4vw, 26px);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+/* การ์ดน้อง: ขอบครีมบาง ๆ ทำให้ตัวน้องเด่นออกจากพื้นม่วงของแผง */
+.pf-cat {
   flex: 0 0 auto;
-  width: clamp(140px, 34%, 300px);
+  width: clamp(120px, 36%, 330px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2px, 0.8dvh, 8px);
-  min-height: 0;
+  border: 2px solid rgba(255,231,168,.85);
+  background: linear-gradient(165deg, #7A3FB5 0%, #5E2E92 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
 }
-/* แสงเรืองใต้เท้าดันตัวน้องออกจากพื้นการ์ดที่สีใกล้กัน — ท่าเดียวกับสปอตไลต์
-   ใต้เท้าในหน้าแรก ต่างกันแค่ที่นี่ทำด้วย CSS เพราะฉากหลังไม่ใช่ canvas */
+/* การ์ดข้อมูล: สว่างกว่าอีกใบเพื่อให้กล่องตัวเลขสีเข้มข้างในลอยขึ้นมา
+   ชื่อคลาสต้องไม่ใช่ .pf-info — การ์ดบัญชีในล็อบบี้ใช้ชื่อนั้นไปแล้ว
+   ทับเมื่อไหร่ การ์ดมุมซ้ายบนจะได้พื้นม่วงกับขอบของหน้านี้ไปด้วยทันที */
+.pf-panel-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1dvh, 10px);
+  padding: clamp(7px, 1.4dvh, 14px) clamp(8px, 1.4vw, 16px);
+  border: 1px solid rgba(255,243,226,.2);
+  background: linear-gradient(160deg, #A96FDC 0%, #8A4FC6 52%, #7A41B8 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+/* ── ป้ายสถานะออนไลน์ มุมบนซ้ายของการ์ดน้อง ── */
+.pf-online {
+  position: absolute;
+  top: clamp(5px, 1dvh, 11px);
+  left: clamp(6px, 1vw, 12px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, .6vw, 6px);
+  font-size: clamp(8px, 1.15vw, 12px);
+  color: var(--cream);
+  line-height: 1;
+}
+.pf-online i {
+  width: clamp(7px, 1.1vw, 12px);
+  height: clamp(7px, 1.1vw, 12px);
+  border-radius: 50%;
+  background: #4CD964;
+  box-shadow: 0 0 8px rgba(76,217,100,.8);
+}
+.pf-online b { font-weight: 400; }
+/* ออฟไลน์/เล่นในเครื่อง = จุดเทา ไม่ใช่เขียว — สีคือตัวบอกสถานะ ไม่ใช่ตัวหนังสืออย่างเดียว */
+.pf-online.off i { background: #9C86B8; box-shadow: none; }
+.pf-online.local i { background: #FFC93C; box-shadow: 0 0 8px rgba(255,201,60,.6); }
+
+/* ── ลูกโป่งความคิด มุมบนขวา ──
+   ตัวก้อนเมฆทำจากกล่องมนก้อนเดียว + เงาอีกสามวงเป็นหยักด้านบน
+   แตะได้ทั้งก้อน = ทางเดียวที่จะแก้สเตตัส (ปุ่ม "แก้ไข" ถูกถอดออกตามแบบ) */
+.pf-bubble {
+  position: absolute;
+  top: clamp(4px, .8dvh, 10px);
+  right: clamp(5px, 1vw, 12px);
+  z-index: 2;
+  width: clamp(74px, 46%, 190px);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.pf-bubble {
+  display: grid;
+  place-items: center;
+  min-height: clamp(34px, 7dvh, 70px);
+  filter: drop-shadow(0 3px 8px rgba(20,8,32,.4));
+}
+/* ก้อนเมฆกินเต็มปุ่ม ส่วนข้อความวางทับอยู่ในช่องเดียวกันของกริด */
+.pf-bubble-cloud {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+}
+.pf-bubble-text {
+  grid-area: 1 / 1;
+  z-index: 1;
+  padding: 0 14%;
+  margin-top: 6%;
+  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-size: clamp(8px, 1.15vw, 12px);
+  line-height: 1.35;
+  color: #3A1D50;
+  text-align: center;
+  /* สเตตัสยาวเกินลูกโป่งให้ตัดท้าย ไม่ใช่ดันลูกโป่งจนบังตัวน้อง */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.pf-bubble-text.empty { color: #8C79A6; }
+/* ฟองสองลูกใต้ก้อนเมฆ ชี้ลงหาตัวน้อง */
+.pf-bubble-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: #FFFDF7;
+  box-shadow: 0 2px 6px rgba(20,8,32,.3);
+}
+.pf-bubble-dot.big {
+  width: clamp(7px, 1.1vw, 12px);
+  height: clamp(7px, 1.1vw, 12px);
+  left: 14%;
+  bottom: clamp(-11px, -1.6dvh, -6px);
+}
+.pf-bubble-dot.small {
+  width: clamp(4px, .7vw, 8px);
+  height: clamp(4px, .7vw, 8px);
+  left: 6%;
+  bottom: clamp(-19px, -2.9dvh, -12px);
+}
+.pf-bubble:active { transform: translateY(1px); }
+
+/* ── เวทีของน้อง ──
+   แสงเรืองใต้เท้าดันตัวน้องออกจากพื้นการ์ดที่สีใกล้กัน */
 .pf-stage {
   position: relative;
   width: 100%;
@@ -4207,229 +4320,275 @@ canvas[hidden] { display: none; }
   min-height: 0;
   display: grid;
   place-items: center;
-  background: radial-gradient(58% 34% at 50% 78%, rgba(255,214,150,.22), transparent 72%);
+  background: radial-gradient(58% 34% at 50% 80%, rgba(255,214,150,.22), transparent 72%);
 }
 /* ── ทำไมใช้ object-fit แทนการล็อกอัตราส่วนของตัวผ้าใบ ──
-   กล่องนี้สูงกว่ากว้าง (คอลัมน์ผอม การ์ดสูง) การสั่ง aspect-ratio คู่กับ
-   max-width จึงขัดกันเอง เบราว์เซอร์ยอมตามความสูงแล้วปล่อยความกว้างโดนบีบ
-   ได้น้องผอมสูงกว่าของจริง
-   ปล่อยให้ผ้าใบกินเต็มกล่องแล้วให้ภาพข้างในจัดตัวเองด้วย contain
-   ภาพจึงคงสัดส่วนเสมอไม่ว่ากล่องจะทรงไหน */
+   กล่องนี้สูงกว่ากว้าง การสั่ง aspect-ratio คู่กับ max-width จะขัดกันเอง
+   เบราว์เซอร์ยอมตามความสูงแล้วปล่อยความกว้างโดนบีบ ได้น้องผอมสูงกว่าของจริง */
 .pf-stage canvas {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
-.pf-show-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
-  font-size: clamp(14px, 2.2vw, 20px);
+
+/* ── เม็ดชื่อสีขน · ชุด มุมล่างขวา ── */
+.pf-chip {
+  position: absolute;
+  right: clamp(5px, 1vw, 12px);
+  bottom: clamp(5px, 1dvh, 12px);
+  z-index: 2;
+  max-width: calc(100% - clamp(10px, 2vw, 24px));
+  padding: clamp(2px, .5dvh, 5px) clamp(7px, 1.2vw, 14px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.34);
+  background: rgba(214,150,235,.42);
+  font-size: clamp(8px, 1.1vw, 11.5px);
   color: var(--cream);
-  text-align: center;
-  line-height: 1.3;
-  /* ชื่อยาว ๆ ต้องไม่ดันคอลัมน์ให้กว้างขึ้นจนภาพน้องโดนบีบ */
-  max-width: 100%;
+  line-height: 1.5;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pf-show-sub {
-  font-size: clamp(9.5px, 1.25vw, 12px);
-  color: #C0A4DC;
-  text-align: center;
-  line-height: 1.5;
 }
 
-/* ── ขวา: สเตตัสกับข้อมูล ── */
-.pf-side {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  /* .panel จัดข้อความกลางทั้งแผง ซึ่งถูกสำหรับหัวเรื่องกับปุ่ม แต่ผิดสำหรับ
-     ข้อความยาวหลายบรรทัดกับตารางตัวเลข — สองอย่างนั้นอ่านจากขอบซ้ายเสมอ */
-  text-align: left;
+/* ── กล่องพิมพ์สเตตัส ซ้อนทับการ์ดน้องเฉพาะตอนแก้ไข ── */
+.pf-status-edit {
+  position: absolute;
+  inset: auto clamp(6px, 1vw, 12px) clamp(6px, 1dvh, 12px);
+  z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: clamp(6px, 1.2dvh, 12px);
-  /* เลื่อนได้ทั้งคอลัมน์ ไม่ใช่เลื่อนเฉพาะตารางข้อมูล — บนจอเตี้ยมาก
-     กล่องสเตตัสเองก็ยาวเกินจอได้ ถ้าล็อกมันไว้ ปุ่มบันทึกจะหลุดออกนอกจอ */
-  overflow-y: auto;
-  scrollbar-width: none;
-  /* overflow-y: auto บังคับ overflow-x เป็น auto ตามไปด้วย เว้นที่ให้เงา
-     กับขอบที่ยื่นออกมา แล้วดึงกลับด้วย margin เท่ากันเป๊ะ */
-  padding: 4px;
-  margin: -4px;
+  gap: 6px;
+  padding: clamp(6px, 1dvh, 10px);
+  border-radius: 14px;
+  border: 1px solid rgba(255,243,226,.3);
+  background: rgba(27,15,43,.94);
+  box-shadow: 0 10px 26px rgba(12,4,24,.6);
 }
-.pf-side::-webkit-scrollbar { display: none; }
-
-/* ── แถบเลเวล ── */
-.pf-level {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: 0 0 auto;
-}
-.pf-level-num {
-  flex: 0 0 auto;
-  min-width: clamp(30px, 4.6vw, 42px);
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #FFD264, #E8973A);
-  color: #4A2374;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: clamp(12px, 1.7vw, 16px);
-  text-align: center;
-}
-.pf-level-bar {
-  flex: 1 1 auto;
-  height: clamp(7px, 1.1dvh, 11px);
-  border-radius: 999px;
-  background: rgba(20,8,32,.55);
-  border: 1px solid rgba(255,243,226,.22);
-  overflow: hidden;
-}
-.pf-level-bar i {
-  display: block;
-  height: 100%;
-  width: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #8DF3EA, #4ECDC4);
-  transition: width .3s ease;
-}
-.pf-level-xp {
-  flex: 0 0 auto;
-  font-size: clamp(9px, 1.2vw, 11.5px);
-  color: #C0A4DC;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── กล่องสเตตัส ── */
-.pf-status {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: clamp(7px, 1.3dvh, 12px) clamp(10px, 1.4vw, 15px);
-  border-radius: 15px;
-  background: linear-gradient(180deg, rgba(255,243,226,.11), rgba(255,243,226,.045));
-  border: 1px solid rgba(255,243,226,.2);
-}
-.pf-status-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.pf-status-label {
-  flex: 1 1 auto;
-  font-family: "Mitr", sans-serif;
-  font-size: clamp(10.5px, 1.4vw, 13px);
-  color: #E4D4F5;
-}
-/* ── ทำไมข้อความสเตตัสใช้ pre-wrap ──
-   ผู้เล่นขึ้นบรรทัดใหม่ได้สามบรรทัด ถ้าใช้ normal บรรทัดที่เขาตั้งใจแยก
-   จะถูกยุบมาต่อกันหมด กลายเป็นย่อหน้าเดียวที่ไม่ใช่สิ่งที่เขาพิมพ์ */
-.pf-status-text {
-  margin: 0;
-  font-size: clamp(10.5px, 1.45vw, 13.5px);
-  line-height: 1.65;
-  color: var(--cream);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.pf-status-text.empty { color: #9B82B8; font-style: italic; }
-/* ── ต้องประกาศเอง ไม่ใช่พึ่งคลาส .hidden กลาง ──
-   เกมนี้ไม่มีกฎ .hidden ตัวเดียวที่ใช้ได้ทั้งเว็บ แต่ละที่ประกาศของตัวเอง
-   (ดูที่อื่นใน style.css ที่เขียน .xxx.hidden { display: none } ไว้เหมือนกัน)
-   ถ้าไม่ประกาศ ตอนกดแก้ไขจะเห็นทั้งข้อความเดิมและกล่องพิมพ์ซ้อนกันสองก้อน */
-.pf-status-text.hidden { display: none; }
-.pf-status-edit { display: flex; flex-direction: column; gap: 6px; }
 .pf-status-edit.hidden { display: none; }
 .pf-status-edit textarea {
   width: 100%;
   resize: none;
-  padding: 8px 10px;
-  border-radius: 11px;
-  border: 1px solid rgba(255,243,226,.28);
-  background: rgba(20,8,32,.5);
+  padding: clamp(5px, 1dvh, 9px) 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,243,226,.24);
+  background: rgba(12,4,24,.6);
   color: var(--cream);
-  font-family: "IBM Plex Sans Thai", sans-serif;
-  font-size: clamp(10.5px, 1.45vw, 13.5px);
-  line-height: 1.6;
+  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-size: clamp(10px, 1.3vw, 13px);
+  line-height: 1.5;
 }
 .pf-status-edit textarea:focus-visible {
-  outline: 2px solid var(--mint);
+  outline: 2px solid var(--mint-lite);
   outline-offset: 1px;
 }
 .pf-status-foot {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
-.pf-count {
-  flex: 1 1 auto;
-  font-size: clamp(9px, 1.2vw, 11.5px);
-  color: #C0A4DC;
-  font-variant-numeric: tabular-nums;
-}
-.pf-count.full { color: var(--danger); }
+.pf-status-foot .btn { margin-top: 0; flex: 0 0 auto; }
+.pf-count { flex: 1 1 auto; font-size: clamp(8.5px, 1.1vw, 11px); color: #9C81B8; }
+.pf-count.full { color: #FF8FB0; }
 
-/* ── ตารางข้อมูลสะสม ──
-   สองช่องต่อแถวบนจอกว้าง หนึ่งช่องบนจอแคบ — ให้เบราว์เซอร์ตัดสินเองด้วย
-   auto-fill แทนการเขียน media query ไล่ทีละขนาด */
-.pf-facts {
+/* ── แถบชื่อกับเลเวล ──
+   สองเม็ดนั่งอยู่บนแถบเข้มก้อนเดียว ตามแบบ — ชื่อกับเลเวลเป็นของคู่กัน
+   ไม่ใช่ป้ายสองอันที่บังเอิญอยู่ใกล้กัน */
+.pf-idbar {
+  position: relative;
+  z-index: 2;
+  align-self: flex-start;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, .6vw, 7px);
+  padding: clamp(2px, .4dvh, 4px);
+  border-radius: 999px;
+  background: rgba(27,15,43,.72);
+  border: 1px solid rgba(255,243,226,.18);
+  min-width: 0;
+}
+.pf-id-name {
+  padding: clamp(2px, .5dvh, 6px) clamp(8px, 1.5vw, 18px);
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,163,214,.8);
+  background: linear-gradient(180deg, #FFF6EC, #FFD9F0);
+  color: #3A1D50;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(11px, 1.9vw, 22px);
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-id-lv {
   flex: 0 0 auto;
+  padding: clamp(2px, .5dvh, 6px) clamp(6px, 1.1vw, 14px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FFD97A, #E9A62A);
+  color: #4A2A00;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(9.5px, 1.5vw, 18px);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* ── รอยตีนแมวมุมขวาบน ──
+   อุ้งเท้าหนึ่งก้อน + นิ้วสามนิ้วทำจากเงาสามวง (ท่าเดียวกับปุ่มเช็คอิน) */
+.pf-paws {
+  position: absolute;
+  top: clamp(6px, 1.2dvh, 14px);
+  right: clamp(8px, 1.4vw, 18px);
+  width: clamp(34px, 7vw, 76px);
+  height: clamp(26px, 5vw, 56px);
+  pointer-events: none;
+}
+/* ── รอยตีนสามรอย ──
+   รูปทรงอยู่ใน SVG (ดู index.html) ที่นี่คุมแค่ขนาด ตำแหน่ง และสี
+   เคยวาดด้วยไล่สีสี่วงในกล่องเดียว แต่ที่ขนาดจริง 17-25px มันอ่านเป็นสี่เหลี่ยม
+   ส่วน box-shadow ที่เคยใช้ทำนิ้วนั้นรับระยะเป็น % ไม่ได้ ทั้งบรรทัดเลยถูกทิ้งเงียบ ๆ */
+.pf-paws i { position: absolute; display: block; }
+.pf-paws svg { width: 100%; height: 100%; fill: currentColor; }
+.pf-paws .p1 {
+  right: 0;
+  bottom: 0;
+  width: clamp(18px, 3.6vw, 38px);
+  height: clamp(16px, 3.2vw, 34px);
+  color: rgba(255,160,200,.92);
+  transform: rotate(8deg);
+}
+.pf-paws .p2 {
+  right: clamp(16px, 3.2vw, 34px);
+  bottom: clamp(3px, .6vw, 7px);
+  width: clamp(13px, 2.6vw, 27px);
+  height: clamp(12px, 2.3vw, 24px);
+  color: rgba(30,12,44,.82);
+  transform: rotate(-10deg);
+}
+.pf-paws .p3 {
+  right: clamp(7px, 1.4vw, 15px);
+  top: 0;
+  width: clamp(9px, 1.8vw, 19px);
+  height: clamp(8px, 1.6vw, 17px);
+  color: rgba(255,255,255,.8);
+  transform: rotate(14deg);
+}
+
+/* ── กล่องตัวเลขสีเข้ม ── */
+.pf-score-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(7px, 1.4dvh, 16px) clamp(9px, 1.6vw, 20px);
+  border-radius: clamp(12px, 1.8vw, 22px);
+  background: rgba(58,29,80,.5);
+  border: 1px solid rgba(255,243,226,.14);
+  text-align: left;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.pf-score-box::-webkit-scrollbar { display: none; }
+.pf-score-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.5vw, 17px);
+  color: var(--cream);
+  line-height: 1.3;
+}
+.pf-score {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(20px, 4.4vw, 52px);
+  color: #FFF8EC;
+  line-height: 1.15;
+  letter-spacing: .01em;
+  text-shadow: 0 2px 0 rgba(20,8,32,.35);
+}
+
+/* สามช่องเรียงกัน — ชื่อเล็กอยู่บน ตัวเลขใหญ่อยู่ล่าง ตามแบบ */
+.pf-stats {
+  margin-top: auto;
+  padding-top: clamp(5px, 1.2dvh, 14px);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(118px, 14vw, 168px), 1fr));
-  gap: clamp(5px, 0.9dvh, 9px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(4px, 1vw, 14px);
+}
+.pf-stat { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 5px; }
+.pf-stat .k {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: clamp(8px, 1.1vw, 12.5px);
+  color: #E6D6F5;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-stat .v {
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(14px, 2.6vw, 32px);
+  color: #FFF8EC;
+  line-height: 1.2;
+}
+.pf-stat small { font-size: clamp(8px, 1.1vw, 13px); color: #E6D6F5; }
+
+/* ── ของสะสมที่เหลือ เม็ดเล็กเงียบ ๆ ──
+   ไม่ได้อยู่ในแบบที่วาดมา แต่ถ้าตัดทิ้งข้อมูลพวกนี้จะไม่เหลือที่อยู่ในเกมเลย
+   จึงทำให้เบาที่สุดเท่าที่ยังอ่านออก ไม่ให้แย่งสายตาตัวเลขใหญ่ */
+.pf-mini {
+  margin-top: clamp(5px, 1.1dvh, 12px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(3px, .6vw, 7px);
 }
 .pf-fact {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: clamp(5px, 1dvh, 9px) 10px;
-  border-radius: 13px;
-  background: linear-gradient(180deg, rgba(255,243,226,.1), rgba(255,243,226,.04));
-  border: 1px solid rgba(255,243,226,.16);
+  align-items: baseline;
+  gap: 4px;
+  padding: clamp(2px, .4dvh, 4px) clamp(5px, .9vw, 10px);
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.14);
+  background: rgba(255,243,226,.07);
   min-width: 0;
 }
-.pf-fact .ico {
-  flex: 0 0 auto;
-  font-size: clamp(13px, 1.8vw, 17px);
-  line-height: 1;
-}
-.pf-fact .txt { min-width: 0; display: flex; flex-direction: column; }
-/* ป้ายชื่อช่องตัดท้ายเมื่อยาวเกิน ไม่ใช่ขึ้นบรรทัดใหม่ — ขึ้นบรรทัดแล้วช่องนั้น
-   จะสูงกว่าเพื่อนทั้งแถว ส่วนตัวเลขข้างล่างสำคัญกว่าชื่อ จึงยอมให้ชื่อโดนตัดก่อน */
+.pf-fact .ico { font-size: clamp(8px, 1.1vw, 12px); line-height: 1; }
+/* ชื่อช่องกับตัวเลขอยู่ในกล่องเดียวกัน ถ้าไม่เว้นช่องไฟจะอ่านติดกันเป็นคำเดียว */
+.pf-fact .txt { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
 .pf-fact .k {
-  font-size: clamp(8.5px, 1.1vw, 10.5px);
-  color: #B99BD4;
+  font-size: clamp(7.5px, 1vw, 11px);
+  color: #C9AEE8;
   line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pf-fact .v {
   font-family: "Mitr", sans-serif;
-  font-size: clamp(11px, 1.5vw, 14px);
+  font-size: clamp(8px, 1.1vw, 12px);
   color: var(--cream);
-  line-height: 1.35;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
   white-space: nowrap;
 }
+/* ชื่อช่องของเม็ดเล็กซ่อนบนจอแคบ เหลือแต่ไอคอนกับตัวเลข — อ่านออกอยู่
+   และได้ที่คืนมาให้ตัวเลขใหญ่ซึ่งเป็นพระเอกของหน้านี้ */
+@media (max-width: 760px) {
+  .pf-fact .k { display: none; }
+}
 
-/* ── เวทีเตี้ยมาก (มือถือแนวนอน สูงราว 286px) ──
-   ที่ว่างแนวตั้งคือของหายากที่สุดตรงนี้ บีบทุกอย่างที่บีบได้โดยไม่เสียความอ่านออก
-   เพื่อให้เห็นช่องข้อมูลได้มากกว่าสองแถวก่อนต้องเลื่อน
-   เกณฑ์เดียวกับที่หน้าระบายสีใช้บีบแถวเครื่องมือ */
+/* ── เวทีเตี้ยมาก (มือถือแนวนอน) ── */
 @media (max-height: 460px) {
-  .pf-status { padding: 6px 9px; gap: 3px; border-radius: 12px; }
-  .pf-status-text { line-height: 1.45; }
-  .pf-fact { padding: 4px 8px; gap: 6px; border-radius: 11px; }
-  .pf-fact .k { line-height: 1.25; }
-  .pf-fact .v { line-height: 1.2; }
-  .pf-level-bar { height: 7px; }
+  .pf-panel-main { gap: 4px; padding: 6px 8px; }
+  .pf-score-box { padding: 6px 9px; border-radius: 14px; }
+  .pf-stats { padding-top: 5px; gap: 4px; }
+  .pf-mini { margin-top: 5px; gap: 3px; }
+  .pf-bubble-body { min-height: 28px; }
 }
 
 /* ── ปุ่มลำโพงปิด/เปิดเสียง ───────────────────

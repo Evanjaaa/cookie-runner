@@ -103,7 +103,11 @@ function makeShrimp(items) {
 function makeKibble(items, style) {
   if (!items.length) return;
 
-  if (style === 'cluster') {
+  if (style === 'all') {
+    // ทั้งแถวเป็นเม็ดกลม — ใช้ตอนอยากให้ "แถวอาหารเม็ด" เป็นของชิ้นเอกของท่อนไปเลย
+    // ไม่ใช่ของแทรกในแถวปลาแบบสองแบบข้างล่าง
+    for (const it of items) it.kind = 'kibble';
+  } else if (style === 'cluster') {
     const top = topIndex(items);
     const from = Math.max(0, top - 1);
     for (let i = from; i < Math.min(items.length, from + KIBBLE.clusterSize); i++) {
@@ -113,6 +117,18 @@ function makeKibble(items, style) {
     for (let i = 1; i < items.length; i += KIBBLE.alternateEvery) items[i].kind = 'kibble';
   }
 }
+
+/**
+ * รูปเขียนของ makeShrimp/makeKibble ที่วางกลางนิพจน์ได้เลย
+ *
+ * route สั่งใส่กุ้ง/เม็ดกลมได้ทีละ "ทั้งท่อน" เท่านั้น (ดู spawnChunk)
+ * แต่ท่อนที่เขียนเองมักอยากใส่เฉพาะบางแถว เช่นกุ้งที่ยอดโค้งแถวเดียว
+ * ส่วนแถวพื้นยังเป็นปลาตามเดิม สองตัวนี้จึงคืน array เสมอ เขียนซ้อนได้ทันที:
+ *   fish: [...fishRun(x, 8, 34), ...withShrimp(fishJump(j1, 11))]
+ * (makeKibble แก้ของเดิมในที่ ส่วน makeShrimp คืนชุดใหม่ — ห่อให้ใช้เหมือนกันทั้งคู่)
+ */
+const withShrimp = (items) => makeShrimp(items);
+const withKibble = (items, style) => { makeKibble(items, style); return items; };
 
 /** เม็ดอาหารระดับต่ำ ตรงกับกลางตัวตอนหมอบพอดี เก็บได้เฉพาะตอนลอดคาน */
 function fishLow(x, count, gap) {
@@ -227,6 +243,7 @@ export const AUTHOR = {
   RUN_Y, RUN_REACH, GAP_W,
   fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
   arcMid, arcHigh, groundSpike, lowBar, crateStack, makeShrimp, makeKibble,
+  withShrimp, withKibble,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -1056,6 +1073,13 @@ export class Level {
 
     // ต้องเรียกหลัง push obstacles/pits/fishes แล้วเท่านั้น
     // ไม่งั้น spawnMagnet จะหาที่โล่งจากข้อมูลที่ยังว่างอยู่แล้วได้จุดผิด
+    // ── ของพิเศษที่ตัวท่อนวางเอง ──
+    // ต่างจากของประจำแมพ (scene.faller / scene.hazard) ตรงที่ตัวจับเวลาไม่ได้เป็นคนเลือกจุด
+    // แต่คนออกแบบท่อนเลือกเอง ใช้ตอนอยากได้จังหวะเฉพาะ เช่นผึ้งลอยรออยู่ตรงปลายโค้งพอดี
+    // พิกัดเป็นพิกัดโลกเหมือนของอย่างอื่นในท่อน เพราะแพตเทิร์นรับ x ของท่อนไปแล้ว
+    if (c.fallers) for (const f of c.fallers) this.addFaller(f.x, f.warn, true);
+    if (c.hazards) for (const h of c.hazards) this.addHazard(h.kind, h.x, true);
+
     if (step.magnet) this.spawnMagnet(this.nextChunkX, w);
     if (step.letter) this.spawnLetter(this.nextChunkX, w);
     if (step.nip) this.spawnNip(this.nextChunkX, w);
@@ -1104,27 +1128,46 @@ export class Level {
     const limit = Math.min(fromX + chunkW, this.knownTo);
     for (let x = fromX; x < limit; x += 24) {
       if (this.isClearSpot(x)) {
-        this.fallers.push({
-          x,
-          y: -40,
-          w: FALLER.w,
-          h: FALLER.h,
-          warn: warnFrames,   // นับถอยหลังช่วงเตือน 0 = เริ่มร่วง
-          vy: 0,
-          dead: false,
-        });
+        this.addFaller(x, warnFrames);
         return;
       }
     }
     // ท่อนนี้แน่นจนไม่มีจุดปลอดภัย — ไม่หย่อนดีกว่าหย่อนลงจุดที่หลบไม่ได้
   }
 
+  /**
+   * หย่อนของร่วงลงพิกัดที่บอกมาเป๊ะ ๆ ไม่ต้องหาจุดให้
+   * ใช้โดยท่อนที่ออกแบบเอง ซึ่งคนวางเลือกจุดไว้แล้วและเห็นผังทั้งท่อนตอนวาง
+   * ความปลอดภัยยังมีให้อยู่: updateFallers กรองชิ้นที่ไปอยู่ใต้คานออกทุกเฟรม (ดู underBar)
+   */
+  addFaller(x, warnFrames = FALLER.warnFrames, hold = false) {
+    this.fallers.push({
+      x,
+      y: -40,
+      w: FALLER.w,
+      h: FALLER.h,
+      warn: warnFrames,   // นับถอยหลังช่วงเตือน 0 = เริ่มร่วง
+      hold,               // true = รอให้เข้าจอก่อนถึงเริ่มนับ (ดู updateFallers)
+      vy: 0,
+      dead: false,
+    });
+  }
+
   /** เดินของร่วงหนึ่งเฟรม — คืน true ถ้ามีชิ้นไหนเพิ่งกระแทกพื้น (ไว้ให้เกมสั่นจอ) */
-  updateFallers(dt) {
+  updateFallers(dt, camera = Infinity) {
     // กติกาเดียวกับอันตราย — ของร่วงลงใต้คานคือจุดที่หลบไม่ได้ (ดู underBar)
     this.fallers = this.fallers.filter((f) => !this.underBar(f.x, f.w));
     let landed = false;
     for (const f of this.fallers) {
+      // ── ของที่ท่อนวางเอง ต้องรอให้เข้าจอก่อนถึงเริ่มนับถอยหลัง ──
+      // ท่อนถูกสร้างล่วงหน้าราวหนึ่งจอครึ่ง = ราว 190 เฟรมก่อนผู้เล่นวิ่งถึง
+      // ถ้านับตั้งแต่ตอนเกิด (ช่วงเตือนมาตรฐาน 45 เฟรม) มันจะร่วงลงพื้นแล้วหายไป
+      // ตั้งแต่ก่อนผู้เล่นเห็นด้วยซ้ำ ส่วนของประจำแมพเกิดที่ริมจอขวาอยู่แล้ว
+      // กติกานี้จึงไม่เปลี่ยนจังหวะเดิมของมันเลย
+      if (f.hold) {
+        if (f.x > camera + VIEW.W) continue;
+        f.hold = false;
+      }
       if (f.warn > 0) { f.warn -= dt; continue; }
       f.vy += FALLER.gravity * dt;
       f.y += f.vy * dt;
@@ -1149,23 +1192,40 @@ export class Level {
     for (let x = fromX; x < limit; x += 24) {
       if (!this.isClearSpot(x)) continue;
 
-      if (kind === 'bee') {
-        const b = HAZARD.bee;
-        this.hazards.push({
-          kind, x, w: b.w, h: b.h,
-          t: Math.random() * Math.PI * 2,   // เฟสแกว่งไม่ตรงกันทุกตัว
-          y: b.midY,
-        });
-      } else if (kind === 'ball') {
-        const b = HAZARD.ball;
-        // ลูกบอลเป็นชนิดเดียวที่ "เคลื่อนที่หลังเกิด" จุดโล่งตอนเกิดจึงไม่พอ
-        // มันกลิ้งสวนมาเรื่อย ๆ ถ้าไปหยุดอยู่ใต้คานพอดี ผู้เล่นจะต้องหมอบ (ลุกไม่ได้)
-        // แล้วโดนบอลชนโดยไม่มีทางเลี่ยง = แพตเทิร์นที่หลบไม่ได้ ซึ่งผิดกฎ
-        // จึงต้องเช็คว่า "ทางที่มันจะกลิ้งผ่าน" โล่งด้วย ไม่ใช่แค่จุดที่มันเกิด
-        if (!this.isBallLaneClear(x, camera)) continue;
-        this.hazards.push({ kind, x, w: b.r * 2, h: b.r * 2, y: GROUND_Y - b.r * 2, spin: 0 });
-      }
+      // ลูกบอลเป็นชนิดเดียวที่ "เคลื่อนที่หลังเกิด" จุดโล่งตอนเกิดจึงไม่พอ
+      // มันกลิ้งสวนมาเรื่อย ๆ ถ้าไปหยุดอยู่ใต้คานพอดี ผู้เล่นจะต้องหมอบ (ลุกไม่ได้)
+      // แล้วโดนบอลชนโดยไม่มีทางเลี่ยง = แพตเทิร์นที่หลบไม่ได้ ซึ่งผิดกฎ
+      // จึงต้องเช็คว่า "ทางที่มันจะกลิ้งผ่าน" โล่งด้วย ไม่ใช่แค่จุดที่มันเกิด
+      if (kind === 'ball' && !this.isBallLaneClear(x, camera)) continue;
+
+      this.addHazard(kind, x);
       return;
+    }
+  }
+
+  /**
+   * วางอันตรายลงพิกัดที่บอกมาเป๊ะ ๆ ไม่ต้องหาจุดให้ — คู่กับ addFaller
+   *
+   * preGuided = true สำหรับของที่ท่อนวางเอง: ห้ามระบบไปปูของกินนำทางทับ
+   * เพราะคนออกแบบวางของกินไว้เองแล้ว และสิ่งที่เห็นในเครื่องมือต้องเท่ากับสิ่งที่ได้ในเกม
+   * (ดู guideHazard ซึ่งเก็บของกินในเขตอันตรายออกแล้วปูเส้นใหม่แทน)
+   */
+  addHazard(kind, x, authored = false) {
+    if (kind === 'bee') {
+      const b = HAZARD.bee;
+      this.hazards.push({
+        kind, x, w: b.w, h: b.h,
+        t: Math.random() * Math.PI * 2,   // เฟสแกว่งไม่ตรงกันทุกตัว
+        y: b.midY,
+        guided: authored,
+      });
+    } else if (kind === 'ball') {
+      const b = HAZARD.ball;
+      this.hazards.push({
+        kind, x, w: b.r * 2, h: b.r * 2, y: GROUND_Y - b.r * 2, spin: 0,
+        guided: authored,
+        hold: authored,   // ยังไม่กลิ้งจนกว่าจะเข้าจอ (ดู updateHazards)
+      });
     }
   }
 
@@ -1311,6 +1371,12 @@ export class Level {
         h.t += b.speed * dt;
         h.y = b.midY + Math.sin(h.t) * b.amp;
       } else if (h.kind === 'ball') {
+        // เหตุผลเดียวกับของร่วงที่ท่อนวางเอง — ถ้าเริ่มกลิ้งตั้งแต่ตอนเกิด
+        // กว่าผู้เล่นจะมาถึงมันจะเลยจุดที่คนออกแบบวางไว้ไปแล้วราว 450px
+        if (h.hold) {
+          if (h.x > camera + VIEW.W) continue;
+          h.hold = false;
+        }
         h.x -= HAZARD.ball.speed * dt;   // กลิ้งสวนทางที่แมววิ่ง
         h.spin -= 0.12 * dt;
         // ── เก็บของกินเตี้ยที่ลูกบอลกำลังจะกลิ้งทับ ──

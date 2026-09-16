@@ -83,7 +83,13 @@ function fixText(node) {
     th = node.data;
     original.set(node, th);
   }
-  const next = lang === 'en' ? t(th) : th;
+  // ── ทางลัดสำหรับคำที่แปลได้หลายความหมาย ──
+  // พจนานุกรมใช้ "ข้อความไทย" เป็นคีย์ คำเดียวกันจึงได้คำแปลเดียวทั้งเกม
+  // ส่วนใหญ่ไม่มีปัญหา ยกเว้นคำสั้น ๆ อย่าง "ตา" ที่เป็นทั้งอวัยวะ (หน้าระบายสี)
+  // และลักษณนามของการเล่นหนึ่งรอบ (หน้าโปรไฟล์) — ใส่ data-en ที่ตัวนั้นเพื่อทับเฉพาะจุด
+  const el = node.parentElement;
+  const own = el && el.getAttribute && el.getAttribute('data-en');
+  const next = lang === 'en' ? (own !== null && own !== undefined ? own : t(th)) : th;
   if (node.data !== next) node.data = next;
 }
 

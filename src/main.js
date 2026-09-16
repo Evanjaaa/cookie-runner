@@ -3,7 +3,7 @@ import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getMix, setMix, gameMuted, audioState, sfx, killSfx } from './audio.js';
+import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx } from './audio.js';
 import { startMusic, stopMusic, primeMusicFile } from './music.js';
 import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin, skinById } from './skins.js';
 import {
@@ -1594,28 +1594,6 @@ document.getElementById('enterBtn').addEventListener('click', enterGame);
 // โหลดคลิปเปิดเกมรอไว้ตั้งแต่เปิดหน้า ไฟล์ใหญ่ ไปเริ่มโหลดตอนกดเข้าเกมจะเห็นจอดำรอ
 preloadIntroVideo();
 
-/**
- * ทดสอบเสียงหนึ่งที แล้วรายงานสิ่งที่เครื่องบอกกลับมา
- *
- * แยกสามกรณีที่แก้คนละทางกัน:
- *   ยังไม่ตื่น          เบราว์เซอร์ยังไม่ยอมให้เล่น — แตะหน้าจอก่อน
- *   ตื่นแล้วแต่หรี่ไว้ 0  ปรับที่แถวเพลง/เอฟเฟกต์ข้างบน
- *   ตื่นแล้วเสียงปกติ     ถ้ายังไม่ได้ยินบน iPhone = สวิตช์ปิดเสียงข้างเครื่อง
- */
-function runAudioTest() {
-  const out = document.getElementById('audioTestState');
-  unlockAudio().then(() => {
-    sfx.fish();
-    const a = audioState();
-    out.textContent =
-      a.state !== 'running' ? 'ยังไม่ตื่น — แตะหน้าจอแล้วลองใหม่'
-        : a.muted ? 'เสียงถูกหรี่เป็น 0 — ปรับที่สองแถวบน'
-        : a.session === 'ambient' ? 'พร้อม — ถ้ายังเงียบ ให้ปิดสวิตช์ปิดเสียงข้างเครื่อง'
-        : 'พร้อม — ถ้ายังเงียบ ให้เช็คสวิตช์ปิดเสียงข้างเครื่อง';
-  });
-}
-document.getElementById('audioTest').addEventListener('click', runAudioTest);
-
 // ── ตั้งค่า: เปิด/ปิดคลิปเปิดเกม และเสียงของคลิป ──
 function paintIntroSetting() {
   const on = introVideoEnabled();
@@ -3033,10 +3011,8 @@ const profilePanel = document.getElementById('profilePanel');
  * หน้าจึงอัปเดตถูกเสมอไม่ว่าจะเปิดจากทางไหน
  */
 const PF_FACTS = [
-  { ico: '🏃', k: 'ลงสนาม', v: (s) => s.runs.toLocaleString('en-US') + ' ตา' },
-  { ico: '⏱', k: 'เวลาเล่นรวม', v: (s) => hoursText(s.seconds) },
-  { ico: '🐾', k: 'ระยะทางรวม', v: (s) => distText(s.meters) },
-  { ico: '⭐', k: 'คะแนนรวม', v: (s) => s.score.toLocaleString('en-US') },
+  // สี่ช่องแรกของเดิม (ลงสนาม เวลา ระยะทาง คะแนน) ย้ายไปเป็นตัวเลขใหญ่บนการ์ดแล้ว
+  // เหลือไว้ตรงนี้เฉพาะของสะสมที่ไม่มีที่อยู่อื่นในเกม
   // ชื่อด่านไปอยู่บนป้าย เพราะช่องค่ามีบรรทัดเดียว ถ้ายัดรวมกันตัวเลขจะโดนตัดทิ้ง
   { ico: '🏆', k: () => bestWhere(), v: () => bestScoreText() },
   { ico: '🐱', k: 'แมวที่มี', v: () => countText(SKINS.filter((x) => ownsSkin(x.id)).length, SKINS.length) },
@@ -3051,6 +3027,17 @@ function hoursText(sec) {
   const m = Math.floor(sec / 60);
   const h = Math.floor(m / 60);
   return h > 0 ? h + ' ชม. ' + (m % 60) + ' นาที' : m + ' นาที';
+}
+
+/**
+ * แยก "ตัวเลข" กับ "หน่วย" ออกจากกัน
+ *
+ * การ์ดโปรไฟล์วางตัวเลขใหญ่คู่กับหน่วยตัวเล็ก (54 ตา / 24 นาที / 4.9 กม.)
+ * ถ้าส่งเป็นข้อความก้อนเดียว หน่วยจะใหญ่ตามตัวเลขไปด้วยแล้วอ่านเป็นพรืด
+ */
+function splitUnit(text) {
+  const i = String(text).indexOf(' ');
+  return i < 0 ? [String(text), ''] : [text.slice(0, i), text.slice(i + 1)];
 }
 
 /** เมตรดิบ → กิโลเมตรเมื่อเกินพัน ตัวเลขหกหลักอ่านไม่ทันในช่องแคบ ๆ */
@@ -3075,7 +3062,9 @@ function bestRun() {
 
 const bestScoreText = () => {
   const b = bestRun();
-  return b.top > 0 ? b.top.toLocaleString('en-US') : 'ยังไม่มี';
+  // "ยังไม่มีสถิติ" ไม่ใช่ "ยังไม่มี" เฉย ๆ — คำหลังแปลเป็นอังกฤษแล้วกลายเป็น
+  // "ไม่ได้เป็นเจ้าของ" ซึ่งใช้กับช่องของสะสม ไม่ใช่ช่องคะแนน
+  return b.top > 0 ? b.top.toLocaleString('en-US') : 'ยังไม่มีสถิติ';
 };
 const bestWhere = () => {
   const b = bestRun();
@@ -3130,19 +3119,16 @@ function pfSubText() {
 function refreshStatusView() {
   const txt = loadStatus();
   const el = document.getElementById('pfStatusText');
-  el.textContent = txt || 'ยังไม่ได้เขียนอะไรไว้ — แตะปุ่มแก้ไขเพื่อใส่ข้อความ';
+  // ลูกโป่งเล็กกว่าย่อหน้าเดิมมาก ข้อความชวนเขียนจึงต้องสั้นลงให้พอดีก้อนเมฆ
+  el.textContent = txt || 'แตะเพื่อเขียนสเตตัส';
   el.classList.toggle('empty', !txt);
 }
 
 function pfEditing(on) {
   const box = document.getElementById('pfStatusEdit');
   box.classList.toggle('hidden', !on);
-  document.getElementById('pfStatusText').classList.toggle('hidden', on);
+  // ลูกโป่งคือปุ่มแก้ไขในตัว กดซ้ำระหว่างพิมพ์อยู่ไม่ต้องทำอะไร
   document.getElementById('pfEdit').disabled = on;
-
-  // กล่องพิมพ์สูงกว่าข้อความที่มันแทน คอลัมน์ขวาจึงล้นเพิ่มตอนเปิดและหดตอนปิด
-  // ต้องวัดใหม่ทุกครั้ง ไม่งั้นเงาจางขอบล่างจะค้างผิดสถานะไปทั้งรอบ
-  markScrollable(document.getElementById('pfSide'));
   if (!on) return;
 
   const input = document.getElementById('pfStatusInput');
@@ -3161,15 +3147,47 @@ function refreshCount() {
   el.classList.toggle('full', n >= STATUS_MAX);
 }
 
+/**
+ * ป้ายสถานะบนการ์ด — บอกว่าข้อมูลกำลังวิ่งขึ้นคลาวด์อยู่ไหม
+ *
+ * สามสถานะที่ต่างกันจริง ๆ สำหรับผู้เล่น:
+ *   ใช้งานอยู่   ต่อเน็ตอยู่และข้อมูลซิงก์ขึ้นคลาวด์ได้
+ *   เล่นในเครื่อง ต่อเน็ตอยู่ แต่เกมยังไม่ได้ผูกกับฐานข้อมูล (เล่นได้ปกติ)
+ *   ออฟไลน์      ไม่มีเน็ต — ของที่เล่นตอนนี้จะซิงก์ทีหลัง
+ */
+function refreshOnline() {
+  const box = document.getElementById('pfOnline');
+  if (!box) return;
+  const net = navigator.onLine !== false;
+  const state = !net ? 'off' : cloudReady ? 'on' : 'local';
+  box.classList.toggle('off', state === 'off');
+  box.classList.toggle('local', state === 'local');
+  document.getElementById('pfOnlineText').textContent =
+    state === 'on' ? 'ใช้งานอยู่' : state === 'local' ? 'เล่นในเครื่อง' : 'ออฟไลน์';
+}
+
+// เน็ตหลุด/กลับมาระหว่างเปิดหน้าอยู่ ป้ายต้องเปลี่ยนตามทันที ไม่ใช่รอเปิดหน้าใหม่
+for (const ev of ['online', 'offline']) window.addEventListener(ev, refreshOnline);
+
 function refreshProfilePage() {
   const st = levelFromXp(loadXp());
+  const s = loadStats();
   document.getElementById('pfShowName').textContent = localName() || 'แมวนิรนาม';
   document.getElementById('pfShowSub').textContent = pfSubText();
   document.getElementById('pfBigLv').textContent = 'Lv ' + st.level;
-  document.getElementById('pfBigFill').style.width = Math.round(st.ratio * 100) + '%';
-  document.getElementById('pfBigXp').textContent = st.maxed
-    ? 'สูงสุดแล้ว'
-    : st.into.toLocaleString('en-US') + ' / ' + st.need.toLocaleString('en-US');
+
+  document.getElementById('pfScore').textContent = s.score.toLocaleString('en-US');
+  const rows = [
+    ['pfRuns', 'pfRunsUnit', [s.runs.toLocaleString('en-US'), 'ตา']],
+    ['pfTime', 'pfTimeUnit', splitUnit(hoursText(s.seconds))],
+    ['pfDist', 'pfDistUnit', splitUnit(distText(s.meters))],
+  ];
+  for (const [numId, unitId, [num, unit]] of rows) {
+    document.getElementById(numId).textContent = num;
+    document.getElementById(unitId).textContent = unit;
+  }
+
+  refreshOnline();
   refreshStatusView();
   buildFacts();
   // จางขอบล่างให้รู้ว่าเลื่อนดูต่อได้ — เฉพาะตอนที่ล้นจริง

@@ -1118,16 +1118,6 @@
           </div>
           <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
                ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
-          <!-- ── ทดสอบเสียง ──
-               มีไว้ตอบคำถามเดียว: "เร่งเสียงหมดแล้วทำไมยังไม่ได้ยิน"
-               กดแล้วยิงเสียงจริงหนึ่งที พร้อมบอกสิ่งที่เครื่องรายงานกลับมา
-               (ตื่นหรือยัง / อยู่โหมดเสียงแบบไหน) ซึ่งแยกได้ว่าเป็นที่เกม
-               หรือเป็นที่สวิตช์ปิดเสียงข้างเครื่อง — สองอย่างนี้แก้คนละทางกัน -->
-          <div class="setrow">
-            <span class="setlabel">ทดสอบเสียง</span>
-            <b class="setval" id="audioTestState">—</b>
-            <button class="btn ghost tiny" id="audioTest">เล่นเสียง</button>
-          </div>
           <!-- คลิปเปิดเกม — ทางเดียวที่จะเปิดกลับได้หลังติ๊ก "ไม่ต้องแสดงอีก" ไปแล้ว
                ปุ่มลำโพงหน้าแถว = ปิด/เปิดเฉพาะเสียงของคลิป (ภาพยังเล่นครบ)
                ใช้ปุ่มทรงเดียวกับสองแถวบน คนจึงรู้ได้ทันทีว่ากดแล้วได้อะไร ไม่ต้องมีแถวแยกอีกแถว -->
@@ -1217,46 +1207,87 @@
       <div class="panel hidden" id="profilePanel">
         <div class="pop pf-pop">
           <div class="pf-body">
-            <!-- ซ้าย: น้องยืนโชว์ตัวบนแท่น -->
-            <div class="pf-stand">
+            <!-- ── การ์ดซ้าย: ตัวน้อง ──
+                 ป้ายสถานะมุมบนซ้าย ลูกโป่งความคิดมุมบนขวา (แตะเพื่อแก้สเตตัส)
+                 ชื่อสีขนกับชุดเป็นเม็ดเล็กมุมล่างขวา ตามแบบที่วางไว้ -->
+            <div class="pf-card pf-cat">
+              <span class="pf-online" id="pfOnline">
+                <i aria-hidden="true"></i><b id="pfOnlineText">ใช้งานอยู่</b>
+              </span>
+
+              <!-- ลูกโป่งความคิดวาดด้วย CSS ล้วน: ก้อนเมฆหนึ่งก้อน + ฟองสองลูกใต้ก้อน -->
+              <button type="button" class="pf-bubble" id="pfEdit" aria-label="แก้ไขสเตตัส">
+                <!-- ก้อนเมฆวาดเป็น SVG ไม่ใช่กล่องมน ๆ — หยักของเมฆต้องเป็นวงจริง
+                     ถึงจะอ่านเป็น "ลูกโป่งความคิด" ไม่ใช่ป้ายข้อความธรรมดา
+                     ตัว path ยืดตามกล่องด้วย preserveAspectRatio="none" ข้อความจึงวางทับได้พอดี -->
+                <svg class="pf-bubble-cloud" viewBox="0 0 100 62" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M20 54c-9 0-16-6-16-14 0-6 4-11 10-13-1-8 6-15 15-15 4 0 8 1 11 4
+                           4-6 11-9 18-9 11 0 20 7 22 17 8 1 14 7 14 15 0 8-7 15-16 15z"
+                        fill="#FFFDF7"/>
+                </svg>
+                <span class="pf-bubble-text" id="pfStatusText"></span>
+                <i class="pf-bubble-dot big" aria-hidden="true"></i>
+                <i class="pf-bubble-dot small" aria-hidden="true"></i>
+              </button>
+
               <div class="pf-stage">
                 <canvas id="pfShow" width="240" height="240"></canvas>
               </div>
-              <b class="pf-show-name" id="pfShowName">แมวนิรนาม</b>
-              <small class="pf-show-sub" id="pfShowSub"></small>
+
+              <span class="pf-chip" id="pfShowSub"></span>
+
+              <!-- กล่องพิมพ์สเตตัส ซ้อนทับการ์ดเฉพาะตอนแก้ไข
+                   ไม่เปิดค้างไว้ เพราะการใช้งานส่วนใหญ่ของหน้านี้คือ "เปิดมาดูเฉย ๆ" -->
+              <div class="pf-status-edit hidden" id="pfStatusEdit">
+                <textarea id="pfStatusInput" rows="3" maxlength="100"
+                          placeholder="เขียนอะไรสักอย่างถึงน้อง"></textarea>
+                <div class="pf-status-foot">
+                  <small class="pf-count" id="pfCount">0 / 100</small>
+                  <button type="button" class="btn ghost tiny" id="pfCancel">ยกเลิก</button>
+                  <button type="button" class="btn tiny" id="pfSave">บันทึก</button>
+                </div>
+              </div>
             </div>
 
-            <!-- ขวา: สเตตัสกับข้อมูลสะสม เลื่อนได้เมื่อจอเตี้ย -->
-            <div class="pf-side" id="pfSide">
-              <div class="pf-level">
-                <b class="pf-level-num" id="pfBigLv">1</b>
-                <div class="pf-level-bar"><i id="pfBigFill"></i></div>
-                <small class="pf-level-xp" id="pfBigXp">0 / 270</small>
+            <!-- ── การ์ดขวา: ชื่อ เลเวล และตัวเลขสะสม ── -->
+            <div class="pf-card pf-panel-main">
+              <!-- รอยตีนสามรอยมุมขวาบน วาดเป็น SVG เพราะรูปทรงนี้ต้องชัดว่าเป็น "ตีนแมว"
+                   ไม่ใช่ก้อนกลม ๆ (เคยทำด้วยไล่สีในกล่องเดียว แล้วที่ขนาดจริงมันอ่านเป็นสี่เหลี่ยม) -->
+              <span class="pf-paws" aria-hidden="true">
+                <i class="p1"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p2"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p3"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i>
+              </span>
+
+              <!-- คลาสตั้งชื่อไม่ซ้ำกับการ์ดในล็อบบี้โดยตั้งใจ — ที่นั่นมี .pf-name / .pf-lv
+                   ที่วางตัวแบบ absolute อยู่แล้ว ใช้ชื่อเดียวกันแล้วสองป้ายจะซ้อนทับกันสนิท -->
+              <div class="pf-idbar">
+                <b class="pf-id-name" id="pfShowName">แมวนิรนาม</b>
+                <b class="pf-id-lv" id="pfBigLv">Lv 1</b>
               </div>
 
-              <!-- ── สเตตัส ──
-                   โหมดอ่านกับโหมดพิมพ์เป็นคนละก้อน สลับซ่อน/โชว์
-                   ไม่ใช่ textarea ที่เปิดค้างไว้ตลอด — กล่องพิมพ์ที่เปิดค้าง
-                   ทำให้หน้าอ่านยากขึ้นทุกครั้งที่เปิดมาดูเฉย ๆ ซึ่งคือการใช้งาน
-                   ส่วนใหญ่ของหน้านี้ -->
-              <div class="pf-status">
-                <div class="pf-status-top">
-                  <span class="pf-status-label">สเตตัส</span>
-                  <button type="button" class="btn ghost tiny" id="pfEdit">แก้ไข</button>
-                </div>
-                <p class="pf-status-text" id="pfStatusText"></p>
-                <div class="pf-status-edit hidden" id="pfStatusEdit">
-                  <textarea id="pfStatusInput" rows="3" maxlength="100"
-                            placeholder="เขียนอะไรสักอย่างถึงน้อง"></textarea>
-                  <div class="pf-status-foot">
-                    <small class="pf-count" id="pfCount">0 / 100</small>
-                    <button type="button" class="btn ghost tiny" id="pfCancel">ยกเลิก</button>
-                    <button type="button" class="btn tiny" id="pfSave">บันทึก</button>
+              <div class="pf-score-box" id="pfSide">
+                <span class="pf-score-label">คะแนนรวม <i aria-hidden="true">⭐</i></span>
+                <b class="pf-score" id="pfScore">0</b>
+
+                <div class="pf-stats">
+                  <div class="pf-stat">
+                    <span class="k">ลงสนาม <i aria-hidden="true">🐈</i></span>
+                    <b class="v" id="pfRuns">0</b><small id="pfRunsUnit" data-en="runs">ตา</small>
+                  </div>
+                  <div class="pf-stat">
+                    <span class="k">เวลาเล่นรวม <i aria-hidden="true">🕐</i></span>
+                    <b class="v" id="pfTime">0</b><small id="pfTimeUnit">นาที</small>
+                  </div>
+                  <div class="pf-stat">
+                    <span class="k">ระยะทางรวม <i aria-hidden="true">🐾</i></span>
+                    <b class="v" id="pfDist">0</b><small id="pfDistUnit">ม.</small>
                   </div>
                 </div>
-              </div>
 
-              <div class="pf-facts" id="pfFacts"></div>
+                <!-- ของสะสมที่เหลือ เม็ดเล็กเงียบ ๆ ใต้สามช่องหลัก
+                     ไม่ได้อยู่ในแบบที่วาดมา แต่ถ้าตัดทิ้งเลยข้อมูลพวกนี้จะไม่เหลือที่อยู่
+                     ในเกมอีกเลย จึงเก็บไว้แบบไม่แย่งสายตาตัวเลขใหญ่ -->
+                <div class="pf-mini" id="pfFacts"></div>
+              </div>
             </div>
           </div>
 

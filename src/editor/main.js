@@ -16,11 +16,11 @@
 // ก็เขียนเป็น j1 + HALF เหมือนที่คนเขียนเองในไฟล์ ไม่ใช่ตัวเลขดิบ
 // ─────────────────────────────────────────────────────────────
 import './editor.css';
-import { GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS } from '../config.js';
+import { GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD } from '../config.js';
 import { AUTHOR, PATTERNS, PATTERN_META } from '../level.js';
 import { STAGES } from '../stages.js';
 import { drawSky, drawHills, drawGround } from '../render/background.js';
-import { drawObstacles, drawTreats, drawPlayer } from '../render/entities.js';
+import { drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards } from '../render/entities.js';
 import { SKINS } from '../skins.js';
 
 const A = AUTHOR;
@@ -45,9 +45,19 @@ const ANCHORS = {
 /** จุดเกาะที่ของแต่ละชนิดใช้ได้ — ชนิดไหนไม่มีในตารางนี้คือเกาะไม่ได้ */
 const ANCHOR_SET = {
   obs:  ['AT', 'HALF', 'JUMP_PEAK', 'JUMP_SPAN', 'DBL_PEAK', 'DBL_SPAN'],
+  // ของพิเศษเกาะได้เหมือนของแข็ง — ประโยชน์หลักคือ "วางผึ้งไว้ตรงยอดโค้ง"
+  // ซึ่งเป็นจุดที่ผู้เล่นลอยอยู่พอดี ถ้าไม่เกาะจุดกดจะจูนตำแหน่งแบบนั้นยากมาก
+  sp:   ['AT', 'HALF', 'JUMP_PEAK', 'JUMP_SPAN', 'DBL_PEAK', 'DBL_SPAN'],
   arc:  ['AT'],
   jump: ['DOUBLE', 'JUMP_SPAN', 'DBL_SPAN'],
 };
+
+/**
+ * ของที่วาง "กึ่งกลางชิ้น" ตรงจุดเกาะ
+ * ของแข็งกับของพิเศษเป็นก้อนที่มีความกว้าง จุดที่คนออกแบบคิดถึงคือกลางก้อน
+ * ส่วนของกินเป็นแถวที่ไหลไปทางขวา จุดที่คิดถึงคือเม็ดแรก จึงใช้ขอบซ้าย
+ */
+const CENTERED = new Set(['obs', 'sp']);
 
 // ─────────────────────────────────────────────────────────────
 // กล่องเครื่องมือ
@@ -57,6 +67,8 @@ const KIT = [
   { t: 'jump', group: 'jump', pal: 'mark', label: 'จุดกด', sub: 'กระโดด 1 ครั้ง' },
 
   { t: 'spike', group: 'obs', pal: 'obs', label: 'หนาม', sub: `${spike.w}×${spike.h}` },
+  { t: 'spikeRow', group: 'obs', pal: 'obs', label: 'หนามคู่', sub: 'ยืดปลายขวาได้', n: 2, gap: 44 },
+  { t: 'spikeRow', group: 'obs', pal: 'obs', label: 'หนามสามชิ้น', sub: 'กว้างเกินโค้งเดี่ยว', n: 3, gap: 44 },
   { t: 'crate', group: 'obs', pal: 'obs', label: 'กล่องลัง 1 ชั้น', sub: 'ข้ามสบาย', rows: 1 },
   { t: 'crate', group: 'obs', pal: 'obs', label: 'กล่องลัง 2 ชั้น', sub: 'ต้องกดตรงจังหวะ', rows: 2 },
   { t: 'crate', group: 'obs', pal: 'obs', label: 'กล่องลัง 3 ชั้น', sub: 'บังคับกดสองชั้น', rows: 3 },
@@ -71,6 +83,31 @@ const KIT = [
   { t: 'arcHigh', group: 'arc', pal: 'food', label: 'ซุ้มโค้งสองชั้น', sub: 'ชั้นบนสุด', n: 11, wide: true },
   { t: 'fishWave', group: 'free', pal: 'food', label: 'แถวคลื่น', sub: 'วิ่งเก็บ แต่ตาสวยขึ้น', n: 12, gap: 34, humps: 3, wide: true },
   { t: 'fishLow', group: 'free', pal: 'food', label: 'แถวลอดใต้คาน', sub: 'ระดับตอนหมอบ', n: 8, gap: 32, wide: true },
+
+  // ── ของหายาก ──
+  // ไม่ใช่ชนิดใหม่ แต่เป็น "แถวเดิม + ของหายากโรยทับ" ด้วยกฎชุดเดียวกับที่เกมโรยเอง
+  // (makeShrimp / makeKibble) จึงได้ระยะห่างและจุดวางแบบเดียวกับท่อนที่มีอยู่เป๊ะ ๆ
+  { t: 'fishRun', group: 'free', pal: 'food', label: 'กุ้งทองเดี่ยว', sub: 'ของหายากที่สุด ท่อนละตัว', n: 1, gap: 34, top: 'shrimp' },
+  { t: 'fishRun', group: 'free', pal: 'food', label: 'แถวอาหารเม็ด', sub: 'เม็ดกลมทั้งแถว', n: 6, gap: 34, top: 'all' },
+
+  // ── ของพิเศษ ──
+  // สามอย่างนี้ "ขยับเอง" ต่างจากทุกชิ้นข้างบนที่อยู่นิ่ง
+  // ปกติเกมเป็นคนโรยให้ตามฉาก (scene.faller / scene.hazard) วางเองได้เมื่ออยากคุมจังหวะ
+  { t: 'faller', group: 'sp', pal: 'sp', label: 'ของร่วงจากเพดาน', sub: `เตือน ${FALLER.warnFrames} เฟรมก่อนตก`, warn: FALLER.warnFrames, wide: true },
+  { t: 'bee', group: 'sp', pal: 'sp', label: 'ผึ้งแกว่ง', sub: 'หมอบลอดได้เสมอ', wide: true },
+  { t: 'ball', group: 'sp', pal: 'sp', label: 'ลูกบอลกลิ้งสวน', sub: 'เร็วกว่าฉาก 35%', wide: true },
+];
+
+/**
+ * ของหายากที่โรยทับแถวได้ — ค่าตรงกับที่ route ของเกมสั่งได้ทุกตัว
+ * เว้น 'all' ที่เพิ่มเข้ามาให้ทำ "แถวอาหารเม็ดล้วน" ซึ่ง route ไม่มีให้สั่ง
+ */
+const TOPS = [
+  ['', 'ปลาล้วน (ปกติ)'],
+  ['shrimp', 'กุ้งทอง 1 ตัวที่จุดสูงสุด'],
+  ['cluster', 'เม็ดกลมเกาะกลุ่มที่จุดสูงสุด'],
+  ['alternate', 'เม็ดกลมสลับทุกเม็ดที่ 3'],
+  ['all', 'เม็ดกลมทั้งแถว'],
 ];
 
 const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow']);
@@ -148,9 +185,13 @@ function seedDoc() {
 // ─────────────────────────────────────────────────────────────
 function itemW(it) {
   if (it.t === 'spike') return spike.w;
+  if (it.t === 'spikeRow') return (Math.max(1, it.n) - 1) * it.gap + spike.w;
   if (it.t === 'bar') return bar.w;
   if (it.t === 'crate') return crate.w;
   if (it.t === 'pit') return it.w;
+  if (it.t === 'faller') return FALLER.w;
+  if (it.t === 'bee') return HAZARD.bee.w;
+  if (it.t === 'ball') return HAZARD.ball.r * 2;
   return 0;
 }
 
@@ -163,8 +204,8 @@ function xOf(d, it, depth = 0) {
     if (j && j.t === 'jump') {
       const a = ANCHORS[it.link.key] || ANCHORS.AT;
       const base = xOf(d, j, depth + 1);
-      // ของแข็งวาง "กึ่งกลางชิ้น" ตรงจุดเกาะ ส่วนของกินกับจุดกดใช้ขอบซ้าย
-      return it.group === 'obs' ? base + a.v - itemW(it) / 2 : base + a.v;
+      // ดู CENTERED ว่าชนิดไหนวางกึ่งกลาง ชนิดไหนวางขอบซ้าย
+      return CENTERED.has(it.group) ? base + a.v - itemW(it) / 2 : base + a.v;
     }
   }
   return it.x;
@@ -185,6 +226,8 @@ function build(d, off = 0) {
   const pit = [];
   const fish = [];
   const jumps = [];
+  const fallers = [];
+  const hazards = [];
 
   for (const it of d.items) {
     const x = xOf(d, it) + off;
@@ -194,6 +237,9 @@ function build(d, off = 0) {
     switch (it.t) {
       case 'jump': jumps.push(x); break;
       case 'spike': obs.push(tag(A.groundSpike(x), it)); break;
+      case 'spikeRow':
+        for (let i = 0; i < Math.max(1, it.n); i++) obs.push(tag(A.groundSpike(x + i * it.gap), it));
+        break;
       case 'bar': obs.push(tag(A.lowBar(x), it)); break;
       case 'crate': obs.push(tag(A.crateStack(x, it.rows), it)); break;
       case 'pit': pit.push(tag({ x, w: it.w }, it)); break;
@@ -204,14 +250,41 @@ function build(d, off = 0) {
       case 'fishWave': made = safeArc((xx, nn) => A.fishWave(xx, nn, it.gap, it.humps), x, n); break;
       case 'fishRun': made = n > 0 ? A.fishRun(x, n, it.gap) : []; break;
       case 'fishLow': made = n > 0 ? A.fishLow(x, n, it.gap) : []; break;
+
+      // ของพิเศษเก็บรูปร่างตรงกับที่ Level สร้างตอนเกิดจริง (ดู addFaller/addHazard)
+      // ตำแหน่งแนวตั้งของ "ของร่วง" ไม่ต้องเก็บ เพราะมันตกจากเพดานลงพื้นเสมอ
+      case 'faller':
+        fallers.push(tag({ x, w: FALLER.w, h: FALLER.h, warn: warnOf(it) }, it));
+        break;
+      case 'bee':
+        hazards.push(tag({ kind: 'bee', x, w: HAZARD.bee.w, h: HAZARD.bee.h, y: HAZARD.bee.midY, t: 0 }, it));
+        break;
+      case 'ball': {
+        const r = HAZARD.ball.r;
+        hazards.push(tag({ kind: 'ball', x, w: r * 2, h: r * 2, y: GROUND_Y - r * 2, spin: 0 }, it));
+        break;
+      }
       default: break;
     }
 
-    if (made) for (const f of made) fish.push(tag(f, it));
+    if (made) {
+      if (it.top) made = topping(made, it.top);
+      for (const f of made) fish.push(tag(f, it));
+    }
   }
 
   jumps.sort((a, b) => a - b);
-  return { obs, pit, fish, jumps };
+  return { obs, pit, fish, jumps, fallers, hazards };
+}
+
+/** โรยของหายากลงแถวที่เพิ่งสร้าง — ฟังก์ชันชุดเดียวกับที่เกมใช้ตอนวิ่งจริง */
+function topping(items, kind) {
+  return kind === 'shrimp' ? A.withShrimp(items) : A.withKibble(items, kind);
+}
+
+/** ช่วงเตือนของของร่วง — ท่อนเก่าที่บันทึกไว้ก่อนมีช่องนี้จะไม่มีค่า ใช้ค่ากลางของเกมแทน */
+function warnOf(it) {
+  return it.warn === undefined ? FALLER.warnFrames : it.warn;
 }
 
 function tag(o, it) { o.src = it.id; return o; }
@@ -263,6 +336,7 @@ function draw() {
   if (view.arcs) drawArcs(cam, scene.jumps);
 
   drawObstacles(ctx, scene.obs, cam, st.theme);
+  drawSpecials(cam, st);
   hideEaten();
   drawTreats(ctx, scene.fish, cam, tick);
 
@@ -276,6 +350,46 @@ function draw() {
   drawStrip();
   requestAnimationFrame(draw);
 }
+
+/**
+ * ของพิเศษบนโต๊ะออกแบบ
+ *
+ * สองชิ้นนี้ต่างจากของอื่นตรงที่ "ขยับเอง" ภาพนิ่งภาพเดียวจึงบอกความจริงไม่ครบ
+ *   ผึ้ง     แกว่งขึ้นลงตลอด — วาดแถบคลุมช่วงที่มันกวาดถึง จะได้เห็นว่าชนอะไรได้บ้าง
+ *   ของร่วง  ตกเป็นเส้นตรงลงพื้นเสมอ — เส้นประบอกว่าจะไปลงตรงไหน
+ * ตัวของวาดด้วยฟังก์ชันเดียวกับเกมจริงเหมือนของทุกชิ้นบนหน้านี้
+ */
+function drawSpecials(cam, st) {
+  const fs = scene.fallers || [];
+  const hs = scene.hazards || [];
+  if (!fs.length && !hs.length) return;
+
+  ctx.save();
+  for (const h of hs) {
+    if (h.kind !== 'bee') continue;
+    const b = HAZARD.bee;
+    ctx.fillStyle = 'rgba(255,214,102,.12)';
+    ctx.fillRect(h.x - cam - 6, b.midY - b.amp, h.w + 12, b.amp * 2 + b.h);
+  }
+  ctx.setLineDash([5, 5]);
+  ctx.strokeStyle = 'rgba(255,255,255,.4)';
+  for (const f of fs) {
+    const x = Math.round(f.x - cam + f.w / 2) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, FALL_Y + f.h);
+    ctx.lineTo(x, GROUND_Y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // สำเนาสำหรับวาดเท่านั้น: warn=0 คือ "ร่วงอยู่" ซึ่งเป็นท่าที่ผู้เล่นเห็นตอนต้องหลบจริง
+  // ส่วนค่า warn ที่เก็บในเอกสารมีไว้ส่งออกเป็นโค้ด ไม่ได้ใช้วาด
+  drawFallers(ctx, fs.map((f) => ({ ...f, warn: 0, y: FALL_Y })), cam, st.theme);
+  drawHazards(ctx, hs, cam, tick, st.palette);
+}
+
+/** ความสูงที่วาดของร่วงบนโต๊ะออกแบบ — กลางอากาศ เห็นทั้งตัวของและเงาบนพื้น */
+const FALL_Y = GROUND_Y - FALLER.h - 130;
 
 /**
  * ซ่อนของที่เก็บไปแล้ว ณ เฟรมที่กำลังเลื่อนดู
@@ -530,6 +644,12 @@ function drawStrip() {
     sctx.fillRect((o.x + ox) * k, gy - h, Math.max(2, o.w * k), h);
   }
 
+  // ของพิเศษ — สีเดียวกันทั้งสามชนิด สิ่งที่ต้องรู้จากแถบนี้คือ "มีของขยับได้ตรงไหนบ้าง"
+  sctx.fillStyle = '#FF6E6E';
+  for (const s of [...(sc.fallers || []), ...(sc.hazards || [])]) {
+    sctx.fillRect((s.x + ox) * k, gy - 34, Math.max(2, s.w * k), 4);
+  }
+
   // จุดกด
   sctx.fillStyle = '#FF8FB8';
   for (const j of sc.jumps) sctx.fillRect((j + ox) * k - 1, gy - 40, 2, 40);
@@ -556,6 +676,11 @@ function itemBox(d, it) {
   const x = xOf(d, it);
   if (it.t === 'jump') return { x: x - 9, y: 44, w: 18, h: GROUND_Y - 30 };
   if (it.t === 'spike') return { x, y: GROUND_Y - spike.h, w: spike.w, h: spike.h };
+  if (it.t === 'spikeRow') return { x, y: GROUND_Y - spike.h, w: itemW(it), h: spike.h };
+  if (it.t === 'faller') return { x, y: FALL_Y, w: FALLER.w, h: FALLER.h };
+  // ผึ้งจับได้ทั้งช่วงที่มันแกว่งถึง ไม่ใช่แค่ตรงกลาง — ตรงกับแถบที่วาดให้เห็น
+  if (it.t === 'bee') return { x, y: HAZARD.bee.midY - HAZARD.bee.amp, w: HAZARD.bee.w, h: HAZARD.bee.amp * 2 + HAZARD.bee.h };
+  if (it.t === 'ball') return { x, y: GROUND_Y - HAZARD.ball.r * 2, w: HAZARD.ball.r * 2, h: HAZARD.ball.r * 2 };
   if (it.t === 'bar') return { x, y: bar.top, w: bar.w, h: bar.h };
   if (it.t === 'crate') return { x, y: GROUND_Y - crate.h * it.rows, w: crate.w, h: crate.h * it.rows };
   if (it.t === 'pit') return { x, y: GROUND_Y, w: it.w, h: 34 };
@@ -574,6 +699,7 @@ function itemBox(d, it) {
 /** x ของที่จับยืดปลายขวา — null = ชิ้นนี้ยืดไม่ได้ */
 function handleX(d, it) {
   if (it.t === 'pit') return xOf(d, it) + it.w;
+  if (it.t === 'spikeRow') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
   if (it.t === 'fishRun' && !it.runTo) return xOf(d, it) + Math.max(0, countOf(d, it) - 1) * it.gap;
   if (it.t === 'fishLow') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
   if (it.t === 'fishWave') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
@@ -728,6 +854,36 @@ function staticIssues(sc) {
       out.push({ bad: false, msg: `หลุมที่ x=${Math.round(p.x)} ล้นขอบท่อน` });
     }
   }
+  // ── ของพิเศษ ──
+  // สองข้อนี้คือกฎเดียวกับที่ Level ใช้ตอนหาที่วางให้เอง แค่ย้ายมาบอกตั้งแต่ตอนออกแบบ
+  // (ใต้คานหมอบอย่างเดียว ของที่หย่อนลงตรงนั้นจึงหลบไม่ได้ — เกมจะลบทิ้งให้ ดู underBar)
+  const specials = [
+    ...(sc.fallers || []).map((f) => ({ x: f.x, w: f.w, what: 'ของร่วง' })),
+    ...(sc.hazards || []).map((h) => ({ x: h.x, w: h.w, what: h.kind === 'bee' ? 'ผึ้ง' : 'ลูกบอล' })),
+  ];
+  for (const s of specials) {
+    for (const b of bars) {
+      if (b.x < s.x + s.w && s.x < b.x + b.w) {
+        out.push({ bad: true, msg: `${s.what}ที่ x=${Math.round(s.x)} อยู่ในช่วงคาน — ใต้คานต้องหมอบ หลบไม่ได้ เกมจะลบชิ้นนี้ทิ้งเองตอนวิ่งถึง` });
+      }
+    }
+    for (const p of sc.pit) {
+      if (p.x < s.x + s.w && s.x < p.x + p.w) {
+        out.push({ bad: false, msg: `${s.what}ที่ x=${Math.round(s.x)} อยู่เหนือปากหลุม — ต้องข้ามหลุมพร้อมหลบของไปด้วย ดูให้แน่ว่ายังมีทางออก` });
+      }
+    }
+    if (s.x < 0 || s.x + s.w > sc.width) {
+      out.push({ bad: false, msg: `${s.what}ที่ x=${Math.round(s.x)} ล้นขอบท่อน` });
+    }
+  }
+  for (const h of sc.hazards || []) {
+    if (h.kind !== 'bee') continue;
+    const low = sc.fish.some((f) => f.y > GROUND_Y - BODY.slideH && Math.abs(f.x - (h.x + h.w / 2)) < 130);
+    if (!low) {
+      out.push({ bad: false, msg: `ผึ้งที่ x=${Math.round(h.x)} ยังไม่มีแถวเตี้ยลอดใต้ตัว — ผึ้งที่เกมโรยเองจะได้เส้นนำทางอัตโนมัติ แต่ตัวที่วางเองไม่ได้ ควรวาง “แถวลอดใต้คาน” ไว้ใต้มัน` });
+    }
+  }
+
   if (!sc.jumps.length && sc.obs.some((o) => o.kind !== 'bar')) {
     out.push({ bad: false, msg: 'มีของให้ข้ามแต่ไม่ได้ประกาศจุดกดเลย ตรวจด่านจะจำลองไม่ได้' });
   }
@@ -800,6 +956,12 @@ function runCheck() {
     const c = tight.gap < 10 ? 'bad' : tight.gap < 26 ? 'warn' : 'ok';
     rows.push(`ลอยพ้นของที่เฉียดที่สุด <b class="${c}">${tight.gap.toFixed(1)}px</b>` +
       ` (ราว ${frames} เฟรม) — ต่ำกว่า 10px ถือว่าโหดเกินไป`);
+  }
+
+  if ((sc.fallers || []).length || (sc.hazards || []).length) {
+    rows.push('<span class="warn">ของพิเศษไม่ได้ถูกจำลอง</span>' +
+      ' — ผึ้ง ลูกบอล และของร่วงขยับตามเวลาจริง การจำลองนี้ดูแค่ว่าเฉลยที่วางไว้ข้ามของแข็งได้ไหม' +
+      ' ของสามอย่างนี้ต้องกด “เล่นดู” ในเกมจริงอีกที');
   }
 
   if (sim.missedPress.length) {
@@ -892,6 +1054,8 @@ function addItem(kit, x) {
   if (kit.n !== undefined) it.n = kit.n;
   if (kit.gap !== undefined) it.gap = kit.gap;
   if (kit.humps !== undefined) it.humps = kit.humps;
+  if (kit.warn !== undefined) it.warn = kit.warn;
+  if (kit.top) it.top = kit.top;
   mutate((d) => {
     d.items.push(it);
     snapTo(d, it, x);
@@ -913,7 +1077,7 @@ function snapTo(d, it, wantX) {
     const base = xOf(d, j);
     for (const key of keys) {
       const a = ANCHORS[key];
-      const cand = it.group === 'obs' ? base + a.v - itemW(it) / 2 : base + a.v;
+      const cand = CENTERED.has(it.group) ? base + a.v - itemW(it) / 2 : base + a.v;
       const dist = Math.abs(cand - wantX);
       if (dist <= SNAP && (!best || dist < best.dist)) best = { dist, id: j.id, key };
     }
@@ -1131,7 +1295,11 @@ function renderInspector() {
 
   const kit = KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows));
   const rows = [];
-  rows.push(`<p class="pill">${kit ? kit.label : it.t} · x = ${Math.round(xOf(d, it))}</p>`);
+  // ชื่อบนหัวแผงต้องบอกของชิ้นนี้จริง ๆ ไม่ใช่ชื่อชิปที่ลากมา
+  // ชิปเดียวกันทำของได้หลายหน้าตา (หนามคู่ยืดเป็นสี่ได้ แถวพื้นโรยกุ้งได้)
+  const top = it.top && TOPS.find(([v]) => v === it.top);
+  const extra = it.t === 'spikeRow' ? ` ×${it.n}` : top ? ` · ${top[1]}` : '';
+  rows.push(`<p class="pill">${kit ? kit.label : it.t}${extra} · x = ${Math.round(xOf(d, it))}</p>`);
 
   // จุดเกาะ
   const keys = ANCHOR_SET[it.group];
@@ -1153,13 +1321,22 @@ function renderInspector() {
   rows.push('<div class="inspgrid">');
   if (!it.link) rows.push(num('fX', 'x', Math.round(it.x), 1));
   if (it.t === 'crate') rows.push(num('fRows', 'จำนวนชั้น', it.rows, 1, 1, 3));
+  if (it.t === 'spikeRow') rows.push(num('fN', 'จำนวนหนาม', it.n, 1, 1, 8));
+  if (it.t === 'faller') rows.push(num('fWarn', 'เตือนก่อนตก (เฟรม)', warnOf(it), 5, 10, 180));
   if (it.t === 'pit') rows.push(num('fW', 'กว้าง', it.w, 2, 40, 600));
   if (FOOD_T.has(it.t) && !(it.t === 'fishRun' && it.runTo)) {
     rows.push(num('fN', 'จำนวนเม็ด', it.n, 1, NEEDS_TWO.has(it.t) ? 2 : 1, 40));
   }
-  if (it.gap !== undefined) rows.push(num('fGap', 'ระยะห่าง', it.gap, 1, 16, 80));
+  if (it.gap !== undefined) rows.push(num('fGap', 'ระยะห่าง', it.gap, 1, gapMin(it), 120));
   if (it.humps !== undefined) rows.push(num('fHumps', 'จำนวนลูกคลื่น', it.humps, 1, 1, 8));
   rows.push('</div>');
+
+  if (FOOD_T.has(it.t)) {
+    const opts = TOPS.map(([v, label]) =>
+      `<option value="${v}"${(it.top || '') === v ? ' selected' : ''}>${label}</option>`).join('');
+    rows.push('<div class="anchorbox"><p class="tip">ของหายากในแถวนี้ — ใช้กฎเดียวกับที่เกมโรยให้เอง</p>' +
+      `<select id="fTop" style="width:100%">${opts}</select></div>`);
+  }
 
   if (it.t === 'fishRun') {
     const names = jumpNames(d);
@@ -1180,7 +1357,8 @@ function renderInspector() {
   bind('fRows', (v) => mutate((dd) => { byId(dd, it.id).rows = Math.max(1, Math.min(3, v)); }));
   bind('fW', (v) => mutate((dd) => { byId(dd, it.id).w = Math.max(40, v); }));
   bind('fN', (v) => mutate((dd) => { byId(dd, it.id).n = Math.max(1, v); }));
-  bind('fGap', (v) => mutate((dd) => { byId(dd, it.id).gap = Math.max(16, v); }));
+  bind('fGap', (v) => mutate((dd) => { byId(dd, it.id).gap = Math.max(gapMin(it), v); }));
+  bind('fWarn', (v) => mutate((dd) => { byId(dd, it.id).warn = Math.max(10, Math.min(180, v)); }));
   bind('fHumps', (v) => mutate((dd) => { byId(dd, it.id).humps = Math.max(1, v); }));
 
   const anc = document.getElementById('fAnchor');
@@ -1193,6 +1371,18 @@ function renderInspector() {
           const [id, key] = anc.value.split('|');
           q.link = { id, key };
         }
+      });
+      renderInspector();
+    };
+  }
+
+  const tp = document.getElementById('fTop');
+  if (tp) {
+    tp.onchange = () => {
+      mutate((dd) => {
+        const q = byId(dd, it.id);
+        if (tp.value) q.top = tp.value;
+        else delete q.top;
       });
       renderInspector();
     };
@@ -1219,6 +1409,11 @@ function renderInspector() {
     sel = copy.id;
     renderInspector();
   };
+
+  /** ระยะห่างต่ำสุดของแต่ละชนิด — หนามกว้าง 32px ถ้าชิดกว่านี้จะซ้อนกันเป็นก้อนเดียว */
+  function gapMin(q) {
+    return q.t === 'spikeRow' ? spike.w + 2 : 16;
+  }
 
   function num(id, label, val, step, min, max) {
     const a = min === undefined ? '' : ` min="${min}"`;
@@ -1257,9 +1452,13 @@ function grabRef() {
     else d.items.push({ ...base, t: 'crate', rows: o.rows || 1 });
   }
   for (const q of p.pit) d.items.push({ id: uid(), t: 'pit', group: 'obs', x: Math.round(q.x), w: Math.round(q.w) });
+  for (const f of p.fallers || []) {
+    d.items.push({ id: uid(), t: 'faller', group: 'sp', x: Math.round(f.x), warn: f.warn === undefined ? FALLER.warnFrames : f.warn });
+  }
+  for (const h of p.hazards || []) d.items.push({ id: uid(), t: h.kind, group: 'sp', x: Math.round(h.x) });
 
   // ของที่บังเอิญอยู่ตรงจุดเกาะพอดี ให้เกาะเลย โค้ดที่ export จะได้อ่านเหมือนต้นฉบับ
-  for (const it of d.items) if (it.group === 'obs') snapTo(d, it, it.x);
+  for (const it of d.items) if (CENTERED.has(it.group)) snapTo(d, it, it.x);
 
   pushUndo();
   docs.push(d);
@@ -1289,27 +1488,42 @@ function toCode(d) {
   const obs = [];
   const pit = [];
   const fish = [];
+  const fallers = [];
+  const hazards = [];
 
   for (const it of d.items) {
     const e = anchorExpr(d, it, names, 'x');
+    // แถวของกินที่โรยของหายากไว้ เขียนเป็นการห่อฟังก์ชันเดิม ไม่ใช่รายการเม็ดดิบ
+    const wrap = (call) => (!it.top ? `...${call}`
+      : it.top === 'shrimp' ? `...withShrimp(${call})`
+        : `...withKibble(${call}, '${it.top}')`);
+
     switch (it.t) {
       case 'spike': obs.push(`groundSpike(${off(e, 'spike.w / 2', it)})`); break;
+      case 'spikeRow': {
+        const base = off(e, String(itemW(it) / 2), it);
+        for (let i = 0; i < it.n; i++) obs.push(`groundSpike(${i ? `${base} + ${i * it.gap}` : base})`);
+        break;
+      }
       case 'bar': obs.push(`lowBar(${off(e, 'bar.w / 2', it)})`); break;
       case 'crate': obs.push(`crateStack(${off(e, 'crate.w / 2', it)}, ${it.rows})`); break;
       case 'pit': pit.push(`{ x: ${off(e, String(it.w / 2), it)}, w: ${it.w} }`); break;
-      case 'fishJump': fish.push(`...fishJump(${e}, ${it.n})`); break;
-      case 'fishDouble': fish.push(`...fishDouble(${e}, ${it.n})`); break;
-      case 'arcMid': fish.push(`...arcMid(${e}, ${it.n})`); break;
-      case 'arcHigh': fish.push(`...arcHigh(${e}, ${it.n})`); break;
-      case 'fishWave': fish.push(`...fishWave(${e}, ${it.n}, ${it.gap}, ${it.humps})`); break;
-      case 'fishLow': fish.push(`...fishLow(${e}, ${it.n}, ${it.gap})`); break;
+      case 'fishJump': fish.push(wrap(`fishJump(${e}, ${it.n})`)); break;
+      case 'fishDouble': fish.push(wrap(`fishDouble(${e}, ${it.n})`)); break;
+      case 'arcMid': fish.push(wrap(`arcMid(${e}, ${it.n})`)); break;
+      case 'arcHigh': fish.push(wrap(`arcHigh(${e}, ${it.n})`)); break;
+      case 'fishWave': fish.push(wrap(`fishWave(${e}, ${it.n}, ${it.gap}, ${it.humps})`)); break;
+      case 'fishLow': fish.push(wrap(`fishLow(${e}, ${it.n}, ${it.gap})`)); break;
       case 'fishRun':
         if (it.runTo && names.has(it.runTo)) {
-          fish.push(`...fishRunTo(${e}, ${names.get(it.runTo)}${it.gap === 34 ? '' : ', ' + it.gap})`);
+          fish.push(wrap(`fishRunTo(${e}, ${names.get(it.runTo)}${it.gap === 34 ? '' : ', ' + it.gap})`));
         } else {
-          fish.push(`...fishRun(${e}, ${countOf(d, it)}, ${it.gap})`);
+          fish.push(wrap(`fishRun(${e}, ${countOf(d, it)}, ${it.gap})`));
         }
         break;
+      case 'faller': fallers.push(`{ x: ${off(e, 'FALLER.w / 2', it)}, warn: ${warnOf(it)} }`); break;
+      case 'bee': hazards.push(`{ kind: 'bee', x: ${off(e, 'HAZARD.bee.w / 2', it)} }`); break;
+      case 'ball': hazards.push(`{ kind: 'ball', x: ${off(e, 'HAZARD.ball.r', it)} }`); break;
       default: break;
     }
   }
@@ -1319,6 +1533,8 @@ function toCode(d) {
   if (fish.length <= 2) body.push(`      fish: [${fish.join(', ')}],`);
   else body.push('      fish: [', ...fish.map((f) => `        ${f},`), '      ],');
   body.push(`      jumps: [${js.map((j) => names.get(j.id)).join(', ')}],`);
+  if (fallers.length) body.push(`      fallers: [${fallers.join(', ')}],`);
+  if (hazards.length) body.push(`      hazards: [${hazards.join(', ')}],`);
   if (d.partial) body.push('      partial: true,');
   if (d.width !== chunkW) body.push(`      width: ${d.width},`);
 
@@ -1359,7 +1575,7 @@ function toCode(d) {
 // หน้าตา / การผูกปุ่ม
 // ─────────────────────────────────────────────────────────────
 function buildKit() {
-  const map = { mark: 'kitMark', obs: 'kitObs', food: 'kitFood' };
+  const map = { mark: 'kitMark', obs: 'kitObs', food: 'kitFood', sp: 'kitSpecial' };
   for (const key of Object.keys(map)) document.getElementById(map[key]).innerHTML = '';
   for (const kit of KIT) {
     const el = document.createElement('div');
@@ -1388,8 +1604,12 @@ function refreshMeta() {
 function updateCount() {
   const d = doc();
   const sc = build(d);
+  const rare = sc.fish.filter((f) => f.kind && f.kind !== 'fish').length;
+  const sp = sc.fallers.length + sc.hazards.length;
   document.getElementById('docCount').textContent =
-    `จุดกด ${sc.jumps.length} · สิ่งกีดขวาง ${sc.obs.length} · หลุม ${sc.pit.length} · ของกิน ${sc.fish.length} เม็ด`;
+    `จุดกด ${sc.jumps.length} · สิ่งกีดขวาง ${sc.obs.length} · หลุม ${sc.pit.length}` +
+    ` · ของกิน ${sc.fish.length} เม็ด${rare ? ` (ของหายาก ${rare})` : ''}` +
+    `${sp ? ` · ของพิเศษ ${sp}` : ''}`;
 }
 
 function refreshAll() {
