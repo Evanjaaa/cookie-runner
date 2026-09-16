@@ -13,7 +13,7 @@
 // เพลงใหม่จะเริ่มดังช้าถึง 15 วินาที ซึ่งยาวกว่าช่วงพิเศษบางช่วงทั้งช่วง
 // จึงต้องเก็บอ้างอิงโน้ตที่จองไว้ แล้วยกเลิกตัวที่ "ยังไม่เริ่มเล่น" ตอนสลับ
 // ─────────────────────────────────────────────────────────────
-import { audioCtx, musicOut, unlockAudio } from './audio.js';
+import { audioCtx, musicOut, audioLive, whenAudioAwake } from './audio.js';
 
 const BPM = 128;
 const BEAT = 60 / BPM;
@@ -499,8 +499,37 @@ function fadeOut() {
   g.linearRampToValueAtTime(0, ac.currentTime + FADE_OUT);
 }
 
+/** ตอนนี้ควรให้ไฟล์เพลงเล่นอยู่ไหม — ใช้กันไม่ให้การลองใหม่ไปเล่นเพลงที่สั่งหยุดไปแล้ว */
+let fileWanted = false;
+let gestureHooked = false;
+
+/**
+ * ลองสั่งเล่นใหม่ตอนผู้ใช้แตะจอครั้งถัดไป
+ *
+ * ── ทำไมต้องมี ──
+ * เดิมตรงนี้กลืนข้อผิดพลาดทิ้งพร้อมคอมเมนต์ว่า "เดี๋ยวรอบหน้าค่อยเล่น"
+ * แต่ไม่มี "รอบหน้า" จริง ๆ เลย ไม่มีใครมาสั่งซ้ำอีก
+ *
+ * จุดที่ระเบิดคือตอนคลิปเปิดเกมจบเอง: คำสั่งเล่นเพลงมาจากตัวจับเวลา ไม่ได้มาจากการแตะจอ
+ * iOS จึงปฏิเสธ แล้วเพลงหน้าแรกก็เงียบไปทั้งรอบ — และเป็นบ้างไม่เป็นบ้าง
+ * เพราะขึ้นกับว่าก่อนหน้านั้นไฟล์เคยถูกเล่นสำเร็จไปแล้วหรือยัง (ถ้าเคย iOS จะปล่อยผ่าน)
+ */
+function retryFileOnGesture() {
+  if (gestureHooked) return;
+  gestureHooked = true;
+  const evs = ['pointerdown', 'touchend', 'keydown'];
+  const go = () => {
+    for (const ev of evs) document.removeEventListener(ev, go, true);
+    gestureHooked = false;
+    if (!fileWanted || !fileEl) return;
+    fileEl.play().catch(retryFileOnGesture);
+  };
+  for (const ev of evs) document.addEventListener(ev, go, { capture: true, passive: true });
+}
+
 function playFile(src) {
   const el = ensureFileEl();
+  fileWanted = true;
   fadeToken++;   // ยกเลิกคิวหยุดที่ค้างอยู่ ไม่งั้นมันจะมาหยุดเพลงที่เพิ่งสั่งเล่น
   // ตั้ง src ใหม่เฉพาะตอนเปลี่ยนเพลงจริง ๆ ไม่งั้นกลับมาหน้าแรกทีไรเพลงจะเริ่มใหม่หมด
   if (el.getAttribute('src') !== src) {
@@ -508,7 +537,40 @@ function playFile(src) {
     el.load();
   }
   fadeIn();
-  el.play().catch(() => { /* ยังไม่ได้ปลดล็อกเสียง เดี๋ยวรอบหน้าค่อยเล่น */ });
+  el.play().catch(retryFileOnGesture);
+}
+
+/**
+ * "จุดติด" ไฟล์เพลงหนึ่งครั้งในจังหวะที่ผู้ใช้แตะจอ
+ *
+ * iOS ปลดล็อกไฟล์เสียงเป็นราย ๆ ไฟล์ ไฟล์ที่ไม่เคยถูกเล่นในจังหวะที่แตะจอ
+ * จะถูกปฏิเสธเมื่อสั่งเล่นจากตัวจับเวลาทีหลัง (ซึ่งคือตอนคลิปเปิดเกมจบเอง)
+ * สั่งเล่นแล้วหยุดทันทีตั้งแต่ตอนแตะครั้งแรก ทุกคำสั่งหลังจากนั้นจึงผ่านตลอด
+ * ระดับเสียงของไฟล์ยังเป็นศูนย์อยู่ตอนนี้ จึงไม่มีใครได้ยินการจุดติด
+ */
+let primed = false;
+export function primeMusicFile() {
+  if (primed || fileFailed) return;
+  const src = FILE_TRACKS.home;
+  if (!src) return;
+  primed = true;
+  try {
+    const el = ensureFileEl();
+    if (el.getAttribute('src') !== src) {
+      el.setAttribute('src', src);
+      el.load();
+    }
+    const p = el.play();
+    if (p && p.then) {
+      p.then(() => {
+        if (fileWanted) return;   // ระหว่างนั้นมีคำสั่งเล่นจริงแล้ว ห้ามไปหยุด
+        el.pause();
+        try { el.currentTime = 0; } catch { /* ยังไม่มีข้อมูลไฟล์ */ }
+      }).catch(() => { primed = false; });
+    }
+  } catch {
+    primed = false;
+  }
 }
 
 /**
@@ -517,6 +579,7 @@ function playFile(src) {
  * หน้าแรกอีกทีจะพบว่าข้ามไปไกลกว่าที่ควร แถมยังกินแบนด์วิดท์ฟรี ๆ
  */
 function stopFile() {
+  fileWanted = false;
   if (!fileEl || fileEl.paused) return;
   const my = ++fadeToken;
   fadeOut();
@@ -588,17 +651,51 @@ function pump() {
   booked = booked.filter((b) => b.at > now - 8);
 }
 
+/**
+ * ── ตอนนี้ "ควร" มีเพลงอยู่ไหม ──
+ *
+ * ต่างจาก timer ที่บอกว่า "เพลงกำลังเล่นอยู่จริงไหม" — ตัวนี้คือความตั้งใจของเกม
+ * จำเป็นเพราะคำสั่งเริ่มเพลงอาจต้องรอเสียงตื่นก่อน แล้วระหว่างที่รออยู่นั้น
+ * เกมอาจเปลี่ยนใจไปแล้ว (เช่นคลิปเปิดเกมสั่งหยุดเพลงหน้าแรก)
+ *
+ * เคยไม่มีตัวนี้แล้วเจอจริง: กดเข้าเกมบนมือถือ → เพลงหน้าแรกถูกสั่งเล่นตอนเสียงยังไม่ตื่น
+ * → คลิปเริ่มแล้วสั่งหยุดเพลง (ซึ่งยังไม่ได้เริ่ม จึงไม่มีอะไรให้หยุด)
+ * → พอเสียงตื่น คิวเก่าก็เริ่มเพลงหน้าแรกขึ้นมาทับเพลงของคลิป = สองเพลงดังพร้อมกัน
+ * บนคอมไม่เจอเพราะเสียงตื่นทันทีที่คลิกแรก คิวจึงไม่เคยค้างข้ามจังหวะ
+ */
+let wanted = false;
+let queued = false;
+let retry = 0;
+
 /** เรียกซ้ำได้ ครั้งที่สองเป็นต้นไปไม่ทำอะไร */
 export function startMusic() {
+  wanted = true;
   if (timer) return;
-  const ac = audioCtx();
-  // ── ยังไม่ตื่น: รอแล้วเริ่มเอง ──
-  // เดิมเลิกทำไปเฉย ๆ แล้วรอให้มีใครมาเรียกซ้ำ ซึ่งบางทีไม่มีใครเรียกอีกเลย
-  // เพลงจึงเริ่มช้าไปจนถึงหน้าถัดไป หรือไม่เริ่มเลย (ดู unlockAudio ใน audio.js)
-  if (ac.state !== 'running') {
-    unlockAudio().then((ok) => { if (ok) startMusic(); });
+
+  // ── ยังไม่ตื่น: ฝากไว้ก่อน แล้วค่อยเริ่มเองตอนเสียงตื่น ──
+  // ห้ามเรียก audioCtx() ตรงนี้ เพราะเท่ากับสร้างระบบเสียงตั้งแต่ยังไม่มีใครแตะจอ
+  // ซึ่ง iOS ไม่ยอม (ดู liveCtx ใน audio.js)
+  if (!audioLive()) {
+    if (queued) return;
+    queued = true;
+    whenAudioAwake(() => {
+      queued = false;
+      if (wanted) startMusic();   // ระหว่างรอมีคนสั่งหยุดไปแล้วก็จบตรงนี้
+    });
+    // ── ตาข่ายกันพลาด ──
+    // คิวข้างบนอาศัยว่ามีใครสักคนบอกเราว่า "เสียงตื่นแล้ว" ซึ่งถ้าพลาดไปทางใดทางหนึ่ง
+    // (เบราว์เซอร์บางตัวเปลี่ยนสถานะช้ากว่าที่ตอบกลับมา) เพลงจะไม่ดังทั้งเกม
+    // และไม่มีอะไรบนจอบอกเลยว่าเกิดอะไรขึ้น — เจอมาแล้วสองรอบ
+    // จึงถามเองซ้ำทุกวินาทีครึ่ง จนกว่าจะได้เล่นจริงหรือมีคนสั่งหยุด
+    clearInterval(retry);
+    retry = setInterval(() => {
+      if (!wanted || timer) { clearInterval(retry); retry = 0; return; }
+      if (audioLive()) { clearInterval(retry); retry = 0; startMusic(); }
+    }, 1500);
     return;
   }
+
+  const ac = audioCtx();
 
   // MUSIC_VOL คือระดับเพลง "เทียบกับเสียงเอฟเฟกต์" ส่วนระดับเสียงรวม
   // อยู่ที่ปมของ audio.js ปลายทาง จึงไม่ต้องรู้เรื่องปิดเสียงตรงนี้เลย
@@ -630,6 +727,9 @@ export function startMusic() {
  * (เหตุผลเดียวกับที่ setMusicTrack ปล่อยโน้ตที่กำลังดังอยู่ให้จบเอง)
  */
 export function stopMusic() {
+  // ยกเลิกความตั้งใจก่อนเป็นอันดับแรก คิวที่ค้างอยู่จะได้ไม่เริ่มเพลงขึ้นมาทีหลัง
+  wanted = false;
+  if (retry) { clearInterval(retry); retry = 0; }
   if (timer) { clearInterval(timer); timer = null; }
   stopFile();   // เพลงไฟล์หรี่ลงแล้ว pause ตัวเองอยู่แล้ว ไม่ต้องทำอะไรเพิ่ม
 

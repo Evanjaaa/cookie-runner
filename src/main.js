@@ -4,7 +4,7 @@ import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getMix, setMix, gameMuted, audioState, sfx, killSfx } from './audio.js';
-import { startMusic, stopMusic } from './music.js';
+import { startMusic, stopMusic, primeMusicFile } from './music.js';
 import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin, skinById } from './skins.js';
 import {
   CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
@@ -5679,7 +5679,12 @@ document.addEventListener('visibilitychange', () => {
 // ดักที่ระดับเอกสารในชั้น capture จึงได้ทุกการแตะเสมอ ไม่ว่าใครจะกันเหตุการณ์ไว้หรือไม่
 // ทำงานครั้งเดียวแล้วถอดตัวเองออก (once) — ตื่นแล้วไม่ต้องดักอีก
 for (const ev of ['pointerdown', 'touchend', 'keydown']) {
-  document.addEventListener(ev, () => unlockAudio(), { capture: true, once: true, passive: true });
+  document.addEventListener(ev, () => {
+    unlockAudio();
+    // จุดติดไฟล์เพลงไปพร้อมกัน — iOS ปลดล็อกไฟล์เสียงทีละไฟล์ และปลดได้เฉพาะ
+    // ในจังหวะที่ผู้ใช้แตะจอเท่านั้น (ดู primeMusicFile ใน music.js)
+    primeMusicFile();
+  }, { capture: true, once: true, passive: true });
 }
 
 // ปุ่มเดียวทำได้ 3 อย่าง ขึ้นกับสถานะเกม

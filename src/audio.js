@@ -75,7 +75,23 @@ function askPlaybackSession() {
 
 function ctx() {
   if (!ac) {
-    ac = new (window.AudioContext || window.webkitAudioContext)();
+    // ── latencyHint: 'interactive' ──
+    // บอกเบราว์เซอร์ว่าเสียงชุดนี้ต้องตอบสนองทันใจ ไม่ใช่เพลงที่เล่นยาว ๆ
+    // มันจะเลือกบัฟเฟอร์เล็กที่สุดที่เครื่องไหว = เสียงออกเร็วขึ้นหลังสั่ง
+    // ค่าเริ่มต้นของ Chrome เป็นแบบนี้อยู่แล้ว แต่ Safari/iOS เลือกบัฟเฟอร์ใหญ่กว่า
+    // ถ้าไม่บอก ซึ่งคือที่มาของ "เสียงมาช้ากว่าภาพนิดหนึ่ง" บนมือถือ
+    const AC = window.AudioContext || window.webkitAudioContext;
+    try {
+      ac = new AC({ latencyHint: 'interactive' });
+    } catch {
+      ac = new AC();   // เบราว์เซอร์เก่าที่ไม่รับ option ก็ใช้ค่าเริ่มต้นไป
+    }
+    // ── ทำไมต้องฟังเหตุการณ์ ไม่ใช่เช็ค state หลัง resume() ──
+    // บน iOS คำสั่งปลุกตอบกลับมาก่อนที่ state จะเปลี่ยนเป็น running จริง
+    // โค้ดที่เช็ค state ทันทีหลัง resume จึงเห็นว่า "ยังไม่ตื่น" แล้วไม่ทำงานที่ฝากไว้
+    // ผลคือเพลงหน้าแรกไม่ดังและไฟล์เสียงคลิปไม่ถูกโหลดรอ — บนคอมไม่เจอเพราะ
+    // Chrome เปลี่ยน state ให้เสร็จก่อนตอบกลับเสมอ
+    ac.addEventListener('statechange', () => flushWakeQueue());
     askPlaybackSession();
   }
   return ac;
@@ -103,6 +119,15 @@ function liveCtx() {
   // เบราว์เซอร์ที่บอกได้ว่าเคยมีการกดไหม ให้เชื่อมัน (Chrome / Safari รุ่นใหม่)
   if (ua && ua.hasBeenActive) return ctx();
   return null;
+}
+
+/**
+ * เสียงพร้อมใช้จริงตอนนี้ไหม — ถามได้โดยไม่ไปสร้าง context ขึ้นมาเอง
+ * (สำคัญ: ถามด้วย audioCtx() จะกลายเป็นการสร้างระบบเสียงก่อนผู้ใช้แตะจอ
+ *  ซึ่งเป็นต้นเหตุที่ iPhone เงียบทั้งเกม — ดู liveCtx)
+ */
+export function audioLive() {
+  return !!ac && ac.state === 'running';
 }
 
 /**
@@ -243,6 +268,8 @@ export function whenAudioAwake(fn) {
 }
 
 function flushWakeQueue() {
+  // เรียกจากหลายทาง (ตอนปลุก / ตอน state เปลี่ยน) จึงต้องกันไว้เองว่าตื่นจริงแล้ว
+  if (!ac || ac.state !== 'running') return;
   while (wakeQueue.length) {
     const fn = wakeQueue.shift();
     try {
@@ -260,7 +287,14 @@ export function unlockAudio() {
   // ขอโหมด playback ซ้ำทุกครั้งที่ปลุก — iOS รีเซ็ตกลับเป็น ambient ได้เองหลังถูกขัดจังหวะ
   askPlaybackSession();
   const a = ctx();
-  if (a.state === 'running') return Promise.resolve(true);
+  // ── ตื่นอยู่แล้วก็ต้องเคลียร์คิวด้วย ──
+  // ทางนี้คือทางที่เกิดบ่อยที่สุดบนคอม: context ถูกสร้างตอนคลิกแรกแล้วตื่นทันที
+  // ไม่ต้อง resume() เลย ของที่ฝากไว้ก่อนหน้านั้น (เพลงหน้าแรก / โหลดเสียงคลิป)
+  // จึงค้างอยู่ในคิวตลอดกาล = เพลงหน้าแรกไม่ดังเลย และเสียงคลิปมาช้าเพราะไม่ได้โหลดรอ
+  if (a.state === 'running') {
+    flushWakeQueue();
+    return Promise.resolve(true);
+  }
   if (!waking) {
     waking = a.resume()
       .then(() => {
@@ -417,8 +451,13 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
   filt.frequency.exponentialRampToValueAtTime(peak * 2, t + dur * 0.2);
   filt.frequency.exponentialRampToValueAtTime(end * 1.5, t + dur);
 
+  // ── หัวเสียงต้องมาไว ──
+  // ของเดิมไล่ขึ้น 25 มิลลิวินาที ซึ่งเป็นหูที่ได้ยินว่า "เสียงมาช้ากว่าภาพ"
+  // วัดจริง: กดกระโดดแล้วเสียงโผล่ที่ 26.5ms ส่วนเสียงลงพื้น (ไม่มีหัวไล่) โผล่ที่ 5.1ms
+  // สองเสียงนี้อยู่ในเกมเดียวกันแต่มาไม่พร้อมกัน จึงรู้สึกว่าจังหวะไม่ตรง
+  // 7ms ยังนุ่มพอที่จะไม่เกิดเสียง "คลิก" ตอนเริ่ม แต่ไวขึ้นสามเท่า
   gain.gain.setValueAtTime(0.0001, t);
-  gain.gain.exponentialRampToValueAtTime(vol, t + 0.025);   // เข้าเร็วแบบเสียงร้อง
+  gain.gain.exponentialRampToValueAtTime(vol, t + 0.007);   // เข้าเร็วแบบเสียงร้อง
   gain.gain.setValueAtTime(vol, t + dur * 0.5);
   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
 
@@ -555,9 +594,38 @@ function clipOf(src, ch) {
  */
 export function prepareAudioFile(src, ch = 'sfx') {
   try {
-    clipOf(src, ch);
+    primeClip(clipOf(src, ch));
   } catch {
     /* เตรียมไม่ได้ก็ไม่เป็นไร ตอนเล่นจริงจะลองใหม่เอง */
+  }
+}
+
+/**
+ * "จุดติด" ไฟล์เสียงหนึ่งครั้ง — สั่งเล่นแล้วหยุดทันที
+ *
+ * ── ทำไมต้องทำ ──
+ * iOS ไม่สนใจ preload="auto" มันจะไม่แตะไฟล์เลยจนกว่าจะเคยถูกสั่งเล่น
+ * ในจังหวะที่ผู้ใช้แตะจอ ผลคือพอถึงจังหวะที่ต้องดังจริง (เสียงท้องร้องในคลิป)
+ * มันเพิ่งเริ่มโหลดตอนนั้น เสียงจึงมาช้ากว่าภาพ — แต่ "จุดจบ" ยังตรงเวลาเดิม
+ * เพราะคำสั่งหยุดตั้งไว้ตามนาฬิกา ไม่ได้ตามตัวไฟล์ (ตรงกับอาการที่เจอเป๊ะ)
+ *
+ * ระดับเสียงของคลิปยังเป็นศูนย์อยู่ตอนนี้ การจุดติดจึงไม่มีใครได้ยิน
+ */
+function primeClip(c) {
+  if (c.primed) return;
+  c.primed = true;
+  try {
+    const p = c.el.play();
+    if (p && p.then) {
+      p.then(() => {
+        // ถ้าระหว่างนั้นมีคำสั่งเล่นจริงเข้ามาแล้ว ห้ามไปหยุดของจริง
+        if (c.wantPlay) return;
+        c.el.pause();
+        try { c.el.currentTime = 0; } catch { /* ยังไม่มีข้อมูลไฟล์ */ }
+      }).catch(() => { /* เบราว์เซอร์ยังไม่ยอมก็ข้ามไป ตอนเล่นจริงจะลองใหม่ */ });
+    }
+  } catch {
+    /* เล่นไม่ได้ตอนนี้ก็ไม่เป็นไร */
   }
 }
 
@@ -599,6 +667,7 @@ export function playAudioFile(src, { ch = 'sfx', vol = 0.9, dur = 0, fadeIn = 0,
 
 /** เริ่มเล่นจริง — แยกออกมาเพราะถูกเรียกได้สองทาง: ทันที กับ หลังรอเสียงตื่น */
 function startClip(c, src, { vol, dur, fadeIn, fade }) {
+  c.wantPlay = true;   // กันไม่ให้การ "จุดติด" ที่ค้างอยู่มาสั่งหยุดของจริง
   const a = ctx();
   const t = a.currentTime;
   clearTimeout(c.timer);
@@ -626,6 +695,7 @@ export function stopAudioFile(src, fade = 0.3) {
   // สั่งหยุดระหว่างที่ยังรอเสียงตื่นอยู่ = ยกเลิกคิวทิ้ง ไม่งั้นมันจะมาเริ่มเล่นทีหลัง
   // ตอนที่คลิปจบไปแล้ว (เช่นกดข้ามคลิปก่อนเสียงจะทันได้เล่น)
   c.pending = false;
+  c.wantPlay = false;
   if (c.el.paused) return;
   const a = ctx();
   const t = a.currentTime;
