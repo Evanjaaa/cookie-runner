@@ -772,6 +772,15 @@ export const EN = {
   'ยังไม่มีสถิติ': 'No record yet',
   'ภาษา': 'Language',
   'เลือกภาษา': 'Choose a language',
+  // ── แถวทดสอบเสียง ──
+  'ทดสอบเสียง': 'Sound test',
+  'เล่นเสียง': 'Play',
+  'ยังไม่ตื่น — แตะหน้าจอแล้วลองใหม่': 'Asleep - tap the screen and try again',
+  'เสียงถูกหรี่เป็น 0 — ปรับที่สองแถวบน': 'Volume is at 0 - use the two rows above',
+  'พร้อม — ถ้ายังเงียบ ให้ปิดสวิตช์ปิดเสียงข้างเครื่อง':
+    'Ready - if still silent, turn off the ringer switch on your phone',
+  'พร้อม — ถ้ายังเงียบ ให้เช็คสวิตช์ปิดเสียงข้างเครื่อง':
+    'Ready - if still silent, check the ringer switch on your phone',
   // ── บรรทัดเครดิตใต้กรอบเกม ──
   'ตัวละคร ฉากในเกม และเสียงเอฟเฟกต์ทั้งหมดสร้างด้วยโค้ด (Canvas 2D + Web Audio) ส่วนภาพฉากหลังกับเพลงหน้าแรกเป็นไฟล์ — เพลง':
     'Every character, scene and sound effect is generated in code (Canvas 2D + Web Audio). The background art and title music are files — music',

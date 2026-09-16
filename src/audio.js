@@ -51,9 +51,73 @@ const level = {
 /** ปมย่อยของแต่ละช่อง สร้างตอนถูกขอใช้ครั้งแรก */
 const subBus = { music: null, sfx: null, intro: null };
 
+/**
+ * ── สวิตช์ปิดเสียงข้างเครื่องของ iPhone ──
+ *
+ * iOS แบ่งเสียงของหน้าเว็บเป็นสองประเภท: "ambient" (เสียงประกอบ) กับ "playback"
+ * (สื่อที่ผู้ใช้ตั้งใจเปิดฟัง) ค่าเริ่มต้นของ Web Audio คือ ambient ซึ่ง
+ * "โดนสวิตช์ปิดเสียงข้างเครื่องปิดทับเสมอ" ต่อให้เร่งเสียงในเกมจนสุดก็เงียบสนิท
+ * — บนคอมไม่มีสวิตช์นี้ จึงได้ยินปกติ กลายเป็นอาการ "คอมมีเสียง มือถือเงียบ"
+ *
+ * ขอเปลี่ยนเป็น playback ตั้งแต่สร้าง context เกมจึงดังเหมือนแอปเพลง
+ * ไม่ขึ้นกับสวิตช์นั้นอีก (Safari 17+ / Chrome บนแอนดรอยด์รุ่นใหม่)
+ * เครื่องที่ไม่มี API นี้ก็ข้ามไปเงียบ ๆ ไม่มีอะไรเสียหาย
+ */
+function askPlaybackSession() {
+  try {
+    if (navigator.audioSession && navigator.audioSession.type !== 'playback') {
+      navigator.audioSession.type = 'playback';
+    }
+  } catch {
+    /* เบราว์เซอร์ไม่รองรับก็ใช้ค่าเดิมของมันไป */
+  }
+}
+
 function ctx() {
-  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ac) {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    askPlaybackSession();
+  }
   return ac;
+}
+
+/** เคยมีการแตะ/กดจากผู้ใช้จริงแล้วหรือยัง (ตั้งจาก unlockAudio ซึ่งถูกเรียกจากการกดเท่านั้น) */
+let touched = false;
+
+/**
+ * context สำหรับ "เสียงที่อยากดังตอนนี้" — คืน null ถ้ายังไม่ถึงเวลาที่สร้างได้
+ *
+ * ── ทำไมห้ามสร้างก่อนผู้ใช้แตะจอ ──
+ * iOS ผูกสิทธิ์ใช้ระบบเสียงไว้กับการแตะจอของผู้ใช้ ระบบเสียงที่ถูกสร้างขึ้นก่อนหน้านั้น
+ * จะเกิดมาในสภาพที่ปลุกไม่ขึ้นจริง สั่ง resume() แล้วรายงานว่า running ก็จริง
+ * แต่ไม่มีเสียงออกสักตัวทั้งเกม (วัดจริงบน iPhone มาแล้ว)
+ *
+ * ตัวที่มาเรียกก่อนเวลาคือฉากหน้าแรก — น้องแมวส่งเสียงเหมียวเองระหว่างยืนรออยู่
+ * ตั้งแต่ยังไม่มีใครแตะอะไรเลย ซึ่งเสียงนั้นไม่มีทางดังอยู่แล้วเพราะเบราว์เซอร์บล็อก
+ * จึงไม่ต้องสร้างอะไรทั้งนั้น รอให้แตะก่อนแล้วค่อยเริ่มชีวิตระบบเสียง
+ */
+function liveCtx() {
+  if (ac) return ac;
+  if (touched) return ctx();
+  const ua = navigator.userActivation;
+  // เบราว์เซอร์ที่บอกได้ว่าเคยมีการกดไหม ให้เชื่อมัน (Chrome / Safari รุ่นใหม่)
+  if (ua && ua.hasBeenActive) return ctx();
+  return null;
+}
+
+/**
+ * สถานะระบบเสียง ณ ตอนนี้ — ใช้บอกผู้เล่นเวลาเงียบผิดปกติ
+ *   none        ยังไม่เคยสร้างเลย (ยังไม่มีเสียงอะไรถูกสั่ง)
+ *   running     พร้อมใช้จริง
+ *   suspended   ยังไม่ได้ปลุก (เบราว์เซอร์รอให้แตะหน้าจอก่อน)
+ *   interrupted iOS ตัดไปตอนมีสายเข้า/สลับแอป ต้องปลุกใหม่
+ */
+export function audioState() {
+  return {
+    state: ac ? ac.state : 'none',
+    session: (navigator.audioSession && navigator.audioSession.type) || null,
+    muted: level.music <= 0 && level.sfx <= 0,
+  };
 }
 
 /**
@@ -113,6 +177,21 @@ export function getMix(ch) {
   return level[ch] ?? 0;
 }
 
+/**
+ * เสียงของ "ตัวเกม" ถูกหรี่จนเงียบหมดทั้งสองช่องหรือยัง
+ *
+ * ── ทำไมต้องมีฟังก์ชันนี้ ──
+ * ระดับเสียงเก็บใน localStorage ซึ่งแยกกันคนละโดเมน (เครื่องเดียวกันแต่เปิดจาก
+ * เว็บจริงกับจากเครื่องทดสอบในบ้าน = คนละที่เก็บ) หรี่ไว้ที่ไหนก็เงียบเฉพาะที่นั่น
+ * ผู้เล่นจึงเจอ "เกมเดียวกันแต่ที่หนึ่งมีเสียง อีกที่หนึ่งเงียบสนิท" โดยไม่มีอะไรบอก
+ * — เกิดขึ้นจริงมาแล้ว ใช้เวลาหาสาเหตุนานเพราะไม่มีร่องรอยให้เห็นบนหน้าจอเลย
+ *
+ * ช่องของคลิปเปิดเกมไม่นับ เพราะมันแยกจากเสียงเกมโดยตั้งใจ (คลิปยังดังได้ขณะเกมเงียบ)
+ */
+export function gameMuted() {
+  return level.music <= 0 && level.sfx <= 0;
+}
+
 /** ตั้งระดับของช่องหนึ่ง คืนค่าที่ตั้งได้จริงหลังตัดให้อยู่ในช่วง 0–1 */
 export function setMix(ch, v) {
   if (!(ch in level)) return 0;
@@ -142,12 +221,55 @@ export function setMix(ch, v) {
  * คนที่ต้องการเสียง "ตอนนี้" จึงควรรอ Promise นี้ก่อน แทนการเช็ค state เอง
  * เรียกซ้ำได้ ตื่นอยู่แล้วก็คืนงานที่เสร็จแล้วกลับไป
  */
+/**
+ * งานที่ต้องรอให้เสียง "ตื่น" ก่อนถึงทำได้
+ *
+ * ── ทำไมต้องมีคิวนี้ ──
+ * iOS ไม่ยอมให้สร้างของในระบบเสียงก่อนผู้ใช้แตะจอ โดยเฉพาะการต่อไฟล์เสียง
+ * เข้ากับกราฟ (createMediaElementSource) ถ้าไปทำตั้งแต่ตอนเปิดหน้า
+ * ทั้ง context จะค้างอยู่ในสภาพที่ปลุกไม่ขึ้นจริง — สั่ง resume() แล้วรายงานว่า
+ * running ก็จริง แต่ไม่มีเสียงออกสักตัวทั้งเกม (เจอจริงบน iPhone: หน้าทดสอบ
+ * ที่สร้าง context ตอนแตะปุ่มดังปกติ ส่วนตัวเกมที่สร้างไว้ตั้งแต่เปิดหน้าเงียบสนิท)
+ *
+ * ของที่อยากทำล่วงหน้าจึงต้องฝากไว้ที่นี่ แล้วจะถูกทำให้ทันทีที่เสียงตื่นจริง
+ */
+const wakeQueue = [];
+export function whenAudioAwake(fn) {
+  if (ac && ac.state === 'running') {
+    fn();
+    return;
+  }
+  wakeQueue.push(fn);
+}
+
+function flushWakeQueue() {
+  while (wakeQueue.length) {
+    const fn = wakeQueue.shift();
+    try {
+      fn();
+    } catch {
+      /* งานเตรียมของชิ้นหนึ่งพังห้ามลามไปหยุดชิ้นอื่น */
+    }
+  }
+}
+
 let waking = null;
 export function unlockAudio() {
+  // ถูกเรียกจากการกด/แตะของผู้ใช้เท่านั้น จึงใช้เป็นสัญญาณว่า "มีสิทธิ์ใช้เสียงแล้ว" ได้
+  touched = true;
+  // ขอโหมด playback ซ้ำทุกครั้งที่ปลุก — iOS รีเซ็ตกลับเป็น ambient ได้เองหลังถูกขัดจังหวะ
+  askPlaybackSession();
   const a = ctx();
   if (a.state === 'running') return Promise.resolve(true);
   if (!waking) {
-    waking = a.resume().then(() => true).catch(() => false).finally(() => { waking = null; });
+    waking = a.resume()
+      .then(() => {
+        // ตื่นแล้วค่อยทำงานที่ฝากไว้ — ตรงนี้อยู่หลังการแตะจอเสมอ ซึ่งเป็นเงื่อนไขของ iOS
+        if (a.state === 'running') flushWakeQueue();
+        return a.state === 'running';
+      })
+      .catch(() => false)
+      .finally(() => { waking = null; });
   }
   return waking;
 }
@@ -234,8 +356,12 @@ export function killSfx() {
 
 function tone(from, to, dur, type = 'square', vol = 0.12) {
   if (routeLevel() <= 0) return;   // ปมรวมกรองให้อยู่แล้ว ตัดตรงนี้ไว้เพื่อไม่สร้าง node ทิ้ง
-  const a = ctx();
-  if (a.state === 'suspended') return;
+  // ยังไม่เคยแตะจอ = ยังไม่มีสิทธิ์สร้างระบบเสียง (ดู liveCtx) เสียงนี้ไม่ดังอยู่แล้ว
+  const a = liveCtx();
+  if (!a) return;
+  // ตื่นไม่ทัน: ปลุกไว้ก่อนแล้วเล่นต่อไปเลย — เสียงที่จองไว้จะดังทันทีที่ตื่น
+  // (ของเดิม return ทิ้งเงียบ ๆ ซึ่งบนมือถือที่ปลุกช้ากว่าคอมคือเสียงหายไปดื้อ ๆ)
+  if (a.state !== 'running') unlockAudio();
 
   const t = a.currentTime;
   const osc = a.createOscillator();
@@ -268,8 +394,12 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
  */
 function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
   if (routeLevel() <= 0) return;
-  const a = ctx();
-  if (a.state === 'suspended') return;
+  // ยังไม่เคยแตะจอ = ยังไม่มีสิทธิ์สร้างระบบเสียง (ดู liveCtx) เสียงนี้ไม่ดังอยู่แล้ว
+  const a = liveCtx();
+  if (!a) return;
+  // ตื่นไม่ทัน: ปลุกไว้ก่อนแล้วเล่นต่อไปเลย — เสียงที่จองไว้จะดังทันทีที่ตื่น
+  // (ของเดิม return ทิ้งเงียบ ๆ ซึ่งบนมือถือที่ปลุกช้ากว่าคอมคือเสียงหายไปดื้อ ๆ)
+  if (a.state !== 'running') unlockAudio();
 
   const t = a.currentTime;
   const osc = a.createOscillator();
@@ -325,8 +455,12 @@ function meow({ start, peak, end, dur, vol = 0.13, q = 6, wobble = 24 }) {
  */
 function growl({ dur = 1.1, base = 92, vol = 0.34, bubble = 19 } = {}) {
   if (routeLevel() <= 0) return;
-  const a = ctx();
-  if (a.state === 'suspended') return;
+  // ยังไม่เคยแตะจอ = ยังไม่มีสิทธิ์สร้างระบบเสียง (ดู liveCtx) เสียงนี้ไม่ดังอยู่แล้ว
+  const a = liveCtx();
+  if (!a) return;
+  // ตื่นไม่ทัน: ปลุกไว้ก่อนแล้วเล่นต่อไปเลย — เสียงที่จองไว้จะดังทันทีที่ตื่น
+  // (ของเดิม return ทิ้งเงียบ ๆ ซึ่งบนมือถือที่ปลุกช้ากว่าคอมคือเสียงหายไปดื้อ ๆ)
+  if (a.state !== 'running') unlockAudio();
 
   const t = a.currentTime;
   const osc = a.createOscillator();

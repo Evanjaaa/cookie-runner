@@ -2154,6 +2154,27 @@ canvas[hidden] { display: none; }
 }
 .quest-list::-webkit-scrollbar { display: none; }
 
+/* ── ป้าย "เสียงเกมปิดอยู่" บนปุ่มตั้งค่า ──
+   ลำโพงขีดฆ่าดวงเล็กเกาะมุมขวาล่างของปุ่ม วาดด้วย CSS ล้วน (สามเหลี่ยม + ขีดทับ)
+   สีเทาเงียบ ๆ ไม่ใช่แดง เพราะนี่คือสถานะที่ผู้เล่นตั้งเอง ไม่ใช่ความผิดพลาด */
+#btnSettings { position: relative; }
+#btnSettings.muted-hint::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid #3A1D50;
+  background:
+    /* ขีดทับเฉียง */
+    linear-gradient(45deg, transparent 44%, #FFF3E2 44%, #FFF3E2 56%, transparent 56%),
+    /* ตัวลำโพง */
+    radial-gradient(circle at 38% 50%, #FFF3E2 0 26%, transparent 27%),
+    #6B4C8A;
+}
+
 /* ── ปุ่มเลือกภาษาในหน้าตั้งค่า ──
    ทรงเดียวกับชิปกรองในหน้าอื่น (.fsort/.fchip) เพราะเป็นงานเดียวกัน:
    เลือกหนึ่งอย่างจากสองสามอย่างที่เห็นพร้อมกัน ไม่ใช่ปุ่มสั่งงาน */

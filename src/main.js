@@ -3,7 +3,7 @@ import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getMix, setMix, sfx, killSfx } from './audio.js';
+import { unlockAudio, getMix, setMix, gameMuted, audioState, sfx, killSfx } from './audio.js';
 import { startMusic, stopMusic } from './music.js';
 import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin, skinById } from './skins.js';
 import {
@@ -387,6 +387,8 @@ function refreshHome() {
   refreshQuestDot();
   refreshLvDot();
   refreshDailyDot();
+  // เสียงถูกหรี่ไว้ตั้งแต่รอบก่อนก็ต้องเห็นตั้งแต่เข้าล็อบบี้ ไม่ใช่เห็นตอนเปิดหน้าตั้งค่า
+  paintMuteBadge();
   refreshEquipCount();
   paintFitted(document.getElementById('rankIcon'), 76, 0.96, drawTrophy);
   paintFitted(document.getElementById('gachaIcon'), 76, 0.96, (c) => {
@@ -1592,6 +1594,28 @@ document.getElementById('enterBtn').addEventListener('click', enterGame);
 // โหลดคลิปเปิดเกมรอไว้ตั้งแต่เปิดหน้า ไฟล์ใหญ่ ไปเริ่มโหลดตอนกดเข้าเกมจะเห็นจอดำรอ
 preloadIntroVideo();
 
+/**
+ * ทดสอบเสียงหนึ่งที แล้วรายงานสิ่งที่เครื่องบอกกลับมา
+ *
+ * แยกสามกรณีที่แก้คนละทางกัน:
+ *   ยังไม่ตื่น          เบราว์เซอร์ยังไม่ยอมให้เล่น — แตะหน้าจอก่อน
+ *   ตื่นแล้วแต่หรี่ไว้ 0  ปรับที่แถวเพลง/เอฟเฟกต์ข้างบน
+ *   ตื่นแล้วเสียงปกติ     ถ้ายังไม่ได้ยินบน iPhone = สวิตช์ปิดเสียงข้างเครื่อง
+ */
+function runAudioTest() {
+  const out = document.getElementById('audioTestState');
+  unlockAudio().then(() => {
+    sfx.fish();
+    const a = audioState();
+    out.textContent =
+      a.state !== 'running' ? 'ยังไม่ตื่น — แตะหน้าจอแล้วลองใหม่'
+        : a.muted ? 'เสียงถูกหรี่เป็น 0 — ปรับที่สองแถวบน'
+        : a.session === 'ambient' ? 'พร้อม — ถ้ายังเงียบ ให้ปิดสวิตช์ปิดเสียงข้างเครื่อง'
+        : 'พร้อม — ถ้ายังเงียบ ให้เช็คสวิตช์ปิดเสียงข้างเครื่อง';
+  });
+}
+document.getElementById('audioTest').addEventListener('click', runAudioTest);
+
 // ── ตั้งค่า: เปิด/ปิดคลิปเปิดเกม และเสียงของคลิป ──
 function paintIntroSetting() {
   const on = introVideoEnabled();
@@ -1677,6 +1701,22 @@ function drawMixRow(row) {
 
 function drawVolume() {
   MIX_ROWS.forEach(drawMixRow);
+  paintMuteBadge();
+}
+
+/**
+ * ป้ายลำโพงขีดฆ่าบนปุ่มตั้งค่า — โผล่เมื่อเสียงเกมถูกหรี่เป็นศูนย์ทั้งสองช่อง
+ *
+ * ปุ่มตั้งค่าคือทางเดียวที่แก้เรื่องนี้ได้ ป้ายจึงอยู่บนปุ่มนั้นเลย ไม่ใช่ลอยอยู่ที่อื่น
+ * "เกมเงียบ" เป็นสถานะที่ผู้เล่นตั้งเองได้ ไม่ใช่ความผิดพลาด ป้ายจึงเป็นสีเทาเงียบ ๆ
+ * ไม่ใช่จุดแดงเตือนภัยแบบป้ายจดหมาย
+ */
+function paintMuteBadge() {
+  const btn = document.getElementById('btnSettings');
+  if (!btn) return;
+  const off = gameMuted();
+  btn.classList.toggle('muted-hint', off);
+  btn.setAttribute('aria-label', off ? 'ตั้งค่า (เสียงเกมปิดอยู่)' : 'ตั้งค่า');
 }
 
 function stepMix(ch, dir) {
@@ -5619,8 +5659,28 @@ document.getElementById('restartBtn').addEventListener('click', () => { sfx.rest
 
 // สลับแท็บหรือสลับแอปแล้วหยุดให้เอง จะได้ไม่กลับมาเจอว่าตายไปแล้ว
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) setPaused(true);
+  if (document.hidden) {
+    setPaused(true);
+    return;
+  }
+  // ── กลับเข้ามาแล้วต้องปลุกเสียงใหม่ ──
+  // iOS ตัดระบบเสียงทิ้งตอนมีสายเข้า ล็อกจอ หรือสลับไปแอปอื่น (state = interrupted)
+  // แล้วไม่ตื่นเองเมื่อกลับมา ถ้าไม่ปลุกตรงนี้ เกมจะเงียบไปทั้งรอบโดยไม่มีอะไรบอก
+  unlockAudio();
+  paintMuteBadge();
 });
+
+// ── ปลุกเสียงจากการแตะครั้งแรก ไม่ว่าจะแตะตรงไหน ──
+//
+// เดิมเสียงถูกปลุกเฉพาะตอนกดปุ่มที่ต่อสายไว้ให้ ซึ่งครอบคลุมเส้นทางปกติ
+// แต่บนมือถือการแตะครั้งแรกมักไปตกที่อื่น (แตะข้ามคลิปเปิดเกม แตะพื้นหลัง
+// ปัดหน้าจอ) แล้วเสียงจะยังไม่ตื่นจนกว่าจะบังเอิญกดปุ่มที่ถูกต้อง
+//
+// ดักที่ระดับเอกสารในชั้น capture จึงได้ทุกการแตะเสมอ ไม่ว่าใครจะกันเหตุการณ์ไว้หรือไม่
+// ทำงานครั้งเดียวแล้วถอดตัวเองออก (once) — ตื่นแล้วไม่ต้องดักอีก
+for (const ev of ['pointerdown', 'touchend', 'keydown']) {
+  document.addEventListener(ev, () => unlockAudio(), { capture: true, once: true, passive: true });
+}
 
 // ปุ่มเดียวทำได้ 3 อย่าง ขึ้นกับสถานะเกม
 function confirm() {

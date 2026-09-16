@@ -20,6 +20,7 @@
 
 import { loadPref, savePref } from './storage.js';
 import { playIntroAnim, introSoundEnabled, setIntroSoundEnabled, prepareIntroSound } from './intro-anim.js';
+import { whenAudioAwake } from './audio.js';
 
 // ส่งต่อให้หน้าตั้งค่า — ค่าตัวจริงอยู่กับตัวคลิป (intro-anim.js) ซึ่งเป็นคนใช้มัน
 // แต่ทุกอย่างของ "คลิปเปิดเกม" ควรเรียกผ่านประตูเดียวกัน ไม่ต้องรู้ว่าข้างในแบ่งไฟล์ยังไง
@@ -67,7 +68,11 @@ export function preloadIntroVideo() {
   // คลิปโค้ดไม่มีไฟล์วิดีโอให้โหลด มีแต่ไฟล์เสียงสองตัว (รวมไม่ถึง 0.7 MB)
   // โหลดรอไว้ด้วยตัวเล่นจริงเลย เพลงจะได้ดังพร้อมเฟรมแรกของคลิป (ดู prepareIntroSound)
   if (CLIP === 'anim') {
-    prepareIntroSound();
+    // ── ห้ามเตรียมก่อนผู้ใช้แตะจอ ──
+    // การเตรียมคือการต่อไฟล์เสียงเข้ากราฟเสียง ซึ่ง iOS ถือว่าเป็นการเริ่มใช้ระบบเสียง
+    // ทำตั้งแต่ตอนเปิดหน้า = ทั้งเกมเงียบสนิทบน iPhone (ดู whenAudioAwake ใน audio.js)
+    // ฝากไว้ให้ทำทันทีที่เสียงตื่น ซึ่งยังเร็วกว่าตอนคลิปเริ่มเล่นอยู่มาก
+    whenAudioAwake(prepareIntroSound);
     return;
   }
   const { video } = dom();
