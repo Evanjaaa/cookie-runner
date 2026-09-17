@@ -306,7 +306,7 @@
           <h2 class="skin-title">ตั้งชื่อตัวละคร</h2>
           <canvas id="nameCat" width="120" height="120"></canvas>
           <div class="form-row">
-            <input id="nameInput" maxlength="16" placeholder="ชื่อที่จะโชว์บนกระดาน">
+            <input id="nameInput" maxlength="10" placeholder="ชื่อที่จะโชว์บนกระดาน (ไม่เกิน 10 ตัว)">
           </div>
           <small class="form-msg" id="nameMsg"></small>
           <button class="btn" id="nameSave">เริ่มเล่น</button>
@@ -664,11 +664,8 @@
           <!-- หน้ารายละเอียด: แผ่นซ้อนในการ์ด ปิดได้สามทาง (ปุ่มปิด / แตะพื้นมืด / ปุ่มกลับหรือ Esc) -->
           <div class="tl-detail" id="tlDetail" aria-hidden="true">
             <div class="tl-sheet" role="dialog" aria-modal="true" aria-labelledby="tldName">
-              <button type="button" class="tl-close" id="tldClose" aria-label="ปิดรายละเอียด">
-                <svg viewBox="0 0 24 24" width="55%" height="55%" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor"
-                        stroke-width="3" stroke-linecap="round"/>
-                </svg>
+              <button type="button" class="xbtn tl-close" id="tldClose" aria-label="ปิดรายละเอียด">
+                <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
               <div class="tl-sheet-art" id="tldArt"></div>
               <div class="tl-sheet-info">
@@ -688,6 +685,53 @@
           </div>
 
           <button class="backbtn" id="talentBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── เพื่อนแมว ────────────────────────────────────
+           เปิดจากปุ่มหัวแมวบนแถบขวาบน สองแท็บในแผงเดียว:
+             เพื่อนแมว       รายชื่อเพื่อน แตะแถว = ส่องโปรไฟล์ (ปิดโปรไฟล์แล้วกลับมาที่นี่)
+             คำขอเป็นเพื่อน  ช่องค้นหาด้วยรหัสแมวน้อย/ชื่อ + คำขอที่ส่งมา + คำขอที่เราส่งไป
+           แถวข้างในสร้างจาก JS ทั้งหมด (buildFriendList / buildRequestPage ใน main.js)
+           ข้อมูลทั้งหมดมาจากคลาวด์ — ต้องรัน supabase/friends.sql กับ friend_requests.sql -->
+      <div class="panel hidden" id="friendsPanel">
+        <div class="pop fr-pop">
+          <div class="panel-head"><h2 class="skin-title">เพื่อนแมว</h2></div>
+          <div class="fsort fr-tabs" role="tablist" aria-label="เลือกหน้า">
+            <button type="button" class="fchip on" id="frTabList" role="tab">
+              เพื่อนแมว<b class="fr-num" id="frCount"></b>
+            </button>
+            <button type="button" class="fchip" id="frTabReq" role="tab">
+              คำขอเป็นเพื่อน<b class="fr-num fr-red hidden" id="frReqCount"></b>
+            </button>
+          </div>
+
+          <div class="mail-list fr-list" id="frListPage"></div>
+
+          <div class="fr-req hidden" id="frReqPage">
+            <!-- ค้นได้ทั้งรหัสแมวน้อย 8 ตัว และชื่อ (ชื่อห้ามซ้ำกันแล้ว จึงเจอคนเดียว) -->
+            <form class="form-row fr-search" id="frSearch" autocomplete="off">
+              <input id="frSearchInput" maxlength="20" enterkeyhint="search"
+                     placeholder="ใส่รหัสแมวน้อย หรือชื่อเพื่อน" aria-label="ค้นหาเพื่อน">
+              <button class="btn" type="submit" id="frSearchGo">ค้นหา</button>
+            </form>
+            <div class="fr-mycode">
+              <span>รหัสแมวน้อยของเรา</span>
+              <b id="frMyCode">— — —</b>
+              <button type="button" class="fr-copy" id="frCopy" aria-label="คัดลอกรหัสแมวน้อย">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>
+              </button>
+            </div>
+            <div class="mail-list fr-list" id="frReqList"></div>
+          </div>
+
+          <small class="form-msg" id="frMsg"></small>
+          <button class="backbtn" id="friendsBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1025,7 +1069,7 @@
           <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
           <div class="rank-list" id="rankList"></div>
           <div class="rank-me">
-            <input id="rankName" maxlength="16" placeholder="ตั้งชื่อที่จะโชว์บนกระดาน">
+            <input id="rankName" maxlength="10" placeholder="ตั้งชื่อ (ไม่เกิน 10 ตัว)">
             <button class="btn ghost" id="rankSave">บันทึกชื่อ</button>
           </div>
           <button class="backbtn" id="rankBack" aria-label="กลับ">
@@ -1211,8 +1255,9 @@
              .editing = กดแก้ไขแล้ว ดินสอสามจุดโผล่ขึ้นมา -->
         <div class="pop pf-pop" id="pfPop">
           <h2 class="pf-title">โปรไฟล์เหมียว</h2>
-          <button type="button" class="pf-close" id="pfBack" aria-label="ปิด">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          <!-- ปุ่มปิดทุกอันในเกมใช้เทมเพลต .xbtn เดียวกัน (ดู style.css) -->
+          <button type="button" class="xbtn pf-close" id="pfBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
 
           <!-- บนคอมเห็นครบทั้งสองแถวในจอเดียว
@@ -1250,7 +1295,7 @@
                   <textarea id="pfStatusInput" rows="3" maxlength="100"
                             placeholder="เขียนอะไรสักอย่างถึงน้อง"></textarea>
                   <div class="pf-status-foot">
-                    <small class="pf-count" id="pfCount">0 / 100</small>
+                    <small class="pf-count" id="pfCount">0 / 20 คำ</small>
                     <button type="button" class="btn ghost tiny" id="pfCancel">ยกเลิก</button>
                     <button type="button" class="btn tiny" id="pfSave">บันทึก</button>
                   </div>
@@ -1275,7 +1320,7 @@
 
                 <!-- ช่องแก้ชื่อ ซ้อนทับแถบชื่อเฉพาะตอนแก้ -->
                 <form class="pf-name-edit hidden" id="pfNameEdit">
-                  <input id="pfNameInput" type="text" maxlength="16" autocomplete="off" placeholder="ชื่อของเรา">
+                  <input id="pfNameInput" type="text" maxlength="10" autocomplete="off" placeholder="ชื่อ (ไม่เกิน 10 ตัว)">
                   <button type="button" class="btn ghost tiny" id="pfNameCancel">ยกเลิก</button>
                   <button type="submit" class="btn tiny" id="pfNameSave">บันทึก</button>
                 </form>
@@ -1709,6 +1754,19 @@
                อีโมจิ ⏸ 🔊 หน้าตาไม่เหมือนกันเลยระหว่าง iOS/Android/Windows
                และบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
           <button id="btnPause" aria-label="หยุดชั่วคราว"></button>
+          <!-- เพื่อนแมว: หัวแมวเส้นขาว ทรงปุ่มเดียวกับจดหมาย/ตั้งค่า (.hudbtns button)
+               ป้ายแดง = จำนวนคำขอเป็นเพื่อนที่รอเราตอบ -->
+          <button id="btnFriends" aria-label="เพื่อนแมว">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M4.3 10.2 3.6 3.2l5.3 3.3a9.6 9.6 0 0 1 6.2 0l5.3-3.3-.7 7A8 8 0 0 1 21.2 14c0 4.2-4.1 7-9.2 7s-9.2-2.8-9.2-7a8 8 0 0 1 1.5-3.8Z"
+                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              <circle cx="8.6" cy="13.3" r="1.35" fill="currentColor"/>
+              <circle cx="15.4" cy="13.3" r="1.35" fill="currentColor"/>
+              <path d="M10.9 16.2h2.2L12 17.4Z" fill="currentColor" stroke="currentColor"
+                    stroke-width="1" stroke-linejoin="round"/>
+            </svg>
+            <i class="dot hidden" id="friendsDot" aria-hidden="true"></i>
+          </button>
           <!-- กล่องจดหมายอยู่ซ้ายของปุ่มตั้งค่า จุดแดงโผล่เมื่อมีของค้างรับหรือยังไม่อ่าน
                ซองวาดด้วย SVG ในตัว ไม่ใช้อีโมจิ ✉ เพราะหน้าตาต่างกันทุกระบบ -->
           <button id="btnMail" aria-label="กล่องจดหมาย">

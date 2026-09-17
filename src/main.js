@@ -41,7 +41,9 @@ import {
 import {
   cloudReady, userId, currentAccount, pushName, fetchLeaderboard,
   sendLoginCode, verifyLoginCode, sendLinkCode, verifyLinkCode, signOut,
-  fetchMyFriendCode, fetchProfileByCode, checkFriend, addFriend,
+  fetchMyFriendCode, fetchProfileByCode, claimName,
+  friendStatus, sendFriendRequest, respondFriendRequest, cancelFriendRequest, removeFriend,
+  fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers,
 } from './net/cloud.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
@@ -50,7 +52,7 @@ import {
   loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail, syncMail,
 } from './mail.js';
 import { recordRun, recordPulls, recordUpgrade, loadStats } from './stats.js';
-import { loadStatus, saveStatus, statusLength, cleanStatus, STATUS_MAX } from './profile.js';
+import { loadStatus, saveStatus, statusWords, cleanStatus, STATUS_WORDS } from './profile.js';
 import {
   startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
 } from './friends.js';
@@ -1242,29 +1244,59 @@ function localName() {
  * ส่งไม่สำเร็จก็ไม่เป็นไร ชื่อในเครื่องยังอยู่ เดี๋ยวรอบหน้าค่อยส่งใหม่
  */
 async function storeName(name) {
+  // ── ชื่อต้องไม่ซ้ำใคร ──
+  // เข้าสู่ระบบอยู่ = ให้ฐานข้อมูลตรวจและเปลี่ยนชื่อในคำสั่งเดียว (claim_name)
+  // ผ่านแล้วค่อยเก็บลงเครื่อง ไม่งั้นเครื่องจะโชว์ชื่อที่จริง ๆ ไม่ได้เป็นของเรา
+  if (cloudReady && userId()) {
+    const r = await claimName(name);
+    if (!r.ok && r.reason !== 'schema') return r;
+    // ยังไม่ได้รัน names.sql — ตรวจซ้ำไม่ได้ ใช้ทางเดิมไปก่อน (เกมยังเล่นได้)
+    if (!r.ok) await pushName(name).catch(() => {});
+  }
   try {
     localStorage.setItem(NAME_KEY, name);
   } catch {
-    /* เซฟในเครื่องไม่ได้ก็ยังส่งขึ้นคลาวด์ได้ */
+    /* เซฟในเครื่องไม่ได้ก็ไม่เป็นไร ชื่อบนคลาวด์เปลี่ยนแล้ว */
   }
-  if (!cloudReady) return;
-  try {
-    await pushName(name);
-  } catch {
-    /* ต่อไม่ได้ก็ยังเก็บชื่อไว้ในเครื่อง */
-  }
+  return { ok: true };
+}
+
+/** ชื่อยาวได้กี่ตัวอักษร — ต้องตรงกับ claim_name ใน supabase/names.sql */
+const NAME_MAX = 10;
+
+/** ตัดชื่อให้อยู่ในกติกา (นับเป็นตัวอักษรจริง อีโมจิหนึ่งตัวนับหนึ่ง) */
+function cleanName(raw) {
+  return Array.from(String(raw || '').trim()).slice(0, NAME_MAX).join('');
+}
+
+/**
+ * ตั้งชื่อไม่สำเร็จ → กล่องเตือนพร้อมปุ่มตกลง
+ * ชื่อซ้ำต้องเด้งเป็นกล่องให้เห็นชัด ไม่ใช่ข้อความเล็ก ๆ ที่มองข้ามได้
+ */
+async function warnName(name, reason) {
+  const text = {
+    taken: { title: 'ชื่อนี้มีคนใช้แล้ว', body: `“${name}” มีผู้เล่นคนอื่นใช้อยู่ ลองตั้งชื่ออื่นนะ` },
+    invalid: { title: 'ตั้งชื่อไม่ได้', body: `ชื่อต้องมี 1–${NAME_MAX} ตัวอักษร` },
+    offline: { title: 'ตั้งชื่อไม่ได้', body: 'ต้องเข้าสู่ระบบและต่อเน็ตก่อน ถึงจะตั้งชื่อได้' },
+  }[reason] || { title: 'ตั้งชื่อไม่ได้', body: 'ต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง' };
+  await confirmBox({ ...text, okText: 'ตกลง', alertOnly: true });
 }
 
 async function saveName() {
   const input = document.getElementById('rankName');
-  const name = input.value.trim().slice(0, 16);
+  const name = cleanName(input.value);
   if (!name) return;
 
   const btn = document.getElementById('rankSave');
   btn.disabled = true;
-  await storeName(name);
-  await buildRank();       // อันดับต้องโชว์ชื่อใหม่ทันที ไม่ต้องกดกลับแล้วเข้าใหม่
+  const r = await storeName(name);
   btn.disabled = false;
+  if (!r.ok) {
+    input.value = localName();
+    await warnName(name, r.reason);
+    return;
+  }
+  await buildRank();       // อันดับต้องโชว์ชื่อใหม่ทันที ไม่ต้องกดกลับแล้วเข้าใหม่
 }
 
 // ── ลำดับหน้าเข้าเกม ───────────────────────────────────────
@@ -1395,7 +1427,7 @@ async function doGuest() {
 
 async function saveCharacterName() {
   const msg = document.getElementById('nameMsg');
-  const name = document.getElementById('nameInput').value.trim().slice(0, 16);
+  const name = cleanName(document.getElementById('nameInput').value);
   if (!name) return setMsg(msg, 'ตั้งชื่อก่อนนะ', true);
 
   const btn = document.getElementById('nameSave');
@@ -1404,8 +1436,13 @@ async function saveCharacterName() {
   // จำไว้ว่าตอนเริ่มยิงคลาวด์ จอโชว์อะไรอยู่
   const before = visiblePanels();
 
-  await storeName(name);
+  const r = await storeName(name);
   btn.disabled = false;
+  if (!r.ok) {
+    setMsg(msg, r.reason === 'taken' ? 'ชื่อนี้มีคนใช้แล้ว' : '', true);
+    await warnName(name, r.reason);
+    return;
+  }
   unlockAudio();
   sfx.potion();
 
@@ -2040,6 +2077,9 @@ function confirmBox(opts) {
   document.getElementById('confirmBody').textContent = opts.body || '';
   document.getElementById('confirmYes').textContent = opts.okText || 'ยืนยัน';
   document.getElementById('confirmNo').textContent = opts.cancelText || 'ยกเลิก';
+  // alertOnly = กล่องแจ้งเตือนปุ่มเดียว (เช่นชื่อซ้ำ) ไม่มีอะไรให้ยกเลิก
+  // ใช้ style ไม่ใช่ hidden — .btn ตั้ง display เองซึ่งชนะแอตทริบิวต์ hidden
+  document.getElementById('confirmNo').style.display = opts.alertOnly ? 'none' : '';
 
   cost.classList.toggle('hidden', !opts.cost);
   if (opts.cost) {
@@ -3135,11 +3175,19 @@ function remoteProfile(row) {
     },
     best: { stageId: stage ? stage.id : null, stageName: stage ? stage.name : '', score: num(snap.best?.score) },
     counts: { cats: pair(snap.counts?.cats), outfits: pair(snap.counts?.outfits), treasures: pair(snap.counts?.treasures) },
-    isFriend: false,
+    rel: 'none',             // friends / sent / received / none — เติมทีหลังจากเซิร์ฟเวอร์
   };
 }
 
 let pfView = null;          // ก้อนข้อมูลที่กำลังโชว์
+let pfFrom = null;          // 'friends' = เปิดมาจากหน้าเพื่อนแมว ปิดแล้วต้องกลับไปที่นั่น
+
+// ทางเชื่อมคลาวด์ของระบบเพื่อนทั้งหมด (โปรไฟล์ + หน้าเพื่อนแมว) รวมไว้ก้อนเดียว
+// ตอนพัฒนาสลับเป็นข้อมูลปลอมได้ผ่าน window.__fr โดยไม่ต้องมีบัญชีจริงหลายบัญชี
+let frApi = {
+  friendStatus, sendFriendRequest, respondFriendRequest, cancelFriendRequest, removeFriend,
+  fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers,
+};
 let pfMyCode = '';          // รหัสเพื่อนของเรา (โหลดครั้งเดียวต่อการเปิดเกม)
 
 function setText(id, text) {
@@ -3197,11 +3245,16 @@ function paintActionButton() {
   if (p.mine) {
     setText('pfActionText', pfPop.classList.contains('editing') ? 'เสร็จแล้ว' : 'แก้ไข');
   } else if (p.adding) {
-    setText('pfActionText', 'กำลังเพิ่ม…');
+    setText('pfActionText', 'กำลังส่ง…');
     btn.disabled = true;
-  } else if (p.isFriend) {
+  } else if (p.rel === 'friends') {
     setText('pfActionText', 'เป็นเพื่อนแล้ว');
     btn.disabled = true;
+  } else if (p.rel === 'sent') {
+    setText('pfActionText', 'ส่งคำขอแล้ว');
+    btn.disabled = true;
+  } else if (p.rel === 'received') {
+    setText('pfActionText', 'ตอบรับเพื่อน');
   } else {
     setText('pfActionText', 'เพิ่มเพื่อน');
   }
@@ -3224,7 +3277,7 @@ let pfRAF = 0;
 function paintPfCat() {
   const skin = pfView ? pfView.skin : getSkin();
   paintMini(document.getElementById('pfShow'), 240,
-    (c) => drawCatPose(c, 110, 214, 3.4, skin, pfTick));
+    (c) => drawCatPose(c, 112, 220, 2.75, skin, pfTick));
 }
 
 function pfLoop() {
@@ -3258,10 +3311,16 @@ function openStatusEditor() {
 }
 
 function refreshCount() {
-  const n = statusLength(document.getElementById('pfStatusInput').value);
+  const input = document.getElementById('pfStatusInput');
+  let n = statusWords(input.value);
+  // พิมพ์/วางเกิน 20 คำ = ตัดส่วนเกินทิ้งทันที ผู้เล่นเห็นเลยว่าเกินตรงไหน
+  if (n > STATUS_WORDS) {
+    input.value = cleanStatus(input.value);
+    n = statusWords(input.value);
+  }
   const el = document.getElementById('pfCount');
-  el.textContent = n + ' / ' + STATUS_MAX;
-  el.classList.toggle('full', n >= STATUS_MAX);
+  el.textContent = n + ' / ' + STATUS_WORDS + ' คำ';
+  el.classList.toggle('full', n >= STATUS_WORDS);
 }
 
 function openNameEditor() {
@@ -3300,15 +3359,19 @@ function openBestPicker() {
 
 // ── ข้อมูลเพื่อน ─────────────────────────────────────────────
 async function loadMyCode() {
-  const el = document.getElementById('pfCodeText');
-  if (pfMyCode) { el.textContent = pfMyCode; return; }
-  if (!cloudReady || !userId()) { el.textContent = '— — —'; return; }
+  // รหัสเดียวกันโชว์สองที่: หน้าโปรไฟล์ กับหน้าคำขอเป็นเพื่อน
+  const put = (text) => {
+    document.getElementById('pfCodeText').textContent = text;
+    document.getElementById('frMyCode').textContent = text;
+  };
+  if (pfMyCode) { put(pfMyCode); return; }
+  if (!cloudReady || !userId()) { put('— — —'); return; }
   const r = await fetchMyFriendCode();
   if (r.ok) {
     pfMyCode = r.code;
-    el.textContent = r.code;
+    put(r.code);
   } else {
-    el.textContent = '— — —';
+    put('— — —');
   }
 }
 
@@ -3325,9 +3388,9 @@ async function showRemoteProfile(row) {
   const p = remoteProfile(row);
   renderProfile(p);
   document.getElementById('pfBody').scrollTop = 0;
-  const f = await checkFriend(p.id);
+  const f = await frApi.friendStatus(p.id);
   if (pfView === p && f.ok) {
-    p.isFriend = f.friend;
+    p.rel = f.status;
     paintActionButton();
   }
 }
@@ -3348,15 +3411,24 @@ async function lookupProfile(code) {
 
 async function addViewedFriend() {
   const p = pfView;
-  if (!p || p.mine || p.isFriend || p.adding) return;
+  if (!p || p.mine || p.rel === 'friends' || p.rel === 'sent' || p.adding) return;
   p.adding = true;
   paintActionButton();
-  const r = await addFriend(p.id);
+  // เขาขอเรามาก่อน = ตอบรับ / ยังไม่มีใครขอ = ส่งคำขอ (ต้องรอเขาตอบรับก่อนถึงเป็นเพื่อน)
+  const r = p.rel === 'received'
+    ? await frApi.respondFriendRequest(p.id, true)
+    : await frApi.sendFriendRequest(p.id);
   p.adding = false;
   if (r.ok) {
-    p.isFriend = true;
-    sfx.bonus();
-    pfSay(`เพิ่ม ${p.name} เป็นเพื่อนแล้ว`);
+    const now = r.result === 'accepted' || r.result === 'friends';
+    p.rel = now ? 'friends' : 'sent';
+    if (now) {
+      sfx.bonus();
+      pfSay(`${p.name} เป็นเพื่อนกับเราแล้ว`);
+    } else {
+      pfSay(`ส่งคำขอเป็นเพื่อนถึง ${p.name} แล้ว`);
+    }
+    refreshFriendsBadge();
   } else {
     pfSay(reasonText(r.reason), true);
   }
@@ -3367,6 +3439,7 @@ function showProfile(on) {
   profilePanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
   if (!on) return;
+  pfFrom = null;
   setEditing(false);
   document.getElementById('pfLookup').classList.add('hidden');
   document.getElementById('pfBody').scrollTop = 0;
@@ -3384,6 +3457,13 @@ document.getElementById('profileCard').addEventListener('click', () => {
 // ปิด: ถ้ากำลังส่องคนอื่นอยู่ กลับมาโปรไฟล์ของเราก่อน ไม่ใช่เด้งออกไปล็อบบี้ทันที
 document.getElementById('pfBack').addEventListener('click', () => {
   sfx.fish();
+  if (pfFrom === 'friends') {
+    pfFrom = null;
+    profilePanel.classList.add('hidden');
+    friendsPanel.classList.remove('hidden');
+    loadFriendsData();        // อาจเพิ่ง "ตอบรับเพื่อน" จากในโปรไฟล์ รายการต้องตามทัน
+    return;
+  }
   if (pfView && !pfView.mine) {
     showOwnProfile();
     return;
@@ -3419,11 +3499,16 @@ document.getElementById('pfNameCancel').addEventListener('click', () => {
 });
 document.getElementById('pfNameEdit').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('pfNameInput').value.trim().slice(0, 16);
+  const name = cleanName(document.getElementById('pfNameInput').value);
   if (!name) return;
   sfx.fish();
+  const r = await storeName(name);
+  if (!r.ok) {
+    await warnName(name, r.reason);
+    document.getElementById('pfNameInput').focus();
+    return;
+  }
   document.getElementById('pfNameEdit').classList.add('hidden');
-  await storeName(name);
   refreshProfile();           // การ์ดบัญชีในล็อบบี้ต้องได้ชื่อใหม่ด้วย
   showOwnProfile();
 });
@@ -3515,12 +3600,331 @@ for (const ev of ['online', 'offline']) {
 // เริ่มส่งสถานะออนไลน์ (เช็คเองว่าเข้าสู่ระบบหรือยัง)
 startPresence();
 
+// ══ เพื่อนแมว ═══════════════════════════════════════════════════
+//
+// ปุ่มหัวแมวบนแถบขวาบน → แผงสองแท็บ: รายชื่อเพื่อน / คำขอเป็นเพื่อน (+ ช่องค้นหา)
+// ข้อมูลทั้งหน้ามาจากคลาวด์ก้อนเดียว (frData) โหลดใหม่ทุกครั้งที่เปิดหรือหลังกดอะไรสำเร็จ
+// แล้ววาดทั้งสองแท็บจากก้อนนั้น — สถานะปุ่มในผลค้นหาจึงตรงกับรายการคำขอเสมอ
+// โดยไม่ต้องถามเซิร์ฟเวอร์ทีละคน
+
+const friendsPanel = document.getElementById('friendsPanel');
+let frData = null;          // { friends, incoming, outgoing } | { reason } | null = กำลังโหลด
+let frGen = 0;              // กันผลโหลดรอบเก่ามาวาดทับรอบใหม่
+let frFound = null;         // ผลค้นหาล่าสุด { query, players } | null = ยังไม่ได้ค้น
+const frBusy = new Set();   // id ที่กำลังรอเซิร์ฟเวอร์ตอบ — ปุ่มของแถวนั้นกดซ้ำไม่ได้
+
+function frSay(text, bad = false) {
+  setMsg(document.getElementById('frMsg'), text, bad);
+}
+
+/** ป้ายแดงบนปุ่มหัวแมว + ตัวเลขบนแท็บคำขอ (กฎเดียวกับป้ายจดหมาย: เกิน 9 = 9+) */
+function setFriendsBadge(n) {
+  const dot = document.getElementById('friendsDot');
+  dot.textContent = !n ? '' : n > 9 ? '9+' : n;
+  dot.classList.toggle('hidden', !n);
+  const tab = document.getElementById('frReqCount');
+  tab.textContent = n ? String(n) : '';
+  tab.classList.toggle('hidden', !n);
+}
+
+async function refreshFriendsBadge() {
+  const r = await frApi.countFriendRequests();
+  if (r.ok) setFriendsBadge(r.count);
+}
+
+async function loadFriendsData() {
+  const gen = ++frGen;
+  const [f, q] = await Promise.all([frApi.fetchFriends(), frApi.fetchFriendRequests()]);
+  if (gen !== frGen) return;
+  frData = !f.ok ? { reason: f.reason }
+    : !q.ok ? { reason: q.reason }
+      : { friends: f.friends, incoming: q.incoming, outgoing: q.outgoing };
+  if (frData.incoming) setFriendsBadge(frData.incoming.length);
+  paintFriends();
+}
+
+/** ความสัมพันธ์กับคนนี้ อ่านจากก้อนข้อมูลที่โหลดไว้: friends / received / sent / none */
+function relationOf(id) {
+  if (!frData || !frData.friends) return 'none';
+  if (frData.friends.some((r) => r.id === id)) return 'friends';
+  if (frData.incoming.some((r) => r.id === id)) return 'received';
+  if (frData.outgoing.some((r) => r.id === id)) return 'sent';
+  return 'none';
+}
+
+function frHead(list, text) {
+  const h = document.createElement('p');
+  h.className = 'fr-head';
+  h.textContent = text;
+  list.appendChild(h);
+}
+
+/**
+ * แถวผู้เล่นหนึ่งคน — หน้าน้อง ชื่อ เลเวล สถานะออนไลน์ + ปุ่มท้ายแถว
+ * แตะตัวแถว (นอกปุ่ม) = ส่องโปรไฟล์
+ */
+function friendRow(list, row, { sub, acts = [] } = {}) {
+  const p = remoteProfile(row);
+  const item = document.createElement('div');
+  item.className = 'mail-item fr-row tap';
+  item.setAttribute('role', 'button');
+  item.tabIndex = 0;
+
+  const face = document.createElement('canvas');
+  face.className = 'fr-face';
+  paintMini(face, 96, (c) => drawCatFace(c, 48, 56, 2.5, p.skin));
+
+  const main = document.createElement('span');
+  main.className = 'mail-main';
+  const title = document.createElement('b');
+  title.className = 'mail-title';
+  title.textContent = p.name;
+  const small = document.createElement('small');
+  small.className = 'mail-sub fr-sub' + (!sub && p.online.on ? ' on' : '');
+  small.textContent = sub || `Lv ${p.level} · ${p.online.text}`;
+  main.append(title, small);
+
+  const box = document.createElement('span');
+  box.className = 'fr-acts';
+  for (const a of acts) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn tiny' + (a.ghost ? ' ghost' : '');
+    b.textContent = a.text;
+    b.disabled = Boolean(a.disabled) || frBusy.has(row.id);
+    if (a.run) {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        unlockAudio(); sfx.fish();
+        a.run(row, p);
+      });
+    }
+    box.appendChild(b);
+  }
+
+  item.append(face, main, box);
+  const open = () => { unlockAudio(); openFriendProfile(row); };
+  item.addEventListener('click', open);
+  item.addEventListener('keydown', (e) => {
+    if (e.target === item && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(); }
+  });
+  list.appendChild(item);
+}
+
+/** ปุ่มท้ายแถวตามความสัมพันธ์ — ใช้กับผลค้นหา */
+function relationActs(id) {
+  switch (relationOf(id)) {
+    case 'friends': return [{ text: 'เป็นเพื่อนแล้ว', disabled: true }];
+    case 'sent': return [{ text: 'ยกเลิกคำขอ', ghost: true, run: frCancel }];
+    case 'received': return [{ text: 'ตอบรับ', run: (r, p) => frRespond(r, p, true) }];
+    default: return [{ text: 'เพิ่มเพื่อน', run: frSend }];
+  }
+}
+
+function paintFriends() {
+  const d = frData;
+  document.getElementById('frCount').textContent = d && d.friends && d.friends.length ? String(d.friends.length) : '';
+
+  // ── แท็บรายชื่อเพื่อน ──
+  const list = document.getElementById('frListPage');
+  list.innerHTML = '';
+  if (!d) emptyNote(list, 'กำลังโหลด…');
+  else if (d.reason) emptyNote(list, reasonText(d.reason));
+  else if (!d.friends.length) emptyNote(list, 'ยังไม่มีเพื่อนแมว ไปที่แท็บ “คำขอเป็นเพื่อน” แล้วค้นหาเพื่อนได้เลย');
+  else {
+    for (const row of d.friends) {
+      friendRow(list, row, { acts: [{ text: 'ลบเพื่อน', ghost: true, run: frRemove }] });
+    }
+  }
+  markScrollable(list);
+
+  // ── แท็บคำขอ ──
+  const req = document.getElementById('frReqList');
+  req.innerHTML = '';
+  if (frFound) {
+    frHead(req, 'ผลการค้นหา');
+    if (!frFound.players.length) emptyNote(req, `ไม่พบผู้เล่นที่ตรงกับ “${frFound.query}”`);
+    for (const row of frFound.players) friendRow(req, row, { acts: relationActs(row.id) });
+  }
+  if (!d) emptyNote(req, 'กำลังโหลด…');
+  else if (d.reason) emptyNote(req, reasonText(d.reason));
+  else {
+    frHead(req, 'คำขอที่ส่งมาหาเรา');
+    if (!d.incoming.length) emptyNote(req, 'ยังไม่มีคำขอเป็นเพื่อนใหม่');
+    for (const row of d.incoming) {
+      friendRow(req, row, {
+        acts: [
+          { text: 'ตอบรับ', run: (r, p) => frRespond(r, p, true) },
+          { text: 'ปฏิเสธ', ghost: true, run: (r, p) => frRespond(r, p, false) },
+        ],
+      });
+    }
+    if (d.outgoing.length) {
+      frHead(req, 'คำขอที่เราส่งไป');
+      for (const row of d.outgoing) {
+        friendRow(req, row, { sub: 'รอตอบรับ', acts: [{ text: 'ยกเลิกคำขอ', ghost: true, run: frCancel }] });
+      }
+    }
+  }
+  markScrollable(req);
+}
+
+function setFrTab(tab) {
+  const onList = tab === 'list';
+  document.getElementById('frTabList').classList.toggle('on', onList);
+  document.getElementById('frTabReq').classList.toggle('on', !onList);
+  document.getElementById('frTabList').setAttribute('aria-selected', String(onList));
+  document.getElementById('frTabReq').setAttribute('aria-selected', String(!onList));
+  document.getElementById('frListPage').classList.toggle('hidden', !onList);
+  document.getElementById('frReqPage').classList.toggle('hidden', onList);
+}
+
+/** ครอบงานที่ต้องรอเซิร์ฟเวอร์: ล็อกปุ่มแถวนั้น → ทำ → บอกผล → โหลดข้อมูลใหม่ */
+async function frDo(row, work) {
+  if (frBusy.has(row.id)) return;
+  frBusy.add(row.id);
+  paintFriends();
+  let r;
+  try { r = await work(); } finally { frBusy.delete(row.id); }
+  if (!r.ok) {
+    sfx.shieldBreak();
+    frSay(reasonText(r.reason), true);
+    paintFriends();
+    return r;
+  }
+  await loadFriendsData();
+  return r;
+}
+
+async function frSend(row, p) {
+  const r = await frDo(row, () => frApi.sendFriendRequest(row.id));
+  if (!r?.ok) return;
+  if (r.result === 'accepted' || r.result === 'friends') {
+    sfx.bonus();
+    frSay(`${p.name} เป็นเพื่อนกับเราแล้ว`);
+  } else {
+    frSay(`ส่งคำขอเป็นเพื่อนถึง ${p.name} แล้ว`);
+  }
+}
+
+async function frRespond(row, p, accept) {
+  const r = await frDo(row, () => frApi.respondFriendRequest(row.id, accept));
+  if (!r?.ok) return;
+  if (accept) {
+    sfx.bonus();
+    frSay(`${p.name} เป็นเพื่อนกับเราแล้ว`);
+  } else {
+    frSay(`ปฏิเสธคำขอของ ${p.name} แล้ว`);
+  }
+}
+
+async function frCancel(row, p) {
+  const r = await frDo(row, () => frApi.cancelFriendRequest(row.id));
+  if (r?.ok) frSay(`ยกเลิกคำขอถึง ${p.name} แล้ว`);
+}
+
+async function frRemove(row, p) {
+  const ok = await confirmBox({
+    title: 'ลบเพื่อน',
+    body: `ลบ “${p.name}” ออกจากเพื่อนแมวใช่ไหม ถ้าอยากเป็นเพื่อนกันอีกต้องส่งคำขอใหม่`,
+    okText: 'ลบเพื่อน',
+  });
+  if (!ok) return;
+  const r = await frDo(row, () => frApi.removeFriend(row.id));
+  if (r?.ok) frSay(`ลบ ${p.name} ออกจากเพื่อนแล้ว`);
+}
+
+async function frSearchNow() {
+  const input = document.getElementById('frSearchInput');
+  const query = input.value.trim();
+  if (!query) { input.focus(); return; }
+  // พิมพ์เป็นรหัส (ตัวอักษร/ตัวเลข 8 ตัว มีช่องว่างหรือขีดคั่นได้) ค้นทั้งรหัสและชื่อ
+  // ชื่อที่บังเอิญยาว 8 ตัวจึงยังเจอด้วย ไม่ถูกตีความเป็นรหัสอย่างเดียว
+  const code = normalizeCode(query);
+  const asCode = code.length === FRIEND_CODE_LEN && /^[A-Za-z0-9\s-]+$/.test(query) ? code : '';
+  if (asCode && pfMyCode && asCode === pfMyCode) { frSay(reasonText('self'), true); return; }
+  const btn = document.getElementById('frSearchGo');
+  btn.disabled = true;
+  frSay('กำลังค้นหา…');
+  const r = await frApi.searchPlayers(query, asCode);
+  btn.disabled = false;
+  if (!r.ok) { frSay(reasonText(r.reason), true); return; }
+  frSay('');
+  frFound = { query, players: r.players };
+  paintFriends();
+  document.getElementById('frReqList').scrollTop = 0;
+}
+
+function showFriends(on, tab) {
+  if (!on) {
+    friendsPanel.classList.add('hidden');
+    startPanel.classList.remove('hidden');
+    return;
+  }
+  showPanel(friendsPanel);
+  frSay('');
+  setFrTab(tab || 'list');
+  paintFriends();
+  loadMyCode();
+  loadFriendsData();
+}
+
+/** ส่องโปรไฟล์จากหน้าเพื่อน — ปิดโปรไฟล์แล้วกลับมาที่หน้าเพื่อน ไม่ใช่ล็อบบี้ */
+function openFriendProfile(row) {
+  sfx.fish();
+  friendsPanel.classList.add('hidden');
+  profilePanel.classList.remove('hidden');
+  pfFrom = 'friends';
+  setEditing(false);
+  document.getElementById('pfLookup').classList.add('hidden');
+  pfSay('');
+  showRemoteProfile(row);
+  if (!pfRAF) pfRAF = requestAnimationFrame(pfLoop);
+}
+
+document.getElementById('btnFriends').addEventListener('click', () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  // มีคำขอค้างอยู่ = เปิดที่แท็บคำขอเลย เพราะป้ายแดงคือสิ่งที่ทำให้กดเข้ามา
+  const waiting = document.getElementById('friendsDot').textContent !== '';
+  frFound = null;
+  document.getElementById('frSearchInput').value = '';
+  showFriends(true, waiting ? 'req' : 'list');
+});
+document.getElementById('friendsBack').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  showFriends(false);
+});
+document.getElementById('frTabList').addEventListener('click', () => { sfx.fish(); setFrTab('list'); });
+document.getElementById('frTabReq').addEventListener('click', () => { sfx.fish(); setFrTab('req'); });
+document.getElementById('frSearch').addEventListener('submit', (e) => {
+  e.preventDefault();
+  unlockAudio(); sfx.fish();
+  frSearchNow();
+});
+document.getElementById('frCopy').addEventListener('click', async () => {
+  sfx.fish();
+  if (!pfMyCode) { frSay(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
+  frSay(await copyText(pfMyCode) ? 'คัดลอกรหัสแมวน้อยแล้ว' : 'รหัสแมวน้อยของเรา: ' + pfMyCode);
+});
+
+// ป้ายคำขอใหม่: เช็คตอนเปิดเกม (รอเข้าสู่ระบบเสร็จก่อน) ทุกสองนาที และตอนกลับมาที่แท็บ
+setTimeout(refreshFriendsBadge, 4500);
+setInterval(() => { if (!document.hidden) refreshFriendsBadge(); }, 2 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshFriendsBadge(); });
+
 // ช่องทดสอบตอนพัฒนา: เปิดโปรไฟล์คนอื่นจากข้อมูลปลอมได้โดยไม่ต้องมีเพื่อนจริงในฐานข้อมูล
 if (import.meta.env.DEV) {
   window.__pf = {
     showRemoteProfile, showOwnProfile, setEditing,
     // ตั้งรหัสของเราเองโดยไม่ต้องล็อกอิน — ไว้ลองปุ่มคัดลอก
     setMyCode: (c) => { pfMyCode = c; loadMyCode(); },
+    warnName,   // ลองกล่องเตือนชื่อซ้ำโดยไม่ต้องมีผู้เล่นชื่อซ้ำจริง
+  };
+  // หน้าเพื่อนแมวด้วยข้อมูลปลอม: __fr.mock(data) แทนที่ทางเชื่อมคลาวด์ทั้งก้อน
+  window.__fr = {
+    mock(api) { frApi = { ...frApi, ...api }; },
+    showFriends, setFrTab, refreshFriendsBadge, loadFriendsData,
   };
 }
 

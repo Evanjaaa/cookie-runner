@@ -358,6 +358,7 @@ canvas[hidden] { display: none; }
 }
 
 .backbtn,
+.xbtn,
 #createPanel.paint-full .paint-max {
   position: absolute;
   /* เกาะมุมการ์ด (.pop) ไม่ใช่มุมเวที — พอการ์ดหดตามเนื้อหา ปุ่มต้องหดตามไปด้วย
@@ -382,14 +383,28 @@ canvas[hidden] { display: none; }
   transition: transform .06s ease, box-shadow .06s ease;
 }
 .backbtn svg,
+.xbtn svg,
 #createPanel.paint-full .paint-max svg { display: block; }
 .backbtn:active,
+.xbtn:active,
 #createPanel.paint-full .paint-max:active {
   transform: translateY(3px);
   box-shadow: 0 0 0 rgba(20,8,32,.65), 0 3px 9px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.22);
 }
 .backbtn:focus-visible,
+.xbtn:focus-visible,
 #createPanel.paint-full .paint-max:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
+
+/* ── เทมเพลตปุ่มปิด (.xbtn) ──
+   ปุ่มปิดทุกอันในเกมใช้คลาสนี้ หน้าตาเดียวกับปุ่มปิดโหมดเต็มจอของหน้าระบายสี
+   (วงกลมม่วงไล่สี ขอบครีม เงาใต้ปุ่ม กดแล้วยุบลง) ซึ่งก็มาจากกฎเดียวกับ .backbtn ข้างบน
+   ไอคอนเป็น SVG กากบาทเส้นหนา 3 ปลายมน ตัวเดียวกับ CLOSE_ICON ใน main.js
+   ต่างจากปุ่มกลับแค่ "อยู่มุมขวา" — ล้าง left ที่รับมาด้วย ไม่งั้นปุ่มถูกตรึงสองด้านแล้วยืดเต็มการ์ด
+   ปุ่มปิดใหม่: ใส่ class="xbtn" + ไอคอนเดียวกัน แล้วแก้แค่ตำแหน่งในคลาสของตัวเองถ้าจำเป็น */
+.xbtn {
+  left: auto;
+  right: var(--backbtn-x);
+}
 
 /* ── แถบเรียง/กรองการ์ด ──────────────────────
    เกาะมุมซ้ายบนต่อจากปุ่มกลับ ไม่ได้อยู่ในสายไหลของแผง เพราะถ้าเอาไปต่อ
@@ -2887,15 +2902,15 @@ canvas[hidden] { display: none; }
    "ป้ายคนละชนิด" ทั้งที่มันคือเรื่องเดียวกัน (มีของค้างให้กดกี่ชิ้น)
    ความสม่ำเสมอสำคัญกว่าการเบียดพื้นที่บนไอคอนไม่กี่พิกเซล
    17px เป็นค่ากลาง — เล็กลงจากปุ่มล็อบบี้นิดหน่อยเพื่อให้ปุ่มจดหมายไม่อึดอัด */
-#btnMail, .lobby-btn, .lvgift { --badge: 17px; }
+#btnMail, #btnFriends, .lobby-btn, .lvgift { --badge: 17px; }
 /* ความหนาขอบกับระยะขอบในของป้าย — ประกาศไว้ที่เดียวเพราะกฎ :not(:empty)
    ข้างล่างต้องเอาไปลบออกจากขนาดรวม เพื่อคำนวณ "เนื้อที่ตัวอักษร" ให้ถูก */
-#btnMail .dot, .lobby-btn .dot, .lvgift .dot {
+#btnMail .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
   --badge-bd: max(1.5px, calc(var(--badge) * .11));
   --badge-px: calc(var(--badge) * .18);
 }
 
-#btnMail .dot, .lobby-btn .dot, .lvgift .dot {
+#btnMail .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
   position: absolute;
   /* เยื้องออกครึ่งหนึ่งของตัวป้าย ป้ายจึงคร่อมขอบปุ่มพอดีทั้งปุ่มกลมและปุ่มมุมมน
      ผูกกับ --badge ด้วย ไม่งั้นเปลี่ยนขนาดป้ายทีต้องมาไล่แก้ระยะเยื้องอีกที */
@@ -2929,7 +2944,7 @@ canvas[hidden] { display: none; }
    แพ้ `#btnMail .dot` (1,1,0) ที่ตั้ง width/height ไว้ กฎนี้จะไม่มีผลอะไรเลย
    แล้วป้ายจะเอาขนาดวงกลมมาเป็น "เนื้อที่ตัวอักษร" จนบวมเกินขนาดที่ตั้งใจ
    (กับดักเดียวกับ .skin-title ที่ต้องเขียนคู่กับ .panel h2 เสมอ) */
-#btnMail .dot:not(:empty), .lobby-btn .dot:not(:empty), .lvgift .dot:not(:empty) {
+#btnMail .dot:not(:empty), #btnFriends .dot:not(:empty), .lobby-btn .dot:not(:empty), .lvgift .dot:not(:empty) {
   box-sizing: content-box;
   width: max-content;
   min-width: calc(var(--badge) - var(--badge-px) * 2 - var(--badge-bd) * 2);
@@ -2953,7 +2968,7 @@ canvas[hidden] { display: none; }
    สองกฎนี้ความจำเพาะเท่ากันเป๊ะ (1,2,0) ตัวที่มาทีหลังจึงชนะ
    ถ้าย้ายกฎนี้ขึ้นไปไว้ข้างบน display:grid ของป้ายมีตัวเลขจะทับ display:none ทิ้ง
    แล้วป้ายจะโผล่ค้างอยู่ทั้งที่ไม่มีอะไรให้กดรับ — ซึ่งเคยเกิดมาแล้วจริง ๆ */
-#btnMail .dot.hidden, .lobby-btn .dot.hidden, .lvgift .dot.hidden { display: none; }
+#btnMail .dot.hidden, #btnFriends .dot.hidden, .lobby-btn .dot.hidden, .lvgift .dot.hidden { display: none; }
 
 /* ปุ่มล็อบบี้ไม่ได้ position: relative มาแต่แรก จุดจะไปเกาะมุมเวทีแทนมุมปุ่ม */
 .lobby-btn { position: relative; }
@@ -2962,7 +2977,7 @@ canvas[hidden] { display: none; }
   50%      { transform: scale(1.18); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #btnMail .dot, .lobby-btn .dot, .lvgift .dot { animation: none; }
+  #btnMail .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot { animation: none; }
 }
 
 .mail-list {
@@ -3057,6 +3072,121 @@ canvas[hidden] { display: none; }
 /* เว้นแถวปุ่มให้ห่างจากรายการ ไม่งั้นปุ่มจะดูเหมือนเป็นรายการใบสุดท้ายของลิสต์
    (สองหน้านี้เป็นลิสต์ยาวเหมือนกัน จึงเว้นเท่ากันทั้งคู่) */
 #inboxPanel .btnrow, #questPanel .btnrow { margin-top: clamp(3px, .8dvh, 8px); }
+
+/* ── เพื่อนแมว ───────────────────────────────
+   ปุ่มเปิดอยู่ในแถว .hudbtns (ทรงเดียวกับจดหมาย/ตั้งค่า) ป้ายแดงใช้กฎ .dot ชุดเดียวกับจดหมาย
+   แถวรายชื่อยืมทรงแผ่นจาก .mail-item ต่างแค่มีปุ่มเล็กอยู่ท้ายแถว
+   จึงเป็น div ไม่ใช่ button — ปุ่มซ้อนในปุ่มไม่ได้ (เบราว์เซอร์ตัดแท็กทิ้ง) */
+#btnFriends { position: relative; overflow: visible; }
+
+.fr-tabs { flex: 0 0 auto; }
+.fr-tabs .fchip { display: inline-flex; align-items: center; gap: 6px; font-size: clamp(11px, 1.8dvh, 13.5px); }
+.fr-num {
+  min-width: 1.5em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255,243,226,.14);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: .85em;
+  line-height: 1.2;
+}
+.fr-num:empty { display: none; }
+.fr-num.fr-red { background: #E8434F; color: #FFF3E2; }
+.fr-num.hidden { display: none; }
+
+/* รายการกว้างกว่ากล่องจดหมายนิดหน่อย — ท้ายแถวมีปุ่มสองใบ (ตอบรับ/ปฏิเสธ) */
+.fr-list { width: min(88vw, 470px); }
+.fr-list.hidden, .fr-req.hidden { display: none; }
+
+/* ── หน้าคำขอเลื่อนทั้งหน้า ไม่ใช่เลื่อนแค่รายการ ──
+   บนมือถือแนวนอน ช่องค้นหากับแถวรหัสกินความสูงไปเกือบหมด ถ้าให้เลื่อนเฉพาะรายการ
+   จะเหลือช่องมองรายการแค่ไม่กี่พิกเซล (วัดแล้วเห็นแถวแรกแค่ขอบบน)
+   ให้ทั้งหน้าเลื่อนไปด้วยกัน ช่องค้นหาเลื่อนพ้นจอไปแล้วรายการได้ความสูงทั้งหมด */
+.fr-req {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.4dvh, 11px);
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.fr-req::-webkit-scrollbar { display: none; }
+.fr-req > .fr-list { max-height: none; overflow: visible; flex: 0 0 auto; }
+@media (max-height: 520px) {
+  .fr-search input { padding: 7px 12px; font-size: 13px; }
+  .fr-search .btn { padding: 7px 18px; font-size: 13px; }
+}
+.fr-search { flex-wrap: nowrap; width: min(88vw, 470px); }
+.fr-search input { flex: 1 1 auto; width: auto; min-width: 0; }
+
+.fr-mycode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(11px, 1.6dvh, 12.5px);
+  color: #B99BD4;
+}
+.fr-mycode b {
+  font-family: "Mitr", monospace;
+  font-weight: 600;
+  letter-spacing: .12em;
+  color: var(--cream);
+  font-size: clamp(12.5px, 1.9dvh, 15px);
+}
+.fr-copy {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: #F2D5FF;
+  color: #2A1238;
+  cursor: pointer;
+}
+.fr-copy svg { width: 60%; height: 60%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.fr-copy:active { transform: scale(.9); }
+
+/* หัวข้อกลุ่มในหน้าคำขอ (ผลการค้นหา / ส่งมาหาเรา / ที่เราส่งไป) */
+.fr-head {
+  margin: clamp(2px, .6dvh, 6px) 4px 0;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 1.6dvh, 12.5px);
+  color: #D9C2F0;
+}
+.fr-list .grid-empty { padding-block: clamp(6px, 2dvh, 16px); }
+
+.fr-row { cursor: default; }
+.fr-row.tap { cursor: pointer; }
+.fr-row:active { transform: none; box-shadow: var(--plate-lift); }
+.fr-row.tap:active { transform: translateY(3px); box-shadow: var(--plate-press); }
+.fr-face {
+  flex: 0 0 auto;
+  width: clamp(34px, 6.4dvh, 46px);
+  height: clamp(34px, 6.4dvh, 46px);
+  border-radius: 50%;
+  background: rgba(34,14,54,.55);
+  box-shadow: inset 0 0 0 1px rgba(255,243,226,.16);
+}
+.fr-sub { display: flex; align-items: center; gap: 5px; }
+.fr-sub::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8E76A8;
+}
+.fr-sub.on::before { background: #5BE08A; box-shadow: 0 0 6px rgba(91,224,138,.8); }
+.fr-acts { flex: 0 0 auto; display: flex; gap: 6px; }
+.fr-acts .btn.tiny { padding: 6px 12px; font-size: clamp(11px, 1.7dvh, 12px); }
+.fr-acts .btn:disabled { opacity: .6; }
 
 /* ── หน้าอ่านจดหมาย ────────────────────────── */
 .mail-meta {
@@ -3516,7 +3646,8 @@ canvas[hidden] { display: none; }
    กฎ: ของใหม่ที่เพิ่มลงหน้าแรกต้องมาเติมชื่อในรายการนี้ด้วยเสมอ
    ไม่งั้นมันจะไปโผล่ทับจอตอนกำลังวิ่ง ซึ่งไม่มีใครอยากได้ */
 .stage:not(:has(.panel:not(.hidden))) #btnSettings,
-.stage:not(:has(.panel:not(.hidden))) #btnMail { display: none; }
+.stage:not(:has(.panel:not(.hidden))) #btnMail,
+.stage:not(:has(.panel:not(.hidden))) #btnFriends { display: none; }
 
 .goldbar {
   /* ไปอยู่มุมขวาบนคู่กับปุ่ม ไม่ใช่มุมซ้าย — ซ้ายบนต้องเว้นไว้ให้แถวตัวอักษรสะสม
@@ -4215,25 +4346,8 @@ canvas[hidden] { display: none; }
 .panel .pf-pop > .pf-title { background: none; padding-bottom: 0; }
 
 /* ปุ่มปิดวงกลมมุมขวาบนตามแบบ (หน้าอื่นใช้ลูกศรกลับมุมซ้าย — หน้านี้เป็นหน้าต่างลอย) */
-.pf-close {
-  position: absolute;
-  top: clamp(6px, 1.6dvh, 16px);
-  right: clamp(8px, 1.6vw, 18px);
-  z-index: 6;
-  width: clamp(28px, 5.6dvh, 46px);
-  height: clamp(28px, 5.6dvh, 46px);
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(255,243,226,.55);
-  background: radial-gradient(circle at 35% 30%, #7A4A9E, #3A1D50);
-  box-shadow: 0 3px 10px rgba(12,4,24,.5), inset 0 1px 0 rgba(255,255,255,.2);
-  color: var(--cream);
-  cursor: pointer;
-}
-.pf-close svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
-.pf-close:active { transform: scale(.94); }
+/* หน้าตามาจากเทมเพลต .xbtn — ตรงนี้แค่ยกให้อยู่เหนือการ์ด */
+.pf-close { z-index: 6; }
 
 .pf-body {
   --row: 46cqh;
@@ -4850,6 +4964,25 @@ canvas[hidden] { display: none; }
   }
   .pf-more svg { width: 70%; height: 90%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   @keyframes pfNudge { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 3px); } }
+}
+
+/* ── มือถือ (จอเตี้ย): ปรับเพิ่มเฉพาะมือถือ ── */
+@media (max-height: 520px) {
+  /* หัวข้อเดิม 15px เล็กไปเมื่อเทียบกับตัวเลขในการ์ด */
+  .pf-pop > .pf-title { font-size: clamp(19px, 5.6dvh, 26px); }
+
+  /* รอยตีนมุมขวาบน: ย่อให้อยู่ในความสูงแถบชื่อ ไม่ยื่นลงไปโดนกล่องเข้มทับ
+     และยกไว้เหนือกล่องเผื่อจอบางขนาดที่ยังชิดกันอยู่ */
+  .pf-panel-main .pf-paws {
+    z-index: 3;
+    top: calc(var(--u) * 2);
+    width: calc(var(--u) * 22);
+    height: calc(var(--u) * 16);
+  }
+
+  /* ป้าย "คะแนนรวม" / "สถิติสูงสุด" กับตัวเลขใหญ่ใต้ป้าย — เว้นให้ห่างกันชัด ๆ */
+  .pf-score-box .pf-score,
+  .pf-best .pf-score { margin-top: calc(var(--u) * 3.5); }
 }
 
 /* ── จอแคบแนวตั้ง: การ์ดบนเรียงลงเป็นแถวเดียว ── */
@@ -6017,6 +6150,7 @@ canvas[hidden] { display: none; }
   /* แก้ที่โทเคน ไม่ใช่ที่ตัวปุ่ม — ที่จองใน .pop:has(.backbtn) จะได้ขยับตามเอง */
   :root { --backbtn: 40px; --backbtn-x: 10px; }
   .backbtn,
+  .xbtn:not(.tl-close),
   #createPanel.paint-full .paint-max { top: 5%; }
   /* บีบช่องไฟหลังปุ่มลงบนจอเตี้ย — ที่จองสองข้างกินความกว้างไปเท่าตัว
      พอกว้างขึ้นข้างละสิบกว่าพิกเซล เนื้อหาบางหน้าจะตกบรรทัดแล้วสูงเกินการ์ดทันที */
@@ -8596,23 +8730,8 @@ canvas[hidden] { display: none; }
   padding-block: clamp(6px, 1.3dvh, 10px);
   font-size: clamp(11px, 2dvh, 15px);
 }
-.tl-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: clamp(26px, 5dvh, 34px);
-  height: clamp(26px, 5dvh, 34px);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255,243,226,.3);
-  background: rgba(27,15,43,.6);
-  color: var(--cream);
-  cursor: pointer;
-  z-index: 2;
-}
-.tl-close:active { transform: translateY(1px); }
-.tl-close:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+/* หน้าตามาจากเทมเพลต .xbtn — แผ่นนี้เล็ก จึงชิดมุมแผ่นกว่าปุ่มบนการ์ดใหญ่ */
+.tl-close { top: 8px; right: 8px; }
 
 /* ── จอเตี้ย (มือถือแนวนอน) ── ตัดบรรทัดคำแนะนำทิ้ง แล้วบีบระยะให้กริดได้แถวเพิ่ม */
 @media (max-height: 460px) {

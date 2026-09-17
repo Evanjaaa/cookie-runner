@@ -395,6 +395,26 @@ export async function pushName(name) {
   }
 }
 
+/**
+ * ตั้งชื่อผ่านฐานข้อมูล — ตรวจ "ยาวเกิน / ซ้ำกับคนอื่น" ฝั่งเซิร์ฟเวอร์ (ดู supabase/names.sql)
+ * คืน { ok } หรือ { ok:false, reason: 'taken' | 'invalid' | 'offline' | 'schema' | 'network' }
+ */
+export async function claimName(name) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await c.rpc('claim_name', { p_name: name });
+    if (error) throw error;
+    if (data === 'ok') return { ok: true };
+    if (data === 'signed_out') return { ok: false, reason: 'offline' };
+    return { ok: false, reason: data === 'taken' ? 'taken' : 'invalid' };
+  } catch (e) {
+    if (e?.code === 'PGRST202' || e?.code === '42883') return { ok: false, reason: 'schema' };
+    console.warn('[cloud] ตั้งชื่อไม่ได้', e?.message || e);
+    return { ok: false, reason: 'network' };
+  }
+}
+
 /** กระดานคะแนนของด่านหนึ่ง เรียงมากไปน้อย */
 export async function fetchLeaderboard(stageId, limit = 20) {
   const c = await client();
@@ -509,35 +529,120 @@ export async function fetchProfileById(id) {
   }
 }
 
-/** เราเพิ่มคนนี้เป็นเพื่อนแล้วหรือยัง */
-export async function checkFriend(id) {
+// ── คำขอเป็นเพื่อน (ต้องรัน supabase/friend_requests.sql) ──
+// ทุกอย่างผ่านฟังก์ชันในฐานข้อมูล ซึ่งตอบกลับเป็นคำสั้น ๆ — ส่งคำนั้นต่อให้หน้าจอเลือกข้อความเอง
+
+async function friendRpc(fn, args, what) {
   const c = await client();
   if (!c || !uid) return { ok: false, reason: 'offline' };
   try {
-    const { data, error } = await c.from('friends').select('friend_id')
-      .eq('player_id', uid).eq('friend_id', id).maybeSingle();
+    const { data, error } = await c.rpc(fn, args);
     if (error) throw error;
-    return { ok: true, friend: Boolean(data) };
+    if (data === 'signed_out') return { ok: false, reason: 'offline' };
+    return { ok: true, result: data };
   } catch (e) {
-    return friendFail(e, 'ตรวจสถานะเพื่อน');
+    return friendFail(e, what);
   }
 }
 
-/** เพิ่มเพื่อน — กดซ้ำไม่เป็นไร แถวซ้ำถือว่าสำเร็จ */
-export async function addFriend(id) {
+/** สถานะระหว่างเรากับอีกคน: self / friends / sent / received / none */
+export async function friendStatus(id) {
+  const r = await friendRpc('friend_status', { p_id: id }, 'ตรวจสถานะเพื่อน');
+  return r.ok ? { ok: true, status: r.result } : r;
+}
+
+/**
+ * ส่งคำขอเป็นเพื่อน
+ * ok เมื่อ result เป็น sent (ส่งแล้ว) / accepted (อีกฝ่ายขอเรามาก่อน เลยเป็นเพื่อนกันทันที)
+ * / pending (ขอไปแล้ว) / friends (เป็นเพื่อนกันอยู่แล้ว) — ที่เหลือคืนเป็น reason
+ */
+export async function sendFriendRequest(id) {
+  if (id === uid) return { ok: false, reason: 'self' };
+  const r = await friendRpc('send_friend_request', { p_to: id }, 'ส่งคำขอเป็นเพื่อน');
+  if (!r.ok) return r;
+  if (['sent', 'accepted', 'pending', 'friends'].includes(r.result)) return r;
+  return { ok: false, reason: r.result };
+}
+
+/** ตอบคำขอที่ส่งมาหาเรา — result: accepted / declined, reason: gone / full */
+export async function respondFriendRequest(fromId, accept) {
+  const r = await friendRpc('respond_friend_request', { p_from: fromId, p_accept: Boolean(accept) }, 'ตอบคำขอเป็นเพื่อน');
+  if (!r.ok) return r;
+  if (r.result === 'accepted' || r.result === 'declined') return r;
+  return { ok: false, reason: r.result };
+}
+
+/** ยกเลิกคำขอที่เราส่งไป */
+export function cancelFriendRequest(toId) {
+  return friendRpc('cancel_friend_request', { p_to: toId }, 'ยกเลิกคำขอเป็นเพื่อน');
+}
+
+/** เลิกเป็นเพื่อน (ลบทั้งสองฝั่ง) */
+export function removeFriend(id) {
+  return friendRpc('remove_friend', { p_id: id }, 'ลบเพื่อน');
+}
+
+/** คำขอที่ส่งมาหาเรา (incoming) กับที่เราส่งไปแล้วยังไม่ตอบ (outgoing) ใหม่สุดก่อน */
+export async function fetchFriendRequests() {
   const c = await client();
   if (!c || !uid) return { ok: false, reason: 'offline' };
-  if (id === uid) return { ok: false, reason: 'self' };
   try {
-    const { error } = await c.from('friends').insert({ player_id: uid, friend_id: id });
-    if (error && error.code !== '23505') throw error;   // 23505 = เป็นเพื่อนกันอยู่แล้ว
-    return { ok: true };
+    const cols = `${PROFILE_COLS}, created_at`;
+    const [inc, out] = await Promise.all([
+      c.from('my_friend_requests_in').select(cols).order('created_at', { ascending: false }),
+      c.from('my_friend_requests_out').select(cols).order('created_at', { ascending: false }),
+    ]);
+    if (inc.error) throw inc.error;
+    if (out.error) throw out.error;
+    return { ok: true, incoming: inc.data || [], outgoing: out.data || [] };
   } catch (e) {
-    return friendFail(e, 'เพิ่มเพื่อน');
+    return friendFail(e, 'อ่านคำขอเป็นเพื่อน');
   }
 }
 
-/** รายชื่อเพื่อนทั้งหมด (ยังไม่มีหน้าใช้ — เตรียมไว้ให้หน้ารายชื่อเพื่อน) */
+/** จำนวนคำขอที่รอเราตอบ — ไว้ทำป้ายแดงบนปุ่มเพื่อน (นับอย่างเดียว ไม่ดึงแถว) */
+export async function countFriendRequests() {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { count, error } = await c.from('my_friend_requests_in').select('id', { count: 'exact', head: true });
+    if (error) throw error;
+    return { ok: true, count: count || 0 };
+  } catch (e) {
+    return friendFail(e, 'นับคำขอเป็นเพื่อน');
+  }
+}
+
+/**
+ * ค้นหาผู้เล่นด้วยรหัสแมวน้อย หรือชื่อ (ตรงทั้งคำ ไม่สนตัวพิมพ์เล็ก/ใหญ่)
+ * ชื่อห้ามซ้ำกันอยู่แล้ว (names.sql) ผลจากชื่อจึงได้คนเดียว — ชื่อเก่าที่ซ้ำกันอยู่ก่อนได้หลายคน
+ */
+export async function searchPlayers(query, code) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const found = new Map();
+    if (code) {
+      const { data, error } = await c.from('public_profiles').select(PROFILE_COLS).eq('friend_code', code).limit(1);
+      if (error) throw error;
+      for (const row of data || []) found.set(row.id, row);
+    }
+    const name = String(query || '').trim();
+    if (name) {
+      // ilike ใช้ % กับ _ เป็นตัวแทนอักษร ต้องหลบก่อน ไม่งั้นพิมพ์ "_" ได้ทุกคนที่ชื่อยาวหนึ่งตัว
+      const pattern = name.replace(/[\\%_]/g, (ch) => '\\' + ch);
+      const { data, error } = await c.from('public_profiles').select(PROFILE_COLS).ilike('name', pattern).limit(10);
+      if (error) throw error;
+      for (const row of data || []) found.set(row.id, row);
+    }
+    found.delete(uid);
+    return { ok: true, players: [...found.values()] };
+  } catch (e) {
+    return friendFail(e, 'ค้นหาผู้เล่น');
+  }
+}
+
+/** รายชื่อเพื่อน (หน้าเพื่อนแมว) — เพื่อนคนใหม่สุดก่อน */
 export async function fetchFriends() {
   const c = await client();
   if (!c || !uid) return { ok: false, reason: 'offline' };

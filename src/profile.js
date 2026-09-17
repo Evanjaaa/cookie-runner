@@ -22,9 +22,36 @@ import { loadPref, savePref } from './storage.js';
 
 const KEY = 'status';
 
-/** ยาวได้กี่ตัวอักษร และขึ้นบรรทัดใหม่ได้กี่บรรทัด */
+/** ยาวได้กี่คำ (กติกาหลัก) — ตัวอักษรกับบรรทัดเป็นเพดานกันข้อความประหลาด เช่นคำเดียวยาวร้อยตัว */
+export const STATUS_WORDS = 20;
 export const STATUS_MAX = 100;
 export const STATUS_LINES = 3;
+
+// ── นับคำภาษาไทย ──
+// ไทยไม่เว้นวรรคระหว่างคำ นับช่องว่างไม่ได้ ใช้ตัวตัดคำของเบราว์เซอร์ (Intl.Segmenter)
+// ซึ่งรู้จักพจนานุกรมไทย — เครื่องเก่าที่ไม่มีตัวนี้ถอยไปนับตามช่องว่าง
+const segmenter = typeof Intl !== 'undefined' && Intl.Segmenter
+  ? new Intl.Segmenter('th', { granularity: 'word' })
+  : null;
+
+/** ตำแหน่งสิ้นสุดของแต่ละคำ (นับเฉพาะส่วนที่เป็นคำจริง ไม่นับช่องว่าง/เครื่องหมาย) */
+function wordEnds(text) {
+  const ends = [];
+  if (segmenter) {
+    for (const seg of segmenter.segment(text)) {
+      if (seg.isWordLike) ends.push(seg.index + seg.segment.length);
+    }
+  } else {
+    const re = /\S+/g;
+    let m;
+    while ((m = re.exec(text))) ends.push(m.index + m[0].length);
+  }
+  return ends;
+}
+
+export function statusWords(text) {
+  return wordEnds(typeof text === 'string' ? text : '').length;
+}
 
 /**
  * ตัดข้อความให้อยู่ในกติกา — เรียกทั้งตอนบันทึกและตอนอ่านกลับ
@@ -44,7 +71,10 @@ export function cleanStatus(raw) {
   // ตัดบรรทัดว่างหัวท้ายทิ้ง แต่เก็บบรรทัดว่างที่อยู่ตรงกลางไว้ตามที่พิมพ์
   while (lines.length && !lines[0].trim()) lines.shift();
   while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
-  const text = lines.join('\n');
+  let text = lines.join('\n');
+  // เกิน 20 คำ = ตัดตรงท้ายคำที่ 20 พอดี (ไม่ตัดกลางคำ)
+  const ends = wordEnds(text);
+  if (ends.length > STATUS_WORDS) text = text.slice(0, ends[STATUS_WORDS - 1]).replace(/\s+$/, '');
   const chars = Array.from(text);
   return chars.length > STATUS_MAX ? chars.slice(0, STATUS_MAX).join('') : text;
 }

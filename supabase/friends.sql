@@ -101,8 +101,7 @@ revoke all on public.public_profiles from anon;
 grant select on public.public_profiles to authenticated;
 
 -- ── เพื่อน ──
--- แถวเดียว = "player_id เพิ่ม friend_id เป็นเพื่อน" (ทางเดียว แบบติดตาม)
--- ยังไม่ต้องรออีกฝ่ายตอบรับ — ถ้าวันหลังอยากทำแบบขอเป็นเพื่อน ให้เพิ่มคอลัมน์สถานะที่ตารางนี้
+-- แถวเดียว = "player_id มี friend_id เป็นเพื่อน" — ตอบรับคำขอแล้วจะเขียนเป็นคู่เสมอ (ดู friend_requests.sql)
 create table if not exists public.friends (
   player_id  uuid        not null references public.players on delete cascade,
   friend_id  uuid        not null references public.players on delete cascade,
@@ -118,9 +117,9 @@ drop policy if exists "อ่านความเป็นเพื่อนท
 create policy "อ่านความเป็นเพื่อนที่เกี่ยวกับตัวเอง" on public.friends
   for select using (auth.uid() = player_id or auth.uid() = friend_id);
 
+-- ไม่มีสิทธิ์เพิ่มแถวตรง ๆ แล้ว — เป็นเพื่อนได้ผ่านคำขอที่อีกฝ่ายตอบรับเท่านั้น (friend_requests.sql)
+-- ลบทิ้งไว้ตรงนี้ด้วย รันไฟล์นี้ซ้ำทีหลังจะได้ไม่เปิดทางลัดกลับมา
 drop policy if exists "เพิ่มเพื่อนได้ในชื่อตัวเอง" on public.friends;
-create policy "เพิ่มเพื่อนได้ในชื่อตัวเอง" on public.friends
-  for insert with check (auth.uid() = player_id);
 
 drop policy if exists "ลบเพื่อนของตัวเอง" on public.friends;
 create policy "ลบเพื่อนของตัวเอง" on public.friends

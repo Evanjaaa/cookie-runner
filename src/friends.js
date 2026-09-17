@@ -24,6 +24,9 @@ export function reasonText(reason) {
     case 'notfound': return 'ไม่พบผู้เล่นที่ใช้รหัสนี้';
     case 'self': return 'นี่คือรหัสของเราเอง';
     case 'short': return `รหัสแมวน้อยมี ${FRIEND_CODE_LEN} ตัว`;
+    case 'limit': return 'ส่งคำขอค้างไว้เยอะเกินไป รอให้อีกฝ่ายตอบก่อนนะ';
+    case 'full': return 'เพื่อนเต็มแล้ว ลบเพื่อนบางคนก่อนถึงจะเพิ่มได้';
+    case 'gone': return 'คำขอนี้ถูกยกเลิกไปแล้ว';
     default: return 'ต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง';
   }
 }
