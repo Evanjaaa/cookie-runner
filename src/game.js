@@ -30,6 +30,18 @@ import { TalentRun } from './talent-run.js';
 import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/talent-fx.js';
 import { drawHUD } from './render/hud.js';
 import { postProcess } from './render/post.js';
+import { drawOutlined } from './render/outline.js';
+import { GateRun } from './gate-run.js';
+import { gateFor, GATE_LIST } from './gates.js';
+import { drawGateBack, drawGateFront, warmGateArt } from './render/gates/index.js';
+
+/** แยกเม็ดปลาธรรมดา (ไม่มีเส้นขอบ) ออกจากของกินเด่น (มีเส้นขอบ) — ดู Game.draw */
+function splitFish(list) {
+  const plain = [];
+  const rare = [];
+  for (const t of list) (t.kind === 'shrimp' || t.kind === 'kibble' ? rare : plain).push(t);
+  return [plain, rare];
+}
 import { drawKingdom } from './render/kingdom/index.js';
 import { drawRoomScene } from './render/room/index.js';
 
@@ -394,6 +406,10 @@ export class Game {
     // ใช้ค่านี้แทน null เพราะ onBridge เทียบด้วย < ตรง ๆ ได้เลยโดยไม่ต้องเช็ค null ก่อน
     this.bridgeAt = -Infinity;
     this.bridgeEnd = -Infinity;
+    this.gate = null;   // ทางเข้าด่านที่กำลังวิ่งผ่าน (GateRun) — null = ไม่ได้อยู่ในทางเข้า
+    // ภาพทางเข้าบางแบบมีชั้นแคชขนาดใหญ่ (พุ่มดอกไม้) — สร้างตอนเริ่มรอบซึ่งยังไม่มีอะไรให้หลบ
+    // ดีกว่าไปสร้างตอนตัดสินใจเปลี่ยนฉาก ซึ่งผู้เล่นอาจกำลังกระโดดข้ามของอยู่
+    for (const def of GATE_LIST) warmGateArt(def, this.renderScale);
     this.clearedScenes = 0;           // ผ่านด่านย่อยไปกี่ฉากแล้วในตานี้
 
     this.pal = this.stage.palette;
@@ -1114,6 +1130,66 @@ export class Game {
    * ช่วงรอยต่อจะเหลือแค่ฟ้ากับเนินเขา ซึ่งยังไล่สีต่อเนื่องอยู่ตลอดผ่าน mixPalette
    * ภาพที่ได้จึงเป็น "ที่เดิมสลายไป แล้วที่ใหม่ก่อตัวขึ้น" ไม่ใช่ภาพซ้อน
    */
+  /**
+   * เริ่มทางเข้าด่าน — ต่อท่อนของทางเข้าไว้หน้าเส้นทางของฉากใหม่
+   *
+   * เส้นทางของฉากใหม่ต้องใส่ "ตอนนี้" ไม่ใช่ตอนสลับฉาก เพราะ Level ปูท่อนล่วงหน้าเกือบสองจอ
+   * ท่อนแรกหลังทางเข้าจะถูกปูตั้งแต่แมวยังอยู่ในร้าน (ท่อนนั้นเป็นท่อนปลอดภัยเสมอ ดู composeRoute)
+   * nextChunkX ตอนนี้ = จุดต่อจากของฉากเก่าที่ปูไว้แล้ว ทางเข้าจึงเริ่มหลังของเดิมพอดี
+   */
+  beginGate(def, next) {
+    this.level.switchRoute([{ fn: def.chunk }, ...Level.routeFor(next)], next.theme);
+    this.placeGate(def, next, this.level.nextChunkX);
+    this.noticeText = 'ผ่านด่าน! กำลังเข้า' + next.name;
+    this.notice = SCENE.noticeFrames;
+    sfx.bonus();
+  }
+
+  placeGate(def, next, x0) {
+    this.gate = new GateRun(def, x0, next);
+    // ใช้ช่วงเดียวกับทางเชื่อมเดิม — ของประจำแมพ (ผึ้ง/ของร่วง) จึงไม่โผล่ในทางเข้า (ดู onBridge)
+    this.bridgeAt = x0;
+    this.bridgeEnd = x0 + def.layout.length;
+    // สร้างสไปรต์ของอาคารไว้ก่อน — ตอนนี้อาคารยังอยู่นอกจอไกลอย่างน้อยหนึ่งจอ
+    // (ปกติสร้างเสร็จแล้วตั้งแต่เริ่มรอบ ตรงนี้เป็นประกันกรณีสเกลจอเปลี่ยนระหว่างเล่น)
+    warmGateArt(def, this.renderScale);
+  }
+
+  updateGate(dt) {
+    const g = this.gate;
+    if (g.update(this.camera, dt)) this.activateGate();
+    if (g.activated && g.isDone(this.camera)) this.gate = null;
+  }
+
+  /** สลับฉากจริง — เรียกเฉพาะตอนอาคารปิดจอเต็ม ผู้เล่นจึงไม่เห็นฉากเปลี่ยนต่อหน้า */
+  activateGate() {
+    const g = this.gate;
+    this.scene = g.to;
+    this.pal = g.to.palette;
+    this.nextSceneAt = this.tick + SCENE.frames;
+    this.syncMusic();
+  }
+
+  /**
+   * ปูทางใหม่หลังกล้องกระโดด (ปลาพาลงจากโบนัส / ชุบชีวิต)
+   * ถ้ายังไม่ได้สลับฉากผ่านทางเข้า ต้องต่อทางเข้ากลับมาหลังทางโล่ง ไม่งั้นทางเข้าหายไปพร้อมของเดิม
+   * แล้วฉากจะไม่มีวันเปลี่ยน (ไม่มีอะไรเรียก activateGate อีกเลย)
+   */
+  restartRoute(clearChunks) {
+    const clear = Array.from({ length: clearChunks }, () => ({ p: 0 }));
+    const g = this.gate;
+    if (g && !g.activated) {
+      this.level.restartAt(this.camera, [...clear, { fn: g.def.chunk }, ...Level.routeFor(g.to)], g.to.theme);
+      this.placeGate(g.def, g.to, this.camera + clearChunks * LEVEL.chunkW);
+    } else {
+      // สลับฉากไปแล้ว ตัวอาคารที่เหลืออยู่ข้างหลังไม่ต้องตามมา
+      this.gate = null;
+      // ตัดท่อนแรกของเส้นทางทิ้ง เพราะ composeRoute บังคับให้มันเป็นท่อนปลอดภัยอยู่แล้ว
+      this.level.restartAt(this.camera, [...clear, ...Level.routeFor(this.scene).slice(1)], this.scene.theme);
+    }
+    this.level.ensureAhead(this.camera);
+  }
+
   drawProps(ctx, band) {
     const t = this.nextScene ? Math.min(1, this.fade / SCENE.fadeFrames) : 0;
 
@@ -1275,6 +1351,13 @@ export class Game {
   }
 
   updateScene(dt) {
+    // ── อยู่ในทางเข้าด่าน ──
+    // สลับฉากเกิดข้างใน updateGate ตอนจอถูกอาคารปิดเต็ม ไม่มีการไล่สีแบบทางเชื่อมเดิม
+    if (this.gate) {
+      this.updateGate(dt);
+      return;
+    }
+
     if (this.nextScene) {
       // ยังวิ่งไม่ถึงทางเชื่อม = ยังไม่เริ่มไล่สี
       // ผู้เล่นจะได้อยู่กับฉากเก่าจนวิ่งพ้นของที่วางไว้แล้วจริง ๆ
@@ -1301,6 +1384,13 @@ export class Game {
     this.sceneIndex++;
     this.clearedScenes++;
     const next = sceneAt(this.stage.id, this.sceneIndex);
+
+    // ฉากที่มีทางเข้าของตัวเอง — วิ่งทะลุสถานที่จริงแทนทางเชื่อมไล่สี (gates.js)
+    const gate = gateFor(next);
+    if (gate) {
+      this.beginGate(gate, next);
+      return;
+    }
 
     // ── ต่อทางโล่งคั่นก่อนเข้าฉากใหม่ ──
     // ท่อนที่ 0 คือทางเรียบล้วน ไม่มีหนามไม่มีหลุม มีแต่ปลาให้เก็บ
@@ -1499,10 +1589,7 @@ export class Game {
       // ตัดท่อนแรกของเส้นทางทิ้ง เพราะ composeRoute บังคับให้มันเป็นท่อนปลอดภัยอยู่แล้ว
       // ถ้าไม่ตัด จะได้ทางโล่งซ้อนกันสองท่อน = วิ่ง 4.1 วินาทีกว่าจะเจอของชิ้นแรก
       // ตัดแล้วเหลือ 2.3 วินาที ซึ่งตรงกับจังหวะที่ต้องการ
-      const clear = Array.from({ length: BONUS.landingChunks }, () => ({ p: 0 }));
-      const rest = Level.routeFor(this.scene).slice(1);
-      this.level.restartAt(this.camera, [...clear, ...rest], this.scene.theme);
-      this.level.ensureAhead(this.camera);
+      this.restartRoute(BONUS.landingChunks);
     }
   }
 
@@ -1735,10 +1822,14 @@ export class Game {
       drawHills(ctx, this.camera, this.pal);
       this.drawProps(ctx, 'near');
       drawGround(ctx, this.level.pits, this.camera, this.pal);
-      drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
-      drawFallers(ctx, this.level.fallers, this.camera, this.scene.theme);
-      drawHazards(ctx, this.level.hazards, this.camera, this.tick, this.pal);
-      drawTreats(ctx, this.level.fishes, this.camera, this.tick);
+      const [plainFish, rareTreats] = splitFish(this.level.fishes);
+      drawOutlined(ctx, (c) => {
+        drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
+        drawFallers(c, this.level.fallers, this.camera, this.scene.theme);
+        drawHazards(c, this.level.hazards, this.camera, this.tick, this.pal);
+        drawTreats(c, rareTreats, this.camera, this.tick);
+      });
+      drawTreats(ctx, plainFish, this.camera, this.tick);
     }
 
     // ของบนฟ้าทั้งหมดวาดเฉพาะตอนอยู่ฉากฟ้าเท่านั้น
@@ -1750,13 +1841,19 @@ export class Game {
     // ไม่ต้องกลัวว่ามันจะโผล่มาแบบกะทันหันตอนเข้าฉากฟ้า เพราะจังหวะนั้น
     // แสงขาววาบเต็มจอกลบรอยต่อให้อยู่แล้ว
     if (sky) {
-      drawMagnets(ctx, this.bonusMagnets, this.camera, this.tick);
-      drawTreats(ctx, this.bonusTreats, this.camera, this.tick);
+      const [plainFish, rareTreats] = splitFish(this.bonusTreats);
+      drawOutlined(ctx, (c) => {
+        drawMagnets(c, this.bonusMagnets, this.camera, this.tick);
+        drawTreats(c, rareTreats, this.camera, this.tick);
+      });
+      drawTreats(ctx, plainFish, this.camera, this.tick);
     }
 
     this.particles.draw(ctx, this.camera);
 
     // ปลาก่อนแมว แมวจึงนั่งทับอยู่บนหลังปลาไม่ใช่จมอยู่ข้างใน
+    // ปลาทองตัวใหญ่ไม่ผ่านชั้นเส้นขอบ — มีวงออร่าโปร่งกว้างรอบตัวที่วาดรวมอยู่ในตัว
+    // ถ้าเข้าชั้นเส้นขอบ วงออร่ากลายเป็นเงาทึบสีเข้มทั้งวง (ดู render/outline.js)
     drawBigFish(ctx, this.fishX, this.fishY, BONUS.fishR, this.fishDir, this.tick);
     // ต้องส่ง catMood ตรงนี้ด้วย — นี่คือเส้นทางวาดของ "ตอนอยู่ในโบนัส" ซึ่งเป็น
     // ช่วงเดียวที่อารมณ์ถูกใช้จริง (ดีใจตอนปลามารับ เศร้าตอนกลับลงพื้น)
@@ -1853,9 +1950,7 @@ export class Game {
     // ปูทางเรียบรอไว้ตรงจุดที่น้องจะกลับมายืน
     // ตรงที่ตกคือปากหลุม วางกลับที่เดิมเฉย ๆ จะร่วงซ้ำทันทีในเฟรมถัดไป
     // วิธีเดียวกับตอนปลาพาลงมาส่งหลังโบนัส (ดู enterBonusPhase('fall'))
-    const clear = Array.from({ length: REVIVE.clearChunks }, () => ({ p: 0 }));
-    this.level.restartAt(this.camera, [...clear, ...Level.routeFor(this.scene).slice(1)], this.scene.theme);
-    this.level.ensureAhead(this.camera);
+    this.restartRoute(REVIVE.clearChunks);
 
     this.player.reset();
     // reset() ล้างระยะเลื่อนกับท่า แต่พรสวรรค์ยังเป็นใบเดิม — ผูกตัวปรับกลับเข้าไปใหม่
@@ -1878,6 +1973,11 @@ export class Game {
   // ── ลูปวาด ─────────────────────────────────────────────────
 
   draw(ctx) {
+    // สเกลจริงของผ้าใบ — ภาพทางเข้าที่มีชั้นแคชใช้สร้างแคชให้คมเท่าจอ
+    // อ่านก่อนแยกไปวาดหน้าแรก ตอนกดเริ่มเล่น (reset) จะได้รู้สเกลแล้ว สร้างแคชถูกขนาดตั้งแต่แรก
+    const tf = ctx.getTransform();
+    this.renderScale = Math.hypot(tf.a, tf.b);
+
     if (this.state === STATE.READY) return this.inRoom ? this.drawRoom(ctx) : this.drawHome(ctx);
     if (this.bonus > 0) return this.drawBonus(ctx);
 
@@ -1894,16 +1994,27 @@ export class Game {
     drawHills(ctx, this.camera, this.pal);
     this.drawProps(ctx, 'near');
     drawGround(ctx, this.level.pits, this.camera, this.pal);
-    drawObstacles(ctx, this.level.obstacles, this.camera, this.scene.theme);
-    drawFallers(ctx, this.level.fallers, this.camera, this.scene.theme);
-      drawHazards(ctx, this.level.hazards, this.camera, this.tick, this.pal);
-    drawTreats(ctx, this.level.fishes, this.camera, this.tick);
-    drawPotions(ctx, this.level.potions, this.camera, this.tick);
-    drawMagnets(ctx, this.level.magnets, this.camera, this.tick);
-    drawLetters(ctx, this.level.letters, this.camera, this.tick);
-    drawNips(ctx, this.level.nips, this.camera, this.tick);
-    drawCans(ctx, this.level.cans, this.camera, this.tick);
-    drawShields(ctx, this.level.shields, this.camera);
+    // ทางเข้าด่าน ชั้นหลัง: ชานร้าน ข้างในร้าน ผนังหน้าร้าน — อยู่หลังของกินและตัวแมว
+    const gateView = this.gate && this.gate.view(this.camera, this.tick);
+    if (gateView) drawGateBack(ctx, this.gate.def, gateView);
+    // ของทุกชิ้นในด่านวาดเป็นชั้นเดียวพร้อมเส้นขอบ (ดู render/outline.js)
+    // ของใหม่ที่เพิ่มในอนาคตให้วาดในบล็อกนี้ จะได้เส้นขอบเหมือนชิ้นอื่นเอง
+    // ยกเว้นเม็ดอาหารรูปปลา — ขึ้นเรียงเป็นแถวยาวเต็มจอ มีเส้นแล้วดูรกและหนักตา
+    // จึงวาดแยกนอกชั้นเส้นขอบ (ข้างล่าง) ส่วนเม็ดกลมกับกุ้งทองยังมีเส้นเพราะเป็นของเด่น
+    const [plainFish, rareTreats] = splitFish(this.level.fishes);
+    drawOutlined(ctx, (c) => {
+      drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
+      drawFallers(c, this.level.fallers, this.camera, this.scene.theme);
+      drawHazards(c, this.level.hazards, this.camera, this.tick, this.pal);
+      drawTreats(c, rareTreats, this.camera, this.tick);
+      drawPotions(c, this.level.potions, this.camera, this.tick);
+      drawMagnets(c, this.level.magnets, this.camera, this.tick);
+      drawLetters(c, this.level.letters, this.camera, this.tick);
+      drawNips(c, this.level.nips, this.camera, this.tick);
+      drawCans(c, this.level.cans, this.camera, this.tick);
+      drawShields(c, this.level.shields, this.camera);
+    });
+    drawTreats(ctx, plainFish, this.camera, this.tick);
     this.particles.draw(ctx, this.camera);
 
     // กะพริบตอนอมตะหลังโดนชน ให้เห็นชัดว่าช่วงนี้ยังชนไม่ได้
@@ -1950,6 +2061,8 @@ export class Game {
     }
     if (sucking) drawSuction(ctx, this.player, this.tick, catS);
     if (this.state !== STATE.DEAD) drawTalentFront(ctx, this);
+    // ทางเข้าด่าน ชั้นหน้า: เสาประตู บานสวิง โคมไฟ — แมววิ่งลอดอยู่ข้างหลังจริง
+    if (gateView) drawGateFront(ctx, this.gate.def, gateView);
 
     // หลอดความสามารถ ซ่อนตอนตายเพราะไม่มีความหมายแล้ว
     if (this.state !== STATE.DEAD) {

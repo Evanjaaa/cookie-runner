@@ -59,6 +59,12 @@
 
         <h3>สิ่งกีดขวางพิเศษ</h3>
         <div class="kit" id="kitSpecial"></div>
+
+        <h3>ไอเท็มตัวช่วย</h3>
+        <div class="kit" id="kitItem"></div>
+
+        <h3>พื้นเหยียบได้ (ทดลอง)</h3>
+        <div class="kit" id="kitPlat"></div>
       </div>
 
       <div class="panel">
@@ -73,6 +79,9 @@
           <li><b>ของพิเศษ</b> ขยับเอง ใส่ได้ทุกฉากไม่ต้องรอฉากที่ประกาศไว้ แต่ต้องไม่ไปอยู่ใต้คาน</li>
           <li>ผึ้งควรมี <b>แถวลอดใต้คาน</b> ปูใต้ตัว เพื่อบอกผู้เล่นว่าตรงนี้ต้องหมอบ</li>
           <li>ของพิเศษเริ่มทำงานตอน <b>เข้าจอ</b> ไม่ใช่ตอนสร้างท่อน จุดที่วางไว้จึงเป็นจุดที่ผู้เล่นเจอจริง</li>
+          <li><b>ไอเท็ม</b> มีผลจริงตอนตรวจด่าน — โล่กันชน 1 ครั้ง, สปีด/ตัวโตพุ่งชนของกระเด็นและข้ามหลุม, แม่เหล็กดูดของกิน</li>
+          <li><b>เนิน</b> เดินขึ้นได้เลย แมวลอยตามผิว · <b>พื้นลอย</b> ต้องกระโดดขึ้น ทะลุจากข้างล่างได้ — ทั้งสองอย่างยังเป็นของทดลองในหน้านี้</li>
+          <li>แถวพื้นตั้ง <b>ชั้น</b> ได้ในแผงขวา — ยกไปชั้นกระโดด หรือให้เกาะผิวเนิน/พื้นลอย</li>
         </ul>
       </div>
     </aside>
@@ -89,6 +98,7 @@
         <label class="chk"><input type="checkbox" id="optArc" checked> เส้นโค้งกระโดด</label>
         <label class="chk"><input type="checkbox" id="optNext" checked> เงาท่อนถัดไป</label>
         <label class="chk"><input type="checkbox" id="optGrid"> เส้นบอกระยะ</label>
+        <label class="chk"><input type="checkbox" id="optXray" checked> มองทะลุผนังอาคาร</label>
         <span class="grow"></span>
         <button class="btn ghost" id="runCheck">ตรวจด่าน</button>
         <button class="btn ghost" id="playBtn">▶ เล่นดู</button>
@@ -119,6 +129,9 @@
           </label>
         </div>
         <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="docPartial"> ตั้งใจให้เก็บของไม่ครบในรอบเดียว</label>
+        <label class="field">ใช้เป็นทางเข้าด่าน
+          <select id="docGate"></select>
+        </label>
         <p class="tip" id="docCount">—</p>
       </div>
 
@@ -135,6 +148,7 @@
           <li><b>Delete</b> ลบ · <b>Ctrl+D</b> ทำสำเนา · <b>Ctrl+Z</b> ย้อน</li>
           <li>ลากใกล้จุดกด = ของจะ <b>ดูดเข้าเกาะ</b> เอง</li>
           <li>ลากที่ <b>ปลายขวา</b> ของแถว/หลุม/หนามคู่ = ยืดความยาว</li>
+          <li>ลาก <b>แถวพื้น/แถวกุ้ง/แถวเม็ดกลม</b> ขึ้นลง = เปลี่ยนชั้น (ดูดเข้าเส้นชั้นเอง)</li>
         </ul>
       </div>
     </aside>

@@ -41,6 +41,7 @@ import {
 import {
   cloudReady, userId, currentAccount, pushName, fetchLeaderboard,
   sendLoginCode, verifyLoginCode, sendLinkCode, verifyLinkCode, signOut,
+  fetchMyFriendCode, fetchProfileByCode, checkFriend, addFriend,
 } from './net/cloud.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawSky, drawHills, drawGround } from './render/background.js';
@@ -49,7 +50,10 @@ import {
   loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail, syncMail,
 } from './mail.js';
 import { recordRun, recordPulls, recordUpgrade, loadStats } from './stats.js';
-import { loadStatus, saveStatus, statusLength, STATUS_MAX } from './profile.js';
+import { loadStatus, saveStatus, statusLength, cleanStatus, STATUS_MAX } from './profile.js';
+import {
+  startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
+} from './friends.js';
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI } from './talent-ui.js';
@@ -2995,49 +2999,33 @@ function doClaimQuest(id) {
 
 // ── หน้าโปรไฟล์ ────────────────────────────────────────────
 //
-// รวมทุกอย่างที่ตอบคำถามว่า "ตัวเราในเกมนี้เป็นใคร" ไว้หน้าเดียว
-// ตัวน้องที่สะสมมา ชื่อ เลเวล สเตตัสที่เขียนเอง และสถิติสะสมทั้งหมด
+// หน้าเดียวใช้สองแบบ:
+//   โปรไฟล์ของเรา   ข้อมูลในเครื่อง / ปุ่ม "แก้ไข" เปิดดินสอสามจุด (สเตตัส · ชื่อ · ด่านที่อวดสถิติ)
+//   ส่องโปรไฟล์คนอื่น ภาพรวมที่เจ้าของส่งขึ้นคลาวด์ (ดู friends.js) / ปุ่ม "เพิ่มเพื่อน"
+//
+// ทั้งสองแบบแปลงเป็น "ก้อนข้อมูลโปรไฟล์" ก้อนเดียวกันก่อน (ownProfile / remoteProfile)
+// แล้ววาดด้วย renderProfile ตัวเดียว หน้าตาของสองแบบจึงไม่มีวันเพี้ยนจากกัน
 //
 // ── ทำไมไม่เอาเหรียญทองกับเพชรมาโชว์ด้วย ──
-// สองอย่างนั้นอยู่บนแถบบนของจอตลอดเวลาอยู่แล้ว (ดู .hud-top) การเอามาซ้ำ
-// ทำให้ตารางนี้ยาวขึ้นโดยไม่ได้บอกอะไรใหม่ ตารางนี้จึงเก็บเฉพาะของที่ไม่มีที่อื่น
+// สองอย่างนั้นอยู่บนแถบบนของจอตลอดเวลาอยู่แล้ว และไม่ควรให้คนอื่นส่องเห็น
 
 const profilePanel = document.getElementById('profilePanel');
-
-/**
- * ตารางข้อมูลสะสม — เพิ่มช่องใหม่ก็เติมที่นี่ที่เดียว
- *
- * แต่ละช่องคำนวณเองจากของที่อ่านได้ตอนนั้น ไม่มีใครต้องส่งข้อมูลเข้ามา
- * หน้าจึงอัปเดตถูกเสมอไม่ว่าจะเปิดจากทางไหน
- */
-const PF_FACTS = [
-  // สี่ช่องแรกของเดิม (ลงสนาม เวลา ระยะทาง คะแนน) ย้ายไปเป็นตัวเลขใหญ่บนการ์ดแล้ว
-  // เหลือไว้ตรงนี้เฉพาะของสะสมที่ไม่มีที่อยู่อื่นในเกม
-  // ชื่อด่านไปอยู่บนป้าย เพราะช่องค่ามีบรรทัดเดียว ถ้ายัดรวมกันตัวเลขจะโดนตัดทิ้ง
-  { ico: '🏆', k: () => bestWhere(), v: () => bestScoreText() },
-  { ico: '🐱', k: 'แมวที่มี', v: () => countText(SKINS.filter((x) => ownsSkin(x.id)).length, SKINS.length) },
-  { ico: '👕', k: 'ชุดที่มี', v: () => countText(ownedCount(), OUTFITS.length) },
-  { ico: '🧰', k: 'สมบัติที่มี', v: () => countText(treasureCount(), TREASURES.length) },
-  { ico: '🎰', k: 'สุ่มไปแล้ว', v: (s) => s.pulls.toLocaleString('en-US') + ' ครั้ง' },
-  { ico: '🔨', k: 'ตีบวกสำเร็จ', v: (s) => s.upgrades.toLocaleString('en-US') + ' ครั้ง' },
-];
-
-/** วินาทีดิบ → "3 ชม. 12 นาที" — ต่ำกว่าหนึ่งชั่วโมงไม่ต้องโชว์ช่องชั่วโมงให้รก */
-function hoursText(sec) {
-  const m = Math.floor(sec / 60);
-  const h = Math.floor(m / 60);
-  return h > 0 ? h + ' ชม. ' + (m % 60) + ' นาที' : m + ' นาที';
-}
+const pfPop = document.getElementById('pfPop');
 
 /**
  * แยก "ตัวเลข" กับ "หน่วย" ออกจากกัน
- *
- * การ์ดโปรไฟล์วางตัวเลขใหญ่คู่กับหน่วยตัวเล็ก (54 ตา / 24 นาที / 4.9 กม.)
- * ถ้าส่งเป็นข้อความก้อนเดียว หน่วยจะใหญ่ตามตัวเลขไปด้วยแล้วอ่านเป็นพรืด
+ * การ์ดวางตัวเลขใหญ่คู่กับหน่วยตัวเล็ก (54 ตา / 24 นาที / 4.9 กม.)
+ * เวลาเกินชั่วโมงเหลือแค่หน่วยชั่วโมง ("3.2 ชม.") ช่องแคบ ๆ ใส่สองหน่วยไม่พอ
  */
 function splitUnit(text) {
   const i = String(text).indexOf(' ');
   return i < 0 ? [String(text), ''] : [text.slice(0, i), text.slice(i + 1)];
+}
+function timeParts(sec) {
+  const m = Math.floor(sec / 60);
+  if (m < 60) return [String(m), 'นาที'];
+  const h = (m / 60).toFixed(1);
+  return [h.endsWith('.0') ? h.slice(0, -2) : h, 'ชม.'];
 }
 
 /** เมตรดิบ → กิโลเมตรเมื่อเกินพัน ตัวเลขหกหลักอ่านไม่ทันในช่องแคบ ๆ */
@@ -3047,58 +3035,196 @@ function distText(m) {
   return (km.endsWith('.0') ? km.slice(0, -2) : km) + ' กม.';
 }
 
-const countText = (have, all) => have + ' / ' + all;
-
-/** สถิติที่ดีที่สุดของทุกด่านรวมกัน คืนทั้งคะแนนและชื่อด่านที่ทำไว้ */
+/** สถิติที่ดีที่สุดของทุกด่านรวมกัน คืนทั้งคะแนนและด่านที่ทำไว้ */
 function bestRun() {
   let top = 0;
-  let where = '';
+  let stage = null;
   for (const st of STAGES) {
     const b = loadBest(st.id);
-    if (b > top) { top = b; where = st.name; }
+    if (b > top) { top = b; stage = st; }
   }
-  return { top, where };
+  return { top, stage };
 }
 
-const bestScoreText = () => {
-  const b = bestRun();
-  // "ยังไม่มีสถิติ" ไม่ใช่ "ยังไม่มี" เฉย ๆ — คำหลังแปลเป็นอังกฤษแล้วกลายเป็น
-  // "ไม่ได้เป็นเจ้าของ" ซึ่งใช้กับช่องของสะสม ไม่ใช่ช่องคะแนน
-  return b.top > 0 ? b.top.toLocaleString('en-US') : 'ยังไม่มีสถิติ';
-};
-const bestWhere = () => {
-  const b = bestRun();
-  return b.top > 0 ? 'สถิติสูงสุด · ' + b.where : 'สถิติสูงสุด';
-};
+/**
+ * ด่านที่ผู้เล่นเลือกอวดสถิติ (ดินสอข้างสถิติสูงสุด)
+ * 'auto' = ด่านที่คะแนนสูงสุด — ค่าเริ่มต้น และเป็นค่าที่ถูกเสมอแม้ยังไม่เคยเลือก
+ */
+const PF_BEST_KEY = 'pfBestStage';
 
-function buildFacts() {
-  const box = document.getElementById('pfFacts');
+function chosenBest() {
+  const pick = loadPref(PF_BEST_KEY, 'auto');
+  const st = pick !== 'auto' && STAGES.find((s) => s.id === pick);
+  if (st) return { stage: st, score: loadBest(st.id) };
+  const b = bestRun();
+  return { stage: b.stage, score: b.top };
+}
+
+/** ชื่อสีขนกับชื่อชุดที่ใส่อยู่ */
+function skinText(s) {
+  const bits = [s.name || 'น้องของเรา'];
+  if (s.outfit?.name) bits.push(s.outfit.name);
+  return bits.join(' - ');
+}
+
+/** ก้อนข้อมูลโปรไฟล์ของเรา — อ่านสดจากเครื่องทุกครั้ง */
+function ownProfile() {
+  const st = levelFromXp(loadXp());
   const s = loadStats();
-  box.innerHTML = '';
-  for (const f of PF_FACTS) {
-    const el = document.createElement('div');
-    el.className = 'pf-fact';
-    el.innerHTML = '<span class="ico" aria-hidden="true"></span>'
-      + '<span class="txt"><span class="k"></span><b class="v"></b></span>';
-    el.querySelector('.ico').textContent = f.ico;
-    // ชื่อช่องเป็นข้อความตรง ๆ หรือฟังก์ชันก็ได้ — บางช่องต้องเอาข้อมูลจริง
-    // มาต่อท้ายชื่อ (เช่นชื่อด่านที่ทำสถิติไว้)
-    el.querySelector('.k').textContent = typeof f.k === 'function' ? f.k() : f.k;
-    el.querySelector('.v').textContent = f.v(s);
-    box.appendChild(el);
+  const skin = getSkin();
+  const best = chosenBest();
+  const net = navigator.onLine !== false;
+  return {
+    mine: true,
+    name: localName() || 'แมวนิรนาม',
+    level: st.level,
+    status: loadStatus(),
+    skin,
+    skinLabel: skinText(skin),
+    online: !net ? { on: false, text: 'ออฟไลน์' }
+      : cloudReady ? { on: true, text: 'ใช้งานอยู่' }
+        : { on: false, local: true, text: 'เล่นในเครื่อง' },
+    stats: { score: s.score, runs: s.runs, seconds: s.seconds, meters: s.meters },
+    best: { stageId: best.stage ? best.stage.id : null, stageName: best.stage ? best.stage.name : '', score: best.score },
+    counts: {
+      cats: [SKINS.filter((x) => ownsSkin(x.id)).length, SKINS.length],
+      outfits: [ownedCount(), OUTFITS.length],
+      treasures: [treasureCount(), TREASURES.length],
+    },
+  };
+}
+
+/**
+ * ภาพรวมที่ส่งขึ้นคลาวด์ให้คนอื่นส่อง — เฉพาะของที่หน้าโปรไฟล์โชว์อยู่แล้วเท่านั้น
+ * ทอง เพชร และของในกระเป๋าไม่อยู่ในนี้โดยตั้งใจ
+ */
+function profileSnapshot(p) {
+  return {
+    v: 1,
+    level: p.level,
+    status: p.status,
+    skin: p.skin.id,
+    outfit: p.skin.outfit ? p.skin.outfit.id : null,
+    skinLabel: p.skinLabel,
+    stats: p.stats,
+    best: { stage: p.best.stageId, score: p.best.score },
+    counts: p.counts,
+  };
+}
+
+/** แถวจาก public_profiles → ก้อนข้อมูลโปรไฟล์ชุดเดียวกับของเรา */
+function remoteProfile(row) {
+  const snap = row.public_profile || {};
+  const skin = { ...skinById(snap.skin), outfit: outfitById(snap.outfit || 'none') };
+  const stage = snap.best && STAGES.find((s) => s.id === snap.best.stage);
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const pair = (v) => (Array.isArray(v) ? [num(v[0]), num(v[1])] : [0, 0]);
+  return {
+    mine: false,
+    id: row.id,
+    code: row.friend_code,
+    name: row.name || 'แมวนิรนาม',
+    level: num(snap.level) || 1,
+    status: typeof snap.status === 'string' ? cleanStatus(snap.status) : '',
+    skin,
+    skinLabel: snap.skinLabel || skinText(skin),
+    online: onlineInfo(row.last_seen),
+    stats: {
+      score: num(snap.stats?.score), runs: num(snap.stats?.runs),
+      seconds: num(snap.stats?.seconds), meters: num(snap.stats?.meters),
+    },
+    best: { stageId: stage ? stage.id : null, stageName: stage ? stage.name : '', score: num(snap.best?.score) },
+    counts: { cats: pair(snap.counts?.cats), outfits: pair(snap.counts?.outfits), treasures: pair(snap.counts?.treasures) },
+    isFriend: false,
+  };
+}
+
+let pfView = null;          // ก้อนข้อมูลที่กำลังโชว์
+let pfMyCode = '';          // รหัสเพื่อนของเรา (โหลดครั้งเดียวต่อการเปิดเกม)
+
+function setText(id, text) {
+  document.getElementById(id).textContent = text;
+}
+
+function renderProfile(p) {
+  pfView = p;
+  pfPop.classList.toggle('other', !p.mine);
+  if (!p.mine) pfPop.classList.remove('editing');
+
+  const on = document.getElementById('pfOnline');
+  on.classList.toggle('off', !p.online.on && !p.online.local);
+  on.classList.toggle('local', Boolean(p.online.local));
+  setText('pfOnlineText', p.online.text);
+
+  const status = document.getElementById('pfStatusText');
+  // ว่าง = เส้นประตามแบบ (อ่านได้ทุกภาษา ไม่ต้องแปล)
+  status.textContent = p.status || '- - - - - -';
+  status.classList.toggle('empty', !p.status);
+
+  setText('pfShowSub', p.skinLabel);
+  setText('pfShowName', p.name);
+  setText('pfBigLv', 'Lv ' + p.level);
+
+  setText('pfScore', p.stats.score.toLocaleString('en-US'));
+  setText('pfRuns', p.stats.runs.toLocaleString('en-US'));
+  setText('pfRunsUnit', 'ตา');
+  const [tNum, tUnit] = timeParts(p.stats.seconds);
+  setText('pfTime', tNum);
+  setText('pfTimeUnit', tUnit);
+  const [dNum, dUnit] = splitUnit(distText(p.stats.meters));
+  setText('pfDist', dNum);
+  setText('pfDistUnit', dUnit);
+
+  setText('pfBestWhere', p.best.score > 0 ? p.best.stageName : '');
+  // "ยังไม่มีสถิติ" ไม่ใช่ "ยังไม่มี" เฉย ๆ — คำหลังแปลเป็นอังกฤษแล้วกลายเป็น "ไม่ได้เป็นเจ้าของ"
+  setText('pfBestScore', p.best.score > 0 ? p.best.score.toLocaleString('en-US') : 'ยังไม่มีสถิติ');
+  document.getElementById('pfBestScore').classList.toggle('none', !(p.best.score > 0));
+
+  const count = ([have, all]) => `${have}/${all}`;
+  setText('pfCats', count(p.counts.cats));
+  setText('pfOutfits', count(p.counts.outfits));
+  setText('pfTreasures', count(p.counts.treasures));
+
+  paintActionButton();
+  paintPfCat();
+}
+
+function paintActionButton() {
+  const btn = document.getElementById('pfAction');
+  const p = pfView;
+  if (!p) return;
+  btn.disabled = false;
+  if (p.mine) {
+    setText('pfActionText', pfPop.classList.contains('editing') ? 'เสร็จแล้ว' : 'แก้ไข');
+  } else if (p.adding) {
+    setText('pfActionText', 'กำลังเพิ่ม…');
+    btn.disabled = true;
+  } else if (p.isFriend) {
+    setText('pfActionText', 'เป็นเพื่อนแล้ว');
+    btn.disabled = true;
+  } else {
+    setText('pfActionText', 'เพิ่มเพื่อน');
   }
+}
+
+let pfMsgTimer = 0;
+function pfSay(text, bad = false) {
+  const el = document.getElementById('pfMsg');
+  el.textContent = text || '';
+  el.classList.toggle('bad', bad);
+  clearTimeout(pfMsgTimer);
+  if (text) pfMsgTimer = setTimeout(() => { el.textContent = ''; }, 4000);
 }
 
 // ── น้องยืนโชว์ตัว ──
-// ลูปของตัวเอง หยุดเองที่หัวลูปเมื่อหน้าถูกปิด ด้วยเหตุผลเดียวกับลูปในคลังน้อง:
-// หน้านี้ออกได้หลายทาง (ปุ่มกลับ / กดเล่น / กดปุ่มตั้งค่า) การไล่ปิดทีละทาง
-// พลาดง่ายมากเมื่อมีทางออกใหม่เพิ่มทีหลัง แล้วลูปที่ค้างอยู่จะแย่งเฟรมกับตัวเกม
+// ลูปของตัวเอง หยุดเองที่หัวลูปเมื่อหน้าถูกปิด (หน้านี้ออกได้หลายทาง ไล่ปิดทีละทางพลาดง่าย)
 let pfTick = 0;
 let pfRAF = 0;
 
 function paintPfCat() {
+  const skin = pfView ? pfView.skin : getSkin();
   paintMini(document.getElementById('pfShow'), 240,
-    (c) => drawCatPose(c, 120, 212, 3.6, getSkin(), pfTick));
+    (c) => drawCatPose(c, 110, 214, 3.4, skin, pfTick));
 }
 
 function pfLoop() {
@@ -3108,36 +3234,27 @@ function pfLoop() {
   pfRAF = requestAnimationFrame(pfLoop);
 }
 
-/** ชื่อสีขนกับชื่อชุดที่ใส่อยู่ — บรรทัดเดียวใต้ชื่อผู้เล่น */
-function pfSubText() {
-  const s = getSkin();
-  const bits = [s.name || 'น้องของเรา'];
-  if (s.outfit?.name) bits.push(s.outfit.name);
-  return bits.join(' · ');
+// ── โหมดแก้ไข ────────────────────────────────────────────────
+function closeEditors() {
+  document.getElementById('pfStatusEdit').classList.add('hidden');
+  document.getElementById('pfNameEdit').classList.add('hidden');
+  document.getElementById('pfBestPick').classList.add('hidden');
 }
 
-function refreshStatusView() {
-  const txt = loadStatus();
-  const el = document.getElementById('pfStatusText');
-  // ลูกโป่งเล็กกว่าย่อหน้าเดิมมาก ข้อความชวนเขียนจึงต้องสั้นลงให้พอดีก้อนเมฆ
-  el.textContent = txt || 'แตะเพื่อเขียนสเตตัส';
-  el.classList.toggle('empty', !txt);
+function setEditing(on) {
+  pfPop.classList.toggle('editing', on && Boolean(pfView?.mine));
+  if (!on) closeEditors();
+  paintActionButton();
 }
 
-function pfEditing(on) {
-  const box = document.getElementById('pfStatusEdit');
-  box.classList.toggle('hidden', !on);
-  // ลูกโป่งคือปุ่มแก้ไขในตัว กดซ้ำระหว่างพิมพ์อยู่ไม่ต้องทำอะไร
-  document.getElementById('pfEdit').disabled = on;
-  if (!on) return;
-
+function openStatusEditor() {
+  if (!pfPop.classList.contains('editing')) return;
+  closeEditors();
+  document.getElementById('pfStatusEdit').classList.remove('hidden');
   const input = document.getElementById('pfStatusInput');
   input.value = loadStatus();
   refreshCount();
   input.focus();
-  // บนเวทีเตี้ย ปุ่มบันทึกอยู่ต่ำกว่าขอบล่างของคอลัมน์พอดี ถ้าไม่เลื่อนให้
-  // ผู้เล่นจะพิมพ์เสร็จแล้วหาปุ่มบันทึกไม่เจอ นึกว่าพิมพ์แล้วบันทึกไม่ได้
-  requestAnimationFrame(() => box.scrollIntoView({ block: 'nearest' }));
 }
 
 function refreshCount() {
@@ -3147,61 +3264,114 @@ function refreshCount() {
   el.classList.toggle('full', n >= STATUS_MAX);
 }
 
-/**
- * ป้ายสถานะบนการ์ด — บอกว่าข้อมูลกำลังวิ่งขึ้นคลาวด์อยู่ไหม
- *
- * สามสถานะที่ต่างกันจริง ๆ สำหรับผู้เล่น:
- *   ใช้งานอยู่   ต่อเน็ตอยู่และข้อมูลซิงก์ขึ้นคลาวด์ได้
- *   เล่นในเครื่อง ต่อเน็ตอยู่ แต่เกมยังไม่ได้ผูกกับฐานข้อมูล (เล่นได้ปกติ)
- *   ออฟไลน์      ไม่มีเน็ต — ของที่เล่นตอนนี้จะซิงก์ทีหลัง
- */
-function refreshOnline() {
-  const box = document.getElementById('pfOnline');
-  if (!box) return;
-  const net = navigator.onLine !== false;
-  const state = !net ? 'off' : cloudReady ? 'on' : 'local';
-  box.classList.toggle('off', state === 'off');
-  box.classList.toggle('local', state === 'local');
-  document.getElementById('pfOnlineText').textContent =
-    state === 'on' ? 'ใช้งานอยู่' : state === 'local' ? 'เล่นในเครื่อง' : 'ออฟไลน์';
+function openNameEditor() {
+  closeEditors();
+  document.getElementById('pfNameEdit').classList.remove('hidden');
+  const input = document.getElementById('pfNameInput');
+  input.value = localName();
+  input.focus();
+  input.select();
 }
 
-// เน็ตหลุด/กลับมาระหว่างเปิดหน้าอยู่ ป้ายต้องเปลี่ยนตามทันที ไม่ใช่รอเปิดหน้าใหม่
-for (const ev of ['online', 'offline']) window.addEventListener(ev, refreshOnline);
-
-function refreshProfilePage() {
-  const st = levelFromXp(loadXp());
-  const s = loadStats();
-  document.getElementById('pfShowName').textContent = localName() || 'แมวนิรนาม';
-  document.getElementById('pfShowSub').textContent = pfSubText();
-  document.getElementById('pfBigLv').textContent = 'Lv ' + st.level;
-
-  document.getElementById('pfScore').textContent = s.score.toLocaleString('en-US');
-  const rows = [
-    ['pfRuns', 'pfRunsUnit', [s.runs.toLocaleString('en-US'), 'ตา']],
-    ['pfTime', 'pfTimeUnit', splitUnit(hoursText(s.seconds))],
-    ['pfDist', 'pfDistUnit', splitUnit(distText(s.meters))],
-  ];
-  for (const [numId, unitId, [num, unit]] of rows) {
-    document.getElementById(numId).textContent = num;
-    document.getElementById(unitId).textContent = unit;
+function openBestPicker() {
+  closeEditors();
+  const box = document.getElementById('pfBestPick');
+  const pick = loadPref(PF_BEST_KEY, 'auto');
+  const rows = [{ id: 'auto', name: 'สถิติสูงสุดทุกด่าน', score: bestRun().top }]
+    .concat(STAGES.map((s) => ({ id: s.id, name: s.name, score: loadBest(s.id) })));
+  box.innerHTML = '';
+  for (const r of rows) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = r.id === pick ? 'on' : '';
+    b.innerHTML = '<span></span><b></b>';
+    b.querySelector('span').textContent = r.name;
+    b.querySelector('b').textContent = r.score > 0 ? r.score.toLocaleString('en-US') : '—';
+    b.addEventListener('click', () => {
+      sfx.fish();
+      savePref(PF_BEST_KEY, r.id);
+      box.classList.add('hidden');
+      showOwnProfile();
+    });
+    box.appendChild(b);
   }
+  box.classList.remove('hidden');
+}
 
-  refreshOnline();
-  refreshStatusView();
-  buildFacts();
-  // จางขอบล่างให้รู้ว่าเลื่อนดูต่อได้ — เฉพาะตอนที่ล้นจริง
-  // (ท่าเดียวกับกริดชุดกับกระดานคะแนน ดู markScrollable)
-  markScrollable(document.getElementById('pfSide'));
+// ── ข้อมูลเพื่อน ─────────────────────────────────────────────
+async function loadMyCode() {
+  const el = document.getElementById('pfCodeText');
+  if (pfMyCode) { el.textContent = pfMyCode; return; }
+  if (!cloudReady || !userId()) { el.textContent = '— — —'; return; }
+  const r = await fetchMyFriendCode();
+  if (r.ok) {
+    pfMyCode = r.code;
+    el.textContent = r.code;
+  } else {
+    el.textContent = '— — —';
+  }
+}
+
+/** เปิดโปรไฟล์ของเรา + ส่งภาพรวมขึ้นคลาวด์ให้คนอื่นเห็นของล่าสุด */
+function showOwnProfile() {
+  const p = ownProfile();
+  renderProfile(p);
+  loadMyCode();
+  publishProfile(profileSnapshot(p));
+}
+
+async function showRemoteProfile(row) {
+  setEditing(false);
+  const p = remoteProfile(row);
+  renderProfile(p);
+  document.getElementById('pfBody').scrollTop = 0;
+  const f = await checkFriend(p.id);
+  if (pfView === p && f.ok) {
+    p.isFriend = f.friend;
+    paintActionButton();
+  }
+}
+
+async function lookupProfile(code) {
+  const msg = document.getElementById('pfLookupMsg');
+  if (code.length < FRIEND_CODE_LEN) { msg.textContent = reasonText('short'); return; }
+  if (pfMyCode && code === pfMyCode) { msg.textContent = reasonText('self'); return; }
+  msg.textContent = 'กำลังค้นหา…';
+  const r = await fetchProfileByCode(code);
+  if (!r.ok) { msg.textContent = reasonText(r.reason); return; }
+  if (r.profile.id === userId()) { msg.textContent = reasonText('self'); return; }
+  msg.textContent = '';
+  document.getElementById('pfLookup').classList.add('hidden');
+  sfx.fish();
+  showRemoteProfile(r.profile);
+}
+
+async function addViewedFriend() {
+  const p = pfView;
+  if (!p || p.mine || p.isFriend || p.adding) return;
+  p.adding = true;
+  paintActionButton();
+  const r = await addFriend(p.id);
+  p.adding = false;
+  if (r.ok) {
+    p.isFriend = true;
+    sfx.bonus();
+    pfSay(`เพิ่ม ${p.name} เป็นเพื่อนแล้ว`);
+  } else {
+    pfSay(reasonText(r.reason), true);
+  }
+  if (pfView === p) paintActionButton();
 }
 
 function showProfile(on) {
   profilePanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
   if (!on) return;
-  pfEditing(false);
-  refreshProfilePage();
-  paintPfCat();
+  setEditing(false);
+  document.getElementById('pfLookup').classList.add('hidden');
+  document.getElementById('pfBody').scrollTop = 0;
+  pfSay('');
+  showOwnProfile();
   if (!pfRAF) pfRAF = requestAnimationFrame(pfLoop);
 }
 
@@ -3210,25 +3380,149 @@ document.getElementById('profileCard').addEventListener('click', () => {
   sfx.fish();
   showProfile(true);
 });
+
+// ปิด: ถ้ากำลังส่องคนอื่นอยู่ กลับมาโปรไฟล์ของเราก่อน ไม่ใช่เด้งออกไปล็อบบี้ทันที
 document.getElementById('pfBack').addEventListener('click', () => {
   sfx.fish();
+  if (pfView && !pfView.mine) {
+    showOwnProfile();
+    return;
+  }
   showProfile(false);
 });
-document.getElementById('pfEdit').addEventListener('click', () => {
+
+document.getElementById('pfAction').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
-  pfEditing(true);
+  if (!pfView) return;
+  if (pfView.mine) setEditing(!pfPop.classList.contains('editing'));
+  else addViewedFriend();
 });
+
+document.getElementById('pfEdit').addEventListener('click', () => { sfx.fish(); openStatusEditor(); });
+document.getElementById('pfPenStatus').addEventListener('click', () => { sfx.fish(); openStatusEditor(); });
 document.getElementById('pfCancel').addEventListener('click', () => {
   sfx.fish();
-  pfEditing(false);
+  document.getElementById('pfStatusEdit').classList.add('hidden');
 });
 document.getElementById('pfSave').addEventListener('click', () => {
   sfx.fish();
   saveStatus(document.getElementById('pfStatusInput').value);
-  pfEditing(false);
-  refreshStatusView();
+  document.getElementById('pfStatusEdit').classList.add('hidden');
+  showOwnProfile();
 });
 document.getElementById('pfStatusInput').addEventListener('input', refreshCount);
+
+document.getElementById('pfPenName').addEventListener('click', () => { sfx.fish(); openNameEditor(); });
+document.getElementById('pfNameCancel').addEventListener('click', () => {
+  sfx.fish();
+  document.getElementById('pfNameEdit').classList.add('hidden');
+});
+document.getElementById('pfNameEdit').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('pfNameInput').value.trim().slice(0, 16);
+  if (!name) return;
+  sfx.fish();
+  document.getElementById('pfNameEdit').classList.add('hidden');
+  await storeName(name);
+  refreshProfile();           // การ์ดบัญชีในล็อบบี้ต้องได้ชื่อใหม่ด้วย
+  showOwnProfile();
+});
+
+document.getElementById('pfPenBest').addEventListener('click', () => {
+  sfx.fish();
+  const box = document.getElementById('pfBestPick');
+  if (box.classList.contains('hidden')) openBestPicker();
+  else box.classList.add('hidden');
+});
+
+document.getElementById('pfCode').addEventListener('click', async () => {
+  sfx.fish();
+  if (!pfMyCode) { pfSay(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
+  const btn = document.getElementById('pfCode');
+  if (await copyText(pfMyCode)) {
+    pfSay('คัดลอกรหัสแมวน้อยแล้ว');
+    btn.classList.add('done');
+    setTimeout(() => btn.classList.remove('done'), 1600);
+  } else {
+    // คัดลอกไม่ได้ทั้งสองทาง — โชว์รหัสให้จดเองแทน
+    pfSay('รหัสแมวน้อยของเรา: ' + pfMyCode);
+  }
+});
+
+/**
+ * คัดลอกข้อความลงคลิปบอร์ด — คืน true ถ้าสำเร็จ
+ *
+ * navigator.clipboard ใช้ได้เฉพาะหน้าเว็บที่ปลอดภัย (https / localhost)
+ * เปิดเกมผ่านลิงก์ในวง Wi-Fi (http://192.168...) บนมือถือ ตัวนี้จะไม่มีให้ใช้เลย
+ * จึงถอยไปใช้วิธีเก่า: กล่องข้อความซ่อน + execCommand('copy') ซึ่งยังใช้ได้ทุกเบราว์เซอร์
+ */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* ลองวิธีเก่าต่อ */ }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);   // iOS ไม่เลือกด้วย select() อย่างเดียว
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
+
+document.getElementById('pfFind').addEventListener('click', () => {
+  sfx.fish();
+  closeEditors();
+  const input = document.getElementById('pfLookupInput');
+  input.value = '';
+  document.getElementById('pfLookupMsg').textContent =
+    cloudReady && userId() ? '' : reasonText('offline');
+  document.getElementById('pfLookup').classList.remove('hidden');
+  input.focus();
+});
+document.getElementById('pfLookupInput').addEventListener('input', (e) => {
+  const v = normalizeCode(e.target.value);
+  if (e.target.value !== v) e.target.value = v;
+});
+document.getElementById('pfLookupCancel').addEventListener('click', () => {
+  sfx.fish();
+  document.getElementById('pfLookup').classList.add('hidden');
+});
+document.getElementById('pfLookupForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  lookupProfile(normalizeCode(document.getElementById('pfLookupInput').value));
+});
+
+// มือถือ: ลูกศรใต้หน้าแรก เลื่อนไปหน้าล่าง
+document.getElementById('pfMore').addEventListener('click', () => {
+  const body = document.getElementById('pfBody');
+  body.scrollTo({ top: body.clientHeight, behavior: 'smooth' });
+});
+
+// เน็ตหลุด/กลับมาระหว่างเปิดหน้าอยู่ ป้ายของเราต้องเปลี่ยนตามทันที
+for (const ev of ['online', 'offline']) {
+  window.addEventListener(ev, () => {
+    if (!profilePanel.classList.contains('hidden') && pfView?.mine) showOwnProfile();
+  });
+}
+
+// เริ่มส่งสถานะออนไลน์ (เช็คเองว่าเข้าสู่ระบบหรือยัง)
+startPresence();
+
+// ช่องทดสอบตอนพัฒนา: เปิดโปรไฟล์คนอื่นจากข้อมูลปลอมได้โดยไม่ต้องมีเพื่อนจริงในฐานข้อมูล
+if (import.meta.env.DEV) {
+  window.__pf = {
+    showRemoteProfile, showOwnProfile, setEditing,
+    // ตั้งรหัสของเราเองโดยไม่ต้องล็อกอิน — ไว้ลองปุ่มคัดลอก
+    setMyCode: (c) => { pfMyCode = c; loadMyCode(); },
+  };
+}
 
 function showQuests(on) {
   questPanel.classList.toggle('hidden', !on);

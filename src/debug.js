@@ -14,6 +14,8 @@
 // ─────────────────────────────────────────────────────────────
 import { SKILL } from './config.js';
 import { STATE } from './game.js';
+import { STAGES } from './stages.js';
+import { Level } from './level.js';
 import { addGems, getGems } from './vault.js';
 
 // false = โผล่เฉพาะตอนรัน dev server ส่วนเว็บที่ deploy จริงจะไม่มี
@@ -268,10 +270,35 @@ export function setupDebug(game, hooks = {}) {
   // มีปุ่มนี้เพราะไม่งั้นต้องนั่งวิ่งจริงนาทีละฉาก กว่าจะเห็นฉากที่หกคือหกนาที
   add('⏭ ข้ามฉาก', () => {
     if (game.state !== STATE.RUN || game.bonus > 0) return false;
-    if (game.nextScene) return false;   // กำลังไล่สีอยู่ กดซ้ำจะเปลี่ยนซ้อนกัน
+    if (game.nextScene || game.gate) return false;   // กำลังเปลี่ยนฉากอยู่ กดซ้ำจะเปลี่ยนซ้อนกัน
     game.nextSceneAt = game.tick;
     return true;
   });
+
+  // ── ทดสอบทางเข้าด่าน ──
+  // ทางเข้าของด่านไหน อยู่ "ท้ายฉากที่มาก่อนด่านนั้น" เสมอ (หิมะ → ประตูร้านขนม → ครัวกลางคืน,
+  // ครัวกลางคืน → พุ่มดอกไม้ → สวนกลางวัน) ปุ่มจึงพาไปอยู่ในฉากก่อนหน้าจริงก่อน
+  // แล้วดันนาฬิกาเหมือนปุ่มข้ามฉาก เกมเดินทางจริงของมันทุกขั้น ไม่ใช่ทางลัด
+  // (ถ้าไม่ย้ายฉากก่อน จะได้ภาพแปลก ๆ อย่างวิ่งออกจากครัวแล้วเข้าประตูครัวอีกรอบ)
+  for (const [targetId, icon] of [['night', '🚪'], ['garden', '🌸']]) {
+    const target = STAGES.find((s) => s.id === targetId);
+    add(`${icon} ทางเข้า${target.name}`, () => {
+      if (game.state !== STATE.RUN || game.bonus > 0 || game.nextScene || game.gate) return false;
+      const n = STAGES.length;
+      const start = STAGES.findIndex((s) => s.id === game.stage.id);
+      const ti = STAGES.indexOf(target);
+      const prev = STAGES[(ti - 1 + n) % n];
+      // ย้ายไปอยู่ในฉากก่อนหน้าทันที (จานสี/ของประกอบ/ท่อนที่จะปูต่อจากนี้)
+      game.scene = prev;
+      game.pal = prev.palette;
+      game.level.switchRoute(Level.routeFor(prev), prev.theme);
+      game.syncMusic();
+      // ฉากถัดไป = ด่านเป้าหมาย
+      game.sceneIndex = (((ti - start - 1) % n) + n) % n;
+      game.nextSceneAt = game.tick;
+      return true;
+    });
+  }
 
   // ── เพชรชมพู ──
   add('💎 เพชร 999,999', () => fillGems(hooks));

@@ -413,3 +413,140 @@ export async function fetchLeaderboard(stageId, limit = 20) {
     return [];
   }
 }
+
+
+// ── เพื่อน / โปรไฟล์ที่คนอื่นส่องได้ ─────────────────────────
+//
+// ต้องรัน supabase/friends.sql ก่อน ไม่งั้นทุกฟังก์ชันข้างล่างคืน reason: 'schema'
+// แยกเหตุผลที่พังออกเป็นรหัสสั้น ๆ ให้หน้าจอเลือกข้อความเองได้:
+//   offline   ยังไม่ได้ตั้งค่าคลาวด์ หรือยังไม่ได้เข้าสู่ระบบ
+//   schema    ฐานข้อมูลยังไม่มีตาราง/คอลัมน์ของระบบเพื่อน (ยังไม่ได้รัน friends.sql)
+//   notfound  ไม่มีผู้เล่นที่ใช้รหัสนี้
+//   network   ต่อเน็ตไม่ได้หรือเซิร์ฟเวอร์ตอบผิดพลาด
+
+// PostgREST/Postgres ตอบรหัสพวกนี้เมื่อ "ไม่มีของ" ในฐานข้อมูล ไม่ใช่เมื่อสิทธิ์ไม่พอ
+const MISSING_SCHEMA = new Set(['42P01', '42703', '42883', 'PGRST202', 'PGRST204', 'PGRST205']);
+
+function friendFail(e, what) {
+  const code = e?.code || '';
+  if (MISSING_SCHEMA.has(code)) return { ok: false, reason: 'schema' };
+  console.warn(`[cloud] ${what}ไม่ได้`, e?.message || e);
+  return { ok: false, reason: 'network' };
+}
+
+const PROFILE_COLS = 'id, name, friend_code, last_seen, public_profile';
+
+/** บอกเซิร์ฟเวอร์ว่ายังเล่นอยู่ — เวลาใช้ของเซิร์ฟเวอร์เอง (ดู touch_presence) */
+export async function touchPresence() {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { error } = await c.rpc('touch_presence');
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return friendFail(e, 'อัปเดตสถานะออนไลน์');
+  }
+}
+
+/**
+ * อัปเดตภาพรวมโปรไฟล์ที่คนอื่นเห็น
+ * ใช้ update แยกคอลัมน์เดียว ไม่ปนกับ pushPlayer — ถ้ายังไม่ได้รัน friends.sql
+ * คำสั่งนี้พังคนเดียว การซิงก์ทอง/ชุดตามปกติไม่โดนลากพังไปด้วย
+ */
+export async function pushPublicProfile(snapshot) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { error } = await c.from('players').update({ public_profile: snapshot }).eq('id', uid);
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return friendFail(e, 'อัปเดตโปรไฟล์สาธารณะ');
+  }
+}
+
+/** รหัสเพื่อนของเราเอง */
+export async function fetchMyFriendCode() {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await c.from('players').select('friend_code').eq('id', uid).maybeSingle();
+    if (error) throw error;
+    if (!data?.friend_code) return { ok: false, reason: 'schema' };
+    return { ok: true, code: data.friend_code };
+  } catch (e) {
+    return friendFail(e, 'อ่านรหัสเพื่อน');
+  }
+}
+
+/** ส่องโปรไฟล์จากรหัสเพื่อน */
+export async function fetchProfileByCode(code) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await c.from('public_profiles').select(PROFILE_COLS)
+      .eq('friend_code', code).maybeSingle();
+    if (error) throw error;
+    if (!data) return { ok: false, reason: 'notfound' };
+    return { ok: true, profile: data };
+  } catch (e) {
+    return friendFail(e, 'ส่องโปรไฟล์');
+  }
+}
+
+/** โปรไฟล์จาก id (ไว้ให้หน้ารายชื่อเพื่อนกดเข้ามาดู) */
+export async function fetchProfileById(id) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await c.from('public_profiles').select(PROFILE_COLS).eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) return { ok: false, reason: 'notfound' };
+    return { ok: true, profile: data };
+  } catch (e) {
+    return friendFail(e, 'อ่านโปรไฟล์');
+  }
+}
+
+/** เราเพิ่มคนนี้เป็นเพื่อนแล้วหรือยัง */
+export async function checkFriend(id) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await c.from('friends').select('friend_id')
+      .eq('player_id', uid).eq('friend_id', id).maybeSingle();
+    if (error) throw error;
+    return { ok: true, friend: Boolean(data) };
+  } catch (e) {
+    return friendFail(e, 'ตรวจสถานะเพื่อน');
+  }
+}
+
+/** เพิ่มเพื่อน — กดซ้ำไม่เป็นไร แถวซ้ำถือว่าสำเร็จ */
+export async function addFriend(id) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  if (id === uid) return { ok: false, reason: 'self' };
+  try {
+    const { error } = await c.from('friends').insert({ player_id: uid, friend_id: id });
+    if (error && error.code !== '23505') throw error;   // 23505 = เป็นเพื่อนกันอยู่แล้ว
+    return { ok: true };
+  } catch (e) {
+    return friendFail(e, 'เพิ่มเพื่อน');
+  }
+}
+
+/** รายชื่อเพื่อนทั้งหมด (ยังไม่มีหน้าใช้ — เตรียมไว้ให้หน้ารายชื่อเพื่อน) */
+export async function fetchFriends() {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await c.from('my_friends').select(`${PROFILE_COLS}, created_at`)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return { ok: true, friends: data || [] };
+  } catch (e) {
+    return friendFail(e, 'อ่านรายชื่อเพื่อน');
+  }
+}

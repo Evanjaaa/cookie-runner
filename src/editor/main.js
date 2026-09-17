@@ -16,11 +16,20 @@
 // ก็เขียนเป็น j1 + HALF เหมือนที่คนเขียนเองในไฟล์ ไม่ใช่ตัวเลขดิบ
 // ─────────────────────────────────────────────────────────────
 import './editor.css';
-import { GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD } from '../config.js';
-import { AUTHOR, PATTERNS, PATTERN_META } from '../level.js';
+import {
+  GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD, SHRIMP,
+  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD,
+} from '../config.js';
+import { AUTHOR, PATTERNS, PATTERN_META, PICKUPS } from '../level.js';
+import { GATES, GATE_LIST, gateMarks } from '../gates.js';
+import { gateViewAt, doorOpenAt } from '../gate-run.js';
+import { drawGateBack, drawGateFront, warmGateArt } from '../render/gates/index.js';
 import { STAGES } from '../stages.js';
 import { drawSky, drawHills, drawGround } from '../render/background.js';
-import { drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards } from '../render/entities.js';
+import {
+  drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards,
+  drawNips, drawCans, drawMagnets, drawShields, drawPotions, drawLetters,
+} from '../render/entities.js';
 import { SKINS } from '../skins.js';
 
 const A = AUTHOR;
@@ -45,6 +54,8 @@ const ANCHORS = {
 /** จุดเกาะที่ของแต่ละชนิดใช้ได้ — ชนิดไหนไม่มีในตารางนี้คือเกาะไม่ได้ */
 const ANCHOR_SET = {
   obs:  ['AT', 'HALF', 'JUMP_PEAK', 'JUMP_SPAN', 'DBL_PEAK', 'DBL_SPAN'],
+  // ไอเท็มวางที่ "จุดกึ่งกลาง" อยู่แล้ว (x ของไอเท็มคือกลางตัว) จึงไม่อยู่ใน CENTERED
+  item: ['AT', 'HALF', 'JUMP_PEAK', 'JUMP_SPAN', 'DBL_PEAK', 'DBL_SPAN'],
   // ของพิเศษเกาะได้เหมือนของแข็ง — ประโยชน์หลักคือ "วางผึ้งไว้ตรงยอดโค้ง"
   // ซึ่งเป็นจุดที่ผู้เล่นลอยอยู่พอดี ถ้าไม่เกาะจุดกดจะจูนตำแหน่งแบบนั้นยากมาก
   sp:   ['AT', 'HALF', 'JUMP_PEAK', 'JUMP_SPAN', 'DBL_PEAK', 'DBL_SPAN'],
@@ -58,6 +69,45 @@ const ANCHOR_SET = {
  * ส่วนของกินเป็นแถวที่ไหลไปทางขวา จุดที่คิดถึงคือเม็ดแรก จึงใช้ขอบซ้าย
  */
 const CENTERED = new Set(['obs', 'sp']);
+
+// ─────────────────────────────────────────────────────────────
+// ไอเท็มตัวช่วย
+//
+// ⚠ กติกาถาวร — เพิ่มไอเท็มหรือของกินชนิดใหม่ในเกมเมื่อไหร่ ต้องมาเติมหน้านี้ด้วยเสมอ
+//   ไอเท็ม:  1) PICKUPS ใน src/level.js (รูปร่างตอนเกิด + array ที่มันไปอยู่)
+//            2) ITEM_DEFS ข้างล่าง (ชื่อ คำอธิบาย ภาพ ระยะเก็บ ผลในการจำลอง)
+//            3) ถ้าผลของมันเปลี่ยนการเล่น (ชน/หลุม/เก็บของ) ให้สอน simulate() ด้วย
+//   ของกิน:  ถ้าเป็นแค่หน้าตา/คะแนนใหม่บนเม็ดเดิม ให้เพิ่มเป็นตัวเลือกใน TOPS
+//            ถ้าเป็นรูปแถวใหม่ ให้เพิ่มตัวช่วยใน AUTHOR แล้วเพิ่มชิปใน KIT + build() + toCode()
+//   กล่องเครื่องมือสร้างชิปไอเท็มจากตารางนี้เอง เติมแถวเดียวก็โผล่ในกล่องทันที
+// ─────────────────────────────────────────────────────────────
+const ITEM_DEFS = {
+  nip: {
+    label: 'ต้นหญ้าแมว (สปีด)', sub: `เร็ว ×${SPEEDUP.mult} ${SPEEDUP.frames / 60} วิ · ชนของกระเด็น`,
+    r: SPEEDUP.r, pickR: SPEEDUP.pickR, effect: 'boost', frames: SPEEDUP.frames, draw: drawNips,
+  },
+  can: {
+    label: 'อาหารกระป๋อง (ตัวโต)', sub: `ตัวโต ${BIGCAN.frames / 60} วิ · ชนของกระเด็น ข้ามหลุม`,
+    r: BIGCAN.r, pickR: BIGCAN.pickR, effect: 'big', frames: BIGCAN.frames, draw: drawCans,
+  },
+  magnet: {
+    label: 'แม่เหล็ก', sub: `ดูดของกินรัศมี ${MAGNET.range}px ${MAGNET.frames / 60} วิ`,
+    r: MAGNET.r, pickR: MAGNET.pickR, effect: 'magnet', frames: MAGNET.frames, draw: drawMagnets,
+  },
+  shield: {
+    label: 'โล่', sub: 'กันการชนได้ 1 ครั้ง',
+    // ระยะเก็บโล่ในเกมคือ r + 24 (ดู Game ส่วนเก็บโล่) ไม่มีค่า pickR แยก
+    r: SHIELD.r, pickR: SHIELD.r + 24, effect: 'shield', draw: drawShields,
+  },
+  potion: {
+    label: 'ขวดพลัง', sub: `ฟื้นพลัง +${POTION.heal}`,
+    r: 26, pickR: POTION.pickR, effect: 'heal', draw: drawPotions,
+  },
+  letter: {
+    label: 'ตัวอักษร MEOWZING', sub: 'ในเกมเป็นตัวถัดไปที่ยังไม่ได้เก็บ',
+    r: LETTER.r, pickR: LETTER.pickR, effect: 'letter', draw: drawLetters,
+  },
+};
 
 // ─────────────────────────────────────────────────────────────
 // กล่องเครื่องมือ
@@ -89,6 +139,7 @@ const KIT = [
   // (makeShrimp / makeKibble) จึงได้ระยะห่างและจุดวางแบบเดียวกับท่อนที่มีอยู่เป๊ะ ๆ
   { t: 'fishRun', group: 'free', pal: 'food', label: 'กุ้งทองเดี่ยว', sub: 'ของหายากที่สุด ท่อนละตัว', n: 1, gap: 34, top: 'shrimp' },
   { t: 'fishRun', group: 'free', pal: 'food', label: 'แถวอาหารเม็ด', sub: 'เม็ดกลมทั้งแถว', n: 6, gap: 34, top: 'all' },
+  { t: 'fishRun', group: 'free', pal: 'food', label: 'แถวกุ้งทอง (โบนัส)', sub: 'กุ้งทองทั้งแถว · ตั้งชั้นได้ในแผงขวา', n: 5, gap: 56, top: 'shrimpAll', wide: true },
 
   // ── ของพิเศษ ──
   // สามอย่างนี้ "ขยับเอง" ต่างจากทุกชิ้นข้างบนที่อยู่นิ่ง
@@ -96,6 +147,41 @@ const KIT = [
   { t: 'faller', group: 'sp', pal: 'sp', label: 'ของร่วงจากเพดาน', sub: `เตือน ${FALLER.warnFrames} เฟรมก่อนตก`, warn: FALLER.warnFrames, wide: true },
   { t: 'bee', group: 'sp', pal: 'sp', label: 'ผึ้งแกว่ง', sub: 'หมอบลอดได้เสมอ', wide: true },
   { t: 'ball', group: 'sp', pal: 'sp', label: 'ลูกบอลกลิ้งสวน', sub: 'เร็วกว่าฉาก 35%', wide: true },
+
+  // ── ไอเท็มตัวช่วย — สร้างจาก ITEM_DEFS ทั้งหมด ──
+  ...Object.entries(ITEM_DEFS).map(([kind, def]) => ({
+    t: 'item', kind, group: 'item', pal: 'item', label: def.label, sub: def.sub, wide: true,
+  })),
+
+  // ── พื้นเหยียบได้ (ของทดลอง) ──
+  // ยังมีแค่ในหน้านี้ เกมจริงยังไม่รู้จัก — ไว้ลองจังหวะให้ลงตัวก่อนค่อยย้ายเข้าเครื่องเกม
+  { t: 'hill', group: 'plat', pal: 'plat', label: 'เนินคุกกี้', sub: 'เดินขึ้นได้เลย ไม่ต้องกระโดด', w: 320, h: 70, wide: true },
+  { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอย', sub: 'กระโดดขึ้นไปเหยียบ', w: 200, lift: 90 },
+  { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอยเหนือหลุม', sub: 'ไม่กระโดด = ตก', w: 260, lift: 90, under: true },
+];
+
+const PLAT_T = new Set(['hill', 'ledge']);
+
+// ── ความสูงของชั้นต่าง ๆ — วัดจากส่วนโค้งจริงของเกม ไม่ได้ตั้งเลขเอง ──
+// แถวเม็ดอาหารตามโค้งสุ่มหนาแน่นพอจะได้จุดสูงสุดเป๊ะ (y ของเม็ด = กลางกล่องชนของแมว)
+const PEAK_HOP = Math.min(...A.fishJump(0, 400).map((f) => f.y));
+const PEAK_DBL = Math.min(...A.fishDouble(0, 400).map((f) => f.y));
+/** เท้ายกพ้นพื้นได้สูงสุดเท่าไหร่ — ใช้บอกว่าพื้นลอยสูงแค่ไหนยังกระโดดขึ้นถึง */
+const REACH_HOP = Math.round(A.RUN_Y - PEAK_HOP);
+const REACH_DBL = Math.round(A.RUN_Y - PEAK_DBL);
+
+/** ระยะดูดเข้าชั้นตอนลากขึ้นลง — ลากเฉียด ๆ แล้วแถวยังตรงชั้นเป๊ะ ไม่เพี้ยนไปทีละพิกเซล */
+const LANE_SNAP = 8;
+
+/** ชั้นของแถวพื้น: rise = ยกขึ้นจากระดับวิ่งกี่ px */
+const LANES = [
+  ['run', 'ชั้นวิ่ง (พื้น)', 0],
+  // ครึ่งทางขึ้นยอดโค้ง — กระโดดจังหวะไหนก็ผ่านชั้นนี้ ใช้วางแถวยาว ๆ ให้เก็บได้บางส่วน
+  ['mid', 'ชั้นกลาง (กระโดดจังหวะไหนก็โดน)', Math.round(REACH_HOP / 2)],
+  ['hop', 'ชั้นกระโดดเดี่ยว (ยอดโค้ง)', REACH_HOP],
+  ['high', 'ชั้นกระโดดสองชั้น (ยอดโค้ง)', REACH_DBL],
+  ['surface', 'เกาะผิวพื้นเหยียบ (เนิน/พื้นลอย)', null],
+  ['custom', 'กำหนดเอง', null],
 ];
 
 /**
@@ -108,6 +194,7 @@ const TOPS = [
   ['cluster', 'เม็ดกลมเกาะกลุ่มที่จุดสูงสุด'],
   ['alternate', 'เม็ดกลมสลับทุกเม็ดที่ 3'],
   ['all', 'เม็ดกลมทั้งแถว'],
+  ['shrimpAll', 'กุ้งทองทั้งแถว (โบนัส)'],
 ];
 
 const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow']);
@@ -130,6 +217,7 @@ const view = {
   arcs: true,
   next: true,
   grid: false,
+  xray: true,           // ทางเข้าด่าน: ผนังหน้าอาคารจางไว้ให้เห็นข้างในตอนวางของ
 };
 
 function uid() { return 'i' + (nextId++); }
@@ -165,6 +253,45 @@ function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(docs)); } catch { /* เต็มก็ช่าง */ }
 }
 
+/**
+ * เอกสารตั้งต้นของท่อนทางเข้า — ของชุดเดียวกับ GATES[id].chunk ในเกมตอนนี้
+ * (ตรวจแล้วว่า build() ของเอกสารนี้ได้ตำแหน่งเม็ดตรงกับ chunk(0) ทุกเม็ด)
+ * ทางเข้าที่ยังไม่มีชุดตั้งต้นจะเริ่มจากท่อนว่าง
+ */
+function gateStarter(id) {
+  const def = GATES[id];
+  if (!def) return [];
+  const L = def.layout;
+  const doorIn = L.approach;
+  const doorOut = doorIn + L.interior;
+  const row = (x, endX) => ({ id: uid(), t: 'fishRun', group: 'free', x: Math.round(x), n: Math.floor((endX - x) / 34), gap: 34 });
+
+  if (id === 'garden') {
+    const j1 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 720 };
+    const after1 = Math.round(j1.x + A.JUMP_SPAN + 30);
+    return [
+      j1,
+      row(140, doorIn - 40),
+      { id: uid(), t: 'fishWave', group: 'free', x: doorIn + 100, n: 16, gap: 34, humps: 3, top: 'shrimp' },
+      { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j1.x + 41 },
+      row(after1, doorOut + 200),
+    ];
+  }
+  if (id !== 'kitchen') return [];
+  const j1 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 260 };
+  const j2 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 700 };
+  const after1 = j1.x + A.JUMP_SPAN + 30;
+  const after2 = j2.x + A.JUMP_SPAN + 30;
+  return [
+    j1, j2,
+    row(140, doorIn - 40),
+    { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j1.id, key: 'AT' }, top: 'shrimp' },
+    row(after1, j2.x - 40),
+    row(after2, doorOut + 200),
+    { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j2.x + 41 },
+  ];
+}
+
 /** ท่อนตัวอย่างตอนเปิดครั้งแรก — เป็นท่อนที่ 1 ของเกมเป๊ะ ๆ ไว้ให้ดูเป็นแบบ */
 function seedDoc() {
   const d = blankDoc('ตัวอย่าง: หนามเดี่ยวกลางโค้ง');
@@ -192,7 +319,38 @@ function itemW(it) {
   if (it.t === 'faller') return FALLER.w;
   if (it.t === 'bee') return HAZARD.bee.w;
   if (it.t === 'ball') return HAZARD.ball.r * 2;
+  if (PLAT_T.has(it.t)) return it.w;
   return 0;
+}
+
+// ─────────────────────────────────────────────────────────────
+// พื้นเหยียบได้ — รูปทรงผิว
+// ─────────────────────────────────────────────────────────────
+const LEDGE_THICK = 26;
+
+/** ความยาวทางลาดของเนิน — ยาวอย่างน้อย 2.4 เท่าของความสูง ความชันสูงสุดจึงไม่เกิน ~0.63 */
+function hillRamp(p) {
+  return Math.min(p.w / 2, Math.max(60, p.h * 2.4));
+}
+
+/** y ของผิวชิ้นหนึ่ง ณ x — null ถ้า x ไม่อยู่ในช่วงของชิ้นนั้น */
+function platTop(p, x) {
+  if (x < p.x || x > p.x + p.w) return null;
+  if (p.kind === 'ledge') return p.top;
+  const u = x - p.x;
+  const ramp = hillRamp(p);
+  const t = u < ramp ? u / ramp : u > p.w - ramp ? (p.w - u) / ramp : 1;
+  return GROUND_Y - p.h * t * t * (3 - 2 * t);     // smoothstep: ตีนเนินกับยอดเนินไม่มีมุมหัก
+}
+
+/** ผิวที่สูงที่สุด ณ x (ไม่นับพื้นปกติ) — null ถ้าไม่มีพื้นเหยียบตรงนั้น */
+function highestTop(plats, x) {
+  let best = null;
+  for (const p of plats) {
+    const t = platTop(p, x);
+    if (t !== null && (best === null || t < best)) best = t;
+  }
+  return best;
 }
 
 function byId(d, id) { return d.items.find((q) => q.id === id); }
@@ -228,6 +386,20 @@ function build(d, off = 0) {
   const jumps = [];
   const fallers = [];
   const hazards = [];
+  const plats = [];
+  const pickups = [];
+
+  // พื้นเหยียบต้องมาก่อน แถวที่ "เกาะผิว" จะได้รู้ว่าผิวอยู่ตรงไหน ไม่ว่าวางชิ้นไหนก่อน
+  for (const it of d.items) {
+    if (!PLAT_T.has(it.t)) continue;
+    const x = xOf(d, it) + off;
+    if (it.t === 'hill') plats.push(tag({ kind: 'hill', x, w: it.w, h: it.h }, it));
+    else {
+      plats.push(tag({ kind: 'ledge', x, w: it.w, top: GROUND_Y - it.lift }, it));
+      // หลุมข้างใต้สั้นกว่าตัวพื้นลอยข้างละ 24px — เดินสุดปลายพื้นลอยแล้วยังลงพื้นปกติได้
+      if (it.under && it.w > 60) pit.push(tag({ x: x + 24, w: it.w - 48 }, it));
+    }
+  }
 
   for (const it of d.items) {
     const x = xOf(d, it) + off;
@@ -256,9 +428,18 @@ function build(d, off = 0) {
       case 'faller':
         fallers.push(tag({ x, w: FALLER.w, h: FALLER.h, warn: warnOf(it) }, it));
         break;
-      case 'bee':
-        hazards.push(tag({ kind: 'bee', x, w: HAZARD.bee.w, h: HAZARD.bee.h, y: HAZARD.bee.midY, t: 0 }, it));
+      case 'bee': {
+        const b = HAZARD.bee;
+        const t = phaseOf(it);
+        hazards.push(tag({ kind: 'bee', x, w: b.w, h: b.h, y: b.midY + Math.sin(t) * b.amp, t }, it));
         break;
+      }
+      case 'item': {
+        // รูปร่างตอนเกิดมาจาก PICKUPS ตัวเดียวกับเกม — ตำแหน่งสูงจึงตรงกับของที่ระบบวางเองเสมอ
+        const def = PICKUPS[it.kind];
+        if (def) pickups.push(tag({ ...def.make(x, it.letter || 0), kind: it.kind }, it));
+        break;
+      }
       case 'ball': {
         const r = HAZARD.ball.r;
         hazards.push(tag({ kind: 'ball', x, w: r * 2, h: r * 2, y: GROUND_Y - r * 2, spin: 0 }, it));
@@ -268,18 +449,51 @@ function build(d, off = 0) {
     }
 
     if (made) {
+      if (it.t === 'fishRun') made = laneOf(made, it, plats);
       if (it.top) made = topping(made, it.top);
       for (const f of made) fish.push(tag(f, it));
     }
   }
 
   jumps.sort((a, b) => a - b);
-  return { obs, pit, fish, jumps, fallers, hazards };
+  return { obs, pit, fish, jumps, fallers, hazards, plats, pickups };
+}
+
+/** เฟสเริ่มแกว่งของผึ้ง (เรเดียน) — เก็บในเอกสารเป็นองศาให้คนอ่านง่าย */
+function phaseOf(it) {
+  return ((it.phase || 0) * Math.PI) / 180;
+}
+
+/**
+ * ตั้งความสูงของแถวพื้นจากตำแหน่ง y ที่ลากมา
+ * ใกล้ชั้นไหนภายใน LANE_SNAP = ดูดเข้าชั้นนั้น ที่เหลือเป็น "กำหนดเอง"
+ */
+function setRise(it, wantRise) {
+  const r = Math.round(Math.max(-20, Math.min(260, wantRise)));
+  const near = LANES.find(([, , v]) => v !== null && Math.abs(v - r) <= LANE_SNAP);
+  if (near && near[0] === 'run') { delete it.lane; delete it.rise; return; }
+  if (near) { it.lane = near[0]; it.rise = near[2]; return; }
+  it.lane = 'custom';
+  it.rise = r;
+}
+
+/** ยกแถวพื้นไปชั้นที่เลือก — ใช้ lift ตัวเดียวกับที่โค้ดส่งออกเรียก */
+function laneOf(items, it, plats) {
+  if (it.lane === 'surface') {
+    for (const f of items) {
+      const top = highestTop(plats, f.x);
+      if (top !== null) f.y = top - BODY.standH / 2;
+    }
+    return items;
+  }
+  return it.rise ? A.lift(items, it.rise) : items;
 }
 
 /** โรยของหายากลงแถวที่เพิ่งสร้าง — ฟังก์ชันชุดเดียวกับที่เกมใช้ตอนวิ่งจริง */
 function topping(items, kind) {
-  return kind === 'shrimp' ? A.withShrimp(items) : A.withKibble(items, kind);
+  if (kind === 'shrimp') return A.withShrimp(items);
+  if (kind === 'shrimpAll') return A.withShrimp(items, 'all');
+  return A.withKibble(items, kind);
 }
 
 /** ช่วงเตือนของของร่วง — ท่อนเก่าที่บันทึกไว้ก่อนมีช่องนี้จะไม่มีค่า ใช้ค่ากลางของเกมแทน */
@@ -309,14 +523,74 @@ let playing = false;
 
 function stage() { return STAGES[view.stage]; }
 
+/** ท่อนอ้างอิงลำดับ i — เลยท้าย PATTERNS คือท่อนของทางเข้าด่าน (GATE_LIST) */
+function refChunk(i) {
+  return i < PATTERNS.length ? PATTERNS[i] : GATE_LIST[i - PATTERNS.length].chunk;
+}
+function refGate(i) {
+  return i < PATTERNS.length ? null : GATE_LIST[i - PATTERNS.length];
+}
+
 function active() {
-  // โหมดดูของเดิม: เอาผลจาก PATTERNS ตรง ๆ ไม่ผ่านเอกสาร
+  // โหมดดูของเดิม: เอาผลจาก PATTERNS / ทางเข้าด่าน ตรง ๆ ไม่ผ่านเอกสาร
   if (view.refIdx >= 0) {
-    const p = PATTERNS[view.refIdx](0);
-    return { ...p, width: p.width || chunkW, partial: !!p.partial, readonly: true };
+    const p = refChunk(view.refIdx)(0);
+    const g = refGate(view.refIdx);
+    // ไอเท็มในท่อนเก็บแค่ชนิดกับ x — แปลงเป็นรูปร่างตอนเกิดจริงก่อนวาด
+    const pickups = (p.pickups || []).map((q) => ({ ...PICKUPS[q.kind].make(q.x, 0), kind: q.kind }));
+    return {
+      ...p, pickups, fallers: p.fallers || [], hazards: [], plats: [],
+      width: p.width || chunkW, partial: !!p.partial, readonly: true, gate: g ? g.id : null,
+    };
   }
   const d = doc();
-  return { ...build(d), width: d.width, partial: !!d.partial, readonly: false };
+  return { ...build(d), width: d.width, partial: !!d.partial, readonly: false, gate: d.gate || null };
+}
+
+// ─────────────────────────────────────────────────────────────
+// ทางเข้าด่าน — วาดอาคารด้วยภาพชุดเดียวกับเกม และสูตรจางผนัง/เปิดประตูตัวเดียวกับเกม
+// ─────────────────────────────────────────────────────────────
+function gateView(cam) {
+  const def = scene && scene.gate && GATES[scene.gate];
+  if (!def) return null;
+  const m = gateMarks(def, 0);
+  // มีผลจำลองอยู่ = ใช้ตำแหน่งแมวจำลอง ไม่งั้นใช้ตำแหน่งแมวตามกล้องเหมือนในเกม
+  const f = sim && scrubAt >= 0 && sim.frames[scrubAt];
+  const px = f ? f.cx : cam + PLAYER_X;
+  const v = gateViewAt(m, cam, tick, px, doorOpenAt(px, m.doorIn), doorOpenAt(px, m.doorOut));
+  if (view.xray) {
+    v.facadeIn = Math.min(v.facadeIn, 0.22);
+    v.facadeOut = Math.min(v.facadeOut, 0.22);
+  }
+  return { def, v, m };
+}
+
+/** เส้นประตูหน้า/หลัง และช่วงที่เกมจะสลับฉาก (วัดจากตำแหน่งแมว) */
+function drawGateMarks(cam, g) {
+  const { m, def } = g;
+  const L = def.layout;
+  ctx.save();
+  ctx.font = 'bold 11px system-ui';
+  ctx.setLineDash([6, 5]);
+  ctx.strokeStyle = 'rgba(255,214,102,.8)';
+  ctx.fillStyle = 'rgba(255,214,102,.95)';
+  for (const [x, label] of [[m.doorIn, 'ทางเข้า'], [m.doorOut, 'ทางออก']]) {
+    const sx = Math.round(x - cam) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, 30);
+    ctx.lineTo(sx, GROUND_Y + 40);
+    ctx.stroke();
+    ctx.fillText(label, sx + 4, GROUND_Y + 36);
+  }
+  ctx.setLineDash([]);
+  // ช่วงที่แมวอยู่แล้วจอถูกปิดเต็ม = จุดที่เกมสลับฉากได้โดยผู้เล่นไม่เห็น
+  const a = m.coverFrom + PLAYER_X - cam;
+  const b = m.coverTo + PLAYER_X - cam;
+  ctx.fillStyle = 'rgba(127,227,218,.28)';
+  ctx.fillRect(a, GROUND_Y + 44, b - a, 10);
+  ctx.fillStyle = 'rgba(127,227,218,.95)';
+  ctx.fillText(`ช่วงสลับฉาก ${L.cover}px`, a, GROUND_Y + 68);
+  ctx.restore();
 }
 
 function draw() {
@@ -331,6 +605,9 @@ function draw() {
   drawSky(ctx, cam, pal);
   drawHills(ctx, cam, pal);
   drawGround(ctx, scene.pit, cam, pal);
+  const gate = gateView(cam);
+  if (gate) drawGateBack(ctx, gate.def, gate.v);
+  drawPlats(cam, pal);
 
   if (view.grid) drawGrid(cam);
   if (view.arcs) drawArcs(cam, scene.jumps);
@@ -339,13 +616,19 @@ function draw() {
   drawSpecials(cam, st);
   hideEaten();
   drawTreats(ctx, scene.fish, cam, tick);
+  drawItems(cam);
 
   if (view.next) drawGhost(cam, scene);
   drawBounds(cam, scene.width);
   drawJumpMarks(cam, scene.jumps);
   if (sim) drawSimMarks(cam);
+  if (!scene.readonly) drawLaneGuides();
   if (!scene.readonly) drawSelection(cam);
   drawCat(cam);
+  if (gate) {
+    drawGateFront(ctx, gate.def, gate.v);
+    drawGateMarks(cam, gate);
+  }
 
   drawStrip();
   requestAnimationFrame(draw);
@@ -360,6 +643,16 @@ function draw() {
  * ตัวของวาดด้วยฟังก์ชันเดียวกับเกมจริงเหมือนของทุกชิ้นบนหน้านี้
  */
 function drawSpecials(cam, st) {
+  // ── กำลังเลื่อนดูผลจำลอง: วาดตำแหน่งจริง ณ เฟรมนั้น ──
+  const fr = sim && scrubAt >= 0 && sim.frames[scrubAt];
+  if (fr && fr.hz && fr.hz.length === (scene.hazards || []).length && fr.fl.length === (scene.fallers || []).length) {
+    // ของร่วงที่ยังไม่เข้าจอ ในเกมยังมองไม่เห็นอะไรเลย แต่ในหน้าออกแบบวาดเงาจาง ๆ ไว้ให้รู้ว่ามี
+    const fls = fr.fl.filter((q) => !q.off).map((q) => (q.hold ? { ...q, warn: FALLER.warnFrames } : q));
+    drawFallers(ctx, fls, cam, st.theme);
+    drawHazards(ctx, fr.hz.filter((q) => !q.off), cam, tick, st.palette);
+    return;
+  }
+
   const fs = scene.fallers || [];
   const hs = scene.hazards || [];
   if (!fs.length && !hs.length) return;
@@ -382,10 +675,165 @@ function drawSpecials(cam, st) {
   }
   ctx.restore();
 
-  // สำเนาสำหรับวาดเท่านั้น: warn=0 คือ "ร่วงอยู่" ซึ่งเป็นท่าที่ผู้เล่นเห็นตอนต้องหลบจริง
-  // ส่วนค่า warn ที่เก็บในเอกสารมีไว้ส่งออกเป็นโค้ด ไม่ได้ใช้วาด
+  // ยังไม่ได้ตรวจด่าน: ผึ้งแกว่งโชว์ไปเรื่อย ๆ จากเฟสที่ตั้งไว้ ให้เห็นว่ามันขยับยังไง
+  // สำเนาสำหรับวาดเท่านั้น: ของร่วง warn=0 คือ "ร่วงอยู่" ซึ่งเป็นท่าที่ผู้เล่นเห็นตอนต้องหลบจริง
+  const b = HAZARD.bee;
+  const live = hs.map((h) => (h.kind === 'bee'
+    ? { ...h, y: b.midY + Math.sin(h.t + tick * b.speed) * b.amp }
+    : { ...h, spin: -tick * 0.05 }));
   drawFallers(ctx, fs.map((f) => ({ ...f, warn: 0, y: FALL_Y })), cam, st.theme);
-  drawHazards(ctx, hs, cam, tick, st.palette);
+  drawHazards(ctx, live, cam, tick, st.palette);
+}
+
+/**
+ * ไอเท็มตัวช่วย — วาดด้วยฟังก์ชันของเกมตามชนิด (ดู ITEM_DEFS.draw)
+ * ตอนเลื่อนดูผลจำลอง ชิ้นที่แมวเก็บไปแล้ว ณ เฟรมนั้นจะหายไปเหมือนในเกม
+ */
+function drawItems(cam) {
+  const ps = scene.pickups || [];
+  if (!ps.length) return;
+  const showSim = sim && scrubAt >= 0 && sim.itemAt.length === ps.length;
+  const groups = new Map();
+  ps.forEach((p, i) => {
+    const got = showSim && sim.itemAt[i] <= scrubAt;
+    if (!groups.has(p.kind)) groups.set(p.kind, []);
+    groups.get(p.kind).push({ ...p, got });
+  });
+  for (const [kind, list] of groups) {
+    const def = ITEM_DEFS[kind];
+    if (def) def.draw(ctx, list, cam, tick);
+  }
+}
+
+/**
+ * พื้นเหยียบได้ — วาดด้วยสีชุดเดียวกับพื้นของฉาก จึงกลืนเป็นส่วนหนึ่งของแมพ
+ *   เนิน     ก้อนแป้งคุกกี้โผล่ขึ้นจากพื้น มีเปลือกกรอบตามแนวผิวและช็อกชิป
+ *   พื้นลอย  แท่งเวเฟอร์ลอย มีไส้ครีมตรงกลาง และเงาบนพื้นบอกว่าลอยอยู่
+ */
+function drawPlats(cam, pal) {
+  const ps = scene.plats || [];
+  for (const p of ps) {
+    const x0 = p.x - cam;
+    if (x0 > W + 20 || x0 + p.w < -20) continue;
+    if (p.kind === 'hill') drawHill(p, cam, pal);
+    else drawLedge(p, cam, pal);
+  }
+}
+
+function drawHill(p, cam, pal) {
+  const pts = [];
+  for (let x = p.x; x < p.x + p.w; x += 6) pts.push([x - cam, platTop(p, x)]);
+  pts.push([p.x + p.w - cam, GROUND_Y]);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(p.x - cam, GROUND_Y + 8);
+  for (const [x, y] of pts) ctx.lineTo(x, y);
+  ctx.lineTo(p.x + p.w - cam, GROUND_Y + 8);
+  ctx.closePath();
+  ctx.fillStyle = pal.ground;
+  ctx.fill();
+  ctx.clip();
+
+  // เปลือกกรอบสองชั้นวิ่งตามผิว — ท่าเดียวกับแถบผิวของพื้นปกติ (crust / crustTop)
+  const trace = (dy, width, color) => {
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + dy) : ctx.moveTo(x, y + dy)));
+    ctx.lineWidth = width;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = color;
+    ctx.stroke();
+  };
+  trace(11, 22, pal.crust);
+  trace(3, 6, pal.crustTop);
+
+  // ช็อกชิป — ตำแหน่งตายตัวตามพิกัดโลก เลื่อนจอแล้วไม่วิบวับ
+  ctx.fillStyle = 'rgba(58,28,16,.75)';
+  for (let x = p.x + 30; x < p.x + p.w - 20; x += 46) {
+    const top = platTop(p, x);
+    const depth = 30 + ((x * 7) % 23);
+    if (top + depth > GROUND_Y) continue;
+    ctx.beginPath();
+    ctx.ellipse(x - cam, top + depth, 5, 4, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawLedge(p, cam, pal) {
+  const x = p.x - cam;
+  const y = p.top;
+
+  // เงาบนพื้น — เห็นแล้วรู้ทันทีว่าแท่งนี้ลอยอยู่ ไม่ได้ตั้งบนพื้น
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.2)';
+  ctx.beginPath();
+  ctx.ellipse(x + p.w / 2, GROUND_Y + 2, p.w * 0.42, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const r = 9;
+  const body = () => {
+    ctx.beginPath();
+    ctx.roundRect(x, y, p.w, LEDGE_THICK, r);
+  };
+  body();
+  ctx.fillStyle = pal.crust;
+  ctx.fill();
+  ctx.clip();
+
+  // ลายตารางเวเฟอร์
+  ctx.strokeStyle = 'rgba(90,40,18,.28)';
+  ctx.lineWidth = 1.5;
+  for (let gx = x + 14; gx < x + p.w; gx += 16) {
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + LEDGE_THICK); ctx.stroke();
+  }
+  // ไส้ครีมตรงกลาง + ผิวบนที่โดนแสง
+  ctx.fillStyle = '#FFF1D6';
+  ctx.fillRect(x, y + LEDGE_THICK / 2 - 2, p.w, 4);
+  ctx.fillStyle = pal.crustTop;
+  ctx.fillRect(x, y, p.w, 6);
+  ctx.restore();
+
+  ctx.save();
+  body();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(60,24,10,.45)';
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * เส้นบอกชั้น — โผล่เฉพาะตอนเลือกแถวพื้นอยู่ บอกว่าลากขึ้นลงแล้วจะไปดูดเข้าชั้นไหน
+ * เส้นของชั้นที่แถวอยู่ตอนนี้เข้มกว่าเส้นอื่น
+ */
+function drawLaneGuides() {
+  const it = sel && view.refIdx < 0 && byId(doc(), sel);
+  if (!it || it.t !== 'fishRun' || it.lane === 'surface') return;
+  const cur = it.lane || 'run';
+  ctx.save();
+  ctx.font = '11px system-ui';
+  for (const [key, label, rise] of LANES) {
+    if (rise === null) continue;
+    const y = Math.round(A.RUN_Y - rise) + 0.5;
+    const on = key === cur;
+    ctx.strokeStyle = on ? 'rgba(255,143,184,.9)' : 'rgba(255,214,102,.35)';
+    ctx.setLineDash(on ? [] : [4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+    ctx.fillStyle = on ? '#FF8FB8' : 'rgba(255,214,102,.7)';
+    ctx.fillText(label.replace(/ \(.*\)$/, ''), 8, y - 4);
+  }
+  if (cur === 'custom') {
+    const y = Math.round(A.RUN_Y - (it.rise || 0)) + 0.5;
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255,143,184,.9)';
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = '#FF8FB8';
+    ctx.fillText(`กำหนดเอง ${it.rise}px`, 8, y - 4);
+  }
+  ctx.restore();
 }
 
 /** ความสูงที่วาดของร่วงบนโต๊ะออกแบบ — กลางอากาศ เห็นทั้งตัวของและเงาบนพื้น */
@@ -603,6 +1051,31 @@ function drawCat(cam) {
   };
   drawPlayer(ctx, ghost, false, skin, false, 0, '', 1, 1, {});
   ctx.restore();
+
+  // ผลของไอเท็มที่ติดตัวอยู่ ณ เฟรมนี้ — วงโล่ + ป้ายเวลาที่เหลือ
+  const s = f.fx;
+  if (!s) return;
+  const hx = f.cx - cam;
+  const hy = f.y - BODY.standH - 16;
+  ctx.save();
+  if (s.shielded) {
+    ctx.strokeStyle = 'rgba(255,243,226,.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(hx, f.y - BODY.standH / 2, 36, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const tags = [];
+  if (s.boost > 0) tags.push(['สปีด', s.boost, '#7CFF8A']);
+  if (s.big > 0) tags.push(['ตัวโต', s.big, '#FFC66B']);
+  if (s.magnet > 0) tags.push(['แม่เหล็ก', s.magnet, '#7FE3DA']);
+  ctx.font = 'bold 11px system-ui';
+  ctx.textAlign = 'center';
+  tags.forEach(([label, left, color], i) => {
+    ctx.fillStyle = color;
+    ctx.fillText(`${label} ${(left / 60).toFixed(1)}วิ`, hx, hy - i * 14);
+  });
+  ctx.restore();
 }
 
 // ── แถบภาพรวมด้านล่าง ─────────────────────────────────
@@ -644,6 +1117,17 @@ function drawStrip() {
     sctx.fillRect((o.x + ox) * k, gy - h, Math.max(2, o.w * k), h);
   }
 
+  // ไอเท็ม
+  sctx.fillStyle = '#9DFFB0';
+  for (const p of sc.pickups || []) sctx.fillRect((p.x + ox) * k - 2, gy - 52, 4, 4);
+
+  // พื้นเหยียบ
+  sctx.fillStyle = '#E8B06A';
+  for (const p of sc.plats || []) {
+    const h = p.kind === 'hill' ? p.h : GROUND_Y - p.top;
+    sctx.fillRect((p.x + ox) * k, gy - h * 0.32, Math.max(2, p.w * k), 3);
+  }
+
   // ของพิเศษ — สีเดียวกันทั้งสามชนิด สิ่งที่ต้องรู้จากแถบนี้คือ "มีของขยับได้ตรงไหนบ้าง"
   sctx.fillStyle = '#FF6E6E';
   for (const s of [...(sc.fallers || []), ...(sc.hazards || [])]) {
@@ -678,6 +1162,14 @@ function itemBox(d, it) {
   if (it.t === 'spike') return { x, y: GROUND_Y - spike.h, w: spike.w, h: spike.h };
   if (it.t === 'spikeRow') return { x, y: GROUND_Y - spike.h, w: itemW(it), h: spike.h };
   if (it.t === 'faller') return { x, y: FALL_Y, w: FALLER.w, h: FALLER.h };
+  if (it.t === 'hill') return { x, y: GROUND_Y - it.h, w: it.w, h: it.h };
+  if (it.t === 'item') {
+    const def = ITEM_DEFS[it.kind];
+    const p = PICKUPS[it.kind] && PICKUPS[it.kind].make(x, 0);
+    const r = (def ? def.r : 18) + 4;
+    return { x: x - r, y: (p ? p.y : GROUND_Y - 92) - r, w: r * 2, h: r * 2 };
+  }
+  if (it.t === 'ledge') return { x, y: GROUND_Y - it.lift, w: it.w, h: LEDGE_THICK };
   // ผึ้งจับได้ทั้งช่วงที่มันแกว่งถึง ไม่ใช่แค่ตรงกลาง — ตรงกับแถบที่วาดให้เห็น
   if (it.t === 'bee') return { x, y: HAZARD.bee.midY - HAZARD.bee.amp, w: HAZARD.bee.w, h: HAZARD.bee.amp * 2 + HAZARD.bee.h };
   if (it.t === 'ball') return { x, y: GROUND_Y - HAZARD.ball.r * 2, w: HAZARD.ball.r * 2, h: HAZARD.ball.r * 2 };
@@ -700,6 +1192,7 @@ function itemBox(d, it) {
 function handleX(d, it) {
   if (it.t === 'pit') return xOf(d, it) + it.w;
   if (it.t === 'spikeRow') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
+  if (PLAT_T.has(it.t)) return xOf(d, it) + it.w;
   if (it.t === 'fishRun' && !it.runTo) return xOf(d, it) + Math.max(0, countOf(d, it) - 1) * it.gap;
   if (it.t === 'fishLow') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
   if (it.t === 'fishWave') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
@@ -713,7 +1206,7 @@ function handleX(d, it) {
 // ตาม "เฉลย" ที่ผู้ออกแบบประกาศไว้ (จุดกดทุกอัน) แล้วรายงานว่าเกิดอะไรขึ้น
 // ─────────────────────────────────────────────────────────────
 function simulate(d) {
-  const sc = view.refIdx >= 0 ? active() : { ...build(d), width: d.width, partial: !!d.partial };
+  const sc = view.refIdx >= 0 ? active() : { ...build(d), width: d.width, partial: !!d.partial, gate: d.gate || null };
   const bars = sc.obs.filter((o) => o.kind === 'bar');
   const solids = sc.obs;
   const press = sc.jumps.slice().sort((a, b) => a - b);
@@ -734,13 +1227,33 @@ function simulate(d) {
   let sliding = false;
   let pi = 0;
 
+  // ── ของที่ขยับได้ — สำเนาแยก ไม่แตะของที่วาดอยู่ในสนาม ──
+  // hold = ยังไม่เข้าจอ ยังไม่เริ่มขยับ (กติกาเดียวกับ Level.updateFallers/updateHazards)
+  const hz = (sc.hazards || []).map((h) => ({ ...h, hold: true, smashed: false, gone: false, spin: 0 }));
+  const fl = (sc.fallers || []).map((f) => ({ ...f, y: -40, vy: 0, hold: true, dead: false, smashed: false }));
+  const items = sc.pickups || [];
+  const itemAt = items.map(() => Infinity);
+  const eatAt = sc.fish.map(() => Infinity);
+  const smashed = new Set();
+
+  // ผลของไอเท็มที่ติดตัว — หน่วยเป็น "เฟรมจริง" เหมือนตัวจับเวลาในเกม
+  const fx = { boost: 0, big: 0, magnet: 0, shielded: false, invuln: 0 };
+  const events = [];
+  let smashCount = 0;
+
   const frames = [];
   const missedPress = [];
   const clear = new Map();      // ชิ้น → ระยะที่ลอยพ้นน้อยที่สุด
   let death = null;
   const endX = sc.width + 240;
 
-  for (let f = 0; f < 5000 && cx < endX && !death; f++) {
+  for (let f = 0; f < 6000 && cx < endX && !death; f++) {
+    // ── เวลาจริงต่อหนึ่งก้าวโลก ──
+    // ติดสปีดแล้วโลกเดินเร็วขึ้น 1.8 เท่า แต่ฟิสิกส์ยังก้าวทีละ 1 เฟรมอ้างอิง (ดู Game.update)
+    // หนึ่งก้าวโลกจึงกินเวลาจริงแค่ 1/1.8 เฟรม ตัวจับเวลาและของที่ขยับเองต้องเดินตามเวลาจริง
+    const rdt = fx.boost > 0 ? 1 / SPEEDUP.mult : 1;
+    const camera = cx - BODY.standW / 2 - PLAYER_X;
+
     // 1) รับอินพุตตามเฉลย
     while (pi < press.length && cx + SPEED.run / 2 >= press[pi]) {
       if (jumpsUsed === 0) { vy = PHYSICS.jumpV; jumpsUsed = 1; onGround = false; sliding = false; slideHeld = false; }
@@ -752,20 +1265,44 @@ function simulate(d) {
     // 2) หมอบอัตโนมัติเมื่อมีคานอยู่ข้างหน้า (ผู้เล่นจริงกดค้างไว้)
     // ลุกได้ก็ต่อเมื่อขอบซ้ายของตัวตอนยืนพ้นคานแล้วจริง ไม่ใช่แค่กึ่งกลางพ้น
     // ตอนยืนตัวกว้าง 40 ขอบซ้ายจึงอยู่หลังกึ่งกลาง 20px เผื่ออีก 12 กันเฟรมคาบเกี่ยว
-    slideHeld = bars.some((b) => cx > b.x - 70 && cx < b.x + b.w + BODY.standW / 2 + 12);
+    slideHeld = bars.some((b) => !smashed.has(b) && cx > b.x - 70 && cx < b.x + b.w + BODY.standW / 2 + 12);
     sliding = slideHeld && onGround;
+
+    // 3) เดินของที่ขยับได้หนึ่งก้าว
+    stepMovers(hz, fl, camera, rdt, bars);
 
     const h = sliding ? BODY.slideH : BODY.standH;
     const bw = sliding ? BODY.slideW : BODY.standW;
     const box = { x: cx - bw / 2, y: y - h, w: bw, h };
+    const cy = y - h / 2;
 
-    frames.push({ cx, y, vy, onGround, sliding });
+    frames.push({
+      cx, y, vy, onGround, sliding,
+      fx: { boost: fx.boost, big: fx.big, magnet: fx.magnet, shielded: fx.shielded },
+      hz: hz.map((q) => ({ kind: q.kind, x: q.x, y: q.y, w: q.w, h: q.h, t: q.t, spin: q.spin, off: q.gone || q.smashed })),
+      fl: fl.map((q) => ({ x: q.x, y: q.y, w: q.w, h: q.h, warn: q.warn, off: q.dead || q.smashed, hold: q.hold })),
+    });
 
-    // 3) ชนอะไรหรือยัง
+    // 4) ชนอะไรหรือยัง — กติกาเดียวกับเกม: ตัวโต/สปีด = พุ่งชนกระเด็น, อมตะ = ผ่าน, โล่ = แตกแทน
+    const hit = (what, onSmash) => {
+      if (fx.boost > 0 || fx.big > 0) { onSmash(); smashCount++; return false; }
+      if (fx.invuln > 0) return false;
+      if (fx.shielded) {
+        fx.shielded = false;
+        fx.invuln = SHIELD.invulnFrames;
+        events.push(`โล่รับแรงชนแทนที่ x=${Math.round(cx)}`);
+        return false;
+      }
+      death = { at: Math.round(cx), what, frame: f, box };
+      return true;
+    };
+    const overlap = (o) => box.x < o.x + o.w && o.x < box.x + box.w && box.y < o.y + o.h && o.y < box.y + box.h;
+
     for (const o of solids) {
-      if (box.x < o.x + o.w && o.x < box.x + box.w && box.y < o.y + o.h && o.y < box.y + box.h) {
-        death = { at: Math.round(cx), what: o.kind, frame: f, box };
-        break;
+      if (smashed.has(o)) continue;
+      if (overlap(o)) {
+        if (hit(o.kind, () => smashed.add(o))) break;
+        continue;
       }
       // ระยะลอยพ้น: นับเฉพาะตอนอยู่เหนือชิ้นนั้นจริง ๆ
       if (o.kind !== 'bar' && box.x < o.x + o.w && o.x < box.x + box.w) {
@@ -774,37 +1311,60 @@ function simulate(d) {
       }
     }
     if (death) break;
+    for (const q of hz) {
+      if (q.gone || q.smashed || q.hold || !overlap(q)) continue;
+      if (hit(q.kind, () => { q.smashed = true; })) break;
+    }
+    if (death) break;
+    for (const q of fl) {
+      if (q.dead || q.smashed || q.hold || q.warn > 0 || !overlap(q)) continue;
+      if (hit('faller', () => { q.smashed = true; })) break;
+    }
+    if (death) break;
+
+    // 5) เก็บไอเท็มและของกิน — ระยะเก็บชุดเดียวกับ Game
+    items.forEach((p, i) => {
+      if (itemAt[i] < Infinity || Math.hypot(cx - p.x, cy - p.y) >= ITEM_DEFS[p.kind].pickR) return;
+      itemAt[i] = f;
+      const def = ITEM_DEFS[p.kind];
+      if (def.effect === 'boost') fx.boost = def.frames;
+      else if (def.effect === 'big') fx.big = def.frames;
+      else if (def.effect === 'magnet') fx.magnet = def.frames;
+      else if (def.effect === 'shield') fx.shielded = true;
+    });
+    sc.fish.forEach((t, i) => {
+      if (eatAt[i] < Infinity) return;
+      const d0 = Math.hypot(cx - t.x, cy - t.y);
+      // กุ้งตัวใหญ่ ระยะเก็บกว้างกว่า — ค่าเดียวกับ Game.pickTreats
+      const pad = t.kind === 'shrimp' ? SHRIMP.pickPad : 22;
+      // แม่เหล็ก: ของที่เข้ารัศมีดูดถือว่าได้แล้ว (ในเกมมันบินเข้าปากเร็วกว่ากล้องเสมอ ดู MAGNET.minPull)
+      if (d0 < t.r + pad || (fx.magnet > 0 && d0 < MAGNET.range)) eatAt[i] = f;
+    });
 
     if (y > H + 100) { death = { at: Math.round(cx), what: 'pit', frame: f, box }; break; }
 
-    // 4) เดินหน้าหนึ่งเฟรม
+    // 6) ตัวจับเวลา
+    fx.boost = Math.max(0, fx.boost - rdt);
+    fx.big = Math.max(0, fx.big - rdt);
+    fx.magnet = Math.max(0, fx.magnet - rdt);
+    fx.invuln = Math.max(0, fx.invuln - rdt);
+
+    // 7) เดินหน้าหนึ่งเฟรม
     cx += SPEED.run;
     vy += PHYSICS.gravity;
     y += vy;
 
-    const overPit = sc.pit.some((p) => cx > p.x + 6 && cx < p.x + p.w - 6);
-    const crossed = y - vy <= GROUND_Y;
-    if (!overPit && y >= GROUND_Y && crossed) {
-      y = GROUND_Y; vy = 0; onGround = true; jumpsUsed = 0;
+    const stand = footing(sc, cx, y - vy, y, onGround, fx.boost > 0 || fx.big > 0);
+    if (stand !== null) {
+      y = stand; vy = 0; onGround = true; jumpsUsed = 0;
     } else {
       onGround = false;
       if (jumpsUsed === 0) jumpsUsed = 1;   // เดินตกหลุม = เสียสิทธิ์กระโดดแรก
     }
   }
 
-  // 5) เก็บของกิน — เดินย้อนทุกเฟรมเทียบกับทุกเม็ด ใช้ระยะเดียวกับในเกม
-  //    เก็บ "เฟรมที่เก็บได้" ไว้ด้วย ตอนเลื่อนดูจะได้ซ่อนของที่กินไปแล้วเหมือนเกมจริง
-  const missed = [];
-  const eatAt = [];
-  sc.fish.forEach((t, i) => {
-    const pad = t.r + 22;
-    const at = frames.findIndex((p) => {
-      const hh = p.sliding ? BODY.slideH : BODY.standH;
-      return Math.hypot(p.cx - t.x, (p.y - hh / 2) - t.y) < pad;
-    });
-    eatAt[i] = at < 0 ? Infinity : at;
-    if (at < 0) missed.push(t);
-  });
+  if (smashCount) events.push(`พุ่งชนกระเด็น ${smashCount} ชิ้น (ติดสปีด/ตัวโต)`);
+  const missed = sc.fish.filter((_, i) => eatAt[i] === Infinity);
 
   return {
     frames, missed, eatAt, death, missedPress,
@@ -812,7 +1372,78 @@ function simulate(d) {
     got: sc.fish.length - missed.length,
     clear,
     scene: sc,
+    items, itemAt, events,
   };
+}
+
+/**
+ * เดินผึ้ง ลูกบอล และของร่วงหนึ่งก้าว — สูตรชุดเดียวกับ Level.updateHazards / updateFallers
+ * rdt = เวลาจริงของก้าวนี้ (ติดสปีดแล้วของพวกนี้ดูช้าลงเมื่อเทียบกับระยะทาง เหมือนในเกม)
+ */
+function stepMovers(hz, fl, camera, rdt, bars) {
+  const underBar = (x, w) => bars.some((b) => x < b.x + b.w && b.x < x + w);
+  for (const q of hz) {
+    if (q.gone || q.smashed) continue;
+    if (q.hold) {
+      if (q.x > camera + W) continue;
+      q.hold = false;
+    }
+    if (q.kind === 'bee') {
+      const b = HAZARD.bee;
+      q.t += b.speed * rdt;
+      q.y = b.midY + Math.sin(q.t) * b.amp;
+    } else if (q.kind === 'ball') {
+      q.x -= HAZARD.ball.speed * rdt;
+      q.spin -= 0.12 * rdt;
+    }
+    // เกมลบชิ้นที่ไปอยู่ใต้คานทิ้ง (ดู Level.underBar)
+    if (underBar(q.x, q.w)) q.gone = true;
+  }
+  for (const q of fl) {
+    if (q.dead || q.smashed) continue;
+    if (underBar(q.x, q.w)) { q.dead = true; continue; }
+    if (q.hold) {
+      if (q.x > camera + W) continue;
+      q.hold = false;
+    }
+    if (q.warn > 0) { q.warn -= rdt; continue; }
+    q.vy += FALLER.gravity * rdt;
+    q.y += q.vy * rdt;
+    if (q.y + q.h >= GROUND_Y) { q.y = GROUND_Y - q.h; q.dead = true; }
+  }
+}
+
+/**
+ * เท้าควรยืนอยู่ที่ y ไหนหลังเดินหนึ่งเฟรม — null = ลอยอยู่
+ *
+ * พื้นปกติกับพื้นเหยียบใช้กติกาเดียวกัน: "เฟรมก่อนเท้าอยู่เหนือผิว และตอนนี้ถึงผิวแล้ว"
+ * พื้นปกติจึงได้ผลเท่าเดิมทุกกรณี ท่อนเก่าทั้งหมดจำลองออกมาเหมือนเดิม
+ *
+ * สองข้อที่เพิ่มมาเพราะผิวไม่เรียบ:
+ *   ผิวของเฟรมก่อน  เทียบกับผิว ณ x เดิม ไม่ใช่ x ใหม่ ไม่งั้นเดินขึ้นเนินจะดูเหมือน
+ *                  "มุดใต้ผิว" แล้วไม่ถูกยกขึ้น
+ *   ดูดติดขาลง     ตอนยืนอยู่แล้วผิวลาดลงเร็วกว่าแรงโน้มถ่วงของเฟรมเดียว (0.86)
+ *                  ถ้าไม่ดูดไว้แมวจะเด้งหลุดจากผิวทุกเฟรมตอนลงเนินเหมือนวิ่งลงบันได
+ * พื้นลอยเป็นแบบทะลุจากข้างล่างได้ — กระโดดลอดขึ้นไปยืนข้างบนได้ ไม่ชนหัว
+ */
+const STICK = 10;
+
+function footing(sc, cx, prevY, y, wasOnGround, pitsSolid = false) {
+  const prevX = cx - SPEED.run;
+  let best = null;
+  const tryTop = (now, before) => {
+    if (now === null) return;
+    const from = before === null ? now : before;
+    const land = prevY <= from + 0.5 && y >= now;
+    const stick = wasOnGround && y < now && now - y <= STICK;
+    if ((land || stick) && (best === null || now < best)) best = now;
+  };
+
+  // ติดสปีด/ตัวโต วิ่งข้ามปากหลุมได้ (ดู Game.pitsSolid)
+  const overPit = !pitsSolid && sc.pit.some((p) => cx > p.x + 6 && cx < p.x + p.w - 6);
+  if (!overPit) tryTop(GROUND_Y, GROUND_Y);
+  for (const p of sc.plats || []) tryTop(platTop(p, cx), platTop(p, prevX));
+  return best;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -884,6 +1515,54 @@ function staticIssues(sc) {
     }
   }
 
+  for (const p of sc.pickups || []) {
+    for (const b of bars) {
+      if (p.x > b.x - 20 && p.x < b.x + b.w + 20) {
+        out.push({ bad: false, msg: `${ITEM_DEFS[p.kind].label}ที่ x=${Math.round(p.x)} อยู่ในช่วงคาน — ลอยสูงระดับเดียวกับคาน เก็บไม่ได้ถ้าไม่ชน` });
+      }
+    }
+  }
+
+  // ── ท่อนทางเข้าด่าน ──
+  if (sc.gate && GATES[sc.gate]) {
+    const m = gateMarks(GATES[sc.gate], 0);
+    const busy = sc.obs.length + (sc.hazards || []).length + (sc.fallers || []).length;
+    if (busy) {
+      out.push({ bad: false, msg: `ทางเข้าด่านมีสิ่งกีดขวาง ${busy} ชิ้น — ช่วงนี้เกมกำลังเตรียมฉากใหม่และผู้เล่นกำลังมองสถานที่ ควรเป็นทางโล่ง` });
+    }
+    for (const p of sc.pit) {
+      if (p.x < m.doorOut && m.doorIn < p.x + p.w) {
+        out.push({ bad: true, msg: `หลุมที่ x=${Math.round(p.x)} อยู่ในตัวร้าน — พื้นร้านวาดทับหลุมจนมองไม่เห็น ผู้เล่นจะตกโดยไม่รู้ตัว` });
+      }
+    }
+  }
+
+  // ── พื้นเหยียบ ──
+  for (const p of sc.plats || []) {
+    if (p.kind === 'ledge') {
+      const lift = GROUND_Y - p.top;
+      if (lift > REACH_DBL) {
+        out.push({ bad: true, msg: `พื้นลอยที่ x=${Math.round(p.x)} สูง ${lift}px — กระโดดสองชั้นยกเท้าได้แค่ ${REACH_DBL}px ขึ้นไม่ถึง` });
+      } else if (lift > REACH_HOP) {
+        out.push({ bad: false, msg: `พื้นลอยที่ x=${Math.round(p.x)} สูง ${lift}px — เกินกระโดดเดี่ยว (${REACH_HOP}px) ต้องกดสองชั้นทุกครั้ง` });
+      }
+    } else {
+      for (const o of sc.obs) {
+        if (o.kind !== 'bar' && o.x < p.x + p.w && p.x < o.x + o.w) {
+          out.push({ bad: false, msg: `${name(o.kind)}ที่ x=${Math.round(o.x)} อยู่บนเนิน — สิ่งกีดขวางยังตั้งที่ระดับพื้นเสมอ จะจมอยู่ในเนิน` });
+        }
+      }
+    }
+    if (p.x < 0 || p.x + p.w > sc.width) {
+      out.push({ bad: false, msg: `พื้นเหยียบที่ x=${Math.round(p.x)} ล้นขอบท่อน` });
+    }
+  }
+  const surf = sc.fish.filter((f) => highestTop(sc.plats || [], f.x) !== null);
+  for (const f of surf) {
+    const top = highestTop(sc.plats, f.x);
+    if (f.y > top) { out.push({ bad: false, msg: `ของกินที่ x=${Math.round(f.x)} จมอยู่ใต้ผิวพื้นเหยียบ — ลองตั้งชั้นเป็น “เกาะผิวพื้นเหยียบ”` }); break; }
+  }
+
   if (!sc.jumps.length && sc.obs.some((o) => o.kind !== 'bar')) {
     out.push({ bad: false, msg: 'มีของให้ข้ามแต่ไม่ได้ประกาศจุดกดเลย ตรวจด่านจะจำลองไม่ได้' });
   }
@@ -924,16 +1603,18 @@ function joinIssues(sc) {
 const reportEl = document.getElementById('report');
 
 function runCheck() {
-  const sc = view.refIdx >= 0 ? active() : { ...build(doc()), width: doc().width, partial: !!doc().partial };
+  const sc = view.refIdx >= 0 ? active() : { ...build(doc()), width: doc().width, partial: !!doc().partial, gate: doc().gate || null };
   sim = simulate(doc());
   const statics = staticIssues(sc);
-  const join = joinIssues(sc);
+  // ท่อนทางเข้าไม่ถูกสุ่มต่อกับท่อนอื่น ไม่ต้องตรวจการต่อท่อน
+  const join = sc.gate ? { after: [], before: [], gate: true } : joinIssues(sc);
 
   const rows = [];
   if (sim.death) {
-    const what = sim.death.what === 'pit' ? 'ตกหลุม'
-      : sim.death.what === 'bar' ? 'ชนคาน'
-        : sim.death.what === 'spike' ? 'ชนหนาม' : 'ชนลัง';
+    const what = {
+      pit: 'ตกหลุม', bar: 'ชนคาน', spike: 'ชนหนาม', crate: 'ชนลัง',
+      bee: 'ชนผึ้ง', ball: 'โดนลูกบอลชน', faller: 'โดนของร่วงทับ',
+    }[sim.death.what] || 'ชน';
     rows.push(`<b class="bad">เล่นตามเฉลยแล้วตาย</b> — ${what} ที่ x=${sim.death.at}`);
   } else {
     rows.push('<b class="ok">เล่นตามเฉลยแล้วรอดจนจบท่อน</b>');
@@ -958,10 +1639,21 @@ function runCheck() {
       ` (ราว ${frames} เฟรม) — ต่ำกว่า 10px ถือว่าโหดเกินไป`);
   }
 
+  if ((sc.plats || []).length) {
+    rows.push('<span class="warn">มีพื้นเหยียบ (ของทดลอง)</span>' +
+      ' — จำลองในหน้านี้ได้ครบ แต่เกมจริงยังไม่รองรับ ยังไม่ควรวางท่อนนี้ลงไฟล์เกม');
+  }
+
+  if (sim.items.length) {
+    const list = sim.items.map((p, i) => {
+      const ok = sim.itemAt[i] < Infinity;
+      return `<span class="${ok ? 'ok' : 'warn'}">${ITEM_DEFS[p.kind].label} ${ok ? '✓' : '✗ เก็บไม่ถึง'}</span>`;
+    });
+    rows.push('ไอเท็ม: ' + list.join(' · '));
+  }
+  for (const ev of sim.events) rows.push(`<span class="ok">${ev}</span>`);
   if ((sc.fallers || []).length || (sc.hazards || []).length) {
-    rows.push('<span class="warn">ของพิเศษไม่ได้ถูกจำลอง</span>' +
-      ' — ผึ้ง ลูกบอล และของร่วงขยับตามเวลาจริง การจำลองนี้ดูแค่ว่าเฉลยที่วางไว้ข้ามของแข็งได้ไหม' +
-      ' ของสามอย่างนี้ต้องกด “เล่นดู” ในเกมจริงอีกที');
+    rows.push('<span class="tip">ผึ้ง ลูกบอล และของร่วง ขยับตามเวลาจริงและเริ่มทำงานตอนเข้าจอเหมือนในเกม — เลื่อนแถบเฟรมหรือกด “เล่นดู” เพื่อดูจังหวะ</span>');
   }
 
   if (sim.missedPress.length) {
@@ -973,7 +1665,14 @@ function runCheck() {
   if (bad.length) rows.push('<b class="bad">ผิดกฎ</b><ul>' + bad.map((s) => `<li>${s.msg}</li>`).join('') + '</ul>');
   if (warn.length) rows.push('<b class="warn">ควรดูอีกที</b><ul>' + warn.map((s) => `<li>${s.msg}</li>`).join('') + '</ul>');
 
-  if (join.after.length || join.before.length) {
+  if (join.gate) {
+    const L = GATES[sc.gate].layout;
+    const w = L.why;
+    rows.push(`<span class="ok">ทางเข้าด่าน: ${GATES[sc.gate].name}</span> — ยาว ${L.length}px (${L.chunks} ท่อน ≈ ${(w.totalFrames / 60).toFixed(1)} วิ)` +
+      ` · ชานหน้าร้าน ${L.approach}px · ในร้าน ${L.interior}px · หลังออกประตู ${L.exit}px`);
+    rows.push(`<span class="tip">ช่วงสลับฉาก ${L.cover}px = (ขั้นเตรียมฉาก ${w.preloadSteps} + สลับ 1 + สำรอง ${w.framesNeeded - w.preloadSteps - 1}) เฟรม` +
+      ` × ${w.vMax.toFixed(2)}px/เฟรม (ติดสปีด) × ${w.dtBudget} (เผื่อเครื่องเฟรมตก) — คำนวณจากค่าจริงของเกม (gates.js)</span>`);
+  } else if (join.after.length || join.before.length) {
     const t = [];
     if (join.after.length) t.push(`วางต่อหน้าท่อน ${join.after.join(', ')} ไม่ได้`);
     if (join.before.length) t.push(`วางต่อหลังท่อน ${join.before.join(', ')} ไม่ได้`);
@@ -1056,6 +1755,10 @@ function addItem(kit, x) {
   if (kit.humps !== undefined) it.humps = kit.humps;
   if (kit.warn !== undefined) it.warn = kit.warn;
   if (kit.top) it.top = kit.top;
+  if (kit.h !== undefined) it.h = kit.h;
+  if (kit.lift !== undefined) it.lift = kit.lift;
+  if (kit.under) it.under = true;
+  if (kit.kind) it.kind = kit.kind;
   mutate((d) => {
     d.items.push(it);
     snapTo(d, it, x);
@@ -1145,7 +1848,9 @@ cv.addEventListener('pointerdown', (ev) => {
   if (hit) {
     sel = hit.id;
     renderInspector();
-    drag = { kind: 'move', id: hit.id, off: p.x - xOf(d, hit) };
+    // แถวพื้นลากขึ้นลงได้ด้วย จึงต้องจำระยะแนวตั้งจากจุดที่จับไว้ ไม่งั้นแถวจะกระตุกมาอยู่ใต้นิ้ว
+    const offY = hit.t === 'fishRun' ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
+    drag = { kind: 'move', id: hit.id, off: p.x - xOf(d, hit), offY, sy: p.y };
     pushUndo();
     return;
   }
@@ -1171,6 +1876,11 @@ cv.addEventListener('pointermove', (ev) => {
 
   if (drag.kind === 'move') {
     snapTo(d, it, p.x - drag.off);
+    // ต้องขยับแนวตั้งเกิน LANE_SNAP ก่อนถึงนับว่าตั้งใจลากขึ้นลง — ลากแนวนอนมือสั่นนิดหน่อยแถวไม่หลุดชั้น
+    if (it.t === 'fishRun' && (drag.lifting || Math.abs(p.y - drag.sy) > LANE_SNAP)) {
+      drag.lifting = true;
+      setRise(it, A.RUN_Y - (p.y - drag.offY));
+    }
     dirty();
     renderInspector();
     return;
@@ -1179,6 +1889,7 @@ cv.addEventListener('pointermove', (ev) => {
   if (drag.kind === 'resize') {
     const left = xOf(d, it);
     if (it.t === 'pit') it.w = Math.max(40, Math.round(p.x - left));
+    else if (PLAT_T.has(it.t)) it.w = Math.max(80, Math.round(p.x - left));
     else {
       if (it.runTo) delete it.runTo;
       it.n = Math.max(1, Math.round((p.x - left) / it.gap) + 1);
@@ -1293,7 +2004,8 @@ function renderInspector() {
     return;
   }
 
-  const kit = KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows));
+  const kit = KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows)
+    && (k.kind === undefined || k.kind === it.kind));
   const rows = [];
   // ชื่อบนหัวแผงต้องบอกของชิ้นนี้จริง ๆ ไม่ใช่ชื่อชิปที่ลากมา
   // ชิปเดียวกันทำของได้หลายหน้าตา (หนามคู่ยืดเป็นสี่ได้ แถวพื้นโรยกุ้งได้)
@@ -1323,13 +2035,45 @@ function renderInspector() {
   if (it.t === 'crate') rows.push(num('fRows', 'จำนวนชั้น', it.rows, 1, 1, 3));
   if (it.t === 'spikeRow') rows.push(num('fN', 'จำนวนหนาม', it.n, 1, 1, 8));
   if (it.t === 'faller') rows.push(num('fWarn', 'เตือนก่อนตก (เฟรม)', warnOf(it), 5, 10, 180));
+  if (it.t === 'bee') rows.push(num('fPhase', 'เฟสเริ่มแกว่ง (องศา)', it.phase || 0, 15, 0, 345));
   if (it.t === 'pit') rows.push(num('fW', 'กว้าง', it.w, 2, 40, 600));
+  if (PLAT_T.has(it.t)) rows.push(num('fW', 'กว้าง', it.w, 10, 80, 1200));
+  if (it.t === 'hill') rows.push(num('fH', 'สูง', it.h, 5, 20, 140));
+  if (it.t === 'ledge') rows.push(num('fLift', 'ลอยสูงจากพื้น', it.lift, 5, 40, 260));
+  if (it.t === 'fishRun' && it.lane === 'custom') rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
   if (FOOD_T.has(it.t) && !(it.t === 'fishRun' && it.runTo)) {
     rows.push(num('fN', 'จำนวนเม็ด', it.n, 1, NEEDS_TWO.has(it.t) ? 2 : 1, 40));
   }
   if (it.gap !== undefined) rows.push(num('fGap', 'ระยะห่าง', it.gap, 1, gapMin(it), 120));
   if (it.humps !== undefined) rows.push(num('fHumps', 'จำนวนลูกคลื่น', it.humps, 1, 1, 8));
   rows.push('</div>');
+
+  if (it.t === 'bee') {
+    rows.push('<p class="tip">0° = กลางวงแกว่งกำลังลง · 90° = ต่ำสุด · 270° = สูงสุด — ตอนตรวจด่านผึ้งเริ่มแกว่งตอนเข้าจอ เหมือนในเกม</p>');
+  }
+  if (it.t === 'item' && it.kind === 'letter') {
+    const opts = [...WORD].map((ch, i) => `<option value="${i}"${(it.letter || 0) === i ? ' selected' : ''}>${ch}</option>`).join('');
+    rows.push('<div class="anchorbox"><p class="tip">ตัวที่โชว์ในหน้านี้ — ในเกมจะเป็นตัวถัดไปที่ผู้เล่นยังไม่ได้เก็บเสมอ</p>' +
+      `<select id="fLetter" style="width:100%">${opts}</select></div>`);
+  }
+  if (it.t === 'item' && ITEM_DEFS[it.kind]) {
+    rows.push(`<p class="tip">${ITEM_DEFS[it.kind].sub} · ระยะเก็บ ${ITEM_DEFS[it.kind].pickR}px</p>`);
+  }
+
+  if (PLAT_T.has(it.t)) {
+    if (it.t === 'ledge') {
+      rows.push(`<label class="chk" style="margin:4px 0 8px"><input type="checkbox" id="fUnder"${it.under ? ' checked' : ''}> มีหลุมข้างใต้ (บังคับให้กระโดด)</label>`);
+      rows.push(`<p class="tip">กระโดดเดี่ยวยกเท้าได้ ${REACH_HOP}px · สองชั้น ${REACH_DBL}px</p>`);
+    }
+    rows.push('<p class="tip">ของทดลอง — ลองได้เฉพาะในหน้านี้ เกมจริงยังไม่รองรับ</p>');
+  }
+
+  if (it.t === 'fishRun') {
+    const cur = it.lane || 'run';
+    const opts = LANES.map(([v, label]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`).join('');
+    rows.push('<div class="anchorbox"><p class="tip">ชั้นของแถวนี้ — หรือ <b>ลากแถวขึ้นลงในสนาม</b> ได้เลย ใกล้ชั้นไหนจะดูดเข้าชั้นนั้น</p>' +
+      `<select id="fLane" style="width:100%">${opts}</select></div>`);
+  }
 
   if (FOOD_T.has(it.t)) {
     const opts = TOPS.map(([v, label]) =>
@@ -1355,10 +2099,35 @@ function renderInspector() {
 
   bind('fX', (v) => mutate((dd) => { byId(dd, it.id).x = v; }));
   bind('fRows', (v) => mutate((dd) => { byId(dd, it.id).rows = Math.max(1, Math.min(3, v)); }));
-  bind('fW', (v) => mutate((dd) => { byId(dd, it.id).w = Math.max(40, v); }));
+  bind('fW', (v) => mutate((dd) => { byId(dd, it.id).w = Math.max(PLAT_T.has(it.t) ? 80 : 40, v); }));
   bind('fN', (v) => mutate((dd) => { byId(dd, it.id).n = Math.max(1, v); }));
   bind('fGap', (v) => mutate((dd) => { byId(dd, it.id).gap = Math.max(gapMin(it), v); }));
   bind('fWarn', (v) => mutate((dd) => { byId(dd, it.id).warn = Math.max(10, Math.min(180, v)); }));
+  bind('fH', (v) => mutate((dd) => { byId(dd, it.id).h = Math.max(20, Math.min(140, v)); }));
+  bind('fPhase', (v) => mutate((dd) => { byId(dd, it.id).phase = ((Math.round(v) % 360) + 360) % 360; }));
+  const lt = document.getElementById('fLetter');
+  if (lt) lt.onchange = () => mutate((dd) => { byId(dd, it.id).letter = Number(lt.value); });
+  bind('fLift', (v) => mutate((dd) => { byId(dd, it.id).lift = Math.max(40, Math.min(260, v)); }));
+  bind('fRise', (v) => { mutate((dd) => { const q = byId(dd, it.id); q.lane = 'custom'; q.rise = Math.max(-20, Math.min(260, Math.round(v))); }); });
+
+  const un = document.getElementById('fUnder');
+  if (un) un.onchange = () => mutate((dd) => { byId(dd, it.id).under = un.checked; });
+
+  const ln = document.getElementById('fLane');
+  if (ln) {
+    ln.onchange = () => {
+      mutate((dd) => {
+        const q = byId(dd, it.id);
+        const lane = LANES.find(([v]) => v === ln.value);
+        q.lane = ln.value;
+        if (lane[2] !== null) q.rise = lane[2];
+        // กำหนดเอง: เริ่มจากความสูงที่แถวอยู่ตอนนี้ แล้วให้ปรับต่อด้วยช่องตัวเลขหรือลากในสนาม
+        if (ln.value === 'custom') q.rise = q.rise || 0;
+        if (ln.value === 'run') { delete q.lane; delete q.rise; }
+      });
+      renderInspector();
+    };
+  }
   bind('fHumps', (v) => mutate((dd) => { byId(dd, it.id).humps = Math.max(1, v); }));
 
   const anc = document.getElementById('fAnchor');
@@ -1438,6 +2207,26 @@ function jumpNames(d) {
 /** ดึงผังของท่อนเดิมมาเป็นจุดตั้งต้น — ได้เฉพาะของแข็งกับจุดกด ของกินต้องวางใหม่ */
 function grabRef() {
   const i = view.refIdx;
+  const g = refGate(i);
+  if (g) {
+    // ท่อนทางเข้าคัดมาได้ครบทั้งของกินและไอเท็ม (ดู gateStarter) ไม่ใช่แค่ของแข็งแบบท่อนปกติ
+    const d = blankDoc(`คัดมาจาก ${g.name}`);
+    d.gate = g.id;
+    d.width = g.layout.length;
+    d.kind = 'safe';
+    d.diff = 1;
+    d.items = gateStarter(g.id);
+    pushUndo();
+    docs.push(d);
+    cur = docs.length - 1;
+    view.refIdx = -1;
+    document.getElementById('refPick').value = '-1';
+    sel = null;
+    sim = null;
+    save();
+    refreshAll();
+    return;
+  }
   const p = PATTERNS[i](0);
   const d = blankDoc(`คัดมาจากท่อน ${i}`);
   d.width = p.width || chunkW;
@@ -1490,13 +2279,21 @@ function toCode(d) {
   const fish = [];
   const fallers = [];
   const hazards = [];
+  const plats = [];
+  const pickups = [];
 
   for (const it of d.items) {
     const e = anchorExpr(d, it, names, 'x');
     // แถวของกินที่โรยของหายากไว้ เขียนเป็นการห่อฟังก์ชันเดิม ไม่ใช่รายการเม็ดดิบ
-    const wrap = (call) => (!it.top ? `...${call}`
-      : it.top === 'shrimp' ? `...withShrimp(${call})`
-        : `...withKibble(${call}, '${it.top}')`);
+    const lifted = (call) => (it.t !== 'fishRun' || !it.rise || it.lane === 'surface' ? call
+      : `lift(${call}, ${it.rise})`);
+    const wrap = (raw) => {
+      const call = lifted(raw);
+      return !it.top ? `...${call}`
+        : it.top === 'shrimp' ? `...withShrimp(${call})`
+          : it.top === 'shrimpAll' ? `...withShrimp(${call}, 'all')`
+            : `...withKibble(${call}, '${it.top}')`;
+    };
 
     switch (it.t) {
       case 'spike': obs.push(`groundSpike(${off(e, 'spike.w / 2', it)})`); break;
@@ -1522,8 +2319,15 @@ function toCode(d) {
         }
         break;
       case 'faller': fallers.push(`{ x: ${off(e, 'FALLER.w / 2', it)}, warn: ${warnOf(it)} }`); break;
-      case 'bee': hazards.push(`{ kind: 'bee', x: ${off(e, 'HAZARD.bee.w / 2', it)} }`); break;
+      case 'bee': hazards.push(`{ kind: 'bee', x: ${off(e, 'HAZARD.bee.w / 2', it)}, phase: ${phaseOf(it).toFixed(3)} }`); break;
+      case 'item': pickups.push(`{ kind: '${it.kind}', x: ${e} }`); break;
       case 'ball': hazards.push(`{ kind: 'ball', x: ${off(e, 'HAZARD.ball.r', it)} }`); break;
+      // พื้นเหยียบยังไม่มีในเกม — เขียนเป็นหมายเหตุไว้ให้เห็นว่ามีอะไรอยู่ แต่ไม่ให้โค้ดพัง
+      case 'hill': plats.push(`{ kind: 'hill', x: ${e}, w: ${it.w}, h: ${it.h} }`); break;
+      case 'ledge':
+        plats.push(`{ kind: 'ledge', x: ${e}, w: ${it.w}, lift: ${it.lift} }`);
+        if (it.under && it.w > 60) pit.push(`{ x: ${e} + 24, w: ${it.w - 48} }`);
+        break;
       default: break;
     }
   }
@@ -1535,6 +2339,8 @@ function toCode(d) {
   body.push(`      jumps: [${js.map((j) => names.get(j.id)).join(', ')}],`);
   if (fallers.length) body.push(`      fallers: [${fallers.join(', ')}],`);
   if (hazards.length) body.push(`      hazards: [${hazards.join(', ')}],`);
+  if (pickups.length) body.push(`      pickups: [${pickups.join(', ')}],`);
+  if (plats.length) body.push(`      // (ทดลอง ยังไม่รองรับในเกม) platforms: [${plats.join(', ')}],`);
   if (d.partial) body.push('      partial: true,');
   if (d.width !== chunkW) body.push(`      width: ${d.width},`);
 
@@ -1553,7 +2359,7 @@ function toCode(d) {
 
   const meta = `  { kind: '${d.kind}', diff: ${d.diff} },    // ${idx}  ${d.name}`;
 
-  return { code: L.join('\n'), meta, idx };
+  return { code: L.join('\n'), meta, idx, experimental: plats.length > 0 };
 
   /** พิกัดของชิ้น เขียนเป็นสูตรถ้ามันเกาะจุดกดอยู่ ไม่งั้นเป็นตัวเลขดิบ */
   function anchorExpr(dd, it, nm, root) {
@@ -1575,7 +2381,7 @@ function toCode(d) {
 // หน้าตา / การผูกปุ่ม
 // ─────────────────────────────────────────────────────────────
 function buildKit() {
-  const map = { mark: 'kitMark', obs: 'kitObs', food: 'kitFood', sp: 'kitSpecial' };
+  const map = { mark: 'kitMark', obs: 'kitObs', food: 'kitFood', sp: 'kitSpecial', item: 'kitItem', plat: 'kitPlat' };
   for (const key of Object.keys(map)) document.getElementById(map[key]).innerHTML = '';
   for (const kit of KIT) {
     const el = document.createElement('div');
@@ -1598,6 +2404,8 @@ function refreshMeta() {
   document.getElementById('docKind').value = d.kind;
   document.getElementById('docDiff').value = d.diff;
   document.getElementById('docPartial').checked = !!d.partial;
+  document.getElementById('docGate').value = d.gate || '';
+  document.getElementById('docWidth').disabled = !!d.gate;
   updateCount();
 }
 
@@ -1609,7 +2417,9 @@ function updateCount() {
   document.getElementById('docCount').textContent =
     `จุดกด ${sc.jumps.length} · สิ่งกีดขวาง ${sc.obs.length} · หลุม ${sc.pit.length}` +
     ` · ของกิน ${sc.fish.length} เม็ด${rare ? ` (ของหายาก ${rare})` : ''}` +
-    `${sp ? ` · ของพิเศษ ${sp}` : ''}`;
+    `${sp ? ` · ของพิเศษ ${sp}` : ''}` +
+    `${sc.plats.length ? ` · พื้นเหยียบ ${sc.plats.length}` : ''}` +
+    `${sc.pickups.length ? ` · ไอเท็ม ${sc.pickups.length}` : ''}`;
 }
 
 function refreshAll() {
@@ -1677,7 +2487,8 @@ stagePick.onchange = (e) => { view.stage = Number(e.target.value); };
 
 const refPick = document.getElementById('refPick');
 refPick.innerHTML = '<option value="-1">— ท่อนของฉัน —</option>' +
-  PATTERNS.map((_, i) => `<option value="${i}">ท่อน ${i} · ${PATTERN_META[i].kind} ${PATTERN_META[i].diff}</option>`).join('');
+  PATTERNS.map((_, i) => `<option value="${i}">ท่อน ${i} · ${PATTERN_META[i].kind} ${PATTERN_META[i].diff}</option>`).join('') +
+  GATE_LIST.map((g, i) => `<option value="${PATTERNS.length + i}">🚪 ${g.name}</option>`).join('');
 refPick.onchange = (e) => {
   view.refIdx = Number(e.target.value);
   sel = null; sim = null; scrubAt = -1;
@@ -1689,6 +2500,25 @@ refPick.onchange = (e) => {
 document.getElementById('optArc').onchange = (e) => { view.arcs = e.target.checked; };
 document.getElementById('optNext').onchange = (e) => { view.next = e.target.checked; };
 document.getElementById('optGrid').onchange = (e) => { view.grid = e.target.checked; };
+document.getElementById('optXray').onchange = (e) => { view.xray = e.target.checked; };
+
+// ── ใช้ท่อนนี้เป็นทางเข้าด่าน ──
+const docGate = document.getElementById('docGate');
+docGate.innerHTML = '<option value="">— ท่อนปกติ (สุ่มในด่าน) —</option>' +
+  GATE_LIST.map((g) => `<option value="${g.id}">🚪 ${g.name}</option>`).join('');
+docGate.onchange = (e) => {
+  const id = e.target.value;
+  mutate((d) => {
+    if (!id) { delete d.gate; return; }
+    d.gate = id;
+    // ความยาวทางเข้าคำนวณจากเกม (gates.js) แก้เองไม่ได้ — ตัวอาคารกับจังหวะสลับฉากผูกกับความยาวนี้
+    d.width = GATES[id].layout.length;
+    if (!d.items.length) d.items = gateStarter(id);
+  });
+  warmGateArt(GATES[id] || GATE_LIST[0]);
+  view.cam = -100;
+  refreshMeta();
+};
 
 document.getElementById('runCheck').onclick = runCheck;
 
@@ -1760,7 +2590,23 @@ const modal = document.getElementById('codeModal');
 
 document.getElementById('showCode').onclick = () => {
   const out = toCode(doc());
+  const gd = doc().gate && GATES[doc().gate];
+  if (gd) {
+    // ท่อนทางเข้าไม่ได้ต่อท้าย PATTERNS — แทนที่ chunk ของทางเข้านั้นใน gates.js ตรง ๆ
+    const body = out.code.split('\n').slice(1).join('\n').replace(/^ {2}\(x\) =>/, '    chunk: (x) =>');
+    document.getElementById('codeOut').value =
+      `// ① src/gates.js → ใน GATES.${gd.id} แทนที่ทั้งก้อน chunk: (x) => { ... }, ด้วยก้อนนี้\n${body}\n\n` +
+      `// ไม่ต้องแก้ PATTERN_META หรือ pool — ทางเข้าด่านไม่ถูกสุ่มปนกับท่อนปกติ`;
+    document.getElementById('codeHint').textContent =
+      `ท่อนนี้ใช้เป็น “${gd.name}” — ตำแหน่ง x นับจากจุดเริ่มทางเข้า ความยาวคงที่ ${gd.layout.length}px`;
+    modal.classList.remove('hidden');
+    return;
+  }
   document.getElementById('codeOut').value =
+    (out.experimental
+      ? '// ⚠ ท่อนนี้มีพื้นเหยียบซึ่งเป็นของทดลอง — เกมจริงยังไม่รองรับ\n' +
+        '//   ถ้าวางลงไฟล์ตอนนี้ แมวจะวิ่งทะลุเนิน/พื้นลอย และหลุมใต้พื้นลอยจะกลายเป็นกับดัก\n\n'
+      : '') +
     `// ① ต่อท้าย PATTERNS ใน src/level.js\n${out.code}\n\n` +
     `// ② ต่อท้าย PATTERN_META ใน src/level.js (ต้องยาวเท่ากับ PATTERNS เสมอ)\n${out.meta}\n\n` +
     `// ③ เติมเลข ${out.idx} ลงใน pool ของฉากที่อยากให้ท่อนนี้โผล่ (src/stages.js)`;

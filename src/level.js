@@ -127,7 +127,15 @@ function makeKibble(items, style) {
  *   fish: [...fishRun(x, 8, 34), ...withShrimp(fishJump(j1, 11))]
  * (makeKibble แก้ของเดิมในที่ ส่วน makeShrimp คืนชุดใหม่ — ห่อให้ใช้เหมือนกันทั้งคู่)
  */
-const withShrimp = (items) => makeShrimp(items);
+const withShrimp = (items, style) => {
+  // 'all' = กุ้งทองทั้งแถว สำหรับช่วงโบนัส ไม่ตัดเม็ดข้าง ๆ ทิ้งเพราะทุกเม็ดเป็นกุ้งเหมือนกัน
+  // (คนวางต้องเว้นระยะเองอย่างน้อย SHRIMP.minGap ไม่งั้นตัวจะซ้อนกัน)
+  if (style === 'all') { for (const it of items) it.kind = 'shrimp'; return items; }
+  return makeShrimp(items);
+};
+
+/** ยกทั้งแถวขึ้นไปอยู่ชั้นอื่น — dy บวก = สูงขึ้น ใช้กับแถวพื้นที่อยากให้ลอยไปชั้นกระโดด */
+const lift = (items, dy) => { for (const it of items) it.y -= dy; return items; };
 const withKibble = (items, style) => { makeKibble(items, style); return items; };
 
 /** เม็ดอาหารระดับต่ำ ตรงกับกลางตัวตอนหมอบพอดี เก็บได้เฉพาะตอนลอดคาน */
@@ -238,12 +246,30 @@ const crateStack = (x, rows = 1) => ({
 // ทุกตัวในนี้ PATTERNS เรียกใช้อยู่แล้วทั้งหมด การปล่อยออกไปจึงไม่ได้
 // พาโค้ดเพิ่มเข้าก้อนเกม มีแค่อ็อบเจกต์หนึ่งตัวที่ชี้ไปหาของที่มีอยู่แล้ว
 // ─────────────────────────────────────────────────────────────
+/**
+ * ไอเท็มที่ "ท่อน" วางเองได้ — ทะเบียนเดียวที่ทั้งเกมและโต๊ะออกแบบด่านอ่าน
+ *
+ * ⚠ กติกาถาวร: เพิ่มไอเท็มชนิดใหม่ในเกมเมื่อไหร่ ต้องเติมที่นี่ด้วย
+ *   และเติม ITEM_DEFS ใน src/editor/main.js (ชื่อ ภาพ ผลในการจำลอง)
+ *   ไม่งั้นหน้าออกแบบด่านจะวางไอเท็มนั้นไม่ได้ และโค้ดที่ส่งออกจะไม่มีมัน
+ *
+ * list = ชื่อ array ใน Level ที่ของชิ้นนั้นไปอยู่ / make = รูปร่างตอนเกิด (ต้องตรงกับ spawnXxx เดิม)
+ */
+export const PICKUPS = {
+  nip:    { list: 'nips',    make: (x) => ({ x, y: SPEEDUP.y, r: SPEEDUP.r, got: false }) },
+  can:    { list: 'cans',    make: (x) => ({ x, y: BIGCAN.y, r: BIGCAN.r, got: false }) },
+  magnet: { list: 'magnets', make: (x) => ({ x, y: MAGNET.y, r: MAGNET.r, got: false }) },
+  shield: { list: 'shields', make: (x) => ({ x, y: SHIELD.y, r: SHIELD.r, got: false }) },
+  potion: { list: 'potions', make: (x) => ({ x, y: POTION.y, got: false }) },
+  letter: { list: 'letters', make: (x, idx) => ({ x, y: LETTER.y, r: LETTER.r, idx, got: false }) },
+};
+
 export const AUTHOR = {
   JUMP, JUMP_DBL, JUMP_SPAN, HALF, JUMP_PEAK, DBL_SPAN, DBL_PEAK, DOUBLE_AT,
   RUN_Y, RUN_REACH, GAP_W,
   fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
   arcMid, arcHigh, groundSpike, lowBar, crateStack, makeShrimp, makeKibble,
-  withShrimp, withKibble,
+  withShrimp, withKibble, lift,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -1045,7 +1071,8 @@ export class Level {
     // แต่เส้นทางเหมือนเดิมทุกรอบ ผู้เล่นจำได้และทำสถิติแข่งกับตัวเองได้
     const step = this.route[this.chunkIndex % this.route.length];
 
-    const c = PATTERNS[step.p](this.nextChunkX);
+    // step.fn = ท่อนที่มากับทางเข้าด่าน (gates.js) ไม่ได้อยู่ในคลัง PATTERNS ที่สุ่มได้
+    const c = step.fn ? step.fn(this.nextChunkX) : PATTERNS[step.p](this.nextChunkX);
     // แพตเทิร์นยาว ๆ ประกาศ width เองได้ ไม่งั้นเนื้อหาจะล้นไปทับท่อนถัดไป
     const w = c.width || chunkW;
 
@@ -1078,7 +1105,9 @@ export class Level {
     // แต่คนออกแบบท่อนเลือกเอง ใช้ตอนอยากได้จังหวะเฉพาะ เช่นผึ้งลอยรออยู่ตรงปลายโค้งพอดี
     // พิกัดเป็นพิกัดโลกเหมือนของอย่างอื่นในท่อน เพราะแพตเทิร์นรับ x ของท่อนไปแล้ว
     if (c.fallers) for (const f of c.fallers) this.addFaller(f.x, f.warn, true);
-    if (c.hazards) for (const h of c.hazards) this.addHazard(h.kind, h.x, true);
+    if (c.hazards) for (const h of c.hazards) this.addHazard(h.kind, h.x, true, h.phase);
+    // ไอเท็มที่ท่อนวางเอง — ต่างจาก step.magnet/letter ที่ให้ระบบหาที่โล่งให้
+    if (c.pickups) for (const p of c.pickups) this.addPickup(p.kind, p.x);
 
     if (step.magnet) this.spawnMagnet(this.nextChunkX, w);
     if (step.letter) this.spawnLetter(this.nextChunkX, w);
@@ -1153,6 +1182,23 @@ export class Level {
     });
   }
 
+  /**
+   * วางไอเท็มลงพิกัดที่ท่อนกำหนด (ดู PICKUPS)
+   * ตัวอักษรไม่ได้ระบุตัวในท่อน — ใช้ "ตัวถัดไปที่ผู้เล่นยังไม่ได้เก็บ" เสมอเหมือนที่ระบบวางเอง
+   * ไม่งั้นท่อนเดิมวนมาซ้ำจะได้ตัวอักษรตัวเดิมซ้ำจนเก็บครบคำไม่ได้
+   */
+  addPickup(kind, x) {
+    const def = PICKUPS[kind];
+    if (!def) return;
+    if (kind === 'letter') {
+      const idx = this.nextLetter();
+      if (idx === null) return;
+      this[def.list].push(def.make(x, idx));
+      return;
+    }
+    this[def.list].push(def.make(x));
+  }
+
   /** เดินของร่วงหนึ่งเฟรม — คืน true ถ้ามีชิ้นไหนเพิ่งกระแทกพื้น (ไว้ให้เกมสั่นจอ) */
   updateFallers(dt, camera = Infinity) {
     // กติกาเดียวกับอันตราย — ของร่วงลงใต้คานคือจุดที่หลบไม่ได้ (ดู underBar)
@@ -1210,12 +1256,14 @@ export class Level {
    * เพราะคนออกแบบวางของกินไว้เองแล้ว และสิ่งที่เห็นในเครื่องมือต้องเท่ากับสิ่งที่ได้ในเกม
    * (ดู guideHazard ซึ่งเก็บของกินในเขตอันตรายออกแล้วปูเส้นใหม่แทน)
    */
-  addHazard(kind, x, authored = false) {
+  addHazard(kind, x, authored = false, phase = undefined) {
     if (kind === 'bee') {
       const b = HAZARD.bee;
       this.hazards.push({
         kind, x, w: b.w, h: b.h,
-        t: Math.random() * Math.PI * 2,   // เฟสแกว่งไม่ตรงกันทุกตัว
+        // เฟสแกว่งไม่ตรงกันทุกตัว — ยกเว้นตัวที่ท่อนกำหนดเฟสมา
+        // คนออกแบบจูนจังหวะผึ้งกับจุดกดไว้แล้ว ถ้าสุ่มใหม่ในเกม ที่ทดสอบไว้ก็ไม่มีความหมาย
+        t: phase === undefined ? Math.random() * Math.PI * 2 : phase,
         y: b.midY,
         guided: authored,
       });

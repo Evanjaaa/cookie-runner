@@ -1205,98 +1205,188 @@
            การ์ดในล็อบบี้เล็กเกินกว่าจะเห็นชุดที่ใส่อยู่ หน้านี้คือที่เดียวที่ผู้เล่น
            เห็นผลรวมของทุกอย่างที่สะสมมา (สีขน ชุด สมบัติ) พร้อมกันในภาพเดียว -->
       <div class="panel hidden" id="profilePanel">
-        <div class="pop pf-pop">
-          <div class="pf-body">
-            <!-- ── การ์ดซ้าย: ตัวน้อง ──
-                 ป้ายสถานะมุมบนซ้าย ลูกโป่งความคิดมุมบนขวา (แตะเพื่อแก้สเตตัส)
-                 ชื่อสีขนกับชุดเป็นเม็ดเล็กมุมล่างขวา ตามแบบที่วางไว้ -->
-            <div class="pf-card pf-cat">
-              <span class="pf-online" id="pfOnline">
-                <i aria-hidden="true"></i><b id="pfOnlineText">ใช้งานอยู่</b>
-              </span>
+        <!-- ── หน้าโปรไฟล์ ──
+             ใช้หน้าเดียวกันทั้ง "โปรไฟล์ของเรา" และ "ส่องโปรไฟล์คนอื่น"
+             .other = ของคนอื่น (ซ่อนปุ่มแก้ไขทั้งหมด ปุ่มล่างเป็นเพิ่มเพื่อน)
+             .editing = กดแก้ไขแล้ว ดินสอสามจุดโผล่ขึ้นมา -->
+        <div class="pop pf-pop" id="pfPop">
+          <h2 class="pf-title">โปรไฟล์เหมียว</h2>
+          <button type="button" class="pf-close" id="pfBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
 
-              <!-- ลูกโป่งความคิดวาดด้วย CSS ล้วน: ก้อนเมฆหนึ่งก้อน + ฟองสองลูกใต้ก้อน -->
-              <button type="button" class="pf-bubble" id="pfEdit" aria-label="แก้ไขสเตตัส">
-                <!-- ก้อนเมฆวาดเป็น SVG ไม่ใช่กล่องมน ๆ — หยักของเมฆต้องเป็นวงจริง
-                     ถึงจะอ่านเป็น "ลูกโป่งความคิด" ไม่ใช่ป้ายข้อความธรรมดา
-                     ตัว path ยืดตามกล่องด้วย preserveAspectRatio="none" ข้อความจึงวางทับได้พอดี -->
-                <svg class="pf-bubble-cloud" viewBox="0 0 100 62" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M20 54c-9 0-16-6-16-14 0-6 4-11 10-13-1-8 6-15 15-15 4 0 8 1 11 4
-                           4-6 11-9 18-9 11 0 20 7 22 17 8 1 14 7 14 15 0 8-7 15-16 15z"
-                        fill="#FFFDF7"/>
-                </svg>
-                <span class="pf-bubble-text" id="pfStatusText"></span>
-                <i class="pf-bubble-dot big" aria-hidden="true"></i>
-                <i class="pf-bubble-dot small" aria-hidden="true"></i>
+          <!-- บนคอมเห็นครบทั้งสองแถวในจอเดียว
+               บนมือถือ (จอเตี้ย) แบ่งเป็นสองหน้า เลื่อนลงดูกรอบล่าง -->
+          <div class="pf-body" id="pfBody">
+            <section class="pf-page pf-top">
+              <!-- ── การ์ดซ้าย: ตัวน้อง ── -->
+              <div class="pf-card pf-cat">
+                <span class="pf-online" id="pfOnline">
+                  <i aria-hidden="true"></i><b id="pfOnlineText">ใช้งานอยู่</b>
+                </span>
+
+                <!-- ลูกโป่งความคิด — ตอนแก้ไขแตะได้ทั้งก้อน (หรือแตะดินสอ) -->
+                <button type="button" class="pf-bubble" id="pfEdit" aria-label="แก้ไขสเตตัส">
+                  <svg class="pf-bubble-cloud" viewBox="0 0 100 62" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M20 54c-9 0-16-6-16-14 0-6 4-11 10-13-1-8 6-15 15-15 4 0 8 1 11 4
+                             4-6 11-9 18-9 11 0 20 7 22 17 8 1 14 7 14 15 0 8-7 15-16 15z"
+                          fill="#FFFDF7"/>
+                  </svg>
+                  <span class="pf-bubble-text" id="pfStatusText"></span>
+                  <i class="pf-bubble-dot big" aria-hidden="true"></i>
+                  <i class="pf-bubble-dot small" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="pf-pen pf-pen-status" id="pfPenStatus" aria-label="แก้ไขสเตตัส">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+                </button>
+
+                <div class="pf-stage">
+                  <canvas id="pfShow" width="240" height="240"></canvas>
+                </div>
+
+                <span class="pf-chip" id="pfShowSub"></span>
+
+                <div class="pf-status-edit hidden" id="pfStatusEdit">
+                  <textarea id="pfStatusInput" rows="3" maxlength="100"
+                            placeholder="เขียนอะไรสักอย่างถึงน้อง"></textarea>
+                  <div class="pf-status-foot">
+                    <small class="pf-count" id="pfCount">0 / 100</small>
+                    <button type="button" class="btn ghost tiny" id="pfCancel">ยกเลิก</button>
+                    <button type="button" class="btn tiny" id="pfSave">บันทึก</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── การ์ดขวา: ชื่อ เลเวล คะแนนรวม ── -->
+              <div class="pf-card pf-panel-main pf-sheen">
+                <span class="pf-paws" aria-hidden="true">
+                  <i class="p1"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p2"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p3"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i>
+                </span>
+
+                <div class="pf-idrow">
+                  <div class="pf-idbar">
+                    <b class="pf-id-name" id="pfShowName">แมวนิรนาม</b>
+                    <b class="pf-id-lv" id="pfBigLv">Lv 1</b>
+                  </div>
+                  <button type="button" class="pf-pen" id="pfPenName" aria-label="แก้ไขชื่อ">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+                  </button>
+                </div>
+
+                <!-- ช่องแก้ชื่อ ซ้อนทับแถบชื่อเฉพาะตอนแก้ -->
+                <form class="pf-name-edit hidden" id="pfNameEdit">
+                  <input id="pfNameInput" type="text" maxlength="16" autocomplete="off" placeholder="ชื่อของเรา">
+                  <button type="button" class="btn ghost tiny" id="pfNameCancel">ยกเลิก</button>
+                  <button type="submit" class="btn tiny" id="pfNameSave">บันทึก</button>
+                </form>
+
+                <div class="pf-score-box">
+                  <span class="pf-score-label">คะแนนรวม <i aria-hidden="true">⭐</i></span>
+                  <b class="pf-score" id="pfScore">0</b>
+
+                  <div class="pf-stats">
+                    <div class="pf-stat">
+                      <span class="k">ลงสนาม <i aria-hidden="true">🐈‍⬛</i></span>
+                      <span class="vv"><b class="v" id="pfRuns">0</b><small id="pfRunsUnit" data-en="runs">ตา</small></span>
+                    </div>
+                    <div class="pf-stat">
+                      <span class="k">เวลาเล่นรวม <i aria-hidden="true">🕐</i></span>
+                      <span class="vv"><b class="v" id="pfTime">0</b><small id="pfTimeUnit">นาที</small></span>
+                    </div>
+                    <div class="pf-stat">
+                      <span class="k">ระยะทางรวม <i aria-hidden="true">🐾</i></span>
+                      <span class="vv"><b class="v" id="pfDist">0</b><small id="pfDistUnit">ม.</small></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- มือถือ: บอกว่ายังมีอีกหน้าข้างล่าง -->
+              <button type="button" class="pf-more" id="pfMore" aria-label="เลื่อนลงดูต่อ">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
               </button>
+            </section>
 
-              <div class="pf-stage">
-                <canvas id="pfShow" width="240" height="240"></canvas>
-              </div>
+            <section class="pf-page pf-bottom">
+              <div class="pf-card pf-lower pf-sheen">
+                <div class="pf-lower-box">
+                  <div class="pf-best">
+                    <span class="pf-score-label pf-best-label">
+                      สถิติสูงสุด <i aria-hidden="true">🏆</i>
+                      <span class="pf-best-where" id="pfBestWhere"></span>
+                      <button type="button" class="pf-pen" id="pfPenBest" aria-label="เลือกด่านที่จะโชว์">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+                      </button>
+                    </span>
+                    <b class="pf-score" id="pfBestScore">0</b>
 
-              <span class="pf-chip" id="pfShowSub"></span>
-
-              <!-- กล่องพิมพ์สเตตัส ซ้อนทับการ์ดเฉพาะตอนแก้ไข
-                   ไม่เปิดค้างไว้ เพราะการใช้งานส่วนใหญ่ของหน้านี้คือ "เปิดมาดูเฉย ๆ" -->
-              <div class="pf-status-edit hidden" id="pfStatusEdit">
-                <textarea id="pfStatusInput" rows="3" maxlength="100"
-                          placeholder="เขียนอะไรสักอย่างถึงน้อง"></textarea>
-                <div class="pf-status-foot">
-                  <small class="pf-count" id="pfCount">0 / 100</small>
-                  <button type="button" class="btn ghost tiny" id="pfCancel">ยกเลิก</button>
-                  <button type="button" class="btn tiny" id="pfSave">บันทึก</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── การ์ดขวา: ชื่อ เลเวล และตัวเลขสะสม ── -->
-            <div class="pf-card pf-panel-main">
-              <!-- รอยตีนสามรอยมุมขวาบน วาดเป็น SVG เพราะรูปทรงนี้ต้องชัดว่าเป็น "ตีนแมว"
-                   ไม่ใช่ก้อนกลม ๆ (เคยทำด้วยไล่สีในกล่องเดียว แล้วที่ขนาดจริงมันอ่านเป็นสี่เหลี่ยม) -->
-              <span class="pf-paws" aria-hidden="true">
-                <i class="p1"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p2"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p3"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i>
-              </span>
-
-              <!-- คลาสตั้งชื่อไม่ซ้ำกับการ์ดในล็อบบี้โดยตั้งใจ — ที่นั่นมี .pf-name / .pf-lv
-                   ที่วางตัวแบบ absolute อยู่แล้ว ใช้ชื่อเดียวกันแล้วสองป้ายจะซ้อนทับกันสนิท -->
-              <div class="pf-idbar">
-                <b class="pf-id-name" id="pfShowName">แมวนิรนาม</b>
-                <b class="pf-id-lv" id="pfBigLv">Lv 1</b>
-              </div>
-
-              <div class="pf-score-box" id="pfSide">
-                <span class="pf-score-label">คะแนนรวม <i aria-hidden="true">⭐</i></span>
-                <b class="pf-score" id="pfScore">0</b>
-
-                <div class="pf-stats">
-                  <div class="pf-stat">
-                    <span class="k">ลงสนาม <i aria-hidden="true">🐈</i></span>
-                    <b class="v" id="pfRuns">0</b><small id="pfRunsUnit" data-en="runs">ตา</small>
+                    <!-- เลือกด่านที่อยากอวดสถิติ -->
+                    <div class="pf-best-pick hidden" id="pfBestPick" role="listbox" aria-label="เลือกด่าน"></div>
                   </div>
-                  <div class="pf-stat">
-                    <span class="k">เวลาเล่นรวม <i aria-hidden="true">🕐</i></span>
-                    <b class="v" id="pfTime">0</b><small id="pfTimeUnit">นาที</small>
-                  </div>
-                  <div class="pf-stat">
-                    <span class="k">ระยะทางรวม <i aria-hidden="true">🐾</i></span>
-                    <b class="v" id="pfDist">0</b><small id="pfDistUnit">ม.</small>
+
+                  <div class="pf-stats pf-owned">
+                    <div class="pf-stat">
+                      <span class="k">แมวที่มี <i aria-hidden="true">🐱</i></span>
+                      <span class="vv"><b class="v" id="pfCats">0/0</b></span>
+                    </div>
+                    <div class="pf-stat">
+                      <span class="k">ชุดที่มี <i aria-hidden="true">👕</i></span>
+                      <span class="vv"><b class="v" id="pfOutfits">0/0</b></span>
+                    </div>
+                    <div class="pf-stat">
+                      <span class="k">สมบัติที่มี <i aria-hidden="true">🧰</i></span>
+                      <span class="vv"><b class="v" id="pfTreasures">0/0</b></span>
+                    </div>
                   </div>
                 </div>
 
-                <!-- ของสะสมที่เหลือ เม็ดเล็กเงียบ ๆ ใต้สามช่องหลัก
-                     ไม่ได้อยู่ในแบบที่วาดมา แต่ถ้าตัดทิ้งเลยข้อมูลพวกนี้จะไม่เหลือที่อยู่
-                     ในเกมอีกเลย จึงเก็บไว้แบบไม่แย่งสายตาตัวเลขใหญ่ -->
-                <div class="pf-mini" id="pfFacts"></div>
+                <div class="pf-foot">
+                  <span class="pf-paws pf-paws-foot" aria-hidden="true">
+                    <i class="p1"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p2"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p3"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i>
+                  </span>
+
+                  <!-- เครื่องมือเพื่อน (เฉพาะโปรไฟล์ของเรา): รหัสเพื่อน + ส่องโปรไฟล์คนอื่น -->
+                  <div class="pf-friend-tools" id="pfFriendTools">
+                    <!-- รหัสของเราเอง: ป้ายบอกรหัส + ปุ่มคัดลอกแยกชัด ๆ (เดิมต้องเดาว่าแตะป้ายแล้วคัดลอก) -->
+                    <div class="pf-code">
+                      <small>รหัสแมวน้อย</small><b id="pfCodeText">— — —</b>
+                      <button type="button" class="pf-copy" id="pfCode" aria-label="คัดลอกรหัสแมวน้อย">
+                        <svg class="ico-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg>
+                        <svg class="ico-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                      </button>
+                    </div>
+                    <button type="button" class="pf-find" id="pfFind">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+                      <span>ส่องโปรไฟล์</span>
+                    </button>
+                  </div>
+                  <span class="pf-msg" id="pfMsg" role="status"></span>
+
+                  <button type="button" class="pf-action" id="pfAction">
+                    <span id="pfActionText">แก้ไข</span>
+                    <svg class="ico-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+                    <svg class="ico-done" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                    <svg class="ico-add" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8" r="4"/><path d="M2.5 20.5c.8-3.8 3.6-6 7-6s6.2 2.2 7 6"/><path d="M19 8v6M16 11h6"/></svg>
+                  </button>
+                </div>
               </div>
-            </div>
+            </section>
           </div>
 
-          <button class="backbtn" id="pfBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+          <!-- ส่องโปรไฟล์ด้วยรหัสเพื่อน -->
+          <div class="pf-lookup hidden" id="pfLookup">
+            <form class="pf-lookup-card" id="pfLookupForm">
+              <h3>ส่องโปรไฟล์เพื่อน</h3>
+              <p>ใส่รหัสแมวน้อย 8 ตัวที่อยู่ในหน้าโปรไฟล์ของเพื่อน</p>
+              <input id="pfLookupInput" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters"
+                     maxlength="12" placeholder="เช่น AB3K9QZX" spellcheck="false">
+              <small class="pf-lookup-msg" id="pfLookupMsg" role="status"></small>
+              <div class="pf-lookup-row">
+                <button type="button" class="btn ghost tiny" id="pfLookupCancel">ยกเลิก</button>
+                <button type="submit" class="btn tiny" id="pfLookupGo">ดูโปรไฟล์</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 

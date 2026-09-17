@@ -4169,254 +4169,322 @@ canvas[hidden] { display: none; }
 
 /* ── หน้าโปรไฟล์ ───────────────────────────────────────────
  *
- * สองคอลัมน์: ซ้ายคือน้องยืนโชว์ตัว ขวาคือสเตตัสกับข้อมูลสะสม
- * ใช้โครงเดียวกับคลังน้อง (.stash-cols) เพราะสัดส่วนนั้นถูกจูนกับเวทีเตี้ย
- * บนมือถือมาแล้ว การคิดสัดส่วนใหม่เองมีแต่จะได้ของที่พังบนจอเดิมที่เคยแก้ไปแล้ว
+ * ตามแบบที่วาดมา: สองการ์ดแถวบน (ตัวน้อง | ชื่อ-คะแนนรวม) + การ์ดกว้างแถวล่าง (สถิติสูงสุด-ของสะสม)
+ * บนคอมเห็นครบในจอเดียว บนจอเตี้ย (มือถือแนวนอน) แบ่งเป็นสองหน้า เลื่อนลงดูแถวล่าง
+ *
+ * หน้าเดียวกันใช้ทั้งโปรไฟล์ของเรา และตอนส่องโปรไฟล์คนอื่น (.other)
  */
 .pf-pop {
-  width: 100%;
-  padding-left: clamp(12px, 2vw, 26px);
-  padding-right: clamp(12px, 2vw, 26px);
-}
-.pf-body {
-  display: flex;
-  align-items: stretch;
-  gap: clamp(8px, 1.6vw, 20px);
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  width: min(100%, 1000px);
+  height: calc(100% - var(--card-inset) * 2);
+  padding: clamp(34px, 7dvh, 64px) clamp(12px, 2.6vw, 34px) clamp(10px, 2.4dvh, 26px);
+  gap: 0;
+  /* ── ขนาดทุกอย่างคิดจาก "ความสูงของแถว" ไม่ใช่ความกว้างหน้าต่าง ──
+     เคยใช้ vw แล้วบนจอคอมที่เวทีเตี้ยกว่ากว้าง ตัวเลขคะแนนรวมใหญ่จนล้นกล่อง
+     หายไปทั้งตัว และตัวน้องล้นการ์ดเหลือแค่หัว
+     --u = 1% ของความสูงแถว (คอม: แถวละครึ่งการ์ด / มือถือ: หน้าละเกือบเต็มการ์ด)
+     แต่ไม่เกิน 0.26% ของความกว้าง เผื่อจอที่แคบกว่าปกติ ตัวหนังสือจะได้ไม่ล้นข้าง */
+  container-type: size;
 }
 
-/* ── การ์ดสองใบ ──
-   ซ้ายเป็นที่ของตัวน้อง ขวาเป็นที่ของตัวเลข แบ่งชัดเจนตามแบบที่วางไว้
-   ทั้งคู่ใช้ทรงเดียวกัน ต่างกันแค่สีพื้นกับขอบ */
+/* หัวข้อหน้า — วางกลางแถบบนระดับเดียวกับปุ่มปิด (แถบนั้นเว้นไว้ด้วย padding-top ของการ์ด)
+   ใช้ absolute เพื่อไม่ให้ไปแย่งความสูงของแถวการ์ดที่คำนวณขนาดตัวอักษรไว้แล้ว */
+.pf-pop > .pf-title {
+  position: absolute;
+  top: clamp(6px, 1.6dvh, 16px);
+  left: 50%;
+  z-index: 5;
+  height: clamp(28px, 5.6dvh, 46px);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: .35em;
+  transform: translateX(-50%);
+  max-width: calc(100% - clamp(90px, 16vw, 140px));
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(15px, 3.4dvh, 28px);
+  line-height: 1;
+  color: var(--cream);
+  text-shadow: 0 2px 0 rgba(20,8,32,.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* หัวข้อแผงทั่วไปมีขีดใต้สั้น ๆ (.panel h2) — หน้านี้แถบบนเตี้ย ขีดจะไปแตะขอบการ์ดแถวบนพอดี จึงปิดไว้ */
+.panel .pf-pop > .pf-title { background: none; padding-bottom: 0; }
+
+/* ปุ่มปิดวงกลมมุมขวาบนตามแบบ (หน้าอื่นใช้ลูกศรกลับมุมซ้าย — หน้านี้เป็นหน้าต่างลอย) */
+.pf-close {
+  position: absolute;
+  top: clamp(6px, 1.6dvh, 16px);
+  right: clamp(8px, 1.6vw, 18px);
+  z-index: 6;
+  width: clamp(28px, 5.6dvh, 46px);
+  height: clamp(28px, 5.6dvh, 46px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255,243,226,.55);
+  background: radial-gradient(circle at 35% 30%, #7A4A9E, #3A1D50);
+  box-shadow: 0 3px 10px rgba(12,4,24,.5), inset 0 1px 0 rgba(255,255,255,.2);
+  color: var(--cream);
+  cursor: pointer;
+}
+.pf-close svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.pf-close:active { transform: scale(.94); }
+
+.pf-body {
+  --row: 46cqh;
+  --u: min(calc(var(--row) / 100), .26cqw);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(8px, 1.8dvh, 18px);
+}
+.pf-page { min-height: 0; min-width: 0; position: relative; }
+.pf-top {
+  display: grid;
+  grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+  gap: clamp(8px, 1.6vw, 20px);
+}
+.pf-bottom { display: flex; }
+.pf-more { display: none; }
+
+/* ── การ์ด ── */
 .pf-card {
   position: relative;
-  border-radius: clamp(16px, 2.4vw, 26px);
+  border-radius: clamp(16px, 2.4vw, 28px);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
-/* การ์ดน้อง: ขอบครีมบาง ๆ ทำให้ตัวน้องเด่นออกจากพื้นม่วงของแผง */
-.pf-cat {
-  flex: 0 0 auto;
-  width: clamp(120px, 36%, 330px);
-  display: flex;
-  flex-direction: column;
-  border: 2px solid rgba(255,231,168,.85);
-  background: linear-gradient(165deg, #7A3FB5 0%, #5E2E92 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
-}
-/* การ์ดข้อมูล: สว่างกว่าอีกใบเพื่อให้กล่องตัวเลขสีเข้มข้างในลอยขึ้นมา
-   ชื่อคลาสต้องไม่ใช่ .pf-info — การ์ดบัญชีในล็อบบี้ใช้ชื่อนั้นไปแล้ว
-   ทับเมื่อไหร่ การ์ดมุมซ้ายบนจะได้พื้นม่วงกับขอบของหน้านี้ไปด้วยทันที */
-.pf-panel-main {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(5px, 1dvh, 10px);
-  padding: clamp(7px, 1.4dvh, 14px) clamp(8px, 1.4vw, 16px);
-  border: 1px solid rgba(255,243,226,.2);
-  background: linear-gradient(160deg, #A96FDC 0%, #8A4FC6 52%, #7A41B8 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+/* แสงเฉียงพาดการ์ดสีอ่อน ตามแบบ */
+.pf-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 52%, rgba(255,255,255,.12) 52%, rgba(255,255,255,.12) 74%, transparent 74%);
 }
 
-/* ── ป้ายสถานะออนไลน์ มุมบนซ้ายของการ์ดน้อง ── */
+/* การ์ดน้อง: ขอบไล่สีครีม→ชมพู */
+.pf-cat {
+  display: flex;
+  flex-direction: column;
+  border: clamp(2px, .35vw, 4px) solid transparent;
+  background:
+    linear-gradient(165deg, #8E52C9 0%, #7440AF 100%) padding-box,
+    linear-gradient(135deg, #FFE9A8 0%, #FFB9DD 60%, #FF9FD6 100%) border-box;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 18px rgba(12,4,24,.35);
+}
+
+.pf-panel-main {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.2dvh, 12px);
+  padding: clamp(8px, 1.6dvh, 16px) clamp(10px, 1.6vw, 20px);
+  background: linear-gradient(160deg, #B774DE 0%, #A263D6 55%, #9656CD 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 6px 18px rgba(12,4,24,.35);
+}
+
+/* ── ป้ายสถานะออนไลน์ ── */
 .pf-online {
   position: absolute;
-  top: clamp(5px, 1dvh, 11px);
-  left: clamp(6px, 1vw, 12px);
+  top: clamp(6px, 1.4dvh, 14px);
+  left: clamp(7px, 1.2vw, 14px);
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: clamp(3px, .6vw, 6px);
-  font-size: clamp(8px, 1.15vw, 12px);
+  gap: clamp(4px, .6vw, 7px);
+  max-width: 55%;
+  font-size: calc(var(--u) * 5.2);
   color: var(--cream);
-  line-height: 1;
+  line-height: 1.2;
 }
 .pf-online i {
-  width: clamp(7px, 1.1vw, 12px);
-  height: clamp(7px, 1.1vw, 12px);
+  flex: 0 0 auto;
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 6);
   border-radius: 50%;
   background: #4CD964;
   box-shadow: 0 0 8px rgba(76,217,100,.8);
 }
 .pf-online b { font-weight: 400; }
-/* ออฟไลน์/เล่นในเครื่อง = จุดเทา ไม่ใช่เขียว — สีคือตัวบอกสถานะ ไม่ใช่ตัวหนังสืออย่างเดียว */
 .pf-online.off i { background: #9C86B8; box-shadow: none; }
 .pf-online.local i { background: #FFC93C; box-shadow: 0 0 8px rgba(255,201,60,.6); }
 
-/* ── ลูกโป่งความคิด มุมบนขวา ──
-   ตัวก้อนเมฆทำจากกล่องมนก้อนเดียว + เงาอีกสามวงเป็นหยักด้านบน
-   แตะได้ทั้งก้อน = ทางเดียวที่จะแก้สเตตัส (ปุ่ม "แก้ไข" ถูกถอดออกตามแบบ) */
+/* ── ลูกโป่งความคิด ── */
 .pf-bubble {
   position: absolute;
-  top: clamp(4px, .8dvh, 10px);
-  right: clamp(5px, 1vw, 12px);
+  top: clamp(8px, 2dvh, 20px);
+  right: clamp(6px, 1.2vw, 14px);
   z-index: 2;
-  width: clamp(74px, 46%, 190px);
+  width: 42%;
+  min-height: calc(var(--u) * 26);
+  display: grid;
+  place-items: center;
   padding: 0;
   border: none;
   background: none;
-  cursor: pointer;
-}
-.pf-bubble {
-  display: grid;
-  place-items: center;
-  min-height: clamp(34px, 7dvh, 70px);
   filter: drop-shadow(0 3px 8px rgba(20,8,32,.4));
+  cursor: default;
 }
-/* ก้อนเมฆกินเต็มปุ่ม ส่วนข้อความวางทับอยู่ในช่องเดียวกันของกริด */
-.pf-bubble-cloud {
-  grid-area: 1 / 1;
-  width: 100%;
-  height: 100%;
-}
+.pf-pop.editing .pf-bubble { cursor: pointer; }
+.pf-bubble-cloud { grid-area: 1 / 1; width: 100%; height: 100%; }
 .pf-bubble-text {
   grid-area: 1 / 1;
   z-index: 1;
   padding: 0 14%;
   margin-top: 6%;
   font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
-  font-size: clamp(8px, 1.15vw, 12px);
+  font-size: calc(var(--u) * 4.8);
   line-height: 1.35;
   color: #3A1D50;
   text-align: center;
-  /* สเตตัสยาวเกินลูกโป่งให้ตัดท้าย ไม่ใช่ดันลูกโป่งจนบังตัวน้อง */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
 }
-.pf-bubble-text.empty { color: #8C79A6; }
-/* ฟองสองลูกใต้ก้อนเมฆ ชี้ลงหาตัวน้อง */
-.pf-bubble-dot {
-  position: absolute;
-  border-radius: 50%;
-  background: #FFFDF7;
-  box-shadow: 0 2px 6px rgba(20,8,32,.3);
+.pf-bubble-text.empty { color: #8C79A6; letter-spacing: .12em; }
+/* ก้อนเมฆเป็นทรงโค้ง พื้นที่พิมพ์จริงแคบกว่ากล่อง — จอเตี้ยให้ลูกโป่งกว้างขึ้น ข้อความจะได้ไม่ล้นขอบเมฆ */
+@media (max-height: 520px) {
+  .pf-bubble { width: 50%; min-height: calc(var(--u) * 30); }
+  .pf-bubble-text { padding: 0 12%; -webkit-line-clamp: 2; }
 }
-.pf-bubble-dot.big {
-  width: clamp(7px, 1.1vw, 12px);
-  height: clamp(7px, 1.1vw, 12px);
-  left: 14%;
-  bottom: clamp(-11px, -1.6dvh, -6px);
-}
-.pf-bubble-dot.small {
-  width: clamp(4px, .7vw, 8px);
-  height: clamp(4px, .7vw, 8px);
-  left: 6%;
-  bottom: clamp(-19px, -2.9dvh, -12px);
-}
-.pf-bubble:active { transform: translateY(1px); }
+.pf-bubble-dot { position: absolute; border-radius: 50%; background: #FFFDF7; box-shadow: 0 2px 6px rgba(20,8,32,.3); }
+.pf-bubble-dot.big { width: clamp(7px, 1.1vw, 13px); height: clamp(7px, 1.1vw, 13px); left: 14%; bottom: clamp(-11px, -1.6dvh, -6px); }
+.pf-bubble-dot.small { width: clamp(4px, .7vw, 8px); height: clamp(4px, .7vw, 8px); left: 6%; bottom: clamp(-19px, -2.9dvh, -12px); }
 
-/* ── เวทีของน้อง ──
-   แสงเรืองใต้เท้าดันตัวน้องออกจากพื้นการ์ดที่สีใกล้กัน */
+/* ── เวทีของน้อง ── */
 .pf-stage {
   position: relative;
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(58% 34% at 50% 80%, rgba(255,214,150,.22), transparent 72%);
+  background: radial-gradient(58% 34% at 45% 82%, rgba(255,214,150,.22), transparent 72%);
 }
-/* ── ทำไมใช้ object-fit แทนการล็อกอัตราส่วนของตัวผ้าใบ ──
-   กล่องนี้สูงกว่ากว้าง การสั่ง aspect-ratio คู่กับ max-width จะขัดกันเอง
-   เบราว์เซอร์ยอมตามความสูงแล้วปล่อยความกว้างโดนบีบ ได้น้องผอมสูงกว่าของจริง */
+/* ── ผ้าใบวางแบบ absolute ──
+   ถ้าปล่อยเป็นลูกปกติ ขนาดจริงของผ้าใบ (240px) จะดันความสูงของเวทีเกินการ์ด
+   บนจอคอมที่แถวเตี้ย น้องจึงล้นจนเหลือแค่หัว — ยึดกล่องไว้แล้ว object-fit ย่อให้พอดีเสมอ */
 .pf-stage canvas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--u) * 10);
+  bottom: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - var(--u) * 10);
   object-fit: contain;
 }
 
-/* ── เม็ดชื่อสีขน · ชุด มุมล่างขวา ── */
 .pf-chip {
   position: absolute;
-  right: clamp(5px, 1vw, 12px);
-  bottom: clamp(5px, 1dvh, 12px);
+  right: clamp(6px, 1.2vw, 14px);
+  bottom: clamp(6px, 1.4dvh, 14px);
   z-index: 2;
-  max-width: calc(100% - clamp(10px, 2vw, 24px));
-  padding: clamp(2px, .5dvh, 5px) clamp(7px, 1.2vw, 14px);
+  max-width: calc(100% - clamp(12px, 2.4vw, 28px));
+  padding: clamp(2px, .6dvh, 6px) clamp(8px, 1.3vw, 16px);
   border-radius: 999px;
-  border: 1px solid rgba(255,243,226,.34);
-  background: rgba(214,150,235,.42);
-  font-size: clamp(8px, 1.1vw, 11.5px);
-  color: var(--cream);
+  background: #EBC6F7;
+  color: #3A1D50;
+  font-size: calc(var(--u) * 4.6);
   line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ── กล่องพิมพ์สเตตัส ซ้อนทับการ์ดน้องเฉพาะตอนแก้ไข ── */
+/* ── กล่องพิมพ์สเตตัส ── */
 .pf-status-edit {
   position: absolute;
   inset: auto clamp(6px, 1vw, 12px) clamp(6px, 1dvh, 12px);
-  z-index: 3;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: clamp(6px, 1dvh, 10px);
   border-radius: 14px;
   border: 1px solid rgba(255,243,226,.3);
-  background: rgba(27,15,43,.94);
+  background: rgba(27,15,43,.95);
   box-shadow: 0 10px 26px rgba(12,4,24,.6);
 }
-.pf-status-edit.hidden { display: none; }
-.pf-status-edit textarea {
+.pf-status-edit.hidden, .pf-name-edit.hidden, .pf-best-pick.hidden, .pf-lookup.hidden { display: none; }
+.pf-status-edit textarea, .pf-name-edit input, .pf-lookup input {
   width: 100%;
-  resize: none;
   padding: clamp(5px, 1dvh, 9px) 9px;
   border-radius: 10px;
   border: 1px solid rgba(255,243,226,.24);
   background: rgba(12,4,24,.6);
   color: var(--cream);
   font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
-  font-size: clamp(10px, 1.3vw, 13px);
+  font-size: clamp(11px, 1.3vw, 14px);
   line-height: 1.5;
 }
-.pf-status-edit textarea:focus-visible {
+.pf-status-edit textarea { resize: none; }
+.pf-status-edit textarea:focus-visible, .pf-name-edit input:focus-visible, .pf-lookup input:focus-visible {
   outline: 2px solid var(--mint-lite);
   outline-offset: 1px;
 }
-.pf-status-foot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.pf-status-foot .btn { margin-top: 0; flex: 0 0 auto; }
+.pf-status-foot { display: flex; align-items: center; gap: 6px; }
+.pf-status-foot .btn, .pf-name-edit .btn, .pf-lookup-row .btn { margin-top: 0; flex: 0 0 auto; }
 .pf-count { flex: 1 1 auto; font-size: clamp(8.5px, 1.1vw, 11px); color: #9C81B8; }
 .pf-count.full { color: #FF8FB0; }
 
-/* ── แถบชื่อกับเลเวล ──
-   สองเม็ดนั่งอยู่บนแถบเข้มก้อนเดียว ตามแบบ — ชื่อกับเลเวลเป็นของคู่กัน
-   ไม่ใช่ป้ายสองอันที่บังเอิญอยู่ใกล้กัน */
+/* ── ดินสอแก้ไข — โผล่เฉพาะโหมดแก้ไขของโปรไฟล์ตัวเอง ── */
+.pf-pen {
+  display: none;
+  place-items: center;
+  flex: 0 0 auto;
+  width: max(24px, calc(var(--u) * 13));
+  height: max(24px, calc(var(--u) * 13));
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #3A1D50;
+  background: #FFE7F7;
+  color: #2A1238;
+  box-shadow: 0 3px 8px rgba(12,4,24,.35);
+  cursor: pointer;
+}
+.pf-pen svg { width: 58%; height: 58%; fill: currentColor; stroke: #FFE7F7; stroke-width: 1.4; stroke-linejoin: round; }
+.pf-pop.editing:not(.other) .pf-pen { display: grid; animation: pfPenIn .28s cubic-bezier(.3,1.6,.5,1) both; }
+.pf-pen:active { transform: scale(.92); }
+@keyframes pfPenIn { from { transform: scale(0); } to { transform: scale(1); } }
+.pf-pen-status {
+  position: absolute;
+  z-index: 3;
+  top: clamp(4px, 1dvh, 10px);
+  right: clamp(4px, .8vw, 10px);
+}
+
+/* ── ชื่อ + เลเวล ── */
+.pf-idrow { position: relative; z-index: 2; display: flex; align-items: center; gap: clamp(5px, .8vw, 10px); min-width: 0; padding-right: clamp(40px, 8vw, 90px); }
 .pf-idbar {
-  position: relative;
-  z-index: 2;
-  align-self: flex-start;
-  max-width: 100%;
   display: flex;
   align-items: center;
   gap: clamp(3px, .6vw, 7px);
+  min-width: 0;
   padding: clamp(2px, .4dvh, 4px);
   border-radius: 999px;
-  background: rgba(27,15,43,.72);
-  border: 1px solid rgba(255,243,226,.18);
-  min-width: 0;
+  background: rgba(58,29,80,.8);
 }
 .pf-id-name {
-  padding: clamp(2px, .5dvh, 6px) clamp(8px, 1.5vw, 18px);
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 7);
   border-radius: 999px;
-  border: 1.5px solid rgba(255,163,214,.8);
-  background: linear-gradient(180deg, #FFF6EC, #FFD9F0);
-  color: #3A1D50;
+  border: clamp(2px, .3vw, 3px) solid transparent;
+  background:
+    linear-gradient(180deg, #F5D2FF, #E6B3F7) padding-box,
+    linear-gradient(90deg, #FF8FC8, #FFD97A) border-box;
+  color: #2A1238;
   font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: clamp(11px, 1.9vw, 22px);
-  line-height: 1.25;
+  font-weight: 500;
+  font-size: calc(var(--u) * 10);
+  line-height: 1.2;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4424,171 +4492,371 @@ canvas[hidden] { display: none; }
 }
 .pf-id-lv {
   flex: 0 0 auto;
-  padding: clamp(2px, .5dvh, 6px) clamp(6px, 1.1vw, 14px);
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 5);
   border-radius: 999px;
-  background: linear-gradient(180deg, #FFD97A, #E9A62A);
-  color: #4A2A00;
+  background: linear-gradient(180deg, #F8C77A, #E0A04A);
+  color: #6A3A12;
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(9.5px, 1.5vw, 18px);
-  line-height: 1.25;
+  font-size: calc(var(--u) * 7.6);
+  line-height: 1.2;
   white-space: nowrap;
 }
 
-/* ── รอยตีนแมวมุมขวาบน ──
-   อุ้งเท้าหนึ่งก้อน + นิ้วสามนิ้วทำจากเงาสามวง (ท่าเดียวกับปุ่มเช็คอิน) */
+.pf-name-edit {
+  position: absolute;
+  z-index: 4;
+  top: clamp(6px, 1.4dvh, 14px);
+  left: clamp(8px, 1.4vw, 16px);
+  right: clamp(8px, 1.4vw, 16px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(27,15,43,.95);
+  box-shadow: 0 10px 26px rgba(12,4,24,.6);
+}
+.pf-name-edit input { flex: 1 1 auto; min-width: 0; }
+
+/* ── รอยตีน ── */
 .pf-paws {
   position: absolute;
-  top: clamp(6px, 1.2dvh, 14px);
-  right: clamp(8px, 1.4vw, 18px);
-  width: clamp(34px, 7vw, 76px);
-  height: clamp(26px, 5vw, 56px);
+  top: clamp(6px, 1.4dvh, 16px);
+  right: clamp(10px, 1.8vw, 22px);
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 23);
   pointer-events: none;
 }
-/* ── รอยตีนสามรอย ──
-   รูปทรงอยู่ใน SVG (ดู index.html) ที่นี่คุมแค่ขนาด ตำแหน่ง และสี
-   เคยวาดด้วยไล่สีสี่วงในกล่องเดียว แต่ที่ขนาดจริง 17-25px มันอ่านเป็นสี่เหลี่ยม
-   ส่วน box-shadow ที่เคยใช้ทำนิ้วนั้นรับระยะเป็น % ไม่ได้ ทั้งบรรทัดเลยถูกทิ้งเงียบ ๆ */
 .pf-paws i { position: absolute; display: block; }
 .pf-paws svg { width: 100%; height: 100%; fill: currentColor; }
-.pf-paws .p1 {
-  right: 0;
-  bottom: 0;
-  width: clamp(18px, 3.6vw, 38px);
-  height: clamp(16px, 3.2vw, 34px);
-  color: rgba(255,160,200,.92);
-  transform: rotate(8deg);
-}
-.pf-paws .p2 {
-  right: clamp(16px, 3.2vw, 34px);
-  bottom: clamp(3px, .6vw, 7px);
-  width: clamp(13px, 2.6vw, 27px);
-  height: clamp(12px, 2.3vw, 24px);
-  color: rgba(30,12,44,.82);
-  transform: rotate(-10deg);
-}
-.pf-paws .p3 {
-  right: clamp(7px, 1.4vw, 15px);
-  top: 0;
-  width: clamp(9px, 1.8vw, 19px);
-  height: clamp(8px, 1.6vw, 17px);
-  color: rgba(255,255,255,.8);
-  transform: rotate(14deg);
-}
+.pf-paws .p1 { right: 0; bottom: 0; width: 52%; height: 60%; color: #FF8FB8; transform: rotate(8deg); }
+.pf-paws .p2 { left: 0; bottom: 4%; width: 36%; height: 44%; color: #2A1238; transform: rotate(-10deg); }
+.pf-paws .p3 { left: 38%; top: 0; width: 24%; height: 28%; color: #FFFFFF; transform: rotate(14deg); }
 
-/* ── กล่องตัวเลขสีเข้ม ── */
+/* ── กล่องเข้มข้างใน ── */
+.pf-score-box, .pf-lower-box {
+  position: relative;
+  /* 2 = อยู่เหนือแถวปุ่มล่าง (.pf-foot) — รายการเลือกด่านที่กางออกจากกล่องนี้จะได้ไม่โดนแถวปุ่มทับ */
+  z-index: 2;
+  min-height: 0;
+  border-radius: clamp(14px, 2vw, 26px);
+  background: rgba(74,40,108,.62);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
 .pf-score-box {
   flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: clamp(7px, 1.4dvh, 16px) clamp(9px, 1.6vw, 20px);
-  border-radius: clamp(12px, 1.8vw, 22px);
-  background: rgba(58,29,80,.5);
-  border: 1px solid rgba(255,243,226,.14);
+  padding: clamp(8px, 1.8dvh, 20px) clamp(10px, 1.8vw, 22px);
   text-align: left;
-  overflow-y: auto;
-  scrollbar-width: none;
 }
-.pf-score-box::-webkit-scrollbar { display: none; }
 .pf-score-label {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: clamp(4px, .6vw, 8px);
+  min-width: 0;
   font-family: "Mitr", sans-serif;
   font-weight: 500;
-  font-size: clamp(10px, 1.5vw, 17px);
+  font-size: calc(var(--u) * 7);
   color: var(--cream);
   line-height: 1.3;
 }
 .pf-score {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(20px, 4.4vw, 52px);
+  font-size: calc(var(--u) * 14.5);
   color: #FFF8EC;
   line-height: 1.15;
-  letter-spacing: .01em;
+  letter-spacing: .02em;
   text-shadow: 0 2px 0 rgba(20,8,32,.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* สามช่องเรียงกัน — ชื่อเล็กอยู่บน ตัวเลขใหญ่อยู่ล่าง ตามแบบ */
 .pf-stats {
   margin-top: auto;
-  padding-top: clamp(5px, 1.2dvh, 14px);
+  padding-top: clamp(4px, 1dvh, 12px);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(4px, 1vw, 14px);
 }
-.pf-stat { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 5px; }
+.pf-stat { min-width: 0; display: flex; flex-direction: column; }
 .pf-stat .k {
-  flex: 1 0 100%;
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: clamp(8px, 1.1vw, 12.5px);
-  color: #E6D6F5;
+  font-size: calc(var(--u) * 5.2);
+  color: #EBDDF7;
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.pf-stat .vv { display: flex; align-items: baseline; gap: clamp(3px, .6vw, 8px); min-width: 0; }
 .pf-stat .v {
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(14px, 2.6vw, 32px);
+  font-size: calc(var(--u) * 11.5);
   color: #FFF8EC;
   line-height: 1.2;
+  white-space: nowrap;
 }
-.pf-stat small { font-size: clamp(8px, 1.1vw, 13px); color: #E6D6F5; }
+.pf-stat small { font-size: calc(var(--u) * 6); color: #EBDDF7; white-space: nowrap; }
 
-/* ── ของสะสมที่เหลือ เม็ดเล็กเงียบ ๆ ──
-   ไม่ได้อยู่ในแบบที่วาดมา แต่ถ้าตัดทิ้งข้อมูลพวกนี้จะไม่เหลือที่อยู่ในเกมเลย
-   จึงทำให้เบาที่สุดเท่าที่ยังอ่านออก ไม่ให้แย่งสายตาตัวเลขใหญ่ */
-.pf-mini {
-  margin-top: clamp(5px, 1.1dvh, 12px);
+/* ── การ์ดล่าง ── */
+.pf-lower {
+  flex: 1 1 auto;
   display: flex;
-  flex-wrap: wrap;
-  gap: clamp(3px, .6vw, 7px);
+  flex-direction: column;
+  gap: clamp(4px, 1dvh, 10px);
+  padding: clamp(8px, 1.8dvh, 18px) clamp(10px, 1.8vw, 20px) clamp(6px, 1.2dvh, 12px);
+  background: linear-gradient(160deg, #B774DE 0%, #A263D6 55%, #9656CD 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 6px 18px rgba(12,4,24,.35);
 }
-.pf-fact {
+.pf-lower-box {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+  align-items: stretch;
+  gap: clamp(6px, 1.4vw, 18px);
+  padding: clamp(8px, 1.8dvh, 20px) clamp(12px, 2.2vw, 28px);
+}
+.pf-best { position: relative; display: flex; flex-direction: column; min-width: 0; text-align: left; }
+.pf-best-label { flex-wrap: nowrap; }
+.pf-best-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-best-where:not(:empty)::before { content: "-"; margin: 0 clamp(4px, .8vw, 12px); }
+.pf-owned { margin-top: 0; align-self: end; padding-top: 0; }
+.pf-owned .pf-stat { align-items: center; }
+.pf-score.none { font-size: calc(var(--u) * 11); color: #EBDDF7; }
+.pf-owned .v { font-size: calc(var(--u) * 14); letter-spacing: .03em; }
+
+/* รายการเลือกด่านที่จะอวดสถิติ */
+.pf-best-pick {
+  position: absolute;
+  z-index: 5;
+  /* กางลงจากใต้ป้ายสถิติ สูงไม่เกินที่เหลือในการ์ด (การ์ดตัดขอบ overflow ไว้) เกินกว่านั้นเลื่อนดูในรายการ */
+  top: calc(var(--u) * 12);
+  left: 0;
+  width: min(100%, 300px);
+  max-height: calc(var(--row) - var(--u) * 26);
+  overflow-y: auto;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
   gap: 4px;
-  padding: clamp(2px, .4dvh, 4px) clamp(5px, .9vw, 10px);
-  border-radius: 999px;
-  border: 1px solid rgba(255,243,226,.14);
-  background: rgba(255,243,226,.07);
-  min-width: 0;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(27,15,43,.97);
+  box-shadow: 0 10px 26px rgba(12,4,24,.6);
 }
-.pf-fact .ico { font-size: clamp(8px, 1.1vw, 12px); line-height: 1; }
-/* ชื่อช่องกับตัวเลขอยู่ในกล่องเดียวกัน ถ้าไม่เว้นช่องไฟจะอ่านติดกันเป็นคำเดียว */
-.pf-fact .txt { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
-.pf-fact .k {
-  font-size: clamp(7.5px, 1vw, 11px);
-  color: #C9AEE8;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-.pf-fact .v {
-  font-family: "Mitr", sans-serif;
-  font-size: clamp(8px, 1.1vw, 12px);
+.pf-best-pick button {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255,243,226,.06);
   color: var(--cream);
-  line-height: 1.4;
+  font-size: clamp(10px, 1.2vw, 13px);
+  text-align: left;
+  cursor: pointer;
+}
+.pf-best-pick button b { font-family: "Mitr", sans-serif; font-weight: 500; }
+.pf-best-pick button.on { border-color: var(--mint-lite); background: rgba(127,227,218,.14); }
+
+.pf-foot {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1vw, 12px);
+  min-height: calc(var(--u) * 20);
+}
+.pf-paws-foot {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 auto;
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 19);
+}
+.pf-paws-foot .p1 { right: 0; bottom: 0; width: 50%; height: 60%; color: #FF8FB8; }
+.pf-paws-foot .p2 { left: 0; bottom: 6%; width: 44%; height: 54%; color: #1A0A24; }
+.pf-paws-foot .p3 { left: 22%; top: 0; width: 26%; height: 30%; color: #FFFFFF; }
+
+.pf-friend-tools { display: flex; align-items: center; gap: clamp(5px, .8vw, 10px); min-width: 0; }
+.pf-code, .pf-find {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: clamp(3px, .7dvh, 6px) clamp(8px, 1.2vw, 14px);
+  border-radius: 999px;
+  border: 1px solid rgba(58,29,80,.35);
+  background: rgba(58,29,80,.28);
+  color: var(--cream);
+  font-size: calc(var(--u) * 4.6);
+  line-height: 1.3;
+  cursor: pointer;
   white-space: nowrap;
 }
-/* ชื่อช่องของเม็ดเล็กซ่อนบนจอแคบ เหลือแต่ไอคอนกับตัวเลข — อ่านออกอยู่
-   และได้ที่คืนมาให้ตัวเลขใหญ่ซึ่งเป็นพระเอกของหน้านี้ */
-@media (max-width: 760px) {
-  .pf-fact .k { display: none; }
+.pf-code { cursor: default; padding-right: calc(var(--u) * 1.4); }
+.pf-code small { color: #F2E2FA; font-size: inherit; }
+/* ปุ่มคัดลอกกลมเล็กท้ายป้าย — กดแล้วเปลี่ยนเป็นเครื่องหมายถูกชั่วครู่ */
+.pf-copy {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: max(22px, calc(var(--u) * 9));
+  height: max(22px, calc(var(--u) * 9));
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: #F2D5FF;
+  color: #2A1238;
+  cursor: pointer;
+}
+.pf-copy svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pf-copy .ico-ok { display: none; stroke-width: 3; }
+.pf-copy.done { background: #7FE3DA; }
+.pf-copy.done .ico-copy { display: none; }
+.pf-copy.done .ico-ok { display: block; }
+.pf-copy:active { transform: scale(.9); }
+.pf-code b { font-family: "Mitr", monospace; font-weight: 600; letter-spacing: .12em; font-size: calc(var(--u) * 5.4); }
+.pf-find svg { width: clamp(11px, 1.4vw, 16px); height: clamp(11px, 1.4vw, 16px); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.pf-find:active { transform: translateY(1px); }
+.pf-pop.other .pf-friend-tools { display: none; }
+
+/* ข้อความตอบกลับ (คัดลอกแล้ว / เพิ่มเพื่อนแล้ว) ลอยเป็นป้ายเหนือแถวปุ่ม
+   เคยวางแทรกในแถวเดียวกัน แล้วบนมือถือข้อความทับปุ่มส่องโปรไฟล์ */
+.pf-msg {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--u) * 1.5);
+  z-index: 4;
+  max-width: 100%;
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 4);
+  border-radius: 999px;
+  background: rgba(27,15,43,.9);
+  font-size: calc(var(--u) * 4.6);
+  color: #FFF3C8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pf-msg:empty { display: none; }
+.pf-msg.bad { color: #FFD1DE; }
+
+/* ปุ่มล่างขวา: แก้ไข / เสร็จแล้ว / เพิ่มเพื่อน */
+.pf-action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.2vw, 16px);
+  padding: calc(var(--u) * 3) calc(var(--u) * 10);
+  border-radius: 999px;
+  border: clamp(2px, .3vw, 3px) solid #6A3F8C;
+  background: linear-gradient(180deg, #F2D5FF, #E1B6F5);
+  color: #2A1238;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: calc(var(--u) * 8);
+  line-height: 1.3;
+  box-shadow: 0 3px 0 rgba(58,29,80,.45), 0 6px 14px rgba(12,4,24,.3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pf-action svg { width: calc(var(--u) * 11); height: calc(var(--u) * 11); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pf-action .ico-edit { fill: currentColor; stroke: #F2D5FF; stroke-width: 1.2; }
+.pf-action .ico-done, .pf-action .ico-add { display: none; }
+.pf-pop.editing .pf-action .ico-edit { display: none; }
+.pf-pop.editing .pf-action .ico-done { display: block; stroke-width: 3; }
+.pf-pop.other .pf-action .ico-edit, .pf-pop.other .pf-action .ico-done { display: none; }
+.pf-pop.other .pf-action .ico-add { display: block; }
+.pf-action:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(58,29,80,.45); }
+.pf-action:disabled { opacity: .75; cursor: default; transform: none; }
+
+/* ── ส่องโปรไฟล์ด้วยรหัสเพื่อน ── */
+.pf-lookup {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(12,4,24,.55);
+}
+.pf-lookup-card {
+  width: min(100%, 360px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(12px, 2.6dvh, 22px) clamp(14px, 2vw, 22px);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #6A3496, #3A1D50);
+  border: 1px solid rgba(255,243,226,.25);
+  box-shadow: 0 18px 40px rgba(0,0,0,.55);
+  text-align: left;
+}
+.pf-lookup-card h3 { margin: 0; font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(14px, 2vw, 19px); color: var(--cream); }
+.pf-lookup-card p { margin: 0; max-width: none; font-size: clamp(10px, 1.3vw, 13px); line-height: 1.5; }
+.pf-lookup input { font-family: "Mitr", monospace; letter-spacing: .18em; text-transform: uppercase; font-size: clamp(14px, 2vw, 18px); text-align: center; }
+.pf-lookup-msg { min-height: 1.4em; font-size: clamp(9.5px, 1.2vw, 12px); color: #FFD1DE; }
+.pf-lookup-row { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── จอเตี้ย (มือถือแนวนอน): แบ่งเป็นสองหน้า เลื่อนลงดูแถวล่าง ── */
+@media (max-height: 520px) {
+  .pf-pop { padding-top: clamp(30px, 9dvh, 44px); }
+  .pf-body {
+    /* หนึ่งหน้า = เกือบทั้งการ์ด และยอมให้กว้างกว่าบนคอมหน่อย (การ์ดสองใบวางชิดกันในจอแคบ) */
+    --row: 92cqh;
+    --u: min(calc(var(--row) / 100), .36cqw);
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+    border-radius: clamp(14px, 2.4vw, 22px);
+  }
+  .pf-body::-webkit-scrollbar { display: none; }
+  .pf-page {
+    height: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  .pf-top { padding-bottom: clamp(18px, 6dvh, 28px); }
+  .pf-bottom { padding-top: 2px; }
+  .pf-more {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: clamp(34px, 9dvh, 44px);
+    height: clamp(16px, 5dvh, 24px);
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255,243,226,.16);
+    color: var(--cream);
+    transform: translateX(-50%);
+    animation: pfNudge 1.4s ease-in-out infinite;
+    cursor: pointer;
+  }
+  .pf-more svg { width: 70%; height: 90%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes pfNudge { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 3px); } }
 }
 
-/* ── เวทีเตี้ยมาก (มือถือแนวนอน) ── */
-@media (max-height: 460px) {
-  .pf-panel-main { gap: 4px; padding: 6px 8px; }
-  .pf-score-box { padding: 6px 9px; border-radius: 14px; }
-  .pf-stats { padding-top: 5px; gap: 4px; }
-  .pf-mini { margin-top: 5px; gap: 3px; }
-  .pf-bubble-body { min-height: 28px; }
+/* ── จอแคบแนวตั้ง: การ์ดบนเรียงลงเป็นแถวเดียว ── */
+@media (max-width: 560px) {
+  .pf-top { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .pf-lower-box { grid-template-columns: minmax(0, 1fr); }
+  .pf-code small { display: none; }
 }
 
 /* ── ปุ่มลำโพงปิด/เปิดเสียง ───────────────────
@@ -8691,7 +8959,7 @@ canvas[hidden] { display: none; }
 .panel.just-open .quest-row,
 .panel.just-open .mail-item,
 .panel.just-open .rank-row,
-.panel.just-open .pf-fact {
+.panel.just-open .pf-card {
   animation: cardPopIn .34s cubic-bezier(.2,.85,.3,1.06) backwards;
   animation-delay: calc(var(--i, 0) * 26ms);
 }
@@ -8776,7 +9044,7 @@ canvas[hidden] { display: none; }
   .panel.just-open .quest-row,
   .panel.just-open .mail-item,
   .panel.just-open .rank-row,
-  .panel.just-open .pf-fact { animation: none; }
+  .panel.just-open .pf-card { animation: none; }
   .skin-card:hover canvas,
   .skin-card:hover .t-emoji,
   .stage-card:hover canvas,

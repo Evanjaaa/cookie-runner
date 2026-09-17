@@ -42,6 +42,9 @@ export const STAGES = [
     // ให้เติมช่อง hazard แล้วคลังชุดนี้จะรับได้ทันทีโดยไม่ต้องแก้อะไรอีก
     pool: [0, 1, 2, 3, 9, 12, 6, 10, 16],
     segments: 20,
+    // เข้าฉากนี้จากฉากอื่น = วิ่งทะลุร้านขนมหลังใหญ่ (gates.js) แทนทางเชื่อมไล่สีแบบเดิม
+    // ฉากที่ยังไม่มี gate ใช้ทางเชื่อมเดิมต่อไปตามปกติ
+    gate: 'kitchen',
     layers: [
       { art: 'shelf',   depth: 0.12, every: 460, y: 96,  size: 1.2,  band: 'far' },
       { art: 'ovenBox', depth: 0.24, every: 620, y: 320, size: 1,    band: 'far' },
@@ -83,6 +86,8 @@ export const STAGES = [
     // จึงยังมีทางออกที่ปลอดภัยอยู่หนึ่งทางเสมอ ไม่ใช่ตายลูกเดียว
     pool: [0, 3, 5, 9, 12, 1, 6, 8, 10, 16],
     segments: 20,
+    // เข้าสวนจากฉากก่อนหน้า (ครัวกลางคืน) = มุดผ่านพุ่มดอกไม้ยักษ์ (gates.js)
+    gate: 'garden',
     hazard: { kind: 'bee', every: 215 },
     layers: [
       { art: 'cloudPuff', depth: 0.07, every: 420, y: 82,  size: 1.3, band: 'far' },
