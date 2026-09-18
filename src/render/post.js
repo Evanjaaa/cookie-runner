@@ -7,12 +7,14 @@
 // จะฟุ้งจนอ่านไม่ออก ซึ่งแลกไม่คุ้มกับความสวยที่ได้
 // ─────────────────────────────────────────────────────────────
 import { VIEW, POST } from '../config.js';
+import { quality } from '../graphics.js';
 
 const { W, H } = VIEW;
 
 let buf = null;
 let bufCtx = null;
 let vignette = null;
+let bloomTick = 0;
 
 /**
  * บัฟเฟอร์ย่อส่วนสำหรับเบลอ
@@ -41,11 +43,19 @@ function buffer() {
 function bloom(ctx) {
   const b = buffer();
 
-  bufCtx.setTransform(1, 0, 0, 1, 0, 0);
-  bufCtx.clearRect(0, 0, b.width, b.height);
-  bufCtx.filter = `blur(${POST.bloomBlur}px)`;
-  bufCtx.drawImage(ctx.canvas, 0, 0, b.width, b.height);
-  bufCtx.filter = 'none';
+  // ── ภาพเบลออัปเดตเฟรมเว้นเฟรม แต่ซ้อนกลับทุกเฟรม ──
+  // ขั้นที่แพงคือ "อ่านภาพทั้งจอกลับมาย่อ+เบลอ" (drawImage จากผ้าใบหลัก)
+  // ซึ่งบังคับให้การ์ดจอหยุดรอส่งภาพกลับมาทุกเฟรม — เป็นตัวทำให้มือถือร้อนที่สุดในเกม
+  // ใช้ภาพของเฟรมก่อนหน้าแทนในเฟรมคี่ แสงฟุ้งช้ากว่าภาพจริงหนึ่งเฟรม (16 มิลลิวินาที)
+  // ซึ่งมองไม่ออกด้วยตา เพราะมันเป็นแสงฟุ้งอยู่แล้ว ไม่ใช่ขอบคม
+  // ระดับกราฟิกบอกว่าอัปเดตทุกกี่เฟรม (ประหยัดแบต = ไม่มีแสงฟุ้งเลย ตัดตั้งแต่ผู้เรียก)
+  if (bloomTick++ % quality().bloom === 0) {
+    bufCtx.setTransform(1, 0, 0, 1, 0, 0);
+    bufCtx.clearRect(0, 0, b.width, b.height);
+    bufCtx.filter = `blur(${POST.bloomBlur}px)`;
+    bufCtx.drawImage(ctx.canvas, 0, 0, b.width, b.height);
+    bufCtx.filter = 'none';
+  }
 
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
@@ -77,6 +87,6 @@ function darkenEdges(ctx) {
  */
 export function postProcess(ctx, { edges = true } = {}) {
   if (!POST.on) return;
-  if (POST.bloomStrength > 0) bloom(ctx);
+  if (POST.bloomStrength > 0 && quality().bloom > 0) bloom(ctx);
   if (edges && POST.vignette > 0) darkenEdges(ctx);
 }

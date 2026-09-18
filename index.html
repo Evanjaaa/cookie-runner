@@ -218,7 +218,7 @@
 
       <!-- หน้าชื่อเกม แผงนี้ไม่มีม่านคลุมเลย เพื่อให้เห็นฉากปราสาทกับแมวเต็ม ๆ
            โลโก้เกาะซ้ายบน ปุ่มเกาะขวาล่าง เว้นกลางจอไว้ให้แมวที่วาดบน canvas -->
-      <div class="panel title" id="titlePanel">
+      <div class="panel title see-scene" id="titlePanel">
         <!-- ป้ายชื่อเกมเป็นทรงโล่ปลายแหลม มีหูแมวโผล่สองข้าง = ตัวป้ายเป็น "หัวแมว" เอง
              ทั้งป้าย รอยตีน และปลา วาดด้วย CSS กับ SVG ในตัว ไม่มีไฟล์รูปสักไฟล์ -->
         <div class="title-logo logo-plate">
@@ -1082,8 +1082,9 @@
       </div>
 
       <!-- ฉากห้องก่อนเริ่มวิ่ง — น้องยืนพูดอะไรสักอย่างแล้วค่อยเข้าเกม
-           ตัวแมววาดอยู่บน canvas ข้างหลัง แผงนี้จึงต้องโปร่ง เหลือแต่กล่องคำพูด -->
-      <div class="panel hidden" id="introPanel">
+           ตัวแมววาดอยู่บน canvas ข้างหลัง แผงนี้จึงต้องโปร่ง เหลือแต่กล่องคำพูด
+           see-scene = ฉากข้างหลังยังเห็นเต็ม ๆ ห้ามลดเฟรม (ดู menuCovers ใน main.js) -->
+      <div class="panel hidden see-scene" id="introPanel">
         <div class="intro-bubble" id="introLine"></div>
         <small class="intro-skip">แตะเพื่อข้าม</small>
       </div>
@@ -1122,6 +1123,18 @@
               <button type="button" class="langbtn" id="langEn" lang="en">English</button>
             </div>
           </div>
+          <!-- ── กราฟิก ──
+               สามระดับ ต่างกันที่ความละเอียดผ้าใบ เพดานเฟรม แสงฟุ้ง และจำนวนอนุภาค
+               (ตารางจริงอยู่ใน src/graphics.js) เปลี่ยนแล้วเห็นผลทันทีโดยไม่ต้องรีโหลด -->
+          <div class="setrow">
+            <span class="setlabel">กราฟิก</span>
+            <div class="langpick gfxpick" role="group" aria-label="เลือกระดับกราฟิก">
+              <button type="button" class="langbtn on" id="gfxHigh">สวยเต็มที่</button>
+              <button type="button" class="langbtn" id="gfxMid">ปานกลาง</button>
+              <button type="button" class="langbtn" id="gfxSave">ประหยัดแบต</button>
+            </div>
+          </div>
+          <small class="setnote" id="gfxNote">เครื่องร้อนหรือเฟรมตก ลองลดระดับลงได้</small>
           <div class="setrow">
             <button class="stepbtn mutebtn" id="musicMute" aria-label="ปิดเสียงเพลง">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1206,25 +1219,27 @@
       <div class="panel hidden" id="overPanel">
         <div class="pop over-pop">
           <div class="confetti" id="overConfetti" aria-hidden="true"></div>
-          <h2 id="overTitle">หมดแรงแล้ว</h2>
+          <h2 class="over-title" id="overTitle">หมดแรงแล้ว</h2>
 
-          <!-- คะแนนของตาที่เพิ่งจบเป็นพระเอกของหน้า จึงแยกออกมาตัวใหญ่เดี่ยว ๆ
-               ส่วนระยะทางกับสถิติสูงสุดเป็นข้อมูลประกอบ อยู่เป็นการ์ดเล็กข้างล่าง -->
-          <div class="over-hero">
-            <span class="lbl">คะแนน</span>
+          <!-- การ์ดคะแนน: คะแนนของตานี้ตัวใหญ่ ใต้ลงมาเป็นสถิติ
+               ตาที่ทำสถิติใหม่ ป้ายแดงจะห้อยเชือกลงมามุมขวาบน และบรรทัดล่างเปลี่ยน
+               เป็น "สถิติเดิม" พร้อมตัวเลขของสถิติก่อนหน้า (ดู showGameOver ใน main.js) -->
+          <div class="over-card">
+            <span class="over-lbl">คะแนนของกิน</span>
             <b class="over-score" id="finalScore">0</b>
-            <span class="best-badge hidden" id="bestBadge">★ สถิติใหม่</span>
+            <span class="over-best-lbl" id="bestLabel">สถิติสูงสุด</span>
+            <b class="over-best" id="bestScore">0</b>
+
+            <div class="over-medal hidden" id="bestBadge">
+              <i class="medal-cord" aria-hidden="true"></i>
+              <span class="medal-disc">สถิติใหม่!</span>
+            </div>
           </div>
 
-          <div class="final">
-            <div class="fstat">
-              <div class="lbl">ระยะทาง</div>
-              <div class="val" id="finalDist">0 ม.</div>
-            </div>
-            <div class="fstat">
-              <div class="lbl">สถิติสูงสุด</div>
-              <div class="val mint" id="bestScore">0</div>
-            </div>
+          <div class="over-dist">
+            <i aria-hidden="true"></i>
+            <span>ระยะทาง</span>
+            <b id="finalDist">0 ม.</b>
           </div>
 
           <!-- XP ที่เพิ่งได้จากตานี้ ต้องโชว์ตรงนี้เพราะเป็นที่เดียวที่ผู้เล่นเห็น
@@ -1448,9 +1463,21 @@
           </div>
           <p class="dl-lead" id="dlLead">แวะมาทักน้องทุกวันนะ มีของฝากให้ทุกวันเลย</p>
 
-          <div class="dl-grid" id="dlGrid"></div>
+          <!-- กระดานเช็คอิน: น้องนั่งรออยู่ซ้าย ปฏิทินเจ็ดช่องอยู่ขวา
+               ไม่มีปุ่มรับแล้ว — แตะที่ช่องของวันนี้เพื่อรับของเลย (ดู buildDailyGrid ใน main.js)
+               ช่องทั้งเจ็ดเป็น <button> จริง คีย์บอร์ดกับโปรแกรมอ่านหน้าจอจึงใช้ได้เหมือนกัน -->
+          <div class="dl-board">
+            <!-- ห่วงปฏิทินสีฟ้า คร่อมขอบบนของกระดาน — ตัวที่ทำให้กระดานอ่านเป็น "ปฏิทิน" -->
+            <span class="dl-bind" aria-hidden="true"></span>
+            <div class="dl-cat">
+              <!-- ก้อนเมฆความคิดสี่ก้อน ไล่เล็กลงจากป้ายคำพูดลงมาหาหัวน้อง
+                   ทำให้ป้ายชมพูด้านบนอ่านเป็น "คำพูดของน้อง" ไม่ใช่ป้ายประกาศของหน้าจอ -->
+              <span class="dl-puffs" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <canvas id="dlCat" width="240" height="240"></canvas>
+            </div>
+            <div class="dl-grid" id="dlGrid"></div>
+          </div>
 
-          <button class="btn dl-get" id="dlClaim">รับของวันนี้</button>
           <small class="form-msg" id="dlMsg"></small>
           <button class="backbtn" id="dlBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
@@ -1481,12 +1508,18 @@
             <b class="lv-now-badge" id="lvNowBadge">1</b>
             <div class="lv-now-info">
               <b class="lv-now-text" id="lvNowText">เลเวล 1</b>
-              <span class="pf-bar"><i id="lvNowFill"></i></span>
-              <small class="lv-now-xp" id="lvNowXp">0 / 270 XP</small>
+              <div class="lv-now-xp">
+                <b id="lvNowInto">0</b>
+                <i class="lv-arrow" aria-hidden="true"></i>
+                <b id="lvNowNeed">270</b>
+              </div>
             </div>
           </div>
 
-          <div class="lv-list" id="lvList"></div>
+          <!-- เส้นทางรางวัล: รางรวมอยู่ซ้าย หมุดของรางวัลเกาะอยู่บนราง
+               แถวที่ถึงแล้วแตะที่การ์ดเพื่อรับได้เลย (เหมือนหน้าเช็คอินรายวัน)
+               ข้างในสร้างจาก JS ทั้งหมด (buildLvList ใน main.js) -->
+          <div class="lv-rail" id="lvList"></div>
           <small class="form-msg" id="lvMsg"></small>
           <button class="backbtn" id="lvBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
@@ -1718,11 +1751,15 @@
         <div class="pop confirm-pop">
           <canvas class="confirm-art" id="confirmArt" width="96" height="96" hidden></canvas>
           <b class="confirm-title" id="confirmTitle"></b>
-          <p class="confirm-body" id="confirmBody"></p>
-          <div class="confirm-cost hidden" id="confirmCost">
-            <span class="coin" aria-hidden="true"></span><span id="confirmPrice"></span>
+          <!-- กล่องครอบเนื้อหา — ปกติเป็น display: contents (เหมือนไม่มีอยู่)
+               จะกลายเป็นการ์ดชมพูขอบทองแบบหน้าสรุปคะแนนเฉพาะกล่องที่ขอ look: 'card' -->
+          <div class="confirm-card">
+            <p class="confirm-body" id="confirmBody"></p>
+            <div class="confirm-cost hidden" id="confirmCost">
+              <span class="coin" aria-hidden="true"></span><span id="confirmPrice"></span>
+            </div>
+            <p class="confirm-after" id="confirmAfter"></p>
           </div>
-          <p class="confirm-after" id="confirmAfter"></p>
           <div class="confirm-btns">
             <button class="btn ghost" id="confirmNo">ยกเลิก</button>
             <button class="btn" id="confirmYes">ยืนยัน</button>

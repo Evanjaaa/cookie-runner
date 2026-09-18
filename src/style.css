@@ -355,6 +355,10 @@ canvas[hidden] { display: none; }
 :root {
   --backbtn: clamp(30px, 6.5dvh, 46px);
   --backbtn-x: clamp(8px, 1.4vw, 16px);
+  /* พื้นการ์ดม่วงอ่อน — อ่อนกว่าพื้นการ์ดปกติ (.pop) หนึ่งขั้น
+     ใช้กับหน้าที่เป็น "จังหวะของตา" ไม่ใช่หน้าเมนู: จบรอบ / น้องตกหลุม / พักก่อน
+     ประกาศที่เดียวเพราะสามหน้านี้ต้องเป็นสีเดียวกันเสมอ ไม่งั้นสลับหน้าแล้วเห็นว่าเพี้ยน */
+  --pop-lite: linear-gradient(180deg, rgba(126,69,168,.96), rgba(74,34,112,.97));
 }
 
 .backbtn,
@@ -1112,11 +1116,14 @@ canvas[hidden] { display: none; }
 .xp-gain.hidden { display: none; }
 .xp-gain b { font-family: "Mitr", sans-serif; font-weight: 600; }
 /* เลเวลอัพต้องเด่นกว่าการได้ XP เฉย ๆ ไม่งั้นกลืนกันจนไม่รู้ว่าเกิดอะไรพิเศษ */
+/* เลเวลอัพต้องเด่นที่สุดในหน้า จึงเป็นป้ายไล่สีเต็มใบ ไม่ใช่แค่เปลี่ยนสีขอบ */
 .xp-gain.up {
-  border-color: rgba(255,201,60,.6);
-  background: rgba(255,201,60,.16);
-  color: #FFE9A8;
+  border-color: transparent;
+  background: linear-gradient(90deg, #5B7BF0, #C96BE0 52%, #FF7BB0);
+  color: #FFF3E2;
+  box-shadow: 0 3px 0 rgba(20,8,32,.4);
 }
+.xp-gain.up b { color: #FFE9B5; }
 
 @media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
   /* จอเตี้ยการ์ดต้องเล็กลง — ประกาศที่แผงเหมือนกัน เพื่อให้ช่องของปุ่มขยับตามด้วย */
@@ -2221,6 +2228,17 @@ canvas[hidden] { display: none; }
   box-shadow: 0 1px 0 rgba(20,8,32,.6), inset 0 1px 0 rgba(255,255,255,.16);
 }
 
+/* ── แถวกราฟิก ──
+   ใช้ทรงเดียวกับตัวเลือกภาษา ต่างแค่มีสามปุ่มจึงต้องยอมให้ตกบรรทัดบนจอแคบ
+   คำอธิบายใต้แถวบอกว่า "ลดแล้วได้อะไร" เพราะคนส่วนใหญ่ไม่รู้ว่ากราฟิกเกี่ยวกับความร้อน */
+.gfxpick { flex-wrap: wrap; justify-content: center; }
+.setnote {
+  margin-top: calc(clamp(4px, 1dvh, 9px) * -1);
+  font-size: clamp(9px, 1.4dvh, 11.5px);
+  color: #B99BD4;
+  text-align: center;
+}
+
 /* ══ หน้าเช็คอินรายวัน ════════════════════════════════════
    เจ็ดใบในกริดเดียว ใบที่เจ็ดกินสองช่องเพราะเป็นวันปลายทางของทั้งรอบ
    ต้องเห็นทั้งเจ็ดใบพร้อมกันโดยไม่ต้องเลื่อน ไม่งั้นมันไม่ใช่ "ปฏิทิน" แต่เป็นรายการ */
@@ -2228,24 +2246,122 @@ canvas[hidden] { display: none; }
 .dl-head { grid-template-columns: auto auto 1fr; align-items: center; }
 .dl-head > h2 { grid-column: 1; justify-self: start; }
 .dl-head > .count-pill { grid-column: 2; justify-self: start; }
-.dl-lead {
-  margin: 0;
-  font-size: clamp(10px, 1.6dvh, 13px);
-  color: #C9AEE8;
+/* คำทักเป็นป้ายชมพูลอยอยู่เหนือกระดาน = คำพูดของน้อง ไม่ใช่คำอธิบายหน้าจอ
+   ── ทำไมถึงกดลงมาคร่อมขอบกระดาน ──
+   ป้ายที่ลอยอยู่เหนือกระดานเฉย ๆ อ่านเป็นหัวข้อของหน้า ไม่ใช่คำพูด
+   ดึงกระดานขึ้นมาด้วย margin ติดลบให้ป้ายคร่อมขอบบนของกระดานราวครึ่งใบ
+   ป้ายจึงเกาะอยู่กับกระดานเป็นชิ้นเดียวกัน (z-index กันไม่ให้กระดานทับป้าย) */
+.panel p.dl-lead {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 clamp(-19px, -2.6dvh, -11px);
+  align-self: center;
+  max-width: 92%;
+  padding: clamp(5px, 1dvh, 9px) clamp(14px, 2.6vw, 26px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #F3D9FF, #E6BBFA);
+  color: #4A1E63;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.7dvh, 14px);
   text-align: center;
+  box-shadow: 0 3px 0 rgba(20,8,32,.35);
 }
 
-.dl-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(5px, 1.1vw, 11px);
+/* ── กระดานเช็คอิน ── น้องซ้าย ปฏิทินขวา อยู่ในกรอบม่วงอ่อนกรอบเดียวกัน */
+.dl-board {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: clamp(8px, 1.8vw, 18px);
   width: 100%;
   min-height: 0;
+  padding: clamp(9px, 1.8dvh, 18px);
+  border-radius: clamp(16px, 2.4vw, 26px);
+  /* ม่วงสดกว่าพื้นการ์ด = กระดานลอยขึ้นมาอีกชั้นหนึ่ง (ตามแบบที่วางไว้)
+     ขอบในบาง ๆ ทำให้ขอบกระดานคมโดยไม่ต้องมีเส้นกรอบหนา ๆ */
+  background: linear-gradient(180deg, #A95BDE, #8E3FC4);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,243,226,.22),
+    inset 0 2px 0 rgba(255,255,255,.18),
+    0 6px 16px rgba(20,8,32,.32);
 }
-/* ใบที่เจ็ดกินสองช่องที่เหลือของแถวสอง = การ์ดแนวนอนใบใหญ่ปิดท้ายรอบ
-   ต้องเป็น 2 ไม่ใช่ 3 — กริดมีสี่ช่อง แถวสองถูกวันที่ 5 กับ 6 จองไปแล้วสองช่อง
-   ถ้าขอสามช่องมันจะไม่พอแล้วตกไปขึ้นแถวสามเอง กลายเป็นปฏิทินสามแถวที่มีบรรทัดสุดท้ายโดดเดี่ยว */
-.dl-card.big { grid-column: span 2; flex-direction: row; justify-content: center; gap: clamp(6px, 1.4vw, 14px); }
+
+/* ── ห่วงปฏิทิน ──
+   แท่งฟ้ามุมมนคร่อมขอบบนของกระดาน ครึ่งบนโผล่พ้นขอบ ครึ่งล่างจมอยู่ในกระดาน
+   เป็นของชิ้นเดียวที่บอกว่ากระดานนี้คือ "ปฏิทิน" ไม่ใช่ตารางเฉย ๆ
+   ไล่สีจากฟ้าอ่อนลงฟ้าเข้มให้ดูเป็นห่วงกลม ไม่ใช่แถบแบน
+
+   ── ชื่อคลาสห้ามซ้ำกับ .dl-ring ──
+   .dl-ring เป็นห่วงบนไอคอนปุ่มเช็คอินในล็อบบี้อยู่ก่อนแล้ว (ดูข้างบน)
+   เคยตั้งชื่อซ้ำแล้วกฎนี้ไปทับ ห่วงบนไอคอนปุ่มกลายเป็นแท่งฟ้าหนา ๆ ทันที */
+.dl-bind {
+  position: absolute;
+  z-index: 2;
+  left: 13%;
+  top: calc(clamp(24px, 4.4dvh, 50px) * -0.42);
+  width: clamp(9px, 1.3vw, 15px);
+  height: clamp(24px, 4.4dvh, 50px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #9EDCFF, #4FA9F0);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.7),
+    0 2px 4px rgba(20,8,32,.3);
+  pointer-events: none;
+}
+
+/* น้องนั่งรอ — กว้างราวหนึ่งในสามของกระดาน เท่ากับหนึ่งช่องปฏิทินพอดี
+   ยึดก้นน้องไว้ที่ขอบล่าง ไม่ให้ลอยกลางกรอบเวลาความสูงเปลี่ยนตามจอ */
+.dl-cat {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(112px, 22vw, 248px);
+  min-height: 0;
+  display: grid;
+  place-items: end center;
+}
+.dl-cat canvas { width: 100%; height: 100%; object-fit: contain; }
+
+/* ก้อนเมฆความคิด — วงกลมไล่ขนาดจากใหญ่ (ใกล้ป้ายคำพูด) ลงมาเล็กสุดตรงหัวน้อง
+   เรียงชิดกันจนเกือบแตะกัน อ่านเป็น "หางของกล่องคำพูด" ไม่ใช่จุดสามจุดที่ลอยแยกกัน
+   (ระยะห่างติดลบเล็กน้อย เพราะวงกลมที่วางเฉียงกันจะดูห่างกว่าระยะจริงเสมอ) */
+.dl-puffs {
+  position: absolute;
+  top: 3%;
+  right: 2%;
+  width: 46%;
+  height: 34%;
+  pointer-events: none;
+}
+/* วางทีละก้อนตามเส้นเฉียง แทนการเรียงเป็นคอลัมน์
+   คอลัมน์ทำให้สามก้อนซ้อนกันเป็นกองเดียวตรงหัวน้อง อ่านไม่ออกว่าชี้ไปทางไหน
+   เส้นเฉียงนี้ลากจากป้ายคำพูด (มุมขวาบน) ลงมาจบที่หัวน้อง (ล่างซ้าย)
+   สี่ก้อน ระยะเว้นเท่ากันทุกช่วง และเล็กลงตามระยะ จึงอ่านเป็นหางของกล่องคำพูด
+   (สามก้อนที่ห่างกว่านี้ยังอ่านเป็นจุดสามจุด ไม่ใช่หางที่ลากต่อกัน) */
+.dl-puffs i {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #E3B8F7;
+  box-shadow: 0 2px 0 rgba(20,8,32,.18);
+}
+.dl-puffs i:nth-child(1) { width: clamp(13px, 2.2vw, 25px); top: 0; right: 0; }
+.dl-puffs i:nth-child(2) { width: clamp(10px, 1.7vw, 19px); top: 29%; right: 20%; }
+.dl-puffs i:nth-child(3) { width: clamp(8px, 1.3vw, 14px); top: 55%; right: 39%; }
+.dl-puffs i:nth-child(4) { width: clamp(6px, .95vw, 10px); top: 78%; right: 57%; }
+
+.dl-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: clamp(5px, 1.1vw, 11px);
+  min-width: 0;
+  min-height: 0;
+}
+/* ใบที่เจ็ดกินทั้งแถวล่าง = การ์ดแนวนอนใบใหญ่ปิดท้ายรอบ
+   (กริดสามช่อง แถวบนสองแถวเต็มด้วยวันที่ 1-6 พอดี) */
+.dl-card.big { grid-column: span 3; flex-direction: row; justify-content: center; gap: clamp(6px, 1.4vw, 14px); }
 
 .dl-card {
   position: relative;
@@ -2255,17 +2371,35 @@ canvas[hidden] { display: none; }
   justify-content: center;
   gap: clamp(2px, .6dvh, 5px);
   min-width: 0;
+  overflow: hidden;
   padding: clamp(5px, 1.2dvh, 12px) clamp(3px, .8vw, 8px);
-  border-radius: 16px;
-  border: 1.5px solid rgba(196,143,243,.4);
-  background: rgba(255,243,226,.05);
+  border-radius: clamp(12px, 1.8vw, 20px);
+  border: none;
+  background: linear-gradient(180deg, #5B3480, #4A2A6C);
+  color: var(--cream);
+  font-family: inherit;
   text-align: center;
+  cursor: pointer;
+  transition: transform .07s ease, filter .12s ease;
 }
+/* แถบแสงเฉียงพาดช่อง — ของตกแต่งตามแบบ ทำให้ช่องดูเป็นวัสดุมันวาว ไม่ใช่กล่องทึบ
+   อยู่ใต้เนื้อหาเสมอ (z-index 0 กับ position ของลูกข้างใน) จึงไม่บังตัวเลข */
+.dl-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg, transparent 0 34%, rgba(255,255,255,.1) 34% 62%, transparent 62%);
+  pointer-events: none;
+}
+.dl-day, .dl-prize, .dl-tap { position: relative; }
+.dl-card:hover { filter: brightness(1.12); }
+.dl-card:active { transform: translateY(2px); }
+.dl-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
 .dl-day {
   font-family: "Mitr", sans-serif;
   font-weight: 500;
   font-size: clamp(9px, 1.5dvh, 12px);
-  color: #C0A6DC;
+  color: #EBD9FF;
   line-height: 1;
 }
 .dl-prize {
@@ -2287,40 +2421,44 @@ canvas[hidden] { display: none; }
    เรืองทองเหมือนของที่กดรับได้ทุกที่ในเกม บวกเด้งเบา ๆ ให้ตาไปหยุดที่ใบนี้ก่อน */
 .dl-card.today {
   border-color: rgba(255,201,60,.85);
-  background: linear-gradient(180deg, rgba(255,201,60,.18), rgba(255,201,60,.04));
+  background: linear-gradient(180deg, rgba(255,201,60,.22), rgba(255,201,60,.06));
   box-shadow: 0 0 20px rgba(255,201,60,.34);
   animation: dlBob 1.8s ease-in-out infinite;
+}
+/* คำว่า "แตะเพื่อรับ" มีเฉพาะช่องของวันนี้ — ไม่มีปุ่มรับแล้ว ต้องบอกให้รู้ว่าแตะได้ตรงไหน */
+.dl-tap {
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(8px, 1.3dvh, 11px);
+  line-height: 1;
+  color: #FFD76A;
 }
 @keyframes dlBob {
   50% { transform: translateY(-3px); }
 }
 /* ── รับไปแล้ว ──
    จางลงแล้วปั๊มรอยตีนทับ — เครื่องหมายถูกก็ได้ แต่รอยตีนเป็นภาษาของเกมนี้ */
-.dl-card.done { opacity: .5; }
-.dl-card.done::after {
-  content: '';
-  position: absolute;
-  right: 8%;
-  top: 8%;
-  width: clamp(12px, 2.2dvh, 19px);
-  height: clamp(10px, 1.9dvh, 16px);
-  border-radius: 50% 50% 46% 46%;
-  background: #8DF3EA;
-  box-shadow:
-    -128% -76% 0 -8% #8DF3EA,
-    0 -104% 0 -10% #8DF3EA,
-    128% -76% 0 -8% #8DF3EA;
-}
-.dl-card.soon { opacity: .76; border-color: rgba(196,143,243,.24); }
+/* ── รับไปแล้ว ── จางลงเฉย ๆ ไม่มีตราปั๊มทับ
+   ช่องที่ยัง "รับได้ในอนาคต" ต้องอ่านชัดเต็มตา จึงไม่หรี่มันลงเลย
+   ความต่างระหว่างสามสถานะจึงเป็น: จาง = ผ่านไปแล้ว / ปกติ = ยังมาไม่ถึง / เรืองทอง = วันนี้ */
+.dl-card.done { opacity: .42; }
 
-/* ปุ่มรับใหญ่เต็มความกว้าง — ปุ่มเดียวของหน้านี้ ไม่ต้องให้หาว่าอยู่ไหน */
-.dl-get { margin-top: clamp(2px, .8dvh, 8px); min-width: clamp(150px, 26vw, 240px); }
-
-/* จอเตี้ย: ปฏิทินต้องยังเห็นครบเจ็ดใบ จึงบีบระยะแทนการปล่อยให้เลื่อน */
+/* จอเตี้ย: ปฏิทินต้องยังเห็นครบเจ็ดใบ จึงบีบระยะแทนการปล่อยให้เลื่อน
+   น้องยังอยู่ แค่แคบลง — ตัวน้องคือครึ่งหนึ่งของหน้านี้ ถ้าเอาออกก็เหลือแค่ตาราง */
 @media (max-height: 460px) {
-  .dl-lead { display: none; }
-  .dl-card { padding: 4px 3px; border-radius: 12px; }
-  .dl-grid { gap: 5px; }
+  /* จอเตี้ย: กระดานเตี้ยตามไปด้วย ถ้าคร่อมลึกเท่าจอใหญ่ป้ายจะไปบังคำว่า "วันนี้" ในช่องแรก
+     คร่อมแค่พอให้ติดขอบกระดาน ก็ยังอ่านเป็นชิ้นเดียวกันอยู่ */
+  /* จอเตี้ย: ทุกอย่างใหญ่ขึ้นกว่าค่าตั้งต้นของจอเตี้ยเดิม แต่กระดานยังหดตามเนื้อหา
+     เหมือนการ์ดหน้าอื่นในเกม (ไม่ล็อกความกว้างไว้) */
+  .panel p.dl-lead { padding: 4px 18px; font-size: 12px; margin-bottom: -7px; }
+  /* ช่องของวันนี้มีสามบรรทัด (วันนี้ / ของรางวัล / แตะเพื่อรับ) ส่วนช่องอื่นมีสอง
+     min-height จึงต้องเผื่อให้สามบรรทัดพอดีช่อง ไม่งั้นบรรทัดบนโดนตัด */
+  .dl-card { padding: 3px 8px; border-radius: 13px; gap: 1px; min-height: 46px; }
+  .dl-day { font-size: 10.5px; }
+  .dl-prize { font-size: 13px; line-height: 1.05; }
+  .dl-tap { font-size: 8.5px; line-height: 1; }
+  .dl-grid { gap: 8px; }
+  .dl-board { padding: 10px; gap: 12px; }
+  .dl-cat { width: clamp(92px, 16vw, 142px); }
 }
 
 /* ══ หน้ารางวัลเลเวล ══════════════════════════════════════
@@ -2332,17 +2470,18 @@ canvas[hidden] { display: none; }
 .lv-head > .count-pill { grid-column: 2; justify-self: start; }
 .lv-head > .btn { grid-column: 3; justify-self: end; margin-top: 0; }
 
-/* แถบสรุปเลเวลปัจจุบัน ติดอยู่บนสุดไม่เลื่อนหายไปกับรายการ */
+/* ── แถบสรุปเลเวลปัจจุบัน ──
+   ตราเลเวลกลม + ชื่อเลเวล + XP ตอนนี้ ▶ XP ที่ต้องใช้ (ตามแบบที่วางไว้) */
 .lv-now {
   flex: 0 0 auto;
-  width: 100%;
+  width: min(88vw, 500px);
   display: flex;
   align-items: center;
   gap: clamp(8px, 1.8vw, 16px);
   margin-bottom: clamp(6px, 1.4dvh, 12px);
-  padding: clamp(6px, 1.3dvh, 12px) clamp(10px, 2vw, 18px);
-  border-radius: 16px;
-  border: 1px solid rgba(255,243,226,.16);
+  padding: clamp(6px, 1.3dvh, 12px) clamp(12px, 2.2vw, 22px);
+  border-radius: clamp(14px, 2.2vw, 22px);
+  border: 1.5px solid rgba(255,243,226,.34);
   background: rgba(27,15,43,.5);
 }
 .lv-now-badge {
@@ -2360,108 +2499,219 @@ canvas[hidden] { display: none; }
   font-size: clamp(13px, 2.4dvh, 20px);
   line-height: 1;
 }
-.lv-now-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.lv-now-text { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(12px, 2dvh, 16px); color: var(--cream); }
-.lv-now-xp { font-size: clamp(10px, 1.5dvh, 12px); color: #C0A6DC; }
-
-.lv-list {
+.lv-now-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.lv-now-text { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(12px, 2dvh, 17px); color: var(--cream); }
+.lv-now-xp {
   display: flex;
-  flex-direction: column;
-  gap: clamp(6px, 1.2dvh, 11px);
-  width: 100%;
+  align-items: center;
+  gap: clamp(6px, 1.4vw, 14px);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(12px, 2.1dvh, 18px);
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+/* ลูกศรสามเหลี่ยมแดงระหว่างสองตัวเลข — อ่านว่า "จากเท่านี้ ไปเท่านี้" */
+.lv-arrow {
+  width: clamp(11px, 1.9dvh, 17px);
+  height: clamp(12px, 2.1dvh, 19px);
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 24% 50%);
+  background: linear-gradient(180deg, #FF5A5A, #C4162A);
+}
+
+/* ── เส้นทางรางวัล ──
+   ทั้งหน้าเป็นรางแนวตั้งเส้นเดียว หมุดของรางวัลเรียงอยู่บนราง
+   อ่านเป็น "ทางที่กำลังเดินอยู่" ไม่ใช่รายการที่ไล่ดูทีละใบ
+
+   ความกว้างเป็นค่าจริง (vw) ไม่ใช่ % ของการ์ด — % ไม่นับเป็น "ความกว้างที่ขอมา"
+   การ์ดจะหดตามหัวเรื่องแทน แล้วกรอบรางวัลก็แคบจนคำตกสองบรรทัด
+   (กับดักเดียวกับ .mail-list ที่เคยเจอมาแล้ว) */
+.lv-rail {
+  width: min(88vw, 500px);
   min-height: 0;
+  flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
-.lv-list::-webkit-scrollbar { display: none; }
+.lv-rail::-webkit-scrollbar { display: none; }
+/* กล่องในสุดสูงเท่าเนื้อหาจริง รางจึงยาวตลอดทั้งรายการ ไม่ใช่แค่ช่วงที่มองเห็น */
+/* ระยะห่างระหว่างขั้นต้องเห็นรางคั่นชัด ๆ ไม่ใช่หมุดเรียงติดกันเป็นแถว
+   (ของเดิม 11px หมุดเกือบแตะกัน อ่านเป็นรายการ ไม่ใช่เส้นทาง) */
+.lv-inner { position: relative; display: flex; flex-direction: column; gap: clamp(38px, 8dvh, 84px); }
 
-/* ── รางวัลหนึ่งเลเวล ──
-   ป้ายเลเวล | ของที่ได้ | ปุ่มรับ — แถวเดียวจบเหมือนหน้ากิจกรรม */
+.lv-track {
+  position: absolute;
+  left: calc(var(--rail-x) - var(--rail-w) / 2);
+  top: 0;
+  bottom: 0;
+  width: var(--rail-w);
+  border-radius: 999px;
+  background: #E6C8FA;
+  overflow: hidden;
+}
+/* ส่วนที่เดินมาแล้ว — ไล่สีชมพูลงเหลืองแบบเดียวกับหลอดพลัง
+   ความสูงมาจาก JS (--fill) แล้วไหลขึ้นมาเองด้วย transition ตอนเปิดหน้า */
+/* ── ทำไมไล่สีแค่ช่วงท้าย ──
+   หลอดยาวเป็นพันพิกเซล (98 เลเวล) ถ้าไล่สีจากหัวถึงท้าย หน้าจอหนึ่งจะเห็นสีเดียว
+   ตลอด อ่านไม่ออกว่าเป็นหลอดไล่สี ล็อกช่วงไล่สีไว้ 420px สุดท้ายแทน
+   ข้างบนเป็นชมพูล้วน ปลายหลอดตรงจุดที่ยืนอยู่จึงเปลี่ยนเป็นเหลืองพอดีเสมอ */
+.lv-track b {
+  display: block;
+  width: 100%;
+  height: var(--fill, 0);
+  border-radius: 999px;
+  background-color: #FF4FD8;
+  background-image: linear-gradient(180deg, #FF4FD8, #FFD54A);
+  background-size: 100% 420px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: height .9s cubic-bezier(.2, .85, .3, 1);
+}
+/* หัวหลอดเรืองแสงเต้นเบา ๆ บอกว่า "ตอนนี้อยู่ตรงนี้"
+   ── ต้องเป็น absolute เท่านั้น ──
+   เคยใช้ margin-top ติดลบดึงขึ้นมาไว้ปลายหลอด ผลคือ margin ของลูกไหลออกไปรวมกับ
+   ขอบบนของตัวหลอดเอง (margin collapsing) หลอดทั้งเส้นจึงเลื่อนขึ้น 26px
+   ปลายหลอดเลยไปจบก่อนถึงบรรทัด XP อยู่เท่านั้นพอดี (วัดแล้วตรงเป๊ะ) */
+.lv-track b { position: relative; }
+.lv-track b::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(16px, 3dvh, 26px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.85));
+  animation: lvPulse 1.6s ease-in-out infinite;
+}
+@keyframes lvPulse { 50% { opacity: .35; } }
+
+.lv-rail { --rail-x: clamp(26px, 5vw, 42px); --rail-w: clamp(14px, 2.6vw, 22px); }
+
+/* หนึ่งขั้นของเส้นทาง: หมุดบนราง + การ์ดรางวัล */
 .lv-row {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(var(--rail-x) * 2) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(8px, 1.8vw, 16px);
-  padding: clamp(6px, 1.3dvh, 12px) clamp(10px, 2vw, 18px);
-  border-radius: 14px;
-  border: 1.5px solid rgba(196,143,243,.4);
-  background: rgba(255,243,226,.05);
-  text-align: left;
+  gap: clamp(4px, 1vw, 10px);
 }
-/* ถึงเลเวลแล้วและยังไม่ได้กดรับ = เรืองทองเหมือนกิจกรรมที่ทำครบแล้ว
-   ภาษาสีเดียวกันทั้งเกม: ทองเรือง = "อันนี้แหละที่ต้องกด" */
-.lv-row.ready {
-  border-color: rgba(255,201,60,.75);
-  background: linear-gradient(180deg, rgba(255,201,60,.16), rgba(255,201,60,.04));
-  box-shadow: 0 0 18px rgba(255,201,60,.28);
+/* กล่องของขวัญในหมุดวาดด้วย CSS ชุดเดียวกับไอคอนปุ่มรางวัลในล็อบบี้ (.lg-box)
+   ไม่ใช้อีโมจิ 🎁 เพราะหน้าตาต่างกันทุกระบบ (กฎเดียวกับไอคอนอื่นในเกม) */
+.lv-node {
+  justify-self: center;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(34px, 6.4dvh, 58px);
+  height: clamp(34px, 6.4dvh, 58px);
+  border-radius: 50%;
+  border: 3px solid #F0D7FF;
+  background: linear-gradient(180deg, #8E3FC4, #5E2189);
 }
-.lv-row.done { opacity: .48; }
-/* ยังไปไม่ถึง — จางแต่ยังอ่านออก ครึ่งหนึ่งของคุณค่าหน้านี้คือ "รู้ว่ารออะไรอยู่" */
-.lv-row.locked { opacity: .72; border-color: rgba(196,143,243,.22); }
-/* เลเวลถัดไปที่กำลังไล่อยู่ — ขอบสว่างขึ้นหน่อยให้หาเจอทันทีที่เปิดหน้ามา */
-.lv-row.next { border-color: rgba(141,243,234,.6); background: rgba(141,243,234,.07); }
+/* ย่อกล่องของขวัญให้อยู่ในวงกลมพอดี — ค่าตั้งต้นของ .lg-box คิดจากปุ่มล็อบบี้ที่ใหญ่กว่านี้
+   ฝากล่องยื่นขึ้นไป 34% ถ้าไม่ย่อจะล้นออกนอกขอบหมุด */
+.lv-node .lg-box { width: 44%; height: 38%; margin-top: 14%; }
 
-.lv-tag {
+/* การ์ดรางวัล = ปุ่มจริง แตะทั้งใบเพื่อรับ (ไม่มีปุ่มรับแยกแล้ว)
+   มีกรอบใบเดียวคือ "ได้อะไร" ส่วนเลขเลเวลเป็นข้อความเปล่า ๆ วางนำหน้า ไม่มีกล่องของตัวเอง */
+.lv-card {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .07s ease, filter .12s ease;
+}
+.lv-card:hover { filter: brightness(1.1); }
+.lv-card:active { transform: translateY(2px); }
+.lv-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+.lv-when {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: clamp(28px, 5dvh, 42px);
-  height: clamp(28px, 5dvh, 42px);
-  border-radius: 12px;
-  border: 1.5px solid rgba(255,243,226,.24);
-  background: rgba(27,15,43,.55);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: clamp(12px, 2.1dvh, 17px);
-  line-height: 1;
+  padding-right: clamp(8px, 1.8vw, 18px);
   color: var(--cream);
-}
-.lv-row.ready .lv-tag { border-color: rgba(255,201,60,.7); color: #FFE9B0; }
-
-.lv-prize { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.lv-prize-main {
-  display: flex;
-  align-items: center;
-  gap: clamp(4px, 1vw, 9px);
   font-family: "Mitr", sans-serif;
   font-weight: 500;
-  font-size: clamp(12px, 1.9dvh, 16px);
+  font-size: clamp(11px, 1.9dvh, 16px);
+  white-space: nowrap;
+}
+.lv-row.locked .lv-when { opacity: .85; }
+.lv-what {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1vw, 9px);
+  padding: clamp(6px, 1.3dvh, 12px) clamp(10px, 2vw, 20px);
+  border-radius: 999px;
+  border: 2px solid rgba(255,243,226,.5);
+  background: #C77DEA;
   color: var(--cream);
-}
-.lv-prize-main .coin, .lv-prize-main .gem { flex: none; }
-.lv-prize-note { font-size: clamp(10px, 1.45dvh, 12px); color: #C0A6DC; line-height: 1.35; }
-/* ของที่ยังไม่ได้กำหนด — กล่องปริศนา ไม่ใช่ช่องว่างเปล่า
-   ช่องว่างอ่านเป็น "ระบบพัง" ส่วนกล่องปริศนาอ่านเป็น "ยังไม่ประกาศ" ซึ่งตรงกับความจริง */
-.lv-prize.tbd .lv-prize-main { color: #C9AEE8; }
-.lv-qmark {
-  display: grid;
-  place-items: center;
-  width: clamp(18px, 3dvh, 26px);
-  height: clamp(18px, 3dvh, 26px);
-  border-radius: 8px;
-  border: 1.5px dashed rgba(255,243,226,.4);
-  color: #E3D2F5;
   font-family: "Mitr", sans-serif;
-  font-size: clamp(10px, 1.7dvh, 14px);
-  line-height: 1;
+  font-weight: 500;
+  font-size: clamp(11px, 1.9dvh, 16px);
+  line-height: 1.25;
+  text-align: center;
+  /* ห้ามตัดคำ — ของรางวัลบางอย่างชื่อยาว ถ้าตัดจะอ่านไม่ออกว่าได้อะไร
+     ให้กรอบสูงขึ้นแทน (แถวสูงไม่เท่ากันไม่เป็นไร รางเป็นตัวร้อยให้อยู่แล้ว) */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
+.lv-what .coin, .lv-what .gem { flex: none; }
+
+/* ── สามสถานะของขั้นตอน ── */
+/* ถึงแล้วและยังไม่ได้กด = เรืองทอง (ภาษาสีเดียวกันทั้งเกม: ทองเรือง = อันนี้แหละที่ต้องกด) */
+.lv-row.ready .lv-node { border-color: #FFD65C; box-shadow: 0 0 16px rgba(255,201,60,.55); }
+.lv-row.ready .lv-what { border-color: #FFD65C; background: linear-gradient(180deg, #D98CF0, #B45FD8); }
+.lv-row.ready .lv-tap { color: #FFE9A8; }
+.lv-tap { font-size: clamp(9px, 1.4dvh, 12px); }
+.lv-row.done { opacity: .45; }
+/* ยังไปไม่ถึง — จางแต่ยังอ่านออก ครึ่งหนึ่งของคุณค่าหน้านี้คือ "รู้ว่ารออะไรอยู่" */
+.lv-row.locked .lv-node { background: linear-gradient(180deg, #5B3480, #40205E); border-color: rgba(240,215,255,.45); }
+.lv-row.locked .lv-what { background: #9E63C2; }
+
+/* หมุด "ตอนนี้อยู่ตรงนี้" — XP สะสมกับหน้าน้อง วางคั่นระหว่างขั้นเหมือนในแบบ */
+.lv-here {
+  position: relative;
+  margin-block: clamp(16px, 3.6dvh, 40px);
+  display: grid;
+  grid-template-columns: calc(var(--rail-x) * 2) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(4px, 1vw, 10px);
+}
+/* ข้อความก่อน หน้าน้องต่อท้ายทางขวา — ตามแบบที่วางไว้ */
+.lv-here-info {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.4vw, 14px);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(12px, 2.1dvh, 18px);
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+.lv-here-cat { width: clamp(26px, 4.6dvh, 40px); height: clamp(26px, 4.6dvh, 40px); }
 
 /* จอเตี้ย (มือถือแนวนอน): บีบระยะทุกจุดในหน้านี้ เป้าหมายคือให้เห็นรางวัลสามใบขึ้นไป
    หน้าที่เห็นทีละสองใบอ่านไม่ออกว่าเป็น "เส้นทางรางวัล" มันดูเหมือนกล่องสองกล่องลอย ๆ */
 @media (max-height: 460px) {
   .lv-now { padding: 4px clamp(8px, 1.6vw, 14px); margin-bottom: 5px; }
   .lv-now-badge { width: 26px; height: 26px; font-size: 12px; }
-  .lv-row { padding: 4px clamp(8px, 1.6vw, 14px); border-radius: 12px; }
-  .lv-tag { width: 24px; height: 24px; border-radius: 9px; font-size: 11px; }
-  .lv-list { gap: 5px; }
-}
-
-.lv-get {
-  flex: 0 0 auto;
-  margin-top: 0;
-  min-width: clamp(64px, 11vw, 104px);
-  padding: clamp(4px, .9dvh, 8px) clamp(8px, 1.6vw, 16px);
-  font-size: clamp(10px, 1.7dvh, 14px);
+  .lv-node { width: 28px; height: 28px; border-width: 2px; }
+  .lv-what { padding: 4px clamp(8px, 1.6vw, 14px); }
+  .lv-when { padding-right: 8px; }
+  .lv-inner { gap: 44px; }
+  .lv-here { margin-block: 18px; }
+  .lv-rail { --rail-x: 20px; --rail-w: 12px; }
 }
 
 /* ── ภารกิจหนึ่งแถว ──
@@ -3489,97 +3739,170 @@ canvas[hidden] { display: none; }
   position: relative;
   overflow: hidden;
   gap: clamp(6px, 1.3dvh, 12px);
-  padding: clamp(14px, 3dvh, 30px) clamp(26px, 5vw, 58px);
-  background:
-    radial-gradient(70% 54% at 50% 4%, rgba(255,201,60,.16), transparent 72%),
-    linear-gradient(180deg, rgba(96,47,131,.95), rgba(35,16,55,.97));
+  padding: clamp(16px, 3.4dvh, 34px) clamp(26px, 5vw, 58px) clamp(14px, 3dvh, 30px);
+  /* ม่วงอ่อนกว่าการ์ดแผงอื่นหนึ่งขั้น — หน้านี้เป็นหน้าฉลอง ไม่ใช่หน้าบอกข่าวร้าย
+     ยังเข้มพอให้การ์ดชมพูข้างในเด้งออกมาอยู่ */
+  background: var(--pop-lite);
 }
-/* ทุกชั้นในการ์ดต้องลอยเหนือริบบิ้น ไม่งั้นริบบิ้นจะตกทับตัวเลข */
+/* ทุกชั้นในการ์ดต้องเรียงอยู่ในแถวปกติและลอยเหนือของที่เป็นฉากหลัง */
 .over-pop > * { position: relative; z-index: 2; }
-.over-pop > .confetti { z-index: 1; }
+/* ── ริบบิ้นโปรยอยู่หน้าสุด ──
+   การ์ดคะแนนใบใหม่ทึบเต็มใบ ถ้าริบบิ้นอยู่หลังการ์ดเหมือนของเดิมจะแทบไม่เห็นอะไรเลย
+   ชิ้นริบบิ้นบางและไม่รับคลิก (pointer-events: none) จึงบังตัวเลขแค่เสี้ยววินาทีตอนผ่านหน้า */
+.over-pop > .confetti { position: absolute; z-index: 5; }
 
-/* ── คะแนนของตาที่เพิ่งจบ = พระเอกของหน้า ──
-   แยกออกมาตัวใหญ่เดี่ยว ๆ เพราะเป็นตัวเลขเดียวที่คนเปิดหน้านี้มาหาคำตอบ
-   ของเดิมวางสามช่องเท่ากันหมด สายตาจึงไม่รู้ว่าควรอ่านช่องไหนก่อน */
-.over-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: clamp(6px, 1.2dvh, 12px) clamp(22px, 4vw, 44px) clamp(7px, 1.4dvh, 13px);
-  border-radius: 20px;
-  border: 1px solid rgba(255,243,226,.2);
-  background: linear-gradient(180deg, rgba(255,243,226,.13), rgba(255,243,226,.04));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 18px rgba(0,0,0,.35);
+/* หัวเรื่องเป็นป้ายม่วงคร่อมขอบบนของการ์ดคะแนน (กฎเดียวกับป้ายคำพูดในหน้าเช็คอิน)
+   ต้องเขียนคู่กับ .panel h2 เสมอ ไม่งั้นเส้นใต้ของหัวเรื่องกลางจะทับป้ายนี้ */
+.panel h2.over-title {
+  z-index: 3;
+  margin: 0 0 clamp(-22px, -3dvh, -12px);
+  padding: clamp(4px, .9dvh, 9px) clamp(20px, 3.4vw, 38px) clamp(6px, 1.2dvh, 12px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8E3FC4, #5E2189);
+  box-shadow: 0 4px 0 rgba(20,8,32,.5), 0 8px 18px rgba(0,0,0,.36);
+  font-size: clamp(17px, 3.4dvh, 27px);
 }
-.over-hero .lbl {
-  font-size: clamp(9px, 1.4dvh, 11.5px);
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  color: #B99BD4;
+
+/* ── การ์ดคะแนน ── ชมพูม่วงขอบทอง ตามแบบที่วางไว้ */
+.over-card {
+  position: relative;
+  display: grid;
+  gap: clamp(1px, .3dvh, 4px);
+  width: min(88vw, 430px);
+  padding: clamp(14px, 2.6dvh, 26px) clamp(16px, 3vw, 30px) clamp(10px, 2dvh, 20px);
+  border-radius: clamp(16px, 2.4vw, 26px);
+  border: clamp(2px, .4vw, 4px) solid #FFD65C;
+  background: linear-gradient(180deg, #C86BE4, #B052D6);
+  box-shadow: 0 8px 22px rgba(20,8,32,.45), inset 0 2px 0 rgba(255,255,255,.22);
+}
+/* ป้ายบอกว่าตัวเลขใหญ่คืออะไร ชิดขวาเหนือตัวเลข — ตัวเลขจึงได้กลางการ์ดไว้คนเดียว */
+.over-lbl {
+  justify-self: end;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 1.8dvh, 15px);
+  color: var(--cream);
 }
 .over-score {
+  justify-self: center;
   font-family: "Mitr", sans-serif;
   font-weight: 600;
   font-size: clamp(30px, 6.6dvh, 54px);
   line-height: 1.06;
-  color: var(--cream);
+  color: #FFE9B5;
   /* ตัวเลขไล่ขึ้นทีละหลัก ถ้าความกว้างตัวเลขไม่เท่ากันทั้งแถวจะกระตุกซ้ายขวาตลอด */
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 3px 0 rgba(58,29,80,.85), 0 0 26px rgba(255,201,60,.42);
+  text-shadow: 0 4px 0 rgba(88,32,120,.55);
 }
-
-/* ป้ายสถิติใหม่ — โผล่ตามหลังตัวเลขที่ไล่จบ (ดู showGameOver ใน main.js) */
-.best-badge {
-  margin-top: 4px;
-  padding: 2px 13px;
-  border-radius: 999px;
+.over-best-lbl {
+  justify-self: start;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.7dvh, 14px);
+  color: var(--cream);
+}
+.over-best {
+  justify-self: start;
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  font-size: clamp(10px, 1.6dvh, 13px);
-  letter-spacing: .04em;
-  color: #3E2600;
-  background: linear-gradient(180deg, #FFE49B, #F5B31E);
-  box-shadow: 0 0 16px rgba(255,201,60,.6), 0 2px 0 rgba(120,72,6,.4);
-  animation: badgePop .45s cubic-bezier(.2,.9,.3,1.5) backwards;
-}
-.best-badge.hidden { display: none; }
-@keyframes badgePop {
-  0%   { opacity: 0; transform: scale(.4) rotate(-10deg); }
-  60%  { opacity: 1; transform: scale(1.15) rotate(3deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
+  font-size: clamp(19px, 3.8dvh, 31px);
+  line-height: 1.1;
+  color: var(--mint-lite);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 3px 0 rgba(88,32,120,.5);
 }
 
-/* ── สองช่องรอง: ระยะทาง กับ สถิติสูงสุด ── */
-.final {
+/* ── ป้ายสถิติใหม่ ── ห้อยเชือกหล่นลงมามุมขวาบนของการ์ด แล้วแกว่งเบา ๆ ค้างไว้
+   เป็นของชิ้นเดียวที่ประกาศว่า "ตานี้ทำสถิติใหม่" หัวเรื่องจึงไม่ต้องเปลี่ยนคำอีก */
+.over-medal {
+  position: absolute;
+  z-index: 3;
+  right: clamp(-74px, -9.6vw, -38px);
+  top: clamp(-42px, -7.4dvh, -80px);
+  width: clamp(58px, 9.6vw, 112px);
+  transform-origin: 50% -34%;
+  animation:
+    medalDrop .8s cubic-bezier(.18, 1.28, .4, 1) both,
+    medalSway 3.4s ease-in-out .8s infinite;
+}
+.over-medal.hidden { display: none; }
+/* เชือกยาวพ้นขอบการ์ดขึ้นไป ป้ายจึงอ่านเป็น "ห้อยลงมา" ไม่ใช่ "ลอยอยู่" */
+.medal-cord {
+  position: absolute;
+  left: 50%;
+  bottom: 96%;
+  width: 2px;
+  height: clamp(16px, 3.4dvh, 38px);
+  margin-left: -1px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(255,243,226,.2), rgba(255,243,226,.85));
+}
+.medal-disc {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  clip-path: polygon(50.0% 0.0%, 55.0% 8.8%, 62.0% 1.5%, 64.7% 11.2%, 73.2% 5.7%, 73.6% 15.8%, 83.2% 12.6%, 81.1% 22.5%, 91.1% 21.6%, 86.7% 30.7%, 96.8% 32.3%, 90.3% 40.1%, 99.6% 44.0%, 91.5% 50.0%, 99.6% 56.0%, 90.3% 59.9%, 96.8% 67.7%, 86.7% 69.3%, 91.1% 78.4%, 81.1% 77.5%, 83.2% 87.4%, 73.6% 84.2%, 73.2% 94.3%, 64.7% 88.8%, 62.0% 98.5%, 55.0% 91.2%, 50.0% 100.0%, 45.0% 91.2%, 38.0% 98.5%, 35.3% 88.8%, 26.8% 94.3%, 26.4% 84.2%, 16.8% 87.4%, 18.9% 77.5%, 8.9% 78.4%, 13.3% 69.3%, 3.2% 67.7%, 9.7% 59.9%, 0.4% 56.0%, 8.5% 50.0%, 0.4% 44.0%, 9.7% 40.1%, 3.2% 32.3%, 13.3% 30.7%, 8.9% 21.6%, 18.9% 22.5%, 16.8% 12.6%, 26.4% 15.8%, 26.8% 5.7%, 35.3% 11.2%, 38.0% 1.5%, 45.0% 8.8%);
+  background: radial-gradient(circle at 44% 32%, #FF6060, #C4162A 76%);
+  color: #FFF3E2;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(9px, 1.5dvh, 13px);
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(70,0,10,.55);
+}
+@keyframes medalDrop {
+  0%   { opacity: 0; transform: translateY(-260%) rotate(-16deg); }
+  55%  { opacity: 1; transform: translateY(7%) rotate(6deg); }
+  78%  { transform: translateY(-4%) rotate(-4deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0); }
+}
+@keyframes medalSway {
+  0%, 100% { transform: rotate(-3.5deg); }
+  50%      { transform: rotate(3.5deg); }
+}
+
+/* ── ระยะทาง ── เส้นประพาดจากซ้ายมาจบที่ตัวเลข อ่านเป็นบรรทัดสรุปท้ายใบเสร็จ */
+.over-dist {
   display: flex;
-  gap: clamp(8px, 1.6vw, 14px);
-  justify-content: center;
-  flex-wrap: wrap;
-  margin: 0;
+  align-items: center;
+  gap: clamp(8px, 1.6vw, 16px);
+  width: min(88vw, 430px);
+  font-size: clamp(11px, 1.8dvh, 15px);
+  color: #E6D5F7;
 }
-.fstat {
-  min-width: clamp(96px, 17vw, 132px);
-  padding: clamp(5px, 1dvh, 9px) clamp(10px, 1.8vw, 18px);
-  border-radius: 14px;
-  border: 1px solid rgba(255,243,226,.14);
-  background: rgba(255,243,226,.055);
+.over-dist i {
+  flex: 1 1 auto;
+  height: 0;
+  border-top: 2px dashed rgba(255,243,226,.5);
 }
-.final .lbl {
-  font-size: clamp(8.5px, 1.3dvh, 10.5px);
-  letter-spacing: .13em;
-  text-transform: uppercase;
-  color: #A98BC4;
-}
-.final .val {
+.over-dist b {
   font-family: "Mitr", sans-serif;
-  font-size: clamp(17px, 3dvh, 24px);
   font-weight: 600;
-  line-height: 1.25;
   color: var(--cream);
   font-variant-numeric: tabular-nums;
 }
-.final .val.mint { color: var(--mint-lite); }
+
+@media (prefers-reduced-motion: reduce) {
+  .over-medal { animation: none; }
+}
+
+/* ── จอเตี้ย (มือถือแนวนอน) ──
+   การ์ดกับตัวเลขย่อลงทั้งชุด ไม่งั้นแถวปุ่มจะตกพ้นขอบล่างของแผง
+   ป้ายแดงย้ายเข้ามาอยู่ในมุมการ์ด เพราะขอบแผงตัดของที่ยื่นออกไป (overflow: hidden
+   ซึ่งจำเป็นสำหรับริบบิ้น) ส่วนป้าย "คะแนนของกิน" ย้ายไปชิดซ้ายเพื่อไม่ให้ชนกัน */
+@media (max-height: 460px) {
+  .pop.over-pop { padding: 10px 16px; gap: 4px; }
+  .panel h2.over-title { font-size: clamp(14px, 4.4dvh, 19px); padding: 3px 16px 5px; margin-bottom: -9px; }
+  .over-card { padding: 8px 12px 6px; border-width: 2px; border-radius: 13px; gap: 0; }
+  .over-score { font-size: clamp(22px, 9dvh, 34px); }
+  .over-best { font-size: clamp(14px, 5.4dvh, 21px); }
+  .over-lbl { justify-self: start; font-size: clamp(9px, 3.2dvh, 12px); }
+  .over-best-lbl { font-size: clamp(8.5px, 3dvh, 11px); }
+  .over-dist { font-size: clamp(9px, 3dvh, 12px); }
+  .over-medal { width: clamp(42px, 15dvh, 60px); right: 4px; top: -8px; }
+  .medal-cord { height: clamp(8px, 2.4dvh, 14px); }
+}
 
 /* ── แถบบนในจอ ─────────────────────────────── */
 /* เดิมลอยอยู่เหนือกรอบเกม ทำให้หน้าเว็บดูเป็น "เว็บที่มีเกมอยู่ข้างใน"
@@ -3777,6 +4100,10 @@ canvas[hidden] { display: none; }
   clip-path: polygon(28% 34%, 50% 44%, 44% 62%);
   background: rgba(255,255,255,.34);
 }
+
+/* หน้าพักก่อนใช้พื้นอ่อนชุดเดียวกับหน้าจบรอบและหน้าน้องตกหลุม
+   สามหน้านี้โผล่ระหว่างเล่นเหมือนกัน ต่างจากแผงเมนูที่เข้าจากล็อบบี้ */
+#pausePanel > .pop { background: var(--pop-lite); }
 
 /* ── ปุ่มหยุดชั่วคราว + ปิดเสียง ───────────── */
 /* ชิดขวาบนในจอ — ค่าขนมเปียกที่เคยอยู่มุมนี้ถูกย้ายลงไปใต้แถวตัวอักษรแล้ว */
@@ -4246,13 +4573,10 @@ canvas[hidden] { display: none; }
     box-shadow: 0 4px 0 #2E9C95, 0 8px 16px rgba(78,205,196,.24);
   }
   .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #2E9C95; }
-  .final { gap: 7px; margin: 0; }
-  .fstat { min-width: 78px; padding: 4px 10px; border-radius: 11px; }
-  .final .lbl { font-size: 8.5px; letter-spacing: .1em; }
-  .final .val { font-size: 15px; }
-  .over-hero { padding: 4px 18px 6px; border-radius: 15px; }
+  .over-card { padding: 10px 14px 8px; border-radius: 15px; }
   .over-score { font-size: clamp(26px, 7.4dvh, 40px); }
-  .pop.over-pop { padding: 12px 20px; }
+  .over-best { font-size: clamp(17px, 4.2dvh, 24px); }
+  .pop.over-pop { padding: 14px 20px 12px; }
   .hud-top { padding: 8px 9px; gap: 7px; }
   /* จอแคบมาก — ปุ่มยังต้องกดโดนอยู่ แต่ห้ามกินจอจนมองไม่เห็นทางวิ่ง
      ปรับผ่าน --tp ตัวเดียว ขนาดตัวหนังสือกับด้านของปุ่มจึงขยับตามกันเสมอ
@@ -4924,11 +5248,14 @@ canvas[hidden] { display: none; }
 
 /* ── จอเตี้ย (มือถือแนวนอน): แบ่งเป็นสองหน้า เลื่อนลงดูแถวล่าง ── */
 @media (max-height: 520px) {
-  .pf-pop { padding-top: clamp(30px, 9dvh, 44px); }
+  /* การ์ดไม่ต้องกินเต็มความกว้างเวที — บนมือถือแนวนอนเวทีกว้างมาก
+     การ์ดที่กว้างเต็มทำให้ทุกอย่างข้างในต้องใหญ่ตาม แล้วอ่านเป็น "ใหญ่เกินตัว" */
+  .pf-pop { padding-top: clamp(30px, 9dvh, 44px); width: min(90%, 700px); }
   .pf-body {
-    /* หนึ่งหน้า = เกือบทั้งการ์ด และยอมให้กว้างกว่าบนคอมหน่อย (การ์ดสองใบวางชิดกันในจอแคบ) */
-    --row: 92cqh;
-    --u: min(calc(var(--row) / 100), .36cqw);
+    /* หนึ่งหน้า = เกือบทั้งการ์ด แต่เพดานความกว้างแคบลงกว่าเดิมหนึ่งขั้น
+       ทุกขนาดในหน้านี้คิดจาก --u ตัวเดียว ลดตัวนี้ = ย่อทั้งกรอบและตัวหนังสือพร้อมกัน */
+    --row: 84cqh;
+    --u: min(calc(var(--row) / 100), .29cqw);
     display: block;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -6641,6 +6968,49 @@ canvas[hidden] { display: none; }
    ใช้ทรง .pop เดียวกับแผงอื่น ต่างแค่แคบกว่าและมีปุ่มสองอัน
    แคบกว่าตั้งใจ เพราะกล่องยืนยันต้องอ่านจบในสายตาเดียว ไม่ใช่หน้าที่ต้องกวาดอ่าน */
 .confirm-pop { width: min(340px, 100%); gap: 10px; }
+/* ปกติกล่องครอบไม่มีตัวตน ลูกทั้งสามจึงเรียงในคอลัมน์ของการ์ดเหมือนเดิมทุกกล่อง */
+.confirm-card { display: contents; }
+
+/* ── หน้าตาแบบเดียวกับหน้าสรุปคะแนน (look: 'card') ──
+   ใช้กับกล่องที่เป็น "จังหวะใหญ่ของตา" อย่างตอนน้องตกหลุม ไม่ใช่กล่องยืนยันทั่วไป
+   หัวเรื่องเป็นป้ายม่วงคร่อมขอบบนของการ์ดชมพูขอบทอง — ชุดเดียวกับหน้าจบรอบเป๊ะ */
+.confirm-pop.card { gap: 0; background: var(--pop-lite); }
+.confirm-pop.card .confirm-title {
+  position: relative;
+  z-index: 2;
+  margin-bottom: clamp(-18px, -2.6dvh, -11px);
+  padding: clamp(4px, .9dvh, 8px) clamp(18px, 3vw, 30px) clamp(6px, 1.2dvh, 11px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8E3FC4, #5E2189);
+  box-shadow: 0 4px 0 rgba(20,8,32,.5), 0 8px 18px rgba(0,0,0,.36);
+}
+.confirm-pop.card .confirm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.2dvh, 11px);
+  width: 100%;
+  padding: clamp(16px, 2.8dvh, 26px) clamp(14px, 2.6vw, 22px) clamp(11px, 2dvh, 18px);
+  border-radius: clamp(16px, 2.4vw, 26px);
+  border: clamp(2px, .4vw, 4px) solid #FFD65C;
+  background: linear-gradient(180deg, #C86BE4, #B052D6);
+  box-shadow: 0 8px 22px rgba(20,8,32,.45), inset 0 2px 0 rgba(255,255,255,.22);
+}
+.confirm-pop.card .confirm-body { color: #FFF3E2; }
+/* ราคายังต้องเด่นสุดในกล่อง พื้นเข้มบนการ์ดชมพูให้คอนทราสต์มากกว่าพื้นอ่อน */
+.confirm-pop.card .confirm-cost { background: rgba(48,16,74,.55); border-color: #FFE49B; }
+.confirm-pop.card .confirm-after { color: #F6E8FF; }
+.confirm-pop.card .confirm-btns { margin-top: clamp(8px, 1.6dvh, 14px); }
+
+/* จอเตี้ย: การ์ดในกล่องแบบนี้สูงกว่ากล่องยืนยันปกติอยู่แล้ว (มีขอบการ์ดกับช่องไฟเพิ่ม)
+   ถ้าไม่บีบ แถวปุ่มจะตกพ้นขอบล่างของเวที */
+@media (max-height: 460px) {
+  .confirm-pop.card .confirm-title { font-size: 14px; padding: 3px 14px 5px; margin-bottom: -9px; }
+  .confirm-pop.card .confirm-card { gap: 5px; padding: 12px 12px 9px; border-width: 2px; border-radius: 14px; }
+  .confirm-pop.card .confirm-body { font-size: 11px; line-height: 1.4; }
+  .confirm-pop.card .confirm-after { font-size: 10px; }
+  .confirm-pop.card .confirm-btns { margin-top: 6px; }
+}
 
 .confirm-art {
   width: 84px;

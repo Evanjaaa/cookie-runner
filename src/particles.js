@@ -1,5 +1,6 @@
 // src/particles.js
 import { COLORS } from './config.js';
+import { partCount } from './graphics.js';
 
 const TINT = {
   dust: 'rgba(255,243,226,.5)',
@@ -27,9 +28,10 @@ export class Particles {
     this.list.push({ life: 24, max: 24, r: 3, vx: 0, vy: 0, kind: 'dust', ...p });
   }
 
-  /** ระเบิดออกทุกทิศ ใช้ตอนเก็บเจลลี่หรือตาย */
+  /** ระเบิดออกทุกทิศ ใช้ตอนเก็บเจลลี่หรือตาย
+      จำนวนจริงหักตามระดับกราฟิก — ผู้เรียกไม่ต้องรู้ว่าตอนนี้เครื่องตั้งไว้ระดับไหน */
   burst(x, y, count, kind, power = 4.5) {
-    for (let i = 0; i < count; i++) {
+    for (let i = 0, n = partCount(count); i < n; i++) {
       this.add({
         x, y,
         vx: (Math.random() - 0.5) * power,
@@ -43,7 +45,7 @@ export class Particles {
 
   /** ฝุ่นลอยขึ้น ใช้ตอนกระโดดและลงพื้น */
   dust(x, y, count) {
-    for (let i = 0; i < count; i++) {
+    for (let i = 0, n = partCount(count); i < n; i++) {
       this.add({
         x, y,
         vx: -(Math.random() * 2 + 1),

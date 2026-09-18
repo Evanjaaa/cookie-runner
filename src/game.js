@@ -29,6 +29,7 @@ import { drawTreasureSlots } from './render/treasure-hud.js';
 import { TalentRun } from './talent-run.js';
 import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/talent-fx.js';
 import { drawHUD } from './render/hud.js';
+import { drawWarpBack, drawWarpFront, drawWarpArrive } from './render/warp.js';
 import { postProcess } from './render/post.js';
 import { drawOutlined } from './render/outline.js';
 import { GateRun } from './gate-run.js';
@@ -414,6 +415,9 @@ export class Game {
 
     this.pal = this.stage.palette;
     this.best = loadBest(this.stage.id);
+    // สถิติก่อนตานี้ — หน้าสรุปเอาไปโชว์เป็น "สถิติเดิม" ตอนทำสถิติใหม่ได้
+    // ต้องเก็บแยกไว้ เพราะ this.best ถูกทับด้วยคะแนนใหม่ตั้งแต่ตอนตาย
+    this.prevBest = this.best;
     this.level.reset(Level.routeFor(this.stage), this.stage.theme);
     this.level.nextLetter = () => this.nextLetterIndex();
 
@@ -444,6 +448,9 @@ export class Game {
     this.letters = 0;     // เก็บตัวอักษร SPEEDCAT ได้กี่ตัวแล้ว
     this.bonus = 0;       // เฟรมที่เหลือของโหมดโบนัส (0 = ไม่ได้อยู่ในโบนัส)
     this.bonusPhase = '';
+    // กล้องของ "ฉากฟ้า" ระหว่างโบนัส — เดินหน้าแทน this.camera ซึ่งถูกแช่ไว้ทั้งช่วง
+    // ด่านข้างล่างจึงค้างอยู่ที่เดิม แล้วปลาพาลงมาส่งจุดเดิมที่ขึ้นไปพอดี
+    this.bonusCam = 0;
     this.catMood = '';
     this.bonusTreats = [];
     this.bonusMagnets = [];
@@ -1507,9 +1514,10 @@ export class Game {
 
   /**
    * เริ่มโบนัส — ไม่แตะ state ของด่านเลย แค่ "หยุดใช้มัน" ชั่วคราว
-   * ระหว่างโบนัสจะไม่เรียก ensureAhead/cull ด่านจึงค้างอยู่ที่เดิม
-   * พอจบแล้ว ensureAhead จะไล่สร้างท่อนจนทันกล้อง ส่วนท่อนที่ตกค้างข้างหลัง
-   * โดน cull ทิ้งเอง จึงไม่มีรอยต่อให้ต้องจัดการเป็นพิเศษ
+   *
+   * ระหว่างโบนัส this.camera ไม่ขยับเลย ทั้งด่าน หลอดระยะ และระยะทางสะสม
+   * จึงค้างอยู่ที่เดิมทั้งหมด ฉากฟ้าเลื่อนด้วยกล้องของตัวเอง (bonusCam)
+   * พอปลาพาลงมาส่ง แมวจึงกลับมายืนจุดเดิมที่ถูกช้อนขึ้นไป ไม่ใช่จุดใหม่ที่ไกลออกไป
    */
   startBonus() {
     // เข้าโบนัสได้ทั้งที่พลังแตะศูนย์ไปแล้ว = โบนัสมารับทันพอดี
@@ -1521,6 +1529,7 @@ export class Game {
     }
     this.bonus = BONUS.frames;
     this.bonusPhase = 'catch';
+    this.bonusCam = this.camera;   // ฉากฟ้าเริ่มเลื่อนจากจุดที่ยืนอยู่ตอนนี้
     // ท่าพิเศษที่กำลังออกฤทธิ์จบทันที โบนัสคุมตัวน้องด้วยกติกาของมันเอง
     this.talents.onBonusStart(this);
     this.syncMusic();      // เพลงบนฟ้าต้องมาแทนเพลงเต้นทันที ถ้าความสามารถกำลังทำงานอยู่
@@ -1544,9 +1553,40 @@ export class Game {
     // ถ้ายังบวก catchFrames อยู่ ของแถวแรกจะถูกวางล้ำไปข้างหน้าเกินจริง
     // แล้วผู้เล่นจะบินผ่านที่ว่างอยู่พักหนึ่งก่อนเจอของชิ้นแรก
     const flyFrom = BONUS.riseFrames * this.speed;
-    this.bonusTreats = buildBonusField(this.camera + flyFrom + 200, span);
-    this.bonusMagnets = buildBonusMagnets(this.camera + PLAYER_X, span, this.speed);
+    this.bonusTreats = buildBonusField(this.bonusCam + flyFrom + 200, span);
+    this.bonusMagnets = buildBonusMagnets(this.bonusCam + PLAYER_X, span, this.speed);
     sfx.bonus();
+  }
+
+  /**
+   * ความคืบหน้าของเวทวาร์ป คิดจากเวลาของโบนัสตรง ๆ ไม่ต้องเก็บตัวจับเวลาแยก
+   *   rise   0→1 ตลอดช่วงทะยานขึ้น (0 = ยังไม่ถึงช่วงนี้)
+   *   arrive 0→1 ครึ่งวินาทีแรกหลังโผล่บนฟ้า (-1 = พ้นช่วงนั้นไปแล้ว)
+   */
+  warpAt() {
+    const elapsed = BONUS.frames - this.bonus;
+    const rise = (elapsed - BONUS.catchFrames) / BONUS.riseFrames;
+    const after = elapsed - BONUS.catchFrames - BONUS.riseFrames;
+    return {
+      rise: this.bonusPhase === 'rise' ? Math.max(0, Math.min(1, rise)) : 0,
+      arrive: this.bonusPhase === 'fly' && after < BONUS.arriveFrames ? after / BONUS.arriveFrames : -1,
+    };
+  }
+
+  /**
+   * จุดลงของปลา — จุดเดิมที่ช้อนขึ้นไป ถ้าตรงนั้นยืนไม่ได้ค่อยเลื่อนไปข้างหน้าทีละนิด
+   *
+   * ปกติแล้วจุดเดิมโล่งอยู่แล้ว (แมววิ่งผ่านมาได้) กล้องจึงไม่ขยับเลยสักพิกเซล
+   * ที่ต้องเลื่อนมีสองกรณี: เข้าโบนัสตอนลอยข้ามหลุมอยู่ กับมีของจ่อข้างหน้าใกล้เกินจะหลบทัน
+   */
+  landingX() {
+    const b = this.player.box;
+    for (let i = 0; i <= 40; i++) {
+      const x = this.camera + i * BONUS.landStep;
+      this.level.ensureAhead(x);
+      if (!this.level.hasSolid(x + b.x, BONUS.landRunway)) return x;
+    }
+    return this.camera;
   }
 
   /**
@@ -1566,6 +1606,9 @@ export class Game {
 
   /** งานที่ทำครั้งเดียวตอนเปลี่ยนช่วงฉาก */
   enterBonusPhase(to) {
+    // เวทวาร์ปเริ่มพร้อมช่วงทะยานขึ้น เสียงยาวเท่าช่วงพอดี จบลงตรงที่แสงวาบขาว
+    if (to === 'rise') sfx.warp();
+
     // ขาววาบตอนตัดขึ้นฟ้า ดำวาบตอนปิดฉากกลับลงพื้น
     if (to === 'fly' || to === 'fall') {
       this.flash = 1;
@@ -1581,15 +1624,12 @@ export class Game {
       this.bonusTreats = [];
       this.bonusMagnets = [];
 
-      // ระหว่างลอยอยู่บนฟ้า กล้องวิ่งไปไกลมากโดยไม่มีใครสร้างด่านรอไว้
-      // ต้องไล่สร้างให้ทันก่อนฉากพื้นจะกลับมาให้เห็น ไม่งั้นจะโผล่มาเจอที่ว่าง
-      // ── ปูทางโล่งรอไว้ตรงจุดที่ปลาจะพาลงมาส่ง ──
-      // ท่อนที่ 0 คือทางเรียบล้วน ไม่มีหนามไม่มีหลุม (ชุดเดียวกับทางเชื่อมระหว่างฉาก)
-      // เริ่มจากขอบจอซ้ายพอดี ทั้งจอที่ผู้เล่นเห็นตอนลงมาจึงว่างเปล่าแน่นอน
-      // ตัดท่อนแรกของเส้นทางทิ้ง เพราะ composeRoute บังคับให้มันเป็นท่อนปลอดภัยอยู่แล้ว
-      // ถ้าไม่ตัด จะได้ทางโล่งซ้อนกันสองท่อน = วิ่ง 4.1 วินาทีกว่าจะเจอของชิ้นแรก
-      // ตัดแล้วเหลือ 2.3 วินาที ซึ่งตรงกับจังหวะที่ต้องการ
-      this.restartRoute(BONUS.landingChunks);
+      // ไม่ต้องปูทางใหม่รอ — กล้องด่านไม่ได้ขยับไปไหนตลอดช่วงโบนัส
+      // ฉากพื้นที่โผล่กลับมาจึงเป็นภาพเดียวกับตอนที่ปลาช้อนแมวขึ้นไปเป๊ะ
+      // (ของกับสิ่งกีดขวางก็หยุดตามไปด้วย เพราะ update ของด่านไม่ถูกเรียกในช่วงนี้)
+      // เหลืออย่างเดียวคือเช็คว่าจุดเดิมยืนได้จริงไหม เผื่อขึ้นไปตอนกระโดดข้ามหลุมอยู่
+      this.camera = this.landingX();
+      this.level.ensureAhead(this.camera);
     }
   }
 
@@ -1620,10 +1660,12 @@ export class Game {
     // ไม่ได้วิ่งเอง กำลังยืนรอปลาอยู่ ซึ่งอ่านไม่ออกว่าเป็นคัตซีนหรือยังเล่นอยู่
     // หยุดกล้องแล้วจังหวะจะชัดขึ้นมาก: หยุด -> ดูปลามารับ -> ขึ้นฟ้า -> ลง -> วิ่งต่อ
     const worldMoves = phase === 'rise' || phase === 'fly';
-    if (worldMoves) {
-      this.camera += this.speed * gdt;
-      this.distance += this.speed * gdt;
-    }
+    if (worldMoves) this.bonusCam += this.speed * gdt;
+
+    // ── หลอดระยะของฉากต้องนิ่งด้วย ──
+    // หลอดนั้นอ่านจาก nextSceneAt - tick (เวลาเดินตลอด แม้ตอนอยู่บนฟ้า)
+    // ถ้าไม่เลื่อนเส้นตายตามไปด้วย หลอดจะเดินต่อทั้งที่ด่านข้างล่างหยุดสนิท
+    this.nextSceneAt += dt;
 
     // ── อารมณ์บนหน้าแมวตลอดช่วงโบนัส ──
     // ไล่เป็นเรื่องเดียวกันสามจังหวะ: ดีใจตอนปลามารับ -> ตาเป็นประกายตอนลอยอยู่บนฟ้า
@@ -1667,7 +1709,7 @@ export class Game {
       p.vy = 0;
       this.turnFish(1, dt);   // หมุนตัวกลับไปหันทางที่วิ่ง
       if (elapsed % 4 < dt) {
-        this.particles.burst(PLAYER_X + this.camera, p.y + 30, 4, 'mint', 3);
+        this.particles.burst(PLAYER_X + this.bonusCam, p.y + 30, 4, 'mint', 3);
       }
     } else if (phase === 'fly') {
       p.vy += BONUS.gravity * dt;
@@ -1726,7 +1768,8 @@ export class Game {
     if (phase !== 'fly') this.level.ensureAhead(this.camera);
 
     const b = p.box;
-    const cx = b.x + this.camera + b.w / 2;
+    // ของบนฟ้าปูไว้ในพิกัดของ bonusCam จึงต้องเทียบกับกล้องตัวนั้น ไม่ใช่กล้องด่านที่ถูกแช่ไว้
+    const cx = b.x + this.bonusCam + b.w / 2;
     const cy = b.y + b.h / 2;
 
     // เก็บของได้เฉพาะตอนอยู่ฉากฟ้า ช่วงเปิดกับปิดแมวอยู่ในมือปลา
@@ -1784,6 +1827,9 @@ export class Game {
       this.bonusTreats = [];
       this.bonusMagnets = [];
       this.syncMusic();    // กลับไปเพลงเต้นถ้าความสามารถยังเหลือเวลา ไม่งั้นเพลงหลัก
+      // อมตะสั้น ๆ ตอนคืนการควบคุม — ของที่ขยับได้ถูกแช่ค้างไว้ตั้งแต่ตอนเข้าโบนัส
+      // ถ้ามันบังเอิญค้างอยู่ตรงตัวแมวพอดี ผู้เล่นจะโดนชนทันทีในเฟรมแรกโดยไม่มีทางเลี่ยง
+      this.invuln = Math.max(this.invuln, BONUS.landGrace);
       p.y = GROUND_Y;
       p.vy = 0;
       p.onGround = true;
@@ -1811,8 +1857,8 @@ export class Game {
       // ชุดระดับสูงเปลี่ยนสีฟ้าโบนัสได้ — ผสมทับจานสีของด่านเฉพาะคีย์ที่ชุดกำหนด
       // ไม่ได้แทนทั้งจาน เพราะยังต้องใช้สี HUD กับสีของกินจากด่านเดิม
       const pal = skin.outfit.bonus ? { ...this.pal, ...skin.outfit.bonus } : this.pal;
-      drawSky(ctx, this.camera, pal, true);
-      drawClouds(ctx, this.camera, pal);
+      drawSky(ctx, this.bonusCam, pal, true);
+      drawClouds(ctx, this.bonusCam, pal);
       if (skin.outfit.bonus?.sparkle) {
         drawBonusSparkle(ctx, this.tick, skin.outfit.bonus.sparkle);
       }
@@ -1843,13 +1889,24 @@ export class Game {
     if (sky) {
       const [plainFish, rareTreats] = splitFish(this.bonusTreats);
       drawOutlined(ctx, (c) => {
-        drawMagnets(c, this.bonusMagnets, this.camera, this.tick);
-        drawTreats(c, rareTreats, this.camera, this.tick);
+        drawMagnets(c, this.bonusMagnets, this.bonusCam, this.tick);
+        drawTreats(c, rareTreats, this.bonusCam, this.tick);
       });
-      drawTreats(ctx, plainFish, this.camera, this.tick);
+      drawTreats(ctx, plainFish, this.bonusCam, this.tick);
     }
 
-    this.particles.draw(ctx, this.camera);
+    // อนุภาคของช่วงลอยเกิดในพิกัดฉากฟ้า ส่วนช่วงรับ/ส่งเกิดในพิกัดด่าน
+    // สองช่วงนี้คั่นด้วยแสงวาบเต็มจอเสมอ จึงไม่มีจังหวะที่เห็นทั้งสองชุดพร้อมกัน
+    this.particles.draw(ctx, sky ? this.bonusCam : this.camera);
+
+    // ── เวทวาร์ปขึ้นฟ้า ──
+    // ด่านข้างล่างหยุดนิ่งตลอดโบนัส ช่วงทะยานขึ้นจึงไม่มีฉากไหลผ่านให้รู้สึกว่ากำลังไปไหน
+    // วงเวทกับประกายเป็นตัวเล่าแทน แล้วส่งต่อให้แสงขาวที่วาบตอนตัดเข้าฉากฟ้า
+    const warp = this.warpAt();
+    const b = this.player.box;
+    const wx = b.x + b.w / 2;
+    const wy = b.y + b.h / 2;
+    if (warp.rise > 0) drawWarpBack(ctx, wx, wy, warp.rise, this.tick);
 
     // ปลาก่อนแมว แมวจึงนั่งทับอยู่บนหลังปลาไม่ใช่จมอยู่ข้างใน
     // ปลาทองตัวใหญ่ไม่ผ่านชั้นเส้นขอบ — มีวงออร่าโปร่งกว้างรอบตัวที่วาดรวมอยู่ในตัว
@@ -1860,6 +1917,8 @@ export class Game {
     // เส้นทางวาดตอนวิ่งปกติเป็นคนละบรรทัดกัน แก้ที่นั่นอย่างเดียวจึงไม่มีผลอะไรเลย
     drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK);
     if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT_LOOK);
+    if (warp.rise > 0) drawWarpFront(ctx, wx, wy, warp.rise, this.tick);
+    if (warp.arrive >= 0) drawWarpArrive(ctx, wx, wy, warp.arrive);
 
     postProcess(ctx);
     drawHUD(ctx, this);
@@ -1881,6 +1940,7 @@ export class Game {
    * ซึ่งดูเหมือนบั๊กมากกว่าดูเหมือนกติกา
    */
   bankBest() {
+    this.prevBest = this.best;
     if (this.score > this.best) {
       this.best = this.score;
       saveBest(this.stage.id, this.best, Math.floor(this.distance / SCORING.pxPerMeter));
@@ -1908,6 +1968,7 @@ export class Game {
 
     sfx.die();
 
+    this.prevBest = this.best;
     this.best = Math.max(this.best, this.score);
     saveBest(this.stage.id, this.best, Math.floor(this.distance / SCORING.pxPerMeter));
 

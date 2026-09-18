@@ -38,7 +38,10 @@ import { drawKingdom } from './render/kingdom/index.js';
 import { drawCatPose, drawPlayer, drawBigFish, drawShrimp, star4 } from './render/entities.js';
 import { SKINS } from './skins.js';
 import { REGIONS, pickSkin } from './paint.js';
-import { sfx, playAudioFile, stopAudioFile, prepareAudioFile, setSfxRoute } from './audio.js';
+import {
+  sfx, playAudioFile, stopAudioFile, pauseAudioFile, resumeAudioFile,
+  prepareAudioFile, setSfxRoute,
+} from './audio.js';
 import { loadPref, savePref } from './storage.js';
 
 const { W, H } = VIEW;
@@ -965,7 +968,12 @@ function drawOutside(ctx, cw, ch, t) {
 /**
  * เล่นคลิปลงผ้าใบที่ให้มา แล้วเรียก onDone ตอนจบ (ภาพเฟรมสุดท้ายเป็นสีขาวล้วน)
  * onShine ถูกเรียกตอนแสงขาวเริ่มบาน ราวครึ่งวินาทีก่อนจบ
- * คืนฟังก์ชันสำหรับหยุดกลางคัน (ผู้เล่นแตะข้าม)
+ *
+ * คืนฟังก์ชันสำหรับหยุดกลางคัน (ผู้เล่นแตะข้าม) ตัวฟังก์ชันมีของแถมติดมาด้วย:
+ *   stop.pause()   หยุดค้างเฟรมปัจจุบัน (เพลงค้างตามไปด้วย)
+ *   stop.resume()  เล่นต่อจากเฟรมเดิม
+ *   stop.paused    กำลังค้างอยู่ไหม
+ * ตอนนี้ใช้ในหน้าพรีวิว (intro-preview.html) — คลิปในเกมจริงเรียกแค่ตัวฟังก์ชันเหมือนเดิม
  *
  * ต้องเรียกหลังผู้เล่นแตะจอแล้ว เบราว์เซอร์ถึงจะยอมให้มีเสียง
  */
@@ -1042,6 +1050,8 @@ export function playIntroAnim(canvas, { onDone = () => {}, onShine = () => {} } 
 
   let start = performance.now();
   let last = start;
+  let paused = false;
+  let pausedAt = 0;
 
   function finish() {
     stopped = true;
@@ -1085,6 +1095,32 @@ export function playIntroAnim(canvas, { onDone = () => {}, onShine = () => {} } 
     raf = requestAnimationFrame(frame);
   }
   raf = requestAnimationFrame(frame);
+
+  // ── หยุด / เล่นต่อ ──
+  // ทั้งคลิปคิดจาก "เวลาตั้งแต่เริ่ม" ตัวเดียว การหยุดจึงเป็นแค่การเลื่อนจุดเริ่มต้น
+  // ไปข้างหน้าเท่าที่ค้างไว้ — ไม่มีสถานะไหนต้องเก็บเพิ่ม และเสียงที่ยิงไปแล้วก็ไม่ยิงซ้ำ
+  //
+  // เพลงค้างไว้ตรงจุดเดิมแล้วเล่นต่อ (ไม่ใช่หยุดแล้วเริ่มใหม่) ภาพกับเพลงจึงไม่คลาดกัน
+  // ส่วนเสียงสั้น ๆ ที่กำลังดังค้างอยู่ปล่อยให้ดังจนจบ — สั้นกว่าครึ่งวินาทีทุกตัว
+  finish.pause = () => {
+    if (stopped || paused) return;
+    paused = true;
+    pausedAt = performance.now();
+    cancelAnimationFrame(raf);
+    if (soundOn) pauseAudioFile(MUSIC_SRC);
+  };
+
+  finish.resume = () => {
+    if (stopped || !paused) return;
+    paused = false;
+    const now = performance.now();
+    start += now - pausedAt;
+    last = now;
+    if (soundOn) resumeAudioFile(MUSIC_SRC);
+    raf = requestAnimationFrame(frame);
+  };
+
+  Object.defineProperty(finish, 'paused', { get: () => paused });
 
   return finish;
 }

@@ -24,6 +24,19 @@
       position: fixed; left: 10px; bottom: 8px; color: rgba(255,244,220,.55);
       font: 400 12px Mitr, sans-serif; pointer-events: none;
     }
+    /* ปุ่มคุมคลิป — มุมขวาล่าง ไม่ทับตัวนับเวลาที่อยู่มุมซ้าย
+       โผล่เฉพาะตอนคลิปกำลังเล่น (ตอนมีฉากคลุมอยู่ก็ไม่มีอะไรให้หยุด) */
+    .ctrl {
+      position: fixed; right: 10px; bottom: 8px; display: flex; gap: 8px;
+    }
+    .ctrl[hidden] { display: none; }
+    .ctrl button {
+      padding: 7px 16px; border-radius: 999px; cursor: pointer;
+      border: 1px solid rgba(255,244,220,.32); background: rgba(24,10,38,.72);
+      color: #FFF4DC; font: 600 14px Mitr, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ctrl button:active { transform: translateY(1px); }
   </style>
 </head>
 <body>
@@ -32,6 +45,10 @@
     <div>▶ แตะเพื่อเล่น<small>หลับ → ท้องร้อง → ตื่น → หาว → ลูบท้อง → มองหา → กระโดดออก → แสงขาว</small></div>
   </div>
   <div class="time" id="time"></div>
+  <!-- หยุด/เล่นต่อ: กดปุ่ม หรือเคาะ Space ก็ได้ (มือเดียวกับที่ถือเมาส์ดูอยู่) -->
+  <div class="ctrl" id="ctrl" hidden>
+    <button type="button" id="hold">⏸ หยุด</button>
+  </div>
 
   <script type="module">
     import { playIntroAnim, INTRO_ANIM_LENGTH, prepareIntroSound } from './src/intro-anim.js';
@@ -44,13 +61,44 @@
     const cv = document.getElementById('cv');
     const gate = document.getElementById('gate');
     const time = document.getElementById('time');
+    const ctrl = document.getElementById('ctrl');
+    const hold = document.getElementById('hold');
     let started = 0;
+    let play = null;      // ตัวคุมคลิปที่กำลังเล่นอยู่ (pause / resume / เรียกเพื่อหยุด)
+    let heldAt = 0;       // เวลาที่กดหยุด — ไว้เลื่อนนาฬิกาบนจอให้ค้างตามคลิป
 
     function tick() {
-      if (started) time.textContent = Math.min((performance.now() - started) / 1000, INTRO_ANIM_LENGTH).toFixed(1) + ' / ' + INTRO_ANIM_LENGTH.toFixed(1) + ' วิ';
+      if (started) {
+        // ตอนกดหยุด ตัวเลขต้องค้างด้วย ไม่งั้นมันจะเดินต่อทั้งที่ภาพนิ่ง แล้วอ่านผิดว่าเฟรมไหน
+        const at = play?.paused ? heldAt : performance.now();
+        const sec = Math.min((at - started) / 1000, INTRO_ANIM_LENGTH);
+        time.textContent = sec.toFixed(1) + ' / ' + INTRO_ANIM_LENGTH.toFixed(1) + ' วิ'
+          + (play?.paused ? ' · หยุดอยู่' : '');
+      }
       requestAnimationFrame(tick);
     }
     tick();
+
+    /** สลับหยุด/เล่นต่อ — ปุ่มบอกสิ่งที่จะเกิดขึ้นเมื่อกด ไม่ใช่สถานะปัจจุบัน */
+    function toggleHold() {
+      if (!play) return;
+      if (play.paused) {
+        started += performance.now() - heldAt;   // เวลาที่ค้างไว้ไม่นับเป็นเวลาในคลิป
+        play.resume();
+      } else {
+        heldAt = performance.now();
+        play.pause();
+      }
+      hold.textContent = play.paused ? '▶ เล่นต่อ' : '⏸ หยุด';
+    }
+
+    hold.addEventListener('click', toggleHold);
+    // เคาะ Space ก็ได้ — ปุ่มมาตรฐานของการหยุดคลิปทุกที่
+    addEventListener('keydown', (e) => {
+      if (e.code !== 'Space' || !play) return;
+      e.preventDefault();
+      toggleHold();
+    });
 
     gate.addEventListener('click', async () => {
       unlockAudio();   // ต้องเรียกตอนแตะจอ ไม่งั้นเบราว์เซอร์ปิดเสียง
@@ -58,8 +106,12 @@
       // รอฟอนต์ก่อน ไม่งั้นตัวหนังสือ "โครก~" เฟรมแรกขึ้นเป็นฟอนต์ระบบแล้วค่อยกระโดดเปลี่ยน
       try { await document.fonts.load('600 40px Mitr'); } catch { /* ใช้ฟอนต์สำรอง */ }
       started = performance.now();
-      playIntroAnim(cv, {
+      hold.textContent = '⏸ หยุด';
+      ctrl.hidden = false;
+      play = playIntroAnim(cv, {
         onDone: () => {
+          play = null;
+          ctrl.hidden = true;
           gate.querySelector('div').innerHTML = '↻ เล่นอีกครั้ง<small>หลับ → ท้องร้อง → ตื่น → หาว → ลูบท้อง → มองหา → กระโดดออก → แสงขาว</small>';
           gate.hidden = false;
         },

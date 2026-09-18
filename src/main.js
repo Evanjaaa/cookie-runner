@@ -27,6 +27,7 @@ import {
 } from './level-rewards.js';
 import { CYCLE, rewardOfDay, dayState, claimToday as claimDaily } from './daily.js';
 import { getLang, setLang, applyLang, watchLang, onLang } from './i18n.js';
+import { quality, gfxLevel, setGfxLevel, onQuality, LEVEL_IDS } from './graphics.js';
 import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
   pullTreasure, upgradeTreasure, getEquipped, isEquipped, toggleEquip,
@@ -83,7 +84,8 @@ const ctx = canvas.getContext('2d');
 function fitDPR() {
   const dpr = window.devicePixelRatio || 1;
   const shown = canvas.clientWidth || W;   // 0 ได้ตอน CSS ยังไม่ทันมา
-  const scale = Math.min(2, Math.max(1, (shown * dpr) / W));
+  // เพดานมาจากระดับกราฟิกที่ผู้เล่นเลือก (ดู src/graphics.js) — ตัวที่กินแรงเครื่องที่สุด
+  const scale = Math.min(quality().scale, Math.max(1, (shown * dpr) / W));
 
   canvas.width = Math.round(W * scale);
   canvas.height = Math.round(H * scale);
@@ -94,6 +96,8 @@ fitDPR();
 // resize อย่างเดียวไม่พอ — กรอบเกมเปลี่ยนขนาดได้จากหลายทางที่ไม่ยิง resize
 // เช่นเข้า/ออกเต็มจอ หรือแถบที่อยู่ของเบราว์เซอร์มือถือหด แล้ว dvh ขยับ
 new ResizeObserver(fitDPR).observe(canvas);
+// เปลี่ยนระดับกราฟิกแล้วต้องตั้งขนาดผ้าใบใหม่ทันที ไม่ต้องรอ resize หรือรีโหลด
+onQuality(fitDPR);
 
 const startPanel = document.getElementById('startPanel');
 const overPanel = document.getElementById('overPanel');
@@ -2073,6 +2077,8 @@ function confirmBox(opts) {
   const art = document.getElementById('confirmArt');
   const cost = document.getElementById('confirmCost');
 
+  // look: 'card' = หน้าตาชุดเดียวกับหน้าสรุปคะแนน (ดู .confirm-pop.card ใน style.css)
+  panel.querySelector('.confirm-pop').classList.toggle('card', opts.look === 'card');
   document.getElementById('confirmTitle').textContent = opts.title || '';
   document.getElementById('confirmBody').textContent = opts.body || '';
   document.getElementById('confirmYes').textContent = opts.okText || 'ยืนยัน';
@@ -2705,7 +2711,10 @@ function dailyPrizeHtml(reward) {
 }
 
 /**
- * ปฏิทินเจ็ดใบ
+ * ปฏิทินเจ็ดช่อง — แตะช่องของวันนี้เพื่อรับของเลย ไม่มีปุ่มรับแยก
+ *
+ * ทุกช่องเป็นปุ่มจริง ไม่ใช่เฉพาะช่องที่กดรับได้ เพราะช่องอื่นก็ต้องตอบคนที่แตะมัน
+ * ให้รู้ว่า "ทำไมช่องนี้ยังกดไม่ได้" — เงียบเฉย ๆ อ่านเป็นปุ่มเสีย
  *
  * ใบที่ผ่านไปแล้วยังอยู่ครบ ไม่ได้ซ่อนทิ้ง — ปฏิทินที่เหลือแต่วันข้างหน้า
  * ไม่ได้ให้ความรู้สึกว่า "มาต่อเนื่องมาหลายวันแล้ว" ซึ่งเป็นความรู้สึกเดียว
@@ -2721,27 +2730,77 @@ function buildDailyGrid() {
     const done = n <= st.day;
     const today = st.ready && n === st.next;
 
-    const card = document.createElement('div');
+    const card = document.createElement('button');
+    card.type = 'button';
     card.className = 'dl-card'
       + (reward.big ? ' big' : '')
       + (done ? ' done' : today ? ' today' : n > st.next ? ' soon' : '');
-    card.innerHTML = '<span class="dl-day"></span><span class="dl-prize"></span>';
+    card.innerHTML = '<span class="dl-day"></span><span class="dl-prize"></span>'
+      + (today ? '<span class="dl-tap">แตะเพื่อรับ</span>' : '');
     card.querySelector('.dl-day').textContent = today ? 'วันนี้' : 'วันที่ ' + n;
     card.querySelector('.dl-prize').innerHTML = dailyPrizeHtml(reward);
+    card.addEventListener('click', () => {
+      unlockAudio();
+      if (today) { doClaimDaily(); return; }
+      sfx.fish();
+      setMsg(document.getElementById('dlMsg'), done
+        ? 'ช่องนี้รับไปแล้ว'
+        : st.ready
+          ? 'ต้องรับของวันที่ ' + st.next + ' ก่อนนะ'
+          : 'วันนี้รับไปแล้ว พรุ่งนี้มาเปิดช่องนี้ต่อได้เลย');
+    });
     grid.appendChild(card);
   }
 
   markScrollable(grid);
   document.getElementById('dlCycle').textContent = st.cycles + 1;
 
-  const btn = document.getElementById('dlClaim');
-  btn.disabled = !st.ready;
-  btn.classList.toggle('ghost', !st.ready);
-  btn.textContent = st.ready ? 'รับของวันที่ ' + st.next : 'วันนี้รับไปแล้ว';
   document.getElementById('dlLead').textContent = st.ready
     ? 'แวะมาทักน้องทุกวันนะ มีของฝากให้ทุกวันเลย'
     : 'วันนี้รับไปแล้ว พรุ่งนี้มาใหม่นะ น้องรออยู่';
+  paintDailyCat();
   refreshDailyDot();
+}
+
+// ── น้องนั่งรออยู่ข้างปฏิทิน ──
+// ใช้สีขนที่ผู้เล่นใส่อยู่จริง (ไม่ใช่ตัวส้มตายตัว) หน้านี้จึงเป็นน้องของเราเอง
+// ท่านั่งกับตาประกายมาจากชุดท่าเดียวกับที่ใช้ตอนน้องนั่งรอในล็อบบี้
+let dlTick = 0;
+let dlRAF = 0;
+
+/**
+ * เบาะกลมสีฟ้าที่น้องนั่งอยู่ — วงรีสามชั้น: ขอบล่างเข้ม หน้าเบาะ แล้วแสงบนขอบบน
+ * วาดด้วยโค้ดเหมือนของทุกชิ้นในเกม ไม่ใช้ไฟล์รูป
+ */
+function drawCushion(c, x, y, w) {
+  const h = w * 0.34;
+  c.save();
+  c.fillStyle = '#1668CE';
+  c.beginPath(); c.ellipse(x, y + h * 0.26, w / 2, h / 2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#2E90F0';
+  c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2); c.fill();
+  c.globalAlpha = 0.34;
+  c.fillStyle = '#B4E0FF';
+  c.beginPath(); c.ellipse(x, y - h * 0.14, w * 0.41, h * 0.3, 0, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+
+/**
+ * น้องนั่งบนเบาะ ตาประกาย — ท่า "ดีใจสุด ๆ" ชุดเดียวกับตอนอยู่บนฟ้าในโบนัส
+ * (mood: 'starry' = ตาแป๊วมีประกาย ปากอ้ายิ้ม)
+ */
+function paintDailyCat() {
+  paintMini(document.getElementById('dlCat'), 240, (c) => {
+    drawCushion(c, 120, 220, 172);
+    drawCatPose(c, 120, 213, 3.35, getSkin(), dlTick, { pose: 'sit', k: 1, mood: 'starry' });
+  });
+}
+
+function dailyCatLoop() {
+  if (dailyPanel.classList.contains('hidden')) { dlRAF = 0; return; }
+  dlTick++;
+  paintDailyCat();
+  dlRAF = requestAnimationFrame(dailyCatLoop);
 }
 
 function doClaimDaily() {
@@ -2763,6 +2822,7 @@ function showDaily(on) {
     setMsg(document.getElementById('dlMsg'), '');
     refreshGold();
     buildDailyGrid();
+    if (!dlRAF) dlRAF = requestAnimationFrame(dailyCatLoop);
   }
 }
 
@@ -2772,10 +2832,6 @@ document.getElementById('btnDaily').addEventListener('click', () => {
   showDaily(true);
 });
 document.getElementById('dlBack').addEventListener('click', () => showDaily(false));
-document.getElementById('dlClaim').addEventListener('click', () => {
-  unlockAudio();
-  doClaimDaily();
-});
 
 /**
  * เปิดหน้าเช็คอินให้เองตอนเข้าล็อบบี้ ถ้าวันนี้ยังไม่ได้รับ
@@ -2826,18 +2882,14 @@ function paintLvNow() {
   document.getElementById('lvNowBadge').textContent = st.level;
   document.getElementById('lvNowText').textContent =
     st.maxed ? 'เลเวล ' + st.level + ' · สูงสุดแล้ว' : 'เลเวล ' + st.level;
-  document.getElementById('lvNowFill').style.width = Math.round(st.ratio * 100) + '%';
-  document.getElementById('lvNowXp').textContent = st.maxed
-    ? 'ไล่ครบทุกเลเวลแล้ว'
-    : st.into.toLocaleString('en-US') + ' / ' + st.need.toLocaleString('en-US') + ' XP'
-      + ' · อีก ' + (st.need - st.into).toLocaleString('en-US') + ' XP ถึงกล่องถัดไป';
+  // XP ตอนนี้ ▶ XP ที่ต้องใช้ถึงเลเวลหน้า (ตันแล้วโชว์ตัวเลขเดียวกันทั้งคู่)
+  document.getElementById('lvNowInto').textContent = st.into.toLocaleString('en-US');
+  document.getElementById('lvNowNeed').textContent = st.maxed ? '—' : st.need.toLocaleString('en-US');
 }
 
 /** ของรางวัลหนึ่งใบเขียนเป็นข้อความสั้น ๆ ในแถว */
 function lvPrizeHtml(reward) {
-  if (!reward) {
-    return '<span class="lv-qmark" aria-hidden="true">?</span><span>ยังไม่ประกาศของรางวัล</span>';
-  }
+  if (!reward) return '<span>ยังไม่ประกาศของรางวัล</span>';
   const bits = [];
   if (reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + reward.gold.toLocaleString('en-US'));
   if (reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + reward.gems.toLocaleString('en-US'));
@@ -2853,53 +2905,98 @@ function lvPrizeHtml(reward) {
  */
 function buildLvList() {
   const list = document.getElementById('lvList');
-  const level = curLevel();
+  const st = levelFromXp(loadXp());
+  const level = st.level;
   list.innerHTML = '';
 
+  // กล่องในสุดสูงเท่าเนื้อหาจริง — รางกับหมุดจึงอ้างอิงความสูงเดียวกันได้
+  const inner = document.createElement('div');
+  inner.className = 'lv-inner';
+  const track = document.createElement('i');
+  track.className = 'lv-track';
+  track.setAttribute('aria-hidden', 'true');
+  track.innerHTML = '<b></b>';
+  inner.appendChild(track);
+
   let firstReady = null;
+  let hereRow = null;
+
   for (let lv = FIRST_REWARD_LEVEL; lv <= LEVEL_CAP; lv++) {
+    // หมุด "ตอนนี้อยู่ตรงนี้" แทรกก่อนเลเวลแรกที่ยังไปไม่ถึง
+    if (!hereRow && lv > level) {
+      hereRow = document.createElement('div');
+      hereRow.className = 'lv-here';
+      // ช่องซ้ายเว้นว่างให้รางผ่าน ส่วนข้อความกับหน้าน้องอยู่ช่องขวาเรียงกัน (ตามแบบ)
+      hereRow.innerHTML = '<span aria-hidden="true"></span>'
+        + '<span class="lv-here-info"><b></b>'
+        + '<canvas class="lv-here-cat" width="96" height="96" aria-hidden="true"></canvas></span>';
+      paintMini(hereRow.querySelector('.lv-here-cat'), 96, (c) => drawCatFace(c, 48, 56, 2.5, getSkin()));
+      hereRow.querySelector('.lv-here-info b').textContent = st.into.toLocaleString('en-US') + ' XP';
+      inner.appendChild(hereRow);
+    }
+
     const reward = rewardFor(lv);
     const reached = lv <= level;
     const claimed = isClaimed(lv);
     const ready = canClaim(lv, level);
 
     const row = document.createElement('div');
-    row.className = 'lv-row'
-      + (ready ? ' ready' : claimed ? ' done' : reached ? '' : ' locked')
-      + (lv === level + 1 ? ' next' : '');
-    row.innerHTML =
-      '<span class="lv-tag"></span>'
-      + '<div class="lv-prize"><span class="lv-prize-main"></span>'
-      + '<small class="lv-prize-note"></small></div>'
-      + '<button type="button" class="btn lv-get"></button>';
+    row.className = 'lv-row' + (ready ? ' ready' : claimed ? ' done' : reached ? '' : ' locked');
+    row.innerHTML = '<span class="lv-node" aria-hidden="true">'
+      + '<span class="lg-box"><i class="lg-lid"></i><i class="lg-band"></i><i class="lg-bow"></i></span></span>'
+      + '<button type="button" class="lv-card">'
+      + '<span class="lv-when"></span><span class="lv-what"></span></button>';
 
-    row.querySelector('.lv-tag').textContent = lv;
-    row.querySelector('.lv-prize-main').innerHTML = lvPrizeHtml(reward);
-    if (!reward) row.querySelector('.lv-prize').classList.add('tbd');
-    row.querySelector('.lv-prize-note').textContent =
-      reward && reward.note ? reward.note
-        : claimed ? 'รับไปแล้ว'
-        : reached ? 'ถึงเลเวลนี้แล้ว'
-        : 'ถึงเลเวล ' + lv + ' แล้วปลดล็อก';
+    row.querySelector('.lv-when').textContent = 'เลเวล ' + lv;
+    const what = row.querySelector('.lv-what');
+    what.innerHTML = lvPrizeHtml(reward);
+    // ถึงแล้วแต่ยังไม่กด = บอกให้รู้ว่าแตะได้ (ไม่มีปุ่มรับแยกแล้ว เหมือนหน้าเช็คอิน)
+    if (ready) what.insertAdjacentHTML('beforeend', '<span class="lv-tap">· แตะเพื่อรับ</span>');
 
-    const get = row.querySelector('.lv-get');
-    get.textContent = claimed ? 'รับแล้ว' : !reached ? 'ยังไม่ถึง' : reward ? 'รับรางวัล' : 'เร็ว ๆ นี้';
-    get.disabled = !ready;
-    get.classList.toggle('ghost', !ready);
-    get.addEventListener('click', () => doClaimLv(lv));
+    row.querySelector('.lv-card').addEventListener('click', () => {
+      unlockAudio();
+      if (ready) { doClaimLv(lv); return; }
+      sfx.fish();
+      setMsg(document.getElementById('lvMsg'), claimed
+        ? 'รางวัลเลเวล ' + lv + ' รับไปแล้ว'
+        : !reached
+          ? 'ถึงเลเวล ' + lv + ' แล้วกดรับได้เลย'
+          : 'เลเวลนี้ยังไม่ได้ใส่ของรางวัล');
+    });
 
     if (ready && firstReady === null) firstReady = row;
-    list.appendChild(row);
+    inner.appendChild(row);
   }
 
-  markScrollable(list);
+  list.appendChild(inner);
   paintLvNow();
   paintLvCount(level);
   refreshLvDot();
 
-  // เปิดหน้ามาแล้วเลื่อนไปที่ของที่กดรับได้ทันที ถ้าไม่มีก็ไปที่เลเวลถัดไปที่กำลังไล่อยู่
+  // ── ความยาวของหลอด ──
+  // ปลายหลอดต้องอยู่กึ่งกลางแถว "ตอนนี้อยู่ตรงนี้" พอดี เลข XP กับหน้าน้องจึงอยู่บรรทัดเดียวกับปลายหลอด
+  //
+  // ── ทำไมวัดครั้งเดียวไม่พอ ──
+  // ฟอนต์ Mitr โหลดเสร็จทีหลัง พอสลับฟอนต์ ความสูงของทุกแถวข้างบนเปลี่ยน
+  // ค่าที่วัดไว้ตอนแรกจึงเตี้ยกว่าจุดจริงอยู่หลายสิบพิกเซล (เห็นเป็นหลอดจบก่อนถึงหน้าน้อง)
+  // วัดซ้ำเมื่อฟอนต์พร้อม และเมื่อความสูงของรายการเปลี่ยนด้วย (หมุนจอ/ย่อขยายหน้าต่าง)
+  const fillTo = hereRow || inner.lastElementChild;
+  const bar = track.querySelector('b');
+  const syncFill = () => {
+    if (!fillTo.isConnected) return;
+    const y = fillTo.offsetTop + fillTo.offsetHeight / 2;
+    bar.style.setProperty('--fill', Math.round(y) + 'px');
+  };
+  requestAnimationFrame(syncFill);
+  if (document.fonts?.ready) document.fonts.ready.then(() => requestAnimationFrame(syncFill));
+  if (window.ResizeObserver) {
+    // ตัวสังเกตตายไปพร้อมรายการที่ถูกทิ้งตอนสร้างใหม่ (inner ถูกแทนที่ทั้งก้อน)
+    new ResizeObserver(syncFill).observe(inner);
+  }
+
+  // เปิดหน้ามาแล้วเลื่อนไปที่ของที่กดรับได้ทันที ถ้าไม่มีก็ไปที่จุดที่ยืนอยู่ตอนนี้
   // ไม่งั้นคนเลเวล 40 ต้องเลื่อนผ่านแถวที่รับไปแล้วสี่สิบแถวกว่าจะเจอของจริง
-  const target = firstReady || list.children[Math.max(0, level - FIRST_REWARD_LEVEL)];
+  const target = firstReady || hereRow;
   if (target) {
     requestAnimationFrame(() => {
       list.scrollTop = Math.max(0, target.offsetTop - list.clientHeight * 0.35);
@@ -6115,6 +6212,8 @@ async function askRevive() {
     after: 'ทองคงเหลือหลังใช้ ' + (getGold() - cost).toLocaleString('en-US'),
     okText: 'ดึงน้องขึ้นมา',
     cancelText: 'ไม่ดีกว่าเเง้',
+    // จังหวะนี้เป็นจังหวะใหญ่ของตา ไม่ใช่กล่องยืนยันทั่วไป จึงใช้หน้าตาชุดเดียวกับหน้าจบรอบ
+    look: 'card',
     // ไม่ส่ง art มาโดยตั้งใจ — รูปแมวตรงนี้เป็นตัวเดียวกับที่ผู้เล่นเพิ่งเห็นวิ่งอยู่
     // มันไม่ได้บอกอะไรที่ยังไม่รู้ มีแต่ดันราคากับปุ่มให้เลื่อนต่ำลงไปอีก
     // ต่างจากกล่องซื้อสกินที่รูปคือ "ของที่กำลังจะซื้อ" ซึ่งจำเป็นต้องเห็นก่อนจ่าย
@@ -6178,17 +6277,22 @@ function showGameOver(quit = false) {
   const dist = Math.floor(game.distance / SCORING.pxPerMeter);
   const isBest = game.score >= game.best && game.score > 0;
 
+  // ริบบิ้นโปรยทุกตา ไม่ใช่เฉพาะตาที่ทำสถิติใหม่ — จบหนึ่งตาคือเรื่องที่ควรฉลองเสมอ
+  // (ตาที่ได้สถิติใหม่โปรยซ้ำอีกชุดตอนป้ายแดงหล่นลงมา จึงยังต่างกันอยู่)
+  burstConfetti('overConfetti');
+
   countGen++;   // ยกเลิกการนับของตาก่อนหน้าที่อาจยังไล่ค้างอยู่
   countUp(document.getElementById('finalScore'), game.score, 900);
   countUp(document.getElementById('finalDist'), dist, 700, ' ม.');
-  countUp(document.getElementById('bestScore'), game.best, 1100);
+  // ตาที่ทำสถิติใหม่โชว์ "สถิติเดิม" (ค่าก่อนตานี้) — ถ้าโชว์สถิติสูงสุดจะได้เลขเดียว
+  // กับคะแนนที่เพิ่งทำ ซึ่งไม่บอกอะไรเลยว่าดีขึ้นแค่ไหน
+  document.getElementById('bestLabel').textContent = isBest ? 'สถิติเดิม' : 'สถิติสูงสุด';
+  countUp(document.getElementById('bestScore'), isBest ? game.prevBest : game.best, 1100);
 
-  // สถิติใหม่ชนะทุกกรณี ส่วนที่เหลือบอกตามจริงว่าจบเพราะอะไร
-  // "หมดแรงแล้ว" ใช้กับตอนตายเท่านั้น คนที่กดเลิกเองไม่ได้หมดแรง
-  document.getElementById('overTitle').textContent =
-    isBest ? 'สถิติใหม่!' : quit ? 'จบรอบแล้ว' : 'หมดแรงแล้ว';
+  // หัวเรื่องบอกแค่ว่าจบยังไง ส่วน "ทำสถิติใหม่" เป็นหน้าที่ของป้ายแดงที่ห้อยลงมา
+  document.getElementById('overTitle').textContent = quit ? 'จบรอบแล้ว' : 'หมดแรงแล้ว';
 
-  // ป้ายสถิติใหม่โผล่ตามหลังตัวเลขที่ไล่จบ ไม่ใช่ขึ้นมาพร้อมกันตั้งแต่แรก
+  // ป้ายสถิติใหม่หล่นลงมาตามหลังตัวเลขที่ไล่จบ ไม่ใช่ขึ้นมาพร้อมกันตั้งแต่แรก
   // ถ้าขึ้นพร้อมกัน มันจะเฉลยผลก่อนที่ตัวเลขจะไล่ถึง แล้วการไล่ก็ไม่เหลือความหมาย
   const badge = document.getElementById('bestBadge');
   badge.classList.add('hidden');
@@ -6560,6 +6664,24 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   showSettings(true);
 });
 document.getElementById('settingsBack').addEventListener('click', () => showSettings(false));
+
+// ── ระดับกราฟิก ──
+// ปุ่มสามใบใช้ทรงเดียวกับตัวเลือกภาษา กดแล้วมีผลทันที (ดู onQuality ข้างบน)
+const GFX_BTN = { high: 'gfxHigh', mid: 'gfxMid', save: 'gfxSave' };
+function paintGfxPick() {
+  const now = gfxLevel();
+  for (const id of LEVEL_IDS) {
+    document.getElementById(GFX_BTN[id]).classList.toggle('on', id === now);
+  }
+}
+for (const id of LEVEL_IDS) {
+  document.getElementById(GFX_BTN[id]).addEventListener('click', () => {
+    unlockAudio(); sfx.fish();
+    setGfxLevel(id);
+    paintGfxPick();
+  });
+}
+paintGfxPick();
 for (const r of MIX_ROWS) {
   document.getElementById(r.down).addEventListener('click', () => stepMix(r.ch, -1));
   document.getElementById(r.up).addEventListener('click', () => stepMix(r.ch, 1));
@@ -6570,10 +6692,52 @@ for (const r of MIX_ROWS) {
 }
 
 // ── ลูปหลัก ────────────────────────────────────────────────
+//
+// ── งบพลังงานของเครื่อง ──
+// การวาดฉากหนึ่งเฟรมคือของที่แพงที่สุดในเกม (ผ้าใบเต็มจอ + แสงฟุ้งทั้งเฟรม)
+// สามกฎข้างล่างตัดงานที่ "วาดไปก็ไม่มีใครเห็นต่าง" ทิ้ง โดยภาพที่ตาเห็นเหมือนเดิมทุกอย่าง:
+//
+//   1. เพดาน 60 เฟรมต่อวินาที  จอ 120Hz ทำงานสองเท่าโดยเกมไม่ได้ลื่นขึ้นเท่าตัว
+//                             (ทุกอย่างในเกมคิดจาก dt เป็นวินาทีจริงอยู่แล้ว ความเร็วจึงไม่เปลี่ยน)
+//   2. มีแผงเมนูคลุมอยู่ = 10  ฉากข้างหลังถูกม่านทับเกือบหมด เห็นแค่ริม ๆ การ์ด
+//
+// ── ห้ามลดเฟรมของหน้าที่ยังเห็นฉากเต็ม ๆ ──
+// เคยลดหน้าชื่อเกมกับห้องก่อนวิ่งเหลือ 10 เฟรม (เพราะมันมี .panel เปิดอยู่เหมือนเมนู)
+// สองหน้านั้นฉากเลื่อนอยู่ตลอด ภาพเลยกระตุกจนดูเหมือนเกมค้าง — แผงพวกนี้ติด .see-scene ไว้
+// และล็อบบี้ก็เคยลดเหลือ 30 ซึ่งกระตุกด้วยเหตุผลเดียวกัน ตอนนี้ทุกหน้าที่เห็นฉากวาดเต็มเฟรมหมด
+// (คนที่อยากประหยัดจริง ๆ เลือก "ประหยัดแบต" ในหน้าตั้งค่าได้ ซึ่งลดทั้งเกมเหลือ 30)
+//
+// อัปเดตเกม (game.update) ยังเดินทุกเฟรมเหมือนเดิม — มันถูกกว่าการวาดมาก
+// และถ้าข้ามด้วย จังหวะการเล่นจะเพี้ยน
+//   4. ระดับกราฟิก           "ประหยัดแบต" ลดเพดานเหลือ 30 เฟรม (ดู src/graphics.js)
+const MENU_MS = 1000 / 10;
 
 let last = performance.now();
+let lastDraw = 0;
+let menuSeen = 0;      // เช็คว่ามีแผงเปิดอยู่ไหมทุก ๆ 120 มิลลิวินาที ไม่ใช่ทุกเฟรม
+let menuOpen = false;
+
+/** มีแผงเมนูทึบคลุมฉากอยู่หรือเปล่า (ล็อบบี้กับแผงโปร่งไม่นับ) */
+function menuCovers(now) {
+  if (now - menuSeen >= 120) {
+    menuSeen = now;
+    menuOpen = Boolean(
+      document.querySelector('.stage .panel:not(.home):not(.see-scene):not(.hidden)'),
+    );
+  }
+  return menuOpen;
+}
 
 function loop(now) {
+  // ── เพดาน 60 เฟรมต่อวินาที ──
+  // ปล่อยผ่านเฉพาะเฟรมที่ห่างจากเฟรมก่อนพอ จอ 120Hz จึงทำงานเท่าจอ 60Hz พอดี
+  // (ต้องตัดตั้งแต่ก่อนคิด dt ไม่งั้นเวลาที่ข้ามไปจะหายไปจากนาฬิกาของเกม)
+  // ลบ 1.5 เผื่อไว้ ไม่งั้นจะพลาดจังหวะของจอแล้วเหลือครึ่งเดียวของเพดานที่ตั้งไว้
+  if (now - last < 1000 / quality().fps - 1.5) {
+    requestAnimationFrame(loop);
+    return;
+  }
+
   // แปลงเวลาจริงเป็น "จำนวนเฟรมที่ 60fps"
   // เพื่อให้เกมเร็วเท่ากันทั้งจอ 60Hz และ 144Hz
   let dt = (now - last) / 16.667;
@@ -6588,7 +6752,13 @@ function loop(now) {
   }
 
   game.update(dt);
-  game.draw(ctx);
+
+  // วาดเมื่อถึงรอบของสถานะนั้น ๆ เท่านั้น — เฟรมที่ข้ามไปผ้าใบยังค้างภาพเดิมอยู่
+  // จึงไม่มีอะไรกะพริบหรือหายไป
+  if (now - lastDraw >= (menuCovers(now) ? MENU_MS : 0)) {
+    lastDraw = now;
+    game.draw(ctx);
+  }
   updateSkillPad();
 
   // ตู้กาช่าวาดใหม่เฉพาะตอนเปิดพาเนลอยู่ ไม่ต้องเสียเฟรมทิ้งตอนเล่นเกม
@@ -6643,7 +6813,12 @@ setupFilterBar({
 });
 
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle
-if (import.meta.env.DEV) window.__game = game;
+if (import.meta.env.DEV) {
+  window.__game = game;
+  // เปิดหน้าสรุปผลด้วยตัวเลขที่ตั้งเองได้ ไม่ต้องเล่นจนตายทุกครั้งที่จะดูหน้านี้
+  window.__showGameOver = showGameOver;
+  window.__askRevive = askRevive;     // กล่อง "น้องตกหลุม" โดยไม่ต้องรอตกหลุมจริง
+}
 
 // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 // ปุ่มเสกเพชรต้องวาดแถบบนใหม่เอง และถ้าตู้สุ่มเปิดค้างอยู่ก็ต้องปลดล็อกปุ่มสุ่มด้วย
