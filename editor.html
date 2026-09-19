@@ -17,21 +17,33 @@
   <header class="bar">
     <h1>MeowZing <span>โต๊ะออกแบบด่าน</span></h1>
 
-    <label class="pick">ท่อน
+    <!-- ท่อนเดี่ยว = แก้ของในท่อนเดียว · ทั้งด่าน = จัดลำดับท่อนของทั้งฉากเหมือนตัดคลิป -->
+    <div class="modes" id="modeSw">
+      <button type="button" class="mode on" data-mode="chunk">ท่อนเดี่ยว</button>
+      <button type="button" class="mode" data-mode="stage">ทั้งด่าน</button>
+    </div>
+
+    <label class="pick only-chunk">ท่อน
       <select id="docPick"></select>
     </label>
-    <button class="btn ghost" id="newDoc">+ ท่อนใหม่</button>
-    <button class="btn ghost" id="dupDoc">ทำสำเนา</button>
-    <button class="btn ghost danger" id="delDoc">ลบ</button>
+    <button class="btn ghost only-chunk" id="newDoc">+ ท่อนใหม่</button>
+    <button class="btn ghost only-chunk" id="dupDoc">ทำสำเนา</button>
+    <button class="btn ghost danger only-chunk" id="delDoc">ลบ</button>
 
     <span class="sep"></span>
 
     <label class="pick">ฉาก
       <select id="stagePick"></select>
     </label>
-    <label class="pick">ดูของเดิม
+    <label class="pick only-chunk">ดูของเดิม
       <select id="refPick"></select>
     </label>
+    <button class="btn ghost only-stage" id="reRoll">สุ่มลำดับใหม่ทั้งด่าน</button>
+    <label class="pick only-stage">เทมเพลต
+      <select id="tplPick"></select>
+    </label>
+    <button class="btn ghost only-stage" id="tplSave">เก็บเป็นเทมเพลต</button>
+    <button class="btn ghost danger only-stage" id="tplDel">ลบเทมเพลต</button>
 
     <span class="grow"></span>
 
@@ -44,7 +56,25 @@
   <main class="wrap">
     <!-- ── กล่องเครื่องมือซ้าย ───────────────────────────── -->
     <aside class="side left">
-      <div class="panel">
+      <!-- แถบข้างของโหมดทั้งด่าน: เลือกว่าจะแก้ท่อนไหน -->
+      <div class="panel only-stage">
+        <h2>ท่อนในด่านนี้</h2>
+        <p class="tip" id="slotHead">—</p>
+        <div class="slots" id="slotList"></div>
+      </div>
+
+      <div class="panel only-stage">
+        <h2>ทั้งด่านทำงานยังไง</h2>
+        <ul class="rules">
+          <li>จำนวนท่อนของด่านนี้ <b>ล็อกไว้</b> ตามที่เกมตั้งไว้ เปลี่ยนได้แค่ว่าแต่ละช่องเป็นท่อนไหน</li>
+          <li>สีขอบและออร่าบอกชนิดท่อน — <b class="kt k-safe">ทางโล่ง</b> · <b class="kt k-recovery">ช่วงพัก</b> · <b class="kt k-obstacle">มีของหลบ</b> · <b class="kt k-challenge">ท่อนยาก</b></li>
+          <li>ไอคอนบนท่อนคือของที่ระบบโรยให้ — ✉ ตัวอักษร · ● เม็ดขนม · 🦐 กุ้งทอง · 🌿 หญ้าแมว · 🥫 กระป๋อง · 🛡 โล่ · 🧲 แม่เหล็ก</li>
+          <li>กด <b>ตรวจด่าน</b> แล้วแมวจะวิ่งยาวทั้งด่านจริง ๆ รอยต่อระหว่างท่อนจึงถูกตรวจไปด้วย</li>
+          <li>ท่อนสุดท้ายต่อกลับไปหาท่อนแรกเสมอ เพราะเกมวนลำดับนี้ซ้ำไปเรื่อย ๆ</li>
+        </ul>
+      </div>
+
+      <div class="panel only-edit">
         <h2>ลากลงสนามได้เลย</h2>
         <p class="tip">กดค้างที่ชิ้นแล้วลากลงสนาม หรือกดเฉย ๆ เพื่อวางกลางจอ</p>
 
@@ -67,7 +97,7 @@
         <div class="kit" id="kitPlat"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel only-edit">
         <h2>กติกาที่ควรรู้</h2>
         <ul class="rules">
           <li>วาง <b>จุดกด</b> ก่อนเสมอ แล้วค่อยเอาของไปเกาะ — ของที่เกาะจุดกดจะขยับตามเมื่อเลื่อนจุดกด</li>
@@ -92,6 +122,9 @@
         <canvas id="view" width="960" height="420"></canvas>
       </div>
 
+      <!-- ไทม์ไลน์ของทั้งด่าน: ท่อนทุกท่อนเรียงตามลำดับจริง ความกว้างตามความยาวท่อน -->
+      <div class="timeline only-stage" id="timeline"></div>
+
       <canvas id="strip" class="strip" width="1600" height="96"></canvas>
 
       <div class="row toolrow">
@@ -111,7 +144,12 @@
 
     <!-- ── รายละเอียดชิ้นที่เลือก ขวา ───────────────────── -->
     <aside class="side right">
-      <div class="panel">
+      <div class="panel only-stage">
+        <h2>ท่อนที่เลือก</h2>
+        <div id="slotEdit"></div>
+      </div>
+
+      <div class="panel only-edit">
         <h2>ท่อนนี้</h2>
         <label class="field">ชื่อ<input id="docName" type="text" maxlength="40"></label>
         <label class="field">ความกว้าง (px)<input id="docWidth" type="number" min="400" max="3000" step="10"></label>
@@ -135,12 +173,12 @@
         <p class="tip" id="docCount">—</p>
       </div>
 
-      <div class="panel" id="insp">
+      <div class="panel only-edit" id="insp">
         <h2>ชิ้นที่เลือก</h2>
         <div id="inspBody"><p class="tip">ยังไม่ได้เลือกชิ้นไหน — คลิกที่ของในสนาม</p></div>
       </div>
 
-      <div class="panel">
+      <div class="panel only-edit">
         <h2>ปุ่มลัด</h2>
         <ul class="rules small">
           <li><b>ลาก</b> ที่ของ = ย้าย · <b>ลากพื้นหลัง</b> = เลื่อนจอ</li>

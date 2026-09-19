@@ -20,6 +20,7 @@
 // ละอองแร่เป็นพูลคงที่ 18 เม็ด ไม่มีการสร้างอ็อบเจกต์ใหม่ระหว่างเล่น
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../config.js';
+import { placed, minGap } from './scenery.js';
 import { stageById } from '../stages.js';
 
 const { W, H } = VIEW;
@@ -85,6 +86,17 @@ function zoneAt(cam) {
   // 0 = โถงกว้าง, 1 = ดงคริสตัล (ไล่ขึ้นลงเป็นคลื่นนุ่ม ๆ ไม่ใช่สลับทันที)
   return ease(0.5 + 0.5 * Math.sin((cam / CYCLE) * Math.PI));
 }
+
+// ── คริสตัลที่พื้นถ้ำ ──
+//
+// เดิมทั้งหกแท่งจางเข้า-ออกพร้อมกันตามย่าน (0.58 ↔ 0.99) ทั้งที่ตัวมันไม่ได้ไปไหน
+// ผลคือแท่งคริสตัลค่อย ๆ ปรากฏขึ้นตรงที่มันยืนอยู่ แทนที่จะไหลเข้ามาจากขอบจอ
+//
+// ตอนนี้แต่ละแท่งมีที่ของมันในโลก ความเข้มคงที่ตลอดชีวิต และ "ความหนาแน่น"
+// ของย่านมาจากการที่บางช่องว่าง บางช่องมีแท่ง — ตัดสินจากย่านของช่องนั้นเอง
+// ไม่ใช่ย่านที่กล้องอยู่ ค่าจึงไม่เปลี่ยนระหว่างที่มันอยู่ในจอ
+const CRYSTAL_DEPTH = 0.5;
+const CRYSTAL_GAP = 300;
 
 // ─────────────────────────────────────────────────────────────
 // เพดาน/ผนังพื้นหลัง — ใช้จานสีของด่านถ้ำจริง
@@ -300,7 +312,9 @@ const MOTES = Array.from({ length: 18 }, (_, i) => ({
   ph: hash(i * 9.1) * TAU,
 }));
 
-function drawMotes(ctx, tick, a) {
+/** ละอองแร่ — ลอยอยู่ในถ้ำ จึงต้องไหลไปกับถ้ำด้วย ไม่ใช่ลอยติดจอ (ดูหมายเหตุใน bakery.js) */
+function drawMotes(ctx, cam, tick, a) {
+  const drift = (x) => wrap(x - cam * 0.4, W + 120) - 60;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = C.mote;
@@ -309,7 +323,7 @@ function drawMotes(ctx, tick, a) {
     if (p.y < -6) { p.y = GROUND_Y + 6; p.x = hash(p.x * 0.31 + tick) * W; }
     ctx.globalAlpha = a * (0.25 + 0.35 * (0.5 + 0.5 * Math.sin(tick * 0.05 + p.ph)));
     ctx.beginPath();
-    ctx.arc(p.x + Math.sin(tick * 0.02 + p.ph) * 6, p.y, p.r, 0, TAU);
+    ctx.arc(drift(p.x) + Math.sin(tick * 0.02 + p.ph) * 6, p.y, p.r, 0, TAU);
     ctx.fill();
   }
   ctx.restore();
@@ -335,7 +349,7 @@ export function drawCaveBackdrop(ctx, cam, tick, opts = {}) {
 
   // 2) สายแร่บนผนัง — ดงคริสตัลยิ่งเข้มยิ่งสว่าง
   ctx.save();
-  ctx.globalAlpha = 0.55 + z * 0.45;
+  ctx.globalAlpha = 0.85;
   tileRow(ctx, veinBand(), TILE, cam * 0.14, GROUND_Y - 250);
   ctx.restore();
 
@@ -347,19 +361,20 @@ export function drawCaveBackdrop(ctx, cam, tick, opts = {}) {
   tileRow(ctx, ceilingBand('cvCeilNear', 14, 116, C.wall), TILE, cam * 0.26, -70 + z * 24);
   ctx.restore();
 
-  // 4) เสาหิน — เยอะขึ้นตอนดงคริสตัล
+  // 4) เสาหิน — ความเข้มคงที่ (เดิมสว่างตามย่าน = ทั้งแถวค่อย ๆ สว่างขึ้นเองทั้งที่ไม่ได้ขยับ)
   ctx.save();
-  ctx.globalAlpha = 0.5 + z * 0.5;
+  ctx.globalAlpha = 0.85;
   tileRow(ctx, pillarBand(), TILE, cam * 0.34, GROUND_Y - 300);
   ctx.restore();
 
   // 5) คริสตัลชั้นกลางที่พื้น — กลุ่มเด่นที่สุดของฉาก
-  const span = W * 2.4;
-  for (let i = 0; i < 6; i++) {
-    const x = wrap(i * 420 - cam * 0.5, span) - 120;
-    if (x > W + 40) continue;
+  placed(cam, CRYSTAL_DEPTH, CRYSTAL_GAP, 160, (i, x) => {
+    // ช่องนี้มีคริสตัลไหม — ย่านของช่องตัวเอง ไม่ใช่ย่านที่กล้องอยู่
+    const camHere = (i * CRYSTAL_GAP - W * 0.5) / CRYSTAL_DEPTH;
+    const dense = zoneAt(camHere);
+    if (hash(i * 3.7) > 0.25 + dense * 0.55) return;     // ดงคริสตัล = ช่องว่างน้อยลง
     const s = 0.5 + hash(i * 6.1) * 0.7;
-    ctx.globalAlpha = (0.55 + z * 0.45) * deep;
+    ctx.globalAlpha = deep;
     ctx.drawImage(crystalSprite(i), x, GROUND_Y - 220 * s + 18, 120 * s, 220 * s);
     // ประกายวับที่ยอด — ดวงเดียวต่อแท่ง สลับจังหวะกันไป
     const tw = Math.sin(tick * 0.05 + i * 2.1);
@@ -370,16 +385,17 @@ export function drawCaveBackdrop(ctx, cam, tick, opts = {}) {
       ctx.arc(x + 60 * s, GROUND_Y - 220 * s + 34, 2.6, 0, TAU);
       ctx.fill();
     }
-  }
+  });
   ctx.globalAlpha = 1;
 
-  // 6) บ่อน้ำเรืองแสงที่พื้นถ้ำ — เห็นเฉพาะโถงกว้าง
+  // 6) บ่อน้ำเรืองแสงที่พื้นถ้ำ — ปูต่อกันทั้งแนว ความเข้มคงที่
+  // เดิมทั้งแถวจางหายตอนเข้าดงคริสตัล ซึ่งเห็นเป็นน้ำระเหยหายไปกับที่
   ctx.save();
-  ctx.globalAlpha = (1 - z) * 0.9;
+  ctx.globalAlpha = 0.62;
   tileRow(ctx, poolBand(), TILE, cam * 0.56, GROUND_Y - POOL_H + 22);
   ctx.restore();
 
-  drawMotes(ctx, tick, deep);
+  drawMotes(ctx, cam, tick, deep);
 }
 
 export function warmCaveArt() {

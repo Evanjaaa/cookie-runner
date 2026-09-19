@@ -47,7 +47,7 @@ import {
   fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers,
 } from './net/cloud.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { drawSky, drawHills, drawGround } from './render/background.js';
+import { drawSky, drawHills, drawGround, GROUND_ART } from './render/background.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
   loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail, syncMail,
@@ -296,7 +296,7 @@ function paintStageScene(canvas, stage, logicalW) {
 
   drawSky(c, 0, stage.palette);
   drawHills(c, 0, stage.palette);
-  drawGround(c, [], 0, stage.palette);
+  drawGround(c, [], 0, stage.palette, GROUND_ART[stage.backdrop]);
   // วางสิ่งกีดขวางสองชิ้นให้เห็นว่าธีมนี้หน้าตาแบบไหน
   drawObstacles(c, [
     { x: 300, y: 320 - 38, w: 32, h: 38, kind: 'spike' },

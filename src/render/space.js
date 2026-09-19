@@ -119,8 +119,34 @@ function skyStops(t) {
   return from.map((col, i) => mixHex(col, to[i], k));
 }
 
-function skyAt(u) {
-  const step = Math.round(clamp01(u) * (SKY_STEPS - 1));
+/**
+ * วาดฟ้าเต็มจอแบบไล่ต่อเนื่อง — ผสมสองขั้นที่ขนาบค่าจริงอยู่
+ *
+ * ── ทำไมไม่เลือกขั้นที่ใกล้ที่สุดเหมือนเดิม ──
+ * ของเดิมใช้ Math.round เลือกขั้นเดียว พอค่าที่ขับมันไหลข้ามกึ่งกลางระหว่างสองขั้น
+ * ฟ้าทั้งจอเปลี่ยนสีในเฟรมเดียว ซึ่งตาเห็นเป็น "ภาพกระพริบทั้งภาพ"
+ * และเพราะฟ้าถมเต็มจอ ทุกอย่างที่วาดทับมันก็เปลี่ยนโทนตามไปด้วย จึงดูเหมือนพื้นวูบหายไปด้วย
+ *
+ * วัดจากคลิปที่ผู้ใช้ถ่ายมา: เฟรมที่กระโดดต่างจากเฟรมก่อนหน้า 116 เทียบกับปกติ 0.31
+ * และวัดในเครื่องแล้วเกิด 13 ครั้งต่อการวิ่ง 21000px ในทุ่งหิมะ (ราวหนึ่งครั้งต่อ 4 วินาที)
+ *
+ * ต้นทุนที่เพิ่มคือถมสีเต็มจออีกหนึ่งรอบเฉพาะตอนค่าอยู่ระหว่างขั้น
+ * ยังถูกกว่าการไล่สีสดทุกเฟรมมาก ซึ่งเป็นเหตุผลที่แบ่งขั้นไว้ตั้งแต่แรก
+ */
+function paintSky(ctx, u) {
+  const f = clamp01(u) * (SKY_STEPS - 1);
+  const lo = Math.floor(f);
+  const t = f - lo;
+  ctx.drawImage(skyStep(lo), 0, 0, W, H);
+  if (t <= 0.002) return;
+  ctx.save();
+  ctx.globalAlpha = t;
+  ctx.drawImage(skyStep(lo + 1), 0, 0, W, H);
+  ctx.restore();
+}
+
+function skyStep(i) {
+  const step = Math.max(0, Math.min(SKY_STEPS - 1, Math.round(i)));
   return spaceSprite(`spSky${step}`, 64, H, (g, w, h) => {
     const cols = skyStops(step / (SKY_STEPS - 1));
     const grad = g.createLinearGradient(0, 0, 0, h);
@@ -525,7 +551,7 @@ function drawEarth(ctx, tick, u) {
 export function drawSpaceBackdrop(ctx, cam, tick, opts = {}) {
   const u = clamp01(opts.u ?? 1);
 
-  ctx.drawImage(skyAt(u), 0, 0, W, H);
+  paintSky(ctx, u);
 
   const deep = ease(clamp01((u - 0.3) / 0.45));       // ความเป็นอวกาศ: ดาว/เนบิวลา/ดาวเคราะห์
   drawNebula(ctx, cam, deep * 0.9);
@@ -549,7 +575,7 @@ export function drawSpaceBackdrop(ctx, cam, tick, opts = {}) {
 
 /** สร้างสไปรต์ทั้งชุดล่วงหน้า — เรียกตอนอุ่นเครื่องทางเข้า ไม่ให้ไปสร้างกลางฉาก */
 export function warmSpaceArt() {
-  for (let i = 0; i < SKY_STEPS; i++) skyAt(i / (SKY_STEPS - 1));
+  for (let i = 0; i < SKY_STEPS; i++) skyStep(i);
   for (let l = 0; l < 3; l++) starTile(l);
   for (let i = 0; i < 3; i++) nebulaSprite(i);
   planetSprite('ring');

@@ -188,7 +188,10 @@ function drawInside(ctx, v, alpha) {
   const { m, camera: cam, tick } = v;
   ctx.save();
   ctx.globalAlpha = alpha;
-  drawSeaBackdrop(ctx, cam, tick, { u: v.inside });
+  // palms ต้องตรงกับที่ด่านใช้ (ดู BACKDROPS.sea) — ไม่งั้นระหว่างอยู่ในทางเข้า
+  // ต้นมะพร้าวของด่านจะถูกภาพทางเข้าบังไว้ แล้วโผล่พรวดทั้งแถวตอนทางเข้าเลิกวาด
+  // ต้นมะพร้าววางตามพิกัดโลกอยู่แล้ว ตำแหน่งจึงตรงกันเป๊ะทั้งสองฝั่ง
+  drawSeaBackdrop(ctx, cam, tick, { u: v.inside, palms: true });
 
   // ทางเดินไม้ที่ตัวแมววิ่งอยู่ (ชั้นแคช) — ปิดพื้นของฉากเดิมไว้ด้วย
   blit(ctx, layers(ctx, m).walk, m.houseL - PAD, cam, GROUND_Y - 30);

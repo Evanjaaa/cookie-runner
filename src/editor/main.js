@@ -20,12 +20,12 @@ import {
   GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD, SHRIMP,
   SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD,
 } from '../config.js';
-import { AUTHOR, PATTERNS, PATTERN_META, PICKUPS } from '../level.js';
+import { AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute } from '../level.js';
 import { GATES, GATE_LIST, gateMarks } from '../gates.js';
 import { gateViewAt, doorOpenAt } from '../gate-run.js';
 import { drawGateBack, drawGateFront, warmGateArt } from '../render/gates/index.js';
 import { STAGES } from '../stages.js';
-import { drawSky, drawHills, drawGround } from '../render/background.js';
+import { drawSky, drawHills, drawGround, GROUND_ART } from '../render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards,
   drawNips, drawCans, drawMagnets, drawShields, drawPotions, drawLetters,
@@ -220,12 +220,47 @@ const view = {
   next: true,
   grid: false,
   xray: true,           // ทางเข้าด่าน: ผนังหน้าอาคารจางไว้ให้เห็นข้างในตอนวางของ
+  mode: 'chunk',        // 'chunk' = แก้ท่อนเดียว · 'stage' = จัดลำดับท่อนทั้งด่าน
+  slot: 0,              // ท่อนที่เลือกอยู่บนไทม์ไลน์ (โหมดทั้งด่าน)
 };
+
+/**
+ * ตอนนี้แก้ของในสนามได้ไหม
+ *
+ * ดูท่อนเดิมของเกม = ไม่ได้ ของพวกนั้นเป็นโค้ดใน level.js ไม่ใช่เอกสาร
+ * โหมดทั้งด่าน = ได้เฉพาะท่อนที่กด "แก้ท่อนนี้ให้เป็นของฉัน" ไปแล้ว
+ *   ท่อนที่ยังเป็นแพตเทิร์นของเกมอยู่ก็ยังแก้ไม่ได้เหมือนเดิม — แต่แปลงเป็นของเราได้ทุกท่อน
+ */
+function editing() {
+  if (view.refIdx >= 0) return false;
+  if (view.mode === 'stage') return !!slotDoc();
+  return true;
+}
+
+function locked() { return !editing(); }
+
+/**
+ * กล้องในพิกัดของ "เอกสาร" ไม่ใช่พิกัดโลก
+ *
+ * โหมดท่อนเดี่ยววาดเอกสารไว้ที่ x=0 สองค่านี้จึงเท่ากัน
+ * แต่โหมดทั้งด่านวางเอกสารไว้กลางด่าน (เช่น x=5016) การชี้เมาส์กับกรอบของชิ้นที่เลือก
+ * ต้องหักระยะนั้นออกก่อน ไม่งั้นจะจับของผิดชิ้นไปทั้งท่อน
+ */
+function editOff() {
+  if (view.mode !== 'stage' || !slotDoc()) return 0;
+  const s = stageScene().slots[view.slot];
+  return s ? s.x : 0;
+}
+
+function docCam() { return view.cam - editOff(); }
 
 function uid() { return 'i' + (nextId++); }
 
 function blankDoc(name) {
   return {
+    // เลขประจำตัวของเอกสาร — ลำดับท่อนของด่านชี้มาที่ตัวนี้ ({ d: 'i12' })
+    // ถ้าใช้ตำแหน่งใน array แทน พอลบท่อนอื่นทิ้งลำดับด่านจะชี้ผิดตัวทันที
+    id: uid(),
     name: name || 'ท่อนใหม่',
     width: chunkW,
     kind: 'obstacle',
@@ -234,7 +269,29 @@ function blankDoc(name) {
   };
 }
 
-function doc() { return docs[cur]; }
+/**
+ * เอกสารที่กำลังแก้อยู่
+ *
+ * โหมดทั้งด่านคืนเอกสารของ "ท่อนที่เลือกบนไทม์ไลน์" ไม่ใช่ท่อนที่เลือกในช่องท่อน
+ * ทำแบบนี้แล้วเครื่องมือแก้ของทั้งชุด (ลาก ดูดเข้าเกาะ ปุ่มลัด แผงขวา) ใช้ได้ทันที
+ * โดยไม่ต้องแก้อะไรเลย เพราะทุกตัวถามหาเอกสารผ่านทางนี้ทางเดียว
+ */
+function doc() {
+  if (view.mode === 'stage') {
+    const d = slotDoc();
+    if (d) return d;
+  }
+  return docs[cur];
+}
+
+function docById(id) { return docs.find((q) => q.id === id); }
+
+/** เอกสารของท่อนที่เลือกบนไทม์ไลน์ — null = ท่อนนั้นยังเป็นแพตเทิร์นของเกม แก้ไม่ได้ */
+function slotDoc() {
+  const r = routes[stage().id];
+  const s = r && r[view.slot];
+  return s && s.d ? docById(s.d) : null;
+}
 
 function load() {
   try {
@@ -248,11 +305,76 @@ function load() {
       const n = parseInt(String(it.id).slice(1), 10);
       if (n >= nextId) nextId = n + 1;
     }
+    const n = parseInt(String(d.id || '').slice(1), 10);
+    if (n >= nextId) nextId = n + 1;
   }
+  // เอกสารที่บันทึกไว้ก่อนมีระบบลำดับท่อน ยังไม่มีเลขประจำตัว แจกให้ตรงนี้
+  for (const d of docs) if (!d.id) d.id = uid();
 }
 
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(docs)); } catch { /* เต็มก็ช่าง */ }
+}
+
+// ─────────────────────────────────────────────────────────────
+// ลำดับท่อนของแต่ละด่าน — ของโหมด "ทั้งด่าน"
+//
+// ── ทำไมต้องเก็บเอง ──
+// เกมสร้างลำดับนี้สดทุกครั้งที่เริ่มด่าน (Level.routeFor → composeRoute สุ่มใหม่)
+// ซึ่งดีสำหรับคนเล่น แต่จัดแมพด้วยมือไม่ได้เลย เพราะสิ่งที่เห็นบนจอรอบนี้
+// ไม่ใช่สิ่งที่ผู้เล่นจะเจอรอบหน้า หน้านี้จึง "ตรึง" ผลครั้งแรกไว้เป็นของตัวเอง
+// แก้ทีละท่อนได้ แล้วตอนจบค่อยส่งออกเป็น route: [...] ให้ stages.js ใช้ตรง ๆ
+//
+// จำนวนท่อนล็อกตามที่ด่านตั้งไว้ (segments) — เพิ่มลบท่อนไม่ได้ในหน้านี้
+// เพราะความยาวด่านผูกกับจังหวะของทั้งตา (ทางเข้าด่านถัดไปโผล่ที่ระยะไหน)
+// ซึ่งเป็นเรื่องของ stages.js ไม่ใช่ของคนจัดลำดับท่อน
+// ─────────────────────────────────────────────────────────────
+const ROUTE_KEY = 'meowzing:editor:routes';
+let routes = {};
+
+const deep = (o) => JSON.parse(JSON.stringify(o));
+
+/** ชื่อไทยของชนิดท่อน — ใช้ทั้งบนไทม์ไลน์ แถบข้าง และในโค้ดที่ส่งออก */
+const KIND_TH = {
+  safe: 'ทางโล่ง',
+  recovery: 'ช่วงพัก',
+  obstacle: 'มีของหลบ',
+  challenge: 'ท่อนยาก',
+};
+
+/** ของที่ระบบโรยให้ทั้งท่อน (ดู sprinklePickups ใน level.js) — ไอคอนไว้โชว์บนไทม์ไลน์ */
+const SPRINKLE = [
+  ['letter', '✉', 'ตัวอักษร'],
+  ['shrimp', '🦐', 'กุ้งทอง'],
+  ['nip', '🌿', 'หญ้าแมว (สปีด)'],
+  ['can', '🥫', 'กระป๋อง (ตัวโต)'],
+  ['shield', '🛡', 'โล่'],
+  ['magnet', '🧲', 'แม่เหล็ก'],
+];
+
+function loadRoutes() {
+  try { routes = JSON.parse(localStorage.getItem(ROUTE_KEY)) || {}; } catch { routes = {}; }
+  if (!routes || typeof routes !== 'object') routes = {};
+}
+
+function saveRoutes() {
+  try { localStorage.setItem(ROUTE_KEY, JSON.stringify(routes)); } catch { /* เต็มก็ช่าง */ }
+}
+
+/** ลำดับท่อนที่กำลังแก้อยู่ของฉากหนึ่ง — ครั้งแรกดึงจากเกมมาตรึงไว้ */
+function routeOf(st) {
+  if (!Array.isArray(routes[st.id]) || !routes[st.id].length) {
+    routes[st.id] = deep(Level.routeFor(st) || []);
+    saveRoutes();
+  }
+  return routes[st.id];
+}
+
+/** สุ่มลำดับใหม่ด้วยกฎเดียวกับเกม — ด่านที่เขียน route มือไว้จะได้ของเดิมคืน */
+function rerollRoute(st) {
+  routes[st.id] = st.pool ? deep(composeRoute(st.pool, st.segments || 20)) : deep(st.route || []);
+  saveRoutes();
+  stageDirty();
 }
 
 /**
@@ -602,8 +724,116 @@ function active() {
       width: p.width || chunkW, partial: !!p.partial, readonly: true, gate: g ? g.id : null,
     };
   }
+  if (view.mode === 'stage') return stageScene();
   const d = doc();
   return { ...build(d), width: d.width, partial: !!d.partial, readonly: false, gate: d.gate || null };
+}
+
+// ─────────────────────────────────────────────────────────────
+// ทั้งด่านต่อกันเป็นฉากเดียว
+//
+// ไม่ได้ต่อท่อนเอง แต่ให้ Level ตัวเดียวกับเกมเป็นคนปูให้ทีละท่อน (spawnChunk)
+// ของที่ระบบโรยเอง — แม่เหล็ก ตัวอักษร หญ้าแมว กระป๋อง โล่ — จึงไปลงจุดเดียวกับในเกมเป๊ะ
+// ถ้าต่อเอง ต้องลอกสูตร "หาที่โล่ง" มาไว้ในไฟล์นี้ ซึ่งผิดกฎข้อเดียวของหน้าออกแบบ
+//
+// ปูยี่สิบท่อนพร้อมไล่หาที่โล่งไม่ใช่งานที่ทำทุกเฟรมไหว จึงเก็บผลไว้
+// แล้วล้างทิ้งเมื่อลำดับท่อนหรือฉากเปลี่ยน (stageDirty)
+// ─────────────────────────────────────────────────────────────
+let stageCache = null;
+
+function stageDirty() {
+  stageCache = null;
+  sim = null;
+  scrubAt = -1;
+  const el = document.getElementById('scrub');
+  if (el) el.disabled = true;
+}
+
+function stageScene() {
+  if (stageCache) return stageCache;
+
+  const st = stage();
+  const route = routeOf(st);
+
+  // ── ท่อนที่เราแก้เอง ──
+  // spawnChunk รองรับ step.fn อยู่แล้ว (ทางเข้าด่านใช้ช่องนี้) ท่อนของเราจึงเสียบตรงนี้ได้เลย
+  // ผลคือของที่ระบบโรยให้ทั้งท่อน — กุ้ง เม็ดขนม แม่เหล็ก ตัวอักษร — ทำงานกับท่อนของเรา
+  // ด้วยกฎชุดเดียวกับท่อนของเกมทุกประการ ไม่ต้องเขียนทางแยกไว้ในหน้านี้เลย
+  const runRoute = route.map((s) => {
+    const d = s.d && docById(s.d);
+    if (!d) return s;
+    return { ...s, fn: (x) => ({ ...build(d, x), width: d.width, partial: !!d.partial }) };
+  });
+
+  const lvl = new Level(runRoute);
+  lvl.restartAt(0, runRoute, st.theme);
+  // ในเกม Game เป็นคนบอกว่าตัวอักษรถัดไปคือตัวไหน ที่นี่ไล่วนไปเรื่อย ๆ ให้เห็นครบทุกตัว
+  let li = 0;
+  lvl.nextLetter = () => li++ % WORD.length;
+
+  const slots = [];
+  const jumps = [];
+  const fallers = [];
+  const hazards = [];
+  const plats = [];
+
+  for (let i = 0; i < route.length; i++) {
+    const p = route[i].p;
+    const own = route[i].d ? docById(route[i].d) : null;
+    const x0 = lvl.nextChunkX;
+    // เรียกแพตเทิร์นซ้ำเพื่ออ่าน "จุดกด" กับของพิเศษ ซึ่ง spawnChunk ไม่ได้เก็บไว้
+    // (เกมไม่ต้องใช้ แต่หน้านี้ต้องวาดส่วนโค้งกระโดด) แพตเทิร์นคืนของใหม่ทุกครั้ง
+    // ไม่มีผลข้างเคียง เรียกซ้ำจึงปลอดภัย
+    const c = own ? build(own, x0) : (PATTERNS[p] ? PATTERNS[p](x0) : { jumps: [] });
+    if (own) plats.push(...c.plats);
+    lvl.spawnChunk();
+
+    jumps.push(...(c.jumps || []));
+    // ของพิเศษเก็บรูปร่างชุดเดียวกับที่ build() ทำให้ท่อนของเรา drawSpecials จะได้วาดได้เหมือนกัน
+    for (const f of c.fallers || []) {
+      fallers.push({ x: f.x, w: FALLER.w, h: FALLER.h, warn: f.warn === undefined ? FALLER.warnFrames : f.warn });
+    }
+    for (const h of c.hazards || []) {
+      if (h.kind === 'bee') {
+        const b = HAZARD.bee;
+        const t = h.phase || 0;
+        hazards.push({ kind: 'bee', x: h.x, w: b.w, h: b.h, y: b.midY + Math.sin(t) * b.amp, t });
+      } else {
+        const r = HAZARD.ball.r;
+        hazards.push({ kind: 'ball', x: h.x, w: r * 2, h: r * 2, y: GROUND_Y - r * 2, spin: 0 });
+      }
+    }
+
+    slots.push({ i, p, x: x0, w: lvl.nextChunkX - x0, doc: own ? own.id : null });
+  }
+
+  // ไอเท็มทุกกองรวมเป็นรายการเดียวแบบที่ drawItems กับ simulate ใช้
+  const pickups = [
+    ...lvl.nips.map((q) => ({ ...q, kind: 'nip' })),
+    ...lvl.cans.map((q) => ({ ...q, kind: 'can' })),
+    ...lvl.magnets.map((q) => ({ ...q, kind: 'magnet' })),
+    ...lvl.shields.map((q) => ({ ...q, kind: 'shield' })),
+    ...lvl.letters.map((q) => ({ ...q, kind: 'letter' })),
+    ...lvl.potions.map((q) => ({ ...q, kind: 'potion' })),
+  ].sort((a, b) => a.x - b.x);
+
+  stageCache = {
+    obs: lvl.obstacles,
+    pit: lvl.pits,
+    fish: lvl.fishes,
+    jumps: jumps.sort((a, b) => a - b),
+    fallers,
+    hazards,
+    plats,
+    pickups,
+    width: lvl.nextChunkX,
+    partial: false,
+    readonly: !editing(),
+    cached: true,         // ฉากนี้ไม่ได้สร้างใหม่ทุกเฟรม ใครแตะของในนี้ต้องคืนค่าเอง
+    gate: null,
+    slots,
+  };
+  return stageCache;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -663,13 +893,19 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
   drawSky(ctx, cam, pal);
   drawHills(ctx, cam, pal);
-  drawGround(ctx, scene.pit, cam, pal);
+  drawGround(ctx, scene.pit, cam, pal, GROUND_ART[st.backdrop]);
   const gate = gateView(cam);
   if (gate) drawGateBack(ctx, gate.def, gate.v);
   drawPlats(cam, pal);
 
+  // ทั้งด่านมีจุดกดหลายสิบจุด วาดส่วนโค้งทุกจุดทุกเฟรมคือเปลืองเปล่า ๆ
+  // เอาเฉพาะที่อยู่ใกล้จอพอจะมองเห็น เผื่อข้างละ 400px ให้เส้นที่เริ่มนอกจอยังต่อเนื่อง
+  const nearJumps = view.mode === 'stage'
+    ? scene.jumps.filter((j) => j > cam - 400 && j < cam + W + 400)
+    : scene.jumps;
+
   if (view.grid) drawGrid(cam);
-  if (view.arcs) drawArcs(cam, scene.jumps);
+  if (view.arcs) drawArcs(cam, nearJumps);
 
   drawObstacles(ctx, scene.obs, cam, st.theme);
   drawSpecials(cam, st);
@@ -677,18 +913,21 @@ function draw() {
   drawTreats(ctx, scene.fish, cam, tick);
   drawItems(cam);
 
-  if (view.next) drawGhost(cam, scene);
-  drawBounds(cam, scene.width);
-  drawJumpMarks(cam, scene.jumps);
+  // เงาท่อนถัดไปมีไว้ดูรอยต่อของท่อนเดียว — ทั้งด่านเห็นรอยต่อจริงอยู่แล้วไม่ต้องเดา
+  if (view.next && view.mode !== 'stage') drawGhost(cam, scene);
+  if (view.mode === 'stage') drawSlotBounds(cam, scene);
+  else drawBounds(cam, scene.width);
+  drawJumpMarks(cam, nearJumps);
   if (sim) drawSimMarks(cam);
   if (!scene.readonly) drawLaneGuides();
-  if (!scene.readonly) drawSelection(cam);
+  if (!scene.readonly) drawSelection();
   drawCat(cam);
   if (gate) {
     drawGateFront(ctx, gate.def, gate.v);
     drawGateMarks(cam, gate);
   }
 
+  if (view.mode === 'stage') markHere(cam);
   drawStrip();
   requestAnimationFrame(draw);
 }
@@ -866,7 +1105,7 @@ function drawLedge(p, cam, pal) {
  * เส้นของชั้นที่แถวอยู่ตอนนี้เข้มกว่าเส้นอื่น
  */
 function drawLaneGuides() {
-  const it = sel && view.refIdx < 0 && byId(doc(), sel);
+  const it = sel && !locked() && byId(doc(), sel);
   if (!it || it.t !== 'fishRun' || it.lane === 'surface') return;
   const cur = it.lane || 'run';
   ctx.save();
@@ -905,7 +1144,12 @@ const FALL_Y = GROUND_Y - FALLER.h - 130;
  * แต่ถ้าเพิ่งแก้อะไรไปแล้วยังไม่ได้ตรวจใหม่ จำนวนจะไม่ตรง ตอนนั้นให้โชว์ทั้งหมด
  */
 function hideEaten() {
-  if (!sim || scrubAt < 0 || sim.eatAt.length !== scene.fish.length) return;
+  if (!sim || scrubAt < 0 || sim.eatAt.length !== scene.fish.length) {
+    // ฉากของโหมดทั้งด่านถูกเก็บไว้ใช้ซ้ำ ไม่ได้สร้างใหม่ทุกเฟรมเหมือนท่อนเดี่ยว
+    // ถ้าไม่คืนค่าตรงนี้ เม็ดที่เคยถูกกินตอนเลื่อนดูผลจำลองจะหายไปถาวร
+    if (scene.cached) for (const f of scene.fish) f.got = false;
+    return;
+  }
   scene.fish.forEach((f, i) => { f.got = sim.eatAt[i] <= scrubAt; });
 }
 
@@ -995,6 +1239,43 @@ function drawGhost(cam, sc) {
   }
 }
 
+/**
+ * เส้นแบ่งท่อนในโหมดทั้งด่าน
+ * ไทม์ไลน์ข้างล่างบอกว่าด่านมีท่อนอะไรบ้าง ส่วนเส้นพวกนี้บอกว่า
+ * "ตรงที่มองอยู่ตอนนี้" เป็นท่อนที่เท่าไร — สองอย่างนี้ต้องตรงกันเสมอ
+ */
+function drawSlotBounds(cam, sc) {
+  const here = sc.slots[view.slot];
+  if (here) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,143,184,.06)';
+    ctx.fillRect(here.x - cam, 0, here.w, H);
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.font = 'bold 11px system-ui';
+  for (const s of sc.slots) {
+    const sx = Math.round(s.x - cam) + 0.5;
+    if (sx < -80 || sx > W + 80) continue;
+    const on = s.i === view.slot;
+    const col = on ? 'rgba(255,143,184,.95)' : 'rgba(255,255,255,.32)';
+    ctx.strokeStyle = col;
+    ctx.lineWidth = on ? 2 : 1;
+    ctx.setLineDash(on ? [] : [4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col;
+    // ป้ายชื่อท่อนอยู่บนฟ้า ไม่ใช่บนพื้น — พื้นของแต่ละฉากสีไม่เหมือนกัน
+    // ตัวหนังสือบนทรายหิมะหรือพื้นส้มอ่อนอ่านไม่ออก ส่วนท้องฟ้ามืดทุกฉาก
+    ctx.fillText(`ท่อน ${s.i + 1} · ${s.doc ? '✎ ของฉัน' : '#' + s.p}`, sx + 5, 16);
+  }
+  ctx.restore();
+}
+
 function drawBounds(cam, width) {
   ctx.save();
   ctx.font = '11px system-ui';
@@ -1041,7 +1322,8 @@ function drawJumpMarks(cam, jumps) {
   ctx.restore();
 }
 
-function drawSelection(cam) {
+function drawSelection() {
+  const cam = docCam();
   const d = doc();
   const it = sel && byId(d, sel);
   if (!it) return;
@@ -1162,6 +1444,17 @@ function drawStrip() {
   sctx.fillRect(ox * k, 0, 1.5, SH);
   sctx.fillRect((sc.width + ox) * k, 0, 1.5, SH);
 
+  // โหมดทั้งด่าน: ขีดแบ่งทุกท่อน + แรเงาท่อนที่กำลังแก้
+  if (sc.slots) {
+    const here = sc.slots[view.slot];
+    if (here) {
+      sctx.fillStyle = 'rgba(255,143,184,.14)';
+      sctx.fillRect((here.x + ox) * k, 0, here.w * k, SH);
+    }
+    sctx.fillStyle = 'rgba(255,255,255,.16)';
+    for (const s of sc.slots) sctx.fillRect((s.x + ox) * k, 0, 1, SH);
+  }
+
   // ของกิน
   sctx.fillStyle = '#7FE3DA';
   for (const f of sc.fish) {
@@ -1265,8 +1558,9 @@ function handleX(d, it) {
 // นี่คือหัวใจของเครื่องมือ: ไม่ได้เดาว่าด่านผ่านได้ไหม แต่ให้แมวลองวิ่งจริง
 // ตาม "เฉลย" ที่ผู้ออกแบบประกาศไว้ (จุดกดทุกอัน) แล้วรายงานว่าเกิดอะไรขึ้น
 // ─────────────────────────────────────────────────────────────
-function simulate(d) {
-  const sc = view.refIdx >= 0 ? active() : { ...build(d), width: d.width, partial: !!d.partial, gate: d.gate || null };
+function simulate(d, scIn) {
+  // scIn = ฉากที่ประกอบมาแล้ว (โหมดทั้งด่านส่งเข้ามา) ไม่งั้นสร้างจากเอกสารเหมือนเดิม
+  const sc = scIn || (view.refIdx >= 0 ? active() : { ...build(d), width: d.width, partial: !!d.partial, gate: d.gate || null });
   const bars = sc.obs.filter((o) => o.kind === 'bar');
   const solids = sc.obs;
   const press = sc.jumps.slice().sort((a, b) => a - b);
@@ -1307,7 +1601,9 @@ function simulate(d) {
   let death = null;
   const endX = sc.width + 240;
 
-  for (let f = 0; f < 6000 && cx < endX && !death; f++) {
+  // เพดานเฟรม: ท่อนเดียวใช้ไม่ถึงพันเฟรม แต่ทั้งด่านยี่สิบท่อนราวสามพัน
+  // ตั้งไว้เผื่อด่านที่ท่อนกว้างกว่าปกติ ไม่ใช่ตัวเลขที่ตั้งใจให้ถึง
+  for (let f = 0; f < 20000 && cx < endX && !death; f++) {
     // ── เวลาจริงต่อหนึ่งก้าวโลก ──
     // ติดสปีดแล้วโลกเดินเร็วขึ้น 1.8 เท่า แต่ฟิสิกส์ยังก้าวทีละ 1 เฟรมอ้างอิง (ดู Game.update)
     // หนึ่งก้าวโลกจึงกินเวลาจริงแค่ 1/1.8 เฟรม ตัวจับเวลาและของที่ขยับเองต้องเดินตามเวลาจริง
@@ -1663,13 +1959,21 @@ function joinIssues(sc) {
 const reportEl = document.getElementById('report');
 
 function runCheck() {
-  const sc = view.refIdx >= 0 ? active() : { ...build(doc()), width: doc().width, partial: !!doc().partial, gate: doc().gate || null };
-  sim = simulate(doc());
+  const whole = view.mode === 'stage';
+  const sc = whole || view.refIdx >= 0
+    ? active()
+    : { ...build(doc()), width: doc().width, partial: !!doc().partial, gate: doc().gate || null };
+  sim = simulate(doc(), whole ? sc : null);
   const statics = staticIssues(sc);
   // ท่อนทางเข้าไม่ถูกสุ่มต่อกับท่อนอื่น ไม่ต้องตรวจการต่อท่อน
+  // ส่วนโหมดทั้งด่าน joinIssues ยังมีความหมาย: มันตรวจ "ท่อนสุดท้ายต่อกับท่อนแรก"
+  // ซึ่งคือรอยวนจริงของด่าน เพราะเกมอ่าน route ด้วย chunkIndex % route.length
   const join = sc.gate ? { after: [], before: [], gate: true } : joinIssues(sc);
 
   const rows = [];
+  if (whole) {
+    rows.push(`<b>ทั้งด่าน “${esc(stage().name)}”</b> — ${sc.slots.length} ท่อน ยาวรวม ${Math.round(sc.width)}px`);
+  }
   if (sim.death) {
     const what = {
       pit: 'ตกหลุม', bar: 'ชนคาน', spike: 'ชนหนาม', crate: 'ชนลัง',
@@ -1763,7 +2067,12 @@ function updateScrubTxt() {
 function centerOn(x) { view.cam = clampCam(x - W / 2); }
 
 function clampCam(c) {
-  const w = scene ? scene.width : chunkW;
+  // ── ทำไมไม่ใช้ scene.width ตรง ๆ ──
+  // scene คือของที่วาดไปเมื่อเฟรมที่แล้ว ตอนเพิ่งสลับโหมดมันยังเป็นของโหมดก่อนหน้าอยู่
+  // สลับจากท่อนเดี่ยวมาทั้งด่านแล้วสั่งเลื่อนไปท่อนที่ 6 กล้องจะโดนหนีบด้วยความกว้าง
+  // ของท่อนเดียว (900px) แล้วเด้งกลับไปต้นด่านทันที — เจอมาจริงจากการทดสอบ
+  const w = view.mode === 'stage' ? stageScene().width
+    : (scene && !scene.slots ? scene.width : chunkW);
   return Math.max(-160, Math.min(w + 160 - W, c));
 }
 
@@ -1773,6 +2082,10 @@ function clampCam(c) {
 /** มีอะไรเปลี่ยนแล้ว ผลตรวจเดิมใช้ไม่ได้อีก */
 function dirty() {
   save();
+  // แก้ของในท่อนเดียว = ตำแหน่งของทั้งด่านหลังจากนั้นเลื่อนตามได้ ต้องปูใหม่ทั้งด่าน
+  // ล้างของเก่าทิ้งเฉย ๆ เท่านั้น เดี๋ยว stageScene() ปูใหม่เองตอนวาดเฟรมถัดไป
+  // ห้ามสั่งวาดหน้าตาใหม่ตรงนี้ — ตัวนี้ถูกเรียกทุกเฟรมระหว่างลากของ
+  if (view.mode === 'stage') stageCache = null;
   sim = null;
   scrubAt = -1;
   const el = document.getElementById('scrub');
@@ -1780,7 +2093,7 @@ function dirty() {
 }
 
 function pushUndo() {
-  undoStack.push(JSON.stringify({ cur, docs }));
+  undoStack.push(JSON.stringify({ cur, docs, routes }));
   if (undoStack.length > 60) undoStack.shift();
 }
 
@@ -1790,6 +2103,7 @@ function undo() {
   const o = JSON.parse(s);
   docs = o.docs;
   cur = Math.min(o.cur, docs.length - 1);
+  if (o.routes) { routes = o.routes; saveRoutes(); stageCache = null; }
   sel = null;
   sim = null;
   scrubAt = -1;
@@ -1798,7 +2112,7 @@ function undo() {
 }
 
 function mutate(fn) {
-  if (view.refIdx >= 0) return;
+  if (locked()) return;
   pushUndo();
   fn(doc());
   dirty();
@@ -1821,7 +2135,7 @@ function addItem(kit, x) {
   if (kit.kind) it.kind = kit.kind;
   mutate((d) => {
     d.items.push(it);
-    snapTo(d, it, x);
+    snapTo(d, it, Math.round(x));
   });
   sel = it.id;
   return it;
@@ -1830,9 +2144,15 @@ function addItem(kit, x) {
 /** ดูดเข้าเกาะจุดกดที่ใกล้ที่สุด ถ้าไม่มีอันไหนใกล้พอก็ปล่อยเป็นพิกัดอิสระ */
 const SNAP = 12;
 
-function snapTo(d, it, wantX) {
+/**
+ * @param tol ระยะที่ยอมให้ห่างแล้วยังนับว่า "เกาะ" — ปกติ 12px เพื่อให้ลากแล้วดูดติดง่าย
+ *   แต่ตอนแปลงท่อนของเกมมาเป็นเอกสาร ต้องส่ง 0 เข้ามา เพราะการดูดคือการ "ย้ายของ"
+ *   ของที่อยู่ห่างจุดเกาะ 5px จะถูกดึงไปชิดจุดเกาะ = ท่อนที่แปลงมาไม่เหมือนต้นฉบับอีกต่อไป
+ *   (วัดแล้ว: คานกับหลุมในเก้าท่อนเลื่อนตำแหน่งเพราะเหตุนี้)
+ */
+function snapTo(d, it, wantX, tol = SNAP) {
   const keys = ANCHOR_SET[it.group];
-  if (!keys) { it.x = Math.round(wantX); delete it.link; return; }
+  if (!keys) { it.x = wantX; delete it.link; return; }
 
   let best = null;
   for (const j of d.items) {
@@ -1842,12 +2162,12 @@ function snapTo(d, it, wantX) {
       const a = ANCHORS[key];
       const cand = CENTERED.has(it.group) ? base + a.v - itemW(it) / 2 : base + a.v;
       const dist = Math.abs(cand - wantX);
-      if (dist <= SNAP && (!best || dist < best.dist)) best = { dist, id: j.id, key };
+      if (dist <= tol && (!best || dist < best.dist)) best = { dist, id: j.id, key };
     }
   }
 
   if (best) { it.link = { id: best.id, key: best.key }; }
-  else { delete it.link; it.x = Math.round(wantX); }
+  else { delete it.link; it.x = wantX; }
 }
 
 function delItem(id) {
@@ -1870,7 +2190,7 @@ let drag = null;
 function worldAt(ev) {
   const r = cv.getBoundingClientRect();
   return {
-    x: view.cam + (ev.clientX - r.left) * (W / r.width),
+    x: docCam() + (ev.clientX - r.left) * (W / r.width),
     y: (ev.clientY - r.top) * (H / r.height),
   };
 }
@@ -1889,7 +2209,7 @@ function pick(d, p) {
 cv.addEventListener('pointerdown', (ev) => {
   cv.setPointerCapture(ev.pointerId);
   const p = worldAt(ev);
-  if (view.refIdx >= 0) { drag = { kind: 'pan', sx: ev.clientX, cam: view.cam }; return; }
+  if (locked()) { drag = { kind: 'pan', sx: ev.clientX, cam: view.cam }; return; }
   const d = doc();
 
   // ที่จับยืดปลายขวาของชิ้นที่เลือกอยู่ มาก่อนเสมอ
@@ -1935,7 +2255,7 @@ cv.addEventListener('pointermove', (ev) => {
   if (!it) return;
 
   if (drag.kind === 'move') {
-    snapTo(d, it, p.x - drag.off);
+    snapTo(d, it, Math.round(p.x - drag.off));
     // ต้องขยับแนวตั้งเกิน LANE_SNAP ก่อนถึงนับว่าตั้งใจลากขึ้นลง — ลากแนวนอนมือสั่นนิดหน่อยแถวไม่หลุดชั้น
     if (it.t === 'fishRun' && (drag.lifting || Math.abs(p.y - drag.sy) > LANE_SNAP)) {
       drag.lifting = true;
@@ -1960,7 +2280,12 @@ cv.addEventListener('pointermove', (ev) => {
 });
 
 function endDrag() {
-  if (drag && drag.kind !== 'pan') { updateCount(); }
+  if (drag && drag.kind !== 'pan') {
+    updateCount();
+    // ความกว้างท่อนกับไอคอนบนไทม์ไลน์อาจเปลี่ยน — อัปเดตทีเดียวตอนปล่อยมือ
+    // ไม่ใช่ทุกเฟรมระหว่างลาก เพราะมันสร้างปุ่มใหม่ทั้งแถบ
+    if (view.mode === 'stage') renderStageUI();
+  }
   drag = null;
 }
 
@@ -1971,17 +2296,19 @@ cv.addEventListener('pointercancel', endDrag);
 function wireChip(el, kit) {
   el.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
-    if (view.refIdx >= 0) return;
+    if (locked()) return;
     let made = null;
     const move = (e) => {
       const r = cv.getBoundingClientRect();
       const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
       if (!inside) return;
-      const wx = view.cam + (e.clientX - r.left) * (W / r.width);
+      // docCam ไม่ใช่ view.cam — โหมดทั้งด่านวางเอกสารไว้กลางด่าน ถ้าใช้พิกัดโลก
+      // ของที่วางจะไปโผล่ที่ x=2500 ของท่อน ซึ่งอยู่นอกท่อนไปไกล
+      const wx = docCam() + (e.clientX - r.left) * (W / r.width);
       if (!made) { made = addItem(kit, wx); return; }
       // ระหว่างลากไม่ผ่าน mutate เพราะไม่อยากได้ก้อนย้อนกลับหนึ่งก้อนต่อหนึ่งเฟรม
       const d = doc();
-      snapTo(d, byId(d, made.id), wx);
+      snapTo(d, byId(d, made.id), Math.round(wx));
       dirty();
     };
     const up = () => {
@@ -2016,7 +2343,7 @@ window.addEventListener('keydown', (ev) => {
   const tag = ev.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   if (ev.key === 'z' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); undo(); return; }
-  if (!sel || view.refIdx >= 0) return;
+  if (!sel || locked()) return;
 
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); delItem(sel); return; }
 
@@ -2264,7 +2591,210 @@ function jumpNames(d) {
   return m;
 }
 
-/** ดึงผังของท่อนเดิมมาเป็นจุดตั้งต้น — ได้เฉพาะของแข็งกับจุดกด ของกินต้องวางใหม่ */
+
+// ─────────────────────────────────────────────────────────────
+// แปลงท่อนของเกมกลับมาเป็น "เอกสารที่แก้ได้"
+//
+// ── ปัญหาที่ต้องแก้ ──
+// ท่อนในเกมเป็นโค้ด ไม่ใช่ข้อมูล — fishJump(j1, 11) คืนมาเป็นเม็ดปลาสิบเอ็ดเม็ด
+// ของแข็งกับจุดกดคัดกลับมาได้ตรง ๆ เพราะมันคือ x/y ล้วน แต่ของกินคัดกลับไม่ได้
+// เพราะสิ่งที่หายไปคือ "ความตั้งใจ" (นี่คือแถวโค้งกระโดดที่ออกจากจุดกดนั้น)
+// ถ้าปล่อยให้หาย คนแก้ต้องวางปลาใหม่ทั้งท่อนทุกครั้งที่แตะท่อนเดิม = ใช้งานจริงไม่ได้
+//
+// ── วิธี ──
+// เดาย้อนด้วยการ "สร้างแล้วเทียบ": เรียกสูตรเดียวกับที่เกมใช้ ทุกจำนวนเม็ด ทุกจุดกด
+// แล้วดูว่าชุดไหนได้ x/y/ชนิด ตรงกับของจริงเป๊ะ — ตรงแปลว่านั่นแหละคือสูตรที่เขาเขียนไว้
+// ไม่ใช่การประมาณ เพราะทั้งสองฝั่งมาจากฟังก์ชันตัวเดียวกัน เทียบกันได้ระดับทศนิยม
+// เม็ดที่เข้าสูตรไหนไม่ได้จริง ๆ กลายเป็นแถวเม็ดเดียว ยังลากยังลบได้ ไม่มีอะไรหาย
+// ─────────────────────────────────────────────────────────────
+const ARC_GENS = [
+  ['fishJump', A.fishJump],
+  ['fishDouble', A.fishDouble],
+  ['arcMid', A.arcMid],
+  ['arcHigh', A.arcHigh],
+];
+
+const LOW_Y = GROUND_Y - BODY.slideH / 2;
+
+function sameFish(gen, list, at) {
+  if (!gen.length || at + gen.length > list.length) return false;
+  for (let k = 0; k < gen.length; k++) {
+    const a = gen[k];
+    const b = list[at + k];
+    if (Math.abs(a.x - b.x) > 0.02 || Math.abs(a.y - b.y) > 0.02) return false;
+    if ((a.kind || 'fish') !== (b.kind || 'fish')) return false;
+  }
+  return true;
+}
+
+/**
+ * เทียบแถวหนึ่งกับของจริง โดยลอง "ของหายากที่โรยทับ" ด้วย
+ * จำเป็นเพราะ withShrimp ตัดเม็ดข้างกุ้งทิ้ง แถวที่มีกุ้งจึงไม่เท่ากับแถวเปล่าแล้ว
+ * make ต้องสร้างชุดใหม่ทุกครั้ง เพราะ topping แก้ของเดิมในที่
+ */
+function matchRow(make, list, at, tops) {
+  for (const top of tops) {
+    const g = top ? topping(make(), top) : make();
+    if (sameFish(g, list, at)) return { n: g.length, top };
+  }
+  return null;
+}
+
+/** ลองเฉพาะของหายากที่โผล่อยู่แถวนั้นจริง ๆ — ไม่งั้นเสียเวลาไล่ครบหกแบบทุกรอบ */
+function topsNear(list, at) {
+  const kinds = new Set();
+  for (let k = at; k < Math.min(list.length, at + 48); k++) kinds.add(list[k].kind || 'fish');
+  const out = [''];
+  if (kinds.has('shrimp')) out.push('shrimp', 'shrimpAll');
+  if (kinds.has('kibble')) out.push('cluster', 'alternate', 'all');
+  return out;
+}
+
+function harvestFish(p, jumpItems, push) {
+  const list = p.fish || [];
+  const MAXN = 44;
+  let i = 0;
+
+  while (i < list.length) {
+    const hit = bestAt(i);
+    if (hit) { push(hit.item); i += hit.n; }
+    else {
+      // เม็ดที่เข้าสูตรไหนไม่ได้ — เก็บไว้เป็นแถวเม็ดเดียว ดีกว่าทำหาย
+      const f = list[i];
+      const it = { t: 'fishRun', group: 'free', x: f.x, n: 1, gap: 34 };
+      if (Math.abs(f.y - A.RUN_Y) > 0.001) exactRise(it, A.RUN_Y - f.y);
+      if (f.kind === 'shrimp') it.top = 'shrimpAll';
+      else if (f.kind === 'kibble') it.top = 'all';
+      push(it);
+      i += 1;
+    }
+  }
+
+  function bestAt(at) {
+    const left = list.length - at;
+    const tops = topsNear(list, at);
+    let best = null;
+    const keep = (n, item) => { if (!best || n > best.n) best = { n, item }; };
+
+    // ── แถวที่เกาะจุดกด: ส่วนโค้ง กับ ช่อเกล็ดหิมะ ──
+    jumpItems.forEach((jit) => {
+      const j = jit.x;
+      for (const [t, fn] of ARC_GENS) {
+        for (let n = Math.min(MAXN, left); n >= 2; n--) {
+          const m = matchRow(() => fn(j, n), list, at, tops);
+          if (m) { keep(m.n, arcItem(t, jit, { n }, m.top)); break; }
+        }
+      }
+      for (let arm = Math.round(A.RUN_REACH); arm >= 6; arm--) {
+        const m = matchRow(() => A.fishFlake(j, arm), list, at, tops);
+        if (m) { keep(m.n, arcItem('fishFlake', jit, { arm }, m.top)); break; }
+      }
+    });
+
+    // ── แถวอิสระ: แถวพื้น (ยกชั้นได้) แถวลอดคาน แถวคลื่น ──
+    const x0 = list[at].x;
+    const rise = A.RUN_Y - list[at].y;
+    const d0 = list[at + 1] ? list[at + 1].x - x0 : 34;
+    const gaps = [...new Set([d0, d0 / 2, d0 / 3, 34, 32, 56]
+      .map((g) => Math.round(g * 1000) / 1000).filter((g) => g > 4))];
+
+    for (const gap of gaps) {
+      for (let n = Math.min(MAXN, left); n >= 2; n--) {
+        const m = matchRow(() => (rise ? A.lift(A.fishRun(x0, n, gap), rise) : A.fishRun(x0, n, gap)), list, at, tops);
+        if (m) { keep(m.n, rowItem('fishRun', x0, { n, gap }, m.top, rise)); break; }
+      }
+      if (Math.abs(list[at].y - LOW_Y) < 0.5) {
+        for (let n = Math.min(MAXN, left); n >= 2; n--) {
+          const m = matchRow(() => A.fishLow(x0, n, gap), list, at, tops);
+          if (m) { keep(m.n, rowItem('fishLow', x0, { n, gap }, m.top, 0)); break; }
+        }
+      }
+      for (let humps = 1; humps <= 6; humps++) {
+        for (let n = Math.min(MAXN, left); n >= 3; n--) {
+          const m = matchRow(() => A.fishWave(x0, n, gap, humps), list, at, tops);
+          if (m) { keep(m.n, rowItem('fishWave', x0, { n, gap, humps }, m.top, 0)); break; }
+        }
+      }
+    }
+
+    return best;
+  }
+
+  function arcItem(t, jit, extra, top) {
+    const it = { t, group: 'arc', x: 0, ...extra, link: { id: jit.id, key: 'AT' } };
+    if (top) it.top = top;
+    return it;
+  }
+
+  function rowItem(t, x0, extra, top, rise) {
+    const it = { t, group: 'free', x: x0, ...extra };
+    if (top) it.top = top;
+    if (rise) exactRise(it, rise);
+    return it;
+  }
+}
+
+/**
+ * ตั้งชั้นของแถวให้ตรงกับของเดิมเป๊ะ
+ * ใช้แทน setRise ตอนแปลงท่อน เพราะ setRise ดูดเข้าชั้นมาตรฐานที่ใกล้ที่สุด (คลาด 8px ได้)
+ * ซึ่งเป็นพฤติกรรมที่ถูกตอนคนลากเอง แต่ผิดตอนคัดลอกของเดิม
+ */
+function exactRise(it, rise) {
+  const lane = LANES.find(([, , v]) => v !== null && Math.abs(v - rise) < 0.001);
+  if (lane && lane[0] === 'run') return;
+  it.lane = lane ? lane[0] : 'custom';
+  it.rise = lane ? lane[2] : rise;
+}
+
+/**
+ * ท่อนของเกมลำดับที่ idx → เอกสารของเราที่หน้าตาเหมือนเดิมทุกเม็ด
+ * ใช้ทั้งปุ่ม "คัดลอกมาเป็นท่อนใหม่" และปุ่ม "แก้ท่อนนี้ให้เป็นของฉัน" บนไทม์ไลน์
+ */
+function docFromPattern(idx, name) {
+  const p = PATTERNS[idx](0);
+  const d = blankDoc(name || `ท่อน ${idx} (ของฉัน)`);
+  d.width = p.width || chunkW;
+  d.kind = PATTERN_META[idx].kind;
+  d.diff = PATTERN_META[idx].diff;
+  if (p.partial) d.partial = true;
+
+  // ── ห้ามปัดเศษตรงนี้ ──
+  // ท่อนของเกมคิดพิกัดจากความเร็ววิ่ง (เช่น DOUBLE_AT * SPEED.run) จุดกดจึงเป็นเลขทศนิยม
+  // อย่าง 480.79999... ปัดเป็น 481 แล้วทุกอย่างที่เกาะจุดกดนั้นเลื่อนตาม 0.2px
+  // ผลคือแถวปลาที่สร้างจากสูตรเดิมไม่ตรงกับของจริงอีกต่อไป แล้วการจับแถวพังทั้งท่อน
+  // (วัดแล้ว: ปัดเศษ = 19 ใน 31 ท่อนประกอบกลับไม่ตรง ปลาหลุดเป็นเม็ดเดี่ยว 174 แถว)
+  // ค่าทศนิยมอยู่ในเอกสารได้ไม่มีปัญหา พอคนลากแก้เองค่อยกลายเป็นจำนวนเต็มตามปกติ
+  const jumpItems = (p.jumps || []).map((x) => ({ id: uid(), t: 'jump', group: 'jump', x }));
+  d.items.push(...jumpItems);
+
+  for (const o of p.obs) {
+    const base = { id: uid(), group: 'obs', x: o.x };
+    if (o.kind === 'spike') d.items.push({ ...base, t: 'spike' });
+    else if (o.kind === 'bar') d.items.push({ ...base, t: 'bar' });
+    else d.items.push({ ...base, t: 'crate', rows: o.rows || 1 });
+  }
+  for (const q of p.pit) d.items.push({ id: uid(), t: 'pit', group: 'obs', x: q.x, w: q.w });
+  for (const f of p.fallers || []) {
+    d.items.push({ id: uid(), t: 'faller', group: 'sp', x: f.x, warn: f.warn === undefined ? FALLER.warnFrames : f.warn });
+  }
+  for (const h of p.hazards || []) {
+    const it = { id: uid(), t: h.kind, group: 'sp', x: h.x };
+    if (h.kind === 'bee' && h.phase) it.phase = (h.phase * 180) / Math.PI;
+    d.items.push(it);
+  }
+  for (const q of p.pickups || []) {
+    d.items.push({ id: uid(), t: 'item', group: 'item', kind: q.kind, x: q.x });
+  }
+
+  harvestFish(p, jumpItems, (it) => d.items.push({ id: uid(), ...it }));
+
+  // ของที่อยู่ตรงจุดเกาะ "พอดีเป๊ะ" ให้เกาะเลย โค้ดที่ export จะได้อ่านเป็น j1 + HALF เหมือนต้นฉบับ
+  // ต้องเป๊ะเท่านั้น (tol 0.05) ไม่ใช่ใกล้ ๆ — ดูเหตุผลที่ snapTo
+  for (const it of d.items) if (CENTERED.has(it.group)) snapTo(d, it, it.x, 0.05);
+  return d;
+}
+
+/** ดึงผังของท่อนเดิมมาเป็นจุดตั้งต้น — ตอนนี้ได้ของกินกลับมาครบด้วย (ดู harvestFish) */
 function grabRef() {
   const i = view.refIdx;
   const g = refGate(i);
@@ -2287,27 +2817,7 @@ function grabRef() {
     refreshAll();
     return;
   }
-  const p = PATTERNS[i](0);
-  const d = blankDoc(`คัดมาจากท่อน ${i}`);
-  d.width = p.width || chunkW;
-  d.kind = PATTERN_META[i].kind;
-  d.diff = PATTERN_META[i].diff;
-  const marks = p.jumps.map((x) => ({ id: uid(), t: 'jump', group: 'jump', x: Math.round(x) }));
-  d.items.push(...marks);
-  for (const o of p.obs) {
-    const base = { id: uid(), group: 'obs', x: Math.round(o.x) };
-    if (o.kind === 'spike') d.items.push({ ...base, t: 'spike' });
-    else if (o.kind === 'bar') d.items.push({ ...base, t: 'bar' });
-    else d.items.push({ ...base, t: 'crate', rows: o.rows || 1 });
-  }
-  for (const q of p.pit) d.items.push({ id: uid(), t: 'pit', group: 'obs', x: Math.round(q.x), w: Math.round(q.w) });
-  for (const f of p.fallers || []) {
-    d.items.push({ id: uid(), t: 'faller', group: 'sp', x: Math.round(f.x), warn: f.warn === undefined ? FALLER.warnFrames : f.warn });
-  }
-  for (const h of p.hazards || []) d.items.push({ id: uid(), t: h.kind, group: 'sp', x: Math.round(h.x) });
-
-  // ของที่บังเอิญอยู่ตรงจุดเกาะพอดี ให้เกาะเลย โค้ดที่ export จะได้อ่านเหมือนต้นฉบับ
-  for (const it of d.items) if (CENTERED.has(it.group)) snapTo(d, it, it.x);
+  const d = docFromPattern(i, `คัดมาจากท่อน ${i}`);
 
   pushUndo();
   docs.push(d);
@@ -2323,11 +2833,12 @@ function grabRef() {
 // ─────────────────────────────────────────────────────────────
 // ออกเป็นโค้ด
 // ─────────────────────────────────────────────────────────────
-function toCode(d) {
+function toCode(d, idxIn) {
   const names = jumpNames(d);
   const js = d.items.filter((q) => q.t === 'jump').slice().sort((a, b) => xOf(d, a) - xOf(d, b));
   const L = [];
-  const idx = PATTERNS.length;
+  // ส่งออกทีละท่อนได้เลข "ต่อท้ายคลัง" ส่วนตอนส่งทั้งด่านต้องไล่เลขให้เองจากข้างนอก
+  const idx = idxIn === undefined ? PATTERNS.length : idxIn;
 
   L.push(`  // ${idx} — ${d.name}`);
 
@@ -2487,11 +2998,452 @@ function refreshAll() {
   refreshDocPick();
   refreshMeta();
   renderInspector();
+  if (view.mode === 'stage') renderStageUI();
+  syncEditClass();
   view.cam = clampCam(view.cam);
+}
+
+/**
+ * บอก CSS ว่าตอนนี้มีอะไรให้แก้ไหม
+ * กล่องเครื่องมือกับแผงรายละเอียดจะได้ไม่ต้องโผล่มาให้กดไม่ได้ตอนที่ยังไม่แปลงท่อน
+ */
+function syncEditClass() {
+  document.body.classList.toggle('can-edit', editing());
 }
 
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// โหมดทั้งด่าน — ไทม์ไลน์ แถบเลือกท่อน และแผงแก้ท่อน
+//
+// ── ทำไมต้องมีโหมดนี้ ──
+// โหมดท่อนเดี่ยวตอบคำถามว่า "ท่อนนี้เล่นสนุกไหม" ได้ดี แต่ตอบไม่ได้เลยว่า
+// "ทั้งด่านมีจังหวะยังไง" — ท่อนยากสามท่อนติดกันจะรู้ก็ต่อเมื่อเห็นทั้งแถว
+// หน้านี้จึงเรียงท่อนทั้งหมดให้ดูพร้อมกันแบบแถบตัดคลิป สีบอกชนิด ความกว้างบอกความยาวจริง
+// ─────────────────────────────────────────────────────────────
+const timelineEl = document.getElementById('timeline');
+const slotListEl = document.getElementById('slotList');
+const slotEditEl = document.getElementById('slotEdit');
+const slotHeadEl = document.getElementById('slotHead');
+
+/** ไอคอนของที่ระบบโรยในท่อนนี้ — เม็ดขนมเก็บเป็นชื่อสไตล์ ไม่ใช่ true/false จึงแยกออกมา */
+function slotBadges(s) {
+  return (s.kibble ? '●' : '') + SPRINKLE.filter(([k]) => s[k]).map(([, ic]) => ic).join('');
+}
+
+function metaOf(p) {
+  return PATTERN_META[p] || { kind: 'obstacle', diff: 0 };
+}
+
+function renderStageUI() {
+  const st = stage();
+  const route = routeOf(st);
+  const sc = stageScene();
+  if (view.slot >= route.length) view.slot = Math.max(0, route.length - 1);
+
+  slotHeadEl.textContent = `${st.name} · ${route.length} ท่อน (ล็อกไว้) · ยาวรวม ${Math.round(sc.width)}px`;
+
+  timelineEl.innerHTML = route.map((s, i) => {
+    const m = metaOf(s.p);
+    const w = sc.slots[i] ? sc.slots[i].w : chunkW;
+    const own = s.d ? docById(s.d) : null;
+    return `<button type="button" class="tl k-${m.kind}${i === view.slot ? ' on' : ''}${own ? ' mine' : ''}" data-i="${i}"`
+      + ` style="flex-grow:${w}" title="ท่อนที่ ${i + 1} · ${own ? 'ท่อนของฉัน: ' + own.name : 'แพตเทิร์น #' + s.p} · ${KIND_TH[m.kind]} ระดับ ${m.diff} · กว้าง ${Math.round(w)}px">`
+      + `<span class="no">${i + 1}</span><span class="pat">${own ? '<span class="mk">✎</span>' : '#' + s.p}</span>`
+      // ช่องแคบเกินกว่าจะใส่คำว่า "มีของหลบ" ได้ครบ — ชนิดบอกด้วยสีอยู่แล้ว
+      // เหลือที่ให้ความยากซึ่งสีบอกไม่ได้ จุดยิ่งเยอะยิ่งหนัก อ่านเป็นจังหวะของทั้งด่านได้ในแวบเดียว
+      + `<span class="kd">${'●'.repeat(m.diff)}</span>`
+      + `<span class="bd">${slotBadges(s)}</span></button>`;
+  }).join('');
+
+  slotListEl.innerHTML = route.map((s, i) => {
+    const m = metaOf(s.p);
+    const own = s.d ? docById(s.d) : null;
+    return `<button type="button" class="slot k-${m.kind}${i === view.slot ? ' on' : ''}${own ? ' mine' : ''}" data-i="${i}">`
+      + `<span class="no">${i + 1}</span><span class="pat">${own ? '<span class="mk">✎</span>' : '#' + s.p}</span>`
+      + `<span class="kd">${own ? esc(own.name) : KIND_TH[m.kind] + ' ' + m.diff}</span>`
+      + `<span class="bd">${slotBadges(s)}</span></button>`;
+  }).join('');
+
+  renderSlotEdit();
+  syncEditClass();
+  hereAt = -1;      // ให้ markHere ทาสีตัวชี้ใหม่บนปุ่มชุดที่เพิ่งสร้าง
+}
+
+/** ตัวเลือกแพตเทิร์น — ของที่ด่านนี้ประกาศไว้ใน pool มาก่อน ที่เหลือตามหลัง */
+function patOptions(cur, st) {
+  const pool = [...new Set(st.pool || [])];
+  const one = (i) => `<option value="${i}"${i === cur ? ' selected' : ''}>#${i} · ${KIND_TH[metaOf(i).kind]} ${metaOf(i).diff}</option>`;
+  const inPool = pool.filter((i) => PATTERNS[i]).map(one).join('');
+  const rest = PATTERNS.map((_, i) => i).filter((i) => !pool.includes(i)).map(one).join('');
+  return (inPool ? `<optgroup label="คลังของด่านนี้">${inPool}</optgroup>` : '')
+    + `<optgroup label="ท่อนอื่นทั้งหมด">${rest}</optgroup>`;
+}
+
+function renderSlotEdit() {
+  const st = stage();
+  const route = routeOf(st);
+  const i = view.slot;
+  const s = route[i];
+  if (!s) { slotEditEl.innerHTML = '<p class="tip">ด่านนี้ยังไม่มีลำดับท่อน</p>'; return; }
+
+  const own = s.d ? docById(s.d) : null;
+  const m = metaOf(s.p);
+  const sl = stageScene().slots[i] || { x: 0, w: chunkW };
+  const ticks = SPRINKLE.map(([k, ic, label]) => `<label class="chk"><input type="checkbox" data-sp="${k}"`
+    + `${s[k] ? ' checked' : ''}> ${ic} ${label}</label>`).join('');
+
+  // ── หัวแผง: ท่อนของเกมเลือกแพตเทิร์นได้ ท่อนของเราบอกว่าเป็นของเราและแก้ได้เลย ──
+  const head = own
+    ? `<p class="tip owned">✎ <b>ท่อนของฉัน</b> — ลากของในสนามได้เลย แก้ชื่อ/ความกว้าง/ชนิด ได้ที่แผง “ท่อนนี้” ข้างล่าง</p>
+       <p class="tip">สร้างจากแพตเทิร์น #${s.p} · ${esc(own.name)}</p>
+       <button class="btn ghost" id="slotRelease">↩ เปลี่ยนกลับเป็นท่อนของเกม</button>`
+    : `<label class="field">แพตเทิร์นที่ใช้<select id="slotPat">${patOptions(s.p, st)}</select></label>
+       <p class="tip">ชนิด <b class="kt k-${m.kind}">${KIND_TH[m.kind]}</b> · ความยาก ${m.diff}</p>
+       <button class="btn adopt" id="slotAdopt">✎ แก้ท่อนนี้ให้เป็นของฉัน</button>
+       <p class="tip">กดแล้วท่อนนี้จะกลายเป็นของเรา ลากแก้ได้ทุกชิ้น — ของกิน ของแข็ง จุดกด มาครบเหมือนเดิมทุกเม็ด</p>`;
+
+  slotEditEl.innerHTML = `
+    <p class="tip">ท่อนที่ <b>${i + 1}</b> จาก ${route.length} · กว้าง ${Math.round(sl.w)}px · เริ่มที่ x=${Math.round(sl.x)}</p>
+    ${head}
+    <div class="row">
+      <button class="btn ghost" id="slotLeft">◀ สลับกับท่อนก่อน</button>
+      <button class="btn ghost" id="slotRight">สลับกับท่อนถัดไป ▶</button>
+    </div>
+    <h3>ของที่โรยในท่อนนี้</h3>
+    <label class="field">เม็ดขนม<select id="slotKibble">
+      <option value="">— ไม่ใส่ —</option>
+      <option value="cluster"${s.kibble === 'cluster' ? ' selected' : ''}>cluster — เกาะกลุ่ม</option>
+      <option value="alternate"${s.kibble === 'alternate' ? ' selected' : ''}>alternate — สลับเม็ด</option>
+    </select></label>
+    <div class="sprinkle">${ticks}</div>
+    <p class="tip">กุ้งทองเขียนทับเม็ดขนมเสมอ (กติกาของ spawnChunk) ใส่พร้อมกันจะเห็นแค่กุ้ง</p>
+    ${own ? '' : '<button class="btn ghost" id="slotGrab">คัดไปเป็นท่อนใหม่ในโหมดท่อนเดี่ยว</button>'}
+  `;
+
+  if (own) document.getElementById('slotRelease').onclick = releaseSlot;
+  else {
+    document.getElementById('slotAdopt').onclick = adoptSlot;
+    document.getElementById('slotPat').onchange = (e) => {
+      const p = Number(e.target.value);
+      mutRoute((r) => { r[i].p = p; });
+    };
+  }
+  document.getElementById('slotKibble').onchange = (e) => {
+    const v = e.target.value;
+    mutRoute((r) => { if (v) r[i].kibble = v; else delete r[i].kibble; });
+  };
+  for (const el of slotEditEl.querySelectorAll('[data-sp]')) {
+    el.onchange = () => {
+      const k = el.dataset.sp;
+      mutRoute((r) => { if (el.checked) r[i][k] = true; else delete r[i][k]; });
+    };
+  }
+  document.getElementById('slotLeft').onclick = () => swapSlot(i, i - 1);
+  document.getElementById('slotRight').onclick = () => swapSlot(i, i + 1);
+
+  // คัดแพตเทิร์นออกไปเป็นท่อนใหม่ในโหมดท่อนเดี่ยว — คนละอย่างกับ "แก้ท่อนนี้ให้เป็นของฉัน"
+  // อันนั้นผูกกับช่องนี้ในด่าน อันนี้ได้ท่อนลอย ๆ ไว้เอาไปใช้ที่ไหนก็ได้
+  const grab = document.getElementById('slotGrab');
+  if (grab) {
+    grab.onclick = () => {
+      setMode('chunk');
+      view.refIdx = s.p;
+      document.getElementById('refPick').value = String(s.p);
+      grabRef();
+    };
+  }
+}
+
+function mutRoute(fn) {
+  const st = stage();
+  const route = routeOf(st);
+  fn(route, st);
+  saveRoutes();
+  stageDirty();
+  renderStageUI();
+}
+
+function swapSlot(a, b) {
+  const route = routeOf(stage());
+  if (b < 0 || b >= route.length) return;
+  view.slot = b;
+  mutRoute((r) => { const t = r[a]; r[a] = r[b]; r[b] = t; });
+  gotoSlot(b);
+}
+
+function pickSlot(i) {
+  view.slot = i;
+  gotoSlot(i);
+  renderStageUI();
+  const b = timelineEl.querySelector(`.tl[data-i="${i}"]`);
+  if (b) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+/** เลื่อนจอไปที่ต้นท่อน เผื่อที่ว่างข้างหน้านิดหน่อยให้เห็นรอยต่อกับท่อนก่อน */
+function gotoSlot(i) {
+  const s = stageScene().slots[i];
+  if (s) view.cam = clampCam(s.x - 60);
+}
+
+timelineEl.onclick = (e) => {
+  const b = e.target.closest('.tl');
+  if (b) pickSlot(Number(b.dataset.i));
+};
+slotListEl.onclick = (e) => {
+  const b = e.target.closest('.slot');
+  if (b) pickSlot(Number(b.dataset.i));
+};
+
+/** ตัวชี้บนไทม์ไลน์ว่ากล้องกำลังมองท่อนไหน — แตะ DOM เฉพาะตอนเปลี่ยนท่อนเท่านั้น */
+let hereAt = -1;
+
+function markHere(cam) {
+  if (!scene.slots) return;
+  const mid = cam + W / 2;
+  const s = scene.slots.find((q) => mid >= q.x && mid < q.x + q.w);
+  const i = s ? s.i : -1;
+  if (i === hereAt) return;
+  hereAt = i;
+  for (const el of timelineEl.children) el.classList.toggle('here', Number(el.dataset.i) === i);
+}
+
+function setMode(m) {
+  view.mode = m;
+  document.body.classList.toggle('mode-stage', m === 'stage');
+  for (const b of document.querySelectorAll('#modeSw .mode')) b.classList.toggle('on', b.dataset.mode === m);
+
+  sel = null;
+  sim = null;
+  scrubAt = -1;
+  const sb = document.getElementById('scrub');
+  if (sb) sb.disabled = true;
+
+  if (m === 'stage') {
+    // โหมดดูของเดิมเป็นของฝั่งท่อนเดี่ยว ถ้าค้างไว้จะกลับไปเจอสภาพที่งงว่าทำไมแก้ไม่ได้
+    view.refIdx = -1;
+    document.getElementById('refPick').value = '-1';
+    stageDirty();
+    renderStageUI();
+    gotoSlot(view.slot);
+  } else {
+    view.cam = -100;
+  }
+  refreshAll();
+}
+
+document.getElementById('modeSw').onclick = (e) => {
+  const b = e.target.closest('.mode');
+  if (b) setMode(b.dataset.mode);
+};
+
+document.getElementById('reRoll').onclick = () => {
+  const st = stage();
+  if (!window.confirm(`สุ่มลำดับท่อนของ “${st.name}” ใหม่ทั้งด่าน — ที่จัดไว้เองจะหายหมด`)) return;
+  rerollRoute(st);
+  view.slot = 0;
+  renderStageUI();
+  gotoSlot(0);
+};
+
+
+// ─────────────────────────────────────────────────────────────
+// เทมเพลตของด่าน — เก็บ "ลำดับท่อน + ท่อนที่เราแก้เอง" ไว้ทั้งชุด
+//
+// ต่างจากการบันทึกท่อนเดี่ยวตรงที่มันเก็บทั้งด่าน ทั้งลำดับ ทั้งของที่โรย
+// และเอกสารของทุกท่อนที่แปลงเป็นของเราแล้ว — เปิดขึ้นมาก็ได้ด่านทั้งด่านกลับคืน
+// เก็บแยกจากลำดับท่อนที่กำลังแก้อยู่ จะลองมั่ว ๆ แล้วค่อยเรียกของเดิมกลับก็ได้
+// ─────────────────────────────────────────────────────────────
+const TPL_KEY = 'meowzing:editor:templates';
+let tpls = [];
+
+function loadTpls() {
+  try { tpls = JSON.parse(localStorage.getItem(TPL_KEY)) || []; } catch { tpls = []; }
+  if (!Array.isArray(tpls)) tpls = [];
+}
+
+function saveTpls() {
+  try { localStorage.setItem(TPL_KEY, JSON.stringify(tpls)); } catch { /* เต็มก็ช่าง */ }
+}
+
+/** ท่อนที่เราแก้เองซึ่งลำดับนี้ใช้อยู่ — ต้องติดไปกับเทมเพลตด้วย ไม่งั้นเปิดมาแล้วท่อนหาย */
+function ownDocsOf(route) {
+  const ids = [...new Set(route.filter((s) => s.d).map((s) => s.d))];
+  return ids.map((id) => docById(id)).filter(Boolean);
+}
+
+function makeTpl(name) {
+  const st = stage();
+  const route = routeOf(st);
+  return {
+    id: uid(),
+    name,
+    stage: st.id,
+    stageName: st.name,
+    at: Date.now(),
+    route: deep(route),
+    docs: deep(ownDocsOf(route)),
+  };
+}
+
+/**
+ * เอาเทมเพลตมาใช้
+ * เอกสารในเทมเพลตต้องได้เลขประจำตัวใหม่ทั้งชุด (ทั้งตัวท่อนและของในท่อน)
+ * ไม่งั้นมันจะไปทับท่อนที่มีอยู่แล้วซึ่งใช้เลขเดียวกัน แล้วสองด่านจะแก้พร้อมกันโดยไม่ตั้งใจ
+ */
+function applyTpl(t) {
+  const map = new Map();
+  for (const src of t.docs || []) {
+    const d = deep(src);
+    const old = d.id;
+    d.id = uid();
+    const rm = new Map();
+    for (const it of d.items || []) { const n = uid(); rm.set(it.id, n); it.id = n; }
+    for (const it of d.items || []) {
+      if (it.link) it.link.id = rm.get(it.link.id) || it.link.id;
+      if (it.runTo) it.runTo = rm.get(it.runTo) || it.runTo;
+    }
+    docs.push(d);
+    map.set(old, d.id);
+  }
+
+  const st = STAGES.find((s) => s.id === t.stage) || stage();
+  routes[st.id] = (t.route || []).map((s) => {
+    const q = { ...s };
+    if (q.d) { if (map.has(q.d)) q.d = map.get(q.d); else delete q.d; }
+    return q;
+  });
+
+  view.stage = Math.max(0, STAGES.indexOf(st));
+  document.getElementById('stagePick').value = String(view.stage);
+  view.slot = 0;
+  sel = null;
+  save();
+  saveRoutes();
+  stageDirty();
+  setMode('stage');
+  gotoSlot(0);
+}
+
+function refreshTplPick() {
+  const el = document.getElementById('tplPick');
+  el.innerHTML = '<option value="">— เทมเพลตที่เก็บไว้ —</option>' +
+    tpls.map((t) => `<option value="${t.id}">${esc(t.name)} · ${esc(t.stageName || t.stage)}</option>`).join('');
+}
+
+document.getElementById('tplPick').onchange = (e) => {
+  const t = tpls.find((q) => q.id === e.target.value);
+  if (!t) return;
+  pushUndo();
+  applyTpl(t);
+};
+
+document.getElementById('tplSave').onclick = () => {
+  const st = stage();
+  const name = window.prompt('ตั้งชื่อเทมเพลต', `${st.name} ${new Date().toLocaleDateString('th-TH')}`);
+  if (!name) return;
+  const t = makeTpl(name.trim());
+  // ชื่อซ้ำ = เขียนทับของเดิม ไม่งั้นรายการจะรกด้วยชื่อเดียวกันหลายอัน
+  const at = tpls.findIndex((q) => q.name === t.name && q.stage === t.stage);
+  if (at >= 0) tpls[at] = t; else tpls.push(t);
+  saveTpls();
+  refreshTplPick();
+  document.getElementById('tplPick').value = t.id;
+  flash('เก็บเทมเพลตแล้ว');
+};
+
+document.getElementById('tplDel').onclick = () => {
+  const el = document.getElementById('tplPick');
+  const t = tpls.find((q) => q.id === el.value);
+  if (!t) { flash('ยังไม่ได้เลือกเทมเพลต'); return; }
+  if (!window.confirm(`ลบเทมเพลต “${t.name}” ทิ้ง?`)) return;
+  tpls = tpls.filter((q) => q.id !== t.id);
+  saveTpls();
+  refreshTplPick();
+};
+
+// ─────────────────────────────────────────────────────────────
+// แปลงท่อนของเกมให้เป็นท่อนของเรา (และกลับ)
+// ─────────────────────────────────────────────────────────────
+function adoptSlot() {
+  const st = stage();
+  const route = routeOf(st);
+  const s = route[view.slot];
+  if (!s || s.d) return;
+  pushUndo();
+  const d = docFromPattern(s.p, `${st.name} · ท่อน ${view.slot + 1}`);
+  docs.push(d);
+  s.d = d.id;
+  save();
+  saveRoutes();
+  stageDirty();
+  sel = null;
+  renderStageUI();
+  refreshAll();
+}
+
+/** คืนช่องนี้ให้เป็นแพตเทิร์นของเกม — เอกสารยังอยู่ในช่องท่อน ไม่ได้ถูกลบ */
+function releaseSlot() {
+  const route = routeOf(stage());
+  const s = route[view.slot];
+  if (!s || !s.d) return;
+  if (!window.confirm('เปลี่ยนช่องนี้กลับไปใช้ท่อนของเกม? ท่อนที่แก้ไว้ยังอยู่ในช่อง “ท่อน” ของโหมดท่อนเดี่ยว')) return;
+  pushUndo();
+  delete s.d;
+  saveRoutes();
+  stageDirty();
+  sel = null;
+  renderStageUI();
+  refreshAll();
+}
+
+/**
+ * โค้ดของทั้งด่าน
+ *
+ * ท่อนที่เราแก้เองไม่มีเลขในคลัง PATTERNS จึงต้องส่งออกเป็นแพตเทิร์นใหม่ต่อท้ายคลังก่อน
+ * แล้ว route ค่อยอ้างเลขใหม่นั้น — ถ้าส่งแต่ route ไป ปลายทางจะไม่มีท่อนให้อ้างถึงเลย
+ */
+function stageOwnCode(st) {
+  const route = routeOf(st);
+  const own = ownDocsOf(route);
+  if (!own.length) return null;
+
+  const at = new Map();
+  own.forEach((d, k) => at.set(d.id, PATTERNS.length + k));
+  const parts = own.map((d, k) => toCode(d, PATTERNS.length + k));
+  return {
+    at,
+    code: parts.map((q) => q.code).join('\n'),
+    meta: parts.map((q) => q.meta).join('\n'),
+    experimental: parts.some((q) => q.experimental),
+    names: own.map((d, k) => `#${PATTERNS.length + k} = ${d.name}`).join(' · '),
+  };
+}
+
+/** โค้ดลำดับท่อนทั้งด่าน สำหรับวางลง stages.js */
+function stageRouteCode(st, at) {
+  const route = routeOf(st);
+  const lines = route.map((s, i) => {
+    const p = s.d && at && at.has(s.d) ? at.get(s.d) : s.p;
+    const parts = [`p: ${p}`];
+    if (s.kibble) parts.push(`kibble: '${s.kibble}'`);
+    if (s.shrimp) parts.push('shrimp: true');
+    if (s.shield) parts.push('shield: true');
+    if (s.magnet) parts.push('magnet: true');
+    if (s.letter) parts.push('letter: true');
+    if (s.nip) parts.push('nip: true');
+    if (s.can) parts.push('can: true');
+    const m = metaOf(s.p);
+    const body = `      { ${parts.join(', ')} },`;
+    const note = s.d ? 'ท่อนของฉัน' : `${m.kind} ${m.diff}`;
+    // ท่อนที่ใส่ของเยอะจนยาวเกินคอลัมน์หมายเหตุ ยังต้องมีช่องว่างคั่นก่อน //
+    return (body.length < 64 ? body.padEnd(64) : body + '  ')
+      + `// ${String(i + 1).padStart(2)} · ${note}`;
+  });
+  return `    route: [\n${lines.join('\n')}\n    ],`;
 }
 
 // ── แถบบน ────────────────────────────────────────────
@@ -2544,7 +3496,14 @@ document.getElementById('docPartial').onchange = (e) => { mutate((d) => { d.part
 
 const stagePick = document.getElementById('stagePick');
 stagePick.innerHTML = STAGES.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
-stagePick.onchange = (e) => { view.stage = Number(e.target.value); };
+stagePick.onchange = (e) => {
+  view.stage = Number(e.target.value);
+  if (view.mode !== 'stage') return;
+  view.slot = 0;
+  stageDirty();
+  renderStageUI();
+  gotoSlot(0);
+};
 
 const refPick = document.getElementById('refPick');
 refPick.innerHTML = '<option value="-1">— ท่อนของฉัน —</option>' +
@@ -2610,10 +3569,15 @@ function step() {
 
 // ── ไฟล์ ─────────────────────────────────────────────
 document.getElementById('dlJson').onclick = () => {
-  const blob = new Blob([JSON.stringify(doc(), null, 2)], { type: 'application/json' });
+  const st = stage();
+  const whole = view.mode === 'stage';
+  const data = whole
+    ? { stage: st.id, name: st.name, route: routeOf(st), docs: ownDocsOf(routeOf(st)) }
+    : doc();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = (doc().name || 'chunk').replace(/[\\/:*?"<>|]/g, '_') + '.json';
+  a.download = (whole ? `ลำดับท่อน-${st.id}` : (doc().name || 'chunk')).replace(/[\\/:*?"<>|]/g, '_') + '.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 };
@@ -2625,6 +3589,13 @@ document.getElementById('fileIn').onchange = (e) => {
   f.text().then((txt) => {
     try {
       const d = JSON.parse(txt);
+      // ไฟล์ลำดับท่อนทั้งด่าน — คนละรูปแบบกับไฟล์ท่อนเดียว แยกที่ชื่อฟิลด์
+      if (d && Array.isArray(d.route)) {
+        // ไฟล์ทั้งด่านมีหน้าตาเดียวกับเทมเพลต ใช้ทางเดียวกันได้เลย
+        pushUndo();
+        applyTpl(d);
+        return;
+      }
       if (!d || !Array.isArray(d.items)) throw new Error('รูปแบบไม่ถูก');
       // id ในไฟล์อาจชนกับที่มีอยู่ ออกเลขใหม่ให้ทั้งชุด
       const remap = new Map();
@@ -2650,6 +3621,35 @@ document.getElementById('fileIn').onchange = (e) => {
 const modal = document.getElementById('codeModal');
 
 document.getElementById('showCode').onclick = () => {
+  // โหมดทั้งด่าน: ส่งออกเป็นลำดับท่อนของฉาก ไม่ใช่ตัวท่อน
+  if (view.mode === 'stage') {
+    const st = stage();
+    const route = routeOf(st);
+    const own = stageOwnCode(st);
+    const head = own
+      ? (own.experimental
+        ? '// ⚠ มีท่อนที่ใช้พื้นเหยียบซึ่งเป็นของทดลอง เกมจริงยังไม่รองรับ\n\n' : '') +
+        `// ① ต่อท้าย PATTERNS ใน src/level.js — เรียงตามนี้ ห้ามสลับ เพราะ route ข้างล่างอ้างเลขนี้\n` +
+        `${own.code}\n\n` +
+        `// ② ต่อท้าย PATTERN_META ใน src/level.js (ต้องยาวเท่ากับ PATTERNS เสมอ)\n${own.meta}\n\n` +
+        `// ③ src/stages.js → ในฉาก “${st.name}” (id: '${st.id}')\n` +
+        `//    ลบ pool: [...] กับ segments: ${st.segments || route.length} ทิ้งก่อน แล้ววาง route นี้แทน\n` +
+        `//    (Level.routeFor อ่าน pool ก่อนเสมอ ถ้า pool ยังอยู่ route จะไม่ถูกใช้เลย)\n`
+      : `// src/stages.js → ในฉาก “${st.name}” (id: '${st.id}')\n` +
+        `//\n` +
+        `// ① ลบ pool: [...] กับ segments: ${st.segments || route.length} ของฉากนี้ทิ้งก่อน\n` +
+        `//    Level.routeFor อ่าน pool ก่อนเสมอ ถ้า pool ยังอยู่ ก้อนข้างล่างจะไม่ถูกใช้เลย\n` +
+        `// ② วางก้อนนี้แทน — ลำดับท่อนจะตรงกับที่เห็นบนไทม์ไลน์ทุกครั้งที่เล่น ไม่สุ่มอีก\n`;
+
+    document.getElementById('codeOut').value = head + stageRouteCode(st, own && own.at) + '\n';
+    document.getElementById('codeHint').textContent =
+      `ทั้งด่าน ${route.length} ท่อน · ยาวรวม ${Math.round(stageScene().width)}px` +
+      (own ? ` · มีท่อนของฉัน ${own.names}` : '') +
+      ' — ปุ่ม “คัดลอกเป็น JSON” ได้ก้อนที่ส่งให้เคลาด์แก้ต่อได้ทันที';
+    modal.classList.remove('hidden');
+    return;
+  }
+
   const out = toCode(doc());
   const gd = doc().gate && GATES[doc().gate];
   if (gd) {
@@ -2685,7 +3685,11 @@ document.getElementById('copyCode').onclick = () => {
 };
 
 document.getElementById('copyJson').onclick = () => {
-  navigator.clipboard.writeText(JSON.stringify(doc()))
+  const st = stage();
+  const data = view.mode === 'stage'
+    ? { stage: st.id, name: st.name, route: routeOf(st), docs: ownDocsOf(routeOf(st)) }
+    : doc();
+  navigator.clipboard.writeText(JSON.stringify(data))
     .then(() => flash('คัดลอก JSON แล้ว'));
 };
 
@@ -2697,6 +3701,9 @@ function flash(msg) {
 
 // ─────────────────────────────────────────────────────────────
 load();
+loadRoutes();
+loadTpls();
+refreshTplPick();
 buildKit();
 refreshAll();
 draw();
@@ -2708,7 +3715,14 @@ if (import.meta.env.DEV) {
     get docs() { return docs; },
     get cur() { return cur; },
     get view() { return view; },
+    get sel() { return sel; },
+    xOf,
     get sim() { return sim; },
+    get routes() { return routes; },
     doc, build, toCode, simulate, staticIssues, joinIssues, runCheck, addItem, KIT, A,
+    PATTERNS, PATTERN_META,
+    get tpls() { return tpls; },
+    stageScene, routeOf, rerollRoute, setMode, pickSlot, stageRouteCode,
+    adoptSlot, releaseSlot, docFromPattern, harvestFish, makeTpl, applyTpl, slotDoc,
   };
 }

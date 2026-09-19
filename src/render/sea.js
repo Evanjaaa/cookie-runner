@@ -89,11 +89,39 @@ function skyTone(late) {
  * ฟ้ากินเต็มจอ การวาดสองชั้นทับกันทุกเฟรมคือถมสีเต็มหน้าจอสองรอบ ซึ่งแพงที่สุดในฉากนี้
  * แบ่ง 9 ขั้นก็พอ — แต่ละขั้นต่างกันนิดเดียวจนตาแยกไม่ออกว่าไล่เป็นขั้น
  */
-function skyAt(u) {
-  const step = Math.round(clamp01((u - 0.1) / 0.55) * 8);
+/**
+ * วาดฟ้าเต็มจอแบบไล่ต่อเนื่อง — ผสมสองขั้นที่ขนาบค่าจริงอยู่
+ *
+ * ── ทำไมไม่เลือกขั้นที่ใกล้ที่สุดเหมือนเดิม ──
+ * ของเดิมใช้ Math.round เลือกขั้นเดียว พอค่าที่ขับมันไหลข้ามกึ่งกลางระหว่างสองขั้น
+ * ฟ้าทั้งจอเปลี่ยนสีในเฟรมเดียว ซึ่งตาเห็นเป็น "ภาพกระพริบทั้งภาพ"
+ * และเพราะฟ้าถมเต็มจอ ทุกอย่างที่วาดทับมันก็เปลี่ยนโทนตามไปด้วย จึงดูเหมือนพื้นวูบหายไปด้วย
+ *
+ * วัดจากคลิปที่ผู้ใช้ถ่ายมา: เฟรมที่กระโดดต่างจากเฟรมก่อนหน้า 116 เทียบกับปกติ 0.31
+ * และวัดในเครื่องแล้วเกิด 13 ครั้งต่อการวิ่ง 21000px ในทุ่งหิมะ (ราวหนึ่งครั้งต่อ 4 วินาที)
+ *
+ * ต้นทุนที่เพิ่มคือถมสีเต็มจออีกหนึ่งรอบเฉพาะตอนค่าอยู่ระหว่างขั้น
+ * ยังถูกกว่าการไล่สีสดทุกเฟรมมาก ซึ่งเป็นเหตุผลที่แบ่งขั้นไว้ตั้งแต่แรก
+ */
+function paintSky(ctx, u) {
+  const f = clamp01((u - 0.1) / 0.55) * SKY_STEPS;
+  const lo = Math.floor(f);
+  const t = f - lo;
+  ctx.drawImage(skyStep(lo), 0, 0, W, H);
+  if (t <= 0.002) return;
+  ctx.save();
+  ctx.globalAlpha = t;
+  ctx.drawImage(skyStep(lo + 1), 0, 0, W, H);
+  ctx.restore();
+}
+
+const SKY_STEPS = 8;
+
+function skyStep(i) {
+  const step = Math.max(0, Math.min(SKY_STEPS, Math.round(i)));
   return seaSprite(`skyMix${step}`, 64, H, (g, w, h) => {
     g.drawImage(skyTone(false), 0, 0, w, h);
-    g.globalAlpha = step / 8;
+    g.globalAlpha = step / SKY_STEPS;
     g.drawImage(skyTone(true), 0, 0, w, h);
   });
 }
@@ -288,7 +316,7 @@ export function drawSeaBackdrop(ctx, cam, tick, opts = {}) {
   const u = clamp01(opts.u ?? 1);
 
   // 1) ฟ้า
-  ctx.drawImage(skyAt(u), 0, 0, W, H);
+  paintSky(ctx, u);
 
   // 2) เส้นขอบฟ้า — ยิ่งเข้าใกล้ทะเลยิ่งเปิดกว้าง
   const horizon = GROUND_Y - 118 - u * 26;
@@ -371,7 +399,7 @@ export function drawSeaBackdrop(ctx, cam, tick, opts = {}) {
 export function warmSeaArt() {
   skyTone(false);
   skyTone(true);
-  skyAt(1);
+  for (let i = 0; i <= SKY_STEPS; i++) skyStep(i);
   sunSprite();
   cloudSprite(0);
   cloudSprite(1);

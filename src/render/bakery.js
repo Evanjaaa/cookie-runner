@@ -24,6 +24,7 @@
 // ไม่มี filter / shadowBlur เลย แสงเรืองอบไว้ในสไปรต์ตั้งแต่ตอนสร้าง
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../config.js';
+import { placed, minGap } from './scenery.js';
 import { stageById } from '../stages.js';
 
 const { W, H } = VIEW;
@@ -83,11 +84,20 @@ function tileRow(ctx, img, tw, offset, y) {
   for (let x = x0; x < W; x += tw) ctx.drawImage(img, x, y);
 }
 
-const CYCLE = 4400;
-
-function zoneAt(cam) {
-  return ease(0.5 + 0.5 * Math.sin((cam / CYCLE) * Math.PI));
-}
+// ── ของชิ้นใหญ่ประจำครัว: หน้าต่าง ↔ เตาอบ ──
+//
+// เดิมสองอย่างนี้ต่างคนต่างวนด้วยช่วงแคบ ๆ แล้วใช้ "ความโปร่งใสตามย่าน" เป็นตัวสลับ
+// ผลคือมันผุดขึ้นกลางจอแล้วจางหายที่เดิม ไม่ใช่ของที่ตั้งอยู่ในห้องจริง ๆ
+// (วัดแล้วหน้าต่างโผล่ที่ x=140 เตาอบโผล่ที่ x=668 — กลางจอทั้งคู่)
+//
+// ตอนนี้ทั้งคู่เป็นของในชั้นเดียวกัน วางสลับช่องเว้นช่อง ห่างกันช่องละ FIX_GAP
+// ผู้เล่นจึงเห็นมันไหลเข้ามาจากขอบขวาทีละชิ้น เหมือนวิ่งผ่านห้องครัวยาว ๆ จริง ๆ
+//
+// FIX_GAP ต้องไม่น้อยกว่า จอ + ความกว้างชิ้น (ดู minGap ใน scenery.js)
+// ส่วน depth เลือกจากจังหวะที่อยากได้: 1260 / 0.26 ≈ 4,850px ≈ 12 วินาทีต่อหนึ่งชิ้น
+// ซึ่งเท่ากับจังหวะของย่านเดิมพอดี แต่คราวนี้เป็นการเคลื่อนที่จริง ไม่ใช่การจางเข้าออก
+const FIX_DEPTH = 0.26;
+const FIX_GAP = minGap(300);
 
 // ─────────────────────────────────────────────────────────────
 // ผนังครัว — ครึ่งบนทาสีเข้ม ครึ่งล่างเป็นกระเบื้อง
@@ -526,7 +536,16 @@ const EMBERS = Array.from({ length: 14 }, (_, i) => ({
   ph: hash(i * 2.9) * TAU,
 }));
 
-function drawAir(ctx, tick) {
+/**
+ * ไอน้ำกับสะเก็ดไฟ
+ *
+ * ── ทำไมต้องลบด้วย cam ──
+ * ของพวกนี้ลอยอยู่ "ในห้อง" ไม่ได้ลอยติดหน้าจอ ถ้าไม่เลื่อนตามกล้อง มันจะลอยขึ้น
+ * อยู่กับที่ขณะที่ทั้งห้องไหลผ่านไป ซึ่งอ่านเป็นฝุ่นติดเลนส์ ไม่ใช่ไอที่ลอยอยู่ในครัว
+ * ช่วงวนกว้างกว่าจอ (W + 120) ของจึงโผล่นอกจอเสมอ ไม่ผุดกลางจอ
+ */
+function drawAir(ctx, cam, tick) {
+  const air = (x, depth) => wrap(x - cam * depth, W + 120) - 60;
   ctx.save();
   // ไอน้ำ — ก้อนขาวจาง ๆ ลอยขึ้นแล้วบานออก
   for (const p of STEAM) {
@@ -536,7 +555,7 @@ function drawAir(ctx, tick) {
     ctx.globalAlpha = 0.16 * (1 - k);
     ctx.fillStyle = C.cream;
     ctx.beginPath();
-    ctx.arc(p.x + Math.sin(tick * 0.02 + p.ph) * 14, p.y, p.r * (1 + k * 1.6), 0, TAU);
+    ctx.arc(air(p.x, 0.45) + Math.sin(tick * 0.02 + p.ph) * 14, p.y, p.r * (1 + k * 1.6), 0, TAU);
     ctx.fill();
   }
   // สะเก็ดไฟจากเตา
@@ -547,7 +566,7 @@ function drawAir(ctx, tick) {
     ctx.globalAlpha = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(tick * 0.06 + p.ph));
     ctx.fillStyle = C.fire;
     ctx.beginPath();
-    ctx.arc(p.x + Math.sin(tick * 0.03 + p.ph) * 8, p.y, p.r, 0, TAU);
+    ctx.arc(air(p.x, 0.55) + Math.sin(tick * 0.03 + p.ph) * 8, p.y, p.r, 0, TAU);
     ctx.fill();
   }
   ctx.restore();
@@ -558,60 +577,57 @@ function drawAir(ctx, tick) {
 //
 // @param opts.lit  ความสว่างของห้อง 0 → 1 (ด่านจริงใช้ 1)
 // ─────────────────────────────────────────────────────────────
+/** หน้าต่างโค้งพร้อมแสงจันทร์ทาบพื้น — x = ขอบซ้ายของหน้าต่างบนจอ */
+function drawKitchenWindow(ctx, x) {
+  ctx.drawImage(windowSprite(), x, 52, 300, 230);
+  // แสงจันทร์ทาบพื้น
+  // แคบและจางกว่าที่คิดไว้มาก — ลำแสงกว้าง ๆ ทึบ ๆ อ่านเป็นแผ่นพลาสติก ไม่ใช่แสง
+  const beam = ctx.createLinearGradient(0, 264, 0, GROUND_Y + 10);
+  beam.addColorStop(0, 'rgba(255,247,218,.13)');
+  beam.addColorStop(1, 'rgba(255,247,218,0)');
+  ctx.fillStyle = beam;
+  ctx.beginPath();
+  ctx.moveTo(x + 66, 264);
+  ctx.lineTo(x + 234, 264);
+  ctx.lineTo(x + 268, GROUND_Y + 10);
+  ctx.lineTo(x + 24, GROUND_Y + 10);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** เตาอบที่ไฟยังติด พร้อมแสงทาบพื้น */
+function drawOven(ctx, x, tick, lit) {
+  const y = GROUND_Y - 240;
+  ctx.save();
+  ctx.globalAlpha = lit;
+  ctx.drawImage(ovenSprite(), x, y, 300, 240);
+  ovenFire(ctx, x, y, tick, lit);
+  const pool = ctx.createRadialGradient(x + 150, GROUND_Y - 6, 10, x + 150, GROUND_Y - 6, 230);
+  pool.addColorStop(0, 'rgba(255,166,87,.3)');
+  pool.addColorStop(1, 'rgba(255,166,87,0)');
+  ctx.fillStyle = pool;
+  ctx.fillRect(x - 90, GROUND_Y - 120, 480, 140);
+  ctx.restore();
+}
+
 export function drawBakeryBackdrop(ctx, cam, tick, opts = {}) {
   const lit = clamp01(opts.lit ?? 1);
-  const z = zoneAt(cam);      // 0 โซนเตาอบ → 1 โซนชั้นวางของ
 
   // 1) ผนัง
   tileRow(ctx, wallSheet(), 240, cam * 0.04, 0);
 
-  // 2) หน้าต่าง — เด่นในโซนชั้นวางของ
-  if (z > 0.05) {
-    ctx.save();
-    ctx.globalAlpha = z;
-    const span = CYCLE * 0.1;
-    const x = wrap(240 - cam * 0.1, span) - 300;
-    ctx.drawImage(windowSprite(), x, 52, 300, 230);
-    // แสงจันทร์ทาบพื้น
-    // แคบและจางกว่าที่คิดไว้มาก — ลำแสงกว้าง ๆ ทึบ ๆ อ่านเป็นแผ่นพลาสติก ไม่ใช่แสง
-    const beam = ctx.createLinearGradient(0, 264, 0, GROUND_Y + 10);
-    beam.addColorStop(0, 'rgba(255,247,218,.13)');
-    beam.addColorStop(1, 'rgba(255,247,218,0)');
-    ctx.fillStyle = beam;
-    ctx.beginPath();
-    ctx.moveTo(x + 66, 264);
-    ctx.lineTo(x + 234, 264);
-    ctx.lineTo(x + 268, GROUND_Y + 10);
-    ctx.lineTo(x + 24, GROUND_Y + 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // 3) ชั้นวางของ
+  // 2) ชั้นวางของ — ความสว่างคงที่
+  // เดิมสว่างตามย่าน ซึ่งอ่านเป็น "ทั้งแถวค่อย ๆ สว่างขึ้นเอง" ทั้งที่กล้องเลื่อนไปข้างหน้าเฉย ๆ
   ctx.save();
-  ctx.globalAlpha = (0.55 + z * 0.45) * lit;
+  ctx.globalAlpha = 0.92 * lit;
   tileRow(ctx, shelfBand(), TILE, cam * 0.14, 62);
   ctx.restore();
 
-  // 4) เตาอบ — ของชิ้นหลักของโซนเตา วาดหลังชั้นวาง (= อยู่หน้ากว่า) และไม่ปล่อยให้จางจนเป็นผี
-  const ovenA = lit * (0.25 + (1 - z) * 0.75);
-  if (ovenA > 0.04) {
-    ctx.save();
-    ctx.globalAlpha = ovenA;
-    const span = CYCLE * 0.22;
-    const x = wrap(760 - cam * 0.22, span) - 300;
-    const y = GROUND_Y - 200;
-    ctx.drawImage(ovenSprite(), x, y - 40, 300, 240);
-    ovenFire(ctx, x, y - 40, tick, ovenA);
-    // แสงไฟเตาทาบพื้น
-    const pool = ctx.createRadialGradient(x + 150, GROUND_Y - 6, 10, x + 150, GROUND_Y - 6, 230);
-    pool.addColorStop(0, 'rgba(255,166,87,.3)');
-    pool.addColorStop(1, 'rgba(255,166,87,0)');
-    ctx.fillStyle = pool;
-    ctx.fillRect(x - 90, GROUND_Y - 120, 480, 140);
-    ctx.restore();
-  }
+  // 3) ของชิ้นใหญ่: หน้าต่างสลับเตาอบ ไหลเข้าจอจากขวาเสมอ (ดู FIX_GAP ข้างบน)
+  placed(cam, FIX_DEPTH, FIX_GAP, 340, (i, x) => {
+    if (i % 2 === 0) drawKitchenWindow(ctx, x);
+    else drawOven(ctx, x, tick, lit);
+  });
 
   // 5) ราวหม้อกระทะกับพวงไฟ (ชั้นบนสุด)
   ctx.save();
@@ -622,7 +638,7 @@ export function drawBakeryBackdrop(ctx, cam, tick, opts = {}) {
   // 6) เคาน์เตอร์หน้าสุด
   tileRow(ctx, counterBand(), TILE, cam * 0.5, GROUND_Y - COUNTER_H + 18);
 
-  drawAir(ctx, tick);
+  drawAir(ctx, cam, tick);
 }
 
 export function warmBakeryArt() {

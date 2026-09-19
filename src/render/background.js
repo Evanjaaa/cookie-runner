@@ -4,7 +4,7 @@
 import { VIEW, GROUND_Y } from '../config.js';
 import { drawSeaBackdrop } from './sea.js';
 import { drawSpaceBackdrop } from './space.js';
-import { drawSnowBackdrop } from './snow.js';
+import { drawSnowBackdrop, drawSnowDeck } from './snow.js';
 import { drawCaveBackdrop } from './cave.js';
 import { drawMeadowBackdrop } from './meadow.js';
 import { drawBakeryBackdrop } from './bakery.js';
@@ -520,7 +520,21 @@ export function drawProps(ctx, camera, layers, band, pal, tick) {
   }
 }
 
-export function drawGround(ctx, pits, camera, pal) {
+/**
+ * @param detail ลายพื้นประจำฉาก (ไม่ใส่ = ใช้สีจากจานสีอย่างเดียวเหมือนเดิม)
+ *   ถูกเรียกทีละ "ช่วงพื้นตัน" หลังถมสีพื้นฐานแล้ว จึงวาดทับได้โดยไม่กลบปากหลุม
+ *   มีไว้เพราะบางฉากพื้นเป็นวัสดุที่สีเดียวเล่าไม่ได้ — หิมะเป็นตัวแรก
+ *   (แผ่นฟ้าทึบใต้เส้นพื้นอ่านเป็นน้ำ ไม่ใช่ทุ่งหิมะ และไม่ต่อกับพื้นของทางเข้าด่าน)
+ */
+/**
+ * ลายพื้นประจำฉาก — คู่กับ BACKDROPS แต่เป็นชั้น "ใต้เส้นพื้น"
+ * ฉากที่ไม่อยู่ในตารางนี้ใช้สีจากจานสีอย่างเดียวเหมือนเดิมทุกประการ
+ */
+export const GROUND_ART = {
+  snow: drawSnowDeck,
+};
+
+export function drawGround(ctx, pits, camera, pal, detail) {
   // เติมเงาลงในช่องหลุมก่อน — ถ้าไม่ทำ ช่องว่างจะโชว์เนินเขาที่วาดไว้ก่อนหน้า
   // แล้วอ่านเป็น "พื้นอีกสี" แทนที่จะเป็น "รู" ซึ่งอันตรายมากเพราะตกหลุมคือจบทันที
   // บนด่านกลางคืนพอมองออกเพราะทุกอย่างมืดอยู่แล้ว แต่ด่านสว่างจะสับสนทันที
@@ -560,6 +574,10 @@ export function drawGround(ctx, pits, camera, pal) {
       const px = x - camera;
       if (px > s + 8 && px < e - 8) ctx.fillRect(px, GROUND_Y + 11, 7, 5);
     }
+
+    // ลายพื้นประจำฉากมาหลังสุด — มันคือ "หน้าตาของพื้น" ไม่ใช่ของตกแต่งเพิ่ม
+    // จึงต้องทับทั้งสีจากจานสีและเศษผิวพื้น ไม่งั้นได้พื้นสองแบบซ้อนกัน
+    if (detail) detail(ctx, s, e, camera, pal);
 
     // ขอบหลุม
     ctx.fillStyle = pal.pitEdge;

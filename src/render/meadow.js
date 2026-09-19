@@ -19,6 +19,7 @@
 // ใบพัดกังหันเป็นของชิ้นเดียวที่หมุนสด ๆ ต่อเฟรม
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../config.js';
+import { placed, minGap } from './scenery.js';
 import { stageById } from '../stages.js';
 
 const { W, H } = VIEW;
@@ -389,17 +390,17 @@ const FLIES = Array.from({ length: 3 }, (_, i) => ({
   col: [C.petalA, C.petalB, C.petalD][i],
 }));
 
-function drawPetals(ctx, tick) {
+/** กลีบดอกที่ปลิว — ปลิวอยู่ในทุ่ง ไม่ใช่ติดจอ (ดูหมายเหตุใน bakery.js) */
+function drawPetals(ctx, cam, tick) {
+  const drift = (x) => wrap(x - cam * 0.5, W + 120) - 60;
   ctx.save();
   for (const p of PETALS) {
     p.y += p.vy;
-    p.x -= 0.5;
     if (p.y > GROUND_Y + 8) { p.y = -8; p.x = hash(p.x * 0.29 + tick) * W; }
-    if (p.x < -8) p.x = W + 8;
     ctx.globalAlpha = 0.75;
     ctx.fillStyle = p.col;
     ctx.save();
-    ctx.translate(p.x + Math.sin(tick * 0.03 + p.ph) * 10, p.y);
+    ctx.translate(drift(p.x) + Math.sin(tick * 0.03 + p.ph) * 10, p.y);
     ctx.rotate(Math.sin(tick * 0.05 + p.ph) * 0.9);
     ctx.beginPath();
     ctx.ellipse(0, 0, p.r, p.r * 0.55, 0, 0, TAU);
@@ -409,9 +410,11 @@ function drawPetals(ctx, tick) {
   ctx.restore();
 }
 
-function drawFlies(ctx, tick) {
+/** ผีเสื้อ — บินอยู่ในทุ่งเหมือนกัน */
+function drawFlies(ctx, cam, tick) {
+  const drift = (x) => wrap(x - cam * 0.42, W + 160) - 80;
   for (const f of FLIES) {
-    const x = f.x + Math.sin(tick * 0.014 + f.ph) * 120;
+    const x = drift(f.x) + Math.sin(tick * 0.014 + f.ph) * 120;
     const y = f.y + Math.sin(tick * 0.045 + f.ph) * 22;
     const flap = 0.5 + 0.5 * Math.sin(tick * 0.35 + f.ph);
     ctx.save();
@@ -461,42 +464,48 @@ export function drawMeadowBackdrop(ctx, cam, tick, opts = {}) {
   // เนินไกล → กังหัน/เรือนกระจก → เนินกลาง → ต้นไม้ไกล → เนินใกล้ (มีดอกไม้) → ต้นไม้ใกล้
   tileRow(ctx, hillBand('mdHill0', 0, 22, false), TILE, cam * 0.08, GROUND_Y - 214);
 
-  landmarks(ctx, cam, tick, 1 - z * 0.55);
+  landmarks(ctx, cam, tick);
 
   tileRow(ctx, hillBand('mdHill1', 1, 16, false), TILE, cam * 0.16, GROUND_Y - 178);
 
   ctx.save();
-  ctx.globalAlpha = 0.65 + z * 0.35;
+  ctx.globalAlpha = 0.88;
   tileRow(ctx, treeBand('mdTreeFar', 14, 0.62), TILE, cam * 0.24, GROUND_Y - 206);
   ctx.restore();
 
   tileRow(ctx, hillBand('mdHill2', 2, 12, true), TILE, cam * 0.34, GROUND_Y - 150);
 
   ctx.save();
-  ctx.globalAlpha = 0.7 + z * 0.3;
+  ctx.globalAlpha = 0.92;
   tileRow(ctx, treeBand('mdTreeNear', 9, 1.1), TILE, cam * 0.46, GROUND_Y - 226);
   ctx.restore();
 
   // ทุ่งดอกไม้ชั้นหน้าสุด
   tileRow(ctx, fieldBand(), TILE, cam * 0.62, GROUND_Y - FIELD_H + 16);
 
-  if (open > 0.4) drawFlies(ctx, tick);
-  drawPetals(ctx, tick);
+  if (open > 0.4) drawFlies(ctx, cam, tick);
+  drawPetals(ctx, cam, tick);
 }
 
-/** เรือนกระจกกับกังหันลม — โผล่รอบละครั้งพอดีตามระยะ (ช่วงวน = หนึ่งย่าน × depth) */
-function landmarks(ctx, cam, tick, a) {
-  if (a <= 0.02) return;
-  ctx.save();
-  ctx.globalAlpha = a;
-  const span = CYCLE * 0.12;
-  const gx = wrap(520 - cam * 0.12, span) - 260;
-  ctx.drawImage(greenhouse(), gx, GROUND_Y - 236, 260, 180);
+// ── เรือนกระจกกับกังหันลม ──
+//
+// เดิมวนอยู่ในช่วง 552px ซึ่งแคบกว่าจอ เรือนกระจกจึงผุดขึ้นที่ x=292 กลางจอ
+// แล้วจางเข้าออกตามย่านอีกชั้น — อ่านเป็นภาพซ้อน ไม่ใช่สิ่งปลูกสร้างที่ตั้งอยู่ในทุ่ง
+//
+// ตอนนี้ทั้งคู่เป็นหมุดหมายในโลกจริง วางสลับกันช่องเว้นช่อง ห่างกันช่องละ MARK_GAP
+// (1220 / 0.22 ≈ 5,500px ≈ 13 วินาทีต่อหนึ่งหลัง) ความเข้มคงที่ ไม่จางตามย่าน
+const MARK_DEPTH = 0.22;
+const MARK_GAP = minGap(260);
 
-  const mx = wrap(520 + span * 0.55 - cam * 0.12, span) - 130;
-  ctx.drawImage(millTower(), mx, GROUND_Y - 262, 130, 220);
-  millBlades(ctx, mx + 65, GROUND_Y - 262 + 38, tick);
-  ctx.restore();
+function landmarks(ctx, cam, tick) {
+  placed(cam, MARK_DEPTH, MARK_GAP, 280, (i, x) => {
+    if (i % 2 === 0) {
+      ctx.drawImage(greenhouse(), x, GROUND_Y - 236, 260, 180);
+    } else {
+      ctx.drawImage(millTower(), x, GROUND_Y - 262, 130, 220);
+      millBlades(ctx, x + 65, GROUND_Y - 262 + 38, tick);
+    }
+  });
 }
 
 export function warmMeadowArt() {

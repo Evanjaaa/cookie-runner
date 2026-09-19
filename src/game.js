@@ -11,7 +11,7 @@ import { Particles } from './particles.js';
 import { loadBest, saveBest } from './storage.js';
 import { sfx } from './audio.js';
 import { setMusicTrack, SILENT } from './music.js';
-import { drawSky, drawHills, drawGround, drawProps, BACKDROPS } from './render/background.js';
+import { drawSky, drawHills, drawGround, drawProps, BACKDROPS, GROUND_ART } from './render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
@@ -1896,7 +1896,7 @@ export class Game {
       }
     } else {
       this.drawBackdrop(ctx);
-      drawGround(ctx, this.level.pits, this.camera, this.pal);
+      drawGround(ctx, this.level.pits, this.camera, this.pal, GROUND_ART[this.scene.backdrop]);
       const [plainFish, rareTreats] = splitFish(this.level.fishes);
       drawOutlined(ctx, (c) => {
         drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
@@ -2080,7 +2080,7 @@ export class Game {
     }
 
     this.drawBackdrop(ctx);
-    drawGround(ctx, this.level.pits, this.camera, this.pal);
+    drawGround(ctx, this.level.pits, this.camera, this.pal, GROUND_ART[this.scene.backdrop]);
     // ทางเข้าด่าน ชั้นหลัง: ชานร้าน ข้างในร้าน ผนังหน้าร้าน — อยู่หลังของกินและตัวแมว
     const gateView = this.gate && this.gate.view(this.camera, this.tick);
     if (gateView) drawGateBack(ctx, this.gate.def, gateView);

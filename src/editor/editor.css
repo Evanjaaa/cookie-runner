@@ -410,3 +410,178 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
   .canvasbox { position: static; }
   .bar { position: static; }
 }
+
+/* ── สลับโหมด: ท่อนเดี่ยว / ทั้งด่าน ─────────────────────
+   สองโหมดใช้หน้าจอเดียวกัน แต่คนละงาน จึงซ่อนของอีกฝั่งให้หมด
+   ไม่ใช่จางไว้ — ของที่กดไม่ได้แต่ยังเห็นอยู่คือเสียงรบกวนล้วน ๆ */
+.modes {
+  display: flex;
+  gap: 2px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.modes .mode {
+  border: 0;
+  background: none;
+  color: var(--soft);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.modes .mode.on {
+  background: var(--hot);
+  color: #2A1020;
+  font-weight: 600;
+}
+
+body:not(.mode-stage) .only-stage { display: none !important; }
+body.mode-stage .only-chunk { display: none !important; }
+
+/* ── สีประจำชนิดท่อน — ใช้ร่วมกันทั้งไทม์ไลน์ แถบข้าง และข้อความ ── */
+.k-safe { --k: var(--ok); }
+.k-recovery { --k: var(--cool); }
+.k-obstacle { --k: var(--warn); }
+.k-challenge { --k: var(--bad); }
+.kt { color: var(--k); font-weight: 600; }
+
+/* ── ไทม์ไลน์ของทั้งด่าน ─────────────────────────────────
+   ความกว้างของแต่ละช่องผูกกับความยาวจริงของท่อน (flex-grow ตั้งจาก js)
+   ท่อนยาวจึงกินที่มากกว่าจริง ๆ เหมือนแถบตัดคลิป ไม่ใช่ช่องเท่ากันหมด */
+.timeline {
+  display: flex;
+  gap: 3px;
+  align-items: stretch;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px;
+  overflow-x: auto;
+  flex: 0 0 auto;
+}
+
+.tl {
+  flex: 1 1 0;
+  /* ยี่สิบท่อนต้องอยู่ในสายตาเดียวให้ได้ ไม่งั้นก็ไม่ต่างจากการเลือกท่อนทีละท่อนแบบเดิม
+     ชื่อชนิดท่อนจึงไม่อยู่บนช่อง — สีกับออร่าบอกแทนแล้ว ส่วนคำเต็มอยู่ในแถบข้างและทูลทิป */
+  min-width: 42px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--k, var(--soft));
+  border-radius: 7px;
+  /* ออร่าสีชนิดท่อนไล่ขึ้นมาจากขอบล่าง — มองแวบเดียวก็เห็นจังหวะหนักเบาทั้งด่าน */
+  box-shadow: inset 0 -16px 18px -15px var(--k, transparent);
+  background: var(--panel2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  padding: 6px 7px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.tl:hover { border-color: var(--k, var(--hot)); }
+
+.tl.on {
+  background: #322940;
+  box-shadow: inset 0 -22px 22px -14px var(--k), 0 0 0 2px var(--k);
+}
+
+.tl .no { font-weight: 700; font-size: 12px; line-height: 1; }
+.tl .pat { color: var(--k); font-size: 11px; font-weight: 600; line-height: 1; }
+.tl .kd {
+  color: var(--k);
+  letter-spacing: -1px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl .bd { font-size: 10px; letter-spacing: 1px; min-height: 13px; line-height: 1.2; }
+
+/* ตัวชี้ว่ากล้องกำลังมองท่อนไหนอยู่ — เส้นบาง ๆ บนหัวช่อง ไม่แย่งสายตากับช่องที่เลือก */
+.tl.here { border-top-color: var(--hot); border-top-width: 2px; }
+
+/* ── แถบเลือกท่อนด้านซ้าย ───────────────────────────── */
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--k, var(--soft));
+  border-radius: 7px;
+  background: var(--panel2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.slot:hover { border-color: var(--k, var(--hot)); }
+.slot.on { background: #322940; box-shadow: 0 0 0 1px var(--k); }
+.slot .no { width: 20px; color: var(--soft); text-align: right; flex: 0 0 auto; }
+.slot .pat { color: var(--k); font-weight: 600; flex: 0 0 auto; }
+.slot .kd {
+  color: var(--soft);
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot .bd { font-size: 10px; flex: 0 0 auto; }
+
+/* กล่องติ๊กของที่โรยในท่อน — เรียงสองคอลัมน์ให้ครบชุดอยู่ในสายตาเดียว */
+.sprinkle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+  margin-bottom: 8px;
+}
+
+/* ── ของที่โผล่เฉพาะตอนมีอะไรให้แก้จริง ๆ ─────────────
+   โหมดทั้งด่านเริ่มจาก "ดูอย่างเดียว" จนกว่าจะกดแปลงท่อนเป็นของเรา
+   ระหว่างนั้นกล่องเครื่องมือกับแผงรายละเอียดไม่มีประโยชน์ ซ่อนไปเลยดีกว่าโชว์ให้กดไม่ได้ */
+body.mode-stage:not(.can-edit) .only-edit { display: none !important; }
+
+/* ── ลำดับแผงตอนกำลังแก้ท่อนในโหมดทั้งด่าน ──────────────
+   กล่องเครื่องมือต้องอยู่ใกล้มือ ไม่ใช่ถูกดันไปใต้รายการท่อนยี่สิบแถวจนต้องเลื่อนหา
+   (ทดสอบแล้วลากชิปไม่ได้จริง ๆ เพราะชิปอยู่ต่ำกว่าขอบจอ) */
+body.mode-stage.can-edit .side.left > .panel { order: 5; }
+body.mode-stage.can-edit .side.left > .panel:nth-child(1) { order: 1; }   /* รายการท่อน */
+body.mode-stage.can-edit .side.left > .panel:nth-child(3) { order: 2; }   /* กล่องเครื่องมือ */
+body.mode-stage.can-edit .slots { max-height: 28vh; }
+
+/* ปุ่มแปลงท่อน — งานหลักของแผงนี้ ต้องเด่นกว่าปุ่มอื่นในแผงเดียวกัน */
+.btn.adopt {
+  width: 100%;
+  margin: 2px 0 6px;
+}
+
+.tip.owned {
+  color: var(--ok);
+  border-left: 3px solid var(--ok);
+  padding-left: 8px;
+}
+
+/* ท่อนที่แปลงเป็นของเราแล้ว — ขีดไข่ปลาบอกว่าช่องนี้ไม่ใช่ของเกมอีกต่อไป */
+.tl.mine, .slot.mine { border-style: dashed; }
+.tl.mine .pat, .slot.mine .pat { color: var(--ink); }
+.tl .mk, .slot .mk { color: var(--ok); font-weight: 700; }
