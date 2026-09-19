@@ -280,7 +280,7 @@ export function setupDebug(game, hooks = {}) {
   // ครัวกลางคืน → พุ่มดอกไม้ → สวนกลางวัน) ปุ่มจึงพาไปอยู่ในฉากก่อนหน้าจริงก่อน
   // แล้วดันนาฬิกาเหมือนปุ่มข้ามฉาก เกมเดินทางจริงของมันทุกขั้น ไม่ใช่ทางลัด
   // (ถ้าไม่ย้ายฉากก่อน จะได้ภาพแปลก ๆ อย่างวิ่งออกจากครัวแล้วเข้าประตูครัวอีกรอบ)
-  for (const [targetId, icon] of [['night', '🚪'], ['garden', '🌸']]) {
+  for (const [targetId, icon] of [['night', '🚪'], ['garden', '🌸'], ['cavern', '💎'], ['beach', '🌅'], ['space', '🚀'], ['snow', '❄️']]) {
     const target = STAGES.find((s) => s.id === targetId);
     add(`${icon} ทางเข้า${target.name}`, () => {
       if (game.state !== STATE.RUN || game.bonus > 0 || game.nextScene || game.gate) return false;

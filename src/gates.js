@@ -169,6 +169,190 @@ GATES.garden = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────
+// ทางเข้าถ้ำคริสตัล — ภูเขาหินที่มีคริสตัลแทงทะลุ → อุโมงค์คริสตัล → โถงถ้ำ
+// ─────────────────────────────────────────────────────────────
+GATES.cavern = {
+  id: 'cavern',
+  name: 'ทางเข้าถ้ำคริสตัล',
+  stage: 'cavern',
+  art: 'cavern',
+  layout: LAYOUT,
+
+  // ── ท่อนเริ่มต้น ──
+  // ไม่มีสิ่งกีดขวางเหมือนทางเข้าอีกสองแห่ง — ช่วงนี้ผู้เล่นควรได้มองถ้ำ ไม่ใช่ต้องหลบของ
+  // ของกินเป็นเส้นนำสายตาเข้าไปในถ้ำ:
+  //   ทางวิ่งพาเข้าปากถ้ำ → แถวเลี้ยวขึ้นเป็นโค้งกระโดดตรงกลางอุโมงค์ ยอดโค้งมีกุ้งทอง
+  //   → กระโดดเก็บขวดพลังรางวัลผ่านฉาก → ทางวิ่งยาวพาออกปากถ้ำเข้าฉากถ้ำจริง
+  //
+  // ── ทำไมโค้งอยู่ลึกกว่าของสองด่านแรก ──
+  // ช่วง 55% แรกของอุโมงค์เพดานยังต่ำ (ดู ceilAt ใน render/gates/cavern.js)
+  // วางโค้งกระโดดตรงนั้นแล้วหัวน้องจะชนภาพเพดานพอดี ย้ายมาอยู่ช่วงที่ถ้ำเปิดสูงแล้วแทน
+  chunk: (x) => {
+    const L = LAYOUT;
+    const doorIn = x + L.approach;
+    const doorOut = doorIn + L.interior;
+    const j1 = doorIn + 820;
+    const after1 = Math.round(j1 + JUMP_SPAN + 30);
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 140, Math.floor((doorIn - 40 - (x + 140)) / 34), 34),
+        ...fishRun(doorIn + 90, Math.floor((j1 - 60 - (doorIn + 90)) / 34), 34),
+        ...withShrimp(fishJump(j1, 11)),
+        ...fishRun(after1, Math.floor((doorOut + 200 - after1) / 34), 34),
+      ],
+      jumps: [j1],
+      pickups: [{ kind: 'potion', x: j1 + 41 }],
+      width: L.length,
+    };
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// ทางเข้าชายหาดยามเย็น — ซุ้มไม้ริมทะเล → ทางเดินไม้ → ทะเลเปิด → พระอาทิตย์ใกล้ตก
+// ─────────────────────────────────────────────────────────────
+GATES.beach = {
+  id: 'beach',
+  name: 'ทางเข้าชายหาดยามเย็น',
+  stage: 'beach',
+  art: 'beach',
+  layout: LAYOUT,
+
+  // ── ท่อนเริ่มต้น ──
+  // ไม่มีสิ่งกีดขวางเหมือนทางเข้าอื่น — ช่วงนี้ให้ผู้เล่นได้มองทะเล
+  // ของกินเป็นเส้นนำสายตาออกไปทางทะเล:
+  //   ทางวิ่งพาลอดซุ้มไม้ → แถวคลื่นลอยขึ้นลงตามจังหวะคลื่นทะเล มีกุ้งทองที่ยอดคลื่น
+  //   → กระโดดเก็บขวดพลังรางวัลผ่านฉากช่วงที่ทะเลเปิดกว้างสุด → วิ่งออกซุ้มเข้าชายหาดจริง
+  chunk: (x) => {
+    const L = LAYOUT;
+    const doorIn = x + L.approach;
+    const doorOut = doorIn + L.interior;
+    const j1 = doorIn + 860;
+    const after1 = Math.round(j1 + JUMP_SPAN + 30);
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 140, Math.floor((doorIn - 40 - (x + 140)) / 34), 34),
+        ...withShrimp(fishWave(doorIn + 90, 14, 34, 3)),
+        ...withShrimp(fishJump(j1, 11)),
+        ...fishRun(after1, Math.floor((doorOut + 200 - after1) / 34), 34),
+      ],
+      jumps: [j1],
+      pickups: [{ kind: 'potion', x: j1 + 41 }],
+      width: L.length,
+    };
+  },
+};
+
+// ───────────────────────────────────────────────────────────
+// ทางเข้าห้วงอวกาศ — ฐานปล่อยยานริมทะเล → ทะยานขึ้น → ทะลุเมฆ → เห็นโลก → ประตูมิติ
+//
+// ── ทำไมทางเข้านี้ยาวกว่าที่อื่น ──
+// ทางเข้าอื่นเล่าเรื่องเดียว ("เข้าไปในที่แห่งหนึ่ง") ช่วงปิดจอ 1209px ≈ 3 วินาทีจึงพอ
+// ทางเข้านี้ต้องเล่าห้าช่วงต่อกัน: ทะยานขึ้น → ทะลุเมฆ → ชั้นบรรยากาศ → โลกเผยตัว → อวกาศเปิด
+// ให้ช่วงละ ~1.3 วินาที (สั้นกว่านี้ตาอ่านไม่ทันว่าเปลี่ยนอะไร) = 6.7 วินาที
+//   6.7 วิ × 60 เฟรม × 6.8 px = 2734px → ต่อความยาวข้างในอีก 2 ท่อน (1520px) ลงตัวพอดี
+// ตัวเลขอื่นทั้งหมด (ชานหน้า ซุ้มท้าย ช่วงหลังออก) ใช้ของเดิมไม่แตะ ทางออกจึงยาวเท่ากันทุกด่าน
+// ───────────────────────────────────────────────────────────
+const LONG_EXTRA = chunkW * 2;
+const LONG_LAYOUT = {
+  ...LAYOUT,
+  interior: LAYOUT.interior + LONG_EXTRA,
+  length: LAYOUT.length + LONG_EXTRA,
+  chunks: LAYOUT.chunks + 2,
+  why: {
+    ...LAYOUT.why,
+    interiorFrames: (LAYOUT.interior + LONG_EXTRA) / SPEED.run,
+    totalFrames: (LAYOUT.length + LONG_EXTRA) / SPEED.run,
+    note: 'ยาวกว่าที่อื่น 2 ท่อน เพราะต้องเล่าหลายช่วงในทางเดียว (ห้วงอวกาศ / ทุ่งหิมะ)',
+  },
+};
+
+GATES.space = {
+  id: 'space',
+  name: 'ทางเข้าห้วงอวกาศ',
+  stage: 'space',
+  art: 'space',
+  layout: LONG_LAYOUT,
+
+  // ── ท่อนเริ่มต้น ──
+  // ไม่มีสิ่งกีดขวางเหมือนทางเข้าอื่น ของกินเป็นเส้นนำสายตาไล่ตามจังหวะของฉาก:
+  //   ทางวิ่งพาเข้าเสาลิฟต์ → โค้งกระโดดตรงจังหวะทะลุเมฆ (กุ้งทองที่ยอดโค้ง)
+  //   → แถวคลื่นยาวช่วงลอยผ่านชั้นบรรยากาศ ให้ความรู้สึกลอยไร้น้ำหนัก
+  //   → โค้งกระโดดที่สองตรงจังหวะโลกเผยตัว + ขวดพลังรางวัลผ่านฉาก
+  //   → ทางวิ่งยาวลอดประตูมิติเข้าห้วงอวกาศจริง
+  chunk: (x) => {
+    const L = LONG_LAYOUT;
+    const doorIn = x + L.approach;
+    const doorOut = doorIn + L.interior;
+    const j1 = doorIn + 620;
+    const after1 = Math.round(j1 + JUMP_SPAN + 30);
+    const j2 = doorIn + 1900;
+    const after2 = Math.round(j2 + JUMP_SPAN + 30);
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 140, Math.floor((doorIn - 40 - (x + 140)) / 34), 34),
+        ...fishRun(doorIn + 90, Math.floor((j1 - 60 - (doorIn + 90)) / 34), 34),
+        ...withShrimp(fishJump(j1, 11)),
+        ...fishWave(after1, 16, 34, 3),
+        ...withShrimp(fishJump(j2, 11)),
+        ...fishRun(after2, Math.floor((doorOut + 200 - after2) / 34), 34),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'potion', x: j2 + 41 }],
+      width: L.length,
+    };
+  },
+};
+
+// ───────────────────────────────────────────────────────────
+// ทางเข้าทุ่งหิมะ — ร่อนลงจากอวกาศ → หิมะเริ่มตก → พายุหิมะ → ทุ่งหิมะเปิดออก
+// ไม่มีประตู ไม่มีถ้ำ ไม่มีซุ้ม — สิ่งที่พาเปลี่ยนฉากคือ "อากาศ" (ดู render/gates/snowstorm.js)
+// ใช้ผังระยะยาวพิเศษชุดเดียวกับห้วงอวกาศ เพราะต้องเล่า ร่อนลง → พายุ → เผยทุ่ง ต่อกัน
+// ───────────────────────────────────────────────────────────
+GATES.snow = {
+  id: 'snow',
+  name: 'ทางเข้าทุ่งหิมะ',
+  stage: 'snow',
+  art: 'snowstorm',
+  layout: LONG_LAYOUT,
+
+  // ── ท่อนเริ่มต้น ──
+  // ของกินเดินตามจังหวะของพายุ:
+  //   ทางวิ่งเข้าปากทาง → โค้งกระโดดตอนเริ่มร่อนลง (กุ้งทองที่ยอดโค้ง)
+  //   → แถวคลื่นยาวช่วงพายุ ทำหน้าที่เป็น "ไฟนำทาง" ให้ยังอ่านทางออกได้ตอนจอเกือบขาว
+  //   → โค้งกระโดดตอนพายุสงบ + ขวดพลังรางวัลผ่านฉาก → ทางวิ่งยาวเข้าทุ่งหิมะจริง
+  chunk: (x) => {
+    const L = LONG_LAYOUT;
+    const doorIn = x + L.approach;
+    const doorOut = doorIn + L.interior;
+    const j1 = doorIn + 560;
+    const after1 = Math.round(j1 + JUMP_SPAN + 30);
+    const j2 = doorIn + 2040;
+    const after2 = Math.round(j2 + JUMP_SPAN + 30);
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 140, Math.floor((doorIn - 40 - (x + 140)) / 34), 34),
+        ...fishRun(doorIn + 80, Math.floor((j1 - 60 - (doorIn + 80)) / 34), 34),
+        ...withShrimp(fishJump(j1, 11)),
+        ...fishWave(after1, 20, 34, 4),
+        ...withShrimp(fishJump(j2, 11)),
+        ...fishRun(after2, Math.floor((doorOut + 200 - after2) / 34), 34),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'potion', x: j2 + 41 }],
+      width: L.length,
+    };
+  },
+};
+
 export const GATE_LIST = Object.values(GATES);
 
 /** ทางเข้าของฉากหนึ่ง — null ถ้าฉากนั้นยังใช้ทางเชื่อมแบบเดิม */

@@ -5,10 +5,18 @@
 // ─────────────────────────────────────────────────────────────
 import { drawKitchenBack, drawKitchenFront, warmKitchenArt } from './kitchen.js';
 import { drawGardenBack, drawGardenFront, warmGardenArt } from './garden.js';
+import { drawCavernBack, drawCavernFront, warmCavernArt } from './cavern.js';
+import { drawBeachBack, drawBeachFront, warmBeachArt } from './beach.js';
+import { drawSpaceBack, drawSpaceFront, warmSpaceGateArt } from './space.js';
+import { drawSnowGateBack, drawSnowGateFront, warmSnowGateArt } from './snowstorm.js';
 
 export const GATE_ART = {
   kitchen: { back: drawKitchenBack, front: drawKitchenFront, warm: warmKitchenArt },
   garden: { back: drawGardenBack, front: drawGardenFront, warm: warmGardenArt },
+  cavern: { back: drawCavernBack, front: drawCavernFront, warm: warmCavernArt },
+  beach: { back: drawBeachBack, front: drawBeachFront, warm: warmBeachArt },
+  space: { back: drawSpaceBack, front: drawSpaceFront, warm: warmSpaceGateArt },
+  snowstorm: { back: drawSnowGateBack, front: drawSnowGateFront, warm: warmSnowGateArt },
 };
 
 /** ชั้นหลัง — วาดหลังพื้น ก่อนของกินและตัวละคร */

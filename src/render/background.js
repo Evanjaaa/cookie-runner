@@ -2,6 +2,12 @@
 // ฉากหลังทั้งหมดรับ "จานสี" ของด่านเข้ามา ไม่อ่านสีจาก config โดยตรง
 // เปลี่ยนธีมด่านจึงทำได้โดยไม่ต้องแตะโค้ดวาดเลยสักบรรทัด
 import { VIEW, GROUND_Y } from '../config.js';
+import { drawSeaBackdrop } from './sea.js';
+import { drawSpaceBackdrop } from './space.js';
+import { drawSnowBackdrop } from './snow.js';
+import { drawCaveBackdrop } from './cave.js';
+import { drawMeadowBackdrop } from './meadow.js';
+import { drawBakeryBackdrop } from './bakery.js';
 
 const { W, H } = VIEW;
 
@@ -50,6 +56,24 @@ function hillLayer(ctx, offset, amp, baseY, color, step) {
   ctx.closePath();
   ctx.fill();
 }
+
+/**
+ * ── ฉากหลังพิเศษประจำด่าน ──
+ * ปกติฉากหลังคือ ฟ้า (drawSky) + เนิน (drawHills) ซึ่งคุมด้วยจานสีของด่าน
+ * ด่านที่ประกาศ backdrop ใน stages.js จะใช้ตัวในทะเบียนนี้วาดแทนทั้งสองอย่าง
+ *
+ * มีไว้เพื่อให้ "ทางเข้าด่าน" กับ "ตัวด่าน" ใช้ภาพชุดเดียวกันเป๊ะ ๆ ได้
+ * (ชายหาดยามเย็น: ทางเข้าวาดทะเลชุดนี้ พอเข้าด่านก็ยังเป็นทะเลผืนเดิมต่อไป)
+ * ด่านใหม่ที่อยากได้ฉากหลังของตัวเอง: เขียนฟังก์ชันวาดแล้วเติมหนึ่งแถวตรงนี้
+ */
+export const BACKDROPS = {
+  sea: (ctx, camera, tick) => drawSeaBackdrop(ctx, camera, tick, { u: 1, palms: true }),
+  space: (ctx, camera, tick) => drawSpaceBackdrop(ctx, camera, tick, { u: 1 }),
+  snow: (ctx, camera, tick) => drawSnowBackdrop(ctx, camera, tick, {}),
+  cave: (ctx, camera, tick) => drawCaveBackdrop(ctx, camera, tick, { deep: 1 }),
+  meadow: (ctx, camera, tick) => drawMeadowBackdrop(ctx, camera, tick, { open: 1 }),
+  bakery: (ctx, camera, tick) => drawBakeryBackdrop(ctx, camera, tick, { lit: 1 }),
+};
 
 /** parallax: ยิ่งไกลยิ่งเลื่อนช้า = สมองตีความว่ามีความลึก */
 export function drawHills(ctx, camera, pal) {

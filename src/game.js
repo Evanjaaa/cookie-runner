@@ -11,7 +11,7 @@ import { Particles } from './particles.js';
 import { loadBest, saveBest } from './storage.js';
 import { sfx } from './audio.js';
 import { setMusicTrack, SILENT } from './music.js';
-import { drawSky, drawHills, drawGround, drawProps } from './render/background.js';
+import { drawSky, drawHills, drawGround, drawProps, BACKDROPS } from './render/background.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
   drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
@@ -1197,6 +1197,38 @@ export class Game {
     this.level.ensureAhead(this.camera);
   }
 
+  /**
+   * ฟ้า + เนิน + ของประกอบฉาก
+   *
+   * ด่านที่ประกาศ backdrop ไว้ (เช่นชายหาดยามเย็น) ใช้ภาพฉากหลังของตัวเองแทนฟ้ากับเนิน
+   * เพื่อให้ต่อกับทางเข้าด่านได้สนิท (ดู BACKDROPS ใน render/background.js)
+   *
+   * ── ระหว่างไล่สีไปฉากถัดไป ──
+   * ฉากหลังพิเศษไม่ได้คุมด้วยจานสี ถ้าปล่อยไว้เฉย ๆ มันจะดับวูบตอนสลับฉากจริง
+   * จึงค่อย ๆ เอาฟ้า/เนินของจานสีผสมมาทับตามความคืบหน้าของการไล่สี — ได้รอยต่อนุ่มเหมือนด่านอื่น
+   */
+  drawBackdrop(ctx) {
+    const paint = BACKDROPS[this.scene.backdrop];
+    if (!paint) {
+      drawSky(ctx, this.camera, this.pal);
+      this.drawProps(ctx, 'far');
+      drawHills(ctx, this.camera, this.pal);
+      this.drawProps(ctx, 'near');
+      return;
+    }
+    paint(ctx, this.camera, this.tick);
+    const t = this.nextScene ? Math.min(1, this.fade / SCENE.fadeFrames) : 0;
+    if (t > 0) {
+      ctx.save();
+      ctx.globalAlpha = t;
+      drawSky(ctx, this.camera, this.pal);
+      drawHills(ctx, this.camera, this.pal);
+      ctx.restore();
+    }
+    this.drawProps(ctx, 'far');
+    this.drawProps(ctx, 'near');
+  }
+
   drawProps(ctx, band) {
     const t = this.nextScene ? Math.min(1, this.fade / SCENE.fadeFrames) : 0;
 
@@ -1863,10 +1895,7 @@ export class Game {
         drawBonusSparkle(ctx, this.tick, skin.outfit.bonus.sparkle);
       }
     } else {
-      drawSky(ctx, this.camera, this.pal);
-      this.drawProps(ctx, 'far');
-      drawHills(ctx, this.camera, this.pal);
-      this.drawProps(ctx, 'near');
+      this.drawBackdrop(ctx);
       drawGround(ctx, this.level.pits, this.camera, this.pal);
       const [plainFish, rareTreats] = splitFish(this.level.fishes);
       drawOutlined(ctx, (c) => {
@@ -2050,10 +2079,7 @@ export class Game {
       );
     }
 
-    drawSky(ctx, this.camera, this.pal);
-    this.drawProps(ctx, 'far');
-    drawHills(ctx, this.camera, this.pal);
-    this.drawProps(ctx, 'near');
+    this.drawBackdrop(ctx);
     drawGround(ctx, this.level.pits, this.camera, this.pal);
     // ทางเข้าด่าน ชั้นหลัง: ชานร้าน ข้างในร้าน ผนังหน้าร้าน — อยู่หลังของกินและตัวแมว
     const gateView = this.gate && this.gate.view(this.camera, this.tick);

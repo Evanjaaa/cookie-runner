@@ -47,6 +47,8 @@ const peak = (path) => path.reduce((a, b) => (b.y < a.y ? b : a)).dx;
 const JUMP_SPAN = span(JUMP);
 const HALF = JUMP_SPAN / 2;
 const JUMP_PEAK = peak(JUMP);
+/** y ณ จุดสูงสุดของส่วนโค้ง — จุดที่ตัวแมวลอยไปถึงจริง ใช้วางของที่ต้องเก็บได้แน่ ๆ */
+const PEAK_Y = JUMP.reduce((a, b) => (b.y < a.y ? b : a)).y;
 const DBL_SPAN = span(JUMP_DBL);
 const DBL_PEAK = peak(JUMP_DBL);
 
@@ -187,6 +189,29 @@ function fishWave(x, count, gap = 34, humps = 3, amp = RUN_REACH) {
 }
 
 /**
+ * ช่อเกล็ดหิมะ — เม็ดเก้าเม็ดเรียงเป็นรูปเกล็ดหิมะ วางคร่อม "จุดสูงสุดของส่วนโค้งกระโดด"
+ *
+ * ── ทำไมต้องผูกกับยอดโค้ง ──
+ * กฎของไฟล์นี้คือทุกเม็ดต้องเก็บได้จริง (ระยะเก็บ fishR + 22 = 33px)
+ * ลายเกล็ดหิมะแบบกางเต็มจอจะมีเม็ดที่ตาเห็นแต่มือเอื้อมไม่ถึง ซึ่งเป็นความรู้สึกที่แย่ที่สุด
+ * จึงจำกัดก้านไว้ไม่เกิน 26px รอบยอดโค้ง = กดกระโดดตรงจังหวะแล้วได้ครบทั้งเก้าเม็ดพอดี
+ *
+ * @param x   จุดที่ผู้เล่นต้องกดกระโดด (เหมือน fishJump) ช่อจะไปโผล่ที่ยอดโค้งเอง
+ * @param arm ความยาวก้าน — ห้ามเกิน RUN_REACH ไม่งั้นเม็ดปลายก้านจะเก็บไม่ได้
+ */
+function fishFlake(x, arm = 24) {
+  const a = Math.min(arm, RUN_REACH);
+  const d = a * 0.72;
+  const cx = x + JUMP_PEAK;
+  const at = (dx, dy) => ({ x: cx + dx, y: PEAK_Y + dy, r: fishR, got: false, kind: 'fish' });
+  return [
+    at(0, 0),
+    at(-a, 0), at(a, 0), at(0, -a), at(0, a),
+    at(-d, -d), at(d, -d), at(-d, d), at(d, d),
+  ];
+}
+
+/**
  * ส่วนโค้งกระโดดเฉพาะ "ช่วงบน" — ตัดช่วงที่ยังอยู่ใกล้พื้นออก
  * ใช้เวลาวางซ้อนเหนือแถวล่าง จะได้ไม่ไปทับกันจนดูรก
  * clearance คือระยะที่ต้องสูงกว่าเส้นวิ่งเป็นอย่างน้อย
@@ -268,6 +293,7 @@ export const AUTHOR = {
   JUMP, JUMP_DBL, JUMP_SPAN, HALF, JUMP_PEAK, DBL_SPAN, DBL_PEAK, DOUBLE_AT,
   RUN_Y, RUN_REACH, GAP_W,
   fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
+  fishFlake,
   arcMid, arcHigh, groundSpike, lowBar, crateStack, makeShrimp, makeKibble,
   withShrimp, withKibble, lift,
 };
@@ -759,6 +785,42 @@ export const PATTERNS = [
       width: (b2 - x) + bar.w + 240,
     };
   },
+
+  // 29 — ทางเกล็ดหิมะ: ไม่มีของขวางเลย แต่ต้องกดให้ตรงจังหวะถึงจะได้ช่อครบ
+  // ท่อนพักของทุ่งหิมะ — แทนที่จะให้แถวยาวเฉย ๆ ให้รางวัลคนที่กดตรงยอดโค้งพอดี
+  (x) => {
+    const j1 = x + 200;
+    const j2 = j1 + JUMP_SPAN + 200;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRunTo(x + 30, j1), ...fishJump(j1, 9), ...fishFlake(j1),
+        ...fishWave(j1 + JUMP_SPAN + 30, 5, 34, 1),
+        ...fishJump(j2, 9), ...fishFlake(j2),
+      ],
+      jumps: [j1, j2],
+      width: (j2 - x) + JUMP_SPAN + 240,
+    };
+  },
+
+  // 30 — แท่งน้ำแข็งสามแท่ง ระยะบีบเข้าเรื่อย ๆ
+  // ต่างจากท่อนหนามหลายอันของแมพอื่นตรงที่ระยะ "ไม่เท่ากัน" — จังหวะที่เพิ่งกดไปใช้ซ้ำไม่ได้
+  // เป็นกริยาที่เข้ากับทุ่งหิมะ (ลื่นไถล กะระยะยาก) โดยไม่ต้องแตะฟิสิกส์จริงของเกม
+  (x) => {
+    const j1 = x + 170;
+    const j2 = j1 + JUMP_SPAN + 150;
+    // 126 คือช่องที่แคบที่สุดในเกม (ท่อนอื่นใช้ 130-150) แคบกว่านี้แล้วจังหวะที่สามกลายเป็นวัดดวง
+    const j3 = j2 + JUMP_SPAN + 126;
+    const js = [j1, j2, j3];
+    return {
+      obs: js.map((j) => groundSpike(j + HALF - spike.w / 2)),
+      pit: [],
+      fish: [...fishRunTo(x + 30, j1), ...js.flatMap((j) => fishJump(j, 8))],
+      jumps: js,
+      width: (j3 - x) + JUMP_SPAN + 240,
+    };
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -804,6 +866,8 @@ export const PATTERN_META = [
   { kind: 'challenge', diff: 4 },   // 26 กระโดด-หมอบ-กระโดด
   { kind: 'challenge', diff: 4 },   // 27 หมอบ-กระโดด-หมอบ
   { kind: 'challenge', diff: 5 },   // 28 สลับสี่จังหวะรวด
+  { kind: 'recovery', diff: 2 },    // 29 ทางเกล็ดหิมะ
+  { kind: 'challenge', diff: 5 },   // 30 แท่งน้ำแข็งบีบระยะ
 ];
 
 /**

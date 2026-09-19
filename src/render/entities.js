@@ -578,7 +578,8 @@ function drawBall(ctx, h, x, pal) {
   ctx.translate(cx, cy);
   ctx.rotate(h.spin);
   // เสี้ยวสลับสี — ตัวที่ทำให้เห็นการหมุน ถ้าเป็นวงกลมสีเดียวจะดูเหมือนลอยนิ่ง
-  const cols = ['#FF7E6B', '#FFF1DC', '#4FC9E8', '#FFF1DC'];
+  // แมพที่อยากได้ลูกกลิ้งหน้าตาอื่น (ก้อนหิมะของทุ่งหิมะ) ประกาศ ballCols ไว้ในจานสีได้
+  const cols = pal.ballCols || ['#FF7E6B', '#FFF1DC', '#4FC9E8', '#FFF1DC'];
   for (let i = 0; i < 4; i++) {
     ctx.fillStyle = cols[i];
     ctx.beginPath();

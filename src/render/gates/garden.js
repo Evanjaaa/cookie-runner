@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../../config.js';
 import { stageById } from '../../stages.js';
+import { drawMeadowBackdrop, warmMeadowArt } from '../meadow.js';
 
 const { W, H } = VIEW;
 
@@ -112,50 +113,6 @@ function flower(i) {
   });
 }
 
-/** วิวสวนที่มองทะลุช่องใบไม้ — ฟ้า เนิน ต้นไม้กลม ทุ่งดอกไม้ ต่อกันเป็นลายวนได้ */
-function vista() {
-  return sprite('vista', 512, GROUND_Y, (g, w, h) => {
-    const pal = stageById('garden').palette;
-    const sky = g.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, pal.sky[0]);
-    sky.addColorStop(0.55, pal.sky[1]);
-    sky.addColorStop(1, pal.sky[2]);
-    g.fillStyle = sky;
-    g.fillRect(0, 0, w, h);
-    // เนินสองชั้น — ไซน์ที่ครบรอบพอดี 512px ลายจึงต่อกันไม่มีรอยตัด
-    const hill = (base, amp, color, phase) => {
-      g.fillStyle = color;
-      g.beginPath();
-      g.moveTo(0, h);
-      for (let x = 0; x <= w; x += 8) g.lineTo(x, base - Math.sin((x / w) * Math.PI * 4 + phase) * amp);
-      g.lineTo(w, h);
-      g.closePath();
-      g.fill();
-    };
-    hill(h - 96, 18, pal.hills[0], 0);
-    // ต้นไม้ทรงกลม
-    for (let i = 0; i < 4; i++) {
-      const tx = 60 + i * 128;
-      g.fillStyle = '#8A5A36';
-      g.fillRect(tx - 5, h - 120, 10, 40);
-      g.fillStyle = pal.hills[1];
-      g.beginPath();
-      g.arc(tx, h - 132, 30, 0, Math.PI * 2);
-      g.arc(tx - 20, h - 118, 20, 0, Math.PI * 2);
-      g.arc(tx + 20, h - 118, 20, 0, Math.PI * 2);
-      g.fill();
-    }
-    hill(h - 50, 10, pal.hills[2], 1.3);
-    // ทุ่งดอกไม้จุด ๆ
-    const dots = ['#FF8FB8', '#FFE38A', '#FFFFFF', '#C7A6FF'];
-    for (let i = 0; i < 70; i++) {
-      g.fillStyle = dots[i % dots.length];
-      g.beginPath();
-      g.arc(hash(i * 1.7) * w, h - 44 + hash(i * 2.3) * 40, 2 + hash(i) * 2, 0, Math.PI * 2);
-      g.fill();
-    }
-  });
-}
 
 function sunbeam() {
   return sprite('beam', 120, 300, (g, w, h) => {
@@ -206,7 +163,7 @@ function mouthPath(g, x, y, w, h) {
 }
 
 export function warmGardenArt(_ctx, layout, scale = 1) {
-  clump(false); clump(true); vista(); sunbeam(); mouthFill(); glow();
+  clump(false); clump(true); warmMeadowArt(); sunbeam(); mouthFill(); glow();
   for (let i = 0; i < FLOWER_KINDS.length; i++) flower(i);
   // ชั้นแคชของพุ่ม/ผนังอุโมงค์ — ใหญ่ที่สุด สร้างตอนนี้แทนที่จะไปสร้างกลางเฟรมที่พุ่มโผล่
   if (layout) {
@@ -505,10 +462,10 @@ function drawTunnel(ctx, v) {
   mouthHole(ctx, exitX, exitTop);
   ctx.clip('evenodd');
 
-  // 1) วิวสวนไกล — เลื่อนช้า (parallax 0.25)
-  const img = vista();
-  const shift = -((cam * 0.25) % img.width) - img.width;
-  for (let x = shift; x < W + img.width; x += img.width) ctx.drawImage(img, x, 0);
+  // 1) วิวสวนไกล = ฉากหลังของด่านสวนจริงทั้งผืน (render/meadow.js)
+  // เดิมเป็นลายวนของตัวเอง ซึ่งแปลว่าสวนที่เห็นผ่านช่องใบไม้กับสวนจริงเป็นคนละที่
+  // เรียกตัวเดียวกันแล้วผู้เล่นจะเห็น "สวนเดียวกัน" ตั้งแต่ยังอยู่ในพุ่ม
+  drawMeadowBackdrop(ctx, cam, v.tick, { open: v.inside });
 
   // 2) ผนังใบไม้ที่มีช่องมองทะลุ + เงาในพุ่ม + หลังคาใบไม้ + ทางเดินหญ้า — ชั้นแคชเดียว (ดู paintWall)
   //    ทางเดินหญ้าปิดพื้นของฉากไว้ด้วย (สีพื้นฉากเปลี่ยนตอนสลับ ในอุโมงค์ต้องไม่เปลี่ยนตาม)

@@ -132,6 +132,7 @@ const KIT = [
   { t: 'arcMid', group: 'arc', pal: 'food', label: 'ซุ้มโค้งเดี่ยว', sub: 'ตัดหางล่างทิ้ง', n: 11, wide: true },
   { t: 'arcHigh', group: 'arc', pal: 'food', label: 'ซุ้มโค้งสองชั้น', sub: 'ชั้นบนสุด', n: 11, wide: true },
   { t: 'fishWave', group: 'free', pal: 'food', label: 'แถวคลื่น', sub: 'วิ่งเก็บ แต่ตาสวยขึ้น', n: 12, gap: 34, humps: 3, wide: true },
+  { t: 'fishFlake', group: 'arc', pal: 'food', label: 'ช่อเกล็ดหิมะ', sub: 'เก้าเม็ดที่ยอดโค้งกระโดด', arm: 24 },
   { t: 'fishLow', group: 'free', pal: 'food', label: 'แถวลอดใต้คาน', sub: 'ระดับตอนหมอบ', n: 8, gap: 32, wide: true },
 
   // ── ของหายาก ──
@@ -197,8 +198,9 @@ const TOPS = [
   ['shrimpAll', 'กุ้งทองทั้งแถว (โบนัส)'],
 ];
 
-const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow']);
+const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow', 'fishFlake']);
 const NEEDS_TWO = new Set(['fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave']);
+// ช่อเกล็ดหิมะผูกกับยอดโค้งของจุดกระโดด จึงวางเดี่ยว ๆ ได้โดยไม่ต้องบอกจำนวนเม็ด
 
 // ─────────────────────────────────────────────────────────────
 // เอกสาร
@@ -273,6 +275,62 @@ function gateStarter(id) {
       j1,
       row(140, doorIn - 40),
       { id: uid(), t: 'fishWave', group: 'free', x: doorIn + 100, n: 16, gap: 34, humps: 3, top: 'shrimp' },
+      { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j1.x + 41 },
+      row(after1, doorOut + 200),
+    ];
+  }
+  if (id === 'beach') {
+    const j1 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 860 };
+    const after1 = Math.round(j1.x + A.JUMP_SPAN + 30);
+    return [
+      j1,
+      row(140, doorIn - 40),
+      { id: uid(), t: 'fishWave', group: 'free', x: doorIn + 90, n: 14, gap: 34, humps: 3, top: 'shrimp' },
+      { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j1.id, key: 'AT' }, top: 'shrimp' },
+      { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j1.x + 41 },
+      row(after1, doorOut + 200),
+    ];
+  }
+  if (id === 'snow') {
+    const j1 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 560 };
+    const j2 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 2040 };
+    const after1 = Math.round(j1.x + A.JUMP_SPAN + 30);
+    const after2 = Math.round(j2.x + A.JUMP_SPAN + 30);
+    return [
+      j1, j2,
+      row(140, doorIn - 40),
+      row(doorIn + 80, j1.x - 60),
+      { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j1.id, key: 'AT' }, top: 'shrimp' },
+      { id: uid(), t: 'fishWave', group: 'free', x: after1, n: 20, gap: 34, humps: 4 },
+      { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j2.id, key: 'AT' }, top: 'shrimp' },
+      { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j2.x + 41 },
+      row(after2, doorOut + 200),
+    ];
+  }
+  if (id === 'space') {
+    const j1 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 620 };
+    const j2 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 1900 };
+    const after1 = Math.round(j1.x + A.JUMP_SPAN + 30);
+    const after2 = Math.round(j2.x + A.JUMP_SPAN + 30);
+    return [
+      j1, j2,
+      row(140, doorIn - 40),
+      row(doorIn + 90, j1.x - 60),
+      { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j1.id, key: 'AT' }, top: 'shrimp' },
+      { id: uid(), t: 'fishWave', group: 'free', x: after1, n: 16, gap: 34, humps: 3 },
+      { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j2.id, key: 'AT' }, top: 'shrimp' },
+      { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j2.x + 41 },
+      row(after2, doorOut + 200),
+    ];
+  }
+  if (id === 'cavern') {
+    const j1 = { id: uid(), t: 'jump', group: 'jump', x: doorIn + 820 };
+    const after1 = Math.round(j1.x + A.JUMP_SPAN + 30);
+    return [
+      j1,
+      row(140, doorIn - 40),
+      row(doorIn + 90, j1.x - 60),
+      { id: uid(), t: 'fishJump', group: 'arc', x: 0, n: 11, link: { id: j1.id, key: 'AT' }, top: 'shrimp' },
       { id: uid(), t: 'item', kind: 'potion', group: 'item', x: j1.x + 41 },
       row(after1, doorOut + 200),
     ];
@@ -420,6 +478,7 @@ function build(d, off = 0) {
       case 'arcMid': made = safeArc(A.arcMid, x, n); break;
       case 'arcHigh': made = safeArc(A.arcHigh, x, n); break;
       case 'fishWave': made = safeArc((xx, nn) => A.fishWave(xx, nn, it.gap, it.humps), x, n); break;
+      case 'fishFlake': made = A.fishFlake(x, it.arm); break;
       case 'fishRun': made = n > 0 ? A.fishRun(x, n, it.gap) : []; break;
       case 'fishLow': made = n > 0 ? A.fishLow(x, n, it.gap) : []; break;
 
@@ -1196,6 +1255,7 @@ function handleX(d, it) {
   if (it.t === 'fishRun' && !it.runTo) return xOf(d, it) + Math.max(0, countOf(d, it) - 1) * it.gap;
   if (it.t === 'fishLow') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
   if (it.t === 'fishWave') return xOf(d, it) + Math.max(0, it.n - 1) * it.gap;
+  if (it.t === 'fishFlake') return xOf(d, it) + A.JUMP_PEAK + (it.arm || 24);
   return null;
 }
 
@@ -2310,6 +2370,7 @@ function toCode(d) {
       case 'arcMid': fish.push(wrap(`arcMid(${e}, ${it.n})`)); break;
       case 'arcHigh': fish.push(wrap(`arcHigh(${e}, ${it.n})`)); break;
       case 'fishWave': fish.push(wrap(`fishWave(${e}, ${it.n}, ${it.gap}, ${it.humps})`)); break;
+      case 'fishFlake': fish.push(wrap(`fishFlake(${e}, ${it.arm})`)); break;
       case 'fishLow': fish.push(wrap(`fishLow(${e}, ${it.n}, ${it.gap})`)); break;
       case 'fishRun':
         if (it.runTo && names.has(it.runTo)) {
