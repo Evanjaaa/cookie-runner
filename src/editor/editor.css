@@ -198,6 +198,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--hot); }
   gap: 10px;
   min-width: 0;
   min-height: 0;
+  /* กันเหนียว: ถ้าเนื้อหาในคอลัมน์กลางยังสูงเกินจออยู่ดี ให้เลื่อนดู ไม่ใช่ล้นไปทับกัน */
+  overflow-y: auto;
 }
 
 .canvasbox {
@@ -206,11 +208,26 @@ select:focus, input:focus, textarea:focus { border-color: var(--hot); }
   border-radius: 12px;
   overflow: hidden;
   line-height: 0;
+  /* ── ห้ามให้กล่องนี้ถูกบีบ ──
+     ของเดิมมันยอมหดตามพื้นที่ที่เหลือ (flex-shrink ปริยาย) แต่ตัว <canvas> ข้างในยัง
+     ยืดตามอัตราส่วน 960:420 อยู่ ผลคือผ้าใบล้นออกไปทับไทม์ไลน์ที่อยู่ข้างล่าง
+     แล้วการคลิกแถวล่างของสนามจะไปโดนไทม์ไลน์แทน (เลือกของไม่ติด + เด้งไปท่อนอื่น)
+     เจอบนหน้าต่างสูง 620px ซึ่งเป็นขนาดที่ใช้งานจริง */
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
 }
 
+/* ── ขนาดผ้าใบ ──
+   กว้างเต็มคอลัมน์เป็นหลัก แต่ห้ามสูงเกินครึ่งจอ
+   aspect-ratio ทำให้พอชนเพดานความสูง ความกว้างหดตามสัดส่วนเอง
+   (ต้องคงสัดส่วน 960:420 ไว้เป๊ะ ไม่งั้นพิกัดเมาส์กับภาพจะเพี้ยนคนละทาง)
+   ของเดิมบังคับความสูงตายตัวบนจอเตี้ย ทำให้จอกว้างได้แถบดำข้างซ้ายขวาเปล่า ๆ */
 #view {
   width: 100%;
   height: auto;
+  aspect-ratio: 960 / 420;
+  max-height: 48vh;
   display: block;
   touch-action: none;
   cursor: crosshair;
@@ -368,7 +385,9 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
 
    สนามขึ้นมาก่อน และหนึบติดไว้ใต้แถบหัว จะได้เห็นของที่วางตลอด
    ตอนเลื่อนหาชิ้นในกล่องเครื่องมือข้างล่าง */
-@media (max-width: 1180px) {
+/* แคบกว่านี้แล้วสามคอลัมน์ไม่ไหวจริง ๆ ค่อยพับเป็นแนวตั้ง
+   (เดิมตั้งไว้ที่ 1180px ซึ่งเร็วเกินไปมาก โน้ตบุ๊กที่ซูม 125% ก็ตกมาอยู่ในนี้แล้ว) */
+@media (max-width: 860px) {
   html, body { height: auto; }
   body { display: block; overflow: visible; }
 
@@ -411,6 +430,45 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
   .bar { position: static; }
 }
 
+/* ── หัวแถบกระชับเมื่อจอไม่กว้าง ──
+   ของเดิมหัวแถบพันเป็นสองบรรทัดสูงถึง 103px กินพื้นที่ทำงานไปเปล่า ๆ
+   ชื่อรองกับคำอธิบายตัดได้ ปุ่มยังอ่านออกและกดถูกเหมือนเดิม */
+/* ป้ายปุ่มสองชุด — จอกว้างใช้ชื่อเต็ม จอแคบใช้ชื่อย่อ (ชื่อเต็มไปอยู่ในทูลทิป)
+   หัวแถบจึงอยู่แถวเดียวได้แม้บนโน้ตบุ๊กที่ซูม 125% */
+.bar .sm { display: none; }
+.bar b { font-weight: inherit; }
+
+@media (max-width: 1460px) {
+  .bar .lg { display: none; }
+  .bar .sm { display: inline; }
+  .bar { padding: 6px 10px; gap: 6px; }
+  .bar h1 { font-size: 14px; margin-right: 4px; }
+  .bar h1 span { display: none; }
+  .btn { padding: 6px 9px; font-size: 12px; }
+  .pick { font-size: 11px; gap: 4px; }
+  select, input[type=text], input[type=number] { padding: 5px 6px; font-size: 12px; }
+  .sep { margin: 0 2px; }
+  /* ชื่อท่อนยาว ๆ ทำให้ช่องเลือกกว้างจนดันหัวแถบพันบรรทัด — ตัดท้ายเอา ชื่อเต็มยังอ่านได้ตอนกางเมนู */
+  .bar select { max-width: 148px; text-overflow: ellipsis; }
+}
+
+/* ── จอกลาง (861-1180px): ยังเป็นสามคอลัมน์ แค่แผงข้างแคบลง ──
+   ของเดิมพอแคบกว่า 1180px จะพับเป็นแนวตั้งทันที กล่องเครื่องมือกับแผงรายละเอียด
+   เลยไปกองอยู่ "ใต้สนาม" ต้องเลื่อนหน้าลงไปหาทุกครั้งที่จะหยิบของ
+   (วัดที่ 1093x614: หน้าสูง 3221px แผงซ้ายเริ่มที่ y=658 คือพ้นจอไปแล้ว)
+   ความกว้างเท่านี้ยังวางสามคอลัมน์ได้สบาย ถ้าย่อแผงข้างลงหน่อย */
+@media (max-width: 1180px) and (min-width: 861px) {
+  .wrap { grid-template-columns: 212px minmax(0, 1fr) 212px; gap: 8px; padding: 8px; }
+  .panel { padding: 9px; }
+  .panel h2 { font-size: 12px; }
+  .kit { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .chip { padding: 6px; font-size: 10.5px; }
+  .chip em { display: none; }
+  .chip.wide { grid-column: auto; }
+  .rules { font-size: 11px; line-height: 1.6; }
+  .strip { height: 74px; }
+}
+
 /* ── สลับโหมด: ท่อนเดี่ยว / ทั้งด่าน ─────────────────────
    สองโหมดใช้หน้าจอเดียวกัน แต่คนละงาน จึงซ่อนของอีกฝั่งให้หมด
    ไม่ใช่จางไว้ — ของที่กดไม่ได้แต่ยังเห็นอยู่คือเสียงรบกวนล้วน ๆ */
@@ -439,6 +497,17 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
   color: #2A1020;
   font-weight: 600;
 }
+
+/* ── ย้อนกลับ / ทำซ้ำ ── */
+.hist { display: flex; gap: 4px; }
+
+.btn:disabled {
+  opacity: .35;
+  cursor: default;
+  filter: none;
+}
+
+.btn:disabled:active { transform: none; }
 
 body:not(.mode-stage) .only-stage { display: none !important; }
 body.mode-stage .only-chunk { display: none !important; }
@@ -564,10 +633,37 @@ body.mode-stage:not(.can-edit) .only-edit { display: none !important; }
 /* ── ลำดับแผงตอนกำลังแก้ท่อนในโหมดทั้งด่าน ──────────────
    กล่องเครื่องมือต้องอยู่ใกล้มือ ไม่ใช่ถูกดันไปใต้รายการท่อนยี่สิบแถวจนต้องเลื่อนหา
    (ทดสอบแล้วลากชิปไม่ได้จริง ๆ เพราะชิปอยู่ต่ำกว่าขอบจอ) */
+/* ── ตอนกำลังแก้ท่อน กล่องเครื่องมือต้องมาก่อนทุกอย่าง ──
+   วัดบนหน้าต่างสูง 620px แล้วพบว่าชิป "หนาม" ตกไปอยู่ที่ y 598-645 = ใต้ขอบจอ
+   กดไม่โดนเลย (อีเวนต์ไม่ยิงด้วยซ้ำ) ซึ่งอ่านเป็น "เพิ่มของไม่ได้"
+   รายการท่อนถูกย่อลงเพราะไทม์ไลน์ด้านบนทำหน้าที่เดียวกันอยู่แล้ว */
 body.mode-stage.can-edit .side.left > .panel { order: 5; }
-body.mode-stage.can-edit .side.left > .panel:nth-child(1) { order: 1; }   /* รายการท่อน */
-body.mode-stage.can-edit .side.left > .panel:nth-child(3) { order: 2; }   /* กล่องเครื่องมือ */
-body.mode-stage.can-edit .slots { max-height: 28vh; }
+body.mode-stage.can-edit .side.left > .panel:nth-child(3) { order: 1; }   /* กล่องเครื่องมือ */
+body.mode-stage.can-edit .side.left > .panel:nth-child(1) { order: 2; }   /* รายการท่อน */
+body.mode-stage.can-edit .slots { max-height: 116px; }
+
+/* ชิปสามคอลัมน์ + ซ่อนคำอธิบายใต้ชื่อ (ย้ายไปอยู่ในทูลทิปแทน)
+   ── ทำไมต้องบีบขนาดนี้ ──
+   ของในกล่องมี 33 ชิ้น บนหน้าต่างสูง 620px แบบเดิมมี 17 ชิ้นตกไปอยู่ใต้ขอบจอ
+   ซึ่งแปลว่าของครึ่งหนึ่งในเกม "เพิ่มไม่ได้" ถ้าผู้ใช้ไม่รู้ว่าต้องเลื่อนแผงข้างใน
+   สามคอลัมน์ทำให้เหลือ 11 แถว ลงจอเดียวได้พอดี */
+body.mode-stage.can-edit .kit { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+body.mode-stage.can-edit .chip.wide { grid-column: auto; }
+body.mode-stage.can-edit .chip em { display: none; }
+body.mode-stage.can-edit .chip {
+  padding: 6px 5px;
+  font-size: 10.5px;
+  line-height: 1.25;
+  min-height: 0;
+}
+body.mode-stage.can-edit .panel h3 { margin: 9px 0 3px; font-size: 11px; }
+
+/* พื้นเหยียบได้ใช้ได้ทั้งสองโหมด — เป็นของทดลองที่เกมจริงยังไม่รองรับ
+   แต่หน้านี้มีไว้ลองจังหวะก่อนย้ายเข้าเครื่องเกม จึงต้องลองได้ในโหมดจัดด่านด้วย
+   (ตัวโค้ดที่ส่งออกเตือนไว้ให้เองแล้วว่าท่อนไหนมีของทดลองอยู่) */
+.lab-plat .chip { border-style: dashed; }
+body.mode-stage.can-edit .panel h2 { margin-bottom: 4px; }
+body.mode-stage.can-edit .panel { padding: 9px; }
 
 /* ปุ่มแปลงท่อน — งานหลักของแผงนี้ ต้องเด่นกว่าปุ่มอื่นในแผงเดียวกัน */
 .btn.adopt {
@@ -585,3 +681,93 @@ body.mode-stage.can-edit .slots { max-height: 28vh; }
 .tl.mine, .slot.mine { border-style: dashed; }
 .tl.mine .pat, .slot.mine .pat { color: var(--ink); }
 .tl .mk, .slot .mk { color: var(--ok); font-weight: 700; }
+
+/* ── กล่องวาดลายของกิน ─────────────────────────────── */
+.btn.artopen {
+  width: 100%;
+  margin-bottom: 6px;
+  background: var(--cool);
+  color: #0C2A28;
+}
+
+.sheet.art { max-width: 820px; }
+
+.artrow {
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: flex-end;
+}
+
+.artbox {
+  background: #16121C;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+#artPad {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 720 / 260;
+  display: block;
+  touch-action: none;
+}
+
+body.art-draw #artPad, body.art-edit #artPad { cursor: crosshair; }
+body:not(.art-draw) .only-draw { display: none; }
+body:not(.art-edit) .only-edit-mode { display: none; }
+/* โหมดวาดเองกับแก้เม็ดเองไม่ได้ใช้ช่องข้อความ */
+body.art-draw .only-text, body.art-edit .only-text { display: none; }
+
+/* ── รายการของในท่อน ───────────────────────────────── */
+.itemlist {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+
+.irow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 4px 4px 4px 8px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.irow:hover { border-color: var(--hot); }
+.irow.on { border-color: var(--hot); box-shadow: 0 0 0 1px var(--hot); }
+
+.irow .nm {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.irow .xx { color: var(--soft); flex: 0 0 auto; font-size: 10.5px; }
+.irow .xx.out { color: var(--warn); }   /* หลุดออกนอกท่อน */
+
+.irow .del {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--soft);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.irow .del:hover { background: var(--bad); color: #2A0F1C; }
+.irow.stray { border-color: var(--warn); }
+.warnrow { color: var(--warn); margin: 8px 0 4px; }

@@ -23,11 +23,17 @@
       <button type="button" class="mode" data-mode="stage">ทั้งด่าน</button>
     </div>
 
+    <!-- ย้อนกลับ/ทำซ้ำ อยู่ซ้ายสุดถัดจากปุ่มสลับโหมด ตำแหน่งเดียวกับที่โปรแกรมอื่นวางไว้ -->
+    <div class="hist">
+      <button type="button" class="btn ghost" id="undoBtn" title="ย้อนกลับ (Ctrl+Z)" disabled><b class="lg">↶ ย้อนกลับ</b><b class="sm">↶</b></button>
+      <button type="button" class="btn ghost" id="redoBtn" title="ทำซ้ำ (Ctrl+Y)" disabled><b class="lg">↷ ทำซ้ำ</b><b class="sm">↷</b></button>
+    </div>
+
     <label class="pick only-chunk">ท่อน
       <select id="docPick"></select>
     </label>
-    <button class="btn ghost only-chunk" id="newDoc">+ ท่อนใหม่</button>
-    <button class="btn ghost only-chunk" id="dupDoc">ทำสำเนา</button>
+    <button class="btn ghost only-chunk" id="newDoc"><b class="lg">+ ท่อนใหม่</b><b class="sm">+ ท่อน</b></button>
+    <button class="btn ghost only-chunk" id="dupDoc"><b class="lg">ทำสำเนา</b><b class="sm">สำเนา</b></button>
     <button class="btn ghost danger only-chunk" id="delDoc">ลบ</button>
 
     <span class="sep"></span>
@@ -38,19 +44,19 @@
     <label class="pick only-chunk">ดูของเดิม
       <select id="refPick"></select>
     </label>
-    <button class="btn ghost only-stage" id="reRoll">สุ่มลำดับใหม่ทั้งด่าน</button>
+    <button class="btn ghost only-stage" id="reRoll" title="สุ่มลำดับท่อนใหม่ทั้งด่าน"><b class="lg">สุ่มลำดับใหม่ทั้งด่าน</b><b class="sm">สุ่มใหม่</b></button>
     <label class="pick only-stage">เทมเพลต
       <select id="tplPick"></select>
     </label>
-    <button class="btn ghost only-stage" id="tplSave">เก็บเป็นเทมเพลต</button>
-    <button class="btn ghost danger only-stage" id="tplDel">ลบเทมเพลต</button>
+    <button class="btn ghost only-stage" id="tplSave" title="เก็บลำดับท่อนทั้งด่านเป็นเทมเพลต"><b class="lg">เก็บเป็นเทมเพลต</b><b class="sm">เก็บ</b></button>
+    <button class="btn ghost danger only-stage" id="tplDel" title="ลบเทมเพลตที่เลือกอยู่"><b class="lg">ลบเทมเพลต</b><b class="sm">ลบ</b></button>
 
     <span class="grow"></span>
 
-    <button class="btn ghost" id="dlJson">บันทึกไฟล์</button>
-    <button class="btn ghost" id="upJson">เปิดไฟล์</button>
+    <button class="btn ghost" id="dlJson" title="บันทึกเป็นไฟล์ JSON"><b class="lg">บันทึกไฟล์</b><b class="sm">บันทึก</b></button>
+    <button class="btn ghost" id="upJson" title="เปิดไฟล์ JSON">เปิดไฟล์</button>
     <input type="file" id="fileIn" accept=".json,application/json" hidden>
-    <button class="btn" id="showCode">โค้ดสำหรับวางลงเกม</button>
+    <button class="btn" id="showCode" title="โค้ดสำหรับวางลงเกม"><b class="lg">โค้ดสำหรับวางลงเกม</b><b class="sm">โค้ดลงเกม</b></button>
   </header>
 
   <main class="wrap">
@@ -78,11 +84,19 @@
         <h2>ลากลงสนามได้เลย</h2>
         <p class="tip">กดค้างที่ชิ้นแล้วลากลงสนาม หรือกดเฉย ๆ เพื่อวางกลางจอ</p>
 
+        <button type="button" class="btn artopen" id="openArt">✎ วาดลาย / ใส่ตัวอักษร</button>
+        <p class="tip">วาดรูปหรือพิมพ์ข้อความ แล้วมันจะเรียงของกินให้เป็นลายนั้นทีเดียว</p>
+
         <h3>จุดกด</h3>
         <div class="kit" id="kitMark"></div>
 
         <h3>สิ่งกีดขวาง</h3>
         <div class="kit" id="kitObs"></div>
+
+        <!-- ไอเท็มอยู่สูงกว่าของกิน เพราะของกินมี 11 ชิ้นและดันกลุ่มล่าง ๆ ตกขอบจอ
+             บนหน้าต่างเตี้ย ซึ่งทำให้ "เพิ่มไอเท็มไม่ได้" ทั้งที่จริง ๆ แค่มองไม่เห็น -->
+        <h3>ไอเท็มตัวช่วย</h3>
+        <div class="kit" id="kitItem"></div>
 
         <h3>ของกิน (เทมเพลตสำเร็จ)</h3>
         <div class="kit" id="kitFood"></div>
@@ -90,11 +104,8 @@
         <h3>สิ่งกีดขวางพิเศษ</h3>
         <div class="kit" id="kitSpecial"></div>
 
-        <h3>ไอเท็มตัวช่วย</h3>
-        <div class="kit" id="kitItem"></div>
-
-        <h3>พื้นเหยียบได้ (ทดลอง)</h3>
-        <div class="kit" id="kitPlat"></div>
+        <h3 class="lab-plat">พื้นเหยียบได้</h3>
+        <div class="kit lab-plat" id="kitPlat"></div>
       </div>
 
       <div class="panel only-edit">
@@ -110,7 +121,7 @@
           <li>ผึ้งควรมี <b>แถวลอดใต้คาน</b> ปูใต้ตัว เพื่อบอกผู้เล่นว่าตรงนี้ต้องหมอบ</li>
           <li>ของพิเศษเริ่มทำงานตอน <b>เข้าจอ</b> ไม่ใช่ตอนสร้างท่อน จุดที่วางไว้จึงเป็นจุดที่ผู้เล่นเจอจริง</li>
           <li><b>ไอเท็ม</b> มีผลจริงตอนตรวจด่าน — โล่กันชน 1 ครั้ง, สปีด/ตัวโตพุ่งชนของกระเด็นและข้ามหลุม, แม่เหล็กดูดของกิน</li>
-          <li><b>เนิน</b> เดินขึ้นได้เลย แมวลอยตามผิว · <b>พื้นลอย</b> ต้องกระโดดขึ้น ทะลุจากข้างล่างได้ — ทั้งสองอย่างยังเป็นของทดลองในหน้านี้</li>
+          <li><b>เนิน</b> เดินขึ้นได้เลย แมวลอยตามผิว · <b>พื้นลอย</b> ต้องกระโดดขึ้น ทะลุจากข้างล่างได้ · ติ๊ก <b>มีหลุมข้างใต้</b> แล้วไม่กระโดด = ตก</li>
           <li>แถวพื้นตั้ง <b>ชั้น</b> ได้ในแผงขวา — ยกไปชั้นกระโดด หรือให้เกาะผิวเนิน/พื้นลอย</li>
         </ul>
       </div>
@@ -173,6 +184,12 @@
         <p class="tip" id="docCount">—</p>
       </div>
 
+      <div class="panel only-edit">
+        <h2>ของในท่อนนี้</h2>
+        <p class="tip">กดแถวเพื่อเลือกและเลื่อนจอไปหา · กด ✕ เพื่อลบ — ใช้ได้แม้ของซ้อนกันจนคลิกในสนามไม่โดน</p>
+        <div class="itemlist" id="itemList"></div>
+      </div>
+
       <div class="panel only-edit" id="insp">
         <h2>ชิ้นที่เลือก</h2>
         <div id="inspBody"><p class="tip">ยังไม่ได้เลือกชิ้นไหน — คลิกที่ของในสนาม</p></div>
@@ -191,6 +208,49 @@
       </div>
     </aside>
   </main>
+
+  <!-- ── กล่องวาดลายของกิน ─────────────────────────────── -->
+  <div class="modal hidden" id="artModal">
+    <div class="sheet art">
+      <header>
+        <h2>วาดลายของกิน</h2>
+        <button class="btn ghost" id="closeArt">ปิด</button>
+      </header>
+
+      <div class="row artrow">
+        <div class="modes" id="artMode">
+          <button type="button" class="mode on" data-m="text">ตัวอักษร</button>
+          <button type="button" class="mode" data-m="draw">วาดเอง</button>
+          <button type="button" class="mode" data-m="edit" title="คลิก/ลากบนตารางเพื่อเพิ่มหรือลบเม็ดทีละเม็ด">แก้เม็ดเอง</button>
+        </div>
+        <label class="field flex only-text" style="margin:0">ข้อความ
+          <input id="artText" type="text" maxlength="24" value="MEOW">
+        </label>
+        <label class="field w70" style="margin:0" title="ความสูงของลายที่จะวางลงท่อน">ความสูง
+          <input id="artH" type="number" min="30" max="160" step="5" value="150">
+        </label>
+        <label class="field w70" style="margin:0" title="ระยะห่างระหว่างเม็ด ยิ่งถี่ยิ่งละเอียดแต่เม็ดเยอะ">ห่างเม็ด
+          <input id="artGap" type="number" min="22" max="60" step="2" value="26">
+        </label>
+
+        <span class="grow"></span>
+        <label class="chk only-draw"><input type="checkbox" id="artErase"> ยางลบ</label>
+        <button class="btn ghost only-draw" id="artClear">ล้าง</button>
+      </div>
+
+      <div class="artbox">
+        <canvas id="artPad" width="720" height="260"></canvas>
+      </div>
+
+      <p class="tip" id="artInfo">—</p>
+
+      <div class="row">
+        <button class="btn" id="artPlace">วางลงท่อน</button>
+        <button class="btn ghost only-edit-mode" id="artWipe">ล้างเม็ดทั้งหมด</button>
+        <span class="readout" id="artMsg"></span>
+      </div>
+    </div>
+  </div>
 
   <!-- ── กล่องโค้ด ─────────────────────────────────────── -->
   <div class="modal hidden" id="codeModal">

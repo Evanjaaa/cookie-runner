@@ -4,7 +4,7 @@ import {
   SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X,
 } from './config.js';
 
-const { spike, bar, crate, fishR, chunkW } = LEVEL;
+const { spike, bar, crate, fishR, chunkW, ledgeThick } = LEVEL;
 
 // ─────────────────────────────────────────────────────────────
 // เส้นทางกระโดด — แกนกลางของการวางด่านทั้งหมด
@@ -95,28 +95,46 @@ function topIndex(items) {
  * ถ้าปล่อยไว้จะซ้อนทับกันจนดูรกและอ่านไม่ออกว่าอันไหนเป็นอันไหน
  * คืน array ใหม่ ผู้เรียกต้องเอาค่าที่คืนไปใช้ ไม่ใช่ของเดิม
  */
+/**
+ * เม็ดธรรมดาที่ยังไม่ถูกกำหนดชนิดไว้
+ *
+ * ── ทำไมต้องมี ──
+ * ของหายากมาจากสองทางที่ไม่รู้จักกัน: คนออกแบบตั้งไว้ในแถว (withShrimp/withKibble ตอนสร้างท่อน)
+ * กับระบบโรยให้ทั้งท่อนตาม route (step.shrimp / step.kibble ใน spawnChunk)
+ * ทางหลังมาทีหลังเสมอ ของเดิมจึงเขียนทับสิ่งที่คนตั้งใจไว้
+ * เช่นตั้ง "กุ้งทองทั้งแถว" ไว้ แล้วโดน kibble แบบสลับเม็ดทับจนกลายเป็นกุ้งสลับเม็ดขนม
+ *
+ * กติกา: สิ่งที่คนตั้งใจใส่ชนะการโรยอัตโนมัติเสมอ ระบบเติมได้เฉพาะเม็ดที่ยังว่างอยู่
+ */
+const isPlainFish = (it) => !it.kind || it.kind === 'fish';
+
 function makeShrimp(items) {
   if (!items.length) return items;
-  const gold = items[topIndex(items)];
+  // แถวนี้มีกุ้งที่คนวางไว้แล้ว ไม่ต้องเติมอีก (กติกาคือกุ้งทองท่อนละตัว)
+  if (items.some((it) => it.kind === 'shrimp')) return items;
+
+  const plain = items.filter(isPlainFish);
+  if (!plain.length) return items;
+  const gold = plain[topIndex(plain)];
   gold.kind = 'shrimp';
-  return items.filter((it) => it === gold || Math.abs(it.x - gold.x) >= SHRIMP.minGap);
+  // ตัดเฉพาะเม็ดธรรมดาที่อยู่ชิดกุ้งเกินไป — ของที่คนตั้งใจใส่ไว้ห้ามหาย
+  return items.filter((it) => it === gold || !isPlainFish(it) || Math.abs(it.x - gold.x) >= SHRIMP.minGap);
 }
 
 function makeKibble(items, style) {
   if (!items.length) return;
+  const set = (it) => { if (it && isPlainFish(it)) it.kind = 'kibble'; };
 
   if (style === 'all') {
     // ทั้งแถวเป็นเม็ดกลม — ใช้ตอนอยากให้ "แถวอาหารเม็ด" เป็นของชิ้นเอกของท่อนไปเลย
     // ไม่ใช่ของแทรกในแถวปลาแบบสองแบบข้างล่าง
-    for (const it of items) it.kind = 'kibble';
+    for (const it of items) set(it);
   } else if (style === 'cluster') {
     const top = topIndex(items);
     const from = Math.max(0, top - 1);
-    for (let i = from; i < Math.min(items.length, from + KIBBLE.clusterSize); i++) {
-      items[i].kind = 'kibble';
-    }
+    for (let i = from; i < Math.min(items.length, from + KIBBLE.clusterSize); i++) set(items[i]);
   } else {
-    for (let i = 1; i < items.length; i += KIBBLE.alternateEvery) items[i].kind = 'kibble';
+    for (let i = 1; i < items.length; i += KIBBLE.alternateEvery) set(items[i]);
   }
 }
 
@@ -212,6 +230,31 @@ function fishFlake(x, arm = 24) {
 }
 
 /**
+ * เม็ดอาหารตาม "จุดที่กำหนดเอง" — ใช้กับลายที่วาดเองหรือตัวอักษร
+ *
+ * ── ทำไมต้องมีตัวนี้ ──
+ * ตัวช่วยตัวอื่นในไฟล์นี้เป็นรูปทรงสำเร็จ (แถวตรง ส่วนโค้ง คลื่น เกล็ดหิมะ)
+ * ซึ่งพอแล้วสำหรับจังหวะการเล่น แต่ไม่พอสำหรับ "ลาย" เช่นตัวอักษรหรือรูปหัวใจ
+ * ถ้าไม่มีตัวนี้ คนจัดด่านต้องวางทีละเม็ดแล้ว export ออกมาเป็นเม็ดดิบเป็นร้อยบรรทัด
+ *
+ * ── กติกาที่ยังต้องรักษา ──
+ * ทุกเม็ดต้องเก็บได้จริง คนวางจึงต้องคุมความสูงเอง (เกิน DBL_PEAK ไปคือเอื้อมไม่ถึง)
+ * หน้าออกแบบด่านมีเส้นเพดานกระโดดกับตัวตรวจ "เม็ดที่เก็บไม่ได้" ไว้ให้เช็กอยู่แล้ว
+ *
+ * @param x   ขอบซ้ายของลาย
+ * @param pts [[dx, dy], ...] — dy บวก = สูงขึ้นจากเส้นวิ่ง
+ */
+function fishDots(x, pts) {
+  return pts.map(([dx, dy]) => ({
+    x: x + dx,
+    y: RUN_Y - dy,
+    r: fishR,
+    got: false,
+    kind: 'fish',
+  }));
+}
+
+/**
  * ส่วนโค้งกระโดดเฉพาะ "ช่วงบน" — ตัดช่วงที่ยังอยู่ใกล้พื้นออก
  * ใช้เวลาวางซ้อนเหนือแถวล่าง จะได้ไม่ไปทับกันจนดูรก
  * clearance คือระยะที่ต้องสูงกว่าเส้นวิ่งเป็นอย่างน้อย
@@ -289,13 +332,115 @@ export const PICKUPS = {
   letter: { list: 'letters', make: (x, idx) => ({ x, y: LETTER.y, r: LETTER.r, idx, got: false }) },
 };
 
+
+// ─────────────────────────────────────────────────────────────
+// พื้นเหยียบได้ — ผิวที่ไม่ใช่เส้นพื้นหลัก
+//
+// ── ทำไมต้องมี ──
+// เดิมทั้งเกมมีผิวให้ยืนอยู่เส้นเดียวคือ GROUND_Y ท่อนหนึ่งจึงพูดได้แค่ว่า
+// "ตรงนี้มีพื้น" หรือ "ตรงนี้เป็นหลุม" ความสูงเป็นของสิ่งกีดขวางเท่านั้น
+// พอเพิ่มผิวที่สองเข้ามา ท่อนหนึ่งเล่าเรื่องได้อีกแบบ: ขึ้นไปวิ่งชั้นบน
+// แล้วเลือกเองว่าจะลงเมื่อไหร่ ซึ่งเป็นจังหวะที่ทำด้วยลังกับหลุมไม่ได้เลย
+//
+// สองชนิด:
+//   hill   เนินที่งอกจากพื้น เดินขึ้นได้เลยไม่ต้องกระโดด ผิวเป็นเส้นโค้งต่อเนื่อง
+//   ledge  แท่งลอย ต้องกระโดดขึ้นไปเหยียบ ลอดใต้ได้ ใส่ under เพื่อเจาะหลุมข้างใต้
+//
+// กติกาเดียวที่ทั้งเกมใช้: ผิวไหนอยู่สูงสุด ณ x นั้น = ผิวที่เท้าจะเจอ
+// พื้นปกติก็เป็นผิวหนึ่งในนั้น จึงไม่มีโค้ดสาขาพิเศษว่า "ตอนนี้อยู่บนพื้นลอยหรือเปล่า"
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * ความยาวทางลาดของเนิน — ยาวอย่างน้อย 2.4 เท่าของความสูง
+ * ความชันสูงสุดจึงไม่เกิน ~0.63 px ต่อ px ซึ่งน้อยกว่าแรงโน้มถ่วงหนึ่งเฟรม (0.86)
+ * แปลว่าวิ่งลงเนินแล้วเท้าไม่หลุดจากผิว ไม่ต้องพึ่งการดูดติดเลยแม้แต่เฟรมเดียว
+ */
+export function hillRamp(p) {
+  return Math.min(p.w / 2, Math.max(60, p.h * 2.4));
+}
+
+/**
+ * ผิวบนของพื้นลอย — เขียนได้สองแบบ
+ *   lift: 90   ลอยเหนือพื้น 90px (อ่านง่ายกว่าตอนเขียนท่อนด้วยมือ และเป็นแบบที่หน้าออกแบบส่งออก)
+ *   top: 230   พิกัด y ตรง ๆ (แบบที่ build() ในหน้าออกแบบใช้ภายใน)
+ * รับทั้งคู่จะได้ไม่มีท่อนไหนพังเพราะเขียนคนละแบบ
+ */
+const ledgeTop = (p) => (p.top !== undefined ? p.top : GROUND_Y - p.lift);
+
+/** y ของผิวชิ้นหนึ่ง ณ x — null ถ้า x ไม่อยู่ในช่วงของชิ้นนั้น */
+export function platTop(p, x) {
+  if (x < p.x || x > p.x + p.w) return null;
+  if (p.kind === 'ledge') return ledgeTop(p);
+  const u = x - p.x;
+  const ramp = hillRamp(p);
+  const t = u < ramp ? u / ramp : u > p.w - ramp ? (p.w - u) / ramp : 1;
+  return GROUND_Y - p.h * t * t * (3 - 2 * t);     // smoothstep: ตีนเนินกับยอดเนินไม่มีมุมหัก
+}
+
+/** ผิวที่สูงที่สุด ณ x (ไม่นับพื้นปกติ) — null ถ้าไม่มีพื้นเหยียบตรงนั้น */
+export function highestTop(plats, x) {
+  let best = null;
+  for (const p of plats) {
+    const t = platTop(p, x);
+    if (t !== null && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+
+/** กล่องตันของพื้นลอย ใช้ตอนวาดและตอนวัดว่ามีอะไรมาทับกัน */
+export function platBox(p) {
+  return p.kind === 'hill'
+    ? { x: p.x, y: GROUND_Y - p.h, w: p.w, h: p.h }
+    : { x: p.x, y: ledgeTop(p), w: p.w, h: ledgeThick };
+}
+
+/** ระยะดูดติดผิวตอนวิ่งลง — หน่วยเป็น px ต่อหนึ่งก้าวอ้างอิง */
+const STICK = 10;
+
+/**
+ * ผิวที่เท้าจะยืนในเฟรมนี้ — null = ไม่มีอะไรรองรับ ร่วงต่อ
+ *
+ * พื้นปกติกับพื้นเหยียบใช้กติกาเดียวกัน: "เฟรมก่อนเท้าอยู่เหนือผิว และตอนนี้ถึงผิวแล้ว"
+ * พื้นปกติจึงได้ผลเท่าเดิมทุกกรณี ด่านเก่าทั้งหมดเล่นออกมาเหมือนเดิมเป๊ะ
+ *
+ * สองข้อที่เพิ่มมาเพราะผิวไม่เรียบ:
+ *   ผิวของเฟรมก่อน  เทียบกับผิว ณ x เดิม ไม่ใช่ x ใหม่ ไม่งั้นเดินขึ้นเนินจะดูเหมือน
+ *                  "มุดใต้ผิว" แล้วไม่ถูกยกขึ้น
+ *   ดูดติดขาลง     ตอนยืนอยู่แล้วผิวลาดลง ถ้าไม่ดูดไว้เท้าจะหลุดจากผิวทุกเฟรม
+ *                  ตอนลงเนิน กลายเป็นวิ่งลงบันไดแทนที่จะไหลลงเนิน
+ *
+ * พื้นลอยเป็นแบบทะลุจากข้างล่างได้ — กระโดดลอดขึ้นไปยืนข้างบนได้ ไม่ชนหัว
+ * เพราะเงื่อนไข land ต้องมาจาก "อยู่เหนือผิวอยู่แล้ว" เท่านั้น
+ */
+export function footing(pits, plats, cx, prevX, prevY, y, wasOnGround, pitsSolid = false, step = 1) {
+  let best = null;
+  // slack = เผื่อให้เฉพาะผิวที่ไม่เรียบ ผิวเอียงทำให้ y ต้นเฟรมกับผิว ณ x เดิม
+  // ต่างกันได้เศษเสี้ยวพิกเซลจนพลาดการเหยียบทั้งที่ตาเห็นว่าโดน
+  // พื้นปกติใช้ 0 เป๊ะเท่าของเดิม จะได้ไม่มีทางที่แมวซึ่งร่วงอยู่ในหลุมแล้ว
+  // เด้งกลับขึ้นมายืนบนขอบหลุมฝั่งตรงข้าม (ดูคอมเมนต์ใน Player.update)
+  const tryTop = (now, before, slack) => {
+    if (now === null) return;
+    const from = before === null ? now : before;
+    const land = prevY <= from + slack && y >= now;
+    const stick = wasOnGround && y < now && now - y <= STICK * Math.max(1, step);
+    if ((land || stick) && (best === null || now < best)) best = now;
+  };
+
+  // ติดสปีด/ตัวโต วิ่งข้ามปากหลุมได้ (ดู Game.pitsSolid)
+  const overPit = !pitsSolid && pits.some((p) => cx > p.x + 6 && cx < p.x + p.w - 6);
+  if (!overPit) tryTop(GROUND_Y, GROUND_Y, 0);
+  for (const p of plats) tryTop(platTop(p, cx), platTop(p, prevX), 0.5);
+  return best;
+}
+
 export const AUTHOR = {
   JUMP, JUMP_DBL, JUMP_SPAN, HALF, JUMP_PEAK, DBL_SPAN, DBL_PEAK, DOUBLE_AT,
   RUN_Y, RUN_REACH, GAP_W,
   fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
-  fishFlake,
+  fishFlake, fishDots,
   arcMid, arcHigh, groundSpike, lowBar, crateStack, makeShrimp, makeKibble,
   withShrimp, withKibble, lift,
+  platTop, highestTop, platBox, footing, ledgeThick,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -821,6 +966,300 @@ export const PATTERNS = [
       width: (j3 - x) + JUMP_SPAN + 240,
     };
   },
+
+  // ─────────────────────────────────────────────────────────────
+  // ท่อน 31-50 — ด่าน "ครัวกลางคืน" ที่จัดเองทั้งด่าน
+  // ทำจากหน้าออกแบบด่าน (editor.html โหมดทั้งด่าน) แล้วส่งออกมาเป็นโค้ดชุดนี้
+  // route ของฉากอ้างเลขพวกนี้ตามลำดับ — ห้ามสลับหรือแทรกกลาง
+  // ─────────────────────────────────────────────────────────────
+
+  // 31 — ครัวกลางคืน · ท่อน 1
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [...fishRun(x + 619, 8, 35), ...lift(fishDots(x + 278, [[0,130],[130,130],[182,130],[208,130],[234,130],[260,130],[0,104],[26,104],[104,104],[130,104],[260,104],[0,78],[78,78],[130,78],[234,78],[0,52],[130,52],[208,52],[0,26],[130,26],[182,26],[0,0],[130,0],[182,0],[208,0],[234,0],[260,0],[52,78]]), 5)],
+    jumps: [],
+    partial: true,
+    width: 2280,
+  }),
+  // 32 — ครัวกลางคืน · ท่อน 2
+  (x) => {
+    const j1 = x + 115;
+    const j2 = x + 554;
+    const j3 = x + 1099;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withKibble(arcMid(j1, 8), 'all'),
+        ...withKibble(arcMid(j2, 8), 'all'),
+        ...withKibble(arcMid(j3, 3), 'cluster'),
+        ...fishRun(x + 1325, 6, 35),
+        ...fishRun(x + 339, 7, 35),
+        ...fishRun(x + 778, 10, 35),
+        ...withKibble(lift(fishRun(x + 131, 1, 34), 27), 'all'),
+        ...withKibble(lift(fishRun(x + 316, 1, 34), 21), 'all'),
+        ...withKibble(lift(fishRun(x + 573, 1, 34), 29), 'all'),
+        ...withKibble(lift(fishRun(x + 752, 1, 34), 21), 'all'),
+        ...withKibble(lift(fishRun(x + 1114, 1, 34), 21), 'all'),
+        ...withKibble(lift(fishRun(x + 1300, 1, 34), 21), 'all'),
+        ...withShrimp(lift(fishRun(x + 1161, 1, 34), 86)),
+        ...withShrimp(lift(fishRun(x + 1256, 1, 34), 88)),
+      ],
+      jumps: [j1, j2, j3],
+      partial: true,
+      width: 1500,
+    };
+  },
+  // 33 — ครัวกลางคืน · ท่อน 3
+  (x) => {
+    const j1 = x + 198;
+    return {
+      obs: [groundSpike(x + 259), groundSpike(x + 311)],
+      pit: [],
+      fish: [
+        ...fishRun(x + 40, 5, 34),
+        ...fishJump(j1, 11),
+        ...fishRun(x + 433, 2, 35),
+      ],
+      jumps: [j1],
+      // เนินท้ายท่อน เดินขึ้นได้เลย เป็นตัวสอนว่าพื้นในด่านนี้มีหลายชั้น
+      // ก่อนจะเจอพื้นลอยจริง ๆ ในท่อนถัดไป
+      plats: [{ kind: 'hill', x: x + 462, w: 320, h: 70 }],
+    };
+  },
+  // 34 — ครัวกลางคืน · ท่อน 4
+  // j1 อยู่หลังจุดเริ่มท่อน (x-155) เพราะต้องกดตั้งแต่ปลายท่อน 3 ถึงจะขึ้นพื้นลอยทัน
+  (x) => {
+    const j1 = x + -155;
+    const j2 = x + 309;
+    return {
+      obs: [crateStack(x + 563, 3), crateStack(x + 507, 1), crateStack(x + 620, 2), groundSpike(j2 + DBL_SPAN - spike.w / 2), crateStack(x + 679, 3)],
+      pit: [{ x: x + 15 + 24, w: 263 - 48 }],
+      plats: [{ kind: 'ledge', x: x + 15, w: 263, lift: 90 }],
+      fish: [...withKibble(lift(fishRun(x + 33, 7, 38), 105), 'alternate')],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'nip', x: x + 435 }],
+    };
+  },
+  // 35 — ครัวกลางคืน · ท่อน 5
+  (x) => {
+    const j1 = x + 651;
+    return {
+      obs: [crateStack(x + -20, 1), groundSpike(x + 5), groundSpike(x + 5 + 44), crateStack(x + 98, 2), crateStack(x + 153, 1), crateStack(x + 271, 1), groundSpike(x + 220), crateStack(x + 331, 3), groundSpike(x + 324), crateStack(x + 385, 2), crateStack(x + 440, 2), crateStack(x + 506, 1), groundSpike(x + 472), groundSpike(x + 472 + 44), crateStack(x + 555, 3), crateStack(x + 605, 1)],
+      pit: [],
+      fish: [],
+      jumps: [j1],
+      pickups: [{ kind: 'magnet', x: x + 733 }],
+    };
+  },
+  // 36 — ครัวกลางคืน · ท่อน 6
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(lift(fishRun(x + 117, 28, 56), 212), 'alternate'),
+      ...withShrimp(lift(fishRun(x + 124, 28, 56), 152), 'all'),
+      ...withKibble(fishRun(x + 120, 28, 56), 'cluster'),
+      ...withShrimp(lift(fishRun(x + 121, 28, 56), 53), 'all'),
+      ...withKibble(lift(fishRun(x + 124, 28, 56), 105), 'alternate'),
+    ],
+    jumps: [],
+    pickups: [{ kind: 'letter', x: x + 62 }],
+  }),
+  // 37 — ครัวกลางคืน · ท่อน 7 (ทางโล่งล้วน ไว้หายใจ)
+  () => ({
+    obs: [],
+    pit: [],
+    fish: [],
+    jumps: [],
+  }),
+  // 38 — ครัวกลางคืน · ท่อน 8
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [...withKibble(lift(fishDots(x + 208, [[0,130],[130,130],[156,130],[182,130],[260,130],[364,130],[416,130],[442,130],[468,130],[494,130],[0,104],[104,104],[208,104],[260,104],[416,104],[0,78],[104,78],[208,78],[260,78],[416,78],[0,52],[104,52],[208,52],[416,52],[0,26],[104,26],[208,26],[416,26],[0,0],[26,0],[52,0],[156,0],[182,0],[416,0],[442,0],[468,0],[494,0],[364,104],[364,78],[364,52],[338,26],[312,0],[260,52],[286,26],[78,0],[130,0],[442,52],[468,52],[494,52]]), 37), 'alternate')],
+    jumps: [],
+  }),
+  // 39 — ครัวกลางคืน · ท่อน 9
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(fishFlake(x + 133), 'all'),
+      ...withKibble(fishFlake(x + 445), 'all'),
+      ...fishRun(x + 271, 8, 34),
+      ...withShrimp(lift(fishRun(x + 392, 1, 34), 64)),
+      ...withKibble(lift(fishRun(x + 499, 6, 34), 43), 'cluster'),
+      ...withKibble(lift(fishRun(x + 114, 6, 34), 37), 'cluster'),
+    ],
+    jumps: [],
+  }),
+  // 40 — ครัวกลางคืน · ท่อน 10
+  (x) => {
+    const j1 = x + 269;
+    const j2 = x + 500;
+    const j3 = j1 + DBL_SPAN;
+    return {
+      obs: [crateStack(j1 + HALF - crate.w / 2, 1), crateStack(j3 + HALF - crate.w / 2, 2)],
+      pit: [],
+      fish: [
+        ...fishRun(x + 31, 8, 34),
+        ...fishJump(j1, 9),
+        ...fishRun(x + 489, 3, 34),
+        ...withKibble(fishJump(j3, 9), 'cluster'),
+      ],
+      jumps: [j1, j2, j3],
+    };
+  },
+  // 41 — ครัวกลางคืน · ท่อน 11
+  (x) => ({
+    obs: [lowBar(x + 161), lowBar(x + 481)],
+    pit: [],
+    fish: [
+      ...fishRun(x + 30, 22, 34),
+      ...withShrimp(lift(fishRun(x + 411, 1, 56), 38), 'all'),
+      ...withShrimp(lift(fishRun(x + 710, 1, 56), 38), 'all'),
+    ],
+    jumps: [],
+  }),
+  // 42 — ครัวกลางคืน · ท่อน 12
+  (x) => {
+    const j1 = x + 202;
+    return {
+      obs: [lowBar(x + 505)],
+      pit: [],
+      fish: [...fishRun(x + 22, 6, 34), ...fishRun(x + 348, 15, 34)],
+      jumps: [j1],
+      pickups: [{ kind: 'can', x: x + 272 }],
+    };
+  },
+  // 43 — ครัวกลางคืน · ท่อน 13
+  // พื้นลอยยาว 1800px พาดข้ามไปถึงท่อน 14 — ทั้งช่วงนี้คือทางวิ่งชั้นบน
+  // ไม่มีหลุมข้างใต้ ตกลงมาก็แค่กลับไปวิ่งพื้นปกติ
+  (x) => {
+    const j1 = x + -20;
+    const j2 = x + 17;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 117, 28, 34),
+        ...withKibble(lift(fishRun(x + 119, 28, 34), 42), 'all'),
+        ...withShrimp(lift(fishRun(x + 133, 15, 56), 178), 'all'),
+        ...withShrimp(lift(fishRun(x + 134, 15, 56), 136), 'all'),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'ledge', x: x + 107, w: 1800, lift: 130 }],
+      partial: true,
+    };
+  },
+  // 44 — ครัวกลางคืน · ท่อน 14
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...lift(fishRun(x + 315, 25, 34), 41),
+      ...withKibble(fishRun(x + 315, 25, 34), 'all'),
+      ...withShrimp(lift(fishRun(x + 216, 17, 56), 137), 'all'),
+      ...withShrimp(lift(fishRun(x + 217, 17, 56), 184), 'all'),
+      ...fishRun(x + 1169, 9, 34),
+    ],
+    jumps: [],
+    width: 1368,
+  }),
+  // 45 — ครัวกลางคืน · ท่อน 15
+  (x) => {
+    const j1 = x + 289;
+    return {
+      obs: [],
+      pit: [{ x: j1 + HALF - 66, w: 132 }],
+      fish: [
+        ...fishRun(x + 516, 10, 34),
+        ...withShrimp(fishJump(x + 296, 11)),
+        ...fishRun(x + 113, 6, 34),
+      ],
+      jumps: [j1],
+    };
+  },
+  // 46 — ครัวกลางคืน · ท่อน 16
+  (x) => {
+    const j1 = x + 191;
+    const j2 = j1 + DOUBLE_AT * SPEED.run;
+    return {
+      obs: [],
+      pit: [{ x: x + 200, w: 270 }],
+      fish: [
+        ...fishRun(x + 99, 3, 34),
+        ...withKibble(fishDouble(j1, 10), 'all'),
+        ...withKibble(lift(fishRun(x + 200, 1, 34), 17), 'all'),
+        ...withKibble(lift(fishRun(x + 489, 1, 34), 10), 'all'),
+        ...fishRun(x + 521, 8, 34),
+      ],
+      jumps: [j1, j2],
+    };
+  },
+  // 47 — ครัวกลางคืน · ท่อน 17
+  // พื้นลอยเหนือหลุมสองแท่งติดกัน — กดพลาดแท่งไหนก็ตกหลุมนั้น
+  (x) => {
+    const j1 = x + 174;
+    const j2 = x + 443;
+    return {
+      obs: [],
+      pit: [{ x: x + 216 + 24, w: 186 - 48 }, { x: x + 515 + 24, w: 186 - 48 }],
+      plats: [
+        { kind: 'ledge', x: x + 216, w: 186, lift: 90 },
+        { kind: 'ledge', x: x + 515, w: 186, lift: 90 },
+      ],
+      fish: [
+        ...fishRun(x + 728, 5, 34),
+        ...withKibble(lift(fishRun(x + 241, 5, 34), 92), 'all'),
+        ...withKibble(lift(fishRun(x + 539, 5, 34), 92), 'all'),
+        ...fishRun(x + 36, 5, 34),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'letter', x: x + 457 }],
+    };
+  },
+  // 48 — ครัวกลางคืน · ท่อน 18
+  (x) => {
+    const j1 = x + 171;
+    const j2 = j1 + DOUBLE_AT * SPEED.run;
+    return {
+      obs: [crateStack(j1 + DBL_PEAK - crate.w / 2, 3), lowBar(x + 608), lowBar(x + 887), lowBar(x + 1160)],
+      pit: [],
+      fish: [
+        ...fishRun(x + 139, 3, 34),
+        ...arcHigh(x + 169, 5),
+        ...withShrimp(lift(fishRun(x + 257, 1, 34), 53)),
+        ...withShrimp(lift(fishRun(x + 415, 1, 34), 53)),
+        ...fishRun(x + 462, 30, 34),
+        ...withShrimp(lift(fishRun(x + 1112, 1, 34), 37)),
+        ...withShrimp(lift(fishRun(x + 828, 1, 34), 35)),
+      ],
+      jumps: [j1, j2],
+      width: 1368,
+    };
+  },
+  // 49 — ครัวกลางคืน · ท่อน 19
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [...fishRun(x + 119, 6, 34), ...fishDots(x + 290, [[0,130],[26,130],[52,130],[78,130],[104,130],[156,130],[260,130],[468,130],[52,104],[156,104],[260,104],[468,104],[494,104],[52,78],[156,78],[260,78],[468,78],[52,52],[156,52],[260,52],[338,52],[364,52],[390,52],[468,52],[52,26],[156,26],[260,26],[312,26],[416,26],[468,26],[52,0],[156,0],[260,0],[312,0],[416,0],[468,0],[312,52],[364,130],[416,52],[338,104],[312,78],[390,104],[416,78],[520,78],[546,52],[572,26],[598,0],[598,26],[598,104],[598,130],[598,78],[598,52],[234,52],[182,52],[208,52]])],
+    jumps: [],
+  }),
+  // 50 — ครัวกลางคืน · ท่อน 20
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...lift(fishDots(x + 178, [[0,130],[78,130],[156,130],[182,130],[208,130],[0,104],[52,104],[130,104],[234,104],[0,78],[26,78],[0,52],[26,52],[52,52],[234,52],[0,26],[78,26],[130,26],[234,26],[0,0],[104,0],[156,0],[182,0],[208,0],[156,52],[182,52],[208,52],[130,78]]), -10),
+      ...withKibble(lift(fishDots(x + 320, [[286,26],[260,26],[260,52],[234,52],[234,78],[208,78],[208,104],[182,104],[182,130],[208,130],[234,130],[234,104],[260,78],[286,78],[312,130],[338,78],[312,78],[312,52],[286,52],[312,104],[338,104],[338,130],[364,130],[364,104],[260,104],[286,104],[260,0],[286,0]]), -11), 'all'),
+      ...withKibble(fishRun(x + 739, 8, 89), 'all'),
+    ],
+    jumps: [],
+    width: 2280,
+  }),
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -868,6 +1307,28 @@ export const PATTERN_META = [
   { kind: 'challenge', diff: 5 },   // 28 สลับสี่จังหวะรวด
   { kind: 'recovery', diff: 2 },    // 29 ทางเกล็ดหิมะ
   { kind: 'challenge', diff: 5 },   // 30 แท่งน้ำแข็งบีบระยะ
+
+  // ── ด่าน "ครัวกลางคืน" ที่จัดเองทั้งด่าน (ดู route ของฉาก night) ──
+  { kind: 'safe', diff: 1 },        // 31 ครัวกลางคืน · ท่อน 1
+  { kind: 'recovery', diff: 2 },    // 32 ครัวกลางคืน · ท่อน 2
+  { kind: 'obstacle', diff: 3 },    // 33 ครัวกลางคืน · ท่อน 3
+  { kind: 'obstacle', diff: 3 },    // 34 ครัวกลางคืน · ท่อน 4
+  { kind: 'safe', diff: 1 },        // 35 ครัวกลางคืน · ท่อน 5
+  { kind: 'obstacle', diff: 3 },    // 36 ครัวกลางคืน · ท่อน 6
+  { kind: 'obstacle', diff: 2 },    // 37 ครัวกลางคืน · ท่อน 7
+  { kind: 'obstacle', diff: 3 },    // 38 ครัวกลางคืน · ท่อน 8
+  { kind: 'safe', diff: 1 },        // 39 ครัวกลางคืน · ท่อน 9
+  { kind: 'obstacle', diff: 3 },    // 40 ครัวกลางคืน · ท่อน 10
+  { kind: 'obstacle', diff: 2 },    // 41 ครัวกลางคืน · ท่อน 11
+  { kind: 'obstacle', diff: 3 },    // 42 ครัวกลางคืน · ท่อน 12
+  { kind: 'obstacle', diff: 3 },    // 43 ครัวกลางคืน · ท่อน 13
+  { kind: 'recovery', diff: 2 },    // 44 ครัวกลางคืน · ท่อน 14
+  { kind: 'obstacle', diff: 2 },    // 45 ครัวกลางคืน · ท่อน 15
+  { kind: 'obstacle', diff: 2 },    // 46 ครัวกลางคืน · ท่อน 16
+  { kind: 'obstacle', diff: 2 },    // 47 ครัวกลางคืน · ท่อน 17
+  { kind: 'recovery', diff: 2 },    // 48 ครัวกลางคืน · ท่อน 18
+  { kind: 'obstacle', diff: 2 },    // 49 ครัวกลางคืน · ท่อน 19
+  { kind: 'recovery', diff: 2 },    // 50 ครัวกลางคืน · ท่อน 20
 ];
 
 /**
@@ -1110,6 +1571,7 @@ export class Level {
     this.cans = [];          // อาหารกระป๋อง กินแล้วตัวโต
     this.fallers = [];       // ของร่วงจากเพดาน เป็นอันตราย ไม่ใช่ของเก็บ
     this.hazards = [];       // อันตรายที่ขยับได้ (ไฟ / ผึ้ง / ลูกบอล)
+    this.plats = [];         // พื้นเหยียบได้ — เนินกับพื้นลอย (ดู footing)
     this.nextChunkX = 900;   // เว้นที่ว่างตอนเริ่มเกม
     this.chunkIndex = 0;
   }
@@ -1170,6 +1632,10 @@ export class Level {
     // พิกัดเป็นพิกัดโลกเหมือนของอย่างอื่นในท่อน เพราะแพตเทิร์นรับ x ของท่อนไปแล้ว
     if (c.fallers) for (const f of c.fallers) this.addFaller(f.x, f.warn, true);
     if (c.hazards) for (const h of c.hazards) this.addHazard(h.kind, h.x, true, h.phase);
+    // พื้นเหยียบของท่อน — ต้องมาก่อนของอย่างอื่นในเฟรมเดียวกัน ไม่งั้นเฟรมแรกที่ท่อน
+    // โผล่เข้าจอจะยังไม่มีผิวให้ยืน แมวที่กำลังลอยอยู่เหนือมันพอดีจะร่วงทะลุ
+    if (c.plats) this.plats.push(...c.plats);
+
     // ไอเท็มที่ท่อนวางเอง — ต่างจาก step.magnet/letter ที่ให้ระบบหาที่โล่งให้
     if (c.pickups) for (const p of c.pickups) this.addPickup(p.kind, p.x);
 
@@ -1652,6 +2118,7 @@ export class Level {
       : o.x + o.w > cut));
     this.fishes = this.fishes.filter((f) => f.x > cut);
     this.pits = this.pits.filter((p) => p.x + p.w > cut);
+    this.plats = this.plats.filter((p) => p.x + p.w > cut);
     this.shields = this.shields.filter((s) => s.x > cut);
     this.potions = this.potions.filter((p) => p.x > cut);
     this.magnets = this.magnets.filter((m) => m.x > cut);
@@ -1662,5 +2129,19 @@ export class Level {
 
   isOverPit(worldX) {
     return this.pits.some((p) => worldX > p.x + 6 && worldX < p.x + p.w - 6);
+  }
+
+  /**
+   * ผิวที่เท้าจะยืนในเฟรมนี้ — null = ไม่มีอะไรรองรับ
+   * ตัวละครถามที่นี่ที่เดียว จึงไม่ต้องรู้ว่าด่านนี้มีพื้นเหยียบหรือเปล่า
+   */
+  surfaceAt(cx, prevX, prevY, y, wasOnGround, pitsSolid) {
+    return footing(this.pits, this.plats, cx, prevX, prevY, y, wasOnGround, pitsSolid,
+      Math.abs(cx - prevX) / SPEED.run);
+  }
+
+  /** ผิวที่สูงที่สุด ณ x ไม่นับพื้นปกติ — ใช้ตอนหาที่โล่งวางของ */
+  topAt(worldX) {
+    return highestTop(this.plats, worldX);
   }
 }

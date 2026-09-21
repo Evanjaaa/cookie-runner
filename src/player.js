@@ -134,25 +134,29 @@ export class Player {
     this.squash += (0 - this.squash) * 0.16 * dt;
 
     const centerWorldX = PLAYER_X + this.ox + BODY.standW / 2 + game.camera;
-    // ระหว่างใช้ความสามารถหรือติดสปีด ถือว่ามีพื้นตลอด วิ่งข้ามหลุมได้เหมือนไม่มีหลุม
-    // ถามผ่าน pitsSolid จุดเดียว ตัวละครจึงไม่ต้องรู้ว่ามีกี่อย่างที่ทำให้หลุมหาย
-    const overPit = !game.pitsSolid && game.level.isOverPit(centerWorldX);
+    const prevWorldX = centerWorldX - game.speed * dt;
 
     let justLanded = false;
 
-    // ต้อง "เพิ่งข้ามเส้นพื้นในเฟรมนี้" ถึงจะยืนได้ (ต้นเฟรมยังอยู่เหนือพื้น)
-    // ถ้าเช็คแค่ y >= GROUND_Y แมวที่ร่วงลงหลุมไปลึกแล้วจะเด้งกลับขึ้นมายืน
+    // ── ผิวที่เท้าจะเจอในเฟรมนี้ ──
+    // ถามด่านที่เดียว (ดู Level.surfaceAt / footing) ตัวละครจึงไม่ต้องรู้ว่าด่านนี้
+    // มีพื้นลอยหรือเนินหรือเปล่า ด่านที่มีแต่พื้นปกติได้ผลเท่าเดิมทุกกรณี
+    //
+    // เงื่อนไขหลักยังเป็นข้อเดิม: ต้อง "เพิ่งข้ามผิวในเฟรมนี้" ถึงจะยืนได้
+    // ถ้าเช็คแค่ y >= ผิว แมวที่ร่วงลงหลุมไปลึกแล้วจะเด้งกลับขึ้นมายืน
     // บนขอบหลุมฝั่งตรงข้ามทันทีที่พ้นช่วง x ของหลุม หลุมแคบจึงไม่อันตรายเลย
     // เทียบกับ vy เพราะ y ต้นเฟรมคือ y ปัจจุบันลบระยะที่เพิ่งตกไปในเฟรมนี้
-    const crossedGroundNow = this.y - this.vy * dt <= GROUND_Y;
+    const surface = game.level.surfaceAt(
+      centerWorldX, prevWorldX, this.y - this.vy * dt, this.y, this.onGround, game.pitsSolid,
+    );
 
-    if (!overPit && this.y >= GROUND_Y && crossedGroundNow) {
+    if (surface !== null) {
       if (!this.onGround) {
         justLanded = true;
         // ตกแรงแค่ไหนแบนแค่นั้น มีเพดานกันไม่ให้ตกจากที่สูงมากแล้วแบนเป็นแพนเค้ก
         this.squash = Math.min(0.85, 0.28 + impactV * 0.03);
       }
-      this.y = GROUND_Y;
+      this.y = surface;
       this.vy = 0;
       this.onGround = true;
       this.jumps = 0;

@@ -20,7 +20,11 @@ import {
   GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD, SHRIMP,
   SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD,
 } from '../config.js';
-import { AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute } from '../level.js';
+import {
+  AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute,
+  platTop, highestTop, footing,
+} from '../level.js';
+import { drawPlats } from '../render/platforms.js';
 import { GATES, GATE_LIST, gateMarks } from '../gates.js';
 import { gateViewAt, doorOpenAt } from '../gate-run.js';
 import { drawGateBack, drawGateFront, warmGateArt } from '../render/gates/index.js';
@@ -154,7 +158,7 @@ const KIT = [
     t: 'item', kind, group: 'item', pal: 'item', label: def.label, sub: def.sub, wide: true,
   })),
 
-  // ── พื้นเหยียบได้ (ของทดลอง) ──
+  // ── พื้นเหยียบได้ ──
   // ยังมีแค่ในหน้านี้ เกมจริงยังไม่รู้จัก — ไว้ลองจังหวะให้ลงตัวก่อนค่อยย้ายเข้าเครื่องเกม
   { t: 'hill', group: 'plat', pal: 'plat', label: 'เนินคุกกี้', sub: 'เดินขึ้นได้เลย ไม่ต้องกระโดด', w: 320, h: 70, wide: true },
   { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอย', sub: 'กระโดดขึ้นไปเหยียบ', w: 200, lift: 90 },
@@ -198,7 +202,7 @@ const TOPS = [
   ['shrimpAll', 'กุ้งทองทั้งแถว (โบนัส)'],
 ];
 
-const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow', 'fishFlake']);
+const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow', 'fishFlake', 'fishDots']);
 const NEEDS_TWO = new Set(['fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave']);
 // ช่อเกล็ดหิมะผูกกับยอดโค้งของจุดกระโดด จึงวางเดี่ยว ๆ ได้โดยไม่ต้องบอกจำนวนเม็ด
 
@@ -210,6 +214,7 @@ let docs = [];
 let cur = 0;
 let sel = null;         // id ของชิ้นที่เลือก
 let undoStack = [];
+let redoStack = [];
 let nextId = 1;
 
 const view = {
@@ -372,6 +377,7 @@ function routeOf(st) {
 
 /** สุ่มลำดับใหม่ด้วยกฎเดียวกับเกม — ด่านที่เขียน route มือไว้จะได้ของเดิมคืน */
 function rerollRoute(st) {
+  pushUndo();
   routes[st.id] = st.pool ? deep(composeRoute(st.pool, st.segments || 20)) : deep(st.route || []);
   saveRoutes();
   stageDirty();
@@ -503,35 +509,9 @@ function itemW(it) {
   return 0;
 }
 
-// ─────────────────────────────────────────────────────────────
-// พื้นเหยียบได้ — รูปทรงผิว
-// ─────────────────────────────────────────────────────────────
-const LEDGE_THICK = 26;
-
-/** ความยาวทางลาดของเนิน — ยาวอย่างน้อย 2.4 เท่าของความสูง ความชันสูงสุดจึงไม่เกิน ~0.63 */
-function hillRamp(p) {
-  return Math.min(p.w / 2, Math.max(60, p.h * 2.4));
-}
-
-/** y ของผิวชิ้นหนึ่ง ณ x — null ถ้า x ไม่อยู่ในช่วงของชิ้นนั้น */
-function platTop(p, x) {
-  if (x < p.x || x > p.x + p.w) return null;
-  if (p.kind === 'ledge') return p.top;
-  const u = x - p.x;
-  const ramp = hillRamp(p);
-  const t = u < ramp ? u / ramp : u > p.w - ramp ? (p.w - u) / ramp : 1;
-  return GROUND_Y - p.h * t * t * (3 - 2 * t);     // smoothstep: ตีนเนินกับยอดเนินไม่มีมุมหัก
-}
-
-/** ผิวที่สูงที่สุด ณ x (ไม่นับพื้นปกติ) — null ถ้าไม่มีพื้นเหยียบตรงนั้น */
-function highestTop(plats, x) {
-  let best = null;
-  for (const p of plats) {
-    const t = platTop(p, x);
-    if (t !== null && (best === null || t < best)) best = t;
-  }
-  return best;
-}
+// พื้นเหยียบได้: รูปผิว (platTop/highestTop) กับการหาที่ยืน (footing) มาจาก level.js
+// ตัวเดียวกับที่เกมใช้ — หน้านี้จึงไม่มีสูตรของตัวเองตามกฎของโปรเจกต์
+const LEDGE_THICK = LEVEL.ledgeThick;
 
 function byId(d, id) { return d.items.find((q) => q.id === id); }
 
@@ -601,6 +581,7 @@ function build(d, off = 0) {
       case 'arcHigh': made = safeArc(A.arcHigh, x, n); break;
       case 'fishWave': made = safeArc((xx, nn) => A.fishWave(xx, nn, it.gap, it.humps), x, n); break;
       case 'fishFlake': made = A.fishFlake(x, it.arm); break;
+      case 'fishDots': made = A.fishDots(x, it.pts || []); break;
       case 'fishRun': made = n > 0 ? A.fishRun(x, n, it.gap) : []; break;
       case 'fishLow': made = n > 0 ? A.fishLow(x, n, it.gap) : []; break;
 
@@ -630,7 +611,9 @@ function build(d, off = 0) {
     }
 
     if (made) {
-      if (it.t === 'fishRun') made = laneOf(made, it, plats);
+      // ลายวาดเองยกขึ้นลงได้อิสระ ไม่ต้องดูดเข้าชั้นมาตรฐานเหมือนแถวพื้น
+      if (it.t === 'fishDots') { if (it.rise) made = A.lift(made, it.rise); }
+      else if (it.t === 'fishRun') made = laneOf(made, it, plats);
       if (it.top) made = topping(made, it.top);
       for (const f of made) fish.push(tag(f, it));
     }
@@ -720,7 +703,7 @@ function active() {
     // ไอเท็มในท่อนเก็บแค่ชนิดกับ x — แปลงเป็นรูปร่างตอนเกิดจริงก่อนวาด
     const pickups = (p.pickups || []).map((q) => ({ ...PICKUPS[q.kind].make(q.x, 0), kind: q.kind }));
     return {
-      ...p, pickups, fallers: p.fallers || [], hazards: [], plats: [],
+      ...p, pickups, fallers: p.fallers || [], hazards: [], plats: p.plats || [],
       width: p.width || chunkW, partial: !!p.partial, readonly: true, gate: g ? g.id : null,
     };
   }
@@ -775,7 +758,6 @@ function stageScene() {
   const jumps = [];
   const fallers = [];
   const hazards = [];
-  const plats = [];
 
   for (let i = 0; i < route.length; i++) {
     const p = route[i].p;
@@ -785,7 +767,6 @@ function stageScene() {
     // (เกมไม่ต้องใช้ แต่หน้านี้ต้องวาดส่วนโค้งกระโดด) แพตเทิร์นคืนของใหม่ทุกครั้ง
     // ไม่มีผลข้างเคียง เรียกซ้ำจึงปลอดภัย
     const c = own ? build(own, x0) : (PATTERNS[p] ? PATTERNS[p](x0) : { jumps: [] });
-    if (own) plats.push(...c.plats);
     lvl.spawnChunk();
 
     jumps.push(...(c.jumps || []));
@@ -824,7 +805,9 @@ function stageScene() {
     jumps: jumps.sort((a, b) => a - b),
     fallers,
     hazards,
-    plats,
+    // พื้นเหยียบมาจาก Level ที่ปูไว้ ได้ทั้งท่อนของเกมและท่อนที่เราแก้เอง
+    // ถ้าเก็บเองตรงนี้จะเห็นเฉพาะท่อนของเรา ท่อนของเกมจะกลายเป็นพื้นล่องหน
+    plats: lvl.plats,
     pickups,
     width: lvl.nextChunkX,
     partial: false,
@@ -896,7 +879,7 @@ function draw() {
   drawGround(ctx, scene.pit, cam, pal, GROUND_ART[st.backdrop]);
   const gate = gateView(cam);
   if (gate) drawGateBack(ctx, gate.def, gate.v);
-  drawPlats(cam, pal);
+  drawPlats(ctx, scene.plats || [], cam, pal);
 
   // ทั้งด่านมีจุดกดหลายสิบจุด วาดส่วนโค้งทุกจุดทุกเฟรมคือเปลืองเปล่า ๆ
   // เอาเฉพาะที่อยู่ใกล้จอพอจะมองเห็น เผื่อข้างละ 400px ให้เส้นที่เริ่มนอกจอยังต่อเนื่อง
@@ -1003,102 +986,7 @@ function drawItems(cam) {
   }
 }
 
-/**
- * พื้นเหยียบได้ — วาดด้วยสีชุดเดียวกับพื้นของฉาก จึงกลืนเป็นส่วนหนึ่งของแมพ
- *   เนิน     ก้อนแป้งคุกกี้โผล่ขึ้นจากพื้น มีเปลือกกรอบตามแนวผิวและช็อกชิป
- *   พื้นลอย  แท่งเวเฟอร์ลอย มีไส้ครีมตรงกลาง และเงาบนพื้นบอกว่าลอยอยู่
- */
-function drawPlats(cam, pal) {
-  const ps = scene.plats || [];
-  for (const p of ps) {
-    const x0 = p.x - cam;
-    if (x0 > W + 20 || x0 + p.w < -20) continue;
-    if (p.kind === 'hill') drawHill(p, cam, pal);
-    else drawLedge(p, cam, pal);
-  }
-}
-
-function drawHill(p, cam, pal) {
-  const pts = [];
-  for (let x = p.x; x < p.x + p.w; x += 6) pts.push([x - cam, platTop(p, x)]);
-  pts.push([p.x + p.w - cam, GROUND_Y]);
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(p.x - cam, GROUND_Y + 8);
-  for (const [x, y] of pts) ctx.lineTo(x, y);
-  ctx.lineTo(p.x + p.w - cam, GROUND_Y + 8);
-  ctx.closePath();
-  ctx.fillStyle = pal.ground;
-  ctx.fill();
-  ctx.clip();
-
-  // เปลือกกรอบสองชั้นวิ่งตามผิว — ท่าเดียวกับแถบผิวของพื้นปกติ (crust / crustTop)
-  const trace = (dy, width, color) => {
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + dy) : ctx.moveTo(x, y + dy)));
-    ctx.lineWidth = width;
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = color;
-    ctx.stroke();
-  };
-  trace(11, 22, pal.crust);
-  trace(3, 6, pal.crustTop);
-
-  // ช็อกชิป — ตำแหน่งตายตัวตามพิกัดโลก เลื่อนจอแล้วไม่วิบวับ
-  ctx.fillStyle = 'rgba(58,28,16,.75)';
-  for (let x = p.x + 30; x < p.x + p.w - 20; x += 46) {
-    const top = platTop(p, x);
-    const depth = 30 + ((x * 7) % 23);
-    if (top + depth > GROUND_Y) continue;
-    ctx.beginPath();
-    ctx.ellipse(x - cam, top + depth, 5, 4, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawLedge(p, cam, pal) {
-  const x = p.x - cam;
-  const y = p.top;
-
-  // เงาบนพื้น — เห็นแล้วรู้ทันทีว่าแท่งนี้ลอยอยู่ ไม่ได้ตั้งบนพื้น
-  ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,.2)';
-  ctx.beginPath();
-  ctx.ellipse(x + p.w / 2, GROUND_Y + 2, p.w * 0.42, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const r = 9;
-  const body = () => {
-    ctx.beginPath();
-    ctx.roundRect(x, y, p.w, LEDGE_THICK, r);
-  };
-  body();
-  ctx.fillStyle = pal.crust;
-  ctx.fill();
-  ctx.clip();
-
-  // ลายตารางเวเฟอร์
-  ctx.strokeStyle = 'rgba(90,40,18,.28)';
-  ctx.lineWidth = 1.5;
-  for (let gx = x + 14; gx < x + p.w; gx += 16) {
-    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + LEDGE_THICK); ctx.stroke();
-  }
-  // ไส้ครีมตรงกลาง + ผิวบนที่โดนแสง
-  ctx.fillStyle = '#FFF1D6';
-  ctx.fillRect(x, y + LEDGE_THICK / 2 - 2, p.w, 4);
-  ctx.fillStyle = pal.crustTop;
-  ctx.fillRect(x, y, p.w, 6);
-  ctx.restore();
-
-  ctx.save();
-  body();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(60,24,10,.45)';
-  ctx.stroke();
-  ctx.restore();
-}
+// พื้นเหยียบวาดด้วย drawPlats() จาก render/platforms.js ตัวเดียวกับเกม
 
 /**
  * เส้นบอกชั้น — โผล่เฉพาะตอนเลือกแถวพื้นอยู่ บอกว่าลากขึ้นลงแล้วจะไปดูดเข้าชั้นไหน
@@ -1710,7 +1598,7 @@ function simulate(d, scIn) {
     vy += PHYSICS.gravity;
     y += vy;
 
-    const stand = footing(sc, cx, y - vy, y, onGround, fx.boost > 0 || fx.big > 0);
+    const stand = footingOf(sc, cx, y - vy, y, onGround, fx.boost > 0 || fx.big > 0);
     if (stand !== null) {
       y = stand; vy = 0; onGround = true; jumpsUsed = 0;
     } else {
@@ -1782,25 +1670,9 @@ function stepMovers(hz, fl, camera, rdt, bars) {
  *                  ถ้าไม่ดูดไว้แมวจะเด้งหลุดจากผิวทุกเฟรมตอนลงเนินเหมือนวิ่งลงบันได
  * พื้นลอยเป็นแบบทะลุจากข้างล่างได้ — กระโดดลอดขึ้นไปยืนข้างบนได้ ไม่ชนหัว
  */
-const STICK = 10;
-
-function footing(sc, cx, prevY, y, wasOnGround, pitsSolid = false) {
-  const prevX = cx - SPEED.run;
-  let best = null;
-  const tryTop = (now, before) => {
-    if (now === null) return;
-    const from = before === null ? now : before;
-    const land = prevY <= from + 0.5 && y >= now;
-    const stick = wasOnGround && y < now && now - y <= STICK;
-    if ((land || stick) && (best === null || now < best)) best = now;
-  };
-
-  // ติดสปีด/ตัวโต วิ่งข้ามปากหลุมได้ (ดู Game.pitsSolid)
-  const overPit = !pitsSolid && sc.pit.some((p) => cx > p.x + 6 && cx < p.x + p.w - 6);
-  if (!overPit) tryTop(GROUND_Y, GROUND_Y);
-  for (const p of sc.plats || []) tryTop(platTop(p, cx), platTop(p, prevX));
-  return best;
-}
+// ตัวจำลองเรียกของเกมตรง ๆ ก้าวละหนึ่งเฟรมอ้างอิง (step = 1) เหมือนที่เกมเดินจริง
+const footingOf = (sc, cx, prevY, y, wasOnGround, pitsSolid = false) =>
+  footing(sc.pit, sc.plats || [], cx, cx - SPEED.run, prevY, y, wasOnGround, pitsSolid);
 
 // ─────────────────────────────────────────────────────────────
 // ตรวจแบบไม่ต้องวิ่ง — กฎที่ดูจากผังก็รู้ว่าผิด
@@ -2003,11 +1875,6 @@ function runCheck() {
       ` (ราว ${frames} เฟรม) — ต่ำกว่า 10px ถือว่าโหดเกินไป`);
   }
 
-  if ((sc.plats || []).length) {
-    rows.push('<span class="warn">มีพื้นเหยียบ (ของทดลอง)</span>' +
-      ' — จำลองในหน้านี้ได้ครบ แต่เกมจริงยังไม่รองรับ ยังไม่ควรวางท่อนนี้ลงไฟล์เกม');
-  }
-
   if (sim.items.length) {
     const list = sim.items.map((p, i) => {
       const ok = sim.itemAt[i] < Infinity;
@@ -2092,23 +1959,60 @@ function dirty() {
   if (el) el.disabled = true;
 }
 
-function pushUndo() {
-  undoStack.push(JSON.stringify({ cur, docs, routes }));
-  if (undoStack.length > 60) undoStack.shift();
+// ─────────────────────────────────────────────────────────────
+// ย้อนกลับ / ทำซ้ำ
+//
+// เก็บเป็น "ภาพถ่ายสถานะทั้งก้อน" (เอกสารทุกท่อน + ลำดับท่อนทุกด่าน) ไม่ใช่เก็บเป็นคำสั่ง
+// เพราะการแก้ในหน้านี้มีหลายแบบมาก (ลากของ เปลี่ยนแพตเทิร์น สลับท่อน แปลงท่อน โรยไอเท็ม)
+// ถ้าเก็บเป็นคำสั่งต้องเขียนวิธีย้อนของแต่ละแบบแยกกัน แล้วพลาดง่ายเวลาเพิ่มของใหม่
+// ก้อนละไม่กี่สิบ KB และเก็บไว้แค่ 60 ก้าว จึงคุ้มกว่ามาก
+// ─────────────────────────────────────────────────────────────
+function snapshot() {
+  return JSON.stringify({ cur, docs, routes });
 }
 
-function undo() {
-  const s = undoStack.pop();
-  if (!s) return;
+function applySnapshot(s) {
   const o = JSON.parse(s);
   docs = o.docs;
   cur = Math.min(o.cur, docs.length - 1);
-  if (o.routes) { routes = o.routes; saveRoutes(); stageCache = null; }
+  if (o.routes) { routes = o.routes; saveRoutes(); }
+  stageCache = null;
   sel = null;
   sim = null;
   scrubAt = -1;
   save();
   refreshAll();
+  syncHistoryBtns();
+}
+
+function pushUndo() {
+  undoStack.push(snapshot());
+  if (undoStack.length > 60) undoStack.shift();
+  // ลงมือทำอะไรใหม่ = ทางเดินไปข้างหน้าเส้นเดิมใช้ไม่ได้แล้ว (กติกาเดียวกับทุกโปรแกรม)
+  redoStack.length = 0;
+  syncHistoryBtns();
+}
+
+function undo() {
+  const s = undoStack.pop();
+  if (!s) return;
+  redoStack.push(snapshot());
+  applySnapshot(s);
+}
+
+function redo() {
+  const s = redoStack.pop();
+  if (!s) return;
+  undoStack.push(snapshot());
+  applySnapshot(s);
+}
+
+/** ปุ่มต้องบอกได้ว่าตอนนี้ย้อนได้หรือไม่ได้ ไม่ใช่กดแล้วเงียบ */
+function syncHistoryBtns() {
+  const u = document.getElementById('undoBtn');
+  const r = document.getElementById('redoBtn');
+  if (u) u.disabled = !undoStack.length;
+  if (r) r.disabled = !redoStack.length;
 }
 
 function mutate(fn) {
@@ -2195,15 +2099,64 @@ function worldAt(ev) {
   };
 }
 
+/**
+ * คลิกอยู่ห่างจาก "ตัวของจริง" ของชิ้นนี้เท่าไร — null = ไม่โดนตัวมัน
+ *
+ * ของแต่ละชนิดมีตัวจริงคนละแบบ จึงวัดคนละวิธี:
+ *   ของกิน  = ระยะถึงเม็ดที่ใกล้ที่สุด (กรอบของมันคือกรอบรวมทั้งแถว ข้างในโล่ง)
+ *   ไอเท็ม   = ระยะถึงกึ่งกลางชิ้น (วาดเป็นวงกลม ไม่ใช่สี่เหลี่ยมเต็มกรอบ)
+ *   ที่เหลือ = ก้อนทึบเต็มกรอบอยู่แล้ว ให้ค่าคงที่เล็ก ๆ
+ *
+ * ── ทำไมของทึบไม่ใช่ 0 ──
+ * ถ้าให้ 0 ก้อนทึบจะชนะทุกอย่างเสมอ เม็ดปลาที่วางทับลังอยู่จะคลิกไม่โดนเลย
+ * ให้ 6 แทน = เม็ดที่คลิกตรงกลางเป๊ะ (ห่างไม่ถึง 6) ยังชนะได้ ส่วนคลิกห่าง ๆ ก้อนทึบชนะ
+ */
+const SOLID_DIST = 6;
+
+function hitDist(d, it, p) {
+  if (FOOD_T.has(it.t)) {
+    const one = build(soloDoc(d, it));
+    let best = null;
+    for (const f of one.fish) {
+      const dist = Math.hypot(f.x - p.x, f.y - p.y);
+      if (dist <= f.r + 7 && (best === null || dist < best)) best = dist;
+    }
+    return best;
+  }
+  if (it.t === 'item') {
+    const def = ITEM_DEFS[it.kind];
+    const b = itemBox(d, it);
+    const dist = Math.hypot(b.x + b.w / 2 - p.x, b.y + b.h / 2 - p.y);
+    return dist <= (def ? def.r : 18) + 7 ? dist : null;
+  }
+  return SOLID_DIST;
+}
+
+/**
+ * ของที่อยู่ใต้จุดที่คลิก
+ *
+ * ── ทำไมไม่ตัดสินด้วย "กรอบเล็กสุด" อย่างเดียวเหมือนเดิม ──
+ * กรอบของของกินคือกรอบรวมของเม็ดทั้งแถว ซึ่งข้างในโล่งเป็นส่วนใหญ่
+ * ลายที่วาดเอง (fishDots) กรอบยิ่งใหญ่และยิ่งโล่ง ของชิ้นเล็กที่บังเอิญซ้อนอยู่จึงชนะตลอด
+ * ผลคือคลิกตรงเม็ดของลายแล้วไปเลือกของชิ้นอื่น กด Delete ก็ลบผิดชิ้น
+ * (ผู้ใช้เจอจริง: คลิกตัว M แล้วเลือกไปโดนแถวปลาที่ทับอยู่ ลบเท่าไรตัว M ก็ไม่หาย
+ *  วัดแล้ว: คลิกตรงเม็ดของลาย 19 เม็ด กติกาเก่าเลือกถูกแค่ 9 เม็ด)
+ *
+ * กติกาใหม่: ใครอยู่ใกล้จุดที่คลิกที่สุดคนนั้นชนะ ถ้าไม่โดนตัวใครเลยค่อยใช้กรอบเล็กสุด
+ */
 function pick(d, p) {
-  let best = null;
+  let near = null;
+  let box = null;
   for (const it of d.items) {
     const b = itemBox(d, it);
     if (p.x < b.x - 4 || p.x > b.x + b.w + 4 || p.y < b.y - 4 || p.y > b.y + b.h + 4) continue;
     const area = b.w * b.h;
-    if (!best || area < best.area) best = { it, area };
+    const dist = hitDist(d, it, p);
+    if (dist !== null) {
+      if (!near || dist < near.dist || (dist === near.dist && area < near.area)) near = { it, dist, area };
+    } else if (!box || area < box.area) box = { it, area };
   }
-  return best && best.it;
+  return (near && near.it) || (box && box.it) || null;
 }
 
 cv.addEventListener('pointerdown', (ev) => {
@@ -2229,7 +2182,7 @@ cv.addEventListener('pointerdown', (ev) => {
     sel = hit.id;
     renderInspector();
     // แถวพื้นลากขึ้นลงได้ด้วย จึงต้องจำระยะแนวตั้งจากจุดที่จับไว้ ไม่งั้นแถวจะกระตุกมาอยู่ใต้นิ้ว
-    const offY = hit.t === 'fishRun' ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
+    const offY = (hit.t === 'fishRun' || hit.t === 'fishDots') ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
     drag = { kind: 'move', id: hit.id, off: p.x - xOf(d, hit), offY, sy: p.y };
     pushUndo();
     return;
@@ -2260,6 +2213,11 @@ cv.addEventListener('pointermove', (ev) => {
     if (it.t === 'fishRun' && (drag.lifting || Math.abs(p.y - drag.sy) > LANE_SNAP)) {
       drag.lifting = true;
       setRise(it, A.RUN_Y - (p.y - drag.offY));
+    }
+    // ลายวาดเองเลื่อนขึ้นลงได้ทุกพิกเซล ไม่ดูดเข้าชั้น — ลายต้องอยู่ตรงที่คนวางตั้งใจ
+    if (it.t === 'fishDots' && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
+      drag.lifting = true;
+      it.rise = Math.round(A.RUN_Y - (p.y - drag.offY));
     }
     dirty();
     renderInspector();
@@ -2315,7 +2273,8 @@ function wireChip(el, kit) {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       // กดเฉย ๆ ไม่ได้ลากไปไหน = วางกลางจอให้เลย
-      if (!made) addItem(kit, Math.round(view.cam + W / 2));
+      // ต้องเป็น docCam() ไม่ใช่ view.cam ด้วยเหตุผลเดียวกับตอนลาก (ดูใน move)
+      if (!made) addItem(kit, Math.round(docCam() + W / 2));
       updateCount();
       renderInspector();
     };
@@ -2342,7 +2301,11 @@ strip.addEventListener('pointerup', () => { stripDrag = false; });
 window.addEventListener('keydown', (ev) => {
   const tag = ev.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-  if (ev.key === 'z' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); undo(); return; }
+  const mod = ev.ctrlKey || ev.metaKey;
+  const k = ev.key.toLowerCase();
+  // Ctrl+Y กับ Ctrl+Shift+Z ใช้ได้ทั้งคู่ — คนละสำนักแต่เจอบ่อยพอกัน
+  if (mod && (k === 'y' || (k === 'z' && ev.shiftKey))) { ev.preventDefault(); redo(); return; }
+  if (mod && k === 'z') { ev.preventDefault(); undo(); return; }
   if (!sel || locked()) return;
 
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); delItem(sel); return; }
@@ -2428,12 +2391,19 @@ function renderInspector() {
   if (it.t === 'hill') rows.push(num('fH', 'สูง', it.h, 5, 20, 140));
   if (it.t === 'ledge') rows.push(num('fLift', 'ลอยสูงจากพื้น', it.lift, 5, 40, 260));
   if (it.t === 'fishRun' && it.lane === 'custom') rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
-  if (FOOD_T.has(it.t) && !(it.t === 'fishRun' && it.runTo)) {
+  // ลายวาดเองไม่มี "จำนวนเม็ด" ให้ปรับ — จำนวนมาจากตัวลายเอง แก้ที่กล่องวาดลาย
+  if (FOOD_T.has(it.t) && it.t !== 'fishDots' && !(it.t === 'fishRun' && it.runTo)) {
     rows.push(num('fN', 'จำนวนเม็ด', it.n, 1, NEEDS_TWO.has(it.t) ? 2 : 1, 40));
   }
+  if (it.t === 'fishDots') rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
   if (it.gap !== undefined) rows.push(num('fGap', 'ระยะห่าง', it.gap, 1, gapMin(it), 120));
   if (it.humps !== undefined) rows.push(num('fHumps', 'จำนวนลูกคลื่น', it.humps, 1, 1, 8));
   rows.push('</div>');
+
+  if (it.t === 'fishDots') {
+    rows.push(`<p class="tip">ลายวาดเอง ${(it.pts || []).length} เม็ด — กดปุ่มข้างล่างเพื่อเพิ่ม/ลบเม็ดทีละเม็ด</p>`);
+    rows.push('<button class="btn ghost" id="fArtEdit" style="width:100%">✎ แก้ลายนี้</button>');
+  }
 
   if (it.t === 'bee') {
     rows.push('<p class="tip">0° = กลางวงแกว่งกำลังลง · 90° = ต่ำสุด · 270° = สูงสุด — ตอนตรวจด่านผึ้งเริ่มแกว่งตอนเข้าจอ เหมือนในเกม</p>');
@@ -2452,7 +2422,6 @@ function renderInspector() {
       rows.push(`<label class="chk" style="margin:4px 0 8px"><input type="checkbox" id="fUnder"${it.under ? ' checked' : ''}> มีหลุมข้างใต้ (บังคับให้กระโดด)</label>`);
       rows.push(`<p class="tip">กระโดดเดี่ยวยกเท้าได้ ${REACH_HOP}px · สองชั้น ${REACH_DBL}px</p>`);
     }
-    rows.push('<p class="tip">ของทดลอง — ลองได้เฉพาะในหน้านี้ เกมจริงยังไม่รองรับ</p>');
   }
 
   if (it.t === 'fishRun') {
@@ -2495,7 +2464,17 @@ function renderInspector() {
   const lt = document.getElementById('fLetter');
   if (lt) lt.onchange = () => mutate((dd) => { byId(dd, it.id).letter = Number(lt.value); });
   bind('fLift', (v) => mutate((dd) => { byId(dd, it.id).lift = Math.max(40, Math.min(260, v)); }));
-  bind('fRise', (v) => { mutate((dd) => { const q = byId(dd, it.id); q.lane = 'custom'; q.rise = Math.max(-20, Math.min(260, Math.round(v))); }); });
+  bind('fRise', (v) => {
+    mutate((dd) => {
+      const q = byId(dd, it.id);
+      // lane เป็นเรื่องของแถวพื้นเท่านั้น ลายวาดเองยกได้อิสระอยู่แล้วไม่ต้องมีชั้น
+      if (q.t === 'fishRun') q.lane = 'custom';
+      q.rise = Math.max(-20, Math.min(260, Math.round(v)));
+    });
+  });
+
+  const ae = document.getElementById('fArtEdit');
+  if (ae) ae.onclick = () => artEditItem(it.id);
 
   const un = document.getElementById('fUnder');
   if (un) un.onchange = () => mutate((dd) => { byId(dd, it.id).under = un.checked; });
@@ -2856,8 +2835,8 @@ function toCode(d, idxIn) {
   for (const it of d.items) {
     const e = anchorExpr(d, it, names, 'x');
     // แถวของกินที่โรยของหายากไว้ เขียนเป็นการห่อฟังก์ชันเดิม ไม่ใช่รายการเม็ดดิบ
-    const lifted = (call) => (it.t !== 'fishRun' || !it.rise || it.lane === 'surface' ? call
-      : `lift(${call}, ${it.rise})`);
+    const liftable = it.t === 'fishDots' || (it.t === 'fishRun' && it.lane !== 'surface');
+    const lifted = (call) => (!liftable || !it.rise ? call : `lift(${call}, ${it.rise})`);
     const wrap = (raw) => {
       const call = lifted(raw);
       return !it.top ? `...${call}`
@@ -2882,6 +2861,8 @@ function toCode(d, idxIn) {
       case 'arcHigh': fish.push(wrap(`arcHigh(${e}, ${it.n})`)); break;
       case 'fishWave': fish.push(wrap(`fishWave(${e}, ${it.n}, ${it.gap}, ${it.humps})`)); break;
       case 'fishFlake': fish.push(wrap(`fishFlake(${e}, ${it.arm})`)); break;
+      // ลายวาดเอง: จุดทั้งชุดเขียนติดกันบรรทัดเดียว อ่านไม่เอาแต่แก้ในหน้านี้ได้เสมอ
+      case 'fishDots': fish.push(wrap(`fishDots(${e}, ${dotsCode(it.pts)})`)); break;
       case 'fishLow': fish.push(wrap(`fishLow(${e}, ${it.n}, ${it.gap})`)); break;
       case 'fishRun':
         if (it.runTo && names.has(it.runTo)) {
@@ -2912,7 +2893,7 @@ function toCode(d, idxIn) {
   if (fallers.length) body.push(`      fallers: [${fallers.join(', ')}],`);
   if (hazards.length) body.push(`      hazards: [${hazards.join(', ')}],`);
   if (pickups.length) body.push(`      pickups: [${pickups.join(', ')}],`);
-  if (plats.length) body.push(`      // (ทดลอง ยังไม่รองรับในเกม) platforms: [${plats.join(', ')}],`);
+  if (plats.length) body.push(`      plats: [${plats.join(', ')}],`);
   if (d.partial) body.push('      partial: true,');
   if (d.width !== chunkW) body.push(`      width: ${d.width},`);
 
@@ -2931,7 +2912,12 @@ function toCode(d, idxIn) {
 
   const meta = `  { kind: '${d.kind}', diff: ${d.diff} },    // ${idx}  ${d.name}`;
 
-  return { code: L.join('\n'), meta, idx, experimental: plats.length > 0 };
+  return { code: L.join('\n'), meta, idx };
+
+  /** จุดของลาย — เขียนสั้นที่สุดเท่าที่ยังอ่านออก */
+  function dotsCode(pts) {
+    return '[' + (pts || []).map(([dx, dy]) => `[${Math.round(dx)},${Math.round(dy)}]`).join(',') + ']';
+  }
 
   /** พิกัดของชิ้น เขียนเป็นสูตรถ้ามันเกาะจุดกดอยู่ ไม่งั้นเป็นตัวเลขดิบ */
   function anchorExpr(dd, it, nm, root) {
@@ -2959,6 +2945,7 @@ function buildKit() {
     const el = document.createElement('div');
     el.className = 'chip' + (kit.wide ? ' wide' : '');
     el.innerHTML = `${kit.label}<em>${kit.sub}</em>`;
+    el.title = `${kit.label} — ${kit.sub}`;   // โหมดทั้งด่านย่อชิปจนซ่อนคำอธิบาย ต้องมีทูลทิปแทน
     document.getElementById(map[kit.pal]).appendChild(el);
     wireChip(el, kit);
   }
@@ -2982,6 +2969,7 @@ function refreshMeta() {
 }
 
 function updateCount() {
+  renderItemList();
   const d = doc();
   const sc = build(d);
   const rare = sc.fish.filter((f) => f.kind && f.kind !== 'fish').length;
@@ -2998,6 +2986,7 @@ function refreshAll() {
   refreshDocPick();
   refreshMeta();
   renderInspector();
+  renderItemList();
   if (view.mode === 'stage') renderStageUI();
   syncEditClass();
   view.cam = clampCam(view.cam);
@@ -3093,8 +3082,11 @@ function renderSlotEdit() {
   const own = s.d ? docById(s.d) : null;
   const m = metaOf(s.p);
   const sl = stageScene().slots[i] || { x: 0, w: chunkW };
-  const ticks = SPRINKLE.map(([k, ic, label]) => `<label class="chk"><input type="checkbox" data-sp="${k}"`
-    + `${s[k] ? ' checked' : ''}> ${ic} ${label}</label>`).join('');
+  // ท่อนของเรา: ไอเท็มอยู่ในเอกสารแล้ว (ลาก/ลบเองได้) เหลือแต่กุ้งทองซึ่งไปเปลี่ยนชนิด
+  // ของเม็ดอาหารที่มีอยู่ ไม่ได้วางไอเท็มเพิ่ม จึงยังเป็นธงระดับท่อนต่อไป
+  const ticks = SPRINKLE.filter(([k]) => !own || !OWNABLE.includes(k))
+    .map(([k, ic, label]) => `<label class="chk"><input type="checkbox" data-sp="${k}"`
+      + `${s[k] ? ' checked' : ''}> ${ic} ${label}</label>`).join('');
 
   // ── หัวแผง: ท่อนของเกมเลือกแพตเทิร์นได้ ท่อนของเราบอกว่าเป็นของเราและแก้ได้เลย ──
   const head = own
@@ -3121,6 +3113,7 @@ function renderSlotEdit() {
     </select></label>
     <div class="sprinkle">${ticks}</div>
     <p class="tip">กุ้งทองเขียนทับเม็ดขนมเสมอ (กติกาของ spawnChunk) ใส่พร้อมกันจะเห็นแค่กุ้ง</p>
+    ${own ? '<p class="tip owned">ตัวอักษร หญ้าแมว กระป๋อง โล่ แม่เหล็ก กลายเป็นของในท่อนนี้แล้ว — ลากย้ายหรือกด Delete ลบได้เลย ถ้าจะเพิ่มใหม่ใช้ชิปในกล่อง “ไอเท็มตัวช่วย”</p>' : ''}
     ${own ? '' : '<button class="btn ghost" id="slotGrab">คัดไปเป็นท่อนใหม่ในโหมดท่อนเดี่ยว</button>'}
   `;
 
@@ -3161,6 +3154,7 @@ function renderSlotEdit() {
 function mutRoute(fn) {
   const st = stage();
   const route = routeOf(st);
+  pushUndo();
   fn(route, st);
   saveRoutes();
   stageDirty();
@@ -3177,6 +3171,8 @@ function swapSlot(a, b) {
 
 function pickSlot(i) {
   view.slot = i;
+  // ท่อนที่เป็นของเราแล้วแต่ยังมีธงไอเท็มค้างอยู่ (แปลงไว้ก่อนมีระบบนี้) — ดึงมาให้แก้ได้
+  materializeSprinkles(i);
   gotoSlot(i);
   renderStageUI();
   const b = timelineEl.querySelector(`.tl[data-i="${i}"]`);
@@ -3209,6 +3205,16 @@ function markHere(cam) {
   if (i === hereAt) return;
   hereAt = i;
   for (const el of timelineEl.children) el.classList.toggle('here', Number(el.dataset.i) === i);
+
+  // ── ท่อนที่กำลังมองอยู่ ต้องเป็นท่อนที่กำลังแก้อยู่เสมอ ──
+  // ถ้าปล่อยให้ต่างกันได้ ของที่วางจะไปตกในเอกสารของท่อนที่ "เลือกไว้" แต่ไปวาดตรงที่ "มองอยู่"
+  // เจอจริง: เลือกท่อน 5 ไว้แล้วเลื่อนจอมาดูท่อน 1 พอวางลาย ลายไปอยู่ในท่อน 5 ที่ x=-3567
+  // แล้วไปโผล่ทับท่อน 1 — หาในรายการของท่อน 1 ไม่เจอ คลิกก็ไม่โดน เพราะคนละเอกสารกัน
+  if (i >= 0 && i !== view.slot) {
+    view.slot = i;
+    materializeSprinkles(i);
+    refreshAll();
+  }
 }
 
 function setMode(m) {
@@ -3365,6 +3371,70 @@ document.getElementById('tplDel').onclick = () => {
   refreshTplPick();
 };
 
+
+// ─────────────────────────────────────────────────────────────
+// ไอเท็มที่ "ระบบโรยให้ทั้งท่อน" → ของในเอกสารที่แก้ได้
+//
+// ── ปัญหาที่แก้ ──
+// route เก็บไอเท็มเป็น "ธง" ระดับท่อน ({ p: 6, shield: true }) แล้วเกมเป็นคนหาที่วางเอง
+// ตอนรันจริง (spawnShield/spawnMagnet/spawnLetter/...) ของพวกนี้จึงไม่มีตัวตนในเอกสาร
+// ผลคือในหน้าออกแบบ มันโผล่บนสนามให้เห็น แต่คลิกไม่โดน ลบไม่ได้ ย้ายไม่ได้
+//
+// ── วิธี ──
+// พอท่อนกลายเป็น "ท่อนของฉัน" แล้ว ทุกอย่างในท่อนควรเป็นของเรา — ย้ายธงพวกนี้มาเป็น
+// ไอเท็มจริงในเอกสาร โดยวางที่ "ตำแหน่งเดิมที่เกมเลือกไว้" ภาพจึงไม่ขยับสักพิกเซล
+// แล้วถอดธงออกจาก route ไม่ให้ระบบโรยซ้ำอีกชั้น
+//
+// ── ทำไมต้องเทียบก่อน-หลัง ไม่ใช่กวาดไอเท็มทั้งช่วงท่อน ──
+// ไอเท็มในช่วงนั้นมีสองแหล่ง: ธงของ route กับของที่เอกสารวางเอง (c.pickups)
+// ถ้ากวาดทั้งหมดมาใส่เอกสาร ของที่เอกสารมีอยู่แล้วจะถูกใส่ซ้ำเป็นสองชิ้นทับกัน
+// จึงประกอบด่านสองรอบ (มีธง / ไม่มีธง) แล้วเอาเฉพาะส่วนต่าง ซึ่งคือของที่ธงเป็นคนวาง
+//
+// เม็ดขนมกับกุ้งทองไม่อยู่ในนี้ เพราะสองตัวนั้นไม่ได้ "วางไอเท็มเพิ่ม" แต่ไป
+// เปลี่ยนชนิดของเม็ดอาหารที่มีอยู่แล้ว (makeKibble/makeShrimp) ซึ่งยังทำงานกับท่อนของเราได้ปกติ
+// ─────────────────────────────────────────────────────────────
+const OWNABLE = ['letter', 'nip', 'can', 'shield', 'magnet'];
+
+/** ไอเท็มที่อยู่ในช่วงของท่อน i — คืนพิกัดเทียบกับต้นท่อน (พิกัดแบบที่เอกสารใช้) */
+function pickupsIn(i) {
+  const sc = stageScene();
+  const sl = sc.slots[i];
+  if (!sl) return [];
+  return sc.pickups
+    .filter((p) => p.x >= sl.x && p.x < sl.x + sl.w)
+    .map((p) => ({ kind: p.kind, x: Math.round(p.x - sl.x), idx: p.idx }));
+}
+
+function materializeSprinkles(i) {
+  const route = routeOf(stage());
+  const s = route[i];
+  const d = s && s.d ? docById(s.d) : null;
+  if (!d) return false;
+  const flags = OWNABLE.filter((k) => s[k]);
+  if (!flags.length) return false;
+
+  pushUndo();
+  stageCache = null;
+  const before = pickupsIn(i);
+  for (const k of flags) delete s[k];
+  stageCache = null;
+  const after = pickupsIn(i);
+
+  const left = after.slice();
+  for (const b of before) {
+    const k = left.findIndex((a) => a.kind === b.kind && Math.abs(a.x - b.x) < 2);
+    if (k >= 0) { left.splice(k, 1); continue; }   // ของที่เอกสารวางเองอยู่แล้ว
+    const it = { id: uid(), t: 'item', group: 'item', kind: b.kind, x: b.x };
+    if (b.idx !== undefined && b.idx !== null) it.letter = b.idx;
+    d.items.push(it);
+  }
+
+  save();
+  saveRoutes();
+  stageCache = null;
+  return true;
+}
+
 // ─────────────────────────────────────────────────────────────
 // แปลงท่อนของเกมให้เป็นท่อนของเรา (และกลับ)
 // ─────────────────────────────────────────────────────────────
@@ -3380,6 +3450,8 @@ function adoptSlot() {
   save();
   saveRoutes();
   stageDirty();
+  // ไอเท็มที่ระบบโรยให้ท่อนนี้ ต้องกลายเป็นของในเอกสารด้วย ไม่งั้นมันจะลบไม่ได้ย้ายไม่ได้
+  materializeSprinkles(view.slot);
   sel = null;
   renderStageUI();
   refreshAll();
@@ -3418,7 +3490,6 @@ function stageOwnCode(st) {
     at,
     code: parts.map((q) => q.code).join('\n'),
     meta: parts.map((q) => q.meta).join('\n'),
-    experimental: parts.some((q) => q.experimental),
     names: own.map((d, k) => `#${PATTERNS.length + k} = ${d.name}`).join(' · '),
   };
 }
@@ -3540,6 +3611,9 @@ docGate.onchange = (e) => {
   refreshMeta();
 };
 
+document.getElementById('undoBtn').onclick = undo;
+document.getElementById('redoBtn').onclick = redo;
+
 document.getElementById('runCheck').onclick = runCheck;
 
 const scrubEl = document.getElementById('scrub');
@@ -3617,6 +3691,598 @@ document.getElementById('fileIn').onchange = (e) => {
   e.target.value = '';
 };
 
+
+
+// ─────────────────────────────────────────────────────────────
+// รายการของทุกชิ้นในท่อน — ทางเลือกที่ "กดพลาดไม่ได้"
+//
+// ── ทำไมต้องมี ──
+// การคลิกในสนามต้องเดาว่าของชิ้นไหนอยู่บนสุด ณ จุดนั้น ซึ่งพลาดได้เสมอเมื่อของซ้อนกัน
+// (ผู้ใช้เจอจริงกับลายที่วาดเอง: คลิกเท่าไรก็ไปโดนแถวปลาที่ทับอยู่ ลบไม่ได้สักที)
+// รายการนี้อ้างถึงของ "ตามตัวตน" ไม่ใช่ตามตำแหน่งบนจอ จึงเลือกผิดไม่ได้เลย
+// ─────────────────────────────────────────────────────────────
+const itemListEl = document.getElementById('itemList');
+
+/** ชื่อสั้น ๆ ของชิ้นหนึ่ง พร้อมข้อมูลที่ช่วยแยกแยะเมื่อมีของชนิดเดียวกันหลายชิ้น */
+function itemLabel(d, it) {
+  const kit = KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows)
+    && (k.kind === undefined || k.kind === it.kind));
+  let name = kit ? kit.label : it.t;
+  if (it.t === 'fishDots') name = `ลายวาดเอง ${(it.pts || []).length} เม็ด`;
+  else if (it.t === 'jump') name = 'จุดกด';
+  else if (FOOD_T.has(it.t) && it.n) name += ` ×${it.n}`;
+  return name;
+}
+
+/**
+ * ของที่หลุดออกนอกท่อนของตัวเอง — ค้นทั้งด่าน ไม่ใช่แค่ท่อนที่เปิดอยู่
+ *
+ * ของพวกนี้ยังถูกวาดบนจอ (ตามพิกัดของมัน) แต่ไปโผล่คร่อมท่อนอื่น
+ * จึงหาไม่เจอในรายการของท่อนที่เห็น และคลิกในสนามก็ไม่โดนเพราะคนละเอกสารกัน
+ * ต้องมีทางเก็บกวาดจากที่เดียว ไม่งั้นมันค้างอยู่ตลอดไปโดยลบไม่ได้
+ */
+function strayItems() {
+  if (view.mode !== 'stage') return [];
+  const route = routes[stage().id];
+  if (!route) return [];
+  const out = [];
+  route.forEach((s, i) => {
+    const dd = s.d && docById(s.d);
+    if (!dd) return;
+    for (const it of dd.items) {
+      const x = Math.round(xOf(dd, it));
+      if (x < -20 || x > dd.width + 20) out.push({ slot: i, doc: dd, it, x });
+    }
+  });
+  return out;
+}
+
+function renderItemList() {
+  if (!itemListEl) return;
+
+  // ── ของที่หลุดไปอยู่ในท่อนอื่น ต้องเห็นเสมอ ──
+  // แม้ท่อนที่เปิดอยู่จะยังแก้ไม่ได้ ของพวกนี้ก็ยังวาดทับมันอยู่ดี
+  // ถ้าไม่โชว์ตรงนี้จะไม่มีที่ไหนให้เก็บกวาดมันได้เลย
+  const mine = view.mode === 'stage' && slotDoc() ? slotDoc().id : (locked() ? null : doc().id);
+  const stray = strayItems().filter((q) => q.doc.id !== mine);
+  const strayHtml = stray.length
+    ? '<p class="tip warnrow">⚠ ของที่หลุดไปอยู่ในท่อนอื่น — มันจะไปวาดทับท่อนที่ไม่ใช่ของมัน</p>'
+      + stray.map((q) => `<div class="irow stray" data-stray="${q.doc.id}|${q.it.id}|${q.slot}">`
+        + `<span class="nm">${esc(itemLabel(q.doc, q.it))}</span>`
+        + `<span class="xx out">ท่อน ${q.slot + 1} · x=${q.x}</span>`
+        + `<button type="button" class="del" data-delstray="${q.doc.id}|${q.it.id}" title="ลบชิ้นนี้">✕</button></div>`).join('')
+    : '';
+
+  if (locked()) {
+    itemListEl.innerHTML = '<p class="tip">ท่อนนี้ยังแก้ไม่ได้ — กด “แก้ท่อนนี้ให้เป็นของฉัน” ก่อน</p>' + strayHtml;
+    return;
+  }
+
+  const d = doc();
+  const list = d.items.slice().sort((a2, b2) => xOf(d, a2) - xOf(d, b2));
+  const rowsHtml = list.map((it) => {
+    const x = Math.round(xOf(d, it));
+    const out = x < -20 || x > d.width + 20;      // เตือนของที่หลุดออกนอกท่อน
+    return `<div class="irow${it.id === sel ? ' on' : ''}" data-id="${it.id}">`
+      + `<span class="nm">${esc(itemLabel(d, it))}</span>`
+      + `<span class="xx${out ? ' out' : ''}">x=${x}</span>`
+      + `<button type="button" class="del" data-del="${it.id}" title="ลบชิ้นนี้">✕</button></div>`;
+  }).join('');
+
+  itemListEl.innerHTML = (list.length ? rowsHtml : '<p class="tip">ยังไม่มีของในท่อนนี้</p>') + strayHtml;
+}
+
+itemListEl.onclick = (e) => {
+  const ds = e.target.closest('[data-delstray]');
+  if (ds) {
+    const [docId, itemId] = ds.dataset.delstray.split('|');
+    const dd = docById(docId);
+    if (dd) {
+      pushUndo();
+      dd.items = dd.items.filter((q) => q.id !== itemId);
+      dirty();
+      renderItemList();
+    }
+    return;
+  }
+  const goStray = e.target.closest('[data-stray]');
+  if (goStray) {
+    // พาไปที่ท่อนเจ้าของ แล้วเลือกชิ้นนั้นให้ จะได้แก้ต่อได้ตามปกติ
+    const [, itemId, slot] = goStray.dataset.stray.split('|');
+    pickSlot(Number(slot));
+    sel = itemId;
+    const dd = doc();
+    const it = byId(dd, itemId);
+    if (it) { const b = itemBox(dd, it); centerOn(editOff() + b.x + b.w / 2); }
+    renderInspector();
+    renderItemList();
+    return;
+  }
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    delItem(del.dataset.del);
+    renderItemList();
+    return;
+  }
+  const row = e.target.closest('.irow');
+  if (!row) return;
+  const d = doc();
+  const it = byId(d, row.dataset.id);
+  if (!it) return;
+  sel = it.id;
+  // เลื่อนจอไปหาของชิ้นนั้น จะได้เห็นว่ากำลังเลือกอะไรอยู่
+  const b = itemBox(d, it);
+  centerOn(editOff() + b.x + b.w / 2);
+  renderInspector();
+  renderItemList();
+};
+
+// ─────────────────────────────────────────────────────────────
+// วาดลายของกิน — วาดรูปหรือพิมพ์ข้อความ แล้วแปลงเป็นเม็ดอาหารทั้งลาย
+//
+// ── ทำไมไม่ใช้ฟอนต์แบบจุด (bitmap font) ที่เขียนเอง ──
+// เกมนี้เป็นภาษาไทย ซึ่งมีสระบน สระล่าง วรรณยุกต์ซ้อนกันได้สามชั้น
+// ฟอนต์จุดที่เขียนเองจะรองรับไม่ครบ และต้องมาไล่เพิ่มทีละตัวตลอดไป
+// วิธีที่ใช้คือให้เบราว์เซอร์วาดข้อความด้วยฟอนต์จริงลงผ้าใบซ่อน แล้วค่อย "สุ่มจุด"
+// จากพิกเซลที่ทึบ — ได้ทั้งไทย อังกฤษ ตัวเลข อิโมจิ โดยไม่ต้องรู้จักตัวอักษรเลยสักตัว
+// การวาดเองก็ใช้ทางเดียวกัน ต่างกันแค่ใครเป็นคนทำให้พิกเซลทึบ
+//
+// ── กติกาที่ยังต้องรักษา ──
+// เม็ดทุกเม็ดต้องเก็บได้จริง ลายจึงถูกจำกัดความสูงไม่ให้เกินเพดานกระโดดสองชั้น
+// และมีเส้นบอกเพดานทั้งสองแบบให้เห็นในกล่องนี้ตั้งแต่ตอนวาด ไม่ต้องรอไปตรวจทีหลัง
+// ─────────────────────────────────────────────────────────────
+const artModal = document.getElementById('artModal');
+const artPad = document.getElementById('artPad');
+const artCtx = artPad.getContext('2d', { willReadFrequently: true });
+const PAD_W = artPad.width;
+const PAD_H = artPad.height;
+
+/** เพดานที่เอื้อมถึงจริง วัดจากส่วนโค้งกระโดดของเกม ไม่ได้ตั้งเลขเอง */
+const ART_CEIL = REACH_DBL;
+
+const art = {
+  mode: 'text',
+  strokes: [],          // [[x,y], ...] ต่อหนึ่งเส้น
+  drawing: null,
+  pts: [],              // ผลลัพธ์ [[dx,dy], ...]
+  w: 0,
+  gap: 26,              // ระยะห่างที่เม็ดชุดปัจจุบันวางอยู่บนตาราง
+  paint: null,          // ระหว่างลากในโหมดแก้เม็ด: 'on' = เติม, 'off' = ลบ
+  editId: null,         // แก้ลายเดิมอยู่ = id ของชิ้นนั้น · null = สร้างใหม่
+};
+
+/** จุดบนจอของเม็ดที่ช่อง (c, r) — ใช้ร่วมกันทั้งตอนวาดพรีวิวและตอนคลิกแก้ */
+const ART_X0 = 12;
+function artBaseY() { return PAD_H - 24; }
+function artMaxRow(gap) { return Math.floor(ART_CEIL / gap); }
+
+/** ช่องบนตารางที่ตรงกับจุดบนผ้าใบ — คืน null ถ้าอยู่นอกเขตที่วางได้ */
+function artCellAt(px, py, gap) {
+  const c = Math.round((px - ART_X0) / gap);
+  const r = Math.round((artBaseY() - py) / gap);
+  if (c < 0 || r < 0 || r > artMaxRow(gap)) return null;
+  return [c * gap, r * gap];
+}
+
+function artNum(id, dflt) {
+  const v = Number(document.getElementById(id).value);
+  return Number.isFinite(v) ? v : dflt;
+}
+
+/** วาดสิ่งที่ผู้ใช้ป้อนลงผ้าใบ (ทึบ = มีเม็ด) แล้วคืนช่วงที่ใช้จริง */
+function artPaintSource(g) {
+  g.clearRect(0, 0, PAD_W, PAD_H);
+  g.fillStyle = '#FFFFFF';
+  if (art.mode === 'text') return;   // ตัวอักษรคิดจุดเองใน artTextDots ไม่ผ่านผ้าใบนี้
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.strokeStyle = '#FFFFFF';
+  g.lineWidth = Math.max(10, artNum('artGap', 28) * 0.7);
+  for (const s of art.strokes) {
+    if (s.length < 2) {
+      g.beginPath();
+      g.arc(s[0][0], s[0][1], g.lineWidth / 2, 0, Math.PI * 2);
+      g.fill();
+      continue;
+    }
+    g.beginPath();
+    g.moveTo(s[0][0], s[0][1]);
+    for (let i = 1; i < s.length; i++) g.lineTo(s[i][0], s[i][1]);
+    g.stroke();
+  }
+}
+
+/**
+ * แปลงลายบนผ้าใบเป็นจุดวางเม็ด
+ *
+ * ── ทำไมต้องวัด "พื้นที่ทึบทั้งช่อง" ไม่ใช่จิ้มทีละพิกเซล ──
+ * ของเดิมเช็กพิกเซลเดียวตรงกลางช่อง ซึ่งพลาดง่ายมากกับเส้นบาง ๆ อย่างตัวอักษร
+ * วัดจริงแล้ว "แมว" ได้ 7 เม็ด และพอเปลี่ยนระยะห่างเป็น 40 ได้ศูนย์เม็ด
+ * เพราะแถวที่สุ่มดันไปตกในช่องว่างระหว่างเส้นพอดี
+ * ตอนนี้นับพิกเซลทึบทั้งช่องแล้วดูสัดส่วน ช่องไหนมีหมึกพอก็ลงเม็ด — ไม่มีจุดบอดอีก
+ *
+ * ── ทำไมต้องปูตารางจาก "กรอบของหมึก" ──
+ * ปูจากขอบผ้าใบจะได้แถวบน/ล่างที่ไม่ตรงกับตัวอักษร ลายเลยดูเบี้ยว
+ * ปูจากกรอบหมึกแทน แถวล่างสุดจึงอยู่ที่ dy = 0 พอดีเสมอ (ลายนั่งบนเส้นวิ่ง)
+ * และแถวบนสุดอยู่ที่ยอดลายพอดี
+ *
+ * ── ย่อให้พอดีเพดานเอง ──
+ * ลายที่สูงเกินเพดานกระโดดสองชั้นจะเก็บไม่ได้ทั้งแถวบน แทนที่จะตัดหัวทิ้ง
+ * ให้ย่อทั้งลายตามสัดส่วนลงมา ตัวอักษรจึงยังครบตัว แค่เตี้ยลง
+ */
+/**
+ * ตัวอักษร → จุด
+ *
+ * ── ทำไมไม่ย่อฟอนต์ใหญ่ลงมา ──
+ * เพดานกระโดดกับระยะห่างเม็ดจำกัดให้ลายสูงได้แค่ 5-7 แถว
+ * ย่อฟอนต์ 220px ลงเหลือ 6 แถวยังไงก็เบลอ ตัวอักษรติดกันเป็นก้อน (ลองแล้วทั้งถมทึบและลายเส้น)
+ *
+ * วิธีที่ได้ผลคือเรนเดอร์ตัวอักษรที่ "ขนาดเท่าจำนวนแถว" ตั้งแต่แรก — ฟอนต์ 6px
+ * แล้วอ่านทีละพิกเซล หนึ่งพิกเซลคือหนึ่งเม็ด ได้หน้าตาแบบป้ายไฟ LED ซึ่งอ่านออกจริง
+ * (ตัวเรนเดอร์ของเบราว์เซอร์จัดการ hinting ให้เองที่ขนาดเล็ก ดีกว่าที่เราย่อเอง)
+ *
+ * ── ข้อจำกัดที่ต้องยอมรับ ──
+ * 6 แถวพอสำหรับตัวพิมพ์ใหญ่อังกฤษกับตัวเลข แต่ภาษาไทยที่มีสระบน-ล่างจะอ่านไม่ออก
+ * เป็นข้อจำกัดของ "จำนวนเม็ดที่เอื้อมถึง" ไม่ใช่ของโค้ด
+ */
+function artTextDots(gap, want) {
+  const txt = document.getElementById('artText').value || '';
+  if (!txt.trim()) return [];
+  const rows = Math.max(3, Math.min(9, Math.floor(want / gap) + 1));
+
+  // ── ค่าสองตัวนี้มาจากการทดลอง ไม่ได้เดา ──
+  // ตัวหนา (700) + เกณฑ์ต่ำ (90) ทำให้ตัวอักษรกลายเป็นก้อนทึบติดกันหมด อ่านไม่ออกสักตัว
+  // ตัวปกติ (400) + เกณฑ์สูง (160) ตัดขอบที่เบลอทิ้ง เหลือแต่แกนของเส้น ตัวอักษรจึงแยกออกจากกัน
+  // และต้องเรนเดอร์ที่ฟอนต์ "ใหญ่กว่าจำนวนแถวราวครึ่งเท่า" แล้วค่อยได้ความสูงเท่าที่ต้องการ
+  const WEIGHT = 400;
+  const THRESHOLD = 160;
+
+  const read = (fontPx) => {
+    const cv = document.createElement('canvas');
+    let g = cv.getContext('2d', { willReadFrequently: true });
+    const font = `${WEIGHT} ${fontPx}px 'IBM Plex Sans Thai', system-ui, sans-serif`;
+    g.font = font;
+    cv.width = Math.max(4, Math.ceil(g.measureText(txt).width) + 6);
+    cv.height = fontPx * 2 + 6;
+    g = cv.getContext('2d', { willReadFrequently: true });
+    g.font = font;                     // ตั้งขนาดผ้าใบแล้วค่าเดิมถูกล้าง ต้องตั้งใหม่
+    g.textBaseline = 'alphabetic';
+    g.fillStyle = '#FFFFFF';
+    g.fillText(txt, 3, fontPx * 1.5);
+
+    const d = g.getImageData(0, 0, cv.width, cv.height).data;
+    const on = [];
+    let y0 = cv.height, y1 = -1, x0 = cv.width;
+    for (let y = 0; y < cv.height; y++) {
+      for (let x = 0; x < cv.width; x++) {
+        if (d[(y * cv.width + x) * 4 + 3] > THRESHOLD) {
+          on.push([x, y]);
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+          if (x < x0) x0 = x;
+        }
+      }
+    }
+    return { on, y1, x0, h: y1 < 0 ? 0 : (y1 - y0 + 1) };
+  };
+
+  // ไล่ขนาดฟอนต์ลงมาจนกว่าจะได้จำนวนแถวที่ไม่เกินเพดาน — ได้รายละเอียดมากที่สุดเท่าที่ใส่ได้
+  let best = null;
+  for (let fp = Math.round(rows * 1.7); fp >= 5; fp--) {
+    const r = read(fp);
+    if (!r.on.length) continue;
+    best = r;
+    if (r.h <= rows) break;
+  }
+  if (!best || !best.on.length) return [];
+  return best.on.map(([x, y]) => [(x - best.x0) * gap, (best.y1 - y) * gap]);
+}
+
+function artSample() {
+  const gap = Math.min(60, Math.max(20, artNum('artGap', 28)));
+
+  // ── โหมดแก้เม็ดเอง ──
+  // ไม่สร้างลายใหม่ ใช้เม็ดชุดที่มีอยู่ตรง ๆ เพราะคนกำลังแก้มันอยู่
+  // ถ้าเปลี่ยนระยะห่าง ให้ย้ายเม็ดทั้งชุดไปลงตารางใหม่ ไม่งั้นเม็ดจะหลุดออกนอกช่อง
+  if (art.mode === 'edit') {
+    if (gap !== art.gap && art.gap > 0) {
+      const seen = new Set();
+      const moved = [];
+      for (const [dx, dy] of art.pts) {
+        const k = `${Math.round(dx / art.gap)},${Math.round(dy / art.gap)}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        moved.push([Math.round(dx / art.gap) * gap, Math.round(dy / art.gap) * gap]);
+      }
+      art.pts = moved.filter(([, dy]) => dy <= ART_CEIL);
+    }
+    art.gap = gap;
+    art.w = art.pts.length ? Math.max(...art.pts.map((p) => p[0])) : 0;
+    return;
+  }
+  art.gap = gap;
+  const wantH = Math.min(ART_CEIL, Math.max(gap, artNum('artH', 150)));
+  if (art.mode === 'text') {
+    const pts = artTextDots(gap, wantH);
+    art.pts = pts;
+    art.w = pts.length ? Math.max(...pts.map((p) => p[0])) : 0;
+    return;
+  }
+
+  const src = document.createElement('canvas');
+  src.width = PAD_W;
+  src.height = PAD_H;
+  const sg = src.getContext('2d', { willReadFrequently: true });
+  artPaintSource(sg);
+  const d = sg.getImageData(0, 0, PAD_W, PAD_H).data;
+  const A_AT = (x, y) => d[(y * PAD_W + x) * 4 + 3];
+
+  // 1) กรอบของหมึก
+  let x0 = PAD_W, x1 = -1, y0 = PAD_H, y1 = -1;
+  for (let y = 0; y < PAD_H; y++) {
+    for (let x = 0; x < PAD_W; x++) {
+      if (A_AT(x, y) > 128) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) { art.pts = []; art.w = 0; return; }
+
+  // 2) ย่อถ้าสูงเกินเพดาน — เก็บสัดส่วนไว้ ลายจึงไม่เบี้ยว
+  const inkH = y1 - y0;
+  const k = inkH > 0 ? wantH / inkH : 1;
+  const cell = gap / k;                       // ขนาดช่องในพิกัดของผ้าใบต้นฉบับ
+
+  const cols = Math.max(1, Math.round((x1 - x0) / cell) + 1);
+  const rows = Math.max(1, Math.round(inkH / cell) + 1);
+
+  // 3) ช่องไหนมีหมึกเกิน 28% ของพื้นที่ ถือว่ามีเม็ด
+  const out = [];
+  const half = cell / 2;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = x0 + c * cell;
+      const cy = y1 - r * cell;
+      let hit = 0, seen = 0;
+      const ax = Math.max(0, Math.round(cx - half));
+      const bx = Math.min(PAD_W - 1, Math.round(cx + half));
+      const ay = Math.max(0, Math.round(cy - half));
+      const by = Math.min(PAD_H - 1, Math.round(cy + half));
+      for (let y = ay; y <= by; y += 2) {
+        for (let x = ax; x <= bx; x += 2) { seen++; if (A_AT(x, y) > 128) hit++; }
+      }
+      if (seen && hit / seen > 0.3) out.push([c * gap, r * gap]);
+    }
+  }
+
+  art.pts = out;
+  art.w = out.length ? Math.max(...out.map((p) => p[0])) : 0;
+}
+
+/** ภาพตัวอย่าง: โชว์เม็ดจริง ๆ พร้อมเส้นเพดานกระโดด จะได้รู้ตั้งแต่ตอนวาดว่าเอื้อมถึงไหม */
+function artDraw() {
+  artSample();
+  const g = artCtx;
+  g.clearRect(0, 0, PAD_W, PAD_H);
+  g.fillStyle = '#16121C';
+  g.fillRect(0, 0, PAD_W, PAD_H);
+
+  const base = PAD_H - 24;                      // เส้นวิ่ง
+  const line = (dy, col, text) => {
+    const y = base - dy;
+    g.strokeStyle = col;
+    g.setLineDash([5, 4]);
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(0, y + 0.5);
+    g.lineTo(PAD_W, y + 0.5);
+    g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = col;
+    g.font = '10px system-ui';
+    g.fillText(text, 6, y - 3);
+  };
+  line(0, 'rgba(255,255,255,.35)', 'เส้นวิ่ง');
+  line(REACH_HOP, 'rgba(127,227,218,.55)', 'เพดานกระโดดเดี่ยว');
+  line(REACH_DBL, 'rgba(196,164,255,.55)', 'เพดานกระโดดสองชั้น');
+
+  // ตารางช่องวางเม็ด — มีเฉพาะตอนแก้เม็ดเอง จะได้รู้ว่าคลิกตรงไหนเม็ดจะไปลงช่องไหน
+  if (art.mode === 'edit') {
+    const gap = art.gap;
+    g.strokeStyle = 'rgba(255,255,255,.07)';
+    g.lineWidth = 1;
+    const maxR = artMaxRow(gap);
+    for (let c = 0; ART_X0 + c * gap < PAD_W; c++) {
+      const x = ART_X0 + c * gap;
+      g.beginPath();
+      g.moveTo(x + 0.5, base - maxR * gap);
+      g.lineTo(x + 0.5, base);
+      g.stroke();
+    }
+    for (let r = 0; r <= maxR; r++) {
+      const y = base - r * gap;
+      g.beginPath();
+      g.moveTo(ART_X0, y + 0.5);
+      g.lineTo(PAD_W, y + 0.5);
+      g.stroke();
+    }
+  }
+
+  // ลายที่วาดไว้ (จาง ๆ) ให้เห็นว่าเม็ดเกาะตามอะไร
+  if (art.mode === 'draw') {
+    g.save();
+    g.globalAlpha = 0.16;
+    artPaintSource(g);
+    g.restore();
+  }
+
+  for (const [dx, dy] of art.pts) {
+    g.fillStyle = dy > REACH_DBL ? '#FF7A7A' : '#7FE3DA';
+    g.beginPath();
+    g.arc(ART_X0 + dx, base - dy, LEVEL.fishR * 0.8, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  const info = document.getElementById('artInfo');
+  const hint = art.mode === 'edit' ? ' — คลิกช่องว่างเพื่อเติมเม็ด คลิกเม็ดเพื่อลบ ลากค้างได้' : '';
+  info.textContent = art.pts.length
+    ? `${art.pts.length} เม็ด · กว้าง ${art.w}px · สูง ${Math.max(...art.pts.map((p) => p[1]))}px`
+      + ` (เพดานที่เอื้อมถึง ${ART_CEIL}px)${hint}`
+    : (art.mode === 'edit'
+      ? 'ตารางว่าง — คลิกในตารางเพื่อวางเม็ดเอง'
+      : 'ยังไม่มีลาย — พิมพ์ข้อความ หรือสลับไปโหมด “วาดเอง” แล้วลากในกรอบ');
+}
+
+function artSyncMode() {
+  document.body.classList.toggle('art-draw', art.mode === 'draw');
+  document.body.classList.toggle('art-edit', art.mode === 'edit');
+  for (const b of document.querySelectorAll('#artMode .mode')) b.classList.toggle('on', b.dataset.m === art.mode);
+  document.getElementById('artPlace').textContent = art.editId ? 'บันทึกลาย' : 'วางลงท่อน';
+  artDraw();
+}
+
+document.getElementById('openArt').onclick = () => {
+  if (locked()) return;
+  art.editId = null;
+  artModal.classList.remove('hidden');
+  artSyncMode();
+};
+
+/** เปิดกล่องมาแก้ลายที่วางไว้แล้ว — เข้าโหมดแก้เม็ดพร้อมเม็ดชุดเดิม */
+function artEditItem(id) {
+  const it = byId(doc(), id);
+  if (!it || it.t !== 'fishDots') return;
+  art.editId = id;
+  art.pts = (it.pts || []).map((p) => p.slice());
+  // เดาระยะห่างจากเม็ดจริง — ผู้ใช้อาจเคยตั้งไว้คนละค่ากับช่องในกล่องตอนนี้
+  const xs = [...new Set(art.pts.map((p) => p[0]))].sort((a, b) => a - b);
+  let g = 0;
+  for (let i = 1; i < xs.length; i++) { const d2 = xs[i] - xs[i - 1]; if (d2 > 0 && (!g || d2 < g)) g = d2; }
+  art.gap = g || artNum('artGap', 26);
+  document.getElementById('artGap').value = art.gap;
+  art.mode = 'edit';
+  artModal.classList.remove('hidden');
+  artSyncMode();
+}
+document.getElementById('closeArt').onclick = () => artModal.classList.add('hidden');
+artModal.onclick = (e) => { if (e.target === artModal) artModal.classList.add('hidden'); };
+
+document.getElementById('artMode').onclick = (e) => {
+  const b = e.target.closest('.mode');
+  if (!b) return;
+  art.mode = b.dataset.m;
+  artSyncMode();
+};
+
+for (const id of ['artText', 'artH', 'artGap']) {
+  document.getElementById(id).oninput = artDraw;
+}
+
+document.getElementById('artClear').onclick = () => { art.strokes = []; artDraw(); };
+document.getElementById('artWipe').onclick = () => { art.pts = []; artDraw(); };
+
+// ── วาดด้วยเมาส์/นิ้วในกรอบ ──
+const artAt = (ev) => {
+  const r = artPad.getBoundingClientRect();
+  return [(ev.clientX - r.left) * (PAD_W / r.width), (ev.clientY - r.top) * (PAD_H / r.height)];
+};
+artPad.addEventListener('pointerdown', (ev) => {
+  if (art.mode === 'edit') {
+    artPad.setPointerCapture(ev.pointerId);
+    const cell = artCellAt(...artAt(ev), art.gap);
+    if (!cell) return;
+    // ช่องแรกที่จิ้มเป็นตัวตัดสินว่าการลากครั้งนี้คือ "เติม" หรือ "ลบ"
+    // (แบบเดียวกับโปรแกรมวาดจุดทั่วไป ลากทีเดียวได้ทั้งแถวโดยไม่สลับไปมา)
+    art.paint = artHasDot(cell) ? 'off' : 'on';
+    artApplyDot(cell);
+    return;
+  }
+  if (art.mode !== 'draw') return;
+  artPad.setPointerCapture(ev.pointerId);
+  if (document.getElementById('artErase').checked) {
+    // ยางลบ: ทิ้งเส้นที่ลากผ่าน ง่ายกว่าและเดาง่ายกว่าการลบทีละพิกเซล
+    art.drawing = 'erase';
+    artErasePt(artAt(ev));
+    return;
+  }
+  art.drawing = [artAt(ev)];
+  art.strokes.push(art.drawing);
+  artDraw();
+});
+artPad.addEventListener('pointermove', (ev) => {
+  if (art.paint) {
+    const cell = artCellAt(...artAt(ev), art.gap);
+    if (cell) artApplyDot(cell);
+    return;
+  }
+  if (!art.drawing) return;
+  if (art.drawing === 'erase') { artErasePt(artAt(ev)); return; }
+  art.drawing.push(artAt(ev));
+  artDraw();
+});
+const artUp = () => { art.drawing = null; art.paint = null; };
+
+function artHasDot([dx, dy]) {
+  return art.pts.some((p) => p[0] === dx && p[1] === dy);
+}
+
+function artApplyDot(cell) {
+  const has = artHasDot(cell);
+  if (art.paint === 'on' && !has) art.pts.push(cell);
+  else if (art.paint === 'off' && has) art.pts = art.pts.filter((p) => !(p[0] === cell[0] && p[1] === cell[1]));
+  else return;
+  artDraw();
+}
+artPad.addEventListener('pointerup', artUp);
+artPad.addEventListener('pointercancel', artUp);
+
+function artErasePt(p) {
+  const r = Math.max(14, artNum('artGap', 28) * 0.7);
+  const before = art.strokes.length;
+  art.strokes = art.strokes.filter((s) => !s.some(([x, y]) => Math.hypot(x - p[0], y - p[1]) < r));
+  if (art.strokes.length !== before) artDraw();
+}
+
+document.getElementById('artPlace').onclick = () => {
+  if (!art.pts.length) { artFlash('ยังไม่มีลายให้วาง'); return; }
+  if (locked()) { artFlash('ท่อนนี้แก้ไม่ได้'); return; }
+
+  // กำลังแก้ลายเดิม — เขียนทับเม็ดชุดเดิมของชิ้นนั้น ไม่สร้างชิ้นใหม่
+  if (art.editId) {
+    const id = art.editId;
+    mutate((dd) => {
+      const q = byId(dd, id);
+      if (q) q.pts = art.pts.map((p) => p.slice());
+    });
+    renderInspector();
+    updateCount();
+    artFlash(`บันทึกแล้ว ${art.pts.length} เม็ด`);
+    return;
+  }
+
+  const it = {
+    id: uid(),
+    t: 'fishDots',
+    group: 'free',
+    x: Math.round(docCam() + W / 2 - art.w / 2),
+    pts: art.pts.map((p) => p.slice()),
+  };
+  mutate((d) => { d.items.push(it); });
+  sel = it.id;
+  renderInspector();
+  updateCount();
+  artFlash(`วางแล้ว ${art.pts.length} เม็ด`);
+};
+
+function artFlash(msg) {
+  const el = document.getElementById('artMsg');
+  el.textContent = msg;
+  setTimeout(() => { el.textContent = ''; }, 1800);
+}
+
 // ── กล่องโค้ด ────────────────────────────────────────
 const modal = document.getElementById('codeModal');
 
@@ -3627,9 +4293,7 @@ document.getElementById('showCode').onclick = () => {
     const route = routeOf(st);
     const own = stageOwnCode(st);
     const head = own
-      ? (own.experimental
-        ? '// ⚠ มีท่อนที่ใช้พื้นเหยียบซึ่งเป็นของทดลอง เกมจริงยังไม่รองรับ\n\n' : '') +
-        `// ① ต่อท้าย PATTERNS ใน src/level.js — เรียงตามนี้ ห้ามสลับ เพราะ route ข้างล่างอ้างเลขนี้\n` +
+      ? `// ① ต่อท้าย PATTERNS ใน src/level.js — เรียงตามนี้ ห้ามสลับ เพราะ route ข้างล่างอ้างเลขนี้\n` +
         `${own.code}\n\n` +
         `// ② ต่อท้าย PATTERN_META ใน src/level.js (ต้องยาวเท่ากับ PATTERNS เสมอ)\n${own.meta}\n\n` +
         `// ③ src/stages.js → ในฉาก “${st.name}” (id: '${st.id}')\n` +
@@ -3664,10 +4328,6 @@ document.getElementById('showCode').onclick = () => {
     return;
   }
   document.getElementById('codeOut').value =
-    (out.experimental
-      ? '// ⚠ ท่อนนี้มีพื้นเหยียบซึ่งเป็นของทดลอง — เกมจริงยังไม่รองรับ\n' +
-        '//   ถ้าวางลงไฟล์ตอนนี้ แมวจะวิ่งทะลุเนิน/พื้นลอย และหลุมใต้พื้นลอยจะกลายเป็นกับดัก\n\n'
-      : '') +
     `// ① ต่อท้าย PATTERNS ใน src/level.js\n${out.code}\n\n` +
     `// ② ต่อท้าย PATTERN_META ใน src/level.js (ต้องยาวเท่ากับ PATTERNS เสมอ)\n${out.meta}\n\n` +
     `// ③ เติมเลข ${out.idx} ลงใน pool ของฉากที่อยากให้ท่อนนี้โผล่ (src/stages.js)`;
@@ -3703,6 +4363,7 @@ function flash(msg) {
 load();
 loadRoutes();
 loadTpls();
+syncHistoryBtns();
 refreshTplPick();
 buildKit();
 refreshAll();
@@ -3716,12 +4377,13 @@ if (import.meta.env.DEV) {
     get cur() { return cur; },
     get view() { return view; },
     get sel() { return sel; },
-    xOf,
+    xOf, itemBox, docCam, pick, worldAt,
     get sim() { return sim; },
     get routes() { return routes; },
     doc, build, toCode, simulate, staticIssues, joinIssues, runCheck, addItem, KIT, A,
     PATTERNS, PATTERN_META,
     get tpls() { return tpls; },
+    artPts: () => art.pts,
     stageScene, routeOf, rerollRoute, setMode, pickSlot, stageRouteCode,
     adoptSlot, releaseSlot, docFromPattern, harvestFish, makeTpl, applyTpl, slotDoc,
   };
