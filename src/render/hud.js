@@ -1,5 +1,5 @@
 // src/render/hud.js
-import { VIEW, HEALTH, SCENE, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
+import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
 import { t } from '../i18n.js';
@@ -352,8 +352,8 @@ function drawRunBar(ctx, game) {
   const x = Math.round((W - w) / 2);
   const y = RUN_TOP;
 
-  const left = game.nextSceneAt - game.tick;
-  const p = game.nextScene ? 1 : Math.max(0, Math.min(1, 1 - left / SCENE.frames));
+  // ด่านที่เขียนลำดับท่อนเองวัดความคืบหน้าด้วยระยะ ไม่ใช่เวลา (ดู Game.sceneProgress)
+  const p = game.sceneProgress;
   const fw = w * p;
 
   ctx.save();

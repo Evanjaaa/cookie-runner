@@ -1260,6 +1260,458 @@ export const PATTERNS = [
     jumps: [],
     width: 2280,
   }),
+
+  // ── สามท่อนสุดท้ายของครัวกลางคืน ──
+  // ทำจากหน้าออกแบบด่าน (โหมดทั้งด่าน) แล้วส่งออกมาต่อท้าย
+  // มาแทนท่อน 31 / 32 / 48 ซึ่งเลิกใช้แล้วแต่ยังต้องอยู่ในคลัง เพราะเลขท่อนหลังจากนั้น
+  // อ้างถึงกันด้วยดัชนี ลบทิ้งเมื่อไหร่ route ของทุกด่านเลื่อนผิดหมดทันที
+
+  // 51 — ครัวกลางคืน · ท่อน 1
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(lift(fishDots(x + 631, [[0,130],[130,130],[182,130],[208,130],[234,130],[260,130],[338,130],[364,130],[390,130],[468,130],[650,130],[0,104],[26,104],[104,104],[130,104],[182,104],[312,104],[416,104],[468,104],[650,104],[0,78],[52,78],[78,78],[130,78],[182,78],[208,78],[234,78],[260,78],[312,78],[416,78],[494,78],[546,78],[572,78],[624,78],[0,52],[130,52],[182,52],[312,52],[416,52],[494,52],[0,26],[130,26],[182,26],[312,26],[416,26],[494,26],[598,26],[624,26],[0,0],[130,0],[182,0],[208,0],[234,0],[260,0],[338,0],[364,0],[390,0],[520,0],[598,0],[546,52],[520,26],[624,52],[572,52]]), -1), 'alternate'),
+      ...withKibble(lift(fishDots(x + 1318, [[0,144],[24,144],[48,144],[72,144],[96,144],[96,120],[72,96],[48,72],[24,48],[0,0],[24,0],[48,0],[72,0],[96,0],[120,0],[120,144],[0,24]]), -10), 'alternate'),
+      ...withKibble(lift(fishDots(x + 1523, [[0,144],[24,144],[48,144],[24,120],[24,96],[24,72],[24,48],[24,24],[0,0],[24,0],[48,0]]), -8), 'alternate'),
+      ...lift(fishRun(x + 1501, 1, 24), 135),
+      ...lift(fishRun(x + 1594, 1, 24), 137),
+      ...lift(fishRun(x + 1502, 1, 24), -9),
+      ...lift(fishRun(x + 1595, 1, 24), -9),
+      ...withKibble(lift(fishDots(x + 1645, [[0,144],[96,144],[192,144],[216,144],[240,144],[0,120],[96,120],[168,120],[264,120],[96,96],[168,96],[0,72],[96,72],[168,72],[240,72],[264,72],[0,48],[96,48],[168,48],[264,48],[0,24],[96,24],[168,24],[264,24],[0,0],[96,0],[216,0],[240,0],[264,0],[72,24],[48,48],[24,72],[0,96],[216,72],[192,0]]), -9), 'alternate'),
+      ...fishRun(x + 1950, 14, 34),
+    ],
+    jumps: [],
+    partial: true,
+    width: 2280,
+  }),
+
+  // 52 — ครัวกลางคืน · ท่อน 2
+  (x) => {
+    const j1 = x + 115;
+    const j2 = x + 554;
+    const j3 = x + 1099;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withKibble(arcMid(j1, 8), 'all'),
+        ...withKibble(arcMid(j2, 8), 'all'),
+        ...withKibble(arcMid(j3, 3), 'cluster'),
+        ...fishRun(x + 1325, 6, 35),
+        ...fishRun(x + 339, 7, 35),
+        ...fishRun(x + 778, 10, 35),
+        ...withKibble(lift(fishRun(x + 131, 1, 34), 27), 'all'),
+        ...withKibble(lift(fishRun(x + 316, 1, 34), 21), 'all'),
+        ...withKibble(lift(fishRun(x + 573, 1, 34), 29), 'all'),
+        ...withKibble(lift(fishRun(x + 752, 2, 362), 21), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1300, 1, 34), 21), 'all'),
+        ...withShrimp(lift(fishRun(x + 1161, 1, 34), 86), 'all'),
+        ...withShrimp(lift(fishRun(x + 1256, 1, 34), 88), 'all'),
+      ],
+      jumps: [j1, j2, j3],
+      partial: true,
+      width: 1500,
+    };
+  },
+
+  // 53 — ครัวกลางคืน · ท่อน 18
+  (x) => {
+    const j1 = x + 171;
+    const j2 = x + 273;
+    return {
+      obs: [lowBar(x + 608), lowBar(x + 887), lowBar(x + 1160), crateStack(j1 + DBL_PEAK - crate.w / 2, 2)],
+      pit: [],
+      fish: [
+        ...fishRun(x + 139, 3, 34),
+        ...lift(fishRun(x + 298, 1, 34), 134.30000000000007),
+        ...lift(fishRun(x + 319, 1, 34), 147.02000000000007),
+        ...lift(fishRun(x + 346, 1, 34), 151.94000000000008),
+        ...lift(fishRun(x + 366, 1, 34), 146.6000000000001),
+        ...lift(fishRun(x + 387, 1, 34), 133.5200000000001),
+        ...withShrimp(lift(fishRun(x + 257, 2, 158), 53), 'all'),
+        ...fishRun(x + 462, 30, 34),
+        ...withShrimp(lift(fishRun(x + 1112, 1, 34), 37), 'all'),
+        ...withShrimp(lift(fishRun(x + 828, 1, 34), 35), 'all'),
+      ],
+      jumps: [j1, j2],
+      width: 1368,
+    };
+  },
+
+  // ── ยี่สิบท่อนของสวนกลางวัน ──
+  // ทำจากหน้าออกแบบด่าน (โหมดทั้งด่าน) แล้วส่งออกมาต่อท้าย
+  // เลขในคลังเริ่มที่ 54 เพราะ 51-53 เป็นของครัวกลางคืนไปแล้ว — เลขท่อนคือดัชนีในอาร์เรย์นี้
+  // สลับหรือแทรกตรงกลางเมื่อไหร่ route ของทุกด่านชี้ผิดหมดทันที
+
+  // 54 — สวนกลางวัน · ท่อน 1
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [...fishRun(x + 33, 22, 34)],
+    jumps: [],
+  }),
+
+  // 55 — สวนกลางวัน · ท่อน 2
+  (x) => {
+    const j1 = x + 170;
+    const j2 = x + 481;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 30, 4, 34),
+        ...withKibble(fishJump(j1, 10), 'cluster'),
+        ...withKibble(fishJump(j2, 10), 'cluster'),
+        ...fishRun(x + 410, 2, 34),
+        ...fishRun(x + 719, 2, 34),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'hill', x: x + 116, w: 320, h: 70 }, { kind: 'hill', x: x + 420, w: 320, h: 70 }],
+    };
+  },
+
+  // 56 — สวนกลางวัน · ท่อน 3
+  (x) => {
+    const j1 = x + 180;
+    const j2 = x + 501;
+    return {
+      obs: [groundSpike(j1 + HALF - spike.w / 2)],
+      pit: [{ x: j2 + HALF - 60, w: 120 }],
+      fish: [
+        ...fishRun(x + 28, 5, 34),
+        ...fishJump(j1, 10),
+        ...fishJump(j2, 10),
+        ...fishRun(x + 395, 4, 34),
+        ...fishRun(x + 715, 8, 34),
+      ],
+      jumps: [j1, j2],
+      width: 971.5999999999999,
+    };
+  },
+
+  // 57 — สวนกลางวัน · ท่อน 4
+  (x) => {
+    const j1 = x + 99;
+    return {
+      obs: [],
+      pit: [{ x: x + 211 + 24, w: 309 }],
+      fish: [
+        ...fishRun(x + 17, 4, 34),
+        ...withShrimp(lift(fishRun(x + 253, 9, 34), 91)),
+        ...withKibble(lift(fishRun(x + 299, 6, 34), 120), 'all'),
+        ...fishRun(x + 652, 4, 34),
+      ],
+      jumps: [j1],
+      plats: [{ kind: 'ledge', x: x + 211, w: 357, lift: 95 }],
+    };
+  },
+
+  // 58 — สวนกลางวัน · ท่อน 5
+  (x) => {
+    const j1 = x + 170;
+    return {
+      obs: [lowBar(x + 611)],
+      pit: [{ x: j1 + HALF - 58, w: 116 }],
+      fish: [
+        ...fishRun(x + 30, 5, 34),
+        ...fishJump(j1, 10),
+        ...fishRun(x + 400, 15, 34),
+      ],
+      jumps: [j1],
+    };
+  },
+
+  // 59 — สวนกลางวัน · ท่อน 6
+  (x) => {
+    const j1 = x + 210;
+    const j2 = x + 491;
+    const j3 = x + 772;
+    const j4 = x + 1052;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 150, 47, 34),
+        ...withKibble(lift(fishDots(x + 420, [[0,144],[96,144],[168,144],[192,144],[216,144],[240,144],[312,144],[480,144],[504,144],[528,144],[0,120],[96,120],[168,120],[312,120],[384,120],[456,120],[552,120],[0,96],[24,96],[96,96],[168,96],[312,96],[360,96],[456,96],[552,96],[0,72],[48,72],[96,72],[168,72],[192,72],[216,72],[240,72],[312,72],[336,72],[456,72],[552,72],[0,48],[72,48],[96,48],[168,48],[312,48],[360,48],[456,48],[552,48],[0,24],[96,24],[168,24],[312,24],[384,24],[456,24],[552,24],[0,0],[96,0],[168,0],[192,0],[216,0],[240,0],[312,0],[408,0],[480,0],[504,0],[528,0],[408,144]]), 31), 'all'),
+        ...withKibble(lift(fishDots(x + 1110, [[48,144],[72,144],[96,144],[168,144],[288,144],[384,144],[504,144],[600,144],[24,120],[120,120],[168,120],[288,120],[360,120],[384,120],[408,120],[504,120],[600,120],[24,96],[168,96],[288,96],[504,96],[528,96],[600,96],[24,72],[168,72],[192,72],[216,72],[240,72],[264,72],[288,72],[504,72],[552,72],[600,72],[24,48],[168,48],[288,48],[336,48],[360,48],[384,48],[408,48],[432,48],[504,48],[576,48],[600,48],[24,24],[120,24],[168,24],[288,24],[336,24],[432,24],[504,24],[600,24],[48,0],[72,0],[96,0],[168,0],[288,0],[336,0],[432,0],[504,0],[600,0],[336,96],[336,72],[432,96],[432,72]]), 31), 'all'),
+      ],
+      jumps: [j1, j2, j3, j4],
+      pickups: [{ kind: 'can', x: x + 294 }],
+      partial: true,
+      width: 1602,
+    };
+  },
+
+  // 60 — สวนกลางวัน · ท่อน 7
+  (x) => {
+    const j1 = x + 210;
+    const j2 = x + 492;
+    const j3 = x + 772;
+    const j4 = x + 1052;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...fishRun(x + 150, 1, 34),
+        ...withShrimp(fishWave(x + 216, 14, 103, 4), 'all'),
+        ...arcMid(x + 426, 11),
+        ...withKibble(arcMid(x + 509, 11), 'all'),
+        ...arcMid(x + 615, 11),
+        ...withKibble(arcMid(x + 718, 11), 'all'),
+        ...arcMid(x + 823, 11),
+        ...withKibble(arcMid(x + 912, 11), 'all'),
+        ...arcMid(x + 1025, 11),
+        ...withKibble(arcMid(x + 1128, 11), 'all'),
+        ...arcMid(x + 1235, 11),
+        ...withKibble(arcMid(x + 1338, 11), 'all'),
+        ...arcMid(x + 1436, 11),
+        ...withKibble(arcMid(x + 318, 11), 'all'),
+      ],
+      jumps: [j1, j2, j3, j4],
+      pickups: [{ kind: 'letter', x: x + 189 }],
+      partial: true,
+      width: 1602,
+    };
+  },
+
+  // 61 — สวนกลางวัน · ท่อน 8
+  (x) => {
+    const j1 = x + 130;
+    const j2 = x + 431;
+    const j3 = x + 732;
+    return {
+      obs: [crateStack(j1 + HALF - crate.w / 2, 1), crateStack(j2 + HALF - crate.w / 2, 1), crateStack(j3 + HALF - crate.w / 2, 1)],
+      pit: [],
+      fish: [
+        ...fishRun(x + 20, 4, 34),
+        ...fishJump(j1, 9),
+        ...fishJump(j2, 9),
+        ...withKibble(fishJump(j3, 9), 'cluster'),
+        ...fishRun(x + 357, 3, 34),
+        ...fishRun(x + 654, 3, 34),
+        ...fishRun(x + 947, 5, 34),
+      ],
+      jumps: [j1, j2, j3],
+      width: 1062.3999999999999,
+    };
+  },
+
+  // 62 — สวนกลางวัน · ท่อน 9
+  // หลุมยาว 992 กินเลยไปถึงท่อนถัดไป — สองท่อนนี้เป็นคู่กัน ห้ามแยก
+  (x) => {
+    const j1 = x + 453;
+    const j2 = x + 630;
+    return {
+      obs: [lowBar(x + 117)],
+      pit: [{ x: x + 505, w: 992 }],
+      fish: [
+        ...fishRun(x + 54, 13, 34),
+        ...withKibble(lift(fishRun(x + 531, 4, 34), 83), 'all'),
+        ...lift(fishRun(x + 744, 4, 34), 83),
+        ...withShrimp(lift(fishRun(x + 615, 4, 47), 152), 'all'),
+        ...withShrimp(lift(fishRun(x + 829, 4, 47), 152), 'all'),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'ledge', x: x + 509, w: 142, lift: 90 }, { kind: 'ledge', x: x + 724, w: 142, lift: 90 }],
+    };
+  },
+
+  // 63 — สวนกลางวัน · ท่อน 10
+  (x) => {
+    const j1 = x + 83;
+    const j2 = x + 309;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withKibble(lift(fishRun(x + 189, 4, 34), 84), 'all'),
+        ...withKibble(lift(fishRun(x + 398, 10, 34), 85), 'alternate'),
+        ...withShrimp(lift(fishRun(x + 305, 8, 47), 152), 'all'),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'ledge', x: x + 172, w: 139, lift: 90 }, { kind: 'ledge', x: x + 367, w: 364, lift: 90 }],
+    };
+  },
+
+  // 64 — สวนกลางวัน · ท่อน 11
+  (x) => {
+    const j1 = x + 130;
+    const j2 = x + 431;
+    const j3 = x + 732;
+    return {
+      obs: [crateStack(j2 + HALF - crate.w / 2, 1), crateStack(j3 + HALF - crate.w / 2, 1), crateStack(j1 + JUMP_PEAK - crate.w / 2, 2), groundSpike(x + 368), groundSpike(x + 672), groundSpike(x + 957)],
+      pit: [],
+      fish: [
+        ...fishRun(x + 20, 3, 34),
+        ...fishJump(j1, 9),
+        ...fishJump(j2, 9),
+        ...fishJump(j3, 9),
+      ],
+      jumps: [j1, j2, j3],
+      hazards: [{ kind: 'bee', x: x + 701, phase: 0.000 }, { kind: 'bee', x: x + 396, phase: 0.000 }],
+      pickups: [{ kind: 'nip', x: x + 40 }],
+      width: 1062.3999999999999,
+    };
+  },
+
+  // 65 — สวนกลางวัน · ท่อน 12
+  (x) => {
+    const j1 = x + 240;
+    return {
+      obs: [],
+      pit: [{ x: j1 + HALF - 66, w: 132 }],
+      fish: [
+        ...withKibble(fishRun(x + -38, 9, 34), 'alternate'),
+        ...withKibble(fishJump(j1, 11), 'alternate'),
+        ...withKibble(fishRun(x + 453, 10, 34), 'alternate'),
+      ],
+      jumps: [j1],
+      hazards: [{ kind: 'bee', x: x + 95, phase: 0.000 }, { kind: 'bee', x: x + 596, phase: 0.000 }],
+    };
+  },
+
+  // 66 — สวนกลางวัน · ท่อน 13
+  (x) => {
+    const j1 = x + 230;
+    return {
+      obs: [groundSpike(j1 + HALF - spike.w / 2)],
+      pit: [],
+      fish: [
+        ...withKibble(fishRun(x + 35, 7, 34), 'alternate'),
+        ...fishJump(j1, 15),
+        ...withKibble(fishRun(x + 453, 10, 34), 'alternate'),
+      ],
+      jumps: [j1],
+    };
+  },
+
+  // 67 — สวนกลางวัน · ท่อน 14
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...fishRun(x + 34, 6, 34),
+      ...withKibble(fishJump(x + 244, 11), 'cluster'),
+      ...withKibble(fishJump(x + 559, 11), 'cluster'),
+      ...fishRun(x + 472, 3, 34),
+    ],
+    jumps: [],
+    hazards: [{ kind: 'bee', x: x + 492, phase: 0.000 }],
+    pickups: [{ kind: 'letter', x: x + 234 }],
+    plats: [{ kind: 'hill', x: x + 186, w: 320, h: 70 }, { kind: 'hill', x: x + 496, w: 320, h: 70 }],
+  }),
+
+  // 68 — สวนกลางวัน · ท่อน 15
+  (x) => {
+    const j1 = x + 481;
+    const j2 = x + 704;
+    return {
+      obs: [],
+      pit: [{ x: x + 541, w: 648 }],
+      fish: [
+        ...withKibble(fishJump(x + 112, 10), 'cluster'),
+        ...fishRun(x + 28, 3, 34),
+        ...fishRun(x + 353, 5, 34),
+        ...withKibble(lift(fishRun(x + 554, 6, 34), 53), 'alternate'),
+        ...withKibble(lift(fishRun(x + 801, 4, 34), 114), 'alternate'),
+        ...withShrimp(lift(fishRun(x + 554, 3, 56), 91), 'all'),
+        ...withShrimp(lift(fishRun(x + 798, 2, 56), 152), 'all'),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'hill', x: x + 58, w: 320, h: 70 }, { kind: 'ledge', x: x + 533, w: 251, lift: 60 }, { kind: 'ledge', x: x + 779, w: 175, lift: 110 }],
+    };
+  },
+
+  // 69 — สวนกลางวัน · ท่อน 16
+  (x) => {
+    const j1 = x + 180;
+    const j2 = x + 632;
+    const j3 = x + 988;
+    return {
+      obs: [crateStack(x + 701, 1)],
+      pit: [],
+      fish: [
+        ...fishJump(x + 623, 10),
+        ...withKibble(lift(fishRun(x + 249, 6, 34), 53), 'alternate'),
+        ...withShrimp(lift(fishRun(x + 303, 3, 56), 93), 'all'),
+        ...fishRun(x + 497, 5, 34),
+        ...fishRun(x + 828, 5, 34),
+      ],
+      jumps: [j1, j2, j3],
+      pickups: [{ kind: 'magnet', x: x + 1055 }],
+      plats: [{ kind: 'ledge', x: x + 190, w: 247, lift: 65 }],
+      width: 971.5999999999999,
+    };
+  },
+
+  // 70 — สวนกลางวัน · ท่อน 17
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withShrimp(fishRun(x + 189, 28, 43), 'all'),
+      ...withKibble(lift(fishRun(x + 239, 28, 43), 44), 'all'),
+      ...lift(fishRun(x + 187, 28, 43), 93),
+      ...withShrimp(lift(fishRun(x + 242, 28, 43), 143), 'all'),
+    ],
+    jumps: [],
+    width: 1368,
+  }),
+
+  // 71 — สวนกลางวัน · ท่อน 18
+  (x) => {
+    const j1 = x + 180;
+    const j2 = x + 501;
+    return {
+      obs: [groundSpike(j1 + HALF - spike.w / 2)],
+      pit: [{ x: j2 + HALF - 60, w: 120 }],
+      fish: [
+        ...withKibble(fishRun(x + 47, 5, 34), 'alternate'),
+        ...fishJump(j1, 10),
+        ...fishJump(j2, 10),
+        ...withKibble(fishRun(x + 397, 4, 34), 'alternate'),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'letter', x: x + 96 }],
+      width: 971.5999999999999,
+    };
+  },
+
+  // 72 — สวนกลางวัน · ท่อน 19
+  (x) => {
+    const j1 = x + 297;
+    const j2 = x + 551;
+    return {
+      obs: [lowBar(x + -63)],
+      pit: [{ x: x + 347, w: 116 }, { x: j2 + HALF - 58, w: 116 }],
+      fish: [
+        ...fishRun(x + -259, 8, 34),
+        ...fishJump(x + 299, 10),
+        ...fishJump(x + 544, 10),
+        ...fishRun(x + 6, 10, 34),
+        ...withShrimp(fishRun(x + 529, 1, 34)),
+      ],
+      jumps: [j1, j2],
+    };
+  },
+
+  // 73 — สวนกลางวัน · ท่อน 20
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...fishRun(x + -3, 21, 34),
+      ...withKibble(fishDots(x + 723, [[0,150],[120,150],[180,150],[210,150],[330,150],[360,150],[450,150],[480,150],[510,150],[540,150],[0,120],[120,120],[210,120],[390,120],[450,120],[0,90],[30,90],[120,90],[210,90],[270,90],[450,90],[0,60],[60,60],[120,60],[210,60],[270,60],[450,60],[0,30],[90,30],[120,30],[210,30],[390,30],[450,30],[0,0],[120,0],[180,0],[210,0],[300,0],[330,0],[360,0],[450,0],[480,0],[510,0],[540,0],[240,150],[240,0],[300,150],[270,120],[270,30],[480,60],[510,60],[540,60]]), 'all'),
+      ...fishRun(x + 1312, 6, 34),
+      ...withShrimp(lift(fishRun(x + 653, 1, 34), 76)),
+      ...withShrimp(lift(fishRun(x + 1134, 1, 34), 221)),
+      ...withShrimp(lift(fishRun(x + 1368, 1, 34), 76)),
+      ...withShrimp(lift(fishRun(x + 835, 1, 34), 222)),
+    ],
+    jumps: [],
+    width: 1368,
+  }),
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -1329,6 +1781,29 @@ export const PATTERN_META = [
   { kind: 'recovery', diff: 2 },    // 48 ครัวกลางคืน · ท่อน 18
   { kind: 'obstacle', diff: 2 },    // 49 ครัวกลางคืน · ท่อน 19
   { kind: 'recovery', diff: 2 },    // 50 ครัวกลางคืน · ท่อน 20
+  { kind: 'safe', diff: 1 },        // 51 ครัวกลางคืน · ท่อน 1
+  { kind: 'recovery', diff: 2 },    // 52 ครัวกลางคืน · ท่อน 2
+  { kind: 'recovery', diff: 2 },    // 53 ครัวกลางคืน · ท่อน 18
+  { kind: 'safe', diff: 1 },        // 54 สวนกลางวัน · ท่อน 1
+  { kind: 'challenge', diff: 4 },   // 55 สวนกลางวัน · ท่อน 2
+  { kind: 'obstacle', diff: 3 },    // 56 สวนกลางวัน · ท่อน 3
+  { kind: 'challenge', diff: 4 },   // 57 สวนกลางวัน · ท่อน 4
+  { kind: 'challenge', diff: 4 },   // 58 สวนกลางวัน · ท่อน 5
+  { kind: 'recovery', diff: 2 },    // 59 สวนกลางวัน · ท่อน 6
+  { kind: 'recovery', diff: 2 },    // 60 สวนกลางวัน · ท่อน 7
+  { kind: 'obstacle', diff: 3 },    // 61 สวนกลางวัน · ท่อน 8
+  { kind: 'obstacle', diff: 2 },    // 62 สวนกลางวัน · ท่อน 9
+  { kind: 'challenge', diff: 4 },   // 63 สวนกลางวัน · ท่อน 10
+  { kind: 'obstacle', diff: 3 },    // 64 สวนกลางวัน · ท่อน 11
+  { kind: 'obstacle', diff: 2 },    // 65 สวนกลางวัน · ท่อน 12
+  { kind: 'obstacle', diff: 2 },    // 66 สวนกลางวัน · ท่อน 13
+  { kind: 'obstacle', diff: 2 },    // 67 สวนกลางวัน · ท่อน 14
+  { kind: 'challenge', diff: 4 },   // 68 สวนกลางวัน · ท่อน 15
+  { kind: 'obstacle', diff: 3 },    // 69 สวนกลางวัน · ท่อน 16
+  { kind: 'recovery', diff: 2 },    // 70 สวนกลางวัน · ท่อน 17
+  { kind: 'obstacle', diff: 3 },    // 71 สวนกลางวัน · ท่อน 18
+  { kind: 'challenge', diff: 4 },   // 72 สวนกลางวัน · ท่อน 19
+  { kind: 'recovery', diff: 2 },    // 73 สวนกลางวัน · ท่อน 20
 ];
 
 /**
@@ -1538,12 +2013,43 @@ export class Level {
    * chunkIndex กลับไปนับหนึ่งใหม่ ด่านใหม่จึงเริ่มจากท่อนอุ่นเครื่องของตัวเอง
    * ไม่ใช่โผล่กลางช่วงพีคของด่านก่อนหน้า
    */
-  switchRoute(route, theme) {
+  switchRoute(route, theme, loop = true) {
     if (!route || !route.length) return;
     this.route = route;
     this.theme = theme;
+    this.loop = loop;
     this.chunkIndex = 0;
+    this.beginRoute();
   }
+
+  /**
+   * จดไว้ว่าลำดับชุดนี้เริ่มที่พิกัดไหนและจบที่ไหน
+   *
+   * ระยะปลายทางคำนวณจากความกว้างจริงของทุกท่อนในลำดับ (ท่อนยาว ๆ ประกาศ width เอง)
+   * ไม่ได้เดาจากจำนวนท่อน × ความกว้างมาตรฐาน — ครัวกลางคืนมีท่อน 2280 กับ 1368 ปนกันอยู่
+   * หลอดระยะบน HUD อ่านค่าคู่นี้ ด่านที่จบตามลำดับท่อนจึงมีหลอดที่ตรงกับของจริง
+   */
+  beginRoute() {
+    this.routeFrom = this.nextChunkX;
+    if (this.loop) { this.routeTo = null; return; }
+    let w = 0;
+    for (const step of this.route) {
+      const c = step.fn ? step.fn(0) : PATTERNS[step.p](0);
+      w += c.width || chunkW;
+    }
+    this.routeTo = this.routeFrom + w;
+  }
+
+  /** ปูครบทุกท่อนของลำดับที่เขียนไว้เองแล้ว — ด่านนี้พอแล้ว ไม่มีท่อนต่อ */
+  get routeDone() {
+    return !this.loop && this.chunkIndex >= this.route.length;
+  }
+
+  /** ช่วงระยะของลำดับชุดนี้ — null = ด่านที่วิ่งวนไม่รู้จบ (วัดความคืบหน้าด้วยเวลาแทน) */
+  get routeSpan() {
+    return this.routeTo === null ? null : { from: this.routeFrom, to: this.routeTo };
+  }
+
 
   /**
    * ลำดับท่อนของฉากหนึ่ง — ด่านที่ประกาศ pool ไว้จะได้เส้นทางสุ่มใหม่ทุกครั้ง
@@ -1556,10 +2062,24 @@ export class Level {
     return stage.pool ? composeRoute(stage.pool, stage.segments || 20) : stage.route;
   }
 
+  /**
+   * ด่านนี้วนลำดับท่อนซ้ำได้ไหม
+   *
+   * ด่านที่ประกาศ pool = สุ่มลำดับใหม่ทุกตา ไม่มี "ท่อนสุดท้าย" ที่ตั้งใจไว้
+   * วนซ้ำได้เรื่อย ๆ ตามแบบ endless runner เหมือนเดิมทุกประการ
+   *
+   * ด่านที่เขียน route เองคือด่านที่ออกแบบลำดับและจุดจบไว้แล้ว (ครัวกลางคืนเป็นด่านแรก)
+   * วิ่งครบลำดับ = จบด่าน ต้องพาไปฉากถัดไป ไม่ใช่ย้อนกลับไปเจอท่อนแรกอีกรอบ
+   */
+  static loops(stage) {
+    return !!stage.pool;
+  }
+
   /** ส่ง route ใหม่เข้ามาเมื่อเปลี่ยนด่าน ไม่ส่งก็ใช้ของเดิม */
-  reset(route, theme) {
+  reset(route, theme, loop = true) {
     if (route) this.route = route;
     if (theme) this.theme = theme;
+    this.loop = loop;
     this.obstacles = [];
     this.fishes = [];
     this.pits = [];
@@ -1574,6 +2094,7 @@ export class Level {
     this.plats = [];         // พื้นเหยียบได้ — เนินกับพื้นลอย (ดู footing)
     this.nextChunkX = 900;   // เว้นที่ว่างตอนเริ่มเกม
     this.chunkIndex = 0;
+    this.beginRoute();
   }
 
   /**
@@ -1585,17 +2106,25 @@ export class Level {
    * ใช้ตอนปลาพาลงมาส่งหลังจบโบนัส — ระหว่างลอยอยู่บนฟ้ากล้องวิ่งไปไกลมาก
    * โดยไม่มีใครสร้างด่านรอไว้ ตรงนี้จึงเป็นจุดที่ปูใหม่ทั้งหมดได้อย่างสะอาด
    */
-  restartAt(x, route, theme) {
-    this.reset(route, theme);
+  restartAt(x, route, theme, loop = true) {
+    this.reset(route, theme, loop);
     this.nextChunkX = x;
+    this.beginRoute();       // reset() จดไว้ตอน nextChunkX ยังเป็น 900 ต้องจดใหม่จากพิกัดจริง
   }
 
-  spawnChunk() {
-    if (!this.route.length) return;   // ยังไม่ได้ตั้งด่าน อย่าสร้างอะไรทั้งนั้น
 
-    // วนด่านซ้ำเมื่อจบลำดับ — endless runner จึงยังวิ่งต่อได้ไม่รู้จบ
-    // แต่เส้นทางเหมือนเดิมทุกรอบ ผู้เล่นจำได้และทำสถิติแข่งกับตัวเองได้
-    const step = this.route[this.chunkIndex % this.route.length];
+  spawnChunk() {
+    if (!this.route.length) return false;   // ยังไม่ได้ตั้งด่าน อย่าสร้างอะไรทั้งนั้น
+
+    // ── จบลำดับแล้วทำยังไง ──
+    // ด่านสุ่ม: วนกลับไปท่อนแรก เส้นทางเหมือนเดิมทุกรอบ ผู้เล่นจำได้และทำสถิติแข่งกับตัวเองได้
+    // ด่านที่เขียนลำดับเอง: ไม่ปูต่อ แล้วบอกผู้เรียกว่า "หมดแล้ว" (ดู ensureAhead / Game.updateScene)
+    // Game จะเริ่มทางเข้าด่านถัดไปต่อจากท่อนสุดท้ายพอดี ไม่มีท่อนซ้ำมาคั่นตรงกลาง
+    if (this.chunkIndex >= this.route.length) {
+      if (!this.loop) return false;
+      this.chunkIndex = 0;
+    }
+    const step = this.route[this.chunkIndex];
 
     // step.fn = ท่อนที่มากับทางเข้าด่าน (gates.js) ไม่ได้อยู่ในคลัง PATTERNS ที่สุ่มได้
     const c = step.fn ? step.fn(this.nextChunkX) : PATTERNS[step.p](this.nextChunkX);
@@ -1646,13 +2175,16 @@ export class Level {
 
     this.nextChunkX += w;
     this.chunkIndex++;
+    return true;
   }
 
   /** เติมท่อนล่วงหน้าเสมอ ไม่ให้ผู้เล่นวิ่งไปเจอที่ว่าง */
   ensureAhead(camera) {
-    // กันลูปไม่รู้จบ: ถ้าไม่มี route แล้ว spawnChunk ไม่ขยับ nextChunkX เลย
-    if (!this.route.length) return;
-    while (this.nextChunkX < camera + VIEW.W + chunkW) this.spawnChunk();
+    // กันลูปไม่รู้จบ: spawnChunk คืน false เมื่อไม่มีอะไรให้ปูแล้ว
+    // (ยังไม่ได้ตั้งด่าน หรือด่านที่เขียนลำดับเองวิ่งครบแล้ว) ซึ่งแปลว่า nextChunkX ไม่ขยับ
+    while (this.nextChunkX < camera + VIEW.W + chunkW) {
+      if (!this.spawnChunk()) break;
+    }
   }
 
   /**

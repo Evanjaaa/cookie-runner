@@ -291,7 +291,7 @@ export function setupDebug(game, hooks = {}) {
       // ย้ายไปอยู่ในฉากก่อนหน้าทันที (จานสี/ของประกอบ/ท่อนที่จะปูต่อจากนี้)
       game.scene = prev;
       game.pal = prev.palette;
-      game.level.switchRoute(Level.routeFor(prev), prev.theme);
+      game.level.switchRoute(Level.routeFor(prev), prev.theme, Level.loops(prev));
       game.syncMusic();
       // ฉากถัดไป = ด่านเป้าหมาย
       game.sceneIndex = (((ti - start - 1) % n) + n) % n;

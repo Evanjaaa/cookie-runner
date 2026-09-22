@@ -17,6 +17,7 @@
 // จำนวนขั้นตอนตรงนี้ถูกใช้คำนวณความยาวทางเข้า (gates.js) — เพิ่มขั้นตอนแล้วทางเข้ายาวขึ้นเอง
 // ─────────────────────────────────────────────────────────────
 import { GROUND_Y, LEVEL, HAZARD, FALLER } from './config.js';
+import { PATTERNS } from './level.js';
 import { drawObstacles, drawHazards, drawFallers } from './render/entities.js';
 import { drawProps } from './render/background.js';
 
@@ -34,6 +35,27 @@ function pad() {
   scratch.setTransform(0.1, 0, 0, 0.1, 0, 0);
   scratch.clearRect(0, 0, 960, 420);
   return scratch;
+}
+
+/**
+ * ชนิดอันตรายที่ขยับได้ทั้งหมดที่ฉากนี้ทำให้เกิดได้
+ *
+ * มีสองทางที่ของพวกนี้เกิดได้ ต้องอุ่นเครื่องทั้งคู่:
+ *   ของประจำฉาก  stage.hazard — ตัวจับเวลาปล่อยเองเรื่อย ๆ
+ *   ของที่ท่อนวาง  hazards ในแพตเทิร์น — คนออกแบบเลือกจุดเอง (สวนกลางวันใช้ทางนี้ล้วน)
+ * ถ้าอุ่นแต่ทางแรก ฉากที่วางเองล้วนจะไปคอมไพล์เส้นทางวาดเอาตอนผึ้งตัวแรกโผล่ = สะดุดหนึ่งเฟรม
+ */
+function hazardKinds(stage) {
+  const kinds = new Set();
+  if (stage.hazard) kinds.add(stage.hazard.kind);
+  for (const step of stage.route || []) {
+    if (step.p === undefined) continue;
+    for (const h of (PATTERNS[step.p](0).hazards || [])) kinds.add(h.kind);
+  }
+  for (const p of stage.pool || []) {
+    for (const h of (PATTERNS[p](0).hazards || [])) kinds.add(h.kind);
+  }
+  return kinds;
 }
 
 export const PRELOAD_STEPS = [
@@ -65,8 +87,7 @@ export const PRELOAD_STEPS = [
     label: 'ของที่ขยับได้ประจำฉาก',
     run(stage) {
       const c = pad();
-      if (stage.hazard) {
-        const k = stage.hazard.kind;
+      for (const k of hazardKinds(stage)) {
         const h = k === 'bee'
           ? { kind: k, x: 60, y: HAZARD.bee.midY, w: HAZARD.bee.w, h: HAZARD.bee.h, t: 0 }
           : { kind: k, x: 60, y: GROUND_Y - HAZARD.ball.r * 2, w: HAZARD.ball.r * 2, h: HAZARD.ball.r * 2, spin: 0 };

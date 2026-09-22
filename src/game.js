@@ -419,7 +419,8 @@ export class Game {
     // สถิติก่อนตานี้ — หน้าสรุปเอาไปโชว์เป็น "สถิติเดิม" ตอนทำสถิติใหม่ได้
     // ต้องเก็บแยกไว้ เพราะ this.best ถูกทับด้วยคะแนนใหม่ตั้งแต่ตอนตาย
     this.prevBest = this.best;
-    this.level.reset(Level.routeFor(this.stage), this.stage.theme);
+    this.level.reset(Level.routeFor(this.stage), this.stage.theme, Level.loops(this.stage));
+    this.armSceneClock(this.stage);
     this.level.nextLetter = () => this.nextLetterIndex();
 
     this.state = STATE.READY;
@@ -1146,7 +1147,7 @@ export class Game {
    * nextChunkX ตอนนี้ = จุดต่อจากของฉากเก่าที่ปูไว้แล้ว ทางเข้าจึงเริ่มหลังของเดิมพอดี
    */
   beginGate(def, next) {
-    this.level.switchRoute([{ fn: def.chunk }, ...Level.routeFor(next)], next.theme);
+    this.level.switchRoute([{ fn: def.chunk }, ...Level.routeFor(next)], next.theme, Level.loops(next));
     this.placeGate(def, next, this.level.nextChunkX);
     this.noticeText = 'ผ่านด่าน! กำลังเข้า' + next.name;
     this.notice = SCENE.noticeFrames;
@@ -1174,28 +1175,8 @@ export class Game {
     const g = this.gate;
     this.scene = g.to;
     this.pal = g.to.palette;
-    this.nextSceneAt = this.tick + SCENE.frames;
+    this.armSceneClock(g.to);
     this.syncMusic();
-  }
-
-  /**
-   * ปูทางใหม่หลังกล้องกระโดด (ปลาพาลงจากโบนัส / ชุบชีวิต)
-   * ถ้ายังไม่ได้สลับฉากผ่านทางเข้า ต้องต่อทางเข้ากลับมาหลังทางโล่ง ไม่งั้นทางเข้าหายไปพร้อมของเดิม
-   * แล้วฉากจะไม่มีวันเปลี่ยน (ไม่มีอะไรเรียก activateGate อีกเลย)
-   */
-  restartRoute(clearChunks) {
-    const clear = Array.from({ length: clearChunks }, () => ({ p: 0 }));
-    const g = this.gate;
-    if (g && !g.activated) {
-      this.level.restartAt(this.camera, [...clear, { fn: g.def.chunk }, ...Level.routeFor(g.to)], g.to.theme);
-      this.placeGate(g.def, g.to, this.camera + clearChunks * LEVEL.chunkW);
-    } else {
-      // สลับฉากไปแล้ว ตัวอาคารที่เหลืออยู่ข้างหลังไม่ต้องตามมา
-      this.gate = null;
-      // ตัดท่อนแรกของเส้นทางทิ้ง เพราะ composeRoute บังคับให้มันเป็นท่อนปลอดภัยอยู่แล้ว
-      this.level.restartAt(this.camera, [...clear, ...Level.routeFor(this.scene).slice(1)], this.scene.theme);
-    }
-    this.level.ensureAhead(this.camera);
   }
 
   /**
@@ -1390,6 +1371,39 @@ export class Game {
     return this.camera + PLAYER_X < this.bridgeEnd;
   }
 
+  /**
+   * ตั้งเส้นตายของฉากใหม่
+   *
+   * ด่านที่วิ่งวนไม่รู้จบใช้เวลาเป็นตัวจบฉากเหมือนเดิม (SCENE.frames = หนึ่งนาที)
+   * ด่านที่เขียนลำดับท่อนเองจบด้วย "ท่อนสุดท้าย" แทน จึงต้องดันเส้นตายออกไปไกล ๆ
+   * ไม่งั้นนาฬิกาจะตัดจบกลางลำดับที่ออกแบบไว้ — ครัวกลางคืนยาวกว่าหนึ่งนาทีพอสมควร
+   *
+   * ดันออกไปเฉย ๆ ไม่ได้ตั้งเป็น Infinity เพราะปุ่ม "ข้ามฉาก" ในหน้าดีบั๊กสั่งข้าม
+   * ด้วยการดันนาฬิกาให้ถึงเส้นตาย ถ้าเป็น Infinity ปุ่มนั้นจะพัง
+   */
+  armSceneClock(stage) {
+    this.nextSceneAt = this.tick + (Level.loops(stage) ? SCENE.frames : SCENE.frames * 100);
+  }
+
+  /**
+   * ความคืบหน้าของฉากนี้ 0 → 1 (หลอดระยะบน HUD อ่านค่านี้)
+   * ด่านที่จบตามลำดับท่อนวัดด้วย "ระยะที่วิ่งไปแล้ว" ส่วนด่านที่วิ่งวนวัดด้วยเวลาเหมือนเดิม
+   */
+  get sceneProgress() {
+    // กำลังเปลี่ยนฉากอยู่ (ไล่สีอยู่ หรือเดินอยู่ในทางเข้าด่าน) = ด่านนี้จบแล้ว หลอดเต็ม
+    if (this.nextScene || this.gate) return 1;
+    const span = this.level.routeSpan;
+    // ── ทำไมเส้นชัยไม่ใช่ปลายท่อนสุดท้าย ──
+    // ฉากเปลี่ยนตั้งแต่ "ปูท่อนสุดท้ายเสร็จ" ซึ่งตอนนั้นแมวยังตามอยู่ข้างหลังราวจอครึ่ง
+    // บวกอีกท่อน (ดู Level.ensureAhead) ถ้าวัดถึงปลายจริง หลอดจะค้างอยู่ราว 80%
+    // แล้วกระโดดเป็นเต็มตอนเข้าทางเข้า — หักระยะล่วงหน้าออกไปเลย หลอดจึงเต็มพอดีจังหวะ
+    const goal = span ? span.to - (VIEW.W + LEVEL.chunkW) : 0;
+    const k = span && goal > span.from
+      ? (this.camera + PLAYER_X - span.from) / (goal - span.from)
+      : 1 - (this.nextSceneAt - this.tick) / SCENE.frames;
+    return Math.max(0, Math.min(1, k));
+  }
+
   updateScene(dt) {
     // ── อยู่ในทางเข้าด่าน ──
     // สลับฉากเกิดข้างใน updateGate ตอนจอถูกอาคารปิดเต็ม ไม่มีการไล่สีแบบทางเชื่อมเดิม
@@ -1414,12 +1428,17 @@ export class Game {
         this.nextScene = null;
         this.fade = 0;
         this.syncMusic();                       // เพลงประจำแมพใหม่เริ่มตรงนี้
-        this.nextSceneAt = this.tick + SCENE.frames;
+        this.armSceneClock(this.scene);
       }
       return;   // ระหว่างไล่สียังไม่เริ่มนับเวลาฉากใหม่ กันเปลี่ยนซ้อนกัน
     }
 
-    if (this.tick < this.nextSceneAt) return;
+    // ── ถึงเวลาเปลี่ยนฉากหรือยัง ──
+    // ด่านที่วิ่งวน: ครบนาที
+    // ด่านที่เขียนลำดับท่อนเอง: ปูท่อนสุดท้ายเสร็จแล้ว (ตอนนั้นผู้เล่นยังวิ่งตามอยู่ข้างหลัง
+    //   ราวสองท่อน ทางเข้าด่านถัดไปจึงถูกวางต่อท้ายท่อนสุดท้ายพอดี วิ่งถึงแล้วเข้าได้เลย)
+    // นาฬิกายังมีผลอยู่ทั้งสองแบบ ปุ่ม "ข้ามฉาก" ในหน้าดีบั๊กจึงยังใช้ได้เหมือนเดิม
+    if (this.tick < this.nextSceneAt && !this.level.routeDone) return;
 
     this.sceneIndex++;
     this.clearedScenes++;
@@ -1436,7 +1455,7 @@ export class Game {
     // ท่อนที่ 0 คือทางเรียบล้วน ไม่มีหนามไม่มีหลุม มีแต่ปลาให้เก็บ
     // ต่อไว้หน้าเส้นทางของฉากใหม่ ผู้เล่นจึงวิ่งยาว ๆ เก็บขวดได้ก่อนเจอของจริง
     const bridge = Array.from({ length: SCENE.bridgeChunks }, () => ({ p: 0 }));
-    this.level.switchRoute([...bridge, ...Level.routeFor(next)], next.theme);
+    this.level.switchRoute([...bridge, ...Level.routeFor(next)], next.theme, Level.loops(next));
 
     // nextChunkX คือจุดที่ท่อนถัดไปจะไปวาง = จุดเริ่มของทางเชื่อมพอดี
     // ของที่วางไว้ล่วงหน้าแล้วยังเป็นของฉากเก่า ทางเชื่อมจึงเริ่มหลังจากนั้น
@@ -2028,6 +2047,38 @@ export class Game {
   }
 
   /**
+   * กล้องที่ควรกลับมายืน หลังถูกดึงขึ้นจากหลุม
+   *
+   * ── ทำไมไม่ใช้กล้องตอนตายตรง ๆ ──
+   * น้องตายตอน "ร่วงพ้นจอ" ไม่ใช่ตอนตกลงหลุม ระหว่างนั้นโลกเลื่อนต่ออีกราว 143px
+   * ใช้กล้องตอนนั้นเลยจะโผล่เลยหลุมไปอีกฝั่ง เหมือนวาร์ปข้ามหลุมให้ฟรี
+   *
+   * จึงหา "หลุมที่เพิ่งตก" (หลุมสุดท้ายที่ปากอยู่ไม่เกินตัวน้อง) แล้วยืนก่อนปากหลุมนิดเดียว
+   * ระยะทางกับคะแนนไม่ถูกแตะ เพราะสองตัวนั้นสะสมแยก ไม่ได้อ่านจากกล้อง (ดู update)
+   *
+   * ถ้าหาหลุมไม่เจอ (ตายด้วยเหตุอื่น) ก็อยู่ที่เดิม ไม่ขยับอะไรเลย
+   */
+  reviveCam() {
+    const catX = this.camera + PLAYER_X;
+    // หลุมที่เพิ่งตก = หลุมสุดท้ายที่ปากอยู่ไม่เกินตัวน้อง
+    let pit = null;
+    for (const p of this.level.pits) {
+      if (p.x <= catX && (!pit || p.x > pit.x)) pit = p;
+    }
+    if (!pit) return this.camera;
+
+    let cam = pit.x - REVIVE.standBack - PLAYER_X;
+    // จุดที่ได้อาจไปตรงกับปากหลุมอีกหลุมพอดี (หลุมติดกันสองหลุมมีจริงในหลายท่อน)
+    // ถอยเพิ่มทีละนิดจนยืนได้จริง — สิ่งกีดขวางไม่ต้องเลี่ยง เพราะกลับมาแล้วอมตะ 1.5 วิ
+    const steps = Math.floor(REVIVE.maxBack / REVIVE.backStep);
+    for (let i = 0; i < steps && this.level.isOverPit(cam + PLAYER_X); i++) {
+      cam -= REVIVE.backStep;
+    }
+    // ถอยได้อย่างเดียว และไม่เกินเพดานที่ตั้งไว้
+    return Math.max(this.camera - REVIVE.maxBack, Math.min(this.camera, cam));
+  }
+
+  /**
    * ดึงน้องขึ้นมาจากหลุมแล้ววิ่งต่อ — คะแนน ระยะทาง สมบัติ ตัวอักษร คงเดิมทั้งหมด
    *
    * ผู้เรียกต้องหักทองมาก่อนแล้ว ที่นี่ไม่ยุ่งกับกระเป๋าเงินเลย
@@ -2039,10 +2090,15 @@ export class Game {
     // นับก่อนทำอย่างอื่น ครั้งถัดไปจะได้แพงขึ้นทันทีแม้ผู้เล่นตกซ้ำในวินาทีเดียวกัน
     this.revives++;
 
-    // ปูทางเรียบรอไว้ตรงจุดที่น้องจะกลับมายืน
-    // ตรงที่ตกคือปากหลุม วางกลับที่เดิมเฉย ๆ จะร่วงซ้ำทันทีในเฟรมถัดไป
-    // วิธีเดียวกับตอนปลาพาลงมาส่งหลังโบนัส (ดู enterBonusPhase('fall'))
-    this.restartRoute(REVIVE.clearChunks);
+    // ── กลับไปยืนที่เดิม โดยไม่แตะด่านเลยสักชิ้น ──
+    // เดิมตรงนี้ปูด่านใหม่ทั้งผืน (ทางเรียบหนึ่งท่อน + ท่อนที่เหลือ) ซึ่งแก้ปัญหา
+    // "ร่วงซ้ำทันที" ได้จริง แต่ทำให้หลุมที่เพิ่งตกกับของรอบตัวหายไปหมด
+    // ผู้เล่นจึงอ่านว่า "ถูกย้ายไปที่อื่น" ทั้งที่กล้องถอยกลับมาแล้ว
+    //
+    // ตอนนี้ถอยกล้องไปยืนก่อนปากหลุมแทน — ด่านยังเป็นผืนเดิมทุกอย่าง
+    // หลุมนั้นยังอยู่ข้างหน้าให้ลองใหม่ และภาพรอบตัวเหมือนตอนก่อนตกเป๊ะ
+    this.camera = this.reviveCam();
+    this.level.ensureAhead(this.camera);
 
     this.player.reset();
     // reset() ล้างระยะเลื่อนกับท่า แต่พรสวรรค์ยังเป็นใบเดิม — ผูกตัวปรับกลับเข้าไปใหม่
