@@ -28,6 +28,8 @@ import { TreasureRun, catAnchor } from './treasure-run.js';
 import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treasure-fx.js';
 import { drawTreasureSlots } from './render/treasure-hud.js';
 import { TalentRun } from './talent-run.js';
+import { getEquippedSkill } from './skills.js';
+import { drawSkillBack, drawSkillWorld, drawSkillScreen, skillLift } from './render/skill-fx.js';
 import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/talent-fx.js';
 import { drawHUD } from './render/hud.js';
 import { drawWarpBack, drawWarpFront, drawWarpArrive } from './render/warp.js';
@@ -325,6 +327,45 @@ export class Game {
   }
 
   /**
+   * กำลัง "พุ่ง" อยู่ไหม — โลกเร็วขึ้น และชนของแล้วของกระเด็นแตก
+   *
+   * เดิมมีแหล่งเดียวคือต้นหญ้าแมว (boost) ตอนนี้สกิลฮีโร่ก็พุ่งได้ด้วย
+   * รวมเป็นคำถามเดียว ทุกจุดที่เคยถาม boost (ความเร็วโลก ชนกระเด็น ของร่วงแตก
+   * ผึ้งกระเด็น) จึงรองรับสกิลพุ่งเองโดยไม่ต้องรู้ว่ามีสกิลอยู่ในเกม
+   * ติดสปีดพร้อมใช้สกิลพุ่ง = เร็วเท่าเดิม ไม่คูณซ้อนกัน (เป็นสถานะ ไม่ใช่ตัวคูณ)
+   */
+  get dashing() {
+    return this.boost > 0 || (this.skill > 0 && this.skillDef.tune.dash);
+  }
+
+  /**
+   * กำลังบินด้วยสกิลอยู่ไหม — เฉพาะช่วงออกฤทธิ์ ไม่รวมช่วงกะพริบ
+   * ช่วงกะพริบคืนแรงโน้มถ่วงให้ร่วงลงมาเองแบบฟิสิกส์ปกติ (หลุมยังแข็งอยู่เพราะ skillOn)
+   * จะได้ลงบนเนิน/พื้นลอยตรงนั้นได้ถูก ไม่ใช่ไหลลงไปหาพื้นราบที่อาจจมอยู่ในเนิน
+   */
+  get skillFlying() {
+    return this.skill > 0 && !!this.skillDef.tune.fly && this.bonus <= 0;
+  }
+
+  /** ระยะเก็บของกินที่สกิลบวกให้ (บอลหิมะ: โตจาก grab[0] ไป grab[1] ตามเวลาที่ผ่านไป) */
+  get skillGrab() {
+    const g = this.skill > 0 && this.skillDef.tune.grab;
+    if (!g) return 0;
+    const p = 1 - this.skill / this.skillDef.tune.active;
+    return g[0] + (g[1] - g[0]) * p;
+  }
+
+  /** ตัวคูณคะแนนของกินจากสกิล (อุ้งเท้าทองคำ = 2) — นอกช่วงออกฤทธิ์เป็น 1 */
+  get skillTreatMult() {
+    return this.skill > 0 ? this.skillDef.tune.treatMult || 1 : 1;
+  }
+
+  /** สกิลที่กำลังออกฤทธิ์อยู่ดูดของรอบตัวไหม (เต้น = ดูด / ฮีโร่ = ไม่ดูด ต้องพุ่งผ่านเอง) */
+  get skillMagnet() {
+    return this.skill > 0 && this.skillDef.tune.magnet;
+  }
+
+  /**
    * ตอนนี้เหยียบหลุมได้เหมือนพื้นแข็งรึยัง
    *
    * มีสองอย่างที่ทำให้หลุมหาย: ความสามารถประจำตัว กับไอเทมสปีด
@@ -388,7 +429,7 @@ export class Game {
       // เพลงหน้าแรกดังทับเสียงร้องจนฟังไม่ออกว่าน้องส่งเสียงอะไร
       setMusicTrack(this.inRoom ? SILENT : 'home');
     } else if (this.bonus > 0) setMusicTrack(this.scene.bonusTrack);
-    else if (this.skill > 0) setMusicTrack('dance');
+    else if (this.skill > 0) setMusicTrack(this.skillDef.tune.music);
     // เพลงประจำแมพ — ด่านที่ยังไม่ได้ประกาศ track ไว้ใช้เพลงกลางเหมือนเดิม
     // ปล่อยให้ตกกลับไป 'main' แทนที่จะบังคับให้ทุกด่านต้องมีเพลงของตัวเอง
     else setMusicTrack(this.scene.track || 'main');
@@ -413,6 +454,9 @@ export class Game {
     // ดีกว่าไปสร้างตอนตัดสินใจเปลี่ยนฉาก ซึ่งผู้เล่นอาจกำลังกระโดดข้ามของอยู่
     for (const def of GATE_LIST) warmGateArt(def, this.renderScale);
     this.clearedScenes = 0;           // ผ่านด่านย่อยไปกี่ฉากแล้วในตานี้
+    // ผ่านด่านไหนไปกี่ครั้งในตานี้ { space: 1, ... } — จบตาแล้วส่งเข้า stats.js
+    // ภารกิจปลดสกิลประจำด่านนับจากตรงนี้ (ดู skills.js)
+    this.clears = {};
 
     this.pal = this.stage.palette;
     this.best = loadBest(this.stage.id);
@@ -464,11 +508,18 @@ export class Game {
     this.flash = 0;        // ความเข้มแสงวาบตอนสลับฉาก 0-1
     this.flashInk = false; // true = วาบดำ (ขากลับ) / false = วาบขาว (ขาขึ้น)
 
-    // ความสามารถประจำตัว: ชาร์จ → ออกฤทธิ์ → กะพริบ → ชาร์จใหม่
+    // ความสามารถประจำตัว (สกิล): ชาร์จ → ออกฤทธิ์ → กะพริบ → ชาร์จใหม่
+    // อ่านสกิลที่ติดตั้งใหม่ทุกตา เหมือนพรสวรรค์ — เปลี่ยนในเมนูแล้วมีผลตาถัดไป
+    this.skillDef = getEquippedSkill();
     this.charge = 0;       // เฟรมที่ชาร์จไปแล้ว
     this.skill = 0;        // เฟรมที่เหลือของช่วงออกฤทธิ์
     this.skillBlink = 0;   // เฟรมที่เหลือของช่วงกะพริบ (ยังอมตะ)
     this.rain = [];        // เม็ดที่โปรยลงมา
+    this.skyLane = 1;      // ระดับบินของสกิลบิน (ดัชนีใน tune.lanes) — เริ่มกลาง
+    this.skyTrain = 0;     // เฟรมสะสมก่อนปล่อยขบวนขนมถัดไป (สกิลบิน)
+    this.skyMods = false;  // สกิลบินกำลังยืม mods ของตัวละครอยู่ไหม (ต้องคืนตอนเลิก)
+    this.pulseT = 0;       // เฟรมสะสมก่อนคลื่นเสียงลูกถัดไป (สกิลคริสตัล)
+    this.pulseR = -1;      // รัศมีคลื่นที่กำลังวิ่งอยู่ (px) — ติดลบ = ไม่มีคลื่น
     this.boost = 0;        // เฟรมที่เหลือของสปีดจากต้นหญ้าแมว
     this.big = 0;          // เฟรมที่เหลือของช่วงตัวโตจากอาหารกระป๋อง
     this.revives = 0;      // ดึงขึ้นจากหลุมไปแล้วกี่ครั้งในตานี้ — คุมราคาครั้งถัดไป
@@ -519,6 +570,12 @@ export class Game {
       return;
     }
 
+    // สกิลบิน: ปุ่มกระโดด = ขึ้นหนึ่งระดับ (มาก่อนพรสวรรค์ — ระหว่างบินสกิลเป็นเจ้าของตัว)
+    if (this.skillFlying) {
+      this.shiftSkyLane(+1);
+      return;
+    }
+
     // พรสวรรค์บางใบยืมปุ่มกระโดดไปทำอย่างอื่น (แมวลอยใช้เปลี่ยนระดับ)
     if (this.talents.onJumpPress(this)) return;
 
@@ -545,9 +602,45 @@ export class Game {
 
   setSlide(on) {
     if (this.state !== STATE.RUN) return;
+    // สกิลบิน: กดหมอบ = ลงหนึ่งระดับ ปล่อยปุ่มไม่ทำอะไร (ไม่ส่งต่อให้ตัวละครหมอบกลางฟ้า)
+    if (this.skillFlying) {
+      if (on) this.shiftSkyLane(-1);
+      return;
+    }
     // แมวลอย: กดหมอบตอนอยู่สูง = ลดระดับ ไม่ใช่หมอบ
     if (this.talents.onSlide(this, on)) return;
     this.player.setSlide(on);
+  }
+
+  /** เปลี่ยนระดับบินของสกิลบิน — ชนเพดาน/พื้นแล้วไม่ทำอะไร (ไม่มีเสียงผิดให้รำคาญระหว่างบินรัว ๆ) */
+  shiftSkyLane(dir) {
+    const lanes = this.skillDef.tune.lanes;
+    const to = Math.max(0, Math.min(lanes.length - 1, this.skyLane + dir));
+    if (to === this.skyLane) return;
+    this.skyLane = to;
+    const b = this.player.box;
+    this.particles.burst(b.x + this.camera + b.w / 2, b.y + b.h / 2, 6, 'mint', 3);
+    sfx.jump();
+  }
+
+  /**
+   * สกิลบินยืมโหมดลอยของตัวละคร (mods.laneY ตัวเดียวกับพรสวรรค์แมวลอย)
+   * เรียกทุกเฟรมหลังพรสวรรค์เขียน mods ของมันเสร็จ สกิลจึงทับได้ชั่วคราวโดยไม่แก้ talent-run.js
+   * เลิกบินแล้วให้พรสวรรค์เขียน mods ของมันคืนหนึ่งครั้ง — ไม่ติดพรสวรรค์ก็ได้ค่าปกติ
+   * (ตอนไม่ติดพรสวรรค์ talent-run ไม่เขียน mods ทุกเฟรม ถ้าไม่คืนเอง ตัวจะลอยค้าง)
+   */
+  applySkyMods() {
+    const m = this.player.mods;
+    if (this.skillFlying) {
+      const tn = this.skillDef.tune;
+      m.laneY = tn.lanes[this.skyLane];
+      m.laneEase = tn.flyEase;
+      this.player.slideHeld = false;
+      this.skyMods = true;
+    } else if (this.skyMods) {
+      this.skyMods = false;
+      this.talents.writeMods(this.player, this.bonus > 0);
+    }
   }
 
   /** ปล่อยปุ่มกระโดด — ใช้กับพรสวรรค์ที่ต้องกดค้าง (ร่อน / บังคับกลางอากาศ) */
@@ -617,7 +710,7 @@ export class Game {
     }
     // พรสวรรค์คูณเวลาโลกเพิ่มอีกชั้น (พุ่ง = เร็วขึ้นช่วงสั้น / หยุดจังหวะ = ช้าลง)
     // ใช้กลไกเดียวกับสปีดจากต้นหญ้าแมว ตัวจับเวลาทุกตัวจึงยังเดินด้วยเวลาจริงเหมือนเดิม
-    const gdt = dt * (this.boost > 0 ? SPEEDUP.mult : 1) * this.talents.timeK;
+    const gdt = dt * (this.dashing ? SPEEDUP.mult : 1) * this.talents.timeK;
 
     if (this.bonus > 0) return this.updateBonus(dt, gdt);
 
@@ -658,6 +751,7 @@ export class Game {
 
     // เดินพรสวรรค์ก่อนก้าวฟิสิกส์ ตัวปรับการเคลื่อนที่ของเฟรมนี้จึงมีผลทันเฟรมนี้เลย
     this.talents.update(dt, this);
+    this.applySkyMods();
 
     let justLanded = false, justSlid = false, fellOut = false;
     for (this.stepAcc += gdt; this.stepAcc >= 1; this.stepAcc -= 1) {
@@ -711,7 +805,7 @@ export class Game {
         // ทะลุผ่านแบบไม่มีอะไรเกิดขึ้นเลยอ่านเป็น "ชนไม่โดน" ซึ่งดูเหมือนบั๊ค
         // มากกว่าดูเหมือนพลัง ทั้งที่ภาพบนจอคือแมวตัวเท่าบ้านเดินชนหนามอยู่
         // ให้ของกระเด็นออกไปแทน ภาพกับความรู้สึกจึงตรงกัน และได้คะแนนพุ่งชนด้วย
-        if (this.boost > 0 || this.big > 0) {
+        if (this.dashing || this.big > 0) {
           this.smashObstacle(o);
           continue;
         }
@@ -752,7 +846,7 @@ export class Game {
     // ใช้เฉพาะตอนไม่มีไอเทมและไม่ได้ใช้ความสามารถ ของแรงกว่าจึงชนะเสมอ
     // ไม่ได้บวกทับกัน ไม่งั้นคนที่พกดอกไม้จะได้แม่เหล็กแรงกว่าคนที่เก็บไอเทมมาได้
     const petal = this.treasures.magnetPull;
-    if (this.magnet > 0 || this.skill > 0 || petal > 0) {
+    if (this.magnet > 0 || this.skillMagnet || petal > 0) {
       // ── ตัวคูณความอ่อนของแม่เหล็กดอกไม้ ──
       //
       // แยกตัวคูณ "ระยะ" ออกจาก "ความเร็ว" เพราะสองอย่างนี้มีข้อจำกัดคนละแบบ:
@@ -764,10 +858,10 @@ export class Game {
       // เดิมใช้ตัวคูณเดียวกันทั้งคู่ (0.45 + petal x 0.55) ซึ่งถูกพื้นของความเร็ว
       // ดึงให้ระยะลดตามไม่ได้ — ลด pull จาก 0.26 ลงไปถึง 0.08 ระยะขยับแค่ 249->207px
       // แยกออกจากกันแล้วจึงลดพลังได้จริงโดยที่ยังดูดของเข้ามาได้อยู่
-      const weak = this.magnet > 0 || this.skill > 0 ? 1 : 0.5 + petal * 0.55;
-      const reach = this.magnet > 0 || this.skill > 0 ? 1 : 0.3 + petal * 0.6;
+      const weak = this.magnet > 0 || this.skillMagnet ? 1 : 0.5 + petal * 0.55;
+      const reach = this.magnet > 0 || this.skillMagnet ? 1 : 0.3 + petal * 0.6;
       const range = this.magnet > 0 ? MAGNET.range
-        : this.skill > 0 ? SKILL.magnetRange
+        : this.skillMagnet ? SKILL.magnetRange
         : MAGNET.range * reach;
       // สร้างครั้งเดียวนอกลูป ของในระยะมีได้หลายสิบชิ้นต่อเฟรม
       const cfg = {
@@ -787,7 +881,7 @@ export class Game {
       // ส่วนไอเทมแม่เหล็กที่เก็บได้ในด่านดูดแค่ของกินกับตัวอักษร ตั้งใจให้ต่างกัน:
       // มันแลกด้วยระยะที่กว้างเกือบครึ่งจอ ส่วนดอกไม้แลกด้วยระยะที่แคบกว่าครึ่ง
       // สองอย่างจึงไม่ใช่ของชิ้นเดียวกันที่แรงไม่เท่ากัน แต่เป็นคนละเครื่องมือ
-      const lists = this.skill > 0 || petal > 0
+      const lists = this.skillMagnet || petal > 0
         ? this.level.pullables
         : [this.level.fishes, this.level.letters];
 
@@ -822,7 +916,7 @@ export class Game {
     // ความอ่อนของดอกไม้จึงไปแสดงออกที่ "รัศมีที่จับได้" อย่างเดียว ไม่ใช่ที่
     // ความเร็วตอนบินเข้า — ซึ่งตรงกับที่ควรเป็น เพราะของที่ดูดติดแล้ว
     // ไม่มีเหตุผลอะไรให้บินช้าจนผู้เล่นต้องมองมันไล่ตามอยู่ครึ่งจอ
-    const worldMult = this.boost > 0 ? SPEEDUP.mult : 1;
+    const worldMult = this.dashing ? SPEEDUP.mult : 1;
     const reel = {
       range: MAGNET.range,
       // คูณเฉพาะ "ความเร็วพื้น" ด้วยความเร็วโลกตอนติดสปีด ของที่อยู่ข้างหลัง
@@ -994,12 +1088,14 @@ export class Game {
     for (const f of this.level.fishes) {
       if (f.got || f.x < this.camera - 40) continue;
       // กุ้งตัวใหญ่กว่า ระยะเก็บเลยกว้างกว่าให้สมกับที่ตาเห็น
-      const pad = f.kind === 'shrimp' ? SHRIMP.pickPad : 22;
+      const pad = (f.kind === 'shrimp' ? SHRIMP.pickPad : 22) + this.skillGrab;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
         f.got = true;
         // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
         // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
-        const m = this.treasures.treatMult;
+        const m = this.treasures.treatMult * this.skillTreatMult;
+        // อุ้งเท้าทองคำ: ประกายทองเพิ่มตอนเก็บ ให้รู้ว่าชิ้นนี้ได้คะแนนคูณ
+        if (this.skillTreatMult > 1) this.particles.burst(f.x, f.y, 8, 'letter', 4);
         if (f.kind === 'shrimp') {
           this.treat += Math.round((SCORING.pointsPerShrimp + this.foodBonus) * m);
           this.particles.burst(f.x, f.y, 22, 'shrimp', 7);
@@ -1267,7 +1363,7 @@ export class Game {
 
       if (this.skillOn || this.talents.phasing || this.invuln > 0) break;
       // ของร่วงเป็นก้อนแข็งเหมือนสิ่งกีดขวาง ตัวโตจึงต้องทุบแตกด้วยกติกาเดียวกัน
-      if (this.boost > 0 || this.big > 0) { f.dead = true; break; }
+      if (this.dashing || this.big > 0) { f.dead = true; break; }
       if (this.shielded) {
         this.shielded = false;
         this.invuln = SHIELD.invulnFrames;
@@ -1327,7 +1423,7 @@ export class Game {
 
       // ตัวโตจากกระป๋องหรือติดสปีด = พุ่งชนให้กระเด็น ไม่ใช่ทะลุผ่านเฉย ๆ
       // เงื่อนไขและผลลัพธ์ชุดเดียวกับสิ่งกีดขวาง ผู้เล่นจึงไม่ต้องเรียนรู้ข้อยกเว้นใหม่
-      if (this.boost > 0 || this.big > 0) {
+      if (this.dashing || this.big > 0) {
         this.smashHazard(h);
         continue;
       }
@@ -1442,6 +1538,8 @@ export class Game {
 
     this.sceneIndex++;
     this.clearedScenes++;
+    // ฉากที่เพิ่งวิ่งจบคือ this.scene (ยังไม่ได้สลับ — สลับตอนไล่สี/ในทางเข้า)
+    this.clears[this.scene.id] = (this.clears[this.scene.id] || 0) + 1;
     const next = sceneAt(this.stage.id, this.sceneIndex);
 
     // ฉากที่มีทางเข้าของตัวเอง — วิ่งทะลุสถานที่จริงแทนทางเชื่อมไล่สี (gates.js)
@@ -1485,10 +1583,14 @@ export class Game {
     if (this.skill > 0) {
       this.skill -= dt;
 
+      const tn = this.skillDef.tune;
+      if (tn.rain === 'sky') this.spawnSkyTrain(dt, tn);
+      if (tn.pulse) this.updatePulse(dt, tn.pulse, cx);
       // โปรยเม็ดใหม่จากเหนือจอเป็นจังหวะ กระจายทั่วความกว้างจอ
       this.rainTick = (this.rainTick || 0) + dt;
-      while (this.rainTick >= SKILL.rainEvery) {
-        this.rainTick -= SKILL.rainEvery;
+      const every = tn.rainEvery || SKILL.rainEvery;
+      while (tn.rain !== 'sky' && this.rainTick >= every) {
+        this.rainTick -= every;
         this.rain.push({
           x: this.camera + 120 + Math.random() * (VIEW.W - 140),
           y: -20 - Math.random() * 90,
@@ -1503,6 +1605,7 @@ export class Game {
 
       if (this.skill <= 0) {
         this.skill = 0;
+        this.pulseR = -1;
         this.skillBlink = SKILL.blinkFrames;
       }
     } else if (this.skillBlink > 0) {
@@ -1515,16 +1618,20 @@ export class Game {
       this.charge += dt;
       if (this.charge >= SKILL.chargeFrames) {
         this.charge = 0;
-        this.skill = SKILL.activeFrames;
+        this.skill = this.skillDef.tune.active;
         this.rainTick = 0;
+        this.skyTrain = this.skillDef.tune.trainEvery || 0;   // ขบวนแรกมาทันที ไม่ต้องรอ
+        this.skyLane = 1;
+        this.pulseT = this.skillDef.tune.pulse ? this.skillDef.tune.pulse.every : 0;   // ร้องทันทีที่ติด
         sfx.skill();
         this.syncMusic();
       }
     }
 
     // เม็ดที่โปรยแล้ว: ร่วงลงมาก่อน พอเข้าระยะก็พุ่งเข้าตัวเอง
+    const pullRange = this.skillDef.tune.pull || SKILL.pullRange;
     const rainCfg = {
-      range: SKILL.pullRange,
+      range: pullRange,
       base: SKILL.minPull,
       rush: SKILL.rush,
       turn: SKILL.turn,
@@ -1536,7 +1643,7 @@ export class Game {
       const dy = cy - d.y;
       const dist = Math.hypot(dx, dy);
 
-      if (dist < SKILL.pullRange && dist > 1) {
+      if (dist < pullRange && dist > 1) {
         // สืบทอดความเร็วที่กำลังร่วงอยู่มาเป็นความเร็วตั้งต้น
         // เม็ดจึงโค้งจากแนวดิ่งเข้าหาตัว แทนที่จะหักศอกทันทีที่เข้าระยะ
         if (d.mvx === undefined) {
@@ -1550,7 +1657,7 @@ export class Game {
 
       if (dist < SKILL.pickR) {
         d.got = true;
-        this.treat += SCORING.pointsPerRain + this.foodBonus;
+        this.treat += Math.round((SCORING.pointsPerRain + this.foodBonus) * this.skillTreatMult);
         this.particles.burst(d.x, d.y, 9, 'kibble');
         sfx.kibble();
       }
@@ -1560,6 +1667,88 @@ export class Game {
     this.rain = this.rain.filter(
       (d) => !d.got && d.y < VIEW.H + 60 && d.x > this.camera - 120
     );
+  }
+
+  /**
+   * คลื่นเสียงของสกิลคริสตัล — วงแหวนขยายจากตัวออกไปข้างหน้า
+   *
+   * ทุบของตอนขอบคลื่นไปถึงจริง ไม่ใช่ทุบทั้งจอพร้อมกันตอนร้อง ภาพวงแหวนกับของที่แตกจึงตรงกัน
+   * ใช้ smashObstacle / smashHazard ตัวเดียวกับพุ่งชน คะแนนกับท่ากระเด็นจึงเหมือนกันทุกประการ
+   * ของที่อยู่ข้างหลังตัวเกิน 60px ไม่นับ (ผ่านไปแล้ว ทุบไปก็ไม่มีใครเห็น)
+   */
+  updatePulse(dt, pu, cx) {
+    this.pulseT += dt;
+    if (this.pulseT >= pu.every) {
+      this.pulseT -= pu.every;
+      this.pulseR = 0;
+      sfx.double();
+    }
+    if (this.pulseR < 0) return;
+    this.pulseR += pu.speed * dt;
+    const back = cx - 60;
+    const edge = cx + this.pulseR;
+    for (const o of this.level.obstacles) {
+      if (o.x > edge) break;
+      if (o.smashed || o.x + o.w < back) continue;
+      this.smashObstacle(o);
+      this.spawnGems(o.x + o.w / 2, o.y + o.h / 2, pu.gems);
+    }
+    for (const h of this.level.hazards) {
+      if (h.smashed || h.x > edge || h.x + h.w < back) continue;
+      this.smashHazard(h);
+      this.spawnGems(h.x + h.w / 2, h.y + h.h / 2, pu.gems);
+    }
+    for (const f of this.level.fallers) {
+      if (f.dead || f.warn > 0 || f.x > edge || f.x + f.w < back) continue;
+      f.dead = true;
+      this.particles.burst(f.x + f.w / 2, f.y + f.h / 2, 14, 'nip', 6);
+      this.spawnGems(f.x + f.w / 2, f.y + f.h / 2, pu.gems);
+    }
+    if (this.pulseR > pu.reach) this.pulseR = -1;
+  }
+
+  /** เม็ดคริสตัลจากของที่แตก — ใส่ array ฝนเดิม ร่วงช้า ๆ แล้วถูกดูดเข้าตัวด้วยโค้ดชุดเดียวกับฝน */
+  spawnGems(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      this.rain.push({
+        x: x + (i - (n - 1) / 2) * 22,
+        y: Math.min(y, GROUND_Y - 30) - i * 10,
+        vy: 1.1,
+        seed: Math.random(),
+        got: false,
+      });
+    }
+  }
+
+  /**
+   * ขบวนขนมของสกิลบิน — แถวเม็ดเรียงแนวนอนลอยนิ่งอยู่บนฟ้า เกิดที่ขอบจอขวา
+   * ใช้ array ฝนเดิม (vy = 0 คือไม่ร่วง) การดูด/เก็บ/ทิ้งจึงเป็นโค้ดชุดเดียวกับเต้นทั้งหมด
+   * สุ่มระดับแต่ไม่ซ้ำขบวนก่อน ผู้เล่นจึงต้องขยับทุกขบวน ไม่ใช่นิ่งอยู่ระดับเดียวแล้วได้หมด
+   */
+  spawnSkyTrain(dt, tn) {
+    this.skyTrain += dt;
+    if (this.skyTrain < tn.trainEvery) return;
+    this.skyTrain -= tn.trainEvery;
+    // ขบวนที่ลอยมาไม่ถึงตัวก่อนหมดฤทธิ์ไม่ต้องปล่อย — ตอนนั้นน้องร่วงลงพื้นแล้ว
+    // ถ้าปล่อยไปจะเห็นขนมลอยค้างบนฟ้าผ่านหัวไปทั้งแถว อ่านเป็น "พลาด" ทั้งที่ไม่มีทางเก็บทัน
+    if (this.skill < (VIEW.W + 30 - PLAYER_X) / Math.max(1, this.speed)) return;
+    const n = tn.lanes.length;
+    let lane = Math.floor(Math.random() * n);
+    if (lane === this.lastSkyLane) lane = (lane + 1 + Math.floor(Math.random() * (n - 1))) % n;
+    this.lastSkyLane = lane;
+    // กลางตัวแมวตอนบินระดับนั้น = เท้า − ครึ่งความสูงตัว
+    const y = tn.lanes[lane] - BODY.standH / 2;
+    const x0 = this.camera + VIEW.W + 30;
+    for (let i = 0; i < tn.trainLen; i++) {
+      this.rain.push({
+        x: x0 + i * 36,
+        // โค้งขึ้นลงนิดหนึ่งตามแถว อ่านเป็น "ขบวน" ไม่ใช่เส้นตรงแข็ง ๆ
+        y: y + Math.sin(i * 0.9) * 8,
+        vy: 0,
+        seed: Math.random(),
+        got: false,
+      });
+    }
   }
 
   // ── โหมดโบนัส ──────────────────────────────────────────────
@@ -2163,16 +2352,18 @@ export class Game {
     });
     drawTreats(ctx, plainFish, this.camera, this.tick);
     this.particles.draw(ctx, this.camera);
+    // สีฉากช่วงสกิล (เต้น = ปาร์ตี้แดงจาง ๆ) — ทับฉากและของ แต่อยู่ใต้ขนมโปรยกับตัวน้อง
+    drawSkillWorld(ctx, this);
 
     // กะพริบตอนอมตะหลังโดนชน ให้เห็นชัดว่าช่วงนี้ยังชนไม่ได้
     // เช็ค RUN ด้วย ไม่งั้นตอนตาย tick หยุดเดิน แล้วตัวละครอาจค้างสถานะซ่อน
     const blinking =
       this.state === STATE.RUN && this.invuln > 0 && Math.floor(this.tick / 4) % 2 === 0;
-    drawRain(ctx, this.rain, this.camera, getSkin(), this.tick);
+    drawRain(ctx, this.rain, this.camera, getSkin(), this.tick, this.skillDef.tune.look);
 
     // อ้าปากกับคลื่นดูดโผล่ทั้งตอนมีไอเทมแม่เหล็กและตอนใช้ความสามารถ
     // เพราะทั้งสองกรณีคือ "กำลังดูดของเข้าตัว" เหมือนกัน ต้องอ่านออกเหมือนกัน
-    const sucking = this.state === STATE.RUN && (this.magnet > 0 || this.skill > 0);
+    const sucking = this.state === STATE.RUN && (this.magnet > 0 || this.skillMagnet);
     // กะพริบสองกรณี: หลังโดนชน กับตอนความสามารถใกล้หมดฤทธิ์
     const skillFlicker = this.skillBlink > 0 && Math.floor(this.tick / 5) % 2 === 0;
     const catS = this.catScale;
@@ -2187,11 +2378,15 @@ export class Game {
 
     // เอฟเฟกต์พรสวรรค์ชั้นหลังตัว (เมฆใต้ตัว ปีกร่อน เส้นพุ่ง ออร่าเงา)
     if (this.state !== STATE.DEAD) drawTalentBack(ctx, this);
+    // เอฟเฟกต์สกิลชั้นหลังตัว (ฮีโร่: หางแสง + เส้นความเร็ว)
+    if (this.state !== STATE.DEAD) drawSkillBack(ctx, this);
 
     // แมวเงา: ตัวโปร่ง และกะพริบถี่ช่วงใกล้หมดฤทธิ์ ผู้เล่นจะได้ไม่พุ่งใส่ของตอนฤทธิ์หมดพอดี
     const shadowFlicker = this.talents.shadowEnding && Math.floor(this.tick / 4) % 2 === 0;
     const catAlpha = this.talents.phasing ? (shadowFlicker ? 0.8 : 0.5) : 1;
 
+    // บอลหิมะยกตัวน้องขึ้น — หลอดบนหัวต้องยกตามด้วย ไม่งั้นไปจมกลางหน้า
+    const liftY = this.state === STATE.DEAD ? 0 : skillLift(this);
     if (!blinking && !skillFlicker) {
       ctx.globalAlpha = catAlpha;
       // ตัวโตอยู่ = ยิ้มสะใจ ทับอารมณ์อื่นที่อาจตั้งค้างไว้จากโบนัส
@@ -2200,10 +2395,25 @@ export class Game {
       // ใช้เส้นเดียวกับที่หลอดพลังเปลี่ยนเป็นแดง ตัวละครกับ HUD จึงเตือนพร้อมกัน
       // ไม่ใช่คนละจังหวะจนผู้เล่นสับสนว่าอันไหนคือสัญญาณจริง
       const lowK = Math.max(0, 1 - (this.hp / HEALTH.max) / HEALTH.lowAt);
-      drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking,
-        this.skill > 0 ? this.tick : 0, this.big > 0 ? 'smug' : this.catMood,
+      // ── ท่าของสกิล ──
+      // เต้น = ส่ายตัวเด้งบนท่าวิ่งเดิม (ส่ง tick เป็นจังหวะเต้น)
+      // ฮีโร่ = เอนพุ่ง ยืดตัว ยื่นอุ้งเท้าไปข้างหน้า (fx.hero) — ทั้งคู่บิดท่าวิ่งเดิม
+      // ไม่ได้วาดตัวใหม่ จึงใส่ได้ทุกสกินทุกชุดโดยไม่ต้องเตรียมภาพแยก
+      // บิน = ปีกผีเสื้อวาดใน skill-fx.js ตัวใช้ท่ากลางอากาศเดิม (ขาห้อย หางถ่วง) / ทอง = ชูอุ้งเท้าโบก
+      // คริสตัล = อ้าปากร้องตอนคลื่นเพิ่งออก / บอลหิมะ = ยกทั้งตัวขึ้นไปวิ่งบนลูกบอล (ภาพล้วน กล่องชนอยู่ที่เดิม)
+      const pose = this.skill > 0 ? this.skillDef.tune.pose : '';
+      const hero = pose === 'hero';
+      const gold = pose === 'gold';
+      const shout = pose === 'shout' && this.pulseR >= 0 && this.pulseR < 260;
+      ctx.save();
+      ctx.translate(0, -liftY);
+      drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking || shout,
+        pose === 'dance' ? this.tick : 0,
+        this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood,
         catS, 1 + (BIGCAN.gait - 1) * this.bigK,
-        { tired: this.big > 0 ? 0 : lowK, hurt: this.hurtFlash });
+        { tired: this.big > 0 || pose ? 0 : lowK, hurt: this.hurtFlash, hero: hero ? 1 : 0,
+          wave: gold ? 1 : 0, waveT: Math.sin(this.tick * 0.18) });
+      ctx.restore();
       ctx.globalAlpha = 1;
     }
     if (sucking) drawSuction(ctx, this.player, this.tick, catS);
@@ -2213,7 +2423,10 @@ export class Game {
 
     // หลอดความสามารถ ซ่อนตอนตายเพราะไม่มีความหมายแล้ว
     if (this.state !== STATE.DEAD) {
+      ctx.save();
+      ctx.translate(0, -liftY);
       drawSkillGauge(ctx, this.player, this.charge / SKILL.chargeFrames, this.skillOn, this.tick, catS);
+      ctx.restore();
     }
 
     // ── ฤทธิ์สมบัติ ──
@@ -2228,6 +2441,8 @@ export class Game {
     postProcess(ctx);
     // ฟิลเตอร์เต็มจอของพรสวรรค์ (โลกช้า / โหมดเงา) อยู่ใต้ HUD ตัวเลขจึงยังอ่านชัด
     drawTalentScreen(ctx, this);
+    // ขอบจอเรือง/หัวใจลอยของช่วงสกิล — ใต้ HUD เหมือนฟิลเตอร์พรสวรรค์ ตัวเลขยังอ่านชัด
+    drawSkillScreen(ctx, this);
     drawHUD(ctx, this);
 
     // ช่องสมบัติอยู่นอก ctx.save() ของการสั่นจอโดยตั้งใจ — ตัวเลขนับถอยหลัง

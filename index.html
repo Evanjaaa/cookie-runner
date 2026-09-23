@@ -410,7 +410,7 @@
                เปิดหน้าพรสวรรค์ (#talentPanel) เลือกใบที่เปลี่ยนวิธีเคลื่อนที่ของน้อง -->
           <button class="lobby-btn" id="btnTalent">
             <canvas id="talentIcon" width="76" height="76"></canvas>
-            <b>พรสวรรค์</b>
+            <b>สกิล</b>
           </button>
           <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
                รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
@@ -638,8 +638,14 @@
         <div class="pop tl-pop">
           <div class="tl-head">
             <div class="tl-titles">
-              <span class="tl-kicker" aria-hidden="true">TALENT</span>
-              <h2 class="skin-title">พรสวรรค์</h2>
+              <span class="tl-kicker" id="tlKicker" aria-hidden="true">SKILL</span>
+              <h2 class="skin-title" id="tlTitle">สกิล</h2>
+            </div>
+            <!-- สองหมวดในแผงเดียว: สกิล (ท่าไม้ตายตอนหลอดบนหัวเต็ม) / พรสวรรค์ (นิสัยตลอดตา)
+                 แยกคนละช่องติดตั้ง ใส่พร้อมกันได้ — ปุ่มล็อบบี้มีปุ่มเดียว ไม่ต้องเพิ่มปุ่มใหม่ -->
+            <div class="fsort tl-tabs" id="tlTabs" role="tablist" aria-label="หมวด">
+              <button type="button" class="fchip on" data-tab="skill" role="tab" aria-selected="true">สกิล</button>
+              <button type="button" class="fchip" data-tab="talent" role="tab" aria-selected="false">พรสวรรค์</button>
             </div>
             <span class="tl-count" aria-label="สะสมแล้ว">
               <b id="tlOwned">0</b><span class="tl-count-sep">/</span><span id="tlTotal">0</span>
@@ -654,11 +660,22 @@
 
           <div class="tl-body">
             <aside class="tl-side">
-              <p class="tl-side-label">ใช้งานอยู่</p>
+              <p class="tl-side-label">ติดตั้งอยู่</p>
               <button type="button" class="tl-equipped" id="tlEquipped"></button>
               <p class="tl-side-note">ติดตั้งได้ทีละ 1 ใบ<br>มีผลตั้งแต่เริ่มวิ่งตาถัดไป</p>
             </aside>
             <div class="tl-grid" id="tlGrid" role="list" aria-label="พรสวรรค์ทั้งหมด"></div>
+          </div>
+
+          <!-- หมวดสกิล — ใช้โครงซ้าย/ขวาเดียวกับพรสวรรค์ แต่การ์ดกว้างกว่า
+               สกิลมีไม่กี่อัน และต้องเห็นเงื่อนไขปลดล็อก + หลอดความคืบหน้าบนการ์ดเลย -->
+          <div class="tl-body sk-body" id="skBody">
+            <aside class="tl-side">
+              <p class="tl-side-label">ติดตั้งอยู่</p>
+              <div class="tl-equipped sk-equipped" id="skEquipped"></div>
+              <p class="tl-side-note">ติดตั้งได้ทีละ 1 สกิล<br>หลอดบนหัวเต็มทุก 20 วิ<br>แล้วออกฤทธิ์เอง</p>
+            </aside>
+            <div class="tl-grid sk-grid" id="skGrid" role="list" aria-label="สกิลทั้งหมด"></div>
           </div>
 
           <!-- หน้ารายละเอียด: แผ่นซ้อนในการ์ด ปิดได้สามทาง (ปุ่มปิด / แตะพื้นมืด / ปุ่มกลับหรือ Esc) -->

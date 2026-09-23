@@ -1777,11 +1777,12 @@ const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rai
  *
  * seed สุ่มครั้งเดียวตอนเม็ดเกิดแล้วไม่เปลี่ยนอีก ลูกไหนเป็นส้มก็เป็นส้มจนหายไป
  */
-export function drawRain(ctx, drops, camera, skin, t) {
+export function drawRain(ctx, drops, camera, skin, t, look = null) {
   // ชุดระดับสูงเปลี่ยนทั้งสีและทรง ชุดอื่นใช้ลูกกลมสีประจำสีขนตามเดิม
-  const [main, lite, dark] = skin.outfit?.rain || skin.rain;
-  const glow = skin.outfit?.glow;
-  const shape = RAIN_SHAPES[skin.outfit?.rainShape] || rainBall;
+  // สกิลที่มีหน้าตาเม็ดของตัวเอง (look — เช่นเหรียญทอง) ชนะสกินเสมอ ผู้เล่นต้องอ่านออกว่าสกิลไหนทำงาน
+  const [main, lite, dark] = look?.rain || skin.outfit?.rain || skin.rain;
+  const glow = look ? look.glow : skin.outfit?.glow;
+  const shape = RAIN_SHAPES[look ? look.shape : skin.outfit?.rainShape] || rainBall;
 
   for (const d of drops) {
     if (d.got) continue;
@@ -2797,6 +2798,10 @@ export function drawShieldRing(ctx, player, tick, scale = 1) {
 export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0, mood = '', scale = 1, gait = 1, fx = {}) {
   const tired = isDead ? 0 : Math.max(0, Math.min(1, fx.tired || 0));
   const hurt = isDead ? 0 : Math.max(0, Math.min(1, fx.hurt || 0));
+  // ท่าพุ่งของสกิลฮีโร่ 0-1 — บิดท่าวิ่งเดิม ไม่ได้วาดตัวใหม่ (ดู drawCatStand ช่อง reach)
+  const hero = isDead ? 0 : Math.max(0, Math.min(1, fx.hero || 0));
+  // ชูอุ้งเท้าโบก (สกิลอุ้งเท้าทองคำ) — ใช้ช่อง wave ของ drawCatStand ตัวเดียวกับท่าทักทาย
+  const wave = isDead ? 0 : Math.max(0, Math.min(1, fx.wave || 0));
   const b = player.box;
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
@@ -2838,7 +2843,9 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
     // สะบัดตัวตอนโดนชน — ความถี่สูงคูณกับแอมป์ที่ยุบลงเอง จึงสั่นถี่แล้วนิ่งเร็ว
     // ไม่ต้องมีตัวจับเวลาแยก เพราะ hurt ที่เกมส่งมาก็ไล่จาก 1 ลง 0 อยู่แล้ว
     const shake = hurt > 0 ? Math.sin(hurt * 34) * hurt * 0.26 : 0;
-    ctx.rotate(base + shake + (dance ? Math.sin(dance * 0.24) * 0.28 : 0));
+    // ท่าพุ่ง: เอนตัวไปข้างหน้า 0.3 เรเดียน (~17°) — มุมมองของน้องเป็นหน้าตรง
+    // เอนมากกว่านี้จะอ่านเป็น "ล้ม" แทน "พุ่ง" เพราะไม่เห็นลำตัวยืดออกไปตามแนวนอน
+    ctx.rotate(base + shake + (dance ? Math.sin(dance * 0.24) * 0.28 : 0) + hero * 0.3);
   }
   if (hurt > 0) ctx.translate(-hurt * 5, 0);   // ถูกผลักถอยหลังนิดหน่อย
 
@@ -2851,14 +2858,16 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
   // และตอนเหนื่อยให้บวกจังหวะหายใจแรง ๆ ทับลงไปบนค่าเดียวกันนี้เลย
   const puff = tired > 0 ? Math.sin(player.runPhase * 1.7) * tired * 0.05 : 0;
   const sq = isDead ? 0 : player.squash || 0;
-  if (scale !== 1 || sq !== 0 || puff !== 0) {
+  // ท่าพุ่งยืดตัวตามแนวนอนนิดหนึ่ง (ตรึงเท้าไว้เหมือนการยืด/แบนอื่น ๆ) = ความเร็ว
+  if (scale !== 1 || sq !== 0 || puff !== 0 || hero !== 0) {
     const feet = b.h / 2;
     ctx.translate(0, feet);
-    ctx.scale(scale * (1 + sq * 0.26 + puff), scale * (1 - sq * 0.3 + puff));
+    ctx.scale(scale * (1 + sq * 0.26 + puff + hero * 0.1), scale * (1 - sq * 0.3 + puff - hero * 0.06));
     ctx.translate(0, -feet);
   }
 
-  const swing = Math.sin(ph * 2) * (player.onGround ? 1 : 0.25);
+  // ตอนพุ่งขาแทบไม่ก้าว — ลากไปข้างหลังแทน (ดู reach ใน drawCatStand)
+  const swing = Math.sin(ph * 2) * (player.onGround ? 1 : 0.25) * (1 - hero * 0.75);
   ctx.lineCap = 'round';
 
   // อารมณ์ที่เกมสั่งมาโดยตรงต้องชนะเสมอ (เช่นสะใจตอนร่างยักษ์)
@@ -2871,7 +2880,7 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
   const wag = player.tailLag * (1 - tired * 0.55) + tired * 0.85;
 
   if (player.sliding) drawCatSlide(ctx, s, { isDead, mood: look });
-  else drawCatStand(ctx, s, { swing, wag, isDead, mood: look, tired, earLay });
+  else drawCatStand(ctx, s, { swing, wag, isDead, mood: look, tired, earLay, reach: hero, wave, waveT: fx.waveT || 0 });
 
   ctx.restore();
 }
@@ -3129,7 +3138,7 @@ function drawCatStand(ctx, s, {
   swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
   sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '', tired = 0, earLay = 0,
   wave = 0, waveT = 0, knead = 0, kneadT = 0, puff = 0, crouch = 0, tailShort = 0,
-  sprawlPads = 0, gaze = 0,
+  sprawlPads = 0, gaze = 0, reach = 0,
 } = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
@@ -3187,8 +3196,14 @@ function drawCatStand(ctx, s, {
     // จะกลายเป็นแมวลอยเหนือพื้น ไม่ใช่แมวย่อตัว
     const hy0 = 13 + rest * 4 + crouch * 9;
     const hy1 = 24 - rest * 2;
-    ctx.beginPath(); ctx.moveTo(-4, hy0); ctx.lineTo(-4 + swing * 10 * (1 - rest), hy1); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(6, hy0); ctx.lineTo(6 - swing * 10 * (1 - rest), hy1); ctx.stroke();
+    // ── ท่าพุ่ง (reach) ขาทั้งสองลากไปข้างหลัง ──
+    // ปลายเท้าเลื่อนไปทางซ้าย (หลังตัว) และยกขึ้นนิดหนึ่ง = ตัวกำลังพุ่งไปข้างหน้า
+    // ไม่ใช่ยืนก้าวขา — ตัวเลขเดียวกันใช้กับรอยแปรงข้างล่าง รอยจึงตามขาไปเอง
+    const lfx = -4 + swing * 10 * (1 - rest) - reach * 8;
+    const rfx = 6 - swing * 10 * (1 - rest) - reach * 8;
+    const fy1 = hy1 - reach * 3;
+    ctx.beginPath(); ctx.moveTo(-4, hy0); ctx.lineTo(lfx, fy1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, hy0); ctx.lineTo(rfx, fy1); ctx.stroke();
 
     // แขนหุบเข้าและลดลงหาพื้น จนไปจบที่เดียวกับขาหน้าของท่านั่งพอดี
     ctx.lineWidth = 6;
@@ -3204,18 +3219,29 @@ function drawCatStand(ctx, s, {
     // ── โบกทักทาย ──
     // ไม่ได้วาดแขนเส้นใหม่ แต่ย้าย "ปลายแขนขวาเส้นเดิม" ขึ้นไปข้างหัว
     // ถ้าวาดเส้นใหม่ทับ จะเห็นแขนขวาสองข้างพร้อมกันตลอดช่วงที่ท่ายังเข้าไม่เต็ม
-    const wx = ax1 + (18.5 + waveT * 6.5 - ax1) * wave;
-    const wy = ay1 + (-18 + Math.abs(waveT) * 3 - ay1) * wave;
+    const wx0 = ax1 + (18.5 + waveT * 6.5 - ax1) * wave;
+    const wy0 = ay1 + (-18 + Math.abs(waveT) * 3 - ay1) * wave;
 
-    ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(-ax1, ay1 - swing * 8 * (1 - rest)); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(wx, wy + swing * 8 * (1 - rest) * (1 - wave)); ctx.stroke();
+    // ── ยื่นอุ้งเท้าพุ่งแบบฮีโร่ (reach) ──
+    // ใช้วิธีเดียวกับโบกทักทาย: ย้าย "ปลายแขนขวาเส้นเดิม" ไปไว้หน้าหัว ไม่วาดแขนเส้นใหม่
+    // ปลายแขนไปอยู่ระดับคาง ยื่นเลยหน้าออกไป = กำปั้นนำหน้าตัวแบบฮีโร่บิน
+    // แขนซ้ายหุบไปข้างหลังเล็กน้อย ให้รูปเงาทั้งตัวเป็นทิศเดียวกันหมด
+    const wx = wx0 + (25 - wx0) * reach;
+    const wy = wy0 + (-5 - wy0) * reach;
+    const lhx = -ax1 - reach * 3;
+    const lhy = ay1 - swing * 8 * (1 - rest) * (1 - reach) + reach * 5;
+    const rhy = wy + swing * 8 * (1 - rest) * (1 - wave) * (1 - reach);
 
-    // อุ้งเท้าที่ปลายมือโบก — มือเปล่า ๆ ที่ไม่มีอุ้งเท้าอ่านเป็นแท่งไม้ ไม่ใช่มือ
-    if (wave > 0.02) {
+    ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(lhx, lhy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(wx, rhy); ctx.stroke();
+
+    // อุ้งเท้าที่ปลายมือโบก/มือพุ่ง — มือเปล่า ๆ ที่ไม่มีอุ้งเท้าอ่านเป็นแท่งไม้ ไม่ใช่มือ
+    const pad = Math.max(wave, reach);
+    if (pad > 0.02) {
       ctx.save();
-      ctx.globalAlpha *= wave;
+      ctx.globalAlpha *= pad;
       ctx.fillStyle = s.cream;
-      ctx.beginPath(); ctx.arc(wx, wy, 3.9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(wx, rhy, 3.9 + reach * 0.8, 0, Math.PI * 2); ctx.fill();
       catEdge(ctx, s); ctx.stroke();
       ctx.restore();
     }
@@ -3223,13 +3249,13 @@ function drawCatStand(ctx, s, {
     // รอยแปรงบนขากับแขน — อยู่นอกวงรีลำตัวเหมือนหาง
     paintStroke(ctx, s, 'body', () => {
       ctx.beginPath();
-      ctx.moveTo(-4, hy0); ctx.lineTo(-4 + swing * 10 * (1 - rest), hy1);
-      ctx.moveTo(6, hy0); ctx.lineTo(6 - swing * 10 * (1 - rest), hy1);
+      ctx.moveTo(-4, hy0); ctx.lineTo(lfx, fy1);
+      ctx.moveTo(6, hy0); ctx.lineTo(rfx, fy1);
     }, 7);
     paintStroke(ctx, s, 'body', () => {
       ctx.beginPath();
-      ctx.moveTo(-ax0, ay0); ctx.lineTo(-ax1, ay1 - swing * 8 * (1 - rest));
-      ctx.moveTo(ax0, ay0); ctx.lineTo(ax1, ay1 + swing * 8 * (1 - rest));
+      ctx.moveTo(-ax0, ay0); ctx.lineTo(lhx, lhy);
+      ctx.moveTo(ax0, ay0); ctx.lineTo(wx, rhy);
     }, 6);
 
     // ── อุ้งเท้าตอนเหยียดขานอน ──

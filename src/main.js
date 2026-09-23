@@ -60,6 +60,8 @@ import {
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI } from './talent-ui.js';
+import { talentById } from './talents.js';
+import { setupSkillUI } from './skill-ui.js';
 import {
   playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
   introSoundEnabled, setIntroSoundEnabled,
@@ -2678,8 +2680,8 @@ for (const [id, code] of [['langTh', 'th'], ['langEn', 'en']]) {
 onLang(() => {
   paintLangPick();
   refreshHome();
-  // หน้าพรสวรรค์สร้างการ์ดใหม่ทุกครั้งที่เปิด สั่งเปิดซ้ำจึงเท่ากับวาดใหม่ทั้งหน้า
-  if (!talentPanel.classList.contains('hidden')) talentUI.open();
+  // หน้าสกิล/พรสวรรค์สร้างการ์ดใหม่ทุกครั้งที่เปิด สั่งเปิดซ้ำ (หมวดเดิม) จึงเท่ากับวาดใหม่ทั้งหน้า
+  if (!talentPanel.classList.contains('hidden')) skillUI.open();
 });
 
 // แปลรอบแรกตอนเปิดเกม แล้วเฝ้าดูของที่ถูกสร้างใหม่ตลอดอายุการเล่น
@@ -2891,6 +2893,12 @@ function paintLvNow() {
 function lvPrizeHtml(reward) {
   if (!reward) return '<span>ยังไม่ประกาศของรางวัล</span>';
   const bits = [];
+  // การ์ดพรสวรรค์ขึ้นก่อนทอง/เพชร — เป็นของหายาก ต้องเห็นก่อน
+  const t = reward.talent && talentById(reward.talent);
+  if (t) {
+    bits.push(`<span class="lv-talent rank-${t.rank.toLowerCase()}"><i aria-hidden="true">${t.icon}</i>`
+      + `<span></span></span>`);
+  }
   if (reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + reward.gold.toLocaleString('en-US'));
   if (reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + reward.gems.toLocaleString('en-US'));
   return bits.join('');
@@ -2950,6 +2958,10 @@ function buildLvList() {
     row.querySelector('.lv-when').textContent = 'เลเวล ' + lv;
     const what = row.querySelector('.lv-what');
     what.innerHTML = lvPrizeHtml(reward);
+    // ชื่อการ์ดใส่ทาง textContent (ไม่ต่อสตริง HTML) — ตัวแปลภาษาจะได้เจอเป็นโหนดข้อความของมันเอง
+    const tSlot = what.querySelector('.lv-talent > span');
+    if (tSlot) tSlot.textContent = talentById(reward.talent).name;
+    if (reward.talent) row.classList.add('has-talent');
     // ถึงแล้วแต่ยังไม่กด = บอกให้รู้ว่าแตะได้ (ไม่มีปุ่มรับแยกแล้ว เหมือนหน้าเช็คอิน)
     if (ready) what.insertAdjacentHTML('beforeend', '<span class="lv-tap">· แตะเพื่อรับ</span>');
 
@@ -3011,12 +3023,34 @@ function paintLvCount(level) {
   document.getElementById('lvClaimAll').disabled = lvClaimableCount(level) === 0;
 }
 
+/**
+ * การ์ดพรสวรรค์ในกล่องฉลอง — ทรงเดียวกับการ์ดทอง/เพชร (got-card) ขอบตามระดับการ์ด
+ * กดรับแล้วการ์ดปลดทันที (isUnlocked อ่านจากรายการเลเวลที่รับแล้ว) ไม่มีขั้นจ่ายของแยก
+ */
+function talentGotCard(t) {
+  const card = document.createElement('div');
+  card.className = 'got-card talent rank-' + t.rank.toLowerCase();
+  card.innerHTML = '<span class="got-talent-ico" aria-hidden="true"></span><b></b><small>การ์ดพรสวรรค์</small>';
+  card.querySelector('.got-talent-ico').textContent = t.icon;
+  card.querySelector('b').textContent = t.name;
+  return card;
+}
+
+function talentNote(ids) {
+  return ids.length ? 'ติดตั้งได้ที่ปุ่มสกิล › แท็บพรสวรรค์' : '';
+}
+
 function doClaimLv(lv) {
   const reward = claimLevel(lv, curLevel());
   if (!reward) return;   // กดซ้ำเร็ว ๆ หรือยังไม่ถึง — ไม่มีอะไรเกิดขึ้น
   payReward(reward);
   buildLvList();
-  showReward('รางวัลเลเวล ' + lv + '!', reward, reward.note ? { note: reward.note } : {});
+  const ids = reward.talent ? [reward.talent] : [];
+  const note = reward.note || talentNote(ids);
+  showReward('รางวัลเลเวล ' + lv + '!', reward, {
+    ...(note ? { note } : {}),
+    cards: ids.map((id) => talentGotCard(talentById(id))),
+  });
 }
 
 function doClaimAllLv() {
@@ -3024,7 +3058,11 @@ function doClaimAllLv() {
   if (!got.count) return;
   payReward(got);
   buildLvList();
-  showReward('รับรางวัลครบ ' + got.count + ' เลเวล!', got);
+  const note = talentNote(got.talents);
+  showReward('รับรางวัลครบ ' + got.count + ' เลเวล!', got, {
+    ...(note ? { note } : {}),
+    cards: got.talents.map((id) => talentGotCard(talentById(id))),
+  });
 }
 
 function showLvPanel(on) {
@@ -4916,11 +4954,14 @@ const talentUI = setupTalentUI({
     refreshHome();
   },
 });
+// หมวดสกิลอยู่ในแผงเดียวกัน (แท็บบนหัว) — skill-ui.js ดูแลการสลับหมวด
+const skillUI = setupSkillUI({ panel: talentPanel, talentUI, sfx, unlockAudio, markScrollable });
 document.getElementById('btnTalent').addEventListener('click', () => {
   // แตะเมนูก็นับเป็น gesture แล้ว เพลงหน้าแรกจึงเริ่มได้โดยไม่ต้องกดเริ่มวิ่งก่อน
   unlockAudio(); startMusic(); sfx.fish();
   startPanel.classList.add('hidden');
-  talentUI.open();
+  // ปุ่มล็อบบี้ชื่อ "สกิล" เปิดมาเจอหมวดสกิลเสมอ
+  skillUI.open('skill');
 });
 document.getElementById('btnStages').addEventListener('click', () => {
   unlockAudio(); startMusic();
@@ -6309,6 +6350,7 @@ function showGameOver(quit = false) {
   // บันทึกสถิติสะสมที่จุดเดียวกับที่บวก XP — จุดเดียวที่การันตีว่าตาหนึ่งจบแล้วจริง
   // (die() ถูกเรียกจากหลายทาง ถ้าไปนับตรงนั้นจะโดนนับซ้ำ)
   recordRun({
+    clears: game.clears,
     seconds: game.tick / 60,
     meters: game.distance / SCORING.pxPerMeter,
     score: game.score,
@@ -6827,6 +6869,16 @@ setupDebug(game, {
   refreshCurrency: () => {
     if (!gachaPanel.classList.contains('hidden')) refreshGacha();
     else refreshGold();
+  },
+  // เลเวลเพิ่งถูกดัน — แถบเลเวลในล็อบบี้ ป้ายแดงรางวัล และหน้ารางวัลที่อาจเปิดค้างอยู่
+  refreshLevel: () => {
+    refreshHome();
+    refreshLvDot();
+    if (!lvPanel.classList.contains('hidden')) buildLvList();
+  },
+  // หน้าสกิลเปิดค้างอยู่ตอนกดปลด — วาดการ์ดใหม่ให้เห็นว่าปลดแล้วทันที
+  refreshSkills: () => {
+    if (!talentPanel.classList.contains('hidden')) skillUI.open();
   },
 });
 

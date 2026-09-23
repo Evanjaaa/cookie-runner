@@ -15,31 +15,58 @@ import { LEVEL_CAP } from './progress.js';
 export const FIRST_REWARD_LEVEL = 2;
 
 /**
- * ตารางของรางวัล — เติมที่นี่ที่เดียว
+ * การ์ดพรสวรรค์ที่แจกเป็นรางวัลเลเวล — { เลเวล: id การ์ด }
  *
- * รูปแบบ: <เลเวล>: { gold: 0, gems: 0, note: 'ข้อความพิเศษ' }
- * ใส่เท่าที่มี ช่องที่เป็นศูนย์หรือไม่ใส่จะไม่ขึ้นการ์ด
+ * การ์ดพรสวรรค์หาได้จากทางนี้ทางเดียว (ชุด = กาช่าทอง / สมบัติ = กาช่าเพชร / สกิล = ภารกิจด่าน)
+ * เรียงตามระดับ: A ก่อน (เลเวล 5-12) → S (16-20) → SS (24-50)
+ * ผู้เล่นได้ใบแรกภายในไม่กี่ตา และมีเป้าให้ไล่เป็นช่วง ๆ ไปจนถึงเลเวล 50 (~190 ตา)
+ * แทนที่จะเจอกำแพงเดียวที่ไกลมาก
  *
- * ── ทำไมตอนนี้ว่างทั้งตาราง ──
- * ยังไม่ได้ตกลงกันว่าจะให้อะไรบ้าง (รอเจ้าของเกมบอก) เลเวลที่ยังไม่มีของ
- * จะขึ้นเป็นกล่องปริศนาในหน้ารางวัล และกดรับไม่ได้ ซึ่งตรงกับความจริง
- * ดีกว่าแจกของมั่ว ๆ ไปก่อนแล้วมาแก้ทีหลังตอนผู้เล่นรับไปแล้ว
- *
- * เติมเลเวลไหนแล้ว เลเวลนั้นกดรับได้ทันทีโดยไม่ต้องแก้อะไรอีก
+ * ── ตัวเลขชุดนี้เป็นร่างแรก ── ย้ายเลเวลได้อิสระ แต่หนึ่งเลเวลต่อหนึ่งใบ
+ * (การ์ดปลดเมื่อ "กดรับรางวัลเลเวลนั้นแล้ว" — ดู isUnlocked ใน talents.js)
  */
-export const REWARDS = {
-  // ตัวอย่างรูปแบบ (ยังไม่เปิดใช้):
-  // 2:  { gold: 500 },
-  // 5:  { gold: 1500, gems: 5 },
-  // 10: { gems: 20, note: 'ครบสิบเลเวลแล้ว!' },
+export const TALENT_AT = {
+  5: 'A1', 8: 'A2', 10: 'A3', 12: 'A4',
+  16: 'S1', 20: 'S2',
+  24: 'SS5', 28: 'SS2', 32: 'SS7', 36: 'SS1', 40: 'SS6', 45: 'SS3', 50: 'SS4',
 };
+
+/** การ์ดพรสวรรค์ใบนี้ได้จากเลเวลไหน — null ถ้าไม่มีในตาราง */
+export function talentLevel(id) {
+  for (const [lv, tid] of Object.entries(TALENT_AT)) if (tid === id) return Number(lv);
+  return null;
+}
+
+/**
+ * ตารางของรางวัล — ทอง/เพชรคำนวณจากสูตร ส่วนการ์ดมาจาก TALENT_AT
+ *
+ * ── ร่างแรก (เจ้าของเกมบอกให้ใส่อะไรก็ได้ไปก่อน) ──
+ *   ทอง   ทุกเลเวล 300 + เลเวล×50 (เลเวล 2 = 400, 50 = 2,800, 99 = 5,250)
+ *   เพชร  ทุก 5 เลเวล 10 เม็ด ครบสิบเลเวลได้ 20
+ *   การ์ด ตาม TALENT_AT
+ * ปรับทั้งตารางได้ที่ฟังก์ชันนี้ที่เดียว หน้าจอไม่ต้องแก้
+ *
+ * รูปแบบแต่ละเลเวล: { gold, gems, talent: 'A1', note }
+ */
+function buildRewards() {
+  const out = {};
+  for (let lv = FIRST_REWARD_LEVEL; lv <= LEVEL_CAP; lv++) {
+    const r = { gold: 300 + lv * 50 };
+    if (lv % 10 === 0) r.gems = 20;
+    else if (lv % 5 === 0) r.gems = 10;
+    if (TALENT_AT[lv]) r.talent = TALENT_AT[lv];
+    out[lv] = r;
+  }
+  return out;
+}
+export const REWARDS = buildRewards();
 
 /** ของรางวัลของเลเวลนั้น — คืน null ถ้ายังไม่ได้กำหนด */
 export function rewardFor(lv) {
   const r = REWARDS[lv];
   if (!r) return null;
-  // กันตารางที่ใส่ศูนย์ไว้ทั้งคู่ ซึ่งเท่ากับยังไม่ได้กำหนด
-  if (!r.gold && !r.gems && !r.note) return null;
+  // กันตารางที่ใส่ศูนย์ไว้ทุกช่อง ซึ่งเท่ากับยังไม่ได้กำหนด
+  if (!r.gold && !r.gems && !r.note && !r.talent) return null;
   return r;
 }
 
@@ -97,12 +124,13 @@ export function claimableCount(level) {
  * คืนยอดรวมเพื่อให้กล่องฉลองโชว์เป็นก้อนเดียว ไม่ใช่เด้งทีละใบสิบรอบ
  */
 export function claimAll(level) {
-  const got = { gold: 0, gems: 0, count: 0 };
+  const got = { gold: 0, gems: 0, count: 0, talents: [] };
   for (let lv = FIRST_REWARD_LEVEL; lv <= Math.min(level, LEVEL_CAP); lv++) {
     const r = claim(lv, level);
     if (!r) continue;
     got.gold += r.gold || 0;
     got.gems += r.gems || 0;
+    if (r.talent) got.talents.push(r.talent);
     got.count++;
   }
   return got;

@@ -15,6 +15,7 @@
 // โดยไม่ต้องกลัวว่าภารกิจที่เคยทำสำเร็จแล้วจะกลับไปไม่สำเร็จอีก
 // ─────────────────────────────────────────────────────────────
 import { loadPref, savePref } from './storage.js';
+import { STAGES } from './stages.js';
 
 const KEY = 'stats';
 
@@ -25,6 +26,13 @@ const EMPTY = {
   score: 0,       // คะแนนรวมทุกตาบวกกัน
   pulls: 0,       // กดสุ่มกาช่าไปกี่ครั้ง (นับทั้งช่องสมบัติและช่องสกิน)
   upgrades: 0,    // ตีบวกสำเร็จไปกี่ครั้ง
+  // ── วิ่งผ่านแต่ละด่านไปกี่ครั้ง ──
+  // ช่องละด่าน ชื่อ clear_<id ของด่าน> เช่น clear_space — ภารกิจปลดสกิลประจำด่านอ่านจากตรงนี้
+  // (ดู skills.js) สร้างจาก STAGES เอง ด่านใหม่จึงได้ตัวนับของตัวเองโดยไม่ต้องมาเติมมือ
+  //
+  // "ผ่าน" = วิ่งจนเกมเริ่มพาเข้าฉากถัดไป ไม่ใช่แค่เคยเข้าไปในด่านนั้น
+  // เริ่มตาที่ด่านไหนก็นับด่านนั้นได้ ไม่จำเป็นต้องวิ่งมาจากด่านแรก
+  ...Object.fromEntries(STAGES.map((st) => ['clear_' + st.id, 0])),
 };
 
 let stats = null;
@@ -54,14 +62,32 @@ function save() {
  * เหมือนที่ awardRun() ของ progress.js ทำ ถ้าไปเรียกตอนตายจะโดนนับซ้ำ
  * เพราะตายถูกเรียกจากหลายทาง
  */
-export function recordRun({ seconds = 0, meters = 0, score = 0 } = {}) {
+export function recordRun({ seconds = 0, meters = 0, score = 0, clears = {} } = {}) {
   const s = loadStats();
   s.runs += 1;
   s.seconds += Math.max(0, Math.round(seconds));
   s.meters += Math.max(0, Math.round(meters));
   s.score += Math.max(0, Math.round(score));
+  // ด่านที่วิ่งผ่านในตานี้ — รับเฉพาะด่านที่มีช่องอยู่จริง กันชื่อแปลก ๆ หลุดเข้ามาเป็นช่องใหม่
+  for (const [id, n] of Object.entries(clears)) {
+    const k = 'clear_' + id;
+    if (k in EMPTY) s[k] += Math.max(0, Math.floor(Number(n) || 0));
+  }
   save();
   return s;
+}
+
+/**
+ * ดันตัวนับขึ้นไปอย่างน้อย atLeast (ไม่ลดค่าที่มากกว่าอยู่แล้ว) — ใช้กับปุ่มทดสอบปลดสกิล
+ * แยกจาก recordRun เพราะไม่ใช่ "หนึ่งตาที่จบ" ถ้ายืม recordRun จำนวนตาที่เล่นจะเพี้ยน
+ * คืน true ถ้าค่าเปลี่ยนจริง
+ */
+export function raiseStat(key, atLeast) {
+  const s = loadStats();
+  if (!(key in EMPTY) || s[key] >= atLeast) return false;
+  s[key] = atLeast;
+  save();
+  return true;
 }
 
 /** นับจำนวนครั้งที่กดสุ่ม ไม่ใช่จำนวนของที่ได้ — สุ่มทีละ 5 ก็คือ 5 ครั้ง */

@@ -17,6 +17,9 @@ import { STATE } from './game.js';
 import { STAGES } from './stages.js';
 import { Level } from './level.js';
 import { addGems, getGems } from './vault.js';
+import { unlockAllSkills } from './skills.js';
+import { xpAtLevel, levelFromXp } from './progress.js';
+import { loadXp, saveXp } from './storage.js';
 
 // false = โผล่เฉพาะตอนรัน dev server ส่วนเว็บที่ deploy จริงจะไม่มี
 // และ Vite ตัดโค้ดทั้งก้อนทิ้งตอน build ผู้เล่นจึงงัดมาใช้ไม่ได้เลย
@@ -66,6 +69,25 @@ const CSS = `
   flex-direction: column;
   align-items: flex-start;
   gap: 5px;
+  /* ปุ่มเยอะขึ้นเรื่อย ๆ — ห้ามสูงเกินจอ ไม่งั้นแผงที่จัดกึ่งกลางแนวตั้งไว้
+     จะล้นทั้งหัวและท้าย ปุ่มล่างสุดหลุดจอกดไม่ได้ (เจอจริงบนมือถือแนวนอน)
+     เกินเมื่อไหร่ก็เลื่อนในแผงเอง */
+  max-height: calc(100dvh - 56px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.dbg-body::-webkit-scrollbar { display: none; }
+/* จอเตี้ย (มือถือแนวนอน): เรียงสองคอลัมน์ ปุ่มเล็กลง — สูงเหลือครึ่งเดียว เห็นครบทุกปุ่ม */
+@media (max-height: 560px) {
+  .dbg-body {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    align-items: stretch;
+    gap: 4px;
+  }
+  .dbg-tag { grid-column: 1 / -1; }
+  .dbg-body button { padding: 5px 9px; font-size: 11px; text-align: left; }
 }
 .dbg-tag {
   font-size: 8px;
@@ -214,7 +236,8 @@ export function setupDebug(game, hooks = {}) {
   }
 
   function paint() {
-    body.style.display = open ? 'flex' : 'none';
+    // ตอนกาง ปล่อยให้ CSS ตัดสินว่าเป็น flex (จอสูง) หรือ grid สองคอลัมน์ (จอเตี้ย)
+    body.style.display = open ? '' : 'none';
     toggle.textContent = open ? '✕' : '🐞';
     toggle.setAttribute('aria-label', open ? 'ซ่อนปุ่มทดสอบ' : 'แสดงปุ่มทดสอบ');
   }
@@ -302,6 +325,35 @@ export function setupDebug(game, hooks = {}) {
 
   // ── เพชรชมพู ──
   add('💎 เพชร 999,999', () => fillGems(hooks));
+
+  // ── ดันเลเวลไป 50 ──
+  // การ์ดพรสวรรค์แจกที่เลเวล 5-50 ปุ่มนี้ให้ XP พอถึงเลเวล 50 พอดี แล้วไปกดรับที่หน้ารางวัลเลเวลเอง
+  // (ไม่ได้ปลดการ์ดให้ตรง ๆ — จะได้เทสทางรับรางวัลจริงทั้งเส้น: ป้ายแดง แถวรางวัล กล่องฉลอง)
+  add('⬆️ เลเวล 50', () => {
+    const goal = xpAtLevel(50);
+    if (loadXp() >= goal) {
+      toast('⬆️ เลเวล ' + levelFromXp(loadXp()).level + ' อยู่แล้ว');
+      return false;
+    }
+    saveXp(goal);
+    hooks.refreshLevel?.();
+    toast('⬆️ ถึงเลเวล 50 แล้ว — ไปกดรับที่รางวัลเลเวล');
+    return true;
+  });
+
+  // ── ปลดสกิลทั้งหมด ──
+  // ดันตัวนับภารกิจ (วิ่งผ่านด่าน X ครั้ง) ให้ถึงเป้า — ทางเดียวกับเล่นจริง ไม่ใช่ธงลัด
+  // ติดตั้งสกิลไหนก็มีผลตั้งแต่ตาถัดไปที่เริ่มวิ่งเหมือนปกติ
+  add('🔓 ปลดสกิลทั้งหมด', () => {
+    const n = unlockAllSkills();
+    if (!n) {
+      toast('🔓 ปลดสกิลครบทุกอันอยู่แล้ว');
+      return false;
+    }
+    hooks.refreshSkills?.();
+    toast(`🔓 ปลดสกิลแล้ว ${n} อัน`);
+    return true;
+  });
 
   paint();
   document.body.appendChild(box);

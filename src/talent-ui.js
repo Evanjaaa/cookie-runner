@@ -6,7 +6,7 @@
 // ติดตั้ง/ถอดที่นี่ = บันทึกลงเครื่อง (ซิงก์ขึ้นคลาวด์ให้เอง) แล้วมีผลตั้งแต่ตาถัดไปที่เริ่มวิ่ง
 
 import {
-  TALENTS, TYPE_LABEL, talentById, getEquippedTalent, setEquippedTalent, isUnlocked, secText,
+  TALENTS, TYPE_LABEL, talentById, getEquippedTalent, setEquippedTalent, isUnlocked, secText, unlockLevel,
 } from './talents.js';
 
 /**
@@ -123,7 +123,9 @@ export function setupTalentUI({ panel, sfx, unlockAudio, markScrollable, onBack 
     } else if (!got) {
       const tag = document.createElement('span');
       tag.className = 'tl-tag lock';
-      tag.textContent = '🔒 เร็ว ๆ นี้';
+      // การ์ดได้จากรางวัลเลเวล — บอกเลเวลตรง ๆ ผู้เล่นจะได้รู้ว่าต้องไล่ถึงไหน
+      const lv = unlockLevel(t);
+      tag.textContent = lv ? '🔒 เลเวล ' + lv : '🔒 เร็ว ๆ นี้';
       el.appendChild(tag);
     }
 
@@ -225,7 +227,8 @@ export function setupTalentUI({ panel, sfx, unlockAudio, markScrollable, onBack 
     status.className = 'tl-status';
     if (!got) {
       status.classList.add('lock');
-      status.textContent = t.note || 'ยังไม่เปิดใช้งาน';
+      const lv = unlockLevel(t);
+      status.textContent = lv ? `รับรางวัลเลเวล ${lv} เพื่อปลดล็อก` : t.note || 'ยังไม่เปิดใช้งาน';
     } else if (on) {
       status.classList.add('on');
       status.textContent = 'สถานะ: ใช้งานอยู่ — มีผลตั้งแต่เริ่มวิ่งตาถัดไป';
@@ -242,7 +245,7 @@ export function setupTalentUI({ panel, sfx, unlockAudio, markScrollable, onBack 
     // ติดตั้งอยู่ = ปุ่มกลายเป็น "ถอดออก" (ถอดได้ ไม่ใช่ปุ่มตาย)
     equipBtn.disabled = !got;
     equipBtn.classList.toggle('ghost', on || !got);
-    equipBtn.textContent = !got ? 'เร็ว ๆ นี้' : on ? 'ถอดออก' : cur ? 'ติดตั้งแทน' : 'ติดตั้ง';
+    equipBtn.textContent = !got ? (unlockLevel(t) ? 'ล็อกอยู่' : 'เร็ว ๆ นี้') : on ? 'ถอดออก' : cur ? 'ติดตั้งแทน' : 'ติดตั้ง';
   }
 
   function openDetail(id, from) {

@@ -2667,6 +2667,31 @@ canvas[hidden] { display: none; }
   overflow-wrap: anywhere;
 }
 .lv-what .coin, .lv-what .gem { flex: none; }
+/* การ์ดพรสวรรค์ในแถวรางวัลเลเวล — แคปซูลเข้มในแถว ขอบตามระดับการ์ด (A ม่วง / S ทอง / SS รุ้ง)
+   ให้แยกออกทันทีว่าเลเวลนี้ "ได้การ์ด" ไม่ใช่แค่ทองเพิ่ม */
+.lv-talent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 9px 1px 4px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(240,215,255,.7);
+  background: rgba(40,16,64,.55);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lv-talent > i { font-style: normal; line-height: 1; }
+.lv-talent.rank-s { border-color: #FFD65C; }
+.lv-talent.rank-ss {
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(40,16,64,.85), rgba(40,16,64,.85)) padding-box,
+    linear-gradient(90deg, #FF8FB0, #FFD65C, #8DF3EA, #C77DFF) border-box;
+}
+/* เลเวลที่มีการ์ดทั้งแถวเด่นขึ้นนิดหนึ่ง — เห็นเป้าหมายระหว่างเลื่อนผ่านแถวทอง */
+.lv-row.has-talent .lv-what { box-shadow: 0 0 0 2px rgba(255,214,92,.25), 0 0 14px rgba(199,125,255,.35); }
 
 /* ── สามสถานะของขั้นตอน ── */
 /* ถึงแล้วและยังไม่ได้กด = เรืองทอง (ภาษาสีเดียวกันทั้งเกม: ทองเรือง = อันนี้แหละที่ต้องกด) */
@@ -6218,6 +6243,16 @@ canvas[hidden] { display: none; }
 }
 .got-card.gold b { color: #FFD97A; }
 .got-card .coin.big { width: 52%; height: auto; aspect-ratio: 1; margin: 8% 0 4%; }
+/* การ์ดพรสวรรค์ในกล่องฉลอง (talentGotCard ใน main.js) — ขอบตามระดับ ภาษาเดียวกับหน้าพรสวรรค์ */
+.got-card.talent { border-color: rgba(199,125,255,.7); background: linear-gradient(180deg, rgba(199,125,255,.24), rgba(199,125,255,.07)); }
+.got-card.talent.rank-s { border-color: #FFC93C; background: linear-gradient(180deg, rgba(255,201,60,.22), rgba(255,201,60,.07)); }
+.got-card.talent.rank-ss { border-color: #FF8FB0; box-shadow: 0 0 18px rgba(255,143,176,.42), 0 6px 14px rgba(0,0,0,.4); }
+.got-talent-ico {
+  font-size: clamp(26px, 5.2dvh, 40px);
+  line-height: 1.15;
+  margin: 6% 0 2%;
+  filter: drop-shadow(0 2px 3px rgba(12,4,24,.5));
+}
 
 @keyframes gotPop {
   0%   { opacity: 0; transform: scale(.3) rotate(-16deg); }
@@ -8903,6 +8938,117 @@ canvas[hidden] { display: none; }
 .tl-equipped .tl-card-name { font-size: clamp(11px, 2dvh, 15px); }
 .tl-equipped.empty { cursor: default; border-style: dashed; box-shadow: none; }
 .tl-equipped-empty { padding: 20px 0; font-size: 12px; color: #B99BD4; }
+
+/* ══ หมวดสกิล (skill-ui.js) ═════════════════════════════════════
+   แผงเดียวกับพรสวรรค์ สลับด้วยแท็บบนหัว — .tab-skill บนแผงเป็นตัวบอกว่าอยู่หมวดไหน
+   ของเฉพาะหมวดพรสวรรค์ (ตัวนับ ตัวกรองระดับ เนื้อหา) ซ่อนหมดตอนอยู่หมวดสกิล และกลับกัน */
+.tl-tabs .fchip[data-tab] { font-family: "Mitr", sans-serif; font-weight: 500; }
+/* แท็บสกิล|พรสวรรค์ อยู่ขวาสุดของหัวเสมอทั้งสองหมวด — สลับหมวดแล้วปุ่มไม่กระโดดไปมา
+   (ใน HTML แท็บอยู่ติดหัวเรื่อง จึงดันไปท้ายแถวด้วย order แทนการย้ายโหนด)
+   หมวดพรสวรรค์: ตัวกรองระดับมี margin-left:auto อยู่แล้ว จึงไปชิดขวาต่อหน้าแท็บพอดี */
+.tl-tabs { order: 10; }
+#talentPanel .sk-body { display: none; }
+#talentPanel.tab-skill .sk-body { display: flex; }
+#talentPanel.tab-skill .tl-body:not(.sk-body),
+#talentPanel.tab-skill .tl-count,
+#talentPanel.tab-skill .tl-filter { display: none; }
+/* ตัวกรองระดับหายไปแล้ว แท็บต้องดันไปชิดขวาแทน หัวเรื่องจะได้ไม่เลื่อนตำแหน่งตอนสลับหมวด */
+#talentPanel.tab-skill .tl-tabs { margin-left: auto; }
+
+/* การ์ดสกิลกว้าง — มีไม่กี่อัน และต้องอ่านผลในเกม + เงื่อนไขปลดได้ครบบนการ์ด */
+.sk-grid { grid-template-columns: repeat(auto-fill, minmax(clamp(180px, 22vw, 280px), 1fr)); }
+.sk-card {
+  align-items: stretch;
+  text-align: left;
+  gap: clamp(4px, 0.9dvh, 8px);
+  padding: clamp(9px, 1.6dvh, 13px) clamp(10px, 1.2vw, 14px);
+}
+.sk-head { display: flex; align-items: center; gap: 10px; }
+.sk-head .tl-card-art { flex: 0 0 auto; }
+.sk-titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sk-name {
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(12px, 2.1dvh, 16px);
+  line-height: 1.2;
+}
+.sk-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.sk-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.2);
+  background: rgba(27,15,43,.6);
+  font-family: "Mitr", sans-serif;
+  font-size: clamp(8.5px, 1.45dvh, 11px);
+  line-height: 1.5;
+  color: #D9C6EE;
+  white-space: nowrap;
+}
+.sk-chip.sk-chip-stage { color: #FFE3A3; border-color: rgba(255,201,60,.4); }
+.sk-short { font-size: clamp(10px, 1.7dvh, 12.5px); line-height: 1.35; color: #E3D2F5; }
+.sk-effect {
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: clamp(9.5px, 1.55dvh, 11.5px);
+  line-height: 1.4;
+  color: #CDB6E6;
+}
+.sk-foot { margin-top: auto; padding-top: 2px; }
+.sk-foot > .sk-chip { display: block; text-align: center; padding-block: 3px; font-weight: 600; }
+.sk-chip.sk-chip-on {
+  color: #0B3B37;
+  border-color: transparent;
+  background: linear-gradient(180deg, #A9F5EC, #6FD9CE);
+}
+.sk-chip.sk-chip-equip { color: var(--cream); border-style: dashed; }
+
+/* ภารกิจปลดล็อก: ข้อความ + หลอด + ตัวเลข — ตัวเลขบอกค่าตรง ๆ ไม่ต้องเดาจากความยาวหลอด */
+.sk-quest {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(24,12,40,.7);
+  border: 1px solid rgba(255,243,226,.16);
+}
+.sk-quest-text { grid-column: 1 / -1; font-size: clamp(9.5px, 1.55dvh, 11.5px); line-height: 1.35; color: #EBDDF8; }
+.sk-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,243,226,.12);
+  overflow: hidden;
+}
+.sk-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #FFC93C, #FFE7A0);
+}
+.sk-quest-num { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(10px, 1.6dvh, 12px); color: #FFE3A3; }
+/* การ์ดล็อก: จางแค่หัว (รูป ชื่อ ผล) — กล่องภารกิจต้องชัดเต็มที่ เพราะนั่นคือสิ่งที่ต้องอ่าน */
+.sk-card.locked .sk-head,
+.sk-card.locked .sk-short,
+.sk-card.locked .sk-effect { opacity: .62; }
+.sk-card.locked { cursor: default; }
+.sk-card.nope { animation: skNope .36s ease; }
+@keyframes skNope {
+  20% { transform: translateX(-5px); }
+  45% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+}
+.sk-equipped { cursor: default; }
+@media (hover: hover) {
+  .sk-equipped:hover { transform: none; box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4), 0 8px 22px rgba(78,205,196,.26); }
+  .sk-card.locked:hover { transform: none; }
+}
+.sk-equipped:active { transform: none; box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4), 0 8px 22px rgba(78,205,196,.26); }
+@media (prefers-reduced-motion: reduce) {
+  .sk-card.nope { animation: none; }
+}
 /* เด้งรับตอนเพิ่งติดตั้งใบใหม่ บอกว่า "เปลี่ยนแล้ว ตรงนี้" */
 .tl-equipped.bump { animation: tlBump .42s cubic-bezier(.2,.85,.3,1.3); }
 @keyframes tlBump {
