@@ -415,10 +415,30 @@ export async function claimName(name) {
   }
 }
 
-/** กระดานคะแนนของด่านหนึ่ง เรียงมากไปน้อย */
+/**
+ * กระดานคะแนนของด่านหนึ่ง เรียงมากไปน้อย
+ *
+ * เข้าสู่ระบบแล้ว = อ่านจาก leaderboard_profiles ก่อน (supabase/leaderboard_profiles.sql)
+ * ได้ id + โปรไฟล์สาธารณะมาด้วย หน้าอันดับจึงวาดหน้าน้องหน้าชื่อ และแตะเพื่อส่องโปรไฟล์ได้
+ * ยังไม่ได้รันไฟล์นั้น / ยังไม่เข้าสู่ระบบ = ถอยไปใช้ leaderboard เดิม (ชื่อกับคะแนนอย่างเดียว)
+ */
 export async function fetchLeaderboard(stageId, limit = 20) {
   const c = await client();
   if (!c) return [];
+  if (uid) {
+    try {
+      const { data, error } = await c
+        .from('leaderboard_profiles')
+        .select('id, name, score, distance, friend_code, last_seen, public_profile')
+        .eq('stage_id', stageId)
+        .order('score', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      if (!MISSING_SCHEMA.has(e?.code || '')) console.warn('[cloud] อ่านกระดานพร้อมโปรไฟล์ไม่ได้', e.message || e);
+    }
+  }
   try {
     const { data, error } = await c
       .from('leaderboard')

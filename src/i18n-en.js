@@ -552,6 +552,12 @@ export const EN = {
   'ติดตั้งได้ทีละ 1 ใบ': 'One talent at a time',
   // ── สกิล (skill-ui.js / skills.js) ──
   'สกิล': 'Skills',
+  'การ์ดพลัง': 'Power Cards',
+  'รับ!': 'Claim!',
+  'การ์ดใหม่!': 'New card!',
+  'รางวัลใหญ่ถัดไป': 'Next big reward',
+  'การ์ดสกิลมีไว้ทำอะไร?': 'What are Skill cards for?',
+  'การ์ดพรสวรรค์มีไว้ทำอะไร?': 'What are Talent cards for?',
   'หมวด': 'Section',
   'สกิลทั้งหมด': 'All skills',
   'ติดตั้งได้ทีละ 1 สกิล': 'One skill at a time',
@@ -918,6 +924,9 @@ export const EN_RULES = [
   // ── การ์ดพรสวรรค์จากรางวัลเลเวล ──
   { re: /^🔒 เลเวล (\d+)$/, en: '🔒 Level $1' },
   { re: /^รับรางวัลเลเวล (\d+) เพื่อปลดล็อก$/, en: 'Claim the level $1 reward to unlock' },
+  { re: /^เลเวล (\d+) · อีก (\d+) เลเวล$/, en: 'Level $1 · $2 to go' },
+  { re: /^ระดับ (A|S|SS)$/, en: 'Rank $1' },
+  { re: /^รับรางวัลครบ (\d+) ภารกิจ!$/, en: 'Claimed $1 quest rewards!' },
   // ── สกิล ──
   { re: /^สกิลประจำด่าน(.+)$/, en: '$1 skill' },
   { re: /^ออกฤทธิ์ (\d+) วิ$/, en: 'Lasts $1s' },

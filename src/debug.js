@@ -189,8 +189,19 @@ function fillGems(hooks) {
  * @param hooks { refreshCurrency } — ให้ main.js ส่งฟังก์ชันวาดแถบทอง/เพชรใหม่มา
  *              ไม่ใช้ก็ได้ ปุ่มยังทำงาน แค่ตัวเลขบนจอจะรอรอบวาดถัดไป
  */
-export function setupDebug(game, hooks = {}) {
-  if (!SHOW_ON_LIVE && !import.meta.env.DEV) return;
+/**
+ * ไอดีผู้ทดสอบ — รหัสแมวน้อย (รหัสเพื่อน) ที่ได้แผงนี้บนเว็บจริงด้วย
+ * คนอื่นทุกคนบนเว็บจริงไม่เห็นแผงนี้เหมือนเดิม (main.js เช็ครหัสหลังเข้าสู่ระบบแล้วเรียก setupDebug ด้วย force)
+ */
+export const TESTER_CODES = ['8QQMVX2X'];
+
+let mounted = false;
+
+export function setupDebug(game, hooks = {}, { force = false } = {}) {
+  if (!force && !SHOW_ON_LIVE && !import.meta.env.DEV) return;
+  // เรียกซ้ำได้ (เช่น dev + ไอดีผู้ทดสอบพร้อมกัน) แต่สร้างแผงครั้งเดียว
+  if (mounted) return;
+  mounted = true;
 
   const style = document.createElement('style');
   style.textContent = CSS;

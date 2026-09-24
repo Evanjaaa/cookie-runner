@@ -8,6 +8,7 @@
 import {
   TALENTS, TYPE_LABEL, talentById, getEquippedTalent, setEquippedTalent, isUnlocked, secText, unlockLevel,
 } from './talents.js';
+import { isFresh, markSeen, setDot } from './fresh.js';
 
 /**
  * ระดับของพรสวรรค์
@@ -129,9 +130,11 @@ export function setupTalentUI({ panel, sfx, unlockAudio, markScrollable, onBack 
       el.appendChild(tag);
     }
 
+    setDot(el, got && isFresh('talent', t.id));
     el.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
+      if (isUnlocked(t)) { markSeen('talent', t.id); setDot(el, false); }
       openDetail(t.id, el);
     });
     return el;

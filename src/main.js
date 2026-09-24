@@ -23,7 +23,7 @@ import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './fa
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
   FIRST_REWARD_LEVEL, rewardFor, isClaimed, canClaim, claim as claimLevel,
-  claimableCount as lvClaimableCount, claimAll as claimAllLevels,
+  claimableCount as lvClaimableCount, claimAll as claimAllLevels, TALENT_AT,
 } from './level-rewards.js';
 import { CYCLE, rewardOfDay, dayState, claimToday as claimDaily } from './daily.js';
 import { getLang, setLang, applyLang, watchLang, onLang } from './i18n.js';
@@ -59,14 +59,17 @@ import {
 } from './friends.js';
 import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
-import { setupTalentUI } from './talent-ui.js';
-import { talentById } from './talents.js';
+import { setupTalentUI, RANKS as T_RANKS } from './talent-ui.js';
+import { talentById, TALENTS, isUnlocked as talentUnlocked } from './talents.js';
+import { SKILLS, isSkillUnlocked } from './skills.js';
+import { registerFresh, isFresh, hasFresh, markSeen, onFresh, setDot } from './fresh.js';
 import { setupSkillUI } from './skill-ui.js';
+import { HOME_MOVES } from './home-moves.js';
 import {
   playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
   introSoundEnabled, setIntroSoundEnabled,
 } from './intro-video.js';   // หน้าพรสวรรค์ (ข้อมูลใน talents.js ผลตอนวิ่งใน talent-run.js)
-import { setupDebug } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
+import { setupDebug, TESTER_CODES } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 
 const { W, H } = VIEW;
 const canvas = document.getElementById('game');
@@ -381,8 +384,29 @@ function refreshProfile() {
     : st.into.toLocaleString('en-US') + ' / ' + st.need.toLocaleString('en-US');
 }
 
+// ── ของใหม่ (จุดแดง) ─────────────────────────────────────────
+// แต่ละหมวดบอก fresh.js ว่า "ตอนนี้มีอะไรบ้าง" — ของที่มีแต่ยังไม่เคยแตะดู = ของใหม่
+// ต้องลงทะเบียนก่อนใครจะถาม isFresh ครั้งแรก เพราะครั้งแรกของแต่ละหมวดคือการตั้งฐาน
+// (ของที่มีอยู่แล้วทั้งหมดถือว่าดูแล้ว) ถ้าถามก่อนลงทะเบียน ฐานจะว่างแล้วของเก่าทั้งหมดกลายเป็นของใหม่
+registerFresh('skill', () => SKILLS.filter(isSkillUnlocked).map((x) => x.id));
+registerFresh('talent', () => TALENTS.filter(talentUnlocked).map((x) => x.id));
+registerFresh('skin', () => SKINS.filter((x) => ownsSkin(x.id)).map((x) => x.id));
+registerFresh('outfit', () => OUTFITS.filter((x) => isOwned(x.id)).map((x) => x.id));
+registerFresh('treasure', () => TREASURES.filter((x) => ownsTreasure(x.id)).map((x) => x.id));
+
+/** จุดแดงบนปุ่มล็อบบี้กับแท็บหมวดในคลังน้อง — เรียกทุกครั้งที่อาจมีของใหม่หรือเพิ่งดูของไป */
+function refreshFreshDots() {
+  document.getElementById('cardDot').classList.toggle('hidden', !hasFresh('skill', 'talent'));
+  document.getElementById('stashDot').classList.toggle('hidden', !hasFresh('skin', 'outfit', 'treasure'));
+  setDot(document.getElementById('tabStashSkin'), hasFresh('skin'));
+  setDot(document.getElementById('tabStashOutfit'), hasFresh('outfit'));
+  setDot(document.getElementById('tabStashTreasure'), hasFresh('treasure'));
+}
+onFresh(refreshFreshDots);
+
 function refreshHome() {
   refreshMailDot();   // จุดแดงต้องตรงกับของจริงทุกครั้งที่กลับมาล็อบบี้
+  refreshFreshDots();
   const st = getStage();
   refreshProfile();
   // ปุ่มล็อบบี้เหลือแค่ไอคอนกับชื่อ ไม่มีบรรทัดคำอธิบายให้เขียนแล้ว
@@ -686,10 +710,7 @@ function drawShow() {
     bonus.textContent = effectText(item, treasureLevel(item.id));
     bonus.style.display = '';
   } else {
-    paintBox(cat, 150, 150, (c) => {
-      drawCatPose(c, 75, 138, 2.05, { ...getSkin(), outfit: item }, 60);
-      if (!got) silhouette(c, 150, 150);
-    });
+    startShowAnim();
 
     // ป้ายของชุดเป็น "รูปตรา" ส่วนป้ายของสมบัติ (อีกสาขาของ if ข้างบน) ยังเป็นตัวย่อ
     // ใช้ element เดียวกันได้เพราะสองสาขาเขียนทับลูกของมันคนละแบบเสมอ
@@ -707,6 +728,69 @@ function drawShow() {
       : '';
     bonus.style.display = item.foodBonus > 0 ? '' : 'none';
   }
+}
+
+// ── น้องในกรอบส่องชุดขยับได้ ──────────────────────────────────
+//
+// เดิมวาดครั้งเดียวเป็นรูปยืนนิ่ง ตอนนี้วาดใหม่ทุกเฟรมตอนหน้ากาช่าช่องสกินเปิดอยู่:
+// หายใจ หางแกว่ง กะพริบตาตลอด แล้วทุก ~3 วินาทีเล่นท่าหนึ่งจากชุดท่าหน้าแรก
+// (src/home-moves.js — ท่าเดียวกับตอนแตะน้อง จึงไม่มีท่าชุดที่สองให้ดูแล)
+// ชุดที่ใส่ตามท่าไปเองเพราะวาดด้วยตัววาดตัวเดียวกัน
+//
+// ตัดท่านอนลอยออก — มันลอยพ้นกรอบ 150px ไปครึ่งตัว
+// ลูปหยุดเองทันทีที่หน้าปิดหรือสลับไปช่องสมบัติ ไม่มีงานวาดค้างอยู่เบื้องหลัง
+const SHOW_MOVES = HOME_MOVES.filter((m) => m.id !== 'float');
+const SHOW_SIZE = 150;
+let showAnim = null;
+
+function startShowAnim() {
+  if (showAnim) return;
+  const cat = document.getElementById('showCat');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cat.width = SHOW_SIZE * dpr;
+  cat.height = SHOW_SIZE * dpr;
+  showAnim = { t: 60, move: null, mt: 0, wait: 70, last: null, prev: performance.now(), dpr, raf: 0 };
+  showAnim.raf = requestAnimationFrame(stepShowAnim);
+}
+
+function stepShowAnim(now) {
+  const A = showAnim;
+  if (!A) return;
+  if (gachaPanel.classList.contains('hidden') || gIsT()) {
+    showAnim = null;
+    return;
+  }
+  // เวลาเป็นเฟรมที่ 60fps เหมือนหน้าแรก — จอ 120Hz จึงไม่เร่งท่าเป็นสองเท่า
+  const dt = Math.min(3, (now - A.prev) / (1000 / 60));
+  A.prev = now;
+  A.t += dt;
+  if (A.move) {
+    A.mt += dt;
+    if (A.mt >= A.move.dur) {
+      A.last = A.move.id;
+      A.move = null;
+      A.wait = 150 + Math.random() * 90;
+    }
+  } else if ((A.wait -= dt) <= 0) {
+    const pool = SHOW_MOVES.filter((m) => m.id !== A.last);
+    A.move = pool[Math.floor(Math.random() * pool.length)];
+    A.mt = 0;
+  }
+
+  const item = gPool().find((x) => x.id === gHeroId());
+  if (item) {
+    const cat = document.getElementById('showCat');
+    const c = cat.getContext('2d');
+    c.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
+    c.clearRect(0, 0, SHOW_SIZE, SHOW_SIZE);
+    const S = 2.05;
+    const shape = A.move ? A.move.shape(A.mt) : null;
+    const lift = (shape?.lift || 0) * S;
+    drawCatPose(c, 75, 138 - lift, S, { ...getSkin(), outfit: item }, A.t,
+      shape ? { pose: A.move.id, k: 1, shape } : null);
+    if (!gGot(item.id)) silhouette(c, SHOW_SIZE, SHOW_SIZE);
+  }
+  A.raf = requestAnimationFrame(stepShowAnim);
 }
 
 /**
@@ -1221,13 +1305,26 @@ async function buildRank() {
 
   const list = document.getElementById('rankList');
   list.innerHTML = '';
+  const me = userId();
   rows.forEach((r, i) => {
-    const row = document.createElement('div');
-    row.className = 'rank-row' + (i < 3 ? ' top' + (i + 1) : '');
-    row.innerHTML = '<span class="no"></span><span class="who"></span><span class="pts"></span>';
-    row.querySelector('.no').textContent = i + 1;
+    // แถวที่มี id (มาจาก leaderboard_profiles) แตะแล้วส่องโปรไฟล์ได้ — เป็นปุ่ม
+    const tappable = Boolean(r.id);
+    const row = document.createElement(tappable ? 'button' : 'div');
+    if (tappable) row.type = 'button';
+    row.className = 'rank-row' + (i < 3 ? ' top' + (i + 1) : '')
+      + (tappable ? ' tap' : '') + (me && r.id === me ? ' me' : '');
+    row.innerHTML = '<span class="no"></span><canvas class="rank-face" width="96" height="96" aria-hidden="true"></canvas>'
+      + '<span class="who"></span><span class="pts"></span>';
+    // สามอันดับแรกเป็นเหรียญ ที่เหลือเป็นตัวเลข
+    row.querySelector('.no').textContent = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
     row.querySelector('.who').textContent = r.name || 'แมวนิรนาม';
     row.querySelector('.pts').textContent = Number(r.score).toLocaleString('en-US');
+    // หน้าน้องของคนนั้นจริง ๆ (สกิน + ชุดจากโปรไฟล์สาธารณะ) — ไม่มีข้อมูลก็เป็นน้องส้มตั้งต้น
+    const skin = r.public_profile ? remoteProfile(r).skin : SKINS[0];
+    paintMini(row.querySelector('.rank-face'), 96, (c) => drawCatFace(c, 48, 56, 2.5, skin));
+    if (tappable) {
+      row.addEventListener('click', () => { unlockAudio(); openRankProfile(r); });
+    }
     list.appendChild(row);
   });
   markScrollable(list);
@@ -2044,6 +2141,7 @@ function buildSkinStashGrid() {
     paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5, x, 60));
 
     if (x.id === stashSel.skin) card.classList.add('sel');
+    setDot(card, got && isFresh('skin', x.id));
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
@@ -2249,6 +2347,7 @@ function buildOutfitGrid() {
     // ผู้เล่นจึงกวาดดูเทียบหลายชุดรวดเดียวได้ ปุ่ม "ดูเพิ่มเติม" ในช่องซ้าย
     // คือทางไปหน้ารายละเอียดสำหรับคนที่อยากอ่านตัวเลขเต็ม ๆ ของชิ้นนั้น
     if (o.id === stashSel.outfit) card.classList.add('sel');
+    setDot(card, got && isFresh('outfit', o.id));
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
@@ -2887,22 +2986,83 @@ function paintLvNow() {
   // XP ตอนนี้ ▶ XP ที่ต้องใช้ถึงเลเวลหน้า (ตันแล้วโชว์ตัวเลขเดียวกันทั้งคู่)
   document.getElementById('lvNowInto').textContent = st.into.toLocaleString('en-US');
   document.getElementById('lvNowNeed').textContent = st.maxed ? '—' : st.need.toLocaleString('en-US');
+  document.getElementById('lvNowFill').style.width = (st.maxed ? 100 : Math.round(st.ratio * 100)) + '%';
+
+  // ── รางวัลใหญ่ถัดไป ── การ์ดพรสวรรค์ใบต่อไปที่ยังไปไม่ถึง (เป้าหมายระยะกลาง)
+  const next = document.getElementById('lvNext');
+  const nextLv = Object.keys(TALENT_AT).map(Number).sort((a, b) => a - b).find((lv) => lv > st.level);
+  next.classList.toggle('hidden', !nextLv);
+  if (nextLv) {
+    const t = talentById(TALENT_AT[nextLv]);
+    next.className = 'lv-next rank-' + t.rank.toLowerCase();
+    next.replaceChildren();
+    const lead = document.createElement('small');
+    lead.textContent = 'รางวัลใหญ่ถัดไป';
+    const ico = document.createElement('span');
+    ico.className = 'lv-next-ico';
+    ico.textContent = t.icon;
+    const name = document.createElement('b');
+    name.textContent = t.name;
+    const when = document.createElement('small');
+    when.className = 'lv-next-when';
+    when.textContent = `เลเวล ${nextLv} · อีก ${nextLv - st.level} เลเวล`;
+    next.append(lead, ico, name, when);
+  }
 }
 
-/** ของรางวัลหนึ่งใบเขียนเป็นข้อความสั้น ๆ ในแถว */
-function lvPrizeHtml(reward) {
-  if (!reward) return '<span>ยังไม่ประกาศของรางวัล</span>';
-  const bits = [];
-  // การ์ดพรสวรรค์ขึ้นก่อนทอง/เพชร — เป็นของหายาก ต้องเห็นก่อน
+/** รูปตราระดับของการ์ดพรสวรรค์ (A / S / SS) — ใช้ในแถวรางวัลเลเวลกับกล่องฉลอง */
+function talentSign(rank, cls) {
+  const img = document.createElement('img');
+  img.className = cls;
+  img.src = import.meta.env.BASE_URL + T_RANKS[rank].sign;
+  img.alt = 'ระดับ ' + T_RANKS[rank].label;
+  return img;
+}
+
+/**
+ * ของรางวัลของเลเวลหนึ่งเป็น "ไทล์" แยกชิ้น — เห็นทันทีว่าเลเวลนี้ได้อะไรบ้าง
+ * การ์ดพรสวรรค์เป็นไทล์ใหญ่ (รูป + ป้าย "การ์ดพรสวรรค์" + ชื่อ + ตราระดับ) ขึ้นก่อนเสมอ
+ */
+function lvPrizeTiles(reward) {
+  const box = document.createElement('span');
+  box.className = 'lv-items';
+  if (!reward) {
+    box.textContent = 'ยังไม่ประกาศของรางวัล';
+    return box;
+  }
   const t = reward.talent && talentById(reward.talent);
   if (t) {
-    bits.push(`<span class="lv-talent rank-${t.rank.toLowerCase()}"><i aria-hidden="true">${t.icon}</i>`
-      + `<span></span></span>`);
+    const tile = document.createElement('span');
+    tile.className = 'lv-item talent rank-' + t.rank.toLowerCase();
+    const ico = document.createElement('span');
+    ico.className = 'lv-t-ico';
+    ico.textContent = t.icon;
+    const txt = document.createElement('span');
+    txt.className = 'lv-t-txt';
+    const kind = document.createElement('small');
+    kind.textContent = 'การ์ดพรสวรรค์';
+    const name = document.createElement('b');
+    name.textContent = t.name;
+    txt.append(kind, name);
+    tile.append(ico, txt, talentSign(t.rank, 'lv-t-sign'));
+    box.appendChild(tile);
   }
-  if (reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + reward.gold.toLocaleString('en-US'));
-  if (reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + reward.gems.toLocaleString('en-US'));
-  return bits.join('');
+  const money = (cls, icon, amount) => {
+    const tile = document.createElement('span');
+    tile.className = 'lv-item ' + cls;
+    const i = document.createElement('span');
+    i.className = icon;
+    i.setAttribute('aria-hidden', 'true');
+    const b = document.createElement('b');
+    b.textContent = amount.toLocaleString('en-US');
+    tile.append(i, b);
+    box.appendChild(tile);
+  };
+  if (reward.gems) money('gems', 'gem', reward.gems);
+  if (reward.gold) money('gold', 'coin', reward.gold);
+  return box;
 }
+
 
 /**
  * รายการรางวัลทุกเลเวล
@@ -2957,13 +3117,22 @@ function buildLvList() {
 
     row.querySelector('.lv-when').textContent = 'เลเวล ' + lv;
     const what = row.querySelector('.lv-what');
-    what.innerHTML = lvPrizeHtml(reward);
-    // ชื่อการ์ดใส่ทาง textContent (ไม่ต่อสตริง HTML) — ตัวแปลภาษาจะได้เจอเป็นโหนดข้อความของมันเอง
-    const tSlot = what.querySelector('.lv-talent > span');
-    if (tSlot) tSlot.textContent = talentById(reward.talent).name;
-    if (reward.talent) row.classList.add('has-talent');
-    // ถึงแล้วแต่ยังไม่กด = บอกให้รู้ว่าแตะได้ (ไม่มีปุ่มรับแยกแล้ว เหมือนหน้าเช็คอิน)
-    if (ready) what.insertAdjacentHTML('beforeend', '<span class="lv-tap">· แตะเพื่อรับ</span>');
+    what.appendChild(lvPrizeTiles(reward));
+    // เลเวลที่ได้การ์ด = แถวพิเศษ (กรอบสีตามระดับ + ริบบิ้น "การ์ดใหม่!") เป็นหมุดหมายระหว่างทาง
+    if (reward?.talent) {
+      row.classList.add('has-talent', 'rank-' + talentById(reward.talent).rank.toLowerCase());
+      const rib = document.createElement('span');
+      rib.className = 'lv-ribbon';
+      rib.textContent = 'การ์ดใหม่!';
+      what.appendChild(rib);
+    } else if (reward?.gems) {
+      row.classList.add('has-gems');
+    }
+    // ท้ายแถว: สถานะเป็นชิป — รับ! (เด้ง ทองเรือง) / ✓ รับแล้ว / 🔒 ยังไปไม่ถึง
+    const chip = document.createElement('span');
+    chip.className = 'lv-claim';
+    chip.textContent = ready ? 'รับ!' : claimed ? '✓' : '🔒';
+    what.appendChild(chip);
 
     row.querySelector('.lv-card').addEventListener('click', () => {
       unlockAudio();
@@ -3030,9 +3199,13 @@ function paintLvCount(level) {
 function talentGotCard(t) {
   const card = document.createElement('div');
   card.className = 'got-card talent rank-' + t.rank.toLowerCase();
-  card.innerHTML = '<span class="got-talent-ico" aria-hidden="true"></span><b></b><small>การ์ดพรสวรรค์</small>';
+  // ป้ายมุมซ้ายบนบอกชนิดของ (การ์ดพรสวรรค์) / ตราระดับมุมขวาบน / ล่างเป็นชื่อกับระดับ
+  card.innerHTML = '<span class="got-kind"></span><span class="got-talent-ico" aria-hidden="true"></span><b></b><small></small>';
+  card.querySelector('.got-kind').textContent = 'การ์ดพรสวรรค์';
   card.querySelector('.got-talent-ico').textContent = t.icon;
   card.querySelector('b').textContent = t.name;
+  card.querySelector('small').textContent = 'ระดับ ' + T_RANKS[t.rank].label;
+  card.appendChild(talentSign(t.rank, 'got-sign'));
   return card;
 }
 
@@ -3157,7 +3330,28 @@ function buildQuestList() {
   }
   markScrollable(list);
   refreshQuestDot();
+  document.getElementById('questClaimAll').disabled = claimableCount() === 0;
 }
+
+/** รับทุกข้อที่ทำครบแล้วรวดเดียว — จ่ายรวมก้อนเดียว กล่องฉลองขึ้นครั้งเดียว (ไม่เด้งทีละข้อ) */
+function doClaimAllQuests() {
+  unlockAudio();
+  const got = { gold: 0, gems: 0 };
+  let n = 0;
+  for (const q of QUESTS) {
+    const r = claimQuest(q.id);
+    if (!r.ok) continue;
+    got.gold += r.reward.gold || 0;
+    got.gems += r.reward.gems || 0;
+    n++;
+  }
+  if (!n) return;
+  payReward(got);
+  setMsg(document.getElementById('questMsg'), '');
+  buildQuestList();
+  showReward('รับรางวัลครบ ' + n + ' ภารกิจ!', got);
+}
+document.getElementById('questClaimAll').addEventListener('click', doClaimAllQuests);
 
 function doClaimQuest(id) {
   const r = claimQuest(id);
@@ -3599,6 +3793,12 @@ document.getElementById('pfBack').addEventListener('click', () => {
     loadFriendsData();        // อาจเพิ่ง "ตอบรับเพื่อน" จากในโปรไฟล์ รายการต้องตามทัน
     return;
   }
+  if (pfFrom === 'rank') {
+    pfFrom = null;
+    profilePanel.classList.add('hidden');
+    rankPanel.classList.remove('hidden');
+    return;
+  }
   if (pfView && !pfView.mine) {
     showOwnProfile();
     return;
@@ -4001,7 +4201,26 @@ function showFriends(on, tab) {
   setFrTab(tab || 'list');
   paintFriends();
   loadMyCode();
+  // บัตรของเรา: หน้าน้องตัวที่ใช้อยู่ (สกิน + ชุด) — แบบเดียวกับหน้าเพื่อนในการ์ดเพื่อน
+  paintMini(document.getElementById('frMeFace'), 96, (c) => drawCatFace(c, 48, 56, 2.5, getSkin()));
   loadFriendsData();
+}
+
+/**
+ * ส่องโปรไฟล์จากหน้าอันดับ — ปิดโปรไฟล์แล้วกลับมาที่หน้าอันดับ
+ * แตะแถวของตัวเอง = เปิดโปรไฟล์ของเรา (แก้ไขได้) ไม่ใช่ส่องตัวเองแบบคนอื่น
+ */
+function openRankProfile(row) {
+  sfx.fish();
+  rankPanel.classList.add('hidden');
+  profilePanel.classList.remove('hidden');
+  pfFrom = 'rank';
+  setEditing(false);
+  document.getElementById('pfLookup').classList.add('hidden');
+  pfSay('');
+  if (row.id === userId()) showOwnProfile();
+  else showRemoteProfile(row);
+  if (!pfRAF) pfRAF = requestAnimationFrame(pfLoop);
 }
 
 /** ส่องโปรไฟล์จากหน้าเพื่อน — ปิดโปรไฟล์แล้วกลับมาที่หน้าเพื่อน ไม่ใช่ล็อบบี้ */
@@ -4334,6 +4553,8 @@ function stashDefault(tab) {
 
 function selectStash(tab, id) {
   stashSel[tab] = id;
+  // แตะดูแล้ว = ไม่ใช่ของใหม่อีกต่อไป (หมวดในคลังน้องชื่อเดียวกับหมวดใน fresh.js)
+  markSeen(tab, id);
   refreshStash();
 }
 
@@ -4546,6 +4767,7 @@ function buildTreasureGrid() {
 
     // แตะแล้วเลือกขึ้นมาโชว์ในช่องซ้าย เหตุผลเดียวกับการ์ดชุด
     if (t.id === stashSel.treasure) card.classList.add('sel');
+    setDot(card, got && isFresh('treasure', t.id));
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
@@ -6600,6 +6822,9 @@ new MutationObserver((records) => {
     // เห็นว่าโผล่อยู่แล้วก็ข้าม — ไม่งั้นตอนเราถอด just-open ออกเองจะวนเรียกตัวเองไม่จบ
     if (panelShown.has(el)) continue;
     panelShown.add(el);
+    // จุดแดงของใหม่ต้องตรงกับของจริงทุกครั้งที่แผงไหนโผล่ (รวมล็อบบี้) — ของใหม่มาได้จากหลายทาง
+    // (จบตา กาช่า รางวัลเลเวล จดหมาย) ดักที่นี่ที่เดียวจึงไม่ต้องไล่ใส่ทุกทางที่ได้ของ
+    refreshFreshDots();
     el.classList.add('just-open');
     clearTimeout(panelTimer.get(el));
     panelTimer.set(el, setTimeout(() => el.classList.remove('just-open'), 620));
@@ -6706,6 +6931,26 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   showSettings(true);
 });
 document.getElementById('settingsBack').addEventListener('click', () => showSettings(false));
+
+// ── หมวดในหน้าตั้งค่า ── (ทั่วไป / เสียง / การแสดงผล) สลับด้วยแถบซ้าย ทีละหมวด
+const setTabs = [...document.querySelectorAll('#settingsPanel .set-tabs .stab')];
+function showSetTab(key) {
+  for (const b of setTabs) {
+    const on = b.dataset.set === key;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', String(on));
+  }
+  for (const sec of document.querySelectorAll('#settingsPanel .set-sec')) {
+    sec.classList.toggle('hidden', sec.dataset.set !== key);
+  }
+}
+for (const b of setTabs) {
+  b.addEventListener('click', () => {
+    unlockAudio();
+    sfx.fish();
+    showSetTab(b.dataset.set);
+  });
+}
 
 // ── ระดับกราฟิก ──
 // ปุ่มสามใบใช้ทรงเดียวกับตัวเลือกภาษา กดแล้วมีผลทันที (ดู onQuality ข้างบน)
@@ -6865,7 +7110,7 @@ if (import.meta.env.DEV) {
 // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 // ปุ่มเสกเพชรต้องวาดแถบบนใหม่เอง และถ้าตู้สุ่มเปิดค้างอยู่ก็ต้องปลดล็อกปุ่มสุ่มด้วย
 // ไม่งั้นเพชรเข้าแล้วแต่ปุ่มยังเทาอยู่จนกว่าจะออกไปเข้าใหม่
-setupDebug(game, {
+const debugHooks = {
   refreshCurrency: () => {
     if (!gachaPanel.classList.contains('hidden')) refreshGacha();
     else refreshGold();
@@ -6880,7 +7125,23 @@ setupDebug(game, {
   refreshSkills: () => {
     if (!talentPanel.classList.contains('hidden')) skillUI.open();
   },
-});
+};
+setupDebug(game, debugHooks);
+
+// ── แผงทดสอบสำหรับไอดีผู้ทดสอบบนเว็บจริง ──
+// เข้าสู่ระบบเสร็จเมื่อไหร่ไม่แน่นอน (กู้เซสชันเป็น async / ล็อกอินทีหลังได้) จึงเช็คเป็นระยะ
+// ต่อหนึ่งบัญชีถามรหัสจากคลาวด์ครั้งเดียว — บัญชีเปลี่ยนค่อยถามใหม่ ไม่ได้ยิงถี่ ๆ
+// รหัสตรงกับ TESTER_CODES (debug.js) = โผล่แผงทดสอบเหมือนตอนรันในเครื่อง
+let testerCheckedFor = null;
+setInterval(async () => {
+  const uid = cloudReady && userId();
+  if (!uid || uid === testerCheckedFor) return;
+  testerCheckedFor = uid;
+  const r = await fetchMyFriendCode().catch(() => ({ ok: false }));
+  if (!r.ok) return;
+  if (!pfMyCode) pfMyCode = r.code;
+  if (TESTER_CODES.includes(r.code)) setupDebug(game, debugHooks, { force: true });
+}, 4000);
 
 requestAnimationFrame(loop);
 game.draw(ctx);

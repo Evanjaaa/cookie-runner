@@ -19,8 +19,9 @@ import {
   drawBigFish,
   drawBonusSparkle,
   drawRain, drawSkillGauge, drawNips, drawCans, drawFallers, drawHazards,
-  drawHeart, poseMouthOpen, poseSpeaks,
+  drawHeart, poseMouthOpen, poseSpeaks, poseShape, star4,
 } from './render/entities.js';
+import { pickMove, mixShape, scaleShape, E as EASE, LOVE_MOVE } from './home-moves.js';
 import { getSkin } from './skins.js';
 import { getStage, sceneAt } from './stages.js';
 import { mixPalette } from './render/palette.js';
@@ -127,34 +128,19 @@ const IDLE_ACTS = [
 ];
 
 /**
- * ท่าตอบตอนผู้เล่นแตะตัวน้องบนหน้าแรก
+ * ท่าตอบตอนผู้เล่นแตะตัวน้องบนหน้าแรก — อยู่ใน src/home-moves.js ทั้งหมด
  *
- * ── ทำไมไม่เอาไปรวมกับ IDLE_ACTS ──
- * สองชุดนี้ตอบคนละคำถาม ท่าว่างตอบว่า "น้องทำอะไรอยู่ตอนไม่มีใครยุ่ง"
- * จึงต้องเป็นท่าพักที่ค้างนาน ๆ แล้วยังดูเป็นธรรมชาติ ส่วนชุดนี้ตอบว่า
- * "น้องตอบสนองคุณยังไง" จึงต้องมีการเคลื่อนไหวในตัวเองทุกท่า และต้องจบไว
- * เพื่อให้แตะรัว ๆ ได้ ถ้ารวมกันจะได้ชุดที่ผิดทั้งสองงาน
+ * ── ทำไมไม่ใช้ตารางท่าสำเร็จแบบ IDLE_ACTS ──
+ * ท่าว่างตอบว่า "น้องทำอะไรอยู่ตอนไม่มีใครยุ่ง" ท่าพักค้างนาน ๆ จึงเป็นธรรมชาติ
+ * ส่วนท่าตอบการแตะตอบว่า "น้องเล่นกับเรายังไง" ต้องเคลื่อนไหวจริงตลอดท่า
+ * (เตรียมตัว → ออกท่า → ส่วนปลายตามทีหลัง → คลาย) ซึ่งรูปร่างก้อนเดียวทำไม่ได้
+ * จึงเขียนเป็นไทม์ไลน์รายเฟรม แต่ยังวาดด้วยตัววาดเดิม (drawCatPose รับรูปร่างรายเฟรมได้)
  *
- * เรียงตามลำดับ ไม่สุ่ม ด้วยเหตุผลเดียวกับ IDLE_ACTS — สุ่มแล้วมีโอกาสออกท่าเดิม
- * ซ้ำติดกัน ซึ่งอ่านเป็น "แตะแล้วไม่มีอะไรเกิดขึ้น" ทั้งที่ท่ามันเล่นอยู่จริง ๆ
- *
- * hold นับรวมช่วงเข้า-ออกแล้ว จึงต้องมากกว่า REACT_EASE * 2 เสมอ
- * ท่าที่มีจังหวะซ้ำ ๆ ในตัว (นวดแป้ง ส่ายก้น) ตั้งยาวกว่า เพราะต้องเห็นอย่างน้อย
- * สามรอบถึงจะอ่านออกว่ามันเป็นจังหวะ ไม่ใช่การกระตุกครั้งเดียว
+ * REACT_BLEND  เฟรมที่ใช้ผสมจากท่าที่ค้างอยู่ (นั่ง/หมอบของท่าว่าง) เข้าไทม์ไลน์
+ * REACT_FADE   เฟรมที่ใช้คลายท่าปัจจุบันทิ้งตอนถูกแตะซ้ำกลางท่า ก่อนเข้าท่าใหม่
  */
-const REACT_EASE = 18;
-const REACT_ACTS = [
-  // โบกอุ้งเท้าทักทาย ตาเป็นประกาย ร้องทัก — ปากขยับ เสียงจึงตามปากทุกครั้งที่อ้า
-  { pose: 'wave', hold: 118, voice: 'trill' },
-  // นวดแป้งหน้าอก หลับตาเคลิ้ม — ท่าที่แมวทำตอนสบายใจที่สุด
-  { pose: 'knead', hold: 160, voice: 'purr' },
-  // ย่อตัวส่ายก้นเล็งเป้า หูลู่ — ท่าก่อนพุ่งตะครุบ
-  { pose: 'wiggle', hold: 132, voice: 'chirp' },
-  // ล้มตัวลงนอนตะแคงชูอุ้งเท้า = ยอมให้ลูบพุง ซึ่งแมวทำเฉพาะกับคนที่ไว้ใจ
-  { pose: 'roll', hold: 168, voice: 'flop' },
-  // ขนพองฟูทั้งตัวเพราะตกใจที่โดนแตะ แล้วค่อย ๆ ยุบ
-  { pose: 'puff', hold: 112, voice: 'startle' },
-];
+const REACT_BLEND = 14;
+const REACT_FADE = 16;
 
 /**
  * ท่าดีใจตอนได้หัวใจ — ไม่ได้อยู่ในตารางไหนเพราะเล่นได้ทางเดียวคือกดปุ่มหัวใจ
@@ -207,11 +193,12 @@ export const LOVE_BTN = { x: 585, y: 182 };
  *
  * hold นับรวมช่วงเข้า-ออกจากท่าแล้ว เหมือนกติกาของ IDLE_ACTS ข้างบน
  */
+// ท่าของน้องอยู่ใน LOVE_MOVE (src/home-moves.js) — ที่นี่เหลือแค่จังหวะของหัวใจที่ลอยมา
+// fly ต้องเท่ากับ lead ของท่า ไม่งั้นน้องจะกระโดดดีใจก่อน/หลังหัวใจถึงตัว
 const LOVE = {
-  fly: 32,     // หัวใจลอยจากปุ่มไปถึงหัวน้อง
-  ease: 20,    // เข้า/ออกจากท่าดีใจ
-  hold: 112,   // ช่วงที่น้องนั่งร้องเมี้ยว
-  jump: 26,    // กระโดดดีใจหนึ่งครั้งตอนหัวใจถึงตัว
+  fly: LOVE_MOVE.lead,                  // หัวใจลอยจากปุ่มไปถึงหัวน้อง
+  ease: 20,                             // หยุดปล่อยหัวใจดวงเล็กก่อนจบท่าเท่านี้
+  hold: LOVE_MOVE.dur - LOVE_MOVE.lead, // ช่วงดีใจหลังหัวใจถึงตัว
 };
 const LOVE_TOTAL = LOVE.fly + LOVE.hold;
 
@@ -297,9 +284,11 @@ export class Game {
     this.idleWait = 0;    // ยืนเฉย ๆ มากี่เฟรมแล้ว
     this.idleT = -1;      // เฟรมในท่าปัจจุบัน (-1 = ยังไม่ได้ทำท่าอะไร)
 
-    // ท่าตอบตอนถูกแตะ — ตัวชี้ท่าถัดไปอยู่นอก this.react เพราะมันต้องจำข้าม
-    // การแตะแต่ละครั้ง ส่วน react เกิดใหม่ทุกครั้งที่แตะ
-    this.reactAt = 0;
+    // ท่าตอบตอนถูกแตะ — จำท่าล่าสุดไว้นอก this.react เพราะต้องจำข้ามการแตะ
+    // (สุ่มท่าถัดไปห้ามซ้ำท่านี้) ส่วน react เกิดใหม่ทุกครั้งที่แตะ
+    this.lastMove = null;
+    // ของประกอบท่า (หัวใจ ประกาย zzz) — ลอยต่อได้แม้ท่าจบแล้ว จึงแยกจาก react
+    this.homeFx = [];
     // เฟรมก่อนปากอ้าอยู่ไหม — ใช้หาจังหวะที่ปากเพิ่งเปิด ซึ่งคือจังหวะที่ต้องออกเสียง
     this.mouthWas = false;
 
@@ -382,7 +371,8 @@ export class Game {
 
   get pitsSolid() {
     // แมวลอยไม่เคยแตะพื้น หลุมจึงไม่มีความหมายสำหรับมัน
-    return this.skillOn || this.boost > 0 || this.big > 0 || this.talents.floating;
+    // หลังดึงขึ้นจากหลุม: หลุมแข็งจนตัวกระพริบหมด (ดู reviveGuard) — ขึ้นมาแล้วต้องไม่ร่วงซ้ำทันที
+    return this.skillOn || this.boost > 0 || this.big > 0 || this.talents.floating || this.reviveGuard;
   }
 
   /**
@@ -477,6 +467,8 @@ export class Game {
     // ท่าตอบตอนถูกแตะก็ต้องล้างด้วยเหตุผลเดียวกัน — ท่านอนตะแคงที่ค้างอยู่
     // จะกลายเป็นน้องวิ่งตะแคงข้างไปทั้งด่าน
     this.react = null;
+    this.homeFx = [];
+    this.reviveGuard = false;   // อมตะหลังดึงขึ้นจากหลุม (ดู revive) — ตาใหม่ต้องเริ่มแบบปกติ
     // ตัวจำสถานะปากต้องล้างด้วย ไม่งั้นรอบหน้าที่กลับมาล็อบบี้ จะค้างว่าปากยังอ้าอยู่
     // แล้วกลืนเสียงแรกของท่าถัดไปหนึ่งครั้ง
     this.mouthWas = false;
@@ -689,6 +681,7 @@ export class Game {
       this.homeTick += dt;
       this.stepLove(dt);
       this.stepReact(dt);
+      this.stepHomeFx(dt);
       this.stepIdle(dt);
       this.stepVoice();
     }
@@ -696,6 +689,16 @@ export class Game {
 
     this.tick += dt;
     if (this.invuln > 0) this.invuln -= dt;
+    // ── อมตะหลังดึงขึ้นจากหลุม ── ครอบทั้งชนและหลุม จบพร้อมกับที่ตัวเลิกกะพริบ (invuln หมด)
+    // ถ้ากะพริบจะหมดตอนยืนอยู่เหนือหลุมพอดี ยืดไปจนพ้นปากหลุม — ไม่งั้นหมดกลางอากาศแล้วร่วงอยู่ดี
+    if (this.reviveGuard) {
+      // กะพริบ (= อมตะ) ต่อไปเรื่อย ๆ จนกว่าจะพ้นหลุมที่เพิ่งตก — ขึ้นมาไกลจากปากหลุมกว่าช่วงกะพริบ
+      // ถ้าปล่อยให้หมดตามเวลา น้องจะวิ่งไปถึงหลุมเดิมตอนเลิกกะพริบพอดีแล้วร่วงซ้ำ
+      const pb = this.player.box;
+      const px = pb.x + this.camera + pb.w / 2;
+      if (px < this.reviveUntil || this.level.isOverPit(px)) this.invuln = Math.max(this.invuln, 20);
+      if (this.invuln <= 0) this.reviveGuard = false;
+    }
     if (this.notice > 0) this.notice -= dt;
     this.hurtFlash = Math.max(0, this.hurtFlash - 0.06 * dt);
     this.flash = Math.max(0, this.flash - BONUS.flashFade * dt);
@@ -2295,6 +2298,13 @@ export class Game {
     this.state = STATE.RUN;
     this.dying = 0;
     this.invuln = REVIVE.invulnFrames;
+    this.reviveGuard = true;
+    // หลุมที่เพิ่งตก = หลุมแรกที่อยู่ข้างหน้าจุดยืนใหม่ (reviveCam ถอยมายืนก่อนปากหลุมนั้น)
+    {
+      const px = PLAYER_X + this.camera + BODY.standW / 2;
+      const pit = this.level.pits.filter((q) => q.x + q.w > px).sort((a, b) => a.x - b.x)[0];
+      this.reviveUntil = pit ? pit.x + pit.w + 30 : px;
+    }
     this.hp = Math.max(this.hp, HEALTH.max * REVIVE.hpFloor);
     this.shake = 0;
     this.hurtFlash = 0;
@@ -2497,12 +2507,22 @@ export class Game {
    */
   get activePose() {
     if (this.love) {
-      const k = this.love.k;
-      return k > 0.001 ? { act: LOVE_ACT, k } : null;
+      // ท่ารับหัวใจเป็นไทม์ไลน์รายเฟรมเหมือนท่าตอบการแตะ — ผสมจากท่าที่ค้างอยู่ช่วงเฟรมแรก
+      const L = this.love;
+      let shape = LOVE_MOVE.shape(Math.min(L.t, LOVE_MOVE.dur));
+      if (L.from && L.t < REACT_BLEND) shape = mixShape(L.from, shape, EASE.io(L.t / REACT_BLEND));
+      return { act: LOVE_ACT, k: 1, shape };
     }
     if (this.react) {
-      const act = REACT_ACTS[this.react.at];
-      return { act, k: poseWeight(this.react.t, act.hold, REACT_EASE) };
+      // ท่าตอบการแตะส่งรูปร่างรายเฟรมมาเอง (shape) ไม่ได้ใช้ตารางท่าสำเร็จ
+      const R = this.react;
+      const m = R.move;
+      let shape = m.shape(Math.min(R.t, m.dur));
+      // เฟรมแรก ๆ ผสมจากท่าที่ค้างอยู่ — น้องที่นั่งอยู่ลุกจากท่านั่งจริง ไม่วาร์ปไปยืนก่อน
+      if (R.from && R.t < REACT_BLEND) shape = mixShape(R.from, shape, EASE.io(R.t / REACT_BLEND));
+      // ถูกแตะซ้ำกลางท่า: คลายท่าปัจจุบันลงนุ่ม ๆ ก่อนเข้าท่าใหม่ (ไม่ตัดภาพ)
+      const k = R.fade >= 0 ? 1 - EASE.io(Math.min(1, R.fade / REACT_FADE)) : 1;
+      return { act: { pose: m.id }, k, shape };
     }
     if (this.idleT < 0) return null;
     const act = IDLE_ACTS[this.idleAt];
@@ -2511,7 +2531,7 @@ export class Game {
 
   get idlePose() {
     const a = this.activePose;
-    return a ? { pose: a.act.pose, k: a.k } : null;
+    return a ? { pose: a.act.pose, k: a.k, shape: a.shape } : null;
   }
 
   // ── เสียงพูดของน้อง ─────────────────────────────
@@ -2536,7 +2556,8 @@ export class Game {
    */
   stepVoice() {
     const a = this.activePose;
-    const open = !!a && poseMouthOpen(a.act.pose, this.homeTick, a.k);
+    // ท่าตอบการแตะร้องตามตาราง voices ของมันเอง (ดู stepReact) — ไม่ผ่านทางนี้
+    const open = !!a && !a.shape && poseMouthOpen(a.act.pose, this.homeTick, a.k);
     if (open && !this.mouthWas && a.act.voice) sfx[a.act.voice]?.();
     this.mouthWas = open;
   }
@@ -2545,12 +2566,11 @@ export class Game {
   // ── แตะตัวน้อง ──────────────────────────────────────────────
 
   /**
-   * ผู้เล่นแตะตัวน้อง — เล่นท่าถัดไปในตาราง แล้วเลื่อนตัวชี้ไปท่าต่อไป
+   * ผู้เล่นแตะตัวน้อง — สุ่มท่าใหม่จาก src/home-moves.js (ไม่ซ้ำท่าล่าสุด)
    *
    * ── แตะซ้ำระหว่างท่ายังไม่จบ ──
-   * ไม่ตัดภาพไปท่าใหม่ทันที แต่จองท่าถัดไปไว้แล้วเร่งท่าปัจจุบันเข้าสู่ช่วงคลายออก
-   * น้องจึงกลับมายืนก่อนแล้วค่อยเข้าท่าใหม่ ซึ่งอ่านเป็น "เลิกทำอันเก่า
-   * ไปทำอันใหม่" ส่วนการตัดภาพจะเห็นตัวเปลี่ยนรูปกลางอากาศ
+   * ไม่ตัดภาพไปท่าใหม่ทันที แต่จองท่าถัดไปไว้แล้วค่อย ๆ คลายท่าปัจจุบันลง (REACT_FADE)
+   * น้องจึง "เลิกทำอันเก่า ไปทำอันใหม่" ไม่ใช่เปลี่ยนรูปกลางอากาศ
    *
    * เมินการแตะตอนหัวใจกำลังเล่น — ท่านั้นมีของขวัญผูกอยู่ท้ายแอนิเมชัน
    * ถ้าตัดทิ้งกลางคัน กล่องของขวัญจะไม่มีวันเปิด (ดู settleLove ใน main.js)
@@ -2561,37 +2581,171 @@ export class Game {
     if (this.state !== STATE.READY || this.inRoom || this.love) return false;
 
     if (this.react) {
-      if (this.react.next != null) return false;   // จองไว้แล้ว รอท่าที่จองก่อน
-      this.react.next = this.reactAt;
-      this.reactAt = (this.reactAt + 1) % REACT_ACTS.length;
-      const out = REACT_ACTS[this.react.at].hold - REACT_EASE;
-      if (this.react.t < out) this.react.t = out;
+      if (this.react.next) return false;   // จองไว้แล้ว รอท่าที่จองก่อน
+      this.react.next = pickMove(this.react.move.id);
+      this.react.fade = 0;
       return true;
     }
 
-    this.startReact(this.reactAt);
-    this.reactAt = (this.reactAt + 1) % REACT_ACTS.length;
+    this.startReact(pickMove(this.lastMove));
     return true;
   }
 
-  /** เข้าท่าที่ i ทันที พร้อมเสียงประจำท่า */
-  startReact(i) {
+  /** เข้าท่าใหม่ทันที — จำรูปร่างที่ค้างอยู่ไว้ผสมเข้าท่าช่วงเฟรมแรก */
+  startReact(move) {
+    const a = this.activePose;
+    const from = a ? scaleShape(a.shape || poseShape(a.act.pose), a.k) : null;
     // ตัดท่าว่างที่ค้างอยู่ทิ้ง คนเพิ่งแตะต้องเห็นน้องตอบในเฟรมถัดไป
-    // ไม่ใช่รอครึ่งวินาทีให้ท่าหมอบคลายออกก่อน (เหตุผลเดียวกับ startLove)
     this.idleT = -1;
     this.idleWait = 0;
-    this.react = { at: i, t: 0, next: null };
-    this.speakStart(REACT_ACTS[i]);
+    this.react = { move, t: 0, next: null, fade: -1, from };
+    this.lastMove = move.id;
   }
 
-  /** เดินท่าตอบการแตะไปทีละเฟรม — แยกจากการวาดด้วยเหตุผลเดียวกับ stepIdle() */
+  /**
+   * เดินท่าตอบการแตะไปทีละเฟรม — แยกจากการวาดด้วยเหตุผลเดียวกับ stepIdle()
+   * เสียงและของประกอบยิงตอน "เวลาข้ามเฟรมที่กำหนด" จึงไม่ยิงซ้ำแม้เฟรมตก
+   * ช่วงที่กำลังคลายท่าทิ้ง (ถูกแตะซ้ำ) ไม่ยิงอะไรเพิ่ม — ท่านั้นกำลังจะจบแล้ว
+   */
   stepReact(dt) {
     const R = this.react;
     if (!R) return;
+    const m = R.move;
+    const t0 = R.t;
     R.t += dt;
-    if (R.t < REACT_ACTS[R.at].hold) return;
-    if (R.next != null) this.startReact(R.next);
+    if (R.fade < 0) {
+      for (const [f, v] of m.voices || []) if (t0 < f && R.t >= f) sfx[v]?.();
+      for (const [f, fn] of m.fx || []) if (t0 < f && R.t >= f) fn(this.fxEmit(), this.homeAnchors());
+    } else {
+      R.fade += dt;
+      if (R.fade >= REACT_FADE) this.startReact(R.next);
+      return;
+    }
+    if (R.t < m.dur) return;
+    if (R.next) this.startReact(R.next);
     else this.react = null;
+  }
+
+  // ── ของประกอบท่า (หัวใจ ประกาย zzz) ────────────────────────
+  //
+  // พิกัดฉาก ไม่ใช่พิกัดตัวแมว — ปล่อยออกจากตัวแล้วลอยไปเอง ไม่ต้องตามตัว
+  // ของที่ต้องติดตัว (หัวใจระหว่างอุ้งเท้า) วาดอยู่ในตัววาดแมวเอง ไม่ได้อยู่ที่นี่
+
+  /** ความสูงที่ท่าตอบการแตะยกตัวน้องขึ้นตอนนี้ (พิกเซลฉาก) */
+  homeAnchorsLift() {
+    const a = this.activePose;
+    return (a?.shape?.lift || 0) * (a?.k || 0) * this.catScaleHome;
+  }
+
+  /** จุดอ้างอิงบนตัวน้องตอนนี้ (รวมความสูงที่ลอยอยู่) — ใช้ปล่อยของประกอบ */
+  homeAnchors() {
+    const scale = this.catScaleHome;
+    const a = this.activePose;
+    const lift = (a?.shape?.lift || 0) * (a?.k || 0) * scale;
+    const cx = VIEW.W * 0.5;
+    const body = GROUND_Y - (BODY.standH / 2) * scale - lift;
+    return {
+      scale,
+      head: { x: cx + scale, y: body - 12 * scale, r: 13 * scale },
+      chest: { x: cx, y: body + 2 * scale, s: scale },
+      tail: { x: cx - 26 * scale, y: body - 12 * scale },
+    };
+  }
+
+  /** ตัวปล่อยของประกอบ — ท่าใน home-moves เรียกผ่านนี้ ไม่ต้องรู้จักโครงสร้าง homeFx */
+  fxEmit() {
+    const fx = this.homeFx;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    return {
+      // ประกายสี่แฉกกระจายรอบจุด
+      sparks(p, n) {
+        for (let i = 0; i < n; i++) {
+          const ang = (i / n) * Math.PI * 2 + rnd(-0.3, 0.3);
+          fx.push({ kind: 'spark', x: p.x, y: p.y, vx: Math.cos(ang) * rnd(1.2, 2.2),
+            vy: Math.sin(ang) * rnd(1.2, 2.2) - 0.6, r: rnd(4, 7), age: 0, life: rnd(26, 36) });
+        }
+      },
+      // เขิน: หัวใจชมพูดวงจิ๋วสามดวงผุดข้างแก้ม
+      blush(head) {
+        for (let i = 0; i < 3; i++) {
+          const side = i % 2 ? 1 : -1;
+          fx.push({ kind: 'heart', x: head.x + side * head.r * rnd(0.9, 1.3), y: head.y + rnd(-4, 6),
+            vx: side * rnd(0.2, 0.5), vy: rnd(-0.9, -0.6), r: rnd(3.5, 5), age: -i * 6, life: 50 });
+        }
+      },
+      // zzz ลอยเฉียงขึ้นจากหัว ค่อย ๆ โตแล้วจาง
+      z(head) {
+        fx.push({ kind: 'z', x: head.x + head.r * 0.8, y: head.y - head.r * 0.8,
+          vx: 0.35, vy: -0.5, r: head.r * 0.5, age: 0, life: 84 });
+      },
+      // ส่งหัวใจ: ดวงใหญ่พุ่งเข้าหาคนดู (โตขึ้น) + ดวงเล็กกับประกายกระจายออกข้าง
+      // ── ห้ามบังหน้าน้อง ── ออกจากข้างอกแล้วพุ่งเฉียงขึ้นขวา (ผ่านนอกวงหัว)
+      // ดวงเล็กกับประกายกระจายออกด้านข้างระดับอก ไม่ขึ้นไปทางหน้า
+      gift(chest) {
+        const s = chest.s;
+        fx.push({ kind: 'big', x: chest.x + 10 * s, y: chest.y, vx: 1.5, vy: -1.55, r: 13, age: 0, life: 74 });
+        for (let i = 0; i < 8; i++) {
+          const side = i % 2 ? 1 : -1;
+          fx.push({ kind: 'heart', x: chest.x + side * 12 * s, y: chest.y + 2 * s,
+            vx: side * rnd(2, 3.2), vy: rnd(-1.3, -0.2), r: rnd(4, 6.5), age: 0, life: rnd(44, 60), g: 0.03 });
+        }
+        for (let i = 0; i < 6; i++) {
+          const side = i % 2 ? 1 : -1;
+          fx.push({ kind: 'spark', x: chest.x + side * 14 * s, y: chest.y, vx: side * rnd(1.5, 2.8),
+            vy: rnd(-1.6, 0.4), r: rnd(4, 6.5), age: 0, life: 32 });
+        }
+      },
+    };
+  }
+
+  stepHomeFx(dt) {
+    if (!this.homeFx.length) return;
+    for (const p of this.homeFx) {
+      p.age += dt;
+      if (p.age < 0) continue;     // ดวงที่หน่วงเวลาไว้ยังไม่ออก
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += (p.g || 0) * dt;
+      p.vx *= 0.985;
+    }
+    this.homeFx = this.homeFx.filter((p) => p.age < p.life);
+  }
+
+  /** วาดของประกอบ — เรียกหลังวาดตัวน้อง ของจึงอยู่หน้าตัวเสมอ */
+  drawHomeFx(ctx) {
+    for (const p of this.homeFx) {
+      if (p.age < 0) continue;
+      const u = p.age / p.life;
+      ctx.save();
+      if (p.kind === 'big') {
+        // โตขึ้นเรื่อย ๆ = พุ่งเข้าหาจอ แล้วจางช่วงท้าย
+        const s = p.r * (1 + u * 1.7);
+        ctx.globalAlpha = u < 0.65 ? 1 : (1 - u) / 0.35;
+        ctx.fillStyle = 'rgba(255,120,170,.28)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, s * 1.35, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 2;
+        drawHeart(ctx, p.x, p.y, s);
+      } else if (p.kind === 'heart') {
+        ctx.globalAlpha = Math.min(1, (1 - u) * 2.2);
+        ctx.lineWidth = 1.4;
+        drawHeart(ctx, p.x, p.y, p.r * (0.6 + (1 - u) * 0.4));
+      } else if (p.kind === 'spark') {
+        ctx.globalAlpha = 1 - u;
+        ctx.fillStyle = '#FFF1A8';
+        star4(ctx, p.x, p.y, p.r * (1 - u * 0.6));
+      } else if (p.kind === 'z') {
+        ctx.globalAlpha = Math.sin(u * Math.PI) * 0.9;
+        const size = p.r * (0.7 + u * 0.7);
+        ctx.font = `700 ${size.toFixed(1)}px "Mitr", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(60,30,90,.55)';
+        ctx.strokeText('z', p.x, p.y);
+        ctx.fillStyle = '#EDE3FF';
+        ctx.fillText('z', p.x, p.y);
+      }
+      ctx.restore();
+    }
   }
 
   // ── ให้หัวใจน้อง ────────────────────────────────────────────
@@ -2629,12 +2783,15 @@ export class Game {
     if (this.love) return false;
     // ท่าตอบการแตะที่ค้างอยู่ต้องหยุด — หัวใจเป็นท่าที่มีของขวัญผูกอยู่ท้าย
     // จึงต้องได้เล่นจนจบเสมอ ปล่อยให้สองท่าแย่งตัวน้องกันไม่ได้
+    // จำท่าที่ค้างอยู่ (นั่ง/หมอบ/ท่าตอบการแตะ) ไว้ผสมเข้าท่ารับหัวใจ — ลุกจากท่าเดิมจริง ไม่วาร์ป
+    const a = this.activePose;
+    const from = a ? scaleShape(a.shape || poseShape(a.act.pose), a.k) : null;
     this.react = null;
     // ตัดท่าว่างที่ค้างอยู่ทิ้งทันที ไม่ปล่อยให้คลายออกเอง — คนเพิ่งกดปุ่ม
     // ต้องเห็นน้องตอบสนองในเฟรมถัดไป ไม่ใช่รอครึ่งวินาทีให้ท่าหมอบคลายก่อน
     this.idleT = -1;
     this.idleWait = 0;
-    this.love = { t: 0, k: 0, hop: 0, hearts: [], burst: false, done: onDone };
+    this.love = { t: 0, hearts: [], burst: false, done: onDone, from };
     return true;
   }
 
@@ -2643,25 +2800,22 @@ export class Game {
     const L = this.love;
     if (!L) return;
 
+    const t0 = L.t;
     L.t += dt;
     const r = L.t - LOVE.fly;   // เวลาหลังหัวใจถึงตัวน้อง ติดลบ = ยังลอยอยู่
 
-    // น้ำหนักท่าดีใจ 0→1→0 สูตรเดียวกับ idlePose เป๊ะ ๆ จะได้นุ่มเท่ากัน
-    const raw = r < 0 ? 0 : Math.min(1, r / LOVE.ease, (LOVE.hold - r) / LOVE.ease);
-    const e = Math.max(0, Math.min(1, raw));
-    L.k = e * e * (3 - 2 * e);
-
-    // กระโดดดีใจหนึ่งครั้งตอนหัวใจถึงตัว แล้วค่อยทรุดลงนั่ง
-    // ครึ่งคลื่นไซน์เดียว ขึ้นแล้วลงจบในตัว ไม่ต้องมีตัวหน่วงแยก
-    L.hop = r >= 0 && r < LOVE.jump ? Math.sin((r / LOVE.jump) * Math.PI) * 15 : 0;
+    // เสียงกับของประกอบของท่า ยิงตอนเวลาข้ามเฟรมที่กำหนด (กติกาเดียวกับ stepReact)
+    for (const [f, v] of LOVE_MOVE.voices) if (t0 < f && L.t >= f) sfx[v]?.();
+    for (const [f, fn] of LOVE_MOVE.fx) if (t0 < f && L.t >= f) fn(this.fxEmit(), this.homeAnchors());
 
     // หัวใจแตกกระจายตอนถึงตัว ครั้งเดียวต่อการกดหนึ่งครั้ง
     if (!L.burst && r >= 0) {
       L.burst = true;
       for (let i = 0; i < 9; i++) {
         const a = -Math.PI / 2 + (i / 8 - 0.5) * 2.4;
+        // ออกจากเหนือหัว ไม่ใช่กลางหน้า — ตอนนั้นน้องกำลังกระโดดอ้าปากดีใจ หัวใจต้องไม่บังหน้า
         L.hearts.push({
-          x: 0, y: 0, vx: Math.cos(a) * (1.6 + Math.random() * 1.5),
+          x: 0, y: -24, vx: Math.cos(a) * (1.6 + Math.random() * 1.5),
           vy: Math.sin(a) * (1.7 + Math.random() * 1.4),
           r: 4 + Math.random() * 3.5, life: 40 + Math.random() * 22, age: 0,
         });
@@ -2703,12 +2857,14 @@ export class Game {
     const head = this.homeHead();
 
     // ── หัวใจดวงเล็กรอบหัว ──
-    // พิกัดของแต่ละดวงวัดจากหัว ไม่ใช่จากขอบจอ ย้ายน้องแล้วหัวใจตามไปเอง
+    // พิกัดของแต่ละดวงวัดจากหัว "ตอนนี้" (รวมความสูงที่กระโดดอยู่) ไม่ใช่หัวตอนยืน
+    // ไม่งั้นน้องกระโดดดีใจขึ้นไปทะลุกลุ่มหัวใจที่ค้างอยู่ระดับหัวเดิม หัวใจเลยไปบังหน้าพอดี
+    const live = this.homeAnchors().head;
     for (const h of L.hearts) {
       const k = 1 - h.age / h.life;
       ctx.save();
       ctx.globalAlpha = Math.min(1, k * 2.2);
-      drawHeart(ctx, head.x + h.x, head.y - head.r * 0.5 + h.y, h.r * (0.55 + k * 0.45));
+      drawHeart(ctx, live.x + h.x, live.y - live.r * 0.5 + h.y, h.r * (0.55 + k * 0.45));
       ctx.restore();
     }
 
@@ -2817,7 +2973,8 @@ export class Game {
 
     // กระโดดดีใจตอนได้หัวใจ — ยกทั้งตัวขึ้นจากพื้น ไม่ใช่บิดท่า
     // จึงบวกที่ "ระดับเท้า" ที่ส่งให้ drawCatPose ไม่ใช่ไปยุ่งกับตาราง IDLE_SHAPE
-    const hop = this.love?.hop || 0;
+    // ท่าตอบการแตะที่ลอย/เด้ง (นอนลอย ส่งหัวใจ) ยกเท้าขึ้นด้วยทางเดียวกัน เงาจึงหดตามเอง
+    const hop = this.homeAnchorsLift();
 
     ctx.save();
     // เงาหดลงตอนตัวลอย = สัญญาณเดียวที่บอกความสูงได้ในมุมมองหน้าตรง
@@ -2832,6 +2989,7 @@ export class Game {
     ctx.restore();
 
     drawCatPose(ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    this.drawHomeFx(ctx);
     this.drawLove(ctx);
     postProcess(ctx, { edges: false });
   }

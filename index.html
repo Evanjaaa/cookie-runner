@@ -410,7 +410,8 @@
                เปิดหน้าพรสวรรค์ (#talentPanel) เลือกใบที่เปลี่ยนวิธีเคลื่อนที่ของน้อง -->
           <button class="lobby-btn" id="btnTalent">
             <canvas id="talentIcon" width="76" height="76"></canvas>
-            <b>สกิล</b>
+            <b>การ์ดพลัง</b>
+            <i class="dot hidden" id="cardDot" aria-hidden="true"></i>
           </button>
           <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
                รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
@@ -418,6 +419,7 @@
           <button class="lobby-btn" id="btnStash">
             <canvas id="stashIcon" width="76" height="76"></canvas>
             <b>คลังน้อง</b>
+            <i class="dot hidden" id="stashDot" aria-hidden="true"></i>
           </button>
           <!-- สร้างสรรค์ = ระบายสีน้อง + ใส่รูปหน้าน้อง สองโหมดในแผงเดียว
                รวมเพราะทั้งคู่คือ "แต่งหน้าตาน้องด้วยตัวเอง" เหมือนกัน
@@ -663,6 +665,10 @@
               <p class="tl-side-label">ติดตั้งอยู่</p>
               <button type="button" class="tl-equipped" id="tlEquipped"></button>
               <p class="tl-side-note">ติดตั้งได้ทีละ 1 ใบ<br>มีผลตั้งแต่เริ่มวิ่งตาถัดไป</p>
+              <!-- ปุ่มอ่านวิธีใช้ — ชิดขอบล่างของช่องซ้าย เปิดแผ่นอธิบาย (#tlHelp) -->
+              <button type="button" class="tl-help" data-help="talent">
+                <span>การ์ดพรสวรรค์มีไว้ทำอะไร?</span><i class="tl-help-i" aria-hidden="true">!</i>
+              </button>
             </aside>
             <div class="tl-grid" id="tlGrid" role="list" aria-label="พรสวรรค์ทั้งหมด"></div>
           </div>
@@ -674,8 +680,26 @@
               <p class="tl-side-label">ติดตั้งอยู่</p>
               <div class="tl-equipped sk-equipped" id="skEquipped"></div>
               <p class="tl-side-note">ติดตั้งได้ทีละ 1 สกิล<br>หลอดบนหัวเต็มทุก 20 วิ<br>แล้วออกฤทธิ์เอง</p>
+              <!-- ปุ่มอ่านวิธีใช้ — ชิดขอบล่างของช่องซ้าย เปิดแผ่นอธิบาย (#tlHelp) -->
+              <button type="button" class="tl-help" data-help="skill">
+                <span>การ์ดสกิลมีไว้ทำอะไร?</span><i class="tl-help-i" aria-hidden="true">!</i>
+              </button>
             </aside>
             <div class="tl-grid sk-grid" id="skGrid" role="list" aria-label="สกิลทั้งหมด"></div>
+          </div>
+
+          <!-- แผ่นอธิบายว่าการ์ดสกิล/พรสวรรค์มีไว้ทำอะไร — ชั้นเดียวกับหน้ารายละเอียด เนื้อหาเติมจาก skill-ui.js -->
+          <div class="tl-detail" id="tlHelp" aria-hidden="true">
+            <div class="tl-sheet tl-help-sheet" role="dialog" aria-modal="true" aria-labelledby="tlHelpTitle">
+              <button type="button" class="xbtn tl-close" id="tlHelpClose" aria-label="ปิด">
+                <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div class="tl-help-head">
+                <span class="tl-help-ico" id="tlHelpIco" aria-hidden="true"></span>
+                <h3 class="tl-sheet-name" id="tlHelpTitle"></h3>
+              </div>
+              <ul class="tl-help-list" id="tlHelpList"></ul>
+            </div>
           </div>
 
           <!-- หน้ารายละเอียด: แผ่นซ้อนในการ์ด ปิดได้สามทาง (ปุ่มปิด / แตะพื้นมืด / ปุ่มกลับหรือ Esc) -->
@@ -716,35 +740,53 @@
              คำขอเป็นเพื่อน  ช่องค้นหาด้วยรหัสแมวน้อย/ชื่อ + คำขอที่ส่งมา + คำขอที่เราส่งไป
            แถวข้างในสร้างจาก JS ทั้งหมด (buildFriendList / buildRequestPage ใน main.js)
            ข้อมูลทั้งหมดมาจากคลาวด์ — ต้องรัน supabase/friends.sql กับ friend_requests.sql -->
+      <!-- โครงเดียวกับหน้าการ์ดพลัง (.tl-pop): หัวซ้าย + แท็บชิดขวา / ช่องซ้ายคือ "บัตรของเรา"
+           (หน้าน้อง + รหัสแมวน้อย + ปุ่มคัดลอก) / ขวาคือกริดการ์ดเพื่อน
+           ช่องค้นหาอยู่บนสุดของแท็บคำขอ เพราะการเพิ่มเพื่อนเริ่มจากตรงนั้นเสมอ -->
       <div class="panel hidden" id="friendsPanel">
-        <div class="pop fr-pop">
-          <div class="panel-head"><h2 class="skin-title">เพื่อนแมว</h2></div>
-          <div class="fsort fr-tabs" role="tablist" aria-label="เลือกหน้า">
-            <button type="button" class="fchip on" id="frTabList" role="tab">
-              เพื่อนแมว<b class="fr-num" id="frCount"></b>
-            </button>
-            <button type="button" class="fchip" id="frTabReq" role="tab">
-              คำขอเป็นเพื่อน<b class="fr-num fr-red hidden" id="frReqCount"></b>
-            </button>
-          </div>
-
-          <div class="mail-list fr-list" id="frListPage"></div>
-
-          <div class="fr-req hidden" id="frReqPage">
-            <!-- ค้นได้ทั้งรหัสแมวน้อย 8 ตัว และชื่อ (ชื่อห้ามซ้ำกันแล้ว จึงเจอคนเดียว) -->
-            <form class="form-row fr-search" id="frSearch" autocomplete="off">
-              <input id="frSearchInput" maxlength="20" enterkeyhint="search"
-                     placeholder="ใส่รหัสแมวน้อย หรือชื่อเพื่อน" aria-label="ค้นหาเพื่อน">
-              <button class="btn" type="submit" id="frSearchGo">ค้นหา</button>
-            </form>
-            <div class="fr-mycode">
-              <span>รหัสแมวน้อยของเรา</span>
-              <b id="frMyCode">— — —</b>
-              <button type="button" class="fr-copy" id="frCopy" aria-label="คัดลอกรหัสแมวน้อย">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>
+        <div class="pop tl-pop fr-pop">
+          <div class="tl-head">
+            <div class="tl-titles">
+              <h2 class="skin-title">เพื่อนแมว</h2>
+            </div>
+            <div class="fsort fr-tabs" role="tablist" aria-label="เลือกหน้า">
+              <button type="button" class="fchip on" id="frTabList" role="tab">
+                เพื่อนแมว<b class="fr-num" id="frCount"></b>
+              </button>
+              <button type="button" class="fchip" id="frTabReq" role="tab">
+                คำขอเป็นเพื่อน<b class="fr-num fr-red hidden" id="frReqCount"></b>
               </button>
             </div>
-            <div class="mail-list fr-list" id="frReqList"></div>
+          </div>
+
+          <div class="tl-body fr-body">
+            <aside class="tl-side fr-side">
+              <p class="tl-side-label">บัตรแมวน้อยของเรา</p>
+              <div class="tl-equipped fr-me">
+                <canvas class="fr-me-face" id="frMeFace" width="96" height="96" aria-hidden="true"></canvas>
+                <small class="fr-me-label">รหัสแมวน้อย</small>
+                <b class="fr-me-code" id="frMyCode">— — —</b>
+                <button type="button" class="fr-copy" id="frCopy" aria-label="คัดลอกรหัสแมวน้อย">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>
+                  <span>คัดลอก</span>
+                </button>
+              </div>
+              <p class="tl-side-note">ส่งรหัสนี้ให้เพื่อน<br>ค้นหาแล้วกดเพิ่มกันได้เลย</p>
+            </aside>
+
+            <div class="fr-main">
+              <div class="fr-grid" id="frListPage"></div>
+
+              <div class="fr-req hidden" id="frReqPage">
+                <!-- ค้นได้ทั้งรหัสแมวน้อย 8 ตัว และชื่อ (ชื่อห้ามซ้ำกันแล้ว จึงเจอคนเดียว) -->
+                <form class="form-row fr-search" id="frSearch" autocomplete="off">
+                  <input id="frSearchInput" maxlength="20" enterkeyhint="search"
+                         placeholder="ใส่รหัสแมวน้อย หรือชื่อเพื่อน" aria-label="ค้นหาเพื่อน">
+                  <button class="btn" type="submit" id="frSearchGo">ค้นหา</button>
+                </form>
+                <div class="fr-grid" id="frReqList"></div>
+              </div>
+            </div>
           </div>
 
           <small class="form-msg" id="frMsg"></small>
@@ -1117,107 +1159,115 @@
         </div>
       </div>
 
+      <!-- ── ตั้งค่า ──
+           แบ่งเป็นสามหมวด เลือกจากแถบซ้าย (โครงเดียวกับคลังน้อง):
+             ทั่วไป      ภาษา (บนสุดโดยตั้งใจ — คนที่อ่านไทยไม่ออกต้องเจอก่อน ปุ่มเขียนด้วยภาษาของตัวเอง) + บัญชี
+             เสียง       เพลง / เอฟเฟกต์ แยกหรี่แยกปิด (ปุ่มลำโพงหน้าแถว = เงียบเฉพาะช่องนั้น กดซ้ำคืนระดับเดิม)
+             การแสดงผล  ระดับกราฟิก (ตารางจริงใน src/graphics.js เปลี่ยนแล้วเห็นผลทันที) + คลิปเปิดเกม
+           แต่ละหมวดมีแค่สองแถว จึงไม่ต้องเลื่อนบนจอเตี้ย และหาของเจอจากชื่อหมวดทันที
+           id ของทุกปุ่มยังเดิม — โค้ดใน main.js ไม่ต้องรู้ว่าแถวย้ายไปอยู่หมวดไหน -->
       <div class="panel hidden" id="settingsPanel">
-        <div class="pop">
-          <h2>ตั้งค่า</h2>
-          <!-- ── เสียงสองช่อง ─────────────────────────────────
-               เพลงกับเอฟเฟกต์ทำหน้าที่คนละอย่าง เพลงคือบรรยากาศที่เปิดค้างไว้นาน
-               ส่วนเอฟเฟกต์คือสัญญาณว่าเกิดอะไรขึ้น คนที่เปิดเพลงของตัวเองอยู่
-               ยังต้องการได้ยินสัญญาณ จึงต้องหรี่และปิดแยกกันได้ทั้งคู่
+        <div class="pop stash-pop set-pop">
+          <div class="stash-body">
+            <div class="stash-tabs set-tabs" role="tablist" aria-label="เลือกหมวด">
+              <button type="button" class="stab on" data-set="general" role="tab" aria-selected="true">
+                <span class="stab-ico" aria-hidden="true">⚙️</span>ทั่วไป
+              </button>
+              <button type="button" class="stab" data-set="sound" role="tab" aria-selected="false">
+                <span class="stab-ico" aria-hidden="true">🔊</span>เสียง
+              </button>
+              <button type="button" class="stab" data-set="display" role="tab" aria-selected="false">
+                <span class="stab-ico" aria-hidden="true">✨</span>การแสดงผล
+              </button>
+            </div>
 
-               แต่ละแถวมีปุ่มลำโพงของตัวเอง กดทีเดียวเงียบเฉพาะช่องนั้น กดซ้ำได้
-               ระดับเดิมคืน ต่างจากปุ่ม − ที่ต้องกดสิบทีกว่าจะเงียบ แล้วกดกลับอีกสิบที
-               รูปลำโพงวาดเป็น SVG เหมือนไอคอนอื่นในเกม ไม่ใช้อีโมจิลำโพงที่หน้าตา
-               ต่างกันทุกระบบและบางเครื่องขึ้นเป็นกล่องสี่เหลี่ยม -->
-          <!-- ── ภาษา ──
-               อยู่บนสุดของหน้าตั้งค่าโดยตั้งใจ — คนที่อ่านไทยไม่ออกต้องหาแถวนี้เจอ
-               ก่อนจะเจอแถวอื่น และชื่อสองปุ่มเขียนด้วยภาษาของตัวเองเสมอ
-               ("ไทย" กับ "English") จึงอ่านออกไม่ว่าตอนนี้เกมเป็นภาษาอะไรอยู่ -->
-          <div class="setrow">
-            <span class="setlabel">ภาษา</span>
-            <div class="langpick" role="group" aria-label="เลือกภาษา">
-              <button type="button" class="langbtn on" id="langTh" lang="th">ไทย</button>
-              <button type="button" class="langbtn" id="langEn" lang="en">English</button>
+            <div class="stash-main set-main">
+              <div class="panel-head"><h2 class="skin-title">ตั้งค่า</h2></div>
+              <div class="set-sec" data-set="general">
+              <div class="setrow">
+                <span class="setlabel">ภาษา</span>
+                <div class="langpick" role="group" aria-label="เลือกภาษา">
+                  <button type="button" class="langbtn on" id="langTh" lang="th">ไทย</button>
+                  <button type="button" class="langbtn" id="langEn" lang="en">English</button>
+                </div>
+              </div>
+              <div class="setrow">
+                <span class="setlabel">บัญชี</span>
+                <b class="setval" id="accState">—</b>
+                <button class="btn ghost tiny" id="accBtn">เชื่อมอีเมล</button>
+              </div>
+              <small class="form-msg" id="accMsg"></small>
+              </div>
+              <div class="set-sec hidden" data-set="sound">
+              <div class="setrow">
+                <button class="stepbtn mutebtn" id="musicMute" aria-label="ปิดเสียงเพลง">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                    <g class="wave" fill="none" stroke-linecap="round">
+                      <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                      <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                    </g>
+                    <g class="cross" fill="none" stroke-linecap="round">
+                      <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                    </g>
+                  </svg>
+                </button>
+                <span class="setlabel">เพลง</span>
+                <button class="stepbtn" id="musicDown" aria-label="ลดเสียงเพลง">−</button>
+                <div class="volbar" id="musicBar"></div>
+                <button class="stepbtn" id="musicUp" aria-label="เพิ่มเสียงเพลง">+</button>
+                <b class="volnum" id="musicNum">80%</b>
+              </div>
+              <div class="setrow">
+                <button class="stepbtn mutebtn" id="sfxMute" aria-label="ปิดเสียงเอฟเฟกต์">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                    <g class="wave" fill="none" stroke-linecap="round">
+                      <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                      <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                    </g>
+                    <g class="cross" fill="none" stroke-linecap="round">
+                      <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                    </g>
+                  </svg>
+                </button>
+                <span class="setlabel">เอฟเฟกต์</span>
+                <button class="stepbtn" id="sfxDown" aria-label="ลดเสียงเอฟเฟกต์">−</button>
+                <div class="volbar" id="sfxBar"></div>
+                <button class="stepbtn" id="sfxUp" aria-label="เพิ่มเสียงเอฟเฟกต์">+</button>
+                <b class="volnum" id="sfxNum">80%</b>
+              </div>
+              </div>
+              <div class="set-sec hidden" data-set="display">
+              <div class="setrow">
+                <span class="setlabel">กราฟิก</span>
+                <div class="langpick gfxpick" role="group" aria-label="เลือกระดับกราฟิก">
+                  <button type="button" class="langbtn on" id="gfxHigh">สวยเต็มที่</button>
+                  <button type="button" class="langbtn" id="gfxMid">ปานกลาง</button>
+                  <button type="button" class="langbtn" id="gfxSave">ประหยัดแบต</button>
+                </div>
+              </div>
+              <small class="setnote" id="gfxNote">เครื่องร้อนหรือเฟรมตก ลองลดระดับลงได้</small>
+              <div class="setrow">
+                <button class="stepbtn mutebtn" id="introMute" aria-label="ปิดเสียงคลิปเปิดเกม">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                  <g class="wave" fill="none" stroke-linecap="round">
+                    <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                    <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                  </g>
+                  <g class="cross" fill="none" stroke-linecap="round">
+                    <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                  </g>
+                </svg>
+                </button>
+                <span class="setlabel">คลิปเปิดเกม</span>
+                <b class="setval" id="introState">แสดง</b>
+                <button class="btn ghost tiny" id="introToggle">ปิดคลิป</button>
+              </div>
+              </div>
             </div>
           </div>
-          <!-- ── กราฟิก ──
-               สามระดับ ต่างกันที่ความละเอียดผ้าใบ เพดานเฟรม แสงฟุ้ง และจำนวนอนุภาค
-               (ตารางจริงอยู่ใน src/graphics.js) เปลี่ยนแล้วเห็นผลทันทีโดยไม่ต้องรีโหลด -->
-          <div class="setrow">
-            <span class="setlabel">กราฟิก</span>
-            <div class="langpick gfxpick" role="group" aria-label="เลือกระดับกราฟิก">
-              <button type="button" class="langbtn on" id="gfxHigh">สวยเต็มที่</button>
-              <button type="button" class="langbtn" id="gfxMid">ปานกลาง</button>
-              <button type="button" class="langbtn" id="gfxSave">ประหยัดแบต</button>
-            </div>
-          </div>
-          <small class="setnote" id="gfxNote">เครื่องร้อนหรือเฟรมตก ลองลดระดับลงได้</small>
-          <div class="setrow">
-            <button class="stepbtn mutebtn" id="musicMute" aria-label="ปิดเสียงเพลง">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
-                <g class="wave" fill="none" stroke-linecap="round">
-                  <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
-                  <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
-                </g>
-                <g class="cross" fill="none" stroke-linecap="round">
-                  <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
-                </g>
-              </svg>
-            </button>
-            <span class="setlabel">เพลง</span>
-            <button class="stepbtn" id="musicDown" aria-label="ลดเสียงเพลง">−</button>
-            <div class="volbar" id="musicBar"></div>
-            <button class="stepbtn" id="musicUp" aria-label="เพิ่มเสียงเพลง">+</button>
-            <b class="volnum" id="musicNum">80%</b>
-          </div>
-          <div class="setrow">
-            <button class="stepbtn mutebtn" id="sfxMute" aria-label="ปิดเสียงเอฟเฟกต์">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
-                <g class="wave" fill="none" stroke-linecap="round">
-                  <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
-                  <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
-                </g>
-                <g class="cross" fill="none" stroke-linecap="round">
-                  <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
-                </g>
-              </svg>
-            </button>
-            <span class="setlabel">เอฟเฟกต์</span>
-            <button class="stepbtn" id="sfxDown" aria-label="ลดเสียงเอฟเฟกต์">−</button>
-            <div class="volbar" id="sfxBar"></div>
-            <button class="stepbtn" id="sfxUp" aria-label="เพิ่มเสียงเอฟเฟกต์">+</button>
-            <b class="volnum" id="sfxNum">80%</b>
-          </div>
-          <!-- ผู้มาเยือนเสียบัญชีทันทีที่ล้างข้อมูลเบราว์เซอร์ แถวนี้จึงต้องบอกสถานะ
-               ให้เห็นตลอด ไม่ใช่ซ่อนปุ่มผูกอีเมลไว้ให้ไปหาเอง -->
-          <!-- คลิปเปิดเกม — ทางเดียวที่จะเปิดกลับได้หลังติ๊ก "ไม่ต้องแสดงอีก" ไปแล้ว
-               ปุ่มลำโพงหน้าแถว = ปิด/เปิดเฉพาะเสียงของคลิป (ภาพยังเล่นครบ)
-               ใช้ปุ่มทรงเดียวกับสองแถวบน คนจึงรู้ได้ทันทีว่ากดแล้วได้อะไร ไม่ต้องมีแถวแยกอีกแถว -->
-          <div class="setrow">
-            <button class="stepbtn mutebtn" id="introMute" aria-label="ปิดเสียงคลิปเปิดเกม">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
-              <g class="wave" fill="none" stroke-linecap="round">
-                <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
-                <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
-              </g>
-              <g class="cross" fill="none" stroke-linecap="round">
-                <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
-              </g>
-            </svg>
-            </button>
-            <span class="setlabel">คลิปเปิดเกม</span>
-            <b class="setval" id="introState">แสดง</b>
-            <button class="btn ghost tiny" id="introToggle">ปิดคลิป</button>
-          </div>
-          <div class="setrow">
-            <span class="setlabel">บัญชี</span>
-            <b class="setval" id="accState">—</b>
-            <button class="btn ghost tiny" id="accBtn">เชื่อมอีเมล</button>
-          </div>
-          <small class="form-msg" id="accMsg"></small>
           <button class="backbtn" id="settingsBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
@@ -1530,7 +1580,10 @@
                 <i class="lv-arrow" aria-hidden="true"></i>
                 <b id="lvNowNeed">270</b>
               </div>
+              <span class="lv-now-bar" aria-hidden="true"><i id="lvNowFill"></i></span>
             </div>
+            <!-- รางวัลใหญ่ถัดไป (การ์ดพรสวรรค์ใบต่อไป) — เป้าหมายที่ทำให้อยากเล่นต่อ -->
+            <div class="lv-next hidden" id="lvNext"></div>
           </div>
 
           <!-- เส้นทางรางวัล: รางรวมอยู่ซ้าย หมุดของรางวัลเกาะอยู่บนราง
@@ -1551,6 +1604,8 @@
         <div class="pop">
           <div class="quest-head">
             <h2 class="skin-title">กิจกรรม</h2>
+            <!-- รับทุกข้อที่ทำครบแล้วรวดเดียว — ทรงเดียวกับปุ่มรับทั้งหมดในหน้ารางวัลเลเวล -->
+            <button type="button" class="btn ghost tiny quest-all" id="questClaimAll">รับทั้งหมด</button>
           </div>
           <div class="quest-list" id="questList"></div>
           <small class="form-msg" id="questMsg"></small>

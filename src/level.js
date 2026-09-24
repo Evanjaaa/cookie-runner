@@ -3,6 +3,7 @@ import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
   SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X,
 } from './config.js';
+import { PROP_OBSTACLES, isLowObstacle } from './obstacles.js';
 
 const { spike, bar, crate, fishR, chunkW, ledgeThick } = LEVEL;
 
@@ -66,7 +67,28 @@ function fishAlong(path, x, count) {
 }
 
 const fishJump = (x, count) => fishAlong(JUMP, x, count);
-const fishDouble = (x, count) => fishAlong(JUMP_DBL, x, count);
+/**
+ * เม็ดอาหารเรียงตามเส้นทางกระโดด แต่เว้นระยะเท่ากันตาม "ความยาวเส้นโค้ง" แทนตามเฟรม
+ * โค้งสองชั้นมีหักมุมตอนกดชั้นสองและขาลงร่วงเร็ว ถ้าแบ่งตามเฟรมเม็ดจะเบียดกันช่วงบน
+ * แล้วห่างกันช่วงขาขึ้น/ขาลง แบบนี้ทุกเม็ดยังอยู่บนเส้นทางจริง (เก็บได้เหมือนเดิม) แต่ห่างเท่ากันทุกเม็ด
+ */
+function fishAlongEven(path, x, count, from = 0.07, to = 0.93) {
+  const len = [0];
+  for (let i = 1; i < path.length; i++) {
+    len.push(len[i - 1] + Math.hypot(path[i].dx - path[i - 1].dx, path[i].y - path[i - 1].y));
+  }
+  const total = len[len.length - 1];
+  return Array.from({ length: count }, (_, k) => {
+    const s = total * (from + ((to - from) * k) / Math.max(1, count - 1));
+    let i = 1;
+    while (i < len.length - 1 && len[i] < s) i++;
+    const u = (s - len[i - 1]) / (len[i] - len[i - 1] || 1);
+    const a = path[i - 1], b = path[i];
+    return { x: x + a.dx + (b.dx - a.dx) * u, y: a.y + (b.y - a.y) * u, r: fishR, got: false, kind: 'fish' };
+  });
+}
+
+const fishDouble = (x, count) => fishAlongEven(JUMP_DBL, x, count);
 
 /**
  * เปลี่ยนบางเม็ดในท่อนให้เป็นอาหารเม็ดกลม — แก้เฉพาะ kind
@@ -305,6 +327,18 @@ const crateStack = (x, rows = 1) => ({
   kind: 'crate',
 });
 
+/**
+ * สิ่งกีดขวางชุดใหม่ประจำด่าน (ดู src/obstacles.js) — id เช่น 'nightKitchen_Obstacle_Single_01'
+ * ขนาดกล่องชนมาจากทะเบียน ห้ามกำหนดเองที่นี่ ชิ้นหมอบได้ low: true (ใช้แทนการเช็ค kind === 'bar')
+ */
+const propObs = (x, id) => {
+  const d = PROP_OBSTACLES[id];
+  if (!d) return { x, y: GROUND_Y - spike.h, w: spike.w, h: spike.h, kind: 'spike' };
+  return d.type === 'crouch'
+    ? { x, y: d.top, w: d.w, h: d.h, kind: 'prop', art: id, low: true }
+    : { x, y: GROUND_Y - d.h, w: d.w, h: d.h, kind: 'prop', art: id };
+};
+
 // ─────────────────────────────────────────────────────────────
 // ชุดเครื่องมือสำหรับหน้าออกแบบด่าน (editor.html)
 //
@@ -438,7 +472,7 @@ export const AUTHOR = {
   RUN_Y, RUN_REACH, GAP_W,
   fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
   fishFlake, fishDots,
-  arcMid, arcHigh, groundSpike, lowBar, crateStack, makeShrimp, makeKibble,
+  arcMid, arcHigh, groundSpike, lowBar, crateStack, propObs, isLowObstacle, makeShrimp, makeKibble,
   withShrimp, withKibble, lift,
   platTop, highestTop, platBox, footing, ledgeThick,
 };
@@ -1840,8 +1874,8 @@ const BAD_JOIN = (() => {
     for (let b = 0; b < PATTERNS.length; b++) {
       const B = PATTERNS[b](w);
       const all = [...A.obs, ...B.obs];
-      const bars = all.filter((o) => o.kind === 'bar');
-      const solid = all.filter((o) => o.kind !== 'bar');
+      const bars = all.filter(isLowObstacle);
+      const solid = all.filter((o) => !isLowObstacle(o));
       const clash = bars.some((bar) => solid.some(
         (o) => bar.x < o.x + o.w && o.x < bar.x + bar.w
       ));
@@ -2454,7 +2488,7 @@ export class Level {
    */
   underBar(x, w) {
     return this.obstacles.some(
-      (o) => o.kind === 'bar' && x < o.x + o.w && o.x < x + w
+      (o) => isLowObstacle(o) && x < o.x + o.w && o.x < x + w
     );
   }
 
@@ -2467,7 +2501,7 @@ export class Level {
    */
   hasSolid(x, w) {
     const hit = (o) => x < o.x + o.w && o.x < x + w;
-    return this.obstacles.some((o) => o.kind !== 'bar' && hit(o)) || this.pits.some(hit);
+    return this.obstacles.some((o) => !isLowObstacle(o) && hit(o)) || this.pits.some(hit);
   }
 
   /** เดินอันตรายที่ขยับได้หนึ่งเฟรม แล้วทิ้งชิ้นที่พ้นจอไปแล้ว */

@@ -1,4 +1,5 @@
 // src/render/entities.js
+import { PROP_ART } from './props/index.js';
 import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, POTION, LETTER_COLORS, COLORS as C } from '../config.js';
 import { getFace } from '../face.js';
 import { LAYER } from '../paint.js';
@@ -29,6 +30,11 @@ const THEME_ART = {
 };
 
 function drawOneObstacle(ctx, o, x, y, theme) {
+  // สิ่งกีดขวางชุดใหม่ประจำด่าน — หน้าตาของตัวเอง ไม่ขึ้นกับธีมของฉาก (ดู render/props/)
+  if (o.kind === 'prop') {
+    const draw = PROP_ART[o.art];
+    if (draw) { draw(ctx, x, y, o.w, o.h); return; }
+  }
   const art = THEME_ART[theme] || THEME_ART.bakery;
   if (o.kind === 'bar') art.bar(ctx, x, y, o.w, o.h);
   else if (o.kind === 'crate') art.crate(ctx, x, y, o.w, o.h, o.rows);
@@ -2961,6 +2967,14 @@ export function poseMouthOpen(pose, t, k) {
   return poseMouth(IDLE_SHAPE[pose] || IDLE_SHAPE.stand, t, Math.max(0, Math.min(1, k))) > 0.5;
 }
 
+/**
+ * รูปร่างสำเร็จของท่าว่าง — ให้ฝั่งเกมหยิบไปเป็นจุดตั้งต้นตอนผสมเข้าท่าตอบการแตะ
+ * (น้องที่กำลังนั่งอยู่แล้วโดนแตะ ต้องลุกจากท่านั่งจริง ไม่ใช่วาร์ปไปยืนก่อน)
+ */
+export function poseShape(pose) {
+  return IDLE_SHAPE[pose] || IDLE_SHAPE.stand;
+}
+
 /** ท่านี้มีจังหวะอ้าปากไหม — ถ้าไม่มี ผู้เรียกต้องเล่นเสียงตอนเริ่มท่าเอง */
 export function poseSpeaks(pose) {
   const shape = IDLE_SHAPE[pose] || IDLE_SHAPE.stand;
@@ -3057,7 +3071,20 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
     + waveT * 0.05 + sway * 0.06;
   const mouth = poseMouth(shape, t, k);
   const shut = (shape.shut || 0) * k;
-  const ear = (shape.ear || 0) * k;
+
+  // ── หูกระดิกตอนยืนเฉย ๆ (idle micro-movement) ──
+  // สะบัดหูสั้น ๆ ทุก ~5.5 วินาที เฉพาะตอนไม่ได้ทำท่าอะไรและไม่มีผู้กำกับท่าส่งรูปร่างมาเอง
+  // (คลิปเปิดเกม/ท่าตอบการแตะคุมหูเองทุกเฟรมอยู่แล้ว ถ้าไปแทรกจะกระตุกผิดจังหวะ)
+  const twitchPh = t % 331;
+  const twitch = !idle?.shape && twitchPh < 14 ? Math.sin((twitchPh / 14) * Math.PI) * 0.3 * (1 - k) : 0;
+  const ear = (shape.ear || 0) * k + twitch;
+
+  // ── ช่องของท่าตอบการแตะ (src/home-moves.js) ── ทุกช่องคูณ k เหมือนช่องเดิม
+  const lean = (shape.lean || 0) * k;       // เอียงทั้งตัวรอบจุดที่เท้าเหยียบ
+  const sqx = (shape.sx || 0) * k;          // ยืด/แบน (squash & stretch)
+  const sqy = (shape.sy || 0) * k;
+  const shiftX = (shape.dx || 0) * k;
+  const turn = (shape.turn || 0) * k;       // หมุนตัว (เรเดียน) — ภาพหน้าตรงบีบกว้างตาม cos
 
   ctx.save();
   // ตอนนั่ง/หมอบ ตัวลงไปติดพื้นแล้ว การหายใจขึ้นลงต้องเบาลงตาม ไม่งั้นดูเหมือนลอย
@@ -3069,6 +3096,21 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
   // ทำที่นี่ ไม่ใช่ในตัววาดแมว เพราะมันคือการหมุน "ทั้งก้อน" ไม่ใช่การบิดชิ้นส่วน
   // ถ้าเอาไปทำข้างใน ทุกชิ้น (หัว ขา หาง ชุด) ต้องรู้เรื่องการหมุนพร้อมกันหมด
   if (sway) ctx.translate(sway * 3.5, 0);
+
+  // ── เอียง / ยืด-แบน / หมุนตัว ── ทั้งหมดอ้างอิง "จุดที่เท้าเหยียบ" (y = 23)
+  // เท้าจึงติดพื้นเสมอ: ตัวแบนลงหาพื้น ไม่ใช่หดเข้าหากลางตัวจนเท้าลอย
+  // หมุนตัวใช้การบีบแกน x ตาม cos — พ้นครึ่งรอบภาพกลับด้าน หางไปอยู่อีกฝั่ง = หันหลังแล้วหันกลับ
+  // (บีบไม่ต่ำกว่า 0.22 ไม่งั้นตรงกลางรอบตัวจะกลายเป็นเส้นบางเฉียบแว้บหนึ่ง)
+  if (lean || sqx || sqy || shiftX || turn) {
+    const FEET = 23;
+    const c = Math.cos(turn);
+    const flip = (c < 0 ? -1 : 1) * Math.max(0.22, Math.abs(c));
+    ctx.translate(shiftX, FEET);
+    ctx.rotate(lean);
+    ctx.scale(flip * (1 + sqx), 1 + sqy);
+    ctx.translate(0, -FEET);
+  }
+
   if (roll > 0.001) {
     // หมุนรอบ "จุดที่เท้าเหยียบ" ไม่ใช่กลางตัว ตัวจึงล้มลงกองกับพื้นเหมือนของจริง
     // ถ้าหมุนรอบกลางตัว หัวจะจมลงไปใต้พื้นพอ ๆ กับที่ก้นลอยขึ้นฟ้า
@@ -3093,14 +3135,17 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // ตอนนอนตะแคงกับตอนขนพองหางสะบัดเร็วกว่าปกติ เป็นหางที่ "มีอารมณ์"
     // ตอนเล็งเป้า หางตั้งขึ้นค้างแล้วกระตุกถี่ ๆ ที่ปลาย ไม่ได้แกว่งไปมาช้า ๆ
     // เป็นหางคนละแบบกับหางสบาย ๆ และเป็นครึ่งหนึ่งของสัญญาณว่า "กำลังจะพุ่ง"
-    wag: crouch > 0.02
+    // ท่าที่เขียนหางเอง (wag ในรูปร่าง) ผสมกับหางปกติตามน้ำหนัก k — ท่าตอบการแตะทุกท่า
+    // มีหางของตัวเองที่ตามแรงตัว (follow through) ไม่ใช่แกว่งเป็นคลื่นเดียวตลอด
+    wag: (crouch > 0.02
       ? 0.72 + Math.sin(t * 0.62) * 0.28
       : Math.sin(t * (0.038 - loaf * 0.02 + roll * 0.09 + puff * 0.06))
-        * (1 - loaf * 0.45) * (1 + roll * 0.5),
+        * (1 - loaf * 0.45) * (1 + roll * 0.5)) * (shape.wag !== undefined ? 1 - k : 1)
+      + (shape.wag !== undefined ? shape.wag * k : 0),
     // หางหดสั้นลงตอนล้มตัว — หางเป็นส่วนที่ยื่นไกลจากจุดหมุนที่สุด พอหมุนไป
     // 76 องศา ปลายหางจะเหวี่ยงลงไปอยู่ต่ำกว่าพื้นเกือบยี่สิบหน่วย
     // ของจริงแมวก็ขดหางเข้าหาตัวตอนล้มลงนอน ไม่ได้เหยียดค้างไว้
-    tailShort: roll * 0.34,
+    tailShort: roll * 0.34 + (shape.tailShort || 0) * k,
     blink: idle?.blink ?? (shut > 0.5 || t % 200 < 9),   // กะพริบสั้น ๆ ทุก ~3.3 วินาที
     mouthOpen: mouth > 0.5,
     mood: idle?.mood ?? (k > 0.45 ? (shape.mood || '') : ''),
@@ -3117,6 +3162,11 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
     knead,
     kneadT,
     puff: puff + puffQuiver * puff,
+    clasp: (shape.clasp || 0) * k,
+    offer: (shape.offer || 0) * k,
+    scratch: (shape.scratch || 0) * k,
+    scratchT: shape.scratchT || 0,
+    reachL: (shape.reachL || 0) * k,
   });
   ctx.restore();
 }
@@ -3139,6 +3189,7 @@ function drawCatStand(ctx, s, {
   sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '', tired = 0, earLay = 0,
   wave = 0, waveT = 0, knead = 0, kneadT = 0, puff = 0, crouch = 0, tailShort = 0,
   sprawlPads = 0, gaze = 0, reach = 0,
+  clasp = 0, offer = 0, scratch = 0, scratchT = 0, reachL = 0,
 } = {}) {
   s.outfit?.back?.(ctx, s, 'stand');
 
@@ -3228,8 +3279,12 @@ function drawCatStand(ctx, s, {
     // แขนซ้ายหุบไปข้างหลังเล็กน้อย ให้รูปเงาทั้งตัวเป็นทิศเดียวกันหมด
     const wx = wx0 + (25 - wx0) * reach;
     const wy = wy0 + (-5 - wy0) * reach;
-    const lhx = -ax1 - reach * 3;
-    const lhy = ay1 - swing * 8 * (1 - rest) * (1 - reach) + reach * 5;
+    const lhx0 = -ax1 - reach * 3;
+    const lhy0 = ay1 - swing * 8 * (1 - rest) * (1 - reach) + reach * 5;
+    // ── เอื้อมแขนซ้ายไปทางหาง (reachL) ── วิธีเดียวกับโบก: ย้ายปลายแขนเส้นเดิม
+    // ปลายไปอยู่เหนือโคนหาง ตรงที่ปลายหางชูขึ้นมา (ดู TAIL ใน src/home-moves.js)
+    const lhx = lhx0 + (-24 - lhx0) * reachL;
+    const lhy = lhy0 + (-11 - lhy0) * reachL;
     const rhy = wy + swing * 8 * (1 - rest) * (1 - wave) * (1 - reach);
 
     ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(lhx, lhy); ctx.stroke();
@@ -3242,6 +3297,14 @@ function drawCatStand(ctx, s, {
       ctx.globalAlpha *= pad;
       ctx.fillStyle = s.cream;
       ctx.beginPath(); ctx.arc(wx, rhy, 3.9 + reach * 0.8, 0, Math.PI * 2); ctx.fill();
+      catEdge(ctx, s); ctx.stroke();
+      ctx.restore();
+    }
+    if (reachL > 0.02) {
+      ctx.save();
+      ctx.globalAlpha *= reachL;
+      ctx.fillStyle = s.cream;
+      ctx.beginPath(); ctx.arc(lhx, lhy, 3.9, 0, Math.PI * 2); ctx.fill();
       catEdge(ctx, s); ctx.stroke();
       ctx.restore();
     }
@@ -3346,16 +3409,17 @@ function drawCatStand(ctx, s, {
       // นั่ง: ขาหน้าตั้งตรงลงพื้นสองข้าง ปลายจบที่ระดับเท้าพอดี
       // ตอนนวดแป้ง ขาหน้าคู่นี้คือคู่ที่ถูกยกขึ้นไปนวด ต้องหายไปพร้อมกับที่คู่บนโผล่มา
       // ไม่งั้นจะเห็นขาหน้าสี่ข้างในท่าเดียว
-      ctx.save();
-      ctx.globalAlpha *= 1 - knead;
+      // ตอนเกาพุง ขาหน้าขวาคือขาที่ถูกยกขึ้นไปเกา ต้องหายไปข้างเดียว (เหตุผลเดียวกับนวดแป้ง)
       ctx.lineWidth = 6;
       for (const sx of [-1, 1]) {
+        ctx.save();
+        ctx.globalAlpha *= 1 - Math.max(knead, sx > 0 ? scratch : 0);
         ctx.beginPath();
         ctx.moveTo(sx * 6.5, cy + 5);
         ctx.lineTo(sx * 7, 23);
         ctx.stroke();
+        ctx.restore();
       }
-      ctx.restore();
     }
 
     if (loaf > 0.02) {
@@ -3394,18 +3458,51 @@ function drawCatStand(ctx, s, {
     ctx.lineCap = 'round';
     for (const sx of [-1, 1]) {
       const push = kneadT * sx;
-      const px = sx * 8.6;
-      const py = cy + 1.5 + push * 3.4;
+      let px = sx * 8.6;
+      let py = cy + 1.5 + push * 3.4;
+      // ประกบ (clasp): สองอุ้งเท้าเข้ามาชิดกันกลางอก / ยื่น (offer): กางออกยกขึ้นหาคนดู
+      px += (sx * 3.4 - px) * clasp;
+      py += (cy - 3 - py) * clasp;
+      px += sx * 6.5 * offer;
+      py -= 7 * offer;
       ctx.strokeStyle = s.dark;
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(sx * 5.5, cy - 5);
-      ctx.quadraticCurveTo(sx * 10, cy - 2.5, px, py);
+      ctx.quadraticCurveTo(sx * (10 + offer * 3), cy - 2.5 - offer * 3, px, py);
       ctx.stroke();
       ctx.fillStyle = s.cream;
       ctx.beginPath(); ctx.ellipse(px, py, 4.3, 3.5, 0, 0, Math.PI * 2); ctx.fill();
       catEdge(ctx, s); ctx.stroke();
     }
+    // หัวใจดวงเล็กระหว่างอุ้งเท้าที่ประกบกัน — ติดไปกับตัว (เอียง/เด้งตามตัว) จึงวาดตรงนี้
+    // ไม่ใช่เป็นอนุภาคลอยแยก ถ้าแยก ตอนน้องเด้งดีใจหัวใจจะค้างอยู่กลางอากาศ
+    if (clasp > 0.3) {
+      ctx.globalAlpha *= Math.min(1, (clasp - 0.3) / 0.5);
+      ctx.lineWidth = 1.2;
+      // ใต้คางพอดี — สูงกว่านี้หัว (วาดทีหลัง) จะบังหัวใจจนมิด
+      drawHeart(ctx, 0.2, cy - 1, 4.6 * (0.7 + clasp * 0.3));
+    }
+    ctx.restore();
+  }
+
+  // ── เกาพุง ──────────────────────────────────
+  // ขาหน้าขวายกมาเกาที่พุง ปลายขาถูไปมาสั้น ๆ ตาม scratchT (ท่าทั้งตัวโยกตามอยู่ใน home-moves)
+  if (scratch > 0.02) {
+    ctx.save();
+    ctx.globalAlpha *= scratch;
+    ctx.lineCap = 'round';
+    const px = 3.2 + scratchT * 2.4;
+    const py = cy + 5.5 + scratchT * 1.8;
+    ctx.strokeStyle = s.dark;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(6, cy - 4);
+    ctx.quadraticCurveTo(12, cy + 1, px, py);
+    ctx.stroke();
+    ctx.fillStyle = s.cream;
+    ctx.beginPath(); ctx.ellipse(px, py, 4.1, 3.4, -0.5, 0, Math.PI * 2); ctx.fill();
+    catEdge(ctx, s); ctx.stroke();
     ctx.restore();
   }
 
@@ -3531,9 +3628,10 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // ขยับเฉพาะ "ปลายหู" ไม่แตะโคน หูจึงพับลงจากโคนเหมือนหูจริง
   // ถ้าเลื่อนทั้งใบ มันจะกลายเป็นหูหลุดออกจากหัวไปวางที่อื่น
   // แมวตัวนี้เป็นมุมมองหน้าตรง หูจึงต้องแบะออก "คนละข้าง" ไม่ใช่พับไปทางเดียวกัน
-  const ears = earLay <= 0.01 ? earsUp : earsUp.map(([a, b, tip], i) => {
+  // ค่าติดลบ = หูตั้งชันตื่นตัว: ปลายหูยกขึ้นและหุบเข้านิดหนึ่ง (แบะออกน้อยกว่าตอนลู่มาก)
+  const ears = Math.abs(earLay) <= 0.01 ? earsUp : earsUp.map(([a, b, tip], i) => {
     const out = i === 0 ? -1 : 1;
-    return [a, b, [tip[0] + out * earLay * 6.5, tip[1] + earLay * 10]];
+    return [a, b, [tip[0] + out * earLay * (earLay < 0 ? 2 : 6.5), tip[1] + earLay * (earLay < 0 ? 6 : 10)]];
   });
 
   // หูนอก วาดก่อนหัวเพื่อให้โคนหูถูกกลบ

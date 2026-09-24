@@ -15,6 +15,10 @@ import { stageById } from './stages.js';
 import {
   SKILLS, skillProgress, isSkillUnlocked, getEquippedSkill, setEquippedSkill, skillSeconds,
 } from './skills.js';
+import { isFresh, hasFresh, markSeen, onFresh, setDot } from './fresh.js';
+import { TALENTS, isUnlocked as talentUnlocked } from './talents.js';
+import { TALENT_AT } from './level-rewards.js';
+import { getLang } from './i18n.js';
 
 /**
  * @param {object} o
@@ -125,9 +129,12 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
     else foot.appendChild(chip(on ? '✓ ใช้งานอยู่' : 'แตะเพื่อติดตั้ง', on ? 'sk-chip-on' : 'sk-chip-equip'));
 
     el.append(head, short, list, foot);
+    setDot(el, got && isFresh('skill', sk.id));
 
     el.addEventListener('click', () => {
       unlockAudio();
+      // แตะดูแล้ว = ไม่ใช่ของใหม่ (แม้จะยังล็อกอยู่ก็ไม่มีจุด เพราะของใหม่ต้อง "มีแล้ว")
+      if (isSkillUnlocked(sk)) { markSeen('skill', sk.id); setDot(el, false); }
       if (!isSkillUnlocked(sk)) {
         // ยังล็อก: สั่นการ์ดบอกว่ากดไม่ได้ เงื่อนไขอยู่บนการ์ดให้อ่านแล้ว
         sfx.fish();
@@ -177,8 +184,116 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
   // ── แท็บ ──
   // ซ่อนของเฉพาะหมวดด้วยคลาสบนแผง (.tab-skill) ใน CSS ที่เดียว ไม่ไล่ตั้ง hidden ทีละชิ้น
 
+  /** จุดแดงบนแท็บ สกิล | พรสวรรค์ — มีของใหม่ในหมวดไหน แท็บนั้นมีจุด */
+  function paintTabDots() {
+    for (const c of tabs) setDot(c, hasFresh(c.dataset.tab));
+  }
+  onFresh(paintTabDots);
+
+  // ── ตัวนับ สะสมแล้ว / ทั้งหมด ── ช่องเดียวกันทั้งสองหมวด ตัวเลขตามหมวดที่เปิด
+  function paintCount() {
+    const owned = tab === 'skill' ? SKILLS.filter(isSkillUnlocked).length : TALENTS.filter(talentUnlocked).length;
+    $('#tlOwned').textContent = owned;
+    $('#tlTotal').textContent = tab === 'skill' ? SKILLS.length : TALENTS.length;
+  }
+
+  // ── แผ่นอธิบาย "การ์ด...มีไว้ทำอะไร?" ──
+  // ตัวเลขในข้อความ (เวลาชาร์จ ช่วงเลเวลที่แจกการ์ด) ดึงจากค่าจริง ปรับเกมแล้วข้อความตาม
+  const helpLayer = $('#tlHelp');
+  let helpFrom = null;
+  function helpText(kind) {
+    const secs = Math.round(SKILL.chargeFrames / 60);
+    const lvs = Object.keys(TALENT_AT).map(Number);
+    const lvFrom = Math.min(...lvs), lvTo = Math.max(...lvs);
+    // ข้อความมีตัวหนาแทรกกลางประโยค ตัวแปลภาษาแบบกวาดโหนดข้อความแปลทีละชิ้นไม่ได้
+    // จึงเขียนฉบับอังกฤษไว้ตรงนี้คู่กันเลย
+    if (getLang() === 'en') {
+      return kind === 'skill' ? {
+        icon: '⚡',
+        title: 'What are Skill cards for?',
+        lines: [
+          `<b>Kitty's special move</b> — the bar over its head fills by itself every ${secs}s while running, then the skill fires automatically`,
+          'While active, kitty is <b>invincible</b>, walks over pits, pulls in nearby snacks, and snacks rain from the sky',
+          'Each card adds its own twist — smash obstacles, fly between heights, double snack points, and more',
+          '<b>Unlock new cards with stage quests</b> — clear that stage the number of times shown on the card',
+          'Equip one at a time, alongside a Talent card. Takes effect from your next run',
+        ],
+      } : {
+        icon: '🃏',
+        title: 'What are Talent cards for?',
+        lines: [
+          '<b>A trait kitty keeps for the whole run</b> — changes how it moves: triple jump, gliding, floating and more',
+          'Some cards add a <b>special move button</b> you press yourself (with a cooldown)',
+          `<b>Earned from level rewards</b> at levels ${lvFrom}–${lvTo}, from rank A → S → SS`,
+          'Works together with your Skill card — separate slots',
+          'Equip one at a time. Takes effect from your next run',
+        ],
+      };
+    }
+    if (kind === 'skill') {
+      return {
+        icon: '⚡',
+        title: 'การ์ดสกิลมีไว้ทำอะไร?',
+        lines: [
+          `<b>ท่าไม้ตายของน้อง</b> — ระหว่างวิ่ง หลอดบนหัวน้องชาร์จเอง เต็มทุก ${secs} วิ แล้วสกิลออกฤทธิ์อัตโนมัติ ไม่ต้องกดอะไร`,
+          'ช่วงออกฤทธิ์น้อง<b>อมตะ</b> ข้ามหลุมได้ ดูดของรอบตัว และมีขนมโปรยลงมาจากฟ้า',
+          'แต่ละใบมีลูกเล่นของตัวเอง เช่น พุ่งชนของแตก บินเลือกระดับ ของกินคะแนนคูณสอง',
+          '<b>ได้การ์ดใหม่จากภารกิจประจำด่าน</b> — วิ่งผ่านด่านนั้นให้ครบตามจำนวนที่การ์ดบอก',
+          'ติดตั้งได้ทีละ 1 ใบ ใส่คู่กับการ์ดพรสวรรค์ได้ มีผลตั้งแต่เริ่มวิ่งตาถัดไป',
+        ],
+      };
+    }
+    return {
+      icon: '🃏',
+      title: 'การ์ดพรสวรรค์มีไว้ทำอะไร?',
+      lines: [
+        '<b>นิสัยติดตัวน้องตลอดทั้งตา</b> — เปลี่ยนวิธีเคลื่อนที่ เช่น กระโดดสามจังหวะ ร่อน ลอยเหนือพื้น',
+        'บางใบมี<b>ปุ่มท่าพิเศษ</b>ให้กดเองระหว่างวิ่ง (ใช้แล้วต้องรอคูลดาวน์)',
+        `<b>ได้การ์ดจากรางวัลเลเวล</b> เลเวล ${lvFrom}–${lvTo} ไล่จากระดับ A → S → SS`,
+        'ใส่คู่กับการ์ดสกิลได้ คนละช่อง ไม่ทับกัน',
+        'ติดตั้งได้ทีละ 1 ใบ มีผลตั้งแต่เริ่มวิ่งตาถัดไป',
+      ],
+    };
+  }
+  function openHelp(kind, from) {
+    const h = helpText(kind);
+    $('#tlHelpIco').textContent = h.icon;
+    $('#tlHelpTitle').textContent = h.title;
+    $('#tlHelpList').replaceChildren(...h.lines.map((html) => {
+      const li = document.createElement('li');
+      li.innerHTML = html;   // ข้อความเขียนเองในไฟล์นี้ทั้งหมด ไม่มีข้อความจากผู้เล่น
+      return li;
+    }));
+    helpFrom = from;
+    helpLayer.classList.add('show');
+    helpLayer.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => $('#tlHelpClose').focus({ preventScroll: true }));
+  }
+  function closeHelp() {
+    if (!helpLayer.classList.contains('show')) return false;
+    helpLayer.classList.remove('show');
+    helpLayer.setAttribute('aria-hidden', 'true');
+    if (helpFrom && helpFrom.isConnected) helpFrom.focus({ preventScroll: true });
+    return true;
+  }
+  for (const b of panel.querySelectorAll('.tl-help')) {
+    b.addEventListener('click', () => { unlockAudio(); sfx.fish(); openHelp(b.dataset.help, b); });
+  }
+  $('#tlHelpClose').addEventListener('click', () => { unlockAudio(); sfx.fish(); closeHelp(); });
+  helpLayer.addEventListener('click', (e) => { if (e.target === helpLayer) { sfx.fish(); closeHelp(); } });
+  // ปุ่มกลับ/Esc ปิดแผ่นนี้ก่อน (ดักตั้งแต่ขาเข้า ก่อนตัวจัดการของหน้าพรสวรรค์จะพาออกจากหน้า)
+  $('#talentBack').addEventListener('click', (e) => {
+    if (closeHelp()) { e.stopImmediatePropagation(); sfx.fish(); }
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.classList.contains('hidden') && closeHelp()) e.stopImmediatePropagation();
+  }, true);
+
   function setTab(next) {
     tab = next;
+    closeHelp();
+    paintTabDots();
+    paintCount();
     panel.classList.toggle('tab-skill', tab === 'skill');
     for (const c of tabs) {
       const on = c.dataset.tab === tab;

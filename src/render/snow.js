@@ -650,6 +650,9 @@ const FLAKES = Array.from({ length: 26 }, (_, i) => ({
 }));
 
 let flakeTick = 0;
+// tick ของเฟรมล่าสุดที่เดินเกล็ดไปแล้ว — ฉากหิมะถูกวาดสองรอบในเฟรมเดียวได้ (ด่าน + ทางเข้าตอนส่งต่อ)
+// ถ้าเดินทุกครั้งที่วาด เกล็ดจะขยับสองก้าวต่อเฟรมแล้วโผล่คนละที่ในสองภาพ = ภาพซ้อนกะพริบ
+let flakeAt = null;
 
 /** เดินเกล็ดชั้นหน้าหนึ่งเฟรม — เรียกจากผู้วาดเฟรมเท่านั้น ไม่มีการสร้างอ็อบเจกต์ใหม่เลย */
 function stepFlakes(windX) {
@@ -864,7 +867,7 @@ export function drawSnowBackdrop(ctx, cam, tick, opts = {}) {
   tileRow(ctx, fieldBand(), MT_W, cam * 0.62, GROUND_Y - FIELD_H + 14);
 
   // 5) หิมะตกกับลม แล้วปิดท้ายด้วยหมอกขาวถ้ามี
-  stepFlakes(wind);
+  if (tick !== flakeAt) { flakeAt = tick; stepFlakes(wind); }
   drawSnowfall(ctx, cam, tick, density, wind);
 
   // หมอกพายุ — ทับได้แค่ฉากหลัง ตัวละคร/ปลา/สิ่งกีดขวางถูกวาดทีหลังเสมอจึงไม่โดนกลบ

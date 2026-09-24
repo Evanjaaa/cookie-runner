@@ -214,7 +214,13 @@ export function drawSnowGateBack(ctx, v) {
 
   if (v.facadeIn > 0.02) drawApproach(ctx, v);
 
-  const world = (1 - v.facadeIn) * (1 - v.facadeOut);
+  // ── พ้นประตูทางออกแล้ว ไม่วาดโลกหิมะซ้ำ ──
+  // ตอนนั้นด่านสลับเป็นทุ่งหิมะไปแล้ว (สลับตอนจอถูกปิดอยู่ข้างใน) และค่าพายุจบที่ค่าเดียวกับด่านพอดี
+  // (ดู beats) ภาพของด่านข้างหลังจึงเหมือนของทางเข้าทุกอย่าง — ถ้ายังจางทางเข้าทับลงไป
+  // จะได้สองภาพที่หิมะ/ลาย/พื้นขยับไม่ตรงกันซ้อนกันอยู่ครึ่งวินาที เห็นเป็นภาพซ้อนกะพริบ
+  // พื้นตรงรอยต่อถูกกองหิมะ (drawSnowGateFront) ปิดไว้อยู่แล้ว จึงเลิกวาดทันทีได้โดยไม่เห็นรอย
+  if (v.facadeOut > 0) return;
+  const world = 1 - v.facadeIn;
   if (world > 0.02) drawInside(ctx, v, world);
 }
 
@@ -250,7 +256,21 @@ function drawInside(ctx, v, alpha) {
   // ── ไม่ต้องบังคับหน้าตาของทุ่งตรงนี้แล้ว ──
   // ทุ่งหิมะมีหน้าตาเดียวตลอดด่าน สิ่งที่ทางเข้าทำคือ "ค่อย ๆ เปิดให้เห็น" ด้วยหมอกกับหิมะ
   // ไม่ใช่ "วาดทุ่งคนละแบบแล้วค่อยไล่กลับ" ซึ่งเป็นที่มาของภาพกระโดดตอนส่งต่อให้ด่าน
-  drawSnowBackdrop(ctx, cam, tick, { snow: b.snow, wind: b.wind, haze: b.haze });
+  // ── ช่วงร่อนลง: วาดโลกหิมะเฉพาะในวงดาว (รวมแสงขอบ) ──
+  // นอกวงดาวคืออวกาศอยู่แล้ว (spaceAbove) ถ้าวาดโลกหิมะเต็มจอไว้ข้างใต้ ตอนผนังหน้าจางออก
+  // (ข้างในยังโปร่งครึ่งหนึ่ง) ป่าสนกับพื้นขาวจะทะลุอวกาศขึ้นมาเป็นภาพซ้อนกะพริบแว้บหนึ่ง
+  // ตัดไว้ในวงดาว ช่วงต้นที่ดาวยังอยู่ใต้จอจึงไม่มีโลกหิมะให้ทะลุเลย
+  if (u < 0.24) {
+    const pl = planetAt(u);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(pl.cx, pl.cy, pl.R * 1.14, 0, TAU);
+    ctx.clip();
+    drawSnowBackdrop(ctx, cam, tick, { snow: b.snow, wind: b.wind, haze: b.haze });
+    ctx.restore();
+  } else {
+    drawSnowBackdrop(ctx, cam, tick, { snow: b.snow, wind: b.wind, haze: b.haze });
+  }
 
   // อวกาศเหนือขอบดาว — เห็นได้เฉพาะส่วนที่ยังอยู่ "นอกผิวดาว" ที่กำลังโตขึ้นเรื่อย ๆ
   if (u < 0.24) spaceAbove(ctx, cam, tick, u, alpha);
@@ -267,11 +287,35 @@ function drawInside(ctx, v, alpha) {
  * ถ้าใช้วิธีจางอวกาศทิ้งเฉย ๆ จะได้ภาพดำทับขาวขุ่น ๆ ที่ไม่ได้เล่าอะไรเลย
  * ข้างในวงคือโลกหิมะที่วาดไว้แล้ว (= ผิวดาว) จึงไม่ต้องถมสีขาวทับให้เสียของ
  */
-function spaceAbove(ctx, cam, tick, u, alpha) {
+let spaceCv = null;
+/** อวกาศทั้งจอบนแผ่นแยก (ความละเอียดตามจอจริง) — ใช้แผ่นเดิมซ้ำทุกเฟรม ไม่สร้างใหม่ */
+function spaceLayer(ctx, cam, tick) {
+  const t = ctx.getTransform();
+  const sc = Math.max(1, Math.hypot(t.a, t.b));
+  const w = Math.ceil(W * sc), h = Math.ceil(H * sc);
+  if (!spaceCv || spaceCv.width !== w || spaceCv.height !== h) {
+    spaceCv = document.createElement('canvas');
+    spaceCv.width = w;
+    spaceCv.height = h;
+  }
+  const g = spaceCv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, w, h);
+  g.setTransform(sc, 0, 0, sc, 0, 0);
+  drawSpaceBackdrop(g, cam, tick, { u: 1 });
+  return spaceCv;
+}
+
+/** วงดาวน้ำแข็ง ณ ช่วง u ของทางเข้า — ใช้ทั้งตัดอวกาศ (spaceAbove) และตัดโลกหิมะ (drawInside) */
+function planetAt(u) {
   const e = ease(clamp01(u / 0.22));
   const R = lerp(700, 2600, e);
-  const cx = W * 0.44;
-  const cy = lerp(H + 60, -40, e) + R;      // ขอบบนของดาวไล่จากใต้จอขึ้นไปพ้นจอ
+  // ขอบบนของดาวไล่จากใต้จอขึ้นไปพ้นจอ
+  return { R, cx: W * 0.44, cy: lerp(H + 60, -40, e) + R };
+}
+
+function spaceAbove(ctx, cam, tick, u, alpha) {
+  const { R, cx, cy } = planetAt(u);
   const fade = 1 - ease(clamp01((u - 0.17) / 0.07));
   if (fade <= 0.01) return;
 
@@ -282,7 +326,12 @@ function spaceAbove(ctx, cam, tick, u, alpha) {
   ctx.rect(0, 0, W, H);
   ctx.arc(cx, cy, R, 0, TAU);
   ctx.clip('evenodd');
-  drawSpaceBackdrop(ctx, cam, tick, { u: 1 });
+  // ── วาดอวกาศลงแผ่นแยกก่อน แล้วค่อยแปะด้วยความโปร่งของเรา ──
+  // ข้างใน drawSpaceBackdrop ตั้ง globalAlpha เอง (ดวงอาทิตย์ เนบิวลา) ซึ่งทับความโปร่งที่เราตั้งไว้
+  // ถ้าวาดตรงลงจอ ตอนทางเข้าเพิ่งเริ่มจาง (โปร่ง 8%) ดวงอาทิตย์กับเนบิวลาจะถูกวาดทึบเต็มที่
+  // ซ้อนทับอวกาศของด่านอีกชั้น — แสงเรืองสว่างวาบขึ้นหนึ่งจังหวะ เห็นเป็นภาพกะพริบ
+  // วาดลงแผ่นก่อน = ความโปร่งข้างในไม่รั่วออกมา แผ่นทั้งแผ่นจางเข้าตามจังหวะเดียวกันจริง ๆ
+  ctx.drawImage(spaceLayer(ctx, cam, tick), 0, 0, W, H);
   ctx.restore();
 
   // ชั้นบรรยากาศเรืองที่ขอบดาว — เส้นที่ทำให้ขอบอ่านเป็น "ผิวดาว" ไม่ใช่รอยตัดภาพ

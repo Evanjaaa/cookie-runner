@@ -1515,8 +1515,11 @@ canvas[hidden] { display: none; }
 .rank-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  width: min(430px, 82%);
+  gap: 6px;
+  /* ความกว้างจริงเป็น vw ไม่ใช่ % — การ์ด (.pop) หดตามเนื้อหา ถ้าเป็น % ของการ์ด
+     รายการจะแคบตามช่องชื่อที่ยาวที่สุด ชื่อคนอื่นจึงโดนตัดเป็น "Fluk…" */
+  width: min(560px, 76vw);
+  padding: 3px 4px 8px;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1525,33 +1528,73 @@ canvas[hidden] { display: none; }
 }
 .rank-list::-webkit-scrollbar { display: none; }
 
+/* แถวเป็นแผ่นม่วงแบบการ์ดทั้งเกม: อันดับ | หน้าน้อง | ชื่อ | คะแนน
+   สามอันดับแรกได้แผ่นสีทอง/เงิน/ทองแดงของตัวเอง อ่านลำดับได้โดยไม่ต้องนับ */
 .rank-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 12px;
-  border-radius: 11px;
-  background: rgba(255,243,226,.06);
-  border: 1px solid rgba(255,243,226,.14);
+  width: 100%;
+  padding: 6px 14px 6px 10px;
+  border-radius: 14px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+  color: var(--cream);
+  font-family: inherit;
   font-size: 13px;
+  text-align: left;
 }
+.rank-row.tap { cursor: pointer; transition: transform .1s ease, filter .12s ease; }
+@media (hover: hover) { .rank-row.tap:hover { filter: brightness(1.1); } }
+.rank-row.tap:active { transform: translateY(3px); box-shadow: var(--plate-press); }
+.rank-row.tap:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
 .rank-row .no {
-  width: 26px;
+  flex: 0 0 auto;
+  width: 28px;
   font-family: "Mitr", sans-serif;
   font-weight: 600;
-  color: #B99BD4;
+  font-size: 14px;
+  color: #D9C6EE;
   text-align: center;
 }
-/* สามอันดับแรกได้สีของตัวเอง อ่านลำดับได้โดยไม่ต้องนับ */
-.rank-row.top1 .no { color: #FFC93C; }
-.rank-row.top2 .no { color: #DCE6F5; }
-.rank-row.top3 .no { color: #E0955C; }
-.rank-row .who { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row.top1 .no, .rank-row.top2 .no, .rank-row.top3 .no { font-size: 20px; line-height: 1; }
+.rank-row.top1 {
+  border-color: #FFD65C;
+  background: linear-gradient(180deg, rgba(196,140,40,.95), rgba(128,74,150,.96));
+  box-shadow: var(--plate-lift), 0 0 14px rgba(255,201,60,.35);
+}
+.rank-row.top2 { border-color: #DCE6F5; background: linear-gradient(180deg, rgba(150,160,196,.9), rgba(104,68,150,.96)); }
+.rank-row.top3 { border-color: #E8A06A; background: linear-gradient(180deg, rgba(176,104,70,.92), rgba(110,58,140,.96)); }
+/* แถวของเราเอง — ขอบมิ้นต์ (ภาษาเดียวกับ "ใช้งานอยู่" ทั้งเกม) */
+.rank-row.me { border-color: var(--mint); box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4); }
+.rank-face {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(34,14,54,.6);
+  box-shadow: inset 0 0 0 1.5px rgba(255,243,226,.28);
+}
+.rank-row .who {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .rank-row .pts {
+  flex: 0 0 auto;
   font-family: "Mitr", sans-serif;
   font-weight: 600;
+  font-size: 14px;
   color: var(--mint-lite);
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
 }
+.rank-row.top1 .pts, .rank-row.top2 .pts, .rank-row.top3 .pts { color: #FFFFFF; }
 
 .rank-note { font-size: 12px; color: #B99BD4; text-align: center; line-height: 1.7; }
 
@@ -1622,8 +1665,9 @@ canvas[hidden] { display: none; }
 }
 .stage-card.on {
   border-color: var(--mint);
-  background: rgba(78,205,196,.14);
-  box-shadow: 0 8px 22px rgba(78,205,196,.2);
+  /* แผ่นม่วงอ่อนเหมือนใบอื่น (ดูบล็อก "กรอบม่วงอ่อนทั้งเกม" ท้ายไฟล์) ต่างแค่ขอบมิ้นต์ = กำลังเล่น */
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4), 0 8px 22px rgba(78,205,196,.26);
 }
 .stage-card.on small { color: var(--mint-lite); }
 
@@ -1913,7 +1957,7 @@ canvas[hidden] { display: none; }
      วางไว้ในกรอบเลยจึงไม่มีทางโดนตัด ไม่ว่าจะอยู่ในช่องแบบไหน */
   top: 2px;
   right: 2px;
-  width: 30px;
+  width: 22px;   /* เล็กลงจาก 30 — ตราใหญ่แย่งสายตาจากตัวของบนการ์ด */
   height: auto;
   aspect-ratio: 1;
   pointer-events: none;
@@ -1925,9 +1969,9 @@ canvas[hidden] { display: none; }
    ไปครึ่งใบบนจอเล็ก และเล็กจนมองไม่เห็นบนจอใหญ่
    มีพื้นกับเพดานกันไม่ให้เลยเถิดทั้งสองทาง */
 .got-card .tier-sign {
-  width: 30%;
-  min-width: 20px;
-  max-width: 34px;
+  width: 24%;
+  min-width: 16px;
+  max-width: 26px;
   top: 2px;
   right: 2px;
 }
@@ -1945,7 +1989,7 @@ canvas[hidden] { display: none; }
 .tier-badge.as-sign .tier-sign {
   position: static;
   display: block;
-  width: clamp(30px, 5.2dvh, 46px);
+  width: clamp(22px, 3.8dvh, 34px);
 }
 
 /* การ์ดระดับสูงเรืองขอบทองไว้ตลอด แยกออกจากใบอื่นตั้งแต่ยังไม่ได้กด */
@@ -2161,6 +2205,10 @@ canvas[hidden] { display: none; }
   gap: clamp(8px, 2vw, 20px);
 }
 .quest-head h2 { padding-bottom: 0; }
+/* ปุ่มรับทั้งหมดชิดขวาของหัว หัวเรื่องจึงยังอยู่กลางการ์ดเหมือนเดิม */
+.quest-head { position: relative; }
+.quest-all { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.quest-all:active { transform: translateY(calc(-50% + 2px)); }
 
 /* รายการภารกิจ เลื่อนในตัวเองเมื่อยาวเกิน ไม่ดันการ์ดจนล้นเวที
    (เงาขอบล่างมาจากคลาส .scrolls ที่ markScrollable ใส่ให้เฉพาะตอนล้นจริง) */
@@ -3245,6 +3293,29 @@ canvas[hidden] { display: none; }
    แล้วป้ายจะโผล่ค้างอยู่ทั้งที่ไม่มีอะไรให้กดรับ — ซึ่งเคยเกิดมาแล้วจริง ๆ */
 #btnMail .dot.hidden, #btnFriends .dot.hidden, .lobby-btn .dot.hidden, .lvgift .dot.hidden { display: none; }
 
+/* ── จุดแดง "ของใหม่" บนการ์ดและแท็บ (src/fresh.js) ──
+   ภาษาเดียวกับจุดแดงบนปุ่มล็อบบี้ (แดงสด ขอบม่วงเข้ม เรืองแดง เต้นเบา ๆ) แต่เล็กกว่า
+   คร่อมมุมขวาบนของกรอบ — ช่องเลื่อนที่การ์ดอยู่เว้นขอบไว้พอให้จุดไม่โดนตัด (ดู padding ข้างล่าง) */
+.new-dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 4;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #E8434F;
+  border: 2px solid #3A1D50;
+  box-shadow: 0 0 8px rgba(232,67,79,.85);
+  pointer-events: none;
+  animation: mailPulse 1.6s ease-in-out infinite;
+}
+.tl-card, .skin-card, .fchip, .stab { position: relative; }
+.fchip > .new-dot, .stab > .new-dot { top: -4px; right: -4px; width: 12px; height: 12px; }
+/* ช่องเลื่อนของคลังน้องไม่เคยเว้นขอบ — เว้นให้จุดแดงที่คร่อมมุมการ์ดแถวบน/ริมขวาไม่ถูกเฉือน */
+.stash-grid { padding: 6px 6px 0 0; }
+@media (prefers-reduced-motion: reduce) { .new-dot { animation: none; } }
+
 /* ปุ่มล็อบบี้ไม่ได้ position: relative มาแต่แรก จุดจะไปเกาะมุมเวทีแทนมุมปุ่ม */
 .lobby-btn { position: relative; }
 @keyframes mailPulse {
@@ -3370,32 +3441,99 @@ canvas[hidden] { display: none; }
 .fr-num.fr-red { background: #E8434F; color: #FFF3E2; }
 .fr-num.hidden { display: none; }
 
-/* รายการกว้างกว่ากล่องจดหมายนิดหน่อย — ท้ายแถวมีปุ่มสองใบ (ตอบรับ/ปฏิเสธ) */
-.fr-list { width: min(88vw, 470px); }
-.fr-list.hidden, .fr-req.hidden { display: none; }
+/* ── โครงหน้าเพื่อน (ยืมโครง .tl-pop ของหน้าการ์ดพลัง) ──
+   แท็บชิดขวาเหมือนหน้าการ์ดพลัง / ช่องซ้ายคือบัตรของเรา / ขวาเป็นกริดการ์ดเพื่อน */
+.fr-pop .fr-tabs { margin-left: auto; }
+.fr-grid.hidden, .fr-req.hidden { display: none; }
+.fr-main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+/* บัตรของเรา — ทรงเดียวกับช่อง "ติดตั้งอยู่" (.tl-equipped) แต่แตะไม่ได้ ไม่ยก/ไม่ยุบ */
+.fr-me { cursor: default; gap: clamp(3px, .8dvh, 7px); }
+@media (hover: hover) { .fr-me:hover { transform: none; } }
+.fr-me:active { transform: none; box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4), 0 8px 22px rgba(78,205,196,.26); }
+.fr-me-face {
+  width: clamp(52px, 11dvh, 84px);
+  height: clamp(52px, 11dvh, 84px);
+  border-radius: 50%;
+  background: rgba(34,14,54,.6);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.14);
+}
+.fr-me-label { font-size: clamp(9.5px, 1.5dvh, 11.5px); color: #D9C6EE; }
+.fr-me-code {
+  font-family: "Mitr", monospace;
+  font-weight: 600;
+  letter-spacing: .12em;
+  font-size: clamp(13px, 2.3dvh, 17px);
+  color: #FFF3E2;
+}
+.fr-me .fr-copy {
+  width: auto;
+  height: auto;
+  gap: 5px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  font-size: clamp(10px, 1.6dvh, 12px);
+}
+.fr-me .fr-copy svg { width: 14px; height: 14px; }
+
+/* กริดการ์ดเพื่อน — การ์ดแผ่นม่วงอ่อนสองคอลัมน์บนจอกว้าง คอลัมน์เดียวบนจอแคบ
+   เลื่อนในตัวเองแบบเดียวกับกริดการ์ดพลัง เว้นขอบให้เงาใต้การ์ดไม่โดนตัด */
+.fr-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(230px, 28vw, 320px), 1fr));
+  align-content: start;
+  gap: clamp(7px, 1.3vw, 12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 6px 14px;
+  scrollbar-width: none;
+}
+.fr-grid::-webkit-scrollbar { display: none; }
+.fr-grid > .fr-head, .fr-grid > .grid-empty { grid-column: 1 / -1; }
+/* หัวข้อกลุ่มกับข้อความว่างอยู่กลางพื้นที่ฝั่งขวาเสมอ
+   ต้องเขียน .panel p.xxx — กฎกลาง .panel p จำกัดความกว้างไว้ ข้อความจึงเคยไปกองชิดซ้ายไม่ตรงกลาง */
+.panel .fr-grid > p.fr-head,
+.panel .fr-grid > p.grid-empty {
+  max-width: none;
+  justify-self: stretch;
+  margin-inline: 0;
+  text-align: center;
+}
+/* ยังไม่มีเพื่อนเลย (มีแต่ข้อความว่างใบเดียว) — วางข้อความกลางกรอบทั้งแนวตั้งด้วย */
+.fr-grid:has(> .grid-empty:only-child) { align-content: center; }
+.fr-grid .grid-empty { padding-block: clamp(6px, 2dvh, 16px); }
+.fr-grid .fr-row { width: auto; min-width: 0; }
+.fr-grid .fr-row .mail-main { min-width: 0; }
+.fr-grid .fr-row .mail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── หน้าคำขอเลื่อนทั้งหน้า ไม่ใช่เลื่อนแค่รายการ ──
    บนมือถือแนวนอน ช่องค้นหากับแถวรหัสกินความสูงไปเกือบหมด ถ้าให้เลื่อนเฉพาะรายการ
    จะเหลือช่องมองรายการแค่ไม่กี่พิกเซล (วัดแล้วเห็นแถวแรกแค่ขอบบน)
    ให้ทั้งหน้าเลื่อนไปด้วยกัน ช่องค้นหาเลื่อนพ้นจอไปแล้วรายการได้ความสูงทั้งหมด */
 .fr-req {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: clamp(6px, 1.4dvh, 11px);
   min-height: 0;
-  max-height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
   padding: 2px;
 }
 .fr-req::-webkit-scrollbar { display: none; }
-.fr-req > .fr-list { max-height: none; overflow: visible; flex: 0 0 auto; }
+.fr-req > .fr-grid { flex: 0 0 auto; overflow: visible; }
 @media (max-height: 520px) {
   .fr-search input { padding: 7px 12px; font-size: 13px; }
   .fr-search .btn { padding: 7px 18px; font-size: 13px; }
 }
-.fr-search { flex-wrap: nowrap; width: min(88vw, 470px); }
+.fr-search { flex-wrap: nowrap; width: auto; margin: 2px 6px 0; }
 .fr-search input { flex: 1 1 auto; width: auto; min-width: 0; }
 
 .fr-mycode {
@@ -3576,8 +3714,8 @@ canvas[hidden] { display: none; }
   right: -7%;
   /* 38% ทำให้ตราใหญ่เกือบเท่าหัวน้องในกรอบ แย่งสายตาไปจากตัวชุดซึ่งเป็นพระเอก
      ของหน้า 29% ยังอ่านตัวอักษรบนตราออกสบายแต่ไม่ข่มรูป */
-  width: 29%;
-  max-width: 62px;
+  width: 20%;
+  max-width: 44px;
   height: auto;
   pointer-events: none;
   filter: drop-shadow(0 3px 6px rgba(12,4,24,.6));
@@ -4619,10 +4757,25 @@ canvas[hidden] { display: none; }
   #btnPause::after { margin-left: 3.8px; }
 }
 
-/* ── แผงตั้งค่า ─────────────────────────────── */
-#settingsPanel .pop { gap: clamp(8px, 1.8dvh, 15px); }
+/* ── แผงตั้งค่า ───────────────────────────────
+   โครงเดียวกับคลังน้อง: แถบหมวดซ้าย | หัวเรื่อง + แถวของหมวดที่เลือกทางขวา
+   แถวอยู่กึ่งกลางพื้นที่ขวาทั้งแนวตั้งและแนวนอน หมวดละสองแถวจึงไม่ลอยค้างอยู่บนสุด */
+.set-pop { width: min(100%, 860px); }
+.set-main { align-items: center; }
+.set-main > .panel-head { width: 100%; justify-content: center; text-align: center; }
+.set-sec {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.8dvh, 15px);
+  min-height: 0;
+}
+.set-sec.hidden { display: none; }
 /* แถวตั้งค่ากว้างเท่ากันทุกแถว ไม่ใช่หดตามเนื้อหาจนขอบขวาเยื้องกันเป็นขั้นบันได */
-#settingsPanel .setrow { width: min(100%, 420px); }
+#settingsPanel .setrow { width: min(100%, 470px); }
 
 .setrow {
   display: flex;
@@ -5570,10 +5723,13 @@ canvas[hidden] { display: none; }
   border-radius: 20px;
   min-height: 0;
   overflow: hidden;
+  /* กรอบม่วงอ่อนทึบแบบการ์ดสกิล (--plate-face) — เดิมเป็นฝ้าโปร่งบาง ๆ บนพื้นเบลอ
+     เห็นเป็นเทาหม่น ตอนนี้เป็นแผ่นนูนสีสดชุดเดียวกับการ์ดทั้งเกม มีแสงม่วงเรืองหลังของที่ส่อง */
   background:
-    radial-gradient(62% 52% at 50% 40%, rgba(199,125,255,.26), transparent 74%),
-    rgba(255,243,226,.05);
-  border: 1px solid rgba(255,243,226,.13);
+    radial-gradient(62% 52% at 50% 40%, rgba(236,190,255,.32), transparent 74%),
+    var(--plate-face);
+  border: 2px solid var(--plate-line);
+  box-shadow: var(--plate-lift);
 }
 
 /* กรอบรูป — ป้ายระดับเกาะมุมบนซ้ายยื่นออกนอกกรอบ เหมือนสติกเกอร์แปะไว้ */
@@ -5719,8 +5875,10 @@ canvas[hidden] { display: none; }
   border-radius: 20px;
   min-height: 0;
   overflow: hidden;
-  background: rgba(255,243,226,.05);
-  border: 1px solid rgba(255,243,226,.13);
+  /* แผ่นเดียวกับกรอบส่องของ (.gacha-show) — สองกรอบต้องเป็นชุดเดียวกันเสมอ */
+  background: var(--plate-face);
+  border: 2px solid var(--plate-line);
+  box-shadow: var(--plate-lift);
 }
 
 /* ปุ่มไปหน้ารายการ — เกาะมุมขวาบนของกรอบตู้ ไม่ได้อยู่ในสายไหล
@@ -6244,8 +6402,8 @@ canvas[hidden] { display: none; }
 .got-card.gold b { color: #FFD97A; }
 .got-card .coin.big { width: 52%; height: auto; aspect-ratio: 1; margin: 8% 0 4%; }
 /* การ์ดพรสวรรค์ในกล่องฉลอง (talentGotCard ใน main.js) — ขอบตามระดับ ภาษาเดียวกับหน้าพรสวรรค์ */
-.got-card.talent { border-color: rgba(199,125,255,.7); background: linear-gradient(180deg, rgba(199,125,255,.24), rgba(199,125,255,.07)); }
-.got-card.talent.rank-s { border-color: #FFC93C; background: linear-gradient(180deg, rgba(255,201,60,.22), rgba(255,201,60,.07)); }
+.got-card.talent { border-color: #D9B8FF; background: var(--plate-face); }
+.got-card.talent.rank-s { border-color: #FFC93C; background: linear-gradient(180deg, rgba(190,132,44,.94), rgba(126,70,154,.96)); }
 .got-card.talent.rank-ss { border-color: #FF8FB0; box-shadow: 0 0 18px rgba(255,143,176,.42), 0 6px 14px rgba(0,0,0,.4); }
 .got-talent-ico {
   font-size: clamp(26px, 5.2dvh, 40px);
@@ -6288,8 +6446,10 @@ canvas[hidden] { display: none; }
   .lobby-btn b { font-size: 9px; }
   .btn.play { padding: 10px 30px; }
   .rank-list { width: 92%; }
-  .rank-row { padding: 5px 9px; font-size: 11px; gap: 7px; }
-  .rank-row .no { width: 20px; }
+  .rank-row { padding: 4px 10px 4px 7px; font-size: 11px; gap: 7px; }
+  .rank-row .no { width: 22px; }
+  .rank-face { width: 26px; height: 26px; }
+  .rank-row .who, .rank-row .pts { font-size: 12px; }
   .rank-me input { width: 130px; padding: 6px 11px; font-size: 11px; }
   .rank-me .btn { font-size: 11px; padding: 6px 12px; }
   #stagePanel { padding: 6px 10px; gap: 4px; }
@@ -6361,7 +6521,7 @@ canvas[hidden] { display: none; }
   .outfit-card canvas { width: 44px; height: 44px; border-radius: 8px; }
   .outfit-card b { font-size: 9px; min-height: 2.4em; }
   .tier-badge { top: 3px; right: 3px; padding: 1px 5px; font-size: 7.5px; }
-  .tier-sign { width: 22px; top: 2px; right: 2px; }
+  .tier-sign { width: 17px; top: 2px; right: 2px; }
   /* บรรทัดคำอธิบายตัดออกได้ แต่ป้ายโบนัสห้ามตัด — เป็นข้อมูลที่ใช้ตัดสินใจ
      ย่อให้เล็กลงแทน และตัดคำว่า "/ ชิ้น" ทิ้งด้วย ::after ไม่ได้ จึงย่อฟอนต์เอา */
   .skin-card small { display: none; }
@@ -6557,7 +6717,7 @@ canvas[hidden] { display: none; }
   .outfit-card b { font-size: 10px; min-height: 2.4em; }
   .card-bonus { font-size: 10.5px; padding: 1px 8px; }
   .tier-badge { top: 4px; right: 4px; padding: 1px 6px; font-size: 8.5px; }
-  .tier-sign { width: 25px; top: 2px; right: 2px; }
+  .tier-sign { width: 19px; top: 2px; right: 2px; }
   .skin-grid { gap: 9px; }
 
   .stage-card { width: 176px; padding: 7px 8px 9px; gap: 5px; border-radius: 13px; }
@@ -7576,9 +7736,9 @@ canvas[hidden] { display: none; }
    การ์ดในคลังน้องยืดหดตามจอ (กริด 4 คอลัมน์) ป้ายขนาดคงที่จึงกินหน้าการ์ด
    ไปเกือบครึ่งใบบนจอแคบ ใช้กฎเดียวกับป้ายบนการ์ดผลสุ่ม (.got-card .tier-sign) */
 .stash-grid .tier-sign {
-  width: 27%;
-  min-width: 15px;
-  max-width: 26px;
+  width: 22%;
+  min-width: 13px;
+  max-width: 20px;
 }
 .stash-grid .t-card .t-emoji { font-size: clamp(21px, 4dvh, 32px); }
 /* กุญแจบนการ์ดแมวที่ยังไม่ได้ วัดเป็น % ของการ์ดด้วยเหตุผลเดียวกับป้ายระดับข้างบน
@@ -8774,7 +8934,7 @@ canvas[hidden] { display: none; }
   position: absolute;
   top: 4px;
   right: 4px;
-  width: clamp(18px, 3.4dvh, 26px);
+  width: clamp(14px, 2.6dvh, 20px);
   height: auto;
   aspect-ratio: 1;
   pointer-events: none;
@@ -8934,7 +9094,7 @@ canvas[hidden] { display: none; }
 }
 .tl-equipped .tl-card-art { width: clamp(52px, 11dvh, 88px); border-radius: 14px; }
 .tl-equipped .tl-ico { font-size: clamp(30px, 6.4dvh, 52px); }
-.tl-equipped .tl-card-rank { width: clamp(22px, 4.2dvh, 32px); }
+.tl-equipped .tl-card-rank { width: clamp(17px, 3.2dvh, 24px); }
 .tl-equipped .tl-card-name { font-size: clamp(11px, 2dvh, 15px); }
 .tl-equipped.empty { cursor: default; border-style: dashed; box-shadow: none; }
 .tl-equipped-empty { padding: 20px 0; font-size: 12px; color: #B99BD4; }
@@ -8950,8 +9110,68 @@ canvas[hidden] { display: none; }
 #talentPanel .sk-body { display: none; }
 #talentPanel.tab-skill .sk-body { display: flex; }
 #talentPanel.tab-skill .tl-body:not(.sk-body),
-#talentPanel.tab-skill .tl-count,
 #talentPanel.tab-skill .tl-filter { display: none; }
+/* ตัวนับสะสมแล้ว/ทั้งหมดโชว์ทั้งสองหมวด — ตัวเลขเปลี่ยนตามหมวดที่เปิด (skill-ui.js) */
+
+/* ── ปุ่ม "การ์ด...มีไว้ทำอะไร?" ท้ายช่องซ้าย ──
+   ชิดขอบล่างของช่อง (margin-top:auto ดันลงไปสุด) ทั้งแถวกดได้ ปลายแถวเป็นวง ! ให้รู้ว่ากดอ่านได้ */
+.tl-help {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 6px 6px 11px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,243,226,.28);
+  background: rgba(27,15,43,.5);
+  color: #EBDDF8;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(9.5px, 1.6dvh, 12px);
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s ease, transform .1s ease;
+}
+.tl-help:active { transform: translateY(1px); background: rgba(78,205,196,.22); }
+.tl-help:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+.tl-help-i {
+  flex: 0 0 auto;
+  width: clamp(18px, 3.2dvh, 24px);
+  height: clamp(18px, 3.2dvh, 24px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #FFE27A, #FFB21F);
+  border: 1.5px solid #FFF6E6;
+  color: #6A3A00;
+  font-style: normal;
+  font-weight: 700;
+  font-size: clamp(11px, 1.9dvh, 14px);
+  box-shadow: 0 2px 6px rgba(255,178,31,.45);
+}
+/* โน้ตเดิมถูกดันด้วย margin-top:auto อยู่แล้ว — ปุ่มอ่านวิธีใช้ต้องเป็นตัวที่ชิดล่างแทน โน้ตจึงชิดปุ่ม */
+.tl-side .tl-side-note { margin-top: auto; }
+.tl-side .tl-side-note + .tl-help { margin-top: clamp(4px, 1dvh, 8px); }
+
+/* แผ่นอธิบาย — ใช้ชั้น .tl-detail/.tl-sheet เดียวกับหน้ารายละเอียด แต่เรียงเป็นแนวตั้ง */
+.tl-help-sheet { flex-direction: column; align-items: stretch; width: min(100%, 520px); overflow-y: auto; }
+.tl-help-head { display: flex; align-items: center; gap: 10px; padding-right: 34px; }
+.tl-help-ico { font-size: clamp(26px, 5dvh, 38px); line-height: 1; }
+.tl-help-list {
+  margin: 0;
+  text-align: left;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .9dvh, 8px);
+  font-size: clamp(11px, 1.9dvh, 14px);
+  line-height: 1.45;
+  color: #EBDDF8;
+}
+.tl-help-list b { color: #FFE3A3; font-weight: 600; }
 /* ตัวกรองระดับหายไปแล้ว แท็บต้องดันไปชิดขวาแทน หัวเรื่องจะได้ไม่เลื่อนตำแหน่งตอนสลับหมวด */
 #talentPanel.tab-skill .tl-tabs { margin-left: auto; }
 
@@ -9116,7 +9336,7 @@ canvas[hidden] { display: none; }
   position: absolute;
   top: -10px;
   right: -10px;
-  width: clamp(30px, 6.4dvh, 46px);
+  width: clamp(22px, 4.6dvh, 34px);
   height: auto;
   aspect-ratio: 1;
   filter: drop-shadow(0 3px 6px rgba(12,4,24,.6));
@@ -9252,6 +9472,8 @@ canvas[hidden] { display: none; }
 /* ── จอเตี้ย (มือถือแนวนอน) ── ตัดบรรทัดคำแนะนำทิ้ง แล้วบีบระยะให้กริดได้แถวเพิ่ม */
 @media (max-height: 460px) {
   .tl-side-note { display: none; }
+  /* โน้ตหายไปแล้ว ปุ่มอ่านวิธีใช้ต้องกลับมาเป็นตัวที่ดันลงชิดขอบล่างเอง */
+  .tl-side .tl-side-note + .tl-help { margin-top: auto; }
   .tl-kicker { display: none; }
   .tl-side { width: clamp(118px, 17%, 160px); }
   .tl-sheet { padding-block: 12px; }
@@ -9264,6 +9486,7 @@ canvas[hidden] { display: none; }
    (มือถือเล่นแนวนอนเสมอ แนวตั้งมีหน้าบอกให้หมุนจอ จึงไม่มีจอไหนได้ประโยชน์จากการซ้อน) */
 @media (max-width: 720px) {
   .tl-kicker, .tl-side-note { display: none; }
+  .tl-side .tl-side-note + .tl-help { margin-top: auto; }
   .tl-side { width: clamp(96px, 20%, 130px); }
   .tl-side-label { font-size: 10px; }
   .tl-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
@@ -9686,3 +9909,219 @@ canvas[hidden] { display: none; }
   .scene-row:hover .scene-pic { animation: none; }
   .skin-card, .stage-card, .quest-row, .mail-item, .scene-row { transition: none; }
 }
+
+/* ══ กรอบม่วงอ่อนทั้งเกม ══════════════════════════════════════
+   กรอบที่เคยเป็นฝ้าโปร่งบาง ๆ (อ่านเป็นเทาม่วงหม่นบนพื้นเบลอ) เปลี่ยนเป็นแผ่นม่วงอ่อนนูน
+   ชุดเดียวกับการ์ดสกิล/กาช่า (--plate-face / --plate-line / --plate-lift) ทั้งเกมจึงเป็นชุดเดียวกัน
+   อยู่ท้ายไฟล์โดยตั้งใจ — ความจำเพาะเท่ากับกฎเดิม ตัวที่มาทีหลังจึงชนะ ส่วนสถานะ
+   (.on / .ready / .done ฯลฯ) มีความจำเพาะสูงกว่า จึงยังทับสีของตัวเองได้เหมือนเดิม */
+.quest-row,
+.setrow,
+.stage-card,
+.scene-row,
+.odetail-info,
+.stash-show,
+.lv-now,
+.got-card {
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+}
+.stage-card:hover { background: var(--plate-face); filter: brightness(1.08); }
+/* ภารกิจที่ทำครบแล้ว = แผ่นทองเรือง (ภาษาเดียวกับ "กดรับได้" ทั้งเกม) */
+.quest-row.ready {
+  border-color: #FFD65C;
+  background: linear-gradient(180deg, rgba(190,132,44,.94), rgba(126,70,154,.96));
+  box-shadow: var(--plate-lift), 0 0 14px rgba(255,201,60,.35);
+}
+
+/* ══ หน้ารางวัลเลเวล (ชุดใหม่) ════════════════════════════════
+   แต่ละเลเวลเป็นแผ่นม่วงที่มี "ไทล์ของรางวัล" แยกชิ้น → เห็นทันทีว่าได้อะไร
+   เลเวลที่ได้การ์ดพรสวรรค์เป็นแถวพิเศษ (กรอบสีตามระดับ + ริบบิ้น + ไทล์การ์ดใหญ่)
+   ท้ายแถวเป็นชิปสถานะ: รับ! (ทองเด้ง) / ✓ / 🔒 */
+.lv-what {
+  position: relative;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: clamp(5px, 1.1dvh, 9px) clamp(8px, 1.4vw, 12px) clamp(5px, 1.1dvh, 9px) clamp(10px, 1.8vw, 16px);
+  border-radius: 18px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+}
+.lv-row.locked .lv-what { background: linear-gradient(180deg, rgba(118,76,164,.92), rgba(78,44,118,.96)); }
+.lv-row.ready .lv-what {
+  border-color: #FFD65C;
+  background: linear-gradient(180deg, #D98CF0, #A34FD0);
+  box-shadow: var(--plate-lift), 0 0 18px rgba(255,201,60,.5);
+}
+.lv-row.done { opacity: .5; }
+.lv-items { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lv-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 11px 3px 5px;
+  border-radius: 12px;
+  background: rgba(27,15,43,.42);
+  box-shadow: inset 0 0 0 1px rgba(255,243,226,.16);
+  font-family: "Mitr", sans-serif;
+  font-weight: 600;
+  line-height: 1;
+}
+.lv-item b { font-size: clamp(12px, 2dvh, 16px); color: #FFF3E2; }
+.lv-item.gold b { color: #FFE08A; }
+.lv-item.gems b { color: #FFC2DC; }
+/* ไทล์การ์ดพรสวรรค์ — รูปในช่องเข้ม + "การ์ดพรสวรรค์" ตัวเล็ก + ชื่อ + ตราระดับ */
+.lv-item.talent { padding: 4px 8px 4px 4px; gap: 7px; border: 1.5px solid rgba(240,215,255,.7); background: rgba(40,16,64,.6); }
+.lv-item.talent.rank-s { border-color: #FFD65C; }
+.lv-item.talent.rank-ss {
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(40,16,64,.88), rgba(40,16,64,.88)) padding-box,
+    linear-gradient(90deg, #FF8FB0, #FFD65C, #8DF3EA, #C77DFF) border-box;
+}
+.lv-t-ico {
+  width: clamp(28px, 5.2dvh, 42px);
+  height: clamp(28px, 5.2dvh, 42px);
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(20,8,34,.6);
+  font-size: clamp(17px, 3.2dvh, 26px);
+}
+.lv-t-txt { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.lv-t-txt small { font-size: clamp(8.5px, 1.4dvh, 11px); font-weight: 500; color: #E8D0FF; letter-spacing: .02em; }
+.lv-t-txt b { font-size: clamp(12px, 2dvh, 15px); }
+.lv-t-sign { width: clamp(18px, 3.4dvh, 26px); height: auto; filter: drop-shadow(0 2px 3px rgba(12,4,24,.5)); }
+/* แถวที่ได้การ์ด: สูงขึ้น กรอบสีตามระดับ เรืองนิด ๆ */
+.lv-row.has-talent .lv-what { padding-block: clamp(8px, 1.6dvh, 13px); }
+.lv-row.has-talent.rank-a .lv-what { border-color: #D9B8FF; }
+.lv-row.has-talent.rank-s .lv-what { border-color: #FFD65C; }
+.lv-row.has-talent.rank-ss .lv-what {
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(150,90,200,.96), rgba(98,52,150,.97)) padding-box,
+    linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
+}
+.lv-row.has-talent .lv-what::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  box-shadow: 0 0 16px rgba(199,125,255,.45);
+  pointer-events: none;
+  animation: lvGlow 2.4s ease-in-out infinite;
+}
+@keyframes lvGlow { 50% { opacity: .35; } }
+.lv-ribbon {
+  position: absolute;
+  top: -9px;
+  left: 14px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FF7EC8, #E8439A);
+  border: 1.5px solid #FFF6E6;
+  color: #FFFFFF;
+  font-family: "Mitr", sans-serif;
+  font-weight: 700;
+  font-size: clamp(8.5px, 1.4dvh, 11px);
+  line-height: 1.3;
+  box-shadow: 0 2px 6px rgba(120,20,70,.45);
+  pointer-events: none;
+}
+/* ชิปสถานะท้ายแถว */
+.lv-claim {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: clamp(30px, 5.6dvh, 44px);
+  height: clamp(26px, 4.6dvh, 36px);
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(27,15,43,.4);
+  font-family: "Mitr", sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 1.9dvh, 15px);
+  color: #D9C6EE;
+}
+.lv-row.ready .lv-claim {
+  background: linear-gradient(180deg, #FFF08A, #FFB21F);
+  border: 1.5px solid #FFF6E6;
+  color: #6A3A00;
+  box-shadow: 0 3px 0 #B8740C, 0 0 12px rgba(255,201,60,.6);
+  animation: lvClaimBob 1.4s ease-in-out infinite;
+}
+@keyframes lvClaimBob { 50% { transform: translateY(-3px) scale(1.06); } }
+.lv-row.done .lv-claim { color: #8DF3EA; }
+.lv-row.done .lv-node .lg-box { opacity: .5; }
+
+/* แถบสรุปบนสุด: หลอด XP + รางวัลใหญ่ถัดไป */
+.lv-now { width: min(88vw, 560px); }
+.lv-now-bar {
+  display: block;
+  width: min(100%, 220px);
+  height: 7px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: rgba(27,15,43,.55);
+  overflow: hidden;
+}
+.lv-now-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FF4FD8, #FFD54A); }
+.lv-next {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "lead lead" "ico name" "ico when";
+  align-items: center;
+  column-gap: 7px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 14px;
+  background: rgba(27,15,43,.45);
+  border: 1.5px solid rgba(240,215,255,.55);
+  font-family: "Mitr", sans-serif;
+  text-align: left;
+}
+.lv-next.rank-s { border-color: #FFD65C; }
+.lv-next.rank-ss { border-color: #FF9FE0; }
+.lv-next > small:first-child { grid-area: lead; font-size: clamp(8px, 1.3dvh, 10px); color: #FFE3A3; font-weight: 600; }
+.lv-next-ico { grid-area: ico; font-size: clamp(18px, 3.4dvh, 28px); line-height: 1; }
+.lv-next > b { grid-area: name; font-size: clamp(11px, 1.8dvh, 14px); color: #FFF3E2; }
+.lv-next-when { grid-area: when; font-size: clamp(8.5px, 1.4dvh, 11px); color: #D9C6EE; }
+@media (max-width: 720px) { .lv-next { display: none; } }
+
+/* ══ กล่องฉลอง: การ์ดพรสวรรค์มีตราระดับกับป้ายชนิดของ ══ */
+.got-card { position: relative; }
+.got-kind {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(20,8,34,.62);
+  color: #EBDDF8;
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(7px, 1.15dvh, 9.5px);
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.got-sign {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 26%;
+  min-width: 18px;
+  max-width: 28px;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(12,4,24,.55));
+}
+.got-card.talent .got-talent-ico { margin-top: 16%; }
+/* การ์ดพรสวรรค์กว้างกว่าการ์ดทอง/เพชรนิดหนึ่ง — ป้ายชนิด (ซ้าย) กับตราระดับ (ขวา) อยู่แถวเดียวกันโดยไม่ทับ */
+.got-card.talent { min-width: 96px; }
+.got-card .got-kind { max-width: calc(100% - 34px); overflow: hidden; text-overflow: ellipsis; }
+
+.got-card.gold { border-color: #FFD65C; background: linear-gradient(180deg, rgba(190,132,44,.94), rgba(126,70,154,.96)); }
+.got-card.gems { border-color: #FF9FC8; background: linear-gradient(180deg, rgba(200,90,150,.94), rgba(120,62,150,.96)); }

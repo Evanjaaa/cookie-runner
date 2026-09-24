@@ -35,6 +35,7 @@ import {
   drawNips, drawCans, drawMagnets, drawShields, drawPotions, drawLetters,
 } from '../render/entities.js';
 import { SKINS } from '../skins.js';
+import { PROP_OBSTACLES, PROP_LIST, isLowObstacle } from '../obstacles.js';
 
 const A = AUTHOR;
 const { spike, bar, crate, chunkW } = LEVEL;
@@ -117,6 +118,11 @@ const ITEM_DEFS = {
 // กล่องเครื่องมือ
 // group บอกว่าชิ้นนั้นเกาะจุดกดแบบไหน และ export เป็นโค้ดท่าไหน
 // ─────────────────────────────────────────────────────────────
+/** ชื่อไทยของประเภทสิ่งกีดขวางชุดใหม่ (ชิปในกล่องเครื่องมือ) */
+const PROP_TYPE_TH = { singleJump: 'กระโดด', doubleJump: 'กระโดด 2 ชั้น', crouch: 'หมอบ' };
+/** วงเล็บต่อท้ายชื่อชิป บอกวิธีผ่านแบบเห็นปุ๊บรู้ปั๊บ */
+const PROP_TAG = { singleJump: '(กระโดด 1)', doubleJump: '(กระโดด 2)', crouch: '(หมอบ)' };
+
 const KIT = [
   { t: 'jump', group: 'jump', pal: 'mark', label: 'จุดกด', sub: 'กระโดด 1 ครั้ง' },
 
@@ -163,6 +169,13 @@ const KIT = [
   { t: 'hill', group: 'plat', pal: 'plat', label: 'เนินคุกกี้', sub: 'เดินขึ้นได้เลย ไม่ต้องกระโดด', w: 320, h: 70, wide: true },
   { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอย', sub: 'กระโดดขึ้นไปเหยียบ', w: 200, lift: 90 },
   { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอยเหนือหลุม', sub: 'ไม่กระโดด = ตก', w: 260, lift: 90, under: true },
+
+  // ── สิ่งกีดขวางชุดใหม่ประจำด่าน ── สร้างจากทะเบียน src/obstacles.js ทั้งหมด (ชื่อ ขนาด ประเภท)
+  ...PROP_LIST.map((p) => ({
+    t: 'prop', group: 'obs', pal: 'prop', kind: p.id, stage: p.stage,
+    label: `${p.name} ${PROP_TAG[p.type]}`,
+    sub: `${PROP_TYPE_TH[p.type]} · ${['', 'ง่าย', 'กลาง', 'ยาก'][p.difficulty]} · ${p.note}`,
+  })),
 ];
 
 const PLAT_T = new Set(['hill', 'ledge']);
@@ -501,6 +514,7 @@ function itemW(it) {
   if (it.t === 'spikeRow') return (Math.max(1, it.n) - 1) * it.gap + spike.w;
   if (it.t === 'bar') return bar.w;
   if (it.t === 'crate') return crate.w;
+  if (it.t === 'prop') return PROP_OBSTACLES[it.kind] ? PROP_OBSTACLES[it.kind].w : spike.w;
   if (it.t === 'pit') return it.w;
   if (it.t === 'faller') return FALLER.w;
   if (it.t === 'bee') return HAZARD.bee.w;
@@ -574,6 +588,7 @@ function build(d, off = 0) {
         break;
       case 'bar': obs.push(tag(A.lowBar(x), it)); break;
       case 'crate': obs.push(tag(A.crateStack(x, it.rows), it)); break;
+      case 'prop': obs.push(tag(A.propObs(x, it.kind), it)); break;
       case 'pit': pit.push(tag({ x, w: it.w }, it)); break;
       case 'fishJump': made = safeArc(A.fishJump, x, n); break;
       case 'fishDouble': made = safeArc(A.fishDouble, x, n); break;
@@ -1352,7 +1367,7 @@ function drawStrip() {
 
   // สิ่งกีดขวาง
   for (const o of sc.obs) {
-    sctx.fillStyle = o.kind === 'bar' ? '#C4A4FF' : '#FFC66B';
+    sctx.fillStyle = isLowObstacle(o) ? '#C4A4FF' : '#FFC66B';
     const h = Math.max(3, o.h * 0.32);
     sctx.fillRect((o.x + ox) * k, gy - h, Math.max(2, o.w * k), h);
   }
@@ -1415,6 +1430,7 @@ function itemBox(d, it) {
   if (it.t === 'ball') return { x, y: GROUND_Y - HAZARD.ball.r * 2, w: HAZARD.ball.r * 2, h: HAZARD.ball.r * 2 };
   if (it.t === 'bar') return { x, y: bar.top, w: bar.w, h: bar.h };
   if (it.t === 'crate') return { x, y: GROUND_Y - crate.h * it.rows, w: crate.w, h: crate.h * it.rows };
+  if (it.t === 'prop') { const o = A.propObs(x, it.kind); return { x, y: o.y, w: o.w, h: o.h }; }
   if (it.t === 'pit') return { x, y: GROUND_Y, w: it.w, h: 34 };
 
   // ของกิน: กรอบรวมของเม็ดทั้งหมด เผื่อขอบให้จิ้มโดนง่าย
@@ -1449,7 +1465,7 @@ function handleX(d, it) {
 function simulate(d, scIn) {
   // scIn = ฉากที่ประกอบมาแล้ว (โหมดทั้งด่านส่งเข้ามา) ไม่งั้นสร้างจากเอกสารเหมือนเดิม
   const sc = scIn || (view.refIdx >= 0 ? active() : { ...build(d), width: d.width, partial: !!d.partial, gate: d.gate || null });
-  const bars = sc.obs.filter((o) => o.kind === 'bar');
+  const bars = sc.obs.filter(isLowObstacle);
   const solids = sc.obs;
   const press = sc.jumps.slice().sort((a, b) => a - b);
 
@@ -1549,7 +1565,7 @@ function simulate(d, scIn) {
         continue;
       }
       // ระยะลอยพ้น: นับเฉพาะตอนอยู่เหนือชิ้นนั้นจริง ๆ
-      if (o.kind !== 'bar' && box.x < o.x + o.w && o.x < box.x + box.w) {
+      if (!isLowObstacle(o) && box.x < o.x + o.w && o.x < box.x + box.w) {
         const gap = o.y - (box.y + box.h);
         if (gap >= 0) clear.set(o, Math.min(clear.has(o) ? clear.get(o) : Infinity, gap));
       }
@@ -1679,8 +1695,8 @@ const footingOf = (sc, cx, prevY, y, wasOnGround, pitsSolid = false) =>
 // ─────────────────────────────────────────────────────────────
 function staticIssues(sc) {
   const out = [];
-  const bars = sc.obs.filter((o) => o.kind === 'bar');
-  const solids = sc.obs.filter((o) => o.kind !== 'bar');
+  const bars = sc.obs.filter(isLowObstacle);
+  const solids = sc.obs.filter((o) => !isLowObstacle(o));
 
   for (const b of bars) {
     for (const o of solids) {
@@ -1776,7 +1792,7 @@ function staticIssues(sc) {
       }
     } else {
       for (const o of sc.obs) {
-        if (o.kind !== 'bar' && o.x < p.x + p.w && p.x < o.x + o.w) {
+        if (!isLowObstacle(o) && o.x < p.x + p.w && p.x < o.x + o.w) {
           out.push({ bad: false, msg: `${name(o.kind)}ที่ x=${Math.round(o.x)} อยู่บนเนิน — สิ่งกีดขวางยังตั้งที่ระดับพื้นเสมอ จะจมอยู่ในเนิน` });
         }
       }
@@ -1791,13 +1807,13 @@ function staticIssues(sc) {
     if (f.y > top) { out.push({ bad: false, msg: `ของกินที่ x=${Math.round(f.x)} จมอยู่ใต้ผิวพื้นเหยียบ — ลองตั้งชั้นเป็น “เกาะผิวพื้นเหยียบ”` }); break; }
   }
 
-  if (!sc.jumps.length && sc.obs.some((o) => o.kind !== 'bar')) {
+  if (!sc.jumps.length && sc.obs.some((o) => !isLowObstacle(o))) {
     out.push({ bad: false, msg: 'มีของให้ข้ามแต่ไม่ได้ประกาศจุดกดเลย ตรวจด่านจะจำลองไม่ได้' });
   }
   return out;
 
   function name(k) {
-    return k === 'spike' ? 'หนาม' : k === 'crate' ? 'ลัง' : k === 'bar' ? 'คาน' : k;
+    return k === 'spike' ? 'หนาม' : k === 'crate' ? 'ลัง' : k === 'bar' ? 'คาน' : k === 'prop' ? 'สิ่งกีดขวาง' : k;
   }
 }
 
@@ -1819,8 +1835,8 @@ function joinIssues(sc) {
 
   function clash(l1, l2) {
     const all = [...l1, ...l2];
-    const bars = all.filter((o) => o.kind === 'bar');
-    const solids = all.filter((o) => o.kind !== 'bar');
+    const bars = all.filter(isLowObstacle);
+    const solids = all.filter((o) => !isLowObstacle(o));
     return bars.some((b) => solids.some((o) => b.x < o.x + o.w && o.x < b.x + b.w));
   }
 }
@@ -2750,6 +2766,7 @@ function docFromPattern(idx, name) {
     const base = { id: uid(), group: 'obs', x: o.x };
     if (o.kind === 'spike') d.items.push({ ...base, t: 'spike' });
     else if (o.kind === 'bar') d.items.push({ ...base, t: 'bar' });
+    else if (o.kind === 'prop') d.items.push({ ...base, t: 'prop', kind: o.art });
     else d.items.push({ ...base, t: 'crate', rows: o.rows || 1 });
   }
   for (const q of p.pit) d.items.push({ id: uid(), t: 'pit', group: 'obs', x: q.x, w: q.w });
@@ -2854,6 +2871,7 @@ function toCode(d, idxIn) {
       }
       case 'bar': obs.push(`lowBar(${off(e, 'bar.w / 2', it)})`); break;
       case 'crate': obs.push(`crateStack(${off(e, 'crate.w / 2', it)}, ${it.rows})`); break;
+      case 'prop': obs.push(`propObs(${off(e, String(itemW(it) / 2), it)}, '${it.kind}')`); break;
       case 'pit': pit.push(`{ x: ${off(e, String(it.w / 2), it)}, w: ${it.w} }`); break;
       case 'fishJump': fish.push(wrap(`fishJump(${e}, ${it.n})`)); break;
       case 'fishDouble': fish.push(wrap(`fishDouble(${e}, ${it.n})`)); break;
@@ -2941,12 +2959,28 @@ function toCode(d, idxIn) {
 function buildKit() {
   const map = { mark: 'kitMark', obs: 'kitObs', food: 'kitFood', sp: 'kitSpecial', item: 'kitItem', plat: 'kitPlat' };
   for (const key of Object.keys(map)) document.getElementById(map[key]).innerHTML = '';
+  const propBox = document.getElementById('kitProps');
+  propBox.innerHTML = '';
+  const propGroups = {};
   for (const kit of KIT) {
     const el = document.createElement('div');
     el.className = 'chip' + (kit.wide ? ' wide' : '');
     el.innerHTML = `${kit.label}<em>${kit.sub}</em>`;
     el.title = `${kit.label} — ${kit.sub}`;   // โหมดทั้งด่านย่อชิปจนซ่อนคำอธิบาย ต้องมีทูลทิปแทน
-    document.getElementById(map[kit.pal]).appendChild(el);
+    if (kit.pal === 'prop') {
+      // ชุดใหม่ 54 ชิ้น — พับเป็นกลุ่มตามด่าน ไม่งั้นกล่องเครื่องมือยาวจนหาอย่างอื่นไม่เจอ
+      if (!propGroups[kit.stage]) {
+        const st = STAGES.find((x) => x.id === kit.stage);
+        const det = document.createElement('details');
+        det.className = 'kit-group';
+        det.innerHTML = `<summary>${st ? st.name : kit.stage}</summary><div class="kit"></div>`;
+        propBox.appendChild(det);
+        propGroups[kit.stage] = det.querySelector('.kit');
+      }
+      propGroups[kit.stage].appendChild(el);
+    } else {
+      document.getElementById(map[kit.pal]).appendChild(el);
+    }
     wireChip(el, kit);
   }
 }

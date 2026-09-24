@@ -771,3 +771,8 @@ body.art-draw .only-text, body.art-edit .only-text { display: none; }
 .irow .del:hover { background: var(--bad); color: #2A0F1C; }
 .irow.stray { border-color: var(--warn); }
 .warnrow { color: var(--warn); margin: 8px 0 4px; }
+
+/* กลุ่มสิ่งกีดขวางชุดใหม่ พับตามด่าน */
+.kit-group { margin: 4px 0; border-radius: 8px; background: rgba(255,255,255,.04); }
+.kit-group > summary { cursor: pointer; padding: 5px 8px; font-weight: 600; font-size: 12.5px; }
+.kit-group > .kit { padding: 2px 6px 8px; }

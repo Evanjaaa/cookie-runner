@@ -1,5 +1,5 @@
 // src/render/hud.js
-import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C } from '../config.js';
+import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C, BONUS, SCENE } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
 import { t } from '../i18n.js';
@@ -10,6 +10,9 @@ const { W, H } = VIEW;
 const TREAT_TOP = 58;    // ค่าขนมเปียก ขวาริม ใต้ปุ่มหยุด/เสียงที่เป็น DOM
 const WORD_TOP = 22;     // แถวตัวอักษรสะสม ซ้ายบนสุด
 const RUN_TOP = 66;      // หลอดระยะในด่านย่อย ใต้หลอดพลัง (ขอบล่างหลอดพลังจบที่ 58)
+// ขอบบนสุดที่ป้ายกลางจอ (โบนัส / ผ่านด่าน) ยื่นขึ้นไปได้ — รวมวงตัวเลขตอนเด้ง ขอบครีม และประกาย
+// ต้องพ้นหลอดระยะ (ราง 66-76 + หัวน้องบนหลอดที่ยื่นลงมาอีกนิด) ห้ามบังเส้นทาง
+const BANNER_CLEAR = RUN_TOP + 22;
 
 /**
  * ระยะขั้นต่ำจากขอบจอ สำหรับเครื่องที่ไม่รายงานเขตปลอดภัยมาให้
@@ -241,17 +244,148 @@ function drawWord(ctx, game) {
   ctx.restore();
 }
 
+// ── ป้ายกลางจอแบบลูกกวาด (โบนัส / ผ่านด่าน) ─────────────────────
+//
+// เดิมเป็นแคปซูลม่วงเข้มโปร่ง ตัวหนังสือจาง — บนฉากกลางคืนกลืนไปกับฟ้า
+// และบนฉากสว่างก็อ่านเป็นแถบเงาดำ ๆ ไม่ใช่ "ข่าวดี"
+// ตอนนี้เป็นป้ายทึบสีสด ขอบครีมหนา เงาใต้ป้าย แสงเงาวาวด้านบน กับแสงวิ่งผ่านเป็นระยะ
+// ตัวหนังสือขาวตีขอบเข้ม — อ่านออกทุกฉากตั้งแต่ครัวมืดไปจนถึงทุ่งหิมะขาว
+//
+// ธีมสีคือ [บน, ล่าง, ขอบตัวหนังสือ, แสงเรืองรอบป้าย]
+const PILL_THEME = {
+  bonus: ['#FF7EC8', '#FF9A3D', '#8A1F5C', 'rgba(255,140,190,.55)'],
+  clear: ['#FFE066', '#FFA928', '#8A4A00', 'rgba(255,214,90,.55)'],
+  info: ['#8EF0E4', '#3FC3D8', '#0B4A5C', 'rgba(120,230,230,.5)'],
+};
+
+/** ดาวสี่แฉกเล็ก ๆ ข้างป้าย */
+function sparkle(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.quadraticCurveTo(x, y, x, y + r);
+  ctx.quadraticCurveTo(x, y, x - r, y);
+  ctx.quadraticCurveTo(x, y, x, y - r);
+  ctx.fill();
+}
+
+/**
+ * ป้ายลูกกวาด — คำนวณกล่องให้อยู่กลางจอเอง แล้ววางข้อความยึดขอบซ้ายกล่อง
+ * (ไม่ใช้ textAlign 'center' — บนมือถือ measureText กับ textAlign อ้างจุดคนละที่ ป้ายกับข้อความเคยเหลื่อมกัน)
+ * @param pop    0→1 ตอนป้ายเพิ่งโผล่ (เด้งจากเล็กไปเต็ม เลยนิดแล้วคืน)
+ * @param badge  ข้อความในวงกลมท้ายป้าย (ตัวเลขนับถอยหลัง) — null = ไม่มีวง
+ * @param bump   0→1 เด้งวงกลมตอนตัวเลขเปลี่ยน
+ */
+function drawCandyPill(ctx, label, y, h, theme, tick, { pop = 1, badge = null, bump = 0 } = {}) {
+  const [top, bottom, ink, glow] = PILL_THEME[theme];
+  const padX = h * 0.62;
+  const badgeD = badge != null ? h + 8 : 0;
+  const textW = textWidth(ctx, label);
+  const boxW = textW + padX * 2 + (badge != null ? badgeD * 0.72 : 0);
+  const boxX = Math.round((W - boxW) / 2);
+  const cx = boxX + boxW / 2;
+  const cy = y + h / 2;
+
+  // เด้งเข้า: เลยขนาดจริงไปนิดแล้วคืน (easeOutBack)
+  const c1 = 1.7, v = pop - 1;
+  const s = pop >= 1 ? 1 : Math.max(0.01, 1 + (c1 + 1) * v * v * v + c1 * v * v);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+  ctx.translate(-cx, -cy);
+  ctx.textAlign = 'left';
+
+  // แสงเรืองรอบป้าย + เงาใต้ป้าย
+  ctx.save();
+  ctx.shadowColor = glow;
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = 'rgba(40,14,60,.45)';
+  ctx.beginPath(); ctx.roundRect(boxX, y + 4, boxW, h, h / 2); ctx.fill();
+  ctx.restore();
+
+  // ขอบครีมหนา แล้วตัวป้ายไล่สีข้างใน
+  ctx.fillStyle = '#FFF6E6';
+  ctx.beginPath(); ctx.roundRect(boxX - 3, y - 3, boxW + 6, h + 6, (h + 6) / 2); ctx.fill();
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, top);
+  g.addColorStop(1, bottom);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.roundRect(boxX, y, boxW, h, h / 2); ctx.fill();
+
+  // แสงเงาวาวครึ่งบน + แสงวิ่งผ่านทุก ~2.5 วินาที (clip ในตัวป้าย)
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(boxX, y, boxW, h, h / 2); ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,.34)';
+  ctx.beginPath(); ctx.roundRect(boxX + h * 0.3, y + 2.5, boxW - h * 0.6, h * 0.36, h * 0.18); ctx.fill();
+  const sweep = ((tick % 150) / 150) * (boxW + 120) - 60;
+  const sg = ctx.createLinearGradient(boxX + sweep - 30, 0, boxX + sweep + 30, 0);
+  sg.addColorStop(0, 'rgba(255,255,255,0)');
+  sg.addColorStop(0.5, 'rgba(255,255,255,.55)');
+  sg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sg;
+  ctx.beginPath();
+  ctx.moveTo(boxX + sweep - 18, y + h); ctx.lineTo(boxX + sweep + 4, y);
+  ctx.lineTo(boxX + sweep + 26, y); ctx.lineTo(boxX + sweep + 4, y + h);
+  ctx.fill();
+  ctx.restore();
+
+  // ตัวหนังสือขาวตีขอบเข้ม
+  const tx = boxX + padX;
+  const ty = cy;
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 4.5;
+  ctx.strokeStyle = ink;
+  ctx.strokeText(label, tx, ty + 1);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(label, tx, ty + 1);
+
+  // วงกลมตัวเลขท้ายป้าย (ทองสด ขอบขาว) เด้งตอนเลขเปลี่ยน
+  if (badge != null) {
+    const bx = boxX + boxW - badgeD * 0.42;
+    const r = (badgeD / 2) * (1 + bump * 0.22);
+    ctx.fillStyle = '#FFF6E6';
+    ctx.beginPath(); ctx.arc(bx, cy, r + 3, 0, Math.PI * 2); ctx.fill();
+    const bg = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+    bg.addColorStop(0, '#FFF08A');
+    bg.addColorStop(1, '#FFB21F');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(bx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    ctx.beginPath(); ctx.ellipse(bx, cy - r * 0.45, r * 0.6, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#8A4A00';
+    ctx.strokeText(String(badge), bx, cy + 1);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(String(badge), bx, cy + 1);
+  }
+
+  // ประกายวิบสองข้างป้าย คนละจังหวะ
+  ctx.fillStyle = '#FFF8C8';
+  for (const [sx, sy, ph] of [[boxX - 12, y - 2, 0], [boxX + boxW + 12, y + h, 1.7], [boxX + 16, y + h + 5, 3.1]]) {
+    const k = 0.35 + Math.abs(Math.sin(tick * 0.09 + ph)) * 0.65;
+    sparkle(ctx, sx, sy, 6 * k);
+  }
+  ctx.restore();
+}
+
 /** ป้ายกลางจอตอนอยู่ในโบนัส พร้อมเวลาที่เหลือ */
 function drawBonusBanner(ctx, game) {
   const secs = Math.ceil(game.bonus / 60);
+  // เวลาที่ผ่านมาในโบนัส (ป้ายเด้งเข้าช่วง 18 เฟรมแรก) และเศษของวินาที (เลขเด้งตอนเปลี่ยน)
+  const since = BONUS.frames - game.bonus;
+  const frac = (game.bonus % 60) / 60;
 
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-
-  ctx.font = "700 17px Mitr, sans-serif";
-  const label = `BONUS TIME  ${secs}`;
-  drawLabelPill(ctx, label, 78, 30, 18, 'rgba(59,17,85,.82)', C.letterLite, 6);
+  ctx.font = "700 19px Mitr, sans-serif";
+  // วงตัวเลขตอนเด้งสุดยื่นขึ้นเหนือป้าย (34+8)/2*1.22+3 - 17 ≈ 12 หน่วย ประกายอีก 8
+  drawCandyPill(ctx, 'BONUS TIME', BANNER_CLEAR + 12, 34, 'bonus', game.tick, {
+    pop: Math.min(1, since / 18),
+    badge: secs,
+    bump: frac > 0.85 ? (frac - 0.85) / 0.15 : 0,
+  });
   ctx.restore();
 }
 
@@ -269,44 +403,6 @@ function textWidth(ctx, str) {
 }
 
 /**
- * วาดป้ายข้อความกลางจอ: กล่องพื้นหลัง + ข้อความข้างใน
- *
- * ── ทำไมต้องวางเองทั้งคู่ ไม่ใช้ textAlign 'center' ──
- * เคยเขียนแบบวาดกล่องกลางจอ แล้วให้ข้อความจัดกลางด้วย textAlign 'center'
- * ซึ่งดูควรจะตรงกันเอง แต่บนมือถือจริงมันเหลื่อมกัน — กล่องเหลือที่ว่างข้างหนึ่ง
- * ส่วนข้อความไปเบียดอีกข้าง
- *
- * ต้นเหตุคือ measureText กับ textAlign ตกลงกันไม่ได้ว่า "จุดอ้างอิง" อยู่ตรงไหน
- * ค่า actualBoundingBoxLeft/Right ที่ควรวัดจากจุดจัดกลาง บางเบราว์เซอร์กลับ
- * รายงานโดยอ้างอิงหัวข้อความแทน พอเอาไปคำนวณขอบกล่องทีละข้างจึงเพี้ยนคนละทาง
- *
- * เลิกเดาว่าเบราว์เซอร์ยึดอะไร แล้วยึดซ้ายอย่างเดียวทั้งกล่องและข้อความ:
- * วัดความกว้าง -> คำนวณกล่องให้อยู่กลางจอ -> วางข้อความเยื้องจากขอบซ้ายกล่อง
- * เท่ากับ pad พอดี ทั้งสองอย่างจึงอ้างอิงตัวเลขชุดเดียวกันและยึดขอบเดียวกัน
- * ไม่มีทางเหลื่อมกันได้อีกไม่ว่าฟอนต์จะโหลดทันหรือไม่
- *
- * ความกว้างเอาค่ามากสุดระหว่าง advance width กับกรอบหมึกจริง เพราะภาษาไทย
- * มีสระบนล่างกับวรรณยุกต์ที่ยื่นพ้นระยะที่เคอร์เซอร์เดินได้
- */
-function drawLabelPill(ctx, label, y, h, padX, bg, fg, textDy) {
-  const boxW = textWidth(ctx, label) + padX * 2;
-  const boxX = Math.round((W - boxW) / 2);
-
-  const align = ctx.textAlign;
-  ctx.textAlign = 'left';
-
-  ctx.fillStyle = bg;
-  ctx.beginPath();
-  ctx.roundRect(boxX, y, boxW, h, h / 2);
-  ctx.fill();
-
-  ctx.fillStyle = fg;
-  ctx.fillText(label, boxX + padX, y + textDy);
-
-  ctx.textAlign = align;
-}
-
-/**
  * ป้ายบอกว่าขวดพลังกำลังมา
  * จำเป็นเพราะขวดโผล่ตามเวลา ไม่ใช่ตามระยะทาง ผู้เล่นเลยเดาเองไม่ได้
  * ว่าต้องทนอีกไกลแค่ไหน — ถ้าไม่บอก การรอดจนหลอดเกือบหมดจะรู้สึกเหมือนถูกลงโทษ
@@ -316,15 +412,16 @@ function drawNotice(ctx, game) {
   const a = Math.min(1, game.notice / 40);
 
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
   ctx.globalAlpha = a;
 
-  ctx.font = "600 15px 'IBM Plex Sans Thai', sans-serif";
-  // ข้อความมาจากฝั่งเกม เพราะตอนนี้แถบนี้ใช้บอกได้สองเรื่อง
-  // (ผ่านด่านย่อย / ขวดพลังมาแล้ว) ไม่ใช่เรื่องเดียวเหมือนเดิม
+  ctx.font = "700 16px Mitr, sans-serif";
+  // ข้อความมาจากฝั่งเกม เพราะตอนนี้แถบนี้ใช้บอกได้หลายเรื่อง
+  // ผ่านด่าน = ป้ายทองสด (ข่าวดีใหญ่) / เรื่องอื่น (ขวดพลัง ดึงขึ้นจากหลุม) = ป้ายฟ้าสด
   const label = game.noticeText || 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';
-  drawLabelPill(ctx, label, 80, 26, 17, game.pal.noticeBg, C.danger, 5);
+  const theme = label.startsWith('ผ่านด่าน') ? 'clear' : 'info';
+  // เด้งเข้าช่วง 16 เฟรมแรกของข้อความ (notice นับถอยหลังจากค่าตั้งต้น)
+  const start = theme === 'clear' ? SCENE.noticeFrames : Math.max(game.notice, 90);
+  drawCandyPill(ctx, label, BANNER_CLEAR + 8, 32, theme, game.tick, { pop: Math.min(1, (start - game.notice) / 16) });
 
   ctx.restore();
 }
