@@ -256,15 +256,23 @@ export async function fetchPlayer() {
  * เพราะ RLS ของสองตารางคนละเงื่อนไขกัน (ฉบับส่งทั้งเซิร์ฟไม่มี player_id)
  * การ join ข้ามเงื่อนไขแบบนั้นเขียนให้ถูกยากกว่าประกบสองรายการสั้น ๆ ตรงนี้
  */
+/** เพดานจำนวนฉบับที่ดึงต่อครั้ง — mail.js ใช้รู้ว่ารายการที่ได้ "ครบ" หรือโดนตัด */
+export const MAIL_FETCH_LIMIT = 50;
+
+/**
+ * คืน null เมื่ออ่านไม่ได้ (ออฟไลน์/พัง) แยกจาก [] ที่แปลว่า "ไม่มีจดหมายเลย"
+ * เพราะ mail.js ใช้รายการนี้ตัดสินว่าฉบับไหนถูกยกเลิกไปแล้ว — ถ้าอ่านไม่ได้แล้วคืน []
+ * จดหมายทุกฉบับในเครื่องจะถูกนับว่าโดนยกเลิกแล้วหายไปหมด
+ */
 export async function fetchMail() {
   const c = await client();
-  if (!c || !uid) return [];
+  if (!c || !uid) return null;
   try {
     const [box, claims] = await Promise.all([
       c.from('mail_outbox')
         .select('id, sender, title, body, gold, gems, sent_at')
         .order('sent_at', { ascending: false })
-        .limit(50),
+        .limit(MAIL_FETCH_LIMIT),
       c.from('mail_claims').select('mail_id'),
     ]);
     if (box.error) throw box.error;
@@ -279,13 +287,14 @@ export async function fetchMail() {
       title: m.title,
       body: m.body,
       at: (m.sent_at || '').slice(0, 10),
+      sentAt: m.sent_at || '',
       reward: (m.gold || m.gems) ? { gold: m.gold || 0, gems: m.gems || 0 } : null,
       claimed: got.has(m.id),
       cloud: true,          // บอก mail.js ว่าฉบับนี้ต้องกดรับผ่านคลาวด์
     }));
   } catch (e) {
     console.warn('[cloud] อ่านจดหมายไม่ได้', e.message || e);
-    return [];
+    return null;
   }
 }
 
@@ -304,6 +313,8 @@ export async function claimMail(mailId) {
     const row = Array.isArray(data) ? data[0] : data;
     return { ok: Boolean(row && row.claimed), gold: row?.gold || 0, gems: row?.gems || 0 };
   } catch (e) {
+    // แอดมินยกเลิกฉบับนี้ไปแล้ว (claim_mail หาไม่เจอ) — ไม่ใช่เน็ตหลุด บอกให้ถูกเรื่อง
+    if (/ไม่พบจดหมาย/.test(e.message || '')) return { ok: false, gone: true };
     console.warn('[cloud] กดรับของขวัญไม่ได้', e.message || e);
     return { ok: false, offline: true };
   }

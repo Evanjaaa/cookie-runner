@@ -57,7 +57,7 @@ import { loadStatus, saveStatus, statusWords, cleanStatus, STATUS_WORDS } from '
 import {
   startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
 } from './friends.js';
-import { QUESTS, questList, questState, claimQuest, claimableCount } from './quests.js';
+import { QUESTS, questList, questState, claimQuest, claimableCount, seasonText } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI, RANKS as T_RANKS } from './talent-ui.js';
 import { talentById, TALENTS, isUnlocked as talentUnlocked } from './talents.js';
@@ -1385,23 +1385,6 @@ async function warnName(name, reason) {
   await confirmBox({ ...text, okText: 'ตกลง', alertOnly: true });
 }
 
-async function saveName() {
-  const input = document.getElementById('rankName');
-  const name = cleanName(input.value);
-  if (!name) return;
-
-  const btn = document.getElementById('rankSave');
-  btn.disabled = true;
-  const r = await storeName(name);
-  btn.disabled = false;
-  if (!r.ok) {
-    input.value = localName();
-    await warnName(name, r.reason);
-    return;
-  }
-  await buildRank();       // อันดับต้องโชว์ชื่อใหม่ทันที ไม่ต้องกดกลับแล้วเข้าใหม่
-}
-
 // ── ลำดับหน้าเข้าเกม ───────────────────────────────────────
 //
 //   ชื่อเกม → เข้าสู่ระบบ → ตั้งชื่อตัวละคร → ล็อบบี้
@@ -1896,7 +1879,6 @@ function showRank(on) {
   rankPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
   if (on) {
-    document.getElementById('rankName').value = localName();
     buildRank();
   }
 }
@@ -2781,6 +2763,8 @@ onLang(() => {
   refreshHome();
   // หน้าสกิล/พรสวรรค์สร้างการ์ดใหม่ทุกครั้งที่เปิด สั่งเปิดซ้ำ (หมวดเดิม) จึงเท่ากับวาดใหม่ทั้งหน้า
   if (!talentPanel.classList.contains('hidden')) skillUI.open();
+  // วันที่กิจกรรมเขียนตามภาษา (พ.ศ./ค.ศ.) ไม่ได้ผ่านพจนานุกรม
+  document.getElementById('questWhen').textContent = seasonText(getLang());
 });
 
 // แปลรอบแรกตอนเปิดเกม แล้วเฝ้าดูของที่ถูกสร้างใหม่ตลอดอายุการเล่น
@@ -3331,6 +3315,7 @@ function buildQuestList() {
   markScrollable(list);
   refreshQuestDot();
   document.getElementById('questClaimAll').disabled = claimableCount() === 0;
+  document.getElementById('questWhen').textContent = seasonText(getLang());
 }
 
 /** รับทุกข้อที่ทำครบแล้วรวดเดียว — จ่ายรวมก้อนเดียว กล่องฉลองขึ้นครั้งเดียว (ไม่เด้งทีละข้อ) */
@@ -6393,8 +6378,6 @@ document.getElementById('btnRank').addEventListener('click', () => {
   showRank(true);
 });
 document.getElementById('rankBack').addEventListener('click', () => showRank(false));
-document.getElementById('rankSave').addEventListener('click', saveName);
-typable('rankName', saveName);
 // จำนวนครั้งของปุ่มใบที่สองต่างกันคนละช่อง (สมบัติ 3 / ชุด 5) จึงถามจากช่องที่เปิดอยู่
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
 document.getElementById('pull5').addEventListener('click', () => doPull(gMulti()));

@@ -35,7 +35,7 @@ import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/tale
 import { drawHUD } from './render/hud.js';
 import { drawWarpBack, drawWarpFront, drawWarpArrive } from './render/warp.js';
 import { postProcess } from './render/post.js';
-import { drawOutlined } from './render/outline.js';
+import { drawOutlined, outlineSpans } from './render/outline.js';
 import { GateRun } from './gate-run.js';
 import { gateFor, GATE_LIST } from './gates.js';
 import { drawGateBack, drawGateFront, warmGateArt } from './render/gates/index.js';
@@ -2111,12 +2111,13 @@ export class Game {
       drawGround(ctx, this.level.pits, this.camera, this.pal, GROUND_ART[this.scene.backdrop]);
       drawPlats(ctx, this.level.plats, this.camera, this.pal);
       const [plainFish, rareTreats] = splitFish(this.level.fishes);
+      const L = this.level;
       drawOutlined(ctx, (c) => {
-        drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
-        drawFallers(c, this.level.fallers, this.camera, this.scene.theme);
-        drawHazards(c, this.level.hazards, this.camera, this.tick, this.pal);
+        drawObstacles(c, L.obstacles, this.camera, this.scene.theme);
+        drawFallers(c, L.fallers, this.camera, this.scene.theme);
+        drawHazards(c, L.hazards, this.camera, this.tick, this.pal);
         drawTreats(c, rareTreats, this.camera, this.tick);
-      });
+      }, outlineSpans([L.obstacles, L.fallers, L.hazards, rareTreats], this.camera, VIEW.W));
       drawTreats(ctx, plainFish, this.camera, this.tick);
     }
 
@@ -2133,7 +2134,7 @@ export class Game {
       drawOutlined(ctx, (c) => {
         drawMagnets(c, this.bonusMagnets, this.bonusCam, this.tick);
         drawTreats(c, rareTreats, this.bonusCam, this.tick);
-      });
+      }, outlineSpans([this.bonusMagnets, rareTreats], this.bonusCam, VIEW.W));
       drawTreats(ctx, plainFish, this.bonusCam, this.tick);
     }
 
@@ -2359,7 +2360,7 @@ export class Game {
       drawNips(c, this.level.nips, this.camera, this.tick);
       drawCans(c, this.level.cans, this.camera, this.tick);
       drawShields(c, this.level.shields, this.camera);
-    });
+    }, outlineSpans([this.level.obstacles, this.level.fallers, this.level.hazards, rareTreats, this.level.potions, this.level.magnets, this.level.letters, this.level.nips, this.level.cans, this.level.shields], this.camera, VIEW.W));
     drawTreats(ctx, plainFish, this.camera, this.tick);
     this.particles.draw(ctx, this.camera);
     // สีฉากช่วงสกิล (เต้น = ปาร์ตี้แดงจาง ๆ) — ทับฉากและของ แต่อยู่ใต้ขนมโปรยกับตัวน้อง

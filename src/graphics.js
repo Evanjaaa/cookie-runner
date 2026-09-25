@@ -26,13 +26,30 @@ export const LEVELS = {
 
 export const LEVEL_IDS = ['high', 'mid', 'save'];
 
+/**
+ * เพดานความละเอียดบนมือถือ — ทับค่า scale ของระดับนั้นเฉพาะเครื่องที่เป็นมือถือ
+ * จอ 6 นิ้วที่ 1.6 เท่ายังละเอียดเกินกว่าตาแยกออก (เทียบภาพกันแล้ว) แต่วาดพิกเซลน้อยลง 36%
+ * ทุกเฟรม ซึ่งเป็นตัวที่ทำให้มือถือร้อนที่สุด คอมกับแท็บเล็ตยังได้ 2 เท่าเต็มเหมือนเดิม
+ */
+const PHONE_SCALE = { high: 1.6 };
+
+/** มือถือ = จอสัมผัส และด้านสั้นของจอไม่เกิน 500 จุด (แท็บเล็ตด้านสั้น 700+ จึงไม่นับ) */
+const IS_PHONE = typeof window !== 'undefined'
+  && window.matchMedia?.('(pointer: coarse)').matches
+  && Math.min(window.screen.width, window.screen.height) <= 500;
+
+/** ค่าจริงที่ใช้บนเครื่องนี้ — คิดครั้งเดียว (quality() ถูกเรียกหลายครั้งต่อเฟรม) */
+const ACTIVE = Object.fromEntries(Object.entries(LEVELS).map(([id, q]) => [
+  id, IS_PHONE && PHONE_SCALE[id] ? { ...q, scale: PHONE_SCALE[id] } : q,
+]));
+
 const PREF = 'gfx';
 let level = LEVEL_IDS.includes(loadPref(PREF, '')) ? loadPref(PREF, '') : 'high';
 const listeners = [];
 
 /** ค่าของระดับที่เลือกอยู่ */
 export function quality() {
-  return LEVELS[level];
+  return ACTIVE[level];
 }
 
 export function gfxLevel() {

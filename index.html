@@ -1126,11 +1126,8 @@
       <div class="panel hidden" id="rankPanel">
         <div class="pop">
           <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
+          <!-- เปลี่ยนชื่อได้ที่หน้าโปรไฟล์ที่เดียว (ดินสอข้างชื่อ) -->
           <div class="rank-list" id="rankList"></div>
-          <div class="rank-me">
-            <input id="rankName" maxlength="10" placeholder="ตั้งชื่อ (ไม่เกิน 10 ตัว)">
-            <button class="btn ghost" id="rankSave">บันทึกชื่อ</button>
-          </div>
           <button class="backbtn" id="rankBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
@@ -1603,7 +1600,10 @@
       <div class="panel hidden" id="questPanel">
         <div class="pop">
           <div class="quest-head">
-            <h2 class="skin-title">กิจกรรม</h2>
+            <div class="quest-title">
+              <h2 class="skin-title">กิจกรรม</h2>
+              <span class="quest-when" id="questWhen"></span>
+            </div>
             <!-- รับทุกข้อที่ทำครบแล้วรวดเดียว — ทรงเดียวกับปุ่มรับทั้งหมดในหน้ารางวัลเลเวล -->
             <button type="button" class="btn ghost tiny quest-all" id="questClaimAll">รับทั้งหมด</button>
           </div>

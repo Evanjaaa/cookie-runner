@@ -776,3 +776,96 @@ body.art-draw .only-text, body.art-edit .only-text { display: none; }
 .kit-group { margin: 4px 0; border-radius: 8px; background: rgba(255,255,255,.04); }
 .kit-group > summary { cursor: pointer; padding: 5px 8px; font-weight: 600; font-size: 12.5px; }
 .kit-group > .kit { padding: 2px 6px 8px; }
+
+/* ── คีย์ลัดแบบ Blender ──────────────────────────────── */
+.modalbar.hidden, .keyspanel.hidden { display: none; }
+
+/* แถบสถานะระหว่าง G/S — ลอยกลางล่างจอเหมือนแถบสถานะของ Blender */
+.modalbar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(24, 18, 32, .94);
+  border: 1px solid var(--cool);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .5);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.modalbar b { color: var(--cool); }
+.modalbar em { font-style: normal; color: var(--warn); }
+.modalbar span { flex-basis: 100%; font-size: 12px; color: var(--soft); }
+.modalbar kbd, .keyspanel kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  background: var(--panel2);
+  color: var(--ink);
+  font: 600 12px/1.5 ui-monospace, Consolas, monospace;
+  text-align: center;
+}
+
+/* แผงคีย์ลัด (? / F1) */
+.keyspanel {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(10, 7, 16, .7);
+}
+.keysbox {
+  position: relative;
+  width: min(100%, 860px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+}
+.keysbox h2 { margin: 0 0 2px; font-size: 20px; }
+.keysbox > .tip { margin: 0 0 14px; }
+.keysgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px 24px; }
+.keysgrid h3 { margin: 0 0 8px; font-size: 14px; color: var(--cool); }
+.keysgrid dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; align-items: baseline; }
+.keysgrid dt { white-space: nowrap; }
+.keysgrid dd { margin: 0; color: var(--soft); font-size: 13px; line-height: 1.5; }
+@media (max-width: 480px) { .keysgrid { grid-template-columns: 1fr; } }
+
+/* ── ปุ่มปิด .xbtn — เทมเพลตเดียวกับ src/style.css (วงกลมม่วงไล่สี ขอบครีม เงาใต้ปุ่ม กดแล้วยุบ)
+   หน้านี้ไม่ได้โหลด style.css ของเกม จึงยกกฎชุดเดียวกันมาไว้ตรงนี้ — แก้หน้าตาต้องแก้ทั้งสองที่ */
+.xbtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 243, 226, .44);
+  background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
+  color: #FFF3E2;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(20, 8, 32, .65), 0 8px 18px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .22);
+  transition: transform .06s ease, box-shadow .06s ease;
+}
+.xbtn svg { display: block; }
+.xbtn:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(20, 8, 32, .65), 0 3px 9px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .22); }
+.xbtn:focus-visible { outline: 2px solid #FFF3E2; outline-offset: 3px; }

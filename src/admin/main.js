@@ -88,7 +88,7 @@ function gateMsg(text, kind = '') {
 // @param opts.expect  ถ้าใส่ = ต้องพิมพ์ให้ตรงค่านี้ถึงจะกดยืนยันได้
 // @param opts.label   ป้ายเหนือช่องพิมพ์
 // @param opts.okText  ข้อความบนปุ่มยืนยัน
-function ask({ title, body = '', expect = null, label = '', okText = 'ยืนยัน' }) {
+function ask({ title, body = '', expect = null, label = '', okText = 'ยืนยัน', cancelText = 'ยกเลิก' }) {
   const box = $('modal');
   const input = $('modalInput');
   const ok = $('modalOk');
@@ -99,6 +99,7 @@ function ask({ title, body = '', expect = null, label = '', okText = 'ยืน�
   $('modalBody').innerHTML = body;
   $('modalLabel').textContent = label;
   ok.textContent = okText;
+  cancel.textContent = cancelText;
 
   const needType = expect !== null;
   field.classList.toggle('hidden', !needType);
@@ -212,7 +213,7 @@ async function afterSignIn(user) {
   $('whoEmail').textContent = user.email || '';
   $('gate').classList.add('hidden');
   $('app').classList.remove('hidden');
-  go('overview');
+  go(PAGES[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
 }
 
 async function signOut() {
@@ -225,11 +226,76 @@ async function signOut() {
 
 const PAGES = {};
 
+const PAGE_TITLE = {
+  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย',
+  scores: 'คะแนน', pulls: 'กาช่า', audit: 'ตรวจผิดปกติ',
+};
+
 function go(name) {
   [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.page === name));
   closeDrawer();
+  // จำหน้าไว้ใน # — รีเฟรชแล้วกลับมาหน้าเดิม ไม่เด้งไปภาพรวมทุกครั้ง
+  if (location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+  document.title = `${PAGE_TITLE[name] || ''} · MeowZing หลังบ้าน`;
+  window.scrollTo(0, 0);
   PAGES[name]();
 }
+
+/** หัวหน้าแบบเดียวกันทุกหน้า: ชื่อ + คำอธิบาย ซ้าย / ปุ่มหลักของหน้า ขวา */
+function pageHead(title, sub, actions = '') {
+  return `<div class="phead"><div><h2>${title}</h2><p class="sub">${sub}</p></div>`
+    + (actions ? `<div class="phead-actions">${actions}</div>` : '') + '</div>';
+}
+
+/** วงกลมตัวแรกของชื่อ — สีคงที่ต่อคน (ได้จาก id) จำคนจากสีได้เวลากวาดตาดูตาราง */
+function avatar(p) {
+  const name = String(p?.name || '?').trim() || '?';
+  let h = 7;
+  for (const ch of name + String(p?.id || '')) h = (h * 131 + ch.charCodeAt(0)) % 997;
+  h = (h * 37) % 360;
+  return `<span class="ava" style="--h:${h}" aria-hidden="true">${esc([...name][0].toUpperCase())}</span>`;
+}
+
+/** ช่องชื่อในตาราง: วงกลม + ชื่อ + ไอดีผู้ใช้บรรทัดล่าง */
+function whoCell(p) {
+  return `<div class="who-cell">${avatar(p)}<span class="nm"><b>${esc(p.name || 'แมวนิรนาม')}</b>`
+    + `${p.friend_code ? `<small>${esc(p.friend_code)}</small>` : ''}</span></div>`;
+}
+
+/** ป้ายประเภทบัญชี */
+function accountPill(p) {
+  return p.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>'
+    : `<span class="pill email" title="${esc(p.email)}">${esc(p.email)}</span>`;
+}
+
+/** เติมไอดีผู้ใช้ (friend_code) ให้แถวที่มาจาก view ของแอดมิน ซึ่งไม่มีคอลัมน์นี้ */
+async function attachCodes(rows, key = 'id') {
+  const ids = [...new Set(rows.map((r) => r[key]).filter(Boolean))];
+  if (!ids.length) return rows;
+  const c = await client();
+  const { data } = await c.from('players').select('id, friend_code').in('id', ids);
+  const byId = new Map((data || []).map((r) => [r.id, r.friend_code]));
+  return rows.map((r) => ({ ...r, friend_code: r.friend_code || byId.get(r[key]) || '' }));
+}
+
+/** คัดลอกข้อความ — เบราว์เซอร์ที่ไม่ยอมให้คัดลอก บอกให้คัดลอกเองแทนที่จะเงียบ */
+async function copyText(text, label = 'คัดลอกแล้ว') {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(label, 'good');
+  } catch {
+    toast('คัดลอกไม่ได้ ลองเลือกข้อความแล้วคัดลอกเอง: ' + text, 'bad');
+  }
+}
+
+const ICON = {
+  mail: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6.5L20.5 7"/></svg>',
+  gift: '<svg viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="11.5" rx="2"/><path d="M2.5 9h19M12 9v11.5M12 9c-2-4.5-6.5-4-6-1.2.3 1.4 3 1.2 6 1.2Zm0 0c2-4.5 6.5-4 6-1.2-.3 1.4-3 1.2-6 1.2Z"/></svg>',
+  alert: '<svg viewBox="0 0 24 24"><path d="M12 3 3 19.5h18L12 3Z"/><path d="M12 10v4.5M12 17.2v.3"/></svg>',
+  users: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6 0 4.5 1.6 5 4.4"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  broom: '<svg viewBox="0 0 24 24"><path d="M14 4 9.5 12.5M6 13h9l2 7H4l2-7Z"/><path d="M8 20v-3M12 20v-3"/></svg>',
+};
 
 /** โครงตารางแบบเดียวกันทุกหน้า จะได้ไม่ต้องเขียนซ้ำห้ารอบ */
 function tableHTML(cols, rows, opts = {}) {
@@ -247,51 +313,78 @@ function tableHTML(cols, rows, opts = {}) {
 // ── หน้า 1: ภาพรวม ──────────────────────────────────────────
 
 PAGES.overview = async () => {
-  $('page').innerHTML = '<h2>ภาพรวม</h2><p class="sub">กำลังโหลด…</p>';
+  $('page').innerHTML = pageHead('ภาพรวม', 'กำลังโหลด…');
   const c = await client();
   const { data, error } = await c.rpc('admin_overview');
   if (error) return fail(error);
 
   const d = data || {};
-  const card = (lbl, val, cls = '', note = '') =>
+  const card = (lbl, val, cls = '', note = '', extra = '') =>
     `<div class="card"><div class="lbl">${lbl}</div><div class="val ${cls}">${val}</div>${
       note ? `<div class="note">${note}</div>` : ''
-    }</div>`;
+    }${extra}</div>`;
+  const group = (title, dot, cards) =>
+    `<section class="statgroup" style="--dot:${dot}"><h3>${title}</h3><div class="cards">${cards}</div></section>`;
+
+  const total = Number(d.players_total) || 0;
+  const emailShare = total ? Math.round((Number(d.emails) / total) * 100) : 0;
+  const quick = (page, icon, title, note) =>
+    `<button class="qbtn" type="button" data-go="${page}"><span class="qi">${ICON[icon]}</span><b>${title}</b><span>${note}</span></button>`;
 
   $('page').innerHTML = `
-    <h2>ภาพรวม</h2>
-    <p class="sub">ตัวเลขทั้งชุดนี้อ่านมาจากฐานข้อมูลในคำสั่งเดียว จึงเป็นภาพ ณ เวลาเดียวกันทั้งหมด</p>
-    <div class="cards">
-      ${card('ผู้เล่นทั้งหมด', num(d.players_total), 'violet')}
-      ${card('เข้าด้วยอีเมล', num(d.emails), 'mint', 'ข้ามเครื่องได้ ข้อมูลไม่หาย')}
-      ${card('ผู้มาเยือน', num(d.guests), '', 'ล้างเบราว์เซอร์แล้วข้อมูลหาย')}
-      ${card('สมัครใหม่ 24 ชม.', num(d.new_24h))}
-      ${card('สมัครใหม่ 7 วัน', num(d.new_7d))}
-      ${card('เล่นใน 24 ชม.', num(d.active_24h), 'mint')}
-      ${card('เล่นใน 7 วัน', num(d.active_7d))}
-      ${card('ทองรวมทั้งระบบ', num(d.gold_total), 'gold')}
-      ${card('เพชรรวมทั้งระบบ', num(d.gems_total), 'violet')}
-      ${card('รอบวิ่งสะสม', num(d.runs_total))}
-      ${card('สุ่มกาช่าทั้งหมด', num(d.pulls_total))}
-      ${card('คะแนนสูงสุด', num(d.top_score), 'gold')}
+    ${pageHead('ภาพรวม', 'ตัวเลขทั้งชุดอ่านจากฐานข้อมูลในคำสั่งเดียว จึงเป็นภาพ ณ เวลาเดียวกันทั้งหมด',
+      '<button class="btn ghost" type="button" id="ovReload">โหลดใหม่</button>')}
+
+    <div class="quick">
+      ${quick('mail', 'gift', 'ส่งของขวัญ', 'ส่งจดหมายด้วยไอดีผู้ใช้ หรือทั้งเซิร์ฟ')}
+      ${quick('players', 'users', 'หาผู้เล่น', 'ดู แก้ไข หรือลบบัญชี')}
+      ${quick('audit', 'alert', 'ตรวจผิดปกติ', 'บัญชีที่ตัวเลขไม่น่าเป็นไปได้')}
     </div>
-    <p class="sub">
+
+    <div class="statgroups section">
+      ${group('ผู้เล่น', 'var(--violet)', `
+        ${card('ผู้เล่นทั้งหมด', num(d.players_total), 'violet')}
+        ${card('เข้าด้วยอีเมล', num(d.emails), 'mint', `${emailShare}% ของทั้งหมด · ข้อมูลไม่หาย`,
+          `<div class="split" title="สัดส่วนบัญชีอีเมล"><i style="width:${emailShare}%"></i></div>`)}
+        ${card('ผู้มาเยือน', num(d.guests), '', 'ล้างเบราว์เซอร์แล้วข้อมูลหาย')}
+        ${card('สมัครใหม่ 24 ชม.', num(d.new_24h))}
+        ${card('สมัครใหม่ 7 วัน', num(d.new_7d))}`)}
+      ${group('ความเคลื่อนไหว', 'var(--mint)', `
+        ${card('เล่นใน 24 ชม.', num(d.active_24h), 'mint')}
+        ${card('เล่นใน 7 วัน', num(d.active_7d))}
+        ${card('รอบวิ่งสะสม', num(d.runs_total))}
+        ${card('สุ่มกาช่าทั้งหมด', num(d.pulls_total))}`)}
+      ${group('เศรษฐกิจในเกม', 'var(--gold)', `
+        ${card('ทองรวมทั้งระบบ', num(d.gold_total), 'gold')}
+        ${card('เพชรรวมทั้งระบบ', num(d.gems_total), 'violet')}
+        ${card('คะแนนสูงสุด', num(d.top_score), 'gold')}`)}
+    </div>
+    <p class="sub footnote">
       "เล่นใน 24 ชม." นับจาก updated_at ของแถวผู้เล่น ซึ่งขยับทุกครั้งที่เกมซิงก์ข้อมูลขึ้นคลาวด์
       — ผู้เล่นที่เปิดเกมแบบออฟไลน์ล้วนจะไม่ถูกนับ
     </p>`;
+
+  $('ovReload').addEventListener('click', () => PAGES.overview());
+  $('page').querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
 };
 
 // ── หน้า 2: ผู้เล่น ─────────────────────────────────────────
 
 const PAGE_SIZE = 50;
+
+/** ชื่อด่านที่คนอ่านรู้เรื่อง แทน id ในฐานข้อมูล */
+const STAGE_NAME = {
+  night: 'ครัวกลางคืน', garden: 'สวนดอกไม้', cavern: 'ถ้ำคริสตัล',
+  beach: 'ชายหาดยามเย็น', space: 'ห้วงอวกาศ', snow: 'ทุ่งหิมะ',
+};
 let playersState = { q: '', kind: 'all', sort: 'updated_at', page: 0, rows: [], total: 0 };
 
 PAGES.players = async () => {
   $('page').innerHTML = `
-    <h2>ผู้เล่น</h2>
-    <p class="sub">กดที่แถวเพื่อดูรายละเอียด แก้ไข หรือลบ</p>
+    ${pageHead('ผู้เล่น', 'กดที่แถวเพื่อดูรายละเอียด ส่งของขวัญ แก้ไข หรือลบ',
+      `<button class="btn danger" id="purge">${ICON.broom}เคลียร์ผู้มาเยือน</button>`)}
     <div class="toolbar">
-      <input class="grow" id="q" type="text" placeholder="ค้นชื่อหรืออีเมล" value="${esc(playersState.q)}">
+      <input class="grow" id="q" type="search" placeholder="ไอดีผู้ใช้ 8 ตัว ชื่อ หรืออีเมล" value="${esc(playersState.q)}" autocomplete="off" spellcheck="false">
       <select id="kind">
         <option value="all">ทุกประเภท</option>
         <option value="email">เข้าด้วยอีเมล</option>
@@ -305,7 +398,6 @@ PAGES.players = async () => {
         <option value="best_score">คะแนนสูงสุด</option>
       </select>
       <span class="count" id="count"></span>
-      <button class="btn danger" id="purge">เคลียร์ผู้มาเยือน</button>
     </div>
     <div id="list"></div>
     <div class="pager">
@@ -343,10 +435,19 @@ async function loadPlayers() {
   const c = await client();
   let q = c.from('admin_players').select('*', { count: 'exact' });
 
-  if (s.q.trim()) {
-    // or() ของ postgrest ต้องหนีคอมมากับวงเล็บในคำค้น ไม่งั้นมันไปแยกเป็นเงื่อนไขใหม่
-    const term = s.q.trim().replace(/[(),]/g, ' ');
-    q = q.or(`name.ilike.%${term}%,email.ilike.%${term}%`);
+  const raw = s.q.trim();
+  if (raw) {
+    // ไอดีผู้ใช้ 8 ตัว = หาคนนั้นตรงตัว (ไอดีอยู่ในตาราง players ไม่ได้อยู่ใน view นี้)
+    // ถ้าไม่เจอ ค่อยค้นเป็นชื่อต่อ เพราะชื่อ 8 ตัวอักษรก็มี
+    const byCode = CODE_RE.test(raw.toUpperCase())
+      ? (await c.from('players').select('id').eq('friend_code', raw.toUpperCase()).limit(1)).data?.[0]?.id
+      : null;
+    if (byCode) q = q.eq('id', byCode);
+    else {
+      // or() ของ postgrest ต้องหนีคอมมากับวงเล็บในคำค้น ไม่งั้นมันไปแยกเป็นเงื่อนไขใหม่
+      const term = raw.replace(/[(),]/g, ' ');
+      q = q.or(`name.ilike.%${term}%,email.ilike.%${term}%`);
+    }
   }
   if (s.kind === 'guest') q = q.is('email', null);
   if (s.kind === 'email') q = q.not('email', 'is', null);
@@ -358,7 +459,7 @@ async function loadPlayers() {
 
   if (error) return failInto('list', error);
 
-  s.rows = data || [];
+  s.rows = await attachCodes(data || []);
   s.total = count || 0;
   $('count').textContent = `${num(s.total)} คน`;
   $('pageNo').textContent = `${s.page + 1} / ${Math.max(1, Math.ceil(s.total / PAGE_SIZE))}`;
@@ -366,10 +467,8 @@ async function loadPlayers() {
   $('next').disabled = (s.page + 1) * PAGE_SIZE >= s.total;
 
   const cols = [
-    { label: 'ชื่อ', cell: (r) => esc(r.name) },
-    { label: 'บัญชี', cell: (r) =>
-        r.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>'
-                   : `<span class="pill email">${esc(r.email)}</span>` },
+    { label: 'ผู้เล่น', cell: whoCell },
+    { label: 'บัญชี', cell: accountPill },
     { label: 'ทอง', num: true, cell: (r) => num(r.gold) },
     { label: 'เพชร', num: true, cell: (r) => num(r.gems) },
     { label: 'คะแนนสูงสุด', num: true, cell: (r) => num(r.best_score) },
@@ -378,7 +477,10 @@ async function loadPlayers() {
     { label: 'สมัครเมื่อ', cell: (r) => esc(when(r.created_at)) },
   ];
 
-  $('list').innerHTML = tableHTML(cols, s.rows, { onRow: true, empty: 'ไม่เจอผู้เล่นที่ตรงกับที่ค้น' });
+  $('list').innerHTML = tableHTML(cols, s.rows, { onRow: true, empty: 'ไม่เจอผู้เล่นที่ตรงกับไอดีหรือคำค้น' });
+  if (s.rows.length === 1 && CODE_RE.test(raw.toUpperCase()) && s.rows[0].friend_code === raw.toUpperCase()) {
+    openPlayer(s.rows[0]);
+  }
   el('tbody', $('list'))?.addEventListener('click', (e) => {
     const tr = e.target.closest('tr[data-i]');
     if (tr) openPlayer(s.rows[+tr.dataset.i]);
@@ -398,17 +500,31 @@ function closeDrawer() {
   $('scrim').classList.add('hidden');
 }
 
-function openPlayer(p) {
+async function openPlayer(p) {
   const jsonBox = (v) => `<div class="json">${esc(JSON.stringify(v ?? null, null, 2))}</div>`;
+  // แถวจากหน้าตรวจผิดปกติ/ลิงก์อื่นอาจยังไม่มีไอดีผู้ใช้ — เติมก่อนเปิด
+  if (!p.friend_code) [p] = await attachCodes([p]);
 
-  openDrawer(p.name || 'ผู้เล่น', `
-    <div class="formrow">
-      <label>รหัสผู้เล่น (แก้ไม่ได้)</label>
-      <div class="readonly">${esc(p.id)}</div>
+  openDrawer('รายละเอียดผู้เล่น', `
+    <div class="pcard">
+      ${avatar(p)}
+      <div class="pname">${esc(p.name || 'แมวนิรนาม')}</div>
+      <div class="pmeta">
+        ${p.friend_code ? `<code class="uid">${esc(p.friend_code)}</code>` : ''}
+        ${accountPill(p)}
+      </div>
+      <div class="pacts">
+        <button class="btn small" id="pMail" type="button">${ICON.gift}ส่งของขวัญ</button>
+        ${p.friend_code ? `<button class="btn ghost small" id="pCopy" type="button">${ICON.copy}คัดลอกไอดี</button>` : ''}
+      </div>
     </div>
-    <div class="formrow">
-      <label>บัญชี</label>
-      <div class="readonly">${p.is_guest ? 'ผู้มาเยือน — ไม่มีอีเมลผูกไว้' : esc(p.email)}</div>
+    <div class="pnums">
+      <div><span>ทอง</span><b>${num(p.gold)}</b></div>
+      <div><span>เพชร</span><b>${num(p.gems)}</b></div>
+      <div><span>คะแนนสูงสุด</span><b>${num(p.best_score)}</b></div>
+      <div><span>รอบวิ่ง</span><b>${num(p.stats?.runs ?? 0)}</b></div>
+      <div><span>สุ่มกาช่า</span><b>${num(p.pull_count)}</b></div>
+      <div><span>XP</span><b>${num(p.xp)}</b></div>
     </div>
     <div class="row2">
       <div class="formrow"><label>เข้าครั้งล่าสุด</label><div class="readonly">${esc(when(p.last_sign_in_at))}</div></div>
@@ -440,12 +556,17 @@ function openPlayer(p) {
       <div class="formrow"><label>ชุดที่ใส่</label><input id="f_outfit" type="text" value="${esc(p.outfit)}"></div>
     </div>
 
-    <div class="sect">ข้อมูลดิบ (อ่านอย่างเดียว)</div>
-    <div class="formrow"><label>สถิติสะสม</label>${jsonBox(p.stats)}</div>
-    <div class="formrow"><label>สมบัติกับขั้นตีบวก</label>${jsonBox(p.treasures)}</div>
-    <div class="formrow"><label>ชุดที่สุ่มได้แล้ว (${(p.owned || []).length} ชิ้น)</label>${jsonBox(p.owned)}</div>
-    <div class="formrow"><label>สมบัติที่ติดตั้ง</label>${jsonBox(p.equip)}</div>
-    <div class="formrow"><label>กิจกรรมที่กดรับแล้ว</label>${jsonBox(p.quests_claimed)}</div>
+    <details class="raw">
+      <summary>ข้อมูลดิบ (อ่านอย่างเดียว)</summary>
+      <div class="rawbody">
+        <div class="formrow"><label>รหัสระบบ (uuid)</label><div class="readonly">${esc(p.id)}</div></div>
+        <div class="formrow"><label>สถิติสะสม</label>${jsonBox(p.stats)}</div>
+        <div class="formrow"><label>สมบัติกับขั้นตีบวก</label>${jsonBox(p.treasures)}</div>
+        <div class="formrow"><label>ชุดที่สุ่มได้แล้ว (${(p.owned || []).length} ชิ้น)</label>${jsonBox(p.owned)}</div>
+        <div class="formrow"><label>สมบัติที่ติดตั้ง</label>${jsonBox(p.equip)}</div>
+        <div class="formrow"><label>กิจกรรมที่กดรับแล้ว</label>${jsonBox(p.quests_claimed)}</div>
+      </div>
+    </details>
 
     <div class="drawer-actions">
       <button class="btn" id="save">บันทึก</button>
@@ -461,6 +582,8 @@ function openPlayer(p) {
     </p>`);
 
   $('cancel').addEventListener('click', closeDrawer);
+  $('pMail').addEventListener('click', () => mailTo(p));
+  $('pCopy')?.addEventListener('click', () => copyText(p.friend_code, 'คัดลอกไอดี ' + p.friend_code + ' แล้ว'));
   $('save').addEventListener('click', () => savePlayer(p));
   $('del').addEventListener('click', () => deletePlayer(p));
 }
@@ -634,8 +757,7 @@ function openPurge() {
 
 PAGES.scores = async () => {
   $('page').innerHTML = `
-    <h2>คะแนน</h2>
-    <p class="sub">สถิติสูงสุดของแต่ละคนแยกตามด่าน — ลบได้ทีละแถวเมื่อเจอคะแนนที่ไม่น่าเป็นไปได้</p>
+    ${pageHead('คะแนน', 'สถิติสูงสุดของแต่ละคนแยกตามด่าน — ลบได้ทีละแถวเมื่อเจอคะแนนที่ไม่น่าเป็นไปได้')}
     <div class="toolbar">
       <input class="grow" id="sq" type="text" placeholder="ค้นชื่อผู้เล่น">
       <span class="count" id="scount"></span>
@@ -656,17 +778,17 @@ async function loadScores() {
   const { data, error, count } = await q.order('score', { ascending: false }).range(0, 199);
   if (error) return failInto('slist', error);
 
-  const rows = data || [];
+  const rows = await attachCodes(data || [], 'player_id');
   $('scount').textContent = `${num(count || 0)} แถว (โชว์สูงสุด 200)`;
 
   const cols = [
-    { label: 'ชื่อ', cell: (r) => esc(r.name) },
-    { label: 'บัญชี', cell: (r) => r.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>' : `<span class="pill email">${esc(r.email)}</span>` },
-    { label: 'ด่าน', cell: (r) => esc(r.stage_id) },
+    { label: 'ผู้เล่น', cell: (r) => whoCell({ ...r, id: r.player_id }) },
+    { label: 'บัญชี', cell: accountPill },
+    { label: 'ด่าน', cell: (r) => esc(STAGE_NAME[r.stage_id] || r.stage_id) },
     { label: 'คะแนน', num: true, cell: (r) => num(r.score) },
     { label: 'ระยะทาง', num: true, cell: (r) => num(r.distance) + ' ม.' },
     { label: 'เมื่อ', cell: (r) => esc(when(r.updated_at)) },
-    { label: '', cell: () => '<button class="btn danger" data-act="del">ลบ</button>' },
+    { label: '', cell: () => '<button class="btn danger small" data-act="del">ลบ</button>' },
   ];
 
   $('slist').innerHTML = tableHTML(cols, rows, { empty: 'ยังไม่มีคะแนน' });
@@ -698,8 +820,7 @@ async function loadScores() {
 
 PAGES.pulls = async () => {
   $('page').innerHTML = `
-    <h2>ประวัติกาช่า</h2>
-    <p class="sub">200 รายการล่าสุด พร้อมสัดส่วนความหายากที่ออกจริง — เอาไว้เทียบกับอัตราที่ตั้งไว้ในเกม</p>
+    ${pageHead('ประวัติกาช่า', '200 รายการล่าสุด พร้อมสัดส่วนความหายากที่ออกจริง — เอาไว้เทียบกับอัตราที่ตั้งไว้ในเกม')}
     <div id="pstats" class="cards"></div>
     <div id="plist"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
 
@@ -707,22 +828,24 @@ PAGES.pulls = async () => {
   const { data, error } = await c.from('admin_pulls').select('*').order('created_at', { ascending: false }).range(0, 199);
   if (error) return failInto('plist', error);
 
-  const rows = data || [];
+  const rows = await attachCodes(data || [], 'player_id');
 
   // สัดส่วนความหายากจากที่ออกจริง — ตัวเลขนี้ควรใกล้อัตราที่ตั้งไว้ในเกม
   // ถ้าเพี้ยนไปมากแปลว่าสูตรสุ่มมีปัญหา หรือมีคนยิง API ตรงเข้ามาเขียนเอง
   const byRarity = {};
   rows.forEach((r) => { byRarity[r.rarity || '—'] = (byRarity[r.rarity || '—'] || 0) + 1; });
+  const RANK = ['SS', 'S', 'A', 'B', 'C'];
+  const rk = (k) => (RANK.includes(k) ? RANK.indexOf(k) : 99);
   $('pstats').innerHTML = Object.entries(byRarity)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => rk(a[0]) - rk(b[0]) || b[1] - a[1])
     .map(([k, v]) => `<div class="card"><div class="lbl">${esc(k)}</div><div class="val violet">${v}</div>
         <div class="note">${rows.length ? ((v / rows.length) * 100).toFixed(1) : 0}% ของที่โชว์</div></div>`)
     .join('') || '<div class="card"><div class="lbl">ยังไม่มีการสุ่ม</div></div>';
 
   const cols = [
-    { label: 'ชื่อ', cell: (r) => esc(r.name) },
+    { label: 'ผู้เล่น', cell: (r) => whoCell({ ...r, id: r.player_id }) },
     { label: 'ได้ชุด', cell: (r) => esc(r.outfit_id || '—') },
-    { label: 'ความหายาก', cell: (r) => esc(r.rarity || '—') },
+    { label: 'ความหายาก', cell: (r) => (r.rarity ? `<span class="pill rar-${esc(r.rarity)}">${esc(r.rarity)}</span>` : '—') },
     { label: 'ทองที่ได้', num: true, cell: (r) => num(r.gold_won) },
     { label: 'ของใหม่', cell: (r) => (r.is_new ? '<span class="pill email">ใหม่</span>' : '—') },
     { label: 'เมื่อ', cell: (r) => esc(when(r.created_at)) },
@@ -742,12 +865,23 @@ PAGES.pulls = async () => {
 // เหตุผลอยู่ในหัวไฟล์ supabase/mail.sql — สรุปสั้น ๆ คือถ้าเขียนลงแถวผู้เล่น
 // ตอนที่เจ้าของออนไลน์อยู่ การซิงก์ครั้งถัดไปของเขาจะทับของขวัญหายไปเงียบ ๆ
 
-const mailState = { to: null, all: false, rows: [], found: [] };
+const mailState = { to: null, mode: 'one', rows: [], found: [] };
+
+/** ไอดีผู้ใช้ที่ผู้เล่นเห็นในเกม = รหัสแมวน้อย 8 ตัว (players.friend_code) */
+const CODE_RE = /^[A-Z0-9]{8}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** ยังไม่ได้รัน mail_welcome.sql = ตารางยังไม่มีคอลัมน์ kind/active */
+function needWelcomeSql(error) {
+  return /kind|active|eligible|to_code/.test(String(error?.message || ''));
+}
+const WELCOME_SQL_HINT = 'ต้องรัน supabase/mail_welcome.sql ใน Supabase ก่อน';
+
+const MODE_BTN = { one: 'ส่งจดหมาย', all: 'ส่งให้ทุกคน', welcome: 'ตั้งจดหมายต้อนรับ' };
 
 PAGES.mail = async () => {
   $('page').innerHTML = `
-    <h2>ส่งจดหมายและของขวัญ</h2>
-    <p class="sub">ของขวัญจะเข้ากล่องจดหมายในเกม ผู้เล่นต้องกดรับเอง ทองกับเพชรบวกให้ตอนกดรับ ไม่ใช่ตอนส่ง</p>
+    ${pageHead('จดหมายและของขวัญ', 'ของขวัญจะเข้ากล่องจดหมายในเกม ผู้เล่นต้องกดรับเอง ทองกับเพชรบวกให้ตอนกดรับ ไม่ใช่ตอนส่ง')}
 
     <div class="mailform">
       <div class="fld">
@@ -755,12 +889,14 @@ PAGES.mail = async () => {
         <div class="modes">
           <button class="mode on" id="mModeOne" type="button">เลือกทีละคน</button>
           <button class="mode" id="mModeAll" type="button">ทั้งเซิร์ฟ</button>
+          <button class="mode" id="mModeWelcome" type="button">ต้อนรับบัญชีใหม่</button>
         </div>
-        <div id="mOne">
+        <div id="mOne" class="onebox">
           <div class="pickrow">
-            <input id="mTo" type="search" placeholder="พิมพ์ชื่อหรืออีเมลเพื่อค้นหา" autocomplete="off">
+            <input id="mTo" type="search" placeholder="ไอดีผู้ใช้ 8 ตัว ชื่อ หรืออีเมล" autocomplete="off" spellcheck="false">
             <button class="btn ghost" id="mClear" type="button">ล้าง</button>
           </div>
+          <small class="note">ไอดีผู้ใช้ = "รหัสแมวน้อย" ในหน้าโปรไฟล์ของผู้เล่น เช่น 8QQMVX2X</small>
           <div id="mFound" class="found"></div>
         </div>
         <div id="mPicked" class="picked"></div>
@@ -785,6 +921,10 @@ PAGES.mail = async () => {
       </div>
     </div>
 
+    <h3 class="mailsent">จดหมายพิเศษ · ต้อนรับบัญชีใหม่</h3>
+    <p class="sub">ส่งให้อัตโนมัติทุกครั้งที่มีคนสร้างบัญชีใหม่ แก้ข้อความหรือยกเลิกได้ตลอด ผู้เล่นที่มีบัญชีอยู่ก่อนวันตั้งจดหมายจะไม่ได้</p>
+    <div id="mWelcome" class="welcomes"><div class="empty">กำลังโหลด…</div></div>
+
     <h3 class="mailsent">จดหมายที่ส่งไปแล้ว</h3>
     <div id="mList"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
 
@@ -796,42 +936,89 @@ PAGES.mail = async () => {
     clearTimeout(timer);
     timer = setTimeout(searchPlayers, 260);
   });
+  // วางไอดีแล้วกด Enter = ค้นทันที ไม่ต้องรอ
+  to.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    clearTimeout(timer);
+    searchPlayers();
+  });
   $('mClear').addEventListener('click', () => {
     mailState.to = null;
     to.value = '';
     $('mFound').innerHTML = '';
     renderPicked();
   });
-  $('mModeOne').addEventListener('click', () => setMode(false));
-  $('mModeAll').addEventListener('click', () => setMode(true));
+  $('mModeOne').addEventListener('click', () => setMode('one'));
+  $('mModeAll').addEventListener('click', () => setMode('all'));
+  $('mModeWelcome').addEventListener('click', () => setMode('welcome'));
   $('mSend').addEventListener('click', sendMail);
 
-  setMode(false);
+  setMode('one');
+  // มาจากปุ่ม "ส่งของขวัญ" ในลิ้นชักผู้เล่น = เลือกผู้รับไว้ให้แล้ว
+  if (mailState.preset) {
+    mailState.to = mailState.preset;
+    mailState.preset = null;
+    renderPicked();
+    $('mTitle').focus();
+  }
   loadSentMail();
 };
 
+/** เปิดหน้าจดหมายพร้อมเลือกผู้รับคนนี้ไว้ */
+function mailTo(p) {
+  mailState.preset = { id: p.id, name: p.name, email: p.email ?? null, friend_code: p.friend_code || '' };
+  go('mail');
+}
+
+/**
+ * ค้นผู้รับ — พิมพ์ไอดีผู้ใช้ (รหัสแมวน้อย 8 ตัว) หรือ uuid = หาตรงตัว
+ * นอกนั้นค้นจากชื่อ/อีเมลเหมือนเดิม แล้วแนบไอดีของแต่ละคนมาให้เห็นด้วย
+ */
 async function searchPlayers() {
   const term = $('mTo').value.trim();
   const box = $('mFound');
   if (term.length < 2) return (box.innerHTML = '');
 
   const c = await client();
-  const safe = term.replace(/[(),]/g, ' ');
-  const { data, error } = await c
-    .from('admin_players')
-    .select('id, name, email')
-    .or(`name.ilike.%${safe}%,email.ilike.%${safe}%`)
-    .limit(8);
+  const code = term.toUpperCase();
+  let rows = [];
 
-  if (error) return (box.innerHTML = `<div class="empty">ค้นหาไม่ได้: ${esc(errText(error))}</div>`);
+  if (CODE_RE.test(code) || UUID_RE.test(term)) {
+    const q = c.from('players').select('id, name, friend_code');
+    const { data, error } = await (UUID_RE.test(term) ? q.eq('id', term) : q.eq('friend_code', code)).limit(1);
+    if (error) return (box.innerHTML = `<div class="empty">ค้นหาไม่ได้: ${esc(errText(error))}</div>`);
+    rows = data || [];
+    // เจอไอดีตรงตัวแล้ว เติมอีเมลให้รู้ว่าเป็นบัญชีแบบไหน (players ไม่มีอีเมล)
+    if (rows.length) {
+      const { data: acc } = await c.from('admin_players').select('id, email').eq('id', rows[0].id).limit(1);
+      rows[0] = { ...rows[0], email: acc?.[0]?.email ?? null };
+    }
+  }
 
-  mailState.found = data || [];
-  if (!mailState.found.length) return (box.innerHTML = '<div class="empty">ไม่เจอผู้เล่นที่ตรงกับคำค้น</div>');
+  // ไอดี 8 ตัวบางทีก็เป็นชื่อได้ (เช่น "MEOWMEOW") หาไอดีไม่เจอค่อยค้นแบบชื่อต่อ
+  if (!rows.length) {
+    const safe = term.replace(/[(),]/g, ' ');
+    const { data, error } = await c
+      .from('admin_players')
+      .select('id, name, email')
+      .or(`name.ilike.%${safe}%,email.ilike.%${safe}%`)
+      .limit(8);
+    if (error) return (box.innerHTML = `<div class="empty">ค้นหาไม่ได้: ${esc(errText(error))}</div>`);
+    rows = data || [];
+    if (rows.length) {
+      const { data: codes } = await c.from('players').select('id, friend_code').in('id', rows.map((r) => r.id));
+      const byId = new Map((codes || []).map((r) => [r.id, r.friend_code]));
+      rows = rows.map((r) => ({ ...r, friend_code: byId.get(r.id) || '' }));
+    }
+  }
 
-  box.innerHTML = mailState.found
+  mailState.found = rows;
+  if (!rows.length) return (box.innerHTML = '<div class="empty">ไม่เจอผู้เล่นที่ตรงกับไอดีหรือคำค้น</div>');
+
+  box.innerHTML = rows
     .map((p, i) => `<button class="foundrow" data-i="${i}" type="button">
         <b>${esc(p.name)}</b>
-        <span>${p.email ? esc(p.email) : 'ผู้มาเยือน'}</span>
+        <span>${p.friend_code ? `<code class="uid">${esc(p.friend_code)}</code> · ` : ''}${p.email ? esc(p.email) : 'ผู้มาเยือน'}</span>
       </button>`)
     .join('');
 
@@ -845,21 +1032,24 @@ async function searchPlayers() {
   });
 }
 
-/** สลับระหว่างส่งทีละคนกับส่งทั้งเซิร์ฟ */
-function setMode(all) {
-  mailState.all = all;
+/** สลับโหมดผู้รับ: one = ทีละคน / all = ทั้งเซิร์ฟ / welcome = ต้อนรับบัญชีใหม่ */
+function setMode(mode) {
+  mailState.mode = mode;
   // ล้างคนที่เลือกไว้ทุกครั้งที่สลับโหมด ไม่ให้เหลือค้างแล้วส่งผิดคน
   mailState.to = null;
   $('mTo').value = '';
   $('mFound').innerHTML = '';
-  $('mOne').classList.toggle('hidden', all);
-  $('mModeOne').classList.toggle('on', !all);
-  $('mModeAll').classList.toggle('on', all);
+  $('mOne').classList.toggle('hidden', mode !== 'one');
+  $('mModeOne').classList.toggle('on', mode === 'one');
+  $('mModeAll').classList.toggle('on', mode === 'all');
+  $('mModeWelcome').classList.toggle('on', mode === 'welcome');
+  $('mSend').textContent = MODE_BTN[mode];
   renderPicked();
 }
 
 function renderPicked() {
-  if (mailState.all) {
+  const mode = mailState.mode;
+  if (mode === 'all') {
     // บอกให้ชัดตรงนี้เลยว่าใครจะได้บ้าง เพราะ "ทั้งเซิร์ฟ" ตีความได้หลายแบบ
     // ฉบับที่ส่งทั้งเซิร์ฟเก็บเป็นแถวเดียวที่ไม่ระบุผู้รับ ใครเปิดเกมมาก็เห็น
     // คนที่สมัครทีหลังจึงได้ด้วย
@@ -869,58 +1059,83 @@ function renderPicked() {
     $('mHint').textContent = '';
     return;
   }
+  if (mode === 'welcome') {
+    $('mPicked').innerHTML = '<span class="pill welcome">บัญชีใหม่ทุกบัญชี</span> '
+      + '<span class="note">ส่งอัตโนมัติให้ทุกบัญชีที่สร้างหลังจากกดตั้ง · ผู้เล่นเดิมไม่ได้</span>';
+    $('mSend').disabled = false;
+    $('mHint').textContent = '';
+    return;
+  }
 
   const p = mailState.to;
   $('mPicked').innerHTML = p
-    ? `<span class="pill email">${esc(p.name)}</span> <span class="note">${p.email ? esc(p.email) : 'ผู้มาเยือน'}</span>`
+    ? `<span class="pill email">${esc(p.name)}</span>${p.friend_code ? ` <code class="uid">${esc(p.friend_code)}</code>` : ''}`
+      + ` <span class="note">${p.email ? esc(p.email) : 'ผู้มาเยือน'}</span>`
     : '<span class="note">ยังไม่ได้เลือกผู้รับ</span>';
   $('mSend').disabled = !p;
   $('mHint').textContent = p ? '' : 'เลือกผู้รับก่อน';
 }
 
+/** ค่าทอง/เพชรจากช่องกรอก — ติดลบหรือพิมพ์มั่วกลายเป็น 0 */
+const giftVal = (id) => Math.max(0, Math.floor(Number($(id).value) || 0));
+const giftText = (gold, gems) => (gold || gems
+  ? `ทอง ${num(gold)} • เพชร ${num(gems)}`
+  : 'ไม่มีของขวัญแนบ (ข้อความอย่างเดียว)');
+
 async function sendMail() {
-  const all = mailState.all;
+  const mode = mailState.mode;
   const p = mailState.to;
-  if (!all && !p) return;
+  if (mode === 'one' && !p) return;
 
   const title = $('mTitle').value.trim();
   const body = $('mBody').value;
-  const gold = Math.max(0, Math.floor(Number($('mGold').value) || 0));
-  const gems = Math.max(0, Math.floor(Number($('mGems').value) || 0));
+  const gold = giftVal('mGold');
+  const gems = giftVal('mGems');
 
   if (!title) return toast('ใส่หัวข้อก่อน', 'bad');
 
   // ให้ทวนของที่จะส่งอีกรอบ เพราะพิมพ์ศูนย์เกินตัวเดียวก็แจกเกินสิบเท่าแล้ว
-  const gift = gold || gems
-    ? `ทอง ${num(gold)} • เพชร ${num(gems)}`
-    : 'ไม่มีของขวัญแนบ (ข้อความอย่างเดียว)';
   // ask() ใส่ body ด้วย innerHTML จึงต้อง esc ก่อน — หัวข้อมาจากช่องพิมพ์
-  // ถ้าไม่ esc คนที่พิมพ์แท็กลงไปจะทำให้กล่องยืนยันแสดงผลเพี้ยน
   // ส่งทั้งเซิร์ฟถอนคืนไม่ได้และกระทบทุกคน จึงบังคับพิมพ์ยืนยันก่อน
-  // ต่างจากส่งทีละคนที่กดยืนยันเฉย ๆ พอ เพราะพลาดแล้วแก้ได้ด้วยการคุยกับคนเดียว
+  // ส่งทีละคนกับจดหมายต้อนรับกดยืนยันเฉย ๆ พอ (พลาดแล้วยังแก้/ยกเลิกได้)
+  let title2 = 'ส่งให้ผู้เล่นทุกคน?';
+  let extra = '<br><br>ทุกคนที่เปิดเกมจะได้รับ รวมคนที่สมัครใหม่ทีหลัง และถอนคืนไม่ได้';
+  if (mode === 'one') {
+    title2 = 'ส่งจดหมายถึง ' + p.name + '?';
+    extra = p.friend_code ? '<br>ไอดีผู้ใช้: ' + esc(p.friend_code) : '';
+  } else if (mode === 'welcome') {
+    title2 = 'ตั้งจดหมายต้อนรับบัญชีใหม่?';
+    extra = '<br><br>ทุกบัญชีที่สร้างหลังจากนี้จะได้ฉบับนี้อัตโนมัติ ผู้เล่นเดิมไม่ได้ แก้ข้อความหรือยกเลิกทีหลังได้';
+  }
   const ok = await ask({
-    title: all ? 'ส่งให้ผู้เล่นทุกคน?' : 'ส่งจดหมายถึง ' + p.name + '?',
-    body: `หัวข้อ: ${esc(title)}<br>${esc(gift)}`
-      + (all ? '<br><br>ทุกคนที่เปิดเกมจะได้รับ รวมคนที่สมัครใหม่ทีหลัง และถอนคืนไม่ได้' : ''),
-    expect: all ? 'ทั้งเซิร์ฟ' : null,
-    label: all ? 'พิมพ์ว่า ทั้งเซิร์ฟ เพื่อยืนยัน' : '',
-    okText: 'ส่งเลย',
+    title: title2,
+    body: `หัวข้อ: ${esc(title)}<br>${esc(giftText(gold, gems))}${extra}`,
+    expect: mode === 'all' ? 'ทั้งเซิร์ฟ' : null,
+    label: mode === 'all' ? 'พิมพ์ว่า ทั้งเซิร์ฟ เพื่อยืนยัน' : '',
+    okText: mode === 'welcome' ? 'ตั้งเลย' : 'ส่งเลย',
   });
   if (!ok) return;
 
   $('mSend').disabled = true;
   const c = await client();
-  const { error } = await c.from('mail_outbox').insert({
-    // null = ส่งทั้งเซิร์ฟ ใช้แถวเดียวไม่ว่าจะมีผู้เล่นกี่คน
-    to_player: all ? null : p.id,
+  const row = {
+    // null = ไม่ระบุผู้รับ (ทั้งเซิร์ฟ หรือ ต้อนรับบัญชีใหม่) แถวเดียวไม่ว่าจะมีผู้เล่นกี่คน
+    to_player: mode === 'one' ? p.id : null,
     title, body, gold, gems,
     sent_by: (await c.auth.getUser()).data.user?.id ?? null,
-  });
+  };
+  // ใส่ kind เฉพาะจดหมายต้อนรับ — ฉบับธรรมดายังส่งได้แม้ยังไม่ได้รัน mail_welcome.sql
+  if (mode === 'welcome') row.kind = 'welcome';
+  const { error } = await c.from('mail_outbox').insert(row);
   $('mSend').disabled = false;
 
-  if (error) return toast('ส่งไม่สำเร็จ: ' + errText(error), 'bad');
+  if (error) {
+    return toast('ส่งไม่สำเร็จ: ' + (needWelcomeSql(error) ? WELCOME_SQL_HINT : errText(error)), 'bad');
+  }
 
-  toast(all ? 'ส่งให้ผู้เล่นทุกคนแล้ว' : 'ส่งให้ ' + p.name + ' แล้ว', 'good');
+  toast(mode === 'one' ? 'ส่งให้ ' + p.name + ' แล้ว'
+    : mode === 'all' ? 'ส่งให้ผู้เล่นทุกคนแล้ว'
+    : 'ตั้งจดหมายต้อนรับแล้ว บัญชีใหม่จะได้ตั้งแต่ตอนนี้', 'good');
   $('mTitle').value = '';
   $('mBody').value = '';
   $('mGold').value = '0';
@@ -930,16 +1145,24 @@ async function sendMail() {
 
 async function loadSentMail() {
   const c = await client();
-  const { data, error } = await c.from('admin_mail').select('*').limit(100);
-  if (error) return failInto('mList', error);
+  const { data, error } = await c.from('admin_mail').select('*').limit(200);
+  if (error) {
+    failInto('mList', error);
+    $('mWelcome').innerHTML = '';
+    return;
+  }
 
-  mailState.rows = data || [];
+  const rows = data || [];
+  // ยังไม่ได้รัน mail_welcome.sql = ไม่มีคอลัมน์ kind ทุกฉบับถือเป็นจดหมายธรรมดา
+  const hasKind = rows.length === 0 || 'kind' in rows[0];
+  mailState.rows = rows.filter((r) => r.kind !== 'welcome');
+  renderWelcome(rows.filter((r) => r.kind === 'welcome'), hasKind);
+
   const cols = [
-    { label: 'ถึง', cell: (r) => esc(r.to_name) },
+    { label: 'ถึง', cell: (r) => esc(r.to_name) + (r.to_code ? ` <code class="uid">${esc(r.to_code)}</code>` : '') },
     { label: 'หัวข้อ', cell: (r) => esc(r.title) },
     { label: 'ทอง', num: true, cell: (r) => num(r.gold) },
     { label: 'เพชร', num: true, cell: (r) => num(r.gems) },
-    // ฉบับที่ส่งทั้งเซิร์ฟมีผู้รับหลายคน ตัวเลขนี้จึงบอกว่ากดรับไปแล้วกี่คน
     // ฉบับทั้งเซิร์ฟมีผู้รับหลายคน ตัวเลขจำนวนคนที่กดรับจึงมีความหมาย
     // ส่วนฉบับที่ส่งทีละคนมีได้แค่ 0 กับ 1 บอกเป็นสถานะอ่านง่ายกว่าบอกเป็นเลข
     { label: 'รับแล้ว', cell: (r) => (r.to_player === null
@@ -948,13 +1171,165 @@ async function loadSentMail() {
                    : '<span class="pill guest">ยังไม่รับ</span>') },
     { label: 'ส่งเมื่อ', cell: (r) => esc(when(r.sent_at)) },
   ];
+  // ยกเลิก/แก้ได้เฉพาะหลังรัน mail_welcome.sql (ต้องมีคอลัมน์ active)
+  if (hasKind) {
+    cols.push(
+      { label: 'สถานะ', cell: (r) => (r.active === false
+          ? '<span class="pill warn">ยกเลิกแล้ว</span>'
+          : '<span class="pill email">ส่งอยู่</span>') },
+      { label: '', cell: (r) => {
+        // ส่งทีละคนแล้วเขารับไปแล้ว = จบเรื่อง ยกเลิกหรือแก้ก็ไม่มีผลอะไรแล้ว
+        if (r.to_player !== null && r.claims) return '<span class="note">รับไปแล้ว</span>';
+        return '<div class="rowacts">'
+          + '<button class="btn ghost small" type="button" data-act="edit">แก้ไข</button>'
+          + (r.active === false
+            ? '<button class="btn small" type="button" data-act="on">เปิดส่งอีกครั้ง</button>'
+            : '<button class="btn danger small" type="button" data-act="off">ยกเลิก</button>')
+          + '</div>';
+      } },
+    );
+  }
   $('mList').innerHTML = tableHTML(cols, mailState.rows, { empty: 'ยังไม่เคยส่งจดหมาย' });
+  el('tbody', $('mList'))?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const r = mailState.rows[+b.closest('tr').dataset.i];
+    if (b.dataset.act === 'edit') editMail(r);
+    else setMailActive(r, b.dataset.act === 'on');
+  });
+}
+
+// ── จดหมายพิเศษ: ต้อนรับบัญชีใหม่ ──────────────────────────
+// แสดงเป็นการ์ดแยกจากตาราง เพราะมันไม่ได้ "ส่งแล้วจบ" แบบฉบับธรรมดา
+// มันยังทำงานอยู่ตลอด (ส่งให้บัญชีใหม่ทุกบัญชี) จึงต้องเห็นสถานะกับปุ่มคุมชัด ๆ
+
+let welcomeRows = [];
+
+function renderWelcome(rows, hasKind) {
+  welcomeRows = rows;
+  const box = $('mWelcome');
+  if (!hasKind) {
+    box.innerHTML = `<div class="empty">${WELCOME_SQL_HINT} แล้วรีเฟรชหน้านี้</div>`;
+    return;
+  }
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty">ยังไม่มีจดหมายต้อนรับ — เลือก "ต้อนรับบัญชีใหม่" ในฟอร์มข้างบนเพื่อตั้ง</div>';
+    return;
+  }
+
+  box.innerHTML = rows.map((r, i) => `
+    <article class="wcard${r.active ? '' : ' off'}">
+      <header>
+        <span class="pill ${r.active ? 'welcome' : 'warn'}">${r.active ? 'กำลังส่ง' : 'ยกเลิกแล้ว'}</span>
+        <b>${esc(r.title)}</b>
+      </header>
+      ${r.body ? `<p class="wbody">${esc(r.body)}</p>` : ''}
+      <dl class="wmeta">
+        <div><dt>ของขวัญ</dt><dd>${esc(giftText(Number(r.gold), Number(r.gems)))}</dd></div>
+        <div><dt>ส่งให้บัญชีที่สร้างตั้งแต่</dt><dd>${esc(when(r.sent_at))}</dd></div>
+        <div><dt>บัญชีใหม่ที่ได้รับ</dt><dd>${num(r.eligible)} บัญชี · กดรับแล้ว ${num(r.claims)}</dd></div>
+        ${r.updated_at ? `<div><dt>แก้ล่าสุด</dt><dd>${esc(when(r.updated_at))}</dd></div>` : ''}
+      </dl>
+      <div class="wact">
+        <button class="btn ghost" type="button" data-edit="${i}">แก้ไขข้อความ</button>
+        ${r.active
+          ? `<button class="btn danger" type="button" data-off="${i}">ยกเลิกจดหมายนี้</button>`
+          : `<button class="btn" type="button" data-on="${i}">เปิดส่งอีกครั้ง</button>`}
+      </div>
+    </article>`).join('');
+
+  box.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => editMail(welcomeRows[b.dataset.edit])));
+  box.querySelectorAll('[data-off]').forEach((b) => b.addEventListener('click', () => setMailActive(welcomeRows[b.dataset.off], false)));
+  box.querySelectorAll('[data-on]').forEach((b) => b.addEventListener('click', () => setMailActive(welcomeRows[b.dataset.on], true)));
+}
+
+/** ผู้รับของฉบับนี้ เป็นคำที่คนอ่านรู้เรื่อง ใช้ในกล่องยืนยัน */
+function mailWho(r) {
+  if (r.kind === 'welcome') return 'บัญชีใหม่ทุกบัญชี';
+  if (r.to_player === null) return 'ผู้เล่นทุกคน';
+  return esc(r.to_name) + (r.to_code ? ` (${esc(r.to_code)})` : '');
+}
+
+/** แก้ข้อความ/ของขวัญ (ได้ทั้งจดหมายต้อนรับและฉบับธรรมดา) — ใช้ลิ้นชักข้างเดียวกับหน้าผู้เล่น */
+function editMail(r) {
+  const welcome = r.kind === 'welcome';
+  openDrawer(welcome ? 'แก้จดหมายต้อนรับ' : 'แก้จดหมาย', `
+    <p class="sub">ถึง: <b>${mailWho(r)}</b></p>
+    <div class="mailform flat">
+      <label class="fld"><span>หัวข้อ</span>
+        <input id="wTitle" maxlength="80" value="${esc(r.title)}"></label>
+      <label class="fld"><span>ข้อความ</span>
+        <textarea id="wBody" rows="8" maxlength="1000">${esc(r.body)}</textarea></label>
+      <div class="giftrow">
+        <label class="fld"><span>เหรียญทอง</span>
+          <input id="wGold" type="number" min="0" max="9999999" step="100" value="${Number(r.gold) || 0}"></label>
+        <label class="fld"><span>อัญมณีสีชมพู</span>
+          <input id="wGems" type="number" min="0" max="9999999" step="10" value="${Number(r.gems) || 0}"></label>
+      </div>
+      <p class="note">คนที่กดรับไปแล้วได้ของตามจำนวนเดิม ส่วนคนที่ยังไม่รับ${welcome ? ' และบัญชีใหม่ต่อจากนี้' : ''} จะเห็นฉบับที่แก้แล้วตอนเปิดกล่องจดหมายครั้งถัดไป</p>
+      <div class="sendrow">
+        <button class="btn" id="wSave" type="button">บันทึก</button>
+        <button class="btn ghost" id="wCancel" type="button">ยกเลิก</button>
+      </div>
+    </div>`);
+
+  $('wCancel').addEventListener('click', closeDrawer);
+  $('wSave').addEventListener('click', async () => {
+    const title = $('wTitle').value.trim();
+    if (!title) return toast('ใส่หัวข้อก่อน', 'bad');
+    const btn = $('wSave');
+    btn.disabled = true;
+    const c = await client();
+    const { error } = await c.from('mail_outbox').update({
+      title,
+      body: $('wBody').value,
+      gold: giftVal('wGold'),
+      gems: giftVal('wGems'),
+      updated_at: new Date().toISOString(),
+    }).eq('id', r.id);
+    btn.disabled = false;
+    if (error) return toast('บันทึกไม่สำเร็จ: ' + errText(error), 'bad');
+    toast(welcome ? 'บันทึกจดหมายต้อนรับแล้ว' : 'บันทึกจดหมายแล้ว', 'good');
+    closeDrawer();
+    loadSentMail();
+  });
+}
+
+/**
+ * ยกเลิก / เปิดส่งอีกครั้ง — ใช้คอลัมน์ active ตัวเดียวทั้งจดหมายต้อนรับและฉบับธรรมดา
+ * ยกเลิก = ซ่อนจากคนที่ยังไม่ได้รับ (หายจากกล่องในเกมตอนเปิดกล่องครั้งถัดไป) และกดรับไม่ได้อีก
+ * คนที่รับไปแล้วได้ของไปแล้ว ถอนคืนไม่ได้ เพราะทอง/เพชรบวกเข้ากระเป๋าในเครื่องเขาไปแล้ว
+ */
+async function setMailActive(r, on) {
+  const welcome = r.kind === 'welcome';
+  const who = mailWho(r);
+  const ok = await ask({
+    title: on ? 'เปิดส่งจดหมายนี้อีกครั้ง?' : 'ยกเลิกจดหมายนี้?',
+    body: `หัวข้อ: <b>${esc(r.title)}</b><br>ถึง: ${who}<br><br>` + (on
+      ? (welcome
+        ? `บัญชีที่สร้างตั้งแต่ ${esc(when(r.sent_at))} และยังไม่ได้กดรับ จะเห็นฉบับนี้อีกครั้ง`
+        : 'คนที่ยังไม่ได้กดรับจะเห็นฉบับนี้อีกครั้ง')
+      : (welcome ? 'บัญชีใหม่จะไม่ได้รับอีก และ' : '')
+        + 'คนที่ยังไม่กดรับจะไม่เห็นฉบับนี้แล้ว (หายจากกล่องจดหมายในเกม)'
+        + `<br><span class="warn">คนที่กดรับไปแล้ว${r.claims ? ` (${num(r.claims)} คน)` : ''} ได้ของไปแล้ว ถอนคืนไม่ได้</span> · เปิดกลับมาได้ทีหลัง`),
+    okText: on ? 'เปิดส่ง' : 'ยกเลิกจดหมาย',
+    // ปุ่มปิดกล่องชื่อ "ยกเลิก" จะอ่านสับสนกับปุ่ม "ยกเลิกจดหมาย" ข้าง ๆ
+    cancelText: on ? 'ยกเลิก' : 'ไม่ยกเลิก',
+  });
+  if (!ok) return;
+
+  const c = await client();
+  const { error } = await c.from('mail_outbox')
+    .update({ active: on, updated_at: new Date().toISOString() })
+    .eq('id', r.id);
+  if (error) return toast('ไม่สำเร็จ: ' + errText(error), 'bad');
+  toast(on ? 'เปิดส่งอีกครั้งแล้ว' : 'ยกเลิกจดหมายแล้ว', 'good');
+  loadSentMail();
 }
 
 PAGES.audit = async () => {
   $('page').innerHTML = `
-    <h2>ตรวจผิดปกติ</h2>
-    <p class="sub">ไล่หาบัญชีที่ตัวเลขไม่น่าเป็นไปได้ ปรับเกณฑ์ได้ตามใจ</p>
+    ${pageHead('ตรวจผิดปกติ', 'ไล่หาบัญชีที่ตัวเลขไม่น่าเป็นไปได้ ปรับเกณฑ์ได้ตามใจ แล้วกดที่แถวเพื่อดูบัญชีนั้น')}
     <div class="toolbar">
       <label class="count">ทองเกิน <input id="tGold" type="number" value="5000000" style="width:130px"></label>
       <label class="count">เพชรเกิน <input id="tGems" type="number" value="100000" style="width:120px"></label>
@@ -1012,8 +1387,8 @@ async function runAudit() {
   });
 
   const cols = [
-    { label: 'ชื่อ', cell: (r) => esc(r.name) },
-    { label: 'บัญชี', cell: (r) => r.is_guest ? '<span class="pill guest">ผู้มาเยือน</span>' : `<span class="pill email">${esc(r.email)}</span>` },
+    { label: 'ผู้เล่น', cell: whoCell },
+    { label: 'บัญชี', cell: accountPill },
     { label: 'เหตุที่สะดุดตา', cell: (r) => r.why.map((w) => `<span class="pill warn">${esc(w)}</span>`).join(' ') },
     { label: 'เล่นล่าสุด', cell: (r) => esc(when(r.updated_at)) },
   ];
@@ -1095,6 +1470,25 @@ async function boot() {
   $('tabs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-page]');
     if (b) go(b.dataset.page);
+  });
+  // ค้นจากหัวหน้า — ไปหน้าผู้เล่นพร้อมคำค้น ถ้าเป็นไอดีตรงตัวเจอคนเดียวก็เปิดลิ้นชักให้เลย
+  $('gq').addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    const term = e.target.value.trim();
+    if (!term) return;
+    playersState.q = term;
+    playersState.page = 0;
+    e.target.value = '';
+    e.target.blur();
+    go('players');
+  });
+  // กด / ที่ไหนก็ได้ (ที่ไม่ใช่ช่องพิมพ์) = ไปช่องค้นหา
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+    if ($('app').classList.contains('hidden')) return;
+    e.preventDefault();
+    $('gq').focus();
   });
 
   // เปิดหน้ามาแล้วยังมี session ค้างอยู่ = เข้าได้เลย ไม่ต้องขอรหัสใหม่ทุกครั้ง

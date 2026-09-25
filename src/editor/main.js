@@ -2013,14 +2013,26 @@ function undo() {
   const s = undoStack.pop();
   if (!s) return;
   redoStack.push(snapshot());
+  const keep = sel;
   applySnapshot(s);
+  keepSel(keep);
 }
 
 function redo() {
   const s = redoStack.pop();
   if (!s) return;
   undoStack.push(snapshot());
+  const keep = sel;
   applySnapshot(s);
+  keepSel(keep);
+}
+
+/** ย้อน/ทำซ้ำแล้วชิ้นเดิมยังอยู่ = เลือกค้างไว้ (G → Ctrl+Z → G ต่อได้เลย ไม่ต้องคลิกเลือกใหม่) */
+function keepSel(id) {
+  if (id && byId(doc(), id)) {
+    sel = id;
+    renderInspector();
+  }
 }
 
 /** ปุ่มต้องบอกได้ว่าตอนนี้ย้อนได้หรือไม่ได้ ไม่ใช่กดแล้วเงียบ */
@@ -2176,9 +2188,12 @@ function pick(d, p) {
 }
 
 cv.addEventListener('pointerdown', (ev) => {
+  // คลิกขวาไว้ยกเลิก G/S (ดักไว้ที่คีย์ลัดแบบ Blender) นอกนั้นไม่ทำอะไร ไม่ไปเลือกชิ้น
+  if (ev.button === 2) return;
   cv.setPointerCapture(ev.pointerId);
   const p = worldAt(ev);
-  if (locked()) { drag = { kind: 'pan', sx: ev.clientX, cam: view.cam }; return; }
+  // คลิกกลางค้าง = เลื่อนจอเสมอ แม้กดโดนชิ้นอยู่ (แบบ Blender)
+  if (locked() || ev.button === 1) { ev.preventDefault(); drag = { kind: 'pan', sx: ev.clientX, cam: view.cam }; return; }
   const d = doc();
 
   // ที่จับยืดปลายขวาของชิ้นที่เลือกอยู่ มาก่อนเสมอ
@@ -2314,30 +2329,328 @@ strip.addEventListener('pointermove', (ev) => { if (stripDrag) stripSeek(ev); })
 strip.addEventListener('pointerup', () => { stripDrag = false; });
 
 // ── ปุ่มลัด ───────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// คีย์ลัดแบบ Blender
+//
+// ── G / S เป็น "โหมดค้าง" ไม่ใช่การลาก ──
+// กด G แล้วของที่เลือกจะเดินตามเมาส์ทันทีโดยไม่ต้องกดค้าง จนกว่าจะคลิกซ้าย/Enter (ยืนยัน)
+// หรือคลิกขวา/Esc (ยกเลิก คืนที่เดิมเป๊ะ) ระหว่างนั้นกด X/Y ล็อกแกน พิมพ์ตัวเลขใส่ระยะตรง ๆ ได้
+// ทั้งหมดนับเป็นก้าวย้อนกลับก้าวเดียว (Ctrl+Z ทีเดียวกลับที่เดิม)
+//
+// รายการคีย์ทั้งหมดอยู่ใน KEYS ข้างล่าง — แผง ? กับไฟล์ EDITOR_KEYS.txt สร้างจากชุดเดียวกัน
+// เพิ่มคีย์ใหม่ต้องเพิ่มใน KEYS ด้วย ไม่งั้นแผงช่วยจำจะไม่รู้จัก
+// ─────────────────────────────────────────────────────────────
+
+/** ตำแหน่งเมาส์ล่าสุดบนสนาม (พิกัดเอกสาร) — G/S ใช้เป็นจุดตั้งต้น */
+let lastP = { x: 0, y: 0 };
+/** โหมดค้างที่กำลังทำอยู่ (G ย้าย / S ยืด) — null = ไม่มี */
+let gmod = null;
+
+const KEYS = [
+  ['ย้าย / ยืด (แบบ Blender)', [
+    ['G', 'ย้ายชิ้นที่เลือก — ของเดินตามเมาส์เลย ไม่ต้องกดค้าง'],
+    ['S', 'ยืด/หด (ความกว้างหลุม-พื้นลอย หรือจำนวนเม็ด/หนาม) ตามระยะเมาส์'],
+    ['X · Y', 'ระหว่าง G: ล็อกให้ขยับแนวนอนอย่างเดียว / แนวตั้งอย่างเดียว (กดซ้ำ = ปลดล็อก)'],
+    ['พิมพ์ตัวเลข', 'ระหว่าง G: ระยะเป๊ะเป็นพิกเซล เช่น G 40 Enter, G - 1 2 Enter · ระหว่าง S: ตัวคูณ เช่น S 2 Enter'],
+    ['Ctrl (ค้าง)', 'ระหว่าง G: ไม่ดูดเข้าจุดกด วางตรงไหนก็อยู่ตรงนั้น'],
+    ['Shift (ค้าง)', 'ระหว่าง G/S: ขยับละเอียด ช้าลง 10 เท่า'],
+    ['คลิกซ้าย · Enter · Space', 'ยืนยัน'],
+    ['คลิกขวา · Esc', 'ยกเลิก คืนที่เดิม'],
+  ]],
+  ['เลือก / แก้ชิ้น', [
+    ['คลิก', 'เลือกชิ้น (คลิกค้างแล้วลากก็ยังได้เหมือนเดิม)'],
+    ['Tab · Shift+Tab', 'เลือกชิ้นถัดไป / ก่อนหน้า (เรียงซ้ายไปขวา)'],
+    ['Esc', 'เลิกเลือก'],
+    ['Shift+D', 'ทำสำเนาแล้วย้ายต่อทันที (เหมือน Blender)'],
+    ['Ctrl+D', 'ทำสำเนาวางถัดไปทางขวา 60px'],
+    ['X · Delete', 'ลบชิ้นที่เลือก (Ctrl+Z เอาคืนได้)'],
+    ['← →', 'ขยับทีละ 1px · Shift = ทีละ 10px'],
+  ]],
+  ['มุมมอง', [
+    ['F · Numpad .', 'เลื่อนจอไปที่ชิ้นที่เลือก'],
+    ['Home', 'กลับไปต้นท่อน'],
+    ['ลูกกลิ้งเมาส์', 'เลื่อนจอซ้าย-ขวา'],
+    ['คลิกกลางค้าง', 'ลากเลื่อนจอ (คลิกค้างที่ที่ว่างก็ได้)'],
+    ['Space', 'เล่น / หยุด การวิ่งทดสอบ'],
+  ]],
+  ['ทั่วไป', [
+    ['Ctrl+Z', 'ย้อนกลับ'],
+    ['Ctrl+Shift+Z · Ctrl+Y', 'ทำซ้ำ'],
+    ['? · F1', 'เปิด/ปิดแผงคีย์ลัดนี้'],
+  ]],
+];
+
+// ── แถบบอกสถานะระหว่าง G/S (มุมล่างเหมือนแถบสถานะของ Blender) ──
+const modalBar = document.createElement('div');
+modalBar.className = 'modalbar hidden';
+document.body.appendChild(modalBar);
+
+function showModalBar(text) {
+  modalBar.innerHTML = text;
+  modalBar.classList.remove('hidden');
+}
+
+/** ชิ้นนี้ยืดได้ไหม (มีที่จับปลายขวา = ยืดได้) */
+function scalable(d, it) {
+  return handleX(d, it) !== null && !(it.t === 'fishRun' && it.runTo);
+}
+
+/** ชิ้นนี้ขยับขึ้นลงได้ไหม — แถวพื้นกับลายวาดเอง (ของอื่นอยู่ระดับเดียวเสมอ) */
+const canLift = (it) => it.t === 'fishRun' || it.t === 'fishDots';
+
+function startModal(kind) {
+  const d = doc();
+  const it = sel && byId(d, sel);
+  if (!it || locked()) return;
+  if (kind === 'scale' && !scalable(d, it)) {
+    showModalBar('<b>S</b> ชิ้นนี้ยืดไม่ได้ — ยืดได้เฉพาะหลุม พื้นลอย แถวหนาม และแถวของกิน');
+    setTimeout(() => { if (!gmod) modalBar.classList.add('hidden'); }, 1800);
+    return;
+  }
+  playing = false;
+  pushUndo();
+  const left = xOf(d, it);
+  gmod = {
+    kind,
+    id: it.id,
+    snap: undoStack[undoStack.length - 1],   // ก้อนที่ pushUndo เพิ่งเก็บ = สถานะก่อนเริ่ม
+    startX: left,
+    startRise: it.rise || 0,
+    startW: it.w,
+    startN: it.n,
+    startArm: it.arm || 24,
+    startP: { ...lastP },
+    // เคอร์เซอร์เสมือน: สะสมระยะที่เมาส์ขยับ (คูณ 0.1 ตอนกด Shift) — กด/ปล่อย Shift แล้วของไม่กระโดด
+    cur: { ...lastP },
+    // ยืด: วัดจากขอบซ้ายของชิ้น เมาส์ห่างขอบซ้ายเท่าเดิม = ขนาดเดิม (แบบ S ของ Blender)
+    pivot: left,
+    axis: null,
+    typed: '',
+    free: false,
+  };
+  updateModal();
+}
+
+/** คำนวณตำแหน่ง/ขนาดใหม่จากจุดตั้งต้นทุกครั้ง (ไม่สะสม) — ยกเลิกแล้วจึงกลับที่เดิมเป๊ะ */
+function updateModal() {
+  const m = gmod;
+  const d = doc();
+  const it = byId(d, m.id);
+  if (!it) { gmod = null; return; }
+  const typed = m.typed === '' || m.typed === '-' ? null : Number(m.typed);
+
+  if (m.kind === 'grab') {
+    let dx = m.cur.x - m.startP.x;
+    let dy = m.cur.y - m.startP.y;
+    if (typed !== null && Number.isFinite(typed)) {
+      // พิมพ์ตัวเลข = ระยะตรง ๆ ตามแกนที่ล็อก (ไม่ล็อก = แนวนอน) · แนวตั้งนับขึ้นเป็นบวก
+      if (m.axis === 'y') { dx = 0; dy = -typed; } else { dx = typed; dy = 0; }
+    }
+    if (m.axis === 'x') dy = 0;
+    if (m.axis === 'y') dx = 0;
+
+    const want = Math.round(m.startX + dx);
+    if (m.free) { it.x = want; delete it.link; } else snapTo(d, it, want);
+
+    if (canLift(it)) {
+      const rise = m.startRise - dy;
+      if (it.t === 'fishRun') {
+        if (dy === 0) it.rise = m.startRise; else setRise(it, rise);
+      } else it.rise = Math.round(rise);
+    }
+
+    const nx = Math.round(xOf(d, it) - m.startX);
+    const ny = Math.round((it.rise || 0) - m.startRise);
+    const ax = m.axis === 'x' ? ' · <em>ล็อกแนวนอน</em>' : m.axis === 'y' ? ' · <em>ล็อกแนวตั้ง</em>' : '';
+    const snapTxt = it.link ? ' · <em>เกาะจุดกด</em>' : '';
+    showModalBar(`<b>G ย้าย</b> x ${nx >= 0 ? '+' : ''}${nx}${canLift(it) ? ` · สูง ${ny >= 0 ? '+' : ''}${ny}` : ''}`
+      + (m.typed ? ` · พิมพ์: <kbd>${m.typed}</kbd>` : '') + ax + snapTxt
+      + '<span>คลิกซ้าย/Enter ยืนยัน · คลิกขวา/Esc ยกเลิก · X/Y ล็อกแกน · Ctrl ไม่ดูด · Shift ละเอียด</span>');
+  } else {
+    const base = Math.max(40, Math.abs(m.startP.x - m.pivot));
+    let f = 1 + (m.cur.x - m.startP.x) / base;
+    if (typed !== null && Number.isFinite(typed)) f = typed;
+    f = Math.max(0.05, f);
+
+    let label = '';
+    if (it.t === 'pit' || PLAT_T.has(it.t)) {
+      it.w = Math.max(it.t === 'pit' ? 40 : 80, Math.round(m.startW * f));
+      label = `กว้าง ${it.w}px`;
+    } else if (it.t === 'fishFlake') {
+      it.arm = Math.max(8, Math.min(90, Math.round(m.startArm * f)));
+      label = `แขน ${it.arm}px`;
+    } else {
+      it.n = Math.max(1, Math.round(m.startN * f));
+      label = `${it.n} ชิ้น`;
+    }
+    showModalBar(`<b>S ยืด</b> ×${f.toFixed(2)} · ${label}`
+      + (m.typed ? ` · พิมพ์: <kbd>${m.typed}</kbd>` : '')
+      + '<span>คลิกซ้าย/Enter ยืนยัน · คลิกขวา/Esc ยกเลิก · พิมพ์ตัวคูณได้ เช่น 2 · Shift ละเอียด</span>');
+  }
+  dirty();
+  renderInspector();
+}
+
+function endModal(ok) {
+  const m = gmod;
+  gmod = null;
+  modalBar.classList.add('hidden');
+  if (!m) return;
+  if (ok) {
+    updateCount();
+    if (view.mode === 'stage') renderStageUI();
+    return;
+  }
+  // ยกเลิก = คืนสถานะก่อนเริ่ม และถอนก้าวย้อนกลับที่เพิ่งเก็บทิ้ง (ไม่ได้ทำอะไรจริง)
+  undoStack.pop();
+  syncHistoryBtns();
+  applySnapshot(m.snap);
+  sel = m.id;
+  renderInspector();
+}
+
+/** คีย์ระหว่างโหมดค้าง — คืน true ถ้ากินคีย์นี้ไปแล้ว */
+function modalKey(ev) {
+  if (!gmod) return false;
+  const k = ev.key;
+  ev.preventDefault();
+  if (k === 'Escape') { endModal(false); return true; }
+  if (k === 'Enter' || k === ' ') { endModal(true); return true; }
+  if (gmod.kind === 'grab' && (k === 'x' || k === 'X' || k === 'y' || k === 'Y')) {
+    const a = k.toLowerCase();
+    gmod.axis = gmod.axis === a ? null : a;
+    updateModal();
+    return true;
+  }
+  if (/^[0-9.]$/.test(k)) { gmod.typed += k; updateModal(); return true; }
+  if (k === '-' ) { gmod.typed = gmod.typed.startsWith('-') ? gmod.typed.slice(1) : '-' + gmod.typed; updateModal(); return true; }
+  if (k === 'Backspace') { gmod.typed = gmod.typed.slice(0, -1); updateModal(); return true; }
+  if (k === 'Control' || k === 'Meta') { gmod.free = true; updateModal(); return true; }
+  return true;   // คีย์อื่นระหว่างโหมดค้างไม่ทำอะไร (กันพลาดไปสั่งอย่างอื่น)
+}
+
+window.addEventListener('keyup', (ev) => {
+  if (gmod && (ev.key === 'Control' || ev.key === 'Meta')) { gmod.free = false; updateModal(); }
+});
+
+// ── เมาส์ระหว่างโหมดค้าง ──
+// ฟังทั้งหน้าต่าง ไม่ใช่แค่ผ้าใบ — เมาส์หลุดขอบสนามไประหว่าง G ของยังตามอยู่
+window.addEventListener('pointermove', (ev) => {
+  const p = worldAt(ev);
+  if (gmod) {
+    const k = ev.shiftKey ? 0.1 : 1;
+    gmod.cur.x += (p.x - lastP.x) * k;
+    gmod.cur.y += (p.y - lastP.y) * k;
+    lastP = p;
+    updateModal();
+    return;
+  }
+  lastP = p;
+});
+// คลิกที่ไหนก็ได้ระหว่างโหมดค้าง = ซ้ายยืนยัน ขวายกเลิก — ดักตั้งแต่ขาลง ไม่ให้คลิกไปเลือกชิ้นอื่นต่อ
+window.addEventListener('pointerdown', (ev) => {
+  if (!gmod) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  endModal(ev.button !== 2);
+}, true);
+
+/** ชิ้นทั้งหมดเรียงซ้ายไปขวา — Tab เลือกทีละชิ้น */
+function itemsInOrder(d) {
+  return [...d.items].sort((a, b) => xOf(d, a) - xOf(d, b) || itemBox(d, a).y - itemBox(d, b).y);
+}
+
+function frameSelected() {
+  const d = doc();
+  const it = sel && byId(d, sel);
+  if (!it) return;
+  const b = itemBox(d, it);
+  view.cam = clampCam(editOff() + b.x + b.w / 2 - W / 2);
+}
+
+function duplicateSel(offset) {
+  const d = doc();
+  const src = byId(d, sel);
+  if (!src) return null;
+  const copy = { ...src, id: uid(), x: Math.round(xOf(d, src)) + offset };
+  delete copy.link;
+  delete copy.runTo;
+  mutate((dd) => dd.items.push(copy));
+  sel = copy.id;
+  renderInspector();
+  return copy;
+}
+
+// ── แผงคีย์ลัด (? / F1) ──
+const keysPanel = document.createElement('div');
+keysPanel.className = 'keyspanel hidden';
+keysPanel.innerHTML = `
+  <div class="keysbox" role="dialog" aria-gmod="true" aria-labelledby="keysTitle">
+    <button type="button" class="xbtn keys-close" id="keysClose" aria-label="ปิด">
+      <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <h2 id="keysTitle">คีย์ลัด</h2>
+    <p class="tip">แบบเดียวกับ Blender · รายการเต็มอยู่ในไฟล์ EDITOR_KEYS.txt</p>
+    <div class="keysgrid">
+      ${KEYS.map(([title, rows]) => `<section><h3>${title}</h3><dl>${
+        rows.map(([k, v]) => `<dt>${k.split(' · ').map((x) => `<kbd>${x}</kbd>`).join(' ')}</dt><dd>${v}</dd>`).join('')
+      }</dl></section>`).join('')}
+    </div>
+  </div>`;
+document.body.appendChild(keysPanel);
+const toggleKeys = (on = keysPanel.classList.contains('hidden')) => keysPanel.classList.toggle('hidden', !on);
+keysPanel.addEventListener('click', (e) => { if (e.target === keysPanel) toggleKeys(false); });
+document.getElementById('keysClose').addEventListener('click', () => toggleKeys(false));
+document.getElementById('keysBtn')?.addEventListener('click', () => toggleKeys());
+
 window.addEventListener('keydown', (ev) => {
   const tag = ev.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (modalKey(ev)) return;
+
   const mod = ev.ctrlKey || ev.metaKey;
   const k = ev.key.toLowerCase();
+
+  if (ev.key === '?' || ev.key === 'F1') { ev.preventDefault(); toggleKeys(); return; }
+  if (!keysPanel.classList.contains('hidden')) {
+    if (ev.key === 'Escape') toggleKeys(false);
+    return;
+  }
+
   // Ctrl+Y กับ Ctrl+Shift+Z ใช้ได้ทั้งคู่ — คนละสำนักแต่เจอบ่อยพอกัน
   if (mod && (k === 'y' || (k === 'z' && ev.shiftKey))) { ev.preventDefault(); redo(); return; }
   if (mod && k === 'z') { ev.preventDefault(); undo(); return; }
-  if (!sel || locked()) return;
 
-  if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); delItem(sel); return; }
-
-  if (ev.key === 'd' && (ev.ctrlKey || ev.metaKey)) {
+  // ── มุมมอง (ไม่ต้องเลือกชิ้นก่อน) ──
+  if (ev.key === ' ') { ev.preventDefault(); document.getElementById('playBtn').click(); return; }
+  if (ev.key === 'Home') { ev.preventDefault(); view.cam = clampCam(editOff() - 40); return; }
+  if (ev.key === 'Tab' && !mod) {
     ev.preventDefault();
-    const d = doc();
-    const src = byId(d, sel);
-    const copy = { ...src, id: uid(), x: Math.round(xOf(d, src)) + 60 };
-    delete copy.link;
-    delete copy.runTo;
-    mutate((dd) => dd.items.push(copy));
-    sel = copy.id;
+    if (locked()) return;
+    const list = itemsInOrder(doc());
+    if (!list.length) return;
+    const i = list.findIndex((q) => q.id === sel);
+    const next = i < 0 ? (ev.shiftKey ? list.length - 1 : 0) : (i + (ev.shiftKey ? -1 : 1) + list.length) % list.length;
+    sel = list[next].id;
     renderInspector();
+    frameSelected();
     return;
   }
+  if (ev.key === 'Escape') { if (sel) { sel = null; renderInspector(); } return; }
+
+  if (!sel || locked()) return;
+
+  if ((k === 'f' && !mod) || (ev.code === 'NumpadDecimal')) { ev.preventDefault(); frameSelected(); return; }
+  if (k === 'g' && !mod) { ev.preventDefault(); startModal('grab'); return; }
+  if (k === 's' && !mod) { ev.preventDefault(); startModal('scale'); return; }
+  if (k === 'd' && ev.shiftKey && !mod) {
+    ev.preventDefault();
+    if (duplicateSel(0)) startModal('grab');
+    return;
+  }
+  if (k === 'd' && mod) { ev.preventDefault(); duplicateSel(60); return; }
+
+  if (ev.key === 'Delete' || ev.key === 'Backspace' || (k === 'x' && !mod)) { ev.preventDefault(); delItem(sel); return; }
 
   if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
     ev.preventDefault();
@@ -2349,6 +2662,16 @@ window.addEventListener('keydown', (ev) => {
     });
   }
 });
+
+// ลูกกลิ้ง = เลื่อนจอซ้ายขวา (หน้านี้ไม่มีซูม) · คลิกขวาบนสนามไม่เปิดเมนูของเบราว์เซอร์ (ใช้ยกเลิก G/S)
+cv.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const r = cv.getBoundingClientRect();
+  const delta = Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.deltaY;
+  view.cam = clampCam(view.cam + delta * (W / r.width) * 0.9);
+  if (gmod) updateModal();
+}, { passive: false });
+cv.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
 // ─────────────────────────────────────────────────────────────
 // แผงรายละเอียดชิ้นที่เลือก

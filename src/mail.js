@@ -16,7 +16,7 @@
 // ถ้ารวมเป็นค่าเดียว คนที่เปิดอ่านแต่ยังไม่กดรับจะเสียของฟรี
 // ─────────────────────────────────────────────────────────────
 import { loadPref, savePref } from './storage.js';
-import { fetchMail, claimMail as claimOnCloud } from './net/cloud.js';
+import { fetchMail, claimMail as claimOnCloud, MAIL_FETCH_LIMIT } from './net/cloud.js';
 
 const KEY = 'inbox';
 
@@ -140,6 +140,11 @@ export async function claimMail(id) {
   if (m.cloud) {
     const r = await claimOnCloud(m.id);
     if (!r.ok) {
+      // แอดมินยกเลิกฉบับนี้แล้ว — เอาออกจากกล่องเลย ไม่ปล่อยให้ค้างเป็นปุ่มที่กดไม่ได้
+      if (r.gone) {
+        removeMail(m.id);
+        return { ok: false, gone: true, reason: 'จดหมายฉบับนี้ถูกยกเลิกแล้ว' };
+      }
       return {
         ok: false,
         reason: r.offline ? 'ต่อเน็ตไม่ได้ ลองใหม่อีกครั้ง' : 'รับของขวัญนี้ไปแล้ว',
@@ -216,29 +221,67 @@ export function clearReadMail() {
  */
 export async function syncMail() {
   const list = await fetchMail();
-  if (!list.length) return 0;
+  // อ่านไม่ได้ (ออฟไลน์) = ไม่รู้อะไรเพิ่ม ห้ามแตะกล่อง — โดยเฉพาะห้ามลบอะไรทิ้ง
+  if (!list) return 0;
 
   const box = loadInbox();
   const byId = new Map(box.map((m) => [m.id, m]));
   const gone = new Set(loadPref(GONE_KEY, []));
-  let added = 0;
+  let changed = 0;
 
   for (const raw of list) {
     const cur = byId.get(String(raw.id));
     if (cur) {
-      // มีอยู่แล้ว — อัปเดตเฉพาะสถานะรับของให้ตรงกับคลาวด์
-      if (raw.claimed && !cur.claimed) cur.claimed = true;
+      if (raw.claimed && !cur.claimed) { cur.claimed = true; changed++; }
+      // แอดมินแก้ข้อความ/ของขวัญหลังส่ง — ฉบับที่ยังไม่ได้รับต้องเห็นฉบับล่าสุด
+      // (ที่รับไปแล้วคงของเดิมไว้ ให้ตรงกับของที่ได้จริง)
+      if (!cur.claimed) {
+        const fresh = normalize(raw);
+        const same = cur.title === fresh.title && cur.body === fresh.body
+          && JSON.stringify(cur.reward) === JSON.stringify(fresh.reward);
+        if (!same) {
+          cur.title = fresh.title;
+          cur.body = fresh.body;
+          cur.reward = fresh.reward;
+          changed++;
+        }
+      }
       continue;
     }
     // ผู้เล่นเคยล้างฉบับนี้ทิ้งไปแล้ว อย่าเติมกลับมาให้เขาเห็นจุดแดงอีก
     if (gone.has(String(raw.id))) continue;
     box.push(normalize(raw));
-    added++;
+    changed++;
+  }
+
+  // ── ฉบับที่แอดมินยกเลิก ──
+  // คลาวด์ไม่ส่งฉบับที่ถูกยกเลิกมาอีก ฉบับที่ยังไม่ได้รับซึ่งหายไปจากรายการจึงเอาออก
+  // แต่ต้องแน่ใจว่ามัน "หายจริง" ไม่ใช่แค่เก่าจนหลุดเพดาน 50 ฉบับที่ดึงมา:
+  // รายการไม่เต็มเพดาน = ได้ครบทุกฉบับ / เต็มเพดาน = เชื่อได้เฉพาะฉบับที่ใหม่กว่าฉบับเก่าสุดที่ได้มา
+  // ฉบับที่รับของไปแล้วไม่ลบ เป็นหลักฐานของที่ได้ไปแล้ว
+  const got = new Set(list.map((r) => String(r.id)));
+  const full = list.length >= MAIL_FETCH_LIMIT;
+  const oldest = list.reduce((a, r) => (r.at && r.at < a ? r.at : a), '9999');
+  for (const m of [...box]) {
+    if (!m.cloud || m.claimed || got.has(m.id)) continue;
+    if (full && m.at < oldest) continue;
+    removeMail(m.id);
+    changed++;
   }
 
   box.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   save();
-  return added;
+  return changed;
+}
+
+/** เอาฉบับหนึ่งออกจากกล่อง (แก้อาเรย์ตัวเดิมในที่ ตัวแปร inbox ถูกอ้างจากหลายที่) */
+function removeMail(id) {
+  const list = loadInbox();
+  const i = list.findIndex((m) => m.id === String(id));
+  if (i < 0) return false;
+  list.splice(i, 1);
+  save();
+  return true;
 }
 
 /** สำหรับเทสกับตอนต่อคลาวด์ทีหลัง — ยัดจดหมายเข้ากล่องโดยตรง */

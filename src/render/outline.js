@@ -57,33 +57,83 @@ function dirs(n) {
  * @param {(c: CanvasRenderingContext2D) => void} paint วาดของทั้งหมดลงผ้าใบที่ส่งให้ — ถูกเรียกสองครั้ง
  *   จึงห้ามเปลี่ยนสถานะเกมข้างใน (วาดอย่างเดียว)
  */
-export function drawOutlined(ctx, paint) {
+export function drawOutlined(ctx, paint, spans = null) {
   if (OUTLINE.on) {
     const { width: w, height: h } = ctx.canvas;
-    ensure(w, h);
-
-    // รอบเงา: transform เดียวกับผ้าใบหลัก (สเกลความละเอียด + การสั่นจอ) และปิดแสงเรือง
     const m = ctx.getTransform();
-    layerCtx.setTransform(1, 0, 0, 1, 0, 0);
-    layerCtx.globalCompositeOperation = 'source-over';
-    layerCtx.clearRect(0, 0, w, h);
-    layerCtx.setTransform(m);
-    GLOW.on = false;
-    try { paint(layerCtx); } finally { GLOW.on = true; }
+    // ── ทำเฉพาะแถบที่มีของ ──
+    // เส้นขอบคือการแปะผ้าใบเงาทั้งจอซ้ำ 8 ทิศ + ล้าง + ทาสี = ราวสิบรอบเต็มจอต่อเฟรม
+    // ซึ่งกินแรงการ์ดจอที่สุดในเกม (ตัวทำให้มือถือร้อน) ทั้งที่ส่วนใหญ่ของจอว่างเปล่า
+    // ผู้เรียกส่งแถบแนวนอนที่มีของอยู่มา (พิกัดเกม เผื่อขอบไว้แล้ว) — นอกแถบไม่มีอะไรให้ตีเส้น
+    // ภาพที่ได้จึงเหมือนเดิมทุกพิกเซล แค่ไม่เสียแรงกับพื้นที่ว่าง
+    // ไม่ส่งมา = ทั้งจอเหมือนเดิม / ส่งมาแต่ว่าง = ไม่มีของให้ตีเส้น ข้ามรอบเงาไปเลย
+    const cols = spans
+      ? spans.map(([a, b]) => {
+        const x0 = Math.max(0, Math.floor(m.a * a + m.e));
+        const x1 = Math.min(w, Math.ceil(m.a * b + m.e));
+        return [x0, x1 - x0];
+      }).filter(([, sw]) => sw > 0)
+      : [[0, w]];
 
-    // ทาสีเส้นทับทั้งรูป — source-in เก็บความโปร่งใสของรูปเดิมไว้ ขอบจึงยังนุ่มเท่าเดิม
-    layerCtx.setTransform(1, 0, 0, 1, 0, 0);
-    layerCtx.globalCompositeOperation = 'source-in';
-    layerCtx.fillStyle = OUTLINE.color;
-    layerCtx.fillRect(0, 0, w, h);
-    layerCtx.globalCompositeOperation = 'source-over';
+    if (cols.length) {
+      ensure(w, h);
 
-    // ความหนาคิดเป็นหน่วยของเกม แล้วคูณสเกลจอ เส้นจึงหนาเท่ากันทุกความละเอียด
-    const r = OUTLINE.width * Math.hypot(m.a, m.b);
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    for (const [dx, dy] of dirs(OUTLINE.dirs)) ctx.drawImage(layer, dx * r, dy * r);
-    ctx.restore();
+      // รอบเงา: transform เดียวกับผ้าใบหลัก (สเกลความละเอียด + การสั่นจอ) และปิดแสงเรือง
+      layerCtx.setTransform(1, 0, 0, 1, 0, 0);
+      layerCtx.globalCompositeOperation = 'source-over';
+      layerCtx.clearRect(0, 0, w, h);
+      layerCtx.setTransform(m);
+      GLOW.on = false;
+      try { paint(layerCtx); } finally { GLOW.on = true; }
+
+      // ทาสีเส้นทับทั้งรูป — source-in เก็บความโปร่งใสของรูปเดิมไว้ ขอบจึงยังนุ่มเท่าเดิม
+      layerCtx.setTransform(1, 0, 0, 1, 0, 0);
+      layerCtx.globalCompositeOperation = 'source-in';
+      layerCtx.fillStyle = OUTLINE.color;
+      for (const [sx, sw] of cols) layerCtx.fillRect(sx, 0, sw, h);
+      layerCtx.globalCompositeOperation = 'source-over';
+
+      // ความหนาคิดเป็นหน่วยของเกม แล้วคูณสเกลจอ เส้นจึงหนาเท่ากันทุกความละเอียด
+      const r = OUTLINE.width * Math.hypot(m.a, m.b);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      for (const [dx, dy] of dirs(OUTLINE.dirs)) {
+        for (const [sx, sw] of cols) ctx.drawImage(layer, sx, 0, sw, h, sx + dx * r, dy * r, sw, h);
+      }
+      ctx.restore();
+    }
   }
   paint(ctx);
+}
+
+/**
+ * แถบแนวนอนบนจอที่มีของอยู่ สำหรับส่งให้ drawOutlined
+ * @param {Array<Array<{x:number,w?:number,got?:boolean}>>} lists ของแต่ละชนิด (x = พิกัดโลก)
+ * @param {number} camera
+ * @param {number} viewW ความกว้างจอในหน่วยเกม
+ * @returns {Array<[number, number]>} แถบ [ซ้าย, ขวา] ในพิกัดจอ เรียงและรวมที่ซ้อนกันแล้ว
+ *
+ * เผื่อขอบข้างละ OUTLINE.pad — ภาพบางชิ้นล้นกล่องชนออกไป (ชิ้นที่โดนชนกระเด็นหมุน ปีกผึ้ง
+ * ประกายรอบไอเท็ม) แนวตั้งไม่ตัดเลย เพราะของห้อยจากเพดานกับของร่วงลากยาวถึงขอบบนจอ
+ */
+export function outlineSpans(lists, camera, viewW) {
+  const pad = OUTLINE.pad;
+  const raw = [];
+  for (const list of lists) {
+    for (const e of list) {
+      if (e.got) continue;
+      const a = e.x - camera - pad;
+      const b = e.x - camera + (e.w || 0) + pad;
+      if (b < 0 || a > viewW) continue;
+      raw.push([Math.max(0, a), Math.min(viewW, b)]);
+    }
+  }
+  raw.sort((p, q) => p[0] - q[0]);
+  const out = [];
+  for (const s of raw) {
+    const last = out[out.length - 1];
+    if (last && s[0] <= last[1]) last[1] = Math.max(last[1], s[1]);
+    else out.push(s);
+  }
+  return out;
 }

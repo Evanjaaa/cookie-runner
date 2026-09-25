@@ -12,7 +12,8 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Mitr = ฟอนต์หัวข้อของตัวเกม ให้รู้ว่าเป็นระบบเดียวกัน / Plex = ตัวหนังสือทั่วไป อ่านตัวเลขในตารางง่าย -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Mitr:wght@500;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- ── หน้าเข้าสู่ระบบ ──────────────────────────────
@@ -20,6 +21,9 @@
        จะได้ไม่ต้องมีรหัสผ่านอีกชุดให้ดูแลและให้หลุด -->
   <div class="gate" id="gate">
     <div class="gate-card">
+      <div class="gate-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M10 38V16l7 6h14l7-6v22a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4Z"/><circle cx="19" cy="30" r="2.2"/><circle cx="29" cy="30" r="2.2"/><path d="M22 35.5q2 1.6 4 0" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
       <h1>MeowZing <span>หลังบ้าน</span></h1>
 
       <div id="gateStep1">
@@ -47,23 +51,61 @@
 
   <!-- ── ตัวแอป ─────────────────────────────────────── -->
   <div class="app hidden" id="app">
-    <header class="top">
-      <div class="brand">MeowZing <span>หลังบ้าน</span></div>
-      <nav class="tabs" id="tabs">
-        <button class="tab on" data-page="overview">ภาพรวม</button>
-        <button class="tab" data-page="players">ผู้เล่น</button>
-        <button class="tab" data-page="scores">คะแนน</button>
-        <button class="tab" data-page="pulls">กาช่า</button>
-        <button class="tab" data-page="mail">จดหมาย</button>
-        <button class="tab" data-page="audit">ตรวจผิดปกติ</button>
-      </nav>
-      <div class="who">
-        <span id="whoEmail"></span>
-        <button class="linkbtn" id="signOut">ออก</button>
+    <!-- แถบข้าง: เมนูหลัก (บนมือถือกลายเป็นแถบเลื่อนแนวนอนใต้หัว) -->
+    <aside class="side">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48"><path d="M10 38V16l7 6h14l7-6v22a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4Z"/><circle cx="19" cy="30" r="2.2"/><circle cx="29" cy="30" r="2.2"/></svg>
+        </span>
+        <span class="brand-text">MeowZing <small>หลังบ้าน</small></span>
       </div>
-    </header>
 
-    <main class="page" id="page"></main>
+      <nav class="tabs" id="tabs" aria-label="เมนู">
+        <button class="tab on" data-page="overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="2"/><rect x="13.5" y="3" width="7.5" height="5" rx="2"/><rect x="13.5" y="11" width="7.5" height="10" rx="2"/><rect x="3" y="15" width="7.5" height="6" rx="2"/></svg>
+          <span>ภาพรวม</span>
+        </button>
+        <button class="tab" data-page="players">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6 0 4.5 1.6 5 4.4"/></svg>
+          <span>ผู้เล่น</span>
+        </button>
+        <button class="tab" data-page="mail">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6.5L20.5 7"/></svg>
+          <span>จดหมาย</span>
+        </button>
+        <button class="tab" data-page="scores">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5A3.5 3.5 0 0 1 16.5 11"/></svg>
+          <span>คะแนน</span>
+        </button>
+        <button class="tab" data-page="pulls">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><circle cx="12" cy="12" r="2.6"/></svg>
+          <span>กาช่า</span>
+        </button>
+        <button class="tab" data-page="audit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 19.5h18L12 3Z"/><path d="M12 10v4.5M12 17.2v.3"/></svg>
+          <span>ตรวจผิดปกติ</span>
+        </button>
+      </nav>
+
+      <div class="who">
+        <span class="who-dot" aria-hidden="true"></span>
+        <span id="whoEmail" class="who-mail"></span>
+        <button class="linkbtn" id="signOut">ออกจากระบบ</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <!-- ค้นผู้เล่นได้จากทุกหน้า — วางไอดีผู้ใช้ 8 ตัวแล้วกด Enter = เปิดคนนั้นทันที -->
+      <header class="bar">
+        <label class="gsearch">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          <input id="gq" type="search" placeholder="ค้นผู้เล่น: ไอดี 8 ตัว ชื่อ หรืออีเมล" autocomplete="off" spellcheck="false" aria-label="ค้นผู้เล่น">
+          <kbd>/</kbd>
+        </label>
+      </header>
+
+      <main class="page" id="page"></main>
+    </div>
 
     <!-- ลิ้นชักรายละเอียดผู้เล่น เลื่อนเข้ามาจากขวาตอนกดแถวในตาราง
          ใช้ลิ้นชักแทนหน้าใหม่ เพราะแอดมินมักต้องกลับไปดูตารางต่อทันที
@@ -78,7 +120,7 @@
     <div class="scrim hidden" id="scrim"></div>
 
     <!-- แถบแจ้งผลมุมล่าง บอกว่าบันทึก/ลบสำเร็จหรือพัง -->
-    <div class="toast hidden" id="toast"></div>
+    <div class="toast hidden" id="toast" role="status"></div>
 
     <!-- ── กล่องยืนยันของหน้านี้เอง ────────────────────────────
          แทน confirm()/prompt() ของเบราว์เซอร์ ซึ่งมีปัญหาสามอย่างกับงานแบบนี้:

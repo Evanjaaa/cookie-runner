@@ -1559,13 +1559,29 @@ canvas[hidden] { display: none; }
   text-align: center;
 }
 .rank-row.top1 .no, .rank-row.top2 .no, .rank-row.top3 .no { font-size: 20px; line-height: 1; }
-.rank-row.top1 {
-  border-color: #FFD65C;
-  background: linear-gradient(180deg, rgba(196,140,40,.95), rgba(128,74,150,.96));
-  box-shadow: var(--plate-lift), 0 0 14px rgba(255,201,60,.35);
+/* สามอันดับแรก = แผ่นม่วงสว่างขึ้นหนึ่งขั้น + กรอบไล่สีพาสเทลตามเหรียญ (ทอง/เงิน/ทองแดง)
+   กับแสงสีเหรียญจาง ๆ ที่ฝั่งเหรียญ — เดิมระบายพื้นทั้งแถวเป็นส้ม/เทา/น้ำตาล ตีกับม่วงจนหม่น
+   ภาษาเดียวกับภารกิจที่พร้อมรับ (.quest-row.ready): กรอบไล่สีด้วยพื้นสองชั้น padding-box / border-box */
+.rank-row.top1, .rank-row.top2, .rank-row.top3 {
+  --medal: 255,214,120;
+  border-color: transparent;
+  background:
+    radial-gradient(90% 160% at 0% 50%, rgba(var(--medal), .26), transparent 60%) padding-box,
+    linear-gradient(180deg, rgba(160,104,214,.96), rgba(104,58,160,.97)) padding-box,
+    var(--medal-line) border-box;
 }
-.rank-row.top2 { border-color: #DCE6F5; background: linear-gradient(180deg, rgba(150,160,196,.9), rgba(104,68,150,.96)); }
-.rank-row.top3 { border-color: #E8A06A; background: linear-gradient(180deg, rgba(176,104,70,.92), rgba(110,58,140,.96)); }
+.rank-row.top1 {
+  --medal-line: linear-gradient(120deg, #FFE9A8 0%, #FFC9E4 55%, #FFE39A 100%);
+  box-shadow: var(--plate-lift), 0 0 16px rgba(255,214,120,.3);
+}
+.rank-row.top2 {
+  --medal: 214,228,255;
+  --medal-line: linear-gradient(120deg, #F1F5FF 0%, #C9D4F2 55%, #E6DBFF 100%);
+}
+.rank-row.top3 {
+  --medal: 255,176,140;
+  --medal-line: linear-gradient(120deg, #FFCBA8 0%, #F3A6C8 55%, #FFBE99 100%);
+}
 /* แถวของเราเอง — ขอบมิ้นต์ (ภาษาเดียวกับ "ใช้งานอยู่" ทั้งเกม) */
 .rank-row.me { border-color: var(--mint); box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.4); }
 .rank-face {
@@ -1595,26 +1611,10 @@ canvas[hidden] { display: none; }
   text-shadow: 0 1px 2px rgba(0,0,0,.35);
 }
 .rank-row.top1 .pts, .rank-row.top2 .pts, .rank-row.top3 .pts { color: #FFFFFF; }
+.rank-row.top1 .pts { color: #FFE9A8; }
 
 .rank-note { font-size: 12px; color: #B99BD4; text-align: center; line-height: 1.7; }
 
-.rank-me { display: flex; gap: 8px; align-items: center; }
-.rank-me input {
-  width: 190px;
-  padding: 9px 13px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,243,226,.28);
-  background: rgba(255,243,226,.07);
-  color: var(--cream);
-  font-family: inherit;
-  font-size: 13px;
-  /* ช่องกรอกเป็นที่เดียวในเกมที่ต้องเลือกข้อความได้ ต้องปลดจากกฎรวมของ body */
-  -webkit-user-select: text;
-  user-select: text;
-}
-.rank-me input::placeholder { color: #8E76A8; }
-.rank-me input:focus { outline: none; border-color: var(--mint); }
-.rank-me .btn { margin-top: 0; font-size: 13px; padding: 9px 18px; }
 
 
 /* ── เลือกด่าน ─────────────────────────────── */
@@ -2199,16 +2199,34 @@ canvas[hidden] { display: none; }
    แล้วอ่านเป็นข้อความลอย ๆ ไม่ใช่ชื่อหน้า — จัดกลางการ์ดเหมือนหน้าอื่นทั้งเกม */
 .quest-head {
   width: 100%;
-  display: flex;
+  /* สามช่อง ซ้ายว่าง | หัวเรื่อง | ปุ่มรับทั้งหมด — ช่องซ้ายกับขวากว้างเท่ากัน หัวเรื่องจึงอยู่กลางการ์ดเป๊ะ
+     เดิมปุ่มเป็น absolute ความสูงของมันไม่ถูกนับ พอปุ่มสูงกว่าหัวเรื่อง (มือถือขยายปุ่มเป็น 40px)
+     ขอบล่างปุ่มเลยยื่นลงไปทับกรอบภารกิจแถวแรก — อยู่ในสายไหลแบบนี้หัวจะสูงเท่าปุ่มเสมอ */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
   gap: clamp(8px, 2vw, 20px);
 }
+.quest-title { grid-column: 2; display: flex; align-items: center; gap: clamp(6px, 1vw, 10px); min-width: 0; }
 .quest-head h2 { padding-bottom: 0; }
-/* ปุ่มรับทั้งหมดชิดขวาของหัว หัวเรื่องจึงยังอยู่กลางการ์ดเหมือนเดิม */
-.quest-head { position: relative; }
-.quest-all { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
-.quest-all:active { transform: translateY(calc(-50% + 2px)); }
+.quest-all { grid-column: 3; justify-self: end; margin-top: 0; }
+/* ช่วงเวลากิจกรรม ต่อท้ายหัวเรื่อง ตัวเล็กกว่าหัวราวครึ่งหนึ่ง */
+.quest-when {
+  display: inline-block;
+  padding: .28em .8em;
+  border-radius: 999px;
+  background: rgba(255,243,226,.12);
+  border: 1px solid rgba(255,243,226,.22);
+  font-family: "Mitr", sans-serif;
+  font-weight: 500;
+  font-size: clamp(10px, 1.35vw, 12.5px);
+  line-height: 1.2;
+  color: #E4D4F5;
+  letter-spacing: 0;
+  text-shadow: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 
 /* รายการภารกิจ เลื่อนในตัวเองเมื่อยาวเกิน ไม่ดันการ์ดจนล้นเวที
    (เงาขอบล่างมาจากคลาส .scrolls ที่ markScrollable ใส่ให้เฉพาะตอนล้นจริง) */
@@ -2843,7 +2861,7 @@ canvas[hidden] { display: none; }
   background: linear-gradient(90deg, #6FD98F, #8DF3EA);
   transition: width .3s ease;
 }
-.quest-row.ready .quest-bar i { background: linear-gradient(90deg, #FFD25A, #FFF3C4); }
+.quest-row.ready .quest-bar i { background: linear-gradient(90deg, #7FF0DC, #D8FFF8); }
 
 .quest-side {
   flex: 0 0 auto;
@@ -4760,7 +4778,13 @@ canvas[hidden] { display: none; }
 /* ── แผงตั้งค่า ───────────────────────────────
    โครงเดียวกับคลังน้อง: แถบหมวดซ้าย | หัวเรื่อง + แถวของหมวดที่เลือกทางขวา
    แถวอยู่กึ่งกลางพื้นที่ขวาทั้งแนวตั้งและแนวนอน หมวดละสองแถวจึงไม่ลอยค้างอยู่บนสุด */
-.set-pop { width: min(100%, 860px); }
+/* กว้างเต็มขอบเขตบนคอม (หน้าต่างคอมมักแคบกว่าเวทีมือถือ บีบลงแล้วแถวตั้งค่าเบียดกัน)
+   ต้องชนะ .stash-pop { width: 100% } ที่ประกาศทีหลังในไฟล์ จึงผูกกับ id ของแผง */
+#settingsPanel .set-pop { width: min(100%, 860px); }
+/* มือถือแนวนอน: เวทีกว้างมาก การ์ดเต็มความกว้างเหลือที่ว่างเปล่าเยอะ — หดเหลือ 80% */
+@media (pointer: coarse) and (max-height: 520px) {
+  #settingsPanel .set-pop { width: min(80%, 760px); }
+}
 .set-main { align-items: center; }
 .set-main > .panel-head { width: 100%; justify-content: center; text-align: center; }
 .set-sec {
@@ -4810,7 +4834,7 @@ canvas[hidden] { display: none; }
 .pf-pop {
   width: min(100%, 1000px);
   height: calc(100% - var(--card-inset) * 2);
-  padding: clamp(34px, 7dvh, 64px) clamp(12px, 2.6vw, 34px) clamp(10px, 2.4dvh, 26px);
+  padding: calc(var(--pf-xtop) + var(--backbtn) + clamp(6px, 1.4dvh, 12px)) clamp(12px, 2.6vw, 34px) clamp(10px, 2.4dvh, 26px);
   gap: 0;
   /* ── ขนาดทุกอย่างคิดจาก "ความสูงของแถว" ไม่ใช่ความกว้างหน้าต่าง ──
      เคยใช้ vw แล้วบนจอคอมที่เวทีเตี้ยกว่ากว้าง ตัวเลขคะแนนรวมใหญ่จนล้นกล่อง
@@ -4824,10 +4848,10 @@ canvas[hidden] { display: none; }
    ใช้ absolute เพื่อไม่ให้ไปแย่งความสูงของแถวการ์ดที่คำนวณขนาดตัวอักษรไว้แล้ว */
 .pf-pop > .pf-title {
   position: absolute;
-  top: clamp(6px, 1.6dvh, 16px);
+  top: var(--pf-xtop);
   left: 50%;
   z-index: 5;
-  height: clamp(28px, 5.6dvh, 46px);
+  height: var(--backbtn);
   margin: 0;
   display: flex;
   align-items: center;
@@ -4850,6 +4874,11 @@ canvas[hidden] { display: none; }
 /* ปุ่มปิดวงกลมมุมขวาบนตามแบบ (หน้าอื่นใช้ลูกศรกลับมุมซ้าย — หน้านี้เป็นหน้าต่างลอย) */
 /* หน้าตามาจากเทมเพลต .xbtn — ตรงนี้แค่ยกให้อยู่เหนือการ์ด */
 .pf-close { z-index: 6; }
+/* ปุ่มปิดกับหัวข้ออยู่บนแถบเดียวกัน แล้วการ์ดเริ่มใต้ขอบล่างปุ่ม — ปุ่มจึงไม่มีวันทับกรอบการ์ด
+   (เดิม padding-top ของการ์ดเตี้ยกว่าปุ่ม ปุ่มเลยยื่นลงมาทับมุมกรอบขวาบน)
+   มือถือตั้ง top ของ .xbtn เป็น 5% ของการ์ด ซึ่งคิดเป็น padding ไม่ได้ จึงตรึงระยะเองที่นี่ */
+.pf-pop { --pf-xtop: clamp(6px, 1.6dvh, 14px); }
+.pf-pop > .xbtn.pf-close { top: var(--pf-xtop); }
 
 .pf-body {
   --row: 46cqh;
@@ -5428,7 +5457,7 @@ canvas[hidden] { display: none; }
 @media (max-height: 520px) {
   /* การ์ดไม่ต้องกินเต็มความกว้างเวที — บนมือถือแนวนอนเวทีกว้างมาก
      การ์ดที่กว้างเต็มทำให้ทุกอย่างข้างในต้องใหญ่ตาม แล้วอ่านเป็น "ใหญ่เกินตัว" */
-  .pf-pop { padding-top: clamp(30px, 9dvh, 44px); width: min(90%, 700px); }
+  .pf-pop { width: min(90%, 700px); }
   .pf-body {
     /* หนึ่งหน้า = เกือบทั้งการ์ด แต่เพดานความกว้างแคบลงกว่าเดิมหนึ่งขั้น
        ทุกขนาดในหน้านี้คิดจาก --u ตัวเดียว ลดตัวนี้ = ย่อทั้งกรอบและตัวหนังสือพร้อมกัน */
@@ -6445,13 +6474,13 @@ canvas[hidden] { display: none; }
   .lobby-btn #stageIcon { width: 38px; height: 17px; border-radius: 5px; margin-block: 5px; }
   .lobby-btn b { font-size: 9px; }
   .btn.play { padding: 10px 30px; }
-  .rank-list { width: 92%; }
+  /* เดิม 92% ของการ์ด — แต่การ์ดหดตามเนื้อหา รายการเลยแคบจนชื่อกับคะแนนเบียดกัน
+     อิงความกว้างจอแทน (เหมือนบนคอม) แถวจะยาวพอให้ชื่อกับคะแนนห่างกันสบายตา */
+  .rank-list { width: min(640px, 70vw); }
   .rank-row { padding: 4px 10px 4px 7px; font-size: 11px; gap: 7px; }
   .rank-row .no { width: 22px; }
   .rank-face { width: 26px; height: 26px; }
   .rank-row .who, .rank-row .pts { font-size: 12px; }
-  .rank-me input { width: 130px; padding: 6px 11px; font-size: 11px; }
-  .rank-me .btn { font-size: 11px; padding: 6px 12px; }
   #stagePanel { padding: 6px 10px; gap: 4px; }
   .stage-grid { gap: 7px; }
   .stage-card { width: 132px; padding: 5px 6px 7px; gap: 4px; border-radius: 11px; }
@@ -6633,7 +6662,7 @@ canvas[hidden] { display: none; }
    *
    * ต้องเขียน .btn.ghost คู่ไปด้วย ไม่งั้นกฎ .btn.ghost ที่ตั้ง 13.5px ตายตัว
    * จะชนะเพราะความจำเพาะสูงกว่า ส่วนปุ่มที่มีขนาดของตัวเองอยู่แล้ว
-   * (.btn.play, .rank-me .btn, #gachaPanel .btn, .form-row .btn) ไม่โดนกฎนี้
+   * (.btn.play, #gachaPanel .btn, .form-row .btn) ไม่โดนกฎนี้
    * เพราะความจำเพาะสูงกว่า .btn เฉย ๆ อยู่แล้ว */
   .btn { font-size: clamp(12.5px, 3.3dvh, 15.5px); }
   .btn.ghost { font-size: clamp(12.5px, 3.3dvh, 13.5px); }
@@ -9928,11 +9957,17 @@ canvas[hidden] { display: none; }
   box-shadow: var(--plate-lift);
 }
 .stage-card:hover { background: var(--plate-face); filter: brightness(1.08); }
-/* ภารกิจที่ทำครบแล้ว = แผ่นทองเรือง (ภาษาเดียวกับ "กดรับได้" ทั้งเกม) */
+/* ภารกิจที่ทำครบแล้ว = แผ่นม่วงสว่างขึ้นหนึ่งขั้น กรอบไล่สีพาสเทล มินต์ → ลาเวนเดอร์ → ชมพู
+   เดิมเป็นกรอบเหลืองบนพื้นส้มน้ำตาล ซึ่งตีกับม่วงทั้งหน้าจนดูหม่น
+   มินต์รับกับปุ่ม "รับรางวัล" ที่อยู่ในแถวเดียวกัน ส่วนเรืองขอบบอกว่า "กดได้แล้ว" แทนสีทอง
+   กรอบไล่สีทำด้วยพื้นสองชั้น (padding-box / border-box) เพราะ border-color ไล่สีไม่ได้ */
 .quest-row.ready {
-  border-color: #FFD65C;
-  background: linear-gradient(180deg, rgba(190,132,44,.94), rgba(126,70,154,.96));
-  box-shadow: var(--plate-lift), 0 0 14px rgba(255,201,60,.35);
+  border-color: transparent;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(143,244,226,.22), transparent 55%) padding-box,
+    linear-gradient(180deg, rgba(160,104,214,.96), rgba(104,58,160,.97)) padding-box,
+    linear-gradient(120deg, #9FF5E4 0%, #C7B2FF 50%, #FFB9E1 100%) border-box;
+  box-shadow: var(--plate-lift), 0 0 16px rgba(143,244,226,.28);
 }
 
 /* ══ หน้ารางวัลเลเวล (ชุดใหม่) ════════════════════════════════

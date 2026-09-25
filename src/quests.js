@@ -23,6 +23,27 @@ import { loadStats } from './stats.js';
 
 const KEY = 'questsClaimed';
 
+/**
+ * ช่วงเวลากิจกรรม — โชว์ต่อท้ายหัวเรื่องหน้ากิจกรรม
+ * เปลี่ยนรอบใหม่แก้วันที่สองบรรทัดนี้ที่เดียว (ปี ค.ศ. รูปแบบ ปปปป-ดด-วว)
+ * ตอนนี้ใช้แสดงผลอย่างเดียว ยังไม่ได้ปิดภารกิจเมื่อหมดเวลา
+ */
+export const QUEST_SEASON = { start: '2026-09-01', end: '2026-12-31' };
+
+const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const EN_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "1 ก.ย. 69 – 31 ธ.ค. 69" (ไทย ปี พ.ศ. สองหลัก) หรือ "1 Sep – 31 Dec 2026" */
+export function seasonText(lang = 'th') {
+  const [a, b] = [QUEST_SEASON.start, QUEST_SEASON.end].map((s) => s.split('-').map(Number));
+  if (lang === 'en') {
+    const d = ([y, m, dd], year) => `${dd} ${EN_MON[m - 1]}${year ? ' ' + y : ''}`;
+    return `${d(a, a[0] !== b[0])} – ${d(b, true)}`;
+  }
+  const d = ([y, m, dd]) => `${dd} ${TH_MON[m - 1]} ${(y + 543) % 100}`;
+  return `${d(a)} – ${d(b)}`;
+}
+
 export const QUESTS = [
   {
     id: 'run-30min',
