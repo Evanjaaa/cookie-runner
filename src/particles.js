@@ -7,6 +7,8 @@ const TINT = {
   mint: COLORS.mintLite,
   kibble: COLORS.kibbleLite,
   shrimp: COLORS.shrimpLite,
+  jelly: COLORS.jellyLite,
+  crystal: COLORS.crystalLite,
   letter: COLORS.letterLite,
   nip: COLORS.nipLite,
   crumb: COLORS.cat,

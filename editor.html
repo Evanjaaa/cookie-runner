@@ -35,6 +35,7 @@
       <select id="docPick"></select>
     </label>
     <button class="btn ghost only-chunk" id="newDoc"><b class="lg">+ ท่อนใหม่</b><b class="sm">+ ท่อน</b></button>
+    <button class="btn ghost only-chunk" id="newBonus" title="วางของกินบนฟ้าโบนัสตัวอักษร"><b class="lg">+ ท่อนโบนัส</b><b class="sm">+ ☁</b></button>
     <button class="btn ghost only-chunk" id="dupDoc"><b class="lg">ทำสำเนา</b><b class="sm">สำเนา</b></button>
     <button class="btn ghost danger only-chunk" id="delDoc">ลบ</button>
 
@@ -89,30 +90,31 @@
         <button type="button" class="btn artopen" id="openArt">✎ วาดลาย / ใส่ตัวอักษร</button>
         <p class="tip">วาดรูปหรือพิมพ์ข้อความ แล้วมันจะเรียงของกินให้เป็นลายนั้นทีเดียว</p>
 
-        <h3>จุดกด</h3>
-        <div class="kit" id="kitMark"></div>
+        <h3 class="no-bonus">จุดกด</h3>
+        <div class="kit no-bonus" id="kitMark"></div>
 
-        <h3>สิ่งกีดขวาง</h3>
-        <div class="kit" id="kitObs"></div>
+        <h3 class="no-bonus">สิ่งกีดขวาง</h3>
+        <div class="kit no-bonus" id="kitObs"></div>
 
         <!-- สิ่งกีดขวางชุดใหม่ประจำด่าน (src/obstacles.js) — ด่านละ 9 แบบ พับเป็นกลุ่มตามด่าน
              ชิปสร้างจากทะเบียนเองทั้งหมด (buildKit) เพิ่มชิ้นใหม่ที่ทะเบียนแล้วขึ้นที่นี่เอง -->
-        <h3>สิ่งกีดขวางชุดใหม่ (ตามด่าน)</h3>
-        <div id="kitProps"></div>
+        <h3 class="no-bonus">สิ่งกีดขวางชุดใหม่ (ตามด่าน)</h3>
+        <div class="no-bonus" id="kitProps"></div>
 
         <!-- ไอเท็มอยู่สูงกว่าของกิน เพราะของกินมี 11 ชิ้นและดันกลุ่มล่าง ๆ ตกขอบจอ
              บนหน้าต่างเตี้ย ซึ่งทำให้ "เพิ่มไอเท็มไม่ได้" ทั้งที่จริง ๆ แค่มองไม่เห็น -->
-        <h3>ไอเท็มตัวช่วย</h3>
-        <div class="kit" id="kitItem"></div>
+        <h3 class="no-bonus">ไอเท็มตัวช่วย</h3>
+        <div class="kit no-bonus" id="kitItem"></div>
 
         <h3>ของกิน (เทมเพลตสำเร็จ)</h3>
-        <div class="kit" id="kitFood"></div>
+        <p class="tip">แบ่งตามจำนวนครั้งที่ต้องกด · ชุดจัดวางสำเร็จกดทีเดียวได้ทั้งชุด วางแล้วแก้ทีละชิ้นได้ตามปกติ</p>
+        <div id="kitFood"></div>
 
-        <h3>สิ่งกีดขวางพิเศษ</h3>
-        <div class="kit" id="kitSpecial"></div>
+        <h3 class="no-bonus">สิ่งกีดขวางพิเศษ</h3>
+        <div class="kit no-bonus" id="kitSpecial"></div>
 
-        <h3 class="lab-plat">พื้นเหยียบได้</h3>
-        <div class="kit lab-plat" id="kitPlat"></div>
+        <h3 class="lab-plat no-bonus">พื้นเหยียบได้</h3>
+        <div class="kit lab-plat no-bonus" id="kitPlat"></div>
       </div>
 
       <div class="panel only-edit">
@@ -146,15 +148,15 @@
       <canvas id="strip" class="strip" width="1600" height="96"></canvas>
 
       <div class="row toolrow">
-        <label class="chk"><input type="checkbox" id="optArc" checked> เส้นโค้งกระโดด</label>
-        <label class="chk"><input type="checkbox" id="optNext" checked> เงาท่อนถัดไป</label>
+        <label class="chk no-bonus"><input type="checkbox" id="optArc" checked> เส้นโค้งกระโดด</label>
+        <label class="chk no-bonus"><input type="checkbox" id="optNext" checked> เงาท่อนถัดไป</label>
         <label class="chk"><input type="checkbox" id="optGrid"> เส้นบอกระยะ</label>
-        <label class="chk"><input type="checkbox" id="optXray" checked> มองทะลุผนังอาคาร</label>
+        <label class="chk no-bonus"><input type="checkbox" id="optXray" checked> มองทะลุผนังอาคาร</label>
         <span class="grow"></span>
         <button class="btn ghost" id="runCheck">ตรวจด่าน</button>
-        <button class="btn ghost" id="playBtn">▶ เล่นดู</button>
-        <input type="range" id="scrub" min="0" max="0" value="0" disabled>
-        <span class="readout" id="scrubTxt">—</span>
+        <button class="btn ghost no-bonus" id="playBtn">▶ เล่นดู</button>
+        <input class="no-bonus" type="range" id="scrub" min="0" max="0" value="0" disabled>
+        <span class="readout no-bonus" id="scrubTxt">—</span>
       </div>
 
       <div class="report" id="report">กด “ตรวจด่าน” เพื่อให้แมวจำลองวิ่งตามจุดกดที่วางไว้</div>
@@ -169,9 +171,15 @@
 
       <div class="panel only-edit">
         <h2>ท่อนนี้</h2>
+        <div class="only-bonus bonus-note">
+          <p class="tip">☁ <b>ท่อนโบนัส</b> — ของกินบนฟ้าตอนเก็บตัวอักษรครบ บินขึ้นลงได้อิสระ
+          วางได้ทุกชนิด ลากขึ้นลงได้ทุกชิ้น · เส้นประบนล่าง = ช่วงที่บินไปเก็บถึง ·
+          แม่เหล็กจาง ๆ = ที่เกมวางให้เอง · ส่งออกแล้ววางใน <code>src/bonus-layouts.js</code></p>
+          <button class="btn ghost" id="bonusImport" style="width:100%;display:none">นำแบบโบนัสในเกมมาแก้</button>
+        </div>
         <label class="field">ชื่อ<input id="docName" type="text" maxlength="40"></label>
         <label class="field">ความกว้าง (px)<input id="docWidth" type="number" min="400" max="3000" step="10"></label>
-        <div class="row">
+        <div class="row no-bonus">
           <label class="field flex">ชนิด
             <select id="docKind">
               <option value="safe">safe — ทางโล่ง</option>
@@ -184,8 +192,8 @@
             <input id="docDiff" type="number" min="1" max="5" step="1">
           </label>
         </div>
-        <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="docPartial"> ตั้งใจให้เก็บของไม่ครบในรอบเดียว</label>
-        <label class="field">ใช้เป็นทางเข้าด่าน
+        <label class="chk no-bonus" style="margin-bottom:8px"><input type="checkbox" id="docPartial"> ตั้งใจให้เก็บของไม่ครบในรอบเดียว</label>
+        <label class="field no-bonus">ใช้เป็นทางเข้าด่าน
           <select id="docGate"></select>
         </label>
         <p class="tip" id="docCount">—</p>

@@ -9185,8 +9185,23 @@ canvas[hidden] { display: none; }
 .tl-side .tl-side-note { margin-top: auto; }
 .tl-side .tl-side-note + .tl-help { margin-top: clamp(4px, 1dvh, 8px); }
 
-/* แผ่นอธิบาย — ใช้ชั้น .tl-detail/.tl-sheet เดียวกับหน้ารายละเอียด แต่เรียงเป็นแนวตั้ง */
-.tl-help-sheet { flex-direction: column; align-items: stretch; width: min(100%, 520px); overflow-y: auto; }
+/* แผ่นอธิบาย — ใช้ชั้น .tl-detail/.tl-sheet เดียวกับหน้ารายละเอียด แต่เรียงเป็นแนวตั้ง
+   ── กว้างตามข้อความ ไม่ใช่ความกว้างตายตัว ──
+   เดิมแผ่นกว้างสุด 560 (ของ .tl-sheet ทับค่า 520 ที่ตั้งไว้ตรงนี้ เพราะมาทีหลังและน้ำหนักเท่ากัน)
+   วัดแล้วหลายบรรทัดขาดแค่ 3–9px ก็ต้องตบลงบรรทัดใหม่ เหลือเศษอย่าง "SS" หรือ "วน)" ค้างอยู่บรรทัดล่าง
+   ตอนนี้แผ่นยืดตามบรรทัดที่ยาวที่สุดจนถึงขอบกรอบ ข้อที่สั้นจึงอยู่บรรทัดเดียว ข้อที่ยาวจริงค่อยตบ
+   ใช้ .tl-sheet.tl-help-sheet ให้น้ำหนักชนะ .tl-sheet ที่อยู่ข้างล่าง */
+/* ชั้น .tl-detail เป็น grid ที่คอลัมน์โตตามของข้างใน — ถ้าไม่ตรึงคอลัมน์ไว้เท่ากรอบ
+   max-width: 100% ของแผ่นจะอ้างความกว้างของตัวแผ่นเอง แล้วแผ่นที่กว้างตามข้อความล้นจอมือถือเล็ก
+   (วัดได้ 619px บนจอ 667) ตรึงเฉพาะชั้นของแผ่นอธิบาย หน้ารายละเอียดการ์ดไม่เกี่ยว */
+#tlHelp { grid-template-columns: minmax(0, 1fr); }
+.tl-sheet.tl-help-sheet {
+  flex-direction: column;
+  align-items: stretch;
+  width: max-content;
+  max-width: min(100%, 860px);
+  overflow-y: auto;
+}
 .tl-help-head { display: flex; align-items: center; gap: 10px; padding-right: 34px; }
 .tl-help-ico { font-size: clamp(26px, 5dvh, 38px); line-height: 1; }
 .tl-help-list {
@@ -9201,6 +9216,9 @@ canvas[hidden] { display: none; }
   color: #EBDDF8;
 }
 .tl-help-list b { color: #FFE3A3; font-weight: 600; }
+/* ข้อที่ยาวจนต้องตบ — แบ่งบรรทัดให้ยาวพอ ๆ กัน ไม่ปล่อยเศษคำสั้น ๆ ค้างบรรทัดล่าง
+   (ลองแบบ pretty แล้ว ยังเหลือหางสั้น 8–18% ของบรรทัด) ข้อที่อยู่บรรทัดเดียวไม่โดนผลนี้ */
+.tl-help-list li { text-wrap: balance; }
 /* ตัวกรองระดับหายไปแล้ว แท็บต้องดันไปชิดขวาแทน หัวเรื่องจะได้ไม่เลื่อนตำแหน่งตอนสลับหมวด */
 #talentPanel.tab-skill .tl-tabs { margin-left: auto; }
 
@@ -10117,6 +10135,9 @@ canvas[hidden] { display: none; }
   font-family: "Mitr", sans-serif;
   text-align: left;
 }
+/* ไม่มีการ์ดใบต่อไปแล้ว (เลเวล 50 ขึ้นไป) main.js ใส่ .hidden ให้ แต่เกมนี้ไม่มีกฎ .hidden กลาง
+   display: grid ข้างบนจึงชนะ แล้วเหลือกรอบเปล่า ๆ ค้างอยู่ขวาสุดของแถบเลเวล — ต้องซ่อนเองที่นี่ */
+.lv-next.hidden { display: none; }
 .lv-next.rank-s { border-color: #FFD65C; }
 .lv-next.rank-ss { border-color: #FF9FE0; }
 .lv-next > small:first-child { grid-area: lead; font-size: clamp(8px, 1.3dvh, 10px); color: #FFE3A3; font-weight: 600; }

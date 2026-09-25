@@ -75,6 +75,23 @@ export const BACKDROPS = {
   bakery: (ctx, camera, tick) => drawBakeryBackdrop(ctx, camera, tick, { lit: 1 }),
 };
 
+/**
+ * ฉากหลังของด่านหนึ่งด่านแบบนิ่ง ๆ (ไม่มีช่วงไล่สลับฉาก) — ลำดับเดียวกับ Game.drawBackdrop
+ * ฉากวาดใหม่ (BACKDROPS) → ของประกอบชั้นไกล → เนิน (เฉพาะด่านที่ยังไม่มีฉากวาดใหม่) → ชั้นใกล้
+ *
+ * มีไว้ให้หน้าออกแบบด่านวาดฉากเดียวกับเกม — เดิมหน้านั้นวาดแค่ท้องฟ้ากับเนินรุ่นแรก
+ * ทุกด่านจึงเป็นเนินม่วงเหมือนกันหมด ทั้งที่ในเกมเป็นครัว สวน ถ้ำ ทะเล อวกาศ หิมะ
+ * ช่วงสลับฉากกลางตา (fade) ยังเป็นของ Game เพราะหน้าออกแบบไม่มีการเปลี่ยนฉาก
+ */
+export function drawStageBackdrop(ctx, camera, scene, pal, tick) {
+  const paint = BACKDROPS[scene.backdrop];
+  if (paint) paint(ctx, camera, tick);
+  else drawSky(ctx, camera, pal);
+  drawProps(ctx, camera, scene.layers, 'far', pal, tick);
+  if (!paint) drawHills(ctx, camera, pal);
+  drawProps(ctx, camera, scene.layers, 'near', pal, tick);
+}
+
 /** parallax: ยิ่งไกลยิ่งเลื่อนช้า = สมองตีความว่ามีความลึก */
 export function drawHills(ctx, camera, pal) {
   hillLayer(ctx, camera * 0.12, 46, 268, pal.hills[0], 20);

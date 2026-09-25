@@ -42,13 +42,33 @@ function ensure(w, h) {
   }
 }
 
-/** ทิศที่วางเงาเยื้อง — n ทิศเรียงรอบวง (ดู OUTLINE.dirs) */
-const dirsCache = new Map();
-function dirs(n) {
-  if (!dirsCache.has(n)) {
-    dirsCache.set(n, Array.from({ length: n }, (_, i) => [Math.cos((i * 2 * Math.PI) / n), Math.sin((i * 2 * Math.PI) / n)]));
+/**
+ * จุดที่วางเงาเยื้อง — เป็น "พิกเซลเต็ม" เสมอ ไม่มีเศษทศนิยม
+ *
+ * ── ทำไมต้องเป็นพิกเซลเต็ม ──
+ * เดิมวางเงาเยื้องตามวงกลม ระยะ = ความหนาเส้น × สเกลจอ ซึ่งเป็นเศษทศนิยมแทบทุกกรณี
+ * (×2 = 1.4 / มือถือ ×1.6 = 1.12 / ประหยัดแบต ×1.15 = 0.8 และแนวทแยงยังคูณ 0.707 อีกที)
+ * การแปะผ้าใบที่ตำแหน่งเศษพิกเซลบังคับให้เบราว์เซอร์เกลี่ยสีเส้นลงสองพิกเซลข้างกัน
+ * พอกล้องเลื่อน เศษของตำแหน่งของก็เปลี่ยนทุกเฟรม เส้นจึงสลับไปมาระหว่าง "ทึบคม 1 พิกเซล"
+ * กับ "จาง ๆ สองพิกเซล" ซึ่งตาเห็นเป็นเส้นขอบกะพริบ ยิ่งความละเอียดต่ำเส้นยิ่งบางยิ่งเห็นชัด
+ * (วัดแล้ว: มือถือ ×1.6 เส้นทึบเหลือแค่ 34% ในเฟรมที่แย่สุด คอม ×2 ยังเหลือ 50%)
+ *
+ * เยื้องทีละพิกเซลเต็มคือการ "ก๊อปพิกเซล" ตรง ๆ ไม่มีการเกลี่ย เส้นจึงทึบเท่ากันทุกเฟรม
+ * r = รัศมีเป็นพิกเซลเต็ม — เอาจุดที่อยู่ในวงรัศมีนั้นทั้งหมด (ไม่รวมจุดศูนย์กลาง)
+ * r 1 = 8 จุดรอบตัว ซึ่งเท่ากับจำนวนครั้งที่แปะเดิมพอดี แรงเครื่องจึงไม่เพิ่ม
+ */
+const offsCache = new Map();
+function offsets(r) {
+  if (!offsCache.has(r)) {
+    const out = [];
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if ((dx || dy) && dx * dx + dy * dy <= r * r + r) out.push([dx, dy]);
+      }
+    }
+    offsCache.set(r, out);
   }
-  return dirsCache.get(n);
+  return offsCache.get(r);
 }
 
 /**
@@ -87,18 +107,28 @@ export function drawOutlined(ctx, paint, spans = null) {
       try { paint(layerCtx); } finally { GLOW.on = true; }
 
       // ทาสีเส้นทับทั้งรูป — source-in เก็บความโปร่งใสของรูปเดิมไว้ ขอบจึงยังนุ่มเท่าเดิม
+      //
+      // ── ต้องทาครั้งเดียว ห้ามทาทีละแถบ ──
+      // source-in มีผลกับ "ทั้งผ้าใบ" ไม่ใช่แค่ในสี่เหลี่ยมที่ทา: ทุกอย่างนอกสี่เหลี่ยมถูกลบทิ้ง
+      // เคยทาทีละแถบ — แถบแรกลบของในแถบที่สอง แถบที่สองลบของในแถบแรก ผ้าใบว่างเปล่า
+      // เส้นขอบของทุกชิ้นบนจอจึงหายพร้อมกันทุกครั้งที่ของบนจอแยกเป็นสองกลุ่มขึ้นไป
+      // (ห่างกันเกิน 2 × OUTLINE.pad) แล้วกลับมาตอนรวมเป็นกลุ่มเดียว = เส้นขอบกะพริบขึ้น ๆ หาย ๆ
+      // ทาครั้งเดียวคลุมตั้งแต่แถบแรกถึงแถบสุดท้าย ช่องว่างระหว่างแถบไม่มีของอยู่แล้ว ทาไปก็ไม่เสียอะไร
+      const fillX = cols[0][0];
+      const fillW = cols[cols.length - 1][0] + cols[cols.length - 1][1] - fillX;
       layerCtx.setTransform(1, 0, 0, 1, 0, 0);
       layerCtx.globalCompositeOperation = 'source-in';
       layerCtx.fillStyle = OUTLINE.color;
-      for (const [sx, sw] of cols) layerCtx.fillRect(sx, 0, sw, h);
+      layerCtx.fillRect(fillX, 0, fillW, h);
       layerCtx.globalCompositeOperation = 'source-over';
 
-      // ความหนาคิดเป็นหน่วยของเกม แล้วคูณสเกลจอ เส้นจึงหนาเท่ากันทุกความละเอียด
-      const r = OUTLINE.width * Math.hypot(m.a, m.b);
+      // ความหนาคิดเป็นหน่วยของเกม แล้วคูณสเกลจอ — ปัดเป็นพิกเซลเต็ม อย่างน้อย 1 (ดู offsets)
+      // บางกว่า 1 พิกเซลไม่มีทางทึบได้ จะกลายเป็นเส้นจางที่กะพริบตามการเลื่อนของกล้อง
+      const r = Math.max(1, Math.round(OUTLINE.width * Math.hypot(m.a, m.b)));
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      for (const [dx, dy] of dirs(OUTLINE.dirs)) {
-        for (const [sx, sw] of cols) ctx.drawImage(layer, sx, 0, sw, h, sx + dx * r, dy * r, sw, h);
+      for (const [dx, dy] of offsets(r)) {
+        for (const [sx, sw] of cols) ctx.drawImage(layer, sx, 0, sw, h, sx + dx, dy, sw, h);
       }
       ctx.restore();
     }

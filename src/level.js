@@ -1,7 +1,7 @@
 // src/level.js
 import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
-  SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X,
+  SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X, CRYSTAL,
 } from './config.js';
 import { PROP_OBSTACLES, isLowObstacle } from './obstacles.js';
 
@@ -174,6 +174,27 @@ const withShrimp = (items, style) => {
   // (คนวางต้องเว้นระยะเองอย่างน้อย SHRIMP.minGap ไม่งั้นตัวจะซ้อนกัน)
   if (style === 'all') { for (const it of items) it.kind = 'shrimp'; return items; }
   return makeShrimp(items);
+};
+
+/**
+ * ตั้งชนิดของกินให้แถว — ใช้กับของกินที่ไม่มีระบบโรยอัตโนมัติ (เยลลี่จิ๋ว คริสตัลดาว)
+ *   style 'all' = ทุกเม็ดในแถว
+ *   style 'top' = เม็ดเดียวที่จุดสูงสุดของแถว (ของหายาก) แล้วตัดเม็ดปลาที่ชิดเกินไปออก
+ *                 แบบเดียวกับกุ้งทอง เพราะคริสตัลดาวตัวใหญ่และมีวงโคจรรอบตัว
+ * เปลี่ยนเฉพาะเม็ดปลาธรรมดา — ของที่คนตั้งใจใส่ไว้แล้วไม่ถูกทับ (กติกาเดียวกับ makeKibble)
+ * คืน array เสมอ วางกลางนิพจน์ได้: fish: [...withTreat(fishJump(j1, 11), 'crystal', 'top')]
+ */
+const withTreat = (items, kind, style = 'all') => {
+  if (style !== 'top') {
+    for (const it of items) if (isPlainFish(it)) it.kind = kind;
+    return items;
+  }
+  const plain = items.filter(isPlainFish);
+  if (!plain.length) return items;
+  const pick = plain[topIndex(plain)];
+  pick.kind = kind;
+  const gap = kind === 'crystal' ? CRYSTAL.minGap : SHRIMP.minGap;
+  return items.filter((it) => it === pick || !isPlainFish(it) || Math.abs(it.x - pick.x) >= gap);
 };
 
 /** ยกทั้งแถวขึ้นไปอยู่ชั้นอื่น — dy บวก = สูงขึ้น ใช้กับแถวพื้นที่อยากให้ลอยไปชั้นกระโดด */
@@ -473,7 +494,7 @@ export const AUTHOR = {
   fishAlong, fishJump, fishDouble, fishLow, fishRun, fishWave, fishAbove, fishRunTo,
   fishFlake, fishDots,
   arcMid, arcHigh, groundSpike, lowBar, crateStack, propObs, isLowObstacle, makeShrimp, makeKibble,
-  withShrimp, withKibble, lift,
+  withShrimp, withKibble, withTreat, lift,
   platTop, highestTop, platBox, footing, ledgeThick,
 };
 

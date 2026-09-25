@@ -1320,7 +1320,7 @@ async function buildRank() {
     row.querySelector('.who').textContent = r.name || 'แมวนิรนาม';
     row.querySelector('.pts').textContent = Number(r.score).toLocaleString('en-US');
     // หน้าน้องของคนนั้นจริง ๆ (สกิน + ชุดจากโปรไฟล์สาธารณะ) — ไม่มีข้อมูลก็เป็นน้องส้มตั้งต้น
-    const skin = r.public_profile ? remoteProfile(r).skin : SKINS[0];
+    const skin = r.public_profile ? remoteProfile(r).skin : othersSkin(SKINS[0], r.id);
     paintMini(row.querySelector('.rank-face'), 96, (c) => drawCatFace(c, 48, 56, 2.5, skin));
     if (tappable) {
       row.addEventListener('click', () => { unlockAudio(); openRankProfile(r); });
@@ -3466,10 +3466,23 @@ function profileSnapshot(p) {
   };
 }
 
+/**
+ * น้องของคนอื่นห้ามมีรูปหน้าของเรา
+ *
+ * รูปหน้าที่อัปโหลดเก็บในเครื่องอย่างเดียว ไม่ขึ้นคลาวด์ (ดู face.js) แต่ตัววาดแมวหยิบรูปนั้น
+ * มาแปะให้ "ทุกตัวที่วาด" เว้นแต่สกินจะบอก noPhoto — เคยพลาดมาแล้ว: กระดานคะแนน หน้าเพื่อน
+ * และหน้าส่องโปรไฟล์ ขึ้นหน้าเราติดไปบนน้องของทุกคน
+ * แถวที่เป็นของเราเอง (id ตรงกัน) ยังได้รูป เหมือนน้องของเราในหน้าอื่น
+ */
+function othersSkin(skin, id) {
+  const me = userId();
+  return { ...skin, noPhoto: !(me && id === me) };
+}
+
 /** แถวจาก public_profiles → ก้อนข้อมูลโปรไฟล์ชุดเดียวกับของเรา */
 function remoteProfile(row) {
   const snap = row.public_profile || {};
-  const skin = { ...skinById(snap.skin), outfit: outfitById(snap.outfit || 'none') };
+  const skin = othersSkin({ ...skinById(snap.skin), outfit: outfitById(snap.outfit || 'none') }, row.id);
   const stage = snap.best && STAGES.find((s) => s.id === snap.best.stage);
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const pair = (v) => (Array.isArray(v) ? [num(v[0]), num(v[1])] : [0, 0]);

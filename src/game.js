@@ -1,10 +1,11 @@
 // src/game.js
 import {
-  VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, SHRIMP, MAGNET, BODY,
+  VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, MAGNET, BODY,
   LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD, REVIVE,
-  CAT_LOOK,
+  CAT_LOOK, treatOf,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
+import { buildBonusField, buildBonusMagnets, bonusGeometry } from './bonus-layouts.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { Particles } from './particles.js';
@@ -40,11 +41,11 @@ import { GateRun } from './gate-run.js';
 import { gateFor, GATE_LIST } from './gates.js';
 import { drawGateBack, drawGateFront, warmGateArt } from './render/gates/index.js';
 
-/** แยกเม็ดปลาธรรมดา (ไม่มีเส้นขอบ) ออกจากของกินเด่น (มีเส้นขอบ) — ดู Game.draw */
+/** แยกของกินที่ไม่มีเส้นขอบ (ปลา เยลลี่) ออกจากของกินเด่นที่มีเส้นขอบ — ดู TREATS.outline */
 function splitFish(list) {
   const plain = [];
   const rare = [];
-  for (const t of list) (t.kind === 'shrimp' || t.kind === 'kibble' ? rare : plain).push(t);
+  for (const t of list) (treatOf(t.kind).outline ? rare : plain).push(t);
   return [plain, rare];
 }
 import { drawKingdom } from './render/kingdom/index.js';
@@ -56,55 +57,6 @@ import { drawRoomScene } from './render/room/index.js';
 const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
 
 export const STATE = { READY: 0, RUN: 1, DEAD: 2, PAUSE: 3 };
-
-/**
- * ปูของกินบนฟ้าสำหรับโหมดโบนัส
- *
- * สามเลนสลับกันเป็นเกลียว ผู้เล่นจึงต้องขยับขึ้นลงตลอด ไม่ใช่ลอยนิ่งรอเก็บ
- * ระยะห่าง 50px เลือกมาจากงบคะแนน: ทั้งโบนัสให้ราวสองถึงสามเท่าของรอบเล่นปกติ
- * ถ้าถี่กว่านี้คะแนนจากโบนัสจะกลบคะแนนจากการเล่นจริงจนสถิติไม่มีความหมาย
- */
-function buildBonusField(startX, span) {
-  const out = [];
-  let i = 0;
-
-  for (let x = startX; x < startX + span; x += BONUS.colGap, i++) {
-    // เติมครบทั้งสามเลนทุกคอลัมน์ ไม่ใช่สลับกันทีละเลน — ของจึงแน่นเต็มฟ้า
-    // แต่ละเลนแกว่งคนละเฟส เลนจึงไขว้กันไปมา ผู้เล่นต้องขยับหาจุดที่คุ้มที่สุด
-    // ไม่ใช่เลือกเลนเดียวแล้วลอยนิ่งยาว ๆ
-    for (let lane = 0; lane < 3; lane++) {
-      const y = 118 + lane * BONUS.laneGap
-        + Math.sin(x / 250 + lane * 2.1) * BONUS.waveAmp * 0.5;
-
-      // ให้ปลาเป็นส่วนใหญ่ เม็ดกลมรองลงมา กุ้งนาน ๆ ที
-      // ถ้าเทเม็ดแพงลงมาหมด คะแนนโบนัสจะกลบคะแนนจากการเล่นจริงจนสถิติไม่มีความหมาย
-      const n = i * 3 + lane;
-      const kind = n % 17 === 8 ? 'shrimp' : (n % 4 === 2 ? 'kibble' : 'fish');
-      out.push({ x, y, r: LEVEL.fishR, got: false, kind });
-    }
-  }
-  return out;
-}
-
-/**
- * โปรยแม่เหล็กทั่วสนามโบนัส
- * catX = ตำแหน่งตัวแมวในพิกัดโลก ณ วินาทีที่เริ่มโบนัส
- */
-export function buildBonusMagnets(catX, span, speed) {
-  const lanes = [118, 186, 254];   // ระดับเดียวกับสามเลนของแนวอาหาร
-
-  // ลูกแรกอยู่ถัดจากจุดเริ่มลอยเล็กน้อย ไม่ใช่ระหว่างช่วงทะยานขึ้นแล้ว
-  // คำนวณจากค่าใน BONUS ตรง ๆ เผื่อมีคนไปปรับจังหวะฉากแล้วลืมแก้ตรงนี้
-  const firstAt = (BONUS.catchFrames + BONUS.riseFrames) * speed + BONUS_MAGNET.afterFly;
-  const out = [{ x: catX + firstAt, y: lanes[1], r: BONUS_MAGNET.r, got: false }];
-
-  let i = 0;
-  const from = catX + firstAt + BONUS_MAGNET.gap;
-  for (let x = from; x < catX + span; x += BONUS_MAGNET.gap, i++) {
-    out.push({ x, y: lanes[i % 3], r: BONUS_MAGNET.r, got: false });
-  }
-  return out;
-}
 
 /**
  * ท่าว่างของแมวหน้าแรก — ยืนเฉย ๆ ครบ IDLE_GAP แล้วทำท่าหนึ่งท่า วนไปเรื่อย ๆ
@@ -1090,8 +1042,9 @@ export class Game {
   pickTreats(cx, cy, midAir) {
     for (const f of this.level.fishes) {
       if (f.got || f.x < this.camera - 40) continue;
-      // กุ้งตัวใหญ่กว่า ระยะเก็บเลยกว้างกว่าให้สมกับที่ตาเห็น
-      const pad = (f.kind === 'shrimp' ? SHRIMP.pickPad : 22) + this.skillGrab;
+      // ของที่วาดใหญ่ (กุ้ง คริสตัล) เก็บได้กว้างกว่าให้สมกับที่ตาเห็น — ดู TREATS.pickPad
+      const def = treatOf(f.kind);
+      const pad = def.pickPad + this.skillGrab;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
         f.got = true;
         // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
@@ -1099,19 +1052,9 @@ export class Game {
         const m = this.treasures.treatMult * this.skillTreatMult;
         // อุ้งเท้าทองคำ: ประกายทองเพิ่มตอนเก็บ ให้รู้ว่าชิ้นนี้ได้คะแนนคูณ
         if (this.skillTreatMult > 1) this.particles.burst(f.x, f.y, 8, 'letter', 4);
-        if (f.kind === 'shrimp') {
-          this.treat += Math.round((SCORING.pointsPerShrimp + this.foodBonus) * m);
-          this.particles.burst(f.x, f.y, 22, 'shrimp', 7);
-          sfx.shrimp();
-        } else if (f.kind === 'kibble') {
-          this.treat += Math.round((SCORING.pointsPerKibble + this.foodBonus) * m);
-          this.particles.burst(f.x, f.y, 10, 'kibble');
-          sfx.kibble();
-        } else {
-          this.treat += Math.round((SCORING.pointsPerFish + this.foodBonus) * m);
-          this.particles.burst(f.x, f.y, 7, 'mint');
-          sfx.fish();
-        }
+        this.treat += Math.round((def.points + this.foodBonus) * m);
+        this.particles.burst(f.x, f.y, def.burst[1], def.burst[0], def.burst[2]);
+        sfx[def.sfx]();
         // นับให้สมบัติที่ผูกกับการเก็บของ — midAir ตัดสินจากเท้าลอยพ้นพื้นจริง ๆ
         this.treasures.onTreat(this, midAir);
       }
@@ -1790,15 +1733,15 @@ export class Game {
     this.fishY = GROUND_Y - 74;
     this.fishDir = -1;             // หันซ้าย เพราะกำลังว่ายเข้าหาแมว
 
-    const span = this.speed * BONUS.frames + VIEW.W;
     // แนวอาหารเริ่มหลังจบช่วงทะยาน ไม่งั้นของแถวแรกจะไหลผ่านไปตอนยังอยู่ฉากพื้น
     //
     // นับเฉพาะ riseFrames — ช่วง catch กล้องไม่เลื่อนแล้ว (ดู worldMoves ใน updateBonus)
     // ถ้ายังบวก catchFrames อยู่ ของแถวแรกจะถูกวางล้ำไปข้างหน้าเกินจริง
     // แล้วผู้เล่นจะบินผ่านที่ว่างอยู่พักหนึ่งก่อนเจอของชิ้นแรก
-    const flyFrom = BONUS.riseFrames * this.speed;
-    this.bonusTreats = buildBonusField(this.bonusCam + flyFrom + 200, span);
-    this.bonusMagnets = buildBonusMagnets(this.bonusCam + PLAYER_X, span, this.speed);
+    // ระยะทั้งหมดอยู่ใน bonusGeometry ตัวเดียวกับที่หน้าออกแบบด่านใช้วางของบนฟ้า
+    const geo = bonusGeometry(this.speed);
+    this.bonusTreats = buildBonusField(this.bonusCam + geo.fieldAt, geo.span);
+    this.bonusMagnets = buildBonusMagnets(this.bonusCam + geo.catAt, geo.span, this.speed);
     sfx.bonus();
   }
 
@@ -2048,13 +1991,13 @@ export class Game {
 
     if (collecting) for (const f of this.bonusTreats) {
       if (f.got) continue;
-      if (Math.hypot(cx - f.x, cy - f.y) < f.r + 24) {
+      if (Math.hypot(cx - f.x, cy - f.y) < f.r + BONUS.pickPad) {
         f.got = true;
-        const b0 = this.foodBonus;
-        if (f.kind === 'shrimp') { this.treat += SCORING.pointsPerShrimp + b0; sfx.shrimp(); }
-        else if (f.kind === 'kibble') { this.treat += SCORING.pointsPerKibble + b0; sfx.kibble(); }
-        else { this.treat += SCORING.pointsPerFish + b0; sfx.fish(); }
-        this.particles.burst(f.x, f.y, 8, f.kind === 'kibble' ? 'kibble' : 'mint');
+        // ตารางเดียวกับในด่าน (TREATS) — บนฟ้าไม่คูณสมบัติ และอนุภาคน้อยกว่าเพราะเก็บถี่มาก
+        const def = treatOf(f.kind);
+        this.treat += def.points + this.foodBonus;
+        sfx[def.sfx]();
+        this.particles.burst(f.x, f.y, 8, def.burst[0]);
       }
     }
 
@@ -2327,6 +2270,31 @@ export class Game {
     this.renderScale = Math.hypot(tf.a, tf.b);
 
     if (this.state === STATE.READY) return this.inRoom ? this.drawRoom(ctx) : this.drawHome(ctx);
+
+    // ── ตรึงกล้องลงตารางพิกเซลของจอ เฉพาะตอนวาด ──
+    // กล้องเลื่อนทีละเศษพิกเซล (6.8 หน่วยเกม × สเกลจอ เช่น ×1.6 = 10.88 พิกเซล) ของทุกชิ้นในด่าน
+    // จึงถูกวาดที่ "เศษพิกเซล" ไม่ซ้ำเดิมทุกเฟรม ขอบของที่ถูกเกลี่ยสี (anti-alias) ก็เปลี่ยนตามทุกเฟรม
+    // เส้นขอบรอบของกินซึ่งบางแค่ราว 1 พิกเซลเลยทึบบ้างจางบ้าง = เห็นเป็นกะพริบ
+    // ความละเอียดยิ่งต่ำ (มือถือ ×1.6 / ประหยัดแบต ×1.15) ยิ่งเห็นชัด เพราะเส้นบางกว่าเดิมในหน่วยพิกเซล
+    //
+    // ปัดกล้องให้ตรงพิกเซลเต็ม: ของแต่ละชิ้นจึงตกเศษพิกเซลเดิมทุกเฟรม วาดออกมาเหมือนเดิมเป๊ะ
+    // เลื่อนไปทีละ 10 หรือ 11 พิกเซลแทน 10.88 — ต่างกันไม่ถึงพิกเซล ตามองไม่ออก
+    // ค่าจริงคืนกลับทันทีหลังวาด ฟิสิกส์ การชน และการเก็บของใช้กล้องจริงเหมือนเดิมทุกอย่าง
+    const s = this.renderScale || 1;
+    const realCam = this.camera;
+    const realBonusCam = this.bonusCam;
+    this.camera = Math.round(realCam * s) / s;
+    if (Number.isFinite(realBonusCam)) this.bonusCam = Math.round(realBonusCam * s) / s;
+    try {
+      return this.drawWorld(ctx);
+    } finally {
+      this.camera = realCam;
+      this.bonusCam = realBonusCam;
+    }
+  }
+
+  /** ฉากในด่าน (และฉากโบนัส) — เรียกผ่าน draw() เท่านั้น กล้องถูกตรึงลงพิกเซลไว้แล้ว */
+  drawWorld(ctx) {
     if (this.bonus > 0) return this.drawBonus(ctx);
 
     ctx.save();

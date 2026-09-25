@@ -1,6 +1,6 @@
 // src/render/entities.js
 import { PROP_ART } from './props/index.js';
-import { VIEW, GROUND_Y, BODY, SHRIMP, WORD, SKILL, POTION, LETTER_COLORS, COLORS as C } from '../config.js';
+import { VIEW, GROUND_Y, BODY, WORD, SKILL, POTION, LETTER_COLORS, TREATS, COLORS as C } from '../config.js';
 import { getFace } from '../face.js';
 import { LAYER } from '../paint.js';
 
@@ -926,53 +926,68 @@ function drawIceBlock(ctx, x, y, w, h, topBlock) {
 // ทุกสัดส่วนคูณจาก r เพื่อให้ตัวเดียวกันนี้ใช้ได้ทั้งในด่านและบน HUD
 // หันหน้าไปทางขวา (ทิศที่แมววิ่ง) หางอยู่ซ้าย
 
+// ── สไปรต์แคชของของกิน ──────────────────────────────────────────
+//
+// ── ทำไมต้องแคช ──
+// ของกินมีบนจอพร้อมกันหลายสิบชิ้น (ปลาอย่างเดียววัดได้ราวยี่สิบสองตัว) และแต่ละชิ้น
+// วาดด้วยคำสั่งหลายสิบคำสั่ง บางคำสั่งเปิด shadowBlur ซึ่งแพงที่สุดตัวหนึ่งของ canvas
+// วาดครั้งเดียวเก็บไว้ แล้วที่เหลือเป็น drawImage ครั้งเดียวต่อชิ้น — หน้าตาละเอียดขึ้นได้
+// โดยมือถือไม่ต้องทำงานหนักขึ้นเลย
+//
+// เก็บที่ความละเอียดสองเท่าแล้วย่อลงตอนวาด ภาพจึงยังคมตอนถูกย่อขยาย
+// ของที่ขยับหรือวิบ (ละออง ประกาย วงโคจร) ไม่อยู่ในแคช วาดสดทับทีหลัง
+const SPRITES = new Map();
+const SPRITE_SS = 2;
+
 /**
- * แคชภาพปลาสำเร็จรูป — หนึ่งภาพต่อหนึ่งรัศมี
- *
- * ── ทำไมต้องแคช ──
- * ปลาเป็นของที่มีเยอะที่สุดบนจอ (วัดได้ราวยี่สิบสองตัวพร้อมกัน) และแต่ละตัว
- * วาดด้วยคำสั่งราวสิบคำสั่ง โดยสองคำสั่งในนั้นเปิด shadowBlur ไว้
- * shadowBlur คือคำสั่งที่แพงที่สุดตัวหนึ่งของ canvas — เบราว์เซอร์ต้องเปิดผิวชั่วคราว
- * แล้ววิ่ง blur หนึ่งรอบต่อการวาดหนึ่งครั้ง วัดได้ 44 ครั้งต่อเฟรมมาจากปลาล้วน ๆ
- *
- * สีของปลาเป็นค่าคงที่ (COLORS ใน config) ไม่เปลี่ยนตามด่าน ภาพจึงเหมือนเดิมเสมอ
- * วาดครั้งเดียวเก็บไว้ แล้วที่เหลือเป็น drawImage ครั้งเดียวต่อตัว
- *
- * เก็บที่ความละเอียดสองเท่าแล้วย่อลงตอนวาด ภาพจึงยังคมตอนถูกย่อขยาย
+ * ภาพสำเร็จรูปหนึ่งภาพต่อ key — w/h คือกรอบ (หน่วยเกม) ที่เผื่อขอบให้แสงเรืองแล้ว
+ * จุดศูนย์กลางของตัวของอยู่กลางกรอบพอดี
  */
-const FISH_SPRITE = new Map();
-const FISH_SS = 2;
-
-function fishSprite(r) {
-  const key = Math.round(r * 4) / 4;
-  const hit = FISH_SPRITE.get(key);
+function sprite(key, w, h, paint) {
+  const hit = SPRITES.get(key);
   if (hit) return hit;
-
-  // ตอนนี้รัศมีมีไม่กี่ค่า (11 ในด่าน 10 บน HUD) แคชจึงเล็กมาก
-  // ถ้าวันหลังมีใครทำให้ปลาย่อขยายต่อเนื่อง แคชจะโตไม่หยุดจนกินหน่วยความจำ
-  // ล้างทิ้งเมื่อโตเกินควรเป็นประกันที่ถูกกว่าการไปไล่แก้ทีหลัง
-  if (FISH_SPRITE.size > 24) FISH_SPRITE.clear();
-
-  // เผื่อขอบให้แสงเรืองที่ฟุ้งออกไปไม่ถูกตัด — รัศมีเบลอ 12 บวกครีบที่ยื่นออกไป
-  const pad = 22;
-  const w = Math.ceil(r * 2.9) + pad * 2;
-  const h = Math.ceil(r * 2.4) + pad * 2;
+  // ตอนนี้รัศมีมีไม่กี่ค่า แคชจึงเล็กมาก ล้างทิ้งเมื่อโตเกินควรเป็นประกันไว้
+  // เผื่อวันหลังมีใครทำให้ของย่อขยายต่อเนื่อง แคชจะได้ไม่โตจนกินหน่วยความจำ
+  if (SPRITES.size > 48) SPRITES.clear();
   const cv = document.createElement('canvas');
-  cv.width = Math.ceil(w * FISH_SS);
-  cv.height = Math.ceil(h * FISH_SS);
+  cv.width = Math.ceil(w * SPRITE_SS);
+  cv.height = Math.ceil(h * SPRITE_SS);
   const g = cv.getContext('2d');
-  g.scale(FISH_SS, FISH_SS);
+  g.scale(SPRITE_SS, SPRITE_SS);
   g.translate(w / 2, h / 2);
-  paintFish(g, r);
-
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  paint(g);
   const made = { cv, w, h, ox: w / 2, oy: h / 2 };
-  FISH_SPRITE.set(key, made);
+  SPRITES.set(key, made);
   return made;
 }
 
-export function drawFish(ctx, x, y, r) {
-  const s = fishSprite(r);
-  ctx.drawImage(s.cv, x - s.ox, y - s.oy, s.w, s.h);
+/** ปัดรัศมีเป็นช่วง 0.25 — ของขนาดใกล้กันใช้ภาพเดียวกัน แคชไม่บวม */
+const rkey = (r) => Math.round(r * 4) / 4;
+
+/** แปะสไปรต์ให้ศูนย์กลางตรงจุด (x, y) — sx/sy ยืดหดรอบศูนย์กลาง (เยลลี่ดุ๊กดิ๊ก) */
+function blit(ctx, s, x, y, sx = 1, sy = 1) {
+  ctx.drawImage(s.cv, x - s.ox * sx, y - s.oy * sy, s.w * sx, s.h * sy);
+}
+
+function fishSprite(r) {
+  // เผื่อขอบให้แสงเรืองฟุ้งไม่ถูกตัด + หางพลิ้วที่ยื่นยาวกว่าเดิม
+  const pad = 22;
+  return sprite('fish:' + rkey(r), Math.ceil(r * 3.3) + pad * 2, Math.ceil(r * 2.5) + pad * 2, (g) => paintFish(g, r));
+}
+
+/**
+ * ปลาวิเศษ — ของกินพื้นฐาน มีเยอะที่สุดบนจอ
+ * t / phase ไม่บังคับ: ในด่านส่งมาเพื่อให้มีประกายวิบเล็ก ๆ นาน ๆ ที
+ * ไอคอนบน HUD กับหน้าแรกไม่ส่ง = ภาพนิ่ง
+ */
+export function drawFish(ctx, x, y, r, t = 0, phase = 0) {
+  blit(ctx, fishSprite(r), x, y);
+  if (!t || !GLOW.on) return;
+  // ประกายวิบช้า ๆ ทีละตัว ไม่พร้อมกันทั้งแถว (เฟสตามพิกัดโลก) — สั้นและเบา จะได้ไม่อ่านเป็นจอกะพริบ
+  const p = Math.sin(t * 0.045 + phase * 0.037);
+  if (p > 0.72) glint(ctx, x + r * 0.95, y - r * 0.8, r * 0.34 * ((p - 0.72) / 0.28), 0.9);
 }
 
 // ── ออราของไอเทมที่เก็บได้ ────────────────────────────────────
@@ -1050,104 +1065,232 @@ const AURA = {
   power: 'rgba(255,243,226,A)',
 };
 
-/** รูปปลาจริง ๆ วาดที่จุดกำเนิด — ถูกเรียกครั้งเดียวต่อรัศมีตอนสร้างแคช */
-function paintFish(ctx, r) {
-  // ขอบเข้ม — วาดเงาร่างเดียวกันขยาย 15% ไว้ข้างใต้
-  // จำเป็นตั้งแต่มีด่านกลางวัน เพราะปลาสีมิ้นต์ทับเนินหญ้าเขียวแล้วกลืนกันสนิท
-  // แสงเรืองช่วยไม่ได้เลยเมื่อพื้นหลังสว่างพอ ๆ กับตัวปลา ต้องใช้ขอบเข้มเท่านั้น
-  ctx.save();
-  ctx.scale(1.15, 1.15);
-  ctx.fillStyle = 'rgba(14,36,32,.5)';
+/** เส้นรอบลำตัวปลา — หัวมนทางขวา หลังโค้ง เรียวลงหาโคนหาง */
+function fishBodyPath(ctx, r) {
   ctx.beginPath();
-  ctx.moveTo(-r * 0.7, 0);
-  ctx.lineTo(-r * 1.38, -r * 0.64);
-  ctx.lineTo(-r * 1.38, r * 0.64);
+  ctx.moveTo(r * 1.04, r * 0.04);
+  ctx.bezierCurveTo(r * 1.0, -r * 0.66, r * 0.12, -r * 0.86, -r * 0.48, -r * 0.44);
+  ctx.quadraticCurveTo(-r * 0.76, -r * 0.2, -r * 0.8, 0);
+  ctx.quadraticCurveTo(-r * 0.76, r * 0.2, -r * 0.48, r * 0.44);
+  ctx.bezierCurveTo(r * 0.12, r * 0.84, r * 0.98, r * 0.64, r * 1.04, r * 0.04);
   ctx.closePath();
-  ctx.fill();
+}
+
+/** หางพลิ้วสองแฉก ปลายมน ไม่ใช่สามเหลี่ยมแข็ง ๆ แบบเดิม */
+function fishTailPath(ctx, r) {
   ctx.beginPath();
-  ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(-r * 0.66, 0);
+  ctx.bezierCurveTo(-r * 0.92, -r * 0.22, -r * 1.22, -r * 0.7, -r * 1.56, -r * 0.66);
+  ctx.quadraticCurveTo(-r * 1.3, -r * 0.24, -r * 1.36, 0);
+  ctx.quadraticCurveTo(-r * 1.3, r * 0.24, -r * 1.56, r * 0.66);
+  ctx.bezierCurveTo(-r * 1.22, r * 0.7, -r * 0.92, r * 0.22, -r * 0.66, 0);
+  ctx.closePath();
+}
+
+/**
+ * ปลาวิเศษ วาดที่จุดกำเนิด — ถูกเรียกครั้งเดียวต่อรัศมีตอนสร้างแคช
+ * สีเดิมทุกสี (fish / fishLite / fishFin) เปลี่ยนแค่รูปทรงกับรายละเอียด
+ */
+function paintFish(ctx, r) {
+  // ขอบเข้ม — ร่างเดียวกันขยาย 12% ไว้ข้างใต้
+  // จำเป็นตั้งแต่มีด่านกลางวัน เพราะปลาสีมิ้นต์ทับเนินหญ้าเขียวแล้วกลืนกันสนิท
+  ctx.save();
+  ctx.scale(1.12, 1.12);
+  ctx.fillStyle = 'rgba(14,36,32,.5)';
+  fishTailPath(ctx, r); ctx.fill();
+  fishBodyPath(ctx, r); ctx.fill();
   ctx.restore();
 
-  // เรืองแสงรอบตัว วาดลำตัวกับหางในรอบเดียวกันเพื่อให้ได้ขอบเรืองรูปปลา
+  // ออร่าเล็ก ๆ รอบตัว — วาดหางกับลำตัวในรอบเดียวกันเพื่อให้ได้แสงเรืองเป็นรูปปลา
   ctx.save();
   ctx.shadowColor = 'rgba(78,205,196,.85)';
   ctx.shadowBlur = 12;
-
   ctx.fillStyle = C.fishFin;
-  ctx.beginPath();
-  ctx.moveTo(-r * 0.7, 0);
-  ctx.lineTo(-r * 1.38, -r * 0.64);
-  ctx.lineTo(-r * 1.38, r * 0.64);
-  ctx.closePath();
-  ctx.fill();
-
+  fishTailPath(ctx, r); ctx.fill();
   ctx.fillStyle = C.fish;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2);
-  ctx.fill();
+  fishBodyPath(ctx, r); ctx.fill();
   ctx.restore();
 
-  // ครีบบน วาดหลังลำตัวเพื่อให้โคนครีบถูกกลบ
+  // ลายเส้นบนหาง ให้อ่านเป็นครีบบาง ๆ ที่พลิ้ว
+  ctx.strokeStyle = 'rgba(180,247,240,.55)';
+  ctx.lineWidth = r * 0.07;
+  for (const k of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.8, k * r * 0.06);
+    ctx.quadraticCurveTo(-r * 1.1, k * r * 0.3, -r * 1.4, k * r * 0.5);
+    ctx.stroke();
+  }
+
+  // ในลำตัว: เงาอมเข้มบนหลัง + พุงสีอ่อน — ตัดตามรูปลำตัว ขอบจึงเนียน
+  ctx.save();
+  fishBodyPath(ctx, r);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(46,158,151,.45)';
+  ctx.beginPath(); ctx.ellipse(-r * 0.1, -r * 0.72, r * 1.2, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.fishLite;
+  ctx.beginPath(); ctx.ellipse(r * 0.14, r * 0.36, r * 0.78, r * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // ครีบหลังโค้งเป็นคลื่น
   ctx.fillStyle = C.fishFin;
   ctx.beginPath();
-  ctx.moveTo(-r * 0.2, -r * 0.6);
-  ctx.lineTo(r * 0.16, -r * 1.02);
-  ctx.lineTo(r * 0.4, -r * 0.5);
-  ctx.closePath();
+  ctx.moveTo(-r * 0.3, -r * 0.6);
+  ctx.quadraticCurveTo(-r * 0.05, -r * 1.12, r * 0.42, -r * 0.66);
+  ctx.quadraticCurveTo(r * 0.1, -r * 0.66, -r * 0.3, -r * 0.6);
   ctx.fill();
 
-  // พุงสีอ่อน เยื้องไปทางหัวเล็กน้อย
-  ctx.fillStyle = C.fishLite;
+  // ครีบข้างจิ๋ว
   ctx.beginPath();
-  ctx.ellipse(r * 0.12, r * 0.22, r * 0.6, r * 0.38, 0, 0, Math.PI * 2);
+  ctx.moveTo(r * 0.2, r * 0.18);
+  ctx.quadraticCurveTo(-r * 0.1, r * 0.34, -r * 0.12, r * 0.62);
+  ctx.quadraticCurveTo(r * 0.14, r * 0.44, r * 0.2, r * 0.18);
   ctx.fill();
 
-  // ตากลมโต = ตัวชี้ขาดความน่ารัก
+  // แนวเหงือก
+  ctx.strokeStyle = 'rgba(46,158,151,.7)';
+  ctx.lineWidth = r * 0.07;
+  ctx.beginPath();
+  ctx.moveTo(r * 0.36, -r * 0.36);
+  ctx.quadraticCurveTo(r * 0.22, 0, r * 0.36, r * 0.34);
+  ctx.stroke();
+
+  // เงาวับพาดหลัง
+  ctx.strokeStyle = 'rgba(255,255,255,.75)';
+  ctx.lineWidth = r * 0.11;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.34, -r * 0.44);
+  ctx.quadraticCurveTo(r * 0.1, -r * 0.7, r * 0.56, -r * 0.5);
+  ctx.stroke();
+
+  // แก้มชมพูใต้ตา
+  ctx.fillStyle = 'rgba(255,155,176,.6)';
+  ctx.beginPath(); ctx.ellipse(r * 0.62, r * 0.22, r * 0.14, r * 0.09, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ตาโตกว่าเดิม (0.18 → 0.25) = ตัวชี้ขาดความน่ารัก ประกายตาสองจุด
   ctx.fillStyle = C.catInk;
+  ctx.beginPath(); ctx.arc(r * 0.6, -r * 0.12, r * 0.25, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.97)';
+  ctx.beginPath(); ctx.arc(r * 0.53, -r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r * 0.68, -r * 0.02, r * 0.045, 0, Math.PI * 2); ctx.fill();
+}
+
+// ── เม็ดส้มเรือง ─────────────────────────────────────────────
+//
+// สีส้มเดิม (kibble / kibbleLite / kibbleDark) แต่รูปทรงไม่ใช่วงกลมแข็ง ๆ อีกแล้ว
+// ขอบเป็นลอนนุ่ม ๆ แบบก้อนแป้งโมจิ ซ้อนแกนเรืองไว้ข้างใน และมีละอองลอยขึ้นรอบเม็ด
+// = "มีค่ากว่าปลา" ทั้งที่ยังเรียบง่ายพอจะอ่านออกตอนวิ่งเร็ว
+//
+// แยกเป็นสองภาพ: ตัวเม็ด (ไม่มีแสงเรือง) กับวงแสงเรือง (วาดเฉพาะตอน GLOW.on)
+// เพราะเม็ดนี้มีเส้นขอบ (ดู render/outline.js) ถ้าแสงเรืองติดอยู่ในภาพเดียวกัน
+// เงาของเส้นขอบจะกลายเป็นวงกลมใหญ่ทั้งวงตามแสงเรือง แทนที่จะเป็นเส้นรอบตัวเม็ด
+
+/**
+ * เส้นรอบเม็ด — ทรงกลมนุ่มแบบโมจิ กว้างกว่าสูงนิดหน่อย ขอบพองมนสามลอนเบา ๆ
+ * ลอนต้องเบา: ลองลอนลึกกว่านี้แล้วขอบขรุขระจนอ่านเป็นก้อนหิน ไม่ใช่ของกิน
+ */
+function orbPath(ctx, rr) {
   ctx.beginPath();
-  ctx.arc(r * 0.46, -r * 0.14, r * 0.18, 0, Math.PI * 2);
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const k = (1 + 0.035 * Math.cos(3 * a + 0.5)) * (1 + 0.06 * Math.cos(2 * a));
+    const px = Math.cos(a) * rr * k;
+    const py = Math.sin(a) * rr * k;
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function paintOrb(ctx, rr) {
+  // ขอบเข้มรอบนอก — เม็ดส้มวางบนพื้นส้มแล้วเหลือแค่แสงเรือง ตัวเม็ดหายไปกับพื้น
+  // บางและจางกว่ารุ่นแรก ขอบหนาเข้มทำให้ดูเป็นก้อนหินแข็ง
+  ctx.fillStyle = 'rgba(70,28,4,.42)';
+  orbPath(ctx, rr + 1);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.95)';
+
+  // ตัวเม็ด ไล่จากจุดรับแสงบนซ้ายไปขอบล่าง — ส้มเดิมเป็นเนื้อหลัก ขอบเข้มแค่ปลายสุด
+  const body = ctx.createRadialGradient(-rr * 0.22, -rr * 0.26, rr * 0.1, 0, 0, rr * 1.05);
+  body.addColorStop(0, C.kibbleLite);
+  body.addColorStop(0.62, C.kibble);
+  body.addColorStop(1, C.kibbleDark);
+  ctx.fillStyle = body;
+  orbPath(ctx, rr);
+  ctx.fill();
+
+  // แกนเรืองซ้อนชั้นข้างใน = "ของที่มีพลังงานอยู่ข้างใน"
+  const core = ctx.createRadialGradient(rr * 0.04, rr * 0.08, 0, rr * 0.04, rr * 0.08, rr * 0.62);
+  core.addColorStop(0, 'rgba(255,250,215,.95)');
+  core.addColorStop(0.45, 'rgba(255,214,140,.6)');
+  core.addColorStop(1, 'rgba(255,170,90,0)');
+  ctx.fillStyle = core;
   ctx.beginPath();
-  ctx.arc(r * 0.53, -r * 0.23, r * 0.075, 0, Math.PI * 2);
+  ctx.arc(rr * 0.04, rr * 0.08, rr * 0.62, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ประกายดาวสี่แฉกเล็ก ๆ กลางแกน = "มีพลังซ่อนอยู่ข้างใน" (ลึกลับ ไม่ใช่แค่ลูกกลม)
+  ctx.fillStyle = 'rgba(255,253,236,.95)';
+  ctx.beginPath();
+  const cs = rr * 0.34;
+  ctx.moveTo(rr * 0.04, rr * 0.08 - cs);
+  ctx.quadraticCurveTo(rr * 0.1, rr * 0.02, rr * 0.04 + cs, rr * 0.08);
+  ctx.quadraticCurveTo(rr * 0.1, rr * 0.14, rr * 0.04, rr * 0.08 + cs);
+  ctx.quadraticCurveTo(-rr * 0.02, rr * 0.14, rr * 0.04 - cs, rr * 0.08);
+  ctx.quadraticCurveTo(-rr * 0.02, rr * 0.02, rr * 0.04, rr * 0.08 - cs);
+  ctx.fill();
+
+  // เงาขอบล่างบาง ๆ ให้ยังดูกลมมีน้ำหนัก
+  ctx.strokeStyle = 'rgba(194,90,18,.55)';
+  ctx.lineWidth = rr * 0.1;
+  ctx.beginPath();
+  ctx.arc(0, 0, rr * 0.88, 0.2 * Math.PI, 0.8 * Math.PI);
+  ctx.stroke();
+
+  // ไฮไลต์เงาวับ
+  ctx.fillStyle = 'rgba(255,255,255,.88)';
+  ctx.beginPath();
+  ctx.ellipse(-rr * 0.36, -rr * 0.42, rr * 0.24, rr * 0.14, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-rr * 0.06, -rr * 0.6, rr * 0.06, 0, Math.PI * 2);
   ctx.fill();
 }
 
-// ── เม็ดกลม ──────────────────────────────────────────────────
+function orbGlowSprite(rr) {
+  const R = rr * 2.1;
+  return sprite('orbGlow:' + rkey(rr), R * 2, R * 2, (g) => {
+    const grad = g.createRadialGradient(0, 0, rr * 0.6, 0, 0, R);
+    grad.addColorStop(0, 'rgba(255,160,70,.55)');
+    grad.addColorStop(0.5, 'rgba(255,140,58,.2)');
+    grad.addColorStop(1, 'rgba(255,140,58,0)');
+    g.fillStyle = grad;
+    g.fillRect(-R, -R, R * 2, R * 2);
+  });
+}
 
-export function drawKibble(ctx, x, y, r) {
+/** t / phase ไม่บังคับ — ไม่ส่งมา (หน้าแรก) = เม็ดนิ่ง ไม่มีละออง */
+export function drawKibble(ctx, x, y, r, t = 0, phase = 0) {
   const rr = r * 0.86;   // เล็กกว่าปลาเล็กน้อย แต่รัศมี "เก็บ" ยังเท่าเดิม
+  if (GLOW.on) {
+    // แสงเรืองหายใจช้า ๆ ไล่เฟสตามพิกัด ของที่เรียงเป็นแถวจึงไม่เต้นพร้อมกันทั้งแถว
+    ctx.save();
+    ctx.globalAlpha = 0.8 + Math.sin(t * 0.07 + phase * 0.03) * 0.2;
+    blit(ctx, orbGlowSprite(rr), x, y);
+    ctx.restore();
+  }
+  blit(ctx, sprite('orb:' + rkey(rr), rr * 2 + 8, rr * 2 + 8, (g) => paintOrb(g, rr)), x, y);
+  if (!GLOW.on || !t) return;
 
-  // ขอบเข้มรอบนอก — ขนมเม็ดสีส้มวางบนพื้นส้มแล้วเหลือแค่แสงเรือง ตัวเม็ดหายไปกับพื้น
-  // ท่าเดียวกับขอบเข้มของปลาที่ใส่ไว้ตอนมีด่านกลางวัน
-  // 2.2 → 1.1: ในด่านมีเส้นขอบรวมของทุกชิ้นซ้อนทับอีกชั้น (ดู render/outline.js)
-  // ขอบเดิมบวกเส้นขอบรวมแล้วหนากว่าของชิ้นอื่นชัดเจน ลดขอบในตัวลงให้รวมแล้วพอ ๆ กัน
-  ctx.fillStyle = 'rgba(70,28,4,.55)';
-  ctx.beginPath();
-  ctx.arc(x, y, rr + 1.1, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.save();
-  ctx.shadowColor = 'rgba(255,140,58,.9)';
-  ctx.shadowBlur = 13;
-  ctx.fillStyle = C.kibble;
-  ctx.beginPath();
-  ctx.arc(x, y, rr, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // เงาขอบล่าง ทำให้ดูกลมมีน้ำหนักแทนที่จะเป็นจานแบน
-  ctx.strokeStyle = C.kibbleDark;
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.arc(x, y, rr - 0.9, 0.12 * Math.PI, 0.88 * Math.PI);
-  ctx.stroke();
-
+  // ละอองอุ่น ๆ ลอยขึ้นรอบเม็ด — ไม่อยู่ในรอบเงาของเส้นขอบ (GLOW ปิดตอนนั้น)
+  // ละอองจึงไม่มีเส้นขอบของตัวเอง ที่จะวิบขึ้นลงตามจังหวะลอย
   ctx.fillStyle = C.kibbleLite;
-  ctx.beginPath();
-  ctx.arc(x - rr * 0.3, y - rr * 0.34, rr * 0.34, 0, Math.PI * 2);
-  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const life = (t * 0.012 + i / 3 + phase * 0.0007) % 1;
+    ctx.globalAlpha = Math.sin(life * Math.PI) * 0.85;
+    ctx.beginPath();
+    ctx.arc(x + Math.sin(i * 2.3 + life * 4) * rr * 0.95, y - rr * 0.5 - life * rr * 1.5, rr * (0.1 + 0.05 * (i % 2)), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ── กุ้งทอง ──────────────────────────────────────────────────
@@ -1176,9 +1319,71 @@ const GLINTS = [
   { dx: 0.25, dy: 0.95, size: 0.26, phase: 4.2 },
 ];
 
+/**
+ * ปีกขนนกแบบเทวดาหนึ่งข้าง ชี้ขึ้นเฉียงไปข้างหลัง โคนอยู่ที่จุดกำเนิด
+ * ขอบบนโค้งมน ขอบล่างเป็นลอนขนนกสามลอน
+ *
+ * ── ทำไมต้องเป็นขนนก ไม่ใช่ปีกใส ──
+ * รุ่นแรกเป็นปีกใสมีเส้นลาย พอรวมกับลายปล้องบนตัวกุ้งแล้วอ่านเป็น "ผึ้ง" ทันที
+ * ซึ่งอันตรายมาก: ด่านสวนมีผึ้งเป็นของต้องหลบ ผู้เล่นจะหลบของดีหรือพุ่งชนผึ้ง
+ * ขนนกสีครีมขาวขอบทองไม่มีแมลงตัวไหนมี จึงอ่านเป็น "ของวิเศษมีปีก" ไม่ใช่แมลง
+ */
+function wingPath(ctx, len, wid) {
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-len * 0.1, -wid * 1.0, -len * 0.7, -wid * 1.25, -len, -wid * 0.9);
+  ctx.quadraticCurveTo(-len * 0.92, -wid * 0.45, -len * 0.72, -wid * 0.5);
+  ctx.quadraticCurveTo(-len * 0.66, -wid * 0.08, -len * 0.45, -wid * 0.18);
+  ctx.quadraticCurveTo(-len * 0.38, wid * 0.14, -len * 0.18, wid * 0.03);
+  ctx.quadraticCurveTo(-len * 0.08, wid * 0.08, 0, 0);
+  ctx.closePath();
+}
+
+/** วาดปีกที่มุม a (เรเดียน · 0 = ชี้ไปข้างหลังเฉียงขึ้น · ลบ = ลู่ลงไปข้างหลัง · บวก = กระพือขึ้น) — เส้นแบ่งขนนกเส้นเดียว ไม่มีเส้นลายแบบแมลง */
+function drawWing(ctx, len, wid, a, fill, edge) {
+  ctx.save();
+  ctx.rotate(a);
+  ctx.fillStyle = fill;
+  wingPath(ctx, len, wid);
+  ctx.fill();
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = len * 0.06;
+  ctx.stroke();
+  // แถวขนชั้นใน — โค้งเดียวขนานขอบบน บอกว่าเป็นขนซ้อนชั้น
+  ctx.lineWidth = len * 0.045;
+  ctx.beginPath();
+  ctx.moveTo(-len * 0.14, -wid * 0.3);
+  ctx.quadraticCurveTo(-len * 0.5, -wid * 0.78, -len * 0.84, -wid * 0.74);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * กุ้งทองติดปีก — สีทองเดิม (shrimp / shrimpLite / shrimpDark) ลำตัวทรงเดิมที่คนเล่นจำได้แล้ว
+ * เพิ่มปีกซ้อนสองชั้นกระพือ แกนเรืองทองข้างหลัง และประกายรอบตัว = หายากและมีค่า
+ */
 export function drawShrimp(ctx, x, y, r, t = 0) {
   ctx.save();
   ctx.translate(x, y);
+  const flap = Math.sin(t * 0.26);
+
+  // แกนเรืองทองหลังลำตัว — แสงเรืองไม่อยู่ในรอบเงาของเส้นขอบ (ดู GLOW)
+  if (GLOW.on) {
+    const core = ctx.createRadialGradient(0, -r * 0.05, 0, 0, -r * 0.05, r * 1.35);
+    core.addColorStop(0, 'rgba(255,238,160,.85)');
+    core.addColorStop(0.45, 'rgba(255,200,90,.35)');
+    core.addColorStop(1, 'rgba(255,193,69,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.05, r * 1.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ปีกชั้นหลัง จางกว่า กระพือสูงกว่าปีกหน้านิดหน่อย = มีมิติซ้อนสองชั้น
+  ctx.save();
+  ctx.translate(r * 0.02, -r * 0.58);
+  drawWing(ctx, r * 1.0, r * 0.5, -0.22 + flap * 0.2, 'rgba(255,250,236,.92)', 'rgba(232,170,60,.8)');
+  ctx.restore();
 
   // เรืองทองรอบตัว เข้มกว่าของกินอื่นเพราะต้องอ่านออกว่า "ของพิเศษ"
   ctx.save();
@@ -1212,8 +1417,10 @@ export function drawShrimp(ctx, x, y, r, t = 0) {
   ctx.restore();
 
   // ปล้องลำตัว วาดหลังตัวเพื่อให้ทับบนสีพื้น
-  ctx.strokeStyle = C.shrimpDark;
-  ctx.lineWidth = r * 0.11;
+  // จางและบางกว่ารุ่นก่อนมีปีก: แถบเข้มพาดตัวเหลือง + ปีก = สัญลักษณ์ของผึ้งพอดี
+  // (ผึ้งในด่านสวนคือของต้องหลบ) ลดลงแค่พอให้ยังอ่านออกว่าเป็นปล้องกุ้ง
+  ctx.strokeStyle = 'rgba(232,137,42,.5)';
+  ctx.lineWidth = r * 0.075;
   ctx.lineCap = 'round';
   for (const [sx, sy, ex, ey] of [
     [-r * 0.2, -r * 0.55, -r * 0.26, r * 0.34],
@@ -1257,6 +1464,15 @@ export function drawShrimp(ctx, x, y, r, t = 0) {
   ctx.quadraticCurveTo(r * 1.45, r * 0.3 - sway, r * 1.8, r * 0.14 - sway);
   ctx.stroke();
 
+  // ปีกชั้นหน้า ขาวครีมไล่ไปทองอ่อนที่ปลาย ขอบทอง ทับบนหลัง
+  ctx.save();
+  ctx.translate(r * 0.16, -r * 0.56);
+  const wg = ctx.createLinearGradient(0, 0, -r * 0.86, -r * 0.4);
+  wg.addColorStop(0, '#FFFFFF');
+  wg.addColorStop(1, C.shrimpLite);
+  drawWing(ctx, r * 0.86, r * 0.44, -0.42 + flap * 0.22, wg, C.shrimp);
+  ctx.restore();
+
   // ตา
   ctx.fillStyle = C.catInk;
   ctx.beginPath();
@@ -1268,11 +1484,247 @@ export function drawShrimp(ctx, x, y, r, t = 0) {
   ctx.fill();
 
   // ประกายวิบวับ วาดท้ายสุดให้ลอยอยู่เหนือทุกชั้น
-  for (const g of GLINTS) {
-    const pulse = Math.sin(t * 0.075 + g.phase);
-    if (pulse > 0) glint(ctx, r * g.dx, r * g.dy, r * g.size * pulse, pulse * 0.95);
+  // ไม่อยู่ในรอบเงาของเส้นขอบ — ถ้าอยู่ เส้นขอบรอบประกายจะโผล่ ๆ หาย ๆ ตามจังหวะวิบ
+  if (GLOW.on) {
+    for (const g of GLINTS) {
+      const pulse = Math.sin(t * 0.075 + g.phase);
+      if (pulse > 0) glint(ctx, r * g.dx, r * g.dy, r * g.size * pulse, pulse * 0.95);
+    }
   }
 
+  ctx.restore();
+}
+
+// ── เยลลี่จิ๋ว (คะแนนน้อยที่สุด) ──────────────────────────────
+//
+// ของธรรมดาที่เก็บง่าย — ต้องดู "ค่าน้อย" ทันทีแต่ไม่น่าเกลียด
+// ตัวเล็กสุด ทรงกลมมนเรียบ รายละเอียดน้อยสุด มีแค่เงาวับเล็ก ๆ ไม่มีออร่า ไม่มีประกายวิบ
+// ขยับแค่ดุ๊กดิ๊กเบา ๆ แบบเยลลี่ ซึ่งบอกเนื้อสัมผัสได้โดยไม่ต้องเพิ่มรายละเอียด
+
+/** ทรงเยลลี่หยดน้ำตาล (gumdrop) — โดมกลม ฐานแบนมุมมน */
+function jellyPath(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(-s, s * 0.55);
+  ctx.bezierCurveTo(-s * 1.08, -s * 0.35, -s * 0.6, -s * 1.02, 0, -s * 1.02);
+  ctx.bezierCurveTo(s * 0.6, -s * 1.02, s * 1.08, -s * 0.35, s, s * 0.55);
+  ctx.quadraticCurveTo(s * 0.95, s * 0.8, s * 0.7, s * 0.8);
+  ctx.lineTo(-s * 0.7, s * 0.8);
+  ctx.quadraticCurveTo(-s * 0.95, s * 0.8, -s, s * 0.55);
+  ctx.closePath();
+}
+
+function paintJelly(ctx, s) {
+  // ขอบเข้ม — ให้อ่านออกบนฉากสว่าง (ด่านกลางวัน) เหมือนปลา
+  ctx.save();
+  ctx.scale(1.16, 1.14);
+  ctx.fillStyle = 'rgba(96,24,58,.45)';
+  jellyPath(ctx, s);
+  ctx.fill();
+  ctx.restore();
+
+  // ตัวเยลลี่ ไล่จากยอดอ่อนลงฐานเข้ม
+  const g = ctx.createLinearGradient(0, -s, 0, s * 0.8);
+  g.addColorStop(0, C.jellyLite);
+  g.addColorStop(0.45, C.jelly);
+  g.addColorStop(1, C.jellyDark);
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,147,196,.6)';
+  ctx.shadowBlur = 5;
+  ctx.fillStyle = g;
+  jellyPath(ctx, s);
+  ctx.fill();
+  ctx.restore();
+
+  // ความใสข้างใน — วงสว่างจาง ๆ ครึ่งล่าง ให้ดูเป็นเยลลี่ ไม่ใช่ก้อนแป้ง
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.beginPath();
+  ctx.ellipse(s * 0.1, s * 0.25, s * 0.55, s * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // เงาฐาน
+  ctx.strokeStyle = 'rgba(200,70,130,.7)';
+  ctx.lineWidth = s * 0.14;
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.62, s * 0.68);
+  ctx.lineTo(s * 0.62, s * 0.68);
+  ctx.stroke();
+
+  // เงาวับเล็ก ๆ — ประกายเดียวที่เยลลี่มี
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.38, -s * 0.5, s * 0.2, s * 0.13, -0.7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(s * 0.42, -s * 0.62, s * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+export function drawJelly(ctx, x, y, r, t = 0, phase = 0) {
+  const s = r * TREATS.jelly.scale;
+  const sp = sprite('jelly:' + rkey(s), s * 2.6 + 12, s * 2.6 + 12, (g) => paintJelly(g, s));
+  // ดุ๊กดิ๊ก: ยืดขึ้นแล้วบีบลง สลับกันเบา ๆ (5%) ไล่เฟสตามพิกัด ไม่เต้นพร้อมกันทั้งแถว
+  const k = t ? Math.sin(t * 0.14 + phase * 0.05) * 0.05 : 0;
+  blit(ctx, sp, x, y, 1 + k, 1 - k);
+}
+
+// ── คริสตัลดาว (ตำนาน · คะแนนสูงสุด) ─────────────────────────
+//
+// ต้องดูมีค่ากว่าของกินทุกชนิดแบบเห็นทันที ลำดับชั้นของเกม:
+//   เยลลี่ (เล็ก เรียบ) → ปลา (น่ารัก) → เม็ดส้ม (เรือง) → กุ้ง (ปีก ทอง) → คริสตัล (ทุกอย่าง)
+// รูปทรง: ดาวคริสตัลสี่แฉกยาว + แฉกรองแนวทแยง + อัญมณีแปดเหลี่ยมตรงกลางที่มีหน้าตัดแสงเงา
+// แกนเรืองขาว ประกายรุ้งกวาดผ่านผิว วงโคจรที่มีเม็ดสีของของกินทุกชนิดวิ่งรอบ
+// และประกายดาวรอบตัว — ออร่าใหญ่ที่สุดในเกม
+//
+// วาดสดทุกเฟรม ไม่แคช: มีทีละชิ้นบนจอ และเกือบทุกชั้นขยับ
+// ของที่ขยับ (ออร่า วงโคจร ประกาย) อยู่นอกรอบเงาของเส้นขอบ เส้นขอบจึงรอบแค่ตัวคริสตัลนิ่ง ๆ
+
+/** ดาว n แฉก — rOut ปลายแฉก rIn ร่องระหว่างแฉก */
+function starPath(ctx, n, rOut, rIn) {
+  ctx.beginPath();
+  for (let i = 0; i < n * 2; i++) {
+    const a = (i * Math.PI) / n - Math.PI / 2;
+    const rr = i % 2 ? rIn : rOut;
+    if (i) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath();
+}
+
+function gemPath(ctx, g) {
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 8;
+    if (i) ctx.lineTo(Math.cos(a) * g, Math.sin(a) * g);
+    else ctx.moveTo(Math.cos(a) * g, Math.sin(a) * g);
+  }
+  ctx.closePath();
+}
+
+/** เม็ดสีของของกินทุกชนิดที่วิ่งรอบคริสตัล: ปลา · เม็ดส้ม · กุ้งทอง */
+const ORBIT = [C.fish, C.kibble, C.shrimp];
+
+/** วงโคจรเอียง — วาดสองรอบ: ครึ่งหลัง (ก่อนตัวคริสตัล) กับครึ่งหน้า (หลังตัวคริสตัล) */
+function orbitRing(ctx, R, t, front) {
+  const rx = R * 1.5;
+  const ry = R * 0.42;
+  ctx.save();
+  ctx.rotate(-0.28);
+  ctx.strokeStyle = front ? 'rgba(236,240,255,.55)' : 'rgba(236,240,255,.25)';
+  ctx.lineWidth = R * 0.045;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < ORBIT.length; i++) {
+    const a = t * 0.045 + (i * Math.PI * 2) / ORBIT.length;
+    // ครึ่งล่างของวง (sin > 0) อยู่ใกล้ตาเรากว่า = อยู่หน้าคริสตัล
+    if ((Math.sin(a) > 0) !== front) continue;
+    ctx.fillStyle = ORBIT[i];
+    ctx.shadowColor = ORBIT[i];
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * rx, Math.sin(a) * ry, R * (front ? 0.13 : 0.1), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+const CRYSTAL_GLINTS = [
+  { dx: 1.1, dy: -0.95, size: 0.34, phase: 0 },
+  { dx: -1.2, dy: -0.55, size: 0.26, phase: 1.6 },
+  { dx: -0.85, dy: 1.0, size: 0.3, phase: 3.1 },
+  { dx: 1.25, dy: 0.7, size: 0.22, phase: 4.6 },
+];
+
+export function drawCrystal(ctx, x, y, R, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  // หมุนไปมาช้า ๆ นิดเดียว — มีชีวิตแต่ยังอ่านรูปทรงออกตลอด
+  const spin = Math.sin(t * 0.02) * 0.08;
+
+  if (GLOW.on) {
+    // ออร่าใหญ่ที่สุดในเกม + ครึ่งหลังของวงโคจร
+    pickupAura(ctx, 0, 0, R * 1.1, 'rgba(150,160,255,A)', t, 0);
+    orbitRing(ctx, R, t, false);
+  }
+
+  // ดาวชั้นหลัง สี่แฉกยาว
+  ctx.save();
+  ctx.rotate(spin);
+  ctx.shadowColor = 'rgba(143,157,255,.95)';
+  ctx.shadowBlur = 16;
+  const back = ctx.createLinearGradient(0, -R * 1.2, 0, R * 1.2);
+  back.addColorStop(0, C.crystalLite);
+  back.addColorStop(0.5, C.crystalBack);
+  back.addColorStop(1, C.crystal);
+  ctx.fillStyle = back;
+  starPath(ctx, 4, R * 1.22, R * 0.34);
+  ctx.fill();
+  ctx.restore();
+
+  // แฉกรองแนวทแยง สั้นกว่า สว่างกว่า = ซ้อนชั้นแบบคริสตัล
+  ctx.save();
+  ctx.rotate(spin + Math.PI / 4);
+  ctx.fillStyle = 'rgba(226,230,255,.92)';
+  starPath(ctx, 4, R * 0.78, R * 0.26);
+  ctx.fill();
+  ctx.restore();
+
+  // อัญมณีแปดเหลี่ยม — หน้าตัดที่หันหาแสง (บนซ้าย) สว่าง หันหนีแสงเข้ม
+  const G = R * 0.6;
+  ctx.save();
+  ctx.rotate(spin);
+  for (let i = 0; i < 8; i++) {
+    const a0 = (i / 8) * Math.PI * 2 - Math.PI / 8;
+    const a1 = a0 + Math.PI / 4;
+    const lit = Math.cos((a0 + a1) / 2 + Math.PI * 0.75);   // 1 = หันหาแสงบนซ้ายตรง ๆ
+    ctx.fillStyle = lit > 0.5 ? C.crystalLite : lit > -0.2 ? C.crystalBack : lit > -0.7 ? C.crystal : C.crystalDark;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a0) * G, Math.sin(a0) * G);
+    ctx.lineTo(Math.cos(a1) * G, Math.sin(a1) * G);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,.75)';
+  ctx.lineWidth = R * 0.05;
+  gemPath(ctx, G);
+  ctx.stroke();
+
+  // ประกายรุ้งกวาดผ่านผิว — สีของของกินทุกชนิด (ฟ้า ทอง ส้ม ชมพู) ในอัญมณีเดียว
+  ctx.save();
+  gemPath(ctx, G);
+  ctx.clip();
+  const sweep = ((t * 0.01) % 1.8 - 0.4) * G * 2.6 - G;
+  const rainbow = ctx.createLinearGradient(sweep - G * 0.6, -G, sweep + G * 0.6, G);
+  rainbow.addColorStop(0, 'rgba(78,205,196,0)');
+  rainbow.addColorStop(0.25, 'rgba(78,205,196,.55)');
+  rainbow.addColorStop(0.45, 'rgba(255,193,69,.55)');
+  rainbow.addColorStop(0.62, 'rgba(255,140,58,.45)');
+  rainbow.addColorStop(0.8, 'rgba(255,147,196,.45)');
+  rainbow.addColorStop(1, 'rgba(255,147,196,0)');
+  ctx.fillStyle = rainbow;
+  ctx.fillRect(-G, -G, G * 2, G * 2);
+  ctx.restore();
+  ctx.restore();
+
+  // แกนเรืองขาวตรงกลาง
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, G * 0.62);
+  core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(0.5, 'rgba(236,240,255,.75)');
+  core.addColorStop(1, 'rgba(200,210,255,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(0, 0, G * 0.62, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (GLOW.on) {
+    // ครึ่งหน้าของวงโคจร + ประกายดาวรอบตัว
+    orbitRing(ctx, R, t, true);
+    for (const g of CRYSTAL_GLINTS) {
+      const pulse = Math.sin(t * 0.07 + g.phase);
+      if (pulse > 0) glint(ctx, R * g.dx, R * g.dy, R * g.size * pulse, pulse);
+    }
+  }
   ctx.restore();
 }
 
@@ -1330,8 +1782,8 @@ export function drawMagnets(ctx, magnets, camera, tick) {
     if (m.got) continue;
     const x = m.x - camera;
     if (x > W + 50 || x < -50) continue;
-    pickupAura(ctx, x, floatY(m, tick), m.r * 1.15, AURA.power, tick, m.x * 0.02);
-    drawMagnet(ctx, x, floatY(m, tick), m.r, tick);
+    pickupAura(ctx, x, floatY(ctx, m, tick), m.r * 1.15, AURA.power, tick, m.x * 0.02);
+    drawMagnet(ctx, x, floatY(ctx, m, tick), m.r, tick);
   }
 }
 
@@ -1987,8 +2439,8 @@ export function drawCans(ctx, cans, camera, tick) {
     const x = c.x - camera;
     if (x > W + 50 || x < -50) continue;
     // ลอยเฟสเดียวกับไอเทมอื่น อ่านออกว่าเป็นของชุดเดียวกันที่เก็บได้
-    pickupAura(ctx, x, floatY(c, tick), c.r * 1.15, AURA.power, tick, c.x * 0.02);
-    drawCan(ctx, x, floatY(c, tick), c.r, tick);
+    pickupAura(ctx, x, floatY(ctx, c, tick), c.r * 1.15, AURA.power, tick, c.x * 0.02);
+    drawCan(ctx, x, floatY(ctx, c, tick), c.r, tick);
   }
 }
 
@@ -1998,8 +2450,8 @@ export function drawNips(ctx, nips, camera, tick) {
     const x = n.x - camera;
     if (x > W + 50 || x < -50) continue;
     // ลอยขึ้นลงเฟสเดียวกับแม่เหล็กและตัวอักษร ให้อ่านออกว่าเป็นไอเทมชุดเดียวกัน
-    pickupAura(ctx, x, floatY(n, tick), n.r * 1.15, AURA.power, tick, n.x * 0.02);
-    drawNip(ctx, x, floatY(n, tick), n.r, tick);
+    pickupAura(ctx, x, floatY(ctx, n, tick), n.r * 1.15, AURA.power, tick, n.x * 0.02);
+    drawNip(ctx, x, floatY(ctx, n, tick), n.r, tick);
   }
 }
 
@@ -2097,8 +2549,8 @@ export function drawLetters(ctx, letters, camera, tick) {
     if (l.got) continue;
     const x = l.x - camera;
     if (x > W + 50 || x < -50) continue;
-    pickupAura(ctx, x, floatY(l, tick), l.r * 1.15, AURA.power, tick, l.x * 0.02);
-    drawLetterCoin(ctx, x, floatY(l, tick), l.r, WORD[l.idx], tick, l.idx);
+    pickupAura(ctx, x, floatY(ctx, l, tick), l.r * 1.15, AURA.power, tick, l.x * 0.02);
+    drawLetterCoin(ctx, x, floatY(ctx, l, tick), l.r, WORD[l.idx], tick, l.idx);
   }
 }
 
@@ -2607,11 +3059,20 @@ export function drawClouds(ctx, camera, pal) {
  * ที่ทำให้การดูดดู "ไม่สมูท" ทั้งที่เส้นทางจริงเรียบอยู่แล้ว
  *
  * mvx มีค่าเมื่อไหร่ = ชิ้นนั้นเข้าสู่การถูกดูดแล้ว (ตั้งโดย seek ใน utils.js)
+ *
+ * ── ปัดความสูงลงพิกเซลเต็มของจอ ──
+ * การลอยขึ้นลงเลื่อนทีละเศษพิกเซลทุกเฟรม ขอบของชิ้นจึงถูกเกลี่ยสีไม่ซ้ำเดิมทุกเฟรม
+ * เส้นขอบบาง ๆ รอบของกิน (render/outline.js) ที่วาดตามขอบนั้นเลยทึบบ้างจางบ้าง = กะพริบ
+ * ปัดให้ตรงพิกเซลแล้วยังลอยเหมือนเดิม แค่ขยับทีละพิกเซลเต็ม (สั่นขึ้นลงราว 5 ขั้น) ตามองไม่ออก
+ * ต้องอ่านสเกลจาก ctx ตัวที่กำลังวาดอยู่ — รอบวาดเงาของเส้นขอบใช้ผ้าใบคนละใบแต่สเกลเดียวกัน
+ * ทั้งสองรอบจึงปัดได้ค่าเดียวกัน เงาจึงตรงกับตัวจริงเป๊ะ
  */
-function floatY(item, t, amp = 5, rate = 0.05) {
-  return item.mvx === undefined
+function floatY(ctx, item, t, amp = 5, rate = 0.05) {
+  const y = item.mvx === undefined
     ? item.y + Math.sin(t * rate + item.x * 0.01) * amp
     : item.y;
+  const m = ctx.getTransform();
+  return m.d ? (Math.round(y * m.d + m.f) - m.f) / m.d : y;
 }
 
 export function star4(ctx, x, y, r) {
@@ -2655,10 +3116,16 @@ export function drawTreats(ctx, treats, camera, tick = 0) {
     if (t.got) continue;
     const x = t.x - camera;
     if (x > W + 50 || x < -50) continue;
-    const y = floatY(t, camera, 3, 0.02);
-    if (t.kind === 'shrimp') drawShrimp(ctx, x, y, t.r * SHRIMP.scale, tick);
-    else if (t.kind === 'kibble') drawKibble(ctx, x, y, t.r);
-    else drawFish(ctx, x, y, t.r);
+    const y = floatY(ctx, t, camera, 3, 0.02);
+    // ขนาดที่วาดมาจาก TREATS.scale (ตารางเดียวกับคะแนนและระยะเก็บ) · เฟสตามพิกัดโลก
+    // ของที่เรียงเป็นแถวจึงวิบ/ดุ๊กดิ๊กไล่กันเป็นคลื่น ไม่ใช่พร้อมกันทั้งแถว
+    switch (t.kind) {
+      case 'jelly': drawJelly(ctx, x, y, t.r, tick, t.x); break;
+      case 'kibble': drawKibble(ctx, x, y, t.r, tick, t.x); break;
+      case 'shrimp': drawShrimp(ctx, x, y, t.r * TREATS.shrimp.scale, tick); break;
+      case 'crystal': drawCrystal(ctx, x, y, t.r * TREATS.crystal.scale, tick); break;
+      default: drawFish(ctx, x, y, t.r, tick, t.x);
+    }
   }
 }
 
@@ -2669,8 +3136,8 @@ export function drawPotions(ctx, potions, camera, tick) {
     if (p.got) continue;
     const x = p.x - camera;
     if (x > W + 60 || x < -60) continue;
-    pickupAura(ctx, x, floatY(p, tick), 22 * POTION.drawScale, AURA.power, tick, p.x * 0.02);
-    drawPotion(ctx, x, floatY(p, tick), tick);
+    pickupAura(ctx, x, floatY(ctx, p, tick), 22 * POTION.drawScale, AURA.power, tick, p.x * 0.02);
+    drawPotion(ctx, x, floatY(ctx, p, tick), tick);
   }
 }
 
@@ -2743,7 +3210,7 @@ export function drawShields(ctx, shields, camera) {
     if (s.got) continue;
     const x = s.x - camera;
     if (x > W + 40 || x < -40) continue;
-    const y = floatY(s, camera, 4, 0.02);
+    const y = floatY(ctx, s, camera, 4, 0.02);
     pickupAura(ctx, x, y, s.r, AURA.power, camera * 0.1, s.x * 0.02);
 
     ctx.save();
@@ -3174,13 +3641,16 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
 /**
  * เฉพาะหัว ใช้เป็นไอคอนในเมนู ซึ่งเล็กเกินกว่าจะเห็นรายละเอียดตัวเต็ม
  * opts ส่งต่อให้ drawCatHead ตรง ๆ — ที่ใช้จริงตรงนี้คือ noPhoto
+ *
+ * s.noPhoto ต้องมีผลที่นี่ด้วย เหมือนใน drawCatPose — เดิมอ่านแค่ opts
+ * หัวน้องของคนอื่นบนกระดานคะแนนกับหน้าเพื่อนจึงได้รูปหน้าของเราไปแปะ ทั้งที่สกินบอกว่าห้าม
  */
 export function drawCatFace(ctx, x, y, scale, s, opts = {}) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
   ctx.lineCap = 'round';
-  drawCatHead(ctx, 0, 0, s, opts);
+  drawCatHead(ctx, 0, 0, s, { ...opts, noPhoto: !!opts.noPhoto || !!s.noPhoto });
   ctx.restore();
 }
 

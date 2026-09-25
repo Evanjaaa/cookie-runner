@@ -17,9 +17,10 @@
 // ─────────────────────────────────────────────────────────────
 import './editor.css';
 import {
-  GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD, SHRIMP,
-  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD,
+  GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD,
+  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD, TREATS, treatOf, BONUS,
 } from '../config.js';
+import { BONUS_LAYOUTS, bonusGeometry, buildBonusMagnets } from '../bonus-layouts.js';
 import {
   AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute,
   platTop, highestTop, footing,
@@ -29,9 +30,9 @@ import { GATES, GATE_LIST, gateMarks } from '../gates.js';
 import { gateViewAt, doorOpenAt } from '../gate-run.js';
 import { drawGateBack, drawGateFront, warmGateArt } from '../render/gates/index.js';
 import { STAGES } from '../stages.js';
-import { drawSky, drawHills, drawGround, GROUND_ART } from '../render/background.js';
+import { drawSky, drawGround, drawStageBackdrop, GROUND_ART } from '../render/background.js';
 import {
-  drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards,
+  drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards, drawClouds,
   drawNips, drawCans, drawMagnets, drawShields, drawPotions, drawLetters,
 } from '../render/entities.js';
 import { SKINS } from '../skins.js';
@@ -136,21 +137,30 @@ const KIT = [
   { t: 'pit', group: 'obs', pal: 'obs', label: 'หลุม', sub: 'ยืดปลายขวาได้', w: 132 },
   { t: 'pit', group: 'obs', pal: 'obs', label: 'หลุมกว้าง', sub: `${A.GAP_W}px ต้องกดสองชั้น`, w: A.GAP_W },
 
-  { t: 'fishRun', group: 'free', pal: 'food', label: 'แถวพื้น', sub: 'วิ่งเก็บ ไม่ต้องกระโดด', n: 8, gap: 34, wide: true },
-  { t: 'fishJump', group: 'arc', pal: 'food', label: 'โค้งกระโดดเดี่ยว', sub: 'เต็มใบ เม็ดแรก = จุดกด', n: 11, wide: true },
-  { t: 'fishDouble', group: 'arc', pal: 'food', label: 'โค้งกระโดดสองชั้น', sub: 'เต็มใบ', n: 11, wide: true },
-  { t: 'arcMid', group: 'arc', pal: 'food', label: 'ซุ้มโค้งเดี่ยว', sub: 'ตัดหางล่างทิ้ง', n: 11, wide: true },
-  { t: 'arcHigh', group: 'arc', pal: 'food', label: 'ซุ้มโค้งสองชั้น', sub: 'ชั้นบนสุด', n: 11, wide: true },
-  { t: 'fishWave', group: 'free', pal: 'food', label: 'แถวคลื่น', sub: 'วิ่งเก็บ แต่ตาสวยขึ้น', n: 12, gap: 34, humps: 3, wide: true },
-  { t: 'fishFlake', group: 'arc', pal: 'food', label: 'ช่อเกล็ดหิมะ', sub: 'เก้าเม็ดที่ยอดโค้งกระโดด', arm: 24 },
-  { t: 'fishLow', group: 'free', pal: 'food', label: 'แถวลอดใต้คาน', sub: 'ระดับตอนหมอบ', n: 8, gap: 32, wide: true },
+  // ── ของกิน — แบ่งโซนตามจำนวนครั้งที่ต้องกด (zone) ──
+  //   run  วิ่งเก็บ ไม่ต้องกด (รวมหมอบลอด)
+  //   j1   กระโดดครั้งเดียว
+  //   j2   กระโดดสองชั้น (กดซ้ำกลางอากาศ)
+  //   rare ของหายากโรยทับแถว
+  // ชุดจัดวางสำเร็จ (SETS ข้างล่าง) ใช้โซนเดียวกันและขึ้นอยู่ใต้ชิ้นเดี่ยวของโซนนั้น
+  { t: 'fishRun', group: 'free', pal: 'food', zone: 'run', label: 'แถวพื้น', sub: 'วิ่งเก็บ ไม่ต้องกระโดด', n: 8, gap: 34, wide: true },
+  { t: 'fishWave', group: 'free', pal: 'food', zone: 'run', label: 'แถวคลื่น', sub: 'วิ่งเก็บ แต่ตาสวยขึ้น', n: 12, gap: 34, humps: 3, wide: true },
+  { t: 'fishLow', group: 'free', pal: 'food', zone: 'run', label: 'แถวลอดใต้คาน', sub: 'ระดับตอนหมอบ', n: 8, gap: 32, wide: true },
+  { t: 'fishJump', group: 'arc', pal: 'food', zone: 'j1', label: 'โค้งกระโดดเดี่ยว', sub: 'เต็มใบ เม็ดแรก = จุดกด', n: 11, wide: true },
+  { t: 'arcMid', group: 'arc', pal: 'food', zone: 'j1', label: 'ซุ้มโค้งเดี่ยว', sub: 'ตัดหางล่างทิ้ง', n: 11, wide: true },
+  { t: 'fishFlake', group: 'arc', pal: 'food', zone: 'j1', label: 'ช่อเกล็ดหิมะ', sub: 'เก้าเม็ดที่ยอดโค้งกระโดด', arm: 24 },
+  { t: 'fishDouble', group: 'arc', pal: 'food', zone: 'j2', label: 'โค้งกระโดดสองชั้น', sub: 'เต็มใบ', n: 11, wide: true },
+  { t: 'arcHigh', group: 'arc', pal: 'food', zone: 'j2', label: 'ซุ้มโค้งสองชั้น', sub: 'ชั้นบนสุด', n: 11, wide: true },
 
   // ── ของหายาก ──
   // ไม่ใช่ชนิดใหม่ แต่เป็น "แถวเดิม + ของหายากโรยทับ" ด้วยกฎชุดเดียวกับที่เกมโรยเอง
   // (makeShrimp / makeKibble) จึงได้ระยะห่างและจุดวางแบบเดียวกับท่อนที่มีอยู่เป๊ะ ๆ
-  { t: 'fishRun', group: 'free', pal: 'food', label: 'กุ้งทองเดี่ยว', sub: 'ของหายากที่สุด ท่อนละตัว', n: 1, gap: 34, top: 'shrimp' },
-  { t: 'fishRun', group: 'free', pal: 'food', label: 'แถวอาหารเม็ด', sub: 'เม็ดกลมทั้งแถว', n: 6, gap: 34, top: 'all' },
-  { t: 'fishRun', group: 'free', pal: 'food', label: 'แถวกุ้งทอง (โบนัส)', sub: 'กุ้งทองทั้งแถว · ตั้งชั้นได้ในแผงขวา', n: 5, gap: 56, top: 'shrimpAll', wide: true },
+  { t: 'fishRun', group: 'free', pal: 'food', zone: 'rare', label: 'กุ้งทองเดี่ยว', sub: 'ของหายากที่สุด ท่อนละตัว', n: 1, gap: 34, top: 'shrimp' },
+  { t: 'fishRun', group: 'free', pal: 'food', zone: 'rare', label: 'แถวอาหารเม็ด', sub: 'เม็ดกลมทั้งแถว', n: 6, gap: 34, top: 'all' },
+  { t: 'fishRun', group: 'free', pal: 'food', zone: 'rare', label: 'แถวกุ้งทอง (โบนัส)', sub: 'กุ้งทองทั้งแถว · ตั้งชั้นได้ในแผงขวา', n: 5, gap: 56, top: 'shrimpAll', wide: true },
+  // เยลลี่จิ๋วกับคริสตัลดาวไม่มีระบบโรยให้อัตโนมัติ วางเองจากตรงนี้เท่านั้น (ดู withTreat ใน level.js)
+  { t: 'fishRun', group: 'free', pal: 'food', zone: 'rare', label: 'แถวเยลลี่จิ๋ว', sub: `คะแนนน้อยสุด (${TREATS.jelly.points}) · ทั้งแถว`, n: 8, gap: 34, top: 'jellyAll', wide: true },
+  { t: 'fishRun', group: 'free', pal: 'food', zone: 'rare', label: 'คริสตัลดาวเดี่ยว', sub: `ของตำนาน คะแนนสูงสุด (${TREATS.crystal.points})`, n: 1, gap: 34, top: 'crystal' },
 
   // ── ของพิเศษ ──
   // สามอย่างนี้ "ขยับเอง" ต่างจากทุกชิ้นข้างบนที่อยู่นิ่ง
@@ -213,7 +223,395 @@ const TOPS = [
   ['alternate', 'เม็ดกลมสลับทุกเม็ดที่ 3'],
   ['all', 'เม็ดกลมทั้งแถว'],
   ['shrimpAll', 'กุ้งทองทั้งแถว (โบนัส)'],
+  ['jellyAll', 'เยลลี่จิ๋วทั้งแถว (คะแนนน้อยสุด)'],
+  ['crystal', 'คริสตัลดาว 1 เม็ดที่จุดสูงสุด (ตำนาน)'],
+  ['crystalAll', 'คริสตัลดาวทั้งแถว (โบนัส)'],
 ];
+
+// ─────────────────────────────────────────────────────────────
+// ชุดจัดวางสำเร็จ — กดทีเดียวได้ทั้งชุดที่จัดไว้สวยแล้ว
+//
+// ── ต่อยอดจากชิ้นเดิม ไม่ใช่ของชนิดใหม่ ──
+// ทุกชุดประกอบจากชิ้นในกล่องเครื่องมือที่มีอยู่แล้ว (จุดกด แถว โค้ง หนาม ลัง หลุม)
+// ผูกกับจุดกดผ่าน ANCHORS ชุดเดียวกับที่คนลากเอง วางแล้วจึงแก้ได้ทีละชิ้นตามปกติ
+// เลื่อนจุดกดแล้วโค้ง หนาม ลัง และแถวนำทางขยับตามเองทั้งหมด
+// ไม่มีตัวเลขระยะของตัวเอง: ระยะหลังลงพื้นใช้ JUMP_SPAN / DBL_SPAN ของเกม
+//
+// zone เดียวกับชิปของกิน (run / j1 / j2) — ชุดขึ้นอยู่ใต้ชิ้นเดี่ยวของโซนนั้นในกล่องเครื่องมือ
+// width = ความยาวชุด (หน่วยเกม) ใช้วางกลางจอและทำภาพตัวอย่าง — เทสแล้วว่าของทุกชิ้นอยู่ในช่วงนี้
+// make() คืนชิ้นในพิกัดของชุด (ขอบซ้าย = 0) ตอนวางค่อยเลื่อนทั้งชุดไปที่จุดที่วาง
+// ─────────────────────────────────────────────────────────────
+const SET_GAP = 30;   // เว้นหลังจุดลงพื้นก่อนเริ่มแถวต่อไป — ค่าเดียวกับชุดตั้งต้นของทางเข้า (gateStarter)
+
+const P = {
+  jump: (x) => ({ id: uid(), t: 'jump', group: 'jump', x: Math.round(x) }),
+  /** กดชั้นสองกลางอากาศ — เกาะจุดกดแรกด้วย DOUBLE เลื่อนจุดแรกแล้วตามไปเอง */
+  jump2: (j) => ({ id: uid(), t: 'jump', group: 'jump', x: 0, link: { id: j.id, key: 'DOUBLE' } }),
+  row: (x, n, extra = {}) => ({ id: uid(), t: 'fishRun', group: 'free', x: Math.round(x), n, gap: 34, ...extra }),
+  /** แถวนำทางที่ยืดไปจนถึงจุดกดเอง (runTo) — เม็ดสุดท้ายชี้ว่า "กดตรงนี้" */
+  lead: (x, j, extra = {}) => ({ id: uid(), t: 'fishRun', group: 'free', x: Math.round(x), n: 0, gap: 34, runTo: j.id, ...extra }),
+  arc: (t, j, n, extra = {}) => ({ id: uid(), t, group: 'arc', x: 0, n, link: { id: j.id, key: 'AT' }, ...extra }),
+  flake: (j) => ({ id: uid(), t: 'fishFlake', group: 'arc', x: 0, arm: 24, link: { id: j.id, key: 'AT' } }),
+  on: (t, j, key, extra = {}) => ({ id: uid(), t, group: 'obs', x: 0, link: { id: j.id, key }, ...extra }),
+  wave: (x, n, humps, extra = {}) => ({ id: uid(), t: 'fishWave', group: 'free', x: Math.round(x), n, gap: 34, humps, ...extra }),
+  low: (x, n) => ({ id: uid(), t: 'fishLow', group: 'free', x: Math.round(x), n, gap: 32 }),
+  bar: (x) => ({ id: uid(), t: 'bar', group: 'obs', x: Math.round(x) }),
+};
+/** จุดเริ่มแถวหลังลงพื้น — ไม่ได้เกาะจุดกด (แถวเกาะได้แค่ runTo) จึงคิดจากตำแหน่งจุดกดตอนสร้าง */
+const after = (j, span) => j.x + span + SET_GAP;
+
+const SETS = [
+  // ── 🏃 วิ่งเก็บ ─────────────────────────────
+  {
+    zone: 'run', label: 'ขบวนของดีไล่ระดับ', sub: 'เยลลี่ → ปลา → เม็ดส้ม → กุ้งทอง', width: 700,
+    make: () => [
+      P.row(20, 5, { top: 'jellyAll' }),
+      P.row(200, 5),
+      P.row(380, 4, { top: 'all' }),
+      P.row(530, 5, { top: 'shrimp' }),
+    ],
+  },
+  {
+    zone: 'run', label: 'คลื่นสามลอนกุ้งทอง', sub: 'แถวคลื่น + กุ้งทองที่ยอดลอน', width: 600,
+    make: () => [P.wave(20, 16, 3, { top: 'shrimp' })],
+  },
+  {
+    zone: 'run', label: 'คลื่นเยลลี่สู่คริสตัล', sub: 'เก็บง่ายยาว ๆ แล้วปิดท้ายด้วยของตำนาน', width: 640,
+    make: () => [
+      P.wave(20, 13, 2, { top: 'jellyAll' }),
+      P.row(520, 3, { top: 'crystal' }),
+    ],
+  },
+  {
+    zone: 'run', label: 'ลอดคานสองรอบ', sub: 'หมอบลอด · แถวต่ำใต้คาน', width: 720,
+    make: () => [
+      P.row(20, 3),
+      P.bar(130),
+      P.low(130, 6),
+      P.row(330, 3, { top: 'all' }),
+      P.bar(440),
+      P.low(440, 6),
+      P.row(640, 2),
+    ],
+  },
+
+  // ── ⤴ กระโดดครั้งเดียว ─────────────────────
+  {
+    zone: 'j1', label: 'สะพานปลา', sub: 'แถวนำทาง → โค้งเต็มใบ → แถวรับ', width: 660,
+    make: () => {
+      const j = P.jump(220);
+      return [j, P.lead(20, j), P.arc('fishJump', j, 11), P.row(after(j, A.JUMP_SPAN), 6)];
+    },
+  },
+  {
+    zone: 'j1', label: 'ข้ามหนามโค้งกุ้งทอง', sub: 'หนามกลางโค้ง · กุ้งทองที่ยอด', width: 660,
+    make: () => {
+      const j = P.jump(220);
+      return [j, P.lead(20, j), P.on('spike', j, 'HALF'), P.arc('fishJump', j, 11, { top: 'shrimp' }), P.row(after(j, A.JUMP_SPAN), 6)];
+    },
+  },
+  {
+    zone: 'j1', label: 'ข้ามลังเม็ดส้ม', sub: 'ลัง 1 ชั้น · เม็ดส้มเกาะกลุ่มที่ยอด', width: 660,
+    make: () => {
+      const j = P.jump(220);
+      return [j, P.lead(20, j, { top: 'jellyAll' }), P.on('crate', j, 'HALF', { rows: 1 }), P.arc('fishJump', j, 11, { top: 'cluster' }), P.row(after(j, A.JUMP_SPAN), 6)];
+    },
+  },
+  {
+    zone: 'j1', label: 'ช่อเกล็ดหิมะกลางฟ้า', sub: 'แถวนำทาง → เกล็ดหิมะที่ยอดโค้ง', width: 640,
+    make: () => {
+      const j = P.jump(220);
+      return [j, P.lead(20, j), P.flake(j), P.row(after(j, A.JUMP_SPAN), 5, { top: 'all' })];
+    },
+  },
+  {
+    zone: 'j1', label: 'คริสตัลยอดโค้ง', sub: 'เยลลี่นำทาง · ของตำนานที่ยอดโค้ง', width: 660,
+    make: () => {
+      const j = P.jump(220);
+      return [j, P.lead(20, j, { top: 'jellyAll' }), P.arc('fishJump', j, 11, { top: 'crystal' }), P.row(after(j, A.JUMP_SPAN), 6, { top: 'jellyAll' })];
+    },
+  },
+  {
+    zone: 'j1', label: 'สองก้าวข้ามหนาม', sub: 'กระโดดเดี่ยว × 2 · ซุ้มโค้งทุกก้าว', width: 660,
+    make: () => {
+      const j1 = P.jump(130);
+      const j2 = P.jump(after(j1, A.JUMP_SPAN) + 70);
+      return [
+        j1, j2, P.lead(20, j1),
+        P.on('spike', j1, 'HALF'), P.arc('arcMid', j1, 9),
+        P.row(after(j1, A.JUMP_SPAN), 2),
+        P.on('spike', j2, 'HALF'), P.arc('arcMid', j2, 9, { top: 'shrimp' }),
+      ];
+    },
+  },
+
+  // ── ⤴⤴ กระโดดสองชั้น ───────────────────────
+  {
+    zone: 'j2', label: 'โค้งสองชั้นเต็มใบ', sub: 'แถวนำทาง → กดสองครั้ง → แถวรับ', width: 700,
+    make: () => {
+      const j = P.jump(180);
+      return [j, P.jump2(j), P.lead(20, j), P.arc('fishDouble', j, 11), P.row(after(j, A.DBL_SPAN), 5)];
+    },
+  },
+  {
+    zone: 'j2', label: 'หอลังสามชั้น', sub: 'ลัง 3 ชั้นที่ยอดโค้ง · กุ้งทองบนหอ', width: 700,
+    make: () => {
+      const j = P.jump(180);
+      return [j, P.jump2(j), P.lead(20, j), P.on('crate', j, 'DBL_PEAK', { rows: 3 }), P.arc('fishDouble', j, 11, { top: 'shrimp' }), P.row(after(j, A.DBL_SPAN), 5)];
+    },
+  },
+  {
+    zone: 'j2', label: 'ข้ามหลุมกว้าง', sub: `หลุม ${A.GAP_W}px · เม็ดส้มทั้งโค้ง`, width: 700,
+    make: () => {
+      const j = P.jump(180);
+      return [j, P.jump2(j), P.lead(20, j), P.on('pit', j, 'DBL_PEAK', { w: A.GAP_W }), P.arc('fishDouble', j, 11, { top: 'all' }), P.row(after(j, A.DBL_SPAN), 5)];
+    },
+  },
+  {
+    zone: 'j2', label: 'ยอดฟ้าคริสตัล', sub: 'เยลลี่นำทาง · คริสตัลบนยอดสองชั้น', width: 700,
+    make: () => {
+      const j = P.jump(180);
+      return [j, P.jump2(j), P.lead(20, j, { top: 'jellyAll' }), P.arc('fishDouble', j, 11, { top: 'crystal' }), P.row(after(j, A.DBL_SPAN), 5, { top: 'all' })];
+    },
+  },
+  {
+    zone: 'j2', label: 'สองชั้นต่อกันสองรอบ', sub: 'กดสองครั้ง × 2 · รอบหลังมีกุ้งทอง', width: 760,
+    make: () => {
+      const j1 = P.jump(60);
+      const j2 = P.jump(after(j1, A.DBL_SPAN) + 40);
+      return [
+        j1, P.jump2(j1), j2, P.jump2(j2),
+        P.arc('fishDouble', j1, 11),
+        P.arc('fishDouble', j2, 11, { top: 'shrimp' }),
+      ];
+    },
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// ท่อนโบนัส — วางของกินบนฟ้าโบนัสตัวอักษร (เก็บตัวอักษรครบ → ปลาทองพาขึ้นฟ้า)
+//
+// เป็นเอกสารธรรมดาที่ติดธง bonus: เครื่องมือทุกอย่างของหน้านี้ใช้ได้ทันที
+// (ลากย้ายอิสระ ปุ่มลัด G/S ย้อนกลับ กล่องวาดลาย/ตัวอักษร รายการของ) ต่างกันแค่:
+//   - ฉากเป็นท้องฟ้าชุดเดียวกับตอนบินในเกม ไม่มีพื้น ไม่มีจุดกด ไม่มีสิ่งกีดขวาง
+//   - ความยาว = ระยะที่แมวบินผ่านจริง (bonusGeometry) ของที่วางเลยไปเก็บไม่ได้
+//   - ตรวจด่าน = ดูว่าแต่ละเม็ดอยู่ในช่วงที่บินไปเก็บถึงไหม (บนฟ้าบินขึ้นลงได้อิสระ ไม่มีเฉลยการกด)
+//   - ส่งออกเป็นแบบจัดวางใน BONUS_LAYOUTS (src/bonus-layouts.js) ไม่ใช่ PATTERNS
+// ตัวเลขระยะทุกตัวมาจาก bonus-layouts.js / config.js ตัวเดียวกับเกม
+// ─────────────────────────────────────────────────────────────
+const BONUS_GEO = bonusGeometry(SPEED.run);
+const BONUS_LEN = Math.round(BONUS_GEO.flyLen);
+
+/** ช่วงความสูง (y ของเม็ด) ที่บินไปเก็บถึง — เท้าแมวอยู่ระหว่าง topY กับ floorY เก็บวัดจากกลางตัว */
+function bonusBand(r) {
+  const reach = r + BONUS.pickPad;
+  return [BONUS.topY - BODY.standH / 2 - reach, BONUS.floorY - BODY.standH / 2 + reach];
+}
+
+/** กำลังแก้ท่อนโบนัสอยู่ไหม — โหมดทั้งด่านกับโหมดดูของเดิมไม่นับ */
+function isBonus() {
+  return view.mode !== 'stage' && view.refIdx < 0 && !!doc().bonus;
+}
+
+/**
+ * ท่อนโบนัสใหม่ — ตั้งต้นด้วยสามแถวที่ความสูงเดียวกับสามเลนของแบบสุ่มเดิม + คริสตัลดาว
+ * จะได้เห็นทันทีว่าบนฟ้าวางตรงไหนได้บ้าง แล้วแก้ต่อจากตรงนั้น
+ */
+function bonusDoc(name) {
+  const d = blankDoc(name);
+  d.bonus = true;
+  d.width = BONUS_LEN;
+  d.kind = 'recovery';
+  d.diff = 1;
+  const rise = (y) => Math.round(A.RUN_Y - y);   // ความสูงบนจอ → ค่ายก
+  d.items = [
+    { id: uid(), t: 'fishRun', group: 'free', x: 60, n: 20, gap: 40, lane: 'custom', rise: rise(118), top: 'jellyAll' },
+    { id: uid(), t: 'fishWave', group: 'free', x: 60, n: 24, gap: 34, humps: 3, rise: rise(186) },
+    { id: uid(), t: 'fishRun', group: 'free', x: 60, n: 20, gap: 40, lane: 'custom', rise: rise(254), top: 'all' },
+    { id: uid(), t: 'fishRun', group: 'free', x: 960, n: 1, gap: 34, lane: 'custom', rise: rise(186), top: 'crystal' },
+  ];
+  return d;
+}
+
+/**
+ * แบบโบนัสที่อยู่ในเกมแล้ว → ท่อนโบนัสที่แก้ต่อได้
+ * รวมเม็ดชนิดเดียวกันเป็นลายวาดเองหนึ่งชิ้นต่อชนิด (แล้วตั้งหน้าตาเม็ดทั้งชิ้น)
+ * ตำแหน่งทุกเม็ดตรงของเดิมเป๊ะ — ส่งออกกลับไปจะได้แบบเดิมทุกพิกเซล
+ */
+const TOP_OF_KIND = { jelly: 'jellyAll', kibble: 'all', shrimp: 'shrimpAll', crystal: 'crystalAll' };
+function docFromBonusLayout(L) {
+  const d = bonusDoc(L.name);
+  d.items = [];
+  const byKind = {};
+  for (const [x, y, k] of L.treats) (byKind[k] = byKind[k] || []).push([x, y]);
+  for (const [k, pts] of Object.entries(byKind)) {
+    const x0 = Math.min(...pts.map((q) => q[0]));
+    const it = { id: uid(), t: 'fishDots', group: 'free', x: x0, pts: pts.map(([x, y]) => [x - x0, A.RUN_Y - y]) };
+    if (TOP_OF_KIND[k]) it.top = TOP_OF_KIND[k];
+    d.items.push(it);
+  }
+  return d;
+}
+
+/** ตัวช่วยบนฉากฟ้า: ช่วงที่เก็บถึง เลนของแบบสุ่มเดิม แม่เหล็กที่เกมวางเอง จุดเริ่มบิน จุดที่ปลาพาลงมาส่ง */
+function drawBonusGuides(cam) {
+  const [top, bottom] = bonusBand(LEVEL.fishR);
+  ctx.save();
+  // นอกช่วงเก็บถึง — แรเงาจาง ๆ
+  ctx.fillStyle = 'rgba(30,8,40,.3)';
+  ctx.fillRect(0, 0, W, top);
+  ctx.fillRect(0, bottom, W, H - bottom);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)';
+  ctx.setLineDash([6, 5]);
+  ctx.lineWidth = 1;
+  for (const y of [top, bottom]) {
+    ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke();
+  }
+  ctx.font = '600 11px system-ui';
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.fillText('เพดานที่บินไปเก็บถึง', 8, top - 5);
+  ctx.fillText('ต่ำสุดที่บินไปเก็บถึง', 8, bottom + 14);
+
+  // เลนสามเลนของแบบสุ่มเดิม — ไว้อ้างอิง (แม่เหล็กของเกมก็วางตามเลนนี้)
+  ctx.strokeStyle = 'rgba(255,255,255,.18)';
+  ctx.setLineDash([2, 6]);
+  for (const y of [118, 186, 254]) {
+    ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // แม่เหล็กที่เกมโปรยให้เอง (ย้ายไม่ได้) — ดูดของรอบตัว ของที่วางใกล้แม่เหล็กจึงเก็บง่ายกว่า
+  const mags = buildBonusMagnets(BONUS_GEO.catAt, BONUS_GEO.span, SPEED.run)
+    .map((m) => ({ ...m, x: m.x - BONUS_GEO.fieldAt }));
+  ctx.globalAlpha = 0.55;
+  drawMagnets(ctx, mags, cam, tick);
+  ctx.globalAlpha = 1;
+
+  // เส้นเริ่มบิน / เส้นที่ปลาพาลงมาส่ง
+  for (const [x, label, col] of [
+    [0, 'เริ่มบิน — แมวอยู่ตรงนี้ตอนโผล่บนฟ้า', 'rgba(127,227,218,.95)'],
+    [BONUS_LEN, 'ปลาพาลงมาส่ง — ของหลังเส้นนี้เก็บไม่ได้', 'rgba(255,143,184,.95)'],
+  ]) {
+    const sx = x - cam;
+    if (sx < -200 || sx > W + 20) continue;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(sx + 0.5, 0); ctx.lineTo(sx + 0.5, H); ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.fillText(label, sx + 6, H - 10);
+  }
+  ctx.restore();
+}
+
+/** ตรวจท่อนโบนัส — บนฟ้าบินขึ้นลงได้อิสระ จึงตรวจแค่ว่าแต่ละเม็ดอยู่ในช่วงที่บินไปถึงไหม */
+function runBonusCheck() {
+  const d = doc();
+  const sc = build(d);
+  const out = sc.fish.filter((f) => {
+    const [a, b] = bonusBand(f.r);
+    return f.x < -f.r || f.x > BONUS_LEN || f.y < a || f.y > b;
+  });
+  sim = {
+    frames: [], missed: out, eatAt: [], death: null, missedPress: [],
+    total: sc.fish.length, got: sc.fish.length - out.length,
+    clear: new Map(), scene: { ...sc, width: d.width }, items: [], itemAt: [], events: [],
+  };
+  const ok = sc.fish.filter((f) => !out.includes(f));
+  const pts = ok.reduce((s, f) => s + treatOf(f.kind).points, 0);
+  const count = {};
+  for (const f of sc.fish) count[f.kind || 'fish'] = (count[f.kind || 'fish'] || 0) + 1;
+  const names = { jelly: 'เยลลี่', fish: 'ปลา', kibble: 'เม็ดส้ม', shrimp: 'กุ้งทอง', crystal: 'คริสตัลดาว' };
+  const rows = [
+    `<b>ท่อนโบนัส “${esc(d.name)}”</b> — บินผ่านได้ ${BONUS_LEN}px`,
+    `ของกิน ${sc.fish.length} เม็ด: ` + Object.entries(count).map(([k, n]) => `${names[k] || k} ${n}`).join(' · '),
+    out.length
+      ? `<b class="warn">เก็บไม่ถึง ${out.length} เม็ด</b> — สูง/ต่ำเกินช่วงบิน หรือวางเลยจุดที่ปลาพาลง (คาดวงแดงไว้แล้ว)`
+      : '<b class="ok">ทุกเม็ดอยู่ในช่วงที่บินไปเก็บถึง</b>',
+    `คะแนนถ้าเก็บครบ ${pts.toLocaleString('en-US')} (ยังไม่รวมโบนัสสมบัติ)`,
+  ];
+  reportEl.innerHTML = rows.join('<br>');
+}
+
+/** โค้ดของท่อนโบนัส — แบบจัดวางหนึ่งแบบใน BONUS_LAYOUTS (พิกัดจริงของทุกเม็ด เรียงซ้ายไปขวา) */
+function bonusCode(d) {
+  const list = build(d).fish.slice().sort((a, b) => a.x - b.x);
+  const lines = [];
+  for (let i = 0; i < list.length; i += 6) {
+    lines.push('      ' + list.slice(i, i + 6)
+      .map((f) => `[${Math.round(f.x)}, ${Math.round(f.y)}, '${f.kind || 'fish'}']`).join(', ') + ',');
+  }
+  const name = d.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return `// ① ต่อท้าย BONUS_LAYOUTS ใน src/bonus-layouts.js — มีหลายแบบ เกมสุ่มหยิบรอบละแบบ\n`
+    + `  // ${d.name} — ${list.length} เม็ด\n`
+    + `  {\n    name: '${name}',\n    treats: [\n${lines.join('\n')}\n    ],\n  },\n`;
+}
+
+/** ชื่อโซนบนหัวกลุ่มในกล่องเครื่องมือ — ลำดับนี้คือลำดับที่ขึ้นจริง */
+const FOOD_ZONES = [
+  ['run', '🏃 วิ่งเก็บ — ไม่ต้องกด', 'วิ่งผ่านก็ได้ของ · แถวต่ำใต้คานต้องหมอบ'],
+  ['j1', '⤴ กระโดดครั้งเดียว', 'กดหนึ่งที เม็ดแรกของโค้ง = จุดกด'],
+  ['j2', '⤴⤴ กระโดดสองชั้น', 'กดครั้งแรก แล้วกดซ้ำกลางอากาศ'],
+  ['rare', '✦ ของหายาก', 'แถวที่โรยของพิเศษไว้แล้ว'],
+];
+
+/**
+ * วางชุดทั้งชุดทีเดียว — นับเป็นการย้อนกลับก้าวเดียว (Ctrl+Z ครั้งเดียวหายทั้งชุด)
+ * x0 = ขอบซ้ายของชุดในพิกัดท่อน · ของที่เกาะจุดกดไม่ต้องเลื่อน เพราะ x ของมันคิดจากจุดกดอยู่แล้ว
+ */
+function addSet(set, x0) {
+  const d = doc();
+  // ดันชุดให้อยู่ในท่อนเท่าที่ทำได้ — ชุดที่วางเลยขอบจะไปโผล่ในท่อนถัดไป (ดู strayItems)
+  const left = Math.round(Math.max(0, Math.min(x0, d.width - set.width)));
+  const items = set.make();
+  // ป้ายชุด — ลากชิ้นไหนก็ย้ายทั้งชุด (ดู drag 'group') · แยกชุดได้จากแผงขวา
+  const grp = uid();
+  for (const it of items) {
+    if (!it.link) it.x += left;
+    it.grp = grp;
+    it.grpName = set.label;
+  }
+  mutate((dd) => { dd.items.push(...items); });
+  const first = items.find((it) => it.t === 'jump') || items[0];
+  sel = first ? first.id : null;
+  renderInspector();
+  renderItemList();
+  return items;
+}
+
+/**
+ * ภาพตัวอย่างจิ๋วบนชิปชุด — วาดด้วยตัววาดของเกมเอง (drawTreats / drawObstacles)
+ * ตัวที่เห็นบนชิปจึงเป็นหน้าตาเดียวกับที่จะวางลงสนาม ไม่ใช่รูปวาดแยกที่อาจไม่ตรงกัน
+ * จุดสีชมพูบนพื้น = จุดกด (เลข 1 / 2 = กดครั้งที่เท่าไร)
+ */
+function paintSetThumb(canvas, set) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cssW = canvas.clientWidth || 220;
+  const cssH = canvas.clientHeight || 58;
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const c = canvas.getContext('2d');
+  const tmp = { ...blankDoc('ตัวอย่าง'), items: set.make() };
+  const sc = build(tmp);
+  const top = 120;                                  // เหนือยอดโค้งสองชั้นเล็กน้อย
+  const s = Math.min(cssW / set.width, cssH / (GROUND_Y + 14 - top));
+  c.setTransform(dpr * s, 0, 0, dpr * s, 0, -top * dpr * s);
+  c.fillStyle = '#241838';
+  c.fillRect(0, top, set.width, GROUND_Y + 14 - top);
+  // พื้น (เว้นช่องหลุม)
+  c.fillStyle = '#7A4A2E';
+  c.fillRect(0, GROUND_Y, set.width, 14);
+  c.fillStyle = '#241838';
+  for (const p of sc.pit) c.fillRect(p.x, GROUND_Y, p.w, 14);
+  drawObstacles(c, sc.obs, 0, stage().theme);
+  drawTreats(c, sc.fish, 0, 30);
+  // จุดกด
+  sc.jumps.forEach((jx, i) => {
+    c.fillStyle = '#FF7AB6';
+    c.beginPath();
+    c.arc(jx, GROUND_Y + 7, 7, 0, Math.PI * 2);
+    c.fill();
+  });
+}
 
 const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow', 'fishFlake', 'fishDots']);
 const NEEDS_TWO = new Set(['fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave']);
@@ -629,6 +1027,9 @@ function build(d, off = 0) {
       // ลายวาดเองยกขึ้นลงได้อิสระ ไม่ต้องดูดเข้าชั้นมาตรฐานเหมือนแถวพื้น
       if (it.t === 'fishDots') { if (it.rise) made = A.lift(made, it.rise); }
       else if (it.t === 'fishRun') made = laneOf(made, it, plats);
+      // โค้ง ซุ้ม คลื่น เกล็ดหิมะ แถวลอดคาน — ยกได้อิสระด้วย lift ตัวเดียวกับเกม
+      // (โค้งที่ยกพ้นเส้นทางกระโดดจะเก็บไม่ได้ ตัวตรวจด่านจะวงแดงให้เห็นเอง)
+      else if (it.rise) made = A.lift(made, it.rise);
       if (it.top) made = topping(made, it.top);
       for (const f of made) fish.push(tag(f, it));
     }
@@ -672,6 +1073,9 @@ function laneOf(items, it, plats) {
 function topping(items, kind) {
   if (kind === 'shrimp') return A.withShrimp(items);
   if (kind === 'shrimpAll') return A.withShrimp(items, 'all');
+  if (kind === 'jellyAll') return A.withTreat(items, 'jelly');
+  if (kind === 'crystal') return A.withTreat(items, 'crystal', 'top');
+  if (kind === 'crystalAll') return A.withTreat(items, 'crystal');
   return A.withKibble(items, kind);
 }
 
@@ -889,12 +1293,19 @@ function draw() {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  drawSky(ctx, cam, pal);
-  drawHills(ctx, cam, pal);
-  drawGround(ctx, scene.pit, cam, pal, GROUND_ART[st.backdrop]);
-  const gate = gateView(cam);
+  // ท่อนโบนัส = ฟ้าเปิดโล่งชุดเดียวกับตอนบินในเกม (Game.drawBonus) ไม่มีพื้น ไม่มีทางเข้าด่าน
+  const bonusView = isBonus();
+  if (bonusView) {
+    drawSky(ctx, cam, pal, true);
+    drawClouds(ctx, cam, pal);
+  } else {
+    // ฉากหลังชุดเดียวกับเกม (ครัว สวน ถ้ำ ทะเล อวกาศ หิมะ) — ไม่ใช่ท้องฟ้ากับเนินรุ่นแรกแบบเดิม
+    drawStageBackdrop(ctx, cam, st, pal, tick);
+    drawGround(ctx, scene.pit, cam, pal, GROUND_ART[st.backdrop]);
+  }
+  const gate = bonusView ? null : gateView(cam);
   if (gate) drawGateBack(ctx, gate.def, gate.v);
-  drawPlats(ctx, scene.plats || [], cam, pal);
+  if (!bonusView) drawPlats(ctx, scene.plats || [], cam, pal);
 
   // ทั้งด่านมีจุดกดหลายสิบจุด วาดส่วนโค้งทุกจุดทุกเฟรมคือเปลืองเปล่า ๆ
   // เอาเฉพาะที่อยู่ใกล้จอพอจะมองเห็น เผื่อข้างละ 400px ให้เส้นที่เริ่มนอกจอยังต่อเนื่อง
@@ -912,9 +1323,10 @@ function draw() {
   drawItems(cam);
 
   // เงาท่อนถัดไปมีไว้ดูรอยต่อของท่อนเดียว — ทั้งด่านเห็นรอยต่อจริงอยู่แล้วไม่ต้องเดา
-  if (view.next && view.mode !== 'stage') drawGhost(cam, scene);
+  if (bonusView) drawBonusGuides(cam);
+  else if (view.next && view.mode !== 'stage') drawGhost(cam, scene);
   if (view.mode === 'stage') drawSlotBounds(cam, scene);
-  else drawBounds(cam, scene.width);
+  else if (!bonusView) drawBounds(cam, scene.width);
   drawJumpMarks(cam, nearJumps);
   if (sim) drawSimMarks(cam);
   if (!scene.readonly) drawLaneGuides();
@@ -1232,6 +1644,21 @@ function drawSelection() {
   if (!it) return;
   const b = itemBox(d, it);
   ctx.save();
+  if (it.grp) {
+    // กรอบรวมทั้งชุด — เส้นจางกว่ากรอบชิ้นที่เลือก
+    const boxes = d.items.filter((q) => q.grp === it.grp).map((q) => itemBox(d, q));
+    const x0 = Math.min(...boxes.map((q) => q.x));
+    const y0 = Math.min(...boxes.map((q) => q.y));
+    const x1 = Math.max(...boxes.map((q) => q.x + q.w));
+    const y1 = Math.max(...boxes.map((q) => q.y + q.h));
+    ctx.strokeStyle = 'rgba(255,143,184,.45)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 5]);
+    ctx.strokeRect(x0 - cam - 8, y0 - 8, x1 - x0 + 16, y1 - y0 + 16);
+    ctx.fillStyle = 'rgba(255,143,184,.9)';
+    ctx.font = '600 11px system-ui';
+    ctx.fillText(`ชุด: ${it.grpName || ''}`, x0 - cam - 6, y0 - 12);
+  }
   ctx.strokeStyle = '#FF8FB8';
   ctx.lineWidth = 2;
   ctx.setLineDash([4, 3]);
@@ -1595,8 +2022,8 @@ function simulate(d, scIn) {
     sc.fish.forEach((t, i) => {
       if (eatAt[i] < Infinity) return;
       const d0 = Math.hypot(cx - t.x, cy - t.y);
-      // กุ้งตัวใหญ่ ระยะเก็บกว้างกว่า — ค่าเดียวกับ Game.pickTreats
-      const pad = t.kind === 'shrimp' ? SHRIMP.pickPad : 22;
+      // ของที่วาดใหญ่ (กุ้ง คริสตัล) เก็บได้กว้างกว่า — ตาราง TREATS ตัวเดียวกับ Game.pickTreats
+      const pad = treatOf(t.kind).pickPad;
       // แม่เหล็ก: ของที่เข้ารัศมีดูดถือว่าได้แล้ว (ในเกมมันบินเข้าปากเร็วกว่ากล้องเสมอ ดู MAGNET.minPull)
       if (d0 < t.r + pad || (fx.magnet > 0 && d0 < MAGNET.range)) eatAt[i] = f;
     });
@@ -1847,6 +2274,7 @@ function joinIssues(sc) {
 const reportEl = document.getElementById('report');
 
 function runCheck() {
+  if (isBonus()) { runBonusCheck(); return; }
   const whole = view.mode === 'stage';
   const sc = whole || view.refIdx >= 0
     ? active()
@@ -2212,8 +2640,16 @@ cv.addEventListener('pointerdown', (ev) => {
   if (hit) {
     sel = hit.id;
     renderInspector();
-    // แถวพื้นลากขึ้นลงได้ด้วย จึงต้องจำระยะแนวตั้งจากจุดที่จับไว้ ไม่งั้นแถวจะกระตุกมาอยู่ใต้นิ้ว
-    const offY = (hit.t === 'fishRun' || hit.t === 'fishDots') ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
+    // ── ชิ้นที่มาจากชุดจัดวางสำเร็จ: ลากชิ้นไหนก็ย้ายทั้งชุด (กด Alt ค้าง = ย้ายชิ้นเดียว) ──
+    // ย้ายเฉพาะชิ้นที่เป็นพิกัดอิสระ ชิ้นที่เกาะจุดกดตามจุดกดไปเอง ระยะในชุดจึงไม่เพี้ยน
+    if (hit.grp && !ev.altKey) {
+      const orig = new Map(d.items.filter((q) => q.grp === hit.grp && !q.link).map((q) => [q.id, q.x]));
+      drag = { kind: 'group', grp: hit.grp, sx: p.x, orig };
+      pushUndo();
+      return;
+    }
+    // ของกินลากขึ้นลงได้ด้วย จึงต้องจำระยะแนวตั้งจากจุดที่จับไว้ ไม่งั้นแถวจะกระตุกมาอยู่ใต้นิ้ว
+    const offY = canLift(hit) ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
     drag = { kind: 'move', id: hit.id, off: p.x - xOf(d, hit), offY, sy: p.y };
     pushUndo();
     return;
@@ -2235,18 +2671,29 @@ cv.addEventListener('pointermove', (ev) => {
   }
 
   const p = worldAt(ev);
+
+  if (drag.kind === 'group') {
+    const dx = Math.round(p.x - drag.sx);
+    for (const [id, x0] of drag.orig) {
+      const q = byId(d, id);
+      if (q) q.x = x0 + dx;
+    }
+    dirty();
+    return;
+  }
+
   const it = byId(d, drag.id);
   if (!it) return;
 
   if (drag.kind === 'move') {
     snapTo(d, it, Math.round(p.x - drag.off));
     // ต้องขยับแนวตั้งเกิน LANE_SNAP ก่อนถึงนับว่าตั้งใจลากขึ้นลง — ลากแนวนอนมือสั่นนิดหน่อยแถวไม่หลุดชั้น
-    if (it.t === 'fishRun' && (drag.lifting || Math.abs(p.y - drag.sy) > LANE_SNAP)) {
+    if (it.t === 'fishRun' && !d.bonus && (drag.lifting || Math.abs(p.y - drag.sy) > LANE_SNAP)) {
       drag.lifting = true;
       setRise(it, A.RUN_Y - (p.y - drag.offY));
     }
-    // ลายวาดเองเลื่อนขึ้นลงได้ทุกพิกเซล ไม่ดูดเข้าชั้น — ลายต้องอยู่ตรงที่คนวางตั้งใจ
-    if (it.t === 'fishDots' && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
+    // ของกินชนิดอื่น (ลายวาดเอง โค้ง ซุ้ม คลื่น เกล็ดหิมะ) เลื่อนขึ้นลงได้ทุกพิกเซล ไม่ดูดเข้าชั้น
+    if ((it.t !== 'fishRun' || d.bonus) && canLift(it) && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
       drag.lifting = true;
       it.rise = Math.round(A.RUN_Y - (p.y - drag.offY));
     }
@@ -2395,8 +2842,12 @@ function scalable(d, it) {
   return handleX(d, it) !== null && !(it.t === 'fishRun' && it.runTo);
 }
 
-/** ชิ้นนี้ขยับขึ้นลงได้ไหม — แถวพื้นกับลายวาดเอง (ของอื่นอยู่ระดับเดียวเสมอ) */
-const canLift = (it) => it.t === 'fishRun' || it.t === 'fishDots';
+/**
+ * ชิ้นนี้ขยับขึ้นลงได้ไหม — ของกินทุกชนิด
+ * เดิมได้แค่แถวพื้นกับลายวาดเอง โค้งกับคลื่นติดอยู่ระดับเดียวตลอด ย้ายไปวางสูงต่ำตามใจไม่ได้
+ * แถวพื้นยังดูดเข้าชั้นมาตรฐานเหมือนเดิม (setRise) ส่วนชนิดอื่นยกได้ทุกพิกเซล
+ */
+const canLift = (it) => FOOD_T.has(it.t);
 
 function startModal(kind) {
   const d = doc();
@@ -2454,9 +2905,12 @@ function updateModal() {
 
     if (canLift(it)) {
       const rise = m.startRise - dy;
-      if (it.t === 'fishRun') {
+      if (it.t === 'fishRun' && !d.bonus) {
         if (dy === 0) it.rise = m.startRise; else setRise(it, rise);
-      } else it.rise = Math.round(rise);
+      } else {
+        if (it.t === 'fishRun') it.lane = 'custom';
+        it.rise = Math.round(rise);
+      }
     }
 
     const nx = Math.round(xOf(d, it) - m.startX);
@@ -2729,15 +3183,21 @@ function renderInspector() {
   if (PLAT_T.has(it.t)) rows.push(num('fW', 'กว้าง', it.w, 10, 80, 1200));
   if (it.t === 'hill') rows.push(num('fH', 'สูง', it.h, 5, 20, 140));
   if (it.t === 'ledge') rows.push(num('fLift', 'ลอยสูงจากพื้น', it.lift, 5, 40, 260));
-  if (it.t === 'fishRun' && it.lane === 'custom') rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
+  if (it.t === 'fishRun' && (it.lane === 'custom' || d.bonus)) rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
   // ลายวาดเองไม่มี "จำนวนเม็ด" ให้ปรับ — จำนวนมาจากตัวลายเอง แก้ที่กล่องวาดลาย
   if (FOOD_T.has(it.t) && it.t !== 'fishDots' && !(it.t === 'fishRun' && it.runTo)) {
     rows.push(num('fN', 'จำนวนเม็ด', it.n, 1, NEEDS_TWO.has(it.t) ? 2 : 1, 40));
   }
-  if (it.t === 'fishDots') rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
+  if (canLift(it) && it.t !== 'fishRun') rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
   if (it.gap !== undefined) rows.push(num('fGap', 'ระยะห่าง', it.gap, 1, gapMin(it), 120));
   if (it.humps !== undefined) rows.push(num('fHumps', 'จำนวนลูกคลื่น', it.humps, 1, 1, 8));
   rows.push('</div>');
+
+  if (it.grp) {
+    rows.push(`<div class="anchorbox"><p class="tip">อยู่ในชุด “${esc(it.grpName || 'ชุดจัดวาง')}” — ลากชิ้นไหนก็ย้ายทั้งชุด`
+      + ' · กด <b>Alt</b> ค้างแล้วลาก = ย้ายชิ้นนี้ชิ้นเดียว</p>'
+      + '<button class="btn ghost" id="fUngroup" style="width:100%">แยกชุด — ให้ทุกชิ้นย้ายอิสระ</button></div>');
+  }
 
   if (it.t === 'fishDots') {
     rows.push(`<p class="tip">ลายวาดเอง ${(it.pts || []).length} เม็ด — กดปุ่มข้างล่างเพื่อเพิ่ม/ลบเม็ดทีละเม็ด</p>`);
@@ -2763,7 +3223,7 @@ function renderInspector() {
     }
   }
 
-  if (it.t === 'fishRun') {
+  if (it.t === 'fishRun' && !d.bonus) {
     const cur = it.lane || 'run';
     const opts = LANES.map(([v, label]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`).join('');
     rows.push('<div class="anchorbox"><p class="tip">ชั้นของแถวนี้ — หรือ <b>ลากแถวขึ้นลงในสนาม</b> ได้เลย ใกล้ชั้นไหนจะดูดเข้าชั้นนั้น</p>' +
@@ -2814,6 +3274,13 @@ function renderInspector() {
 
   const ae = document.getElementById('fArtEdit');
   if (ae) ae.onclick = () => artEditItem(it.id);
+
+  const ug = document.getElementById('fUngroup');
+  if (ug) {
+    ug.onclick = () => mutate((dd) => {
+      for (const q of dd.items) if (q.grp === it.grp) { delete q.grp; delete q.grpName; }
+    });
+  }
 
   const un = document.getElementById('fUnder');
   if (un) un.onchange = () => mutate((dd) => { byId(dd, it.id).under = un.checked; });
@@ -2965,6 +3432,8 @@ function topsNear(list, at) {
   const out = [''];
   if (kinds.has('shrimp')) out.push('shrimp', 'shrimpAll');
   if (kinds.has('kibble')) out.push('cluster', 'alternate', 'all');
+  if (kinds.has('jelly')) out.push('jellyAll');
+  if (kinds.has('crystal')) out.push('crystal', 'crystalAll');
   return out;
 }
 
@@ -2983,6 +3452,8 @@ function harvestFish(p, jumpItems, push) {
       if (Math.abs(f.y - A.RUN_Y) > 0.001) exactRise(it, A.RUN_Y - f.y);
       if (f.kind === 'shrimp') it.top = 'shrimpAll';
       else if (f.kind === 'kibble') it.top = 'all';
+      else if (f.kind === 'jelly') it.top = 'jellyAll';
+      else if (f.kind === 'crystal') it.top = 'crystalAll';
       push(it);
       i += 1;
     }
@@ -3175,14 +3646,17 @@ function toCode(d, idxIn) {
   for (const it of d.items) {
     const e = anchorExpr(d, it, names, 'x');
     // แถวของกินที่โรยของหายากไว้ เขียนเป็นการห่อฟังก์ชันเดิม ไม่ใช่รายการเม็ดดิบ
-    const liftable = it.t === 'fishDots' || (it.t === 'fishRun' && it.lane !== 'surface');
+    const liftable = canLift(it) && !(it.t === 'fishRun' && it.lane === 'surface');
     const lifted = (call) => (!liftable || !it.rise ? call : `lift(${call}, ${it.rise})`);
     const wrap = (raw) => {
       const call = lifted(raw);
-      return !it.top ? `...${call}`
-        : it.top === 'shrimp' ? `...withShrimp(${call})`
-          : it.top === 'shrimpAll' ? `...withShrimp(${call}, 'all')`
-            : `...withKibble(${call}, '${it.top}')`;
+      if (!it.top) return `...${call}`;
+      if (it.top === 'shrimp') return `...withShrimp(${call})`;
+      if (it.top === 'shrimpAll') return `...withShrimp(${call}, 'all')`;
+      if (it.top === 'jellyAll') return `...withTreat(${call}, 'jelly')`;
+      if (it.top === 'crystal') return `...withTreat(${call}, 'crystal', 'top')`;
+      if (it.top === 'crystalAll') return `...withTreat(${call}, 'crystal')`;
+      return `...withKibble(${call}, '${it.top}')`;
     };
 
     switch (it.t) {
@@ -3282,6 +3756,30 @@ function toCode(d, idxIn) {
 function buildKit() {
   const map = { mark: 'kitMark', obs: 'kitObs', food: 'kitFood', sp: 'kitSpecial', item: 'kitItem', plat: 'kitPlat' };
   for (const key of Object.keys(map)) document.getElementById(map[key]).innerHTML = '';
+
+  // ── ของกินแบ่งโซนตามจำนวนครั้งที่กด ──
+  // แต่ละโซน: ชิ้นเดี่ยวก่อน แล้วตามด้วยชุดจัดวางสำเร็จของโซนนั้น (มีภาพตัวอย่าง)
+  const foodBox = document.getElementById('kitFood');
+  const zoneBox = {};
+  for (const [id, title, hint] of FOOD_ZONES) {
+    const det = document.createElement('details');
+    det.className = 'kit-group food-zone zone-' + id;
+    det.open = true;
+    const sets = SETS.filter((st) => st.zone === id);
+    det.innerHTML = `<summary>${title}<small>${hint}</small></summary><div class="kit"></div>`
+      + (sets.length ? `<p class="set-head">ชุดจัดวางสำเร็จ · ${sets.length} แบบ</p><div class="kit sets"></div>` : '');
+    foodBox.appendChild(det);
+    zoneBox[id] = det.querySelector('.kit');
+    const setBox = det.querySelector('.kit.sets');
+    for (const st of sets) {
+      const el = document.createElement('div');
+      el.className = 'chip wide set';
+      el.title = `${st.label} — ${st.sub}`;
+      el.innerHTML = `<canvas class="set-thumb"></canvas>${st.label}<em>${st.sub}</em>`;
+      setBox.appendChild(el);
+      wireSet(el, st);
+    }
+  }
   const propBox = document.getElementById('kitProps');
   propBox.innerHTML = '';
   const propGroups = {};
@@ -3301,16 +3799,45 @@ function buildKit() {
         propGroups[kit.stage] = det.querySelector('.kit');
       }
       propGroups[kit.stage].appendChild(el);
+    } else if (kit.pal === 'food' && zoneBox[kit.zone]) {
+      zoneBox[kit.zone].appendChild(el);
     } else {
       document.getElementById(map[kit.pal]).appendChild(el);
     }
     wireChip(el, kit);
   }
+  // ภาพตัวอย่างต้องวาดหลังชิปอยู่ในหน้าแล้ว (ต้องรู้ขนาดจริงของผ้าใบ)
+  requestAnimationFrame(() => {
+    const thumbs = document.querySelectorAll('#kitFood .chip.set canvas');
+    const sets = FOOD_ZONES.flatMap(([id]) => SETS.filter((st) => st.zone === id));
+    thumbs.forEach((cvs, i) => paintSetThumb(cvs, sets[i]));
+  });
+}
+
+/**
+ * ชิปชุด: ลากไปปล่อยในสนาม = ชุดเริ่มตรงจุดที่ปล่อย (กลางชุดอยู่ใต้นิ้ว)
+ * กดเฉย ๆ = วางกลางจอ — ไม่ลากตามเมาส์ระหว่างลากเหมือนชิ้นเดี่ยว
+ * เพราะชุดมีหลายชิ้น ขยับทั้งกลุ่มทุกเฟรมแล้วสะดุดตาและกินแรงโดยไม่จำเป็น
+ */
+function wireSet(el, set) {
+  el.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    if (locked()) return;
+    const up = (e) => {
+      window.removeEventListener('pointerup', up);
+      const r = cv.getBoundingClientRect();
+      const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      const mid = inside ? docCam() + (e.clientX - r.left) * (W / r.width) : docCam() + W / 2;
+      addSet(set, mid - set.width / 2);
+      updateCount();
+    };
+    window.addEventListener('pointerup', up);
+  });
 }
 
 function refreshDocPick() {
   const el = document.getElementById('docPick');
-  el.innerHTML = docs.map((d, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${i + 1}. ${esc(d.name)}</option>`).join('');
+  el.innerHTML = docs.map((d, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${i + 1}. ${d.bonus ? '☁ ' : ''}${esc(d.name)}</option>`).join('');
 }
 
 function refreshMeta() {
@@ -3321,7 +3848,7 @@ function refreshMeta() {
   document.getElementById('docDiff').value = d.diff;
   document.getElementById('docPartial').checked = !!d.partial;
   document.getElementById('docGate').value = d.gate || '';
-  document.getElementById('docWidth').disabled = !!d.gate;
+  document.getElementById('docWidth').disabled = !!d.gate || !!d.bonus;
   updateCount();
 }
 
@@ -3355,6 +3882,7 @@ function refreshAll() {
  */
 function syncEditClass() {
   document.body.classList.toggle('can-edit', editing());
+  document.body.classList.toggle('bonus-doc', isBonus());
 }
 
 function esc(s) {
@@ -3890,6 +4418,35 @@ document.getElementById('newDoc').onclick = () => {
   refreshAll();
 };
 
+document.getElementById('newBonus').onclick = () => {
+  pushUndo();
+  docs.push(bonusDoc('โบนัสฟ้า ' + (docs.filter((q) => q.bonus).length + 1)));
+  cur = docs.length - 1;
+  view.cam = 0;
+  sel = null; sim = null;
+  save();
+  refreshAll();
+};
+
+// แบบโบนัสที่อยู่ในเกมแล้ว → ท่อนโบนัสที่แก้ต่อได้ (ปุ่มโผล่เฉพาะตอนมีแบบในเกม)
+{
+  const imp = document.getElementById('bonusImport');
+  if (imp) {
+    // ซ่อนด้วย style ตรง ๆ — หน้านี้ไม่มีกฎ .hidden กลาง (มีแต่ของกล่องโค้ด)
+    imp.style.display = BONUS_LAYOUTS.length ? '' : 'none';
+    imp.textContent = `นำแบบโบนัสในเกมมาแก้ (${BONUS_LAYOUTS.length} แบบ)`;
+    imp.onclick = () => {
+      pushUndo();
+      for (const L of BONUS_LAYOUTS) docs.push(docFromBonusLayout(L));
+      cur = docs.length - 1;
+      view.cam = 0;
+      sel = null; sim = null;
+      save();
+      refreshAll();
+    };
+  }
+}
+
 document.getElementById('dupDoc').onclick = () => {
   pushUndo();
   const copy = JSON.parse(JSON.stringify(doc()));
@@ -4062,7 +4619,10 @@ const itemListEl = document.getElementById('itemList');
 
 /** ชื่อสั้น ๆ ของชิ้นหนึ่ง พร้อมข้อมูลที่ช่วยแยกแยะเมื่อมีของชนิดเดียวกันหลายชิ้น */
 function itemLabel(d, it) {
-  const kit = KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows)
+  // ชิปที่หน้าตาเม็ดตรงกันก่อน (แถวเยลลี่จิ๋ว / คริสตัลดาวเดี่ยว / แถวกุ้งทอง) ไม่งั้นทุกแถวที่โรยของ
+  // จะได้ชื่อ "แถวพื้น" เหมือนกันหมด เพราะชิปแถวพื้นมาก่อนในรายการและไม่ระบุหน้าตาเม็ด
+  const kit = (it.top && KIT.find((k) => k.t === it.t && k.top === it.top))
+    || KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows)
     && (k.kind === undefined || k.kind === it.kind));
   let name = kit ? kit.label : it.t;
   if (it.t === 'fishDots') name = `ลายวาดเอง ${(it.pts || []).length} เม็ด`;
@@ -4671,6 +5231,15 @@ document.getElementById('showCode').onclick = () => {
     return;
   }
 
+  if (isBonus()) {
+    const d = doc();
+    document.getElementById('codeOut').value = bonusCode(d);
+    document.getElementById('codeHint').textContent =
+      `ท่อนโบนัส — x นับจากจุดเริ่มบิน · บินผ่านได้ ${BONUS_LEN}px · ยังไม่มีแบบใน BONUS_LAYOUTS เกมใช้แนวคลื่นสามเลนแบบเดิม`;
+    modal.classList.remove('hidden');
+    return;
+  }
+
   const out = toCode(doc());
   const gd = doc().gate && GATES[doc().gate];
   if (gd) {
@@ -4737,7 +5306,7 @@ if (import.meta.env.DEV) {
     xOf, itemBox, docCam, pick, worldAt,
     get sim() { return sim; },
     get routes() { return routes; },
-    doc, build, toCode, simulate, staticIssues, joinIssues, runCheck, addItem, KIT, A,
+    doc, build, toCode, simulate, staticIssues, joinIssues, runCheck, addItem, KIT, A, SETS, addSet, isBonus, bonusDoc, bonusCode, docFromBonusLayout, BONUS_LEN,
     PATTERNS, PATTERN_META,
     get tpls() { return tpls; },
     artPts: () => art.pts,
