@@ -130,13 +130,13 @@ export function drawHUD(ctx, game) {
   // ป้ายเล็กจนอ่านเป็นเศษฝุ่น ส่วนตัวเลขใหญ่จนดูลอยไม่มีอะไรถ่วง
   // 13/20 (ต่างกัน 1.5 เท่า) ทั้งคู่อ่านออกและอ่านเป็นของชิ้นเดียวกัน
   ctx.globalAlpha = 0.72;
-  ctx.font = "500 13px 'IBM Plex Sans Thai', sans-serif";
+  ctx.font = "600 13px Mali, sans-serif";
   ctx.fillStyle = pal.ink;
   const treatLabel = t('ค่าขนมเปียก');
   ctx.fillText(treatLabel, treatX - textWidth(ctx, treatLabel), TREAT_TOP);
   ctx.globalAlpha = 1;
 
-  ctx.font = '600 20px Mitr, sans-serif';
+  ctx.font = '700 20px Mali, sans-serif';
   ctx.fillStyle = pal.accent;
   const treatW = textWidth(ctx, treatText);
   ctx.fillText(treatText, treatX - treatW, TREAT_TOP + 16);
@@ -203,7 +203,7 @@ function drawWord(ctx, game) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '600 14px Mitr, sans-serif';
+  ctx.font = '700 14px Mali, sans-serif';
 
   for (let i = 0; i < WORD.length; i++) {
     const x = x0 + i * (size + gap);
@@ -379,7 +379,7 @@ function drawBonusBanner(ctx, game) {
   const frac = (game.bonus % 60) / 60;
 
   ctx.save();
-  ctx.font = "700 19px Mitr, sans-serif";
+  ctx.font = "700 19px Mali, sans-serif";
   // วงตัวเลขตอนเด้งสุดยื่นขึ้นเหนือป้าย (34+8)/2*1.22+3 - 17 ≈ 12 หน่วย ประกายอีก 8
   drawCandyPill(ctx, 'BONUS TIME', BANNER_CLEAR + 12, 34, 'bonus', game.tick, {
     pop: Math.min(1, since / 18),
@@ -414,7 +414,7 @@ function drawNotice(ctx, game) {
   ctx.save();
   ctx.globalAlpha = a;
 
-  ctx.font = "700 16px Mitr, sans-serif";
+  ctx.font = "700 16px Mali, sans-serif";
   // ข้อความมาจากฝั่งเกม เพราะตอนนี้แถบนี้ใช้บอกได้หลายเรื่อง
   // ผ่านด่าน = ป้ายทองสด (ข่าวดีใหญ่) / เรื่องอื่น (ขวดพลัง ดึงขึ้นจากหลุม) = ป้ายฟ้าสด
   const label = game.noticeText || 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';

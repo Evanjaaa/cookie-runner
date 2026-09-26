@@ -600,7 +600,7 @@ export function drawScorePops(ctx, pops, cat) {
   for (const p of pops) {
     const k = p.t / p.life;
     ctx.globalAlpha = Math.max(0, 1 - k * k);
-    ctx.font = '700 26px Mitr, sans-serif';
+    ctx.font = '700 26px Mali, sans-serif';
     ctx.lineWidth = 5;
     ctx.strokeStyle = 'rgba(28,10,44,.85)';
     ctx.fillStyle = p.color || C.cream;

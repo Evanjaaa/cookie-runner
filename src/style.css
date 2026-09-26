@@ -52,7 +52,7 @@ body {
     radial-gradient(120% 80% at 50% 0%, #4A2760 0%, var(--night) 60%),
     var(--night);
   color: var(--cream);
-  font-family: "IBM Plex Sans Thai", "Mitr", system-ui, sans-serif;
+  font-family: "Mali", system-ui, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,8 +237,8 @@ canvas[hidden] { display: none; }
 .panel:not(.home):not(.hidden) > .pop > *:nth-child(4) { animation-delay: .15s; }
 
 .panel h2 {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   /* ย่อลงจาก clamp(24px, 5vw, 40px) — หัวเรื่องเดิมกินความสูงไปมากจนการ์ด
      ข้างล่างเหลือที่น้อย โดยเฉพาะจอเตี้ย และหน้าพวกนี้คนเข้ามาดูของ
      ไม่ได้เข้ามาอ่านหัวเรื่อง มันแค่ต้องบอกได้ว่าอยู่หน้าไหน */
@@ -289,13 +289,13 @@ canvas[hidden] { display: none; }
   color: var(--cream);
   background: rgba(255,243,226,.05);
 }
-.key b { color: var(--mint-lite); font-weight: 600; }
+.key b { color: var(--mint-lite); font-weight: 700; }
 
 .btn {
   position: relative;
   margin-top: 6px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 15.5px;
   /* เข้มขึ้นจากม่วงดำเป็นเขียวเข้ม — สีตัวอักษรควรเป็นญาติกับสีพื้นของปุ่มเอง
      ไม่ใช่สีที่ยืมมาจากพื้นหลังหน้า ซึ่งทำให้ตัวหนังสือดูเหมือนวางทับ ไม่ใช่พิมพ์ลงไป */
@@ -470,7 +470,7 @@ canvas[hidden] { display: none; }
   border: none;
   background: none;
   color: #B99BD4;
-  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-family: "Mali", system-ui, sans-serif;
   font-size: clamp(9px, 1.5dvh, 12px);
   line-height: 1;
   cursor: pointer;
@@ -575,7 +575,7 @@ canvas[hidden] { display: none; }
   padding: 1px 7px;
   border-radius: 999px;
   background: rgba(27,15,43,.32);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* สองปุ่มเรียงแถวเดียว — จอมือถือเตี้ยมาก ถ้าซ้อนกันปุ่มล่างจะโดนตัดหาย */
@@ -739,14 +739,16 @@ canvas[hidden] { display: none; }
   border: .045em solid rgba(255,243,226,.55);
   background: linear-gradient(180deg, #FBA85A 0%, #F08A2E 55%, #D9701C 100%);
   box-shadow: inset 0 .05em 0 rgba(255,255,255,.45), 0 .06em 0 rgba(120,52,10,.45);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
-  font-size: .235em;
-  letter-spacing: .3em;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  /* ชื่อไทย "เหมียวซิ่ง" — ตัวไทยมีสระบน-ล่าง ต้องใหญ่กว่าตัวพิมพ์ใหญ่อังกฤษเดิม (.235em)
+     และช่องไฟแคบลง ช่องไฟกว้างทำให้สระกับวรรณยุกต์ลอยห่างจากพยัญชนะจนอ่านสะดุด */
+  font-size: .42em;
+  line-height: 1.3;
+  letter-spacing: .1em;
   /* letter-spacing ใส่ช่องไฟไว้ "ท้ายตัวสุดท้าย" ด้วย ข้อความจึงเบี้ยวไปทางซ้าย
-     ดันกลับมาครึ่งหนึ่งของช่องไฟ ตัวหนังสือถึงจะอยู่กลางริบบิ้นจริง ๆ */
-  text-indent: .3em;
-  text-transform: uppercase;
+     ดันกลับมาเท่าช่องไฟ ตัวหนังสือถึงจะอยู่กลางริบบิ้นจริง ๆ */
+  text-indent: .1em;
   color: #FFF6E6;
   text-shadow: 0 .06em 0 rgba(140,62,12,.75);
   white-space: nowrap;
@@ -952,8 +954,8 @@ canvas[hidden] { display: none; }
   border: 1.5px solid rgba(27,15,43,.7);
   background: linear-gradient(180deg, #8DF3EA, #3BC3B4);
   color: #10333A;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: calc(var(--lg) * .26);
   line-height: 1.5;
   letter-spacing: .04em;
@@ -1051,8 +1053,8 @@ canvas[hidden] { display: none; }
   border: 2px solid rgba(58,29,80,.9);
   background: linear-gradient(180deg, #FFDF8A, #F5B31E);
   color: #3E2600;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: calc(var(--pf) * .28);
   line-height: 1.5;
   text-align: center;
@@ -1067,8 +1069,8 @@ canvas[hidden] { display: none; }
   max-width: calc(var(--pf) * 2.6);
 }
 .pf-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: calc(var(--pf) * .27);
   line-height: 1.25;
   color: #FFF6E6;
@@ -1114,7 +1116,7 @@ canvas[hidden] { display: none; }
   color: var(--mint-lite);
 }
 .xp-gain.hidden { display: none; }
-.xp-gain b { font-family: "Mitr", sans-serif; font-weight: 600; }
+.xp-gain b { font-family: "Mali", sans-serif; font-weight: 700; }
 /* เลเวลอัพต้องเด่นกว่าการได้ XP เฉย ๆ ไม่งั้นกลืนกันจนไม่รู้ว่าเกิดอะไรพิเศษ */
 /* เลเวลอัพต้องเด่นที่สุดในหน้า จึงเป็นป้ายไล่สีเต็มใบ ไม่ใช่แค่เปลี่ยนสีขอบ */
 .xp-gain.up {
@@ -1250,12 +1252,14 @@ canvas[hidden] { display: none; }
 }
 
 .lobby-btn b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: 10.5px;
   line-height: 1.15;
-  /* ชื่อยาวเกินปุ่มต้องหด ไม่ใช่ดันปุ่มให้กว้างขึ้นจนไม่เท่าใบอื่น */
-  max-width: 100%;
+  /* ชื่อยาวเกินปุ่มต้องหด ไม่ใช่ดันปุ่มให้กว้างขึ้นจนไม่เท่าใบอื่น
+     เผื่อยื่นพ้นขอบปุ่มได้ข้างละนิด (พื้นปุ่มโปร่งอยู่แล้ว) — Mali ตัวกว้างกว่าฟอนต์เดิม
+     "สร้างสรรค์" เกินปุ่มไปราว 5px ถ้าบีบไว้แค่ 100% จะโดนตัดเป็น … */
+  max-width: calc(100% + 12px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1412,7 +1416,7 @@ canvas[hidden] { display: none; }
   border: 1px solid rgba(255,243,226,.26);
   color: var(--cream);
   font-size: clamp(8.5px, 1.28vw, 11.5px);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
   pointer-events: none;
@@ -1446,7 +1450,7 @@ canvas[hidden] { display: none; }
    สองปุ่มนี้ทำหน้าที่เดียวกัน คือปุ่มที่พาเข้าเกม จึงควรเป็นวัสดุชิ้นเดียวกัน
    ต่างกันแค่ที่วางกับขนาด ซึ่งแยกไว้ในกฎของแต่ละใบเอง */
 .btn.play, .btn.big {
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 999px;
   border: none;
   /* กลับมาใช้เขียวมิ้นต์สีเดิมของเกม ส่วนทรงนูนยังเป็นแบบใหม่ทุกอย่าง
@@ -1552,8 +1556,8 @@ canvas[hidden] { display: none; }
 .rank-row .no {
   flex: 0 0 auto;
   width: 28px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 14px;
   color: #D9C6EE;
   text-align: center;
@@ -1595,8 +1599,8 @@ canvas[hidden] { display: none; }
 .rank-row .who {
   flex: 1 1 auto;
   min-width: 0;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1604,8 +1608,8 @@ canvas[hidden] { display: none; }
 }
 .rank-row .pts {
   flex: 0 0 auto;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 14px;
   color: var(--mint-lite);
   text-shadow: 0 1px 2px rgba(0,0,0,.35);
@@ -1649,7 +1653,7 @@ canvas[hidden] { display: none; }
   display: block;
 }
 .stage-card .row { display: flex; align-items: baseline; gap: 8px; }
-.stage-card b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: 15px; }
+.stage-card b { font-family: "Mali", sans-serif; font-weight: 600; font-size: 15px; }
 .stage-card small { font-size: 11.5px; color: #B99BD4; margin-left: auto; }
 .stage-card .best {
   font-size: 12px;
@@ -1659,7 +1663,7 @@ canvas[hidden] { display: none; }
   gap: 8px;
 }
 .stage-card .best b {
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: 14px;
   color: var(--mint-lite);
 }
@@ -1687,9 +1691,9 @@ canvas[hidden] { display: none; }
   border: 1.5px solid rgba(255,243,226,.5);
   background: rgba(27,15,43,.78);
   color: var(--cream);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
@@ -1745,8 +1749,8 @@ canvas[hidden] { display: none; }
   place-items: center;
   border-radius: 50%;
   background: rgba(27,15,43,.62);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(10px, 1.6dvh, 13px);
   color: #D9C4EC;
 }
@@ -1762,8 +1766,8 @@ canvas[hidden] { display: none; }
 .scene-main { flex: 1 1 auto; min-width: 0; }
 .scene-main b {
   display: block;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(11px, 1.9dvh, 15px);
   color: var(--cream);
 }
@@ -1849,8 +1853,8 @@ canvas[hidden] { display: none; }
    ชื่อชุดไทยยาวไม่เท่ากัน ("ชุด" กับ "ลูกคุณหนูจอมซน") ถ้าปล่อยตามเนื้อหา
    การ์ดในแถวเดียวกันจะสูงไม่เท่ากันแล้วแถวดูไม่เรียบ */
 .skin-card b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: 14px;
   line-height: 1.25;
   min-height: 2.5em;
@@ -1874,8 +1878,8 @@ canvas[hidden] { display: none; }
    ตัวเลขนี้คือเหตุผลเดียวที่ชุดระดับสูงมีค่ากว่าระดับกลาง จึงต้องเด่นพอ ๆ กับชื่อ
    ไม่ใช่ซ่อนอยู่ในบรรทัดคำอธิบาย — ผู้เล่นต้องเทียบได้ตั้งแต่ก่อนกดเลือก */
 .card-bonus {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 11.5px;
   line-height: 1.5;
   padding: 1px 9px;
@@ -1890,7 +1894,7 @@ canvas[hidden] { display: none; }
 .card-bonus.none {
   background: rgba(255,243,226,.1);
   color: #C9AEE8;
-  font-weight: 500;
+  font-weight: 600;
   box-shadow: none;
 }
 /* ระดับสูงใช้ป้ายทอง ให้โยงกับกรอบทองของการ์ดและป้ายระดับที่มุม */
@@ -1900,7 +1904,7 @@ canvas[hidden] { display: none; }
   border-color: var(--mint);
   box-shadow: var(--plate-lift), 0 0 0 2px rgba(78,205,196,.55), 0 8px 24px rgba(78,205,196,.3);
 }
-.skin-card.on small { color: var(--mint-lite); font-weight: 600; }
+.skin-card.on small { color: var(--mint-lite); font-weight: 700; }
 
 /* ── การ์ดที่ "กำลังเลือกดู" ในคลังน้อง ──
    ต่างจาก .on ซึ่งแปลว่า "ใส่อยู่/ติดตั้งอยู่" คนละความหมายกันจึงต้องดูต่างกัน
@@ -1920,8 +1924,8 @@ canvas[hidden] { display: none; }
   right: 7px;
   padding: 2px 8px;
   border-radius: 999px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 9.5px;
   line-height: 1.55;
   letter-spacing: .01em;
@@ -2074,7 +2078,7 @@ canvas[hidden] { display: none; }
   background: rgba(24,12,40,.9);
   border: 1.5px solid rgba(255,228,155,.5);
   color: #FFE49B;
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: 10.5px;
   line-height: 1.5;
@@ -2170,8 +2174,8 @@ canvas[hidden] { display: none; }
   gap: clamp(7px, 1.4vw, 15px);
 }
 .tdetail-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(15px, 3dvh, 24px);
 }
 .tdetail-when { font-size: clamp(10px, 1.7dvh, 13px); color: #EBDCF8; }
@@ -2217,8 +2221,8 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   background: rgba(255,243,226,.12);
   border: 1px solid rgba(255,243,226,.22);
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(10px, 1.35vw, 12.5px);
   line-height: 1.2;
   color: #E4D4F5;
@@ -2280,7 +2284,7 @@ canvas[hidden] { display: none; }
   border: none;
   background: none;
   color: #B99BD4;
-  font-family: "Mitr", "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-family: "Mali", system-ui, sans-serif;
   font-size: clamp(10px, 1.7dvh, 14px);
   line-height: 1.4;
   cursor: pointer;
@@ -2327,8 +2331,8 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   background: linear-gradient(180deg, #F3D9FF, #E6BBFA);
   color: #4A1E63;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(10px, 1.7dvh, 14px);
   text-align: center;
   box-shadow: 0 3px 0 rgba(20,8,32,.35);
@@ -2462,8 +2466,8 @@ canvas[hidden] { display: none; }
 .dl-card:active { transform: translateY(2px); }
 .dl-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
 .dl-day {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(9px, 1.5dvh, 12px);
   color: #EBD9FF;
   line-height: 1;
@@ -2472,8 +2476,8 @@ canvas[hidden] { display: none; }
   display: flex;
   align-items: center;
   gap: 4px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(11px, 1.9dvh, 16px);
   color: var(--cream);
   line-height: 1;
@@ -2493,7 +2497,7 @@ canvas[hidden] { display: none; }
 }
 /* คำว่า "แตะเพื่อรับ" มีเฉพาะช่องของวันนี้ — ไม่มีปุ่มรับแล้ว ต้องบอกให้รู้ว่าแตะได้ตรงไหน */
 .dl-tap {
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(8px, 1.3dvh, 11px);
   line-height: 1;
   color: #FFD76A;
@@ -2560,19 +2564,19 @@ canvas[hidden] { display: none; }
   border: 2px solid rgba(255,201,60,.6);
   background: linear-gradient(180deg, #FFD25A, #E7A51F);
   color: #3A2500;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(13px, 2.4dvh, 20px);
   line-height: 1;
 }
 .lv-now-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.lv-now-text { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(12px, 2dvh, 17px); color: var(--cream); }
+.lv-now-text { font-family: "Mali", sans-serif; font-weight: 600; font-size: clamp(12px, 2dvh, 17px); color: var(--cream); }
 .lv-now-xp {
   display: flex;
   align-items: center;
   gap: clamp(6px, 1.4vw, 14px);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(12px, 2.1dvh, 18px);
   color: var(--cream);
   font-variant-numeric: tabular-nums;
@@ -2704,8 +2708,8 @@ canvas[hidden] { display: none; }
   place-items: center;
   padding-right: clamp(8px, 1.8vw, 18px);
   color: var(--cream);
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(11px, 1.9dvh, 16px);
   white-space: nowrap;
 }
@@ -2722,8 +2726,8 @@ canvas[hidden] { display: none; }
   border: 2px solid rgba(255,243,226,.5);
   background: #C77DEA;
   color: var(--cream);
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(11px, 1.9dvh, 16px);
   line-height: 1.25;
   text-align: center;
@@ -2784,8 +2788,8 @@ canvas[hidden] { display: none; }
   display: flex;
   align-items: center;
   gap: clamp(6px, 1.4vw, 14px);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(12px, 2.1dvh, 18px);
   color: var(--cream);
   font-variant-numeric: tabular-nums;
@@ -2838,8 +2842,8 @@ canvas[hidden] { display: none; }
 }
 .quest-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .quest-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(14px, 2dvh, 16px);
   color: var(--cream);
 }
@@ -2874,8 +2878,8 @@ canvas[hidden] { display: none; }
   display: flex;
   align-items: center;
   gap: 5px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(13px, 1.9dvh, 15px);
   color: #FFE9B0;
   white-space: nowrap;
@@ -3057,8 +3061,8 @@ canvas[hidden] { display: none; }
   width: clamp(17px, 2.7dvh, 23px);
   height: clamp(17px, 2.7dvh, 23px);
 }
-#upGo b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(15px, 2.5dvh, 20px); line-height: 1; }
-#upGo small, #upAuto small { font-size: clamp(13px, 2.1dvh, 17px); font-weight: 600; line-height: 1; }
+#upGo b { font-family: "Mali", sans-serif; font-weight: 700; font-size: clamp(15px, 2.5dvh, 20px); line-height: 1; }
+#upGo small, #upAuto small { font-size: clamp(13px, 2.1dvh, 17px); font-weight: 700; line-height: 1; }
 
 /* ── ปุ่มตีจนกว่าจะตัน ────────────────────────
    สายฟ้าบอก "รัวเอง" ตอนกำลังรัวจะสลับเป็นสี่เหลี่ยมหยุด ปุ่มเดียวทำสองหน้าที่ */
@@ -3127,10 +3131,10 @@ canvas[hidden] { display: none; }
 /* ต้องเขียนออร่าต่อท้ายด้วย ไม่งั้นกฎนี้ (มาทีหลัง) จะทับ animation ของ .on ทิ้ง
    แล้วดาวดวงที่เพิ่งได้มาจะกลายเป็นดวงเดียวในแถวที่ไม่เรืองแสง */
 .up-step i.just { animation: starPop .55s cubic-bezier(.2,.9,.3,1.4) backwards, starAura 2.4s ease-in-out infinite; }
-.up-name { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(13px, 2.3dvh, 18px); }
+.up-name { font-family: "Mali", sans-serif; font-weight: 600; font-size: clamp(13px, 2.3dvh, 18px); }
 /* ฤทธิ์ตอนนี้ → ฤทธิ์ถ้าสำเร็จ บอกให้เห็นว่าจ่ายทองไปแล้วได้อะไรเพิ่ม */
 .up-arrow { display: flex; align-items: center; gap: 9px; font-size: clamp(11px, 1.9dvh, 14px); color: #C9AEE8; }
-.up-arrow b { font-family: "Mitr", sans-serif; color: var(--mint-lite); font-size: clamp(12px, 2.1dvh, 16px); }
+.up-arrow b { font-family: "Mali", sans-serif; color: var(--mint-lite); font-size: clamp(12px, 2.1dvh, 16px); }
 .up-arrow i { font-style: normal; color: #8E76A8; }
 .up-odds { font-size: clamp(9.5px, 1.6dvh, 12.5px); color: #B99BD4; }
 .up-odds b { color: #FFD97A; }
@@ -3173,8 +3177,8 @@ canvas[hidden] { display: none; }
 .up-result.hidden { display: none; }
 .up-result b {
   position: relative;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(15px, 2.8dvh, 23px);
   line-height: 1.2;
   letter-spacing: .01em;
@@ -3186,7 +3190,7 @@ canvas[hidden] { display: none; }
   line-height: 1.45;
 }
 /* คำถามชวนตีต่อ เน้นให้เห็นชัดว่ากดปุ่มเดิมได้เลย ไม่ต้องออกไปแล้วเข้ามาใหม่ */
-.up-result em { font-style: normal; font-weight: 600; margin-top: 3px; color: #FFE9A8; }
+.up-result em { font-style: normal; font-weight: 700; margin-top: 3px; color: #FFE9A8; }
 .up-result.win {
   background: linear-gradient(180deg, rgba(141,243,234,.36), rgba(78,205,196,.12));
   border: 1.5px solid rgba(141,243,234,.85);
@@ -3292,9 +3296,9 @@ canvas[hidden] { display: none; }
   height: calc(var(--badge) - var(--badge-bd) * 2);
   padding: 0 var(--badge-px);
   border-radius: 999px;
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   font-size: calc(var(--badge) * .63);
   line-height: 1;
   color: #FFF3E2;
@@ -3406,8 +3410,8 @@ canvas[hidden] { display: none; }
 .mail-main { flex: 1 1 auto; min-width: 0; }
 .mail-title {
   display: block;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(14px, 1.9dvh, 15px);
   line-height: 1.3;
   /* หัวข้อยาวต้องหด ไม่ใช่ดันการ์ดให้กว้างจนแถวไม่เท่ากัน */
@@ -3427,7 +3431,7 @@ canvas[hidden] { display: none; }
   padding: 4px 12px;
   border-radius: 999px;
   font-size: clamp(10px, 1.4dvh, 11px);
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
 .mail-tag.gift { background: linear-gradient(180deg, #FFDF8A, #F5B31E); color: #4A3000; }
@@ -3450,8 +3454,8 @@ canvas[hidden] { display: none; }
   padding: 2px 6px;
   border-radius: 999px;
   background: rgba(255,243,226,.14);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: .85em;
   line-height: 1.2;
 }
@@ -3478,8 +3482,8 @@ canvas[hidden] { display: none; }
 }
 .fr-me-label { font-size: clamp(9.5px, 1.5dvh, 11.5px); color: #D9C6EE; }
 .fr-me-code {
-  font-family: "Mitr", monospace;
-  font-weight: 600;
+  font-family: "Mali", monospace;
+  font-weight: 700;
   letter-spacing: .12em;
   font-size: clamp(13px, 2.3dvh, 17px);
   color: #FFF3E2;
@@ -3492,8 +3496,8 @@ canvas[hidden] { display: none; }
   align-items: center;
   padding: 4px 12px;
   border-radius: 999px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(10px, 1.6dvh, 12px);
 }
 .fr-me .fr-copy svg { width: 14px; height: 14px; }
@@ -3562,8 +3566,8 @@ canvas[hidden] { display: none; }
   color: #B99BD4;
 }
 .fr-mycode b {
-  font-family: "Mitr", monospace;
-  font-weight: 600;
+  font-family: "Mali", monospace;
+  font-weight: 700;
   letter-spacing: .12em;
   color: var(--cream);
   font-size: clamp(12.5px, 1.9dvh, 15px);
@@ -3586,8 +3590,8 @@ canvas[hidden] { display: none; }
 /* หัวข้อกลุ่มในหน้าคำขอ (ผลการค้นหา / ส่งมาหาเรา / ที่เราส่งไป) */
 .fr-head {
   margin: clamp(2px, .6dvh, 6px) 4px 0;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(11px, 1.6dvh, 12.5px);
   color: #D9C2F0;
 }
@@ -3666,8 +3670,8 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.2);
   background: rgba(27,15,43,.62);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(11px, 1.9dvh, 15px);
   color: var(--cream);
 }
@@ -3783,8 +3787,8 @@ canvas[hidden] { display: none; }
   background: linear-gradient(180deg, #B85CE0, #8A2BBE);
   border: 1px solid rgba(255,243,226,.28);
   box-shadow: 0 3px 10px rgba(90,20,130,.45);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   /* ป้ายนี้คือบรรทัดแรกของกล่องและเป็นคำโปรยของชุด ต้องเป็นตัวที่ใหญ่ที่สุด
      ในกล่อง พื้น 15 ไม่ใช่ 12 เพราะบนจอแนวนอน dvh ตกไปชนพื้นเสมอ
      ค่าพื้นจึงเป็นตัวที่ใช้จริง ไม่ใช่ค่ากลาง */
@@ -3841,8 +3845,8 @@ canvas[hidden] { display: none; }
   margin: 0;
   flex: 0 0 auto;
   text-align: center;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(11px, 2dvh, 16px);
   color: #FFD97A;
   line-height: 1.3;
@@ -3959,15 +3963,15 @@ canvas[hidden] { display: none; }
 /* ป้ายบอกว่าตัวเลขใหญ่คืออะไร ชิดขวาเหนือตัวเลข — ตัวเลขจึงได้กลางการ์ดไว้คนเดียว */
 .over-lbl {
   justify-self: end;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(11px, 1.8dvh, 15px);
   color: var(--cream);
 }
 .over-score {
   justify-self: center;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(30px, 6.6dvh, 54px);
   line-height: 1.06;
   color: #FFE9B5;
@@ -3977,15 +3981,15 @@ canvas[hidden] { display: none; }
 }
 .over-best-lbl {
   justify-self: start;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(10px, 1.7dvh, 14px);
   color: var(--cream);
 }
 .over-best {
   justify-self: start;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(19px, 3.8dvh, 31px);
   line-height: 1.1;
   color: var(--mint-lite);
@@ -4025,8 +4029,8 @@ canvas[hidden] { display: none; }
   clip-path: polygon(50.0% 0.0%, 55.0% 8.8%, 62.0% 1.5%, 64.7% 11.2%, 73.2% 5.7%, 73.6% 15.8%, 83.2% 12.6%, 81.1% 22.5%, 91.1% 21.6%, 86.7% 30.7%, 96.8% 32.3%, 90.3% 40.1%, 99.6% 44.0%, 91.5% 50.0%, 99.6% 56.0%, 90.3% 59.9%, 96.8% 67.7%, 86.7% 69.3%, 91.1% 78.4%, 81.1% 77.5%, 83.2% 87.4%, 73.6% 84.2%, 73.2% 94.3%, 64.7% 88.8%, 62.0% 98.5%, 55.0% 91.2%, 50.0% 100.0%, 45.0% 91.2%, 38.0% 98.5%, 35.3% 88.8%, 26.8% 94.3%, 26.4% 84.2%, 16.8% 87.4%, 18.9% 77.5%, 8.9% 78.4%, 13.3% 69.3%, 3.2% 67.7%, 9.7% 59.9%, 0.4% 56.0%, 8.5% 50.0%, 0.4% 44.0%, 9.7% 40.1%, 3.2% 32.3%, 13.3% 30.7%, 8.9% 21.6%, 18.9% 22.5%, 16.8% 12.6%, 26.4% 15.8%, 26.8% 5.7%, 35.3% 11.2%, 38.0% 1.5%, 45.0% 8.8%);
   background: radial-gradient(circle at 44% 32%, #FF6060, #C4162A 76%);
   color: #FFF3E2;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(9px, 1.5dvh, 13px);
   line-height: 1.1;
   text-align: center;
@@ -4058,8 +4062,8 @@ canvas[hidden] { display: none; }
   border-top: 2px dashed rgba(255,243,226,.5);
 }
 .over-dist b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   color: var(--cream);
   font-variant-numeric: tabular-nums;
 }
@@ -4169,8 +4173,8 @@ canvas[hidden] { display: none; }
   background: linear-gradient(rgba(255,201,60,.16), rgba(255,201,60,.16)), rgba(27,15,43,.62);
 }
 .goldbar b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 15px;
   line-height: 1;
   color: #FFD97A;
@@ -4237,8 +4241,8 @@ canvas[hidden] { display: none; }
   background: linear-gradient(rgba(255,143,176,.18), rgba(255,143,176,.18)), rgba(27,15,43,.62);
 }
 .gembar b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 15px;
   line-height: 1;
   color: #FFB3CC;
@@ -4415,11 +4419,11 @@ canvas[hidden] { display: none; }
   box-shadow:
     0 4px 14px rgba(0,0,0,.20),
     inset 0 2px 0 rgba(255,255,255,.30);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   /* ผูกกับความสูงของปุ่ม ไม่ใช่ px ตายตัว — ปุ่มโตขึ้นแล้วตัวหนังสือเท่าเดิม
      จะกลายเป็นคำเล็ก ๆ ลอยกลางปุ่มใหญ่ ๆ ซึ่งดูเหมือนวางผิดมากกว่าปุ่มใหญ่ */
   font-size: clamp(13px, calc(var(--tph) * 0.3), 34px);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   /* ย้ำอีกรอบบนปุ่มเอง เพราะ Safari ไม่ยอมให้ค่าพวกนี้ตกทอดลงมาที่ <button> */
   -webkit-user-select: none;
@@ -4563,7 +4567,7 @@ canvas[hidden] { display: none; }
   background: rgba(255,246,230,.97);
   color: #4A2B12;
   font-size: clamp(11px, 2.1dvh, 19px);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.55;
   text-align: left;
   box-shadow: 0 8px 24px rgba(0,0,0,.45);
@@ -4629,8 +4633,8 @@ canvas[hidden] { display: none; }
     color: var(--cream);
   }
   .rotate-hint b {
-    font-family: "Mitr", sans-serif;
-    font-weight: 500;
+    font-family: "Mali", sans-serif;
+    font-weight: 600;
     font-size: 19px;
     line-height: 1.5;
   }
@@ -4816,8 +4820,8 @@ canvas[hidden] { display: none; }
    ใส่ที่ป้ายชื่อแถวจุดเดียว ไม่ใช่ไปใส่ margin-left:auto ที่ตัวควบคุมสักตัว
    ไม่งั้นช่องว่างจะไปแทรกกลางกลุ่ม แล้วปุ่ม − จะหลุดออกจากแถบเสียงของมันเอง */
 .setlabel {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: 13px;
   color: #E4D4F5;
   flex: 0 0 auto;
@@ -4858,8 +4862,8 @@ canvas[hidden] { display: none; }
   gap: .35em;
   transform: translateX(-50%);
   max-width: calc(100% - clamp(90px, 16vw, 140px));
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(15px, 3.4dvh, 28px);
   line-height: 1;
   color: var(--cream);
@@ -4985,7 +4989,7 @@ canvas[hidden] { display: none; }
   z-index: 1;
   padding: 0 14%;
   margin-top: 6%;
-  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-family: "Mali", system-ui, sans-serif;
   font-size: calc(var(--u) * 4.8);
   line-height: 1.35;
   color: #3A1D50;
@@ -5067,7 +5071,7 @@ canvas[hidden] { display: none; }
   border: 1px solid rgba(255,243,226,.24);
   background: rgba(12,4,24,.6);
   color: var(--cream);
-  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-family: "Mali", system-ui, sans-serif;
   font-size: clamp(11px, 1.3vw, 14px);
   line-height: 1.5;
 }
@@ -5126,8 +5130,8 @@ canvas[hidden] { display: none; }
     linear-gradient(180deg, #F5D2FF, #E6B3F7) padding-box,
     linear-gradient(90deg, #FF8FC8, #FFD97A) border-box;
   color: #2A1238;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: calc(var(--u) * 10);
   line-height: 1.2;
   min-width: 0;
@@ -5141,8 +5145,8 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   background: linear-gradient(180deg, #F8C77A, #E0A04A);
   color: #6A3A12;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: calc(var(--u) * 7.6);
   line-height: 1.2;
   white-space: nowrap;
@@ -5201,15 +5205,15 @@ canvas[hidden] { display: none; }
   align-items: center;
   gap: clamp(4px, .6vw, 8px);
   min-width: 0;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: calc(var(--u) * 7);
   color: var(--cream);
   line-height: 1.3;
 }
 .pf-score {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: calc(var(--u) * 14.5);
   color: #FFF8EC;
   line-height: 1.15;
@@ -5241,8 +5245,8 @@ canvas[hidden] { display: none; }
 }
 .pf-stat .vv { display: flex; align-items: baseline; gap: clamp(3px, .6vw, 8px); min-width: 0; }
 .pf-stat .v {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: calc(var(--u) * 11.5);
   color: #FFF8EC;
   line-height: 1.2;
@@ -5308,7 +5312,7 @@ canvas[hidden] { display: none; }
   text-align: left;
   cursor: pointer;
 }
-.pf-best-pick button b { font-family: "Mitr", sans-serif; font-weight: 500; }
+.pf-best-pick button b { font-family: "Mali", sans-serif; font-weight: 600; }
 .pf-best-pick button.on { border-color: var(--mint-lite); background: rgba(127,227,218,.14); }
 
 .pf-foot {
@@ -5369,7 +5373,7 @@ canvas[hidden] { display: none; }
 .pf-copy.done .ico-copy { display: none; }
 .pf-copy.done .ico-ok { display: block; }
 .pf-copy:active { transform: scale(.9); }
-.pf-code b { font-family: "Mitr", monospace; font-weight: 600; letter-spacing: .12em; font-size: calc(var(--u) * 5.4); }
+.pf-code b { font-family: "Mali", monospace; font-weight: 700; letter-spacing: .12em; font-size: calc(var(--u) * 5.4); }
 .pf-find svg { width: clamp(11px, 1.4vw, 16px); height: clamp(11px, 1.4vw, 16px); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
 .pf-find:active { transform: translateY(1px); }
 .pf-pop.other .pf-friend-tools { display: none; }
@@ -5407,8 +5411,8 @@ canvas[hidden] { display: none; }
   border: clamp(2px, .3vw, 3px) solid #6A3F8C;
   background: linear-gradient(180deg, #F2D5FF, #E1B6F5);
   color: #2A1238;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: calc(var(--u) * 8);
   line-height: 1.3;
   box-shadow: 0 3px 0 rgba(58,29,80,.45), 0 6px 14px rgba(12,4,24,.3);
@@ -5447,9 +5451,9 @@ canvas[hidden] { display: none; }
   box-shadow: 0 18px 40px rgba(0,0,0,.55);
   text-align: left;
 }
-.pf-lookup-card h3 { margin: 0; font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(14px, 2vw, 19px); color: var(--cream); }
+.pf-lookup-card h3 { margin: 0; font-family: "Mali", sans-serif; font-weight: 600; font-size: clamp(14px, 2vw, 19px); color: var(--cream); }
 .pf-lookup-card p { margin: 0; max-width: none; font-size: clamp(10px, 1.3vw, 13px); line-height: 1.5; }
-.pf-lookup input { font-family: "Mitr", monospace; letter-spacing: .18em; text-transform: uppercase; font-size: clamp(14px, 2vw, 18px); text-align: center; }
+.pf-lookup input { font-family: "Mali", monospace; letter-spacing: .18em; text-transform: uppercase; font-size: clamp(14px, 2vw, 18px); text-align: center; }
 .pf-lookup-msg { min-height: 1.4em; font-size: clamp(9.5px, 1.2vw, 12px); color: #FFD1DE; }
 .pf-lookup-row { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -5558,7 +5562,7 @@ canvas[hidden] { display: none; }
   background: linear-gradient(180deg, #7A3563 0%, #45205C 100%);
   color: var(--cream);
   font-size: 19px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 2px 0 rgba(20,8,32,.6), inset 0 1px 0 rgba(255,255,255,.2);
@@ -5584,8 +5588,8 @@ canvas[hidden] { display: none; }
 .volnum {
   min-width: 42px;
   text-align: right;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: 14px;
   color: var(--mint-lite);
 }
@@ -5713,8 +5717,8 @@ canvas[hidden] { display: none; }
   border: 1px solid rgba(255,243,226,.18);
   background: rgba(255,243,226,.07);
   color: #D9C4EC;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(11px, 2.5dvh, 21px);
   line-height: 1;
   cursor: pointer;
@@ -5852,8 +5856,8 @@ canvas[hidden] { display: none; }
    กรอบรูปด้านบนมีพื้นของตัวเองอยู่แล้ว ถ้าสองบรรทัดนี้ลอยเปล่า
    ครึ่งล่างของการ์ดจะดูโหวงเหมือนยังโหลดไม่เสร็จ */
 .show-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   /* ไม่มีพื้นหลังเป็นแผ่นอีกแล้ว ต้องใหญ่ขึ้นเองถึงจะยังเด่นพอ */
   font-size: clamp(14px, 2.6dvh, 23px);
   line-height: 1.25;
@@ -5877,7 +5881,7 @@ canvas[hidden] { display: none; }
    เปลี่ยนจากแผ่นใสจาง ๆ เป็นป้ายทึบไล่สีชุดเดียวกับ .card-bonus ในหน้าเลือกชุด
    จะได้อ่านเป็น "ป้ายรางวัล" จริง ๆ ไม่ใช่ตัวหนังสือแปะขอบบาง ๆ ที่จมกับพื้นหลังมืด */
 .hero-bonus {
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-weight: 700;
   /* ใหญ่เท่าชื่อสกินแล้วหนักไปหน่อย ลดลงมาขั้นหนึ่งแต่ยังหนากว่าเดิมชัดเจน */
   font-size: clamp(11.5px, 2.1dvh, 17px);
@@ -6138,14 +6142,14 @@ canvas[hidden] { display: none; }
    จึงตั้งขนาดที่คลาสร่วม .cur (ดูกฎข้างบน) ไม่ใช่ตั้งแยกทีละสกุล
    ที่เหลือตรงนี้คือรายละเอียดเฉพาะของเหรียญเท่านั้น */
 .btn.pull b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(13px, 2.9dvh, 24px);
   line-height: 1;
 }
 .btn.pull small {
   font-size: clamp(8.5px, 1.8dvh, 14px);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: .02em;
   padding: 1px 8px;
   border-radius: 999px;
@@ -6176,7 +6180,7 @@ canvas[hidden] { display: none; }
 
 .gacha-foot { display: flex; align-items: center; gap: 8px; }
 .gacha-owned { margin: 0; font-size: clamp(9.5px, 1.9dvh, 15px); color: #B99BD4; }
-.gacha-owned b { color: var(--mint-lite); font-weight: 600; }
+.gacha-owned b { color: var(--mint-lite); font-weight: 700; }
 
 /* ปุ่มเครื่องหมายตกใจ — เปิดตารางอัตราออก */
 .info-btn {
@@ -6192,8 +6196,8 @@ canvas[hidden] { display: none; }
   border: 1px solid rgba(255,243,226,.4);
   background: rgba(255,243,226,.1);
   color: var(--cream);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(11px, 1.8vh, 14px);
   line-height: 1;
   cursor: pointer;
@@ -6244,7 +6248,7 @@ canvas[hidden] { display: none; }
 /* ต้องผูก id เหมือนกฎหลักข้างบน ไม่งั้น display: flex ของกฎนั้น (มี id = จำเพาะกว่า)
    จะชนะ display: none ตรงนี้ แล้วป๊อปอัพจะเปิดค้างตลอดเวลา ปิดไม่ลง */
 #gachaPanel .odds-pop.hidden { display: none; }
-.odds-pop > b { font-family: "Mitr", sans-serif; font-weight: 500; font-size: clamp(12px, 2vh, 16px); }
+.odds-pop > b { font-family: "Mali", sans-serif; font-weight: 600; font-size: clamp(12px, 2vh, 16px); }
 .odds-pop .btn { margin-top: 2px; font-size: clamp(11px, 1.7vh, 14px); padding: 6px 20px; }
 
 /* อัตราออก — จุดสีนำหน้าใช้สีเดียวกับป้ายระดับบนการ์ดชุด
@@ -6263,7 +6267,7 @@ canvas[hidden] { display: none; }
 }
 .odds-row i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .odds-row span { flex: 1 1 auto; text-align: left; }
-.odds-row b { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(10.5px, 1.8vh, 14px); }
+.odds-row b { font-family: "Mali", sans-serif; font-weight: 700; font-size: clamp(10.5px, 1.8vh, 14px); }
 .odds-row.high { border-color: rgba(255,201,60,.4); background: rgba(255,201,60,.1); }
 .odds-row.high i { background: #FFC93C; box-shadow: 0 0 8px rgba(255,201,60,.75); }
 .odds-row.high b { color: #FFC93C; }
@@ -6345,8 +6349,8 @@ canvas[hidden] { display: none; }
 /* เนื้อหาต้องอยู่เหนือริบบิ้น ไม่งั้นชิ้นที่ตกผ่านจะพาดทับชื่อของที่เพิ่งได้ */
 .got-title, .got-row, .gacha-result .btn { position: relative; z-index: 2; }
 .got-title {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(15px, 3dvh, 26px);
   color: #FFE9B0;
   text-shadow: 0 2px 0 rgba(58,29,80,.9), 0 0 18px rgba(255,201,60,.5);
@@ -6407,15 +6411,15 @@ canvas[hidden] { display: none; }
 }
 .got-card canvas { width: 72%; height: auto; aspect-ratio: 1; }
 .got-card b {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(9.5px, 1.7dvh, 13px);
   line-height: 1.3;
   color: var(--cream);
   /* ชื่อชุดภาษาไทยยาวกว่าการ์ดเสมอ ต้องขึ้นบรรทัดได้ ไม่ใช่ล้นไปทับใบข้าง ๆ */
   overflow-wrap: anywhere;
 }
-.got-card small { font-size: clamp(8px, 1.4dvh, 11px); letter-spacing: .03em; font-weight: 600; }
+.got-card small { font-size: clamp(8px, 1.4dvh, 11px); letter-spacing: .03em; font-weight: 700; }
 /* ป้ายระดับเกาะมุมบนเหมือนการ์ดในหน้าเลือกชุด สายตาจึงหาที่เดิมได้ */
 .got-card .tier-badge { top: -6px; right: -4px; }
 .got-card.high {
@@ -6801,6 +6805,8 @@ canvas[hidden] { display: none; }
 }
 /* ไม่เอาการ์ดของ .panel:not(.home) มาซ้อนทับฉาก */
 .panel.title::before { display: none; }
+/* ให้ของข้างในวัดขนาดจากกรอบเกมได้ (cqw) — ดู .title-logo ข้างล่าง */
+.panel.title { container-type: size; }
 
 /* หน่วยตั้งต้นของป้าย — ใหญ่กว่าปกติเพราะเป็นภาพแรกที่คนเห็น
    relative ตรงนี้คือที่ยึดของหูแมวกับปลาที่ลอย absolute อยู่ในป้าย
@@ -6810,7 +6816,14 @@ canvas[hidden] { display: none; }
   position: relative;
   text-align: center;
   white-space: nowrap;
-  font-size: clamp(26px, 5.6vw, 52px);
+  /* ── ทำไมเป็น cqw ไม่ใช่ vw ──
+     vw วัดจากหน้าต่างเบราว์เซอร์ แต่กรอบเกมมีสัดส่วนตายตัว (960:420) หน้าต่างกว้างแต่เตี้ย
+     กรอบเกมจะแคบกว่าหน้าต่างมาก ป้ายเลยโตเกินกรอบ — วัดจริงเคยแกว่งตั้งแต่ 24% ถึง 50%
+     ของความกว้างกรอบแล้วแต่เครื่อง วัดจากกรอบเกมเอง (.panel.title เป็น container)
+     ป้ายจึงกินราว 29% ของกรอบเท่ากันทุกเครื่อง ทั้งคอมและมือถือ
+     ตัวแรกเป็นค่าสำรองของเบราว์เซอร์ที่ไม่รู้จัก cqw */
+  font-size: clamp(22px, 4.2vw, 52px);
+  font-size: 4.2cqw;
 }
 .title-logo.logo-plate {
   /* ลอยขึ้นลงแทนการเรืองแสง — พื้นป้ายเป็น clip-path ซึ่ง box-shadow ใช้ไม่ได้
@@ -6827,8 +6840,8 @@ canvas[hidden] { display: none; }
   50%      { transform: translateY(-.14em) rotate(.35deg); }
 }
 .title-logo h2 {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: 1em;
   line-height: 1;
   color: #FFF6E6;
@@ -6906,7 +6919,7 @@ canvas[hidden] { display: none; }
 .form-row input:focus { outline: none; border-color: var(--mint); }
 .form-row .btn { margin-top: 0; font-size: 14px; padding: 10px 22px; }
 
-#codeInput { letter-spacing: .3em; font-family: "Mitr", sans-serif; }
+#codeInput { letter-spacing: .3em; font-family: "Mali", sans-serif; }
 
 /* บรรทัดสถานะใต้ฟอร์ม — จองที่ไว้ตลอดด้วย min-height ไม่งั้นทั้งแผงจะกระตุก
    ขยับขึ้นลงทุกครั้งที่ข้อความโผล่มาหรือหายไป */
@@ -7063,7 +7076,7 @@ canvas[hidden] { display: none; }
   border: 1.5px solid rgba(255,243,226,.5);
   background: linear-gradient(180deg, #B85CE0, #7C2BAE);
   color: #FFF6E6;
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: 15px;
   line-height: 1;
@@ -7128,7 +7141,7 @@ canvas[hidden] { display: none; }
   line-height: 1.6;
   color: #E4D4F5;
 }
-.auth-bubble b { color: #FFE9B0; font-weight: 600; }
+.auth-bubble b { color: #FFE9B0; font-weight: 700; }
 .auth-bubble .btn { margin-top: 0; }
 /* .panel p ถูกซ่อนบนจอแคบเพื่อเอาที่ไปให้ปุ่ม แต่นี่คือเนื้อหาทั้งหมดของป๊อปอัพ
    ถ้าหายไปจะเหลือฟองเปล่ากับปุ่มปิด ซึ่งไม่ได้บอกอะไรเลย */
@@ -7136,8 +7149,8 @@ canvas[hidden] { display: none; }
 
 /* ── แถวบัญชีในหน้าตั้งค่า ─────────────────── */
 .setval {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: 13px;
   color: var(--mint-lite);
   max-width: 22ch;
@@ -7146,6 +7159,24 @@ canvas[hidden] { display: none; }
   white-space: nowrap;
 }
 .btn.tiny { margin-top: 0; font-size: 12px; padding: 7px 15px; }
+/* วงกลมขาวหน้าอีเมล — พื้นขาวให้โลโก้สี่สีของ Gmail อ่านออกบนแถบม่วง
+   ไม่ต้องดันชิดขวาเอง .setlabel มี margin-right:auto อยู่แล้ว (ใส่ซ้ำสองฝั่ง ไอคอนจะลอยกลางแถว) */
+.acc-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: -4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.28), inset 0 0 0 1px rgba(123,75,176,.18);
+}
+.acc-icon svg { width: 60%; height: 60%; display: block; }
+/* จอแคบ: ปุ่มต้องอยู่บรรทัดเดียวเสมอ ให้อีเมลเป็นฝ่ายหดแล้วตัดเป็น … แทน
+   (min-width:0 จำเป็น ไม่งั้น flex item ไม่ยอมหดต่ำกว่าความยาวข้อความ) */
+#accBtn, #accOut { flex: none; white-space: nowrap; }
+#accState { min-width: 0; }
 
 @media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
   .form-row input { width: clamp(130px, 46vw, 200px); padding: 8px 12px; font-size: 13px; }
@@ -7154,8 +7185,6 @@ canvas[hidden] { display: none; }
   #nameCat { width: 84px; height: 84px; }
   .btn.big { padding: 10px 32px; }
   .title-note { margin-top: 8px; font-size: 10.5px; padding: 3px 10px; }
-  /* จอเตี้ยต้องบีบป้ายลง ไม่งั้นโล่กับปลากินความสูงจนไปชนปุ่มที่มุมล่าง */
-  .title-logo { font-size: clamp(20px, 6.4vw, 34px); }
 }
 
 .footnote {
@@ -7245,8 +7274,8 @@ canvas[hidden] { display: none; }
 }
 
 .confirm-title {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(15px, 2.4vw, 18px);
   color: var(--cream);
   line-height: 1.35;
@@ -7264,7 +7293,7 @@ canvas[hidden] { display: none; }
   background: rgba(24,12,40,.75);
   border: 1.5px solid rgba(255,228,155,.45);
   color: #FFE49B;
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: 19px;
   line-height: 1.4;
@@ -7692,7 +7721,7 @@ canvas[hidden] { display: none; }
   z-index: 2;
 }
 .stash-name {
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   /* เว้นจากกรอบรูปมากกว่า gap ปกติของคอลัมน์ ไม่งั้นชื่อไปแปะติดขอบกรอบ
      อ่านเป็นป้ายที่ติดอยู่บนกรอบ ไม่ใช่ชื่อของสิ่งที่อยู่ในกรอบ */
   margin-top: clamp(6px, 1.7dvh, 15px);
@@ -8160,7 +8189,7 @@ canvas[hidden] { display: none; }
 #createPanel b,
 #createPanel small,
 #createPanel p {
-  font-family: "Mitr", "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-family: "Mali", system-ui, sans-serif;
 }
 
 /* กล่องครอบสองคอลัมน์ขวา — เรียงข้างกันเป็นค่าตั้งต้น */
@@ -8214,7 +8243,7 @@ canvas[hidden] { display: none; }
   border: 1px solid rgba(255, 246, 230, .3);
   color: #fff;
   font-size: var(--pfont);
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -8254,7 +8283,7 @@ canvas[hidden] { display: none; }
   color: #fff;
   font: inherit;
   font-size: clamp(9.5px, .98vw, 13px);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   line-height: 1.25;
   white-space: nowrap;
@@ -8279,7 +8308,7 @@ canvas[hidden] { display: none; }
   gap: clamp(6px, 1.2vw, 12px);
   color: var(--cream);
   font-size: var(--pfont);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ตกไปแถวสองได้ตอนหน้าต่างแคบมาก ดีกว่าปล่อยให้ข้อความล้นออกนอกปุ่ม
@@ -8319,7 +8348,7 @@ canvas[hidden] { display: none; }
   flex: 0 0 auto;
   color: var(--cream);
   font-size: clamp(10px, 1.7dvh, 13px);
-  font-weight: 600;
+  font-weight: 700;
   opacity: .85;
 }
 .fs-reset {
@@ -8809,8 +8838,8 @@ canvas[hidden] { display: none; }
 }
 .tl-titles { display: flex; flex-direction: column; line-height: 1; }
 .tl-kicker {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(8px, 1.3dvh, 10.5px);
   letter-spacing: .22em;
   color: #C9A9EC;
@@ -8830,17 +8859,17 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.18);
   background: rgba(27,15,43,.62);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(10px, 1.7dvh, 13px);
   color: #C9AEE8;
 }
-.tl-count b { font-weight: 600; font-size: 1.2em; color: var(--cream); }
+.tl-count b { font-weight: 700; font-size: 1.2em; color: var(--cream); }
 .tl-count-sep { opacity: .6; }
 .tl-filter { margin-left: auto; }
 /* ชิปตัวอักษรระดับใช้ฟอนต์หัวเรื่อง ตัว A S SS จะอ่านเป็นตราระดับ ไม่ใช่คำธรรมดา */
 .tl-filter .fchip[data-rank]:not([data-rank="all"]) {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   min-width: 2.6em;
 }
 
@@ -8870,8 +8899,8 @@ canvas[hidden] { display: none; }
 .panel p.tl-status { max-width: none; }
 
 .panel p.tl-side-label {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(10px, 1.7dvh, 13px);
   color: var(--mint-lite);
   letter-spacing: .02em;
@@ -8970,8 +8999,8 @@ canvas[hidden] { display: none; }
   filter: drop-shadow(0 2px 4px rgba(12,4,24,.55));
 }
 .tl-card-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(10px, 1.75dvh, 13px);
   line-height: 1.22;
   /* จองสองบรรทัดเสมอ การ์ดในแถวเดียวกันจึงสูงเท่ากันไม่ว่าชื่อสั้นหรือยาว */
@@ -9020,7 +9049,7 @@ canvas[hidden] { display: none; }
     radial-gradient(90% 80% at 50% 40%, rgba(255,120,210,.24), transparent 70%),
     rgba(34,14,54,.62);
 }
-.rank-ss .tl-card-name { font-weight: 600; }
+.rank-ss .tl-card-name { font-weight: 700; }
 /* แสงเรืองของ SS — ชั้นแยกด้านหลัง เต้นด้วย opacity อย่างเดียว เบาและไม่รก */
 .tl-card.rank-ss::before {
   content: '';
@@ -9056,8 +9085,8 @@ canvas[hidden] { display: none; }
   transform: translateX(-50%);
   padding: 1px 7px;
   border-radius: 999px;
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(7.5px, 1.3dvh, 9.5px);
   line-height: 1.5;
   white-space: nowrap;
@@ -9131,7 +9160,7 @@ canvas[hidden] { display: none; }
 /* ══ หมวดสกิล (skill-ui.js) ═════════════════════════════════════
    แผงเดียวกับพรสวรรค์ สลับด้วยแท็บบนหัว — .tab-skill บนแผงเป็นตัวบอกว่าอยู่หมวดไหน
    ของเฉพาะหมวดพรสวรรค์ (ตัวนับ ตัวกรองระดับ เนื้อหา) ซ่อนหมดตอนอยู่หมวดสกิล และกลับกัน */
-.tl-tabs .fchip[data-tab] { font-family: "Mitr", sans-serif; font-weight: 500; }
+.tl-tabs .fchip[data-tab] { font-family: "Mali", sans-serif; font-weight: 600; }
 /* แท็บสกิล|พรสวรรค์ อยู่ขวาสุดของหัวเสมอทั้งสองหมวด — สลับหมวดแล้วปุ่มไม่กระโดดไปมา
    (ใน HTML แท็บอยู่ติดหัวเรื่อง จึงดันไปท้ายแถวด้วย order แทนการย้ายโหนด)
    หมวดพรสวรรค์: ตัวกรองระดับมี margin-left:auto อยู่แล้ว จึงไปชิดขวาต่อหน้าแท็บพอดี */
@@ -9156,8 +9185,8 @@ canvas[hidden] { display: none; }
   border: 1.5px solid rgba(255,243,226,.28);
   background: rgba(27,15,43,.5);
   color: #EBDDF8;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(9.5px, 1.6dvh, 12px);
   line-height: 1.25;
   text-align: left;
@@ -9215,7 +9244,7 @@ canvas[hidden] { display: none; }
   line-height: 1.45;
   color: #EBDDF8;
 }
-.tl-help-list b { color: #FFE3A3; font-weight: 600; }
+.tl-help-list b { color: #FFE3A3; font-weight: 700; }
 /* ข้อที่ยาวจนต้องตบ — แบ่งบรรทัดให้ยาวพอ ๆ กัน ไม่ปล่อยเศษคำสั้น ๆ ค้างบรรทัดล่าง
    (ลองแบบ pretty แล้ว ยังเหลือหางสั้น 8–18% ของบรรทัด) ข้อที่อยู่บรรทัดเดียวไม่โดนผลนี้ */
 .tl-help-list li { text-wrap: balance; }
@@ -9234,8 +9263,8 @@ canvas[hidden] { display: none; }
 .sk-head .tl-card-art { flex: 0 0 auto; }
 .sk-titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .sk-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(12px, 2.1dvh, 16px);
   line-height: 1.2;
 }
@@ -9246,7 +9275,7 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.2);
   background: rgba(27,15,43,.6);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(8.5px, 1.45dvh, 11px);
   line-height: 1.5;
   color: #D9C6EE;
@@ -9262,7 +9291,7 @@ canvas[hidden] { display: none; }
   color: #CDB6E6;
 }
 .sk-foot { margin-top: auto; padding-top: 2px; }
-.sk-foot > .sk-chip { display: block; text-align: center; padding-block: 3px; font-weight: 600; }
+.sk-foot > .sk-chip { display: block; text-align: center; padding-block: 3px; font-weight: 700; }
 .sk-chip.sk-chip-on {
   color: #0B3B37;
   border-color: transparent;
@@ -9295,7 +9324,7 @@ canvas[hidden] { display: none; }
   border-radius: inherit;
   background: linear-gradient(90deg, #FFC93C, #FFE7A0);
 }
-.sk-quest-num { font-family: "Mitr", sans-serif; font-weight: 600; font-size: clamp(10px, 1.6dvh, 12px); color: #FFE3A3; }
+.sk-quest-num { font-family: "Mali", sans-serif; font-weight: 700; font-size: clamp(10px, 1.6dvh, 12px); color: #FFE3A3; }
 /* การ์ดล็อก: จางแค่หัว (รูป ชื่อ ผล) — กล่องภารกิจต้องชัดเต็มที่ เพราะนั่นคือสิ่งที่ต้องอ่าน */
 .sk-card.locked .sk-head,
 .sk-card.locked .sk-short,
@@ -9398,8 +9427,8 @@ canvas[hidden] { display: none; }
   text-align: left;
 }
 .tl-sheet-rank-label {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(10px, 1.7dvh, 12.5px);
   letter-spacing: .06em;
   color: #D9BDF5;
@@ -9407,8 +9436,8 @@ canvas[hidden] { display: none; }
 .tl-sheet.rank-s .tl-sheet-rank-label { color: #FFE49B; }
 .tl-sheet.rank-ss .tl-sheet-rank-label { color: #FFB8E8; }
 .tl-sheet-name {
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   font-size: clamp(17px, 3.3dvh, 25px);
   line-height: 1.2;
   color: var(--cream);
@@ -9427,8 +9456,8 @@ canvas[hidden] { display: none; }
 }
 .tl-effect b {
   display: block;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(10px, 1.7dvh, 12.5px);
   color: var(--mint-lite);
   margin-bottom: 2px;
@@ -9463,7 +9492,7 @@ canvas[hidden] { display: none; }
   left: 5px;
   padding: 0 5px;
   border-radius: 999px;
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(7.5px, 1.3dvh, 9.5px);
   line-height: 1.6;
   color: #E3D2F5;
@@ -9498,8 +9527,8 @@ canvas[hidden] { display: none; }
   line-height: 1.45;
   color: #C9AEE8;
 }
-.panel p.tl-status.on { color: var(--mint-lite); font-weight: 600; }
-.panel p.tl-status.swap b { color: var(--cream); font-weight: 600; }
+.panel p.tl-status.on { color: var(--mint-lite); font-weight: 700; }
+.panel p.tl-status.swap b { color: var(--cream); font-weight: 700; }
 .panel p.tl-status.lock { color: #D9C6EE; }
 .tl-sheet-info .btn {
   /* ── ชิดขวา ไม่ใช่ชิดซ้ายตามคอลัมน์ ──
@@ -9581,7 +9610,7 @@ canvas[hidden] { display: none; }
   color: #FFF6EA;
   background: radial-gradient(circle at 50% 35%, rgba(122,53,99,.82), rgba(43,18,66,.84));
   box-shadow: 0 4px 14px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.22);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -9605,7 +9634,7 @@ canvas[hidden] { display: none; }
 }
 .sk-label {
   font-size: calc(var(--sk) * 0.17);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.1;
   text-shadow: 0 1px 2px rgba(0,0,0,.7);
 }
@@ -9619,7 +9648,7 @@ canvas[hidden] { display: none; }
   border-radius: 6px;
   font-style: normal;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   color: #2B1242;
   background: var(--cream);
   box-shadow: 0 2px 0 rgba(0,0,0,.3);
@@ -9762,7 +9791,7 @@ canvas[hidden] { display: none; }
   background: rgba(20,8,32,.55);
   border: 1px solid rgba(255,243,226,.28);
   color: var(--cream);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(12px, 2.6dvh, 15px);
   line-height: 1;
   cursor: pointer;
@@ -9803,7 +9832,7 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   background: rgba(20,8,32,.5);
   color: var(--cream);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(12px, 2.8dvh, 16px);
   white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0,0,0,.7);
@@ -9908,13 +9937,13 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.18);
   background: rgba(27,15,43,.62);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-size: clamp(9px, 1.6dvh, 12px);
   line-height: 1.5;
   color: #C9AEE8;
   white-space: nowrap;
 }
-.count-pill b { font-weight: 600; font-size: 1.15em; color: var(--cream); }
+.count-pill b { font-weight: 700; font-size: 1.15em; color: var(--cream); }
 .count-sep { opacity: .6; }
 
 /* ── หัวเรื่องคลังน้อง: ชื่อ + ป้ายจำนวน ชิดซ้าย / แถบกรองชิดขวา ──
@@ -10018,8 +10047,8 @@ canvas[hidden] { display: none; }
   border-radius: 12px;
   background: rgba(27,15,43,.42);
   box-shadow: inset 0 0 0 1px rgba(255,243,226,.16);
-  font-family: "Mitr", sans-serif;
-  font-weight: 600;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
   line-height: 1;
 }
 .lv-item b { font-size: clamp(12px, 2dvh, 16px); color: #FFF3E2; }
@@ -10044,7 +10073,7 @@ canvas[hidden] { display: none; }
   font-size: clamp(17px, 3.2dvh, 26px);
 }
 .lv-t-txt { display: flex; flex-direction: column; gap: 2px; text-align: left; }
-.lv-t-txt small { font-size: clamp(8.5px, 1.4dvh, 11px); font-weight: 500; color: #E8D0FF; letter-spacing: .02em; }
+.lv-t-txt small { font-size: clamp(8.5px, 1.4dvh, 11px); font-weight: 600; color: #E8D0FF; letter-spacing: .02em; }
 .lv-t-txt b { font-size: clamp(12px, 2dvh, 15px); }
 .lv-t-sign { width: clamp(18px, 3.4dvh, 26px); height: auto; filter: drop-shadow(0 2px 3px rgba(12,4,24,.5)); }
 /* แถวที่ได้การ์ด: สูงขึ้น กรอบสีตามระดับ เรืองนิด ๆ */
@@ -10076,7 +10105,7 @@ canvas[hidden] { display: none; }
   background: linear-gradient(180deg, #FF7EC8, #E8439A);
   border: 1.5px solid #FFF6E6;
   color: #FFFFFF;
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: clamp(8.5px, 1.4dvh, 11px);
   line-height: 1.3;
@@ -10093,7 +10122,7 @@ canvas[hidden] { display: none; }
   padding: 0 10px;
   border-radius: 999px;
   background: rgba(27,15,43,.4);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: clamp(11px, 1.9dvh, 15px);
   color: #D9C6EE;
@@ -10132,7 +10161,7 @@ canvas[hidden] { display: none; }
   border-radius: 14px;
   background: rgba(27,15,43,.45);
   border: 1.5px solid rgba(240,215,255,.55);
-  font-family: "Mitr", sans-serif;
+  font-family: "Mali", sans-serif;
   text-align: left;
 }
 /* ไม่มีการ์ดใบต่อไปแล้ว (เลเวล 50 ขึ้นไป) main.js ใส่ .hidden ให้ แต่เกมนี้ไม่มีกฎ .hidden กลาง
@@ -10140,7 +10169,7 @@ canvas[hidden] { display: none; }
 .lv-next.hidden { display: none; }
 .lv-next.rank-s { border-color: #FFD65C; }
 .lv-next.rank-ss { border-color: #FF9FE0; }
-.lv-next > small:first-child { grid-area: lead; font-size: clamp(8px, 1.3dvh, 10px); color: #FFE3A3; font-weight: 600; }
+.lv-next > small:first-child { grid-area: lead; font-size: clamp(8px, 1.3dvh, 10px); color: #FFE3A3; font-weight: 700; }
 .lv-next-ico { grid-area: ico; font-size: clamp(18px, 3.4dvh, 28px); line-height: 1; }
 .lv-next > b { grid-area: name; font-size: clamp(11px, 1.8dvh, 14px); color: #FFF3E2; }
 .lv-next-when { grid-area: when; font-size: clamp(8.5px, 1.4dvh, 11px); color: #D9C6EE; }
@@ -10156,8 +10185,8 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   background: rgba(20,8,34,.62);
   color: #EBDDF8;
-  font-family: "Mitr", sans-serif;
-  font-weight: 500;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
   font-size: clamp(7px, 1.15dvh, 9.5px);
   line-height: 1.35;
   white-space: nowrap;

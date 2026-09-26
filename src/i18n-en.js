@@ -459,6 +459,14 @@ export const EN = {
     'The database is not set up — data stays on this device only.',
   'ที่เก็บในเครื่องเต็ม ลองล้างข้อมูลเว็บก่อนนะ': 'Device storage is full — try clearing site data.',
   'กดอีกครั้งเพื่อยืนยัน': 'Tap again to confirm',
+  'ออกจากระบบ?': 'Sign out?',
+  'ออกเลย': 'Sign out anyway',
+  'ข้อมูลเกมเก็บไว้กับอีเมลนี้ครบ กลับเข้ามาด้วยอีเมลเดิมได้เสมอ':
+    'Your progress is saved to this email — sign back in with it any time.',
+  'ตอนนี้เล่นแบบผู้มาเยือนอยู่ ถ้าออกจากระบบ ทอง ชุด และความคืบหน้าทั้งหมดของบัญชีนี้จะหายไป และกู้คืนไม่ได้':
+    'You are playing as a guest. If you sign out, all gold, outfits and progress on this account will be lost for good.',
+  'อยากเก็บไว้ ให้เชื่อมอีเมลก่อนออกนะ':
+    'Want to keep it? Link an email before signing out.',
   'กรอกข้อมูลไม่ครบหรือรูปแบบไม่ถูกต้อง': 'Something is missing or in the wrong format.',
   'รูปแบบอีเมลไม่ถูกต้อง': 'That email address is not valid.',
   'รหัสไม่ถูกต้องหรือหมดอายุแล้ว': 'The code is wrong or has expired.',

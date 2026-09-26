@@ -28,7 +28,7 @@
   <meta name="theme-color" content="#421268">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- ── หน้าโหลด ────────────────────────────────────────────
        CSS อยู่ในหน้าเลย ไม่ได้อยู่ใน style.css ตั้งใจ:
        สไตล์ชีตกับสคริปต์เกมโหลดทีหลังเสมอ ถ้าหน้าโหลดรอไฟล์พวกนั้น
@@ -51,7 +51,7 @@
       background:
         radial-gradient(58% 46% at 50% 40%, #6B3A96 0%, transparent 70%),
         linear-gradient(180deg, #3A1D50 0%, #1B0F2B 100%);
-      font-family: "Mitr", "IBM Plex Sans Thai", system-ui, sans-serif;
+      font-family: "Mali", system-ui, sans-serif;
       color: #FFF3E2;
       overflow: hidden;
       transition: opacity .45s ease;
@@ -236,7 +236,7 @@
           <h2>MeowZing</h2>
           <!-- ใช้ span ไม่ใช่ p — กฎ .panel p ซ่อนย่อหน้าทิ้งทั้งหมดบนจอแคบ
                ซึ่งจะทำให้ริบบิ้นหายไปแล้วทรงโล่พังทั้งป้าย -->
-          <span class="logo-ribbon">endless runner</span>
+          <span class="logo-ribbon">เหมียวซิ่ง</span>
           <!-- ปลาห้อยที่ปลายแหลมของโล่ -->
           <svg class="logo-fish" viewBox="0 0 104 58" aria-hidden="true">
             <ellipse class="fish-body" cx="46" cy="29" rx="33" ry="20"/>
@@ -310,6 +310,12 @@
           </div>
           <small class="form-msg" id="nameMsg"></small>
           <button class="btn" id="nameSave">เริ่มเล่น</button>
+          <button class="backbtn" id="nameBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -1190,8 +1196,11 @@
               </div>
               <div class="setrow">
                 <span class="setlabel">บัญชี</span>
+                <!-- ไอคอนหน้าอีเมล — refreshAccount() ใส่โลโก้ Gmail หรือซองจดหมายตามโดเมน -->
+                <span class="acc-icon" id="accIcon" aria-hidden="true"></span>
                 <b class="setval" id="accState">—</b>
                 <button class="btn ghost tiny" id="accBtn">เชื่อมอีเมล</button>
+                <button class="btn ghost tiny" id="accOut">ออกจากระบบ</button>
               </div>
               <small class="form-msg" id="accMsg"></small>
               </div>

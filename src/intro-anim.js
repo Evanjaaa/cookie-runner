@@ -693,7 +693,7 @@ function drawMark(ctx, t, glyph, at, dur, x, y, size, tilt, shake = 0) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  ctx.font = `600 ${size}px Mitr, "IBM Plex Sans Thai", system-ui, sans-serif`;
+  ctx.font = `700 ${size}px Mali, system-ui, sans-serif`;
   // สามชั้น: เงาเข้ม / ขอบหนา / เนื้อสีเหลืองไล่ลงส้ม — เหมือนสัญลักษณ์ในการ์ตูน
   ctx.lineWidth = size * 0.22;
   ctx.strokeStyle = 'rgba(40,14,0,.35)';

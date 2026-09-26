@@ -113,7 +113,7 @@ function drawSlot(ctx, g, x, y, tick) {
 
       ctx.save();
       ctx.textBaseline = 'middle';
-      ctx.font = '600 13px Mitr, sans-serif';
+      ctx.font = '700 13px Mali, sans-serif';
       ctx.fillStyle = g.color;
       ctx.fillText(text, x + SLOT / 2, y + SLOT - STRIP / 2 + 0.5);
       ctx.restore();

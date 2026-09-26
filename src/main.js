@@ -1475,8 +1475,16 @@ function showAuth() {
   showPanel(authPanel);
 }
 
-/** warn = คำเตือนที่ตามมาจากหน้าก่อน เช่นสร้างบัญชีไม่สำเร็จแต่ยังให้เล่นต่อ */
-function showNameStep(warn = '') {
+/** หน้าที่ปุ่มย้อนกลับของหน้าตั้งชื่อพากลับไป — มาจากหน้าเข้าสู่ระบบ หรือจากหน้าชื่อเกมตรง ๆ */
+let nameFrom = null;
+
+/**
+ * warn = คำเตือนที่ตามมาจากหน้าก่อน เช่นสร้างบัญชีไม่สำเร็จแต่ยังให้เล่นต่อ
+ * from = แผงที่เพิ่งจากมา ย้อนกลับแล้วกดผู้มาเยือนซ้ำได้ปลอดภัย
+ *        เพราะ signInGuest ใช้ session เดิม ไม่สร้างบัญชีซ้อน
+ */
+function showNameStep(warn = '', from = titlePanel) {
+  nameFrom = from;
   document.getElementById('nameInput').value = chosenName();
   // โชว์แมวตัวที่เลือกอยู่จริง ๆ ให้เห็นว่ากำลังตั้งชื่อให้ใคร
   paintMini(document.getElementById('nameCat'), 120,
@@ -1508,7 +1516,7 @@ async function doGuest() {
   setMsg(msg, '');
   // ต่อคลาวด์ไม่ได้ก็ต้องเล่นได้อยู่ดี คำเตือนจึงตามไปโชว์ที่หน้าตั้งชื่อ
   // ไม่ใช่ค้างผู้เล่นไว้ที่หน้านี้จนไปต่อไม่ได้
-  showNameStep(warn);
+  showNameStep(warn, authPanel);
 }
 
 async function saveCharacterName() {
@@ -1645,15 +1653,33 @@ async function verifyCode() {
 
 // ── แถวบัญชีในหน้าตั้งค่า ───────────────────────────────────
 
-// ออกจากระบบต้องกดสองครั้ง — พลาดทีเดียวคือหลุดออกจากบัญชีกลางเกม
-let signOutArmed = false;
+/**
+ * สองสถานะที่ผู้เล่นต้องแยกออก: ผูกอีเมลแล้ว (กู้คืนได้) กับยังไม่ผูก (หายแล้วหายเลย)
+ *
+ * ปุ่มออกจากระบบแยกจากปุ่มหลัก — ผู้มาเยือนต้องเห็นทั้ง "เชื่อมอีเมล" และ "ออกจากระบบ"
+ * พร้อมกัน จะได้เลือกผูกอีเมลก่อนได้ทันทีถ้ากล่องเตือนทำให้เปลี่ยนใจ
+ * ใช้ style.display ไม่ใช่ hidden — .btn ตั้ง display เองซึ่งชนะแอตทริบิวต์ hidden
+ */
+// โลโก้ Gmail สี่สีตามแบบของ Google — ผู้เล่นจำได้ทันทีว่าผูกไว้กับบัญชีไหน
+const GMAIL_ICON = '<svg viewBox="52 42 88 66"><path fill="#4285F4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/>'
+  + '<path fill="#34A853" d="M120 108h14c3.32 0 6-2.69 6-6V59l-20 15"/>'
+  + '<path fill="#FBBC04" d="M120 48v26l20-15v-8c0-7.42-8.47-11.65-14.4-7.2"/>'
+  + '<path fill="#EA4335" d="M72 74V48l24 18 24-18v26L96 92"/>'
+  + '<path fill="#C5221F" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.45-14.4-.22-14.4 7.2"/></svg>';
+// อีเมลค่ายอื่นไม่ใช้โลโก้ Gmail — ใช้ซองจดหมายกลาง ๆ แทน
+const MAIL_ICON = '<svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5" fill="none" stroke="#7B4BB0" stroke-width="2"/>'
+  + '<path d="m4 7.5 8 6 8-6" fill="none" stroke="#7B4BB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-/** สองสถานะที่ผู้เล่นต้องแยกออก: ผูกอีเมลแล้ว (กู้คืนได้) กับยังไม่ผูก (หายแล้วหายเลย) */
 function refreshAccount() {
   const state = document.getElementById('accState');
+  const icon = document.getElementById('accIcon');
+  icon.style.display = 'none';
   const btn = document.getElementById('accBtn');
+  const out = document.getElementById('accOut');
   setMsg(document.getElementById('accMsg'), '');
-  signOutArmed = false;
+  btn.style.display = '';
+  out.style.display = 'none';
+  out.disabled = false;
 
   if (!cloudReady) {
     state.textContent = 'เก็บในเครื่องนี้';
@@ -1667,9 +1693,15 @@ function refreshAccount() {
   if (!acc) {
     state.textContent = 'ยังไม่ได้เข้าสู่ระบบ';
     btn.textContent = 'เข้าสู่ระบบ';
-  } else if (acc.email) {
+    return;
+  }
+  out.style.display = '';
+  if (acc.email) {
     state.textContent = acc.email;
-    btn.textContent = 'ออกจากระบบ';
+    state.title = acc.email;   // จอแคบอีเมลถูกตัดเป็น … ชี้ค้างแล้วเห็นเต็ม
+    btn.style.display = 'none';
+    icon.innerHTML = /@(gmail|googlemail)\.com$/i.test(acc.email) ? GMAIL_ICON : MAIL_ICON;
+    icon.style.display = '';
   } else {
     state.textContent = 'ผู้มาเยือน';
     btn.textContent = 'เชื่อมอีเมล';
@@ -1680,17 +1712,36 @@ async function accountAction() {
   const acc = cloudReady ? currentAccount() : null;
   if (!acc) return showMail('login', settingsPanel);
   if (!acc.email) return showMail('link', settingsPanel);
+}
 
-  const btn = document.getElementById('accBtn');
-  if (!signOutArmed) {
-    signOutArmed = true;
-    btn.textContent = 'กดอีกครั้งเพื่อยืนยัน';
-    setMsg(document.getElementById('accMsg'),
-      'ข้อมูลอยู่บนคลาวด์ครบ กลับเข้ามาด้วยอีเมลเดิมได้เสมอ');
-    return;
-  }
+/**
+ * ออกจากระบบ — ถามก่อนเสมอ พลาดทีเดียวคือหลุดออกจากบัญชีกลางเกม
+ *
+ * ผู้มาเยือนไม่มีทางกลับเข้าบัญชีเดิมได้อีก (ไม่มีอีเมลให้ยืนยันตัว)
+ * กล่องจึงต้องบอกตรง ๆ ว่าของจะหาย และชี้ทางรอดคือเชื่อมอีเมลก่อน
+ * ปุ่มยืนยันเป็นปุ่มออก กดพื้นหลัง/ยกเลิก = อยู่ต่อ ไม่มีทางหลุดออกโดยบังเอิญ
+ */
+async function signOutAction() {
+  const acc = cloudReady ? currentAccount() : null;
+  if (!acc) return;
 
-  btn.disabled = true;
+  const ok = await confirmBox(acc.email
+    ? {
+      title: 'ออกจากระบบ?',
+      body: 'ข้อมูลเกมเก็บไว้กับอีเมลนี้ครบ กลับเข้ามาด้วยอีเมลเดิมได้เสมอ',
+      okText: 'ออกจากระบบ',
+    }
+    : {
+      title: 'ออกจากระบบ?',
+      body: 'ตอนนี้เล่นแบบผู้มาเยือนอยู่ ถ้าออกจากระบบ ทอง ชุด และความคืบหน้าทั้งหมดของบัญชีนี้จะหายไป และกู้คืนไม่ได้',
+      after: 'อยากเก็บไว้ ให้เชื่อมอีเมลก่อนออกนะ',
+      afterBad: true,
+      okText: 'ออกเลย',
+      cancelText: 'ยกเลิก',
+    });
+  if (!ok) return;
+
+  document.getElementById('accOut').disabled = true;
   await signOut();
   // ของในเครื่องเป็นของบัญชีที่เพิ่งออกไป ถ้าไม่ล้าง คนถัดไปที่กดเล่นแบบ
   // ผู้มาเยือนจะได้ทองกับชุดของเจ้าของเครื่องติดไปด้วย
@@ -1753,10 +1804,12 @@ document.getElementById('authBack').addEventListener('click', () => showPanel(ti
 document.getElementById('guestBtn').addEventListener('click', doGuest);
 document.getElementById('loginMailBtn').addEventListener('click', () => showMail('login', authPanel));
 document.getElementById('nameSave').addEventListener('click', saveCharacterName);
+document.getElementById('nameBack').addEventListener('click', () => showPanel(nameFrom || titlePanel));
 document.getElementById('mailSend').addEventListener('click', sendCode);
 document.getElementById('codeVerify').addEventListener('click', verifyCode);
 document.getElementById('mailBack').addEventListener('click', closeMail);
 document.getElementById('accBtn').addEventListener('click', accountAction);
+document.getElementById('accOut').addEventListener('click', signOutAction);
 
 // ป้ายใต้ปุ่มบอกล่วงหน้าว่าข้อมูลจะไปเก็บที่ไหน ดีกว่าปล่อยให้ไปเจอเอาตอนเล่นไปแล้ว
 document.getElementById('titleNote').textContent = cloudReady

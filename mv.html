@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeowZing MV</title>
+  <!-- หน้าทำงานของ MV — เปิดผ่าน npm run dev เท่านั้น ไม่ได้ใส่ใน build ของเว็บจริง -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #1C1224; --panel: #2B1C36; --ink: #FFEBD2; --dim: #B79FCB; --accent: #FF9DBA; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; background: var(--bg); color: var(--ink); font-family: Mali, sans-serif;
+           display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+    #mv { width: min(100%, calc((100dvh - 150px) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: 14px;
+          background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .bar { width: min(100%, calc((100dvh - 150px) * 16 / 9)); display: flex; align-items: center; gap: 12px; }
+    #play { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: #3A1D30;
+            font-size: 16px; font-weight: 700; cursor: pointer; flex: none; }
+    #bar { flex: 1; accent-color: var(--accent); }
+    #time { font-variant-numeric: tabular-nums; color: var(--dim); min-width: 110px; text-align: right; }
+    #chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .chip { border: 1px solid rgba(255,235,210,.25); background: var(--panel); color: var(--ink); font: 600 12px Mali, sans-serif;
+            border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+    .chip.todo { color: var(--dim); opacity: .6; }
+    small { color: var(--dim); }
+  </style>
+</head>
+<body>
+  <canvas id="mv"></canvas>
+  <div class="bar">
+    <button id="play" aria-label="เล่น/หยุด">▶</button>
+    <input id="bar" type="range" min="0" max="90" step="0.01" value="0" aria-label="เลื่อนเวลา">
+    <span id="time">0:00.0</span>
+  </div>
+  <div id="chips"></div>
+  <small>Space = เล่น/หยุด · ← → = ทีละ 1 วิ (Shift = 0.1 วิ)</small>
+  <script type="module" src="/src/mv/main.js"></script>
+</body>
+</html>

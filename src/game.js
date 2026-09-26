@@ -2705,7 +2705,7 @@ export class Game {
       } else if (p.kind === 'z') {
         ctx.globalAlpha = Math.sin(u * Math.PI) * 0.9;
         const size = p.r * (0.7 + u * 0.7);
-        ctx.font = `700 ${size.toFixed(1)}px "Mitr", sans-serif`;
+        ctx.font = `700 ${size.toFixed(1)}px Mali, sans-serif`;
         ctx.textAlign = 'center';
         ctx.lineWidth = 3;
         ctx.strokeStyle = 'rgba(60,30,90,.55)';

@@ -188,7 +188,7 @@ function beachSign(ctx, x, y, w, h) {
   rr(ctx, x, y, w, h * 0.55, 8, vgrad(ctx, y, y + h * 0.55, '#FFB86B', '#D9763A'));
   rr(ctx, x + 6, y + 5, w - 12, h * 0.55 - 10, 5, 'rgba(255,240,210,.35)');
   ctx.fillStyle = '#6B2E1A';
-  ctx.font = `700 ${Math.round(h * 0.26)}px Mitr, sans-serif`;
+  ctx.font = `700 ${Math.round(h * 0.26)}px Mali, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('SUNSET BEACH', x + w / 2, y + h * 0.28);

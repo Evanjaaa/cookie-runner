@@ -2523,7 +2523,7 @@ export function drawLetterCoin(ctx, x, y, r, ch, t = 0, idx = -1) {
 
   // ── ตัวอักษร ──
   ctx.fillStyle = col.ink;
-  ctx.font = `700 ${Math.round(r * 1.08)}px Mitr, sans-serif`;
+  ctx.font = `700 ${Math.round(r * 1.08)}px Mali, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(ch, 0, r * 0.08);
@@ -4504,7 +4504,7 @@ function fade(hex, a) {
 //
 // ลดจาก 0.85 อีกขั้น — บนตัวขาวที่มีชุดสีสด เส้น 0.85 ยังอ่านเป็น "เส้นวาด"
 // ไม่ใช่ "ขอบของตัว" โดยเฉพาะตรงที่เส้นวิ่งขนานกับขอบชุดจนเห็นเป็นสองเส้นคู่กัน
-const CAT_EDGE = 0.62;
+export const CAT_EDGE = 0.62;   // MV (src/mv/kitten.js) ใช้ค่านี้กับท่าหันหลังด้วย
 
 /**
  * วาดรอยแปรงที่ผู้เล่นระบายเอง ทับลงบนชิ้นหนึ่งของตัวละคร
