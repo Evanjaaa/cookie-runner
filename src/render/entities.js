@@ -33,7 +33,31 @@ function drawOneObstacle(ctx, o, x, y, theme) {
   // สิ่งกีดขวางชุดใหม่ประจำด่าน — หน้าตาของตัวเอง ไม่ขึ้นกับธีมของฉาก (ดู render/props/)
   if (o.kind === 'prop') {
     const draw = PROP_ART[o.art];
-    if (draw) { draw(ctx, x, y, o.w, o.h); return; }
+    if (draw) {
+      // ── ท่าขยับพื้นฐานของทุกชิ้น ──
+      // แอนิเมชันข้างในแต่ละชิ้นเล็กมาก (แกว่ง 2–3 องศา) พอฉากวิ่งผ่านเร็ว ๆ ตาเห็นเป็นภาพนิ่ง
+      // ชิ้นบนพื้น = หายใจยืด-ยุบจากฐาน / ชิ้นห้อย (หมอบ) = แกว่งจากขอบบนเหมือนลูกตุ้ม
+      // จังหวะต่างกันตามตำแหน่งในด่าน ของหลายชิ้นบนจอจึงไม่ขยับพร้อมกันเป็นแถว
+      // ภาพอย่างเดียว กล่องชนไม่ขยับ — ระยะแกว่งเล็กพอที่ขอบภาพยังตรงกับกล่องชน
+      const t = performance.now() / 1000 + (o.x % 997) * 0.013;
+      ctx.save();
+      if (o.low) {
+        const cx = x + o.w / 2;
+        ctx.translate(cx, y);
+        ctx.rotate(Math.sin(t * 2.2) * 0.045);
+        ctx.translate(-cx, -y);
+      } else {
+        const cx = x + o.w / 2;
+        const by = y + o.h;
+        const s = Math.sin(t * 3.1) * 0.045;
+        ctx.translate(cx, by);
+        ctx.scale(1 - s * 0.6, 1 + s);
+        ctx.translate(-cx, -by);
+      }
+      draw(ctx, x, y, o.w, o.h);
+      ctx.restore();
+      return;
+    }
   }
   const art = THEME_ART[theme] || THEME_ART.bakery;
   if (o.kind === 'bar') art.bar(ctx, x, y, o.w, o.h);

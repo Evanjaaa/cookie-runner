@@ -30,7 +30,7 @@ function mushroom(ctx, x, y, w, h) {
   rr(ctx, x + w * 0.34, y + h * 0.45, w * 0.32, h * 0.55, 6, vgrad(ctx, y + h * 0.45, y + h, '#FFF6E6', '#E8D8BE'));
   ctx.save();
   ctx.translate(x + w / 2, y + h * 0.5);
-  ctx.rotate(Math.sin(t * 0.05) * 0.06);
+  ctx.rotate(Math.sin(t * 0.05) * 0.12);
   ctx.fillStyle = vgrad(ctx, -h * 0.5, 0, '#FF6B6B', '#D93A4A');
   ctx.beginPath();
   ctx.moveTo(-w / 2, 2);
@@ -53,7 +53,7 @@ function flowerPot(ctx, x, y, w, h) {
   rr(ctx, x, y + h * 0.4, w, 8, 3, '#C7613A');
   const cols = ['#FF8FB5', '#FFD84D', '#B98CFF', '#7FD1FF'];
   for (let i = 0; i < 4; i++) {
-    const fx = x + 12 + i * (w - 24) / 3 + Math.sin(t * 0.04 + i) * 2;
+    const fx = x + 12 + i * (w - 24) / 3 + Math.sin(t * 0.04 + i) * 4;
     const fy = y + 8 + (i % 2) * 7;
     line(ctx, x + 12 + i * (w - 24) / 3, y + h * 0.42, fx, fy, 2, '#3E8E52');
     flower(ctx, fx, fy, 7, cols[i]);
@@ -95,7 +95,7 @@ function sunflower(ctx, x, y, w, h) {
   leaf(ctx, cx, y + h * 0.75, 24, Math.PI + 0.5, '#5CB85C');
   ctx.save();
   ctx.translate(cx, y + 26);
-  ctx.rotate(Math.sin(t * 0.03) * 0.12);
+  ctx.rotate(Math.sin(t * 0.03) * 0.24);
   for (let i = 0; i < 14; i++) {
     const a = (i / 14) * TAU;
     ellipse(ctx, Math.cos(a) * 17, Math.sin(a) * 17, 9, 4.5, '#FFC93C', a);
@@ -177,7 +177,7 @@ function wisteria(ctx, x, y, w, h) {
   const n = 7;
   for (let i = 0; i < n; i++) {
     const cx = x + 10 + i * (w - 20) / (n - 1);
-    const sw = Math.sin(t * 0.04 + i * 0.8) * 3;
+    const sw = Math.sin(t * 0.04 + i * 0.8) * 6;
     const len = h - 14 - (i % 2) * 10;
     for (let k = 0; k < 7; k++) {
       const f = k / 6;
@@ -202,7 +202,7 @@ function vineArch(ctx, x, y, w, h) {
   const cols = ['#FF8FB5', '#FFD84D', '#FFFFFF', '#B98CFF'];
   for (let i = 0; i < 11; i++) {
     const fx = x + 10 + i * (w - 20) / 10;
-    const fy = y + h * 0.55 + Math.sin(i * 1.7) * 8 + Math.sin(t * 0.05 + i) * 1.5;
+    const fy = y + h * 0.55 + Math.sin(i * 1.7) * 8 + Math.sin(t * 0.05 + i) * 3;
     flower(ctx, fx, fy, 5, cols[i % 4]);
   }
   sparkle(ctx, x + w * 0.3, y + h * 0.3, 2.5, 'rgba(255,255,255,.7)');

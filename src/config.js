@@ -427,12 +427,12 @@ export const SHRIMP = {
 //   scale    ขนาดที่วาดเทียบรัศมีเม็ด — ไม่กระทบระยะเก็บ (ใช้ pickPad คุมแยก)
 // ─────────────────────────────────────────────────────────────
 export const TREATS = {
-  jelly: { points: SCORING.pointsPerJelly, pickPad: 22, burst: ['jelly', 5, 3.5], sfx: 'fish', outline: false, scale: 0.74 },
+  jelly: { points: SCORING.pointsPerJelly, pickPad: 22, burst: ['jelly', 5, 3.5], sfx: 'jelly', outline: false, scale: 0.74 },
   fish: { points: SCORING.pointsPerFish, pickPad: 22, burst: ['mint', 7, 4.5], sfx: 'fish', outline: false, scale: 1 },
   kibble: { points: SCORING.pointsPerKibble, pickPad: 22, burst: ['kibble', 10, 4.5], sfx: 'kibble', outline: true, scale: 1 },
   shrimp: { points: SCORING.pointsPerShrimp, pickPad: SHRIMP.pickPad, burst: ['shrimp', 22, 7], sfx: 'shrimp', outline: true, scale: SHRIMP.scale },
   // ใหญ่ที่สุดและเก็บได้กว้างที่สุด — ของตำนานที่พลาดแล้วเจ็บใจที่สุดต้องไม่พลาดเพราะระยะเก็บแคบ
-  crystal: { points: SCORING.pointsPerCrystal, pickPad: 34, burst: ['crystal', 30, 8], sfx: 'shrimp', outline: true, scale: 2.1 },
+  crystal: { points: SCORING.pointsPerCrystal, pickPad: 34, burst: ['crystal', 30, 8], sfx: 'crystal', outline: true, scale: 2.1 },
 };
 
 /** ข้อมูลของกินชนิดหนึ่ง — ชนิดที่ไม่รู้จัก (หรือไม่มี kind) = ปลา */

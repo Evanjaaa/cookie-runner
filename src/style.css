@@ -1715,7 +1715,9 @@ canvas[hidden] { display: none; }
 .stage-card { position: relative; }
 
 .stage-lead {
-  max-width: 46ch;
+  /* ประโยคเดียวสั้น ๆ — เดิมจำกัด 46ch แล้วตัดกลางคำ "ต่อ|กัน" เหลือสองบรรทัดเบี้ยว ๆ
+     (ความจำเพาะต้องชนะ .panel p ที่ตั้ง max-width: 44ch ไว้ จึงเขียนคู่ .panel) */
+  max-width: none;
   font-size: clamp(10px, 1.6dvh, 13px);
   line-height: 1.55;
   color: #C0A6DC;
@@ -3237,7 +3239,7 @@ canvas[hidden] { display: none; }
 
 /* ── กล่องจดหมาย ─────────────────────────────
    ปุ่มอยู่ในแถว .hudbtns จึงได้ทรงกลมกับขนาด --hud-h มาเองเหมือนปุ่มตั้งค่า */
-#btnMail { position: relative; overflow: visible; }
+#btnMail, #btnNews { position: relative; overflow: visible; }
 
 /* จุดแดงบอกว่ามีของค้าง — เกาะมุมขวาบนของปุ่ม ล้นออกนอกวงได้นิดหน่อย
    ขอบสีเดียวกับพื้นปุ่มทำให้จุดดูลอยแยกจากตัวปุ่ม ไม่ใช่รอยเปื้อนบนปุ่ม */
@@ -3256,15 +3258,15 @@ canvas[hidden] { display: none; }
    "ป้ายคนละชนิด" ทั้งที่มันคือเรื่องเดียวกัน (มีของค้างให้กดกี่ชิ้น)
    ความสม่ำเสมอสำคัญกว่าการเบียดพื้นที่บนไอคอนไม่กี่พิกเซล
    17px เป็นค่ากลาง — เล็กลงจากปุ่มล็อบบี้นิดหน่อยเพื่อให้ปุ่มจดหมายไม่อึดอัด */
-#btnMail, #btnFriends, .lobby-btn, .lvgift { --badge: 17px; }
+#btnMail, #btnNews, #btnFriends, .lobby-btn, .lvgift { --badge: 17px; }
 /* ความหนาขอบกับระยะขอบในของป้าย — ประกาศไว้ที่เดียวเพราะกฎ :not(:empty)
    ข้างล่างต้องเอาไปลบออกจากขนาดรวม เพื่อคำนวณ "เนื้อที่ตัวอักษร" ให้ถูก */
-#btnMail .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
+#btnMail .dot, #btnNews .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
   --badge-bd: max(1.5px, calc(var(--badge) * .11));
   --badge-px: calc(var(--badge) * .18);
 }
 
-#btnMail .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
+#btnMail .dot, #btnNews .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
   position: absolute;
   /* เยื้องออกครึ่งหนึ่งของตัวป้าย ป้ายจึงคร่อมขอบปุ่มพอดีทั้งปุ่มกลมและปุ่มมุมมน
      ผูกกับ --badge ด้วย ไม่งั้นเปลี่ยนขนาดป้ายทีต้องมาไล่แก้ระยะเยื้องอีกที */
@@ -3298,7 +3300,7 @@ canvas[hidden] { display: none; }
    แพ้ `#btnMail .dot` (1,1,0) ที่ตั้ง width/height ไว้ กฎนี้จะไม่มีผลอะไรเลย
    แล้วป้ายจะเอาขนาดวงกลมมาเป็น "เนื้อที่ตัวอักษร" จนบวมเกินขนาดที่ตั้งใจ
    (กับดักเดียวกับ .skin-title ที่ต้องเขียนคู่กับ .panel h2 เสมอ) */
-#btnMail .dot:not(:empty), #btnFriends .dot:not(:empty), .lobby-btn .dot:not(:empty), .lvgift .dot:not(:empty) {
+#btnMail .dot:not(:empty), #btnNews .dot:not(:empty), #btnFriends .dot:not(:empty), .lobby-btn .dot:not(:empty), .lvgift .dot:not(:empty) {
   box-sizing: content-box;
   width: max-content;
   min-width: calc(var(--badge) - var(--badge-px) * 2 - var(--badge-bd) * 2);
@@ -3322,7 +3324,7 @@ canvas[hidden] { display: none; }
    สองกฎนี้ความจำเพาะเท่ากันเป๊ะ (1,2,0) ตัวที่มาทีหลังจึงชนะ
    ถ้าย้ายกฎนี้ขึ้นไปไว้ข้างบน display:grid ของป้ายมีตัวเลขจะทับ display:none ทิ้ง
    แล้วป้ายจะโผล่ค้างอยู่ทั้งที่ไม่มีอะไรให้กดรับ — ซึ่งเคยเกิดมาแล้วจริง ๆ */
-#btnMail .dot.hidden, #btnFriends .dot.hidden, .lobby-btn .dot.hidden, .lvgift .dot.hidden { display: none; }
+#btnMail .dot.hidden, #btnNews .dot.hidden, #btnFriends .dot.hidden, .lobby-btn .dot.hidden, .lvgift .dot.hidden { display: none; }
 
 /* ── จุดแดง "ของใหม่" บนการ์ดและแท็บ (src/fresh.js) ──
    ภาษาเดียวกับจุดแดงบนปุ่มล็อบบี้ (แดงสด ขอบม่วงเข้ม เรืองแดง เต้นเบา ๆ) แต่เล็กกว่า
@@ -3342,7 +3344,19 @@ canvas[hidden] { display: none; }
   animation: mailPulse 1.6s ease-in-out infinite;
 }
 .tl-card, .skin-card, .fchip, .stab { position: relative; }
-.fchip > .new-dot, .stab > .new-dot { top: -4px; right: -4px; width: 12px; height: 12px; }
+/* ── ปุ่มทรงแคปซูล: จุดต้องเกาะบนโค้งหัวปุ่ม ไม่ใช่มุมกล่อง ──
+   มุมขวาบนของกล่องปุ่มแคปซูลเป็นที่ว่าง (หัวโค้งเป็นครึ่งวงกลม) จุดที่ -4px จากมุมกล่อง
+   เลยลอยออกไปนอกปุ่ม ดูไม่เกี่ยวกับปุ่ม — วางไว้ที่จุด 45° บนโค้งแทน
+   ห่างจากมุมกล่อง = รัศมี × (1 − 1/√2) ≈ ความสูงปุ่ม × .146 แล้วถอยครึ่งจุดให้กึ่งกลางจุดทับเส้นขอบพอดี
+   --pill-h = ความสูงปุ่มจากสูตรขนาดตัวเอง (padding บนล่าง + บรรทัด + ขอบ) */
+.stab  { --pill-h: calc(2 * clamp(8px, 1.9dvh, 16px) + 1.4 * clamp(11px, 2.5dvh, 21px) + 2px); }
+.fchip { --pill-h: calc(2 * clamp(3px, 0.7dvh, 6px) + clamp(9px, 1.5dvh, 12px)); }
+.fchip > .new-dot, .stab > .new-dot {
+  width: 12px;
+  height: 12px;
+  top: calc(var(--pill-h) * .146 - 7px);
+  right: calc(var(--pill-h) * .146 - 7px);
+}
 /* ช่องเลื่อนของคลังน้องไม่เคยเว้นขอบ — เว้นให้จุดแดงที่คร่อมมุมการ์ดแถวบน/ริมขวาไม่ถูกเฉือน */
 .stash-grid { padding: 6px 6px 0 0; }
 @media (prefers-reduced-motion: reduce) { .new-dot { animation: none; } }
@@ -3354,7 +3368,7 @@ canvas[hidden] { display: none; }
   50%      { transform: scale(1.18); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #btnMail .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot { animation: none; }
+  #btnMail .dot, #btnNews .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot { animation: none; }
 }
 
 .mail-list {
@@ -4164,6 +4178,7 @@ canvas[hidden] { display: none; }
    ไม่งั้นมันจะไปโผล่ทับจอตอนกำลังวิ่ง ซึ่งไม่มีใครอยากได้ */
 .stage:not(:has(.panel:not(.hidden))) #btnSettings,
 .stage:not(:has(.panel:not(.hidden))) #btnMail,
+.stage:not(:has(.panel:not(.hidden))) #btnNews,
 .stage:not(:has(.panel:not(.hidden))) #btnFriends { display: none; }
 
 .goldbar {
@@ -5180,6 +5195,20 @@ canvas[hidden] { display: none; }
   box-shadow: 0 10px 26px rgba(12,4,24,.6);
 }
 .pf-name-edit input { flex: 1 1 auto; min-width: 0; }
+/* กติกาชื่อใต้ช่องพิมพ์ — หน้าตั้งชื่อ และช่องแก้ชื่อในโปรไฟล์ */
+.pf-name-edit { flex-wrap: wrap; }
+/* basis 0 = ช่องพิมพ์ไม่ดันปุ่มให้ตกบรรทัด เหลือแค่ป้ายกติกาที่ขึ้นบรรทัดใหม่ */
+.pf-name-edit input { flex: 1 1 0; }
+.pf-name-edit .name-rule { flex-basis: 100%; padding: 0 6px 2px; }
+.name-rule {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #CDB8E8;
+  text-align: center;
+}
+.name-rule b { color: var(--cream); font-variant-numeric: tabular-nums; }
+.name-rule.full b { color: #FFB86B; }
 
 /* ── รอยตีน ── */
 .pf-paws {
@@ -10240,3 +10269,569 @@ canvas[hidden] { display: none; }
 
 .got-card.gold { border-color: #FFD65C; background: linear-gradient(180deg, rgba(190,132,44,.94), rgba(126,70,154,.96)); }
 .got-card.gems { border-color: #FF9FC8; background: linear-gradient(180deg, rgba(200,90,150,.94), rgba(120,62,150,.96)); }
+
+/* ══ กระเป๋าเงินหน้าแรก (เพชร + ทอง) — ใหญ่ขึ้นและมีชีวิต ══════════════════════
+   เฉพาะแถบบนหน้าแรก (.hud-top) — กระเป๋าในหน้าตีบวก/ตู้กาช่าขนาดเดิม
+   อยู่ท้ายไฟล์ + ผูกกับ .hud-top ให้ชนะกฎย่อของจอเตี้ยข้างบน
+     เพชร  ลอยขึ้นลงเอียงนิด ๆ เรืองชมพูเต้นเป็นจังหวะ
+     ทอง   หมุนพลิกเหรียญเป็นครั้งคราว (ส่วนใหญ่นิ่ง ไม่ให้ลายตา)
+     แถบ   แสงวาบกวาดผ่านทุกไม่กี่วินาที + ประกายวิบที่ไอคอน */
+.hud-top .wallet { gap: clamp(6px, 1vw, 12px); }
+.hud-top .wallet .gembar,
+.hud-top .wallet .goldbar {
+  position: relative;
+  overflow: hidden;
+  height: calc(var(--hud-h) * 1.34);
+  padding: 0 18px 0 7px;
+  gap: 10px;
+}
+.hud-top .wallet .gembar b,
+.hud-top .wallet .goldbar b { font-size: clamp(16.5px, 2.86dvh, 21px); }
+.hud-top .wallet .gem,
+.hud-top .wallet .coin { width: calc(var(--hud-h) * .9); height: calc(var(--hud-h) * .9); }
+
+.hud-top .wallet .gem { animation: walletGem 2.6s ease-in-out infinite; }
+.hud-top .wallet .coin { animation: walletCoin 4.2s ease-in-out infinite; }
+@keyframes walletGem {
+  0%, 100% { transform: translateY(0) rotate(-6deg); filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)) drop-shadow(0 0 3px rgba(255,110,165,.5)); }
+  50% { transform: translateY(-2.5px) rotate(6deg); filter: drop-shadow(0 3px 3px rgba(0,0,0,.35)) drop-shadow(0 0 9px rgba(255,120,175,.95)); }
+}
+@keyframes walletCoin {
+  0%, 70% { transform: scaleX(1); }
+  78% { transform: scaleX(.08); }
+  86% { transform: scaleX(-1); }
+  93% { transform: scaleX(.08); }
+  100% { transform: scaleX(1); }
+}
+
+/* แสงวาบกวาดผ่านแถบ — เพชรกับทองจังหวะเหลื่อมกัน ไม่วาบพร้อมกัน */
+.hud-top .wallet .gembar::after,
+.hud-top .wallet .goldbar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 34%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.42), transparent);
+  transform: skewX(-18deg);
+  animation: walletShine 4.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.hud-top .wallet .goldbar::after { animation-delay: 2.4s; }
+@keyframes walletShine {
+  0%, 62% { left: -40%; }
+  86%, 100% { left: 120%; }
+}
+
+/* ประกายสี่แฉกวิบข้างไอคอน */
+.hud-top .wallet .gembar::before,
+.hud-top .wallet .goldbar::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  left: calc(var(--hud-h) * .79);
+  top: 12%;
+  width: 9px;
+  height: 9px;
+  background: #FFFFFF;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 3px rgba(255,255,255,.9));
+  opacity: 0;
+  animation: walletTwinkle 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+.hud-top .wallet .goldbar::before { animation-delay: 1.6s; }
+@keyframes walletTwinkle {
+  0%, 55%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); }
+  68% { opacity: 1; transform: scale(1) rotate(45deg); }
+  80% { opacity: 0; transform: scale(.4) rotate(90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-top .wallet .gem, .hud-top .wallet .coin,
+  .hud-top .wallet .gembar::after, .hud-top .wallet .goldbar::after,
+  .hud-top .wallet .gembar::before, .hud-top .wallet .goldbar::before { animation: none; }
+}
+
+/* ── ข่าวสาร (ปุ่มโทรโข่ง) ────────────────────────────────
+   การ์ดใหญ่เกือบเต็มเวที: ซ้าย = หัวข้อข่าว (รูปย่อ + ป้าย + วันที่)
+   ขวา = ข่าวที่เลือก รูปใหญ่ 16:9 มาก่อนตัวหนังสือ เพราะข่าวส่วนใหญ่เล่าด้วยรูป
+   ตัวหนังสือพื้นครีมสีเข้ม ตัวใหญ่ บรรทัดห่าง อ่านง่ายกว่าตัวอ่อนบนพื้นม่วง */
+#newsPanel .news-pop {
+  width: min(94%, 980px);
+  height: calc(100% - var(--card-inset) * 2);
+  max-height: 640px;
+}
+.news-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(170px, 31%) 1fr;
+  gap: clamp(8px, 1.6vw, 18px);
+}
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2dvh, 10px);
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 3px 3px 6px;
+}
+.news-list::-webkit-scrollbar { display: none; }
+.news-list.hidden { display: none; }
+.news-wrap:has(.news-list.hidden) { grid-template-columns: 1fr; }
+
+.news-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(7px, 1.2vw, 11px);
+  width: 100%;
+  padding: clamp(6px, 1.2dvh, 9px);
+  border-radius: 14px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+  color: var(--cream);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: filter .12s ease, transform .07s ease;
+}
+.news-item:hover { filter: brightness(1.12); }
+.news-item:active { transform: translateY(3px); box-shadow: var(--plate-press); }
+.news-item:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+/* ข่าวที่เปิดอยู่ = ขอบทองเรือง รู้ทันทีว่ากำลังอ่านอันไหน */
+.news-item.on {
+  border-color: #FFD66B;
+  box-shadow: 0 0 0 2px rgba(255,214,107,.35), var(--plate-lift);
+  filter: brightness(1.1);
+}
+.news-thumb {
+  flex: 0 0 auto;
+  width: clamp(46px, 8.6dvh, 70px);
+  aspect-ratio: 16 / 10;
+  border-radius: 9px;
+  object-fit: cover;
+  background: rgba(34,14,54,.55);
+  box-shadow: inset 0 0 0 1px rgba(255,243,226,.16);
+}
+.news-thumb.blank {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,214,107,.5), transparent 55%),
+    linear-gradient(135deg, #FF9EC4, #B78CFF);
+}
+.news-item-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.news-item-meta { display: flex; gap: 4px; flex-wrap: wrap; }
+.news-item b {
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
+  font-size: clamp(12px, 1.8dvh, 14.5px);
+  line-height: 1.3;
+  /* หัวข้อยาวตัดที่สองบรรทัด ไม่ดันรายการให้สูงไม่เท่ากัน */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.news-item small { font-size: clamp(10px, 1.4dvh, 11.5px); color: #C9AEE2; }
+/* ยังไม่อ่าน = จุดชมพูเต้นตุบ ๆ มุมขวาบน */
+.news-new {
+  position: absolute;
+  top: -4px; right: -4px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #FF5C8A;
+  border: 2px solid #FFF3E2;
+  animation: newsPing 1.6s ease-in-out infinite;
+}
+@keyframes newsPing { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+
+.news-tag, .news-pin {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: clamp(9.5px, 1.35dvh, 11px);
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+  background: linear-gradient(180deg, #FFB3D0, #FF7EAE);
+  color: #5A1030;
+}
+.news-pin { background: linear-gradient(180deg, #FFE59A, #F5B31E); color: #4A3000; }
+
+/* ── ฝั่งอ่าน: กระดาษครีม ตัวหนังสือเข้ม ── */
+.news-view {
+  min-height: 0;
+  /* ใช้ความสูงกรอบอ่านคุมขนาดรูป (cqh) — รูปใหญ่ได้เต็มที่ แต่ต้องเหลือที่ให้
+     ป้าย/หัวข้อ/เนื้อบรรทัดแรกโผล่เสมอ คนจะได้รู้ว่ามีเนื้อหาให้เลื่อนอ่านต่อ */
+  container-type: size;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120,70,160,.5) transparent;
+  padding: clamp(8px, 1.6dvh, 14px);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(255,190,220,.45), transparent 40%),
+    #FFF7EC;
+  box-shadow: inset 0 0 0 3px #FFE1EE, 0 8px 22px rgba(0,0,0,.35);
+  color: #4A2A5E;
+  text-align: left;
+}
+.news-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 13px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #FFC6DD, #C8A8FF);
+  box-shadow: 0 4px 0 #E9C6DA, 0 6px 16px rgba(90,40,120,.22);
+  max-height: max(90px, calc(100cqh - 7.6em));
+}
+.news-hero img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.news-noimg {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,.92);
+  background:
+    radial-gradient(circle at 20% 25%, rgba(255,255,255,.45) 0 6%, transparent 7%),
+    radial-gradient(circle at 82% 70%, rgba(255,255,255,.35) 0 4%, transparent 5%),
+    radial-gradient(circle at 70% 18%, rgba(255,255,255,.3) 0 3%, transparent 4%),
+    linear-gradient(135deg, #FFB3D0, #B78CFF);
+}
+.news-noimg svg { width: 30%; max-width: 120px; filter: drop-shadow(0 4px 0 rgba(90,40,120,.25)); animation: newsHorn 2.4s ease-in-out infinite; }
+@keyframes newsHorn { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg) scale(1.05); } }
+
+.news-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: clamp(8px, 1.6dvh, 14px);
+}
+.news-meta time { font-size: clamp(11px, 1.6dvh, 13px); color: #9A7AB0; font-weight: 600; }
+.news-title {
+  /* เว้นห่างจากแถวป้าย/วันที่ให้พอ — สระบนกับวรรณยุกต์ของหัวข้อตัวใหญ่ชนวันที่ได้ */
+  margin: clamp(10px, 1.8dvh, 16px) 0 0;
+  font-family: "Mali", sans-serif;
+  font-size: clamp(16px, 2.9dvh, 23px);
+  line-height: 1.45;
+  color: #5B2A7A;
+}
+.news-body {
+  margin-top: clamp(6px, 1.2dvh, 10px);
+  font-size: clamp(13px, 2dvh, 16px);
+  line-height: 1.7;
+}
+.news-body p { margin: 0 0 .7em; }
+.news-body p:last-child { margin-bottom: 0; }
+/* กฎกลาง .panel p ตั้งสีม่วงอ่อน (ไว้บนพื้นม่วง) จำกัด 44ch และซ่อนทิ้งบนจอแคบ
+   บนกระดาษครีมตรงนี้สีนั้นจางจนอ่านไม่ออก เนื้อข่าวคือของหลัก ห้ามหาย */
+.panel .news-body p {
+  display: block;
+  max-width: none;
+  color: #4A2A5E;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.news-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+.news-empty .news-noimg { width: min(260px, 60%); aspect-ratio: 16 / 9; height: auto; border-radius: 13px; }
+.news-empty b { font-family: "Mali", sans-serif; font-size: clamp(15px, 2.4dvh, 19px); color: #5B2A7A; }
+.news-empty span { font-size: clamp(12px, 1.8dvh, 14px); color: #8A6A9E; }
+
+/* จอเตี้ย (มือถือแนวนอน) — รายการแคบลง รูปย่อเล็กลง ให้ฝั่งรูปใหญ่ได้เนื้อที่ */
+/* รายการเหลือแค่ป้าย+หัวข้อ+วันที่ (ไม่มีรูปย่อ) ป้ายเรียงแถวเดียว ฝั่งรูปใหญ่ได้เนื้อที่ */
+@media (max-height: 460px) {
+  .news-wrap { grid-template-columns: minmax(130px, 28%) 1fr; }
+  .news-list .news-thumb { display: none; }
+  .news-item-meta { flex-wrap: nowrap; overflow: hidden; }
+  .news-item b { font-size: 12px; }
+  .news-view { padding: 7px; }
+  .news-hero { max-height: max(70px, calc(100cqh - 4em)); }
+  .news-title { font-size: 15px; margin-top: 8px; }
+  .news-meta { margin-top: 6px; }
+}
+/* จอแคบแนวตั้ง — ซ้อนเป็นแถวบน (เลื่อนแนวนอน) กับข่าวข้างล่าง */
+@media (max-width: 560px) and (orientation: portrait) {
+  .news-wrap { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .news-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+  .news-item { width: 200px; flex: 0 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-new, .news-noimg svg { animation: none; }
+}
+
+/* ── หน้าอันดับ: แถบเลือกด่านด้านซ้าย ─────────────────────────
+   ซ้าย = ปุ่มด่าน (รูปฉากย่อ + ชื่อ) ขวา = รายการอันดับของด่านที่เลือก
+   ด่านที่เลือกอยู่ = ขอบฟ้าอมเขียวแบบการ์ด "กำลังเล่น" ในหน้าเลือกด่าน */
+.rank-wrap {
+  display: flex;
+  gap: clamp(8px, 1.6vw, 16px);
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.rank-wrap .rank-list { width: min(560px, 58vw); }
+.rank-stages {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1dvh, 8px);
+  flex: 0 0 auto;
+  width: clamp(120px, 17vw, 176px);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 3px 3px 8px;
+  scrollbar-width: none;
+}
+.rank-stages::-webkit-scrollbar { display: none; }
+.rank-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px 5px 5px;
+  border-radius: 12px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
+  font-size: clamp(11px, 1.8dvh, 14px);
+  text-align: left;
+  cursor: pointer;
+  opacity: .78;
+  transition: filter .12s ease, transform .07s ease, opacity .12s ease;
+}
+.rank-stage:hover { filter: brightness(1.12); opacity: 1; }
+.rank-stage:active { transform: translateY(3px); box-shadow: var(--plate-press); }
+.rank-stage:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+.rank-stage.on {
+  opacity: 1;
+  border-color: #5FE3D2;
+  box-shadow: 0 0 0 2px rgba(95,227,210,.3), 0 0 14px rgba(95,227,210,.35), var(--plate-lift);
+}
+.rank-stage canvas {
+  flex: 0 0 auto;
+  width: clamp(40px, 6.4vw, 60px);
+  aspect-ratio: 960 / 420;
+  height: auto;
+  border-radius: 7px;
+}
+.rank-stage b { font-weight: 600; line-height: 1.25; }
+.panel .rank-stages.scrolls {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+/* จอเตี้ย (มือถือแนวนอน): เหลือแค่ชื่อด่าน ไม่มีรูปย่อ ให้รายการอันดับได้ที่เต็ม */
+@media (max-height: 460px) {
+  .rank-stages { width: clamp(92px, 15vw, 120px); gap: 4px; }
+  .rank-stage { padding: 5px 8px; font-size: 11px; border-radius: 10px; }
+  .rank-stage canvas { display: none; }
+  .rank-wrap .rank-list { width: min(560px, 56vw); }
+}
+
+/* ── ไอคอนสีบนแถบขวาบน (เพื่อน / ข่าว / จดหมาย / ตั้งค่า) ──
+   ภาษาเดียวกับไอคอนปุ่มล็อบบี้ (ตู้กาช่า การ์ดพลัง): สีเติมเต็ม ขอบม่วงเข้มแบบสติกเกอร์
+   ใหญ่กว่าไอคอนเส้นเดิม (56%) เพราะรูปทึบมีรายละเอียดข้างใน เล็กไปจะอ่านไม่ออก
+   ความจำเพาะสูงกว่ากฎ 17px ของจอเล็ก จึงคุมเป็นสัดส่วนของปุ่มได้ทุกจอ */
+.hudbtns button svg.ico-color {
+  width: 72%;
+  height: 72%;
+  filter: drop-shadow(0 1.5px 0 rgba(20,8,32,.45));
+}
+
+/* ── เส้นขอบสติกเกอร์ของไอคอนปุ่มล็อบบี้ ──
+   ภาษาเดียวกับไอคอนสีบนแถบขวาบน (.ico-color): ขอบม่วงเข้มล้อมรูป
+   ใช้ drop-shadow 4 ทิศแทนการไล่แก้ฟังก์ชันวาดทีละตัว — ตามรูปทรงจริงของภาพ (ช่องใสไม่โดน)
+   ไอคอนที่วาดใหม่/ขยับทีหลัง (หีบเปิดปิด ไอคอนสร้างสรรค์) จึงได้ขอบเองโดยไม่ต้องจำ
+   ตัวสุดท้ายคือเงาใต้ไอคอนเดิม ต้องมาหลังเส้นขอบ ไม่งั้นเงาจะโดนขอบล้อมไปด้วย */
+.lobby-btn canvas,
+.lg-box,
+.dl-cal {
+  --ol: #3A1D50;
+  filter:
+    drop-shadow(.7px 0 0 var(--ol)) drop-shadow(-.7px 0 0 var(--ol))
+    drop-shadow(0 .7px 0 var(--ol)) drop-shadow(0 -.7px 0 var(--ol))
+    drop-shadow(0 2px 3px rgba(20,8,32,.55));
+}
+
+/* ── แถวกราฟิก: สามตัวเลือกเรียงแถวเดียวเสมอ ──
+   เดิม .gfxpick ยอมตกบรรทัด พอแถวแคบปุ่มที่สามหล่นลงไปบรรทัดใหม่ กลายเป็นก้อนสองชั้นเบี้ยว ๆ
+   ตอนนี้ตัวเลือกทั้งชุดห้ามแตกแถว: กว้างพอ = อยู่ข้างป้าย / แคบไป = ทั้งชุดลงไปอยู่ใต้ป้ายเต็มความกว้าง
+   ปุ่มสามใบกว้างเท่ากัน (flex: 1) แถวจึงดูเป็นระเบียบ ไม่ยืดหดตามความยาวคำ */
+.setrow:has(.gfxpick) { flex-wrap: wrap; row-gap: 8px; }
+.gfxpick {
+  flex: 1 1 250px;
+  flex-wrap: nowrap;
+  justify-content: stretch;
+  max-width: 330px;
+  margin-left: auto;
+}
+.gfxpick .langbtn { flex: 1 1 0; text-align: center; padding-inline: clamp(6px, 1.2vw, 12px); }
+
+/* ── ตั้งค่า → ช่วยเหลือ ── */
+.help-row { gap: 12px; }
+.help-ico { font-size: 1.7em; line-height: 1; flex: 0 0 auto; }
+.help-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left; }
+.help-txt b { font-family: "Mali", sans-serif; font-weight: 600; font-size: 13.5px; color: #F3E8FF; }
+.help-txt small { font-size: clamp(10px, 1.5dvh, 12px); color: #C9AEE2; line-height: 1.4; }
+.help-row .btn { flex: 0 0 auto; }
+
+/* ── หน้าแจ้งปัญหา ── */
+.form-msg.good { color: #8FF4E2; }
+.report-pop { width: min(560px, 90%); }
+.report-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(7px, 1.5dvh, 12px);
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.report-form::-webkit-scrollbar { display: none; }
+.report-cats {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.16);
+  background: rgba(27,15,43,.62);
+}
+.report-cats .langbtn { flex: 1 1 0; text-align: center; padding-inline: 6px; }
+.report-field { position: relative; display: block; }
+.report-field textarea {
+  display: block;
+  width: 100%;
+  min-height: clamp(70px, 17dvh, 130px);
+  padding: 10px 12px 22px;
+  border-radius: 14px;
+  border: 2px solid var(--plate-line, rgba(255,243,226,.25));
+  background: rgba(27,15,43,.62);
+  color: var(--cream);
+  font: inherit;
+  font-size: clamp(12.5px, 2dvh, 15px);
+  line-height: 1.55;
+  resize: none;
+  text-wrap: wrap;
+}
+.report-field textarea::placeholder { color: #9C81B8; }
+.report-field textarea:focus { outline: 2px solid #C7B2FF; outline-offset: 1px; }
+.report-count { position: absolute; right: 12px; bottom: 6px; font-size: 11px; color: #9C81B8; pointer-events: none; }
+
+.report-pics { display: flex; gap: 10px; flex-wrap: wrap; }
+.report-pic, .report-add {
+  position: relative;
+  width: clamp(88px, 16dvh, 128px);
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  flex: 0 0 auto;
+}
+.report-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid var(--plate-line, rgba(255,243,226,.3));
+  display: block;
+}
+.report-pic-x {
+  position: absolute;
+  top: -7px; right: -7px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid #FFF3E2;
+  background: #E8434F;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+.report-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 2px dashed rgba(255,243,226,.35);
+  background: rgba(255,243,226,.05);
+  color: #D9C4EC;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.report-add:hover { background: rgba(255,243,226,.1); border-color: rgba(255,243,226,.6); }
+.report-add span { font-size: 22px; line-height: 1; }
+.report-add small { font-size: 11px; }
+
+/* จอเตี้ย (มือถือแนวนอน): ช่องพิมพ์ซ้าย รูปแนบเรียงลงข้างขวา — ทุกอย่างอยู่ในจอเดียว
+   ถ้าเรียงบนลงล่างแบบคอม แถวรูปจะหล่นไปใต้ขอบการ์ดจนไม่รู้ว่าแนบรูปได้ */
+@media (max-height: 460px) {
+  .report-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    gap: 6px 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .report-cats { grid-column: 1 / -1; }
+  .report-field { min-height: 0; }
+  .report-field textarea { height: 100%; min-height: 0; padding: 7px 10px 18px; }
+  .report-pics { flex-wrap: nowrap; align-items: flex-start; gap: 8px; padding: 7px 7px 0 0; }
+  .report-pic, .report-add { width: 68px; }
+  #reportPanel .form-msg:empty { display: none; }
+  #reportPanel .pop { gap: 6px; }
+  .report-add small { font-size: 10px; }
+  .report-cats .langbtn { font-size: 10.5px; }
+  .help-txt small { font-size: 10px; }
+}
+
+.panel p.stage-lead { max-width: none; }
+
+/* ── หน้าอันดับ: เส้นคั่นระหว่างแถบด่านกับรายการอันดับ ──
+   ภาษาเดียวกับแถบซ้ายของคลังน้อง/ตู้กาช่า (.stash-tabs): เส้นครีมจาง ๆ + เว้นระยะสองฝั่ง */
+.rank-wrap { gap: clamp(14px, 2.6vw, 30px); }
+.rank-stages {
+  padding-right: clamp(12px, 2.2vw, 26px);
+  border-right: 1px solid rgba(255,243,226,.16);
+  /* ความกว้างเดิม + ระยะเว้นฝั่งเส้นคั่น — ไม่งั้นปุ่มแคบลงจนชื่อด่านตกเป็นสองบรรทัด */
+  width: calc(clamp(150px, 19vw, 196px) + clamp(12px, 2.2vw, 26px));
+}
+@media (max-height: 460px) {
+  .rank-wrap { gap: 12px; }
+  .rank-stages { padding-right: 10px; width: 118px; }
+}
+
+/* ── หน้าข่าวสาร: เส้นคั่นระหว่างรายการหัวข้อกับฝั่งอ่าน ──
+   ชุดเดียวกับหน้าอันดับ / คลังน้อง / ตู้กาช่า: เส้นครีมจาง ๆ + เว้นระยะสองฝั่งให้หายใจได้ */
+.news-wrap { gap: clamp(14px, 2.6vw, 30px); }
+.news-list {
+  padding-right: clamp(12px, 2.2vw, 26px);
+  border-right: 1px solid rgba(255,243,226,.16);
+}
+@media (max-height: 460px) {
+  .news-wrap { gap: 12px; }
+  .news-list { padding-right: 10px; }
+}
+@media (max-width: 560px) and (orientation: portrait) {
+  .news-list { padding-right: 3px; border-right: 0; }
+}

@@ -20,7 +20,7 @@ function sandMound(ctx, x, y, w, h) {
   ctx.fill();
   for (let i = 0; i < 4; i++) circle(ctx, x + 10 + i * 8, y + h * 0.75 - (i % 2) * 4, 1.4, '#C98B55');
   line(ctx, x + w * 0.6, y + h * 0.35, x + w * 0.6, y, 2, '#6B4226');
-  const f = Math.sin(t * 0.15) * 3;
+  const f = Math.sin(t * 0.15) * 6;
   poly(ctx, [[x + w * 0.6, y], [x + w * 0.6 + 14, y + 4 + f * 0.3], [x + w * 0.6, y + 9]], '#FF6B6B');
   poly(ctx, [[x + w * 0.2, y + h * 0.5], [x + w * 0.32, y + h * 0.3], [x + w * 0.36, y + h * 0.36], [x + w * 0.25, y + h * 0.55]], '#4FB6E8');
 }
@@ -31,7 +31,7 @@ function cooler(ctx, x, y, w, h) {
   groundShadow(ctx, x, y, w, h);
   rr(ctx, x, y + 14, w, h - 14, 6, vgrad(ctx, y + 14, y + h, '#FF6B6B', '#C8384A'));
   rr(ctx, x + 4, y + h * 0.55, w - 8, 6, 3, '#FFFFFF');
-  const lift = 3 + Math.sin(t * 0.05) * 2;
+  const lift = 3 + Math.sin(t * 0.05) * 4;
   circle(ctx, x + 18, y + 14, 5, '#DFF4FF');
   circle(ctx, x + 30, y + 13, 4, '#DFF4FF');
   rr(ctx, x + w * 0.62, y + 2, 7, 16, 2, '#6FD3A8');
@@ -70,7 +70,7 @@ function lifebuoyPost(ctx, x, y, w, h) {
   line(ctx, x + w / 2, y + 16, x + w / 2, y + 30, 2, '#6B4226');
   ctx.save();
   ctx.translate(x + w / 2, y + 30);
-  ctx.rotate(Math.sin(t * 0.04) * 0.08);
+  ctx.rotate(Math.sin(t * 0.04) * 0.16);
   for (let i = 0; i < 4; i++) {
     ctx.strokeStyle = i % 2 ? '#FFFFFF' : '#E8434F';
     ctx.lineWidth = 9;
@@ -103,7 +103,7 @@ function rowboat(ctx, x, y, w, h) {
   rr(ctx, x - 2, y + h * 0.62, w + 4, 7, 3, '#F5E6C8');
   line(ctx, x + 10, y + h * 0.85, x + w - 6, y + h * 0.45, 4, WOOD[0]);
   ellipse(ctx, x + w - 8, y + h * 0.45, 8, 4, WOOD[0], -0.35);
-  const wv = Math.sin(t * 0.06) * 3;
+  const wv = Math.sin(t * 0.06) * 6;
   ctx.fillStyle = 'rgba(210,240,255,.8)';
   ctx.beginPath();
   ctx.moveTo(x - 4, y + h);
@@ -196,7 +196,7 @@ function beachSign(ctx, x, y, w, h) {
   const n = 12;
   for (let i = 0; i < n; i++) {
     const fx = x + 6 + i * (w - 12) / n;
-    const flap = Math.sin(t * 0.12 + i * 0.7) * 3;
+    const flap = Math.sin(t * 0.12 + i * 0.7) * 6;
     poly(ctx, [[fx, y + h * 0.55], [fx + (w - 12) / n, y + h * 0.55], [fx + (w - 12) / n / 2 + flap, y + h - 2]], cols[i % cols.length]);
   }
   circle(ctx, x + w - 18, y + h * 0.28, 7, '#FFE08A');

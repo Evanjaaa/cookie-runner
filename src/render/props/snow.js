@@ -35,7 +35,7 @@ function snowman(ctx, x, y, w, h) {
   circle(ctx, x + w / 2 + 3, y + 10, 1.4, '#2A2A3A');
   poly(ctx, [[x + w / 2, y + 13], [x + w / 2 + 8, y + 14.5], [x + w / 2, y + 16]], '#FF8A3D');
   rr(ctx, x + w / 2 - 10, y + 20, 20, 5, 2, '#E8434F');
-  const f = Math.sin(t * 0.1) * 3;
+  const f = Math.sin(t * 0.1) * 6;
   poly(ctx, [[x + w / 2 + 6, y + 22], [x + w / 2 + 16, y + 26 + f], [x + w / 2 + 14, y + 30 + f], [x + w / 2 + 4, y + 25]], '#E8434F');
   for (let i = 0; i < 2; i++) circle(ctx, x + w / 2, y + h - 16 + i * 7, 1.5, '#2A2A3A');
 }

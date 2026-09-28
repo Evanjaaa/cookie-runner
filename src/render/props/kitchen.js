@@ -24,7 +24,7 @@ function flourSack(ctx, x, y, w, h) {
   for (let i = 0; i < 3; i++) {
     const p = ((t * 0.012 + i / 3) % 1);
     ctx.globalAlpha = (1 - p) * 0.6;
-    circle(ctx, x + w * (0.35 + i * 0.15) + Math.sin(t * 0.05 + i) * 3, y - p * 14, 1.6 + p * 1.5, '#FFFFFF');
+    circle(ctx, x + w * (0.35 + i * 0.15) + Math.sin(t * 0.05 + i) * 6, y - p * 14, 1.6 + p * 1.5, '#FFFFFF');
   }
   ctx.globalAlpha = 1;
 }
@@ -145,7 +145,7 @@ function tallCake(ctx, x, y, w, h) {
   }
   const top = y + h - 6 - th * tiers;
   rr(ctx, x + w / 2 - 3, top - 18, 6, 18, 2, '#9ED9FF');
-  const f = Math.sin(t * 0.3) * 1.5;
+  const f = Math.sin(t * 0.3) * 3;
   ellipse(ctx, x + w / 2 + f * 0.4, top - 23, 3.2, 5.5, '#FFB73D');
   ellipse(ctx, x + w / 2 + f * 0.4, top - 22, 1.6, 3, '#FFF1B0');
   glow(ctx, x + w / 2, top - 23, 14, '255,190,90', 0.5);
@@ -196,7 +196,7 @@ function panRack(ctx, x, y, w, h) {
   const n = 4;
   for (let i = 0; i < n; i++) {
     const hx = x + 18 + i * (w - 36) / (n - 1);
-    const sw = Math.sin(t * 0.05 + i * 1.3) * 0.12;
+    const sw = Math.sin(t * 0.05 + i * 1.3) * 0.24;
     ctx.save();
     ctx.translate(hx, y + 8);
     ctx.rotate(sw);

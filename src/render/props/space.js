@@ -147,7 +147,7 @@ function laserGate(ctx, x, y, w, h) {
 /** เศษยานลอยต่ำ 140×86 (หมอบ) — แผ่นโลหะยานบิดเบี้ยว สายไฟห้อย ลอยขึ้นลงเบา ๆ */
 function floatingDebris(ctx, x, y, w, h) {
   const t = now();
-  const bob = Math.sin(t * 0.04) * 2;
+  const bob = Math.sin(t * 0.04) * 4;
   ctx.save();
   ctx.translate(0, bob - 2);
   poly(ctx, [[x, y + h * 0.2], [x + w * 0.35, y], [x + w * 0.7, y + h * 0.08], [x + w, y + h * 0.3], [x + w * 0.92, y + h * 0.78], [x + w * 0.5, y + h * 0.95], [x + w * 0.1, y + h * 0.8]], vgrad(ctx, y, y + h, '#E6E9F2', '#8A92AC'));

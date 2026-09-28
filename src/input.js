@@ -16,7 +16,20 @@ export function setupInput(stageEl, handlers) {
     onSkill = () => {},
   } = handlers;
 
+  /**
+   * กำลังพิมพ์อยู่ในช่องกรอก — ห้ามตีความปุ่มเป็นคำสั่งเกม
+   * เดิมดักทั้งหน้าต่าง แล้ว preventDefault ปุ่ม W/S/P/Space: พิมพ์ตัว w, s, p ในช่องสเตตัส
+   * ช่องชื่อ ช่องค้นหาเพื่อนไม่ขึ้นเลย (และน้องกระโดด/หมอบ/พักเกมไปแทน) ทั้งคอมและมือถือ
+   * เช็คที่นี่ที่เดียว ช่องกรอกใหม่ในอนาคตพิมพ์ได้ครบเองโดยไม่ต้องจำไปใส่ตัวกัน
+   */
+  const typing = (e) => {
+    const el = e.target;
+    if (!el || !el.tagName) return false;
+    return el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+  };
+
   window.addEventListener('keydown', (e) => {
+    if (typing(e)) return;
     if (JUMP_KEYS.includes(e.code)) {
       e.preventDefault();
       if (!e.repeat) onConfirm();   // e.repeat กันการกดค้างแล้วกระโดดรัว
@@ -33,6 +46,7 @@ export function setupInput(stageEl, handlers) {
   });
 
   window.addEventListener('keyup', (e) => {
+    if (typing(e)) return;
     if (SLIDE_KEYS.includes(e.code)) onSlideEnd();
     if (JUMP_KEYS.includes(e.code)) onJumpEnd();
   });

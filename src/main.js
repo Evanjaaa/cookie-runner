@@ -46,8 +46,12 @@ import {
   friendStatus, sendFriendRequest, respondFriendRequest, cancelFriendRequest, removeFriend,
   fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers,
 } from './net/cloud.js';
+import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
+import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { drawSky, drawHills, drawGround, GROUND_ART } from './render/background.js';
+import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.js';
+import { drawPlats } from './render/platforms.js';
+import { PROP_LIST } from './obstacles.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
   loadInbox, mailById, badgeCount, markRead, claimMail, claimAll, clearReadMail, syncMail,
@@ -299,14 +303,21 @@ function paintStageScene(canvas, stage, logicalW) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.scale(logicalW / 960, logicalH / 420);
 
-  drawSky(c, 0, stage.palette);
-  drawHills(c, 0, stage.palette);
-  drawGround(c, [], 0, stage.palette, GROUND_ART[stage.backdrop]);
-  // วางสิ่งกีดขวางสองชิ้นให้เห็นว่าธีมนี้หน้าตาแบบไหน
-  drawObstacles(c, [
-    { x: 300, y: 320 - 38, w: 32, h: 38, kind: 'spike' },
-    { x: 600, y: 320 - 88, w: 46, h: 88, rows: 2, kind: 'crate' },
-  ], 0, stage.theme);
+  // ฉากชุดเดียวกับในเกมและหน้าออกแบบด่าน (drawStageBackdrop) — เดิมวาดแค่ฟ้า+เนินรุ่นแรก
+  // กับหนาม/กล่องลังรุ่นเก่า รูปบนการ์ดเลยไม่ตรงกับด่านที่เล่นจริงเลย
+  // กล้องเลื่อนไปนิดหน่อยให้ชิ้นเด่นของฉากหลังเข้ามาในกรอบ ไม่ใช่ขอบซ้ายสุดของฉาก
+  const cam = 180;
+  const pal = stage.palette;
+  drawStageBackdrop(c, cam, stage, pal, 0);
+  drawGround(c, [], cam, pal, GROUND_ART[stage.backdrop]);
+  // เนินหนึ่งลูก (ลาย THEMES ของด่านนั้นจาก platforms.js)
+  drawPlats(c, [{ kind: 'hill', x: cam + 60, w: 300, h: 56 }], cam, pal, stage.theme);
+  // สิ่งกีดขวางชุดของด่านนั้นจริง ๆ (PROP_OBSTACLES) สองชิ้น: กระโดดชั้นเดียว + สองชั้น
+  const prop = (slot, x) => {
+    const d = PROP_LIST.find((o) => o.stage === stage.id && o.slot === slot);
+    return d && { x: cam + x, y: 320 - d.h, w: d.w, h: d.h, kind: 'prop', art: d.id };
+  };
+  drawObstacles(c, [prop('s2', 470), prop('d1', 700)].filter(Boolean), cam, stage.theme);
 }
 
 // หูแมวบนป้ายชื่อเกมวาดด้วย CSS ล้วน (.plate-ear ใน style.css)
@@ -406,6 +417,9 @@ onFresh(refreshFreshDots);
 
 function refreshHome() {
   refreshMailDot();   // จุดแดงต้องตรงกับของจริงทุกครั้งที่กลับมาล็อบบี้
+  refreshNewsDot();
+  // ข่าวใหม่จากแอดมิน — ดึงเบื้องหลัง (เว้นช่วงเองใน news.js) แล้วค่อยขึ้นจุดแดง
+  syncNews().then((ch) => { if (ch) refreshNewsDot(); });
   refreshFreshDots();
   const st = getStage();
   refreshProfile();
@@ -1287,8 +1301,45 @@ function rankNote(html) {
     '<p class="rank-note">' + html + '</p>';
 }
 
+// ด่านที่กำลังดูอันดับ — เริ่มที่ด่านที่เล่นอยู่ทุกครั้งที่เปิดหน้า สลับดูด่านอื่นได้จากแถบซ้าย
+// แยกจากด่านที่เล่น (setStage) โดยตั้งใจ: แค่อยากดูอันดับ ไม่ได้อยากเปลี่ยนด่าน
+let rankStageId = null;
+// กดสลับด่านรัว ๆ แล้วเน็ตตอบกลับไม่เรียงลำดับ — วาดเฉพาะคำตอบของครั้งล่าสุด
+let rankReq = 0;
+
+/** แถบเลือกด่านด้านซ้าย: รูปฉากย่อ + ชื่อด่าน */
+function buildRankStages() {
+  const box = document.getElementById('rankStages');
+  box.innerHTML = '';
+  for (const st of STAGES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    const on = st.id === rankStageId;
+    b.className = 'rank-stage' + (on ? ' on' : '');
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.innerHTML = '<canvas aria-hidden="true"></canvas><b></b>';
+    b.querySelector('b').textContent = st.name;
+    paintStageScene(b.querySelector('canvas'), st, 96);
+    b.addEventListener('click', () => {
+      if (st.id === rankStageId) return;
+      unlockAudio(); sfx.fish();
+      rankStageId = st.id;
+      box.querySelectorAll('.rank-stage').forEach((x, i) => {
+        const sel = STAGES[i].id === rankStageId;
+        x.classList.toggle('on', sel);
+        x.setAttribute('aria-selected', sel ? 'true' : 'false');
+      });
+      buildRank();
+    });
+    box.appendChild(b);
+  }
+  markScrollable(box);
+}
+
 async function buildRank() {
-  const st = getStage();
+  const st = STAGES.find((s) => s.id === rankStageId) || getStage();
+  const req = ++rankReq;
   document.getElementById('rankStage').textContent = st.name;
   rankNote('กำลังโหลด…');
 
@@ -1298,6 +1349,7 @@ async function buildRank() {
   }
 
   const rows = await fetchLeaderboard(st.id, 20);
+  if (req !== rankReq) return;   // ระหว่างรอ ผู้เล่นกดไปดูด่านอื่นแล้ว
   if (!rows.length) {
     rankNote('ยังไม่มีใครทำคะแนนในด่านนี้<br>ไปเป็นคนแรกกันเถอะ!');
     return;
@@ -1366,6 +1418,29 @@ async function storeName(name) {
 
 /** ชื่อยาวได้กี่ตัวอักษร — ต้องตรงกับ claim_name ใน supabase/names.sql */
 const NAME_MAX = 10;
+
+/**
+ * กติกาชื่อ + ตัวนับตัวอักษรใต้ช่องพิมพ์ — นับแบบเดียวกับ cleanName (ทีละตัวอักษร สระ/วรรณยุกต์นับด้วย)
+ * ข้อความตั้งจาก NAME_MAX ตัวเดียว เปลี่ยนเพดานที่เดียวแล้วทุกที่ตามกันเอง
+ */
+function wireNameRule(inputId, ruleId, short) {
+  const input = document.getElementById(inputId);
+  const rule = document.getElementById(ruleId);
+  if (!input || !rule) return;
+  input.maxLength = NAME_MAX;
+  const paint = () => {
+    const n = Array.from(input.value.trim()).length;
+    rule.innerHTML = `${short ? '' : 'ตั้งได้'}ไม่เกิน ${NAME_MAX} ตัวอักษร (สระกับวรรณยุกต์นับด้วย) · ห้ามซ้ำกับคนอื่น`
+      + ` · <b>${n}/${NAME_MAX}</b>`;
+    rule.classList.toggle('full', n >= NAME_MAX);
+  };
+  input.addEventListener('input', paint);
+  // ค่าตั้งต้นถูกเติมตอนเปิดหน้า (ชื่อเดิม) — วาดใหม่ตอนได้โฟกัสด้วย ตัวเลขจะไม่ค้างที่ 0
+  input.addEventListener('focus', paint);
+  paint();
+}
+wireNameRule('nameInput', 'nameRule', false);
+wireNameRule('pfNameInput', 'pfNameRule', true);
 
 /** ตัดชื่อให้อยู่ในกติกา (นับเป็นตัวอักษรจริง อีโมจิหนึ่งตัวนับหนึ่ง) */
 function cleanName(raw) {
@@ -1486,6 +1561,7 @@ let nameFrom = null;
 function showNameStep(warn = '', from = titlePanel) {
   nameFrom = from;
   document.getElementById('nameInput').value = chosenName();
+  document.getElementById('nameInput').dispatchEvent(new Event('input'));   // ตัวนับตัวอักษรใต้ช่อง
   // โชว์แมวตัวที่เลือกอยู่จริง ๆ ให้เห็นว่ากำลังตั้งชื่อให้ใคร
   paintMini(document.getElementById('nameCat'), 120,
     (c) => drawCatPose(c, 60, 110, 1.85, getSkin(), 60));
@@ -1938,6 +2014,8 @@ function showRank(on) {
   rankPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
   if (on) {
+    rankStageId = getStage().id;
+    buildRankStages();
     buildRank();
   }
 }
@@ -2399,6 +2477,46 @@ function buildOutfitGrid() {
   }
   markScrollable(grid);
 }
+
+// ── ข่าวสาร (โทรโข่ง) ──────────────────────────────────────
+//
+// ซ้าย = หัวข้อ  ขวา = ข่าวที่เลือก (รูปใหญ่ก่อนตัวหนังสือ) — วาดใน news.js
+// เปิดข่าวไหน = นับว่าอ่านข่าวนั้นแล้ว จุดแดงบนปุ่มนับเฉพาะข่าวที่ยังไม่เคยเปิด
+
+const newsPanel = document.getElementById('newsPanel');
+let newsPick = null;
+
+function refreshNewsDot() {
+  const n = newsUnread();
+  const dot = document.getElementById('newsDot');
+  dot.textContent = n === 0 ? '' : n > 9 ? '9+' : n;
+  dot.classList.toggle('hidden', n === 0);
+}
+
+function drawNews() {
+  newsPick = renderNews(
+    document.getElementById('newsList'), document.getElementById('newsView'), newsPick,
+    (id) => { sfx.fish(); newsPick = id; drawNews(); },
+  );
+  if (newsPick) markNewsSeen(newsPick);
+  refreshNewsDot();
+}
+
+document.getElementById('btnNews').addEventListener('click', async () => {
+  unlockAudio(); startMusic();
+  sfx.fish();
+  newsPick = null;          // เปิดใหม่ทุกครั้งเริ่มที่ข่าวบนสุด (ปักหมุด/ล่าสุด)
+  showPanel(newsPanel);
+  drawNews();               // ของในเครื่องขึ้นก่อน ไม่ต้องรอเน็ต
+  const changed = await syncNews(true);
+  if (changed && !newsPanel.classList.contains('hidden')) drawNews();
+});
+document.getElementById('newsBack').addEventListener('click', () => {
+  unlockAudio();
+  newsPanel.classList.add('hidden');
+  startPanel.classList.remove('hidden');
+  refreshNewsDot();
+});
 
 // ── กล่องจดหมาย ────────────────────────────────────────────
 //
@@ -7012,6 +7130,21 @@ for (const b of setTabs) {
     showSetTab(b.dataset.set);
   });
 }
+
+// ── ช่วยเหลือ → แจ้งปัญหา ──
+// หมวดช่วยเหลือมีแค่ปุ่มทางเข้า ตัวฟอร์มอยู่อีกหน้า (#reportPanel) กดกลับแล้วคืนมาที่หมวดเดิม
+const reportPanel = document.getElementById('reportPanel');
+const openReport = setupReport({
+  open: () => swapPanel(settingsPanel, reportPanel),
+  close: () => swapPanel(reportPanel, settingsPanel),
+  sfx,
+  unlockAudio,
+});
+document.getElementById('helpReport').addEventListener('click', () => {
+  unlockAudio();
+  sfx.fish();
+  openReport();
+});
 
 // ── ระดับกราฟิก ──
 // ปุ่มสามใบใช้ทรงเดียวกับตัวเลือกภาษา กดแล้วมีผลทันที (ดู onQuality ข้างบน)

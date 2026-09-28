@@ -257,6 +257,72 @@ export async function fetchPlayer() {
   }
 }
 
+// ── ข่าวสาร (ปุ่มโทรโข่ง) ──────────────────────────────────
+//
+// ตาราง news อ่านได้ทุกคน (ไม่ต้องล็อกอิน) — ดู supabase/news.sql
+// คืน null เมื่ออ่านไม่ได้ แยกจาก [] = "ยังไม่มีข่าว" หน้าข่าวจะได้บอกให้ถูก
+
+export async function fetchNews() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data, error } = await c.from('news')
+      .select('id, title, body, image_url, tag, news_date, pinned, created_at')
+      .eq('active', true)
+      .order('pinned', { ascending: false })
+      .order('news_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(40);
+    if (error) throw error;
+    return (data || []).map((n) => ({
+      id: n.id,
+      title: n.title,
+      body: n.body || '',
+      image: n.image_url || '',
+      tag: n.tag || 'ประกาศ',
+      date: n.news_date || (n.created_at || '').slice(0, 10),
+      pinned: !!n.pinned,
+    }));
+  } catch (e) {
+    console.warn('[cloud] อ่านข่าวไม่ได้', e.message || e);
+    return null;
+  }
+}
+
+// ── แจ้งปัญหา (ตั้งค่า → ช่วยเหลือ) ─────────────────────────
+//
+// ตาราง bug_reports + รูปใน bucket "reports" (ส่วนตัว) — ดู supabase/reports.sql
+// รูปขึ้นก่อน แล้วค่อยบันทึกเรื่อง — บันทึกไม่ผ่านก็ลบรูปที่เพิ่งอัปทิ้ง ไม่ปล่อยไฟล์กำพร้าค้าง
+
+/**
+ * @param {{category: string, body: string, images: Blob[], device: string}} r
+ * @returns {Promise<{ok: true} | {ok: false, reason: 'offline'|'limit'|'schema'|'error'}>}
+ */
+export async function sendReport({ category, body, images = [], device = '' }) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  const paths = [];
+  try {
+    for (const [i, blob] of images.slice(0, 2).entries()) {
+      const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+      const path = `${uid}/${Date.now().toString(36)}-${i}.${ext}`;
+      const { error } = await c.storage.from('reports').upload(path, blob, { contentType: blob.type || 'image/jpeg' });
+      if (error) throw error;
+      paths.push(path);
+    }
+    const { error } = await c.from('bug_reports').insert({ category, body, images: paths, device });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    if (paths.length) c.storage.from('reports').remove(paths).catch(() => {});
+    const msg = String(e?.message || e);
+    console.warn('[cloud] ส่งแจ้งปัญหาไม่ได้', msg);
+    if (/report_rate_limit/.test(msg)) return { ok: false, reason: 'limit' };
+    if (/bug_reports|schema cache|Bucket not found/i.test(msg)) return { ok: false, reason: 'schema' };
+    return { ok: false, reason: 'error' };
+  }
+}
+
 // ── จดหมายจากแอดมิน ─────────────────────────────────────────
 //
 // อยู่คนละตารางกับ players.mail โดยตั้งใจ — ดู supabase/mail.sql

@@ -227,7 +227,7 @@ async function signOut() {
 const PAGES = {};
 
 const PAGE_TITLE = {
-  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย',
+  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย', news: 'ข่าวสาร', reports: 'แจ้งปัญหา',
   scores: 'คะแนน', pulls: 'กาช่า', audit: 'ตรวจผิดปกติ',
 };
 
@@ -1197,6 +1197,371 @@ async function loadSentMail() {
     if (b.dataset.act === 'edit') editMail(r);
     else setMailActive(r, b.dataset.act === 'on');
   });
+}
+
+// ── หน้า: ข่าวสาร ───────────────────────────────────────────
+//
+// ข่าวที่โผล่ในปุ่มโทรโข่งหน้าแรกของเกม — ตาราง news + รูปใน bucket "news"
+// ฟอร์มเดียวใช้ทั้งเพิ่มใหม่และแก้ (กด "แก้" ในรายการ = โหลดข่าวนั้นขึ้นฟอร์ม)
+// ขวาของฟอร์มมีตัวอย่างหน้าตาจริงในเกม เห็นก่อนกดลงข่าว
+
+const NEWS_TAGS = ['ประกาศ', 'กิจกรรม', 'อัปเดต', 'ของขวัญ', 'ปิดปรับปรุง'];
+const newsState = { editing: null, image: '' };
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const newsDay = (d) => {
+  const t = new Date(d + 'T00:00:00');
+  return Number.isNaN(t.getTime()) ? '' : t.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+PAGES.news = async () => {
+  newsState.editing = null;
+  newsState.image = '';
+  $('page').innerHTML = `
+    ${pageHead('ข่าวสาร', 'ข่าวจะขึ้นในปุ่มโทรโข่งหน้าแรกของเกม ผู้เล่นที่ยังไม่เปิดอ่านจะเห็นจุดแดงบนปุ่ม')}
+
+    <div class="newsedit">
+      <div class="mailform newsform">
+        <h3 class="nf-head" id="nfHead">ลงข่าวใหม่</h3>
+        <label class="fld"><span>หัวข้อ</span>
+          <input id="nTitle" maxlength="90" placeholder="เช่น กิจกรรมวันฮาโลวีนมาแล้ว!"></label>
+
+        <div class="giftrow">
+          <label class="fld"><span>ป้าย</span>
+            <input id="nTag" maxlength="16" list="nTagList" value="${NEWS_TAGS[0]}">
+            <datalist id="nTagList">${NEWS_TAGS.map((t) => `<option value="${t}">`).join('')}</datalist></label>
+          <label class="fld"><span>วันที่</span>
+            <input id="nDate" type="date" value="${todayISO()}"></label>
+        </div>
+
+        <div class="fld"><span>รูปภาพ <small class="note">(แนะนำแนวนอน 16:9 เช่น 1280×720)</small></span>
+          <div class="pickrow">
+            <input id="nImgUrl" type="url" placeholder="วางลิงก์รูป หรือกดอัปโหลด" autocomplete="off" spellcheck="false">
+            <label class="btn ghost" for="nImgFile">อัปโหลด</label>
+            <input id="nImgFile" type="file" accept="image/*" hidden>
+            <button class="btn ghost" id="nImgClear" type="button">ลบรูป</button>
+          </div>
+          <small class="note" id="nImgMsg"></small>
+        </div>
+
+        <label class="fld"><span>รายละเอียด</span>
+          <textarea id="nBody" rows="7" maxlength="3000" placeholder="เล่ารายละเอียดข่าว เว้นบรรทัดว่าง = ขึ้นย่อหน้าใหม่"></textarea></label>
+
+        <div class="nf-checks">
+          <label class="chk"><input type="checkbox" id="nPinned"> ปักหมุดไว้บนสุด</label>
+          <label class="chk"><input type="checkbox" id="nActive" checked> โชว์ในเกม</label>
+        </div>
+
+        <div class="sendrow">
+          <button class="btn" id="nSave" type="button">ลงข่าว</button>
+          <button class="btn ghost hidden" id="nCancel" type="button">ยกเลิกการแก้</button>
+          <span id="nHint" class="note"></span>
+        </div>
+      </div>
+
+      <div class="newsprev">
+        <span class="note">ตัวอย่างในเกม</span>
+        <div class="np-card" id="nPrev"></div>
+      </div>
+    </div>
+
+    <h3 class="mailsent">ข่าวทั้งหมด</h3>
+    <div id="nList"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
+
+  ['nTitle', 'nTag', 'nDate', 'nBody'].forEach((id) => $(id).addEventListener('input', newsPreview));
+  $('nImgUrl').addEventListener('input', () => { newsState.image = $('nImgUrl').value.trim(); newsPreview(); });
+  $('nImgFile').addEventListener('change', uploadNewsImage);
+  $('nImgClear').addEventListener('click', () => {
+    newsState.image = '';
+    $('nImgUrl').value = '';
+    $('nImgMsg').textContent = '';
+    newsPreview();
+  });
+  $('nSave').addEventListener('click', saveNews);
+  $('nCancel').addEventListener('click', () => fillNewsForm(null));
+  newsPreview();
+  loadNewsList();
+};
+
+/** ตัวอย่างหน้าตาในเกม — โครงเดียวกับฝั่งอ่านของเกม (รูปใหญ่ → ป้าย+วันที่ → หัวข้อ → เนื้อ) */
+function newsPreview() {
+  const title = $('nTitle').value.trim() || 'หัวข้อข่าว';
+  const body = $('nBody').value.trim() || 'รายละเอียดข่าวจะขึ้นตรงนี้';
+  const img = newsState.image;
+  $('nPrev').innerHTML = `
+    <div class="np-hero">${img ? `<img src="${esc(img)}" alt="">` : '<span>ยังไม่มีรูป</span>'}</div>
+    <div class="np-meta"><span class="np-tag">${esc($('nTag').value.trim() || 'ประกาศ')}</span><time>${newsDay($('nDate').value)}</time></div>
+    <h4>${esc(title)}</h4>
+    <div class="np-body">${body.split(/\n\s*\n/).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
+  const im = $('nPrev').querySelector('img');
+  if (im) im.addEventListener('error', () => { im.parentElement.innerHTML = '<span>โหลดรูปไม่ได้ — เช็คลิงก์อีกที</span>'; }, { once: true });
+}
+
+async function uploadNewsImage(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  const msg = $('nImgMsg');
+  if (!file.type.startsWith('image/')) return (msg.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพ');
+  if (file.size > 5 * 1024 * 1024) return (msg.textContent = 'รูปใหญ่เกิน 5 MB ลองย่อก่อนนะ');
+  msg.textContent = 'กำลังอัปโหลด…';
+  const c = await client();
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `${todayISO()}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const { error } = await c.storage.from('news').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) {
+    msg.textContent = 'อัปโหลดไม่ได้: ' + errText(error) + ' (รัน supabase/news.sql แล้วหรือยัง?)';
+    return;
+  }
+  const { data } = c.storage.from('news').getPublicUrl(path);
+  newsState.image = data.publicUrl;
+  $('nImgUrl').value = data.publicUrl;
+  msg.textContent = 'อัปโหลดแล้ว ✓';
+  newsPreview();
+}
+
+/** ใส่ข่าวลงฟอร์ม (null = ล้างกลับเป็นลงข่าวใหม่) */
+function fillNewsForm(n) {
+  newsState.editing = n ? n.id : null;
+  newsState.image = n?.image_url || '';
+  $('nTitle').value = n?.title || '';
+  $('nTag').value = n?.tag || NEWS_TAGS[0];
+  $('nDate').value = n?.news_date || todayISO();
+  $('nBody').value = n?.body || '';
+  $('nImgUrl').value = newsState.image;
+  $('nImgMsg').textContent = '';
+  $('nPinned').checked = !!n?.pinned;
+  $('nActive').checked = n ? !!n.active : true;
+  $('nfHead').textContent = n ? 'แก้ข่าว' : 'ลงข่าวใหม่';
+  $('nSave').textContent = n ? 'บันทึกการแก้' : 'ลงข่าว';
+  $('nCancel').classList.toggle('hidden', !n);
+  $('nHint').textContent = '';
+  newsPreview();
+  if (n) $('nTitle').focus();
+}
+
+async function saveNews() {
+  const row = {
+    title: $('nTitle').value.trim(),
+    tag: $('nTag').value.trim() || NEWS_TAGS[0],
+    news_date: $('nDate').value || todayISO(),
+    body: $('nBody').value.trim(),
+    image_url: newsState.image || null,
+    pinned: $('nPinned').checked,
+    active: $('nActive').checked,
+  };
+  if (!row.title) {
+    $('nHint').textContent = 'ใส่หัวข้อก่อนนะ';
+    $('nTitle').focus();
+    return;
+  }
+  const btn = $('nSave');
+  btn.disabled = true;
+  const c = await client();
+  const q = newsState.editing
+    ? c.from('news').update({ ...row, updated_at: new Date().toISOString() }).eq('id', newsState.editing)
+    : c.from('news').insert(row);
+  const { error } = await q;
+  btn.disabled = false;
+  if (error) {
+    $('nHint').textContent = 'บันทึกไม่ได้: ' + errText(error);
+    return;
+  }
+  toast(newsState.editing ? 'แก้ข่าวแล้ว' : 'ลงข่าวแล้ว', 'good');
+  fillNewsForm(null);
+  loadNewsList();
+}
+
+async function loadNewsList() {
+  const c = await client();
+  const { data, error } = await c.from('news')
+    .select('id, title, body, image_url, tag, news_date, pinned, active, created_at, updated_at')
+    .order('pinned', { ascending: false })
+    .order('news_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) return failInto('nList', error);
+  const rows = data || [];
+  if (!rows.length) {
+    $('nList').innerHTML = '<div class="tablewrap"><div class="empty">ยังไม่มีข่าว ลองลงข่าวแรกจากฟอร์มข้างบน</div></div>';
+    return;
+  }
+  $('nList').innerHTML = `<div class="newslist">${rows.map((n, i) => `
+    <div class="nl-row${n.active ? '' : ' off'}" data-i="${i}">
+      ${n.image_url ? `<img class="nl-thumb" src="${esc(n.image_url)}" alt="" loading="lazy">` : '<span class="nl-thumb blank"></span>'}
+      <div class="nl-main">
+        <div class="nl-pills"><span class="pill tag">${esc(n.tag)}</span>
+          ${n.pinned ? '<span class="pill gold">ปักหมุด</span>' : ''}
+          ${n.active ? '' : '<span class="pill guest">ซ่อนอยู่</span>'}</div>
+        <b>${esc(n.title)}</b>
+        <small>${newsDay(n.news_date)} · ลงเมื่อ ${when(n.created_at)}${n.updated_at ? ` · แก้ล่าสุด ${when(n.updated_at)}` : ''}</small>
+      </div>
+      <div class="nl-acts">
+        <button class="btn ghost small" data-act="edit" type="button">แก้</button>
+        <button class="btn ghost small" data-act="pin" type="button">${n.pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
+        <button class="btn ghost small" data-act="show" type="button">${n.active ? 'ซ่อน' : 'โชว์'}</button>
+        <button class="btn ghost small danger" data-act="del" type="button">ลบ</button>
+      </div>
+    </div>`).join('')}</div>`;
+
+  $('nList').querySelectorAll('.nl-row').forEach((r) => {
+    const n = rows[+r.dataset.i];
+    r.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => newsAction(b.dataset.act, n)));
+  });
+}
+
+async function newsAction(act, n) {
+  if (act === 'edit') {
+    fillNewsForm(n);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  const c = await client();
+  if (act === 'del') {
+    const ok = await ask({
+      title: 'ลบข่าวนี้?',
+      body: `ข่าว <b>${esc(n.title)}</b> จะหายจากเกมทันทีและกู้คืนไม่ได้<br>ถ้าแค่อยากเก็บไว้ก่อน ใช้ปุ่ม "ซ่อน" แทนได้`,
+      okText: 'ลบข่าว',
+    });
+    if (!ok) return;
+    const { error } = await c.from('news').delete().eq('id', n.id);
+    if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+    // รูปที่อัปโหลดขึ้น bucket ของเราเองลบตามไปด้วย ลิงก์จากที่อื่นไม่แตะ
+    const mark = '/storage/v1/object/public/news/';
+    if (n.image_url && n.image_url.includes(mark)) {
+      await c.storage.from('news').remove([decodeURIComponent(n.image_url.split(mark)[1])]);
+    }
+    if (newsState.editing === n.id) fillNewsForm(null);
+    toast('ลบข่าวแล้ว', 'good');
+  } else {
+    const patch = act === 'pin' ? { pinned: !n.pinned } : { active: !n.active };
+    const { error } = await c.from('news').update(patch).eq('id', n.id);
+    if (error) return toast('แก้ไม่ได้: ' + errText(error), 'bad');
+    toast(act === 'pin' ? (n.pinned ? 'เลิกปักหมุดแล้ว' : 'ปักหมุดแล้ว')
+      : (n.active ? 'ซ่อนข่าวแล้ว' : 'โชว์ข่าวในเกมแล้ว'), 'good');
+  }
+  loadNewsList();
+}
+
+// ── หน้า: แจ้งปัญหา ─────────────────────────────────────────
+//
+// เรื่องที่ผู้เล่นส่งจาก ตั้งค่า → ช่วยเหลือ → แจ้งปัญหา (ตาราง bug_reports + รูปใน bucket "reports")
+// bucket เป็นส่วนตัว รูปจึงเปิดผ่านลิงก์ชั่วคราว (signed URL) ที่ขอใหม่ทุกครั้งที่โหลดหน้า
+
+const REPORT_STATUS = { new: 'ใหม่', seen: 'กำลังดู', done: 'แก้แล้ว' };
+const reportsState = { filter: 'open' };
+
+PAGES.reports = async () => {
+  $('page').innerHTML = `
+    ${pageHead('แจ้งปัญหา', 'เรื่องที่ผู้เล่นส่งมาจากหน้าตั้งค่า → ช่วยเหลือ · กดที่รูปเพื่อเปิดดูขนาดเต็ม')}
+    <div class="modes rp-modes">
+      <button class="mode" data-f="open" type="button">ยังไม่เสร็จ</button>
+      <button class="mode" data-f="new" type="button">ใหม่</button>
+      <button class="mode" data-f="done" type="button">แก้แล้ว</button>
+      <button class="mode" data-f="all" type="button">ทั้งหมด</button>
+    </div>
+    <div id="rpList"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
+  document.querySelectorAll('.rp-modes .mode').forEach((b) => {
+    b.classList.toggle('on', b.dataset.f === reportsState.filter);
+    b.addEventListener('click', () => {
+      reportsState.filter = b.dataset.f;
+      document.querySelectorAll('.rp-modes .mode').forEach((x) => x.classList.toggle('on', x === b));
+      loadReports();
+    });
+  });
+  loadReports();
+};
+
+async function loadReports() {
+  const c = await client();
+  let q = c.from('bug_reports')
+    .select('id, player_id, category, body, images, device, status, created_at')
+    .order('created_at', { ascending: false })
+    .limit(150);
+  if (reportsState.filter === 'open') q = q.in('status', ['new', 'seen']);
+  else if (reportsState.filter !== 'all') q = q.eq('status', reportsState.filter);
+  const { data, error } = await q;
+  if (error) return failInto('rpList', error);
+  const rows = data || [];
+  if (!rows.length) {
+    $('rpList').innerHTML = '<div class="tablewrap"><div class="empty">ไม่มีเรื่องในหมวดนี้ 🎉</div></div>';
+    return;
+  }
+
+  // ชื่อ/อีเมล/ไอดีของคนส่ง (admin_players มีอีเมล, players มี friend_code)
+  const ids = [...new Set(rows.map((r) => r.player_id))];
+  const { data: ppl } = await c.from('admin_players').select('id, name, email, is_guest').in('id', ids);
+  const who = new Map((ppl || []).map((p) => [p.id, p]));
+  const withCodes = await attachCodes(ids.map((id) => ({ id, ...(who.get(id) || {}) })));
+  const byId = new Map(withCodes.map((p) => [p.id, p]));
+
+  // ลิงก์ชั่วคราวของรูปทั้งหมดในหน้า ขอทีเดียว (อายุ 1 ชั่วโมง)
+  const paths = rows.flatMap((r) => r.images || []);
+  const urls = new Map();
+  if (paths.length) {
+    const { data: signed } = await c.storage.from('reports').createSignedUrls(paths, 3600);
+    (signed || []).forEach((s) => { if (s.signedUrl) urls.set(s.path, s.signedUrl); });
+  }
+
+  $('rpList').innerHTML = `<div class="rplist">${rows.map((r, i) => {
+    const p = byId.get(r.player_id) || { id: r.player_id };
+    const pics = (r.images || []).map((path) => urls.get(path)
+      ? `<a href="${esc(urls.get(path))}" target="_blank" rel="noopener"><img src="${esc(urls.get(path))}" alt="" loading="lazy"></a>`
+      : '<span class="rp-nopic">รูปหาย</span>').join('');
+    return `
+    <div class="rp-card st-${esc(r.status)}" data-i="${i}">
+      <div class="rp-top">
+        ${whoCell(p)}
+        <span class="pill tag">${esc(r.category)}</span>
+        <span class="pill rp-st">${REPORT_STATUS[r.status] || esc(r.status)}</span>
+        <small class="rp-when" title="${esc(new Date(r.created_at).toLocaleString('th-TH'))}">${when(r.created_at)}</small>
+      </div>
+      <p class="rp-body">${esc(r.body)}</p>
+      ${pics ? `<div class="rp-pics">${pics}</div>` : ''}
+      <details class="rp-dev"><summary>เครื่องที่ใช้</summary><code>${esc(r.device || '—')}</code></details>
+      <div class="rp-acts">
+        ${r.status !== 'seen' ? '<button class="btn ghost small" data-act="seen" type="button">กำลังดู</button>' : ''}
+        ${r.status !== 'done' ? '<button class="btn ghost small" data-act="done" type="button">แก้แล้ว</button>' : ''}
+        ${r.status !== 'new' ? '<button class="btn ghost small" data-act="new" type="button">กลับเป็นใหม่</button>' : ''}
+        <button class="btn ghost small" data-act="mail" type="button">${ICON.mail}ส่งจดหมายหา</button>
+        <button class="btn ghost small" data-act="player" type="button">${ICON.users}ดูผู้เล่น</button>
+        <button class="btn ghost small danger" data-act="del" type="button">ลบ</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+
+  $('rpList').querySelectorAll('.rp-card').forEach((card) => {
+    const r = rows[+card.dataset.i];
+    const p = byId.get(r.player_id) || { id: r.player_id };
+    card.querySelectorAll('[data-act]').forEach((b) =>
+      b.addEventListener('click', () => reportAction(b.dataset.act, r, p)));
+  });
+}
+
+async function reportAction(act, r, p) {
+  const c = await client();
+  if (act === 'mail') return mailTo(p);
+  if (act === 'player') return openPlayer(p);
+  if (act === 'del') {
+    const ok = await ask({
+      title: 'ลบเรื่องนี้?',
+      body: 'เรื่องนี้และรูปแนบจะถูกลบถาวร กู้คืนไม่ได้<br>ถ้าแก้ปัญหาเสร็จแล้ว ใช้ปุ่ม "แก้แล้ว" แทนได้',
+      okText: 'ลบเรื่อง',
+    });
+    if (!ok) return;
+    const { error } = await c.from('bug_reports').delete().eq('id', r.id);
+    if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+    if (r.images?.length) await c.storage.from('reports').remove(r.images);
+    toast('ลบเรื่องแล้ว', 'good');
+  } else {
+    const { error } = await c.from('bug_reports').update({ status: act }).eq('id', r.id);
+    if (error) return toast('แก้สถานะไม่ได้: ' + errText(error), 'bad');
+    toast('เปลี่ยนเป็น "' + REPORT_STATUS[act] + '" แล้ว', 'good');
+  }
+  loadReports();
 }
 
 // ── จดหมายพิเศษ: ต้อนรับบัญชีใหม่ ──────────────────────────

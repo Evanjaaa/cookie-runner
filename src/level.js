@@ -1767,6 +1767,1013 @@ export const PATTERNS = [
     jumps: [],
     width: 1368,
   }),
+  // 74 — ครัวกลางคืน · ท่อน 1
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(lift(fishRun(x + 631, 2, 130), 129), 'alternate'),
+      ...lift(fishRun(x + 813, 2, 26), 129),
+      ...withKibble(lift(fishRun(x + 865, 1, 34), 129), 'all'),
+      ...lift(fishRun(x + 891, 2, 78), 129),
+      ...withKibble(lift(fishRun(x + 995, 1, 34), 129), 'all'),
+      ...lift(fishRun(x + 1021, 2, 78), 129),
+      ...withKibble(lift(fishRun(x + 1281, 1, 34), 129), 'all'),
+      ...lift(fishRun(x + 631, 2, 26), 103),
+      ...withKibble(lift(fishRun(x + 735, 1, 34), 103), 'all'),
+      ...lift(fishRun(x + 761, 2, 52), 103),
+      ...withKibble(lift(fishRun(x + 943, 1, 34), 103), 'all'),
+      ...lift(fishRun(x + 1047, 2, 52), 103),
+      ...withKibble(lift(fishRun(x + 1281, 1, 34), 103), 'all'),
+      ...lift(fishRun(x + 631, 2, 52), 77),
+      ...withKibble(lift(fishRun(x + 709, 1, 34), 77), 'all'),
+      ...lift(fishRun(x + 761, 2, 52), 77),
+      ...withKibble(lift(fishRun(x + 839, 1, 34), 77), 'all'),
+      ...lift(fishRun(x + 865, 2, 26), 77),
+      ...withKibble(lift(fishRun(x + 943, 1, 34), 77), 'all'),
+      ...lift(fishRun(x + 1047, 2, 78), 77),
+      ...withKibble(lift(fishRun(x + 1177, 1, 34), 77), 'all'),
+      ...lift(fishRun(x + 1203, 2, 52), 77),
+      ...withKibble(lift(fishRun(x + 631, 1, 34), 51), 'all'),
+      ...lift(fishRun(x + 761, 2, 52), 51),
+      ...withKibble(lift(fishRun(x + 943, 1, 34), 51), 'all'),
+      ...lift(fishRun(x + 1047, 2, 78), 51),
+      ...withKibble(lift(fishRun(x + 631, 1, 34), 25), 'all'),
+      ...lift(fishRun(x + 761, 2, 52), 25),
+      ...withKibble(lift(fishRun(x + 943, 1, 34), 25), 'all'),
+      ...lift(fishRun(x + 1047, 2, 78), 25),
+      ...withKibble(lift(fishRun(x + 1229, 1, 34), 25), 'all'),
+      ...lift(fishRun(x + 1255, 1, 34), 25),
+      ...withKibble(lift(fishRun(x + 631, 2, 130), -1), 'alternate'),
+      ...lift(fishRun(x + 813, 2, 26), -1),
+      ...withKibble(lift(fishRun(x + 865, 1, 34), -1), 'all'),
+      ...lift(fishRun(x + 891, 2, 78), -1),
+      ...withKibble(lift(fishRun(x + 995, 1, 34), -1), 'all'),
+      ...lift(fishRun(x + 1021, 2, 130), -1),
+      ...withKibble(lift(fishRun(x + 1229, 1, 34), -1), 'all'),
+      ...lift(fishRun(x + 1177, 1, 34), 51),
+      ...lift(fishRun(x + 1151, 1, 34), 25),
+      ...withKibble(lift(fishRun(x + 1255, 1, 34), 51), 'all'),
+      ...lift(fishRun(x + 1203, 1, 34), 51),
+      ...withKibble(lift(fishRun(x + 1318, 5, 24), 134), 'alternate'),
+      ...lift(fishRun(x + 1414, 1, 34), 110),
+      ...lift(fishRun(x + 1390, 1, 34), 86),
+      ...withKibble(lift(fishRun(x + 1366, 1, 34), 62), 'all'),
+      ...lift(fishRun(x + 1342, 1, 34), 38),
+      ...withKibble(lift(fishRun(x + 1318, 6, 24), -10), 'alternate'),
+      ...lift(fishRun(x + 1438, 1, 34), 134),
+      ...withKibble(lift(fishRun(x + 1318, 1, 34), 14), 'all'),
+      ...withKibble(lift(fishRun(x + 1523, 3, 24), 136), 'alternate'),
+      ...lift(fishRun(x + 1547, 1, 34), 112),
+      ...withKibble(lift(fishRun(x + 1547, 1, 34), 88), 'all'),
+      ...lift(fishRun(x + 1547, 1, 34), 64),
+      ...lift(fishRun(x + 1547, 1, 34), 40),
+      ...withKibble(lift(fishRun(x + 1547, 1, 34), 16), 'all'),
+      ...lift(fishRun(x + 1523, 2, 24), -8),
+      ...withKibble(lift(fishRun(x + 1571, 1, 34), -8), 'all'),
+      ...lift(fishRun(x + 1501, 1, 34), 135),
+      ...lift(fishRun(x + 1594, 1, 34), 137),
+      ...lift(fishRun(x + 1502, 2, 93), -9),
+      ...withKibble(lift(fishRun(x + 1645, 3, 96), 135), 'alternate'),
+      ...withKibble(lift(fishRun(x + 1861, 2, 24), 135), 'alternate'),
+      ...lift(fishRun(x + 1645, 2, 96), 111),
+      ...withKibble(lift(fishRun(x + 1813, 1, 34), 111), 'all'),
+      ...lift(fishRun(x + 1909, 1, 34), 111),
+      ...withKibble(lift(fishRun(x + 1741, 2, 72), 87), 'alternate'),
+      ...lift(fishRun(x + 1645, 2, 96), 63),
+      ...withKibble(lift(fishRun(x + 1813, 1, 34), 63), 'all'),
+      ...lift(fishRun(x + 1885, 2, 24), 63),
+      ...withKibble(lift(fishRun(x + 1645, 1, 34), 39), 'all'),
+      ...lift(fishRun(x + 1741, 2, 72), 39),
+      ...withKibble(lift(fishRun(x + 1909, 1, 34), 39), 'all'),
+      ...lift(fishRun(x + 1645, 2, 96), 15),
+      ...withKibble(lift(fishRun(x + 1813, 1, 34), 15), 'all'),
+      ...lift(fishRun(x + 1909, 1, 34), 15),
+      ...withKibble(lift(fishRun(x + 1645, 2, 96), -9), 'alternate'),
+      ...lift(fishRun(x + 1861, 2, 24), -9),
+      ...withKibble(lift(fishRun(x + 1909, 1, 34), -9), 'all'),
+      ...lift(fishRun(x + 1717, 1, 34), 15),
+      ...lift(fishRun(x + 1693, 1, 34), 39),
+      ...withKibble(lift(fishRun(x + 1669, 1, 34), 63), 'all'),
+      ...lift(fishRun(x + 1645, 1, 34), 87),
+      ...lift(fishRun(x + 1861, 1, 34), 63),
+      ...withKibble(lift(fishRun(x + 1837, 1, 34), -9), 'all'),
+      ...withTreat(fishRun(x + 1950, 14, 34), 'jelly'),
+    ],
+    jumps: [],
+    partial: true,
+    width: 2280,
+  }),
+  // 75 — ครัวกลางคืน · ท่อน 2
+  (x) => {
+    const j1 = x + 115;
+    const j2 = x + 554;
+    const j3 = x + 1099;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withKibble(arcMid(j1, 8), 'all'),
+        ...withKibble(arcMid(j2, 8), 'all'),
+        ...withKibble(arcMid(j3, 3), 'cluster'),
+        ...withTreat(fishRun(x + 1325, 6, 35), 'jelly'),
+        ...withTreat(fishRun(x + 339, 7, 35), 'jelly'),
+        ...withTreat(fishRun(x + 778, 10, 35), 'jelly'),
+        ...withKibble(lift(fishRun(x + 131, 1, 34), 27), 'all'),
+        ...withKibble(lift(fishRun(x + 316, 1, 34), 21), 'all'),
+        ...withKibble(lift(fishRun(x + 573, 1, 34), 29), 'all'),
+        ...withKibble(lift(fishRun(x + 752, 2, 362), 21), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1300, 1, 34), 21), 'all'),
+        ...withShrimp(lift(fishRun(x + 1161, 1, 34), 86), 'all'),
+        ...withShrimp(lift(fishRun(x + 1256, 1, 34), 88), 'all'),
+      ],
+      jumps: [j1, j2, j3],
+      partial: true,
+      width: 1500,
+    };
+  },
+  // 76 — ครัวกลางคืน · ท่อน 3
+  (x) => {
+    const j1 = x + 198;
+    return {
+      obs: [groundSpike(x + 259), groundSpike(x + 311)],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 40, 5, 34), 'jelly'),
+        ...fishJump(j1, 11),
+        ...withTreat(fishRun(x + 433, 6, 35), 'jelly'),
+      ],
+      jumps: [j1],
+    };
+  },
+  // 77 — ครัวกลางคืน · ท่อน 4
+  (x) => {
+    const j1 = x + -155;
+    const j2 = x + 309;
+    return {
+      obs: [crateStack(x + 563, 3), crateStack(x + 507, 1), crateStack(x + 620, 2), groundSpike(j2 + DBL_SPAN - spike.w / 2), crateStack(x + 679, 3)],
+      pit: [{ x: x + 39, w: 215 }],
+      fish: [...withKibble(lift(fishRun(x + 33, 7, 38), 105), 'alternate')],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'nip', x: x + 435 }],
+    };
+  },
+  // 78 — ครัวกลางคืน · ท่อน 5
+  (x) => {
+    const j1 = x + 651;
+    return {
+      obs: [crateStack(x + -20, 1), groundSpike(x + 5), groundSpike(x + 49), crateStack(x + 98, 2), crateStack(x + 153, 1), crateStack(x + 271, 1), groundSpike(x + 220), crateStack(x + 331, 3), groundSpike(x + 324), crateStack(x + 385, 2), crateStack(x + 440, 2), crateStack(x + 506, 1), groundSpike(x + 472), groundSpike(x + 516), crateStack(x + 555, 3), crateStack(x + 605, 1)],
+      pit: [],
+      fish: [],
+      jumps: [j1],
+      pickups: [{ kind: 'magnet', x: x + 733 }],
+    };
+  },
+  // 79 — ครัวกลางคืน · ท่อน 6
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(lift(fishRun(x + 117, 28, 56), 212), 'alternate'),
+      ...withShrimp(lift(fishRun(x + 124, 28, 56), 152), 'all'),
+      ...withTreat(fishRun(x + 120, 28, 56), 'jelly'),
+      ...withShrimp(lift(fishRun(x + 121, 28, 56), 53), 'all'),
+      ...withKibble(lift(fishRun(x + 124, 28, 56), 105), 'alternate'),
+    ],
+    jumps: [],
+    pickups: [{ kind: 'letter', x: x + 62 }],
+  }),
+  // 80 — ครัวกลางคืน · ท่อน 9
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(lift(fishRun(x + 242, 1, 34), 105.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 218, 2, 48), 105.44000000000008), 'cluster'),
+      ...withKibble(lift(fishRun(x + 242, 1, 34), 129.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 242, 1, 34), 81.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 225, 2, 34.56), 122.72000000000008), 'cluster'),
+      ...withKibble(lift(fishRun(x + 225, 2, 34.56), 88.16000000000008), 'cluster'),
+      ...withKibble(lift(fishRun(x + 554, 1, 34), 105.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 530, 2, 48), 105.44000000000008), 'cluster'),
+      ...withKibble(lift(fishRun(x + 554, 1, 34), 129.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 554, 1, 34), 81.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 537, 2, 34.56), 122.72000000000008), 'cluster'),
+      ...withKibble(lift(fishRun(x + 537, 2, 34.56), 88.16000000000008), 'cluster'),
+      ...withTreat(fishRun(x + 271, 8, 34), 'jelly'),
+      ...withShrimp(lift(fishRun(x + 392, 1, 34), 64), 'all'),
+      ...withKibble(lift(fishRun(x + 499, 6, 34), 43), 'cluster'),
+      ...withKibble(lift(fishRun(x + 114, 6, 34), 37), 'cluster'),
+    ],
+    jumps: [],
+  }),
+  // 81 — ครัวกลางคืน · ท่อน 10
+  (x) => {
+    const j1 = x + 269;
+    const j2 = x + 500;
+    const j3 = x + 568;
+    return {
+      obs: [propObs(j1 + JUMP_PEAK - 23, 'nightKitchen_Obstacle_Single_01'), propObs(j2 + DBL_PEAK - 35, 'nightKitchen_Obstacle_Single_02')],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 31, 8, 34), 'jelly'),
+        ...fishJump(j1, 9),
+        ...withTreat(fishRun(x + 489, 3, 34), 'jelly'),
+        ...withKibble(fishJump(j3, 9), 'cluster'),
+      ],
+      jumps: [j1, j2, j3],
+    };
+  },
+  // 82 — ครัวกลางคืน · ท่อน 11
+  (x) => ({
+    obs: [propObs(x + 146, 'nightKitchen_Obstacle_Crouch_03'), propObs(x + 468, 'nightKitchen_Obstacle_Crouch_03')],
+    pit: [],
+    fish: [...withTreat(fishRun(x + 30, 22, 34), 'jelly'), ...withShrimp(lift(fishRun(x + 407, 2, 330), 38), 'all')],
+    jumps: [],
+  }),
+  // 83 — ครัวกลางคืน · ท่อน 12
+  (x) => {
+    const j1 = x + 202;
+    return {
+      obs: [propObs(x + 519, 'nightKitchen_Obstacle_Crouch_02')],
+      pit: [],
+      fish: [...withTreat(fishRun(x + 22, 6, 34), 'jelly'), ...withTreat(fishRun(x + 348, 15, 34), 'jelly')],
+      jumps: [j1],
+      pickups: [{ kind: 'can', x: x + 272 }],
+    };
+  },
+  // 84 — ครัวกลางคืน · ท่อน 14
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...lift(fishRun(x + 315, 25, 34), 41),
+      ...withKibble(fishRun(x + 315, 25, 34), 'all'),
+      ...withShrimp(lift(fishRun(x + 216, 17, 56), 137), 'all'),
+      ...withShrimp(lift(fishRun(x + 217, 17, 56), 184), 'all'),
+      ...withTreat(fishRun(x + 1169, 7, 34), 'jelly'),
+    ],
+    jumps: [],
+    width: 1368,
+  }),
+  // 85 — ครัวกลางคืน · ท่อน 15
+  (x) => {
+    const j1 = x + 289;
+    return {
+      obs: [],
+      pit: [{ x: j1 + HALF - 66, w: 132 }],
+      fish: [
+        ...fishRun(x + 516, 10, 34),
+        ...lift(fishRun(x + 316, 1, 34), 36.54000000000002),
+        ...lift(fishRun(x + 337, 1, 34), 65.34000000000003),
+        ...lift(fishRun(x + 350, 1, 34), 80.24000000000004),
+        ...withShrimp(lift(fishRun(x + 405, 1, 34), 105.44000000000008), 'all'),
+        ...lift(fishRun(x + 459, 1, 34), 75.60000000000008),
+        ...lift(fishRun(x + 473, 1, 34), 59.54000000000008),
+        ...lift(fishRun(x + 493, 1, 34), 29.000000000000057),
+        ...fishRun(x + 43, 8, 34),
+      ],
+      jumps: [j1],
+    };
+  },
+  // 86 — ครัวกลางคืน · ท่อน 16
+  (x) => {
+    const j1 = x + 191;
+    const j2 = x + 293;
+    return {
+      obs: [],
+      pit: [{ x: x + 200, w: 270 }],
+      fish: [
+        ...fishRun(x + 99, 3, 34),
+        ...withKibble(fishDouble(j1, 10), 'all'),
+        ...withKibble(lift(fishRun(x + 200, 1, 34), 17), 'all'),
+        ...withKibble(lift(fishRun(x + 489, 1, 34), 10), 'all'),
+        ...withTreat(fishRun(x + 521, 8, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+    };
+  },
+  // 87 — ครัวกลางคืน · ท่อน 17
+  (x) => {
+    const j1 = x + 174;
+    const j2 = x + 443;
+    return {
+      obs: [],
+      pit: [{ x: x + 240, w: 138 }, { x: x + 539, w: 138 }],
+      fish: [
+        ...withTreat(fishRun(x + 728, 5, 34), 'jelly'),
+        ...withKibble(lift(fishRun(x + 241, 5, 34), 92), 'all'),
+        ...withKibble(lift(fishRun(x + 539, 5, 34), 92), 'all'),
+        ...withTreat(fishRun(x + 36, 5, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'letter', x: x + 457 }],
+    };
+  },
+  // 88 — ครัวกลางคืน · ท่อน 18
+  (x) => {
+    const j1 = x + 171;
+    const j2 = x + 273;
+    return {
+      obs: [propObs(j1 + DBL_PEAK - 50, 'nightKitchen_Obstacle_Single_03'), propObs(x + 667, 'nightKitchen_Obstacle_Crouch_01'), propObs(x + 894, 'nightKitchen_Obstacle_Crouch_02'), propObs(x + 1173, 'nightKitchen_Obstacle_Crouch_03')],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 139, 3, 34), 'jelly'),
+        ...lift(fishRun(x + 298, 1, 34), 134.30000000000007),
+        ...lift(fishRun(x + 319, 1, 34), 147.02000000000007),
+        ...lift(fishRun(x + 346, 1, 34), 151.94000000000008),
+        ...lift(fishRun(x + 366, 1, 34), 146.6000000000001),
+        ...lift(fishRun(x + 387, 1, 34), 133.5200000000001),
+        ...withShrimp(lift(fishRun(x + 257, 2, 158), 53), 'all'),
+        ...withTreat(fishRun(x + 462, 30, 34), 'jelly'),
+        ...withShrimp(lift(fishRun(x + 1112, 1, 34), 37), 'all'),
+        ...withShrimp(lift(fishRun(x + 828, 1, 34), 35), 'all'),
+      ],
+      jumps: [j1, j2],
+      width: 1368,
+    };
+  },
+  // 89 — ครัวกลางคืน · ท่อน 19
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withTreat(fishRun(x + 119, 6, 34), 'jelly'),
+      ...lift(fishRun(x + 290, 5, 26), 130),
+      ...lift(fishRun(x + 446, 2, 104), 130),
+      ...lift(fishRun(x + 758, 1, 34), 130),
+      ...lift(fishRun(x + 342, 3, 104), 104),
+      ...lift(fishRun(x + 758, 2, 26), 104),
+      ...lift(fishRun(x + 342, 3, 104), 78),
+      ...lift(fishRun(x + 758, 1, 34), 78),
+      ...lift(fishRun(x + 342, 3, 104), 52),
+      ...lift(fishRun(x + 628, 3, 26), 52),
+      ...lift(fishRun(x + 758, 1, 34), 52),
+      ...lift(fishRun(x + 342, 3, 104), 26),
+      ...lift(fishRun(x + 602, 2, 104), 26),
+      ...lift(fishRun(x + 758, 1, 34), 26),
+      ...fishRun(x + 342, 3, 104),
+      ...fishRun(x + 602, 2, 104),
+      ...fishRun(x + 758, 1, 34),
+      ...lift(fishRun(x + 602, 1, 34), 52),
+      ...lift(fishRun(x + 654, 1, 34), 130),
+      ...lift(fishRun(x + 706, 1, 34), 52),
+      ...lift(fishRun(x + 628, 1, 34), 104),
+      ...lift(fishRun(x + 602, 1, 34), 78),
+      ...lift(fishRun(x + 680, 1, 34), 104),
+      ...lift(fishRun(x + 706, 2, 104), 78),
+      ...lift(fishRun(x + 836, 1, 34), 52),
+      ...lift(fishRun(x + 862, 1, 34), 26),
+      ...fishRun(x + 888, 1, 34),
+      ...lift(fishRun(x + 888, 1, 34), 26),
+      ...lift(fishRun(x + 888, 1, 34), 104),
+      ...lift(fishRun(x + 888, 1, 34), 130),
+      ...lift(fishRun(x + 888, 1, 34), 78),
+      ...lift(fishRun(x + 888, 1, 34), 52),
+      ...lift(fishRun(x + 524, 1, 34), 52),
+      ...lift(fishRun(x + 472, 2, 26), 52),
+    ],
+    jumps: [],
+  }),
+  // 90 — ครัวกลางคืน · ท่อน 20
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...lift(fishRun(x + 178, 3, 78), 120),
+      ...lift(fishRun(x + 360, 2, 26), 120),
+      ...lift(fishRun(x + 178, 2, 52), 94),
+      ...lift(fishRun(x + 308, 2, 104), 94),
+      ...lift(fishRun(x + 178, 2, 26), 68),
+      ...lift(fishRun(x + 178, 3, 26), 42),
+      ...lift(fishRun(x + 412, 1, 34), 42),
+      ...lift(fishRun(x + 178, 2, 78), 16),
+      ...lift(fishRun(x + 308, 2, 104), 16),
+      ...lift(fishRun(x + 178, 2, 104), -10),
+      ...lift(fishRun(x + 334, 3, 26), -10),
+      ...lift(fishRun(x + 334, 3, 26), 42),
+      ...lift(fishRun(x + 308, 1, 34), 68),
+      ...withKibble(lift(fishRun(x + 606, 1, 34), 15), 'all'),
+      ...withKibble(lift(fishRun(x + 580, 1, 34), 15), 'all'),
+      ...withKibble(lift(fishRun(x + 580, 1, 34), 41), 'all'),
+      ...withKibble(lift(fishRun(x + 554, 1, 34), 41), 'all'),
+      ...withKibble(lift(fishRun(x + 554, 1, 34), 67), 'all'),
+      ...withKibble(lift(fishRun(x + 528, 1, 34), 67), 'all'),
+      ...withKibble(lift(fishRun(x + 528, 1, 34), 93), 'all'),
+      ...withKibble(lift(fishRun(x + 502, 1, 34), 93), 'all'),
+      ...withKibble(lift(fishRun(x + 502, 3, 26), 119), 'cluster'),
+      ...withKibble(lift(fishRun(x + 554, 1, 34), 93), 'all'),
+      ...withKibble(lift(fishRun(x + 580, 2, 26), 67), 'cluster'),
+      ...withKibble(lift(fishRun(x + 632, 1, 34), 119), 'all'),
+      ...withKibble(lift(fishRun(x + 658, 1, 34), 67), 'all'),
+      ...withKibble(lift(fishRun(x + 632, 1, 34), 67), 'all'),
+      ...withKibble(lift(fishRun(x + 632, 1, 34), 41), 'all'),
+      ...withKibble(lift(fishRun(x + 606, 1, 34), 41), 'all'),
+      ...withKibble(lift(fishRun(x + 632, 2, 26), 93), 'cluster'),
+      ...withKibble(lift(fishRun(x + 658, 2, 26), 119), 'cluster'),
+      ...withKibble(lift(fishRun(x + 684, 1, 34), 93), 'all'),
+      ...withKibble(lift(fishRun(x + 580, 2, 26), 93), 'cluster'),
+      ...withKibble(lift(fishRun(x + 580, 2, 26), -11), 'cluster'),
+      ...withKibble(fishRun(x + 739, 8, 89), 'all'),
+    ],
+    jumps: [],
+    width: 2280,
+  }),
+  // 91 — สวนกลางวัน · ท่อน 1
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [...withTreat(fishRun(x + 33, 22, 34), 'jelly')],
+    jumps: [],
+  }),
+  // 92 — สวนกลางวัน · ท่อน 2
+  (x) => {
+    const j1 = x + 170;
+    const j2 = x + 481;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 20, 5, 34), 'jelly'),
+        ...withKibble(fishJump(j1, 10), 'cluster'),
+        ...withKibble(fishJump(j2, 10), 'cluster'),
+        ...withTreat(fishRun(x + 410, 2, 34), 'jelly'),
+        ...withTreat(fishRun(x + 719, 2, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+    };
+  },
+  // 93 — สวนกลางวัน · ท่อน 3
+  (x) => {
+    const j1 = x + 180;
+    const j2 = x + 501;
+    return {
+      obs: [groundSpike(j1 + HALF - spike.w / 2)],
+      pit: [{ x: j2 + HALF - 60, w: 120 }],
+      fish: [
+        ...withTreat(fishRun(x + 28, 5, 34), 'jelly'),
+        ...fishJump(j1, 10),
+        ...fishJump(j2, 10),
+        ...withTreat(fishRun(x + 395, 4, 34), 'jelly'),
+        ...withTreat(fishRun(x + 715, 8, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+      width: 971.5999999999999,
+    };
+  },
+  // 94 — สวนกลางวัน · ท่อน 4
+  (x) => {
+    const j1 = x + 99;
+    return {
+      obs: [],
+      pit: [{ x: x + 235, w: 309 }],
+      fish: [
+        ...withTreat(fishRun(x + 17, 4, 34), 'jelly'),
+        ...withShrimp(lift(fishRun(x + 253, 9, 34), 91)),
+        ...withKibble(lift(fishRun(x + 299, 6, 34), 120), 'all'),
+        ...withTreat(fishRun(x + 638, 5, 34), 'jelly'),
+        ...withTreat(lift(fishRun(x + 384, 1, 34), 164), 'crystal', 'top'),
+      ],
+      jumps: [j1],
+      plats: [{ kind: 'ledge', x: x + 229, w: 313, lift: 89 }],
+    };
+  },
+  // 95 — สวนกลางวัน · ท่อน 5
+  (x) => {
+    const j1 = x + 170;
+    return {
+      obs: [propObs(x + 619, 'flowerGarden_Obstacle_Crouch_03')],
+      pit: [{ x: j1 + HALF - 58, w: 116 }],
+      fish: [
+        ...withTreat(fishRun(x + 44, 5, 34), 'jelly'),
+        ...fishJump(j1, 10),
+        ...withTreat(fishRun(x + 400, 15, 34), 'jelly'),
+      ],
+      jumps: [j1],
+    };
+  },
+  // 96 — สวนกลางวัน · ท่อน 6
+  (x) => {
+    const j1 = x + 210;
+    const j2 = x + 491;
+    const j3 = x + 772;
+    const j4 = x + 1052;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 150, 44, 34), 'jelly'),
+        ...fishRun(x + 1646, 3, 34),
+        ...withKibble(lift(fishRun(x + 420, 2, 96), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 588, 4, 24), 175), 'all'),
+        ...withKibble(lift(fishRun(x + 732, 2, 168), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 924, 2, 24), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 420, 2, 96), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 588, 2, 144), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 804, 2, 72), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 972, 1, 34), 151), 'all'),
+        ...withKibble(lift(fishRun(x + 420, 2, 24), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 516, 2, 72), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 732, 2, 48), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 876, 2, 96), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 420, 3, 48), 103), 'cluster'),
+        ...withKibble(lift(fishRun(x + 588, 4, 24), 103), 'all'),
+        ...withKibble(lift(fishRun(x + 732, 2, 24), 103), 'cluster'),
+        ...withKibble(lift(fishRun(x + 876, 2, 96), 103), 'cluster'),
+        ...withKibble(lift(fishRun(x + 420, 2, 72), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 516, 2, 72), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 732, 2, 48), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 876, 2, 96), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 420, 2, 96), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 588, 2, 144), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 804, 2, 72), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 972, 1, 34), 55), 'all'),
+        ...withKibble(lift(fishRun(x + 420, 2, 96), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 588, 4, 24), 31), 'all'),
+        ...withKibble(lift(fishRun(x + 732, 2, 96), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 900, 3, 24), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 828, 2, 330), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1182, 2, 24), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1278, 2, 120), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1494, 2, 120), 175), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1710, 1, 34), 175), 'all'),
+        ...withKibble(lift(fishRun(x + 1134, 2, 96), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1278, 2, 120), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1470, 3, 24), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1614, 2, 96), 151), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1134, 2, 144), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1398, 2, 216), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1638, 2, 72), 127), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1134, 2, 144), 103), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1302, 5, 24), 103), 'all'),
+        ...withKibble(lift(fishRun(x + 1614, 3, 48), 103), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1134, 2, 144), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1398, 2, 48), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1470, 4, 24), 79), 'all'),
+        ...withKibble(lift(fishRun(x + 1614, 2, 72), 79), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1710, 1, 34), 79), 'all'),
+        ...withKibble(lift(fishRun(x + 1134, 2, 96), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1278, 2, 120), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1446, 2, 96), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1614, 2, 96), 55), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1158, 3, 24), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1278, 2, 120), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1446, 2, 96), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1614, 2, 96), 31), 'cluster'),
+        ...withKibble(lift(fishRun(x + 1446, 1, 34), 127), 'all'),
+        ...withKibble(lift(fishRun(x + 1446, 1, 34), 103), 'all'),
+        ...withKibble(lift(fishRun(x + 1542, 1, 34), 127), 'all'),
+        ...withKibble(lift(fishRun(x + 1542, 1, 34), 103), 'all'),
+      ],
+      jumps: [j1, j2, j3, j4],
+      pickups: [{ kind: 'can', x: x + 294 }],
+      partial: true,
+      width: 1602,
+    };
+  },
+  // 97 — สวนกลางวัน · ท่อน 7
+  (x) => {
+    const j1 = x + 210;
+    const j2 = x + 492;
+    const j3 = x + 772;
+    const j4 = x + 1052;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withShrimp(fishRun(x + 150, 2, 66)),
+        ...withShrimp(lift(fishRun(x + 319, 1, 34), 21.397580513235084), 'all'),
+        ...withShrimp(lift(fishRun(x + 422, 1, 34), 24.310422309820808), 'all'),
+        ...withShrimp(lift(fishRun(x + 525, 1, 34), 6.22220727147652), 'all'),
+        ...withShrimp(lift(fishRun(x + 628, 1, 34), 17.241189114260692), 'all'),
+        ...withShrimp(lift(fishRun(x + 731, 1, 34), 25.810430726549384), 'all'),
+        ...withShrimp(lift(fishRun(x + 834, 2, 103), 12.082802473137974), 'all'),
+        ...withShrimp(lift(fishRun(x + 1040, 1, 34), 25.810430726549384), 'all'),
+        ...withShrimp(lift(fishRun(x + 1143, 1, 34), 17.241189114260692), 'all'),
+        ...withShrimp(lift(fishRun(x + 1246, 1, 34), 6.22220727147652), 'all'),
+        ...withShrimp(lift(fishRun(x + 1349, 1, 34), 24.31042230982075), 'all'),
+        ...withShrimp(lift(fishRun(x + 1452, 1, 34), 21.397580513235084), 'all'),
+        ...withShrimp(fishRun(x + 1555, 1, 34), 'all'),
+        ...lift(fishRun(x + 460, 1, 34), 56.60000000000002),
+        ...lift(fishRun(x + 474, 1, 34), 73.22000000000003),
+        ...lift(fishRun(x + 487, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 508, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 521, 1, 34), 104.30000000000007),
+        ...lift(fishRun(x + 535, 1, 34), 105.44000000000008),
+        ...lift(fishRun(x + 548, 1, 34), 103.1400000000001),
+        ...lift(fishRun(x + 562, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 582, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 596, 1, 34), 68.00000000000009),
+        ...lift(fishRun(x + 610, 1, 34), 50.220000000000084),
+        ...withKibble(lift(fishRun(x + 543, 1, 34), 56.60000000000002), 'all'),
+        ...withKibble(lift(fishRun(x + 557, 1, 34), 73.22000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 570, 1, 34), 86.40000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 591, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 604, 1, 34), 104.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 618, 1, 34), 105.44000000000008), 'all'),
+        ...withKibble(lift(fishRun(x + 631, 1, 34), 103.1400000000001), 'all'),
+        ...withKibble(lift(fishRun(x + 645, 1, 34), 97.40000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 665, 1, 34), 82.34000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 679, 1, 34), 68.00000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 693, 1, 34), 50.220000000000084), 'all'),
+        ...lift(fishRun(x + 649, 1, 34), 56.60000000000002),
+        ...lift(fishRun(x + 663, 1, 34), 73.22000000000003),
+        ...lift(fishRun(x + 676, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 697, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 710, 1, 34), 104.30000000000007),
+        ...lift(fishRun(x + 724, 1, 34), 105.44000000000008),
+        ...lift(fishRun(x + 737, 1, 34), 103.1400000000001),
+        ...lift(fishRun(x + 751, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 771, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 785, 1, 34), 68.00000000000009),
+        ...lift(fishRun(x + 799, 1, 34), 50.220000000000084),
+        ...withKibble(lift(fishRun(x + 752, 1, 34), 56.60000000000002), 'all'),
+        ...withKibble(lift(fishRun(x + 766, 1, 34), 73.22000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 779, 1, 34), 86.40000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 800, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 813, 1, 34), 104.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 827, 1, 34), 105.44000000000008), 'all'),
+        ...withKibble(lift(fishRun(x + 840, 1, 34), 103.1400000000001), 'all'),
+        ...withKibble(lift(fishRun(x + 854, 1, 34), 97.40000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 874, 1, 34), 82.34000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 888, 1, 34), 68.00000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 902, 1, 34), 50.220000000000084), 'all'),
+        ...lift(fishRun(x + 857, 1, 34), 56.60000000000002),
+        ...lift(fishRun(x + 871, 1, 34), 73.22000000000003),
+        ...lift(fishRun(x + 884, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 905, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 918, 1, 34), 104.30000000000007),
+        ...lift(fishRun(x + 932, 1, 34), 105.44000000000008),
+        ...lift(fishRun(x + 945, 1, 34), 103.1400000000001),
+        ...lift(fishRun(x + 959, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 979, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 993, 1, 34), 68.00000000000009),
+        ...lift(fishRun(x + 1007, 1, 34), 50.220000000000084),
+        ...withKibble(lift(fishRun(x + 946, 1, 34), 56.60000000000002), 'all'),
+        ...withKibble(lift(fishRun(x + 960, 1, 34), 73.22000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 973, 1, 34), 86.40000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 994, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 1007, 1, 34), 104.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 1021, 1, 34), 105.44000000000008), 'all'),
+        ...withKibble(lift(fishRun(x + 1034, 1, 34), 103.1400000000001), 'all'),
+        ...withKibble(lift(fishRun(x + 1048, 1, 34), 97.40000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1068, 1, 34), 82.34000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1082, 1, 34), 68.00000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1096, 1, 34), 50.220000000000084), 'all'),
+        ...lift(fishRun(x + 1059, 1, 34), 56.60000000000002),
+        ...lift(fishRun(x + 1073, 1, 34), 73.22000000000003),
+        ...lift(fishRun(x + 1086, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 1107, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 1120, 1, 34), 104.30000000000007),
+        ...lift(fishRun(x + 1134, 1, 34), 105.44000000000008),
+        ...lift(fishRun(x + 1147, 1, 34), 103.1400000000001),
+        ...lift(fishRun(x + 1161, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 1181, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 1195, 1, 34), 68.00000000000009),
+        ...lift(fishRun(x + 1209, 1, 34), 50.220000000000084),
+        ...withKibble(lift(fishRun(x + 1162, 1, 34), 56.60000000000002), 'all'),
+        ...withKibble(lift(fishRun(x + 1176, 1, 34), 73.22000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 1189, 1, 34), 86.40000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 1210, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 1223, 1, 34), 104.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 1237, 1, 34), 105.44000000000008), 'all'),
+        ...withKibble(lift(fishRun(x + 1250, 1, 34), 103.1400000000001), 'all'),
+        ...withKibble(lift(fishRun(x + 1264, 1, 34), 97.40000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1284, 1, 34), 82.34000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1298, 1, 34), 68.00000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1312, 1, 34), 50.220000000000084), 'all'),
+        ...lift(fishRun(x + 1269, 1, 34), 56.60000000000002),
+        ...lift(fishRun(x + 1283, 1, 34), 73.22000000000003),
+        ...lift(fishRun(x + 1296, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 1317, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 1330, 1, 34), 104.30000000000007),
+        ...lift(fishRun(x + 1344, 1, 34), 105.44000000000008),
+        ...lift(fishRun(x + 1357, 1, 34), 103.1400000000001),
+        ...lift(fishRun(x + 1371, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 1391, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 1405, 1, 34), 68.00000000000009),
+        ...lift(fishRun(x + 1419, 1, 34), 50.220000000000084),
+        ...withKibble(lift(fishRun(x + 1372, 1, 34), 56.60000000000002), 'all'),
+        ...withKibble(lift(fishRun(x + 1386, 1, 34), 73.22000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 1399, 1, 34), 86.40000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 1420, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 1433, 1, 34), 104.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 1447, 1, 34), 105.44000000000008), 'all'),
+        ...withKibble(lift(fishRun(x + 1460, 1, 34), 103.1400000000001), 'all'),
+        ...withKibble(lift(fishRun(x + 1474, 1, 34), 97.40000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1494, 1, 34), 82.34000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1508, 1, 34), 68.00000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 1522, 1, 34), 50.220000000000084), 'all'),
+        ...lift(fishRun(x + 1470, 1, 34), 56.60000000000002),
+        ...lift(fishRun(x + 1484, 1, 34), 73.22000000000003),
+        ...lift(fishRun(x + 1497, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 1518, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 1531, 1, 34), 104.30000000000007),
+        ...lift(fishRun(x + 1545, 1, 34), 105.44000000000008),
+        ...lift(fishRun(x + 1558, 1, 34), 103.1400000000001),
+        ...lift(fishRun(x + 1572, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 1592, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 1606, 1, 34), 68.00000000000009),
+        ...lift(fishRun(x + 1620, 1, 34), 50.220000000000084),
+        ...withKibble(lift(fishRun(x + 352, 1, 34), 56.60000000000002), 'all'),
+        ...withKibble(lift(fishRun(x + 366, 1, 34), 73.22000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 379, 1, 34), 86.40000000000003), 'all'),
+        ...withKibble(lift(fishRun(x + 400, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 413, 1, 34), 104.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 427, 1, 34), 105.44000000000008), 'all'),
+        ...withKibble(lift(fishRun(x + 440, 1, 34), 103.1400000000001), 'all'),
+        ...withKibble(lift(fishRun(x + 454, 1, 34), 97.40000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 474, 1, 34), 82.34000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 488, 1, 34), 68.00000000000009), 'all'),
+        ...withKibble(lift(fishRun(x + 502, 1, 34), 50.220000000000084), 'all'),
+      ],
+      jumps: [j1, j2, j3, j4],
+      pickups: [{ kind: 'letter', x: x + 189 }],
+      partial: true,
+      width: 1602,
+    };
+  },
+  // 98 — สวนกลางวัน · ท่อน 8
+  (x) => {
+    const j1 = x + 130;
+    const j2 = x + 431;
+    const j3 = x + 732;
+    return {
+      obs: [propObs(j2 + HALF - 35, 'flowerGarden_Obstacle_Single_02'), propObs(j3 + JUMP_PEAK - 23, 'flowerGarden_Obstacle_Single_01'), propObs(j1 + JUMP_PEAK - 50, 'flowerGarden_Obstacle_Single_03')],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 20, 4, 34), 'jelly'),
+        ...fishJump(j1, 9),
+        ...fishJump(j2, 9),
+        ...withKibble(fishJump(j3, 9), 'cluster'),
+        ...withTreat(fishRun(x + 357, 3, 34), 'jelly'),
+        ...withTreat(fishRun(x + 654, 3, 34), 'jelly'),
+        ...withTreat(fishRun(x + 947, 5, 34), 'jelly'),
+      ],
+      jumps: [j1, j2, j3],
+      width: 1062.3999999999999,
+    };
+  },
+  // 99 — สวนกลางวัน · ท่อน 9
+  (x) => {
+    const j1 = x + 453;
+    const j2 = x + 630;
+    return {
+      obs: [propObs(x + 173, 'flowerGarden_Obstacle_Crouch_02')],
+      pit: [{ x: x + 505, w: 992 }],
+      fish: [
+        ...withTreat(fishRun(x + 54, 13, 34), 'jelly'),
+        ...withKibble(lift(fishRun(x + 531, 4, 34), 83), 'all'),
+        ...lift(fishRun(x + 744, 4, 34), 83),
+        ...withShrimp(lift(fishRun(x + 615, 4, 47), 152), 'all'),
+        ...withShrimp(lift(fishRun(x + 829, 4, 47), 152), 'all'),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'ledge', x: x + 511, w: 140, lift: 92 }, { kind: 'ledge', x: x + 724, w: 140, lift: 92 }],
+    };
+  },
+  // 100 — สวนกลางวัน · ท่อน 11
+  (x) => {
+    const j1 = x + 130;
+    const j2 = x + 431;
+    const j3 = x + 732;
+    return {
+      obs: [crateStack(j2 + HALF - crate.w / 2, 1), groundSpike(x + 368), groundSpike(x + 672), groundSpike(x + 957), propObs(j1 + JUMP_PEAK - 35, 'flowerGarden_Obstacle_Single_02'), propObs(j3 + JUMP_PEAK - 23, 'flowerGarden_Obstacle_Single_01')],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 20, 3, 34), 'jelly'),
+        ...fishJump(j1, 9),
+        ...fishJump(j2, 9),
+        ...fishJump(j3, 9),
+      ],
+      jumps: [j1, j2, j3],
+      hazards: [{ kind: 'bee', x: x + 701, phase: 0.000 }, { kind: 'bee', x: x + 396, phase: 0.000 }],
+      pickups: [{ kind: 'nip', x: x + 40 }],
+      width: 1062.3999999999999,
+    };
+  },
+  // 101 — สวนกลางวัน · ท่อน 12
+  (x) => {
+    const j1 = x + 240;
+    return {
+      obs: [],
+      pit: [{ x: j1 + HALF - 66, w: 132 }],
+      fish: [
+        ...withTreat(fishRun(x + -38, 9, 34), 'jelly'),
+        ...withKibble(fishJump(j1, 11), 'alternate'),
+        ...withTreat(fishRun(x + 453, 10, 34), 'jelly'),
+      ],
+      jumps: [j1],
+      hazards: [{ kind: 'bee', x: x + 95, phase: 0.000 }, { kind: 'bee', x: x + 596, phase: 0.000 }],
+    };
+  },
+  // 102 — สวนกลางวัน · ท่อน 13
+  (x) => {
+    const j1 = x + 230;
+    return {
+      obs: [groundSpike(j1 + HALF - spike.w / 2)],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 35, 7, 34), 'jelly'),
+        ...fishJump(j1, 15),
+        ...withTreat(fishRun(x + 453, 10, 34), 'jelly'),
+      ],
+      jumps: [j1],
+    };
+  },
+  // 103 — สวนกลางวัน · ท่อน 14
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withTreat(fishRun(x + 34, 6, 34), 'jelly'),
+      ...lift(fishRun(x + 264, 1, 34), 36.54000000000002),
+      ...lift(fishRun(x + 285, 1, 34), 65.34000000000003),
+      ...lift(fishRun(x + 298, 1, 34), 80.24000000000004),
+      ...lift(fishRun(x + 319, 1, 34), 96.14000000000004),
+      ...withKibble(lift(fishRun(x + 332, 1, 34), 102.44000000000005), 'all'),
+      ...withKibble(lift(fishRun(x + 353, 1, 34), 105.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 373, 1, 34), 100.7000000000001), 'all'),
+      ...lift(fishRun(x + 387, 1, 34), 93.2400000000001),
+      ...lift(fishRun(x + 407, 1, 34), 75.60000000000008),
+      ...lift(fishRun(x + 421, 1, 34), 59.54000000000008),
+      ...lift(fishRun(x + 441, 1, 34), 29.000000000000057),
+      ...lift(fishRun(x + 579, 1, 34), 36.54000000000002),
+      ...lift(fishRun(x + 600, 1, 34), 65.34000000000003),
+      ...lift(fishRun(x + 613, 1, 34), 80.24000000000004),
+      ...lift(fishRun(x + 634, 1, 34), 96.14000000000004),
+      ...withKibble(lift(fishRun(x + 647, 1, 34), 102.44000000000005), 'all'),
+      ...withKibble(lift(fishRun(x + 668, 1, 34), 105.44000000000008), 'all'),
+      ...withKibble(lift(fishRun(x + 688, 1, 34), 100.7000000000001), 'all'),
+      ...lift(fishRun(x + 702, 1, 34), 93.2400000000001),
+      ...lift(fishRun(x + 722, 1, 34), 75.60000000000008),
+      ...lift(fishRun(x + 736, 1, 34), 59.54000000000008),
+      ...lift(fishRun(x + 756, 1, 34), 29.000000000000057),
+      ...withTreat(fishRun(x + 472, 3, 34), 'jelly'),
+    ],
+    jumps: [],
+    hazards: [{ kind: 'bee', x: x + 492, phase: 0.000 }],
+    pickups: [{ kind: 'letter', x: x + 234 }],
+    plats: [{ kind: 'hill', x: x + 505, w: 320, h: 86 }, { kind: 'hill', x: x + 190, w: 320, h: 81 }],
+  }),
+  // 104 — สวนกลางวัน · ท่อน 15
+  (x) => {
+    const j1 = x + 481;
+    const j2 = x + 704;
+    return {
+      obs: [],
+      pit: [{ x: x + 541, w: 648 }],
+      fish: [
+        ...lift(fishRun(x + 132, 1, 34), 36.54000000000002),
+        ...lift(fishRun(x + 153, 1, 34), 65.34000000000003),
+        ...lift(fishRun(x + 173, 1, 34), 86.40000000000003),
+        ...withKibble(lift(fishRun(x + 194, 1, 34), 99.72000000000006), 'all'),
+        ...withKibble(lift(fishRun(x + 214, 1, 34), 105.30000000000007), 'all'),
+        ...withKibble(lift(fishRun(x + 228, 1, 34), 104.72000000000008), 'all'),
+        ...lift(fishRun(x + 248, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 268, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 289, 1, 34), 59.54000000000008),
+        ...lift(fishRun(x + 309, 1, 34), 29.000000000000057),
+        ...withTreat(fishRun(x + 28, 3, 34), 'jelly'),
+        ...withTreat(fishRun(x + 353, 5, 34), 'jelly'),
+        ...withKibble(lift(fishRun(x + 554, 6, 34), 53), 'alternate'),
+        ...withKibble(lift(fishRun(x + 801, 4, 34), 114), 'alternate'),
+        ...withShrimp(lift(fishRun(x + 554, 3, 56), 91), 'all'),
+        ...withShrimp(lift(fishRun(x + 798, 2, 56), 152), 'all'),
+      ],
+      jumps: [j1, j2],
+      plats: [{ kind: 'hill', x: x + 59, w: 320, h: 87 }, { kind: 'ledge', x: x + 755, w: 171, lift: 116 }, { kind: 'ledge', x: x + 534, w: 206, lift: 64 }],
+    };
+  },
+  // 105 — สวนกลางวัน · ท่อน 16
+  (x) => {
+    const j1 = x + 180;
+    const j2 = x + 644;
+    const j3 = j2 + DOUBLE_AT * SPEED.run;
+    const j4 = x + 988;
+    return {
+      obs: [propObs(j2 + DBL_PEAK - 30, 'flowerGarden_Obstacle_Double_01')],
+      pit: [],
+      fish: [
+        ...withKibble(lift(fishRun(x + 249, 6, 34), 53), 'alternate'),
+        ...withShrimp(lift(fishRun(x + 303, 3, 56), 93), 'all'),
+        ...withTreat(fishRunTo(x + 484, j2), 'jelly'),
+        ...fishDouble(j2, 11),
+        ...withTreat(fishRun(x + 973, 5, 34), 'jelly'),
+      ],
+      jumps: [j1, j2, j3, j4],
+      pickups: [{ kind: 'magnet', x: x + 1055 }],
+      plats: [{ kind: 'ledge', x: x + 176, w: 259, lift: 62 }],
+      width: 971.5999999999999,
+    };
+  },
+  // 106 — สวนกลางวัน · ท่อน 17
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withShrimp(fishRun(x + 189, 28, 43), 'all'),
+      ...withKibble(lift(fishRun(x + 239, 28, 43), 44), 'all'),
+      ...lift(fishRun(x + 187, 28, 43), 93),
+      ...withShrimp(lift(fishRun(x + 242, 28, 43), 143), 'all'),
+    ],
+    jumps: [],
+    width: 1368,
+  }),
+  // 107 — สวนกลางวัน · ท่อน 18
+  (x) => {
+    const j1 = x + 180;
+    const j2 = x + 501;
+    return {
+      obs: [propObs(j1 + HALF - 35, 'flowerGarden_Obstacle_Single_02')],
+      pit: [{ x: j2 + HALF - 60, w: 120 }],
+      fish: [
+        ...withTreat(fishRun(x + 47, 5, 34), 'jelly'),
+        ...fishJump(j1, 10),
+        ...fishJump(j2, 10),
+        ...withTreat(fishRun(x + 397, 4, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'letter', x: x + 96 }],
+      width: 971.5999999999999,
+    };
+  },
+  // 108 — สวนกลางวัน · ท่อน 19
+  (x) => {
+    const j1 = x + 297;
+    const j2 = x + 551;
+    return {
+      obs: [propObs(x + -172, 'flowerGarden_Obstacle_Crouch_03'), propObs(x + 40, 'flowerGarden_Obstacle_Crouch_02')],
+      pit: [{ x: x + 347, w: 116 }, { x: j2 + HALF - 58, w: 116 }],
+      fish: [
+        ...withTreat(fishRun(x + -259, 8, 34), 'jelly'),
+        ...lift(fishRun(x + 319, 1, 34), 36.54000000000002),
+        ...lift(fishRun(x + 340, 1, 34), 65.34000000000003),
+        ...lift(fishRun(x + 360, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 381, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 401, 1, 34), 105.30000000000007),
+        ...lift(fishRun(x + 415, 1, 34), 104.72000000000008),
+        ...lift(fishRun(x + 435, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 455, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 476, 1, 34), 59.54000000000008),
+        ...lift(fishRun(x + 496, 1, 34), 29.000000000000057),
+        ...lift(fishRun(x + 564, 1, 34), 36.54000000000002),
+        ...lift(fishRun(x + 585, 1, 34), 65.34000000000003),
+        ...lift(fishRun(x + 605, 1, 34), 86.40000000000003),
+        ...lift(fishRun(x + 626, 1, 34), 99.72000000000006),
+        ...lift(fishRun(x + 646, 1, 34), 105.30000000000007),
+        ...lift(fishRun(x + 660, 1, 34), 104.72000000000008),
+        ...lift(fishRun(x + 680, 1, 34), 97.40000000000009),
+        ...lift(fishRun(x + 700, 1, 34), 82.34000000000009),
+        ...lift(fishRun(x + 721, 1, 34), 59.54000000000008),
+        ...lift(fishRun(x + 741, 1, 34), 29.000000000000057),
+        ...withTreat(fishRun(x + 6, 10, 34), 'jelly'),
+        ...withTreat(fishRun(x + 529, 1, 34), 'crystal', 'top'),
+      ],
+      jumps: [j1, j2],
+    };
+  },
+  // 109 — สวนกลางวัน · ท่อน 20
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withTreat(fishRun(x + -3, 21, 34), 'jelly'),
+      ...withKibble(lift(fishRun(x + 723, 2, 120), 150), 'cluster'),
+      ...withKibble(lift(fishRun(x + 903, 2, 30), 150), 'cluster'),
+      ...withKibble(lift(fishRun(x + 1053, 2, 30), 150), 'cluster'),
+      ...withKibble(lift(fishRun(x + 1173, 4, 30), 150), 'all'),
+      ...withKibble(lift(fishRun(x + 723, 2, 120), 120), 'cluster'),
+      ...withKibble(lift(fishRun(x + 933, 2, 180), 120), 'cluster'),
+      ...withKibble(lift(fishRun(x + 1173, 1, 34), 120), 'all'),
+      ...withKibble(lift(fishRun(x + 723, 2, 30), 90), 'cluster'),
+      ...withKibble(lift(fishRun(x + 843, 2, 90), 90), 'cluster'),
+      ...withKibble(lift(fishRun(x + 993, 2, 180), 90), 'cluster'),
+      ...withKibble(lift(fishRun(x + 723, 3, 60), 60), 'cluster'),
+      ...withKibble(lift(fishRun(x + 933, 2, 60), 60), 'cluster'),
+      ...withKibble(lift(fishRun(x + 1173, 1, 34), 60), 'all'),
+      ...withKibble(lift(fishRun(x + 723, 2, 90), 30), 'cluster'),
+      ...withKibble(lift(fishRun(x + 843, 2, 90), 30), 'cluster'),
+      ...withKibble(lift(fishRun(x + 1113, 2, 60), 30), 'cluster'),
+      ...withKibble(fishRun(x + 723, 2, 120), 'cluster'),
+      ...withKibble(fishRun(x + 903, 2, 30), 'cluster'),
+      ...withKibble(fishRun(x + 1023, 3, 30), 'cluster'),
+      ...withKibble(fishRun(x + 1173, 4, 30), 'all'),
+      ...withKibble(lift(fishRun(x + 963, 1, 34), 150), 'all'),
+      ...withKibble(fishRun(x + 963, 1, 34), 'all'),
+      ...withKibble(lift(fishRun(x + 1023, 1, 34), 150), 'all'),
+      ...withKibble(lift(fishRun(x + 993, 1, 34), 120), 'all'),
+      ...withKibble(lift(fishRun(x + 993, 1, 34), 30), 'all'),
+      ...withKibble(lift(fishRun(x + 1203, 3, 30), 60), 'cluster'),
+      ...withTreat(fishRun(x + 1312, 6, 34), 'jelly'),
+      ...withShrimp(lift(fishRun(x + 653, 1, 34), 76), 'all'),
+      ...withShrimp(lift(fishRun(x + 1134, 1, 34), 221), 'all'),
+      ...withShrimp(lift(fishRun(x + 1368, 1, 34), 76), 'all'),
+      ...withShrimp(lift(fishRun(x + 835, 1, 34), 222), 'all'),
+    ],
+    jumps: [],
+    width: 1368,
+  }),
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -1859,6 +2866,42 @@ export const PATTERN_META = [
   { kind: 'obstacle', diff: 3 },    // 71 สวนกลางวัน · ท่อน 18
   { kind: 'challenge', diff: 4 },   // 72 สวนกลางวัน · ท่อน 19
   { kind: 'recovery', diff: 2 },    // 73 สวนกลางวัน · ท่อน 20
+  { kind: 'safe', diff: 1 },    // 74  ครัวกลางคืน · ท่อน 1
+  { kind: 'recovery', diff: 2 },    // 75  ครัวกลางคืน · ท่อน 2
+  { kind: 'obstacle', diff: 3 },    // 76  ครัวกลางคืน · ท่อน 3
+  { kind: 'obstacle', diff: 3 },    // 77  ครัวกลางคืน · ท่อน 4
+  { kind: 'safe', diff: 1 },    // 78  ครัวกลางคืน · ท่อน 5
+  { kind: 'obstacle', diff: 3 },    // 79  ครัวกลางคืน · ท่อน 6
+  { kind: 'safe', diff: 1 },    // 80  ครัวกลางคืน · ท่อน 9
+  { kind: 'obstacle', diff: 3 },    // 81  ครัวกลางคืน · ท่อน 10
+  { kind: 'obstacle', diff: 2 },    // 82  ครัวกลางคืน · ท่อน 11
+  { kind: 'obstacle', diff: 3 },    // 83  ครัวกลางคืน · ท่อน 12
+  { kind: 'recovery', diff: 2 },    // 84  ครัวกลางคืน · ท่อน 14
+  { kind: 'obstacle', diff: 2 },    // 85  ครัวกลางคืน · ท่อน 15
+  { kind: 'obstacle', diff: 2 },    // 86  ครัวกลางคืน · ท่อน 16
+  { kind: 'obstacle', diff: 2 },    // 87  ครัวกลางคืน · ท่อน 17
+  { kind: 'recovery', diff: 2 },    // 88  ครัวกลางคืน · ท่อน 18
+  { kind: 'obstacle', diff: 2 },    // 89  ครัวกลางคืน · ท่อน 19
+  { kind: 'recovery', diff: 2 },    // 90  ครัวกลางคืน · ท่อน 20
+  { kind: 'safe', diff: 1 },    // 91  สวนกลางวัน · ท่อน 1
+  { kind: 'challenge', diff: 4 },    // 92  สวนกลางวัน · ท่อน 2
+  { kind: 'obstacle', diff: 3 },    // 93  สวนกลางวัน · ท่อน 3
+  { kind: 'challenge', diff: 4 },    // 94  สวนกลางวัน · ท่อน 4
+  { kind: 'challenge', diff: 4 },    // 95  สวนกลางวัน · ท่อน 5
+  { kind: 'recovery', diff: 2 },    // 96  สวนกลางวัน · ท่อน 6
+  { kind: 'recovery', diff: 2 },    // 97  สวนกลางวัน · ท่อน 7
+  { kind: 'obstacle', diff: 3 },    // 98  สวนกลางวัน · ท่อน 8
+  { kind: 'obstacle', diff: 2 },    // 99  สวนกลางวัน · ท่อน 9
+  { kind: 'obstacle', diff: 3 },    // 100  สวนกลางวัน · ท่อน 11
+  { kind: 'obstacle', diff: 2 },    // 101  สวนกลางวัน · ท่อน 12
+  { kind: 'obstacle', diff: 2 },    // 102  สวนกลางวัน · ท่อน 13
+  { kind: 'obstacle', diff: 2 },    // 103  สวนกลางวัน · ท่อน 14
+  { kind: 'challenge', diff: 4 },    // 104  สวนกลางวัน · ท่อน 15
+  { kind: 'obstacle', diff: 3 },    // 105  สวนกลางวัน · ท่อน 16
+  { kind: 'recovery', diff: 2 },    // 106  สวนกลางวัน · ท่อน 17
+  { kind: 'obstacle', diff: 3 },    // 107  สวนกลางวัน · ท่อน 18
+  { kind: 'challenge', diff: 4 },    // 108  สวนกลางวัน · ท่อน 19
+  { kind: 'recovery', diff: 2 },    // 109  สวนกลางวัน · ท่อน 20
 ];
 
 /**
