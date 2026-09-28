@@ -210,6 +210,10 @@ const PLAT_T = new Set(['hill', 'ledge']);
 const LIFT_MIN = 40;
 const LIFT_MAX = 260;
 const clampLift = (v) => Math.max(LIFT_MIN, Math.min(LIFT_MAX, Math.round(v)));
+/** ช่วงความสูงของเนิน — ใช้ทั้งช่องในแผงขวา การลากในสนาม และปุ่ม G */
+const HILL_MIN = 20;
+const HILL_MAX = 140;
+const clampHill = (v) => Math.max(HILL_MIN, Math.min(HILL_MAX, Math.round(v)));
 
 /** หน้าตาพื้นเหยียบที่ตั้งเอง → ส่วนต่อท้ายในโค้ดที่ส่งออก (ไม่ตั้ง = ไม่ต่อท้าย ตามด่านเหมือนเดิม) */
 const artCode = (it) => (it.art ? `, art: '${it.art}'` : '');
@@ -2704,7 +2708,7 @@ function delSel() {
 }
 
 /** ปรับความสูงได้ไหม — พื้นลอย (ลอยสูงจากพื้น) กับของกิน (ยกสูง) · ที่เหลืออยู่ระดับพื้นเสมอ */
-const canRaise = (q) => q.t === 'ledge' || canLift(q);
+const canRaise = (q) => q.t === 'ledge' || q.t === 'hill' || canLift(q);
 
 /**
  * เตรียมข้อมูลลากขึ้นลงของทั้งชุด — ทุกชิ้นต้องปรับความสูงได้ ถึงจะยอมให้ลากขึ้นลง
@@ -2716,7 +2720,7 @@ function raiseInfo(d, ids) {
   const stuck = qs.filter((q) => !canRaise(q));
   return {
     ok: stuck.length === 0,
-    start: qs.map((q) => [q.id, q.lift, q.rise || 0]),
+    start: qs.map((q) => [q.id, q.t === 'hill' ? q.h : q.lift, q.rise || 0]),
     stuck: [...new Set(stuck.map((q) => itemLabel(d, q).split(' ·')[0]))].slice(0, 3).join(', '),
   };
 }
@@ -2727,6 +2731,7 @@ function raiseAll(d, start, up) {
     const q = byId(d, id);
     if (!q) continue;
     if (q.t === 'ledge') q.lift = clampLift(lift + up);
+    else if (q.t === 'hill') q.h = clampHill(lift + up);
     else if (q.t === 'fishRun' && !d.bonus) setRise(q, rise + up);
     else q.rise = Math.round(rise + up);
   }
@@ -2863,6 +2868,7 @@ cv.addEventListener('pointerdown', (ev) => {
     // ของกินลากขึ้นลงได้ด้วย จึงต้องจำระยะแนวตั้งจากจุดที่จับไว้ ไม่งั้นแถวจะกระตุกมาอยู่ใต้นิ้ว
     // พื้นลอยจำระยะจากผิวบนที่จับ — ลากขึ้นลงแล้วแผ่นไม่กระตุกมาอยู่ใต้นิ้ว
     const offY = hit.t === 'ledge' ? p.y - (GROUND_Y - hit.lift)
+      : hit.t === 'hill' ? p.y - (GROUND_Y - hit.h)
       : canLift(hit) ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
     drag = { kind: 'move', id: hit.id, off: p.x - xOf(d, hit), offY, sy: p.y };
     pushUndo();
@@ -2924,6 +2930,11 @@ cv.addEventListener('pointermove', (ev) => {
     if (it.t === 'ledge' && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
       drag.lifting = true;
       it.lift = clampLift(GROUND_Y - (p.y - drag.offY));
+    }
+    // เนิน: ลากขึ้นลง = ปรับความสูงยอดเนิน (ช่อง "สูง" ในแผงขวาขยับตาม)
+    if (it.t === 'hill' && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
+      drag.lifting = true;
+      it.h = clampHill(GROUND_Y - (p.y - drag.offY));
     }
     // ของกินชนิดอื่น (ลายวาดเอง โค้ง ซุ้ม คลื่น เกล็ดหิมะ) เลื่อนขึ้นลงได้ทุกพิกเซล ไม่ดูดเข้าชั้น
     if ((it.t !== 'fishRun' || d.bonus) && canLift(it) && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
@@ -3110,6 +3121,7 @@ function startModal(kind) {
     startX: left,
     startRise: it.rise || 0,
     startLift: it.lift,
+    startH: it.h,
     startW: it.w,
     startN: it.n,
     startArm: it.arm || 24,
@@ -3168,6 +3180,7 @@ function updateModal() {
     if (m.free) { it.x = want; delete it.link; } else snapTo(d, it, want);
 
     if (it.t === 'ledge') it.lift = clampLift(m.startLift - dy);
+    if (it.t === 'hill') it.h = clampHill(m.startH - dy);
     if (canLift(it)) {
       const rise = m.startRise - dy;
       if (it.t === 'fishRun' && !d.bonus) {
@@ -3179,8 +3192,9 @@ function updateModal() {
     }
 
     const nx = Math.round(xOf(d, it) - m.startX);
-    const ny = it.t === 'ledge' ? it.lift - m.startLift : Math.round((it.rise || 0) - m.startRise);
-    const upDown = canLift(it) || it.t === 'ledge';
+    const ny = it.t === 'ledge' ? it.lift - m.startLift
+      : it.t === 'hill' ? it.h - m.startH : Math.round((it.rise || 0) - m.startRise);
+    const upDown = canRaise(it);
     const ax = m.axis === 'x' ? ' · <em>ล็อกแนวนอน</em>' : m.axis === 'y' ? ' · <em>ล็อกแนวตั้ง</em>' : '';
     const snapTxt = it.link ? ' · <em>เกาะจุดกด</em>' : '';
     showModalBar(`<b>G ย้าย</b> x ${nx >= 0 ? '+' : ''}${nx}${upDown ? ` · สูง ${ny >= 0 ? '+' : ''}${ny}` : ''}`
@@ -3538,7 +3552,7 @@ function renderInspector() {
   if (it.t === 'bee') rows.push(num('fPhase', 'เฟสเริ่มแกว่ง (องศา)', it.phase || 0, 15, 0, 345));
   if (it.t === 'pit') rows.push(num('fW', 'กว้าง', it.w, 2, 40, 600));
   if (PLAT_T.has(it.t)) rows.push(num('fW', 'กว้าง', it.w, 10, 80, 1200));
-  if (it.t === 'hill') rows.push(num('fH', 'สูง', it.h, 5, 20, 140));
+  if (it.t === 'hill') rows.push(num('fH', 'สูง', it.h, 5, HILL_MIN, HILL_MAX));
   if (it.t === 'ledge') rows.push(num('fLift', 'ลอยสูงจากพื้น', it.lift, 5, LIFT_MIN, LIFT_MAX));
   if (it.t === 'fishRun' && (it.lane === 'custom' || d.bonus)) rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
   // ลายวาดเองไม่มี "จำนวนเม็ด" ให้ปรับ — จำนวนมาจากตัวลายเอง แก้ที่กล่องวาดลาย
