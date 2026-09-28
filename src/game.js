@@ -2052,7 +2052,7 @@ export class Game {
     } else {
       this.drawBackdrop(ctx);
       drawGround(ctx, this.level.pits, this.camera, this.pal, GROUND_ART[this.scene.backdrop]);
-      drawPlats(ctx, this.level.plats, this.camera, this.pal);
+      drawPlats(ctx, this.level.plats, this.camera, this.pal, this.scene.theme);
       const [plainFish, rareTreats] = splitFish(this.level.fishes);
       const L = this.level;
       drawOutlined(ctx, (c) => {
@@ -2308,7 +2308,7 @@ export class Game {
     this.drawBackdrop(ctx);
     drawGround(ctx, this.level.pits, this.camera, this.pal, GROUND_ART[this.scene.backdrop]);
     // พื้นเหยียบได้ วาดต่อจากพื้นทันที เป็นส่วนหนึ่งของภูมิประเทศ ไม่ใช่ของวางบนด่าน
-    drawPlats(ctx, this.level.plats, this.camera, this.pal);
+    drawPlats(ctx, this.level.plats, this.camera, this.pal, this.scene.theme);
     // ทางเข้าด่าน ชั้นหลัง: ชานร้าน ข้างในร้าน ผนังหน้าร้าน — อยู่หลังของกินและตัวแมว
     const gateView = this.gate && this.gate.view(this.camera, this.tick);
     if (gateView) drawGateBack(ctx, this.gate.def, gateView);
@@ -2428,7 +2428,9 @@ export class Game {
     // ที่สั่นตามจอตอนโดนชนอ่านไม่ทันพอดีในจังหวะที่ต้องการอ่านที่สุด
     // ซ่อนตอนตายเพราะไม่มีอะไรให้รอแล้ว เหมือนหลอดความสามารถ
     if (this.state !== STATE.DEAD) {
-      drawTreasureSlots(ctx, this.treasures.gauges(), this.tick);
+      // การ์ดพรสวรรค์ที่ทำงานเอง (ไม่มีปุ่มกด) โชว์ต่อขวาช่องสมบัติ ให้รู้ว่าใช้ใบไหนอยู่
+      const passive = this.talents.t && !this.talents.hasButton ? this.talents.t : null;
+      drawTreasureSlots(ctx, this.treasures.gauges(), this.tick, passive);
     }
 
     this.drawFlash(ctx);

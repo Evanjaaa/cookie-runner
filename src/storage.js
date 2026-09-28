@@ -50,6 +50,147 @@ export const KEYS = {
   pref: (k) => 'cookie-runner:pref:' + k,
 };
 
+// ─────────────────────────────────────────────────────────────
+// ข้อมูลของบัญชี vs ค่าของเครื่อง — ใช้ตอนออกจากระบบ / สลับบัญชี
+//
+// ── ทำไมกลับด้าน (ล้างทุกอย่าง เว้นค่าของเครื่อง) ──
+// เดิมล้างตาม "รายชื่อของที่ต้องล้าง" แล้วทุกระบบที่เพิ่มทีหลัง (สเตตัส แมวที่ปลดล็อก
+// การ์ดพรสวรรค์ สกิล รางวัลเลเวล เช็คอินรายวัน รูปหน้า ฯลฯ) ไม่มีใครมาเติมรายชื่อ
+// ออกจากบัญชีแล้วสร้างบัญชีใหม่ ของพวกนั้นเลยติดไปกับบัญชีใหม่ — ผู้เล่นเจอจริง
+// ตอนนี้ล้าง "ทุกคีย์ของเกม" แล้วเว้นเฉพาะค่าของเครื่องในรายการข้างล่าง
+// ระบบใหม่ที่เพิ่มในอนาคตจึงถูกล้างให้เองโดยไม่ต้องจำ — พลาดแบบนี้ไม่ได้อีก
+// (ถ้าระบบใหม่เป็นค่าของเครื่องจริง ๆ ค่อยมาเติมใน DEVICE_KEYS)
+// ─────────────────────────────────────────────────────────────
+const NS = 'cookie-runner:';
+const STASH_PREFIX = NS + 'stash:';
+
+/** ค่าของ "เครื่อง" ไม่ใช่ของบัญชี — ออกจากระบบแล้วคงไว้ */
+const DEVICE_KEYS = new Set([
+  NS + 'vol', NS + 'vol:music', NS + 'vol:sfx',   // ระดับเสียง
+  NS + 'dbg-open',                                // แผงทดสอบเปิดค้างไว้ไหม
+  KEYS.pref('gfx'), KEYS.pref('lang'),            // ระดับกราฟิก / ภาษา
+  KEYS.pref('introVideo'), KEYS.pref('introSound'),
+]);
+
+/**
+ * ของที่คลาวด์เก็บให้แล้ว (ดู readLocal ใน net/sync.js) — เข้าบัญชีเดิมอีกครั้งก็ดึงกลับลงมาเอง
+ * ไม่ต้องฝากไว้ในเครื่อง และห้ามฝาก: ของที่ฝากไว้อาจเก่ากว่าบนคลาวด์ แล้วไปทับของใหม่
+ */
+function syncedByCloud(k) {
+  return k.startsWith(KEYS.bestPrefix) || [
+    KEYS.gold, KEYS.owned, KEYS.outfit, KEYS.skin, KEYS.stage, KEYS.gems, KEYS.treasures,
+    KEYS.equip, KEYS.xp, KEYS.name,
+    KEYS.pref('stats'), KEYS.pref('questsClaimed'), KEYS.pref('inbox'),
+  ].includes(k);
+}
+
+/**
+ * ของบัญชีที่ตั้งใจไม่ขึ้นคลาวด์
+ *   face / faceOn  รูปหน้าน้อง — หน้าเกมบอกผู้เล่นว่า "เก็บในเครื่องนี้เท่านั้น ไม่ส่งขึ้นเซิร์ฟเวอร์"
+ *   myCatPaint     ภาพที่ระบายเอง เป็นไฟล์รูป PNG ก้อนใหญ่ ส่งซ้ำทุกครั้งที่ซิงก์ไม่คุ้ม
+ * (สองอย่างนี้ยังตามบัญชีอีเมลได้ในเครื่องเดิม ผ่านการฝากตอนออกจากระบบ — ดู wipeAccountData)
+ */
+const LOCAL_ONLY = new Set([NS + 'face', NS + 'faceOn', KEYS.pref('myCatPaint')]);
+
+/** คีย์ทั้งหมดที่เป็นข้อมูลของบัญชีที่เล่นอยู่ในเครื่องตอนนี้ */
+function accountKeys() {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(NS) || k.startsWith(STASH_PREFIX) || DEVICE_KEYS.has(k)) continue;
+    out.push(k);
+  }
+  return out;
+}
+
+/**
+ * ข้อมูลบัญชีที่ยังไม่มีคอลัมน์ของตัวเองบนคลาวด์ — ขึ้นไปเป็นก้อนเดียวในคอลัมน์ players.extra
+ * (แมวที่ปลดล็อก รางวัลเลเวลที่รับแล้ว การ์ดที่เลือก สเตตัส เช็คอิน ฯลฯ และระบบใหม่ในอนาคตทุกตัว)
+ * คืน { ชื่อคีย์ไม่มีคำนำหน้า: ค่าดิบที่เก็บไว้ } — เก็บค่าดิบ ไม่แปลง เขียนกลับได้ตรงตัว
+ */
+export function readAccountExtras() {
+  const out = {};
+  try {
+    for (const k of accountKeys()) {
+      if (syncedByCloud(k) || LOCAL_ONLY.has(k)) continue;
+      out[k.slice(NS.length)] = localStorage.getItem(k);
+    }
+  } catch { /* อ่านไม่ได้ก็ส่งเท่าที่ได้ */ }
+  return out;
+}
+
+/**
+ * เทก้อน extra จากคลาวด์ลงเครื่อง — คลาวด์เป็นความจริงเหมือนคอลัมน์อื่น
+ * ยกเว้นรายการสะสม (array) ที่รวมของสองฝั่ง เช่นแมวที่ปลดล็อก รางวัลเลเวลที่รับแล้ว:
+ * เครื่องนี้อาจปลดล็อกเพิ่มตอนออฟไลน์แล้วยังไม่ได้ส่งขึ้น ถ้าให้คลาวด์ทับตรง ๆ ของที่ได้มาจะหาย
+ * เขียนด้วย localStorage ตรง ๆ ไม่ผ่าน savePref — ไม่ปลุกการซิงก์ให้ดันของเดิมกลับขึ้นไปฟรี ๆ
+ */
+export function writeAccountExtras(extra) {
+  if (!extra || typeof extra !== 'object') return;
+  try {
+    for (const [short, raw] of Object.entries(extra)) {
+      if (typeof raw !== 'string') continue;
+      const k = NS + short;
+      if (!k.startsWith(NS) || DEVICE_KEYS.has(k) || LOCAL_ONLY.has(k) || syncedByCloud(k)) continue;
+      const mine = localStorage.getItem(k);
+      let value = raw;
+      if (mine !== null) {
+        try {
+          const a = JSON.parse(mine);
+          const b = JSON.parse(raw);
+          if (Array.isArray(a) && Array.isArray(b)) {
+            const seen = new Set(b.map((x) => JSON.stringify(x)));
+            value = JSON.stringify([...b, ...a.filter((x) => !seen.has(JSON.stringify(x)))]);
+          }
+        } catch { /* ไม่ใช่ JSON = ค่าธรรมดา ใช้ของคลาวด์ */ }
+      }
+      localStorage.setItem(k, value);
+    }
+  } catch { /* เขียนไม่ได้ก็เล่นต่อด้วยของในเครื่อง */ }
+}
+
+/**
+ * ล้างข้อมูลของบัญชีออกจากเครื่องทั้งหมด (ค่าของเครื่องยังอยู่)
+ *
+ * @param stashFor user id ของบัญชีที่กำลังออก — ส่งมาเฉพาะบัญชีที่กลับเข้ามาได้อีก (ผูกอีเมลแล้ว)
+ *   ของที่มีแต่ในเครื่อง (ยังไม่ขึ้นคลาวด์ เช่นแมวที่ปลดล็อก รางวัลเลเวลที่รับแล้ว สเตตัส)
+ *   จะถูกฝากไว้ใต้ id นั้น แล้วคืนให้ตอนเข้าบัญชีเดิมอีกครั้ง (restoreAccountStash)
+ *   บัญชีอื่นที่เข้ามาใช้เครื่องนี้มองไม่เห็นของที่ฝากไว้
+ *   ผู้มาเยือนไม่ส่งมา — ออกแล้วกลับเข้าบัญชีเดิมไม่ได้อยู่แล้ว ฝากไว้ก็ค้างเปล่า ๆ
+ */
+export function wipeAccountData(stashFor = null) {
+  try {
+    const keys = accountKeys();
+    if (stashFor) {
+      const kept = {};
+      for (const k of keys) if (!syncedByCloud(k)) kept[k] = localStorage.getItem(k);
+      if (Object.keys(kept).length) localStorage.setItem(STASH_PREFIX + stashFor, JSON.stringify(kept));
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch {
+    /* ลบไม่ได้ก็ปล่อย ไม่ใช่เหตุให้ออกจากระบบไม่สำเร็จ */
+  }
+}
+
+/**
+ * คืนของที่ฝากไว้ตอนออกจากบัญชีนี้ครั้งก่อน — เรียกตอนรู้แล้วว่าเข้าบัญชีไหน ก่อนเกมอ่านค่า
+ * ของที่อยู่ในเครื่องแล้วไม่ทับ (เครื่องใหม่กว่าเสมอ) แล้วลบก้อนฝากทิ้ง
+ */
+export function restoreAccountStash(uid) {
+  if (!uid) return;
+  try {
+    const raw = localStorage.getItem(STASH_PREFIX + uid);
+    if (!raw) return;
+    const kept = JSON.parse(raw) || {};
+    for (const [k, v] of Object.entries(kept)) {
+      if (typeof v === 'string' && localStorage.getItem(k) === null) localStorage.setItem(k, v);
+    }
+    localStorage.removeItem(STASH_PREFIX + uid);
+  } catch {
+    /* อ่านไม่ได้ก็เล่นต่อแบบไม่มีของฝาก */
+  }
+}
+
 let writeHook = null;
 
 /** ให้ชั้นซิงก์มาสมัครรับรู้ว่ามีการเขียนอะไรลงเครื่อง */

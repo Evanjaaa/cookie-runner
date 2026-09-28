@@ -67,6 +67,15 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* ── ห้ามคำตกบรรทัดเดี่ยว (กติกาทั้งโปรเจกต์ — ดู CLAUDE.md) ──
+   ตัดบรรทัดแบบปกติจะเติมบรรทัดบนให้เต็มก่อน แล้วเศษคำสั้น ๆ ตกไปอยู่บรรทัดล่างคำเดียว
+   (เช่น "...และกู้คืน / ไม่ได้") ซึ่งอ่านสะดุดและดูไม่เรียบร้อย
+   balance ให้เบราว์เซอร์เกลี่ยทุกบรรทัดให้ยาวใกล้กัน — ตั้งที่ body ครั้งเดียว
+   text-wrap สืบทอดลงไปทุกข้อความในหน้า หน้าใหม่ในอนาคตจึงได้กฎนี้เองโดยไม่ต้องจำ
+   ช่องพิมพ์ไม่ใช้ balance — บรรทัดจะกระโดดไปมาระหว่างพิมพ์ */
+body { text-wrap: balance; }
+input, textarea, [contenteditable] { text-wrap: wrap; }
+
 /* กรอบเกมโตตามหน้าต่าง โดยยังคงอัตราส่วน 960/420 ไว้เป๊ะ ๆ
  *
  * ตัวคุมมีสามตัว เอาอันที่เล็กที่สุดเสมอ:
@@ -4987,11 +4996,15 @@ canvas[hidden] { display: none; }
 .pf-bubble-text {
   grid-area: 1 / 1;
   z-index: 1;
-  padding: 0 14%;
-  margin-top: 6%;
+  /* ── เผื่อที่บน-ล่างให้สระกับวรรณยุกต์ ──
+     line-clamp ต้องใช้ overflow: hidden ซึ่งตัดทุกอย่างที่ล้นกรอบทิ้ง
+     ฟอนต์ Mali มีสระบน + วรรณยุกต์ซ้อนกันสูงมาก (ขี้ ปี่ นี้) ถ้าบรรทัดเตี้ยและกรอบชิดตัวอักษร
+     ไม้โท/ไม้เอกของบรรทัดแรกจะโดนตัดหายไปเฉย ๆ — ขยายบรรทัดและเว้นขอบบนล่างไว้ในกรอบเอง */
+  padding: .42em 14% .28em;
+  margin-top: 4%;
   font-family: "Mali", system-ui, sans-serif;
   font-size: calc(var(--u) * 4.8);
-  line-height: 1.35;
+  line-height: 1.62;
   color: #3A1D50;
   text-align: center;
   display: -webkit-box;
@@ -5004,7 +5017,7 @@ canvas[hidden] { display: none; }
 /* ก้อนเมฆเป็นทรงโค้ง พื้นที่พิมพ์จริงแคบกว่ากล่อง — จอเตี้ยให้ลูกโป่งกว้างขึ้น ข้อความจะได้ไม่ล้นขอบเมฆ */
 @media (max-height: 520px) {
   .pf-bubble { width: 50%; min-height: calc(var(--u) * 30); }
-  .pf-bubble-text { padding: 0 12%; -webkit-line-clamp: 2; }
+  .pf-bubble-text { padding: .42em 12% .28em; -webkit-line-clamp: 2; }
 }
 .pf-bubble-dot { position: absolute; border-radius: 50%; background: #FFFDF7; box-shadow: 0 2px 6px rgba(20,8,32,.3); }
 .pf-bubble-dot.big { width: clamp(7px, 1.1vw, 13px); height: clamp(7px, 1.1vw, 13px); left: 14%; bottom: clamp(-11px, -1.6dvh, -6px); }
@@ -5376,7 +5389,11 @@ canvas[hidden] { display: none; }
 .pf-code b { font-family: "Mali", monospace; font-weight: 700; letter-spacing: .12em; font-size: calc(var(--u) * 5.4); }
 .pf-find svg { width: clamp(11px, 1.4vw, 16px); height: clamp(11px, 1.4vw, 16px); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
 .pf-find:active { transform: translateY(1px); }
-.pf-pop.other .pf-friend-tools { display: none; }
+/* ส่องโปรไฟล์คนอื่น: ยังเห็นรหัสแมวน้อยของเขาพร้อมปุ่มคัดลอก แต่ไม่มีปุ่มส่องโปรไฟล์ต่อ */
+.pf-pop.other .pf-find { display: none; }
+/* "รหัสแมวน้อยของ <ชื่อ>" — ชื่อยาวหดเป็น … ไม่ดันป้ายจนชนปุ่มเพิ่มเพื่อน */
+.pf-code { min-width: 0; }
+.pf-code small { min-width: 0; max-width: calc(var(--u) * 70); overflow: hidden; text-overflow: ellipsis; }
 
 /* ข้อความตอบกลับ (คัดลอกแล้ว / เพิ่มเพื่อนแล้ว) ลอยเป็นป้ายเหนือแถวปุ่ม
    เคยวางแทรกในแถวเดียวกัน แล้วบนมือถือข้อความทับปุ่มส่องโปรไฟล์ */
@@ -8705,6 +8722,27 @@ canvas[hidden] { display: none; }
   .face-crop { max-height: min(100%, 52dvh); }
 }
 
+/* ── iPad: ช่องโชว์ของที่เลือก (แมวน้อย / ชุดแมว / สมบัติ) ──
+   จอ 4:3 สูงกว่าจอมือถือเยอะ คอลัมน์นี้เลยยืดเต็มความสูงการ์ดแต่กว้างแค่ 36%
+   ได้เป็นแท่งผอมสูง รูปข้างในโดนบีบ ที่ว่างบน-ล่างก็โหรงเหรง
+   บน iPad ให้กว้างขึ้นแล้วสูงเท่าของข้างใน (ไม่ยืดตามการ์ด) ลอยอยู่กลางแนวตั้ง
+   กรอบรูปผูกความกว้างกับความสูงจอไว้ด้วยกัน จึงยังเป็นสี่เหลี่ยมจัตุรัสเสมอ */
+@media (pointer: coarse) and (min-height: 620px) {
+  .stash-show {
+    width: clamp(240px, 40%, 340px);
+    align-self: center;
+    justify-content: flex-start;
+    gap: clamp(8px, 1.6dvh, 14px);
+    padding-block: 18px 22px;
+  }
+  .stash-show .stash-face { height: auto; width: min(100%, 42dvh); }
+
+  /* กรอบตัดรูปหน้าน้อง: 52dvh ใหญ่เกินคอลัมน์บน iPad จนกินข้ามเส้นคั่นแถบซ้าย
+     ผูกกับความกว้างจอด้วย (38vw) กรอบจะอยู่ในคอลัมน์ของมันเสมอ */
+  .face-work { min-height: min(100%, 46dvh); }
+  .face-crop { max-height: min(100%, 46dvh, 38vw); }
+}
+
 /* แท็บเล็ตเล็ก (iPad 10-11") คอลัมน์เหลือราว 110-140px
    แถวเครื่องมือสี่ปุ่มเรียงแถวเดียวจึงกว้างเกินจนล้นขอบ (วัดแล้ว scrollWidth เกิน)
    พับเป็นสองแถวแทน — คอลัมน์มีความสูงเหลือเพียบพออยู่แล้วบนจอสูง 768+ */
@@ -8837,13 +8875,6 @@ canvas[hidden] { display: none; }
   min-height: var(--backbtn);
 }
 .tl-titles { display: flex; flex-direction: column; line-height: 1; }
-.tl-kicker {
-  font-family: "Mali", sans-serif;
-  font-weight: 700;
-  font-size: clamp(8px, 1.3dvh, 10.5px);
-  letter-spacing: .22em;
-  color: #C9A9EC;
-}
 .tl-head .skin-title {
   font-size: clamp(17px, 2.9dvh, 24px);
   padding-bottom: 3px;
@@ -9550,7 +9581,6 @@ canvas[hidden] { display: none; }
   .tl-side-note { display: none; }
   /* โน้ตหายไปแล้ว ปุ่มอ่านวิธีใช้ต้องกลับมาเป็นตัวที่ดันลงชิดขอบล่างเอง */
   .tl-side .tl-side-note + .tl-help { margin-top: auto; }
-  .tl-kicker { display: none; }
   .tl-side { width: clamp(118px, 17%, 160px); }
   .tl-sheet { padding-block: 12px; }
 }
@@ -9561,7 +9591,7 @@ canvas[hidden] { display: none; }
    แถบนั้นกินที่จนกริดไม่เหลือให้เห็นเลย — เรียงข้างกันแบบเดิมแล้วย่อทุกอย่างลงใช้ได้จริงกว่า
    (มือถือเล่นแนวนอนเสมอ แนวตั้งมีหน้าบอกให้หมุนจอ จึงไม่มีจอไหนได้ประโยชน์จากการซ้อน) */
 @media (max-width: 720px) {
-  .tl-kicker, .tl-side-note { display: none; }
+  .tl-side-note { display: none; }
   .tl-side .tl-side-note + .tl-help { margin-top: auto; }
   .tl-side { width: clamp(96px, 20%, 130px); }
   .tl-side-label { font-size: 10px; }

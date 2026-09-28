@@ -33,6 +33,10 @@ body {
   overflow: hidden;
 }
 
+/* ห้ามคำตกบรรทัดเดี่ยว — กติกาทั้งโปรเจกต์ (ดู CLAUDE.md และกฎเดียวกันใน src/style.css) */
+body { text-wrap: balance; }
+input, textarea, [contenteditable] { text-wrap: wrap; }
+
 /* ── แถบบนสุด ───────────────────────────────────────── */
 .bar {
   display: flex;
@@ -913,3 +917,45 @@ body.bonus-doc #kitFood .set-head { display: none !important; }
   border: 1px solid rgba(143,157,255,.35);
 }
 .bonus-note .tip { margin: 0 0 6px; }
+
+/* ── เมนูคลิกขวา (รวมกลุ่ม / ยกเลิกกลุ่ม / ลบ) ── */
+.ctxmenu.hidden { display: none; }
+.ctxmenu {
+  position: fixed;
+  z-index: 95;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .55);
+  display: grid;
+  gap: 2px;
+}
+.ctxmenu .ctx-head { padding: 6px 10px 8px; font-size: 12px; color: var(--soft); }
+.ctxmenu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+.ctxmenu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ctxmenu button:hover:not(:disabled) { background: var(--panel2); }
+.ctxmenu button:disabled { opacity: .4; cursor: default; }
+.ctxmenu button[data-act="del"]:not(:disabled) { color: var(--bad); }
+.ctxmenu kbd {
+  font: 600 11px/1.4 ui-monospace, Consolas, monospace;
+  color: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 5px;
+}

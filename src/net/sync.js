@@ -11,10 +11,12 @@
 // ผลคือถ้าเน็ตหลุดหรือยังไม่ได้ตั้งคีย์ Supabase เกมทำงานเหมือนเดิมเป๊ะ
 // แค่ไม่มีสำเนาบนคลาวด์เท่านั้น
 // ─────────────────────────────────────────────────────────────
-import { KEYS, onStorageWrite } from '../storage.js';
+import {
+  KEYS, onStorageWrite, wipeAccountData, restoreAccountStash, readAccountExtras, writeAccountExtras,
+} from '../storage.js';
 import {
   cloudReady, restoreSession, signInGuest,
-  fetchPlayer, fetchBests, pushPlayer, pushScore, pushPulls,
+  fetchPlayer, fetchBests, pushPlayer, pushScore, pushPulls, userId,
 } from './cloud.js';
 
 // ชื่อคีย์ทุกตัวมาจาก storage.js ที่เดียว เคยประกาศซ้ำที่นี่แล้วเสี่ยงเพี้ยนจากกัน
@@ -78,6 +80,9 @@ function readLocal() {
     stats: readJson(KEYS.pref('stats'), {}),
     quests_claimed: readJson(KEYS.pref('questsClaimed'), []),
     mail: readJson(KEYS.pref('inbox'), []),
+    // ทุกอย่างของบัญชีที่ยังไม่มีคอลัมน์ของตัวเอง (แมวที่ปลดล็อก รางวัลเลเวล การ์ด สเตตัส ฯลฯ)
+    // รวบเป็นก้อนเดียว — ระบบใหม่ในอนาคตขึ้นคลาวด์เองโดยไม่ต้องมาเติมที่นี่ (ดู storage.js)
+    extra: readAccountExtras(),
   };
 }
 
@@ -124,6 +129,7 @@ function writeLocal(row) {
     set(KEYS.pref('questsClaimed'), JSON.stringify(row.quests_claimed));
   }
   if (Array.isArray(row.mail)) set(KEYS.pref('inbox'), JSON.stringify(row.mail));
+  if (row.extra && typeof row.extra === 'object') writeAccountExtras(row.extra);
 }
 
 /**
@@ -202,29 +208,18 @@ export function recordPulls(results) {
  * ใช้ร่วมกันทุกบัญชี ถ้าไม่ล้างก่อน ของบัญชีเก่าจะค้างปนกับของบัญชีใหม่
  * แล้วถูกดันขึ้นคลาวด์ตามหลังจนข้อมูลสองบัญชีปนกัน
  */
-export function clearLocalProgress() {
+/**
+ * ล้างข้อมูลของบัญชีออกจากเครื่อง — ใช้ก่อนออกจากระบบหรือสลับไปบัญชีอื่น
+ * @param stashFor user id ของบัญชีที่กำลังออก ถ้ากลับเข้ามาได้อีก (ผูกอีเมล) — ดู wipeAccountData
+ */
+export function clearLocalProgress(stashFor = null) {
   // ปิดการดันขึ้นคลาวด์ก่อนล้าง ไม่งั้นคิวที่ค้างอยู่ (หรือตัว pagehide ตอนโหลด
   // หน้าใหม่) จะดันของว่าง ๆ ขึ้นไปทับข้อมูลของบัญชีที่เพิ่งเข้ามาจนหายเกลี้ยง
   online = false;
   clearTimeout(timer);
   timer = null;
-
-  try {
-    // ต้องล้างของใหม่ด้วย ไม่งั้นสมบัติกับเพชรของบัญชีก่อนหน้าจะค้างอยู่
-    // แล้วถูกดันขึ้นไปทับบัญชีที่เพิ่งเข้ามา
-    const doomed = [
-      GOLD_KEY, OWNED_KEY, NAME_KEY, KEYS.outfit, KEYS.skin, KEYS.stage,
-      KEYS.gems, KEYS.treasures, KEYS.equip, KEYS.xp,
-      KEYS.pref('stats'), KEYS.pref('questsClaimed'), KEYS.pref('inbox'),
-    ];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(KEYS.bestPrefix)) doomed.push(k);
-    }
-    doomed.forEach((k) => localStorage.removeItem(k));
-  } catch {
-    /* ลบไม่ได้ก็ปล่อย ไม่ใช่เหตุให้เข้าสู่ระบบไม่สำเร็จ */
-  }
+  // ล้างทุกคีย์ของเกม เว้นค่าของเครื่อง (เสียง ภาษา กราฟิก) — รายละเอียดใน storage.js
+  wipeAccountData(stashFor);
 }
 
 // เข้าได้ทางเดียวเท่านั้นต่อการเปิดหน้าหนึ่งครั้ง — resume() ล้มเหลวแล้วผู้เล่น
@@ -235,6 +230,10 @@ let hydrated = false;
 async function hydrate() {
   if (hydrated) return true;
   hydrated = true;
+
+  // เข้าบัญชีที่เคยออกจากเครื่องนี้ไป = คืนของที่มีแต่ในเครื่อง (แมวที่ปลดล็อก รางวัลเลเวล ฯลฯ)
+  // ต้องทำก่อนเกมอ่าน localStorage — hydrate ทำงานใน boot.js ก่อนโหลดตัวเกมพอดี
+  restoreAccountStash(userId());
 
   const [row, bests] = await Promise.all([fetchPlayer(), fetchBests()]);
   const local = readLocal();
@@ -258,6 +257,12 @@ async function hydrate() {
       set(KEYS.best(stageId), String(score));
     }
     online = true;
+    // ผู้เล่นเดิมก่อนมีคอลัมน์ extra: บนคลาวด์ยังว่าง แต่เครื่องนี้มีของอยู่ → ส่งขึ้นไปรอบแรก
+    // (รวมถึงของที่เพิ่งรวมจากสองฝั่งใน writeAccountExtras) ถ้าคอลัมน์ยังไม่มี pushPlayer ข้ามให้เอง
+    const extraNow = readAccountExtras();
+    if (JSON.stringify(row.extra || {}) !== JSON.stringify(extraNow) && Object.keys(extraNow).length) {
+      schedule();
+    }
   }
 
   onStorageWrite((kind, arg) => {

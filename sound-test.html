@@ -75,7 +75,10 @@
     word-break: break-word;
   }
   .hint { font-size: 13px; color: #C9AEE8; margin: 14px 0 6px; }
-</style>
+    /* ห้ามคำตกบรรทัดเดี่ยว — กติกาทั้งโปรเจกต์ (ดู CLAUDE.md) */
+    body { text-wrap: balance; }
+    input, textarea { text-wrap: wrap; }
+  </style>
 </head>
 <body>
 

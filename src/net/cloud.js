@@ -224,18 +224,31 @@ export async function signOut() {
 // ── ข้อมูลผู้เล่น ────────────────────────────────────────────
 
 /** อ่านแถวผู้เล่นของตัวเอง — คืน null ถ้าอ่านไม่ได้หรือยังไม่มีแถว */
+/**
+ * ฐานข้อมูลมีคอลัมน์ players.extra แล้วหรือยัง (supabase/account_extra.sql)
+ * null = ยังไม่รู้ · ถามครั้งแรกตอน fetchPlayer ถ้ายังไม่มีก็ถอยไปอ่าน/เขียนแบบเดิม
+ * ต้องกันไว้ เพราะขอคอลัมน์ที่ไม่มีอยู่ = ทั้งคำสั่งพัง = ซิงก์ทั้งบัญชีพังตาม
+ */
+let hasExtra = null;
+const isExtraMissing = (e) => /extra/i.test(String(e?.message || '')) && /column|schema/i.test(String(e?.message || ''));
+
 export async function fetchPlayer() {
   const c = await client();
   if (!c || !uid) return null;
+  const base = 'gold, owned, outfit, skin, stage, name, '
+    + 'gems, treasures, equip, xp, stats, quests_claimed, mail';
   try {
-    const { data, error } = await c
+    let { data, error } = await c
       .from('players')
-      .select(
-        'gold, owned, outfit, skin, stage, name, '
-        + 'gems, treasures, equip, xp, stats, quests_claimed, mail',
-      )
+      .select(hasExtra === false ? base : base + ', extra')
       .eq('id', uid)
       .maybeSingle();
+    if (error && hasExtra !== false && isExtraMissing(error)) {
+      hasExtra = false;
+      ({ data, error } = await c.from('players').select(base).eq('id', uid).maybeSingle());
+    } else if (!error) {
+      hasExtra = hasExtra !== false;
+    }
     if (error) throw error;
     return data;
   } catch (e) {
@@ -342,7 +355,15 @@ export async function pushPlayer(state) {
   const c = await client();
   if (!c || !uid) return false;
   try {
-    const { error } = await c.from('players').upsert({ id: uid, ...state });
+    const row = { id: uid, ...state };
+    if (hasExtra === false) delete row.extra;
+    let { error } = await c.from('players').upsert(row);
+    // ยังไม่ได้รัน account_extra.sql — ส่งใหม่แบบไม่มีก้อน extra แล้วจำไว้ไม่ส่งอีก
+    if (error && 'extra' in row && isExtraMissing(error)) {
+      hasExtra = false;
+      delete row.extra;
+      ({ error } = await c.from('players').upsert(row));
+    }
     if (error) throw error;
     return true;
   } catch (e) {

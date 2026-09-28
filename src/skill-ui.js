@@ -300,7 +300,6 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
       c.classList.toggle('on', on);
       c.setAttribute('aria-selected', String(on));
     }
-    $('#tlKicker').textContent = tab === 'skill' ? 'SKILL' : 'TALENT';
     $('#tlTitle').textContent = tab === 'skill' ? 'สกิล' : 'พรสวรรค์';
     if (tab === 'skill') { render(); grid.scrollTop = 0; }
   }

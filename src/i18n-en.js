@@ -941,6 +941,7 @@ export const EN_RULES = [
   { re: /^หลอดบนหัวเต็มทุก (\d+) วิ$/, en: 'The bar over its head fills every $1s' },
   { re: /^🔒 (.+)$/, en: '🔒 $1' },
   // ── ระบบเพื่อน ──
+  { re: /^รหัสแมวน้อยของ (.+)$/, en: "$1's kitty code" },
   { re: /^ออนไลน์เมื่อ (\d+) นาทีที่แล้ว$/, en: 'Online $1 min ago' },
   { re: /^ออนไลน์เมื่อ (\d+) ชม\.ที่แล้ว$/, en: 'Online $1 h ago' },
   { re: /^ออนไลน์เมื่อ (\d+) วันที่แล้ว$/, en: 'Online $1 d ago' },

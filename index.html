@@ -646,7 +646,6 @@
         <div class="pop tl-pop">
           <div class="tl-head">
             <div class="tl-titles">
-              <span class="tl-kicker" id="tlKicker" aria-hidden="true">SKILL</span>
               <h2 class="skin-title" id="tlTitle">สกิล</h2>
             </div>
             <!-- สองหมวดในแผงเดียว: สกิล (ท่าไม้ตายตอนหลอดบนหัวเต็ม) / พรสวรรค์ (นิสัยตลอดตา)
@@ -1478,11 +1477,12 @@
                     <i class="p1"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p2"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i><i class="p3"><svg viewBox="0 0 34 30" aria-hidden="true"><ellipse cx="7" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="5.4" rx="4.4" ry="5.4"/><ellipse cx="27" cy="9" rx="4.6" ry="5.6"/><ellipse cx="17" cy="21" rx="9" ry="7.6"/></svg></i>
                   </span>
 
-                  <!-- เครื่องมือเพื่อน (เฉพาะโปรไฟล์ของเรา): รหัสเพื่อน + ส่องโปรไฟล์คนอื่น -->
+                  <!-- เครื่องมือเพื่อน: รหัสแมวน้อย + ปุ่มคัดลอก (ของเราและของคนที่ส่องอยู่)
+                       ปุ่มส่องโปรไฟล์คนอื่นมีเฉพาะในโปรไฟล์ของเรา -->
                   <div class="pf-friend-tools" id="pfFriendTools">
                     <!-- รหัสของเราเอง: ป้ายบอกรหัส + ปุ่มคัดลอกแยกชัด ๆ (เดิมต้องเดาว่าแตะป้ายแล้วคัดลอก) -->
                     <div class="pf-code">
-                      <small>รหัสแมวน้อย</small><b id="pfCodeText">— — —</b>
+                      <small id="pfCodeLabel">รหัสแมวน้อย</small><b id="pfCodeText">— — —</b>
                       <button type="button" class="pf-copy" id="pfCode" aria-label="คัดลอกรหัสแมวน้อย">
                         <svg class="ico-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg>
                         <svg class="ico-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>

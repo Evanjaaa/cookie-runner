@@ -25,7 +25,7 @@ import {
   AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute,
   platTop, highestTop, footing,
 } from '../level.js';
-import { drawPlats } from '../render/platforms.js';
+import { drawPlats, PLAT_THEMES } from '../render/platforms.js';
 import { GATES, GATE_LIST, gateMarks } from '../gates.js';
 import { gateViewAt, doorOpenAt } from '../gate-run.js';
 import { drawGateBack, drawGateFront, warmGateArt } from '../render/gates/index.js';
@@ -124,6 +124,16 @@ const PROP_TYPE_TH = { singleJump: 'กระโดด', doubleJump: 'กระ�
 /** วงเล็บต่อท้ายชื่อชิป บอกวิธีผ่านแบบเห็นปุ๊บรู้ปั๊บ */
 const PROP_TAG = { singleJump: '(กระโดด 1)', doubleJump: '(กระโดด 2)', crouch: '(หมอบ)' };
 
+/** ชื่อพื้นเหยียบตามหน้าตาของแต่ละด่าน [เนิน, พื้นลอย] — คีย์ = stage.theme */
+const PLAT_ART_NAME = {
+  bakery: ['เนินแป้งอบ', 'ชั้นไม้'],
+  garden: ['เนินหญ้า', 'กิ่งไม้'],
+  cavern: ['เนินหินคริสตัล', 'หิ้งคริสตัล'],
+  beach: ['เนินทราย', 'ท่าเรือไม้'],
+  space: ['เนินหินอวกาศ', 'แผ่นพลังงาน'],
+  snow: ['เนินหิมะ', 'หิ้งน้ำแข็ง'],
+};
+
 const KIT = [
   { t: 'jump', group: 'jump', pal: 'mark', label: 'จุดกด', sub: 'กระโดด 1 ครั้ง' },
 
@@ -176,9 +186,16 @@ const KIT = [
 
   // ── พื้นเหยียบได้ ──
   // ยังมีแค่ในหน้านี้ เกมจริงยังไม่รู้จัก — ไว้ลองจังหวะให้ลงตัวก่อนค่อยย้ายเข้าเครื่องเกม
-  { t: 'hill', group: 'plat', pal: 'plat', label: 'เนินคุกกี้', sub: 'เดินขึ้นได้เลย ไม่ต้องกระโดด', w: 320, h: 70, wide: true },
+  // ── ตามด่าน: หน้าตาเปลี่ยนเองตามด่านที่ท่อนนี้ไปอยู่ ──
+  { t: 'hill', group: 'plat', pal: 'plat', label: 'เนิน', sub: 'เดินขึ้นได้เลย · หน้าตาตามด่าน', w: 320, h: 70, wide: true },
   { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอย', sub: 'กระโดดขึ้นไปเหยียบ', w: 200, lift: 90 },
   { t: 'ledge', group: 'plat', pal: 'plat', label: 'พื้นลอยเหนือหลุม', sub: 'ไม่กระโดด = ตก', w: 260, lift: 90, under: true },
+  // ── หน้าตาของด่านที่เลือก (art) — วางได้ทุกด่าน เหมือนสิ่งกีดขวางชุดใหม่ ──
+  ...PLAT_THEMES.flatMap((art) => [
+    { t: 'hill', group: 'plat', pal: 'platArt', art, label: PLAT_ART_NAME[art][0], sub: 'เดินขึ้นได้เลย', w: 320, h: 70, wide: true },
+    { t: 'ledge', group: 'plat', pal: 'platArt', art, label: PLAT_ART_NAME[art][1], sub: 'กระโดดขึ้นไปเหยียบ', w: 200, lift: 90 },
+    { t: 'ledge', group: 'plat', pal: 'platArt', art, label: PLAT_ART_NAME[art][1] + 'เหนือหลุม', sub: 'ไม่กระโดด = ตก', w: 260, lift: 90, under: true },
+  ]),
 
   // ── สิ่งกีดขวางชุดใหม่ประจำด่าน ── สร้างจากทะเบียน src/obstacles.js ทั้งหมด (ชื่อ ขนาด ประเภท)
   ...PROP_LIST.map((p) => ({
@@ -189,6 +206,13 @@ const KIT = [
 ];
 
 const PLAT_T = new Set(['hill', 'ledge']);
+/** ช่วงความสูงของพื้นลอย (ลอยสูงจากพื้น) — ใช้ทั้งช่องในแผงขวา การลากในสนาม และปุ่ม G */
+const LIFT_MIN = 40;
+const LIFT_MAX = 260;
+const clampLift = (v) => Math.max(LIFT_MIN, Math.min(LIFT_MAX, Math.round(v)));
+
+/** หน้าตาพื้นเหยียบที่ตั้งเอง → ส่วนต่อท้ายในโค้ดที่ส่งออก (ไม่ตั้ง = ไม่ต่อท้าย ตามด่านเหมือนเดิม) */
+const artCode = (it) => (it.art ? `, art: '${it.art}'` : '');
 
 // ── ความสูงของชั้นต่าง ๆ — วัดจากส่วนโค้งจริงของเกม ไม่ได้ตั้งเลขเอง ──
 // แถวเม็ดอาหารตามโค้งสุ่มหนาแน่นพอจะได้จุดสูงสุดเป๊ะ (y ของเม็ด = กลางกล่องชนของแมว)
@@ -624,6 +648,12 @@ const STORE_KEY = 'meowzing:editor:chunks';
 let docs = [];
 let cur = 0;
 let sel = null;         // id ของชิ้นที่เลือก
+/**
+ * ชิ้นที่เลือกเพิ่มด้วย Shift+คลิก (นอกจาก sel ซึ่งเป็นชิ้นหลักที่แผงขวาโชว์)
+ * ปล่อย Shift แล้วยังเลือกค้าง — ลาก / G / ลูกศร / Delete ทำกับทุกชิ้นพร้อมกัน
+ * Ctrl+J รวมเป็นกลุ่ม (ใช้ป้าย grp ชุดเดียวกับชุดจัดวางสำเร็จ) · Ctrl+K ยกเลิกกลุ่ม
+ */
+const multi = new Set();
 let undoStack = [];
 let redoStack = [];
 let nextId = 1;
@@ -965,9 +995,11 @@ function build(d, off = 0) {
   for (const it of d.items) {
     if (!PLAT_T.has(it.t)) continue;
     const x = xOf(d, it) + off;
-    if (it.t === 'hill') plats.push(tag({ kind: 'hill', x, w: it.w, h: it.h }, it));
+    // art = หน้าตาของด่านที่เลือกไว้ (ไม่มี = ตามด่านที่วาง) — ภาพอย่างเดียว ไม่แตะการชน
+    const art = it.art ? { art: it.art } : {};
+    if (it.t === 'hill') plats.push(tag({ kind: 'hill', x, w: it.w, h: it.h, ...art }, it));
     else {
-      plats.push(tag({ kind: 'ledge', x, w: it.w, top: GROUND_Y - it.lift }, it));
+      plats.push(tag({ kind: 'ledge', x, w: it.w, top: GROUND_Y - it.lift, ...art }, it));
       // หลุมข้างใต้สั้นกว่าตัวพื้นลอยข้างละ 24px — เดินสุดปลายพื้นลอยแล้วยังลงพื้นปกติได้
       if (it.under && it.w > 60) pit.push(tag({ x: x + 24, w: it.w - 48 }, it));
     }
@@ -1305,7 +1337,7 @@ function draw() {
   }
   const gate = bonusView ? null : gateView(cam);
   if (gate) drawGateBack(ctx, gate.def, gate.v);
-  if (!bonusView) drawPlats(ctx, scene.plats || [], cam, pal);
+  if (!bonusView) drawPlats(ctx, scene.plats || [], cam, pal, st.theme);
 
   // ทั้งด่านมีจุดกดหลายสิบจุด วาดส่วนโค้งทุกจุดทุกเฟรมคือเปลืองเปล่า ๆ
   // เอาเฉพาะที่อยู่ใกล้จอพอจะมองเห็น เผื่อข้างละ 400px ให้เส้นที่เริ่มนอกจอยังต่อเนื่อง
@@ -1644,9 +1676,24 @@ function drawSelection() {
   if (!it) return;
   const b = itemBox(d, it);
   ctx.save();
-  if (it.grp) {
+  // ชิ้นอื่นที่เลือกไว้ด้วย (Shift+คลิก) — กรอบบางกว่าชิ้นหลัก
+  const ids = selIds(d);
+  if (ids.length > 1) {
+    ctx.strokeStyle = 'rgba(127,227,218,.9)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    for (const id of ids) {
+      if (id === it.id) continue;
+      const q = itemBox(d, byId(d, id));
+      ctx.strokeRect(q.x - cam - 3, q.y - 3, q.w + 6, q.h + 6);
+    }
+    ctx.setLineDash([]);
+  }
+  // กรอบกลุ่มของทุกกลุ่มที่มีชิ้นถูกเลือก
+  for (const g of new Set(ids.map((id) => byId(d, id).grp).filter(Boolean))) {
     // กรอบรวมทั้งชุด — เส้นจางกว่ากรอบชิ้นที่เลือก
-    const boxes = d.items.filter((q) => q.grp === it.grp).map((q) => itemBox(d, q));
+    const members = d.items.filter((q) => q.grp === g);
+    const boxes = members.map((q) => itemBox(d, q));
     const x0 = Math.min(...boxes.map((q) => q.x));
     const y0 = Math.min(...boxes.map((q) => q.y));
     const x1 = Math.max(...boxes.map((q) => q.x + q.w));
@@ -1657,7 +1704,8 @@ function drawSelection() {
     ctx.strokeRect(x0 - cam - 8, y0 - 8, x1 - x0 + 16, y1 - y0 + 16);
     ctx.fillStyle = 'rgba(255,143,184,.9)';
     ctx.font = '600 11px system-ui';
-    ctx.fillText(`ชุด: ${it.grpName || ''}`, x0 - cam - 6, y0 - 12);
+    const nm = members[0].grpName || '';
+    ctx.fillText(nm.startsWith('กลุ่ม') ? nm : `ชุด: ${nm}`, x0 - cam - 6, y0 - 12);
   }
   ctx.strokeStyle = '#FF8FB8';
   ctx.lineWidth = 2;
@@ -2492,6 +2540,7 @@ function addItem(kit, x) {
   if (kit.h !== undefined) it.h = kit.h;
   if (kit.lift !== undefined) it.lift = kit.lift;
   if (kit.under) it.under = true;
+  if (kit.art) it.art = kit.art;
   if (kit.kind) it.kind = kit.kind;
   mutate((d) => {
     d.items.push(it);
@@ -2540,6 +2589,158 @@ function delItem(id) {
     }
   });
   if (sel === id) sel = null;
+}
+
+/**
+ * ทุกชิ้นที่ถูกเลือกอยู่ตอนนี้ — ชิ้นหลัก + ที่ Shift+คลิกเพิ่ม และชิ้นในกลุ่มเดียวกันทั้งหมด
+ * (เลือกชิ้นหนึ่งในกลุ่ม = เลือกทั้งกลุ่ม) · ของที่ถูกลบไปแล้วตัดทิ้งเอง
+ */
+function selIds(d = doc()) {
+  const out = new Set([...multi, ...(sel ? [sel] : [])].filter((id) => byId(d, id)));
+  const grps = new Set([...out].map((id) => byId(d, id).grp).filter(Boolean));
+  if (grps.size) for (const q of d.items) if (q.grp && grps.has(q.grp)) out.add(q.id);
+  return [...out];
+}
+
+/** กำลังเลือกหลายชิ้นแบบตั้งใจ (Shift+คลิก) อยู่ไหม — ไว้เลือกว่าแผงขวาจะโชว์แบบไหน */
+function isMulti(d = doc()) {
+  return multi.size > 0 && selIds(d).length > 1;
+}
+
+/** Shift+คลิก: เพิ่ม/เอาออกทีละชิ้น (ชิ้นในกลุ่ม = ทั้งกลุ่ม) */
+function toggleSel(d, hit) {
+  if (sel) multi.add(sel);
+  const ids = hit.grp ? d.items.filter((q) => q.grp === hit.grp).map((q) => q.id) : [hit.id];
+  const picked = selIds(d);
+  if (ids.some((id) => picked.includes(id))) {
+    for (const id of ids) multi.delete(id);
+    if (ids.includes(sel)) sel = [...multi].pop() || null;
+  } else {
+    for (const id of ids) multi.add(id);
+    sel = hit.id;
+  }
+  if (multi.size === 1 && multi.has(sel)) multi.clear();   // เหลือชิ้นเดียว = กลับเป็นเลือกปกติ
+}
+
+function clearSel() {
+  multi.clear();
+  sel = null;
+}
+
+/** ข้อความสั้น ๆ บนแถบสถานะล่างจอ แล้วหายเอง */
+function flashBar(html) {
+  showModalBar(html);
+  clearTimeout(flashBar.t);
+  flashBar.t = setTimeout(() => { if (!gmod) modalBar.classList.add('hidden'); }, 1800);
+}
+
+/**
+ * รวมกลุ่ม (Ctrl+J) — ทุกชิ้นที่เลือกเป็นกลุ่มเดียว
+ * ถ้าในนั้นมีกลุ่มเดิมอยู่ กลุ่มเดิมถูกรวมเข้ามาทั้งกลุ่ม = "จับกลุ่มเพิ่ม"
+ */
+function groupSel() {
+  const d = doc();
+  const ids = selIds(d);
+  if (ids.length < 2) { flashBar('<b>รวมกลุ่ม</b> เลือกอย่างน้อย 2 ชิ้นก่อน — กด <kbd>Shift</kbd> ค้างแล้วคลิกทีละชิ้น'); return; }
+  const olds = new Set(ids.map((id) => byId(d, id).grp).filter(Boolean));
+  if (olds.size === 1 && ids.every((id) => byId(d, id).grp)) { flashBar('<b>รวมกลุ่ม</b> ทุกชิ้นอยู่กลุ่มเดียวกันอยู่แล้ว'); return; }
+  // จับกลุ่มเพิ่ม = ขยายกลุ่มเดิม ใช้ป้ายกับชื่อของกลุ่มแรกที่มีอยู่ (ไม่ตั้งชื่อใหม่ให้งง)
+  const firstOld = ids.map((id) => byId(d, id)).find((q) => q.grp);
+  let g;
+  let name;
+  if (firstOld) {
+    g = firstOld.grp;
+    name = firstOld.grpName || 'กลุ่ม';
+  } else {
+    const used = new Set(d.items.map((q) => q.grpName).filter(Boolean));
+    let n = 1;
+    while (used.has(`กลุ่ม ${n}`)) n++;
+    g = uid();
+    name = `กลุ่ม ${n}`;
+  }
+  mutate((dd) => {
+    for (const id of ids) {
+      const q = byId(dd, id);
+      q.grp = g;
+      q.grpName = name;
+    }
+  });
+  multi.clear();
+  if (!sel || !ids.includes(sel)) sel = ids[0];
+  renderInspector();
+  flashBar(`<b>${olds.size ? 'จับกลุ่มเพิ่ม' : 'รวมกลุ่ม'}</b> ${esc(name)} · ${ids.length} ชิ้น — ลากชิ้นไหนก็ย้ายทั้งกลุ่ม`);
+}
+
+/** ยกเลิกกลุ่ม (Ctrl+K) — ทุกกลุ่มที่มีชิ้นถูกเลือกอยู่ แยกเป็นชิ้นอิสระ */
+function ungroupSel() {
+  const d = doc();
+  const grps = new Set(selIds(d).map((id) => byId(d, id).grp).filter(Boolean));
+  if (!grps.size) { flashBar('<b>ยกเลิกกลุ่ม</b> ชิ้นที่เลือกไม่ได้อยู่ในกลุ่มไหน'); return; }
+  mutate((dd) => {
+    for (const q of dd.items) if (q.grp && grps.has(q.grp)) { delete q.grp; delete q.grpName; }
+  });
+  multi.clear();
+  renderInspector();
+  flashBar(`<b>ยกเลิกกลุ่ม</b> แยก ${grps.size} กลุ่มแล้ว — ทุกชิ้นย้ายอิสระ`);
+}
+
+/** ลบทุกชิ้นที่เลือก — ก้าวย้อนกลับก้าวเดียว */
+function delSel() {
+  const d = doc();
+  const ids = new Set(selIds(d));
+  if (!ids.size) return;
+  if (ids.size === 1) { delItem([...ids][0]); multi.clear(); return; }
+  mutate((dd) => {
+    // ของที่เกาะชิ้นที่ถูกลบ ต้องกลายเป็นพิกัดอิสระ "ที่เดิม" — จดตำแหน่งก่อนลบ
+    const keep = new Map(dd.items.filter((q) => !ids.has(q.id) && q.link && ids.has(q.link.id)).map((q) => [q.id, Math.round(xOf(dd, q))]));
+    dd.items = dd.items.filter((q) => !ids.has(q.id));
+    for (const q of dd.items) {
+      if (keep.has(q.id)) { q.x = keep.get(q.id); delete q.link; }
+      if (q.runTo && ids.has(q.runTo)) delete q.runTo;
+    }
+  });
+  clearSel();
+  renderInspector();
+}
+
+/** ปรับความสูงได้ไหม — พื้นลอย (ลอยสูงจากพื้น) กับของกิน (ยกสูง) · ที่เหลืออยู่ระดับพื้นเสมอ */
+const canRaise = (q) => q.t === 'ledge' || canLift(q);
+
+/**
+ * เตรียมข้อมูลลากขึ้นลงของทั้งชุด — ทุกชิ้นต้องปรับความสูงได้ ถึงจะยอมให้ลากขึ้นลง
+ * (ชิ้นเดียวที่ปรับไม่ได้ = ทั้งชุดขึ้นลงไม่ได้ ไม่งั้นระยะในกลุ่มจะเบี้ยวจากที่วางไว้)
+ * คืน { ok, start: [[id, lift, rise]], stuck: ชื่อชิ้นที่ปรับไม่ได้ }
+ */
+function raiseInfo(d, ids) {
+  const qs = ids.map((id) => byId(d, id)).filter(Boolean);
+  const stuck = qs.filter((q) => !canRaise(q));
+  return {
+    ok: stuck.length === 0,
+    start: qs.map((q) => [q.id, q.lift, q.rise || 0]),
+    stuck: [...new Set(stuck.map((q) => itemLabel(d, q).split(' ·')[0]))].slice(0, 3).join(', '),
+  };
+}
+
+/** ยกทั้งชุดขึ้น/ลง up px จากค่าเริ่ม (บวก = สูงขึ้น) */
+function raiseAll(d, start, up) {
+  for (const [id, lift, rise] of start) {
+    const q = byId(d, id);
+    if (!q) continue;
+    if (q.t === 'ledge') q.lift = clampLift(lift + up);
+    else if (q.t === 'fishRun' && !d.bonus) setRise(q, rise + up);
+    else q.rise = Math.round(rise + up);
+  }
+}
+
+/** แจ้งเตือนเล็ก ๆ ว่าชุดนี้ขึ้นลงไม่ได้ — ครั้งเดียวต่อการลากหนึ่งครั้ง */
+function warnNoRaise(info) {
+  flashBar(`<b>ลากขึ้นลงไม่ได้</b> ในกลุ่มมี <em>${esc(info.stuck)}</em> ที่ปรับความสูงไม่ได้`
+    + '<span>ย้ายซ้าย-ขวาได้ตามปกติ · อยากปรับความสูงเฉพาะบางชิ้น: Alt+ลาก หรือ Ctrl+K แยกกลุ่มก่อน</span>');
+}
+
+/** ชิ้นที่ย้ายได้ตรง ๆ ในชุดที่เลือก — ชิ้นที่เกาะจุดกดตามจุดกดไปเอง (ระยะในกลุ่มจึงไม่เพี้ยน) */
+function movableIn(d, ids) {
+  return ids.map((id) => byId(d, id)).filter((q) => q && !q.link);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2638,24 +2839,38 @@ cv.addEventListener('pointerdown', (ev) => {
 
   const hit = pick(d, p);
   if (hit) {
+    // Shift+คลิก = เลือกเพิ่ม / เอาออก ไม่ลาก (ปล่อย Shift แล้วยังเลือกค้าง)
+    if (ev.shiftKey) {
+      toggleSel(d, hit);
+      renderInspector();
+      return;
+    }
+    // คลิกชิ้นที่อยู่ในชุดที่เลือกไว้หลายชิ้น = ลากทั้งชุด ไม่ล้างการเลือก
+    const picked = selIds(d);
+    const keepMulti = multi.size > 0 && picked.includes(hit.id) && picked.length > 1;
+    if (!keepMulti) multi.clear();
     sel = hit.id;
     renderInspector();
-    // ── ชิ้นที่มาจากชุดจัดวางสำเร็จ: ลากชิ้นไหนก็ย้ายทั้งชุด (กด Alt ค้าง = ย้ายชิ้นเดียว) ──
+    // ── ย้ายหลายชิ้นพร้อมกัน: ชุดที่ Shift เลือกไว้ หรือกลุ่ม/ชุดจัดวาง (กด Alt ค้าง = ย้ายชิ้นเดียว) ──
     // ย้ายเฉพาะชิ้นที่เป็นพิกัดอิสระ ชิ้นที่เกาะจุดกดตามจุดกดไปเอง ระยะในชุดจึงไม่เพี้ยน
-    if (hit.grp && !ev.altKey) {
-      const orig = new Map(d.items.filter((q) => q.grp === hit.grp && !q.link).map((q) => [q.id, q.x]));
-      drag = { kind: 'group', grp: hit.grp, sx: p.x, orig };
+    const many = ev.altKey ? [] : keepMulti ? picked : hit.grp ? selIds(d) : [];
+    if (many.length > 1) {
+      const orig = new Map(movableIn(d, many).map((q) => [q.id, q.x]));
+      drag = { kind: 'group', grp: hit.grp, sx: p.x, sy: p.y, orig, raise: raiseInfo(d, many) };
       pushUndo();
       return;
     }
     // ของกินลากขึ้นลงได้ด้วย จึงต้องจำระยะแนวตั้งจากจุดที่จับไว้ ไม่งั้นแถวจะกระตุกมาอยู่ใต้นิ้ว
-    const offY = canLift(hit) ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
+    // พื้นลอยจำระยะจากผิวบนที่จับ — ลากขึ้นลงแล้วแผ่นไม่กระตุกมาอยู่ใต้นิ้ว
+    const offY = hit.t === 'ledge' ? p.y - (GROUND_Y - hit.lift)
+      : canLift(hit) ? p.y - (A.RUN_Y - (hit.rise || 0)) : 0;
     drag = { kind: 'move', id: hit.id, off: p.x - xOf(d, hit), offY, sy: p.y };
     pushUndo();
     return;
   }
 
-  sel = null;
+  // คลิกที่ว่าง = เลิกเลือกทั้งหมด (Shift ค้างอยู่ = คงการเลือกไว้ แค่เลื่อนจอ)
+  if (!ev.shiftKey) clearSel();
   renderInspector();
   drag = { kind: 'pan', sx: ev.clientX, cam: view.cam };
 });
@@ -2678,7 +2893,19 @@ cv.addEventListener('pointermove', (ev) => {
       const q = byId(d, id);
       if (q) q.x = x0 + dx;
     }
+    // ขึ้นลง: ต้องขยับแนวตั้งเกิน 6px ก่อน ลากแนวนอนมือสั่นแล้วความสูงไม่เพี้ยน
+    const dy = p.y - drag.sy;
+    if (drag.lifting || Math.abs(dy) > 6) {
+      if (drag.raise.ok) {
+        drag.lifting = true;
+        raiseAll(d, drag.raise.start, Math.round(-dy));
+      } else if (!drag.warned && Math.abs(dy) > 14) {
+        drag.warned = true;
+        warnNoRaise(drag.raise);
+      }
+    }
     dirty();
+    renderInspector();
     return;
   }
 
@@ -2691,6 +2918,12 @@ cv.addEventListener('pointermove', (ev) => {
     if (it.t === 'fishRun' && !d.bonus && (drag.lifting || Math.abs(p.y - drag.sy) > LANE_SNAP)) {
       drag.lifting = true;
       setRise(it, A.RUN_Y - (p.y - drag.offY));
+    }
+    // พื้นลอย: ลากขึ้นลงได้อิสระ = ปรับ "ลอยสูงจากพื้น" (ช่องในแผงขวาขยับตาม) — ต้องขยับเกิน 6px ก่อน
+    // ลากแนวนอนมือสั่นนิดหน่อยความสูงไม่เพี้ยน
+    if (it.t === 'ledge' && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
+      drag.lifting = true;
+      it.lift = clampLift(GROUND_Y - (p.y - drag.offY));
     }
     // ของกินชนิดอื่น (ลายวาดเอง โค้ง ซุ้ม คลื่น เกล็ดหิมะ) เลื่อนขึ้นลงได้ทุกพิกเซล ไม่ดูดเข้าชั้น
     if ((it.t !== 'fishRun' || d.bonus) && canLift(it) && (drag.lifting || Math.abs(p.y - drag.sy) > 6)) {
@@ -2802,15 +3035,20 @@ const KEYS = [
     ['Ctrl (ค้าง)', 'ระหว่าง G: ไม่ดูดเข้าจุดกด วางตรงไหนก็อยู่ตรงนั้น'],
     ['Shift (ค้าง)', 'ระหว่าง G/S: ขยับละเอียด ช้าลง 10 เท่า'],
     ['คลิกซ้าย · Enter · Space', 'ยืนยัน'],
-    ['คลิกขวา · Esc', 'ยกเลิก คืนที่เดิม'],
+    ['คลิกขวา · Esc', 'ยกเลิก คืนที่เดิม (ระหว่าง G/S)'],
   ]],
   ['เลือก / แก้ชิ้น', [
     ['คลิก', 'เลือกชิ้น (คลิกค้างแล้วลากก็ยังได้เหมือนเดิม)'],
     ['Tab · Shift+Tab', 'เลือกชิ้นถัดไป / ก่อนหน้า (เรียงซ้ายไปขวา)'],
-    ['Esc', 'เลิกเลือก'],
+    ['Esc', 'เลิกเลือกทั้งหมด'],
+    ['Shift+คลิก', 'เลือกหลายชิ้น (คลิกซ้ำ = เอาออก) — ปล่อย Shift แล้วยังเลือกค้าง ลาก / G / ลูกศร / Delete ทำพร้อมกัน'],
+    ['Ctrl+J', 'รวมที่เลือกเป็นกลุ่ม · เลือกกลุ่มเดิม + ชิ้นอื่นแล้วกด = จับกลุ่มเพิ่ม'],
+    ['Ctrl+K', 'ยกเลิกกลุ่มของชิ้นที่เลือก'],
+    ['คลิกขวา', 'เมนู: รวมกลุ่ม / จับกลุ่มเพิ่ม / ยกเลิกรวมกลุ่ม / ลบ / เลิกเลือก'],
+    ['Alt+ลาก', 'ย้ายชิ้นเดียวในกลุ่ม โดยไม่ลากทั้งกลุ่ม'],
     ['Shift+D', 'ทำสำเนาแล้วย้ายต่อทันที (เหมือน Blender)'],
     ['Ctrl+D', 'ทำสำเนาวางถัดไปทางขวา 60px'],
-    ['X · Delete', 'ลบชิ้นที่เลือก (Ctrl+Z เอาคืนได้)'],
+    ['X · Delete', 'ลบที่เลือกทั้งหมด (รวมทั้งกลุ่ม) · Ctrl+Z เอาคืนได้'],
     ['← →', 'ขยับทีละ 1px · Shift = ทีละ 10px'],
   ]],
   ['มุมมอง', [
@@ -2861,12 +3099,17 @@ function startModal(kind) {
   playing = false;
   pushUndo();
   const left = xOf(d, it);
+  // หลายชิ้น (Shift เลือก / กลุ่ม) — G ย้ายทุกชิ้นพร้อมกันแนวนอน · S ยังยืดเฉพาะชิ้นหลัก
+  const group = kind === 'grab' ? selIds(d) : [];
   gmod = {
     kind,
     id: it.id,
+    many: group.length > 1 ? movableIn(d, group).map((q) => [q.id, q.x]) : null,
+    raise: group.length > 1 ? raiseInfo(d, group) : null,
     snap: undoStack[undoStack.length - 1],   // ก้อนที่ pushUndo เพิ่งเก็บ = สถานะก่อนเริ่ม
     startX: left,
     startRise: it.rise || 0,
+    startLift: it.lift,
     startW: it.w,
     startN: it.n,
     startArm: it.arm || 24,
@@ -2900,9 +3143,31 @@ function updateModal() {
     if (m.axis === 'x') dy = 0;
     if (m.axis === 'y') dx = 0;
 
+    if (m.many) {
+      // ย้ายทั้งชุด ระยะห่างในชุดคงเดิม (ไม่ดูดเข้าจุดกด — ชุดทั้งชุดจะเบี้ยว)
+      const step = Math.round(dx);
+      for (const [id, x0] of m.many) { const q = byId(d, id); if (q) q.x = x0 + step; }
+      // ขึ้นลงได้เฉพาะชุดที่ทุกชิ้นปรับความสูงได้ — ไม่งั้นเตือนแทน (ซ้ายขวายังได้)
+      const up = Math.round(-dy);
+      let upTxt = '';
+      if (m.raise.ok) {
+        raiseAll(d, m.raise.start, up);
+        upTxt = ` · สูง ${up >= 0 ? '+' : ''}${up}`;
+      } else if (Math.abs(dy) > 14 || m.axis === 'y') {
+        upTxt = ` · <em>ขึ้นลงไม่ได้ — มี ${esc(m.raise.stuck)} ที่ปรับความสูงไม่ได้</em>`;
+      }
+      showModalBar(`<b>G ย้าย ${selIds(d).length} ชิ้น</b> x ${step >= 0 ? '+' : ''}${step}${upTxt}`
+        + (m.typed ? ` · พิมพ์: <kbd>${m.typed}</kbd>` : '')
+        + '<span>คลิกซ้าย/Enter ยืนยัน · คลิกขวา/Esc ยกเลิก · X/Y ล็อกแกน · พิมพ์ระยะได้ · Shift ละเอียด</span>');
+      dirty();
+      renderInspector();
+      return;
+    }
+
     const want = Math.round(m.startX + dx);
     if (m.free) { it.x = want; delete it.link; } else snapTo(d, it, want);
 
+    if (it.t === 'ledge') it.lift = clampLift(m.startLift - dy);
     if (canLift(it)) {
       const rise = m.startRise - dy;
       if (it.t === 'fishRun' && !d.bonus) {
@@ -2914,10 +3179,11 @@ function updateModal() {
     }
 
     const nx = Math.round(xOf(d, it) - m.startX);
-    const ny = Math.round((it.rise || 0) - m.startRise);
+    const ny = it.t === 'ledge' ? it.lift - m.startLift : Math.round((it.rise || 0) - m.startRise);
+    const upDown = canLift(it) || it.t === 'ledge';
     const ax = m.axis === 'x' ? ' · <em>ล็อกแนวนอน</em>' : m.axis === 'y' ? ' · <em>ล็อกแนวตั้ง</em>' : '';
     const snapTxt = it.link ? ' · <em>เกาะจุดกด</em>' : '';
-    showModalBar(`<b>G ย้าย</b> x ${nx >= 0 ? '+' : ''}${nx}${canLift(it) ? ` · สูง ${ny >= 0 ? '+' : ''}${ny}` : ''}`
+    showModalBar(`<b>G ย้าย</b> x ${nx >= 0 ? '+' : ''}${nx}${upDown ? ` · สูง ${ny >= 0 ? '+' : ''}${ny}` : ''}`
       + (m.typed ? ` · พิมพ์: <kbd>${m.typed}</kbd>` : '') + ax + snapTxt
       + '<span>คลิกซ้าย/Enter ยืนยัน · คลิกขวา/Esc ยกเลิก · X/Y ล็อกแกน · Ctrl ไม่ดูด · Shift ละเอียด</span>');
   } else {
@@ -3006,6 +3272,7 @@ window.addEventListener('pointerdown', (ev) => {
   if (!gmod) return;
   ev.preventDefault();
   ev.stopPropagation();
+  if (ev.button === 2) noMenuOnce = true;   // คลิกขวานี้ใช้ยกเลิกแล้ว ไม่ต้องเปิดเมนู
   endModal(ev.button !== 2);
 }, true);
 
@@ -3090,9 +3357,13 @@ window.addEventListener('keydown', (ev) => {
     frameSelected();
     return;
   }
-  if (ev.key === 'Escape') { if (sel) { sel = null; renderInspector(); } return; }
+  if (ev.key === 'Escape') { if (sel || multi.size) { clearSel(); renderInspector(); } return; }
 
   if (!sel || locked()) return;
+
+  // ── รวมกลุ่ม / ยกเลิกกลุ่ม ── (Ctrl+J / Ctrl+K — ต้องกันไม่ให้เบราว์เซอร์เปิดหน้าดาวน์โหลด/ช่องค้นหา)
+  if (mod && k === 'j') { ev.preventDefault(); groupSel(); return; }
+  if (mod && k === 'k') { ev.preventDefault(); ungroupSel(); return; }
 
   if ((k === 'f' && !mod) || (ev.code === 'NumpadDecimal')) { ev.preventDefault(); frameSelected(); return; }
   if (k === 'g' && !mod) { ev.preventDefault(); startModal('grab'); return; }
@@ -3104,15 +3375,26 @@ window.addEventListener('keydown', (ev) => {
   }
   if (k === 'd' && mod) { ev.preventDefault(); duplicateSel(60); return; }
 
-  if (ev.key === 'Delete' || ev.key === 'Backspace' || (k === 'x' && !mod)) { ev.preventDefault(); delItem(sel); return; }
+  // ลบทุกชิ้นที่เลือก — รวมทั้งกลุ่มถ้าคลิกชิ้นในกลุ่ม (ลากก็ย้ายทั้งกลุ่ม ลบจึงต้องไปด้วยกัน)
+  // อยากลบชิ้นเดียวในกลุ่ม: Ctrl+K แยกกลุ่มก่อน
+  if (ev.key === 'Delete' || ev.key === 'Backspace' || (k === 'x' && !mod)) {
+    ev.preventDefault();
+    delSel();
+    return;
+  }
 
   if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
     ev.preventDefault();
     const step = (ev.key === 'ArrowLeft' ? -1 : 1) * (ev.shiftKey ? 10 : 1);
+    const ids = selIds();
     mutate((d) => {
-      const it = byId(d, sel);
-      if (it.link) { it.x = Math.round(xOf(d, it)); delete it.link; }
-      it.x += step;
+      for (const id of ids) {
+        const it = byId(d, id);
+        if (!it) continue;
+        // หลายชิ้น: ชิ้นที่เกาะจุดกดตามจุดกดไปเอง / ชิ้นเดียว: ปลดเกาะแล้วขยับ (แบบเดิม)
+        if (it.link) { if (ids.length > 1) continue; it.x = Math.round(xOf(d, it)); delete it.link; }
+        it.x += step;
+      }
     });
   }
 });
@@ -3125,7 +3407,67 @@ cv.addEventListener('wheel', (ev) => {
   view.cam = clampCam(view.cam + delta * (W / r.width) * 0.9);
   if (gmod) updateModal();
 }, { passive: false });
-cv.addEventListener('contextmenu', (ev) => ev.preventDefault());
+cv.addEventListener('contextmenu', (ev) => {
+  ev.preventDefault();
+  // คลิกขวาที่เพิ่งใช้ยกเลิก G/S — ไม่ต้องเปิดเมนูต่อ
+  if (noMenuOnce) { noMenuOnce = false; return; }
+  if (locked()) return;
+  const d = doc();
+  const hit = pick(d, worldAt(ev));
+  // คลิกขวาที่ชิ้นที่ยังไม่ได้เลือก = เลือกชิ้นนั้นก่อน (Shift ค้าง = เลือกเพิ่ม) แบบโปรแกรมทั่วไป
+  if (hit && !selIds(d).includes(hit.id)) {
+    if (ev.shiftKey) toggleSel(d, hit); else { multi.clear(); sel = hit.id; }
+    renderInspector();
+  }
+  openCtxMenu(ev.clientX, ev.clientY);
+});
+
+// ── เมนูคลิกขวา ──
+let noMenuOnce = false;
+const ctxMenu = document.createElement('div');
+ctxMenu.className = 'ctxmenu hidden';
+ctxMenu.setAttribute('role', 'menu');
+document.body.appendChild(ctxMenu);
+
+function openCtxMenu(x, y) {
+  const d = doc();
+  const ids = selIds(d);
+  const grps = new Set(ids.map((id) => byId(d, id).grp).filter(Boolean));
+  const allOneGroup = grps.size === 1 && ids.every((id) => byId(d, id).grp);
+  const items = [
+    ids.length
+      ? `<div class="ctx-head">เลือก ${ids.length} ชิ้น${grps.size ? ` · ${grps.size} กลุ่ม` : ''}</div>`
+      : '<div class="ctx-head">ยังไม่ได้เลือกอะไร — Shift+คลิกเพื่อเลือกหลายชิ้น</div>',
+    `<button type="button" data-act="group"${ids.length >= 2 && !allOneGroup ? '' : ' disabled'}>`
+      + `${grps.size ? 'จับกลุ่มเพิ่ม' : 'รวมกลุ่ม'}<kbd>Ctrl+J</kbd></button>`,
+    `<button type="button" data-act="ungroup"${grps.size ? '' : ' disabled'}>ยกเลิกรวมกลุ่ม<kbd>Ctrl+K</kbd></button>`,
+    '<hr>',
+    `<button type="button" data-act="del"${ids.length ? '' : ' disabled'}>ลบ${ids.length > 1 ? ` ${ids.length} ชิ้น` : ''}<kbd>Delete</kbd></button>`,
+    `<button type="button" data-act="clear"${ids.length ? '' : ' disabled'}>เลิกเลือก<kbd>Esc</kbd></button>`,
+  ];
+  ctxMenu.innerHTML = items.join('');
+  ctxMenu.classList.remove('hidden');
+  // ไม่ให้เมนูล้นขอบจอ
+  const r = ctxMenu.getBoundingClientRect();
+  ctxMenu.style.left = Math.min(x, innerWidth - r.width - 8) + 'px';
+  ctxMenu.style.top = Math.min(y, innerHeight - r.height - 8) + 'px';
+}
+function closeCtxMenu() { ctxMenu.classList.add('hidden'); }
+
+ctxMenu.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-act]');
+  if (!b || b.disabled) return;
+  closeCtxMenu();
+  const act = b.dataset.act;
+  if (act === 'group') groupSel();
+  else if (act === 'ungroup') ungroupSel();
+  else if (act === 'del') { if (selIds().length > 1) delSel(); else if (sel) delItem(sel); renderInspector(); }
+  else if (act === 'clear') { clearSel(); renderInspector(); }
+});
+// คลิกที่อื่น / Esc / เลื่อนจอ = ปิดเมนู
+window.addEventListener('pointerdown', (ev) => { if (!ctxMenu.contains(ev.target)) closeCtxMenu(); });
+window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeCtxMenu(); });
+cv.addEventListener('wheel', closeCtxMenu, { passive: true });
 
 // ─────────────────────────────────────────────────────────────
 // แผงรายละเอียดชิ้นที่เลือก
@@ -3143,12 +3485,27 @@ function renderInspector() {
   const d = doc();
   const it = sel && byId(d, sel);
   if (!it) {
-    inspBody.innerHTML = '<p class="tip">ยังไม่ได้เลือกชิ้นไหน — คลิกที่ของในสนาม</p>';
+    inspBody.innerHTML = '<p class="tip">ยังไม่ได้เลือกชิ้นไหน — คลิกที่ของในสนาม · Shift+คลิก = เลือกหลายชิ้น</p>';
+    return;
+  }
+  if (isMulti(d)) {
+    const ids = selIds(d);
+    const grps = new Set(ids.map((id) => byId(d, id).grp).filter(Boolean));
+    const allOne = grps.size === 1 && ids.every((id) => byId(d, id).grp);
+    inspBody.innerHTML = `<p class="pill">เลือก ${ids.length} ชิ้น${grps.size ? ` · ${grps.size} กลุ่ม` : ''}</p>`
+      + '<p class="tip">ลากชิ้นไหนก็ได้ = ย้ายทั้งหมด · G / ลูกศร / Delete ทำพร้อมกันทุกชิ้น · Shift+คลิก = เพิ่ม/เอาออก</p>'
+      + `<button class="btn" id="mGroup" style="width:100%;margin-bottom:6px"${allOne ? ' disabled' : ''}>${grps.size ? 'จับกลุ่มเพิ่ม' : 'รวมกลุ่ม'} (Ctrl+J)</button>`
+      + `<button class="btn ghost" id="mUngroup" style="width:100%;margin-bottom:6px"${grps.size ? '' : ' disabled'}>ยกเลิกรวมกลุ่ม (Ctrl+K)</button>`
+      + `<button class="btn ghost danger" id="mDel" style="width:100%">ลบทั้ง ${ids.length} ชิ้น</button>`;
+    document.getElementById('mGroup').onclick = groupSel;
+    document.getElementById('mUngroup').onclick = ungroupSel;
+    document.getElementById('mDel').onclick = () => { delSel(); };
     return;
   }
 
   const kit = KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows)
-    && (k.kind === undefined || k.kind === it.kind));
+    && (k.kind === undefined || k.kind === it.kind)
+    && (!PLAT_T.has(it.t) || ((k.art || null) === (it.art || null) && Boolean(k.under) === Boolean(it.under))));
   const rows = [];
   // ชื่อบนหัวแผงต้องบอกของชิ้นนี้จริง ๆ ไม่ใช่ชื่อชิปที่ลากมา
   // ชิปเดียวกันทำของได้หลายหน้าตา (หนามคู่ยืดเป็นสี่ได้ แถวพื้นโรยกุ้งได้)
@@ -3182,7 +3539,7 @@ function renderInspector() {
   if (it.t === 'pit') rows.push(num('fW', 'กว้าง', it.w, 2, 40, 600));
   if (PLAT_T.has(it.t)) rows.push(num('fW', 'กว้าง', it.w, 10, 80, 1200));
   if (it.t === 'hill') rows.push(num('fH', 'สูง', it.h, 5, 20, 140));
-  if (it.t === 'ledge') rows.push(num('fLift', 'ลอยสูงจากพื้น', it.lift, 5, 40, 260));
+  if (it.t === 'ledge') rows.push(num('fLift', 'ลอยสูงจากพื้น', it.lift, 5, LIFT_MIN, LIFT_MAX));
   if (it.t === 'fishRun' && (it.lane === 'custom' || d.bonus)) rows.push(num('fRise', 'ยกสูง (px)', it.rise || 0, 5, -20, 260));
   // ลายวาดเองไม่มี "จำนวนเม็ด" ให้ปรับ — จำนวนมาจากตัวลายเอง แก้ที่กล่องวาดลาย
   if (FOOD_T.has(it.t) && it.t !== 'fishDots' && !(it.t === 'fishRun' && it.runTo)) {
@@ -3217,6 +3574,16 @@ function renderInspector() {
   }
 
   if (PLAT_T.has(it.t)) {
+    // หน้าตา: ตามด่านที่ท่อนนี้ไปอยู่ หรือล็อกเป็นของด่านใดด่านหนึ่ง (ภาพอย่างเดียว การชนเหมือนกันทุกแบบ)
+    const cur = it.art || '';
+    const opts = [`<option value=""${cur ? '' : ' selected'}>ตามด่านที่วาง</option>`]
+      .concat(PLAT_THEMES.map((a) => {
+        const st = STAGES.find((x) => x.theme === a);
+        const nm = PLAT_ART_NAME[a][it.t === 'hill' ? 0 : 1];
+        return `<option value="${a}"${cur === a ? ' selected' : ''}>${nm} (${st ? st.name : a})</option>`;
+      }));
+    rows.push(`<div class="anchorbox"><p class="tip">หน้าตา — วางของด่านไหนก็ได้ ภาพเปลี่ยนอย่างเดียว เหยียบได้เหมือนเดิม</p>`
+      + `<select id="fArt" style="width:100%">${opts.join('')}</select></div>`);
     if (it.t === 'ledge') {
       rows.push(`<label class="chk" style="margin:4px 0 8px"><input type="checkbox" id="fUnder"${it.under ? ' checked' : ''}> มีหลุมข้างใต้ (บังคับให้กระโดด)</label>`);
       rows.push(`<p class="tip">กระโดดเดี่ยวยกเท้าได้ ${REACH_HOP}px · สองชั้น ${REACH_DBL}px</p>`);
@@ -3301,6 +3668,16 @@ function renderInspector() {
     };
   }
   bind('fHumps', (v) => mutate((dd) => { byId(dd, it.id).humps = Math.max(1, v); }));
+  const artSel = document.getElementById('fArt');
+  if (artSel) {
+    artSel.onchange = () => {
+      mutate((dd) => {
+        const q = byId(dd, it.id);
+        if (artSel.value) q.art = artSel.value; else delete q.art;
+      });
+      renderInspector();
+    };
+  }
 
   const anc = document.getElementById('fAnchor');
   if (anc) {
@@ -3691,9 +4068,9 @@ function toCode(d, idxIn) {
       case 'item': pickups.push(`{ kind: '${it.kind}', x: ${e} }`); break;
       case 'ball': hazards.push(`{ kind: 'ball', x: ${off(e, 'HAZARD.ball.r', it)} }`); break;
       // พื้นเหยียบยังไม่มีในเกม — เขียนเป็นหมายเหตุไว้ให้เห็นว่ามีอะไรอยู่ แต่ไม่ให้โค้ดพัง
-      case 'hill': plats.push(`{ kind: 'hill', x: ${e}, w: ${it.w}, h: ${it.h} }`); break;
+      case 'hill': plats.push(`{ kind: 'hill', x: ${e}, w: ${it.w}, h: ${it.h}${artCode(it)} }`); break;
       case 'ledge':
-        plats.push(`{ kind: 'ledge', x: ${e}, w: ${it.w}, lift: ${it.lift} }`);
+        plats.push(`{ kind: 'ledge', x: ${e}, w: ${it.w}, lift: ${it.lift}${artCode(it)} }`);
         if (it.under && it.w > 60) pit.push(`{ x: ${e} + 24, w: ${it.w - 48} }`);
         break;
       default: break;
@@ -3783,6 +4160,9 @@ function buildKit() {
   const propBox = document.getElementById('kitProps');
   propBox.innerHTML = '';
   const propGroups = {};
+  // พื้นเหยียบตามหน้าตาของแต่ละด่าน — พับเป็นกลุ่มต่อจากชิป "ตามด่าน" สามใบบนสุด
+  const platBox = document.getElementById('kitPlat');
+  const platGroups = {};
   for (const kit of KIT) {
     const el = document.createElement('div');
     el.className = 'chip' + (kit.wide ? ' wide' : '');
@@ -3799,6 +4179,18 @@ function buildKit() {
         propGroups[kit.stage] = det.querySelector('.kit');
       }
       propGroups[kit.stage].appendChild(el);
+    } else if (kit.pal === 'platArt') {
+      if (!platGroups[kit.art]) {
+        const st = STAGES.find((x) => x.theme === kit.art);
+        const det = document.createElement('details');
+        det.className = 'kit-group';
+        det.innerHTML = `<summary>${st ? st.name : kit.art}</summary><div class="kit"></div>`;
+        // กล่อง #kitPlat เป็นกริดสองคอลัมน์ — กลุ่มต้องกินเต็มแถว
+        det.style.gridColumn = '1 / -1';
+        platBox.appendChild(det);
+        platGroups[kit.art] = det.querySelector('.kit');
+      }
+      platGroups[kit.art].appendChild(el);
     } else if (kit.pal === 'food' && zoneBox[kit.zone]) {
       zoneBox[kit.zone].appendChild(el);
     } else {
@@ -4621,9 +5013,11 @@ const itemListEl = document.getElementById('itemList');
 function itemLabel(d, it) {
   // ชิปที่หน้าตาเม็ดตรงกันก่อน (แถวเยลลี่จิ๋ว / คริสตัลดาวเดี่ยว / แถวกุ้งทอง) ไม่งั้นทุกแถวที่โรยของ
   // จะได้ชื่อ "แถวพื้น" เหมือนกันหมด เพราะชิปแถวพื้นมาก่อนในรายการและไม่ระบุหน้าตาเม็ด
+  // พื้นเหยียบต้องจับคู่ทั้งหน้าตา (art) และหลุมข้างใต้ด้วย ไม่งั้นทุกแบบขึ้นว่า "เนิน" / "พื้นลอย" เหมือนกันหมด
   const kit = (it.top && KIT.find((k) => k.t === it.t && k.top === it.top))
     || KIT.find((k) => k.t === it.t && (k.rows === undefined || k.rows === it.rows)
-    && (k.kind === undefined || k.kind === it.kind));
+    && (k.kind === undefined || k.kind === it.kind)
+    && (!PLAT_T.has(it.t) || ((k.art || null) === (it.art || null) && Boolean(k.under) === Boolean(it.under))));
   let name = kit ? kit.label : it.t;
   if (it.t === 'fishDots') name = `ลายวาดเอง ${(it.pts || []).length} เม็ด`;
   else if (it.t === 'jump') name = 'จุดกด';

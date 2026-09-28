@@ -1629,6 +1629,9 @@ async function verifyCode() {
   btn.disabled = true;
   setMsg(msg, 'กำลังตรวจรหัส…');
 
+  // บัญชีที่เล่นอยู่ก่อนสลับ — ตรวจรหัสผ่านแล้ว session เปลี่ยนเป็นบัญชีใหม่ทันที จึงต้องจดไว้ก่อน
+  const prev = cloudReady ? currentAccount() : null;
+  const prevStash = prev && prev.email ? userId() : null;
   const r = mailMode === 'link'
     ? await verifyLinkCode(mailAddr, token)
     : await verifyLoginCode(mailAddr, token);
@@ -1647,7 +1650,7 @@ async function verifyCode() {
   // แล้วโหลดหน้าใหม่ ให้ boot.js ดึงของบัญชีนี้ลงมาก่อนโมดูลเกมจะอ่าน localStorage
   setMsg(msg, 'เข้าสู่ระบบแล้ว กำลังโหลดข้อมูล…');
   const { clearLocalProgress } = await import('./net/sync.js');
-  clearLocalProgress();
+  clearLocalProgress(prevStash);
   location.reload();
 }
 
@@ -1742,11 +1745,14 @@ async function signOutAction() {
   if (!ok) return;
 
   document.getElementById('accOut').disabled = true;
+  // จด id ไว้ก่อนออก — ออกแล้ว userId() เป็น null
+  // บัญชีที่ผูกอีเมลกลับเข้ามาได้อีก จึงฝากของที่มีแต่ในเครื่องไว้ให้ (ผู้มาเยือนไม่ต้อง)
+  const stashFor = acc.email ? userId() : null;
   await signOut();
-  // ของในเครื่องเป็นของบัญชีที่เพิ่งออกไป ถ้าไม่ล้าง คนถัดไปที่กดเล่นแบบ
-  // ผู้มาเยือนจะได้ทองกับชุดของเจ้าของเครื่องติดไปด้วย
+  // ของในเครื่องเป็นของบัญชีที่เพิ่งออกไป ถ้าไม่ล้าง บัญชีถัดไป (รวมผู้มาเยือนใหม่)
+  // จะได้ทอง ชุด แมวที่ปลดล็อก สเตตัส การ์ด ฯลฯ ของบัญชีเก่าติดไปด้วย
   const { clearLocalProgress } = await import('./net/sync.js');
-  clearLocalProgress();
+  clearLocalProgress(stashFor);
   location.reload();
 }
 
@@ -3591,6 +3597,9 @@ function renderProfile(p) {
 
   setText('pfShowSub', p.skinLabel);
   setText('pfShowName', p.name);
+  // รหัสแมวน้อย: ของเรา = โหลดจากคลาวด์ใน loadMyCode / ของคนอื่น = มากับแถวโปรไฟล์ของเขาเลย
+  setText('pfCodeLabel', p.mine ? 'รหัสแมวน้อย' : `รหัสแมวน้อยของ ${p.name}`);
+  if (!p.mine) setText('pfCodeText', p.code || '— — —');
   setText('pfBigLv', 'Lv ' + p.level);
 
   setText('pfScore', p.stats.score.toLocaleString('en-US'));
@@ -3908,15 +3917,18 @@ document.getElementById('pfPenBest').addEventListener('click', () => {
 
 document.getElementById('pfCode').addEventListener('click', async () => {
   sfx.fish();
-  if (!pfMyCode) { pfSay(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
+  // ส่องโปรไฟล์คนอื่นอยู่ = คัดลอกรหัสของเขา (ส่งต่อให้เพื่อนคนอื่นได้)
+  const mine = !pfView || pfView.mine;
+  const code = mine ? pfMyCode : pfView.code;
+  if (!code) { pfSay(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
   const btn = document.getElementById('pfCode');
-  if (await copyText(pfMyCode)) {
+  if (await copyText(code)) {
     pfSay('คัดลอกรหัสแมวน้อยแล้ว');
     btn.classList.add('done');
     setTimeout(() => btn.classList.remove('done'), 1600);
   } else {
     // คัดลอกไม่ได้ทั้งสองทาง — โชว์รหัสให้จดเองแทน
-    pfSay('รหัสแมวน้อยของเรา: ' + pfMyCode);
+    pfSay(mine ? 'รหัสแมวน้อยของเรา: ' + code : `รหัสแมวน้อยของ ${pfView.name}: ` + code);
   }
 });
 

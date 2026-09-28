@@ -47,6 +47,10 @@ html, body {
   line-height: 1.55;
 }
 
+/* ห้ามคำตกบรรทัดเดี่ยว — กติกาทั้งโปรเจกต์ (ดู CLAUDE.md และกฎเดียวกันใน src/style.css) */
+body { text-wrap: balance; }
+input, textarea, [contenteditable] { text-wrap: wrap; }
+
 .hidden { display: none !important; }
 
 button, input, select, textarea {
