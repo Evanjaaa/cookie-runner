@@ -69,6 +69,8 @@
       <div class="panel only-stage">
         <h2>ท่อนในด่านนี้</h2>
         <p class="tip" id="slotHead">—</p>
+        <!-- กู้ท่อนที่แก้ไว้แต่หลุดจากลำดับ (renderOrphans) — โผล่เฉพาะตอนเจอ -->
+        <div class="orphans" id="orphanBox" hidden></div>
         <div class="slots" id="slotList"></div>
       </div>
 
@@ -83,43 +85,80 @@
         </ul>
       </div>
 
-      <div class="panel only-edit">
-        <h2>ลากลงสนามได้เลย</h2>
-        <p class="tip">กดค้างที่ชิ้นแล้วลากลงสนาม หรือกดเฉย ๆ เพื่อวางกลางจอ</p>
+      <!-- ── กล่องเครื่องมือแบบ Canva ──────────────────────────
+           แถบไอคอนซ้าย = หมวด · ข้างขวาโชว์ทีละหมวด + ช่องค้นหาข้ามทุกหมวด
+           เดิมทุกหมวดเรียงต่อกันยาว ~5,000px ต้องเลื่อนหาของทุกครั้ง
+           id ของกล่องชิปทุกอัน (kitMark, kitObs, ...) ยังเดิม buildKit() ใน main.js จึงไม่ต้องแก้
+           การสลับหมวด/ค้นหา/พับแผงอยู่ใน src/editor/ui.js
+           ต้องเป็นลูกลำดับที่ 3 ของแผงซ้ายเสมอ (กฎจัดลำดับโหมดทั้งด่านใน editor.css อ้าง nth-child(3)) -->
+      <div class="panel only-edit toolbox">
+        <nav class="rail" id="kitRail" aria-label="หมวดของ">
+          <button type="button" class="rb" data-cat="draw" title="วาดลาย / ใส่ตัวอักษร"><i>✎</i><span>วาดลาย</span></button>
+          <button type="button" class="rb no-bonus" data-cat="mark" title="จุดกด"><i>🎯</i><span>จุดกด</span></button>
+          <button type="button" class="rb no-bonus" data-cat="obs" title="สิ่งกีดขวาง"><i>🧱</i><span>กีดขวาง</span></button>
+          <button type="button" class="rb no-bonus" data-cat="props" title="สิ่งกีดขวางชุดใหม่ตามด่าน"><i>🏰</i><span>ตามด่าน</span></button>
+          <button type="button" class="rb no-bonus" data-cat="item" title="ไอเท็มตัวช่วย"><i>⭐</i><span>ไอเท็ม</span></button>
+          <button type="button" class="rb" data-cat="food" title="ของกิน"><i>🐟</i><span>ของกิน</span></button>
+          <button type="button" class="rb no-bonus" data-cat="sp" title="สิ่งกีดขวางพิเศษ (ขยับได้)"><i>⚡</i><span>พิเศษ</span></button>
+          <button type="button" class="rb no-bonus" data-cat="plat" title="พื้นเหยียบได้"><i>⛰</i><span>พื้น</span></button>
+          <span class="rail-gap"></span>
+          <button type="button" class="rb" data-cat="rules" title="กติกาที่ควรรู้"><i>📘</i><span>กติกา</span></button>
+        </nav>
 
-        <button type="button" class="btn artopen" id="openArt">✎ วาดลาย / ใส่ตัวอักษร</button>
-        <p class="tip">วาดรูปหรือพิมพ์ข้อความ แล้วมันจะเรียงของกินให้เป็นลายนั้นทีเดียว</p>
+        <div class="kitpane" id="kitPane">
+          <div class="kitsearch">
+            <input id="kitSearch" type="search" placeholder="ค้นหาของ… (กด / )" autocomplete="off" spellcheck="false">
+          </div>
+          <p class="tip kit-hint">กดค้างที่ชิ้นแล้วลากลงสนาม หรือกดเฉย ๆ เพื่อวางกลางจอ</p>
+          <p class="tip kit-empty hidden" id="kitEmpty">ไม่เจอของที่ค้นหา ลองคำอื่นดูนะ</p>
 
-        <h3 class="no-bonus">จุดกด</h3>
-        <div class="kit no-bonus" id="kitMark"></div>
+          <section class="cat" data-cat="draw">
+            <h3>วาดลาย / ใส่ตัวอักษร</h3>
+            <button type="button" class="btn artopen" id="openArt">✎ วาดลาย / ใส่ตัวอักษร</button>
+            <p class="tip">วาดรูปหรือพิมพ์ข้อความ แล้วมันจะเรียงของกินให้เป็นลายนั้นทีเดียว</p>
+          </section>
 
-        <h3 class="no-bonus">สิ่งกีดขวาง</h3>
-        <div class="kit no-bonus" id="kitObs"></div>
+          <section class="cat no-bonus" data-cat="mark">
+            <h3>จุดกด</h3>
+            <div class="kit" id="kitMark"></div>
+          </section>
 
-        <!-- สิ่งกีดขวางชุดใหม่ประจำด่าน (src/obstacles.js) — ด่านละ 9 แบบ พับเป็นกลุ่มตามด่าน
-             ชิปสร้างจากทะเบียนเองทั้งหมด (buildKit) เพิ่มชิ้นใหม่ที่ทะเบียนแล้วขึ้นที่นี่เอง -->
-        <h3 class="no-bonus">สิ่งกีดขวางชุดใหม่ (ตามด่าน)</h3>
-        <div class="no-bonus" id="kitProps"></div>
+          <section class="cat no-bonus" data-cat="obs">
+            <h3>สิ่งกีดขวาง</h3>
+            <div class="kit" id="kitObs"></div>
+          </section>
 
-        <!-- ไอเท็มอยู่สูงกว่าของกิน เพราะของกินมี 11 ชิ้นและดันกลุ่มล่าง ๆ ตกขอบจอ
-             บนหน้าต่างเตี้ย ซึ่งทำให้ "เพิ่มไอเท็มไม่ได้" ทั้งที่จริง ๆ แค่มองไม่เห็น -->
-        <h3 class="no-bonus">ไอเท็มตัวช่วย</h3>
-        <div class="kit no-bonus" id="kitItem"></div>
+          <!-- สิ่งกีดขวางชุดใหม่ประจำด่าน (src/obstacles.js) — ด่านละ 9 แบบ พับเป็นกลุ่มตามด่าน
+               ui.js กางกลุ่มของด่านที่เลือกอยู่ให้เอง -->
+          <section class="cat no-bonus" data-cat="props">
+            <h3>สิ่งกีดขวางชุดใหม่ (ตามด่าน)</h3>
+            <div id="kitProps"></div>
+          </section>
 
-        <h3>ของกิน (เทมเพลตสำเร็จ)</h3>
-        <p class="tip">แบ่งตามจำนวนครั้งที่ต้องกด · ชุดจัดวางสำเร็จกดทีเดียวได้ทั้งชุด วางแล้วแก้ทีละชิ้นได้ตามปกติ</p>
-        <div id="kitFood"></div>
+          <section class="cat no-bonus" data-cat="item">
+            <h3>ไอเท็มตัวช่วย</h3>
+            <div class="kit" id="kitItem"></div>
+          </section>
 
-        <h3 class="no-bonus">สิ่งกีดขวางพิเศษ</h3>
-        <div class="kit no-bonus" id="kitSpecial"></div>
+          <section class="cat" data-cat="food">
+            <h3>ของกิน (เทมเพลตสำเร็จ)</h3>
+            <p class="tip">แบ่งตามจำนวนครั้งที่ต้องกด · ชุดจัดวางสำเร็จกดทีเดียวได้ทั้งชุด วางแล้วแก้ทีละชิ้นได้ตามปกติ</p>
+            <div id="kitFood"></div>
+          </section>
 
-        <h3 class="lab-plat no-bonus">พื้นเหยียบได้</h3>
-        <div class="kit lab-plat no-bonus" id="kitPlat"></div>
-      </div>
+          <section class="cat no-bonus" data-cat="sp">
+            <h3>สิ่งกีดขวางพิเศษ</h3>
+            <div class="kit" id="kitSpecial"></div>
+          </section>
 
-      <div class="panel only-edit">
-        <h2>กติกาที่ควรรู้</h2>
-        <ul class="rules">
+          <section class="cat no-bonus" data-cat="plat">
+            <h3 class="lab-plat">พื้นเหยียบได้</h3>
+            <div class="kit lab-plat" id="kitPlat"></div>
+          </section>
+
+          <section class="cat" data-cat="rules">
+            <h3>กติกาที่ควรรู้</h3>
+            <ul class="rules">
           <li>วาง <b>จุดกด</b> ก่อนเสมอ แล้วค่อยเอาของไปเกาะ — ของที่เกาะจุดกดจะขยับตามเมื่อเลื่อนจุดกด</li>
           <li>สิ่งกีดขวางควรอยู่ที่ <b>กลางโค้ง</b> หรือ <b>ยอดโค้ง</b> เพราะเป็นช่วงที่แมวลอยพ้นแน่นอน</li>
           <li>ลัง 3 ชั้นสูงเกินกระโดดเดี่ยว ต้องมีจุดกดคู่ (กดสองชั้น)</li>
@@ -133,6 +172,8 @@
           <li><b>เนิน</b> เดินขึ้นได้เลย แมวลอยตามผิว · <b>พื้นลอย</b> ต้องกระโดดขึ้น ทะลุจากข้างล่างได้ · ติ๊ก <b>มีหลุมข้างใต้</b> แล้วไม่กระโดด = ตก</li>
           <li>แถวพื้นตั้ง <b>ชั้น</b> ได้ในแผงขวา — ยกไปชั้นกระโดด หรือให้เกาะผิวเนิน/พื้นลอย</li>
         </ul>
+          </section>
+        </div>
       </div>
     </aside>
 
@@ -169,7 +210,17 @@
         <div id="slotEdit"></div>
       </div>
 
-      <div class="panel only-edit">
+      <!-- ── แท็บแผงขวา ──
+           เดิมสี่แผงซ้อนกันยาวลงไป ต้องเลื่อนหาช่องที่จะแก้ · ตอนนี้โชว์ทีละแผง
+           คลิกชิ้นในสนาม = เด้งมาแท็บ "ชิ้นที่เลือก" เอง (ui.js) -->
+      <nav class="rtabs only-edit" id="rTabs" role="tablist" aria-label="แผงรายละเอียด">
+        <button type="button" class="rt" data-tab="insp" role="tab">ชิ้นที่เลือก</button>
+        <button type="button" class="rt" data-tab="doc" role="tab">ท่อนนี้</button>
+        <button type="button" class="rt" data-tab="list" role="tab">เลเยอร์ <b class="rt-n" id="rtCount"></b></button>
+        <button type="button" class="rt" data-tab="keys" role="tab" title="ปุ่มลัด">⌨</button>
+      </nav>
+
+      <div class="panel only-edit" data-tab="doc">
         <h2>ท่อนนี้</h2>
         <div class="only-bonus bonus-note">
           <p class="tip">☁ <b>ท่อนโบนัส</b> — ของกินบนฟ้าตอนเก็บตัวอักษรครบ บินขึ้นลงได้อิสระ
@@ -199,18 +250,18 @@
         <p class="tip" id="docCount">—</p>
       </div>
 
-      <div class="panel only-edit">
-        <h2>ของในท่อนนี้</h2>
-        <p class="tip">กดแถวเพื่อเลือกและเลื่อนจอไปหา · กด ✕ เพื่อลบ — ใช้ได้แม้ของซ้อนกันจนคลิกในสนามไม่โดน</p>
+      <div class="panel only-edit" data-tab="list">
+        <h2>เลเยอร์ในท่อนนี้</h2>
+        <p class="tip">บนสุด = อยู่หน้าสุด · คลิกแถว = เลือก · Shift/Ctrl+คลิก = เลือกหลายชิ้น · ชี้แถว = เห็นกรอบบนสนาม · ✕ = ลบ</p>
         <div class="itemlist" id="itemList"></div>
       </div>
 
-      <div class="panel only-edit" id="insp">
+      <div class="panel only-edit" id="insp" data-tab="insp">
         <h2>ชิ้นที่เลือก</h2>
         <div id="inspBody"><p class="tip">ยังไม่ได้เลือกชิ้นไหน — คลิกที่ของในสนาม</p></div>
       </div>
 
-      <div class="panel only-edit">
+      <div class="panel only-edit" data-tab="keys">
         <h2>ปุ่มลัด</h2>
         <ul class="rules small">
           <li><b>ลาก</b> ที่ของ = ย้าย · <b>ลากพื้นหลัง</b> = เลื่อนจอ</li>
@@ -285,5 +336,6 @@
   </div>
 
   <script type="module" src="/src/editor/main.js"></script>
+  <script type="module" src="/src/editor/ui.js"></script>
 </body>
 </html>

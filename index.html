@@ -435,6 +435,8 @@
           <button class="lobby-btn" id="btnCreate">
             <canvas id="createIcon" width="76" height="76"></canvas>
             <b>สร้างสรรค์</b>
+            <!-- ล็อกจนกว่าจะถึงเลเวล CREATE_LEVEL (main.js) — ป้ายกุญแจเกาะมุมปุ่ม -->
+            <i class="lock-tag hidden" id="createLockTag" aria-hidden="true">🔒 Lv.20</i>
           </button>
         </div>
 
@@ -613,6 +615,8 @@
                     <span class="stash-emoji" id="stashEmoji" aria-hidden="true"></span>
                   </div>
                   <b class="stash-name" id="stashName"></b>
+                  <!-- ดาวขั้นตีบวก — เฉพาะหมวดสมบัติที่มีแล้ว (paintStashShow) -->
+                  <div class="tdetail-stars stash-stars hidden" id="stashStars" aria-hidden="true"></div>
                   <div class="stash-btns">
                     <button class="btn" id="stashUse">ใส่ชุดนี้</button>
                     <button class="btn ghost" id="stashMore">ดูเพิ่มเติม</button>
@@ -624,6 +628,10 @@
                 <div class="skin-grid stash-grid hidden" id="outfitGrid"></div>
                 <div class="skin-grid stash-grid hidden" id="treasureGrid"></div>
               </div>
+
+              <!-- คำบอกใต้ช่องซ้าย (หมวดสมบัติ): ตีบวกเต็มแล้ว / ไปตีบวกได้ที่ไหน
+                   เป็น div ไม่ใช่ p — กฎ .panel p ซ่อนย่อหน้าบนจอเตี้ยและจำกัดความกว้าง -->
+              <div class="stash-hint hidden" id="stashHint"></div>
 
               <small class="form-msg" id="outfitMsg"></small>
             </div>
@@ -971,6 +979,9 @@
               <span class="up-emoji" id="upEmoji">🍊</span>
               <!-- ประกายกระเด็นตอนรู้ผล สร้างใหม่ทุกครั้งจาก burstSparks() -->
               <div class="up-spark" id="upSpark" aria-hidden="true"></div>
+              <!-- ค้อนเคาะตอนชาร์จ + ข้อความลอยตอนรู้ผล (+1 ★ / ฟู่…) -->
+              <span class="up-hammer" aria-hidden="true">🔨</span>
+              <span class="up-float" id="upFloat" aria-hidden="true"></span>
             </div>
             <b class="up-name" id="upName"></b>
             <span class="up-step" id="upStep"></span>
@@ -1728,6 +1739,37 @@
            โครงเดียวกับคลังน้องเป๊ะ ๆ (stash-pop / stash-tabs / stash-main)
            ตั้งใจใช้คลาสชุดเดิมซ้ำ ไม่ได้ทำชุดใหม่ เพื่อให้สองแผงนี้ปรับขนาด
            บนจอเตี้ยเหมือนกันเป๊ะโดยไม่ต้องไล่จูน dvh ซ้ำอีกรอบ -->
+      <!-- ── โหมดสร้างสรรค์ยังล็อกอยู่ ─────────────────────────
+           กดปุ่มสร้างสรรค์ก่อนถึงเลเวลที่กำหนด = เปิดหน้านี้แทน (showCreateLock ใน main.js)
+           บอกว่าต้องเลเวลเท่าไหร่ ตอนนี้อยู่ไหน และข้างในมีอะไรรออยู่ -->
+      <div class="panel hidden" id="createLockPanel">
+        <div class="pop cl-pop">
+          <div class="cl-lock" aria-hidden="true">
+            <canvas id="clCat" width="120" height="120"></canvas>
+            <span class="cl-padlock">🔒</span>
+          </div>
+          <h2 class="skin-title">โหมดสร้างสรรค์ยังล็อกอยู่</h2>
+          <div class="cl-lead">ถึง <b id="clNeed">เลเวล 20</b> ก่อนนะเหมียว<br>แล้วจะแต่งตัวน้องได้ตามใจเลย</div>
+          <div class="cl-progress">
+            <div class="cl-bar"><i id="clFill"></i></div>
+            <small id="clNow">เลเวล 1 / 20</small>
+          </div>
+          <div class="cl-feats">
+            <div class="cl-feat"><span class="cl-ico">🎨</span><b>ระบายสีน้อง</b><small>ระบายสีตัวน้องได้ตามใจ</small></div>
+            <div class="cl-feat"><span class="cl-ico">📷</span><b>ใส่รูปหน้าน้อง</b><small>ใช้รูปของคุณเป็นหน้าแมว</small></div>
+          </div>
+          <div class="btnrow">
+            <button class="btn" id="clGo">ไปวิ่งเก็บ XP กัน!</button>
+          </div>
+          <button class="backbtn" id="clBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <div class="panel hidden" id="createPanel">
         <div class="pop stash-pop">
           <div class="stash-body">
@@ -1759,12 +1801,6 @@
                          ใช้ DOM ชุดเดิมทั้งหมด ไม่ได้สร้างหน้าใหม่ เครื่องมือทุกตัวจึงยังต่อสายเดิม -->
                     <button type="button" class="paint-max" id="paintMax"
                             aria-label="ขยายเต็มจอ" title="ขยายเต็มจอ">⛶</button>
-                    <!-- ── ปุ่มย่อแถบเครื่องมือ ──
-                         เกาะริมขวาของกรอบระบายสี ไม่ใช่มุมจอ — ตำแหน่งจึงเดินตามกรอบทั้งตอนกางและตอนย่อ
-                         และอยู่ต่ำกว่าปุ่มปิดเสมอ เพราะกรอบเริ่มต่ำกว่าขอบบนของการ์ดอยู่แล้ว -->
-                    <button type="button" class="pcol-fold" id="foldSide"
-                            aria-expanded="true" aria-controls="paintTools paintSwatches"
-                            aria-label="ย่อแถบเครื่องมือกับจานสี"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                   </div>
                   <small class="paint-hint" id="paintHint">แตะตัวน้องเพื่อลงสี</small>
                 </div>
@@ -1773,6 +1809,13 @@
                      แต่ซ้อนเป็นคอลัมน์เดียวตอนย่อบนมือถือ ที่ตรงนั้นกว้างแค่ ~360px
                      ซึ่งไม่พอให้สองคอลัมน์อยู่ข้างกันโดยที่ชื่อปุ่มไม่ถูกตัด -->
                 <div class="paint-side">
+                  <!-- ── ปุ่มย่อแถบเครื่องมือ (เฉพาะโหมดเต็มจอ) ──
+                       แท็บแนวตั้งเกาะ "ขอบซ้ายของแถบเครื่องมือ" กึ่งกลางความสูงแถว
+                       เดิมเกาะมุมกรอบผ้าใบ ซึ่งขนาด/ตำแหน่งเปลี่ยนตามจอ ปุ่มเลยกระโดดขึ้นลง
+                       ตอนย่อ แถบยุบเหลือความกว้าง 0 ที่ขอบขวาการ์ด แท็บจึงไปอยู่ขอบขวาเอง -->
+                  <button type="button" class="pcol-fold" id="foldSide"
+                          aria-expanded="true" aria-controls="paintTools paintSwatches"
+                          aria-label="ย่อแถบเครื่องมือกับจานสี"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pcol-fold-txt" id="foldSideTxt">ย่อ</span></button>
 
                 <!-- ── คอลัมน์อุปกรณ์ ──
                      หัวข้อเป็นป้ายกลม ๆ เหมือนแบบที่วางไว้ ไม่ใช่ข้อความลอย

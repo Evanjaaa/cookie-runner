@@ -4646,12 +4646,18 @@ function drawTail(ctx, x, y, wag, s, fat = 0, short = 0) {
   catEdge(ctx, s); ctx.stroke();
 
   // รอยแปรงบนหาง — หางอยู่นอกวงรีลำตัว ถ้าไม่ทาตรงนี้จะระบายหางไม่ติดเลย
+  //
+  // ── ต้องเป็นรูปทรงเดียวกับหางที่วาดจริงเป๊ะ ──
+  // เดิมปลายหางทาด้วย "เส้นหนา 7 รอบวงกลมรัศมี 3.6" = สีแผ่ออกไปถึงรัศมี ~7
+  // ทั้งที่ปลายหางจริงรัศมีแค่ 3.6 สีจึงล้นออกนอกขอบหาง (ลงสีทั้งตัวแล้วเห็นชัด)
+  // และเส้นหางไม่ได้คูณความยาว/ความหนาจริง (len, thick) ท่าหางหด/หางพองเลยทาเลยขอบ
+  // ตอนนี้: ตัวหางใช้เส้นทางและความหนาเดียวกับที่วาด · ปลายหางตัดตามวงกลมจริง (clip)
   paintStroke(ctx, s, 'body', () => {
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.quadraticCurveTo(x - 17, y + 3 + wag * 5, tipX, tipY);
-  }, 7);
-  paintStroke(ctx, s, 'body', () => {
-    ctx.beginPath(); ctx.arc(tipX, tipY, 3.6, 0, Math.PI * 2);
-  }, 7);
+    ctx.quadraticCurveTo(x - 17 * len, y + (3 + wag * 5) * len, tipX, tipY);
+  }, thick);
+  paintOver(ctx, s, 'body', () => {
+    ctx.beginPath(); ctx.arc(tipX, tipY, 3.6 + fat * 1.1, 0, Math.PI * 2);
+  });
 }

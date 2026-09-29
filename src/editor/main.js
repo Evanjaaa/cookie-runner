@@ -641,6 +641,210 @@ function paintSetThumb(canvas, set) {
   });
 }
 
+/**
+ * ภาพตัวอย่างบนชิปทุกใบ (แบบ Canva — เห็นหน้าตาของก่อนหยิบ)
+ *
+ * วางชิ้นนั้นลงท่อนชั่วคราว → build() → วาดด้วยตัววาดของเกมชุดเดียวกับสนาม
+ * แล้วตัดกรอบเฉพาะส่วนที่มีภาพ ย่อให้พอดีชิป — ไม่มีรูปวาดแยก หน้าตาจึงตรงกับที่วางจริงเสมอ
+ * (เปลี่ยนภาพสิ่งกีดขวาง/ของกินในเกม ชิปเปลี่ยนตามเอง)
+ *
+ * ของตระกูลโค้ง (group arc) ต้องมีจุดกดให้เกาะ ไม่งั้น build() ไม่รู้ว่าโค้งเริ่มตรงไหน — ใส่จุดกดให้หนึ่งจุด
+ * สิ่งกีดขวางชุดใหม่ใช้หน้าตาของด่านเจ้าของ ของอื่นใช้ด่านที่เลือกอยู่ (เปลี่ยนด่าน = วาดใหม่)
+ */
+const THUMB_H = 46;
+const thumbScratch = document.createElement('canvas');
+thumbScratch.width = W / 2;
+thumbScratch.height = H / 2;
+
+function paintKitThumb(canvas, kit, src = null) {
+  const d = { id: 'thumb', name: '', width: chunkW, kind: 'obstacle', diff: 1, items: [] };
+  // src = ชิ้นจริงในท่อน (แผงเลเยอร์) — คัดลอกมาวางที่ x 300 ตัดการเกาะ/กลุ่มออก
+  let it;
+  if (src) {
+    it = JSON.parse(JSON.stringify(src));
+    it.id = 'th'; it.x = 300;
+    delete it.link; delete it.grp; delete it.grpName; delete it.runTo;
+  } else {
+    it = kitItem(kit, 'th', 300);
+  }
+  if (kit.group === 'arc') {
+    d.items.push({ id: 'thj', t: 'jump', group: 'jump', x: 300 });
+    it.link = { id: 'thj', key: 'AT' };
+  }
+  d.items.push(it);
+  let sc;
+  try { sc = build(d); } catch { return; }
+
+  const own = kit.pal === 'prop' ? STAGES.find((s) => s.id === kit.stage) : null;
+  const st = own || stage();
+  const theme = st.theme;
+  const pal = st.palette;
+  const paint = (c) => {
+    drawPlats(c, sc.plats || [], 0, pal, theme);
+    drawObstacles(c, sc.obs, 0, theme);
+    drawFallers(c, (sc.fallers || []).map((f) => ({ ...f, warn: 0, y: FALL_Y })), 0, theme);
+    drawHazards(c, (sc.hazards || []).map((h) => (h.kind === 'bee' ? { ...h, y: HAZARD.bee.midY } : h)), 0, 0, pal);
+    drawTreats(c, sc.fish, 0, 30);
+    const byKind = new Map();
+    for (const p of sc.pickups || []) {
+      if (!byKind.has(p.kind)) byKind.set(p.kind, []);
+      byKind.get(p.kind).push(p);
+    }
+    for (const [kind, list] of byKind) ITEM_DEFS[kind]?.draw(c, list, 0, 0);
+    // จุดกด: หมุดชมพูบนพื้น + เส้นโค้งกระโดดจาง ๆ บอกว่าเป็น "จุดเริ่มกระโดด"
+    if (kit.t === 'jump') {
+      for (const jx of sc.jumps) {
+        c.save();
+        c.strokeStyle = 'rgba(255,143,184,.8)';
+        c.lineWidth = 4;
+        c.setLineDash([10, 9]);
+        c.beginPath();
+        c.moveTo(jx, GROUND_Y - 6);
+        c.quadraticCurveTo(jx + A.JUMP_PEAK, GROUND_Y - 260, jx + A.JUMP_SPAN, GROUND_Y - 6);
+        c.stroke();
+        c.restore();
+        c.fillStyle = '#FF7AB6';
+        c.beginPath();
+        c.arc(jx, GROUND_Y - 4, 13, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+  };
+
+  // ── หากรอบของภาพ: วาดครึ่งขนาดบนผ้าใบร่าง แล้วไล่หาพิกเซลที่ไม่ใส ──
+  const sc2 = thumbScratch.getContext('2d', { willReadFrequently: true });
+  sc2.setTransform(1, 0, 0, 1, 0, 0);
+  sc2.clearRect(0, 0, thumbScratch.width, thumbScratch.height);
+  sc2.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  paint(sc2);
+  const px = sc2.getImageData(0, 0, thumbScratch.width, thumbScratch.height).data;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let y = 0; y < thumbScratch.height; y++) {
+    for (let x = 0; x < thumbScratch.width; x++) {
+      if (px[(y * thumbScratch.width + x) * 4 + 3] > 16) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  // กลับเป็นพิกัดสนาม · หลุมไม่มีภาพของตัวเอง (เป็นช่องในพื้น) ใช้กรอบหลุมแทน
+  let bx0 = x0 * 2, by0 = y0 * 2, bx1 = x1 * 2 + 2, by1 = y1 * 2 + 2;
+  for (const p of sc.pit) {
+    bx0 = Math.min(bx0, p.x - 30); bx1 = Math.max(bx1, p.x + p.w + 30);
+    by0 = Math.min(by0, GROUND_Y - 40);
+  }
+  // ไอเท็มวาดเงา/ฐานแปะพื้นไว้ด้วย กรอบจากพิกเซลเลยยืดลงไปถึงพื้นจนตัวไอเท็มเหลือจุดจิ๋ว
+  // ใช้กรอบของตัวไอเท็มเอง (itemBox ตัวเดียวกับที่ใช้คลิกเลือก) แทน
+  if (kit.group === 'item') {
+    const b = itemBox(d, it);
+    const r = (ITEM_DEFS[kit.kind]?.r || 18) + 6;       // รัศมีตัวภาพ ไม่ใช่ระยะเก็บ (ซึ่งกว้างกว่ามาก)
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    bx0 = cx - r; bx1 = cx + r; by0 = cy - r; by1 = cy + r;
+  }
+  if (!Number.isFinite(bx0)) return;
+  // เห็นพื้นเมื่อพื้นช่วยบอกความหมาย — สิ่งกีดขวาง (คานลอยเหนือพื้นแค่ไหน) หลุม และของที่อยู่ใกล้พื้น
+  // ไอเท็ม/ของพิเศษลอยสูง ถ้าดึงพื้นเข้ามาด้วยภาพจะถูกย่อจนเหลือจุดเดียว
+  const withGround = kit.group !== 'item' && (kit.group === 'obs' || sc.pit.length || GROUND_Y - by1 < 90);
+  if (withGround) by1 = Math.max(by1, GROUND_Y + 12);
+  const pad = 10;
+  bx0 -= pad; bx1 += pad; by0 -= pad;
+  const bw = bx1 - bx0;
+  const bh = by1 - by0;
+
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cssW = canvas.clientWidth || (src ? 84 : 110);
+  const cssH = canvas.clientHeight || (src ? 36 : THUMB_H);
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const c = canvas.getContext('2d');
+  const s = Math.min(cssW / bw, cssH / bh);
+  const ox = (cssW - bw * s) / 2 - bx0 * s;
+  const oy = (cssH - bh * s) / 2 - by0 * s;
+  c.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
+  // แถบพื้นตามสีของด่าน เว้นช่องหลุม
+  if (withGround) {
+    c.fillStyle = pal.ground || '#7A4A2E';
+    c.fillRect(bx0, GROUND_Y, bw, 12);
+    c.fillStyle = pal.crustTop || '#EFA657';
+    c.fillRect(bx0, GROUND_Y, bw, 3);
+    for (const p of sc.pit) c.clearRect(p.x, GROUND_Y, p.w, 13);
+  }
+  paint(c);
+}
+
+/**
+ * วาดชิปทีละใบเมื่อมัน "มีขนาดจริง" แล้วเท่านั้น
+ * ชิปในหมวดที่ซ่อนอยู่กว้าง 0 — ถ้าวาดตอนนั้นจะได้ภาพผิดสัดส่วน พอเปิดหมวดภาพจะยืดเบี้ยว
+ * ResizeObserver ยิงตอนหมวดถูกเปิด (0 → กว้างจริง) และตอนแผงเปลี่ยนความกว้าง จึงวาดตรงขนาดเสมอ
+ */
+function paintThumbOne(cvs) {
+  const kit = KIT[Number(cvs.dataset.k)];
+  const w = Math.round(cvs.clientWidth);
+  if (!kit || !w) return;
+  paintKitThumb(cvs, kit);
+  cvs.dataset.w = String(w);
+}
+const thumbRO = new ResizeObserver((entries) => {
+  for (const e of entries) {
+    const cvs = e.target;
+    if (cvs.clientWidth && cvs.dataset.w !== String(Math.round(cvs.clientWidth))) paintThumbOne(cvs);
+  }
+});
+
+// ── ภาพย่อของชิ้นในแผงเลเยอร์ ──
+// วาดด้วย paintKitThumb ตัวเดียวกับชิปในกล่องเครื่องมือ แล้วเก็บเป็นรูปไว้ใช้ซ้ำ
+// (คีย์ = หน้าตาของชิ้น + ด่าน ไม่รวมตำแหน่ง) ลากย้ายของจึงไม่ต้องวาดภาพย่อใหม่ทุกครั้ง
+const layerThumbCache = new Map();
+function layerThumb(it, d) {
+  // แถวที่ "วิ่งไปจนถึงจุดกด" (runTo, n = 0) นับเม็ดจากระยะถึงจุดกด — ตัดการเกาะทิ้งแล้วจะเหลือ 0 เม็ด
+  // นับเม็ดจริงจากท่อนก่อน แล้วใส่เป็นจำนวนตายตัวให้ภาพย่อ
+  if (it.runTo && !it.n && d) {
+    let cnt = 0;
+    try { cnt = build(soloDoc(d, it)).fish.length; } catch { /* นับไม่ได้ก็ใช้ค่าเดิม */ }
+    if (cnt) it = { ...it, n: cnt };
+  }
+  const st = stage();
+  const { id, x, link, grp, grpName, runTo, ...shape } = it;
+  const key = st.id + '|' + JSON.stringify(shape);
+  let url = layerThumbCache.get(key);
+  if (url !== undefined) return url;
+  const kit = {
+    t: it.t, group: it.group, kind: it.kind,
+    pal: it.t === 'prop' ? 'prop' : '',
+    stage: it.t === 'prop' ? PROP_OBSTACLES[it.kind]?.stage : undefined,
+  };
+  const cv = document.createElement('canvas');
+  try { paintKitThumb(cv, kit, it); } catch { /* วาดไม่ได้ก็เว้นภาพว่าง */ }
+  url = cv.width ? cv.toDataURL() : '';
+  if (layerThumbCache.size > 400) layerThumbCache.clear();
+  layerThumbCache.set(key, url);
+  return url;
+}
+
+/** วาดภาพตัวอย่างชิปทั้งหมดใหม่ — ตอนสร้างกล่องเครื่องมือ และตอนเปลี่ยนด่าน (หน้าตาของเปลี่ยนตามด่าน) */
+function paintKitThumbs() {
+  for (const cvs of document.querySelectorAll('canvas.kit-thumb')) {
+    delete cvs.dataset.w;          // ใบที่ยังซ่อนอยู่จะถูกวาดใหม่ตอนหมวดเปิด
+    paintThumbOne(cvs);
+    thumbRO.observe(cvs);
+  }
+  // กลุ่มที่พับอยู่ (<details> ของด่านอื่น / โซนของกิน) — กางออกแล้วขนาดชิปไม่เปลี่ยน
+  // ResizeObserver จึงไม่ยิง ต้องวาดตอนกางเอง
+  for (const det of document.querySelectorAll('#kitPane details')) {
+    if (det.dataset.thumbs) continue;
+    det.dataset.thumbs = '1';
+    det.addEventListener('toggle', () => {
+      if (!det.open) return;
+      requestAnimationFrame(() => det.querySelectorAll('canvas.kit-thumb').forEach((c) => {
+        delete c.dataset.w;
+        paintThumbOne(c);
+      }));
+    });
+  }
+}
+
 const FOOD_T = new Set(['fishRun', 'fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave', 'fishLow', 'fishFlake', 'fishDots']);
 const NEEDS_TWO = new Set(['fishJump', 'fishDouble', 'arcMid', 'arcHigh', 'fishWave']);
 // ช่อเกล็ดหิมะผูกกับยอดโค้งของจุดกระโดด จึงวางเดี่ยว ๆ ได้โดยไม่ต้องบอกจำนวนเม็ด
@@ -763,7 +967,29 @@ function load() {
 }
 
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(docs)); } catch { /* เต็มก็ช่าง */ }
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(docs));
+    saveFailed(false);
+  } catch { saveFailed(true); }
+}
+
+/**
+ * บันทึกลงเครื่องไม่ผ่าน (ที่เก็บของเบราว์เซอร์เต็ม) — ต้องเห็น ห้ามเงียบ
+ * เดิมกลืนข้อผิดพลาดทิ้ง ("เต็มก็ช่าง") งานที่ทำต่อจากนั้นอยู่แค่ในแท็บ พอรีโหลดก็หายทั้งหมด
+ * ตอนนี้ขึ้นแถบแดงค้างไว้บนสุด บอกให้กด "บันทึกไฟล์" เก็บงานไว้ก่อนปิดหน้า
+ */
+function saveFailed(on) {
+  let bar = document.getElementById('saveFailBar');
+  if (!on) { if (bar) bar.remove(); return; }
+  if (bar) return;
+  bar = document.createElement('div');
+  bar.id = 'saveFailBar';
+  bar.className = 'savefail';
+  bar.innerHTML = '⚠ บันทึกลงเครื่องไม่ได้ (ที่เก็บของเบราว์เซอร์เต็ม) — งานตอนนี้ยังไม่ถูกเก็บ '
+    + '<b>กด “บันทึกไฟล์” ก่อนปิดหรือรีโหลดหน้านี้</b> '
+    + '<button type="button" class="btn" id="saveFailDl">บันทึกไฟล์เลย</button>';
+  document.body.prepend(bar);
+  bar.querySelector('#saveFailDl').onclick = () => document.getElementById('dlJson').click();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -808,7 +1034,7 @@ function loadRoutes() {
 }
 
 function saveRoutes() {
-  try { localStorage.setItem(ROUTE_KEY, JSON.stringify(routes)); } catch { /* เต็มก็ช่าง */ }
+  try { localStorage.setItem(ROUTE_KEY, JSON.stringify(routes)); } catch { saveFailed(true); }
 }
 
 /** ลำดับท่อนที่กำลังแก้อยู่ของฉากหนึ่ง — ครั้งแรกดึงจากเกมมาตรึงไว้ */
@@ -1367,6 +1593,7 @@ function draw() {
   if (sim) drawSimMarks(cam);
   if (!scene.readonly) drawLaneGuides();
   if (!scene.readonly) drawSelection();
+  if (!scene.readonly) drawLayerHover();
   drawCat(cam);
   if (gate) {
     drawGateFront(ctx, gate.def, gate.v);
@@ -2533,7 +2760,18 @@ function mutate(fn) {
 }
 
 function addItem(kit, x) {
-  const it = { id: uid(), t: kit.t, group: kit.group, x: Math.round(x) };
+  const it = kitItem(kit, uid(), x);
+  mutate((d) => {
+    d.items.push(it);
+    snapTo(d, it, Math.round(x));
+  });
+  sel = it.id;
+  return it;
+}
+
+/** ชิ้นใหม่จากชิปหนึ่งใบ — ใช้ทั้งตอนวางจริง (addItem) และภาพตัวอย่างบนชิป (paintKitThumb) */
+function kitItem(kit, id, x) {
+  const it = { id, t: kit.t, group: kit.group, x: Math.round(x) };
   if (kit.rows) it.rows = kit.rows;
   if (kit.w) it.w = kit.w;
   if (kit.n !== undefined) it.n = kit.n;
@@ -2546,11 +2784,6 @@ function addItem(kit, x) {
   if (kit.under) it.under = true;
   if (kit.art) it.art = kit.art;
   if (kit.kind) it.kind = kit.kind;
-  mutate((d) => {
-    d.items.push(it);
-    snapTo(d, it, Math.round(x));
-  });
-  sel = it.id;
   return it;
 }
 
@@ -2775,13 +3008,21 @@ function worldAt(ev) {
  */
 const SOLID_DIST = 6;
 
+/**
+ * ระยะเผื่อรอบของที่ยังนับว่า "คลิกโดน" (พิกเซลสนาม)
+ * เดิม 7 (เม็ด) / 4 (กรอบ) — เม็ดของกินรัศมีราว 9 บนจอโน้ตบุ๊กเหลือไม่กี่พิกเซลจริง คลิกพลาดบ่อย
+ * ขยายขึ้นเพื่อให้ "กดติด" ง่าย ของที่ซ้อนกันยังตัดสินด้วยระยะใกล้สุดเหมือนเดิม จึงไม่เลือกผิดชิ้น
+ */
+const HIT_PAD = 11;
+const BOX_PAD = 8;
+
 function hitDist(d, it, p) {
   if (FOOD_T.has(it.t)) {
     const one = build(soloDoc(d, it));
     let best = null;
     for (const f of one.fish) {
       const dist = Math.hypot(f.x - p.x, f.y - p.y);
-      if (dist <= f.r + 7 && (best === null || dist < best)) best = dist;
+      if (dist <= f.r + HIT_PAD && (best === null || dist < best)) best = dist;
     }
     return best;
   }
@@ -2789,7 +3030,7 @@ function hitDist(d, it, p) {
     const def = ITEM_DEFS[it.kind];
     const b = itemBox(d, it);
     const dist = Math.hypot(b.x + b.w / 2 - p.x, b.y + b.h / 2 - p.y);
-    return dist <= (def ? def.r : 18) + 7 ? dist : null;
+    return dist <= (def ? def.r : 18) + HIT_PAD ? dist : null;
   }
   return SOLID_DIST;
 }
@@ -2811,7 +3052,7 @@ function pick(d, p) {
   let box = null;
   for (const it of d.items) {
     const b = itemBox(d, it);
-    if (p.x < b.x - 4 || p.x > b.x + b.w + 4 || p.y < b.y - 4 || p.y > b.y + b.h + 4) continue;
+    if (p.x < b.x - BOX_PAD || p.x > b.x + b.w + BOX_PAD || p.y < b.y - BOX_PAD || p.y > b.y + b.h + BOX_PAD) continue;
     const area = b.w * b.h;
     const dist = hitDist(d, it, p);
     if (dist !== null) {
@@ -2835,7 +3076,7 @@ cv.addEventListener('pointerdown', (ev) => {
   if (it) {
     const hx = handleX(d, it);
     const b = itemBox(d, it);
-    if (hx !== null && Math.abs(p.x - hx) < 9 && Math.abs(p.y - (b.y + b.h / 2)) < 14) {
+    if (hx !== null && Math.abs(p.x - hx) < 12 && Math.abs(p.y - (b.y + b.h / 2)) < 16) {
       drag = { kind: 'resize', id: it.id };
       pushUndo();
       return;
@@ -3243,10 +3484,32 @@ function endModal(ok) {
   renderInspector();
 }
 
+/**
+ * ปุ่มที่กด "ตามตำแหน่งบนแป้น" ไม่ใช่ตัวอักษรที่พิมพ์ออกมา
+ *
+ * ── ทำไมไม่ใช้ ev.key ตรง ๆ ──
+ * แป้นพิมพ์ภาษาไทย (เกษมณี) ปุ่ม G พิมพ์ออกมาเป็น "เ" ปุ่ม Z เป็น "ผ" แถวตัวเลขเป็น ๅ / - ภ ถ
+ * ev.key จึงไม่เคยเป็น 'g' / 'z' / '1' เลยตราบที่เปิดภาษาไทยค้างไว้ = คีย์ลัดทุกตัวตาย
+ * ev.code บอกตำแหน่งปุ่มจริง (KeyG, Digit1) ไม่ขึ้นกับภาษาที่เปิดอยู่ แปลงกลับเป็นตัวอังกฤษที่นี่ที่เดียว
+ * ปุ่มพิเศษ (Delete, ลูกศร, Escape, Enter ...) ev.key เป็นชื่ออังกฤษทุกภาษาอยู่แล้ว ใช้ตามเดิม
+ */
+function keyOf(ev) {
+  const c = ev.code || '';
+  let m = /^Key([A-Z])$/.exec(c);
+  if (m) return ev.shiftKey ? m[1] : m[1].toLowerCase();
+  m = /^(?:Digit|Numpad)([0-9])$/.exec(c);
+  if (m && !(c.startsWith('Digit') && ev.shiftKey)) return m[1];
+  if (c === 'Slash' && ev.shiftKey) return '?';
+  if (c === 'Period' || c === 'NumpadDecimal') return '.';
+  if ((c === 'Minus' && !ev.shiftKey) || c === 'NumpadSubtract') return '-';
+  if (c === 'Space') return ' ';
+  return ev.key;
+}
+
 /** คีย์ระหว่างโหมดค้าง — คืน true ถ้ากินคีย์นี้ไปแล้ว */
 function modalKey(ev) {
   if (!gmod) return false;
-  const k = ev.key;
+  const k = keyOf(ev);
   ev.preventDefault();
   if (k === 'Escape') { endModal(false); return true; }
   if (k === 'Enter' || k === ' ') { endModal(true); return true; }
@@ -3344,9 +3607,9 @@ window.addEventListener('keydown', (ev) => {
   if (modalKey(ev)) return;
 
   const mod = ev.ctrlKey || ev.metaKey;
-  const k = ev.key.toLowerCase();
+  const k = keyOf(ev).toLowerCase();
 
-  if (ev.key === '?' || ev.key === 'F1') { ev.preventDefault(); toggleKeys(); return; }
+  if (keyOf(ev) === '?' || ev.key === 'F1') { ev.preventDefault(); toggleKeys(); return; }
   if (!keysPanel.classList.contains('hidden')) {
     if (ev.key === 'Escape') toggleKeys(false);
     return;
@@ -3488,7 +3751,13 @@ cv.addEventListener('wheel', closeCtxMenu, { passive: true });
 // ─────────────────────────────────────────────────────────────
 const inspBody = document.getElementById('inspBody');
 
+// เลือกบนสนามแล้วแผงเลเยอร์ต้องไฮไลต์ตาม — รวบหลายครั้งในจังหวะเดียวเป็นครั้งเดียว
+let layerSync = false;
 function renderInspector() {
+  if (!layerSync) {
+    layerSync = true;
+    queueMicrotask(() => { layerSync = false; renderItemList(); });
+  }
   if (view.refIdx >= 0) {
     inspBody.innerHTML = '<p class="tip">กำลังดูท่อนที่มีอยู่ในเกม แก้ไม่ได้ — เลือก “—” ในช่องดูของเดิมเพื่อกลับไปแก้ท่อนของตัวเอง</p>' +
       '<button class="btn ghost" id="grabRef">คัดลอกสิ่งกีดขวาง+จุดกดมาเป็นท่อนใหม่</button>';
@@ -4180,7 +4449,8 @@ function buildKit() {
   for (const kit of KIT) {
     const el = document.createElement('div');
     el.className = 'chip' + (kit.wide ? ' wide' : '');
-    el.innerHTML = `${kit.label}<em>${kit.sub}</em>`;
+    // ภาพตัวอย่างบนชิป (paintKitThumb) — data-k ชี้กลับไปหาแถวใน KIT ตอนวาดใหม่
+    el.innerHTML = `<canvas class="kit-thumb" data-k="${KIT.indexOf(kit)}" aria-hidden="true"></canvas>${kit.label}<em>${kit.sub}</em>`;
     el.title = `${kit.label} — ${kit.sub}`;   // โหมดทั้งด่านย่อชิปจนซ่อนคำอธิบาย ต้องมีทูลทิปแทน
     if (kit.pal === 'prop') {
       // ชุดใหม่ 54 ชิ้น — พับเป็นกลุ่มตามด่าน ไม่งั้นกล่องเครื่องมือยาวจนหาอย่างอื่นไม่เจอ
@@ -4217,6 +4487,7 @@ function buildKit() {
     const thumbs = document.querySelectorAll('#kitFood .chip.set canvas');
     const sets = FOOD_ZONES.flatMap(([id]) => SETS.filter((st) => st.zone === id));
     thumbs.forEach((cvs, i) => paintSetThumb(cvs, sets[i]));
+    paintKitThumbs();
   });
 }
 
@@ -4318,11 +4589,72 @@ function metaOf(p) {
   return PATTERN_META[p] || { kind: 'obstacle', diff: 0 };
 }
 
+/**
+ * ท่อนที่แก้ไว้ (ชื่อ "<ด่าน> · ท่อน N") แต่ตอนนี้ไม่ได้อยู่ในลำดับท่อนของด่าน
+ *
+ * เกิดได้จากการเลือกเทมเพลตที่เก็บไว้ก่อนแก้ท่อนพวกนั้น (ลำดับถูกแทนที่ทั้งชุด)
+ * ตัวท่อนยังอยู่ครบในที่เก็บ แค่ไม่มีช่องไหนชี้หา — คืนเฉพาะช่องที่ตอนนี้ยังไม่ใช่ท่อนของเรา
+ * ช่องที่มีท่อนของเราอยู่แล้วไม่แตะ ไม่เสี่ยงทับงานที่อยู่ในลำดับตอนนี้
+ * ช่องเดียวมีหลายฉบับ = เลือกฉบับที่มีของเยอะสุด (เสมอกันเอาฉบับล่าสุด)
+ */
+function orphanSlots(st) {
+  const route = routeOf(st);
+  const used = new Set(route.filter((s) => s.d).map((s) => s.d));
+  const re = new RegExp('^' + st.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' · ท่อน (\\d+)$');
+  const best = new Map();
+  for (const d of docs) {
+    if (used.has(d.id)) continue;
+    const m = re.exec(d.name || '');
+    if (!m) continue;
+    const i = Number(m[1]) - 1;
+    if (i < 0 || i >= route.length) continue;
+    const n = (d.items || []).length;
+    const idn = parseInt(String(d.id).slice(1), 10) || 0;
+    const cur = best.get(i);
+    if (!cur || n > cur.n || (n === cur.n && idn > cur.idn)) best.set(i, { d, n, idn });
+  }
+  // ช่องว่าง (ยังไม่ใช่ท่อนของเรา) = เสนอคืนเสมอ
+  // ช่องที่มีท่อนของเราอยู่แล้ว = เสนอเฉพาะเมื่อฉบับที่หลุดมี "ของมากกว่า" ฉบับในลำดับตอนนี้
+  //   (เจอจริง: เทมเพลตเก็บตอนท่อน 5-8 เพิ่งแปลงเป็นของเรายังว่าง ใช้เทมเพลตแล้วได้ท่อนว่าง
+  //    ส่วนฉบับที่จัดของไว้เต็มหลุดออกไป — กติกาเดิมข้ามช่องพวกนี้เพราะ "มีท่อนของเราอยู่แล้ว")
+  const out = [];
+  for (const [i, v] of best) {
+    const curDoc = route[i].d ? docById(route[i].d) : null;
+    const cur = curDoc ? (curDoc.items || []).length : -1;
+    if (v.n > cur && v.n > 0) out.push({ i, d: v.d, n: v.n, cur });
+  }
+  return out.sort((a, b) => a.i - b.i);
+}
+
+function renderOrphans(st) {
+  const box = document.getElementById('orphanBox');
+  if (!box) return;
+  const list = orphanSlots(st);
+  if (!list.length) { box.innerHTML = ''; box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = `<b>🛟 เจอท่อนที่แก้ไว้แต่หลุดจากลำดับ ${list.length} ท่อน</b>`
+    + (list.some((o) => o.cur >= 0) ? '<small>ช่องที่มีท่อนอยู่แล้ว จะสลับเป็นฉบับที่มีของมากกว่า (ฉบับเดิมไม่ถูกลบ · กดย้อนกลับได้)</small>' : '')
+    + `<small>${list.map((o) => (o.cur >= 0
+      ? `ท่อน ${o.i + 1} (ตอนนี้ ${o.cur} ชิ้น → ฉบับที่หลุด ${o.n} ชิ้น)`
+      : `ท่อน ${o.i + 1} (${o.n} ชิ้น)`)).join(' · ')}</small>`
+    + '<button type="button" class="btn" id="orphanFix">เอากลับเข้าลำดับ</button>';
+  document.getElementById('orphanFix').onclick = () => {
+    pushUndo();
+    const route = routeOf(st);
+    for (const o of list) route[o.i] = { ...route[o.i], d: o.d.id };
+    saveRoutes();
+    stageDirty();
+    renderStageUI();
+    gotoSlot(list[0].i);
+  };
+}
+
 function renderStageUI() {
   const st = stage();
   const route = routeOf(st);
   const sc = stageScene();
   if (view.slot >= route.length) view.slot = Math.max(0, route.length - 1);
+  renderOrphans(st);
 
   slotHeadEl.textContent = `${st.name} · ${route.length} ท่อน (ล็อกไว้) · ยาวรวม ${Math.round(sc.width)}px`;
 
@@ -4563,7 +4895,7 @@ function loadTpls() {
 }
 
 function saveTpls() {
-  try { localStorage.setItem(TPL_KEY, JSON.stringify(tpls)); } catch { /* เต็มก็ช่าง */ }
+  try { localStorage.setItem(TPL_KEY, JSON.stringify(tpls)); } catch { saveFailed(true); }
 }
 
 /** ท่อนที่เราแก้เองซึ่งลำดับนี้ใช้อยู่ — ต้องติดไปกับเทมเพลตด้วย ไม่งั้นเปิดมาแล้วท่อนหาย */
@@ -4633,7 +4965,14 @@ function refreshTplPick() {
 
 document.getElementById('tplPick').onchange = (e) => {
   const t = tpls.find((q) => q.id === e.target.value);
+  // คืนช่องเป็น "— เทมเพลตที่เก็บไว้ —" เสมอ — ค้างชื่อไว้แล้วดูเหมือนกำลังใช้เทมเพลตนั้นอยู่
+  e.target.value = '';
   if (!t) return;
+  // เดิมเลือกปุ๊บแทนที่ลำดับท่อนทั้งด่านทันที ท่อนที่แก้หลังจากเก็บเทมเพลตหลุดออกจากลำดับเงียบ ๆ
+  const when = new Date(t.at || Date.now()).toLocaleString('th-TH');
+  if (!window.confirm(`ใช้เทมเพลต “${t.name}” (เก็บไว้ ${when})?\n\n`
+    + 'ลำดับท่อนของด่านนี้ตอนนี้จะถูกแทนที่ด้วยของในเทมเพลต\n'
+    + '(ท่อนที่แก้ไว้ไม่ถูกลบ — กู้กลับเข้าลำดับได้จากกล่อง “ท่อนที่แก้ไว้แต่หลุดจากลำดับ”)')) return;
   pushUndo();
   applyTpl(t);
 };
@@ -4889,6 +5228,8 @@ const stagePick = document.getElementById('stagePick');
 stagePick.innerHTML = STAGES.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
 stagePick.onchange = (e) => {
   view.stage = Number(e.target.value);
+  // หน้าตาสิ่งกีดขวาง/พื้นเหยียบบนชิปเปลี่ยนตามด่าน — วาดตัวอย่างใหม่
+  requestAnimationFrame(paintKitThumbs);
   if (view.mode !== 'stage') return;
   view.slot = 0;
   stageDirty();
@@ -5083,19 +5424,74 @@ function renderItemList() {
     return;
   }
 
+  // ── แผงเลเยอร์ (แบบ Canva) ──
+  // เรียงตามชั้นที่วาดจริงบนสนาม บนสุด = อยู่หน้าสุด แต่ละชั้นเรียงซ้ายไปขวาตามตำแหน่ง
+  // แถวมีภาพย่อของชิ้นนั้นจริง · คลิก = เลือก + เลื่อนจอไปหา · Shift/Ctrl+คลิก = เลือกหลายชิ้น
+  // ชี้เมาส์ที่แถว = ชิ้นนั้นมีกรอบเรืองบนสนาม (drawLayerHover)
   const d = doc();
-  const list = d.items.slice().sort((a2, b2) => xOf(d, a2) - xOf(d, b2));
-  const rowsHtml = list.map((it) => {
-    const x = Math.round(xOf(d, it));
-    const out = x < -20 || x > d.width + 20;      // เตือนของที่หลุดออกนอกท่อน
-    return `<div class="irow${it.id === sel ? ' on' : ''}" data-id="${it.id}">`
-      + `<span class="nm">${esc(itemLabel(d, it))}</span>`
-      + `<span class="xx${out ? ' out' : ''}">x=${x}</span>`
-      + `<button type="button" class="del" data-del="${it.id}" title="ลบชิ้นนี้">✕</button></div>`;
+  const picked = new Set(selIds(d));
+  const rowsHtml = LAYER_GROUPS.map(([key, title]) => {
+    const list = d.items.filter((it) => layerOf(it) === key)
+      .sort((a2, b2) => xOf(d, a2) - xOf(d, b2));
+    if (!list.length) return '';
+    return `<p class="lhead">${title}<b>${list.length}</b></p>` + list.map((it) => {
+      const x = Math.round(xOf(d, it));
+      const out = x < -20 || x > d.width + 20;      // เตือนของที่หลุดออกนอกท่อน
+      const url = layerThumb(it, d);
+      const extra = (it.grp ? ' · 🔗 ' + esc(it.grpName || 'กลุ่ม') : '') + (it.link ? ' · เกาะจุดกด' : '');
+      return `<div class="irow lrow${picked.has(it.id) ? ' on' : ''}${it.id === sel ? ' main' : ''}" data-id="${it.id}">`
+        + `<span class="lthumb">${url ? `<img src="${url}" alt="">` : ''}</span>`
+        + `<span class="lmeta"><span class="nm">${esc(itemLabel(d, it))}</span>`
+        + `<span class="xx${out ? ' out' : ''}">x=${x}${extra}</span></span>`
+        + `<button type="button" class="del" data-del="${it.id}" title="ลบชิ้นนี้">✕</button></div>`;
+    }).join('');
   }).join('');
 
-  itemListEl.innerHTML = (list.length ? rowsHtml : '<p class="tip">ยังไม่มีของในท่อนนี้</p>') + strayHtml;
+  itemListEl.innerHTML = (d.items.length ? rowsHtml : '<p class="tip">ยังไม่มีของในท่อนนี้</p>') + strayHtml;
+  itemListEl.querySelector('.irow.main')?.scrollIntoView({ block: 'nearest' });
 }
+
+/** ชั้นบนสนาม เรียงจากหน้าสุดไปหลังสุด — ตรงกับลำดับวาดใน draw() */
+const LAYER_GROUPS = [
+  ['item', '⭐ ไอเท็มตัวช่วย'],
+  ['food', '🐟 ของกิน'],
+  ['sp', '⚡ ของพิเศษ'],
+  ['obs', '🧱 สิ่งกีดขวาง / หลุม'],
+  ['plat', '⛰ พื้นเหยียบ'],
+  ['jump', '🎯 จุดกด'],
+];
+function layerOf(it) {
+  if (it.t === 'jump') return 'jump';
+  if (it.group === 'item') return 'item';
+  if (it.group === 'sp') return 'sp';
+  if (it.group === 'plat' || PLAT_T.has(it.t)) return 'plat';
+  if (it.group === 'obs') return 'obs';
+  return 'food';
+}
+
+/** ชิ้นที่เมาส์ชี้อยู่ในแผงเลเยอร์ — วาดกรอบเรืองบนสนามให้รู้ว่าแถวนั้นคือชิ้นไหน */
+let layerHover = null;
+function drawLayerHover() {
+  if (!layerHover || locked()) return;
+  const d = doc();
+  const it = byId(d, layerHover);
+  if (!it) return;
+  const b = itemBox(d, it);
+  const cam = docCam();
+  ctx.save();
+  ctx.fillStyle = 'rgba(127,227,218,.14)';
+  ctx.fillRect(b.x - cam - 6, b.y - 6, b.w + 12, b.h + 12);
+  ctx.strokeStyle = '#7FE3DA';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.strokeRect(b.x - cam - 6, b.y - 6, b.w + 12, b.h + 12);
+  ctx.restore();
+}
+itemListEl.addEventListener('mouseover', (e) => {
+  const row = e.target.closest('.irow[data-id]');
+  layerHover = row ? row.dataset.id : null;
+});
+itemListEl.addEventListener('mouseleave', () => { layerHover = null; });
 
 itemListEl.onclick = (e) => {
   const ds = e.target.closest('[data-delstray]');
@@ -5134,6 +5530,14 @@ itemListEl.onclick = (e) => {
   const d = doc();
   const it = byId(d, row.dataset.id);
   if (!it) return;
+  // Shift/Ctrl+คลิก = เพิ่ม/เอาออกจากชุดที่เลือก (ท่าเดียวกับบนสนาม)
+  if (e.shiftKey || e.ctrlKey || e.metaKey) {
+    toggleSel(d, it);
+    renderInspector();
+    renderItemList();
+    return;
+  }
+  multi.clear();
   sel = it.id;
   // เลื่อนจอไปหาของชิ้นนั้น จะได้เห็นว่ากำลังเลือกอะไรอยู่
   const b = itemBox(d, it);

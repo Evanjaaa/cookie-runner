@@ -4506,16 +4506,18 @@ canvas[hidden] { display: none; }
      ส่วนขนาดของ canvas เองไปว่ากันในบล็อกถัดไป */
   body { padding: 0; }
   .footnote { display: none; }
+  /* --app-h = ความสูงจอจริงที่ main.js วัดให้ (syncAppHeight) — 100dvh ของ Safari บน iPhone
+     ค้างค่าเก่าหลังหมุนจอ เวทีเลยเตี้ยกว่าจอ เหลือแถบดำข้างล่าง; dvh เป็นแค่ค่าสำรองก่อน JS มา */
   .shell {
     width: 100%;
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .stage {
     width: 100%;
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
     border-radius: 0;
     box-shadow: none;
     /* จัด canvas ให้อยู่กลางตอนที่มันไม่ได้กินเต็มจอ (จอที่สัดส่วนไม่ใกล้ 2.2857) */
@@ -4525,7 +4527,7 @@ canvas[hidden] { display: none; }
   }
   .stage > canvas {
     /* ค่าตั้งต้น: คงอัตราส่วน 960/420 แล้วเหลือแถบบน-ล่าง */
-    width: min(100vw, calc(100dvh * 2.2857));
+    width: min(100vw, calc(var(--app-h, 100dvh) * 2.2857));
     height: auto;
   }
 }
@@ -4545,7 +4547,7 @@ canvas[hidden] { display: none; }
 @media (hover: none) and (pointer: coarse) and (min-aspect-ratio: 21/10) {
   .stage > canvas {
     width: 100%;
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
   }
 }
 
@@ -5670,7 +5672,7 @@ canvas[hidden] { display: none; }
 
 /* บนจอสัมผัส .stage กินเต็มจอ ไม่ได้ล็อกอัตราส่วนแบบบนคอม */
 @media (hover: none) and (pointer: coarse) {
-  #gachaPanel { --stage-h: 100dvh; }
+  #gachaPanel { --stage-h: var(--app-h, 100dvh); }
 }
 
 /* การ์ดของหน้านี้กว้างกว่าหน้าอื่น เพราะต้องวางสามคอลัมน์ให้จบในแถวเดียว
@@ -8218,7 +8220,7 @@ canvas[hidden] { display: none; }
 
 /* บนจอสัมผัส .stage กินเต็มจอ ไม่ได้ล็อกอัตราส่วนแบบบนคอม */
 @media (hover: none) and (pointer: coarse) {
-  #createPanel { --stage-h: 100dvh; }
+  #createPanel { --stage-h: var(--app-h, 100dvh); }
 }
 
 /* ── ฟอนต์ทั้งแผงเป็น Mitr ตัวเดียวกับหน้าแรก ──
@@ -10557,7 +10559,8 @@ canvas[hidden] { display: none; }
 @media (max-height: 460px) {
   .news-wrap { grid-template-columns: minmax(130px, 28%) 1fr; }
   .news-list .news-thumb { display: none; }
-  .news-item-meta { flex-wrap: nowrap; overflow: hidden; }
+  .news-item-meta { gap: 3px; }
+  .news-item-meta .news-tag, .news-item-meta .news-pin { padding: 0 7px; font-size: 9.5px; }
   .news-item b { font-size: 12px; }
   .news-view { padding: 7px; }
   .news-hero { max-height: max(70px, calc(100cqh - 4em)); }
@@ -10835,3 +10838,567 @@ canvas[hidden] { display: none; }
 @media (max-width: 560px) and (orientation: portrait) {
   .news-list { padding-right: 3px; border-right: 0; }
 }
+
+/* ── กรอบเพชร/ทองบนมือถือ: เล็กลง 10% ──
+   บนคอมขนาดพอดีแล้ว แต่บนจอมือถือ (เงื่อนไขเดียวกับที่โชว์ปุ่มสัมผัส) กรอบสองอันกินแถบบนเกินไป
+   โดยเฉพาะตอนตัวเลขยาวหลักพันล้าน — ย่อทุกค่า ×0.9 จากชุดข้างบน สัดส่วนภายในจึงเหมือนเดิมทุกอย่าง */
+@media (hover: none) and (pointer: coarse) {
+  .hud-top .wallet .gembar,
+  .hud-top .wallet .goldbar {
+    height: calc(var(--hud-h) * 1.206);
+    padding: 0 16px 0 6px;
+    gap: 9px;
+  }
+  .hud-top .wallet .gembar b,
+  .hud-top .wallet .goldbar b { font-size: clamp(14.85px, 2.574dvh, 18.9px); }
+  .hud-top .wallet .gem,
+  .hud-top .wallet .coin { width: calc(var(--hud-h) * .81); height: calc(var(--hud-h) * .81); }
+  .hud-top .wallet .gembar::before,
+  .hud-top .wallet .goldbar::before { left: calc(var(--hud-h) * .71); width: 8px; height: 8px; }
+}
+
+/* ── ข้อความใต้หัวกล่องรางวัล: ขึ้นบรรทัดตามที่เขียนไว้ (\n) ──
+   กล่อง "น้องมองคุณตาแป๋ว" เดิมโดน .got-note จำกัด 30ch แล้วตัดเองเป็นสามบรรทัด
+   ตอนนี้ข้อความกำหนดบรรทัดเอง แล้วให้กว้างพอสำหรับบรรทัดยาวสุดในกล่อง */
+#rewardNote { white-space: pre-line; max-width: min(100%, 56ch); }
+
+/* ══ หน้าข่าวสาร — ตามแบบที่วางไว้ ═══════════════════════════════════
+   ของตกแต่ง 3 ชิ้นตัดมาจากไฟล์ SVG ที่ออกแบบใน Canva (public/news-deco/)
+     pin.png    หมุดแดงบนการ์ดข่าวที่ปักหมุด
+     paws.webp  รอยเท้าแมวชมพู-ม่วง มุมซ้ายบนของกรอบอ่าน
+     line.png   เส้นประรอยเท้า มุมขวาล่างของกรอบอ่าน
+   (ไฟล์ SVG ต้นฉบับหนัก 1.5MB เพราะฝังภาพไว้ข้างใน — ตัดกรอบแล้วย่อเหลือรวม ~50KB)
+   กฎชุดนี้อยู่ท้ายไฟล์โดยตั้งใจ ทับหน้าตาชุดแรกของหน้าข่าวที่อยู่ข้างบน */
+
+/* ── รายการหัวข้อ: รูปย่อใหญ่ซ้าย ตัวหนังสือขวา ── */
+/* เว้นบนให้หัวหมุดที่โผล่พ้นการ์ดใบแรก — รายการเลื่อนได้ (overflow) ส่วนที่เกินขอบจะโดนตัด */
+.news-list { padding-top: calc(clamp(12px, 2.3dvh, 18px) * 2.08 - 2px); gap: clamp(7px, 1.4dvh, 12px); }
+.news-item {
+  gap: clamp(8px, 1.2vw, 12px);
+  padding: clamp(5px, .9dvh, 8px) clamp(7px, 1vw, 10px);
+  border-radius: 14px;
+  overflow: visible;
+}
+.news-item-txt { gap: 1px; }
+.news-item b { -webkit-line-clamp: 1; }
+.news-list .news-item .news-thumb {
+  display: block;
+  width: 44%;
+  /* สัดส่วนเดียวกับรูปข่าวในกรอบอ่าน (NEWS_IMG ใน src/admin/main.js) — เห็นทั้งแผ่นเหมือนกัน
+     แบนกว่า 16:9 เดิม การ์ดจึงเตี้ยลงเกือบครึ่ง */
+  aspect-ratio: 2.6 / 1;
+  border-radius: 8px;
+}
+.news-item b { font-size: clamp(12px, 2dvh, 16px); }
+.news-item small { font-size: clamp(10px, 1.6dvh, 13px); color: #E6D2F5; }
+/* หมุดแดงปักมุมขวาบน — หัวหมุดโผล่พ้นขอบการ์ด เข็มจิ้มลงในการ์ด */
+.news-pinimg {
+  position: absolute;
+  --pin-w: clamp(12px, 2.3dvh, 18px);
+  top: calc(var(--pin-w) * -2.08 + 7px);
+  right: clamp(14px, 2vw, 22px);
+  width: var(--pin-w);
+  height: auto;
+  filter: drop-shadow(1px 3px 2px rgba(40,10,50,.45));
+  pointer-events: none;
+  z-index: 2;
+}
+.news-item.pinned .news-new { top: auto; bottom: -4px; }
+
+/* ── กรอบอ่าน: กระดาษครีม + เส้นประรอยเท้ามุมขวาล่าง ── */
+.news-view {
+  padding: clamp(10px, 2dvh, 20px) clamp(12px, 2.2vw, 26px);
+  border-radius: 20px;
+  background:
+    url("/news-deco/line.png") right clamp(8px, 1.4vw, 16px) bottom clamp(8px, 1.4dvh, 14px) / var(--line-w) auto no-repeat,
+    radial-gradient(90% 60% at 100% 0%, rgba(255,205,228,.45), transparent 60%),
+    #FFF8EE;
+  box-shadow: inset 0 0 0 3px #FFE3EF, 0 8px 22px rgba(0,0,0,.35);
+}
+.news-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: clamp(6px, 1.3dvh, 12px);
+}
+.news-paws { width: clamp(40px, 8dvh, 76px); height: auto; flex: 0 0 auto; }
+.news-top .news-meta { margin: 0; gap: 10px; }
+.news-top .news-meta time { font-size: clamp(11px, 2dvh, 17px); color: #8B6A93; font-weight: 700; }
+.news-top .news-tag { font-size: clamp(10px, 1.7dvh, 14px); padding: 2px 12px; }
+
+/* รูปข่าว: แถบกว้างเตี้ย (ราว 2.6:1) ในกรอบชมพู-ม่วงอ่อน · รูปที่ไม่ใช่สัดส่วนนี้ถูกตัดขอบบนล่าง (cover) */
+.news-view .news-hero {
+  aspect-ratio: 2.6 / 1;
+  max-height: none;
+  border-radius: 16px;
+  border: 4px solid #E7B2F1;
+  box-shadow: 0 0 0 2px #F8DDFA, 0 6px 14px rgba(120,60,150,.18);
+  background: #F3DDF7;
+}
+.news-view .news-hero img { object-position: 50% 45%; }
+
+/* หัวข้อ + เส้นขีดใต้สีม่วงอ่อน (ยาวเท่าตัวหนังสือ) */
+.news-view .news-title {
+  margin-top: clamp(10px, 2dvh, 18px);
+  font-size: clamp(15px, 3.2dvh, 26px);
+  color: #5B2466;
+}
+.news-view .news-title span {
+  display: inline-block;
+  padding-bottom: clamp(3px, .8dvh, 7px);
+  border-bottom: clamp(2px, .45dvh, 4px) solid #D8B4EC;
+}
+.news-view .news-body {
+  margin-top: clamp(6px, 1.3dvh, 12px);
+  /* เว้นขวานิดเดียว — ลายเส้นประอยู่มุมขวาล่าง ตัวหนังสือบรรทัดบน ๆ ไม่ชน
+     pretty แทน balance: บรรทัดเต็มความกว้างตามแบบ แต่ยังกันคำเดี่ยวตกบรรทัดท้าย (กติกา CLAUDE.md) */
+  padding-right: clamp(20px, 6%, 60px);
+  text-wrap: pretty;
+  font-size: clamp(12px, 2.2dvh, 18px);
+  line-height: 1.6;
+}
+.panel .news-view .news-body p { color: #7A4F78; }
+
+/* ── จอเตี้ย (มือถือแนวนอน): โครงเดิม แค่ย่อให้พอดีจอเดียว ──
+   รูปสูงไม่เกินที่เหลือหลังหักแถวบน/หัวข้อ/เนื้อบรรทัดแรก (cqh = ความสูงกรอบอ่าน) */
+@media (max-height: 460px) {
+  /* แบบที่วางไว้ รายการกว้างราว 37% ของการ์ด — แคบกว่านี้หัวข้อกับวันที่ตกบรรทัด */
+  .news-wrap { grid-template-columns: minmax(160px, 37%) 1fr; }
+  .news-list { gap: 7px; }
+  .news-item { padding: 5px; gap: 7px; }
+  .news-list .news-item .news-thumb { width: 44%; }
+  .news-item-meta .news-tag { font-size: 9px; padding: 0 7px; }
+  .news-item b { font-size: 11.5px; }
+  .news-item small { font-size: 9.5px; }
+  .news-view { padding: 8px 12px; }
+  .news-top { margin-bottom: 5px; }
+  .news-paws { width: 34px; }
+  .news-view .news-hero { max-height: max(80px, calc(100cqh - 6.2em)); aspect-ratio: auto; height: min(calc((100cqw - 24px) / 2.6), max(80px, calc(100cqh - 6.2em))); }
+  .news-view .news-title { margin-top: 7px; font-size: 14px; }
+  .news-view .news-body { margin-top: 4px; font-size: 11.5px; }
+}
+
+/* ── กรอบอ่านข่าว: สูงเท่าเนื้อหา + เลื่อนเฉพาะรายละเอียด ──
+   เดิมกรอบยืดเต็มความสูงการ์ดเสมอ ข่าวสั้นเหลือที่ว่างครีมก้อนใหญ่ข้างล่าง
+   และข่าวยาวเลื่อนทั้งกรอบ (รูป/หัวข้อเลื่อนหายไปด้วย)
+   ตอนนี้: กรอบหดตามเนื้อหา สูงสุดเท่าพื้นที่ที่มี · รูป หัวข้อ อยู่กับที่ · เลื่อนเฉพาะช่องรายละเอียด */
+.news-view {
+  --line-w: clamp(52px, 11%, 100px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.news-view > .news-top,
+.news-view > .news-hero,
+.news-view > .news-title { flex: 0 0 auto; }
+.news-view .news-body {
+  flex: 0 1 auto;
+  min-height: 2.2em;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* ลายเส้นประรอยเท้าอยู่มุมขวาล่าง — เว้นด้านขวาเท่าความกว้างลาย แทนการเว้นล่าง
+     กรอบจึงไม่ต้องสูงเกินเนื้อหาเพื่อหลบลาย (เดิมเว้นล่าง 56px = ที่ว่างครีมก้อนใหญ่) */
+  padding-right: calc(var(--line-w) + 4px);
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #E3B6EC transparent;
+}
+.news-view .news-body::-webkit-scrollbar { width: 6px; }
+.news-view .news-body::-webkit-scrollbar-thumb { background: #E3B6EC; border-radius: 99px; }
+
+/* จอสูงพอ (คอม/แท็บเล็ต): กรอบไม่ยืดตามแถว — หดเท่าเนื้อหา
+   ปลด size containment (ใช้กับสูตร cqh ของจอเตี้ยเท่านั้น) ไม่งั้นกรอบที่สูงตามเนื้อหาจะยุบเหลือ 0 */
+@media (min-height: 461px) {
+  .news-view {
+    container-type: normal;
+    align-self: start;
+    max-height: 100%;
+  }
+}
+/* จอเตี้ย: กรอบเต็มความสูงเหมือนเดิม (ที่น้อยอยู่แล้ว) แต่เลื่อนเฉพาะรายละเอียด */
+@media (max-height: 460px) {
+  .news-view { --line-w: 46px; }
+}
+
+/* ── การ์ดรายการข่าว: ตัวอักษรเล็กลง 5% + หมุดต่ำลง ชิดขวาขึ้น ──
+   ทุกค่าคือค่าเดิม × 0.95 (หัวข้อ / วันที่ / ป้าย) */
+.news-item b { font-size: clamp(11.4px, 1.9dvh, 15.2px); }
+.news-item small { font-size: clamp(9.5px, 1.52dvh, 12.35px); }
+.news-item-meta .news-tag { font-size: clamp(9px, 1.28dvh, 10.45px); }
+/* หมุด: เข็มจิ้มลึกลงในการ์ดอีกนิด (หัวหมุดโผล่พ้นขอบน้อยลง) และขยับไปทางมุมขวา */
+.news-pinimg {
+  top: calc(var(--pin-w) * -2.08 + 13px);
+  right: clamp(7px, 1.1vw, 12px);
+}
+/* หัวหมุดโผล่น้อยลง — เว้นบนของรายการลดตาม */
+.news-list { padding-top: calc(clamp(12px, 2.3dvh, 18px) * 2.08 - 8px); }
+@media (max-height: 460px) {
+  .news-item b { font-size: 10.9px; }
+  .news-item small { font-size: 9px; }
+  .news-item-meta .news-tag { font-size: 8.55px; }
+}
+
+/* ── มือถือ: หัวข้อ/รายละเอียดข่าวห่างจากกรอบรูปขึ้น ──
+   เดิมหัวข้อเว้นจากรูปแค่ 7px ขอบกรอบชมพู + เงารูปเลยเกือบชนตัวหนังสือ
+   เฉพาะจอสัมผัส (เงื่อนไขเดียวกับปุ่มบนจอ) — บนคอมระยะพอดีแล้ว
+   รูปเตี้ยลงตาม (หักที่เพิ่มออกจากสูตรความสูงรูป) ข้อความจึงไม่ถูกดันตกกรอบ */
+@media (hover: none) and (pointer: coarse) {
+  .news-view .news-title { margin-top: clamp(12px, 3dvh, 20px); }
+  .news-view .news-body { margin-top: clamp(6px, 1.6dvh, 12px); }
+}
+@media (hover: none) and (pointer: coarse) and (max-height: 460px) {
+  .news-view .news-hero {
+    max-height: max(72px, calc(100cqh - 7.4em));
+    height: min(calc((100cqw - 24px) / 2.6), max(72px, calc(100cqh - 7.4em)));
+  }
+}
+
+/* ── คลังน้อง หมวดสมบัติ: ดาวใต้ชื่อ + คำบอกใต้ช่องซ้าย ── */
+.stash-stars { margin-top: clamp(2px, .6dvh, 6px); gap: clamp(2px, .4vw, 5px); }
+.stash-stars i { width: clamp(16px, 3.2dvh, 28px); height: clamp(16px, 3.2dvh, 28px); }
+.stash-stars.hidden, .stash-hint.hidden { display: none; }
+.stash-hint {
+  flex: 0 0 auto;
+  margin-top: clamp(6px, 1.4dvh, 12px);
+  padding-left: 2px;
+  font-size: clamp(12px, 2.4dvh, 19px);
+  line-height: 1.4;
+  color: var(--cream);
+  text-align: left;
+  align-self: stretch;
+}
+
+/* ══ ตีบวกสมบัติ: ป้ายผลแบบฟุ้งฟิ้ง + แอนิเมชันเวที ═══════════════════════
+   ป้ายผลสี่แบบ (upBadge ใน main.js): win สำเร็จ · fail ไม่สำเร็จ · stop พักก่อน · max ตันแล้ว
+   ทุกแบบเป็นเม็ดลูกอมพาสเทล ขอบขาวนุ่ม มีไอคอนเด้ง ประกายวิบวับสามดวง และแสงพาดผ่าน */
+.up-result {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 8px;
+  row-gap: 0;
+  border-radius: 999px;
+  border: 3px solid rgba(255,255,255,.85);
+  padding: clamp(7px, 1.4dvh, 12px) clamp(22px, 3.6vw, 40px);
+  animation: urIn .55s cubic-bezier(.2,.9,.3,1.5) backwards;
+}
+.up-result > b { order: 1; font-size: clamp(16px, 3dvh, 25px); }
+.up-result > .ur-ico { order: 0; }
+.up-result > small { order: 2; flex-basis: 100%; text-align: center; font-weight: 600; }
+@keyframes urIn {
+  0%   { opacity: 0; transform: scale(.4) rotate(-6deg); }
+  60%  { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+/* แสงพาดเฉียงวิ่งผ่านหนึ่งรอบหลังป้ายเด้งเข้า */
+.up-result::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -40%;
+  width: 30%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.7), transparent);
+  transform: skewX(-18deg);
+  animation: urShine 1.1s .35s ease-out backwards;
+  pointer-events: none;
+}
+@keyframes urShine { from { left: -40%; } to { left: 130%; } }
+.ur-ico {
+  position: relative;
+  font-size: clamp(18px, 3.4dvh, 28px);
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.25));
+  animation: urIco 1.6s ease-in-out infinite;
+}
+@keyframes urIco { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-3px) rotate(8deg); } }
+/* ประกายวิบวับสามดวงรอบป้าย */
+.ur-tw {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: #fff;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: urTw 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.ur-tw.a { top: 6px; left: 12px; }
+.ur-tw.b { top: 8px; right: 16px; width: 8px; height: 8px; animation-delay: .6s; }
+.ur-tw.c { bottom: 6px; right: 34%; width: 7px; height: 7px; animation-delay: 1.2s; }
+@keyframes urTw { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0); } 50% { opacity: 1; transform: scale(1) rotate(90deg); } }
+
+/* สำเร็จ — มิ้นต์ → ลาเวนเดอร์ */
+.up-result.win {
+  background: linear-gradient(120deg, #9FF5E4 0%, #B8E6FF 45%, #D9C2FF 100%);
+  color: #2C5B6A;
+  box-shadow: 0 0 0 3px rgba(159,245,228,.35), 0 0 26px rgba(159,245,228,.75), 0 6px 0 #6FC7C0, 0 10px 18px rgba(0,0,0,.3);
+}
+.up-result.win b { color: #1F5362; text-shadow: 0 2px 0 rgba(255,255,255,.7); }
+/* ไม่สำเร็จ — ชมพูพีชนุ่ม ๆ ส่ายหัวเบา ๆ ไม่ใช่แดงเตือนภัย */
+.up-result.fail {
+  background: linear-gradient(120deg, #FFD3DE 0%, #FFB5C8 55%, #F9A4C0 100%);
+  color: #8A3656;
+  box-shadow: 0 0 0 3px rgba(255,181,200,.3), 0 0 20px rgba(255,160,190,.55), 0 6px 0 #E0869F, 0 10px 18px rgba(0,0,0,.3);
+  animation: urIn .55s cubic-bezier(.2,.9,.3,1.5) backwards, urShake .5s .5s ease-in-out;
+}
+.up-result.fail b { color: #7A2446; text-shadow: 0 2px 0 rgba(255,255,255,.6); }
+.up-result.fail .ur-tw { background: #FFE6EE; }
+@keyframes urShake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+/* พักก่อน (หยุดเอง) — ลาเวนเดอร์ละมุน */
+.up-result.stop {
+  background: linear-gradient(120deg, #E9DDFF 0%, #D4C2FF 55%, #C3B0FA 100%);
+  color: #54408A;
+  box-shadow: 0 0 0 3px rgba(212,194,255,.3), 0 0 20px rgba(200,180,255,.55), 0 6px 0 #A58FE0, 0 10px 18px rgba(0,0,0,.3);
+}
+.up-result.stop b { color: #45307A; text-shadow: 0 2px 0 rgba(255,255,255,.6); }
+/* ตันแล้ว — ทองรุ้ง ขอบรุ้งหมุน มงกุฎเด้ง */
+.up-result.max {
+  background:
+    linear-gradient(120deg, #FFF3B8 0%, #FFD86E 45%, #FFB8D9 100%) padding-box,
+    conic-gradient(from var(--ang, 0deg), #FFB3D0, #FFE38A, #9FF5E4, #C7B2FF, #FFB3D0) border-box;
+  border-color: transparent;
+  color: #7A4A00;
+  box-shadow: 0 0 30px rgba(255,216,110,.8), 0 6px 0 #D89A2A, 0 10px 18px rgba(0,0,0,.3);
+  animation: urIn .55s cubic-bezier(.2,.9,.3,1.5) backwards, urRainbow 3s linear infinite;
+}
+.up-result.max b { color: #6A3A00; text-shadow: 0 2px 0 rgba(255,255,255,.7); }
+.up-result.max .ur-tw { background: #FFF8D6; }
+@property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes urRainbow { to { --ang: 360deg; } }
+
+/* ── ปุ่มหยุด (ระหว่างตีรัว): ชมพูลูกอม + ไอคอนหยุดชั่วคราววาดเอง + วงแสงเต้น ── */
+.btn.ghost.stopping {
+  background: linear-gradient(180deg, #FFC2D4 0%, #FF94B4 52%, #F2709A 100%);
+  color: #5A1030;
+  box-shadow: 0 6px 0 #C94F77, 0 0 0 0 rgba(255,148,180,.6), inset 0 2px 0 rgba(255,255,255,.6);
+  animation: stopPulse 1.2s ease-out infinite;
+}
+.btn.ghost.stopping:active { box-shadow: 0 2px 0 #C94F77, inset 0 2px 0 rgba(255,255,255,.6); }
+@keyframes stopPulse {
+  0%   { box-shadow: 0 6px 0 #C94F77, 0 0 0 0 rgba(255,148,180,.7), inset 0 2px 0 rgba(255,255,255,.6); }
+  100% { box-shadow: 0 6px 0 #C94F77, 0 0 0 14px rgba(255,148,180,0), inset 0 2px 0 rgba(255,255,255,.6); }
+}
+.btn.ghost.stopping .up-auto-ico {
+  width: 14px; height: 16px;
+  background: linear-gradient(90deg, #fff 0 35%, transparent 35% 65%, #fff 65%);
+  border-radius: 3px;
+  filter: drop-shadow(0 1px 1px rgba(120,20,60,.4));
+}
+
+/* ── ปุ่มตีบวกตอนตันแล้ว: ป้ายทองมงกุฎ ไม่ใช่ปุ่มเทาหมดสภาพ ── */
+#upGo.maxed:disabled {
+  opacity: 1;
+  filter: none;
+  background: linear-gradient(180deg, #FFF1B0 0%, #FFD35E 55%, #F2B233 100%);
+  color: #6A3A00;
+  box-shadow: 0 4px 0 #C98A1C, 0 0 18px rgba(255,211,94,.6), inset 0 2px 0 rgba(255,255,255,.7);
+  cursor: default;
+}
+#upGo.maxed .price { display: none; }
+
+/* ── แอนิเมชันเวที ──
+   ชาร์จ: ค้อนเคาะ ๆ ข้างตัวสมบัติ · รู้ผล: ข้อความลอยขึ้น (+1 ★ ทอง / ฟู่… ควันเทา)
+   ประกายตอนสำเร็จเป็นรูปดาว ไม่ใช่จุดกลม */
+.up-stage { overflow: visible; }
+.up-hammer {
+  justify-self: end;
+  align-self: start;
+  font-size: clamp(20px, 4.2dvh, 32px);
+  transform-origin: 80% 80%;
+  opacity: 0;
+  pointer-events: none;
+  margin: -6px -14px 0 0;
+}
+.up-box.charging .up-hammer { opacity: 1; animation: upHammer .22s ease-in-out infinite alternate; }
+@keyframes upHammer { from { transform: rotate(-35deg); } to { transform: rotate(18deg); } }
+.up-float {
+  align-self: start;
+  margin-top: -8px;
+  font-family: "Mali", sans-serif;
+  font-weight: 800;
+  font-size: clamp(16px, 3.2dvh, 24px);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 3;
+}
+.up-float.go { animation: upFloat 1.1s ease-out forwards; }
+.up-float.win { color: #FFE27A; text-shadow: 0 2px 0 #A8661A, 0 0 12px rgba(255,210,90,.9); }
+.up-float.fail { color: #E9E1F2; text-shadow: 0 2px 0 rgba(60,30,80,.6); }
+@keyframes upFloat {
+  0%   { opacity: 0; transform: translateY(10px) scale(.6); }
+  20%  { opacity: 1; transform: translateY(-6px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-38px) scale(1); }
+}
+.up-box.win .up-spark i {
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 0;
+  box-shadow: none;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: linear-gradient(155deg, #FFF6D0, #FFD25A 50%, #FF9EC4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .up-result, .up-result::after, .ur-ico, .ur-tw, .btn.ghost.stopping, .up-box.charging .up-hammer, .up-float.go { animation: none; }
+  .up-float.go { opacity: 1; }
+}
+
+/* ── ปุ่มสร้างสรรค์ตอนยังล็อก: ไอคอนจาง + ป้ายกุญแจมุมปุ่ม ── */
+.lobby-btn.locked canvas { filter: grayscale(.85) brightness(.75); opacity: .75; }
+.lobby-btn.locked b { opacity: .7; }
+.lock-tag {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FFE59A, #F5B31E);
+  color: #4A3000;
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  border: 1.5px solid #FFF3E2;
+  box-shadow: 0 2px 4px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+.lock-tag.hidden { display: none; }
+
+/* ── หน้าโหมดสร้างสรรค์ยังล็อก ── */
+.cl-pop { width: min(460px, 92%); text-align: center; }
+.cl-lock { position: relative; width: clamp(70px, 17dvh, 112px); aspect-ratio: 1; }
+.cl-lock canvas { width: 100%; height: 100%; filter: grayscale(.4); animation: clBob 2.4s ease-in-out infinite; }
+.cl-padlock {
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  font-size: clamp(24px, 5.5dvh, 38px);
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
+  animation: clWiggle 2.4s ease-in-out infinite;
+}
+@keyframes clBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes clWiggle { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-12deg); } 86% { transform: rotate(10deg); } 94% { transform: rotate(-5deg); } }
+.cl-lead { font-size: clamp(12.5px, 2.4dvh, 16px); line-height: 1.6; color: #E4D4F5; }
+.cl-lead b { color: #FFD86E; }
+.cl-progress { width: min(320px, 100%); display: grid; gap: 4px; }
+.cl-bar { height: 12px; border-radius: 999px; background: rgba(27,15,43,.65); box-shadow: inset 0 1px 3px rgba(0,0,0,.5); overflow: hidden; }
+.cl-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #9FF5E4, #C7B2FF, #FFB3D0); }
+.cl-progress small { font-size: clamp(10.5px, 1.8dvh, 13px); color: #C9AEE2; }
+.cl-feats { display: flex; gap: 10px; width: 100%; justify-content: center; }
+.cl-feat {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: clamp(6px, 1.4dvh, 12px) 8px;
+  border-radius: 14px;
+  border: 2px solid var(--plate-line);
+  background: var(--plate-face);
+  box-shadow: var(--plate-lift);
+  opacity: .9;
+}
+.cl-ico { font-size: clamp(20px, 4dvh, 30px); filter: grayscale(.3); }
+.cl-feat b { font-family: "Mali", sans-serif; font-size: clamp(12px, 2.1dvh, 15px); color: var(--cream); }
+.cl-feat small { font-size: clamp(9.5px, 1.6dvh, 12px); color: #C9AEE2; }
+@media (prefers-reduced-motion: reduce) { .cl-lock canvas, .cl-padlock { animation: none; } }
+/* กระชับให้ลงจอเดียวทุกขนาด: หัวเรื่องบรรทัดเดียว · ฟีเจอร์เป็นชิปแนวนอน (ไอคอนซ้าย ข้อความขวา) */
+#createLockPanel .cl-pop { width: min(580px, 94%); gap: clamp(5px, 1.3dvh, 11px); padding-block: clamp(10px, 2.4dvh, 22px); }
+#createLockPanel .skin-title { white-space: nowrap; font-size: clamp(18px, 4dvh, 30px); margin: 0; }
+.cl-lock { width: clamp(48px, 12dvh, 84px); }
+.cl-padlock { font-size: clamp(18px, 4.2dvh, 30px); right: -8px; }
+.cl-lead { font-size: clamp(11.5px, 2.2dvh, 15px); line-height: 1.5; }
+.cl-feat { flex-direction: row; justify-content: center; gap: 8px; text-align: left; padding: clamp(5px, 1.1dvh, 9px) 10px; }
+.cl-feat > span { flex: 0 0 auto; }
+.cl-feat b, .cl-feat small { display: block; }
+.cl-feat { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; }
+.cl-feat .cl-ico { grid-row: 1 / 3; }
+#createLockPanel .btnrow { margin-top: clamp(0px, .6dvh, 6px); }
+@media (max-height: 460px) {
+  #createLockPanel .cl-pop { gap: 4px; padding-block: 8px 12px; }
+  #createLockPanel .skin-title { font-size: 17px; }
+  .cl-lock { width: 38px; }
+  .cl-padlock { font-size: 16px; }
+  .cl-lead { font-size: 11px; line-height: 1.4; }
+  .cl-bar { height: 9px; }
+  .cl-feat { padding: 3px 8px; }
+  .cl-ico { font-size: 18px; }
+  #createLockPanel .btnrow .btn { padding: 6px 20px; font-size: 13px; }
+}
+
+/* ── ปุ่มคู่ "เลือกลงสีน้อน / ลงสีทั้งตัวน้อน": เห็นชัดว่าเลือกอันไหนอยู่ ──
+   เดิมสองปุ่มสีสดพอกัน (ม่วงกับมิ้นต์) ตาแยกไม่ออกว่าอันไหนคือที่เลือก
+   ตอนนี้: อันที่ไม่ได้เลือก = จางลงเป็นพื้นม่วงเข้มโปร่ง ตัวหนังสืออ่อน
+            อันที่เลือก = มิ้นต์สว่าง ขอบขาว วงเรือง นูนขึ้น
+   (ไม่ใส่ ✓ / ไม่หนาขึ้น — ข้อความยาวจนล้นปุ่มในช่องแคบ) */
+.pmode {
+  background: rgba(27, 15, 43, .55);
+  border: 1.5px solid rgba(255, 246, 230, .18);
+  color: #B99BD4;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+.pmode:hover { color: #E4D4F5; border-color: rgba(255, 246, 230, .35); }
+.pmode.on {
+  background: linear-gradient(180deg, #8FF4E6 0%, #4FD1C3 60%, #38B5A8 100%);
+  border: 2px solid #FFFFFF;
+  color: #0C2E2B;
+  box-shadow:
+    0 0 0 3px rgba(111, 227, 214, .35),
+    0 0 14px rgba(111, 227, 214, .7),
+    0 3px 0 #2A8F85,
+    inset 0 2px 0 rgba(255, 255, 255, .55);
+  transform: translateY(-1px);
+}
+/* "ลงสีทั้งตัวน้อน" ยาวจนตัวท้ายชิดขอบ — บีบช่องไฟตัวอักษรนิดเดียวให้หายใจได้ */
+.pmode { letter-spacing: -.3px; padding-inline: clamp(2px, .35vw, 7px); }
+
+/* ══ ปุ่มย่อแถบเครื่องมือ (โหมดเต็มจอ): แท็บแนวตั้งที่อยู่กับที่ ══
+   เกาะขอบซ้ายของ .paint-side กึ่งกลางความสูงแถวเสมอ — ไม่ขึ้นกับขนาดผ้าใบของแต่ละเครื่อง
+   กางอยู่: ลูกศรชี้ขวา + "ย่อ" · ย่ออยู่: ลูกศรชี้ซ้าย + "เครื่องมือ" (แท็บไปอยู่ขอบขวาการ์ด) */
+#createPanel .paint-side { position: relative; }
+#createPanel .pcol-fold {
+  top: 50%;
+  right: auto;
+  left: calc(-1 * clamp(26px, 4.4dvh, 34px) - 4px);
+  transform: translateY(-50%);
+  width: clamp(26px, 4.4dvh, 34px);
+  height: auto;
+  min-height: clamp(78px, 20dvh, 120px);
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, .8);
+  background: linear-gradient(180deg, #C892F5 0%, #9C5EDC 60%, #8046C4 100%);
+  color: #fff;
+  box-shadow: 0 3px 0 #5B2C90, 0 6px 14px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.35);
+}
+#createPanel .pcol-fold:hover { filter: brightness(1.1); }
+#createPanel .pcol-fold:active { transform: translateY(calc(-50% + 2px)); box-shadow: 0 1px 0 #5B2C90, inset 0 2px 0 rgba(255,255,255,.35); }
+#createPanel .pcol-fold svg { width: 70%; height: auto; flex: 0 0 auto; }
+.pcol-fold-txt {
+  /* ภาษาไทยหมุนแนวตั้งแล้วสระ/วรรณยุกต์ลอยผิดที่ อ่านไม่ออก — ใช้ไอคอนแทนข้อความ */
+  display: none;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(10px, 1.7dvh, 13px);
+  line-height: 1;
+  letter-spacing: 1px;
+  text-wrap: nowrap;
+}
+/* ย่ออยู่: แถบกว้าง 0 → แท็บอยู่ติดขอบขวาของแถว เว้นที่ให้มันด้วย */
+#createPanel.paint-full.fold-side .paint-side { margin-left: calc(clamp(26px, 4.4dvh, 34px) + 8px); }
+
+/* ── ลงสีทั้งตัว: ทุกช่องส่วนติดเลือก (ขอบครีม) — บอกว่าทาทั้งตัวอยู่ ── */
+#paintParts .ppart.on { border-color: var(--cream); background: rgba(255, 232, 190, .22); }
+
+/* แท็บย่อ: ไอคอนเครื่องมือเหนือ/ใต้ลูกศรแทนตัวหนังสือแนวตั้ง */
+#createPanel .pcol-fold::before, #createPanel .pcol-fold::after {
+  content: '🎨';
+  font-size: clamp(12px, 2.2dvh, 16px);
+  line-height: 1;
+}
+#createPanel .pcol-fold::after { content: '🖌️'; }

@@ -95,12 +95,54 @@ function fitDPR() {
   const shown = canvas.clientWidth || W;   // 0 ได้ตอน CSS ยังไม่ทันมา
   // เพดานมาจากระดับกราฟิกที่ผู้เล่นเลือก (ดู src/graphics.js) — ตัวที่กินแรงเครื่องที่สุด
   const scale = Math.min(quality().scale, Math.max(1, (shown * dpr) / W));
+  const nw = Math.round(W * scale);
+  const nh = Math.round(H * scale);
 
-  canvas.width = Math.round(W * scale);
-  canvas.height = Math.round(H * scale);
+  // ── ตอนหมุนจอฉากกะพริบ ──
+  // ตั้ง canvas.width ทุกครั้ง = ล้างผ้าใบเป็นสีว่างทุกครั้ง แม้ขนาดจะเท่าเดิมก็ตาม
+  // และ ResizeObserver ยิงหลังเกมวาดเฟรมไปแล้วแต่ก่อนจอแสดงผล จอจึงได้เฟรมเปล่าไปหนึ่งเฟรม
+  // หมุนจอทีเดียวยิงหลายครั้งติดกัน (ขนาดกลางทาง → ขนาดจริง) = กะพริบเป็นชุด
+  // แก้สองชั้น: ขนาดเท่าเดิมไม่แตะเลย / ขนาดเปลี่ยนก็ยกภาพเฟรมก่อนมาวางยืดไว้ก่อน
+  // เฟรมถัดไปเกมวาดทับด้วยความละเอียดใหม่เองตามปกติ
+  if (canvas.width === nw && canvas.height === nh) {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    return;
+  }
+  let snap = null;
+  if (canvas.width && canvas.height) {
+    snap = document.createElement('canvas');
+    snap.width = canvas.width;
+    snap.height = canvas.height;
+    snap.getContext('2d').drawImage(canvas, 0, 0);
+  }
+  canvas.width = nw;
+  canvas.height = nh;
+  if (snap) ctx.drawImage(snap, 0, 0, nw, nh);
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 fitDPR();
+
+/**
+ * ความสูงจอจริง → ตัวแปร CSS --app-h (ใช้แทน 100dvh บนจอสัมผัส ดู style.css)
+ *
+ * หมุนมือถือเป็นแนวนอนแล้วเวทีไม่เต็มจอ เหลือแถบดำข้างล่าง — Safari บน iPhone
+ * อัปเดตค่า dvh ช้า/ไม่อัปเดตหลังหมุนจอ ค่ายังค้างเป็นความสูงของตอนก่อนหมุนจนกว่าจะแตะจอ
+ * innerHeight ของหน้าต่างถูกต้องกว่า แต่ก็มาช้าเหมือนกันหลัง orientationchange
+ * จึงวัดทันที แล้ววัดซ้ำอีกสามจังหวะสั้น ๆ ให้ทันค่าจริงตอนแถบเบราว์เซอร์ขยับเสร็จ
+ */
+function syncAppHeight() {
+  const h = window.innerHeight;
+  if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+}
+function syncAppHeightSoon() {
+  syncAppHeight();
+  for (const ms of [80, 250, 600]) setTimeout(syncAppHeight, ms);
+}
+syncAppHeight();
+window.addEventListener('resize', syncAppHeight);
+window.addEventListener('orientationchange', syncAppHeightSoon);
+window.visualViewport?.addEventListener('resize', syncAppHeight);
+screen.orientation?.addEventListener?.('change', syncAppHeightSoon);
 
 // resize อย่างเดียวไม่พอ — กรอบเกมเปลี่ยนขนาดได้จากหลายทางที่ไม่ยิง resize
 // เช่นเข้า/ออกเต็มจอ หรือแถบที่อยู่ของเบราว์เซอร์มือถือหด แล้ว dvh ขยับ
@@ -109,6 +151,8 @@ new ResizeObserver(fitDPR).observe(canvas);
 onQuality(fitDPR);
 
 const startPanel = document.getElementById('startPanel');
+/** เลเวลที่ปลดล็อกโหมดสร้างสรรค์ (ระบายสีน้อง + ใส่รูปหน้าน้อง) */
+const CREATE_LEVEL = 20;
 const overPanel = document.getElementById('overPanel');
 const pausePanel = document.getElementById('pausePanel');
 const stagePanel = document.getElementById('stagePanel');
@@ -434,6 +478,7 @@ function refreshHome() {
   paintStashIcon();
   paintQuestIcon();
   refreshCreateIcon();
+  refreshCreateLock();
   refreshQuestDot();
   refreshLvDot();
   refreshDailyDot();
@@ -468,6 +513,9 @@ function refreshGold() {
   // หน้าตีบวกก็ต้องเห็นทองด้วย เพราะมันคือหน้าที่จ่ายทองถี่ที่สุดในเกม
   // (ใช้ทองอย่างเดียว จึงไม่มีช่องเพชรให้เขียน)
   document.getElementById('goldUp').textContent = gold;
+  // ตู้เปิดค้างอยู่ = ปุ่มสุ่มต้องตามเงินล่าสุดด้วย (ดู paintPullAfford)
+  // เช็คแผงก่อน: ตอนเกมเพิ่งโหลด ตัวแปรของตู้ยังไม่ถูกประกาศ แต่ตอนนั้นตู้ก็ยังไม่เคยเปิด
+  if (!gachaPanel.classList.contains('hidden')) paintPullAfford();
 }
 
 // ── ตู้กาช่า ───────────────────────────────────────────────
@@ -848,7 +896,6 @@ function refreshGacha() {
   // ราคากับสกุลเงินบนปุ่มมาจากค่าจริง ไม่ได้พิมพ์ค้างไว้ใน HTML
   const cost = gCost();
   const multi = gMulti();
-  const money = gWallet();
   const p1 = document.getElementById('pull1');
   const p5 = document.getElementById('pull5');
 
@@ -856,11 +903,34 @@ function refreshGacha() {
   p1.querySelector('b').textContent = cost.toLocaleString('en-US');
   p5.querySelector('b').textContent = (cost * multi).toLocaleString('en-US');
   p5.querySelector('small').textContent = multi + ' ครั้ง!';
-  p1.disabled = money < cost;
-  p5.disabled = money < cost * multi;
+  paintPullAfford();
 
   buildOdds();
   drawShow();
+}
+
+/**
+ * เปิด/ปิดปุ่มสุ่มตามเงินที่มีตอนนี้
+ *
+ * ── ทำไมแยกออกมาแล้วเรียกจาก refreshGold ด้วย ──
+ * เดิมเช็คแค่ตอนวาดหน้าตู้ (refreshGacha) พอเงินเปลี่ยนทีหลังระหว่างเปิดตู้อยู่
+ * (ซิงก์จากคลาวด์ รับจดหมาย เช็คอินรายวัน) ตัวเลขบนหัวหน้าอัปเดตแล้ว แต่ปุ่มยังค้างสถานะเก่า
+ * — มีเพชร 1,050 แต่ปุ่ม 3 ครั้ง (450) ยังเทากดไม่ได้ จนกว่าจะออกแล้วเข้าตู้ใหม่
+ * ตอนนี้ทุกครั้งที่ตัวเลขเงินขยับ ปุ่มตัดสินใหม่ตามไปด้วยเสมอ
+ *
+ * ระหว่างฝาหีบกำลังเปิด (chestTimer) ต้องปิดไว้ทั้งคู่ — ตอนจบ doTPull เรียก refreshGacha เอง
+ */
+function paintPullAfford() {
+  const p1 = document.getElementById('pull1');
+  const p5 = document.getElementById('pull5');
+  if (gIsT() && chestTimer) {
+    p1.disabled = p5.disabled = true;
+    return;
+  }
+  const cost = gCost();
+  const money = gWallet();
+  p1.disabled = money < cost;
+  p5.disabled = money < cost * gMulti();
 }
 
 // ── กล่องผลสุ่ม ──
@@ -2695,7 +2765,8 @@ function settleLove(show) {
   if (show) {
     showReward('น้องมองคุณตาแป๋ว', {}, {
       quiet: true,
-      note: 'รอบนี้น้องไม่ได้ให้ของขวัญ แต่ดีใจมากที่คุณมาหา — อีก 2 ชั่วโมงมาเล่นกับน้องอีกนะ',
+      // สองบรรทัดพอดี (\n + white-space: pre-line ที่ #rewardNote) — ปล่อยตัดเองได้สามบรรทัดเบี้ยว ๆ
+      note: 'รอบนี้น้องไม่ได้ให้ของขวัญ แต่ดีใจมากที่คุณมาหา\nอีก 2 ชั่วโมงมาเล่นกับน้องอีกนะ',
     });
   }
 }
@@ -4782,6 +4853,11 @@ function paintStashShow() {
   const badge = document.getElementById('stashTier');
   const name = document.getElementById('stashName');
   const use = document.getElementById('stashUse');
+  const stars = document.getElementById('stashStars');
+  const hint = document.getElementById('stashHint');
+  // ดาวกับคำบอกมีแค่หมวดสมบัติ — ซ่อนก่อน แล้วสาขาสมบัติค่อยเปิดเอง
+  stars.classList.add('hidden');
+  hint.classList.add('hidden');
 
   if (!stashSel[stashTab]) stashSel[stashTab] = stashDefault(stashTab);
 
@@ -4861,6 +4937,16 @@ function paintStashShow() {
     badge.classList.remove('hidden');
 
     name.textContent = t.name;
+    // ดาวขั้นตีบวกใต้ชื่อ + คำบอกใต้ช่อง (เฉพาะของที่มีแล้ว — ยังไม่มีก็ตีบวกไม่ได้)
+    if (got) {
+      const lv = treasureLevel(t.id);
+      stars.innerHTML = starRow(lv);
+      stars.classList.remove('hidden');
+      hint.textContent = lv >= UPGRADE.maxLevel
+        ? 'อัพเกรดสมบัตินี้เต็มแล้วนะเหมียว'
+        : 'อัพเกรดสมบัติได้ที่ปุ่มดูเพิ่มเติมและกดปุ่มอัพเกรดเลยนะเหมียว';
+      hint.classList.remove('hidden');
+    }
     use.textContent = !got ? 'ไปสุ่มกาช่ากัน!' : isEquipped(t.id) ? 'ถอดออก' : 'ติดตั้ง';
     use.disabled = false;
     use.classList.toggle('ghost', got && isEquipped(t.id));
@@ -5030,7 +5116,8 @@ function paintUpgrade() {
 
   // ระหว่างตีรัวอยู่ ปุ่มตีทีละครั้งต้องกดไม่ได้ ไม่งั้นทองจะถูกหักซ้อนกันสองทาง
   document.getElementById('upGo').disabled = maxed || autoOn;
-  document.getElementById('upGoLabel').textContent = maxed ? 'ตันแล้ว' : 'ตีบวก';
+  document.getElementById('upGoLabel').textContent = maxed ? '👑 ตันแล้ว' : 'ตีบวก';
+  document.getElementById('upGo').classList.toggle('maxed', maxed);
   // ตันแล้วก็ไม่มีอะไรให้ตีรัวต่อ แต่ตอนกำลังรัวอยู่ปุ่มต้องกดได้ เพราะมันคือปุ่ม "หยุด"
   document.getElementById('upAuto').disabled = maxed && !autoOn;
   paintAutoBtn();
@@ -5055,6 +5142,28 @@ const CHARGE_MS = 900;
 let upBusy = false;
 let upTimer = 0;
 
+/**
+ * ป้ายผลตีบวก — สี่แบบ: win สำเร็จ / fail ไม่สำเร็จ / stop หยุดเอง / max ตันแล้ว
+ * หน้าตาแต่ละแบบอยู่ที่ .up-result.<kind> ใน style.css (ไอคอนลอยตาม ประกายวิบวับ ฯลฯ)
+ */
+const UP_ICON = { win: '🌟', fail: '🥺', stop: '🐾', max: '👑' };
+function upBadge(kind, head, note = '') {
+  const box = document.getElementById('upResult');
+  box.className = 'up-result ' + kind;
+  box.innerHTML = `<span class="ur-ico" aria-hidden="true">${UP_ICON[kind] || ''}</span>`
+    + `<b>${head}</b>${note ? `<small>${note}</small>` : ''}`
+    + '<i class="ur-tw a"></i><i class="ur-tw b"></i><i class="ur-tw c"></i>';
+}
+
+/** ข้อความลอยขึ้นจากตัวสมบัติตอนรู้ผล */
+function floatUp(text, kind) {
+  const f = document.getElementById('upFloat');
+  f.className = 'up-float';
+  void f.offsetWidth;          // เล่นซ้ำได้ทุกครั้ง
+  f.textContent = text;
+  f.className = 'up-float go ' + kind;
+}
+
 /** ประกายกระเด็นออกจากกลางเวที — ชิ้นส่วนสร้างใหม่ทุกครั้งด้วยเหตุผลเดียวกับริบบิ้นกาช่า */
 function burstSparks(win) {
   const box = document.getElementById('upSpark');
@@ -5078,6 +5187,7 @@ function resetUpgradeAnim() {
   upBusy = false;
   document.getElementById('upBox').classList.remove('charging', 'win', 'fail');
   document.getElementById('upSpark').innerHTML = '';
+  document.getElementById('upFloat').className = 'up-float';
 }
 
 // ── ตีบวกรัวจนตัน ──────────────────────────────────────────
@@ -5097,7 +5207,7 @@ let autoSpent = 0;
 function paintAutoBtn() {
   const btn = document.getElementById('upAuto');
   btn.classList.toggle('stopping', autoOn);
-  btn.querySelector('.up-auto-ico').textContent = autoOn ? '■' : '⚡';
+  btn.querySelector('.up-auto-ico').textContent = autoOn ? '' : '⚡';
   document.getElementById('upAutoLabel').textContent = autoOn ? 'หยุด' : 'ตีจนกว่าจะตัน';
 }
 
@@ -5110,13 +5220,10 @@ function stopAuto() {
 }
 
 /** สรุปผลตอนจบรอบ แล้วคืนปุ่มให้กดได้ตามปกติ */
-function finishAuto(head, note, win) {
+function finishAuto(head, note, kind) {
   stopAuto();
-  const box = document.getElementById('upResult');
-  box.classList.remove('hidden');
-  box.className = 'up-result ' + (win ? 'win' : 'fail');
-  box.innerHTML = `<b>${head}</b><small>${note}</small>`;
-  if (win) setTimeout(() => sfx.cheer(), 200);
+  upBadge(kind, head, note);
+  if (kind === 'max') setTimeout(() => sfx.cheer(), 200);
   paintUpgrade();
   refreshGold();
 }
@@ -5129,11 +5236,12 @@ function autoStep() {
     // ยังไม่ได้ตีสักครั้ง = กดมาแล้วติดตั้งแต่แรก บอกเหตุผลตรง ๆ ดีกว่าสรุปยอดศูนย์
     if (!autoTries) {
       return finishAuto(r.reason,
-        r.need ? `ขาดอีก ${r.need.toLocaleString('en-US')} ทอง` : 'ไม่มีอะไรให้ตีต่อแล้ว', false);
+        r.need ? `ขาดอีก ${r.need.toLocaleString('en-US')} ทอง` : 'ไม่มีอะไรให้ตีต่อแล้ว',
+        r.need ? 'fail' : 'max');
     }
-    return finishAuto('😿 ทองหมดก่อน',
+    return finishAuto('ทองหมดก่อนน้า',
       `ตีไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง · หยุดที่ขั้น ${treasureLevel(tCurrent)}/${UPGRADE.maxLevel}`,
-      false);
+      'fail');
   }
 
   autoTries++;
@@ -5147,14 +5255,11 @@ function autoStep() {
   void stage.offsetWidth;
   stage.classList.add(r.win ? 'win' : 'fail');
   burstSparks(r.win);
+  floatUp(r.win ? '+1 ★' : 'ฟู่…', r.win ? 'win' : 'fail');
 
   const lv = treasureLevel(tCurrent);
-  const box = document.getElementById('upResult');
-  box.classList.remove('hidden');
-  box.className = 'up-result ' + (r.win ? 'win' : 'fail');
-  box.innerHTML = `<b>${r.win ? '✨ สำเร็จ!' : '😿 ไม่สำเร็จ'}</b>`
-    + `<small>ครั้งที่ ${autoTries} · ขั้น ${lv}/${UPGRADE.maxLevel}`
-    + ` · ใช้ไป ${autoSpent.toLocaleString('en-US')} ทอง</small>`;
+  upBadge(r.win ? 'win' : 'fail', r.win ? 'สำเร็จแล้ว!' : 'ไม่สำเร็จ',
+    `ครั้งที่ ${autoTries} · ขั้น ${lv}/${UPGRADE.maxLevel} · ใช้ไป ${autoSpent.toLocaleString('en-US')} ทอง`);
 
   paintUpgrade();
   refreshGold();
@@ -5165,8 +5270,8 @@ function autoStep() {
   }
 
   if (lv >= UPGRADE.maxLevel) {
-    return finishAuto('🏆 ตีบวกจนตันแล้ว!',
-      `ใช้ไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง`, true);
+    return finishAuto('ตีบวกจนตันแล้ว!',
+      `ใช้ไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง`, 'max');
   }
   autoTimer = setTimeout(autoStep, AUTO_MS);
 }
@@ -5175,11 +5280,11 @@ function toggleAuto() {
   // กดซ้ำระหว่างรัว = หยุด ปุ่มเดียวทำสองหน้าที่ จะได้ไม่ต้องหาปุ่มหยุดที่อื่น
   if (autoOn) {
     stopAuto();
-    return finishAuto('หยุดแล้ว',
+    return finishAuto('พักก่อนนะ',
       autoTries
         ? `ตีไป ${autoTries} ครั้ง · ${autoSpent.toLocaleString('en-US')} ทอง · ขั้น ${treasureLevel(tCurrent)}/${UPGRADE.maxLevel}`
         : 'ยังไม่ได้ตีสักครั้ง',
-      false);
+      'stop');
   }
   // ตีทีละครั้งค้างอยู่ ต้องรอให้รอบนั้นเฉลยก่อน ไม่งั้นผลสองรอบจะทับกัน
   if (upBusy) return;
@@ -5202,10 +5307,7 @@ function doUpgrade() {
 
   // ทองไม่พอหรือตันแล้ว ไม่ใช่ผลของการตีบวก จึงไม่ต้องเล่นแอนิเมชันให้รอเก้อ
   if (!r.ok) {
-    box.classList.remove('hidden');
-    box.className = 'up-result fail';
-    box.innerHTML = `<b>${r.reason}</b>`
-      + (r.need ? `<small>ขาดอีก ${r.need.toLocaleString('en-US')} ทอง</small>` : '');
+    upBadge(r.need ? 'fail' : 'max', r.reason, r.need ? `ขาดอีก ${r.need.toLocaleString('en-US')} ทอง` : '');
     return;
   }
 
@@ -5223,22 +5325,21 @@ function doUpgrade() {
     stage.classList.remove('charging');
     stage.classList.add(r.win ? 'win' : 'fail');
     burstSparks(r.win);
+    floatUp(r.win ? '+1 ★' : 'ฟู่…', r.win ? 'win' : 'fail');
 
-    box.classList.remove('hidden');
     if (r.win) {
       recordUpgrade();
       sfx.upWin();
       setTimeout(() => sfx.cheer(), 300);   // แมวดีใจตามหลังระฆัง ไม่ใช่พร้อมกันจนฟังไม่ออก
-      box.className = 'up-result win';
-      box.innerHTML = `<b>✨ สำเร็จ!</b><small>ขั้น ${r.from} → ${r.to}</small>`;
+      // ขั้นสุดท้ายพอดี = ป้ายตันแล้ว (มงกุฎทอง) แทนป้ายสำเร็จธรรมดา
+      if (r.to >= UPGRADE.maxLevel) upBadge('max', 'ตีบวกจนตันแล้ว!', `ขั้น ${r.from} → ${r.to} · เต็มทุกดาวแล้วนะเหมียว`);
+      else upBadge('win', 'สำเร็จแล้ว!', `ขั้น ${r.from} → ${r.to}`);
     } else {
       // บอกแค่ว่าไม่สำเร็จกับเสียอะไรไป ไม่ต้องถามว่าจะลองอีกไหม
       // ปุ่มตีบวกยังอยู่ตรงนั้นให้กดต่อได้เลยอยู่แล้ว การถามซ้ำเป็นการทวงให้จ่ายอีก
       // ซึ่งอ่านไม่น่ารักเท่าปล่อยให้ตัดสินใจเอง
       sfx.upFail();
-      box.className = 'up-result fail';
-      box.innerHTML = `<b>😿 ไม่สำเร็จ</b>`
-        + `<small>เสียไป ${r.spent.toLocaleString('en-US')} ทอง · ขั้นยังเท่าเดิม</small>`;
+      upBadge('fail', 'ไม่สำเร็จ', `เสียไป ${r.spent.toLocaleString('en-US')} ทอง · ขั้นยังเท่าเดิม ลองใหม่นะ`);
     }
 
     paintUpgrade();
@@ -5718,9 +5819,49 @@ function showFace(on) {
   }
 }
 
+// ── ล็อกโหมดสร้างสรรค์ ──
+// ระบายสีน้องกับใส่รูปหน้าน้องเปิดให้เล่นตั้งแต่เลเวล CREATE_LEVEL
+// ก่อนหน้านั้นปุ่มในล็อบบี้ขึ้นกุญแจ และกดแล้วเปิดหน้าบอกว่าต้องไปถึงเลเวลเท่าไหร่แทน
+// (CREATE_LEVEL ประกาศไว้บนสุดของไฟล์ — refreshHome เรียกใช้ตั้งแต่ก่อนโค้ดตรงนี้จะรัน)
+const createLockPanel = document.getElementById('createLockPanel');
+function createUnlocked() { return curLevel() >= CREATE_LEVEL; }
+
+function refreshCreateLock() {
+  const locked = !createUnlocked();
+  document.getElementById('btnCreate').classList.toggle('locked', locked);
+  const tag = document.getElementById('createLockTag');
+  tag.textContent = '🔒 Lv.' + CREATE_LEVEL;
+  tag.classList.toggle('hidden', !locked);
+}
+
+function showCreateLock(on) {
+  if (on) {
+    const lv = curLevel();
+    document.getElementById('clNeed').textContent = 'เลเวล ' + CREATE_LEVEL;
+    document.getElementById('clNow').textContent =
+      `ตอนนี้เลเวล ${lv} · อีก ${Math.max(0, CREATE_LEVEL - lv)} เลเวล`;
+    document.getElementById('clFill').style.width =
+      Math.min(100, Math.round((lv / CREATE_LEVEL) * 100)) + '%';
+    paintMini(document.getElementById('clCat'), 120,
+      (c) => drawCatFace(c, 60, 70, 3, getSkin()));
+  }
+  createLockPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+}
+
 document.getElementById('btnCreate').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); startMusic();
+  if (!createUnlocked()) return showCreateLock(true);
   showFace(true);
+});
+document.getElementById('clBack').addEventListener('click', () => {
+  unlockAudio(); sfx.fish(); showCreateLock(false);
+});
+// ไปวิ่งเลย = ปิดหน้านี้แล้วกดปุ่มเล่นของล็อบบี้ให้ (ทางเดียวกับที่ผู้เล่นกดเอง)
+document.getElementById('clGo').addEventListener('click', () => {
+  unlockAudio();
+  showCreateLock(false);
+  document.getElementById('startBtn').click();
 });
 document.getElementById('createBack').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); showFace(false);
@@ -6245,7 +6386,8 @@ function setScope(name) {
     b.classList.toggle('on', b.dataset.mode === name);
   }
   // เลือกส่วนไว้แล้วสั่งทาทั้งตัวมันขัดกันเอง ปลดล็อกให้เลย
-  if (name === 'all') { paintPart = null; refreshParts(); }
+  if (name === 'all') paintPart = null;
+  refreshParts();
   strokeRegion = null;
   refreshHint();
 }
@@ -6329,7 +6471,8 @@ function refreshParts() {
   for (const b of box.children) {
     const key = b.dataset.key;
     b.querySelector('i').style.background = pal[key];
-    b.classList.toggle('on', !!paintPart && paintPart.key === key);
+    // ลงสีทั้งตัว = ทุกส่วนโดนหมด → ติดเลือกทุกช่อง ให้เห็นว่ากำลังทาทั้งตัว
+    b.classList.toggle('on', paintScope === 'all' || (!!paintPart && paintPart.key === key));
   }
 }
 
@@ -6450,6 +6593,7 @@ function setFold(on) {
   btn.setAttribute('aria-label', on
     ? 'กางแถบเครื่องมือกับจานสี'
     : 'ย่อแถบเครื่องมือกับจานสี');
+  document.getElementById('foldSideTxt').textContent = on ? 'เครื่องมือ' : 'ย่อ';
   requestAnimationFrame(() => { drawPaintCat(); drawPickMap(); });
 }
 

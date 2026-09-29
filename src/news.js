@@ -94,23 +94,31 @@ export function renderNews(listEl, viewEl, pickId, onPick) {
   const cur = list.find((n) => n.id === pickId) || list[0];
   const s = seen();
 
+  // ── ตามแบบที่วางไว้ (ของตกแต่งอยู่ใน public/news-deco/ — ตัดมาจากไฟล์ SVG ที่ออกแบบใน Canva) ──
+  // รายการ: รูปย่อใหญ่ซ้าย + ป้าย/หัวข้อ/วันที่ขวา · ข่าวปักหมุด = หมุดแดงปักมุมขวาบนของการ์ด (แทนป้ายคำว่าปักหมุด)
   listEl.innerHTML = list.map((n) => `
-    <button type="button" class="news-item${n.id === cur.id ? ' on' : ''}" data-id="${esc(n.id)}">
+    <button type="button" class="news-item${n.id === cur.id ? ' on' : ''}${n.pinned ? ' pinned' : ''}" data-id="${esc(n.id)}">
       ${n.image ? `<img class="news-thumb" src="${esc(n.image)}" alt="" loading="lazy">` : `<span class="news-thumb blank"></span>`}
       <span class="news-item-txt">
-        <span class="news-item-meta"><span class="news-tag">${esc(n.tag)}</span>${n.pinned ? '<span class="news-pin">ปักหมุด</span>' : ''}</span>
+        <span class="news-item-meta"><span class="news-tag">${esc(n.tag)}</span></span>
         <b>${esc(n.title)}</b>
         <small>${newsDate(n.date)}</small>
       </span>
+      ${n.pinned ? '<img class="news-pinimg" src="/news-deco/pin.png" alt="ปักหมุด">' : ''}
       ${s.has(n.id) || n.id === cur.id ? '' : '<i class="news-new" aria-label="ใหม่"></i>'}
     </button>`).join('');
 
+  // ฝั่งอ่าน: รอยเท้าแมวชมพู-ม่วงมุมซ้ายบน · ป้าย+วันที่ชิดขวาบน · รูปในกรอบม่วงอ่อน
+  // · หัวข้อมีเส้นขีดใต้ · เนื้อข่าว · เส้นประรอยเท้ามุมขวาล่าง (พื้นหลังของกรอบ ดู .news-view)
   viewEl.innerHTML = `
+    <div class="news-top">
+      <img class="news-paws" src="/news-deco/paws.webp" alt="" aria-hidden="true">
+      <div class="news-meta"><span class="news-tag">${esc(cur.tag)}</span><time>${newsDate(cur.date)}</time></div>
+    </div>
     <div class="news-hero">${cur.image
       ? `<img src="${esc(cur.image)}" alt="${esc(cur.title)}">`
       : NO_IMAGE}</div>
-    <div class="news-meta"><span class="news-tag">${esc(cur.tag)}</span><time>${newsDate(cur.date)}</time></div>
-    <h3 class="news-title">${esc(cur.title)}</h3>
+    <h3 class="news-title"><span>${esc(cur.title)}</span></h3>
     <div class="news-body">${bodyHTML(cur.body)}</div>`;
   viewEl.scrollTop = 0;
 

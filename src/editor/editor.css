@@ -959,3 +959,290 @@ body.bonus-doc #kitFood .set-head { display: none !important; }
   border-radius: 5px;
   padding: 0 5px;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   หน้าตาแบบ Canva (src/editor/ui.js)
+   ซ้าย = แถบไอคอนหมวด + แผงของทีละหมวด · ขวา = แท็บ · กลาง = สนามใหญ่ขึ้น
+   ══════════════════════════════════════════════════════════════ */
+
+.wrap { grid-template-columns: var(--lw, 332px) minmax(0, 1fr) var(--rw, 292px); }
+/* กดไอคอนหมวดที่เปิดอยู่ซ้ำ = พับแผงเหลือแต่แถบไอคอน สนามกว้างขึ้นทันที
+   (โหมดทั้งด่านที่ยังไม่ได้แก้ท่อน ไม่มีกล่องเครื่องมือ — แผงซ้ายเป็นรายการท่อน ห้ามพับ) */
+body.kit-collapsed:not(.mode-stage) .wrap,
+body.kit-collapsed.mode-stage.can-edit .wrap { --lw: 76px; }
+body.kit-collapsed:not(.mode-stage) .side.left > .panel:not(.toolbox),
+body.kit-collapsed.mode-stage.can-edit .side.left > .panel:not(.toolbox) { display: none; }
+body.kit-collapsed .kitpane { display: none; }
+
+.side { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* ── กล่องเครื่องมือ: แถบไอคอน + แผงหมวด ── */
+.panel.toolbox {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* ท่อนเดี่ยว: กล่องเครื่องมือกินเต็มความสูงคอลัมน์ เลื่อนเฉพาะในแผงของ ไม่ใช่ทั้งคอลัมน์
+   โหมดทั้งด่านยังเลื่อนทั้งคอลัมน์ได้ตามเดิม (มีรายการท่อนกับคำอธิบายอยู่ใต้กล่องเครื่องมือ) */
+body:not(.mode-stage) .side.left { overflow: hidden; }
+/* โหมดทั้งด่านตอนแก้ท่อน: กล่องเครื่องมือต้องสูงพอให้แถบไอคอนครบทุกหมวด (วัดแล้ว 340px ตัดหมวดล่าง ๆ หาย) */
+body.mode-stage.can-edit .panel.toolbox { flex: 0 0 auto; height: min(560px, 68vh); }
+
+.rail {
+  flex: 0 0 74px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 6px;
+  background: #1A1522;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail-gap { flex: 1 1 auto; min-height: 6px; }
+.rb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 2px 7px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--soft);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.rb i { font-style: normal; font-size: 20px; line-height: 1; filter: saturate(.85); }
+.rb:hover { background: var(--panel2); color: var(--ink); }
+.rb.on { background: #3A2F4A; color: var(--ink); box-shadow: inset 3px 0 0 var(--hot); }
+.rb.on i { filter: none; }
+.rb:focus-visible { outline: 2px solid var(--hot); outline-offset: -2px; }
+
+.kitpane {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  padding: 0 12px 16px;
+}
+.kitsearch {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px 0 8px;
+  background: var(--panel);
+}
+.kitsearch input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.kitsearch input:focus { border-color: var(--hot); outline: none; }
+.kit-hint { font-size: 11.5px; }
+.kit-empty.hidden { display: none; }
+
+.cat { display: none; }
+.cat.show { display: block; }
+.cat > h3:first-child { margin-top: 4px; color: var(--ink); font-size: 13px; }
+body.kit-searching .kit-hint { display: none; }
+.chip.miss, .kit-group.miss { display: none !important; }
+
+/* ชิปใหญ่ขึ้น กดง่ายขึ้น — เดิม 8px/12px เล็กจนกดพลาดบ่อย ยกขึ้นนิดตอนชี้ = รู้ว่าหยิบได้ */
+.kitpane .kit { gap: 8px; }
+.kitpane .chip {
+  padding: 11px 8px;
+  min-height: 54px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform .1s ease, border-color .1s ease, background .1s ease;
+}
+.kitpane .chip:hover { transform: translateY(-1px); background: #33293F; }
+.kitpane .chip:active { transform: translateY(1px) scale(.98); }
+.kitpane .chip em { font-size: 10.5px; }
+.kitpane .kit-group > summary { padding: 8px 10px; font-size: 13px; }
+.kitpane .kit-group > .kit { padding: 4px 8px 10px; }
+.kitpane .btn.artopen { width: 100%; padding: 12px; font-size: 14px; }
+.kitpane .rules { font-size: 12.5px; }
+
+/* โหมดทั้งด่าน: กฎเดิมบีบชิปเป็นสามคอลัมน์ไร้คำอธิบาย (ตอนที่ทุกหมวดต้องอัดลงจอเดียว)
+   ตอนนี้โชว์ทีละหมวดแล้ว ไม่ต้องบีบอีก — ใช้ชิปขนาดเดียวกับท่อนเดี่ยว */
+body.mode-stage.can-edit .kitpane .kit { grid-template-columns: 1fr 1fr; gap: 8px; }
+body.mode-stage.can-edit .kitpane .chip { padding: 11px 8px; font-size: 12.5px; min-height: 54px; }
+body.mode-stage.can-edit .kitpane .chip em { display: block; }
+body.mode-stage.can-edit .kitpane .chip.wide { grid-column: 1 / -1; }
+
+/* ── แท็บแผงขวา ── */
+.rtabs {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.rt {
+  flex: 1 1 auto;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rt[data-tab="keys"] { flex: 0 0 auto; padding-inline: 10px; }
+.rt:hover { color: var(--ink); background: var(--panel2); }
+.rt.on { background: var(--hot); color: #2A1020; }
+.rt-n { font-weight: 700; font-size: 10.5px; padding: 0 5px; border-radius: 999px; background: rgba(0,0,0,.22); }
+.rt-n:empty { display: none; }
+.side.right[data-tab="insp"] .panel[data-tab]:not([data-tab="insp"]),
+.side.right[data-tab="doc"]  .panel[data-tab]:not([data-tab="doc"]),
+.side.right[data-tab="list"] .panel[data-tab]:not([data-tab="list"]),
+.side.right[data-tab="keys"] .panel[data-tab]:not([data-tab="keys"]) { display: none; }
+
+/* ── สนามตรงกลางใหญ่ขึ้น ── */
+#view { max-height: 60vh; }
+.report { min-height: 56px; }
+
+/* ตัวเลือกใต้สนาม: ช่องติ๊กเป็นปุ่มเม็ดยา กดง่ายกว่าช่องติ๊กจิ๋ว เปิดอยู่ = สีสว่าง */
+.toolrow .chk {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  user-select: none;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.toolrow .chk input { position: absolute; opacity: 0; pointer-events: none; }
+.toolrow .chk:hover { border-color: var(--soft); color: var(--ink); }
+.toolrow .chk:has(input:checked) { background: #3A2F4A; border-color: var(--cool); color: var(--ink); }
+.toolrow .chk:has(input:checked)::before { content: '✓'; color: var(--cool); font-weight: 700; }
+.toolrow .chk:has(input:focus-visible) { outline: 2px solid var(--hot); outline-offset: 2px; }
+
+/* ── จอกลาง (861-1180px): แผงข้างแคบลง ── */
+@media (max-width: 1180px) and (min-width: 861px) {
+  .wrap { --lw: 280px; --rw: 236px; }
+  .rail { flex-basis: 64px; }
+  .rb span { font-size: 9.5px; }
+  .kitpane { padding: 0 9px 12px; }
+  .kitpane .chip { padding: 8px 6px; min-height: 46px; font-size: 11.5px; }
+  .kitpane .chip em { display: block; }
+  .kitpane .chip.wide { grid-column: 1 / -1; }
+  .rt { font-size: 11px; padding: 7px 4px; }
+}
+
+/* ── จอแคบ (≤ 860px): พับเป็นแนวตั้ง — แถบหมวดกลายเป็นแถวแนวนอนบนแผงของ ── */
+@media (max-width: 860px) {
+  .panel.toolbox { flex-direction: column; overflow: visible; }
+  .rail { flex-direction: row; flex-basis: auto; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .rb { width: auto; min-width: 62px; }
+  .rail-gap { display: none; }
+  .kitpane { overflow: visible; }
+  body.kit-collapsed .kitpane { display: block; }
+  .side.left:has(.toolbox) { overflow: visible; }
+}
+
+/* ── ภาพตัวอย่างบนชิป (paintKitThumb ใน main.js) ──
+   ความสูงต้องตรงกับ THUMB_H ใน main.js — ผ้าใบตั้งความละเอียดจากขนาดนี้ */
+.chip .kit-thumb {
+  display: block;
+  width: 100%;
+  height: 46px;
+  margin: 0 0 5px;
+  border-radius: 8px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.06), transparent 70%),
+    #1B1524;
+  pointer-events: none;
+}
+.chip:hover .kit-thumb { background-color: #231A30; }
+/* ชิปชุด (ของกินชุดจัดวาง) มีภาพของตัวเองอยู่แล้ว */
+.chip.set .kit-thumb { display: none; }
+/* โหมดทั้งด่านที่กล่องเครื่องมือยังแคบ ๆ (จอกลาง) ย่อภาพลงหน่อย */
+@media (max-width: 1180px) and (min-width: 861px) {
+  .chip .kit-thumb { height: 40px; }
+}
+
+/* ── แผงเลเยอร์ (แบบ Canva) ──
+   แถว = ภาพย่อ + ชื่อ + ตำแหน่ง · หัวชั้นบอกว่าอยู่หน้า/หลังแค่ไหน */
+.lhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 2px 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--soft);
+}
+.lhead:first-child { margin-top: 2px; }
+.lhead b { font-size: 10.5px; padding: 0 7px; border-radius: 999px; background: var(--panel2); color: var(--ink); }
+.irow.lrow { gap: 8px; padding: 5px 6px; cursor: pointer; }
+.lthumb {
+  flex: 0 0 84px;
+  height: 36px;
+  border-radius: 7px;
+  background: #1B1524;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.lthumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.lmeta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lmeta .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lmeta .xx { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.irow.lrow:hover { border-color: var(--cool); }
+.irow.lrow.on { border-color: var(--hot); background: #3A2A45; box-shadow: none; }
+.irow.lrow.main { box-shadow: 0 0 0 2px var(--hot); }
+/* แท็บเลเยอร์เปิดอยู่ = แผงเลเยอร์กินความสูงที่เหลือทั้งคอลัมน์ (เดิมจำกัด 34vh เห็นแค่ 4-5 แถว) */
+.side.right[data-tab="list"] .panel[data-tab="list"] { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.side.right[data-tab="list"] .itemlist { max-height: none; flex: 1 1 auto; min-height: 0; }
+.side.right[data-tab="list"] { overflow: hidden; }
+
+/* ── บันทึกลงเครื่องไม่ได้: แถบแดงค้างบนสุด ── */
+.savefail {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 14px;
+  background: #5A1422; color: #FFD9DF; font-size: 13px;
+  border-bottom: 2px solid var(--bad);
+}
+.savefail b { color: #fff; }
+/* ── กล่องกู้ท่อนที่หลุดจากลำดับ ── */
+.orphans {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 0 0 10px; padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--warn);
+  background: rgba(255,198,107,.1);
+  font-size: 12.5px;
+}
+.orphans[hidden] { display: none; }
+.orphans small { color: var(--soft); line-height: 1.5; }
+.orphans .btn { align-self: flex-start; }

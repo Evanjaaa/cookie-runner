@@ -487,8 +487,8 @@ export const EN = {
   // ── ให้หัวใจ ──
   'น้องให้ของขวัญ!': 'A gift from your cat!',
   'น้องมองคุณตาแป๋ว': 'Your cat gazes at you',
-  'รอบนี้น้องไม่ได้ให้ของขวัญ แต่ดีใจมากที่คุณมาหา — อีก 2 ชั่วโมงมาเล่นกับน้องอีกนะ':
-    'No gift this time, but your cat is delighted you came by — drop in again in 2 hours.',
+  'รอบนี้น้องไม่ได้ให้ของขวัญ แต่ดีใจมากที่คุณมาหา\nอีก 2 ชั่วโมงมาเล่นกับน้องอีกนะ':
+    'No gift this time, but your cat is delighted you came by.\nDrop in again in 2 hours.',
   'ให้หัวใจน้องได้อีกครั้งในอีก': 'You can pet your cat again in',
   'ทำไมมนุดต้องทำให้เเมวอย่างพวกเราอ้วนด้วยนะ': 'Why do humans keep making us cats chubby?',
   'นุดรักหนูที่สุดใช่ม้ายย ถ้ารักก็เอาเปียกมาเลยยย!': 'You love me most, right? Then bring the wet food!',

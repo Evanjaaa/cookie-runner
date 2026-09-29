@@ -1205,6 +1205,13 @@ async function loadSentMail() {
 // ฟอร์มเดียวใช้ทั้งเพิ่มใหม่และแก้ (กด "แก้" ในรายการ = โหลดข่าวนั้นขึ้นฟอร์ม)
 // ขวาของฟอร์มมีตัวอย่างหน้าตาจริงในเกม เห็นก่อนกดลงข่าว
 
+/**
+ * ขนาดรูปข่าวที่พอดีกรอบในเกมเป๊ะ (เห็นทั้งแผ่น ไม่โดนตัดขอบ)
+ * สัดส่วนต้องตรงกับ aspect-ratio ของ .news-hero ใน src/style.css (2.6 : 1) — แก้ที่หนึ่งต้องแก้อีกที่
+ */
+const NEWS_IMG = { w: 1560, h: 600 };
+const NEWS_RATIO = NEWS_IMG.w / NEWS_IMG.h;
+
 const NEWS_TAGS = ['ประกาศ', 'กิจกรรม', 'อัปเดต', 'ของขวัญ', 'ปิดปรับปรุง'];
 const newsState = { editing: null, image: '' };
 
@@ -1237,7 +1244,7 @@ PAGES.news = async () => {
             <input id="nDate" type="date" value="${todayISO()}"></label>
         </div>
 
-        <div class="fld"><span>รูปภาพ <small class="note">(แนะนำแนวนอน 16:9 เช่น 1280×720)</small></span>
+        <div class="fld"><span>รูปภาพ <small class="note">ขนาดพอดีกรอบในเกม <b>${NEWS_IMG.w} × ${NEWS_IMG.h} px</b> (แนวนอน 2.6 : 1) — สัดส่วนอื่นจะโดนตัดขอบให้พอดีกรอบ</small></span>
           <div class="pickrow">
             <input id="nImgUrl" type="url" placeholder="วางลิงก์รูป หรือกดอัปโหลด" autocomplete="off" spellcheck="false">
             <label class="btn ghost" for="nImgFile">อัปโหลด</label>
@@ -1245,6 +1252,7 @@ PAGES.news = async () => {
             <button class="btn ghost" id="nImgClear" type="button">ลบรูป</button>
           </div>
           <small class="note" id="nImgMsg"></small>
+          <small class="note img-size" id="nImgSize"></small>
         </div>
 
         <label class="fld"><span>รายละเอียด</span>
@@ -1286,6 +1294,30 @@ PAGES.news = async () => {
   loadNewsList();
 };
 
+/** บอกขนาดรูปที่ใส่ เทียบกับขนาดที่พอดีกรอบ — ตัดขอบไหม ตัดด้านไหน */
+function newsImgCheck(w, h) {
+  const box = $('nImgSize');
+  if (!w || !h) { box.textContent = ''; return; }
+  const r = w / h;
+  const off = Math.abs(r - NEWS_RATIO) / NEWS_RATIO;
+  let msg = `รูปนี้ ${w} × ${h} px`;
+  let kind = 'good';
+  if (off <= 0.03) {
+    msg += ' — สัดส่วนพอดีกรอบ เห็นทั้งแผ่น ✓';
+    if (w < NEWS_IMG.w * 0.6) { msg += ' (แต่รูปเล็ก อาจไม่คมบนจอใหญ่)'; kind = 'warn'; }
+  } else if (r < NEWS_RATIO) {
+    const cut = Math.round((1 - r / NEWS_RATIO) * 100);
+    msg += ` — สูงกว่ากรอบ จะโดนตัดขอบบน-ล่างรวม ${cut}%`;
+    kind = 'warn';
+  } else {
+    const cut = Math.round((1 - NEWS_RATIO / r) * 100);
+    msg += ` — กว้างกว่ากรอบ จะโดนตัดขอบซ้าย-ขวารวม ${cut}%`;
+    kind = 'warn';
+  }
+  box.textContent = msg;
+  box.className = 'note img-size ' + kind;
+}
+
 /** ตัวอย่างหน้าตาในเกม — โครงเดียวกับฝั่งอ่านของเกม (รูปใหญ่ → ป้าย+วันที่ → หัวข้อ → เนื้อ) */
 function newsPreview() {
   const title = $('nTitle').value.trim() || 'หัวข้อข่าว';
@@ -1297,7 +1329,12 @@ function newsPreview() {
     <h4>${esc(title)}</h4>
     <div class="np-body">${body.split(/\n\s*\n/).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
   const im = $('nPrev').querySelector('img');
-  if (im) im.addEventListener('error', () => { im.parentElement.innerHTML = '<span>โหลดรูปไม่ได้ — เช็คลิงก์อีกที</span>'; }, { once: true });
+  if (im) {
+    im.addEventListener('error', () => { im.parentElement.innerHTML = '<span>โหลดรูปไม่ได้ — เช็คลิงก์อีกที</span>'; }, { once: true });
+    im.addEventListener('load', () => newsImgCheck(im.naturalWidth, im.naturalHeight), { once: true });
+  } else {
+    $('nImgSize').textContent = '';
+  }
 }
 
 async function uploadNewsImage(e) {
