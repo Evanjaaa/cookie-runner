@@ -10661,15 +10661,9 @@ canvas[hidden] { display: none; }
    ใช้ drop-shadow 4 ทิศแทนการไล่แก้ฟังก์ชันวาดทีละตัว — ตามรูปทรงจริงของภาพ (ช่องใสไม่โดน)
    ไอคอนที่วาดใหม่/ขยับทีหลัง (หีบเปิดปิด ไอคอนสร้างสรรค์) จึงได้ขอบเองโดยไม่ต้องจำ
    ตัวสุดท้ายคือเงาใต้ไอคอนเดิม ต้องมาหลังเส้นขอบ ไม่งั้นเงาจะโดนขอบล้อมไปด้วย */
-.lobby-btn canvas,
-.lg-box,
-.dl-cal {
-  --ol: #3A1D50;
-  filter:
-    drop-shadow(.7px 0 0 var(--ol)) drop-shadow(-.7px 0 0 var(--ol))
-    drop-shadow(0 .7px 0 var(--ol)) drop-shadow(0 -.7px 0 var(--ol))
-    drop-shadow(0 2px 3px rgba(20,8,32,.55));
-}
+/* (เส้นขอบสติกเกอร์ของไอคอนล็อบบี้ถอดออกแล้วตามที่ขอ — เหลือเงาใต้ไอคอนแบบเดิม) */
+.lobby-btn canvas { filter: drop-shadow(0 2px 3px rgba(20,8,32,.55)); }
+.lg-box, .dl-cal { filter: none; }
 
 /* ── แถวกราฟิก: สามตัวเลือกเรียงแถวเดียวเสมอ ──
    เดิม .gfxpick ยอมตกบรรทัด พอแถวแคบปุ่มที่สามหล่นลงไปบรรทัดใหม่ กลายเป็นก้อนสองชั้นเบี้ยว ๆ
@@ -11695,4 +11689,10 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 /* มือถือจริง (จอสัมผัส): เวทีสูงเต็มจอเสมอ จึงใช้ความสูงจอคุมขนาดน้องได้ตรง ๆ — น้องใหญ่ขึ้น การ์ดชมพูสูงขึ้น */
 @media (hover: none) and (pointer: coarse) and (max-height: 460px) {
   .name-stage { --nc-cat: clamp(60px, 24dvh, 104px); --nc-lap: 22px; }
+}
+
+/* จอสัมผัส: ตัวหน้าเว็บต้องสูงเท่าเวทีด้วย (--app-h) ไม่งั้นเวทีที่สูงกว่า html (ความสูงที่ iOS รายงานผิด)
+   จะถูก body (overflow: hidden + จัดกลาง) เฉือนขอบบน/ล่างทิ้ง */
+@media (hover: none) and (pointer: coarse) {
+  html, body { height: var(--app-h, 100%); min-height: var(--app-h, 100%); }
 }

@@ -2774,6 +2774,338 @@ export const PATTERNS = [
     jumps: [],
     width: 1368,
   }),
+  // 110 — ถ้ำคริสตัล · ท่อน 1
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withTreat(lift(fishWave(x + 368, 12, 34, 3), -4), 'jelly'),
+      ...withKibble(lift(fishWave(x + 353, 12, 34, 3), -7), 'all'),
+      ...withKibble(lift(fishWave(x + 787, 12, 34, 3), -7), 'all'),
+      ...withShrimp(lift(fishRun(x + 720, 3, 34), 20)),
+    ],
+    jumps: [],
+  }),
+  // 111 — ถ้ำคริสตัล · ท่อน 2
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withTreat(lift(fishWave(x + 9, 12, 34, 3), -6), 'jelly'),
+      ...withTreat(lift(fishWave(x + 443, 12, 34, 3), -5), 'jelly'),
+      ...withKibble(lift(fishWave(x + 425, 12, 34, 3), -6), 'all'),
+      ...withShrimp(lift(fishRun(x + 411, 1, 34), 18)),
+    ],
+    jumps: [],
+  }),
+  // 112 — ถ้ำคริสตัล · ท่อน 3
+  (x) => {
+    const j1 = x + -14;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withTreat(lift(fishRun(x + 323, 1, 34), 67), 'crystal', 'top'),
+        ...withShrimp(lift(fishJump(x + 215, 11), 41), 'all'),
+        ...lift(fishJump(x + 368, 11), -42),
+        ...lift(fishJump(x + 75, 11), -40),
+        ...withTreat(lift(fishRun(x + 180, 1, 34), 9), 'crystal', 'top'),
+        ...withTreat(lift(fishRun(x + 474, 1, 34), 11), 'crystal', 'top'),
+        ...withTreat(lift(fishRun(x + 441, 1, 34), 105), 'jelly'),
+        ...withTreat(lift(fishRun(x + 322, 1, 34), 192), 'jelly'),
+        ...withTreat(lift(fishRun(x + 194, 1, 34), 105), 'jelly'),
+        ...withTreat(lift(fishRun(x + 398, 1, 34), 168), 'jelly'),
+        ...withTreat(lift(fishRun(x + 229, 1, 34), 163), 'jelly'),
+      ],
+      jumps: [j1],
+      pickups: [{ kind: 'letter', x: x + 324 }, { kind: 'can', x: x + 62 }],
+    };
+  },
+  // 113 — ถ้ำคริสตัล · ท่อน 4
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [
+      ...withKibble(lift(fishWave(x + -151, 12, 34, 3), -2), 'all'),
+      ...withTreat(lift(fishWave(x + -135, 12, 34, 3), -1), 'jelly'),
+      ...withTreat(lift(fishWave(x + 270, 12, 34, 3), -3), 'jelly'),
+      ...withKibble(lift(fishWave(x + 286, 12, 34, 3), -3), 'all'),
+      ...withShrimp(lift(fishRun(x + 254, 1, 34), 19)),
+      ...withTreat(lift(fishWave(x + 686, 12, 34, 3), -2), 'jelly'),
+      ...withKibble(lift(fishWave(x + 702, 12, 34, 3), -2), 'all'),
+      ...withShrimp(lift(fishRun(x + 672, 1, 34), 18)),
+      ...withTreat(fishRun(x + 1110, 9, 34), 'jelly'),
+      ...withTreat(lift(fishRun(x + 1416, 1, 34), 12), 'jelly'),
+      ...withTreat(lift(fishRun(x + 1445, 1, 34), 29), 'jelly'),
+      ...withTreat(lift(fishRun(x + 1477, 1, 34), 53), 'jelly'),
+      ...withTreat(lift(fishRun(x + 1511, 1, 34), 73), 'jelly'),
+      ...withTreat(lift(fishRun(x + 1544, 1, 34), 92), 'jelly'),
+      ...withTreat(lift(fishRun(x + 1575, 1, 34), 114), 'jelly'),
+    ],
+    jumps: [],
+    partial: true,
+    width: 1602,
+  }),
+  // 114 — ถ้ำคริสตัล · ท่อน 5
+  (x) => {
+    const j1 = x + 778;
+    const j2 = x + 1201;
+    const j3 = x + 1602;
+    const j4 = x + 2016;
+    return {
+      obs: [propObs(x + 19, 'crystalCave_Obstacle_Single_01'), propObs(x + 58, 'crystalCave_Obstacle_Single_02'), propObs(x + 128, 'crystalCave_Obstacle_Double_03'), propObs(x + 167, 'crystalCave_Obstacle_Double_02'), propObs(x + -20, 'crystalCave_Obstacle_Single_01'), propObs(x + -61, 'crystalCave_Obstacle_Single_02'), propObs(x + -107, 'crystalCave_Obstacle_Single_01'), propObs(x + 245, 'crystalCave_Obstacle_Single_02'), propObs(x + 410, 'crystalCave_Obstacle_Double_03'), propObs(x + 511, 'crystalCave_Obstacle_Double_03'), propObs(x + 446, 'crystalCave_Obstacle_Single_02'), propObs(x + 312, 'crystalCave_Obstacle_Single_03'), propObs(x + 549, 'crystalCave_Obstacle_Single_01'), propObs(x + 587, 'crystalCave_Obstacle_Single_01'), propObs(x + 621, 'crystalCave_Obstacle_Single_01'), propObs(x + 657, 'crystalCave_Obstacle_Single_02'), propObs(x + 721, 'crystalCave_Obstacle_Single_03'), propObs(x + 820, 'crystalCave_Obstacle_Single_01'), crateStack(x + 873, 1), groundSpike(x + 910), groundSpike(x + 929), groundSpike(x + 948), propObs(x + 968, 'crystalCave_Obstacle_Single_02'), propObs(x + 1039, 'crystalCave_Obstacle_Single_01')],
+      pit: [{ x: x + 1093, w: 1124 }],
+      fish: [
+        ...withTreat(lift(fishRun(x + 8, 1, 34), 128), 'jelly'),
+        ...withTreat(lift(fishRun(x + 45, 1, 34), 137), 'jelly'),
+        ...withTreat(lift(fishRun(x + 79, 21, 34), 139), 'jelly'),
+        ...lift(fishJump(x + 771, 11), 112),
+        ...withTreat(lift(fishRun(x + 998, 6, 34), 136), 'jelly'),
+        ...lift(fishJump(x + 1185, 11), 107),
+        ...withTreat(lift(fishRun(x + 1414, 6, 34), 136), 'jelly'),
+        ...lift(fishJump(x + 1597, 11), 106),
+        ...withTreat(lift(fishRun(x + 1828, 6, 34), 138), 'jelly'),
+        ...lift(fishJump(x + 2013, 11), 101),
+      ],
+      jumps: [j1, j2, j3, j4],
+      fallers: [{ x: x + 43, warn: 45 }, { x: x + 268, warn: 45 }, { x: x + 488, warn: 45 }, { x: x + 747, warn: 45 }, { x: x + 165, warn: 45 }, { x: x + 373, warn: 45 }, { x: x + 619, warn: 45 }],
+      plats: [{ kind: 'hill', x: x + -257, w: 1350, h: 140 }, { kind: 'ledge', x: x + 951, w: 261, lift: 135 }, { kind: 'ledge', x: x + 1360, w: 270, lift: 135 }, { kind: 'ledge', x: x + 1774, w: 261, lift: 136 }],
+      width: 2000,
+    };
+  },
+  // 115 — ถ้ำคริสตัล · ท่อน 6
+  (x) => ({
+    obs: [propObs(x + 360, 'crystalCave_Obstacle_Crouch_02'), propObs(x + 617, 'crystalCave_Obstacle_Crouch_02')],
+    pit: [],
+    fish: [...withTreat(fishRun(x + 256, 16, 34), 'jelly'), ...withTreat(lift(fishRun(x + 558, 1, 34), 39), 'crystal', 'top')],
+    jumps: [],
+    pickups: [{ kind: 'shield', x: x + 232 }],
+  }),
+  // 116 — ถ้ำคริสตัล · ท่อน 7
+  (x) => {
+    const j1 = x + 1127;
+    const j2 = j1 + DOUBLE_AT * SPEED.run;
+    return {
+      obs: [propObs(x + 114, 'crystalCave_Obstacle_Crouch_02'), propObs(x + 378, 'crystalCave_Obstacle_Crouch_02'), propObs(x + 647, 'crystalCave_Obstacle_Crouch_02')],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 44, 27, 34), 'jelly'),
+        ...withTreat(lift(fishRun(x + 58, 1, 34), 39), 'crystal', 'top'),
+        ...withTreat(lift(fishRun(x + 313, 1, 34), 40), 'crystal', 'top'),
+        ...withTreat(lift(fishRun(x + 584, 1, 34), 41), 'crystal', 'top'),
+        ...fishRunTo(x + 967, j1),
+        ...fishDouble(j1, 11),
+        ...fishRun(x + 1456, 5, 34),
+      ],
+      jumps: [j1, j2],
+      width: 971.5999999999999,
+    };
+  },
+  // 117 — ถ้ำคริสตัล · ท่อน 8
+  (x) => {
+    const j1 = x + 629;
+    const j2 = j1 + DOUBLE_AT * SPEED.run;
+    return {
+      obs: [propObs(x + 277, 'crystalCave_Obstacle_Double_02'), propObs(j1 + DBL_PEAK - 22, 'crystalCave_Obstacle_Double_03')],
+      pit: [],
+      fish: [...withKibble(fishDouble(j1, 11), 'alternate')],
+      jumps: [j1, j2],
+      fallers: [{ x: j1 + DBL_PEAK - FALLER.w / 2, warn: 45 }, { x: x + 316, warn: 45 }],
+    };
+  },
+  // 118 — ถ้ำคริสตัล · ท่อน 9
+  (x) => {
+    const j1 = x + 325;
+    const j2 = j1 + DOUBLE_AT * SPEED.run;
+    return {
+      obs: [propObs(j1 + DBL_PEAK - 30, 'crystalCave_Obstacle_Double_01')],
+      pit: [],
+      fish: [
+        ...withKibble(fishRunTo(x + 188, j1), 'alternate'),
+        ...withKibble(fishDouble(j1, 11), 'alternate'),
+        ...withTreat(fishRun(x + 654, 5, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+      fallers: [{ x: j1 + DBL_PEAK - FALLER.w / 2, warn: 45 }],
+    };
+  },
+  // 119 — ถ้ำคริสตัล · ท่อน 10
+  (x) => ({
+    obs: [propObs(x + 276, 'crystalCave_Obstacle_Crouch_03'), propObs(x + 492, 'crystalCave_Obstacle_Crouch_01'), propObs(x + 805, 'crystalCave_Obstacle_Crouch_01'), propObs(x + 592, 'crystalCave_Obstacle_Crouch_03'), propObs(x + 905, 'crystalCave_Obstacle_Crouch_03'), propObs(x + 1118, 'crystalCave_Obstacle_Crouch_01'), propObs(x + 1220, 'crystalCave_Obstacle_Crouch_03')],
+    pit: [],
+    fish: [
+      ...withTreat(fishRun(x + 58, 13, 34), 'jelly'),
+      ...withTreat(fishRun(x + 508, 1, 34), 'crystal', 'top'),
+      ...withTreat(fishRun(x + 557, 8, 34), 'jelly'),
+      ...withTreat(fishRun(x + 835, 1, 34), 'crystal', 'top'),
+      ...withTreat(fishRun(x + 879, 8, 34), 'jelly'),
+      ...withTreat(fishRun(x + 1160, 1, 34), 'crystal', 'top'),
+      ...withTreat(fishRun(x + 1206, 8, 34), 'jelly'),
+    ],
+    jumps: [],
+    width: 1280,
+  }),
+  // 120 — ถ้ำคริสตัล · ท่อน 11
+  (x) => {
+    const j1 = x + 235;
+    const j2 = x + 869;
+    const j3 = x + 1149;
+    return {
+      obs: [],
+      pit: [],
+      fish: [...withKibble(fishDots(x + 407, [[30,150],[60,150],[90,150],[180,150],[210,150],[240,150],[270,150],[330,150],[450,150],[510,150],[540,150],[570,150],[120,120],[180,120],[300,120],[510,120],[0,90],[180,90],[300,90],[360,90],[390,90],[420,90],[510,90],[0,60],[180,60],[210,60],[240,60],[270,60],[390,60],[120,30],[180,30],[270,30],[390,30],[510,30],[600,30],[30,0],[60,0],[90,0],[180,0],[270,0],[300,0],[390,0],[510,0],[540,0],[570,0],[600,0],[0,120],[0,30],[600,150],[540,90],[570,90],[600,90],[600,60],[330,120],[450,120]]), 'alternate'), ...withKibble(fishDots(x + 1057, [[0,150],[30,150],[60,150],[90,150],[120,150],[210,150],[330,150],[60,120],[180,120],[330,120],[60,90],[330,90],[60,60],[180,60],[210,60],[240,60],[330,60],[60,30],[150,30],[270,30],[330,30],[60,0],[150,0],[270,0],[330,0],[360,0],[390,0],[420,0],[150,90],[150,60],[240,120],[270,90],[270,60]]), 'alternate')],
+      jumps: [j1, j2, j3],
+      pickups: [{ kind: 'magnet', x: x + 302 }],
+      partial: true,
+      width: 1602,
+    };
+  },
+  // 121 — ถ้ำคริสตัล · ท่อน 12
+  (x) => {
+    const j1 = x + 461;
+    return {
+      obs: [],
+      pit: [],
+      fish: [...withTreat(fishRun(x + -86, 11, 34), 'jelly'), ...withKibble(fishDots(x + 304, [[0,150],[270,150],[300,150],[330,150],[360,150],[450,150],[630,150],[0,120],[390,120],[450,120],[630,120],[240,90],[390,90],[450,90],[630,90],[240,60],[390,60],[450,60],[390,30],[600,30],[270,0],[300,0],[330,0],[360,0],[0,90],[0,60],[0,30],[0,0],[30,30],[60,60],[90,90],[120,60],[150,30],[180,0],[180,30],[180,60],[180,90],[180,120],[180,150],[240,120],[240,30],[450,30],[450,0],[480,30],[510,60],[540,90],[570,60],[630,0],[630,30],[630,60]]), 'alternate')],
+      jumps: [j1],
+      pickups: [{ kind: 'nip', x: x + 620 }],
+    };
+  },
+  // 122 — ถ้ำคริสตัล · ท่อน 13
+  (x) => {
+    const j1 = x + 653;
+    return {
+      obs: [propObs(j1 + HALF - 35, 'crystalCave_Obstacle_Single_02')],
+      pit: [],
+      fish: [
+        ...withKibble(fishJump(j1, 11), 'alternate'),
+        ...withTreat(fishRun(x + 324, 10, 34), 'jelly'),
+        ...withShrimp(fishDots(x + 237, [[0,120],[0,90],[0,60],[0,0],[0,150],[30,150],[30,120],[30,90],[30,60],[30,0]]), 'all'),
+      ],
+      jumps: [j1],
+    };
+  },
+  // 123 — ถ้ำคริสตัล · ท่อน 14
+  (x) => {
+    const j1 = x + 298;
+    return {
+      obs: [propObs(j1 + JUMP_PEAK - 50, 'crystalCave_Obstacle_Single_03')],
+      pit: [],
+      fish: [...withTreat(fishRun(x + 131, 5, 34), 'jelly'), ...withKibble(fishJump(j1, 11), 'alternate')],
+      jumps: [j1],
+    };
+  },
+  // 124 — ถ้ำคริสตัล · ท่อน 15
+  (x) => {
+    const j1 = x + -77;
+    return {
+      obs: [propObs(j1 + HALF - 23, 'crystalCave_Obstacle_Single_01'), propObs(x + 351, 'crystalCave_Obstacle_Single_02')],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + -230, 5, 34), 'jelly'),
+        ...fishJump(j1, 10),
+        ...withTreat(fishRun(x + 139, 5, 34), 'jelly'),
+        ...lift(fishJump(x + 282, 10), -11),
+        ...withTreat(fishRun(x + 510, 18, 34), 'jelly'),
+      ],
+      jumps: [j1],
+      fallers: [{ x: j1 + HALF - FALLER.w / 2, warn: 45 }],
+      width: 1090.8,
+    };
+  },
+  // 125 — ถ้ำคริสตัล · ท่อน 16
+  (x) => {
+    const j1 = x + 1;
+    const j2 = j1 + DOUBLE_AT * SPEED.run;
+    const j3 = x + 572;
+    const j4 = j3 + DOUBLE_AT * SPEED.run;
+    return {
+      obs: [],
+      pit: [{ x: x + 600, w: 256 }, { x: x + 88, w: 256 }],
+      fish: [
+        ...fishDouble(x + -6, 11),
+        ...withTreat(fishRun(x + 309, 9, 34), 'jelly'),
+        ...lift(fishDouble(x + 565, 11), 1),
+        ...withTreat(fishRun(x + 870, 20, 34), 'jelly'),
+      ],
+      jumps: [j1, j2, j3, j4],
+      width: 1368,
+    };
+  },
+  // 126 — ถ้ำคริสตัล · ท่อน 17
+  (x) => {
+    const j1 = x + 189;
+    return {
+      obs: [],
+      pit: [],
+      fish: [
+        ...withTreat(fishRun(x + 325, 5, 34), 'jelly'),
+        ...fishRun(x + 505, 5, 34),
+        ...withKibble(fishRun(x + 685, 4, 34), 'all'),
+        ...withShrimp(fishRun(x + 835, 11, 34)),
+        ...withTreat(lift(fishRun(x + 325, 5, 34), 26), 'jelly'),
+        ...lift(fishRun(x + 505, 5, 34), 26),
+        ...withKibble(lift(fishRun(x + 685, 4, 34), 26), 'all'),
+        ...withShrimp(lift(fishRun(x + 835, 11, 34), 26)),
+        ...withTreat(lift(fishRun(x + 326, 5, 34), 53), 'jelly'),
+        ...lift(fishRun(x + 506, 5, 34), 53),
+        ...withKibble(lift(fishRun(x + 686, 4, 34), 53), 'all'),
+        ...withShrimp(lift(fishRun(x + 836, 11, 34), 53)),
+        ...withKibble(lift(fishWave(x + 330, 26, 34, 3), 90), 'alternate'),
+        ...withTreat(lift(fishWave(x + 363, 25, 34, 3), 140), 'jelly'),
+        ...withTreat(lift(fishWave(x + 316, 15, 65, 3), 207), 'crystal'),
+      ],
+      jumps: [j1],
+      pickups: [{ kind: 'magnet', x: x + 249 }],
+      width: 990,
+    };
+  },
+  // 127 — ถ้ำคริสตัล · ท่อน 18
+  (x) => {
+    const j1 = x + 24;
+    const j2 = x + 445;
+    return {
+      obs: [],
+      pit: [{ x: x + 509 + 24, w: 332 }],
+      fish: [
+        ...withTreat(fishRun(x + 221, 7, 34), 'jelly'),
+        ...lift(fishWave(x + 528, 11, 34, 3), 83),
+        ...withTreat(fishRun(x + 922, 5, 34), 'jelly'),
+      ],
+      jumps: [j1, j2],
+      fallers: [{ x: x + 679, warn: 45 }],
+      plats: [{ kind: 'ledge', x: x + 509, w: 380, lift: 90 }],
+      width: 1090.8,
+    };
+  },
+  // 128 — ถ้ำคริสตัล · ท่อน 19
+  (x) => {
+    const j1 = x + 772;
+    const j2 = x + 1052;
+    return {
+      obs: [propObs(x + -11, 'crystalCave_Obstacle_Crouch_02'), propObs(x + 453, 'crystalCave_Obstacle_Crouch_02')],
+      pit: [],
+      fish: [
+        ...withTreat(lift(fishRun(x + 171, 5, 61), 68), 'crystal'),
+        ...withTreat(fishRun(x + 9, 22, 34), 'jelly'),
+        ...withShrimp(fishDots(x + 964, [[30,150],[60,150],[90,150],[120,150],[240,150],[270,150],[300,150],[420,150],[450,150],[480,150],[120,120],[210,120],[330,120],[0,90],[210,90],[330,90],[390,90],[720,90],[0,60],[90,60],[120,60],[210,60],[330,60],[390,60],[720,60],[210,30],[330,30],[30,0],[60,0],[90,0],[120,0],[240,0],[270,0],[300,0],[420,0],[450,0],[480,0],[0,120],[0,30],[0,0],[120,30],[60,60],[390,120],[390,30],[510,120],[510,90],[510,60],[510,30],[570,150],[570,90],[570,120],[570,60],[570,30],[570,0],[600,150],[630,150],[660,120],[660,90],[660,60],[660,30],[630,0],[600,0]]), 'all'),
+        ...withShrimp(lift(fishDots(x + 1683, [[0,150],[30,150],[60,150],[90,150],[150,150],[270,150],[330,150],[360,150],[390,150],[420,150],[0,120],[90,120],[150,120],[330,120],[90,90],[210,90],[330,90],[90,60],[210,60],[330,60],[0,30],[90,30],[210,30],[330,30],[0,0],[30,0],[60,0],[90,0],[210,0],[330,0],[360,0],[390,0],[420,0],[30,60],[60,60],[180,90],[240,90],[270,120],[360,60],[390,60],[420,60]]), 5), 'all'),
+      ],
+      jumps: [j1, j2],
+      pickups: [{ kind: 'can', x: x + 836 }],
+      partial: true,
+      width: 1602,
+    };
+  },
+  // 129 — ถ้ำคริสตัล · ท่อน 20
+  (x) => ({
+    obs: [],
+    pit: [],
+    fish: [...withTreat(fishRun(x + 651, 14, 34), 'jelly')],
+    jumps: [],
+    pickups: [{ kind: 'letter', x: x + 595 }],
+    width: 990,
+  }),
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -2902,6 +3234,26 @@ export const PATTERN_META = [
   { kind: 'obstacle', diff: 3 },    // 107  สวนกลางวัน · ท่อน 18
   { kind: 'challenge', diff: 4 },    // 108  สวนกลางวัน · ท่อน 19
   { kind: 'recovery', diff: 2 },    // 109  สวนกลางวัน · ท่อน 20
+  { kind: 'safe', diff: 1 },    // 110  ถ้ำคริสตัล · ท่อน 1
+  { kind: 'obstacle', diff: 2 },    // 111  ถ้ำคริสตัล · ท่อน 2
+  { kind: 'obstacle', diff: 2 },    // 112  ถ้ำคริสตัล · ท่อน 3
+  { kind: 'recovery', diff: 2 },    // 113  ถ้ำคริสตัล · ท่อน 4
+  { kind: 'recovery', diff: 2 },    // 114  ถ้ำคริสตัล · ท่อน 5
+  { kind: 'obstacle', diff: 2 },    // 115  ถ้ำคริสตัล · ท่อน 6
+  { kind: 'obstacle', diff: 3 },    // 116  ถ้ำคริสตัล · ท่อน 7
+  { kind: 'obstacle', diff: 2 },    // 117  ถ้ำคริสตัล · ท่อน 8
+  { kind: 'obstacle', diff: 2 },    // 118  ถ้ำคริสตัล · ท่อน 9
+  { kind: 'challenge', diff: 5 },    // 119  ถ้ำคริสตัล · ท่อน 10
+  { kind: 'recovery', diff: 2 },    // 120  ถ้ำคริสตัล · ท่อน 11
+  { kind: 'obstacle', diff: 3 },    // 121  ถ้ำคริสตัล · ท่อน 12
+  { kind: 'obstacle', diff: 3 },    // 122  ถ้ำคริสตัล · ท่อน 13
+  { kind: 'obstacle', diff: 2 },    // 123  ถ้ำคริสตัล · ท่อน 14
+  { kind: 'challenge', diff: 5 },    // 124  ถ้ำคริสตัล · ท่อน 15
+  { kind: 'recovery', diff: 2 },    // 125  ถ้ำคริสตัล · ท่อน 16
+  { kind: 'challenge', diff: 4 },    // 126  ถ้ำคริสตัล · ท่อน 17
+  { kind: 'challenge', diff: 5 },    // 127  ถ้ำคริสตัล · ท่อน 18
+  { kind: 'recovery', diff: 2 },    // 128  ถ้ำคริสตัล · ท่อน 19
+  { kind: 'challenge', diff: 4 },    // 129  ถ้ำคริสตัล · ท่อน 20
 ];
 
 /**

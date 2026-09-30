@@ -130,19 +130,37 @@ fitDPR();
  * innerHeight ของหน้าต่างถูกต้องกว่า แต่ก็มาช้าเหมือนกันหลัง orientationchange
  * จึงวัดทันที แล้ววัดซ้ำอีกสามจังหวะสั้น ๆ ให้ทันค่าจริงตอนแถบเบราว์เซอร์ขยับเสร็จ
  */
+/**
+ * ── เปิดจากไอคอนบนหน้าจอโฮม (iPhone, เต็มจอ) แล้วเวทีเตี้ยกว่าจอ เหลือแถบม่วงเข้มข้างล่าง ──
+ * โหมดนี้ iOS รายงาน innerHeight ผิดเป็นช่วง ๆ (หักแถบสถานะ/แถบโฮมออก หรือค้างค่าตอนก่อนหมุน)
+ * ทั้งที่แอปกินเต็มจอจริง — ในโหมดนี้จอทั้งจอคือพื้นที่ของเกม จึงใช้ "ด้านสั้นของจอ" ตรง ๆ
+ * (เล่นแนวนอนเสมอ ด้านสั้น = ความสูง) ส่วนเปิดในเบราว์เซอร์ปกติยังใช้ innerHeight
+ * ซึ่งหักแถบที่อยู่ของเบราว์เซอร์ออกให้ถูกต้อง
+ */
+const standaloneApp = () => navigator.standalone === true
+  || window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
 function syncAppHeight() {
-  const h = window.innerHeight;
+  let h = window.innerHeight;
+  if (standaloneApp() && window.innerWidth > window.innerHeight) {
+    const shortSide = Math.min(screen.width, screen.height);
+    if (shortSide > h) h = shortSide;
+  }
   if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
 }
 function syncAppHeightSoon() {
   syncAppHeight();
-  for (const ms of [80, 250, 600]) setTimeout(syncAppHeight, ms);
+  for (const ms of [80, 250, 600, 1200]) setTimeout(syncAppHeight, ms);
 }
-syncAppHeight();
+syncAppHeightSoon();   // ตอนเปิดแอปก็วัดซ้ำหลายจังหวะ — iOS ส่งขนาดจริงมาช้ากว่าตอนโหลดหน้า
 window.addEventListener('resize', syncAppHeight);
 window.addEventListener('orientationchange', syncAppHeightSoon);
 window.visualViewport?.addEventListener('resize', syncAppHeight);
 screen.orientation?.addEventListener?.('change', syncAppHeightSoon);
+// กลับมาจากแอปอื่น / สลับแท็บ — ขนาดอาจเปลี่ยนไประหว่างนั้นโดยไม่มี resize
+window.addEventListener('pageshow', syncAppHeightSoon);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncAppHeightSoon(); });
+// แตะครั้งแรก = วัดใหม่อีกรอบ (ตัวช่วยสุดท้าย ถ้าเครื่องไม่ยิงเหตุการณ์ไหนเลย)
+window.addEventListener('pointerdown', syncAppHeightSoon, { once: true });
 
 // resize อย่างเดียวไม่พอ — กรอบเกมเปลี่ยนขนาดได้จากหลายทางที่ไม่ยิง resize
 // เช่นเข้า/ออกเต็มจอ หรือแถบที่อยู่ของเบราว์เซอร์มือถือหด แล้ว dvh ขยับ

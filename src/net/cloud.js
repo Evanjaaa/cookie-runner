@@ -85,11 +85,19 @@ const AUTH_MSG = {
   validation_failed: 'กรอกข้อมูลไม่ครบหรือรูปแบบไม่ถูกต้อง',
 };
 
+/** ระบบส่งอีเมลส่งไม่ได้ชั่วคราว (ต้องตรงกับคำแปลใน src/i18n-en.js) */
+const MAIL_DOWN = 'ระบบส่งอีเมลเต็มชั่วคราว ลองใหม่ภายหลัง หรือเล่นแบบผู้มาเยือนไปก่อนได้นะ';
+
 function authError(e) {
   const code = e?.code || e?.error_code || '';
   if (AUTH_MSG[code]) return AUTH_MSG[code];
 
   const msg = String(e?.message || e || '');
+  // ระบบส่งอีเมล (SMTP เช่น Brevo) ปฏิเสธ — ส่วนใหญ่คือโควตาต่อวันเต็ม หรือเซิร์ฟเวอร์อีเมลขัดข้อง
+  // Supabase ตอบเป็นข้อความอังกฤษ ("Error sending magic link email" / "...confirmation email") → แปลงเป็นคำที่ผู้เล่นทำอะไรต่อได้
+  if (code === 'unexpected_failure' || /error sending|sending .*email|smtp|mail.*(quota|limit)/i.test(msg)) {
+    return MAIL_DOWN;
+  }
   if (/expired|invalid/i.test(msg)) return 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว';
   if (/fetch|network/i.test(msg)) return 'ต่อเน็ตไม่ได้ ลองใหม่อีกครั้ง';
   return msg || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';

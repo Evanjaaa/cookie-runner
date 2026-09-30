@@ -472,6 +472,19 @@ export const EN = {
   'รหัสไม่ถูกต้องหรือหมดอายุแล้ว': 'The code is wrong or has expired.',
   'รหัสหมดอายุแล้ว กดขอรหัสใหม่อีกครั้ง': 'The code expired — request a new one.',
   'ขอรหัสถี่เกินไป รออีกสักครู่แล้วค่อยลองใหม่': 'Too many code requests — wait a moment and try again.',
+  'ระบบส่งอีเมลเต็มชั่วคราว ลองใหม่ภายหลัง หรือเล่นแบบผู้มาเยือนไปก่อนได้นะ':
+    'Our email service is busy right now. Try again later, or play as a guest for now.',
+  // ── ช่องอีเมล Gmail / สร้างบัญชีด้วยอีเมล ──
+  'ใส่ชื่ออีเมลก่อนนะ': 'Enter your email name first.',
+  'ชื่ออีเมล Gmail ใช้ได้แค่ a–z ตัวเลข และจุด (.)': 'A Gmail name can only use a–z, numbers and dots (.)',
+  'ชื่ออีเมล Gmail ต้องยาว 6–30 ตัว ลองเช็คอีกทีนะ': 'A Gmail name must be 6–30 characters. Please check it again.',
+  'จุด (.) อยู่หน้าสุด ท้ายสุด หรือติดกันไม่ได้': "Dots (.) can't be first, last, or next to each other.",
+  'ชื่ออีเมล': 'email name',
+  'สร้างบัญชีด้วยอีเมล': 'Create an account with email',
+  'ผูกอีเมลตั้งแต่แรก ข้อมูลจะไม่หายแม้เปลี่ยนเครื่องหรือล้างเบราว์เซอร์ ใส่ชื่ออีเมล Gmail แล้วเดี๋ยวส่งรหัส 6 หลักไปให้ ยืนยันเสร็จไปตั้งชื่อน้องกันเลย':
+    "Link an email from the start so your progress is safe on any device. Enter your Gmail name and we'll send a 6-digit code — then let's name your cat!",
+  'เป็นผู้เล่นใหม่ ยังไม่เคยผูกบัญชี': 'New player without a linked account?',
+  'อยากผูกบัญชีเลยมั้ยเหมียว?': 'Link one now, meow?',
   'ลองบ่อยเกินไป รอสักครู่แล้วค่อยลองใหม่': 'Too many attempts — wait a moment and try again.',
   'อีเมลนี้ผูกกับอีกบัญชีไปแล้ว': 'That email is already linked to another account.',
   'อีเมลนี้มีบัญชีอยู่แล้ว ใช้ปุ่ม "เข้าด้วยอีเมล" แทน':
@@ -929,6 +942,9 @@ export const EN = {
 // เรียงจาก "เจาะจงที่สุด" ไปหา "กว้างที่สุด" เพราะ t() ใช้กฎข้อแรกที่ตรง
 // $1 $2 ที่จับได้จะถูกส่งกลับเข้า t() อีกรอบ ชื่อของจึงถูกแปลตามไปด้วยเอง
 export const EN_RULES = [
+  // ── ส่งรหัสทางอีเมลแล้ว ──
+  { re: /^ส่งรหัสไปที่ (\S+) แล้ว เช็คโฟลเดอร์สแปมด้วยนะ · ถ้าไม่ได้รับภายใน 2 นาที อาจพิมพ์อีเมลผิด ลองเช็คตัวสะกดแล้วกดส่งใหม่$/,
+    en: "Code sent to $1 — check your spam folder too. No code within 2 minutes? The address may be misspelled; check it and send again." },
   // ── การ์ดพรสวรรค์จากรางวัลเลเวล ──
   { re: /^🔒 เลเวล (\d+)$/, en: '🔒 Level $1' },
   { re: /^รับรางวัลเลเวล (\d+) เพื่อปลดล็อก$/, en: 'Claim the level $1 reward to unlock' },
