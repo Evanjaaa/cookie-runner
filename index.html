@@ -274,6 +274,10 @@
             <button class="btn" id="guestBtn">เล่นแบบผู้มาเยือน</button>
             <button class="btn ghost" id="loginMailBtn">มีบัญชีอยู่แล้ว — เข้าด้วยอีเมล</button>
           </div>
+          <!-- ผู้เล่นใหม่ที่อยากผูกอีเมลตั้งแต่แรก: สร้างบัญชีด้วยอีเมลเลย → ยืนยันรหัส → ตั้งชื่อ → คลิปเปิดเกม -->
+          <button type="button" class="auth-signup" id="signupMailBtn">
+            เป็นผู้เล่นใหม่ ยังไม่เคยผูกบัญชี <b>อยากผูกบัญชีเลยมั้ยเหมียว?</b>
+          </button>
           <small class="form-msg" id="authMsg"></small>
 
           <!-- ── ป๊อปอัพเล็กของปุ่ม ! ──
@@ -304,9 +308,22 @@
       <div class="panel hidden" id="namePanel">
         <div class="pop">
           <h2 class="skin-title">ตั้งชื่อตัวละคร</h2>
-          <canvas id="nameCat" width="120" height="120"></canvas>
-          <div class="form-row">
-            <input id="nameInput" maxlength="10" placeholder="ชื่อที่จะโชว์บนกระดาน (ไม่เกิน 10 ตัว)">
+          <!-- ── กรอบตั้งชื่อตามแบบ ──
+               การ์ดม่วงขอบไล่ชมพู→เหลือง หัวใจลายสก็อต (Decorative bow.svg → public/news-deco/bow.webp) มุมซ้ายบน
+               น้องยืนกลางการ์ด ป้ายชื่อทับขอบล่างของการ์ด -->
+          <div class="name-stage">
+            <div class="name-card">
+              <img class="name-heart" src="/news-deco/bow.webp" alt="" aria-hidden="true">
+              <canvas id="nameCat" width="120" height="120"></canvas>
+            </div>
+            <!-- ป้ายชื่อน่ารัก: รอยเท้าซ้าย ดินสอขวา กรอบชมพูเรืองตอนพิมพ์ (.name-tag ใน style.css) -->
+            <div class="form-row">
+              <label class="name-tag">
+                <svg class="nt-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="15.5" rx="5.2" ry="4.4"/><ellipse cx="5.6" cy="10" rx="2.1" ry="2.6"/><ellipse cx="9.4" cy="6.4" rx="2.1" ry="2.7"/><ellipse cx="14.6" cy="6.4" rx="2.1" ry="2.7"/><ellipse cx="18.4" cy="10" rx="2.1" ry="2.6"/></svg>
+                <input id="nameInput" maxlength="10" placeholder="ตั้งชื่อน้องตรงนี้" autocomplete="off">
+                <span class="nt-pen" aria-hidden="true">✏️</span>
+              </label>
+            </div>
           </div>
           <!-- กติกาชื่อต้องเห็นตลอด ไม่ใช่แค่ในช่องว่างที่หายไปทันทีที่เริ่มพิมพ์ — ตัวนับอัปเดตตามที่พิมพ์ -->
           <small class="name-rule" id="nameRule">ตั้งได้ไม่เกิน 10 ตัวอักษร (สระกับวรรณยุกต์นับด้วย) · ห้ามซ้ำกับคนอื่น</small>
@@ -329,8 +346,12 @@
           <h2 class="skin-title" id="mailTitle">เข้าด้วยอีเมล</h2>
           <p id="mailLead"></p>
           <div class="form-row" id="mailStep1">
-            <input id="mailInput" type="email" inputmode="email"
-                   autocomplete="email" placeholder="you@example.com">
+            <!-- ล็อกเป็น Gmail: ผู้เล่นพิมพ์แค่ชื่อหน้า @ ส่วน @gmail.com ติดอยู่ท้ายช่องเสมอ -->
+            <label class="mail-field">
+              <input id="mailInput" type="text" inputmode="email" autocapitalize="off" spellcheck="false"
+                     autocomplete="username" placeholder="ชื่ออีเมล">
+              <span class="mail-suffix">@gmail.com</span>
+            </label>
             <button class="btn ghost" id="mailSend">ส่งรหัส</button>
           </div>
           <div class="form-row hidden" id="mailStep2">
@@ -777,7 +798,8 @@
           <div class="tl-body fr-body">
             <aside class="tl-side fr-side">
               <p class="tl-side-label">บัตรแมวน้อยของเรา</p>
-              <div class="tl-equipped fr-me">
+              <!-- แตะบัตร = เปิดโปรไฟล์ของเรา (ปุ่มคัดลอกข้างในยังทำงานของตัวเอง ไม่พาไปโปรไฟล์) -->
+              <div class="tl-equipped fr-me" id="frMeCard" role="button" tabindex="0" aria-label="ดูโปรไฟล์ของเรา">
                 <canvas class="fr-me-face" id="frMeFace" width="96" height="96" aria-hidden="true"></canvas>
                 <small class="fr-me-label">รหัสแมวน้อย</small>
                 <b class="fr-me-code" id="frMyCode">— — —</b>
@@ -786,6 +808,8 @@
                   <span>คัดลอก</span>
                 </button>
               </div>
+              <!-- ผลการคัดลอกอยู่ใต้บัตรทันที ไม่ใช่ท้ายแผงที่ห่างออกไปครึ่งจอ -->
+              <small class="form-msg fr-copy-msg" id="frCopyMsg"></small>
               <p class="tl-side-note">ส่งรหัสนี้ให้เพื่อน<br>ค้นหาแล้วกดเพิ่มกันได้เลย</p>
             </aside>
 

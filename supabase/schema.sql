@@ -34,7 +34,7 @@
 create table if not exists public.players (
   id          uuid primary key references auth.users on delete cascade,
   name        text        not null default 'แมวนิรนาม',
-  gold        bigint      not null default 999999,
+  gold        bigint      not null default 15000,   -- ตรงกับ GOLD_START (ดู supabase/wallet_reset.sql)
   owned       text[]      not null default '{}',      -- id ชุดที่สุ่มได้แล้ว
   outfit      text        not null default 'none',
   skin        text        not null default 'orange',

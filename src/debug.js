@@ -17,6 +17,7 @@ import { STATE } from './game.js';
 import { STAGES } from './stages.js';
 import { Level } from './level.js';
 import { addGems, getGems } from './vault.js';
+import { addGold, getGold } from './gacha.js';
 import { unlockAllSkills } from './skills.js';
 import { xpAtLevel, levelFromXp } from './progress.js';
 import { loadXp, saveXp } from './storage.js';
@@ -184,6 +185,20 @@ function fillGems(hooks) {
   return true;
 }
 
+/** เสกทองให้ครบ GOLD_GOAL พอดี — ท่าเดียวกับ fillGems (ทองผ่าน addGold ของ gacha.js เท่านั้น) */
+const GOLD_GOAL = 999999;
+function fillGold(hooks) {
+  const need = GOLD_GOAL - getGold();
+  if (need <= 0) {
+    toast('🪙 มีครบ ' + getGold().toLocaleString('en-US') + ' อยู่แล้ว');
+    return false;
+  }
+  addGold(need);
+  hooks.refreshCurrency?.();
+  toast('🪙 เสกทองแล้ว ' + getGold().toLocaleString('en-US'));
+  return true;
+}
+
 /**
  * @param game  ตัวเกม
  * @param hooks { refreshCurrency } — ให้ main.js ส่งฟังก์ชันวาดแถบทอง/เพชรใหม่มา
@@ -336,6 +351,7 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
 
   // ── เพชรชมพู ──
   add('💎 เพชร 999,999', () => fillGems(hooks));
+  add('🪙 ทอง 999,999', () => fillGold(hooks));
 
   // ── ดันเลเวลไป 50 ──
   // การ์ดพรสวรรค์แจกที่เลเวล 5-50 ปุ่มนี้ให้ XP พอถึงเลเวล 50 พอดี แล้วไปกดรับที่หน้ารางวัลเลเวลเอง

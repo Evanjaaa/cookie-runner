@@ -25,8 +25,8 @@ export const NAME_KEY = KEYS.name;
 const OWNED_KEY = KEYS.owned;
 
 // ค่าตั้งต้นของสองกระเป๋าเงิน ใช้ตัดสินว่า "แถวนี้ยังไม่เคยถูกแตะ" หรือยัง
-const GEM_START = 300;
-const GOLD_START = 999999;
+const GEM_START = 450;     // ต้องตรงกับ storage.js
+const GOLD_START = 15000;  // ต้องตรงกับ storage.js
 
 const PUSH_DELAY = 900;   // ms รอรวมการเขียนหลาย ๆ ครั้งให้เป็นครั้งเดียว
 

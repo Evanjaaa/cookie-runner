@@ -42,7 +42,7 @@ import {
 import {
   cloudReady, userId, currentAccount, pushName, fetchLeaderboard,
   sendLoginCode, verifyLoginCode, sendLinkCode, verifyLinkCode, signOut,
-  fetchMyFriendCode, fetchProfileByCode, claimName,
+  fetchMyFriendCode, fetchProfileByCode, claimName, nameAvailable,
   friendStatus, sendFriendRequest, respondFriendRequest, cancelFriendRequest, removeFriend,
   fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers,
 } from './net/cloud.js';
@@ -1244,12 +1244,13 @@ function buildGList() {
     }
     card.querySelector('b').textContent = item.name;
 
-    // แตะแล้วพากลับไปส่องใบนั้นในหน้าตู้ทันที — หน้านี้มีไว้ "เลือกดู" อย่างเดียว
-    // ส่วนติดตั้งสมบัติกับใส่ชุด ยังอยู่ในหน้าสมบัติกับหน้าชุดเหมือนเดิม
+    // สกิน: แตะแล้วเปิดหน้ารายละเอียดชุด (หน้าเดียวกับในคลังน้อง) ปุ่มล่างใส่ชุด / ไปสุ่มกัน!
+    // สมบัติ: พากลับไปส่องใบนั้นในหน้าตู้เหมือนเดิม
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
       setHeroId(item.id);
+      if (!t) { openOutfitDetail(item.id, gListPanel); return; }
       showGList(false);
     });
 
@@ -1493,24 +1494,57 @@ const NAME_MAX = 10;
  * กติกาชื่อ + ตัวนับตัวอักษรใต้ช่องพิมพ์ — นับแบบเดียวกับ cleanName (ทีละตัวอักษร สระ/วรรณยุกต์นับด้วย)
  * ข้อความตั้งจาก NAME_MAX ตัวเดียว เปลี่ยนเพดานที่เดียวแล้วทุกที่ตามกันเอง
  */
-function wireNameRule(inputId, ruleId, short) {
+function wireNameRule(inputId, ruleId, short, saveBtn) {
   const input = document.getElementById(inputId);
   const rule = document.getElementById(ruleId);
   if (!input || !rule) return;
   input.maxLength = NAME_MAX;
+  // ── เช็คชื่อซ้ำสด ๆ ตอนพิมพ์ ──
+  // หยุดพิมพ์ 0.4 วิ ค่อยถามเซิร์ฟเวอร์ (ไม่ยิงทุกตัวอักษร) แล้วขึ้นบรรทัดสถานะใต้กติกา
+  // ซ้ำ = ตัวแดง + ปิดปุ่มบันทึก · เช็คไม่ได้ (ออฟไลน์) = ไม่ขึ้นอะไร ให้ claim_name ตัดสินตอนกดบันทึก
+  let status = '';            // '' | 'checking' | 'ok' | 'taken'
+  let timer = 0;
+  let asked = '';
+  const btn = () => (saveBtn ? document.getElementById(saveBtn) : null);
   const paint = () => {
     const n = Array.from(input.value.trim()).length;
+    const line = status === 'taken' ? '<span class="nr-bad">✗ ชื่อนี้มีคนใช้แล้ว ลองชื่ออื่นนะ</span>'
+      : status === 'ok' ? '<span class="nr-ok">✓ ใช้ชื่อนี้ได้</span>'
+        : status === 'checking' ? '<span class="nr-wait">กำลังเช็คชื่อ…</span>' : '';
     rule.innerHTML = `${short ? '' : 'ตั้งได้'}ไม่เกิน ${NAME_MAX} ตัวอักษร (สระกับวรรณยุกต์นับด้วย) · ห้ามซ้ำกับคนอื่น`
-      + ` · <b>${n}/${NAME_MAX}</b>`;
+      + ` · <b>${n}/${NAME_MAX}</b>` + line;
     rule.classList.toggle('full', n >= NAME_MAX);
+    rule.classList.toggle('taken', status === 'taken');
+    input.classList.toggle('name-taken', status === 'taken');
+    const b = btn();
+    if (b) b.disabled = status === 'taken';
   };
-  input.addEventListener('input', paint);
+  const check = () => {
+    clearTimeout(timer);
+    const name = cleanName(input.value);
+    const mine = localName();
+    if (!cloudReady || !name || name === DEFAULT_NAME || (mine && name.toLowerCase() === mine.toLowerCase())) {
+      status = '';
+      paint();
+      return;
+    }
+    status = 'checking';
+    paint();
+    timer = setTimeout(async () => {
+      asked = name;
+      const free = await nameAvailable(name);
+      if (asked !== cleanName(input.value)) return;   // พิมพ์ต่อไปแล้ว คำตอบเก่าทิ้ง
+      status = free === true ? 'ok' : free === false ? 'taken' : '';
+      paint();
+    }, 400);
+  };
+  input.addEventListener('input', () => { paint(); check(); });
   // ค่าตั้งต้นถูกเติมตอนเปิดหน้า (ชื่อเดิม) — วาดใหม่ตอนได้โฟกัสด้วย ตัวเลขจะไม่ค้างที่ 0
   input.addEventListener('focus', paint);
   paint();
 }
-wireNameRule('nameInput', 'nameRule', false);
-wireNameRule('pfNameInput', 'pfNameRule', true);
+wireNameRule('nameInput', 'nameRule', false, 'nameSave');
+wireNameRule('pfNameInput', 'pfNameRule', true, 'pfNameSave');
 
 /** ตัดชื่อให้อยู่ในกติกา (นับเป็นตัวอักษรจริง อีโมจิหนึ่งตัวนับหนึ่ง) */
 function cleanName(raw) {
@@ -1583,12 +1617,23 @@ function visiblePanels() {
     .join(',');
 }
 
+/** ตั้งไว้ก่อนโหลดหน้าใหม่หลังเข้าด้วยอีเมล — กดเข้าเกมรอบถัดไปจะไปหน้าตั้งชื่อต่อทันที */
+const MAIL_JUST_IN = 'cookie-runner:mail-just-in';
+
 function enterGame() {
   // แตะปุ่มนี้คือ gesture แรกของผู้เล่น เพลงกับเสียงจึงเริ่มได้ตั้งแต่ตรงนี้
   unlockAudio();
   startMusic();
   if (!hasAccount()) return showAuth();
-  if (!chosenName()) return showNameStep();
+  if (!chosenName()) {
+    // เพิ่งเข้าด้วยอีเมลแล้วเกมโหลดใหม่ = ไปตั้งชื่อต่อเลย (ย้อนกลับจากหน้าตั้งชื่อยังกลับหน้าเลือกได้)
+    let fromMail = false;
+    try { fromMail = sessionStorage.getItem(MAIL_JUST_IN) === '1'; sessionStorage.removeItem(MAIL_JUST_IN); } catch { /* ไม่เป็นไร */ }
+    if (fromMail) return showNameStep('', authPanel);
+    // มีบัญชีแต่ยังไม่ได้ตั้งชื่อ (เช่นกดย้อนกลับออกจากหน้าตั้งชื่อ) = กลับหน้าเลือกวิธีเข้าเกมก่อน
+    // ไม่ใช่เด้งเข้าหน้าตั้งชื่อตรง ๆ — กด "เล่นแบบผู้มาเยือน" ซ้ำก็ใช้บัญชีเดิม ไม่สร้างใหม่ (signInGuest)
+    return showAuth();
+  }
   enterLobby();
 }
 
@@ -1633,10 +1678,44 @@ function showNameStep(warn = '', from = titlePanel) {
   document.getElementById('nameInput').value = chosenName();
   document.getElementById('nameInput').dispatchEvent(new Event('input'));   // ตัวนับตัวอักษรใต้ช่อง
   // โชว์แมวตัวที่เลือกอยู่จริง ๆ ให้เห็นว่ากำลังตั้งชื่อให้ใคร
-  paintMini(document.getElementById('nameCat'), 120,
-    (c) => drawCatPose(c, 60, 110, 1.85, getSkin(), 60));
+  // วาดที่ 176 (ขนาดใหญ่สุดที่กรอบตั้งชื่อโชว์) แล้วย่อพิกัดชุดเดิมของ 120 ขึ้นมา — ภาพไม่แตกบนจอใหญ่
+  paintMini(document.getElementById('nameCat'), 176, (c) => {
+    c.scale(176 / 120, 176 / 120);
+    drawCatPose(c, 60, 110, 1.85, getSkin(), 60);
+  });
   setMsg(document.getElementById('nameMsg'), warn, Boolean(warn));
   showPanel(namePanel);
+  unsealNameCard();
+}
+
+/**
+ * ย้อนกลับของ sealNameCard — ตอนเปิดหน้าตั้งชื่อ (อีเมลใหม่ / ผู้มาเยือน / ยังไม่มีชื่อ)
+ *   1) ป้ายชื่อเริ่มกลางจอ เรืองทอง แล้วเด้งลงมาที่ของมัน
+ *   2) การ์ดน้องแมวเด้งขึ้นมาจากป้ายชื่อ เหมือนดึงกระดาษออกจากช่อง
+ *   3) หัวข้อ กติกา ปุ่ม ค่อย ๆ โผล่ตาม
+ */
+function unsealNameCard() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // ต้องใส่คลาสในเฟรมเดียวกับที่แผงเพิ่งโผล่ (ไม่ใช่เฟรมถัดไป)
+  // ไม่งั้นหัวข้อ/กติกา/ปุ่ม เล่นแอนิเมชันเข้าหน้าปกติของแผงไปก่อนหนึ่งเฟรม
+  // แล้วโดนแอนิเมชันของเราทับ = กระพริบโผล่สองรอบ
+  // getBoundingClientRect บังคับจัดหน้าทันที จึงวัดตำแหน่งป้ายได้ในจังหวะนี้เลย
+  namePanel.classList.remove('unsealing', 'no-rise');
+  const tag = namePanel.querySelector('.name-tag');
+  if (!tag) return;
+  const t = tag.getBoundingClientRect();
+  const p = namePanel.getBoundingClientRect();
+  namePanel.style.setProperty('--seal-y', Math.round(p.top + p.height / 2 - (t.top + t.height / 2)) + 'px');
+  namePanel.classList.add('unsealing');
+  setTimeout(() => sfx.fish(), 520);         // ตุบตอนการ์ดเด้งพ้นช่อง
+  clearTimeout(unsealNameCard.t);
+  unsealNameCard.t = setTimeout(() => {
+    // ถอดคลาสแล้วของในแผงจะกลับไปใช้แอนิเมชันเข้าหน้าปกติ (cardRise) ซึ่งจะเล่นซ้ำอีกรอบ
+    // no-rise ปิดแอนิเมชันนั้นไว้จนกว่าจะเปิดหน้านี้ครั้งถัดไป (ถอดตอนต้นฟังก์ชันนี้)
+    namePanel.classList.add('no-rise');
+    namePanel.classList.remove('unsealing');
+    namePanel.style.removeProperty('--seal-y');
+  }, 1700);
 }
 
 async function doGuest() {
@@ -1696,7 +1775,35 @@ async function saveCharacterName() {
   // แต่กันไว้เพราะมันคือกฎที่ควรใช้กับทุกงานที่ "await แล้วค่อยไปเปลี่ยนหน้า"
   // ไม่ใช่เฉพาะที่นี่ — และเสียแค่บรรทัดเดียว
   if (visiblePanels() !== before) return;
+  await sealNameCard();
+  if (visiblePanels() !== before) return;
   enterLobby();
+}
+
+/**
+ * แอนิเมชันปิดการ์ดตอนตั้งชื่อเสร็จ (ประมาณ 1.8 วิ) แล้วค่อยเข้าเกม
+ *   1) การ์ดน้องแมวเลื่อนลงหายเข้าไปหลังป้ายชื่อ (เหมือนดึงกระดาษกลับเข้าช่อง)
+ *   2) ป้ายชื่อเด้งไปกลางจอ ใหญ่ขึ้น ของอื่นในแผงจางหาย
+ * ตำแหน่ง "กลางจอ" คำนวณจากตำแหน่งจริงของป้ายตอนนั้น → ส่งให้ CSS ผ่าน --seal-y
+ * ผู้เล่นที่ตั้งค่าลดการเคลื่อนไหว = ข้ามแอนิเมชันไปเลย
+ */
+function sealNameCard() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+  const tag = namePanel.querySelector('.name-tag');
+  if (!tag) return Promise.resolve();
+  const t = tag.getBoundingClientRect();
+  const p = namePanel.getBoundingClientRect();
+  namePanel.style.setProperty('--seal-y', Math.round(p.top + p.height / 2 - (t.top + t.height / 2)) + 'px');
+  document.getElementById('nameInput').readOnly = true;
+  document.getElementById('nameInput').blur();
+  namePanel.classList.add('sealing');
+  setTimeout(() => sfx.fish(), 640);          // ตุบตอนกระดาษเข้าช่องหมด
+  return new Promise((res) => setTimeout(() => {
+    namePanel.classList.remove('sealing');
+    namePanel.style.removeProperty('--seal-y');
+    document.getElementById('nameInput').readOnly = false;
+    res();
+  }, 1800));
 }
 
 // ── อีเมล: เข้าสู่ระบบ / ผูกกับบัญชีที่เล่นอยู่ ──────────────
@@ -1707,7 +1814,7 @@ async function saveCharacterName() {
 // ใช้รหัส 6 หลักไม่ใช่ลิงก์ในเมล เพราะบนมือถือลิงก์จะเปิดในเบราว์เซอร์ของ
 // แอปเมล ซึ่งเป็นคนละที่กับแท็บที่เปิดเกมค้างไว้ แล้ว session จะไปลงผิดที่
 
-let mailMode = 'login';   // 'login' = เข้าด้วยอีเมล | 'link' = ผูกกับบัญชีที่เล่นอยู่
+let mailMode = 'login';   // 'login' = เข้าด้วยอีเมล | 'link' = ผูกกับบัญชีที่เล่นอยู่ | 'signup' = ผู้เล่นใหม่สร้างบัญชีด้วยอีเมล
 let mailFrom = null;      // แผงต้นทาง กดกลับแล้วคืนที่เดิม
 let mailAddr = '';        // อีเมลที่ส่งรหัสไป ตอนยืนยันต้องส่งตัวเดิมกลับไปด้วย
 
@@ -1717,6 +1824,11 @@ const MAIL_TEXT = {
     lead: 'กรอกอีเมลที่เคยผูกไว้ เดี๋ยวส่งรหัส 6 หลักไปให้ — '
         + 'ข้อมูลของผู้มาเยือนในเครื่องนี้จะถูกแทนที่ด้วยข้อมูลของบัญชีนั้น '
         + 'ถ้าอยากเก็บของที่เล่นมา ให้ใช้ "เชื่อมอีเมล" ในหน้าตั้งค่าแทน',
+  },
+  signup: {
+    title: 'สร้างบัญชีด้วยอีเมล',
+    lead: 'ผูกอีเมลตั้งแต่แรก ข้อมูลจะไม่หายแม้เปลี่ยนเครื่องหรือล้างเบราว์เซอร์ '
+        + 'ใส่ชื่ออีเมล Gmail แล้วเดี๋ยวส่งรหัส 6 หลักไปให้ ยืนยันเสร็จไปตั้งชื่อน้องกันเลย',
   },
   link: {
     title: 'เชื่อมอีเมล',
@@ -1748,22 +1860,52 @@ function closeMail() {
   mailFrom = null;
 }
 
+/**
+ * ชื่อหน้า @ ของ Gmail ถูกกติกาไหม (Gmail: 6–30 ตัว · a–z 0–9 และจุด · ขึ้นต้น/ลงท้ายด้วยจุดไม่ได้ · จุดติดกันไม่ได้)
+ * คืนข้อความเตือน หรือ '' ถ้าผ่าน
+ *
+ * ── ทำไมเช็คได้แค่รูปแบบ ──
+ * ตอนส่งรหัส ระบบอีเมลตอบกลับว่า "ส่งแล้ว" เสมอ ไม่มีทางรู้จากฝั่งเกมว่าอีเมลนั้นมีคนใช้อยู่จริงไหม
+ * (Gmail ไม่เปิดให้ถาม และการถามแบบนั้นก็เป็นช่องให้คนสุ่มหาอีเมลคนอื่น)
+ * จึงกันพิมพ์ผิดรูปแบบตรงนี้ + ให้ผู้เล่นเห็นอีเมลเต็มก่อนส่ง + บอกชัดว่าไม่ได้รหัส = น่าจะพิมพ์ผิด
+ */
+function gmailProblem(user) {
+  if (!user) return 'ใส่ชื่ออีเมลก่อนนะ';
+  if (!/^[a-z0-9.]+$/.test(user)) return 'ชื่ออีเมล Gmail ใช้ได้แค่ a–z ตัวเลข และจุด (.)';
+  if (user.length < 6 || user.length > 30) return 'ชื่ออีเมล Gmail ต้องยาว 6–30 ตัว ลองเช็คอีกทีนะ';
+  if (user.startsWith('.') || user.endsWith('.') || user.includes('..')) return 'จุด (.) อยู่หน้าสุด ท้ายสุด หรือติดกันไม่ได้';
+  return '';
+}
+
+/** ชื่อหน้า @ จากช่องพิมพ์ — ผู้เล่นเผลอพิมพ์/วางอีเมลเต็มมา ก็ตัดส่วนหลัง @ ทิ้งให้เอง */
+function gmailUser() {
+  const el = document.getElementById('mailInput');
+  const v = el.value.trim().toLowerCase().split('@')[0].replace(/\s+/g, '');
+  if (v !== el.value) el.value = v;
+  return v;
+}
+
 async function sendCode() {
   const msg = document.getElementById('mailMsg');
-  const email = document.getElementById('mailInput').value.trim();
-  if (!email) return setMsg(msg, 'กรอกอีเมลก่อนนะ', true);
+  const user = gmailUser();
+  const bad = gmailProblem(user);
+  if (bad) return setMsg(msg, bad, true);
+  const email = user + '@gmail.com';
 
   const btn = document.getElementById('mailSend');
   btn.disabled = true;
   setMsg(msg, 'กำลังส่งรหัส…');
 
+  // signup กับ login ใช้ทางเดียวกัน (สร้างบัญชีให้ถ้ายังไม่มี) ต่างกันแค่ข้อความบนหน้า
   const r = mailMode === 'link' ? await sendLinkCode(email) : await sendLoginCode(email);
   btn.disabled = false;
   if (!r.ok) return setMsg(msg, r.error, true);
 
   mailAddr = email;
   document.getElementById('mailStep2').classList.remove('hidden');
-  setMsg(msg, 'ส่งรหัสไปที่ ' + email + ' แล้ว เช็คโฟลเดอร์สแปมด้วยนะ');
+  setMsg(msg, 'ส่งรหัสไปที่ ' + email + ' แล้ว เช็คโฟลเดอร์สแปมด้วยนะ · '
+    + 'ถ้าไม่ได้รับภายใน 2 นาที อาจพิมพ์อีเมลผิด ลองเช็คตัวสะกดแล้วกดส่งใหม่');
+  document.getElementById('codeInput').focus();
 }
 
 async function verifyCode() {
@@ -1797,6 +1939,7 @@ async function verifyCode() {
   setMsg(msg, 'เข้าสู่ระบบแล้ว กำลังโหลดข้อมูล…');
   const { clearLocalProgress } = await import('./net/sync.js');
   clearLocalProgress(prevStash);
+  try { sessionStorage.setItem(MAIL_JUST_IN, '1'); } catch { /* ไม่เป็นไร */ }
   location.reload();
 }
 
@@ -1955,8 +2098,23 @@ paintIntroSetting();
 document.getElementById('authBack').addEventListener('click', () => showPanel(titlePanel));
 document.getElementById('guestBtn').addEventListener('click', doGuest);
 document.getElementById('loginMailBtn').addEventListener('click', () => showMail('login', authPanel));
+document.getElementById('signupMailBtn').addEventListener('click', () => { unlockAudio(); sfx.fish(); showMail('signup', authPanel); });
+// พิมพ์ @ ในช่องชื่ออีเมล = ตัดทิ้งทันที (ส่วน @gmail.com ติดอยู่ท้ายช่องแล้ว)
+document.getElementById('mailInput').addEventListener('input', () => {
+  const el = document.getElementById('mailInput');
+  if (el.value.includes('@')) el.value = el.value.split('@')[0];
+});
+document.getElementById('mailInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCode(); });
+document.getElementById('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyCode(); });
+// เพิ่งยืนยันอีเมลแล้วเกมโหลดใหม่ (สมัคร/เข้าด้วยอีเมล) = ไปต่อเองเลย ไม่ต้องกด "เข้าเกม" อีกรอบ
+// ยังไม่มีชื่อ → หน้าตั้งชื่อ (enterGame อ่านธงนี้) · มีชื่อแล้ว → ล็อบบี้พร้อมคลิปเปิดเกม
+try {
+  if (sessionStorage.getItem(MAIL_JUST_IN) === '1') setTimeout(enterGame, 0);
+} catch { /* ไม่เป็นไร */ }
 document.getElementById('nameSave').addEventListener('click', saveCharacterName);
-document.getElementById('nameBack').addEventListener('click', () => showPanel(nameFrom || titlePanel));
+// ย้อนกลับจากหน้าตั้งชื่อ = กลับหน้าเลือกวิธีเข้าเกม (อีเมล / ผู้มาเยือน) เสมอ
+// เดิมกลับไปหน้าชื่อเกม ซึ่งกด "เข้าเกม" แล้วเด้งกลับมาหน้าตั้งชื่อทันที วนอยู่แค่สองหน้านี้
+document.getElementById('nameBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); showAuth(); });
 document.getElementById('mailSend').addEventListener('click', sendCode);
 document.getElementById('codeVerify').addEventListener('click', verifyCode);
 document.getElementById('mailBack').addEventListener('click', closeMail);
@@ -4510,8 +4668,35 @@ document.getElementById('frSearch').addEventListener('submit', (e) => {
 });
 document.getElementById('frCopy').addEventListener('click', async () => {
   sfx.fish();
-  if (!pfMyCode) { frSay(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
-  frSay(await copyText(pfMyCode) ? 'คัดลอกรหัสแมวน้อยแล้ว' : 'รหัสแมวน้อยของเรา: ' + pfMyCode);
+  const say = (text, bad = false) => {
+    const m = document.getElementById('frCopyMsg');
+    setMsg(m, text, bad);
+    clearTimeout(say.t);
+    say.t = setTimeout(() => setMsg(m, ''), 2600);
+  };
+  if (!pfMyCode) { say(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
+  say(await copyText(pfMyCode) ? 'คัดลอกรหัสแมวน้อยแล้ว ✓' : 'รหัสแมวน้อยของเรา: ' + pfMyCode);
+});
+
+// แตะบัตรแมวน้อยของเรา = เปิดโปรไฟล์ของเรา (ปิดแล้วกลับมาหน้าเพื่อนเหมือนส่องเพื่อน)
+// ปุ่มคัดลอกอยู่ในบัตร ต้องไม่พาไปโปรไฟล์ด้วย
+const frMeCard = document.getElementById('frMeCard');
+function openMyProfileFromFriends(e) {
+  if (e.target.closest('#frCopy')) return;
+  unlockAudio();
+  sfx.fish();
+  friendsPanel.classList.add('hidden');
+  profilePanel.classList.remove('hidden');
+  pfFrom = 'friends';
+  setEditing(false);
+  document.getElementById('pfLookup').classList.add('hidden');
+  pfSay('');
+  showOwnProfile();
+  if (!pfRAF) pfRAF = requestAnimationFrame(pfLoop);
+}
+frMeCard.addEventListener('click', openMyProfileFromFriends);
+frMeCard.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMyProfileFromFriends(e); }
 });
 
 // ป้ายคำขอใหม่: เช็คตอนเปิดเกม (รอเข้าสู่ระบบเสร็จก่อน) ทุกสองนาที และตอนกลับมาที่แท็บ
@@ -4560,6 +4745,8 @@ document.getElementById('questBack').addEventListener('click', () => showQuests(
 
 const odPanel = document.getElementById('odPanel');
 let odCurrent = null;
+// แผงที่เปิดหน้ารายละเอียดนี้มา — คลังน้อง (ค่าตั้งต้น) หรือรายการสกินในตู้กาช่า
+let odFrom = null;
 let odTick = 0;
 let odRAF = 0;
 
@@ -4671,7 +4858,9 @@ function paintOutfitDetail() {
   // ทางลัดไปตู้กาช่าแทน (ดู odWear ข้างล่าง) — จุดที่ตอบคำถามนั้นได้จริง
   const wear = document.getElementById('odWear');
   wear.disabled = on;
-  wear.textContent = !got ? 'ไปสุ่มกาช่ากัน!' : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
+  // มาจากรายการในตู้กาช่า = อยู่ข้างตู้อยู่แล้ว ปุ่มจึงชวนสั้น ๆ ว่า "ไปสุ่มกัน!"
+  const fromGacha = odFrom === gListPanel;
+  wear.textContent = !got ? (fromGacha ? 'ไปสุ่มกัน!' : 'ไปสุ่มกาช่ากัน!') : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
   wear.classList.toggle('ghost', on);
 
   setMsg(document.getElementById('odMsg'),
@@ -4679,16 +4868,25 @@ function paintOutfitDetail() {
   paintOdCat();
 }
 
-function openOutfitDetail(id) {
+function openOutfitDetail(id, from = outfitPanel) {
   odCurrent = id;
+  odFrom = from;
   odTick = 0;
   paintOutfitDetail();
-  swapPanel(outfitPanel, odPanel);
+  swapPanel(from, odPanel);
   if (!odRAF) odLoop();
 }
 
 function closeOutfitDetail() {
   stopOdCat();
+  // กลับไปแผงที่เปิดมา — รายการในตู้ต้องวาดใหม่ (อาจเพิ่งใส่ชุดไป การ์ดที่ "ใส่อยู่" เปลี่ยน)
+  if (odFrom === gListPanel) {
+    odFrom = null;
+    buildGList();
+    swapPanel(odPanel, gListPanel);
+    return;
+  }
+  odFrom = null;
   swapPanel(odPanel, stashPanel);
   refreshStash();
 }
@@ -4710,6 +4908,14 @@ document.getElementById('odWear').addEventListener('click', () => {
   if (!isOwned(o.id)) {
     sfx.fish();
     stopOdCat();
+    // มาจากรายการในตู้ = ตู้เปิดค้างอยู่ใต้รายการแล้ว กลับไปหน้าตู้ตรง ๆ (ส่องชุดนี้อยู่)
+    if (odFrom === gListPanel) {
+      odFrom = null;
+      swapPanel(odPanel, gachaPanel);
+      refreshGacha();
+      return;
+    }
+    odFrom = null;
     odPanel.classList.add('hidden');
     showGacha(true, 'skin');
     return;
@@ -7443,6 +7649,7 @@ if (import.meta.env.DEV) {
   // เปิดหน้าสรุปผลด้วยตัวเลขที่ตั้งเองได้ ไม่ต้องเล่นจนตายทุกครั้งที่จะดูหน้านี้
   window.__showGameOver = showGameOver;
   window.__askRevive = askRevive;     // กล่อง "น้องตกหลุม" โดยไม่ต้องรอตกหลุมจริง
+  window.__showNameStep = showNameStep; // หน้าตั้งชื่อ + แอนิเมชันเปิด โดยไม่ต้องสร้างบัญชีใหม่
 }
 
 // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด

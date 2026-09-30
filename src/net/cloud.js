@@ -497,6 +497,22 @@ export async function pushName(name) {
  * ตั้งชื่อผ่านฐานข้อมูล — ตรวจ "ยาวเกิน / ซ้ำกับคนอื่น" ฝั่งเซิร์ฟเวอร์ (ดู supabase/names.sql)
  * คืน { ok } หรือ { ok:false, reason: 'taken' | 'invalid' | 'offline' | 'schema' | 'network' }
  */
+/**
+ * ชื่อนี้ยังว่างไหม — ใช้เตือนตอนพิมพ์ (supabase/names.sql → name_available)
+ * @returns {Promise<boolean|null>} true ว่าง · false มีคนใช้แล้ว · null เช็คไม่ได้ (ออฟไลน์/ยังไม่รัน SQL)
+ */
+export async function nameAvailable(name) {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data, error } = await c.rpc('name_available', { p_name: name });
+    if (error) throw error;
+    return typeof data === 'boolean' ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function claimName(name) {
   const c = await client();
   if (!c || !uid) return { ok: false, reason: 'offline' };

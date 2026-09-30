@@ -85,3 +85,25 @@ drop trigger if exists players_name_guard on public.players;
 create trigger players_name_guard
   before update of name on public.players
   for each row execute function public.players_name_guard();
+
+-- ── name_available(): เช็คว่าชื่อนี้ยังว่างไหม ตอนผู้เล่นกำลังพิมพ์ ──
+-- ไม่เปลี่ยนอะไรทั้งนั้น แค่ตอบ true/false ให้เกมขึ้นคำเตือนก่อนกดบันทึก
+-- ชื่อตัวเองนับว่า "ว่าง" (แก้ชื่อเดิมกลับเป็นชื่อเดิมได้) · ยังไม่เข้าสู่ระบบก็เช็คได้ (หน้าตั้งชื่อตอนสมัคร)
+-- ตอบแค่ว่ามีคนใช้หรือไม่ ไม่บอกว่าใครใช้ — ไม่มีข้อมูลผู้เล่นรั่วออกไป
+-- คำตัดสินจริงยังเป็นของ claim_name() ข้างบน (กันสองคนกดพร้อมกัน) ฟังก์ชันนี้มีไว้เตือนล่วงหน้าเท่านั้น
+create or replace function public.name_available(p_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select not exists (
+    select 1 from public.players
+    where lower(name) = lower(btrim(coalesce(p_name, '')))
+      and id is distinct from auth.uid()
+      and lower(name) <> lower('แมวนิรนาม')
+  );
+$$;
+
+grant execute on function public.name_available(text) to anon, authenticated;
