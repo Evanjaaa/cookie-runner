@@ -416,6 +416,52 @@ function tone(from, to, dur, type = 'square', vol = 0.12) {
 }
 
 /**
+ * เสียงซ่า (noise) ผ่านฟิลเตอร์ — สำหรับเสียงที่ไม่มีระดับเสียงแน่นอน
+ * น้ำกระเซ็น ฟองสบู่ เม็ดอาหารร่วงลงชาม เคี้ยวกรุบ ฝีเท้า ซึ่ง tone() กับ meow() ทำไม่ได้
+ * (คลื่นที่มีระดับเสียงฟังเป็น "โน้ต" เสมอ ต่อให้สั้นแค่ไหน)
+ *
+ * ใช้บัฟเฟอร์สุ่มก้อนเดียวทั้งเกม แล้วเริ่มเล่นจากจุดสุ่ม — ไม่ต้องสร้างใหม่ทุกครั้ง
+ * และเสียงสองครั้งติดกันไม่ซ้ำกันเป๊ะ ซึ่งจะฟังเป็นเสียงเครื่องจักร
+ *
+ * @param type   ชนิดฟิลเตอร์: bandpass = เสียงเฉพาะช่วง (กรุบ/ซ่า) / lowpass = ทุ้มอู้ (ตุ้บ/ฟู่)
+ * @param freqTo กวาดความถี่ฟิลเตอร์ไปถึงค่านี้ตอนจบ (น้ำกระเซ็นแล้วจางลงเป็นทุ้ม)
+ */
+let noiseBuf = null;
+function noise({ dur = 0.1, vol = 0.1, type = 'bandpass', freq = 2000, freqTo = null, q = 1, attack = 0.004 } = {}) {
+  if (routeLevel() <= 0) return;
+  const a = liveCtx();
+  if (!a) return;
+  if (a.state !== 'running') unlockAudio();
+  if (!noiseBuf) {
+    const n = Math.floor(a.sampleRate);
+    noiseBuf = a.createBuffer(1, n, a.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t = a.currentTime;
+  const src = a.createBufferSource();
+  src.buffer = noiseBuf;
+  src.loop = true;
+  const f = a.createBiquadFilter();
+  f.type = type;
+  f.Q.value = q;
+  f.frequency.setValueAtTime(freq, t);
+  if (freqTo) f.frequency.exponentialRampToValueAtTime(freqTo, t + dur);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + Math.min(attack, dur * 0.8));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f);
+  f.connect(g);
+  g.connect(routeOut());
+  src.start(t, Math.random() * 0.8);
+  src.stop(t + dur + 0.02);
+  trackSfx(g, t + dur + 0.02);
+}
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/**
  * เสียงร้องของแมว — คลื่นเปล่า ๆ จาก tone() ทำเสียงนี้ไม่ได้ เพราะฟังเป็น "บี๊บ"
  * สิ่งที่ทำให้ฟังเป็นเสียงร้องคือสามอย่างนี้รวมกัน:
  *   1. sawtooth  — มีฮาร์มอนิกเยอะเหมือนเสียงจากสายเสียงจริง
@@ -1101,6 +1147,88 @@ export const sfx = {
   // เมี้ยวแบบถาม "หืม?" — ต่างจาก mew ตรงที่ปลายเสียง "ขึ้น" ไม่ใช่ลง
   // ภาษาไหนก็ตามคำถามจบด้วยเสียงสูง หูจึงอ่านออกว่าสงสัยโดยไม่ต้องมีคำพูด
   huh: () => meow({ start: 560, peak: 640, end: 1020, dur: 0.3, vol: 0.22, q: 4.5, wobble: 16 }),
+
+  // ══ บ้านน้องแมว (src/catroom.js) ══════════════════════════
+  // ทุกเสียงเบากว่าเสียงในด่าน — ในบ้านมีน้องหลายตัวทำอะไรพร้อมกันได้ ถ้าดังเท่าในด่านจะรก
+
+  // เคาะชามเรียกน้อง "ติ๊ง ติ๊ง" — เสียงโลหะใส ๆ สองที ทุกตัวในบ้านรู้ว่าข้าวมาแล้ว
+  bowlTap: () => {
+    tone(1760, null, 0.32, 'sine', 0.07);
+    tone(3520, null, 0.12, 'sine', 0.02);
+    later(() => { tone(1975, null, 0.4, 'sine', 0.07); tone(3950, null, 0.14, 'sine', 0.02); }, 150);
+  },
+  // เม็ดอาหารร่วงลงชาม — เม็ดเล็ก ๆ กระทบกันเป็นห้วงถี่ ๆ แล้วซาลง
+  pour: () => {
+    for (let i = 0; i < 14; i++) {
+      later(() => noise({ dur: 0.028, vol: rnd(0.05, 0.1), freq: rnd(2600, 5200), q: 3.5 }), i * 32 + rnd(0, 18));
+    }
+    later(() => noise({ dur: 0.2, vol: 0.03, freq: 3200, freqTo: 1800, q: 1 }), 60);
+  },
+  // เคี้ยวข้าวเม็ด "กรุบ กรุบ" — สองคำติดกัน คำหลังเบากว่า
+  crunch: () => {
+    // งับ "ง่ำ" ทุ้มสั้น ๆ ก่อน แล้วตามด้วยกรุบ ๆ สองที — ฟังเป็นการเคี้ยวของกรอบ ไม่ใช่แค่เสียงซ่า
+    tone(210, 150, 0.06, 'sine', 0.09);
+    noise({ dur: 0.055, vol: 0.2, freq: rnd(2200, 2900), q: 1.3 });
+    later(() => noise({ dur: 0.05, vol: 0.15, freq: rnd(1700, 2300), q: 1.3 }), 85);
+    later(() => noise({ dur: 0.04, vol: 0.09, freq: rnd(2600, 3200), q: 1.5 }), 165);
+  },
+  // กินของนิ่ม (ปลา/แซลมอน) "งั่ม ๆ" — ทุ้มนุ่ม ไม่มีเสียงกรอบ
+  nom: () => {
+    noise({ dur: 0.09, vol: 0.14, type: 'lowpass', freq: 760, q: 0.8 });
+    tone(240, 170, 0.08, 'sine', 0.08);
+    later(() => { noise({ dur: 0.07, vol: 0.09, type: 'lowpass', freq: 600, q: 0.8 }); tone(220, 160, 0.06, 'sine', 0.05); }, 140);
+  },
+  // เลียน้ำหนึ่งแผล็บ — ลิ้นแตะน้ำ "จุ๊บ" สั้น ๆ มีน้ำกระเซ็นเบา ๆ (ดังทุกครั้งที่ลิ้นแลบ ดู drinkShape)
+  sip: () => {
+    tone(rnd(520, 620), rnd(1100, 1350), 0.045, 'sine', 0.08);
+    noise({ dur: 0.05, vol: 0.05, freq: rnd(3200, 4200), q: 2.2 });
+  },
+  // เลียน้ำ "แผล็บ ๆ" — หยดสั้นไล่ขึ้นสามที
+  lap: () => {
+    [0, 120, 240].forEach((ms) => later(() => tone(rnd(700, 820), rnd(1300, 1500), 0.05, 'sine', 0.05), ms));
+  },
+  // ฝีเท้าบนพรม — ตุ้บเบามาก ดังเฉพาะตอนวิ่งมาหาเรา
+  pat: () => noise({ dur: 0.05, vol: 0.05, type: 'lowpass', freq: 520, q: 0.6 }),
+  // กระโดดลงพื้น — ตุ้บทุ้มสั้น
+  thump: () => {
+    tone(150, 70, 0.09, 'sine', 0.12);
+    noise({ dur: 0.06, vol: 0.06, type: 'lowpass', freq: 500, q: 0.6 });
+  },
+  // กระโดดลงเบาะ/ฟูก — ฟุ่บนุ่ม ๆ ไม่มีเสียงตุ้บ
+  fluff: () => noise({ dur: 0.16, vol: 0.09, type: 'lowpass', freq: 1100, freqTo: 400, q: 0.5, attack: 0.02 }),
+  // กระโดดลงอ่าง — น้ำกระเซ็นแล้วจางเป็นเสียงทุ้ม ตามด้วยฟองผุดสองสามเม็ด
+  splash: () => {
+    noise({ dur: 0.5, vol: 0.2, type: 'lowpass', freq: 5200, freqTo: 380, q: 0.7, attack: 0.006 });
+    noise({ dur: 0.18, vol: 0.08, freq: 3600, q: 1.5 });
+    [140, 230, 330].forEach((ms) => later(() => tone(rnd(700, 950), rnd(1600, 2100), 0.05, 'sine', 0.06), ms));
+  },
+  // ถูตัวในอ่าง — ซ่าเบา ๆ ไล่ขึ้น เหมือนฟองถูไปมา
+  scrub: () => noise({ dur: rnd(0.16, 0.24), vol: 0.06, freq: 1400, freqTo: 3400, q: 0.9, attack: 0.04 }),
+  // สะบัดขนไล่น้ำ — ฟรึ่บถี่ ๆ แล้วมีหยดน้ำกระเด็น
+  shake: () => {
+    for (let i = 0; i < 7; i++) later(() => noise({ dur: 0.035, vol: 0.08, freq: rnd(2200, 3200), q: 1.1 }), i * 42);
+    [80, 190, 300].forEach((ms) => later(() => tone(rnd(1400, 1900), rnd(2400, 2900), 0.04, 'sine', 0.04), ms));
+  },
+  // ลูกบอลกระดิ่ง — กรุ๊งกริ๊งสามเม็ด
+  jingle: () => {
+    [0, 70, 150].forEach((ms, i) => later(() => tone([2637, 3136, 2794][i], null, 0.22, 'triangle', 0.045), ms));
+  },
+  // หนูของเล่นบีบ "จี๊ด"
+  squeak: () => {
+    tone(1700, 2700, 0.07, 'sine', 0.08);
+    later(() => tone(2500, 1800, 0.08, 'sine', 0.06), 70);
+  },
+  // ไม้ตกแมวสะบัด — วืดสั้น ๆ
+  swish: () => noise({ dur: 0.22, vol: 0.07, freq: 900, freqTo: 5200, q: 1.6, attack: 0.05 }),
+  // ไหมพรมกลิ้งบนพรม — ฟืดทุ้มเบา ๆ
+  roll: () => noise({ dur: 0.45, vol: 0.05, type: 'lowpass', freq: 420, q: 0.6, attack: 0.08 }),
+  // กรนเบา ๆ ตอนหลับ — หายใจเข้าช้าแล้วออก
+  snore: () => {
+    noise({ dur: 0.9, vol: 0.045, type: 'lowpass', freq: 340, q: 0.9, attack: 0.55 });
+    later(() => noise({ dur: 0.7, vol: 0.03, type: 'lowpass', freq: 520, freqTo: 260, q: 0.7, attack: 0.08 }), 950);
+  },
+  // เลียขน "แผล็บ" — สั้นกว่าเลียน้ำ
+  lick: () => tone(rnd(620, 720), rnd(1100, 1250), 0.045, 'sine', 0.04),
 
   // แสงขาวปิดคลิป — ประกายไล่ขึ้นห้าเม็ด แล้วค้างเสียงใสสูงไว้ให้หายไปพร้อมแสง
   // เบาทุกเม็ด เพราะเป็นจังหวะส่งต่อเข้าหน้าแรก ไม่ใช่จุดพีคของคลิป

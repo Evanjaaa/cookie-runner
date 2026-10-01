@@ -385,6 +385,9 @@ export const PICKUPS = {
   shield: { list: 'shields', make: (x) => ({ x, y: SHIELD.y, r: SHIELD.r, got: false }) },
   potion: { list: 'potions', make: (x) => ({ x, y: POTION.y, got: false }) },
   letter: { list: 'letters', make: (x, idx) => ({ x, y: LETTER.y, r: LETTER.r, idx, got: false }) },
+  // กล่องน้องแมว — ตั้งบนพื้น ไม่ต้องกดเก็บ วิ่งผ่านก็พบน้อง (ดู game.js / cats.js)
+  // ท่อนวางไว้ได้ แต่จะโผล่จริงเฉพาะรอบที่ระบบสุ่มให้เจอเท่านั้น (ดู addPickup)
+  box: { list: 'boxes', make: (x) => ({ x, y: GROUND_Y, got: false, open: 0 }) },
 };
 
 
@@ -3539,6 +3542,7 @@ export class Level {
     this.letters = [];
     this.nips = [];
     this.cans = [];          // อาหารกระป๋อง กินแล้วตัวโต
+    this.boxes = [];         // กล่องน้องแมว — มีได้ไม่เกินหนึ่งใบต่อรอบ
     this.fallers = [];       // ของร่วงจากเพดาน เป็นอันตราย ไม่ใช่ของเก็บ
     this.hazards = [];       // อันตรายที่ขยับได้ (ไฟ / ผึ้ง / ลูกบอล)
     this.plats = [];         // พื้นเหยียบได้ — เนินกับพื้นลอย (ดู footing)
@@ -3655,6 +3659,23 @@ export class Level {
   }
 
   /**
+   * วางกล่องน้องแมวบนพื้นจุดโล่งจุดแรกนับจาก fromX — คืน true ถ้าวางได้
+   * ต้องเป็นพื้นเรียบ ไม่ใช่บนเนิน/พื้นลอย และห่างหลุมกับสิ่งกีดขวาง
+   * กล่องนี้หายาก ต้องวางในทางวิ่งธรรมดาที่ผ่านได้ง่าย ไม่ใช่ในจุดยาก
+   * หาไม่เจอในท่อนนี้ = ไม่วาง (เกมจะลองใหม่ท่อนถัดไป)
+   */
+  spawnBox(fromX) {
+    const limit = Math.min(fromX + chunkW, this.knownTo);
+    for (let x = fromX; x < limit; x += 24) {
+      if (!this.isClearSpot(x, 90)) continue;
+      if (highestTop(this.plats, x - 40) !== null || highestTop(this.plats, x + 40) !== null) continue;
+      this.boxes.push(PICKUPS.box.make(x));
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * ของร่วงจากเพดาน — ชิ้นส่วนใช้ซ้ำได้ทุกแมพ (คริสตัลถ้ำ / อุกกาบาต / น้ำแข็ง)
    *
    * มีสองช่วงเสมอ: เตือนก่อน แล้วค่อยร่วง
@@ -3702,6 +3723,14 @@ export class Level {
   addPickup(kind, x) {
     const def = PICKUPS[kind];
     if (!def) return;
+    // กล่องน้องแมวที่ท่อนวางไว้ = "จุดที่กล่องจะไปตั้ง" ถ้ารอบนี้ได้เจอ
+    // ไม่ได้เจอ (เกือบทุกรอบ) = ข้ามไปเฉย ๆ ไม่มีอะไรโผล่
+    if (kind === 'box') {
+      if (!this.wantBox || !this.wantBox()) return;
+      this.boxes.push(def.make(x));
+      if (this.boxPlaced) this.boxPlaced();
+      return;
+    }
     if (kind === 'letter') {
       const idx = this.nextLetter();
       if (idx === null) return;
@@ -4107,6 +4136,7 @@ export class Level {
     this.letters = this.letters.filter((l) => l.x > cut);
     this.nips = this.nips.filter((n) => n.x > cut);
     this.cans = this.cans.filter((c) => c.x > cut);
+    this.boxes = this.boxes.filter((b) => b.x > cut);
   }
 
   isOverPit(worldX) {

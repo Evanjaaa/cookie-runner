@@ -21,6 +21,9 @@ import { addGold, getGold } from './gacha.js';
 import { unlockAllSkills } from './skills.js';
 import { xpAtLevel, levelFromXp } from './progress.js';
 import { loadXp, saveXp } from './storage.js';
+import {
+  debugAge, debugExp, debugForceFind, debugAdopt, debugClearCats, roomCats,
+} from './cats.js';
 
 // false = โผล่เฉพาะตอนรัน dev server ส่วนเว็บที่ deploy จริงจะไม่มี
 // และ Vite ตัดโค้ดทั้งก้อนทิ้งตอน build ผู้เล่นจึงงัดมาใช้ไม่ได้เลย
@@ -352,6 +355,40 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
   // ── เพชรชมพู ──
   add('💎 เพชร 999,999', () => fillGems(hooks));
   add('🪙 ทอง 999,999', () => fillGold(hooks));
+
+  // ── น้องแมวจากกล่อง (cats.js) ──
+  add('📦 รอบหน้าเจอกล่อง', () => {
+    debugForceFind();
+    toast('📦 กดเล่นรอบหน้าจะเจอกล่องน้องแมว (ต้องเลเวล 5 ขึ้นไป)');
+    return true;
+  });
+  add('🐱 พบน้องทันที', () => {
+    const c = debugAdopt();
+    if (!c) { toast('🐱 บ้านเต็มแล้ว (ห้อง 3 + กล่องรอ 1)'); return false; }
+    hooks.refreshCats?.();
+    toast('🐱 ได้น้องใหม่แล้ว — ไปดูที่บ้านน้อง');
+    return true;
+  });
+  add('⏩ เวลาผ่านไป 6 ชม.', () => {
+    debugAge(6);
+    hooks.refreshCats?.();
+    toast('⏩ น้องทุกตัวหิว/ง่วงขึ้นเหมือนผ่านไป 6 ชั่วโมง (เพดาน EXP วันนี้รีเซ็ตด้วย)');
+    return true;
+  });
+  add('⬆️ น้องในห้อง +200 EXP', () => {
+    const list = roomCats();
+    if (!list.length) { toast('⬆️ ยังไม่มีน้องในห้อง'); return false; }
+    for (const c of list) debugExp(c.id, 200);
+    hooks.refreshCats?.();
+    toast('⬆️ +200 EXP ทุกตัวในห้อง — ถึง Lv5 แล้วเปิดบ้านน้องเพื่อฉลอง');
+    return true;
+  });
+  add('🗑 ล้างน้องทั้งหมด', () => {
+    debugClearCats();
+    hooks.refreshCats?.();
+    toast('🗑 ล้างน้องจากกล่องทั้งหมดแล้ว');
+    return true;
+  });
 
   // ── ดันเลเวลไป 50 ──
   // การ์ดพรสวรรค์แจกที่เลเวล 5-50 ปุ่มนี้ให้ XP พอถึงเลเวล 50 พอดี แล้วไปกดรับที่หน้ารางวัลเลเวลเอง

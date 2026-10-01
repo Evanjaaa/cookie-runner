@@ -2,7 +2,8 @@
 // ─────────────────────────────────────────────────────────────
 // ชุดสีของแมวแต่ละตัว — ตัวละครวาดด้วยโค้ดชุดเดียวกันทั้งหมด
 // เปลี่ยนแค่จานสีกับสวิตช์ลาย/แก้ม ไม่ได้วาดตัวใหม่แยกไฟล์
-// อยากเพิ่มแมวตัวที่สาม แค่เพิ่มอ็อบเจกต์ในอาเรย์นี้ เมนูจะขึ้นให้เอง
+// ตัวแรก (น้องส้ม) คือตัวหลักของเกม ห้าตัวถัดมาคือสายพันธุ์ของน้องในกล่อง (ดู BREEDS ใน cats.js)
+// เพิ่มสายพันธุ์ใหม่ = เพิ่มจานสีที่นี่ แล้วเพิ่มบรรทัดใน BREEDS
 //
 // ── eye กับ ink แยกกัน ──
 // เคยเป็นช่องเดียวกันชื่อ ink แล้วมันวาดทั้งดวงตาและเส้นปาก ผลคือแมวตาสีฟ้าได้ปากสีฟ้า
@@ -12,7 +13,8 @@
 // นั่นคือเหตุผลที่แมวขาวใช้ #F6F1FA ไม่ใช่ขาวล้วน และขาใช้เทาอมม่วง
 // ไม่ใช่เทากลาง ๆ ซึ่งจะจมหายไปกับฉากหลัง
 // ─────────────────────────────────────────────────────────────
-import { loadSkin, saveSkin, loadSkinsOwned, saveSkinsOwned } from './storage.js';
+import { loadSkin, saveSkin, KEYS } from './storage.js';
+import { catById, nameOf, levelOf, ageOf } from './cats.js';
 import { getOutfit } from './outfits.js';
 import { CUSTOM_ID, customSkin } from './paint.js';
 
@@ -100,8 +102,6 @@ export const SKINS = [
     rain: ['#9B7BF0', '#DCC9FF', '#432E7A'],
     stripes: false,
     blush: false,
-    // แมวที่ไม่มีช่อง cost ถือว่าได้ฟรีตั้งแต่แรก
-    cost: 10000,
   },
   {
     id: 'tabby',
@@ -125,7 +125,6 @@ export const SKINS = [
     rain: ['#E0A05C', '#FFE3B4', '#8A5220'],
     stripes: true,
     blush: false,
-    cost: 11000,
   },
   {
     id: 'siamese',
@@ -159,7 +158,6 @@ export const SKINS = [
     rain: ['#E4CCA4', '#FFF6E8', '#4A3552'],
     stripes: false,
     blush: false,
-    cost: 13000,
   },
   {
     id: 'grey',
@@ -179,7 +177,6 @@ export const SKINS = [
     rain: ['#AEBCE4', '#E9EEFC', '#5C6A9B'],
     stripes: false,
     blush: true,
-    cost: 14000,
   },
 ];
 
@@ -189,7 +186,7 @@ export const SKINS = [
 // ทุกครั้งที่มีคนอ่านช่องนั้น ทำแบบนี้เพื่อให้ "ระบายปุ๊บเห็นผลปั๊บทุกที่ในเกม"
 // ทั้งการ์ดในเมนู ไอคอนล็อบบี้ และตัวจริงตอนวิ่ง โดยไม่ต้องไล่สั่งวาดใหม่ทีละหน้า
 //
-// ไม่มีช่อง cost = ได้ฟรี ไม่เกี่ยวกับกาช่า ตรงตามที่ตั้งใจว่านี่คือการระบายสี
+// ทุกคนมีตั้งแต่แรก ไม่เกี่ยวกับกล่องน้อง ตรงตามที่ตั้งใจว่านี่คือการระบายสี
 // ไม่ใช่การได้ตัวละครใหม่
 const MINE = { id: CUSTOM_ID, name: 'น้องของเรา', note: 'ระบายสีเอง' };
 for (const k of ['cat', 'dark', 'cream', 'pink', 'nose', 'eye', 'ink',
@@ -198,38 +195,93 @@ for (const k of ['cat', 'dark', 'cream', 'pink', 'nose', 'eye', 'ink',
 }
 SKINS.push(MINE);
 
-// ── การปลดล็อก ─────────────────────────────────────────────
+// ── ตัวที่เลือกลงวิ่งได้ ─────────────────────────────────────
 //
-// แมวที่ไม่มี cost = ได้ฟรี ไม่ต้องบันทึกอะไร
-// แมวที่มี cost = ต้องอยู่ในรายชื่อที่ซื้อแล้วถึงจะใช้ได้
+// ระบบซื้อสีขนถูกถอดออกแล้ว (สีที่เคยซื้อถูกดึงคืนทั้งหมด) ตอนนี้ลงวิ่งได้สามแบบ:
+//   orange     น้องส้ม ตัวหลักของเกม ทุกคนมีตั้งแต่แรก
+//   mine       น้องที่ระบายสีเอง (แจกให้ทุกคนตั้งแต่แรกเหมือนเดิม)
+//   cat:…      น้องจากกล่องที่เลี้ยงจนโตเต็มวัยแล้ว (ดู cats.js)
+//
+// จานสีห้าตัวที่เหลือในตาราง (ขาวมุก ดำสนิท ปลาสลิด วิเชียรมาศ เทาหมอก)
+// ไม่ได้เป็นตัวละครที่เลือกเองได้อีก แต่เป็น "สายพันธุ์" ของน้องในกล่อง
+//
+// ── รหัสของน้องจากกล่อง: cat:<สายพันธุ์>:<รหัสตัว> ──
+// ใส่สายพันธุ์ไว้ในรหัสด้วย เพราะรหัสนี้ขึ้นคลาวด์ไปอยู่ในคอลัมน์ skin ของผู้เล่น
+// คนอื่นที่ส่องโปรไฟล์ไม่มีข้อมูลน้องของเรา แต่อ่านสายพันธุ์จากรหัสแล้ววาดสีถูกได้ทันที
 
-export function ownsSkin(id) {
-  const s = skinById(id);
-  return !s.cost || loadSkinsOwned().includes(s.id);
-}
+const CAT_PREFIX = 'cat:';
 
-/**
- * บันทึกว่าซื้อแมวตัวนี้แล้ว
- *
- * ไม่หักทองในนี้ — เรื่องเงินเป็นของ gacha.js ที่เดียว
- * ถ้าหักสองที่จะเกิดกรณีหักแล้วแต่บันทึกไม่ผ่าน (หรือกลับกัน) ซึ่งแก้ทีหลังยากมาก
- */
-export function unlockSkin(id) {
-  const list = loadSkinsOwned();
-  if (!list.includes(id)) {
-    list.push(id);
-    saveSkinsOwned(list);
-  }
-}
+/** รหัสลงวิ่งของน้องจากกล่อง */
+export const catSkinId = (cat) => `${CAT_PREFIX}${cat.breed}:${cat.id}`;
 
-export function skinById(id) {
+/** สีขนพื้นฐาน (ไม่มีชื่อเฉพาะตัว) ของรหัสใดก็ได้ */
+function basePalette(id) {
   return SKINS.find((s) => s.id === id) || SKINS[0];
 }
 
-// ถ้าค่าที่บันทึกไว้เป็นตัวที่ยังไม่ได้ซื้อ (ล้างข้อมูลการซื้อทิ้ง หรือแก้ค่าในเครื่องเอง)
-// ต้องดีดกลับตัวเริ่มต้น ไม่งั้นผู้เล่นจะใช้ตัวที่ยังไม่ได้จ่ายเงินได้
-let current = skinById(loadSkin());
-if (current.cost && !ownsSkin(current.id)) current = SKINS[0];
+/**
+ * น้องจากกล่อง → ก้อนสกินที่ตัววาดใช้ได้ทันที
+ * age = วัย ('baby' / 'young' / null) ตัววาดเปลี่ยนสัดส่วนหน้าตาให้เอง (ดู ageOf ใน cats.js)
+ * noPhoto เสมอ — รูปหน้าที่อัปโหลดเป็นของน้องตัวหลัก ไม่ใช่ของน้องที่รับมาเลี้ยง
+ */
+export function catSkin(cat) {
+  const base = basePalette(cat.breed);
+  return {
+    ...base,
+    id: catSkinId(cat),
+    breedName: base.name,
+    name: nameOf(cat),
+    note: base.note,
+    age: ageOf(levelOf(cat)),
+    noPhoto: true,
+    palette: cat.breed,
+    catId: cat.id,
+  };
+}
+
+/** แยกรหัส cat:… → { breed, id } หรือ null */
+function parseCatId(id) {
+  if (typeof id !== 'string' || !id.startsWith(CAT_PREFIX)) return null;
+  const [breed, uid] = id.slice(CAT_PREFIX.length).split(':');
+  return { breed, id: uid || '' };
+}
+
+/**
+ * ลงวิ่งตัวนี้ได้ไหม
+ * น้องจากกล่องต้องเป็นของเรา และต้องโตเต็มวัยแล้วเท่านั้น
+ */
+export function ownsSkin(id) {
+  if (id === 'orange' || id === CUSTOM_ID) return true;
+  const c = parseCatId(id);
+  if (!c) return false;
+  const cat = catById(c.id);
+  return !!cat && cat.state === 'grown';
+}
+
+/**
+ * รหัสใดก็ได้ → ก้อนสกิน
+ * น้องจากกล่องที่ไม่ใช่ของเรา (โปรไฟล์คนอื่น) ได้สีตามสายพันธุ์ในรหัส ไม่มีชื่อเฉพาะ
+ */
+export function skinById(id) {
+  const c = parseCatId(id);
+  if (c) {
+    const mine = catById(c.id);
+    if (mine) return catSkin(mine);
+    return { ...basePalette(c.breed), id, palette: c.breed, noPhoto: true };
+  }
+  return basePalette(id);
+}
+
+/** สายพันธุ์/จานสีของสกินนี้ — ใช้ส่งขึ้นโปรไฟล์ที่คนอื่นส่อง */
+export const paletteOf = (s) => s.palette || s.id;
+
+// รายชื่อสีที่เคยซื้อไม่มีใครอ่านแล้ว (ดึงคืนหมด ดู supabase/cats.sql) — ลบทิ้งจากเครื่องด้วย
+// ไม่งั้นมันจะถูกดันกลับขึ้นคลาวด์ไปกับก้อน extra ทุกครั้งที่ซิงก์
+try { localStorage.removeItem(KEYS.skinsOwned); } catch { /* โหมดส่วนตัว */ }
+
+// ค่าที่บันทึกไว้เป็นตัวที่ลงวิ่งไม่ได้แล้ว (สีที่เคยซื้อ / น้องที่ยังไม่โต) → ดีดกลับน้องส้ม
+let currentId = ownsSkin(loadSkin()) ? loadSkin() : 'orange';
+if (currentId !== loadSkin()) saveSkin(currentId);
 
 /**
  * คืนสกินที่ผนวก "ชุดที่ใส่อยู่" เข้าไปแล้ว
@@ -246,24 +298,32 @@ export function getSkin() {
   const outfit = getOutfit();
   // น้องที่ระบายเองเปลี่ยนสีได้ตลอดเวลา เทียบด้วย id อย่างเดียวไม่พอ
   // ต้องเทียบตัวอ็อบเจกต์สกินด้วย ซึ่ง customSkin() คืนก้อนเดิมจนกว่าจะระบายใหม่
-  if (current.id === CUSTOM_ID) {
+  if (currentId === CUSTOM_ID) {
     const mine = customSkin();
     if (!view || view.id !== CUSTOM_ID || view.outfit !== outfit || view.src !== mine) {
       view = { ...mine, outfit, src: mine };
     }
     return view;
   }
-  if (!view || view.id !== current.id || view.outfit !== outfit) {
-    view = { ...current, outfit };
+  // น้องจากกล่องเปลี่ยนชื่อได้ — ผูกกับตัวอ็อบเจกต์น้อง ไม่ใช่แค่รหัส
+  const cat = parseCatId(currentId) ? catById(parseCatId(currentId).id) : null;
+  if (!view || view.id !== currentId || view.outfit !== outfit || view.name !== (cat ? nameOf(cat) : view.name)) {
+    view = { ...skinById(currentId), outfit };
   }
   return view;
 }
 
 export function setSkin(id) {
-  // ด่านสุดท้ายกันการเปลี่ยนไปตัวที่ยังไม่ได้ซื้อ ฝั่ง UI กันไว้แล้วชั้นหนึ่ง
+  // ด่านสุดท้ายกันการเปลี่ยนไปตัวที่ลงวิ่งไม่ได้ ฝั่ง UI กันไว้แล้วชั้นหนึ่ง
   // แต่ setSkin ถูกเรียกได้จากหลายที่ จึงต้องกันที่ตัวมันเองด้วย
-  if (!ownsSkin(id)) return current;
-  current = skinById(id);
-  saveSkin(current.id);
-  return current;
+  if (!ownsSkin(id)) return getSkin();
+  currentId = id;
+  view = null;
+  saveSkin(currentId);
+  return getSkin();
+}
+
+/** ตัวที่ลงวิ่งอยู่หายไปแล้ว (เข้าบัญชีอื่น ฯลฯ) → กลับน้องส้ม */
+export function recheckSkin() {
+  if (!ownsSkin(currentId)) setSkin('orange');
 }

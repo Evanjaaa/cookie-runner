@@ -465,6 +465,12 @@
           <!-- กิจกรรมอยู่บนสุดของแถวขวา เหนือปุ่มด่าน — เป็นที่ที่ตาไปถึงก่อน
                ปุ่มเล่นที่มุมขวาล่าง จึงเห็นว่ามีของค้างรับก่อนจะกดลงเล่น
                จุดแดงใช้กฎเดียวกับกล่องจดหมาย (ดู .dot ใน style.css) -->
+          <!-- บ้านน้องแมว — ห้องในปราสาทที่เลี้ยงน้องจากกล่อง (src/catroom.js) -->
+          <button class="lobby-btn" id="btnCatRoom">
+            <canvas id="catRoomIcon" width="76" height="76"></canvas>
+            <b>บ้านน้อง</b>
+            <i class="dot hidden" id="catRoomDot" aria-hidden="true"></i>
+          </button>
           <button class="lobby-btn" id="btnQuests">
             <canvas id="questIcon" width="76" height="76"></canvas>
             <b>กิจกรรม</b>
@@ -573,7 +579,7 @@
               <!-- แมวน้อยอยู่บนสุด และเป็นหมวดที่เปิดขึ้นมาก่อนเสมอ
                    เลือกตัวน้องก่อน แล้วค่อยแต่งชุดกับติดสมบัติให้ตัวนั้น — ลำดับเดียวกับที่คนคิด -->
               <button type="button" class="stab on" id="tabStashSkin" role="tab">
-                <span class="stab-ico" aria-hidden="true">🐱</span>แมวน้อย
+                <span class="stab-ico" aria-hidden="true">🐱</span>น้องแมว
               </button>
               <button type="button" class="stab" id="tabStashOutfit" role="tab">
                 <span class="stab-ico" aria-hidden="true">👕</span>ชุดแมว
@@ -585,17 +591,18 @@
 
             <div class="stash-main">
               <div class="panel-head">
-                <h2 class="skin-title" id="stashTitle">เลือกแมวน้อย</h2>
+                <h2 class="skin-title" id="stashTitle">คลังน้องแมว</h2>
                 <!-- มีแล้วกี่ชิ้นจากทั้งหมด — ท่าเดียวกับป้ายจำนวนในหน้าพรสวรรค์ -->
                 <span class="count-pill" aria-label="สะสมแล้ว">
                   <b id="stashGot">0</b><span class="count-sep">/</span><span id="stashAll">0</span>
                 </span>
-                <!-- แมวไม่มีระดับความหายาก ปุ่มที่สองจึงเป็น "ไม่ปลดล็อก" แทน
-                     ดันตัวที่ยังไม่ได้ขึ้นมาก่อน เรียงจากราคาถูกไปแพง = ตัวที่ใกล้ได้ที่สุดอยู่หน้าสุด -->
+                <!-- คลังน้องแมว: เรียงตามที่ได้มา / เลเวล (ตัวที่กำลังเลี้ยง) / สายพันธุ์ที่หายาก
+                     สายพันธุ์ที่ยังไม่เคยพบโชว์เป็นเงาดำ ติ๊ก "ดูเฉพาะสิ่งที่มี" แล้วเงาหายไป -->
                 <div class="filterbar" id="skinFilter">
                   <div class="fsort" role="group" aria-label="เรียงลำดับ">
                     <button type="button" class="fchip" data-sort="recent">ล่าสุด</button>
-                    <button type="button" class="fchip" data-sort="locked">ไม่ปลดล็อก</button>
+                    <button type="button" class="fchip" data-sort="level">เลเวล</button>
+                    <button type="button" class="fchip" data-sort="rarity">หายาก</button>
                   </div>
                   <label class="fonly">
                     <input type="checkbox" id="skinOnly">
@@ -1199,6 +1206,164 @@
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+        </div>
+      </div>
+
+      <!-- ══ บ้านน้องแมว ══════════════════════════════════════
+           ห้องวาดอยู่บน canvas ข้างหลัง (src/catroom.js ผ่าน game.catRoom) แผงนี้โปร่ง
+           มีแต่ปุ่ม การ์ดของน้องที่เลือก และชั้นรับนิ้ว (#crHit) สำหรับปัดเลื่อนห้อง/แตะตัวน้อง
+           see-scene = ฉากข้างหลังเห็นเต็ม ๆ ห้ามลดเฟรม (ดู menuCovers ใน main.js) -->
+      <div class="panel hidden see-scene" id="catRoomPanel">
+        <div class="cr-hit" id="crHit" aria-hidden="true"></div>
+
+        <div class="cr-top">
+          <button class="backbtn cr-back" id="crBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="cr-title">บ้านน้องแมว</h2>
+          <div class="cr-tools">
+            <div class="goldbar" aria-label="เหรียญทอง">
+              <span class="coin" aria-hidden="true"></span>
+              <b id="goldRoom">0</b>
+            </div>
+            <button type="button" class="cr-pill" id="crMini">🎮 มินิเกม</button>
+          </div>
+        </div>
+
+        <button type="button" class="cr-arrow left" id="crLeft" aria-label="เลื่อนห้องไปทางซ้าย">‹</button>
+        <button type="button" class="cr-arrow right" id="crRight" aria-label="เลื่อนห้องไปทางขวา">›</button>
+
+        <!-- น้องในห้อง (สูงสุด 3) + น้องที่รอในกล่อง — แตะเพื่อเลือก -->
+        <div class="cr-cats" id="crCats" role="tablist" aria-label="เลือกน้อง"></div>
+
+        <div class="cr-card" id="crCard">
+          <div class="cr-namerow">
+            <b class="cr-name" id="crName"></b>
+            <i class="sex-tag" id="crSex"></i>
+            <button type="button" class="cr-mini-btn" id="crRename" aria-label="เปลี่ยนชื่อ">✎</button>
+            <button type="button" class="cr-mini-btn" id="crStory" aria-label="เรื่องราวของน้อง">📖</button>
+          </div>
+          <div class="cr-lvrow">
+            <span class="cr-lv">Lv.<b id="crLv">1</b></span>
+            <span class="cr-bar"><i id="crExpFill"></i></span>
+            <small id="crExpTxt"></small>
+          </div>
+          <div class="cr-needs" id="crNeeds">
+            <div class="cr-need" data-need="food" title="อิ่ม"><span aria-hidden="true">🍚</span><span class="cr-bar"><i></i></span></div>
+            <div class="cr-need" data-need="water" title="อิ่มน้ำ"><span aria-hidden="true">💧</span><span class="cr-bar"><i></i></span></div>
+            <div class="cr-need" data-need="fun" title="สนุก"><span aria-hidden="true">🧶</span><span class="cr-bar"><i></i></span></div>
+            <div class="cr-need" data-need="clean" title="สะอาด"><span aria-hidden="true">🫧</span><span class="cr-bar"><i></i></span></div>
+            <div class="cr-need" data-need="sleep" title="สดชื่น"><span aria-hidden="true">💤</span><span class="cr-bar"><i></i></span></div>
+          </div>
+          <div class="cr-hearts" id="crHearts" aria-label="ความผูกพัน"></div>
+          <small class="cr-note" id="crNote"></small>
+        </div>
+
+        <div class="cr-acts" id="crActs">
+          <button type="button" class="cr-act" data-act="feed"><span aria-hidden="true">🍚</span><b>อาหาร & น้ำ</b></button>
+          <button type="button" class="cr-act" data-act="play"><span aria-hidden="true">🧶</span><b>เล่นด้วย</b></button>
+          <button type="button" class="cr-act" data-act="bathe"><span aria-hidden="true">🫧</span><b>อาบน้ำ</b></button>
+          <button type="button" class="cr-act" data-act="sleep"><span aria-hidden="true">💤</span><b>พาไปนอน</b></button>
+        </div>
+
+        <!-- เลือกอาหาร/ของเล่น — เด้งขึ้นเหนือแถวปุ่มดูแล -->
+        <div class="cr-picker hidden" id="crPicker" role="dialog" aria-label="เลือก">
+          <b class="cr-picker-title" id="crPickTitle"></b>
+          <div class="cr-picker-list" id="crPickList"></div>
+        </div>
+
+        <!-- ดูเต็มจอ: ซ่อนปุ่มกับการ์ดทั้งหมด เหลือแต่ห้องกับน้อง (กดอีกทีเพื่อเอากลับมา) -->
+        <button type="button" class="cr-full" id="crFull" aria-label="ดูเต็มจอ" aria-pressed="false">
+          <svg class="ic-open" viewBox="0 0 24 24" width="58%" height="58%" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="ic-close" viewBox="0 0 24 24" width="58%" height="58%" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <div class="cr-empty hidden" id="crEmpty">
+          <b>บ้านยังว่างอยู่</b>
+          <span id="crEmptyText"></span>
+        </div>
+      </div>
+
+      <!-- ══ พบน้องแมวในกล่อง ══ เปิดทับหน้าสรุปผลตอนจบรอบที่เจอกล่อง -->
+      <div class="panel hidden" id="foundPanel">
+        <!-- สองคอลัมน์: ซ้าย = รูปน้องในกล่องบนวงแสง + ป้ายเพศ/สายพันธุ์ / ขวา = เรื่องราว ช่องชื่อ ปุ่ม
+             เวทีเป็นแนวนอนเสมอ วางเรียงลงมาคอลัมน์เดียวจะสูงจนรูปเล็กและข้อความตกบรรทัดแปลก ๆ -->
+        <div class="pop found-pop">
+          <h2 class="found-title">พบน้องแมว!</h2>
+          <div class="found-cols">
+            <div class="found-left">
+              <div class="found-stage">
+                <canvas id="foundArt" width="200" height="190"></canvas>
+              </div>
+              <div class="found-tags">
+                <span class="found-tag sex" id="foundSex"></span>
+                <span class="found-tag breed" id="foundBreed"></span>
+              </div>
+            </div>
+            <div class="found-right">
+              <div class="found-story" id="foundStory"></div>
+              <label class="found-name">
+                <span class="found-label">ตั้งชื่อน้อง</span>
+                <span class="found-input">
+                  <input type="text" id="foundName" maxlength="16" autocomplete="off" placeholder="ชื่อของน้อง">
+                  <button type="button" class="found-dice" id="foundDice" aria-label="สุ่มชื่อ">🎲</button>
+                </span>
+              </label>
+              <small class="found-wait hidden" id="foundWait">ห้องเต็มแล้ว น้องจะนอนรอในกล่องหน้าประตูก่อน
+                พอมีที่ว่างก็ย้ายเข้าห้องเอง</small>
+              <div class="found-btns">
+                <button class="btn" id="foundGo">ไปบ้านน้อง</button>
+                <button class="btn ghost" id="foundLater">ไว้ทีหลัง</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ เรื่องราวของน้อง ══ ห้าตอน ปลดตอนละเลเวล -->
+      <div class="panel hidden" id="catStoryPanel">
+        <div class="pop story-pop">
+          <button type="button" class="xbtn story-x" id="storyClose" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="skin-title" id="storyTitle">เรื่องราวของน้อง</h2>
+          <div class="story-list" id="storyList"></div>
+        </div>
+      </div>
+
+      <!-- ══ มินิเกม ══ ยังไม่มีเกม — หน้ารอไว้ก่อน -->
+      <div class="panel hidden" id="miniPanel">
+        <div class="pop mini-pop">
+          <button type="button" class="xbtn mini-x" id="miniClose" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="skin-title">มินิเกม</h2>
+          <div class="mini-soon">
+            <span class="mini-ico" aria-hidden="true">🎮</span>
+            <b>เร็ว ๆ นี้</b>
+            <small>เกมเล็ก ๆ น่ารัก ๆ ให้เล่นกับน้องที่ยังไม่โต ได้ความผูกพันกับ EXP</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ น้องส้มพี่เลี้ยง ══ เคล็ดลับครั้งแรกที่เจอระบบใหม่ (src/tips.js) -->
+      <div class="panel hidden" id="tipPanel">
+        <div class="pop tip-pop">
+          <canvas id="tipFace" width="120" height="120"></canvas>
+          <div class="tip-body">
+            <b class="tip-who">น้องส้ม</b>
+            <p class="tip-text" id="tipText"></p>
+            <button class="btn" id="tipOk">เข้าใจแล้ว</button>
+          </div>
         </div>
       </div>
 

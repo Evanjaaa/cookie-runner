@@ -11696,3 +11696,592 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 @media (hover: none) and (pointer: coarse) {
   html, body { height: var(--app-h, 100%); min-height: var(--app-h, 100%); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   บ้านน้องแมว (src/catroom.js + catroom-ui.js)
+   ห้องวาดบน canvas ข้างหลัง แผงนี้โปร่งทั้งแผง เหลือแต่ปุ่มกับการ์ดเกาะขอบจอ
+   วางของรอบขอบ "บน-ซ้าย-ขวา" — พื้นห้องด้านล่างคือทางเดินของน้อง ห้ามบัง
+   ══════════════════════════════════════════════════════════════ */
+#catRoomPanel {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  display: block;
+  padding: 0;
+  text-align: left;
+}
+/* ชั้นรับนิ้ว: ลาก = เลื่อนห้อง / แตะ = เลือกน้อง (ทุกอย่างอื่นวางทับข้างบน) */
+#catRoomPanel .cr-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  touch-action: none;
+  cursor: grab;
+}
+#catRoomPanel .cr-hit:active { cursor: grabbing; }
+
+#catRoomPanel .cr-title {
+  position: absolute;
+  z-index: 2;
+  top: clamp(10px, 2dvh, 20px);
+  left: calc(var(--backbtn-x) + var(--backbtn) + 12px);
+  margin: 0;
+  font-family: "Mali", sans-serif;
+  font-size: clamp(15px, 3.4dvh, 22px);
+  color: var(--cream);
+  text-shadow: 0 2px 0 rgba(58,29,80,.9), 0 0 12px rgba(58,29,80,.6);
+  pointer-events: none;
+}
+#catRoomPanel .cr-tools {
+  position: absolute;
+  z-index: 2;
+  top: clamp(8px, 1.4dvh, 16px);
+  right: var(--backbtn-x);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cr-pill {
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 2.4dvh, 14px);
+  color: var(--cream);
+  height: var(--hud-h);
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.4);
+  background: linear-gradient(180deg, #8A4AB8, #5A2A86);
+  box-shadow: 0 3px 0 rgba(20,8,32,.6);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cr-pill:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(20,8,32,.6); }
+
+/* ลูกศรเลื่อนห้อง — จางหายเมื่อสุดทาง */
+#catRoomPanel .cr-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 58%;
+  width: clamp(28px, 6dvh, 40px);
+  height: clamp(28px, 6dvh, 40px);
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255,243,226,.5);
+  background: rgba(58,29,80,.55);
+  color: var(--cream);
+  font-size: clamp(18px, 4dvh, 26px);
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: opacity .25s;
+}
+#catRoomPanel .cr-arrow.left { left: 6px; }
+#catRoomPanel .cr-arrow.right { right: 6px; }
+#catRoomPanel .cr-arrow.off { opacity: 0; pointer-events: none; }
+
+/* ── น้องในห้อง (แถวชิป) + การ์ดน้องที่เลือก (ซ้าย) ── */
+#catRoomPanel .cr-cats {
+  position: absolute;
+  z-index: 2;
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + 8px);
+  left: var(--backbtn-x);
+  display: flex;
+  gap: 6px;
+}
+.cr-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.35);
+  background: rgba(40,20,62,.78);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+.cr-chip canvas { width: clamp(22px, 5dvh, 30px); height: clamp(22px, 5dvh, 30px); border-radius: 50%; background: rgba(255,243,226,.14); }
+.cr-chip span { display: flex; flex-direction: column; line-height: 1.05; }
+.cr-chip b { font-size: clamp(10px, 2.2dvh, 13px); max-width: 7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-chip small { font-size: clamp(9px, 1.9dvh, 11px); opacity: .8; }
+.cr-chip.on { border-color: #FFE48A; background: rgba(122,53,99,.92); box-shadow: 0 0 0 2px rgba(255,228,138,.35); }
+.cr-chip.wait { border-style: dashed; }
+.cr-chip.empty {
+  justify-content: center;
+  width: clamp(28px, 6dvh, 36px);
+  padding: 0;
+  font-size: 16px;
+  opacity: .45;
+  cursor: default;
+}
+.cr-chip .dot { top: -2px; right: -2px; }
+
+#catRoomPanel .cr-card {
+  position: absolute;
+  z-index: 2;
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + clamp(36px, 8dvh, 48px) + 10px);
+  left: var(--backbtn-x);
+  width: clamp(170px, 30dvh + 60px, 240px);
+  padding: clamp(6px, 1.6dvh, 12px) clamp(8px, 1.8dvh, 14px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,243,226,.28);
+  background: linear-gradient(180deg, rgba(96,47,131,.9), rgba(40,18,62,.92));
+  box-shadow: 0 10px 24px rgba(0,0,0,.4);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, .9dvh, 6px);
+}
+.cr-namerow { display: flex; align-items: center; gap: 6px; }
+.cr-name { font-size: clamp(13px, 3dvh, 17px); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-mini-btn {
+  width: clamp(22px, 4.6dvh, 28px);
+  height: clamp(22px, 4.6dvh, 28px);
+  border-radius: 50%;
+  border: 1px solid rgba(255,243,226,.35);
+  background: rgba(255,243,226,.12);
+  color: var(--cream);
+  font-size: clamp(11px, 2.4dvh, 14px);
+  cursor: pointer;
+  padding: 0;
+}
+.sex-tag { font-style: normal; font-weight: 800; font-size: clamp(12px, 2.6dvh, 15px); }
+.sex-tag.m { color: #8EC5FF; }
+.sex-tag.f { color: #FF9EC8; }
+.cr-lvrow { display: flex; align-items: center; gap: 6px; font-size: clamp(11px, 2.3dvh, 13px); }
+.cr-lv b { color: #FFE48A; }
+.cr-lvrow small { opacity: .8; font-size: clamp(9px, 2dvh, 11px); white-space: nowrap; }
+.cr-bar {
+  position: relative;
+  flex: 1;
+  height: clamp(6px, 1.4dvh, 9px);
+  border-radius: 999px;
+  background: rgba(0,0,0,.35);
+  overflow: hidden;
+}
+.cr-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #FFD36E, #FFE9A8);
+  transition: width .5s ease;
+}
+.cr-needs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.cr-need { display: flex; align-items: center; gap: 4px; font-size: clamp(11px, 2.3dvh, 13px); }
+.cr-need .cr-bar i { background: linear-gradient(90deg, #4ECDC4, #9DF2C8); }
+.cr-need.mid .cr-bar i { background: linear-gradient(90deg, #F2B544, #FFE08A); }
+.cr-need.low .cr-bar i { background: linear-gradient(90deg, #FF5C6E, #FF9A8A); }
+.cr-hearts { color: #FF8FB8; letter-spacing: 2px; font-size: clamp(12px, 2.6dvh, 15px); line-height: 1; }
+.cr-note { font-size: clamp(9.5px, 2dvh, 11.5px); opacity: .85; line-height: 1.3; }
+
+/* ── ปุ่มดูแล (ขวา เรียงลงมา) ── */
+#catRoomPanel .cr-acts {
+  position: absolute;
+  z-index: 2;
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--hud-h) + 12px);
+  right: var(--backbtn-x);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1.4dvh, 9px);
+}
+.cr-act {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: clamp(104px, 22dvh, 136px);
+  padding: clamp(4px, 1.2dvh, 8px) 12px clamp(4px, 1.2dvh, 8px) 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.45);
+  background: linear-gradient(180deg, #FFE7B0, #F6C063 60%, #E09A3A);
+  box-shadow: 0 4px 0 #A8661E, 0 8px 14px rgba(0,0,0,.3);
+  color: #5A2E0E;
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+}
+.cr-act span {
+  display: grid;
+  place-items: center;
+  width: clamp(24px, 5.4dvh, 32px);
+  height: clamp(24px, 5.4dvh, 32px);
+  border-radius: 50%;
+  background: rgba(255,255,255,.6);
+  font-size: clamp(13px, 3dvh, 18px);
+}
+.cr-act b { font-size: clamp(11px, 2.5dvh, 14.5px); }
+.cr-act:active { transform: translateY(3px); box-shadow: 0 1px 0 #A8661E, 0 4px 8px rgba(0,0,0,.3); }
+.cr-act:disabled { filter: grayscale(.7) brightness(.85); cursor: default; transform: none; }
+/* ดูแลตอนนี้ได้ EXP = กรอบเรืองนิด ๆ ชวนกด */
+.cr-act.want::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid #FFF3B0;
+  animation: crWant 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes crWant { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+
+/* ── เลือกอาหาร / ของเล่น — เด้งออกทางซ้ายของแถวปุ่ม ── */
+#catRoomPanel .cr-picker {
+  position: absolute;
+  z-index: 3;
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--hud-h) + 12px);
+  right: calc(var(--backbtn-x) + clamp(104px, 22dvh, 136px) + 10px);
+  width: clamp(220px, 34dvh + 90px, 280px);
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,243,226,.3);
+  background: linear-gradient(180deg, rgba(96,47,131,.96), rgba(40,18,62,.97));
+  box-shadow: 0 12px 26px rgba(0,0,0,.45);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#catRoomPanel .cr-picker.hidden { display: none; }
+.cr-picker-title { font-size: clamp(12px, 2.6dvh, 14px); text-align: center; }
+.cr-picker-list { display: flex; flex-direction: column; gap: 5px; }
+.cr-pick {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,243,226,.25);
+  background: rgba(255,243,226,.1);
+  color: var(--cream);
+  font-family: inherit;
+  cursor: pointer;
+}
+.cr-pick .cr-icon {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: clamp(28px, 6.4dvh, 38px);
+  height: clamp(28px, 6.4dvh, 38px);
+  border-radius: 9px;
+  background: rgba(255,243,226,.16);
+}
+.cr-pick b { grid-column: 2; grid-row: 1; font-size: clamp(11px, 2.4dvh, 13.5px); }
+.cr-pick .cr-aff { grid-column: 2; grid-row: 2; color: #FF9EC8; font-size: 10px; letter-spacing: 1px; }
+.cr-pick .cr-price {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: #FFD97A;
+  font-size: clamp(11px, 2.4dvh, 13px);
+  white-space: nowrap;
+}
+.cr-pick .coin { transform: scale(.75); }
+.cr-pick:disabled { opacity: .45; cursor: default; }
+.cr-pick:not(:disabled):active { background: rgba(255,243,226,.22); }
+
+#catRoomPanel .cr-empty {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 24%;
+  transform: translateX(-50%);
+  max-width: 60%;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: rgba(40,18,62,.85);
+  border: 1px solid rgba(255,243,226,.3);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+#catRoomPanel .cr-empty.hidden,
+#catRoomPanel .cr-card.hidden,
+#catRoomPanel .cr-acts.hidden { display: none; }
+
+/* ── หน้าพบน้อง / ตั้งชื่อ ── เด้งทับหน้าสรุปผล (ซึ่งอยู่ทีหลังใน DOM) จึงต้องยกชั้นขึ้น */
+#foundPanel, #catStoryPanel, #miniPanel { z-index: 20; }
+.found-pop { width: min(640px, 94%); gap: clamp(4px, 1.4dvh, 12px); }
+.found-title {
+  margin: 0;
+  font-family: "Mali", sans-serif;
+  color: #FFE48A;
+  font-size: clamp(18px, 4.6dvh, 30px);
+  text-shadow: 0 2px 0 rgba(120,50,20,.5);
+}
+.found-cols {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(10px, 2.4dvh, 22px);
+  align-items: center;
+  width: 100%;
+}
+.found-left { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* วงแสงนุ่ม ๆ หลังน้อง — ทำให้รูปเป็นจุดเด่น ไม่ลอยอยู่กลางพื้นม่วงเปล่า ๆ */
+.found-stage {
+  width: clamp(120px, 34dvh, 200px);
+  aspect-ratio: 200 / 190;
+  border-radius: 50% 50% 22px 22px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,236,170,.55) 0 34%, rgba(255,190,220,.22) 58%, transparent 72%),
+    linear-gradient(180deg, rgba(255,243,226,.10), rgba(255,243,226,.04));
+  border: 2px solid rgba(255,243,226,.22);
+  display: grid;
+  place-items: center;
+}
+#foundArt { width: 100%; height: 100%; }
+.found-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.found-tag {
+  /* สูงพอให้สระบน/วรรณยุกต์ (ตัวผู้ ตัวเมีย) อยู่ในกรอบ ไม่ชนขอบบน */
+  padding: 5px 12px 4px;
+  line-height: 1.55;
+  border-radius: 999px;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 2.4dvh, 13.5px);
+  white-space: nowrap;
+}
+.found-tag.sex { background: #CFE6FF; color: #1F4E8A; }
+.found-tag.sex.f { background: #FFD6E8; color: #A3285F; }
+.found-tag.breed { background: #FFF1C9; color: #7A4A12; }
+
+.found-right { display: flex; flex-direction: column; gap: clamp(6px, 1.6dvh, 12px); min-width: 0; }
+/* เรื่องราวตอนแรก — การ์ดกระดาษครีมมีเครื่องหมายคำพูด */
+.found-story {
+  position: relative;
+  padding: clamp(8px, 1.8dvh, 12px) 14px clamp(8px, 1.8dvh, 12px) 30px;
+  border-radius: 14px;
+  background: #FFF6E6;
+  color: #5A3A20;
+  font-size: clamp(11px, 2.4dvh, 13.5px);
+  line-height: 1.5;
+  text-align: left;
+  box-shadow: inset 0 -3px 0 rgba(120,70,30,.12);
+}
+.found-story::before {
+  content: "“";
+  position: absolute;
+  left: 9px;
+  top: -2px;
+  font-family: Georgia, serif;
+  font-size: 34px;
+  line-height: 1;
+  color: #F0A6C2;
+}
+.found-name { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; }
+.found-label { font-family: "Mali", sans-serif; font-weight: 700; color: #FFE48A; font-size: clamp(11.5px, 2.5dvh, 14px); }
+/* ช่องชื่อกับปุ่มสุ่มเป็นก้อนเดียว ปุ่มลูกเต๋ากลมฝังอยู่ท้ายช่อง */
+.found-input {
+  position: relative;
+  display: flex;
+}
+.found-input input {
+  flex: 1;
+  min-width: 0;
+  font-family: "Mali", sans-serif;
+  font-size: 16px;
+  padding: 8px 48px 8px 16px;
+  border-radius: 999px;
+  border: 2px solid #FFE48A;
+  background: #FFFDF6;
+  color: #3A1D50;
+  box-shadow: 0 3px 0 rgba(0,0,0,.18);
+  text-wrap: wrap;
+}
+.found-input input:focus { outline: none; border-color: #FFB3CF; box-shadow: 0 0 0 3px rgba(255,179,207,.45); }
+.found-dice {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(180deg, #B98BEA, #7E4CB8);
+  box-shadow: 0 2px 0 #4F2A7A;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.found-dice:active { transform: translateY(calc(-50% + 2px)); box-shadow: none; }
+.found-wait { color: #FFD97A; font-size: clamp(10.5px, 2.2dvh, 12.5px); text-align: left; }
+.found-wait.hidden { display: none; }
+.found-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-start; }
+.found-btns .btn { margin-top: 0; }
+
+/* ── เรื่องราวของน้อง ── */
+.story-pop { width: min(520px, 92%); }
+.story-list { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; text-align: left; }
+.story-ch {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255,243,226,.1);
+  border: 1px solid rgba(255,243,226,.18);
+  color: var(--cream);
+}
+.story-ch b { font-family: "Mali", sans-serif; font-size: clamp(12px, 2.5dvh, 14px); color: #FFE48A; }
+.story-ch p { margin: 4px 0 0; font-size: clamp(11px, 2.3dvh, 13px); line-height: 1.45; opacity: .9; display: block; max-width: none; }
+.story-ch.locked { opacity: .55; }
+.story-ch.locked b { color: var(--cream); }
+
+/* ── มินิเกม (ยังไม่มีเกม) ── */
+.mini-pop { width: min(420px, 90%); }
+.mini-soon { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--cream); font-family: "Mali", sans-serif; }
+.mini-ico { font-size: clamp(34px, 9dvh, 56px); }
+.mini-soon b { font-size: clamp(16px, 3.6dvh, 22px); color: #FFE48A; }
+.mini-soon small { font-size: clamp(11px, 2.3dvh, 13px); opacity: .85; max-width: 26em; }
+
+/* ── น้องส้มพี่เลี้ยง ── อยู่บนสุดเสมอ (เด้งทับหน้าไหนก็ได้) */
+#tipPanel { z-index: 30; }
+.tip-pop {
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(8px, 2dvh, 16px);
+  width: min(560px, 92%);
+  text-align: left;
+}
+#tipFace { width: clamp(64px, 18dvh, 120px); height: clamp(64px, 18dvh, 120px); flex: none; }
+.tip-body { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.tip-who { font-family: "Mali", sans-serif; color: #FFB066; font-size: clamp(13px, 2.8dvh, 16px); }
+.tip-text { margin: 0; color: var(--cream); font-size: clamp(12px, 2.5dvh, 15px); line-height: 1.5; display: block; max-width: none; }
+
+/* ── การ์ดน้องในคลังน้อง ── */
+.cat-card { position: relative; }
+.cat-card .cat-tag {
+  display: block;
+  font-size: 10.5px;
+  opacity: .78;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cat-card.kind-main .cat-tag { color: #FFB066; opacity: 1; font-weight: 700; }
+.cat-card.kind-raising .cat-tag { color: #9DF2C8; opacity: 1; }
+.cat-card .sex-tag { position: absolute; top: 4px; left: 6px; font-size: 13px; }
+
+/* ── น้ำ ── แถวน้ำสะอาดในเมนูอาหาร (ฟรี = ป้ายฟ้า) + หลอดน้ำสีฟ้าในการ์ดน้อง */
+.cr-pick.water { border-color: rgba(143,208,240,.55); background: rgba(95,184,240,.16); }
+.cr-pick.water .cr-price { color: #A8E2FF; }
+.cr-need[data-need="water"]:not(.mid):not(.low) .cr-bar i { background: linear-gradient(90deg, #5FB8F0, #A8E2FF); }
+.cr-pick.tree { border-color: rgba(232,210,168,.6); background: rgba(232,210,168,.16); }
+.cr-pick.tree .cr-price { color: #FFE9B0; }
+
+/* เมนูเลือกอาหาร/ของเล่นเด้งใกล้จุดที่ลากน้องไปวาง (ตำแหน่งตั้งจาก catroom-ui.js) */
+#catRoomPanel .cr-picker.at { right: auto; }
+#catRoomPanel .cr-picker:not(.at) { right: calc(var(--backbtn-x) + clamp(150px, 28dvh, 170px)); }
+/* เวลาที่เหลือก่อนดูแลแล้วได้ EXP — บรรทัดเล็กใต้ชื่อปุ่ม */
+/* ไอคอนซ้ายกินสองบรรทัด ชื่อปุ่มกับเวลาซ้อนกันทางขวา — ปุ่มกว้างเท่าเดิม */
+#catRoomPanel .cr-act {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  align-items: center;
+  min-width: clamp(116px, 24dvh, 146px);
+  text-align: left;
+}
+.cr-act > span { grid-column: 1; grid-row: 1 / span 2; }
+.cr-act b { grid-column: 2; grid-row: 1; line-height: 1.1; align-self: end; white-space: nowrap; }
+.cr-act .cr-cd {
+  grid-column: 2;
+  grid-row: 2;
+  display: block;
+  align-self: start;
+  white-space: nowrap;
+  font-size: clamp(8.5px, 1.8dvh, 10.5px);
+  font-weight: 700;
+  color: rgba(90,46,14,.75);
+  line-height: 1.1;
+  text-align: left;
+}
+.cr-act .cr-cd.ready { color: #1E7A5A; }
+.cr-act .cr-cd:empty { display: none; }
+
+/* ป้ายแจ้งสั้น ๆ ในบ้านน้อง (ดูแลซ้ำก่อนถึงเวลา) — กลางล่าง เหนือพรม จางหายเอง */
+#catRoomPanel .cr-toast {
+  position: absolute;
+  z-index: 6;
+  /* กลางจอ ระดับผนังห้องเหนือหัวน้อง — เห็นชัดทันที และไม่ลงไปทับทางเดินบนพรม */
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, calc(-50% + 10px)) scale(.92);
+  max-width: 58%;
+  padding: 8px 18px 8px 40px;
+  border-radius: 999px;
+  /* ชมพูพาสเทลสดใส ขอบขาวหนา + เงานูน เหมือนปุ่มขนมหวาน */
+  background: linear-gradient(180deg, #FFE3EE 0%, #FFC2D8 55%, #FFA8C8 100%);
+  border: 3px solid #FFFFFF;
+  box-shadow:
+    0 0 0 2.5px #E66C9B,
+    0 5px 0 #C9507F,
+    0 10px 20px rgba(120,30,70,.28),
+    inset 0 2px 0 rgba(255,255,255,.75);
+  color: #8A2251;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(11.5px, 2.5dvh, 14.5px);
+  line-height: 1.3;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+/* หัวแมวน้อยหน้าป้าย (SVG ในตัว ไม่ต้องโหลดไฟล์) */
+#catRoomPanel .cr-toast::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 24px;
+  height: 22px;
+  margin-top: -12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 30'%3E%3Cpath d='M5 13 L4 2 L12 8 Q16 7 20 8 L28 2 L27 13 Q30 27 16 28 Q2 27 5 13Z' fill='%23FFF6D8' stroke='%23E66C9B' stroke-width='2.4' stroke-linejoin='round'/%3E%3Cpath d='M6.5 5 L11 8.5 L7 11Z M25.5 5 L21 8.5 L25 11Z' fill='%23FFB3CF'/%3E%3Ccircle cx='11.5' cy='17' r='2' fill='%238A2251'/%3E%3Ccircle cx='20.5' cy='17' r='2' fill='%238A2251'/%3E%3Cpath d='M14.5 20.5 L17.5 20.5 L16 22Z' fill='%23FF6E9C'/%3E%3Cpath d='M13 23 Q14.5 24.5 16 23 Q17.5 24.5 19 23' fill='none' stroke='%238A2251' stroke-width='1.3' stroke-linecap='round'/%3E%3Cellipse cx='8.5' cy='21' rx='2.2' ry='1.3' fill='%23FFB3CF'/%3E%3Cellipse cx='23.5' cy='21' rx='2.2' ry='1.3' fill='%23FFB3CF'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+#catRoomPanel .cr-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+/* จอเตี้ย (มือถือแนวนอน): ป้ายเล็กลงนิดหนึ่ง ตำแหน่งกลางจอเหมือนเดิม */
+@media (max-height: 520px) {
+  #catRoomPanel .cr-toast { padding: 5px 12px 5px 32px; font-size: 10.5px; max-width: 64%; }
+  #catRoomPanel .cr-toast::before { left: 8px; width: 19px; height: 17px; margin-top: -9px; }
+}
+
+/* ── ดูเต็มจอ (บ้านน้อง) ── ปุ่มกลมมุมขวาล่างสุด กดแล้วซ่อน UI ทั้งหมด เหลือแต่ห้องกับน้อง */
+#catRoomPanel .cr-full {
+  position: absolute;
+  z-index: 7;
+  right: var(--backbtn-x);
+  bottom: clamp(8px, 1.6dvh, 16px);
+  width: clamp(32px, 7dvh, 44px);
+  height: clamp(32px, 7dvh, 44px);
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255,243,226,.6);
+  background: linear-gradient(180deg, #8A4AB8, #5A2A86);
+  color: var(--cream);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(20,8,32,.6), 0 6px 14px rgba(0,0,0,.35);
+}
+#catRoomPanel .cr-full:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(20,8,32,.6); }
+#catRoomPanel .cr-full svg { grid-area: 1 / 1; }
+#catRoomPanel .cr-full .ic-close { display: none; }
+#catRoomPanel.clean .cr-full .ic-open { display: none; }
+#catRoomPanel.clean .cr-full .ic-close { display: block; }
+/* โหมดเต็มจอ: ซ่อนทุกอย่างยกเว้นชั้นรับนิ้ว ปุ่มเต็มจอ ป้ายแจ้งสั้น ๆ (ยังไม่ได้ EXP)
+   และเมนูเลือกอาหาร/ของเล่น — ลากน้องไปวางที่ชามหรือหีบแล้วเมนูยังเด้งขึ้นใกล้จุดนั้นได้ */
+#catRoomPanel.clean > :not(.cr-hit):not(.cr-full):not(.cr-toast):not(.cr-picker) { display: none !important; }

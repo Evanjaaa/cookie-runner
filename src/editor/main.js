@@ -36,6 +36,10 @@ import {
   drawNips, drawCans, drawMagnets, drawShields, drawPotions, drawLetters,
 } from '../render/entities.js';
 import { SKINS } from '../skins.js';
+import { drawCatBoxes } from '../render/catbox.js';
+
+/** หูลูกแมวที่โผล่จากกล่องในหน้าออกแบบ — ใช้สีปลาสลิดเป็นตัวแทน (ในเกมเป็นสีของตัวที่สุ่มได้) */
+const BOX_EARS = SKINS.find((x) => x.id === 'tabby');
 import { PROP_OBSTACLES, PROP_LIST, isLowObstacle } from '../obstacles.js';
 
 const A = AUTHOR;
@@ -112,6 +116,14 @@ const ITEM_DEFS = {
   letter: {
     label: 'ตัวอักษร MEOWZING', sub: 'ในเกมเป็นตัวถัดไปที่ยังไม่ได้เก็บ',
     r: LETTER.r, pickR: LETTER.pickR, effect: 'letter', draw: drawLetters,
+  },
+  // กล่องน้องแมว — ในเกมไม่ต้องเก็บ แค่วิ่งผ่านก็พบน้อง (ดู updateCatBox ใน game.js)
+  // ระยะเก็บจึงกว้างมาก การจำลองจะนับว่า "พบ" ตั้งแต่เข้าใกล้ ซึ่งตรงกับในเกมที่พลาดไม่ได้
+  // จุดที่วางเป็นแค่ "ที่ตั้งกล่อง" — ในเกมโผล่จริงเฉพาะรอบที่ระบบสุ่มให้เจอ (cats.js rollFind)
+  box: {
+    label: 'กล่องน้องแมว', sub: 'วิ่งผ่านก็พบน้อง · ในเกมโผล่เฉพาะรอบที่สุ่มให้เจอ',
+    r: 32, pickR: 300, effect: 'box',
+    draw: (ctx, list, cam, tick) => drawCatBoxes(ctx, list, cam, tick, BOX_EARS),
   },
 };
 

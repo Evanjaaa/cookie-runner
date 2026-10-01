@@ -23,7 +23,8 @@ import {
   drawHeart, poseMouthOpen, poseSpeaks, poseShape, star4,
 } from './render/entities.js';
 import { pickMove, mixShape, scaleShape, E as EASE, LOVE_MOVE } from './home-moves.js';
-import { getSkin } from './skins.js';
+import { getSkin, skinById } from './skins.js';
+import { drawCatBoxes, drawKitten } from './render/catbox.js';
 import { getStage, sceneAt } from './stages.js';
 import { mixPalette } from './render/palette.js';
 import { TreasureRun, catAnchor } from './treasure-run.js';
@@ -247,6 +248,10 @@ export class Game {
     // ฉากห้องก่อนเริ่มวิ่ง — เป็นแค่ "โหมดวาด" ไม่ใช่สถานะเกม
     // สถานะยังเป็น READY อยู่ ระบบหยุด/นับคะแนน/อินพุตจึงไม่ต้องรู้จักมันเลย
     this.inRoom = false;
+
+    // บ้านน้องแมว (src/catroom.js) — ไม่ใช่ null = กำลังเปิดอยู่ วาดแทนหน้าแรก
+    // เป็นโหมดวาดเหมือน inRoom ไม่ใช่สถานะเกม main.js เป็นคนเปิด/ปิด
+    this.catRoom = null;
   }
 
   /**
@@ -369,7 +374,8 @@ export class Game {
     if (this.state === STATE.READY) {
       // ฉากห้องก่อนเริ่มวิ่งต้องเงียบสนิท เหลือแค่เสียงน้องแมวร้องตอนพูด
       // เพลงหน้าแรกดังทับเสียงร้องจนฟังไม่ออกว่าน้องส่งเสียงอะไร
-      setMusicTrack(this.inRoom ? SILENT : 'home');
+      // บ้านน้องแมวมีเพลงของตัวเอง (public/Music_room.mp3)
+      setMusicTrack(this.catRoom ? 'room' : this.inRoom ? SILENT : 'home');
     } else if (this.bonus > 0) setMusicTrack(this.scene.bonusTrack);
     else if (this.skill > 0) setMusicTrack(this.skillDef.tune.music);
     // เพลงประจำแมพ — ด่านที่ยังไม่ได้ประกาศ track ไว้ใช้เพลงกลางเหมือนเดิม
@@ -488,11 +494,83 @@ export class Game {
     this.treasures.reset();
     // พรสวรรค์ก็อ่านใหม่ทุกตาด้วยเหตุผลเดียวกัน แล้วผูกตัวปรับการเคลื่อนที่เข้ากับตัวละครทันที
     this.talents.reset(this.player);
+
+    // ── กล่องน้องแมว ──
+    // รอบนี้จะเจอไหม main.js ตัดสินตอนกดเล่น (cats.js rollFind) แล้วฝากไว้ที่ pendingBox
+    // Game ไม่รู้จักเลเวลผู้เล่นหรือจำนวนน้องในบ้าน — รู้แค่ "รอบนี้มีกล่องไหม ตั้งที่ไหน"
+    this.boxPlan = null;      // { at: เฟรมที่เริ่มหาที่ตั้ง, breed, sex }
+    this.boxFound = null;     // พบแล้ว = แผนเดิม (main.js อ่านตอนจบรอบ)
+    this.kitten = null;       // ลูกแมวที่วิ่งตามหลัง
+    this.boxRetry = 0;
+    this.level.wantBox = () => this.needBox(240);
+    this.level.boxPlaced = () => {};
     this.level.ensureAhead(this.camera);
+  }
+
+  /** ยังต้องตั้งกล่องอยู่ไหม — lead = ยอมให้ท่อนที่ออกแบบไว้วางล่วงหน้าได้กี่เฟรม */
+  needBox(lead = 0) {
+    return !!this.boxPlan && !this.boxFound && !this.level.boxes.length
+      && this.tick >= this.boxPlan.at - lead;
+  }
+
+  /**
+   * กล่องหนึ่งเฟรม: ถึงเวลาแล้วหาที่ตั้ง / วิ่งผ่านกล่อง = พบน้อง / ลูกแมววิ่งตาม
+   * วิ่งผ่านก็พบเลย ไม่ต้องกระโดดเก็บ — กล่องหายาก ต้องพลาดไม่ได้
+   */
+  updateCatBox(dt) {
+    if (this.needBox() && this.bonus <= 0 && !this.gate) {
+      this.boxRetry -= dt;
+      if (this.boxRetry <= 0) {
+        // ตั้งไว้นอกจอขวา ผู้เล่นจะเห็นกล่องวิ่งเข้ามาหา ไม่ใช่โผล่ตรงหน้า
+        if (!this.level.spawnBox(this.camera + VIEW.W + 40)) this.boxRetry = 30;
+      }
+    }
+    const px = this.camera + PLAYER_X + 10;
+    for (const b of this.level.boxes) {
+      if (b.got) { b.open = Math.min(1, b.open + 0.08 * dt); continue; }
+      if (px < b.x) continue;
+      b.got = true;
+      this.boxFound = this.boxPlan;
+      this.kitten = { x: b.x - this.camera, y: GROUND_Y - 40, vy: -7, air: true, phase: 0, t: 0 };
+      this.particles.burst(b.x, GROUND_Y - 40, 14, 'letter', 5);
+      sfx.mew();
+      setTimeout(() => sfx.trill(), 260);
+      this.notice = 120;
+      this.noticeText = 'พบน้องแมวในกล่อง!';
+    }
+    const k = this.kitten;
+    if (!k) return;
+    k.t += dt;
+    // วิ่งตามหลังน้องห่างราวหนึ่งช่วงตัว — ไล่เข้าหาแบบนุ่ม ๆ ไม่ติดหนึบ
+    const goal = PLAYER_X - 58;
+    k.x += (goal - k.x) * Math.min(1, 0.05 * dt);
+    k.phase += this.speed * dt * 0.07;
+    // กระโดดตามพื้นของตัวเอง (ไม่สนสิ่งกีดขวาง เป็นแค่ภาพประกอบ ไม่มีการชน)
+    const ground = GROUND_Y;
+    if (k.air) {
+      k.vy += 0.55 * dt;
+      k.y += k.vy * dt;
+      if (k.y >= ground) { k.y = ground; k.air = false; k.vy = 0; }
+    } else if (!this.player.onGround && this.player.vy < -4 && Math.random() < 0.06 * dt) {
+      k.air = true;
+      k.vy = -7;
+    }
+  }
+
+  /** ภาพลูกแมว: พันธุ์ที่สุ่มไว้ วัยลูกแมว (age = baby) */
+  kittenSkin() {
+    const p = this.boxPlan;
+    if (!p) return null;
+    if (!this.kittenView || this.kittenView.palette !== p.breed) {
+      this.kittenView = { ...skinById(p.breed), palette: p.breed, age: 'baby', noPhoto: true };
+    }
+    return this.kittenView;
   }
 
   start() {
     this.reset();
+    this.boxPlan = this.pendingBox || null;
+    this.pendingBox = null;
     this.state = STATE.RUN;
     // ต้องเรียกซ้ำหลังตั้ง RUN — reset() รันตอน state ยังเป็น READY
     // ถ้าไม่เรียก เพลงหน้าแรกจะค้างเล่นต่อไปทั้งที่เริ่มวิ่งแล้ว
@@ -630,6 +708,11 @@ export class Game {
       return;
     }
     if (this.state === STATE.READY) {
+      // บ้านน้องแมวเปิดอยู่ — ห้องมีนาฬิกากับตัวละครของตัวเอง หน้าแรกข้างหลังพักไว้
+      if (this.catRoom) {
+        this.catRoom.update(dt);
+        return;
+      }
       this.homeTick += dt;
       this.stepLove(dt);
       this.stepReact(dt);
@@ -1021,6 +1104,7 @@ export class Game {
     this.updateScene(dt);
     this.updateFallers(dt, cx, cy);
     this.updateHazards(dt, cx, cy);
+    this.updateCatBox(dt);
 
     // เดินเวลาของสมบัติหลังเก็บของครบแล้ว ตัวนับในเฟรมนี้จึงถูกนับก่อนเช็คเงื่อนไข
     this.treasures.update(dt, this);
@@ -2269,7 +2353,10 @@ export class Game {
     const tf = ctx.getTransform();
     this.renderScale = Math.hypot(tf.a, tf.b);
 
-    if (this.state === STATE.READY) return this.inRoom ? this.drawRoom(ctx) : this.drawHome(ctx);
+    if (this.state === STATE.READY) {
+      if (this.catRoom) return this.catRoom.draw(ctx);
+      return this.inRoom ? this.drawRoom(ctx) : this.drawHome(ctx);
+    }
 
     // ── ตรึงกล้องลงตารางพิกเซลของจอ เฉพาะตอนวาด ──
     // กล้องเลื่อนทีละเศษพิกเซล (6.8 หน่วยเกม × สเกลจอ เช่น ×1.6 = 10.88 พิกเซล) ของทุกชิ้นในด่าน
@@ -2317,6 +2404,7 @@ export class Game {
     // ยกเว้นเม็ดอาหารรูปปลา — ขึ้นเรียงเป็นแถวยาวเต็มจอ มีเส้นแล้วดูรกและหนักตา
     // จึงวาดแยกนอกชั้นเส้นขอบ (ข้างล่าง) ส่วนเม็ดกลมกับกุ้งทองยังมีเส้นเพราะเป็นของเด่น
     const [plainFish, rareTreats] = splitFish(this.level.fishes);
+    if (this.level.boxes.length) drawCatBoxes(ctx, this.level.boxes, this.camera, this.tick, this.kittenSkin());
     drawOutlined(ctx, (c) => {
       drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
       drawFallers(c, this.level.fallers, this.camera, this.scene.theme);
@@ -2354,6 +2442,9 @@ export class Game {
     if (this.state !== STATE.DEAD && this.shielded) {
       drawShieldRing(ctx, this.player, this.tick, catS);
     }
+
+    // ลูกแมวจากกล่องวิ่งตามอยู่ข้างหลัง
+    if (this.kitten && this.state !== STATE.DEAD) drawKitten(ctx, this.kitten, this.kittenSkin());
 
     // เอฟเฟกต์พรสวรรค์ชั้นหลังตัว (เมฆใต้ตัว ปีกร่อน เส้นพุ่ง ออร่าเงา)
     if (this.state !== STATE.DEAD) drawTalentBack(ctx, this);

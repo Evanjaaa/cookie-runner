@@ -421,7 +421,7 @@ function drawNotice(ctx, game) {
   const theme = label.startsWith('ผ่านด่าน') ? 'clear' : 'info';
   // เด้งเข้าช่วง 16 เฟรมแรกของข้อความ (notice นับถอยหลังจากค่าตั้งต้น)
   const start = theme === 'clear' ? SCENE.noticeFrames : Math.max(game.notice, 90);
-  drawCandyPill(ctx, label, BANNER_CLEAR + 8, 32, theme, game.tick, { pop: Math.min(1, (start - game.notice) / 16) });
+  drawCandyPill(ctx, t(label), BANNER_CLEAR + 8, 32, theme, game.tick, { pop: Math.min(1, (start - game.notice) / 16) });
 
   ctx.restore();
 }

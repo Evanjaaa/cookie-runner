@@ -3698,11 +3698,17 @@ function drawCatStand(ctx, s, {
   // ── ย่อตัวเล็งเป้า ──
   // ตัวลงไปใกล้พื้นและผายออกข้าง แต่ขายังอยู่ครบ ต่างจากหมอบที่ขาหายไปใต้ตัว
   // นี่คือสิ่งเดียวที่แยกสองท่านี้ออกจากกันในมุมมองหน้าตรง
-  const cy = 6 + sit * 3 + loaf * 9 + crouch * 9;
+  // ── วัยของน้องจากกล่อง (s.age ดู ageOf ใน cats.js) ──
+  //   baby   ตัวกลมป้อม เตี้ยลงติดพื้น (ขาสั้น)
+  //   young  ตัวยืดเพรียว ขายาวกว่าลูกแมว
+  // ตัวโตเต็มวัยไม่มี age ค่าทุกตัวข้างล่างจึงเป็นของเดิมทุกประการ
+  const baby = s.age === 'baby';
+  const young = s.age === 'young';
+  const cy = 6 + sit * 3 + loaf * 9 + crouch * 9 + (baby ? 3 : 0);
   // ขนพองทำให้ตัวโตขึ้นทุกทาง แต่กว้างมากกว่าสูง — ขนที่พองตั้งฉากกับผิว
   // ด้านข้างจึงยื่นออกไปมากกว่าด้านบนที่มีน้ำหนักตัวกดอยู่
-  const rx = (14 + sit * 1 + loaf * 4) * (1 + puff * 0.34 + crouch * 0.26);
-  const ry = (13 + sit * 0.5 - loaf * 4.5) * (1 + puff * 0.22 - crouch * 0.24);
+  const rx = (14 + sit * 1 + loaf * 4) * (1 + puff * 0.34 + crouch * 0.26) * (baby ? 1.12 : young ? 0.92 : 1);
+  const ry = (13 + sit * 0.5 - loaf * 4.5) * (1 + puff * 0.22 - crouch * 0.24) * (baby ? 0.9 : young ? 1.03 : 1);
   const hx = 1 + loaf * 2;
   // ตัวพองดันหัวขึ้นนิดหนึ่ง ส่วนตอนเล็งเป้าหัวต่ำลงมาระดับเดียวกับไหล่
   const hy = -12 + sit * 2 + loaf * 10.5 - puff * 2 + crouch * 10;
@@ -3710,8 +3716,9 @@ function drawCatStand(ctx, s, {
   // ── หาง ─────────────────────────────────────
   // โคนหางเลื่อนลงตามตัว ตอนหมอบขดมาข้างลำตัวแทนที่จะชี้ออกไปหลัง
   // หางฟูตามตัวด้วย ถ้าตัวพองแต่หางยังเรียว มันจะอ่านเป็น "อ้วนขึ้น" ไม่ใช่ "ขนพอง"
-  drawTail(ctx, -11 - loaf * 3, 8 + sit * 4 + loaf * 10 + crouch * 6,
-           wag * (1 - loaf * 0.5), s, puff, tailShort);
+  // ลูกแมวหางสั้นกุดและฟูกว่า (puff เพิ่มนิดหน่อย = หางป้อม ไม่ใช่หางเรียว)
+  drawTail(ctx, -11 - loaf * 3, 8 + sit * 4 + loaf * 10 + crouch * 6 + (baby ? 3 : 0),
+           wag * (1 - loaf * 0.5), s, puff + (baby ? 0.35 : 0), Math.min(0.8, tailShort + (baby ? 0.5 : 0)));
 
   // ── ก้นตอนนั่ง ──────────────────────────────
   // วาดก่อนลำตัวเพื่อให้กลืนเป็นก้อนเดียวกัน ไม่ใช่ก้อนกลมแปะอยู่ข้าง ๆ
@@ -3736,10 +3743,11 @@ function drawCatStand(ctx, s, {
     ctx.globalAlpha *= 1 - rest;
 
     ctx.strokeStyle = s.dark;
-    ctx.lineWidth = 7;
+    // ลูกแมวขาสั้นป้อม (หนาขึ้น เริ่มต่ำลง) / วัยรุ่นขาเรียวยาว
+    ctx.lineWidth = baby ? 8.5 : young ? 6.2 : 7;
     // ย่อตัวแล้วขาสั้นลงจากด้านบน ฝ่าเท้ายังอยู่ที่เดิม — ขาที่หดจากด้านล่างด้วย
     // จะกลายเป็นแมวลอยเหนือพื้น ไม่ใช่แมวย่อตัว
-    const hy0 = 13 + rest * 4 + crouch * 9;
+    const hy0 = 13 + rest * 4 + crouch * 9 + (baby ? 4 : young ? -1 : 0);
     const hy1 = 24 - rest * 2;
     // ── ท่าพุ่ง (reach) ขาทั้งสองลากไปข้างหลัง ──
     // ปลายเท้าเลื่อนไปทางซ้าย (หลังตัว) และยกขึ้นนิดหนึ่ง = ตัวกำลังพุ่งไปข้างหน้า
@@ -4001,7 +4009,10 @@ function drawCatStand(ctx, s, {
   }
 
   // เหนื่อยแล้วหัวห้อยลงนิดหน่อย ทั้งตัวจึงดูหนักขึ้นโดยไม่ต้องแก้ท่าขา
-  drawCatHead(ctx, hx, hy + tired * 1.6, s, {
+  // ── วัย ── ลูกแมวหัวโตมากและจมลงหาไหล่ (คอสั้น) / วัยรุ่นหัวโตกว่าตัวโตเต็มวัยนิดเดียว
+  // ส่วนตัวที่เล็กลงเป็นหน้าที่ของผู้เรียก (ส่ง scale ที่เล็กลง) โมเดลจึงเป็นตัวเดียวกันทุกวัย
+  drawCatHead(ctx, hx, hy + tired * 1.6 + (baby ? 5 : young ? 1 : 0), s, {
+    scale: baby ? 1.42 : young ? 1.14 : 1,
     isDead, blink, mouthOpen, tilt, mood, earLay, gaze,
     // แผนที่รหัสสีต้องเห็นหน้าน้องตัวจริง ไม่ใช่รูปที่ผู้เล่นอัปโหลดมาทับ
     // ไม่งั้นขอบเขตของทุกส่วนบนหัวจะกลายเป็นสีในรูปถ่าย
@@ -4091,7 +4102,7 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } =
 
   // ไม่ตีขอบซ้ำทับชุด — ขอบถูกเตรียมไว้ตั้งแต่ก่อนใส่ชุดแล้ว (ดู bodyEdgeUnder)
 
-  drawCatHead(ctx, 12, -4, s, { isDead, scale: 0.82, earsBack: true, mouthOpen, mood });
+  drawCatHead(ctx, 12, -4, s, { isDead, scale: 0.82 * (s.age === 'baby' ? 1.42 : s.age === 'young' ? 1.14 : 1), earsBack: true, mouthOpen, mood });
 }
 
 /**
@@ -4123,7 +4134,14 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // ถ้าเลื่อนทั้งใบ มันจะกลายเป็นหูหลุดออกจากหัวไปวางที่อื่น
   // แมวตัวนี้เป็นมุมมองหน้าตรง หูจึงต้องแบะออก "คนละข้าง" ไม่ใช่พับไปทางเดียวกัน
   // ค่าติดลบ = หูตั้งชันตื่นตัว: ปลายหูยกขึ้นและหุบเข้านิดหนึ่ง (แบะออกน้อยกว่าตอนลู่มาก)
-  const ears = Math.abs(earLay) <= 0.01 ? earsUp : earsUp.map(([a, b, tip], i) => {
+  // ── วัย ── ลูกแมวหูเล็กมน (ปลายหูหดเข้าหาโคน) / วัยรุ่นหูใหญ่ (ปลายหูยื่นออก)
+  const earK = s.age === 'baby' ? 0.7 : s.age === 'young' ? 1.22 : 1;
+  const sized = earK === 1 ? earsUp : earsUp.map(([a, b, tip]) => {
+    const mx = (a[0] + b[0]) / 2;
+    const my = (a[1] + b[1]) / 2;
+    return [a, b, [mx + (tip[0] - mx) * earK, my + (tip[1] - my) * earK]];
+  });
+  const ears = Math.abs(earLay) <= 0.01 ? sized : sized.map(([a, b, tip], i) => {
     const out = i === 0 ? -1 : 1;
     return [a, b, [tip[0] + out * earLay * (earLay < 0 ? 2 : 6.5), tip[1] + earLay * (earLay < 0 ? 6 : 10)]];
   });
@@ -4165,6 +4183,26 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
   catEdge(ctx, s); ctx.stroke();
+
+  // ── ขนปุยบนหัวลูกแมว ── ปอยขนสามแฉกโผล่พ้นกลางหัว สัญลักษณ์ "ยังเป็นเด็ก" ที่อ่านออกแม้ตัวเล็ก
+  // วาดเป็นก้อนเดียวต่อกับหัว (เติมสีขนก่อน ตีเส้นเฉพาะขอบบน) จึงไม่เห็นรอยต่อ
+  if (s.age === 'baby') {
+    ctx.fillStyle = s.cat;
+    ctx.beginPath();
+    ctx.moveTo(-5, -11.5);
+    ctx.quadraticCurveTo(-5, -17, -1.5, -16.5);
+    ctx.quadraticCurveTo(0, -20, 2.5, -16);
+    ctx.quadraticCurveTo(6, -17.5, 5.5, -11.5);
+    ctx.closePath();
+    ctx.fill();
+    catEdge(ctx, s);
+    ctx.beginPath();
+    ctx.moveTo(-5, -11.8);
+    ctx.quadraticCurveTo(-5, -17, -1.5, -16.5);
+    ctx.quadraticCurveTo(0, -20, 2.5, -16);
+    ctx.quadraticCurveTo(6, -17.5, 5.5, -11.8);
+    ctx.stroke();
+  }
 
   // ขอบแสงด้านบนขวา รับกับแสงเรืองที่ขอบฟ้าซึ่งอยู่ทางขวาของจอ
   // ทำหน้าที่คู่กับเส้นขอบเข้ม: เส้นเข้มไว้สู้ฉากสว่าง เส้นสว่างไว้สู้ฉากมืด
@@ -4223,7 +4261,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // เพราะแก้มแดงคือครึ่งหนึ่งของอารมณ์ "ดีใจจนหน้าแดง" ถ้ามีแต่ตาประกายเฉย ๆ
   // ส้มน้อยกับปลาสลิดจะได้หน้าที่จืดกว่าขาวมุกทั้งที่เป็นจังหวะเดียวกันของเกม
   const glee = mood === 'starry';
-  if (s.blush || glee) {
+  // ลูกแมวแก้มชมพูเสมอทุกสายพันธุ์
+  if (s.blush || glee || s.age === 'baby') {
     ctx.save();
     // แก้มเป็นสีโปร่งบาง ๆ เพื่อให้ดูเป็นเลือดฝาด ไม่ใช่สติกเกอร์แปะหน้า
     // แต่ตอนวาดแผนที่รหัสสีต้องทึบ ไม่งั้นรหัสแก้มจะผสมกับรหัสขนจนได้ค่ากลาง ๆ
@@ -4376,6 +4415,19 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.fillStyle = '#8FD6FF';
     ctx.beginPath(); ctx.ellipse(9.6, 2 + fall * 7, 1.3, 1.9, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
+  } else if (s.age === 'baby' || s.age === 'young') {
+    // ── ตาลูกแมว / วัยรุ่น ── ตาโตกลมกว่าตัวโตเต็มวัย ประกายสองจุด = ตาแป๋วใส
+    const er = s.age === 'baby' ? 4.2 : 3.5;
+    ctx.fillStyle = s.eye;
+    ctx.beginPath(); ctx.arc(-5 + gx, -0.6, er, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7 + gx, -0.6, er, 0, Math.PI * 2); ctx.fill();
+    if (!s.solid) {
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      for (const ex of [-5, 7]) {
+        ctx.beginPath(); ctx.arc(ex + gx + er * 0.38, -0.6 - er * 0.4, er * 0.36, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex + gx - er * 0.4, -0.6 + er * 0.35, er * 0.17, 0, Math.PI * 2); ctx.fill();
+      }
+    }
   } else {
     ctx.fillStyle = s.eye;
     ctx.beginPath(); ctx.arc(-5 + gx, -1, 3, 0, Math.PI * 2); ctx.fill();

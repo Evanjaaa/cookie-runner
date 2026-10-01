@@ -10,6 +10,8 @@
 // ฝั่งอ่าน/เขียนข้อมูลจึงคืนค่าว่าง ๆ เวลาพัง ส่วนฝั่งเข้าสู่ระบบคืน { ok, error }
 // เพราะหน้าจอต้องบอกผู้เล่นให้ได้ว่าพลาดเพราะอะไร ไม่ใช่เงียบไปเฉย ๆ
 // ─────────────────────────────────────────────────────────────
+import { noteServerDate, noteServerTime } from '../clock.js';
+
 const URL = import.meta.env.VITE_SUPABASE_URL;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -41,6 +43,13 @@ async function client() {
         // ให้ต้องตรวจ — และรหัสยังเชื่อถือได้กว่าบนมือถือ เพราะลิงก์ในเมลมักเปิด
         // ในเบราว์เซอร์ของแอปเมล ซึ่งเป็นคนละที่กับแท็บที่เปิดเกมค้างไว้
         detectSessionInUrl: false,
+      },
+      // จดเวลาเซิร์ฟเวอร์จากทุกคำตอบ — ระบบเลี้ยงน้องนับเวลาจากนาฬิกานี้ (ดู clock.js)
+      global: {
+        fetch: (...a) => fetch(...a).then((r) => {
+          noteServerDate(r.headers.get('date'));
+          return r;
+        }),
       },
     });
   }
@@ -509,6 +518,22 @@ export async function pushName(name) {
  * ชื่อนี้ยังว่างไหม — ใช้เตือนตอนพิมพ์ (supabase/names.sql → name_available)
  * @returns {Promise<boolean|null>} true ว่าง · false มีคนใช้แล้ว · null เช็คไม่ได้ (ออฟไลน์/ยังไม่รัน SQL)
  */
+/**
+ * ตั้งนาฬิกาของเกมให้ตรงเซิร์ฟเวอร์ (ดู clock.js) — เรียกตอนเปิดเกมและตอนกลับเข้าแอป
+ * ยังไม่ได้รัน supabase/cats.sql = ไม่มีฟังก์ชันนี้ ก็ใช้นาฬิกาเครื่องต่อไปเงียบ ๆ
+ */
+export async function syncServerClock() {
+  const c = await client();
+  if (!c) return;
+  try {
+    const sent = Date.now();
+    const { data, error } = await c.rpc('server_now');
+    if (error) throw error;
+    // เวลาเดินทางไป-กลับ แบ่งครึ่ง = เวลาที่เซิร์ฟเวอร์อ่านนาฬิกาจริง ๆ
+    noteServerTime(Date.parse(data) + (Date.now() - sent) / 2);
+  } catch { /* ไม่มีฟังก์ชัน / เน็ตหลุด ใช้นาฬิกาเครื่องไปก่อน */ }
+}
+
 export async function nameAvailable(name) {
   const c = await client();
   if (!c) return null;

@@ -5,7 +5,10 @@ import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx } from './audio.js';
 import { startMusic, stopMusic, primeMusicFile } from './music.js';
-import { SKINS, getSkin, setSkin, ownsSkin, unlockSkin, skinById } from './skins.js';
+import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
+import {
+  allCats, roomCats, waitingCats, grownCats, catById, breedOf, BREEDS, levelOf, nameOf, sizeOf, reloadCats,
+} from './cats.js';
 import {
   CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
   pickSkin, regionAt, toSkin,
@@ -18,7 +21,7 @@ import {
   ownedOrder as outfitOrder,
 } from './outfits.js';
 import { getGold, addGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
-import { loadBest, loadPref, savePref, loadSkinsOwned } from './storage.js';
+import { loadBest, loadPref, savePref } from './storage.js';
 import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
@@ -74,6 +77,12 @@ import {
   introSoundEnabled, setIntroSoundEnabled,
 } from './intro-video.js';   // หน้าพรสวรรค์ (ข้อมูลใน talents.js ผลตอนวิ่งใน talent-run.js)
 import { setupDebug, TESTER_CODES } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
+import { setupCatRoomUI } from './catroom-ui.js';
+import { syncServerClock } from './net/cloud.js';
+
+// หน้าจอระบบน้องแมว (บ้านน้อง หน้าพบน้อง เรื่องราว เคล็ดลับน้องส้ม) — สร้างทีหลังใน setupCatRoomUI
+// ประกาศไว้บนสุดเพราะ refreshHome() ถูกเรียกตั้งแต่ก่อนถึงบรรทัดที่สร้าง
+let catRoomUI = null;
 
 const { W, H } = VIEW;
 const canvas = document.getElementById('game');
@@ -194,6 +203,8 @@ const mailPanel = document.getElementById('mailPanel');
 const pauseBtn = document.getElementById('btnPause');
 
 const game = new Game({ onGameOver: showGameOver, onPitFall: askRevive });
+// ช่องส่องตัวเกมตอนพัฒนา (สคริปต์ทดสอบ) — ไม่มีในเว็บจริง
+if (import.meta.env.DEV) window.__game = game;
 
 // ── ตัวเลขไล่ขึ้นในหน้าสรุป ──────────────────────────────────
 //
@@ -463,7 +474,8 @@ function refreshProfile() {
 // (ของที่มีอยู่แล้วทั้งหมดถือว่าดูแล้ว) ถ้าถามก่อนลงทะเบียน ฐานจะว่างแล้วของเก่าทั้งหมดกลายเป็นของใหม่
 registerFresh('skill', () => SKILLS.filter(isSkillUnlocked).map((x) => x.id));
 registerFresh('talent', () => TALENTS.filter(talentUnlocked).map((x) => x.id));
-registerFresh('skin', () => SKINS.filter((x) => ownsSkin(x.id)).map((x) => x.id));
+// หมวดน้องแมว: ทุกตัวที่อยู่กับเรา (ตัวที่ยังเลี้ยงอยู่กับตัวที่โตแล้วมีรหัสคนละแบบ โตแล้วจึงขึ้นจุดแดงอีกรอบ)
+registerFresh('skin', () => catEntries().filter((x) => x.kind !== 'locked').map((x) => x.id));
 registerFresh('outfit', () => OUTFITS.filter((x) => isOwned(x.id)).map((x) => x.id));
 registerFresh('treasure', () => TREASURES.filter((x) => ownsTreasure(x.id)).map((x) => x.id));
 
@@ -492,6 +504,8 @@ function refreshHome() {
   // พรสวรรค์เป็นไพ่สองใบ ไม่มีตัวน้องอยู่ในรูป — ปุ่มคลังน้องกับปุ่มสร้างสรรค์มีน้องอยู่แล้ว
   // ถ้าอันนี้มีน้องด้วยอีกใบ สามปุ่มจะหน้าตาคล้ายกันจนแยกไม่ออกว่ากดอันไหนได้อะไร
   paintFitted(document.getElementById('talentIcon'), 76, 0.96, drawTalentCards);
+  catRoomUI?.paintIcon();
+  catRoomUI?.refreshDot();
   paintStageScene(document.getElementById('stageIcon'), st, 210);
   paintStashIcon();
   paintQuestIcon();
@@ -531,6 +545,8 @@ function refreshGold() {
   // หน้าตีบวกก็ต้องเห็นทองด้วย เพราะมันคือหน้าที่จ่ายทองถี่ที่สุดในเกม
   // (ใช้ทองอย่างเดียว จึงไม่มีช่องเพชรให้เขียน)
   document.getElementById('goldUp').textContent = gold;
+  // บ้านน้องแมวมีกระเป๋าทองของตัวเอง (ซื้ออาหาร/ของเล่น)
+  document.getElementById('goldRoom').textContent = gold;
   // ตู้เปิดค้างอยู่ = ปุ่มสุ่มต้องตามเงินล่าสุดด้วย (ดู paintPullAfford)
   // เช็คแผงก่อน: ตอนเกมเพิ่งโหลด ตัวแปรของตู้ยังไม่ถูกประกาศ แต่ตอนนั้นตู้ก็ยังไม่เคยเปิด
   if (!gachaPanel.classList.contains('hidden')) paintPullAfford();
@@ -2461,52 +2477,119 @@ function emptyNote(grid, text) {
 }
 
 /**
- * กริดหมวดแมวน้อยในคลังน้อง
+ * รายการในหมวด "น้องแมว" ของคลังน้อง
  *
- * ท่าเดียวกับกริดชุด: แตะการ์ด = เลือกขึ้นไปโชว์ในช่องซ้าย ไม่ใช่สวม/ซื้อทันที
- * หน้าแมวน้อยเดิมแตะทีเดียวเปลี่ยนตัวเลย แต่พอมาอยู่ข้างช่องพรีวิวแล้ว
- * คนจะแตะเพื่อ "ดู" ก่อน การเปลี่ยนตัวจึงย้ายไปอยู่ที่ปุ่ม "เลือกสีนี้" แทน
+ * ไม่ใช่รายการสีขนให้ซื้อแล้ว (ระบบซื้อสีถูกถอดออก) แต่เป็น "ทุกตัวที่อยู่กับเรา":
+ *   main     น้องส้ม ตัวหลักของเกม อยู่บนสุดเสมอ
+ *   paint    น้องที่ระบายสีเอง
+ *   grown    น้องจากกล่องที่โตเต็มวัยแล้ว ลงวิ่งได้
+ *   raising  น้องที่ยังเลี้ยงอยู่ในบ้าน (แตะแล้วพาไปบ้านน้อง)
+ *   locked   สายพันธุ์ที่ยังไม่เคยพบ โชว์เป็นเงาดำ
+ */
+function catEntries() {
+  const out = [
+    { id: 'orange', kind: 'main', skin: skinById('orange') },
+    { id: CUSTOM_ID, kind: 'paint', skin: skinById(CUSTOM_ID) },
+  ];
+  const cats = allCats().sort((a, b) => (a.foundAt || 0) - (b.foundAt || 0));
+  for (const c of cats) {
+    const grown = c.state === 'grown';
+    out.push({ id: grown ? catSkinId(c) : 'raise:' + c.id, kind: grown ? 'grown' : 'raising', cat: c, skin: catSkin(c) });
+  }
+  const seen = new Set(cats.map((c) => c.breed));
+  for (const b of BREEDS) {
+    if (!seen.has(b.id)) out.push({ id: 'breed:' + b.id, kind: 'locked', breed: b, skin: catSilhouette() });
+  }
+  return out;
+}
+
+/**
+ * เงาดำของสายพันธุ์ที่ยังไม่เคยพบ — ทรงแมวครบ แต่ไม่บอกสี
+ * เป็นฟังก์ชัน (ไม่ใช่ const) เพราะ registerFresh ด้านบนไฟล์อาจเรียก catEntries()
+ * ก่อนบรรทัดนี้จะถูกรัน — const ที่ยังไม่ได้ประกาศจะโยน error ตอนบูต
+ */
+function catSilhouette() {
+  // จำผลไว้ที่ตัวฟังก์ชันเอง — ตัวแปร let ระดับไฟล์ก็ติดปัญหาเดียวกับ const
+  if (!catSilhouette.skin) {
+    catSilhouette.skin = {
+      ...SKINS[0], id: 'silhouette', cat: '#5B4A78', dark: '#4E3F69', cream: '#5B4A78', pink: '#5B4A78',
+      eye: '#3A2D52', ink: '#3A2D52', nose: '#3A2D52', line: '#2E2342', whisker: 'rgba(0,0,0,0)',
+      rain: ['#5B4A78', '#5B4A78', '#2E2342'], stripes: false, blush: false, points: false, noPhoto: true,
+    };
+  }
+  return catSilhouette.skin;
+}
+
+const catEntryById = (id) => catEntries().find((x) => x.id === id) || null;
+
+/** ป้ายเล็กใต้ชื่อบนการ์ด */
+function catEntryTag(x) {
+  if (x.kind === 'main') return 'ตัวหลัก';
+  if (x.kind === 'paint') return 'ระบายสีเอง';
+  if (x.kind === 'raising') return 'Lv.' + levelOf(x.cat) + ' กำลังเลี้ยง';
+  if (x.kind === 'grown') return x.skin.breedName;
+  return 'ยังไม่เคยพบ';
+}
+
+/** คำบอกใต้ช่องพรีวิว — ตัวนี้คือใคร มาจากไหน */
+function catEntryHint(x) {
+  if (x.kind === 'main') return 'ตัวหลักของเกม และพี่เลี้ยงของน้อง ๆ ทุกตัวในบ้าน';
+  if (x.kind === 'paint') return 'น้องที่เราระบายสีเอง ระบายใหม่ได้ที่หน้าสร้างสรรค์';
+  const sex = x.cat ? (x.cat.sex === 'f' ? '♀ ตัวเมีย' : '♂ ตัวผู้') : '';
+  if (x.kind === 'grown') return sex + ' · ' + x.skin.breedName + ' · โตเต็มวัยแล้ว ลงวิ่งได้';
+  if (x.kind === 'raising') {
+    const where = x.cat.state === 'wait' ? 'รออยู่ในกล่องหน้าประตูบ้าน' : 'กำลังเลี้ยงอยู่ที่บ้านน้อง';
+    return sex + ' · ' + x.skin.breedName + ' · ' + where;
+  }
+  return 'สายพันธุ์ที่ยังไม่เคยพบ — อาจเจอในกล่องระหว่างวิ่ง';
+}
+
+/**
+ * กริดหมวดน้องแมวในคลังน้อง
+ *
+ * แตะการ์ด = เลือกขึ้นไปโชว์ในช่องซ้าย ไม่ใช่เปลี่ยนตัวทันที
+ * น้องส้มกับน้องระบายสีปักไว้หน้าสุดเสมอไม่ว่าจะเรียงแบบไหน — สองตัวนี้คือตัวที่ทุกคนมี
  */
 function buildSkinStashGrid() {
   const grid = document.getElementById('skinStashGrid');
   grid.innerHTML = '';
 
-  // ลำดับ "ได้มา" ของแมวคือลำดับที่ซื้อ ตัวฟรีไม่เคยถูกบันทึก จึงต่อท้ายตามลำดับในตาราง
-  const list = applyFilter('skin', SKINS, {
-    owned: (x) => ownsSkin(x.id),
-    rank: (x) => x.cost || 0,
-    order: () => loadSkinsOwned(),
-    level: () => 0,
+  const all = catEntries();
+  const pinned = all.filter((x) => x.kind === 'main' || x.kind === 'paint');
+  const rest = applyFilter('skin', all.filter((x) => !pinned.includes(x)), {
+    owned: (x) => x.kind !== 'locked',
+    // สายพันธุ์ที่พบยากขึ้นก่อน (น้ำหนักสุ่มน้อย = หายาก)
+    rank: (x) => breedOf(x.cat ? x.cat.breed : x.breed.id).w,
+    order: () => all.filter((x) => x.cat).map((x) => x.id),
+    level: (x) => (x.cat ? levelOf(x.cat) : 0),
   });
-
-  if (!list.length) {
-    emptyNote(grid, 'ยังไม่มีแมวน้อยให้ดูในตัวกรองนี้');
-    markScrollable(grid);
-    return;
-  }
+  const list = [...pinned, ...rest];
 
   const using = getSkin().id;
   for (const x of list) {
-    const got = ownsSkin(x.id);
-    const on = got && x.id === using;
+    const on = x.id === using;
+    const locked = x.kind === 'locked';
 
     const card = document.createElement('button');
-    card.className = 'skin-card outfit-card' + (on ? ' on' : '') + (got ? '' : ' locked');
-    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
-    card.querySelector('b').textContent = x.name;
-
-    if (!got) {
-      const lock = document.createElement('span');
-      lock.className = 'lock-badge';
-      lock.textContent = '🔒';
-      card.appendChild(lock);
+    card.className = 'skin-card outfit-card cat-card kind-' + x.kind + (on ? ' on' : '') + (locked ? ' locked' : '');
+    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small class="cat-tag"></small>';
+    card.querySelector('b').textContent = locked ? '???' : (x.cat ? nameOf(x.cat) : x.skin.name);
+    card.querySelector('.cat-tag').textContent = catEntryTag(x);
+    if (x.cat) {
+      const sex = document.createElement('i');
+      sex.className = 'sex-tag ' + x.cat.sex;
+      sex.textContent = x.cat.sex === 'f' ? '♀' : '♂';
+      sex.setAttribute('aria-label', x.cat.sex === 'f' ? 'ตัวเมีย' : 'ตัวผู้');
+      card.appendChild(sex);
     }
 
     // t=60 ไม่ใช่ 0 เพราะที่ t=0 แมวกำลังหลับตาพอดี รูปตัวอย่างจะดูเหมือนหลับ
-    paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5, x, 60));
+    // น้องที่ยังเด็กวาดตัวเล็กลงตามวัย ให้เห็นตั้งแต่ในกริดว่ายังเป็นลูกแมว
+    const k = x.kind === 'raising' ? sizeOf(levelOf(x.cat)) : 1;
+    paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5 * k, x.skin, 60));
 
     if (x.id === stashSel.skin) card.classList.add('sel');
-    setDot(card, got && isFresh('skin', x.id));
+    setDot(card, !locked && isFresh('skin', x.id));
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
@@ -2591,78 +2674,6 @@ function confirmBox(opts) {
     // ปิดจากทางอื่น (กดเล่น กดกลับหน้าแรก) ต้องนับเป็น "ยกเลิก" ไม่ใช่ค้างไว้เฉย ๆ
     cancelConfirm = () => done(false);
   });
-}
-
-/**
- * การ์ดฉลองของแมวที่เพิ่งปลดล็อก
- *
- * ทรงเดียวกับการ์ดชุดในผลสุ่มตู้กาช่าเป๊ะ ๆ ทั้งขนาดผ้าใบและท่าที่น้องยืน
- * ของที่ได้มาใหม่จึงหน้าตาเหมือนกันหมดไม่ว่าจะมาจากตู้สุ่ม จดหมาย หรือซื้อเอง
- *
- * วาดจาก getSkin() ไม่ใช่จากตัวสกินเปล่า ๆ — ตอนนี้น้องใส่ชุดที่สวมอยู่จริง
- * การ์ดจึงเป็นรูป "น้องของเราตอนนี้" ไม่ใช่รูปตัวอย่างในแค็ตตาล็อก
- */
-function skinGotCard(s) {
-  const card = document.createElement('div');
-  card.className = 'got-card legend';
-  card.innerHTML = '<canvas width="72" height="72"></canvas><b></b><small>แมวใหม่!</small>';
-  card.querySelector('b').textContent = s.name;
-  paintMini(card.querySelector('canvas'), 72, (c) => drawCatPose(c, 38, 66, 1.05, getSkin(), 60));
-  return card;
-}
-
-/**
- * ซื้อแมวที่ยังล็อกอยู่
- *
- * หักทองก่อนแล้วค่อยปลดล็อก ลำดับนี้สำคัญ — ถ้าปลดล็อกก่อนแล้วหักทองพลาด
- * ผู้เล่นจะได้ของฟรี ส่วนลำดับนี้กรณีแย่สุดคือเสียทองแล้วไม่ได้ของ
- * ซึ่งกู้คืนได้เพราะรู้ยอดที่หักไป
- *
- * ซื้อแล้วสวมให้เลย ไม่ต้องกดอีกที — คนกดซื้อคือคนที่อยากใส่อยู่แล้ว
- */
-async function buySkin(s) {
-  const msg = document.getElementById('outfitMsg');
-  const gold = getGold();
-
-  if (gold < s.cost) {
-    sfx.upFail();
-    setMsg(msg, 'ทองไม่พอ ขาดอีก ' + (s.cost - gold).toLocaleString('en-US'), true);
-    return;
-  }
-
-  const ok = await confirmBox({
-    title: 'ปลดล็อก ' + s.name + '?',
-    body: s.note,
-    cost: s.cost,
-    after: 'ทองคงเหลือหลังซื้อ ' + (gold - s.cost).toLocaleString('en-US'),
-    okText: 'ซื้อเลย',
-    art: (c) => drawCatPose(c, 55, 88, 1.5, s, 60),
-  });
-  if (!ok) return;
-
-  // อ่านยอดใหม่หลังกล่องปิด เผื่อมีอย่างอื่นหักทองไประหว่างที่กล่องเปิดค้างอยู่
-  // (เช่นซิงก์จากเครื่องอื่น) ถ้าเชื่อยอดที่อ่านไว้ตอนแรกจะติดลบได้
-  if (getGold() < s.cost) {
-    sfx.upFail();
-    setMsg(msg, 'ทองไม่พอแล้ว ลองใหม่อีกครั้ง', true);
-    return;
-  }
-
-  addGold(-s.cost);
-  unlockSkin(s.id);
-  setSkin(s.id);
-  refreshHome();
-  refreshStash();
-  setMsg(msg, 'ปลดล็อก ' + s.name + ' แล้ว ใส่ให้เรียบร้อย');
-
-  // ── ฉลองเหมือนตอนได้ของขวัญ ──
-  // ใช้กล่องใบเดียวกับจดหมายและกิจกรรม (ริบบิ้นโปรย + เสียงเย้ มาพร้อมกล่อง)
-  // ไม่ได้ทำกล่องใหม่ เพราะ "ได้ของใหม่" ควรรู้สึกเหมือนกันทุกทางที่ได้มา
-  // กล่องนี้เป็น .panel จึงซ้อนทับหน้าคลังน้องที่เปิดค้างอยู่ได้เลย ไม่ต้องปิดหน้าเดิม
-  //
-  // เสียง upWin ของการซื้อถูกถอดออก — กล่องยิง bonus ตามด้วย cheer อยู่แล้ว
-  // สามเสียงซ้อนในครึ่งวินาทีฟังออกเป็นเสียงเดียวที่รกกว่าเดิม
-  showReward('ได้น้องใหม่!', {}, { cards: [skinGotCard(s)] });
 }
 
 function buildOutfitGrid() {
@@ -3865,7 +3876,8 @@ function ownProfile() {
     stats: { score: s.score, runs: s.runs, seconds: s.seconds, meters: s.meters },
     best: { stageId: best.stage ? best.stage.id : null, stageName: best.stage ? best.stage.name : '', score: best.score },
     counts: {
-      cats: [SKINS.filter((x) => ownsSkin(x.id)).length, SKINS.length],
+      // นับแบบเดียวกับป้ายในคลังน้อง: น้องส้ม + น้องระบายสี + สายพันธุ์ที่เคยพบ
+      cats: [2 + new Set(allCats().map((c) => c.breed)).size, 2 + BREEDS.length],
       outfits: [ownedCount(), OUTFITS.length],
       treasures: [treasureCount(), TREASURES.length],
     },
@@ -4955,7 +4967,7 @@ const stashSel = { skin: null, outfit: null, treasure: null };   // ของท
 
 // หัวเรื่อง / แถบกรอง / กริด ของแต่ละหมวด — สลับหมวดคือซ่อนทุกอันแล้วโชว์ของหมวดนั้น
 const STASH_TABS = {
-  skin: { title: 'เลือกแมวน้อย', tab: 'tabStashSkin', filter: 'skinFilter', grid: 'skinStashGrid' },
+  skin: { title: 'คลังน้องแมว', tab: 'tabStashSkin', filter: 'skinFilter', grid: 'skinStashGrid' },
   outfit: { title: 'เลือกชุด', tab: 'tabStashOutfit', filter: 'outfitFilter', grid: 'outfitGrid' },
   treasure: { title: 'สมบัติ', tab: 'tabStashTreasure', filter: 'treasureFilter', grid: 'treasureGrid' },
 };
@@ -4993,10 +5005,13 @@ function setStashTab(tab) {
  * ซึ่งเดิมต้องนับการ์ดในกริดเอาเอง และนับไม่ได้เลยถ้ากริดยาวจนต้องเลื่อน
  */
 function paintStashCount(tab) {
-  const got = tab === 'skin' ? SKINS.filter((x) => ownsSkin(x.id)).length
+  // หมวดน้องแมว: ไม่มี "ทั้งหมด" ตายตัว (รับเลี้ยงได้ไม่จำกัด) จึงนับเป็นสายพันธุ์ที่เคยพบ
+  // จากสายพันธุ์ทั้งหมด + น้องส้มกับน้องระบายสีที่ทุกคนมี
+  const seenBreeds = new Set(allCats().map((c) => c.breed)).size;
+  const got = tab === 'skin' ? 2 + seenBreeds
     : tab === 'outfit' ? OUTFITS.filter((o) => isOwned(o.id)).length
     : TREASURES.filter((t) => ownsTreasure(t.id)).length;
-  const all = tab === 'skin' ? SKINS.length : tab === 'outfit' ? OUTFITS.length : TREASURES.length;
+  const all = tab === 'skin' ? 2 + BREEDS.length : tab === 'outfit' ? OUTFITS.length : TREASURES.length;
   document.getElementById('stashGot').textContent = got;
   document.getElementById('stashAll').textContent = all;
 }
@@ -5021,7 +5036,7 @@ function refreshStash() {
  * เพราะคำถามแรกที่คนเปิดคลังมาถามคือ "ตอนนี้ใส่อะไรอยู่" ไม่ใช่ "มีอะไรบ้าง"
  */
 function stashDefault(tab) {
-  if (tab === 'skin') return getSkin().id;
+  if (tab === 'skin') return catEntryById(getSkin().id) ? getSkin().id : 'orange';
   if (tab === 'outfit') return getSkin().outfit.id;
   const eq = getEquipped().filter(Boolean);
   return eq[0] || TREASURES[0].id;
@@ -5040,10 +5055,12 @@ let stashRAF = 0;
 /** วาดเฉพาะตัวแมวในช่องพรีวิว — เรียกทุกเฟรมตอนอยู่หมวดแมวน้อยหรือหมวดชุด */
 function paintStashCat() {
   if (stashTab === 'skin') {
-    // โชว์สีขนล้วน ๆ ไม่ใส่ชุด — หมวดนี้เลือก "สี" ชุดจะบังสีจนเทียบกันไม่ออก
-    const x = skinById(stashSel.skin);
+    // โชว์ตัวน้องล้วน ๆ ไม่ใส่ชุด — หมวดนี้เลือก "ตัว" ชุดจะบังสีจนเทียบกันไม่ออก
+    // น้องที่ยังเด็กวาดเล็กลงตามวัย เท้ายังอยู่ที่เดิม
+    const x = catEntryById(stashSel.skin) || catEntries()[0];
+    const k = x.kind === 'raising' ? sizeOf(levelOf(x.cat)) : 1;
     paintMini(document.getElementById('stashCat'), 190,
-      (c) => drawCatPose(c, 95, 167, 2.85, x, stashTick));
+      (c) => drawCatPose(c, 95, 167, 2.85 * k, x.skin, stashTick));
     return;
   }
   const o = outfitById(stashSel.outfit);
@@ -5085,19 +5102,20 @@ function paintStashShow() {
 
   if (!stashSel[stashTab]) stashSel[stashTab] = stashDefault(stashTab);
 
-  // ปุ่ม "ดูเพิ่มเติม" มีเฉพาะชุดกับสมบัติ แมวไม่มีหน้ารายละเอียด ช่องซ้ายจึงเหลือปุ่มเดียว
+  // ปุ่ม "ดูเพิ่มเติม" ของหมวดน้องแมวคือ "เรื่องราว" — มีเฉพาะน้องจากกล่อง (ตั้งค่าในสาขาข้างล่าง)
   document.getElementById('stashMore').hidden = stashTab === 'skin';
-  // ปุ่มทองมีแค่ตอนซื้อแมว ล้างทิ้งก่อนทุกครั้ง ไม่งั้นสลับไปหมวดอื่นแล้วปุ่มยังเป็นสีทองค้าง
+  document.getElementById('stashMore').textContent = 'ดูเพิ่มเติม';
+  // ปุ่มทองมีแค่ตอนซื้อ ล้างทิ้งก่อนทุกครั้ง ไม่งั้นสลับไปหมวดอื่นแล้วปุ่มยังเป็นสีทองค้าง
   use.classList.remove('buy');
   use.removeAttribute('aria-label');
 
   if (stashTab === 'skin') {
-    const x = skinById(stashSel.skin);
+    const x = catEntryById(stashSel.skin) || catEntries()[0];
     stashSel.skin = x.id;
-    const got = ownsSkin(x.id);
-    const on = got && x.id === getSkin().id;
+    const locked = x.kind === 'locked';
+    const on = x.id === getSkin().id;
 
-    face.className = 'stash-face normal' + (got ? '' : ' locked');
+    face.className = 'stash-face normal' + (locked ? ' locked' : '');
     cat.classList.remove('hidden');
     emo.classList.add('hidden');
     badge.replaceChildren();
@@ -5105,25 +5123,26 @@ function paintStashShow() {
     paintStashCat();
     if (!stashRAF) stashLoop();
 
-    name.textContent = x.name;
-    // ตัวที่ยังไม่ได้บอกราคาบนปุ่มเลย คนจะได้รู้ก่อนกดว่ากดแล้วต้องจ่าย
-    // (กดแล้วยังมีกล่องยืนยันอีกชั้น ไม่มีทางจ่ายโดยไม่ตั้งใจ)
-    // ปุ่มซื้อเป็นสีทองมีเหรียญ ต่างจากปุ่มเขียวของ "เลือกสีนี้" — ดูปุ่มก็รู้ว่ากดแล้วเสียเงิน
-    if (got) {
-      use.textContent = on ? 'กำลังใช้อยู่' : 'เลือกสีนี้';
+    name.textContent = locked ? '???' : (x.cat ? nameOf(x.cat) : x.skin.name);
+    hint.classList.remove('hidden');
+    hint.textContent = catEntryHint(x);
+
+    if (x.kind === 'raising') {
+      use.textContent = 'ไปบ้านน้อง';
+      use.disabled = false;
+      use.classList.remove('ghost');
+    } else if (locked) {
+      use.textContent = 'ยังไม่เคยพบ';
+      use.disabled = true;
+      use.classList.add('ghost');
     } else {
-      use.classList.add('buy');
-      use.replaceChildren('ปลดล็อก');
-      const coin = document.createElement('span');
-      coin.className = 'coin';
-      coin.setAttribute('aria-hidden', 'true');
-      const price = document.createElement('b');
-      price.textContent = x.cost.toLocaleString('en-US');
-      use.append(coin, price);
-      use.setAttribute('aria-label', 'ปลดล็อก ' + x.cost.toLocaleString('en-US') + ' ทอง');
+      use.textContent = on ? 'กำลังใช้อยู่' : 'เลือกลงวิ่ง';
+      use.disabled = on;
+      use.classList.toggle('ghost', on);
     }
-    use.disabled = on;
-    use.classList.toggle('ghost', on);
+    const more = document.getElementById('stashMore');
+    more.hidden = !x.cat;
+    more.textContent = 'เรื่องราว';
   } else if (stashTab === 'outfit') {
     const o = outfitById(stashSel.outfit) || OUTFITS[0];
     stashSel.outfit = o.id;
@@ -5684,6 +5703,26 @@ const talentUI = setupTalentUI({
 });
 // หมวดสกิลอยู่ในแผงเดียวกัน (แท็บบนหัว) — skill-ui.js ดูแลการสลับหมวด
 const skillUI = setupSkillUI({ panel: talentPanel, talentUI, sfx, unlockAudio, markScrollable });
+
+// ── บ้านน้องแมว ── (ระบบเลี้ยงน้องจากกล่อง: cats.js / catroom.js / catroom-ui.js)
+catRoomUI = setupCatRoomUI({
+  game, sfx, unlockAudio, paintMini, paintFitted, getGold, addGold, refreshGold,
+  closeAllPanels, startPanel, refreshHome, confirmBox, recheckSkin,
+});
+
+/** ทางลัดจากหน้าอื่น (คลังน้อง) — เปิดบ้านน้องแล้วเลือกตัวนี้ไว้ */
+function openCatRoom(id) {
+  catRoomUI.open(id);
+}
+
+/** เรื่องราวของน้อง เปิดทับหน้าที่อยู่ (คลังน้อง / บ้านน้อง) */
+function openCatStory(id) {
+  catRoomUI.openStory(id);
+}
+
+// นาฬิกาเกมต้องตรงเซิร์ฟเวอร์ (ระบบเลี้ยงน้องนับเวลาจริง) — ตอนเปิดเกมและตอนกลับเข้าแอป
+syncServerClock();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncServerClock(); });
 document.getElementById('btnTalent').addEventListener('click', () => {
   // แตะเมนูก็นับเป็น gesture แล้ว เพลงหน้าแรกจึงเริ่มได้โดยไม่ต้องกดเริ่มวิ่งก่อน
   unlockAudio(); startMusic(); sfx.fish();
@@ -5704,6 +5743,8 @@ document.getElementById('btnStash').addEventListener('click', () => {
   unlockAudio(); startMusic();
   // เปิดจากล็อบบี้ต้องเจอแมวน้อยก่อนเสมอ ไม่ใช่หมวดที่ค้างไว้รอบก่อน
   showStash(true, 'skin');
+  // ครั้งแรกที่เห็นคลังน้องแมวแบบใหม่ — น้องส้มอธิบายเงาดำกับตัวหลัก
+  catRoomUI.showTip('collection');
 });
 document.getElementById('stashBack').addEventListener('click', () => showStash(false));
 
@@ -5711,8 +5752,15 @@ document.getElementById('stashBack').addEventListener('click', () => showStash(f
 document.getElementById('stashUse').addEventListener('click', () => {
   unlockAudio();
   if (stashTab === 'skin') {
-    const x = skinById(stashSel.skin);
-    if (!ownsSkin(x.id)) { buySkin(x); return; }
+    const x = catEntryById(stashSel.skin);
+    if (!x || x.kind === 'locked') return;
+    // น้องที่ยังเลี้ยงอยู่ลงวิ่งไม่ได้ ปุ่มจึงเป็นทางลัดไปหาน้องที่บ้านแทน
+    if (x.kind === 'raising') {
+      sfx.fish();
+      stashPanel.classList.add('hidden');
+      openCatRoom(x.cat.id);
+      return;
+    }
     setSkin(x.id);
     sfx.potion();
     refreshHome();
@@ -5761,7 +5809,10 @@ document.getElementById('stashUse').addEventListener('click', () => {
 document.getElementById('stashMore').addEventListener('click', () => {
   unlockAudio();
   sfx.fish();
-  if (stashTab === 'outfit') openOutfitDetail(stashSel.outfit);
+  if (stashTab === 'skin') {
+    const x = catEntryById(stashSel.skin);
+    if (x?.cat) openCatStory(x.cat.id, stashPanel);
+  } else if (stashTab === 'outfit') openOutfitDetail(stashSel.outfit);
   else openDetail(stashSel.treasure, stashPanel);
 });
 
@@ -7135,6 +7186,14 @@ function showGameOver(quit = false) {
   // ตาที่ไม่ได้ XP เลย (ตายทันทีจนคะแนนไม่ถึงพัน) ไม่ต้องโชว์อะไร
   box.classList.toggle('hidden', run.gained <= 0 && !run.leveledUp);
 
+  // ── พบน้องแมวในกล่อง ── รับเข้าบ้านทันที (ตายหลังจากพบแล้วก็ยังนับ) แล้วค่อยเปิดหน้าตั้งชื่อ
+  const found = game.boxFound;
+  game.boxFound = null;
+  const kitten = catRoomUI.afterRun(found, {
+    stage: game.stage.id,
+    stageName: (game.scene && game.scene.name) || game.stage.name,
+  }, curLevel());
+
   // การ์ดในล็อบบี้ต้องอัปเดตด้วย ไม่งั้นกดกลับหน้าแรกแล้วเลเวลยังเป็นของเก่า
   refreshProfile();
   // เลเวลขึ้น = อาจมีกล่องใหม่ให้กดรับ ป้ายแดงต้องรู้ตั้งแต่ยังอยู่หน้าสรุป
@@ -7159,6 +7218,15 @@ function showGameOver(quit = false) {
   if (run.leveledUp) setTimeout(() => { if (alive()) sfx.levelUp(); }, landAt + (isBest ? 800 : 400));
 
   overPanel.classList.remove('hidden');
+
+  // หน้าพบน้องเด้งทับหน้าสรุปหลังตัวเลขไล่จบ — ถ้าผู้เล่นกดเล่นต่อไปก่อน น้องยังอยู่ในบ้านแล้ว
+  if (kitten) {
+    setTimeout(() => {
+      if (!alive() || overPanel.classList.contains('hidden')) return;
+      sfx.mew();
+      catRoomUI.openFound(kitten.id, 'found');
+    }, landAt + (run.leveledUp ? 1400 : 700));
+  }
 }
 
 // ── ฉากห้องก่อนเริ่มวิ่ง ────────────────────────────────────
@@ -7206,8 +7274,13 @@ function showIntro() {
   // จึงไปสั่งเพลงหน้าแรกมา ทั้งที่ฉากนี้ต้องเงียบ
   game.syncMusic();
 
+  // ── กล่องน้องแมว ── รอบนี้จะเจอไหมตัดสินตอนนี้ (Game เอาไปตั้งตอน start)
+  // กล่องแรกของบัญชี น้องส้มเล่าเองว่าได้ยินเสียงร้อง แทนประโยคสุ่มปกติ
+  const box = catRoomUI.planRun(curLevel());
+  game.pendingBox = box.plan;
+
   introPanel.classList.remove('hidden');
-  document.getElementById('introLine').textContent = pickLine();
+  document.getElementById('introLine').textContent = box.line || pickLine();
   sfx.jump();            // เสียงร้องทักทายให้รู้ว่าน้องกำลังพูด
 
   clearTimeout(introTimer);
@@ -7235,6 +7308,13 @@ function closeAllPanels() {
   // (showFace(false) ล้างให้อยู่แล้ว แต่ยังออกจากหน้านี้ได้ทางอื่น เช่นกดปุ่มเล่น)
   setDraft(null);
   document.querySelectorAll('.stage .panel').forEach((el) => el.classList.add('hidden'));
+  // บ้านน้องแมววาดแทนหน้าแรกบนผ้าใบเดียวกัน — ปิดแผงแล้วต้องเลิกวาดห้องด้วย
+  // ไม่งั้นกดเล่นจากที่อื่นแล้วฉากห้องก่อนวิ่งจะกลายเป็นบ้านน้องค้างอยู่
+  // เพลงบ้านน้องต้องหยุดตามด้วย (ทางที่ไปต่อจะสั่งเพลงของตัวเองอีกที)
+  if (game.catRoom) {
+    game.catRoom = null;
+    game.syncMusic();
+  }
   // รอบตีบวกรัวเป็นลูปที่ "หักทองเอง" ทุก ๆ ไม่กี่ร้อยมิลลิวินาที ปิดแค่แผงไม่พอ
   // ถ้าไม่หยุดตรงนี้ด้วย ผู้เล่นที่กดกลับหน้าแรกหรือกดเล่นกลางคันจะเสียทองต่อไป
   // เรื่อย ๆ ทั้งที่มองไม่เห็นหน้านั้นแล้ว
@@ -7674,6 +7754,11 @@ if (import.meta.env.DEV) {
 // ปุ่มเสกเพชรต้องวาดแถบบนใหม่เอง และถ้าตู้สุ่มเปิดค้างอยู่ก็ต้องปลดล็อกปุ่มสุ่มด้วย
 // ไม่งั้นเพชรเข้าแล้วแต่ปุ่มยังเทาอยู่จนกว่าจะออกไปเข้าใหม่
 const debugHooks = {
+  // ข้อมูลน้องแมวถูกแก้จากแผงทดสอบ — บ้านน้องที่เปิดอยู่กับปุ่มล็อบบี้ต้องวาดใหม่
+  refreshCats: () => {
+    catRoomUI.refresh();
+    refreshHome();
+  },
   refreshCurrency: () => {
     if (!gachaPanel.classList.contains('hidden')) refreshGacha();
     else refreshGold();

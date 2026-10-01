@@ -530,7 +530,19 @@ const TRACKS = {
 // ─────────────────────────────────────────────────────────────
 const FILE_TRACKS = {
   home: import.meta.env.BASE_URL + 'home-theme.mp3',
+  // บ้านน้องแมว (src/catroom.js) — เพลงของห้องโดยเฉพาะ
+  room: import.meta.env.BASE_URL + 'Music_room.mp3',
 };
+
+// เพลงบ้านน้องใช้ชื่อในตาราง TRACKS ด้วย (setMusicTrack รับเฉพาะชื่อที่มีในตาราง)
+// ถ้าไฟล์โหลดไม่ได้ ถอยไปใช้เพลงสังเคราะห์ของหน้าแรก ห้องจะได้ไม่เงียบสนิท
+TRACKS.room = TRACKS.home;
+
+/**
+ * ตำแหน่งที่เล่นค้างไว้ของแต่ละไฟล์ — ไฟล์เพลงใช้ <audio> ตัวเดียวสลับ src กัน
+ * ถ้าไม่จำไว้ ออกจากบ้านน้องกลับมาหน้าแรกทีไรเพลงหน้าแรกจะเริ่มต้นใหม่ทุกครั้ง
+ */
+const filePos = {};
 
 // วัด RMS เทียบกับเพลงสังเคราะห์ในเกมจริง ไม่ได้เดาเอา
 // ที่ 0.5 เพลงหน้าแรกดังกว่าเพลงตอนวิ่ง 3.5 dB (1.5 เท่า) เพราะไฟล์จริงถูกบีบ
@@ -577,7 +589,7 @@ function ensureFileEl() {
     // ไฟล์หาย/เน็ตพัง — อย่าปล่อยให้หน้าแรกเงียบสนิท ถอยไปใช้เพลงสังเคราะห์
     console.warn('[music] โหลดเพลงหน้าแรกไม่ได้ ใช้เพลงสังเคราะห์แทน');
     fileFailed = true;
-    if (track === 'home') { loopStart = ac.currentTime + 0.05; pump(); }
+    if (FILE_TRACKS[track]) { loopStart = ac.currentTime + 0.05; pump(); }
   });
 
   fileGain = ac.createGain();
@@ -649,9 +661,21 @@ function playFile(src) {
   fileWanted = true;
   fadeToken++;   // ยกเลิกคิวหยุดที่ค้างอยู่ ไม่งั้นมันจะมาหยุดเพลงที่เพิ่งสั่งเล่น
   // ตั้ง src ใหม่เฉพาะตอนเปลี่ยนเพลงจริง ๆ ไม่งั้นกลับมาหน้าแรกทีไรเพลงจะเริ่มใหม่หมด
-  if (el.getAttribute('src') !== src) {
+  const old = el.getAttribute('src');
+  if (old !== src) {
+    if (old) filePos[old] = el.currentTime || 0;
     el.setAttribute('src', src);
     el.load();
+    // เล่นต่อจากจุดที่ค้างไว้ (ต้องรอให้รู้ความยาวไฟล์ก่อนถึงตั้งตำแหน่งได้)
+    const at = filePos[src];
+    if (at) {
+      el.addEventListener('loadedmetadata', () => {
+        try { el.currentTime = at % (el.duration || Infinity); } catch { /* ยังเลื่อนไม่ได้ */ }
+      }, { once: true });
+    }
+    // สลับเพลงกลางทาง ไล่เสียงขึ้นจากเงียบใหม่ — ไม่งั้นเพลงใหม่โผล่มาเต็มเสียงทันที
+    fileGain.gain.cancelScheduledValues(audioCtx().currentTime);
+    fileGain.gain.setValueAtTime(FADE_FLOOR, audioCtx().currentTime);
   }
   fadeIn();
   el.play().catch(retryFileOnGesture);
