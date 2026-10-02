@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────
 import { loadSkin, saveSkin, KEYS } from './storage.js';
 import { catById, nameOf, levelOf, ageOf } from './cats.js';
+import { faceOf } from './faces.js';
 import { getOutfit } from './outfits.js';
 import { CUSTOM_ID, customSkin } from './paint.js';
 
@@ -233,6 +234,7 @@ export function catSkin(cat) {
     name: nameOf(cat),
     note: base.note,
     age: ageOf(levelOf(cat)),
+    face: faceOf(cat),   // หน้าเฉพาะตัว — ตัววาดหัวอ่านช่องนี้ (render/faces.js)
     noPhoto: true,
     palette: cat.breed,
     catId: cat.id,

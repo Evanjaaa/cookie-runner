@@ -26,6 +26,7 @@
 // ─────────────────────────────────────────────────────────────
 import { loadPref, savePref } from './storage.js';
 import { now, dayKey } from './clock.js';
+import { rollFaceId } from './faces.js';
 
 export const ROOM_SLOTS = 3;
 export const WAIT_SLOTS = 1;
@@ -423,6 +424,7 @@ export function adoptFound(where = {}, pre = {}) {
     id: newId(),
     breed: BREEDS.some((b) => b.id === pre.breed) ? pre.breed : rollBreed(),
     sex: pre.sex === 'm' || pre.sex === 'f' ? pre.sex : (Math.random() < 0.5 ? 'm' : 'f'),
+    face: pre.face || null,   // หน้าเฉพาะตัว (src/faces.js) — เติมข้างล่างถ้ายังไม่มี
     name: '',
     foundAt: t,
     where: { stage: where.stage || '', stageName: where.stageName || '' },
@@ -433,6 +435,8 @@ export function adoptFound(where = {}, pre = {}) {
     state: roomCats().length < ROOM_SLOTS ? 'room' : 'wait',
     seed: Math.floor(Math.random() * 1e6),
   };
+  // หน้าต้องตรงกับสายพันธุ์และเพศของตัวจริง — ลูกแมวที่ขี่คอระหว่างวิ่งใช้หน้าเดียวกันนี้
+  if (!cat.face) cat.face = rollFaceId(cat.breed, cat.sex);
   state.list.push(cat);
   state.finds = { since: 0, day: dayKey(t), total: (state.finds.total || 0) + 1 };
   save();

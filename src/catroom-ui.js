@@ -23,11 +23,13 @@ import { drawCatBox } from './render/catbox.js';
 import { drawItemIcon } from './render/items.js';
 import { TIPS, tipSeen, markTip } from './tips.js';
 import { dayKey } from './clock.js';
+import { rollFaceId } from './faces.js';
 import { STATE } from './game.js';
 import { startMusic } from './music.js';
 import { t, getLang } from './i18n.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
+const later = (fn, ms) => setTimeout(fn, ms);
 /** วันที่ในเรื่องราวของน้อง ตามภาษาที่เลือก (ไทย = พ.ศ.) */
 const fmtDate = (ms) => new Date(ms).toLocaleDateString(getLang() === 'en' ? 'en-GB' : 'th-TH');
 const $ = (id) => document.getElementById(id);
@@ -140,10 +142,30 @@ export function setupCatRoomUI(deps) {
     refreshHome();
   }
 
+  /**
+   * ออกจากบ้าน — กลับด้านของตอนเข้า: ม่านวงกลมขยายจากกลางจอปิดห้อง → ปิดห้องข้างหลังม่าน
+   * → ม่านหดกลับเข้าไปที่กล่องแมวบนหน้าแรก (เหมือนน้องเดินกลับเข้ากล่อง)
+   */
+  let leaving = false;
   $('crBack').addEventListener('click', () => {
+    if (leaving) return;
+    leaving = true;
     unlockAudio();
     sfx.fish();
-    close();
+    later(() => sfx.bubblePop(), 300);
+    const wipe = $('roomWipe');
+    wipe.className = 'room-wipe in-center';
+    setTimeout(() => {
+      close();
+      // ปุ่มกล่องเพิ่งโผล่หลังปิดห้อง — วัดตำแหน่งตอนนี้ ม่านจะหดเข้าไปตรงกล่องพอดี
+      const btn = $('btnHomeBox').getBoundingClientRect();
+      const stage = wipe.parentElement.getBoundingClientRect();
+      wipe.style.setProperty('--wx', ((btn.left + btn.width / 2 - stage.left) / stage.width * 100) + '%');
+      wipe.style.setProperty('--wy', ((btn.top + btn.height / 2 - stage.top) / stage.height * 100) + '%');
+      wipe.className = 'room-wipe out-box';
+      game.homeBoxPop = 1;   // กล่องเด้งรับตอนม่านหดเข้าไป
+      setTimeout(() => { wipe.className = 'room-wipe'; leaving = false; }, 560);
+    }, 430);
   });
 
   // ลูกศรเลื่อนห้อง — จางหายเมื่อสุดทางแล้ว
@@ -750,7 +772,9 @@ export function setupCatRoomUI(deps) {
     reloadCats();
     if (!rollFind(playerLv)) return { plan: null, line: null };
     const first = !allCats().length && !tipSeen('firstBox');
-    const plan = { at: Math.round(rand(420, 840)), breed: rollBreed(), sex: Math.random() < 0.5 ? 'm' : 'f' };
+    const breed = rollBreed();
+    const sex = Math.random() < 0.5 ? 'm' : 'f';
+    const plan = { at: Math.round(rand(420, 840)), breed, sex, face: rollFaceId(breed, sex) };
     if (first) markTip('firstBox');
     return { plan, line: first ? TIPS.firstBox : null };
   }
@@ -776,22 +800,36 @@ export function setupCatRoomUI(deps) {
     $('catRoomDot').classList.toggle('hidden', !on);
   }
 
-  /** ไอคอนปุ่ม: กล่องกระดาษมีลูกแมวโผล่หัว */
-  function paintIcon() {
-    const c = roomCats()[0] || waitingCats()[0];
-    const s = c ? catSkin(c) : { ...skinById('tabby'), age: 'baby', noPhoto: true };
-    // หน้าลูกแมวโผล่พ้นขอบกล่องครึ่งหัว — วาดหัวก่อน กล่องทับครึ่งล่าง
-    paintFitted($('catRoomIcon'), 76, 0.96, (g) => {
-      drawCatFace(g, 38, 24, 0.95, s);
-      drawCatBox(g, 38, 72, 0, 0.6);
-    });
-  }
+  /** ปุ่มบ้านน้องในแถวขวาถูกแทนด้วยกล่องแมวในฉากแล้ว (drawHomeBox) — ไม่มีไอคอนให้วาด
+   *  คงชื่อไว้เพราะ refreshHome ใน main.js ยังเรียกอยู่ */
+  function paintIcon() {}
 
-  $('btnCatRoom').addEventListener('click', () => {
+  /**
+   * แตะกล่องแมวบนหน้าแรก → กล่องเด้ง ฝากาง → ม่านวงกลมขยายออกจากกล่องจนเต็มจอ
+   * → เปิดห้องข้างหลังม่าน → ม่านหดเปิดออกตรงกลาง เผยห้องลูกเหมียว
+   */
+  let entering = false;
+  $('btnHomeBox').addEventListener('click', () => {
+    if (entering) return;
+    entering = true;
     unlockAudio();
     startMusic();   // ต้องอยู่ในจังหวะที่ผู้ใช้กด ไม่งั้นมือถือบล็อกเพลง
-    sfx.fish();
-    open();
+    sfx.bubblePop();
+    later(() => sfx.trill(), 120);
+    game.homeBoxPop = 1;
+    const wipe = $('roomWipe');
+    const btn = $('btnHomeBox').getBoundingClientRect();
+    const stage = wipe.parentElement.getBoundingClientRect();
+    wipe.style.setProperty('--wx', ((btn.left + btn.width / 2 - stage.left) / stage.width * 100) + '%');
+    wipe.style.setProperty('--wy', ((btn.top + btn.height / 2 - stage.top) / stage.height * 100) + '%');
+    setTimeout(() => {
+      wipe.className = 'room-wipe in';
+      setTimeout(() => {
+        open();
+        wipe.className = 'room-wipe out';
+        setTimeout(() => { wipe.className = 'room-wipe'; entering = false; }, 560);
+      }, 430);
+    }, 220);
   });
 
   // ทุกวันใหม่จุดแดงต้องคิดใหม่ (เพดาน EXP รีเซ็ต)

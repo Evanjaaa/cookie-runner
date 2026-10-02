@@ -5426,26 +5426,34 @@ canvas[hidden] { display: none; }
 .pf-code { min-width: 0; }
 .pf-code small { min-width: 0; max-width: calc(var(--u) * 70); overflow: hidden; text-overflow: ellipsis; }
 
-/* ข้อความตอบกลับ (คัดลอกแล้ว / เพิ่มเพื่อนแล้ว) ลอยเป็นป้ายเหนือแถวปุ่ม
-   เคยวางแทรกในแถวเดียวกัน แล้วบนมือถือข้อความทับปุ่มส่องโปรไฟล์ */
+/* ข้อความตอบกลับ (คัดลอกแล้ว / ส่งคำขอแล้ว / ยกเลิกแล้ว) — ป้ายลอยกลางการ์ดล่าง เหนือทุกชั้น
+   เดิมเกาะอยู่เหนือแถวปุ่มในชั้นของแถวปุ่มเอง เลยไปซ้อนกับขอบกรอบสถิติข้างบน ตัวเล็กอ่านไม่ออก
+   (ก่อนนั้นเคยแทรกในแถวปุ่ม แล้วบนมือถือทับปุ่มส่องโปรไฟล์) — ตอนนี้เป็นลูกของการ์ด ไม่อยู่ในแถวไหน */
 .pf-msg {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + var(--u) * 1.5);
-  z-index: 4;
-  max-width: 100%;
-  padding: calc(var(--u) * 1.2) calc(var(--u) * 4);
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  width: max-content;
+  max-width: 86%;
+  padding: calc(var(--u) * 3) calc(var(--u) * 9);
   border-radius: 999px;
-  background: rgba(27,15,43,.9);
-  font-size: calc(var(--u) * 4.6);
-  color: #FFF3C8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border: clamp(2px, .3vw, 3px) solid #FFFFFF;
+  background: linear-gradient(180deg, #FFF8E4, #FFE7B8);
+  box-shadow: 0 4px 0 rgba(58,29,80,.35), 0 10px 24px rgba(12,4,24,.4);
+  color: #4A2163;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--u) * 7);
+  line-height: 1.4;
+  text-align: center;
+  transform: translate(-50%, -50%);
   pointer-events: none;
+  animation: pf-msg-pop .28s cubic-bezier(.3,1.6,.5,1);
 }
 .pf-msg:empty { display: none; }
-.pf-msg.bad { color: #FFD1DE; }
+.pf-msg.bad { background: linear-gradient(180deg, #FFE9EF, #FFCCD9); color: #8C1E45; }
+@keyframes pf-msg-pop { from { transform: translate(-50%, -50%) scale(.7); opacity: 0; } }
 
 /* ปุ่มล่างขวา: แก้ไข / เสร็จแล้ว / เพิ่มเพื่อน */
 .pf-action {
@@ -5476,6 +5484,16 @@ canvas[hidden] { display: none; }
 .pf-pop.other .pf-action .ico-add { display: block; }
 .pf-action:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(58,29,80,.45); }
 .pf-action:disabled { opacity: .75; cursor: default; transform: none; }
+/* ยกเลิกคำขอ — เทมเพลตเดียวกับปุ่มเพิ่มเพื่อน แค่โทนแดงอมชมพู วางชิดซ้ายของปุ่ม "ส่งคำขอแล้ว" */
+.pf-action.pf-unsend {
+  border-color: #A63A5E;
+  background: linear-gradient(180deg, #FFD6E0, #FFAFC4);
+  color: #5A1230;
+}
+.pf-action.pf-unsend:active { box-shadow: 0 1px 0 rgba(90,18,48,.45); }
+.pf-unsend svg { stroke-width: 3; }
+.pf-unsend.hidden { display: none; }
+.pf-unsend:not(.hidden) + .pf-action { margin-left: 0; }
 
 /* ── ส่องโปรไฟล์ด้วยรหัสเพื่อน ── */
 .pf-lookup {
@@ -12285,3 +12303,93 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 /* โหมดเต็มจอ: ซ่อนทุกอย่างยกเว้นชั้นรับนิ้ว ปุ่มเต็มจอ ป้ายแจ้งสั้น ๆ (ยังไม่ได้ EXP)
    และเมนูเลือกอาหาร/ของเล่น — ลากน้องไปวางที่ชามหรือหีบแล้วเมนูยังเด้งขึ้นใกล้จุดนั้นได้ */
 #catRoomPanel.clean > :not(.cr-hit):not(.cr-full):not(.cr-toast):not(.cr-picker) { display: none !important; }
+
+/* ══ กล่องแมวบนหน้าแรก = ทางเข้าบ้านลูกเหมียว ══
+   ตัวกล่องกับออร่าวาดบน canvas — ปุ่มนี้ใส ทับกล่องพอดี (ตำแหน่งจาก HOME_BOX ผ่าน --box-*)
+   ป้ายชื่อห้อยใต้กล่อง */
+.homebox {
+  position: absolute;
+  left: var(--box-x, 74%);
+  top: var(--box-y, 74%);
+  width: var(--box-w, 13.5%);
+  height: var(--box-h, 28%);
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.homebox:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; border-radius: 16px; }
+.homebox-label {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translate(-50%, 100%);
+  padding: 3px 12px 2px;
+  border-radius: 999px;
+  background: rgba(58,29,80,.82);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(10px, 2.4dvh, 14px);
+  line-height: 1.55;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  animation: homeboxLabel 2.4s ease-in-out infinite;
+}
+@keyframes homeboxLabel { 0%, 100% { transform: translate(-50%, 100%); } 50% { transform: translate(-50%, calc(100% - 3px)); } }
+.homebox .dot { top: 8%; right: 14%; }
+
+/* ══ ม่านตอนเข้าบ้านลูกเหมียว ══
+   วงกลมชมพูพาสเทลมีรอยเท้าแมว ขยายออกจากกล่อง (in) แล้วหดเปิดตรงกลางจอ (out) */
+.room-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 50%, #FFE3EE 0%, #F6B6D2 55%, #C98AE0 100%);
+  clip-path: circle(0% at var(--wx, 74%) var(--wy, 74%));
+  visibility: hidden;
+}
+.room-wipe.in, .room-wipe.out, .room-wipe.in-center, .room-wipe.out-box { visibility: visible; pointer-events: auto; }
+/* ออกจากบ้าน: ปิดจากกลางจอ แล้วหดกลับเข้าไปที่กล่องแมว */
+.room-wipe.in-center { animation: wipeInCenter .43s cubic-bezier(.55,0,.75,.3) forwards; }
+.room-wipe.out-box { animation: wipeOutBox .56s cubic-bezier(.25,.7,.35,1) forwards; }
+@keyframes wipeInCenter {
+  from { clip-path: circle(0% at 50% 55%); }
+  to { clip-path: circle(150% at 50% 55%); }
+}
+@keyframes wipeOutBox {
+  from { clip-path: circle(150% at var(--wx, 74%) var(--wy, 74%)); }
+  to { clip-path: circle(0% at var(--wx, 74%) var(--wy, 74%)); }
+}
+.room-wipe.in-center .room-wipe-paw { animation: wipePaw .43s ease-out .2s forwards; }
+.room-wipe.out-box .room-wipe-paw { opacity: 1; transform: scale(1); animation: wipePawOut .3s ease-in forwards; }
+.room-wipe.in { animation: wipeIn .43s cubic-bezier(.55,0,.75,.3) forwards; }
+.room-wipe.out { animation: wipeOut .56s cubic-bezier(.25,.7,.35,1) forwards; }
+@keyframes wipeIn {
+  from { clip-path: circle(0% at var(--wx, 74%) var(--wy, 74%)); }
+  to { clip-path: circle(150% at var(--wx, 74%) var(--wy, 74%)); }
+}
+@keyframes wipeOut {
+  from { clip-path: circle(150% at 50% 55%); }
+  to { clip-path: circle(0% at 50% 55%); }
+}
+/* รอยเท้าแมวกลางม่าน — เด้งขึ้นตอนม่านปิดเต็ม */
+.room-wipe-paw {
+  width: clamp(48px, 16dvh, 90px);
+  aspect-ratio: 1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23FFFFFF'%3E%3Cellipse cx='20' cy='26' rx='10' ry='8.5'/%3E%3Cellipse cx='9' cy='15' rx='3.6' ry='4.6'/%3E%3Cellipse cx='16' cy='9' rx='3.6' ry='4.8'/%3E%3Cellipse cx='24' cy='9' rx='3.6' ry='4.8'/%3E%3Cellipse cx='31' cy='15' rx='3.6' ry='4.6'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0;
+  transform: scale(.4);
+}
+.room-wipe.in .room-wipe-paw { animation: wipePaw .43s ease-out .2s forwards; }
+.room-wipe.out .room-wipe-paw { opacity: 1; transform: scale(1); animation: wipePawOut .3s ease-in forwards; }
+@keyframes wipePaw { to { opacity: .95; transform: scale(1); } }
+@keyframes wipePawOut { to { opacity: 0; transform: scale(1.4); } }
+/* จอเตี้ย: กล่องอยู่ชิดล่างซ้ายของพรม ป้ายชื่อขึ้นไปอยู่เหนือกล่องแทน (ข้างล่างไม่มีที่) */
+.homebox.up .homebox-label { bottom: auto; top: 6px; transform: translate(-50%, -100%); animation-name: homeboxLabelUp; }
+@keyframes homeboxLabelUp { 0%, 100% { transform: translate(-50%, -100%); } 50% { transform: translate(-50%, calc(-100% - 3px)); } }

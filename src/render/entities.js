@@ -1,4 +1,8 @@
 // src/render/entities.js
+import {
+  faceEars, earPath, earFluff, faceShape, faceCrown, faceMarks, faceEyes, faceBrows,
+  faceNose, faceMouth, faceWhiskers,
+} from './faces.js';
 import { PROP_ART } from './props/index.js';
 import { VIEW, GROUND_Y, BODY, WORD, SKILL, POTION, LETTER_COLORS, TREATS, COLORS as C } from '../config.js';
 import { getFace } from '../face.js';
@@ -3376,8 +3380,13 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
   // หางตกลงและแกว่งน้อยลงตอนเหนื่อย — ค่าบวกคือปลายหางต่ำ (ดู drawTail)
   const wag = player.tailLag * (1 - tired * 0.55) + tired * 0.85;
 
+  // ── ของที่ติดตัวน้อง (เป้อุ้มลูกแมว) ── วาดในพิกัดเดียวกับตัว (หลังเอียง/หมุน/ยืดแล้ว)
+  // จึงขยับตามทุกท่าเหมือนเป็นส่วนหนึ่งของตัว — กลางกล่องชน = (0,0) เท้าอยู่ที่ y = feetY
+  const feetY = b.h / 2;
+  if (fx.back) fx.back(ctx, feetY, !!player.sliding);
   if (player.sliding) drawCatSlide(ctx, s, { isDead, mood: look });
   else drawCatStand(ctx, s, { swing, wag, isDead, mood: look, tired, earLay, reach: hero, wave, waveT: fx.waveT || 0 });
+  if (fx.front) fx.front(ctx, feetY, !!player.sliding);
 
   ctx.restore();
 }
@@ -4114,6 +4123,9 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } =
 function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '', noPhoto = false, earLay = 0, gaze = 0 } = {}) {
   // ตาดำเลื่อนได้ไม่เกิน 1.7 หน่วย — มากกว่านั้นตาดำจะหลุดออกนอกรูปหน้า (ตากว้างแค่ 3)
   const gx = Math.max(-1, Math.min(1, gaze)) * 1.7;
+  // ── หน้าเฉพาะตัวของน้องจากกล่อง (src/faces.js) ── ไม่มี = หน้าเดิมทุกประการ
+  // ตอนวาดแผนที่รหัสสี (s.solid) ใช้หน้าเดิม — แผนที่ต้องตรงกับขอบเขตที่ระบายได้
+  const F = s.solid ? null : (s.face || null);
   ctx.save();
   ctx.translate(hx, hy);
   // เอียงหัวรอบ "โคนคอ" ไม่ใช่กลางหัว ไม่งั้นหัวจะลอยหลุดจากตัวเวลาเอียงเยอะ ๆ
@@ -4141,7 +4153,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     const my = (a[1] + b[1]) / 2;
     return [a, b, [mx + (tip[0] - mx) * earK, my + (tip[1] - my) * earK]];
   });
-  const ears = Math.abs(earLay) <= 0.01 ? sized : sized.map(([a, b, tip], i) => {
+  const shaped = F && !earsBack ? faceEars(sized, F) : sized;
+  const ears = Math.abs(earLay) <= 0.01 ? shaped : shaped.map(([a, b, tip], i) => {
     const out = i === 0 ? -1 : 1;
     return [a, b, [tip[0] + out * earLay * (earLay < 0 ? 2 : 6.5), tip[1] + earLay * (earLay < 0 ? 6 : 10)]];
   });
@@ -4151,8 +4164,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   ctx.fillStyle = s.points ? s.dark : s.cat;
   for (const [a, b, tip] of ears) {
     ctx.beginPath();
-    ctx.moveTo(a[0], a[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(b[0], b[1]);
-    ctx.closePath(); ctx.fill();
+    earPath(ctx, a, b, tip, F);
+    ctx.fill();
     catEdge(ctx, s); ctx.stroke();
   }
 
@@ -4162,27 +4175,30 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   for (const [a, b, tip] of ears) {
     const mx = (a[0] + b[0] + tip[0]) / 3;
     const my = (a[1] + b[1] + tip[1]) / 3;
+    const sc = ([px, py]) => [mx + (px - mx) * 0.55, my + (py - my) * 0.55];
     ctx.beginPath();
-    for (const [px, py] of [a, tip, b]) {
-      ctx.lineTo(mx + (px - mx) * 0.55, my + (py - my) * 0.55);
-    }
-    ctx.closePath(); ctx.fill();
+    earPath(ctx, sc(a), sc(b), sc(tip), F);
+    ctx.fill();
   }
 
   // รอยแปรงบนหู — หูอยู่นอกวงกลมหัว ต้องทาแยกไม่งั้นระบายหูไม่ติด
   // วาดก่อนหัวเพราะหูอยู่หลังหัว ลำดับเดียวกับตอนวาดหูจริง
   paintOver(ctx, s, 'head', () => {
     ctx.beginPath();
-    for (const [a, b, tip] of ears) {
-      ctx.moveTo(a[0], a[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(b[0], b[1]);
-      ctx.closePath();
-    }
+    for (const [a, b, tip] of ears) earPath(ctx, a, b, tip, F);
   });
 
   // หัว
   ctx.fillStyle = s.cat;
   ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
   catEdge(ctx, s); ctx.stroke();
+
+  // ทรงหัวเฉพาะตัว: แก้มป่อง ปอยขนข้างแก้ม ขนฟูรอบหัว ขนปลายหู ปอยหน้าผาก
+  if (F) {
+    faceShape(ctx, s, F, CAT_EDGE);
+    earFluff(ctx, s, ears, F);
+    if (s.age !== 'baby') faceCrown(ctx, s, F, catEdge);
+  }
 
   // ── ขนปุยบนหัวลูกแมว ── ปอยขนสามแฉกโผล่พ้นกลางหัว สัญลักษณ์ "ยังเป็นเด็ก" ที่อ่านออกแม้ตัวเล็ก
   // วาดเป็นก้อนเดียวต่อกับหัว (เติมสีขนก่อน ตีเส้นเฉพาะขอบบน) จึงไม่เห็นรอยต่อ
@@ -4213,7 +4229,9 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath(); ctx.arc(0, 0, 11.9, -Math.PI * 0.6, Math.PI * 0.06); ctx.stroke();
   }
 
-  if (s.stripes) {
+  // หน้าเฉพาะตัววาดลายของตัวเอง (คืน true = วาดลายหน้าผากแทนลายเดิมแล้ว)
+  const marked = F ? faceMarks(ctx, s, F) : false;
+  if (s.stripes && !marked) {
     ctx.strokeStyle = s.dark;
     ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(-5, -11); ctx.lineTo(-4, -6); ctx.stroke();
@@ -4226,7 +4244,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   paintOver(ctx, s, 'head', () => { ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); });
 
   // ปากสีครีม
-  const muzzle = () => { ctx.beginPath(); ctx.ellipse(1, 5, 7.5, 5, 0, 0, Math.PI * 2); };
+  const [mw, mh] = F?.muzzle || [7.5, 5];
+  const muzzle = () => { ctx.beginPath(); ctx.ellipse(1, 5, mw, mh, 0, 0, Math.PI * 2); };
   ctx.fillStyle = s.cream;
   muzzle(); ctx.fill();
 
@@ -4247,8 +4266,9 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.clip();
     const m = ctx.createRadialGradient(1, 4.5, 1.5, 1, 4.5, 11.5);
-    m.addColorStop(0, fade(s.dark, 0.82));
-    m.addColorStop(0.45, fade(s.dark, 0.5));
+    const mk = F?.mask || 1;   // หน้าเฉพาะตัวปรับความเข้มหน้ากากได้
+    m.addColorStop(0, fade(s.dark, Math.min(0.95, 0.82 * mk)));
+    m.addColorStop(0.45, fade(s.dark, Math.min(0.8, 0.5 * mk)));
     m.addColorStop(1, fade(s.dark, 0));
     ctx.fillStyle = m;
     ctx.beginPath(); ctx.arc(1, 4.5, 11.5, 0, Math.PI * 2); ctx.fill();
@@ -4262,7 +4282,8 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // ส้มน้อยกับปลาสลิดจะได้หน้าที่จืดกว่าขาวมุกทั้งที่เป็นจังหวะเดียวกันของเกม
   const glee = mood === 'starry';
   // ลูกแมวแก้มชมพูเสมอทุกสายพันธุ์
-  if (s.blush || glee || s.age === 'baby') {
+  // หน้าเฉพาะตัวมีแก้มชมพูทุกหน้า (ความน่ารักพื้นฐาน) — ช่อง blush ในข้อมูลหน้ายังเข้มกว่า
+  if (s.blush || glee || s.age === 'baby' || F) {
     ctx.save();
     // แก้มเป็นสีโปร่งบาง ๆ เพื่อให้ดูเป็นเลือดฝาด ไม่ใช่สติกเกอร์แปะหน้า
     // แต่ตอนวาดแผนที่รหัสสีต้องทึบ ไม่งั้นรหัสแก้มจะผสมกับรหัสขนจนได้ค่ากลาง ๆ
@@ -4313,6 +4334,12 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     for (const ex of [-5, 7]) {
       ctx.beginPath(); ctx.arc(ex, 0, 3.2, Math.PI, 0, true); ctx.stroke();
     }
+  } else if (F && (!mood || mood === 'happy' || mood === 'starry' || mood === 'smug')) {
+    // หน้าเฉพาะตัว — ตาของตัวเองทั้งตอนหน้าปกติและตอนดีใจ/ตาเป็นประกาย/ยิ้มมั่นใจ
+    // (ตอนวิ่งน้องแทบไม่เคยหน้าปกติ ถ้าใช้ตาเดิมตอนมีอารมณ์ หน้าใหม่จะแทบไม่โผล่ให้เห็น)
+    // หลับตา ตกใจ เศร้า เหนื่อย ยังใช้ตาเดิม — เป็นท่าทางชั่วคราวที่ต้องอ่านออกทันที
+    faceEyes(ctx, s, F, gx, s.age === 'baby' ? 1.3 : s.age === 'young' ? 1.1 : 1, { mood, age: s.age });
+    if (s.age !== 'baby') faceBrows(ctx, s, F);
   } else if (mood === 'happy') {
     // ── ตาเป็นประกาย ──
     // ตาโตกว่าปกติ ไฮไลต์สองจุดคนละขนาด แล้วมีดาวประกายวิบอยู่มุมตา
@@ -4441,11 +4468,14 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     }
   }
 
-  // จมูก — สกินที่ไม่ได้ตั้ง nose ไว้ใช้ชมพูตามเดิม
-  ctx.fillStyle = s.nose || s.pink;
-  ctx.beginPath();
-  ctx.moveTo(-2, 2.5); ctx.lineTo(4, 2.5); ctx.lineTo(1, 5.5);
-  ctx.closePath(); ctx.fill();
+  // จมูก — สกินที่ไม่ได้ตั้ง nose ไว้ใช้ชมพูตามเดิม / หน้าเฉพาะตัวมีทรงจมูกของตัวเอง
+  if (F) faceNose(ctx, s, F);
+  else {
+    ctx.fillStyle = s.nose || s.pink;
+    ctx.beginPath();
+    ctx.moveTo(-2, 2.5); ctx.lineTo(4, 2.5); ctx.lineTo(1, 5.5);
+    ctx.closePath(); ctx.fill();
+  }
 
   if (mouthOpen) {
     // อ้าปากกว้างตอนแม่เหล็กทำงาน — ช่องปากเข้มพร้อมลิ้น
@@ -4495,6 +4525,9 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.lineWidth = 1.6;
     ctx.lineCap = 'round';
     ctx.beginPath(); ctx.arc(1, 10.4, 3.4, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  } else if (F) {
+    // หน้าเฉพาะตัว — ปากหน้าตาปกติของตัวเอง (ลูกแมวปาก ω เล็ก ๆ น่ารักทุกตัว)
+    faceMouth(ctx, s, s.age === 'baby' ? { ...F, mouth: { type: F.mouth?.type === 'tongue' ? 'tongue' : 'w', k: 0.85 } } : F);
   } else {
     // ปากรูป ω
     ctx.strokeStyle = s.ink;
@@ -4530,7 +4563,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // สี่เส้นอยู่ในพาธเดียว ไม่ได้แยก stroke ทีละเส้นเหมือนเดิม — ผลบนจอเท่ากันเป๊ะ
   // (แต่ละเส้นขึ้นต้นด้วย moveTo จึงไม่ต่อกัน) แต่ได้พาธก้อนเดียวไว้ส่งให้รอยแปรง
   // ใช้ซ้ำ ถ้าเขียนแยกกันสองที่ วันที่ใครขยับหนวด รอยแปรงจะไปทาผิดที่ทันที
-  const whiskers = () => {
+  const whiskers = F ? () => faceWhiskers(ctx, F) : () => {
     ctx.beginPath();
     ctx.moveTo(-7, 4); ctx.lineTo(-16, 2);
     ctx.moveTo(-7, 6.5); ctx.lineTo(-16, 7.5);

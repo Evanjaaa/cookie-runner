@@ -697,6 +697,10 @@ export function primeMusicFile() {
   primed = true;
   try {
     const el = ensureFileEl();
+    // มีเพลงไฟล์เล่นอยู่แล้ว (เช่นเพลงบ้านลูกเหมียว) = ไฟล์ปลดล็อกไปแล้ว ไม่ต้องจุดติดซ้ำ
+    // ห้ามสลับ src เด็ดขาด — เคยเจอ: จุดติดครั้งแรกโดนปฏิเสธ แล้วมาลองใหม่ตอนผู้เล่นพิมพ์ชื่อน้อง
+    // ในห้อง ตัวจุดติดสลับไฟล์เป็นเพลงหน้าแรกทับเพลงห้องที่กำลังเล่นอยู่
+    if (fileWanted || !el.paused) return;
     if (el.getAttribute('src') !== src) {
       el.setAttribute('src', src);
       el.load();

@@ -24,7 +24,8 @@ import {
 } from './render/entities.js';
 import { pickMove, mixShape, scaleShape, E as EASE, LOVE_MOVE } from './home-moves.js';
 import { getSkin, skinById } from './skins.js';
-import { drawCatBoxes, drawKitten } from './render/catbox.js';
+import { FACES } from './faces.js';
+import { drawCatBoxes, drawHomeBox, drawCarrierBack, drawCarrierFront, drawBoxScene } from './render/catbox.js';
 import { getStage, sceneAt } from './stages.js';
 import { mixPalette } from './render/palette.js';
 import { TreasureRun, catAnchor } from './treasure-run.js';
@@ -122,6 +123,15 @@ function poseWeight(t, hold, ease) {
  * main.js เอาไปทำเป็นปุ่มใส ๆ ทับบน canvas — เหตุผลเดียวกับปุ่มหัวใจ
  */
 export const CAT_TAP = { x: 480, y: 242, w: 124, h: 180 };
+
+/**
+ * กล่องแมวบนหน้าแรก = ทางเข้าบ้านลูกเหมียว (พิกัดฉาก 960x420, x/y = กลางฐานกล่อง)
+ * วางขวาของพรม หน้าพุ่มไม้ ไม่บังตัวน้องกับปุ่มเล่น
+ * ปุ่มใสใน index.html (#btnHomeBox) วางทับตำแหน่งนี้ผ่านตัวแปร CSS ที่ main.js เขียนลงมา
+ * จอเตี้ย (มือถือแนวนอน) ปุ่มเล่นใหญ่จนทับมุมขวา — main.js ย้าย x/y ไปจุด SHORT ทางซ้ายของพรมแทน
+ */
+export const HOME_BOX = { x: 712, y: 372, w: 130, h: 120 };
+export const HOME_BOX_SPOTS = { wide: { x: 712, y: 372 }, short: { x: 252, y: 398 } };
 
 /**
  * ตำแหน่งปุ่มหัวใจในพิกัดฉาก 960x420 — จุดกึ่งกลางปุ่ม
@@ -500,7 +510,8 @@ export class Game {
     // Game ไม่รู้จักเลเวลผู้เล่นหรือจำนวนน้องในบ้าน — รู้แค่ "รอบนี้มีกล่องไหม ตั้งที่ไหน"
     this.boxPlan = null;      // { at: เฟรมที่เริ่มหาที่ตั้ง, breed, sex }
     this.boxFound = null;     // พบแล้ว = แผนเดิม (main.js อ่านตอนจบรอบ)
-    this.kitten = null;       // ลูกแมวที่วิ่งตามหลัง
+    this.rider = null;        // ลูกแมวในเป้อุ้มบนหลังน้อง (หลังฉากพบน้อง)
+    this.boxScene = null;     // ฉากพบน้อง — โลกหยุดชั่วคราว (ดู stepBoxScene)
     this.boxRetry = 0;
     this.level.wantBox = () => this.needBox(240);
     this.level.boxPlaced = () => {};
@@ -525,36 +536,81 @@ export class Game {
         if (!this.level.spawnBox(this.camera + VIEW.W + 40)) this.boxRetry = 30;
       }
     }
-    const px = this.camera + PLAYER_X + 10;
+    // วิ่งมาถึงหน้ากล่อง = หยุดเล่นฉากพบน้อง (รอให้เท้าแตะพื้นก่อน ฉากจะได้เริ่มจากท่ายืน
+    // ถ้าวิ่งเลยไปไกลแล้วยังลอยอยู่ ก็เริ่มเลย กล่องหายาก ห้ามพลาด)
+    const px = this.camera + PLAYER_X + 24;
     for (const b of this.level.boxes) {
       if (b.got) { b.open = Math.min(1, b.open + 0.08 * dt); continue; }
-      if (px < b.x) continue;
+      if (px < b.x - 70) continue;
+      if (!this.player.onGround && px < b.x + 60) continue;
       b.got = true;
       this.boxFound = this.boxPlan;
-      this.kitten = { x: b.x - this.camera, y: GROUND_Y - 40, vy: -7, air: true, phase: 0, t: 0 };
-      this.particles.burst(b.x, GROUND_Y - 40, 14, 'letter', 5);
-      sfx.mew();
-      setTimeout(() => sfx.trill(), 260);
-      this.notice = 120;
+      this.boxScene = { t: 0, box: b, kit: null };
+      this.player.setSlide(false);
+      this.player.sliding = false;   // ฉากเริ่มจากท่ายืนเสมอ (อัปเดตตัวละครหยุดระหว่างฉาก จึงต้องตั้งเอง)
+      this.notice = 150;
       this.noticeText = 'พบน้องแมวในกล่อง!';
     }
-    const k = this.kitten;
-    if (!k) return;
-    k.t += dt;
-    // วิ่งตามหลังน้องห่างราวหนึ่งช่วงตัว — ไล่เข้าหาแบบนุ่ม ๆ ไม่ติดหนึบ
-    const goal = PLAYER_X - 58;
-    k.x += (goal - k.x) * Math.min(1, 0.05 * dt);
-    k.phase += this.speed * dt * 0.07;
-    // กระโดดตามพื้นของตัวเอง (ไม่สนสิ่งกีดขวาง เป็นแค่ภาพประกอบ ไม่มีการชน)
-    const ground = GROUND_Y;
-    if (k.air) {
-      k.vy += 0.55 * dt;
-      k.y += k.vy * dt;
-      if (k.y >= ground) { k.y = ground; k.air = false; k.vy = 0; }
-    } else if (!this.player.onGround && this.player.vy < -4 && Math.random() < 0.06 * dt) {
-      k.air = true;
-      k.vy = -7;
+  }
+
+  /**
+   * ฉากพบน้อง (เฟรมนับจาก boxScene.t) — โลกทั้งโลกหยุด มีแค่ฉากนี้ที่ขยับ
+   *   0-40     น้องสะดุ้งตาโต กระโดดตัวลอยนิด ๆ มี "!" เหนือหัว
+   *   40-64    ฝากล่องเด้งเปิด ลูกแมวโผล่พรวด "จ๊ะเอ๋!" (เด้งเกินแล้วดึงกลับ)
+   *   64-130   ลูกแมวตาแป๋วเป็นประกาย ร้องดีใจ หัวใจลอย — ดีใจที่มีคนรับเลี้ยง
+   *   130-162  ลูกแมวกระโดดโค้งขึ้นขี่คอน้อง
+   *   162-188  ขี่คอแล้วดุ๊กดิ๊กเข้าที่ น้องยิ้ม → วิ่งต่อพร้อมกัน
+   */
+  stepBoxScene(dt) {
+    const sc = this.boxScene;
+    const prev = sc.t;
+    sc.t += dt;
+    const t = sc.t;
+    const at = (f) => prev < f && t >= f;
+    const b = sc.box;
+    if (b.open < 1 && t > 40) b.open = Math.min(1, b.open + 0.12 * dt);
+
+    // ── รูปทรงตัวต้องคลายกลับเป็นปกติ ── (ปัญหาเดียวกับช่วงโบนัสปลา ดู updateBonus)
+    // squash คือสปริงยืด/แบนที่ Player.update คลายกลับทุกเฟรม แต่ระหว่างฉากนี้ไม่ได้เรียก
+    // ค่าที่ค้าง ณ วินาทีที่เจอกล่อง (เพิ่งลงพื้น = แบนบวม / เพิ่งถีบขึ้น = ยืดหด) จึงถูกแช่ทั้งฉาก
+    // คลายด้วยสปริงตัวเดียวกับตอนวิ่ง หางกับความเอียงก็คลายกลับด้วย
+    const p = this.player;
+    p.squash += (0 - p.squash) * 0.16 * dt;
+    p.tailLag += (0 - p.tailLag) * 0.12 * dt;
+    if (p.tilt) p.tilt += (0 - p.tilt) * 0.2 * dt;
+    if (at(1)) sfx.startle();
+    if (at(40)) { sfx.bubblePop(); this.particles.burst(b.x, GROUND_Y - 40, 14, 'letter', 5); }
+    if (at(46)) sfx.trill();
+    if (at(80)) sfx.chirp();
+    if (at(108)) sfx.mew();
+    if (at(130)) sfx.bounce();
+    if (at(162)) { sfx.purr(); this.particles.burst(this.camera + PLAYER_X + 20, this.player.y - 70, 10, 'letter', 3); }
+    if (t >= 188) {
+      this.boxScene = null;
+      this.rider = { t: 0 };
+      this.invuln = Math.max(this.invuln, 60);   // กันชนของทันทีที่ออกตัวต่อ
     }
+  }
+
+  /**
+   * เป้อุ้มลูกแมวเป็นชั้นหลัง/หน้าของ drawPlayer (fx.back / fx.front) — วาดในพิกัดตัวน้อง
+   * จึงเอียง หมุน ยืดตามตัวทุกท่า ทั้งตอนวิ่ง ตอนโบนัสขี่ปลา และตอนใช้สกิล
+   */
+  carrierFx() {
+    if (!this.riding) return {};
+    const skin = this.kittenSkin();
+    const t = this.boxScene ? this.boxScene.t : this.tick;
+    const land = this.boxScene ? 1 - Math.min(1, (this.boxScene.t - 162) / 26) : 0;
+    const phase = this.player.runPhase;
+    return {
+      back: (c, feetY, sliding) => drawCarrierBack(c, feetY, sliding, skin, t, phase, land),
+      front: (c, feetY, sliding) => drawCarrierFront(c, feetY, sliding),
+    };
+  }
+
+  /** ลูกแมวอยู่ในเป้บนหลังไหม (ใช้ทั้งตอนวิ่งและช่วงท้ายฉากพบน้อง) */
+  get riding() {
+    return !!this.rider || (this.boxScene && this.boxScene.t >= 162);
   }
 
   /** ภาพลูกแมว: พันธุ์ที่สุ่มไว้ วัยลูกแมว (age = baby) */
@@ -562,7 +618,7 @@ export class Game {
     const p = this.boxPlan;
     if (!p) return null;
     if (!this.kittenView || this.kittenView.palette !== p.breed) {
-      this.kittenView = { ...skinById(p.breed), palette: p.breed, age: 'baby', noPhoto: true };
+      this.kittenView = { ...skinById(p.breed), palette: p.breed, age: 'baby', noPhoto: true, face: FACES[p.face] || null };
     }
     return this.kittenView;
   }
@@ -580,7 +636,7 @@ export class Game {
   // ── อินพุต ─────────────────────────────────────────────────
 
   jump() {
-    if (this.state !== STATE.RUN) return;
+    if (this.state !== STATE.RUN || this.boxScene) return;
 
     // ระหว่างโบนัส ปุ่มเดียวกันเปลี่ยนหน้าที่เป็น "ตีปีก" ไม่ใช่กระโดด
     // คุมได้เฉพาะช่วงลอยอยู่แล้ว ช่วงทะยานขึ้นกับร่อนลงเป็นแอนิเมชันล้วน
@@ -623,7 +679,7 @@ export class Game {
   }
 
   setSlide(on) {
-    if (this.state !== STATE.RUN) return;
+    if (this.state !== STATE.RUN || this.boxScene) return;
     // สกิลบิน: กดหมอบ = ลงหนึ่งระดับ ปล่อยปุ่มไม่ทำอะไร (ไม่ส่งต่อให้ตัวละครหมอบกลางฟ้า)
     if (this.skillFlying) {
       if (on) this.shiftSkyLane(-1);
@@ -721,6 +777,15 @@ export class Game {
       this.stepVoice();
     }
     if (this.state !== STATE.RUN) return;
+
+    // ฉากพบน้องในกล่อง — โลกหยุดทั้งโลก (ไม่เลื่อน ไม่ชน ไม่นับเวลาด่าน) จนฉากจบ
+    if (this.boxScene) {
+      this.stepBoxScene(dt);
+      this.particles.update(dt);
+      if (this.notice > 0) this.notice -= dt;
+      return;
+    }
+    if (this.rider) this.rider.t += dt;
 
     this.tick += dt;
     if (this.invuln > 0) this.invuln -= dt;
@@ -2185,7 +2250,8 @@ export class Game {
     // ต้องส่ง catMood ตรงนี้ด้วย — นี่คือเส้นทางวาดของ "ตอนอยู่ในโบนัส" ซึ่งเป็น
     // ช่วงเดียวที่อารมณ์ถูกใช้จริง (ดีใจตอนปลามารับ เศร้าตอนกลับลงพื้น)
     // เส้นทางวาดตอนวิ่งปกติเป็นคนละบรรทัดกัน แก้ที่นั่นอย่างเดียวจึงไม่มีผลอะไรเลย
-    drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK);
+    // ลูกแมวในเป้ไปโบนัสด้วย (นั่งบนหลังน้องที่ขี่ปลาอยู่)
+    drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK, 1, this.carrierFx());
     if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT_LOOK);
     if (warp.rise > 0) drawWarpFront(ctx, wx, wy, warp.rise, this.tick);
     if (warp.arrive >= 0) drawWarpArrive(ctx, wx, wy, warp.arrive);
@@ -2444,7 +2510,8 @@ export class Game {
     }
 
     // ลูกแมวจากกล่องวิ่งตามอยู่ข้างหลัง
-    if (this.kitten && this.state !== STATE.DEAD) drawKitten(ctx, this.kitten, this.kittenSkin());
+    // ฉากพบน้อง: ลูกแมวโผล่จากกล่อง / กระโดดมาขี่คอ (ช่วงที่ยังไม่ได้ขี่)
+    if (this.boxScene && this.boxScene.t < 162) drawBoxScene(ctx, this, this.kittenSkin());
 
     // เอฟเฟกต์พรสวรรค์ชั้นหลังตัว (เมฆใต้ตัว ปีกร่อน เส้นพุ่ง ออร่าเงา)
     if (this.state !== STATE.DEAD) drawTalentBack(ctx, this);
@@ -2456,7 +2523,9 @@ export class Game {
     const catAlpha = this.talents.phasing ? (shadowFlicker ? 0.8 : 0.5) : 1;
 
     // บอลหิมะยกตัวน้องขึ้น — หลอดบนหัวต้องยกตามด้วย ไม่งั้นไปจมกลางหน้า
-    const liftY = this.state === STATE.DEAD ? 0 : skillLift(this);
+    // ฉากพบน้อง: สะดุ้งตัวลอยนิดหนึ่ง (0-40)
+    const sceneHop = this.boxScene && this.boxScene.t < 40 ? Math.sin((this.boxScene.t / 40) * Math.PI) * 16 : 0;
+    const liftY = this.state === STATE.DEAD ? 0 : skillLift(this) + sceneHop;
     if (!blinking && !skillFlicker) {
       ctx.globalAlpha = catAlpha;
       // ตัวโตอยู่ = ยิ้มสะใจ ทับอารมณ์อื่นที่อาจตั้งค้างไว้จากโบนัส
@@ -2479,12 +2548,32 @@ export class Game {
       ctx.translate(0, -liftY);
       drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking || shout,
         pose === 'dance' ? this.tick : 0,
-        this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood,
+        this.boxScene ? (this.boxScene.t < 64 ? 'hurt' : 'happy')
+          : this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood,
         catS, 1 + (BIGCAN.gait - 1) * this.bigK,
         { tired: this.big > 0 || pose ? 0 : lowK, hurt: this.hurtFlash, hero: hero ? 1 : 0,
-          wave: gold ? 1 : 0, waveT: Math.sin(this.tick * 0.18) });
+          wave: gold ? 1 : 0, waveT: Math.sin(this.tick * 0.18),
+          ...(this.state !== STATE.DEAD ? this.carrierFx() : {}) });
       ctx.restore();
       ctx.globalAlpha = 1;
+    }
+    // "!" ตกใจเหนือหัวน้องช่วงต้นฉากพบน้อง
+    if (this.boxScene && this.boxScene.t < 60) {
+      const pb = this.player.box;
+      const k = Math.min(1, this.boxScene.t / 8);
+      ctx.save();
+      ctx.translate(pb.x + pb.w / 2 + 16, pb.y - 30 * catS - liftY);
+      ctx.scale(k, k);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = '#5C3B26';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#E2463F';
+      ctx.font = '900 21px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('!', 0, 1);
+      ctx.restore();
     }
     if (sucking) drawSuction(ctx, this.player, this.tick, catS);
     if (this.state !== STATE.DEAD) drawTalentFront(ctx, this);
@@ -3054,5 +3143,13 @@ export class Game {
     this.drawHomeFx(ctx);
     this.drawLove(ctx);
     postProcess(ctx, { edges: false });
+    // กล่องแมว (ทางเข้าบ้านลูกเหมียว) วาดหลังแสงฟุ้ง — ไม่งั้นแสงฟุ้งทำให้กล่องซีดจนเกือบขาว
+    // homeBoxPop เด้งตอนถูกแตะ ไล่ลงเองทีละเฟรม
+    if (this.homeBoxPop > 0) this.homeBoxPop = Math.max(0, this.homeBoxPop - 0.04);
+    ctx.save();
+    ctx.translate(HOME_BOX.x, HOME_BOX.y);
+    ctx.scale(0.88, 0.88);
+    drawHomeBox(ctx, 0, 0, t, this.homeBoxPop || 0);
+    ctx.restore();
   }
 }

@@ -465,12 +465,6 @@
           <!-- กิจกรรมอยู่บนสุดของแถวขวา เหนือปุ่มด่าน — เป็นที่ที่ตาไปถึงก่อน
                ปุ่มเล่นที่มุมขวาล่าง จึงเห็นว่ามีของค้างรับก่อนจะกดลงเล่น
                จุดแดงใช้กฎเดียวกับกล่องจดหมาย (ดู .dot ใน style.css) -->
-          <!-- บ้านน้องแมว — ห้องในปราสาทที่เลี้ยงน้องจากกล่อง (src/catroom.js) -->
-          <button class="lobby-btn" id="btnCatRoom">
-            <canvas id="catRoomIcon" width="76" height="76"></canvas>
-            <b>บ้านน้อง</b>
-            <i class="dot hidden" id="catRoomDot" aria-hidden="true"></i>
-          </button>
           <button class="lobby-btn" id="btnQuests">
             <canvas id="questIcon" width="76" height="76"></canvas>
             <b>กิจกรรม</b>
@@ -498,6 +492,14 @@
 
              วางก่อนปุ่มหัวใจ ปุ่มหัวใจจึงอยู่ทับด้านบนถ้าสองกรอบเบียดกันวันหลัง -->
         <button class="cattap" id="btnPet" aria-label="แตะตัวน้อง"></button>
+
+        <!-- ── กล่องแมว = ทางเข้าบ้านลูกเหมียว ──
+             ตัวกล่องวาดบน canvas (drawHomeBox) ปุ่มนี้ใส ทับกล่องพอดีจาก HOME_BOX ใน game.js
+             ป้ายชื่อใต้กล่องเป็น HTML จะได้แปลภาษาได้ จุดแดง = มีน้องที่ดูแลแล้วได้ EXP -->
+        <button class="homebox" id="btnHomeBox" aria-label="บ้านลูกเหมียว">
+          <span class="homebox-label">บ้านลูกเหมียว</span>
+          <i class="dot hidden" id="catRoomDot" aria-hidden="true"></i>
+        </button>
 
         <!-- ── ปุ่มหัวใจข้างหัวน้อง ────────────────────────────
              กดแล้วหัวใจลอยไปหาน้อง น้องดีใจร้องเมี้ยว แล้วให้ของขวัญกลับมา
@@ -799,6 +801,10 @@
               <button type="button" class="fchip" id="frTabReq" role="tab">
                 คำขอเป็นเพื่อน<b class="fr-num fr-red hidden" id="frReqCount"></b>
               </button>
+              <!-- คำขอที่เราส่งไป — หน้าแยกของตัวเอง (เดิมต่อท้ายหน้าคำขอเป็นเพื่อน) -->
+              <button type="button" class="fchip" id="frTabSent" role="tab">
+                คำขอที่เราส่งไป<b class="fr-num" id="frSentCount"></b>
+              </button>
             </div>
           </div>
 
@@ -817,7 +823,7 @@
               </div>
               <!-- ผลการคัดลอกอยู่ใต้บัตรทันที ไม่ใช่ท้ายแผงที่ห่างออกไปครึ่งจอ -->
               <small class="form-msg fr-copy-msg" id="frCopyMsg"></small>
-              <p class="tl-side-note">ส่งรหัสนี้ให้เพื่อน<br>ค้นหาแล้วกดเพิ่มกันได้เลย</p>
+              <p class="tl-side-note">ส่งรหัสนี้ให้เพื่อน<br>ค้นหาแล้วกดเพิ่มกัน&#8288;ได้&#8288;เลย</p>
             </aside>
 
             <div class="fr-main">
@@ -832,6 +838,8 @@
                 </form>
                 <div class="fr-grid" id="frReqList"></div>
               </div>
+
+              <div class="fr-grid hidden" id="frSentPage"></div>
             </div>
           </div>
 
@@ -1223,7 +1231,7 @@
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <h2 class="cr-title">บ้านน้องแมว</h2>
+          <h2 class="cr-title">บ้านลูกเหมียว</h2>
           <div class="cr-tools">
             <div class="goldbar" aria-label="เหรียญทอง">
               <span class="coin" aria-hidden="true"></span>
@@ -1286,6 +1294,9 @@
           <span id="crEmptyText"></span>
         </div>
       </div>
+
+      <!-- ม่านตอนเข้าบ้านลูกเหมียว — วงกลมขยายจากกล่องจนเต็มจอ แล้วหดเปิดเข้าห้อง (catroom-ui.js) -->
+      <div class="room-wipe" id="roomWipe" aria-hidden="true"><span class="room-wipe-paw"></span></div>
 
       <!-- ══ พบน้องแมวในกล่อง ══ เปิดทับหน้าสรุปผลตอนจบรอบที่เจอกล่อง -->
       <div class="panel hidden" id="foundPanel">
@@ -1764,8 +1775,11 @@
                       <span>ส่องโปรไฟล์</span>
                     </button>
                   </div>
-                  <span class="pf-msg" id="pfMsg" role="status"></span>
-
+                  <!-- ยกเลิกคำขอที่เราส่งไปแล้ว — โผล่ข้างปุ่ม "ส่งคำขอแล้ว" เท่านั้น -->
+                  <button type="button" class="pf-action pf-unsend hidden" id="pfUnsend">
+                    <span>ยกเลิกคำขอ</span>
+                    <svg class="ico-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
+                  </button>
                   <button type="button" class="pf-action" id="pfAction">
                     <span id="pfActionText">แก้ไข</span>
                     <svg class="ico-edit" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
@@ -1773,6 +1787,7 @@
                     <svg class="ico-add" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8" r="4"/><path d="M2.5 20.5c.8-3.8 3.6-6 7-6s6.2 2.2 7 6"/><path d="M19 8v6M16 11h6"/></svg>
                   </button>
                 </div>
+                <span class="pf-msg" id="pfMsg" role="status"></span>
               </div>
             </section>
           </div>

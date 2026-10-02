@@ -1,7 +1,7 @@
 ﻿// src/main.js
 import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
-import { Game, STATE, LOVE_BTN, CAT_TAP } from './game.js';
+import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx } from './audio.js';
 import { startMusic, stopMusic, primeMusicFile } from './music.js';
@@ -3008,6 +3008,20 @@ startPanel.style.setProperty('--cat-x', ((CAT_TAP.x / VIEW.W) * 100).toFixed(3) 
 startPanel.style.setProperty('--cat-y', ((CAT_TAP.y / VIEW.H) * 100).toFixed(3) + '%');
 startPanel.style.setProperty('--cat-w', ((CAT_TAP.w / VIEW.W) * 100).toFixed(3) + '%');
 startPanel.style.setProperty('--cat-h', ((CAT_TAP.h / VIEW.H) * 100).toFixed(3) + '%');
+// กล่องแมว: ปุ่มใสคลุมตั้งแต่ปลายฝาถึงฐานกล่อง (HOME_BOX.y คือฐาน)
+// จอเตี้ย ปุ่มเล่นใหญ่จนทับมุมขวาล่าง — ย้ายกล่องไปซ้ายของพรม ป้ายชื่อขึ้นไปอยู่เหนือกล่อง
+// (เกณฑ์เดียวกับ @media (max-height: 520px) ที่ย่อปุ่มต่าง ๆ ใน style.css)
+const shortScreen = matchMedia('(max-height: 520px)');
+function placeHomeBox() {
+  Object.assign(HOME_BOX, shortScreen.matches ? HOME_BOX_SPOTS.short : HOME_BOX_SPOTS.wide);
+  startPanel.style.setProperty('--box-x', ((HOME_BOX.x / VIEW.W) * 100).toFixed(3) + '%');
+  startPanel.style.setProperty('--box-y', (((HOME_BOX.y - HOME_BOX.h / 2) / VIEW.H) * 100).toFixed(3) + '%');
+  startPanel.style.setProperty('--box-w', ((HOME_BOX.w / VIEW.W) * 100).toFixed(3) + '%');
+  startPanel.style.setProperty('--box-h', ((HOME_BOX.h / VIEW.H) * 100).toFixed(3) + '%');
+  document.getElementById('btnHomeBox').classList.toggle('up', shortScreen.matches);
+}
+placeHomeBox();
+shortScreen.addEventListener('change', placeHomeBox);
 
 // เดินป้ายเวลาทุกวินาที — เขียนข้อความสองช่องต่อวินาที ถูกกว่าการไปผูกกับลูปเกม
 // ซึ่งจะกลายเป็นงานที่ต้องทำ 60 ครั้งต่อวินาทีเพื่อผลลัพธ์ที่เปลี่ยนวินาทีละครั้ง
@@ -4008,6 +4022,10 @@ function paintActionButton() {
   const p = pfView;
   if (!p) return;
   btn.disabled = false;
+  // ปุ่มยกเลิกคำขอโผล่เฉพาะตอนเราส่งคำขอถึงคนนี้ไว้แล้ว (และไม่ได้กำลังส่ง/ยกเลิกอยู่)
+  const unsend = document.getElementById('pfUnsend');
+  unsend.classList.toggle('hidden', p.mine || p.rel !== 'sent');
+  unsend.disabled = !!p.adding;
   if (p.mine) {
     setText('pfActionText', pfPop.classList.contains('editing') ? 'เสร็จแล้ว' : 'แก้ไข');
   } else if (p.adding) {
@@ -4201,6 +4219,25 @@ async function addViewedFriend() {
   if (pfView === p) paintActionButton();
 }
 
+/** ยกเลิกคำขอเป็นเพื่อนที่เราส่งถึงคนที่กำลังส่องอยู่ */
+async function cancelViewedRequest() {
+  const p = pfView;
+  if (!p || p.mine || p.rel !== 'sent' || p.adding) return;
+  p.adding = true;
+  setText('pfActionText', 'กำลังยกเลิก…');
+  document.getElementById('pfUnsend').disabled = true;
+  const r = await frApi.cancelFriendRequest(p.id);
+  p.adding = false;
+  if (r.ok) {
+    p.rel = 'none';
+    pfSay(`ยกเลิกคำขอถึง ${p.name} แล้ว`);
+    refreshFriendsBadge();
+  } else {
+    pfSay(reasonText(r.reason), true);
+  }
+  if (pfView === p) paintActionButton();
+}
+
 function showProfile(on) {
   profilePanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
@@ -4248,6 +4285,11 @@ document.getElementById('pfAction').addEventListener('click', () => {
   if (!pfView) return;
   if (pfView.mine) setEditing(!pfPop.classList.contains('editing'));
   else addViewedFriend();
+});
+
+document.getElementById('pfUnsend').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  cancelViewedRequest();
 });
 
 document.getElementById('pfEdit').addEventListener('click', () => { sfx.fish(); openStatusEditor(); });
@@ -4534,24 +4576,33 @@ function paintFriends() {
         ],
       });
     }
-    if (d.outgoing.length) {
-      frHead(req, 'คำขอที่เราส่งไป');
-      for (const row of d.outgoing) {
-        friendRow(req, row, { sub: 'รอตอบรับ', acts: [{ text: 'ยกเลิกคำขอ', ghost: true, run: frCancel }] });
-      }
-    }
   }
   markScrollable(req);
+
+  // ── แท็บคำขอที่เราส่งไป ──
+  const sent = document.getElementById('frSentPage');
+  sent.innerHTML = '';
+  document.getElementById('frSentCount').textContent = d && d.outgoing && d.outgoing.length ? String(d.outgoing.length) : '';
+  if (!d) emptyNote(sent, 'กำลังโหลด…');
+  else if (d.reason) emptyNote(sent, reasonText(d.reason));
+  else if (!d.outgoing.length) emptyNote(sent, 'ยังไม่ได้ส่งคำขอถึงใคร ค้นหาเพื่อนได้ที่แท็บ “คำขอเป็นเพื่อน”');
+  else {
+    for (const row of d.outgoing) {
+      friendRow(sent, row, { sub: 'รอตอบรับ', acts: [{ text: 'ยกเลิกคำขอ', ghost: true, run: frCancel }] });
+    }
+  }
+  markScrollable(sent);
 }
 
+/** สามแท็บ: list = เพื่อนแมว / req = คำขอเป็นเพื่อน (ค้นหา + ที่ส่งมาหาเรา) / sent = คำขอที่เราส่งไป */
 function setFrTab(tab) {
-  const onList = tab === 'list';
-  document.getElementById('frTabList').classList.toggle('on', onList);
-  document.getElementById('frTabReq').classList.toggle('on', !onList);
-  document.getElementById('frTabList').setAttribute('aria-selected', String(onList));
-  document.getElementById('frTabReq').setAttribute('aria-selected', String(!onList));
-  document.getElementById('frListPage').classList.toggle('hidden', !onList);
-  document.getElementById('frReqPage').classList.toggle('hidden', onList);
+  const tabs = { list: ['frTabList', 'frListPage'], req: ['frTabReq', 'frReqPage'], sent: ['frTabSent', 'frSentPage'] };
+  for (const [key, [btn, page]] of Object.entries(tabs)) {
+    const on = key === tab;
+    document.getElementById(btn).classList.toggle('on', on);
+    document.getElementById(btn).setAttribute('aria-selected', String(on));
+    document.getElementById(page).classList.toggle('hidden', !on);
+  }
 }
 
 /** ครอบงานที่ต้องรอเซิร์ฟเวอร์: ล็อกปุ่มแถวนั้น → ทำ → บอกผล → โหลดข้อมูลใหม่ */
@@ -4691,6 +4742,7 @@ document.getElementById('friendsBack').addEventListener('click', () => {
 });
 document.getElementById('frTabList').addEventListener('click', () => { sfx.fish(); setFrTab('list'); });
 document.getElementById('frTabReq').addEventListener('click', () => { sfx.fish(); setFrTab('req'); });
+document.getElementById('frTabSent').addEventListener('click', () => { sfx.fish(); setFrTab('sent'); });
 document.getElementById('frSearch').addEventListener('submit', (e) => {
   e.preventDefault();
   unlockAudio(); sfx.fish();

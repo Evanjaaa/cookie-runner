@@ -919,6 +919,7 @@ export const EN = {
   'ยังไม่มีเพื่อนแมว ไปที่แท็บ “คำขอเป็นเพื่อน” แล้วค้นหาเพื่อนได้เลย': 'No cat friends yet — search for friends in the “Friend Requests” tab',
   'รอตอบรับ': 'Waiting for reply',
   'ยกเลิกคำขอ': 'Cancel request',
+  'กำลังยกเลิก…': 'Cancelling…',
   'ตอบรับ': 'Accept',
   'ปฏิเสธ': 'Decline',
   'ลบเพื่อน': 'Remove friend',
@@ -937,6 +938,7 @@ export const EN = {
 
   // ── บ้านน้องแมว (catroom-ui.js / tips.js) ──
   'บ้านน้อง': 'Cat House',
+  'บ้านลูกเหมียว': 'Kitten House',
   'บ้านน้องแมว': 'Cat House',
   '🎮 มินิเกม': '🎮 Mini games',
   'มินิเกม': 'Mini games',
@@ -963,6 +965,7 @@ export const EN = {
   'เล่นคอนโด': 'Cat tree',
   'นั่งบนชั้น': 'Sit on the shelf',
   'เข้าบ้าน': 'Into the house',
+  'ยังไม่ได้ส่งคำขอถึงใคร ค้นหาเพื่อนได้ที่แท็บ “คำขอเป็นเพื่อน”': 'No requests sent yet — search for friends in the “Friend requests” tab',
   'ดูเต็มจอ': 'Full view',
   'แสดงเมนู': 'Show menu',
   'ได้ EXP': 'EXP ready',
@@ -1074,6 +1077,7 @@ export const EN_RULES = [
   { re: /^เพิ่ม (.+) เป็นเพื่อนแล้ว$/, en: 'Added $1 as a friend' },
   { re: /^(.+) เป็นเพื่อนกับเราแล้ว$/, en: '$1 is now your friend' },
   { re: /^ส่งคำขอเป็นเพื่อนถึง (.+) แล้ว$/, en: 'Friend request sent to $1' },
+  { re: /^ยกเลิกคำขอถึง (.+) แล้ว$/, en: 'Request to $1 cancelled' },
   { re: /^ปฏิเสธคำขอของ (.+) แล้ว$/, en: 'Declined $1' },
   { re: /^ยกเลิกคำขอถึง (.+) แล้ว$/, en: 'Cancelled request to $1' },
   { re: /^ลบ (.+) ออกจากเพื่อนแล้ว$/, en: 'Removed $1 from friends' },
