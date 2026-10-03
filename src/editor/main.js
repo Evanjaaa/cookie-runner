@@ -18,12 +18,12 @@
 import './editor.css';
 import {
   GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD,
-  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD, TREATS, treatOf, BONUS,
+  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD, TREATS, treatOf, BONUS, CAT_LOOK,
 } from '../config.js';
 import { BONUS_LAYOUTS, bonusGeometry, buildBonusMagnets } from '../bonus-layouts.js';
 import {
   AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute,
-  platTop, highestTop, footing,
+  platTop, highestTop, footing, thinFood, spreadChunk,
 } from '../level.js';
 import { drawPlats, PLAT_THEMES } from '../render/platforms.js';
 import { GATES, GATE_LIST, gateMarks } from '../gates.js';
@@ -1310,7 +1310,8 @@ function build(d, off = 0) {
   }
 
   jumps.sort((a, b) => a - b);
-  return { obs, pit, fish, jumps, fallers, hazards, plats, pickups };
+  // ความแน่นของกินแบบเดียวกับตอนปูท่อนในเกม (thinFood) — เห็นในหน้านี้เท่ากับที่ผู้เล่นเจอจริง
+  return { obs, pit, fish: thinFood(fish), jumps, fallers, hazards, plats, pickups };
 }
 
 /** เฟสเริ่มแกว่งของผึ้ง (เรเดียน) — เก็บในเอกสารเป็นองศาให้คนอ่านง่าย */
@@ -1393,11 +1394,15 @@ function active() {
   if (view.refIdx >= 0) {
     const p = refChunk(view.refIdx)(0);
     const g = refGate(view.refIdx);
+    // แบบที่เกมปูจริงตอนนี้: ขยายท่อน (MAP_SPREAD) แล้วลดความแน่นของกิน (FOOD_SPACING)
+    // ลำดับเดียวกับ Level.spawnChunk — ท่อนนี้ดูอย่างเดียว แก้ไม่ได้ จึงแสดงผลจริงได้ตรง ๆ
+    const refW = spreadChunk(p, 0, p.width || chunkW);
+    p.fish = thinFood(p.fish);
     // ไอเท็มในท่อนเก็บแค่ชนิดกับ x — แปลงเป็นรูปร่างตอนเกิดจริงก่อนวาด
     const pickups = (p.pickups || []).map((q) => ({ ...PICKUPS[q.kind].make(q.x, 0), kind: q.kind }));
     return {
       ...p, pickups, fallers: p.fallers || [], hazards: [], plats: p.plats || [],
-      width: p.width || chunkW, partial: !!p.partial, readonly: true, gate: g ? g.id : null,
+      width: refW, partial: !!p.partial, readonly: true, gate: g ? g.id : null,
     };
   }
   if (view.mode === 'stage') return stageScene();
@@ -1460,6 +1465,8 @@ function stageScene() {
     // (เกมไม่ต้องใช้ แต่หน้านี้ต้องวาดส่วนโค้งกระโดด) แพตเทิร์นคืนของใหม่ทุกครั้ง
     // ไม่มีผลข้างเคียง เรียกซ้ำจึงปลอดภัย
     const c = own ? build(own, x0) : (PATTERNS[p] ? PATTERNS[p](x0) : { jumps: [] });
+    // ขยายท่อนด้วยตัวเดียวกับ spawnChunk — จุดกด/ของพิเศษที่วาดที่นี่จึงตรงกับของที่เกมปูจริง
+    spreadChunk(c, x0, (own ? own.width : c.width) || LEVEL.chunkW);
     lvl.spawnChunk();
 
     jumps.push(...(c.jumps || []));
@@ -2011,7 +2018,8 @@ function drawCat(cam) {
     y: f.y, vy: f.vy, onGround: f.onGround, sliding: f.sliding,
     runPhase: scrubAt * 0.4, squash: 0, tailLag: 0, tilt: 0,
   };
-  drawPlayer(ctx, ghost, false, skin, false, 0, '', 1, 1, {});
+  // ขนาดที่ตาเห็นเท่าในเกม (CAT_LOOK) — กล่องชนยังเท่าเดิม ช่องใต้คาน/ระยะเฉียดจึงดูได้ตรงกับที่ผู้เล่นเห็น
+  drawPlayer(ctx, ghost, false, skin, false, 0, '', CAT_LOOK, 1, {});
   ctx.restore();
 
   // ผลของไอเท็มที่ติดตัวอยู่ ณ เฟรมนี้ — วงโล่ + ป้ายเวลาที่เหลือ

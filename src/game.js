@@ -2,7 +2,7 @@
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, MAGNET, BODY,
   LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD, REVIVE,
-  CAT_LOOK, treatOf,
+  CAT_LOOK, treatOf, foodLook,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { buildBonusField, buildBonusMagnets, bonusGeometry } from './bonus-layouts.js';
@@ -221,6 +221,24 @@ function dimForUi(ctx, k = 1) {
   ctx.fillRect(0, 0, W, H);
 }
 
+/**
+ * จำจังหวะที่เก็บเม็ดได้ — ให้ตัววาดเล่นท่า "ถูกเก็บ" สั้น ๆ แทนการหายวับ (ดู drawTreats)
+ * เป้าเก็บเป็นพิกัดจอ เพราะตัวน้องอยู่ที่เดิมบนจอเสมอ เม็ดจึงไหลเข้าหาตัวได้ถูกที่แม้กล้องวิ่งต่อ
+ * คะแนน/เสียงยังเกิดทันทีที่แตะ — แอนิเมชันเป็นภาพล้วน ไม่หน่วงการเก็บ
+ */
+function markGot(f, tick, sx, sy) {
+  f.gotT = tick;
+  f.toSX = sx;
+  f.toY = sy;
+}
+
+/** วงกลมแตะสี่เหลี่ยมไหม (แตะแค่ขอบก็นับ) */
+function circleHitsRect(x, y, r, rc) {
+  const nx = Math.max(rc.x, Math.min(x, rc.x + rc.w));
+  const ny = Math.max(rc.y, Math.min(y, rc.y + rc.h));
+  return (x - nx) * (x - nx) + (y - ny) * (y - ny) <= r * r;
+}
+
 export class Game {
   constructor({ onGameOver, onPitFall } = {}) {
     this.player = new Player();
@@ -349,9 +367,14 @@ export class Game {
    * ไม่งั้นมันจะยึดกล่องชนซึ่งไม่โตตามตัว แล้วไปโผล่ผ่ากลางตัวแมวตอนตัวใหญ่
    */
   get catScale() {
-    // ปกติเริ่มที่ CAT_LOOK แต่ตอนโตเต็มที่ยังจบที่ BIGCAN.scale เท่าเดิม
-    // ไม่คูณทับกัน — คูณแล้วได้ 2.65 ซึ่งเลยเพดานที่หัวเริ่มชนแถบ HUD ตอนกระโดดสูงสุด
-    return CAT_LOOK + (BIGCAN.scale - CAT_LOOK) * this.bigK;
+    // ปกติเริ่มที่ CAT_LOOK แต่ตอนโตเต็มที่ยังจบที่ BIGCAN.scale เท่าเดิม (ไม่คูณทับกัน)
+    const s = CAT_LOOK + (BIGCAN.scale - CAT_LOOK) * this.bigK;
+    // ตัวโตใหญ่มาก (3.45 เท่า) กระโดดแล้วหัวจะทะลุขึ้นไปทับแถบพลังด้านบนจอ
+    // จึงย่อภาพลงตามความสูงที่ลอยอยู่ ให้หัวไม่เกิน BIGCAN.topRoom — เท้ายังอยู่ที่เดิม
+    // ค่านี้ต่อเนื่องตามตำแหน่งตัว จึงย่อ/ขยายลื่น ๆ ระหว่างกระโดด ไม่กระตุก
+    // บนพื้นที่ว่างเหนือหัวพอ = ใหญ่เต็มที่เสมอ
+    const room = (this.player.y - BIGCAN.topRoom) / (BODY.standH + 6);
+    return Math.max(CAT_LOOK, Math.min(s, room));
   }
 
   /**
@@ -675,6 +698,9 @@ export class Game {
       this.player.vy = PHYSICS.doubleJumpV;
       this.particles.burst(PLAYER_X + 20 + this.camera, this.player.y - 10, 10, 'letter', 4);
       sfx.double();
+    } else {
+      // หมดทุกสิทธิ์แล้ว แต่กดก่อนแตะผิวนิดเดียว — จำไว้กระโดดให้ตอนแตะ (ดู BUFFER ใน player.js)
+      this.player.queueJump();
     }
   }
 
@@ -861,6 +887,8 @@ export class Game {
       this.camera += this.speed;
       this.distance += this.speed;
       const r = this.player.update(1, this);
+      // ปุ่มที่กดค้างไว้ก่อนแตะผิว — กระโดดในเฟรมที่แตะเลย ผ่านทางเดียวกับการกดจริง (เสียง/ฝุ่นครบ)
+      if (this.player.pendingJump) { this.player.pendingJump = false; this.jump(); }
       justLanded = justLanded || r.justLanded;
       justSlid = justSlid || r.justSlid;
       fellOut = fellOut || r.fellOut;
@@ -1189,13 +1217,19 @@ export class Game {
    * ถ้าก๊อปลูปไปอีกชุด วันหนึ่งจะมีคนแก้คะแนนหรือตัวคูณสมบัติที่เดียวแล้วอีกตัวไม่ตาม
    */
   pickTreats(cx, cy, midAir) {
+    const body = this.bodyRect(cx, cy);
     for (const f of this.level.fishes) {
       if (f.got || f.x < this.camera - 40) continue;
       // ของที่วาดใหญ่ (กุ้ง คริสตัล) เก็บได้กว้างกว่าให้สมกับที่ตาเห็น — ดู TREATS.pickPad
       const def = treatOf(f.kind);
       const pad = def.pickPad + this.skillGrab;
-      if (Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
+      // เก็บได้สองทาง: วงรอบกลางตัวแบบเดิม (ระยะเผื่อ + สกิลดูดของ) หรือ "ตัวที่ตาเห็นแตะเม็ด"
+      // แม้แค่เสี้ยวเดียว — ตัวน้องวาดใหญ่กว่ากล่องชน (CAT_LOOK / ร่างโต 2.3 เท่า) ถ้าใช้แค่วงเดิม
+      // เม็ดที่ไหลผ่านหัว หาง หรือขอบตัวจะไม่ถูกเก็บทั้งที่ตาเห็นว่าโดนเต็ม ๆ
+      const touch = circleHitsRect(f.x, f.y, f.r * (def.scale || 1) * foodLook(f.kind) + 2, body);
+      if (touch || Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
         f.got = true;
+        markGot(f, this.tick, cx - this.camera, cy);
         // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
         // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
         const m = this.treasures.treatMult * this.skillTreatMult;
@@ -1208,6 +1242,20 @@ export class Game {
         this.treasures.onTreat(this, midAir);
       }
     }
+  }
+
+  /**
+   * กรอบตัวน้องที่ "ตาเห็น" รอบจุดกลางกล่องชน (พิกัดโลก) — ใช้เฉพาะการเก็บของกิน
+   * ขยายกล่องชนตามขนาดที่วาดจริง (catScale) โดยตรึงเท้าไว้ เหมือนที่ drawPlayer ขยายภาพ
+   * +6 ด้านบนเผื่อหูที่โผล่พ้นหัว · การชนสิ่งกีดขวางยังใช้กล่องเดิม (เฉียดแล้วรอดยังเป็นของดี)
+   */
+  bodyRect(cx, cy) {
+    const b = this.player.box;
+    const s = this.catScale;
+    const feet = cy + b.h / 2;
+    // หางยื่นออกไปข้างหลัง (ซ้าย) อีกราว 12 หน่วย — เม็ดที่ปัดโดนหางก็นับด้วย
+    const w = (b.w + 12) * s, h = (b.h + 6) * s;
+    return { x: cx - (b.w / 2 + 12) * s, y: feet - h, w, h };
   }
 
   /**
@@ -2142,6 +2190,7 @@ export class Game {
       if (f.got) continue;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + BONUS.pickPad) {
         f.got = true;
+        markGot(f, this.tick, cx - this.bonusCam, cy);
         // ตารางเดียวกับในด่าน (TREATS) — บนฟ้าไม่คูณสมบัติ และอนุภาคน้อยกว่าเพราะเก็บถี่มาก
         const def = treatOf(f.kind);
         this.treat += def.points + this.foodBonus;

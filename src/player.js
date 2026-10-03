@@ -7,6 +7,19 @@ const FAINT_TILT = Math.PI / 2 * 0.94;
 /** ระยะที่ตัวต้องจมลงตอนล้มสุด เพื่อให้ลำตัวแนบพื้นแทนที่จะลอย */
 const FAINT_DROP = 9;
 
+// ── ผ่อนจังหวะกด (เทคนิคมาตรฐานของเกมกระโดด) ─────────────────
+// วัดจริง: วิ่งเลยขอบพื้นลอยแล้วกดกระโดดช้าไปแค่ 1 เฟรม เดิมได้สูง 46px แทน 105px
+// เพราะเท้าหลุดผิว = เสียสิทธิ์กระโดดแรก ปุ่มที่กดกลายเป็นกระโดดชั้นสองที่แรงน้อยกว่า
+// ทั้งที่ตัวยังกำลังร่วง ผู้เล่นรู้สึกเหมือน "อยู่ดี ๆ โดนแรงโน้มถ่วงดูด" แล้วไปไม่ถึงฝั่ง
+// บนพื้นปกติไม่เคยเจอเพราะไม่มีขอบให้หลุด — มาเจอตอนมีพื้นลอยที่ผู้เล่นกดตรงขอบพอดี
+//
+// COYOTE  เท้าพ้นขอบไปแล้วไม่เกินเท่านี้ ยังกระโดดแรกเต็มแรงได้ (7 เฟรม ≈ 0.12 วิ)
+// BUFFER  กดก่อนเท้าแตะผิวไม่เกินเท่านี้ (ตอนหมดสิทธิ์กระโดดกลางอากาศแล้ว) = จำไว้
+//         แล้วกระโดดให้ทันทีที่แตะผิว — เดิมการกดนั้นหายไปเฉย ๆ
+// สั้นพอที่ตาไม่เห็นว่าตัวกระโดดจากอากาศ แต่ยาวพอกลบความคลาดของนิ้วบนจอสัมผัส
+const COYOTE = 7;
+const BUFFER = 7;
+
 // ─────────────────────────────────────────────────────────────
 // สำคัญ: this.y คือ "ตำแหน่งเท้า" ไม่ใช่ขอบบนของตัว
 // เพราะเท้าอยู่ที่เดิมเสมอไม่ว่าจะยืนหรือหมอบ
@@ -28,6 +41,9 @@ export class Player {
     this.vy = 0;
     this.onGround = true;
     this.jumps = 0;
+    this.coyote = COYOTE;     // เฟรมที่ยังกระโดดแรกได้หลังเท้าพ้นผิว (ดู COYOTE)
+    this.buffer = 0;          // เฟรมที่ยังจำปุ่มกระโดดที่กดก่อนแตะผิว (ดู BUFFER)
+    this.pendingJump = false; // แตะผิวแล้วมีปุ่มค้างอยู่ — เกมเป็นคนสั่งกระโดดให้ (เสียง/ฝุ่นครบ)
     this.sliding = false;
     this.slideHeld = false;
     this.runPhase = 0;
@@ -84,6 +100,8 @@ export class Player {
     if (this.jumps === 0) {
       this.vy = PHYSICS.jumpV * m.jump;
       this.jumps = 1;
+      this.coyote = 0;
+      this.buffer = 0;
       this.onGround = false;
       this.sliding = false;
       // ยืดตัวตอนถีบขึ้น — ไม่มีท่าย่อก่อนกระโดด (anticipation) โดยตั้งใจ
@@ -106,6 +124,11 @@ export class Player {
       return 'extra';
     }
     return null;
+  }
+
+  /** หมดสิทธิ์กระโดดกลางอากาศแล้วแต่ยังกด = จำไว้ แตะผิวเมื่อไหร่กระโดดให้ (ดู BUFFER) */
+  queueJump() {
+    if (!this.onGround) this.buffer = BUFFER;
   }
 
   setSlide(on) {
@@ -160,9 +183,17 @@ export class Player {
       this.vy = 0;
       this.onGround = true;
       this.jumps = 0;
+      this.coyote = COYOTE;
+      if (justLanded && this.buffer > 0) this.pendingJump = true;
+      this.buffer = 0;
     } else {
       this.onGround = false;
-      if (this.jumps === 0) this.jumps = 1;   // เดินตกหลุม = เสียสิทธิ์กระโดดแรก
+      // เดินตกขอบ = เสียสิทธิ์กระโดดแรก — แต่ไม่ทันที ผ่อนให้ COYOTE เฟรมก่อน
+      if (this.jumps === 0) {
+        this.coyote -= dt;
+        if (this.coyote <= 0) this.jumps = 1;
+      }
+      if (this.buffer > 0) this.buffer -= dt;
     }
 
     // หมอบได้เฉพาะตอนแตะพื้น แต่กดค้างรอไว้ตั้งแต่กลางอากาศได้

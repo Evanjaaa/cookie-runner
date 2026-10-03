@@ -4,7 +4,7 @@ import {
   faceNose, faceMouth, faceWhiskers,
 } from './faces.js';
 import { PROP_ART } from './props/index.js';
-import { VIEW, GROUND_Y, BODY, WORD, SKILL, POTION, LETTER_COLORS, TREATS, COLORS as C } from '../config.js';
+import { VIEW, GROUND_Y, BODY, WORD, SKILL, POTION, LETTER_COLORS, TREATS, COLORS as C, foodLook } from '../config.js';
 import { getFace } from '../face.js';
 import { LAYER } from '../paint.js';
 
@@ -3139,12 +3139,35 @@ function twinkle(ctx, x, y, r, t, color) {
   ctx.restore();
 }
 
+/** ท่า "ถูกเก็บ" ยาวกี่เฟรม (≈ 0.25 วิ) — สั้นพอไม่ให้ของที่เก็บแล้วค้างบังของชิ้นถัดไป */
+const GOT_FRAMES = 15;
+
 export function drawTreats(ctx, treats, camera, tick = 0) {
   for (const t of treats) {
-    if (t.got) continue;
-    const x = t.x - camera;
-    if (x > W + 50 || x < -50) continue;
-    const y = floatY(ctx, t, camera, 3, 0.02);
+    let x = t.x - camera;
+    let y;
+    let s = 1, a = 1;
+    if (t.got) {
+      // ── เพิ่งถูกเก็บ: เด้งพองนิดหนึ่ง แล้วหดลง จางหาย และไหลเข้าหาตัวน้อง ──
+      // ไม่ใช่หายวับทันทีที่แตะ — ตาจะเห็นว่า "โดนแล้ว ค่อย ๆ ถูกกินเข้าไป"
+      if (t.gotT === undefined) continue;
+      const k = (tick - t.gotT) / GOT_FRAMES;
+      if (k >= 1 || k < 0) continue;
+      const e = k * k * (3 - 2 * k);
+      x += (t.toSX - x) * e * 0.85;
+      y = t.y + (t.toY - t.y) * e * 0.85;
+      s = k < 0.25 ? 1 + 0.35 * (k / 0.25) : 1.35 * (1 - (k - 0.25) / 0.75) + 0.05;
+      a = 1 - k * k;
+    } else {
+      if (x > W + 50 || x < -50) continue;
+      y = floatY(ctx, t, camera, 3, 0.02);
+    }
+    s *= foodLook(t.kind);   // ขนาดที่ตาเห็น (ดู FOOD_LOOK) — คูณทับท่าเด้งตอนถูกเก็บ
+    if (s !== 1 || a !== 1) {
+      ctx.save();
+      ctx.globalAlpha *= a;
+      ctx.translate(x, y); ctx.scale(s, s); ctx.translate(-x, -y);
+    }
     // ขนาดที่วาดมาจาก TREATS.scale (ตารางเดียวกับคะแนนและระยะเก็บ) · เฟสตามพิกัดโลก
     // ของที่เรียงเป็นแถวจึงวิบ/ดุ๊กดิ๊กไล่กันเป็นคลื่น ไม่ใช่พร้อมกันทั้งแถว
     switch (t.kind) {
@@ -3154,6 +3177,7 @@ export function drawTreats(ctx, treats, camera, tick = 0) {
       case 'crystal': drawCrystal(ctx, x, y, t.r * TREATS.crystal.scale, tick); break;
       default: drawFish(ctx, x, y, t.r, tick, t.x);
     }
+    if (s !== 1 || a !== 1) ctx.restore();
   }
 }
 

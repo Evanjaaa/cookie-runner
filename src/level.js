@@ -2,6 +2,7 @@
 import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
   SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X, CRYSTAL,
+  FOOD_SPACING, MAP_SPREAD,
 } from './config.js';
 import { PROP_OBSTACLES, isLowObstacle } from './obstacles.js';
 
@@ -487,8 +488,135 @@ export function footing(pits, plats, cx, prevX, prevY, y, wasOnGround, pitsSolid
   // ติดสปีด/ตัวโต วิ่งข้ามปากหลุมได้ (ดู Game.pitsSolid)
   const overPit = !pitsSolid && pits.some((p) => cx > p.x + 6 && cx < p.x + p.w - 6);
   if (!overPit) tryTop(GROUND_Y, GROUND_Y, 0);
-  for (const p of plats) tryTop(platTop(p, cx), platTop(p, prevX), 0.5);
+  for (const p of plats) tryTop(footTop(p, cx), footTop(p, prevX), 0.5);
   return best;
+}
+
+/**
+ * ครึ่งความกว้างฝ่าเท้า — พื้นลอยรับน้องตั้งแต่ปลายเท้าแตะขอบ ไม่ต้องรอจุดกลางตัว
+ *
+ * เดิมวัดจากจุดกลางตัวจุดเดียว: กระโดดไปถึงพื้นลอยฝั่งตรงข้ามแล้วครึ่งตัวหน้าอยู่บนขอบ
+ * (ตาเห็นว่าถึง) แต่จุดกลางยังไม่ถึง น้องร่วงลงไปทั้งตัว — ผู้เล่นรู้สึก "ไปไม่ถึงฝั่ง
+ * ทั้งที่ถึงแล้ว" ขาออกก็เหมือนกัน: ยืนอยู่ได้จนเท้าหลังพ้นขอบ ไม่ใช่หล่นตั้งแต่ครึ่งตัว
+ * ใช้เฉพาะพื้นลอยแบบแผ่นเรียบ — เนินเป็นผิวโค้ง ถ้าหยิบความสูงจากจุดข้าง ๆ ตัวจะลอยเหนือเนิน
+ */
+const FOOT = 14;
+function footTop(p, x) {
+  const t = platTop(p, x);
+  if (t !== null || p.kind !== 'ledge') return t;
+  return platTop(p, x - FOOT) ?? platTop(p, x + FOOT);
+}
+
+/**
+ * ลดความแน่นของของกิน — เก็บเม็ดหนึ่งไว้ก็ต่อเมื่อห่างจากทุกเม็ดที่เก็บไว้แล้วอย่างน้อย FOOD_SPACING
+ * ไล่จากซ้ายไปขวา (ตามที่ผู้เล่นเจอ) เม็ดแรกของทุกแถวอยู่เสมอ = สัญญาณบอกจุดกดยังอยู่ครบ
+ * กุ้งทอง/คริสตัลไม่ถูกตัด และกันระยะให้เม็ดรอบตัวด้วย (ไม่ให้ปลาเบียดของหายาก)
+ * คืน array ใหม่ · ใช้ทั้งตอนปูท่อนในเกมและในหน้าออกแบบ (ความแน่นจึงตรงกันสองฝั่ง)
+ */
+export function thinFood(items) {
+  // ไม่แตะ: กุ้งทอง/คริสตัล (ของหายากชิ้นเดี่ยว) และเยลลี่ — เยลลี่ใช้วาดเป็นตัวอักษร/ลาย
+  // ตัดเม็ดออกแล้วลายอ่านไม่ออก จึงคงไว้ครบตามที่วาดทุกเม็ด
+  const rare = (it) => it.kind === 'shrimp' || it.kind === 'crystal';
+  const fixed = (it) => rare(it) || it.kind === 'jelly';
+  const pool = items.filter((it) => !fixed(it)).sort((a, b) => a.x - b.x || a.y - b.y);
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const S = FOOD_SPACING;
+  const MIN = 30;        // กันแถวต่างระดับที่ผ่านใกล้กันไม่ให้เบียด
+  const LINK = 60;       // เม็ดก่อนหน้าในแนวเดียวกัน = เม็ดที่ใกล้ที่สุดข้างหลังในระยะนี้
+  // ── สะสมระยะตามแนว ──
+  // แต่ละเม็ดรับ "ระยะสะสม" ต่อจากเม็ดก่อนหน้าในแนวเดียวกัน ถึง S เมื่อไหร่ก็เก็บไว้แล้วหักออก S
+  // ได้ความห่างเฉลี่ย S ทุกแนวโดยไม่ต้องรู้ว่าเป็นแถวหรือโค้ง: แถว 34px เหลือราว 3 ใน 4
+  // ส่วนโค้งกระโดดที่ถี่กว่าเหลือราวครึ่ง · เม็ดแรกของทุกแนวอยู่เสมอ = สัญญาณบอกจุดกด
+  const acc = new Map();
+  const kept = [];
+  pool.forEach((f, idx) => {
+    let prev = null, pd = Infinity;
+    for (let i = idx - 1; i >= 0 && f.x - pool[i].x <= LINK; i--) {
+      const d = dist(f, pool[i]);
+      if (d <= LINK && d < pd) { pd = d; prev = pool[i]; }
+    }
+    let a = prev ? acc.get(prev) + pd : S;
+    if (a >= S && !items.some((r) => rare(r) && dist(r, f) < S)
+        && !kept.slice(-12).some((k) => dist(k, f) < MIN)) {
+      kept.push(f);
+      a -= S;
+    }
+    acc.set(f, a);
+  });
+  return [...items.filter(fixed), ...kept];
+}
+
+/**
+ * ขยายท่อนให้กว้างขึ้น MAP_SPREAD เท่า โดยไม่ยืดของชิ้นไหนเลย — คืนความกว้างใหม่ (แก้ c ในที่)
+ *
+ * ── วิธีคิด ──
+ * 1) หา "ช่วงที่ห้ามแยก": ของแข็ง หลุม พื้นเหยียบ เม็ดที่ลอยเหนือเส้นวิ่ง (ส่วนโค้งกระโดด)
+ *    ทางลอยตั้งแต่จุดกดถึงจุดลงสองชั้น ของอันตรายที่ขยับได้ และช่องระหว่างพื้นเหยียบสองแผ่น
+ *    ที่ใกล้พอจะกระโดดถึงกัน — ถ้าแทรกที่ว่างกลางช่วงพวกนี้ ส่วนโค้งจะเพี้ยนหรือกระโดดไม่ถึง
+ * 2) ที่เหลือคือ "ช่วงว่าง" (วิ่งเฉย ๆ ไม่ต้องทำอะไร) แทรกระยะเพิ่มกลางช่วงว่างแต่ละช่วง
+ *    รวมกันเท่ากับ (MAP_SPREAD − 1) × ความกว้างท่อน แบ่งตามความยาวช่วงว่าง
+ * 3) ทุกอย่างที่อยู่หลังจุดแทรกเลื่อนไปทั้งก้อน — เม็ดแถวพื้นที่คร่อมจุดแทรกแค่ห่างกันขึ้นหนึ่งช่อง
+ *
+ * เรียกก่อนลดความแน่นของกินและก่อนโรยของพิเศษ — หน้าออกแบบด่านเรียกตัวเดียวกันกับ c ชุดเดียวกัน
+ * จุดแทรกจึงตรงกันทุกพิกเซลทั้งในเกมและในหน้าออกแบบ
+ */
+export function spreadChunk(c, x0, w) {
+  const extra = w * (MAP_SPREAD - 1);
+  if (extra <= 0) return w;
+  const PAD = 24;
+  const occ = [];
+  const add = (a, b) => occ.push([a, b]);
+  for (const o of c.obs || []) add(o.x - PAD, o.x + (o.w || 0) + PAD);
+  for (const p of c.pit || []) add(p.x - PAD, p.x + p.w + PAD);
+  const plats = (c.plats || []).slice().sort((a, b) => a.x - b.x);
+  for (const p of plats) add(p.x - PAD, p.x + p.w + PAD);
+  for (let i = 1; i < plats.length; i++) {
+    const a = plats[i - 1], b = plats[i];
+    if (b.x - (a.x + a.w) < DBL_SPAN) add(a.x + a.w, b.x);   // กระโดดข้ามถึงกัน = ห้ามถ่าง
+  }
+  // เม็ดลอยเหนือเส้นวิ่ง (ส่วนโค้ง) และเยลลี่ทุกเม็ด (ใช้วาดเป็นตัวอักษร) — ห้ามแยกกลางลาย
+  for (const f of c.fish || []) if (f.y < RUN_Y - 8 || f.kind === 'jelly') add(f.x - 30, f.x + 30);
+  for (const j of c.jumps || []) add(j - PAD, j + DBL_SPAN + PAD);
+  for (const h of c.hazards || []) add(h.x - 80, h.x + 80);
+  for (const f of c.fallers || []) add(f.x - 60, f.x + 60);
+
+  // รวมช่วงที่ซ้อนกัน แล้วหาช่วงว่างภายในท่อน
+  occ.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [a, b] of occ) {
+    const last = merged[merged.length - 1];
+    if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  }
+  // ── จุดที่แทรกได้ ──
+  // ช่วงว่าง "ระหว่างกลุ่ม" ในท่อนเสมอ · ช่วงว่างหัวท่อนห้ามแทรก: บางท่อนวางส่วนโค้งกระโดด
+  // ยื่นข้ามขอบไปเคลียร์ของชิ้นแรกของท่อนถัดไป (เจอจริงในถ้ำคริสตัล ท่อน 116 → 117)
+  // ถ้าแทรกหัวท่อน ของชิ้นแรกจะเลื่อนหนีจุดกดของท่อนก่อนหน้า แล้วชนทั้งที่กดตามเฉลย
+  // · ช่วงว่างท้ายท่อนแทรกได้เฉพาะตอนที่ไม่มีของในท่อนยื่นเลยขอบออกไป ด้วยเหตุผลเดียวกัน
+  const overhang = merged.length && merged[merged.length - 1][1] > x0 + w;
+  const gaps = [];
+  for (let i = 1; i < merged.length; i++) {
+    const a = merged[i - 1][1], b = merged[i][0];
+    if (b - a >= 20 && a >= x0 && b <= x0 + w) gaps.push([a, b]);
+  }
+  const lastEnd = merged.length ? merged[merged.length - 1][1] : x0;
+  if (!overhang && x0 + w - lastEnd >= 20) gaps.push([Math.max(x0, lastEnd), x0 + w]);
+  if (!merged.length) gaps.push([x0, x0 + w]);
+  const total = gaps.reduce((n, [a, b]) => n + (b - a), 0);
+  // ไม่มีจุดที่แทรกได้เลย (ท่อนแน่นทั้งท่อน หรือมีของยื่นข้ามไปท่อนถัดไป) = ไม่ขยายท่อนนี้
+  if (total <= 0) return w;
+  const cuts = gaps.map(([a, b]) => ({ at: (a + b) / 2, add: (extra * (b - a)) / total }));
+  const shift = (x) => { let d = 0; for (const k of cuts) if (x >= k.at) d += k.add; return d; };
+
+  for (const o of c.obs || []) o.x += shift(o.x);
+  for (const p of c.pit || []) p.x += shift(p.x);
+  for (const p of c.plats || []) p.x += shift(p.x);
+  for (const f of c.fish || []) f.x += shift(f.x);
+  for (const h of c.hazards || []) h.x += shift(h.x);
+  for (const f of c.fallers || []) f.x += shift(f.x);
+  for (const p of c.pickups || []) p.x += shift(p.x);
+  if (c.jumps) c.jumps = c.jumps.map((j) => j + shift(j));
+  return w + extra;
 }
 
 export const AUTHOR = {
@@ -795,8 +923,8 @@ export const PATTERNS = [
   // ── 19-22 · ชุดถ้ำคริสตัล: อุโมงค์เพดานต่ำ ──────────────────
   //
   // กริยาหลักของถ้ำคือ "หมอบค้าง" ไม่ใช่ "หมอบทีละครั้ง" แบบท่อน 2
-  // ทำได้ด้วยการวางคานติดกันเป็นแนวยาว ช่องใต้คานสูง 34px เท่าเดิมทุกใบ
-  // (bar.top 232 + h 54 = 286 / GROUND_Y 320) กล่องชนจึงไม่เปลี่ยนเลย
+  // ทำได้ด้วยการวางคานติดกันเป็นแนวยาว ช่องใต้คานสูงเท่ากันทุกใบ
+  // (bar.top 225 + h 54 = 279 / GROUND_Y 320 = ช่อง 41px) กล่องชนจึงไม่เปลี่ยนเลย
   // สิ่งที่เปลี่ยนคือ "ต้องกดค้างนานแค่ไหน" ซึ่งเป็นอินพุตคนละแบบกับแมพอื่น
   //
   // ผู้เล่นลุกกลางอุโมงค์ไม่ได้ ต้องหมอบยาวจนพ้น จึงต้องโรยปลาไว้ใต้คานตลอดแนว
@@ -3583,12 +3711,15 @@ export class Level {
     // step.fn = ท่อนที่มากับทางเข้าด่าน (gates.js) ไม่ได้อยู่ในคลัง PATTERNS ที่สุ่มได้
     const c = step.fn ? step.fn(this.nextChunkX) : PATTERNS[step.p](this.nextChunkX);
     // แพตเทิร์นยาว ๆ ประกาศ width เองได้ ไม่งั้นเนื้อหาจะล้นไปทับท่อนถัดไป
-    const w = c.width || chunkW;
+    // แล้วขยายท่อนตาม MAP_SPREAD (แทรกที่ว่างเฉพาะช่วงวิ่งโล่ง ไม่ยืดของ) — ต้องทำก่อนโรยของพิเศษ
+    const w = spreadChunk(c, this.nextChunkX, c.width || chunkW);
 
     // กุ้งมาก่อนเม็ดกลมเสมอ ท่อนที่มีกุ้งแล้วจะไม่ใส่เม็ดกลมทับ
     // ไม่งั้นของเด่นสองอย่างอยู่ในแนวเดียวกันแล้วแย่งสายตากันเอง
     if (step.shrimp) c.fish = makeShrimp(c.fish);   // คืน array ใหม่ที่ตัดเม็ดใกล้กุ้งออกแล้ว
     else if (step.kibble) makeKibble(c.fish, step.kibble);
+    // ลดความแน่นของกินหลังใส่ของพิเศษแล้ว — ของพิเศษจะได้กันที่ของตัวเองไว้ก่อน (ดู FOOD_SPACING)
+    c.fish = thinFood(c.fish);
 
     // ติดธีมไว้กับชิ้นตั้งแต่ตอนเกิด ไม่ใช่ให้ตอนวาดไปอ่านธีมของด่านปัจจุบัน
     // ชิ้นที่เกิดก่อนเปลี่ยนฉากจึงยังเป็นหน้าตาของฉากเดิมจนวิ่งผ่านไปเอง
