@@ -971,6 +971,8 @@ export const EN = {
   'ได้ EXP': 'EXP ready',
   'เต็มวันนี้': 'Maxed today',
   'วันนี้น้องโตเต็มที่แล้ว พรุ่งนี้มาเลี้ยงต่อนะ': 'Grown as much as possible today — come back tomorrow!',
+  'รอน้องอีกตัวอาบน้ำเสร็จก่อนนะ': 'Wait for the other kitten to finish bathing first!',
+  'นั่งริมหน้าต่าง': 'Sit by the window',
   'อิ่มน้ำ': 'Hydrated',
   'เลือก': 'Choose',
   'บ้านยังว่างอยู่': 'The house is still empty',

@@ -78,11 +78,13 @@ export const SPOTS = {
   // จุดขึ้นไปนั่ง/นอน: y = ระดับผิวเบาะจริง น้องจะนั่งอยู่บนเบาะ ไม่ร่วงลงมาข้างล่าง
   // เตียงนอนได้สามตัว — ตรงหมอนแต่ละใบ (ดู BED_PILLOWS) บนผิวฟูก
   beds: [-56, 0, 56].map((dx) => ({ x: L.bed + dx * BED_S, y: BED_BASE - 52 * BED_S })),
-  seat: { x: L.window, y: 288 },                   // บนเบาะม้านั่ง
+  // ม้านั่งริมหน้าต่างนั่งได้สามตัว — เบาะแยกสามใบ (ดู windowSeat) น้องทั้งห้องนั่งเรียงกันได้
+  seats: [-64, 0, 64].map((dx) => ({ x: L.window + dx, y: 288 })),
   hammock: { x: L.tree - 5, y: 322 },              // ในเปล (ผ้าเปลทับตัวช่วงล่าง ดู drawHammockFront)
   // คอนโดแมว: แท่นล่าง / หลังคาบ้าน / แท่นบนสุด — ปีนขึ้นไปเป็นลำดับ (ดู TREE_ROUTES ใน catroom.js)
   treeLow: { x: L.tree - 62, y: 246 },
-  treeMid: { x: L.tree + 52, y: 138 },
+  // หลังคาบ้านกล่อง (ขอบบนกล่องอยู่ที่ y 130) — เดิม 138 ขาน้องจมลงไปใต้หลังคา ดูห้อยลอยอยู่ข้างกล่อง
+  treeMid: { x: L.tree + 52, y: 130 },
   treeTop: { x: L.tree - 20, y: 112 },
   treeHouse: { x: L.tree + 52, y: 186 },   // ในบ้านกล่อง (พื้นบ้าน)
   // ชั้นนอนบนผนังสองชั้น — กระโดดต่อจากคอนโดขึ้นไปนั่งได้
@@ -513,22 +515,23 @@ function windowSeat(ctx) {
   fs(ctx, P.wood, 2.2);
   rr(ctx, x - 92, y + 8, 184, 22, 4);
   fs(ctx, P.woodDark, 1.6);
-  // เบาะยาว
-  rr(ctx, x - 104, y - 14, 208, 18, 8);
-  fs(ctx, P.red, 2.2);
-  ctx.strokeStyle = P.gold; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x - 96, y - 2); ctx.lineTo(x + 96, y - 2); ctx.stroke();
-  crown(ctx, x, y - 4, 14, 9);
-  // หมอนอิง
-  const pillows = [[-80, P.pink, -0.18], [-54, P.pinkLight, -0.08], [56, P.cream, 0.1], [82, P.lilac, 0.2]];
-  for (const [dx, c, a] of pillows) {
+  // ── เบาะนั่งสามใบ ── แยกกันเป็นที่นั่งของใครของมัน (ดู SPOTS.seats)
+  // เดิมเป็นเบาะยาวผืนเดียวกับหมอนกองสองข้าง อ่านเป็น "ที่นอน" และนั่งได้แค่ตรงกลาง
+  // หมอนพิงเล็ก ๆ หลังเบาะแต่ละใบ บอกว่า "นั่งตรงนี้ได้" ทีละที่
+  const backs = [P.pink, P.cream, P.lilac];
+  [-64, 0, 64].forEach((dx, i) => {
     ctx.save();
-    ctx.translate(x + dx, y - 22);
-    ctx.rotate(a);
-    rr(ctx, -14, -14, 28, 26, 7);
-    fs(ctx, c, 1.8);
+    ctx.translate(x + dx, y - 24);
+    ctx.rotate((i - 1) * 0.06);
+    rr(ctx, -16, -12, 32, 22, 7);
+    fs(ctx, backs[i], 1.8);
     ctx.restore();
-  }
+    rr(ctx, x + dx - 31, y - 14, 62, 18, 8);
+    fs(ctx, P.red, 2.2);
+    ctx.strokeStyle = P.gold; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + dx - 24, y - 2); ctx.lineTo(x + dx + 24, y - 2); ctx.stroke();
+  });
+  crown(ctx, x, y - 4, 14, 9);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1292,12 +1295,6 @@ function windowSky(ctx, t, night) {
   // ทิวไม้กับปราสาทไกล ๆ
   const tower = night ? '#3D3470' : '#E6A9C8';
   const roof = night ? '#2B2458' : '#B66CA6';
-  ctx.fillStyle = night ? '#24305A' : '#8CC481';
-  ctx.beginPath();
-  ctx.moveTo(WIN.x - 80, WIN.bottom);
-  for (let i = 0; i <= 8; i++) ctx.arc(WIN.x - 80 + i * 20, WIN.bottom - 34, 14, Math.PI, 0);
-  ctx.lineTo(WIN.x + 80, WIN.bottom);
-  ctx.fill();
   for (const [dx, h, w] of [[-26, 70, 18], [0, 100, 22], [26, 64, 18]]) {
     const bx = WIN.x + dx;
     ctx.fillStyle = tower;
@@ -1314,7 +1311,21 @@ function windowSky(ctx, t, night) {
     }
   }
   ctx.fillStyle = tower;
-  ctx.fillRect(WIN.x - 40, WIN.bottom - 60, 80, 30);
+  ctx.fillRect(WIN.x - 40, WIN.bottom - 60, 80, 60);
+  // ── ทิวไม้ "หน้า" ปราสาท ── เดิมวาดไม้ก่อนปราสาท ปราสาทจึงลอยทับยอดพุ่มไม้
+  // วาดทีหลังแล้วให้พุ่มสูงขึ้นมาคลุมฐานปราสาท ปราสาทจึงตั้งอยู่หลังแนวต้นไม้จริง ๆ
+  ctx.fillStyle = night ? '#1E2A50' : '#7DBB74';
+  ctx.beginPath();
+  ctx.moveTo(WIN.x - 80, WIN.bottom);
+  for (let i = 0; i <= 7; i++) ctx.arc(WIN.x - 74 + i * 21, WIN.bottom - 44, 15, Math.PI, 0);
+  ctx.lineTo(WIN.x + 80, WIN.bottom);
+  ctx.fill();
+  ctx.fillStyle = night ? '#24305A' : '#8CC481';
+  ctx.beginPath();
+  ctx.moveTo(WIN.x - 80, WIN.bottom);
+  for (let i = 0; i <= 8; i++) ctx.arc(WIN.x - 80 + i * 20, WIN.bottom - 30, 14, Math.PI, 0);
+  ctx.lineTo(WIN.x + 80, WIN.bottom);
+  ctx.fill();
   ctx.restore();
 
   // กรอบกระจกแบ่งช่อง

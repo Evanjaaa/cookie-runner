@@ -35,6 +35,10 @@ const later = (fn, ms) => setTimeout(fn, ms);
 const MAX_CAM = CATROOM_W - VIEW.W;
 /** ขนาดตัวโตเต็มวัยในห้อง — เล็กกว่าหน้าแรก (2.6) เพราะห้องหนึ่งมีได้สามตัว */
 const ADULT = 1.85;
+/** แกว่งน้องไปมาเร็ว ๆ ต่อเนื่องกี่เฟรมถึงจะเวียนหัว (300 = 5 วินาที) */
+const DIZZY_AFTER = 300;
+/** แตะปลุกน้องในกล่อง: ตื่นงัวเงีย หาว แล้วหลับต่อ ใช้เวลารวมเท่านี้ (≈ 2.7 วิ) */
+const WAKE_FRAMES = 160;
 const WALK = 1.15;   // หน่วยต่อเฟรม
 const RUN = 3.6;
 /** เดินไปทำกิจกรรมที่ผู้เล่นกด — เร็วกว่าเดินเล่น ห้องกว้างสองจอ ไม่งั้นต้องรอนาน */
@@ -51,7 +55,10 @@ const PERCHES = {
   bed0: SPOTS.beds[0],
   bed1: SPOTS.beds[1],
   bed2: SPOTS.beds[2],
-  seat: SPOTS.seat,
+  // ม้านั่งริมหน้าต่างสามที่ — นั่งพร้อมกันได้สามตัว
+  seat0: SPOTS.seats[0],
+  seat1: SPOTS.seats[1],
+  seat2: SPOTS.seats[2],
   hammock: SPOTS.hammock,
   // คอนโดแมวกับชั้นบนผนัง — ขึ้นไปได้ทีละแท่นตามทาง (TREE_ROUTES)
   treeLow: SPOTS.treeLow,
@@ -62,6 +69,7 @@ const PERCHES = {
   shelfHigh: SPOTS.shelfHigh,
 };
 const BEDS = ['bed1', 'bed0', 'bed2'];
+const SEATS = ['seat1', 'seat0', 'seat2'];
 
 /**
  * ทางปีน — จุดสูงบนคอนโดไปถึงได้ทีละแท่น ไม่กระโดดจากพื้นขึ้นยอดทีเดียว
@@ -88,7 +96,7 @@ const DROPS = [
   { act: 'drink', label: 'ให้น้ำ', x0: 262, x1: 334, y0: 290, y1: 400 },
   { act: 'bathe', label: 'อาบน้ำ', x0: SPOTS.tub.x - 75, x1: SPOTS.tub.x + 75, y0: 262, y1: 372 },
   { act: 'sleep', label: 'พาไปนอน', at: 'bed', x0: SPOTS.beds[0].x - 70, x1: SPOTS.beds[2].x + 70, y0: 170, y1: 340 },
-  { act: 'sleep', label: 'พาไปนอน', at: 'seat', x0: SPOTS.seat.x - 110, x1: SPOTS.seat.x + 110, y0: 220, y1: 330 },
+  { act: 'sleep', label: 'นั่งริมหน้าต่าง', at: 'seat', x0: SPOTS.seats[0].x - 46, x1: SPOTS.seats[2].x + 46, y0: 220, y1: 330 },
   // เปลอยู่ในโซนคอนโด ต้องมาก่อนโซนคอนโด — จุดวางที่เจาะจงกว่าต้องได้ลองก่อน
   { act: 'sleep', label: 'พาไปนอน', at: 'hammock', x0: SPOTS.hammock.x - 48, x1: SPOTS.hammock.x + 48, y0: 280, y1: 350 },
   { act: 'perch', label: 'เข้าบ้าน', at: 'treeHouse', x0: SPOTS.treeHouse.x - 38, x1: SPOTS.treeHouse.x + 38, y0: 120, y1: 200 },
@@ -443,7 +451,7 @@ export class CatRoom {
     const pick = (name) => (this.perchFree(name, a) ? name : null);
     let perch = null;
     if (!a.sad) {
-      if (r < 0.1) perch = pick('seat');
+      if (r < 0.1) perch = SEATS.find((n) => this.perchFree(n, a)) || null;
       else if (r < 0.16) perch = pick('hammock');
       else if (r < 0.22) perch = BEDS.find((b) => this.perchFree(b, a)) || null;
       // ปีนคอนโด/กระโดดขึ้นชั้นบนผนังเล่น
@@ -682,6 +690,24 @@ export class CatRoom {
       && (a.mode === 'idle' || (a.mode === 'walk' && !a.then)) && !a.sad;
   }
 
+  /**
+   * ปุ่มเทส (debug.js) — เรียกน้องทุกตัวที่ว่างมาเล่นด้วยกันทันที ไม่ต้องรอสุ่ม
+   * ตัวที่นั่งบนที่สูงเดินลงมาเองตามทางปกติ (goTo ในขั้นวิ่งไล่) · ตัวที่ถูกยก/อาบน้ำ/มีงานดูแลค้างไม่นับ
+   * คืนจำนวนตัวที่เข้าวง (น้อยกว่า 2 = เล่นด้วยกันไม่ได้)
+   */
+  debugSocial() {
+    const ms = [...this.actors.values()].filter((a) => a.mode !== 'held' && a.mode !== 'fall'
+      && a.mode !== 'hop' && !a.task && !a.inTub);
+    if (ms.length < 2) return ms.length;
+    if (this.social) this.endSocial(this.social);
+    for (const a of ms) {
+      a.act = null;
+      if (a.mode === 'act') a.mode = 'idle';
+    }
+    this.startSocial(ms);
+    return ms.length;
+  }
+
   startSocial(members) {
     const s = { members: [], join: [], cx: 0, round: 0, phase: null, pending: 0, dir: 1 };
     this.social = s;
@@ -804,7 +830,10 @@ export class CatRoom {
     a.stack = routeTo(name).slice();
     a.perch = p;
     a.perchName = name;
-    this.hop(a, p.x, p.y, () => this.rest(a, 'sit', rand(400, 800)), 'auto', 6);
+    // ม้านั่งริมหน้าต่าง = นั่งเล่นชมวิว ท่าสลับไปมา (นั่ง เลียขน นวดเบาะ ร้องทัก) ไม่ใช่นั่งนิ่งท่าเดียว
+    const SEAT_POSES = ['sit', 'groom', 'knead', 'love'];
+    const pose = name.startsWith('seat') ? SEAT_POSES[Math.floor(Math.random() * SEAT_POSES.length)] : 'sit';
+    this.hop(a, p.x, p.y, () => this.rest(a, pose, rand(400, 800)), 'auto', 6);
   }
 
   /** เสียงของเล่นแต่ละชิ้น — ตอนโยนออกมาและทุกครั้งที่ถูกตะปบ */
@@ -835,7 +864,7 @@ export class CatRoom {
     this.goTo(a, SPOTS.tub.x - 70, { speed: BRISK, then: intoTub });
   }
 
-  /** @param at ชื่อที่นอนที่ถูกยกมาวาง (bed0-2 / seat / hammock) — นอนตรงนั้นเลยไม่ต้องเดินมา */
+  /** @param at ชื่อที่นอนที่ถูกยกมาวาง (bed0-2 / seat0-2 / hammock) — นอนตรงนั้นเลยไม่ต้องเดินมา */
   sleep(id, onDone, at = null) {
     const a = this.actors.get(id);
     if (!a) return;
@@ -843,7 +872,7 @@ export class CatRoom {
     a.task = 'sleep';
     this.focus(id);
     // เตียงก่อน (สามที่) แล้วค่อยม้านั่ง/เปล — ห้องมีสามตัว นอนบนเตียงได้ครบทุกตัว
-    const name = at || [...BEDS, 'seat', 'hammock', 'treeHouse'].find((n) => this.perchFree(n, a)) || 'bed1';
+    const name = at || [...BEDS, ...SEATS, 'hammock', 'treeHouse'].find((n) => this.perchFree(n, a)) || 'bed1';
     const p = PERCHES[name];
     const lieDown = () => {
       a.perchName = name;
@@ -963,7 +992,25 @@ export class CatRoom {
     const hit = this.hitCat(x + this.cam, y);
     if (hit) {
       this.selected = hit;
+      if (hit === this.waitActor?.id) this.pokeWaiting();
       if (this.onTapCat) this.onTapCat(hit);
+    }
+  }
+
+  /**
+   * แตะน้องที่หลับอยู่ในกล่อง — แตะรัว ๆ (3 ครั้งภายในราว 1.5 วิ) = ตื่นมางัวเงีย หาว แล้วหลับต่อ
+   * แตะทีเดียวแค่กระดิกหูในฝัน ไม่ตื่น
+   */
+  pokeWaiting() {
+    const w = this.waitActor;
+    if (!w) return;
+    w.pokes = (w.pokes || []).filter((t) => this.t - t < 90);
+    w.pokes.push(this.t);
+    w.twitch = 14;
+    if (w.pokes.length >= 3 && !(w.wake > 0)) {
+      w.wake = WAKE_FRAMES;
+      w.pokes = [];
+      sfx.huh();
     }
   }
 
@@ -1038,6 +1085,8 @@ export class CatRoom {
     a.then = null;
     a.inTub = false;
     a.swing = 0;
+    a.dizzy = 0;
+    a.woozy = false;
     // จับตรงไหนของตัวก็ห้อยจากตรงนั้น — ตัวไม่กระตุกไปหานิ้ว
     this.grab = { id, sx, sy, offX: a.x - (this.cam + sx), offY: a.y - sy, lastX: a.x, zone: null };
     this.selected = id;
@@ -1064,15 +1113,27 @@ export class CatRoom {
     const zone = this.dropZoneAt(a.x, a.y);
     a.mode = 'idle';
     a.swing = 0;
+    // ปล่อยตอนยังเวียนหัวอยู่ = มึนต่ออีกครู่บนพื้นแล้วค่อยหาย (ไม่ใช่หายวับตอนปล่อยมือ)
+    if (a.woozy) a.dizzyLeft = 90;
+    a.dizzy = 0;
+    a.woozy = false;
+    // ปล่อยจากที่สูง = ร่วงตามแรงโน้มถ่วงลงมาแตะพื้น ตัวแบนนิดหนึ่งแล้วเด้งคืน (ดู fall ใน step)
+    const fallFrom = a.lane - a.y;
 
     // นอน: วางลงที่นอนที่ใกล้ที่สุดในโซนนั้นเลย (เตียงเลือกหมอนที่ว่างใกล้ตัวที่สุด)
     if (zone?.act === 'sleep') {
       let at = zone.at;
-      if (at === 'bed') {
-        const free = BEDS.filter((b) => this.perchFree(b, a));
+      if (at === 'bed' || at === 'seat') {
+        // เตียงกับม้านั่งมีหลายที่ — เลือกที่ว่างใกล้ตัวที่สุด
+        const free = (at === 'bed' ? BEDS : SEATS).filter((b) => this.perchFree(b, a));
         at = free.sort((p, q) => Math.abs(PERCHES[p].x - a.x) - Math.abs(PERCHES[q].x - a.x))[0] || null;
       } else if (!this.perchFree(at, a)) at = null;
       if (at) {
+        // ม้านั่งริมหน้าต่าง: วางแล้วบางทีหลับ บางทีนั่งเล่นชมวิว (สุ่มครึ่งต่อครึ่ง) — ไม่ได้นอนทุกครั้งเหมือนเตียง
+        if (zone.at === 'seat' && Math.random() < 0.5) {
+          this.perchAt(a, at);
+          return;
+        }
         if (this.onDropCat) this.onDropCat(a.id, 'sleep', { at });
         return;
       }
@@ -1086,6 +1147,15 @@ export class CatRoom {
       return;
     }
     if (zone?.act === 'bathe') {
+      // อ่างอาบได้ทีละตัว — มีตัวอื่นอาบอยู่ (หรือกำลังเดินไปอาบ) = เด้งออกข้างอ่าง แล้วบอกให้รอ
+      const busy = [...this.actors.values()].some((o) => o !== a && (o.inTub || o.task === 'bath'));
+      if (busy) {
+        const x = clamp(SPOTS.tub.x + (a.x >= SPOTS.tub.x ? 110 : -110), 40, CATROOM_W - 40);
+        this.hop(a, x, a.lane, () => this.rest(a, 'sit', rand(160, 300)), 'auto', 40);
+        this.burst(SPOTS.tub.x, SPOTS.tub.y - 30, 'bubble', 4);
+        if (this.onNotice) this.onNotice('รอน้องอีกตัวอาบน้ำเสร็จก่อนนะ');
+        return;
+      }
       if (this.onDropCat) this.onDropCat(a.id, 'bathe', { direct: true });
       return;
     }
@@ -1096,7 +1166,14 @@ export class CatRoom {
     // วางทับตัวอื่นบนพรม = ขยับออกไปข้าง ๆ นิดหนึ่ง ไม่นั่งซ้อนกัน
     const crowd = [...this.actors.values()].find((o) => o !== a && !o.perch && Math.abs(o.x - x) < 50);
     if (crowd) a.x = clamp(crowd.x + (x >= crowd.x ? 60 : -60), 40, CATROOM_W - 40);
-    this.hop(a, crowd ? a.x : x, a.lane, () => this.rest(a, 'sit', rand(200, 400)), 'auto', 6);
+    if (fallFrom > 24 && !crowd && zone?.act !== 'feed') {
+      // ร่วงตรง ๆ ลงพรม (ไม่กระโดดโค้ง) — ขาห้อย หางชี้ขึ้น แล้วลงพื้นแบบตัวแบนเด้ง
+      a.mode = 'fall';
+      a.fall = { vy: 0, squash: 0 };
+      a.then = () => this.rest(a, 'sit', rand(200, 400));
+    } else {
+      this.hop(a, crowd ? a.x : x, a.lane, () => this.rest(a, 'sit', rand(200, 400)), 'auto', 6);
+    }
     // ส่งตำแหน่งบนจอ (หน่วยฉาก) ไปด้วย เมนูเลือกอาหาร/ของเล่นจะเด้งขึ้นใกล้จุดที่วาง
     if (zone && zone.act !== 'perch' && this.onDropCat) {
       this.onDropCat(a.id, zone.act, { at: { x: (zone.x0 + zone.x1) / 2 - this.cam, y: zone.y0 } });
@@ -1116,6 +1193,10 @@ export class CatRoom {
 
   update(dt) {
     this.t += dt;
+    // อารมณ์สด — เดิมคิดแค่ตอน sync จึงหน้าเศร้าค้างจนกว่าจะปิดเปิดห้องใหม่ (ทุก ~1 วิ)
+    if (Math.floor(this.t / 60) !== Math.floor((this.t - dt) / 60)) {
+      for (const a of this.actors.values()) if (a.cat) a.sad = isSad(a.cat);
+    }
 
     // กล้อง: นิ้วลากอยู่ > ตามตัว > ไปเป้า > ไหลตามแรงเหวี่ยง
     if (!this.drag) {
@@ -1147,6 +1228,17 @@ export class CatRoom {
         const v = a.x - g.lastX;
         g.lastX = a.x;
         a.swing = (a.swing || 0) * Math.pow(0.86, dt) + clamp(v, -14, 14) * 0.022;
+        // ── เวียนหัว ── นับเฉพาะ "แกว่งไปมาเร็ว ๆ" ไม่ใช่การลากพาไปไหนมาไหน
+        // แกว่ง = กลับทิศซ้าย/ขวาด้วยความเร็วสูงถี่ ๆ (ภายในครึ่งวินาทีจากครั้งก่อน)
+        // แกว่งต่อเนื่องครบ DIZZY_AFTER เฟรม (~5 วิ) ถึงจะมึน · ยกพาไปทำภารกิจเฉย ๆ = ไม่มึนเลย
+        const dirNow = Math.abs(v) > 5 ? Math.sign(v) : 0;
+        if (dirNow && g.lastDir && dirNow !== g.lastDir) g.flipAt = this.t;
+        if (dirNow) g.lastDir = dirNow;
+        const swinging = g.flipAt !== undefined && this.t - g.flipAt < 30;
+        a.dizzy = clamp((a.dizzy || 0) + (swinging ? dt / DIZZY_AFTER : -dt / 90), 0, 1);
+        // มึนแล้วค้างไว้จนแกว่งหยุดสักพัก (ตกต่ำกว่าครึ่ง) — ไม่กระพริบเข้าออกตอนแกว่งสะดุดจังหวะ
+        if (a.dizzy >= 1) a.woozy = true;
+        else if (a.dizzy < 0.5) a.woozy = false;
         const zone = this.dropZoneAt(a.x, a.y);
         if (zone !== g.zone) {
           g.zone = zone;
@@ -1166,12 +1258,13 @@ export class CatRoom {
     b.ang = clamp(b.ang + b.vel * dt, -0.42, 0.42);
     if (Math.abs(b.ang) >= 0.42) b.vel *= -0.5;
 
-    // น้องที่รออยู่ในกล่องร้องเมี้ยวเบา ๆ เป็นระยะ (ได้ยินเฉพาะตอนกล้องอยู่แถวกล่อง)
-    if (this.waitActor) {
-      this.waitMew = (this.waitMew ?? rand(240, 480)) - dt;
-      if (this.waitMew <= 0) {
-        this.waitMew = rand(420, 780);
-        if (this.hear({ x: SPOTS.box.x })) sfx.mew();
+    // น้องที่รออยู่ในกล่อง: หลับตลอดจนกว่าจะได้เข้าห้อง — zzz ลอยเป็นระยะ (ไม่ร้องเมี้ยวแล้ว)
+    const w = this.waitActor;
+    if (w) {
+      if (w.wake > 0) w.wake -= dt;
+      if (w.twitch > 0) w.twitch -= dt;
+      if (!(w.wake > 0) && Math.floor(this.t / 60) !== Math.floor((this.t - dt) / 60)) {
+        this.fx.push({ kind: 'zzz', x: SPOTS.box.x + 14, y: SPOTS.box.y - 46, vx: 0.3, vy: -0.5, t: 0, life: 90, r: 7, spin: 0 });
       }
     }
 
@@ -1191,6 +1284,29 @@ export class CatRoom {
 
   step(a, dt) {
     if (a.mode === 'held') { a.runPhase += dt * 0.05; return; }   // ถูกยกอยู่ ตำแหน่งมาจาก update
+    if (a.dizzyLeft > 0) a.dizzyLeft -= dt;
+    if (a.mode === 'fall') {
+      const f = a.fall;
+      if (f.land === undefined) {
+        f.vy += 0.75 * dt;
+        a.y += f.vy * dt;
+        if (a.y >= a.lane) {
+          a.y = a.lane;
+          f.land = 0;
+          if (this.hear(a)) sfx.bounce();
+        }
+      } else {
+        // ลงแล้ว: แบนลงแล้วเด้งคืนราว 1/3 วินาที
+        f.land += dt;
+        if (f.land >= 20) {
+          a.mode = 'idle';
+          a.fall = null;
+          const then = a.then; a.then = null;
+          if (then) then();
+        }
+      }
+      return;
+    }
     a.runPhase += dt * (a.mode === 'walk' ? a.speed * 0.09 : 0.02);
     if (a.react > 0) a.react -= dt;
     if (a.bubble) { a.bubble.t -= dt; if (a.bubble.t <= 0) a.bubble = null; }
@@ -1472,8 +1588,20 @@ export class CatRoom {
     // กล่องต้อนรับ: วาดด้านหน้ากล่องทุกครั้ง (เดิมวาดเฉพาะตอนมีน้องรอ กล่องเปล่าเลยเหลือแต่ฝาหลังลอยอยู่)
     const w = this.waitActor;
     if (w) {
-      const bob = Math.sin(this.t * 0.05) * 1.5;
-      drawCatPose(ctx, SPOTS.box.x - 4, SPOTS.box.y - 22 + bob, w.size, w.skin, this.t, { pose: 'sit', k: 1 });
+      // หลับขดในกล่อง หายใจช้า ๆ · ถูกแตะรัว ๆ = ลุกขึ้นนั่งงัวเงีย หาว แล้วค่อย ๆ หมอบหลับต่อ
+      const wake = w.wake > 0 ? 1 - w.wake / WAKE_FRAMES : -1;   // 0..1 ตลอดช่วงตื่น
+      const up = wake < 0 ? 0 : Math.min(1, wake / 0.15, (1 - wake) / 0.2);
+      const bob = Math.sin(this.t * 0.03) * 1.2 * (1 - up);
+      const yawn = wake > 0.3 && wake < 0.6;
+      const ear = w.twitch > 0 ? Math.sin(w.twitch * 0.9) * 0.5 : 0;
+      drawCatPose(ctx, SPOTS.box.x - 4, SPOTS.box.y - 22 + bob - (1 - up) * 9, w.size, w.skin, this.t, {
+        shape: up > 0
+          ? { loaf: 1 - up, sit: up, mouth: yawn ? 1 : 0, shut: yawn ? 1 : 0, ear: 0.3 + ear, tilt: Math.sin(this.t * 0.07) * 0.1 * up }
+          : { loaf: 1, shut: 1, ear: 0.2 + ear },
+        k: 1,
+        mood: up > 0 && !yawn ? 'tired' : '',
+        blink: up > 0 && !yawn ? undefined : true,
+      });
     }
     drawBoxFront(ctx);
     if (w && this.selected === w.id) this.drawTag(ctx, SPOTS.box.x, SPOTS.box.y - 22 - 52 * w.size - 4, nameOf(w.cat));
@@ -1505,8 +1633,10 @@ export class CatRoom {
     this.drawFx(ctx);
     ctx.restore();
 
-    drawCatRoomLight(ctx, cam, this.t, this.night);
+    // ชั้นหน้า (ม่านแดง ต้นไม้ใหญ่) ต้องอยู่ "ใต้" ความมืดของกลางคืนด้วย
+    // เดิมวาดทีหลังความมืด กลางคืนจึงมีม่านกับต้นไม้สว่างจ้าอยู่สองปลายห้องเหมือนตอนกลางวัน
     drawCatRoomFront(ctx, cam, this.t);
+    drawCatRoomLight(ctx, cam, this.t, this.night);
 
     ctx.save();
     ctx.translate(-cam, 0);
@@ -1555,12 +1685,67 @@ export class CatRoom {
     ctx.translate(a.x, pivotY);
     ctx.rotate(clamp(a.swing || 0, -0.5, 0.5));
     ctx.translate(-a.x, -pivotY);
+    const woozy = !!a.woozy;
+    const dz = woozy ? 1 : 0;
     drawCatPose(ctx, a.x, a.y, s, a.skin, this.t + a.runPhase * 10, {
-      shape: { sy: 0.14, sx: -0.08, ear: 0.35, tilt: 0.05, wag: Math.sin(this.t * 0.2) * 0.6 },
+      // เวียนหัว = หัวโยกวน หูลู่ หางห้อยตก
+      shape: { sy: 0.14, sx: -0.08, ear: 0.35 + dz * 0.5, tilt: 0.05 + (woozy ? Math.sin(this.t * 0.22) * 0.22 * dz : 0),
+        wag: woozy ? 0.9 : Math.sin(this.t * 0.2) * 0.6 },
       k: 1,
-      mood: 'happy',
+      mood: woozy ? 'dizzy' : 'happy',
     });
     ctx.restore();
+    if (woozy) this.drawDizzyStars(ctx, a.x, a.y - 52 * s, s, dz);
+  }
+
+  /** ดาวหมุนเป็นวงรอบหัวตอนเวียนหัว */
+  drawDizzyStars(ctx, x, y, s, k = 1) {
+    ctx.save();
+    for (let i = 0; i < 3; i++) {
+      const ang = this.t * 0.12 + (i / 3) * Math.PI * 2;
+      const px = x + Math.cos(ang) * 22 * s / ADULT * 1.6;
+      const py = y + Math.sin(ang) * 6 * s / ADULT * 1.6;
+      ctx.globalAlpha = k * (0.6 + 0.4 * Math.sin(ang));
+      ctx.fillStyle = i === 1 ? '#FFF3B0' : '#FFD54A';
+      ctx.strokeStyle = '#8A5A12';
+      ctx.lineWidth = 1;
+      const r = 7;
+      ctx.beginPath();
+      for (let j = 0; j < 10; j++) {
+        const rr = j % 2 ? r * 0.45 : r;
+        const aa = -Math.PI / 2 + (j / 10) * Math.PI * 2;
+        ctx.lineTo(px + Math.cos(aa) * rr, py + Math.sin(aa) * rr);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** ร่วงลงพื้นหลังถูกปล่อยจากที่สูง — กลางอากาศขาห้อย หางชี้ขึ้น · ลงแล้วตัวแบนเด้งคืน */
+  drawFall(ctx, a) {
+    const s = a.size;
+    const f = a.fall;
+    const lift = a.lane - a.y;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.08, 0.26 - lift / 900);
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    const k = Math.max(0.45, 1 - lift / 320);
+    ctx.ellipse(a.x, a.lane + 4, 22 * s / ADULT * 1.4 * k, 6 * s / ADULT * k, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    let shape;
+    if (f.land === undefined) {
+      shape = { sy: 0.12, sx: -0.06, ear: -0.4, wag: -0.8, puff: 0.25 };
+    } else {
+      const q = f.land / 20;
+      const squash = Math.sin(q * Math.PI) * (1 - q * 0.4);
+      shape = { sit: q, sy: -0.28 * squash, sx: 0.22 * squash, ear: 0.3 * (1 - q) };
+    }
+    drawCatPose(ctx, a.x, a.y, s, a.skin, this.t + a.runPhase * 10, {
+      shape, k: 1, mood: a.dizzyLeft > 0 ? 'dizzy' : f.land === undefined ? 'hurt' : 'happy',
+    });
+    if (a.dizzyLeft > 0) this.drawDizzyStars(ctx, a.x, a.y - 52 * s, s, Math.min(1, a.dizzyLeft / 40));
   }
 
   /** น้องที่อยู่ในบ้านกล่อง — วาดหมอบในรู ตัดภาพตามรู เห็นหน้าโผล่ออกมา แล้วขอบรูทับอีกที */
@@ -1586,6 +1771,10 @@ export class CatRoom {
     const skin = a.skin;
     if (a.mode === 'held') {
       this.drawHeld(ctx, a);
+      return;
+    }
+    if (a.mode === 'fall') {
+      this.drawFall(ctx, a);
       return;
     }
     if (a.perchName === 'treeHouse' && a.mode !== 'hop') {
@@ -1632,16 +1821,19 @@ export class CatRoom {
       let pose = a.pose;
       let mood;
       if (a.react > 0) { pose = 'love'; mood = 'happy'; }
+      else if (a.dizzyLeft > 0) mood = 'dizzy';
       else if (a.sad && !a.act) mood = 'sad';
       const lift = a.react > 0 ? Math.abs(Math.sin(a.react * 0.18)) * 10 : 0;
       if (a.act?.then && ['swat', 'scratch', 'cheer', 'wiggle', 'bat', 'puffed'].includes(a.act.kind)) {
         const k = a.act.kind;
-        // หันเข้าหาเพื่อน (มุมมองหน้าตรง หันได้แค่เอียงหัว/ตัวไปทางนั้น)
-        const toward = a.faceTo !== undefined ? Math.sign(a.faceTo - a.x) || 1 : 1;
+        // หันเข้าหาเพื่อน — ตัวแมวมีแต่ภาพหน้าตรง จึงหันแบบสามส่วนสี่: หัว+หน้าเลื่อนไปทางเพื่อน
+        // หางย้ายไปฝั่งตรงข้าม ตัวบีบแคบลงนิด (turn) เอียงตัวเข้าหา และตามองไปทางนั้น
+        const toward = this.lookSide(a) || 1;
+        const face = k === 'scratch' || k === 'swat' ? 0 : toward;
         const shape = k === 'wiggle'
           ? { crouch: 1, sway: 1, ear: 0.85, tilt: 0.1 * toward, lean: 0.08 * toward }
           : k === 'puffed'
-            ? { puff: 1, ear: 0.7, tilt: 0.05 }
+            ? { puff: 1, ear: 0.7, tilt: 0.1 * toward }
             : k === 'bat'
               // ยืนตบอุ้งเท้าใส่กันสลับจังหวะ เอนตัวเข้าหาเพื่อน
               ? { sit: 0.25, wave: 1, tilt: (0.1 + Math.sin(this.t * 0.35) * 0.08) * toward, lean: 0.06 * toward, wag: 0.6 * Math.sin(this.t * 0.4) }
@@ -1651,8 +1843,11 @@ export class CatRoom {
           : k === 'scratch'
             // ข่วนเสา — อุ้งเท้าสองข้างสลับขึ้นลง
             ? { scratch: 1, scratchT: Math.sin(this.t * 0.5), ear: 0.2, wag: 0.4 }
-            : { sit: 0.6, chirp: 1, tilt: 0.15 };
-        drawCatPose(ctx, a.x, a.y, s, skin, this.t + a.runPhase * 10, { shape, k: 1, mood: k === 'scratch' ? '' : 'happy' });
+            : { sit: 0.6, chirp: 1, tilt: 0.15 * toward };
+        // ตามองเพื่อน/ของเล่นด้วย — เดิมตามองตรงมาที่จอทั้งคู่ ดูเหมือนต่างคนต่างเล่น
+        const gaze = k === 'scratch' ? 0 : toward;
+        drawCatPose(ctx, a.x, a.y, s, skin, this.t + a.runPhase * 10,
+          { shape: face ? { ...shape, turn: 0.5 } : shape, k: 1, mood: k === 'scratch' ? '' : 'happy', gaze, face });
       } else if (a.act?.kind === 'drink') {
         // ท่าดื่มน้ำ: ก้มเลียแผล็บ ๆ เงยพักเป็นระยะ (ดู drinkShape)
         const e = drinkShape(a.act.t);
@@ -1665,9 +1860,18 @@ export class CatRoom {
         // ในเปล: ขดตัวหมอบ หางสั้นเก็บเข้าตัว — หางยาวปกติจะโผล่ทะลุผ้าเปลออกมาข้าง ๆ
         drawCatPose(ctx, a.x, a.y, s, skin, this.t + a.runPhase * 10,
           { shape: { loaf: 1, shut: 1, tailShort: 0.95, wag: 0 }, k: 1, mood, blink: true });
+      } else if (pose === 'wiggle' && this.lookSide(a)) {
+        // ย่อตัวเล็งของเล่น — เอนตัว เอียงหัว และมองไปทางของเล่น (เดิมใช้ท่าตั้งต้นที่เอนไปทางเดียวเสมอ
+        // เล็งผิดฝั่งแล้วค่อยกระโดดไปถูกฝั่ง ดูแปลก)
+        const toward = this.lookSide(a);
+        drawCatPose(ctx, a.x, a.y - lift, s, skin, this.t + a.runPhase * 10, {
+          shape: { crouch: 1, sway: 1, ear: 0.85, tilt: 0.12 * toward, lean: 0.1 * toward, turn: 0.5 },
+          k: Math.min(1, a.poseK), mood, gaze: toward, face: toward,
+        });
       } else {
+        const look = this.lookSide(a);
         drawCatPose(ctx, a.x, a.y - lift, s, skin, this.t + a.runPhase * 10,
-          { pose, k: Math.min(1, a.poseK), mood, blink: a.act?.kind === 'sleep' ? true : undefined });
+          { pose, k: Math.min(1, a.poseK), mood, blink: a.act?.kind === 'sleep' ? true : undefined, gaze: look ? look * 0.8 : undefined, face: look || undefined });
       }
     }
 
@@ -1675,6 +1879,25 @@ export class CatRoom {
     const top = a.y - 52 * s - 4;
     if (a.bubble) this.drawBubble(ctx, a.x + 14 * s, top - 6, a.bubble.text);
     if (sel) this.drawTag(ctx, a.x, top - (a.bubble ? 26 : 0), nameOf(a.cat));
+  }
+
+  /**
+   * ตอนนี้น้องควรหันไปทางไหน: -1 ซ้าย / 1 ขวา / 0 ไม่มีเป้า
+   * เล่นของเล่น = มองของเล่น · เล่นกับเพื่อน = มองเพื่อนที่ใกล้ที่สุดในวง (ไม่ใช่จุดกลางวง
+   * ซึ่งตัวที่ยืนตรงกลางพอดีจะไม่รู้ว่าต้องหันทางไหน)
+   */
+  lookSide(a) {
+    if (a.act?.kind === 'play' && this.toy) return Math.sign(this.toy.x - a.x) || 0;
+    if (a.social) {
+      let best = null;
+      for (const m of a.social.members) {
+        if (m === a) continue;
+        if (!best || Math.abs(m.x - a.x) < Math.abs(best.x - a.x)) best = m;
+      }
+      if (best) return Math.sign(best.x - a.x) || 0;
+      if (a.faceTo !== undefined) return Math.sign(a.faceTo - a.x) || 0;
+    }
+    return 0;
   }
 
   /**

@@ -3139,25 +3139,108 @@ function twinkle(ctx, x, y, r, t, color) {
   ctx.restore();
 }
 
-/** ท่า "ถูกเก็บ" ยาวกี่เฟรม (≈ 0.25 วิ) — สั้นพอไม่ให้ของที่เก็บแล้วค้างบังของชิ้นถัดไป */
-const GOT_FRAMES = 15;
+/** ท่า "ถูกเก็บ" ยาวกี่เฟรม (≈ 0.37 วิ) — สั้นพอไม่ให้ของที่เก็บแล้วค้างบังของชิ้นถัดไป */
+const GOT_FRAMES = 22;
+
+/** สีประกายตอนเก็บ ตามชนิดของกิน [สีหลัก, สีอ่อน] — ชุดเดียวกับตัวเม็ด (COLORS) */
+const GOT_TINT = {
+  fish: [C.fish, C.fishLite],
+  jelly: [C.jelly, C.jellyLite],
+  kibble: [C.kibble, C.kibbleLite],
+  shrimp: [C.shrimp, C.shrimpLite],
+  crystal: [C.crystal, C.crystalLite],
+};
+
+/**
+ * เม็ดแสงฟุ้งหนึ่งเม็ด (สีของกิน ขอบจาง แกนกลางสว่าง) — วาดครั้งเดียวต่อชนิดแล้วแคชไว้
+ * ตอนเก็บรัว ๆ มีประกายพร้อมกันหลายสิบเม็ด ถ้าสร้างไล่สีใหม่ทุกเฟรมเครื่องจะหน่วง
+ * แคชแล้วแต่ละเม็ดเหลือแค่ drawImage ครั้งเดียว ไม่มี shadowBlur ไม่มี gradient ต่อเฟรม
+ */
+const GOT_DOTS = new Map();
+function glowDot(kind) {
+  // แคชของตัวเอง ไม่ใช้ SPRITES — แคชรวมล้างทิ้งทั้งก้อนเมื่อเกิน 48 ภาพ ตอนเก็บของหลายชนิดรัว ๆ
+  // จะโดนล้างแล้วสร้างไล่สีใหม่ซ้ำทุกเฟรม (ต้นเหตุของการหน่วง) — ห้าชนิดห้าภาพ เก็บไว้ตลอด
+  const hit = GOT_DOTS.get(kind);
+  if (hit) return hit;
+  const [main, lite] = GOT_TINT[kind] || GOT_TINT.fish;
+  const cv = document.createElement('canvas');
+  // 24px พอ — ภาพฟุ้งไม่มีขอบคมให้เห็นความละเอียด ภาพเล็กวาดซ้ำหลายร้อยครั้งต่อเฟรมได้เร็วกว่ามาก
+  cv.width = cv.height = 24;
+  const g = cv.getContext('2d');
+  g.translate(12, 12); g.scale(0.75, 0.75);
+  const out = { cv, w: 32, h: 32, ox: 16, oy: 16 };
+  GOT_DOTS.set(kind, out);
+  ((g) => {
+    const rg = g.createRadialGradient(0, 0, 0, 0, 0, 16);
+    rg.addColorStop(0, '#FFFFFF');
+    rg.addColorStop(0.22, lite);
+    rg.addColorStop(0.55, fadeHex(main, 0.55));
+    rg.addColorStop(1, fadeHex(main, 0));
+    g.fillStyle = rg;
+    g.beginPath(); g.arc(0, 0, 16, 0, Math.PI * 2); g.fill();
+  })(g);
+  return out;
+}
+
+/** สี hex + ความโปร่ง → rgba (ใช้ตอนสร้างภาพแคชเท่านั้น) */
+function fadeHex(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/**
+ * ประกายตอนเก็บเม็ด — ออร่าสีของกินชนิดนั้นวาบขึ้นแล้วจาง + เม็ดแสงเล็ก ๆ กระจายออกวิบวับ
+ * k = 0..1 ตลอดท่า · r = ขนาดเม็ด · seed = ให้แต่ละเม็ดหมุนคนละมุม ไม่เหมือนกันทุกเม็ด
+ * วาดเฉพาะตอน GLOW.on — ชั้นเงาของเส้นขอบ (render/outline.js) จะได้ไม่เห็นประกายเป็นก้อนทึบ
+ */
+function gotSparkle(ctx, x, y, r, k, seed, kind) {
+  if (!GLOW.on) return;
+  const dot = glowDot(kind);
+  const a0 = ctx.globalAlpha;
+  // ออร่ากลาง: พองออกแล้วจาง
+  const aura = Math.sin(Math.min(1, k / 0.7) * Math.PI);
+  ctx.globalAlpha = a0 * aura * 0.85;
+  const as = (r * 2.6 * (0.7 + k * 0.6)) / 16;
+  blit(ctx, dot, x, y, as, as);
+  // เม็ดแสงห้าเม็ดลอยออกเป็นวง วิบขึ้นลงไม่พร้อมกัน
+  for (let i = 0; i < 5; i++) {
+    const ang = seed + (i / 5) * Math.PI * 2;
+    const kk = Math.max(0, Math.min(1, (k - (i % 3) * 0.06) / 0.85));
+    const d = r * (0.5 + kk * 1.8);
+    const tw = Math.sin(kk * Math.PI) * (0.65 + 0.35 * Math.sin(kk * 20 + i));
+    if (tw <= 0.02) continue;
+    ctx.globalAlpha = a0 * tw;
+    const ds = ((i % 2 ? 5 : 7.5) * (0.5 + tw * 0.7)) / 16;
+    blit(ctx, dot, x + Math.cos(ang) * d, y + Math.sin(ang) * d - kk * 6, ds, ds);
+  }
+  ctx.globalAlpha = a0;
+}
+
+/**
+ * เพดานประกายต่อเฟรม — กันเครื่องหน่วงตอนเก็บรัว ๆ (แม่เหล็ก/สกิลดูดของเก็บทีละหลายสิบเม็ด)
+ * เกินเพดาน เม็ดที่เหลือยังเด้ง-หดหายตามปกติ แค่ไม่มีเม็ดแสงกระจาย ซึ่งตาแยกไม่ออกตอนของเยอะขนาดนั้น
+ */
+const SPARKLE_MAX = 24;
+let sparkleTick = -1, sparkleLeft = 0;
+function sparkleBudget(tick) {
+  if (tick !== sparkleTick) { sparkleTick = tick; sparkleLeft = SPARKLE_MAX; }
+  return sparkleLeft-- > 0;
+}
 
 export function drawTreats(ctx, treats, camera, tick = 0) {
   for (const t of treats) {
     let x = t.x - camera;
     let y;
-    let s = 1, a = 1;
+    let s = 1, a = 1, k = -1;
     if (t.got) {
-      // ── เพิ่งถูกเก็บ: เด้งพองนิดหนึ่ง แล้วหดลง จางหาย และไหลเข้าหาตัวน้อง ──
-      // ไม่ใช่หายวับทันทีที่แตะ — ตาจะเห็นว่า "โดนแล้ว ค่อย ๆ ถูกกินเข้าไป"
+      // ── เพิ่งถูกเก็บ: เด้งพองนิดหนึ่งตรงที่เดิม แล้วหดหายเป็นประกายวิบวับ ──
+      // ไม่ใช่หายวับทันทีที่แตะ และไม่ไหลเข้าตัว (ผู้เล่นอยากได้แบบวิ๊ง ๆ สวย ๆ ไม่ใช่ถูกดูด)
       if (t.gotT === undefined) continue;
-      const k = (tick - t.gotT) / GOT_FRAMES;
+      k = (tick - t.gotT) / GOT_FRAMES;
       if (k >= 1 || k < 0) continue;
-      const e = k * k * (3 - 2 * k);
-      x += (t.toSX - x) * e * 0.85;
-      y = t.y + (t.toY - t.y) * e * 0.85;
-      s = k < 0.25 ? 1 + 0.35 * (k / 0.25) : 1.35 * (1 - (k - 0.25) / 0.75) + 0.05;
-      a = 1 - k * k;
+      y = t.y;
+      s = k < 0.2 ? 1 + 0.3 * Math.sin((k / 0.2) * Math.PI * 0.5) : 1.3 * Math.pow(1 - (k - 0.2) / 0.8, 1.6);
+      a = k < 0.5 ? 1 : 1 - (k - 0.5) / 0.5;
     } else {
       if (x > W + 50 || x < -50) continue;
       y = floatY(ctx, t, camera, 3, 0.02);
@@ -3178,6 +3261,7 @@ export function drawTreats(ctx, treats, camera, tick = 0) {
       default: drawFish(ctx, x, y, t.r, tick, t.x);
     }
     if (s !== 1 || a !== 1) ctx.restore();
+    if (k >= 0 && sparkleBudget(tick)) gotSparkle(ctx, x, y, t.r * foodLook(t.kind) * (TREATS[t.kind]?.scale || 1), k, t.x * 0.37, t.kind);
   }
 }
 
@@ -3407,9 +3491,15 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
   // ── ของที่ติดตัวน้อง (เป้อุ้มลูกแมว) ── วาดในพิกัดเดียวกับตัว (หลังเอียง/หมุน/ยืดแล้ว)
   // จึงขยับตามทุกท่าเหมือนเป็นส่วนหนึ่งของตัว — กลางกล่องชน = (0,0) เท้าอยู่ที่ y = feetY
   const feetY = b.h / 2;
-  if (fx.back) fx.back(ctx, feetY, !!player.sliding);
-  if (player.sliding) drawCatSlide(ctx, s, { isDead, mood: look });
-  else drawCatStand(ctx, s, { swing, wag, isDead, mood: look, tired, earLay, reach: hero, wave, waveT: fx.waveT || 0 });
+  // ลำดับชั้นหลังตัว: เครื่องประดับของชุด (โล่ ปีก ผ้าคลุม…) → ลูกแมวในเป้ → ตัวน้อง
+  // มีลูกแมวขี่อยู่ = วาดเครื่องประดับก่อนเอง แล้วบอกตัววาดไม่ให้วาดซ้ำ ของชุดจึงไม่บังหน้าลูกแมว
+  const backFirst = !!fx.back;
+  if (backFirst) {
+    s.outfit?.back?.(ctx, s, player.sliding ? 'slide' : 'stand');
+    fx.back(ctx, feetY, !!player.sliding);
+  }
+  if (player.sliding) drawCatSlide(ctx, s, { isDead, mood: look, noOutfitBack: backFirst });
+  else drawCatStand(ctx, s, { swing, wag, isDead, mood: look, tired, earLay, reach: hero, wave, waveT: fx.waveT || 0, noOutfitBack: backFirst });
   if (fx.front) fx.front(ctx, feetY, !!player.sliding);
 
   ctx.restore();
@@ -3552,6 +3642,7 @@ function outfitOnBody(ctx, s, cy, rx, ry) {
  *   mood   บังคับอารมณ์หน้า (เช่น 'tired' ตาปรือตอนงัวเงีย)
  *   blink  บังคับหลับตา/ลืมตา แทนการกะพริบอัตโนมัติ
  *   gaze   กลอกตา -1 = มองซ้ายสุด / 1 = มองขวาสุด
+ *   face   หันหน้าสามส่วนสี่ -1 = ซ้าย / 1 = ขวา (หัว+หน้าเลื่อนไปทางนั้น หางย้ายไปฝั่งตรงข้าม)
  * ไม่ส่งช่องไหน = พฤติกรรมเดิมทุกประการ
  */
 export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
@@ -3674,6 +3765,8 @@ export function drawCatPose(ctx, x, feetY, scale, s, t = 0, idle = null) {
     mouthOpen: mouth > 0.5,
     mood: idle?.mood ?? (k > 0.45 ? (shape.mood || '') : ''),
     gaze: idle?.gaze || 0,
+    // หันทั้งหน้าไปทางเพื่อน/ของเล่น (-1 ซ้าย / 1 ขวา) — ผู้เรียกส่งมาทาง idle หรือในรูปร่างก็ได้
+    face: idle?.face ?? (shape.face || 0) * k,
     sit,
     loaf,
     crouch,
@@ -3715,10 +3808,10 @@ function drawCatStand(ctx, s, {
   swing = 0, wag = 0, isDead = false, blink = false, mouthOpen = false,
   sit = 0, loaf = 0, paw = 0, tilt = 0, lick = 0, mood = '', tired = 0, earLay = 0,
   wave = 0, waveT = 0, knead = 0, kneadT = 0, puff = 0, crouch = 0, tailShort = 0,
-  sprawlPads = 0, gaze = 0, reach = 0,
-  clasp = 0, offer = 0, scratch = 0, scratchT = 0, reachL = 0,
+  sprawlPads = 0, gaze = 0, reach = 0, face = 0,
+  clasp = 0, offer = 0, scratch = 0, scratchT = 0, reachL = 0, noOutfitBack = false,
 } = {}) {
-  s.outfit?.back?.(ctx, s, 'stand');
+  if (!noOutfitBack) s.outfit?.back?.(ctx, s, 'stand');
 
   // ── ตัวเลขของท่า ────────────────────────────
   // ทุกค่าเริ่มจากท่ายืนแล้วบวกส่วนต่างตามน้ำหนักของ sit/loaf
@@ -3742,7 +3835,8 @@ function drawCatStand(ctx, s, {
   // ด้านข้างจึงยื่นออกไปมากกว่าด้านบนที่มีน้ำหนักตัวกดอยู่
   const rx = (14 + sit * 1 + loaf * 4) * (1 + puff * 0.34 + crouch * 0.26) * (baby ? 1.12 : young ? 0.92 : 1);
   const ry = (13 + sit * 0.5 - loaf * 4.5) * (1 + puff * 0.22 - crouch * 0.24) * (baby ? 0.9 : young ? 1.03 : 1);
-  const hx = 1 + loaf * 2;
+  // หันสามส่วนสี่ — หัวเลื่อนไปทางที่หันนิดหนึ่ง (หน้าในหัวเลื่อนต่ออีกชั้นใน drawCatHead)
+  const hx = 1 + loaf * 2 + face * 2.5;
   // ตัวพองดันหัวขึ้นนิดหนึ่ง ส่วนตอนเล็งเป้าหัวต่ำลงมาระดับเดียวกับไหล่
   const hy = -12 + sit * 2 + loaf * 10.5 - puff * 2 + crouch * 10;
 
@@ -3750,8 +3844,11 @@ function drawCatStand(ctx, s, {
   // โคนหางเลื่อนลงตามตัว ตอนหมอบขดมาข้างลำตัวแทนที่จะชี้ออกไปหลัง
   // หางฟูตามตัวด้วย ถ้าตัวพองแต่หางยังเรียว มันจะอ่านเป็น "อ้วนขึ้น" ไม่ใช่ "ขนพอง"
   // ลูกแมวหางสั้นกุดและฟูกว่า (puff เพิ่มนิดหน่อย = หางป้อม ไม่ใช่หางเรียว)
+  // หันไปทางซ้าย = หางย้ายไปโผล่ฝั่งขวา (หางอยู่ฝั่งตรงข้ามกับที่หน้าหันเสมอ)
+  if (face < -0.3) { ctx.save(); ctx.scale(-1, 1); }
   drawTail(ctx, -11 - loaf * 3, 8 + sit * 4 + loaf * 10 + crouch * 6 + (baby ? 3 : 0),
            wag * (1 - loaf * 0.5), s, puff + (baby ? 0.35 : 0), Math.min(0.8, tailShort + (baby ? 0.5 : 0)));
+  if (face < -0.3) ctx.restore();
 
   // ── ก้นตอนนั่ง ──────────────────────────────
   // วาดก่อนลำตัวเพื่อให้กลืนเป็นก้อนเดียวกัน ไม่ใช่ก้อนกลมแปะอยู่ข้าง ๆ
@@ -4046,7 +4143,7 @@ function drawCatStand(ctx, s, {
   // ส่วนตัวที่เล็กลงเป็นหน้าที่ของผู้เรียก (ส่ง scale ที่เล็กลง) โมเดลจึงเป็นตัวเดียวกันทุกวัย
   drawCatHead(ctx, hx, hy + tired * 1.6 + (baby ? 5 : young ? 1 : 0), s, {
     scale: baby ? 1.42 : young ? 1.14 : 1,
-    isDead, blink, mouthOpen, tilt, mood, earLay, gaze,
+    isDead, blink, mouthOpen, tilt, mood, earLay, gaze, face,
     // แผนที่รหัสสีต้องเห็นหน้าน้องตัวจริง ไม่ใช่รูปที่ผู้เล่นอัปโหลดมาทับ
     // ไม่งั้นขอบเขตของทุกส่วนบนหัวจะกลายเป็นสีในรูปถ่าย
     // s.noPhoto = ตัวละครที่ไม่ใช่ "น้องของผู้เล่น" เช่นน้องส้มในคลิปเปิดเกม
@@ -4077,8 +4174,8 @@ function drawCatStand(ctx, s, {
   }
 }
 
-function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } = {}) {
-  s.outfit?.back?.(ctx, s, 'slide');
+function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '', noOutfitBack = false } = {}) {
+  if (!noOutfitBack) s.outfit?.back?.(ctx, s, 'slide');
 
   // หางลากยาวไปข้างหลัง
   // หางเป็นเส้น ไม่ใช่รูปปิด จะตีขอบตรง ๆ ไม่ได้ ต้องวาดเส้นเข้มที่หนากว่ารองไว้
@@ -4144,7 +4241,7 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '' } =
  */
 // noPhoto = ไม่ต้องเอารูปที่ผู้เล่นอัปโหลดมาทับหน้า
 // มีไว้ให้ไอคอนที่ต้องเป็น "หน้าน้องมาตรฐาน" ตลอด ไม่ใช่หน้าที่ผู้เล่นตั้งไว้
-function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '', noPhoto = false, earLay = 0, gaze = 0 } = {}) {
+function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = false, blink = false, mouthOpen = false, tilt = 0, mood = '', noPhoto = false, earLay = 0, gaze = 0, face: turnFace = 0 } = {}) {
   // ตาดำเลื่อนได้ไม่เกิน 1.7 หน่วย — มากกว่านั้นตาดำจะหลุดออกนอกรูปหน้า (ตากว้างแค่ 3)
   const gx = Math.max(-1, Math.min(1, gaze)) * 1.7;
   // ── หน้าเฉพาะตัวของน้องจากกล่อง (src/faces.js) ── ไม่มี = หน้าเดิมทุกประการ
@@ -4267,6 +4364,11 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
   // ถ้าวาดทับของพวกนั้นด้วย คนที่ระบายเลยขอบหน้าไปนิดเดียวจะได้แมวไม่มีตาทันที
   paintOver(ctx, s, 'head', () => { ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); });
 
+  // ── หันหน้าสามส่วนสี่ (face -1..1) ── เลื่อนหน้าทั้งชุด (ปาก ตา จมูก หนวด ของสวมหัว) ไปทางที่หัน
+  // วงหัวอยู่ที่เดิม หน้าจึงไปชิดขอบฝั่งนั้น อ่านเป็น "หันไปทางนั้น" แบบการ์ตูน ไม่ใช่แค่กลอกตา
+  // แผนที่รหัสสี (s.solid) ไม่เลื่อน — ขอบเขตระบายต้องตรงกับหน้าตรง
+  if (turnFace && !s.solid) ctx.translate(Math.max(-1, Math.min(1, turnFace)) * 2.8, 0);
+
   // ปากสีครีม
   const [mw, mh] = F?.muzzle || [7.5, 5];
   const muzzle = () => { ctx.beginPath(); ctx.ellipse(1, 5, mw, mh, 0, 0, Math.PI * 2); };
@@ -4349,6 +4451,22 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
       ctx.beginPath();
       ctx.moveTo(ex - 3, -4); ctx.lineTo(ex + 3, 2);
       ctx.moveTo(ex + 3, -4); ctx.lineTo(ex - 3, 2);
+      ctx.stroke();
+    }
+  } else if (mood === 'dizzy') {
+    // ── ตาเวียนหัว ── ก้นหอยหมุนในตาทั้งสองข้าง (หมุนสวนกัน) — ใช้ตอนถูกยกแกว่งไปมาในบ้านน้อง
+    const spin = performance.now() * 0.012;
+    ctx.strokeStyle = s.eye;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    for (const [ex, dir] of [[-5, 1], [7, -1]]) {
+      ctx.beginPath();
+      for (let i = 0; i <= 28; i++) {
+        const a = (i / 28) * Math.PI * 4.2 * dir + spin * dir;
+        const r = 0.35 + (i / 28) * 3.6;
+        const px = ex + Math.cos(a) * r, py = -1 + Math.sin(a) * r;
+        if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
       ctx.stroke();
     }
   } else if (blink) {
@@ -4543,6 +4661,15 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
     ctx.beginPath();
     ctx.moveTo(4.4, 6.2); ctx.lineTo(6.4, 6); ctx.lineTo(5.2, 8.2);
     ctx.closePath(); ctx.fill();
+  } else if (mood === 'dizzy') {
+    // ปากหยักเป็นคลื่น — มึน ๆ งง ๆ
+    ctx.strokeStyle = s.ink;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-3.5, 8.4);
+    ctx.quadraticCurveTo(-1.7, 6.6, 0, 8.4); ctx.quadraticCurveTo(1.7, 10.2, 3.4, 8.4); ctx.quadraticCurveTo(4.6, 7.2, 5.6, 8.2);
+    ctx.stroke();
   } else if (mood === 'sad') {
     // ปากคว่ำ — โค้งกลับด้านกับปากปกติ
     ctx.strokeStyle = s.ink;

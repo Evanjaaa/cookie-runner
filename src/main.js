@@ -54,6 +54,9 @@ import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.js';
 import { drawPlats } from './render/platforms.js';
+import { makeDreamBg } from './render/dreambg.js';
+import { makeSkillBg } from './render/skillbg.js';
+import { makeGachaBg } from './render/gachabg.js';
 import { PROP_LIST } from './obstacles.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
@@ -3023,6 +3026,40 @@ function placeHomeBox() {
 placeHomeBox();
 shortScreen.addEventListener('change', placeHomeBox);
 
+// ── แถบบนหน้าแรก: กันการ์ดโปรไฟล์ชนกระเป๋าเงิน ──
+// การ์ดโปรไฟล์ (+ปุ่มรางวัลเลเวล/เช็คอิน) เกาะซ้าย กระเป๋าเงิน+ปุ่มกลมเกาะขวา สองก้อนวางแยกกัน
+// จอแคบ (เช่น 568x320) ป้ายเพชรเลยไปทับปุ่มเช็คอิน — ความกว้างการ์ดขึ้นกับชื่อผู้เล่น
+// และตัวเลขเงิน จึงตั้งระยะตายตัวใน CSS ไม่ได้ ต้องวัดของจริง
+// จอที่ไม่ชนไม่แตะอะไรเลย (ล้างค่าย่อทิ้ง) · ชน = ย่อกระเป๋าเงินก่อน (ยึดขอบขวา ติดปุ่มกลมเหมือนเดิม)
+// ย่อสุดแล้วยังไม่พอ = ย่อการ์ดโปรไฟล์ตามอีกนิด (ยึดขอบซ้าย)
+const pfRow = startPanel.querySelector('.pf-row');
+const walletEl = document.querySelector('.hud-top .wallet');
+const TOPBAR_GAP = 8;      // ระยะเว้นขั้นต่ำระหว่างสองก้อน (px จอ)
+function fitTopBar() {
+  if (!pfRow || !walletEl) return;
+  pfRow.style.transform = '';
+  walletEl.style.transform = '';
+  const p = pfRow.getBoundingClientRect();
+  const w = walletEl.getBoundingClientRect();
+  if (!p.width || !w.width) return;                       // ไม่ได้อยู่หน้าแรก
+  const avail = w.right - (p.right + TOPBAR_GAP);          // ที่ที่กระเป๋าเงินใช้ได้
+  if (avail >= w.width) return;
+  const k = Math.max(0.72, avail / w.width);
+  walletEl.style.transformOrigin = 'right center';
+  walletEl.style.transform = `scale(${k.toFixed(3)})`;
+  const over = w.width * k - avail;                        // ย่อสุดแล้วยังเกินอยู่เท่าไหร่
+  if (over > 0) {
+    pfRow.style.transformOrigin = 'left center';
+    pfRow.style.transform = `scale(${Math.max(0.8, (p.width - over) / p.width).toFixed(3)})`;
+  }
+}
+// transform ไม่เปลี่ยนขนาดที่ ResizeObserver เห็น — ย่อแล้วจึงไม่วนเรียกตัวเองซ้ำ
+// ดูทั้งตัวจอ การ์ด (ชื่อ/เลเวลเปลี่ยน, แผงหน้าแรกโผล่) และกระเป๋าเงิน (ตัวเลขยาวขึ้น)
+if (window.ResizeObserver && pfRow && walletEl) {
+  const ro = new ResizeObserver(() => fitTopBar());
+  [document.getElementById('stage'), pfRow, walletEl].forEach((el) => el && ro.observe(el));
+}
+
 // เดินป้ายเวลาทุกวินาที — เขียนข้อความสองช่องต่อวินาที ถูกกว่าการไปผูกกับลูปเกม
 // ซึ่งจะกลายเป็นงานที่ต้องทำ 60 ครั้งต่อวินาทีเพื่อผลลัพธ์ที่เปลี่ยนวินาทีละครั้ง
 setInterval(refreshLove, 1000);
@@ -5024,6 +5061,14 @@ const STASH_TABS = {
   treasure: { title: 'สมบัติ', tab: 'tabStashTreasure', filter: 'treasureFilter', grid: 'treasureGrid' },
 };
 
+// ── พื้นหลังโลกพาสเทลของคลังน้อง (ทั้งสามหมวด) ──
+// คลาส .dream ติดไว้ที่การ์ดใน index.html คุมทั้งผ้าใบและหน้าตาการ์ด/ปุ่มใน style.css
+// ลูปหยุดเองเมื่อแผงปิด — กลับเข้าหน้านี้จากทางไหนก็ตาม (รวมกลับจากหน้าเรื่องราวน้อง/รายละเอียดชุด)
+// ตัวเฝ้าคลาส .hidden ของแผงจะปลุกลูปขึ้นมาใหม่เอง ไม่ต้องไล่ใส่ทุกทางเข้า
+const stashDream = makeDreamBg(document.getElementById('stashDream'),
+  () => !stashPanel.classList.contains('hidden'));
+new MutationObserver(() => stashDream.kick()).observe(stashPanel, { attributes: true, attributeFilter: ['class'] });
+
 function showStash(on, tab = stashTab) {
   stashPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
@@ -5044,6 +5089,7 @@ function setStashTab(tab) {
     document.getElementById(t.grid).classList.toggle('hidden', !on);
   }
   document.getElementById('stashTitle').textContent = STASH_TABS[tab].title;
+  stashDream.kick();
   paintStashCount(tab);
   setMsg(document.getElementById('outfitMsg'), '');
 
@@ -5775,6 +5821,13 @@ function openCatStory(id) {
 // นาฬิกาเกมต้องตรงเซิร์ฟเวอร์ (ระบบเลี้ยงน้องนับเวลาจริง) — ตอนเปิดเกมและตอนกลับเข้าแอป
 syncServerClock();
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncServerClock(); });
+// ── พื้นหลังห้องพลังพิเศษของหน้าสกิล/พรสวรรค์ (ทั้งสองหมวด) ──
+// ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด ลูปหยุดเองเมื่อแผงปิด
+const talentPanelEl = document.getElementById('talentPanel');
+const skillMagic = makeSkillBg(document.getElementById('skillMagic'),
+  () => !talentPanelEl.classList.contains('hidden'));
+new MutationObserver(() => skillMagic.kick()).observe(talentPanelEl, { attributes: true, attributeFilter: ['class'] });
+
 document.getElementById('btnTalent').addEventListener('click', () => {
   // แตะเมนูก็นับเป็น gesture แล้ว เพลงหน้าแรกจึงเริ่มได้โดยไม่ต้องกดเริ่มวิ่งก่อน
   unlockAudio(); startMusic(); sfx.fish();
@@ -6999,6 +7052,13 @@ document.getElementById('loadoutOpen').addEventListener('click', () => {
   showLoadout(true);
 });
 document.getElementById('loadBack').addEventListener('click', () => showLoadout(false));
+// ── พื้นหลังร้านเซอร์ไพรส์ของหน้าตู้กาช่า (ทั้งสองตู้) ──
+// ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากหน้ารายการ "ดูอื่นๆ") ลูปหยุดเองเมื่อแผงปิด
+const gachaPanelEl = document.getElementById('gachaPanel');
+const gachaMagic = makeGachaBg(document.getElementById('gachaMagic'),
+  () => !gachaPanelEl.classList.contains('hidden'));
+new MutationObserver(() => gachaMagic.kick()).observe(gachaPanelEl, { attributes: true, attributeFilter: ['class'] });
+
 document.getElementById('btnGacha').addEventListener('click', () => {
   unlockAudio(); startMusic();
   showGacha(true);

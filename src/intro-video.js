@@ -34,6 +34,11 @@ const FADE_MS = 320;           // ต้องตรงกับ transition ข�
 // จบคลิปโค้ดเองจนสุด = จอขาวล้วน แล้วจางออกช้ากว่าตอนกดข้ามเกือบสามเท่า
 // ช้าพอให้อ่านเป็น "แสงค่อย ๆ จางเผยหน้าแรก" ไม่ใช่จอกระพริบ (ต้องตรงกับ .closing-white)
 const FADE_WHITE_MS = 900;
+// ── กันแตะทะลุหลังปิดคลิป ──
+// แตะจอเพื่อข้ามแล้วคลิปหายทันที คลิกที่ตามมาจากนิ้วเดียวกัน (หรือแตะซ้ำเร็ว ๆ) จะไปโดน
+// ปุ่ม "เล่น!" ที่อยู่ใต้ตำแหน่งเดียวกันพอดี กลายเป็นเข้าด่านทั้งที่แค่อยากปิดคลิป
+// ชั้นคลิปจึงยังรับการแตะทิ้งไว้ช่วงสั้น ๆ — สั้นพอที่จะไม่รู้สึกว่าเกมค้าง
+const TAP_GUARD_MS = 450;
 
 export function introVideoEnabled() {
   return loadPref(PREF, true) !== false;
@@ -132,19 +137,21 @@ export function playIntroVideo({ onOpen = () => {}, onDone = () => {} } = {}) {
     listeners.forEach((off) => off());
     clearTimeout(hintTimer);
     stopAnim?.();
-    root.classList.add(white === true ? 'closing-white' : 'closing');
+    root.classList.add(white === true ? 'closing-white' : 'closing', 'guard');
+    setTimeout(() => root.classList.remove('guard'), TAP_GUARD_MS);
     video.pause();
     onDone();
     // จางออกก่อนแล้วค่อยซ่อนจริง — ล็อบบี้อยู่ข้างหลังพร้อมแล้ว จึงเห็นเป็นคลิปละลายเข้าหน้าแรก
+    // ซ่อนจริงหลังจางเสร็จ และไม่ก่อนหมดช่วงกันแตะทะลุ
     setTimeout(() => {
       root.classList.add('off');
-      root.classList.remove('closing', 'closing-white', 'playing', 'hinted', 'anim', 'ending');
-    }, white === true ? FADE_WHITE_MS : FADE_MS);
+      root.classList.remove('closing', 'closing-white', 'playing', 'hinted', 'anim', 'ending', 'guard');
+    }, Math.max(white === true ? FADE_WHITE_MS : FADE_MS, TAP_GUARD_MS));
   }
 
   // ── เปิด ──
   box.checked = false;
-  root.classList.remove('off', 'closing', 'closing-white', 'playing', 'hinted', 'anim', 'ending');
+  root.classList.remove('off', 'closing', 'closing-white', 'playing', 'hinted', 'anim', 'ending', 'guard');
   onOpen();
 
   const hintTimer = setTimeout(() => root.classList.add('hinted'), HINT_DELAY);

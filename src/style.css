@@ -214,7 +214,7 @@ canvas[hidden] { display: none; }
 
 /* หน้าที่มีปุ่มกลับต้องเว้นที่ให้มันทั้งสองข้างเท่ากัน
    เว้นข้างเดียวจะดันหัวเรื่องที่จัดกลางให้เยื้องไปทางขวาแทนที่จะอยู่กลางการ์ด */
-.pop:has(.backbtn) {
+.pop:has(.backbtn, .pop-x) {
   /* เว้นทั้งขนาดปุ่มและระยะเยื้องจากขอบ ไม่ใช่แค่ขนาดปุ่ม
      ถ้าเว้นแค่ขนาด ที่จองไว้จะสั้นกว่าที่ปุ่มกินจริงเท่ากับระยะเยื้องพอดี
      แล้วหัวเรื่องที่ชิดซ้าย (หน้ากิจกรรม/หน้าตีบวก) จะโดนปุ่มทับบนจอแคบ */
@@ -1265,6 +1265,11 @@ canvas[hidden] { display: none; }
   font-weight: 600;
   font-size: 10.5px;
   line-height: 1.15;
+  /* overflow: hidden (ไว้ตัดชื่อยาวเป็น …) ตัดที่ขอบกล่องบรรทัด ซึ่ง line-height 1.15 เตี้ยกว่าสระล่าง/บนของ Mali
+     "ตู้กาช่า" เลยเหลือ "ต้กาช่า" และ "อันดับ" ขาดขอบล่าง — ขยายกล่องตัดออกด้วย padding
+     แล้วดึงคืนด้วย margin ติดลบเท่ากัน ตำแหน่งตัวหนังสือกับความสูงปุ่มจึงเท่าเดิมทุกพิกเซล */
+  padding-block: .3em;
+  margin-block: -.3em;
   /* ชื่อยาวเกินปุ่มต้องหด ไม่ใช่ดันปุ่มให้กว้างขึ้นจนไม่เท่าใบอื่น
      เผื่อยื่นพ้นขอบปุ่มได้ข้างละนิด (พื้นปุ่มโปร่งอยู่แล้ว) — Mali ตัวกว้างกว่าฟอนต์เดิม
      "สร้างสรรค์" เกินปุ่มไปราว 5px ถ้าบีบไว้แค่ 100% จะโดนตัดเป็น … */
@@ -2397,17 +2402,24 @@ canvas[hidden] { display: none; }
   position: relative;
   flex: 0 0 auto;
   width: clamp(112px, 22vw, 248px);
+  /* จัตุรัสเท่าผ้าใบ = ดันกระดานให้สูงพอสำหรับน้องเหมือนเดิม — กรอบถูกบีบเตี้ยลงเมื่อไหร่ค่อยย่อน้องตาม */
+  aspect-ratio: 1;
   min-height: 0;
   display: grid;
   place-items: end center;
 }
-.dl-cat canvas { width: 100%; height: 100%; object-fit: contain; }
+/* ผ้าใบลอยเต็มช่อง (absolute) แล้วย่อภาพให้พอดีทั้งกว้างและสูง ชิดขอบล่าง
+   เดิมเป็นลูกปกติ ความสูง 100% ของช่องที่ไม่มีความสูงแน่นอน = ผ้าใบใช้ความสูงตามสัดส่วนจัตุรัสของตัวเอง
+   จอที่กระดานเตี้ยกว่าความกว้างช่องน้อง น้องกับเบาะจึงล้นลงไปใต้ขอบกระดาน
+   จอที่เคยพอดีอยู่แล้วได้ขนาดเท่าเดิมทุกประการ (ความกว้างเป็นตัวจำกัดเหมือนเดิม) */
+.dl-cat canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
 
 /* ก้อนเมฆความคิด — วงกลมไล่ขนาดจากใหญ่ (ใกล้ป้ายคำพูด) ลงมาเล็กสุดตรงหัวน้อง
    เรียงชิดกันจนเกือบแตะกัน อ่านเป็น "หางของกล่องคำพูด" ไม่ใช่จุดสามจุดที่ลอยแยกกัน
    (ระยะห่างติดลบเล็กน้อย เพราะวงกลมที่วางเฉียงกันจะดูห่างกว่าระยะจริงเสมอ) */
 .dl-puffs {
   position: absolute;
+  z-index: 1;   /* ผ้าใบน้องลอย (absolute) แล้ว — ก้อนเมฆต้องอยู่บนผ้าใบเหมือนเดิม */
   top: 3%;
   right: 2%;
   width: 46%;
@@ -6775,7 +6787,7 @@ canvas[hidden] { display: none; }
   #createPanel.paint-full .paint-max { top: 5%; }
   /* บีบช่องไฟหลังปุ่มลงบนจอเตี้ย — ที่จองสองข้างกินความกว้างไปเท่าตัว
      พอกว้างขึ้นข้างละสิบกว่าพิกเซล เนื้อหาบางหน้าจะตกบรรทัดแล้วสูงเกินการ์ดทันที */
-  .pop:has(.backbtn) {
+  .pop:has(.backbtn, .pop-x) {
     padding-left: calc(var(--backbtn-x) + var(--backbtn) + clamp(6px, 1vw, 12px));
     padding-right: calc(var(--backbtn-x) + var(--backbtn) + clamp(6px, 1vw, 12px));
   }
@@ -6976,6 +6988,7 @@ canvas[hidden] { display: none; }
   color: var(--cream);
   font-family: inherit;
   font-size: 14px;
+  line-height: 1.6;   /* ที่ให้สระบน/วรรณยุกต์ไทย ไม่ให้ถูกช่องกรอกตัดทิ้ง (ดู .name-tag input) */
   text-align: center;
   /* ช่องกรอกเป็นที่เดียวในเกมที่ต้องเลือกข้อความได้ ต้องปลดจากกฎรวมของ body */
   -webkit-user-select: text;
@@ -9853,6 +9866,9 @@ canvas[hidden] { display: none; }
   pointer-events: none;
   transition: opacity .9s cubic-bezier(.4, 0, .2, 1);
 }
+/* ช่วงกันแตะทะลุหลังปิดคลิป (TAP_GUARD_MS ใน intro-video.js) — ชั้นคลิปที่จางอยู่ยังรับแตะทิ้ง
+   ไม่ให้นิ้วที่แตะข้ามคลิปไปโดนปุ่ม "เล่น!" ข้างใต้ */
+.intro-video.guard { pointer-events: auto; cursor: default; }
 
 /* ── ช่องติ๊ก "ไม่ต้องแสดงคลิปนี้อีก" มุมขวาบนของกรอบเกม ──
    เว้นจากขอบพอให้พ้นมุมโค้ง 20px ของกรอบ ไม่ต้องเผื่อรอยบากของเครื่องแล้ว
@@ -11259,7 +11275,9 @@ canvas[hidden] { display: none; }
 .lobby-btn.locked b { opacity: .7; }
 .lock-tag {
   position: absolute;
-  top: -7px;
+  /* เกาะในมุมบนของปุ่มเอง — เดิม top: -7px ยื่นขึ้นไปชนขอบล่างปุ่มคลังน้องข้างบน (ช่องไฟคอลัมน์แค่ 5-7px)
+     ทับเงาใต้ปุ่มกับชื่อ "คลังน้อง" ทุกขนาดจอ */
+  top: 1px;
   right: -9px;
   padding: 2px 6px;
   border-radius: 999px;
@@ -11464,6 +11482,12 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   font-weight: 700;
   font-size: clamp(15px, 2.6dvh, 19px);
   letter-spacing: .5px;
+  /* ── สระบน/วรรณยุกต์ซ้อน (มี่ ปั้น ที่) ต้องมีที่ ──
+     ช่องกรอกตัดตัวอักษรที่สูงเกินกล่องทิ้ง ไม่ล้นออกมาให้เห็นแบบข้อความปกติ
+     ฟอนต์ Mali ไทยวางวรรณยุกต์สูงกว่าความสูงบรรทัดตั้งต้นของช่องกรอก จึงหายไปหมด
+     ให้บรรทัดสูง 1.7 เท่า (กล่องสูงขึ้นจากข้างใน) แล้วลด padding ลงชดเชย ป้ายจึงสูงเกือบเท่าเดิม */
+  line-height: 1.7;
+  padding-block: 3px;
 }
 .form-row .name-tag input::placeholder { color: #C9A3C9; font-weight: 600; }
 .nt-paw, .nt-pen { flex: 0 0 auto; font-size: clamp(15px, 2.6dvh, 19px); line-height: 1; }
@@ -11533,7 +11557,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   .name-heart { width: 28px; top: 6px; left: 10px; }
   .name-stage .form-row { margin-top: -20px; }
   .name-stage .name-tag { padding-block: 1px; }
-  .form-row .name-tag input { padding-block: 5px; font-size: 14px; }
+  .form-row .name-tag input { padding-block: 1px; font-size: 14px; }
   #namePanel .pop { gap: 4px; }
 }
 /* น้องยืนเต็มตัวเหนือป้ายชื่อ (แบบที่วางไว้) — การ์ดสูง = ตัวน้อง + ส่วนที่ป้ายชื่อทับ
@@ -11680,7 +11704,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   .name-card { height: calc(var(--nc-cat) * 1.08 + var(--nc-lap) + 6px); padding-top: 4px; }
   .name-heart { width: clamp(30px, 10dvh, 42px); top: 8px; left: 12px; }
   .name-stage .name-tag { padding-block: 2px; }
-  .form-row .name-tag input { padding-block: 7px; font-size: 15px; }
+  .form-row .name-tag input { padding-block: 2px; font-size: 15px; }
   #namePanel .name-rule { margin-top: 0; font-size: 11px; }
   #namePanel #nameSave { margin-top: 2px; }
 }
@@ -12233,9 +12257,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #catRoomPanel .cr-toast {
   position: absolute;
   z-index: 6;
-  /* กลางจอ ระดับผนังห้องเหนือหัวน้อง — เห็นชัดทันที และไม่ลงไปทับทางเดินบนพรม */
+  /* กลางจอแนวนอน ค่อนขึ้นไปด้านบน (ใต้แถบชื่อน้อง) — เดิม 45% อยู่กลางจอเกินไป บังน้องบนคอนโด */
   left: 50%;
-  top: 45%;
+  top: 27%;
   transform: translate(-50%, calc(-50% + 10px)) scale(.92);
   max-width: 58%;
   padding: 8px 18px 8px 40px;
@@ -12391,5 +12415,480 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 @keyframes wipePaw { to { opacity: .95; transform: scale(1); } }
 @keyframes wipePawOut { to { opacity: 0; transform: scale(1.4); } }
 /* จอเตี้ย: กล่องอยู่ชิดล่างซ้ายของพรม ป้ายชื่อขึ้นไปอยู่เหนือกล่องแทน (ข้างล่างไม่มีที่) */
-.homebox.up .homebox-label { bottom: auto; top: 6px; transform: translate(-50%, -100%); animation-name: homeboxLabelUp; }
+/* top เป็น % ของความสูงปุ่ม (ตามขนาดกล่องทุกจอ) — 6px เดิมลอยห่างฝากล่องเกินไป */
+.homebox.up .homebox-label { bottom: auto; top: 34%; transform: translate(-50%, -100%); animation-name: homeboxLabelUp; }
 @keyframes homeboxLabelUp { 0%, 100% { transform: translate(-50%, -100%); } 50% { transform: translate(-50%, calc(-100% - 3px)); } }
+
+/* ══ คลังน้องแมว: โลกพาสเทลนุ่ม ๆ ═══════════════════════════════════
+   ทั้งสามหมวดของ #stashPanel (น้องแมว / ชุดแมว / สมบัติ) — การ์ดติด .dream ไว้ใน index.html
+   หน้าสร้างสรรค์ที่ใช้คลาส stash-* ร่วมกัน ไม่โดนกฎในบล็อกนี้เลย (ผูกกับ #stashPanel)
+   พื้นหลังวาดด้วย Canvas 2D (src/render/dreambg.js) — บล็อกนี้แต่งของที่ลอยอยู่บนพื้น
+   แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ใช้ของเดิมทั้งหมด (รวมที่จูนไว้สำหรับมือถือ)
+
+   ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
+     1. ตัวน้อง        สปอตไลต์สว่างที่สุดในหน้า + เมฆนุ่ม ๆ ให้ยืน
+     2. การ์ดที่เลือก   ขอบขาว เรืองชมพู ยกลอยขึ้น
+     3. การ์ดอื่น ๆ     แผ่นลาเวนเดอร์ใส เงาบาง
+     4. แท็บ/ตัวกรอง   ใสเกือบกลืนกับพื้น ตัวที่เลือกอยู่แค่สว่างขึ้นหนึ่งขั้น
+     5. พื้นหลัง        จางที่สุด (ปรับใน dreambg.js)
+   ความลึกมาจากความใส เงานุ่ม แสงฟุ้ง และเมฆ — ไม่ได้เพิ่มปุ่มหรือของบนจอ */
+#stashPanel .dream-bg { display: none; }
+#stashPanel .stash-pop.dream {
+  background: #9A6AD8;   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก (สีกลางของพื้น) */
+  border-color: rgba(255,255,255,.42);
+  box-shadow:
+    0 22px 50px rgba(40,10,80,.45),
+    inset 0 1px 0 rgba(255,255,255,.4);
+}
+#stashPanel .stash-pop.dream .dream-bg {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* เนื้อหาลอยเหนือผ้าใบ (ปุ่มกลับมี z-index ของตัวเองอยู่แล้ว) */
+#stashPanel .stash-pop.dream .stash-body { position: relative; z-index: 1; }
+
+/* ตัวหนังสือที่วางบนพื้นตรง ๆ — เงาม่วงจาง ๆ ให้อ่านออกบนพื้นที่สว่างขึ้น */
+#stashPanel .dream .stash-main,
+#stashPanel .dream .stash-tabs { text-shadow: 0 1px 4px rgba(72,28,124,.45); }
+#stashPanel .dream .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+
+/* ── 4. แถบหมวดซ้าย (ตัวประกอบ) ── ใสเกือบกลืนพื้น ขอบบาง
+   อันที่เปิดอยู่แค่ "สว่างขึ้นหนึ่งขั้น" ไม่ใช่เม็ดขาวจ้าที่แย่งสายตาจากตัวน้อง */
+#stashPanel .dream .stash-tabs { border-right-color: rgba(255,255,255,.22); }
+#stashPanel .dream .stab {
+  border-color: rgba(255,255,255,.22);
+  background: rgba(98,52,166,.18);
+  color: rgba(255,255,255,.86);
+}
+#stashPanel .dream .stab.on {
+  background: linear-gradient(180deg, rgba(255,255,255,.3), rgba(236,214,255,.16));
+  border-color: rgba(255,255,255,.6);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(80,36,150,.22), inset 0 1px 0 rgba(255,255,255,.75);
+}
+
+/* ── 4. แถบเรียง/กรอง + ป้ายจำนวน (ตัวประกอบ) ── */
+#stashPanel .dream .fsort,
+#stashPanel .dream .fonly,
+#stashPanel .dream .count-pill {
+  border-color: rgba(255,255,255,.26);
+  background: rgba(92,46,158,.26);
+}
+#stashPanel .dream .fchip,
+#stashPanel .dream .fonly,
+#stashPanel .dream .count-pill { color: rgba(255,255,255,.9); }
+#stashPanel .dream .fchip.on {
+  background: rgba(255,255,255,.34);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+}
+
+/* ── 1. ห้องโชว์น้อง ── แผ่นที่ลอยสูงที่สุดในหน้า (เงาลึกสุด ขอบสว่างสุด)
+   (เคยลองเมฆซ้อนทับมุมแผ่น — ดูเป็นก้อนแปะ และบนมือถือไปทับคำอธิบายใต้แผ่น จึงเอาออก
+    ความลึกได้จากเมฆของพื้นหลังที่โผล่มุม + เมฆใต้ตัวน้องแทน) */
+#stashPanel .dream .stash-show {
+  border: 1.5px solid rgba(255,255,255,.62);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23FFFFFF' fill-opacity='.12'%3E%3Cellipse cx='20' cy='25' rx='8' ry='6.5'/%3E%3Cellipse cx='11' cy='16' rx='3' ry='3.8'/%3E%3Cellipse cx='17' cy='10.5' rx='3' ry='3.8'/%3E%3Cellipse cx='23' cy='10.5' rx='3' ry='3.8'/%3E%3Cellipse cx='29' cy='16' rx='3' ry='3.8'/%3E%3C/g%3E%3C/svg%3E") left 7% top 5% / 10% auto no-repeat,
+    linear-gradient(180deg, rgba(206,174,246,.58), rgba(140,90,208,.46));
+  box-shadow:
+    0 18px 38px rgba(60,20,120,.34),
+    0 4px 10px rgba(60,20,120,.18),
+    inset 0 1px 0 rgba(255,255,255,.7),
+    inset 0 0 26px rgba(255,255,255,.16);
+}
+/* สปอตไลต์หลังตัวน้อง — สว่างที่สุดในหน้า ขอบเข้มลงหน่อย (น้องขาวยังเห็นขอบตัว)
+   สีกรอบตามระดับ (.legend/.rare/...) ยังเป็นของเดิม แก้แค่พื้นกับแสง */
+#stashPanel .dream .stash-face {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(255,250,255,.9) 0%, rgba(240,220,255,.62) 30%, rgba(176,130,232,.5) 62%, rgba(104,58,170,.58) 100%);
+  box-shadow:
+    0 0 34px rgba(255,234,255,.45),
+    0 10px 24px rgba(60,20,120,.25),
+    inset 0 1px 0 rgba(255,255,255,.6);
+}
+/* เมฆนุ่ม ๆ ให้น้องยืน — อยู่ใต้ของที่โชว์ (ผ้าใบน้อง/ชุด และไอคอนสมบัติยกขึ้นมาทับ) ตัวน้องไม่ได้ถูกแก้อะไรเลย */
+#stashPanel .dream .stash-face::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 5%;
+  height: 22%;
+  background:
+    radial-gradient(ellipse 30% 60% at 24% 62%, rgba(255,250,255,.72) 50%, rgba(255,250,255,0) 74%),
+    radial-gradient(ellipse 34% 74% at 52% 56%, rgba(255,250,255,.72) 50%, rgba(255,250,255,0) 74%),
+    radial-gradient(ellipse 28% 58% at 78% 64%, rgba(255,250,255,.72) 50%, rgba(255,250,255,0) 74%),
+    radial-gradient(ellipse 50% 34% at 50% 78%, rgba(255,250,255,.72) 52%, rgba(255,250,255,0) 76%);
+  pointer-events: none;
+}
+/* ทั้งผ้าใบ (น้อง/ชุด) และไอคอนสมบัติต้องอยู่เหนือเมฆ — เคยยกแค่ผ้าใบ เมฆเลยทับครึ่งล่างของไอคอนสมบัติ */
+#stashPanel .dream .stash-face canvas,
+#stashPanel .dream .stash-emoji { position: relative; z-index: 1; }
+
+/* ── 3. การ์ดน้องในกริด ── ลาเวนเดอร์ใส ขอบขาวบาง เงาบาง (รองจากช่องโชว์หนึ่งขั้น) */
+#stashPanel .dream .skin-card {
+  border: 1.5px solid rgba(255,255,255,.4);
+  background: linear-gradient(180deg, rgba(180,140,232,.5), rgba(128,80,196,.46));
+  box-shadow: 0 5px 12px rgba(70,30,130,.18), inset 0 1px 0 rgba(255,255,255,.45);
+}
+#stashPanel .dream .skin-card canvas {
+  background: radial-gradient(circle at 50% 62%, rgba(158,112,220,.55), rgba(90,48,148,.6));
+  box-shadow: inset 0 1px 3px rgba(40,10,80,.3), inset 0 0 0 1px rgba(255,255,255,.18);
+}
+/* สายพันธุ์ที่ยังไม่เคยพบ — ม่วงเข้มใสกว่า หรี่ลง แต่ยังเห็นเงาว่าเป็นแมว */
+#stashPanel .dream .skin-card.locked {
+  border-color: rgba(255,255,255,.16);
+  background: rgba(70,34,120,.42);
+  box-shadow: 0 3px 8px rgba(50,20,100,.14);
+}
+/* ── สีกรอบตามระดับ (ชุด .high / สมบัติ legend·epic·rare) ──
+   เป็นข้อมูลของเกม ไม่ใช่การตกแต่ง ต้องอ่านออกเหมือนเดิม — สีเดียวกับของเดิม สว่างขึ้นนิดให้เด่นบนพื้นอ่อน */
+#stashPanel .dream .skin-card.high {
+  border-color: rgba(255,214,110,.95);
+  box-shadow: 0 5px 12px rgba(70,30,130,.18), 0 0 14px rgba(255,201,60,.42), inset 0 1px 0 rgba(255,255,255,.45);
+}
+#stashPanel .dream .t-card.legend {
+  border-color: rgba(255,160,192,.95);
+  box-shadow: 0 5px 12px rgba(70,30,130,.18), 0 0 14px rgba(255,143,176,.45), inset 0 1px 0 rgba(255,255,255,.45);
+}
+#stashPanel .dream .t-card.epic { border-color: rgba(214,150,255,.95); }
+#stashPanel .dream .t-card.rare { border-color: rgba(141,243,234,.85); }
+
+/* ตัวที่ใช้อยู่ (.on) คงขอบมิ้นต์ไว้ — เป็นความหมายของเกม ไม่ใช่การตกแต่ง (ชนะสีระดับเหมือนเดิม) */
+#stashPanel .dream .skin-card.on {
+  border-color: var(--mint);
+  box-shadow: 0 5px 12px rgba(70,30,130,.18), 0 0 0 2px rgba(78,205,196,.4);
+}
+
+/* ── 2. การ์ดที่กำลังเลือกดู ── สว่างกว่าใบอื่นทั้งใบ ขอบขาว เรืองชมพู ยกลอยขึ้น
+   ลอยขึ้นลงช้า ๆ ด้วย translate (แยกจาก transform) ตอนกดการ์ดจึงยังยุบลงได้เหมือนเดิม */
+#stashPanel .dream .skin-card.sel {
+  outline: none;
+  border-color: #FFFFFF;
+  background: linear-gradient(180deg, rgba(214,186,250,.72), rgba(156,106,222,.62));
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.28),
+    0 14px 28px rgba(60,20,120,.3),
+    0 0 26px rgba(255,206,246,.55),
+    inset 0 1px 0 #FFFFFF;
+  animation: dreamFloat 3.2s ease-in-out infinite;
+}
+#stashPanel .dream .skin-card.on.sel {
+  box-shadow:
+    0 0 0 3px rgba(141,243,234,.45),
+    0 14px 28px rgba(60,20,120,.3),
+    0 0 26px rgba(255,206,246,.55),
+    inset 0 1px 0 #FFFFFF;
+}
+@keyframes dreamFloat { 0%, 100% { translate: 0 -2px; } 50% { translate: 0 -5px; } }
+
+/* ── ปุ่ม ── ทรงเม็ดยาเดิม หลักเป็นมิ้นต์ รองเป็นลาเวนเดอร์พาสเทล เงานุ่มลง */
+#stashPanel .dream .stash-btns .btn { text-shadow: none; }
+#stashPanel .dream .stash-btns .btn:not(.ghost):not(:disabled):not(.buy) {
+  box-shadow: 0 4px 0 #36ABA1, 0 10px 20px rgba(78,205,196,.3), inset 0 1px 0 rgba(255,255,255,.65);
+}
+#stashPanel .dream .stash-btns .btn.ghost {
+  background: linear-gradient(180deg, #F4E4FF 0%, #D6B2F7 100%);
+  color: #5A2A86;
+  border-color: rgba(255,255,255,.8);
+  box-shadow: 0 4px 0 #9C70D2, 0 8px 18px rgba(96,46,170,.25), inset 0 1px 0 #FFFFFF;
+}
+#stashPanel .dream .stash-btns .btn:disabled {
+  background: linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,.2));
+  color: #5A2A86;
+  border-color: rgba(255,255,255,.6);
+  filter: none;
+  opacity: 1;
+  box-shadow: 0 3px 0 rgba(90,45,150,.26), inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #stashPanel .dream .skin-card.sel { animation: none; translate: 0 -3px; }
+}
+
+/* ══ หน้าสกิล/พรสวรรค์: ห้องพลังพิเศษของน้องแมว ══════════════════════
+   ทั้งสองหมวดของ #talentPanel (สกิล + พรสวรรค์) — ผูกกับ #talentPanel หน้าอื่นที่ยืมคลาส tl-*
+   (เช่นหน้าเพื่อนแมว) ไม่โดนกฎในบล็อกนี้
+   พื้นหลังวาดด้วย Canvas 2D (src/render/skillbg.js) — บล็อกนี้แต่งของที่ลอยอยู่บนพื้น
+   แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ข้อความ ไอคอน ใช้ของเดิมทั้งหมด
+
+   ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
+     1. ใบที่ติดตั้งอยู่     ขอบมิ้นต์ + ออร่ามิ้นต์/ลาเวนเดอร์หายใจช้า ๆ (2.8 วิ)
+     2. การ์ดสกิล/พรสวรรค์  แผ่นม่วงใสลอย ขอบขาวบาง (หรือสีตามระดับ) เงานุ่ม
+     3. หัวเรื่อง/ข้อมูล     "สกิล" มีแสงนวลด้านหลังนิดหนึ่ง
+     4. แท็บ/ตัวนับ          ใสเกือบกลืนพื้น
+     5. พื้นหลัง + ละออง     จางที่สุด (ปรับใน skillbg.js) */
+#talentPanel .magic-bg { display: none; }
+#talentPanel .tl-pop {
+  background: #8457C9;   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+  border-color: rgba(255,255,255,.34);
+  box-shadow:
+    0 22px 50px rgba(30,8,64,.5),
+    inset 0 1px 0 rgba(255,255,255,.32);
+}
+#talentPanel .magic-bg {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* เนื้อหาลอยเหนือผ้าใบ — แผ่นรายละเอียด (.tl-detail z 8) กับปุ่มกลับมีชั้นของตัวเองสูงกว่าอยู่แล้ว */
+#talentPanel .tl-head,
+#talentPanel .tl-body { position: relative; z-index: 1; }
+
+/* ── 3. หัวเรื่อง ── ตัวหนังสือเดิม แค่มีแสงนวลด้านหลัง อ่านเป็น "ชื่อห้องพลัง" */
+#talentPanel .tl-head .skin-title {
+  text-shadow: 0 0 14px rgba(255,214,250,.55), 0 2px 6px rgba(60,20,110,.5);
+}
+#talentPanel .tl-side,
+#talentPanel .tl-grid { text-shadow: 0 1px 3px rgba(50,16,96,.35); }
+
+/* ── 4. ตัวนับ + แท็บ (ตัวประกอบ) ── */
+#talentPanel .tl-count,
+#talentPanel .tl-tabs,
+#talentPanel .tl-filter {
+  border-color: rgba(255,255,255,.24);
+  background: rgba(70,32,130,.32);
+}
+#talentPanel .tl-count { color: rgba(255,255,255,.85); }
+#talentPanel .tl-tabs .fchip,
+#talentPanel .tl-filter .fchip { color: rgba(255,255,255,.85); }
+#talentPanel .tl-tabs .fchip.on,
+#talentPanel .tl-filter .fchip.on {
+  background: rgba(255,255,255,.3);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+/* ── ช่องซ้าย ── เส้นคั่นบางลง คำอธิบายอ่านง่ายขึ้นบนพื้นใหม่ */
+#talentPanel .tl-side { border-right-color: rgba(255,255,255,.2); }
+#talentPanel p.tl-side-note { color: rgba(240,228,255,.85); }
+#talentPanel .tl-help {
+  border-color: rgba(255,255,255,.3);
+  background: rgba(70,32,130,.34);
+}
+
+/* ── ปุ่มกลับ ── ทรงเดิม เพิ่มแสงลาเวนเดอร์จาง ๆ รอบปุ่มให้เข้ากับห้อง */
+#talentPanel .backbtn {
+  box-shadow:
+    0 3px 0 rgba(20,8,32,.65),
+    0 8px 18px rgba(0,0,0,.36),
+    0 0 16px rgba(226,190,255,.45),
+    inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+/* ── 2. การ์ดสกิล ── แผ่นพลังม่วงใสลอยอยู่ในห้อง ขอบขาวบาง เงานุ่ม (ไม่ดำ) */
+#talentPanel .sk-card {
+  border: 1.5px solid rgba(255,255,255,.34);
+  background: linear-gradient(180deg, rgba(160,112,224,.62), rgba(104,60,176,.66));
+  box-shadow:
+    0 8px 20px rgba(36,10,84,.3),
+    inset 0 1px 0 rgba(255,255,255,.4),
+    inset 0 0 18px rgba(255,255,255,.06);
+}
+#talentPanel .sk-card .tl-card-art {
+  background: radial-gradient(circle at 50% 40%, rgba(120,72,190,.7), rgba(60,28,110,.8));
+}
+#talentPanel .sk-chip {
+  border-color: rgba(255,255,255,.22);
+  background: rgba(54,24,100,.5);
+}
+#talentPanel .sk-chip.sk-chip-stage { border-color: rgba(255,214,110,.5); }
+#talentPanel .sk-chip.sk-chip-on {
+  border-color: transparent;
+  background: linear-gradient(180deg, #B6F7EF, #74DCD1);
+  box-shadow: 0 3px 10px rgba(78,205,196,.35), inset 0 1px 0 rgba(255,255,255,.7);
+}
+#talentPanel .sk-short { color: #F1E6FF; }
+#talentPanel .sk-effect { color: #E2D2F6; }
+#talentPanel .sk-quest {
+  background: rgba(44,18,86,.6);
+  border-color: rgba(255,255,255,.18);
+}
+
+/* ── การ์ดที่ยังล็อก ── ม่วงเข้มใส หรี่ลง ชัดว่ายังล็อก แต่ไม่ดำทึบ (กล่องภารกิจยังชัดเต็มที่เหมือนเดิม) */
+#talentPanel .sk-card.locked {
+  border-color: rgba(255,255,255,.16);
+  background: linear-gradient(180deg, rgba(92,52,152,.62), rgba(60,28,110,.7));
+  box-shadow: 0 6px 14px rgba(30,8,70,.26), inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+/* ── 2. การ์ดพรสวรรค์ ── แผ่นม่วงใสชุดเดียวกับการ์ดสกิล
+   สีกรอบตามระดับเป็นข้อมูลของเกม ต้องอ่านออกเหมือนเดิม: A ขอบขาวบาง · S ขอบทอง · SS ขอบรุ้ง
+   (SS ทำด้วยพื้นสองชั้น padding-box/border-box แบบเดิม — แค่เปลี่ยนพื้นด้านในเป็นม่วงใส) */
+#talentPanel .tl-card:not(.sk-card) {
+  border: 1.5px solid rgba(255,255,255,.34);
+  background: linear-gradient(180deg, rgba(160,112,224,.62), rgba(104,60,176,.66));
+  box-shadow: 0 8px 18px rgba(36,10,84,.28), inset 0 1px 0 rgba(255,255,255,.4);
+}
+#talentPanel .tl-card.rank-s:not(.sk-card) { border-color: rgba(255,214,110,.9); }
+#talentPanel .tl-card.rank-ss:not(.sk-card),
+#talentPanel .tl-equipped.rank-ss {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, rgb(150,102,218), rgb(102,58,172)) padding-box,
+    linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
+}
+#talentPanel .tl-card.locked:not(.sk-card) {
+  background: linear-gradient(180deg, rgba(92,52,152,.62), rgba(60,28,110,.7));
+  box-shadow: 0 6px 14px rgba(30,8,70,.26), inset 0 1px 0 rgba(255,255,255,.14);
+}
+#talentPanel .tl-card.locked.rank-ss:not(.sk-card) {
+  background:
+    linear-gradient(180deg, rgb(88,50,146), rgb(60,28,110)) padding-box,
+    linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
+}
+#talentPanel .tl-card-desc { color: #F1E6FF; }
+/* ช่อง "ติดตั้งอยู่" ตอนยังว่าง — กรอบเส้นประใส ไม่มีออร่า */
+#talentPanel .tl-equipped.empty {
+  background: rgba(70,32,130,.26);
+  border-color: rgba(141,243,234,.6);
+}
+#talentPanel .tl-equipped-empty { color: rgba(240,228,255,.8); }
+
+/* ── 1. ใบที่ติดตั้งอยู่ (ทั้งสกิลและพรสวรรค์) ── ขอบมิ้นต์เดิม + ออร่ามิ้นต์/ลาเวนเดอร์ที่หายใจช้า ๆ (ไม่กะพริบ ไม่เต้นแรง) */
+#talentPanel .tl-card.equipped,
+#talentPanel .tl-equipped:not(.empty) {
+  border-color: #8DF3EA;
+  background: linear-gradient(180deg, rgba(176,128,236,.7), rgba(112,64,186,.72));
+  /* แทนแอนิเมชันเข้าของการ์ด (tlCardIn) ด้วยออร่า — ใบที่ใช้อยู่จึงไม่ไล่ขึ้นพร้อมใบอื่น
+     ซึ่งยิ่งทำให้มันดูเป็น "ใบหลัก" ที่อยู่ตรงนั้นอยู่แล้ว
+     แอนิเมชันชนะเงาตอนชี้/กดของเดิม ออร่าจึงหายใจต่อเนื่องไม่สะดุด */
+  animation: skAura 2.8s ease-in-out infinite;
+}
+/* เพิ่งติดตั้งใบใหม่ = เด้งรับ (tlBump เดิม) พร้อมกับออร่า — ไม่ให้ออร่าไปทับการเด้งจนหาย */
+#talentPanel .tl-equipped.bump {
+  animation: tlBump .42s cubic-bezier(.2,.85,.3,1.3), skAura 2.8s ease-in-out infinite;
+}
+@keyframes skAura {
+  0%, 100% {
+    box-shadow:
+      0 8px 20px rgba(36,10,84,.3),
+      0 0 0 2px rgba(141,243,234,.35),
+      0 0 16px rgba(141,243,234,.28),
+      0 0 30px rgba(226,190,255,.22),
+      inset 0 1px 0 rgba(255,255,255,.45);
+  }
+  50% {
+    box-shadow:
+      0 8px 20px rgba(36,10,84,.3),
+      0 0 0 2px rgba(141,243,234,.5),
+      0 0 24px rgba(141,243,234,.42),
+      0 0 44px rgba(226,190,255,.34),
+      inset 0 1px 0 rgba(255,255,255,.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #talentPanel .tl-card.equipped,
+  #talentPanel .tl-equipped:not(.empty) {
+    animation: none;
+    box-shadow: 0 8px 20px rgba(36,10,84,.3), 0 0 0 2px rgba(141,243,234,.42), 0 0 20px rgba(141,243,234,.35), inset 0 1px 0 rgba(255,255,255,.45);
+  }
+}
+
+/* ══ ตู้กาช่า: ร้านเซอร์ไพรส์เวทมนตร์ ═══════════════════════════════════
+   ทั้งสองตู้ของ #gachaPanel (สุ่มสมบัติ / สุ่มสกิน) — ผูกกับ #gachaPanel หน้าอื่นไม่โดน
+   พื้นหลังวาดด้วย Canvas 2D (src/render/gachabg.js) — บล็อกนี้แต่งแผ่นที่ลอยอยู่บนพื้น
+   แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ตัวตู้ ของรางวัล ราคา ปุ่มสุ่ม ตัวนับเงิน ใช้ของเดิมทั้งหมด
+
+   ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
+     1. ตัวตู้/หีบ          แสงลาเวนเดอร์-ทองนวลด้านหลัง (ในแผ่นขวา)
+     2. ของรางวัลที่ส่อง     แสงทอง/ลาเวนเดอร์จาง ๆ หลังกรอบรูป
+     3. ราคา ปุ่มสุ่ม       ของเดิมทุกอย่าง
+     4. ตัวนับเงิน          ของเดิม
+     5. แถบเลือกตู้         ใสเกือบกลืนพื้น
+     6. พื้นหลัง            จางที่สุด */
+#gachaPanel .gacha-bg { display: none; }
+#gachaPanel .gacha-pop {
+  background: #8656C8;   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+  border-color: rgba(255,255,255,.34);
+  box-shadow:
+    0 22px 50px rgba(30,8,64,.5),
+    inset 0 1px 0 rgba(255,255,255,.32);
+}
+#gachaPanel .gacha-pop .gacha-bg {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* เนื้อหาลอยเหนือผ้าใบ — หน้าต่างอัตราการสุ่ม (z 7) ผลสุ่ม (z 8) และปุ่มกลับ อยู่สูงกว่าอยู่แล้ว */
+#gachaPanel .gacha-body { position: relative; z-index: 1; }
+
+/* หัวเรื่อง — ตัวหนังสือเดิม แสงนวลด้านหลังนิดหนึ่ง */
+#gachaPanel .gacha-head h2 { text-shadow: 0 0 14px rgba(255,214,250,.5), 0 2px 6px rgba(60,20,110,.5); }
+
+/* ── 5. แถบเลือกตู้ (ตัวประกอบ) ── ใสเกือบกลืนพื้น อันที่เลือกอยู่สว่างขึ้นหนึ่งขั้น */
+#gachaPanel .gacha-tabs { border-right-color: rgba(255,255,255,.2); }
+#gachaPanel .gtab {
+  border-color: rgba(255,255,255,.24);
+  background: rgba(70,32,130,.26);
+  color: rgba(255,255,255,.88);
+  text-shadow: 0 1px 3px rgba(50,16,96,.35);
+}
+#gachaPanel .gtab.on {
+  background: linear-gradient(180deg, rgba(255,255,255,.34), rgba(236,214,255,.2));
+  border-color: rgba(255,255,255,.65);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(60,20,120,.24), inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+/* ── แผ่นสองใบ ── ม่วงใสลอย ขอบลาเวนเดอร์บาง เงานุ่ม ไฮไลต์ด้านบน
+   ทึบพอให้ตัวหนังสืออ่านง่ายเสมอ (ไม่ใช่กระจกใสจนเห็นละอองวิ่งหลังตัวหนังสือชัด) */
+#gachaPanel .gacha-show,
+#gachaPanel .gacha-right {
+  border: 1.5px solid rgba(236,214,255,.5);
+  box-shadow:
+    0 10px 26px rgba(36,10,84,.3),
+    inset 0 1px 0 rgba(255,255,255,.42),
+    inset 0 0 22px rgba(255,255,255,.06);
+}
+/* 2. ห้องโชว์ของรางวัล — แสงทองกับลาเวนเดอร์จาง ๆ หลังกรอบรูป (ของรางวัลยังเด่นกว่าแสงเสมอ) */
+#gachaPanel .gacha-show {
+  background:
+    radial-gradient(46% 40% at 50% 40%, rgba(255,222,150,.2), transparent 72%),
+    radial-gradient(64% 54% at 50% 42%, rgba(236,200,255,.3), transparent 76%),
+    linear-gradient(180deg, rgba(160,112,224,.66), rgba(104,60,176,.7));
+}
+/* 1. แผ่นตัวตู้ — วงแสงลาเวนเดอร์กับทองนวลหลังตู้/หีบ ตัวตู้จึงเป็น "ของวิเศษ" ในร้าน */
+#gachaPanel .gacha-right {
+  background:
+    radial-gradient(40% 34% at 50% 40%, rgba(255,226,160,.22), transparent 70%),
+    radial-gradient(58% 48% at 50% 40%, rgba(226,196,255,.34), transparent 74%),
+    linear-gradient(180deg, rgba(160,112,224,.66), rgba(104,60,176,.7));
+}
+/* ปุ่มไปหน้ารายการ — ม่วงใสแทนเม็ดดำทึบ */
+#gachaPanel .more-btn {
+  border-color: rgba(255,255,255,.3);
+  background: rgba(60,26,112,.5);
+  color: #F4EAFF;
+}
+/* ตัวหนังสือรองบนแผ่น — สว่างขึ้นให้อ่านง่ายบนแผ่นใส */
+#gachaPanel .tg-hint,
+#gachaPanel .gacha-owned,
+#gachaPanel .show-note { color: rgba(244,234,255,.86); }
+
+/* ── ปุ่มกลับ ── ทรงเดิม แสงลาเวนเดอร์จาง ๆ รอบปุ่ม */
+#gachaPanel .backbtn {
+  box-shadow:
+    0 3px 0 rgba(20,8,32,.65),
+    0 8px 18px rgba(0,0,0,.36),
+    0 0 16px rgba(226,190,255,.45),
+    inset 0 1px 0 rgba(255,255,255,.22);
+}

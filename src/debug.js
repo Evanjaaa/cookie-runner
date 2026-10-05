@@ -383,6 +383,15 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
     toast('⬆️ +200 EXP ทุกตัวในห้อง — ถึง Lv5 แล้วเปิดบ้านน้องเพื่อฉลอง');
     return true;
   });
+  // ── น้องในห้องเล่นด้วยกัน ── วงเล่นตัวเดียวกับที่ห้องสุ่มเองทุกขั้น (วิ่งไล่ เล็ง กระโจน ตบ ดีใจ)
+  add('🐾 น้องเล่นด้วยกัน', () => {
+    const room = game.catRoom;
+    if (!room) { toast('🐾 เปิดบ้านน้องก่อนนะ'); return false; }
+    const n = room.debugSocial();
+    if (n < 2) { toast('🐾 ต้องมีน้องว่างอย่างน้อย 2 ตัว'); return false; }
+    toast(`🐾 น้อง ${n} ตัวมาเล่นด้วยกันแล้ว`);
+    return true;
+  });
   add('🗑 ล้างน้องทั้งหมด', () => {
     debugClearCats();
     hooks.refreshCats?.();

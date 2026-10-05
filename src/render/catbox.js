@@ -219,7 +219,9 @@ export function drawHomeBox(ctx, x, y, t, pop = 0) {
  *   feetY    ระดับเท้าในพิกัดตัว (กลางกล่องชน = 0)
  */
 function seatLocal(feetY, sliding) {
-  if (sliding) return { x: -10, y: feetY - 12, chest: { x: 2, y: feetY - 8 }, low: true };
+  // หมอบ: ลำตัวเป็นวงรีนอนกลาง (-2, feetY-11) กว้าง 19 สูง 10 — ลูกแมวนั่งบนแผ่นหลังพอดี
+  // ไม่จมกลางตัว (เดิม y = feetY-12 ผ้าห่อไปอยู่กลางลำตัว เห็นเป็นก้อนลอยแปะข้างตัว)
+  if (sliding) return { x: -8, y: feetY - 21, chest: { x: 5, y: feetY - 11 }, low: true };
   return { x: -19, y: feetY - 24, chest: { x: 0, y: feetY - 17 }, low: false };
 }
 
@@ -232,7 +234,8 @@ function carrierSeat(player, scale) {
   return { x: cx + L.x * scale, y: cy + L.y * scale };
 }
 
-const SLING = { cloth: '#FF9EC0', clothDark: '#E0709A', trim: '#FFE3EE', strap: '#7FD6B8', line: '#5C3B26' };
+// สายรัดตัวสีเดียวกับผ้าห่อลูกแมว (เดิมเป็นมิ้น ดูเป็นของคนละชิ้นกับผ้า)
+const SLING = { cloth: '#FF9EC0', clothDark: '#E0709A', trim: '#FFE3EE', strap: '#FF9EC0', line: '#5C3B26' };
 
 /**
  * ชั้นหลัง: ลูกแมวในผ้าห่อ — วาด "ก่อน" ตัวน้อง ตัวน้องจึงบังช่วงที่อยู่ข้างหลังลำตัวจริง
@@ -297,7 +300,14 @@ export function drawCarrierFront(ctx, feetY, sliding) {
     }
   };
   if (seat.low) {
-    band(c.x - 14, c.y - 2, c.x, c.y + 2, c.x + 10, c.y - 4, 4.4);
+    // ท่าหมอบ: สายวงรอบลำตัวช่วงอก โค้งตามหน้าตัดของลำตัว (บนหลัง → ใต้ท้อง)
+    // แนบผิวพอดี ไม่ใช่เส้นตรงพาดลอยกลางตัว · ผ้าห่อนั่งบนหลังจึงต่อกับสายเป็นชิ้นเดียว
+    band(c.x - 3, c.y - 9, c.x + 6, c.y + 1, c.x + 1, c.y + 10, 4.2);
+    band(c.x - 16, c.y - 6, c.x - 8, c.y - 11, c.x - 2, c.y - 9, 3.6);
+    ctx.fillStyle = '#FFE48A';
+    ctx.strokeStyle = SLING.line;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(c.x + 3.6, c.y + 1, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   } else {
     band(c.x - 14, c.y + 6, c.x, c.y + 9, c.x + 13, c.y + 5, 4);
     band(c.x + 10, c.y - 8, c.x + 2, c.y - 1, c.x - 13, c.y + 4, 4.6);

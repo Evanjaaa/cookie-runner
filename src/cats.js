@@ -203,7 +203,14 @@ export function moodOf(cat, t = now()) {
   for (const k of NEED_KEYS) sum += needNow(cat, k, t);
   return sum / NEED_KEYS.length;
 }
-export const isSad = (cat, t) => moodOf(cat, t) < 30;
+/**
+ * เศร้าไหม — อารมณ์รวมต่ำกว่า 30 และ "ไม่ได้รับการดูแลมาสักพัก"
+ * ดูแลอย่างใดอย่างหนึ่ง (ให้อาหาร เล่น อาบน้ำ พานอน ลูบ) = หายเศร้าทันที อยู่ได้ COMFORT_H ชั่วโมง
+ * เดิมดูแค่ค่าเฉลี่ย เติมให้หนึ่งอย่างจากห้าอย่างยังไม่พ้น 30 น้องจึงหน้าเศร้าค้างทั้งที่เพิ่งเล่นด้วย
+ */
+const COMFORT_H = 3;
+export const isSad = (cat, t = now()) =>
+  moodOf(cat, t) < 30 && !(cat.caredAt && t - cat.caredAt < COMFORT_H * 3600000);
 
 export function levelOf(cat) {
   let lv = 1;
@@ -287,6 +294,7 @@ export function care(id, act, extra = {}) {
     cat.exp += exp;
   }
   cat.need[a.need] = [100, t];
+  cat.caredAt = t;   // หายเศร้าทันที (ดู isSad)
 
   const aff = Math.min(AFF_MAX - cat.aff, (extra.aff || 1));
   cat.aff += aff;
@@ -305,6 +313,7 @@ export function petCat(id) {
   if (cat.petToday >= PET_AFF_DAY || cat.aff >= AFF_MAX) return 0;
   cat.petToday++;
   cat.aff++;
+  cat.caredAt = now();   // ลูบแล้วหายเหงา (ดู isSad)
   save();
   return 1;
 }

@@ -109,6 +109,7 @@ export function setupCatRoomUI(deps) {
     room.onTapCat = onTapCat;
     room.onGrab = (id) => select(id);
     room.onDropCat = onDropCat;
+    room.onNotice = (text) => toast(text);
     room.open(selectId);
     panel.classList.remove('hidden');
     refreshGold();

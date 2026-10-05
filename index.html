@@ -574,7 +574,9 @@
            แยกไว้แล้วซ่อน/โชว์แทน ทำให้โค้ดเดิมของทั้งสองหน้าทำงานต่อได้ทั้งดุ้น
            โดยไม่ต้องแตะเลยสักบรรทัด -->
       <div class="panel hidden" id="stashPanel">
-        <div class="pop stash-pop">
+        <div class="pop stash-pop dream">
+          <!-- พื้นหลังโลกพาสเทล (src/render/dreambg.js) — ทั้งสามหมวดของคลังน้อง (.dream) -->
+          <canvas class="dream-bg" id="stashDream" aria-hidden="true"></canvas>
           <div class="stash-body">
             <!-- ซ้าย: เลือกหมวด อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
             <div class="stash-tabs" role="tablist" aria-label="เลือกหมวด">
@@ -684,6 +686,8 @@
            หน้ารายละเอียดเปิดเป็นแผ่นซ้อนในการ์ดเดียวกัน ไม่ได้สลับไปอีกแผง -->
       <div class="panel hidden" id="talentPanel">
         <div class="pop tl-pop">
+          <!-- พื้นหลังห้องพลังพิเศษ (src/render/skillbg.js) — ทั้งหมวดสกิลและพรสวรรค์ -->
+          <canvas class="magic-bg" id="skillMagic" aria-hidden="true"></canvas>
           <div class="tl-head">
             <div class="tl-titles">
               <h2 class="skin-title" id="tlTitle">สกิล</h2>
@@ -844,11 +848,9 @@
           </div>
 
           <small class="form-msg" id="frMsg"></small>
-          <button class="backbtn" id="friendsBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <!-- ปุ่มปิดมุมขวาบน — เทมเพลต .xbtn (pop-x = การ์ดเว้นที่ให้ปุ่มเหมือนปุ่มกลับ) -->
+          <button type="button" class="xbtn pop-x" id="friendsBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -863,11 +865,9 @@
             <div class="news-list" id="newsList"></div>
             <article class="news-view" id="newsView"></article>
           </div>
-          <button class="backbtn" id="newsBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <!-- ปุ่มปิดมุมขวาบน — เทมเพลต .xbtn (pop-x = การ์ดเว้นที่ให้ปุ่มเหมือนปุ่มกลับ) -->
+          <button type="button" class="xbtn pop-x" id="newsBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -885,11 +885,9 @@
             <button class="btn ghost" id="mailClear">ล้างจดหมายที่อ่านแล้ว</button>
           </div>
           <small class="form-msg" id="inboxMsg"></small>
-          <button class="backbtn" id="inboxBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <!-- ปุ่มปิดมุมขวาบน — เทมเพลต .xbtn (pop-x = การ์ดเว้นที่ให้ปุ่มเหมือนปุ่มกลับ) -->
+          <button type="button" class="xbtn pop-x" id="inboxBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -1074,6 +1072,8 @@
            "ดูอื่นๆ" ที่มุมขวาบนของกรอบตู้ ซึ่งพาไปหน้ารายการเต็ม -->
       <div class="panel hidden" id="gachaPanel">
         <div class="pop gacha-pop">
+          <!-- พื้นหลังร้านเซอร์ไพรส์เวทมนตร์ (src/render/gachabg.js) — ทั้งสองตู้ -->
+          <canvas class="gacha-bg" id="gachaMagic" aria-hidden="true"></canvas>
           <div class="gacha-body">
             <!-- ซ้าย: เลือกว่าจะสุ่มตู้ไหน — อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
             <div class="gacha-tabs" role="tablist" aria-label="เลือกตู้">
@@ -1520,11 +1520,9 @@
               </div>
             </div>
           </div>
-          <button class="backbtn" id="settingsBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <!-- ปุ่มปิดมุมขวาบน — เทมเพลต .xbtn (pop-x = การ์ดเว้นที่ให้ปุ่มเหมือนปุ่มกลับ) -->
+          <button type="button" class="xbtn pop-x" id="settingsBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -1904,11 +1902,9 @@
           </div>
           <div class="quest-list" id="questList"></div>
           <small class="form-msg" id="questMsg"></small>
-          <button class="backbtn" id="questBack" aria-label="กลับ">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
-                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <!-- ปุ่มปิดมุมขวาบน — เทมเพลต .xbtn (pop-x = การ์ดเว้นที่ให้ปุ่มเหมือนปุ่มกลับ) -->
+          <button type="button" class="xbtn pop-x" id="questBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>

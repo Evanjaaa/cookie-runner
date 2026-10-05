@@ -222,14 +222,11 @@ function dimForUi(ctx, k = 1) {
 }
 
 /**
- * จำจังหวะที่เก็บเม็ดได้ — ให้ตัววาดเล่นท่า "ถูกเก็บ" สั้น ๆ แทนการหายวับ (ดู drawTreats)
- * เป้าเก็บเป็นพิกัดจอ เพราะตัวน้องอยู่ที่เดิมบนจอเสมอ เม็ดจึงไหลเข้าหาตัวได้ถูกที่แม้กล้องวิ่งต่อ
+ * จำจังหวะที่เก็บเม็ดได้ — ให้ตัววาดเล่นท่า "ถูกเก็บ" (เด้งแล้วหดหายเป็นประกาย) แทนการหายวับ (ดู drawTreats)
  * คะแนน/เสียงยังเกิดทันทีที่แตะ — แอนิเมชันเป็นภาพล้วน ไม่หน่วงการเก็บ
  */
-function markGot(f, tick, sx, sy) {
+function markGot(f, tick) {
   f.gotT = tick;
-  f.toSX = sx;
-  f.toY = sy;
 }
 
 /** วงกลมแตะสี่เหลี่ยมไหม (แตะแค่ขอบก็นับ) */
@@ -238,6 +235,9 @@ function circleHitsRect(x, y, r, rc) {
   const ny = Math.max(rc.y, Math.min(y, rc.y + rc.h));
   return (x - nx) * (x - nx) + (y - ny) * (y - ny) <= r * r;
 }
+
+/** น้องหยุดยืนห่างจากกล่องเท่านี้ (px) ตอนฉากพบน้อง — กล่องอยู่ราวกลางจอ น้องยืนหน้ากล่อง */
+const BOX_STAND = 70;
 
 export class Game {
   constructor({ onGameOver, onPitFall } = {}) {
@@ -561,14 +561,21 @@ export class Game {
     }
     // วิ่งมาถึงหน้ากล่อง = หยุดเล่นฉากพบน้อง (รอให้เท้าแตะพื้นก่อน ฉากจะได้เริ่มจากท่ายืน
     // ถ้าวิ่งเลยไปไกลแล้วยังลอยอยู่ ก็เริ่มเลย กล่องหายาก ห้ามพลาด)
-    const px = this.camera + PLAYER_X + 24;
+    // ── พบกล่องตอนกล่องเลื่อนมาถึงกลางจอ ──
+    // โลกหยุด แล้วน้องวิ่งต่อไปหยุดหน้ากล่องเอง (ดู stepBoxScene ช่วง walk) — ฉากทั้งหมดจึงเล่นกลางจอ
+    // ไม่ใช่ชิดขอบซ้ายตรงจุดวิ่งปกติ และไม่ใช่วาร์ป: ตัวน้องเลื่อนไปจริงทีละเฟรมด้วยท่าวิ่ง
+    const px = this.camera + PLAYER_X + this.player.ox + 24;
+    const mid = this.camera + VIEW.W / 2 + BOX_STAND;
     for (const b of this.level.boxes) {
       if (b.got) { b.open = Math.min(1, b.open + 0.08 * dt); continue; }
-      if (px < b.x - 70) continue;
+      if (b.x > mid && px < b.x - BOX_STAND) continue;
+      // รอเท้าแตะพื้นก่อน ฉากจะได้เริ่มจากท่าวิ่งบนพื้น — ถ้าลอยเลยกล่องไปแล้วก็เริ่มเลย ห้ามพลาด
       if (!this.player.onGround && px < b.x + 60) continue;
       b.got = true;
       this.boxFound = this.boxPlan;
-      this.boxScene = { t: 0, box: b, kit: null };
+      // ระยะที่ต้องวิ่งไปหยุดหน้ากล่อง (พิกัดจอ) — กล่องเลยตัวไปแล้ว = ไม่ต้องเดิน
+      const go = Math.max(0, b.x - BOX_STAND - px);
+      this.boxScene = { t: 0, box: b, kit: null, walk: go };
       this.player.setSlide(false);
       this.player.sliding = false;   // ฉากเริ่มจากท่ายืนเสมอ (อัปเดตตัวละครหยุดระหว่างฉาก จึงต้องตั้งเอง)
       this.notice = 150;
@@ -586,6 +593,18 @@ export class Game {
    */
   stepBoxScene(dt) {
     const sc = this.boxScene;
+    // ── ช่วงวิ่งเข้าหากล่อง ── โลกหยุดแล้ว ตัวน้องวิ่งไปข้างหน้าเอง (ox) ด้วยความเร็ววิ่งปกติ
+    // ชะลอช่วงท้ายให้หยุดนุ่ม ๆ หน้ากล่อง แล้วค่อยเริ่มฉากจริง (t ยังไม่เดิน)
+    if (sc.walk > 0) {
+      const p = this.player;
+      const v = Math.max(1.6, Math.min(this.speed, sc.walk * 0.12)) * dt;
+      const step = Math.min(sc.walk, v);
+      p.ox += step;
+      sc.walk -= step;
+      p.runPhase += step * 0.06;
+      p.tailLag += (0.4 - p.tailLag) * 0.1 * dt;
+      return;
+    }
     const prev = sc.t;
     sc.t += dt;
     const t = sc.t;
@@ -611,6 +630,8 @@ export class Game {
     if (t >= 188) {
       this.boxScene = null;
       this.rider = { t: 0 };
+      // วิ่งต่อแล้วค่อย ๆ ถอยกลับจุดวิ่งปกติ (ox → 0) ไม่ใช่วาร์ปกลับซ้ายทันที
+      this.boxReturn = true;
       this.invuln = Math.max(this.invuln, 60);   // กันชนของทันทีที่ออกตัวต่อ
     }
   }
@@ -626,6 +647,7 @@ export class Game {
     const land = this.boxScene ? 1 - Math.min(1, (this.boxScene.t - 162) / 26) : 0;
     const phase = this.player.runPhase;
     return {
+      // ลูกแมวในเป้อยู่หลังตัวน้องหลัก (ผู้ใช้เลือกแบบนี้ หลังลองให้อยู่หน้าสุดแล้วบังตัวหลักมากไป)
       back: (c, feetY, sliding) => drawCarrierBack(c, feetY, sliding, skin, t, phase, land),
       front: (c, feetY, sliding) => drawCarrierFront(c, feetY, sliding),
     };
@@ -812,6 +834,12 @@ export class Game {
       return;
     }
     if (this.rider) this.rider.t += dt;
+    // หลังฉากพบน้อง: ตัวน้องอยู่กลางจอ ค่อย ๆ ไหลกลับจุดวิ่งปกติ (ox → 0) ราว 2 วินาที
+    if (this.boxReturn) {
+      const p = this.player;
+      p.ox = Math.max(0, p.ox - 2.4 * dt);
+      if (p.ox <= 0) this.boxReturn = false;
+    }
 
     this.tick += dt;
     if (this.invuln > 0) this.invuln -= dt;
@@ -1229,7 +1257,7 @@ export class Game {
       const touch = circleHitsRect(f.x, f.y, f.r * (def.scale || 1) * foodLook(f.kind) + 2, body);
       if (touch || Math.hypot(cx - f.x, cy - f.y) < f.r + pad) {
         f.got = true;
-        markGot(f, this.tick, cx - this.camera, cy);
+        markGot(f, this.tick);
         // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
         // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
         const m = this.treasures.treatMult * this.skillTreatMult;
@@ -2190,7 +2218,7 @@ export class Game {
       if (f.got) continue;
       if (Math.hypot(cx - f.x, cy - f.y) < f.r + BONUS.pickPad) {
         f.got = true;
-        markGot(f, this.tick, cx - this.bonusCam, cy);
+        markGot(f, this.tick);
         // ตารางเดียวกับในด่าน (TREATS) — บนฟ้าไม่คูณสมบัติ และอนุภาคน้อยกว่าเพราะเก็บถี่มาก
         const def = treatOf(f.kind);
         this.treat += def.points + this.foodBonus;
@@ -2519,7 +2547,6 @@ export class Game {
     // ยกเว้นเม็ดอาหารรูปปลา — ขึ้นเรียงเป็นแถวยาวเต็มจอ มีเส้นแล้วดูรกและหนักตา
     // จึงวาดแยกนอกชั้นเส้นขอบ (ข้างล่าง) ส่วนเม็ดกลมกับกุ้งทองยังมีเส้นเพราะเป็นของเด่น
     const [plainFish, rareTreats] = splitFish(this.level.fishes);
-    if (this.level.boxes.length) drawCatBoxes(ctx, this.level.boxes, this.camera, this.tick, this.kittenSkin());
     drawOutlined(ctx, (c) => {
       drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
       drawFallers(c, this.level.fallers, this.camera, this.scene.theme);
@@ -2533,6 +2560,8 @@ export class Game {
       drawShields(c, this.level.shields, this.camera);
     }, outlineSpans([this.level.obstacles, this.level.fallers, this.level.hazards, rareTreats, this.level.potions, this.level.magnets, this.level.letters, this.level.nips, this.level.cans, this.level.shields], this.camera, VIEW.W));
     drawTreats(ctx, plainFish, this.camera, this.tick);
+    // กล่องน้องแมวอยู่หน้าของกินทุกชนิด — ของกินที่วางในด่านต้องไม่บังกล่องกับลูกแมว
+    if (this.level.boxes.length) drawCatBoxes(ctx, this.level.boxes, this.camera, this.tick, this.kittenSkin());
     this.particles.draw(ctx, this.camera);
     // สีฉากช่วงสกิล (เต้น = ปาร์ตี้แดงจาง ๆ) — ทับฉากและของ แต่อยู่ใต้ขนมโปรยกับตัวน้อง
     drawSkillWorld(ctx, this);
@@ -2560,7 +2589,6 @@ export class Game {
 
     // ลูกแมวจากกล่องวิ่งตามอยู่ข้างหลัง
     // ฉากพบน้อง: ลูกแมวโผล่จากกล่อง / กระโดดมาขี่คอ (ช่วงที่ยังไม่ได้ขี่)
-    if (this.boxScene && this.boxScene.t < 162) drawBoxScene(ctx, this, this.kittenSkin());
 
     // เอฟเฟกต์พรสวรรค์ชั้นหลังตัว (เมฆใต้ตัว ปีกร่อน เส้นพุ่ง ออร่าเงา)
     if (this.state !== STATE.DEAD) drawTalentBack(ctx, this);
@@ -2597,7 +2625,7 @@ export class Game {
       ctx.translate(0, -liftY);
       drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking || shout,
         pose === 'dance' ? this.tick : 0,
-        this.boxScene ? (this.boxScene.t < 64 ? 'hurt' : 'happy')
+        this.boxScene && !(this.boxScene.walk > 0) ? (this.boxScene.t < 64 ? 'hurt' : 'happy')
           : this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood,
         catS, 1 + (BIGCAN.gait - 1) * this.bigK,
         { tired: this.big > 0 || pose ? 0 : lowK, hurt: this.hurtFlash, hero: hero ? 1 : 0,
@@ -2607,7 +2635,7 @@ export class Game {
       ctx.globalAlpha = 1;
     }
     // "!" ตกใจเหนือหัวน้องช่วงต้นฉากพบน้อง
-    if (this.boxScene && this.boxScene.t < 60) {
+    if (this.boxScene && !(this.boxScene.walk > 0) && this.boxScene.t < 60) {
       const pb = this.player.box;
       const k = Math.min(1, this.boxScene.t / 8);
       ctx.save();
@@ -2626,6 +2654,8 @@ export class Game {
     }
     if (sucking) drawSuction(ctx, this.player, this.tick, catS);
     if (this.state !== STATE.DEAD) drawTalentFront(ctx, this);
+    // ลูกแมวในฉากพบน้อง (โผล่จากกล่อง / กระโดดมาหา) อยู่หน้าตัวน้อง ชุด และเอฟเฟกต์
+    if (this.boxScene && this.boxScene.t < 162) drawBoxScene(ctx, this, this.kittenSkin());
     // ทางเข้าด่าน ชั้นหน้า: เสาประตู บานสวิง โคมไฟ — แมววิ่งลอดอยู่ข้างหลังจริง
     if (gateView) drawGateFront(ctx, this.gate.def, gateView);
 

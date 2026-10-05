@@ -563,6 +563,12 @@ const FADE_OUT = 0.14;
 // เข้าหน้าแรกทางไหนก็ตาม (เล่นจบ กดเลิกเล่น กดกลับ) เพลงต้องค่อย ๆ ดังขึ้น
 // ไม่ใช่โผล่มาเต็มเสียงทันที ซึ่งกระแทกหูโดยเฉพาะตอนเพิ่งตายแล้วจอเงียบอยู่
 const FADE_IN = 1.6;
+/** เข้า/ออกบ้านลูกเหมียว — ค่อย ๆ ดังขึ้นช้ากว่าปกติ (ผู้ใช้ขอราว 3 วินาที) */
+const ROOM_FADE_IN = 3;
+// หรี่ขึ้นช้าเริ่มจากเบา ๆ ที่ยังได้ยิน (−30 dB ของระดับเต็ม) ไม่ใช่จากเกือบเงียบ (−52 dB)
+// เริ่มจากเกือบเงียบ ครึ่งแรกของ 3 วินาทีจะเบาจนไม่ได้ยิน แล้วเพลงโผล่มาช่วงท้ายทีเดียว
+// เริ่มที่ระดับนี้ = ได้ยินตั้งแต่วินาทีแรก แล้วดังขึ้นต่อเนื่องจนรู้ว่า "กำลังดังขึ้น"
+const SLOW_FROM = 0.032;
 
 // ค่าเริ่มของการหรี่ขึ้น ต้องมากกว่าศูนย์เพราะ exponentialRamp ผ่านศูนย์ไม่ได้
 // (คณิตศาสตร์ของมันคือคูณทีละขั้น ถ้าเริ่มที่ศูนย์จะคูณเท่าไหร่ก็ยังศูนย์)
@@ -610,13 +616,16 @@ function ensureFileEl() {
  * เริ่มจากระดับปัจจุบันเสมอ (ไม่รีเซ็ตเป็นศูนย์) เผื่อสั่งเล่นซ้อนตอนที่ยัง
  * หรี่ลงไม่สุด เสียงจะได้ไต่ขึ้นต่อจากจุดเดิมแทนที่จะกระตุกลงไปเริ่มใหม่
  */
-function fadeIn() {
+function fadeIn(sec = FADE_IN, start = null) {
   const ac = audioCtx();
   const g = fileGain.gain;
-  const from = Math.max(FADE_FLOOR, g.value);
+  // start = ระดับที่ผู้เรียกเพิ่งตั้งไว้ — ต้องส่งมาตรง ๆ เพราะ g.value ยังคืนค่าเก่าของเฟรมที่แล้ว
+  // (เคยเจอ: สลับเพลงหน้าแรก→เพลงห้อง ตั้งเสียงลงเงียบแล้ว แต่อ่าน g.value ได้ 0.33 เต็ม
+  //  เลยกลายเป็นหรี่จากเต็มไปเต็ม เพลงห้องดังเต็มทันทีไม่มีหรี่ขึ้นเลย)
+  const from = Math.max(FADE_FLOOR, start ?? g.value);
   g.cancelScheduledValues(ac.currentTime);
   g.setValueAtTime(from, ac.currentTime);
-  g.exponentialRampToValueAtTime(FILE_VOL, ac.currentTime + FADE_IN);
+  g.exponentialRampToValueAtTime(FILE_VOL, ac.currentTime + sec);
 }
 
 /** หรี่ลงจนเงียบแบบเร็ว ๆ — linear พอ เพราะสั้นจนรูปทรงของเส้นไม่มีผลกับหู */
@@ -656,10 +665,11 @@ function retryFileOnGesture() {
   for (const ev of evs) document.addEventListener(ev, go, { capture: true, passive: true });
 }
 
-function playFile(src) {
+function playFile(src, fadeSec = FADE_IN) {
   const el = ensureFileEl();
   fileWanted = true;
   fadeToken++;   // ยกเลิกคิวหยุดที่ค้างอยู่ ไม่งั้นมันจะมาหยุดเพลงที่เพิ่งสั่งเล่น
+  let start = null;   // ระดับเริ่มของการหรี่ขึ้น (null = ต่อจากระดับที่ดังอยู่ตอนนี้)
   // ตั้ง src ใหม่เฉพาะตอนเปลี่ยนเพลงจริง ๆ ไม่งั้นกลับมาหน้าแรกทีไรเพลงจะเริ่มใหม่หมด
   const old = el.getAttribute('src');
   if (old !== src) {
@@ -673,11 +683,19 @@ function playFile(src) {
         try { el.currentTime = at % (el.duration || Infinity); } catch { /* ยังเลื่อนไม่ได้ */ }
       }, { once: true });
     }
-    // สลับเพลงกลางทาง ไล่เสียงขึ้นจากเงียบใหม่ — ไม่งั้นเพลงใหม่โผล่มาเต็มเสียงทันที
+    // สลับเพลงกลางทาง ไล่เสียงขึ้นจากเบาใหม่ — ไม่งั้นเพลงใหม่โผล่มาเต็มเสียงทันที
+    start = fadeSec > FADE_IN ? FILE_VOL * SLOW_FROM : FADE_FLOOR;
     fileGain.gain.cancelScheduledValues(audioCtx().currentTime);
-    fileGain.gain.setValueAtTime(FADE_FLOOR, audioCtx().currentTime);
+    fileGain.gain.setValueAtTime(start, audioCtx().currentTime);
   }
-  fadeIn();
+  // ── เริ่มหรี่ขึ้นตอนเพลงเริ่มดังจริง ไม่ใช่ตอนสั่ง ──
+  // ไฟล์ใหม่ต้องโหลดก่อน (บนมือถืออาจเกินวินาที) ถ้าเริ่มนับตั้งแต่สั่ง ช่วงหรี่ขึ้นจะหมดไปกับการรอโหลด
+  if (el.paused || el.readyState < 3) {
+    const token = fadeToken;
+    el.addEventListener('playing', () => { if (token === fadeToken) fadeIn(fadeSec, start); }, { once: true });
+  } else {
+    fadeIn(fadeSec, start);
+  }
   el.play().catch(retryFileOnGesture);
 }
 
@@ -915,6 +933,7 @@ export const SILENT = 'none';
 export function setMusicTrack(name) {
   if (name !== SILENT && !TRACKS[name]) return;
   if (name === track) return;
+  const prev = track;
   track = name;
   if (!master) return;
 
@@ -930,7 +949,10 @@ export function setMusicTrack(name) {
 
   // สลับระหว่างเพลงไฟล์กับเพลงสังเคราะห์ — ต้องปิดอีกฝั่งเสมอ ไม่งั้นซ้อนกันสองเพลง
   const f = fileFor(name);
-  if (f) playFile(f);
+  // เข้า/ออกบ้านลูกเหมียว: เพลงเริ่มเบาแล้วค่อย ๆ ดังขึ้นราว 3 วินาที (ทั้งเพลงห้องและเพลงหน้าแรกตอนกลับ)
+  // ไม่ใช่ดังเต็มทันทีที่สลับฉาก
+  const slow = name === 'room' || prev === 'room';
+  if (f) playFile(f, slow ? ROOM_FADE_IN : FADE_IN);
   else stopFile();
 
   loopStart = now + 0.05;
