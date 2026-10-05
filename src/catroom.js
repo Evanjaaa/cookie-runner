@@ -230,13 +230,16 @@ export class CatRoom {
     this.ball = { ang: 0, vel: 0 };   // ลูกบอลห้อยบนคอนโด (ดู TREE_BALL)
     this.onTapCat = null;
     this.onActDone = null;
+    // ไปเยี่ยมบ้านเพื่อน: { room: [น้อง], wait: น้อง|null } แทนน้องของเรา (ดู visitorCat ใน cats.js)
+    // null = บ้านของเราเอง
+    this.source = null;
   }
 
   // ── ข้อมูล → ตัวละครในห้อง ────────────────────────────────
 
   /** อ่านน้องจาก cats.js ใหม่ — เรียกตอนเปิดห้องและหลังทุกการเปลี่ยนแปลงข้อมูล */
   sync() {
-    const room = roomCats();
+    const room = this.source ? this.source.room : roomCats();
     const keep = new Set(room.map((c) => c.id));
     for (const id of [...this.actors.keys()]) if (!keep.has(id)) this.actors.delete(id);
     room.forEach((c, i) => {
@@ -255,7 +258,7 @@ export class CatRoom {
       a.size = ADULT * sizeOf(levelOf(c));
       a.sad = isSad(c);
     });
-    const w = waitingCats()[0];
+    const w = this.source ? this.source.wait : waitingCats()[0];
     this.waitActor = w ? { id: w.id, cat: w, skin: catSkin(w), size: ADULT * sizeOf(1) } : null;
     if (this.selected && !keep.has(this.selected) && this.waitActor?.id !== this.selected) this.selected = null;
     if (!this.selected) this.selected = room[0]?.id || this.waitActor?.id || null;
@@ -1027,7 +1030,8 @@ export class CatRoom {
   /** ยกน้องขึ้น — น้องห้อยตามนิ้ว กิจกรรมที่ทำค้างอยู่ถูกยกเลิก (ข้อมูลบันทึกไปแล้วตั้งแต่ตอนกด) */
   startGrab(id, sx, sy) {
     const a = this.actors.get(id);
-    if (!a) return;
+    // บ้านเพื่อน (source) ดูอย่างเดียว — ยกได้แต่วางลงจุดกิจกรรมไม่ได้ น้องจะค้างกลางอากาศ
+    if (!a || this.source) return;
     this.cancel(a);
     if (this.toy && a.task === 'play') this.toy = null;
     a.mode = 'held';
