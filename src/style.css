@@ -148,6 +148,16 @@ canvas[hidden] { display: none; }
   z-index: 0;
   transition: opacity .25s ease, visibility .25s;
 }
+/* ── แผงที่ซ่อนอยู่ = หยุดแอนิเมชัน CSS ทุกตัวข้างใน ──
+   แผงซ่อนด้วย opacity + visibility (ไม่ใช่ display: none) เพื่อให้จางออกได้
+   ข้อเสียคือแอนิเมชันวนไม่รู้จบข้างในยังเล่นอยู่ — วัดแล้วมี 25-29 ตัววิ่งตลอดเวลา
+   (โลโก้หน้าชื่อเกม หัวใจหน้าตั้งชื่อ ปุ่มสุ่มในตู้กาช่า ออร่าหน้าสกิล ...) ทั้งที่ไม่มีใครเห็น
+   เบราว์เซอร์ต้องคำนวณสไตล์ใหม่ทุกเฟรม — ตอนวิ่งกินเธรดหลักราว 8% เปล่า ๆ
+   หยุดไว้เฉย ๆ (ไม่ใช่ animation: none) เปิดแผงกลับมาก็เล่นต่อจากจุดเดิม ไม่มีอะไรกระตุก */
+.panel.hidden,
+.panel.hidden *,
+.panel.hidden *::before,
+.panel.hidden *::after { animation-play-state: paused !important; }
 
 /* ── แผงเมนูเป็นการ์ดลอยอยู่บนฉากที่มัวลง ─────
    เดิมเนื้อหาลอยอยู่บนพื้นทึบเต็มจอ ซึ่งอ่านเป็น "หน้าเว็บที่มีตัวหนังสือ"
@@ -244,6 +254,9 @@ canvas[hidden] { display: none; }
 .panel:not(.home):not(.hidden) > .pop > *:nth-child(2) { animation-delay: .05s; }
 .panel:not(.home):not(.hidden) > .pop > *:nth-child(3) { animation-delay: .1s; }
 .panel:not(.home):not(.hidden) > .pop > *:nth-child(4) { animation-delay: .15s; }
+/* ผ้าใบพื้นหลังของการ์ด (คลังน้อง สกิล กาช่า กิจกรรม) เป็นลูกคนแรกของ .pop จึงโดนแอนิเมชันไล่ขึ้นไปด้วย
+   พื้นหลังทั้งผืนเลยลอยขึ้น 14px ตอนเปิดหน้า (เห็นชัดที่หน้ากิจกรรม) — พื้นหลังต้องนิ่งอยู่กับการ์ด มีแค่เนื้อหาที่ไล่ขึ้น */
+.panel:not(.home):not(.hidden) > .pop > :is(.quest-bg, .dream-bg, .magic-bg, .gacha-bg) { animation: none; }
 
 .panel h2 {
   font-family: "Mali", sans-serif;
@@ -10355,9 +10368,11 @@ canvas[hidden] { display: none; }
   pointer-events: none;
 }
 .hud-top .wallet .goldbar::after { animation-delay: 2.4s; }
+/* เลื่อนด้วย transform ไม่ใช่ left — left ต้องจัดหน้า+วาดใหม่ทุกเฟรม ส่วน transform การ์ดจอเลื่อนเองได้เลย
+   ระยะเท่าเดิมเป๊ะ: จาก left -40% ไป 120% = 160% ของแถบ = 160/34 ≈ 470.6% ของความกว้างตัวแสงเอง */
 @keyframes walletShine {
-  0%, 62% { left: -40%; }
-  86%, 100% { left: 120%; }
+  0%, 62% { transform: translateX(0) skewX(-18deg); }
+  86%, 100% { transform: translateX(470.6%) skewX(-18deg); }
 }
 
 /* ประกายสี่แฉกวิบข้างไอคอน */
@@ -13298,4 +13313,13 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #questPanel > .pop > .form-msg { position: relative; z-index: 1; }
 #questPanel > .pop > .backbtn { z-index: 2; }
 /* การ์ดภารกิจลอยเหนือพื้นนิดหนึ่ง — เงานุ่มใต้การ์ด (หน้าตาการ์ดเดิมทุกอย่าง) */
-#questPanel .quest-row:not(.ready) { box-shadow: var(--plate-lift), 0 8px 18px rgba(26,8,44,.22); }
+/* ── เงาการ์ดภารกิจ: สั้นและจาง ──
+   --plate-lift กลางมีเงาดำฟุ้ง 0 10px 22px ติดมา บนรายการที่การ์ดเรียงชิดกัน เงานั้นเติมเต็มช่องระหว่างการ์ด
+   แล้วโดนขอบกล่องเลื่อนตัด กลายเป็นแถบสี่เหลี่ยมม่วงดำหลังรายการ (เห็นชัดหลังพื้นหลังสว่างขึ้น)
+   เขียนเงาใหม่เฉพาะหน้านี้ — ความหนาของแผ่น (ขอบล่าง 4px) ยังเท่าเดิม ตัวแปรกลางไม่แตะ */
+#questPanel .quest-row:not(.ready) {
+  box-shadow: 0 4px 0 rgba(60,24,110,.45), 0 6px 10px rgba(60,20,120,.14), inset 0 1px 0 rgba(255,255,255,.2);
+}
+#questPanel .quest-row.ready {
+  box-shadow: 0 4px 0 rgba(60,24,110,.45), 0 0 16px rgba(143,244,226,.28), inset 0 1px 0 rgba(255,255,255,.2);
+}

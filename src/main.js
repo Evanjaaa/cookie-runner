@@ -7783,7 +7783,20 @@ for (const r of MIX_ROWS) {
 // อัปเดตเกม (game.update) ยังเดินทุกเฟรมเหมือนเดิม — มันถูกกว่าการวาดมาก
 // และถ้าข้ามด้วย จังหวะการเล่นจะเพี้ยน
 //   4. ระดับกราฟิก           "ประหยัดแบต" ลดเพดานเหลือ 30 เฟรม (ดู src/graphics.js)
+//   5. หน้าแรกที่เปิดค้างไว้เฉย ๆ เกิน 45 วิ (ไม่มีใครแตะ) วาด 30 เฟรม — แตะครั้งเดียวกลับ 60 (ดู IDLE_MS)
 const MENU_MS = 1000 / 10;
+
+// ── พักเครื่องตอนเปิดหน้าแรกค้างไว้เฉย ๆ ──
+// ไม่มีใครแตะจอ/กดปุ่มเลยนานเกิน IDLE_MS ขณะอยู่หน้าแรก = วาดหน้าแรก 30 เฟรมแทน 60
+// ภาพแต่ละเฟรมคมเท่าเดิมทุกอย่าง (ความละเอียด แสง เอฟเฟกต์ไม่เปลี่ยน) แค่วาดถี่น้อยลงตอนไม่มีใครเล่น
+// ซึ่งเป็นช่วงที่มือถือร้อนเปล่า ๆ มากที่สุด ("เข้าเกมค้างไว้") — แตะครั้งเดียวกลับเป็น 60 ทันที
+// ตอนวิ่ง / บ้านลูกเหมียว ไม่เข้าโหมดนี้เลย
+const IDLE_MS = 45000;
+const IDLE_DRAW_MS = 1000 / 30;
+let lastInput = performance.now();
+for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  window.addEventListener(type, () => { lastInput = performance.now(); }, { capture: true, passive: true });
+}
 
 let last = performance.now();
 let lastDraw = 0;
@@ -7828,7 +7841,9 @@ function loop(now) {
 
   // วาดเมื่อถึงรอบของสถานะนั้น ๆ เท่านั้น — เฟรมที่ข้ามไปผ้าใบยังค้างภาพเดิมอยู่
   // จึงไม่มีอะไรกะพริบหรือหายไป
-  if (now - lastDraw >= (menuCovers(now) ? MENU_MS : 0)) {
+  const idleHome = game.state === STATE.READY && !game.catRoom && !game.inRoom && now - lastInput > IDLE_MS;
+  // ลบ 1.5 เผื่อจังหวะจอเหมือนเพดานเฟรมข้างบน ไม่งั้นจะเหลือ 20 แทน 30
+  if (now - lastDraw >= (menuCovers(now) ? MENU_MS : idleHome ? IDLE_DRAW_MS - 1.5 : 0)) {
     lastDraw = now;
     game.draw(ctx);
   }

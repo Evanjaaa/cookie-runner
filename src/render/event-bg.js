@@ -51,17 +51,36 @@ function seeded(seed) {
 // ชิ้นส่วนวาด (ใช้ซ้ำได้ — ทุกตัวรับพิกัดเป็นพิกเซล CSS)
 // ─────────────────────────────────────────────────────────────
 
-/** 1 · พื้น: แสงลาเวนเดอร์กลางจอ + ขอบเข้มลงนิดหน่อยให้มีมิติ (ทับบนพื้นม่วงเดิมของการ์ดใหญ่) */
+/**
+ * 1 · พื้น: ม่วงลาเวนเดอร์ทึบของตัวเอง กลางจอนวล ขอบพลัมจาง ๆ ให้มีมิติ
+ * ── ทำไมต้องทึบ ──
+ * เดิมวาดแค่แสงโปร่งทับพื้นม่วงเข้มของการ์ดใหญ่ (.pop) ทั้งหน้าจึงมืดกว่าคลังน้อง/สกิล/กาช่า
+ * ซึ่งวาดพื้นสีของตัวเองทั้งหมด — ไล่สีชุดเดียวกับหน้ากาช่า/สกิล สี่หน้าจึงเป็นโลกเดียวกัน
+ */
 export function drawEventBackground(ctx, w, h) {
-  const g = ctx.createRadialGradient(w / 2, h * 0.4, 0, w / 2, h * 0.4, Math.max(w, h) * 0.65);
-  g.addColorStop(0, 'rgba(214,180,255,.16)');
-  g.addColorStop(0.55, 'rgba(170,120,230,.06)');
-  g.addColorStop(1, 'rgba(40,14,66,0)');
+  const R = Math.max(w, h);
+  const base = ctx.createLinearGradient(0, 0, 0, h);
+  base.addColorStop(0, '#9E6EDB');
+  base.addColorStop(0.55, '#8858C9');
+  base.addColorStop(1, '#6D3EB0');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, w, h);
+  // กลางสว่างนวล (หลังรายการภารกิจ) — รัศมีใหญ่มาก ขอบจึงไม่เห็นเป็นวง
+  const g = ctx.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, R * 0.62);
+  g.addColorStop(0, 'rgba(214,184,252,.34)');
+  g.addColorStop(1, 'rgba(214,184,252,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
-  const v = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.78);
-  v.addColorStop(0, 'rgba(26,8,44,0)');
-  v.addColorStop(1, 'rgba(26,8,44,.32)');
+  // ชมพูนวลด้านบน — โทนเดียวกับหน้าอื่น (#F7C7E8)
+  const p = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 0, R * 0.46);
+  p.addColorStop(0, 'rgba(247,199,232,.3)');
+  p.addColorStop(1, 'rgba(247,199,232,0)');
+  ctx.fillStyle = p;
+  ctx.fillRect(0, 0, w, h);
+  // ขอบพลัมจาง ๆ (อ่อนกว่าเดิม — เดิมดำอมม่วง .32)
+  const v = ctx.createRadialGradient(w / 2, h / 2, R * 0.26, w / 2, h / 2, R * 0.78);
+  v.addColorStop(0, 'rgba(56,22,100,0)');
+  v.addColorStop(1, 'rgba(56,22,100,.38)');
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, w, h);
 }
@@ -352,31 +371,58 @@ export function createEventBackground(canvas, pop) {
   /** อยู่ในช่องว่างข้างไหน → พิกัด x จริง (u = 0-1 ภายในช่อง) */
   const sideX = (side, u) => (side ? w - R + u * R : u * L);
 
+  /**
+   * ตำแหน่งของ el ในการ์ดใหญ่ตามเลย์เอาต์ (offsetLeft/Top ไล่ขึ้นไปจนถึงการ์ด หักระยะที่เลื่อนรายการไว้)
+   *
+   * ── ทำไมไม่ใช้ getBoundingClientRect ──
+   * ตอนเปิดหน้า การ์ดใหญ่เด้งเข้า (ย่อ → ขยาย) และของข้างในไล่ขึ้นทีละชิ้น (เลื่อนขึ้น 14px)
+   * getBoundingClientRect ได้ตำแหน่ง "ระหว่างแอนิเมชัน" — ทางจุดไข่ปลา ดาว แสงรอบการ์ด
+   * จึงถูกวางตามรายการที่ยังลอยต่ำอยู่ แล้ววัดใหม่ทีหลังกระโดดขึ้นไป (ที่ผู้ใช้เห็นว่า "เด้งขึ้น")
+   * ค่า offset* เป็นตำแหน่งตามเลย์เอาต์ ไม่สนแอนิเมชันเลย จึงถูกตั้งแต่เฟรมแรก
+   */
+  function layoutRect(el) {
+    let x = 0;
+    let y = 0;
+    let n = el;
+    while (n && n !== pop) {
+      x += n.offsetLeft;
+      y += n.offsetTop;
+      const p = n.offsetParent;
+      if (!p) return null;
+      // ระยะที่กล่องเลื่อนได้ (รายการภารกิจ) เลื่อนไว้ — ของข้างในขยับขึ้นตามนั้นจริงบนจอ
+      for (let a = n.parentElement; a && a !== p; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
+      if (p !== pop) { x += p.clientLeft - p.scrollLeft; y += p.clientTop - p.scrollTop; }
+      n = p;
+    }
+    return n === pop ? { x, y, w: el.offsetWidth, h: el.offsetHeight } : null;
+  }
+
   function measure() {
-    const box = pop.getBoundingClientRect();
-    if (!box.width) return false;
+    const fullW = pop.offsetWidth;
+    const fullH = pop.offsetHeight;
+    if (!fullW) return false;
     const list = pop.querySelector('.quest-list');
-    const lb = list ? list.getBoundingClientRect() : box;
-    L = Math.max(0, lb.left - box.left);
-    R = Math.max(0, box.right - lb.right);
-    top = Math.max(0, lb.top - box.top);
-    bottom = Math.max(0, box.bottom - lb.bottom);
-    const tb = pop.querySelector('.quest-title')?.getBoundingClientRect();
-    title = tb ? { x: tb.left - box.left, y: tb.top - box.top, w: tb.width, h: tb.height } : null;
+    const lb = (list && layoutRect(list)) || { x: 0, y: 0, w: fullW, h: fullH };
+    L = Math.max(0, lb.x);
+    R = Math.max(0, fullW - (lb.x + lb.w));
+    top = Math.max(0, lb.y);
+    bottom = Math.max(0, fullH - (lb.y + lb.h));
+    const tEl = pop.querySelector('.quest-title');
+    title = tEl ? layoutRect(tEl) : null;
     hot = [];
     done = [];
     for (const row of pop.querySelectorAll('.quest-row')) {
-      const r = row.getBoundingClientRect();
+      const r = layoutRect(row);
       // ข้อที่เลื่อนพ้นช่องรายการไปแล้วไม่ต้องเรือง
-      if (r.bottom < lb.top || r.top > lb.bottom) continue;
-      const rect = { x: r.left - box.left, y: r.top - box.top, w: r.width, h: r.height, clipTop: lb.top - box.top, clipBot: lb.bottom - box.top };
+      if (!r || r.y + r.h < lb.y || r.y > lb.y + lb.h) continue;
+      const rect = { ...r, clipTop: lb.y, clipBot: lb.y + lb.h };
       if (row.classList.contains('ready')) hot.push(rect);
       else if (row.classList.contains('done')) done.push(rect);
     }
     const nd = Math.min(window.devicePixelRatio || 1, quality().scale);
-    if (box.width !== w || box.height !== h || nd !== dpr) {
-      w = box.width;
-      h = box.height;
+    if (fullW !== w || fullH !== h || nd !== dpr) {
+      w = fullW;
+      h = fullH;
       dpr = nd;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -392,16 +438,17 @@ export function createEventBackground(canvas, pop) {
     // 1-2 · พื้น + แสงนุ่ม
     drawEventBackground(ctx, w, h);
     if (title) drawEventGlow(ctx, title.x + title.w / 2, title.y + title.h / 2, Math.max(120, title.w * 0.9), COLORS.lavender, 0.16 * breathe);
-    drawEventGlow(ctx, w * 0.06, h * 0.96, Math.min(w, h) * 0.42, COLORS.pink, 0.13 * breathe);
-    drawEventGlow(ctx, w * 0.95, h * 0.94, Math.min(w, h) * 0.4, COLORS.violet, 0.14 * (1.7 - breathe));
+    // มุมล่าง: ชมพู (ซ้าย) กับพีช #F1B4B1 (ขวา) — สดขึ้นให้เข้ากับหน้าอื่น
+    drawEventGlow(ctx, w * 0.06, h * 0.96, Math.min(w, h) * 0.46, COLORS.pink, 0.3 * breathe);
+    drawEventGlow(ctx, w * 0.95, h * 0.94, Math.min(w, h) * 0.44, '#F1B4B1', 0.28 * (1.7 - breathe));
     drawEventGlow(ctx, w * 0.92, h * 0.12, Math.min(w, h) * 0.3, COLORS.mint, 0.07 * breathe);
 
     // 3 · หมอกเมฆมุมล่าง (ส่วนใหญ่อยู่นอกการ์ดภารกิจ ตัวการ์ดทึบบังส่วนที่ล้ำเข้ามาอยู่แล้ว)
     const cs = Math.min(w, h) * 0.075;
-    drawEventCloud(ctx, w * 0.03, h - cs * 0.3, cs * 1.3, 0.07, COLORS.pink);
-    drawEventCloud(ctx, w * 0.13, h + cs * 0.15, cs, 0.06);
-    drawEventCloud(ctx, w * 0.97, h - cs * 0.2, cs * 1.25, 0.07);
-    drawEventCloud(ctx, w * 0.86, h + cs * 0.25, cs * 0.9, 0.05, COLORS.pink);
+    drawEventCloud(ctx, w * 0.03, h - cs * 0.3, cs * 1.3, 0.16, COLORS.pink);
+    drawEventCloud(ctx, w * 0.13, h + cs * 0.15, cs, 0.12);
+    drawEventCloud(ctx, w * 0.97, h - cs * 0.2, cs * 1.25, 0.16);
+    drawEventCloud(ctx, w * 0.86, h + cs * 0.25, cs * 0.9, 0.12, COLORS.pink);
 
     // 4 · ทางภารกิจ — เฉพาะตอนขอบข้างกว้างพอ (มือถือแนวนอนขอบแคบ ทางจะโดนการ์ดบังหมด ไม่ต้องวาด)
     if (L > 34) {

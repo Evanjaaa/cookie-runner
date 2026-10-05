@@ -195,6 +195,9 @@ const HOME_DECO = [
  * ฉากที่วาดด้วยโค้ดคุมได้ตั้งแต่ต้นทาง กดแรงเท่าเดิมแล้วสีจะจมหมด
  * (วัดด้วยตาแล้ว: ขอบมืด 46% ทำให้พื้นทรายสีครีมกลายเป็นน้ำตาลโคลน)
  */
+/** ฉากหลังหน้าแรกวาดใหม่ทุกกี่หน่วยเวลาเกม (1 = หนึ่งเฟรมที่ 60fps) — 1.9 ≈ 30 ครั้งต่อวินาที (ดู drawHomeBackdrop) */
+const HOME_BG_STEP = 1.9;
+
 function dimForUi(ctx, k = 1) {
   const { W, H } = VIEW;
   const INK = '18,7,30';
@@ -3162,6 +3165,47 @@ export class Game {
     postProcess(ctx, { edges: false });
   }
 
+  /**
+   * ฉากหลังหน้าแรก (อาณาจักร + ม่านหรี่ใต้เมนู) — วาดลงภาพสำรองแล้วแปะ
+   *
+   * ── ทำไม ──
+   * ฉากนี้คือเวกเตอร์ราว 1,300 คำสั่งต่อเฟรม (เติมสี ~480 เส้น ~350 ตัดขอบ ~50) ทั้งที่ขยับช้ามาก
+   * (ต้นไม้แกว่ง ธงพลิ้ว เมฆลอย) วัดใน Chrome แล้วการวาดฉากนี้ใหม่ทุกเฟรมกินงานการ์ดจอมากกว่าครึ่ง
+   * ของทั้งหน้าแรก — เป็นตัวหลักที่ทำให้มือถือร้อนตอนเปิดเกมค้างไว้
+   *
+   * ── ภาพเหมือนเดิม ทุกอย่างยังขยับ ──
+   * วาดฉากหลังใหม่ราว 30 ครั้งต่อวินาที (ทุก HOME_BG_STEP หน่วยเวลาเกม) ส่วนที่สายตาจับ
+   * (ตัวน้อง ของกินลอย หัวใจ กล่องแมว แสงฟุ้ง) ยังวาดสดทุกเฟรมเต็ม 60 ข้างบนเหมือนเดิม
+   * ของในฉากหลังเคลื่อนไม่ถึงพิกเซลต่อเฟรม ตาแยก 30 กับ 60 ไม่ออก
+   * ภาพสำรองใช้ความละเอียดเท่าผ้าใบจริงพอดี (คัดลอกทั้ง transform) จึงคมเท่าวาดตรง
+   */
+  drawHomeBackdrop(ctx, t) {
+    const cw = ctx.canvas.width;
+    const ch = ctx.canvas.height;
+    let bg = this.homeBg;
+    if (!bg) {
+      bg = this.homeBg = document.createElement('canvas');
+      bg.c = bg.getContext('2d');
+      bg.at = -Infinity;
+    }
+    if (bg.width !== cw || bg.height !== ch) {
+      bg.width = cw;
+      bg.height = ch;
+      bg.at = -Infinity;
+    }
+    // t ย้อนกลับ (กลับเข้าหน้าแรกใหม่ homeTick เริ่มนับใหม่) = วาดใหม่ทันที
+    if (t - bg.at >= HOME_BG_STEP || t < bg.at) {
+      bg.at = t;
+      bg.c.setTransform(ctx.getTransform());
+      drawKingdom(bg.c, t);
+      dimForUi(bg.c, 0.45);
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(bg, 0, 0);
+    ctx.restore();
+  }
+
   drawHome(ctx) {
     const t = this.homeTick;
     // ตรงกลางเป๊ะ ๆ เพราะฉากหลังมีเก้าอี้อยู่กลางภาพ และน้องต้องยืนอยู่บนเบาะพอดี
@@ -3176,8 +3220,7 @@ export class Game {
     //
     // ตอนนี้วาดเองทั้งฉาก ใช้พิกัดชุดเดียวกับตัวเกม (960x420 พื้นอยู่ที่ GROUND_Y)
     // น้องจึงยืนบนพื้นของฉากพอดีโดยไม่ต้องจูนตำแหน่งใหม่
-    drawKingdom(ctx, t);
-    dimForUi(ctx, 0.45);
+    this.drawHomeBackdrop(ctx, t);
 
     // สปอตไลต์นุ่ม ๆ ดันตัวละครให้เด่นออกจากฉากหลัง
     const glow = ctx.createRadialGradient(x, GROUND_Y - 60, 10, x, GROUND_Y - 60, 175);
