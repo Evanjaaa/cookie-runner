@@ -822,3 +822,76 @@ export async function fetchFriends() {
     return friendFail(e, 'อ่านรายชื่อเพื่อน');
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// การ์ดส่งต่อน้อง (supabase/cat_cards.sql)
+// ─────────────────────────────────────────────────────────────
+//
+// คำตอบจากฐานข้อมูลเป็นคำสั้น ๆ — ส่งต่อให้ catcards-ui.js เลือกข้อความเอง
+
+/**
+ * การ์ดของเราทั้งขาเข้า (dir 'in') และขาออก (dir 'out') ใหม่สุดก่อน
+ * อ่าน: การ์ดที่ขยับไม่เกิน 14 วัน + การ์ดที่ยังไม่จบหรือรอรับน้อง (open/accepted/done) ทุกใบ
+ * + การ์ดที่น้องในบ้านเรายังจำไว้ (watch) ไม่ว่าเก่าแค่ไหน — ผู้ส่งที่หายไปนานกลับมาแล้ว
+ * ต้องเห็นว่าน้องย้ายบ้านไปแล้ว ไม่งั้นน้องค้างอยู่สองบ้าน
+ */
+export async function fetchCatCards(watch = []) {
+  const c = await client();
+  if (!c || !uid) return { ok: false, reason: 'offline' };
+  try {
+    const since = new Date(Date.now() - 14 * 86400000).toISOString();
+    const ids = watch.filter((x) => /^[0-9a-f-]{36}$/i.test(x));
+    // เวลาครอบเครื่องหมายคำพูด — ใน or() ของ PostgREST ค่าที่มี . : ต้องครอบไว้ถึงจะอ่านถูกเสมอ
+    const or = [`updated_at.gte."${since}"`, 'status.in.(open,accepted,done)'];
+    if (ids.length) or.push(`id.in.(${ids.join(',')})`);
+    const { data, error } = await c.from('my_cat_cards').select('*')
+      .or(or.join(','))
+      .order('created_at', { ascending: false })
+      .limit(80);
+    if (error) throw error;
+    return { ok: true, cards: data || [] };
+  } catch (e) {
+    return friendFail(e, 'อ่านการ์ดส่งต่อน้อง');
+  }
+}
+
+/**
+ * ส่งการ์ดถึงเพื่อน — ok คืน id ของการ์ด
+ * reason: notfriend / dup / limit / bad / self / offline / schema / network
+ */
+export async function sendCatCard(toId, cat, auto) {
+  const r = await friendRpc('send_cat_card', { p_to: toId, p_cat: cat, p_auto: Boolean(auto) }, 'ส่งการ์ดส่งต่อน้อง');
+  if (!r.ok) return r;
+  const s = String(r.result || '');
+  if (s.startsWith('ok:')) return { ok: true, id: s.slice(3) };
+  return { ok: false, reason: s || 'network' };
+}
+
+/** ผู้รับตอบการ์ด — result: accepted / done / declined · reason: gone / expired */
+export async function respondCatCard(id, accept) {
+  const r = await friendRpc('respond_cat_card', { p_id: id, p_accept: Boolean(accept) }, 'ตอบการ์ดส่งต่อน้อง');
+  if (!r.ok) return r;
+  if (['accepted', 'done', 'declined'].includes(r.result)) return r;
+  return { ok: false, reason: r.result };
+}
+
+/** ผู้ส่งยืนยันส่งน้อง — result: done · reason: gone / expired */
+export async function confirmCatCard(id) {
+  const r = await friendRpc('confirm_cat_card', { p_id: id }, 'ยืนยันส่งน้อง');
+  if (!r.ok) return r;
+  return r.result === 'done' ? r : { ok: false, reason: r.result };
+}
+
+/** ผู้ส่งยกเลิกการ์ด — result: cancelled · reason: gone */
+export async function cancelCatCard(id) {
+  const r = await friendRpc('cancel_cat_card', { p_id: id }, 'ยกเลิกการ์ดส่งต่อน้อง');
+  if (!r.ok) return r;
+  return r.result === 'cancelled' ? r : { ok: false, reason: r.result };
+}
+
+/** ผู้รับบอกว่ารับน้องเข้าบ้านแล้ว (เรียกซ้ำได้) — result: claimed · reason: gone */
+export async function claimCatCard(id) {
+  const r = await friendRpc('claim_cat_card', { p_id: id }, 'รับน้องเข้าบ้าน');
+  if (!r.ok) return r;
+  return r.result === 'claimed' ? r : { ok: false, reason: r.result };
+}

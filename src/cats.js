@@ -9,7 +9,13 @@
 //
 // ── ช่อง ──
 //   ห้องเลี้ยง 3 ตัว + ฝากรอในกล่องหน้าประตู 1 ตัว   (ตัวที่โตแล้วไม่นับ ไม่จำกัดจำนวน)
-//   ห้องกับกล่องเต็มทั้งคู่ = กล่องไม่โผล่ระหว่างวิ่งเลย
+//   ห้องกับกล่องเต็มทั้งคู่ = กล่องไม่โผล่ระหว่างวิ่ง — เว้นแต่มีเพื่อนให้ส่งต่อ
+//   ตอนนั้นน้องที่พบจะ "รอบ้านใหม่" (state 'foster') ไม่กินช่อง แต่ต้องส่งการ์ดหาบ้านให้
+//   มีน้องรอบ้านใหม่ได้ทีละตัว
+//
+// ── การ์ดส่งต่อน้อง ── (catcards-ui.js / supabase/cat_cards.sql)
+//   ลูกแมว Lv1-2 ส่งการ์ดหาบ้านใหม่กับเพื่อนได้ ระหว่างรอ cat.card บอกว่าการ์ดใบไหนค้างอยู่
+//   ย้ายบ้านแล้ว ผู้ส่งลบน้องออก / ผู้รับสร้างน้องตัวใหม่จากสำเนาในการ์ด (ค่าการเลี้ยงเริ่มใหม่)
 //
 // ── เวลา ──
 // ความหิว/ง่วง/ความสะอาด/ความสนุก ไม่ได้มีใครคอยลดทุกวินาที
@@ -31,6 +37,8 @@ import { rollFaceId } from './faces.js';
 export const ROOM_SLOTS = 3;
 export const WAIT_SLOTS = 1;
 export const GROWN_LV = 5;
+/** ส่งต่อให้เพื่อนได้ถึงเลเวลนี้ (ลูกแมว) — โตกว่านี้ผูกพันกับบ้านแล้ว */
+export const SEND_MAX_LV = 2;
 
 /** EXP สะสมที่ต้องมีเพื่อถึงเลเวลนั้น (ช่อง 0 ไม่ใช้) */
 export const LV_EXP = [0, 0, 120, 300, 500, 700];
@@ -132,7 +140,8 @@ export const NAME_IDEAS = [
 const PREF = 'cats';
 
 function blank() {
-  return { v: 1, list: [], finds: { since: 0, day: '', total: 0 }, toys: ['yarn'] };
+  // got = การ์ดขาเข้าที่รับน้องเข้าบ้านไปแล้ว กันรับซ้ำ (เช่นส่งน้องตัวนั้นต่อไปอีกทอด แล้วซิงก์การ์ดเดิมเจออีก)
+  return { v: 1, list: [], finds: { since: 0, day: '', total: 0 }, toys: ['yarn'], got: [] };
 }
 
 /** อ่านก้อนข้อมูล — ทุกช่องที่หายหรือพังถูกเติมค่าตั้งต้น ไม่ปล่อยให้หน้าจอพังเพราะข้อมูลเก่า */
@@ -143,6 +152,7 @@ function load() {
   if (Array.isArray(raw.list)) st.list = raw.list.filter((c) => c && c.id && c.breed).map(fixCat);
   if (raw.finds && typeof raw.finds === 'object') st.finds = { ...st.finds, ...raw.finds };
   if (Array.isArray(raw.toys)) st.toys = [...new Set(['yarn', ...raw.toys])];
+  if (Array.isArray(raw.got)) st.got = raw.got.filter((x) => typeof x === 'string').slice(-200);
   return st;
 }
 
@@ -157,7 +167,8 @@ function fixCat(c) {
     ...c,
     exp: Math.max(0, Number(c.exp) || 0),
     aff: Math.max(0, Math.min(AFF_MAX, Number(c.aff) || 0)),
-    state: ['room', 'wait', 'grown'].includes(c.state) ? c.state : 'room',
+    state: ['room', 'wait', 'grown', 'foster'].includes(c.state) ? c.state : 'room',
+    card: c.card && typeof c.card === 'object' && c.card.id ? c.card : null,
     need,
   };
 }
@@ -181,6 +192,8 @@ export const allCats = () => state.list.slice();
 export const roomCats = () => state.list.filter((c) => c.state === 'room');
 export const waitingCats = () => state.list.filter((c) => c.state === 'wait');
 export const grownCats = () => state.list.filter((c) => c.state === 'grown');
+/** น้องที่พบตอนบ้านเต็ม รอส่งการ์ดหาบ้านใหม่ (ไม่กินช่อง ดูแลไม่ได้ — น้องส้มดูแลให้) */
+export const fosterCats = () => state.list.filter((c) => c.state === 'foster');
 export const catById = (id) => state.list.find((c) => c.id === id) || null;
 export const ownsToy = (id) => state.toys.includes(id);
 export const breedOf = (id) => BREEDS.find((b) => b.id === id) || BREEDS[0];
@@ -370,13 +383,121 @@ export function settleHome() {
 /** ห้องมีที่ว่าง = รับน้องที่รออยู่ในกล่องเข้ามา */
 function promoteWaiting() {
   const w = waitingCats()[0];
-  if (!w || roomCats().length >= ROOM_SLOTS) return null;
-  w.state = 'room';
-  // นาฬิกาความต้องการเริ่มนับใหม่ตอนเข้าห้อง ไม่ใช่ตอนที่พบ — ช่วงที่รออยู่ในกล่อง
-  // น้องส้มดูแลให้อยู่ ถ้านับต่อจากวันที่พบ น้องจะเข้าห้องมาพร้อมความหิวเต็มหลอด
+  let moved = null;
+  if (w && roomCats().length < ROOM_SLOTS) {
+    w.state = 'room';
+    // นาฬิกาความต้องการเริ่มนับใหม่ตอนเข้าห้อง ไม่ใช่ตอนที่พบ — ช่วงที่รออยู่ในกล่อง
+    // น้องส้มดูแลให้อยู่ ถ้านับต่อจากวันที่พบ น้องจะเข้าห้องมาพร้อมความหิวเต็มหลอด
+    const t = now();
+    for (const k of NEED_KEYS) w.need[k] = [70, t];
+    moved = w;
+  }
+  // กล่องหน้าประตูว่าง = น้องที่รอบ้านใหม่ได้อยู่บ้านนี้เลย (การ์ดที่ค้างอยู่ยังส่งต่อได้ตามเดิม)
+  const f = fosterCats()[0];
+  if (f && !waitingCats().length) {
+    f.state = roomCats().length < ROOM_SLOTS ? 'room' : 'wait';
+    const t = now();
+    for (const k of NEED_KEYS) f.need[k] = [70, t];
+    moved = moved || f;
+  }
+  return moved;
+}
+
+// ─────────────────────────────────────────────────────────────
+// การ์ดส่งต่อน้อง
+// ─────────────────────────────────────────────────────────────
+
+/** ส่งการ์ดหาบ้านใหม่ได้ไหม — ลูกแมว Lv1-2 ที่ยังไม่มีการ์ดค้าง */
+export function canSend(cat) {
+  return !!cat && ['room', 'wait', 'foster'].includes(cat.state)
+    && levelOf(cat) <= SEND_MAX_LV && !cat.card;
+}
+
+/** สำเนาน้องที่พกไปกับการ์ด — เท่าที่บ้านใหม่ต้องใช้สร้างตัวเดิม (ไม่มีค่าการเลี้ยง) */
+export function cardSnapshot(cat) {
+  return {
+    id: cat.id, breed: cat.breed, sex: cat.sex, face: cat.face || null,
+    name: cat.name || '', seed: cat.seed || 0, lv: levelOf(cat),
+  };
+}
+
+/** จำว่าน้องตัวนี้มีการ์ดค้างอยู่ใบไหน (null = ไม่มี) */
+export function setCard(catId, card) {
+  const cat = catById(catId);
+  if (!cat) return;
+  if (JSON.stringify(cat.card || null) === JSON.stringify(card || null)) return;
+  cat.card = card || null;
+  save();
+}
+
+/** ย้ายบ้านเสร็จแล้ว (ฝั่งผู้ส่ง) — เอาน้องออกจากบ้าน แล้วรับน้องที่รออยู่เข้าแทน */
+export function handOver(catId) {
+  const i = state.list.findIndex((c) => c.id === catId);
+  if (i < 0) return false;
+  state.list.splice(i, 1);
+  promoteWaiting();
+  save();
+  return true;
+}
+
+export const cardReceived = (cardId) => state.got.includes(cardId);
+
+/**
+ * รับน้องจากการ์ดเข้าบ้าน (ฝั่งผู้รับ) — สร้างตัวใหม่จากสำเนา ค่าการเลี้ยงเริ่มใหม่หมด
+ * คืนน้องตัวใหม่ / 'full' ถ้าบ้านเต็ม / null ถ้ารับการ์ดนี้ไปแล้ว
+ */
+export function receiveCat(cardId, snap, fromName) {
+  if (cardReceived(cardId)) return null;
+  if (homeFull()) return 'full';
   const t = now();
-  for (const k of NEED_KEYS) w.need[k] = [70, t];
-  return w;
+  const need = {};
+  for (const k of NEED_KEYS) need[k] = [k === 'clean' ? 50 : 60, t];
+  const breed = BREEDS.some((b) => b.id === snap?.breed) ? snap.breed : rollBreed();
+  const sex = snap?.sex === 'm' || snap?.sex === 'f' ? snap.sex : 'f';
+  const cat = {
+    id: 'card' + String(cardId).replace(/-/g, '').slice(0, 16),
+    breed,
+    sex,
+    face: snap?.face || rollFaceId(breed, sex),
+    name: String(snap?.name || '').slice(0, 16),
+    foundAt: t,
+    where: { stage: '', stageName: '' },
+    from: String(fromName || 'เพื่อน').slice(0, 24),
+    exp: 0,
+    aff: 0,
+    need,
+    state: roomCats().length < ROOM_SLOTS ? 'room' : 'wait',
+    seed: Number(snap?.seed) || Math.floor(Math.random() * 1e6),
+    card: null,
+  };
+  state.list.push(cat);
+  state.got.push(cardId);
+  save();
+  return cat;
+}
+
+/**
+ * น้องในบ้าน (ห้อง + กล่องหน้าประตู + รอบ้านใหม่) แบบที่เพื่อนเห็นตอนมาเยี่ยม — ขึ้นไปกับโปรไฟล์สาธารณะ
+ * เท่าที่ต้องใช้วาด: ไม่มีค่าความต้องการหรือ EXP จริง (เพื่อนเห็นแค่หน้าตา ชื่อ เลเวล)
+ */
+export function homePublic() {
+  return [...roomCats(), ...waitingCats(), ...fosterCats()].map((c) => ({
+    id: c.id, breed: c.breed, sex: c.sex, face: c.face || null, name: c.name || '',
+    seed: c.seed || 0, lv: levelOf(c), wait: c.state !== 'room', card: !!c.card,
+  }));
+}
+
+/** น้องของเพื่อน (จาก homePublic) → ก้อนข้อมูลน้องที่ห้องกับตัววาดอ่านได้ เหมือนน้องของเรา */
+export function visitorCat(p, t = now()) {
+  const need = {};
+  for (const k of NEED_KEYS) need[k] = [90, t];
+  const lv = Math.max(1, Math.min(GROWN_LV, Number(p.lv) || 1));
+  return {
+    id: 'v:' + p.id, breed: BREEDS.some((b) => b.id === p.breed) ? p.breed : 'tabby',
+    sex: p.sex === 'm' ? 'm' : 'f', face: p.face || null, name: String(p.name || ''),
+    seed: Number(p.seed) || 0, exp: LV_EXP[lv], aff: 0, need,
+    state: p.wait ? 'wait' : 'room', card: p.card ? { id: 'x' } : null, visitor: true,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -387,8 +508,10 @@ function promoteWaiting() {
  * รอบนี้กล่องจะโผล่ไหม — ถามครั้งเดียวตอนเริ่มวิ่ง
  * กล่องแรกการันตีเมื่อถึงเลเวล FIND_LEVEL / วันละไม่เกินหนึ่งกล่อง / มีการันตีสะสม
  */
-export function rollFind(playerLv) {
-  if (playerLv < FIND_LEVEL || homeFull()) return false;
+export function rollFind(playerLv, { canRehome = false } = {}) {
+  if (playerLv < FIND_LEVEL) return false;
+  // บ้านเต็ม: ยังเจอได้ถ้ามีเพื่อนให้ส่งต่อ และยังไม่มีน้องที่รอบ้านใหม่อยู่ก่อน
+  if (homeFull() && (!canRehome || fosterCats().length)) return false;
   const f = state.finds;
   if (f.day === dayKey()) return false;
   if (!f.total) return true;
@@ -424,7 +547,9 @@ function newId() {
  * คืน null ถ้าห้องกับกล่องเต็ม (ไม่ควรเกิด เพราะกล่องไม่โผล่ตอนเต็ม แต่กันไว้)
  */
 export function adoptFound(where = {}, pre = {}) {
-  if (homeFull()) return null;
+  // บ้านเต็ม = น้องรอบ้านใหม่ (ได้ทีละตัว) — มีน้องรอบ้านอยู่แล้วด้วย = ไม่รับ
+  const full = homeFull();
+  if (full && fosterCats().length) return null;
   const t = now();
   const need = {};
   // มาถึงแบบหิวนิด ๆ ง่วงหน่อย ตัวมอมแมม — การดูแลครั้งแรกได้ EXP ทันทีทุกอย่าง
@@ -441,8 +566,9 @@ export function adoptFound(where = {}, pre = {}) {
     exp: 0,
     aff: 0,
     need,
-    state: roomCats().length < ROOM_SLOTS ? 'room' : 'wait',
+    state: full ? 'foster' : roomCats().length < ROOM_SLOTS ? 'room' : 'wait',
     seed: Math.floor(Math.random() * 1e6),
+    card: null,
   };
   // หน้าต้องตรงกับสายพันธุ์และเพศของตัวจริง — ลูกแมวที่ขี่คอระหว่างวิ่งใช้หน้าเดียวกันนี้
   if (!cat.face) cat.face = rollFaceId(cat.breed, cat.sex);

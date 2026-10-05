@@ -1231,12 +1231,14 @@
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <h2 class="cr-title">บ้านลูกเหมียว</h2>
+          <h2 class="cr-title" id="crTitle">บ้านลูกเหมียว</h2>
           <div class="cr-tools">
             <div class="goldbar" aria-label="เหรียญทอง">
               <span class="coin" aria-hidden="true"></span>
               <b id="goldRoom">0</b>
             </div>
+            <!-- การ์ดส่งต่อน้อง (catcards-ui.js) — ตัวเลข = การ์ดที่รอเราทำอะไรสักอย่าง -->
+            <button type="button" class="cr-pill cr-cards-btn" id="crCards">💌 การ์ดส่งต่อ<b class="fr-num fr-red hidden" id="crCardsNum"></b></button>
             <button type="button" class="cr-pill" id="crMini">🎮 มินิเกม</button>
           </div>
         </div>
@@ -1268,6 +1270,8 @@
           </div>
           <div class="cr-hearts" id="crHearts" aria-label="ความผูกพัน"></div>
           <small class="cr-note" id="crNote"></small>
+          <!-- ลูกแมว Lv1-2 ส่งการ์ดหาบ้านใหม่กับเพื่อนได้ -->
+          <button type="button" class="cr-send hidden" id="crSend">💌 ส่งต่อให้เพื่อน</button>
         </div>
 
         <div class="cr-acts" id="crActs">
@@ -1325,7 +1329,11 @@
               </label>
               <small class="found-wait hidden" id="foundWait">ห้องเต็มแล้ว น้องจะนอนรอในกล่องหน้าประตูก่อน
                 พอมีที่ว่างก็ย้ายเข้าห้องเอง</small>
+              <!-- บ้านเต็มทั้งห้องและกล่อง = น้องรอบ้านใหม่ ส่งการ์ดหาเพื่อนได้เลยจากตรงนี้ -->
+              <small class="found-wait found-foster hidden" id="foundFoster">บ้านเต็มแล้ว น้องขอรอบ้านใหม่ก่อนนะ
+                ส่งการ์ดหาเพื่อนที่พร้อมดูแลน้องได้เลย</small>
               <div class="found-btns">
+                <button class="btn hidden" id="foundSend">💌 ส่งต่อให้เพื่อนเลย</button>
                 <button class="btn" id="foundGo">ไปบ้านน้อง</button>
                 <button class="btn ghost" id="foundLater">ไว้ทีหลัง</button>
               </div>
@@ -1345,6 +1353,59 @@
           </button>
           <h2 class="skin-title" id="storyTitle">เรื่องราวของน้อง</h2>
           <div class="story-list" id="storyList"></div>
+        </div>
+      </div>
+
+      <!-- ══ การ์ดส่งต่อน้อง ══ การ์ดถึงเรา / ที่เราส่งไป (catcards-ui.js) -->
+      <div class="panel hidden" id="catCardsPanel">
+        <div class="pop cc-pop">
+          <button type="button" class="xbtn cc-x" id="ccClose" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="skin-title">💌 การ์ดส่งต่อน้อง</h2>
+          <p class="cc-lead">หาบ้านใหม่ให้ลูกแมว Lv1-2 กับ&#8288;เพื่อน&#8288;แมว · การ์ดหมดอายุใน 3 วัน</p>
+          <div class="fr-tabs cc-tabs" id="ccTabs" role="tablist">
+            <button type="button" class="fchip on" data-tab="in" role="tab" aria-selected="true">ถึงเรา<b class="fr-num fr-red hidden" id="ccInNum"></b></button>
+            <button type="button" class="fchip" data-tab="out" role="tab" aria-selected="false">ที่เราส่งไป<b class="fr-num fr-red hidden" id="ccOutNum"></b></button>
+          </div>
+          <div class="cc-list" id="ccList"></div>
+          <small class="cc-msg" id="ccMsg" role="status"></small>
+        </div>
+      </div>
+
+      <!-- ══ ส่งการ์ดหาบ้านใหม่ ══ เลือกเพื่อนที่จะส่งน้องไปอยู่ด้วย -->
+      <div class="panel hidden" id="catSendPanel">
+        <div class="pop cs-pop">
+          <button type="button" class="xbtn cs-x" id="csClose" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="skin-title">💌 ส่งการ์ดหาบ้านใหม่</h2>
+          <!-- กระดาษจดหมาย: แสตมป์รูปน้องมุมขวาบน / เนื้อความเรื่องน้อง / บรรทัด "ถึง" = เลือกเพื่อน -->
+          <div class="cs-letter">
+            <div class="cs-stamp" aria-hidden="true"><canvas id="csFace" width="96" height="96"></canvas></div>
+            <div class="cs-who">
+              <small class="cs-hello">ช่วยหาบ้านใหม่ให้</small>
+              <b id="csName"></b>
+              <small id="csSub"></small>
+              <small class="cs-note">เพื่อนแวะมาดูน้องที่บ้านเราได้ก่อนกดรับ น้องจะเริ่มนับเลเวลใหม่กับบ้านใหม่</small>
+            </div>
+            <b class="cs-label">ถึงเพื่อนแมว</b>
+            <div class="cs-friends" id="csFriends" role="radiogroup" aria-label="เลือกเพื่อน"></div>
+          </div>
+          <div class="cs-foot">
+            <label class="cs-auto">
+              <input type="checkbox" id="csAuto" role="switch">
+              <span>เพื่อนกดรับเมื่อไหร่ ส่งน้องให้เลยไม่ต้องรอเรายืนยัน</span>
+            </label>
+            <button type="button" class="cc-btn main cs-go" id="csGo" disabled>💌 ส่งการ์ด</button>
+          </div>
+          <small class="cs-msg" id="csMsg" role="status"></small>
         </div>
       </div>
 
@@ -1892,6 +1953,8 @@
 
       <div class="panel hidden" id="questPanel">
         <div class="pop">
+          <!-- พื้นหลังบอร์ดกิจกรรม วาดสดด้วย Canvas 2D (src/render/event-bg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="quest-bg" id="questBg" aria-hidden="true"></canvas>
           <div class="quest-head">
             <div class="quest-title">
               <h2 class="skin-title">กิจกรรม</h2>

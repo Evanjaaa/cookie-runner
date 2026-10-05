@@ -12892,3 +12892,410 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
     0 0 16px rgba(226,190,255,.45),
     inset 0 1px 0 rgba(255,255,255,.22);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   การ์ดส่งต่อน้อง (catcards-ui.js) + เยี่ยมบ้านเพื่อน
+   ───────────────────────────────────────────────────────────── */
+#catCardsPanel, #catSendPanel { z-index: 21; }
+
+/* ปุ่มบนหัวห้อง: ตัวเลขแดงลอยมุมขวาบน */
+.cr-cards-btn { position: relative; }
+.cr-cards-btn .fr-num { position: absolute; top: -6px; right: -6px; margin: 0; }
+
+/* ปุ่มส่งต่อในการ์ดน้อง — เล็กกว่าปุ่มดูแล โทนชมพูของจดหมาย */
+.cr-send {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,186,214,.6);
+  background: linear-gradient(180deg, #FF9EC0, #E0709A);
+  color: #3A0F24;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(10px, 2.1dvh, 12px);
+  box-shadow: 0 2px 0 rgba(58,15,36,.45);
+  cursor: pointer;
+}
+.cr-send:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(58,15,36,.45); }
+#catRoomPanel .cr-send.hidden { display: none; }
+
+/* ป้ายจดหมายมุมชิปน้อง = มีการ์ดส่งต่อค้างอยู่ */
+.cr-chip { position: relative; }
+.cr-chip-card { position: absolute; top: -7px; left: -5px; font-style: normal; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
+
+/* หน้าพบน้อง: บ้านเต็ม = น้องรอบ้านใหม่ */
+.found-foster { color: #FFB3CF; }
+#foundPanel #foundSend.hidden, #foundPanel #foundGo.hidden { display: none; }
+
+/* ── เยี่ยมบ้านเพื่อน: ห้องเดียวกัน แต่ดูอย่างเดียว ── ซ่อนทุกอย่างที่แตะข้อมูลน้อง */
+#catRoomPanel.visiting .cr-acts,
+#catRoomPanel.visiting .cr-needs,
+#catRoomPanel.visiting .cr-hearts,
+#catRoomPanel.visiting #crRename,
+#catRoomPanel.visiting #crStory,
+#catRoomPanel.visiting #crMini,
+#catRoomPanel.visiting #crCards,
+#catRoomPanel.visiting .goldbar,
+#catRoomPanel.visiting .cr-picker { display: none; }
+#catRoomPanel.visiting .cr-lvrow small,
+#catRoomPanel.visiting .cr-lvrow .cr-bar { display: none; }
+
+/* ── หน้าการ์ดส่งต่อ: การ์ดแต่ละใบเป็น "โปสการ์ด" ──
+   กระดาษครีม ขอบลายจดหมายอากาศ (ชมพู/ม่วง) แสตมป์รูปน้องขอบหยัก ตราประทับเวลาที่เหลือ
+   สีข้อความบนกระดาษเป็นหมึกม่วงเข้ม — อ่านง่ายกว่าตัวอักษรครีมบนพื้นม่วงแบบเดิม */
+.cc-pop {
+  --paper: #FFF8EC;
+  --ink: #4A2163;
+  --ink-soft: #7C5A93;
+  --airmail: repeating-linear-gradient(135deg,
+    #FF8FB8 0 9px, #FFF8EC 9px 15px, #9C7BE0 15px 24px, #FFF8EC 24px 30px);
+  width: min(640px, 94%);
+  max-height: 92%;
+  gap: clamp(4px, 1.2dvh, 10px);
+}
+.cc-lead { margin: 0; font-size: clamp(10.5px, 2.2dvh, 12.5px); color: var(--cream); opacity: .85; }
+
+/* แท็บ: ปุ่มสลับสองช่องในรางเดียว */
+.cc-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(20,8,32,.35);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.35);
+}
+.cc-tabs .fchip { margin: 0; }
+
+.cc-list {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 4px 8px;
+  text-align: left;
+}
+.cc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 14px auto;
+  max-width: 30em;
+  text-align: center;
+}
+.cc-empty-ico { font-size: clamp(30px, 8dvh, 46px); line-height: 1; filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+.cc-sep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 -2px;
+  font-family: "Mali", sans-serif;
+  font-size: clamp(10px, 2.1dvh, 12px);
+  color: var(--cream);
+  opacity: .7;
+}
+.cc-sep::before, .cc-sep::after { content: ""; flex: 1; border-top: 1px dashed rgba(255,243,226,.35); }
+
+.cc-card {
+  position: relative;
+  flex: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(8px, 1.6vw, 14px);
+  padding: 10px 12px 10px 10px;
+  border-radius: 14px;
+  border: 4px solid transparent;
+  background: linear-gradient(var(--paper), var(--paper)) padding-box, var(--airmail) border-box;
+  color: var(--ink);
+  box-shadow: 0 3px 0 rgba(36,14,56,.45), 0 8px 18px rgba(12,4,24,.28);
+}
+/* การ์ดที่จบแล้ว: ซีดลง ขอบเป็นเส้นเรียบ */
+.cc-card:not(.live) {
+  background: linear-gradient(#F1E9DE, #F1E9DE) padding-box, linear-gradient(#CDBFD8, #CDBFD8) border-box;
+  opacity: .82;
+}
+.cc-card:not(.live) { --paper: #F1E9DE; }
+.cc-card:not(.live) .cc-stamp { filter: saturate(.55); }
+
+/* แสตมป์: กระดาษขาวขอบหยัก (mask วงกลมเรียงรอบขอบ) เอียงนิด ๆ */
+.cc-stamp {
+  flex: none;
+  width: clamp(48px, 12dvh, 62px);
+  aspect-ratio: 5 / 6;
+  padding: 6px;
+  /* ขอบหยักของแสตมป์: จุดกลมสีกระดาษการ์ดเรียงรอบขอบ (รูปน้องปิดตรงกลางไว้) */
+  background: radial-gradient(circle at 50% 50%, var(--paper) 2.4px, #fff 2.9px) -3.5px -3.5px / 7px 7px;
+  transform: rotate(-4deg);
+  filter: drop-shadow(0 2px 2px rgba(58,29,80,.3));
+}
+.cc-stamp canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(160deg, #FFD6E6, #E6D6FF);
+}
+.cc-card.out .cc-stamp canvas { background: linear-gradient(160deg, #D6F4EE, #FFE9B8); }
+
+.cc-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.cc-top { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
+.cc-name {
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 2.8dvh, 16px);
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-sex { font-style: normal; font-weight: 700; font-size: clamp(12px, 2.5dvh, 14px); }
+.cc-sex.f { color: #E0568C; }
+.cc-sex.m { color: #3F8FE0; }
+.cc-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #F1E4FF;
+  color: #6A3F8C;
+  font-size: clamp(9.5px, 2dvh, 11px);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cc-tag.lv { background: #FFE9B8; color: #8A5A00; }
+.cc-who { font-size: clamp(10px, 2.1dvh, 12px); color: var(--ink-soft); font-weight: 600; }
+.cc-pill {
+  margin-top: 1px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: clamp(10px, 2.1dvh, 12px);
+  font-weight: 700;
+  line-height: 1.35;
+  background: #EEE6F5;
+  color: #6A5A78;
+}
+.cc-card.in.open .cc-pill { background: #FFE0EC; color: #A3305D; }
+.cc-card.out.open .cc-pill { background: #EDE3FF; color: #5A3A9A; }
+.cc-card.accepted .cc-pill { background: #D3F5EC; color: #17705C; }
+.cc-card.done .cc-pill, .cc-card.claimed .cc-pill { background: #FFF0C2; color: #8A6200; }
+
+/* ขวา: ตราประทับด้านบน + ปุ่มด้านล่าง */
+.cc-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; align-self: stretch; justify-content: space-between; }
+.cc-mark {
+  padding: 2px 9px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  color: #D9668F;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(9px, 1.9dvh, 11px);
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: rotate(6deg);
+  opacity: .85;
+}
+.cc-card:not(.live) .cc-mark { color: #9A8AA8; }
+.cc-card.done .cc-mark, .cc-card.claimed .cc-mark { color: #2E9C82; }
+.cc-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 15em; }
+
+/* ปุ่มของการ์ด — เม็ดยาเล็ก มีเงาใต้ปุ่ม กดแล้วยุบ */
+.cc-btn {
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 2px solid;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 2.3dvh, 13px);
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cc-btn:active { transform: translateY(2px); box-shadow: none !important; }
+.cc-btn:disabled { opacity: .45; cursor: default; transform: none; filter: grayscale(.5); }
+.cc-btn.yes { border-color: #1F8F78; background: linear-gradient(180deg, #8FF0D8, #4ECDB4); color: #0C4A3E; box-shadow: 0 3px 0 #1F8F78; }
+.cc-btn.main { border-color: #B8467A; background: linear-gradient(180deg, #FFB3CF, #FF7FAE); color: #4A0F2A; box-shadow: 0 3px 0 #B8467A; }
+.cc-btn.soft { border-color: #B79AD6; background: #fff; color: #5A2E7E; box-shadow: 0 3px 0 #B79AD6; }
+.cc-btn.warn { border-color: #EBA3B4; background: #fff; color: #C2405F; box-shadow: 0 3px 0 #EBA3B4; }
+
+.cc-msg { min-height: 1.3em; font-size: clamp(10.5px, 2.2dvh, 12.5px); color: #9DF2C8; font-weight: 700; }
+.cc-msg.bad { color: #FFB3B3; }
+
+/* ── หน้าส่งการ์ด: กระดาษจดหมาย ── */
+.cs-pop {
+  --paper: #FFF8EC;
+  --ink: #4A2163;
+  --airmail: repeating-linear-gradient(135deg,
+    #FF8FB8 0 9px, #FFF8EC 9px 15px, #9C7BE0 15px 24px, #FFF8EC 24px 30px);
+  width: min(540px, 94%);
+  max-height: 92%;
+  gap: clamp(6px, 1.4dvh, 12px);
+}
+.cs-pop > * { flex-shrink: 0; }
+.cs-letter {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 12px;
+  border-radius: 14px;
+  border: 4px solid transparent;
+  /* เส้นบรรทัดจาง ๆ เหมือนกระดาษเขียนจดหมาย */
+  background:
+    repeating-linear-gradient(180deg, transparent 0 25px, rgba(156,123,224,.14) 25px 26px) padding-box,
+    linear-gradient(var(--paper), var(--paper)) padding-box,
+    var(--airmail) border-box;
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 3px 0 rgba(36,14,56,.45), 0 8px 18px rgba(12,4,24,.28);
+}
+.cs-letter .cs-stamp {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: clamp(56px, 15dvh, 82px);
+  aspect-ratio: 5 / 6;
+  padding: 6px;
+  background: radial-gradient(circle at 50% 50%, var(--paper) 2.4px, #fff 2.9px) -3.5px -3.5px / 7px 7px;
+  transform: rotate(5deg);
+  filter: drop-shadow(0 2px 2px rgba(58,29,80,.3));
+}
+#csFace { display: block; width: 100%; height: 100%; border-radius: 3px; background: linear-gradient(160deg, #FFD6E6, #E6D6FF); }
+.cs-who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding-right: clamp(70px, 18dvh, 100px);
+  min-height: clamp(56px, 15dvh, 84px);
+}
+.cs-hello { font-size: clamp(10px, 2.1dvh, 12px); color: #9A6FB8; font-weight: 700; }
+.cs-who b { font-family: "Mali", sans-serif; font-size: clamp(16px, 3.4dvh, 21px); color: #C2407A; line-height: 1.2; }
+.cs-who small { font-size: clamp(10.5px, 2.2dvh, 12.5px); }
+.cs-who .cs-note { color: #7C5A93; }
+.cs-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Mali", sans-serif;
+  font-size: clamp(11.5px, 2.4dvh, 13.5px);
+  color: var(--ink);
+}
+.cs-label::after { content: ""; flex: 1; border-top: 2px dotted rgba(156,123,224,.5); }
+.cs-friends {
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 44px;
+  max-height: clamp(70px, 24dvh, 170px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 6px;
+  padding: 2px;
+}
+.cs-friends .cc-empty { color: var(--ink); grid-column: 1 / -1; margin: 6px auto; }
+.cs-friend {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 26px 4px 5px;
+  border-radius: 999px;
+  border: 2px solid #E2D2F2;
+  background: #fff;
+  color: var(--ink);
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 2px 0 #E2D2F2;
+}
+.cs-friend canvas { flex: none; width: 30px; height: 30px; border-radius: 50%; background: #FFEFD6; }
+.cs-friend b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(11px, 2.3dvh, 13px); }
+.cs-tick {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  margin-top: -8.5px;
+  border-radius: 50%;
+  border: 2px solid #E2D2F2;
+  color: transparent;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cs-friend.on { border-color: #FF7FAE; background: #FFF0F6; box-shadow: 0 2px 0 #FF7FAE; }
+.cs-friend.on .cs-tick { border-color: #FF7FAE; background: #FF7FAE; color: #fff; }
+
+.cs-foot { display: flex; align-items: center; gap: 12px; width: 100%; }
+/* สวิตช์ส่งให้อัตโนมัติ — checkbox ที่แต่งเป็นสวิตช์เลื่อน */
+.cs-auto { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; text-align: left; color: var(--cream); font-size: clamp(10.5px, 2.2dvh, 12.5px); cursor: pointer; }
+.cs-auto input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 40px;
+  height: 22px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(255,243,226,.25);
+  border: 2px solid rgba(255,243,226,.45);
+  cursor: pointer;
+  transition: background .2s;
+}
+.cs-auto input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35);
+  transition: transform .2s;
+}
+.cs-auto input:checked { background: #FF7FAE; border-color: #FFB3CF; }
+.cs-auto input:checked::after { transform: translateX(18px); }
+.cs-go { flex: none; padding: 9px 22px; font-size: clamp(13px, 2.8dvh, 16px); }
+.cs-msg { min-height: 1.2em; font-size: clamp(10.5px, 2.2dvh, 12.5px); color: #FFE48A; font-weight: 700; }
+.cs-msg:empty { display: none; }
+
+/* จอเตี้ย (มือถือแนวนอน): ตัดคำอธิบายรองทิ้ง ให้รายการการ์ด/รายชื่อเพื่อนได้ที่มากขึ้น */
+@media (max-height: 460px) {
+  .cc-lead, .cs-who .cs-note { display: none; }
+  .cc-pop, .cs-pop { gap: 6px; padding-top: 10px; padding-bottom: 12px; }
+  .cs-pop { overflow-y: auto; }
+  .cc-pop .skin-title, .cs-pop .skin-title { font-size: clamp(16px, 5.4dvh, 22px); }
+  .cs-who { min-height: 0; }
+  .cs-letter { padding: 8px 12px; }
+  .cs-letter .cs-stamp { width: 50px; top: 8px; }
+  .cs-friends { grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); max-height: 84px; }
+  .cc-card { padding: 7px 10px 7px 8px; }
+  .cc-stamp { width: 44px; }
+}
+
+/* ── หน้ากิจกรรม: พื้นหลังบอร์ดกิจกรรม (Canvas 2D, src/render/event-bg.js) ──
+   ผ้าใบเป็นชั้นล่างสุดในการ์ดใหญ่ ทุกอย่างในการ์ดยกขึ้นมาอยู่เหนือมัน (ปุ่มกลับเป็น absolute อยู่แล้ว ยกแค่ z) */
+#questPanel > .pop { isolation: isolate; }
+.quest-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+#questPanel > .pop > .quest-head,
+#questPanel > .pop > .quest-list,
+#questPanel > .pop > .form-msg { position: relative; z-index: 1; }
+#questPanel > .pop > .backbtn { z-index: 2; }
+/* การ์ดภารกิจลอยเหนือพื้นนิดหนึ่ง — เงานุ่มใต้การ์ด (หน้าตาการ์ดเดิมทุกอย่าง) */
+#questPanel .quest-row:not(.ready) { box-shadow: var(--plate-lift), 0 8px 18px rgba(26,8,44,.22); }

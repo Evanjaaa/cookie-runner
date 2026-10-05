@@ -1,9 +1,13 @@
 name: Deploy to GitHub Pages
 
-# push ขึ้น main เมื่อไหร่ เว็บอัปเดตเองภายในไม่กี่นาที
+# ── ปิดการรันเองตอน push ไว้ (ต.ค. 2026) ──
+# เว็บจริงอยู่ที่ Vercel (meowzing.vercel.app, deploy ด้วย `npx vercel --prod`)
+# รีโปนี้ไม่ได้เปิด GitHub Pages ไว้ ตัวนี้จึงพังที่ขั้น deploy (404) ทุกครั้งที่ push
+# ถ้าวันหลังอยากใช้ GitHub Pages: Settings → Pages → Source = GitHub Actions
+# แล้วคืนบรรทัด push ข้างล่าง (ตอนนี้ยังกดรันเองได้จากแท็บ Actions)
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:

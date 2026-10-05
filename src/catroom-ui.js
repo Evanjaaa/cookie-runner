@@ -14,7 +14,7 @@ import {
   roomCats, waitingCats, allCats, catById, care, petCat, renameCat, unlockToy, ownsToy, graduate,
   settleHome, reloadCats, levelOf, expInfo, expLeftToday, needNow, isSad, heartsOf, nameOf, storyOf,
   careInfo, rollFind, rollBreed, adoptFound, noteRunNoFind, FOODS, TOYS, ACTIONS, NEEDS, NAME_IDEAS, GROWN_LV,
-  ROOM_SLOTS,
+  ROOM_SLOTS, fosterCats, canSend, visitorCat,
 } from './cats.js';
 import { catSkin, skinById } from './skins.js';
 import { CatRoom } from './catroom.js';
@@ -52,6 +52,17 @@ export function setupCatRoomUI(deps) {
   if (import.meta.env.DEV) window.__catRoom = room;
   let ticker = 0;
   let picker = null;      // 'feed' | 'play' | null
+  // ระบบการ์ดส่งต่อน้อง (catcards-ui.js) — สร้างทีหลังแล้วเสียบเข้ามาทาง setCards
+  let cards = null;
+  // ไปเยี่ยมบ้านเพื่อน: { name, room: [น้อง], wait: น้อง|null, back } — null = บ้านของเรา
+  // น้องของเพื่อนเป็นข้อมูลดูอย่างเดียว (visitorCat) ไม่มีใน cats.js จึงแตะ/ดูแล/บันทึกอะไรไม่ได้
+  let visit = null;
+
+  /** น้องที่โชว์เป็นชิปตอนนี้ — บ้านเพื่อน หรือบ้านเรา (ห้อง → กล่องหน้าประตู → รอบ้านใหม่) */
+  const listCats = () => (visit
+    ? [...visit.room, ...(visit.wait ? [visit.wait] : [])]
+    : [...roomCats(), ...waitingCats(), ...fosterCats()]);
+  const getCat = (id) => (visit ? listCats().find((c) => c.id === id) || null : catById(id));
 
   // ─────────────────────────────────────────────────────────
   // เคล็ดลับน้องส้ม
@@ -93,9 +104,12 @@ export function setupCatRoomUI(deps) {
   // เปิด / ปิดบ้านน้อง
   // ─────────────────────────────────────────────────────────
 
-  function open(selectId = null) {
+  function open(selectId = null, keepVisit = false) {
+    // เปิดบ้านเราเสมอ เว้นแต่ openVisit เป็นคนเรียก — แผงอาจถูกปิดทางอื่น (closeAllPanels)
+    // ระหว่างเยี่ยมบ้านเพื่อนโดยไม่ผ่าน close() ถ้าไม่ล้างตรงนี้ เปิดบ้านครั้งหน้าจะเจอบ้านเพื่อน
+    if (!keepVisit && visit) leaveVisitMode();
     reloadCats();
-    const settled = settleHome();
+    const settled = visit ? { grown: [], moved: null } : settleHome();
     closeAllPanels();
     startPanel.classList.add('hidden');
     // เปิดจากหน้าจบรอบ (ปุ่ม "ไปบ้านน้อง" ในหน้าพบน้อง) เกมยังค้างอยู่ในสถานะตาย
@@ -123,21 +137,33 @@ export function setupCatRoomUI(deps) {
     }, 2000);
     requestAnimationFrame(arrowLoop);
 
+    if (visit) return;
     if (!roomCats().length && !waitingCats().length) showTip('emptyRoom');
     else {
       showTip('room');
       if (roomCats().length) showTip('drag');
     }
     if (settled.grown.length) showTip('grown');
+    if (cards) cards.sync();
+  }
+
+  /** ล้างสถานะเยี่ยมบ้านเพื่อน (ไม่ปิดแผง ไม่พากลับ) */
+  function leaveVisitMode() {
+    visit = null;
+    room.source = null;
+    panel.classList.remove('visiting');
+    $('crTitle').textContent = t('บ้านลูกเหมียว');
   }
 
   function close() {
+    if (visit) leaveVisitMode();
     setClean(false);
     clearInterval(ticker);
     closePicker();
     panel.classList.add('hidden');
     game.catRoom = null;
     game.syncMusic();   // กลับเป็นเพลงหน้าแรก
+    if (cards) cards.publish();
     recheckSkin();
     startPanel.classList.remove('hidden');
     refreshHome();
@@ -149,6 +175,7 @@ export function setupCatRoomUI(deps) {
    */
   let leaving = false;
   $('crBack').addEventListener('click', () => {
+    if (visit) { unlockAudio(); sfx.fish(); endVisit(); return; }
     if (leaving) return;
     leaving = true;
     unlockAudio();
@@ -265,35 +292,47 @@ export function setupCatRoomUI(deps) {
   }
 
   function paintAll() {
-    if (!selectedId || !catById(selectedId) || catById(selectedId).state === 'grown') {
-      selectedId = room.selected;
+    if (!selectedId || !getCat(selectedId) || getCat(selectedId).state === 'grown') {
+      selectedId = room.selected || listCats()[0]?.id || null;
     }
     room.select(selectedId);
     paintChips();
     paintCard();
     paintArrows();
-    const empty = !roomCats().length && !waitingCats().length;
+    paintCardsBtn();
+    const empty = !listCats().length;
     $('crEmpty').classList.toggle('hidden', !empty);
     $('crCard').classList.toggle('hidden', empty);
     $('crActs').classList.toggle('hidden', empty);
-    $('crEmptyText').textContent = 'ตอนวิ่งลองสังเกตกล่องกระดาษริมทางนะ น้องแมวตัวเล็ก ๆ อาจรออยู่';
+    $('crEmptyText').textContent = visit
+      ? 'บ้านนี้ยังไม่มีน้องเลย'
+      : 'ตอนวิ่งลองสังเกตกล่องกระดาษริมทางนะ น้องแมวตัวเล็ก ๆ อาจรออยู่';
   }
 
   function paintChips() {
     const box = $('crCats');
     box.innerHTML = '';
-    const list = [...roomCats(), ...waitingCats()];
+    const list = listCats();
     for (const c of list) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'cr-chip' + (c.id === selectedId ? ' on' : '') + (c.state === 'wait' ? ' wait' : '');
+      b.className = 'cr-chip' + (c.id === selectedId ? ' on' : '') + (c.state !== 'room' ? ' wait' : '');
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', c.id === selectedId ? 'true' : 'false');
       b.innerHTML = '<canvas width="40" height="40"></canvas><span><b></b><small></small></span>';
       b.querySelector('b').textContent = nameOf(c);
-      b.querySelector('small').textContent = c.state === 'wait' ? 'รอในกล่อง' : 'Lv.' + levelOf(c);
+      b.querySelector('small').textContent = c.state === 'foster' ? 'รอบ้านใหม่'
+        : c.state === 'wait' ? 'รอในกล่อง' : 'Lv.' + levelOf(c);
       paintMini(b.querySelector('canvas'), 40, (g) => drawCatFace(g, 20, 23, 0.95, catSkin(c)));
-      if (c.state === 'room' && needsCare(c)) {
+      // มีการ์ดส่งต่อค้างอยู่ = ป้ายจดหมายเล็ก ๆ มุมชิป
+      if (c.card) {
+        const tag = document.createElement('i');
+        tag.className = 'cr-chip-card';
+        tag.setAttribute('aria-label', 'มีการ์ดส่งต่อ');
+        tag.textContent = '💌';
+        b.appendChild(tag);
+      }
+      if (!visit && c.state === 'room' && needsCare(c)) {
         const dot = document.createElement('i');
         dot.className = 'dot';
         b.appendChild(dot);
@@ -306,8 +345,8 @@ export function setupCatRoomUI(deps) {
       });
       box.appendChild(b);
     }
-    // ช่องว่างที่เหลือ — ให้เห็นว่ายังรับน้องได้อีกกี่ตัว
-    for (let i = roomCats().length; i < ROOM_SLOTS; i++) {
+    // ช่องว่างที่เหลือ — ให้เห็นว่ายังรับน้องได้อีกกี่ตัว (บ้านเพื่อนไม่ต้องโชว์)
+    for (let i = visit ? ROOM_SLOTS : roomCats().length; i < ROOM_SLOTS; i++) {
       const e = document.createElement('span');
       e.className = 'cr-chip empty';
       e.textContent = '+';
@@ -323,9 +362,11 @@ export function setupCatRoomUI(deps) {
   }
 
   function paintCard() {
-    const c = catById(selectedId);
+    const c = getCat(selectedId);
     if (!c) return;
-    const waiting = c.state === 'wait';
+    const waiting = c.state !== 'room';
+    // ปุ่มส่งต่อให้เพื่อน — ลูกแมว Lv1-2 ที่ยังไม่มีการ์ดค้าง (บ้านเพื่อนไม่มีปุ่มนี้)
+    $('crSend').classList.toggle('hidden', !!visit || !canSend(c));
     $('crName').textContent = nameOf(c);
     const sex = $('crSex');
     sex.className = 'sex-tag ' + c.sex;
@@ -349,7 +390,10 @@ export function setupCatRoomUI(deps) {
     $('crHearts').textContent = '♥'.repeat(hearts) + '♡'.repeat(5 - hearts);
 
     let note;
-    if (waiting) note = 'รออยู่ในกล่องหน้าประตู จะย้ายเข้าห้องเมื่อมีที่ว่าง';
+    if (visit) note = c.card ? 'น้องกำลังรอบ้านใหม่อยู่นะ' : 'น้องของ ' + visit.name;
+    else if (c.card) note = cards ? cards.noteFor(c) : 'มีการ์ดส่งต่อค้างอยู่';
+    else if (c.state === 'foster') note = 'บ้านเต็มแล้ว น้องรอบ้านใหม่อยู่ ส่งการ์ดหาเพื่อนที่พร้อมดูแลได้เลย';
+    else if (waiting) note = 'รออยู่ในกล่องหน้าประตู จะย้ายเข้าห้องเมื่อมีที่ว่าง';
     else if (isSad(c)) note = 'น้องเหงา... ได้ EXP ครึ่งเดียวจนกว่าจะได้รับการดูแล';
     else if (expLeftToday(c) <= 0) note = 'วันนี้โตเต็มเพดานแล้ว พรุ่งนี้มาเลี้ยงต่อนะ';
     else note = 'วันนี้ยังโตได้อีก ' + expLeftToday(c) + ' EXP';
@@ -599,6 +643,74 @@ export function setupCatRoomUI(deps) {
   // ชื่อ / เรื่องราว / มินิเกม
   // ─────────────────────────────────────────────────────────
 
+  $('crSend').addEventListener('click', () => {
+    unlockAudio();
+    sfx.fish();
+    const c = catById(selectedId);
+    if (c && cards) cards.openSend(c.id);
+  });
+  $('crCards').addEventListener('click', () => {
+    unlockAudio();
+    sfx.fish();
+    if (cards) cards.open();
+  });
+
+  /** ป้ายตัวเลขบนปุ่มการ์ดส่งต่อ = การ์ดที่รอเราทำอะไรสักอย่าง */
+  function paintCardsBtn() {
+    const n = cards ? cards.pendingCount() : 0;
+    const num = $('crCardsNum');
+    num.textContent = n ? String(n) : '';
+    num.classList.toggle('hidden', !n);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // เยี่ยมบ้านเพื่อน
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * เปิดห้องของเพื่อน (ดูอย่างเดียว) — ห้องเดียวกับบ้านเรา แต่น้องมาจากโปรไฟล์สาธารณะของเพื่อน
+   * @param v.name  ชื่อเพื่อน
+   * @param v.cats  รายการจาก homePublic() ของเพื่อน
+   * @param v.focus id น้องที่จะเลือกไว้ (เช่นน้องในการ์ด)
+   * @param v.back  เรียกตอนกดกลับ — พากลับไปหน้าที่มา (ห้องเราปิดให้แล้วถ้าเปิดจากข้างนอก)
+   */
+  function openVisit({ name, cats: list = [], focus = null, back = null }) {
+    const all = list.map((p) => visitorCat(p));
+    const pick = focus ? 'v:' + focus : null;
+    const inRoom = all.filter((c) => c.state === 'room').slice(0, ROOM_SLOTS);
+    const wait = all.find((c) => c.state !== 'room' && c.id === pick)
+      || all.find((c) => c.state !== 'room') || null;
+    const wasOpen = !panel.classList.contains('hidden');
+    visit = { name: String(name || 'เพื่อน'), room: inRoom, wait, back, wasOpen };
+    room.source = { room: inRoom, wait };
+    panel.classList.add('visiting');
+    $('crTitle').textContent = t('บ้านของ') + ' ' + visit.name;
+    if (wasOpen) {
+      room.sync();
+      room.open(pick);
+      selectedId = room.selected;
+      paintAll();
+    } else {
+      open(pick, true);
+    }
+    if (pick) room.focus(pick);
+  }
+
+  function endVisit() {
+    const v = visit;
+    if (!v) return;
+    leaveVisitMode();
+    selectedId = null;
+    if (v.wasOpen) {
+      room.sync();
+      room.open(null);
+      paintAll();
+    } else {
+      close();
+    }
+    if (v.back) v.back();
+  }
+
   $('crRename').addEventListener('click', () => {
     unlockAudio();
     sfx.fish();
@@ -712,10 +824,18 @@ export function setupCatRoomUI(deps) {
     $('foundBreed').textContent = skinById(c.breed).name;
     $('foundStory').textContent = storyOf(c, fmtDate)[0].text;
     $('foundName').value = c.name || '';
-    $('foundWait').classList.toggle('hidden', mode !== 'found' || c.state !== 'wait');
-    document.querySelector('#foundPanel .found-title').textContent = mode === 'found' ? 'พบน้องแมว!' : 'ตั้งชื่อน้อง';
-    $('foundGo').textContent = mode === 'found' ? 'ไปบ้านน้อง' : 'บันทึก';
-    $('foundLater').textContent = mode === 'found' ? 'ไว้ทีหลัง' : 'ยกเลิก';
+    const fresh = mode === 'found' || mode === 'gift';
+    $('foundWait').classList.toggle('hidden', !fresh || c.state !== 'wait');
+    // บ้านเต็มตอนพบ = น้องรอบ้านใหม่ — ทางลัดส่งการ์ดหาเพื่อนได้เลยจากหน้านี้
+    const foster = mode === 'found' && c.state === 'foster';
+    $('foundFoster').classList.toggle('hidden', !foster);
+    $('foundSend').classList.toggle('hidden', !foster || !cards);
+    // ปุ่มสามปุ่มล้นแถว — น้องรอบ้านใหม่ไม่ต้องมีปุ่มไปบ้าน (ชิปน้องยังอยู่ในบ้านให้กดส่งทีหลังได้)
+    $('foundGo').classList.toggle('hidden', foster && !!cards);
+    document.querySelector('#foundPanel .found-title').textContent = mode === 'found' ? 'พบน้องแมว!'
+      : mode === 'gift' ? 'น้องมาถึงบ้านแล้ว!' : 'ตั้งชื่อน้อง';
+    $('foundGo').textContent = fresh ? 'ไปบ้านน้อง' : 'บันทึก';
+    $('foundLater').textContent = fresh ? 'ไว้ทีหลัง' : 'ยกเลิก';
     $('foundPanel').classList.remove('hidden');
     if (!foundRAF) foundRAF = requestAnimationFrame(paintFoundArt);
   }
@@ -743,7 +863,7 @@ export function setupCatRoomUI(deps) {
     saveFoundName(true);
     $('foundPanel').classList.add('hidden');
     const id = foundId;
-    if (foundMode === 'found') {
+    if (foundMode === 'found' || foundMode === 'gift') {
       const c = catById(id);
       open(c ? id : null);
       if (c?.state === 'wait') showTip('waiting');
@@ -755,10 +875,19 @@ export function setupCatRoomUI(deps) {
   $('foundLater').addEventListener('click', () => {
     unlockAudio();
     sfx.fish();
-    if (foundMode === 'found') saveFoundName(true);
+    if (foundMode === 'found' || foundMode === 'gift') saveFoundName(true);
     $('foundPanel').classList.add('hidden');
     const c = catById(foundId);
     if (foundMode === 'found' && c?.state === 'wait') showTip('waiting');
+  });
+
+  // ทางลัด: น้องรอบ้านใหม่ → ส่งการ์ดหาเพื่อนเลย (ตั้งชื่อก่อน ชื่อจะได้ไปกับการ์ด)
+  $('foundSend').addEventListener('click', () => {
+    unlockAudio();
+    sfx.fish();
+    saveFoundName(true);
+    $('foundPanel').classList.add('hidden');
+    if (cards) cards.openSend(foundId);
   });
 
   // ─────────────────────────────────────────────────────────
@@ -771,7 +900,8 @@ export function setupCatRoomUI(deps) {
    */
   function planRun(playerLv) {
     reloadCats();
-    if (!rollFind(playerLv)) return { plan: null, line: null };
+    // บ้านเต็มแต่มีเพื่อนให้ส่งต่อ = ยังเจอกล่องได้ (น้องที่พบจะรอบ้านใหม่)
+    if (!rollFind(playerLv, { canRehome: !!cards && cards.canRehome() })) return { plan: null, line: null };
     const first = !allCats().length && !tipSeen('firstBox');
     const breed = rollBreed();
     const sex = Math.random() < 0.5 ? 'm' : 'f';
@@ -788,6 +918,7 @@ export function setupCatRoomUI(deps) {
     }
     const cat = adoptFound(where, found);
     refreshDot();
+    if (cat && cards) cards.publish();
     return cat;
   }
 
@@ -797,7 +928,8 @@ export function setupCatRoomUI(deps) {
 
   /** จุดแดงบนปุ่มบ้านน้อง = มีน้องที่ดูแลแล้วได้ EXP อยู่ตอนนี้ */
   function refreshDot() {
-    const on = roomCats().some(needsCare) || roomCats().some((c) => levelOf(c) >= GROWN_LV);
+    const on = roomCats().some(needsCare) || roomCats().some((c) => levelOf(c) >= GROWN_LV)
+      || fosterCats().some((c) => !c.card) || (!!cards && cards.pendingCount() > 0);
     $('catRoomDot').classList.toggle('hidden', !on);
   }
 
@@ -844,10 +976,16 @@ export function setupCatRoomUI(deps) {
     reloadCats();
     refreshDot();
     if (panel.classList.contains('hidden')) return;
+    if (visit) { paintCardsBtn(); return; }
     room.sync();
     paintAll();
     for (const c of roomCats()) if (levelOf(c) >= GROWN_LV) growUp(c.id);
   }
 
-  return { refresh, open, close, openStory, openFound, planRun, afterRun, refreshDot, paintIcon, showTip, isOpen: () => !panel.classList.contains('hidden') };
+  return {
+    refresh, open, close, openStory, openFound, planRun, afterRun, refreshDot, paintIcon, showTip, toast,
+    openVisit, paintBadge: paintCardsBtn, setCards: (c) => { cards = c; refreshDot(); },
+    isOpen: () => !panel.classList.contains('hidden'),
+    isVisiting: () => !!visit,
+  };
 }

@@ -8,6 +8,7 @@ import { startMusic, stopMusic, primeMusicFile } from './music.js';
 import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
 import {
   allCats, roomCats, waitingCats, grownCats, catById, breedOf, BREEDS, levelOf, nameOf, sizeOf, reloadCats,
+  homePublic,
 } from './cats.js';
 import {
   CUSTOM_ID, REGIONS, SWATCHES, BLANK, palette, paint, setPalette,
@@ -81,6 +82,8 @@ import {
 } from './intro-video.js';   // หน้าพรสวรรค์ (ข้อมูลใน talents.js ผลตอนวิ่งใน talent-run.js)
 import { setupDebug, TESTER_CODES } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 import { setupCatRoomUI } from './catroom-ui.js';
+import { setupCatCardsUI } from './catcards-ui.js';
+import { createEventBackground } from './render/event-bg.js';
 import { syncServerClock } from './net/cloud.js';
 
 // หน้าจอระบบน้องแมว (บ้านน้อง หน้าพบน้อง เรื่องราว เคล็ดลับน้องส้ม) — สร้างทีหลังใน setupCatRoomUI
@@ -2541,7 +2544,8 @@ function catEntryHint(x) {
   const sex = x.cat ? (x.cat.sex === 'f' ? '♀ ตัวเมีย' : '♂ ตัวผู้') : '';
   if (x.kind === 'grown') return sex + ' · ' + x.skin.breedName + ' · โตเต็มวัยแล้ว ลงวิ่งได้';
   if (x.kind === 'raising') {
-    const where = x.cat.state === 'wait' ? 'รออยู่ในกล่องหน้าประตูบ้าน' : 'กำลังเลี้ยงอยู่ที่บ้านน้อง';
+    const where = x.cat.state === 'foster' ? 'รอบ้านใหม่ — ส่งการ์ดหาบ้านให้น้องได้ที่บ้านน้อง'
+      : x.cat.state === 'wait' ? 'รออยู่ในกล่องหน้าประตูบ้าน' : 'กำลังเลี้ยงอยู่ที่บ้านน้อง';
     return sex + ' · ' + x.skin.breedName + ' · ' + where;
   }
   return 'สายพันธุ์ที่ยังไม่เคยพบ — อาจเจอในกล่องระหว่างวิ่ง';
@@ -3950,6 +3954,8 @@ function profileSnapshot(p) {
     stats: p.stats,
     best: { stage: p.best.stageId, score: p.best.score },
     counts: p.counts,
+    // น้องในบ้าน (ห้อง + กล่องหน้าประตู) — เพื่อนแวะมาเยี่ยมบ้านเราได้ (ดู openVisit ใน catroom-ui.js)
+    home: homePublic(),
   };
 }
 
@@ -4587,7 +4593,12 @@ function paintFriends() {
   else if (!d.friends.length) emptyNote(list, 'ยังไม่มีเพื่อนแมว ไปที่แท็บ “คำขอเป็นเพื่อน” แล้วค้นหาเพื่อนได้เลย');
   else {
     for (const row of d.friends) {
-      friendRow(list, row, { acts: [{ text: 'ลบเพื่อน', ghost: true, run: frRemove }] });
+      friendRow(list, row, {
+        acts: [
+          { text: 'เยี่ยมบ้าน', run: visitFriendHome },
+          { text: 'ลบเพื่อน', ghost: true, run: frRemove },
+        ],
+      });
     }
   }
   markScrollable(list);
@@ -4838,6 +4849,9 @@ if (import.meta.env.DEV) {
   };
 }
 
+// พื้นหลังบอร์ดกิจกรรม (ภาพล้วน ไม่แตะข้อมูลภารกิจ) — ลูปหยุดเองเมื่อหน้าถูกซ่อน
+const questBg = createEventBackground(document.getElementById('questBg'), questPanel.querySelector('.pop'));
+
 function showQuests(on) {
   questPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
@@ -4845,6 +4859,7 @@ function showQuests(on) {
     setMsg(document.getElementById('questMsg'), '');
     refreshGold();
     buildQuestList();
+    questBg.start();
   }
 }
 
@@ -5807,6 +5822,23 @@ catRoomUI = setupCatRoomUI({
   game, sfx, unlockAudio, paintMini, paintFitted, getGold, addGold, refreshGold,
   closeAllPanels, startPanel, refreshHome, confirmBox, recheckSkin,
 });
+
+// ── การ์ดส่งต่อน้อง ── (หาบ้านใหม่ให้ลูกแมวกับเพื่อน: catcards-ui.js / supabase/cat_cards.sql)
+// บ้านเราขึ้นไปกับโปรไฟล์สาธารณะ เพื่อนจะได้แวะมาดูน้องในการ์ดได้ — ส่งเฉพาะตอนเนื้อหาเปลี่ยน
+const catCardsUI = setupCatCardsUI({
+  sfx, unlockAudio, paintMini, catRoomUI, refreshHome,
+  publishHome: () => publishProfile(profileSnapshot(ownProfile())),
+});
+catRoomUI.setCards(catCardsUI);
+
+/** เยี่ยมบ้านน้องของเพื่อน (ดูอย่างเดียว) — กดกลับแล้วมาหน้าเพื่อนแมวเหมือนเดิม */
+function visitFriendHome(row) {
+  friendsPanel.classList.add('hidden');
+  catCardsUI.visitFriend(row, () => {
+    startPanel.classList.add('hidden');
+    friendsPanel.classList.remove('hidden');
+  });
+}
 
 /** ทางลัดจากหน้าอื่น (คลังน้อง) — เปิดบ้านน้องแล้วเลือกตัวนี้ไว้ */
 function openCatRoom(id) {
