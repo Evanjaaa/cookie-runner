@@ -34,7 +34,7 @@
   filter: none;
 }
 /* Action buttons share the reference silhouette. Content, prices and icons stay live. */
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup) {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup) {
   --cat-art: url('/ui/cat-button-mint.svg');
   --cat-ink: #086B62;
   position: relative;
@@ -55,11 +55,11 @@
   filter: drop-shadow(0 3px 2px #33204935);
   transition: transform .15s ease, filter .15s ease;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn.ghost, .cc-btn.soft, .cc-btn.warn, .cr-pill, .pf-action, .auth-signup) {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn.ghost, .cc-btn.soft, .cc-btn.warn, .cr-pill, .pf-action, .auth-signup) {
   --cat-art: url('/ui/cat-button-lavender.svg');
   --cat-ink: #512680;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup)::before {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup)::before {
   content: '';
   position: absolute;
   inset: -9px -5px -2px;
@@ -71,35 +71,35 @@
   filter: none;
   box-shadow: none;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup)::after { content: none; }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):not(:disabled):active {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup)::after { content: none; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):not(:disabled):active {
   transform: translateY(2px) scale(.97);
   box-shadow: none;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):disabled {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):disabled {
   opacity: .55;
   filter: grayscale(.35);
   box-shadow: none;
   transform: none;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):focus-visible {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):focus-visible {
   outline: 3px solid #FFF0B8;
   outline-offset: 4px;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn.tiny, .cc-btn, .cr-pill) {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn.tiny, .cc-btn, .cr-pill) {
   min-height: 34px;
   padding: 9px 19px 6px;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .btn.pull { padding: 17px 26px 11px; }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .btnrow { gap: 14px; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) .btn.pull { padding: 17px 26px 11px; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) .btnrow { gap: 14px; }
 /* Compact navigation stays compact, with a stitched pastel surface. */
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.stab, .gtab, .fchip, .langbtn, .stepbtn, .more-btn, .cr-mini-btn) {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.stab, .gtab, .fchip, .langbtn, .stepbtn, .more-btn, .cr-mini-btn) {
   border: 1px dashed #F7C7DD;
   background: linear-gradient(180deg, #B47BE4, #8550B9);
   color: #FFF2FD;
   box-shadow: inset 0 1px 0 #FFFFFF40, 0 2px 0 #693A96;
 }
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.stab, .gtab, .fchip, .langbtn).on {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.stab, .gtab, .fchip, .langbtn).on {
   background: linear-gradient(180deg, #D7FFF2, #97E5D2);
   color: #245E54;
   border-color: #FFF5E6;
@@ -140,20 +140,20 @@
 #stage #inboxPanel :is(#mailClaimAll, #mailClear) { padding: 29px 43px 15px 66px; }
 #stage #inboxPanel :is(#mailClaimAll, #mailClear)::before { inset: 0; }
 @media (hover: hover) {
-  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):not(:disabled):hover {
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):not(:disabled):hover {
     animation: none;
     transform: translateY(-2px);
     filter: drop-shadow(0 5px 3px #33204940) brightness(1.05);
   }
 }
 @media (max-height: 480px) {
-  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cr-act, .pf-action) { min-height: 34px; padding-top: 10px; padding-bottom: 6px; }
-  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .btn.pull { padding: 12px 20px 8px; }
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cr-act, .pf-action) { min-height: 34px; padding-top: 10px; padding-bottom: 6px; }
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) .btn.pull { padding: 12px 20px 8px; }
   #stage #inboxPanel :is(#mailClaimAll, #mailClear) { padding: 23px 37px 11px 57px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup) { transition: none; }
-  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):hover { transform: none; }
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup) { transition: none; }
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):hover { transform: none; }
 }
 
 /* The cat room has a full scene rather than a pop card. */
@@ -167,7 +167,7 @@
   z-index: 4;
 }
 /* All close/back controls continue to use the same shared circular template. */
-#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.xbtn, .backbtn, .cr-arrow, .info-btn, .tl-help, .pf-pen, .paint-max) {
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel, #gachaPanel, #stashPanel, #odPanel, #tDetailPanel, #upPanel, #loadoutPanel, #createPanel, #createLockPanel)) :is(.xbtn, .backbtn, .cr-arrow, .info-btn, .tl-help, .pf-pen, .paint-max) {
   border-color: #FAD9E8;
   background: linear-gradient(180deg, #BD8AE8, #935DC7 60%, #7444A3);
   color: #FFF0B8;
