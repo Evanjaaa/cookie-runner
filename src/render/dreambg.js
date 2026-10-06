@@ -311,15 +311,20 @@ export function makeCanvasBg(canvas, isActive, scene) {
   const t0 = performance.now();
 
   function resize() {
-    const r = canvas.getBoundingClientRect();
-    if (!r.width || !r.height) return false;
+    // ── ขนาดตามเลย์เอาต์ (offset*) ไม่ใช่ขนาดที่ตาเห็น (getBoundingClientRect) ──
+    // ตอนเปิดหน้า การ์ดใหญ่เด้งเข้า (ย่อ 0.93 → ขยาย 1) getBoundingClientRect ได้ขนาด "ระหว่างแอนิเมชัน"
+    // ผ้าใบเลยถูกตั้งขนาดใหม่ 5 ครั้งใน 0.3 วิ (1078 → 1125 → 1147 → 1156 → 1159 วัดแล้ว)
+    // ทุกครั้งต้องจองบัฟเฟอร์ใหม่ + วาดชั้นนิ่งใหม่ + ของตกแต่งเปลี่ยนขนาดตาม = ภาพเด้ง/กระตุกตอนเข้าหน้า
+    // offset* ไม่สนแอนิเมชัน — ตั้งขนาดครั้งเดียวที่ขนาดจริง แล้วการ์ดค่อยย่อขยายภาพนั้นไปลื่น ๆ
+    const cssW = canvas.offsetWidth, cssH = canvas.offsetHeight;
+    if (!cssW || !cssH) return false;
     // มือถือจอคมมาก (dpr 3) ไม่ต้องวาดเต็มความคม — พื้นหลังฟุ้ง ๆ ไม่มีเส้นคมให้เสีย
     dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const cw = Math.round(r.width * dpr), ch = Math.round(r.height * dpr);
+    const cw = Math.round(cssW * dpr), ch = Math.round(cssH * dpr);
     if (cw === canvas.width && ch === canvas.height && w) return true;
     canvas.width = still.width = cw;
     canvas.height = still.height = ch;
-    w = r.width; h = r.height;
+    w = cssW; h = cssH;
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     scene.still(sctx, w, h, L);
     return true;
@@ -344,7 +349,13 @@ export function makeCanvasBg(canvas, isActive, scene) {
   function kick() {
     if (!isActive()) return;
     if (calm.matches) { paint(performance.now()); return; }   // ลดการเคลื่อนไหว = ภาพนิ่งภาพเดียว
-    if (!raf) raf = requestAnimationFrame(frame);
+    if (!raf) {
+      // วาดเฟรมแรกทันทีตอนแผงเพิ่งเปิด (ตัวเฝ้าคลาสเรียกก่อนเบราว์เซอร์วาดจอ) — ไม่งั้นเฟรมแรก
+      // ผ้าใบยังว่าง เห็นพื้นสีเรียบของการ์ดแวบหนึ่งก่อนพื้นหลังโผล่ (เปิดหน้านั้นครั้งแรก)
+      last = performance.now();
+      paint(last);
+      raf = requestAnimationFrame(frame);
+    }
   }
 
   // การ์ดเปลี่ยนขนาด (หมุนจอ/ปรับหน้าต่าง) = วาดชั้นนิ่งใหม่ แล้ววาดเฟรมทันทีไม่รอรอบถัดไป

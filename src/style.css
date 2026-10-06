@@ -256,7 +256,7 @@ canvas[hidden] { display: none; }
 .panel:not(.home):not(.hidden) > .pop > *:nth-child(4) { animation-delay: .15s; }
 /* ผ้าใบพื้นหลังของการ์ด (คลังน้อง สกิล กาช่า กิจกรรม) เป็นลูกคนแรกของ .pop จึงโดนแอนิเมชันไล่ขึ้นไปด้วย
    พื้นหลังทั้งผืนเลยลอยขึ้น 14px ตอนเปิดหน้า (เห็นชัดที่หน้ากิจกรรม) — พื้นหลังต้องนิ่งอยู่กับการ์ด มีแค่เนื้อหาที่ไล่ขึ้น */
-.panel:not(.home):not(.hidden) > .pop > :is(.quest-bg, .dream-bg, .magic-bg, .gacha-bg) { animation: none; }
+.panel:not(.home):not(.hidden) > .pop > :is(.quest-bg, .dream-bg, .magic-bg, .gacha-bg, .create-bg, .stage-bg, .rank-bg, .friends-bg, .news-bg, .mail-bg, .settings-bg) { animation: none; }
 
 .panel h2 {
   font-family: "Mali", sans-serif;
@@ -13322,4 +13322,406 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 #questPanel .quest-row.ready {
   box-shadow: 0 4px 0 rgba(60,24,110,.45), 0 0 16px rgba(143,244,226,.28), inset 0 1px 0 rgba(255,255,255,.2);
+}
+
+/* ══ โหมดสร้างสรรค์: สตูดิโอศิลปะของน้องแมว ═══════════════════════════
+   ทั้งสองแท็บของ #createPanel (ระบายสี / หน้าน้อง) และโหมดขยายเต็มจอ
+   พื้นหลังวาดด้วย Canvas 2D (src/render/creativebg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะหน้าตาตัวน้อง เครื่องมือ จานสี หรือปุ่มใด ๆ (หน้าคลังน้องที่ใช้คลาส stash-* ร่วมกันไม่โดน) */
+#createPanel > .pop { background: #8C5BCB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.create-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* เนื้อหาลอยเหนือผ้าใบ (ปุ่มกลับเป็น absolute อยู่แล้ว ยกแค่ z) */
+#createPanel > .pop > .stash-body { position: relative; z-index: 1; }
+#createPanel > .pop > .backbtn { z-index: 2; }
+/* ตัวหนังสือที่วางบนพื้นตรง ๆ (หัวเรื่อง หัวคอลัมน์ คำแนะนำ) — เงาม่วงจาง ๆ ให้อ่านชัดบนพื้นที่มีสีสันขึ้น */
+#createPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+#createPanel .paint-hint,
+#createPanel .face-note { text-shadow: 0 1px 4px rgba(72,28,124,.55); }
+
+/* ══ หน้าเลือกด่าน: ประตูสู่การผจญภัยของน้องแมว ═══════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/stagebg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะการ์ดด่าน หัวเรื่อง หรือปุ่มใด ๆ (ผูกกับ #stagePanel อย่างเดียว) */
+#stagePanel > .pop { background: #8556C7; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.stage-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#stagePanel > .pop > .skin-title,
+#stagePanel > .pop > .stage-lead,
+#stagePanel > .pop > .stage-grid,
+#stagePanel > .pop > #loadoutOpen { position: relative; z-index: 1; }
+#stagePanel > .pop > .backbtn { z-index: 2; }
+/* คำอธิบายใต้หัวเรื่องวางบนพื้นตรง ๆ — เงาม่วงจาง ๆ ให้อ่านชัด */
+#stagePanel .stage-lead { text-shadow: 0 1px 4px rgba(72,28,124,.55); }
+#stagePanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+
+/* ══ หน้าอันดับ: หอเกียรติยศน่ารักของน้องแมว ═══════════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/rankbg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะแถวอันดับ รายการด่าน หรือปุ่มใด ๆ (ผูกกับ #rankPanel อย่างเดียว) */
+#rankPanel > .pop { background: #8455C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.rank-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#rankPanel > .pop > .skin-title,
+#rankPanel > .pop > .rank-wrap { position: relative; z-index: 1; }
+#rankPanel > .pop > .backbtn { z-index: 2; }
+#rankPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+
+/* ══ ขอบช่องเลื่อนนุ่ม ๆ (ทุกหน้า) ═══════════════════════════════════
+   ช่องที่เลื่อนได้ (overflow) ตัดของที่ล้นขอบเป็นเส้นตรงแข็ง ๆ — ผู้ใช้อยากให้ขอบพวกนี้ "จางเบลอสวย ๆ"
+   สามจุดที่เคยตัดแข็ง:
+   1. เงาแผ่นการ์ดกลาง (--plate-lift มีเงาดำฟุ้ง 22px) ฟุ้งออกข้างเกินที่เผื่อไว้ในช่อง (3-4px)
+      → ในช่องเลื่อนเขียนเงาใหม่ให้ฟุ้ง "ลงล่าง" อย่างเดียว (spread ติดลบ) ไม่มีอะไรล้นข้างให้โดนตัด
+      ความหนาของแผ่น (ขอบล่าง 4px) ยังเท่าเดิม แถวที่มีแสงสีของตัวเอง (ที่หนึ่ง/ที่เลือก) ยังต่อท้ายตัวแปรนี้ได้เหมือนเดิม
+   2. ขอบบนตอนเลื่อนลงแล้ว — แถวโดนตัดหัวขาด → จางนุ่ม ๆ 18px (เฉพาะตอนเลื่อนแล้ว คลาส .scrolled จาก main.js)
+      ขอบล่างจางอยู่แล้ว (22px ตอน .scrolls) — รวมไว้ในกฎเดียวกันที่นี่
+   3. หน้าอันดับ: แสงสีรอบแถว 1-3 และด่านที่เลือก (ฟุ้ง 14-16px) → เพิ่มที่ว่างข้างในช่อง + จางขอบข้างนุ่ม ๆ */
+.panel :is(.rank-list, .rank-stages, .quest-list, .fr-grid, .skin-grid, .stage-grid, .tl-grid, .pf-side, .cc-list, .news-list, .mail-list) {
+  --plate-lift:
+    0 4px 0 rgba(20,8,32,.5),
+    0 10px 14px -8px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.2);
+}
+.panel :is(.rank-list, .rank-stages, .quest-list, .fr-grid, .skin-grid, .stage-grid, .tl-grid, .pf-side).scrolls {
+  --fade-top: 0px;
+  --fade-x: linear-gradient(#000, #000);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - 22px), transparent), var(--fade-x);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - 22px), transparent), var(--fade-x);
+  mask-composite: intersect;
+}
+.panel :is(.rank-list, .rank-stages, .quest-list, .fr-grid, .skin-grid, .stage-grid, .tl-grid, .pf-side).scrolls.scrolled { --fade-top: 18px; }
+
+/* หน้าอันดับ: ช่องรายการกว้างออกข้างละ 10px (ขยับออกด้วย margin ติดลบ แถวยังอยู่ที่เดิม กว้างขึ้นนิดเดียว)
+   ให้แสงทอง/เงิน/ทองแดงรอบแถวฟุ้งได้ครบ แล้วจางที่ขอบข้าง 8px แทนเส้นตัดตรง */
+.rank-wrap .rank-list {
+  box-sizing: content-box;
+  padding-inline: 10px;
+  margin-inline: -10px;
+  --fade-x: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bot, 0px)), transparent), var(--fade-x);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bot, 0px)), transparent), var(--fade-x);
+  mask-composite: intersect;
+}
+.rank-wrap .rank-list.scrolls { --fade-bot: 22px; }
+/* แถบด่านซ้าย: เว้นซ้ายเพิ่มให้แสงมิ้นต์ของด่านที่เลือกฟุ้งได้ จางเฉพาะขอบซ้าย (ขวาคือเส้นคั่น ต้องคม) */
+.rank-wrap .rank-stages {
+  padding-left: 13px;
+  margin-left: -10px;
+  width: calc(clamp(150px, 19vw, 196px) + clamp(12px, 2.2vw, 26px) + 10px);
+  --fade-x: linear-gradient(to right, transparent, #000 8px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bot, 0px)), transparent), var(--fade-x);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bot, 0px)), transparent), var(--fade-x);
+  mask-composite: intersect;
+}
+.rank-wrap .rank-stages.scrolls { --fade-bot: 22px; }
+@media (max-height: 460px) {
+  .rank-wrap .rank-stages { width: 128px; }
+}
+
+/* ══ หน้าเพื่อนแมว: สวนเล็ก ๆ ที่น้องแมวมาเจอกัน ══════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/friendsbg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะบัตรแมวน้อย แท็บ รายชื่อ หรือปุ่มใด ๆ (ผูกกับ #friendsPanel อย่างเดียว หน้าสกิลที่ใช้ tl-pop ร่วมไม่โดน) */
+#friendsPanel > .pop { background: #8957C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.friends-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#friendsPanel > .pop > .tl-head,
+#friendsPanel > .pop > .tl-body,
+#friendsPanel > .pop > .form-msg { position: relative; z-index: 1; }
+#friendsPanel > .pop > .xbtn { z-index: 2; }
+#friendsPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+#friendsPanel .grid-empty,
+#friendsPanel .tl-side-note { text-shadow: 0 1px 4px rgba(72,28,124,.55); }
+/* แท็บบนหัว (เพื่อนแมว / คำขอเป็นเพื่อน / คำขอที่เราส่งไป) — หน้าตาชุดเดียวกับแท็บหน้าสกิล/พรสวรรค์
+   รางม่วงใสขอบขาวจาง · ตัวที่เลือกเป็นเม็ดขาวใสสว่างขึ้นหนึ่งขั้น (เดิมรางเข้ม ตัวที่เลือกสีแดงเลือดหมู ตีกับพื้นใหม่) */
+#friendsPanel .fr-tabs {
+  border-color: rgba(255,255,255,.24);
+  background: rgba(70,32,130,.32);
+}
+#friendsPanel .fr-tabs .fchip { color: rgba(255,255,255,.85); }
+#friendsPanel .fr-tabs .fchip.on {
+  background: rgba(255,255,255,.3);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+/* ══ หน้าข่าวสาร: บอร์ดข่าวน่ารักของโลกน้องแมว ═══════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/newsbg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะรายการข่าว กรอบบทความ หรือปุ่มปิด (ผูกกับ #newsPanel อย่างเดียว) */
+#newsPanel > .pop { background: #8253C4; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.news-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#newsPanel > .pop > .panel-head,
+#newsPanel > .pop > .news-wrap { position: relative; z-index: 1; }
+#newsPanel > .pop > .xbtn { z-index: 2; }
+#newsPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+
+/* ══ หน้ากล่องจดหมาย: กล่องจดหมายวิเศษของน้องแมว ═══════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/mailbg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะการ์ดจดหมาย ปุ่มรับของ หรือปุ่มปิด (ผูกกับ #inboxPanel อย่างเดียว) */
+#inboxPanel > .pop { background: #8856C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.mail-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#inboxPanel > .pop > .panel-head,
+#inboxPanel > .pop > .mail-list,
+#inboxPanel > .pop > .btnrow,
+#inboxPanel > .pop > .form-msg { position: relative; z-index: 1; }
+#inboxPanel > .pop > .xbtn { z-index: 2; }
+#inboxPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+
+/* ══ หน้าตั้งค่า: มุมสงบ ๆ ของน้องแมว ═══════════════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/settingsbg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะแท็บ แถวตั้งค่า ปุ่ม หรือปุ่มปิด (ผูกกับ #settingsPanel อย่างเดียว) */
+#settingsPanel > .pop { background: #7A4CBB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.settings-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#settingsPanel > .pop > .stash-body { position: relative; z-index: 1; }
+#settingsPanel > .pop > :is(.xbtn, .backbtn) { z-index: 2; }
+#settingsPanel .skin-title { text-shadow: 0 2px 8px rgba(60,22,110,.5); }
+/* ตัวเลือกในหน้าตั้งค่า (ภาษา / ระดับกราฟิก) — หน้าตาชุดเดียวกับแท็บหน้าสกิล/เพื่อนแมว
+   รางม่วงใสขอบขาวจาง · ตัวที่เลือกเป็นเม็ดขาวใสสว่างขึ้นหนึ่งขั้น (เดิมรางดำ ตัวที่เลือกสีแดงเลือดหมู) */
+#settingsPanel .langpick {
+  border-color: rgba(255,255,255,.24);
+  background: rgba(70,32,130,.32);
+}
+#settingsPanel .langbtn { color: rgba(255,255,255,.85); }
+#settingsPanel .langbtn:hover { color: #FFFFFF; }
+#settingsPanel .langbtn.on {
+  background: rgba(255,255,255,.3);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+/* ── จุดแดงแจ้งเตือน: ไม่มีขอบตัดสีเข้ม ──
+   เดิมมีขอบม่วงดำรอบจุด (2px / ตามขนาดป้าย) บนพื้นใหม่ที่สว่างขึ้นดูเป็นวงดำตัดขอบแข็ง ๆ
+   ขอบโปร่งใสแทน (ขนาดจุดเท่าเดิม พื้นแดงเต็มถึงขอบ) + แสงชมพูนุ่ม ๆ รอบจุดยังอยู่ */
+.new-dot,
+#btnMail .dot, #btnNews .dot, #btnFriends .dot, .lobby-btn .dot, .lvgift .dot {
+  border-color: transparent;
+  background: radial-gradient(circle at 35% 30%, #FF7A84, #E8434F 62%);
+  box-shadow: 0 0 6px rgba(232,67,79,.7), 0 1px 3px rgba(120,20,40,.35);
+}
+
+/* ══ หน้ารับของรางวัล: งานฉลองเล็ก ๆ ตอนได้ของใหม่ ════════════════════
+   กล่องรับของ (#rewardPanel) + ผลสุ่มตู้กาช่า (.gacha-result) — พื้นหลังวาดด้วย Canvas 2D (src/render/celebratebg.js)
+   ผ้าใบอยู่ล่างสุด (z 0) · ริบบิ้นโปรยของเดิม z 1 · หัวเรื่อง การ์ด ปุ่ม z 2 — ไม่แตะหน้าตาการ์ดหรือปุ่ม */
+.celebrate-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.reward-pop > .got-note { position: relative; z-index: 2; }
+
+/* Cat mail buttons: reference-inspired SVG artwork and live translated text. */
+#inboxPanel > .pop > .btnrow { gap: 12px 18px; padding: 0 8px 7px; }
+#inboxPanel :is(#mailClaimAll, #mailClear) {
+  --cat-art: url('/ui/cat-button-gift.svg');
+  --cat-ink: #086B62;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  min-height: 76px;
+  width: 300px;
+  max-width: 100%;
+  padding: 29px 43px 15px 66px;
+  margin-top: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #FFFFFF;
+  font-size: clamp(12px, 1.9dvh, 15px);
+  font-weight: 700;
+  line-height: 1.5;
+  -webkit-text-stroke: .7px var(--cat-ink);
+  paint-order: stroke fill;
+  text-shadow: 1px 0 var(--cat-ink), -1px 0 var(--cat-ink), 0 1px var(--cat-ink), 0 -1px var(--cat-ink), 0 2px 2px var(--cat-ink);
+  filter: drop-shadow(0 4px 3px #33204935);
+  transition: transform .15s ease, filter .15s ease;
+}
+#inboxPanel #mailClear { --cat-art: url('/ui/cat-button-mail.svg'); --cat-ink: #512680; }
+#inboxPanel :is(#mailClaimAll, #mailClear)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--cat-art) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+#inboxPanel :is(#mailClaimAll, #mailClear)::after { content: none; }
+@media (hover: hover) {
+  #inboxPanel :is(#mailClaimAll, #mailClear):not(:disabled):hover {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 6px 4px #33204940) brightness(1.05);
+  }
+}
+#inboxPanel :is(#mailClaimAll, #mailClear):not(:disabled):active { transform: translateY(2px) scale(.97); box-shadow: none; }
+#inboxPanel :is(#mailClaimAll, #mailClear):disabled {
+  transform: none;
+  opacity: .6;
+  filter: grayscale(.35) drop-shadow(0 2px 2px #33204925);
+  box-shadow: none;
+}
+#inboxPanel :is(#mailClaimAll, #mailClear):focus-visible { outline: 3px solid #FFF3E2; outline-offset: 3px; }
+@media (max-height: 480px) {
+  #inboxPanel :is(#mailClaimAll, #mailClear) { min-height: 62px; width: 260px; padding: 23px 37px 11px 57px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #inboxPanel :is(#mailClaimAll, #mailClear) { transition: none; }
+}
+
+/* Mail cards: lavender glass, envelope tile, soft status pill and paw detail. */
+#inboxPanel .mail-list { padding: 6px; gap: 12px; }
+#inboxPanel .mail-item {
+  position: relative;
+  isolation: isolate;
+  min-height: 76px;
+  gap: 17px;
+  padding: 12px 40px 12px 19px;
+  border: 2px solid #E4BDFF;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #AC76E0 0%, #945ACB 35%, #7945B5 100%);
+  box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
+    inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
+  color: #FFF8FF;
+  opacity: 1;
+  transition: transform .12s ease, filter .12s ease;
+}
+#inboxPanel .mail-item::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 15px;
+  background: radial-gradient(ellipse at center, #FFFFFF 0 55%, transparent 65%) 5px 3px / 11px 7px no-repeat,
+    radial-gradient(ellipse at center, #FFFFFF 0 55%, transparent 65%) 17px 1px / 6px 4px no-repeat;
+  border: 1px solid #FFFFFF26;
+  pointer-events: none;
+}
+#inboxPanel .mail-item::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  width: 25px;
+  height: 25px;
+  background: url('/ui/mail-paw.svg') center / contain no-repeat;
+  opacity: .45;
+  pointer-events: none;
+}
+#inboxPanel .mail-item.read { opacity: 1; }
+#inboxPanel .mail-icon {
+  position: relative;
+  width: clamp(42px, 7.6dvh, 60px);
+  height: clamp(40px, 7dvh, 56px);
+  border-radius: 15px;
+  font-size: 0;
+  background: url('/ui/mail-envelope.svg') center / 55% auto no-repeat,
+    linear-gradient(145deg, #7143A4, #4B2478);
+  box-shadow: inset 0 1px 0 #EAC8FF65, 0 1px 2px #5B2C8C40;
+}
+#inboxPanel .mail-icon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -13px;
+  width: 13px;
+  height: 19px;
+  background: linear-gradient(110deg, transparent 35%, #FFEE9D 38% 57%, transparent 60%) 0 0 / 6px 9px no-repeat,
+    linear-gradient(145deg, transparent 35%, #FFEE9D 38% 57%, transparent 60%) 5px 9px / 8px 6px no-repeat;
+  pointer-events: none;
+}
+#inboxPanel .mail-title,
+#inboxPanel .mail-item.read .mail-title { font-weight: 700; line-height: 1.5; color: #FFF8FF; text-shadow: 0 1px 2px #67379555; }
+#inboxPanel .mail-sub { color: #D4AFE9; line-height: 1.5; overflow-wrap: anywhere; }
+#inboxPanel .mail-tag { padding: 5px 13px; font-size: clamp(10px, 1.6dvh, 12px); }
+#inboxPanel .mail-tag.done { background: #C69AE166; color: #E5C6F4; box-shadow: inset 0 1px 0 #FFFFFF12; }
+#inboxPanel .mail-tag.gift { background: linear-gradient(180deg, #FFF2BA, #FFD578); color: #704619; box-shadow: 0 2px 0 #75409D55; }
+#inboxPanel .mail-item:hover { filter: brightness(1.07); }
+#inboxPanel .mail-item:active { transform: translateY(2px); box-shadow: 0 1px 0 #663398, inset 0 0 0 2px #FFFFFF28; }
+#inboxPanel .mail-item:focus-visible { outline: 3px solid #FFF0B5; outline-offset: 2px; }
+@media (max-height: 480px), (max-width: 400px) {
+  #inboxPanel .mail-item { gap: 10px; padding: 9px 31px 9px 12px; min-height: 62px; border-radius: 17px; }
+  #inboxPanel .mail-tag { padding: 4px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { #inboxPanel .mail-item { transition: none; } }
+
+/* Mail heading: solid cream fill stays above the plum outline. */
+#inboxPanel h2.skin-title {
+  color: #FFF0B8;
+  background: none;
+  -webkit-text-fill-color: #FFF0B8;
+  -webkit-text-stroke: 0;
+  font-weight: 700;
+  line-height: 1.5;
+  text-shadow:
+    -2px -2px 0 #9745BC, 0 -2px 0 #9745BC, 2px -2px 0 #9745BC,
+    -2px 0 0 #9745BC, 2px 0 0 #9745BC,
+    -2px 2px 0 #9745BC, 0 2px 0 #9745BC, 2px 2px 0 #9745BC,
+    0 4px 0 #713298, 0 5px 5px #51217955;
+  filter: none;
+}
+
+/* Pink stitched border inside the mailbox frame, above its canvas backdrop. */
+#inboxPanel > .pop { border-color: #FAD9E8; }
+#inboxPanel > .pop::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 2px dashed #F7C7DD;
+  border-radius: clamp(10px, calc(3vw - 7px), 21px);
+  z-index: 1;
+  pointer-events: none;
 }

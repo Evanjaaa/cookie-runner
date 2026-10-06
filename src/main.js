@@ -1,5 +1,6 @@
 ﻿// src/main.js
 import './style.css';
+import './ui-theme.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
@@ -58,6 +59,14 @@ import { drawPlats } from './render/platforms.js';
 import { makeDreamBg } from './render/dreambg.js';
 import { makeSkillBg } from './render/skillbg.js';
 import { makeGachaBg } from './render/gachabg.js';
+import { makeCreativeBg } from './render/creativebg.js';
+import { makeStageBg } from './render/stagebg.js';
+import { makeRankBg } from './render/rankbg.js';
+import { makeFriendsBg } from './render/friendsbg.js';
+import { makeNewsBg } from './render/newsbg.js';
+import { makeMailBg } from './render/mailbg.js';
+import { makeSettingsBg } from './render/settingsbg.js';
+import { makeCelebrateBg } from './render/celebratebg.js';
 import { PROP_LIST } from './obstacles.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
@@ -83,7 +92,7 @@ import {
 import { setupDebug, TESTER_CODES } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 import { setupCatRoomUI } from './catroom-ui.js';
 import { setupCatCardsUI } from './catcards-ui.js';
-import { createEventBackground } from './render/event-bg.js';
+import { makeEventBg } from './render/event-bg.js';
 import { syncServerClock } from './net/cloud.js';
 
 // หน้าจอระบบน้องแมว (บ้านน้อง หน้าพบน้อง เรื่องราว เคล็ดลับน้องส้ม) — สร้างทีหลังใน setupCatRoomUI
@@ -201,6 +210,10 @@ const outfitPanel = stashPanel;
 const gachaPanel = document.getElementById('gachaPanel');
 const rankPanel = document.getElementById('rankPanel');
 const settingsPanel = document.getElementById('settingsPanel');
+// ── พื้นหลังมุมสงบของหน้าตั้งค่า ── ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด ลูปหยุดเองเมื่อแผงปิด
+const settingsBg = makeSettingsBg(document.getElementById('settingsBg'),
+  () => !settingsPanel.classList.contains('hidden'), settingsPanel.querySelector('.pop'));
+new MutationObserver(() => settingsBg.kick()).observe(settingsPanel, { attributes: true, attributeFilter: ['class'] });
 const introPanel = document.getElementById('introPanel');
 const titlePanel = document.getElementById('titlePanel');
 const authPanel = document.getElementById('authPanel');
@@ -248,8 +261,16 @@ function markScrollable(el) {
 
   requestAnimationFrame(() => {
     el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 2);
+    el.classList.toggle('scrolled', el.scrollTop > 2);
   });
 }
+
+// ── ขอบบนของช่องเลื่อนจางเมื่อเลื่อนลงไปแล้ว ── (คลาส .scrolled — ดู "ขอบช่องเลื่อนนุ่ม ๆ" ใน style.css)
+// ตอนอยู่บนสุดไม่จาง แถวแรกต้องคมเต็มตัว · ตัวฟังเดียวทั้งเกม (scroll ไม่ bubble จึงฟังแบบ capture)
+document.addEventListener('scroll', (e) => {
+  const el = e.target;
+  if (el instanceof Element && el.classList.contains('scrolls')) el.classList.toggle('scrolled', el.scrollTop > 2);
+}, { capture: true, passive: true });
 
 /**
  * วาดลงแคนวาสเล็กในเมนู
@@ -2278,6 +2299,12 @@ function showSettings(on) {
   }
 }
 
+// ── พื้นหลังหอเกียรติยศของหน้าอันดับ ──
+// ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากโปรไฟล์ผู้เล่น) ลูปหยุดเองเมื่อแผงปิด
+const rankBg = makeRankBg(document.getElementById('rankBg'),
+  () => !rankPanel.classList.contains('hidden'), rankPanel.querySelector('.pop'));
+new MutationObserver(() => rankBg.kick()).observe(rankPanel, { attributes: true, attributeFilter: ['class'] });
+
 function showRank(on) {
   rankPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
@@ -2335,6 +2362,12 @@ function buildStageGrid() {
   }
   markScrollable(grid);
 }
+
+// ── พื้นหลังประตูสู่การผจญภัยของหน้าเลือกด่าน ──
+// ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากหน้ารายละเอียดด่าน/ติดตั้งสมบัติ) ลูปหยุดเองเมื่อแผงปิด
+const stageBg = makeStageBg(document.getElementById('stageBg'),
+  () => !stagePanel.classList.contains('hidden'), stagePanel.querySelector('.pop'));
+new MutationObserver(() => stageBg.kick()).observe(stagePanel, { attributes: true, attributeFilter: ['class'] });
 
 function showStages(on) {
   stagePanel.classList.toggle('hidden', !on);
@@ -2748,6 +2781,10 @@ function buildOutfitGrid() {
 // เปิดข่าวไหน = นับว่าอ่านข่าวนั้นแล้ว จุดแดงบนปุ่มนับเฉพาะข่าวที่ยังไม่เคยเปิด
 
 const newsPanel = document.getElementById('newsPanel');
+// ── พื้นหลังบอร์ดข่าว ── ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด ลูปหยุดเองเมื่อแผงปิด
+const newsBg = makeNewsBg(document.getElementById('newsBg'),
+  () => !newsPanel.classList.contains('hidden'), newsPanel.querySelector('.pop'));
+new MutationObserver(() => newsBg.kick()).observe(newsPanel, { attributes: true, attributeFilter: ['class'] });
 let newsPick = null;
 
 function refreshNewsDot() {
@@ -2789,6 +2826,10 @@ document.getElementById('newsBack').addEventListener('click', () => {
 // ห้ามเขียน localStorage ตรง ๆ ไม่งั้นตัวเลขบนจอไม่ขยับและรอบหน้าโดนเขียนทับ
 
 const inboxPanel = document.getElementById('inboxPanel');
+// ── พื้นหลังกล่องจดหมายวิเศษ ── ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (รวมกลับจากหน้าอ่านจดหมาย) ลูปหยุดเองเมื่อแผงปิด
+const mailBg = makeMailBg(document.getElementById('mailBg'),
+  () => !inboxPanel.classList.contains('hidden'), inboxPanel.querySelector('.pop'));
+new MutationObserver(() => mailBg.kick()).observe(inboxPanel, { attributes: true, attributeFilter: ['class'] });
 const mailReadPanel = document.getElementById('mailReadPanel');
 let mrCurrent = null;
 
@@ -2838,6 +2879,16 @@ function payReward(reward) {
 // พอปิดกล่องจึงกลับมาเจอรายการที่ค้างไว้ทันที ไม่ต้องกดกลับเข้าไปใหม่
 
 const rewardPanel = document.getElementById('rewardPanel');
+// ── พื้นหลังฉลองตอนได้ของ ── กล่องรับของ + ผลสุ่มตู้กาช่า (ทุกหน้าที่มีริบบิ้นโปรย)
+// ตัวเฝ้าคลาสปลุกลูปตอนกล่องเปิด และเริ่มจังหวะเปิด (แสงโผล่ → คลื่นแสง → ประกาย) ใหม่ทุกครั้ง
+const rewardCelebrate = makeCelebrateBg(document.getElementById('rewardCelebrate'),
+  () => !rewardPanel.classList.contains('hidden'), rewardPanel.querySelector('.reward-pop'));
+new MutationObserver(() => rewardCelebrate.kick()).observe(rewardPanel, { attributes: true, attributeFilter: ['class'] });
+const gachaResultEl = document.getElementById('gachaResult');
+const gachaCelebrate = makeCelebrateBg(document.getElementById('gachaCelebrate'),
+  () => !gachaResultEl.classList.contains('hidden') && !document.getElementById('gachaPanel').classList.contains('hidden'),
+  gachaResultEl);
+new MutationObserver(() => gachaCelebrate.kick()).observe(gachaResultEl, { attributes: true, attributeFilter: ['class'] });
 
 /** การ์ดของรางวัลหนึ่งใบ — ทองกับเพชรใช้ทรงเดียวกับการ์ดผลสุ่มในตู้กาช่า */
 function rewardCard(kind, amount, label) {
@@ -3083,7 +3134,7 @@ function buildMailList() {
     const item = document.createElement('button');
     item.className = 'mail-item' + (m.read && !waiting ? ' read' : '');
     item.innerHTML =
-      `<span class="mail-icon">${waiting ? '🎁' : m.read ? '📭' : '✉️'}</span>`
+      `<span class="mail-icon" aria-hidden="true">${waiting ? '🎁' : m.read ? '📭' : '✉️'}</span>`
       + '<span class="mail-main"><b class="mail-title"></b><small class="mail-sub"></small></span>'
       + (waiting ? '<span class="mail-tag gift">มีของขวัญ</span>'
         : m.reward ? '<span class="mail-tag done">รับแล้ว</span>' : '');
@@ -4468,6 +4519,11 @@ startPresence();
 // โดยไม่ต้องถามเซิร์ฟเวอร์ทีละคน
 
 const friendsPanel = document.getElementById('friendsPanel');
+// ── พื้นหลังสวนเพื่อนแมว ── (ทั้งสามแท็บ) ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้
+// รวมกลับจากโปรไฟล์เพื่อน/เยี่ยมบ้านเพื่อน) ลูปหยุดเองเมื่อแผงปิด
+const friendsBg = makeFriendsBg(document.getElementById('friendsBg'),
+  () => !friendsPanel.classList.contains('hidden'), friendsPanel.querySelector('.pop'));
+new MutationObserver(() => friendsBg.kick()).observe(friendsPanel, { attributes: true, attributeFilter: ['class'] });
 let frData = null;          // { friends, incoming, outgoing } | { reason } | null = กำลังโหลด
 let frGen = 0;              // กันผลโหลดรอบเก่ามาวาดทับรอบใหม่
 let frFound = null;         // ผลค้นหาล่าสุด { query, players } | null = ยังไม่ได้ค้น
@@ -4849,8 +4905,11 @@ if (import.meta.env.DEV) {
   };
 }
 
-// พื้นหลังบอร์ดกิจกรรม (ภาพล้วน ไม่แตะข้อมูลภารกิจ) — ลูปหยุดเองเมื่อหน้าถูกซ่อน
-const questBg = createEventBackground(document.getElementById('questBg'), questPanel.querySelector('.pop'));
+// ── พื้นหลังบอร์ดกิจกรรม ── (ภาพล้วน ไม่แตะข้อมูลภารกิจ) ตัวคุมผ้าใบชุดเดียวกับคลังน้อง/สกิล/กาช่า
+// ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้) ลูปหยุดเองเมื่อแผงปิด
+const questBg = makeEventBg(document.getElementById('questBg'),
+  () => !questPanel.classList.contains('hidden'), questPanel.querySelector('.pop'));
+new MutationObserver(() => questBg.kick()).observe(questPanel, { attributes: true, attributeFilter: ['class'] });
 
 function showQuests(on) {
   questPanel.classList.toggle('hidden', !on);
@@ -4859,7 +4918,6 @@ function showQuests(on) {
     setMsg(document.getElementById('questMsg'), '');
     refreshGold();
     buildQuestList();
-    questBg.start();
   }
 }
 
@@ -7028,6 +7086,18 @@ document.getElementById('tabFace').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); setCreateTab('face');
 });
 
+// ── พื้นหลังสตูดิโอศิลปะของหน้าโหมดสร้างสรรค์ ── (ทั้งสองแท็บ + โหมดเต็มจอ)
+// ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด/สลับเต็มจอ ลูปหยุดเองเมื่อแผงปิด
+const createBg = makeCreativeBg(document.getElementById('createBg'),
+  () => !createPanel.classList.contains('hidden'), createPanel.querySelector('.pop'));
+new MutationObserver(() => createBg.kick()).observe(createPanel, { attributes: true, attributeFilter: ['class'] });
+// เลือกสีใหม่ = แสงหลังตัวน้องเรืองเป็นสีนั้นแวบหนึ่ง — ตัวฟังแยกของตัวเอง ไม่แตะระบบเลือกสีเลย
+document.getElementById('paintSwatches').addEventListener('click', (e) => {
+  const b = e.target.closest('.pswatch');
+  if (b) createBg.colorPulse(b.dataset.color);
+});
+document.getElementById('paintFree').addEventListener('change', (e) => createBg.colorPulse(e.target.value));
+
 // ── ปุ่มของระบบสมบัติ ──────────────────────────────────────
 
 document.getElementById('tdBack').addEventListener('click', () => {
@@ -7905,6 +7975,8 @@ if (import.meta.env.DEV) {
   window.__game = game;
   // เปิดหน้าสรุปผลด้วยตัวเลขที่ตั้งเองได้ ไม่ต้องเล่นจนตายทุกครั้งที่จะดูหน้านี้
   window.__showGameOver = showGameOver;
+  window.__showReward = showReward;   // กล่องรับของ (ลองพื้นหลังฉลองโดยไม่ต้องมีจดหมายจริง)
+  window.__openResult = openResult;   // ผลสุ่มตู้กาช่า (ลองโดยไม่ต้องใช้เพชร)
   window.__askRevive = askRevive;     // กล่อง "น้องตกหลุม" โดยไม่ต้องรอตกหลุมจริง
   window.__showNameStep = showNameStep; // หน้าตั้งชื่อ + แอนิเมชันเปิด โดยไม่ต้องสร้างบัญชีใหม่
 }

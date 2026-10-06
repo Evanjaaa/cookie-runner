@@ -24,7 +24,7 @@
 //   9 drawEventConfetti    กระดาษสีชิ้นจิ๋วร่วงช้า ๆ ตามขอบ
 //  10 drawEventParticles   จุดแสงลอยขึ้นช้า ๆ
 // ─────────────────────────────────────────────────────────────
-import { quality } from '../graphics.js';
+import { makeCanvasBg } from './dreambg.js';
 
 const TAU = Math.PI * 2;
 const COLORS = {
@@ -312,14 +312,14 @@ export function drawEventRibbon(ctx, x, y, s, a, t) {
 }
 
 /** 9 · กระดาษสีชิ้นเดียว (สี่เหลี่ยมมนหมุนพลิก) */
-export function drawEventConfettiPiece(ctx, c, x, y, a) {
+export function drawEventConfettiPiece(ctx, c, x, y, a, rot = c.rot, flip = c.flip) {
   ctx.save();
   ctx.globalAlpha = a;
   ctx.fillStyle = c.color;
   ctx.translate(x, y);
-  ctx.rotate(c.rot);
+  ctx.rotate(rot);
   // พลิกตัว = ย่อด้านกว้างตามเวลา เหมือนกระดาษหมุนกลางอากาศ
-  ctx.scale(Math.max(0.25, Math.abs(Math.cos(c.flip))), 1);
+  ctx.scale(Math.max(0.25, Math.abs(Math.cos(flip))), 1);
   ctx.beginPath();
   if (c.round) ctx.arc(0, 0, c.s * 0.5, 0, TAU);
   else ctx.roundRect(-c.s * 0.5, -c.s * 0.3, c.s, c.s * 0.6, 1);
@@ -328,32 +328,81 @@ export function drawEventConfettiPiece(ctx, c, x, y, a) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ตัวคุมฉาก — วัดหน้าจริง วางของตามช่องว่าง เดินอนิเมชันเฉพาะตอนหน้าเปิดอยู่
+// ฉากของหน้ากิจกรรม — ใช้ตัวคุมผ้าใบชุดเดียวกับคลังน้อง/สกิล/กาช่า (makeCanvasBg ใน dreambg.js)
+//   still  วาดครั้งเดียวต่อขนาดผ้าใบ: พื้น เมฆ ลวดลายแมวจิ๋ว (ของที่ไม่ขยับ)
+//   live   ทุกเฟรม ~30 fps: แสงหายใจ ทางภารกิจ ไฮไลต์การ์ด หัวเรื่อง ประกาย กระดาษสี จุดแสง
+// ของที่เคลื่อนไหวคิดตำแหน่งจากเวลา t ล้วน ๆ — ไม่มีออบเจกต์ไหนถูกแก้หรือสร้างใหม่ระหว่างเฟรม
 // ─────────────────────────────────────────────────────────────
 
-/**
- * ผูกพื้นหลังเข้ากับการ์ดใหญ่ของหน้ากิจกรรม
- * @param canvas ผ้าใบที่วางเป็นชั้นล่างสุดในการ์ด (CSS ยืดเต็มการ์ด)
- * @param pop    การ์ดใหญ่ (.pop) — ใช้วัดตำแหน่งหัวเรื่อง รายการ และการ์ดภารกิจ
- * คืน { start, stop } — start ตอนเปิดหน้า / ลูปหยุดเองเมื่อหน้าถูกซ่อน
- */
-export function createEventBackground(canvas, pop) {
-  const ctx = canvas.getContext('2d');
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let w = 0;
-  let h = 0;
-  let dpr = 1;
-  let raf = 0;
-  let last = 0;
-  let t = 0;
-  let frame = 0;
-  // พื้นที่ที่ห้ามวางของ / ช่องว่างที่วางได้ (วัดใหม่ทุก ๆ ไม่กี่เฟรม — รายการเลื่อนได้)
-  let L = 0, R = 0, top = 0, bottom = 0;
-  let title = null;
-  let hot = [];        // การ์ดที่รับรางวัลได้ (ready) — กรอบสัมพัทธ์กับการ์ดใหญ่
-  let done = [];       // การ์ดที่รับแล้ว
+/** วัดตำแหน่งการ์ดภารกิจใหม่ทุกกี่วินาที (รายการเลื่อนได้ / กดรับรางวัลแล้วสถานะเปลี่ยน) */
+const REMEASURE_S = 0.4;
 
-  // ── ของที่เคลื่อนไหว — สร้างครั้งเดียว ใช้ซ้ำตลอด ไม่สร้างใหม่ทุกเฟรม ──
+/**
+ * ตำแหน่งของ el ในการ์ดใหญ่ตามเลย์เอาต์ (offsetLeft/Top ไล่ขึ้นไปจนถึงการ์ด หักระยะที่เลื่อนรายการไว้)
+ *
+ * ── ทำไมไม่ใช้ getBoundingClientRect ──
+ * ตอนเปิดหน้า การ์ดใหญ่เด้งเข้า (ย่อ → ขยาย) และของข้างในไล่ขึ้นทีละชิ้น (เลื่อนขึ้น 14px)
+ * getBoundingClientRect ได้ตำแหน่ง "ระหว่างแอนิเมชัน" — ทางจุดไข่ปลา ดาว แสงรอบการ์ด
+ * จึงถูกวางตามรายการที่ยังลอยต่ำอยู่ แล้ววัดใหม่ทีหลังกระโดดขึ้นไป (ที่ผู้ใช้เห็นว่า "เด้งขึ้น")
+ * ค่า offset* เป็นตำแหน่งตามเลย์เอาต์ ไม่สนแอนิเมชันเลย จึงถูกตั้งแต่เฟรมแรก
+ */
+export function layoutRect(pop, el) {
+  let x = 0;
+  let y = 0;
+  let n = el;
+  while (n && n !== pop) {
+    x += n.offsetLeft;
+    y += n.offsetTop;
+    const p = n.offsetParent;
+    if (!p) return null;
+    // ระยะที่กล่องเลื่อนได้ (รายการภารกิจ) เลื่อนไว้ — ของข้างในขยับขึ้นตามนั้นจริงบนจอ
+    for (let a = n.parentElement; a && a !== p; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
+    if (p !== pop) { x += p.clientLeft - p.scrollLeft; y += p.clientTop - p.scrollTop; }
+    n = p;
+  }
+  return n === pop ? { x, y, w: el.offsetWidth, h: el.offsetHeight } : null;
+}
+
+/**
+ * ตำแหน่ง "ที่ตาเห็น" ของ el ในพิกัดผ้าใบ + ความทึบที่ตาเห็น — สำหรับแสงที่ต้องเกาะของชิ้นนั้นติด
+ * (แสงหลังตัวน้อง / การ์ดด่านที่เลือก / แถวอันดับ 1-3) วัดได้ทุกเฟรม (ถูก เพราะใช้กับของไม่กี่ชิ้น)
+ *
+ * ── ทำไมไม่ใช้ layoutRect กับแสงพวกนี้ ──
+ * ตอนเปิดหน้า เนื้อหาในการ์ดใหญ่เลื่อนขึ้น 14px และจางเข้า (0 → 1) แต่ผ้าใบนิ่งอยู่กับการ์ด
+ * แสงที่วาดตำแหน่งสุดท้ายเต็มความสว่างตั้งแต่เฟรมแรก จะเห็นเป็นหมอกขยับ แล้ว "แสงวาบ" มาก่อนเนื้อหา
+ * (ผู้ใช้เจอทั้งสองอาการในหน้าสร้างสรรค์) — ค่านี้หารสัดส่วนที่การ์ดถูกย่ออยู่ออก แล้วคูณความทึบทุกชั้น
+ * แสงจึงเลื่อนขึ้นและจางเข้าพร้อมของจริงพอดี
+ *
+ * @param out ก้อนผลลัพธ์ที่ใช้ซ้ำ { x, y, w, h, a } — คืน out หรือ null ถ้า el ไม่ได้อยู่บนจอ
+ */
+export function trackRect(canvas, pop, el, w, out) {
+  if (!el || !el.isConnected || !el.offsetParent) return null;
+  const cr = canvas.getBoundingClientRect();
+  if (!cr.width) return null;
+  const r = el.getBoundingClientRect();
+  const k = w / cr.width;
+  out.x = (r.left - cr.left) * k;
+  out.y = (r.top - cr.top) * k;
+  out.w = r.width * k;
+  out.h = r.height * k;
+  let a = 1;
+  for (let n = el; n && n !== pop; n = n.parentElement) a *= +getComputedStyle(n).opacity || 0;
+  out.a = a;
+  return out;
+}
+
+/**
+ * พื้นหลังบอร์ดกิจกรรม
+ * @param canvas   ผ้าใบลูกคนแรกของการ์ดใหญ่ (CSS ยืดเต็มการ์ด)
+ * @param isActive แผงเปิดอยู่ไหม — ลูปถามทุกเฟรมแล้วหยุดเองเมื่อแผงปิด
+ * @param pop      การ์ดใหญ่ (.pop) — ใช้วัดหัวเรื่อง รายการ และการ์ดภารกิจ
+ * คืน { kick } เหมือนฉากอื่น — ตัวเฝ้าคลาสของแผงใน main.js เป็นคนปลุก
+ */
+export function makeEventBg(canvas, isActive, pop) {
+  // ── ช่องว่างที่วางของได้ / การ์ดที่ต้องเรือง — ก้อนเดียวใช้ซ้ำ วัดใหม่เป็นระยะ ──
+  const M = { L: 0, R: 0, top: 0, bottom: 0, title: null, hot: [], done: [], at: -Infinity, w: 0 };
+
+  // ── ของที่เคลื่อนไหว — วางครั้งเดียวด้วยตัวสุ่มแบบมีเมล็ด (ตำแหน่งเดิมทุกครั้งที่เปิดหน้า) ──
   const rnd = seeded(20261005);
   const confetti = Array.from({ length: 8 }, (_, i) => ({
     side: i % 2, u: rnd(), y: rnd(), s: 4 + rnd() * 3, rot: rnd() * TAU, flip: rnd() * TAU,
@@ -369,88 +418,80 @@ export function createEventBackground(canvas, pop) {
   }));
 
   /** อยู่ในช่องว่างข้างไหน → พิกัด x จริง (u = 0-1 ภายในช่อง) */
-  const sideX = (side, u) => (side ? w - R + u * R : u * L);
+  const sideX = (side, u) => (side ? M.w - M.R + u * M.R : u * M.L);
 
   /**
-   * ตำแหน่งของ el ในการ์ดใหญ่ตามเลย์เอาต์ (offsetLeft/Top ไล่ขึ้นไปจนถึงการ์ด หักระยะที่เลื่อนรายการไว้)
-   *
-   * ── ทำไมไม่ใช้ getBoundingClientRect ──
-   * ตอนเปิดหน้า การ์ดใหญ่เด้งเข้า (ย่อ → ขยาย) และของข้างในไล่ขึ้นทีละชิ้น (เลื่อนขึ้น 14px)
-   * getBoundingClientRect ได้ตำแหน่ง "ระหว่างแอนิเมชัน" — ทางจุดไข่ปลา ดาว แสงรอบการ์ด
-   * จึงถูกวางตามรายการที่ยังลอยต่ำอยู่ แล้ววัดใหม่ทีหลังกระโดดขึ้นไป (ที่ผู้ใช้เห็นว่า "เด้งขึ้น")
-   * ค่า offset* เป็นตำแหน่งตามเลย์เอาต์ ไม่สนแอนิเมชันเลย จึงถูกตั้งแต่เฟรมแรก
+   * วัดหน้าใหม่ — ค่าทั้งหมดคูณ k ให้ตรงกับขนาดผ้าใบตอนนั้น
+   * (ระหว่างการ์ดเด้งเข้า ผ้าใบถูกย่ออยู่ ตัวคุมผ้าใบวัดขนาดจากที่ตาเห็น ส่วน offset* เป็นขนาดเลย์เอาต์)
    */
-  function layoutRect(el) {
-    let x = 0;
-    let y = 0;
-    let n = el;
-    while (n && n !== pop) {
-      x += n.offsetLeft;
-      y += n.offsetTop;
-      const p = n.offsetParent;
-      if (!p) return null;
-      // ระยะที่กล่องเลื่อนได้ (รายการภารกิจ) เลื่อนไว้ — ของข้างในขยับขึ้นตามนั้นจริงบนจอ
-      for (let a = n.parentElement; a && a !== p; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
-      if (p !== pop) { x += p.clientLeft - p.scrollLeft; y += p.clientTop - p.scrollTop; }
-      n = p;
-    }
-    return n === pop ? { x, y, w: el.offsetWidth, h: el.offsetHeight } : null;
-  }
-
-  function measure() {
+  function measure(w) {
     const fullW = pop.offsetWidth;
     const fullH = pop.offsetHeight;
-    if (!fullW) return false;
+    if (!fullW) return;
+    const k = w / fullW;
+    const sc = (r) => r && { x: r.x * k, y: r.y * k, w: r.w * k, h: r.h * k };
     const list = pop.querySelector('.quest-list');
-    const lb = (list && layoutRect(list)) || { x: 0, y: 0, w: fullW, h: fullH };
-    L = Math.max(0, lb.x);
-    R = Math.max(0, fullW - (lb.x + lb.w));
-    top = Math.max(0, lb.y);
-    bottom = Math.max(0, fullH - (lb.y + lb.h));
+    const lb = (list && layoutRect(pop, list)) || { x: 0, y: 0, w: fullW, h: fullH };
+    M.w = w;
+    M.L = Math.max(0, lb.x) * k;
+    M.R = Math.max(0, fullW - (lb.x + lb.w)) * k;
+    M.top = Math.max(0, lb.y) * k;
+    M.bottom = Math.max(0, fullH - (lb.y + lb.h)) * k;
     const tEl = pop.querySelector('.quest-title');
-    title = tEl ? layoutRect(tEl) : null;
-    hot = [];
-    done = [];
+    M.title = tEl ? sc(layoutRect(pop, tEl)) : null;
+    M.hot.length = 0;
+    M.done.length = 0;
     for (const row of pop.querySelectorAll('.quest-row')) {
-      const r = layoutRect(row);
+      const r = layoutRect(pop, row);
       // ข้อที่เลื่อนพ้นช่องรายการไปแล้วไม่ต้องเรือง
       if (!r || r.y + r.h < lb.y || r.y > lb.y + lb.h) continue;
-      const rect = { ...r, clipTop: lb.y, clipBot: lb.y + lb.h };
-      if (row.classList.contains('ready')) hot.push(rect);
-      else if (row.classList.contains('done')) done.push(rect);
+      if (row.classList.contains('ready')) M.hot.push(sc(r));
+      else if (row.classList.contains('done')) M.done.push(sc(r));
     }
-    const nd = Math.min(window.devicePixelRatio || 1, quality().scale);
-    if (fullW !== w || fullH !== h || nd !== dpr) {
-      w = fullW;
-      h = fullH;
-      dpr = nd;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-    }
-    return true;
   }
 
-  function draw() {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const breathe = 0.85 + 0.15 * Math.sin(t * 0.7);
-
-    // 1-2 · พื้น + แสงนุ่ม
+  /** ชั้นนิ่ง — พื้น เมฆ ลวดลายแมวจิ๋ว (วาดครั้งเดียวต่อขนาดผ้าใบ) */
+  function still(ctx, w, h) {
+    measure(w);
+    const { L, R, bottom } = M;
     drawEventBackground(ctx, w, h);
-    if (title) drawEventGlow(ctx, title.x + title.w / 2, title.y + title.h / 2, Math.max(120, title.w * 0.9), COLORS.lavender, 0.16 * breathe);
-    // มุมล่าง: ชมพู (ซ้าย) กับพีช #F1B4B1 (ขวา) — สดขึ้นให้เข้ากับหน้าอื่น
-    drawEventGlow(ctx, w * 0.06, h * 0.96, Math.min(w, h) * 0.46, COLORS.pink, 0.3 * breathe);
-    drawEventGlow(ctx, w * 0.95, h * 0.94, Math.min(w, h) * 0.44, '#F1B4B1', 0.28 * (1.7 - breathe));
-    drawEventGlow(ctx, w * 0.92, h * 0.12, Math.min(w, h) * 0.3, COLORS.mint, 0.07 * breathe);
 
-    // 3 · หมอกเมฆมุมล่าง (ส่วนใหญ่อยู่นอกการ์ดภารกิจ ตัวการ์ดทึบบังส่วนที่ล้ำเข้ามาอยู่แล้ว)
+    // หมอกเมฆมุมล่าง (ส่วนใหญ่อยู่นอกการ์ดภารกิจ ตัวการ์ดทึบบังส่วนที่ล้ำเข้ามาอยู่แล้ว)
     const cs = Math.min(w, h) * 0.075;
     drawEventCloud(ctx, w * 0.03, h - cs * 0.3, cs * 1.3, 0.16, COLORS.pink);
     drawEventCloud(ctx, w * 0.13, h + cs * 0.15, cs, 0.12);
     drawEventCloud(ctx, w * 0.97, h - cs * 0.2, cs * 1.25, 0.16);
     drawEventCloud(ctx, w * 0.86, h + cs * 0.25, cs * 0.9, 0.12, COLORS.pink);
 
-    // 4 · ทางภารกิจ — เฉพาะตอนขอบข้างกว้างพอ (มือถือแนวนอนขอบแคบ ทางจะโดนการ์ดบังหมด ไม่ต้องวาด)
+    // ลวดลายแมวจิ๋ว ตามมุมและขอบ (นิ่ง ไม่ขยับ)
+    if (L > 26) {
+      drawEventPaw(ctx, L * 0.35, h * 0.86, 4.5, -0.5, 0.12);
+      drawEventPaw(ctx, L * 0.62, h * 0.8, 4.5, -0.3, 0.1);
+      drawEventFish(ctx, L * 0.45, h * 0.3, 6, 0.1);
+    }
+    if (R > 26) {
+      drawEventHeart(ctx, w - R * 0.5, h * 0.24, 9, 0.16);
+      drawEventGift(ctx, w - R * 0.5, h * 0.76, 7, 0.11);
+    }
+    if (bottom > 14) drawEventCatFace(ctx, w * 0.5, h - bottom * 0.5, Math.min(7, bottom * 0.3), 0.08);
+  }
+
+  /** ชั้นเคลื่อนไหว — ทุกเฟรม */
+  function live(ctx, w, h, _L, t) {
+    if (t - M.at > REMEASURE_S || t < M.at || w !== M.w) {
+      measure(w);
+      M.at = t;
+    }
+    const { L, R, top, bottom, title } = M;
+    const breathe = 0.85 + 0.15 * Math.sin(t * 0.7);
+
+    // แสงนุ่มหายใจช้า ๆ — หลังหัวเรื่อง มุมล่างชมพู (ซ้าย) พีช #F1B4B1 (ขวา) มิ้นต์จาง ๆ มุมขวาบน
+    if (title) drawEventGlow(ctx, title.x + title.w / 2, title.y + title.h / 2, Math.max(120, title.w * 0.9), COLORS.lavender, 0.16 * breathe);
+    drawEventGlow(ctx, w * 0.06, h * 0.96, Math.min(w, h) * 0.46, COLORS.pink, 0.3 * breathe);
+    drawEventGlow(ctx, w * 0.95, h * 0.94, Math.min(w, h) * 0.44, '#F1B4B1', 0.28 * (1.7 - breathe));
+    drawEventGlow(ctx, w * 0.92, h * 0.12, Math.min(w, h) * 0.3, COLORS.mint, 0.07 * breathe);
+
+    // ทางภารกิจ — เฉพาะตอนขอบข้างกว้างพอ (มือถือแนวนอนขอบแคบ ทางจะโดนการ์ดบังหมด ไม่ต้องวาด)
     if (L > 34) {
       drawEventPath(ctx, [
         { x: L * 0.55, y: h - Math.max(bottom, 18) * 0.5 },
@@ -468,130 +509,70 @@ export function createEventBackground(canvas, pop) {
       ], 0.14, t + 2, [0.45]);
     }
 
-    // 5 · ลวดลายแมวจิ๋ว ตามมุมและขอบ (นิ่ง ไม่ขยับ)
-    if (L > 26) {
-      drawEventPaw(ctx, L * 0.35, h * 0.86, 4.5, -0.5, 0.12);
-      drawEventPaw(ctx, L * 0.62, h * 0.8, 4.5, -0.3, 0.1);
-      drawEventFish(ctx, L * 0.45, h * 0.3, 6, 0.1);
-    }
-    if (R > 26) {
-      drawEventHeart(ctx, w - R * 0.5, h * 0.24, 9, 0.16);
-      drawEventGift(ctx, w - R * 0.5, h * 0.76, 7, 0.11);
-    }
-    if (bottom > 14) drawEventCatFace(ctx, w * 0.5, h - bottom * 0.5, Math.min(7, bottom * 0.3), 0.08);
-
-    // 6 · ไฮไลต์การ์ด — แสงอุ่น ๆ "รอบ" การ์ดที่รับได้ (ตัวการ์ดทึบ แสงจึงโผล่แค่ขอบนอก ไม่ลอดหลังข้อความ)
+    // ไฮไลต์การ์ด — แสงอุ่น ๆ "รอบ" การ์ดที่รับได้ (ตัวการ์ดทึบ แสงจึงโผล่แค่ขอบนอก ไม่ลอดหลังข้อความ)
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, top - 4, w, Math.max(0, h - top - bottom + 8));
     ctx.clip();
-    for (const r of hot) {
-      const g = 0.6 + 0.4 * Math.sin(t * 1.6);
+    const g = 0.6 + 0.4 * Math.sin(t * 1.6);
+    for (const r of M.hot) {
       drawEventGlow(ctx, r.x + r.w * 0.5, r.y + r.h * 0.5, r.w * 0.55, COLORS.mint, 0.12 + 0.08 * g);
       drawEventGlow(ctx, r.x + r.w * 0.85, r.y + r.h * 0.5, r.h * 1.2, COLORS.yellow, 0.1 + 0.08 * g);
       // ประกายเล็กสองดวงนอกมุมการ์ด
       drawEventSparkle(ctx, r.x - 6, r.y + 6, 5, 0.5 * g, COLORS.yellow);
-      drawEventSparkle(ctx, r.x + r.w + 6, r.y + r.h - 6, 4, 0.5 * (1 - g + 0.3), COLORS.mint);
+      drawEventSparkle(ctx, r.x + r.w + 6, r.y + r.h - 6, 4, 0.5 * (1.3 - g), COLORS.mint);
     }
     // ข้อที่รับแล้ว — ดาวทองจิ๋วนิ่ง ๆ ข้างนอกขอบขวา (ฉลองเบา ๆ ไม่กะพริบ ไม่รบกวน)
-    for (const r of done) {
-      if (R < 14) break;
-      drawEventStar(ctx, r.x + r.w + Math.min(10, R * 0.4), r.y + r.h * 0.35, 2.6, 0.32, COLORS.yellow);
-      drawEventStar(ctx, r.x + r.w + Math.min(16, R * 0.6), r.y + r.h * 0.6, 1.8, 0.24, COLORS.yellow);
+    if (R >= 14) {
+      for (const r of M.done) {
+        drawEventStar(ctx, r.x + r.w + Math.min(10, R * 0.4), r.y + r.h * 0.35, 2.6, 0.32, COLORS.yellow);
+        drawEventStar(ctx, r.x + r.w + Math.min(16, R * 0.6), r.y + r.h * 0.6, 1.8, 0.24, COLORS.yellow);
+      }
     }
     ctx.restore();
 
-    // 7 · หัวเรื่อง: โบเล็กทางซ้าย ดาวสองดวงเหนือมุมขวา — ไม่ทับตัวหนังสือ
+    // หัวเรื่อง: โบเล็กทางซ้าย ดาวสองดวงเหนือมุมขวา — ไม่ทับตัวหนังสือ
     if (title) {
       drawEventRibbon(ctx, title.x - 20, title.y + title.h * 0.42, 9, 0.75, t);
-      const tw = (k) => 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.3 + k));
-      drawEventStar(ctx, title.x + title.w + 10, title.y + 2, 3.4, tw(0), COLORS.yellow);
-      drawEventStar(ctx, title.x + title.w + 22, title.y + title.h * 0.35, 2.2, tw(2), COLORS.cream);
+      drawEventStar(ctx, title.x + title.w + 10, title.y + 2, 3.4, 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.3)), COLORS.yellow);
+      drawEventStar(ctx, title.x + title.w + 22, title.y + title.h * 0.35, 2.2, 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.3 + 2)), COLORS.cream);
     }
 
-    // 8 · ประกายกะพริบช้า ๆ ตามขอบ
+    // ประกายกะพริบช้า ๆ ตามขอบ
     for (const s of sparkles) {
-      const room = s.side ? R : L;
-      if (room < 18) continue;
-      const a = Math.max(0, Math.sin(t * s.sp + s.ph)) * 0.5;
-      drawEventSparkle(ctx, sideX(s.side, s.u), s.y * h, s.r, a);
+      if ((s.side ? R : L) < 18) continue;
+      drawEventSparkle(ctx, sideX(s.side, s.u), s.y * h, s.r, Math.max(0, Math.sin(t * s.sp + s.ph)) * 0.5);
     }
 
-    // 9 · กระดาษสีร่วงช้า ๆ ตามขอบ
+    // กระดาษสีร่วงช้า ๆ ตามขอบ — ร่วงพ้นล่างแล้ววนกลับบนสุด เลื่อนตำแหน่งข้างทุกรอบ จะได้ไม่ตกซ้ำที่เดิม
     for (const c of confetti) {
-      const room = c.side ? R : L;
-      if (room < 18) continue;
-      drawEventConfettiPiece(ctx, c, sideX(c.side, 0.15 + c.u * 0.7), c.y * h, 0.4);
+      if ((c.side ? R : L) < 18) continue;
+      const fall = c.y + 0.05 + c.vy * t;
+      const lap = Math.floor(fall / 1.1);
+      const u = (c.u + lap * 0.37) % 1;
+      drawEventConfettiPiece(ctx, c, sideX(c.side, 0.15 + u * 0.7), (fall - lap * 1.1 - 0.05) * h, 0.4,
+        c.rot + c.vr * t, c.flip + t * 1.2);
     }
 
-    // 10 · จุดแสงลอยขึ้นช้า ๆ
+    // จุดแสงลอยขึ้นช้า ๆ
+    ctx.save();
     for (const m of motes) {
-      const room = m.side ? R : L;
-      if (room < 14) continue;
-      const x = sideX(m.side, 0.1 + m.u * 0.8) + Math.sin(t * 0.6 + m.ph) * 4;
-      ctx.save();
+      if ((m.side ? R : L) < 14) continue;
+      const rise = (1.03 - m.y) + m.vy * t;
+      const lap = Math.floor(rise / 1.06);
+      const u = (m.u + lap * 0.53) % 1;
+      const x = sideX(m.side, 0.1 + u * 0.8) + Math.sin(t * 0.6 + m.ph) * 4;
       ctx.globalAlpha = 0.18 + 0.14 * Math.sin(t + m.ph);
       ctx.fillStyle = m.color;
       ctx.beginPath();
-      ctx.arc(x, m.y * h, m.r, 0, TAU);
+      ctx.arc(x, (1.03 - (rise - lap * 1.06)) * h, m.r, 0, TAU);
       ctx.fill();
-      ctx.restore();
     }
+    ctx.restore();
   }
 
-  /** ขยับของหนึ่งก้าว (dt = วินาที) — ช้ามากโดยตั้งใจ */
-  function step(dt) {
-    t += dt;
-    for (const c of confetti) {
-      c.y += c.vy * dt;
-      c.rot += c.vr * dt;
-      c.flip += dt * 1.2;
-      if (c.y > 1.05) { c.y = -0.05; c.u = (c.u + 0.37) % 1; }
-    }
-    for (const m of motes) {
-      m.y -= m.vy * dt;
-      if (m.y < -0.03) { m.y = 1.03; m.u = (m.u + 0.53) % 1; }
-    }
-  }
-
-  const visible = () => !!pop.offsetParent && !pop.closest('.panel')?.classList.contains('hidden');
-
-  function loop(now) {
-    if (!visible()) { raf = 0; return; }
-    raf = requestAnimationFrame(loop);
-    // 30 เฟรมต่อวินาทีพอ — ของทุกชิ้นขยับช้า วาดถี่กว่านี้ไม่ได้อะไรเพิ่มนอกจากเปลืองแบต
-    if (now - last < 32) return;
-    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
-    last = now;
-    if (frame++ % 12 === 0 && !measure()) return;
-    step(dt);
-    draw();
-  }
-
-  function start() {
-    last = 0;
-    frame = 0;
-    if (!measure()) {
-      requestAnimationFrame(() => start());
-      return;
-    }
-    // ผู้เล่นขอลดการเคลื่อนไหว = วาดภาพนิ่งครั้งเดียว (วาดใหม่เมื่อเลื่อนรายการ)
-    if (reduce.matches) { draw(); return; }
-    if (!raf) raf = requestAnimationFrame(loop);
-  }
-
-  function stop() {
-    cancelAnimationFrame(raf);
-    raf = 0;
-  }
-
-  // รายการเลื่อน = การ์ดที่ต้องเรืองย้ายที่ — วัดใหม่ทันที (ภาพนิ่งก็วาดใหม่ด้วย)
-  pop.querySelector('.quest-list')?.addEventListener('scroll', () => {
-    if (!visible()) return;
-    measure();
-    if (reduce.matches) draw();
-  }, { passive: true });
-  window.addEventListener('resize', () => { if (visible()) { measure(); if (reduce.matches) draw(); } });
-
-  return { start, stop, refresh: () => { if (visible()) { measure(); if (reduce.matches || !raf) draw(); } } };
+  const bg = makeCanvasBg(canvas, isActive, { layout: () => M, still, live });
+  // รายการเลื่อน = การ์ดที่ต้องเรืองย้ายที่ — วัดใหม่เฟรมถัดไปเลย (ภาพนิ่งก็วาดใหม่ผ่าน kick)
+  pop.querySelector('.quest-list')?.addEventListener('scroll', () => { M.at = -Infinity; bg.kick(); }, { passive: true });
+  return bg;
 }

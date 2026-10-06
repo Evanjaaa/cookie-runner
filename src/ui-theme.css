@@ -1,0 +1,198 @@
+/* Shared MeowZing UI. Loaded after page styles; artwork never intercepts input. */
+#stage {
+  --kawaii-cream: #FFF0B8;
+  --kawaii-stitch: #F7C7DD;
+  --kawaii-outline: #9745BC;
+  --kawaii-card: linear-gradient(180deg, #AC76E0, #945ACB 35%, #7945B5);
+  --kawaii-lift: 0 3px 0 #663398, 0 5px 10px #48237138, inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
+}
+/* Frames retain their scene artwork and original responsive dimensions. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.pop, .tl-sheet, .odds-pop, .gacha-result, .auth-pop) {
+  border-color: #FAD9E8;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.pop, .tl-sheet, .odds-pop, .gacha-result, .auth-pop)::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 2px dashed var(--kawaii-stitch);
+  border-radius: clamp(10px, calc(3vw - 7px), 21px);
+  z-index: 4;
+  pointer-events: none;
+  background: none;
+  box-shadow: none;
+}
+/* Solid fill avoids the transparent text/outline issue on the mailbox heading. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(h2, .skin-title, .got-title, .tl-sheet-name, .news-title) {
+  color: var(--kawaii-cream);
+  background: none;
+  -webkit-text-fill-color: var(--kawaii-cream);
+  -webkit-text-stroke: 0;
+  font-weight: 700;
+  text-shadow: -2px -2px 0 #9745BC, 0 -2px 0 #9745BC, 2px -2px 0 #9745BC,
+    -2px 0 0 #9745BC, 2px 0 0 #9745BC, -2px 2px 0 #9745BC,
+    0 2px 0 #9745BC, 2px 2px 0 #9745BC, 0 4px 0 #713298, 0 5px 5px #51217955;
+  filter: none;
+}
+/* Action buttons share the reference silhouette. Content, prices and icons stay live. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup) {
+  --cat-art: url('/ui/cat-button-mint.svg');
+  --cat-ink: #086B62;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #FFFFFF;
+  -webkit-text-fill-color: #FFFFFF;
+  -webkit-text-stroke: 0;
+  text-shadow: 1px 0 var(--cat-ink), -1px 0 var(--cat-ink), 0 1px var(--cat-ink), 0 -1px var(--cat-ink), 0 2px 2px var(--cat-ink);
+  padding-inline: max(24px, 1.5em);
+  padding-top: max(13px, .85em);
+  padding-bottom: max(9px, .6em);
+  min-height: 42px;
+  filter: drop-shadow(0 3px 2px #33204935);
+  transition: transform .15s ease, filter .15s ease;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn.ghost, .cc-btn.soft, .cc-btn.warn, .cr-pill, .pf-action, .auth-signup) {
+  --cat-art: url('/ui/cat-button-lavender.svg');
+  --cat-ink: #512680;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup)::before {
+  content: '';
+  position: absolute;
+  inset: -9px -5px -2px;
+  z-index: -1;
+  background: var(--cat-art) center / 100% 100% no-repeat;
+  border: 0;
+  border-radius: 0;
+  pointer-events: none;
+  filter: none;
+  box-shadow: none;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup)::after { content: none; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):not(:disabled):active {
+  transform: translateY(2px) scale(.97);
+  box-shadow: none;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):disabled {
+  opacity: .55;
+  filter: grayscale(.35);
+  box-shadow: none;
+  transform: none;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):focus-visible {
+  outline: 3px solid #FFF0B8;
+  outline-offset: 4px;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn.tiny, .cc-btn, .cr-pill) {
+  min-height: 34px;
+  padding: 9px 19px 6px;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .btn.pull { padding: 17px 26px 11px; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .btnrow { gap: 14px; }
+/* Compact navigation stays compact, with a stitched pastel surface. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.stab, .gtab, .fchip, .langbtn, .stepbtn, .more-btn, .cr-mini-btn) {
+  border: 1px dashed #F7C7DD;
+  background: linear-gradient(180deg, #B47BE4, #8550B9);
+  color: #FFF2FD;
+  box-shadow: inset 0 1px 0 #FFFFFF40, 0 2px 0 #693A96;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.stab, .gtab, .fchip, .langbtn).on {
+  background: linear-gradient(180deg, #D7FFF2, #97E5D2);
+  color: #245E54;
+  border-color: #FFF5E6;
+  box-shadow: inset 0 1px 0 #FFFFFF90, 0 2px 0 #5EAE9D;
+}
+/* Mail-like surfaces for lists, messages, and collectible cards. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) {
+  --plate-face: var(--kawaii-card);
+  --plate-line: #E4BDFF;
+  --plate-lift: var(--kawaii-lift);
+  --plate-press: 0 1px 0 #663398, inset 0 0 0 2px #FFFFFF28;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.mail-item, .news-item, .quest-row, .rank-row, .scene-row, .stage-card,
+  .skin-card, .tl-card, .tl-equipped, .cc-card, .cs-friend, .cr-card, .pf-card,
+  .pf-lookup-card, .over-card, .confirm-card, .name-card, .dl-card, .lv-what,
+  .news-view, .mr-body, .tdetail, .odetail, .grid-empty, .cc-empty) {
+  border-color: #E4BDFF;
+  background: url('/ui/mail-paw.svg') right 8px bottom 7px / 23px 23px no-repeat,
+    radial-gradient(ellipse at 15px 9px, #FFFFFF90 0 3px, transparent 4px), var(--kawaii-card);
+  box-shadow: var(--kawaii-lift);
+  color: #FFF8FF;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.mail-sub, .cc-who, .cc-name, .cc-card .cc-body, .cr-note, .news-item-txt) { color: #E4C9F6; }
+/* Selection, rarity and claim states remain recognizable within the shared theme. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.skin-card.on, .skin-card.sel, .stage-card.on, .tl-card.equipped, .tl-equipped:not(.empty), .rank-row.me) {
+  border-color: #9DF1D7;
+  box-shadow: var(--kawaii-lift), 0 0 0 2px #9DF1D766;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.skin-card.high, .t-card.legend, .tl-card.rank-ss, .tl-card.rank-s, .rank-row.top1, .quest-row.ready, .lv-row.ready .lv-what) {
+  border-color: #FFE4A2;
+  box-shadow: var(--kawaii-lift), 0 0 9px #FFD57940;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.t-card.epic, .tl-card.rank-a) { border-color: #F3B4ED; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.t-card.rare, .tl-card.rank-b) { border-color: #A4E7EF; }
+/* Preserve the mailbox's bespoke gift/envelope button art. */
+#stage #inboxPanel #mailClaimAll { --cat-art: url('/ui/cat-button-gift.svg'); }
+#stage #inboxPanel #mailClear { --cat-art: url('/ui/cat-button-mail.svg'); --cat-ink: #512680; }
+#stage #inboxPanel :is(#mailClaimAll, #mailClear) { padding: 29px 43px 15px 66px; }
+#stage #inboxPanel :is(#mailClaimAll, #mailClear)::before { inset: 0; }
+@media (hover: hover) {
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):not(:disabled):hover {
+    animation: none;
+    transform: translateY(-2px);
+    filter: drop-shadow(0 5px 3px #33204940) brightness(1.05);
+  }
+}
+@media (max-height: 480px) {
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cr-act, .pf-action) { min-height: 34px; padding-top: 10px; padding-bottom: 6px; }
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .btn.pull { padding: 12px 20px 8px; }
+  #stage #inboxPanel :is(#mailClaimAll, #mailClear) { padding: 23px 37px 11px 57px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup) { transition: none; }
+  #stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.btn:not(.play):not(#enterBtn), .cc-btn, .cr-act, .cr-pill, .pf-action, .auth-signup):hover { transform: none; }
+}
+
+/* The cat room has a full scene rather than a pop card. */
+#stage #catRoomPanel::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 2px dashed var(--kawaii-stitch);
+  border-radius: 20px;
+  pointer-events: none;
+  z-index: 4;
+}
+/* All close/back controls continue to use the same shared circular template. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.xbtn, .backbtn, .cr-arrow, .info-btn, .tl-help, .pf-pen, .paint-max) {
+  border-color: #FAD9E8;
+  background: linear-gradient(180deg, #BD8AE8, #935DC7 60%, #7444A3);
+  color: #FFF0B8;
+  box-shadow: 0 3px 0 #60328D, inset 0 1px 0 #FFFFFF60;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.setrow, .sk-quest, .tl-sheet, .odds-pop, .confirm-card) {
+  background: var(--kawaii-card);
+  border-color: #E4BDFF;
+  box-shadow: var(--kawaii-lift);
+  color: #FFF8FF;
+}
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .news-body { color: #FFF3FF; }
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) .form-msg:not(:empty) {
+  background: #8851B4;
+  border: 1px solid #E4BDFF;
+  border-radius: 12px;
+  padding: 6px 10px;
+  box-shadow: inset 0 1px 0 #FFFFFF30;
+}
+/* Keep the reference's light paw detail behind information rather than above it. */
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.skin-card, .stage-card, .tl-card, .cc-card) { background-blend-mode: soft-light, normal, normal; }
+
+#stage .panel:not(:is(#titlePanel, #startPanel, #authPanel, #namePanel, #mailPanel, #introPanel)) :is(.mail-body) {
+  border-color: #E4BDFF;
+  background: var(--kawaii-card);
+  color: #FFF8FF;
+  box-shadow: var(--kawaii-lift);
+}

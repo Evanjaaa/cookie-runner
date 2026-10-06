@@ -530,6 +530,8 @@
       <!-- หน้าเลือกด่าน ภาพตัวอย่างคือฉากจริงของด่านนั้นย่อส่วนลงมา -->
       <div class="panel hidden" id="stagePanel">
         <div class="pop">
+          <!-- พื้นหลังประตูสู่การผจญภัย (src/render/stagebg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="stage-bg" id="stageBg" aria-hidden="true"></canvas>
           <h2 class="skin-title">เลือกด่าน</h2>
           <p class="stage-lead">หนึ่งตาวิ่งผ่านหลายฉากต่อกัน — ด่านที่เลือกคือฉากเริ่มต้น</p>
           <div class="stage-grid" id="stageGrid"></div>
@@ -794,6 +796,8 @@
            ช่องค้นหาอยู่บนสุดของแท็บคำขอ เพราะการเพิ่มเพื่อนเริ่มจากตรงนั้นเสมอ -->
       <div class="panel hidden" id="friendsPanel">
         <div class="pop tl-pop fr-pop">
+          <!-- พื้นหลังสวนเพื่อนแมว (src/render/friendsbg.js) — ทั้งสามแท็บ ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="friends-bg" id="friendsBg" aria-hidden="true"></canvas>
           <div class="tl-head">
             <div class="tl-titles">
               <h2 class="skin-title">เพื่อนแมว</h2>
@@ -860,6 +864,8 @@
            ข่าวมาจากตาราง news (แอดมินเพิ่มจาก admin.html แท็บ "ข่าวสาร") -->
       <div class="panel hidden" id="newsPanel">
         <div class="pop news-pop">
+          <!-- พื้นหลังบอร์ดข่าว (src/render/newsbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="news-bg" id="newsBg" aria-hidden="true"></canvas>
           <div class="panel-head"><h2 class="skin-title">ข่าวสาร</h2></div>
           <div class="news-wrap">
             <div class="news-list" id="newsList"></div>
@@ -876,6 +882,8 @@
            รายการ → อ่านฉบับเดียว   ของขวัญกดรับได้จากทั้งสองหน้า -->
       <div class="panel hidden" id="inboxPanel">
         <div class="pop">
+          <!-- พื้นหลังกล่องจดหมายวิเศษ (src/render/mailbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="mail-bg" id="mailBg" aria-hidden="true"></canvas>
           <div class="panel-head"><h2 class="skin-title">กล่องจดหมาย</h2></div>
           <div class="mail-list" id="mailList"></div>
           <div class="btnrow">
@@ -1163,6 +1171,8 @@
           <!-- ผลที่เพิ่งสุ่ม ลอยทับทั้งหน้า ใช้ร่วมกันทั้งสองช่อง
                ต้องมีทางปิดของตัวเองเสมอ เพราะมันคลุมทั้งการ์ดจนกดปุ่มอะไรข้างใต้ไม่ได้ -->
           <div class="gacha-result hidden" id="gachaResult">
+            <!-- พื้นหลังฉลอง (src/render/celebratebg.js) — ใต้ริบบิ้นโปรยและเนื้อหา ไม่รับนิ้ว -->
+            <canvas class="celebrate-bg" id="gachaCelebrate" aria-hidden="true"></canvas>
             <!-- ริบบิ้นโปรยฉลอง สร้างใหม่ทุกครั้งที่เปิดกล่อง (burstConfetti ใน main.js)
                  ถ้าปล่อยไว้เป็นชิ้นตายตัวใน HTML แอนิเมชันจะเล่นครั้งเดียวตอนโหลดหน้า
                  แล้วรอบสุ่มถัดไปจะไม่มีอะไรโปรยเลย -->
@@ -1201,6 +1211,8 @@
       <!-- กระดานคะแนนรวม ดึงจาก Supabase ตอนเปิดหน้านี้ -->
       <div class="panel hidden" id="rankPanel">
         <div class="pop">
+          <!-- พื้นหลังหอเกียรติยศ (src/render/rankbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="rank-bg" id="rankBg" aria-hidden="true"></canvas>
           <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
           <!-- เปลี่ยนชื่อได้ที่หน้าโปรไฟล์ที่เดียว (ดินสอข้างชื่อ)
                ซ้าย = เลือกด่านที่จะดูอันดับ (ไม่เปลี่ยนด่านที่เล่นอยู่)  ขวา = อันดับของด่านนั้น -->
@@ -1467,6 +1479,8 @@
            id ของทุกปุ่มยังเดิม — โค้ดใน main.js ไม่ต้องรู้ว่าแถวย้ายไปอยู่หมวดไหน -->
       <div class="panel hidden" id="settingsPanel">
         <div class="pop stash-pop set-pop">
+          <!-- พื้นหลังมุมสงบ (src/render/settingsbg.js) — ทั้งสี่หมวด ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="settings-bg" id="settingsBg" aria-hidden="true"></canvas>
           <div class="stash-body">
             <div class="stash-tabs set-tabs" role="tablist" aria-label="เลือกหมวด">
               <button type="button" class="stab on" data-set="general" role="tab" aria-selected="true">
@@ -1980,6 +1994,8 @@
            วางไว้ท้ายสุดของกลุ่มแผง จึงซ้อนอยู่บนแผงที่เปิดค้างอยู่ข้างหลังเสมอ -->
       <div class="panel hidden" id="rewardPanel">
         <div class="pop reward-pop">
+          <!-- พื้นหลังฉลอง (src/render/celebratebg.js) — ใต้ริบบิ้นโปรยและเนื้อหา ไม่รับนิ้ว -->
+          <canvas class="celebrate-bg" id="rewardCelebrate" aria-hidden="true"></canvas>
           <div class="confetti" id="rewardConfetti" aria-hidden="true"></div>
           <b class="got-title" id="rewardTitle">ได้รับของขวัญ!</b>
           <div class="got-row" id="rewardRow"></div>
@@ -2035,6 +2051,8 @@
 
       <div class="panel hidden" id="createPanel">
         <div class="pop stash-pop">
+          <!-- พื้นหลังสตูดิโอศิลปะ (src/render/creativebg.js) — ทั้งสองแท็บ + โหมดเต็มจอ ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="create-bg" id="createBg" aria-hidden="true"></canvas>
           <div class="stash-body">
             <div class="stash-tabs" role="tablist" aria-label="เลือกโหมด">
               <button type="button" class="stab on" id="tabPaint" role="tab">
