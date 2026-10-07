@@ -13565,65 +13565,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 .reward-pop > .got-note { position: relative; z-index: 2; }
 
-/* Cat mail buttons: reference-inspired SVG artwork and live translated text. */
-#inboxPanel > .pop > .btnrow { gap: 12px 18px; padding: 0 8px 7px; }
-#inboxPanel :is(#mailClaimAll, #mailClear) {
-  --cat-art: url('/ui/cat-button-gift.svg');
-  --cat-ink: #086B62;
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-  min-height: 76px;
-  width: 300px;
-  max-width: 100%;
-  padding: 29px 43px 15px 66px;
-  margin-top: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: none;
-  color: #FFFFFF;
-  font-size: clamp(12px, 1.9dvh, 15px);
-  font-weight: 700;
-  line-height: 1.5;
-  -webkit-text-stroke: .7px var(--cat-ink);
-  paint-order: stroke fill;
-  text-shadow: 1px 0 var(--cat-ink), -1px 0 var(--cat-ink), 0 1px var(--cat-ink), 0 -1px var(--cat-ink), 0 2px 2px var(--cat-ink);
-  filter: drop-shadow(0 4px 3px #33204935);
-  transition: transform .15s ease, filter .15s ease;
-}
-#inboxPanel #mailClear { --cat-art: url('/ui/cat-button-mail.svg'); --cat-ink: #512680; }
-#inboxPanel :is(#mailClaimAll, #mailClear)::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--cat-art) center / 100% 100% no-repeat;
-  pointer-events: none;
-}
-#inboxPanel :is(#mailClaimAll, #mailClear)::after { content: none; }
-@media (hover: hover) {
-  #inboxPanel :is(#mailClaimAll, #mailClear):not(:disabled):hover {
-    transform: translateY(-2px);
-    filter: drop-shadow(0 6px 4px #33204940) brightness(1.05);
-  }
-}
-#inboxPanel :is(#mailClaimAll, #mailClear):not(:disabled):active { transform: translateY(2px) scale(.97); box-shadow: none; }
-#inboxPanel :is(#mailClaimAll, #mailClear):disabled {
-  transform: none;
-  opacity: .6;
-  filter: grayscale(.35) drop-shadow(0 2px 2px #33204925);
-  box-shadow: none;
-}
-#inboxPanel :is(#mailClaimAll, #mailClear):focus-visible { outline: 3px solid #FFF3E2; outline-offset: 3px; }
-@media (max-height: 480px) {
-  #inboxPanel :is(#mailClaimAll, #mailClear) { min-height: 62px; width: 260px; padding: 23px 37px 11px 57px; font-size: 12px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  #inboxPanel :is(#mailClaimAll, #mailClear) { transition: none; }
-}
-
-/* Mail cards: lavender glass, envelope tile, soft status pill and paw detail. */
+/* Mail cards: lavender glass with an envelope tile and soft status pill. */
 #inboxPanel .mail-list { padding: 6px; gap: 12px; }
 #inboxPanel .mail-item {
   position: relative;
@@ -13639,27 +13581,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   color: #FFF8FF;
   opacity: 1;
   transition: transform .12s ease, filter .12s ease;
-}
-#inboxPanel .mail-item::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 15px;
-  background: radial-gradient(ellipse at center, #FFFFFF 0 55%, transparent 65%) 5px 3px / 11px 7px no-repeat,
-    radial-gradient(ellipse at center, #FFFFFF 0 55%, transparent 65%) 17px 1px / 6px 4px no-repeat;
-  border: 1px solid #FFFFFF26;
-  pointer-events: none;
-}
-#inboxPanel .mail-item::after {
-  content: '';
-  position: absolute;
-  right: 8px;
-  bottom: 7px;
-  width: 25px;
-  height: 25px;
-  background: url('/ui/mail-paw.svg') center / contain no-repeat;
-  opacity: .45;
-  pointer-events: none;
 }
 #inboxPanel .mail-item.read { opacity: 1; }
 #inboxPanel .mail-icon {
@@ -13714,14 +13635,56 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   filter: none;
 }
 
-/* Pink stitched border inside the mailbox frame, above its canvas backdrop. */
-#inboxPanel > .pop { border-color: #FAD9E8; }
-#inboxPanel > .pop::after {
-  content: '';
-  position: absolute;
-  inset: 7px;
-  border: 2px dashed #F7C7DD;
-  border-radius: clamp(10px, calc(3vw - 7px), 21px);
-  z-index: 1;
-  pointer-events: none;
+/* Shared heading colors match the mailbox title across game panels. */
+#stage .panel :is(h2, .skin-title, .got-title, .tl-sheet-name, .news-title) {
+  color: #FFF0B8;
+  background: none;
+  -webkit-text-fill-color: #FFF0B8;
+  -webkit-text-stroke: 0;
+  font-weight: 700;
+  text-shadow:
+    -2px -2px 0 #9745BC, 0 -2px 0 #9745BC, 2px -2px 0 #9745BC,
+    -2px 0 0 #9745BC, 2px 0 0 #9745BC,
+    -2px 2px 0 #9745BC, 0 2px 0 #9745BC, 2px 2px 0 #9745BC,
+    0 4px 0 #713298, 0 5px 5px #51217955;
+  filter: none;
+}
+
+/* Glass cards: fixed-size circular highlights keep their shape on any card. */
+#stage .panel.panel :is(
+  .mail-item, .news-item, .quest-row, .rank-row, .scene-row, .stage-card,
+  .skin-card, .tl-card, .tl-equipped, .cc-card, .cs-friend, .cr-card,
+  .pf-card, .pf-lookup-card, .over-card, .confirm-card, .name-card,
+  .dl-card, .lv-what, .news-view, .mr-body, .tdetail, .odetail,
+  .grid-empty, .cc-empty, .setrow, .sk-quest, .fr-row, .got-card, .mail-body
+) {
+  --glass-edge: #E4BDFF;
+  border-color: var(--glass-edge);
+  background:
+    radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px) 9px 5px / 8px 8px no-repeat,
+    radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px) 20px 3px / 5px 5px no-repeat,
+    linear-gradient(180deg, #AC76E0D9, #945ACBCC 35%, #7945B5D9);
+  box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
+    inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
+  color: #FFF8FF;
+}
+/* Selection and rarity keep distinct outlines within the shared glass style. */
+#stage .panel.panel :is(.rank-s, .high, .gold) { --glass-edge: #FFD66E; }
+#stage .panel.panel :is(.legend, .gems) { --glass-edge: #FFA0C0; }
+#stage .panel.panel .epic { --glass-edge: #D696FF; }
+#stage .panel.panel .rare { --glass-edge: #8DF3EA; }
+#stage .panel.panel :is(.skin-card.on, .skin-card.sel, .stage-card.on,
+  .tl-card.equipped, .tl-equipped:not(.empty), .cs-friend.on, .rank-row.me) {
+  --glass-edge: #8DF3EA;
+  outline: 2px solid #8DF3EA66;
+  outline-offset: 1px;
+}
+/* The rainbow border remains visible on SS talent cards. */
+#stage .panel.panel :is(.tl-card, .tl-equipped).rank-ss {
+  border-color: transparent;
+  background:
+    radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px) 9px 5px / 8px 8px no-repeat padding-box,
+    radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px) 20px 3px / 5px 5px no-repeat padding-box,
+    linear-gradient(180deg, #AC76E0, #945ACB 35%, #7945B5) padding-box,
+    linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
 }

@@ -1,6 +1,5 @@
 ﻿// src/main.js
 import './style.css';
-import './ui-theme.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
