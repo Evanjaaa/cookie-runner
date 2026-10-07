@@ -1695,6 +1695,8 @@
              .other = ของคนอื่น (ซ่อนปุ่มแก้ไขทั้งหมด ปุ่มล่างเป็นเพิ่มเพื่อน)
              .editing = กดแก้ไขแล้ว ดินสอสามจุดโผล่ขึ้นมา -->
         <div class="pop pf-pop" id="pfPop">
+          <!-- พื้นหลังโชว์รูมน้องแมว (src/render/profilebg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="profile-bg" id="profileBg" aria-hidden="true"></canvas>
           <h2 class="pf-title">โปรไฟล์เหมียว</h2>
           <!-- ปุ่มปิดทุกอันในเกมใช้เทมเพลต .xbtn เดียวกัน (ดู style.css) -->
           <button type="button" class="xbtn pf-close" id="pfBack" aria-label="ปิด">
@@ -1887,6 +1889,8 @@
            ใบที่เจ็ดใหญ่กว่าเพื่อนเพราะเป็นวันที่ทั้งรอบกำลังเดินไปหา -->
       <div class="panel hidden" id="dailyPanel">
         <div class="pop daily-pop">
+          <!-- พื้นหลังเช้าวันใหม่ (src/render/dailybg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="daily-bg" id="dailyBg" aria-hidden="true"></canvas>
           <div class="panel-head dl-head">
             <h2 class="skin-title">เช็คอินรายวัน</h2>
             <span class="count-pill" aria-label="รอบที่">
@@ -1926,6 +1930,8 @@
            ของรางวัลที่ยังไม่ได้กำหนดขึ้นเป็นกล่องปริศนา (ดูตาราง REWARDS ใน level-rewards.js) -->
       <div class="panel hidden" id="lvPanel">
         <div class="pop">
+          <!-- พื้นหลังเส้นทางเติบโต (src/render/levelbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <canvas class="level-bg" id="levelBg" aria-hidden="true"></canvas>
           <div class="panel-head lv-head">
             <h2 class="skin-title">รางวัลเลเวล</h2>
             <span class="count-pill" aria-label="รับได้ตอนนี้">

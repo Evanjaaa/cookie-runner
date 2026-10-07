@@ -50,7 +50,8 @@ function splitFish(list) {
   for (const t of list) (treatOf(t.kind).outline ? rare : plain).push(t);
   return [plain, rare];
 }
-import { drawKingdom } from './render/kingdom/index.js';
+import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
+import { gfxLevel } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
 /* จอสัมผัสหรือเปล่า — ใช้เกณฑ์เดียวกับ input.js กับ main.js และตรงกับ
@@ -196,6 +197,15 @@ const HOME_DECO = [
  * (วัดด้วยตาแล้ว: ขอบมืด 46% ทำให้พื้นทรายสีครีมกลายเป็นน้ำตาลโคลน)
  */
 /** ฉากหลังหน้าแรกวาดใหม่ทุกกี่หน่วยเวลาเกม (1 = หนึ่งเฟรมที่ 60fps) — 1.9 ≈ 30 ครั้งต่อวินาที (ดู drawHomeBackdrop) */
+/** แปะผ้าใบชั้นแยก (ขนาดเท่าจอ) ลงจอตรงพิกเซลต่อพิกเซล */
+function blitLayer(ctx, layer, op = 'source-over') {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = op;
+  ctx.drawImage(layer, 0, 0);
+  ctx.restore();
+}
+
 const HOME_BG_STEP = 1.9;
 
 function dimForUi(ctx, k = 1) {
@@ -3197,7 +3207,8 @@ export class Game {
     if (t - bg.at >= HOME_BG_STEP || t < bg.at) {
       bg.at = t;
       bg.c.setTransform(ctx.getTransform());
-      drawKingdom(bg.c, t);
+      // กราฟิกระดับสูง = ฉากเต็มแสง (แดด ลำแสง โคม ละออง พุ่มไม้เบลอ ดู kingdom/glow.js)
+      drawKingdom(bg.c, t, { fx: gfxLevel() === 'high' });
       dimForUi(bg.c, 0.45);
     }
     ctx.save();
@@ -3261,17 +3272,47 @@ export class Game {
     ctx.fill();
     ctx.restore();
 
-    drawCatPose(ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    // กราฟิกระดับสูง: วาดตัวน้องลงชั้นแยกก่อนแล้วแปะ — ชั้นนี้ใช้เป็นแม่แบบรับแสงตะเกียงตอนท้าย
+    // (source-over ผ่านชั้นแยกให้ภาพเท่าวาดตรงทุกพิกเซล)
+    const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx) : null;
+    drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    if (lit) blitLayer(ctx, lit.canvas);
     this.drawHomeFx(ctx);
     this.drawLove(ctx);
     postProcess(ctx, { edges: false });
     // กล่องแมว (ทางเข้าบ้านลูกเหมียว) วาดหลังแสงฟุ้ง — ไม่งั้นแสงฟุ้งทำให้กล่องซีดจนเกือบขาว
     // homeBoxPop เด้งตอนถูกแตะ ไล่ลงเองทีละเฟรม
     if (this.homeBoxPop > 0) this.homeBoxPop = Math.max(0, this.homeBoxPop - 0.04);
-    ctx.save();
-    ctx.translate(HOME_BOX.x, HOME_BOX.y);
-    ctx.scale(0.88, 0.88);
-    drawHomeBox(ctx, 0, 0, t, this.homeBoxPop || 0);
-    ctx.restore();
+    const box = (c) => {
+      c.save();
+      c.translate(HOME_BOX.x, HOME_BOX.y);
+      c.scale(0.88, 0.88);
+      drawHomeBox(c, 0, 0, t, this.homeBoxPop || 0);
+      c.restore();
+    };
+    box(ctx);
+    // แสงตะเกียงตกบนตัวน้องกับกล่อง — เฉพาะบนเนื้อของ ไม่ฟุ้งทั้งบริเวณ (ดู lanternLightMask)
+    if (lit) {
+      box(lit);
+      lanternLightMask(lit, 0, t);
+      blitLayer(ctx, lit.canvas, 'lighter');
+    }
+  }
+
+  /** ผ้าใบชั้นแยกขนาดเท่าจอ ล้างแล้ว พร้อม transform เดียวกับ ctx (ใช้ซ้ำทุกเฟรม) */
+  homeLitLayer(ctx) {
+    let c = this.homeLit;
+    if (!c) c = this.homeLit = document.createElement('canvas').getContext('2d');
+    const cv = c.canvas;
+    if (cv.width !== ctx.canvas.width || cv.height !== ctx.canvas.height) {
+      cv.width = ctx.canvas.width;
+      cv.height = ctx.canvas.height;
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.setTransform(ctx.getTransform());
+    return c;
   }
 }

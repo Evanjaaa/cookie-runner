@@ -256,7 +256,7 @@ canvas[hidden] { display: none; }
 .panel:not(.home):not(.hidden) > .pop > *:nth-child(4) { animation-delay: .15s; }
 /* ผ้าใบพื้นหลังของการ์ด (คลังน้อง สกิล กาช่า กิจกรรม) เป็นลูกคนแรกของ .pop จึงโดนแอนิเมชันไล่ขึ้นไปด้วย
    พื้นหลังทั้งผืนเลยลอยขึ้น 14px ตอนเปิดหน้า (เห็นชัดที่หน้ากิจกรรม) — พื้นหลังต้องนิ่งอยู่กับการ์ด มีแค่เนื้อหาที่ไล่ขึ้น */
-.panel:not(.home):not(.hidden) > .pop > :is(.quest-bg, .dream-bg, .magic-bg, .gacha-bg, .create-bg, .stage-bg, .rank-bg, .friends-bg, .news-bg, .mail-bg, .settings-bg) { animation: none; }
+.panel:not(.home):not(.hidden) > .pop > :is(.quest-bg, .dream-bg, .magic-bg, .gacha-bg, .create-bg, .stage-bg, .rank-bg, .friends-bg, .news-bg, .mail-bg, .settings-bg, .profile-bg, .level-bg, .daily-bg) { animation: none; }
 
 .panel h2 {
   font-family: "Mali", sans-serif;
@@ -297,7 +297,7 @@ canvas[hidden] { display: none; }
 
 .panel p {
   max-width: 44ch;
-  color: #D9C4EC;
+  color: #FFFFFF;
   font-size: clamp(13px, 2.4vw, 15px);
   line-height: 1.7;
 }
@@ -491,7 +491,7 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: none;
   background: none;
-  color: #B99BD4;
+  color: #FFFFFF;
   font-family: "Mali", system-ui, sans-serif;
   font-size: clamp(9px, 1.5dvh, 12px);
   line-height: 1;
@@ -519,7 +519,7 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.16);
   background: rgba(27,15,43,.62);
-  color: #B99BD4;
+  color: #FFFFFF;
   font-size: clamp(9px, 1.5dvh, 12px);
   line-height: 1;
   cursor: pointer;
@@ -563,7 +563,7 @@ canvas[hidden] { display: none; }
 /* ไม่มีอะไรเหลือหลังกรอง — ต้องบอกว่าทำไม ไม่ใช่ปล่อยกริดว่างเปล่า
    ซึ่งอ่านได้ว่า "เกมพัง" พอ ๆ กับอ่านได้ว่า "ยังไม่มีของ" */
 .grid-empty {
-  color: #B99BD4;
+  color: #FFFFFF;
   font-size: clamp(10px, 1.7dvh, 13px);
   padding: clamp(10px, 3dvh, 26px) 8px;
   text-align: center;
@@ -1586,7 +1586,7 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: 14px;
-  color: #D9C6EE;
+  color: #FFFFFF;
   text-align: center;
 }
 .rank-row.top1 .no, .rank-row.top2 .no, .rank-row.top3 .no { font-size: 20px; line-height: 1; }
@@ -1644,7 +1644,7 @@ canvas[hidden] { display: none; }
 .rank-row.top1 .pts, .rank-row.top2 .pts, .rank-row.top3 .pts { color: #FFFFFF; }
 .rank-row.top1 .pts { color: #FFE9A8; }
 
-.rank-note { font-size: 12px; color: #B99BD4; text-align: center; line-height: 1.7; }
+.rank-note { font-size: 12px; color: #FFFFFF; text-align: center; line-height: 1.7; }
 
 
 
@@ -1681,10 +1681,10 @@ canvas[hidden] { display: none; }
 }
 .stage-card .row { display: flex; align-items: baseline; gap: 8px; }
 .stage-card b { font-family: "Mali", sans-serif; font-weight: 600; font-size: 15px; }
-.stage-card small { font-size: 11.5px; color: #B99BD4; margin-left: auto; }
+.stage-card small { font-size: 11.5px; color: #FFFFFF; margin-left: auto; }
 .stage-card .best {
   font-size: 12px;
-  color: #A98BC4;
+  color: #FFFFFF;
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -1781,7 +1781,7 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: clamp(10px, 1.6dvh, 13px);
-  color: #D9C4EC;
+  color: #FFFFFF;
 }
 .scene-row.first .scene-no { background: var(--mint); color: #0E3B2E; }
 .scene-pic {
@@ -1804,7 +1804,7 @@ canvas[hidden] { display: none; }
   display: block;
   margin-top: 2px;
   font-size: clamp(9px, 1.4dvh, 11.5px);
-  color: #B99BD4;
+  color: #FFFFFF;
   line-height: 1.4;
 }
 
@@ -1922,7 +1922,7 @@ canvas[hidden] { display: none; }
    ถ้าซ่อนทิ้งไปเลย ใบนั้นจะเตี้ยกว่าเพื่อนแล้วแถวดูไม่เรียบ */
 .card-bonus.none {
   background: rgba(255,243,226,.1);
-  color: #C9AEE8;
+  color: #FFFFFF;
   font-weight: 600;
   box-shadow: none;
 }
@@ -2214,7 +2214,7 @@ canvas[hidden] { display: none; }
      ความสูงที่ได้คืนมาจากการยุบสี่บรรทัดบนเหลือสองแถวถูกยกมาให้ตรงนี้ */
   font-size: clamp(11px, 2dvh, 16px);
   line-height: 1.6;
-  color: #D9C4EC;
+  color: #FFFFFF;
   /* คำอธิบายยาว ปล่อยให้เลื่อนในตัวเองดีกว่าดันปุ่มหลุดกรอบ */
   max-height: 6.4em;
   overflow-y: auto;
@@ -2312,7 +2312,7 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: none;
   background: none;
-  color: #B99BD4;
+  color: #FFFFFF;
   font-family: "Mali", system-ui, sans-serif;
   font-size: clamp(10px, 1.7dvh, 14px);
   line-height: 1.4;
@@ -2334,7 +2334,7 @@ canvas[hidden] { display: none; }
 .setnote {
   margin-top: calc(clamp(4px, 1dvh, 9px) * -1);
   font-size: clamp(9px, 1.4dvh, 11.5px);
-  color: #B99BD4;
+  color: #FFFFFF;
   text-align: center;
 }
 
@@ -3169,10 +3169,10 @@ canvas[hidden] { display: none; }
 .up-step i.just { animation: starPop .55s cubic-bezier(.2,.9,.3,1.4) backwards, starAura 2.4s ease-in-out infinite; }
 .up-name { font-family: "Mali", sans-serif; font-weight: 600; font-size: clamp(13px, 2.3dvh, 18px); }
 /* ฤทธิ์ตอนนี้ → ฤทธิ์ถ้าสำเร็จ บอกให้เห็นว่าจ่ายทองไปแล้วได้อะไรเพิ่ม */
-.up-arrow { display: flex; align-items: center; gap: 9px; font-size: clamp(11px, 1.9dvh, 14px); color: #C9AEE8; }
+.up-arrow { display: flex; align-items: center; gap: 9px; font-size: clamp(11px, 1.9dvh, 14px); color: #FFFFFF; }
 .up-arrow b { font-family: "Mali", sans-serif; color: var(--mint-lite); font-size: clamp(12px, 2.1dvh, 16px); }
 .up-arrow i { font-style: normal; color: #8E76A8; }
-.up-odds { font-size: clamp(9.5px, 1.6dvh, 12.5px); color: #B99BD4; }
+.up-odds { font-size: clamp(9.5px, 1.6dvh, 12.5px); color: #FFFFFF; }
 .up-odds b { color: #FFD97A; }
 
 /* ── ป้ายบอกผล ────────────────────────────────
@@ -3255,7 +3255,7 @@ canvas[hidden] { display: none; }
 .tg-hint {
   font-size: clamp(8.5px, 1.4dvh, 11px);
   letter-spacing: .04em;
-  color: #B99BD4;
+  color: #FFFFFF;
 }
 
 .got-card.legend { border-color: #FF8FB0; background: linear-gradient(180deg, rgba(255,143,176,.24), rgba(255,143,176,.07)); box-shadow: 0 0 18px rgba(255,143,176,.42); }
@@ -3470,7 +3470,7 @@ canvas[hidden] { display: none; }
 .mail-sub {
   display: block;
   font-size: clamp(11px, 1.4dvh, 11.5px);
-  color: #B99BD4;
+  color: #FFFFFF;
   margin-top: 3px;
 }
 /* ป้ายบอกสถานะฝั่งขวา — ของค้างรับต้องเด่นกว่าคำว่ารับแล้ว */
@@ -3528,7 +3528,7 @@ canvas[hidden] { display: none; }
   background: rgba(34,14,54,.6);
   box-shadow: inset 0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.14);
 }
-.fr-me-label { font-size: clamp(9.5px, 1.5dvh, 11.5px); color: #D9C6EE; }
+.fr-me-label { font-size: clamp(9.5px, 1.5dvh, 11.5px); color: #FFFFFF; }
 .fr-me-code {
   font-family: "Mali", monospace;
   font-weight: 700;
@@ -3611,7 +3611,7 @@ canvas[hidden] { display: none; }
   align-items: center;
   gap: 8px;
   font-size: clamp(11px, 1.6dvh, 12.5px);
-  color: #B99BD4;
+  color: #FFFFFF;
 }
 .fr-mycode b {
   font-family: "Mali", monospace;
@@ -3641,7 +3641,7 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-weight: 600;
   font-size: clamp(11px, 1.6dvh, 12.5px);
-  color: #D9C2F0;
+  color: #FFFFFF;
 }
 .fr-list .grid-empty { padding-block: clamp(6px, 2dvh, 16px); }
 
@@ -3675,7 +3675,7 @@ canvas[hidden] { display: none; }
 .mail-meta {
   margin: 0;
   font-size: clamp(9.5px, 1.5dvh, 12px);
-  color: #B99BD4;
+  color: #FFFFFF;
 }
 .panel p.mail-meta { display: block; }
 .mail-body {
@@ -3707,7 +3707,7 @@ canvas[hidden] { display: none; }
 .mail-gift-lead {
   font-size: clamp(11px, 1.4dvh, 11.5px);
   letter-spacing: .06em;
-  color: #B99BD4;
+  color: #FFFFFF;
 }
 .mail-rewards { display: flex; gap: clamp(6px, 1.4vw, 12px); flex-wrap: wrap; justify-content: center; }
 .mail-reward {
@@ -4689,7 +4689,7 @@ canvas[hidden] { display: none; }
     font-size: 19px;
     line-height: 1.5;
   }
-  .rotate-hint small { font-size: 12.5px; color: #B99BD4; line-height: 1.8; }
+  .rotate-hint small { font-size: 12.5px; color: #FFFFFF; line-height: 1.8; }
 
   /* ── กรอบรูป ──
      จองที่ไว้ตายตัว เพราะการหมุนไม่เปลี่ยนขนาดกล่องในผัง แต่เปลี่ยนสิ่งที่ตาเห็น
@@ -5231,7 +5231,7 @@ canvas[hidden] { display: none; }
   display: block;
   font-size: 12px;
   line-height: 1.4;
-  color: #CDB8E8;
+  color: #FFFFFF;
   text-align: center;
 }
 .name-rule b { color: var(--cream); font-variant-numeric: tabular-nums; }
@@ -5807,7 +5807,7 @@ canvas[hidden] { display: none; }
   border-radius: 999px;
   border: 1px solid rgba(255,243,226,.18);
   background: rgba(255,243,226,.07);
-  color: #D9C4EC;
+  color: #FFFFFF;
   font-family: "Mali", sans-serif;
   font-weight: 600;
   font-size: clamp(11px, 2.5dvh, 21px);
@@ -5957,7 +5957,7 @@ canvas[hidden] { display: none; }
 }
 .show-note {
   font-size: clamp(10px, 1.8dvh, 14.5px);
-  color: #C9AEE4;
+  color: #FFFFFF;
   padding: 0 clamp(8px, 1.2vw, 14px);
   line-height: 1.35;
   text-align: center;
@@ -6270,7 +6270,7 @@ canvas[hidden] { display: none; }
 }
 
 .gacha-foot { display: flex; align-items: center; gap: 8px; }
-.gacha-owned { margin: 0; font-size: clamp(9.5px, 1.9dvh, 15px); color: #B99BD4; }
+.gacha-owned { margin: 0; font-size: clamp(9.5px, 1.9dvh, 15px); color: #FFFFFF; }
 .gacha-owned b { color: var(--mint-lite); font-weight: 700; }
 
 /* ปุ่มเครื่องหมายตกใจ — เปิดตารางอัตราออก */
@@ -6354,7 +6354,7 @@ canvas[hidden] { display: none; }
   background: rgba(255,243,226,.08);
   border: 1px solid rgba(255,243,226,.12);
   font-size: clamp(9.5px, 1.6vh, 13px);
-  color: #D9C4EC;
+  color: #FFFFFF;
 }
 .odds-row i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .odds-row span { flex: 1 1 auto; text-align: left; }
@@ -7020,7 +7020,7 @@ canvas[hidden] { display: none; }
   max-width: 40ch;
   font-size: 12px;
   line-height: 1.6;
-  color: #B99BD4;
+  color: #FFFFFF;
 }
 .form-msg.bad { color: var(--danger); }
 
@@ -7054,7 +7054,7 @@ canvas[hidden] { display: none; }
 #authPanel #authLead {
   width: 100%;
   line-height: 1.65;
-  color: #D9C4EC;
+  color: #FFFFFF;
 }
 .auth-actions {
   display: flex;
@@ -7396,7 +7396,7 @@ canvas[hidden] { display: none; }
 .confirm-cost.hidden { display: none; }
 
 /* บรรทัดบอกยอดคงเหลือหลังจ่าย จางกว่าราคาหนึ่งขั้น เป็นข้อมูลประกอบไม่ใช่ตัวตัดสิน */
-.confirm-after { margin: 0; font-size: 11.5px; color: #C6B2DE; line-height: 1.4; }
+.confirm-after { margin: 0; font-size: 11.5px; color: #FFFFFF; line-height: 1.4; }
 .confirm-after.bad { color: #FF9BB0; }
 
 /* ── ปุ่มสองใบต้องอยู่บรรทัดเดียวเสมอ ──
@@ -7532,7 +7532,7 @@ canvas[hidden] { display: none; }
   gap: 3px;
   padding: 0 10px;
   pointer-events: none;
-  color: #C6B2DE;
+  color: #FFFFFF;
   font-size: 11.5px;
   line-height: 1.45;
 }
@@ -7615,7 +7615,7 @@ canvas[hidden] { display: none; }
   flex: 0 0 auto;
   font-size: clamp(10.5px, 1.05vw, 12.5px);
   letter-spacing: .03em;
-  color: #B99BD4;
+  color: #FFFFFF;
   text-align: center;
   line-height: 1.5;
 }
@@ -8967,7 +8967,7 @@ canvas[hidden] { display: none; }
   background: rgba(27,15,43,.62);
   font-family: "Mali", sans-serif;
   font-size: clamp(10px, 1.7dvh, 13px);
-  color: #C9AEE8;
+  color: #FFFFFF;
 }
 .tl-count b { font-weight: 700; font-size: 1.2em; color: var(--cream); }
 .tl-count-sep { opacity: .6; }
@@ -9016,7 +9016,7 @@ canvas[hidden] { display: none; }
   text-align: center;
   font-size: clamp(10px, 1.6dvh, 12px);
   line-height: 1.45;
-  color: #B99BD4;
+  color: #FFFFFF;
 }
 
 /* ── กริด ── เลื่อนในตัวเองได้แบบเดียวกับ .skin-grid */
@@ -9204,7 +9204,7 @@ canvas[hidden] { display: none; }
   box-shadow: 0 1px 0 rgba(0,0,0,.25);
 }
 .tl-tag.lock {
-  color: #D9C6EE;
+  color: #FFFFFF;
   background: rgba(24,12,40,.9);
   border: 1px solid rgba(255,243,226,.22);
 }
@@ -9261,7 +9261,7 @@ canvas[hidden] { display: none; }
 .tl-equipped .tl-card-rank { width: clamp(17px, 3.2dvh, 24px); }
 .tl-equipped .tl-card-name { font-size: clamp(11px, 2dvh, 15px); }
 .tl-equipped.empty { cursor: default; border-style: dashed; box-shadow: none; }
-.tl-equipped-empty { padding: 20px 0; font-size: 12px; color: #B99BD4; }
+.tl-equipped-empty { padding: 20px 0; font-size: 12px; color: #FFFFFF; }
 
 /* ══ หมวดสกิล (skill-ui.js) ═════════════════════════════════════
    แผงเดียวกับพรสวรรค์ สลับด้วยแท็บบนหัว — .tab-skill บนแผงเป็นตัวบอกว่าอยู่หมวดไหน
@@ -9384,7 +9384,7 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-size: clamp(8.5px, 1.45dvh, 11px);
   line-height: 1.5;
-  color: #D9C6EE;
+  color: #FFFFFF;
   white-space: nowrap;
 }
 .sk-chip.sk-chip-stage { color: #FFE3A3; border-color: rgba(255,201,60,.4); }
@@ -9394,7 +9394,7 @@ canvas[hidden] { display: none; }
   padding-left: 1.15em;
   font-size: clamp(9.5px, 1.55dvh, 11.5px);
   line-height: 1.4;
-  color: #CDB6E6;
+  color: #FFFFFF;
 }
 .sk-foot { margin-top: auto; padding-top: 2px; }
 .sk-foot > .sk-chip { display: block; text-align: center; padding-block: 3px; font-weight: 700; }
@@ -9537,7 +9537,7 @@ canvas[hidden] { display: none; }
   font-weight: 700;
   font-size: clamp(10px, 1.7dvh, 12.5px);
   letter-spacing: .06em;
-  color: #D9BDF5;
+  color: #FFFFFF;
 }
 .tl-sheet.rank-s .tl-sheet-rank-label { color: #FFE49B; }
 .tl-sheet.rank-ss .tl-sheet-rank-label { color: #FFB8E8; }
@@ -9631,11 +9631,11 @@ canvas[hidden] { display: none; }
   text-align: right;
   font-size: clamp(10.5px, 1.85dvh, 13.5px);
   line-height: 1.45;
-  color: #C9AEE8;
+  color: #FFFFFF;
 }
 .panel p.tl-status.on { color: var(--mint-lite); font-weight: 700; }
 .panel p.tl-status.swap b { color: var(--cream); font-weight: 700; }
-.panel p.tl-status.lock { color: #D9C6EE; }
+.panel p.tl-status.lock { color: #FFFFFF; }
 .tl-sheet-info .btn {
   /* ── ชิดขวา ไม่ใช่ชิดซ้ายตามคอลัมน์ ──
      ทุกอย่างในคอลัมน์นี้เป็นของที่ "อ่าน" (ระดับ ชื่อ คำอธิบาย ผลในเกม) จึงเริ่มชิดซ้าย
@@ -10048,7 +10048,7 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-size: clamp(9px, 1.6dvh, 12px);
   line-height: 1.5;
-  color: #C9AEE8;
+  color: #FFFFFF;
   white-space: nowrap;
 }
 .count-pill b { font-weight: 700; font-size: 1.15em; color: var(--cream); }
@@ -10233,7 +10233,7 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: clamp(11px, 1.9dvh, 15px);
-  color: #D9C6EE;
+  color: #FFFFFF;
 }
 .lv-row.ready .lv-claim {
   background: linear-gradient(180deg, #FFF08A, #FFB21F);
@@ -10280,7 +10280,7 @@ canvas[hidden] { display: none; }
 .lv-next > small:first-child { grid-area: lead; font-size: clamp(8px, 1.3dvh, 10px); color: #FFE3A3; font-weight: 700; }
 .lv-next-ico { grid-area: ico; font-size: clamp(18px, 3.4dvh, 28px); line-height: 1; }
 .lv-next > b { grid-area: name; font-size: clamp(11px, 1.8dvh, 14px); color: #FFF3E2; }
-.lv-next-when { grid-area: when; font-size: clamp(8.5px, 1.4dvh, 11px); color: #D9C6EE; }
+.lv-next-when { grid-area: when; font-size: clamp(8.5px, 1.4dvh, 11px); color: #FFFFFF; }
 @media (max-width: 720px) { .lv-next { display: none; } }
 
 /* ══ กล่องฉลอง: การ์ดพรสวรรค์มีตราระดับกับป้ายชนิดของ ══ */
@@ -10488,7 +10488,7 @@ canvas[hidden] { display: none; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.news-item small { font-size: clamp(10px, 1.4dvh, 11.5px); color: #C9AEE2; }
+.news-item small { font-size: clamp(10px, 1.4dvh, 11.5px); color: #FFFFFF; }
 /* ยังไม่อ่าน = จุดชมพูเต้นตุบ ๆ มุมขวาบน */
 .news-new {
   position: absolute;
@@ -10548,7 +10548,7 @@ canvas[hidden] { display: none; }
   height: 100%;
   display: grid;
   place-items: center;
-  color: rgba(255,255,255,.92);
+  color: #FFFFFF;
   background:
     radial-gradient(circle at 20% 25%, rgba(255,255,255,.45) 0 6%, transparent 7%),
     radial-gradient(circle at 82% 70%, rgba(255,255,255,.35) 0 4%, transparent 5%),
@@ -10733,7 +10733,7 @@ canvas[hidden] { display: none; }
 .help-ico { font-size: 1.7em; line-height: 1; flex: 0 0 auto; }
 .help-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left; }
 .help-txt b { font-family: "Mali", sans-serif; font-weight: 600; font-size: 13.5px; color: #F3E8FF; }
-.help-txt small { font-size: clamp(10px, 1.5dvh, 12px); color: #C9AEE2; line-height: 1.4; }
+.help-txt small { font-size: clamp(10px, 1.5dvh, 12px); color: #FFFFFF; line-height: 1.4; }
 .help-row .btn { flex: 0 0 auto; }
 
 /* ── หน้าแจ้งปัญหา ── */
@@ -10818,7 +10818,7 @@ canvas[hidden] { display: none; }
   gap: 2px;
   border: 2px dashed rgba(255,243,226,.35);
   background: rgba(255,243,226,.05);
-  color: #D9C4EC;
+  color: #FFFFFF;
   font-family: inherit;
   cursor: pointer;
   transition: background .12s ease, border-color .12s ease;
@@ -11328,7 +11328,7 @@ canvas[hidden] { display: none; }
 .cl-progress { width: min(320px, 100%); display: grid; gap: 4px; }
 .cl-bar { height: 12px; border-radius: 999px; background: rgba(27,15,43,.65); box-shadow: inset 0 1px 3px rgba(0,0,0,.5); overflow: hidden; }
 .cl-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #9FF5E4, #C7B2FF, #FFB3D0); }
-.cl-progress small { font-size: clamp(10.5px, 1.8dvh, 13px); color: #C9AEE2; }
+.cl-progress small { font-size: clamp(10.5px, 1.8dvh, 13px); color: #FFFFFF; }
 .cl-feats { display: flex; gap: 10px; width: 100%; justify-content: center; }
 .cl-feat {
   flex: 1 1 0;
@@ -11345,7 +11345,7 @@ canvas[hidden] { display: none; }
 }
 .cl-ico { font-size: clamp(20px, 4dvh, 30px); filter: grayscale(.3); }
 .cl-feat b { font-family: "Mali", sans-serif; font-size: clamp(12px, 2.1dvh, 15px); color: var(--cream); }
-.cl-feat small { font-size: clamp(9.5px, 1.6dvh, 12px); color: #C9AEE2; }
+.cl-feat small { font-size: clamp(9.5px, 1.6dvh, 12px); color: #FFFFFF; }
 @media (prefers-reduced-motion: reduce) { .cl-lock canvas, .cl-padlock { animation: none; } }
 /* กระชับให้ลงจอเดียวทุกขนาด: หัวเรื่องบรรทัดเดียว · ฟีเจอร์เป็นชิปแนวนอน (ไอคอนซ้าย ข้อความขวา) */
 #createLockPanel .cl-pop { width: min(580px, 94%); gap: clamp(5px, 1.3dvh, 11px); padding-block: clamp(10px, 2.4dvh, 22px); }
@@ -11379,7 +11379,7 @@ canvas[hidden] { display: none; }
 .pmode {
   background: rgba(27, 15, 43, .55);
   border: 1.5px solid rgba(255, 246, 230, .18);
-  color: #B99BD4;
+  color: #FFFFFF;
   transition: background .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease;
 }
 .pmode:hover { color: #E4D4F5; border-color: rgba(255, 246, 230, .35); }
@@ -11451,7 +11451,7 @@ canvas[hidden] { display: none; }
 /* ── เช็คชื่อซ้ำสดใต้ช่องพิมพ์ (wireNameRule) ── */
 .name-rule .nr-ok { color: #8FF4E2; font-weight: 700; }
 .name-rule .nr-bad { color: #FF8A9A; font-weight: 700; }
-.name-rule .nr-wait { color: #C9AEE2; }
+.name-rule .nr-wait { color: #FFFFFF; }
 input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(255,107,125,.35); }
 /* บรรทัดกติกาห่างจากช่องพิมพ์ขึ้น · บรรทัดเตือนชื่อซ้ำ/ว่าง แยกบรรทัดของตัวเองและเว้นห่างจากกติกา */
 .name-rule { margin-top: 6px; }
@@ -11693,7 +11693,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   padding-right: 1px;
 }
 .form-row .mail-field input:focus { border: 0; }
-.mail-suffix { flex: 0 0 auto; color: #D9C4EC; font-size: 14px; font-weight: 600; }
+.mail-suffix { flex: 0 0 auto; color: #FFFFFF; font-size: 14px; font-weight: 600; }
 
 /* ── ลิงก์ผู้เล่นใหม่ผูกอีเมลเลย (หน้าเข้าสู่ระบบ) ── */
 .auth-signup {
@@ -11701,7 +11701,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   padding: 6px 12px;
   border: 0;
   background: none;
-  color: #C9AEE2;
+  color: #FFFFFF;
   font: inherit;
   font-size: clamp(11.5px, 1.9dvh, 13.5px);
   line-height: 1.5;
@@ -12479,7 +12479,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #stashPanel .dream .stab {
   border-color: rgba(255,255,255,.22);
   background: rgba(98,52,166,.18);
-  color: rgba(255,255,255,.86);
+  color: #FFFFFF;
 }
 #stashPanel .dream .stab.on {
   background: linear-gradient(180deg, rgba(255,255,255,.3), rgba(236,214,255,.16));
@@ -12497,7 +12497,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 #stashPanel .dream .fchip,
 #stashPanel .dream .fonly,
-#stashPanel .dream .count-pill { color: rgba(255,255,255,.9); }
+#stashPanel .dream .count-pill { color: #FFFFFF; }
 #stashPanel .dream .fchip.on {
   background: rgba(255,255,255,.34);
   color: #FFFFFF;
@@ -12676,9 +12676,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   border-color: rgba(255,255,255,.24);
   background: rgba(70,32,130,.32);
 }
-#talentPanel .tl-count { color: rgba(255,255,255,.85); }
+#talentPanel .tl-count { color: #FFFFFF; }
 #talentPanel .tl-tabs .fchip,
-#talentPanel .tl-filter .fchip { color: rgba(255,255,255,.85); }
+#talentPanel .tl-filter .fchip { color: #FFFFFF; }
 #talentPanel .tl-tabs .fchip.on,
 #talentPanel .tl-filter .fchip.on {
   background: rgba(255,255,255,.3);
@@ -12854,7 +12854,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #gachaPanel .gtab {
   border-color: rgba(255,255,255,.24);
   background: rgba(70,32,130,.26);
-  color: rgba(255,255,255,.88);
+  color: #FFFFFF;
   text-shadow: 0 1px 3px rgba(50,16,96,.35);
 }
 #gachaPanel .gtab.on {
@@ -13466,7 +13466,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   border-color: rgba(255,255,255,.24);
   background: rgba(70,32,130,.32);
 }
-#friendsPanel .fr-tabs .fchip { color: rgba(255,255,255,.85); }
+#friendsPanel .fr-tabs .fchip { color: #FFFFFF; }
 #friendsPanel .fr-tabs .fchip.on {
   background: rgba(255,255,255,.3);
   color: #FFFFFF;
@@ -13533,7 +13533,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   border-color: rgba(255,255,255,.24);
   background: rgba(70,32,130,.32);
 }
-#settingsPanel .langbtn { color: rgba(255,255,255,.85); }
+#settingsPanel .langbtn { color: #FFFFFF; }
 #settingsPanel .langbtn:hover { color: #FFFFFF; }
 #settingsPanel .langbtn.on {
   background: rgba(255,255,255,.3);
@@ -13578,7 +13578,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   background: linear-gradient(180deg, #AC76E0 0%, #945ACB 35%, #7945B5 100%);
   box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
     inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
-  color: #FFF8FF;
+  color: #FFFFFF;
   opacity: 1;
   transition: transform .12s ease, filter .12s ease;
 }
@@ -13605,8 +13605,8 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   pointer-events: none;
 }
 #inboxPanel .mail-title,
-#inboxPanel .mail-item.read .mail-title { font-weight: 700; line-height: 1.5; color: #FFF8FF; text-shadow: 0 1px 2px #67379555; }
-#inboxPanel .mail-sub { color: #D4AFE9; line-height: 1.5; overflow-wrap: anywhere; }
+#inboxPanel .mail-item.read .mail-title { font-weight: 700; line-height: 1.5; color: #FFFFFF; text-shadow: 0 1px 2px #67379555; }
+#inboxPanel .mail-sub { color: #FFFFFF; line-height: 1.5; overflow-wrap: anywhere; }
 #inboxPanel .mail-tag { padding: 5px 13px; font-size: clamp(10px, 1.6dvh, 12px); }
 #inboxPanel .mail-tag.done { background: #C69AE166; color: #E5C6F4; box-shadow: inset 0 1px 0 #FFFFFF12; }
 #inboxPanel .mail-tag.gift { background: linear-gradient(180deg, #FFF2BA, #FFD578); color: #704619; box-shadow: 0 2px 0 #75409D55; }
@@ -13636,7 +13636,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* Shared heading colors match the mailbox title across game panels. */
-#stage .panel :is(h2, .skin-title, .got-title, .tl-sheet-name, .news-title) {
+#stage .panel :is(h2, .skin-title, .got-title, .tl-sheet-name) {
   color: #FFF0B8;
   background: none;
   -webkit-text-fill-color: #FFF0B8;
@@ -13655,18 +13655,18 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   .mail-item, .news-item, .quest-row, .rank-row, .scene-row, .stage-card,
   .skin-card, .tl-card, .tl-equipped, .cc-card, .cs-friend, .cr-card,
   .pf-card, .pf-lookup-card, .over-card, .confirm-card, .name-card,
-  .dl-card, .lv-what, .news-view, .mr-body, .tdetail, .odetail,
+  .dl-card, .lv-what, .mr-body, .tdetail, .odetail,
   .grid-empty, .cc-empty, .setrow, .sk-quest, .fr-row, .got-card, .mail-body
 ) {
   --glass-edge: #E4BDFF;
   border-color: var(--glass-edge);
   background:
-    radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px) 9px 5px / 8px 8px no-repeat,
-    radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px) 20px 3px / 5px 5px no-repeat,
+    var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px)) 9px 5px / 8px 8px no-repeat,
+    var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px)) 20px 3px / 5px 5px no-repeat,
     linear-gradient(180deg, #AC76E0D9, #945ACBCC 35%, #7945B5D9);
   box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
     inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
-  color: #FFF8FF;
+  color: #FFFFFF;
 }
 /* Selection and rarity keep distinct outlines within the shared glass style. */
 #stage .panel.panel :is(.rank-s, .high, .gold) { --glass-edge: #FFD66E; }
@@ -13683,8 +13683,99 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #stage .panel.panel :is(.tl-card, .tl-equipped).rank-ss {
   border-color: transparent;
   background:
-    radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px) 9px 5px / 8px 8px no-repeat padding-box,
-    radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px) 20px 3px / 5px 5px no-repeat padding-box,
+    var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px)) 9px 5px / 8px 8px no-repeat padding-box,
+    var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px)) 20px 3px / 5px 5px no-repeat padding-box,
     linear-gradient(180deg, #AC76E0, #945ACB 35%, #7945B5) padding-box,
     linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
 }
+
+/* Hide decorative dots in profiles, cat/outfit grids and all friend tabs. */
+#stage :is(#profilePanel, #friendsPanel, #gListPanel),
+#stage .panel .skin-card {
+  --glass-dot-large: linear-gradient(transparent, transparent);
+  --glass-dot-small: linear-gradient(transparent, transparent);
+}
+/* Keep the two highlights on the owner's cat ID card. */
+#stage #friendsPanel .fr-me {
+  --glass-dot-large: radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px);
+  --glass-dot-small: radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px);
+}
+
+/* Ranking cards use plain glass without decorative white dots. */
+#stage #rankPanel {
+  --glass-dot-large: linear-gradient(transparent, transparent);
+  --glass-dot-small: linear-gradient(transparent, transparent);
+}
+/* Brighter secondary text and filter labels on purple surfaces. */
+#stage .panel.panel :is(.fchip, .fonly, .count-pill, .langbtn,
+  .rank-note, .mail-sub, .fr-me-label, .tl-side-note, .gacha-owned,
+  .stage-card small, .stage-card .best) {
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px #51217966;
+}
+/* Lavender checkbox surface, with a clear white check when selected. */
+#stage .panel .fonly input {
+  background: #8852B5;
+  border-color: #D9B7F4;
+  box-shadow: inset 0 1px 2px #FFFFFF30;
+}
+#stage .panel .fonly input:checked {
+  background: #A572D2;
+  border-color: #F0DDFF;
+}
+#stage .panel .fonly input::after {
+  border-left-color: #FFFFFF;
+  border-bottom-color: #FFFFFF;
+}
+
+/* ══ หน้าโปรไฟล์: โชว์รูมเล็ก ๆ ของน้องแมวเรา ═════════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/profilebg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะการ์ด ตัวน้อง สถิติ หรือปุ่ม (ผูกกับ #pfPop อย่างเดียว) */
+#pfPop { background: #8A58CB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.profile-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#pfPop > .pf-body { position: relative; z-index: 1; }
+
+/* ══ หน้ารางวัลเลเวล: เส้นทางเติบโตวิเศษของน้องแมว ═══════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/levelbg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะแถบสรุป ราง หมุด การ์ด หรือปุ่ม (ผูกกับ #lvPanel อย่างเดียว) */
+#lvPanel > .pop { background: #8657C8; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.level-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#lvPanel > .pop > :not(.level-bg, .backbtn) { position: relative; z-index: 1; }
+#lvPanel > .pop > .backbtn { z-index: 2; }
+#lvPanel .skin-title { text-shadow: 0 2px 8px rgba(60,22,110,.5); }
+
+/* ══ หน้าเช็คอินรายวัน: เช้าวันใหม่ที่น้องแมวรออยู่ ════════════════════════
+   พื้นหลังวาดด้วย Canvas 2D (src/render/dailybg.js) — บล็อกนี้แค่วางชั้น
+   ไม่แตะกระดานรางวัล ตัวน้อง คำทัก หรือปุ่ม (ผูกกับ #dailyPanel อย่างเดียว) */
+#dailyPanel > .pop { background: #8C5ACB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+.daily-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#dailyPanel > .pop > :not(.daily-bg, .backbtn) { position: relative; z-index: 1; }
+#dailyPanel > .pop > .backbtn { z-index: 2; }
+#dailyPanel .skin-title { text-shadow: 0 2px 8px rgba(60,22,110,.5); }
+
+/* คำทักของน้อง (กรอบ "วันนี้รับไปแล้ว…") ลอยทับขอบบนของกระดานม่วง */
+#dailyPanel > .pop > .dl-lead { z-index: 3; }

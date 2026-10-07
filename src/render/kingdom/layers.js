@@ -42,7 +42,6 @@ export const KINGDOM_LAYERS = [
       { art: 'cloud', x: 700, y: 88,  s: 1.0,  seed: 19 },
       { art: 'skyBauble', x: 250, y: 58,  s: 1.0, seed: 5 },
       { art: 'skyBauble', x: 560, y: 96,  s: 0.9, seed: 23 },
-      { art: 'skyBauble', x: 830, y: 52,  s: 1.1, seed: 31 },
     ],
   },
   {
@@ -61,7 +60,8 @@ export const KINGDOM_LAYERS = [
     depth: 0.3,
     tile: 660,
     items: [
-      { art: 'cliff',    x: 48,  y: GROUND_Y + 4, s: 1.0,  seed: 4 },
+      // noFall: ปิดน้ำตก — น้ำตกของผานี้ไปลอยอยู่หลังกล่องแมวบนหน้าแรก (ไม่มีพื้นรับ)
+      { art: 'cliff',    x: 48,  y: GROUND_Y + 4, s: 1.0,  seed: 4, noFall: true },
       { art: 'donut',    x: 196, y: GROUND_Y - 118, s: 1.3, seed: 21 },
       { art: 'cliff',    x: 300, y: GROUND_Y + 4, s: 0.82, seed: 8 },
       { art: 'mossHill', x: 452, y: GROUND_Y + 2, s: 0.9,  seed: 10 },
@@ -93,12 +93,12 @@ export const KINGDOM_LAYERS = [
     tile: 500,
     items: [
       { art: 'yarnBall', x: 30,  y: GROUND_Y, s: 0.9,  seed: 33 },
-      { art: 'mouse',    x: 104, y: GROUND_Y, s: 1.0,  seed: 35 },
+      // หนูมีตัวเดียวทั้งโลก (once = วาดเฉพาะช่วงแรก ไม่วนซ้ำทุก tile) — หน้าแรกเหลือตัวเดียวฝั่งซ้าย
+      { art: 'mouse',    x: 104, y: GROUND_Y, s: 1.0,  seed: 35, once: true },
       { art: 'gem',      x: 168, y: GROUND_Y - 12, s: 1.0, seed: 37 },
       { art: 'bowl',     x: 244, y: GROUND_Y, s: 1.0,  seed: 39 },
       { art: 'mushroom', x: 312, y: GROUND_Y, s: 0.8,  seed: 41 },
       { art: 'potion',   x: 372, y: GROUND_Y, s: 1.0,  seed: 43 },
-      { art: 'mouse',    x: 436, y: GROUND_Y, s: 0.85, seed: 45 },
       { art: 'yarnBall', x: 478, y: GROUND_Y, s: 0.75, seed: 47 },
     ],
   },
@@ -191,21 +191,34 @@ export function drawKingdomGround(ctx, worldX, p, t) {
   }
 }
 
-/** ชั้นเดียว — วาดซ้ำเป็นช่วง ๆ จนเต็มจอ */
-function drawLayer(ctx, layer, worldX, p, t) {
+/**
+ * ไล่ของทุกชิ้นของชั้นที่อยู่ในจอตอนนี้ พร้อมตำแหน่งบนจอจริง
+ * ใช้ทั้งตอนวาดชั้นและตอนชั้นแสง (glow.js) หาว่าเมฆ/โคมอยู่ตรงไหน — สูตรเลื่อนจึงมีที่เดียว
+ */
+export function eachItem(layer, worldX, t, fn) {
   const shift = worldX * layer.depth + (layer.drift || 0) * t;
   let off = -(shift % layer.tile);
   if (off > 0) off -= layer.tile;
 
   for (let base = off - layer.tile; base < W + layer.tile; base += layer.tile) {
+    // เลขช่วงในโลก (ช่วงแรกตอนฉากยังไม่เลื่อน = 0) — ใช้กับของที่มีชิ้นเดียว (once)
+    const n = Math.round((base + shift) / layer.tile);
     for (const it of layer.items) {
+      if (it.once && n !== 0) continue;
       const x = base + it.x;
       // ตัดของที่อยู่นอกจอทิ้งก่อนเรียกฟังก์ชันวาด — เผื่อขอบ 200 หน่วยให้ของชิ้นใหญ่
       if (x < -200 || x > W + 200) continue;
-      const draw = PROPS[it.art];
-      if (draw) draw(ctx, x, it.y, it.s, p, t, it.seed);
+      fn(it, x);
     }
   }
+}
+
+/** ชั้นเดียว — วาดซ้ำเป็นช่วง ๆ จนเต็มจอ */
+function drawLayer(ctx, layer, worldX, p, t) {
+  eachItem(layer, worldX, t, (it, x) => {
+    const draw = PROPS[it.art];
+    if (draw) draw(ctx, x, it.y, it.s, p, t, it.seed, it);
+  });
 }
 
 /**
@@ -231,7 +244,7 @@ function haze(ctx, p, alpha) {
 }
 
 /** ชั้นที่อยู่หลังพื้น (ฟ้า ปราสาท เนิน ต้นไม้) */
-export function drawKingdomBack(ctx, worldX, p, t) {
+export function drawKingdomBack(ctx, worldX, p, t, fx = null) {
   // ความเข้มของม่านต่อชั้น — บางมากโดยตั้งใจ
   // ต้นแบบเป็นภาพประกอบสีสด ไม่ได้ใช้หมอกระยะแบบภาพวาดสีน้ำมัน
   // ลองใส่หนา (0.12/0.30/0.16) แล้ววัดด้วยตา: ปราสาทโดนม่านสะสม 0.58 จนแทบหายไปกับฟ้า
@@ -239,7 +252,10 @@ export function drawKingdomBack(ctx, worldX, p, t) {
   const veil = { clouds: 0.05, castle: 0.1, hills: 0.05, env: 0 };
   for (const layer of KINGDOM_LAYERS) {
     if (layer.depth >= 1) continue;
+    // ชั้นแสง (กราฟิกสูง) ขอแทรกก่อน/หลังชั้นใดชั้นหนึ่งได้ เช่นรัศมีหลังเมฆ หมู่เมฆไกลหลังปราสาท
+    fx?.before?.(ctx, layer, worldX, p, t);
     drawLayer(ctx, layer, worldX, p, t);
+    fx?.after?.(ctx, layer, worldX, p, t);
     const a = veil[layer.name];
     if (a) haze(ctx, p, a);
   }

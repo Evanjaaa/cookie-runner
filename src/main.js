@@ -66,6 +66,9 @@ import { makeNewsBg } from './render/newsbg.js';
 import { makeMailBg } from './render/mailbg.js';
 import { makeSettingsBg } from './render/settingsbg.js';
 import { makeCelebrateBg } from './render/celebratebg.js';
+import { makeProfileBg } from './render/profilebg.js';
+import { makeLevelBg } from './render/levelbg.js';
+import { makeDailyBg } from './render/dailybg.js';
 import { PROP_LIST } from './obstacles.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
@@ -3319,6 +3322,10 @@ paintLangPick();
 // ไฟล์นี้        วาดปฏิทิน จ่ายของ และเปิดหน้าให้เองตอนเข้าล็อบบี้วันแรกของวัน
 
 const dailyPanel = document.getElementById('dailyPanel');
+// ── พื้นหลังเช้าวันใหม่ของหน้าเช็คอินรายวัน ── ตัวเฝ้าคลาสปลุกลูปและเริ่มจังหวะสว่างขึ้นตอนเปิด ลูปหยุดเองเมื่อแผงปิด
+const dailyBg = makeDailyBg(document.getElementById('dailyBg'),
+  () => !dailyPanel.classList.contains('hidden'), dailyPanel.querySelector('.pop'));
+new MutationObserver(() => dailyBg.kick()).observe(dailyPanel, { attributes: true, attributeFilter: ['class'] });
 
 /** จุดแดงบนปุ่มเช็คอิน — วันนี้ยังไม่ได้รับก็ขึ้นจุด (ไม่ต้องมีตัวเลข มีได้วันละชิ้นเดียว) */
 function refreshDailyDot() {
@@ -3487,6 +3494,10 @@ function maybePopDaily() {
 // ไฟล์นี้จึงไม่รู้ว่าเลเวลไหนได้อะไร และไฟล์นั้นก็ไม่รู้จักหน้าจอเลย
 
 const lvPanel = document.getElementById('lvPanel');
+// ── พื้นหลังเส้นทางเติบโตของหน้ารางวัลเลเวล ── ตัวเฝ้าคลาสของแผงปลุกลูป ลูปหยุดเองเมื่อแผงปิด
+const levelBg = makeLevelBg(document.getElementById('levelBg'),
+  () => !lvPanel.classList.contains('hidden'), lvPanel.querySelector('.pop'));
+new MutationObserver(() => levelBg.kick()).observe(lvPanel, { attributes: true, attributeFilter: ['class'] });
 
 /** เลเวลตอนนี้ — อ่านสด ๆ ทุกครั้ง เพราะ XP ขึ้นได้ระหว่างเปิดหน้าอื่นค้างอยู่ */
 function curLevel() {
@@ -3905,6 +3916,10 @@ function doClaimQuest(id) {
 
 const profilePanel = document.getElementById('profilePanel');
 const pfPop = document.getElementById('pfPop');
+// ── พื้นหลังโชว์รูมน้องแมวของหน้าโปรไฟล์ ── (ของเรา + ส่องคนอื่น) ตัวเฝ้าคลาสของแผงปลุกลูป ลูปหยุดเองเมื่อแผงปิด
+const profileBg = makeProfileBg(document.getElementById('profileBg'),
+  () => !profilePanel.classList.contains('hidden'), pfPop);
+new MutationObserver(() => profileBg.kick()).observe(profilePanel, { attributes: true, attributeFilter: ['class'] });
 
 /**
  * แยก "ตัวเลข" กับ "หน่วย" ออกจากกัน

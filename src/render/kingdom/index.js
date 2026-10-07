@@ -24,6 +24,8 @@ import {
   drawKingdomBack,
   drawKingdomFront,
 } from './layers.js';
+import { KINGDOM_FX, FX_HOOKS, fxSky, fxAir, fxGround, fxFront } from './glow.js';
+export { lanternLightMask } from './glow.js';
 
 export { KINGDOM } from './palette.js';
 export { PROPS } from './props.js';
@@ -55,9 +57,11 @@ export const KINGDOM_SPEED = {
  * @param opts.worldX        ระยะเลื่อนเอง (ถ้าส่งมา จะไม่คิดจาก tick)
  * @param opts.palette       จานสีชุดอื่น เช่นธีมกลางคืน
  * @param opts.noForeground  ปิดชั้นหน้าสุด ตอนที่ต้องเห็นตัวละครเต็มตัว
+ * @param opts.fx            ชั้นแสงเต็มรูปแบบ (glow.js) — ส่ง true เฉพาะกราฟิกระดับสูง
  */
 export function drawKingdom(ctx, tick, opts = {}) {
-  const p = opts.palette || KINGDOM;
+  const fx = !!opts.fx;
+  const p = opts.palette || (fx ? KINGDOM_FX : KINGDOM);
   const speed = opts.speed ?? KINGDOM_SPEED.lobby;
   const worldX = opts.worldX ?? tick * speed;
 
@@ -68,9 +72,13 @@ export function drawKingdom(ctx, tick, opts = {}) {
   ctx.clip();
 
   drawKingdomSky(ctx, p);
-  drawKingdomBack(ctx, worldX, p, tick);
+  if (fx) fxSky(ctx, p, tick);
+  drawKingdomBack(ctx, worldX, p, tick, fx ? FX_HOOKS : null);
+  if (fx) fxAir(ctx, p, tick);
   drawKingdomGround(ctx, worldX, p, tick);
+  if (fx) fxGround(ctx, worldX, p, tick);
   drawKingdomFront(ctx, worldX, p, tick, opts);
+  if (fx) fxFront(ctx, worldX, p, tick, opts);
 
   ctx.restore();
 }

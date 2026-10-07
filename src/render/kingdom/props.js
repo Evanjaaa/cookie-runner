@@ -91,7 +91,13 @@ function cloud(ctx, x, y, s, p, t, seed) {
       ctx.arc(bx, 6, br, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = p.cloud;
+    // จานสีที่มี cloudLit (โหมดกราฟิกสูง) = เนื้อเมฆไล่จากขอบบนที่โดนแดดลงไปท้องเมฆ
+    if (p.cloudLit) {
+      const g = ctx.createLinearGradient(0, -34, 0, 22);
+      g.addColorStop(0, p.cloudLit);
+      g.addColorStop(1, p.cloud);
+      ctx.fillStyle = g;
+    } else ctx.fillStyle = p.cloud;
     for (let i = 0; i < n; i++) {
       const bx = (i - (n - 1) / 2) * 26 + (hash(seed + i) - 0.5) * 10;
       const br = 20 + hash(seed + i * 3) * 14;
@@ -139,6 +145,12 @@ function skyBauble(ctx, x, y, s, p, t, seed) {
 function towerAt(ctx, p, s, cx, top, w, bottom) {
   ctx.fillStyle = p.stone;
   ctx.fillRect(cx - w / 2, top, w, bottom - top);
+  // แถบเงาด้านขวาของหอ — ทรงกระบอกต้องมีด้านมืด ไม่งั้นอ่านเป็นแผ่นสี่เหลี่ยม
+  // ลงก่อนเส้นขอบ เส้นจึงอยู่บนสุด ไม่โดนเงาทับ
+  ctx.fillStyle = p.stoneDark;
+  ctx.globalAlpha = 0.5;
+  ctx.fillRect(cx + w * 0.18, top, w * 0.32, bottom - top);
+  ctx.globalAlpha = 1;
   pen(ctx, p, s, 0.75);
   ctx.strokeRect(cx - w / 2, top, w, bottom - top);
 
@@ -148,12 +160,6 @@ function towerAt(ctx, p, s, cx, top, w, bottom) {
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = p.roofDark;
   ctx.fillRect(cx - w * 0.66, top - w * 0.02, w * 1.32, w * 0.08);
-
-  // แถบเงาด้านขวาของหอ — ทรงกระบอกต้องมีด้านมืด ไม่งั้นอ่านเป็นแผ่นสี่เหลี่ยม
-  ctx.fillStyle = p.stoneDark;
-  ctx.globalAlpha = 0.5;
-  ctx.fillRect(cx + w * 0.18, top, w * 0.32, bottom - top);
-  ctx.globalAlpha = 1;
 }
 
 /**
@@ -166,6 +172,15 @@ function towerAt(ctx, p, s, cx, top, w, bottom) {
  */
 function castle(ctx, x, y, s, p, t, seed) {
   local(ctx, x, y, s, () => {
+    // ── หอคอย ── วาดก่อนตัวปราสาท ตัวชั้นจึงบังโคนหอไว้ ไม่มีเส้นขอบหอทะลุลงมาในเนื้อหิน
+    // สองต้นนอกสูงกว่าสองต้นใน แล้วต้นกลางสูงสุด = เงาโดยรวมเป็นสามเหลี่ยม
+    // ขอบในของหอชิดขอบชั้นพอดี (ชั้นกลางกว้าง ±78 / ชั้นบน ±46) เส้นขอบจึงเป็นเส้นเดียวกัน ไม่มีร่องว่าง
+    towerAt(ctx, p, s, -93, -168, 30, -110);
+    towerAt(ctx, p, s, 93, -168, 30, -110);
+    towerAt(ctx, p, s, -59, -232, 26, -186);
+    towerAt(ctx, p, s, 59, -232, 26, -186);
+    towerAt(ctx, p, s, 0, -300, 32, -242);
+
     pen(ctx, p, s, 0.75);
 
     // ── ชั้นล่างสุด ──
@@ -193,30 +208,11 @@ function castle(ctx, x, y, s, p, t, seed) {
     catHole(ctx, -40, -152, 14, p.window);
     catHole(ctx, 40, -152, 14, p.window);
 
-    // ผ้าคาดใต้ชั้นกลาง — แถบสีม่วงอ่อนตัดกับหินสีครีมทั้งก้อน
-    ctx.fillStyle = p.banner;
-    for (let i = -3; i <= 3; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * 22 - 11, -118);
-      ctx.lineTo(i * 22 + 11, -118);
-      ctx.lineTo(i * 22, -104);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-    }
-
     // ── ชั้นบนสุด ──
     ctx.fillStyle = p.stone;
     ctx.fillRect(-46, -252, 92, 58);
     ctx.strokeRect(-46, -252, 92, 58);
     catHole(ctx, 0, -218, 15, p.window);
-
-    // ── หอคอย ──
-    // สองต้นนอกสูงกว่าสองต้นใน แล้วต้นกลางสูงสุด = เงาโดยรวมเป็นสามเหลี่ยม
-    towerAt(ctx, p, s, -96, -168, 30, -110);
-    towerAt(ctx, p, s, 96, -168, 30, -110);
-    towerAt(ctx, p, s, -58, -232, 26, -186);
-    towerAt(ctx, p, s, 58, -232, 26, -186);
-    towerAt(ctx, p, s, 0, -300, 32, -242);
 
     // ธงบนยอดหอกลาง โบกตามเวลา
     const wave = Math.sin(t * 0.05) * 5;
@@ -236,6 +232,9 @@ function castle(ctx, x, y, s, p, t, seed) {
 /** กำแพงเมืองพร้อมหอคอยหนึ่งต้น — วางซ้ำสองข้างเพื่อขนาบปราสาทกลาง */
 function wallTower(ctx, x, y, s, p, t, seed) {
   local(ctx, x, y, s, () => {
+    // หอคอยตรงกลางกำแพง — วาดก่อนกำแพง กำแพงจึงบังโคนหอ ไม่มีเส้นขอบหอทะลุลงมา
+    towerAt(ctx, p, s, 0, -150, 40, -60);
+    catHole(ctx, 0, -112, 13, p.window);
     pen(ctx, p, s, 0.75);
     // แนวกำแพงเตี้ย
     ctx.fillStyle = p.stoneLight;
@@ -243,9 +242,6 @@ function wallTower(ctx, x, y, s, p, t, seed) {
     ctx.strokeRect(-70, -74, 140, 74);
     catHole(ctx, -38, -44, 12, p.window);
     catHole(ctx, 38, -44, 12, p.window);
-    // หอคอยตรงกลางกำแพง
-    towerAt(ctx, p, s, 0, -150, 40, -60);
-    catHole(ctx, 0, -112, 13, p.window);
   });
 }
 
@@ -316,22 +312,29 @@ function waterfall(ctx, x, y, s, p, t, seed) {
  * และเวลาปรับขนาดผา ต้องไปตามแก้ตำแหน่งน้ำตกทุกครั้ง
  * รวมเป็นชิ้นเดียว น้ำจึงออกจากยอดผาเสมอไม่ว่าจะย่อขยายเท่าไหร่
  */
-function cliff(ctx, x, y, s, p, t, seed) {
+function cliff(ctx, x, y, s, p, t, seed, it = {}) {
   local(ctx, x, y, s, () => {
     const w = 78 + hash(seed) * 46;
     const h = 92 + hash(seed + 3) * 54;
     pen(ctx, p, s, 0.75);
 
     // ตัวผา — ด้านซ้ายชันกว่าด้านขวา ผาที่สมมาตรจะอ่านเป็นก้อนน้ำแข็ง
+    const rockPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(-w, 0);
+      ctx.lineTo(-w * 0.82, -h * 0.72);
+      ctx.quadraticCurveTo(-w * 0.5, -h, 0, -h);
+      ctx.quadraticCurveTo(w * 0.62, -h, w * 0.86, -h * 0.52);
+      ctx.lineTo(w, 0);
+      ctx.closePath();
+    };
     ctx.fillStyle = p.rock;
-    ctx.beginPath();
-    ctx.moveTo(-w, 0);
-    ctx.lineTo(-w * 0.82, -h * 0.72);
-    ctx.quadraticCurveTo(-w * 0.5, -h, 0, -h);
-    ctx.quadraticCurveTo(w * 0.62, -h, w * 0.86, -h * 0.52);
-    ctx.lineTo(w, 0);
-    ctx.closePath();
+    rockPath();
     ctx.fill(); ctx.stroke();
+    // มอสส์และร่องหินอยู่ในเนื้อผาเท่านั้น — ปลายมอสส์ไม่ยื่นเลยขอบหินออกมาเป็นติ่งเขียว
+    ctx.save();
+    rockPath();
+    ctx.clip();
 
     // ร่องหินสองสามเส้น บอกว่าเป็นหินไม่ใช่ดินก้อนเดียว
     ctx.strokeStyle = p.rockDark;
@@ -379,9 +382,14 @@ function cliff(ctx, x, y, s, p, t, seed) {
     ctx.quadraticCurveTo(-w * 0.5, -h, 0, -h);
     ctx.quadraticCurveTo(w * 0.62, -h, w * 0.86, -h * 0.5);
     ctx.stroke();
+    ctx.restore();
+    // ลากขอบผาซ้ำ เส้นขอบนอกจึงหนาเต็มเส้นเท่าเดิม (ครึ่งในโดนมอสส์ทับไปแล้ว)
+    pen(ctx, p, s, 0.75);
+    rockPath();
+    ctx.stroke();
 
     // น้ำตกไหลจากยอด — บางผาเท่านั้นที่มี ไม่งั้นทั้งฉากมีแต่น้ำ
-    if (hash(seed + 11) > 0.42) {
+    if (!it.noFall && hash(seed + 11) > 0.42) {
       const fx = (hash(seed + 13) - 0.5) * w * 0.7;
       waterfall(ctx, fx, -h * 0.62, 0.9, p, t, seed + 2);
     }
@@ -455,7 +463,9 @@ function bush(ctx, x, y, s, p, t, seed) {
 /** โดนัทยักษ์ — เอียงเล็กน้อยตามเลขสุ่ม ไม่งั้นวางกี่อันก็เหมือนกันหมด */
 function donut(ctx, x, y, s, p, t, seed) {
   local(ctx, x, y, s, () => {
-    ctx.rotate((hash(seed) - 0.5) * 0.9);
+    // หมุนรอบตัวช้า ๆ (รอบละ ~25 วินาที) แต่ละชิ้นหมุนคนละทิศตาม seed
+    const spin = (hash(seed + 2) < 0.5 ? -1 : 1) * t * 0.004;
+    ctx.rotate((hash(seed) - 0.5) * 0.9 + spin);
     pen(ctx, p, s, 0.8);
     const R = 30, r = 11;
     ctx.fillStyle = p.trunk;
@@ -491,9 +501,17 @@ function donut(ctx, x, y, s, p, t, seed) {
 /** อมยิ้มเกลียว — ก้านเสียบพื้น หัวหมุนช้า ๆ */
 function lollipop(ctx, x, y, s, p, t, seed) {
   local(ctx, x, y, s, () => {
+    // ก้านเป็นแท่งไม้มีความหนา (ไส้ครีม + ขอบสองข้าง + เงาซีกขวา) ไม่ใช่เส้นเดียว — อ่านออกว่าเป็นไม้อมยิ้ม
     pen(ctx, p, s, 0.8);
-    ctx.strokeStyle = p.line;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -42); ctx.stroke();
+    ctx.fillStyle = p.stoneLight;
+    rr(ctx, -3.6, -44, 7.2, 44, 3);
+    ctx.fill();
+    ctx.fillStyle = p.stoneDark;
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(0.8, -44, 2.8, 42);
+    ctx.globalAlpha = 1;
+    rr(ctx, -3.6, -44, 7.2, 44, 3);
+    ctx.stroke();
     ctx.save();
     ctx.translate(0, -52);
     ctx.rotate(t * 0.006 + seed);
@@ -549,20 +567,47 @@ function mushroom(ctx, x, y, s, p, t, seed) {
     ctx.fillStyle = p.candyCream;
     rr(ctx, -6, -20, 12, 20, 5);
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = p.candyRed;
-    ctx.beginPath();
-    ctx.ellipse(0, -20, 19, 14, 0, Math.PI, 0);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = p.candyCream;
-    for (let i = 0; i < 3; i++) {
-      const dx = (i - 1) * 8 + (hash(seed + i) - 0.5) * 4;
+    const cap = () => {
       ctx.beginPath();
-      ctx.ellipse(dx, -24 - hash(seed + i * 5) * 4, 3.4, 2.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -20, 19, 14, 0, Math.PI, 0);
+      ctx.closePath();
+    };
+    ctx.fillStyle = p.candyRed;
+    cap();
+    ctx.fill();
+    // จุดขาวหลายขนาดกระจายไม่เป็นแถว บางจุดโดนขอบหมวกตัดครึ่ง — แบบเห็ดในนิทาน
+    // แต่ละดอกพลิกซ้ายขวา/ขยับนิด ๆ ตาม seed จึงไม่มีสองดอกลายซ้ำกัน
+    ctx.save();
+    cap();
+    ctx.clip();
+    ctx.fillStyle = p.candyCream;
+    const flip = hash(seed + 7) < 0.5 ? -1 : 1;
+    for (let i = 0; i < MUSH_SPOTS.length; i++) {
+      const [sx, sy, sr] = MUSH_SPOTS[i];
+      const jx = (hash(seed + i * 3) - 0.5) * 0.08;
+      const jy = (hash(seed + i * 11) - 0.5) * 0.08;
+      const r = sr * 17 * (0.9 + hash(seed + i * 13) * 0.2);
+      ctx.beginPath();
+      ctx.ellipse((sx + jx) * 19 * flip, -20 + (sy + jy) * 14, r, r * 0.88, 0, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+    cap();
+    ctx.stroke();
   });
 }
+
+/** ตำแหน่งจุดบนหมวกเห็ด (หน่วย = รัศมีหมวก, y ติดลบ = ขึ้นบน) — ใหญ่ เล็ก ปนกัน และมีจุดชิดขอบ */
+const MUSH_SPOTS = [
+  [-0.40, -0.58, 0.21],
+  [0.02, -0.20, 0.17],
+  [0.46, -0.72, 0.22],
+  [0.74, -0.18, 0.16],
+  [-0.76, -0.12, 0.14],
+  [-0.46, 0.0, 0.07],
+  [-0.04, -0.86, 0.08],
+  [0.38, 0.0, 0.075],
+];
 
 // ══ ของเล่นและของสะสม ════════════════════════════════════
 

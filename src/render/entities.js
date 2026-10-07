@@ -3919,11 +3919,21 @@ function drawCatStand(ctx, s, {
     const lhy = lhy0 + (-11 - lhy0) * reachL;
     const rhy = wy + swing * 8 * (1 - rest) * (1 - wave) * (1 - reach);
 
+    // ── แขนคู่ที่ขึ้นไปนวด/ประกบหัวใจที่อก (knead) คือแขนคู่นี้ ──
+    // ท่ายืนก็ต้องหายไปพร้อมกับที่คู่บนอกโผล่มา (เหตุผลเดียวกับขาหน้าท่านั่ง) ไม่งั้นเห็นมือสี่ข้าง
+    // เกาพุง (scratch) ใช้แขนขวาข้างเดียว แขนขวาท่ายืนจึงต้องหายตามด้วย
+    const armL = 1 - knead;
+    const armR = 1 - Math.max(knead, scratch);
+    const base = ctx.globalAlpha;
+    ctx.globalAlpha = base * armL;
     ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(lhx, lhy); ctx.stroke();
+    ctx.globalAlpha = base * armR;
     ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(wx, rhy); ctx.stroke();
+    ctx.globalAlpha = base;
 
     // อุ้งเท้าที่ปลายมือโบก/มือพุ่ง — มือเปล่า ๆ ที่ไม่มีอุ้งเท้าอ่านเป็นแท่งไม้ ไม่ใช่มือ
-    const pad = Math.max(wave, reach);
+    // อุ้งเท้าหายไปพร้อมแขนของมัน (เช่นชูแขนดีใจแล้วต่อด้วยกอดหัวใจ) ไม่งั้นเหลืออุ้งเท้าลอยค้าง
+    const pad = Math.max(wave, reach) * armR;
     if (pad > 0.02) {
       ctx.save();
       ctx.globalAlpha *= pad;
@@ -3932,9 +3942,9 @@ function drawCatStand(ctx, s, {
       catEdge(ctx, s); ctx.stroke();
       ctx.restore();
     }
-    if (reachL > 0.02) {
+    if (reachL * armL > 0.02) {
       ctx.save();
-      ctx.globalAlpha *= reachL;
+      ctx.globalAlpha *= reachL * armL;
       ctx.fillStyle = s.cream;
       ctx.beginPath(); ctx.arc(lhx, lhy, 3.9, 0, Math.PI * 2); ctx.fill();
       catEdge(ctx, s); ctx.stroke();
@@ -3947,11 +3957,16 @@ function drawCatStand(ctx, s, {
       ctx.moveTo(-4, hy0); ctx.lineTo(lfx, fy1);
       ctx.moveTo(6, hy0); ctx.lineTo(rfx, fy1);
     }, 7);
-    paintStroke(ctx, s, 'body', () => {
-      ctx.beginPath();
-      ctx.moveTo(-ax0, ay0); ctx.lineTo(lhx, lhy);
-      ctx.moveTo(ax0, ay0); ctx.lineTo(wx, rhy);
-    }, 6);
+    for (const [a, x0, x1, y1] of [[armL, -ax0, lhx, lhy], [armR, ax0, wx, rhy]]) {
+      if (a < 0.02) continue;
+      ctx.save();
+      ctx.globalAlpha *= a;
+      paintStroke(ctx, s, 'body', () => {
+        ctx.beginPath();
+        ctx.moveTo(x0, ay0); ctx.lineTo(x1, y1);
+      }, 6);
+      ctx.restore();
+    }
 
     // ── อุ้งเท้าตอนเหยียดขานอน ──
     // ท่ายืนไม่ต้องมี เพราะปลายขาชี้ลงพื้นแล้วถูกเงาใต้เท้ากลืนไปพอดี
