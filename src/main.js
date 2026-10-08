@@ -243,6 +243,43 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 // ── หน้าแรกกับการเลือกตัวละคร ──────────────────────────────
 
+// ── ปุ่มกากบาท / ปุ่มกลับที่มุมการ์ด: กลางปุ่มตรงกับกลางหัวข้อเสมอ ──
+// CSS ตั้งความสูงปุ่มเป็นค่าตายตัว (top: 5% / clamp) แต่หัวข้อแต่ละหน้าสูงไม่เท่ากัน
+// (มีแท็บ ป้ายวันที่ ปุ่มรับทั้งหมดอยู่แถวเดียวกัน) ปุ่มจึงเยื้องต่ำกว่าหัวข้อ 4-13px แล้วแต่หน้า
+// วัดจากเลย์เอาต์จริงตอนเปิดแผง (offset* ไม่สนแอนิเมชันย่อขยายตอนเปิด) แล้วตั้ง top ให้ตรงกลางหัวข้อ
+const CORNER_TITLE = 'h2, .skin-title, .quest-title, .pf-title';
+function alignCornerBtns(panel) {
+  const pop = panel.querySelector(':scope > .pop');
+  if (!pop || !pop.offsetWidth) return;
+  const btns = pop.querySelectorAll(':scope > .backbtn, :scope > .xbtn');
+  if (!btns.length) return;
+  const title = [...pop.querySelectorAll(CORNER_TITLE)].find((t) => t.offsetWidth && t.offsetParent);
+  let mid = null;
+  if (title) {
+    let y = 0, n = title;
+    while (n && n !== pop) { y += n.offsetTop; n = n.offsetParent; }
+    if (n === pop) {
+      // กลางตัวหนังสือ ไม่นับ padding (h2 บางหน้ามี padding-bottom ดันกลางกล่องให้ต่ำกว่าตัวอักษร)
+      const cs = getComputedStyle(title);
+      const pt = parseFloat(cs.paddingTop) || 0, pb = parseFloat(cs.paddingBottom) || 0;
+      mid = y + pt + (title.offsetHeight - pt - pb) / 2;
+    }
+  }
+  for (const b of btns) {
+    b.style.top = mid == null || !b.offsetHeight ? '' : `${Math.max(4, Math.round(mid - b.offsetHeight / 2))}px`;
+  }
+}
+for (const panel of document.querySelectorAll('#stage .panel')) {
+  new MutationObserver(() => {
+    if (panel.classList.contains('hidden')) return;
+    requestAnimationFrame(() => alignCornerBtns(panel));
+    setTimeout(() => alignCornerBtns(panel), 350);   // ฟอนต์/เนื้อหาที่โหลดตามมาเปลี่ยนความสูงหัวข้อ
+  }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+}
+window.addEventListener('resize', () => {
+  for (const panel of document.querySelectorAll('#stage .panel:not(.hidden)')) alignCornerBtns(panel);
+});
+
 /**
  * ติดคลาส .scrolls ให้ช่องที่เนื้อหาล้นจริงเท่านั้น
  *
@@ -269,9 +306,12 @@ function markScrollable(el) {
 
 // ── ขอบบนของช่องเลื่อนจางเมื่อเลื่อนลงไปแล้ว ── (คลาส .scrolled — ดู "ขอบช่องเลื่อนนุ่ม ๆ" ใน style.css)
 // ตอนอยู่บนสุดไม่จาง แถวแรกต้องคมเต็มตัว · ตัวฟังเดียวทั้งเกม (scroll ไม่ bubble จึงฟังแบบ capture)
+// หน้าโปรไฟล์ (จอเตี้ย) เลื่อนทั้งก้อน .pf-body — ใช้ขอบจางชุดเดียวกัน + .at-end บอกว่าเลื่อนถึงล่างสุดแล้ว (ขอบล่างไม่ต้องจาง)
 document.addEventListener('scroll', (e) => {
   const el = e.target;
-  if (el instanceof Element && el.classList.contains('scrolls')) el.classList.toggle('scrolled', el.scrollTop > 2);
+  if (!(el instanceof Element)) return;
+  if (el.classList.contains('scrolls') || el.classList.contains('pf-body')) el.classList.toggle('scrolled', el.scrollTop > 2);
+  if (el.classList.contains('pf-body')) el.classList.toggle('at-end', el.scrollTop + el.clientHeight >= el.scrollHeight - 2);
 }, { capture: true, passive: true });
 
 /**

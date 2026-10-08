@@ -12196,10 +12196,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 
 /* ── มินิเกม (ยังไม่มีเกม) ── */
 .mini-pop { width: min(420px, 90%); }
-.mini-soon { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--cream); font-family: "Mali", sans-serif; }
-.mini-ico { font-size: clamp(34px, 9dvh, 56px); }
-.mini-soon b { font-size: clamp(16px, 3.6dvh, 22px); color: #FFE48A; }
-.mini-soon small { font-size: clamp(11px, 2.3dvh, 13px); opacity: .85; max-width: 26em; }
 
 /* ── น้องส้มพี่เลี้ยง ── อยู่บนสุดเสมอ (เด้งทับหน้าไหนก็ได้) */
 #tipPanel { z-index: 30; }
@@ -13571,8 +13567,8 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   position: relative;
   isolation: isolate;
   min-height: 76px;
-  gap: 17px;
-  padding: 12px 40px 12px 19px;
+  gap: 23px;
+  padding: 15px 24px 12px 19px;
   border: 2px solid #E4BDFF;
   border-radius: 20px;
   background: linear-gradient(180deg, #AC76E0 0%, #945ACB 35%, #7945B5 100%);
@@ -13597,8 +13593,8 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   content: '';
   position: absolute;
   top: 0;
-  right: -13px;
-  width: 13px;
+  right: -11px;
+  width: 11px;
   height: 19px;
   background: linear-gradient(110deg, transparent 35%, #FFEE9D 38% 57%, transparent 60%) 0 0 / 6px 9px no-repeat,
     linear-gradient(145deg, transparent 35%, #FFEE9D 38% 57%, transparent 60%) 5px 9px / 8px 6px no-repeat;
@@ -13614,7 +13610,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #inboxPanel .mail-item:active { transform: translateY(2px); box-shadow: 0 1px 0 #663398, inset 0 0 0 2px #FFFFFF28; }
 #inboxPanel .mail-item:focus-visible { outline: 3px solid #FFF0B5; outline-offset: 2px; }
 @media (max-height: 480px), (max-width: 400px) {
-  #inboxPanel .mail-item { gap: 10px; padding: 9px 31px 9px 12px; min-height: 62px; border-radius: 17px; }
+  #inboxPanel .mail-item { gap: 19px; padding: 13px 12px 9px 12px; min-height: 62px; border-radius: 17px; }
   #inboxPanel .mail-tag { padding: 4px 8px; }
 }
 @media (prefers-reduced-motion: reduce) { #inboxPanel .mail-item { transition: none; } }
@@ -13661,8 +13657,8 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   --glass-edge: #E4BDFF;
   border-color: var(--glass-edge);
   background:
-    var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px)) 9px 5px / 8px 8px no-repeat,
-    var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px)) 20px 3px / 5px 5px no-repeat,
+    var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 2px, #FFFFFF00 2.8px)) 9px 2px / 6px 6px no-repeat,
+    var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1px, #FFFFFF00 1.7px)) 18px 1px / 4px 4px no-repeat,
     linear-gradient(180deg, #AC76E0D9, #945ACBCC 35%, #7945B5D9);
   box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
     inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
@@ -13683,8 +13679,8 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #stage .panel.panel :is(.tl-card, .tl-equipped).rank-ss {
   border-color: transparent;
   background:
-    var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px)) 9px 5px / 8px 8px no-repeat padding-box,
-    var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px)) 20px 3px / 5px 5px no-repeat padding-box,
+    var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 2px, #FFFFFF00 2.8px)) 9px 2px / 6px 6px no-repeat padding-box,
+    var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1px, #FFFFFF00 1.7px)) 18px 1px / 4px 4px no-repeat padding-box,
     linear-gradient(180deg, #AC76E0, #945ACB 35%, #7945B5) padding-box,
     linear-gradient(135deg, #FF9FE0, #FFE49B 35%, #8DF3EA 65%, #C79BEA) border-box;
 }
@@ -13697,8 +13693,19 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 /* Keep the two highlights on the owner's cat ID card. */
 #stage #friendsPanel .fr-me {
-  --glass-dot-large: radial-gradient(circle, #FFFFFF 0 3px, #FFFFFF00 3.8px);
-  --glass-dot-small: radial-gradient(circle, #FFFFFFE6 0 1.5px, #FFFFFF00 2.2px);
+  --glass-dot-large: radial-gradient(circle, #FFFFFF 0 2px, #FFFFFF00 2.8px);
+  --glass-dot-small: radial-gradient(circle, #FFFFFFE6 0 1px, #FFFFFF00 1.7px);
+}
+
+/* Reserve a clear strip above news thumbnails, including compact layouts. */
+#stage .panel.panel .news-item { padding-top: 12px; }
+
+/* Dense rows and image tiles have no spare corner for decorative highlights. */
+#stage .panel.panel :is(.quest-row, .scene-row, .stage-card, .tl-card,
+  .tl-equipped, .cc-card, .cs-friend, .cr-card, .setrow, .sk-quest,
+  .lv-what, .got-card) {
+  --glass-dot-large: linear-gradient(transparent, transparent);
+  --glass-dot-small: linear-gradient(transparent, transparent);
 }
 
 /* Ranking cards use plain glass without decorative white dots. */
@@ -13779,3 +13786,619 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 
 /* คำทักของน้อง (กรอบ "วันนี้รับไปแล้ว…") ลอยทับขอบบนของกระดานม่วง */
 #dailyPanel > .pop > .dl-lead { z-index: 3; }
+
+/* ══ กรอบการ์ดแก้วที่ไม่มีมุมมนของตัวเอง ═══════════════════════════════
+   กฎการ์ดแก้ว (#stage .panel.panel :is(...)) ใส่พื้นกับขอบให้กล่องพวกนี้ แต่กล่องเดิมไม่เคยมีกรอบจึงไม่ได้ตั้งมุมไว้
+   = ออกมาเป็นสี่เหลี่ยมเหลี่ยม (เช่นรายละเอียดสมบัติ/ชุด) → มุมมนเท่าการ์ดแก้วใบอื่น */
+#stage .panel.panel :is(.tdetail, .odetail, .confirm-card, .mr-body, .grid-empty, .cc-empty, .fr-row) {
+  border-radius: 20px;
+}
+@media (max-height: 480px), (max-width: 400px) {
+  #stage .panel.panel :is(.tdetail, .odetail, .confirm-card, .mr-body, .grid-empty, .cc-empty, .fr-row) { border-radius: 16px; }
+}
+
+/* ══ หน้าโปรไฟล์ (จอเตี้ย): ขอบช่องเลื่อนจางนุ่มแบบหน้าเลือกด่าน ══════════
+   .pf-body เลื่อนทั้งก้อนเป็นสองหน้า ของที่เลื่อนพ้นขอบโดนตัดเป็นเส้นตรง → จางบน 22px ตอนเลื่อนลงแล้ว (.scrolled)
+   และจางล่าง 22px ตอนยังไม่ถึงล่างสุด (.at-end จาก main.js) — อยู่บนสุดขอบบนคม / อยู่ล่างสุดขอบล่างคม */
+@media (max-height: 520px) {
+  .pf-body {
+    --pf-fade-top: 0px;
+    --pf-fade-bot: 22px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--pf-fade-top), #000 calc(100% - var(--pf-fade-bot)), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 var(--pf-fade-top), #000 calc(100% - var(--pf-fade-bot)), transparent);
+  }
+  .pf-body.scrolled { --pf-fade-top: 22px; }
+  .pf-body.at-end { --pf-fade-bot: 0px; }
+}
+
+/* ══ ปุ่มมุมการ์ดไม่ชิดของบนแถวหัวข้อ (มือถือ) ═════════════════════════
+   ช่องไฟหลังปุ่มเดิม 6-12px (≈8px บนจอ 844) — ปุ่มกากบาทเกือบติดปุ่ม "รับทั้งหมด" / ปุ่มกลับติดหัวข้อเช็คอิน
+   ขยายเป็น 16px: การ์ดที่หดตามเนื้อหา (กิจกรรม เช็คอิน เลเวล) กว้างขึ้นเองตามที่จองเพิ่ม
+   ความสูงปุ่มให้ตรงกลางหัวข้อ → alignCornerBtns() ใน main.js */
+@media (max-height: 520px), (pointer: coarse) {
+  .pop:has(.backbtn, .pop-x) {
+    padding-left: calc(var(--backbtn-x) + var(--backbtn) + 16px);
+    padding-right: calc(var(--backbtn-x) + var(--backbtn) + 16px);
+  }
+}
+
+/* ══ เพื่อนแมว ข่าวสาร จดหมาย ตั้งค่า: การ์ดเต็มจอขนาดเดียวกันทั้งสี่หน้า ══ */
+#stage #friendsPanel > .pop,
+#stage #newsPanel > .pop.news-pop,
+#stage #inboxPanel > .pop,
+#stage #settingsPanel > .pop.set-pop {
+  width: 100%;
+  height: calc(100% - var(--card-inset) * 2);
+  max-height: calc(100% - var(--card-inset) * 2);
+}
+#stage #inboxPanel > .pop > .mail-list {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ══ ปุ่มที่กดไม่ได้: ซีดด้วยชั้นซ้อน ไม่ใช้ filter ══════════════════════
+   เดิม .btn:disabled ใช้ filter: grayscale(.5) — Safari (iPhone) ตัดเงาใต้ปุ่ม (box-shadow) ทิ้งเมื่อปุ่มมี filter
+   = เปิดหน้าแล้วเห็นเงานูนใต้ปุ่ม "รับทั้งหมด" แวบหนึ่งระหว่างแอนิเมชันเปิด พอจบแอนิเมชันเงาหายเหลือปุ่มแบน
+   ซีดเท่าเดิมด้วยแผ่นเทาโหมด saturation ข้างในปุ่ม (อยู่ในกรอบมนของปุ่มเอง) เงาจึงอยู่ครบทุกเบราว์เซอร์
+   ปุ่มเล่น/ปุ่มใหญ่/ปุ่มสุ่มมี ::after ของตัวเองอยู่แล้ว — คงแบบเดิม */
+.btn:disabled:not(.play):not(.big):not(.pull) { filter: none; }
+.btn:disabled:not(.play):not(.big):not(.pull)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #808080;
+  mix-blend-mode: saturation;
+  opacity: .5;
+  pointer-events: none;
+}
+
+/* ══ มินิเกม แมวหนีน้ำ: แผงเต็มจอ ══════════════════════════════════
+   ผ้าใบเต็มแผง (ห้องวาดล้นขอบ จอสัดส่วนไหนก็ไม่มีแถบดำ) · HUD อยู่ในผ้าใบ
+   ปุ่มนิ้วโชว์เฉพาะจอสัมผัส · หน้าพัก/สรุปเป็นการ์ดครีมขอบน้ำตาล (#4E3527) ตามสไตล์มินิเกม */
+#catWaterPanel {
+  padding: 0;
+  background: #2E2140;
+  backdrop-filter: none;
+}
+#cwCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.cw-corner {
+  position: absolute;
+  top: clamp(8px, 1.6dvh, 14px);
+  right: var(--backbtn-x);
+  z-index: 3;
+  display: flex;
+  gap: 10px;
+}
+.cw-corner .xbtn { position: static; }
+.cw-pause {
+  width: var(--backbtn);
+  height: var(--backbtn);
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255,243,226,.44);
+  background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
+  color: var(--cream);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(20,8,32,.65), 0 8px 18px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.22);
+  transition: transform .06s ease, box-shadow .06s ease;
+}
+.cw-pause:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(20,8,32,.65), 0 3px 9px rgba(0,0,0,.4); }
+.cw-pause svg { display: block; }
+
+.cw-pad {
+  position: absolute;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 3;
+  display: none;
+  gap: 14px;
+}
+@media (pointer: coarse) { .cw-pad { display: flex; } }
+.cw-pad-jump { right: calc(16px + env(safe-area-inset-right)); }
+.cw-key {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid #4E3527;
+  background: rgba(255,248,232,.8);
+  color: #4E3527;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: 0 5px 0 rgba(78,53,39,.45);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform .05s ease, box-shadow .05s ease;
+}
+.cw-key.on { transform: translateY(4px); box-shadow: 0 1px 0 rgba(78,53,39,.45); background: #FFE9B8; }
+.cw-jump { width: 86px; height: 86px; font-size: 36px; }
+
+.cw-box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  min-width: min(320px, 86%);
+  max-width: 92%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.8dvh, 14px);
+  padding: clamp(14px, 3dvh, 22px) clamp(18px, 3vw, 28px);
+  border: 3px solid #4E3527;
+  border-radius: 24px;
+  background: #FFF8EA;
+  color: #4E3527;
+  font-family: "Mali", sans-serif;
+  box-shadow: 0 6px 0 rgba(78,53,39,.35), 0 18px 30px rgba(0,0,0,.28);
+}
+.cw-box.hidden { display: none; }
+/* หน้าสรุปหลบไปอีกฝั่งของตัวน้อง — ให้เห็นน้องเปียก/กระโดดดีใจข้าง ๆ */
+.cw-result.side-r { left: auto; right: 5%; transform: translateY(-50%); }
+.cw-result.side-l { left: 5%; transform: translateY(-50%); }
+.cw-box-title { font-size: clamp(20px, 4.6dvh, 28px); }
+.cw-stats { display: flex; gap: clamp(14px, 3vw, 26px); margin: 0; }
+.cw-stats div { display: flex; flex-direction: column; align-items: center; }
+.cw-stats dt { font-size: clamp(11px, 2dvh, 13px); opacity: .7; }
+.cw-stats dd { margin: 0; font-size: clamp(18px, 3.8dvh, 24px); font-weight: 800; }
+#catWaterPanel .cw-reward { margin: 0; max-width: 30ch; color: #B0477A; font-weight: 700; font-size: clamp(12px, 2.3dvh, 14px); }
+.cw-box .btnrow { margin-top: 0; }
+.cw-box .btn { margin-top: 0; }
+
+/* ══ มินิเกม: น้องที่เล่นด้วย + หน้าเลือกน้อง ══════════════════════ */
+
+.mgpick-pop { width: min(600px, 94%); }
+.mgpick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 16px);
+}
+.mgpick-card {
+  width: clamp(112px, 17vw, 140px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px 12px;
+  border-radius: 20px;
+  border: 2px solid rgba(255,255,255,.3);
+  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(40,16,70,.45);
+  transition: transform .07s ease, box-shadow .07s ease;
+}
+.mgpick-card:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(40,16,70,.45); }
+.mgpick-card.on {
+  border-color: #FFE48A;
+  box-shadow: 0 0 0 3px rgba(255,228,138,.35), 0 4px 0 rgba(40,16,70,.45);
+}
+.mgpick-card canvas { width: clamp(64px, 12dvh, 84px); height: clamp(64px, 12dvh, 84px); }
+.mgpick-card b { font-size: clamp(13px, 2.6dvh, 15px); }
+.mgpick-card small { font-size: clamp(11px, 2dvh, 12px); opacity: .85; }
+.mgpick-want {
+  font-style: normal;
+  font-size: clamp(10.5px, 1.9dvh, 11.5px);
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255,159,210,.28);
+  color: #FFD9EC;
+}
+.mgpick-want.full { background: rgba(255,255,255,.12); color: rgba(255,255,255,.72); }
+#mgPickPanel .mgpick-note { margin: 0; max-width: none; font-size: clamp(11px, 2.1dvh, 13px); opacity: .85; }
+
+/* ══ มินิเกม: จอยสติ๊กลอย (แทนปุ่ม ◀ ▶) ══════════════════════════════
+   พื้นที่แตะ = ครึ่งซ้ายล่างของจอ (ไม่ทับปุ่มหยุด/ปิดมุมขวาบน) · วงจอยพักอยู่มุมซ้ายล่างให้เห็นว่ามี
+   แตะแล้ววงไปเกิดใต้นิ้ว (catwater.js ตั้ง left/top) ปล่อยนิ้วกลับที่พัก */
+.cw-stick {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 46%;
+  height: 72%;
+  z-index: 3;
+  display: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+@media (pointer: coarse) { .cw-stick { display: block; } }
+.cw-stick-base {
+  position: absolute;
+  left: calc(74px + env(safe-area-inset-left));
+  top: calc(100% - 74px - env(safe-area-inset-bottom));
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border-radius: 50%;
+  border: 3px solid rgba(78,53,39,.55);
+  background: radial-gradient(circle, rgba(255,248,232,.35), rgba(255,248,232,.55));
+  box-shadow: inset 0 2px 8px rgba(78,53,39,.18);
+  opacity: .75;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.cw-stick.on .cw-stick-base { opacity: 1; }
+.cw-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  border: 3px solid #4E3527;
+  background: radial-gradient(circle at 38% 32%, #FFFFFF, #FFE9B8 70%);
+  box-shadow: 0 4px 0 rgba(78,53,39,.4);
+}
+
+/* ══ หัวข้อทุกหน้าขนาดเดียวกับหน้าโปรไฟล์ ═══════════════════════════
+   ผู้ใช้เลือกขนาดหัวข้อโปรไฟล์ (.pf-title) เป็นมาตรฐาน — สูตรเดียวกันเป๊ะ:
+   คอม clamp(15px, 3.4dvh, 28px) · จอเตี้ย (มือถือแนวนอน) clamp(19px, 5.6dvh, 26px)
+   เดิมหน้าอื่นบนมือถือถูกตรึงไว้ 18px (บ้านลูกเหมียว 15px) เล็กกว่าโปรไฟล์ชัดเจน
+   ยกเว้นโลโก้หน้าแรก (#titlePanel) · ปุ่มมุมการ์ดจัดกลางตามหัวข้อใหม่เอง (alignCornerBtns ใน main.js) */
+#stage .panel:not(#titlePanel) :is(.skin-title, .cr-title, .found-title, .over-title, .pf-title),
+#stage .panel:not(#titlePanel) > .pop > h2 {
+  font-size: clamp(15px, 3.4dvh, 28px);
+}
+@media (max-height: 520px) {
+  #stage .panel:not(#titlePanel) :is(.skin-title, .cr-title, .found-title, .over-title, .pf-title),
+  #stage .panel:not(#titlePanel) > .pop > h2 {
+    font-size: clamp(19px, 5.6dvh, 26px);
+  }
+}
+
+/* ══ เช็คอินรายวัน: ออร่าช่องวันนี้ (ช่องที่ต้องแตะรับ) ═════════════════
+   เดิมช่องวันนี้เป็นแก้วม่วงเหมือนช่องอื่น กลืนกันจนหาไม่เจอ → ขอบทอง + แสงทองเต้นเป็นจังหวะ + ป้าย "แตะเพื่อรับ" สว่าง
+   ต้องเขียนผูก #stage #dailyPanel ให้ชนะกฎการ์ดแก้ว (#stage .panel.panel :is(...)) */
+#stage #dailyPanel .dl-card.today {
+  z-index: 1;
+  border-color: #FFE48A;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255,236,160,.38), rgba(255,236,160,0) 70%),
+    linear-gradient(180deg, #B97BE6, #9A5CD0 45%, #7E45B8);
+  animation: dlTodayGlow 1.5s ease-in-out infinite;
+}
+@keyframes dlTodayGlow {
+  0%, 100% {
+    box-shadow: 0 3px 0 #663398, 0 0 0 2px rgba(255,228,138,.55), 0 0 12px 2px rgba(255,214,110,.45),
+      inset 0 0 12px rgba(255,236,160,.35);
+  }
+  50% {
+    box-shadow: 0 3px 0 #663398, 0 0 0 3px rgba(255,228,138,.85), 0 0 24px 8px rgba(255,214,110,.7),
+      inset 0 0 18px rgba(255,236,160,.55);
+  }
+}
+#stage #dailyPanel .dl-card.today .dl-tap { color: #FFF3B0; font-weight: 800; text-shadow: 0 1px 2px rgba(80,30,120,.6); }
+@media (prefers-reduced-motion: reduce) {
+  #stage #dailyPanel .dl-card.today {
+    animation: none;
+    box-shadow: 0 3px 0 #663398, 0 0 0 3px rgba(255,228,138,.8), 0 0 18px 5px rgba(255,214,110,.6);
+  }
+}
+
+/* ══ บ้านลูกเหมียว: ชิปน้องในห้อง สดใสขึ้น + ไม่ชนปุ่มย้อนกลับ ═══════════════
+   ชิปครีมพาสเทล ขอบขาว รูปหน้าน้องในวงชมพู ชื่อสีม่วงเข้มอ่านชัดบนฉากห้อง
+   ตัวที่เลือก = ไล่เหลือง-ชมพู ขอบทอง ยกขึ้นนิด · แถวชิปเลื่อนลง 8px พ้นเงาใต้ปุ่มย้อนกลับ (การ์ดน้องเลื่อนตาม) */
+#catRoomPanel .cr-cats {
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + 16px);
+  gap: 8px;
+}
+#catRoomPanel .cr-card {
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + clamp(36px, 8dvh, 48px) + 20px);
+}
+#catRoomPanel .cr-chip {
+  gap: 6px;
+  padding: 3px 12px 3px 3px;
+  border: 2px solid #FFFFFF;
+  background: linear-gradient(180deg, #FFFBF1 0%, #FFEAF3 100%);
+  color: #5A2A86;
+  box-shadow: 0 3px 0 rgba(90,42,134,.35), 0 6px 14px rgba(40,16,70,.25);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+#catRoomPanel .cr-chip:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(90,42,134,.35); }
+#catRoomPanel .cr-chip canvas {
+  background: radial-gradient(circle at 40% 35%, #FFFFFF, #FFD9EC);
+  box-shadow: 0 0 0 2px #F7B7C9;
+}
+#catRoomPanel .cr-chip b { color: #5A2A86; }
+#catRoomPanel .cr-chip small { color: #B0477A; opacity: 1; font-weight: 700; }
+#catRoomPanel .cr-chip.on {
+  border-color: #FFC84A;
+  background: linear-gradient(180deg, #FFF6C8 0%, #FFD9EC 100%);
+  box-shadow: 0 0 0 3px rgba(255,200,74,.45), 0 3px 0 rgba(176,110,20,.45), 0 8px 16px rgba(40,16,70,.3);
+  transform: translateY(-1px);
+}
+#catRoomPanel .cr-chip.on canvas { box-shadow: 0 0 0 2px #FFC84A; }
+#catRoomPanel .cr-chip.wait { border-style: dashed; border-color: #F7B7C9; }
+#catRoomPanel .cr-chip.empty {
+  opacity: 1;
+  color: #B0477A;
+  border: 2px dashed rgba(255,255,255,.85);
+  background: rgba(255,248,234,.55);
+  box-shadow: none;
+}
+
+/* ══ หน้ามินิเกม: ซ้าย = น้องที่พาไปเล่น · ขวา = กรอบเกม 4 กรอบ (2×2) ═════════════
+   กรอบเกม: รูปโปรโมทด้านบน (public/minigames/*.png — ยังไม่มีไฟล์ = ภาพแทนสีพาสเทล+ไอคอน) ชื่อเกมใต้รูป
+   การ์ดครีม-ชมพูขอบขาวแบบชิปน้องในบ้าน ให้เป็นภาษาเดียวกัน */
+#miniPanel .mini-pop {
+  width: min(880px, 100%);
+  height: min(calc(100% - var(--card-inset) * 2), 470px);
+}
+.mini-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(150px, 32%) minmax(0, 1fr);
+  gap: clamp(10px, 2vw, 20px);
+}
+.mini-pet {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: clamp(1px, .6dvh, 6px);
+  padding: clamp(6px, 1.6dvh, 14px) clamp(8px, 1.6vw, 14px);
+  overflow: hidden;
+  border-radius: 22px;
+  border: 2px solid rgba(255,255,255,.4);
+  background:
+    radial-gradient(70% 45% at 50% 34%, rgba(255,228,138,.3), rgba(255,228,138,0) 70%),
+    linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.07));
+  box-shadow: 0 4px 0 rgba(40,16,70,.35), inset 0 1px 0 rgba(255,255,255,.35);
+  color: var(--cream);
+  font-family: "Mali", sans-serif;
+}
+.mini-pet-tag {
+  font-size: clamp(10.5px, 2dvh, 12px);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+}
+.mini-pet canvas { width: clamp(64px, 19dvh, 150px); height: clamp(64px, 19dvh, 150px); }
+.mini-pet canvas.hidden, .mini-pet-info.hidden { display: none; }
+.mini-pet-name { font-size: clamp(15px, 3.4dvh, 20px); color: #FFE48A; line-height: 1.1; }
+/* หลอดสองแถวเต็มกว้าง แล้วป้าย "อยากเล่น" กับหัวใจวางคู่กันบรรทัดเดียว (ประหยัดความสูงบนมือถือ) */
+.mini-pet-info { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: clamp(2px, .7dvh, 5px) 8px; }
+.mini-row { width: 100%; display: flex; align-items: center; gap: 6px; font-size: clamp(10.5px, 2dvh, 12px); }
+.mini-row span { flex-shrink: 0; min-width: 3.4em; text-align: left; }
+.mini-bar { flex: 1 1 auto; display: block; height: 8px; border-radius: 999px; background: rgba(20,8,32,.38); overflow: hidden; }
+.mini-bar > i { display: block; height: 100%; width: 0; border-radius: inherit; }
+.mini-bar.exp > i { background: linear-gradient(90deg, #FFE48A, #FFB86B); }
+.mini-bar.fun > i { background: linear-gradient(90deg, #FF9FD2, #FF6F91); }
+.mini-want { font-size: clamp(10px, 1.9dvh, 11.5px); padding: 2px 9px; border-radius: 999px; background: rgba(255,159,210,.3); color: #FFE0F0; }
+.mini-want.full { background: rgba(255,255,255,.14); color: rgba(255,255,255,.78); }
+.mini-hearts { font-size: clamp(12px, 2.4dvh, 15px); color: #FF8FB1; letter-spacing: 1px; }
+#miniPanel .mini-empty { margin: 0; max-width: none; font-size: clamp(11px, 2.1dvh, 13px); }
+#miniPanel .mini-empty.hidden { display: none; }
+.mini-pet .mini-swap { margin-top: 2px; }
+
+.mini-games {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 1.6vw, 14px);
+}
+.mini-game {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: clamp(4px, 1dvh, 7px);
+  border-radius: 20px;
+  border: 3px solid #FFFFFF;
+  background: linear-gradient(180deg, #FFFBF1 0%, #FFE8F2 100%);
+  color: #5A2A86;
+  font-family: "Mali", sans-serif;
+  box-shadow: 0 4px 0 rgba(90,42,134,.4), 0 8px 16px rgba(30,10,60,.28);
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.mini-game:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(90,42,134,.4); }
+.mini-game:disabled { cursor: default; }
+.mini-art {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--tint-a), var(--tint-b));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.55);
+}
+.mini-game.has-art .mini-art { background: var(--art) center / cover no-repeat; }
+.mini-art-ph { font-style: normal; font-size: clamp(26px, 8dvh, 46px); filter: drop-shadow(0 3px 4px rgba(90,42,134,.25)); }
+.mini-game.has-art .mini-art-ph { display: none; }
+.mini-soon-tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-style: normal;
+  font-size: clamp(9.5px, 1.8dvh, 11px);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(90,42,134,.75);
+  color: #FFF6D8;
+}
+.mini-soon-tag:empty { display: none; }
+.mini-gname { font-size: clamp(12.5px, 2.6dvh, 15px); line-height: 1.15; margin-top: 2px; }
+.mini-game.soon { background: linear-gradient(180deg, #F7F1FF 0%, #EFE4FB 100%); }
+.mini-game.soon .mini-art { filter: saturate(.75); }
+/* จอเตี้ย: ป้าย "พาน้องไปเล่น" ไม่ต้องมี (ชื่อหน้าบอกอยู่แล้ว) — เหลือที่ให้ตัวน้องกับหลอด */
+@media (max-height: 520px) {
+  .mini-pet-tag { display: none; }
+  .mini-pet canvas { width: 15dvh; height: 15dvh; }
+  .mini-pet { padding-top: 4px; padding-bottom: 6px; }
+  .mini-pet .mini-swap { padding: 4px 12px; font-size: 11.5px; }
+}
+
+/* ══ กรอบเกมตามแบบของผู้ใช้ ══════════════════════════════════════════
+   ไม่มีการ์ดพื้นครีมแล้ว — เหลือแค่ "กรอบรูป" ขอบไล่สีทอง → ชมพู (มุมมน) ลอยบนพื้นม่วง
+   ชื่อเกมชมพูอ่อนตัวหนาใต้รูป แล้วป้ายแคปซูลม่วงสองอัน (สถิติ · เวลา) */
+#miniPanel .mini-game {
+  padding: 0;
+  gap: clamp(3px, .9dvh, 7px);
+  align-items: center;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--cream);
+}
+#miniPanel .mini-game:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
+#miniPanel .mini-game.soon { background: none; }
+#miniPanel .mini-art {
+  width: 100%;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, var(--tint-a), var(--tint-b)) padding-box,
+    linear-gradient(90deg, #F2D27A 0%, #E9B8C9 50%, #E79AD8 100%) border-box;
+  box-shadow: 0 4px 12px rgba(30,10,60,.35);
+}
+#miniPanel .mini-game.has-art .mini-art {
+  background:
+    var(--art) center / cover no-repeat padding-box,
+    linear-gradient(90deg, #F2D27A 0%, #E9B8C9 50%, #E79AD8 100%) border-box;
+}
+#miniPanel .mini-game:not(.has-art) .mini-art {
+  background:
+    linear-gradient(135deg, rgba(190,200,235,.55), rgba(170,150,215,.55)) padding-box,
+    linear-gradient(90deg, #F2D27A 0%, #E9B8C9 50%, #E79AD8 100%) border-box;
+}
+#miniPanel .mini-gname {
+  margin-top: 0;
+  font-size: clamp(14px, 3dvh, 18px);
+  font-weight: 800;
+  color: #FFC6EC;
+  text-shadow: 0 2px 0 rgba(60,20,100,.65), 0 0 8px rgba(60,20,100,.35);
+}
+.mini-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(4px, 1vw, 8px); }
+.mini-chips i {
+  font-style: normal;
+  font-weight: 700;
+  font-size: clamp(10px, 2dvh, 12.5px);
+  line-height: 1.2;
+  padding: 2px clamp(8px, 1.4vw, 12px);
+  border-radius: 999px;
+  border: 1.5px solid rgba(232,190,255,.75);
+  background: linear-gradient(180deg, #9A4FC8, #7A35AE);
+  color: #FFF6FC;
+  box-shadow: 0 2px 0 rgba(40,12,70,.5);
+  white-space: nowrap;
+}
+#miniPanel .mini-game.soon .mini-gname, #miniPanel .mini-game.soon .mini-chips { opacity: .65; }
+#miniPanel .mini-game.soon .mini-art { filter: saturate(.7); }
+/* ══ เส้นบาง ๆ กั้นกรอบเกม (กากบาทกลางกริด 2×2) + ช่องไฟกว้างขึ้น ══════════
+   เส้นจางที่ปลายทั้งสองข้าง ไม่ใช่ตารางแข็ง ๆ — แค่แบ่งให้แต่ละเกมมีพื้นที่ของตัวเอง */
+#miniPanel .mini-games {
+  position: relative;
+  column-gap: clamp(18px, 3.4vw, 34px);
+  row-gap: clamp(14px, 3.2dvh, 26px);
+}
+#miniPanel .mini-games::before,
+#miniPanel .mini-games::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+#miniPanel .mini-games::before {
+  left: 50%;
+  top: 4%;
+  bottom: 4%;
+  width: 1.5px;
+  margin-left: -.75px;
+  background: linear-gradient(180deg, rgba(255,230,250,0), rgba(255,230,250,.45) 20%, rgba(255,230,250,.45) 80%, rgba(255,230,250,0));
+}
+#miniPanel .mini-games::after {
+  top: 50%;
+  left: 3%;
+  right: 3%;
+  height: 1.5px;
+  margin-top: -.75px;
+  background: linear-gradient(90deg, rgba(255,230,250,0), rgba(255,230,250,.45) 20%, rgba(255,230,250,.45) 80%, rgba(255,230,250,0));
+}
+
+/* ปุ่มเปลี่ยนน้อง (ไม่มีอีโมจิ) — ข้อความกลางปุ่ม ช่องไฟซ้ายขวาเท่ากัน สูงพอดีนิ้ว */
+#miniPanel .mini-pet .mini-swap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 8.5em;
+  padding: 6px 18px;
+  line-height: 1.2;
+  text-align: center;
+}
+@media (max-height: 520px) {
+  #miniPanel .mini-pet .mini-swap { padding: 5px 16px; min-width: 8em; }
+}
+/* ชื่อเกมใต้กรอบภาพ: เผื่อที่ให้สระ/วรรณยุกต์บน (ี ้ ำ) ไม่ชนขอบล่างของกรอบภาพ */
+#miniPanel .mini-gname {
+  line-height: 1.5;
+  padding-top: clamp(2px, .6dvh, 5px);
+}
+/* มือถือแนวนอน: เตี้ยมาก — คืนความสูงให้กรอบภาพ (ช่องไฟแถวแคบลง ไอคอนแทนภาพเล็กลงให้อยู่ในกรอบ) */
+@media (max-height: 520px) {
+  #miniPanel .mini-games { row-gap: 10px; }
+  #miniPanel .mini-game { gap: 2px; }
+  #miniPanel .mini-gname { line-height: 1.4; padding-top: 2px; font-size: 14px; }
+  #miniPanel .mini-art-ph { font-size: 24px; }
+  #miniPanel .mini-chips i { padding: 1px 8px; }
+}
+/* ══ บ้านลูกเหมียว: หัวข้อแถวเดียวกับปุ่มย้อนกลับทุกขนาดจอ ════════════════
+   แผงนี้ไม่มี .pop (ตัวจัดปุ่มอัตโนมัติ alignCornerBtns จึงไม่ครอบ) — เดิมหัวข้อตั้ง top ของตัวเอง
+   แต่ปุ่มย้อนกลับบนมือถือ/จอเล็กใช้ top: 5% → หัวข้อลอยสูงกว่าปุ่ม ~15px
+   ตอนนี้ใช้ตำแหน่งเดียวกับปุ่ม (--cr-top) แล้วจัดกลางในความสูงปุ่ม · แถวชิปน้องอิงค่าเดียวกัน ไม่ชิดปุ่ม */
+#catRoomPanel { --cr-top: clamp(8px, 1.4dvh, 16px); }
+@media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
+  #catRoomPanel { --cr-top: 5%; }
+}
+#catRoomPanel .cr-back { top: var(--cr-top); }
+#catRoomPanel .cr-title {
+  top: var(--cr-top);
+  height: var(--backbtn);
+  display: flex;
+  align-items: center;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+#catRoomPanel .cr-cats { top: calc(var(--cr-top) + var(--backbtn) + 14px); }
+#catRoomPanel .cr-card { top: calc(var(--cr-top) + var(--backbtn) + clamp(36px, 8dvh, 48px) + 20px); }
+/* ══ หน้ามินิเกม: น้องฝั่งซ้ายโตเต็มที่ว่าง + สระชื่อเกมไม่ชนกรอบภาพ (ทุกขนาดจอ) ══════
+   ตัวน้องเดิมตั้งขนาดตายตัว (15dvh บนมือถือ) — จอที่การ์ดสูงกว่า (iPhone รุ่นใหญ่/iPad) น้องเลยเล็กจิ๋วกลางที่ว่าง
+   ตอนนี้ผ้าใบน้องยืดกินที่ว่างทั้งหมดของคอลัมน์ (flex) สัดส่วน 1:1 ไม่เกิน 170px ไม่ต่ำกว่า 64px */
+#miniPanel .mini-pet canvas {
+  flex: 1 1 0;
+  min-height: 64px;
+  max-height: 170px;
+  height: auto;
+  width: auto;
+  aspect-ratio: 1;
+}
+#miniPanel .mini-pet { justify-content: center; }
+#miniPanel .mini-gname { line-height: 1.55; padding-top: clamp(5px, 1.2dvh, 9px); }
+@media (max-height: 520px) {
+  #miniPanel .mini-pet canvas { width: auto; height: auto; }
+  #miniPanel .mini-gname { line-height: 1.5; padding-top: 5px; }
+}

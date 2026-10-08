@@ -1431,10 +1431,76 @@
             </svg>
           </button>
           <h2 class="skin-title">มินิเกม</h2>
-          <div class="mini-soon">
-            <span class="mini-ico" aria-hidden="true">🎮</span>
-            <b>เร็ว ๆ นี้</b>
-            <small>เกมเล็ก ๆ น่ารัก ๆ ให้เล่นกับน้องที่ยังไม่โต ได้ความผูกพันกับ EXP</small>
+          <!-- ซ้าย: น้องที่พาไปเล่น (เฉพาะน้องในห้อง) · ขวา: กรอบเกม 4 กรอบ รูปโปรโมทบน ชื่อเกมใต้รูป (catroom-ui.js) -->
+          <div class="mini-body">
+            <section class="mini-pet" aria-label="น้องที่พาไปเล่น">
+              <span class="mini-pet-tag">พาน้องไปเล่น</span>
+              <canvas id="mgPetArt" width="150" height="150" aria-hidden="true"></canvas>
+              <b class="mini-pet-name" id="mgPetName"></b>
+              <div class="mini-pet-info" id="mgPetInfo">
+                <div class="mini-row"><span id="mgPetLv">Lv.1</span><i class="mini-bar exp"><i id="mgPetExp"></i></i></div>
+                <div class="mini-row"><span>🧶 สนุก</span><i class="mini-bar fun"><i id="mgPetFun"></i></i></div>
+                <span class="mini-want" id="mgPetWant"></span>
+                <span class="mini-hearts" id="mgPetHearts" aria-label="ความผูกพัน"></span>
+              </div>
+              <p class="mini-empty hidden" id="mgPetEmpty">ยังไม่มีน้องในห้อง — พาน้องจากกล่องเข้าห้องก่อนนะ</p>
+              <button type="button" class="btn ghost tiny mini-swap" id="cwSwap">เปลี่ยนน้อง</button>
+            </section>
+            <div class="mini-games" id="mgGames" role="list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ เลือกน้องที่จะเล่นมินิเกมด้วย ══ เฉพาะน้องที่อยู่ในห้อง (catroom-ui.js) -->
+      <div class="panel hidden" id="mgPickPanel">
+        <div class="pop mgpick-pop">
+          <button type="button" class="backbtn" id="mgPickBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="skin-title">เลือกน้องที่จะเล่นด้วย</h2>
+          <div class="mgpick-grid" id="mgPickGrid" role="listbox" aria-label="น้องในห้อง"></div>
+          <p class="mgpick-note">แตะเลือกน้อง 1 ตัว ถ้าน้องอยากเล่นจะได้ความผูกพันกับ EXP ด้วย</p>
+        </div>
+      </div>
+
+      <!-- ══ มินิเกม แมวหนีน้ำ ══ (src/minigames/catwater.js) — เต็มจอ ผ้าใบวาดทั้งห้อง HUD อยู่ในผ้าใบ -->
+      <div class="panel hidden" id="catWaterPanel">
+        <canvas id="cwCanvas" aria-label="มินิเกมแมวหนีน้ำ"></canvas>
+        <div class="cw-corner">
+          <button type="button" class="cw-pause" id="cwPause" aria-label="พัก">
+            <svg viewBox="0 0 24 24" width="55%" height="55%" aria-hidden="true">
+              <path d="M8.5 6v12M15.5 6v12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <!-- จอยสติ๊ก (จอสัมผัส) — แตะตรงไหนก็ได้ในครึ่งซ้ายของจอ วงจอยไปเกิดใต้นิ้ว ลากซ้าย/ขวาเดินอย่างเดียว (กระโดด = ปุ่ม 🐾) -->
+        <div class="cw-stick" id="cwStick" aria-label="จอยสติ๊กเดิน">
+          <div class="cw-stick-base" id="cwStickBase"><div class="cw-stick-knob" id="cwStickKnob"></div></div>
+        </div>
+        <div class="cw-pad cw-pad-jump">
+          <button type="button" class="cw-key cw-jump" id="cwJump" aria-label="กระโดด">🐾</button>
+        </div>
+        <div class="cw-box hidden" id="cwPauseBox">
+          <b class="cw-box-title">พักก่อน</b>
+          <div class="btnrow">
+            <button type="button" class="btn" id="cwResume">เล่นต่อ</button>
+            <button type="button" class="btn ghost" id="cwQuit">เลิกเล่น</button>
+          </div>
+        </div>
+        <div class="cw-box cw-result hidden" id="cwResult">
+          <b class="cw-box-title" id="cwResTitle">💦 GAME OVER</b>
+          <dl class="cw-stats">
+            <div><dt>รอดได้</dt><dd id="cwResTime">00:00</dd></div>
+            <div><dt>คะแนน</dt><dd id="cwResScore">0</dd></div>
+            <div><dt>สถิติ</dt><dd id="cwResBest">0</dd></div>
+          </dl>
+          <p class="cw-reward hidden" id="cwResReward"></p>
+          <div class="btnrow">
+            <button type="button" class="btn" id="cwRetry">🔄 เล่นอีกครั้ง</button>
+            <button type="button" class="btn ghost" id="cwHome">🏠 กลับ</button>
           </div>
         </div>
       </div>

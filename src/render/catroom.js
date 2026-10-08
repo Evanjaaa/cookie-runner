@@ -129,9 +129,15 @@ const P = {
 // เครื่องมือวาด
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * ตัวคูณความหนาเส้นขอบทั้งห้อง — ผู้ใช้ขอให้เส้นบางลง (ฉากเส้นหนาไปจนแย่งซีนตัวน้อง)
+ * ปรับที่นี่ที่เดียว: ทุกเส้นในฉากห้องคูณค่านี้ (ตัวน้องวาดด้วยตัววาดของเกมหลัก ไม่โดน)
+ */
+const LINE_K = 0.7;
+
 function pen(ctx, w = 2.2) {
   ctx.strokeStyle = P.line;
-  ctx.lineWidth = w;
+  ctx.lineWidth = w * LINE_K;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 }
@@ -207,7 +213,7 @@ function wall(ctx) {
 
   // ก้อนหินจาง ๆ — เรียงอิฐสลับแถว ไม่ตีเส้นทุกก้อน (ทั้งผนังเป็นเส้นจะรกจนแย่งสายตาจากน้อง)
   ctx.strokeStyle = P.wallLine;
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.2 * LINE_K;
   ctx.globalAlpha = 0.55;
   const rowH = 30;
   for (let r = 0; r * rowH < FLOOR_Y; r++) {
@@ -272,7 +278,7 @@ function floor(ctx) {
 
   // แผ่นหินปูพื้น — เส้นนอนถี่ขึ้นตามระยะ เส้นตั้งเอียงออกจากกลางจอ ให้พื้นมีความลึก
   ctx.strokeStyle = P.floorLine;
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.2 * LINE_K;
   ctx.globalAlpha = 0.6;
   for (const y of [312, 338, 370, 408]) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CATROOM_W, y); ctx.stroke();
@@ -309,7 +315,7 @@ function longRug(ctx) {
   ctx.lineTo(x0 + 10, y1 - 6);
   ctx.closePath();
   ctx.strokeStyle = P.gold;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3 * LINE_K;
   ctx.stroke();
 
   // รอยเท้าแมวเรียงตามทาง — เหมือนน้องเคยเดินผ่าน
@@ -338,7 +344,7 @@ function banner(ctx, x, y, s = 1) {
   ctx.closePath();
   fs(ctx, P.red, 2);
   ctx.strokeStyle = P.gold;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * LINE_K;
   ctx.beginPath();
   ctx.moveTo(-16, 8); ctx.lineTo(16, 8); ctx.lineTo(16, 84); ctx.lineTo(0, 72); ctx.lineTo(-16, 84); ctx.closePath();
   ctx.stroke();
@@ -383,7 +389,7 @@ function frame(ctx, x, y, w, h, kind, oval = false) {
   else {
     // หน้าแมวลายเส้น
     ctx.strokeStyle = '#A88663';
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.6 * LINE_K;
     ctx.beginPath();
     ctx.moveTo(x - r * 1.2, y + r * 0.9);
     ctx.lineTo(x - r * 1.2, y - r * 0.6); ctx.lineTo(x - r * 0.6, y - r * 0.1);
@@ -528,7 +534,7 @@ function windowSeat(ctx) {
     ctx.restore();
     rr(ctx, x + dx - 31, y - 14, 62, 18, 8);
     fs(ctx, P.red, 2.2);
-    ctx.strokeStyle = P.gold; ctx.lineWidth = 2;
+    ctx.strokeStyle = P.gold; ctx.lineWidth = 2 * LINE_K;
     ctx.beginPath(); ctx.moveTo(x + dx - 24, y - 2); ctx.lineTo(x + dx + 24, y - 2); ctx.stroke();
   });
   crown(ctx, x, y - 4, 14, 9);
@@ -589,7 +595,7 @@ function bowl(ctx, x, y, water = false) {
   ctx.ellipse(x, y - 4, 24, 7, 0, 0, Math.PI, false);
   ctx.closePath();
   fs(ctx, P.gold, 2);
-  ctx.strokeStyle = P.goldLight; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = P.goldLight; ctx.lineWidth = 1.5 * LINE_K;
   ctx.beginPath(); ctx.ellipse(x, y - 4, 20, 5, 0, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
 }
 
@@ -604,7 +610,7 @@ function zoneRug(ctx, x, rx, fill, rim, icon) {
   ctx.ellipse(x, y, rx, 15, 0, 0, Math.PI * 2);
   fs(ctx, fill, 2);
   ctx.strokeStyle = rim;
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 2.4 * LINE_K;
   ctx.setLineDash([6, 5]);
   ctx.beginPath();
   ctx.ellipse(x, y, rx - 9, 10, 0, 0, Math.PI * 2);
@@ -616,7 +622,7 @@ function zoneRug(ctx, x, rx, fill, rim, icon) {
 function zoneRugs(ctx) {
   // อาบน้ำ: ฟ้า มีฟองสบู่
   zoneRug(ctx, L.tub, 82, '#A8D8F0', '#E9F7FF', (ix, iy) => {
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.6 * LINE_K;
     for (const [dx, dy, r] of [[0, 0, 4], [7, -3, 3], [4, 4, 2.4]]) { ctx.beginPath(); ctx.arc(ix + dx, iy + dy, r, 0, Math.PI * 2); ctx.stroke(); }
   });
   // เล่น: เหลืองมีจุดสี
@@ -635,7 +641,7 @@ function feedingMat(ctx) {
   ctx.beginPath();
   ctx.ellipse(204, 362, 140, 16, 0, 0, Math.PI * 2);
   fs(ctx, '#E9A7B8', 2);
-  ctx.strokeStyle = '#F7D2DC'; ctx.lineWidth = 2.4;
+  ctx.strokeStyle = '#F7D2DC'; ctx.lineWidth = 2.4 * LINE_K;
   ctx.setLineDash([6, 5]);
   ctx.beginPath(); ctx.ellipse(204, 362, 130, 11, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.setLineDash([]);
@@ -684,7 +690,7 @@ function canopyBed(ctx) {
     fs(ctx, P.red, 2);
     // จีบผ้า
     ctx.strokeStyle = P.redDark;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.6 * LINE_K;
     ctx.beginPath();
     ctx.moveTo(o(C - 3), tie + 12);
     ctx.quadraticCurveTo(o(C + 3), tie + 60, o(C + 4), base - 10);
@@ -693,7 +699,7 @@ function canopyBed(ctx) {
     rr(ctx, Math.min(o(C - 12), o(C + 6)), tie - 4, 18, 8, 3);
     fs(ctx, P.gold, 1.4);
     ctx.strokeStyle = P.goldDark;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.6 * LINE_K;
     ctx.beginPath(); ctx.moveTo(o(C - 3), tie + 4); ctx.lineTo(o(C - 3), tie + 14); ctx.stroke();
     ctx.fillStyle = P.gold;
     ctx.beginPath(); ctx.ellipse(o(C - 3), tie + 18, 3.2, 5, 0, 0, Math.PI * 2); ctx.fill();
@@ -737,7 +743,7 @@ function canopyBed(ctx) {
   ctx.closePath();
   fs(ctx, P.pink, 2.2);
   ctx.strokeStyle = P.gold;
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 2.4 * LINE_K;
   ctx.beginPath();
   ctx.moveTo(x - hw + 8, base - 40);
   ctx.lineTo(x - hw + 8, base - 80);
@@ -758,7 +764,7 @@ function canopyBed(ctx) {
   rr(ctx, x - C + 6, base - 40, (C - 6) * 2, 32, 10);
   fs(ctx, P.red, 2.4);
   ctx.strokeStyle = P.gold;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * LINE_K;
   ctx.beginPath(); ctx.moveTo(x - C + 14, base - 18); ctx.lineTo(x + C - 14, base - 18); ctx.stroke();
   for (const dx of BED_PILLOWS) paw(ctx, x + dx, base - 27, 4.2, P.gold);
 
@@ -852,7 +858,7 @@ function toyChest(ctx) {
   for (const [dx, dy, c] of [[-20, -46, '#7FB6E8'], [0, -50, '#F3A3BF'], [20, -46, '#F6C063']]) {
     ctx.beginPath(); ctx.arc(x + dx, y + dy, 11, 0, Math.PI * 2);
     fs(ctx, c, 1.8);
-    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.4 * LINE_K;
     ctx.beginPath(); ctx.arc(x + dx, y + dy, 6, 0.4, 2.6); ctx.stroke();
   }
   // ไม้ตกแมวโผล่
@@ -881,7 +887,7 @@ function vanity(ctx) {
   const g = ctx.createLinearGradient(x - 20, y - 160, x + 20, y - 104);
   g.addColorStop(0, '#E6F4FB'); g.addColorStop(1, '#B9D7EA');
   ctx.fillStyle = g; ctx.fill(); pen(ctx, 1.6); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3 * LINE_K;
   ctx.beginPath(); ctx.moveTo(x - 10, y - 150); ctx.lineTo(x + 2, y - 158); ctx.stroke();
   crown(ctx, x, y - 168, 18, 12);
   // โต๊ะ
@@ -949,7 +955,7 @@ function catTree(ctx) {
   const post = (px, top, bottom) => {
     rr(ctx, px - 9, top, 18, bottom - top, 4);
     fs(ctx, '#E2C69A', 2);
-    ctx.strokeStyle = '#C6A675'; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#C6A675'; ctx.lineWidth = 1.2 * LINE_K;
     for (let y = top + 6; y < bottom - 3; y += 6) {
       ctx.beginPath(); ctx.moveTo(px - 8, y); ctx.lineTo(px + 8, y + 2); ctx.stroke();
     }
@@ -971,7 +977,7 @@ function catTree(ctx) {
 
   // เปลผ้า — แขวนระหว่างเสาสองต้น ผืนกว้างพอให้น้องนอนขดได้ทั้งตัว
   ctx.strokeStyle = P.woodDark;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * LINE_K;
   ctx.beginPath(); ctx.moveTo(x - 54, 286); ctx.lineTo(x - 48, 300); ctx.moveTo(x + 44, 286); ctx.lineTo(x + 38, 300); ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(x - 50, 298);
@@ -982,7 +988,7 @@ function catTree(ctx) {
   ctx.beginPath();
   ctx.moveTo(x - 50, 298);
   ctx.quadraticCurveTo(x - 5, 340, x + 40, 298);
-  ctx.strokeStyle = '#F7C9D8'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = '#F7C9D8'; ctx.lineWidth = 2 * LINE_K; ctx.stroke();
 
   // แท่นล่างยื่นไปรองโคนเสากลาง (x-20) ทั้งต้น — เดิมแท่นสั้น เสาโผล่เลยขอบแท่นครึ่งต้น ดูเหมือนแท่นจะหัก
   pad(x - 56, 252, 100);
@@ -1007,7 +1013,7 @@ export const TREE_HOLE = { x: L.tree + 52, y: 164, rx: 21, ry: 22 };
 export function drawHoleFront(ctx) {
   const { x, y, rx, ry } = TREE_HOLE;
   ctx.save();
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 4 * LINE_K;
   ctx.strokeStyle = '#E2C69A';
   ctx.beginPath(); ctx.ellipse(x, y, rx + 1, ry + 1, 0, 0, Math.PI * 2); ctx.stroke();
   pen(ctx, 1.6);
@@ -1029,7 +1035,7 @@ export function drawHammockFront(ctx) {
   ctx.beginPath();
   ctx.moveTo(x - 44, 308);
   ctx.quadraticCurveTo(x - 5, 344, x + 34, 308);
-  ctx.strokeStyle = '#F7C9D8'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = '#F7C9D8'; ctx.lineWidth = 2 * LINE_K; ctx.stroke();
 }
 
 /** ลูกบอลห้อยบนคอนโด — ang = มุมแกว่ง (เรเดียน) มาจากตัวควบคุมห้อง */
@@ -1038,11 +1044,11 @@ export function drawTreeBall(ctx, ang) {
   const bx = x + Math.sin(ang) * len;
   const by = y + Math.cos(ang) * len;
   ctx.strokeStyle = P.line;
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 1.4 * LINE_K;
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bx, by); ctx.stroke();
   ctx.beginPath(); ctx.arc(bx, by + 5, 6.5, 0, Math.PI * 2);
   fs(ctx, '#E5795E', 1.6);
-  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.2;
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.2 * LINE_K;
   ctx.beginPath(); ctx.arc(bx, by + 5, 3.5, 0.4, 2.4); ctx.stroke();
 }
 
@@ -1067,7 +1073,7 @@ function welcomeBoxBack(ctx) {
   ctx.lineTo(x + hw - 6, back);
   ctx.closePath();
   fs(ctx, P.cardLight, 2);
-  ctx.strokeStyle = P.cardDark; ctx.lineWidth = 1.2;
+  ctx.strokeStyle = P.cardDark; ctx.lineWidth = 1.2 * LINE_K;
   ctx.beginPath(); ctx.moveTo(x - hw + 14, back - 8); ctx.lineTo(x + hw - 14, back - 8); ctx.stroke();
   // ปากกล่อง (ด้านในเข้ม) — ทรงสี่เหลี่ยมคางหมู ขอบหลังแคบกว่าขอบหน้า
   ctx.beginPath();
@@ -1169,7 +1175,7 @@ function door(ctx) {
   ctx.lineTo(x + w / 2, y);
   ctx.closePath();
   fs(ctx, P.wood, 2.4);
-  ctx.strokeStyle = P.woodDark; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = P.woodDark; ctx.lineWidth = 1.6 * LINE_K;
   for (let dx = -32; dx <= 32; dx += 16) {
     ctx.beginPath(); ctx.moveTo(x + dx, y - 4); ctx.lineTo(x + dx, y - h + 44 + Math.abs(dx) * 0.3); ctx.stroke();
   }
@@ -1177,14 +1183,14 @@ function door(ctx) {
   ctx.fillRect(x - w / 2, y - 150, w, 8);
   ctx.fillRect(x - w / 2, y - 50, w, 8);
   ctx.beginPath(); ctx.arc(x + 28, y - 96, 9, 0, Math.PI * 2);
-  ctx.strokeStyle = P.goldDark; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = P.goldDark; ctx.lineWidth = 3 * LINE_K; ctx.stroke();
 }
 
 function doorMat(ctx) {
   ctx.beginPath();
   ctx.ellipse(L.door, 396, 56, 12, 0, 0, Math.PI * 2);
   fs(ctx, P.red, 2);
-  ctx.strokeStyle = P.gold; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = P.gold; ctx.lineWidth = 1.6 * LINE_K;
   ctx.beginPath(); ctx.ellipse(L.door, 396, 46, 8, 0, 0, Math.PI * 2); ctx.stroke();
 }
 
@@ -1351,7 +1357,7 @@ function windowCurtains(ctx, t) {
     ctx.quadraticCurveTo(x0 - side * 26, 100, x0 - side * 30, WIN.top - 8);
     ctx.closePath();
     fs(ctx, P.cream, 2);
-    ctx.strokeStyle = '#EAD9BA'; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = '#EAD9BA'; ctx.lineWidth = 1.4 * LINE_K;
     ctx.beginPath(); ctx.moveTo(x0, WIN.top); ctx.quadraticCurveTo(x0 + sway, 220, x0 - side * 2 + sway, 294); ctx.stroke();
     // โบว์
     const bx = x0 - side * 6, by = 152;
@@ -1438,7 +1444,7 @@ function tubBubbles(ctx, t, busy) {
     const by = y - 6 - ph * 60;
     ctx.globalAlpha = 1 - ph;
     ctx.strokeStyle = 'rgba(160,200,235,.9)';
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.4 * LINE_K;
     ctx.beginPath(); ctx.arc(bx, by, 3 + hash(i + 1) * 4, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.globalAlpha = 1;
@@ -1485,7 +1491,7 @@ export function drawWaterFront(ctx, ripple = 0) {
     ctx.save();
     ctx.globalAlpha = 1 - ripple;
     ctx.strokeStyle = '#E9F7FF';
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.6 * LINE_K;
     ctx.beginPath();
     ctx.ellipse(x, y - 4, 4 + ripple * 15, 1.4 + ripple * 4, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -1564,7 +1570,7 @@ export function drawCatRoomFront(ctx, cam, t) {
   ctx.lineTo(-10, H + 10);
   ctx.closePath();
   fs(ctx, P.redDark, 3);
-  ctx.strokeStyle = P.red; ctx.lineWidth = 6;
+  ctx.strokeStyle = P.red; ctx.lineWidth = 6 * LINE_K;
   ctx.beginPath(); ctx.moveTo(20, 0); ctx.quadraticCurveTo(10 + sway, 200, 16, H); ctx.stroke();
   // ต้นไม้ชิดขอบ ไม่ยื่นมาบังที่ให้อาหาร (ชามอยู่ที่ x 100-300)
   plant(ctx, 6, H + 30, 1.25);

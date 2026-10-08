@@ -3870,7 +3870,7 @@ function drawCatStand(ctx, s, {
   // พอให้มันเดินเข้าหากันก่อน สองชุดจะทับกันสนิทตอนสลับ จนมองไม่ออกว่ามีการสลับ
   if (rest < 0.98) {
     ctx.save();
-    ctx.globalAlpha *= 1 - rest;
+    ctx.globalAlpha *= Math.max(0, 1 - rest);
 
     ctx.strokeStyle = s.dark;
     // ลูกแมวขาสั้นป้อม (หนาขึ้น เริ่มต่ำลง) / วัยรุ่นขาเรียวยาว
@@ -3922,8 +3922,10 @@ function drawCatStand(ctx, s, {
     // ── แขนคู่ที่ขึ้นไปนวด/ประกบหัวใจที่อก (knead) คือแขนคู่นี้ ──
     // ท่ายืนก็ต้องหายไปพร้อมกับที่คู่บนอกโผล่มา (เหตุผลเดียวกับขาหน้าท่านั่ง) ไม่งั้นเห็นมือสี่ข้าง
     // เกาพุง (scratch) ใช้แขนขวาข้างเดียว แขนขวาท่ายืนจึงต้องหายตามด้วย
-    const armL = 1 - knead;
-    const armR = 1 - Math.max(knead, scratch);
+    // ── ตัดค่าไว้ 0..1 ── ท่าที่ยก/ยื่นใช้จังหวะเลยเป้าแล้วเด้งกลับ (E.back) ค่าจึงเกิน 1 ชั่วครู่
+    // 1 - ค่า เลยติดลบ แล้ว canvas เมิน globalAlpha ที่ติดลบ (คงค่าเดิม = ทึบเต็ม) แขนที่ควรหายเลยโผล่เต็มตัว
+    const armL = Math.max(0, 1 - knead);
+    const armR = Math.max(0, 1 - Math.max(knead, scratch));
     const base = ctx.globalAlpha;
     ctx.globalAlpha = base * armL;
     ctx.beginPath(); ctx.moveTo(-ax0, ay0); ctx.lineTo(lhx, lhy); ctx.stroke();
@@ -3933,7 +3935,7 @@ function drawCatStand(ctx, s, {
 
     // อุ้งเท้าที่ปลายมือโบก/มือพุ่ง — มือเปล่า ๆ ที่ไม่มีอุ้งเท้าอ่านเป็นแท่งไม้ ไม่ใช่มือ
     // อุ้งเท้าหายไปพร้อมแขนของมัน (เช่นชูแขนดีใจแล้วต่อด้วยกอดหัวใจ) ไม่งั้นเหลืออุ้งเท้าลอยค้าง
-    const pad = Math.max(wave, reach) * armR;
+    const pad = Math.min(1, Math.max(wave, reach)) * armR;
     if (pad > 0.02) {
       ctx.save();
       ctx.globalAlpha *= pad;
@@ -4060,7 +4062,7 @@ function drawCatStand(ctx, s, {
       ctx.lineWidth = 6;
       for (const sx of [-1, 1]) {
         ctx.save();
-        ctx.globalAlpha *= 1 - Math.max(knead, sx > 0 ? scratch : 0);
+        ctx.globalAlpha *= Math.max(0, 1 - Math.max(knead, sx > 0 ? scratch : 0));   // ตัด 0..1 เหตุผลเดียวกับ armL/armR
         ctx.beginPath();
         ctx.moveTo(sx * 6.5, cy + 5);
         ctx.lineTo(sx * 7, 23);

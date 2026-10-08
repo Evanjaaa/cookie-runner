@@ -330,9 +330,39 @@ export function makeCanvasBg(canvas, isActive, scene) {
     return true;
   }
 
+  // ── พื้นหลังเป็นภาพนิ่ง (ผู้ใช้ขอ — ลดภาระเครื่อง เหลือฉากขยับแค่หน้าแรก) ──
+  // ตอนเปิดหน้ายังขยับสั้น ๆ SETTLE_MS ให้แสงจางเข้าพร้อมการ์ด (trackRect) แล้วหยุดค้างเป็นภาพนิ่ง
+  // วาดใหม่สั้น ๆ เฉพาะตอนที่ของจริงขยับ: เลื่อนรายการ / กดในการ์ด (สลับแท็บ) / เนื้อหาโหลดเพิ่ม / เปลี่ยนขนาด
+  const SETTLE_MS = 900;
+  let liveUntil = 0;
+  // ระหว่างเลื่อนรายการ วาดทุกเฟรมจอ — แสงที่เกาะการ์ดต้องตามนิ้วที่ 60 ไม่งั้นกระตุก = เห็นเป็นกะพริบ
+  let fastUntil = 0;
+  const host = canvas.parentElement;
+  host?.addEventListener('scroll', () => {
+    fastUntil = performance.now() + 300;
+    scene.onScroll?.();
+    wake(300);
+  }, { capture: true, passive: true });
+  host?.addEventListener('click', () => wake(SETTLE_MS), true);
+  // รายการที่มาทีหลัง (อันดับ ข่าว จดหมาย) — วาดใหม่ให้แสง/เขตหลบตามของที่เพิ่งโผล่
+  if (host && window.MutationObserver) {
+    new MutationObserver(() => wake(500)).observe(host, { childList: true, subtree: true });
+  }
+
+  function wake(ms) {
+    if (!isActive()) return;
+    const now = performance.now();
+    liveUntil = Math.max(liveUntil, now + ms);
+    if (calm.matches) { paint(now); return; }
+    if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
+  }
+
   function frame(now) {
     if (!isActive()) { raf = 0; return; }
+    // หมดช่วงขยับ = วาดเฟรมสุดท้ายแล้วหยุดลูป (ผ้าใบค้างภาพนั้นไว้เอง)
+    if (now >= liveUntil) { raf = 0; paint(now); return; }
     raf = requestAnimationFrame(frame);
+    if (now < fastUntil) { last = now; paint(now); return; }
     if (now - last < FRAME_MS) return;
     last = now;
     paint(now);
@@ -349,6 +379,7 @@ export function makeCanvasBg(canvas, isActive, scene) {
   function kick() {
     if (!isActive()) return;
     if (calm.matches) { paint(performance.now()); return; }   // ลดการเคลื่อนไหว = ภาพนิ่งภาพเดียว
+    liveUntil = Math.max(liveUntil, performance.now() + SETTLE_MS);
     if (!raf) {
       // วาดเฟรมแรกทันทีตอนแผงเพิ่งเปิด (ตัวเฝ้าคลาสเรียกก่อนเบราว์เซอร์วาดจอ) — ไม่งั้นเฟรมแรก
       // ผ้าใบยังว่าง เห็นพื้นสีเรียบของการ์ดแวบหนึ่งก่อนพื้นหลังโผล่ (เปิดหน้านั้นครั้งแรก)
@@ -359,7 +390,7 @@ export function makeCanvasBg(canvas, isActive, scene) {
   }
 
   // การ์ดเปลี่ยนขนาด (หมุนจอ/ปรับหน้าต่าง) = วาดชั้นนิ่งใหม่ แล้ววาดเฟรมทันทีไม่รอรอบถัดไป
-  if (window.ResizeObserver) new ResizeObserver(() => { if (isActive()) paint(performance.now()); }).observe(canvas);
+  if (window.ResizeObserver) new ResizeObserver(() => { if (isActive()) { paint(performance.now()); wake(SETTLE_MS); } }).observe(canvas);
   return { kick };
 }
 

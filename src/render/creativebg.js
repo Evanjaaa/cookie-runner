@@ -501,7 +501,7 @@ export function makeCreativeBg(canvas, isActive, pop) {
     for (const sel of KEEP_OUT) {
       for (const el of pop.querySelectorAll(sel)) {
         if (!el.offsetParent || !el.offsetWidth) continue;   // ซ่อนอยู่ (แท็บอื่น / โหมดเต็มจอ)
-        const r = layoutRect(pop, el);
+        const r = layoutRect(pop, el, false);
         if (r) M.zones.push(sc({ x: r.x - 6, y: r.y - 6, w: r.w + 12, h: r.h + 12 }));
       }
     }
@@ -527,7 +527,10 @@ export function makeCreativeBg(canvas, isActive, pop) {
   const paletteBox = { x: 0, y: 0, w: 0, h: 0, a: 1 };
 
   function live(ctx, w, h, _L, t) {
-    if (t - M.at > REMEASURE_S || t < M.at || w !== M.w || h !== M.h) {
+    // สลับแท็บ (ระบายสี ⇄ หน้าน้อง) = กรอบที่จำไว้ถูกซ่อน/เพิ่งโผล่ — วัดใหม่ทันที ไม่รอรอบ 0.5 วิ
+    // ไม่งั้นแสงหลังตัวน้องหายไปครู่หนึ่งแล้ววาบขึ้นมาทีหลังตอนกลับมาแท็บระบายสี
+    const stale = M.stageEl && !M.stageEl.offsetParent;
+    if (stale || t - M.at > REMEASURE_S || t < M.at || w !== M.w || h !== M.h) {
       measure(w, h);
       M.at = t;
     }
@@ -550,6 +553,8 @@ export function makeCreativeBg(canvas, isActive, pop) {
   }
 
   const bg = makeCanvasBg(canvas, isActive, { layout: () => L, still: drawCreativeBackground, live });
+  // กดอะไรในการ์ด (แท็บ/ปุ่มโหมด) = วัดใหม่เฟรมถัดไป หลังหน้าเปลี่ยนแล้ว
+  pop.addEventListener('click', () => { M.at = -Infinity; }, true);
   if (import.meta.env.DEV) window.__createBgM = M;   // สคริปต์ทดสอบอ่านผลการวัดหน้า
 
   /** สีจากผู้เล่น (#rrggbb หรือ rgb(...)) → 'r,g,b' แล้วเรือง */

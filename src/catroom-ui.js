@@ -17,6 +17,8 @@ import {
   ROOM_SLOTS, fosterCats, canSend, visitorCat,
 } from './cats.js';
 import { catSkin, skinById } from './skins.js';
+import { createCatWater } from './minigames/catwater.js';
+import { fmtTime } from './minigames/catwater-draw.js';
 import { CatRoom } from './catroom.js';
 import { drawCatPose, drawCatFace } from './render/entities.js';
 import { drawCatBox } from './render/catbox.js';
@@ -744,9 +746,216 @@ export function setupCatRoomUI(deps) {
     $('catStoryPanel').classList.add('hidden');
   });
 
+  // ── มินิเกม "แมวหนีน้ำ" (src/minigames/catwater.js) ──
+  // เล่นกับน้องที่เลือกอยู่ในห้อง — รางวัลคือ "ได้เล่นด้วยกัน" ผ่านระบบดูแลเดิม (care 'play'):
+  // ความผูกพันตามคะแนน + EXP ใต้เพดานรายวันเดิม · ไม่มีสกุลเงินใหม่
+  // ให้เฉพาะตอนน้องอยากเล่น (ความสนุกต่ำกว่าเกณฑ์ เหมือนเล่นของเล่นในบ้าน) — กดเล่นรัว ๆ ปั๊มความผูกพันไม่ได้
+  let mgCat = null;   // id น้องที่เล่นด้วย — น้องในห้องเท่านั้น (null = ห้องยังว่าง เล่นไม่ได้)
+  let mgPick = null;  // น้องที่ผู้เล่นเลือกเองในหน้าเลือกน้อง (จำไว้ข้ามรอบ)
+  let mgRes = null;   // ผลการดูแลรอบล่าสุด — ลอยหัวใจ/EXP ให้เห็นตอนกลับเข้าห้อง
+  const catWater = createCatWater({
+    panel: $('catWaterPanel'),
+    onFinish: ({ score }) => {
+      const c = mgCat && catById(mgCat);
+      if (!c || c.state !== 'room' || visit) return '';
+      if (!careInfo(c, 'play').wants) return nameOf(c) + ' ' + t('เล่นจนพอใจแล้ว รอน้องอยากเล่นอีกครั้งนะ');
+      const res = care(c.id, 'play', { aff: score >= 3000 ? 3 : score >= 1000 ? 2 : 1 });
+      if (!res) return '';
+      mgRes = { id: c.id, res };
+      return nameOf(c) + ' ' + t('ดีใจ!') + ' 💗 +' + res.aff + (res.exp > 0 ? ' · +' + res.exp + ' EXP' : '');
+    },
+    onExit: () => {
+      game.syncMusic();
+      // เลิกเล่น / กลับ = กลับมาหน้าเลือกเกม (เปิดแผงก่อน ลูปวาดน้องถึงจะเดิน)
+      $('miniPanel').classList.remove('hidden');
+      paintMiniCard();
+      if (mgRes) {
+        const { id, res } = mgRes;
+        mgRes = null;
+        afterCare(id, res);
+      }
+    },
+  });
+  if (import.meta.env.DEV) window.__catWater = catWater;
+
+  /** น้องที่จะเล่นด้วย: ที่เลือกไว้เอง → น้องที่เลือกอยู่ในห้อง → น้องตัวแรกในห้อง */
+  function miniCat() {
+    if (visit) return null;
+    const ok = (id) => { const c = id && catById(id); return c && c.state === 'room' ? c : null; };
+    return ok(mgPick) || ok(selectedId) || roomCats()[0] || null;
+  }
+
+  /**
+   * มินิเกมทั้งหมด (4 กรอบ) — art = ไฟล์รูปโปรโมทใน public/minigames/ (วางไฟล์ชื่อนี้แล้วรูปขึ้นเอง
+   * ยังไม่มีไฟล์ = ภาพแทนสีพาสเทลกับไอคอน) · open = ฟังก์ชันเริ่มเกม (ไม่มี = เร็ว ๆ นี้)
+   * เพิ่มเกมใหม่: เปลี่ยนแถวที่เป็น soon เป็นเกมจริง ไม่ต้องแก้ HTML
+   */
+  const MINI_GAMES = [
+    { id: 'catwater', name: 'แมวหนีน้ำ', ico: '💦', art: 'minigames/catwater.png', tint: ['#9FD8F5', '#C9B5FF'],
+      open: (c) => catWater.open({ skin: catSkin(c) }),
+      // ป้ายใต้ชื่อเกม (แคปซูลม่วง) — สถิติคะแนน + เวลารอดนานสุด
+      chips: () => { const b = catWater.best(); return [t('สถิติ') + ' ' + (b.score || 0).toLocaleString('en-US'), t('เวลา') + ' ' + fmtTime(b.time || 0)]; } },
+    { id: 'game2', name: 'เร็ว ๆ นี้', ico: '🧶', art: 'minigames/game2.png', tint: ['#FFD3E7', '#FFC98A'] },
+    { id: 'game3', name: 'เร็ว ๆ นี้', ico: '🐟', art: 'minigames/game3.png', tint: ['#BDF2E3', '#9FD8F5'] },
+    { id: 'game4', name: 'เร็ว ๆ นี้', ico: '🎈', art: 'minigames/game4.png', tint: ['#FFF3B0', '#F7B7C9'] },
+  ];
+  // รูปโปรโมท: ลองโหลดครั้งเดียว โหลดได้ค่อยติดคลาส has-art (ไม่มีไฟล์ = ภาพแทนอยู่ต่อ ไม่ขึ้นรูปแตก)
+  const artOk = {};
+  for (const g of MINI_GAMES) {
+    const img = new Image();
+    img.onload = () => { artOk[g.id] = true; const el = document.querySelector(`#mgGames [data-game="${g.id}"]`); el?.classList.add('has-art'); };
+    img.src = import.meta.env.BASE_URL + g.art;
+  }
+
+  function paintMiniGames() {
+    const box = $('mgGames');
+    box.innerHTML = '';
+    const c = mgCat && catById(mgCat);
+    for (const g of MINI_GAMES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.game = g.id;
+      b.setAttribute('role', 'listitem');
+      b.className = 'mini-game' + (g.open ? '' : ' soon') + (artOk[g.id] ? ' has-art' : '');
+      b.disabled = !g.open || !c;
+      b.innerHTML = '<span class="mini-art"><i class="mini-art-ph" aria-hidden="true"></i><em class="mini-soon-tag"></em></span>'
+        + '<b class="mini-gname"></b><span class="mini-chips"></span>';
+      const art = b.querySelector('.mini-art');
+      art.style.setProperty('--art', `url("${import.meta.env.BASE_URL + g.art}")`);
+      art.style.setProperty('--tint-a', g.tint[0]);
+      art.style.setProperty('--tint-b', g.tint[1]);
+      b.querySelector('.mini-art-ph').textContent = g.ico;
+      b.querySelector('.mini-soon-tag').textContent = g.open ? '' : '🔒 ' + t('เร็ว ๆ นี้');
+      b.querySelector('.mini-gname').textContent = t(g.name);
+      const chips = b.querySelector('.mini-chips');
+      for (const txt of g.chips ? g.chips() : [t('กำลังสร้างอยู่จ้า')]) {
+        const chip = document.createElement('i');
+        chip.textContent = txt;
+        chips.appendChild(chip);
+      }
+      if (g.open) {
+        b.addEventListener('click', () => {
+          unlockAudio();
+          sfx.fish();
+          const cat = mgCat && catById(mgCat);
+          if (!cat) return;   // เล่นได้เฉพาะกับน้องในห้อง
+          $('miniPanel').classList.add('hidden');
+          g.open(cat);
+        });
+      }
+      box.appendChild(b);
+    }
+  }
+
+  // ── น้องในหน้ามินิเกมขยับได้ ── หายใจ กะพริบตา หางแกว่ง (drawCatPose ทำให้เองตามเวลา t)
+  // ทุก ~4 วิ เอียงหัวร้องทักหนึ่งที · ลูปเปิดเฉพาะตอนหน้ามินิเกมเปิดอยู่ ~30 ครั้ง/วิ แล้วหยุดเอง
+  let petSkin = null, petRaf = 0, petLast = 0;
+  const petT0 = performance.now();
+  function drawPet(now) {
+    const cv = $('mgPetArt');
+    const g = cv.getContext('2d');
+    const t = (now - petT0) / 1000 * 60;   // ตัววาดน้องนับเวลาเป็นเฟรม 60fps
+    const ph = (t % 240) / 240;
+    const chirp = ph > 0.78 && ph < 0.95 ? Math.sin(((ph - 0.78) / 0.17) * Math.PI) : 0;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    const k = cv.width / 150;
+    g.setTransform(k, 0, 0, k, 0, 0);
+    drawCatPose(g, 75, 138, 2.1, petSkin, t, {
+      shape: { sit: 1, tilt: 0.06 + chirp * 0.14, ear: -chirp * 0.3, chirp: chirp > 0.1 ? 1 : 0, wag: Math.sin(t * 0.09) * 0.7 },
+      k: 1, mood: 'happy',
+    });
+  }
+  function startPetLoop() {
+    const cv = $('mgPetArt');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (cv.width !== 150 * dpr) { cv.width = 150 * dpr; cv.height = 150 * dpr; }
+    drawPet(performance.now());
+    if (petRaf) return;
+    const loop = (now) => {
+      if ($('miniPanel').classList.contains('hidden') || !petSkin) { petRaf = 0; return; }
+      petRaf = requestAnimationFrame(loop);
+      if (now - petLast < 33) return;
+      petLast = now;
+      drawPet(now);
+    };
+    petRaf = requestAnimationFrame(loop);
+  }
+
+  /** ฝั่งซ้าย: โชว์น้องที่พาไปเล่น — ตัวน้อง ชื่อ เลเวล หลอดความสนุก (อยากเล่นไหม) หัวใจความผูกพัน */
+  function paintMiniCard() {
+    const c = miniCat();
+    mgCat = c ? c.id : null;
+    $('mgPetInfo').classList.toggle('hidden', !c);
+    $('mgPetEmpty').classList.toggle('hidden', !!c);
+    $('mgPetArt').classList.toggle('hidden', !c);
+    $('mgPetName').textContent = c ? nameOf(c) : '';
+    if (!c) petSkin = null;   // ห้องว่าง = หยุดลูปวาดน้อง
+    if (c) {
+      const sk = catSkin(c);
+      petSkin = sk;
+      startPetLoop();
+      const e = expInfo(c);
+      $('mgPetLv').textContent = 'Lv.' + e.lv;
+      $('mgPetExp').style.width = Math.round(e.ratio * 100) + '%';
+      const fun = Math.round(needNow(c, 'fun'));
+      $('mgPetFun').style.width = fun + '%';
+      const want = careInfo(c, 'play').wants;
+      // สั้นพอให้อยู่บรรทัดเดียวบนมือถือ (รายละเอียดว่าได้อะไร อยู่ในหน้าเลือกน้อง)
+      $('mgPetWant').textContent = want ? t('อยากเล่น 💗') : t('เล่นพอแล้ว');
+      $('mgPetWant').classList.toggle('full', !want);
+      const h = heartsOf(c);
+      $('mgPetHearts').textContent = '♥'.repeat(h) + '♡'.repeat(5 - h);
+    }
+    $('cwSwap').classList.toggle('hidden', roomCats().length < 2);
+    paintMiniGames();
+  }
+
+  /** หน้าเลือกน้อง — การ์ดน้องในห้องทุกตัว บอกด้วยว่าตัวไหนกำลังอยากเล่น (เล่นแล้วได้รางวัล) */
+  function openMiniPick() {
+    const grid = $('mgPickGrid');
+    grid.innerHTML = '';
+    const cur = miniCat();
+    for (const c of roomCats()) {
+      const want = careInfo(c, 'play').wants;
+      const on = !!cur && c.id === cur.id;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mgpick-card' + (on ? ' on' : '');
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.innerHTML = '<canvas width="84" height="84"></canvas><b></b><small></small><i class="mgpick-want"></i>';
+      b.querySelector('b').textContent = nameOf(c);
+      b.querySelector('small').textContent = 'Lv.' + levelOf(c);
+      const tag = b.querySelector('i');
+      tag.textContent = want ? t('อยากเล่น 💗') : t('เล่นพอแล้ว');
+      tag.classList.toggle('full', !want);
+      paintMini(b.querySelector('canvas'), 84, (g) => drawCatFace(g, 42, 48, 1.95, catSkin(c)));
+      b.addEventListener('click', () => {
+        unlockAudio();
+        sfx.fish();
+        mgPick = c.id;
+        $('mgPickPanel').classList.add('hidden');
+        paintMiniCard();
+        $('miniPanel').classList.remove('hidden');
+      });
+      grid.appendChild(b);
+    }
+    $('miniPanel').classList.add('hidden');
+    $('mgPickPanel').classList.remove('hidden');
+  }
+  $('cwSwap').addEventListener('click', () => { unlockAudio(); sfx.fish(); openMiniPick(); });
+  $('mgPickBack').addEventListener('click', () => {
+    unlockAudio();
+    sfx.fish();
+    $('mgPickPanel').classList.add('hidden');
+    $('miniPanel').classList.remove('hidden');
+  });
+
   $('crMini').addEventListener('click', () => {
     unlockAudio();
     sfx.fish();
+    paintMiniCard();
     $('miniPanel').classList.remove('hidden');
     showTip('mini');
   });
@@ -834,7 +1043,9 @@ export function setupCatRoomUI(deps) {
     $('foundGo').classList.toggle('hidden', foster && !!cards);
     document.querySelector('#foundPanel .found-title').textContent = mode === 'found' ? 'พบน้องแมว!'
       : mode === 'gift' ? 'น้องมาถึงบ้านแล้ว!' : 'ตั้งชื่อน้อง';
-    $('foundGo').textContent = fresh ? 'ไปบ้านน้อง' : 'บันทึก';
+    // ตั้งชื่อน้องที่เพิ่งมาถึง: ปุ่มหลัก = บันทึกชื่อ แล้วพาไปหาน้องในบ้านต่อทันที (ดู foundGo ข้างล่าง)
+    // TODO สตอรี่ตอนน้องมาถึงบ้าน — จะมีแอนิเมชันสั้น ๆ คั่นก่อนเข้าบ้าน (ผู้ใช้จะปรับทีหลัง)
+    $('foundGo').textContent = fresh ? 'บันทึกชื่อ' : 'บันทึก';
     $('foundLater').textContent = fresh ? 'ไว้ทีหลัง' : 'ยกเลิก';
     $('foundPanel').classList.remove('hidden');
     if (!foundRAF) foundRAF = requestAnimationFrame(paintFoundArt);

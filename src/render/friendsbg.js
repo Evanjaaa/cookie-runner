@@ -400,7 +400,7 @@ export function makeFriendsBg(canvas, isActive, pop) {
     for (const sel of KEEP_OUT) {
       for (const el of pop.querySelectorAll(sel)) {
         if (!el.offsetParent || !el.offsetWidth) continue;
-        const r = layoutRect(pop, el);
+        const r = layoutRect(pop, el, false);
         if (r) M.zones.push({ x: (r.x - 6) * k, y: (r.y - 6) * k, w: (r.w + 12) * k, h: (r.h + 12) * k });
       }
     }

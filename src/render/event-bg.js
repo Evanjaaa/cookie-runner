@@ -346,7 +346,7 @@ const REMEASURE_S = 0.4;
  * จึงถูกวางตามรายการที่ยังลอยต่ำอยู่ แล้ววัดใหม่ทีหลังกระโดดขึ้นไป (ที่ผู้ใช้เห็นว่า "เด้งขึ้น")
  * ค่า offset* เป็นตำแหน่งตามเลย์เอาต์ ไม่สนแอนิเมชันเลย จึงถูกตั้งแต่เฟรมแรก
  */
-export function layoutRect(pop, el) {
+export function layoutRect(pop, el, scrolled = true) {
   let x = 0;
   let y = 0;
   let n = el;
@@ -356,8 +356,10 @@ export function layoutRect(pop, el) {
     const p = n.offsetParent;
     if (!p) return null;
     // ระยะที่กล่องเลื่อนได้ (รายการภารกิจ) เลื่อนไว้ — ของข้างในขยับขึ้นตามนั้นจริงบนจอ
-    for (let a = n.parentElement; a && a !== p; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
-    if (p !== pop) { x += p.clientLeft - p.scrollLeft; y += p.clientTop - p.scrollTop; }
+    // scrolled = false → ตำแหน่งตอนยังไม่เลื่อน (นิ่งตลอดการเลื่อน) ใช้กับเขตห้ามวางของตกแต่ง
+    // ถ้านับระยะเลื่อน เขตห้ามวางขยับตามนิ้ว ของตกแต่งโผล่-หายสลับไปมา = เห็นเป็นกะพริบตอนเลื่อน
+    if (scrolled) for (let a = n.parentElement; a && a !== p; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
+    if (p !== pop) { x += p.clientLeft - (scrolled ? p.scrollLeft : 0); y += p.clientTop - (scrolled ? p.scrollTop : 0); }
     n = p;
   }
   return n === pop ? { x, y, w: el.offsetWidth, h: el.offsetHeight } : null;
@@ -571,7 +573,8 @@ export function makeEventBg(canvas, isActive, pop) {
     ctx.restore();
   }
 
-  const bg = makeCanvasBg(canvas, isActive, { layout: () => M, still, live });
+  // แถวที่เรืองเลื่อนตามรายการ — ระหว่างเลื่อนวัดใหม่ทุกเฟรม แสงจึงเกาะแถวติด
+  const bg = makeCanvasBg(canvas, isActive, { layout: () => M, still, live, onScroll: () => { M.at = -Infinity; } });
   // รายการเลื่อน = การ์ดที่ต้องเรืองย้ายที่ — วัดใหม่เฟรมถัดไปเลย (ภาพนิ่งก็วาดใหม่ผ่าน kick)
   pop.querySelector('.quest-list')?.addEventListener('scroll', () => { M.at = -Infinity; bg.kick(); }, { passive: true });
   return bg;
