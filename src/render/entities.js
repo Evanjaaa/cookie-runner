@@ -4197,7 +4197,7 @@ function drawCatSlide(ctx, s, { isDead = false, mouthOpen = false, mood = '', no
   // หางลากยาวไปข้างหลัง
   // หางเป็นเส้น ไม่ใช่รูปปิด จะตีขอบตรง ๆ ไม่ได้ ต้องวาดเส้นเข้มที่หนากว่ารองไว้
   // ข้างใต้แล้ววาดเส้นสีขนทับ ส่วนที่โผล่ออกมารอบ ๆ ก็คือขอบพอดี
-  ctx.lineWidth = 6.5 + CAT_EDGE * 2;
+  ctx.lineWidth = 6.5 + CAT_EDGE * edgeK * 2;
   ctx.strokeStyle = s.line || s.dark;
   ctx.beginPath();
   ctx.moveTo(-15, 2);
@@ -4333,7 +4333,7 @@ function drawCatHead(ctx, hx, hy, s, { isDead = false, scale = 1, earsBack = fal
 
   // ทรงหัวเฉพาะตัว: แก้มป่อง ปอยขนข้างแก้ม ขนฟูรอบหัว ขนปลายหู ปอยหน้าผาก
   if (F) {
-    faceShape(ctx, s, F, CAT_EDGE);
+    faceShape(ctx, s, F, CAT_EDGE * edgeK);
     earFluff(ctx, s, ears, F);
     if (s.age !== 'baby') faceCrown(ctx, s, F, catEdge);
   }
@@ -4784,6 +4784,14 @@ function fade(hex, a) {
 export const CAT_EDGE = 0.62;   // MV (src/mv/kitten.js) ใช้ค่านี้กับท่าหันหลังด้วย
 
 /**
+ * ตัวคูณเส้นขอบตัวน้องตามฉาก — ฉากหน้าแรก/บ้านลูกเหมียว/มินิเกมเส้นบางลง 30% (ผู้ใช้ขอ)
+ * ตัวน้องในฉากพวกนั้นจึงต้องบางตามให้เส้นเท่ากันทั้งภาพ · ตอนวิ่งยังเป็น 1 เท่าเดิม
+ * ผู้วาดฉากตั้งค่านี้ก่อนวาด (ดู Game.draw / มินิเกม)
+ */
+let edgeK = 1;
+export function setCatEdgeScale(k) { edgeK = k; }
+
+/**
  * วาดรอยแปรงที่ผู้เล่นระบายเอง ทับลงบนชิ้นหนึ่งของตัวละคร
  *
  * ── ทำไมต้อง clip ──
@@ -4853,13 +4861,13 @@ function paintStroke(ctx, s, key, path, width) {
  */
 function bodyEdgeUnder(ctx, s) {
   ctx.strokeStyle = s.line || s.dark;
-  ctx.lineWidth = s.outfit?.body ? CAT_EDGE * 2 : CAT_EDGE;
+  ctx.lineWidth = (s.outfit?.body ? CAT_EDGE * 2 : CAT_EDGE) * edgeK;
 }
 
 /** ตั้งค่าปากกาสำหรับตีขอบ แล้วให้ผู้เรียก stroke() เอง (path ปัจจุบันยังอยู่หลัง fill) */
 function catEdge(ctx, s) {
   ctx.strokeStyle = s.line || s.dark;
-  ctx.lineWidth = CAT_EDGE;
+  ctx.lineWidth = CAT_EDGE * edgeK;
 }
 
 /** หางโค้งพร้อมปลายครีม wag = -1..1 คุมการสะบัด */
@@ -4873,7 +4881,7 @@ function drawTail(ctx, x, y, wag, s, fat = 0, short = 0) {
 
   // เส้นเข้มหนากว่ารองข้างใต้ = ขอบหาง (เหตุผลเดียวกับหางท่าหมอบ)
   ctx.strokeStyle = s.line || s.dark;
-  ctx.lineWidth = thick + CAT_EDGE * 2;
+  ctx.lineWidth = thick + CAT_EDGE * edgeK * 2;
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.quadraticCurveTo(x - 17 * len, y + (3 + wag * 5) * len, tipX, tipY);

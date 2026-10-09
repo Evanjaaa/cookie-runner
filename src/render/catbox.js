@@ -8,6 +8,9 @@
 import { GROUND_Y } from '../config.js';
 import { drawCatPose } from './entities.js';
 
+/** เส้นขอบกล่องบางลง 30% ให้เท่าเส้นฉากหน้าแรก/บ้านลูกเหมียว (ผู้ใช้ขอ) */
+const BOX_K = 0.7;
+
 const LINE = '#5C3B26';
 const CARD = '#D8A564';
 const CARD_DARK = '#B07D42';
@@ -33,7 +36,7 @@ export function drawCatBox(ctx, x, y, t, open = 0, ears = null) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.strokeStyle = LINE;
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = 2.2 * BOX_K;
 
   // เงา
   ctx.fillStyle = 'rgba(0,0,0,.22)';
@@ -75,7 +78,7 @@ export function drawCatBox(ctx, x, y, t, open = 0, ears = null) {
   }
   // เทปกับรอยเท้า
   ctx.strokeStyle = CARD_DARK;
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.6 * BOX_K;
   ctx.beginPath(); ctx.moveTo(-20, -20); ctx.lineTo(4, -20); ctx.stroke();
   ctx.fillStyle = CARD_DARK;
   ctx.beginPath(); ctx.ellipse(16, -12, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
@@ -150,7 +153,7 @@ export function drawHomeBox(ctx, x, y, t, pop = 0) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.strokeStyle = LINE;
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = 2.2 * BOX_K;
   const W = 46, H = 40, top = -H, back = top - 12;
 
   // เงา
@@ -171,7 +174,7 @@ export function drawHomeBox(ctx, x, y, t, pop = 0) {
   ctx.quadraticCurveTo(18, back - 5, W - 8, back + 2);
   ctx.lineTo(W - 4, top); ctx.lineTo(-W + 4, top); ctx.closePath();
   ctx.fillStyle = '#FFD3E1'; ctx.fill();
-  ctx.lineWidth = 1.4; ctx.stroke(); ctx.lineWidth = 2.2;
+  ctx.lineWidth = 1.4 * BOX_K; ctx.stroke(); ctx.lineWidth = 2.2 * BOX_K;
   // ฝาข้างกางออก (กางกว้างขึ้นตอนถูกแตะ)
   for (const side of [-1, 1]) {
     const open = 18 + pop * 10;
@@ -202,7 +205,7 @@ export function drawHomeBox(ctx, x, y, t, pop = 0) {
   ctx.translate(-22, top + 26);
   ctx.beginPath();
   ctx.moveTo(0, 7); ctx.bezierCurveTo(-9, 1, -7, -7, 0, -3); ctx.bezierCurveTo(7, -7, 9, 1, 0, 7); ctx.closePath();
-  ctx.fillStyle = '#FF8FB8'; ctx.fill(); ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.fillStyle = '#FF8FB8'; ctx.fill(); ctx.lineWidth = 1.6 * BOX_K; ctx.stroke();
   ctx.restore();
   ctx.fillStyle = CARD_DARK;
   ctx.beginPath(); ctx.ellipse(24, top + 28, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
@@ -266,10 +269,10 @@ export function drawCarrierBack(ctx, feetY, sliding, skin, t, runPhase, land = 0
   ctx.fillStyle = SLING.cloth;
   ctx.fill();
   ctx.strokeStyle = SLING.line;
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.6 * BOX_K;
   ctx.stroke();
   ctx.strokeStyle = SLING.trim;
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = 2.2 * BOX_K;
   ctx.beginPath();
   ctx.moveTo(seat.x - w + 2, top + 1.6);
   ctx.quadraticCurveTo(seat.x, top + 4.4, seat.x + w - 2, top + 0.6);
@@ -295,7 +298,7 @@ export function drawCarrierFront(ctx, feetY, sliding) {
   const band = (x0, y0, cx1, cy1, x1, y1, w) => {
     for (const [col, k] of [[SLING.line, 1], [SLING.strap, 0.72]]) {
       ctx.strokeStyle = col;
-      ctx.lineWidth = w * k;
+      ctx.lineWidth = w * k * BOX_K;
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx1, cy1, x1, y1); ctx.stroke();
     }
   };
@@ -306,14 +309,14 @@ export function drawCarrierFront(ctx, feetY, sliding) {
     band(c.x - 16, c.y - 6, c.x - 8, c.y - 11, c.x - 2, c.y - 9, 3.6);
     ctx.fillStyle = '#FFE48A';
     ctx.strokeStyle = SLING.line;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.2 * BOX_K;
     ctx.beginPath(); ctx.arc(c.x + 3.6, c.y + 1, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   } else {
     band(c.x - 14, c.y + 6, c.x, c.y + 9, c.x + 13, c.y + 5, 4);
     band(c.x + 10, c.y - 8, c.x + 2, c.y - 1, c.x - 13, c.y + 4, 4.6);
     ctx.fillStyle = '#FFE48A';
     ctx.strokeStyle = SLING.line;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.2 * BOX_K;
     ctx.beginPath(); ctx.arc(c.x + 3, c.y - 2.6, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
   ctx.restore();
@@ -351,7 +354,7 @@ export function drawBoxScene(ctx, game, skin) {
       for (const dx of [-11, 11]) {
         ctx.fillStyle = skin.cream;
         ctx.strokeStyle = skin.line || '#5C3B26';
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = 1.4 * BOX_K;
         ctx.beginPath(); ctx.ellipse(bx + dx, by - 3, 5, 3.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
     }
@@ -367,7 +370,7 @@ export function drawBoxScene(ctx, game, skin) {
         ctx.beginPath();
         ctx.moveTo(0, 6); ctx.bezierCurveTo(-8, 1, -6, -6, 0, -2.5); ctx.bezierCurveTo(6, -6, 8, 1, 0, 6); ctx.closePath();
         ctx.fillStyle = '#FF8FB8'; ctx.fill();
-        ctx.strokeStyle = '#8E2B57'; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.strokeStyle = '#8E2B57'; ctx.lineWidth = 1.2 * BOX_K; ctx.stroke();
         ctx.restore();
       }
     }

@@ -11,7 +11,7 @@
 //
 // พิกัดทุกอย่างเป็น "หน่วยฉาก" 960×480 (W×H) พื้นห้องอยู่ที่ FLOOR — ผู้เรียกตั้ง transform ย่อขยายให้เอง
 // ─────────────────────────────────────────────────────────────
-import { drawPlayer, drawCatPose, drawFish, drawKibble, drawShrimp, drawJelly, drawCrystal, pickupAura } from '../render/entities.js';
+import { setCatEdgeScale, drawPlayer, drawCatPose, drawFish, drawKibble, drawShrimp, drawJelly, drawCrystal, pickupAura } from '../render/entities.js';
 import { GROUND_Y, TREATS, foodLook } from '../config.js';
 import { t as tr } from '../i18n.js';
 
@@ -348,6 +348,7 @@ export function drawWater(c, surface, t, crest, bubbles) {
  * cat: { x, y(เท้า), dir, vy, onGround, runPhase, speed, mood, shiver, scale, skin }
  */
 export function drawCatSide(c, cat) {
+  setCatEdgeScale(0.7);   // เส้นตัวน้องบางเท่าฉากห้องซักผ้า
   c.save();
   const jx = cat.shiver ? Math.sin(cat.t * 1.7) * cat.shiver * 1.6 : 0;
   c.translate(cat.x + jx, cat.y - GROUND_Y);
@@ -366,6 +367,7 @@ export function drawCatSide(c, cat) {
 
 /** น้องหน้าตรง (ฉากเปิด / จบเกม / ทำลายสถิติ) */
 export function drawCatFront(c, x, feetY, scale, skin, t, idle) {
+  setCatEdgeScale(0.7);
   drawCatPose(c, x, feetY, scale, skin, t, idle);
 }
 

@@ -7305,7 +7305,7 @@ canvas[hidden] { display: none; }
   .panel:not(.home):not(.hidden) > .pop > * { animation: none; }
   /* หน้าเข้าเกม: ป้ายลอยขึ้นลง กับปุ่มเรืองแสง — ทั้งคู่เป็นแอนิเมชันประดับล้วน ๆ
      ปิดแล้วยังกดเข้าเกมได้ปกติ */
-  .title-logo.logo-plate { animation: none; }
+  .title-logo.logo-plate, .title-logo.logo-img { animation: none; }
   .btn.big { animation: none; }
 }
 
@@ -14402,3 +14402,368 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   #miniPanel .mini-pet canvas { width: auto; height: auto; }
   #miniPanel .mini-gname { line-height: 1.5; padding-top: 5px; }
 }
+
+/* ══ พื้นหลังภาพนิ่งหน้าย่อย (src/render/subbg.js) ══════════════════════
+   ผ้าใบลูกคนแรกของการ์ด จมอยู่ใต้เนื้อหาทั้งหมดด้วย z-index -1 + isolation บนการ์ด
+   (ไม่ต้องยกเนื้อหาทุกชิ้นขึ้น ของที่จัดตำแหน่งเองไว้แล้วจึงไม่เพี้ยน) · ไม่มีแอนิเมชันเปิด (นิ่งอยู่กับการ์ด) */
+.pop.has-subbg { isolation: isolate; }
+/* ผูก #stage ให้ชนะกฎแอนิเมชันไล่ขึ้นของลูก .pop (.panel:not(.home):not(.hidden) > .pop > *) */
+#stage .pop.has-subbg > .sub-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: none;
+}
+
+/* ══ หัวข้อทุกหน้า: สระ/วรรณยุกต์บนไม่โดนตัด (เช่น ไม้หันอากาศ/สระโอ ของ "โปรไฟล์เหมียว") ══════
+   หัวข้อบางตัวตั้ง line-height: 1 + overflow: hidden (ไว้ตัด ... ตอนชื่อยาว) — ส่วนที่ลอยเหนือตัวอักษรเลยหาย
+   เพิ่มที่ว่างเหนือ-ใต้ด้วย line-height และปล่อย overflow ให้เห็นครบ (หัวข้อสั้น ไม่ต้องตัด ...) */
+#stage .panel :is(.skin-title, .cr-title, .found-title, .over-title, .pf-title, .quest-title h2, .tl-sheet-name),
+#stage .panel > .pop > h2 {
+  line-height: 1.45;
+  overflow: visible;
+}
+#stage .panel .pf-pop > .pf-title { padding-top: .1em; }
+#stage .panel :is(.mini-gname, .mini-pet-name, .news-title, .mail-title) { line-height: 1.55; }
+
+/* ══ กล่องจดหมาย: ชื่อจดหมายเล็กลง (เดิมใหญ่เกือบเท่าหัวข้อหน้า) ══════════════ */
+#inboxPanel .mail-title,
+#inboxPanel .mail-item.read .mail-title { font-size: clamp(13px, 2.3dvh, 16px); }
+#inboxPanel .mail-sub { font-size: clamp(10.5px, 1.9dvh, 13px); }
+@media (max-height: 520px) {
+  #inboxPanel .mail-title,
+  #inboxPanel .mail-item.read .mail-title { font-size: 13.5px; }
+  #inboxPanel .mail-sub { font-size: 11px; }
+}
+/* ไม่มีจดหมาย: ข้อความอยู่กลางกล่องรายการ (เดิมชิดซ้ายครึ่งเดียวบนมือถือ — โดนกฎ .panel p จำกัดความกว้าง) */
+#stage #inboxPanel .mail-list > .grid-empty {
+  align-self: center;
+  width: 100%;
+  max-width: none;
+  margin: auto 0;
+  text-align: center;
+}
+
+/* ══ ชื่อมินิเกม: สีสดใส (เหลืองครีมขอบชมพู) ══════════════════════════ */
+#miniPanel .mini-game:not(.soon) .mini-gname {
+  color: #FFF06E;
+  text-shadow: 0 2px 0 #C2408E, 0 0 2px #C2408E, 0 0 10px rgba(255,120,200,.55);
+}
+
+/* ══ ตั้งค่ากราฟิกแยกตามหน้า ════════════════════════════════════════
+   สามแถว (หน้า / เฟรมเรท / ความสวย) + ปุ่ม "ใช้ทุกหน้าเหมือนกัน" · แท็บนี้ของเยอะ เลื่อนได้บนจอเตี้ย */
+#settingsPanel .set-sec[data-set="display"] { justify-content: flex-start; overflow-y: auto; scrollbar-width: none; padding-block: 2px; }
+#settingsPanel .set-sec[data-set="display"]::-webkit-scrollbar { display: none; }
+#settingsPanel .gfx-row .setlabel { flex: 0 0 4.6em; text-align: left; }
+#settingsPanel .gfx-row .gfxpick { max-width: none; }
+#gfxScenePick.off { opacity: .45; }
+#gfxScenePick .langbtn:disabled { cursor: default; }
+.fpspick .langbtn { padding-inline: 4px; font-variant-numeric: tabular-nums; }
+/* เกินที่จอเครื่องนี้ทำได้ — ยังกดได้ แต่จางให้รู้ */
+.fpspick .langbtn.over { opacity: .45; text-decoration: line-through dotted; }
+.fpspick .langbtn.over.on { opacity: .75; }
+.gfx-foot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gfx-foot .gfx-same { margin-top: 0; }
+.gfx-foot .gfx-same:not(.on) { filter: saturate(.5); opacity: .8; }
+
+#settingsPanel .gfx-foot .setnote { margin: 0; position: static; line-height: 1.45; text-align: center; max-width: 34em; }
+@media (max-height: 520px) {
+  #settingsPanel .set-sec[data-set="display"] { gap: 6px; }
+  #settingsPanel .gfx-row { padding-block: 5px; }
+}
+
+/* ══ ตั้งค่า → การแสดงผล (จัดใหม่) ══════════════════════════════════════
+   แถวเท่ากันทุกแถว: ป้ายซ้ายกว้างเท่ากัน · ตัวเลือกเต็มที่เหลือ · สวิตช์ "ตั้งแยกแต่ละหน้า" ชิดขวา
+   แถวเลือกหน้าโผล่เฉพาะตอนเปิดสวิตช์ · ข้อความเตือนเล็กใต้แถวความสวย */
+#settingsPanel .gfx-row { gap: 12px; }
+#settingsPanel .gfx-row .setlabel { flex: 0 0 5.2em; white-space: nowrap; }
+#settingsPanel .gfx-row .gfxpick { flex: 1 1 auto; margin-left: 0; }
+#settingsPanel .gfx-split-row .setlabel { flex: 1 1 auto; }
+#settingsPanel .gfx-scene-row.hidden { display: none; }
+#settingsPanel .gfx-scene-row .langbtn { padding-inline: 6px; }
+.gfx-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 50px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255,243,226,.25);
+  background: rgba(27,15,43,.62);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.gfx-switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E9DDF5;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35);
+  transition: transform .15s ease, background .15s ease;
+}
+.gfx-switch.on { background: linear-gradient(180deg, #5FD6C9, #2E9C95); }
+.gfx-switch.on i { transform: translateX(22px); background: #FFFFFF; }
+#settingsPanel .gfx-note { margin: -2px 0 0; max-width: min(100%, 470px); text-align: center; line-height: 1.45; opacity: .9; }
+
+/* ══ iPhone แนวนอน: ห้าม Safari ขยายตัวหนังสือเอง ══════════════════════════
+   Safari บน iOS "ขยายตัวหนังสือให้อ่านง่าย" อัตโนมัติตอนหมุนจอแนวนอน (text-size-adjust)
+   ทำให้ข้อความบางกล่อง (เช่นชื่อจดหมาย) ใหญ่กว่าที่ตั้งไว้ใน CSS — ปิดไว้ ให้ขนาดตรงตามที่ออกแบบทุกจอ */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* ══ โลโก้รูปใหม่ (แทนป้ายโล่หูแมวที่วาดด้วย CSS) ══════════════════════════
+   ขนาดวัดจากกรอบเกม (cqw) เหมือนป้ายเดิม — กว้างราว 34% ของกรอบ · ผุดขึ้น (logoPop) แล้วลอยเด้ง (logoBob) */
+.title-logo.logo-img {
+  width: clamp(220px, 34vw, 460px);
+  width: 34cqw;
+  line-height: 0;
+  animation:
+    logoPop .55s cubic-bezier(.34, 1.56, .64, 1) both,
+    logoBob 4.2s ease-in-out .55s infinite;
+  filter: drop-shadow(0 6px 10px rgba(58,29,80,.35));
+}
+.title-logo.logo-img img { display: block; width: 100%; height: auto; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+
+/* สัญลักษณ์เพศ ♂ ♀ — ฟอนต์สำรองของสัญลักษณ์เส้นฐานต่ำกว่าฟอนต์ไทย ยกขึ้นให้อยู่กลางบรรทัด (ดู setSexText) */
+.sexsym {
+  display: inline-block;
+  font-family: system-ui, -apple-system, "Segoe UI Symbol", sans-serif;
+  line-height: 1;
+  transform: translateY(-.14em);
+  margin-right: .1em;
+}
+
+/* ══ บ้านลูกเหมียว: ช่องว่าง (+) เป็นวงกลมพอดี เครื่องหมายบวกอยู่กลางวง ══════════════
+   เดิมกว้างตายตัวแต่สูงตามชิปข้าง ๆ = วงรี และ + เยื้องลง — ตอนนี้สูงเท่าชิปน้อง กว้างเท่าสูง จัดกลางด้วย grid */
+#catRoomPanel .cr-chip.empty {
+  display: grid;
+  place-items: center;
+  /* ขนาดเท่าความสูงชิปน้อง (รูปหน้า + ขอบบนล่าง) = วงกลมพอดี */
+  --chip-h: calc(clamp(22px, 5dvh, 30px) + 10px);
+  width: var(--chip-h);
+  height: var(--chip-h);
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* ══ แผ่นเสียงเพลงหน้าแรก (ตั้งค่า → เสียง) ═══════════════════════════════
+   แผ่นไวนิลดำร่องวงกลม + ฉลากกลางสีตามเพลง (--disc-hue) หมุนช้า ๆ · กดลูกศร = แผ่นเด้งเปลี่ยน */
+#settingsPanel .set-sec[data-set="sound"] { overflow-y: auto; scrollbar-width: none; justify-content: flex-start; padding-block: 2px; }
+#settingsPanel .set-sec[data-set="sound"]::-webkit-scrollbar { display: none; }
+.vinyl-row {
+  width: min(100%, 470px);
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vw, 14px);
+  padding: clamp(8px, 1.6dvh, 12px) clamp(8px, 1.6vw, 14px);
+  border-radius: 22px;
+  border: 2px solid rgba(255,255,255,.3);
+  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.05));
+  box-shadow: 0 4px 0 rgba(40,16,70,.35);
+  flex-shrink: 0;
+}
+.vinyl {
+  --disc: clamp(58px, 15dvh, 84px);
+  position: relative;
+  flex: 0 0 var(--disc);
+  width: var(--disc);
+  height: var(--disc);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.28), rgba(255,255,255,0) 32%),
+    repeating-radial-gradient(circle, #1E1528 0 2px, #2C2038 2px 4px),
+    #1E1528;
+  box-shadow: 0 4px 10px rgba(20,8,32,.5), inset 0 0 0 2px rgba(255,255,255,.08);
+  display: grid;
+  place-items: center;
+  animation: vinylSpin 4.5s linear infinite;
+}
+.vinyl-label {
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 40% 35%, hsl(var(--disc-hue, 320) 90% 82%), hsl(var(--disc-hue, 320) 70% 62%));
+  box-shadow: 0 0 0 2px rgba(255,255,255,.55);
+  font-style: normal;
+}
+.vinyl-label b { font-size: calc(var(--disc) * .15); line-height: 1; filter: saturate(.6); }
+.vinyl.swap { animation: vinylSwap .45s cubic-bezier(.34, 1.56, .64, 1), vinylSpin 4.5s linear .45s infinite; }
+@keyframes vinylSpin { to { transform: rotate(360deg); } }
+@keyframes vinylSwap { from { transform: scale(.6) rotate(-120deg); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .vinyl, .vinyl.swap { animation: none; } }
+.vinyl-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; color: var(--cream); font-family: "Mali", sans-serif; }
+.vinyl-kicker { font-size: clamp(10px, 1.9dvh, 12px); opacity: .8; }
+.vinyl-title { font-size: clamp(12.5px, 2.5dvh, 15px); line-height: 1.4; color: #FFE48A; overflow-wrap: anywhere; }
+.vinyl-credit { font-size: clamp(10px, 1.9dvh, 12px); color: #FFD9EC; }
+.vinyl-arrow {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0 0 3px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,243,226,.44);
+  background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
+  color: var(--cream);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(20,8,32,.65);
+  transition: transform .06s ease, box-shadow .06s ease;
+}
+.vinyl-arrow:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(20,8,32,.65); }
+/* สองแผ่น (หน้าแรก / บ้านลูกเหมียว) — ระยะห่างเท่าแถวอื่น · ฉลากแผ่นบ้านลูกเหมียวเป็นโทนส้มอุ่น (hue จาก ROOM_SONGS) */
+.vinyl-row + .vinyl-row { margin-top: 0; }
+/* แท็บเสียง/การแสดงผล: ของพอดีจอ = อยู่กลางแนวตั้งเหมือนแท็บอื่น · ล้นจอ = เริ่มจากบนแล้วเลื่อนได้ (safe center ไม่ตัดหัว) */
+#settingsPanel .set-sec:is([data-set="sound"], [data-set="display"]) { justify-content: safe center; }
+
+/* ══ มินิเกม ตัดขนแมว (src/minigames/groom.js) ═══════════════════════════
+   ใช้ฐานเดียวกับแมวหนีน้ำ (.cw-corner / .cw-pause / .cw-box) · แถบเครื่องมือล่างกลาง ไม่บังตัวน้อง */
+#groomPanel { padding: 0; background: #2E2140; backdrop-filter: none; }
+#grCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.gr-tools {
+  position: absolute;
+  /* มุมซ้ายล่าง — ตัวน้องอยู่กลางจอ แถบนี้จึงไม่บัง */
+  left: calc(12px + env(safe-area-inset-left));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 40%;
+  flex-wrap: wrap;
+}
+.gr-tools.hidden, .gr-acc-row.hidden, .gr-next.hidden, .gr-reveal.hidden { display: none; }
+.gr-tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 18px;
+  border: 3px solid #4E3527;
+  background: #FFF8EA;
+  color: #4E3527;
+  font-family: "Mali", sans-serif;
+  box-shadow: 0 4px 0 rgba(78,53,39,.35);
+}
+.gr-tool.pop { animation: grPop .4s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes grPop { from { transform: scale(.7); } }
+.gr-tool-ico { font-size: 28px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: #FFE9B8; }
+.gr-tool-txt { display: flex; flex-direction: column; text-align: left; line-height: 1.35; }
+.gr-tool-name { font-size: 15px; }
+.gr-tool-hint { font-size: 11.5px; opacity: .85; max-width: 22em; }
+.gr-next { margin-top: 0; }
+.gr-acc-row { display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: rgba(255,248,234,.92); border: 3px solid #4E3527; }
+.gr-acc {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: #FFF0DA;
+  font-size: 22px;
+  cursor: pointer;
+}
+.gr-acc.on { border-color: #FF8FB8; background: #FFD9EC; transform: translateY(-2px); }
+.gr-intro { gap: 10px; }
+.gr-pick { background: rgba(78,53,39,.12); border-color: rgba(78,53,39,.25); }
+.gr-pick .langbtn { color: #4E3527; }
+.gr-pick .langbtn.on { color: #FFF6D8; }
+.gr-target { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: clamp(13px, 2.6dvh, 15px); line-height: 1.5; }
+.gr-reroll { width: 40px; height: 40px; padding: 0; border-radius: 50%; border: 2px solid #4E3527; background: #FFE9B8; font-size: 18px; cursor: pointer; }
+.gr-reveal {
+  position: absolute;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px 6px 16px;
+  border-radius: 999px;
+  background: rgba(255,248,234,.94);
+  border: 3px solid #4E3527;
+  color: #4E3527;
+  font-family: "Mali", sans-serif;
+}
+.gr-reveal .btn { margin-top: 0; }
+.gr-rows { display: grid; gap: 2px; width: 100%; }
+.gr-rows div { display: flex; justify-content: space-between; gap: 16px; font-size: clamp(12px, 2.4dvh, 14px); }
+.gr-rows b { color: #F2A93B; letter-spacing: 1px; }
+.gr-rows b i { color: rgba(78,53,39,.2); font-style: normal; }
+.gr-bonus { color: #B0477A; font-weight: 700; font-size: 11.5px; text-align: center; }
+.gr-total { display: flex; align-items: baseline; gap: 10px; }
+.gr-total b { font-size: clamp(22px, 4.6dvh, 30px); }
+.gr-rate { font-size: clamp(15px, 3dvh, 18px); color: #7A45B5; }
+.gr-line { font-size: 12.5px; }
+#groomPanel .cw-reward { margin: 0; color: #B0477A; font-weight: 700; font-size: 12.5px; max-width: 30ch; }
+#groomPanel .cw-box { max-height: 94%; overflow-y: auto; }
+@media (max-height: 520px) {
+  .gr-tool-hint { display: none; }
+  .gr-tool-name { font-size: 13px; }
+  #groomPanel .cw-box { padding-block: 10px; gap: 6px; }
+}
+/* ตัดขนแมว: แถวเครื่องประดับเป็นคอลัมน์ขวา (ไม่ทับตัวน้องกลางจอ) · หน้าสรุปบนจอเตี้ยกระชับ */
+.gr-acc-row {
+  position: fixed;
+  right: calc(12px + env(safe-area-inset-right));
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+  max-height: 80%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+#groomPanel .gr-acc-row { position: absolute; z-index: 3; }
+.gr-result .btnrow { flex-wrap: wrap; justify-content: center; }
+@media (max-height: 520px) {
+  .gr-acc { width: 40px; height: 40px; font-size: 19px; }
+  .gr-acc-row { gap: 4px; padding: 4px; }
+  .gr-result { width: min(560px, 92%); }
+  .gr-result .cw-box-title { font-size: 17px; }
+  .gr-rows { grid-template-columns: 1fr 1fr; column-gap: 18px; }
+  .gr-rows div { font-size: 12px; }
+  .gr-total b { font-size: 22px; }
+  .gr-rate { font-size: 14px; }
+  .gr-result .btn { padding: 6px 14px; font-size: 13px; }
+}
+/* การ์ดเครื่องมือ: ไอคอนซ้าย ข้อความขวา แถวเดียว (กันการ์ดเป็นคอลัมน์สูงตอนแถบถูกบีบ) */
+.gr-tools { max-width: 52%; flex-wrap: nowrap; }
+.gr-tool { flex: 0 1 auto; flex-direction: row; min-width: 0; }
+.gr-tool-txt { min-width: 0; }
+/* ══ ตั้งค่าบ้านลูกเหมียว (⚙️ ในห้อง) ══ */
+.crset-pop { width: min(560px, 94%); gap: clamp(8px, 1.8dvh, 14px); }
+.crset-pop .setrow, .crset-pop .vinyl-row { width: min(100%, 470px); }
+#crSetPanel .setnote { margin: 0; text-align: center; }
+.cr-set-btn { padding: 0 10px; font-size: clamp(14px, 2.8dvh, 17px); }
+#crSetPanel .crset-pop { overflow-y: auto; scrollbar-width: none; }
+@media (max-height: 520px) { #crSetPanel .setnote { display: none; } #crSetPanel .crset-pop { gap: 8px; } }
+
+/* ความละเอียด: 5 ตัวเลือก — ตัวหนังสือเล็กลงนิดให้พอดีแถวเดียว */
+#resPick .langbtn { padding-inline: 4px; font-size: clamp(10px, 1.6dvh, 13px); }
+/* แถวกราฟิก: ป้ายซ้ายกว้างพอคำยาวสุด ("ความละเอียด") ทุกแถวเท่ากัน — ตัวเลือกจึงอยู่ในกรอบพื้นเข้มเต็มช่องทุกแถว ไม่ล้นทับป้าย */
+#settingsPanel .gfx-row .setlabel { flex: 0 0 6.4em; overflow: visible; }
+#settingsPanel .gfx-row .gfxpick { flex: 1 1 0; min-width: 0; }
+#resPick { justify-content: stretch; }
+#resPick .langbtn { flex: 1 1 0; min-width: 0; }
+/* ตัดขนแมว: ไอคอนเครื่องมือ (หวี ขวดแชมพู ไดร์ กรรไกร) ใหญ่ขึ้น เห็นชัดว่าตอนนี้ถืออะไรอยู่ */
+.gr-tool-ico { width: 68px; height: 68px; font-size: 44px; flex-shrink: 0; }
+.gr-tool-name { font-size: 17px; }
+@media (max-height: 520px) {
+  .gr-tool-ico { width: 56px; height: 56px; font-size: 36px; }
+  .gr-tool-name { font-size: 15px; }
+}
+/* ชื่อเครื่องมือสั้น ๆ ห้ามหักกลางคำ (จอโทรศัพท์เคยแตกเป็น "เล็ม / ขน") — คำอธิบายใต้ชื่อยังตัดบรรทัดได้ตามปกติ */
+.gr-tool-name { min-width: max-content; }

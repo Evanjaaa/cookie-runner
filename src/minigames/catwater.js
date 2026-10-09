@@ -21,6 +21,7 @@ import { sfx, killSfx } from '../audio.js';
 import { setMusicTrack } from '../music.js';
 import { loadPref, savePref } from '../storage.js';
 import { t as tr } from '../i18n.js';
+import { quality, canvasDprCap, framePacer } from '../graphics.js';
 import { TREATS } from '../config.js';
 
 /** สีข้อความคะแนน/ประกายตอนเก็บ ตามชนิดของกิน */
@@ -165,7 +166,8 @@ export function createCatWater({ panel, onExit, onFinish }) {
   function resize() {
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (!cw || !ch) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    // ความคมตามความสวยของหน้า 'บ้านแมว+มินิเกม' ในตั้งค่า (สูง 1.5 / กลาง 1.25 / ประหยัด 1)
+    const dpr = Math.min(window.devicePixelRatio || 1, canvasDprCap('room'));
     const pw = Math.round(cw * dpr), ph = Math.round(ch * dpr);
     if (canvas.width === pw && canvas.height === ph && view.dpr === dpr) return;
     canvas.width = pw;
@@ -855,8 +857,11 @@ export function createCatWater({ panel, onExit, onFinish }) {
   }
 
   // ══ ลูป ══════════════════════════════════════════════════════
+  const pace = framePacer();
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    // เพดานเฟรมของหน้า 'บ้านแมว+มินิเกม' (ตั้งค่า → กราฟิก) — ตั้งทีเดียวกับบ้านลูกเหมียว
+    if (!pace(now, quality('room').fps)) return;
     const dt = Math.min(1 / 30, Math.max(0, (now - lastNow) / 1000));
     lastNow = now;
     if (state !== S.PAUSED) update(dt);

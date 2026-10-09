@@ -219,30 +219,10 @@
       <!-- หน้าชื่อเกม แผงนี้ไม่มีม่านคลุมเลย เพื่อให้เห็นฉากปราสาทกับแมวเต็ม ๆ
            โลโก้เกาะซ้ายบน ปุ่มเกาะขวาล่าง เว้นกลางจอไว้ให้แมวที่วาดบน canvas -->
       <div class="panel title see-scene" id="titlePanel">
-        <!-- ป้ายชื่อเกมเป็นทรงโล่ปลายแหลม มีหูแมวโผล่สองข้าง = ตัวป้ายเป็น "หัวแมว" เอง
-             ทั้งป้าย รอยตีน และปลา วาดด้วย CSS กับ SVG ในตัว ไม่มีไฟล์รูปสักไฟล์ -->
-        <div class="title-logo logo-plate">
-          <span class="plate-ear left" aria-hidden="true"></span>
-          <span class="plate-ear right" aria-hidden="true"></span>
-          <!-- รอยตีนแมวเหนือชื่อ — วาดเป็น SVG เหมือนไอคอนอื่นในเกม (ปุ่มกลับ/ซองจดหมาย)
-               ไม่ใช้อีโมจิ 🐾 เพราะหน้าตาต่างกันทุกระบบปฏิบัติการ -->
-          <svg class="logo-paw" viewBox="0 0 100 92" aria-hidden="true">
-            <ellipse cx="50" cy="64" rx="27" ry="23"/>
-            <ellipse cx="20" cy="34" rx="11" ry="14" transform="rotate(-22 20 34)"/>
-            <ellipse cx="41" cy="19" rx="11" ry="15"/>
-            <ellipse cx="63" cy="19" rx="11" ry="15"/>
-            <ellipse cx="83" cy="34" rx="11" ry="14" transform="rotate(22 83 34)"/>
-          </svg>
-          <h2>MeowZing</h2>
-          <!-- ใช้ span ไม่ใช่ p — กฎ .panel p ซ่อนย่อหน้าทิ้งทั้งหมดบนจอแคบ
-               ซึ่งจะทำให้ริบบิ้นหายไปแล้วทรงโล่พังทั้งป้าย -->
-          <span class="logo-ribbon">เหมียวซิ่ง</span>
-          <!-- ปลาห้อยที่ปลายแหลมของโล่ -->
-          <svg class="logo-fish" viewBox="0 0 104 58" aria-hidden="true">
-            <ellipse class="fish-body" cx="46" cy="29" rx="33" ry="20"/>
-            <path class="fish-tail" d="M75 29 L102 11 L102 47 Z"/>
-            <circle class="fish-eye" cx="28" cy="23" r="4.2"/>
-          </svg>
+        <!-- ป้ายชื่อเกม MeowZing / เหมียวซิ่ง — รูปโลโก้ (public/logo-meowzing.webp ตัดพื้นดำจาก
+             "Glossy MeowZing Thai Badge Logo.png" ให้โปร่ง) · ผุดขึ้นแล้วลอยเด้งเบา ๆ เหมือนป้ายเดิม -->
+        <div class="title-logo logo-img">
+          <img src="/logo-meowzing.webp" alt="MeowZing เหมียวซิ่ง" width="1100" height="313" decoding="async">
         </div>
         <button class="btn big" id="enterBtn">เข้าเกม</button>
         <small class="title-note" id="titleNote"></small>
@@ -1252,6 +1232,7 @@
             <!-- การ์ดส่งต่อน้อง (catcards-ui.js) — ตัวเลข = การ์ดที่รอเราทำอะไรสักอย่าง -->
             <button type="button" class="cr-pill cr-cards-btn" id="crCards">💌 การ์ดส่งต่อ<b class="fr-num fr-red hidden" id="crCardsNum"></b></button>
             <button type="button" class="cr-pill" id="crMini">🎮 มินิเกม</button>
+            <button type="button" class="cr-pill cr-set-btn" id="crSet" aria-label="ตั้งค่าบ้านลูกเหมียว">⚙️</button>
           </div>
         </div>
 
@@ -1466,6 +1447,128 @@
         </div>
       </div>
 
+      <!-- ══ ตั้งค่าบ้านลูกเหมียว ══ เพลงห้อง + ระดับเสียงแยกจากทั้งเกม (catroom-ui.js / audio.js setRoomMix) -->
+      <div class="panel hidden" id="crSetPanel">
+        <div class="pop crset-pop">
+          <button type="button" class="xbtn" id="crSetClose" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h2 class="skin-title">ตั้งค่าบ้านลูกเหมียว</h2>
+              <!-- แผ่นเสียงเพลงบ้านลูกเหมียว — เลือกแยกจากหน้าแรก (ROOM_SONGS ใน src/music.js) -->
+              <div class="vinyl-row" data-song="room">
+                <button type="button" class="vinyl-arrow" data-step="-1" aria-label="เพลงก่อนหน้า">‹</button>
+                <div class="vinyl" aria-hidden="true"><i class="vinyl-label"><b>🐾</b></i></div>
+                <div class="vinyl-info">
+                  <small class="vinyl-kicker">เพลงบ้านลูกเหมียว <span class="vinyl-num">1/1</span></small>
+                  <b class="vinyl-title"></b>
+                  <small class="vinyl-credit"></small>
+                </div>
+                <button type="button" class="vinyl-arrow" data-step="1" aria-label="เพลงถัดไป">›</button>
+              </div>
+              <div class="setrow">
+                <button class="stepbtn mutebtn" id="crMixMusicMute" aria-label="ปิดเสียงเพลง">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                    <g class="wave" fill="none" stroke-linecap="round">
+                      <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                      <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                    </g>
+                    <g class="cross" fill="none" stroke-linecap="round">
+                      <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                    </g>
+                  </svg>
+                </button>
+                <span class="setlabel">เพลง</span>
+                <button class="stepbtn" id="crMixMusicDown" aria-label="ลดเพลง">−</button>
+                <div class="volbar" id="crMixMusicBar"></div>
+                <button class="stepbtn" id="crMixMusicUp" aria-label="เพิ่มเพลง">+</button>
+                <b class="volnum" id="crMixMusicNum">80%</b>
+              </div>
+              <div class="setrow">
+                <button class="stepbtn mutebtn" id="crMixSfxMute" aria-label="ปิดเสียงเอฟเฟกต์">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+                    <g class="wave" fill="none" stroke-linecap="round">
+                      <path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/>
+                      <path d="M17.9 7a7.2 7.2 0 0 1 0 10"/>
+                    </g>
+                    <g class="cross" fill="none" stroke-linecap="round">
+                      <path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/>
+                    </g>
+                  </svg>
+                </button>
+                <span class="setlabel">เอฟเฟกต์</span>
+                <button class="stepbtn" id="crMixSfxDown" aria-label="ลดเอฟเฟกต์">−</button>
+                <div class="volbar" id="crMixSfxBar"></div>
+                <button class="stepbtn" id="crMixSfxUp" aria-label="เพิ่มเอฟเฟกต์">+</button>
+                <b class="volnum" id="crMixSfxNum">80%</b>
+              </div>
+          <small class="setnote">ใช้เฉพาะในบ้านลูกเหมียวกับมินิเกม — หน้าอื่นใช้ค่าในหน้าตั้งค่าหลัก</small>
+        </div>
+      </div>
+
+      <!-- ══ มินิเกม ตัดขนแมว ══ (src/minigames/groom.js) — เต็มจอ ฉาก/น้อง/ขนวาดในผ้าใบ ปุ่มเป็น DOM -->
+      <div class="panel hidden" id="groomPanel">
+        <canvas id="grCanvas" aria-label="มินิเกมตัดขนแมว"></canvas>
+        <div class="cw-corner">
+          <button type="button" class="cw-pause" id="grPause" aria-label="พัก">
+            <svg viewBox="0 0 24 24" width="55%" height="55%" aria-hidden="true">
+              <path d="M8.5 6v12M15.5 6v12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <!-- เครื่องมือของเฟสนี้ + คำใบ้ + ปุ่มถัดไป (ล่างกลาง ไม่บังตัวน้อง) -->
+        <div class="gr-tools hidden" id="grTools">
+          <div class="gr-tool" id="grTool"><span class="gr-tool-ico"></span><span class="gr-tool-txt"><b class="gr-tool-name"></b><small class="gr-tool-hint"></small></span></div>
+          <button type="button" class="btn gr-next hidden" id="grNext">ถัดไป ›</button>
+        </div>
+        <!-- เครื่องประดับ (เฟสจัดทรง) — คอลัมน์ขวา ไม่ทับตัวน้อง -->
+        <div class="gr-acc-row hidden" id="grAcc"></div>
+        <!-- เริ่มเกม: โจทย์วันนี้ / ฟรีสไตล์ + ความยาก -->
+        <div class="cw-box gr-intro" id="grIntro">
+          <b class="cw-box-title">✂️ ตัดขนแมว</b>
+          <div class="langpick gr-pick" role="group" aria-label="เลือกโหมด">
+            <button type="button" class="langbtn on" data-grmode="challenge">โจทย์วันนี้</button>
+            <button type="button" class="langbtn" data-grmode="free">ฟรีสไตล์</button>
+          </div>
+          <div class="gr-target"><span id="grTarget"></span><button type="button" class="gr-reroll" id="grReroll" aria-label="สุ่มโจทย์ใหม่">🎲</button></div>
+          <div class="langpick gr-pick" role="group" aria-label="เลือกความยาก">
+            <button type="button" class="langbtn" data-grdiff="easy">ง่าย</button>
+            <button type="button" class="langbtn on" data-grdiff="normal">ปกติ</button>
+            <button type="button" class="langbtn" data-grdiff="hard">ยาก</button>
+          </div>
+          <button type="button" class="btn" id="grStart">เริ่มแต่งตัว!</button>
+        </div>
+        <div class="gr-reveal hidden" id="grRevealBar">
+          <small>ลากเส้นกลางเพื่อเทียบ ก่อน / หลัง</small>
+          <button type="button" class="btn" id="grSeeScore">ดูคะแนน ⭐</button>
+        </div>
+        <div class="cw-box hidden" id="grPauseBox">
+          <b class="cw-box-title">พักก่อน</b>
+          <div class="btnrow">
+            <button type="button" class="btn" id="grResume">เล่นต่อ</button>
+            <button type="button" class="btn ghost" id="grQuit">เลิกเล่น</button>
+          </div>
+        </div>
+        <div class="cw-box gr-result hidden" id="grResult">
+          <b class="cw-box-title">✨ GROOMING COMPLETE! ✨</b>
+          <div class="gr-rows" id="grRows"></div>
+          <small class="gr-bonus" id="grBonus"></small>
+          <div class="gr-total"><small>คะแนนรวม</small><b id="grScore">0</b></div>
+          <b class="gr-rate" id="grRate"></b>
+          <small class="gr-line" id="grLine"></small>
+          <p class="cw-reward hidden" id="grReward"></p>
+          <div class="btnrow">
+            <button type="button" class="btn" id="grAgain">🔄 อีกครั้ง</button>
+            <button type="button" class="btn ghost" id="grView">📸 ดูผลงาน</button>
+            <button type="button" class="btn ghost" id="grHome">🏠 กลับ</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ มินิเกม แมวหนีน้ำ ══ (src/minigames/catwater.js) — เต็มจอ ผ้าใบวาดทั้งห้อง HUD อยู่ในผ้าใบ -->
       <div class="panel hidden" id="catWaterPanel">
         <canvas id="cwCanvas" aria-label="มินิเกมแมวหนีน้ำ"></canvas>
@@ -1584,6 +1687,17 @@
               <small class="form-msg" id="accMsg"></small>
               </div>
               <div class="set-sec hidden" data-set="sound">
+              <!-- แผ่นเสียงเพลงหน้าแรก — หมุนตลอด ลูกศรเปลี่ยนเพลง (HOME_SONGS ใน src/music.js) -->
+              <div class="vinyl-row" data-song="home">
+                <button type="button" class="vinyl-arrow" data-step="-1" aria-label="เพลงก่อนหน้า">‹</button>
+                <div class="vinyl" aria-hidden="true"><i class="vinyl-label"><b>🐾</b></i></div>
+                <div class="vinyl-info">
+                  <small class="vinyl-kicker">เพลงหน้าแรก <span class="vinyl-num">1/1</span></small>
+                  <b class="vinyl-title"></b>
+                  <small class="vinyl-credit"></small>
+                </div>
+                <button type="button" class="vinyl-arrow" data-step="1" aria-label="เพลงถัดไป">›</button>
+              </div>
               <div class="setrow">
                 <button class="stepbtn mutebtn" id="musicMute" aria-label="ปิดเสียงเพลง">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1624,15 +1738,42 @@
               </div>
               </div>
               <div class="set-sec hidden" data-set="display">
-              <div class="setrow">
-                <span class="setlabel">กราฟิก</span>
+              <!-- กราฟิกแยกตามหน้า (src/graphics.js) — เลือกหน้า แล้วตั้งเฟรมเรท + ความสวยของหน้านั้น -->
+              <div class="setrow gfx-row gfx-split-row">
+                <span class="setlabel">ตั้งแยกแต่ละหน้า</span>
+                <button type="button" class="gfx-switch" id="gfxSame" role="switch" aria-checked="false" aria-label="ตั้งแยกแต่ละหน้า"><i></i></button>
+              </div>
+              <div class="setrow gfx-row gfx-scene-row" id="gfxSceneRow">
+                <span class="setlabel">หน้า</span>
+                <div class="langpick gfxpick" id="gfxScenePick" role="group" aria-label="เลือกหน้าที่จะตั้งค่า">
+                  <button type="button" class="langbtn on" data-scene="home">หน้าแรก</button>
+                  <button type="button" class="langbtn" data-scene="room">บ้านแมว+มินิเกม</button>
+                  <button type="button" class="langbtn" data-scene="run">ตอนวิ่ง</button>
+                </div>
+              </div>
+              <div class="setrow gfx-row">
+                <span class="setlabel">เฟรมเรท</span>
+                <div class="langpick gfxpick fpspick" id="fpsPick" role="group" aria-label="เลือกเฟรมเรท"></div>
+              </div>
+              <div class="setrow gfx-row">
+                <span class="setlabel">ความละเอียด</span>
+                <div class="langpick gfxpick" id="resPick" role="group" aria-label="เลือกความละเอียดภาพ">
+                  <button type="button" class="langbtn" data-res="auto">อัตโนมัติ</button>
+                  <button type="button" class="langbtn" data-res="low">ต่ำ</button>
+                  <button type="button" class="langbtn" data-res="mid">กลาง</button>
+                  <button type="button" class="langbtn" data-res="high">สูง</button>
+                  <button type="button" class="langbtn" data-res="max">สูงสุด</button>
+                </div>
+              </div>
+              <div class="setrow gfx-row">
+                <span class="setlabel">ความสวย</span>
                 <div class="langpick gfxpick" role="group" aria-label="เลือกระดับกราฟิก">
                   <button type="button" class="langbtn on" id="gfxHigh">สวยเต็มที่</button>
                   <button type="button" class="langbtn" id="gfxMid">ปานกลาง</button>
                   <button type="button" class="langbtn" id="gfxSave">ประหยัดแบต</button>
                 </div>
               </div>
-              <small class="setnote" id="gfxNote">เครื่องร้อนหรือเฟรมตก ลองลดระดับลงได้</small>
+              <small class="setnote gfx-note" id="gfxNote">เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้</small>
               <div class="setrow">
                 <button class="stepbtn mutebtn" id="introMute" aria-label="ปิดเสียงคลิปเปิดเกม">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -2434,7 +2575,7 @@
     <p class="footnote">
       ตัวละคร ฉากในเกม และเสียงเอฟเฟกต์ทั้งหมดสร้างด้วยโค้ด (Canvas 2D + Web Audio)
       ส่วนภาพฉากหลังกับเพลงหน้าแรกเป็นไฟล์ —
-      เพลง <em>Love You - Singing Kitten [Japanese Ver.]</em> โดย tideblue จาก Pixabay
+      เพลง <em id="footSong">Love You - Singing Kitten [Japanese Ver.]</em> โดย tideblue จาก Pixabay
     </p>
   </div>
 

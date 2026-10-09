@@ -14,6 +14,7 @@
 // จึงต้องเก็บอ้างอิงโน้ตที่จองไว้ แล้วยกเลิกตัวที่ "ยังไม่เริ่มเล่น" ตอนสลับ
 // ─────────────────────────────────────────────────────────────
 import { audioCtx, musicOut, audioLive, whenAudioAwake } from './audio.js';
+import { loadPref, savePref } from './storage.js';
 
 const BPM = 128;
 const BEAT = 60 / BPM;
@@ -528,10 +529,48 @@ const TRACKS = {
 // BASE_URL ไม่ใช่ '/' ตรง ๆ เพราะ vite ตั้ง base: './' ไว้ (ดู vite.config.js)
 // เว็บที่ deploy ลงโฟลเดอร์ย่อยจึงยังหาไฟล์เจอ
 // ─────────────────────────────────────────────────────────────
+/**
+ * เพลงหน้าแรกให้ผู้เล่นเลือก (ตั้งค่า → เสียง → แผ่นเสียง) — เพิ่มเพลงใหม่ = เพิ่มแถวตรงนี้ + วางไฟล์ใน public/
+ * ทุกเพลงของ tideblue จาก Pixabay (Pixabay Content License — ใช้เชิงพาณิชย์ได้ ไม่บังคับเครดิต แต่เราใส่ให้)
+ */
+export const HOME_SONGS = [
+  { file: 'home-theme.mp3', title: 'Love You - Singing Kitten [Japanese Ver.]', artist: 'tideblue', from: 'Pixabay', hue: 320 },
+  { file: 'tideblue-robo-kitty-waits-vocoder-cat-song-571162.mp3', title: 'Robo Kitty Waits [ Vocoder Cat Song ]', artist: 'tideblue', from: 'Pixabay', hue: 200 },
+  { file: 'tideblue-ocean-morning-japanese-ver-chill-rampb-521267.mp3', title: 'Ocean Morning (Japanese Ver. / Chill R&B)', artist: 'tideblue', from: 'Pixabay', hue: 170 },
+];
+/** เพลงบ้านลูกเหมียว — เลือกแยกจากเพลงหน้าแรก (ตั้งค่า → เสียง → แผ่นเสียงแผ่นที่สอง) */
+export const ROOM_SONGS = [
+  { file: 'Music_room.mp3', title: 'Love You - Singing Kitten [English Ver.]', artist: 'tideblue', from: 'Pixabay', hue: 30 },
+  { file: 'Tide Blue - Sunset Amber Chill (Instrumental).mp3', title: 'Sunset Amber Chill (Instrumental)', artist: 'Tide Blue', from: 'Pixabay', hue: 40 },
+];
+export const SONG_LISTS = { home: HOME_SONGS, room: ROOM_SONGS };
+const SONG_PREF = { home: 'homeSong', room: 'roomSong' };
+const songIdx = {};
+for (const k of Object.keys(SONG_LISTS)) {
+  songIdx[k] = Math.max(0, Math.min(SONG_LISTS[k].length - 1, Number(loadPref(SONG_PREF[k], 0)) || 0));
+}
+// ชื่อไฟล์มีเว้นวรรค/วงเล็บได้ — เข้ารหัสเป็น URL ก่อนใช้
+const songSrc = (k, i = songIdx[k]) => import.meta.env.BASE_URL + encodeURI(SONG_LISTS[k][i].file);
+
+export function songIndex(kind) { return songIdx[kind]; }
+
+/** เปลี่ยนเพลงของหน้าหนึ่ง (home / room) — กำลังเล่นเพลงของหน้านั้นอยู่ = สลับทันที (หรี่ลง-ดังขึ้นนุ่ม ๆ) */
+export function setSong(kind, i) {
+  const n = SONG_LISTS[kind].length;
+  songIdx[kind] = ((i % n) + n) % n;
+  savePref(SONG_PREF[kind], songIdx[kind]);
+  FILE_TRACKS[kind] = songSrc(kind);
+  delete filePos[FILE_TRACKS[kind]];   // เพลงใหม่เริ่มจากหัวเพลงเสมอ
+  if (track === kind && master && !fileFailed) playFile(FILE_TRACKS[kind], kind === 'room' ? ROOM_FADE_IN : FADE_IN);
+  return songIdx[kind];
+}
+export const homeSongIndex = () => songIndex('home');
+export const setHomeSong = (i) => setSong('home', i);
+
 const FILE_TRACKS = {
-  home: import.meta.env.BASE_URL + 'home-theme.mp3',
+  home: songSrc('home'),
   // บ้านน้องแมว (src/catroom.js) — เพลงของห้องโดยเฉพาะ
-  room: import.meta.env.BASE_URL + 'Music_room.mp3',
+  room: songSrc('room'),
 };
 
 // เพลงบ้านน้องใช้ชื่อในตาราง TRACKS ด้วย (setMusicTrack รับเฉพาะชื่อที่มีในตาราง)
@@ -659,10 +698,71 @@ function retryFileOnGesture() {
   const go = () => {
     for (const ev of evs) document.removeEventListener(ev, go, true);
     gestureHooked = false;
-    if (!fileWanted || !fileEl) return;
+    if (!fileWanted || !fileEl || bufSrc) return;   // เล่นจากหน่วยความจำอยู่แล้ว ไม่ต้องปลุก <audio>
     fileEl.play().catch(retryFileOnGesture);
   };
   for (const ev of evs) document.addEventListener(ev, go, { capture: true, passive: true });
+}
+
+// ══ เล่นจากหน่วยความจำแทน <audio> (แก้เพลงค้างแล้วเล่นท่อนเดิมซ้ำบนไอโฟน) ═════════════════
+// <audio> ที่ต่อเข้า Web Audio (createMediaElementSource) บน Safari ป้อนเสียงจากเธรดหลัก
+// เครื่องยุ่ง (หน้าแรกวาดหนัก/เปิดแผง) ป้อนไม่ทัน = เสียงก้อนเดิมวนซ้ำ ฟังเป็น "ค้างแล้วเล่นท่อนเดิมซ้ำ"
+// ถอดรหัสไฟล์ทั้งเพลงเป็น AudioBuffer แล้วเล่นด้วย AudioBufferSourceNode — เล่นบนเธรดเสียงล้วน
+// เธรดหลักยุ่งแค่ไหนเพลงก็ไม่สะดุด · ระหว่างถอดรหัส (1-2 วิ) เล่นด้วย <audio> ไปก่อน แล้วสลับต่อตำแหน่งเดิม
+// ถอดที่ 32kHz (ไม่ใช่ 48k) ประหยัดหน่วยความจำ ~1/3 หูแยกไม่ออกสำหรับเพลงในเกม · เก็บไว้แค่เพลงล่าสุดเพลงเดียว
+const decoded = new Map();    // src → AudioBuffer
+const decoding = new Map();   // src → Promise
+let bufSrc = null;            // AudioBufferSourceNode ที่เล่นอยู่
+let bufFor = null;            // src ของเพลงที่เล่นจากหน่วยความจำ
+let bufStartAt = 0;
+let bufOffset = 0;
+
+function bufPos() {
+  if (!bufSrc) return 0;
+  const d = bufSrc.buffer.duration || 1;
+  return (bufOffset + audioCtx().currentTime - bufStartAt) % d;
+}
+function stopBuf() {
+  if (!bufSrc) return;
+  try { bufSrc.stop(); } catch { /* หยุดไปแล้ว */ }
+  try { bufSrc.disconnect(); } catch { /* ถอดไปแล้ว */ }
+  bufSrc = null;
+  bufFor = null;
+}
+function startBuf(src, offset = 0, when = null) {
+  const ac = audioCtx();
+  const b = decoded.get(src);
+  const n = ac.createBufferSource();
+  n.buffer = b;
+  n.loop = true;
+  n.connect(fileGain);
+  const t = when ?? ac.currentTime;
+  const off = ((offset % b.duration) + b.duration) % b.duration;
+  n.start(t, off);
+  bufSrc = n;
+  bufFor = src;
+  bufStartAt = t;
+  bufOffset = off;
+}
+function decodeSong(src) {
+  if (decoded.has(src)) return Promise.resolve(decoded.get(src));
+  if (decoding.has(src)) return decoding.get(src);
+  const p = fetch(src)
+    .then((r) => { if (!r.ok) throw new Error('fetch ' + r.status); return r.arrayBuffer(); })
+    .then((ab) => new Promise((res, rej) => {
+      let oc;
+      try { oc = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 32000); } catch { oc = audioCtx(); }
+      oc.decodeAudioData(ab, res, rej);   // แบบ callback — Safari รุ่นเก่าไม่คืน Promise
+    }))
+    .then((buf) => {
+      // เก็บแค่เพลงที่เพิ่งถอดเพลงเดียว (ยกเว้นตัวที่กำลังเล่นอยู่) — กันหน่วยความจำบวมบนมือถือ
+      for (const k of [...decoded.keys()]) if (k !== bufFor) decoded.delete(k);
+      decoded.set(src, buf);
+      return buf;
+    })
+    .finally(() => decoding.delete(src));
+  decoding.set(src, p);
+  return p;
 }
 
 function playFile(src, fadeSec = FADE_IN) {
@@ -670,10 +770,32 @@ function playFile(src, fadeSec = FADE_IN) {
   fileWanted = true;
   fadeToken++;   // ยกเลิกคิวหยุดที่ค้างอยู่ ไม่งั้นมันจะมาหยุดเพลงที่เพิ่งสั่งเล่น
   let start = null;   // ระดับเริ่มของการหรี่ขึ้น (null = ต่อจากระดับที่ดังอยู่ตอนนี้)
+
+  // ── มีเพลงนี้ในหน่วยความจำแล้ว = เล่นจากหน่วยความจำเลย ──
+  const playing = bufFor || el.getAttribute('src');
+  let savedPos = null;   // จำตำแหน่งของเพลงเก่าไปแล้วข้างบน — ข้างล่างห้ามเขียนทับด้วยเวลาเก่าของ <audio>
+  if (decoded.has(src) || bufFor) {
+    if (playing !== src) {
+      if (playing) { filePos[playing] = bufFor ? bufPos() : (el.currentTime || 0); savedPos = playing; }
+      start = fadeSec > FADE_IN ? FILE_VOL * SLOW_FROM : FADE_FLOOR;
+      fileGain.gain.cancelScheduledValues(audioCtx().currentTime);
+      fileGain.gain.setValueAtTime(start, audioCtx().currentTime);
+    }
+    if (decoded.has(src)) {
+      if (bufFor !== src) {
+        stopBuf();
+        el.pause();
+        startBuf(src, filePos[src] || 0);
+      }
+      fadeIn(fadeSec, start);
+      return;
+    }
+    stopBuf();   // เพลงเก่าเล่นจากหน่วยความจำ เพลงใหม่ยังไม่ได้ถอด — หยุดตัวเก่า ไปทาง <audio> ข้างล่าง
+  }
   // ตั้ง src ใหม่เฉพาะตอนเปลี่ยนเพลงจริง ๆ ไม่งั้นกลับมาหน้าแรกทีไรเพลงจะเริ่มใหม่หมด
   const old = el.getAttribute('src');
   if (old !== src) {
-    if (old) filePos[old] = el.currentTime || 0;
+    if (old && old !== savedPos) filePos[old] = el.currentTime || 0;
     el.setAttribute('src', src);
     el.load();
     // เล่นต่อจากจุดที่ค้างไว้ (ต้องรอให้รู้ความยาวไฟล์ก่อนถึงตั้งตำแหน่งได้)
@@ -697,6 +819,16 @@ function playFile(src, fadeSec = FADE_IN) {
     fadeIn(fadeSec, start);
   }
   el.play().catch(retryFileOnGesture);
+
+  // ── ถอดรหัสเบื้องหลัง แล้วสลับไปเล่นจากหน่วยความจำต่อตำแหน่งเดิม ──
+  const token = fadeToken;
+  decodeSong(src).then(() => {
+    if (token !== fadeToken || !fileWanted || el.getAttribute('src') !== src || bufFor === src) return;
+    const ac = audioCtx();
+    const lead = 0.05;
+    startBuf(src, (el.currentTime || 0) + lead, ac.currentTime + lead);
+    setTimeout(() => { if (bufFor === src) el.pause(); }, lead * 1000 + 15);
+  }).catch(() => { /* ถอดไม่ได้ (เครื่องหน่วยความจำไม่พอ ฯลฯ) = เล่นด้วย <audio> ต่อไป */ });
 }
 
 /**
@@ -743,12 +875,14 @@ export function primeMusicFile() {
  */
 function stopFile() {
   fileWanted = false;
-  if (!fileEl || fileEl.paused) return;
+  if (!bufSrc && (!fileEl || fileEl.paused)) return;
   const my = ++fadeToken;
   fadeOut();
   setTimeout(() => {
     // เช็คโทเคนก่อน เผื่อระหว่างหรี่มีคำสั่งเล่นใหม่แทรกเข้ามา
-    if (my === fadeToken && fileEl) fileEl.pause();
+    if (my !== fadeToken) return;
+    if (bufSrc) { filePos[bufFor] = bufPos(); stopBuf(); }   // จำตำแหน่ง กลับมาเล่นต่อจากเดิม
+    if (fileEl) fileEl.pause();
   }, FADE_OUT * 1000 + 60);
 }
 
@@ -978,6 +1112,9 @@ if (import.meta.env.DEV) {
   window.__tracks = TRACKS;
   window.__music = {
     get el() { return fileEl; },
+    // เล่นจากหน่วยความจำอยู่ไหม + ตำแหน่ง (ตรวจการสลับจาก <audio> → AudioBuffer)
+    get buffered() { return bufFor; },
+    get bufPos() { return bufPos(); },
     get track() { return track; },
     get failed() { return fileFailed; },
     get running() { return Boolean(timer); },

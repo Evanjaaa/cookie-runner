@@ -317,6 +317,14 @@ export function care(id, act, extra = {}) {
   return { exp, aff, before, after, grew: after >= GROWN_LV && before < GROWN_LV };
 }
 
+/** เล่นมินิเกมด้วยกัน = หายเหงาทันที (แม้รอบนั้นไม่ได้รางวัล) — ดู isSad */
+export function cheerCat(id) {
+  const cat = catById(id);
+  if (!cat) return;
+  cat.caredAt = now();
+  save();
+}
+
 /** ลูบตัวน้อง — ได้ความผูกพันนิดหน่อย วันละไม่เกิน PET_AFF_DAY */
 export function petCat(id) {
   const cat = catById(id);

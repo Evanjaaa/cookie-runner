@@ -4,7 +4,7 @@ import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx } from './audio.js';
-import { startMusic, stopMusic, primeMusicFile } from './music.js';
+import { startMusic, stopMusic, primeMusicFile, SONG_LISTS, songIndex, setSong } from './music.js';
 import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
 import {
   allCats, roomCats, waitingCats, grownCats, catById, breedOf, BREEDS, levelOf, nameOf, sizeOf, reloadCats,
@@ -30,8 +30,12 @@ import {
   claimableCount as lvClaimableCount, claimAll as claimAllLevels, TALENT_AT,
 } from './level-rewards.js';
 import { CYCLE, rewardOfDay, dayState, claimToday as claimDaily } from './daily.js';
-import { getLang, setLang, applyLang, watchLang, onLang } from './i18n.js';
-import { quality, gfxLevel, setGfxLevel, onQuality, LEVEL_IDS } from './graphics.js';
+import { getLang, setLang, applyLang, watchLang, onLang, t as tr } from './i18n.js';
+import { setSexText } from './utils.js';
+import {
+  quality, onQuality, LEVEL_IDS, SCENES, FPS_OPTS, sceneCfg, setSceneCfg, sameAll, setSameAll,
+  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz,
+} from './graphics.js';
 import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
   pullTreasure, upgradeTreasure, getEquipped, isEquipped, toggleEquip,
@@ -67,6 +71,7 @@ import { makeMailBg } from './render/mailbg.js';
 import { makeSettingsBg } from './render/settingsbg.js';
 import { makeCelebrateBg } from './render/celebratebg.js';
 import { makeProfileBg } from './render/profilebg.js';
+import { attachSubBg } from './render/subbg.js';
 import { makeLevelBg } from './render/levelbg.js';
 import { makeDailyBg } from './render/dailybg.js';
 import { PROP_LIST } from './obstacles.js';
@@ -279,6 +284,35 @@ for (const panel of document.querySelectorAll('#stage .panel')) {
 window.addEventListener('resize', () => {
   for (const panel of document.querySelectorAll('#stage .panel:not(.hidden)')) alignCornerBtns(panel);
 });
+
+// ── พื้นหลังภาพนิ่งของหน้าย่อยที่ยังไม่มีพื้นหลังของตัวเอง (src/render/subbg.js) ──
+// วาดครั้งเดียวตอนเปิดแผง/เปลี่ยนขนาด ไม่มีลูปแอนิเมชัน · [id แผง, ชุดลาย]
+for (const [id, theme] of [
+  ['authPanel', 'system'], ['namePanel', 'cat'], ['mailPanel', 'mail'], ['stageInfoPanel', 'stage'],
+  ['mailReadPanel', 'mail'], ['odPanel', 'outfit'], ['tDetailPanel', 'treasure'], ['upPanel', 'forge'],
+  ['loadoutPanel', 'treasure'], ['gListPanel', 'outfit'], ['foundPanel', 'cat'], ['catStoryPanel', 'cat'],
+  ['catCardsPanel', 'mail'], ['catSendPanel', 'mail'], ['miniPanel', 'play'], ['mgPickPanel', 'cat'],
+  ['tipPanel', 'cat'], ['pausePanel', 'system'], ['reportPanel', 'system'], ['overPanel', 'royal'],
+  ['createLockPanel', 'cat'], ['confirmPanel', 'system'],
+]) {
+  const el = document.getElementById(id);
+  if (el) attachSubBg(el, theme, id.length);
+}
+// ── จัดซ้ำเมื่อความสูงหัวข้อเปลี่ยนเอง ──
+// บนมือถือจริงฟอนต์ Mali โหลดช้ากว่า 350ms ได้ หัวข้อวัดตอนยังเป็นฟอนต์สำรอง (สูงไม่เท่ากัน)
+// แล้วพอฟอนต์จริงมา ปุ่มก็ค้างที่ตำแหน่งเก่า (เห็นปุ่มต่ำกว่าหัวข้อ เช่นหน้าตีบวก) — ฟังทั้งฟอนต์โหลดเสร็จและขนาดหัวข้อเปลี่ยน
+const realignOpen = () => { for (const panel of document.querySelectorAll('#stage .panel:not(.hidden)')) alignCornerBtns(panel); };
+document.fonts?.ready.then(realignOpen);
+document.fonts?.addEventListener?.('loadingdone', realignOpen);
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver((entries) => {
+    for (const e of entries) {
+      const panel = e.target.closest('.panel');
+      if (panel && !panel.classList.contains('hidden')) alignCornerBtns(panel);
+    }
+  });
+  for (const t of document.querySelectorAll('#stage .panel > .pop :is(' + CORNER_TITLE + ')')) ro.observe(t);
+}
 
 /**
  * ติดคลาส .scrolls ให้ช่องที่เนื้อหาล้นจริงเท่านั้น
@@ -5350,7 +5384,7 @@ function paintStashShow() {
 
     name.textContent = locked ? '???' : (x.cat ? nameOf(x.cat) : x.skin.name);
     hint.classList.remove('hidden');
-    hint.textContent = catEntryHint(x);
+    setSexText(hint, tr(catEntryHint(x)));   // ♂ ♀ ไม่ตกบรรทัด (ดู setSexText)
 
     if (x.kind === 'raising') {
       use.textContent = 'ไปบ้านน้อง';
@@ -7862,22 +7896,114 @@ document.getElementById('helpReport').addEventListener('click', () => {
   openReport();
 });
 
-// ── ระดับกราฟิก ──
-// ปุ่มสามใบใช้ทรงเดียวกับตัวเลือกภาษา กดแล้วมีผลทันที (ดู onQuality ข้างบน)
+// ── กราฟิกแยกตามหน้า: เลือกหน้า → เฟรมเรท + ความสวย (src/graphics.js) ──
+// หน้า: หน้าแรก / บ้านลูกเหมียว+มินิเกม / ตอนวิ่ง · "ใช้ทุกหน้าเหมือนกัน" = ตั้งทีเดียวทุกหน้า
+// ตัวเลือกเฟรมที่เกินจอเครื่องนี้ = ยังกดได้ แต่ขึ้นเทาพร้อมบอกว่าจอทำได้แค่ไหน
 const GFX_BTN = { high: 'gfxHigh', mid: 'gfxMid', save: 'gfxSave' };
+let gfxScene = 'home';
+const fpsBox = document.getElementById('fpsPick');
+for (const f of FPS_OPTS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'langbtn';
+  b.dataset.fps = f;
+  b.textContent = f;
+  b.addEventListener('click', () => {
+    unlockAudio(); sfx.fish();
+    setSceneCfg(gfxScene, { fps: f });
+    paintGfxPick();
+  });
+  fpsBox.appendChild(b);
+}
 function paintGfxPick() {
-  const now = gfxLevel();
-  for (const id of LEVEL_IDS) {
-    document.getElementById(GFX_BTN[id]).classList.toggle('on', id === now);
+  const same = sameAll();
+  const c = sceneCfg(gfxScene);
+  for (const b of document.querySelectorAll('#gfxScenePick .langbtn')) {
+    b.classList.toggle('on', b.dataset.scene === gfxScene);
+    b.disabled = same;
   }
+  document.getElementById('gfxScenePick').classList.toggle('off', same);
+  for (const id of LEVEL_IDS) document.getElementById(GFX_BTN[id]).classList.toggle('on', id === c.level);
+  for (const b of document.querySelectorAll('#resPick .langbtn')) b.classList.toggle('on', b.dataset.res === (c.res || 'auto'));
+  const hz = maxDisplayHz();
+  for (const b of fpsBox.children) {
+    const f = +b.dataset.fps;
+    b.classList.toggle('on', f === c.fps);
+    b.classList.toggle('over', f > hz);
+    b.title = f > hz ? tr('จอเครื่องนี้ทำได้สูงสุด') + ' ' + hz + ' ' + tr('เฟรม') : '';
+  }
+  // สวิตช์ "ตั้งแยกแต่ละหน้า" (ปิด = ทุกหน้าใช้ค่าเดียวกัน) — เปิดแล้วแถวเลือกหน้าถึงโผล่
+  const sw = document.getElementById('gfxSame');
+  sw.classList.toggle('on', !same);
+  sw.setAttribute('aria-checked', same ? 'false' : 'true');
+  document.getElementById('gfxSceneRow').classList.toggle('hidden', same);
+  document.getElementById('gfxNote').textContent = c.fps > hz
+    ? tr('จอเครื่องนี้ทำได้สูงสุด') + ' ' + hz + ' ' + tr('เฟรม — ตั้งสูงกว่านี้จะได้เท่าที่จอทำได้')
+    : c.fps >= 90 || c.res === 'max' ? tr('เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น')
+      : tr('เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้');
+}
+for (const b of document.querySelectorAll('#gfxScenePick .langbtn')) {
+  b.addEventListener('click', () => { unlockAudio(); sfx.fish(); gfxScene = b.dataset.scene; paintGfxPick(); });
 }
 for (const id of LEVEL_IDS) {
   document.getElementById(GFX_BTN[id]).addEventListener('click', () => {
     unlockAudio(); sfx.fish();
-    setGfxLevel(id);
+    setSceneCfg(gfxScene, { level: id });
     paintGfxPick();
   });
 }
+// ความละเอียดภาพ — แยกจากความสวย (ต่ำ = คมน้อยแต่ลื่น/เย็น · สูงสุด = คมสุดแต่กินเครื่อง)
+for (const b of document.querySelectorAll('#resPick .langbtn')) {
+  b.addEventListener('click', () => {
+    unlockAudio(); sfx.fish();
+    setSceneCfg(gfxScene, { res: b.dataset.res });
+    paintGfxPick();
+  });
+}
+document.getElementById('gfxSame').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  setSameAll(!sameAll(), gfxScene);
+  if (sameAll()) gfxScene = 'home';
+  paintGfxPick();
+});
+onDisplayHz(paintGfxPick);
+
+// ── แผ่นเสียง (ตั้งค่า → เสียง) — หน้าแรก / บ้านลูกเหมียว เลือกแยกกัน แผ่นใครแผ่นมัน ──
+// ลูกศรเปลี่ยนเพลงวนไปเรื่อย ๆ · กำลังอยู่หน้านั้น (เพลงของหน้านั้นเล่นอยู่) = ได้ยินเพลงใหม่ทันที
+function paintSongs() {
+  for (const row of document.querySelectorAll('.vinyl-row[data-song]')) {
+    const kind = row.dataset.song;
+    const list = SONG_LISTS[kind];
+    const i = songIndex(kind);
+    const song = list[i];
+    row.querySelector('.vinyl-title').textContent = song.title;
+    row.querySelector('.vinyl-credit').textContent = tr('โดย') + ' ' + song.artist + ' ' + tr('จาก') + ' ' + song.from;
+    row.querySelector('.vinyl-num').textContent = (i + 1) + '/' + list.length;
+    row.querySelector('.vinyl').style.setProperty('--disc-hue', song.hue);
+    if (kind === 'home') {
+      const foot = document.getElementById('footSong');
+      if (foot) foot.textContent = song.title;
+    }
+  }
+}
+for (const row of document.querySelectorAll('.vinyl-row[data-song]')) {
+  for (const btn of row.querySelectorAll('.vinyl-arrow')) {
+    btn.addEventListener('click', () => {
+      unlockAudio();
+      startMusic();
+      const kind = row.dataset.song;
+      setSong(kind, songIndex(kind) + Number(btn.dataset.step));
+      paintSongs();
+      const disc = row.querySelector('.vinyl');
+      disc.classList.remove('swap');
+      void disc.offsetWidth;   // เริ่มแอนิเมชันเปลี่ยนแผ่นใหม่ทุกครั้งที่กด
+      disc.classList.add('swap');
+    });
+  }
+}
+paintSongs();
+onQuality(() => paintGfxPick());   // ค่าเปลี่ยนจากที่อื่น (เช่นแผงทดสอบ) — ปุ่มตรงกับค่าจริงเสมอ
+measureDisplayHz();
 paintGfxPick();
 for (const r of MIX_ROWS) {
   document.getElementById(r.down).addEventListener('click', () => stepMix(r.ch, -1));
@@ -7923,6 +8049,8 @@ for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
 }
 
 let last = performance.now();
+// เพดานเฟรมแบบเฉลี่ย — 45 บนจอ 60Hz ได้ 45 จริง (ไม่ใช่ตกเป็น 30) ดู framePacer
+const pace = framePacer();
 let lastDraw = 0;
 let menuSeen = 0;      // เช็คว่ามีแผงเปิดอยู่ไหมทุก ๆ 120 มิลลิวินาที ไม่ใช่ทุกเฟรม
 let menuOpen = false;
@@ -7943,7 +8071,9 @@ function loop(now) {
   // ปล่อยผ่านเฉพาะเฟรมที่ห่างจากเฟรมก่อนพอ จอ 120Hz จึงทำงานเท่าจอ 60Hz พอดี
   // (ต้องตัดตั้งแต่ก่อนคิด dt ไม่งั้นเวลาที่ข้ามไปจะหายไปจากนาฬิกาของเกม)
   // ลบ 1.5 เผื่อไว้ ไม่งั้นจะพลาดจังหวะของจอแล้วเหลือครึ่งเดียวของเพดานที่ตั้งไว้
-  if (now - last < 1000 / quality().fps - 1.5) {
+  // หน้าที่กำลังเล่น → ค่าเฟรม/ความสวยของหน้านั้น (ตั้งค่าแยกตามหน้า ดู src/graphics.js)
+  setScene(game.state === STATE.READY && !game.inRoom ? (game.catRoom ? 'room' : 'home') : 'run');
+  if (!pace(now, quality().fps)) {
     requestAnimationFrame(loop);
     return;
   }

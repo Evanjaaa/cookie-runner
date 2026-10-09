@@ -171,7 +171,7 @@ export function drawKingdomGround(ctx, worldX, p, t) {
 
   // เส้นขอบบนสุด หนากว่าเส้นอื่นในฉาก เพราะเป็นเส้นที่บอกว่า "ยืนตรงนี้ได้"
   ctx.strokeStyle = p.line;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.1;   // 3 × 0.7 (บางลงเท่าเส้นอื่นในฉาก)
   ctx.beginPath();
   ctx.moveTo(0, top + 2);
   for (let x = 0; x <= W; x += 24) {
@@ -244,7 +244,7 @@ function haze(ctx, p, alpha) {
 }
 
 /** ชั้นที่อยู่หลังพื้น (ฟ้า ปราสาท เนิน ต้นไม้) */
-export function drawKingdomBack(ctx, worldX, p, t, fx = null) {
+export function drawKingdomBack(ctx, worldX, p, t, fx = null, only = null) {
   // ความเข้มของม่านต่อชั้น — บางมากโดยตั้งใจ
   // ต้นแบบเป็นภาพประกอบสีสด ไม่ได้ใช้หมอกระยะแบบภาพวาดสีน้ำมัน
   // ลองใส่หนา (0.12/0.30/0.16) แล้ววัดด้วยตา: ปราสาทโดนม่านสะสม 0.58 จนแทบหายไปกับฟ้า
@@ -252,6 +252,8 @@ export function drawKingdomBack(ctx, worldX, p, t, fx = null) {
   const veil = { clouds: 0.05, castle: 0.1, hills: 0.05, env: 0 };
   for (const layer of KINGDOM_LAYERS) {
     if (layer.depth >= 1) continue;
+    // only = ฟังก์ชันคัดชั้น (ใช้ตอนแยกวาดส่วนไกล/ใกล้ ดู drawKingdom opts.part)
+    if (only && !only(layer)) continue;
     // ชั้นแสง (กราฟิกสูง) ขอแทรกก่อน/หลังชั้นใดชั้นหนึ่งได้ เช่นรัศมีหลังเมฆ หมู่เมฆไกลหลังปราสาท
     fx?.before?.(ctx, layer, worldX, p, t);
     drawLayer(ctx, layer, worldX, p, t);

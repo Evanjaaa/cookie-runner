@@ -79,4 +79,5 @@ export const KINGDOM = {
  * ไม่งั้นของชิ้นเล็กจะดูเป็นเส้นบางกว่าจนหลุดออกจากชุดเดียวกัน
  * ทุกชิ้นจึงหาร s ทิ้งก่อนตั้ง lineWidth (ดู LINE ใน props.js)
  */
-export const EDGE = 2.4;
+// 2.4 × 0.7 — บางลง 30% ให้เท่าเส้นในบ้านลูกเหมียว (LINE_K ใน render/catroom.js) ตามที่ผู้ใช้ขอ
+export const EDGE = 1.7;

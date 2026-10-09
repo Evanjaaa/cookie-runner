@@ -51,6 +51,7 @@ function splitFish(list) {
   return [plain, rare];
 }
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
+import { setCatEdgeScale } from './render/entities.js';
 import { gfxLevel } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
@@ -198,15 +199,19 @@ const HOME_DECO = [
  */
 /** ฉากหลังหน้าแรกวาดใหม่ทุกกี่หน่วยเวลาเกม (1 = หนึ่งเฟรมที่ 60fps) — 1.9 ≈ 30 ครั้งต่อวินาที (ดู drawHomeBackdrop) */
 /** แปะผ้าใบชั้นแยก (ขนาดเท่าจอ) ลงจอตรงพิกเซลต่อพิกเซล */
-function blitLayer(ctx, layer, op = 'source-over') {
+function blitLayer(ctx, layer, op = 'source-over', r = null) {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = op;
-  ctx.drawImage(layer, 0, 0);
+  // r = เฉพาะบริเวณนั้น (พิกเซลจริง) — แปะทั้งจอทุกเฟรมแพงบนมือถือ ทั้งที่ของอยู่แค่มุมเดียว
+  if (r) ctx.drawImage(layer, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
+  else ctx.drawImage(layer, 0, 0);
   ctx.restore();
 }
 
 const HOME_BG_STEP = 1.9;
+/** ส่วนไกลของฉาก (ฟ้า เมฆ ปราสาท เนิน) วาดใหม่ทุกกี่หน่วยเวลาเกม — 15 ≈ 4 ครั้ง/วิ (ดู drawHomeBackdrop) */
+const HOME_FAR_STEP = 15;
 
 function dimForUi(ctx, k = 1) {
   const { W, H } = VIEW;
@@ -2508,6 +2513,8 @@ export class Game {
     // อ่านก่อนแยกไปวาดหน้าแรก ตอนกดเริ่มเล่น (reset) จะได้รู้สเกลแล้ว สร้างแคชถูกขนาดตั้งแต่แรก
     const tf = ctx.getTransform();
     this.renderScale = Math.hypot(tf.a, tf.b);
+    // เส้นขอบตัวน้องบางตามฉาก: หน้าแรก/บ้านลูกเหมียว (ฉากเส้นบาง) 0.7 · ตอนวิ่ง 1 (ดู setCatEdgeScale)
+    setCatEdgeScale(this.state === STATE.READY ? 0.7 : 1);
 
     if (this.state === STATE.READY) {
       if (this.catRoom) return this.catRoom.draw(ctx);
@@ -3204,11 +3211,30 @@ export class Game {
       bg.at = -Infinity;
     }
     // t ย้อนกลับ (กลับเข้าหน้าแรกใหม่ homeTick เริ่มนับใหม่) = วาดใหม่ทันที
+    // ── สองชั้น: ส่วนไกล (ฟ้า เมฆ ปราสาท เนิน) อัปเดต ~4 ครั้ง/วิ · ส่วนใกล้ ~30 ครั้ง/วิ ──
+    // ส่วนไกลคือก้อนที่แพงที่สุดของฉาก (ไล่สีฟ้า เมฆ ปราสาท หมอกระยะ แสงแดด) แต่ขยับช้ามาก
+    // (เมฆลอยไม่ถึง 1 จุดต่อการอัปเดต) — วาดทุกรอบเท่ากับทำงานซ้ำโดยตาไม่เห็นต่าง
+    let far = this.homeFar;
+    if (!far) {
+      far = this.homeFar = document.createElement('canvas');
+      far.c = far.getContext('2d');
+      far.at = -Infinity;
+    }
+    if (far.width !== cw || far.height !== ch) { far.width = cw; far.height = ch; far.at = -Infinity; }
+    const fx = gfxLevel() === 'high';
+    if (far.fx !== fx) { far.fx = fx; far.at = -Infinity; }
+    if (t - far.at >= HOME_FAR_STEP || t < far.at) {
+      far.at = t;
+      far.c.setTransform(ctx.getTransform());
+      drawKingdom(far.c, t, { fx, part: 'far' });
+    }
     if (t - bg.at >= HOME_BG_STEP || t < bg.at) {
       bg.at = t;
+      bg.c.setTransform(1, 0, 0, 1, 0, 0);
+      bg.c.drawImage(far, 0, 0);
       bg.c.setTransform(ctx.getTransform());
-      // กราฟิกระดับสูง = ฉากเต็มแสง (แดด ลำแสง โคม ละออง พุ่มไม้เบลอ ดู kingdom/glow.js)
-      drawKingdom(bg.c, t, { fx: gfxLevel() === 'high' });
+      // กราฟิกระดับสูง = ฉากเต็มแสง (แดด ลำแสง โคม ละออง ดู kingdom/glow.js)
+      drawKingdom(bg.c, t, { fx, part: 'near' });
       dimForUi(bg.c, 0.45);
     }
     ctx.save();
@@ -3274,9 +3300,9 @@ export class Game {
 
     // กราฟิกระดับสูง: วาดตัวน้องลงชั้นแยกก่อนแล้วแปะ — ชั้นนี้ใช้เป็นแม่แบบรับแสงตะเกียงตอนท้าย
     // (source-over ผ่านชั้นแยกให้ภาพเท่าวาดตรงทุกพิกเซล)
-    const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx) : null;
+    const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
     drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
-    if (lit) blitLayer(ctx, lit.canvas);
+    if (lit) blitLayer(ctx, lit.canvas, 'source-over', this.homeLitRect);
     this.drawHomeFx(ctx);
     this.drawLove(ctx);
     postProcess(ctx, { edges: false });
@@ -3294,13 +3320,20 @@ export class Game {
     // แสงตะเกียงตกบนตัวน้องกับกล่อง — เฉพาะบนเนื้อของ ไม่ฟุ้งทั้งบริเวณ (ดู lanternLightMask)
     if (lit) {
       box(lit);
+      // ระบายแสงเฉพาะบริเวณตัวน้อง+กล่อง (clip) — source-in ทั้งผืนแพงเท่าวาดทั้งจอ
+      const w = this.homeLitWorld;
+      lit.save();
+      lit.beginPath();
+      lit.rect(w.x, w.y, w.w, w.h);
+      lit.clip();
       lanternLightMask(lit, 0, t);
-      blitLayer(ctx, lit.canvas, 'lighter');
+      lit.restore();
+      blitLayer(ctx, lit.canvas, 'lighter', this.homeLitRect);
     }
   }
 
   /** ผ้าใบชั้นแยกขนาดเท่าจอ ล้างแล้ว พร้อม transform เดียวกับ ctx (ใช้ซ้ำทุกเฟรม) */
-  homeLitLayer(ctx) {
+  homeLitLayer(ctx, catX) {
     let c = this.homeLit;
     if (!c) c = this.homeLit = document.createElement('canvas').getContext('2d');
     const cv = c.canvas;
@@ -3308,11 +3341,25 @@ export class Game {
       cv.width = ctx.canvas.width;
       cv.height = ctx.canvas.height;
     }
+    // ── ทำงานเฉพาะบริเวณที่มีตัวน้องกับกล่องแมว ── (หน่วยฉาก → พิกเซลจริงตาม transform ของจอ)
+    const x0 = Math.min(catX - 120, HOME_BOX.x - 100);
+    const x1 = Math.max(catX + 120, HOME_BOX.x + 100);
+    const y0 = 110;
+    this.homeLitWorld = { x: x0, y: y0, w: x1 - x0, h: VIEW.H - y0 };
+    const m = ctx.getTransform();
+    const rx = Math.max(0, Math.floor(m.a * x0 + m.e));
+    const ry = Math.max(0, Math.floor(m.d * y0 + m.f));
+    this.homeLitRect = {
+      x: rx, y: ry,
+      w: Math.min(cv.width - rx, Math.ceil(m.a * (x1 - x0)) + 2),
+      h: Math.min(cv.height - ry, Math.ceil(m.d * (VIEW.H - y0)) + 2),
+    };
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 1;
     c.globalCompositeOperation = 'source-over';
-    c.clearRect(0, 0, cv.width, cv.height);
-    c.setTransform(ctx.getTransform());
+    const r = this.homeLitRect;
+    c.clearRect(r.x, r.y, r.w, r.h);
+    c.setTransform(m);
     return c;
   }
 }

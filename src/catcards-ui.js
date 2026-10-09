@@ -23,6 +23,7 @@ import { drawCatFace } from './render/entities.js';
 import { reasonText } from './friends.js';
 import * as cloud from './net/cloud.js';
 import { t } from './i18n.js';
+import { setSexText } from './utils.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -478,7 +479,7 @@ export function setupCatCardsUI(deps) {
     $('csAuto').checked = false;
     $('csMsg').textContent = '';
     $('csName').textContent = nameOf(cat);
-    $('csSub').textContent = `${skinById(cat.breed).name} · ${cat.sex === 'm' ? '♂ ตัวผู้' : '♀ ตัวเมีย'} · Lv.${levelOf(cat)}`;
+    setSexText($('csSub'), `${t(skinById(cat.breed).name)} · ${t(cat.sex === 'm' ? '♂ ตัวผู้' : '♀ ตัวเมีย')} · Lv.${levelOf(cat)}`);
     paintMini($('csFace'), 96, (g) => drawCatFace(g, 48, 55, 2.45, catSkin(cat), { mood: 'happy' }));
     sendPanel.classList.remove('hidden');
     paintFriends(null);

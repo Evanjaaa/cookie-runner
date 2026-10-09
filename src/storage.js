@@ -67,9 +67,11 @@ const STASH_PREFIX = NS + 'stash:';
 /** ค่าของ "เครื่อง" ไม่ใช่ของบัญชี — ออกจากระบบแล้วคงไว้ */
 const DEVICE_KEYS = new Set([
   NS + 'vol', NS + 'vol:music', NS + 'vol:sfx',   // ระดับเสียง
+  NS + 'vol:room:music', NS + 'vol:room:sfx',      // ระดับเสียงในบ้านลูกเหมียว
   NS + 'dbg-open',                                // แผงทดสอบเปิดค้างไว้ไหม
-  KEYS.pref('gfx'), KEYS.pref('lang'),            // ระดับกราฟิก / ภาษา
+  KEYS.pref('gfx'), KEYS.pref('gfxScenes'), KEYS.pref('lang'),   // ระดับกราฟิก (+แยกตามหน้า) / ภาษา
   KEYS.pref('introVideo'), KEYS.pref('introSound'),
+  KEYS.pref('homeSong'), KEYS.pref('roomSong'),                          // เพลงหน้าแรกที่เลือก (แผ่นเสียงในตั้งค่า)
 ]);
 
 /**

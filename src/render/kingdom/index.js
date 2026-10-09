@@ -58,7 +58,12 @@ export const KINGDOM_SPEED = {
  * @param opts.palette       จานสีชุดอื่น เช่นธีมกลางคืน
  * @param opts.noForeground  ปิดชั้นหน้าสุด ตอนที่ต้องเห็นตัวละครเต็มตัว
  * @param opts.fx            ชั้นแสงเต็มรูปแบบ (glow.js) — ส่ง true เฉพาะกราฟิกระดับสูง
+ * @param opts.part          'far' = เฉพาะฟ้า เมฆ ปราสาท เนิน (ขยับช้ามาก วาดห่าง ๆ ได้)
+ *                           'near' = ที่เหลือทั้งหมด วาดทับภาพส่วนไกล — ไม่ส่ง = ทั้งฉาก
  */
+/** ชั้นไกล — ขยับช้ามาก (เมฆลอย ธงปราสาท) แยกวาดเป็นภาพสำรองที่อัปเดตห่าง ๆ ได้ */
+const FAR_LAYERS = new Set(['clouds', 'castle', 'hills']);
+
 export function drawKingdom(ctx, tick, opts = {}) {
   const fx = !!opts.fx;
   const p = opts.palette || (fx ? KINGDOM_FX : KINGDOM);
@@ -71,9 +76,14 @@ export function drawKingdom(ctx, tick, opts = {}) {
   ctx.rect(0, 0, VIEW.W, VIEW.H);
   ctx.clip();
 
-  drawKingdomSky(ctx, p);
-  if (fx) fxSky(ctx, p, tick);
-  drawKingdomBack(ctx, worldX, p, tick, fx ? FX_HOOKS : null);
+  const part = opts.part || 'all';
+  if (part !== 'near') {
+    drawKingdomSky(ctx, p);
+    if (fx) fxSky(ctx, p, tick);
+  }
+  drawKingdomBack(ctx, worldX, p, tick, fx ? FX_HOOKS : null,
+    part === 'far' ? (l) => FAR_LAYERS.has(l.name) : part === 'near' ? (l) => !FAR_LAYERS.has(l.name) : null);
+  if (part === 'far') { ctx.restore(); return; }
   if (fx) fxAir(ctx, p, tick);
   drawKingdomGround(ctx, worldX, p, tick);
   if (fx) fxGround(ctx, worldX, p, tick);

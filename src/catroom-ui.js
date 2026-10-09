@@ -14,10 +14,13 @@ import {
   roomCats, waitingCats, allCats, catById, care, petCat, renameCat, unlockToy, ownsToy, graduate,
   settleHome, reloadCats, levelOf, expInfo, expLeftToday, needNow, isSad, heartsOf, nameOf, storyOf,
   careInfo, rollFind, rollBreed, adoptFound, noteRunNoFind, FOODS, TOYS, ACTIONS, NEEDS, NAME_IDEAS, GROWN_LV,
-  ROOM_SLOTS, fosterCats, canSend, visitorCat,
+  ROOM_SLOTS, fosterCats, canSend, visitorCat, cheerCat,
 } from './cats.js';
 import { catSkin, skinById } from './skins.js';
 import { createCatWater } from './minigames/catwater.js';
+import { createGroom } from './minigames/groom.js';
+import { setRoomAudio, getRoomMix, setRoomMix } from './audio.js';
+import { setSong, songIndex, SONG_LISTS } from './music.js';
 import { fmtTime } from './minigames/catwater-draw.js';
 import { CatRoom } from './catroom.js';
 import { drawCatPose, drawCatFace } from './render/entities.js';
@@ -29,6 +32,7 @@ import { rollFaceId } from './faces.js';
 import { STATE } from './game.js';
 import { startMusic } from './music.js';
 import { t, getLang } from './i18n.js';
+import { setSexText } from './utils.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const later = (fn, ms) => setTimeout(fn, ms);
@@ -121,6 +125,7 @@ export function setupCatRoomUI(deps) {
       game.syncMusic();
     }
     game.catRoom = room;
+    setRoomAudio(true);   // ระดับเสียงชุดของห้อง (ตั้งที่ ⚙️ ในห้อง)
     game.syncMusic();   // เปลี่ยนเป็นเพลงบ้านน้อง
     room.onTapCat = onTapCat;
     room.onGrab = (id) => select(id);
@@ -164,6 +169,7 @@ export function setupCatRoomUI(deps) {
     closePicker();
     panel.classList.add('hidden');
     game.catRoom = null;
+    setRoomAudio(false);
     game.syncMusic();   // กลับเป็นเพลงหน้าแรก
     if (cards) cards.publish();
     recheckSkin();
@@ -752,7 +758,13 @@ export function setupCatRoomUI(deps) {
   // ให้เฉพาะตอนน้องอยากเล่น (ความสนุกต่ำกว่าเกณฑ์ เหมือนเล่นของเล่นในบ้าน) — กดเล่นรัว ๆ ปั๊มความผูกพันไม่ได้
   let mgCat = null;   // id น้องที่เล่นด้วย — น้องในห้องเท่านั้น (null = ห้องยังว่าง เล่นไม่ได้)
   let mgPick = null;  // น้องที่ผู้เล่นเลือกเองในหน้าเลือกน้อง (จำไว้ข้ามรอบ)
-  let mgRes = null;   // ผลการดูแลรอบล่าสุด — ลอยหัวใจ/EXP ให้เห็นตอนกลับเข้าห้อง
+  let mgRes = null;
+  /** ออกจากมินิเกม: น้องที่เล่นด้วยหายเศร้า แล้วให้ห้องอ่านข้อมูลน้องใหม่ทันที
+   *  (เดิมตัวน้องในห้องถือข้อมูลชุดเก่า เลยยังหน้าเศร้าค้างทั้งที่เพิ่งเล่นด้วยกัน) */
+  function miniCheer() {
+    if (mgCat && !visit) cheerCat(mgCat);
+    room.sync();
+  }   // ผลการดูแลรอบล่าสุด — ลอยหัวใจ/EXP ให้เห็นตอนกลับเข้าห้อง
   const catWater = createCatWater({
     panel: $('catWaterPanel'),
     onFinish: ({ score }) => {
@@ -766,6 +778,7 @@ export function setupCatRoomUI(deps) {
     },
     onExit: () => {
       game.syncMusic();
+      miniCheer();
       // เลิกเล่น / กลับ = กลับมาหน้าเลือกเกม (เปิดแผงก่อน ลูปวาดน้องถึงจะเดิน)
       $('miniPanel').classList.remove('hidden');
       paintMiniCard();
@@ -777,6 +790,71 @@ export function setupCatRoomUI(deps) {
     },
   });
   if (import.meta.env.DEV) window.__catWater = catWater;
+
+  // ── มินิเกม "ตัดขนแมว" (src/minigames/groom.js) — รางวัล = ได้อาบน้ำแต่งตัว (care 'bathe') ──
+  const groom = createGroom({
+    panel: $('groomPanel'),
+    onFinish: ({ stars }) => {
+      const c = mgCat && catById(mgCat);
+      if (!c || c.state !== 'room' || visit) return '';
+      if (!careInfo(c, 'bathe').wants) return nameOf(c) + ' ' + t('ตัวหอมสะอาดอยู่แล้ว รอให้น้องมอมแมมก่อนนะ');
+      const res = care(c.id, 'bathe', { aff: stars >= 5 ? 3 : stars >= 3 ? 2 : 1 });
+      if (!res) return '';
+      mgRes = { id: c.id, res };
+      return nameOf(c) + ' ' + t('ดีใจ!') + ' 💗 +' + res.aff + (res.exp > 0 ? ' · +' + res.exp + ' EXP' : '');
+    },
+    onExit: () => {
+      game.syncMusic();
+      miniCheer();
+      $('miniPanel').classList.remove('hidden');
+      paintMiniCard();
+      if (mgRes) { const { id, res } = mgRes; mgRes = null; afterCare(id, res); }
+    },
+  });
+  if (import.meta.env.DEV) window.__groom = groom;
+
+  // ── ⚙️ ตั้งค่าบ้านลูกเหมียว — เพลงห้อง (แผ่นเสียง) + ระดับเพลง/เอฟเฟกต์แยกจากทั้งเกม ──
+  const ROOM_MIX = [['music', 'Music'], ['sfx', 'Sfx']];
+  const muteMemo = {};
+  function paintRoomSet() {
+    const row = $('crSetPanel').querySelector('.vinyl-row[data-song="room"]');
+    const list = SONG_LISTS.room, i = songIndex('room'), song = list[i];
+    row.querySelector('.vinyl-title').textContent = song.title;
+    row.querySelector('.vinyl-credit').textContent = t('โดย') + ' ' + song.artist + ' ' + t('จาก') + ' ' + song.from;
+    row.querySelector('.vinyl-num').textContent = (i + 1) + '/' + list.length;
+    row.querySelector('.vinyl').style.setProperty('--disc-hue', song.hue);
+    for (const [ch, id] of ROOM_MIX) {
+      const v = getRoomMix(ch);
+      const bar = $('crMix' + id + 'Bar');
+      if (bar.children.length !== 10) bar.innerHTML = '<i></i>'.repeat(10);
+      [...bar.children].forEach((el, k) => el.classList.toggle('on', k < Math.round(v * 10)));
+      $('crMix' + id + 'Num').textContent = Math.round(v * 100) + '%';
+      $('crMix' + id + 'Down').disabled = v <= 0;
+      $('crMix' + id + 'Up').disabled = v >= 1;
+      $('crMix' + id + 'Mute').classList.toggle('muted', v <= 0);
+    }
+  }
+  for (const [ch, id] of ROOM_MIX) {
+    $('crMix' + id + 'Down').addEventListener('click', () => { setRoomMix(ch, getRoomMix(ch) - 0.1); paintRoomSet(); if (ch === 'sfx') sfx.fish(); });
+    $('crMix' + id + 'Up').addEventListener('click', () => { setRoomMix(ch, getRoomMix(ch) + 0.1); paintRoomSet(); if (ch === 'sfx') sfx.fish(); });
+    $('crMix' + id + 'Mute').addEventListener('click', () => {
+      unlockAudio();
+      if (getRoomMix(ch) > 0) { muteMemo[ch] = getRoomMix(ch); setRoomMix(ch, 0); }
+      else { setRoomMix(ch, muteMemo[ch] > 0 ? muteMemo[ch] : 0.8); if (ch === 'sfx') sfx.fish(); }
+      paintRoomSet();
+    });
+  }
+  for (const btn of $('crSetPanel').querySelectorAll('.vinyl-arrow')) {
+    btn.addEventListener('click', () => {
+      unlockAudio();
+      setSong('room', songIndex('room') + Number(btn.dataset.step));
+      paintRoomSet();
+      const disc = $('crSetPanel').querySelector('.vinyl');
+      disc.classList.remove('swap'); void disc.offsetWidth; disc.classList.add('swap');
+    });
+  }
+  $('crSet').addEventListener('click', () => { unlockAudio(); sfx.fish(); paintRoomSet(); $('crSetPanel').classList.remove('hidden'); });
+  $('crSetClose').addEventListener('click', () => { unlockAudio(); sfx.fish(); $('crSetPanel').classList.add('hidden'); });
 
   /** น้องที่จะเล่นด้วย: ที่เลือกไว้เอง → น้องที่เลือกอยู่ในห้อง → น้องตัวแรกในห้อง */
   function miniCat() {
@@ -795,7 +873,9 @@ export function setupCatRoomUI(deps) {
       open: (c) => catWater.open({ skin: catSkin(c) }),
       // ป้ายใต้ชื่อเกม (แคปซูลม่วง) — สถิติคะแนน + เวลารอดนานสุด
       chips: () => { const b = catWater.best(); return [t('สถิติ') + ' ' + (b.score || 0).toLocaleString('en-US'), t('เวลา') + ' ' + fmtTime(b.time || 0)]; } },
-    { id: 'game2', name: 'เร็ว ๆ นี้', ico: '🧶', art: 'minigames/game2.png', tint: ['#FFD3E7', '#FFC98A'] },
+    { id: 'groom', name: 'ตัดขนแมว', ico: '✂️', art: 'minigames/groom.png', tint: ['#FFD3E7', '#FFC98A'],
+      open: (c) => groom.open({ skin: catSkin(c) }),
+      chips: () => { const b = groom.best(); return [t('สถิติ') + ' ' + (b.score || 0).toLocaleString('en-US'), '★'.repeat(b.stars || 0) || t('ยังไม่เคยเล่น')]; } },
     { id: 'game3', name: 'เร็ว ๆ นี้', ico: '🐟', art: 'minigames/game3.png', tint: ['#BDF2E3', '#9FD8F5'] },
     { id: 'game4', name: 'เร็ว ๆ นี้', ico: '🎈', art: 'minigames/game4.png', tint: ['#FFF3B0', '#F7B7C9'] },
   ];
@@ -1028,7 +1108,7 @@ export function setupCatRoomUI(deps) {
     foundId = id;
     foundMode = mode;
     const sex = $('foundSex');
-    sex.textContent = c.sex === 'f' ? '♀ ตัวเมีย' : '♂ ตัวผู้';
+    setSexText(sex, t(c.sex === 'f' ? '♀ ตัวเมีย' : '♂ ตัวผู้'));
     sex.classList.toggle('f', c.sex === 'f');
     $('foundBreed').textContent = skinById(c.breed).name;
     $('foundStory').textContent = storyOf(c, fmtDate)[0].text;

@@ -78,6 +78,11 @@ const NO_IMAGE = `<div class="news-noimg" aria-hidden="true">
   <svg viewBox="0 0 24 24"><path d="M3.4 9.6v4.8a1.4 1.4 0 0 0 1.4 1.4h2.4l7.6 4.2a.9.9 0 0 0 1.3-.8V4.8a.9.9 0 0 0-1.3-.8L7.2 8.2H4.8a1.4 1.4 0 0 0-1.4 1.4Z" fill="currentColor"/><path d="M7.4 15.9 8.6 20.6M19.2 9.2a3.6 3.6 0 0 1 0 5.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
 </div>`;
 
+// ของตกแต่งที่ใช้ซ้ำ (สร้าง/โหลดครั้งเดียว) — ดู renderNews
+const PAWS_IMG = Object.assign(new Image(), { className: 'news-paws', src: '/news-deco/paws.webp', alt: '', decoding: 'sync' });
+PAWS_IMG.setAttribute('aria-hidden', 'true');
+for (const f of ['pin.png', 'line.png']) new Image().src = '/news-deco/' + f;
+
 /**
  * วาดหน้าข่าว: รายการหัวข้อ (ซ้าย) + ข่าวที่เลือก (ขวา)
  * คืน id ข่าวที่กำลังโชว์ (null = ไม่มีข่าว) ให้คนเรียกไปนับว่าอ่านแล้ว
@@ -96,7 +101,18 @@ export function renderNews(listEl, viewEl, pickId, onPick) {
 
   // ── ตามแบบที่วางไว้ (ของตกแต่งอยู่ใน public/news-deco/ — ตัดมาจากไฟล์ SVG ที่ออกแบบใน Canva) ──
   // รายการ: รูปย่อใหญ่ซ้าย + ป้าย/หัวข้อ/วันที่ขวา · ข่าวปักหมุด = หมุดแดงปักมุมขวาบนของการ์ด (แทนป้ายคำว่าปักหมุด)
-  listEl.innerHTML = list.map((n) => `
+  // ── ไม่สร้างรายการใหม่ทุกครั้งที่กดเลือกข่าว ──
+  // เดิมสร้าง HTML ทั้งรายการใหม่ทุกคลิก รูปย่อกับหมุด (<img> ตัวใหม่) ต้องถอดรหัสภาพใหม่
+  // บนมือถือ (Safari) เห็นเป็นกะพริบแวบหนึ่ง → รายการเดิม (ข่าวชุดเดิม ลำดับเดิม) แค่สลับคลาส on / ลบจุดใหม่
+  const sig = list.map((n) => n.id + (n.pinned ? '*' : '')).join('|');
+  if (listEl.dataset.sig === sig && listEl.children.length === list.length) {
+    for (const b of listEl.querySelectorAll('.news-item')) {
+      b.classList.toggle('on', b.dataset.id === cur.id);
+      if (b.dataset.id === cur.id) b.querySelector('.news-new')?.remove();
+    }
+  } else {
+    listEl.dataset.sig = sig;
+    listEl.innerHTML = list.map((n) => `
     <button type="button" class="news-item${n.id === cur.id ? ' on' : ''}${n.pinned ? ' pinned' : ''}" data-id="${esc(n.id)}">
       ${n.image ? `<img class="news-thumb" src="${esc(n.image)}" alt="" loading="lazy">` : `<span class="news-thumb blank"></span>`}
       <span class="news-item-txt">
@@ -107,12 +123,17 @@ export function renderNews(listEl, viewEl, pickId, onPick) {
       ${n.pinned ? '<img class="news-pinimg" src="/news-deco/pin.png" alt="ปักหมุด">' : ''}
       ${s.has(n.id) || n.id === cur.id ? '' : '<i class="news-new" aria-label="ใหม่"></i>'}
     </button>`).join('');
+    listEl.querySelectorAll('img.news-thumb').forEach((img) =>
+      img.addEventListener('error', () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'news-thumb blank' })), { once: true }));
+    listEl.querySelectorAll('.news-item').forEach((b) =>
+      b.addEventListener('click', () => onPick(b.dataset.id)));
+  }
 
   // ฝั่งอ่าน: รอยเท้าแมวชมพู-ม่วงมุมซ้ายบน · ป้าย+วันที่ชิดขวาบน · รูปในกรอบม่วงอ่อน
   // · หัวข้อมีเส้นขีดใต้ · เนื้อข่าว · เส้นประรอยเท้ามุมขวาล่าง (พื้นหลังของกรอบ ดู .news-view)
   viewEl.innerHTML = `
     <div class="news-top">
-      <img class="news-paws" src="/news-deco/paws.webp" alt="" aria-hidden="true">
+      <i class="news-paws-slot"></i>
       <div class="news-meta"><span class="news-tag">${esc(cur.tag)}</span><time>${newsDate(cur.date)}</time></div>
     </div>
     <div class="news-hero">${cur.image
@@ -121,14 +142,11 @@ export function renderNews(listEl, viewEl, pickId, onPick) {
     <h3 class="news-title"><span>${esc(cur.title)}</span></h3>
     <div class="news-body">${bodyHTML(cur.body)}</div>`;
   viewEl.scrollTop = 0;
+  // รอยเท้าแมวมุมซ้ายบน: <img> ตัวเดิมตลอด (ถอดรหัสภาพครั้งเดียว) ย้ายเข้าที่ใหม่ — ไม่กะพริบตอนเปลี่ยนข่าว
+  viewEl.querySelector('.news-paws-slot').replaceWith(PAWS_IMG);
 
   // รูปเสีย/ลิงก์ตาย → เปลี่ยนเป็นภาพแทน ไม่ปล่อยไอคอนรูปแตกไว้กลางหน้า
   const hero = viewEl.querySelector('.news-hero img');
   if (hero) hero.addEventListener('error', () => { hero.parentElement.innerHTML = NO_IMAGE; }, { once: true });
-  listEl.querySelectorAll('img.news-thumb').forEach((img) =>
-    img.addEventListener('error', () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'news-thumb blank' })), { once: true }));
-
-  listEl.querySelectorAll('.news-item').forEach((b) =>
-    b.addEventListener('click', () => onPick(b.dataset.id)));
   return cur.id;
 }

@@ -37,6 +37,10 @@ function readVol(key, fallback) {
 }
 
 const legacyVol = readVol(LEGACY_VOL_KEY, VOL_DEFAULT);
+// ── ระดับเสียงของบ้านลูกเหมียว (รวมมินิเกม) แยกจากทั้งเกม ── ตั้งที่ปุ่ม ⚙️ ในห้อง
+// อยู่ในห้อง (setRoomAudio(true)) = ช่อง music/sfx ใช้ค่าชุดนี้แทน · ค่าตั้งต้น = ค่าของทั้งเกม
+const ROOM_KEY = { music: 'cookie-runner:vol:room:music', sfx: 'cookie-runner:vol:room:sfx' };
+let roomMode = false;
 const level = {
   music: readVol(MIX_KEY.music, legacyVol),
   sfx: readVol(MIX_KEY.sfx, legacyVol),
@@ -166,11 +170,14 @@ export function audioOut() {
 }
 
 /** ปมของช่องหนึ่ง — ทุกเสียงต้องต่อผ่านช่องของตัวเอง ไม่ต่อปมรวมตรง ๆ */
+/** ระดับที่ใช้จริงตอนนี้ (ในห้อง = ค่าห้อง) */
+function eff(ch) { return roomMode && ch in roomLevel ? roomLevel[ch] : level[ch]; }
+
 function chanOut(ch) {
   const a = ctx();
   if (!subBus[ch]) {
     const g = a.createGain();
-    g.gain.value = level[ch];
+    g.gain.value = eff(ch);
     g.connect(audioOut());
     subBus[ch] = g;
   }
@@ -195,7 +202,27 @@ export function setSfxRoute(ch) {
 /** ปมปลายทางของเสียงเอฟเฟกต์ ณ ตอนนี้ (เปลี่ยนตาม setSfxRoute) */
 function routeOut() { return chanOut(sfxRoute); }
 /** ระดับของช่องที่เสียงเอฟเฟกต์กำลังไป — ใช้ตัดตั้งแต่ต้นทางเวลาเงียบอยู่ */
-const routeLevel = () => level[sfxRoute];
+const routeLevel = () => eff(sfxRoute);
+
+const roomLevel = {
+  music: readVol(ROOM_KEY.music, level.music),
+  sfx: readVol(ROOM_KEY.sfx, level.sfx),
+};
+/** เข้า/ออกบ้านลูกเหมียว — สลับไปใช้ระดับเสียงชุดของห้อง */
+export function setRoomAudio(on) {
+  roomMode = !!on;
+  for (const ch of Object.keys(subBus)) {
+    if (subBus[ch]) subBus[ch].gain.setTargetAtTime(eff(ch), ctx().currentTime, 0.05);
+  }
+}
+export function getRoomMix(ch) { return roomLevel[ch] ?? 0; }
+export function setRoomMix(ch, v) {
+  if (!(ch in roomLevel)) return 0;
+  roomLevel[ch] = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+  try { localStorage.setItem(ROOM_KEY[ch], String(roomLevel[ch])); } catch { /* รอบนี้ยังใช้ได้ */ }
+  if (subBus[ch] && roomMode) subBus[ch].gain.setTargetAtTime(eff(ch), ctx().currentTime, 0.03);
+  return roomLevel[ch];
+}
 
 /** ระดับของช่องหนึ่ง 0–1 */
 export function getMix(ch) {
@@ -228,7 +255,7 @@ export function setMix(ch, v) {
   }
   if (subBus[ch]) {
     // ไล่ไปหาค่าใหม่แทนการกระโดด ไม่งั้นได้เสียง "ป๊อก" ทุกครั้งที่กดปุ่ม
-    subBus[ch].gain.setTargetAtTime(level[ch], ctx().currentTime, 0.03);
+    subBus[ch].gain.setTargetAtTime(eff(ch), ctx().currentTime, 0.03);
   }
   return level[ch];
 }
@@ -684,7 +711,7 @@ function primeClip(c) {
  * @param fadeIn เวลาที่ใช้ไล่ความดังขึ้นตอนเริ่ม กันเสียง "ป๊อก" ตอนโน้ตแรก
  */
 export function playAudioFile(src, { ch = 'sfx', vol = 0.9, dur = 0, fadeIn = 0, fade = 0.12 } = {}) {
-  if (level[ch] <= 0) return false;
+  if (eff(ch) <= 0) return false;
 
   let c;
   try {

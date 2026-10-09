@@ -84,3 +84,21 @@ export function randInt(n) {
 export function pick(arr) {
   return arr[randInt(arr.length)];
 }
+
+/**
+ * ใส่ข้อความที่มีสัญลักษณ์เพศ (♂ ♀) — ห่อสัญลักษณ์ด้วย <span class="sexsym">
+ * ฟอนต์ไทยของเกมไม่มีตัว ♂ ♀ เบราว์เซอร์ไปยืมฟอนต์อื่นที่เส้นฐานต่างกัน สัญลักษณ์เลยตกต่ำกว่าตัวหนังสือ
+ * (เห็นชัดบนไอโฟน) — span นี้ยกให้กลางบรรทัด (ดู .sexsym ใน style.css) · ผู้เรียกแปลภาษาก่อนส่งมา
+ */
+export function setSexText(el, text) {
+  el.textContent = '';
+  for (const part of String(text).split(/([♂♀])/)) {
+    if (!part) continue;
+    if (part === '♂' || part === '♀') {
+      const s = document.createElement('span');
+      s.className = 'sexsym';
+      s.textContent = part;
+      el.appendChild(s);
+    } else el.appendChild(document.createTextNode(part));
+  }
+}
