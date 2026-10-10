@@ -323,6 +323,14 @@ function drawLayer(ctx, items, pal, hooks, opt) {
 }
 
 /** หมุนรอบจุด (หน่วยในไฟล์ออกแบบ) */
+/** หาชิ้นตาม id ในชุดคำสั่ง (ไล่ลงไปในกลุ่ม/clip) */
+function findOp(ops, id) {
+  for (const o of ops) {
+    if (o.id === id) return o;
+    if (o.ops) { const r = findOp(o.ops, id); if (r) return r; }
+  }
+  return null;
+}
 function rotAt(ctx, p, a) {
   if (!a) return;
   ctx.translate(p.x, p.y);
@@ -421,14 +429,215 @@ function closedEye(ctx, e, pal, kind, side) {
     ctx.moveTo(e.x - 30 * d, e.y - 22);
     ctx.lineTo(e.x + 26 * d, e.y);
     ctx.lineTo(e.x - 30 * d, e.y + 22);
-  } else if (kind === 'happy') {
-    ctx.moveTo(e.x - 36, e.y + 12);
-    ctx.quadraticCurveTo(e.x, e.y - 26, e.x + 36, e.y + 12);
+  } else if (kind === 'yawn') {
+    // ตัว U (ตามแบบหน้าหาว) ทรงเสี้ยวแบบตาปิด: หนาตรงก้น U เรียวขึ้นไปปลายมน + จุดประกายขาว
+    const u = new Path2D();
+    u.moveTo(e.x - 30, e.y - 12);
+    u.bezierCurveTo(e.x - 32, e.y + 34, e.x + 32, e.y + 34, e.x + 30, e.y - 12);   // ขอบนอก (ล่าง)
+    u.bezierCurveTo(e.x + 25, e.y + 19, e.x - 25, e.y + 19, e.x - 30, e.y - 12);   // ขอบใน (บน)
+    u.closePath();
+    ctx.fillStyle = pal.line;
+    ctx.fill(u);
+    ctx.lineWidth = 3.5;
+    ctx.stroke(u);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(e.x - 9, e.y + 17, 4.6, 3.4, 0, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(e.x + 6, e.y + 17.5, 2.7, 0, TAU);
+    ctx.fill();
+    return;
   } else {
-    ctx.moveTo(e.x - 40, e.y + 4);
-    ctx.quadraticCurveTo(e.x, e.y + 20, e.x + 40, e.y + 4);
+    // ── หลับตา (ดีใจ ∩ / หลับ ∪): เส้นหนาโค้งเรียบแบบพระจันทร์เสี้ยว หนากลาง เรียวปลายมน (ตามภาพอ้างอิง) ──
+    const up = kind === 'happy';
+    const w = up ? 38 : 40;
+    const yE = e.y + (up ? 12 : 4);               // ระดับปลายตาสองข้าง
+    const c1 = up ? e.y - 36 : e.y + 8;           // โค้งบน
+    const c2 = up ? e.y - 8 : e.y + 34;           // โค้งล่าง (ห่างจากโค้งบน = ความหนากลางตา)
+    const lens = new Path2D();
+    lens.moveTo(e.x - w, yE);
+    lens.quadraticCurveTo(e.x, c1, e.x + w, yE);
+    lens.quadraticCurveTo(e.x, c2, e.x - w, yE);
+    lens.closePath();
+    ctx.fillStyle = pal.line;
+    ctx.fill(lens);
+    ctx.lineWidth = 3.5;   // เส้นสีเดียวกันรอบนอก = ปลายตามน ไม่แหลมคม
+    ctx.stroke(lens);
+    // จุดประกายขาวในตา (น่ารักขึ้น) — สองจุดเล็กเยื้องซ้ายกลางเนื้อเส้น
+    const my = (yE + (up ? c1 : c1) ) / 2 + (up ? 6 : 6);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(e.x - 9, my, 4.2, 3.2, 0, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(e.x + 5, my - (up ? 1 : -1), 2.4, 0, TAU);
+    ctx.fill();
+    return;
   }
   ctx.stroke();
+}
+
+// ══ ตาเฟี้ยว (ท่าลอยเฟี้ยว) — ลูกตาข้างในคงเดิม เพิ่มแค่เปลือกตาบนปรือ (ผู้ใช้ให้เอาคิ้ว/หางตาออก) ══
+/** จุดกลางกับรัศมีของตาขาวในไฟล์ (eye-left / eye-right) */
+const EYE_WHITE = { left: { x: 226.6, y: 268.7 }, right: { x: 373.4, y: 268.7 }, r: 49 };
+/**
+ * เปลือกตาบนหนัก ๆ ลงมาบังครึ่งบนของตา (เอียงต่ำลงหาจมูก) = ตาปรือแบบกวน ๆ ตามแบบ
+ * ลงสีขนทับเฉพาะในตาขาว แล้วลากเส้นขอบเปลือกตาหนากว่าเส้นปกตินิด
+ */
+function coolLid(c, white, pal, side, ang = 0) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, d = side === 'left' ? 1 : -1;   // d = ทิศไปหาจมูก
+  // ปลายเปลือกตาจบที่ขอบตาขาวพอดี (ไม่ยื่นเลยออกไป) · มุมนอกสูงกว่ามุมในนิดเดียว เกือบแนวนอนแบบในภาพ
+  const edgeX = (dy) => Math.sqrt(Math.max(0, R * R - dy * dy));
+  // โค้งสมมาตรขนานกับขอบบนของตา — เอียงไปพร้อมหัว ตา และประกาย (ไม่ลาดเฉียงตัดตาแบบตาขมวด)
+  const y0 = W.y - 14, y1 = W.y - 14;
+  const x0 = W.x - d * edgeX(y0 - W.y), x1 = W.x + d * edgeX(y1 - W.y);
+  const lid = new Path2D();
+  lid.moveTo(x0, y0);
+  lid.quadraticCurveTo(W.x, W.y - 36, x1, y1);
+  c.save();
+  c.clip(white);
+  // หมุนสวนมุมเอียงของตัว+หัว — บนจอเปลือกตาจึงเกือบแนวนอนเหมือนในภาพ ไม่เฉียงตามตัว
+  rotAt(c, W, -ang);
+  const cover = new Path2D();
+  cover.addPath(lid);
+  cover.lineTo(x1, W.y - R - 20);
+  cover.lineTo(x0, W.y - R - 20);
+  cover.closePath();
+  c.fillStyle = pal.cat;
+  c.fill(cover);
+  c.restore();
+  // ขอบตาไม่มีเส้นแล้ว — เกลี่ยขนทับขอบตาส่วนที่เปลือกตาปิด ไม่ให้เหลือขอบจาง ๆ จากการตัดภาพ
+  c.save();
+  rotAt(c, W, -ang);
+  c.clip(cover);
+  rotAt(c, W, ang);
+  c.strokeStyle = pal.cat;
+  c.lineWidth = 4;
+  c.stroke(white);
+  c.restore();
+  c.save();
+  rotAt(c, W, -ang);
+  c.strokeStyle = pal.line;
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.lineWidth = 7.5 * LINE_K;
+  c.stroke(lid);
+  c.restore();
+}
+
+// ══ ตาแบ๊ว (ตามภาพอ้างอิงแมวดำตาโต) ══
+// ตาทั้งดวงเป็นวงสีเข้มเกือบดำ มีขอบเสี้ยวจันทร์เหลืองอมส้มที่ขอบล่าง · ไม่มีตาขาว ไม่มีเส้นขอบตา
+// วงเข้มข้างในเลื่อนตามสายตา (กลอกตา) — เสี้ยวทองจึงหนา/บางตามทิศที่มอง เหมือนลูกตากลมจริง
+// ประกายขาวมุมบนเป็นตัวที่ทำให้ตา "แบ๊ว" — วงใหญ่หนึ่ง จุดเล็กสอง
+/** ความหนาเส้นขอบตานอก (เส้นตัว = LW 4.4) */
+const EYE_RIM_W = 2.2;
+const BABY = {
+  rimTop: '#FFEFA6', rimBot: '#FFC24D',        // เสี้ยวขอบนอก: เหลืองอ่อน → เหลืองอมส้ม (สว่างกว่าขนส้ม ไม่กลืน)
+  coreIn: '#3B2418', coreOut: '#120805',        // วงในเข้ม: น้ำตาลเข้มกลาง → ดำขอบ
+};
+function drawBabyEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidded = false } = {}) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, d = side === 'left' ? 1 : -1;
+  c.save();
+  c.clip(white);
+  const rim = c.createLinearGradient(0, W.y - R, 0, W.y + R);
+  rim.addColorStop(0, BABY.rimTop);
+  rim.addColorStop(1, BABY.rimBot);
+  c.fillStyle = rim;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // วงเข้มเยื้องขึ้นบน (และเข้าหาจมูกนิด) = เหลือเสี้ยวทองที่ขอบล่างด้านนอก
+  const ix = W.x + d * 3 + lx, iy = W.y - 11 + ly, ir = R - 5;
+  const core = c.createRadialGradient(ix - 6, iy - 8, 2, ix, iy, ir);
+  core.addColorStop(0, BABY.coreIn);
+  core.addColorStop(1, BABY.coreOut);
+  c.fillStyle = core;
+  c.beginPath();
+  c.arc(ix, iy, ir, 0, TAU);
+  c.fill();
+  // ประกาย: วงกลมล้วนทั้งหมด จัดตามสัดส่วนของวงเข้ม (ir) — แสงมาจากมุมบนซ้ายทั้งสองตา
+  //   ใหญ่ = มุมบนซ้าย · เล็ก = เกาะข้างวงใหญ่ (บนขวา) · กลาง = มุมล่างขวาตรงข้ามแนวทแยงกับวงใหญ่
+  c.fillStyle = '#FFFFFF';
+  const dot = (dx, dy, r) => { c.beginPath(); c.arc(ix + dx * ir, iy + dy * ir, r * ir, 0, TAU); c.fill(); };
+  if (lidded) {
+    // ตาปรือ (ท่าลอยเฟี้ยว): ครึ่งบนโดนเปลือกตาบัง — ย้ายประกายลงมาครึ่งล่างที่ยังเห็น ทิศแสงเดิม
+    dot(-0.3, 0.16, 0.2);
+    dot(0.02, 0.06, 0.08);
+    dot(0.34, 0.46, 0.1);
+  } else {
+    dot(-0.32, -0.32, 0.26);
+    dot(0.06, -0.5, 0.1);
+    dot(0.36, 0.36, 0.12);
+  }
+  if (sparkle > 0) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, ix + 16, iy - 14, 12 * k);
+    star4(c, ix - 8, iy + 18, 6 * k);
+  }
+  c.restore();
+}
+function star4(c, x, y, r) {
+  c.fillStyle = '#FFFFFF';
+  c.beginPath();
+  c.moveTo(x, y - r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.quadraticCurveTo(x, y, x, y + r);
+  c.quadraticCurveTo(x, y, x - r, y);
+  c.quadraticCurveTo(x, y, x, y - r);
+  c.fill();
+}
+
+// ══ หน้าตามอารมณ์ (สไตล์ kawaii ตามชีทอ้างอิง) — วาดทับ/แทนตาตามอารมณ์ของน้อง ══
+/** ตาเศร้า: เปลือกตาบนเอียงลงทางหางตา (ตาละห้อย) + น้ำตาหยดที่มุมนอก */
+function sadLid(c, white, pal, side) {
+  const W = EYE_WHITE[side], d = side === 'left' ? 1 : -1;
+  const lid = new Path2D();
+  lid.moveTo(W.x - d * 52, W.y - 6);
+  lid.quadraticCurveTo(W.x - d * 6, W.y - 44, W.x + d * 46, W.y - 40);
+  c.save();
+  c.clip(white);
+  const cover = new Path2D();
+  cover.addPath(lid);
+  cover.lineTo(W.x + d * 60, W.y - 80);
+  cover.lineTo(W.x - d * 60, W.y - 80);
+  cover.closePath();
+  c.fillStyle = pal.cat;
+  c.fill(cover);
+  c.restore();
+  c.strokeStyle = pal.line;
+  c.lineCap = 'round';
+  c.lineWidth = 6.5 * LINE_K;
+  c.stroke(lid);
+}
+function tearDrop(c, pal, side, t) {
+  const W = EYE_WHITE[side], d = side === 'left' ? 1 : -1;
+  const fall = (t * 0.02) % 1;
+  const x = W.x - d * 30, y = W.y + 44 + fall * 18;
+  c.save();
+  c.globalAlpha = 1 - fall * 0.6;
+  c.fillStyle = '#A9DCF5';
+  c.strokeStyle = '#6FB6DE';
+  c.lineWidth = 3;
+  c.beginPath();
+  c.moveTo(x, y - 16);
+  c.bezierCurveTo(x + 11, y - 2, x + 9, y + 9, x, y + 9);
+  c.bezierCurveTo(x - 9, y + 9, x - 11, y - 2, x, y - 16);
+  c.fill();
+  c.stroke();
+  c.restore();
+}
+/** ตาวนมึน (@_@) */
+function dizzyEye(c, e, pal, t) {
+  c.strokeStyle = pal.line;
+  c.lineWidth = 5 * LINE_K;
+  c.lineCap = 'round';
+  c.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const a = (i / 60) * TAU * 2.3 + t * 0.15;
+    const r = 4 + (i / 60) * 30;
+    const x = e.x + Math.cos(a) * r, y = e.y + 4 + Math.sin(a) * r;
+    if (i) c.lineTo(x, y); else c.moveTo(x, y);
+  }
+  c.stroke();
 }
 
 // ══ จังหวะชีวิต (คิดจากเวลาอย่างเดียว ไม่เก็บสถานะ — เรียกซ้ำกี่รอบก็ได้ภาพเดิม) ══
@@ -609,6 +818,57 @@ const SIT = (() => {
     footL: ell(216, 628, 37, 20), footR: ell(386, 628, 37, 20),
   };
 })();
+// ══ ท่านั่งว่าง (ตามภาพอ้างอิงแมวนั่งตัวระฆัง) ══
+// ตัวเป็นระฆังอวบก้อนเดียว: แคบใต้หัว ผายออกด้านล่างเป็นสะโพกกลม ๆ สองข้าง ก้นแบนติดพื้น
+// ขาหน้าไม่ได้วาดเป็นท่อน — เป็น "เส้นในตัว" ตามแบบ: เส้นนอกขาสองเส้น (แยกขาหน้ากับสะโพก)
+// + ร่องรูป Λ ตรงกลาง (ช่องระหว่างขาหน้าสองข้าง) · อุ้งเท้าครีมมีขีดนิ้วที่ปลายขา
+// ใช้เฉพาะตอนนั่งเฉย ๆ — ท่าเกาพุง/เลียอุ้งเท้ายังใช้ตัวนั่งแบบมีแขนพับ (ด้านล่าง) เพราะต้องขยับแขน
+const SIT2 = (() => {
+  // ตัวอวบป้อม: ไหล่มนกว้าง ข้างตัวป่องออกเป็นก้อนกลม ไม่ใช่เส้นเฉียงตรง
+  const body = new Path2D();
+  body.moveTo(300, 428);
+  body.bezierCurveTo(240, 428, 204, 448, 196, 488);
+  body.bezierCurveTo(188, 528, 160, 548, 146, 586);
+  body.bezierCurveTo(132, 626, 154, 650, 204, 650);
+  body.lineTo(396, 650);
+  body.bezierCurveTo(446, 650, 468, 626, 454, 586);
+  body.bezierCurveTo(440, 548, 412, 528, 404, 488);
+  body.bezierCurveTo(396, 448, 360, 428, 300, 428);
+  body.closePath();
+  // เส้นในตัว — โค้งนุ่ม ๆ สั้นกว่าเดิม (ไม่ตรงแข็ง): นอกขาซ้าย / นอกขาขวา / ร่องกลางปลายมน
+  const legs = new Path2D();
+  // เส้นนอกขาเริ่มจากขอบตัวพอดี (ต่อเนื่องจากเส้นรอบนอก ไม่ลอยกลางตัว) แล้วโค้งเข้าลงหาอุ้งเท้า ตามแบบ
+  legs.moveTo(189, 512);
+  legs.bezierCurveTo(224, 536, 228, 600, 240, 646);
+  legs.moveTo(411, 512);
+  legs.bezierCurveTo(376, 536, 372, 600, 360, 646);
+  legs.moveTo(280, 647);
+  legs.bezierCurveTo(286, 620, 290, 596, 300, 590);
+  legs.bezierCurveTo(310, 596, 314, 620, 320, 647);
+  const gap = new Path2D();
+  gap.moveTo(280, 650);
+  gap.bezierCurveTo(286, 620, 290, 596, 300, 590);
+  gap.bezierCurveTo(310, 596, 314, 620, 320, 650);
+  gap.closePath();
+  // ขาหน้าสองท่อน: ข้างนอกตรงลงมา ข้างในชิดกันตรงบนแล้วแยกนิดตอนล่าง · ปลายมนเป็นอุ้งเท้า
+  const legL = new Path2D();
+  legL.moveTo(232, 520);
+  legL.bezierCurveTo(228, 580, 232, 622, 234, 636);
+  legL.bezierCurveTo(236, 659, 294, 659, 296, 636);
+  legL.bezierCurveTo(298, 596, 301, 560, 302, 520);
+  legL.closePath();
+  const legR = new Path2D();
+  legR.moveTo(368, 520);
+  legR.bezierCurveTo(372, 580, 368, 622, 366, 636);
+  legR.bezierCurveTo(364, 659, 306, 659, 304, 636);
+  legR.bezierCurveTo(302, 596, 299, 560, 298, 520);
+  legR.closePath();
+  const legAll = new Path2D();
+  legAll.addPath(legL);
+  legAll.addPath(legR);
+  return { body, legs, gap, legL, legR, legAll };
+})();
+
 // แขน (จุดควบคุมพิกัดไฟล์ออกแบบ): ซ้ายจอ = ท่อนบน (ไหล่→ศอก) + ท่อนล่าง (ศอก→อุ้งเท้า) · ขวาจอ = ท่อนเดียว
 const SIT_ARM = {
   leftRest: { up: [[248, 424], [220, 470], [212, 512]], lo: [[212, 512], [218, 542], [230, 564]] },
@@ -703,6 +963,11 @@ const HOLD_ARM = {
   loHold: [[222, 476], [226, 448], [240, 424], [258, 408]],
 };
 const mirrorPts = (pts) => pts.map(([x, y]) => [600 - x, y]);
+// ลอยเฟี้ยว (แขนขวาจอ): ศอกยื่นออกข้างเอวแล้วพับขึ้น อุ้งเท้าครีมแตะใต้คางฝั่งแก้มขวา (ตามแบบ)
+const CHIN_ARM = {
+  rest: [[392, 452], [404, 486], [394, 516], [376, 532]],
+  chin: [[400, 496], [402, 460], [384, 424], [354, 400]],
+};
 /** หัวใจเล็กลอยออกไปทางขวาตอนส่งหัวใจ (ตามแบบ) */
 function drawFloatHearts(c, t, w, pal) {
   if (w < 0.05) return;
@@ -832,8 +1097,10 @@ function drawSparks(c, cx, cy, sz, t, w) {
  * วาดน้องแบบใหม่ ยืนเท้าแตะ feetY
  * @param idle { k, shape } ท่าตอบการแตะ (home-moves) หรือ { k, pose } ท่าว่าง (IDLE_SHAPE)
  *   รองรับทุกช่องของรูปร่าง: ลำตัว (sit crouch loaf roll sprawl puff) · แขน (wave knead clasp offer
- *   scratch reachL paw) · หัว (tilt ear gaze lick chirp mouth shut mood) · หาง (wag tailShort)
- *   · ทั้งตัว (lean sx sy dx turn) — lift ผู้เรียกยกเท้าให้เอง
+ *   scratch reachL paw swingL chinR) · ขา (kickL kickR) · หัว (tilt ear gaze lick chirp mouth shut wink mood)
+ *   · หาง (wag tailShort) · ทั้งตัว (lean sx sy dx turn) — lift ผู้เรียกยกเท้าให้เอง
+ *   ท่าลอยเฟี้ยว: swingL = ชูแขนซ้ายออกข้าง · chinR = อุ้งเท้าขวาเท้าคาง · kickL/kickR = เตะขา (เรเดียน)
+ *   · wink = ขยิบตาขวา (ตาหลับแบบเดิม) ตาซ้ายลืมปกติ
  */
 export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const pal = paletteOf(s);
@@ -862,8 +1129,10 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const smack = mh > 0.22 && mh <= 0.5 && mc < 0.7 ? Math.abs(Math.sin((mc / 0.7) * Math.PI * 2)) * 0.3 : 0;
   const chirp = Math.max(v('mouth'), shape?.chirp ? Math.max(0, Math.sin(t * 0.3)) * v('chirp') : 0, mew, smack);
   const yawn = Math.min(v('mouth'), v('shut'));        // ปากอ้า + หลับตาพร้อมกัน = หาว
-  const mood = k > 0.35 ? shape?.mood || '' : '';
-  const happy = mood === 'happy' || mood === 'starry';
+  const mood = idle?.mood ?? (k > 0.35 ? shape?.mood || '' : '');
+  // ดีใจ = ตาปิดโค้ง ∩ · ตาเป็นประกาย (starry) = ตาเปิดโต รูม่านตากลม มีดาววิบ (ชีทหน้า kawaii)
+  const happy = mood === 'happy';
+  const starry = mood === 'starry';
 
   // ── จังหวะประจำตัว ──
   const breath = Math.sin(T * 2.1);                  // หายใจ ~3 วินาทีต่อรอบ
@@ -933,13 +1202,23 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     c.translate(-300, -560);
   };
   // ขา: พับสั้นลงรอบเท้า (เท้าติดพื้น) กางออกตอนนั่ง · เหยียดออกข้างตอนนอน
+  /** ยอดโค้งเป้าระหว่างขาสองข้าง (พิกัดในไฟล์) */
+  const CROTCH = { x: 300, y: 596 };
   const legPt = (side) => {
     const d = side === 'left' ? -1 : 1;
     const hip = M.piv[`hip-${side}`];
     const a = -d * 0.5 * sprawl;
+    // เตะขา (ท่าลอยเฟี้ยว): ดัดทีละจุดแบบแขน — โคนขาใกล้สะโพกแทบไม่ขยับ ปลายเท้าขยับเต็มที่
+    // หมุนทั้งท่อนแข็ง ๆ แล้วขอบขาส่วนเหนือสะโพกหมุนสวนเข้าไปในตัว เกิดหนามแหลมตรงเป้า
+    const kick = v(side === 'left' ? 'kickL' : 'kickR');
     return (x, y) => {
       let X = x + d * spread, Y = FEET_Y - (FEET_Y - y) * legK;
       if (a) [X, Y] = rotPt(hip, a, X, Y);
+      if (kick) {
+        // จางลงใกล้ยอดโค้งเป้า (จุดที่ขาสองข้างใช้ร่วมกัน) — ไม่งั้นโค้ง ∩ ระหว่างขาแยกเป็นมุมหยัก
+        const w = ease(clamp01((Y - (hip.y - 20)) / 80)) * ease(clamp01(Math.hypot(X - CROTCH.x, Y - CROTCH.y) / 38));
+        if (w > 0) [X, Y] = rotPt(hip, kick * w, X, Y);
+      }
       return [X, Y];
     };
   };
@@ -956,12 +1235,17 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       [[100, 515], reachL],                                      // เอื้อมไปหาหาง
       [[283, 368 + lick * 8], paw],                              // ยกอุ้งเท้ามาเลีย
       [[232, 548], loaf],                                        // ซุกแขนตอนหมอบ
+      [[104, 490], yawn],                                        // หาว: แขนกางออกเฉียงลงนิด ๆ แขนเกือบตรง (บิดขี้เกียจ)
+      // ลอยเฟี้ยว: กางแขนออกข้าง — เป้าเฉียงลงนิดในพิกัดตัว เพราะตัวเอียงตามเข็มอยู่ (roll) บนจอจึงออกมาเป็นกางเฉียงขึ้น
+      [[90, 468], v('swingL')],
     ] : [
       [[338, 476 - kneadT * 10], knead * (1 - clasp)],
       [[318, 478 + offer * 30], clasp],
       [[319, 502], offer * (1 - clasp)],
       [[466 + waveT * 14, 366 + Math.abs(waveT) * 4], wave],     // โบกมือ
       [[368, 548], loaf],
+      [[496, 490], yawn],
+      [[336, 384], v('chinR')],                                  // ลอยเฟี้ยว: อุ้งเท้าเท้าคาง
     ];
     const tg = armTarget(list);
     if (tg) {
@@ -1069,7 +1353,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.stroke();
         return;
       }
-      if (chirp < 0.15 && !happy) {
+      if (chirp < 0.15 && !happy && !starry) {
         // ปากปิด: มุมปากยิ้มกว้าง-แคบเบา ๆ ตามลมหายใจ
         c.save();
         c.translate(300, 352);
@@ -1079,15 +1363,24 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.restore();
         return;
       }
-      const o = Math.max(chirp, happy ? 0.7 : 0);
+      const o = Math.max(chirp, happy || starry ? 0.7 : 0);
       if (yawn > 0.3) {
-        c.fillStyle = pal.mouth;
-        c.strokeStyle = pal.line;
-        c.lineWidth = 4.2 * LINE_K;
+        // หาว: ปากวงรีสีชมพูกุหลาบ (ไม่มีลิ้น ตามแบบ) — ครึ่งบนขวาเข้ม ครึ่งล่างซ้ายสว่างเป็นแสงนวล ๆ · ขอบสีเส้นเดิม
+        const cy = 356 + yawn * 6, rx = 12 + yawn * 7, ry = 10 + yawn * 14;
+        const mp = new Path2D();
+        mp.ellipse(300, cy, rx, ry, 0, 0, TAU);
+        c.fillStyle = '#DE7680';
+        c.fill(mp);
+        c.save();
+        c.clip(mp);
+        c.fillStyle = '#F0A2A8';
         c.beginPath();
-        c.ellipse(300, 352 + o * 4 + yawn * 6, 13 + yawn * 7, 6 + o * 9 + yawn * 9, 0, 0, TAU);
+        c.ellipse(300 - rx * 0.32, cy + ry * 0.28, rx * 0.95, ry * 0.85, -0.5, 0, TAU);
         c.fill();
-        c.stroke();
+        c.restore();
+        c.strokeStyle = pal.line;   // ขอบปากสีเส้นเดิมของแบบ — เปลี่ยนแค่สีในปาก
+        c.lineWidth = 4.2 * LINE_K;
+        c.stroke(mp);
         return;
       }
       // ปากยิ้มอ้า: ขอบบนเป็นปากแมว ω (ต่อจากใต้จมูก) ขอบล่างโค้งมนลงตามความกว้างที่อ้า
@@ -1115,17 +1408,29 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.stroke(mp);
     },
   };
+  // แก้มลงสีอย่างเดียว ไม่มีเส้นขอบ (ตามแบบตาแบ๊ว)
+  for (const id of ['cheek-left', 'cheek-right']) {
+    const op = findOp(P.face?.det || [], id);
+    if (op) hooks[id] = (c) => { c.fillStyle = pal.cheek; c.fill(op.path); };
+  }
   for (const side of ['left', 'right']) {
     const e = M.eye[side];
     const ops = M.groups[`eye-${side}-open`];
     if (!e || !ops) continue;
     hooks[`eye-${side}-open`] = (c) => {
       if (loafMode) return closedEye(c, e, pal, 'blink');   // ลงมาหมอบแล้ว = หลับตาตลอด
+      if (yawn > 0.3) return closedEye(c, e, pal, 'yawn');   // หาว: ตาตกเป็นตัว U
+      if (sit > 0.5 && v('paw') > 0.6) return closedEye(c, e, pal, 'blink');   // นั่งเลียอุ้งเท้า: หลับตาพริ้ม
       const eyesOpenHappy = happy && clasp > 0.3;   // ถือหัวใจ: ตาโตเป็นประกาย ไม่หยีตา
       if (happy && !eyesOpenHappy) return closedEye(c, e, pal, 'happy');
       if (eyesOpenHappy && v('shut') > 0.5) return closedEye(c, e, pal, 'happy');
-      if (mood === 'hurt') return closedEye(c, e, pal, 'hurt', side);
-      const lid = mood === 'tired' ? 0.5 : mood === 'smug' ? 0.4 : 0;
+      if (mood === 'hurt') return closedEye(c, e, pal, 'hurt', side);   // > <
+      if (mood === 'dizzy') return dizzyEye(c, e, pal, t);               // @ @
+      const cool = v('wink') > 0.5;
+      const coolAng = roll * 1.25 + tilt;   // มุมเอียงรวมของตัว (roll) กับหัว (tilt) บนจอ
+      // ขยิบตาขวา: ท่าลอยเฟี้ยว / ภูมิใจ (smug) — โค้ง ∩ แบบในชีท ตาซ้ายเปิดปกติ
+      if (side === 'right' && (cool || mood === 'smug')) return closedEye(c, e, pal, 'happy');
+      const lid = mood === 'tired' ? 0.5 : 0;
       const shut = Math.max(lid, blink, v('shut'));
       if (shut > 0.75) return closedEye(c, e, pal, 'blink');
       c.save();
@@ -1133,17 +1438,27 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.scale(1, 1 - shut * 0.9);
       c.translate(-e.x, -e.y);
       // ตาขาว → ตาดำกลอกไปตามสายตา (ตัดอยู่ในตาขาว) → ขอบตาทับอีกรอบ
+      // ตาแบ๊ว (วงเข้ม + เสี้ยวทอง) ไม่มีเส้นขอบตา — ใช้แค่รูปทรงตาขาวจากแบบเป็นกรอบ
       const white = ops[0];
-      drawOps(c, [white], pal, hooks, opt);
-      c.save();
-      c.clip(white.path);
-      c.translate(gx * 9 - hx * 2, gy * 7);
-      drawOps(c, ops.slice(1), pal, hooks, opt);
-      c.restore();
+      drawBabyEye(c, white.path, side, {
+        lx: gx * 7 - hx * 2, ly: gy * 5,
+        sparkle: starry || eyesOpenHappy ? 1 : 0,
+        t,
+        lidded: cool,
+      });
+      // ขอบตานอกเส้นบาง ๆ (บางกว่าเส้นตัวมาก) ให้ตาแยกจากขนส้มชัดขึ้น
       c.strokeStyle = pal.line;
-      c.lineWidth = white.width * LINE_K;
+      c.lineWidth = EYE_RIM_W;
       c.stroke(white.path);
       c.restore();
+      // ตาเฟี้ยว: เปลือกตาปรือ (ตอนกะพริบไม่วาด ไม่งั้นซ้อนกับตาที่กำลังหลับ)
+      // เปลือกตาเอียงไปกับหัว (เดิมหมุนสวนให้ตรงจอ แล้วไม่เข้ากับตา/ประกายที่เอียงตามตัว)
+      if (cool && shut < 0.25) coolLid(c, white.path, pal, side, 0);
+      // ตาเศร้า: เปลือกตาละห้อย + น้ำตา
+      if (mood === 'sad' && shut < 0.25) {
+        sadLid(c, white.path, pal, side);
+        tearDrop(c, pal, side, t);
+      }
     };
   }
 
@@ -1227,7 +1542,108 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const bandR = spineBand(SIT_ARM.right.map(([x, y], i) => [x + (i >= 2 ? sway2 : 0), y + breath * 1.2 * (i / 4)]), 12, (i) => 27 - 2 * (i / 12));
     const flick = shape?.wag != null ? Math.sin(shape.wag * 1.2) * k : 0;
     const tw = Math.sin(T * 1.6) * 3 + flick * 10;
+    const bandItem = (b, det) => ({ sil: [b.path], all: b.path, xf: grow, det });
     const TS = spineBand([[214, 612], [152, 614], [116, 562], [120, 502], [148 + tw * 0.4, 462], [186 + tw, 450 - tw * 0.3]], 16, (i) => 19.5 - 5.5 * (i / 16));
+    if (sc2 < 0.02) {
+      // เลียอุ้งเท้า (ตามภาพอ้างอิง): ขาหน้าซ้ายจอยกพับขึ้นมาแตะปาก ขาอีกข้างวางเหมือนนั่งปกติ
+      const lift = gr > 0.02 ? ease(gr) : 0;
+      // ── นั่งเฉย ๆ: ตัวระฆัง (SIT2) + ขาหน้าสองท่อนชัด ๆ + หางวางกับพื้น ──
+      // หาง: ออกจากหลังสะโพกซ้าย นอนราบไปตามพื้น ปลายงอนขึ้นนิด ๆ (กระดิกเบา ๆ)
+      // ส่ายไปมาช้า ๆ (~4 วิ/รอบ): โคนนิ่งติดพื้น ปลายหางกวาดซ้าย-ขวาแล้วงอนขึ้นตามจังหวะ
+      const sw = Math.sin(T * 1.55), sw2 = Math.sin(T * 1.55 - 0.6);   // ปลายตามหลังกลางหางนิดนึง (มีน้ำหนัก)
+      const TS2 = spineBand([[216, 632], [160, 638], [112 + sw * 3, 637], [74 + sw * 8, 628 - Math.abs(sw) * 3],
+        [54 + sw2 * 16 + tw * 0.3, 610 - Math.abs(sw2) * 4], [50 + sw2 * 24 + tw * 0.6, 588 + sw2 * 4]], 16, (i) => 19.5 - 5.5 * (i / 16));
+      const bodyDet = (c) => {
+        // เงาข้างตัว · อกครีมใต้คาง · ลายบนสะโพก
+        c.fillStyle = pal.shade;
+        c.beginPath();
+        c.ellipse(168, 580, 32, 84, 0, 0, TAU);
+        c.ellipse(432, 580, 32, 84, 0, 0, TAU);
+        c.fill();
+        c.fillStyle = pal.cream;
+        c.beginPath();
+        c.ellipse(300, 512, 52, 60, 0, 0, TAU);
+        c.fill();
+        if (!opt.noStripes) {
+          sitStripes(c, pal, [[160, 600, 184, 594], [158, 624, 184, 619], [440, 600, 416, 594], [442, 624, 416, 619],
+            [206, 504, 224, 510], [394, 504, 376, 510]]);
+        }
+      };
+      drawLayer(ctx, [
+        bandItem(TS2, (c) => tailDetails(c, TS2, pal, opt.noStripes)),
+        { sil: [SIT2.body], all: SIT2.body, xf: grow, det: bodyDet },
+      ], pal, hooks, opt);
+      // ── ขาหน้า (ตามแบบ): สองท่อนอวบตั้งตรงหน้าตัว ปลายเป็นอุ้งเท้ากลมครีม มีขีดนิ้ว ──
+      // วาดเป็นชั้นของตัวเองทับตัว เส้นรอบขาจึงครบ (ข้าง + ปลายมน) · ตัดขอบบนทิ้ง ขาจึงกลืนเข้ากับอก
+      // สองขาชิดกันตรงบน (เส้นกลืนเป็นเส้นเดียว) แล้วแยกออกช่วงล่าง = ร่องระหว่างขาแบบในแบบ
+      const m0 = ctx.getTransform();
+      ctx.save();
+      grow(ctx);
+      const below = new Path2D();
+      below.rect(0, 574, 600, 200);   // เริ่มใต้อกครีม — ขอบตัดไม่ทับครีม จึงไม่เห็นรอยต่อจาง ๆ
+      ctx.clip(below);
+      ctx.setTransform(m0);
+      const legSil = lift > 0 ? [SIT2.legR] : [SIT2.legL, SIT2.legR];
+      const pawXs = lift > 0 ? [336] : [264, 336];
+      drawLayer(ctx, [{ sil: legSil, all: lift > 0 ? SIT2.legR : SIT2.legAll, xf: grow, det: (c) => {
+        c.fillStyle = pal.cream;
+        c.beginPath();
+        c.ellipse(300, 512, 52, 60, 0, 0, TAU);   // อกครีมไหลต่อลงมาบนโคนขา (ไม่โดนขาตัดเป็นขอบตรง)
+        c.fill();
+        c.beginPath();
+        for (const cx of pawXs) c.ellipse(cx, 642, 30, 14, 0, 0, TAU);
+        c.fill();
+        c.strokeStyle = pal.line;
+        c.lineWidth = LW * 0.8;
+        c.lineCap = 'round';
+        for (const cx of pawXs) for (const dx of [-8, 8]) {
+          c.beginPath();
+          c.moveTo(cx + dx, 642);
+          c.lineTo(cx + dx, 651);
+          c.stroke();
+        }
+      } }], pal, hooks, opt);
+      ctx.restore();
+      drawLayer(ctx, [bent('ear-left', earPt('left'), head), bent('ear-right', earPt('right'), head), { ...P.head, xf: head }], pal, hooks, opt);
+      ctx.save();
+      face(ctx);
+      drawOps(ctx, P.face.det, pal, hooks, opt);
+      ctx.restore();
+      if (lift > 0) {
+        // ── ขายกเลีย: ไหล่ → ศอกพับลงข้างอก → ท่อนแขนชูขึ้นให้อุ้งเท้าแตะใต้ปาก (ตามหัวที่เอียง) ──
+        // วาดหลังหน้า อุ้งเท้าจึงอยู่หน้าปากเหมือนแบบ · เริ่มจากท่าขาวางพื้นแล้วค่อยพับขึ้น (ผสมจุดลื่น ๆ)
+        const [mx0, my0] = rotPt(M.piv.neck, tilt, 292, 372);
+        const mx = mx0 + hx * 3, my = my0 + headDrop - breathLag * 2.2 + lick * 6;
+        const down = [[214, 492], [236, 560], [250, 610], [262, 632]];
+        const up = [[214, 492], [242, 552], [mx - 34, my + 62], [mx - 8, my + 26]];   // อุ้งเท้าใต้ปาก เห็นลิ้นแลบเลีย
+        const ctrl = mixPts(down, [[up, lift]]);
+        const band = spineBand(ctrl, 12, (i) => 28 - 4 * (i / 12));
+        const pw = pawOf(band, pal, 27, 24);
+        const cap = new Path2D();
+        cap.arc(band.pts[0].x, band.pts[0].y, band.half(0), 0, TAU, true);
+        const all = new Path2D();
+        all.addPath(band.path);
+        all.addPath(pw.blob);
+        all.addPath(cap);
+        drawLayer(ctx, [{ sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => {
+          c.strokeStyle = pal.shade;
+          c.lineWidth = 12;
+          c.lineCap = 'round';
+          c.stroke(bandEdge(band, -innerSide(band), 2, 9));
+          if (!opt.noStripes) {
+            const st = [];
+            for (const i of [4, 7]) {
+              const q = band.pts[i], nx = -Math.sin(q.a), ny = Math.cos(q.a);
+              st.push([q.x + nx * 18, q.y + ny * 18, q.x + nx * 5, q.y + ny * 5]);
+            }
+            sitStripes(c, pal, st);
+          }
+          pw.det(c, all);
+        } }], pal, hooks, opt);
+      }
+      ctx.restore();
+      return;
+    }
     const torsoDet = (c) => {
       c.fillStyle = pal.shade;
       c.beginPath();
@@ -1254,7 +1670,6 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       if (!opt.noStripes) sitStripes(c, pal, [[420, 486, 402, 492], [424, 510, 406, 515], [182, 474, 200, 479], [178, 496, 196, 500]]);
     };
     // ── เงาก้อนเดียว: หาง ตัว แขนท่อนบนซ้าย แขนขวา ต้นขา ──
-    const bandItem = (b, det) => ({ sil: [b.path], all: b.path, xf: grow, det });
     drawLayer(ctx, [
       bandItem(TS, (c) => tailDetails(c, TS, pal, opt.noStripes)),
       { sil: [SIT.torso], all: SIT.torso, xf: grow, det: torsoDet },
@@ -1432,6 +1847,28 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     };
     hold = { L: mk('left'), R: mk('right') };
   }
+  // ลอยเฟี้ยว: แขนขวาเป็นท่ออวบ (ศอกยื่นข้างเอว → อุ้งเท้าครีมแตะใต้คาง) แทนแขนจากไฟล์ที่พับแล้วดูลีบ
+  // ครึ่งแรกของการยกใช้แขนจากไฟล์ (IK ไปหาคาง) แล้วสลับเป็นท่อตอนกำลังยกเร็ว ๆ แบบแขนถือหัวใจ
+  const chinK = back || useHold ? 0 : v('chinR');
+  const useChin = chinK > 0.4;
+  let chin = null;
+  if (useChin) {
+    const u = ease(clamp01((chinK - 0.4) / 0.6));
+    const lo = mixPts(CHIN_ARM.rest, [[CHIN_ARM.chin, u]]).map(([x, y]) => upperPt(x, y));
+    const bLo = spineBand(lo, 10, (i) => 30 - 6 * (i / 10));
+    const pw = pawOf(bLo, pal, 26, 24);
+    const cap = new Path2D();
+    cap.arc(bLo.pts[0].x, bLo.pts[0].y, bLo.half(0), 0, TAU, true);
+    const all = new Path2D();
+    all.addPath(bLo.path);
+    all.addPath(pw.blob);
+    all.addPath(cap);
+    // ไหล่มน (ก้อนกลมกลืนกับตัว) — แขนจากไฟล์ถูกถอดออกแล้ว ไหล่จึงไม่เหลี่ยม
+    const sh = new Path2D();
+    const [scx, scy] = upperPt(362, 432);
+    sh.ellipse(scx, scy, 38, 36, 0, 0, TAU);
+    chin = { bLo, pw, cap, all, sh };
+  }
   const armItems = useHold
     ? [-1, 1].map((d) => {
       // ไหล่มน: แขนไม่ได้บังมุมไหล่แล้ว เติมก้อนกลมให้ไหล่โค้งแบบในแบบ (กลืนกับตัว)
@@ -1440,13 +1877,22 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       sh.ellipse(cx, cy, 38, 36, 0, 0, TAU);
       return { sil: [sh], all: sh, det: () => {} };
     })
-    : [armL, armR];
+    : useChin ? [armL, { sil: [chin.sh], all: chin.sh, det: () => {} }] : [armL, armR];
   const legL = bent('leg-left', legPt('left')), legR = bent('leg-right', legPt('right'));
   // เงาข้างตัวไหลต่อลงต้นขา (ตัดเฉพาะเหนือเท้า) — ไม่งั้นเงาถูกตัดเป็นเส้นเฉียงตรงรอยต่อตัว-ขา ดูเป็นเส้นซ้อน
   torso.detClip = new Path2D();
   torso.detClip.addPath(torso.all);
   for (const L of [legL, legR]) torso.detClip.addPath(L.all);
   const limbs = [legL, legR, torso, ...armItems];
+  // เตะขา: ขอบล่างของขาที่เตะมาชนขอบในของขาอีกข้างเป็นรอยบากตัว V ตรงเป้า
+  // เติมก้อนเนื้อมน ๆ ลงในชั้นตัว — เส้นรอบนอกวิ่งรอบก้อนรวม รอยบากจึงกลายเป็นโค้งมนต่อเนื่อง (ตามแบบ)
+  const kickAny = Math.max(Math.abs(v('kickL')), Math.abs(v('kickR')));
+  if (!back && kickAny > 0.05) {
+    const fil = new Path2D();
+    const [fx, fy] = upperPt(300, 577);
+    fil.ellipse(fx, fy, 28 * clamp01(kickAny * 3), 12 * clamp01(kickAny * 3), 0.38, 0, TAU);
+    limbs.push({ sil: [fil], all: fil, det: () => {} });
+  }
 
   // ── ชั้นตัว (กลืนเป็นก้อนเดียว) — ด้านหน้าหางอยู่หลังสุด · ด้านหลังหางอยู่หน้าสุด ──
   drawLayer(ctx, back ? [...limbs, tail] : [tail, ...limbs], pal, hooks, opt);
@@ -1466,7 +1912,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     ctx.restore();
   };
   // แขนที่ยกขึ้นข้างหน้า (โบกมือ / ยกอุ้งเท้ามาเลีย) อยู่หน้าหัว วาดหลังหัว
-  const raisedL = paw > 0.3, raisedR = wave > 0.3;
+  const raisedL = paw > 0.3, raisedR = wave > 0.3 || (v('chinR') > 0.3 && !useChin);
 
   if (!back) {
     ctx.save();
@@ -1477,7 +1923,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // (แขนกับหัวใจวาดหลังหน้า — อุ้งเท้าแตะใต้คาง ต้องอยู่หน้าหัว)
     } else {
       if (!raisedL) frontArm('left', armL);
-      if (!raisedR) frontArm('right', armR);
+      if (!raisedR && !useChin) frontArm('right', armR);
     }
   }
 
@@ -1496,6 +1942,25 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   if (!back && !useHold) {
     if (raisedL) frontArm('left', armL);
     if (raisedR) frontArm('right', armR);
+  }
+  if (useChin) {
+    // แขนเท้าคางวาดหลังหัว อุ้งเท้าจึงแตะคางอยู่หน้าหน้า — ท่อเดียวมีเส้นรอบครบ หนาเท่ากันตลอด
+    const H = chin;
+    drawLayer(ctx, [{ sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, det: (c) => {
+      c.strokeStyle = pal.shade;
+      c.lineWidth = 12;
+      c.lineCap = 'round';
+      c.stroke(bandEdge(H.bLo, -innerSide(H.bLo), 0, 8));
+      if (!opt.noStripes) {
+        const st = [];
+        for (const i of [3, 5]) {
+          const q = H.bLo.pts[i], nx = -Math.sin(q.a), ny = Math.cos(q.a);
+          st.push([q.x + nx * 19, q.y + ny * 19, q.x + nx * 6, q.y + ny * 6]);
+        }
+        sitStripes(c, pal, st);
+      }
+      H.pw.det(c, H.all);
+    } }], pal, hooks, opt);
   }
   if (useHold) {
     // หัวใจวาดก่อน อุ้งเท้าสองข้างทับขอบหัวใจ = ประคองไว้ ไม่ใช่ถือแปะหน้า

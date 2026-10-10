@@ -79,7 +79,7 @@ const IDLE_ACTS = [
   // หาวสั้นกว่าท่าอื่น — ปากอ้าค้างนานกว่านี้อ่านเป็นภาพค้าง ไม่ใช่การหาว
   // ส่วนท่าอื่นเป็นท่าพักอยู่แล้ว ค้างนานเท่าไหร่ก็ยังดูเป็นธรรมชาติ
   { pose: 'yawn', hold: 180, voice: 'yawn' },            // หาว 3 วินาที
-  { pose: 'sit', hold: IDLE_HOLD, voice: 'mew' },        // นั่ง
+  { pose: 'sit', hold: 420, voice: 'mew' },              // นั่ง — ค้าง 7 วินาที (นานกว่าท่าอื่น ผู้ใช้ขอ)
   { pose: 'groom', hold: IDLE_HOLD, voice: 'purr' },     // นั่งเลียอุ้งเท้า
   { pose: 'loaf', hold: IDLE_HOLD, voice: 'snooze' },    // หมอบเป็นก้อนขนมปัง
 ];
