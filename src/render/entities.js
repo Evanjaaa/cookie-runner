@@ -3529,7 +3529,7 @@ export function drawPlayer(ctx, player, isDead, s, mouthOpen = false, dance = 0,
  * และต้องอ่านออกจากรูปเงาล้วน ๆ เพราะมุมมองเป็นหน้าตรงเหมือนกันหมด
  * (ดูรายละเอียดของแต่ละท่าที่ REACT_ACTS ใน src/game.js)
  */
-const IDLE_SHAPE = {
+export const IDLE_SHAPE = {
   stand: {},
   yawn: { mouth: 1, shut: 1, tilt: -0.1 },
   sit: { sit: 1 },

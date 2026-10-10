@@ -52,6 +52,7 @@ function splitFish(list) {
 }
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
 import { setCatEdgeScale } from './render/entities.js';
+import { CAT2, drawCat2 } from './render/cat2.js';
 import { gfxLevel } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
@@ -3301,7 +3302,9 @@ export class Game {
     // กราฟิกระดับสูง: วาดตัวน้องลงชั้นแยกก่อนแล้วแปะ — ชั้นนี้ใช้เป็นแม่แบบรับแสงตะเกียงตอนท้าย
     // (source-over ผ่านชั้นแยกให้ภาพเท่าวาดตรงทุกพิกเซล)
     const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
-    drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
+    if (CAT2.home) drawCat2(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    else drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
     if (lit) blitLayer(ctx, lit.canvas, 'source-over', this.homeLitRect);
     this.drawHomeFx(ctx);
     this.drawLove(ctx);
