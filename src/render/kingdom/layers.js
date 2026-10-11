@@ -129,20 +129,68 @@ const SPARKS = 14;
  * ไม่เลื่อนตามฉาก ท้องฟ้าที่เลื่อนได้จะทำให้รู้สึกว่าโลกเล็ก
  * (ของที่ "อยู่ไกลจนไม่ขยับ" คือสิ่งที่บอกสเกลของโลกให้สมองรู้)
  */
-export function drawKingdomSky(ctx, p) {
+export function drawKingdomSky(ctx, p, extTop = 0) {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, p.sky[0]);
   g.addColorStop(0.52, p.sky[1]);
   g.addColorStop(1, p.sky[2]);
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
+  // ต่อฟ้าขึ้นไปเหนือขอบบน (extTop) — เหนือ 0 ไล่สีค้างที่สีบนสุด จึงต่อกันเนียนไม่มีรอย
+  ctx.fillRect(0, -extTop, W, H + extTop);
 
   // ดวงอาทิตย์อยู่หลังปราสาทเยื้องขวา — แสงจึงมาจากทางเดียวกับไฮไลต์ของทุกชิ้น
   const sun = ctx.createRadialGradient(W * 0.62, 96, 12, W * 0.62, 96, 240);
   sun.addColorStop(0, p.sunGlow);
   sun.addColorStop(1, 'rgba(255,233,186,0)');
   ctx.fillStyle = sun;
-  ctx.fillRect(0, 0, W, GROUND_Y);
+  ctx.fillRect(0, -extTop, W, GROUND_Y + extTop);
+}
+
+/**
+ * ลายพื้นส่วนที่ต่อลงไปใต้ขอบล่าง (หน้าแรกบน iPad) — ใบไม้ กรวด ดอกไม้จิ๋ว ชุดเดียวกับลายพื้นเดิม
+ * วางด้วย hash ตายตัว ภาพจึงนิ่ง ไม่กะพริบทุกครั้งที่วาดใหม่ · ใกล้ตากว่า = ชิ้นใหญ่กว่านิด
+ */
+function groundBitsExt(c, p, eb) {
+  const n = Math.round(46 * eb / 100);
+  const hh = (v) => { const s = Math.sin(v * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+  c.save();
+  for (let i = 0; i < n; i++) {
+    const x = hh(i * 3.7 + 9) * W;
+    const y = H - 4 + hh(i * 6.1 + 3) * (eb + 4);
+    const sz = 1.5 + (y - H) / Math.max(1, eb) * 0.5;
+    const kind = hh(i * 9.7 + 1);
+    if (kind < 0.42) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(hh(i * 2.9) * Math.PI * 2);
+      c.globalAlpha = 0.8;
+      c.fillStyle = hh(i * 4.1) < 0.5 ? p.mossLight : p.moss;
+      c.beginPath();
+      c.ellipse(0, 0, 5.5 * sz, 2.4 * sz, 0, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    } else if (kind < 0.8) {
+      c.globalAlpha = 0.28;
+      c.fillStyle = p.sandDark;
+      c.beginPath();
+      c.ellipse(x, y, 4.5 * sz, 1.9 * sz, 0, 0, Math.PI * 2);
+      c.fill();
+    } else {
+      c.globalAlpha = 0.9;
+      c.fillStyle = hh(i * 6.3) < 0.5 ? '#FFFFFF' : '#F8B6D2';
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2;
+        c.beginPath();
+        c.arc(x + Math.cos(a) * 2.6 * sz, y + Math.sin(a) * 1.8 * sz, 1.9 * sz, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.fillStyle = '#F6C64E';
+      c.beginPath();
+      c.arc(x, y, 1.3 * sz, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+  c.restore();
 }
 
 /**
@@ -151,11 +199,12 @@ export function drawKingdomSky(ctx, p) {
  * ขอบบนของพื้นเป็นเส้นหยักเบา ๆ ไม่ใช่เส้นตรง พื้นตรงเป๊ะจะอ่านเป็น "แถบ UI"
  * ซึ่งเป็นสิ่งเดียวที่ทำให้ฉากหลุดจากความเป็นเกมเร็วที่สุด
  */
-export function drawKingdomGround(ctx, worldX, p, t) {
+export function drawKingdomGround(ctx, worldX, p, t, extBottom = 0) {
   const top = GROUND_Y;
 
   ctx.fillStyle = p.sand;
-  ctx.fillRect(0, top, W, H - top);
+  ctx.fillRect(0, top, W, H - top + extBottom);
+  if (extBottom > 0) groundBitsExt(ctx, p, extBottom);
 
   // แถบสว่างด้านบนของพื้น = แสงตกกระทบ ทำให้พื้นมีความหนา ไม่ใช่แผ่นสีเดียว
   ctx.fillStyle = p.sandLight;

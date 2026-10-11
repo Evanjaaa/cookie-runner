@@ -72,21 +72,24 @@ export function drawKingdom(ctx, tick, opts = {}) {
 
   ctx.save();
   // ตัดทุกอย่างให้อยู่ในกรอบฉาก ของที่ยื่นออกนอกขอบจะไม่ไปโผล่ทับอย่างอื่น
+  // extTop = ฟ้าที่ต่อขึ้นไปเหนือขอบบนของฉาก (หน้าแรกบนจอสัดส่วนเตี้ยอย่าง iPad ดู main.js homeCoverView)
+  // extBottom = พื้นทรายที่ต่อลงไปใต้ขอบล่าง (คู่กัน — น้องจึงอยู่กลางจอได้)
+  const extTop = opts.extTop || 0, extBottom = opts.extBottom || 0;
   ctx.beginPath();
-  ctx.rect(0, 0, VIEW.W, VIEW.H);
+  ctx.rect(0, -extTop, VIEW.W, VIEW.H + extTop + extBottom);
   ctx.clip();
 
   const part = opts.part || 'all';
   if (part !== 'near') {
-    drawKingdomSky(ctx, p);
+    drawKingdomSky(ctx, p, extTop);
     if (fx) fxSky(ctx, p, tick);
   }
   drawKingdomBack(ctx, worldX, p, tick, fx ? FX_HOOKS : null,
     part === 'far' ? (l) => FAR_LAYERS.has(l.name) : part === 'near' ? (l) => !FAR_LAYERS.has(l.name) : null);
   if (part === 'far') { ctx.restore(); return; }
   if (fx) fxAir(ctx, p, tick);
-  drawKingdomGround(ctx, worldX, p, tick);
-  if (fx) fxGround(ctx, worldX, p, tick);
+  drawKingdomGround(ctx, worldX, p, tick, extBottom);
+  if (fx) fxGround(ctx, worldX, p, tick, extBottom);
   drawKingdomFront(ctx, worldX, p, tick, opts);
   if (fx) fxFront(ctx, worldX, p, tick, opts);
 

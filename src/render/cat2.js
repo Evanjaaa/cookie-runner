@@ -350,11 +350,14 @@ function rotAt(ctx, p, a) {
  */
 function tailGeom(T, wag, base, wagOff = 0, short = 0) {
   const N = 16, seg = 18 * (1 - short * 0.35);
-  let x = base.x, y = base.y, a = base.a - base.curl * wagOff * 0.35;
+  // ส่ายทั้งหางจากโคนไปมาช้า ๆ (~4 วิ/รอบ) — ยืนเฉย ๆ หางก็ไม่นิ่ง (wag = 1 ตอนว่าง ลดลงตอนเล่นท่า)
+  const swing = Math.sin(T * 1.6) * 0.2 * wag;
+  let x = base.x, y = base.y, a = base.a - base.curl * wagOff * 0.35 + base.curl * swing;
   const pts = [{ x, y, a }];
   for (let i = 1; i <= N; i++) {
     const f = i / N;
-    const w1 = Math.sin(T * 2.3 - i * 0.42) * 0.055;
+    // คลื่นวิ่งจากโคนไปปลาย ปลายหางจึงสะบัดตามหลังโคนเป็นจังหวะ ๆ (ดูนุ่ม มีน้ำหนัก)
+    const w1 = Math.sin(T * 2.3 - i * 0.42) * 0.085;
     const w2 = Math.sin(T * 0.9 - i * 0.25 + 1.7) * 0.03;
     a += base.curl * ((0.02 + 0.2 * f) * (1 + short * 1.4) + (w1 + w2) * f * wag);
     x += Math.cos(a) * seg;
@@ -802,9 +805,9 @@ const SIT = (() => {
   const torso = new Path2D();
   torso.moveTo(300, 428);
   torso.bezierCurveTo(236, 428, 194, 458, 184, 504);
-  torso.bezierCurveTo(176, 552, 192, 606, 230, 638);
-  torso.lineTo(370, 638);
-  torso.bezierCurveTo(408, 606, 424, 552, 416, 504);
+  torso.bezierCurveTo(176, 552, 190, 612, 232, 648);
+  torso.lineTo(368, 648);
+  torso.bezierCurveTo(410, 612, 424, 552, 416, 504);
   torso.bezierCurveTo(406, 458, 364, 428, 300, 428);
   torso.closePath();
   const ell = (x, y, rx, ry) => {
@@ -1230,7 +1233,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const list = L ? [
       [[262, 476 + kneadT * 10], knead * (1 - clasp)],          // นวด/กอดที่อก
       [[282, 478 + offer * 30], clasp],                          // ประคองหัวใจ
-      [[281, 502], offer * (1 - clasp)],                         // ยื่นให้คนดู
+      [[281, 502], offer * (1 - clasp) * (1 - v('tada'))],     // ยื่นให้คนดู (กางแขนทาดาแล้วไม่ดึงกลับมาที่อก — offer ยังค้างไว้ให้หัวใจจิ๋วลอย)
       [[256 + scratchT * 7, 508 + scratchT * 8], scratch],       // เกาพุง
       [[100, 515], reachL],                                      // เอื้อมไปหาหาง
       [[283, 368 + lick * 8], paw],                              // ยกอุ้งเท้ามาเลีย
@@ -1238,14 +1241,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       [[104, 490], yawn],                                        // หาว: แขนกางออกเฉียงลงนิด ๆ แขนเกือบตรง (บิดขี้เกียจ)
       // ลอยเฟี้ยว: กางแขนออกข้าง — เป้าเฉียงลงนิดในพิกัดตัว เพราะตัวเอียงตามเข็มอยู่ (roll) บนจอจึงออกมาเป็นกางเฉียงขึ้น
       [[90, 468], v('swingL')],
+      [[104, 404], v('tada')],                                   // กางแขน "ทาดา~" หลังส่งหัวใจ
     ] : [
       [[338, 476 - kneadT * 10], knead * (1 - clasp)],
       [[318, 478 + offer * 30], clasp],
-      [[319, 502], offer * (1 - clasp)],
+      [[319, 502], offer * (1 - clasp) * (1 - v('tada'))],
       [[466 + waveT * 14, 366 + Math.abs(waveT) * 4], wave],     // โบกมือ
       [[368, 548], loaf],
       [[496, 490], yawn],
       [[336, 384], v('chinR')],                                  // ลอยเฟี้ยว: อุ้งเท้าเท้าคาง
+      [[496, 404], v('tada')],
     ];
     const tg = armTarget(list);
     if (tg) {
@@ -1539,12 +1544,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const bandUpL = spineBand(upL, 8, () => 26);
     const bandLoL = spineBand(loL, 8, (i) => 23 - 1.5 * (i / 8));
     const sway2 = hang * 6;
-    const bandR = spineBand(SIT_ARM.right.map(([x, y], i) => [x + (i >= 2 ? sway2 : 0), y + breath * 1.2 * (i / 4)]), 12, (i) => 27 - 2 * (i / 12));
+    // แขนขวา: หนาเท่าแขนซ้าย (26 → 22) อุ้งเท้าขนาดเดียวกับข้างซ้าย — เดิมอ้วนกว่าอีกข้างจนดูไม่เท่ากัน
+    const bandR = spineBand(SIT_ARM.right.map(([x, y], i) => [x + (i >= 2 ? sway2 : 0), y + breath * 1.2 * (i / 4)]), 12, (i) => 25 - 3 * (i / 12));
     const flick = shape?.wag != null ? Math.sin(shape.wag * 1.2) * k : 0;
     const tw = Math.sin(T * 1.6) * 3 + flick * 10;
     const bandItem = (b, det) => ({ sil: [b.path], all: b.path, xf: grow, det });
     const TS = spineBand([[214, 612], [152, 614], [116, 562], [120, 502], [148 + tw * 0.4, 462], [186 + tw, 450 - tw * 0.3]], 16, (i) => 19.5 - 5.5 * (i / 16));
-    if (sc2 < 0.02) {
+    // ท่าเกาท้องใช้ตัวนั่งแบบเดิม (สะโพกกลม เท้าหลังครีม แขนพับ) ตลอดทั้งท่า — ผู้ใช้ชอบทรงนี้
+    // ตัดสินจาก "เป็นท่าเกา" ไม่ใช่น้ำหนักแขน ไม่งั้นต้นท่าจะเห็นตัวนั่งแบบใหม่แว้บหนึ่งก่อนสลับ
+    const scratchMove = shape != null && shape.scratch !== undefined;
+    if (!scratchMove) {
       // เลียอุ้งเท้า (ตามภาพอ้างอิง): ขาหน้าซ้ายจอยกพับขึ้นมาแตะปาก ขาอีกข้างวางเหมือนนั่งปกติ
       const lift = gr > 0.02 ? ease(gr) : 0;
       // ── นั่งเฉย ๆ: ตัวระฆัง (SIT2) + ขาหน้าสองท่อนชัด ๆ + หางวางกับพื้น ──
@@ -1625,21 +1634,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         all.addPath(band.path);
         all.addPath(pw.blob);
         all.addPath(cap);
-        drawLayer(ctx, [{ sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => {
-          c.strokeStyle = pal.shade;
-          c.lineWidth = 12;
-          c.lineCap = 'round';
-          c.stroke(bandEdge(band, -innerSide(band), 2, 9));
-          if (!opt.noStripes) {
-            const st = [];
-            for (const i of [4, 7]) {
-              const q = band.pts[i], nx = -Math.sin(q.a), ny = Math.cos(q.a);
-              st.push([q.x + nx * 18, q.y + ny * 18, q.x + nx * 5, q.y + ny * 5]);
-            }
-            sitStripes(c, pal, st);
-          }
-          pw.det(c, all);
-        } }], pal, hooks, opt);
+        // เนื้อแขนสีขนเรียบ ๆ ไม่ใส่เงา/ลายส้มเข้ม (บนแขนที่พับเป็นรูป S มันอ่านเป็นขีดแปลก ๆ) — เหลือแค่อุ้งเท้าครีม
+        drawLayer(ctx, [{ sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => pw.det(c, all) }], pal, hooks, opt);
       }
       ctx.restore();
       return;
@@ -1677,22 +1673,33 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       bandItem(bandR, armDet),
       { sil: [SIT.haunchL], all: SIT.haunchL, xf: grow, det: haunchDet },
       { sil: [SIT.haunchR], all: SIT.haunchR, xf: grow, det: haunchDet },
+      { sil: [SIT.footL, SIT.footR], all: SIT.footL, xf: grow, det: () => {} },
     ], pal, hooks, opt);
     // ── เส้นด้านในตามแบบ (ตัดให้อยู่ในตัว ไม่ล้นเส้นรอบนอก) ──
     const body = new Path2D();
     for (const q of [SIT.torso, bandUpL.path, bandR.path, SIT.haunchL, SIT.haunchR]) body.addPath(q);
     ctx.save();
     grow(ctx);
-    ctx.clip(body);
+    // ตัดให้อยู่ในก้อนลำตัวเท่านั้น — ช่วงโค้งต้นขาที่อยู่นอกลำตัวคือเส้นรอบนอกอยู่แล้ว วาดซ้ำจะเป็นเส้นซ้อนหนา
+    ctx.clip(SIT.torso);
+    {
+      // แขนอยู่หน้าต้นขา: เส้นต้นขาต้องหยุดที่ขอบแขน ไม่ลากทับแขน
+      const notArm = new Path2D();
+      notArm.rect(-600, -600, 1800, 2000);
+      notArm.addPath(bandR.path);
+      notArm.addPath(pawOf(bandR, pal, 27, 22).blob);
+      notArm.addPath(bandUpL.path);
+      ctx.clip(notArm, 'evenodd');
+    }
     ctx.strokeStyle = pal.line;
     ctx.lineWidth = LW_IN;
     ctx.lineCap = 'round';
     // ขอบบนต้นขา: โค้งจากขอบตัวข้ามขึ้นมาแล้วลงหาเท้า
     ctx.beginPath();
-    ctx.ellipse(204, 598, 55, 50, 0, Math.PI * 1.14, Math.PI * 2.18);
+    ctx.ellipse(204, 598, 55, 50, 0, Math.PI * 1.24, Math.PI * 2.18);
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(396, 598, 55, 50, 0, Math.PI * 0.82, Math.PI * 1.86);
+    ctx.ellipse(396, 598, 55, 50, 0, Math.PI * 0.82, Math.PI * 1.76);
     ctx.stroke();
     ctx.restore();
     // ขอบในแขนท่อนบนซ้าย: หยุดตรงที่แขนท่อนล่างพับมาทับพอดี (ไม่ล้ำเข้าไปในแขนท่อนล่าง)
@@ -1708,68 +1715,137 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.strokeStyle = pal.line;
       ctx.lineWidth = LW_IN;
       ctx.lineCap = 'round';
-      ctx.stroke(bandEdge(bandUpL, innerSide(bandUpL), 1, 8));
+      // เริ่มกลางแขน ไม่ลากขึ้นไปถึงอก — เส้นแบ่งน้อยลง ตัวดูเป็นก้อนเดียว
+      ctx.stroke(bandEdge(bandUpL, innerSide(bandUpL), 3, 8));
       ctx.setTransform(m2);
       ctx.restore();
     }
-    // แขนขวาช่วงล่าง + อุ้งเท้า: อยู่หน้าพุง มีเส้นของตัวเอง — ตัดเฉพาะใต้ระดับศอก ข้างบนยังกลืนกับตัว
+    // แขนขวา: ขอบนอกกลืนกับตัวอยู่แล้ว (อยู่ในเงาก้อนตัว) — ตรงนี้วาดแค่อุ้งเท้า + ขอบในแขนช่วงล่างเส้นเดียว ปลายมน
+    // (เดิมวาดทั้งชั้นแล้วตัดด้วยสี่เหลี่ยม ปลายเส้นเลยเป็นเหลี่ยมตัดตรง)
     {
-      const pr = pawOf(bandR, pal, 30, 24);
+      const pr = pawOf(bandR, pal, 27, 22);
       const allR = new Path2D();
       allR.addPath(bandR.path);
       allR.addPath(pr.blob);
       const m3 = ctx.getTransform();
+      // ช่วงที่แขนวางหน้าต้นขา: วาดแขนพร้อมเส้นขอบของตัวเองทับต้นขา (แขนอยู่หน้า เส้นแขนทับเส้นขา)
       ctx.save();
       grow(ctx);
-      const below = new Path2D();
-      // เกือบทั้งแขน (เว้นโคนใต้หัว) — ขอบในแขนมาจากชั้นนี้เส้นเดียว ไม่ซ้อนกับเส้นอื่นจนหนาไม่เท่ากัน
-      below.rect(300, bandR.pts[1].y, 300, 400);
-      ctx.clip(below);
+      ctx.clip(SIT.haunchR);
       ctx.setTransform(m3);
-      drawLayer(ctx, [{ sil: [bandR.path, pr.blob], all: allR, xf: grow, det: (c) => {
-        armDet(c);
-        pr.det(c, allR);
-      } }], pal, hooks, opt);
+      drawLayer(ctx, [bandItem(bandR, () => {})], pal, hooks, opt);
+      ctx.restore();
+      // อุ้งเท้า: เส้นรอบเฉพาะส่วนที่ยื่นพ้นแขน
+      ctx.save();
+      grow(ctx);
+      const outArm = new Path2D();
+      outArm.rect(-600, -600, 1800, 2000);
+      outArm.addPath(bandR.path);
+      ctx.clip(outArm, 'evenodd');
+      ctx.setTransform(m3);
+      drawLayer(ctx, [{ sil: [pr.blob], all: pr.blob, xf: grow, det: () => {} }], pal, hooks, opt);
+      ctx.restore();
+      ctx.save();
+      grow(ctx);
+      ctx.fillStyle = pal.cat;
+      ctx.fill(pr.blob);
+      pr.det(ctx, allR);
+      // ขอบในแขนช่วงศอก → อุ้งเท้า (ไม่ล้ำเข้าไปในอุ้งเท้า)
+      const notPaw = new Path2D();
+      notPaw.rect(-600, -600, 1800, 2000);
+      notPaw.addPath(pr.blob);
+      ctx.clip(notPaw, 'evenodd');
+      ctx.strokeStyle = pal.line;
+      ctx.lineWidth = LW_IN;
+      ctx.lineCap = 'round';
+      ctx.stroke(bandEdge(bandR, innerSide(bandR), 5, bandR.N));
       ctx.restore();
     }
-    // เท้าหลังครีม
-    const feet = new Path2D();
-    feet.addPath(SIT.footL);
-    feet.addPath(SIT.footR);
-    drawLayer(ctx, [{ sil: [SIT.footL, SIT.footR], all: feet, xf: grow, det: (c) => {
-      c.fillStyle = pal.cream;
-      c.fill(feet);
-      c.strokeStyle = pal.line;
-      c.lineWidth = LW * 0.8;
-      c.lineCap = 'round';
-      for (const cx of [216, 386]) for (const dx of [-11, 11]) {
-        c.beginPath();
-        c.moveTo(cx + dx, 637);
-        c.lineTo(cx + dx, 647);
-        c.stroke();
+    // เท้าหลังครีม — ขอบนอกมาจากเงาก้อนตัวแล้ว ตรงนี้ลงครีม + เส้นขอบบนเท้า (เส้นในบางเท่าเส้นอื่น) + ขีดนิ้ว
+    {
+      const feet = new Path2D();
+      feet.addPath(SIT.footL);
+      feet.addPath(SIT.footR);
+      ctx.save();
+      grow(ctx);
+      ctx.fillStyle = pal.cream;
+      ctx.fill(feet);
+      ctx.strokeStyle = pal.line;
+      ctx.lineCap = 'round';
+      // ขอบบนเท้าเท่านั้น (ครึ่งบน) — ครึ่งล่างทับเส้นก้นอยู่แล้ว วาดซ้ำจะหนา
+      ctx.lineWidth = LW_IN;
+      for (const [cx, cy, rx, ry] of [[216, 628, 37, 20], [386, 628, 37, 20]]) {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, Math.PI * 1.02, Math.PI * 1.98);
+        ctx.stroke();
       }
-    } }], pal, hooks, opt);
+      ctx.lineWidth = LW * 0.8;
+      for (const cx of [216, 386]) for (const dx of [-11, 11]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx, 637);
+        ctx.lineTo(cx + dx, 647);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     // ── แขนท่อนล่างซ้าย: พับมาอยู่หน้าพุง มีเส้นของตัวเอง เว้นช่วงที่ซ้อนแขนท่อนบน (ศอกกลืนกัน) ──
     const outUp = new Path2D();
     outUp.rect(-600, -600, 1800, 2000);
     outUp.addPath(bandUpL.path);
     const m1 = ctx.getTransform();
+    // ลงสีเนื้อแขนท่อนล่างเต็มท่อนก่อน — ขอบตัด (evenodd) ตรงศอกเหลือรอยขอบจาง ๆ เป็นช่องโหว่สีอ่อน
     ctx.save();
     grow(ctx);
-    ctx.clip(outUp, 'evenodd');
-    ctx.setTransform(m1);
+    ctx.fillStyle = pal.cat;
+    ctx.fill(bandLoL.path);
+    ctx.restore();
     const pl = pawOf(bandLoL, pal, 28, 22);
     const allL = new Path2D();
     allL.addPath(bandLoL.path);
+    // ศอกมน: วงกลมขนาดเท่าปลายแขนท่อนบน (เส้นศอกทับเส้นเดิมพอดี ไม่ซ้อนหนา)
+    const elbowCap = new Path2D();
+    elbowCap.arc(bandLoL.pts[0].x, bandLoL.pts[0].y, bandUpL.half(bandUpL.N), 0, TAU);
     allL.addPath(pl.blob);
-    drawLayer(ctx, [{ sil: [bandLoL.path, pl.blob], all: allL, xf: grow, det: (c) => {
-      if (!opt.noStripes) {
-        const q = bandLoL.pts[3], nx = -Math.sin(q.a), ny = Math.cos(q.a);
-        sitStripes(c, pal, [[q.x + nx * 17, q.y + ny * 17, q.x + nx * 4, q.y + ny * 4]]);
+    allL.addPath(elbowCap);
+    const elbowY = bandLoL.pts[0].y;
+    for (const below of [true, false]) {
+      ctx.save();
+      grow(ctx);
+      if (below) {
+        const r = new Path2D();
+        r.rect(-600, elbowY, 1800, 2000);
+        ctx.clip(r);
+      } else {
+        const r = new Path2D();
+        r.rect(-600, -600, 1800, elbowY + 602);   // ซ้อนกับช่วงล่างนิดนึง กันรอยต่อขอบจาง
+        ctx.clip(r);
+        ctx.clip(outUp, 'evenodd');
       }
-      pl.det(c, allL);
-    } }], pal, hooks, opt);
-    ctx.restore();
+      ctx.setTransform(m1);
+      drawLayer(ctx, [{ sil: [bandLoL.path, pl.blob, elbowCap], all: allL, xf: grow, det: (c) => {
+        if (!opt.noStripes) {
+          const q = bandLoL.pts[3], nx = -Math.sin(q.a), ny = Math.cos(q.a);
+          sitStripes(c, pal, [[q.x + nx * 17, q.y + ny * 17, q.x + nx * 4, q.y + ny * 4]]);
+        }
+        pl.det(c, allL);
+      } }], pal, hooks, opt);
+      ctx.restore();
+    }
+    {
+      // รอยต่อสองช่วง (เหนือ/ใต้ศอก) เหลือเส้นขนจาง ๆ — ลงสีเนื้อทับแถบบาง ๆ ในวงศอก
+      ctx.save();
+      grow(ctx);
+      const seam = new Path2D();
+      seam.rect(-600, elbowY - 3, 600 + bandLoL.pts[0].x + 34, 6);   // เฉพาะแถวศอก ไม่ไปทับเส้นอุ้งเท้า
+      ctx.clip(seam);
+      ctx.fillStyle = pal.cat;
+      ctx.beginPath();
+      ctx.arc(bandLoL.pts[0].x, bandLoL.pts[0].y, bandUpL.half(bandUpL.N) - 1, 0, TAU);
+      ctx.fill();
+      ctx.fill(bandLoL.path);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.save();
     grow(ctx);
     // รอยเกาบนพุง (ขีดสั้น ๆ ข้างอุ้งเท้าตอนกำลังเกา)

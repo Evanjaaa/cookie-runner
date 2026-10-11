@@ -112,6 +112,7 @@ input, textarea, [contenteditable] { text-wrap: wrap; }
   touch-action: none;
 }
 canvas { display: block; width: 100%; height: auto; }
+
 /* กฎบนทับ [hidden] ของเบราว์เซอร์ (0-0-1 ชนะ 0-1-0 ไม่ได้ก็จริง แต่ [hidden] อยู่ใน
    UA stylesheet ซึ่งแพ้ author stylesheet ทุกกรณี) canvas ที่ตั้ง hidden ไว้จึงยังโผล่
    เป็นกล่องเปล่า — เจอตอนกล่องยืนยัน "ดึงน้องขึ้นมาจากหลุม" ที่ไม่ได้ส่งรูปมา */
@@ -4574,6 +4575,41 @@ canvas[hidden] { display: none; }
     width: 100%;
     height: var(--app-h, 100dvh);
   }
+}
+
+/* ── หน้าแรกบนจอสัดส่วนเตี้ย (iPad ทุกขนาด): ผ้าใบเต็มเวที ──
+   main.js (homeCoverView) มองฉากแบบถอยกล้องนิด — ตัดซ้าย-ขวาไม่เกินข้างละ 8% ส่วนสูงที่เกินต่อเป็นฟ้า
+   (วาดในฉากเอง ไม่ใช่แถบแปะ) จึงไม่มีที่ว่างบน-ล่าง และไม่ยืดภาพ
+   ปุ่มใสบนฉาก (หัวใจ ตัวน้อง กล่องแมว) main.js วัดกรอบฉากจริงแล้ววางตาม
+   เฉพาะหน้าแรก (main.js ใส่ .home-cover) — ตอนวิ่งยังเป็นผ้าใบ 960:420 แบบเดิม */
+@media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) {
+  .stage.home-cover > canvas {
+    width: 100%;
+    height: var(--app-h, 100dvh);
+  }
+}
+/* ── ปุ่มหน้าแรกบน iPad: ใหญ่ขึ้นตามจอ ──
+   --home-ui โตตามความสูงจอ (768 → 1.3 เท่า, 1024 → ~1.6 เท่า; main.js placeHomeOverlays) ปุ่มจึงได้สัดส่วนเดิมกับจอทุกขนาด
+   ใช้ zoom ที่ตัวปุ่ม (ไม่ใช่ทั้งแถว) แถวยังกินกรอบเดิม ปุ่มโตแล้วจัดเรียงใหม่ในแถวเอง ไม่ล้นจอ
+   ช่องไฟแถวซ้าย-ขวาคิดจากความสูงจอ ระยะห่างจึงพอดีกับจอทุกขนาด
+   ปุ่มเล่น/หัวใจใช้ property `scale` (ไม่ชนท่ากดของปุ่ม) จุดยึดอยู่มุมที่ปุ่มเกาะ */
+@media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px) {
+  .stage.home-cover { --home-ui: var(--home-ui-js, 1.3); }   /* ค่าจริง main.js คิดจากความสูงจอ */
+  .stage.home-cover #startPanel .pf-row > *,
+  .stage.home-cover .hud-top > * { zoom: var(--home-ui); }
+  .stage.home-cover #startPanel .lobby { gap: calc(var(--app-h, 100dvh) * .022); }
+  .stage.home-cover #startPanel .lobby-btn { zoom: var(--home-ui); }
+  .stage.home-cover #startPanel #startBtn { scale: var(--home-ui); transform-origin: bottom right; }
+  .stage.home-cover #startPanel .lovebtn { scale: var(--home-ui); }
+  /* ป้ายบ้านลูกเหมียว: ตัวอักษรเท่าชื่อปุ่มในแถวซ้าย-ขวา (10.5px × --home-ui ตามที่ปุ่มขยาย)
+     ไม่ใช้ scale — scale คูณระยะ translate(-50%) ของป้ายไปด้วย ป้ายเลยเยื้องซ้ายไม่อยู่กลางกล่อง */
+  .stage.home-cover #startPanel .homebox-label {
+    font-size: calc(10.5px * var(--home-ui));
+    padding: calc(2px * var(--home-ui)) calc(9px * var(--home-ui)) calc(1.5px * var(--home-ui));
+  }
+  /* หน้าเปิดเกม: โลโก้ (มุมซ้ายบน) กับปุ่มเข้าเกม (มุมขวาล่าง) โตตามจอเหมือนกัน */
+  .stage.home-cover #titlePanel .title-logo { scale: var(--home-ui); transform-origin: top left; }
+  .stage.home-cover #titlePanel #enterBtn { scale: var(--home-ui); transform-origin: bottom right; }
 }
 
 /* ตอนวิ่งจริงไม่มีแผงไหนเปิด — ถ้าเป็นเครื่องที่ canvas ไม่เต็มจอ แถบที่เหลือ

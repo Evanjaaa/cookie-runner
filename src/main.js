@@ -121,8 +121,45 @@ const ctx = canvas.getContext('2d');
  * เพดาน 2 เท่ายังอยู่ เพราะเอฟเฟกต์แสงฟุ้งทำงานกับทั้งเฟรมทุกเฟรม
  * ปล่อยให้โตเกินนั้นเฟรมจะตกบนเครื่องที่ไม่แรง
  */
+/**
+ * ── หน้าแรกบนจอสัดส่วนเตี้ย (iPad ทุกขนาด) ──
+ * ผ้าใบกินเต็มเวที แล้วมองฉากแบบ "ถอยกล้องนิด": ตัดซ้าย-ขวาออกไม่เกิน HOME_KEEP ของความกว้างฉาก
+ * ส่วนสูงที่เกินมาต่อเป็นฟ้าเหนือขอบบน (drawKingdom extTop) — ไม่มีแถบว่าง ไม่ตัดฉากทิ้งมาก
+ * คืน null = ใช้ผ้าใบ 960:420 แบบเดิม (มือถือ คอม และตอนวิ่ง)
+ */
+const HOME_KEEP = 0.84;   // เห็นอย่างน้อย 84% ของความกว้างฉาก (ตัดข้างละไม่เกิน 8%)
+const HOME_CAT_MID = 222; // ความสูงกลางตัวน้องในพิกัดฉาก (เท้าที่ GROUND_Y 320 ตัวสูงราว 200 ที่สเกลมือถือ)
+const COVER_MQ = matchMedia('(hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10)');
+function homeCoverView() {
+  const stage = canvas.parentElement;
+  if (!stage || !stage.classList.contains('home-cover') || !COVER_MQ.matches) return null;
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  const a = r.width / r.height;
+  if (a >= W / H - 0.01) return null;
+  const vw = Math.min(W, Math.max(H * a, W * HOME_KEEP));
+  const vh = vw / a;
+  // น้องอยู่กลางจอ: กึ่งกลางจอตรงกับกลางตัวน้อง (HOME_CAT_MID) — ส่วนสูงที่เกินแบ่งเป็นฟ้าบน + พื้นล่าง
+  const extra = Math.max(0, vh - H);
+  const extTop = Math.min(extra, Math.max(0, vh / 2 - HOME_CAT_MID));
+  return { vw, vh, ox: (W - vw) / 2, extTop, extBottom: extra - extTop, cssW: r.width };
+}
 function fitDPR() {
   const dpr = window.devicePixelRatio || 1;
+  const hv = homeCoverView();
+  canvas.homeExtTop = hv ? hv.extTop : 0;   // ฉากหน้าแรกอ่านค่านี้ไปต่อฟ้า/พื้น (game.drawHomeBackdrop)
+  canvas.homeExtBottom = hv ? hv.extBottom : 0;
+  if (hv) {
+    const d = Math.min(quality().scale, Math.max(1, (hv.cssW / hv.vw) * dpr));
+    const tf = [d, 0, 0, d, -d * hv.ox, d * hv.extTop];
+    const nw = Math.round(hv.vw * d), nh = Math.round(hv.vh * d);
+    if (canvas.width !== nw || canvas.height !== nh) {
+      canvas.width = nw;
+      canvas.height = nh;
+    }
+    ctx.setTransform(...tf);
+    return;
+  }
   const shown = canvas.clientWidth || W;   // 0 ได้ตอน CSS ยังไม่ทันมา
   // เพดานมาจากระดับกราฟิกที่ผู้เล่นเลือก (ดู src/graphics.js) — ตัวที่กินแรงเครื่องที่สุด
   const scale = Math.min(quality().scale, Math.max(1, (shown * dpr) / W));
@@ -3136,26 +3173,70 @@ document.getElementById('btnPet').addEventListener('click', () => {
 // ตัวเลขจริงอยู่ที่ LOVE_BTN ใน game.js ที่เดียว เพราะหัวใจที่ลอยออกจากปุ่ม
 // วาดบน canvas และต้องออกจากจุดเดียวกับที่ CSS วางปุ่มไว้เป๊ะ ๆ
 // เวทีเป็นอัตราส่วน 960:420 ตายตัว เปอร์เซ็นต์จึงหารตรงจากพิกัดฉากได้เลย
-startPanel.style.setProperty('--love-x', ((LOVE_BTN.x / VIEW.W) * 100).toFixed(3) + '%');
-startPanel.style.setProperty('--love-y', ((LOVE_BTN.y / VIEW.H) * 100).toFixed(3) + '%');
-startPanel.style.setProperty('--cat-x', ((CAT_TAP.x / VIEW.W) * 100).toFixed(3) + '%');
-startPanel.style.setProperty('--cat-y', ((CAT_TAP.y / VIEW.H) * 100).toFixed(3) + '%');
-startPanel.style.setProperty('--cat-w', ((CAT_TAP.w / VIEW.W) * 100).toFixed(3) + '%');
-startPanel.style.setProperty('--cat-h', ((CAT_TAP.h / VIEW.H) * 100).toFixed(3) + '%');
-// กล่องแมว: ปุ่มใสคลุมตั้งแต่ปลายฝาถึงฐานกล่อง (HOME_BOX.y คือฐาน)
+// ── พิกัดฉาก → เปอร์เซ็นต์ของแผงหน้าแรก ──
+// แผงกินเต็มเวที แต่ผ้าใบเกมไม่ได้เต็มเวทีเสมอ — จอ 4:3 (iPad) ผ้าใบอยู่กลางจอ เหลือแถบบน-ล่าง
+// ถ้าหารพิกัดฉากตรง ๆ ปุ่มใส (หัวใจ ตัวน้อง กล่องแมว) จะเลื่อนออกจากของที่วาดบนผ้าใบ
+// (ป้าย "บ้านลูกเหมียว" เคยตกไปอยู่ล่างจอบน iPad) จึงวัดกรอบผ้าใบจริงในเวทีแล้วแปลงทุกครั้งที่ขนาดเปลี่ยน
+const stageEl = document.getElementById('stage');
+function sceneBox() {
+  const s = stageEl.getBoundingClientRect(), c = canvas.getBoundingClientRect();
+  if (!s.width || !s.height || !c.width || !canvas.width) return { x: 0, y: 0, w: 1, h: 1 };
+  // กรอบฉาก 960x420 บนจอ = ตำแหน่งผ้าใบ + transform ของผ้าใบ (หน้าแรกบน iPad มีเลื่อน/ต่อฟ้า)
+  const m = ctx.getTransform(), k = c.width / canvas.width;
+  const x0 = c.left + m.e * k, y0 = c.top + m.f * k;
+  return { x: (x0 - s.left) / s.width, y: (y0 - s.top) / s.height, w: (W * m.a * k) / s.width, h: (H * m.d * k) / s.height };
+}
+const scenePct = (v) => (v * 100).toFixed(3) + '%';
+function placeHomeOverlays() {
+  // ขนาดปุ่มหน้าแรกบน iPad โตตามความสูงจอ (ใช้ใน style.css --home-ui)
+  const sh = stageEl.getBoundingClientRect().height;
+  if (sh) stageEl.style.setProperty('--home-ui-js', Math.min(1.75, Math.max(1.2, sh / 590)).toFixed(3));
+  const b = sceneBox();
+  // หน้าแรกขยายเต็มจอ (iPad) ขอบซ้าย-ขวาของฉากถูกตัด จุดเดิมของกล่องแมวหลุดจอ/โดนปุ่มเล่นบัง
+  // ฝั่งขวาเหลือที่ไม่พอ (แถวปุ่มขวา + ปุ่มเล่นที่ขยายแล้ว) → ย้ายไปมุมซ้ายล่างหน้าพรม
+  // ถัดจากแถวปุ่มซ้ายพอดี (วัดขอบขวาของแถวจริง) ย่อลงนิด ป้ายชื่ออยู่เหนือกล่อง
+  const cover = stageEl.classList.contains('home-cover') && b.w > 1.01;
+  let spot;
+  if (cover) {
+    const s = 0.66;
+    const sr = stageEl.getBoundingClientRect();
+    const pxPerWorld = (b.w * sr.width) / VIEW.W;
+    const col = startPanel.querySelector('.lobby.left')?.getBoundingClientRect();
+    const colRight = col && col.width ? col.right - sr.left : 0.11 * sr.width;
+    const halfPx = (65 * s / 0.88) * pxPerWorld;
+    // ป้ายชื่อเหนือกล่องกว้างกว่าตัวกล่อง — เว้นจากแถวปุ่มตามครึ่งความกว้างป้าย ไม่ให้ป้ายทับปุ่มล่างสุด
+    const lab = document.querySelector('#btnHomeBox .homebox-label')?.getBoundingClientRect();
+    const half = Math.max(halfPx, lab && lab.width ? lab.width / 2 : 0);
+    const sx = colRight + 18 + half;                       // กลางกล่องบนจอ (px จากขอบซ้ายเวที)
+    spot = { x: (sx / sr.width - b.x) / b.w * VIEW.W, y: 384, s };
+  } else {
+    spot = { ...(shortScreen.matches ? HOME_BOX_SPOTS.short : HOME_BOX_SPOTS.wide), s: 0.88 };
+  }
+  Object.assign(HOME_BOX, spot, { w: 130 * spot.s / 0.88, h: 120 * spot.s / 0.88 });
+  document.getElementById('btnHomeBox').classList.toggle('up', cover || shortScreen.matches);
+  const X = (x) => scenePct(b.x + (x / VIEW.W) * b.w), Y = (y) => scenePct(b.y + (y / VIEW.H) * b.h);
+  const Wd = (w) => scenePct((w / VIEW.W) * b.w), Ht = (h) => scenePct((h / VIEW.H) * b.h);
+  const st = startPanel.style;
+  st.setProperty('--love-x', X(LOVE_BTN.x));
+  st.setProperty('--love-y', Y(LOVE_BTN.y));
+  st.setProperty('--cat-x', X(CAT_TAP.x));
+  st.setProperty('--cat-y', Y(CAT_TAP.y));
+  st.setProperty('--cat-w', Wd(CAT_TAP.w));
+  st.setProperty('--cat-h', Ht(CAT_TAP.h));
+  // กล่องแมว: ปุ่มใสคลุมตั้งแต่ปลายฝาถึงฐานกล่อง (HOME_BOX.y คือฐาน)
+  st.setProperty('--box-x', X(HOME_BOX.x));
+  st.setProperty('--box-y', Y(HOME_BOX.y - HOME_BOX.h / 2));
+  st.setProperty('--box-w', Wd(HOME_BOX.w));
+  st.setProperty('--box-h', Ht(HOME_BOX.h));
+}
 // จอเตี้ย ปุ่มเล่นใหญ่จนทับมุมขวาล่าง — ย้ายกล่องไปซ้ายของพรม ป้ายชื่อขึ้นไปอยู่เหนือกล่อง
 // (เกณฑ์เดียวกับ @media (max-height: 520px) ที่ย่อปุ่มต่าง ๆ ใน style.css)
 const shortScreen = matchMedia('(max-height: 520px)');
-function placeHomeBox() {
-  Object.assign(HOME_BOX, shortScreen.matches ? HOME_BOX_SPOTS.short : HOME_BOX_SPOTS.wide);
-  startPanel.style.setProperty('--box-x', ((HOME_BOX.x / VIEW.W) * 100).toFixed(3) + '%');
-  startPanel.style.setProperty('--box-y', (((HOME_BOX.y - HOME_BOX.h / 2) / VIEW.H) * 100).toFixed(3) + '%');
-  startPanel.style.setProperty('--box-w', ((HOME_BOX.w / VIEW.W) * 100).toFixed(3) + '%');
-  startPanel.style.setProperty('--box-h', ((HOME_BOX.h / VIEW.H) * 100).toFixed(3) + '%');
-  document.getElementById('btnHomeBox').classList.toggle('up', shortScreen.matches);
-}
-placeHomeBox();
-shortScreen.addEventListener('change', placeHomeBox);
+placeHomeOverlays();
+shortScreen.addEventListener('change', placeHomeOverlays);
+new ResizeObserver(placeHomeOverlays).observe(stageEl);
+new ResizeObserver(placeHomeOverlays).observe(canvas);
+
 
 // ── แถบบนหน้าแรก: กันการ์ดโปรไฟล์ชนกระเป๋าเงิน ──
 // การ์ดโปรไฟล์ (+ปุ่มรางวัลเลเวล/เช็คอิน) เกาะซ้าย กระเป๋าเงิน+ปุ่มกลมเกาะขวา สองก้อนวางแยกกัน
@@ -3166,10 +3247,20 @@ shortScreen.addEventListener('change', placeHomeBox);
 const pfRow = startPanel.querySelector('.pf-row');
 const walletEl = document.querySelector('.hud-top .wallet');
 const TOPBAR_GAP = 8;      // ระยะเว้นขั้นต่ำระหว่างสองก้อน (px จอ)
+const hudTopEl = document.querySelector('.hud-top');
 function fitTopBar() {
   if (!pfRow || !walletEl) return;
   pfRow.style.transform = '';
   walletEl.style.transform = '';
+  // หน้าแรกบน iPad ปุ่มโตขึ้นคนละขนาด (การ์ดโปรไฟล์สูงกว่าปุ่มกลม) — เลื่อนแถวขวาลงให้กึ่งกลางตรงกับการ์ด
+  // ทั้งแถวบนจึงอยู่บรรทัดเดียวกัน
+  if (hudTopEl) {
+    hudTopEl.style.translate = '';
+    if (stageEl.classList.contains('home-cover')) {
+      const pr = pfRow.getBoundingClientRect(), hr = hudTopEl.getBoundingClientRect();
+      if (pr.height && hr.height) hudTopEl.style.translate = `0 ${Math.round(pr.top + pr.height / 2 - (hr.top + hr.height / 2))}px`;
+    }
+  }
   const p = pfRow.getBoundingClientRect();
   const w = walletEl.getBoundingClientRect();
   if (!p.width || !w.width) return;                       // ไม่ได้อยู่หน้าแรก
@@ -8092,6 +8183,17 @@ function loop(now) {
   }
 
   game.update(dt);
+  // หน้าแรกบน iPad: ขยายฉากเต็มความสูงจอ (ดู .home-cover ใน style.css) — เฉพาะตอนล็อบบี้เปิดอยู่
+  // หน้าเปิดเกม (titlePanel) ก็เห็นฉากหน้าแรกเต็ม ๆ ข้างหลังเหมือนกัน — ใช้มุมมองเดียวกัน
+  const homeCover = game.state === STATE.READY && !game.catRoom && !game.inRoom
+    && (!startPanel.classList.contains('hidden') || !titlePanel.classList.contains('hidden'));
+  if (stageEl.classList.contains('home-cover') !== homeCover) {
+    stageEl.classList.toggle('home-cover', homeCover);
+    // ผ้าใบเปลี่ยนมุมมองทันที (ไม่รอ ResizeObserver — ขนาดกล่อง CSS อาจไม่เปลี่ยน แต่ transform เปลี่ยน)
+    fitDPR();
+    // ปุ่มบนแถวบนขยายตามโหมดนี้ (style.css) — วัดกันชนแถวบนใหม่ + วางกล่องแมวใหม่หลังเลย์เอาต์เปลี่ยน
+    requestAnimationFrame(() => { fitTopBar(); placeHomeOverlays(); });
+  }
 
   // วาดเมื่อถึงรอบของสถานะนั้น ๆ เท่านั้น — เฟรมที่ข้ามไปผ้าใบยังค้างภาพเดิมอยู่
   // จึงไม่มีอะไรกะพริบหรือหายไป

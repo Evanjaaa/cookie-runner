@@ -179,16 +179,17 @@
     };
     const IDLE = { id: 'idle', dur: 60 * 20, voices: [], fx: [], shape: null };
     // ท่าว่างของหน้าแรก (เกมสุ่มเล่นเองตอนไม่มีใครแตะ) — ค่อย ๆ เข้าท่า ค้าง แล้วค่อย ๆ ออก เหมือนในเกม
-    const rest = (pose, hold) => ({
-      id: 'rest-' + pose, dur: hold + 60, voices: [], fx: [],
+    // ease = เฟรมช่วงเข้า-ออกท่า (ให้ตรงกับ IDLE_ACTS ใน game.js)
+    const rest = (pose, hold, ease = 30) => ({
+      id: 'rest-' + pose, dur: hold + ease * 2, voices: [], fx: [],
       shape: (f) => {
-        const w = f < 30 ? E.io(f / 30) : f > hold + 30 ? E.io(Math.max(0, (hold + 60 - f) / 30)) : 1;
+        const w = f < ease ? E.io(f / ease) : f > hold + ease ? E.io(Math.max(0, (hold + ease * 2 - f) / ease)) : 1;
         const o = {};
         for (const [key, val] of Object.entries(IDLE_SHAPE[pose])) o[key] = typeof val === 'number' ? val * w : (w > 0.5 ? val : '');
         return o;
       },
     });
-    const MOVES = [IDLE, ...HOME_MOVES, LOVE_MOVE, rest('yawn', 180), rest('sit', 360), rest('groom', 300), rest('loaf', 240)];
+    const MOVES = [IDLE, ...HOME_MOVES, LOVE_MOVE, rest('yawn', 180), rest('sit', 360, 48), rest('groom', 300), rest('loaf', 240)];
     // ช่องที่น้องแบบใหม่ยังไม่ได้วาด — โชว์สีเหลืองให้รู้ว่ายังขาด
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม

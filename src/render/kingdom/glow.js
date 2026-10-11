@@ -170,14 +170,14 @@ export function fxAir(ctx, p, t) {
 }
 
 /** หลังวาดพื้น (ก่อนของบนพื้น): ลายพื้น แสงอุ่นกลางเวที เงาใต้ของ ขอบล่างเข้ม */
-export function fxGround(ctx, worldX, p, t) {
+export function fxGround(ctx, worldX, p, t, extBottom = 0) {
   cached(ctx, 'ground', (c) => paintGroundBits(c, p));
-  // พื้นไล่มืดลงล่าง — พื้นทรายสีเดียวดูแบน
-  const d = ctx.createLinearGradient(0, GROUND_Y + 10, 0, H);
+  // พื้นไล่มืดลงล่าง — พื้นทรายสีเดียวดูแบน (ต่อพื้นลงล่างบน iPad = ไล่ยาวลงไปถึงขอบล่างจริง)
+  const d = ctx.createLinearGradient(0, GROUND_Y + 10, 0, H + extBottom);
   d.addColorStop(0, 'rgba(170,110,70,0)');
   d.addColorStop(1, 'rgba(150,90,70,.26)');
   ctx.fillStyle = d;
-  ctx.fillRect(0, GROUND_Y + 10, W, H - GROUND_Y - 10);
+  ctx.fillRect(0, GROUND_Y + 10, W, H + extBottom - GROUND_Y - 10);
   // แสงอุ่นตกลงกลางเวที (ที่น้องยืน)
   ctx.save();
   ctx.translate(W / 2, GROUND_Y + 26);
@@ -266,8 +266,9 @@ export function lanternLightMask(lctx, worldX, t) {
     const cy = it.y - 26 * it.s;
     const R = 175 * it.s;
     const g = lctx.createRadialGradient(x, cy, 0, x, cy, R);
-    g.addColorStop(0, `rgba(255,196,112,${0.42 * fl})`);
-    g.addColorStop(0.45, `rgba(255,178,96,${0.2 * fl})`);
+    // แสงที่ตกบนตัวน้อง/กล่อง ลดลง 20% จากเดิม (0.42 / 0.2) — เดิมแรงจนตัวน้องฝั่งตะเกียงดูส้มจัด
+    g.addColorStop(0, `rgba(255,196,112,${0.336 * fl})`);
+    g.addColorStop(0.45, `rgba(255,178,96,${0.16 * fl})`);
     g.addColorStop(1, 'rgba(255,170,90,0)');
     lctx.fillStyle = g;
   } else {

@@ -79,7 +79,8 @@ const IDLE_ACTS = [
   // หาวสั้นกว่าท่าอื่น — ปากอ้าค้างนานกว่านี้อ่านเป็นภาพค้าง ไม่ใช่การหาว
   // ส่วนท่าอื่นเป็นท่าพักอยู่แล้ว ค้างนานเท่าไหร่ก็ยังดูเป็นธรรมชาติ
   { pose: 'yawn', hold: 180, voice: 'yawn' },            // หาว 3 วินาที
-  { pose: 'sit', hold: 420, voice: 'mew' },              // นั่ง — ค้าง 7 วินาที (นานกว่าท่าอื่น ผู้ใช้ขอ)
+  // นั่ง — ค้าง 7 วินาที (นานกว่าท่าอื่น ผู้ใช้ขอ) · ยืน↔นั่งค่อย ๆ ลง 0.8 วิ (ช่วงเปลี่ยนตัวทั้งตัว 26 เฟรมดูรีบไป)
+  { pose: 'sit', hold: 420, ease: 48, voice: 'mew' },
   { pose: 'groom', hold: IDLE_HOLD, voice: 'purr' },     // นั่งเลียอุ้งเท้า
   { pose: 'loaf', hold: IDLE_HOLD, voice: 'snooze' },    // หมอบเป็นก้อนขนมปัง
 ];
@@ -133,7 +134,8 @@ export const CAT_TAP = { x: 480, y: 242, w: 124, h: 180 };
  * ปุ่มใสใน index.html (#btnHomeBox) วางทับตำแหน่งนี้ผ่านตัวแปร CSS ที่ main.js เขียนลงมา
  * จอเตี้ย (มือถือแนวนอน) ปุ่มเล่นใหญ่จนทับมุมขวา — main.js ย้าย x/y ไปจุด SHORT ทางซ้ายของพรมแทน
  */
-export const HOME_BOX = { x: 712, y: 372, w: 130, h: 120 };
+// s = สเกลวาดกล่อง (w/h ของปุ่มใสคิดจากสเกลนี้) — โหมดขยายเต็มจอบน iPad ย่อกล่องลงให้พอที่ว่างข้างตะเกียง
+export const HOME_BOX = { x: 712, y: 372, w: 130, h: 120, s: 0.88 };
 export const HOME_BOX_SPOTS = { wide: { x: 712, y: 372 }, short: { x: 252, y: 398 } };
 
 /**
@@ -214,14 +216,15 @@ const HOME_BG_STEP = 1.9;
 /** ส่วนไกลของฉาก (ฟ้า เมฆ ปราสาท เนิน) วาดใหม่ทุกกี่หน่วยเวลาเกม — 15 ≈ 4 ครั้ง/วิ (ดู drawHomeBackdrop) */
 const HOME_FAR_STEP = 15;
 
-function dimForUi(ctx, k = 1) {
+function dimForUi(ctx, k = 1, extBottom = 0) {
   const { W, H } = VIEW;
   const INK = '18,7,30';
   const a = (v) => (v * k).toFixed(3);
 
   // 1) หรี่เรียบบาง ๆ ทั้งผืน แค่พอกลบความจัดของสีให้เข้ากับโทนม่วงของเกม
+  // (ทาเลยกรอบฉากขึ้นไปด้วย — หน้าแรกบน iPad ต่อฟ้าเหนือขอบบน ส่วนนั้นต้องหรี่เท่ากัน ไม่งั้นเห็นรอยต่อ)
   ctx.fillStyle = `rgba(${INK},${a(0.08)})`;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, -H, W, H * 3);
 
   // 2) ขอบมืดนุ่ม — ยกจุดศูนย์กลางขึ้นไปเหนือกลางจอ (0.34H)
   //    ขอบล่างจึงอยู่ไกลจากศูนย์กลางกว่าขอบบน แล้วมืดกว่าเองโดยไม่ต้องวาดแยก
@@ -230,14 +233,15 @@ function dimForUi(ctx, k = 1) {
   edge.addColorStop(0.62, `rgba(${INK},${a(0.10)})`);
   edge.addColorStop(1, `rgba(${INK},${a(0.46)})`);
   ctx.fillStyle = edge;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, -H, W, H * 3);
 
   // 3) แถบล่างอีกชั้น เริ่มจากครึ่งจอลงไป ให้พื้นจมหายเข้าไปในกรอบแทนที่จะโดนตัดห้วน ๆ
-  const floor = ctx.createLinearGradient(0, H * 0.52, 0, H);
+  //    (extBottom = พื้นที่ต่อลงไปใต้ขอบล่างบน iPad — ไล่มืดไปจบที่ขอบล่างจริง ไม่งั้นเห็นรอยตัดที่ขอบเดิม)
+  const floor = ctx.createLinearGradient(0, H * 0.52, 0, H + extBottom);
   floor.addColorStop(0, `rgba(${INK},0)`);
   floor.addColorStop(1, `rgba(${INK},${a(0.42)})`);
   ctx.fillStyle = floor;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, H + extBottom);
 }
 
 /**
@@ -2777,7 +2781,7 @@ export class Game {
     }
     if (this.idleT < 0) return null;
     const act = IDLE_ACTS[this.idleAt];
-    return { act, k: poseWeight(this.idleT, act.hold, IDLE_EASE) };
+    return { act, k: poseWeight(this.idleT, act.hold, act.ease ?? IDLE_EASE) };
   }
 
   get idlePose() {
@@ -3227,7 +3231,7 @@ export class Game {
     if (t - far.at >= HOME_FAR_STEP || t < far.at) {
       far.at = t;
       far.c.setTransform(ctx.getTransform());
-      drawKingdom(far.c, t, { fx, part: 'far' });
+      drawKingdom(far.c, t, { fx, part: 'far', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
     }
     if (t - bg.at >= HOME_BG_STEP || t < bg.at) {
       bg.at = t;
@@ -3235,8 +3239,8 @@ export class Game {
       bg.c.drawImage(far, 0, 0);
       bg.c.setTransform(ctx.getTransform());
       // กราฟิกระดับสูง = ฉากเต็มแสง (แดด ลำแสง โคม ละออง ดู kingdom/glow.js)
-      drawKingdom(bg.c, t, { fx, part: 'near' });
-      dimForUi(bg.c, 0.45);
+      drawKingdom(bg.c, t, { fx, part: 'near', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
+      dimForUi(bg.c, 0.45, ctx.canvas.homeExtBottom || 0);
     }
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3315,7 +3319,7 @@ export class Game {
     const box = (c) => {
       c.save();
       c.translate(HOME_BOX.x, HOME_BOX.y);
-      c.scale(0.88, 0.88);
+      c.scale(HOME_BOX.s, HOME_BOX.s);
       drawHomeBox(c, 0, 0, t, this.homeBoxPop || 0);
       c.restore();
     };
@@ -3347,15 +3351,18 @@ export class Game {
     // ── ทำงานเฉพาะบริเวณที่มีตัวน้องกับกล่องแมว ── (หน่วยฉาก → พิกเซลจริงตาม transform ของจอ)
     const x0 = Math.min(catX - 120, HOME_BOX.x - 100);
     const x1 = Math.max(catX + 120, HOME_BOX.x + 100);
-    const y0 = 110;
-    this.homeLitWorld = { x: x0, y: y0, w: x1 - x0, h: VIEW.H - y0 };
+    // ขอบบนต้องเป็นยอดจอ: บนมือถือน้องตัวโตกว่า (สเกล 3) และท่าลอย/กระโดดยกตัวสูงขึ้นอีก
+    // เคยตั้ง 110 ไว้ หัวน้องตอนลอยเลยโดนตัดแหว่งเป็นเส้นตรงเหมือนมีกรอบล่องหน
+    const y0 = -(ctx.canvas.homeExtTop || 0);   // ฟ้าที่ต่อขึ้นไปบน iPad ก็นับด้วย
+    const yEnd = VIEW.H + (ctx.canvas.homeExtBottom || 0);
+    this.homeLitWorld = { x: x0, y: y0, w: x1 - x0, h: yEnd - y0 };
     const m = ctx.getTransform();
     const rx = Math.max(0, Math.floor(m.a * x0 + m.e));
     const ry = Math.max(0, Math.floor(m.d * y0 + m.f));
     this.homeLitRect = {
       x: rx, y: ry,
       w: Math.min(cv.width - rx, Math.ceil(m.a * (x1 - x0)) + 2),
-      h: Math.min(cv.height - ry, Math.ceil(m.d * (VIEW.H - y0)) + 2),
+      h: Math.min(cv.height - ry, Math.ceil(m.d * (yEnd - y0)) + 2),
     };
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 1;

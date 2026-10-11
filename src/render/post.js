@@ -57,10 +57,12 @@ function bloom(ctx) {
     bufCtx.filter = 'none';
   }
 
+  // แปะทั้งผืนผ้าใบตรง ๆ (ไม่ผ่านพิกัดฉาก) — หน้าแรกบน iPad ผ้าใบไม่ใช่สัดส่วน 960:420 แล้ว
   ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = POST.bloomStrength;
-  ctx.drawImage(b, 0, 0, W, H);
+  ctx.drawImage(b, 0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.restore();
 }
 
