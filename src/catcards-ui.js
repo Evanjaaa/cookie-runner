@@ -14,6 +14,7 @@
 // / การ์ดที่ถึงเรา → สร้างน้องในบ้านเรา (กันรับซ้ำด้วย got ใน cats.js)
 // ทุกปุ่มในหน้านี้เรียก sync() ต่อท้าย ข้อมูลจึงไม่ค้างครึ่ง ๆ กลาง ๆ แม้เน็ตหลุดกลางทาง
 // ─────────────────────────────────────────────────────────────
+import { drawCatFaceAuto } from './render/cat2.js';
 import {
   reloadCats, allCats, catById, canSend, cardSnapshot, setCard, handOver, receiveCat, cardReceived,
   homeFull, levelOf, nameOf, fosterCats, SEND_MAX_LV,
@@ -504,7 +505,7 @@ export function setupCatCardsUI(deps) {
       b.setAttribute('aria-checked', 'false');
       const face = document.createElement('canvas');
       const snap = f.public_profile || {};
-      paintMini(face, 44, (g) => drawCatFace(g, 22, 25, 1.05, { ...skinById(snap.skin), noPhoto: true }));
+      paintMini(face, 44, (g) => drawCatFaceAuto(g, 22, 25, 1.05, { ...skinById(snap.skin), noPhoto: true }));
       const name = document.createElement('b');
       name.textContent = f.name || 'เพื่อน';
       const tick = document.createElement('i');

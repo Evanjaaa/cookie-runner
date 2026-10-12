@@ -7,6 +7,7 @@
 // จะฟุ้งจนอ่านไม่ออก ซึ่งแลกไม่คุ้มกับความสวยที่ได้
 // ─────────────────────────────────────────────────────────────
 import { VIEW, POST } from '../config.js';
+import { coverExt } from './cover-ext.js';
 import { quality } from '../graphics.js';
 
 const { W, H } = VIEW;
@@ -68,6 +69,18 @@ function bloom(ctx) {
 
 /** ขอบจอมืดลง ดึงสายตาเข้ากลางจอที่ตัวละครกับของกินอยู่ */
 function darkenEdges(ctx) {
+  // iPad: จอสูงกว่าฉาก (ต่อบน-ล่าง) — ขอบมืดคิดจากจอจริง ไม่ใช่กรอบ 960×420 (ไม่งั้นส่วนต่อมืดทึบเป็นแถบ)
+  const e = coverExt(ctx);
+  if (e.top > 0 || e.bottom > 0) {
+    const vh = H + e.top + e.bottom, cy = (H + e.bottom - e.top) / 2;
+    const g = ctx.createRadialGradient(W / 2, cy - vh * 0.04, vh * 0.36, W / 2, cy, Math.max(W * 0.62, vh * 0.98));
+    g.addColorStop(0, 'rgba(6,2,14,0)');
+    g.addColorStop(0.6, `rgba(6,2,14,${POST.vignette * 0.3})`);
+    g.addColorStop(1, `rgba(6,2,14,${POST.vignette})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, -e.top, W, vh);
+    return;
+  }
   if (!vignette) {
     const g = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.36, W / 2, H * 0.5, H * 0.98);
     g.addColorStop(0, 'rgba(6,2,14,0)');

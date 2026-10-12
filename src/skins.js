@@ -238,6 +238,7 @@ export function catSkin(cat) {
     noPhoto: true,
     palette: cat.breed,
     catId: cat.id,
+    sex: cat.sex,   // ตัววาดแบบใหม่ (cat2) ใช้: เพศเมียมีแพขนตา
   };
 }
 

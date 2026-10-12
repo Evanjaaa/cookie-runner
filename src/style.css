@@ -4588,6 +4588,14 @@ canvas[hidden] { display: none; }
     height: var(--app-h, 100dvh);
   }
 }
+/* ฉากอื่นทุกฉากบน iPad (จอสูง ≥ 600) — ส่วนสูงที่เกินต่อเป็นฉากบน-ล่าง (render/cover-ext.js) ไม่มีแถบว่าง
+   มือถือ 16:9 ไม่ใช้ (ปุ่มหยุดเป็น DOM ขนาดคงที่ แถบบนในผ้าใบจะไปซ้อนใต้ปุ่ม) */
+@media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px) {
+  .stage > canvas#game {
+    width: 100%;
+    height: var(--app-h, 100dvh);
+  }
+}
 /* ── ปุ่มหน้าแรกบน iPad: ใหญ่ขึ้นตามจอ ──
    --home-ui โตตามความสูงจอ (768 → 1.3 เท่า, 1024 → ~1.6 เท่า; main.js placeHomeOverlays) ปุ่มจึงได้สัดส่วนเดิมกับจอทุกขนาด
    ใช้ zoom ที่ตัวปุ่ม (ไม่ใช่ทั้งแถว) แถวยังกินกรอบเดิม ปุ่มโตแล้วจัดเรียงใหม่ในแถวเอง ไม่ล้นจอ

@@ -69,14 +69,17 @@ function paw(ctx, x, y, r, fill) {
  * ก้อนหินเรียงสลับฟันปลาแถวเว้นแถว ถ้าเรียงตรงกันทุกแถวจะอ่านเป็นตารางกระเบื้อง
  * ไม่ใช่กำแพงหินก่อ ซึ่งเป็นรายละเอียดเล็ก ๆ ที่เปลี่ยนความรู้สึกของทั้งห้อง
  */
-export function wall(ctx, W, floorY, p) {
-  ctx.fillStyle = p.wall;
-  ctx.fillRect(0, 0, W, floorY);
-
+export function wall(ctx, W, floorY, p, extTop = 0) {
+  // extTop = ผนังที่ต่อขึ้นไปเหนือขอบบน (iPad จอสูง) — แถวอิฐนับต่อจากแถวเดิม ลายสลับจึงไม่สะดุด
   const bh = 25;
+  const rows0 = Math.ceil(extTop / bh);
+  const y0 = -rows0 * bh;
+  ctx.fillStyle = p.wall;
+  ctx.fillRect(0, y0, W, floorY - y0);
+
   ctx.strokeStyle = p.wallLine;
   ctx.lineWidth = 2;
-  for (let row = 0, y = 0; y < floorY; row++, y += bh) {
+  for (let row = -rows0, y = y0; y < floorY; row++, y += bh) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     const off = row % 2 ? 0 : 31;
     for (let x = off; x < W; x += 62) {
@@ -95,11 +98,11 @@ export function wall(ctx, W, floorY, p) {
   }
 
   // เงาไล่จากมุมบนลงมา ให้เพดานดูมืดกว่าระดับสายตา
-  const g = ctx.createLinearGradient(0, 0, 0, floorY);
+  const g = ctx.createLinearGradient(0, y0, 0, floorY);
   g.addColorStop(0, p.wallShade);
-  g.addColorStop(0.45, 'rgba(0,0,0,0)');
+  g.addColorStop(0.45 * floorY / (floorY - y0), 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, floorY);
+  ctx.fillRect(0, y0, W, floorY - y0);
 }
 
 /** พื้นหินเรียงแผ่น — เส้นแนวลึกลู่เข้าหาจุดกลางภาพ ทำให้พื้นดูราบไม่ใช่ผนังอีกแผ่น */

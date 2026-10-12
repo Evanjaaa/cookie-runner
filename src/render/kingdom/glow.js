@@ -266,9 +266,9 @@ export function lanternLightMask(lctx, worldX, t) {
     const cy = it.y - 26 * it.s;
     const R = 175 * it.s;
     const g = lctx.createRadialGradient(x, cy, 0, x, cy, R);
-    // แสงที่ตกบนตัวน้อง/กล่อง ลดลง 20% จากเดิม (0.42 / 0.2) — เดิมแรงจนตัวน้องฝั่งตะเกียงดูส้มจัด
-    g.addColorStop(0, `rgba(255,196,112,${0.336 * fl})`);
-    g.addColorStop(0.45, `rgba(255,178,96,${0.16 * fl})`);
+    // แสงที่ตกบนตัวน้อง/กล่อง: ลด 20% (0.42/0.2 → 0.336/0.16) แล้วลดอีก 30% (→ 0.235/0.112) — ผู้ใช้ขอให้ตัวน้องไม่โดนแสงส้มจัด
+    g.addColorStop(0, `rgba(255,196,112,${0.235 * fl})`);
+    g.addColorStop(0.45, `rgba(255,178,96,${0.112 * fl})`);
     g.addColorStop(1, 'rgba(255,170,90,0)');
     lctx.fillStyle = g;
   } else {

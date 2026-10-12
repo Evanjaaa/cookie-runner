@@ -86,6 +86,14 @@
     .chip small { display: block; color: var(--dim); font-size: 11.5px; }
     .chip:hover { background: rgba(255,244,220,.1); }
     .chip.on { background: rgba(255,159,196,.2); border-color: var(--accent); }
+    /* ── ลองชุด ── */
+    .of-tier { margin: 8px 0 4px; font-size: 12.5px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+    .of-tier b { padding: 1px 7px; border-radius: 999px; color: #2A0F22; font-size: 11px; }
+    .of-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .of-grid .chip { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+    .tag.new { background: rgba(127,227,208,.22); color: var(--accent2); }
+    .tag.old { background: rgba(255,195,107,.18); color: var(--warn); }
     .opts { display: flex; flex-direction: column; gap: 8px; }
     .opt { display: flex; align-items: center; gap: 8px; }
     .opt > span { flex: 0 0 5.6em; color: var(--dim); }
@@ -145,11 +153,18 @@
         <div class="opts">
           <div class="opt"><span>ความเร็ว</span><div class="seg" id="speed"></div></div>
           <div class="opt"><span>ขนาด</span><div class="seg" id="zoom"></div></div>
+          <div class="opt"><span>มุมมอง</span><div class="seg" id="view"></div></div>
           <div class="opt"><span>พื้นหลัง</span><div class="seg" id="bg"></div></div>
           <div class="opt"><span>เล่นวน</span><div class="seg" id="loop"></div></div>
           <div class="opt"><span>เสียงน้อง</span><div class="seg" id="sound"></div></div>
           <div class="opt"><span>สีแมว</span><select id="skin" aria-label="เลือกสีแมว"></select></div>
         </div>
+      </div>
+      <div class="card">
+        <h2>ลองชุด <small id="ofStat" style="font-weight:400"></small></h2>
+        <div class="opt" style="margin-bottom:8px"><span>เทียบแบบเดิม</span><div class="seg" id="compare"></div></div>
+        <div id="outfits"></div>
+        <p class="note"><span class="tag new">แบบใหม่</span> วาดใหม่ให้เข้ากับน้องแล้ว · <span class="tag old">ยังไม่ทำ</span> ยังเป็นชุดแบบเดิม (โชว์ตัวเดิมข้างน้องไว้เทียบ)</p>
       </div>
       <div class="card">
         <h2>ค่าของท่า ณ เฟรมนี้</h2>
@@ -161,9 +176,10 @@
   </div>
 
   <script type="module">
-    import { drawCat2 } from './src/render/cat2.js';
+    import { drawCat2, cat2Outfits } from './src/render/cat2.js';
+    import { OUTFITS, RARITY, outfitById } from './src/outfits.js';
     import { HOME_MOVES, LOVE_MOVE, E } from './src/home-moves.js';
-    import { IDLE_SHAPE } from './src/render/entities.js';
+    import { IDLE_SHAPE, drawCatPose } from './src/render/entities.js';
     import { SKINS } from './src/skins.js';
     import { sfx, unlockAudio } from './src/audio.js';
 
@@ -194,7 +210,7 @@
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม
 
-    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'home', loop: true, sound: false, skin: SKINS[0] };
+    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'home', loop: true, sound: false, skin: SKINS[0], view: 'front', outfit: 'none', compare: true };
     window.__lab = st;   // เปิดให้สคริปต์ทดสอบปรับมุมกล้องได้
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -237,6 +253,43 @@
     }
     seg('speed', 'speed', [[0.1, '0.1×'], [0.25, '0.25×'], [0.5, '0.5×'], [1, '1×']]);
     seg('zoom', 'zoom', [[1, 'เต็มตัว'], [1.6, 'ขยาย'], [2.6, 'ดูหน้า']]);
+    // มุมมอง: บังคับหมุนตัว (ช่อง turn ของท่า) — ตรวจตัวด้านข้าง/ด้านหลังโดยไม่ต้องรอท่าไล่หาง
+    seg('view', 'view', [['front', 'หน้า'], ['qleft', 'เฉียงซ้าย'], ['qright', 'เฉียงขวา'], ['back', 'หลัง']]);
+    // ชุดที่แบบใหม่ใส่ได้แล้ว (CAT2_OUTFITS ใน cat2.js)
+    seg('compare', 'compare', [[true, 'โชว์'], [false, 'ซ่อน']]);
+    // ── รายการชุดทุกระดับ (จาก outfits.js) + สถานะว่าแบบใหม่วาดแล้วหรือยัง ──
+    {
+      const done = new Set(cat2Outfits());
+      const box = $('outfits');
+      const tiers = [['', 'ไม่ใส่ชุด', '#ddd'], ...Object.values(RARITY).map((r) => [r.key, `${r.name} (${r.short})`, r.color])];
+      let nDone = 0, nAll = 0;
+      for (const [key, label, color] of tiers) {
+        const list = OUTFITS.filter((o) => (o.rarity || '') === key);
+        if (!list.length) continue;
+        const h = document.createElement('div');
+        h.className = 'of-tier';
+        h.innerHTML = `<b style="background:${color}">${label}</b> ${list.length} ชุด`;
+        box.append(h);
+        const grid = document.createElement('div');
+        grid.className = 'of-grid';
+        for (const o of list) {
+          const ok = o.id === 'none' || done.has(o.id);
+          if (o.id !== 'none') { nAll++; if (ok) nDone++; }
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'chip' + (o.id === st.outfit ? ' on' : '');
+          b.dataset.of = o.id;
+          b.innerHTML = `<span>${o.name}</span>` + (o.id === 'none' ? '' : `<span class="tag ${ok ? 'new' : 'old'}">${ok ? 'แบบใหม่' : 'ยังไม่ทำ'}</span>`);
+          b.onclick = () => {
+            st.outfit = o.id;
+            for (const x of box.querySelectorAll('.chip')) x.classList.toggle('on', x === b);
+          };
+          grid.append(b);
+        }
+        box.append(grid);
+      }
+      $('ofStat').textContent = `· แบบใหม่ ${nDone}/${nAll}`;
+    }
     seg('bg', 'bg', [['home', 'ม่วงอ่อน'], ['dark', 'มืด'], ['grid', 'ตาราง']]);
     seg('loop', 'loop', [[true, 'วน'], [false, 'ครั้งเดียว']]);
     seg('sound', 'sound', [[false, 'ปิด'], [true, 'เปิด']]);
@@ -383,7 +436,24 @@
       ctx.fill();
       ctx.globalAlpha = 1;
       // เวลาของจังหวะชีวิต (หายใจ กะพริบ) ผูกกับหลอดเวลาด้วย — ลากกลับมาจุดเดิมได้ภาพเดิมเป๊ะ
-      drawCat2(ctx, 0, -lift, SCALE, st.skin, 600 + st.f, shape ? { k: 1, shape, pose: st.move.id } : null);
+      const TURN = { qleft: 0.75, left: Math.PI / 2, qright: -0.75, right: -Math.PI / 2, back: Math.PI };
+      const sh = st.view !== 'front' ? { ...(shape || {}), turn: TURN[st.view] } : shape;
+      const of = outfitById(st.outfit);
+      const isNew = st.outfit === 'none' || cat2Outfits().includes(st.outfit);
+      // ชุดที่ยังไม่ทำแบบใหม่: น้องแบบใหม่ไม่ใส่ชุด (ยังใส่ไม่ได้) — ดูชุดจากตัวเดิมข้าง ๆ
+      drawCat2(ctx, 0, -lift, SCALE, isNew && of ? { ...st.skin, outfit: of } : st.skin, 600 + st.f, sh ? { k: 1, shape: sh, pose: st.move.id } : null);
+      // เทียบแบบเดิม (ตัววาดเดิมใส่ชุดเดียวกัน) ทางขวา ย่อลง
+      if (st.compare && st.outfit !== 'none' && of) {
+        ctx.save();
+        ctx.translate(150, 0);
+        ctx.globalAlpha = 0.95;
+        drawCatPose(ctx, 0, 0, SCALE * 0.62, { ...st.skin, outfit: of }, 600 + st.f, shape ? { k: 1, shape, pose: st.move.id } : null);
+        ctx.fillStyle = 'rgba(42,15,34,.55)';
+        ctx.font = '600 9px Mitr, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('แบบเดิม', 0, 16);
+        ctx.restore();
+      }
       showVals(shape);
     }
 

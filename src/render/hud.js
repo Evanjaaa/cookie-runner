@@ -1,4 +1,5 @@
 // src/render/hud.js
+import { coverExt } from './cover-ext.js';
 import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C, BONUS, SCENE } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
@@ -102,6 +103,9 @@ export function drawHUD(ctx, game) {
 
   ctx.save();
   ctx.textBaseline = 'top';
+  // iPad: ฉากต่อขึ้นบน (render/cover-ext.js) — แถบ HUD ย้ายขึ้นไปชิดขอบจอจริง ไม่ค้างอยู่กลางจอ
+  const ext = coverExt(ctx);
+  ctx.translate(0, -ext.top);
 
   // ค่าขนมเปียกเป็นตัวเลขเดียวที่โชว์ระหว่างวิ่ง
   //
@@ -170,17 +174,21 @@ export function drawHUD(ctx, game) {
 
   ctx.restore();
 
+  ctx.save();
+  ctx.translate(0, -ext.top);   // แถบบนทั้งชุดชิดขอบจอจริงเหมือนกัน (ดูข้างบน)
   drawWord(ctx, game);
   drawHealthBar(ctx, game);
   drawRunBar(ctx, game);
 
   if (game.notice > 0) drawNotice(ctx, game);
+  ctx.restore();
+  // ป้ายโบนัสอยู่กลางฉากเล่น (ไม่ใช่แถบบน) — ไม่ต้องเลื่อน
   if (game.bonus > 0) drawBonusBanner(ctx, game);
 
   // แฟลชแดงทั้งจอตอนโดนชน วาดท้ายสุดเพื่อให้ทับทุกอย่าง
   if (game.hurtFlash > 0) {
     ctx.fillStyle = `rgba(255,92,110,${0.3 * game.hurtFlash})`;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, -ext.top, W, H + ext.top + ext.bottom);   // คลุมทั้งจอจริงรวมส่วนต่อ
   }
 }
 

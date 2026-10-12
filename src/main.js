@@ -57,6 +57,17 @@ import {
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
+import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto } from './render/cat2.js';
+/** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
+function drawStashCat(c, x, feetY, scale, s, t, { head = false, logical = 190 } = {}) {
+  if (CAT2.stash && useCat2(s)) {
+    // การ์ดเล็ก: โชว์แค่หัวน้องเต็มกรอบ (หู-หนวดพอดีกรอบ) ตัวล้นลงไปใต้กรอบ
+    if (head) return drawCat2(c, logical / 2, logical * 1.42, logical / 50, s, t, null);
+    // กรอบใหญ่: แบบใหม่หัวโต-หูสูงกว่าตัวเดิม ย่อลงให้หูไม่ชนขอบบน
+    return drawCat2(c, x, feetY, scale * 0.86, s, t, null);
+  }
+  drawCatPose(c, x, feetY, scale, s, t);
+}
 import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.js';
 import { drawPlats } from './render/platforms.js';
 import { makeDreamBg } from './render/dreambg.js';
@@ -130,25 +141,36 @@ const ctx = canvas.getContext('2d');
 const HOME_KEEP = 0.84;   // เห็นอย่างน้อย 84% ของความกว้างฉาก (ตัดข้างละไม่เกิน 8%)
 const HOME_CAT_MID = 222; // ความสูงกลางตัวน้องในพิกัดฉาก (เท้าที่ GROUND_Y 320 ตัวสูงราว 200 ที่สเกลมือถือ)
 const COVER_MQ = matchMedia('(hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10)');
+/** ฉากอื่นนอกจากหน้าแรกต่อบน-ล่างเฉพาะจอสูงแบบ iPad (ตรงกับ style.css) */
+const COVER_ALL_MQ = matchMedia('(hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px)');
 function homeCoverView() {
   const stage = canvas.parentElement;
-  if (!stage || !stage.classList.contains('home-cover') || !COVER_MQ.matches) return null;
+  if (!stage || !COVER_MQ.matches) return null;
   const r = stage.getBoundingClientRect();
   if (!r.width || !r.height) return null;
   const a = r.width / r.height;
   if (a >= W / H - 0.01) return null;
+  // ฉากอื่นนอกจากหน้าแรก (วิ่ง โบนัส ห้องก่อนวิ่ง บ้านลูกเหมียว): เห็นเต็มความกว้าง 960 เท่าเดิม
+  // ส่วนสูงที่เกินต่อเป็นฉากบน-ล่างครึ่ง ๆ (render/cover-ext.js) — การเล่นเหมือนเดิมทุกอย่าง ไม่มีแถบม่วง
+  if (!stage.classList.contains('home-cover')) {
+    if (!COVER_ALL_MQ.matches) return null;
+    const vh = W / a, extra = Math.max(0, vh - H), extTop = extra * 0.5;
+    return { vw: W, vh, ox: 0, extTop, extBottom: extra - extTop, cssW: r.width, home: false };
+  }
   const vw = Math.min(W, Math.max(H * a, W * HOME_KEEP));
   const vh = vw / a;
   // น้องอยู่กลางจอ: กึ่งกลางจอตรงกับกลางตัวน้อง (HOME_CAT_MID) — ส่วนสูงที่เกินแบ่งเป็นฟ้าบน + พื้นล่าง
   const extra = Math.max(0, vh - H);
   const extTop = Math.min(extra, Math.max(0, vh / 2 - HOME_CAT_MID));
-  return { vw, vh, ox: (W - vw) / 2, extTop, extBottom: extra - extTop, cssW: r.width };
+  return { vw, vh, ox: (W - vw) / 2, extTop, extBottom: extra - extTop, cssW: r.width, home: true };
 }
 function fitDPR() {
   const dpr = window.devicePixelRatio || 1;
   const hv = homeCoverView();
-  canvas.homeExtTop = hv ? hv.extTop : 0;   // ฉากหน้าแรกอ่านค่านี้ไปต่อฟ้า/พื้น (game.drawHomeBackdrop)
-  canvas.homeExtBottom = hv ? hv.extBottom : 0;
+  canvas.homeExtTop = hv?.home ? hv.extTop : 0;   // ฉากหน้าแรกอ่านค่านี้ไปต่อฟ้า/พื้น (game.drawHomeBackdrop)
+  canvas.homeExtBottom = hv?.home ? hv.extBottom : 0;
+  // ฉากอื่นอ่านค่านี้ (render/cover-ext.js) · catroom-ui ใช้แปลงจุดแตะเป็นพิกัดฉาก
+  canvas.cover = hv ? { extTop: hv.extTop, extBottom: hv.extBottom, vw: hv.vw, vh: hv.vh, ox: hv.ox, home: hv.home } : null;
   if (hv) {
     const d = Math.min(quality().scale, Math.max(1, (hv.cssW / hv.vw) * dpr));
     const tf = [d, 0, 0, d, -d * hv.ox, d * hv.extTop];
@@ -545,7 +567,7 @@ function paintStageScene(canvas, stage, logicalW) {
  */
 function paintAvatar() {
   paintMini(document.getElementById('pfAvatar'), 96,
-    (c) => drawCatFace(c, 48, 56, 2.5, getSkin()));
+    (c) => drawCatFaceAuto(c, 48, 56, 2.5, getSkin()));
 }
 
 /**
@@ -591,7 +613,7 @@ function paintStashIcon() {
 
     // น้องยืนหน้าหีบชิดซ้าย วาดทีหลังจึงบังหีบ = อ่านเป็นความลึก ไม่ใช่ของทับกัน
     c.save();
-    drawCatPose(c, 27, 72, 0.98, s, 60);
+    drawCatAuto(c, 27, 72, 0.98, s, 60);
     c.restore();
   });
 }
@@ -1022,7 +1044,7 @@ function stepShowAnim(now) {
     const S = 2.05;
     const shape = A.move ? A.move.shape(A.mt) : null;
     const lift = (shape?.lift || 0) * S;
-    drawCatPose(c, 75, 138 - lift, S, { ...getSkin(), outfit: item }, A.t,
+    drawCatAuto(c, 75, 138 - lift, S, { ...getSkin(), outfit: item }, A.t,
       shape ? { pose: A.move.id, k: 1, shape } : null);
     if (!gGot(item.id)) silhouette(c, SHOW_SIZE, SHOW_SIZE);
   }
@@ -1205,7 +1227,7 @@ function showOutfitResults(results) {
         tag.style.color = r.isNew ? tier.color : '#B99BD4';
 
         paintMini(card.querySelector('canvas'), 72,
-          (c) => drawCatPose(c, 38, 66, 1.05, { ...getSkin(), outfit: o }, 60));
+          (c) => drawCatAuto(c, 38, 66, 1.05, { ...getSkin(), outfit: o }, 60));
       });
   }
 }
@@ -1414,7 +1436,7 @@ function buildGList() {
       if (sign) card.appendChild(sign);
       // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
       paintMini(card.querySelector('canvas'), 96,
-        (c) => drawCatPose(c, 55, 88, 1.5, { ...getSkin(), outfit: item }, 60));
+        (c) => drawCatAuto(c, 55, 88, 1.5, { ...getSkin(), outfit: item }, 60));
     }
     card.querySelector('b').textContent = item.name;
 
@@ -1618,7 +1640,7 @@ async function buildRank() {
     row.querySelector('.pts').textContent = Number(r.score).toLocaleString('en-US');
     // หน้าน้องของคนนั้นจริง ๆ (สกิน + ชุดจากโปรไฟล์สาธารณะ) — ไม่มีข้อมูลก็เป็นน้องส้มตั้งต้น
     const skin = r.public_profile ? remoteProfile(r).skin : othersSkin(SKINS[0], r.id);
-    paintMini(row.querySelector('.rank-face'), 96, (c) => drawCatFace(c, 48, 56, 2.5, skin));
+    paintMini(row.querySelector('.rank-face'), 96, (c) => drawCatFaceAuto(c, 48, 56, 2.5, skin));
     if (tappable) {
       row.addEventListener('click', () => { unlockAudio(); openRankProfile(r); });
     }
@@ -1855,7 +1877,7 @@ function showNameStep(warn = '', from = titlePanel) {
   // วาดที่ 176 (ขนาดใหญ่สุดที่กรอบตั้งชื่อโชว์) แล้วย่อพิกัดชุดเดิมของ 120 ขึ้นมา — ภาพไม่แตกบนจอใหญ่
   paintMini(document.getElementById('nameCat'), 176, (c) => {
     c.scale(176 / 120, 176 / 120);
-    drawCatPose(c, 60, 110, 1.85, getSkin(), 60);
+    drawCatAuto(c, 60, 110, 1.85, getSkin(), 60);
   });
   setMsg(document.getElementById('nameMsg'), warn, Boolean(warn));
   showPanel(namePanel);
@@ -2739,7 +2761,7 @@ function buildSkinStashGrid() {
     // t=60 ไม่ใช่ 0 เพราะที่ t=0 แมวกำลังหลับตาพอดี รูปตัวอย่างจะดูเหมือนหลับ
     // น้องที่ยังเด็กวาดตัวเล็กลงตามวัย ให้เห็นตั้งแต่ในกริดว่ายังเป็นลูกแมว
     const k = x.kind === 'raising' ? sizeOf(levelOf(x.cat)) : 1;
-    paintMini(card.querySelector('canvas'), 96, (c) => drawCatPose(c, 55, 88, 1.5 * k, x.skin, 60));
+    paintMini(card.querySelector('canvas'), 96, (c) => drawStashCat(c, 55, 88, 1.5 * k, x.skin, 60, { head: true, logical: 96 }));
 
     if (x.id === stashSel.skin) card.classList.add('sel');
     setDot(card, !locked && isFresh('skin', x.id));
@@ -2870,7 +2892,7 @@ function buildOutfitGrid() {
 
     // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
     paintMini(card.querySelector('canvas'), 96,
-      (c) => drawCatPose(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
+      (c) => drawCatAuto(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
 
     // แตะแล้ว "เลือก" ขึ้นมาโชว์ในช่องซ้าย ไม่ใช่เด้งไปหน้ารายละเอียดทันที
     // ผู้เล่นจึงกวาดดูเทียบหลายชุดรวดเดียวได้ ปุ่ม "ดูเพิ่มเติม" ในช่องซ้าย
@@ -3589,7 +3611,7 @@ function drawCushion(c, x, y, w) {
 function paintDailyCat() {
   paintMini(document.getElementById('dlCat'), 240, (c) => {
     drawCushion(c, 120, 220, 172);
-    drawCatPose(c, 120, 213, 3.35, getSkin(), dlTick, { pose: 'sit', k: 1, mood: 'starry' });
+    drawCatAuto(c, 120, 213, 3.35, getSkin(), dlTick, { pose: 'sit', k: 1, mood: 'starry' });
   });
 }
 
@@ -3798,7 +3820,7 @@ function buildLvList() {
       hereRow.innerHTML = '<span aria-hidden="true"></span>'
         + '<span class="lv-here-info"><b></b>'
         + '<canvas class="lv-here-cat" width="96" height="96" aria-hidden="true"></canvas></span>';
-      paintMini(hereRow.querySelector('.lv-here-cat'), 96, (c) => drawCatFace(c, 48, 56, 2.5, getSkin()));
+      paintMini(hereRow.querySelector('.lv-here-cat'), 96, (c) => drawCatFaceAuto(c, 48, 56, 2.5, getSkin()));
       hereRow.querySelector('.lv-here-info b').textContent = st.into.toLocaleString('en-US') + ' XP';
       inner.appendChild(hereRow);
     }
@@ -4334,7 +4356,7 @@ let pfRAF = 0;
 function paintPfCat() {
   const skin = pfView ? pfView.skin : getSkin();
   paintMini(document.getElementById('pfShow'), 240,
-    (c) => drawCatPose(c, 112, 220, 2.75, skin, pfTick));
+    (c) => drawCatAuto(c, 112, 220, 2.75, skin, pfTick));
 }
 
 function pfLoop() {
@@ -4767,7 +4789,7 @@ function friendRow(list, row, { sub, acts = [] } = {}) {
 
   const face = document.createElement('canvas');
   face.className = 'fr-face';
-  paintMini(face, 96, (c) => drawCatFace(c, 48, 56, 2.5, p.skin));
+  paintMini(face, 96, (c) => drawCatFaceAuto(c, 48, 56, 2.5, p.skin));
 
   const main = document.createElement('span');
   main.className = 'mail-main';
@@ -4976,7 +4998,7 @@ function showFriends(on, tab) {
   paintFriends();
   loadMyCode();
   // บัตรของเรา: หน้าน้องตัวที่ใช้อยู่ (สกิน + ชุด) — แบบเดียวกับหน้าเพื่อนในการ์ดเพื่อน
-  paintMini(document.getElementById('frMeFace'), 96, (c) => drawCatFace(c, 48, 56, 2.5, getSkin()));
+  paintMini(document.getElementById('frMeFace'), 96, (c) => drawCatFaceAuto(c, 48, 56, 2.5, getSkin()));
   loadFriendsData();
 }
 
@@ -5126,7 +5148,7 @@ function paintOdCat() {
   if (!o) return;
   const s = getSkin();
   paintMini(document.getElementById('odCat'), 200,
-    (c) => drawCatPose(c, 100, 176, 3, { ...s, outfit: o }, odTick));
+    (c) => drawCatAuto(c, 100, 176, 3, { ...s, outfit: o }, odTick));
 }
 
 function odLoop() {
@@ -5410,13 +5432,13 @@ function paintStashCat() {
     const x = catEntryById(stashSel.skin) || catEntries()[0];
     const k = x.kind === 'raising' ? sizeOf(levelOf(x.cat)) : 1;
     paintMini(document.getElementById('stashCat'), 190,
-      (c) => drawCatPose(c, 95, 167, 2.85 * k, x.skin, stashTick));
+      (c) => drawStashCat(c, 95, 167, 2.85 * k, x.skin, stashTick));
     return;
   }
   const o = outfitById(stashSel.outfit);
   if (!o) return;
   paintMini(document.getElementById('stashCat'), 190,
-    (c) => drawCatPose(c, 95, 167, 2.85, { ...getSkin(), outfit: o }, stashTick));
+    (c) => drawCatAuto(c, 95, 167, 2.85, { ...getSkin(), outfit: o }, stashTick));
 }
 
 /**

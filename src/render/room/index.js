@@ -49,14 +49,16 @@ const lantern = (ctx, x, y, s, seed) => OUT.lantern(ctx, x, y, s, ITEM, FROZEN, 
  * ของบนพื้น → โต๊ะสองฝั่ง → ของบนโต๊ะ
  * ตัวน้องถูกวาดทีหลังโดย drawRoom() ใน game.js จึงยืนอยู่หน้าพรมแต่หลังโต๊ะ
  */
-export function drawRoomScene(ctx, p = ROOM) {
+export function drawRoomScene(ctx, p = ROOM, ext = { top: 0, bottom: 0 }) {
+  // ext = ผนัง/พื้นที่ต่อขึ้นบน-ลงล่าง บน iPad จอสูง (main.js coverView) — วาดต่อจริง ไม่ยืดภาพ
+  const eT = ext.top || 0, eB = ext.bottom || 0;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, 0, W, H);
+  ctx.rect(0, -eT, W, H + eT + eB);
   ctx.clip();
 
   // ── ผนังกับของที่ติดอยู่บนผนัง ──
-  R.wall(ctx, W, FLOOR_Y, p);
+  R.wall(ctx, W, FLOOR_Y, p, eT);
 
   R.brushRack(ctx, 96, 34, 0.92, p, 3);
   R.shelfUnit(ctx, 232, FLOOR_Y - 4, 0.95, p, 11);
@@ -88,7 +90,7 @@ export function drawRoomScene(ctx, p = ROOM) {
   }
 
   // ── พื้น ──
-  R.floor(ctx, W, H, FLOOR_Y, p);
+  R.floor(ctx, W, H + eB, FLOOR_Y, p);
 
   // ชั้นบันไดขวดยา วางชิดผนังใต้หน้าต่างพอดี = จุดกึ่งกลางของฉาก
   // ถ่างขั้นบันไดออกให้ขวดยาโผล่พ้นตัวน้องทั้งสองข้าง
@@ -114,7 +116,7 @@ export function drawRoomScene(ctx, p = ROOM) {
   R.yarnBasket(ctx, 84, 414, 1.1, p, 41, yarn);
   R.yarnBasket(ctx, 878, 414, 1.1, p, 53, yarn);
 
-  warmLight(ctx, p);
+  warmLight(ctx, p, eT, eB);
 
   ctx.restore();
 }
@@ -129,18 +131,20 @@ export function drawRoomScene(ctx, p = ROOM) {
  *
  * เป็นไล่สีสองชั้น วาดทีเดียวจบ ไม่ได้ขยับตามเวลา ฉากนี้ยังเป็นภาพนิ่งเหมือนเดิม
  */
-function warmLight(ctx, p) {
+function warmLight(ctx, p, eT = 0, eB = 0) {
   const lamp = ctx.createRadialGradient(788, 300, 20, 788, 300, 300);
   lamp.addColorStop(0, p.glow);
   lamp.addColorStop(1, 'rgba(255,214,150,0)');
   ctx.fillStyle = lamp;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, -eT, W, H + eT + eB);
 
-  const edge = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.34, W / 2, H * 0.46, H * 1.05);
+  // ขอบมืดคิดจากจอจริง (รวมส่วนต่อ) — กลางยังเป็นตัวน้องเหมือนเดิม
+  const vh = H + eT + eB;
+  const edge = ctx.createRadialGradient(W / 2, H * 0.46, vh * 0.34, W / 2, H * 0.46, Math.max(H * 1.05, vh * 0.8));
   edge.addColorStop(0, 'rgba(58,34,20,0)');
   edge.addColorStop(1, 'rgba(58,34,20,.42)');
   ctx.fillStyle = edge;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, -eT, W, vh);
 }
 
 /**

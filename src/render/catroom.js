@@ -1505,7 +1505,63 @@ export function drawWaterFront(ctx, ripple = 0) {
  * @param scale สเกลจริงของผ้าใบ ใช้สร้างภาพแคชให้คมเท่าจอ
  * @param live  { fills, kinds, bathing } สถานะของสดจากตัวควบคุม
  */
+/**
+ * ห้องที่ต่อขึ้นบน-ลงล่างบน iPad จอสูง (main.js coverView) — วาดจริงในลายเดียวกับห้อง ไม่ยืดภาพ
+ * บน: เพดานไม้เป็นแผ่น ๆ ต่อจากคานยาว · ล่าง: พื้นหินปูต่อจากขอบพรม เส้นแผ่นลู่ตามแนวเดิม
+ */
+function roomExt(ctx, cam) {
+  const c = ctx.canvas.cover;
+  const eT = c?.extTop || 0, eB = c?.extBottom || 0;
+  if (eT > 0) {
+    const g = ctx.createLinearGradient(0, -eT, 0, 0);
+    g.addColorStop(0, P.beamDark);
+    g.addColorStop(1, P.beam);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, -eT, VIEW.W, eT);
+    ctx.save();
+    ctx.translate(-cam, 0);
+    ctx.strokeStyle = 'rgba(78,53,39,.35)';
+    ctx.lineWidth = 2 * LINE_K;
+    // ไม้เพดานวางยาวตามห้อง: รอยต่อแผ่นสลับกันทุกแถว
+    for (let row = 1, y = -22; y > -eT - 22; row++, y -= 22) {
+      ctx.beginPath(); ctx.moveTo(cam, y); ctx.lineTo(cam + VIEW.W, y); ctx.stroke();
+      const off = row % 2 ? 0 : 110;
+      for (let x = Math.floor((cam - off) / 220) * 220 + off; x < cam + VIEW.W; x += 220) {
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 22); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  if (eB > 0) {
+    const g = ctx.createLinearGradient(0, H, 0, H + eB);
+    g.addColorStop(0, P.floorTile);
+    g.addColorStop(1, P.floor);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, H, VIEW.W, eB);
+    ctx.save();
+    ctx.translate(-cam, 0);
+    ctx.strokeStyle = P.floorLine;
+    ctx.lineWidth = 1.2 * LINE_K;
+    ctx.globalAlpha = 0.6;
+    for (let y = H + 44, gap = 52; y < H + eB; y += gap, gap *= 1.35) {
+      ctx.beginPath(); ctx.moveTo(cam, y); ctx.lineTo(cam + VIEW.W, y); ctx.stroke();
+    }
+    // เส้นตั้งต่อจากพื้นในห้อง (สูตรเดียวกับ floor()) ให้ลู่ต่อเนื่องลงมา
+    const k = 0.12 / (H - FLOOR_Y);
+    for (let x = -40; x < CATROOM_W + 80; x += 120) {
+      const xb = x + (x - CATROOM_W / 2) * 0.12;
+      if (xb < cam - 200 || xb > cam + VIEW.W + 200) continue;
+      ctx.beginPath();
+      ctx.moveTo(xb, H);
+      ctx.lineTo(xb + (x - CATROOM_W / 2) * k * eB, H + eB);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 export function drawCatRoomBack(ctx, cam, t, night, scale, live = {}) {
+  roomExt(ctx, cam);
   ctx.save();
   ctx.translate(-cam, 0);
   windowSky(ctx, t, night);
@@ -1530,9 +1586,11 @@ export function drawCatRoomBack(ctx, cam, t, night, scale, live = {}) {
 
 /** ความมืดของกลางคืน + โคมเรืองตอนกลางคืน + ขอบมืดรอบภาพ (วาดหลังตัวน้อง) */
 export function drawCatRoomLight(ctx, cam, t, night) {
+  const cv = ctx.canvas.cover;
+  const eT = cv?.extTop || 0, eB = cv?.extBottom || 0;
   if (night) {
     ctx.fillStyle = 'rgba(22,14,58,.40)';
-    ctx.fillRect(0, 0, VIEW.W, H);
+    ctx.fillRect(0, -eT, VIEW.W, H + eT + eB);
   }
   // กลางคืน: โคมต้องเรืองทับความมืด จึงวาดหลังความมืด (กลางวันวาดไปแล้วข้างหลังตัวน้อง)
   if (night) {
@@ -1543,11 +1601,12 @@ export function drawCatRoomLight(ctx, cam, t, night) {
   }
 
   // ขอบมืดรอบภาพ ดันสายตาเข้ากลางจอ
-  const edge = ctx.createRadialGradient(VIEW.W / 2, H * 0.5, H * 0.4, VIEW.W / 2, H * 0.5, H * 1.15);
+  const vh = H + eT + eB;
+  const edge = ctx.createRadialGradient(VIEW.W / 2, H * 0.5, vh * 0.4, VIEW.W / 2, H * 0.5, Math.max(H * 1.15, vh * 0.85));
   edge.addColorStop(0, 'rgba(58,34,20,0)');
   edge.addColorStop(1, night ? 'rgba(20,10,40,.5)' : 'rgba(58,34,20,.32)');
   ctx.fillStyle = edge;
-  ctx.fillRect(0, 0, VIEW.W, H);
+  ctx.fillRect(0, -eT, VIEW.W, vh);
 }
 
 /** อัตราเลื่อนของชั้นหน้า — เร็วกว่ากล้อง ของจึงดูอยู่ใกล้ตากว่าตัวห้อง */

@@ -52,7 +52,8 @@ function splitFish(list) {
 }
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
 import { setCatEdgeScale } from './render/entities.js';
-import { CAT2, drawCat2 } from './render/cat2.js';
+import { CAT2, drawCat2, drawCatAuto } from './render/cat2.js';
+import { fillCoverExt, fillFullView, coverExt } from './render/cover-ext.js';
 import { gfxLevel } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
@@ -2356,6 +2357,7 @@ export class Game {
     if (warp.rise > 0) drawWarpFront(ctx, wx, wy, warp.rise, this.tick);
     if (warp.arrive >= 0) drawWarpArrive(ctx, wx, wy, warp.arrive);
 
+    fillCoverExt(ctx);
     postProcess(ctx);
     drawHUD(ctx, this);
     this.drawFlash(ctx);
@@ -2367,7 +2369,7 @@ export class Game {
     ctx.fillStyle = this.flashInk
       ? `rgba(8,3,16,${this.flash})`
       : `rgba(255,255,255,${this.flash})`;
-    ctx.fillRect(0, 0, VIEW.W, VIEW.H);
+    fillFullView(ctx, VIEW.W, VIEW.H);   // คลุมส่วนต่อบน-ล่างบน iPad ด้วย
   }
 
   /**
@@ -2522,7 +2524,10 @@ export class Game {
     setCatEdgeScale(this.state === STATE.READY ? 0.7 : 1);
 
     if (this.state === STATE.READY) {
-      if (this.catRoom) return this.catRoom.draw(ctx);
+      if (this.catRoom) {
+        this.catRoom.draw(ctx);   // iPad: ห้องวาดเพดาน/พื้นต่อเอง (render/catroom.js roomExt)
+        return;
+      }
       return this.inRoom ? this.drawRoom(ctx) : this.drawHome(ctx);
     }
 
@@ -2701,6 +2706,7 @@ export class Game {
     drawScorePops(ctx, this.treasures.pops, anchor);
 
     ctx.restore();
+    fillCoverExt(ctx);
     postProcess(ctx);
     // ฟิลเตอร์เต็มจอของพรสวรรค์ (โลกช้า / โหมดเงา) อยู่ใต้ HUD ตัวเลขจึงยังอ่านชัด
     drawTalentScreen(ctx, this);
@@ -3162,11 +3168,13 @@ export class Game {
     const t = this.homeTick;
     const x = VIEW.W * 0.5;
 
-    drawRoomScene(ctx);
+    // iPad จอสูง: ห้องวาดผนัง/พื้นต่อเองจริง (ไม่ใช้ fillCoverExt ที่ยืดภาพ)
+    const ext = coverExt(ctx);
+    drawRoomScene(ctx, undefined, ext);
 
     // หรี่บาง ๆ ให้กล่องคำพูดสีครีมกับตัวแมวเด้งออกจากห้องที่สีอุ่นใกล้กัน
     ctx.fillStyle = 'rgba(24,10,38,.14)';
-    ctx.fillRect(0, 0, VIEW.W, VIEW.H);
+    fillFullView(ctx, VIEW.W, VIEW.H);
 
     // สปอตไลต์ใต้เท้า ดันตัวละครให้เด่นออกจากพรม
     const glow = ctx.createRadialGradient(x, GROUND_Y - 40, 10, x, GROUND_Y - 40, 165);
@@ -3183,7 +3191,7 @@ export class Game {
     ctx.fill();
     ctx.restore();
 
-    drawCatPose(ctx, x, GROUND_Y, 2.6, getSkin(), t);
+    drawCatAuto(ctx, x, GROUND_Y, 2.6, getSkin(), t, null, { fit: 1 });   // ห้องก่อนวิ่ง: แมวส้มใช้แบบใหม่
     postProcess(ctx, { edges: false });
   }
 

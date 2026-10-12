@@ -10,6 +10,7 @@
 // cats.js ไม่แตะทองเลย — ลำดับเสมอ: เช็คทอง → หักทอง → บันทึกการดูแล
 // ทองไม่พอซื้อข้าวเม็ดถูกสุด = พี่ส้มแบ่งข้าวให้ฟรี น้องต้องไม่หิวเพราะเราไม่มีทอง
 // ─────────────────────────────────────────────────────────────
+import { drawCatFaceAuto } from './render/cat2.js';
 import {
   roomCats, waitingCats, allCats, catById, care, petCat, renameCat, unlockToy, ownsToy, graduate,
   settleHome, reloadCats, levelOf, expInfo, expLeftToday, needNow, isSad, heartsOf, nameOf, storyOf,
@@ -79,7 +80,7 @@ export function setupCatRoomUI(deps) {
   const tipOpen = () => !$('tipPanel').classList.contains('hidden');
 
   function paintTipFace() {
-    paintMini($('tipFace'), 120, (c) => drawCatFace(c, 60, 66, 2.3, { ...skinById('orange'), noPhoto: true }, { mood: 'happy' }));
+    paintMini($('tipFace'), 120, (c) => drawCatFaceAuto(c, 60, 66, 2.3, { ...skinById('orange'), noPhoto: true }, { mood: 'happy' }));
   }
 
   /** โชว์เคล็ดลับครั้งเดียวต่อบัญชี — ซ้อนกันหลายอันก็เข้าคิวทีละอัน */
@@ -234,6 +235,9 @@ export function setupCatRoomUI(deps) {
   // ── นิ้วบนห้อง: ลาก = เลื่อนห้อง / แตะ = เลือกน้อง (แตะซ้ำตัวเดิม = ลูบ) ──
   function toScene(e) {
     const r = hit.getBoundingClientRect();
+    // iPad: ผ้าใบเต็มจอ ฉาก 960×420 อยู่กลาง ต่อบน-ล่าง (main.js coverView) — แปลงตามส่วนต่อด้วย
+    const cv = document.getElementById('game').cover;
+    if (cv) return { x: ((e.clientX - r.left) / r.width) * cv.vw + cv.ox, y: ((e.clientY - r.top) / r.height) * cv.vh - cv.extTop };
     return { x: ((e.clientX - r.left) / r.width) * 960, y: ((e.clientY - r.top) / r.height) * 420 };
   }
   hit.addEventListener('pointerdown', (e) => {
@@ -538,11 +542,13 @@ export function setupCatRoomUI(deps) {
     if (at) {
       // วางเหนือจุดกิจกรรม แล้วดันกลับเข้าในจอถ้าล้นขอบ
       const box = panel.getBoundingClientRect();
-      const k = box.width / 960;
+      const cv = document.getElementById('game').cover;
+      const k = box.width / (cv ? cv.vw : 960);
+      const ay = at.y + (cv ? cv.extTop : 0);   // iPad: ฉากเลื่อนลงตามส่วนต่อบน
       const w = pk.offsetWidth;
       const h = pk.offsetHeight;
       const left = Math.max(8, Math.min(box.width - w - 8, at.x * k - w / 2));
-      const top = Math.max(8, Math.min(box.height - h - 8, at.y * k - h - 6));
+      const top = Math.max(8, Math.min(box.height - h - 8, ay * k - h - 6));
       pk.style.left = left + 'px';
       pk.style.top = top + 'px';
     } else {
