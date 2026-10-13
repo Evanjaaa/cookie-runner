@@ -328,7 +328,8 @@ const HEART = {
     // เด้งดีใจสองที ตอนถือหัวใจค้างไว้
     const hopT = t - 58;
     const hop = hopT > 0 && hopT < 32 ? Math.abs(Math.sin((hopT / 32) * Math.PI * 2)) : 0;
-    const touch = hopT > 0 && hopT < 32 ? Math.max(0, 1 - hop * 3) : 0;   // จังหวะแตะพื้น
+    // จังหวะแตะพื้น: ยุบตัวนุ่ม ๆ ราว 4-5 เฟรม — เดิม (1 - hop*3) ยุบแค่เฟรมเดียว ตัวเด้งวูบเหมือนภาพกะพริบ
+    const touch = hopT > 0 && hopT < 32 ? Math.max(0, 1 - hop * 1.5) ** 2 : 0;
     // ยื่นตัวเข้าหาคนดูตอนส่งหัวใจ (ตัวโตขึ้นนิด)
     const push = track(t, [[88, 0], [100, 1, E.back], [148, 1], [180, 0]]);
     return {
@@ -395,7 +396,7 @@ export const LOVE_MOVE = {
     // ── เด้งดีใจสามที ──
     const bT = r - 66;
     const bounce = bT > 0 && bT < 42 ? Math.abs(Math.sin((bT / 42) * Math.PI * 3)) : 0;
-    const touch = bT > 0 && bT < 42 ? Math.max(0, 1 - bounce * 3) : 0;
+    const touch = bT > 0 && bT < 42 ? Math.max(0, 1 - bounce * 1.5) ** 2 : 0;   // ยุบนุ่มหลายเฟรม ไม่วูบเฟรมเดียว
     return {
       gaze: watch * 0.9,
       tilt: -watch * 0.08 + hug * 0.2 + swayLag * 0.1,

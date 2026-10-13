@@ -807,7 +807,7 @@ function lantern(ctx, x, y, s, p, t, seed) {
     const g = ctx.createRadialGradient(0, -26, 2, 0, -26, 52);
     g.addColorStop(0, p.lanternGlow);
     g.addColorStop(1, 'rgba(255,206,106,0)');
-    ctx.globalAlpha = 0.34 * flicker;
+    ctx.globalAlpha = 0.17 * flicker;   // แสงรอบโคมลด 50%
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0, -26, 52, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;

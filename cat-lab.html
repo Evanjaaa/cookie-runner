@@ -70,6 +70,13 @@
     .ib:hover { background: rgba(255,244,220,.12); }
     .ib:active { transform: translateY(1px); }
     .ib.play { min-width: 92px; background: var(--accent); color: #2A0F22; border-color: transparent; font-weight: 600; }
+    .ib:disabled { opacity: .38; cursor: default; transform: none; }
+    /* ── แถบท่าเปิดตัว (ใต้จอภาพ — มือถือเห็นทันทีไม่ต้องเลื่อนหา) ── */
+    .introbar { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .introbar .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
+    .introbar .head small { color: var(--dim); font-size: 12px; }
+    .introbar .row select { flex: 1 1 180px; min-width: 0; }
+    .introbar .note { margin-top: 6px; }
     .time { font-variant-numeric: tabular-nums; color: var(--dim); }
     .time b { color: var(--ink); font-weight: 600; }
     .spacer { flex: 1; }
@@ -133,12 +140,23 @@
           <div class="tip" id="tip">0.00</div>
         </div>
         <div class="row">
-          <button type="button" class="ib play" id="play">⏸ หยุด</button>
+          <button type="button" class="ib play" id="play">⏸ พัก</button>
+          <button type="button" class="ib" id="stop" title="หยุดแล้วกลับต้นท่า">⏹ หยุด</button>
           <button type="button" class="ib" id="back" title="ถอยหนึ่งเฟรม (←)">⏮︎ 1</button>
           <button type="button" class="ib" id="fwd" title="เดินหน้าหนึ่งเฟรม (→)">1 ⏭︎</button>
           <button type="button" class="ib" id="restart" title="กลับไปต้นท่า (Home)">↺ เริ่มใหม่</button>
           <span class="spacer"></span>
           <span class="time" id="time"><b>0.00</b> / 0.00 วิ</span>
+        </div>
+        <div class="introbar">
+          <div class="head"><b>✨ ท่าเปิดตัว · ท่าแอ็ค</b><small>สกินระดับ S — ดูแบบวิดีโอ: ▶ เล่น · ⏸ พัก · ⏹ หยุด · ลากหลอดเวลาได้</small></div>
+          <div class="row">
+            <select id="introOf" aria-label="เลือกสกินที่มีท่าเปิดตัว"></select>
+            <button type="button" class="ib play" id="introPlay">▶ ท่าเปิดตัว</button>
+            <button type="button" class="ib" id="introSkip" disabled>⏭ ข้าม</button>
+            <button type="button" class="ib" id="actPose">✦ ท่าแอ็ค</button>
+          </div>
+          <p class="note" id="introNote"></p>
         </div>
       </div>
     </section>
@@ -176,12 +194,12 @@
   </div>
 
   <script type="module">
-    import { drawCat2, cat2Outfits } from './src/render/cat2.js';
+    import { drawCat2, cat2Outfits, cat2Intro, cat2Act } from './src/render/cat2.js';
     import { OUTFITS, RARITY, outfitById } from './src/outfits.js';
-    import { HOME_MOVES, LOVE_MOVE, E } from './src/home-moves.js';
+    import { HOME_MOVES, LOVE_MOVE, E, mixShape } from './src/home-moves.js';
     import { IDLE_SHAPE, drawCatPose } from './src/render/entities.js';
     import { SKINS } from './src/skins.js';
-    import { sfx, unlockAudio } from './src/audio.js';
+    import { sfx, unlockAudio, fadeSfx } from './src/audio.js';
 
     // ── ท่าทั้งหมด (เวลาในท่าเป็นเฟรมที่ 60fps เหมือนในเกม) ──
     const NAMES = {
@@ -192,6 +210,7 @@
       love: ['รับหัวใจ', 'ตอนได้หัวใจจากเพื่อน'],
       'rest-yawn': ['หาว', 'ท่าว่าง (ไม่มีใครแตะ)'], 'rest-sit': ['นั่ง', 'ท่าว่าง'],
       'rest-groom': ['เลียอุ้งเท้า', 'ท่าว่าง'], 'rest-loaf': ['หมอบ', 'ก้อนขนมปัง · ท่าว่าง'],
+      intro: ['ท่าเปิดตัว', 'สกินระดับ S'], act: ['ท่าแอ็ค', 'ยืนค้างหน้าล็อบบี้'],
     };
     const IDLE = { id: 'idle', dur: 60 * 20, voices: [], fx: [], shape: null };
     // ท่าว่างของหน้าแรก (เกมสุ่มเล่นเองตอนไม่มีใครแตะ) — ค่อย ๆ เข้าท่า ค้าง แล้วค่อย ๆ ออก เหมือนในเกม
@@ -231,9 +250,96 @@
       st.f = 0;
       st.playing = true;
       for (const b of $('moves').children) b.classList.toggle('on', b.dataset.id === m.id);
+      $('introSkip').disabled = !m.intro;
       drawMarks();
       sync();
     }
+
+    // ── ท่าเปิดตัว / ท่าแอ็ค ของชุดระดับ S (CAT2_OUTFITS[id].intro / .act ใน cat2.js) ──
+    // เวลาของเกม (หายใจ กะพริบ) ต่อเนื่องข้ามท่า: ท่าแอ็คที่ต่อจากท่าเปิดตัวเริ่มนับต่อจากเวลาที่ท่าเปิดตัวจบ (tBase)
+    const SKIP_F = 20;   // กดข้าม: ไหลเข้าท่าแอ็คใน 20 เฟรม (เอฟเฟกต์จางออกพร้อมกัน เสียงจางใน 0.3 วิ)
+    const introOf = () => cat2Intro(st.outfit), actOf = () => cat2Act(st.outfit);
+    function introMove() {
+      const it = introOf();
+      return { id: 'intro', dur: it.dur, voices: it.voices, fx: [], intro: true, tBase: 600, shape: (f) => it.shape(f, 600 + f) };
+    }
+    function actMove(tBase = 600, from = null) {
+      const act = actOf();
+      return {
+        id: 'act', dur: 60 * 12, voices: [], fx: [], tBase, from,
+        shape: (f) => {
+          const sh = act.shape(tBase + f);
+          return from && f < SKIP_F ? mixShape(from.shape, sh, E.io(f / SKIP_F)) : sh;
+        },
+      };
+    }
+    function soundOn() {
+      if (st.sound) return;
+      st.sound = true;
+      unlockAudio();
+      [...$('sound').children].forEach((b, i) => b.classList.toggle('on', i === 1));
+    }
+    // รายชื่อสกินที่มีท่าเปิดตัว — เลือกจากแถบนี้ได้เลย ไม่ต้องเลื่อนลงไปเลือกชุดก่อน
+    const INTRO_OFS = OUTFITS.filter((o) => cat2Intro(o.id));
+    for (const o of INTRO_OFS) {
+      const op = document.createElement('option');
+      op.value = o.id;
+      op.textContent = o.name;
+      $('introOf').append(op);
+    }
+    /** สวมชุดให้น้อง (ซิงก์ปุ่มชุดในแผงข้างด้วย) */
+    function setOutfit(id) {
+      st.outfit = id;
+      for (const x of document.querySelectorAll('#outfits .chip')) x.classList.toggle('on', x.dataset.of === id);
+      refreshIntro();
+    }
+    function refreshIntro() {
+      if (introOf()) $('introOf').value = st.outfit;   // ใส่ชุดที่มีท่าเปิดตัวอยู่ = ช่องเลือกตามชุดนั้น
+      const any = INTRO_OFS.length > 0;
+      for (const id of ['introPlay', 'actPose', 'introOf']) $(id).disabled = !any;
+      $('introNote').textContent = !any
+        ? 'ยังไม่มีสกินที่ทำท่าเปิดตัว'
+        : st.move.intro
+          ? 'กำลังเล่นท่าเปิดตัว · ⏭ ข้าม = ไหลเข้าท่าแอ็คทันที (เสียงค่อย ๆ จาง) · จบแล้วค้างที่ท่าแอ็ค กด ▶ ดูซ้ำ'
+          : 'กด ▶ ท่าเปิดตัว = ใส่ชุดที่เลือกแล้วเล่นทันที (เปิดเสียงให้อัตโนมัติ) · ✦ ท่าแอ็ค = ท่ายืนค้างหน้าล็อบบี้';
+      if (!introOf() && (st.move.intro || st.move.id === 'act')) pick(IDLE);
+    }
+    /** มือถือ: จอภาพเลื่อนพ้นขึ้นไปแล้ว — เลื่อนกลับมาให้เห็นตอนเริ่มเล่น */
+    const showStage = () => {
+      const r = cv.getBoundingClientRect();
+      if (r.top < 0 || r.bottom > innerHeight) cv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    $('introPlay').onclick = () => {
+      if (!INTRO_OFS.length) return;
+      setOutfit($('introOf').value);
+      soundOn();
+      fadeSfx(0.05);
+      pick(introMove());
+      refreshIntro();
+      showStage();
+    };
+    $('introSkip').onclick = () => {
+      if (!st.move.intro) return;
+      const fs = Math.min(st.f, st.move.dur);
+      fadeSfx(0.3);
+      pick(actMove(600 + fs, { shape: st.move.shape(fs), f: fs }));
+      refreshIntro();
+    };
+    $('actPose').onclick = () => {
+      if (!INTRO_OFS.length) return;
+      setOutfit($('introOf').value);
+      fadeSfx(0.15);
+      pick(actMove(600));
+      refreshIntro();
+      showStage();
+    };
+    $('introOf').onchange = () => {
+      // เปลี่ยนสกินระหว่างดู: ใส่ชุดใหม่แล้วเล่นท่าเดิมต่อของชุดนั้น
+      const was = st.move.intro ? 'intro' : st.move.id === 'act' ? 'act' : null;
+      setOutfit($('introOf').value);
+      if (was === 'intro') $('introPlay').onclick();
+      else if (was === 'act') $('actPose').onclick();
+    };
 
     // ── ปุ่มตัวเลือกแบบแถบ ──
     function seg(id, key, items) {
@@ -280,10 +386,7 @@
           b.className = 'chip' + (o.id === st.outfit ? ' on' : '');
           b.dataset.of = o.id;
           b.innerHTML = `<span>${o.name}</span>` + (o.id === 'none' ? '' : `<span class="tag ${ok ? 'new' : 'old'}">${ok ? 'แบบใหม่' : 'ยังไม่ทำ'}</span>`);
-          b.onclick = () => {
-            st.outfit = o.id;
-            for (const x of box.querySelectorAll('.chip')) x.classList.toggle('on', x === b);
-          };
+          b.onclick = () => setOutfit(o.id);
           grid.append(b);
         }
         box.append(grid);
@@ -327,6 +430,7 @@
       dragging = true;
       wasPlaying = st.playing;
       st.playing = false;   // ระหว่างลากหยุดไว้ก่อน ปล่อยแล้วค่อยเล่นต่อ (เหมือนยูทูป)
+      fadeSfx(0.1);         // เสียงที่ค้างอยู่ไม่ดังต่อระหว่างลาก
       track.classList.add('drag');
       st.f = posToF(e);
       sync();
@@ -349,17 +453,19 @@
     track.addEventListener('pointercancel', endDrag);
 
     // ── ปุ่มเล่น/หยุด/ทีละเฟรม ──
-    const step = (n) => { st.playing = false; st.f = Math.max(0, Math.min(durOf(), Math.round(st.f) + n)); sync(); };
+    const step = (n) => { if (st.playing) fadeSfx(0.12); st.playing = false; st.f = Math.max(0, Math.min(durOf(), Math.round(st.f) + n)); sync(); };
     const toggle = () => {
       if (!st.playing && st.f >= durOf()) st.f = 0;   // จบท่าแล้วกดเล่น = เริ่มใหม่
       st.playing = !st.playing;
+      if (!st.playing) fadeSfx(0.15);   // พัก = เสียงที่ยังค้างคิวอยู่จางออก (เหมือนกดพักวิดีโอ)
       sync();
     };
     $('play').onclick = toggle;
     cv.onclick = toggle;
+    $('stop').onclick = () => { fadeSfx(0.15); st.playing = false; st.f = 0; sync(); };
     $('back').onclick = () => step(-1);
     $('fwd').onclick = () => step(1);
-    $('restart').onclick = () => { st.f = 0; st.playing = true; sync(); };
+    $('restart').onclick = () => { fadeSfx(0.1); st.f = 0; st.playing = true; sync(); };
     addEventListener('keydown', (e) => {
       if (e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); toggle(); }
@@ -374,7 +480,7 @@
       $('fill').style.width = p + '%';
       $('knob').style.left = p + '%';
       $('time').innerHTML = `<b>${fmt(st.f)}</b> / ${fmt(durOf())} วิ · เฟรม ${Math.round(st.f)}`;
-      $('play').textContent = st.playing ? '⏸ หยุด' : '▶ เล่น';
+      $('play').textContent = st.playing ? '⏸ พัก' : '▶ เล่น';
       $('badge').textContent = st.playing ? 'กำลังเล่น' : 'หยุดค้างท่า';
       $('badge').classList.toggle('paused', !st.playing);
       track.setAttribute('aria-valuenow', fmt(st.f));
@@ -429,7 +535,9 @@
       const lift = (shape?.lift || 0) * SCALE;
       // เงาหดตอนลอย (เหมือนหน้าแรก)
       const hopK = 1 - Math.min(0.42, lift / 40);
-      ctx.globalAlpha = 0.28 * hopK;
+      // ท่าเปิดตัว: ก่อนน้องปรากฏยังไม่มีเงา แล้วค่อย ๆ เข้มขึ้นพร้อมตัวที่เด้งขึ้นมา
+      const appear = st.move.intro ? Math.max(0, Math.min(1, (st.f - (cat2Intro(st.outfit)?.appear || 0)) / 14)) : 1;
+      ctx.globalAlpha = 0.28 * hopK * appear;
       ctx.fillStyle = '#000';
       ctx.beginPath();
       ctx.ellipse(0, 5, 44 * hopK, 8.5 * hopK, 0, 0, Math.PI * 2);
@@ -440,10 +548,15 @@
       const sh = st.view !== 'front' ? { ...(shape || {}), turn: TURN[st.view] } : shape;
       const of = outfitById(st.outfit);
       const isNew = st.outfit === 'none' || cat2Outfits().includes(st.outfit);
+      // ท่าเปิดตัว: ส่งเฟรมในท่าไปด้วย (ตัววาดเล่นเอฟเฟกต์ตามจังหวะ) · ช่วงกดข้าม: เฟรมเดินต่อ + skip ไล่ 0→1 ให้เอฟเฟกต์จางออก
+      let idleArg = sh ? { k: 1, shape: sh, pose: st.move.id } : null;
+      const edgeL = -(w / 2) / u + (st.focusX || 0);   // ขอบซ้ายของจอ (พิกัดเกม) — น้องแอบมองจากขอบนี้
+      if (st.move.intro) idleArg = { ...idleArg, intro: st.f, edgeL };
+      else if (st.move.from && st.f < SKIP_F) idleArg = { ...idleArg, intro: st.move.from.f + st.f, skip: E.io(st.f / SKIP_F), edgeL };
       // ชุดที่ยังไม่ทำแบบใหม่: น้องแบบใหม่ไม่ใส่ชุด (ยังใส่ไม่ได้) — ดูชุดจากตัวเดิมข้าง ๆ
-      drawCat2(ctx, 0, -lift, SCALE, isNew && of ? { ...st.skin, outfit: of } : st.skin, 600 + st.f, sh ? { k: 1, shape: sh, pose: st.move.id } : null);
-      // เทียบแบบเดิม (ตัววาดเดิมใส่ชุดเดียวกัน) ทางขวา ย่อลง
-      if (st.compare && st.outfit !== 'none' && of) {
+      drawCat2(ctx, 0, -lift, SCALE, isNew && of ? { ...st.skin, outfit: of } : st.skin, (st.move.tBase ?? 600) + st.f, idleArg);
+      // เทียบแบบเดิม (ตัววาดเดิมใส่ชุดเดียวกัน) ทางขวา ย่อลง — ไม่โชว์ตอนท่าเปิดตัว/ท่าแอ็ค (ตัวเดิมไม่มีท่านี้)
+      if (st.compare && st.outfit !== 'none' && of && !st.move.intro && st.move.id !== 'act') {
         ctx.save();
         ctx.translate(150, 0);
         ctx.globalAlpha = 0.95;
@@ -479,7 +592,9 @@
         st.f += df;
         if (st.sound) for (const [f, v] of st.move.voices || []) if (f0 < f && st.f >= f) sfx[v]?.();
         if (st.f >= durOf()) {
-          if (st.loop) st.f = 0;
+          if (st.move.intro) { st.f = durOf(); st.playing = false; }   // ท่าเปิดตัวจบ = ค้างภาพสุดท้าย (ท่าแอ็ค) แบบวิดีโอจบ · กด ▶ ดูซ้ำ
+          else if (st.move.id === 'act') { st.move.tBase += st.move.dur; st.move.from = null; st.f = 0; }   // ท่าแอ็ควนไม่สะดุด
+          else if (st.loop) st.f = 0;
           else { st.f = durOf(); st.playing = false; }
         }
         sync();
@@ -487,6 +602,7 @@
       render();
     }
     pick(IDLE);
+    refreshIntro();
     requestAnimationFrame(frame);
   </script>
 </body>

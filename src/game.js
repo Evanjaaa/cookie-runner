@@ -3032,7 +3032,7 @@ export class Game {
 
   /** ตัวคูณขนาดแมวบนหน้าแรก — จอสัมผัสกว้างกว่าเพราะปุ่มเมนูถูกบีบเข้ามาจากขอบ */
   get catScaleHome() {
-    return coarsePointer.matches ? 3 : 2.6;
+    return coarsePointer.matches ? 3.3 : 2.86;   // ใหญ่ขึ้น 10% ทุกเครื่อง (ผู้ใช้ขอ — เดิม 3 / 2.6)
   }
 
   /**
@@ -3191,8 +3191,9 @@ export class Game {
     ctx.fill();
     ctx.restore();
 
-    drawCatAuto(ctx, x, GROUND_Y, 2.6, getSkin(), t, null, { fit: 1 });   // ห้องก่อนวิ่ง: แมวส้มใช้แบบใหม่
+    // แสงฟุ้งลงก่อนวาดน้อง — ไม่งั้นสีห้อง (ครีม/เหลือง) ที่เบลอแล้วบวกทับตัวน้อง ตัวติดโทนเหลืองซีด (เหมือนหน้าแรก)
     postProcess(ctx, { edges: false });
+    drawCatAuto(ctx, x, GROUND_Y, 2.6, getSkin(), t, null, { fit: 1 });   // ห้องก่อนวิ่ง: แมวส้มใช้แบบใหม่
   }
 
   /**
@@ -3313,6 +3314,9 @@ export class Game {
 
     // กราฟิกระดับสูง: วาดตัวน้องลงชั้นแยกก่อนแล้วแปะ — ชั้นนี้ใช้เป็นแม่แบบรับแสงตะเกียงตอนท้าย
     // (source-over ผ่านชั้นแยกให้ภาพเท่าวาดตรงทุกพิกเซล)
+    // แสงฟุ้ง (bloom) ลงก่อนวาดน้อง — bloom บวกสีฉากหลังที่เบลอแล้ว (ชมพู/เหลือง) ทับทั้งจอ
+    // ถ้าลงหลังน้อง ตัวน้องจะติดโทนเหลืองซีดทั้งตัว ไม่ใช่สีจริงของแบบ (ผู้ใช้เห็นบนหน้าแรก)
+    postProcess(ctx, { edges: false });
     const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
     // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
     if (CAT2.home) drawCat2(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
@@ -3320,7 +3324,6 @@ export class Game {
     if (lit) blitLayer(ctx, lit.canvas, 'source-over', this.homeLitRect);
     this.drawHomeFx(ctx);
     this.drawLove(ctx);
-    postProcess(ctx, { edges: false });
     // กล่องแมว (ทางเข้าบ้านลูกเหมียว) วาดหลังแสงฟุ้ง — ไม่งั้นแสงฟุ้งทำให้กล่องซีดจนเกือบขาว
     // homeBoxPop เด้งตอนถูกแตะ ไล่ลงเองทีละเฟรม
     if (this.homeBoxPop > 0) this.homeBoxPop = Math.max(0, this.homeBoxPop - 0.04);

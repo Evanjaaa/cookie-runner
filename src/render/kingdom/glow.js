@@ -216,12 +216,12 @@ export function fxFront(ctx, worldX, p, t, opts = {}) {
         // สูตรวูบไหวเดียวกับเปลวในโคม (props.js) แสงจึงหายใจพร้อมเปลว
         const fl = 0.75 + Math.sin(t * 0.09 + it.seed) * 0.12 + Math.sin(t * 0.21) * 0.06;
         const cy = it.y - 26 * it.s;
-        glow(ctx, x, cy, 110 * it.s, '255,196,110', 0.2 * fl);
-        glow(ctx, x, cy, 36 * it.s, '255,236,180', 0.38 * fl);
+        glow(ctx, x, cy, 110 * it.s, '255,196,110', 0.1 * fl);   // แสงตะเกียงทุกชั้นลด 50% (ผู้ใช้ขอ)
+        glow(ctx, x, cy, 36 * it.s, '255,236,180', 0.19 * fl);
         ctx.save();
         ctx.translate(x, it.y + 2);
         ctx.scale(1, 0.3);
-        glow(ctx, 0, 0, 80 * it.s, '255,200,120', 0.2 * fl);
+        glow(ctx, 0, 0, 80 * it.s, '255,200,120', 0.1 * fl);
         ctx.restore();
       } else if (it.art === 'potionBasket') {
         glow(ctx, x, it.y - 22 * it.s, 44 * it.s, '196,214,255', 0.22);
@@ -262,13 +262,16 @@ export function lanternLightMask(lctx, worldX, t) {
   lctx.globalCompositeOperation = 'source-in';
   if (lamp) {
     const { it, x } = lamp;
-    const fl = 0.75 + Math.sin(t * 0.09 + it.seed) * 0.12 + Math.sin(t * 0.21) * 0.06;
+    // ไหววูบชัดขึ้นนิด (แสงสลับเข้ม-อ่อนบนตัวน้อง) — จังหวะเดียวกับเปลวในโคม
+    const fl = 0.78 + Math.sin(t * 0.09 + it.seed) * 0.17 + Math.sin(t * 0.21) * 0.08;
     const cy = it.y - 26 * it.s;
-    const R = 175 * it.s;
+    // รัศมีกว้างพอถึงตัวน้อง — ตะเกียงอยู่ห่างตัวน้อง ~165 หน่วย เดิมรัศมี 192 แสงถึงตัวแค่ขอบสุดที่จางจนแทบศูนย์
+    // (ผู้ใช้เพิ่มเปอร์เซ็นต์แล้วไม่เห็นเปลี่ยน) · ด้านที่หันหาตะเกียงสว่างกว่า ไล่จางไปอีกฝั่งของตัว
+    const R = 330 * it.s;
     const g = lctx.createRadialGradient(x, cy, 0, x, cy, R);
-    // แสงที่ตกบนตัวน้อง/กล่อง: ลด 20% (0.42/0.2 → 0.336/0.16) แล้วลดอีก 30% (→ 0.235/0.112) — ผู้ใช้ขอให้ตัวน้องไม่โดนแสงส้มจัด
-    g.addColorStop(0, `rgba(255,196,112,${0.235 * fl})`);
-    g.addColorStop(0.45, `rgba(255,178,96,${0.112 * fl})`);
+    g.addColorStop(0, `rgba(255,196,112,${0.27 * fl})`);
+    g.addColorStop(0.42, `rgba(255,186,104,${0.198 * fl})`);
+    g.addColorStop(0.62, `rgba(255,178,96,${0.081 * fl})`);
     g.addColorStop(1, 'rgba(255,170,90,0)');
     lctx.fillStyle = g;
   } else {
