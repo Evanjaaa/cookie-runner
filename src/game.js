@@ -246,6 +246,35 @@ function dimForUi(ctx, k = 1, extBottom = 0) {
 }
 
 /**
+ * ม่านหรี่ใต้เมนูแบบภาพสำรอง — ม่านนี้ไม่เคยขยับ (ขึ้นกับความแรงกับขนาดจอเท่านั้น)
+ * แต่เดิมทาไล่สีเต็มจอสามชั้นใหม่ทุกครั้งที่ฉากส่วนใกล้อัปเดต (~30 ครั้ง/วิ)
+ * ทาครั้งเดียวลงผ้าใบใสขนาดเท่าจอ แล้วแปะทับ — ผลเท่าเดิม (ทับซ้อนแบบปกติรวมเป็นชั้นเดียวได้)
+ */
+let dimCache = null;
+function dimForUiCached(ctx, k, extBottom) {
+  const m = ctx.getTransform();
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  const key = [m.a, m.b, m.c, m.d, m.e, m.f, cw, ch, k, extBottom].join('|');
+  if (!dimCache || dimCache.key !== key) {
+    const cv = dimCache?.cv || document.createElement('canvas');
+    if (cv.width !== cw || cv.height !== ch) {
+      cv.width = cw;
+      cv.height = ch;
+    }
+    const c = cv.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, cw, ch);
+    c.setTransform(m);
+    dimForUi(c, k, extBottom);
+    dimCache = { cv, key };
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(dimCache.cv, 0, 0);
+  ctx.restore();
+}
+
+/**
  * จำจังหวะที่เก็บเม็ดได้ — ให้ตัววาดเล่นท่า "ถูกเก็บ" (เด้งแล้วหดหายเป็นประกาย) แทนการหายวับ (ดู drawTreats)
  * คะแนน/เสียงยังเกิดทันทีที่แตะ — แอนิเมชันเป็นภาพล้วน ไม่หน่วงการเก็บ
  */
@@ -3249,7 +3278,7 @@ export class Game {
       bg.c.setTransform(ctx.getTransform());
       // กราฟิกระดับสูง = ฉากเต็มแสง (แดด ลำแสง โคม ละออง ดู kingdom/glow.js)
       drawKingdom(bg.c, t, { fx, part: 'near', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
-      dimForUi(bg.c, 0.45, ctx.canvas.homeExtBottom || 0);
+      dimForUiCached(bg.c, 0.45, ctx.canvas.homeExtBottom || 0);
     }
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

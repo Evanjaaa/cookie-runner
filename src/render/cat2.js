@@ -827,7 +827,7 @@ function sailorShirt(c, k) {
     c.clip(a.path);
     if (a.notIn) {
       const h = new Path2D();
-      h.rect(-2000, -2000, 5000, 5000);
+      h.rect(...HOLE_BOX);
       h.addPath(a.notIn);
       c.clip(h, 'evenodd');
     }
@@ -836,7 +836,7 @@ function sailorShirt(c, k) {
       const m = c.getTransform();
       a.collar.xf(c);
       const h = new Path2D();
-      h.rect(-2000, -2000, 5000, 5000);
+      h.rect(...HOLE_BOX);
       h.addPath(a.collar.path, new DOMMatrix().translate(300, 410).scale(1.06).translate(-300, -410));
       c.clip(h, 'evenodd');
       c.setTransform(m);
@@ -3890,9 +3890,9 @@ function sweetIntroShape(f, t) {
     return {
       // เอียงมาก + หัวเอียงสวนกลับ = เห็นแค่หัว (ตัวกับแขนยังหลบหลังขอบ)
       lean: ktrack(f, [[P, 0], [P + 12, 0.96, KE.out], [P + 16, 0.9], [A.hide - 4, 0.92], [A.hide, 1.0, KE.out], [A.hide + 9, -0.05, KE.in], [A.gone + 2, 0]])
-        + Math.sin(f * 0.21) * 0.016 * look,
+        + Math.sin(t * 0.21) * 0.016 * look,
       tilt: -0.34 + ktrack(f, [[P + 14, 0], [P + 20, 0.1, KE.out], [P + 28, 0.06], [P + 33, -0.06, KE.out], [P + 40, 0]])
-        + Math.sin(f * 0.15) * 0.02 * look,
+        + Math.sin(t * 0.15) * 0.02 * look,
       // มองไล่ในห้อง (ค้าง-กระตุก) แล้วหันขวับมาหาคนดู
       gaze: ktrack(f, [[P + 10, 0], [P + 15, 0.35, KE.out], [P + 21, 0.35], [P + 24, 0.85, KE.out], [P + 30, 0.8], [P + 33, 0.08, KE.out], [P + 36, 0]]),
       gazeY: ktrack(f, [[P + 10, 0], [P + 15, -0.15, KE.out], [P + 21, -0.15], [P + 24, 0.1, KE.out], [P + 30, 0.1], [P + 33, 0, KE.out]]),
@@ -3904,7 +3904,7 @@ function sweetIntroShape(f, t) {
       wag: 0.3,
     };
   }
-  const L = swLife(f);
+  const L = swLife(t);   // เวลาจริง (ท่าเปิดตัวถูกยืดเวลา — ตัวยังขยับเล็ก ๆ ความเร็วปกติ ไม่ดูเป็นสโลว์)
   // ── ปรากฏตัวจากคัพเค้ก: โตจากในถ้วย → ยืดตัวสูงตอนพุ่งขึ้น → กลมตอนลอยสูงสุด → ยืดตอนตก → ยุบตอนแตะพื้น → เด้งคืน ──
   const g = ktrack(f, [[A.appear, -0.86], [A.appear + 9, 0, KE.out]]);
   const ssY = ktrack(f, [[A.appear + 3, 0], [A.appear + 8, 0.15, KE.out], [A.appear + 12, 0.03], [A.appear + 18, 0.08], [A.appear + 23, -0.13, KE.out], [A.appear + 30, 0.04], [A.appear + 38, 0]]);
@@ -3956,8 +3956,19 @@ function sweetIntroShape(f, t) {
     // หาง: สะบัดตามแรงตอนแตะพื้น (follow-through) · ตวัดแรงตอนโพส
     wag: ktrack(f, [[A.appear, 1], [A.appear + 40, 0.25]])
       + Math.sin((f - A.appear - 22) * 0.3) * 0.5 * Math.exp(-Math.max(0, f - A.appear - 22) * 0.06) * (f > A.appear + 22 ? 1 : 0)
-      + Math.sin(f * 0.21) * 1.25 * kenv(f, A.pose + 4, A.pose + 14, A.orbit, A.orbit + 26),
+      + Math.sin(t * 0.21) * 1.25 * kenv(f, A.pose + 4, A.pose + 14, A.orbit, A.orbit + 26),   // ตวัดตามเวลาจริง (ช่วงโพสถูกยืด)
   };
+  // ── ช่วงที่ยืดเวลาออก (ผู้ใช้ขอให้ช้าลง): ท่าเล็ก ๆ ตามเวลาจริง ตัวไม่ค้างนิ่งระหว่างรอ ──
+  // หลับตายิ้มระหว่างริบบิ้นพันตัว: โยกตัวดีใจซ้าย-ขวา หัวโยกตามช้ากว่าหนึ่งจังหวะ หูขยับ หางส่าย
+  const smile = kenv(f, A.appear + 30, A.appear + 38, A.open - 12, A.open - 4);
+  s.lean += Math.sin(t * 0.085) * 0.03 * smile;
+  s.tilt += Math.sin(t * 0.085 - 0.9) * 0.05 * smile;
+  s.ear += Math.sin(t * 0.17) * 0.08 * smile;
+  s.wag += Math.sin(t * 0.2) * 0.5 * smile;
+  // ลุ้นรอคทาที่ลอยลงมาช้า ๆ: ขยับตัวขึ้น-ลงเบา ๆ โยกนิด ๆ
+  const wait = kenv(f, A.fall + 4, A.fall + 12, A.catch - 10, A.catch - 4);
+  s.sy += Math.sin(t * 0.26) * 0.018 * wait;
+  s.lean += Math.sin(t * 0.13) * 0.012 * wait;
   // ท้ายท่า: ไหลเข้าท่าแอ็ค (ส่วนที่ขยับตามเวลา) ไม่มีรอยต่อ
   const u = KE.io(clamp01((f - (A.dur - 40)) / 40));
   return u > 0 ? kmix(s, SWEET_ACT.shape(t), u) : s;
@@ -3994,8 +4005,8 @@ function swCupAt(f, edge) {
   if (f >= A.cupLand) {
     // สั่นดุ๊กดิ๊กรอป๊อป (แรงขึ้นเรื่อย ๆ) + ย่อตัวรวมพลังก่อนแตก
     const g = clamp01((f - A.cupLand - 6) / (A.appear - A.cupLand - 10));
-    rot = Math.sin((f - A.cupLand) * 0.95) * 0.09 * g;
-    sy += Math.sin((f - A.cupLand) * 0.55) * 0.035 * g;
+    rot = Math.sin((f - A.cupLand) * 1.52) * 0.09 * g;
+    sy += Math.sin((f - A.cupLand) * 0.88) * 0.035 * g;
     const pre = kenv(f, A.appear - 9, A.appear - 3, A.appear - 1, A.appear);
     sy -= pre * 0.14; sx += pre * 0.1;
   }
@@ -4362,20 +4373,69 @@ function sweetCam(f, skip = 0, v = {}) {
   rot += Math.sin(f * 1.3) * sh * 0.002;
   return { z: 1 + (z - 1) * k, fx: Lx + (SW_CAM_C[0] - Lx) * c, fy: Ly + (SW_CAM_C[1] - Ly) * c, dx: dx * k, dy: dy * k, rot: rot * k };
 }
+/**
+ * ยืดเวลาท่าเปิดตัวเป็นช่วง ๆ — เฟรมจริง ↔ เฟรมสตอรี (SWI)
+ * keys = [[เฟรมสตอรี, อัตรา]] · อัตรา = กี่เฟรมจริงต่อหนึ่งเฟรมสตอรี (1 = เร็วเท่าเดิม) ไล่นุ่มระหว่างคีย์ (ไม่มีจุดเปลี่ยนความเร็วกระตุก)
+ * คืน { warp(เฟรมจริง) → เฟรมสตอรี, toRaw(เฟรมสตอรี) → เฟรมจริง, dur = ความยาวจริง (เฟรม) }
+ * (ทำตอนโหลดไฟล์ — ห้ามใช้ clamp01/ease ที่ประกาศทีหลัง)
+ */
+function swMakeTime(storyDur, keys) {
+  const STEP = 0.5, n = Math.ceil(storyDur / STEP);
+  const raw = new Float64Array(n + 1);
+  for (let i = 1; i <= n; i++) {
+    const s0 = (i - 1) * STEP, s1 = Math.min(storyDur, i * STEP);
+    raw[i] = raw[i - 1] + ktrack((s0 + s1) / 2, keys) * (s1 - s0);
+  }
+  const toRaw = (sf) => {
+    const x = Math.max(0, Math.min(1, sf / storyDur)) * n, i = Math.min(n - 1, Math.floor(x));
+    return raw[i] + (raw[i + 1] - raw[i]) * (x - i);
+  };
+  const warp = (rf) => {
+    if (rf <= 0) return rf;
+    if (rf >= raw[n]) return storyDur + (rf - raw[n]);   // เลยท้ายท่า: เดินตามจริง
+    let lo = 0, hi = n;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (raw[mid] <= rf) lo = mid; else hi = mid; }
+    return (lo + (rf - raw[lo]) / (raw[hi] - raw[lo])) * STEP;
+  };
+  return { warp, toRaw, dur: raw[n] };
+}
+/**
+ * ความเร็วแต่ละช่วงของท่าเปิดตัว sweet (ผู้ใช้ขอ 14 ต.ค.: มีกล้องเพิ่มแล้วรู้สึกเร็วไป อยากเห็นรายละเอียด · 7–10 วิ)
+ * ช่วงดูรายละเอียดยืด 1.2–1.65 เท่า · จังหวะที่ต้องเร็วถึงจะสนุก (หดหัวตกใจ ป๊อป+ลงพื้น รับคทา ขนมระเบิด+กระโดด) คงความเร็วเดิม
+ */
+const SW_RATE = [
+  [0, 1.25], [16, 1.45], [48, 1.45], [52, 1], [66, 1],             // แอบมอง: มองรอบห้องนานขึ้น · หดหัวตกใจเร็วเท่าเดิม
+  [70, 1.2], [122, 1.2],                                            // คัพเค้กเด้งมา
+  [128, 1.65], [144, 1.65], [149, 1],                               // คัพเค้กสั่นลุ้นนานขึ้น · ป๊อปเร็วเท่าเดิม
+  [176, 1], [184, 1.5], [196, 1.5],                                 // เด้งออก+แตะพื้นเร็วเท่าเดิม → หลับตายิ้มระหว่างริบบิ้นพันนานขึ้น
+  [200, 1.35], [210, 1.35], [216, 1.55], [238, 1.55], [243, 1.05], [252, 1.05],   // ลืมตา · คทาลอยลงช้า ๆ · รับคทา
+  [258, 1.4], [298, 1.4], [301, 1], [326, 1],                       // ควงคทาช้าลง · ขนมระเบิด+กระโดดเร็วเท่าเดิม
+  [332, 1.35], [346, 1.35], [352, 1.6], [398, 1.6],                 // โพส · ค้างท่า
+];
+const SW_TIME = swMakeTime(SWI.dur, SW_RATE);
+/** เสียงตามจังหวะ (เฟรมสตอรี · ชื่อใน sfx ของ audio.js) — แปลงเป็นเฟรมจริงใน SWEET_INTRO */
+const SW_VOICES = [[SWI.peek + 12, 'sweetPeek'], [SWI.hide, 'sweetHide'], [SWI.cupIn, 'sweetHop'],
+  [SWI.land1, 'sweetBoing'], [SWI.land2, 'sweetBoing'], [SWI.cupLand, 'sweetBoing'], [SWI.cupLand + 8, 'sweetRattle'],
+  [SWI.appear - 1, 'sweetPop'], [SWI.appear + 1, 'sweetAppear'],
+  [SWI.open, 'sweetMusicBox'], [SWI.catch, 'sweetCatch'],
+  [SWI.raise, 'sweetTwirl'], [SWI.burst, 'sweetBurst'], [SWI.pose + 8, 'sweetMew'], [SWI.pose + 18, 'sweetBell'], [SWI.posed + 12, 'sweetShimmer']];
+// เสียงรวมพลังยาวตายตัว ~0.6 วิ ต้องจบตรงป๊อปพอดี — นับถอยจากป๊อปเป็นเฟรมจริง (ไม่ยืดตามช่วงคัพเค้กสั่น)
+const SW_GATHER_LEAD = 35;
+/**
+ * ท่าเปิดตัว sweet — ทุกอย่างที่ผู้เรียกส่งมาเป็น "เฟรมจริง" (dur · appear · voices · shape · cam)
+ * ตัววาดแปลงเป็นเฟรมสตอรีด้วย warp ก่อนส่งให้ช่องของชุด (k.intro) และ stage
+ */
 const SWEET_INTRO = {
-  dur: SWI.dur,
-  appear: SWI.appear,
-  stage: sweetIntroStage,
+  dur: Math.round(SW_TIME.dur),
+  appear: SW_TIME.toRaw(SWI.appear),
+  warp: SW_TIME.warp,
+  stage: sweetIntroStage,   // รับเฟรมสตอรี
   peekHide: SW_PEEK_HIDE,
-  // เสียงตามจังหวะ (ชื่อใน sfx ของ audio.js)
-  voices: [[SWI.peek + 12, 'sweetPeek'], [SWI.hide, 'sweetHide'], [SWI.cupIn, 'sweetHop'],
-    [SWI.land1, 'sweetBoing'], [SWI.land2, 'sweetBoing'], [SWI.cupLand, 'sweetBoing'], [SWI.cupLand + 8, 'sweetRattle'],
-    [SWI.appear - 34, 'sweetGather'], [SWI.appear - 1, 'sweetPop'], [SWI.appear + 1, 'sweetAppear'],
-    [SWI.open, 'sweetMusicBox'], [SWI.catch, 'sweetCatch'],
-    [SWI.raise, 'sweetTwirl'], [SWI.burst, 'sweetBurst'], [SWI.pose + 8, 'sweetMew'], [SWI.pose + 18, 'sweetBell'], [SWI.posed + 12, 'sweetShimmer']],
-  shape: sweetIntroShape,
-  fx: sweetIntroFx,
-  cam: sweetCam,    // กล้องเล่าเรื่อง (ผู้เรียกใส่ให้ทั้งฉาก · ส่ง { edge } มาด้วยสำหรับช่วงแอบมอง)
+  voices: [...SW_VOICES.map(([f, n]) => [Math.round(SW_TIME.toRaw(f)), n]),
+    [Math.round(SW_TIME.toRaw(SWI.appear)) - SW_GATHER_LEAD, 'sweetGather']].sort((a, b) => a[0] - b[0]),
+  shape: (f, t) => sweetIntroShape(SW_TIME.warp(f), t),
+  fx: sweetIntroFx,         // รับ k.intro เป็นเฟรมสตอรีแล้ว
+  cam: (f, skip, v) => sweetCam(SW_TIME.warp(f), skip, v),   // กล้องเล่าเรื่อง (ผู้เรียกใส่ให้ทั้งฉาก · ส่ง { edge } มาด้วยสำหรับช่วงแอบมอง)
 };
 
 // ══ องค์หญิงหิมะ (Snow Princess Meow · ระดับ S · LEGENDARY) — ออกแบบใหม่รอบสองตามบอร์ดผู้ใช้ (14 ต.ค.) ══
@@ -6004,7 +6064,7 @@ function snowIntroStage(f) {
 }
 /** รูปร่างตัว ณ เฟรม f ของท่าเปิดตัว (t = เวลาของเกม ใช้ตอนไหลเข้าท่าแอ็คท้ายท่า) */
 function snowIntroShape(f, t) {
-  const A = SNI, L = swLife(f, 0.6);
+  const A = SNI, L = swLife(t, 0.6);   // เวลาจริง (ท่าเปิดตัวถูกยืดเวลา — ตัวขยับเล็ก ๆ ความเร็วปกติ ไม่ดูเป็นสโลว์)
   // ปรากฏ: โตจากเล็กนิด ๆ แบบนุ่ม ลอยอยู่แล้วค่อย ๆ ลงแตะพื้น ยุบรับน้ำหนักเบา ๆ
   const grow = ktrack(f, [[A.show, -0.22], [A.show + 18, 0.02, KE.out], [A.show + 30, 0]]);
   const landSq = kenv(f, A.land - 3, A.land, A.land + 2, A.land + 14);
@@ -6048,8 +6108,20 @@ function snowIntroShape(f, t) {
     gazeY: lookY * curious - 0.42 * aimK - 0.2 * conjLook,
     tilt: 0.06 * (1 - curious) + lookTilt * 0.2 * curious + 0.05 * poseK + L.tilt,
     lean: -0.02 * aimK + 0.03 * castK - 0.03 * sweep + L.lean,
-    wag: 0.3 + Math.sin(f * 0.3) * 0.8 * kenv(f, H, H + 6, H + 22, H + 32) + Math.sin(f * 0.2) * 0.5 * kenv(f, P, P + 10, A.dur - 30, A.dur),
+    wag: 0.3 + Math.sin(f * 0.3) * 0.8 * kenv(f, H, H + 6, H + 22, H + 32) + Math.sin(t * 0.2) * 0.5 * kenv(f, P, P + 10, A.dur - 30, A.dur),
   };
+  // ── ช่วงที่ยืดเวลาออก (ผู้ใช้ขอให้ช้าลง): ท่าเล็ก ๆ ตามเวลาจริง ตัวไม่ค้างนิ่ง ──
+  // ลอยลงหลับตายิ้มหลังดอกน้ำแข็งบาน: แกว่งตัวเบา ๆ แบบล่องลอย หัวเอียงตามช้ากว่าหนึ่งจังหวะ หูพลิ้ว หางโบก
+  const drift = kenv(f, A.show + 6, A.show + 16, A.land - 8, A.land);
+  s.lean += Math.sin(t * 0.075) * 0.022 * drift;
+  s.tilt += Math.sin(t * 0.075 - 0.9) * 0.045 * drift;
+  s.ear += Math.sin(t * 0.16) * 0.07 * drift;
+  s.wag += Math.sin(t * 0.18) * 0.45 * drift;
+  // ชูคทาชาร์จเวท: ลมเวทพัดหูพลิ้วถี่ ๆ หางสะบัด ตัวสั่นเกร็งนิด ๆ ตามพลังที่รวม
+  const charge = kenv(f, A.raise + 10, A.aim, A.cast - 2, A.cast + 4);
+  s.ear += Math.sin(t * 0.55) * 0.06 * charge;
+  s.wag += Math.sin(t * 0.32) * 0.35 * charge;
+  s.sy += Math.sin(t * 0.9) * 0.006 * charge;
   const u = KE.io(clamp01((f - (A.dur - 40)) / 40));
   return u > 0 ? kmix(s, SNOW_ACT.shape(t), u) : s;
 }
@@ -6134,7 +6206,7 @@ function snowLens(c, k) {
     for (let i = 0; i < 12; i++) {
       const x = hash(i * 3 + 950) * W, y = hash(i * 7 + 951) * H;
       if (frostAt(x, y) < 0.45) continue;
-      const tw = Math.max(0, Math.sin(f * 0.09 + i * 1.7));
+      const tw = Math.max(0, Math.sin((k.t || 0) * 0.09 + i * 1.7));   // เวลาจริง (ช่วงนี้ถูกยืดเวลา)
       snSparkle(c, x, y, 13 * s * tw + 2 * s, tw);
     }
     // รอยร้าว: เส้นซิกแซกสิบสองสายจากจุดกระทบ + วงร้าวสองวง (ค่อย ๆ ลาม)
@@ -6421,19 +6493,35 @@ function snowWandIntro(c, k, f, gx, gy, ga) {
     }
   }
 }
+/**
+ * ความเร็วแต่ละช่วงของท่าเปิดตัว princess (ผู้ใช้ขอ 14 ต.ค. แบบเดียวกับ sweet: ช้าลงให้เห็นรายละเอียด · ~9.5 วิ)
+ * [เฟรมสตอรี SNI, เฟรมจริงต่อหนึ่งเฟรมสตอรี] — ตัวยืดเดียวกับ sweet (swMakeTime)
+ * ยืด: จอน้ำแข็ง+เกล็ดลอยลง · หมุนวนเข้ากลาง · ลอยลงแตะพื้น · มองจอ · ชูคทาชาร์จ · จอร้าว · ปัดคทา · โพส
+ * เร็วเท่าเดิม: ดอกบาน "ปริ๊ง" · ยิงเวท · จอแตก · กระโดดดีใจ (ดอกตูมเต้นตุบ ๆ ยืดนิดเดียว ไม่ให้จังหวะหัวใจหย่อน)
+ */
+const SN_RATE = [
+  [0, 1.3], [96, 1.3], [104, 1.35], [116, 1.35], [122, 1.1], [141, 1.1], [144, 1], [152, 1],   // จอน้ำแข็ง เกล็ดลอยลง หมุนวน · ดอกตูม · บาน
+  [158, 1.45], [180, 1.45], [186, 1.35], [226, 1.35], [232, 1.4], [258, 1.4],                 // ลอยลง · ลืมตามองจอ · ชูคทาชาร์จ
+  [262, 1], [267, 1], [270, 1.2], [279, 1.2], [282, 1], [312, 1],                              // ยิง · จอร้าว · จอแตก + กระโดด
+  [320, 1.25], [344, 1.25], [352, 1.4], [372, 1.5], [432, 1.6],                                // ปัดคทา · โพส · ค้างท่า
+];
+const SN_TIME = swMakeTime(SNI.dur, SN_RATE);
+/** เสียงตามจังหวะ (เฟรมสตอรี · ชื่อใน sfx ของ audio.js) — แปลงเป็นเฟรมจริงใน SNOW_INTRO */
+const SN_VOICES = [[0, 'snowFreeze'], [SNI.fall0 + 6, 'snowDescend'], [SNI.fall1, 'snowGather'], [SNI.fall1 + 16, 'snowBud'], [SNI.bloom - 2, 'snowBloom'],
+  [SNI.open, 'snowWake'], [SNI.notice + 4, 'snowNotice'], [SNI.aim, 'snowCharge'], [SNI.cast, 'snowCast'], [SNI.crack, 'snowCrack'],
+  [SNI.shatter, 'snowShatter'], [SNI.hop + 4, 'snowHop'], [SNI.sweep + 4, 'snowSweep'], [SNI.conjure - 2, 'snowConjure'],
+  [SNI.wink - 2, 'snowMew'], [SNI.wink + 8, 'snowShimmer']];
+/** ท่าเปิดตัว princess — ผู้เรียกส่ง "เฟรมจริง" · ตัววาดแปลงเป็นเฟรมสตอรีด้วย warp ก่อนส่งให้ช่องของชุด/lens/stage */
 const SNOW_INTRO = {
-  dur: SNI.dur,
-  appear: SNI.show,
-  stage: snowIntroStage,
-  cam: snowCam,     // กล้อง (ผู้เรียกใส่ให้ทั้งฉาก)
+  dur: Math.round(SN_TIME.dur),
+  appear: SN_TIME.toRaw(SNI.show),
+  warp: SN_TIME.warp,
+  stage: snowIntroStage,   // รับเฟรมสตอรี
+  cam: (f, skip, v) => snowCam(SN_TIME.warp(f), skip, v),     // กล้อง (ผู้เรียกใส่ให้ทั้งฉาก)
   ground: true,     // เอฟเฟกต์อยู่บนพื้น ไม่ลอยตามตัวตอนปรากฏ/กระโดด
-  lens: snowLens,   // น้ำแข็งเกาะจอ (ตัววาดวาดทับทั้งผ้าใบในพิกัดพิกเซล)
-  // เสียงตามจังหวะ (ชื่อใน sfx ของ audio.js)
-  voices: [[0, 'snowFreeze'], [SNI.fall0 + 6, 'snowDescend'], [SNI.fall1, 'snowGather'], [SNI.fall1 + 16, 'snowBud'], [SNI.bloom - 2, 'snowBloom'],
-    [SNI.open, 'snowWake'], [SNI.notice + 4, 'snowNotice'], [SNI.aim, 'snowCharge'], [SNI.cast, 'snowCast'], [SNI.crack, 'snowCrack'],
-    [SNI.shatter, 'snowShatter'], [SNI.hop + 4, 'snowHop'], [SNI.sweep + 4, 'snowSweep'], [SNI.conjure - 2, 'snowConjure'],
-    [SNI.wink - 2, 'snowMew'], [SNI.wink + 8, 'snowShimmer']],
-  shape: snowIntroShape,
+  lens: snowLens,   // น้ำแข็งเกาะจอ (ตัววาดวาดทับทั้งผ้าใบในพิกัดพิกเซล · k.intro เป็นเฟรมสตอรีแล้ว)
+  voices: SN_VOICES.map(([f, n]) => [Math.round(SN_TIME.toRaw(f)), n]),
+  shape: (f, t) => snowIntroShape(SN_TIME.warp(f), t),
   fx: snowIntroFx,
 };
 
@@ -6591,6 +6679,688 @@ function dryadBehind(c, k) {
   });
 }
 
+// ══ ฉากหลังประจำสกินระดับ S (ผู้ใช้ขอ 14 ต.ค. "ลองวาดพื้นหลังทั้งสองอัน ให้เข้ากับสกิน") ══
+// เป็น "ภาพนิ่ง" ตามที่ตกลงกัน (ฉากขยับทุกเฟรม = กินเครื่อง): วาดครั้งเดียวลงภาพสำรอง แล้วแปะทุกเฟรมด้วย drawImage ครั้งเดียว
+// ความมีชีวิตมาจากกล้องที่เลื่อน/ซูม + เอฟเฟกต์ของชุดที่วาดทับอยู่แล้ว
+// พิกัด = หน่วยไฟล์ของตัวน้อง (กลางตัว x 300 · เท้า y 648 = FEET_Y) — ฉากจึงโต/ย่อตามตัวน้องเสมอ ไม่ว่าจะวาดที่ขนาดไหน
+// สีฉากอ่อน/หม่นกว่าสีชุดเสมอ (ชุดต้องเด่นออกจากฉาก) · ตรงหลังตัวน้องโปร่งสงบ ของชิ้นใหญ่อยู่ด้านข้าง
+const BD_BOX = [-1000, -520, 1600, 1100];   // x0 y0 x1 y1 — ครอบมุมมองหน้ากว้างสุด (มือถือแนวนอน) + ที่กล้องเลื่อน/เงยมองฟ้า
+const BD_HZ = 500;                          // เส้นขอบฟ้า (ระดับสะโพกน้อง)
+const BD_MAX_PX = 4.2e6;                    // เพดานพิกเซลของภาพสำรอง (~17 MB)
+const bdRgba = (rgb, a) => `rgba(${rgb},${a})`;
+/** เส้นทางรวมวงกลมหลายวง (ก้อนเมฆ/พุ่มหิมะ) */
+function bdPuffs(list) {
+  const p = new Path2D();
+  for (const [x, y, r] of list) { p.moveTo(x + r, y); p.arc(x, y, r, 0, TAU); }
+  return p;
+}
+/** แสงฟุ้งกลม (ไล่จางขอบ) แบบวาดทับธรรมดา */
+function bdGlow(c, x, y, r, rgb, a, sy = 1) {
+  c.save();
+  c.translate(x, y);
+  c.scale(1, sy);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, bdRgba(rgb, a));
+  g.addColorStop(0.5, bdRgba(rgb, a * 0.45));
+  g.addColorStop(1, bdRgba(rgb, 0));
+  c.fillStyle = g;
+  c.fillRect(-r, -r, r * 2, r * 2);
+  c.restore();
+}
+/** วงโบเก้ (แสงนอกโฟกัส): ในจาง ขอบสว่างกว่านิด */
+function bdBokeh(c, x, y, r, rgb, a) {
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, bdRgba(rgb, a * 0.5));
+  g.addColorStop(0.72, bdRgba(rgb, a * 0.55));
+  g.addColorStop(0.9, bdRgba(rgb, a * 0.85));
+  g.addColorStop(1, bdRgba(rgb, 0));
+  c.fillStyle = g;
+  c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+}
+/** ขอบภาพสำรองค่อย ๆ กลืนเป็นสีรอบนอก (จอที่กว้างเกินภาพเห็นเป็นสีเดียวกันต่อเนื่อง ไม่เห็นขอบภาพ) */
+function bdEdgeFade(c, col, w = 260) {
+  const [X0, Y0, X1, Y1] = BD_BOX;
+  const side = (x0, y0, x1, y1, rx, ry, rw, rh) => {
+    const g = c.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, col);
+    g.addColorStop(1, col.replace(/[\d.]+\)$/, '0)'));
+    c.fillStyle = g;
+    c.fillRect(rx, ry, rw, rh);
+  };
+  side(X0, 0, X0 + w, 0, X0, Y0, w, Y1 - Y0);
+  side(X1, 0, X1 - w, 0, X1 - w, Y0, w, Y1 - Y0);
+  side(0, Y0, 0, Y0 + w * 0.7, X0, Y0, X1 - X0, w * 0.7);
+  side(0, Y1, 0, Y1 - w * 0.7, X0, Y1 - w * 0.7, X1 - X0, w * 0.7);
+}
+/** พื้นตารางมุมมองลึก (จุดหายที่กลางขอบฟ้า) — ช่องสลับสองสี · tw = กว้างช่องที่ระดับเท้า */
+function bdCheckerFloor(c, colA, colB, tw = 130) {
+  const [X0, , X1, Y1] = BD_BOX;
+  const K = (FEET_Y - BD_HZ) * 4;   // ระดับเท้าอยู่ที่ความลึก 4
+  const yAt = (z) => BD_HZ + K / z;
+  const xAt = (i, z) => 300 + (i * tw * 4) / z;
+  for (let z = 0.6; z < 40; z += 1) {
+    const ya = yAt(z + 1), yb = Math.min(Y1 + 10, yAt(z));
+    if (ya > Y1 + 10) continue;
+    for (let i = -90; i < 90; i++) {
+      const xa = xAt(i, z + 1), xb = xAt(i + 1, z + 1), xc = xAt(i + 1, z), xd = xAt(i, z);
+      if (Math.max(xa, xb, xc, xd) < X0 || Math.min(xa, xb, xc, xd) > X1) continue;
+      c.fillStyle = (i + Math.round(z)) % 2 ? colA : colB;
+      c.beginPath(); c.moveTo(xa, ya); c.lineTo(xb, ya); c.lineTo(xc, yb); c.lineTo(xd, yb); c.closePath(); c.fill();
+    }
+  }
+}
+/** แท่นวงรีใต้เท้า (เวทีของสกิน) — ผิวบน + ขอบหน้าหนา h · top/side = [สีกลาง, สีขอบ] */
+function bdStage(c, rx, ry, h, top, side, rim) {
+  const cx = 300, cy = FEET_Y + 6;
+  // ขอบหน้า (ครึ่งล่างของวงรี ยืดลงมา h)
+  const sp = new Path2D();
+  sp.moveTo(cx - rx, cy);
+  sp.ellipse(cx, cy, rx, ry, 0, Math.PI, 0, true);
+  sp.lineTo(cx + rx, cy + h);
+  sp.ellipse(cx, cy + h, rx, ry, 0, 0, Math.PI, false);
+  sp.closePath();
+  const sg = c.createLinearGradient(0, cy, 0, cy + ry + h);
+  sg.addColorStop(0, side[0]);
+  sg.addColorStop(1, side[1]);
+  c.fillStyle = sg;
+  c.fill(sp);
+  // ผิวบน
+  const tg = c.createRadialGradient(cx, cy - ry * 0.2, 0, cx, cy, rx);
+  tg.addColorStop(0, top[0]);
+  tg.addColorStop(1, top[1]);
+  c.fillStyle = tg;
+  c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.fill();
+  c.strokeStyle = rim;
+  c.lineWidth = 4;
+  c.beginPath(); c.ellipse(cx, cy, rx - 2, ry - 1, 0, 0, TAU); c.stroke();
+  return { cx, cy, rx, ry, h };
+}
+
+// ── ขนมหวาน: "เวทีขนมหวานในฝัน" — ฟ้าพาสเทลชมพู-ม่วง โบเก้ เมฆสายไหม เนินขนมราดครีม อมยิ้ม/ไม้เท้าลูกกวาด พื้นตารางมันวาว แท่นเค้กกลม ──
+function bdCandyHill(c, base, amp, f1, f2, ph, fill, frost, drip) {
+  const [X0, , X1] = BD_BOX;
+  const top = (x) => base - amp * (0.62 + 0.24 * Math.sin(x * f1 + ph) + 0.14 * Math.sin(x * f2 + ph * 1.7));
+  const p = new Path2D();
+  p.moveTo(X0, BD_HZ + 30);
+  for (let x = X0; x <= X1; x += 16) p.lineTo(x, top(x));
+  p.lineTo(X1, BD_HZ + 30);
+  p.closePath();
+  const g = c.createLinearGradient(0, base - amp, 0, BD_HZ + 30);
+  g.addColorStop(0, fill[0]);
+  g.addColorStop(1, fill[1]);
+  c.fillStyle = g;
+  c.fill(p);
+  // ครีมราดบนยอดเนิน: แถบหนาตามสัน + หยดครีมย้อยเป็นระยะ
+  const band = (x) => {
+    let d = 11;
+    for (let k = 0; k < 40; k++) {
+      const xk = X0 + 30 + k * 68 + hash(k * 3.3 + ph) * 30;
+      d += (10 + hash(k * 7.1 + ph) * 26) * Math.exp(-(((x - xk) / 14) ** 2));
+    }
+    return d;
+  };
+  const f = new Path2D();
+  f.moveTo(X0, top(X0) - 2);
+  for (let x = X0; x <= X1; x += 6) f.lineTo(x, top(x) - 2);
+  for (let x = X1; x >= X0; x -= 6) f.lineTo(x, top(x) + band(x));
+  f.closePath();
+  c.fillStyle = frost;
+  c.fill(f);
+  c.save();
+  c.clip(f);
+  c.fillStyle = drip;   // เงาใต้ครีมนิด ๆ ให้ครีมมีความหนา
+  c.translate(0, 5);
+  c.fill(f);
+  c.restore();
+  c.fillStyle = frost;
+  c.translate(0, -3);
+  c.fill(f);
+  c.translate(0, 3);
+}
+function bdLollipop(c, x, y, R, stick, tilt, cols) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(tilt);
+  // ไม้
+  const sg = c.createLinearGradient(-9, 0, 9, 0);
+  sg.addColorStop(0, '#F3E6EE'); sg.addColorStop(0.5, '#FFFFFF'); sg.addColorStop(1, '#E5D2DE');
+  c.fillStyle = sg;
+  c.beginPath(); c.roundRect(-9, -stick, 18, stick, 8); c.fill();
+  // ลูกอมวงก้นหอย
+  c.translate(0, -stick - R * 0.85);
+  const disc = new Path2D();
+  disc.arc(0, 0, R, 0, TAU);
+  const dg = c.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
+  dg.addColorStop(0, cols[0]); dg.addColorStop(1, cols[1]);
+  c.fillStyle = dg;
+  c.fill(disc);
+  c.save();
+  c.clip(disc);
+  c.strokeStyle = 'rgba(255,255,255,.88)';
+  c.lineWidth = R * 0.17;
+  c.lineCap = 'round';
+  for (const arm of [0, Math.PI]) {
+    c.beginPath();
+    for (let i = 0; i <= 60; i++) {
+      const u = i / 60, a = arm + u * TAU * 1.9, rr = R * (0.08 + u * 0.98);
+      if (i) c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else c.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    c.stroke();
+  }
+  // เงาวาว
+  c.fillStyle = 'rgba(255,255,255,.45)';
+  c.beginPath(); c.ellipse(-R * 0.36, -R * 0.42, R * 0.36, R * 0.18, -0.6, 0, TAU); c.fill();
+  c.restore();
+  c.strokeStyle = cols[2];
+  c.lineWidth = 3.5;
+  c.stroke(disc);
+  // โบว์ผูกคอไม้
+  c.translate(0, R * 0.85 + 6);
+  c.fillStyle = cols[3];
+  for (const s of [-1, 1]) {
+    c.beginPath(); c.moveTo(0, 0);
+    c.bezierCurveTo(s * 18, -16, s * 34, -8, s * 30, 6);
+    c.bezierCurveTo(s * 26, 14, s * 10, 8, 0, 0);
+    c.fill();
+  }
+  c.beginPath(); c.arc(0, 0, 6, 0, TAU); c.fill();
+  c.restore();
+}
+function bdCandyCane(c, x, y, h, dir, col) {
+  c.save();
+  c.translate(x, y);
+  const p = new Path2D();
+  p.moveTo(0, 0);
+  p.lineTo(0, -h);
+  if (dir > 0) p.arc(34, -h, 34, Math.PI, TAU + 0.45);   // ขอโค้งข้ามบนไปทางขวา ปลายงุ้มลง
+  else p.arc(-34, -h, 34, 0, -Math.PI - 0.45, true);
+  c.lineCap = 'round';
+  c.lineWidth = 30;
+  c.strokeStyle = '#FFF8FB';
+  c.stroke(p);
+  c.setLineDash([22, 22]);
+  c.lineCap = 'butt';
+  c.lineWidth = 30;
+  c.strokeStyle = col;
+  c.stroke(p);
+  c.setLineDash([]);
+  c.lineWidth = 6;
+  c.strokeStyle = 'rgba(255,255,255,.55)';
+  c.translate(-7, 0);
+  c.stroke(p);
+  c.restore();
+}
+function bdGumdropTree(c, x, y, s, col, deep) {
+  c.save();
+  c.translate(x, y);
+  c.scale(s, s);
+  c.fillStyle = '#F6E3EC';
+  c.fillRect(-6, -40, 12, 40);
+  const p = new Path2D();
+  p.moveTo(-46, -36);
+  p.bezierCurveTo(-50, -110, -16, -136, 0, -136);
+  p.bezierCurveTo(16, -136, 50, -110, 46, -36);
+  p.quadraticCurveTo(0, -24, -46, -36);
+  const g = c.createLinearGradient(-40, -130, 40, -30);
+  g.addColorStop(0, col); g.addColorStop(1, deep);
+  c.fillStyle = g;
+  c.fill(p);
+  c.fillStyle = 'rgba(255,255,255,.75)';   // น้ำตาลเกล็ดบนเยลลี่
+  for (let i = 0; i < 14; i++) {
+    const a = hash(i * 9.1 + x) * 80 - 40, b = -40 - hash(i * 4.3 + x) * 88;
+    c.beginPath(); c.arc(a * (1 - (b + 40) / -150), b, 2.6, 0, TAU); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,.4)';
+  c.beginPath(); c.ellipse(-16, -100, 9, 20, 0.35, 0, TAU); c.fill();
+  c.restore();
+}
+function bdCottonCloud(c, x, y, s, a = 1) {
+  c.save();
+  c.globalAlpha = a;
+  c.translate(x, y);
+  c.scale(s, s);
+  const puff = bdPuffs([[-110, 10, 52], [-60, -22, 66], [4, -38, 78], [70, -16, 62], [118, 12, 46], [-40, 26, 50], [40, 24, 54]]);
+  c.fillStyle = 'rgba(232,170,214,.35)';   // เงาใต้ก้อน
+  c.save(); c.translate(6, 14); c.fill(puff); c.restore();
+  const g = c.createLinearGradient(0, -110, 0, 70);
+  g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.55, '#FFE6F4'); g.addColorStop(1, '#F7C6E4');
+  c.fillStyle = g;
+  c.fill(puff);
+  c.fillStyle = 'rgba(255,255,255,.7)';
+  for (const [px, py, pr] of [[-60, -40, 26], [6, -64, 30], [70, -34, 20]]) { c.beginPath(); c.ellipse(px, py, pr, pr * 0.55, -0.2, 0, TAU); c.fill(); }
+  c.restore();
+}
+function sweetBackdropPaint(c) {
+  const [X0, Y0, X1, Y1] = BD_BOX, W = X1 - X0;
+  // ฟ้าพาสเทล: ม่วงลาเวนเดอร์ → ชมพูนม → ครีมพีชที่ขอบฟ้า
+  const sky = c.createLinearGradient(0, Y0, 0, BD_HZ);
+  sky.addColorStop(0, '#C99AEB');
+  sky.addColorStop(0.42, '#EDB8E6');
+  sky.addColorStop(0.82, '#FFD6EA');
+  sky.addColorStop(1, '#FFE9EE');
+  c.fillStyle = sky;
+  c.fillRect(X0, Y0, W, BD_HZ - Y0 + 40);
+  // ไฟส่องเวทีนุ่ม ๆ หลังตัวน้อง + แสงอุ่นขอบฟ้า
+  bdGlow(c, 300, 300, 700, '255,246,250', 0.3);
+  bdGlow(c, 300, BD_HZ, 900, '255,232,222', 0.45, 0.35);
+  // โบเก้ลอยในฟ้า (ตรงหลังหัวน้องจางลง ไม่ให้รก)
+  const BK = ['255,173,218', '216,184,255', '175,240,220', '255,214,184', '255,240,170', '255,255,255'];
+  for (let i = 0; i < 52; i++) {
+    const x = X0 + hash(i * 3.1 + 7) * W, y = Y0 + 40 + hash(i * 5.3 + 2) * (BD_HZ - Y0 - 120);
+    const r = 16 + hash(i * 7.7 + 1) ** 2 * 84;
+    const calm = Math.abs(x - 300) < 300 && y > -120 ? 0.45 : 1;
+    bdBokeh(c, x, y, r, BK[i % BK.length], (0.4 + hash(i * 1.9) * 0.35) * calm);
+  }
+  // เมฆสายไหมสองข้าง + ก้อนไกลจาง ๆ
+  bdCottonCloud(c, -330, -140, 0.8, 0.75);
+  bdCottonCloud(c, 1010, -200, 0.9, 0.75);
+  bdCottonCloud(c, -150, 120, 1.15);
+  bdCottonCloud(c, 790, 70, 1.25);
+  // เนินขนมสองชั้น (ไกล: มิ้นต์ · ใกล้: ชมพู) ราดครีมขาวย้อย
+  bdCandyHill(c, BD_HZ - 30, 190, 0.0042, 0.011, 1.2, ['#9EE3D0', '#C8F0E4'], '#FFFFFF', 'rgba(150,170,200,.35)');
+  bdGumdropTree(c, -520, BD_HZ - 40, 1.0, '#FFC4E1', '#F49AC8');
+  bdGumdropTree(c, 1180, BD_HZ - 50, 1.1, '#C9B5FF', '#A68CF2');
+  bdCandyHill(c, BD_HZ + 6, 120, 0.0055, 0.014, 3.4, ['#F4A9D2', '#F8CDE4'], '#FFFFFF', 'rgba(220,120,180,.4)');
+  // อมยิ้มยักษ์ + ไม้เท้าลูกกวาด ปักบนเนินสองข้าง (ห่างตัวน้อง)
+  bdLollipop(c, -300, BD_HZ + 14, 96, 300, -0.08, ['#FFD2EA', '#FFA6D2', '#E98DBE', '#9AF5DE']);
+  bdLollipop(c, 930, BD_HZ + 10, 84, 260, 0.1, ['#E7DAFF', '#C7AEFF', '#A992E6', '#FFADDA']);
+  bdCandyCane(c, -40, BD_HZ + 20, 250, 1, '#FF9CCB');
+  bdCandyCane(c, 660, BD_HZ + 20, 220, -1, '#B9A2FF');
+  bdGumdropTree(c, 1320, BD_HZ + 10, 0.85, '#9AF5DE', '#55D6B6');
+  bdGumdropTree(c, -720, BD_HZ + 10, 0.9, '#FFE38A', '#F5C451');
+  // ไอหมอกชมพูกลืนโคนของทุกชิ้นเข้ากับขอบฟ้า (ดันฉากไปข้างหลัง)
+  const haze = c.createLinearGradient(0, BD_HZ - 260, 0, BD_HZ + 30);
+  haze.addColorStop(0, 'rgba(255,230,242,0)');
+  haze.addColorStop(1, 'rgba(255,230,242,.32)');
+  c.fillStyle = haze;
+  c.fillRect(X0, BD_HZ - 260, W, 290);
+  // พื้นตารางมันวาว (ม่วงชมพูอ่อน/ครีม) จางเข้าขอบฟ้า + เงาสะท้อน
+  bdCheckerFloor(c, '#EDB6E2', '#FFEAF5');
+  const fh = c.createLinearGradient(0, BD_HZ, 0, BD_HZ + 120);
+  fh.addColorStop(0, 'rgba(255,228,240,.9)');
+  fh.addColorStop(1, 'rgba(255,228,240,0)');
+  c.fillStyle = fh;
+  c.fillRect(X0, BD_HZ, W, 120);
+  bdGlow(c, 300, FEET_Y + 40, 620, '255,250,252', 0.35, 0.3);
+  // แท่นเค้กกลมใต้เท้า: ผิวครีมชมพู ขอบหน้าลายทาง + ครีมย้อย
+  const st = bdStage(c, 372, 70, 50, ['#FFF7FB', '#FFD6EA'], ['#FFB8DA', '#F58CC2'], 'rgba(255,255,255,.9)');
+  c.save();
+  const side = new Path2D();
+  side.moveTo(st.cx - st.rx, st.cy);
+  side.ellipse(st.cx, st.cy, st.rx, st.ry, 0, Math.PI, 0, true);
+  side.lineTo(st.cx + st.rx, st.cy + st.h);
+  side.ellipse(st.cx, st.cy + st.h, st.rx, st.ry, 0, 0, Math.PI, false);
+  side.closePath();
+  c.clip(side);
+  c.fillStyle = 'rgba(255,255,255,.4)';
+  for (let i = -12; i <= 12; i++) {
+    const x = st.cx + i * 34;
+    c.beginPath(); c.moveTo(x, st.cy); c.lineTo(x + 14, st.cy); c.lineTo(x + 14, st.cy + st.ry + st.h + 4); c.lineTo(x, st.cy + st.ry + st.h + 4); c.fill();
+  }
+  c.restore();
+  // ครีมย้อยรอบขอบแท่น
+  c.fillStyle = '#FFFFFF';
+  const drip = new Path2D();
+  for (let i = 0; i <= 64; i++) {
+    const a = Math.PI * (i / 64);
+    const x = st.cx + Math.cos(a) * st.rx, y = st.cy + Math.sin(a) * st.ry;
+    const d = 8 + (i % 4 === 1 ? 16 + hash(i) * 14 : 0);
+    if (!i) drip.moveTo(x, y - 4);
+    drip.lineTo(x, y + d);
+  }
+  for (let i = 64; i >= 0; i--) {
+    const a = Math.PI * (i / 64);
+    drip.lineTo(st.cx + Math.cos(a) * st.rx, st.cy + Math.sin(a) * st.ry - 4);
+  }
+  drip.closePath();
+  c.fill(drip);
+  // ประกายนิ่งในฟ้า + ขอบมืดนุ่ม (ดึงสายตาเข้ากลาง)
+  for (let i = 0; i < 34; i++) {
+    const x = X0 + hash(i * 6.1 + 40) * W, y = Y0 + 40 + hash(i * 2.7 + 41) * (BD_HZ - Y0 - 80);
+    swSparkle(c, x, y, 5 + hash(i + 70) * 10, 0.55 + hash(i + 71) * 0.4, i % 3 ? '#FFFFFF' : '#FFF3B0');
+  }
+  const vg = c.createRadialGradient(300, 330, 640, 300, 330, 1500);
+  vg.addColorStop(0, 'rgba(170,110,200,0)');
+  vg.addColorStop(1, 'rgba(170,110,200,.55)');
+  c.fillStyle = vg;
+  c.fillRect(X0, Y0, W, Y1 - Y0);
+  bdEdgeFade(c, 'rgba(196,140,214,1)');
+}
+const SWEET_BACKDROP = { paint: sweetBackdropPaint, outer: '#C48CD6' };
+
+// ── องค์หญิงหิมะ: "คืนวังน้ำแข็ง" — ฟ้ากลางคืนกรมท่า ดาว แสงเหนือ พระจันทร์ ภูเขาน้ำแข็ง วังน้ำแข็ง สนคลุมหิมะ ผลึกน้ำแข็ง ทะเลสาบน้ำแข็ง ──
+function bdMountains(c, base, hi, lo, seed, fill, snow) {
+  const [X0, , X1] = BD_BOX;
+  const pts = [];
+  for (let x = X0 - 60, i = 0; x <= X1 + 60; i++) {
+    const w = 70 + hash(seed + i * 3.7) * 110;
+    const peak = i % 2 === 0;
+    pts.push([x, base - (peak ? lo + hash(seed + i * 1.3) * (hi - lo) : lo * 0.4 * hash(seed + i * 5.1))]);
+    x += w;
+  }
+  const p = new Path2D();
+  p.moveTo(X0 - 60, BD_HZ + 20);
+  for (const [x, y] of pts) p.lineTo(x, y);
+  p.lineTo(X1 + 60, BD_HZ + 20);
+  p.closePath();
+  const g = c.createLinearGradient(0, base - hi, 0, BD_HZ + 20);
+  g.addColorStop(0, fill[0]);
+  g.addColorStop(1, fill[1]);
+  c.fillStyle = g;
+  c.fill(p);
+  // หิมะบนยอด: สามเหลี่ยมขอบหยักใต้ยอดแหลม
+  c.fillStyle = snow;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [x, y] = pts[i], [xl, yl] = pts[i - 1], [xr, yr] = pts[i + 1];
+    if (y > yl || y > yr) continue;
+    const k = 0.32;
+    const a = [x + (xl - x) * k, y + (yl - y) * k], b = [x + (xr - x) * k, y + (yr - y) * k];
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(...b);
+    c.lineTo(b[0] - (b[0] - x) * 0.3, b[1] - 6);
+    c.lineTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 8);
+    c.lineTo(a[0] + (x - a[0]) * 0.3, a[1] - 4);
+    c.lineTo(...a);
+    c.closePath();
+    c.fill();
+  }
+}
+function bdPine(c, x, y, h, body, snow, a = 1) {
+  c.save();
+  c.globalAlpha = a;
+  c.translate(x, y);
+  c.fillStyle = body;
+  c.fillRect(-h * 0.035, -h * 0.12, h * 0.07, h * 0.14);
+  const tiers = 4;
+  for (let i = 0; i < tiers; i++) {
+    const t0 = i / tiers;
+    const yb = -h * 0.1 - h * 0.78 * t0, yt = yb - h * 0.42;
+    const w = h * 0.36 * (1 - t0 * 0.62);
+    const p = new Path2D();
+    p.moveTo(-w, yb);
+    p.quadraticCurveTo(-w * 0.45, yb - h * 0.08, 0, yt);
+    p.quadraticCurveTo(w * 0.45, yb - h * 0.08, w, yb);
+    p.quadraticCurveTo(0, yb + h * 0.05, -w, yb);
+    c.fillStyle = body;
+    c.fill(p);
+    // หิมะเกาะบนชั้น
+    const s = new Path2D();
+    s.moveTo(-w * 0.7, yb - h * 0.06);
+    s.quadraticCurveTo(-w * 0.3, yb - h * 0.16, 0, yt + h * 0.02);
+    s.quadraticCurveTo(w * 0.3, yb - h * 0.16, w * 0.75, yb - h * 0.05);
+    s.quadraticCurveTo(w * 0.3, yb - h * 0.02, 0, yb - h * 0.08);
+    s.quadraticCurveTo(-w * 0.3, yb - h * 0.01, -w * 0.7, yb - h * 0.06);
+    c.fillStyle = snow;
+    c.fill(s);
+  }
+  c.restore();
+}
+function bdIcePalace(c, cx, base) {
+  c.save();
+  bdGlow(c, cx, base - 160, 420, '170,200,255', 0.45);
+  const body = c.createLinearGradient(0, base - 420, 0, base);
+  body.addColorStop(0, '#E6F0FF');
+  body.addColorStop(1, '#9DB9EC');
+  const line = 'rgba(110,140,210,.9)';
+  const tower = (x, w, h, roofH) => {
+    c.fillStyle = body;
+    c.beginPath(); c.rect(x - w / 2, base - h, w, h); c.fill();
+    c.strokeStyle = line; c.lineWidth = 3; c.stroke();
+    // หลังคายอดแหลมน้ำแข็ง
+    const rg = c.createLinearGradient(x - w, 0, x + w, 0);
+    rg.addColorStop(0, '#CFE6FF'); rg.addColorStop(0.5, '#FFFFFF'); rg.addColorStop(1, '#8FB2EA');
+    c.fillStyle = rg;
+    c.beginPath(); c.moveTo(x - w * 0.62, base - h); c.lineTo(x, base - h - roofH); c.lineTo(x + w * 0.62, base - h); c.closePath(); c.fill(); c.stroke();
+    // หน้าต่างโค้งเรือง
+    for (let k = 0; k < Math.floor(h / 70); k++) {
+      const wy = base - h + 30 + k * 64;
+      c.fillStyle = 'rgba(255,246,208,.95)';
+      c.beginPath(); c.moveTo(x - 7, wy + 22); c.lineTo(x - 7, wy + 6); c.arc(x, wy + 6, 7, Math.PI, 0); c.lineTo(x + 7, wy + 22); c.closePath(); c.fill();
+      bdGlow(c, x, wy + 12, 22, '255,240,190', 0.5);
+    }
+  };
+  // กำแพงล่าง + ประตูโค้ง
+  c.fillStyle = body;
+  c.beginPath(); c.rect(cx - 210, base - 120, 420, 120); c.fill();
+  c.strokeStyle = line; c.lineWidth = 3; c.stroke();
+  for (let i = -5; i <= 5; i++) { c.fillStyle = body; c.fillRect(cx + i * 38 - 12, base - 138, 24, 20); c.strokeRect(cx + i * 38 - 12, base - 138, 24, 20); }
+  c.fillStyle = 'rgba(255,240,200,.9)';
+  c.beginPath(); c.moveTo(cx - 34, base); c.lineTo(cx - 34, base - 56); c.arc(cx, base - 56, 34, Math.PI, 0); c.lineTo(cx + 34, base); c.closePath(); c.fill();
+  bdGlow(c, cx, base - 40, 90, '255,236,180', 0.5);
+  tower(cx - 170, 54, 230, 110);
+  tower(cx + 170, 54, 250, 120);
+  tower(cx - 92, 62, 300, 130);
+  tower(cx + 92, 62, 320, 140);
+  tower(cx, 84, 390, 190);
+  // ประกายบนยอด
+  for (const [x, y] of [[cx, base - 580], [cx - 92, base - 430], [cx + 92, base - 460]]) snSparkle(c, x, y, 18, 0.95);
+  c.restore();
+}
+function bdCrystalCluster(c, x, y, s, flip = 1) {
+  c.save();
+  c.translate(x, y);
+  c.scale(s * flip, s);
+  bdGlow(c, 0, -80, 170, '150,215,255', 0.4);
+  const xtal = (dx, h, w, ang) => {
+    c.save();
+    c.translate(dx, 0);
+    c.rotate(ang);
+    const p = new Path2D();
+    p.moveTo(-w, 0); p.lineTo(-w, -h * 0.78); p.lineTo(0, -h); p.lineTo(w, -h * 0.78); p.lineTo(w, 0); p.closePath();
+    const g = c.createLinearGradient(-w, 0, w, 0);
+    g.addColorStop(0, 'rgba(232,248,255,.92)'); g.addColorStop(0.5, 'rgba(160,214,250,.88)'); g.addColorStop(1, 'rgba(98,160,232,.9)');
+    c.fillStyle = g;
+    c.fill(p);
+    c.strokeStyle = 'rgba(255,255,255,.9)';
+    c.lineWidth = 3;
+    c.stroke(p);
+    c.beginPath(); c.moveTo(0, -h); c.lineTo(0, -6); c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 2; c.stroke();
+    c.restore();
+  };
+  xtal(-48, 150, 20, -0.32);
+  xtal(42, 130, 18, 0.36);
+  xtal(-18, 230, 28, -0.08);
+  xtal(20, 190, 24, 0.12);
+  xtal(64, 90, 14, 0.58);
+  // หิมะกองที่โคน
+  const pile = bdPuffs([[-70, 0, 30], [-30, -6, 38], [16, -4, 40], [60, 2, 30]]);
+  c.fillStyle = '#F4F9FF';
+  c.fill(pile);
+  c.restore();
+}
+function snowBackdropPaint(c) {
+  const [X0, Y0, X1, Y1] = BD_BOX, W = X1 - X0;
+  // ฟ้ากลางคืน: กรมท่าเข้ม → น้ำเงินคราม → ฟ้าอมม่วงที่ขอบฟ้า
+  const sky = c.createLinearGradient(0, Y0, 0, BD_HZ);
+  sky.addColorStop(0, '#0C1036');
+  sky.addColorStop(0.4, '#1C2766');
+  sky.addColorStop(0.78, '#3C58A6');
+  sky.addColorStop(1, '#8EAFEC');
+  c.fillStyle = sky;
+  c.fillRect(X0, Y0, W, BD_HZ - Y0 + 40);
+  // ทางช้างเผือกจาง ๆ เฉียงฟ้า
+  c.save();
+  c.translate(300, -120);
+  c.rotate(-0.32);
+  bdGlow(c, 0, 0, 1300, '150,160,255', 0.16, 0.16);
+  c.restore();
+  // ดาวเล็ก ๆ ทั่วฟ้า + ดาววิบ
+  for (let i = 0; i < 260; i++) {
+    const x = X0 + hash(i * 2.3 + 900) * W, y = Y0 + hash(i * 4.1 + 901) * (BD_HZ - Y0 - 60);
+    const r = 1.2 + hash(i * 6.7 + 902) ** 3 * 3.2;
+    c.fillStyle = `rgba(${i % 5 ? '255,255,255' : '190,220,255'},${0.35 + hash(i + 903) * 0.6})`;
+    c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+  }
+  for (let i = 0; i < 16; i++) {
+    const x = X0 + hash(i * 5.9 + 950) * W, y = Y0 + 30 + hash(i * 3.3 + 951) * (BD_HZ - Y0 - 220);
+    snSparkle(c, x, y, 10 + hash(i + 952) * 12, 0.75);
+  }
+  // แสงเหนือ: ม่านแสงมิ้นต์-ลาเวนเดอร์ ไหลเป็นคลื่นเหนือหัว (สูงขึ้นทางสองข้าง)
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  // แถบละหนึ่งพิกเซลของภาพสำรองพอดี — กว้างกว่านี้ขอบล่างแต่ละแถบเป็นขั้นบันได กล้องซูมแล้วเห็นเป็นริ้ว
+  const m0 = c.getTransform(), step = Math.max(0.8, 1 / Math.hypot(m0.a, m0.b));
+  for (const [y0, amp, ph, hgt, rgbA, rgbB, al] of [
+    [40, 70, 0.4, 260, '90,255,210', '150,120,255', 0.2],
+    [-60, 90, 2.1, 320, '120,220,255', '200,140,255', 0.15],
+  ]) {
+    for (let x = X0; x <= X1; x += step) {
+      const lift = ((x - 300) / 1300) ** 2 * 260;
+      const yb = y0 - lift + Math.sin(x * 0.0042 + ph) * amp + Math.sin(x * 0.011 + ph * 2) * 22;
+      const hh = hgt * (0.7 + 0.3 * Math.sin(x * 0.007 + ph * 3));
+      const g = c.createLinearGradient(0, yb, 0, yb - hh);
+      g.addColorStop(0, bdRgba(rgbA, 0));
+      const ray = 0.82 + 0.18 * Math.sin(x * 0.045 + ph * 5);   // ลำแสงแนวตั้งนุ่ม ๆ ของม่านแสงเหนือ
+      g.addColorStop(0.12, bdRgba(rgbA, al * ray));
+      g.addColorStop(0.55, bdRgba(rgbB, al * 0.55 * ray));
+      g.addColorStop(1, bdRgba(rgbB, 0));
+      c.fillStyle = g;
+      c.fillRect(x, yb - hh, step, hh);   // กว้างเท่าระยะห่างพอดี — ขอบชนกันไม่ซ้อน จึงไม่เกิดริ้วสว่าง
+    }
+  }
+  c.restore();
+  // พระจันทร์ซ้ายบน
+  bdGlow(c, -190, 20, 300, '200,220,255', 0.5);
+  const mg = c.createRadialGradient(-208, 0, 6, -190, 20, 62);
+  mg.addColorStop(0, '#FFFFFF'); mg.addColorStop(1, '#D6E4FF');
+  c.fillStyle = mg;
+  c.beginPath(); c.arc(-190, 20, 62, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(170,190,235,.35)';
+  for (const [x, y, r] of [[-170, 6, 12], [-212, 40, 9], [-178, 46, 6], [-214, 4, 5]]) { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
+  // ภูเขาน้ำแข็งสองชั้น
+  bdMountains(c, BD_HZ - 10, 300, 170, 11, ['#6C8BD0', '#9FBCEE'], 'rgba(240,248,255,.9)');
+  c.save();
+  c.translate(960, BD_HZ + 6);
+  c.scale(0.78, 0.78);
+  bdIcePalace(c, 0, 0);
+  c.restore();
+  // หมอกฟ้าทับวัง/ภูเขาไกล ดันไปข้างหลัง (วังไม่แย่งความเด่นจากน้อง)
+  const far = c.createLinearGradient(0, BD_HZ - 480, 0, BD_HZ);
+  far.addColorStop(0, 'rgba(120,150,225,0)');
+  far.addColorStop(1, 'rgba(120,150,225,.32)');
+  c.fillStyle = far;
+  c.fillRect(X0, BD_HZ - 480, W, 480);
+  bdMountains(c, BD_HZ + 10, 170, 80, 47, ['#4A69B4', '#7D9EE0'], 'rgba(235,245,255,.92)');
+  // สนคลุมหิมะ (ไกล: จาง · ใกล้สองข้าง: เข้ม)
+  for (const [x, h] of [[90, 100], [140, 80], [470, 110], [530, 76], [-80, 120], [700, 120]]) bdPine(c, x, BD_HZ + 14, h, '#3A5A9A', '#E8F2FF', 0.75);
+  for (const [x, h] of [[-560, 400], [-420, 300], [-680, 300], [1220, 380], [1360, 290], [1100, 250]]) bdPine(c, x, BD_HZ + 40, h, '#1D3468', '#F2F8FF');
+  // หมอกขอบฟ้า
+  const haze = c.createLinearGradient(0, BD_HZ - 200, 0, BD_HZ + 30);
+  haze.addColorStop(0, 'rgba(170,200,250,0)');
+  haze.addColorStop(1, 'rgba(170,200,250,.45)');
+  c.fillStyle = haze;
+  c.fillRect(X0, BD_HZ - 200, W, 230);
+  // ทะเลสาบน้ำแข็ง: สว่างที่ขอบฟ้า เข้มลงมาข้างหน้า + แสงสะท้อนพระจันทร์/แสงเหนือ + รอยน้ำแข็ง
+  const ice = c.createLinearGradient(0, BD_HZ, 0, Y1);
+  ice.addColorStop(0, '#C9DEFF');
+  ice.addColorStop(0.35, '#8DAAE6');
+  ice.addColorStop(1, '#3D5AA6');
+  c.fillStyle = ice;
+  c.fillRect(X0, BD_HZ, W, Y1 - BD_HZ);
+  bdGlow(c, -190, BD_HZ + 160, 260, '235,242,255', 0.5, 2.2);
+  bdGlow(c, 900, BD_HZ + 120, 240, '200,225,255', 0.35, 1.6);
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 9; i++) bdGlow(c, X0 + 120 + i * 300, BD_HZ + 70, 120, i % 2 ? '120,255,220' : '170,140,255', 0.1, 2.4);
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,.28)';
+  c.lineWidth = 2;
+  c.lineCap = 'round';
+  for (let i = 0; i < 26; i++) {
+    let x = X0 + hash(i * 3.9 + 960) * W, y = BD_HZ + 60 + hash(i * 7.3 + 961) * (Y1 - BD_HZ - 80);
+    c.beginPath(); c.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { x += (hash(i * 11 + k) - 0.5) * 90; y += (hash(i * 13 + k) - 0.5) * 24; c.lineTo(x, y); }
+    c.stroke();
+  }
+  // ผลึกน้ำแข็งสองข้าง + กองหิมะริมทะเลสาบ
+  bdCrystalCluster(c, -200, FEET_Y + 40, 1.05);
+  bdCrystalCluster(c, 830, FEET_Y + 30, 0.95, -1);
+  for (const [x, y, s] of [[-470, FEET_Y + 150, 1.4], [1080, FEET_Y + 140, 1.3], [-700, FEET_Y + 60, 1], [1320, FEET_Y + 70, 1.1]]) {
+    c.save(); c.translate(x, y); c.scale(s, s * 0.55);
+    const pile = bdPuffs([[-120, 0, 70], [-40, -26, 86], [50, -18, 80], [130, 4, 64]]);
+    const g = c.createLinearGradient(0, -110, 0, 60);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(1, '#BCD2F2');
+    c.fillStyle = g; c.fill(pile);
+    c.restore();
+  }
+  // แท่นน้ำแข็งกลมใต้เท้า: ผิวฝ้าขาวฟ้า ขอบหน้าน้ำแข็งใส + หิมะเกาะขอบ
+  const st = bdStage(c, 366, 66, 44, ['#F6FBFF', '#C4DAF6'], ['#A6C4EE', '#5F84CC'], 'rgba(255,255,255,.95)');
+  c.fillStyle = '#FFFFFF';
+  for (let i = 0; i <= 40; i++) {
+    const a = Math.PI * (i / 40);
+    const x = st.cx + Math.cos(a) * st.rx, y = st.cy + Math.sin(a) * st.ry;
+    c.beginPath(); c.arc(x, y, 7 + hash(i * 2.2 + 970) * 7, 0, TAU); c.fill();
+  }
+  c.strokeStyle = 'rgba(255,255,255,.5)';
+  c.lineWidth = 2;
+  c.save();
+  c.translate(st.cx, st.cy);
+  c.scale(1, st.ry / st.rx);
+  for (let i = 0; i < 6; i++) {   // ลายเกล็ดหิมะสลักบนแท่น
+    c.rotate(Math.PI / 3);
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -st.rx * 0.7);
+    for (const k of [0.3, 0.5]) { c.moveTo(0, -st.rx * k); c.lineTo(-st.rx * 0.08, -st.rx * (k + 0.1)); c.moveTo(0, -st.rx * k); c.lineTo(st.rx * 0.08, -st.rx * (k + 0.1)); }
+    c.stroke();
+  }
+  c.restore();
+  // เกล็ดหิมะค้างกลางอากาศ (ไกล = เล็กจาง · ใกล้ = ใหญ่นุ่ม)
+  for (let i = 0; i < 70; i++) {
+    const x = X0 + hash(i * 8.3 + 980) * W, y = Y0 + 60 + hash(i * 1.7 + 981) * (Y1 - Y0 - 160);
+    if (Math.abs(x - 300) < 280 && y > -60 && y < FEET_Y) continue;   // ตรงตัวน้องเว้นไว้
+    const big = hash(i + 982) > 0.85;
+    if (big) bdBokeh(c, x, y, 18 + hash(i + 983) * 22, '235,245,255', 0.45);
+    else snFlake(c, x, y, 5 + hash(i + 984) * 9, hash(i + 985) * TAU, 0.55 + hash(i + 986) * 0.4);
+  }
+  const vg = c.createRadialGradient(300, 330, 620, 300, 330, 1500);
+  vg.addColorStop(0, 'rgba(8,10,40,0)');
+  vg.addColorStop(1, 'rgba(8,10,40,.55)');
+  c.fillStyle = vg;
+  c.fillRect(X0, Y0, W, Y1 - Y0);
+  bdEdgeFade(c, 'rgba(14,18,58,1)');
+}
+const SNOW_BACKDROP = { paint: snowBackdropPaint, outer: '#0E123A' };
+
+/** ภาพสำรองของฉากหลังต่อสกิน: id → { cv, r } (r = พิกเซลต่อหน่วยไฟล์) */
+const BD_CACHE = new Map();
+/** ชุดนี้มีฉากหลังประจำสกินไหม */
+export const cat2Backdrop = (id) => CAT2_OUTFITS[id]?.backdrop || null;
+/**
+ * วาดฉากหลังประจำสกินใต้ตัวน้อง (เรียกก่อน drawCat2 ด้วย x/เท้า/scale ชุดเดียวกัน)
+ * opt.res = พิกเซลจริงต่อหน่วยเกม "ไม่รวมกล้อง" (ใช้เลือกความละเอียดภาพสำรอง — กล้องซูมเข้าไม่ต้องวาดใหม่ ฉากนุ่มลงเหมือนชัดตื้น)
+ * ไม่ส่ง = คิดจาก transform ปัจจุบัน · คืน false ถ้าชุดนี้ไม่มีฉาก
+ */
+export function drawCat2Backdrop(ctx, x, feetY, scale, id, opt = {}) {
+  const B = CAT2_OUTFITS[id]?.backdrop;
+  if (!B) return false;
+  const [X0, Y0, X1, Y1] = BD_BOX, BW = X1 - X0, BH = Y1 - Y0;
+  const k = scale * UNIT;
+  const m = ctx.getTransform();
+  const base = (opt.res ?? Math.hypot(m.a, m.b)) * k;
+  const want = Math.max(0.15, Math.min(base, Math.sqrt(BD_MAX_PX / (BW * BH))));
+  let e = BD_CACHE.get(id);
+  // วาดภาพสำรองใหม่เฉพาะตอนความละเอียดที่ต้องการต่างจากเดิมเกิน 25% (หมุนจอ/เปลี่ยนขนาด) — ไม่ใช่ทุกเฟรม
+  if (!e || Math.abs(Math.log(want / e.r)) > Math.log(1.25)) {
+    const cv = e?.cv || document.createElement('canvas');
+    cv.width = Math.ceil(BW * want);
+    cv.height = Math.ceil(BH * want);
+    const c = cv.getContext('2d');
+    c.setTransform(want, 0, 0, want, -X0 * want, -Y0 * want);
+    B.paint(c);
+    e = { cv, r: want };
+    BD_CACHE.set(id, e);
+  }
+  ctx.save();
+  ctx.translate(x, feetY);
+  ctx.scale(k, k);
+  ctx.translate(-300, -FEET_Y);
+  ctx.fillStyle = B.outer;   // นอกภาพ (จอกว้างมาก/กล้องสั่น) = สีขอบภาพ ต่อเนื่องกัน
+  ctx.fillRect(X0 - 8000, Y0 - 8000, BW + 16000, BH + 16000);
+  ctx.drawImage(e.cv, X0, Y0, BW, BH);
+  ctx.restore();
+  return true;
+}
+
 /** ชุดที่วาดแบบใหม่แล้ว (หน้า Cat Lab ใช้บอกสถานะ) */
 export const cat2Outfits = () => Object.keys(CAT2_OUTFITS);
 /** ท่าเปิดตัว / ท่าแอ็ค (ยืนค้าง) ของชุด — มีเฉพาะชุดระดับ S · null = ชุดนี้ไม่มี */
@@ -6700,6 +7470,7 @@ const CAT2_OUTFITS = {
     hat: snowTiara,
     intro: SNOW_INTRO,   // ท่าเปิดตัว (~7.2 วิ มีกล้อง): จอน้ำแข็งเกาะ → เกล็ดหิมะลอยลง → ดอกน้ำแข็งบาน น้องปรากฏ → ยิงเวททำลายจอ → กระโดด ปัดคทา → โพส
     act: SNOW_ACT,       // ท่าแอ็ค: ชูคทาสูง อุ้งเท้าขวาเสกน้ำแข็ง (เกล็ดหิมะหมุนในวงเวท) ขยิบตา
+    backdrop: SNOW_BACKDROP,    // ฉากหลังประจำสกิน (ภาพนิ่ง): คืนวังน้ำแข็ง
   },
   // ── ลูกคุณหนูจอมซน (ระดับ S): ออร่าทอง ลำแสงทอง เหรียญทองลอยวน ผ้าคลุมแดงซับทอง · เชิ้ตขาว กั๊กแดงทอง ·
   //    ระบายคอลูกไม้ เข็มกลัดทับทิม · ขาสั้นดำแถบทอง · หมวกทรงสูงเอียง ขนนกทอง · แว่นข้างเดียวทองมีโซ่ ──
@@ -6740,6 +7511,7 @@ const CAT2_OUTFITS = {
     hat: sweetHat,
     intro: SWEET_INTRO,   // ท่าเปิดตัว (~4.7 วิ) — เล่นตอนเลือกดู/ใส่ชุด/แตะน้อง · กดข้ามได้
     act: SWEET_ACT,       // ท่าแอ็คประจำสกิน — ท่าจบของท่าเปิดตัว และยืนค้างหน้าล็อบบี้ได้
+    backdrop: SWEET_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง): เวทีขนมหวานในฝัน
   },
   lunar: {
     behind: lunarBehind, behindBody: true,
@@ -6791,7 +7563,7 @@ function featherOps(c, ops, inCol, outCol) {
       if (inside) c.clip(op.path);
       else {
         const out = new Path2D();
-        out.rect(-2000, -2000, 5000, 5000);
+        out.rect(...HOLE_BOX);
         out.addPath(op.path);
         c.clip(out, 'evenodd');
       }
@@ -6808,20 +7580,50 @@ function featherOps(c, ops, inCol, outCol) {
   }
 }
 
-/** ผ้าใบชั้นแยกขนาดเท่าจอ (ล้างแล้ว) — วาดของลงไปก่อนแล้วไล่จาง/ตัดด้วย destination-in ค่อยแปะกลับ */
+/**
+ * กรอบพิกเซลจริงของตัวน้องบนผ้าใบ (กรอบไฟล์ box ตาม transform m · ตัดตามขอบผ้าใบ) — { x, y, w, h } พิกเซลเต็ม
+ * box ตั้งต้นคลุมทั้งตัว (0..600 × −20..700) เผื่อขอบรอบละ 200 สำหรับชิ้นที่ยืด/หมุน
+ */
+function catPxRect(m, W, H, box = [-200, -200, 800, 900]) {
+  const [bx0, by0, bx1, by1] = box;
+  const P = [[bx0, by0], [bx1, by0], [bx0, by1], [bx1, by1]].map(([x, y]) => [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f]);
+  const x0 = Math.max(0, Math.floor(Math.min(...P.map((q) => q[0])))), y0 = Math.max(0, Math.floor(Math.min(...P.map((q) => q[1]))));
+  const x1 = Math.min(W, Math.ceil(Math.max(...P.map((q) => q[0])))), y1 = Math.min(H, Math.ceil(Math.max(...P.map((q) => q[1]))));
+  return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
+}
+/**
+ * ผ้าใบชั้นแยกขนาดเท่าจอ (ล้างแล้ว) — วาดของลงไปก่อนแล้วไล่จาง/ตัดด้วย destination-in ค่อยแปะกลับ
+ * r = ทำงานเฉพาะกรอบนี้ (พิกเซลจริง · ตัดขอบไว้ให้แล้ว): ล้าง/ไล่จาง/แปะกลับแค่ในกรอบ ไม่ใช่ทั้งจอ
+ * (ชั้นนี้ใช้ทุกเฟรมกับขอบแก้มนุ่ม — เดิมล้าง + ไล่จาง + แปะทั้งจอสามรอบต่อเฟรม ทั้งที่ของอยู่แค่ที่หัว)
+ */
 let fadeCv = null;
-function fadeLayer(ctx) {
+function fadeLayer(ctx, r = null) {
   if (!fadeCv) fadeCv = document.createElement('canvas').getContext('2d');
   const cv = fadeCv.canvas;
   if (cv.width !== ctx.canvas.width || cv.height !== ctx.canvas.height) {
     cv.width = ctx.canvas.width;
     cv.height = ctx.canvas.height;
   }
+  fadeCv.restore();   // คืนกรอบตัดของรอบก่อน (สแต็กว่าง = ไม่ทำอะไร)
+  fadeCv.save();
   fadeCv.setTransform(1, 0, 0, 1, 0, 0);
   fadeCv.globalCompositeOperation = 'source-over';
   fadeCv.globalAlpha = 1;
-  fadeCv.clearRect(0, 0, cv.width, cv.height);
+  if (r) {
+    fadeCv.clearRect(r.x, r.y, r.w, r.h);
+    fadeCv.beginPath();
+    fadeCv.rect(r.x, r.y, r.w, r.h);
+    fadeCv.clip();
+  } else fadeCv.clearRect(0, 0, cv.width, cv.height);
   return fadeCv;
+}
+/** แปะชั้นแยกกลับลงจอ — เฉพาะกรอบ r ถ้ามี */
+function blitFade(ctx, L, r) {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (r) ctx.drawImage(L.canvas, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
+  else ctx.drawImage(L.canvas, 0, 0);
+  ctx.restore();
 }
 
 /** มุมข้างเต็ม (drawSideView) — ปิดไว้ตามที่ผู้ใช้สั่ง ใช้แค่มุมเฉียงตอนหัน */
@@ -7215,6 +8017,13 @@ function abCanvas(k, w, h) {
 }
 const AB_RES = 0.5;
 /**
+ * กรอบของ "รู" ที่ใช้ตัดชิ้นที่ทับกันออก (rect นี้ + รูปชิ้น แบบ evenodd = ทุกที่ยกเว้นในชิ้น) — หน่วยไฟล์
+ * ตัวน้องทั้งตัวอยู่ใน 0..600 × −20..700 (กรอบเดียวกับ abBox) เผื่อขอบรอบละ 400 สำหรับชิ้นที่หมุน/หัวตกตอนหมอบ/หันข้าง
+ * เดิมใช้ 5000×5000 = ทุกครั้งที่ตัดต้องทำแผ่นตัดขอบเต็มทั้งจอ (Safari บน iPhone สร้างหน้ากากตามกรอบรู)
+ * ตัววาดตัดแบบนี้หลายสิบครั้งต่อเฟรม · ที่วาดจริงอยู่ในรูปชิ้นเสมอ (ตัดซ้อนอีกชั้น) ภาพจึงเท่าเดิมทุกพิกเซล
+ */
+const HOLE_BOX = [-400, -400, 1400, 1500];
+/**
  * เบลอด้วยการย่อแล้วขยายกลับ (ย่อสองขั้น ขยายสองขั้น ด้วยการเกลี่ยภาพของเบราว์เซอร์)
  * แทนการใช้เงาของภาพ (shadowBlur) ที่วาดไว้นอกผ้าใบ — Safari/Chrome บน iPhone ข้ามการวาดภาพที่อยู่นอกผ้าใบทั้งภาพ
  * เงาเลยหายไปด้วย (เงาพ่นสีส้มขึ้นแค่ตอนซูม ตอนเห็นเต็มตัวหาย) · วิธีนี้ได้ผลเหมือนกันทุกเครื่อง
@@ -7256,9 +8065,11 @@ function abMask(c, m, box, items, dy = 0) {
 }
 /**
  * เงาขอบด้านใน: สีเข้มฟุ้งจากขอบก้อนเข้าไปด้านใน (ตามรูปร่างจริงของก้อน รวมหลายชิ้นเป็นก้อนเดียว)
- * blur = ระยะฟุ้ง (หน่วยไฟล์) · rgba = สีเงา
+ * passes = [[ระยะฟุ้ง (หน่วยไฟล์), ความเข้ม], ...] วาดตามลำดับ · rgba = สีเงา
+ * หลายชั้นใช้แผ่นรูปทรง (mask) กับแผ่น "นอกก้อน" ชุดเดียวกัน — เดิมเรียกทีละชั้นแล้วสร้างสองแผ่นนี้ซ้ำทุกชั้น
+ * (เติมรูปทุกชิ้นใหม่ + แปะภาพอีกรอบ ทุกชั้นทุกเฟรม) ภาพที่ได้เท่าเดิมทุกพิกเซล
  */
-function rimShade(ctx, items, rgba, blur, alpha = 1) {
+function rimShade(ctx, items, rgba, passes) {
   const m = ctx.getTransform();
   const box = abBox(m);
   const sc = Math.hypot(m.c, m.d) * AB_RES;   // สเกลแนวตั้ง: ไม่แกว่งตอนตัวหมุน (หมุน = บีบแนวนอน)
@@ -7272,20 +8083,22 @@ function rimShade(ctx, items, rgba, blur, alpha = 1) {
   out.fillRect(0, 0, W, H);
   out.globalCompositeOperation = 'destination-out';
   out.drawImage(mask.canvas, 0, 0);
-  // เบลอด้วยเงาของภาพ (วาดภาพไว้นอกผ้าใบ ให้เหลือแต่เงาเลื่อนกลับมา)
-  const rim = abCanvas('c', W, H);
-  blurInto(rim, out, W, H, Math.max(1, blur * sc));
-  rim.globalCompositeOperation = 'source-in';
-  rim.fillStyle = rgba;
-  rim.fillRect(0, 0, W, H);
-  rim.globalCompositeOperation = 'destination-in';
-  rim.drawImage(mask.canvas, 0, 0);
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = alpha;
-  ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(rim.canvas, 0, 0, W, H, box.x0, box.y0, W / AB_RES, H / AB_RES);
-  ctx.restore();
+  for (const [blur, alpha] of passes) {
+    // เบลอด้วยการย่อ-ขยาย (blurInto) แล้วเหลือเฉพาะในก้อน
+    const rim = abCanvas('c', W, H);
+    blurInto(rim, out, W, H, Math.max(1, blur * sc));
+    rim.globalCompositeOperation = 'source-in';
+    rim.fillStyle = rgba;
+    rim.fillRect(0, 0, W, H);
+    rim.globalCompositeOperation = 'destination-in';
+    rim.drawImage(mask.canvas, 0, 0);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(rim.canvas, 0, 0, W, H, box.x0, box.y0, W / AB_RES, H / AB_RES);
+    ctx.restore();
+  }
 }
 /** เงาตก: เงาของ caster (เลื่อนลง dy) ตกบน receiver เฉพาะในเนื้อ receiver */
 function castShade(ctx, caster, receiver, rgba, blur, dy) {
@@ -7347,19 +8160,20 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     const it = items[i];
     if (!it.sil.length) continue;
     ctx.save();
+    // ตัดตามรูปชิ้นนี้ก่อน (กรอบตัดเล็ก) แล้วค่อยเจาะรูชิ้นก่อนหน้า — ผลเท่ากันทุกพิกเซล แต่การตัดชั้นถัด ๆ ไปถูกลงมาก
+    ctx.setTransform(m00);
+    it.xf?.(ctx);
+    ctx.clip(it.all);
     // ทาแต่ละพิกเซลครั้งเดียว: เว้นที่ชิ้นก่อนหน้าทาไปแล้ว (ส่วนซ้อนทาซ้ำ = เข้มกว่า = เห็นขอบชิ้นเป็นเส้นตรง)
     for (let j = 0; j < i; j++) {
       if (!items[j].sil.length) continue;
       ctx.setTransform(m00);
       items[j].xf?.(ctx);
       const hole = new Path2D();
-      hole.rect(-2000, -2000, 5000, 5000);
+      hole.rect(...HOLE_BOX);
       hole.addPath(items[j].all);
       ctx.clip(hole, 'evenodd');
     }
-    ctx.setTransform(m00);
-    it.xf?.(ctx);
-    ctx.clip(it.all);
     ctx.setTransform(m00);
     // แสงตามชิ้นเจ้าของสนาม (หัว) — หัวลดต่ำตอนหมอบ/นั่ง จุดสว่างต้องลงตามด้วย ไม่งั้นหัวมืดทั้งหัว
     softOwner?.xf?.(ctx);
@@ -7375,8 +8189,7 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     const ab = items.filter((it) => it.sil.length);
     // ชิ้นเล็ก (ขาหน้า แขนที่วางทับตัว) ฟุ้งแคบลง — ไม่งั้นเงากินทั้งชิ้นจนเป็นแท่งเข้ม
     const small = ab.length && ab.every((it) => it.small);
-    rimShade(ctx, ab, shadeRgba(pal, 1), small ? 16 : 42, small ? 0.55 : 0.85);
-    rimShade(ctx, ab, shadeRgba(pal, 1), small ? 7 : 14, small ? 0.4 : 0.6);
+    rimShade(ctx, ab, shadeRgba(pal, 1), small ? [[16, 0.55], [7, 0.4]] : [[42, 0.85], [14, 0.6]]);
   }
   // 3) รายละเอียดของแต่ละชิ้น ตัดให้อยู่ในเนื้อของชิ้นตัวเอง (ลายไม่ล้นออกนอกเส้น)
   //    และเว้นบริเวณที่ชิ้นข้างหน้าบังอยู่ — ไม่งั้นลาย/เงาของหางจะโผล่ทับขา ดูเหมือนหางมาอยู่ข้างหน้า
@@ -7384,19 +8197,22 @@ function drawLayer(ctx, items, pal, hooks, opt) {
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     ctx.save();
+    ctx.setTransform(m0);
+    it.xf?.(ctx);
+    // detClip: ขอบเขตลงรายละเอียดที่กว้างกว่าตัวชิ้น (เช่น เงาข้างตัวไหลลงต้นขา ไม่ขาดเป็นเส้นตรงตรงรอยต่อ)
+    // ตัดตามชิ้นก่อนเจาะรูชิ้นข้างหน้า (ผลเท่ากัน แต่ถูกกว่า — ดู 2b)
+    if (it.sil.length) ctx.clip(it.detClip || it.all);
     for (let j = i + 1; j < items.length; j++) {
       if (!items[j].sil.length) continue;
       ctx.setTransform(m0);
       items[j].xf?.(ctx);
       const hole = new Path2D();
-      hole.rect(-2000, -2000, 5000, 5000);
+      hole.rect(...HOLE_BOX);
       hole.addPath(items[j].all);
       ctx.clip(hole, 'evenodd');
     }
     ctx.setTransform(m0);
     it.xf?.(ctx);
-    // detClip: ขอบเขตลงรายละเอียดที่กว้างกว่าตัวชิ้น (เช่น เงาข้างตัวไหลลงต้นขา ไม่ขาดเป็นเส้นตรงตรงรอยต่อ)
-    if (it.sil.length) ctx.clip(it.detClip || it.all);
     if (typeof it.det === 'function') it.det(ctx);
     else drawOps(ctx, it.det, pal, hooks, opt);
     ctx.restore();
@@ -7549,25 +8365,40 @@ function tailDetails(ctx, G, pal, opt = {}) {
 // ══ ตา ══
 /** ตาปิด: โค้งลง (กะพริบ/หลับ) · ^ (ดีใจ) · > < (เจ็บ) */
 /**
- * ขนตาตอนหลับตา (ตัวเมีย): สองเส้นเรียวงอนขึ้นที่หางตาด้านนอก — ต่อจากปลายเส้นตาปิด สีเดียวกับเส้นตา
+ * ขนตาตอนหลับตา (ตัวเมีย): สองเส้นเรียวงอนขึ้นที่หางตาด้านนอก — งอกจากเส้นตาปิด สีเดียวกับเส้นตา
  * kind: 'blink' (∪ หลับ) · 'happy' (∩ ยิ้ม) · 'yawn' (U หาว)
+ * ฐานขนตาทุกเส้นฝังลงในเนื้อเส้นตาปิด (จุดบนขอบเส้นจริง แล้วดันเข้าในอีกนิด) — เดิมเส้นที่สองตั้งเหนือขอบเส้น
+ * (ตาหาวลอยกลางช่อง U) เห็นเป็นขนตาขาดจากเปลือกตา (ผู้ใช้ทัก 14 ต.ค.)
  */
 function closedLashes(c, e, side, kind) {
   const o = side === 'left' ? -1 : 1;
-  const up = kind === 'happy', yw = kind === 'yawn';
-  const bx = e.x + o * (up ? 36 : yw ? 28 : 38), by = e.y + (up ? 10 : yw ? -10 : 5);
-  const lash = (x0, y0, cx, cy, tx, ty, w) => {
+  // ขนตาหนึ่งเส้น: ฐานกว้างฝังในเส้นตา → เรียวโค้งงอนไปที่ปลาย (b = ฐาน · k = จุดโค้ง · t = ปลาย · w = ครึ่งความกว้างฐาน)
+  const lash = ([x0, y0], [cx, cy], [tx, ty], w) => {
     const dx = cx - x0, dy = cy - y0, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
     const q = new Path2D();
     q.moveTo(x0 + nx * w, y0 + ny * w);
-    q.quadraticCurveTo(cx + nx * w * 0.5, cy + ny * w * 0.5, tx, ty);
-    q.quadraticCurveTo(cx - nx * w * 0.5, cy - ny * w * 0.5, x0 - nx * w, y0 - ny * w);
+    q.quadraticCurveTo(cx + nx * w * 0.45, cy + ny * w * 0.45, tx, ty);
+    q.quadraticCurveTo(cx - nx * w * 0.45, cy - ny * w * 0.45, x0 - nx * w, y0 - ny * w);
     q.closePath();
     c.fill(q);
   };
+  const P = (dx, dy) => [e.x + o * dx, e.y + dy];
   c.fillStyle = BABY.coreIn;
-  lash(bx, by, bx + o * 12, by - 2, bx + o * 18, by - 14, 3.2);
-  lash(bx - o * 9, by - (up ? 7 : 2), bx - o * 2, by - (up ? 14 : 9), bx + o * 2, by - (up ? 22 : 17), 2.8);
+  if (kind === 'yawn') {
+    // ตัว U: ปลายแขน U อยู่ที่ (±30, −12) · ขอบนอกแขนช่วงบนอยู่ราว x ±29..31
+    lash(P(28.5, -7), P(40, -14), P(46, -27), 3.4);        // เส้นยาว: จากปลายแขน U งอนออกนอก
+    lash(P(29, 2), P(38, -1), P(45, -10), 3);              // เส้นสั้น: จากข้างแขน U ใต้ปลายลงมา
+    return;
+  }
+  if (kind === 'happy') {
+    // ∩ ยิ้ม: ปลายตาที่ (±38, +12) · ขอบบนที่ x 27 ≈ y 0 (เนื้อเส้นถึง y 7)
+    lash(P(34, 9), P(46, 7), P(53, -5), 3.4);
+    lash(P(26, 3), P(31, -6), P(33, -15), 3);
+    return;
+  }
+  // ∪ หลับ: ปลายตาที่ (±40, +4) · ขอบบนเกือบตรง (ที่ x 28 อยู่ราว y 5) เนื้อเส้นหนาลงล่าง
+  lash(P(36, 5.5), P(49, 3), P(56, -9), 3.4);
+  lash(P(27, 7), P(32, -2), P(35, -12), 3);
 }
 /** ขนแก้ม (ตามแบบแมวขาว): เส้นโค้งสั้น ๆ จาง ๆ สามเส้นที่ขอบแก้มสองข้าง ใต้ระดับตา */
 function cheekFur(c, pal, opt) {
@@ -7818,9 +8649,23 @@ function drawBabyEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidde
  * แล้วสะบัดปลายขึ้นเป็นแพขนตาที่มุมบนนอก — ไม่มีเส้นขอบ (เป็นก้อนสีเข้มแบบในชีท)
  * วาดหลังลูกตา ภายใต้ transform เดียวกับตา (หรี่ตอนกะพริบไปด้วยกัน)
  */
-function drawLashes(c, side, female = false) {
+function drawLashes(c, side, female = false, sq = 1, cy = null) {
   const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
-  const pt = (a, r) => [W.x + o * Math.cos(a) * r, W.y + Math.sin(a) * r];
+  // sq = ตาหรี่ (ความสูงตาที่เหลือ 1 → ~0.3) บีบรอบ cy · ฐานขนตาเกาะขอบตาที่หรี่แล้ว แต่ความหนาแถบ/ขนตางอนยื่นตามแนวตั้งฉากขอบตาจริง
+  // (เดิมวาดใต้การบีบทั้งก้อน = ขนตาแบนจนแถบฐานบางขาด เหลือแต่ปลายขนตาลอยเป็นเส้น ๆ — ผู้ใช้ทัก 14 ต.ค.)
+  const yc = cy ?? W.y;
+  const base = (a, r) => [W.x + o * Math.cos(a) * r, yc + (W.y + Math.sin(a) * r - yc) * sq];
+  // ทิศที่แถบ/ขนตายื่นออก: ผสมแนวตั้งฉากขอบตาที่หรี่ (แถบไม่บาง) กับทิศเดิมตอนลืมตา (ขนตางอนออกข้างเหมือนเดิม ไม่ตั้งชันเป็นหนาม)
+  const nrm = (a) => {
+    const sx = o * Math.cos(a) * sq, sy = Math.sin(a), sl = Math.hypot(sx, sy) || 1;
+    const nx = 0.35 * sx / sl + 0.65 * o * Math.cos(a), ny = 0.35 * sy / sl + 0.65 * Math.sin(a), l = Math.hypot(nx, ny) || 1;
+    return [nx / l, ny / l];
+  };
+  const pt = (a, r) => {
+    if (sq === 1) return [W.x + o * Math.cos(a) * r, W.y + Math.sin(a) * r];
+    const b = base(a, R - 1), n = nrm(a), d = r - (R - 1);
+    return [b[0] + n[0] * d, b[1] + n[1] * d];
+  };
   // มุมวัดจากแนวนอนออกนอกหน้า (0 = หางตา) · ลบ = ขึ้นบน บวก = ลงล่าง
   const a0 = -1.2, a1 = 1.4;
   // ความหนา: เรียวเป็นศูนย์ทั้งสองปลาย (ไม่มีปลายตัดเหลี่ยม) หนาสุดแถวหางตา
@@ -8703,7 +9548,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const x0 = x;
   const OUT0 = s?.outfit ? CAT2_OUTFITS[s.outfit.id] : null;
   const edgeL = idle?.edgeL ?? x - 620 * scale * UNIT;
-  if (OUT0?.intro && idle?.intro != null && !idle.skip && OUT0.intro.stage?.(idle.intro) === 'peek') {
+  if (OUT0?.intro && idle?.intro != null && !idle.skip && OUT0.intro.stage?.(OUT0.intro.warp ? OUT0.intro.warp(idle.intro) : idle.intro) === 'peek') {
     ctx.beginPath();
     ctx.rect(edgeL, -1e5, 2e5, 2e5);
     ctx.clip();
@@ -8935,7 +9780,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   // ท่าเปิดตัวของชุด (OUT.intro): idle.intro = เฟรมในท่า · idle.skip 0..1 = กำลังข้ามไปท่าแอ็ค (เอฟเฟกต์จางออก)
   const introOn = !!OUT?.intro && idle?.intro != null;
   const outK = {
-    pal, t, back: false, intro: introOn ? idle.intro : null, introSkip: introOn ? idle.skip || 0 : 0,
+    // intro.warp = ชุดที่ยืดเวลาท่าเปิดตัว (sweet): ช่องของชุดได้เฟรมสตอรี ผู้เรียกส่งเฟรมจริงมา
+    pal, t, back: false, intro: introOn ? (OUT.intro.warp ? OUT.intro.warp(idle.intro) : idle.intro) : null, introSkip: introOn ? idle.skip || 0 : 0,
     sv: v,   // ค่าช่องของท่าตอนนี้ (คูณ k แล้ว) — ชุดใช้ช่องของตัวเองได้ เช่น orb
     introEdge: introOn ? 300 + (edgeL - x0) / (scale * UNIT) : null,   // ขอบซ้ายของฉาก (พิกัดตัว) — ของที่โผล่/เด้งมาจากขอบ
   };
@@ -9287,7 +10133,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // เบลอเฉพาะขอบช่วงแก้ม (ใต้ระดับตา) — แถบขาวกลางหน้าระหว่างตาคงขอบคมตามแบบ (ผู้ใช้สั่ง)
       // ขอบเริ่มเบลอไล่ค่อย ๆ เข้ม (y 282 → 336) ไม่ตัดเป็นเส้นตรง — ตัดแข็งแล้วเห็นรอยขีดแนวนอนตอนหลับตา
       const m = c.getTransform();
-      const L = fadeLayer(c);
+      const fr = catPxRect(m, c.canvas.width, c.canvas.height);   // ขอบนุ่มอยู่แค่ที่หัว — ทำงานเฉพาะกรอบตัวน้อง
+      if (!fr.w || !fr.h) return;
+      const L = fadeLayer(c, fr);
       L.setTransform(m);
       featherOps(L, ops, pal.cream, pal.cat);
       const g = L.createLinearGradient(0, 282, 0, 336);
@@ -9297,10 +10145,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       L.fillStyle = g;
       L.fillRect(-1000, -1000, 2600, 3000);
       L.globalCompositeOperation = 'source-over';
-      c.save();
-      c.setTransform(1, 0, 0, 1, 0, 0);
-      c.drawImage(L.canvas, 0, 0);
-      c.restore();
+      blitFade(c, L, fr);
     },
     shade_2: (c, draw) => { if (airbrushOn()) return; c.save(); c.translate(-hx * 5, 0); draw(); c.restore(); },
     'whiskers-left': (c, draw) => { c.save(); rotAt(c, { x: 150, y: 265 }, Math.sin(T * 3.1) * 0.03); draw(); c.restore(); },
@@ -9449,9 +10294,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.strokeStyle = pal.line;
       c.lineWidth = EYE_RIM_W;
       c.stroke(white.path);
-      // ขนตา (ไม่วาดตอนตาปรือของท่าเฟี้ยว — เปลือกตาหนาทำหน้าที่นั้นแล้ว)
-      if (!cool) drawLashes(c, side, female);
       c.restore();
+      // ขนตา (ไม่วาดตอนตาปรือของท่าเฟี้ยว — เปลือกตาหนาทำหน้าที่นั้นแล้ว) · วาดนอกการบีบตา ขนตาจึงไม่แบนตอนหรี่
+      if (!cool) drawLashes(c, side, female, 1 - shut * 0.9, e.y);
       // ตาเฟี้ยว: เปลือกตาปรือ (ตอนกะพริบไม่วาด ไม่งั้นซ้อนกับตาที่กำลังหลับ)
       // เปลือกตาเอียงไปกับหัว (เดิมหมุนสวนให้ตรงจอ แล้วไม่เข้ากับตา/ประกายที่เอียงตามตัว)
       if (cool && shut < 0.25) coolLid(c, white.path, pal, side, 0);
@@ -9650,7 +10495,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // แล้วโคนขาด้านบนไล่จางกลืนเข้าตัว — ไม่มีขอบตัดตรง ๆ · ใช้กับทุกชุดที่มีกระโปรง
       // (OUT.sitLegTop = ระดับเริ่มไล่จางของชุดนั้น ไม่ใส่ = 480)
       const skirtLegs = !!OUT?.skirt && !OUT.pants;   // กางเกงคลุมแค่สะโพก ขาหน้าวางทับปกติ
-      const lc = skirtLegs ? fadeLayer(ctx) : ctx;
+      const legR = skirtLegs ? catPxRect(m0, ctx.canvas.width, ctx.canvas.height) : null;   // ทำงานเฉพาะกรอบตัวน้อง
+      const lc = skirtLegs ? fadeLayer(ctx, legR) : ctx;
       if (skirtLegs) lc.setTransform(m0);
       lc.save();
       grow(lc);
@@ -9698,10 +10544,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         lc.fillStyle = g;
         lc.fillRect(0, y0 - 100, 600, 400);
         lc.restore();
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.drawImage(lc.canvas, 0, 0);
-        ctx.restore();
+        blitFade(ctx, lc, legR);
       }
       if (OUT?.ankle) {
         ctx.save();

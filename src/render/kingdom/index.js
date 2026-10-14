@@ -64,6 +64,44 @@ export const KINGDOM_SPEED = {
 /** ชั้นไกล — ขยับช้ามาก (เมฆลอย ธงปราสาท) แยกวาดเป็นภาพสำรองที่อัปเดตห่าง ๆ ได้ */
 const FAR_LAYERS = new Set(['clouds', 'castle', 'hills']);
 
+/**
+ * ส่วนพื้นที่นิ่งสนิทตอนฉากไม่เลื่อน (หน้าแรก): ไอแดดขอบฟ้า · พื้นทราย + พรม · ลายพื้น แสงอุ่นกลางเวที เงาใต้ของ
+ * ไม่มีอะไรในชุดนี้ขยับตามเวลาเลย (ของบนพื้นไม่ลอยไปไหน · พรมไม่มีแอนิเมชัน) แต่เดิมวาดใหม่ทุกครั้งที่ส่วนใกล้อัปเดต
+ * (~30 ครั้ง/วิ) กินเวลาราวครึ่งหนึ่งของส่วนใกล้ — แสงกลางเวทีวงใหญ่ เงาใต้ของ และลายพื้นทั้งผืน
+ * วาดครั้งเดียวลงภาพสำรองขนาดเท่าผ้าใบ (transform + กรอบตัดเดียวกัน) แล้วแปะตรงลำดับเดิม ภาพจึงเท่าเดิม
+ * วาดใหม่เฉพาะตอนขนาด/มุมมองผ้าใบ ส่วนต่อบน-ล่าง จานสี หรือระดับแสงเปลี่ยน
+ */
+let groundCache = null;
+function drawStaticGround(ctx, worldX, p, tick, fx, extTop, extBottom) {
+  const m = ctx.getTransform();
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  const key = [m.a, m.b, m.c, m.d, m.e, m.f, cw, ch, extTop, extBottom, fx, worldX].join('|');
+  if (!groundCache || groundCache.key !== key || groundCache.p !== p) {
+    const cv = groundCache?.cv || document.createElement('canvas');
+    if (cv.width !== cw || cv.height !== ch) {
+      cv.width = cw;
+      cv.height = ch;
+    }
+    const c = cv.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, cw, ch);
+    c.save();
+    c.setTransform(m);
+    c.beginPath();
+    c.rect(0, -extTop, VIEW.W, VIEW.H + extTop + extBottom);
+    c.clip();
+    if (fx) fxAir(c, p, tick);
+    drawKingdomGround(c, worldX, p, tick, extBottom);
+    if (fx) fxGround(c, worldX, p, tick, extBottom);
+    c.restore();
+    groundCache = { cv, key, p };
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(groundCache.cv, 0, 0);
+  ctx.restore();
+}
+
 export function drawKingdom(ctx, tick, opts = {}) {
   const fx = !!opts.fx;
   const p = opts.palette || (fx ? KINGDOM_FX : KINGDOM);
@@ -87,9 +125,13 @@ export function drawKingdom(ctx, tick, opts = {}) {
   drawKingdomBack(ctx, worldX, p, tick, fx ? FX_HOOKS : null,
     part === 'far' ? (l) => FAR_LAYERS.has(l.name) : part === 'near' ? (l) => !FAR_LAYERS.has(l.name) : null);
   if (part === 'far') { ctx.restore(); return; }
-  if (fx) fxAir(ctx, p, tick);
-  drawKingdomGround(ctx, worldX, p, tick, extBottom);
-  if (fx) fxGround(ctx, worldX, p, tick, extBottom);
+  // ฉากไม่เลื่อน (หน้าแรก) = พื้นนิ่งสนิท ใช้ภาพสำรอง · ฉากที่เลื่อน (คลิปเปิดเกม) วาดสดเหมือนเดิม
+  if (speed === 0 && opts.worldX == null) drawStaticGround(ctx, worldX, p, tick, fx, extTop, extBottom);
+  else {
+    if (fx) fxAir(ctx, p, tick);
+    drawKingdomGround(ctx, worldX, p, tick, extBottom);
+    if (fx) fxGround(ctx, worldX, p, tick, extBottom);
+  }
   drawKingdomFront(ctx, worldX, p, tick, opts);
   if (fx) fxFront(ctx, worldX, p, tick, opts);
 

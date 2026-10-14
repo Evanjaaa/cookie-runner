@@ -57,6 +57,10 @@
     .ov.tr { right: 10px; top: 10px; }
     .ov.bl { left: 10px; bottom: 10px; }
     .ov.br { right: 10px; bottom: 10px; }
+    /* ซ่อนปุ่มบนจอภาพ (ดูคลิปเต็ม ๆ บนมือถือ) — เหลือแค่ปุ่มสลับกลับ จาง ๆ มุมขวาบน */
+    .view.clean .ov.tl, .view.clean .ov.bl, .view.clean .ov.br, .view.clean .ov.tr > :not(#clean) { display: none; }
+    .view.clean #clean { opacity: .45; }
+    .view.clean #clean:hover { opacity: 1; }
     .pill {
       padding: 5px 11px; border-radius: 999px; background: var(--glass); backdrop-filter: blur(8px);
       font-size: 12.5px; pointer-events: none; border: 1px solid rgba(255,244,220,.1); max-width: 100%;
@@ -230,6 +234,7 @@
           <div class="pill" id="now"></div>
         </div>
         <div class="ov tr">
+          <button type="button" class="icon" id="clean" title="ซ่อน/โชว์ปุ่มบนจอภาพ (H)" aria-label="ซ่อนปุ่มบนจอภาพ" aria-pressed="false">👁</button>
           <button type="button" class="icon" id="shot" title="บันทึกภาพเฟรมนี้ (P)" aria-label="บันทึกภาพ">📷</button>
           <button type="button" class="icon" id="wide" title="ขยายจอภาพ ซ่อนแผงข้าง (F)" aria-label="ขยายจอภาพ">⛶</button>
         </div>
@@ -339,7 +344,7 @@
   <div class="toast" id="toast"></div>
 
   <script type="module">
-    import { drawCat2, cat2Outfits, cat2Intro, cat2Act, CAT2_BREEDS } from './src/render/cat2.js';
+    import { drawCat2, cat2Outfits, cat2Intro, cat2Act, CAT2_BREEDS, cat2Backdrop, drawCat2Backdrop } from './src/render/cat2.js';
     import { OUTFITS, RARITY, outfitById } from './src/outfits.js';
     import { HOME_MOVES, LOVE_MOVE, E, mixShape } from './src/home-moves.js';
     import { IDLE_SHAPE, drawCatPose } from './src/render/entities.js';
@@ -380,7 +385,7 @@
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม
 
-    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'home', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all' };
+    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all' };
     window.__lab = st;   // เปิดให้สคริปต์ทดสอบปรับมุมกล้องได้
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -389,20 +394,23 @@
 
     // ── จำสถานะไว้ (แก้โค้ดแล้ว Vite รีโหลดหน้า = กลับมาท่า/ชุด/เฟรมเดิม) ──
     const SAVE_KEY = 'catlab.v2';
+    const isClean = () => document.querySelector('.view').classList.contains('clean');
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { saved = null; }
     if (saved) {
       for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter']) if (saved[k] !== undefined) st[k] = saved[k];
+      if (!saved.bgSkin) st.bg = 'skin';   // ฉากหลังประจำสกินมาใหม่ (14 ต.ค.) — เปิดให้เห็นครั้งแรก แล้วจำตามที่เลือกต่อ
       if (saved.outfit && outfitById(saved.outfit)) st.outfit = saved.outfit;
       st.skin = catById(saved.skin);
       if (saved.wide) document.body.classList.add('wide');
+      if (saved.clean) document.querySelector('.view').classList.add('clean');
     }
     function save() {
       try {
         const plain = !st.move.intro && st.move.id !== 'act';
         localStorage.setItem(SAVE_KEY, JSON.stringify({
           move: plain ? st.move.id : 'idle', f: plain ? st.f : 0, playing: st.playing,
-          outfit: st.outfit, skin: st.skin.id, wide: document.body.classList.contains('wide'),
+          outfit: st.outfit, skin: st.skin.id, wide: document.body.classList.contains('wide'), clean: isClean(), bgSkin: true,
           speed: st.speed, zoom: st.zoom, bg: st.bg, loop: st.loop, view: st.view, compare: st.compare, tab: st.tab, ofFilter: st.ofFilter,
         }));
       } catch { /* ไม่มีที่เก็บก็ไม่เป็นไร */ }
@@ -563,7 +571,7 @@
     seg('view', 'view', [['front', 'หน้า'], ['qleft', '◤ ซ้าย', 'เฉียงซ้าย'], ['qright', 'ขวา ◥', 'เฉียงขวา'], ['back', 'หลัง']]);
     seg('compare', 'compare', [[true, 'โชว์'], [false, 'ซ่อน']]);
     seg('loop', 'loop', [[true, '🔁', 'เล่นวน'], [false, '1×▸', 'เล่นครั้งเดียว']]);
-    seg('bg', 'bg', [['home', 'ม่วงอ่อน'], ['dark', 'มืด'], ['grid', 'ตาราง']]);
+    seg('bg', 'bg', [['skin', 'ฉากสกิน', 'ฉากหลังประจำสกิน (ชุดระดับ S ที่มีฉาก) · ชุดอื่นใช้ม่วงอ่อน'], ['home', 'ม่วงอ่อน'], ['dark', 'มืด'], ['grid', 'ตาราง']]);
     seg('sound', 'sound', [[false, '🔇 ปิด'], [true, '🔊 เปิด']]);
     seg('ofFilter', 'ofFilter', [['all', 'ทั้งหมด'], ['new', 'แบบใหม่'], ['old', 'ยังไม่ทำ']], () => filterOutfits());
 
@@ -667,6 +675,19 @@
     };
     $('shot').onclick = shot;
     $('wide').onclick = toggleWide;
+    // ซ่อนปุ่มบนจอภาพ: ปุ่มมุมมอง/ขนาด/ป้ายสถานะ/ตัวเทียบแบบเดิม หายหมด เหลือปุ่ม 👁 จาง ๆ ไว้กดคืน
+    function toggleClean() {
+      const v = document.querySelector('.view');
+      v.classList.toggle('clean');
+      const on = v.classList.contains('clean');
+      $('clean').textContent = on ? '🙈' : '👁';
+      $('clean').setAttribute('aria-pressed', String(on));
+      $('clean').setAttribute('aria-label', on ? 'โชว์ปุ่มบนจอภาพ' : 'ซ่อนปุ่มบนจอภาพ');
+      toast(on ? 'ซ่อนปุ่มบนจอแล้ว — กด 🙈 มุมขวาบนเพื่อโชว์' : 'โชว์ปุ่มบนจอแล้ว');
+      save();
+    }
+    $('clean').onclick = toggleClean;
+    if (isClean()) { $('clean').textContent = '🙈'; $('clean').setAttribute('aria-pressed', 'true'); }
     $('wide').classList.toggle('on', document.body.classList.contains('wide'));
 
     // ── หลอดเวลา (ลากได้แบบวิดีโอ) ──
@@ -757,6 +778,7 @@
       else if (VIEWS[e.key]) setSeg('view', VIEWS[e.key]);
       else if (e.key === 'f' || e.key === 'F') toggleWide();
       else if (e.key === 'p' || e.key === 'P') shot();
+      else if (e.key === 'h' || e.key === 'H') toggleClean();
     });
 
     /** อัปเดตหลอด ปุ่ม และป้าย ให้ตรงกับสถานะ */
@@ -841,6 +863,9 @@
       ctx.setTransform(cam);
       background(w, h, !cam.isIdentity);
       ctx.setTransform(cam.multiply(new DOMMatrix([u, 0, 0, u, w / 2 - (st.focusX || 0) * u, groundY])));
+      // ฉากหลังประจำสกิน (ภาพนิ่งวาดครั้งเดียว) — ติดพื้นใต้เท้าน้อง เลื่อน/ซูมไปกับกล้องของท่าเปิดตัว
+      // res = พิกเซลต่อหน่วยเกมแบบไม่รวมกล้อง (กล้องซูมเข้า = ฉากนุ่มลงเหมือนชัดตื้น ไม่ต้องวาดใหม่)
+      if (st.bg === 'skin' && cat2Backdrop(st.outfit)) drawCat2Backdrop(ctx, 0, 0, SCALE, st.outfit, { res: u });
       const shape = shapeAt();
       const lift = (shape?.lift || 0) * SCALE;
       // เงาหดตอนลอย (เหมือนหน้าแรก)
@@ -866,7 +891,7 @@
       // ชุดที่ยังไม่ทำแบบใหม่: น้องแบบใหม่ไม่ใส่ชุด (ยังใส่ไม่ได้) — ดูชุดจากตัวเดิมข้าง ๆ
       drawCat2(ctx, 0, -lift, SCALE, isNew && of ? { ...st.skin, outfit: of } : st.skin, (st.move.tBase ?? 600) + st.f, idleArg);
       // เทียบแบบเดิม (ตัววาดเดิมใส่ชุดเดียวกัน) ทางขวา ย่อลง — ไม่โชว์ตอนท่าเปิดตัว/ท่าแอ็ค (ตัวเดิมไม่มีท่านี้)
-      if (st.compare && st.outfit !== 'none' && of && !st.move.intro && st.move.id !== 'act') {
+      if (st.compare && !isClean() && st.outfit !== 'none' && of && !st.move.intro && st.move.id !== 'act') {
         ctx.save();
         ctx.translate(Math.min(150, (w / 2) / u - 48), 0);
         ctx.globalAlpha = 0.95;
