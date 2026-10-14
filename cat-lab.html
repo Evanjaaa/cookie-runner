@@ -272,6 +272,8 @@
       </nav>
       <div class="panes">
         <section class="pane" data-pane="moves">
+          <div class="sec">แมว (ทรงเดียวกัน ใส่ชุดได้ทุกตัว) <span class="line"></span></div>
+          <div class="moves" id="cats"></div>
           <div class="sec">ท่าหน้าแรก (แตะน้อง) <span class="line"></span></div>
           <div class="moves" id="moves"></div>
           <div class="sec">ท่าว่าง (ไม่มีใครแตะ) <span class="line"></span></div>
@@ -337,11 +339,15 @@
   <div class="toast" id="toast"></div>
 
   <script type="module">
-    import { drawCat2, cat2Outfits, cat2Intro, cat2Act } from './src/render/cat2.js';
+    import { drawCat2, cat2Outfits, cat2Intro, cat2Act, CAT2_BREEDS } from './src/render/cat2.js';
     import { OUTFITS, RARITY, outfitById } from './src/outfits.js';
     import { HOME_MOVES, LOVE_MOVE, E, mixShape } from './src/home-moves.js';
     import { IDLE_SHAPE, drawCatPose } from './src/render/entities.js';
     import { SKINS } from './src/skins.js';
+    // แมวแบบใหม่: น้องส้มตัวหลัก (ตัวผู้) + ตัวที่ออกแบบใหม่ใน CAT2_BREEDS (ทรงเดียวกัน ต่างสี/ตา/ขนตา) · ตามด้วยสีเดิมที่ยังไม่ออกแบบ
+    const NEW_CATS = [{ ...SKINS[0], sex: 'm', name: 'ส้มน้อย', note: 'ตัวหลัก · ตัวผู้' }, ...CAT2_BREEDS];
+    const ALL_CATS = [...NEW_CATS, ...SKINS.slice(1)];
+    const catById = (id) => ALL_CATS.find((c) => c.id === id) || NEW_CATS[0];
     import { sfx, unlockAudio, fadeSfx } from './src/audio.js';
 
     // ── ท่าทั้งหมด (เวลาในท่าเป็นเฟรมที่ 60fps เหมือนในเกม) ──
@@ -374,7 +380,7 @@
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม
 
-    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'home', loop: true, sound: false, skin: SKINS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all' };
+    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'home', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all' };
     window.__lab = st;   // เปิดให้สคริปต์ทดสอบปรับมุมกล้องได้
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -388,7 +394,7 @@
     if (saved) {
       for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter']) if (saved[k] !== undefined) st[k] = saved[k];
       if (saved.outfit && outfitById(saved.outfit)) st.outfit = saved.outfit;
-      st.skin = SKINS.find((s) => s.id === saved.skin) || SKINS[0];
+      st.skin = catById(saved.skin);
       if (saved.wide) document.body.classList.add('wide');
     }
     function save() {
@@ -437,7 +443,7 @@
       st.move = m;
       st.f = 0;
       st.playing = true;
-      for (const b of document.querySelectorAll('.moves .chip')) b.classList.toggle('on', b.dataset.id === m.id);
+      for (const b of document.querySelectorAll('#moves .chip, #movesRest .chip')) b.classList.toggle('on', b.dataset.id === m.id);
       $('introSkip').disabled = !m.intro;
       drawMarks();
       sync();
@@ -611,14 +617,36 @@
     }
     filterOutfits();
 
-    for (const s of SKINS) {
-      const o = document.createElement('option');
-      o.value = s.id;
-      o.textContent = s.name || s.id;
-      $('skin').append(o);
+    // ── เลือกแมว: ปุ่มในแท็บท่า (แบบใหม่) + ช่องเลือกในแท็บตั้งค่า (รวมสีเดิม) — สองที่ซิงก์กัน ──
+    const sexMark = (c) => (c.sex === 'f' ? '♀' : c.sex === 'm' ? '♂' : '');
+    for (const [label, list] of [['แบบใหม่', NEW_CATS], ['สีเดิม (ยังไม่ออกแบบใหม่)', SKINS.slice(1)]]) {
+      const g = document.createElement('optgroup');
+      g.label = label;
+      for (const c of list) {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = `${c.name || c.id} ${sexMark(c)}`.trim();
+        g.append(o);
+      }
+      $('skin').append(g);
     }
-    $('skin').value = st.skin.id;
-    $('skin').onchange = (e) => { st.skin = SKINS.find((s) => s.id === e.target.value) || SKINS[0]; };
+    function setCat(id) {
+      st.skin = catById(id);
+      $('skin').value = st.skin.id;
+      for (const b of $('cats').children) b.classList.toggle('on', b.dataset.cat === st.skin.id);
+    }
+    for (const c of NEW_CATS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.dataset.cat = c.id;
+      const dot = c.pal?.cat || c.cat || '#F8C08A';
+      b.innerHTML = `<span class="em" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${dot};border:2px solid #5A3420"></span><span class="tx">${c.name} ${sexMark(c)}<small>${c.note || ''}</small></span>`;
+      b.onclick = () => setCat(c.id);
+      $('cats').append(b);
+    }
+    $('skin').onchange = (e) => setCat(e.target.value);
+    setCat(st.skin.id);
 
     // ── ปุ่มบนจอภาพ ──
     function shot() {
@@ -755,16 +783,19 @@
     }
     new ResizeObserver(resize).observe(cv);
 
-    function background(w, h) {
+    /** พื้นหลัง · wide = มีกล้องเลื่อน/ซูม/เอียง → ปูกว้างเกินจอ ขอบไม่โผล่ */
+    function background(w, h, wide = false) {
+      const [x0, y0, W, H] = wide ? [-w * 1.5, -h * 1.5, w * 4, h * 4] : [0, 0, w, h];
       if (st.bg === 'dark') {
         ctx.fillStyle = '#20132F';
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillRect(x0, y0, W, H);
       } else if (st.bg === 'grid') {
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillRect(x0, y0, W, H);
         const n = Math.max(12, Math.round(w / 40));
         ctx.fillStyle = '#ECE6F2';
-        for (let y = 0; y < h; y += n) for (let x = (y / n) % 2 ? n : 0; x < w; x += n * 2) ctx.fillRect(x, y, n, n);
+        const sy = Math.floor(y0 / n) * n;
+        for (let y = sy; y < y0 + H; y += n) for (let x = Math.floor(x0 / n) * n + (Math.abs(y / n) % 2 ? n : 0); x < x0 + W; x += n * 2) ctx.fillRect(x, y, n, n);
       } else {
         const g = ctx.createLinearGradient(0, 0, 0, h);
         g.addColorStop(0, '#F6D9F2');
@@ -772,8 +803,26 @@
         g.addColorStop(0.72, '#E9C9A4');
         g.addColorStop(1, '#DDB58C');
         ctx.fillStyle = g;
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillRect(x0, y0, W, H);
       }
+    }
+
+    /**
+     * กล้องของท่าเปิดตัว (intro.cam ของชุด เช่นองค์หญิงหิมะ): ใส่ให้ทั้งฉาก — พื้นหลัง เงา ตัวน้อง เอฟเฟกต์
+     * ซูมรอบจุด (fx, fy) ของตัว แล้วเลื่อน/เอียง · ช่วงกดข้าม กล้องค่อย ๆ คืนที่ · ไม่มีกล้อง = null
+     */
+    function camMatrix(w, u, groundY) {
+      const m = st.move, it = cat2Intro(st.outfit);
+      if (!it?.cam) return null;
+      let f, skip = 0;
+      if (m.intro) f = Math.min(st.f, m.dur);
+      else if (m.from && st.f < SKIP_F) { f = m.from.f + st.f; skip = E.io(st.f / SKIP_F); }
+      else return null;
+      const k = u * SCALE * 0.104;   // หน่วยไฟล์ออกแบบ → พิกเซล
+      // ขอบซ้ายของจอในพิกัดตัว (เหมือน introEdge ในตัววาด) — กล้องช่วงแอบมองจากขอบใช้
+      const c = it.cam(f, skip, { edge: 300 + (-(w / 2) / u + (st.focusX || 0)) / (SCALE * 0.104) });
+      const px = w / 2 - (st.focusX || 0) * u + (c.fx - 300) * k, py = groundY + (c.fy - 648) * k;
+      return new DOMMatrix().translate(px, py).rotate((c.rot * 180) / Math.PI).scale(c.z).translate(-px, -py).translate(c.dx * k, c.dy * k);
     }
 
     function shapeAt() {
@@ -783,14 +832,15 @@
 
     function render() {
       const w = cv.width, h = cv.height;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      background(w, h);
       // หน่วยเกม → พิกเซล: ทั้งตัว (~200 หน่วยรวมที่ลอย) พอดีความสูงจอ แล้วคูณซูม
       // จุดที่เล็งไว้กลางจอ (หน่วยเกมเหนือเท้า): เต็มตัว = เท้าค่อนล่าง · ขยาย = กลางตัว · ดูหน้า = กลางหน้า
       const u = (h / 250) * st.zoom;
       const focus = st.focus ?? (st.zoom > 2 ? 104 : st.zoom > 1.2 ? 72 : null);
       const groundY = focus == null ? h * 0.8 : h * 0.5 + focus * u;
-      ctx.setTransform(u, 0, 0, u, w / 2 - (st.focusX || 0) * u, groundY);
+      const cam = camMatrix(w, u, groundY) || new DOMMatrix();
+      ctx.setTransform(cam);
+      background(w, h, !cam.isIdentity);
+      ctx.setTransform(cam.multiply(new DOMMatrix([u, 0, 0, u, w / 2 - (st.focusX || 0) * u, groundY])));
       const shape = shapeAt();
       const lift = (shape?.lift || 0) * SCALE;
       // เงาหดตอนลอย (เหมือนหน้าแรก)
