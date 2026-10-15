@@ -345,7 +345,9 @@
 
   <script type="module">
     import { drawCat2, cat2Outfits, cat2Intro, cat2Act, CAT2_BREEDS, cat2Backdrop, drawCat2Backdrop } from './src/render/cat2.js';
-    import { OUTFITS, RARITY, outfitById } from './src/outfits.js';
+    import { ALL_OUTFITS as OUTFITS, RARITY } from './src/outfits.js';
+    // หน้าทดสอบเห็นทุกชุด รวมชุดที่ยังซ่อนในเกม (HIDDEN_OUTFITS)
+    const outfitById = (id) => OUTFITS.find((o) => o.id === id) || OUTFITS[0];
     import { HOME_MOVES, LOVE_MOVE, E, mixShape } from './src/home-moves.js';
     import { IDLE_SHAPE, drawCatPose } from './src/render/entities.js';
     import { SKINS } from './src/skins.js';

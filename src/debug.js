@@ -22,7 +22,7 @@ import { unlockAllSkills } from './skills.js';
 import { xpAtLevel, levelFromXp } from './progress.js';
 import { loadXp, saveXp } from './storage.js';
 import {
-  debugAge, debugExp, debugForceFind, debugAdopt, debugClearCats, roomCats,
+  debugAge, debugExp, debugForceFind, debugAdopt, debugClearCats, roomCats, debugGrantGrown,
 } from './cats.js';
 
 // false = โผล่เฉพาะตอนรัน dev server ส่วนเว็บที่ deploy จริงจะไม่มี
@@ -367,6 +367,13 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
     if (!c) { toast('🐱 บ้านเต็มแล้ว (ห้อง 3 + กล่องรอ 1)'); return false; }
     hooks.refreshCats?.();
     toast('🐱 ได้น้องใหม่แล้ว — ไปดูที่บ้านน้อง');
+    return true;
+  });
+  // แมวแบบใหม่สามตัว (ไข่มุก · ขนมชั้น · วิเชียรมาศ) โตเต็มวัย — เลือกลงวิ่งได้ที่คลังน้อง
+  add('✨ เสกแมวใหม่ 3 ตัว', () => {
+    for (const [b, sx] of [['pearl', 'f'], ['calico', 'f'], ['siamese', 'm']]) debugGrantGrown(b, sx);
+    hooks.refreshCats?.();
+    toast('✨ ได้ ไข่มุก · ขนมชั้น · วิเชียรมาศ (โตแล้ว) — ไปเลือกที่คลังน้อง > น้องแมว');
     return true;
   });
   add('⏩ เวลาผ่านไป 6 ชม.', () => {

@@ -12668,6 +12668,288 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   #stashPanel .dream .skin-card.sel { animation: none; translate: 0 -3px; }
 }
 
+/* ══ หมวดชุดแมว: การ์ดใหญ่สี่ใบต่อแถว (แบบที่ผู้ใช้วาง 15 ต.ค. · เดิมสามใบ ผู้ใช้ขอเป็นสี่) ══
+   ไม่มีช่องพรีวิวซ้ายแล้ว — แตะการ์ด = เข้าหน้ารายละเอียดชุดเลย (buildOutfitGrid ใน main.js)
+   รูปบนการ์ดตอนนี้วาดจากตัววาดหน้าทดสอบ ผู้ใช้จะทำรูปจริงมาแทนทีหลัง
+   ระดับ S: กรอบชมพูพีช + วงม่วงเข้ม + ประกายวิ้ง · ระดับ A/พื้นฐาน: กรอบชมพูอ่อนเรียบ ๆ */
+#stashPanel.outfit-mode .stash-show { display: none; }
+#stashPanel #outfitGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(9px, 2.2dvh, 20px) clamp(8px, 1.6vw, 20px);
+  padding: clamp(6px, 1.4dvh, 12px) clamp(4px, 2vw, 26px) clamp(12px, 2.6dvh, 22px);
+  justify-items: center;
+}
+.oc-card {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(4px, 1dvh, 9px);
+  padding: clamp(5px, 1.1dvh, 9px) clamp(5px, 1.1dvh, 9px) clamp(6px, 1.4dvh, 12px);
+  border-radius: clamp(15px, 3dvh, 26px);
+  border: 3px solid rgba(244,200,255,.9);
+  background: linear-gradient(180deg, #C982E8, #AE5FD6);
+  box-shadow: 0 8px 18px rgba(70,20,130,.26), inset 0 1px 0 rgba(255,255,255,.5);
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+  transition: filter .12s ease, transform .07s ease;
+}
+.oc-card:hover { filter: brightness(1.08); }
+.oc-card:active { transform: translateY(3px); }
+.oc-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+.oc-art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 200 / 248;
+  border-radius: clamp(12px, 2.4dvh, 20px);
+  background: #EEDFFC;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.45), 0 2px 6px rgba(60,16,110,.22);
+}
+.oc-art canvas { display: block; width: 100%; height: 100%; }
+.oc-card b {
+  min-height: 2.5em;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: clamp(10px, 1.8dvh, 14.5px);
+  line-height: 1.22;
+  font-weight: 800;
+  /* ตัวขาวขอบม่วงเข้มแบบในแบบ — ใช้เงาแปดทิศ (ใช้ได้ทุกเบราว์เซอร์ ไม่พึ่ง paint-order) */
+  text-shadow:
+    1.5px 0 0 #4E1C80, -1.5px 0 0 #4E1C80, 0 1.5px 0 #4E1C80, 0 -1.5px 0 #4E1C80,
+    1px 1px 0 #4E1C80, -1px 1px 0 #4E1C80, 1px -1px 0 #4E1C80, -1px -1px 0 #4E1C80,
+    0 3px 5px rgba(60,16,110,.45);
+}
+/* ── ระดับ S: กรอบไล่สีชมพู-พีช-ลาเวนเดอร์ + วงม่วงเข้มรอบนอก + เรืองชมพู ── */
+.oc-card.s {
+  border: 4px solid transparent;
+  background:
+    linear-gradient(180deg, #BE6FE6, #9C4ACB) padding-box,
+    linear-gradient(135deg, #FFF0FA 0%, #FFB9E0 28%, #FFE6B6 52%, #E3AEFF 78%, #FFF2FB 100%) border-box;
+  box-shadow:
+    0 0 0 2px #6E2AA6,
+    0 10px 22px rgba(70,20,130,.34),
+    0 0 18px rgba(255,186,236,.55),
+    inset 0 1px 0 rgba(255,255,255,.55);
+}
+/* ประกายแสงวิ่งผ่านรูปช้า ๆ (transform อย่างเดียว ไม่เปลืองเครื่อง) */
+.oc-card.s .oc-art::after {
+  content: '';
+  position: absolute;
+  inset: -10% -60%;
+  background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,.42) 50%, transparent 58%);
+  transform: translateX(-70%);
+  animation: ocSheen 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ocSheen { 0%, 58% { transform: translateX(-70%); } 100% { transform: translateX(70%); } }
+/* ดาววิ้งเล็ก ๆ เกาะขอบกรอบ */
+.oc-card.s::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  pointer-events: none;
+  z-index: 3;
+  --st: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z' fill='%23FFFFFF'/%3E%3C/svg%3E");
+  background:
+    var(--st) left 0 top 16% / 15px no-repeat,
+    var(--st) right 2px top 2px / 11px no-repeat,
+    var(--st) right -1px bottom 26% / 13px no-repeat,
+    var(--st) left 14% bottom 0 / 9px no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255,214,246,.95));
+  animation: ocTwinkle 2.6s ease-in-out infinite;
+}
+@keyframes ocTwinkle { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+/* ใส่อยู่ = ขอบมิ้นต์ (ความหมายเดียวกับการ์ดอื่นในคลังน้อง) */
+.oc-card.on { outline: 3px solid var(--mint); outline-offset: 3px; }
+/* ยังไม่มี = รูปขาวดำ หรี่ลง แต่กรอบสีเดิม (ระดับ S ยังเห็นกรอบพิเศษ คนเล่นรู้ว่าของดี) */
+.oc-card.locked canvas { filter: grayscale(1) brightness(.88); opacity: .85; }
+/* จอเตี้ย (มือถือแนวนอน): ชื่อเล็กลง ขอบบางลง การ์ดยังสามใบต่อแถว */
+@media (max-height: 500px) {
+  .oc-card { border-width: 2px; max-width: 150px; }
+  .oc-card.s { border-width: 3px; }
+  .oc-card b { font-size: clamp(9px, 2.4dvh, 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oc-card.s .oc-art::after, .oc-card.s::after { animation: none; }
+  .oc-card.s .oc-art::after { display: none; }
+  .oc-card.s::after { opacity: .8; }
+}
+
+/* ══ หน้ารายละเอียดชุด: เวทีเต็มการ์ด (แบบของผู้ใช้ 15 ต.ค.) ══
+   ผ้าใบ #odStage ปูทั้งการ์ด (ฉากประจำสกิน + น้องเล่นท่าเปิดตัว → ท่าแอ็ค — main.js odDraw)
+   ของที่เหลือลอยทับ: หัวเรื่องข้างปุ่มกลับ · ปุ่มขยายมุมขวาบน · กล่องข้อมูลซ้ายล่าง · ปุ่มใส่ชุดขวาล่าง
+   กฎเก่าของหน้านี้ (.odetail ฯลฯ) ไม่มีใครใช้แล้ว แต่ปล่อยไว้ — ไม่ผูกกับ DOM ใหม่ */
+#odPanel .od-pop {
+  width: 100%;
+  height: calc(100% - var(--card-inset) * 2);
+  padding: 0;
+  display: block;
+  background: #EBD6FA;   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
+  border: 1.5px solid rgba(255,255,255,.6);
+}
+#odPanel .od-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  animation: none;   /* พื้นหลังนิ่งอยู่กับการ์ด ไม่ไล่ขึ้นแบบเนื้อหา */
+}
+/* วิดีโอท่าเปิดตัว: ปูเต็มการ์ดแบบ cover ทับผ้าใบ — โชว์เมื่อขึ้นภาพแล้ว (.on) ตำแหน่งเวทีในผ้าใบคิดจาก cover เดียวกัน (odGeoCover) */
+#odPanel .od-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}
+#odPanel .od-video.on { opacity: 1; pointer-events: auto; cursor: pointer; }
+#odPanel.od-full .od-video { border-radius: 0; }
+#odPanel .od-title {
+  position: absolute;
+  z-index: 2;
+  top: clamp(8px, 1.4dvh, 16px);
+  left: calc(var(--backbtn-x) + var(--backbtn) + clamp(8px, 1.4vw, 16px));
+  right: calc(var(--backbtn-x) + var(--backbtn) + clamp(8px, 1.4vw, 16px));
+  margin: 0;
+  padding: 0;
+  background: none;   /* ไม่มีขีดใต้หัวเรื่อง — วางบนฉากตามแบบ */
+  text-align: left;
+  font-size: clamp(18px, 4.6dvh, 38px);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* ปุ่มขยาย: ลูกศรสี่มุมสีม่วง ไม่มีพื้น (แบบ) — เรืองขาวรอบ ๆ ให้อ่านออกบนฉากทุกสี */
+#odPanel .od-max {
+  position: absolute;
+  z-index: 3;
+  top: clamp(10px, 1.8dvh, 18px);
+  right: var(--backbtn-x);
+  width: var(--backbtn);
+  height: var(--backbtn);
+  padding: clamp(5px, 1dvh, 8px);
+  border: 0;
+  background: none;
+  color: #8E3FC8;
+  cursor: pointer;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,.95)) drop-shadow(0 1px 2px rgba(90,30,140,.35));
+  transition: transform .08s ease;
+}
+#odPanel .od-max svg { display: block; }
+#odPanel .od-max:active { transform: scale(.9); }
+#odPanel .od-max:focus-visible { outline: 2px solid #8E3FC8; outline-offset: 2px; border-radius: 10px; }
+#odPanel .od-x { display: none; }
+
+/* กล่องข้อมูลซ้ายล่าง — แผ่นชมพูขาวใส ขอบขาว (ไม่ใช้ backdrop-filter: ผ้าใบข้างหลังวาดใหม่ทุกเฟรม เบลอซ้ำทุกเฟรมเปลืองเครื่อง) */
+#odPanel .od-info {
+  position: absolute;
+  z-index: 2;
+  left: clamp(12px, 3vw, 40px);
+  bottom: clamp(12px, 3dvh, 32px);
+  max-width: min(46%, 440px);
+  max-height: 46%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(6px, 1.4dvh, 12px);
+  padding: clamp(10px, 2dvh, 18px) clamp(12px, 2vw, 22px);
+  border-radius: clamp(14px, 2.6dvh, 24px);
+  background: rgba(253,238,255,.74);
+  border: 1.5px solid rgba(255,255,255,.75);
+  box-shadow: 0 8px 22px rgba(120,50,150,.18), inset 0 1px 0 rgba(255,255,255,.8);
+  animation: none;
+}
+#odPanel .od-info::-webkit-scrollbar { display: none; }
+#odPanel .od-info .od-tag { align-self: flex-start; }
+#odPanel .od-perks li { color: #4A2066; text-shadow: none; }
+#odPanel .panel p.odetail-sub,
+#odPanel p.odetail-sub { color: #5A2A7C; display: block; }
+#odPanel p.odetail-sub:empty { display: none; }
+
+/* ปุ่มใส่ชุดขวาล่าง — เม็ดยาลาเวนเดอร์ชมพู ขอบไล่ชมพู-ทอง ตัวขาวขอบม่วง (แบบ) */
+#odPanel .od-act {
+  position: absolute;
+  z-index: 2;
+  right: clamp(12px, 3vw, 40px);
+  bottom: clamp(14px, 3.4dvh, 36px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  animation: none;
+}
+#odPanel .od-act .form-msg {
+  min-height: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(253,238,255,.8);
+  color: #6A2A9C;
+  font-size: clamp(10px, 1.8dvh, 13px);
+}
+#odPanel .od-act .form-msg:empty { display: none; }
+#odPanel .btn.od-wear {
+  margin: 0;
+  min-width: clamp(140px, 22vw, 240px);
+  padding: clamp(8px, 1.8dvh, 14px) clamp(18px, 3vw, 34px);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(180deg, #F1B6FA, #D98BF0) padding-box,
+    linear-gradient(100deg, #FF8FC8, #FFC2E2 45%, #FFD877) border-box;
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  font-weight: 800;
+  font-size: clamp(15px, 3.2dvh, 26px);
+  text-shadow:
+    1.5px 0 0 #8A3BB8, -1.5px 0 0 #8A3BB8, 0 1.5px 0 #8A3BB8, 0 -1.5px 0 #8A3BB8,
+    1px 1px 0 #8A3BB8, -1px 1px 0 #8A3BB8, 1px -1px 0 #8A3BB8, -1px -1px 0 #8A3BB8;
+  box-shadow: 0 5px 0 #B866D8, 0 10px 22px rgba(150,60,190,.3), inset 0 1px 0 rgba(255,255,255,.7);
+}
+#odPanel .btn.od-wear:active { transform: translateY(4px); box-shadow: 0 1px 0 #B866D8, 0 4px 10px rgba(150,60,190,.3); }
+#odPanel .btn.od-wear:disabled,
+#odPanel .btn.od-wear.ghost {
+  filter: saturate(.7);
+  opacity: .9;
+  box-shadow: 0 3px 0 #B866D8, inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+/* ── โหมดขยายเต็มจอ: การ์ดเต็มเวที ซ่อนข้อมูลทั้งหมด เหลือน้อง + ปุ่มปิด (.xbtn) ── */
+#odPanel.od-full .od-pop {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  border: 0;
+}
+#odPanel.od-full :is(.od-title, .od-max, .od-info, .od-act, .backbtn) { display: none; }
+#odPanel.od-full .od-x { display: grid; top: clamp(8px, 1.4dvh, 16px); }
+
+/* จอเตี้ย (มือถือแนวนอน): กล่องข้อมูลกับปุ่มเล็กลง ไม่บังตัวน้อง */
+@media (max-height: 500px) {
+  #odPanel .od-info { max-width: 44%; padding: 8px 12px; gap: 5px; }
+  #odPanel .od-info .od-tag { font-size: 12.5px; padding: 3px 10px; }
+  #odPanel .od-perks li { font-size: 10.5px; }
+  #odPanel .od-perks img { width: 18px; }
+  #odPanel .btn.od-wear { min-width: 120px; font-size: 15px; padding: 7px 16px; }
+}
+
 /* ══ หน้าสกิล/พรสวรรค์: ห้องพลังพิเศษของน้องแมว ══════════════════════
    ทั้งสองหมวดของ #talentPanel (สกิล + พรสวรรค์) — ผูกกับ #talentPanel หน้าอื่นที่ยืมคลาส tl-*
    (เช่นหน้าเพื่อนแมว) ไม่โดนกฎในบล็อกนี้
@@ -14811,3 +15093,216 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 /* ชื่อเครื่องมือสั้น ๆ ห้ามหักกลางคำ (จอโทรศัพท์เคยแตกเป็น "เล็ม / ขน") — คำอธิบายใต้ชื่อยังตัดบรรทัดได้ตามปกติ */
 .gr-tool-name { min-width: max-content; }
+
+/* ══ หน้าสุ่มสกิน: ป้ายโปรโมท + ตู้กาช่าหัวแมว (แบบของผู้ใช้ 15 ต.ค.) ══
+   #gachaPanel.skin-mode = ช่องสกิน → ซ่อน .gacha-cards เดิม โชว์ .gacha-promo · ช่องสมบัติกลับกัน
+   ขนาดทุกอย่างผูกกับความสูงของกล่อง (container query) — ตู้สูงเท่าป้าย กว้าง 0.72 เท่าความสูง
+   ตู้ทับขอบขวาของป้ายราวครึ่งตัว ของในป้ายฝั่งขวา (ปุ่มดูสกินอื่น ลูกศรถัดไป) จึงหลบตู้ด้วยตัวแปรเดียวกัน */
+/* การ์ดสูงเต็มขอบเขตทั้งสองช่อง (แบบคลังน้อง) — ป้ายโปรโมทวัดขนาดจากกล่อง (container) จึงต้องมีความสูงให้วัด
+   ตรึงทั้งสองช่องเท่ากัน สลับช่องแล้วการ์ดไม่หดขยาย */
+/* (เดิมตรึงการ์ดสูงเต็มขอบเขต — ผู้ใช้ขอให้ iPad การ์ดเตี้ยลง 15 ต.ค. จึงกลับไปสูงตามเนื้อหา
+   ป้ายโปรโมทได้ความสูงจาก aspect-ratio ของ .gacha-promo แทน) */
+/* ช่องสมบัติ: การ์ดสองใบสูงตามเนื้อหาเหมือนเดิม จัดกลางแนวตั้ง (ไม่ยืดตามการ์ดที่สูงขึ้น) */
+#gachaPanel:not(.skin-mode) .gacha-cards { align-items: center; }
+#gachaPanel:not(.skin-mode) .gacha-promo,
+#gachaPanel.skin-mode .gacha-cards { display: none; }
+.gacha-promo {
+  /* ความกว้างตู้: ตามความสูงกล่อง แต่ไม่เกิน 50% ของความกว้าง (iPad กล่องเกือบจัตุรัส ตู้จะโตเกิน)
+     ผู้ใช้ขอให้ตู้ใหญ่ขึ้น 15 ต.ค. (เดิม 76cqh / 44cqw) · บนมือถือจำกัดด้วยความสูง ไม่ให้หัวแมวชนแถบเงินด้านบน */
+  --mw: min(80cqh, 50cqw);
+  --mo: calc(var(--mw) * .45); /* ส่วนของตู้ที่ทับป้าย */
+  --ms: calc(var(--mw) * .2);  /* ตู้เลื่อนเลยขอบคอลัมน์ไปทางขวา — ป้ายกว้างขึ้นเท่านี้ (ผู้ใช้ขอขยับตู้ขวา ให้รูปกว้างขึ้น) */
+  /* ป้ายไม่สูงเกินสัดส่วน 1.05:1 ของความกว้าง (แบบเป็นป้ายแนวนอน) — กล่องสูงกว่านั้นป้ายจัดกลางแนวตั้ง */
+  /* + ไม่สูงเกินตัวตู้ (ผู้ใช้ขอ: iPad ป้ายสูงเกินตู้ ให้พอ ๆ กันแบบมือถือ) — ตัวตู้จริง ≈ 1.2 เท่าความกว้างตู้ */
+  --bh: min(100cqh, calc((100cqw - var(--mw) + var(--mo) + var(--ms)) / 1.05), calc(var(--mw) * 1.2));
+  position: relative;
+  min-height: 0;
+  container-type: size;
+  /* ความสูงของกล่อง = กว้าง/1.5 (พอดีป้าย + ตู้) — จอเตี้ย (มือถือ) หดตามที่เหลือเอง (min-height: 0) */
+  aspect-ratio: 1.5;
+  flex: 0 1 auto;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  padding-bottom: clamp(6px, 1.4dvh, 14px);
+}
+.gp-banner {
+  position: relative;
+  width: calc(100% - var(--mw) + var(--mo) + var(--ms));
+  height: var(--bh);
+  border-radius: clamp(18px, 4dvh, 34px);
+  border: clamp(3px, .8dvh, 6px) solid transparent;
+  background:
+    linear-gradient(#F7D7F2, #F7D7F2) padding-box,
+    linear-gradient(110deg, #FF5FAE 0%, #FF8CC8 40%, #FFC98A 78%, #FFE07A 100%) border-box;
+  box-shadow: 0 10px 26px rgba(70,20,130,.32), 0 0 22px rgba(255,140,200,.35);
+  overflow: hidden;
+}
+.gp-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity .7s ease;
+}
+.gp-art.on { opacity: 1; }
+/* แตะที่รูป = หน้ารายละเอียดของสกินนี้ (ปุ่มใสใต้ของอื่นทั้งหมด) */
+.gp-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.gp-hit:focus-visible { outline: 3px solid #FFFFFF; outline-offset: -6px; border-radius: inherit; }
+/* ชื่อสกิน: ชมพูขอบขาวหนา + เงาม่วง (แบบ) */
+.gp-name {
+  position: absolute;
+  z-index: 2;
+  top: clamp(8px, calc(var(--bh) * .034), 26px);
+  left: clamp(10px, calc(var(--bh) * .05), 34px);
+  /* กว้างไม่เกินครึ่งส่วนที่เห็น — ชื่อยาวตัดเป็นสองบรรทัดแบบในแบบ ไม่วิ่งไปชนปุ่มดูสกินอื่น */
+  /* กว้างพอให้ชื่อยาวลงสองบรรทัด (ไม่เกินสอง — main.js fitPromoName ย่อตัวอักษรถ้ายังเกิน) */
+  max-width: calc((100% - var(--mo)) * .66);
+  font-family: "Mali", sans-serif;
+  font-weight: 800;
+  font-size: clamp(12px, calc(var(--bh) * .054), 30px);   /* เล็กลง (ผู้ใช้ขอ) */
+  line-height: 1.18;
+  color: #FF4F9E;
+  text-shadow:
+    -2.5px -2.5px 0 #FFFFFF, 0 -2.5px 0 #FFFFFF, 2.5px -2.5px 0 #FFFFFF,
+    -2.5px 0 0 #FFFFFF, 2.5px 0 0 #FFFFFF,
+    -2.5px 2.5px 0 #FFFFFF, 0 2.5px 0 #FFFFFF, 2.5px 2.5px 0 #FFFFFF,
+    0 5px 6px rgba(120,40,140,.35);
+  pointer-events: none;
+  transition: opacity .35s ease;
+}
+.gp-name.fade { opacity: 0; }
+.gp-more {
+  position: absolute;
+  z-index: 2;
+  top: clamp(8px, calc(var(--bh) * 0.036), 26px);
+  /* ขยับขวาเข้าไปใกล้ตู้ (ผู้ใช้ขอ) — อยู่ชั้นบนตู้ ไม่โดนเครื่องหมายรอบหัวแมวบัง */
+  z-index: 4;
+  right: calc(var(--mo) * .62);
+  /* เล็กลง (ผู้ใช้ขอ 15 ต.ค.) — ตัวหนังสือ/ระยะในปุ่มราว 3/4 ของเดิม */
+  padding: clamp(2px, calc(var(--bh) * 0.007), 5px) clamp(6px, calc(var(--bh) * 0.019), 12px);
+  border-radius: 999px;
+  border: 1.5px solid #FFD27A;
+  background: linear-gradient(180deg, #FFF3FB, #FFD6EE);
+  color: #7A2E9E;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(9px, calc(var(--bh) * 0.024), 12.5px);
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(120,40,140,.22);
+  cursor: pointer;
+}
+.gp-more:active { transform: translateY(2px); }
+/* ลูกศรเหลืองสามเหลี่ยม (แบบ) — ก่อนหน้าชิดขอบซ้าย · ถัดไปหลบตู้ */
+.gp-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  width: clamp(26px, calc(var(--bh) * 0.1), 56px);
+  height: clamp(30px, calc(var(--bh) * 0.12), 64px);
+  margin-top: calc(clamp(30px, calc(var(--bh) * 0.12), 64px) / -2);
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 3px rgba(150,80,20,.35)) drop-shadow(0 0 6px rgba(255,255,255,.8));
+  transition: transform .1s ease;
+}
+.gp-arrow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #FFF28A, #FFC21E);
+  clip-path: polygon(100% 0, 0 50%, 100% 100%, 72% 50%);
+}
+.gp-prev { left: clamp(4px, calc(var(--bh) * 0.02), 14px); }
+/* แบบมีลูกศรซ้ายอันเดียว — ทางขวาถูกตู้บัง เลื่อนไปข้างหน้าด้วยการปัดรูป (หรือรอหมุนเอง) */
+.gp-next { display: none; }
+.gp-arrow:active { transform: scale(.88); }
+.gp-buy {
+  position: absolute;
+  z-index: 2;
+  left: clamp(8px, calc(var(--bh) * 0.04), 26px);
+  bottom: clamp(10px, calc(var(--bh) * 0.045), 30px);
+  /* แถวปุ่มกว้างได้ไม่เกินส่วนของป้ายที่ตู้ไม่บัง — ปุ่ม ! ข้างปุ่ม 25,000 จึงไม่มุดใต้ตู้ (ปุ่มสุ่มหดตามได้) */
+  max-width: calc(100% - var(--mo) - clamp(8px, calc(var(--bh) * 0.04), 26px) - 8px);
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(22px, calc(var(--bh) * 0.08), 44px);   /* ห่างขึ้นอีก (ผู้ใช้ขอสองรอบ) */   /* ปุ่ม 5,000 กับ 25,000 ห่างกันขึ้น (ผู้ใช้ขอ) */
+}
+/* ปุ่มสุ่มใช้ร่างเดียวกับ .btn.pull (เม็ดนุ่ม ไฮไลต์แก้ว กดแล้วยุบ) เปลี่ยนแค่สี: ฟ้า / ทอง */
+.btn.pull.gp-pull {
+  flex: 0 1 clamp(84px, calc(var(--bh) * 0.31), 190px);
+  min-width: 0;
+  padding: clamp(5px, calc(var(--bh) * 0.02), 12px) clamp(8px, calc(var(--bh) * 0.03), 22px) clamp(4px, calc(var(--bh) * 0.018), 10px);
+}
+.btn.pull.gp-pull b { font-size: clamp(12px, calc(var(--bh) * 0.047), 26px); white-space: nowrap; }
+.btn.pull.gp-pull .price { gap: 3px; }
+.btn.pull.gp-pull small { font-size: clamp(8.5px, calc(var(--bh) * 0.03), 15px); }
+.btn.pull.gp-one {
+  --base: #0E86A6;
+  --glow: rgba(30,170,210,.38);
+  background:
+    radial-gradient(118% 92% at 50% -20%, rgba(255,255,255,.55), rgba(255,255,255,0) 64%),
+    linear-gradient(180deg, #6EEBFA 0%, #27C9E6 55%, #12AED0 100%);
+  color: #06364A;
+}
+.btn.pull.gp-five {
+  --base: #B5791A;
+  --glow: rgba(240,170,40,.4);
+  background:
+    radial-gradient(118% 92% at 50% -20%, rgba(255,255,255,.6), rgba(255,255,255,0) 64%),
+    linear-gradient(180deg, #FFEA92 0%, #FFCB45 55%, #F5B02A 100%);
+  color: #4A2C04;
+}
+.btn.pull.gp-five small { background: rgba(120,70,0,.32); }
+.gp-odds {
+  /* ข้างปุ่มสุ่ม 25,000 (ผู้ใช้ขอ 15 ต.ค.) */
+  align-self: center;
+  flex: 0 0 auto;
+  width: clamp(20px, calc(var(--bh) * .075), 30px);
+  height: clamp(20px, calc(var(--bh) * .075), 30px);
+  background: rgba(255,255,255,.7);
+  border-color: rgba(122,46,158,.45);
+  color: #7A2E9E;
+}
+.gp-msg {
+  position: absolute;
+  z-index: 2;
+  left: clamp(8px, calc(var(--bh) * 0.04), 26px);
+  bottom: calc(clamp(10px, calc(var(--bh) * 0.045), 30px) + clamp(52px, calc(var(--bh) * 0.2), 104px));
+  min-height: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.85);
+}
+.gp-msg:empty { display: none; }
+/* ตู้หัวแมว: ทับขอบขวาของป้าย ลอยขึ้นลงช้า ๆ (translate แยกจาก transform ที่ใช้ตอนสั่น) */
+.gp-machine {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  /* สูงเท่าป้ายนิด ๆ (สัดส่วนตู้ 300:416) จัดกลางแนวตั้งกับป้าย หัวแมวโผล่พ้นขอบบนป้ายเล็กน้อย */
+  top: calc(50% - var(--mw) * .72);
+  height: calc(var(--mw) * 1.387);
+  width: var(--mw);
+  pointer-events: none;
+  margin-right: calc(var(--ms) * -1);
+  /* ไม่ใช้ filter: drop-shadow — ผ้าใบตู้วาดใหม่ 30 ภาพ/วิ เงาฟิลเตอร์ต้องคิดใหม่ทุกภาพ เปลืองเครื่อง (เงาวาดในผ้าใบแทน) */
+  animation: gpBob 3.4s ease-in-out infinite;
+}
+@keyframes gpBob { 50% { translate: 0 -1.2%; } }
+@media (prefers-reduced-motion: reduce) {
+  .gp-machine { animation: none; }
+  .gp-art { transition: none; }
+}

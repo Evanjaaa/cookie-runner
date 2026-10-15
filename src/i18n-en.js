@@ -19,6 +19,8 @@ export const EN = {
   'สูง': 'High',
   'สูงสุด': 'Max',
   'เลือกความละเอียดภาพ': 'Choose resolution',
+  'อัตโนมัติ: ลดความละเอียดเหลือ': 'Auto: resolution lowered to',
+  'ให้เกมลื่นบนเครื่องนี้': 'to keep this device smooth',
   'เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น': 'High frame rate / max resolution looks great but warms the device and uses more battery',
   'ตั้งค่าบ้านลูกเหมียว': 'Cat house settings',
   'ใช้เฉพาะในบ้านลูกเหมียวกับมินิเกม — หน้าอื่นใช้ค่าในหน้าตั้งค่าหลัก': 'Applies only in the cat house and mini games — other screens use the main settings.',

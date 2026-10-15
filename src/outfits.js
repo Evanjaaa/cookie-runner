@@ -1655,10 +1655,19 @@ const LIST = [
 ];
 
 // เติม foodBonus จากระดับ ไม่ให้ค่าของชุดระดับเดียวกันเพี้ยนกันเอง
-export const OUTFITS = LIST.map((o) => ({
+// ALL_OUTFITS = ทุกชุดที่วาดไว้ (หน้าทดสอบ cat-lab ใช้) · OUTFITS = ชุดที่เปิดในเกมจริง
+export const ALL_OUTFITS = LIST.map((o) => ({
   ...o,
   foodBonus: o.rarity ? RARITY[o.rarity].foodBonus : 0,
 }));
+
+/**
+ * ชุดที่ยังไม่เปิดในเกม — ผู้ใช้สั่ง 15 ต.ค.: ระดับ S โชว์แค่ขนมหวาน (sweet) กับองค์หญิงหิมะ (princess) ก่อน
+ * ที่เหลือยังเป็นร่างแรก รอวาดใหม่ตามกฎ S (S_TIER_SKINS.md) — ซ่อนจากทุกที่: ตู้กาช่า (สุ่มไม่ออก) คลัง ป้ายโปรโมท
+ * คนที่เคยได้ไปแล้ว: ยังจำไว้ในบัญชี แต่ใส่ไม่ได้/ไม่นับ จนกว่าจะเอาออกจากรายการนี้ · เปิดชุดไหนแล้วลบ id ออกจากตรงนี้ที่เดียว
+ */
+export const HIDDEN_OUTFITS = new Set(['noble', 'fruit', 'lunar', 'rainbow', 'dryad']);
+export const OUTFITS = ALL_OUTFITS.filter((o) => !HIDDEN_OUTFITS.has(o.id));
 
 export const OUTFIT_COST = 5000;      // ทองต่อการสุ่มหนึ่งครั้ง
 
@@ -1689,7 +1698,8 @@ export function grantOutfit(id) {
 }
 
 export function ownedCount() {
-  return owned.size;
+  // นับเฉพาะชุดที่เปิดอยู่ในเกม (ชุดซ่อนที่เคยได้ไม่นับ)
+  return OUTFITS.filter((o) => o.rarity && owned.has(o.id)).length;
 }
 
 /**

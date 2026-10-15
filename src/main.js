@@ -3,7 +3,7 @@ import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx } from './audio.js';
+import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx, fadeSfx } from './audio.js';
 import { startMusic, stopMusic, primeMusicFile, SONG_LISTS, songIndex, setSong } from './music.js';
 import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
 import {
@@ -34,7 +34,7 @@ import { getLang, setLang, applyLang, watchLang, onLang, t as tr } from './i18n.
 import { setSexText } from './utils.js';
 import {
   quality, onQuality, LEVEL_IDS, SCENES, FPS_OPTS, sceneCfg, setSceneCfg, sameAll, setSameAll,
-  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz,
+  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz, frameDrawn, autoInfo,
 } from './graphics.js';
 import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
@@ -57,7 +57,7 @@ import {
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto } from './render/cat2.js';
+import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Backdrop, drawCat2Backdrop, cat2Intro, cat2Act } from './render/cat2.js';
 /** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
 function drawStashCat(c, x, feetY, scale, s, t, { head = false, logical = 190 } = {}) {
   if (CAT2.stash && useCat2(s)) {
@@ -103,6 +103,8 @@ import { SKILLS, isSkillUnlocked } from './skills.js';
 import { registerFresh, isFresh, hasFresh, markSeen, onFresh, setDot } from './fresh.js';
 import { setupSkillUI } from './skill-ui.js';
 import { HOME_MOVES } from './home-moves.js';
+import { drawOdScene, odGeo, odGeoCover, odIntroAt, OD_VIDEOS, odVideoPick, odVideoSrc } from './od-stage.js';
+import { GUMBALL, createGumball, drawGumballFrame } from './render/gumball.js';
 import {
   playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
   introSoundEnabled, setIntroSoundEnabled,
@@ -928,6 +930,147 @@ function setHeroId(id) {
 const gCost = () => (gIsT() ? T_GACHA.cost : OUTFIT_COST);
 const gMulti = () => (gIsT() ? T_GACHA.multi : MULTI_PULLS);
 const gWallet = () => (gIsT() ? getGems() : getGold());
+/** บรรทัดข้อความใต้ปุ่มสุ่ม — ช่องสกินแบบใหม่มีของตัวเองในป้ายโปรโมท */
+const gMsg = () => document.getElementById(gIsT() ? 'gachaMsg' : 'gpMsg');
+
+// ── ช่องสกิน: ป้ายโปรโมทสกินระดับ S (แบบของผู้ใช้ 15 ต.ค.) ──
+// โชว์ทีละชุด เปลี่ยนเองทุก PROMO_MS (ภาพจางสลับสองผ้าใบ) · ลูกศรเลื่อนเอง (นับเวลาใหม่) · แตะรูป = หน้ารายละเอียด
+// รูปวาดด้วยตัววาดเวทีหน้ารายละเอียด (od-stage) — ฉากประจำสกิน + น้องตัวที่เลือกยืนท่าแอ็ค วาดครั้งเดียวต่อขนาด เก็บไว้
+// ตำแหน่งน้องหลบตู้หัวแมวที่ทับขอบขวาของป้าย
+const PROMO_MS = 10000;
+const PROMO_T = 600;   // เวลาของท่าแอ็คที่ถ่ายเป็นรูป (ท่าหลัก ไม่ใช่ช่วงขยิบตา)
+const gpArts = [document.getElementById('gpArtA'), document.getElementById('gpArtB')];
+const promoCache = new Map();
+let promoI = 0;
+let promoFront = 0;
+let promoTimer = 0;
+const promoList = () => pullPool().filter((o) => o.rarity === 'high');
+// รูปโปรโมทจริงที่ผู้ใช้ทำมา (public/promo/) — ชุดที่มีรูปใช้รูปนี้ ชุดที่ยังไม่มีวาดจากตัววาดเวที
+// cx = จุดกลางตัวน้องในรูป (สัดส่วนความกว้าง) — จัดให้ตรงกลางพื้นที่ป้ายแบบเดียวกับรูปที่วาดเอง
+const PROMO_IMG = { sweet: { src: 'promo/promo-sweet.jpg', cx: 0.47 } };
+const promoImgs = {};
+function promoImg(id) {
+  const P = PROMO_IMG[id];
+  if (!P) return null;
+  let im = promoImgs[id];
+  if (!im) {
+    im = promoImgs[id] = new Image();
+    im.onload = () => { promoCache.clear(); if (!gachaPanel.classList.contains('hidden') && !gIsT()) paintPromo(0); };
+    im.src = import.meta.env.BASE_URL + P.src;
+  }
+  return im.complete && im.naturalWidth ? im : null;
+}
+
+/** วาดรูปโปรโมทของชุด o ลงผ้าใบ cv (ขนาดตามที่แสดงจริง) — false = ยังไม่มีขนาด (แผงยังไม่ขึ้นจอ) */
+function drawPromoArt(cv, o) {
+  const banner = cv.parentElement, machine = document.getElementById('gpMachine');
+  const w = banner.clientWidth, h = banner.clientHeight;
+  if (!w || !h) return false;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(w * dpr), H = Math.round(h * dpr);
+  // ขอบซ้ายของตู้ในป้าย (พิกเซลผ้าใบ) — น้องอยู่ค่อนกลางป้าย (ผู้ใช้ขอ 15 ต.ค.) แต่ตัวไม่มุดเข้าใต้ตู้
+  const mL = Math.max(0, machine.offsetLeft + machine.offsetWidth * 0.1 - banner.offsetLeft) * dpr;
+  const ov = Math.round(Math.max(0, W - mL));
+  const skin = getSkin();
+  const key = o.id + '|' + skin.id + '|' + W + 'x' + H + '|' + Math.round(ov);
+  let img = promoCache.get(key);
+  if (!img) {
+    if (promoCache.size > 24) promoCache.clear();
+    img = document.createElement('canvas');
+    img.width = W;
+    img.height = H;
+    const pic = promoImg(o.id);
+    const act = cat2Act(o.id);
+    if (pic) {
+      // ปูเต็มป้าย (cover) ให้ตัวน้องในรูปอยู่ที่ 47% ของป้าย เท่าที่ขอบรูปยังคลุมป้ายได้
+      const k = Math.max(W / pic.naturalWidth, H / pic.naturalHeight), iw = pic.naturalWidth * k, ih = pic.naturalHeight * k;
+      const x = Math.min(0, Math.max(W - iw, W * 0.47 - PROMO_IMG[o.id].cx * iw));
+      img.getContext('2d').drawImage(pic, x, (H - ih) / 2, iw, ih);
+    } else drawOdScene(img.getContext('2d'), W, H, {
+      id: o.id, skin: { ...skin, outfit: o }, high: true,
+      mode: act ? 'act' : 'idle', f: 0, tBase: PROMO_T, from: null,
+    }, { u: Math.max((H / 250) * 0.7, Math.min((H / 250) * 1.16, (mL - W * 0.47) / 60)), cx: W * 0.47, gy: H * 0.93 });   // กลางป้าย · ครึ่งตัวฝั่งขวา ~60 หน่วย ไม่เลยขอบตู้
+    promoCache.set(key, img);
+  }
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const c = cv.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, W, H);
+  c.drawImage(img, 0, 0);
+  return true;
+}
+
+/** ชื่อสกินบนป้ายไม่เกินสองบรรทัดทุกจอ (ผู้ใช้ขอ) — ยังเกินก็ย่อตัวอักษรทีละนิดจนลง */
+function fitPromoName() {
+  const el = document.getElementById('gpName');
+  el.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  const line = parseFloat(getComputedStyle(el).lineHeight) || size * 1.18;
+  for (let i = 0; i < 12 && el.offsetHeight > line * 2.3 && size > 10; i++) {
+    size *= 0.92;
+    el.style.fontSize = size + 'px';
+  }
+}
+
+/** โชว์ชุดถัดไป (step ±1) หรือวาดชุดเดิมใหม่ (step 0 — เปิดหน้า/ขนาดเปลี่ยน) แล้วนับเวลาเปลี่ยนรอบใหม่ */
+function paintPromo(step = 0) {
+  const list = promoList();
+  if (!list.length) return;
+  // เปิดหน้ามาครั้งแรก: เริ่มที่ชุดที่กำลังส่องอยู่ถ้าเป็นระดับ S
+  if (step === 0 && !paintPromo.started) {
+    const at = list.findIndex((o) => o.id === heroId);
+    if (at >= 0) promoI = at;
+    paintPromo.started = true;
+  }
+  promoI = (promoI + step + list.length) % list.length;
+  const o = list[promoI];
+  const slot = step ? 1 - promoFront : promoFront;
+  if (!drawPromoArt(gpArts[slot], o)) return;
+  gpArts[slot].classList.add('on');
+  if (slot !== promoFront) gpArts[promoFront].classList.remove('on');
+  promoFront = slot;
+  document.getElementById('gpName').textContent = o.name;
+  fitPromoName();
+  document.getElementById('gpOpen').setAttribute('aria-label', 'ดูรายละเอียด ' + o.name);
+  clearTimeout(promoTimer);
+  promoTimer = setTimeout(() => {
+    if (gachaPanel.classList.contains('hidden') || gIsT()) return;   // เปิดหน้ากลับมา refreshGacha นับใหม่เอง
+    paintPromo(1);
+  }, PROMO_MS);
+}
+new ResizeObserver(() => { if (!gachaPanel.classList.contains('hidden') && !gIsT()) paintPromo(0); })
+  .observe(document.querySelector('.gp-banner'));
+
+// ── ตู้กาช่าหัวแมว (src/render/gumball.js) ──
+// ขยับน่ารัก ๆ ตลอด (หัวโยก ตากะพริบ/ขยิบ หางกระดิก แคปซูลโยก อุ้งเท้าเคาะ หัวใจลอย — ผู้ใช้ขอ 15 ต.ค.)
+// ชิ้นนิ่งวาดเป็นภาพครั้งเดียวต่อขนาด (createGumball) ทุกเฟรมแค่แปะภาพ + ของชิ้นเล็ก · วาดแค่ 30 ภาพ/วิ พอสำหรับท่าช้า ๆ
+// ตอนสั่น/แคปซูลกำลังหล่น (กดสุ่ม) วาดทุกเฟรม ให้การสั่นไม่หน่วง
+const GM_MS = 1000 / 30;
+const gm = { parts: null, key: '', last: 0, t0: performance.now() };
+function paintGumball(now = performance.now()) {
+  const cv = document.getElementById('gpMachine');
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  const anim = gachaShake > 0 || pullProgress > 0;
+  if (!anim && now - gm.last < GM_MS) return;
+  gm.last = now;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(w * dpr), H = Math.round(h * dpr);
+  const k = Math.min(W / GUMBALL.W, H / GUMBALL.H), ox = (W - GUMBALL.W * k) / 2, oy = H - GUMBALL.H * k;
+  const key = W + 'x' + H;
+  if (gm.key !== key) {
+    gm.parts = createGumball(k);
+    gm.key = key;
+  }
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const c = cv.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, W, H);
+  const sx = gachaShake > 0 ? (Math.random() - 0.5) * gachaShake * 10 * k : 0;
+  const sy = gachaShake > 0 ? (Math.random() - 0.5) * gachaShake * 7 * k : 0;
+  c.setTransform(k, 0, 0, k, ox + sx, oy + sy);
+  drawGumballFrame(c, gm.parts, (now - gm.t0) / 1000, pullProgress);
+}
 
 /** วาดของชิ้นที่กำลังส่องลงกรอบซ้าย ทีละชิ้นเท่านั้น */
 function drawShow() {
@@ -1076,6 +1219,7 @@ function refreshGacha() {
   refreshGold();
 
   const t = gIsT();
+  gachaPanel.classList.toggle('skin-mode', !t);   // ช่องสกิน = ป้ายโปรโมท + ตู้หัวแมว (style.css .gacha-promo)
   document.getElementById('tabTreasure').classList.toggle('on', t);
   document.getElementById('tabSkin').classList.toggle('on', !t);
   document.getElementById('gachaMore').textContent = t ? 'ดูสมบัติอื่นๆ' : 'ดูสกินอื่นๆ';
@@ -1099,10 +1243,16 @@ function refreshGacha() {
   p1.querySelector('b').textContent = cost.toLocaleString('en-US');
   p5.querySelector('b').textContent = (cost * multi).toLocaleString('en-US');
   p5.querySelector('small').textContent = multi + ' ครั้ง!';
+  if (!t) {
+    document.getElementById('gpPull1').querySelector('b').textContent = cost.toLocaleString('en-US');
+    document.getElementById('gpPull5').querySelector('b').textContent = (cost * multi).toLocaleString('en-US');
+    document.getElementById('gpPull5').querySelector('small').textContent = multi + ' ครั้ง!';
+  }
   paintPullAfford();
 
   buildOdds();
-  drawShow();
+  if (t) drawShow();
+  else paintPromo();
 }
 
 /**
@@ -1127,6 +1277,10 @@ function paintPullAfford() {
   const money = gWallet();
   p1.disabled = money < cost;
   p5.disabled = money < cost * gMulti();
+  if (!gIsT()) {
+    document.getElementById('gpPull1').disabled = p1.disabled;
+    document.getElementById('gpPull5').disabled = p5.disabled;
+  }
 }
 
 // ── กล่องผลสุ่ม ──
@@ -1305,7 +1459,7 @@ function doOPull(times) {
 
   const res = pull(times);
   if (!res.ok) {
-    setMsg(document.getElementById('gachaMsg'),
+    setMsg(gMsg(),
       'ทองไม่พอ ขาดอีก ' + res.need.toLocaleString('en-US'), true);
     return;
   }
@@ -1313,7 +1467,7 @@ function doOPull(times) {
 
   unlockAudio();
   sfx.potion();                   // เสียงตอนหมุนตู้ เสียงของรางวัลมาทีหลัง
-  setMsg(document.getElementById('gachaMsg'), '');
+  setMsg(gMsg(), '');
   gachaShake = 1;
   pullProgress = 0.0001;          // ต้องมากกว่า 0 ให้ลูปรู้ว่ากำลังเปิดอยู่
   pullPending = res.results;
@@ -1370,6 +1524,7 @@ function setTab(tab) {
   // ของที่ค้างจากช่องก่อนต้องไม่ตามข้ามมา ไม่งั้นแคปซูลจะไปแตกอยู่บนหีบ
   resetGachaAnim();
   setMsg(document.getElementById('gachaMsg'), '');
+  setMsg(document.getElementById('gpMsg'), '');
   refreshGacha();
 }
 
@@ -1391,6 +1546,7 @@ function showGacha(on, tab) {
     if (tab) gTab = tab;
     resetGachaAnim();
     setMsg(document.getElementById('gachaMsg'), '');
+    setMsg(document.getElementById('gpMsg'), '');
     pickFirstHero('treasure');
     pickFirstHero('skin');
     refreshGacha();
@@ -2851,6 +3007,76 @@ function confirmBox(opts) {
   });
 }
 
+/**
+ * รูปบนการ์ดชุด — ตอนนี้ใช้ตัววาดจากหน้าทดสอบ (cat-lab) ไปก่อน ผู้ใช้จะทำรูปจริงมาแปะทีหลัง
+ *
+ * ชุดที่มีฉากหลังประจำสกิน (sweet / princess) ใช้ฉากนั้นเลยแบบในหน้าทดสอบ
+ * ชุดอื่นเป็นห้องลาเวนเดอร์ + พื้นไม้อ่อน (ระดับ S เป็นชมพูอมม่วงมีประกาย)
+ *
+ * เก็บรูปที่วาดแล้วไว้ (ตัวแมว × ชุด × ความละเอียด) — กริดถูกสร้างใหม่บ่อย (กลับจากหน้ารายละเอียด
+ * กดเรียง/กรอง) วาดน้อง 18 ตัวใหม่ทุกรอบเปลืองเครื่องโดยไม่ได้อะไร
+ */
+const OC_W = 200, OC_H = 248;
+const ocCache = new Map();
+function paintOutfitArt(canvas, s, o) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const key = s.id + '|' + o.id + '|' + dpr;
+  let img = ocCache.get(key);
+  if (!img) {
+    if (ocCache.size > 60) ocCache.clear();
+    img = document.createElement('canvas');
+    img.width = OC_W * dpr;
+    img.height = OC_H * dpr;
+    const c = img.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawOutfitArt(c, s, o);
+    ocCache.set(key, img);
+  }
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.getContext('2d').drawImage(img, 0, 0);
+}
+function drawOutfitArt(c, s, o) {
+  const W = OC_W, H = OC_H, feet = H * 0.885, sc = 3.35;
+  const high = o.rarity === 'high';
+  // drawCatAuto ย่อแบบใหม่ด้วย fit 0.86 — ฉากหลังต้องใช้สเกลเดียวกับตัวน้องที่วาดจริง
+  const drawn = cat2Backdrop(o.id) && drawCat2Backdrop(c, W / 2, feet, sc * 0.86, o.id);
+  if (!drawn) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, high ? '#FDEBFA' : '#F5EBFF');
+    g.addColorStop(1, high ? '#E9C9F6' : '#E4D1F8');
+    c.fillStyle = g;
+    c.fillRect(0, 0, W, H);
+    if (high) {
+      // แสงนวลหลังตัว + ประกายเล็ก ๆ ให้ต่างจากห้องธรรมดา
+      const r = c.createRadialGradient(W / 2, H * 0.45, 4, W / 2, H * 0.45, W * 0.62);
+      r.addColorStop(0, 'rgba(255,255,255,.75)');
+      r.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = r;
+      c.fillRect(0, 0, W, H);
+      c.fillStyle = 'rgba(255,255,255,.9)';
+      for (const [x, y, k] of [[24, 34, 5], [176, 58, 4], [30, 128, 3], [170, 150, 5], [150, 22, 3]]) {
+        c.beginPath();
+        c.moveTo(x, y - k); c.quadraticCurveTo(x, y, x + k, y); c.quadraticCurveTo(x, y, x, y + k);
+        c.quadraticCurveTo(x, y, x - k, y); c.quadraticCurveTo(x, y, x, y - k);
+        c.fill();
+      }
+    }
+    // พื้นไม้อ่อนใต้เท้า + เงา (แบบในภาพที่ผู้ใช้วาง)
+    const fy = feet - 20;
+    const f = c.createLinearGradient(0, fy, 0, H);
+    f.addColorStop(0, high ? '#F1D3DF' : '#EAD5BA');
+    f.addColorStop(1, high ? '#E2B9CB' : '#DABF9C');
+    c.fillStyle = f;
+    c.fillRect(0, fy, W, H - fy);
+    c.fillStyle = 'rgba(92,60,44,.26)';
+    c.beginPath();
+    c.ellipse(W / 2, feet - 1, 46, 8, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  drawCatAuto(c, W / 2, feet, sc, { ...s, outfit: o }, 60);
+}
+
 function buildOutfitGrid() {
   const grid = document.getElementById('outfitGrid');
   grid.innerHTML = '';
@@ -2877,32 +3103,23 @@ function buildOutfitGrid() {
     const got = isOwned(o.id);
     const on = got && o.id === s.outfit.id;
 
+    // ── การ์ดใหญ่สามใบต่อแถว (แบบที่ผู้ใช้วาง 15 ต.ค.) — รูปเต็มตัวด้านบน ชื่อด้านล่าง ──
+    // ชุดระดับ S กรอบต่างจากระดับ A: ขอบชมพูพีช + วงม่วงเข้ม + ประกายวิ้ง (style.css .oc-card.s)
     const card = document.createElement('button');
-    card.className =
-      'skin-card outfit-card' + (on ? ' on' : '') + (got ? '' : ' locked')
-      + (o.rarity === 'high' ? ' high' : '');
-    // เหลือแค่รูปกับชื่อ — ป้ายโบนัสกับบรรทัดคำอธิบายย้ายไปหน้ารายละเอียด
-    // การ์ดจึงเตี้ยลงมาก และกริดโชว์ชุดได้มากกว่าเดิมเกือบเท่าตัวในที่เท่าเดิม
-    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b>';
+    card.type = 'button';
+    card.className = 'oc-card' + (o.rarity === 'high' ? ' s' : '') + (on ? ' on' : '') + (got ? '' : ' locked');
+    card.innerHTML = '<span class="oc-art"><canvas></canvas></span><b></b>';
     card.querySelector('b').textContent = o.name;
-
-    // "ขนล้วน" ไม่มีระดับ tierSign() จึงคืน null แล้วการ์ดใบนั้นไม่มีป้าย
-    const sign = tierSign(o.rarity);
-    if (sign) card.appendChild(sign);
-
-    // วาดแมวตัวที่เลือกอยู่ใส่ชุดใบนี้จริง ๆ ไม่ใช่หุ่นกลาง
-    paintMini(card.querySelector('canvas'), 96,
-      (c) => drawCatAuto(c, 55, 88, 1.5, { ...s, outfit: o }, 60));
-
-    // แตะแล้ว "เลือก" ขึ้นมาโชว์ในช่องซ้าย ไม่ใช่เด้งไปหน้ารายละเอียดทันที
-    // ผู้เล่นจึงกวาดดูเทียบหลายชุดรวดเดียวได้ ปุ่ม "ดูเพิ่มเติม" ในช่องซ้าย
-    // คือทางไปหน้ารายละเอียดสำหรับคนที่อยากอ่านตัวเลขเต็ม ๆ ของชิ้นนั้น
-    if (o.id === stashSel.outfit) card.classList.add('sel');
+    paintOutfitArt(card.querySelector('canvas'), s, o);
     setDot(card, got && isFresh('outfit', o.id));
+
+    // แตะแล้วเข้าหน้ารายละเอียดเลย (ไม่มีช่องพรีวิวซ้ายแล้ว) — หน้านั้นมีปุ่มใส่/ไปสุ่มให้ครบ
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
-      selectStash('outfit', o.id);
+      stashSel.outfit = o.id;
+      markSeen('outfit', o.id);
+      openOutfitDetail(o.id, stashPanel);
     });
 
     grid.appendChild(card);
@@ -5131,37 +5348,163 @@ document.getElementById('questBack').addEventListener('click', () => showQuests(
 
 // ── หน้ารายละเอียดชุด ──────────────────────────────────────
 //
-// น้องแมวใส่ชุดนี้ยืนอยู่จริงและขยับ — หายใจกับกะพริบตาเท่านั้น
-// ไม่เอาคิวท่าว่างแบบหน้าแรก (นั่ง เลียขน) เพราะที่นี่คนมาดู "ชุด"
-// ท่าที่ตัวหมุนไปมาจะบังเสื้อผ้าซึ่งเป็นสิ่งเดียวที่ต้องดูให้ชัด
-// drawCatPose() ที่ไม่ส่ง idle เข้าไปให้พอดีแบบนั้นอยู่แล้ว
+// ทั้งการ์ดเป็นเวที (แบบของผู้ใช้ 15 ต.ค.): ฉากหลังประจำสกิน + น้องตัวที่เลือกใส่ชุดนี้ตัวใหญ่กลางการ์ด
+// ชุดที่มีท่าเปิดตัว (ระดับ S): เปิดหน้ามา = เล่นท่าเปิดตัว (มีเสียง) จบแล้วยืนท่าแอ็คต่อเนื่องไม่หยุด
+//   แตะเวทีระหว่างท่าเปิดตัว = ข้ามไปท่าแอ็ค (ไหลเข้าท่าใน OD_SKIP เฟรม เอฟเฟกต์จางออก — แบบปุ่มข้ามในหน้าทดสอบ)
+// ชุดอื่นยืนหายใจ/กะพริบเฉย ๆ บนฉาก — คนมาดู "ชุด" ท่าหมุนตัวจะบังเสื้อผ้า
+// ตัววาดเวทีอยู่ใน src/od-stage.js (ใช้ร่วมกับสคริปต์อัดวิดีโอ)
+//
+// ── วิดีโอท่าเปิดตัว (OD_VIDEOS) ──
+// ท่าเปิดตัววาดสดกระตุกบนเครื่องอ่อน (ผู้ใช้ทัก 15 ต.ค.) → อัดเป็น .mp4 ไว้ แล้วเล่นวิดีโอแทนการวาดสด
+// วิดีโออัดด้วยน้องส้มตัวหลัก — เลือกตัวอื่นอยู่ / เล่นวิดีโอไม่ได้ (โหมดประหยัดแบตของ iPhone ห้ามเล่นเอง) = วาดสดแทน
+// ระหว่างวิดีโอเล่น ผ้าใบไม่วาดเลย · วิดีโอจบ → ผ้าใบวาดท่าแอ็คต่อด้วยตำแหน่งเวทีเดียวกับวิดีโอ (odGeoCover) ภาพจึงต่อกันพอดี
 
 const odPanel = document.getElementById('odPanel');
+const odStage = document.getElementById('odStage');
+const odVideo = document.getElementById('odVideo');
 let odCurrent = null;
 // แผงที่เปิดหน้ารายละเอียดนี้มา — คลังน้อง (ค่าตั้งต้น) หรือรายการสกินในตู้กาช่า
 let odFrom = null;
-let odTick = 0;
 let odRAF = 0;
+// mode: 'intro' | 'act' | 'idle' · f = เฟรมในท่า · tBase = เวลาชีวิต (หายใจ กะพริบ) ต่อเนื่องข้ามท่า
+// from = ท่าเปิดตัว ณ จุดที่ออก (ผสมเข้าท่าแอ็คช่วงแรก) · w/h = ขนาดผ้าใบที่วัดไว้ (ResizeObserver)
+// vid = ขนาดวิดีโอที่ใช้กับการเปิดหน้านี้ (null = วาดสดล้วน) · vplay = วิดีโอกำลังรับหน้าที่ท่าเปิดตัว · vStart = เวลาที่สั่งเล่น
+const od = { mode: 'idle', f: 0, tBase: 600, from: null, last: 0, w: 0, h: 0, vid: null, vplay: false, vStart: 0 };
+new ResizeObserver(([e]) => { od.w = e.contentRect.width; od.h = e.contentRect.height; }).observe(odStage);
+const OD_VIDEO_WAIT = 2500;   // วิดีโอยังไม่ขึ้นภาพเกินเท่านี้ (มิลลิวินาที) = วาดสดแทน
 
-function paintOdCat() {
+/** เริ่มเล่นใหม่ตั้งแต่ต้น — ชุดที่มีท่าเปิดตัวเริ่มที่ท่าเปิดตัว (มีวิดีโอ = เล่นวิดีโอ) */
+function odStart() {
+  const s = { ...getSkin(), outfit: outfitById(odCurrent) };
+  const live = CAT2.ui && useCat2(s);   // ท่าเปิดตัว/ท่าแอ็คมีเฉพาะตัววาดแบบใหม่
+  od.mode = live && cat2Intro(odCurrent) ? 'intro' : live && cat2Act(odCurrent) ? 'act' : 'idle';
+  od.f = 0;
+  od.tBase = 600;
+  od.from = null;
+  od.last = performance.now();
+  odVideoOff();
+  od.vid = null;
+  if (od.mode !== 'intro') return;
+  fadeSfx(0.05);
+  const v = OD_VIDEOS[odCurrent];
+  if (!v || s.id !== v.skin) return;
+  // ขนาดการ์ดตอนนี้ (แผงเพิ่งโชว์ ResizeObserver อาจยังไม่ได้วัด) — อ่านครั้งเดียวตอนเปิด
+  const r = odStage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  od.vid = odVideoPick(odCurrent, r.width, r.height);
+  od.vplay = true;
+  od.vStart = performance.now();
+  odVideo.src = import.meta.env.BASE_URL + odVideoSrc(odCurrent, od.vid);
+  odVideo.currentTime = 0;
+  odVideo.play().catch(odVideoFail);
+}
+
+/** ซ่อน/หยุดวิดีโอ (ไม่แตะสถานะท่า) */
+function odVideoOff() {
+  od.vplay = false;
+  odVideo.classList.remove('on');
+  if (!odVideo.paused) odVideo.pause();
+}
+/** เล่นวิดีโอไม่ได้/โหลดช้า — วาดท่าเปิดตัวสดต่อจากจุดเดิม (ตำแหน่งเวทีของวิดีโอยังใช้ต่อ ภาพไม่กระโดด) */
+function odVideoFail() {
+  if (!od.vplay) return;
+  odVideoOff();
+  od.last = performance.now();
+}
+// วิดีโอขึ้นภาพแรกแล้วค่อยโชว์ทับผ้าใบ (ก่อนหน้านั้นผ้าใบวาดเฟรม 0 = ฉากเปล่า ภาพเดียวกับต้นวิดีโอ)
+odVideo.addEventListener('playing', () => { if (od.vplay) odVideo.classList.add('on'); });
+odVideo.addEventListener('error', odVideoFail);
+
+/** ท่าเปิดตัวจบ/ถูกข้าม → ท่าแอ็ค นับเวลาต่อจากจุดที่ออก ภาพจึงไม่กระตุก */
+function odToAct() {
+  const fs = Math.min(od.f, cat2Intro(odCurrent).dur);
+  od.from = odIntroAt(odCurrent, fs);
+  od.tBase = 600 + fs;
+  od.f = 0;
+  od.mode = cat2Act(odCurrent) ? 'act' : 'idle';
+}
+
+function odDraw() {
+  if (!od.w) return;
   const o = outfitById(odCurrent);
   if (!o) return;
-  const s = getSkin();
-  paintMini(document.getElementById('odCat'), 200,
-    (c) => drawCatAuto(c, 100, 176, 3, { ...s, outfit: o }, odTick));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(od.w * dpr), H = Math.round(od.h * dpr);
+  if (odStage.width !== W || odStage.height !== H) { odStage.width = W; odStage.height = H; }
+  const ctx = odStage.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  drawOdScene(ctx, W, H, {
+    id: odCurrent, skin: { ...getSkin(), outfit: o }, high: o.rarity === 'high',
+    mode: od.mode, f: od.f, tBase: od.tBase, from: od.from,
+  }, od.vid ? odGeoCover(W, H, od.vid) : odGeo(W, H));
 }
 
-function odLoop() {
-  odTick++;
-  paintOdCat();
-  odRAF = requestAnimationFrame(odLoop);
+/** เสียงของท่าเปิดตัว — ยิงตอนเวลาข้ามเฟรมในตาราง voices (ไม่ยิงซ้ำแม้เฟรมตก) */
+function odVoices(f0, f1) {
+  for (const [f, v] of cat2Intro(odCurrent).voices || []) if (f0 < f && f1 >= f) sfx[v]?.();
 }
 
-// วาดเฉพาะตอนแผงเปิด ปิดแล้วหยุดทันที ไม่แย่งเฟรมกับตัวเกม
+/**
+ * ลูปของเวที — หยุดตัวเองเมื่อแผงปิด (ออกได้หลายทาง: กลับ / ไปตู้กาช่า / กดเล่น)
+ * วิดีโอเล่นอยู่ = อ่านเฟรมจากเวลาของวิดีโอ (เสียงตรงกับภาพ) ไม่วาดผ้าใบ
+ */
+function odFrame(now) {
+  if (odPanel.classList.contains('hidden')) { odRAF = 0; odVideoOff(); fadeSfx(0.25); return; }
+  odRAF = requestAnimationFrame(odFrame);
+  const df = Math.max(0, Math.min(4, ((now - od.last) / 1000) * 60));   // ห้ามติดลบ (เวลา rAF อาจเก่ากว่าที่จดไว้)
+  od.last = now;
+  if (od.vplay) {
+    if (odVideo.classList.contains('on')) {
+      const f0 = od.f;
+      const dur = cat2Intro(odCurrent).dur;
+      od.f = Math.min(dur, odVideo.currentTime * 60);
+      odVoices(f0, od.f);
+      if (!odVideo.ended && od.f < dur) return;
+      // จบวิดีโอ: ผ้าใบวาดท่าแอ็คต่อเฟรมนี้เลย แล้วค่อยซ่อนวิดีโอ (ไม่มีเฟรมว่างคั่น)
+      od.f = dur;
+      odToAct();
+      odDraw();
+      odVideoOff();
+      return;
+    }
+    if (now - od.vStart < OD_VIDEO_WAIT) { odDraw(); return; }   // ยังโหลด: ค้างเฟรม 0
+    odVideoFail();
+  }
+  const f0 = od.f;
+  od.f += df;
+  if (od.mode === 'intro') {
+    odVoices(f0, od.f);
+    if (od.f >= cat2Intro(odCurrent).dur) odToAct();
+  }
+  odDraw();
+}
+
+// ออกจากหน้า = หยุดลูป วิดีโอ และเสียงท่าเปิดตัวที่อาจยังค้าง
 function stopOdCat() {
   cancelAnimationFrame(odRAF);
   odRAF = 0;
+  odVideoOff();
+  fadeSfx(0.25);
 }
+
+// แตะเวทีระหว่างท่าเปิดตัว = ข้าม (ไหลเข้าท่าแอ็ค เสียงจางออก) — ตอนวิดีโอเล่น ตัวที่โดนแตะคือวิดีโอ
+function odSkip() {
+  if (od.mode !== 'intro') return;
+  if (od.vplay && odVideo.classList.contains('on')) od.f = Math.min(cat2Intro(odCurrent).dur, odVideo.currentTime * 60);
+  fadeSfx(0.3);
+  odToAct();
+  odDraw();
+  odVideoOff();
+}
+odStage.addEventListener('click', odSkip);
+odVideo.addEventListener('click', odSkip);
+
+// ── ขยายเต็มจอ: ซ่อนข้อมูลทั้งหมดเหลือแต่น้องกับฉาก (ท่าเดียวกับหน้าระบายสี — ติดคลาสอย่างเดียว ที่เหลือเป็น CSS)
+function setOdMax(on) {
+  odPanel.classList.toggle('od-full', on);
+}
+document.getElementById('odMax').addEventListener('click', () => { unlockAudio(); sfx.fish(); setOdMax(true); });
+document.getElementById('odUnmax').addEventListener('click', () => { unlockAudio(); sfx.fish(); setOdMax(false); });
 
 /**
  * รายการ "ของที่ได้จากชุดนี้" — อ่านจากตัวชุดจริง ไม่ได้เขียนข้อความค้างไว้ทีละชุด
@@ -5195,14 +5538,6 @@ function paintOutfitDetail() {
 
   document.getElementById('odName').textContent = o.name;
 
-  // ป้ายระดับเป็นรูปจริง ชุดพื้นฐานไม่มีระดับจึงไม่มีป้าย (ซ่อนทั้งอัน)
-  const sign = document.getElementById('odSign');
-  sign.hidden = !art;
-  if (art) {
-    sign.src = import.meta.env.BASE_URL + art.sign;
-    sign.alt = tier.name;
-  }
-
   // ป้ายชื่อเล่นของชุด — ชื่อชุดจริงอยู่บนหัวเรื่องแล้ว ตรงนี้จึงเป็นคำบรรยายสั้น ๆ
   const tag = document.getElementById('odTag');
   tag.textContent = o.note || (tier ? tier.name : 'ชุดพื้นฐาน');
@@ -5223,24 +5558,10 @@ function paintOutfitDetail() {
     perks.appendChild(li);
   }
 
-  // บอกทั้ง "ต่อชิ้นเท่าไหร่" และ "แปลว่าอะไรเมื่อเทียบกับของที่เก็บได้จริง"
-  //
-  // ตั้งใจเทียบกับค่าปลาซึ่งเป็นของกินที่เจอบ่อยที่สุด แทนที่จะเดาว่าตาหนึ่ง
-  // เก็บได้กี่ชิ้น — ตัวเลขนั้นแกว่งตามฝีมือคนเล่นกับด่านที่เลือก เขียนตายตัวลงไป
-  // ก็เป็นได้แค่ตัวเลขลอย ๆ ที่ไม่มีอะไรรับประกัน
-  // ส่วนค่าปลาอ่านจาก SCORING ตรง ๆ แก้สมดุลที่ config แล้วบรรทัดนี้เปลี่ยนตามเอง
-  const bonus = document.getElementById('odBonus');
+  // แบบใหม่ (15 ต.ค.) เหลือป้ายชื่อเล่น + รายการของที่ได้ ไม่มีบรรทัดโบนัสแยก (โบนัสอยู่ในรายการแล้ว)
+  // ชุดพื้นฐานไม่มีรายการเลย จึงใช้บรรทัดคำอธิบายแทน กล่องจะได้ไม่ว่าง
   const sub = document.getElementById('odSub');
-  if (o.foodBonus > 0) {
-    const base = SCORING.pointsPerFish;
-    bonus.textContent = '+' + o.foodBonus.toLocaleString('en-US') + ' คะแนน / ของกิน 1 ชิ้น';
-    sub.textContent = 'ปลา 1 ตัวปกติได้ ' + base.toLocaleString('en-US')
-      + ' คะแนน ใส่ชุดนี้เป็น ' + (base + o.foodBonus).toLocaleString('en-US')
-      + ' (+' + Math.round((o.foodBonus / base) * 100) + '%) และบวกให้ของกินทุกชนิด';
-  } else {
-    bonus.textContent = 'ไม่มีโบนัสคะแนน';
-    sub.textContent = 'ชุดติดตัวมาแต่แรก ใส่ได้ตลอดโดยไม่ต้องสุ่ม';
-  }
+  sub.textContent = perks.children.length ? '' : 'ชุดติดตัวมาแต่แรก ใส่ได้ตลอดโดยไม่ต้องสุ่ม';
 
   odPanel.classList.toggle('locked', !got);
 
@@ -5252,22 +5573,22 @@ function paintOutfitDetail() {
   const wear = document.getElementById('odWear');
   wear.disabled = on;
   // มาจากรายการในตู้กาช่า = อยู่ข้างตู้อยู่แล้ว ปุ่มจึงชวนสั้น ๆ ว่า "ไปสุ่มกัน!"
-  const fromGacha = odFrom === gListPanel;
+  const fromGacha = odFrom === gListPanel || odFrom === gachaPanel;
   wear.textContent = !got ? (fromGacha ? 'ไปสุ่มกัน!' : 'ไปสุ่มกาช่ากัน!') : on ? 'กำลังใส่อยู่' : 'ใส่ชุดนี้';
   wear.classList.toggle('ghost', on);
 
   setMsg(document.getElementById('odMsg'),
     got ? '' : 'ชุดนี้ลุ้นได้ที่ตู้กาช่า');
-  paintOdCat();
 }
 
 function openOutfitDetail(id, from = outfitPanel) {
   odCurrent = id;
   odFrom = from;
-  odTick = 0;
+  setOdMax(false);
   paintOutfitDetail();
   swapPanel(from, odPanel);
-  if (!odRAF) odLoop();
+  odStart();
+  if (!odRAF) odRAF = requestAnimationFrame(odFrame);
 }
 
 function closeOutfitDetail() {
@@ -5277,6 +5598,12 @@ function closeOutfitDetail() {
     odFrom = null;
     buildGList();
     swapPanel(odPanel, gListPanel);
+    return;
+  }
+  if (odFrom === gachaPanel) {
+    odFrom = null;
+    swapPanel(odPanel, gachaPanel);
+    refreshGacha();
     return;
   }
   odFrom = null;
@@ -5302,7 +5629,7 @@ document.getElementById('odWear').addEventListener('click', () => {
     sfx.fish();
     stopOdCat();
     // มาจากรายการในตู้ = ตู้เปิดค้างอยู่ใต้รายการแล้ว กลับไปหน้าตู้ตรง ๆ (ส่องชุดนี้อยู่)
-    if (odFrom === gListPanel) {
+    if (odFrom === gListPanel || odFrom === gachaPanel) {
       odFrom = null;
       swapPanel(odPanel, gachaPanel);
       refreshGacha();
@@ -5331,7 +5658,7 @@ const stashSel = { skin: null, outfit: null, treasure: null };   // ของท
 // หัวเรื่อง / แถบกรอง / กริด ของแต่ละหมวด — สลับหมวดคือซ่อนทุกอันแล้วโชว์ของหมวดนั้น
 const STASH_TABS = {
   skin: { title: 'คลังน้องแมว', tab: 'tabStashSkin', filter: 'skinFilter', grid: 'skinStashGrid' },
-  outfit: { title: 'เลือกชุด', tab: 'tabStashOutfit', filter: 'outfitFilter', grid: 'outfitGrid' },
+  outfit: { title: 'ชุดแมว', tab: 'tabStashOutfit', filter: 'outfitFilter', grid: 'outfitGrid' },
   treasure: { title: 'สมบัติ', tab: 'tabStashTreasure', filter: 'treasureFilter', grid: 'treasureGrid' },
 };
 
@@ -5363,6 +5690,8 @@ function setStashTab(tab) {
     document.getElementById(t.grid).classList.toggle('hidden', !on);
   }
   document.getElementById('stashTitle').textContent = STASH_TABS[tab].title;
+  // หมวดชุด: ไม่มีช่องพรีวิวซ้าย — การ์ดใหญ่เต็มแถว แตะแล้วเข้าหน้ารายละเอียดเลย (style.css .outfit-mode)
+  stashPanel.classList.toggle('outfit-mode', tab === 'outfit');
   stashDream.kick();
   paintStashCount(tab);
   setMsg(document.getElementById('outfitMsg'), '');
@@ -5450,7 +5779,7 @@ function paintStashCat() {
  * แล้วลูปที่ค้างอยู่จะแย่งเฟรมกับตัวเกมโดยไม่มีใครสังเกต
  */
 function stashLoop() {
-  if (stashPanel.classList.contains('hidden') || stashTab === 'treasure') {
+  if (stashPanel.classList.contains('hidden') || stashTab !== 'skin') {   // หมวดชุดไม่มีช่องพรีวิวแล้ว
     stashRAF = 0;
     return;
   }
@@ -5524,8 +5853,7 @@ function paintStashShow() {
     face.className = 'stash-face ' + (o.rarity || 'normal') + (got ? '' : ' locked');
     cat.classList.remove('hidden');
     emo.classList.add('hidden');
-    paintStashCat();
-    if (!stashRAF) stashLoop();   // เริ่มลูปถ้ายังไม่เดิน (ลูปหยุดตัวเองตอนออกจากหมวด)
+    // ช่องพรีวิวถูกซ่อนในหมวดชุด (.outfit-mode) — ไม่ต้องวาด/วนลูปน้องที่มองไม่เห็น
 
     // "ขนล้วน" ไม่มีระดับ tierSign() คืน null ป้ายจึงว่างไปเลยไม่ใช่ป้ายเปล่า ๆ
     const sign = tierSign(o.rarity);
@@ -7410,6 +7738,38 @@ document.getElementById('btnRank').addEventListener('click', () => {
 document.getElementById('rankBack').addEventListener('click', () => showRank(false));
 // จำนวนครั้งของปุ่มใบที่สองต่างกันคนละช่อง (สมบัติ 3 / ชุด 5) จึงถามจากช่องที่เปิดอยู่
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
+document.getElementById('gpPull1').addEventListener('click', () => doPull(1));
+document.getElementById('gpPull5').addEventListener('click', () => doPull(gMulti()));
+document.getElementById('gpPrev').addEventListener('click', () => { unlockAudio(); sfx.fish(); paintPromo(-1); });
+document.getElementById('gpNext').addEventListener('click', () => { unlockAudio(); sfx.fish(); paintPromo(1); });
+document.getElementById('gpMore').addEventListener('click', () => { unlockAudio(); sfx.fish(); showGList(true); });
+document.getElementById('gpOdds').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  showOdds(oddsPop.classList.contains('hidden'));
+});
+// แตะรูปโปรโมท = หน้ารายละเอียดของสกินนั้น (ท่าเปิดตัว) — กลับมาที่ตู้นี้
+// ปัดรูปซ้าย/ขวา = เลื่อนสกิน (แบบมีลูกศรซ้ายอันเดียว ทางขวาถูกตู้บัง)
+let gpSwipe = null;
+const gpOpenBtn = document.getElementById('gpOpen');
+gpOpenBtn.addEventListener('pointerdown', (e) => { gpSwipe = { x: e.clientX, y: e.clientY, moved: false }; });
+gpOpenBtn.addEventListener('pointerup', (e) => {
+  if (!gpSwipe) return;
+  const dx = e.clientX - gpSwipe.x, dy = e.clientY - gpSwipe.y;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+    gpSwipe.moved = true;
+    unlockAudio(); sfx.fish();
+    paintPromo(dx < 0 ? 1 : -1);
+  }
+});
+gpOpenBtn.addEventListener('click', () => {
+  if (gpSwipe?.moved) { gpSwipe = null; return; }   // ปัดแล้วไม่นับเป็นการแตะ
+  gpSwipe = null;
+  const o = promoList()[promoI];
+  if (!o) return;
+  unlockAudio(); sfx.fish();
+  clearTimeout(promoTimer);
+  openOutfitDetail(o.id, gachaPanel);
+});
 document.getElementById('pull5').addEventListener('click', () => doPull(gMulti()));
 document.getElementById('homeBtn').addEventListener('click', () => { sfx.quit(); goHome(); });
 
@@ -8050,10 +8410,13 @@ function paintGfxPick() {
   sw.classList.toggle('on', !same);
   sw.setAttribute('aria-checked', same ? 'false' : 'true');
   document.getElementById('gfxSceneRow').classList.toggle('hidden', same);
+  // ความละเอียดอัตโนมัติกำลังลดอยู่ (เครื่องวาดไม่ทัน) — บอกให้รู้ว่าลดเหลือเท่าไหร่
+  const ai = autoInfo(gfxScene);
   document.getElementById('gfxNote').textContent = c.fps > hz
     ? tr('จอเครื่องนี้ทำได้สูงสุด') + ' ' + hz + ' ' + tr('เฟรม — ตั้งสูงกว่านี้จะได้เท่าที่จอทำได้')
-    : c.fps >= 90 || c.res === 'max' ? tr('เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น')
-      : tr('เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้');
+    : ai.on && ai.step > 0 ? tr('อัตโนมัติ: ลดความละเอียดเหลือ') + ' ' + Math.round(ai.scale * 100) + '% ' + tr('ให้เกมลื่นบนเครื่องนี้')
+      : c.fps >= 90 || c.res === 'max' ? tr('เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น')
+        : tr('เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้');
 }
 for (const b of document.querySelectorAll('#gfxScenePick .langbtn')) {
   b.addEventListener('click', () => { unlockAudio(); sfx.fish(); gfxScene = b.dataset.scene; paintGfxPick(); });
@@ -8195,7 +8558,9 @@ function loop(now) {
   // เพื่อให้เกมเร็วเท่ากันทั้งจอ 60Hz และ 144Hz
   let dt = (now - last) / 16.667;
   last = now;
-  dt = Math.min(dt, 3);   // กันการกระโดดข้ามเวลาตอนสลับแท็บ
+  // กันการกระโดดข้ามเวลาตอนสลับแท็บ · และห้ามติดลบ: เวลาของ rAF อาจเก่ากว่า performance.now() ที่จดไว้
+  // (เจอในเครื่องที่เฟรมช้า) เวลาหน้าแรกเคยไหลถอยหลังจนติดลบ แล้วเอฟเฟกต์ชุดขนมหวานพัง น้องหายทั้งตัว
+  dt = Math.max(0, Math.min(dt, 3));
 
   // คลิปเปิดเกมคลุมจอทึบอยู่ = ไม่มีใครเห็นหน้าแรกข้างใต้ พักทั้งอัปเดตและวาด
   // ให้คลิปได้เครื่องไปทั้งเครื่อง (ดู introCovering ใน intro-video.js)
@@ -8220,10 +8585,13 @@ function loop(now) {
   // วาดเมื่อถึงรอบของสถานะนั้น ๆ เท่านั้น — เฟรมที่ข้ามไปผ้าใบยังค้างภาพเดิมอยู่
   // จึงไม่มีอะไรกะพริบหรือหายไป
   const idleHome = game.state === STATE.READY && !game.catRoom && !game.inRoom && now - lastInput > IDLE_MS;
+  const menu = menuCovers(now);
   // ลบ 1.5 เผื่อจังหวะจอเหมือนเพดานเฟรมข้างบน ไม่งั้นจะเหลือ 20 แทน 30
-  if (now - lastDraw >= (menuCovers(now) ? MENU_MS : idleHome ? IDLE_DRAW_MS - 1.5 : 0)) {
+  if (now - lastDraw >= (menu ? MENU_MS : idleHome ? IDLE_DRAW_MS - 1.5 : 0)) {
     lastDraw = now;
     game.draw(ctx);
+    // ความละเอียดอัตโนมัติวัดจากเฟรมที่วาดตามจังหวะปกติเท่านั้น (ช่วงที่ตั้งใจวาดห่างไม่นับ) — ดู graphics.js
+    frameDrawn(now, !menu && !idleHome);
   }
   updateSkillPad();
 
@@ -8253,10 +8621,7 @@ function loop(now) {
         if (pullProgress >= 1) pullProgress = 0;
       }
 
-      paintBox(document.getElementById('gachaMachine'), MACHINE_W, MACHINE_H, (c) => {
-        c.scale(MACHINE_W / 150, MACHINE_H / 170);
-        drawGachaMachine(c, spinT, gachaShake, pullProgress);
-      });
+      paintGumball(now);   // ตู้หัวแมวของหน้าสุ่มสกินแบบใหม่ (ตู้เดิม #gachaMachine ไม่ได้โชว์แล้ว)
     }
   }
 
@@ -8281,6 +8646,8 @@ setupFilterBar({
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle
 if (import.meta.env.DEV) {
   window.__game = game;
+  window.__gfxAuto = autoInfo;   // สคริปต์ทดสอบดูขั้นความละเอียดอัตโนมัติ
+  window.__od = od;              // สคริปต์ทดสอบกระโดดไปเฟรมของท่าเปิดตัว/ท่าแอ็คในหน้ารายละเอียดชุด
   // เปิดหน้าสรุปผลด้วยตัวเลขที่ตั้งเองได้ ไม่ต้องเล่นจนตายทุกครั้งที่จะดูหน้านี้
   window.__showGameOver = showGameOver;
   window.__showReward = showReward;   // กล่องรับของ (ลองพื้นหลังฉลองโดยไม่ต้องมีจดหมายจริง)

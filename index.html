@@ -907,33 +907,40 @@
            การ์ดในกริดเลยเหลือแค่รูปกับชื่อ ข้อมูลที่เคยเบียดอยู่บนการ์ดมาอยู่ที่นี่
            น้องแมวใส่ชุดนี้ยืนหายใจกะพริบตาอยู่จริง ไม่ใช่รูปนิ่ง -->
       <div class="panel hidden" id="odPanel">
-        <div class="pop">
-          <div class="panel-head"><h2 class="skin-title" id="odName">ชุด</h2></div>
-          <!-- ซ้าย = รูปน้องในกรอบ + ป้ายระดับเกาะมุมบนขวา + บรรทัดโบนัสใต้กรอบ
-               ขวา = กล่องข้อมูล (ป้ายชื่อเล่นชุด + คำอธิบายโบนัส + รายการของที่ได้)
-               ป้ายระดับกับหัวแมวหน้ารายการเป็นไฟล์รูปใน public/ ไม่ได้วาดด้วยโค้ด -->
-          <div class="odetail">
-            <div class="odetail-left">
-              <div class="odetail-show">
-                <canvas id="odCat" width="200" height="200"></canvas>
-                <img class="od-sign" id="odSign" alt="" aria-hidden="true">
-              </div>
-              <p class="odetail-bonus" id="odBonus"></p>
-            </div>
-
-            <div class="odetail-info">
-              <span class="od-tag" id="odTag"></span>
-              <p class="odetail-sub" id="odSub"></p>
-              <ul class="od-perks" id="odPerks"></ul>
-            </div>
+        <!-- หน้ารายละเอียดชุด (แบบของผู้ใช้ 15 ต.ค.) — ทั้งการ์ดเป็นเวที: ฉากหลังประจำสกิน + น้องเล่นท่าเปิดตัว
+             แล้วยืนท่าแอ็คต่อเนื่อง (ชุดระดับ S ที่มีท่า) · ชุดอื่นยืนเฉย ๆ บนฉาก — วาดใน main.js (odFrame)
+             ซ้ายล่าง = กล่องข้อมูล (ป้ายชื่อเล่นชุด + รายการของที่ได้) · ขวาล่าง = ปุ่มใส่ชุด
+             ขวาบน = ขยายเต็มจอ (ซ่อนข้อมูลทั้งหมด เหลือแต่น้อง) ปิดด้วย .xbtn -->
+        <div class="pop od-pop">
+          <canvas class="od-stage" id="odStage" aria-hidden="true"></canvas>
+          <!-- วิดีโอท่าเปิดตัวที่อัดไว้ (public/video/) — เล่นทับผ้าใบระหว่างท่าเปิดตัว แล้วผ้าใบวาดท่าแอ็คต่อ (main.js odStart) -->
+          <video class="od-video" id="odVideo" muted playsinline preload="none" aria-hidden="true"></video>
+          <h2 class="skin-title od-title" id="odName">ชุด</h2>
+          <button type="button" class="od-max" id="odMax" aria-label="ขยายเต็มจอ" title="ขยายเต็มจอ">
+            <svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true">
+              <path d="M4 9V4h5M4 4l5.5 5.5M20 9V4h-5M20 4l-5.5 5.5M4 15v5h5M4 20l5.5-5.5M20 15v5h-5M20 20l-5.5-5.5"
+                    fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="od-info">
+            <span class="od-tag" id="odTag"></span>
+            <p class="odetail-sub" id="odSub"></p>
+            <ul class="od-perks" id="odPerks"></ul>
           </div>
-          <div class="btnrow">
-            <button class="btn" id="odWear">ใส่ชุดนี้</button>
+          <div class="od-act">
+            <small class="form-msg" id="odMsg"></small>
+            <button class="btn od-wear" id="odWear">ใส่ชุดนี้</button>
           </div>
-          <small class="form-msg" id="odMsg"></small>
           <button class="backbtn" id="odBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <!-- ปิดโหมดเต็มจอ — เทมเพลต .xbtn (ไอคอนเดียวกับ CLOSE_ICON ใน main.js) -->
+          <button type="button" class="xbtn od-x" id="odUnmax" aria-label="ปิดโหมดเต็มจอ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
@@ -1091,6 +1098,36 @@
                     <b id="goldGacha">0</b>
                   </div>
                 </div>
+              </div>
+
+              <!-- ── หน้าสุ่มสกิน (แบบของผู้ใช้ 15 ต.ค.) ──
+                   ป้ายโปรโมทใหญ่ = สกินระดับ S ทีละชุด หมุนเองทุก 10 วิ (ลูกศรเลื่อนเองได้ · แตะรูป = หน้ารายละเอียด)
+                   ตู้กาช่าหัวแมว (src/render/gumball.js) ซ้อนทับขอบขวาของป้าย · ปุ่มสุ่มมุมล่างซ้ายของป้าย
+                   ช่องสมบัติยังใช้ .gacha-cards เดิม — สลับด้วยคลาส .skin-mode ที่ #gachaPanel -->
+              <div class="gacha-promo" id="gachaPromo">
+                <div class="gp-banner">
+                  <canvas class="gp-art on" id="gpArtA" aria-hidden="true"></canvas>
+                  <canvas class="gp-art" id="gpArtB" aria-hidden="true"></canvas>
+                  <button type="button" class="gp-hit" id="gpOpen" aria-label="ดูรายละเอียดสกินนี้"></button>
+                  <b class="gp-name" id="gpName"></b>
+                  <button type="button" class="gp-more" id="gpMore">ดูสกินอื่นๆ</button>
+                  <button type="button" class="gp-arrow gp-prev" id="gpPrev" aria-label="สกินก่อนหน้า"></button>
+                  <button type="button" class="gp-arrow gp-next" id="gpNext" aria-label="สกินถัดไป"></button>
+                  <div class="gp-buy">
+                    <button class="btn pull gp-pull gp-one" id="gpPull1">
+                      <span class="price"><span class="cur coin" aria-hidden="true"></span><b>0</b></span>
+                      <small>1 ครั้ง</small>
+                    </button>
+                    <button class="btn pull gp-pull gp-five" id="gpPull5">
+                      <span class="price"><span class="cur coin" aria-hidden="true"></span><b>0</b></span>
+                      <small>5 ครั้ง!</small>
+                    </button>
+                    <!-- อัตราการสุ่มต้องเปิดดูได้เสมอ (กฎ Play Store เรื่องกล่องสุ่ม) — ใช้กล่อง #oddsPop เดิม · อยู่ข้างปุ่ม 25,000 -->
+                    <button type="button" class="info-btn gp-odds" id="gpOdds" aria-label="ดูอัตราการสุ่ม">!</button>
+                  </div>
+                  <small class="form-msg gp-msg" id="gpMsg"></small>
+                </div>
+                <canvas class="gp-machine" id="gpMachine" aria-hidden="true"></canvas>
               </div>
 
               <div class="gacha-cards">

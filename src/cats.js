@@ -61,6 +61,9 @@ export const BREEDS = [
   { id: 'grey', w: 20, tier: 'uncommon' },
   { id: 'snow', w: 10, tier: 'rare' },
   { id: 'siamese', w: 5, tier: 'rare' },
+  // แมวแบบใหม่ — ยังไม่ออกจากกล่อง (w 0) ได้จากปุ่มเสกในแผงทดสอบเท่านั้น (ผู้ใช้สั่ง 15 ต.ค.) · เปิดให้สุ่มได้ตั้ง w
+  { id: 'pearl', w: 0, tier: 'rare' },
+  { id: 'calico', w: 0, tier: 'rare' },
 ];
 
 /**
@@ -652,6 +655,22 @@ export function debugAdopt() {
   if (c) state.finds.day = '';
   save();
   return c;
+}
+
+/** ทดสอบ: เสกน้องโตเต็มวัยสายพันธุ์ที่ระบุ (ลงวิ่งได้ทันที ไม่กินช่องห้อง) */
+export function debugGrantGrown(breed, sex) {
+  const t = now();
+  const need = {};
+  for (const k of NEED_KEYS) need[k] = [100, t];
+  const cat = {
+    id: newId(), breed, sex, face: rollFaceId(breed, sex), name: '',
+    foundAt: t, where: { stage: '', stageName: 'ปุ่มเสก' }, from: null,
+    exp: LV_EXP[GROWN_LV], aff: 0, need, state: 'grown',
+    seed: Math.floor(Math.random() * 1e6), card: null,
+  };
+  state.list.push(cat);
+  save();
+  return cat;
 }
 
 /** ล้างน้องทั้งหมด */

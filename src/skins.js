@@ -127,6 +127,24 @@ export const SKINS = [
     stripes: true,
     blush: false,
   },
+  // ── แมวแบบใหม่ (CAT2_BREEDS ใน render/cat2.js) — ช่องสีชุดนี้ใช้กับตัววาดเดิม (ลูกแมว) เท่านั้น
+  //    ตัวโตวาดด้วยตัววาดใหม่ ซึ่งดึงจานสี/ตา/ลายเต็มชุดจาก CAT2_BREEDS ตาม palette ของน้อง
+  {
+    id: 'pearl',
+    name: 'ไข่มุก',
+    note: 'แมวขาวตาสองสี',
+    cat: '#FFF8F4', line: '#5A3420', dark: '#E6BCAE', cream: '#FFFFFF', pink: '#F5A6B2',
+    eye: '#1D2C48', ink: '#1D2C48', whisker: 'rgba(90,52,32,.7)', rain: ['#FFFFFF', '#FFE3EC', '#E6BCAE'],
+    stripes: false, blush: true,
+  },
+  {
+    id: 'calico',
+    name: 'ขนมชั้น',
+    note: 'แมวสามสี ขี้อ้อน',
+    cat: '#FFF8F0', line: '#5A3420', dark: '#E9A36E', cream: '#FFFFFF', pink: '#F2A7AE',
+    eye: '#2B1B12', ink: '#2B1B12', whisker: 'rgba(90,52,32,.7)', rain: ['#FFFFFF', '#FDE2C8', '#C9C9D4'],
+    stripes: false, blush: true,
+  },
   {
     id: 'siamese',
     name: 'วิเชียรมาศ',

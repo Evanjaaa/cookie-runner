@@ -52,9 +52,9 @@ function splitFish(list) {
 }
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
 import { setCatEdgeScale } from './render/entities.js';
-import { CAT2, drawCat2, drawCatAuto } from './render/cat2.js';
+import { CAT2, drawCat2, drawCatAuto, cat2Act } from './render/cat2.js';
 import { fillCoverExt, fillFullView, coverExt } from './render/cover-ext.js';
-import { gfxLevel } from './graphics.js';
+import { gfxLevel, autoLite } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
 /* จอสัมผัสหรือเปล่า — ใช้เกณฑ์เดียวกับ input.js กับ main.js และตรงกับ
@@ -106,6 +106,14 @@ const REACT_FADE = 16;
  * แต่ต้องมีช่อง voice เหมือนท่าอื่น ฝั่งเสียงจะได้ไม่ต้องรู้ว่าท่าไหนมาจากตารางไหน
  */
 const LOVE_ACT = { pose: 'love', voice: 'mew' };
+
+/**
+ * ท่ายืนพื้นตอนใส่สกินระดับ S ที่มีท่าแอ็ค (CAT2_OUTFITS[id].act — ขนมหวาน / องค์หญิงหิมะ)
+ * ผู้ใช้สั่ง 15 ต.ค.: ใส่สกิน S แล้วหน้าแรกยืนท่าแอ็คเป็นค่าเริ่มต้น ท่าอื่น (ท่าว่าง แตะตัว หัวใจ) ยังเล่นได้ตามเดิม
+ * ท่าว่างผสมออกจาก/กลับเข้าท่าแอ็คแทนท่ายืนเฉย · จบท่าแตะ/หัวใจแล้วค่อย ๆ กลับเข้าท่าแอ็คใน REST_IN เฟรม
+ */
+const REST_ACT = { pose: 'act' };
+const REST_IN = 30;
 
 /**
  * น้ำหนักของท่า 0→1→0 ตามเวลาที่อยู่ในท่านั้น
@@ -2767,6 +2775,8 @@ export class Game {
     // ระหว่างให้หัวใจหรือกำลังตอบการแตะ คิวท่าว่างต้องหยุดสนิท
     // ไม่ใช่แค่ถูกท่าอื่นทับตอนวาด ถ้าปล่อยให้เดินต่อ พอท่านั้นเล่นจบ
     // น้องจะโผล่กลางท่าหาวหรือท่าเลียทันที เหมือนภาพกระโดดข้ามไปครึ่งท่า
+    // ท่าแอ็คของสกิน S: ถูกท่าแตะ/หัวใจทับ = เริ่มนับใหม่ จบแล้วค่อย ๆ กลับเข้าท่า (ดู restShape)
+    this.restIn = this.love || this.react ? 0 : Math.min(1, (this.restIn ?? 1) + dt / REST_IN);
     if (this.love || this.react) return;
 
     if (this.idleT < 0) {
@@ -2814,9 +2824,22 @@ export class Game {
       const k = R.fade >= 0 ? 1 - EASE.io(Math.min(1, R.fade / REACT_FADE)) : 1;
       return { act: { pose: m.id }, k, shape };
     }
-    if (this.idleT < 0) return null;
+    const rest = this.restShape();
+    if (this.idleT < 0) return rest ? { act: REST_ACT, k: 1, shape: rest } : null;
     const act = IDLE_ACTS[this.idleAt];
-    return { act, k: poseWeight(this.idleT, act.hold, act.ease ?? IDLE_EASE) };
+    const k = poseWeight(this.idleT, act.hold, act.ease ?? IDLE_EASE);
+    // สกิน S: ท่าว่างไหลออกจากท่าแอ็คแล้วกลับเข้าท่าแอ็ค (ไม่ผ่านท่ายืนเฉย) · idleK = น้ำหนักท่าว่างไว้คุมปาก/เสียง
+    if (rest) return { act, k: 1, shape: mixShape(rest, poseShape(act.pose), k), idleK: k };
+    return { act, k };
+  }
+
+  /** รูปร่างท่าแอ็คของสกิน S ที่ใส่อยู่ตอนนี้ (null = ไม่มีท่าแอ็ค ยืนเฉยแบบเดิม) */
+  restShape() {
+    const act = CAT2.home ? cat2Act(getSkin().outfit?.id) : null;
+    if (!act) return null;
+    const sh = act.shape(this.homeTick);
+    const w = this.restIn ?? 1;
+    return w < 1 ? mixShape({}, sh, EASE.io(w)) : sh;
   }
 
   get idlePose() {
@@ -2847,7 +2870,8 @@ export class Game {
   stepVoice() {
     const a = this.activePose;
     // ท่าตอบการแตะร้องตามตาราง voices ของมันเอง (ดู stepReact) — ไม่ผ่านทางนี้
-    const open = !!a && !a.shape && poseMouthOpen(a.act.pose, this.homeTick, a.k);
+    // ท่าว่างที่ผสมกับท่าแอ็คของสกิน S มี shape ด้วย แต่ปากยังขยับตามท่าว่าง (idleK)
+    const open = !!a && (!a.shape || a.idleK != null) && poseMouthOpen(a.act.pose, this.homeTick, a.idleK ?? a.k);
     if (open && !this.mouthWas && a.act.voice) sfx[a.act.voice]?.();
     this.mouthWas = open;
   }
@@ -3346,7 +3370,8 @@ export class Game {
     // แสงฟุ้ง (bloom) ลงก่อนวาดน้อง — bloom บวกสีฉากหลังที่เบลอแล้ว (ชมพู/เหลือง) ทับทั้งจอ
     // ถ้าลงหลังน้อง ตัวน้องจะติดโทนเหลืองซีดทั้งตัว ไม่ใช่สีจริงของแบบ (ผู้ใช้เห็นบนหน้าแรก)
     postProcess(ctx, { edges: false });
-    const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
+    // ความละเอียดอัตโนมัติลดถึงขั้นลึก (เครื่องอ่อน) = ไม่ทำชั้นแสงตะเกียงบนตัวน้อง (ชั้นแยกเต็มความสูงจอ แปะสองรอบต่อเฟรม)
+    const lit = gfxLevel() === 'high' && !autoLite() ? this.homeLitLayer(ctx, x) : null;
     // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
     if (CAT2.home) drawCat2(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
     else drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
