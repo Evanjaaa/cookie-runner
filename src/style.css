@@ -15306,3 +15306,48 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .gp-machine { animation: none; }
   .gp-art { transition: none; }
 }
+
+/* ══ หน้าตู้กาช่า บนมือถือ (จอสัมผัสเตี้ย) — ผู้ใช้ขอ 16 ต.ค. ══
+   การ์ดม่วงขนาดเดียวกับหน้ากล่องจดหมายพอดี: ถอด padding ของแผง (3.2% 12px — กฎเก่าของมือถือ) แล้วใช้ขนาดการ์ดเดียวกัน
+   ที่ได้คืนมาให้หน้าสุ่มสกินใช้ทั้งหมด: กรอบรูปเต็มความสูงที่เหลือ · ตู้สูงพอดีกรอบรูป (หูไม่เกินขอบบน เท้าตรงขอบล่าง) · ไม่ชิดขอบการ์ด
+   iPad / คอม ไม่แตะ (กลับเป็นแบบ commit 72 ตามที่ผู้ใช้สั่ง) */
+@media (pointer: coarse) and (max-height: 520px) {
+  #stage #gachaPanel { padding: 0; }
+  #stage #gachaPanel > .pop.gacha-pop {
+    width: 100%;
+    max-width: calc(100% - var(--card-inset) * 2);
+    height: calc(100% - var(--card-inset) * 2);
+    max-height: calc(100% - var(--card-inset) * 2);
+  }
+  #gachaPanel.skin-mode .gacha-pop { padding-top: 4px; padding-bottom: 8px; }
+  #gachaPanel.skin-mode .gacha-main { gap: 2px; }
+  #gachaPanel.skin-mode .gacha-head h2 { font-size: clamp(15px, 6dvh, 22px); line-height: 1.35; }
+  #gachaPanel.skin-mode .gacha-body { gap: clamp(6px, 1.4vw, 14px); }
+  #gachaPanel.skin-mode .gacha-tabs { padding-right: clamp(6px, 1.2vw, 12px); }
+  #gachaPanel.skin-mode .gacha-promo {
+    aspect-ratio: auto;
+    flex: 1 1 auto;
+    max-height: none;
+    padding-bottom: 0;
+  }
+  /* ตัวแปรขนาดตั้งที่ลูกของกล่อง — หน่วย cq ในตัวกล่องเองวัดจากกล่องบรรพบุรุษ ไม่ใช่กล่องนี้ (ค่าเพี้ยน) */
+  #gachaPanel.skin-mode .gacha-promo > * {
+    /* กรอบรูปสูงเต็มกล่อง · ส่วนที่มองเห็นของตู้ (≈0.906 ของผ้าใบ) สูงเท่ากรอบรูป · เว้นขอบขวา --mg */
+    --mg: clamp(8px, 1.6cqw, 20px);
+    /* ตู้กว้างไม่เกิน 30% ของกล่อง (จอแคบ ตู้ไม่กินกรอบรูป) · กรอบรูปสูงตามตู้ (ไม่เกินกล่อง) */
+    --mw: min(calc(100cqh * .796), 42cqw);
+    --bh: calc(var(--mw) / .796);
+    --mo: calc(var(--mw) * .42);
+    --ms: calc(var(--mg) * -1);
+  }
+  #gachaPanel.skin-mode .gp-machine {
+    height: calc(var(--bh) * 1.104);
+    top: calc(50% + var(--bh) / 2 - var(--bh) * 1.104 * .945);
+  }
+}
+@media (pointer: coarse) and (max-height: 520px) {
+  /* มือถือจอเล็ก: ปุ่มสุ่มหดได้แต่ตัวหนังสือไม่ตกบรรทัด ("1 ครั้ง" แตกเป็นสองบรรทัด) */
+  #gachaPanel.skin-mode .btn.pull.gp-pull small { white-space: nowrap; font-size: clamp(8px, 2.6dvh, 12px); padding: 1px 6px; }
+  #gachaPanel.skin-mode .btn.pull.gp-pull { padding-inline: clamp(6px, 1.4vw, 14px); }
+  #gachaPanel.skin-mode .gp-buy { gap: clamp(8px, 2vw, 22px); }
+}
