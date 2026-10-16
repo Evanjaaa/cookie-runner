@@ -10296,8 +10296,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // เตะขา (ท่าลอยเฟี้ยว): ดัดทีละจุดแบบแขน — โคนขาใกล้สะโพกแทบไม่ขยับ ปลายเท้าขยับเต็มที่
     // หมุนทั้งท่อนแข็ง ๆ แล้วขอบขาส่วนเหนือสะโพกหมุนสวนเข้าไปในตัว เกิดหนามแหลมตรงเป้า
     const kick = v(side === 'left' ? 'kickL' : 'kickR');
+    // ยกเท้า (ท่าวิ่ง/กระโดด · หน่วยไฟล์): เท้าขึ้นเต็มที่ โคนขาไม่ขยับ = ขาพับสั้นลงทางเท้า
+    const lift = v(side === 'left' ? 'liftL' : 'liftR');
     return (x, y) => {
       let X = x + d * spread, Y = FEET_Y - (FEET_Y - y) * legK;
+      if (lift) {
+        const w = ease(clamp01((Y - hip.y - 6) / (FEET_Y - hip.y - 6))) * ease(clamp01(Math.hypot(X - CROTCH.x, Y - CROTCH.y) / 38));
+        Y -= lift * w;
+      }
       if (a) [X, Y] = rotPt(hip, a, X, Y);
       if (kick) {
         // จางลงใกล้ยอดโค้งเป้า (จุดที่ขาสองข้างใช้ร่วมกัน) — ไม่งั้นโค้ง ∩ ระหว่างขาแยกเป็นมุมหยัก
@@ -10349,6 +10355,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       t1 += (ik.t1 - t1) * tg.w;
       t2 += (ik.t2 - t2) * tg.w;
     }
+    // แกว่งแขน/งอศอก (ท่าวิ่ง · เรเดียน — บวก = หมุนตามเข็มบนจอ): บวกทับมุมที่ได้จากท่าอื่น
+    t1 += v(L ? 'armSwingL' : 'armSwingR');
+    t2 += v(L ? 'elbowL' : 'elbowR');
     return { t1, t2 };
   };
   const armPt = (side, ang) => {
@@ -10991,15 +11000,6 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   }
 
   const bent = (id, f, xf) => ({ ...deformPart(P[id], f), xf });
-  if (idle?.headOnly && !back) {
-    drawHeadLayers();
-    ctx.save();
-    face(ctx);
-    drawOps(ctx, P.face.det, pal, hooks, opt);
-    ctx.restore();
-    ctx.restore();
-    return;
-  }
   /** หน้า: ชิ้นละตำแหน่งตามมุมหัน (ตา จมูก ปาก แก้ม) · หนวดฝั่งไกลซ่อน ฝั่งใกล้เลื่อนตาม */
   const drawFace = () => {
     if (!yaw) return drawOps(ctx, P.face.det, pal, hooks, opt);
@@ -11018,6 +11018,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.restore();
     }
   };
+  // วาดเฉพาะหัว (รูปโปรไฟล์ · หัวของตัววิ่งด้านข้าง): หน้าใช้ตัววาดตามมุมหัน (drawFace) — ตัววิ่งหันเฉียงขวา
+  if (idle?.headOnly && !back) {
+    drawHeadLayers();
+    ctx.save();
+    face(ctx);
+    drawFace();
+    ctx.restore();
+    ctx.restore();
+    return;
+  }
 
   // ท่าเปิดตัว: ก่อนจังหวะปรากฏตัว ยังไม่มีน้อง — มีแต่เอฟเฟกต์
   if (introOn && !outK.introSkip && (OUT.intro.stage ? OUT.intro.stage(outK.intro) === 'hidden' : outK.intro < (OUT.intro.appear || 0))) {
@@ -11708,14 +11718,67 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       return { sil: [sh], all: sh, det: () => {} };
     })
     : useChin ? [armL, { sil: [chin.sh], all: chin.sh, det: () => {} }] : [armL, armR];
-  const legL = bent('leg-left', legPt('left')), legR = bent('leg-right', legPt('right'));
+  // ── ขาวิ่ง (ท่าวิ่งในด่าน · cat2-run.js): ขาจากแบบห้อยใต้ตัวก้าวกว้างไม่ได้ → วาดขาใหม่จากสะโพก
+  //    ก้าวไปหน้า/ถีบไปหลังเอง (ผู้ใช้ 16 ต.ค.: "ใช้ตัวแมวอันเก่า แต่วาดขาให้วิ่งไปข้างหน้าข้างหลังเอง")
+  //    runLegs.{left,right} = { dx หน้า(+)/หลัง(−) จากสะโพก · up สูงจากพื้น · toe เชิดปลายเท้า } หน่วยไฟล์ (มองจากด้านข้าง หันขวา)
+  const runLegs = !back && shape?.runLegs ? shape.runLegs : null;
+  const runLeg = (side) => {
+    // ทรงขาแบบท่ายืนในแบบ (ผู้ใช้ 16 ต.ค.): ต้นขากว้างกลืนกับข้างตัว เรียวลงถึงข้อเท้า อุ้งเท้าขาวรีชี้ไปทางที่วิ่ง (ขวา)
+    // ขาสองข้างแยกกัน = มีโค้งเป้า ∩ ระหว่างขาเองแบบในแบบ · ทั้งหมดเป็นชิ้นเดียว (ต้นขา-ขา-เท้า) เส้นรอบนอกเส้นเดียวกับตัว
+    const g = runLegs[side];
+    const hp = M.piv[`hip-${side}`];
+    const L = side === 'left';
+    const [hx, hy] = upperPt(hp.x + (L ? -2 : 2), hp.y);
+    const ax = hx + g.dx, ay = FEET_Y - 26 - g.up;             // ข้อเท้า
+    const len = Math.hypot(ax - hx, ay - hy) || 1;
+    const bend = Math.max(0, 1 - len / 84) * 12;
+    const kx = (hx + ax) / 2 + bend, ky = (hy + ay) / 2;
+    // ครึ่งความกว้าง: ต้นขา 56 (ชนข้างตัวพอดี) → ข้อเท้า 25
+    const B = spineBand([[hx, hy - 36], [hx, hy], [kx, ky], [ax, ay]], 16, (i) => {
+      const u = i / 16;
+      return 25 + 31 * Math.pow(1 - u, 1.6);
+    });
+    const ta = -(g.toe || 0) * 0.8;
+    const foot = new Path2D();
+    const fcx = ax + 12 * Math.cos(ta) + 2, fcy = ay + 10 + 12 * Math.sin(ta);
+    foot.ellipse(fcx, fcy, 32, 17, ta, 0, TAU);
+    const all = new Path2D(); all.addPath(B.path); all.addPath(foot);
+    return {
+      sil: [B.path, foot], all, uni: all,
+      det: (c) => {
+        c.save();
+        c.clip(all);
+        c.fillStyle = pal.paw || pal.cream;
+        c.fill(foot);
+        // ลายขวางต้นขาด้านนอก (แบบลายขาในแบบ)
+        if (!opt.noStripes) {
+          c.strokeStyle = pal.stripe;
+          c.lineWidth = 5 * (opt.stripeK ?? 1);
+          c.globalAlpha = 0.75 * (opt.stripeA ?? 1);
+          c.lineCap = 'round';
+          for (const k of [0.32, 0.48]) {
+            const q = B.pts[Math.round(k * B.N)], h = B.half(Math.round(k * B.N));
+            const o = L ? 1 : -1, nx = -Math.sin(q.a) * o, ny = Math.cos(q.a) * o;
+            c.beginPath();
+            c.moveTo(q.x + nx * (h + 2), q.y + ny * (h + 2));
+            c.lineTo(q.x + nx * (h - 16), q.y + ny * (h - 16) - 3);
+            c.stroke();
+          }
+        }
+        c.restore();
+      },
+    };
+  };
+  const legL = runLegs ? runLeg('left') : bent('leg-left', legPt('left'));
+  const legR = runLegs ? runLeg('right') : bent('leg-right', legPt('right'));
   // เงาข้างตัวไหลต่อลงต้นขา (ตัดเฉพาะเหนือเท้า) — ไม่งั้นเงาถูกตัดเป็นเส้นเฉียงตรงรอยต่อตัว-ขา ดูเป็นเส้นซ้อน
   torso.detClip = new Path2D();
-  for (const L of [torso, legL, legR]) torso.detClip.addPath(L.uni);   // วนทิศเดียวกัน — รวมแล้วไม่เป็นรูตรงที่ตัวทับขา
+  // ขาวิ่งขยับไปไกล — ลายข้างตัวไม่ไหลลงขาวิ่ง (ไม่งั้นลายตัวถูกตัดเป็นขีดลอยบนขา)
+  for (const L of runLegs ? [torso] : [torso, legL, legR]) torso.detClip.addPath(L.uni);   // วนทิศเดียวกัน — รวมแล้วไม่เป็นรูตรงที่ตัวทับขา
   const limbs = [legL, legR, torso, ...armItems];
   // เตะขา: ขอบล่างของขาที่เตะมาชนขอบในของขาอีกข้างเป็นรอยบากตัว V ตรงเป้า
   // เติมก้อนเนื้อมน ๆ ลงในชั้นตัว — เส้นรอบนอกวิ่งรอบก้อนรวม รอยบากจึงกลายเป็นโค้งมนต่อเนื่อง (ตามแบบ)
-  const kickAny = Math.max(Math.abs(v('kickL')), Math.abs(v('kickR')));
+  const kickAny = Math.max(Math.abs(v('kickL')), Math.abs(v('kickR'))) * (raw('noCrotchFill') ? 0 : 1);
   let crotchFil = null;   // ก้อนเนื้อตรงเป้าตอนเตะขา — กางเกงต้องคลุมด้วย
   if (!back && kickAny > 0.05) {
     const fil = new Path2D();

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Run Lab — ห้องทดสอบท่าวิ่ง</title>
+  <!-- หน้าหลังบ้านตอนพัฒนาเท่านั้น (เหมือน cat-lab.html): ไม่อยู่ใน rollupOptions.input จึงไม่ถูก build ไม่ขึ้นเว็บจริง
+       เปิดตอนรัน dev server → /run-lab.html
+       ใช้ตรวจท่าของน้องตอนวิ่งในด่าน (วิ่ง กระโดด 1/2 ชั้น หมอบ เจ็บ ล้ม อารมณ์ ท่าสกิล) บนฉากด่านจริง
+       ฟิสิกส์ = Player ตัวเดียวกับเกม (src/player.js) · ตัววาดเดิม = drawPlayer ตัวเดียวกับเกม (src/render/entities.js)
+       ห้ามมีสูตรของตัวเอง: แรงกระโดด ความเร็ว ขนาดตัว ดึงจาก config.js ชุดเดียวกับเกม -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #150B21; --panel: rgba(40,24,60,.88); --panel2: #2F1C46; --line: rgba(255,244,220,.12);
+      --ink: #FFF4DC; --dim: rgba(255,244,220,.58); --accent: #FF9FC4; --accent2: #7FE3D0; --warn: #FFC36B;
+      --r: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; color: var(--ink); }
+    body {
+      font: 400 14px Mitr, sans-serif; text-wrap: balance;   /* ห้ามคำตกบรรทัดเดี่ยว (CLAUDE.md) */
+      background:
+        radial-gradient(60vw 50vh at 8% -10%, rgba(255,159,196,.16), transparent 70%),
+        radial-gradient(50vw 50vh at 100% 110%, rgba(127,227,208,.10), transparent 70%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    input, textarea { text-wrap: wrap; }
+    button, select { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, select:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+    .wrap {
+      display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px;
+      padding: 14px max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left));
+      max-width: 1600px; margin: 0 auto;
+    }
+    .stage {
+      position: sticky; top: 14px; align-self: start; z-index: 5;
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
+      display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
+    .view { position: relative; width: 100%; height: calc(100dvh - 160px); min-height: 300px; background: #0C0614; }
+    .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .ov { position: absolute; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; pointer-events: none; }
+    .ov > * { pointer-events: auto; }
+    .ov.tl { left: 10px; top: 10px; right: 10px; }
+    .ov.bl { left: 10px; bottom: 10px; }
+    .pill {
+      background: rgba(21,11,33,.72); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+      backdrop-filter: blur(6px); font-size: 13px; cursor: pointer; white-space: nowrap;
+    }
+    .pill.on { background: var(--accent); color: #2A0F22; border-color: transparent; font-weight: 600; }
+    .tag { cursor: default; }
+    .seg { display: inline-flex; background: rgba(21,11,33,.72); border: 1px solid var(--line); border-radius: 999px; padding: 2px; backdrop-filter: blur(6px); }
+    .seg button { border: 0; background: none; padding: 4px 11px; border-radius: 999px; cursor: pointer; font-size: 13px; }
+    .seg button.on { background: var(--accent); color: #2A0F22; font-weight: 600; }
+
+    .bar { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line); background: var(--panel2); border-radius: 12px; padding: 7px 12px; cursor: pointer;
+    }
+    .btn.big { min-width: 44px; font-size: 16px; }
+    .btn.on { background: var(--accent2); color: #10241F; border-color: transparent; }
+    .track { flex: 1 1 180px; accent-color: var(--accent); }
+    .fnum { font-variant-numeric: tabular-nums; color: var(--dim); min-width: 92px; text-align: right; }
+
+    .side { display: flex; flex-direction: column; gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+    .card h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+    .card h3 { margin: 12px 0 6px; font-size: 12.5px; font-weight: 500; color: var(--dim); }
+    .card h3:first-of-type { margin-top: 0; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      border: 1px solid var(--line); background: var(--panel2); border-radius: 12px; padding: 6px 10px; cursor: pointer;
+      font-size: 13px; line-height: 1.25;
+    }
+    .chip.on { background: var(--accent); color: #2A0F22; border-color: transparent; font-weight: 600; }
+    .chip small { display: block; font-size: 11px; opacity: .72; font-weight: 400; }
+    .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+    .row label { min-width: 74px; color: var(--dim); font-size: 13px; }
+    .row select, .row input[type=range] { flex: 1; min-width: 0; }
+    select { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+    .note { color: var(--dim); font-size: 12.5px; line-height: 1.55; margin: 6px 0 0; }
+    .note b { color: var(--warn); font-weight: 500; }
+    .vals { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    .vals span:nth-child(odd) { color: var(--dim); }
+    kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font: inherit; font-size: 12px; }
+    a { color: var(--accent2); }
+
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: minmax(0, 1fr); }
+      .stage { top: 0; }
+      .view { height: 46dvh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="stage">
+      <div class="view">
+        <canvas id="cv"></canvas>
+        <div class="ov tl">
+          <div class="seg" id="viewSeg" title="มุมกล้อง (ปุ่ม V)">
+            <button data-view="full">เต็มฉาก</button>
+            <button data-view="close">ใกล้ตัว</button>
+            <button data-view="follow">ใกล้ + ตามตัว</button>
+          </div>
+          <div class="seg" id="drawSeg" title="ตัววาด">
+            <button data-draw="old">ตัวในเกมตอนนี้</button>
+            <button data-draw="new">ตัวใหม่ (ร่าง)</button>
+            <button data-draw="both">เทียบคู่</button>
+          </div>
+          <button class="pill" id="trailBtn" title="ภาพซ้อนเห็นเส้นทางกระโดด (ปุ่ม T)">👻 ภาพซ้อน</button>
+        </div>
+        <div class="ov bl"><span class="pill tag" id="poseTag">—</span></div>
+      </div>
+      <div class="bar">
+        <button class="btn big" id="play" title="เล่น/หยุด (Space)">⏸</button>
+        <button class="btn" id="stepB" title="ถอยหนึ่งเฟรม (,)">◀︎</button>
+        <button class="btn" id="stepF" title="เดินหนึ่งเฟรม (.)">▶︎</button>
+        <input class="track" id="track" type="range" min="0" max="100" value="0" step="1">
+        <span class="fnum" id="fnum">0 / 0</span>
+        <select id="speed" title="ความเร็ว">
+          <option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option>
+          <option value="1" selected>×1</option><option value="2">×2</option>
+        </select>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2>ท่าตอนวิ่งในด่าน</h2>
+        <div id="poses"></div>
+        <p class="note" id="poseNote"></p>
+      </div>
+      <div class="card">
+        <h2>เล่นเอง</h2>
+        <p class="note">กด <b>เล่นเอง</b> แล้วบังคับเหมือนในเกม: <kbd>Space</kbd>/<kbd>↑</kbd>/แตะจอ = กระโดด (กดอีกครั้งกลางอากาศ = ชั้นสอง) · <kbd>↓</kbd> ค้าง = หมอบ/ดิ่ง · <kbd>H</kbd> = โดนชน · <kbd>K</kbd> = ล้ม</p>
+        <div class="chips" style="margin-top:8px"><button class="chip" id="manual">🎮 เล่นเอง</button></div>
+      </div>
+      <div class="card">
+        <h2>ฉาก / แมว / ชุด</h2>
+        <div class="row"><label>ฉากด่าน</label><select id="stageSel"></select></div>
+        <div class="row"><label>แมว</label><select id="catSel"></select></div>
+        <div class="row"><label>ชุด</label><select id="ofSel"></select></div>
+        <div class="row"><label>ซูม (ใกล้)</label><input id="zoom" type="range" min="1.2" max="4" step="0.1" value="1.5"></div>
+        <p class="note">หน้าทดลองท่ายืน/ท่าเปิดตัว: <a href="./cat-lab.html">cat-lab.html</a></p>
+      </div>
+      <div class="card">
+        <h2>ชุด (ใส่ตอนวิ่ง)</h2>
+        <div class="chips" id="ofChips"></div>
+        <p class="note">ทุกชุดของน้องแบบใหม่ ใส่ทดสอบกับท่าวิ่ง/กระโดดได้ (ชุดที่ซ่อนในเกมก็มี) · ✦S = ระดับ S</p>
+      </div>
+      <div class="card">
+        <h2>ค่าตอนนี้</h2>
+        <div class="vals" id="vals"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { VIEW, GROUND_Y, PLAYER_X, SPEED, BODY, CAT_LOOK, BIGCAN, PHYSICS } from './src/config.js';
+    import { Player } from './src/player.js';
+    import { NEUTRAL_MODS } from './src/talent-run.js';
+    import { STAGES } from './src/stages.js';
+    import { drawStageBackdrop, drawGround, GROUND_ART } from './src/render/background.js';
+    import { drawPlayer, setCatEdgeScale } from './src/render/entities.js';
+    import { drawCat2, cat2Outfits, CAT2_BREEDS } from './src/render/cat2.js';
+    import { createRunAnim, stepRunAnim, drawCat2Run, JUMP2 } from './src/render/cat2-run.js';
+    import { SKINS } from './src/skins.js';
+    import { ALL_OUTFITS } from './src/outfits.js';
+
+    const $ = (id) => document.getElementById(id);
+    const cv = $('cv'), ctx = cv.getContext('2d');
+    const ghost = document.createElement('canvas'), gctx = ghost.getContext('2d');   // แผ่นวาดภาพซ้อน
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    // ══ ท่า (สถานการณ์) — สคริปต์สั่ง Player ตัวจริงตามเฟรม แล้วจำลองฟิสิกส์ตามเกม ══
+    // at(f, P, S) เรียกก่อน P.update ทุกเฟรม · S = สถานะที่เกมส่งให้ตัววาด (เจ็บ เหนื่อย อารมณ์ ท่าสกิล ฯลฯ)
+    const jumpAt = (...fs) => (f, P) => { if (fs.includes(f)) P.jump(); };
+    const all = (...fns) => (f, P, S) => fns.forEach((fn) => fn(f, P, S));
+    const set = (o) => (f, P, S) => { if (f === 0) Object.assign(S, o); };
+    const POSES = [
+      // ── พื้นฐาน ──
+      { g: 'พื้นฐาน', id: 'run', name: 'วิ่ง', dur: 120, note: 'วิ่งบนพื้นเฉย ๆ — ขาก้าว ตัวโยก หางแกว่งตามจังหวะ' },
+      { g: 'พื้นฐาน', id: 'jump1', name: 'กระโดด 1 ครั้ง', dur: 96, at: jumpAt(16),
+        note: 'ถีบขึ้น (ตัวยืด) → ลอยขึ้น → สุดยอด → ตกลง → แตะพื้น (ตัวแบน) → วิ่งต่อ' },
+      { g: 'พื้นฐาน', id: 'jump2', name: 'กระโดด 2 ครั้ง', sub: 'ชั้นสองใกล้ยอด', dur: 120, at: jumpAt(16, 30),
+        note: 'กดชั้นสองตอนใกล้ยอด (แบบที่ผู้เล่นกดบ่อยสุด) — ชั้นสองเบากว่าชั้นแรก ยืดน้อยกว่า' },
+      { g: 'พื้นฐาน', id: 'jump2b', name: 'กระโดด 2 ครั้ง', sub: 'ชั้นสองตอนกำลังตก', dur: 124, at: jumpAt(16, 46),
+        note: 'กดชั้นสองตอนกำลังร่วงลง — ตัวต้องเปลี่ยนจากท่าตกกลับเป็นท่าพุ่งขึ้นทันที' },
+      { g: 'พื้นฐาน', id: 'land', name: 'ลงพื้นแรง', sub: 'ตกจากที่สูง', dur: 80,
+        at: (f, P) => { if (f === 0) { P.y = GROUND_Y - 190; P.onGround = false; P.jumps = 2; P.vy = 2; } },
+        note: 'ตกจากพื้นลอยสูง ๆ — ลงแรงแค่ไหนตัวแบนแค่นั้น (มีเพดาน) แล้วเด้งคืน' },
+      { g: 'พื้นฐาน', id: 'fastfall', name: 'ดิ่งลง', sub: 'กด ↓ กลางอากาศ', dur: 100,
+        at: all(jumpAt(16), (f, P) => { if (f === 26) P.setSlide(true); if (f === 60) P.setSlide(false); }),
+        note: 'กระโดดแล้วกดหมอบกลางอากาศ = ดิ่งลงเร็ว ลงพื้นแล้วหมอบต่อจนปล่อยปุ่ม' },
+      { g: 'พื้นฐาน', id: 'slide', name: 'หมอบ / สไลด์', dur: 110,
+        at: (f, P) => { if (f === 16) P.setSlide(true); if (f === 80) P.setSlide(false); },
+        note: 'หมอบลอดคาน — กล่องชนเตี้ยลง (สูง 26 จาก 46) ปล่อยแล้วลุกวิ่งต่อ' },
+      // ── พรสวรรค์ที่เปลี่ยนการกระโดด ──
+      { g: 'พรสวรรค์', id: 'jump3', name: 'กระโดด 3 ครั้ง', sub: 'พรสวรรค์กระโดดเพิ่ม', dur: 140,
+        mods: { airJumps: 1, extraV: -9.4 }, at: jumpAt(16, 30, 46),
+        note: 'พรสวรรค์ให้กระโดดกลางอากาศเพิ่มหนึ่งครั้ง (ชั้นสามยืดน้อยสุด)' },
+      { g: 'พรสวรรค์', id: 'glide', name: 'ร่อน', sub: 'กดค้างตอนตก', dur: 170,
+        at: all(jumpAt(16), (f, P) => { P.mods = f > 32 && f < 140 ? { ...NEUTRAL_MODS, maxFall: 1.4 } : NEUTRAL_MODS; }),
+        note: 'พรสวรรค์ร่อน (S1) — ตกช้าลงมาก ตอนนี้ใช้ท่ากลางอากาศเดิม (ยังไม่มีท่ากางตัวร่อน)' },
+      { g: 'พรสวรรค์', id: 'float', name: 'ลอยบนเมฆ', sub: 'โหมดลอย', dur: 160,
+        mods: { laneY: GROUND_Y - 110, laneEase: 0.2 },
+        at: (f, P) => { if (f === 90) P.mods = { ...P.mods, laneY: GROUND_Y - 40 }; },
+        note: 'โหมดลอยของพรสวรรค์ — ลอยตามระดับ โยกขึ้นลงเบา ๆ (ปุ่มกระโดดใช้เปลี่ยนระดับ)' },
+      // ── ชน / แพ้ ──
+      { g: 'ชน / แพ้', id: 'hurt', name: 'เจ็บ', sub: 'ชนบนพื้น', dur: 90, at: (f, P, S) => { if (f === 24) S.hurt = 1; },
+        note: 'โดนสิ่งกีดขวาง — สะดุ้งสั่น ถูกผลักถอยนิด หน้าเจ็บ ( > < ) แล้วกลับมาวิ่ง (ในเกมตัวกะพริบช่วงอมตะด้วย)' },
+      { g: 'ชน / แพ้', id: 'hurtAir', name: 'เจ็บกลางอากาศ', dur: 100, at: all(jumpAt(16), (f, P, S) => { if (f === 26) S.hurt = 1; }),
+        note: 'โดนของลอยตอนกระโดด' },
+      { g: 'ชน / แพ้', id: 'tired', name: 'เหนื่อย', sub: 'พลังใกล้หมด', dur: 120, at: all(set({ tired: 1 }), jumpAt(60)),
+        note: 'พลังต่ำกว่าเส้นเตือน — หายใจหอบ หูลู่ หางตก หน้าเหนื่อย (ไล่แรงขึ้นตามพลังที่เหลือ)' },
+      { g: 'ชน / แพ้', id: 'faint', name: 'หมดแรงล้ม', dur: 110,
+        at: (f, P, S) => { if (f === 30) { S.dead = true; P.faint(); } },
+        note: 'พลังหมด — ล้มพับนอนตะแคงกับพื้นตรงนั้น (จบตา)' },
+      { g: 'ชน / แพ้', id: 'pit', name: 'ตกหลุม', dur: 110, pit: true,
+        at: (f, P, S) => { if (f === 30) { S.dead = true; P.vy = -9; } },
+        note: 'ตกหลุม — ปลิวขึ้นแล้วหมุนตกจอไป (จบตา)' },
+      // ── อารมณ์บนท่าวิ่ง ──
+      { g: 'หน้า / อารมณ์', id: 'happy', name: 'ดีใจ', dur: 110, at: all(set({ mood: 'happy' }), jumpAt(50)), note: 'ตอนปลาโบนัสมารับ / ฉากพบน้อง' },
+      { g: 'หน้า / อารมณ์', id: 'starry', name: 'ตาประกาย', dur: 110, at: all(set({ mood: 'starry' }), jumpAt(50)), note: 'ลอยอยู่บนฟ้าในช่วงโบนัส' },
+      { g: 'หน้า / อารมณ์', id: 'sad', name: 'เศร้า', dur: 110, at: all(set({ mood: 'sad' }), jumpAt(50)), note: 'ต้องกลับลงพื้นตอนจบโบนัส' },
+      { g: 'หน้า / อารมณ์', id: 'smug', name: 'สะใจ', dur: 110, at: all(set({ mood: 'smug' }), jumpAt(50)), note: 'ร่างยักษ์ / ท่าสกิล' },
+      { g: 'หน้า / อารมณ์', id: 'mouth', name: 'อ้าปากดูดของ', dur: 110, at: all(set({ mouth: true }), jumpAt(50)), note: 'แม่เหล็กทำงาน — อ้าปากดูดของกิน' },
+      // ── ท่าสกิล (บิดท่าวิ่งเดิม) ──
+      { g: 'ท่าสกิล', id: 'dance', name: 'เต้น', dur: 120, at: set({ skill: 'dance' }), note: 'สกิลปาร์ตี้ — ส่ายตัวเด้งบนท่าวิ่ง' },
+      { g: 'ท่าสกิล', id: 'hero', name: 'ฮีโร่พุ่ง', dur: 120, at: all(set({ skill: 'hero' }), jumpAt(60)), note: 'เอนพุ่ง ยืดตัว ยื่นอุ้งเท้า (หางแสง/เส้นความเร็ววาดแยกในเกม)' },
+      { g: 'ท่าสกิล', id: 'gold', name: 'โบกอุ้งเท้าทอง', dur: 120, at: set({ skill: 'gold' }), note: 'ชูอุ้งเท้าโบกตลอดสกิล' },
+      { g: 'ท่าสกิล', id: 'shout', name: 'ร้องคลื่นคริสตัล', dur: 120, at: set({ skill: 'shout' }), note: 'อ้าปากร้องตอนคลื่นออก' },
+      { g: 'ท่าสกิล', id: 'fly', name: 'บิน', dur: 140, mods: { laneY: GROUND_Y - 120, laneEase: 0.12 }, at: set({ skill: 'fly' }),
+        note: 'สกิลบิน — ตัวใช้ท่ากลางอากาศ (ปีกผีเสื้อวาดแยกในเกม หน้านี้ไม่วาดปีก)' },
+      { g: 'ท่าสกิล', id: 'ball', name: 'บอลหิมะ', dur: 120, at: set({ skill: 'ball', lift: 30 }), note: 'ยกทั้งตัวไปวิ่งบนลูกบอล (ลูกบอลวาดแยกในเกม หน้านี้ไม่วาด)' },
+      { g: 'ท่าสกิล', id: 'big', name: 'ร่างยักษ์', dur: 130, at: all(set({ big: 1 }), jumpAt(50)),
+        note: 'ตัวโต 3.45 เท่า ก้าวช้าลงครึ่งหนึ่ง หน้าสะใจ — กระโดดแล้วย่อตามที่ว่างเหนือหัว' },
+    ];
+    const poseById = (id) => POSES.find((p) => p.id === id) || POSES[0];
+
+    // ── ด่านจำลองที่ Player ใช้ (เหมือนเกม: speed / camera / level.surfaceAt) ──
+    function makeGame(pits) {
+      return {
+        speed: SPEED.run, camera: 0, pitsSolid: true,
+        level: { surfaceAt: (cx, px, py, y) => (y >= GROUND_Y && !pits.some((q) => cx > q.x && cx < q.x + q.w) ? GROUND_Y : null) },
+      };
+    }
+    const snapOf = (P) => Object.assign(Object.create(Object.getPrototypeOf(P)), P);
+    /** ท่าวิ่งของตัวใหม่ ณ เฟรมนี้ (ตัวคุมท่ามีสถานะในตัว — เรียกทุกเฟรมตามลำดับ) */
+    const runOf = (anim, P, S) => {
+      const L = lookOf(S);
+      return stepRunAnim(anim, P, { catId: st.cat, mood: L.mood, mouth: L.mouth, hurt: S.hurt, dead: S.dead, gait: S.big ? BIGCAN.gait : 1 });
+    };
+
+    /** จำลองตั้งแต่เฟรม 0 ทุกครั้ง (ท่าละไม่ถึง 200 เฟรม) — ลากหลอดเวลาย้อนได้ ภาพเดิมเป๊ะ */
+    function simulate(pose, upto) {
+      const P = new Player();
+      P.mods = { ...NEUTRAL_MODS, ...(pose.mods || {}) };
+      const pits = pose.pit ? [{ x: PLAYER_X + 30 * SPEED.run - 20, w: 160 }] : [];
+      const game = makeGame(pits);
+      const S = { hurt: 0, tired: 0, mood: '', mouth: false, skill: '', lift: 0, big: 0, dead: false };
+      const out = [];
+      const anim = createRunAnim();
+      for (let f = 0; f <= upto; f++) {
+        pose.at?.(f, P, S);
+        out.push({ p: snapOf(P), S: { ...S }, cam: game.camera, f, pits, r: runOf(anim, P, S) });
+        if (S.dead) P.updateDead(1);
+        else {
+          P.gaitK = S.big ? BIGCAN.gait : 1;
+          P.update(1, game);
+          if (P.pendingJump) { P.pendingJump = false; P.jump(); }
+          game.camera += game.speed;
+        }
+        S.hurt = Math.max(0, S.hurt - 0.06);   // เท่า game.js (hurtFlash ลด 0.06 ต่อเฟรม)
+      }
+      return out;
+    }
+
+    // ── สถานะหน้า ──
+    const st = {
+      pose: 'jump1', view: 'close', draw: 'old', trail: false, zoom: 1.5, f: 0, playing: true, speed: 1,
+      stage: STAGES[0].id, cat: 'orange', outfit: 'none', manual: false,
+    };
+    try { Object.assign(st, JSON.parse(localStorage.getItem('runlab.v1') || '{}'), { playing: true, manual: false }); } catch {}
+    const save = () => { try { localStorage.setItem('runlab.v1', JSON.stringify({ pose: st.pose, view: st.view, draw: st.draw, trail: st.trail, zoom: st.zoom, stage: st.stage, cat: st.cat, outfit: st.outfit, speed: st.speed })); } catch {} };
+    let sim = [];
+    const resim = () => { sim = simulate(poseById(st.pose), poseById(st.pose).dur); };
+
+    // ── แมว + ชุด ──
+    const NEW_IDS = new Set(['orange', ...CAT2_BREEDS.map((b) => b.id)]);
+    const NEW_OF = new Set(cat2Outfits());
+    const oldSkin = () => {
+      const base = SKINS.find((s) => s.id === st.cat) || SKINS[0];
+      const of = ALL_OUTFITS.find((o) => o.id === st.outfit);
+      return of && of.id !== 'none' ? { ...base, outfit: of } : base;
+    };
+    const newSkin = () => {
+      const base = CAT2_BREEDS.find((b) => b.id === st.cat) || { ...SKINS[0], sex: 'm' };
+      const of = ALL_OUTFITS.find((o) => o.id === st.outfit);
+      return of && of.id !== 'none' && NEW_OF.has(of.id) ? { ...base, outfit: of } : base;
+    };
+
+    // ── อารมณ์/ท่าที่เกมส่งให้ตัววาด (ลอกตรรกะจาก game.js ตอนเรียก drawPlayer) ──
+    function lookOf(S) {
+      const sk = S.skill;
+      const mood = S.big || sk === 'hero' || sk === 'gold' || sk === 'shout' ? 'smug' : sk === 'fly' || sk === 'ball' ? 'happy' : S.mood;
+      return {
+        mood, mouth: S.mouth || sk === 'shout',
+        dance: sk === 'dance', hero: sk === 'hero' ? 1 : 0, wave: sk === 'gold' ? 1 : 0,
+        tired: S.big || sk ? 0 : S.tired,
+      };
+    }
+    function catScaleOf(p, S) {
+      const s = CAT_LOOK + (BIGCAN.scale - CAT_LOOK) * (S.big || 0);
+      const room = (p.y - BIGCAN.topRoom) / (BODY.standH + 6);
+      return Math.max(CAT_LOOK, Math.min(s, room));
+    }
+
+    /** ตัววาดในเกมตอนนี้ (drawPlayer) — อาร์กิวเมนต์ชุดเดียวกับ game.js */
+    function drawOld(c, fr, tick, dx = 0) {
+      const { p, S } = fr, L = lookOf(S);
+      c.save();
+      c.translate(dx, -(S.lift || 0));
+      drawPlayer(c, p, S.dead, oldSkin(), L.mouth, L.dance ? tick : 0, L.mood, catScaleOf(p, S), 1 + (BIGCAN.gait - 1) * (S.big || 0),
+        { tired: L.tired, hurt: S.hurt, hero: L.hero, wave: L.wave, waveT: Math.sin(tick * 0.18) });
+      c.restore();
+    }
+
+    /**
+     * ตัวใหม่ (cat2) — **ร่าง**: cat2 ยังไม่มีท่าวิ่ง/กระโดด จึงใช้ท่ายืนแล้วบิดตามฟิสิกส์ (เอียง ยืด/แบน หมอบ หน้า)
+     * ไว้ดูขนาด/ตำแหน่งเท้า/ความสูงเทียบกับตัวเดิม ก่อนออกแบบท่าวิ่งจริง
+     */
+    const NEW_K = 0.86;   // ตัวใหม่สูงเท่าตัวเดิม (วัดจากภาพ: หูถึงเท้า) — ปรับได้เมื่อออกแบบขนาดตอนวิ่งจริง
+    function drawNew(c, fr, tick, dx = 0) {
+      const { p, S, r } = fr;
+      const sc = catScaleOf(p, S) * NEW_K;
+      const x = PLAYER_X + p.ox + BODY.standW / 2 + dx, feet = p.y - (S.lift || 0);
+      // เงา (เหมือนตัวเดิม)
+      if (!S.dead) {
+        const airH = Math.max(0, GROUND_Y - p.y);
+        c.save();
+        c.globalAlpha = Math.max(0, 0.32 - airH / 500);
+        c.fillStyle = '#000';
+        c.beginPath(); c.ellipse(x, GROUND_Y + 4, Math.max(0, 22 - airH * 0.02) * sc, 5 * sc, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
+      c.save();
+      if (S.dead) { c.translate(x, feet); c.rotate(p.tilt); c.translate(-x, -feet); }
+      if (S.hurt > 0) c.translate(-S.hurt * 5, 0);
+      drawCat2Run(c, x, feet, sc, newSkin(), tick, r);
+      c.restore();
+    }
+
+    // ── กล้อง ──
+    function camera(w, h, fr) {
+      const fit = Math.min(w / VIEW.W, h / VIEW.H);
+      if (st.view === 'full') return { s: fit, ox: (w - VIEW.W * fit) / 2, oy: (h - VIEW.H * fit) / 2 };
+      // ซูม 1 = สูงเท่าฉากเต็ม (420 หน่วย) · ค่าเริ่มต้น 1.5 ≈ เห็นวงกระโดดสองชั้นทั้งวงพร้อมตัว
+      const s = (h / VIEW.H) * st.zoom;
+      const px = PLAYER_X + BODY.standW / 2 + (st.draw === 'both' ? 55 : 0);
+      // ใกล้ตัว: กล้องนิ่ง พื้นค่อนล่างจอ เห็นทั้งวงกระโดด · ตามตัว: เท้าอยู่ราว 70% ของจอ (พื้นไม่ขึ้นเกิน 86%)
+      const oy = st.view === 'follow' ? Math.max(h * 0.86 - GROUND_Y * s, h * 0.7 - fr.p.y * s) : h * 0.86 - GROUND_Y * s;
+      return { s, ox: w * 0.5 - px * s, oy };
+    }
+
+    // ── วาด ──
+    function render() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      const fi = Math.max(0, Math.min(sim.length - 1, Math.floor(st.f)));
+      const fr = sim[fi];
+      if (!fr) return;
+      const stage = STAGES.find((s) => s.id === st.stage) || STAGES[0];
+      const pal = stage.palette, tick = fr.f;
+      const C = camera(w, h, fr);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#0C0614';
+      ctx.fillRect(0, 0, w, h);
+      ctx.setTransform(C.s, 0, 0, C.s, C.ox, C.oy);
+      // ฉากด่านจริง (ฉากวาด/ของประกอบ/พื้น) — กล้องโลกเลื่อนตามความเร็ววิ่ง
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, VIEW.W, VIEW.H); ctx.clip();
+      drawStageBackdrop(ctx, fr.cam, stage, pal, tick);
+      drawGround(ctx, fr.pits, fr.cam, pal, GROUND_ART[stage.backdrop]);
+      ctx.restore();
+      setCatEdgeScale(1);   // เส้นขอบตัวน้องตอนวิ่ง (เหมือนเกม)
+      // ภาพซ้อน: ตำแหน่งย้อนหลังทุก 5 เฟรม เลื่อนตามโลก (เห็นเส้นทางกระโดดจริงบนฉาก)
+      const drawers = st.draw === 'both' ? [[drawOld, 0], [drawNew, 110]] : [[st.draw === 'new' ? drawNew : drawOld, 0]];
+      if (st.trail) {
+        // วาดเงาแต่ละภาพลงแผ่นแยกแล้วค่อยแปะแบบจาง — ตัววาดใหม่ตั้งความโปร่งเองข้างใน ตั้งจากข้างนอกไม่ได้
+        if (ghost.width !== w || ghost.height !== h) { ghost.width = w; ghost.height = h; }
+        for (let j = fi - 5; j >= Math.max(0, fi - 60); j -= 5) {
+          const g = sim[j];
+          gctx.setTransform(1, 0, 0, 1, 0, 0);
+          gctx.clearRect(0, 0, w, h);
+          gctx.setTransform(C.s, 0, 0, C.s, C.ox, C.oy);
+          for (const [fn, dx] of drawers) fn(gctx, g, g.f, dx - (fr.cam - g.cam));
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.globalAlpha = 0.24 * (1 - (fi - j) / 66);
+          ctx.drawImage(ghost, 0, 0);
+          ctx.restore();
+        }
+      }
+      for (const [fn, dx] of drawers) fn(ctx, fr, tick, dx);
+      if (st.draw === 'both') {
+        ctx.font = '600 7px Mitr, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.fillText('ตัวในเกม', PLAYER_X + 20, GROUND_Y + 20);
+        ctx.fillText('ตัวใหม่ (ร่าง)', PLAYER_X + 130, GROUND_Y + 20);
+      }
+      showVals(fr);
+    }
+
+    let lastVals = '';
+    function showVals(fr) {
+      const { p, S } = fr;
+      const rows = [
+        ['เฟรม', `${fr.f}`],
+        ['บนพื้น', p.onGround ? 'ใช่' : 'ลอยอยู่'],
+        ['กระโดดไปแล้ว', `${p.jumps} ชั้น`],
+        ['สูงจากพื้น', `${Math.max(0, GROUND_Y - p.y).toFixed(1)}`],
+        ['ความเร็วแนวตั้ง', `${p.vy.toFixed(2)}${p.vy < -0.05 ? ' ↑' : p.vy > 0.05 ? ' ↓' : ''}`],
+        ['ยืด/แบน', `${(p.squash || 0).toFixed(2)}`],
+        ['หมอบ', p.sliding ? 'ใช่' : '—'],
+        ['เจ็บ', S.hurt.toFixed(2)],
+        ['สถานะ', S.dead ? 'จบตา' : S.skill ? `สกิล ${S.skill}` : S.mood || '—'],
+      ];
+      const html = rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('');
+      if (html !== lastVals) { $('vals').innerHTML = html; lastVals = html; }
+    }
+
+    // ── เล่นเอง: จำลองทีละเฟรมจากปุ่มจริง (ไม่วน) ──
+    let live = null;
+    function startManual() {
+      const P = new Player();
+      const game = makeGame([]);
+      const S = { hurt: 0, tired: 0, mood: '', mouth: false, skill: '', lift: 0, big: 0, dead: false };
+      live = { P, game, S, f: 0, down: false, hist: [], anim: createRunAnim() };
+      st.manual = true;
+      $('manual').classList.add('on');
+      $('poseTag').textContent = '🎮 เล่นเอง — Space กระโดด · ↓ หมอบ · H ชน · K ล้ม';
+      for (const b of $('poses').querySelectorAll('.chip')) b.classList.remove('on');
+    }
+    function stopManual() {
+      live = null; st.manual = false;
+      $('manual').classList.remove('on');
+      pick(st.pose);
+    }
+    function stepManual() {
+      const { P, game, S } = live;
+      live.hist.push({ p: snapOf(P), S: { ...S }, cam: game.camera, f: live.f, pits: [], r: runOf(live.anim, P, S) });
+      if (live.hist.length > 80) live.hist.shift();
+      if (S.dead) {
+        P.updateDead(1);
+        if (live.f - S.deadAt > 120) startManual();
+      } else {
+        P.update(1, game);
+        if (P.pendingJump) { P.pendingJump = false; P.jump(); }
+        game.camera += game.speed;
+      }
+      S.hurt = Math.max(0, S.hurt - 0.06);
+      live.f++;
+      sim = live.hist;
+    }
+    function manualJump() {
+      if (!live || live.S.dead) return;
+      if (!live.P.jump()) live.P.queueJump();
+    }
+
+    // ── ปุ่ม ──
+    function buildPoses() {
+      const groups = [...new Set(POSES.map((p) => p.g))];
+      $('poses').innerHTML = groups.map((g) => `<h3>${g}</h3><div class="chips">${POSES.filter((p) => p.g === g)
+        .map((p) => `<button class="chip" data-pose="${p.id}">${p.name}${p.sub ? `<small>${p.sub}</small>` : ''}</button>`).join('')}</div>`).join('');
+      $('poses').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-pose]');
+        if (b) { if (live) live = null, st.manual = false, $('manual').classList.remove('on'); pick(b.dataset.pose); }
+      });
+    }
+    function pick(id) {
+      st.pose = poseById(id).id;
+      const p = poseById(st.pose);
+      for (const b of $('poses').querySelectorAll('[data-pose]')) b.classList.toggle('on', b.dataset.pose === st.pose);
+      $('poseNote').textContent = p.note || '';
+      $('poseTag').textContent = `${p.name}${p.sub ? ` · ${p.sub}` : ''}`;
+      st.f = 0;
+      resim();
+      $('track').max = p.dur;
+      save();
+    }
+    function setSeg(segId, key, val) {
+      st[key] = val;
+      for (const b of $(segId).querySelectorAll('button')) b.classList.toggle('on', b.dataset[key] === val);
+      save();
+    }
+    function fillSelects() {
+      $('stageSel').innerHTML = STAGES.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
+      const newCats = [{ id: 'orange', name: 'ส้มน้อย (ตัวหลัก)' }, ...CAT2_BREEDS.map((b) => ({ id: b.id, name: b.name }))];
+      const rest = SKINS.filter((s) => !NEW_IDS.has(s.id));
+      $('catSel').innerHTML = `<optgroup label="แบบใหม่">${newCats.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}</optgroup>`
+        + `<optgroup label="สีเดิม">${rest.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}</optgroup>`;
+      $('ofSel').innerHTML = ALL_OUTFITS.map((o) => `<option value="${o.id}">${o.name}${o.rarity === 'high' ? ' ✦S' : ''}${NEW_OF.has(o.id) || o.id === 'none' ? '' : ' (ตัวใหม่ยังไม่มี)'}</option>`).join('');
+      $('ofChips').innerHTML = ALL_OUTFITS.filter((o) => o.id === 'none' || NEW_OF.has(o.id))
+        .map((o) => `<button class="chip" data-of="${o.id}">${o.id === 'none' ? 'ไม่ใส่ชุด' : o.name}${o.rarity === 'high' ? ' ✦S' : ''}</button>`).join('');
+      $('stageSel').value = st.stage; $('catSel').value = st.cat; $('ofSel').value = st.outfit; $('zoom').value = st.zoom;
+      $('speed').value = String(st.speed);
+    }
+
+    buildPoses();
+    fillSelects();
+    setSeg('viewSeg', 'view', st.view);
+    setSeg('drawSeg', 'draw', st.draw);
+    $('trailBtn').classList.toggle('on', st.trail);
+    pick(st.pose);
+
+    $('viewSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setSeg('viewSeg', 'view', b.dataset.view); });
+    $('drawSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setSeg('drawSeg', 'draw', b.dataset.draw); });
+    $('trailBtn').onclick = () => { st.trail = !st.trail; $('trailBtn').classList.toggle('on', st.trail); save(); };
+    $('stageSel').onchange = (e) => { st.stage = e.target.value; save(); };
+    $('catSel').onchange = (e) => { st.cat = e.target.value; resim(); save(); };
+    const markOf = () => { for (const b of $('ofChips').children) b.classList.toggle('on', b.dataset.of === st.outfit); $('ofSel').value = st.outfit; };
+    $('ofSel').onchange = (e) => { st.outfit = e.target.value; markOf(); save(); };
+    $('ofChips').onclick = (e) => { const b = e.target.closest('[data-of]'); if (b) { st.outfit = b.dataset.of; markOf(); save(); } };
+    markOf();
+    $('zoom').oninput = (e) => { st.zoom = +e.target.value; save(); };
+    $('speed').onchange = (e) => { st.speed = +e.target.value; save(); };
+    $('play').onclick = () => { st.playing = !st.playing; };
+    $('stepB').onclick = () => { if (live) return; st.playing = false; st.f = Math.max(0, Math.floor(st.f) - 1); };
+    $('stepF').onclick = () => { if (live) { st.playing = false; stepManual(); return; } st.playing = false; st.f = Math.min(poseById(st.pose).dur, Math.floor(st.f) + 1); };
+    $('track').oninput = (e) => { if (live) return; st.playing = false; st.f = +e.target.value; };
+    $('manual').onclick = () => (live ? stopManual() : startManual());
+    cv.addEventListener('pointerdown', () => { if (live) manualJump(); });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.closest?.('select, input')) return;
+      if (live) {
+        if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); if (!e.repeat) manualJump(); return; }
+        if (e.code === 'ArrowDown') { e.preventDefault(); live.P.setSlide(true); return; }
+        if (e.code === 'KeyH') { live.S.hurt = 1; return; }
+        if (e.code === 'KeyK' && !live.S.dead) { live.S.dead = true; live.S.deadAt = live.f; live.P.faint(); return; }
+        if (e.code === 'Escape') { stopManual(); return; }
+      }
+      if (e.code === 'Space') { e.preventDefault(); st.playing = !st.playing; }
+      if (e.key === ',') $('stepB').click();
+      if (e.key === '.') $('stepF').click();
+      if (e.key === 'v' || e.key === 'V') { const order = ['full', 'close', 'follow']; setSeg('viewSeg', 'view', order[(order.indexOf(st.view) + 1) % 3]); }
+      if (e.key === 't' || e.key === 'T') $('trailBtn').click();
+      if (e.key === '[' || e.key === ']') {
+        const i = POSES.findIndex((p) => p.id === st.pose);
+        pick(POSES[(i + (e.key === ']' ? 1 : POSES.length - 1)) % POSES.length].id);
+      }
+    });
+    window.addEventListener('keyup', (e) => { if (live && e.code === 'ArrowDown') live.P.setSlide(false); });
+
+    // ── นาฬิกา (60 เฟรมต่อวิเหมือนเกม) ──
+    let last = performance.now(), acc = 0;
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const df = Math.min(4, ((now - last) / 1000) * 60);
+      last = now;
+      if (live) {
+        if (st.playing) { acc += df * st.speed; while (acc >= 1) { acc -= 1; stepManual(); } }
+        st.f = sim.length - 1;
+        $('fnum').textContent = `เฟรม ${live.f}`;
+      } else {
+        const dur = poseById(st.pose).dur;
+        if (st.playing) { st.f += df * st.speed; if (st.f > dur) st.f = 0; }
+        $('track').value = Math.floor(st.f);
+        $('fnum').textContent = `${Math.floor(st.f)} / ${dur}`;
+      }
+      $('play').textContent = st.playing ? '⏸' : '▶';
+      render();
+    }
+    requestAnimationFrame(frame);
+    // ทดสอบอัตโนมัติ (สคริปต์ถ่ายภาพ): ตั้ง st แล้ว resim/pick ได้
+    window.__run = { st, pick, resim, POSES, get sim() { return sim; } };
+  </script>
+</body>
+</html>
