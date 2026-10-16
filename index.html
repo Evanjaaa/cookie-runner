@@ -1066,6 +1066,12 @@
            ช่องส่องโชว์ทีละชิ้น ไม่ใช่กางทั้งชั้นวาง — อยากดูตัวอื่นกดปุ่ม
            "ดูอื่นๆ" ที่มุมขวาบนของกรอบตู้ ซึ่งพาไปหน้ารายการเต็ม -->
       <div class="panel hidden" id="gachaPanel">
+        <!-- ฉากเปิดกาช่าแบบ Cinematic (src/render/gacha-cine.js) — คลุมทั้งเวทีตั้งแต่กดสุ่มสกิน
+             จนแสงขาวเต็มจอ แล้วจางออกให้เห็นกล่องผล · แตะจอ = เปิดฝา (ตอนน้องพร้อม) · ข้าม = ไปผลเลย -->
+        <div class="gacha-cine hidden" id="gachaCine">
+          <canvas id="gachaCineCv" aria-hidden="true"></canvas>
+          <button type="button" class="gc-skip" id="gachaCineSkip">ข้าม ›</button>
+        </div>
         <div class="pop gacha-pop">
           <!-- พื้นหลังร้านเซอร์ไพรส์เวทมนตร์ (src/render/gachabg.js) — ทั้งสองตู้ -->
           <canvas class="gacha-bg" id="gachaMagic" aria-hidden="true"></canvas>
@@ -1114,13 +1120,22 @@
                   <button type="button" class="gp-arrow gp-prev" id="gpPrev" aria-label="สกินก่อนหน้า"></button>
                   <button type="button" class="gp-arrow gp-next" id="gpNext" aria-label="สกินถัดไป"></button>
                   <div class="gp-buy">
+                    <!-- ปุ่มสุ่มแบบใหม่ (แบบของผู้ใช้ 16 ต.ค.): เม็ดยาใหญ่ วงอุ้งเท้าซ้าย · ราคาบรรทัดบน จำนวนครั้งตัวโต · ทองมีป้าย POPULAR -->
                     <button class="btn pull gp-pull gp-one" id="gpPull1">
-                      <span class="price"><span class="cur coin" aria-hidden="true"></span><b>0</b></span>
-                      <small>1 ครั้ง</small>
+                      <span class="gp-paw" aria-hidden="true"></span>
+                      <span class="gp-txt">
+                        <span class="price"><span class="cur coin" aria-hidden="true"></span><b>0</b></span>
+                        <small>1 ครั้ง</small>
+                      </span>
                     </button>
                     <button class="btn pull gp-pull gp-five" id="gpPull5">
-                      <span class="price"><span class="cur coin" aria-hidden="true"></span><b>0</b></span>
-                      <small>5 ครั้ง!</small>
+                      <span class="gp-tag">POPULAR</span>
+                      <span class="gp-paw" aria-hidden="true"></span>
+                      <span class="gp-txt">
+                        <span class="price"><span class="cur coin" aria-hidden="true"></span><b>0</b></span>
+                        <small>5 ครั้ง</small>
+                      </span>
+                      <span class="gp-spark" aria-hidden="true"></span>
                     </button>
                     <!-- อัตราการสุ่มต้องเปิดดูได้เสมอ (กฎ Play Store เรื่องกล่องสุ่ม) — ใช้กล่อง #oddsPop เดิม · อยู่ข้างปุ่ม 25,000 -->
                     <button type="button" class="info-btn gp-odds" id="gpOdds" aria-label="ดูอัตราการสุ่ม">!</button>

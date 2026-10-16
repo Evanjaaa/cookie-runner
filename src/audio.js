@@ -1488,6 +1488,61 @@ export const sfx = {
     );
     later(() => { tone(3136, null, 1.1, 'sine', 0.035); tone(2093, null, 1.2, 'triangle', 0.03); }, 330);
   },
+
+  // ══ ฉากเปิดกาช่า (gacha-cine.js) ══
+  // อุ้งเท้าตบเกาะขอบ — ตุ้บนุ่ม ๆ สั้น
+  cineGrab: () => {
+    noise({ dur: 0.08, vol: 0.12, type: 'lowpass', freq: 700, freqTo: 260 });
+    tone(210, 120, 0.07, 'sine', 0.08);
+  },
+  // หัวโผล่ — ปุ๊ง เด้งขึ้น
+  cinePeek: () => {
+    tone(330, 660, 0.12, 'sine', 0.11);
+    later(() => tone(660, 990, 0.08, 'triangle', 0.06), 70);
+  },
+  // กรอกตามอง — ติ๊กเบา ๆ
+  cineLook: () => tone(1400, 1700, 0.05, 'sine', 0.045),
+  // เห็นแคปซูล — กริ๊งประกายสามโน้ตไล่ขึ้น
+  cineSpot: () => {
+    [1318, 1760, 2349].forEach((f, i) => later(() => glassBell(f, 0.45, 0.05), i * 70));
+  },
+  // กล้องแพนขึ้น — ลมหวิวกวาดขึ้น
+  cinePan: () => noise({ dur: 0.5, vol: 0.06, type: 'bandpass', freq: 500, freqTo: 2400, q: 0.8, attack: 0.15 }),
+  // กระโดดม้วนตัว — ฟิ้ววว หมุน + เมี้ยวสั้นดีใจ
+  cineFlip: () => {
+    noise({ dur: 0.38, vol: 0.09, type: 'bandpass', freq: 900, freqTo: 3200, q: 1.4, attack: 0.05 });
+    meow({ start: 700, peak: 1150, end: 900, dur: 0.18, vol: 0.2, q: 4 });
+  },
+  // คว้าแคปซูล — ตุ้บ + กริ๊งพลาสติก
+  cineCatch: () => {
+    noise({ dur: 0.1, vol: 0.13, type: 'lowpass', freq: 900, freqTo: 300 });
+    later(() => musicBox(1046, 0.35, 0.05), 40);
+  },
+  // สปอยล์ระดับ A — ประกายหวาน ๆ
+  cineSpoilA: () => {
+    [1046, 1318, 1568].forEach((f, i) => later(() => musicBox(f, 0.5, 0.045), i * 110));
+  },
+  // สปอยล์ระดับ S — ชาร์จพลังกวาดขึ้น + ระฆังทองไล่ขึ้น + คอร์ดค้าง
+  cineSpoilS: () => {
+    tone(260, 1040, 0.9, 'sine', 0.06);
+    [784, 988, 1175, 1568, 1976].forEach((f, i) => later(() => glassBell(f, 0.6, 0.05 + i * 0.006), 150 + i * 120));
+    later(() => { tone(1568, null, 0.9, 'sine', 0.06); tone(2349, null, 0.8, 'sine', 0.035); }, 820);
+  },
+  // เกร็งดึงฝา — ครืดสั่น ๆ ไต่ขึ้น
+  cineStrain: () => {
+    tone(180, 360, 0.26, 'sawtooth', 0.035);
+    noise({ dur: 0.26, vol: 0.05, type: 'bandpass', freq: 400, freqTo: 900, q: 3 });
+  },
+  // ฝาหลุด — ป๊อก! + ลมพุ่ง
+  cinePop: () => {
+    tone(900, 200, 0.09, 'square', 0.08);
+    noise({ dur: 0.12, vol: 0.14, type: 'bandpass', freq: 1800, freqTo: 500, q: 1.2 });
+    later(() => noise({ dur: 0.6, vol: 0.07, type: 'highpass', freq: 1200, freqTo: 6000, attack: 0.05 }), 60);
+  },
+  // แสงขาวเต็มจอ — ประกายใสยาว ๆ
+  cineFlash: () => {
+    [2093, 2637, 3136, 4186].forEach((f, i) => later(() => tone(f, null, 0.5, 'sine', 0.035), i * 55));
+  },
 };
 
 // ช่องสำหรับวัดระดับเสียงตอนพัฒนา ใช้เทียบความดังระหว่างเสียงแต่ละตัว

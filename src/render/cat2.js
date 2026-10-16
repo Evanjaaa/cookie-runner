@@ -9742,6 +9742,8 @@ const HOLD_ARM = {
   // แขนโค้งออกนอกนิด ๆ (ไม่ใช่ท่อตรง) เหมือนแขนอวบ ๆ ที่งอขึ้นมา
   loRest: [[218, 440], [217, 470], [224, 498], [238, 518]],
   loHold: [[222, 476], [226, 448], [240, 424], [258, 408]],
+  // กอดลูกกลมใหญ่ (แคปซูลกาช่า · shape.grip): ศอกข้างตัว แขนกางออกข้าง อุ้งเท้าเกาะขอบซ้าย/ขวาของลูก (ไม่ทะลุกลางลูก)
+  loGrip: [[222, 468], [198, 478], [176, 488], [160, 496]],
 };
 const mirrorPts = (pts) => pts.map(([x, y]) => [600 - x, y]);
 // ลอยเฟี้ยว (แขนขวาจอ): ศอกยื่นออกข้างเอวแล้วพับขึ้น อุ้งเท้าครีมแตะใต้คางฝั่งแก้มขวา (ตามแบบ)
@@ -10168,7 +10170,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const forcedY = forced != null ? (shape?.gazeY || 0) * k : 0;
   const gx = forced ?? look.x * lookK, gy = forced != null ? forcedY : look.y * lookK;
   const hx = forced != null ? forced * 0.6 : headLook.x * lookK, hy = forced != null ? forcedY * 0.6 : headLook.y * lookK;
-  const blink = blinkAt(T, look);
+  const blink = idle?.noBlink ? 0 : blinkAt(T, look);   // noBlink = ผู้เรียกกะพริบเองผ่าน shape.shut (ฉากกาช่า)
   const tiltOf = (tt) => Math.sin(tt * 0.6) * 0.03;
   // ประคองหัวใจ: เอียงหัวเบา ๆ ราว 4° (ท่าเดิมสั่งมาเกือบ 10° — มากไปสำหรับท่ามอบให้)
   const tiltK = clasp > 0.05 ? 1 - 0.55 * clamp01(clasp * 1.5) : 1;
@@ -11673,7 +11675,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       const mp = (a) => (m ? mirrorPts(a) : a);
       const kn = (m ? -1 : 1) * kneadT * 4 * (1 - clasp);   // นวดสลับ (ท่ากอดไม่มีหัวใจ)
       const H = mp(HOLD_ARM.loHold).map(([x, y], i) => [x, y + (i ? lift * (i / 3) + kn : 0)]);
-      const lo = mixPts(mp(HOLD_ARM.loRest), [[H, u]]).map(([x, y]) => upperPt(x, y));
+      const lo = mixPts(mp(HOLD_ARM.loRest), [[H, u], [mp(HOLD_ARM.loGrip), u * v('grip')]]).map(([x, y]) => upperPt(x, y));
       // ศอกอวบ เรียวลงหาข้อมือ แล้วอุ้งเท้าป่องนิด ๆ
       const bLo = spineBand(lo, 10, (i) => 29 - 7 * (i / 10));
       const pw = pawOf(bLo, pal, 25, 24);
@@ -12012,6 +12014,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const tl0 = hold.L.bLo.pts[10], tr0 = hold.R.bLo.pts[10];
     const hx0 = (tl0.x + tr0.x) / 2, hy0 = (tl0.y + tr0.y) / 2 + 50;
     const hs = 40 * ease(clamp01(clasp * 1.4)) * (1 + 0.25 * offer);
+    // idle.onHoldTips = ขอตำแหน่งปลายแขนสองข้าง (x, y, a พิกัดไฟล์) — ฉากกาช่าใช้ตัดอุ้งเท้าจริงไปแปะเกาะขอบ
+    idle?.onHoldTips?.(ctx, tl0, tr0, 25 + LW);
     // แขนสองข้างเป็นท่อเดียวต่อเส้น มีเส้นรอบครบ หนาเท่ากันตลอด · อุ้งเท้าครีมแตะใต้คาง
     for (const H of [hold.L, hold.R]) {
       drawLayer(ctx, [{ small: true, sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, patch: calPatch.arm(H.bLo), det: (c) => {
@@ -12040,12 +12044,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       notPaw.rect(-600, -600, 1800, 2000);
       for (const H of [hold.L, hold.R]) {
         const tp = H.bLo.pts[10];
-        notPaw.ellipse(tp.x + Math.cos(tp.a) * 2, tp.y + Math.sin(tp.a) * 2, 25 + LW, 24 + LW, tp.a, 0, TAU);
+        const ex = tp.x + Math.cos(tp.a) * 2, ey = tp.y + Math.sin(tp.a) * 2, rx = 25 + LW;
+        notPaw.moveTo(ex + Math.cos(tp.a) * rx, ey + Math.sin(tp.a) * rx);   // ยกปากกา — ไม่งั้นเส้นต่อจากรูปก่อนตัดเป็นแถบเฉียง
+        notPaw.ellipse(ex, ey, rx, 24 + LW, tp.a, 0, TAU);
       }
       ctx.clip(notPaw, 'evenodd');
-      drawHeart(ctx, hx0, hy0, hs, pal);
+      // idle.holdDraw = ของที่กอดแทนหัวใจ (แคปซูลกาช่าในฉากเปิดกาช่า — gacha-cine.js) · พิกัดไฟล์ออกแบบ จุดกลางระหว่างอุ้งเท้า
+      if (idle?.holdDraw) idle.holdDraw(ctx, hx0, hy0, t, clasp);
+      else drawHeart(ctx, hx0, hy0, hs, pal);
       ctx.restore();
-      drawSparks(ctx, hx0, hy0, 38, t, clamp01(clasp * 1.5));
+      if (!idle?.holdDraw) drawSparks(ctx, hx0, hy0, 38, t, clamp01(clasp * 1.5));
     }
   }
   // หัวใจจิ๋วลอยออกไปทางขวาตอนส่งหัวใจ

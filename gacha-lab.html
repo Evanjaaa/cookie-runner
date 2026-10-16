@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Gacha Lab — ห้องทดสอบฉากเปิดกาช่า</title>
+  <!-- หน้าหลังบ้านตอนพัฒนาเท่านั้น (เหมือน cat-lab / run-lab): ไม่อยู่ใน rollupOptions.input จึงไม่ถูก build ไม่ขึ้นเว็บจริง
+       ใช้ตรวจฉากเปิดกาช่าแบบ Cinematic (src/render/gacha-cine.js) ก่อนต่อเข้าตู้จริง — ไม่หักทอง ไม่ให้ของ
+       ตัวฉากเป็นไฟล์เดียวกับที่ตู้กาช่าจริงจะใช้ ปรับที่นี่จนพอใจแล้วตู้จริงได้ของเดียวกัน -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=Mali:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #150B21; --panel: rgba(40,24,60,.9); --line: rgba(255,244,220,.14); --ink: #FFF4DC; --dim: rgba(255,244,220,.6); --accent: #FF9FC4; --gold: #FFC94A; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; color: var(--ink); }
+    body { font: 400 14px Mitr, sans-serif; text-wrap: balance; background: var(--bg); }   /* ห้ามคำตกบรรทัดเดี่ยว (CLAUDE.md) */
+    input, textarea { text-wrap: wrap; }
+    button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto auto; gap: 14px; padding: 14px; max-width: 1500px; margin: 0 auto; }
+    .side { grid-row: 1 / span 2; grid-column: 2; }
+    @media (max-width: 900px) { .side { grid-row: auto; grid-column: auto; } }
+    @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+    .stage { position: relative; aspect-ratio: 16 / 10; border-radius: 18px; overflow: hidden; background: #000; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .skip { position: absolute; right: 12px; top: 12px; z-index: 3; padding: 6px 14px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.7); background: rgba(80,30,120,.45); color: #fff; font-weight: 600; }
+    .skip[hidden] { display: none; }
+    /* ผลจำลอง (หน้าเผยการ์ด) — ในเกมจริงใช้กล่องผลของตู้ */
+    .cards { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 2%; padding: 6%; background: #fff; opacity: 0; pointer-events: none; transition: opacity .5s ease; }
+    .cards.on { opacity: 1; pointer-events: auto; background: linear-gradient(180deg, #F7E3FB, #D9B6F2); }
+    .card { width: 17%; aspect-ratio: 3 / 4; border-radius: 14px; display: grid; place-items: center; text-align: center; font: 700 clamp(10px, 1.6vw, 18px) Mali, sans-serif; color: #6A2A86; background: #fff; border: 3px solid #E6B2F0; box-shadow: 0 8px 18px rgba(90,30,140,.25); transform: scale(.6); opacity: 0; transition: transform .35s cubic-bezier(.2,1.6,.4,1), opacity .25s ease; }
+    .cards.on .card { transform: none; opacity: 1; }
+    .card.s { border-color: var(--gold); background: radial-gradient(circle at 50% 40%, #FFF8D6, #FFE08A); box-shadow: 0 0 22px rgba(255,200,60,.8), 0 8px 18px rgba(90,30,140,.25); color: #8A4A00; }
+    .card.gold { border-color: #F5C24A; }
+    .side { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    h1 { margin: 0; font-size: 18px; }
+    .note { margin: 0; color: var(--dim); font-size: 12.5px; line-height: 1.5; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .row button { flex: 1 1 0; padding: 10px 8px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.06); font-weight: 600; }
+    .row button.on { background: var(--accent); color: #3A0D2A; border-color: transparent; }
+    .row button.a { background: linear-gradient(180deg, #FFE3F6, #E7A8E6); color: #5A1F66; }
+    .row button.s { background: linear-gradient(180deg, #FFF0B0, #F1B640); color: #5A3200; }
+    .row button.g { background: linear-gradient(180deg, #FFF3C4, #E9B640); color: #5A3200; }
+    .sec { font-size: 12px; color: var(--dim); }
+    /* แถบควบคุมใต้จอ: เล่น/หยุด · หลอดเวลา (ลากได้) · ความเร็ว */
+    .ctrl { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
+    .ctrl .pp { width: 44px; height: 36px; border-radius: 10px; border: 0; background: var(--accent); color: #3A0D2A; font-weight: 700; font-size: 16px; }
+    .track { position: relative; flex: 1 1 auto; height: 30px; }
+    .track input { position: absolute; inset: 0; width: 100%; margin: 0; accent-color: var(--accent); }
+    .marks { position: absolute; left: 0; right: 0; top: -4px; height: 8px; pointer-events: none; }
+    .marks i { position: absolute; top: 0; width: 2px; height: 8px; background: rgba(255,244,220,.5); }
+    .marks span { position: absolute; top: -14px; transform: translateX(-50%); font-size: 10px; color: var(--dim); white-space: nowrap; }
+    .ctrl .tm { min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; color: var(--dim); }
+    .ctrl select { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 8px; padding: 4px; color: var(--ink); }
+    .stat { font: 500 13px Mitr, sans-serif; color: var(--ink); background: rgba(0,0,0,.25); border-radius: 10px; padding: 8px 10px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <button type="button" class="skip" id="skip" hidden>ข้าม ›</button>
+      <div class="cards" id="cards"></div>
+    </div>
+    <div class="ctrl" style="grid-column: 1">
+      <button type="button" class="pp" id="pp" aria-label="หยุด/เล่น">⏸</button>
+      <div class="track"><div class="marks" id="marks"></div><input type="range" id="scrub" min="0" max="100" step="1" value="0" aria-label="หลอดเวลา"></div>
+      <span class="tm" id="tm">0.0 วิ</span>
+      <select id="speed" aria-label="ความเร็ว"><option value="1">1×</option><option value="0.5">0.5×</option><option value="0.25">0.25×</option></select>
+    </div>
+    <aside class="side">
+      <h1>🎰 Gacha Lab</h1>
+      <p class="note">ฉากเปิดกาช่าแบบ Cinematic (น้องส้มขนล้วน) · ไม่หักทอง ไม่ให้ของ · แตะในจอตอนขึ้น "แตะเพื่อเปิด!" เพื่อเปิด</p>
+      <div class="sec">เล่นผลแบบ</div>
+      <div class="row">
+        <button type="button" class="a" data-play="a">ระดับ A</button>
+        <button type="button" class="s" data-play="s">ระดับ S</button>
+        <button type="button" class="g" data-play="gold">เหรียญทอง</button>
+      </div>
+      <div class="sec">จำนวนครั้ง (5 ครั้ง = ฉากเดียวตามรางวัลดีสุด แล้วการ์ด 5 ใบ)</div>
+      <div class="row" id="count">
+        <button type="button" data-n="1" class="on">1 ครั้ง</button>
+        <button type="button" data-n="5">5 ครั้ง</button>
+      </div>
+      <div class="sec">เสียง</div>
+      <div class="row" id="sound">
+        <button type="button" data-v="0" class="on">ปิด</button>
+        <button type="button" data-v="1">เปิด</button>
+      </div>
+      <div class="sec">สถานะ</div>
+      <div class="stat" id="stat">—</div>
+      <p class="note">ลิงก์อื่น: <a href="./cat-lab.html" style="color:var(--accent)">Cat Lab</a> · <a href="./run-lab.html" style="color:var(--accent)">Run Lab</a></p>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { createCine, stepCine, drawCine, tapCine, skipCine, seekCine, cineClock, CINE_LEN, CINE_MARKS, CINE_SFX } from './src/render/gacha-cine.js';
+    import { SKINS } from './src/skins.js';
+    import { sfx, unlockAudio } from './src/audio.js';
+
+    const $ = (id) => document.getElementById(id);
+    const cv = $('cv'), ctx = cv.getContext('2d');
+    // น้องส้มตัวหลัก ขนล้วน (ผู้ใช้กำหนด) — ไม่ขึ้นกับแมว/ชุดที่ผู้เล่นใช้อยู่
+    const SKIN = { ...SKINS[0], sex: 'm', outfit: null };
+    const st = { cine: null, n: 1, sound: false, kind: 'a', results: [], playing: true, speed: 1, dragging: false };
+    window.__gacha = st;
+
+    function resize() {
+      const r = cv.getBoundingClientRect();
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      cv.width = Math.round(r.width * dpr);
+      cv.height = Math.round(r.height * dpr);
+    }
+    new ResizeObserver(resize).observe(cv);
+
+    /** ผลจำลอง: ใบแรกเป็นแบบที่กด ที่เหลือสุ่ม (A 60 / ทอง 30 / S 10 แบบตู้จริง) */
+    function fakeResults(kind, n) {
+      const out = [kind];
+      for (let i = 1; i < n; i++) { const r = Math.random(); out.push(r < 0.1 ? 's' : r < 0.7 ? 'a' : 'gold'); }
+      return out;
+    }
+    function play(kind) {
+      unlockAudio();
+      st.kind = kind;
+      st.results = fakeResults(kind, st.n);
+      // ฉากเดียวตามรางวัลดีสุด · เหรียญทองใช้แบบ A
+      const tier = st.results.includes('s') ? 's' : 'a';
+      st.cine = createCine({ tier, skin: SKIN });
+      setPlaying(true);
+      $('cards').className = 'cards';
+      $('cards').innerHTML = '';
+      $('skip').hidden = false;
+    }
+    function reveal() {
+      const box = $('cards');
+      box.innerHTML = '';
+      const label = { a: 'สกิน A', s: '✨ สกิน S ✨', gold: '🪙 เหรียญทอง' };
+      st.results.forEach((k, i) => {
+        const d = document.createElement('div');
+        d.className = 'card ' + k;
+        d.textContent = label[k];
+        d.style.transitionDelay = (0.15 + i * 0.1) + 's';
+        box.appendChild(d);
+      });
+      requestAnimationFrame(() => box.classList.add('on'));
+      $('skip').hidden = true;
+    }
+    for (const b of document.querySelectorAll('[data-play]')) b.onclick = () => play(b.dataset.play);
+    for (const b of document.querySelectorAll('#count button')) b.onclick = () => {
+      st.n = +b.dataset.n;
+      for (const x of document.querySelectorAll('#count button')) x.classList.toggle('on', x === b);
+    };
+    for (const b of document.querySelectorAll('#sound button')) b.onclick = () => {
+      st.sound = b.dataset.v === '1';
+      if (st.sound) unlockAudio();
+      for (const x of document.querySelectorAll('#sound button')) x.classList.toggle('on', x === b);
+    };
+    cv.addEventListener('pointerdown', () => { if (st.cine) tapCine(st.cine); });
+    // ── หยุด/เล่น · หลอดเวลา · ความเร็ว ──
+    const scrub = $('scrub');
+    scrub.max = String(Math.round(CINE_LEN));
+    const MARK_NAMES = { grab: 'เกาะขอบ', peek: 'โผล่หัว', look: 'มองซ้ายขวา', spot: 'เห็นแคปซูล', flip: 'ม้วนตัว', spoil: 'สปอยล์', wait: 'รอแตะ', open: 'เปิดฝา' };
+    for (const [k, f] of Object.entries(CINE_MARKS)) {
+      const i = document.createElement('i'); i.style.left = (f / CINE_LEN * 100) + '%';
+      const sp = document.createElement('span'); sp.textContent = MARK_NAMES[k]; sp.style.left = (f / CINE_LEN * 100) + '%';
+      $('marks').append(i, sp);
+    }
+    function setPlaying(on) { st.playing = on; $('pp').textContent = on ? '⏸' : '▶'; }
+    $('pp').onclick = () => {
+      if (!st.cine) return play(st.kind);
+      if (st.cine.phase === 'done') return play(st.kind);
+      setPlaying(!st.playing);
+    };
+    scrub.addEventListener('input', () => {
+      if (!st.cine) play(st.kind);
+      setPlaying(false);
+      $('cards').className = 'cards';
+      seekCine(st.cine, +scrub.value);
+    });
+    $('speed').onchange = () => { st.speed = +$('speed').value; };
+    addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); $('pp').click(); } });
+    $('skip').onclick = () => { if (st.cine) skipCine(st.cine); };
+    $('cards').onclick = () => { $('cards').className = 'cards'; st.cine = null; };
+
+    // เสียงตามจังหวะฉาก (CINE_SFX — เสียงฉากเปิดกาช่าชุดใหม่ใน audio.js)
+    function sound(ev) {
+      if (!st.sound) return;
+      for (const e of ev) { const k = CINE_SFX[e]; if (k) sfx[k]?.(); }
+    }
+
+    let last = performance.now(), fpsN = 0, fpsT = 0, fps = 0, drawMs = 0;
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const dt = Math.min(3, ((now - last) / 1000) * 60);
+      last = now;
+      fpsN++; fpsT += now - (frame.prev || now); frame.prev = now;
+      if (fpsT > 500) { fps = Math.round(fpsN * 1000 / fpsT); fpsN = 0; fpsT = 0; }
+      const C = st.cine;
+      if (!C) {
+        ctx.fillStyle = '#2A1840';
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.fillStyle = 'rgba(255,244,220,.6)';
+        ctx.font = `500 ${Math.round(cv.height * 0.04)}px Mitr, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('กดปุ่ม ระดับ A / S / เหรียญทอง ทางขวาเพื่อเล่นฉาก', cv.width / 2, cv.height / 2);
+      } else {
+        const ev = st.playing ? stepCine(C, dt * st.speed) : [];
+        sound(ev);
+        scrub.value = String(Math.round(cineClock(C)));
+        $('tm').textContent = (cineClock(C) / 60).toFixed(1) + ' วิ';
+        const t0 = performance.now();
+        drawCine(ctx, cv.width, cv.height, C);
+        drawMs = drawMs * 0.9 + (performance.now() - t0) * 0.1;
+        if (ev.includes('done')) reveal();
+      }
+      $('stat').innerHTML = C
+        ? `ฉาก: <b>${C.tier.toUpperCase()}</b> · ช่วง: ${{ intro: 'กระโดด/สปอยล์', wait: 'รอแตะ', open: 'เปิดฝา', done: 'จบ' }[C.phase]}<br>`
+          + `เวลา ${(C.life / 60).toFixed(1)} วิ · ผล: ${st.results.join(', ')}<br>เฟรม ${fps} fps · วาด ${drawMs.toFixed(1)} ms`
+        : `เฟรม ${fps} fps`;
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

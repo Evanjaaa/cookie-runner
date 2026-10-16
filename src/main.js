@@ -1246,7 +1246,7 @@ function refreshGacha() {
   if (!t) {
     document.getElementById('gpPull1').querySelector('b').textContent = cost.toLocaleString('en-US');
     document.getElementById('gpPull5').querySelector('b').textContent = (cost * multi).toLocaleString('en-US');
-    document.getElementById('gpPull5').querySelector('small').textContent = multi + ' ครั้ง!';
+    document.getElementById('gpPull5').querySelector('small').textContent = multi + ' ครั้ง';
   }
   paintPullAfford();
 
@@ -1453,9 +1453,71 @@ function doTPull(times) {
   }, CHEST_OPEN_MS);
 }
 
-/** สุ่มชุดด้วยเหรียญทอง — ผลรอจนแคปซูลแตกถึงจะโผล่ (ดู revealPull) */
+// ── ฉากเปิดกาช่าแบบ Cinematic ──
+// กดสุ่มสกิน → ฉากเต็มเวที: น้องส้มเกาะขอบ โผล่หัว มองหา กระโดดม้วนตัวกอดแคปซูล สปอยล์ระดับ (S ทอง / A+เหรียญทอง ชมพูขาว)
+// → รอผู้เล่นแตะ (ไม่แตะไม่เปิด) → กระชากฝา แสงขาวเต็มจอ → เผยกล่องผล (revealPull) แล้วฉากจางออก
+// ผลสุ่มออกมาจาก pull() ก่อนเริ่มฉากเสมอ ฉากเป็นแค่การเผย · สุ่ม 5 ครั้ง = ฉากเดียวตามรางวัลดีสุด
+// ตัวในฉาก = น้องส้มขนล้วนเสมอ (ไม่ขึ้นกับแมว/ชุดที่ผู้เล่นใช้)
+const CINE_SKIN = { ...SKINS[0], sex: 'm', outfit: null };
+let cineMod = null;             // โหลดไฟล์ฉากตอนเปิดหน้าตู้ (ไฟล์แยก ไม่ถ่วงหน้าแรก)
+const loadCine = () => (cineMod ??= import('./render/gacha-cine.js'));
+let cineRun = null;             // ฉากที่กำลังเล่น { C, m, last }
+
+async function playCine(results) {
+  let m;
+  try { m = await loadCine(); }
+  catch {
+    // โหลดฉากไม่ได้ (เน็ตหลุดกลางทาง) — กลับไปใช้แคปซูลหล่นแบบเดิม ผลยังโผล่ตามปกติ
+    cineMod = null;
+    gachaShake = 1;
+    pullProgress = 0.0001;
+    return;
+  }
+  const box = document.getElementById('gachaCine');
+  const cv = document.getElementById('gachaCineCv');
+  const tier = results.some((r) => r.kind === 'outfit' && r.outfit.rarity === 'high') ? 's' : 'a';
+  const run = cineRun = { C: m.createCine({ tier, skin: CINE_SKIN }), m, last: performance.now() };
+  box.classList.remove('hidden', 'fade');
+  const ctx = cv.getContext('2d');
+  const frame = (now) => {
+    if (cineRun !== run) return;
+    // ขนาดผืนตามกล่องจริงทุกเฟรม (หมุนจอ/ย่อหน้าต่างกลางฉากก็ไม่เบี้ยว) · ความคมสูงสุด 2 เท่า
+    const d = Math.min(2, devicePixelRatio || 1);
+    const w = Math.round(cv.clientWidth * d), h = Math.round(cv.clientHeight * d);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const dt = Math.min(3, ((now - run.last) / 1000) * 60);
+    run.last = now;
+    const ev = m.stepCine(run.C, dt);
+    for (const e of ev) { const k = m.CINE_SFX[e]; if (k) sfx[k]?.(); }
+    if (w && h) m.drawCine(ctx, w, h, run.C);
+    if (ev.includes('done')) { endCine(true); return; }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+/** จบฉาก: reveal = เผยกล่องผลใต้จอขาวแล้วจางฉากออก · false = ปิดทิ้งทันที (ออกจากหน้าตู้กลางฉาก) */
+function endCine(reveal) {
+  if (!cineRun) return;
+  cineRun = null;
+  const box = document.getElementById('gachaCine');
+  if (!reveal) { box.classList.add('hidden'); return; }
+  revealPull();
+  box.classList.add('fade');
+  setTimeout(() => { if (!cineRun) box.classList.add('hidden'); }, 480);
+  gachaMagic.kick();   // พื้นหลังร้านพักไว้ระหว่างฉาก — ปลุกกลับ
+}
+
+document.getElementById('gachaCineCv').addEventListener('pointerdown', () => {
+  if (cineRun) cineRun.m.tapCine(cineRun.C);
+});
+document.getElementById('gachaCineSkip').addEventListener('click', () => {
+  if (cineRun) cineRun.m.skipCine(cineRun.C);
+});
+
+/** สุ่มชุดด้วยเหรียญทอง — ผลรอจนฉากเปิดกาช่าจบถึงจะโผล่ (ดู playCine / revealPull) */
 function doOPull(times) {
-  if (pullProgress > 0) return;   // กันกดรัวระหว่างแอนิเมชันยังไม่จบ
+  if (pullProgress > 0 || cineRun || pullPending) return;   // กันกดรัวระหว่างแอนิเมชันยังไม่จบ
 
   const res = pull(times);
   if (!res.ok) {
@@ -1466,15 +1528,13 @@ function doOPull(times) {
   recordPulls(times);
 
   unlockAudio();
-  sfx.potion();                   // เสียงตอนหมุนตู้ เสียงของรางวัลมาทีหลัง
   setMsg(gMsg(), '');
-  gachaShake = 1;
-  pullProgress = 0.0001;          // ต้องมากกว่า 0 ให้ลูปรู้ว่ากำลังเปิดอยู่
   pullPending = res.results;
 
   closeResult();
   refreshGacha();
   refreshHome();
+  playCine(res.results);          // ฉากเปิดกาช่า — จบแล้วเรียก revealPull เอง
 }
 
 function doPull(times) {
@@ -1507,6 +1567,7 @@ function revealPull() {
 
 /** เลิกทุกอย่างที่ค้างอยู่กลางคัน — ใช้ทั้งตอนสลับช่องและตอนปิดหน้า */
 function resetGachaAnim() {
+  endCine(false);
   pullProgress = 0;
   pullPending = null;
   gachaShake = 0;
@@ -1545,6 +1606,7 @@ function showGacha(on, tab) {
   if (on) {
     if (tab) gTab = tab;
     resetGachaAnim();
+    loadCine().catch(() => { cineMod = null; });   // โหลดฉากเปิดกาช่ารอไว้ก่อนผู้เล่นกดสุ่ม
     setMsg(document.getElementById('gachaMsg'), '');
     setMsg(document.getElementById('gpMsg'), '');
     pickFirstHero('treasure');
@@ -1574,8 +1636,26 @@ function buildGList() {
   document.getElementById('glOwned').textContent = t ? treasureCount() : ownedCount();
   document.getElementById('glTotal').textContent = gPool().length;
 
+  // สกิน: การ์ดแบบเดียวกับหน้าชุดแมวในคลังน้อง (.oc-card — ผู้ใช้ขอ 16 ต.ค.) · สมบัติ: การ์ดเดิม
+  grid.classList.toggle('oc-grid', !t);
   for (const item of gPool()) {
     const got = gGot(item.id);
+    if (!t) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'oc-card' + (item.rarity === 'high' ? ' s' : '') + (got ? '' : ' locked');
+      card.innerHTML = '<span class="oc-art"><canvas></canvas></span><b></b>';
+      card.querySelector('b').textContent = item.name;
+      paintOutfitArt(card.querySelector('canvas'), getSkin(), item);
+      card.addEventListener('click', () => {
+        unlockAudio();
+        sfx.fish();
+        setHeroId(item.id);
+        openOutfitDetail(item.id, gListPanel);
+      });
+      grid.appendChild(card);
+      continue;
+    }
     const card = document.createElement('button');
     card.className = 'skin-card ' + (got ? '' : 'locked ')
       + (item.id === gHeroId() ? 'on ' : '')
@@ -7687,7 +7767,7 @@ document.getElementById('loadBack').addEventListener('click', () => showLoadout(
 // ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากหน้ารายการ "ดูอื่นๆ") ลูปหยุดเองเมื่อแผงปิด
 const gachaPanelEl = document.getElementById('gachaPanel');
 const gachaMagic = makeGachaBg(document.getElementById('gachaMagic'),
-  () => !gachaPanelEl.classList.contains('hidden'));
+  () => !gachaPanelEl.classList.contains('hidden') && !cineRun);   // พักระหว่างฉากเปิดกาช่า (ฉากคลุมทั้งเวที)
 new MutationObserver(() => gachaMagic.kick()).observe(gachaPanelEl, { attributes: true, attributeFilter: ['class'] });
 
 document.getElementById('btnGacha').addEventListener('click', () => {
@@ -8621,7 +8701,7 @@ function loop(now) {
         if (pullProgress >= 1) pullProgress = 0;
       }
 
-      paintGumball(now);   // ตู้หัวแมวของหน้าสุ่มสกินแบบใหม่ (ตู้เดิม #gachaMachine ไม่ได้โชว์แล้ว)
+      if (!cineRun) paintGumball(now);   // ตู้หัวแมวของหน้าสุ่มสกินแบบใหม่ (ตู้เดิม #gachaMachine ไม่ได้โชว์แล้ว) · พักระหว่างฉากเปิดกาช่า
     }
   }
 
@@ -8652,6 +8732,7 @@ if (import.meta.env.DEV) {
   window.__showGameOver = showGameOver;
   window.__showReward = showReward;   // กล่องรับของ (ลองพื้นหลังฉลองโดยไม่ต้องมีจดหมายจริง)
   window.__openResult = openResult;   // ผลสุ่มตู้กาช่า (ลองโดยไม่ต้องใช้เพชร)
+  window.__cinePhase = () => cineRun?.C.phase || '';   // สคริปต์ทดสอบรอจังหวะแตะเปิดของฉากเปิดกาช่า
   window.__askRevive = askRevive;     // กล่อง "น้องตกหลุม" โดยไม่ต้องรอตกหลุมจริง
   window.__showNameStep = showNameStep; // หน้าตั้งชื่อ + แอนิเมชันเปิด โดยไม่ต้องสร้างบัญชีใหม่
 }
