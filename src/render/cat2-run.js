@@ -21,15 +21,22 @@ const io = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 /** หันเฉียงขวา (มุมเดียวกับปุ่ม "ขวา" ในหน้าทดลอง) */
 export const RUN_TURN = -0.75;
 /** จังหวะขา: เฟรมต่อหนึ่งรอบก้าว (ซ้าย+ขวา) ที่ความเร็ววิ่งปกติ — น้องตัวกลมขาสั้น ก้าวถี่พอดี ๆ ไม่รัวแบบตัวเดิม */
-const STRIDE = 0.88;   // เรเดียนของรอบก้าวต่อหน่วย runPhase ของ Player (runPhase เดิน 0.408/เฟรม → ~17.5 เฟรม/รอบ)
+const STRIDE = 0.88;
+/** วิ่งสี่จังหวะ: ระยะ runPhase ต่อหนึ่งจังหวะ — runPhase เดิน 0.408/เฟรมที่ความเร็วปกติ → 7.5 เฟรม/จังหวะ = 8 จังหวะ/วิ (เท่าค่าเริ่มต้นในแท็บ 4 จังหวะ) · วิ่งเร็วขึ้น = ก้าวถี่ขึ้นเอง */
+const RUN4_STEP = 3.06;   // เรเดียนของรอบก้าวต่อหน่วย runPhase ของ Player (runPhase เดิน 0.408/เฟรม → ~17.5 เฟรม/รอบ)
 
 /**
  * ท่ากระโดดชั้นสองประจำตัว (id แมว → ชนิด) · ไม่มีในรายการ = 'twirl'
  *   flip  = ตีลังกาม้วนตัวไปข้างหน้าหนึ่งรอบ (กอดเข่า หลับตายิ้ม) มีรอยลมโค้งตามหลัง
  *   twirl = หมุนตัวรอบแกนตั้งหนึ่งรอบ (ตัวตรง แขนกาง) มีประกายวนรอบตัว
  */
-export const JUMP2 = { orange: 'flip' };
-const J2_LEN = { flip: 24, twirl: 26 };
+export const JUMP2 = {};   // ผู้ใช้ 17 ต.ค.: แมวทุกตัวทุกสีตีลังกาเหมือนน้องส้ม — ใส่ id: 'twirl' ถ้าอยากให้ตัวไหนหมุนตัวแทน
+const J2_LEN = { flip: 27, twirl: 29 };
+/**
+ * ท่าเตรียมกระโดด (ผู้ใช้ 17 ต.ค.): กดแล้วตัดเข้าท่าตัวหย่น (Down + หดเตี้ยป้อม) ทันที ค้างไว้ JUMP_PREP เฟรม
+ * แล้วตัดไปท่าถัดไปเลย (Up / ตีลังกา) — ไม่มีท่า Down ตัวตรงคั่น (ผู้ใช้: "ไม่ต้องใส่ฉากยืนท่านั้นมา")
+ */
+const JUMP_PREP = 4;
 
 export function createRunAnim() {
   return { sm: {}, air: 0, fall: 0, land: 99, j2: null, j2t: 0, prevJumps: 0, prevGround: true, slide: 0, t: 0 };
@@ -54,9 +61,11 @@ export function stepRunAnim(A, P, info = {}) {
   // ── เหตุการณ์ ──
   if (ground && !A.prevGround) A.land = 0; else A.land += dt;
   if (!ground && P.jumps >= 2 && P.jumps > A.prevJumps && A.prevJumps >= 1) {
-    A.j2 = JUMP2[info.catId] || 'twirl';
+    A.j2 = JUMP2[info.catId] || 'flip';
     A.j2t = 0;
   }
+  // กดกระโดด (ชั้นหนึ่งหรือสอง): เริ่มนับเฟรมท่าเตรียม/สปริง — เดินตกขอบ (jumps ขึ้นแต่ไม่ได้ถีบ) ไม่นับ
+  if (P.jumps > A.prevJumps && P.vy < -4) A.jumpT = 0; else A.jumpT = (A.jumpT ?? 99) + dt;
   A.prevJumps = P.jumps;
   A.prevGround = ground;
 
@@ -114,7 +123,6 @@ export function stepRunAnim(A, P, info = {}) {
     target[k] = run[k] + (a - run[k]) * air;
   }
   // ถีบตัวขึ้น: ยืดตัวสูง แขนสะบัดไปหลัง หูลู่ หางฟาดลง
-  target.sy += 0.1 * kick0; target.sx -= 0.05 * kick0;
   target.armSwingL += 0.18 * kick0; target.armSwingR -= 0.18 * kick0;
   target.ear += 0.3 * kick0; target.wag -= 0.5 * kick0; target.tilt -= 0.04 * kick0;
   // ลอยค้างบนยอด: พับขาเพิ่ม เอนหน้า กางแขนนิด อ้าปากดีใจ หูตั้งกระดิก
@@ -135,9 +143,15 @@ export function stepRunAnim(A, P, info = {}) {
   for (const k of Object.keys(target)) shape[k] = sm(A, 's_' + k, target[k], rate);
 
   // ── ตัวแบนตอนลงพื้น/ยืดตอนถีบ (ค่าเดียวกับตัวเดิม) ──
-  const sq = info.dead ? 0 : P.squash || 0;
+  // ใช้แค่ตัวแบนตอนลงพื้น (squash บวก) — ตอนถีบขึ้น Player ยืดตัว (ลบ) แต่ผู้ใช้ให้หดตัวเด้งดึ๋งแทน (spring ข้างล่าง)
+  const sq = info.dead ? 0 : Math.max(0, P.squash || 0);
   shape.sx += sq * 0.22;
   shape.sy -= sq * 0.26;
+  // ตัวหย่นตอนเริ่มกระโดด: หดเตี้ยป้อมเต็มที่ค้างไว้ JUMP_PREP เฟรม → คลายตัวใน 2 เฟรม (ไม่เด้งยืด)
+  const jt = A.jumpT ?? 99;
+  const spring = jt < JUMP_PREP ? 1 : Math.max(0, 1 - (jt - JUMP_PREP + 1) / 3);
+  shape.sx += 0.15 * spring;
+  shape.sy -= 0.21 * spring;
   // ── หมอบสไลด์ ──
   if (slide > 0.01) {
     shape.loaf = slide;
@@ -153,10 +167,10 @@ export function stepRunAnim(A, P, info = {}) {
     const len = J2_LEN[A.j2];
     // แตะพื้นก่อนครบรอบ = เร่งให้จบใน ~5 เฟรม (ไม่หยุดค้างกลางรอบ)
     A.j2t += ground ? Math.max(dt, (len - A.j2t) / 5) : dt;
-    const u = clamp01(A.j2t / len);
+    const u = clamp01((A.j2t - JUMP_PREP) / (len - JUMP_PREP));   // ช่วงแรกเป็นท่าเตรียม (หดตัว) ยังไม่หมุน
     j2k = Math.sin(Math.PI * u);
     if (A.j2 === 'flip') {
-      spin = TAU * io(u);
+      spin = TAU * (1 - (1 - u) * (1 - u));   // เริ่มหมุนเร็วทันทีหลังตัวหย่น (ไม่ค่อย ๆ เริ่ม = ไม่เห็นท่ายืนตรงตอนต้นรอบ) แล้วค่อยชะลอตอนครบรอบ
       // กอดเข่าม้วนตัวกลม: ขาพับสุด แขนหุบมาหน้า หลับตายิ้ม หางม้วนตาม
       const tuck = ease(clamp01(j2k * 1.6));
       tuckK = tuck;
@@ -187,7 +201,30 @@ export function stepRunAnim(A, P, info = {}) {
   if (!shape.mood) shape.mood = info.mood || (hurt > 0.2 ? 'hurt' : info.dead ? 'dizzy' : '');
   if (info.mouth) shape.mouth = 0.8;
   shape.noCrotchFill = 1;                                 // ขาสลับตลอดเวลา — ไม่เติมก้อนเป้าแบบท่าเตะขา
-  return { shape, spin, twirl, j2: A.j2, j2k, air, land: landK };
+  // ── ตัว+ขาวิ่งสี่จังหวะตามแบบผู้ใช้ (RUN4 · เปลี่ยนท่าทีละจังหวะแบบสไปรต์คุกกี้รัน) ──
+  //   บนพื้น: Up · Down · Up · Down ตามระยะวิ่ง (RUN4_STEP) · กลางอากาศ: ขาขึ้น = Up (ก้าวยาว) / ขาลง = Down (เท้าลงรอแตะพื้น)
+  //   ลงพื้น = Down · ตีลังกา = Down (ตัวกลมเท้าใต้ตัว) · หมอบ/หมุนตัว (twirl) = ขาเดิมจากแบบ
+  let bob4 = 0, beat = -1;
+  if (slide < 0.5 && A.j2 !== 'twirl') {
+    let body;
+    if (A.j2 === 'flip') body = RUN4[1];
+    else if ((A.jumpT ?? 99) < JUMP_PREP) body = RUN4[1];   // ท่าเตรียมกระโดด = Down ตัวหย่น (เท้าใต้ตัว)
+    else if (air > 0.5) body = fall < 0.55 ? RUN4[0] : RUN4[1];
+    else if (A.land < 4 || (P.squash || 0) > 0.05) {
+      body = RUN4[1];   // ลงพื้น: ท่า Down (เท้าใต้ตัว) จนตัวหายแบน ค่อยกางขาวิ่งต่อ (ผู้ใช้: ยังไม่ต้องรีบอ้าขา)
+      if (!info.dead) shape.mood = 'hurt';   // ตัวหดตอนลงพื้น = หลับตาปี๋ > < (ผู้ใช้ขอ)
+    }
+    else {
+      beat = Math.floor((P.runPhase * (info.gait ?? 1)) / RUN4_STEP) % 4;
+      body = RUN4[beat];
+      bob4 = body.bob;
+    }
+    const b = body.shape;
+    for (const k of ['runBody', 'earRun', 'tailBase', 'tailShort', 'armSwingL', 'armSwingR', 'turn', 'noCrotchFill']) shape[k] = b[k];
+    shape.kickL = shape.kickR = shape.liftL = shape.liftR = shape.elbowL = shape.elbowR = 0;
+    if (air <= 0.5) shape.wag = b.wag;   // บนพื้น: หางตามภาพจังหวะ · กลางอากาศ: หางสะบัดตามแรง
+  }
+  return { shape, spin, twirl, j2: A.j2, j2k, air, land: landK, bob: bob4, beat };
 }
 
 /** จุดหมุนตอนตีลังกา: กลางตัว (หน่วยเกมเหนือเท้า ต่อสเกล 1) — สูงจากเท้า ~228 หน่วยไฟล์ × 0.104 */
@@ -201,8 +238,9 @@ export function drawCat2Run(ctx, x, feetY, scale, s, t, r) {
   const py = feetY - SPIN_Y * scale;
   if (r.spin) drawFlipTrail(ctx, x, py, scale, r.spin, r.j2k);
   ctx.save();
+  const fxM = r.spin ? ctx.getTransform() : null;   // เอฟเฟกต์ชุดไม่หมุนตามตอนตีลังกา (idle.fxM ใน drawCat2)
   if (r.spin) { ctx.translate(x, py); ctx.rotate(r.spin); ctx.translate(-x, -py); }
-  drawCat2(ctx, x, feetY, scale, s, t, { k: 1, shape: r.shape });
+  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM });   // bob = ตัวลอยตอนจังหวะ Up
   ctx.restore();
 }
 
@@ -232,4 +270,30 @@ function drawFlipTrail(ctx, x, y, scale, spin, k) {
   ctx.quadraticCurveTo(sx, sy, sx - sz, sy); ctx.quadraticCurveTo(sx, sy, sx, sy - sz);
   ctx.fill();
   ctx.restore();
+}
+
+// ══ วิ่งสี่จังหวะ (แบบผู้ใช้ 17 ต.ค.: Up · Down · Up · Down วนลูปแบบสไปรต์คุกกี้รัน) ══
+// แต่ละจังหวะ = ท่าค้างหนึ่งท่า (ไม่ไล่ผสมระหว่างจังหวะ) · หน้านิ่ง (ไม่กะพริบ ไม่เปลี่ยนอารมณ์)
+// ตอนนี้ยังใช้ขา/ตัวจากแบบ ดัดด้วย kick/lift — รอผู้ใช้ส่งแบบขาแต่ละจังหวะ แล้ววาดขา+ตัวใหม่ทีละจังหวะลงช่องเดียวกันนี้
+//   bob = ยกทั้งตัว (หน่วยเกม · บวก = ขึ้น) · kick บวก = เท้าไปหลัง (ซ้ายจอ) · lift = ยกเท้า (หน่วยไฟล์)
+const RUN4_BASE = { turn: RUN_TURN, gaze: 0.35, gazeY: 0, mood: '', mouth: 0, noCrotchFill: 1, lean: 0.06, earRun: 1 };   // earRun = ทรงหูแบบท่าวิ่ง
+export const RUN4 = [
+  // Up: ตัวลอย ขาหน้าก้าวยาวไปหน้า ขาหลังเหยียดถีบไปหลัง หางชี้ขึ้นหลัง
+  // วาดตามแบบ (ตัว+ขาลากจากภาพ จัดสัดส่วนเทียบหัว) · หัวสูงเท่ากันทุกจังหวะแบบในแบบ — ตัวไม่ลอย ขาพับขึ้นเอง · แขนท่าพักของแบบกางออกข้างอยู่แล้ว
+  { label: 'Up', bob: 5, shape: { ...RUN4_BASE, runBody: 'up', lean: 0, wag: 0, ear: 0.2, tilt: 0, armSwingL: 0.05, armSwingR: 0.12, tailBase: { x: 205, y: 535, a: Math.PI * 1.0, curl: 0.42 }, tailShort: 0.6 } },
+  // Down: เท้าลงใต้ตัว เข่าหน้าพับมาหน้า (วาดตามแบบ) · เท้าแตะพื้นพอดี (bob 2) — ในแบบหัวสูงเท่ากันทุกภาพ เท้า Down ต่ำกว่า Up
+  //   จังหวะ Up จึงลอยขึ้น (bob 5) = ตัวลอยตอนก้าวยาว แล้วยุบลงตอนเท้าแตะพื้น
+  { label: 'Down', bob: 2, shape: { ...RUN4_BASE, runBody: 'down', lean: 0, wag: 0, ear: 0.05, tilt: 0, armSwingL: -0.06, armSwingR: 0.16, tailBase: { x: 210, y: 552, a: Math.PI * 1.03, curl: 0.12 }, tailShort: 0.7 } },
+  // Up (จังหวะ 3 · ผู้ใช้: คล้ายจังหวะ 1 ต่างกันที่ขาหลังยกสูงขึ้นนิด) — ท่าตัว/แขน/หางเดียวกับจังหวะ 1
+  { label: 'Up', bob: 5, shape: { ...RUN4_BASE, runBody: 'up2', lean: 0, wag: 0, ear: 0.2, tilt: 0, armSwingL: 0.05, armSwingR: 0.12, tailBase: { x: 205, y: 535, a: Math.PI * 1.0, curl: 0.42 }, tailShort: 0.6 } },
+  // Down (จังหวะ 4 · สลับขา): เท้าหน้าลงแตะพื้น เท้าหลังยกไปหลัง เข่าหน้ากลม (วาดตามแบบ) — ตัว/แขน/หางเดียวกับจังหวะ 2
+  { label: 'Down', bob: 2.2, shape: { ...RUN4_BASE, runBody: 'down2', lean: 0, wag: 0, ear: 0.05, tilt: 0, armSwingL: -0.06, armSwingR: 0.16, tailBase: { x: 212, y: 538, a: Math.PI * 0.99, curl: 0.16 }, tailShort: 0.68 } },
+];
+/** ท่าของจังหวะ i (วนลูป) · mix 0..1 = ผสมไปจังหวะถัดไป (ปุ่ม "นุ่ม" ในหน้าทดสอบ — ปกติ 0 แบบสไปรต์) */
+export function run4At(i, mix = 0) {
+  const a = RUN4[((i % 4) + 4) % 4], b = RUN4[(((i + 1) % 4) + 4) % 4];
+  if (!mix) return { shape: a.shape, bob: a.bob, label: a.label };
+  const shape = { ...a.shape };
+  for (const k of Object.keys(a.shape)) if (typeof a.shape[k] === 'number') shape[k] = a.shape[k] + ((b.shape[k] ?? 0) - a.shape[k]) * mix;
+  return { shape, bob: a.bob + (b.bob - a.bob) * mix, label: a.label };
 }

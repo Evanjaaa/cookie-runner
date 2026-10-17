@@ -91,6 +91,11 @@
     kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font: inherit; font-size: 12px; }
     a { color: var(--accent2); }
 
+    .modes { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
+    .modes button { flex: 1; border: 0; background: none; border-radius: 12px; padding: 9px 6px; cursor: pointer; font-weight: 500; }
+    .modes button.on { background: var(--accent); color: #2A0F22; font-weight: 600; }
+    body.four .lvl { display: none !important; }
+    body:not(.four) .fourOnly { display: none !important; }
     @media (max-width: 900px) {
       .wrap { grid-template-columns: minmax(0, 1fr); }
       .stage { top: 0; }
@@ -103,7 +108,7 @@
     <section class="stage">
       <div class="view">
         <canvas id="cv"></canvas>
-        <div class="ov tl">
+        <div class="ov tl lvl">
           <div class="seg" id="viewSeg" title="มุมกล้อง (ปุ่ม V)">
             <button data-view="full">เต็มฉาก</button>
             <button data-view="close">ใกล้ตัว</button>
@@ -116,7 +121,13 @@
           </div>
           <button class="pill" id="trailBtn" title="ภาพซ้อนเห็นเส้นทางกระโดด (ปุ่ม T)">👻 ภาพซ้อน</button>
         </div>
-        <div class="ov bl"><span class="pill tag" id="poseTag">—</span></div>
+        <div class="ov bl lvl"><span class="pill tag" id="poseTag">—</span></div>
+        <div class="ov tl fourOnly">
+          <span class="pill tag">🐾 วิ่ง 4 จังหวะ · หน้านิ่ง</span>
+          <button class="pill" id="refBtn" title="ภาพแบบของผู้ใช้ (ปุ่ม R)">🖼 ภาพแบบ</button>
+          <button class="pill" id="onionBtn" title="ซ้อนภาพแบบโปร่ง ๆ บนตัวใหญ่ (ปุ่ม O) — เทียบสัดส่วน">🧅 ซ้อนแบบ</button>
+          <button class="pill" id="smoothBtn" title="ผสมท่าระหว่างจังหวะ (ปกติ = สไปรต์ทีละจังหวะ)">〰 ผสมระหว่างจังหวะ</button>
+        </div>
       </div>
       <div class="bar">
         <button class="btn big" id="play" title="เล่น/หยุด (Space)">⏸</button>
@@ -132,12 +143,25 @@
     </section>
 
     <aside class="side">
-      <div class="card">
+      <nav class="modes" id="modes">
+        <button data-mode="level">🏃 วิ่งในด่าน</button>
+        <button data-mode="four">🐾 วิ่ง 4 จังหวะ</button>
+      </nav>
+      <div class="card fourOnly">
+        <h2>วิ่ง 4 จังหวะ (หน้านิ่ง)</h2>
+        <p class="note">ตามแบบ: <b>Up · Down · Up · Down</b> วนลูปทีละภาพแบบสไปรต์คุกกี้รัน · ด้านบน = เล่นวน · ด้านล่าง = สี่จังหวะค้างไว้เทียบกัน (แตะภาพไหน = ค้างจังหวะนั้น)</p>
+        <div class="row"><label>จังหวะ/วิ</label><select id="beatRate">
+          <option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="10">10</option><option value="12">12</option>
+        </select></div>
+        <div class="row"><label>พื้นหลัง</label><select id="fourBg"><option value="plain">ขาวครีม (แบบภาพแบบ)</option><option value="stage">ฉากด่าน</option></select></div>
+        <p class="note">ตัว+ขาทั้ง 4 จังหวะวาดตามภาพแบบแล้ว (`RUN_BODY` ใน cat2.js) · กด 🧅 ซ้อนแบบ เทียบกับภาพแบบได้ทุกจังหวะ</p>
+      </div>
+      <div class="card lvl">
         <h2>ท่าตอนวิ่งในด่าน</h2>
         <div id="poses"></div>
         <p class="note" id="poseNote"></p>
       </div>
-      <div class="card">
+      <div class="card lvl">
         <h2>เล่นเอง</h2>
         <p class="note">กด <b>เล่นเอง</b> แล้วบังคับเหมือนในเกม: <kbd>Space</kbd>/<kbd>↑</kbd>/แตะจอ = กระโดด (กดอีกครั้งกลางอากาศ = ชั้นสอง) · <kbd>↓</kbd> ค้าง = หมอบ/ดิ่ง · <kbd>H</kbd> = โดนชน · <kbd>K</kbd> = ล้ม</p>
         <div class="chips" style="margin-top:8px"><button class="chip" id="manual">🎮 เล่นเอง</button></div>
@@ -170,7 +194,7 @@
     import { drawStageBackdrop, drawGround, GROUND_ART } from './src/render/background.js';
     import { drawPlayer, setCatEdgeScale } from './src/render/entities.js';
     import { drawCat2, cat2Outfits, CAT2_BREEDS } from './src/render/cat2.js';
-    import { createRunAnim, stepRunAnim, drawCat2Run, JUMP2 } from './src/render/cat2-run.js';
+    import { createRunAnim, stepRunAnim, drawCat2Run, JUMP2, RUN4, run4At } from './src/render/cat2-run.js';
     import { SKINS } from './src/skins.js';
     import { ALL_OUTFITS } from './src/outfits.js';
 
@@ -287,9 +311,10 @@
     const st = {
       pose: 'jump1', view: 'close', draw: 'old', trail: false, zoom: 1.5, f: 0, playing: true, speed: 1,
       stage: STAGES[0].id, cat: 'orange', outfit: 'none', manual: false,
+      mode: 'level', beat: 0, beatRate: 8, smooth: false, ref: false, onion: false, fourBg: 'plain',
     };
     try { Object.assign(st, JSON.parse(localStorage.getItem('runlab.v1') || '{}'), { playing: true, manual: false }); } catch {}
-    const save = () => { try { localStorage.setItem('runlab.v1', JSON.stringify({ pose: st.pose, view: st.view, draw: st.draw, trail: st.trail, zoom: st.zoom, stage: st.stage, cat: st.cat, outfit: st.outfit, speed: st.speed })); } catch {} };
+    const save = () => { try { localStorage.setItem('runlab.v1', JSON.stringify({ onion: st.onion, mode: st.mode, beatRate: st.beatRate, smooth: st.smooth, ref: st.ref, fourBg: st.fourBg, pose: st.pose, view: st.view, draw: st.draw, trail: st.trail, zoom: st.zoom, stage: st.stage, cat: st.cat, outfit: st.outfit, speed: st.speed })); } catch {} };
     let sim = [];
     const resim = () => { sim = simulate(poseById(st.pose), poseById(st.pose).dur); };
 
@@ -302,7 +327,8 @@
       return of && of.id !== 'none' ? { ...base, outfit: of } : base;
     };
     const newSkin = () => {
-      const base = CAT2_BREEDS.find((b) => b.id === st.cat) || { ...SKINS[0], sex: 'm' };
+      // แมวแบบใหม่ (CAT2_BREEDS) · สีเดิม (SKINS) ตัววาดใหม่แปลงจานสีให้เอง — ทุกสีใช้ท่าวิ่งชุดเดียวกัน
+      const base = CAT2_BREEDS.find((b) => b.id === st.cat) || { sex: 'm', ...(SKINS.find((k) => k.id === st.cat) || SKINS[0]) };
       const of = ALL_OUTFITS.find((o) => o.id === st.outfit);
       return of && of.id !== 'none' && NEW_OF.has(of.id) ? { ...base, outfit: of } : base;
     };
@@ -421,6 +447,99 @@
       showVals(fr);
     }
 
+    // ══ หน้า "วิ่ง 4 จังหวะ" ══
+    // ภาพแบบสี่จังหวะ (พิกัดในไฟล์ภาพ 1536×1086): hx/gy = จุดยึดให้ตาตรงกับตัวที่วาด
+    const REF4 = [{ hx: 275, gy: 644 }, { hx: 621, gy: 644 }, { hx: 955, gy: 644 }, { hx: 1277, gy: 644 }];   // จุดยึด = ตำแหน่งตาเทียบกับจังหวะ 1 (หัวทุกภาพสูงเท่ากันในแบบ) — วัดจากตาดำ
+    const refImg = new Image();
+    refImg.src = './ref/run-4beat.jpg';
+    let cells4 = [];
+    let rbXf = null;   // ตัวแปลงของตัววิ่ง (เครื่องมือวาด)   // กรอบภาพสี่จังหวะ (พิกเซลผ้าใบ) — ไว้แตะเลือกจังหวะ
+    /** น้องหนึ่งตัวท่าจังหวะ b · cx = กลางตัว gy = พื้น (พิกเซล) · px = ความสูงตัวโดยประมาณ (พิกเซล) */
+    function drawBeat(c, cx, gy, px, b, mix, t, onRunBody) {
+      const R = run4At(b, mix);
+      const sc = px / 64;   // ตัวน้องสูง ~64 หน่วยเกมที่สเกล 1
+      c.save();
+      c.fillStyle = 'rgba(60,30,10,.18)';
+      c.beginPath(); c.ellipse(cx, gy + 2, px * 0.3 * (R.bob > 2 ? 0.88 : 1), px * 0.05, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+      drawCat2(c, cx, gy - R.bob * sc, sc, newSkin(), t, { k: 1, shape: R.shape, noBlink: true, onRunBody });
+    }
+    function render4() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (st.fourBg === 'stage') {
+        const stage = STAGES.find((x) => x.id === st.stage) || STAGES[0];
+        const sc = h / VIEW.H;
+        ctx.fillStyle = '#0C0614'; ctx.fillRect(0, 0, w, h);
+        ctx.setTransform(sc, 0, 0, sc, (w - VIEW.W * sc) / 2, 0);
+        drawStageBackdrop(ctx, 0, stage, stage.palette, 0);
+        drawGround(ctx, [], 0, stage.palette, GROUND_ART[stage.backdrop]);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = 'rgba(255,248,238,.8)'; ctx.fillRect(0, h * 0.6, w, h * 0.4);
+      } else {
+        const g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, '#FFFDF9'); g.addColorStop(1, '#F6EBDD');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      }
+      const bi = Math.floor(st.beat) % 4, mix = st.smooth ? st.beat - Math.floor(st.beat) : 0;
+      const t = 2070;   // หน้านิ่ง: เวลาคงที่ (ไม่กะพริบ ไม่หายใจ) · 34.5 วิ = ช่วงที่ปากไม่ขยับเอง (เมี้ยว/งุบงิบทุก ~3.3 วิ)
+      // ── บน: เล่นวน ──
+      const topH = h * 0.6;
+      const big = topH * 0.72, gy = topH * 0.92;
+      ctx.strokeStyle = 'rgba(120,80,50,.25)'; ctx.lineWidth = 2 * dpr;
+      ctx.beginPath(); ctx.moveTo(w * 0.2, gy + 2 * dpr); ctx.lineTo(w * 0.8, gy + 2 * dpr); ctx.stroke();
+      if (!st.onionOnly) drawBeat(ctx, w / 2, gy, big, bi, mix, t, (m, dx0, dy0) => { rbXf = { m, dx0, dy0 }; });
+      // เครื่องมือวาด: จุดในภาพแบบ (พิกเซลไฟล์ภาพ) → พิกัดไฟล์ออกแบบของตัววิ่ง (ผ่านตำแหน่งซ้อนแบบเดียวกับปุ่ม 🧅)
+      {
+        const sc = big / 64, k = (344 * sc * 0.104) / 202, R = REF4[bi], bob = RUN4[bi].bob * sc, hw = 344 * sc * 0.104;
+        const ox = (st.onionDx ?? 0.015) * hw, oy = (st.onionDy ?? -0.049) * hw;
+        window.__srcToFile = (sx, sy) => {
+          if (!rbXf) return null;
+          const p = new DOMPoint(w / 2 + (sx - R.hx) * k + ox, gy - bob + (sy - R.gy) * k + oy).matrixTransform(rbXf.m.inverse());
+          return [Math.round(p.x - rbXf.dx0), Math.round(p.y - rbXf.dy0)];
+        };
+      }   // onionOnly = ดูเฉพาะภาพแบบที่จัดตำแหน่งแล้ว (ใช้ตอนวาด)
+      if (st.onion && refImg.complete && refImg.naturalWidth) {
+        // ซ้อนภาพแบบ: ขนาดตามความกว้างหัว (แบบ ~202 พิกเซล = หัวน้อง 344 หน่วยไฟล์) · กลางหัวตรงกัน · พื้นของแบบตรงพื้นของจังหวะ
+        const sc = big / 64, k = (344 * sc * 0.104) / 202;
+        const R = REF4[bi], bob = RUN4[bi].bob * sc;
+        ctx.save();
+        ctx.globalAlpha = st.onionOnly ? 1 : 0.42;
+        ctx.globalCompositeOperation = 'multiply';
+        const sx0 = R.hx - 170, sy0 = 280, sw = 340, sh = 420;   // ทั้งตัวรวมเท้า (เท้าบางจังหวะต่ำกว่าจุดยึด)
+        const hw = 344 * sc * 0.104, ox = (st.onionDx ?? 0.015) * hw, oy = (st.onionDy ?? -0.049) * hw;   // เลื่อนให้ตาตรงกัน (หัวตัวเราหันเฉียงขวา)
+        ctx.drawImage(refImg, sx0, sy0, sw, sh, w / 2 - (R.hx - sx0) * k + ox, gy - bob - (R.gy - sy0) * k + oy, sw * k, sh * k);
+        ctx.restore();
+      }
+      ctx.font = '600 ' + Math.round(16 * dpr) + 'px Mitr, sans-serif';
+      ctx.textAlign = 'left'; ctx.fillStyle = '#6A3E22';
+      ctx.fillText('จังหวะ ' + (bi + 1) + ' · ' + RUN4[bi].label, 16 * dpr, topH * 0.2);
+      // ── ล่าง: สี่จังหวะค้าง (+ ภาพแบบ) ──
+      const rowY = topH, rowH = h - topH;
+      const withRef = st.ref && refImg.complete && refImg.naturalWidth;
+      const framesH = withRef ? rowH * 0.5 : rowH;
+      const cw = w / 4;
+      cells4 = [];
+      for (let i = 0; i < 4; i++) {
+        const x0 = i * cw;
+        cells4.push([x0, rowY, cw, framesH]);
+        if (i === bi) { ctx.fillStyle = 'rgba(255,159,196,.22)'; ctx.fillRect(x0 + 4 * dpr, rowY + 4 * dpr, cw - 8 * dpr, framesH - 8 * dpr); }
+        const px = Math.min(framesH * 0.6, cw * 0.62);
+        drawBeat(ctx, x0 + cw / 2, rowY + framesH * 0.78, px, i, 0, t);
+        ctx.font = '600 ' + Math.round(13 * dpr) + 'px Mitr, sans-serif';
+        ctx.textAlign = 'center'; ctx.fillStyle = '#6A3E22';
+        ctx.fillText((i + 1) + ' · ' + RUN4[i].label, x0 + cw / 2, rowY + framesH * 0.95);
+      }
+      if (withRef) {
+        // ภาพแบบ: ตัดเฉพาะแถบตัวน้องสี่ตัว (ภาพ 1536×1086 · แมวอยู่ช่วง y 290–750) วางใต้ภาพสี่จังหวะ
+        const sy = 290, sh = 460, iw = refImg.naturalWidth;
+        const dh = rowH - framesH, dw = Math.min(w, dh * (iw / sh));
+        ctx.drawImage(refImg, 0, sy, iw, sh, (w - dw) / 2, rowY + framesH, dw, dh);
+      }
+    }
+
     let lastVals = '';
     function showVals(fr) {
       const { p, S } = fr;
@@ -535,9 +654,34 @@
     $('zoom').oninput = (e) => { st.zoom = +e.target.value; save(); };
     $('speed').onchange = (e) => { st.speed = +e.target.value; save(); };
     $('play').onclick = () => { st.playing = !st.playing; };
-    $('stepB').onclick = () => { if (live) return; st.playing = false; st.f = Math.max(0, Math.floor(st.f) - 1); };
-    $('stepF').onclick = () => { if (live) { st.playing = false; stepManual(); return; } st.playing = false; st.f = Math.min(poseById(st.pose).dur, Math.floor(st.f) + 1); };
-    $('track').oninput = (e) => { if (live) return; st.playing = false; st.f = +e.target.value; };
+    // ── หน้า 4 จังหวะ ──
+    function setMode(m) {
+      st.mode = m;
+      document.body.classList.toggle('four', m === 'four');
+      for (const b of $('modes').children) b.classList.toggle('on', b.dataset.mode === m);
+      if (m !== 'four') pick(st.pose);
+      save();
+    }
+    $('modes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); };
+    $('beatRate').value = String(st.beatRate);
+    $('beatRate').onchange = (e) => { st.beatRate = +e.target.value; save(); };
+    $('fourBg').value = st.fourBg;
+    $('fourBg').onchange = (e) => { st.fourBg = e.target.value; save(); };
+    const markFour = () => { $('onionBtn').classList.toggle('on', st.onion); $('refBtn').classList.toggle('on', st.ref); $('smoothBtn').classList.toggle('on', st.smooth); };
+    $('refBtn').onclick = () => { st.ref = !st.ref; markFour(); save(); };
+    $('onionBtn').onclick = () => { st.onion = !st.onion; markFour(); save(); };
+    $('smoothBtn').onclick = () => { st.smooth = !st.smooth; markFour(); save(); };
+    markFour();
+    cv.addEventListener('click', (e) => {
+      if (st.mode !== 'four') return;
+      const r = cv.getBoundingClientRect(), k = cv.width / r.width, x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k;
+      const i = cells4.findIndex(([x0, y0, w0, h0]) => x >= x0 && x < x0 + w0 && y >= y0 && y < y0 + h0);
+      if (i >= 0) { st.playing = false; st.beat = i; }
+    });
+    setMode(st.mode);
+    $('stepB').onclick = () => { if (st.mode === 'four') { st.playing = false; st.beat = (Math.floor(st.beat) + 3) % 4; return; } if (live) return; st.playing = false; st.f = Math.max(0, Math.floor(st.f) - 1); };
+    $('stepF').onclick = () => { if (st.mode === 'four') { st.playing = false; st.beat = (Math.floor(st.beat) + 1) % 4; return; } if (live) { st.playing = false; stepManual(); return; } st.playing = false; st.f = Math.min(poseById(st.pose).dur, Math.floor(st.f) + 1); };
+    $('track').oninput = (e) => { if (st.mode === 'four') { st.playing = false; st.beat = +e.target.value; return; } if (live) return; st.playing = false; st.f = +e.target.value; };
     $('manual').onclick = () => (live ? stopManual() : startManual());
     cv.addEventListener('pointerdown', () => { if (live) manualJump(); });
 
@@ -555,6 +699,8 @@
       if (e.key === '.') $('stepF').click();
       if (e.key === 'v' || e.key === 'V') { const order = ['full', 'close', 'follow']; setSeg('viewSeg', 'view', order[(order.indexOf(st.view) + 1) % 3]); }
       if (e.key === 't' || e.key === 'T') $('trailBtn').click();
+      if ((e.key === 'r' || e.key === 'R') && st.mode === 'four') $('refBtn').click();
+      if ((e.key === 'o' || e.key === 'O') && st.mode === 'four') $('onionBtn').click();
       if (e.key === '[' || e.key === ']') {
         const i = POSES.findIndex((p) => p.id === st.pose);
         pick(POSES[(i + (e.key === ']' ? 1 : POSES.length - 1)) % POSES.length].id);
@@ -568,6 +714,15 @@
       requestAnimationFrame(frame);
       const df = Math.min(4, ((now - last) / 1000) * 60);
       last = now;
+      if (st.mode === 'four') {
+        if (st.playing) st.beat = (st.beat + (df / 60) * st.beatRate * st.speed) % 4;
+        $('track').max = 3.99; $('track').step = 0.01; $('track').value = st.beat;
+        $('fnum').textContent = 'จังหวะ ' + (Math.floor(st.beat) + 1) + ' / 4';
+        $('play').textContent = st.playing ? '⏸' : '▶';
+        try { render4(); window.__err4 = null; } catch (e) { window.__err4 = String(e.stack || e); }
+        return;
+      }
+      $('track').step = 1;
       if (live) {
         if (st.playing) { acc += df * st.speed; while (acc >= 1) { acc -= 1; stepManual(); } }
         st.f = sim.length - 1;
@@ -583,7 +738,7 @@
     }
     requestAnimationFrame(frame);
     // ทดสอบอัตโนมัติ (สคริปต์ถ่ายภาพ): ตั้ง st แล้ว resim/pick ได้
-    window.__run = { st, pick, resim, POSES, get sim() { return sim; } };
+    window.__run = { st, pick, resim, POSES, setMode, get sim() { return sim; } };
   </script>
 </body>
 </html>

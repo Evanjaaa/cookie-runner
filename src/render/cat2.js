@@ -157,6 +157,9 @@ function tutuSkirt(c, k, C) {
   const G = k.mode === 'sit'
     ? { y0: 530, y1: 622, x0: 176, x1: 424, fl: 44, n: 11 }   // นั่ง: เอวต่ำลง 20 (เดิม 510 ดูสูงไป) · เอวกว้างเท่าตัวน้องตรงนั้นพอดี ชายบานพ้นสะโพกนิดเดียว
     : { y0: 486, y1: 566, x0: 196, x1: 404, fl: 32 - 10 * (k.hold || 0), n: 10 };
+  // ตัววิ่ง: เอวกว้างเท่าตัววิ่ง ณ ระดับเอว
+  const span = k.mode !== 'sit' && k.run?.span?.(G.y0 + 10);
+  if (span) { G.x0 = span[0] - 2; G.x1 = span[1] + 2; }
   const M = (x, y) => P(x, y);
   // ขอบเอวผ้าชมพูเข้ม + โบว์กลางเอว (ด้านหน้าเท่านั้น)
   const drawBelt = () => {
@@ -218,21 +221,24 @@ function tutuSkirt(c, k, C) {
 /** ปลอกคอผ้าโค้งตามคาง (หัวบังครึ่งบน) + ระบายลูกไม้ใต้ปลอก — C = ชุดสีของชุดนั้น (C.lace = สีลูกไม้) */
 function laceCollar(c, k, C) {
   const pal = k.pal;
+  // หันหน้า (ผู้ใช้ทัก: ปลอกคอนิ่ง มีแค่กระดิ่งหมุน): กลางปลอกคอเลื่อนเท่าหน้า (faceShift ตัวเดียวกับกระดิ่ง) ปลายติดคอไม่ขยับ
+  const fs = k.back ? 0 : k.faceShift || 0;
+  const M = (x, y) => [x + fs * Math.max(0, 1 - ((x - 300) / 96) ** 2), y];
   const band = new Path2D();
-  band.moveTo(208, 376);
-  band.quadraticCurveTo(300, 420, 392, 376);
-  band.lineTo(394, 398);
-  band.quadraticCurveTo(300, 446, 206, 398);
+  band.moveTo(...M(208, 376));
+  for (let i = 1; i <= 16; i++) { const u = i / 16, x = 208 + 184 * u; band.lineTo(...M(x, 376 + 88 * u * (1 - u))); }
+  band.lineTo(...M(394, 398));
+  for (let i = 1; i <= 16; i++) { const u = i / 16, x = 394 - 188 * u; band.lineTo(...M(x, 398 + 96 * u * (1 - u))); }
   band.closePath();
   const lace = new Path2D();
   const N = 11;
   for (let i = 0; i <= N; i++) {
-    const u = i / N, x = 214 + 172 * u, y = 396 + Math.sin(u * Math.PI) * 42;
+    const u = i / N, [x, y] = M(214 + 172 * u, 396 + Math.sin(u * Math.PI) * 42);
     if (i === 0) lace.moveTo(x, y - 4);
     lace.arc(x, y + 2, 9, Math.PI, 0, true);
   }
-  lace.lineTo(386, 392);
-  lace.quadraticCurveTo(300, 438, 214, 392);
+  lace.lineTo(...M(386, 392));
+  for (let i = 1; i <= 16; i++) { const u = i / 16, x = 386 - 172 * u; lace.lineTo(...M(x, 392 + 92 * u * (1 - u))); }
   lace.closePath();
   c.fillStyle = C.lace || pal.cream;
   c.fill(lace);
@@ -328,6 +334,7 @@ function sailorShorts(c, k) {
   // ช่องระหว่างขาอยู่นอกเงาตัว จึงถูกตัดออกเอง เหลือขากางเกงสองข้างตามขาจริง
   // ยืน: ชายขาเหนือเข่า · นั่ง: แค่ช่วงสะโพก/ต้นขา (ขาหน้าวาดทับ ไม่คลุมขา)
   const y0 = sit ? 532 : 524, y1 = sit ? 588 : 606;   // ยืน: ชายขาต่ำกว่าเป้า ขากางเกงแยกสองข้าง (ไม่เป็นทรงกระโปรง)
+  if (k.run) return runShorts(c, k, P, y0, COLS, T);
   let M = (x, y) => P(x, y);
   const makeArea = () => {
   const area = new Path2D();
@@ -405,6 +412,83 @@ function sailorShorts(c, k) {
   c.restore();
 }
 
+/**
+ * กางเกงขาสั้นบนตัววิ่งสี่จังหวะ (ผู้ใช้ 17 ต.ค.: จัดชุดให้เข้ากับท่าวิ่ง) — ตัวกับขาเป็นรูปทรงเดียว ขาก้าวหน้า/หลังกว้าง
+ * ผ้า = ตัว+ขา ใต้ขอบเอว แต่ตัดปลายขาที่เส้น cuffs ของแต่ละจังหวะ (ฝั่งเท้าเป็นขาเปล่า) · ชายขา (แถบขาว+เส้นขอบ) ลากตามเส้น cuffs
+ */
+function runShorts(c, k, P, y0, COLS, T) {
+  const pal = k.pal, R = k.run;
+  // ตัดฝั่งเท้าของแต่ละเส้นปลายขา: กล่องแคบ ๆ ตามแนวเส้น ยื่นไปฝั่งเท้า (ไม่ตัดเลยไปถึงส่วนอื่นของตัว)
+  const cut = new Path2D();
+  cut.rect(-2000, -2000, 5000, 5000);
+  for (const q of R.cuffs) {
+    const cs = Math.cos(q.ang), sn = Math.sin(q.ang), L = q.hw * 1.12, D = q.hw * 2.6;
+    const pt = (u, v) => [q.x + u * cs - v * sn, q.y + u * sn + v * cs];
+    cut.moveTo(...pt(-L, 0));
+    cut.lineTo(...pt(-L, D));
+    cut.lineTo(...pt(L, D));
+    cut.lineTo(...pt(L, 0));
+    cut.closePath();
+  }
+  const area = new Path2D();
+  area.moveTo(...P(-200, y0));
+  area.quadraticCurveTo(...P(300, y0 + 14), ...P(800, y0));
+  area.lineTo(...P(800, 760));
+  area.lineTo(...P(-200, 760));
+  area.closePath();
+  const [, gy0] = P(300, y0);
+  c.save();
+  c.clip(R.body);
+  c.save();
+  c.clip(cut, 'evenodd');
+  softFill(c, area, 0, gy0, 0, gy0 + 120, COLS[0], COLS[1], COLS[2]);
+  if (T.pattern) { c.save(); c.clip(area); T.pattern(c, P, y0, y0 + 120); c.restore(); }
+  // ขอบเอว
+  c.strokeStyle = pal.line;
+  c.lineWidth = OL;
+  c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(...P(80, y0));
+  c.quadraticCurveTo(...P(300, y0 + 14), ...P(520, y0));
+  c.stroke();
+  // ชายขา: แถบขาวสองเส้นถอยเข้าหาสะโพก
+  c.strokeStyle = 'stripes' in T ? (T.stripes || 'rgba(0,0,0,0)') : '#FFFFFF';
+  for (const q of R.cuffs) {
+    const cs = Math.cos(q.ang), sn = Math.sin(q.ang), L = q.hw * 1.4;
+    for (const [d, w] of [[-9, 5], [-17, 2.6]]) {
+      c.lineWidth = w;
+      c.beginPath();
+      c.moveTo(q.x - L * cs - d * sn, q.y - L * sn + d * cs);
+      c.lineTo(q.x + L * cs - d * sn, q.y + L * sn + d * cs);
+      c.stroke();
+    }
+  }
+  c.restore();
+  // เส้นชายขา (ตัดในตัว = จบที่ขอบขาพอดี)
+  c.strokeStyle = pal.line;
+  c.lineWidth = OL;
+  for (const q of R.cuffs) {
+    const cs = Math.cos(q.ang), sn = Math.sin(q.ang), L = q.hw * 1.4;
+    c.beginPath();
+    c.moveTo(q.x - L * cs, q.y - L * sn);
+    c.lineTo(q.x + L * cs, q.y + L * sn);
+    c.stroke();
+  }
+  c.restore();
+  // กระดุมหน้าเอว
+  if (!k.back && T.buttons !== null) {
+    c.save();
+    c.clip(R.body);
+    for (const x of [262, 338]) {
+      const [bx, by] = P(x, y0 + 18);
+      const b = new Path2D();
+      b.arc(bx, by, 7, 0, TAU);
+      softFill(c, b, bx - 7, by - 7, bx + 7, by + 7, '#FFF3B0', '#FFD34D', '#D99A1E');
+      outline(c, b, pal, OL * 0.6);
+    }
+    c.restore();
+  }
+}
 /** แขนเสื้อสั้นบนแขนแบบท่อ (spineBand): ลงขาวจากต้นท่อถึงจุด upto + ปลายแขนแถบฟ้า — ตัดอยู่ในท่อแขน */
 function tubeSleeve(c, band, upto, pal, cols = null) {
   c.save();
@@ -1111,20 +1195,57 @@ function nurseSkirt(c, k) {
   const P = (x, y) => P0(300 + (x - 300) / shrink, y);
   const sit = k.mode === 'sit';
   const SK = k.SK || {};   // ธีมกระโปรง (ไม่ใส่ = พยาบาล)
-  const G = SK.G ? SK.G[sit ? 'sit' : 'stand'] : sit ? { y0: 536, y1: 634, x0: 172, x1: 428, fl: 54 }   /* นั่ง: บานคลุมสะโพก/ต้นขาข้างตัว ชายลงถึงพื้น */ : { y0: 522, y1: 592, x0: 180, x1: 420, fl: 16 };   // ยืน: เอวกว้างเท่าตัวน้องตรงนั้นพอดี
-  const q = new Path2D();
+  let G = SK.G ? SK.G[sit ? 'sit' : 'stand'] : sit ? { y0: 536, y1: 634, x0: 172, x1: 428, fl: 54 }   /* นั่ง: บานคลุมสะโพก/ต้นขาข้างตัว ชายลงถึงพื้น */ : { y0: 522, y1: 592, x0: 180, x1: 420, fl: 16 };   // ยืน: เอวกว้างเท่าตัวน้องตรงนั้นพอดี
+  // ตัววิ่ง (ผู้ใช้ทักชุดพยาบาล: กระโปรงไม่เข้ากับเอว): เอวกว้างเท่าตัววิ่งที่ระดับเอวจริงของจังหวะนั้น ชายบานนิด
+  const span = !sit && k.run?.span?.(G.y0);
+  if (span) G = { ...G, x0: span[0] - 2, x1: span[1] + 2, fl: Math.min(G.fl, 12) };
+  let q = new Path2D();
+  if (k.run && !sit) {
+    // ตัววิ่ง (ผู้ใช้: ชายกระโปรงเหลี่ยมเกิน ไม่ธรรมชาติ): ผ้าไหลเป็นเส้นโค้งเดียว — ข้างกระโปรงโค้งออก มุมชายมน
+    // ชายเป็นคลื่นผ้านุ่ม ๆ (พับผ้า 4 ลอน) · ทุกจุดผ่านตัวดัด P (ชายยกตามขาที่ก้าว) แล้วลากโค้งเรียบผ่านจุด
+    const pts = [];
+    const side = (xa, xb, sgn) => {
+      for (let i = 1; i <= 5; i++) {
+        const u = i / 6, e = u * u;
+        pts.push([xa + (xb - xa) * e + sgn * Math.sin(Math.PI * u) * 4, G.y0 + (G.y1 - G.y0) * u]);
+      }
+    };
+    pts.push([G.x0, G.y0], [300, G.y0 + 12], [G.x1, G.y0]);
+    side(G.x1, G.x1 + G.fl, 1);
+    pts.push([G.x1 + G.fl + 2, G.y1 + 2]);   // มุมขวามน (จุดเดียว ลากโค้งผ่าน)
+    for (let i = 1; i < 12; i++) {
+      const u = i / 12, x = G.x1 + G.fl - (G.x1 - G.x0 + 2 * G.fl) * u;
+      pts.push([x, G.y1 + 8 + 12 * Math.sin(Math.PI * u) + 4 * Math.sin(u * Math.PI * 8)]);   // ชายโค้งลง + ลอนพับผ้า
+    }
+    pts.push([G.x0 - G.fl - 2, G.y1 + 2]);   // มุมซ้ายมน
+    const back = [];
+    for (let i = 1; i <= 5; i++) { const u = i / 6, e = u * u; back.push([G.x0 + (G.x0 - G.fl - G.x0) * e - Math.sin(Math.PI * u) * 4, G.y0 + (G.y1 - G.y0) * u]); }
+    pts.push(...back.reverse());
+    q = smoothLoop(pts.map(([x, y]) => P(x, y)));
+  } else {
   q.moveTo(...P(G.x0, G.y0));
   q.quadraticCurveTo(...P(300, G.y0 + 12), ...P(G.x1, G.y0));
   q.bezierCurveTo(...P(G.x1 + 8, G.y0 + 20), ...P(G.x1 + G.fl, G.y1 - 20), ...P(G.x1 + G.fl, G.y1));
   q.quadraticCurveTo(...P(300, G.y1 + 22), ...P(G.x0 - G.fl, G.y1));
   q.bezierCurveTo(...P(G.x0 - G.fl, G.y1 - 20), ...P(G.x0 - 8, G.y0 + 20), ...P(G.x0, G.y0));
   q.closePath();
+  }
   const [, y0] = P(300, G.y0), [, y1] = P(300, G.y1);
   const SC = SK.cols || [NURSE.light, NURSE.mid, NURSE.dark];
   softFill(c, q, 0, y0, 0, y1 + 16, SC[0], SC[1], SC[2]);
   c.save(); c.clip(q);
   c.strokeStyle = SK.hem || '#FFFFFF'; c.lineWidth = 9; c.lineCap = 'round';
+  if (k.run && !sit) {
+    c.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const u = i / 24, x = G.x1 + G.fl + 10 - (G.x1 - G.x0 + 2 * G.fl + 20) * u;
+      const [hx, hy] = P(x, G.y1 + 8 + 12 * Math.sin(Math.PI * u) + 4 * Math.sin(u * Math.PI * 8) - 8);
+      if (i) c.lineTo(hx, hy); else c.moveTo(hx, hy);
+    }
+    c.stroke();
+  } else {
   c.beginPath(); c.moveTo(...P(G.x0 - G.fl - 10, G.y1 - 8)); c.quadraticCurveTo(...P(300, G.y1 + 14), ...P(G.x1 + G.fl + 10, G.y1 - 8)); c.stroke();
+  }
   c.strokeStyle = SK.fold || 'rgba(200,110,140,.28)'; c.lineWidth = 4;
   if (SK.extra) SK.extra(c, P, G, k);
   for (const u of [-1, 1]) { c.beginPath(); c.moveTo(...P(300 + u * 50, G.y0 + 14)); c.quadraticCurveTo(...P(300 + u * 62, (G.y0 + G.y1) / 2), ...P(300 + u * 76, G.y1 - 6)); c.stroke(); }
@@ -3272,11 +3393,23 @@ function sweetEarRibbon(c, k) {
   sweetRibbons(c, k, 404, 172);
 }
 /** ถุงเท้าลูกไม้: ระบายขาวหยักรอบข้อเท้า แถบชมพู โบว์ชมพูจิ๋วด้านนอก */
+/**
+ * ตัววิ่งสี่จังหวะ: ย้ายของพันข้อเท้าจากข้อเท้าท่ายืน (cx, cy, ครึ่งความกว้าง hw ในไฟล์) ไปข้อเท้าของขาวิ่ง
+ * at = { x, y, ang, hw } — หมุนตามขา (แกน +y ของของชิ้นนั้น = ฝั่งเท้า) ย่อตามความกว้างขา
+ */
+function runAnklePt(at, cx, cy, hw) {
+  const s = at.hw / hw, cs = Math.cos(at.ang), sn = Math.sin(at.ang);
+  return (x, y) => {
+    const lx = (x - cx) * s, ly = (y - cy) * s;
+    return [at.x + lx * cs - ly * sn, at.y + lx * sn + ly * cs];
+  };
+}
 function sweetSocks(c, k) {
   const pal = k.pal, t = k.t || 0;
-  const P = k.pt || ((x, y) => [x, y]);
+  let P = k.pt || ((x, y) => [x, y]);
   const left = k.side === 'left';
   const [cx, cy, hw] = k.mode === 'sit' ? (left ? [264, 614, 27] : [336, 614, 27]) : (left ? [210, 606, 28] : [390, 606, 28]);
+  if (k.ankleAt) P = runAnklePt(k.ankleAt, cx, cy, hw);
   const pts = [];
   for (let i = 0; i <= 6; i++) { const u = i / 6; pts.push(P(cx - hw + 2 * hw * u, cy + 10 + Math.sin(u * Math.PI) * 5)); }
   swLace(c, pts, 6.5, pal);
@@ -5531,9 +5664,10 @@ function snowTailBow(c, k) {
  */
 function snowAnkle(c, k) {
   const pal = k.pal, t = k.t || 0;
-  const P = k.pt || ((x, y) => [x, y]);
+  let P = k.pt || ((x, y) => [x, y]);
   const left = k.side === 'left';
   const [cx, cy, hw] = k.mode === 'sit' ? (left ? [262, 610, 30] : [338, 610, 30]) : (left ? [224, 607, 41] : [376, 607, 41]);
+  if (k.ankleAt) P = runAnklePt(k.ankleAt, cx, cy, hw);
   const th = 4.6, sag = 5.5, N = 16;
   const yAt = (v) => cy + sag * (1 - (v / hw) ** 2);
   const q = new Path2D();
@@ -7661,6 +7795,87 @@ const flatShade = (pal) => (airbrushOn() ? 'rgba(0,0,0,0)' : pal.shade);
 const TAU = Math.PI * 2;
 /** เท้าของแบบอยู่ที่ y นี้ในไฟล์ออกแบบ (600×720) — ใช้วางน้องลงบนพื้น */
 const FEET_Y = 648;
+/**
+ * ตัว+ขาท่าวิ่งสี่จังหวะ (ผู้ใช้ส่งแบบ 17 ต.ค. — ref/run-4beat.jpg) · ใช้ผ่าน shape.runBody = 'up' | 'down' | …
+ * แทนทั้งลำตัวและขาจากไฟล์ด้วยรูปทรงเดียว (ตัวกับขาเชื่อมเป็นก้อนเดียวแบบในแบบ) — หัว แขน หาง ยังมาจากตัววาดปกติ
+ * พิกัดไฟล์ออกแบบที่มองเฉียงขวาแล้ว (ไม่บีบตามมุมหันซ้ำ) · x 300 = กลางตัว · เท้าต่ำสุดแตะ FEET_Y
+ *   out    = จุดรอบนอก (ตามเข็ม เริ่มไหล่ซ้าย) — ลากโค้งเรียบผ่านทุกจุด (ขอบบนซ่อนใต้หัว/แขน)
+ *   belly  = พุงครีม [cx, cy, rx, ry, มุม] · paws = อุ้งเท้าขาว [cx, cy, rx, ry, มุม] · toes = ร่องนิ้ว [x, y, มุม]
+ *   creases = เส้นในแบ่งขา (เส้นสีขอบ) [x0, y0, cx, cy, x1, y1] · stripes = ลายขวาง [x0, y0, x1, y1]
+ *   skirtPush = แรงขาดันชายกระโปรง { L: ขาหลัง (ซ้ายจอ), R: ขาหน้า } [dx, dy] ที่ชายกระโปรง (ผ้ายกตามขาที่ก้าว)
+ *   cuffs = ปลายขากางเกงขาสั้น (ชุด) · ankles.left/right = ข้อเท้า (กำไล/ถุงเท้าของชุด): [x0, y0, x1, y1, fx, fy]
+ *           = เส้นขวางขาจากขอบหนึ่งถึงอีกขอบ + จุดฝั่งเท้า (บอกทิศ) — ขาซ้ายจอ = ขาหลัง (left) · ขาขวาจอ = ขาหน้า (right)
+ */
+const RUN_BODY = {
+  // จังหวะ 1 Up: ขาหลังเหยียดไปหลังซ้าย อุ้งเท้าขาวชี้หลัง · ขาหน้าก้าวยาวลงหน้าขวา อุ้งเท้าแตะพื้น · ใต้ตัวเป็นแนวเดียว (ไม่มีช่องระหว่างขา)
+  up: {
+    out: [[244, 366], [199, 412], [204, 463], [200, 502], [185, 538], [136, 549], [104, 560], [83, 568], [90, 584], [111, 582], [148, 592], [192, 602], [235, 606], [279, 599], [309, 590], [326, 597], [370, 609], [412, 626], [445, 630], [465, 624], [475, 606], [473, 595], [463, 589], [445, 589], [424, 568], [412, 543], [407, 514], [412, 498], [417, 486], [416, 446], [414, 400], [395, 374], [305, 355]],
+    belly: [326, 502, 63, 53, -0.15],
+    paws: [[97, 565, 12, 20, 0.25], [461, 611, 19, 22, -0.6]],
+    toes: [[87, 567, 3.3], [90, 577, 3.0]],
+    creases: [[407, 515, 388, 567, 321, 589]],
+    cuffs: [[170, 541, 172, 598, 120, 570], [420, 560, 392, 617, 440, 612]],
+    ankles: { left: [121, 555, 123, 586, 97, 565], right: [442, 585, 431, 628, 461, 611] },
+    skirtPush: { L: [-56, -30], R: [40, -16] },
+    stripes: [],
+  },
+  down: {
+    out: [[225, 396], [209, 429], [204, 463], [209, 485], [207, 509], [195, 536], [193, 556], [202, 578], [216, 595], [227, 607], [242, 614], [253, 618], [256, 619], [249, 631], [249, 641], [253, 653], [262, 662], [270, 664], [277, 663], [283, 662], [290, 667], [298, 668], [309, 666], [319, 660], [321, 652], [316, 646], [330, 641], [347, 633], [361, 621], [368, 607], [370, 594], [367, 580], [365, 576], [386, 551], [396, 527], [403, 507], [410, 495], [417, 481], [416, 463], [410, 440], [403, 417], [400, 395], [318, 389]],
+    belly: [332, 507, 54, 42, -0.15],
+    paws: [[265, 641, 18, 23, 0.05], [302, 657, 20, 12, 0]],
+    toes: [],
+    creases: [[340, 551, 356, 561, 366, 576], [283, 662, 284, 646, 316, 646], [261, 603, 260, 611, 256, 619]],
+    cuffs: [[247, 627, 285, 645, 265, 656], [284, 645, 323, 647, 303, 661]],
+    ankles: { left: [250, 628, 285, 634, 265, 645], right: [290, 648, 320, 648, 304, 660] },
+    skirtPush: { L: [-6, 2], R: [26, -26] },
+    stripes: [],
+  },
+  up2: {
+    out: [[246, 362], [202, 404], [207, 456], [204, 495], [189, 529], [142, 537], [111, 544], [90, 553], [97, 568], [118, 567], [153, 580], [195, 594], [237, 602], [279, 599], [309, 590], [326, 597], [370, 609], [412, 626], [445, 630], [465, 624], [475, 606], [473, 595], [463, 589], [445, 589], [424, 568], [412, 543], [407, 514], [412, 498], [417, 486], [416, 446], [414, 400], [395, 374], [305, 355]],
+    belly: [326, 502, 63, 53, -0.15],
+    paws: [[104, 549, 12, 21, 0.25], [461, 611, 19, 22, -0.6]],
+    toes: [[94, 551, 3.3], [97, 561, 3.0]],
+    creases: [[407, 515, 388, 567, 321, 589]],
+    cuffs: [[170, 532, 171, 586, 120, 556], [420, 560, 392, 617, 440, 612]],
+    ankles: { left: [126, 541, 128, 572, 104, 549], right: [442, 585, 431, 628, 461, 611] },
+    skirtPush: { L: [-58, -40], R: [40, -16] },
+    stripes: [],
+  },
+  down2: {
+    out: [[225, 396], [209, 429], [204, 463], [209, 485], [207, 509], [202, 529], [199, 553], [204, 577], [216, 594], [237, 607], [241, 611], [234, 621], [237, 635], [258, 641], [276, 640], [286, 631], [297, 636], [298, 652], [307, 665], [321, 672], [339, 669], [346, 655], [342, 641], [353, 631], [363, 614], [370, 594], [368, 573], [384, 546], [396, 522], [403, 507], [410, 495], [417, 481], [416, 463], [410, 440], [403, 417], [400, 395], [318, 389]],
+    belly: [330, 509, 47, 40, -0.1],
+    paws: [[260, 636, 23, 12, 0.35], [323, 658, 23, 16, 0]],
+    toes: [],
+    creases: [[251, 611, 272, 621, 293, 633], [293, 633, 319, 636, 342, 641], [349, 548, 363, 555, 368, 572]],
+    cuffs: [[240, 611, 290, 632, 258, 636], [296, 634, 343, 641, 322, 660]],
+    ankles: { left: [240, 617, 282, 633, 258, 638], right: [298, 642, 343, 646, 322, 662] },
+    skirtPush: { L: [-20, -18], R: [16, -4] },
+    stripes: [],
+  },
+};
+/** ขอบซ้าย/ขวาของตัววิ่ง ณ ระดับ y (เส้นรอบนอกของแบบ · ช่วงลำตัวกลาง x 150–450) — กระโปรงวัดเอวจากตรงนี้ */
+function runBodySpan(out, y) {
+  let l = Infinity, r = -Infinity;
+  for (let i = 0; i < out.length; i++) {
+    const [x0, y0] = out[i], [x1, y1] = out[(i + 1) % out.length];
+    if ((y0 - y) * (y1 - y) > 0 || y0 === y1) continue;
+    const x = x0 + ((y - y0) / (y1 - y0)) * (x1 - x0);
+    if (x < 150 || x > 450) continue;
+    l = Math.min(l, x); r = Math.max(r, x);
+  }
+  return l < r ? [l, r] : null;
+}
+/** โค้งปิดเรียบผ่านจุดทุกจุด (Catmull-Rom → เบซิเยร์) */
+function smoothLoop(pts) {
+  const q = new Path2D(), n = pts.length;
+  q.moveTo(...pts[0]);
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    q.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
+  }
+  q.closePath();
+  return q;
+}
 /** หน่วยในไฟล์ → หน่วยเกม ต่อ scale 1 (scale 2.6 = สูงราว 160 เท่าน้องเดิมบนหน้าแรก) */
 const UNIT = 0.104;
 /** เส้นขอบบางลงจากในไฟล์ ให้หนาเท่าเส้นของหน้าอื่นเมื่อย่อลงขนาดในเกม */
@@ -10395,6 +10610,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     rotAt(c, M.piv.neck, tilt);
     c.translate(hx * 3, hy * 2);
   };
+  const earRun = clamp01(raw('earRun'));
   const earPt = (side) => {
     const d = side === 'left' ? 1 : -1;
     const a = earLag + d * v('ear') * 0.3 + (twitchSide === side || twitchSide === 'both' ? -d * twitch : 0);
@@ -10402,6 +10618,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     return (x0, y0) => {
       // หูเตี้ยลง 8% จากโคน ตั้งอยู่บนไหล่โดมหัวแบบในแบบ (โคนซ่อนหลังหัว)
       let x = x0, y = y0;
+      // ทรงหูแบบท่าวิ่ง (shape.earRun · ผู้ใช้ส่งแบบ 17 ต.ค.): ใบกว้างขึ้น เตี้ยลงนิด ปลายมนทู่ กางออกข้าง (สีเดิม)
+      if (earRun) {
+        const tipY = 52;
+        if (y < tipY + 22) y += (tipY + 22 - y) * 0.18 * earRun;            // ปลายหูมนนิด (ขอบหูยังตรงแบบสามเหลี่ยม)
+        y = piv.y + (y - piv.y) * (1 - 0.03 * earRun);                          // เตี้ยลงนิด
+        x = piv.x + (x - piv.x) * (1 + 0.07 * earRun);                          // ใบกว้างขึ้นนิด
+        [x, y] = rotPt(piv, -d * 0.04 * earRun * ease(clamp01((piv.y + 20 - y0) / 80)), x, y);   // กางออกข้างนิด (โคนอยู่ที่เดิม)
+      }
       // ขอบนอกช่วงล่างของหูดึงเข้าหาหัว — ขอบหูไหลต่อเป็นข้างหัวเส้นเดียวแบบในแบบ (ไม่ยื่นเป็นบ่า)
       const outer = side === 'left' ? piv.x - x0 : x0 - piv.x;
       // มุมล่างด้านนอกของหูซุกเข้าหัวนิด — ไม่เป็นรอยบากตรงที่ขอบหูชนข้างหัว
@@ -10463,9 +10687,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   };
   let propNow = null;   // ของถือเฟรมนี้ (อุ้งเท้า + busy) — ท่าเปิดตัววาดของถือที่บิน/หมุนทับหน้าตัวด้วย
   /** ของชุดที่อยู่หลังตัว (เช่นฮู้ดกองหลังคอ) — วาดก่อนชั้นตัว ตามหัว */
+  // idle.fxM = ตัวแปลงของผู้เรียกก่อนหมุนตัว (ตีลังกาท่าวิ่ง) — เอฟเฟกต์ชุด (ออร่า วงเวทใต้เท้า ประกาย) วาดตั้งตรงตามพื้น ไม่หมุนตามตัว
+  //   ตอนนี้ = m0 · L  →  เอฟเฟกต์ = fxM · L (L = ตัวแปลงในตัวแมวที่สะสมหลังเข้าฟังก์ชัน)
+  const fxUpright = () => {
+    if (!idle?.fxM) return;
+    ctx.setTransform(idle.fxM.multiply(m0.inverse()).multiply(ctx.getTransform()));
+  };
   const drawBehind = (xf = null) => {
     if (!OUT?.behind || back) return;
     ctx.save();
+    fxUpright();
     if (!OUT.behindBody) head(ctx);   // behindBody = พิกัดตัว (ผ้าคลุมยาวถึงพื้น ออร่ารอบตัว) ไม่ตามหัว
     OUT.behind(ctx, { ...outK, back, hxShift: hx * 6, cpt: (x, y) => [bodyX(x), y], headDrop });
     ctx.restore();
@@ -10490,6 +10721,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const drawFront = () => {
     if (OUT?.front) {
       ctx.save();
+      fxUpright();
       OUT.front(ctx, { ...outK, back });
       ctx.restore();
     }
@@ -10526,6 +10758,17 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     }
     ctx.restore();
   };
+  /**
+   * ตัวแปลงของบนหู: ประมาณการดัดของหู (earPt) รอบจุดยึด (ax, ay) เป็นเลื่อน/หมุน/ย่อ — ของบนหูจึงเกาะหูทุกท่า
+   * (เดิมหมุนรอบโคนหูอย่างเดียว ตอนหันหน้าหูเลื่อน/เอียงไปแล้ว แต่โบว์ค้างที่เดิม — ผู้ใช้ทัก)
+   */
+  const earXf = (c, side, ax, ay) => {
+    const f = earPt(side), [a0, a1] = f(ax, ay), [b0, b1] = f(ax + 20, ay), [c0, c1] = f(ax, ay + 20);
+    // หมุน + ย่อเท่ากันทุกทาง (ไม่บีบตามหูที่แคบลงตอนหัน — ไม่งั้นโบว์แบน)
+    const sc = Math.sqrt(Math.abs(((b0 - a0) * (c1 - a1) - (b1 - a1) * (c0 - a0)) / 400)), an = Math.atan2(b1 - a1, b0 - a0);
+    const A = sc * Math.cos(an), B = sc * Math.sin(an), C = -B, D = A;
+    c.transform(A, B, C, D, a0 - ax * A - ay * C, a1 - ax * B - ay * D);
+  };
   const drawHeadLayers = () => {
     const ears = [bent('ear-left', earPt('left'), head), bent('ear-right', earPt('right'), head)];
     // ปลอกคอใต้คาง: วาดก่อนหัว หัวบังขอบบน (ตามหัว ไม่ใช่ตามตัว — นั่ง/หมอบคอจะลดลงตามหัว)
@@ -10535,8 +10778,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     if (OUT?.earBack && !back) {
       ctx.save();
       head(ctx);
-      const rb = earLag - v('ear') * 0.3 + (twitchSide === 'right' || twitchSide === 'both' ? twitch : 0);
-      rotAt(ctx, M.piv['ear-right'], rb * 0.8);
+      earXf(ctx, 'right', 392, 150);
       OUT.earBack(ctx, outK);
       ctx.restore();
     }
@@ -10546,8 +10788,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     if (OUT?.ear) {
       ctx.save();
       head(ctx);
-      const ra = earLag - v('ear') * 0.3 + (twitchSide === 'right' || twitchSide === 'both' ? twitch : 0);
-      rotAt(ctx, M.piv['ear-right'], ra * 0.8);
+      earXf(ctx, 'right', 392, 150);
       OUT.ear(ctx, { ...outK, back });
       ctx.restore();
     }
@@ -10555,8 +10796,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     if (OUT?.earL && !back) {
       ctx.save();
       head(ctx);
-      const raL = earLag + v('ear') * 0.3 - (twitchSide === 'left' || twitchSide === 'both' ? twitch : 0);
-      rotAt(ctx, M.piv['ear-left'], raL * 0.8);
+      earXf(ctx, 'left', 208, 150);
       OUT.earL(ctx, outK);
       ctx.restore();
     }
@@ -11636,6 +11876,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const wagOff = shape?.wag != null ? shape.wag * k : 0;
   const tailBase = back
     ? { x: 318, y: 584 + drop * 0.9, a: -0.15, curl: -1 }   // ด้านหลัง: จากก้นพาดไปทางขวาแล้วม้วนขึ้น (ตามชีท Back)
+    : shape?.tailBase ? { curl: 1, ...shape.tailBase }   // ท่าวิ่งสี่จังหวะ: โคนหางตามภาพแบบ
     : { x: 252, y: 575 + drop * 0.9, a: Math.PI * 1.04 + sway * 2, curl: 1 };
   // ด้านหลัง (ตามชีท Back): หางยาวพาดออกจากก้นไปทางขวาเกือบแนวนอน ปลายยกขึ้นนิด แกว่งเบา ๆ
   const BL = tailLife(T);
@@ -11659,7 +11900,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const X = 300 + d * (1 + f * belly * 1.4) - Math.sign(d) * sh * 16;
     return upperPt(X, y - sh * 3);
   };
-  const torso = bent('torso', torsoPt);
+  let torso = bent('torso', torsoPt);
   const armL = bent('arm-left', armPt('left', armAngles('left')));
   const armR = bent('arm-right', armPt('right', armAngles('right')));
   // ถือหัวใจ/กอด: แขนเป็นแถบโค้ง (ท่อนบนกลืนกับตัว ท่อนล่างพับมาหน้าอก) แทนแขนจากไฟล์
@@ -11771,8 +12012,57 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       },
     };
   };
-  const legL = runLegs ? runLeg('left') : bent('leg-left', legPt('left'));
-  const legR = runLegs ? runLeg('right') : bent('leg-right', legPt('right'));
+  let legL = runLegs ? runLeg('left') : bent('leg-left', legPt('left'));
+  let legR = runLegs ? runLeg('right') : bent('leg-right', legPt('right'));
+  // ── ท่าวิ่งสี่จังหวะ (shape.runBody): ตัว+ขาเป็นรูปทรงเดียวตามภาพแบบ แทนลำตัวและขาจากไฟล์ ──
+  const RB = !back && RUN_BODY[shape?.runBody] || null;
+  if (RB) {
+    // จุดของแบบอยู่ในพิกัดที่มองเฉียงแล้ว — ตามแค่การเอียง/ยุบของตัวบน (upperPt ที่ x 300) ไม่บีบตามมุมหันซ้ำ
+    // ไม่เลื่อนตามผิวทรงกระบอกตอนหัน (bodyX) — จุดของแบบเป็นภาพที่หันแล้ว เลื่อนซ้ำจะเยื้องไปขวา
+    const rp = ([x, y]) => { const [X, Y] = upperPt(300, Math.min(y, 560)); return [X - bodyX(300) + x, Y + y - Math.min(y, 560)]; };
+    const body = smoothLoop(RB.out.map(rp));
+    const ell = ([cx, cy, rx, ry, a]) => { const e = new Path2D(); const [X, Y] = rp([cx, cy]); e.ellipse(X, Y, rx, ry, a, 0, TAU); return e; };
+    const det0 = torso.det;   // ลายข้างตัว/เงาจากไฟล์ (ลายแบบเดิม — ผู้ใช้: ไม่เอาลายตามภาพแบบ)
+    const det = (c) => {
+      drawOps(c, det0, pal, hooks, opt);
+      c.save();
+      c.clip(body);
+      c.fillStyle = pal.paw || pal.cream;
+      for (const pw of RB.paws) c.fill(ell(pw));
+      // เส้นในแบ่งขา (สีเดียวกับเส้นขอบ บางกว่า) · ร่องนิ้ว
+      c.strokeStyle = pal.line;
+      c.lineCap = 'round';
+      c.lineWidth = LW * 0.75;
+      for (const [x0, y0, cx, cy, x1, y1] of RB.creases) {
+        const [a, b] = rp([x0, y0]), [m, n2] = rp([cx, cy]), [d, e] = rp([x1, y1]);
+        c.beginPath(); c.moveTo(a, b); c.quadraticCurveTo(m, n2, d, e); c.stroke();
+      }
+      c.lineWidth = LW * 0.6;
+      for (const [x, y, a] of RB.toes) {
+        const [X, Y] = rp([x, y]);
+        c.beginPath(); c.moveTo(X, Y); c.lineTo(X + Math.cos(a) * 9, Y + Math.sin(a) * 9); c.stroke();
+      }
+      c.restore();
+    };
+    RB.bellyPath = ell(RB.belly);
+    RB.pt = (x, y) => rp([x, y]);   // ตัวดัดจุดของชุดบนตัววิ่ง (ไม่เลื่อนตามผิวทรงกระบอกซ้ำ — ตัววิ่งเป็นภาพที่หันแล้ว)
+    // เส้นขวางขาของชุด (ปลายขากางเกง/ข้อเท้า) → จุดกลาง มุม ครึ่งความกว้าง · หมุนให้แกน +y ชี้ไปฝั่งเท้าเสมอ
+    const seg = ([x0, y0, x1, y1, fx, fy]) => {
+      const [ax, ay] = rp([x0, y0]), [bx, by] = rp([x1, y1]), [qx, qy] = rp([fx, fy]);
+      const x = (ax + bx) / 2, y = (ay + by) / 2;
+      let ang = Math.atan2(by - ay, bx - ax);
+      if ((qx - x) * -Math.sin(ang) + (qy - y) * Math.cos(ang) < 0) ang += Math.PI;
+      return { x, y, ang, hw: Math.hypot(bx - ax, by - ay) / 2 };
+    };
+    RB.cuffsAt = (RB.cuffs || []).map(seg);
+    RB.anklesAt = RB.ankles ? { left: seg(RB.ankles.left), right: seg(RB.ankles.right) } : null;
+    // เครื่องมือวาด (หน้าทดสอบวิ่ง): ส่งตัวแปลงพิกัดไฟล์ → ผ้าใบ ของตัววิ่ง ไว้แปลงจุดจากภาพแบบกลับเป็นพิกัดไฟล์ตรง ๆ
+    if (idle?.onRunBody) { const [ax, ay] = rp([300, 600]); idle.onRunBody(ctx.getTransform(), ax - 300, ay - 600); }
+    torso = { ...torso, sil: [body], all: body, uni: body, det, det0 };
+    const none = { sil: [], all: new Path2D(), uni: new Path2D(), det: () => {} };
+    legL = none;
+    legR = none;
+  }
   // เงาข้างตัวไหลต่อลงต้นขา (ตัดเฉพาะเหนือเท้า) — ไม่งั้นเงาถูกตัดเป็นเส้นเฉียงตรงรอยต่อตัว-ขา ดูเป็นเส้นซ้อน
   torso.detClip = new Path2D();
   // ขาวิ่งขยับไปไกล — ลายข้างตัวไม่ไหลลงขาวิ่ง (ไม่งั้นลายตัวถูกตัดเป็นขีดลอยบนขา)
@@ -11868,10 +12158,11 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     }
   }
   // ของพันข้อเท้า (ผ้าฟู): ตามขาแต่ละข้างผ่านตัวดัดจุดของขา
-  if (OUT?.ankle) for (const side of ['left', 'right']) OUT.ankle(ctx, { ...outK, back, side, pt: legPt(side) });
+  // ตัววิ่งสี่จังหวะ: ของพันข้อเท้าย้ายไปข้อเท้าของขาวิ่ง (ankleAt = จุดกลาง/มุม/ความกว้างขา)
+  if (OUT?.ankle) for (const side of ['left', 'right']) OUT.ankle(ctx, { ...outK, back, side, pt: legPt(side), ankleAt: RB?.anklesAt?.[side] || null });
   // ลายข้างตัวขวาเส้นล่าง: วาดทับหลังชั้นตัว ตัดแค่ในลำตัว (ตอนแขนไม่ได้พาดหน้าตัว) — ซ้ายขวามีสองเส้นเท่ากัน
   if (!back && !useHold && Math.max(knead, scratch, clasp, offer, reachL) < 0.05) {
-    const st = findOp(torso.det, 'Vector_10');
+    const st = findOp(torso.det0 || torso.det, 'Vector_10');
     if (st) {
       ctx.save();
       ctx.clip(torso.all);
@@ -11923,10 +12214,19 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
 
   let shirtArms = [];
   if (!back) {
-    ctx.save();
-    upper(ctx);
-    drawOps(ctx, P.belly.det, pal, hooks, opt);
-    ctx.restore();
+    if (!RB) {
+      ctx.save();
+      upper(ctx);
+      drawOps(ctx, P.belly.det, pal, hooks, opt);
+      ctx.restore();
+    } else if (RB.bellyPath) {
+      // ตัววิ่งสี่จังหวะ: พุงวาดหลังชั้นตัว (แขนในชั้นเดียวกันไม่บังพุง) ตัดในตัว
+      ctx.save();
+      ctx.clip(torso.all);
+      ctx.fillStyle = pal.cream;
+      ctx.fill(RB.bellyPath);
+      ctx.restore();
+    }
     if (OUT?.shirt) {
       // แขนเสื้อใส่เฉพาะแขนจากไฟล์ที่ไม่ได้ยก (แขนท่อของท่าถือหัวใจ/เท้าคางวาดแยกทีหลัง)
       const arms = [];
@@ -11968,7 +12268,19 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   if (OUT?.skirt && !back) {
     const parts = [{ clip: torso.all, pt: skirtPt }, { clip: legL.all, pt: legPt('left') }, { clip: legR.all, pt: legPt('right') }];
     if (crotchFil) parts.push({ clip: crotchFil, pt: skirtPt });
-    OUT.skirt(ctx, { ...outK, back, hold: clamp01(skF / 0.08), pt: skirtPt, bodies: parts });
+    // ตัววิ่งสี่จังหวะ: กางเกงขาสั้นตัดปลายขาตามขาแต่ละข้าง (run.cuffs) — กระโปรงไม่ใช้ช่องนี้ (ทรงบานคลุมขาอยู่แล้ว)
+    // ตัววิ่ง: กระโปรง/กางเกงใช้ตัวดัดจุดของตัววิ่ง (RB.pt) — ตัวดัดท่ายืนเลื่อนตามมุมหัน ชุดจึงเยื้องออกจากเอว (ผู้ใช้ทักชุดพยาบาล)
+    // กระโปรงบนตัววิ่ง: ชายผ้าถูกขาดันยกตามทิศที่ขาก้าว (ผู้ใช้ 17 ต.ค. "กระโปรงเปลี่ยนตามรอยผ้าที่ยกขา")
+    //   แรงเพิ่มจากเอว (0) ถึงชาย (เต็ม) · ฝั่งซ้ายจอตามขาหลัง ฝั่งขวาจอตามขาหน้า ผสมนุ่มตรงกลาง — กางเกง (pants) ใช้ตัวดัดตรง
+    const push = RB?.skirtPush;
+    const runSkirtPt = RB && push && !OUT.pants ? (x, y) => {
+      const wy = clamp01((y - 500) / 95) ** 1.3;
+      if (!wy) return RB.pt(x, y);
+      const wl = ease(clamp01((330 - x) / 150)), wr = ease(clamp01((x - 270) / 150));
+      return RB.pt(x + (push.L[0] * wl + push.R[0] * wr) * wy, y + (push.L[1] * wl + push.R[1] * wr) * wy);
+    } : RB?.pt;
+    if (RB) for (const q of parts) q.pt = runSkirtPt;
+    OUT.skirt(ctx, { ...outK, back, hold: clamp01(skF / 0.08), pt: RB ? runSkirtPt : skirtPt, bodies: parts, run: RB ? { body: torso.all, cuffs: RB.cuffsAt, span: (y) => runBodySpan(RB.out, y) } : null });
   }
   // เงาหัวตกบนอก (พ่นสีใต้คาง ตามชีท)
   if (!back && airbrushOn()) castShade(ctx, [{ sil: M.headShaped.sil, xf: head }], limbs, OUT?.shirt ? OUT.chinShade || 'rgba(70,45,35,.16)' : shadeRgba(pal, 0.85), 26, 18);   // ใส่เสื้อ: เงากลาง ไม่ใช่ส้มขนทับเสื้อ
