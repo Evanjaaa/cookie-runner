@@ -11,7 +11,8 @@
 //
 // ใช้: const A = createRunAnim();  ทุกเฟรม: const r = stepRunAnim(A, player, info)  แล้ว drawCat2Run(ctx, x, feetY, scale, skin, t, r)
 
-import { drawCat2 } from './cat2.js';
+import { drawCat2, cat2Faint, cat2Trail, drawTrail } from './cat2.js';
+import { gfxLevel } from '../graphics.js';
 
 const TAU = Math.PI * 2;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -38,6 +39,13 @@ const J2_LEN = { flip: 27, twirl: 29 };
  */
 const JUMP_PREP = 4;
 
+/**
+ * ขนาดตัวใหม่ตอนวิ่ง — 0.86 = สูงเท่าตัวเดิม (วัดจากภาพ: หูถึงเท้า) × RUN_SIZE (ผู้ใช้ 18 ต.ค.: ขยาย 15% แล้วขออีก 5% = 20%)
+ * สเกลที่ส่งให้ drawCat2Run = สเกลตัวในเกม × RUN_K · ภาพอย่างเดียว กล่องชนเท่าเดิม (ความยากไม่เปลี่ยน)
+ * ของที่เกาะตัว (เงา หลอดสกิล วงโล่ คลื่นดูด จุดรับแสง) คูณ RUN_SIZE ตาม (game.js)
+ */
+export const RUN_SIZE = 1.2;
+export const RUN_K = 0.86 * RUN_SIZE;
 export function createRunAnim() {
   return { sm: {}, air: 0, fall: 0, land: 99, j2: null, j2t: 0, prevJumps: 0, prevGround: true, slide: 0, t: 0 };
 }
@@ -52,15 +60,53 @@ function sm(A, key, target, rate) {
 
 /**
  * อ่าน Player หนึ่งเฟรม → รูปร่างของ cat2 + ข้อมูลหมุนตัว/เอฟเฟกต์
- * info = { catId, dt, mood, hurt (0..1), dead, gait (ตัวคูณจังหวะขา) }
+ * info = { catId, dt, mood, hurt (0..1), dead, tired (0..1), outfit (id ชุดที่ใส่ — สกิน S ที่มีท่าแอ็ค), gait (ตัวคูณจังหวะขา),
+ *          speed (ฉากเลื่อนต่อเฟรม หน่วยเกม — ทางประกายหลุดจากชุด), scale (สเกลตัวตอนวาด),
+ *          stand (ยืนเฉยบนพื้น = ท่า Down เท้าใต้ตัว ไม่ก้าว — ช่วงโบนัสที่ฉากหยุดนิ่ง) }
  */
 export function stepRunAnim(A, P, info = {}) {
   const dt = info.dt ?? 1;
   A.t += dt;
+  // ── หมดแรง (ผู้ใช้ 17 ต.ค.): ทรุดลงนั่งท่าเกาท้องตรงนั้น แขนสองข้างวางบนพุงเหมือนกัน (symArms · ไม่ขยับเกา) ตาหมุน @ @ ──
+  //    แทนการล้มนอนตะแคง · ตกหลุม (ไม่ใช่ fainting) ยังปลิวหมุนตกจอเหมือนเดิม
+  if (info.dead && P.fainting) {
+    A.faintT = (A.faintT ?? -dt) + dt;
+    const f = A.faintT;
+    // สกิน S ที่มีท่าหมดแรงประจำชุด (ช่อง faint ใน cat2.js · ผู้ใช้ 18 ต.ค.: ต่างจากท่าแอ็ค ไม่นั่งมึนแบบเพื่อน)
+    //   sweet = นั่งหลับกอดคทา Zzz · princess = นั่งสง่า คทาขวางตัก เกล็ดหิมะวนรอบหัว · เข้าท่าทันที ก้นกระแทกแบนเด้งคืน
+    const fp = info.outfit ? cat2Faint(info.outfit) : null;
+    if (fp) {
+      const pop = f > 6 ? Math.sin(clamp01((f - 6) / 16) * Math.PI) * (1 - clamp01((f - 6) / 16)) : 0;
+      const sh = { ...fp.shape(f) };
+      sh.sit = 0.55 + 0.45 * ease(clamp01(f / 8));
+      sh.sy = (sh.sy || 0) - 0.12 * pop;
+      sh.sx = (sh.sx || 0) + 0.08 * pop;
+      return { shape: sh, spin: 0, twirl: 0, j2: null, j2k: 0, air: 0, land: 0, bob: 0, beat: -1, ...trailOut(A, P, info, false) };
+    }
+    // เข้าท่านั่งทันที (ไม่มีท่ายืนคั่น) — ตัวนั่งผุดจากสูงยุบลงที่ (sitU ใน cat2.js) แล้วก้นกระแทกพื้นแบนเด้งคืน
+    const sit = 0.55 + 0.45 * ease(clamp01(f / 8));
+    const plop = f > 6 ? Math.sin(clamp01((f - 6) / 16) * Math.PI) * (1 - clamp01((f - 6) / 16)) : 0;
+    const woozy = clamp01((f - 14) / 20);                                      // มึน: หัวโยกช้า ๆ ตัวโคลง
+    return {
+      shape: {
+        sit, scratch: 0, symArms: 1,
+        turn: -0.5,   // หันหน้าไปทางซ้ายจอ + เอียงหัวตาม (ผู้ใช้ 17 ต.ค. — ลองขวาแล้ว ให้กลับอีกทาง)
+        sy: -0.12 * plop, sx: 0.08 * plop,
+        tilt: -0.12 * ease(clamp01(f / 10)) + 0.035 * Math.sin(f * 0.075) * woozy,
+        lean: 0.035 * Math.sin(f * 0.075 - 0.9) * woozy,
+        ear: 0.35 + 0.1 * Math.sin(f * 0.06), mouth: 0.15,
+        wag: 0.4 * Math.sin(f * 0.05),
+        mood: 'dizzy',
+      },
+      spin: 0, twirl: 0, j2: null, j2k: 0, air: 0, land: 0, bob: 0, beat: -1, ...trailOut(A, P, info, false),
+    };
+  }
+  A.faintT = undefined;
   const ground = !!P.onGround;
   // ── เหตุการณ์ ──
   if (ground && !A.prevGround) A.land = 0; else A.land += dt;
-  if (!ground && P.jumps >= 2 && P.jumps > A.prevJumps && A.prevJumps >= 1) {
+  if (info.dead) A.j2 = null;   // ตายแล้ว (ตกหลุม) = ไม่ตีลังกาค้างกลางทาง — ร่วงลงนิ่ง ๆ
+  if (!info.dead && !ground && P.jumps >= 2 && P.jumps > A.prevJumps && A.prevJumps >= 1) {
     A.j2 = JUMP2[info.catId] || 'flip';
     A.j2t = 0;
   }
@@ -198,7 +244,18 @@ export function stepRunAnim(A, P, info = {}) {
     shape.lean += Math.sin(hurt * 34) * hurt * 0.2;
     shape.ear += 0.6 * hurt;
   }
-  if (!shape.mood) shape.mood = info.mood || (hurt > 0.2 ? 'hurt' : info.dead ? 'dizzy' : '');
+  // ── แรงใกล้หมด (ผู้ใช้ 18 ต.ค.): ตัวหดลง หูลู่ หางตก หัวก้ม หายใจหอบ ตาง่วงปิดครึ่งดวง ('sleepy') ──
+  const tired = info.dead ? 0 : clamp01(info.tired || 0);
+  if (tired > 0) {
+    const puff = Math.sin(A.t * 0.19) * tired;            // หายใจหอบ: ตัวพองยุบช้า ๆ
+    shape.sy -= 0.12 * tired + 0.025 * puff;
+    shape.sx += 0.06 * tired + 0.015 * puff;
+    shape.ear += 0.55 * tired;
+    shape.wag = shape.wag * (1 - 0.6 * tired) - 0.5 * tired;
+    shape.gazeY += 0.35 * tired;
+    shape.tilt += 0.05 * tired;
+  }
+  if (!shape.mood) shape.mood = info.mood || (hurt > 0.2 ? 'hurt' : info.dead ? 'dizzy' : tired > 0.4 ? 'sleepy' : '');
   if (info.mouth) shape.mouth = 0.8;
   shape.noCrotchFill = 1;                                 // ขาสลับตลอดเวลา — ไม่เติมก้อนเป้าแบบท่าเตะขา
   // ── ตัว+ขาวิ่งสี่จังหวะตามแบบผู้ใช้ (RUN4 · เปลี่ยนท่าทีละจังหวะแบบสไปรต์คุกกี้รัน) ──
@@ -214,6 +271,7 @@ export function stepRunAnim(A, P, info = {}) {
       body = RUN4[1];   // ลงพื้น: ท่า Down (เท้าใต้ตัว) จนตัวหายแบน ค่อยกางขาวิ่งต่อ (ผู้ใช้: ยังไม่ต้องรีบอ้าขา)
       if (!info.dead) shape.mood = 'hurt';   // ตัวหดตอนลงพื้น = หลับตาปี๋ > < (ผู้ใช้ขอ)
     }
+    else if (info.stand) body = RUN4[1];   // ยืนรอ (โบนัส: ปลามารับ / ร่อนลง / วางลงพื้น) — เท้าใต้ตัว ไม่ก้าวค้างกลางท่า
     else {
       beat = Math.floor((P.runPhase * (info.gait ?? 1)) / RUN4_STEP) % 4;
       body = RUN4[beat];
@@ -222,25 +280,123 @@ export function stepRunAnim(A, P, info = {}) {
     const b = body.shape;
     for (const k of ['runBody', 'earRun', 'tailBase', 'tailShort', 'armSwingL', 'armSwingR', 'turn', 'noCrotchFill']) shape[k] = b[k];
     shape.kickL = shape.kickR = shape.liftL = shape.liftR = shape.elbowL = shape.elbowR = 0;
-    if (air <= 0.5) shape.wag = b.wag;   // บนพื้น: หางตามภาพจังหวะ · กลางอากาศ: หางสะบัดตามแรง
+    if (air <= 0.5) shape.wag = b.wag * (1 - 0.6 * tired) - 0.5 * tired;   // บนพื้น: หางตามภาพจังหวะ (เหนื่อย = หางตก) · กลางอากาศ: หางสะบัดตามแรง
   }
-  return { shape, spin, twirl, j2: A.j2, j2k, air, land: landK, bob: bob4, beat };
+  // ── ลมปะทะตอนวิ่ง (ผ้าคลุมของชุดอ่าน capeWind / capeLift ผ่าน k.sv) ──
+  //   บนพื้น = ลมเต็ม · หมอบ = ลมน้อย · เหนื่อย = วิ่งช้าลมอ่อน · ตีลังกา = ลมแรงสุด
+  //   กลางอากาศ: พุ่งขึ้น = ผ้าห้อยลง (−) · ร่วงลง = ผ้าเชิดขึ้น (+) · ลงพื้น = ชายผ้าเด้งลง
+  shape.capeWind = (0.85 + 0.15 * Math.sin(A.t * 0.11)) * (1 - 0.45 * slide) * (1 - 0.35 * tired) + 0.25 * j2k;
+  shape.capeLift = air * (fall * 2 - 1) - 0.8 * landK;
+  // ตกหลุม: หางคทาตามลงหลุมไปด้วย (ผู้ใช้ 18 ต.ค.) — หยุดเมื่อเกมนับว่าตายแล้ว (พ้นจอ) · ชุบชีวิต = เกมเริ่มตัวคุมท่าใหม่ (ล้างหางเก่า)
+  return { shape, spin, twirl, j2: A.j2, j2k, air, land: landK, bob: bob4, beat, ...trailOut(A, P, info, !info.dead, bob4, spin) };
 }
 
 /** จุดหมุนตอนตีลังกา: กลางตัว (หน่วยเกมเหนือเท้า ต่อสเกล 1) — สูงจากเท้า ~228 หน่วยไฟล์ × 0.104 */
 const SPIN_Y = 228 * 0.104;
 
 /**
+ * ประกายหลุดจากชุด (สกินระดับ S · ตาราง TRAIL ใน cat2.js): เดินเม็ดที่มีอยู่ + ปล่อยเม็ดใหม่จากจุดวิ้งบนชุด
+ *   เม็ดค้างอยู่กับฉาก: x สัมพัทธ์กับตัว ลดลงตามความเร็วฉาก (ทางประกายตามหลัง) · y พิกัดเกมจริง (กระโดด = ทางประกายโค้งตามวง)
+ *   ตีลังกา = ปล่อยถี่ขึ้น หมุนจุดเกิดตามตัว · หมดแรง/ตาย = หยุดปล่อย เม็ดเดิมร่วงจนหมด
+ *   คืนสำเนาเม็ดของเฟรมนี้ (หน้าทดสอบเลื่อนหลอดเวลาย้อนได้) · null = ไม่มีประกาย
+ */
+/** ผลทางประกายของเฟรมนี้ + sink = ตัววาดส่งตำแหน่งจุดปล่อยจริง (หัวคทา ปลายผ้าคลุม) กลับมาใช้เฟรมถัดไป */
+function trailOut(A, P, info, emit, bob = 0, spin = 0) {
+  const o = stepTrail(A, P, info, emit, bob, spin);
+  if (!o) return {};
+  return { parts: o.parts, ribbon: o.ribbon, sink: (id, dx, dy) => { (A.emitPos ||= {})[id] = [dx, dy, A.t]; } };
+}
+const TRAIL_MAX = 190;
+function stepTrail(A, P, info, emit, bob = 0, spin = 0) {
+  const T = info.outfit ? cat2Trail(info.outfit) : null;
+  if (!T && !A.parts?.length) return null;
+  const dt = info.dt ?? 1, sp = info.speed ?? 0, sc = info.scale ?? 1, U = 0.104 * sc;
+  const parts = (A.parts ||= []);
+  for (const p of parts) {
+    p.age += dt;
+    p.vy = Math.min(1.4, p.vy + p.fall * dt);
+    p.vx *= 0.96;
+    p.x += (p.vx - sp + Math.sin(p.age * 0.14 + p.seed * 9) * p.sway) * dt;   // ค้างกับฉาก + ส่ายเบา ๆ
+    p.y += p.vy * dt;
+    p.rot += p.vr * dt;
+  }
+  A.parts = parts.filter((p) => p.age < p.life);
+  // จุดเกิดในพิกัดเกม (สัมพัทธ์กับตัว / y จริง): ตำแหน่งจริงจากตัววาด (A.emitPos ของเฟรมก่อน) หรือพิกัดไฟล์ (หมุนตามตีลังกา)
+  const fromFile = (fx, fy) => {
+    let dx = (fx - 300) * U, dy = (fy - 648) * U - bob * sc;
+    if (spin) {
+      const py = dy + SPIN_Y * sc, cs = Math.cos(spin), sn = Math.sin(spin);
+      [dx, dy] = [dx * cs - py * sn, dx * sn + py * cs - SPIN_Y * sc];
+    }
+    return [dx, P.y + dy];
+  };
+  const at = (e) => {
+    if (e.at) {
+      const q = A.emitPos?.[e.at];
+      return q && A.t - q[2] < 4 ? [q[0], P.y + q[1]] : fromFile(...e.fb);
+    }
+    const [x0, y0, x1, y1] = e.box;
+    return fromFile(x0 + Math.random() * (x1 - x0), y0 + Math.random() * (y1 - y0));
+  };
+  // หางแสงหัวคทา: จุดย้อนหลัง ~14 เฟรม เลื่อนตามฉาก
+  let ribbon = null;
+  if (T?.ribbon) {
+    const R = (A.ribbon ||= []);
+    for (const q of R) q[0] -= sp * dt;
+    const wand = T.emit.find((e) => e.at === 'wand');
+    if (emit && wand) {
+      const p = at(wand);
+      // หัวคทากระโดดไกลผิดปกติในเฟรมเดียว (ถูกย้ายที่ เช่นชุบชีวิต/กล้องถอย) = เริ่มหางใหม่ ไม่ลากเส้นเชื่อมข้ามจอ
+      if (R[0] && Math.hypot(p[0] - R[0][0], p[1] - R[0][1]) > 60 * sc + sp * 2) R.length = 0;
+      R.unshift(p);
+    } else R.splice(-3);   // หยุดปล่อย = หางหดจากปลาย 3 จุดต่อเฟรม (~5 เฟรมหมด)
+    if (R.length > 14) R.length = 14;
+    ribbon = R.length > 1 ? { ...T.ribbon, pts: R.map((q) => [q[0], q[1]]) } : null;
+  }
+  if (T && emit) {
+    const lite = gfxLevel() === 'save';
+    const cap = lite ? 90 : TRAIL_MAX;
+    const k = (lite ? 0.5 : 1) * (spin ? 1.7 : 1);
+    A.trailAcc ||= T.emit.map(() => 0);
+    T.emit.forEach((e, i) => {
+      A.trailAcc[i] += e.rate * k * dt;
+      while (A.trailAcc[i] >= 1) {
+        A.trailAcc[i] -= 1;
+        if (A.parts.length >= cap) continue;
+        const [x, y] = at(e);
+        let kind = e.kinds[Math.floor(Math.random() * e.kinds.length)];
+        if (kind === 'sprinkle') kind = 'sprinkle' + Math.floor(Math.random() * 6);
+        const glit = kind === 'glitB' || kind === 'glitP' || kind.startsWith('dust');
+        const spr = e.spread ?? 1;
+        A.parts.push({
+          x: x + (Math.random() - 0.5) * 1.6 * sc * spr, y: y + (Math.random() - 0.5) * 1.6 * sc * spr,
+          vx: (Math.random() - 0.5) * 0.35 * spr, vy: e.vy + (Math.random() - 0.5) * 0.3 * spr,   // แทบไม่กระจาย = เป็นเส้นสายจากจุดเกิด
+          fall: e.fall, sway: glit ? 0.08 : 0.2,
+          age: 0, life: 28 + Math.random() * 24, kind, seed: Math.random(),
+          size: (e.sz ?? 1) * (glit ? 0.5 + Math.random() * 0.45 : kind.startsWith('star') ? 0.7 + Math.random() * 0.5 : kind.startsWith('sprinkle') ? 0.75 + Math.random() * 0.35 : 0.6 + Math.random() * 0.35) * 1.5,   // ผู้ใช้: เล็กไปกลืนพื้นหลัง → ×1.5
+          rot: glit ? 0 : Math.random() * TAU, vr: (Math.random() - 0.5) * 0.12,
+        });
+      }
+    });
+  }
+  return { parts: A.parts.map((p) => ({ ...p })), ribbon };
+}
+
+/**
  * วาดน้องท่าวิ่ง (ตัวน้องแบบใหม่หันเฉียงขวา + ขาวิ่งวาดใหม่) รวมการหมุนตีลังกา + รอยลม
  * x = กลางตัว feetY = เท้า (หน่วยเกม) · r = ผลจาก stepRunAnim · scale = สเกลแบบ drawCat2
  */
 export function drawCat2Run(ctx, x, feetY, scale, s, t, r) {
+  if (r.parts || r.ribbon) drawTrail(ctx, r.parts, x, scale, r.ribbon);   // ประกายหลุดจากชุด — อยู่หลังตัว
   const py = feetY - SPIN_Y * scale;
+  // ตัววาดบอกตำแหน่งหัวคทา/ปลายผ้าคลุมจริง (พิกเซล) → แปลงกลับเป็นหน่วยเกมสัมพัทธ์กับตัว ส่งให้ stepTrail เฟรมถัดไป
+  const inv = r.sink ? ctx.getTransform().inverse() : null;
+  const onEmit = inv ? (id, pt) => { const q = inv.transformPoint(pt); r.sink(id, q.x - x, q.y - feetY); } : null;
   if (r.spin) drawFlipTrail(ctx, x, py, scale, r.spin, r.j2k);
   ctx.save();
   const fxM = r.spin ? ctx.getTransform() : null;   // เอฟเฟกต์ชุดไม่หมุนตามตอนตีลังกา (idle.fxM ใน drawCat2)
   if (r.spin) { ctx.translate(x, py); ctx.rotate(r.spin); ctx.translate(-x, -py); }
-  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM });   // bob = ตัวลอยตอนจังหวะ Up
+  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit });   // bob = ตัวลอยตอนจังหวะ Up
   ctx.restore();
 }
 

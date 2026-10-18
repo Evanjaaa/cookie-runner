@@ -4,6 +4,7 @@
 
 import { fetchNews } from './net/cloud.js';
 import { loadPref, savePref } from './storage.js';
+import { cropStyle } from './crop.js';   // ครอบตัดรูปข่าวตามที่แอดมินจัดไว้ในหลังบ้าน
 
 // เก็บข่าวชุดล่าสุดไว้ในเครื่อง — เปิดหน้าข่าวตอนออฟไลน์/เน็ตช้ายังเห็นของเดิมทันที
 // เขียน localStorage ตรง ไม่ผ่าน savePref เพราะเป็นแค่สำเนาจากคลาวด์ ไม่ใช่ความคืบหน้า
@@ -137,7 +138,7 @@ export function renderNews(listEl, viewEl, pickId, onPick) {
       <div class="news-meta"><span class="news-tag">${esc(cur.tag)}</span><time>${newsDate(cur.date)}</time></div>
     </div>
     <div class="news-hero">${cur.image
-      ? `<img src="${esc(cur.image)}" alt="${esc(cur.title)}">`
+      ? `<img src="${esc(cur.image)}" alt="${esc(cur.title)}"${cur.crop ? ` style="${cropStyle(cur.crop)}"` : ''}>`
       : NO_IMAGE}</div>
     <h3 class="news-title"><span>${esc(cur.title)}</span></h3>
     <div class="news-body">${bodyHTML(cur.body)}</div>`;

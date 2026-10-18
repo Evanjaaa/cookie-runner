@@ -194,7 +194,7 @@
     import { drawStageBackdrop, drawGround, GROUND_ART } from './src/render/background.js';
     import { drawPlayer, setCatEdgeScale } from './src/render/entities.js';
     import { drawCat2, cat2Outfits, CAT2_BREEDS } from './src/render/cat2.js';
-    import { createRunAnim, stepRunAnim, drawCat2Run, JUMP2, RUN4, run4At } from './src/render/cat2-run.js';
+    import { createRunAnim, stepRunAnim, drawCat2Run, JUMP2, RUN4, run4At, RUN_K } from './src/render/cat2-run.js';
     import { SKINS } from './src/skins.js';
     import { ALL_OUTFITS } from './src/outfits.js';
 
@@ -244,12 +244,12 @@
         note: 'โดนของลอยตอนกระโดด' },
       { g: 'ชน / แพ้', id: 'tired', name: 'เหนื่อย', sub: 'พลังใกล้หมด', dur: 120, at: all(set({ tired: 1 }), jumpAt(60)),
         note: 'พลังต่ำกว่าเส้นเตือน — หายใจหอบ หูลู่ หางตก หน้าเหนื่อย (ไล่แรงขึ้นตามพลังที่เหลือ)' },
-      { g: 'ชน / แพ้', id: 'faint', name: 'หมดแรงล้ม', dur: 110,
+      { g: 'ชน / แพ้', id: 'faint', name: 'หมดแรง', dur: 110,
         at: (f, P, S) => { if (f === 30) { S.dead = true; P.faint(); } },
-        note: 'พลังหมด — ล้มพับนอนตะแคงกับพื้นตรงนั้น (จบตา)' },
+        note: 'พลังหมด — ตัวใหม่ทรุดลงนั่งท่าเกาท้อง แขนสองข้างวางบนพุงเหมือนกัน ตาหมุน (ตัวเดิมยังล้มนอนตะแคง) (จบตา)' },
       { g: 'ชน / แพ้', id: 'pit', name: 'ตกหลุม', dur: 110, pit: true,
-        at: (f, P, S) => { if (f === 30) { S.dead = true; P.vy = -9; } },
-        note: 'ตกหลุม — ปลิวขึ้นแล้วหมุนตกจอไป (จบตา)' },
+        at: (f, P, S) => { if (f === 30) { S.dead = true; P.calmFall = true; P.vy = Math.max(P.vy, 3); } },
+        note: 'ตกหลุม — ตัวใหม่ร่วงตรงลงหลุมเฉย ๆ ไม่เด้ง/ไม่หมุน หางคทาตามลงไป (ผู้ใช้ 18 ต.ค. · ตัวเดิมในเกมยังปลิวหมุน) (จบตา)' },
       // ── อารมณ์บนท่าวิ่ง ──
       { g: 'หน้า / อารมณ์', id: 'happy', name: 'ดีใจ', dur: 110, at: all(set({ mood: 'happy' }), jumpAt(50)), note: 'ตอนปลาโบนัสมารับ / ฉากพบน้อง' },
       { g: 'หน้า / อารมณ์', id: 'starry', name: 'ตาประกาย', dur: 110, at: all(set({ mood: 'starry' }), jumpAt(50)), note: 'ลอยอยู่บนฟ้าในช่วงโบนัส' },
@@ -280,7 +280,8 @@
     /** ท่าวิ่งของตัวใหม่ ณ เฟรมนี้ (ตัวคุมท่ามีสถานะในตัว — เรียกทุกเฟรมตามลำดับ) */
     const runOf = (anim, P, S) => {
       const L = lookOf(S);
-      return stepRunAnim(anim, P, { catId: st.cat, mood: L.mood, mouth: L.mouth, hurt: S.hurt, dead: S.dead, gait: S.big ? BIGCAN.gait : 1 });
+      return stepRunAnim(anim, P, { catId: st.cat, mood: L.mood, mouth: L.mouth, hurt: S.hurt, dead: S.dead, tired: L.tired, outfit: newSkin().outfit?.id, gait: S.big ? BIGCAN.gait : 1,
+        speed: S.dead ? 0 : SPEED.run, scale: catScaleOf(P, S) * NEW_K });
     };
 
     /** จำลองตั้งแต่เฟรม 0 ทุกครั้ง (ท่าละไม่ถึง 200 เฟรม) — ลากหลอดเวลาย้อนได้ ภาพเดิมเป๊ะ */
@@ -363,13 +364,17 @@
      * ตัวใหม่ (cat2) — **ร่าง**: cat2 ยังไม่มีท่าวิ่ง/กระโดด จึงใช้ท่ายืนแล้วบิดตามฟิสิกส์ (เอียง ยืด/แบน หมอบ หน้า)
      * ไว้ดูขนาด/ตำแหน่งเท้า/ความสูงเทียบกับตัวเดิม ก่อนออกแบบท่าวิ่งจริง
      */
-    const NEW_K = 0.86;   // ตัวใหม่สูงเท่าตัวเดิม (วัดจากภาพ: หูถึงเท้า) — ปรับได้เมื่อออกแบบขนาดตอนวิ่งจริง
+    const NEW_K = RUN_K;   // ขนาดเดียวกับในเกม (cat2-run.js: สูงเท่าตัวเดิม × 1.2 — ผู้ใช้ขอขยาย 18 ต.ค.)
     function drawNew(c, fr, tick, dx = 0) {
       const { p, S, r } = fr;
       const sc = catScaleOf(p, S) * NEW_K;
-      const x = PLAYER_X + p.ox + BODY.standW / 2 + dx, feet = p.y - (S.lift || 0);
+      const x = PLAYER_X + p.ox + BODY.standW / 2 + dx;
+      let feet = p.y - (S.lift || 0);
       // เงา (เหมือนตัวเดิม)
-      if (!S.dead) {
+      // หมดแรง (ล้มเป็นลม): ตัวใหม่ทรุดนั่งตรงพื้น ไม่เอียงล้มตาม p.tilt (cat2-run.js) — ตกหลุมยังหมุนตกตามเดิม
+      const sitFaint = S.dead && p.fainting;
+      if (sitFaint) feet = GROUND_Y;
+      if (!S.dead || sitFaint) {
         const airH = Math.max(0, GROUND_Y - p.y);
         c.save();
         c.globalAlpha = Math.max(0, 0.32 - airH / 500);
@@ -378,7 +383,7 @@
         c.restore();
       }
       c.save();
-      if (S.dead) { c.translate(x, feet); c.rotate(p.tilt); c.translate(-x, -feet); }
+      if (S.dead && !sitFaint) { c.translate(x, feet); c.rotate(p.tilt); c.translate(-x, -feet); }
       if (S.hurt > 0) c.translate(-S.hurt * 5, 0);
       drawCat2Run(c, x, feet, sc, newSkin(), tick, r);
       c.restore();

@@ -85,7 +85,19 @@ export function sparkle(ctx, x, y, r, fill) {
 }
 
 /** แสงเรืองวงกลม (โปร่ง) — ใช้ 'lighter' ให้สว่างขึ้นบนฉากมืด */
+/**
+ * แสงที่ตกกระทบตัวน้องตอนวิ่งผ่าน (ผู้ใช้ 18 ต.ค.) — ผู้เรียก (game.js) ตั้ง LIGHTS.list = [] ก่อนวาดสิ่งกีดขวาง
+ * ทุกครั้งที่ชิ้นไหนเรือง (glow) จะจดจุดแสงไว้เป็นพิกเซลบนผ้าใบ { x, y, r, rgb, a } — ของเรืองแสงชิ้นใหม่ส่องน้องได้เอง
+ * null = ไม่จด (หน้าออกแบบด่าน · รอบเงาของเส้นขอบ)
+ */
+export const LIGHTS = { list: null };
+
 export function glow(ctx, x, y, r, rgb, a) {
+  if (LIGHTS.list && a > 0.02) {
+    const m = ctx.getTransform();
+    const p = m.transformPoint(new DOMPoint(x, y));
+    LIGHTS.list.push({ x: p.x, y: p.y, r: r * Math.hypot(m.a, m.b), rgb, a });
+  }
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, `rgba(${rgb},${a})`);
   g.addColorStop(1, `rgba(${rgb},0)`);

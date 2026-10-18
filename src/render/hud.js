@@ -3,6 +3,7 @@ import { coverExt } from './cover-ext.js';
 import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C, BONUS, SCENE } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
+import { CAT2, useCat2, drawCatFaceAuto } from './cat2.js';
 import { t } from '../i18n.js';
 
 const { W, H } = VIEW;
@@ -484,9 +485,31 @@ function drawRunBar(ctx, game) {
   // เหรียญหน้าแมวที่หัวหลอดพลังซึ่งอยู่เยื้องซ้ายขึ้นไปนิดเดียว
   // 12 คือระยะที่วัดแล้วหัวน้องพ้นขอบเหรียญสนิทตอนหลอดยังว่าง
   const mx = x + Math.max(12, Math.min(w - 8, fw));
-  drawCatFace(ctx, mx, y + h / 2, 0.4, getSkin());
+  hudFace(ctx, mx, y + h / 2, 0.4, getSkin());
 
   ctx.restore();
+}
+
+// ── หน้าน้องบน HUD (เหรียญหัวหลอดพลัง · หัวที่วิ่งบนหลอดระยะทาง) — ลายเส้นใหม่ (ผู้ใช้ 18 ต.ค.) ──
+// หน้าแบบใหม่วาดหนัก (ตัววาดเต็ม เฉพาะหัว) แต่ HUD วาดทุกเฟรม → วาดครั้งเดียวเก็บเป็นภาพ แล้วแปะซ้ำ
+// แมวที่ยังใช้ตัววาดเดิม (ลูกแมว · มีรูปหน้าอัปโหลด) = หน้าเดิมเหมือนก่อน
+const FACE_RES = 4;   // ความละเอียดภาพเทียบหน่วย HUD (จอเรตินา + เวทีขยาย ยังคม)
+const faceCache = new Map();
+function hudFace(ctx, cx, cy, scale, skin) {
+  if (!(CAT2.ui && useCat2(skin))) return drawCatFace(ctx, cx, cy, scale, skin);
+  const key = [skin.id, skin.palette, skin.sex, skin.age, skin.outfit?.id, scale].join('|');
+  let cv = faceCache.get(key);
+  if (!cv) {
+    // กรอบ 70×74 หน่วย (ต่อ scale 1) จุดกลางหน้าที่ (35, 42) — เผื่อหมวก/หูที่ยื่นขึ้นไป
+    const S = scale * FACE_RES;
+    cv = document.createElement('canvas');
+    cv.width = Math.ceil(70 * S);
+    cv.height = Math.ceil(74 * S);
+    drawCatFaceAuto(cv.getContext('2d'), 35 * S, 42 * S, S, skin);
+    if (faceCache.size > 24) faceCache.clear();
+    faceCache.set(key, cv);
+  }
+  ctx.drawImage(cv, cx - 35 * scale, cy - 42 * scale, 70 * scale, 74 * scale);
 }
 
 /** ธงปลายทางของฉาก — โบกตอนถึงแล้ว เพื่อบอกว่ากำลังจะเปลี่ยนฉาก */
@@ -524,7 +547,7 @@ function drawCatBadge(ctx, cx, cy, r) {
 
   // เยื้องลง 4 เพราะจุดกึ่งกลางของหัวอยู่ที่วงหน้า ไม่ใช่รวมหู
   // ถ้าวางกลางจานตรง ๆ หูจะโผล่เกินจนดูหัวลอยขึ้นข้างบน
-  drawCatFace(ctx, cx, cy + 4, 1, getSkin());
+  hudFace(ctx, cx, cy + 4, 1, getSkin());
   ctx.restore();
 }
 

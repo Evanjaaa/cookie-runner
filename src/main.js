@@ -52,8 +52,10 @@ import {
   sendLoginCode, verifyLoginCode, sendLinkCode, verifyLinkCode, signOut,
   fetchMyFriendCode, fetchProfileByCode, claimName, nameAvailable,
   friendStatus, sendFriendRequest, respondFriendRequest, cancelFriendRequest, removeFriend,
-  fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers,
+  fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers, fetchGachaPromos, fetchOutfitCards,
 } from './net/cloud.js';
+import { cropRect } from './crop.js';
+import { OC_W, OC_H, drawOutfitArt } from './render/outfit-art.js';
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
@@ -103,7 +105,7 @@ import { SKILLS, isSkillUnlocked } from './skills.js';
 import { registerFresh, isFresh, hasFresh, markSeen, onFresh, setDot } from './fresh.js';
 import { setupSkillUI } from './skill-ui.js';
 import { HOME_MOVES } from './home-moves.js';
-import { drawOdScene, odGeo, odGeoCover, odIntroAt, OD_VIDEOS, odVideoPick, odVideoSrc } from './od-stage.js';
+import { drawOdScene, odGeo, odGeoCover, odIntroAt, odVideoPick, odVideoSrc, odVideoCast, OD_CASTS, OD_SHOP_CAST } from './od-stage.js';
 import { GUMBALL, createGumball, drawGumballFrame } from './render/gumball.js';
 import {
   playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
@@ -944,7 +946,45 @@ const promoCache = new Map();
 let promoI = 0;
 let promoFront = 0;
 let promoTimer = 0;
-const promoList = () => pullPool().filter((o) => o.rarity === 'high');
+// ── รูปป้ายที่แอดมินอัปโหลดเอง (หลังบ้าน แท็บ "ป้ายตู้กาช่า" · supabase/gacha-promo.sql — ผู้ใช้ขอ 18 ต.ค.) ──
+// มีรูปอย่างน้อยหนึ่งรูป = ป้ายใช้รูปพวกนี้เรียงตามลำดับ (ครอบตัดตามที่จัดไว้) เปลี่ยนทุก interval วินาที
+// ไม่มีรูป / อ่านไม่ได้ = ป้ายเดิม (ชุดระดับ S ทีละชุด) · จำรายการล่าสุดไว้ในเครื่อง เปิดตู้ครั้งหน้าขึ้นทันทีไม่ต้องรอเน็ต
+const PROMO_CACHE_KEY = 'cookie-runner:gacha-promos';
+let promoCustom = (() => {
+  try { const c = JSON.parse(localStorage.getItem(PROMO_CACHE_KEY) || 'null'); return c && Array.isArray(c.slides) ? c : null; } catch { return null; }
+})();
+let promoSyncAt = 0;
+async function syncPromos() {
+  if (Date.now() - promoSyncAt < 60_000) return;
+  promoSyncAt = Date.now();
+  const got = await fetchGachaPromos();
+  if (!got) return;   // อ่านไม่ได้ = คงของเดิม
+  if (JSON.stringify(got) === JSON.stringify(promoCustom)) return;
+  promoCustom = got;
+  try { localStorage.setItem(PROMO_CACHE_KEY, JSON.stringify(got)); } catch {}
+  promoCache.clear();
+  promoI = 0;
+  paintPromo.started = false;
+  if (!gachaPanel.classList.contains('hidden') && !gIsT()) paintPromo(0);
+}
+const promoUrlImgs = new Map();
+/** รูปป้ายจากลิงก์ (โหลดครั้งเดียว) — โหลดเสร็จแล้ววาดป้ายใหม่ · คืน null ถ้ายังไม่พร้อม */
+function promoUrlImg(url) {
+  let im = promoUrlImgs.get(url);
+  if (!im) {
+    im = new Image();
+    im.decoding = 'async';
+    im.onload = () => { promoCache.clear(); if (!gachaPanel.classList.contains('hidden') && !gIsT()) paintPromo(0); };
+    im.src = url;
+    promoUrlImgs.set(url, im);
+  }
+  return im.complete && im.naturalWidth ? im : null;
+}
+const promoMs = () => (promoCustom?.slides?.length ? promoCustom.interval * 1000 : PROMO_MS);
+/** รายการบนป้าย: รูปของแอดมิน (custom) หรือชุดระดับ S — ชื่อ: title ที่ตั้งไว้ · null = ชื่อชุดที่ลิงก์ · '' = ไม่โชว์ */
+const promoList = () => (promoCustom?.slides?.length
+  ? promoCustom.slides.map((p) => ({ id: 'promo:' + p.id, custom: p, name: p.title ?? (outfitById(p.outfit).id === p.outfit ? outfitById(p.outfit).name : '') }))
+  : pullPool().filter((o) => o.rarity === 'high'));
 // รูปโปรโมทจริงที่ผู้ใช้ทำมา (public/promo/) — ชุดที่มีรูปใช้รูปนี้ ชุดที่ยังไม่มีวาดจากตัววาดเวที
 // cx = จุดกลางตัวน้องในรูป (สัดส่วนความกว้าง) — จัดให้ตรงกลางพื้นที่ป้ายแบบเดียวกับรูปที่วาดเอง
 const PROMO_IMG = { sweet: { src: 'promo/promo-sweet.jpg', cx: 0.47 } };
@@ -972,6 +1012,26 @@ function drawPromoArt(cv, o) {
   const mL = Math.max(0, machine.offsetLeft + machine.offsetWidth * 0.1 - banner.offsetLeft) * dpr;
   const ov = Math.round(Math.max(0, W - mL));
   const skin = getSkin();
+  if (o.custom) {
+    // รูปของแอดมิน: ปูเต็มป้ายตามค่าครอบตัด (สูตรเดียวกับตัวอย่างในหลังบ้าน — src/crop.js)
+    const pic = promoUrlImg(o.custom.image);
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const c = cv.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, W, H);
+    if (pic) {
+      const r = cropRect(pic.naturalWidth, pic.naturalHeight, W, H, o.custom.crop);
+      c.drawImage(pic, r.x, r.y, r.w, r.h);
+    } else {
+      // ระหว่างโหลดรูป: พื้นไล่สีชมพู-ม่วงแบบป้ายว่าง (ไม่ปล่อยกรอบโปร่ง)
+      const g = c.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, '#FFC6DD');
+      g.addColorStop(1, '#C8A8FF');
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, H);
+    }
+    return true;
+  }
   const key = o.id + '|' + skin.id + '|' + W + 'x' + H + '|' + Math.round(ov);
   let img = promoCache.get(key);
   if (!img) {
@@ -1018,7 +1078,7 @@ function paintPromo(step = 0) {
   if (!list.length) return;
   // เปิดหน้ามาครั้งแรก: เริ่มที่ชุดที่กำลังส่องอยู่ถ้าเป็นระดับ S
   if (step === 0 && !paintPromo.started) {
-    const at = list.findIndex((o) => o.id === heroId);
+    const at = list[0]?.custom ? 0 : list.findIndex((o) => o.id === heroId);
     if (at >= 0) promoI = at;
     paintPromo.started = true;
   }
@@ -1031,12 +1091,13 @@ function paintPromo(step = 0) {
   promoFront = slot;
   document.getElementById('gpName').textContent = o.name;
   fitPromoName();
-  document.getElementById('gpOpen').setAttribute('aria-label', 'ดูรายละเอียด ' + o.name);
+  document.getElementById('gpOpen').setAttribute('aria-label', o.name ? 'ดูรายละเอียด ' + o.name : 'ป้ายโปรโมท');
   clearTimeout(promoTimer);
+  if (list.length < 2) return;   // รูปเดียว = ไม่ต้องสลับ
   promoTimer = setTimeout(() => {
     if (gachaPanel.classList.contains('hidden') || gIsT()) return;   // เปิดหน้ากลับมา refreshGacha นับใหม่เอง
     paintPromo(1);
-  }, PROMO_MS);
+  }, promoMs());
 }
 new ResizeObserver(() => { if (!gachaPanel.classList.contains('hidden') && !gIsT()) paintPromo(0); })
   .observe(document.querySelector('.gp-banner'));
@@ -1612,6 +1673,7 @@ function showGacha(on, tab) {
     pickFirstHero('treasure');
     pickFirstHero('skin');
     refreshGacha();
+    syncPromos();   // รูปป้ายจากหลังบ้าน (ไม่รอ — ได้แล้ววาดใหม่เอง)
   } else {
     // ปิดพาเนลกลางแอนิเมชัน: ล้างสถานะทิ้ง ไม่งั้นเปิดกลับมาเจอผลเก่าเด้งขึ้นเอง
     // ของที่สุ่มได้ถูกบันทึกไปตั้งแต่ตอนกดแล้ว จึงไม่มีอะไรหาย
@@ -1638,6 +1700,7 @@ function buildGList() {
 
   // สกิน: การ์ดแบบเดียวกับหน้าชุดแมวในคลังน้อง (.oc-card — ผู้ใช้ขอ 16 ต.ค.) · สมบัติ: การ์ดเดิม
   grid.classList.toggle('oc-grid', !t);
+  if (!t) syncOutfitCards();   // รูปการ์ดจากหลังบ้าน (ไม่รอ — ได้แล้ววาดการ์ดใหม่เอง)
   for (const item of gPool()) {
     const got = gGot(item.id);
     if (!t) {
@@ -3096,11 +3159,48 @@ function confirmBox(opts) {
  * เก็บรูปที่วาดแล้วไว้ (ตัวแมว × ชุด × ความละเอียด) — กริดถูกสร้างใหม่บ่อย (กลับจากหน้ารายละเอียด
  * กดเรียง/กรอง) วาดน้อง 18 ตัวใหม่ทุกรอบเปลืองเครื่องโดยไม่ได้อะไร
  */
-const OC_W = 200, OC_H = 248;
 const ocCache = new Map();
+
+// ── รูปการ์ดที่แอดมินอัปโหลดเอง (หลังบ้าน แท็บ "รูปการ์ดชุด" · supabase/outfit-cards.sql — ผู้ใช้ขอ 18 ต.ค.) ──
+// สกินละหนึ่งรูป ครอบตัดตามที่จัดไว้ (src/crop.js) · ไม่มีรูป / อ่านไม่ได้ = ภาพเดิมที่วาดเอง
+// จำรายการล่าสุดไว้ในเครื่อง เปิดหน้าครั้งหน้าขึ้นทันที · ระหว่างโหลดรูปโชว์ภาพเดิมไปก่อน แล้ววาดทับเมื่อรูปมา
+const OCARD_KEY = 'cookie-runner:outfit-cards';
+let ocCustom = (() => {
+  try { const c = JSON.parse(localStorage.getItem(OCARD_KEY) || 'null'); return c && typeof c === 'object' ? c : {}; } catch { return {}; }
+})();
+let ocSyncAt = 0;
+const ocImgs = new Map();
+/** รูปการ์ดจากลิงก์ (โหลดครั้งเดียว) — โหลดเสร็จแล้ววาดการ์ดที่ยังรออยู่บนจอใหม่ · คืน null ถ้ายังไม่พร้อม */
+function ocUrlImg(url) {
+  let im = ocImgs.get(url);
+  if (!im) {
+    im = new Image();
+    im.decoding = 'async';
+    im.onload = () => repaintOutfitCards();
+    im.src = url;
+    ocImgs.set(url, im);
+  }
+  return im.complete && im.naturalWidth ? im : null;
+}
+/** วาดรูปการ์ดทุกใบที่อยู่บนจอใหม่ (ไม่สร้างกริดใหม่ — ตำแหน่งเลื่อนไม่หาย) */
+function repaintOutfitCards() {
+  for (const cv of document.querySelectorAll('.oc-card canvas')) if (cv.__oc) paintOutfitArt(cv, ...cv.__oc);
+}
+async function syncOutfitCards() {
+  if (Date.now() - ocSyncAt < 60_000) return;
+  ocSyncAt = Date.now();
+  const got = await fetchOutfitCards();
+  if (!got || JSON.stringify(got) === JSON.stringify(ocCustom)) return;
+  ocCustom = got;
+  try { localStorage.setItem(OCARD_KEY, JSON.stringify(got)); } catch {}
+  repaintOutfitCards();
+}
 function paintOutfitArt(canvas, s, o) {
+  canvas.__oc = [s, o];   // วาดใหม่ได้เมื่อรูปของแอดมินโหลดเสร็จ/เปลี่ยน (repaintOutfitCards)
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const key = s.id + '|' + o.id + '|' + dpr;
+  const cus = ocCustom[o.id];
+  const pic = cus ? ocUrlImg(cus.image) : null;
+  const key = pic ? `img|${o.id}|${cus.image}|${JSON.stringify(cus.crop)}|${dpr}` : s.id + '|' + o.id + '|' + dpr;
   let img = ocCache.get(key);
   if (!img) {
     if (ocCache.size > 60) ocCache.clear();
@@ -3108,55 +3208,20 @@ function paintOutfitArt(canvas, s, o) {
     img.width = OC_W * dpr;
     img.height = OC_H * dpr;
     const c = img.getContext('2d');
-    c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawOutfitArt(c, s, o);
+    if (pic) {
+      // รูปของแอดมิน: ปูเต็มกรอบการ์ดตามค่าครอบตัด (สูตรเดียวกับตัวอย่างในหลังบ้าน)
+      const r = cropRect(pic.naturalWidth, pic.naturalHeight, img.width, img.height, cus.crop);
+      c.drawImage(pic, r.x, r.y, r.w, r.h);
+    } else {
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawOutfitArt(c, s, o);
+    }
     ocCache.set(key, img);
   }
   canvas.width = img.width;
   canvas.height = img.height;
   canvas.getContext('2d').drawImage(img, 0, 0);
 }
-function drawOutfitArt(c, s, o) {
-  const W = OC_W, H = OC_H, feet = H * 0.885, sc = 3.35;
-  const high = o.rarity === 'high';
-  // drawCatAuto ย่อแบบใหม่ด้วย fit 0.86 — ฉากหลังต้องใช้สเกลเดียวกับตัวน้องที่วาดจริง
-  const drawn = cat2Backdrop(o.id) && drawCat2Backdrop(c, W / 2, feet, sc * 0.86, o.id);
-  if (!drawn) {
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, high ? '#FDEBFA' : '#F5EBFF');
-    g.addColorStop(1, high ? '#E9C9F6' : '#E4D1F8');
-    c.fillStyle = g;
-    c.fillRect(0, 0, W, H);
-    if (high) {
-      // แสงนวลหลังตัว + ประกายเล็ก ๆ ให้ต่างจากห้องธรรมดา
-      const r = c.createRadialGradient(W / 2, H * 0.45, 4, W / 2, H * 0.45, W * 0.62);
-      r.addColorStop(0, 'rgba(255,255,255,.75)');
-      r.addColorStop(1, 'rgba(255,255,255,0)');
-      c.fillStyle = r;
-      c.fillRect(0, 0, W, H);
-      c.fillStyle = 'rgba(255,255,255,.9)';
-      for (const [x, y, k] of [[24, 34, 5], [176, 58, 4], [30, 128, 3], [170, 150, 5], [150, 22, 3]]) {
-        c.beginPath();
-        c.moveTo(x, y - k); c.quadraticCurveTo(x, y, x + k, y); c.quadraticCurveTo(x, y, x, y + k);
-        c.quadraticCurveTo(x, y, x - k, y); c.quadraticCurveTo(x, y, x, y - k);
-        c.fill();
-      }
-    }
-    // พื้นไม้อ่อนใต้เท้า + เงา (แบบในภาพที่ผู้ใช้วาง)
-    const fy = feet - 20;
-    const f = c.createLinearGradient(0, fy, 0, H);
-    f.addColorStop(0, high ? '#F1D3DF' : '#EAD5BA');
-    f.addColorStop(1, high ? '#E2B9CB' : '#DABF9C');
-    c.fillStyle = f;
-    c.fillRect(0, fy, W, H - fy);
-    c.fillStyle = 'rgba(92,60,44,.26)';
-    c.beginPath();
-    c.ellipse(W / 2, feet - 1, 46, 8, 0, 0, Math.PI * 2);
-    c.fill();
-  }
-  drawCatAuto(c, W / 2, feet, sc, { ...s, outfit: o }, 60);
-}
-
 function buildOutfitGrid() {
   const grid = document.getElementById('outfitGrid');
   grid.innerHTML = '';
@@ -5449,13 +5514,15 @@ let odRAF = 0;
 // mode: 'intro' | 'act' | 'idle' · f = เฟรมในท่า · tBase = เวลาชีวิต (หายใจ กะพริบ) ต่อเนื่องข้ามท่า
 // from = ท่าเปิดตัว ณ จุดที่ออก (ผสมเข้าท่าแอ็คช่วงแรก) · w/h = ขนาดผ้าใบที่วัดไว้ (ResizeObserver)
 // vid = ขนาดวิดีโอที่ใช้กับการเปิดหน้านี้ (null = วาดสดล้วน) · vplay = วิดีโอกำลังรับหน้าที่ท่าเปิดตัว · vStart = เวลาที่สั่งเล่น
-const od = { mode: 'idle', f: 0, tBase: 600, from: null, last: 0, w: 0, h: 0, vid: null, vplay: false, vStart: 0 };
+const od = { mode: 'idle', f: 0, tBase: 600, from: null, last: 0, w: 0, h: 0, vid: null, vplay: false, vStart: 0, skin: null };
 new ResizeObserver(([e]) => { od.w = e.contentRect.width; od.h = e.contentRect.height; }).observe(odStage);
 const OD_VIDEO_WAIT = 2500;   // วิดีโอยังไม่ขึ้นภาพเกินเท่านี้ (มิลลิวินาที) = วาดสดแทน
 
 /** เริ่มเล่นใหม่ตั้งแต่ต้น — ชุดที่มีท่าเปิดตัวเริ่มที่ท่าเปิดตัว (มีวิดีโอ = เล่นวิดีโอ) */
 function odStart() {
-  const s = { ...getSkin(), outfit: outfitById(odCurrent) };
+  // เปิดจากตู้กาช่า (ป้ายโปรโมท / สกินในตู้นี้) = พรีเซนเตอร์ประจำร้าน (น้องไข่มุก — ผู้ใช้ 18 ต.ค.) · จากคลังน้อง = แมวของผู้เล่น
+  od.skin = odFrom === gachaPanel || odFrom === gListPanel ? skinById(OD_CASTS[OD_SHOP_CAST].skin) : getSkin();
+  const s = { ...od.skin, outfit: outfitById(odCurrent) };
   const live = CAT2.ui && useCat2(s);   // ท่าเปิดตัว/ท่าแอ็คมีเฉพาะตัววาดแบบใหม่
   od.mode = live && cat2Intro(odCurrent) ? 'intro' : live && cat2Act(odCurrent) ? 'act' : 'idle';
   od.f = 0;
@@ -5466,15 +5533,15 @@ function odStart() {
   od.vid = null;
   if (od.mode !== 'intro') return;
   fadeSfx(0.05);
-  const v = OD_VIDEOS[odCurrent];
-  if (!v || s.id !== v.skin) return;
+  const cast = odVideoCast(odCurrent, s.id);
+  if (!cast) return;
   // ขนาดการ์ดตอนนี้ (แผงเพิ่งโชว์ ResizeObserver อาจยังไม่ได้วัด) — อ่านครั้งเดียวตอนเปิด
   const r = odStage.getBoundingClientRect();
   if (!r.width || !r.height) return;
   od.vid = odVideoPick(odCurrent, r.width, r.height);
   od.vplay = true;
   od.vStart = performance.now();
-  odVideo.src = import.meta.env.BASE_URL + odVideoSrc(odCurrent, od.vid);
+  odVideo.src = import.meta.env.BASE_URL + odVideoSrc(odCurrent, od.vid, cast);
   odVideo.currentTime = 0;
   odVideo.play().catch(odVideoFail);
 }
@@ -5514,7 +5581,7 @@ function odDraw() {
   const ctx = odStage.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawOdScene(ctx, W, H, {
-    id: odCurrent, skin: { ...getSkin(), outfit: o }, high: o.rarity === 'high',
+    id: odCurrent, skin: { ...(od.skin || getSkin()), outfit: o }, high: o.rarity === 'high',
     mode: od.mode, f: od.f, tBase: od.tBase, from: od.from,
   }, od.vid ? odGeoCover(W, H, od.vid) : odGeo(W, H));
 }
@@ -5772,6 +5839,7 @@ function setStashTab(tab) {
   document.getElementById('stashTitle').textContent = STASH_TABS[tab].title;
   // หมวดชุด: ไม่มีช่องพรีวิวซ้าย — การ์ดใหญ่เต็มแถว แตะแล้วเข้าหน้ารายละเอียดเลย (style.css .outfit-mode)
   stashPanel.classList.toggle('outfit-mode', tab === 'outfit');
+  if (tab === 'outfit') syncOutfitCards();   // รูปการ์ดจากหลังบ้าน (ไม่รอ — ได้แล้ววาดการ์ดใหม่เอง)
   stashDream.kick();
   paintStashCount(tab);
   setMsg(document.getElementById('outfitMsg'), '');
@@ -7846,9 +7914,11 @@ gpOpenBtn.addEventListener('click', () => {
   gpSwipe = null;
   const o = promoList()[promoI];
   if (!o) return;
+  const outfit = o.custom ? o.custom.outfit : o.id;   // รูปของแอดมิน: เปิดชุดที่ลิงก์ไว้ (ไม่ได้ลิงก์ = แตะแล้วไม่ไปไหน)
+  if (!outfit || outfitById(outfit).id !== outfit) return;   // id ไม่มีในเกม (ซ่อน/ลบไปแล้ว) = ไม่เปิด
   unlockAudio(); sfx.fish();
   clearTimeout(promoTimer);
-  openOutfitDetail(o.id, gachaPanel);
+  openOutfitDetail(outfit, gachaPanel);
 });
 document.getElementById('pull5').addEventListener('click', () => doPull(gMulti()));
 document.getElementById('homeBtn').addEventListener('click', () => { sfx.quit(); goHome(); });

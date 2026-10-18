@@ -279,12 +279,56 @@ export async function fetchPlayer() {
 // ตาราง news อ่านได้ทุกคน (ไม่ต้องล็อกอิน) — ดู supabase/news.sql
 // คืน null เมื่ออ่านไม่ได้ แยกจาก [] = "ยังไม่มีข่าว" หน้าข่าวจะได้บอกให้ถูก
 
+/**
+ * รูปบนป้ายโปรโมทหน้าสุ่มสกิน (แท็บ "ป้ายตู้กาช่า" ในหลังบ้าน · supabase/gacha-promo.sql)
+ * → { interval: วินาที, slides: [{ id, image, crop, outfit, title }] } · null = อ่านไม่ได้ (ยังไม่รัน SQL / ออฟไลน์)
+ */
+export async function fetchGachaPromos() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const [{ data, error }, cfg] = await Promise.all([
+      c.from('gacha_promos').select('*').eq('active', true).order('sort', { ascending: true }).order('created_at', { ascending: true }).limit(30),
+      c.from('gacha_promo_settings').select('interval_sec').eq('id', 1).maybeSingle(),
+    ]);
+    if (error) throw error;
+    return {
+      interval: Math.max(3, Math.min(60, cfg?.data?.interval_sec || 10)),
+      slides: (data || []).filter((p) => p.image_url).map((p) => ({
+        id: p.id, image: p.image_url, crop: p.crop || null, outfit: p.outfit_id || null, title: p.title ?? null,
+      })),
+    };
+  } catch (e) {
+    console.warn('[cloud] อ่านป้ายตู้กาช่าไม่ได้', e.message || e);
+    return null;
+  }
+}
+
+/**
+ * รูปบนการ์ดชุด (แท็บ "รูปการ์ดชุด" ในหลังบ้าน · supabase/outfit-cards.sql) — สกินละหนึ่งรูป
+ * → { [id ชุด]: { image, crop } } · null = อ่านไม่ได้ (ยังไม่รัน SQL / ออฟไลน์)
+ */
+export async function fetchOutfitCards() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data, error } = await c.from('outfit_cards').select('*').eq('active', true).limit(300);
+    if (error) throw error;
+    return Object.fromEntries((data || []).filter((r) => r.image_url && r.outfit_id)
+      .map((r) => [r.outfit_id, { image: r.image_url, crop: r.crop || null }]));
+  } catch (e) {
+    console.warn('[cloud] อ่านรูปการ์ดชุดไม่ได้', e.message || e);
+    return null;
+  }
+}
+
 export async function fetchNews() {
   const c = await client();
   if (!c) return null;
   try {
+    // '*' = รับคอลัมน์ใหม่ (image_crop) ได้เองเมื่อรัน SQL แล้ว — ยังไม่รันก็ไม่พัง (ระบุชื่อคอลัมน์ที่ไม่มี = error ทั้งชุด)
     const { data, error } = await c.from('news')
-      .select('id, title, body, image_url, tag, news_date, pinned, created_at')
+      .select('*')
       .eq('active', true)
       .order('pinned', { ascending: false })
       .order('news_date', { ascending: false })
@@ -296,6 +340,7 @@ export async function fetchNews() {
       title: n.title,
       body: n.body || '',
       image: n.image_url || '',
+      crop: n.image_crop || null,
       tag: n.tag || 'ประกาศ',
       date: n.news_date || (n.created_at || '').slice(0, 10),
       pinned: !!n.pinned,

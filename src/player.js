@@ -50,6 +50,7 @@ export class Player {
     this.tilt = 0;
     this.fainting = false;
     this.faintV = 0;
+    this.calmFall = false;   // ตกหลุมแบบร่วงตรงลงไปเฉย ๆ ไม่เด้ง/ไม่หมุน (น้องตัวใหม่ — ดู game.die)
     // ระยะเลื่อนแนวนอนจากจุดวิ่งปกติ (พิกัดจอ) — ปกติเป็น 0 ตลอด
     // พรสวรรค์ที่พาตัวไปข้างหน้า/ถอยหลังกลางอากาศเป็นคนขยับค่านี้
     this.ox = 0;
@@ -260,9 +261,9 @@ export class Player {
       return;
     }
 
-    // ตกหลุม: ปลิวขึ้นแล้วหมุนตกจอไป
+    // ตกหลุม: ปลิวขึ้นแล้วหมุนตกจอไป (calmFall = ร่วงตรงต่อไปเฉย ๆ ไม่หมุน)
     this.vy += PHYSICS.gravity * dt;
     this.y += this.vy * dt;
-    this.tilt += 0.09 * dt;
+    if (!this.calmFall) this.tilt += 0.09 * dt;
   }
 }

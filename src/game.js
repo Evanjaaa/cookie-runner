@@ -52,7 +52,10 @@ function splitFish(list) {
 }
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
 import { setCatEdgeScale } from './render/entities.js';
-import { CAT2, drawCat2, drawCatAuto, cat2Act } from './render/cat2.js';
+import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2 } from './render/cat2.js';
+import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_SIZE } from './render/cat2-run.js';
+import { drawTrail } from './render/cat2.js';
+import { LIGHTS } from './render/props/kit.js';
 import { fillCoverExt, fillFullView, coverExt } from './render/cover-ext.js';
 import { gfxLevel, autoLite } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
@@ -220,6 +223,15 @@ function blitLayer(ctx, layer, op = 'source-over', r = null) {
   else ctx.drawImage(layer, 0, 0);
   ctx.restore();
 }
+
+/**
+ * หรี่แสงที่ตัวน้องแบบใหม่ตอนวิ่ง — k = ความเข้มที่ทาบนตัว (0 = ปิด) · tint = สี
+ * ผู้ใช้ 18 ต.ค.: รอบแรกทาโทนม่วงกลางคืน 0.12 + ย้ายแสงฟุ้งไปก่อนวาดน้อง → "มืดไป" (ด่านกลางวันยิ่งชัด)
+ * → คืนแสงฟุ้งแบบเดิม (ลงหลังน้อง) แล้วหรี่ลงนิดเดียวแบบไม่เปลี่ยนสี (ดำ 5%)
+ */
+const RUN_DIM = { k: 0.05, tint: '0,0,0' };
+/** แสงจากสิ่งกีดขวางที่เรือง ส่องตัวน้องตอนวิ่งผ่าน (ผู้ใช้ 18 ต.ค.) — k = ความแรงรวม (0 = ปิด) */
+const RUN_LIGHT = { k: 0.85, max: 0.45 };   // max = ความแรงรวมสูงสุดเมื่อหลายดวงซ้อนกัน (เกินนี้ตัวน้องขาวโพลน)
 
 const HOME_BG_STEP = 1.9;
 /** ส่วนไกลของฉาก (ฟ้า เมฆ ปราสาท เนิน) วาดใหม่ทุกกี่หน่วยเวลาเกม — 15 ≈ 4 ครั้ง/วิ (ดู drawHomeBackdrop) */
@@ -583,6 +595,10 @@ export class Game {
     this.idleT = -1;
 
     this.player.reset();
+    // ท่าวิ่งตัวใหม่ (cat2-run.js) มีสถานะของตัวเอง (จังหวะขา ตีลังกา ประกายจากชุด) — เริ่มใหม่ทุกตา
+    this.runAnim = createRunAnim();
+    this.runAnimTick = null;
+    this.runAnimR = null;
     this.particles.clear();
     // อ่านสมบัติที่ติดตั้งไว้ใหม่ทุกตา ผู้เล่นอาจเพิ่งสลับชุดจากหน้าเลือกด่าน
     this.treasures.reset();
@@ -2389,8 +2405,14 @@ export class Game {
     // ช่วงเดียวที่อารมณ์ถูกใช้จริง (ดีใจตอนปลามารับ เศร้าตอนกลับลงพื้น)
     // เส้นทางวาดตอนวิ่งปกติเป็นคนละบรรทัดกัน แก้ที่นั่นอย่างเดียวจึงไม่มีผลอะไรเลย
     // ลูกแมวในเป้ไปโบนัสด้วย (นั่งบนหลังน้องที่ขี่ปลาอยู่)
-    drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK, 1, this.carrierFx());
-    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT_LOOK);
+    // น้องแบบใหม่ (ผู้ใช้ 18 ต.ค.): ยืนบนหลังปลาด้วยท่าวิ่งตัวใหม่ — ฉากเลื่อน (ขึ้นฟ้า/บิน) = วิ่งสี่จังหวะ
+    // ฉากหยุด (ปลามารับ/ร่อนลง/วางลงพื้น) = ยืนเท้าใต้ตัว · หน้าตามอารมณ์โบนัส (ดีใจ → ตาประกาย → เศร้า)
+    if (CAT2.run && useCat2(skin)) {
+      this.runLights = [];   // แสงสิ่งกีดขวางของเฟรมวิ่งก่อนหน้าไม่ใช้กับฉากโบนัส
+      const moving = this.bonusPhase === 'rise' || this.bonusPhase === 'fly';
+      this.drawRunCat(ctx, skin, this.catMood, this.magnet > 0, CAT_LOOK, 0, 1, { speed: moving ? this.speed : 0, stand: !moving });
+    } else drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK, 1, this.carrierFx());
+    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT2.run && useCat2(skin) ? CAT_LOOK * RUN_SIZE : CAT_LOOK);
     if (warp.rise > 0) drawWarpFront(ctx, wx, wy, warp.rise, this.tick);
     if (warp.arrive >= 0) drawWarpArrive(ctx, wx, wy, warp.arrive);
 
@@ -2437,7 +2459,12 @@ export class Game {
       this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 9);
     } else {
       this.shake = 16;
-      this.player.vy = -9;
+      // น้องตัวใหม่ (ท่าวิ่ง cat2-run): ร่วงตรงลงหลุมต่อไปเฉย ๆ ไม่เด้งกลับขึ้นมาม้วนตัว — ผู้ใช้ 18 ต.ค.
+      // (เด้งขึ้นแล้วหมุน = หางคทาลากตามขึ้นมาจากหลุมอีกรอบ) · ตัวเดิมยังปลิวหมุนตกจอแบบเดิม
+      if (CAT2.run && useCat2(getSkin())) {
+        this.player.calmFall = true;
+        this.player.vy = Math.max(this.player.vy, 3);
+      } else this.player.vy = -9;
       this.particles.burst(PLAYER_X + 20 + this.camera, this.player.y - 20, 18, 'crumb', 7);
     }
 
@@ -2526,6 +2553,10 @@ export class Game {
     this.level.ensureAhead(this.camera);
 
     this.player.reset();
+    // ท่าวิ่งตัวใหม่เริ่มใหม่ด้วย — หางคทา/ประกายที่ตกลงหลุมไปไม่โผล่ขึ้นมาเป็นเส้นจากหลุมถึงตัว (ผู้ใช้ทัก 18 ต.ค.)
+    this.runAnim = createRunAnim();
+    this.runAnimTick = null;
+    this.runAnimR = null;
     // reset() ล้างระยะเลื่อนกับท่า แต่พรสวรรค์ยังเป็นใบเดิม — ผูกตัวปรับกลับเข้าไปใหม่
     this.talents.attach(this.player);
     this.state = STATE.RUN;
@@ -2614,10 +2645,14 @@ export class Game {
     // ยกเว้นเม็ดอาหารรูปปลา — ขึ้นเรียงเป็นแถวยาวเต็มจอ มีเส้นแล้วดูรกและหนักตา
     // จึงวาดแยกนอกชั้นเส้นขอบ (ข้างล่าง) ส่วนเม็ดกลมกับกุ้งทองยังมีเส้นเพราะเป็นของเด่น
     const [plainFish, rareTreats] = splitFish(this.level.fishes);
+    // จดแสงของสิ่งกีดขวางที่เรือง (คริสตัล โคมไฟ เตาไฟ ไฟเตือน ฯลฯ) ไว้ส่องตัวน้องตอนวิ่งผ่าน — เฉพาะรอบวาดจริง (ไม่ใช่รอบเงาเส้นขอบ)
+    const runLights = (this.runLights = []);
     drawOutlined(ctx, (c) => {
+      LIGHTS.list = c === ctx ? runLights : null;
       drawObstacles(c, this.level.obstacles, this.camera, this.scene.theme);
       drawFallers(c, this.level.fallers, this.camera, this.scene.theme);
       drawHazards(c, this.level.hazards, this.camera, this.tick, this.pal);
+      LIGHTS.list = null;
       drawTreats(c, rareTreats, this.camera, this.tick);
       drawPotions(c, this.level.potions, this.camera, this.tick);
       drawMagnets(c, this.level.magnets, this.camera, this.tick);
@@ -2645,13 +2680,15 @@ export class Game {
     // กะพริบสองกรณี: หลังโดนชน กับตอนความสามารถใกล้หมดฤทธิ์
     const skillFlicker = this.skillBlink > 0 && Math.floor(this.tick / 5) % 2 === 0;
     const catS = this.catScale;
+    // ของที่เกาะตัวน้อง (วงโล่ หลอดสกิล คลื่นดูด "!") ตามขนาดที่ตาเห็น — น้องแบบใหม่ใหญ่กว่าตัวเดิม RUN_SIZE
+    const lookS = CAT2.run && useCat2(getSkin()) ? catS * RUN_SIZE : catS;
 
     // ── วงโล่วาดก่อนตัว ──
     // ตอนขนาดปกติวงกว้างกว่าตัวทุกด้านอยู่แล้ว วาดหน้าหรือหลังจึงเห็นเหมือนกันเป๊ะ
     // แต่ตอนตัวใหญ่ ชุดระดับสูงมีผ้าคลุมกับเอฟเฟกต์ยื่นออกนอกกล่องชน
     // วางไว้ข้างหลังจึงการันตีว่าวงจะไม่มีวันพาดทับหน้าหรือชุดของน้อง
     if (this.state !== STATE.DEAD && this.shielded) {
-      drawShieldRing(ctx, this.player, this.tick, catS);
+      drawShieldRing(ctx, this.player, this.tick, lookS);
     }
 
     // ลูกแมวจากกล่องวิ่งตามอยู่ข้างหลัง
@@ -2690,12 +2727,16 @@ export class Game {
       const shout = pose === 'shout' && this.pulseR >= 0 && this.pulseR < 260;
       ctx.save();
       ctx.translate(0, -liftY);
-      drawPlayer(ctx, this.player, this.state === STATE.DEAD, getSkin(), sucking || shout,
-        pose === 'dance' ? this.tick : 0,
-        this.boxScene && !(this.boxScene.walk > 0) ? (this.boxScene.t < 64 ? 'hurt' : 'happy')
-          : this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood,
-        catS, 1 + (BIGCAN.gait - 1) * this.bigK,
-        { tired: this.big > 0 || pose ? 0 : lowK, hurt: this.hurtFlash, hero: hero ? 1 : 0,
+      const runSkin = getSkin();
+      const runMood = this.boxScene && !(this.boxScene.walk > 0) ? (this.boxScene.t < 64 ? 'hurt' : 'happy')
+        : this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood;
+      const runTired = this.big > 0 || pose ? 0 : lowK;
+      const runGait = 1 + (BIGCAN.gait - 1) * this.bigK;
+      // น้องแบบใหม่: ท่าวิ่งสี่จังหวะ/กระโดด/ตีลังกา/เหนื่อย/หมดแรง + ประกายจากชุด S (cat2-run.js) — ปิดได้ที่ CAT2.run
+      if (CAT2.run && useCat2(runSkin)) this.drawRunCat(ctx, runSkin, runMood, sucking || shout, catS, runTired, runGait);
+      else drawPlayer(ctx, this.player, this.state === STATE.DEAD, runSkin, sucking || shout,
+        pose === 'dance' ? this.tick : 0, runMood, catS, runGait,
+        { tired: runTired, hurt: this.hurtFlash, hero: hero ? 1 : 0,
           wave: gold ? 1 : 0, waveT: Math.sin(this.tick * 0.18),
           ...(this.state !== STATE.DEAD ? this.carrierFx() : {}) });
       ctx.restore();
@@ -2706,7 +2747,7 @@ export class Game {
       const pb = this.player.box;
       const k = Math.min(1, this.boxScene.t / 8);
       ctx.save();
-      ctx.translate(pb.x + pb.w / 2 + 16, pb.y - 30 * catS - liftY);
+      ctx.translate(pb.x + pb.w / 2 + 16, pb.y - 30 * lookS - liftY);
       ctx.scale(k, k);
       ctx.fillStyle = '#FFFFFF';
       ctx.strokeStyle = '#5C3B26';
@@ -2719,7 +2760,7 @@ export class Game {
       ctx.fillText('!', 0, 1);
       ctx.restore();
     }
-    if (sucking) drawSuction(ctx, this.player, this.tick, catS);
+    if (sucking) drawSuction(ctx, this.player, this.tick, lookS);
     if (this.state !== STATE.DEAD) drawTalentFront(ctx, this);
     // ลูกแมวในฉากพบน้อง (โผล่จากกล่อง / กระโดดมาหา) อยู่หน้าตัวน้อง ชุด และเอฟเฟกต์
     if (this.boxScene && this.boxScene.t < 162) drawBoxScene(ctx, this, this.kittenSkin());
@@ -2730,7 +2771,7 @@ export class Game {
     if (this.state !== STATE.DEAD) {
       ctx.save();
       ctx.translate(0, -liftY);
-      drawSkillGauge(ctx, this.player, this.charge / SKILL.chargeFrames, this.skillOn, this.tick, catS);
+      drawSkillGauge(ctx, this.player, this.charge / SKILL.chargeFrames, this.skillOn, this.tick, lookS);
       ctx.restore();
     }
 
@@ -2831,6 +2872,149 @@ export class Game {
     // สกิน S: ท่าว่างไหลออกจากท่าแอ็คแล้วกลับเข้าท่าแอ็ค (ไม่ผ่านท่ายืนเฉย) · idleK = น้ำหนักท่าว่างไว้คุมปาก/เสียง
     if (rest) return { act, k: 1, shape: mixShape(rest, poseShape(act.pose), k), idleK: k };
     return { act, k };
+  }
+
+  /**
+   * วาดน้องแบบใหม่ตอนวิ่งในด่าน (แทน drawPlayer เมื่อ useCat2 ได้)
+   * ตัวคุมท่ามีสถานะ (จังหวะขา ตีลังกา ประกาย) → เดินหนึ่งครั้งต่อเฟรมที่เวลาเกมขยับ · หยุดเกม (dt = 0) ใช้ท่าเดิมซ้ำ
+   * หมดแรง (ล้มเป็นลม) = ทรุดนั่งที่พื้น ไม่เอียงตาม tilt · ตกหลุม = หมุนตกตาม tilt เหมือนตัวเดิม
+   */
+  drawRunCat(ctx, skin, mood, mouth, catS, tired, gait, opt = {}) {
+    const P = this.player, dead = this.state === STATE.DEAD;
+    const dt = this.runAnimTick == null ? 1 : Math.min(3, this.tick - this.runAnimTick);
+    this.runAnimTick = this.tick;
+    if (dt > 0 || !this.runAnimR) {
+      this.runAnimR = stepRunAnim(this.runAnim, P, {
+        catId: skin.id, dt: dt || 1, mood, mouth, hurt: this.hurtFlash, dead, tired, gait,
+        outfit: skin.outfit?.id, speed: dead ? 0 : opt.speed ?? this.speed, scale: catS * RUN_K, stand: !!opt.stand,
+      });
+    }
+    const r = this.runAnimR;
+    const x = PLAYER_X + P.ox + BODY.standW / 2;   // กลางตัวตอนยืน (หมอบไม่เลื่อนตามกล่องชน — ท่าหมอบของตัวใหม่วาดเอง)
+    const faintSit = dead && P.fainting;
+    const feet = faintSit ? GROUND_Y : P.y;
+    const sc = catS * RUN_K;
+    const a0 = ctx.globalAlpha;
+    if (!dead || faintSit) {
+      // เงาใต้ตัว จางลงตามความสูง (ค่าเดียวกับตัวเดิม)
+      const air = Math.max(0, GROUND_Y - P.y);
+      ctx.globalAlpha = a0 * Math.max(0, 0.32 - air / 500);
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(x, GROUND_Y + 4, Math.max(0, 22 - air * 0.02) * catS * RUN_SIZE, 5 * catS * RUN_SIZE, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = a0;
+    }
+    // ประกายจากชุด/หางคทา วาดตรงบนจอ (เป็นแสง ไม่หรี่ตาม) — ตัวน้องวาดลงชั้นแยกแล้วหรี่ (ข้างล่าง)
+    if (r.parts || r.ribbon) drawTrail(ctx, r.parts, x, sc, r.ribbon);
+    ctx.save();
+    if (dead && !faintSit) { ctx.translate(x, feet); ctx.rotate(P.tilt); ctx.translate(-x, -feet); }
+    if (this.hurtFlash > 0) ctx.translate(-this.hurtFlash * 5, 0);   // ถูกผลักถอยหลังนิดหน่อยตอนโดนชน
+    const body = { ...r, parts: null, ribbon: null };
+    const lights = this.runLightsNear(ctx, x, feet, catS * RUN_SIZE);
+    const L = RUN_DIM.k > 0 || lights.length ? this.runDimLayer(ctx, x, feet, sc) : null;
+    if (!L) drawCat2Run(ctx, x, feet, sc, skin, this.tick, body);
+    else {
+      // ── หรี่แสงที่ตัวน้องนิดเดียว (ผู้ใช้ 18 ต.ค. · ค่าใน RUN_DIM) — ทาเฉพาะบนเนื้อตัว (source-atop)
+      // พื้นหลังรอบตัวไม่โดน · วาดในชั้นแยกเฉพาะกรอบรอบตัว แล้วแปะกลับ (ไม่แปะทั้งจอ)
+      const { c, rect } = L;
+      drawCat2Run(c, x, feet, sc, skin, this.tick, body);
+      if (RUN_DIM.k > 0) {
+        c.save();
+        c.setTransform(1, 0, 0, 1, 0, 0);
+        c.globalCompositeOperation = 'source-atop';
+        c.fillStyle = `rgba(${RUN_DIM.tint},${RUN_DIM.k})`;
+        c.fillRect(rect.x, rect.y, rect.w, rect.h);
+        c.restore();
+      }
+      blitLayer(ctx, c.canvas, 'source-over', rect);
+      if (lights.length) this.runLightUp(ctx, c.canvas, rect, lights);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * แสงจากสิ่งกีดขวางที่ส่องถึงตัวน้องเฟรมนี้ (ผู้ใช้ 18 ต.ค.) — คืน [{ x, y, R, rgb, k }] พิกเซลจริง เรียงแรงสุดก่อน ไม่เกิน 3 ดวง
+   * ความแรงลดตามระยะจากแสงถึงตัว: ใกล้ = เต็ม · พ้นรัศมีส่อง (ขนาดแสง × 2.2 + 55 หน่วยเกม) = ไม่ส่อง → วิ่งผ่านไปแล้วแสงจางหายเอง
+   * โหมดประหยัดกราฟิก = ไม่ส่อง (ความละเอียดอัตโนมัติลดลึกยังส่อง — เบามาก ทำแค่ในกรอบรอบตัว · iPad ที่ลดความละเอียดเองจะได้เห็น)
+   */
+  runLightsNear(ctx, x, feet, catS) {
+    const src = this.runLights;
+    if (!src?.length || this.state === STATE.DEAD || gfxLevel() === 'save') return [];
+    const m = ctx.getTransform();
+    const k = Math.hypot(m.a, m.b);                                  // หน่วยเกม → พิกเซล
+    const c = m.transformPoint(new DOMPoint(x, feet - 32 * catS));   // กลางตัวน้อง
+    const bodyR = 34 * catS * k;
+    const out = [];
+    for (const L of src) {
+      const R = L.r * 2.2 + 55 * k;
+      const d = Math.max(0, Math.hypot(L.x - c.x, L.y - c.y) - bodyR * 0.6);
+      if (d >= R) continue;
+      const f = 1 - d / R;
+      const s = Math.min(1, L.a * 1.6) * f * f * RUN_LIGHT.k;
+      if (s > 0.02) out.push({ x: L.x, y: L.y, R: R + bodyR, rgb: L.rgb, k: s });
+    }
+    const top = out.sort((a, b) => b.k - a.k).slice(0, 3);
+    const sum = top.reduce((t, L) => t + L.k, 0);
+    if (sum > RUN_LIGHT.max) for (const L of top) L.k *= RUN_LIGHT.max / sum;   // หลายดวงซ้อน = แบ่งกันไม่ให้ขาวโพลน
+    return top;
+  }
+
+  /**
+   * ส่องแสงลงบนตัวน้อง: วงแสงสีของแต่ละดวง (ศูนย์กลางที่ตัวแสง = ด้านที่หันเข้าหาแสงสว่างกว่า) ลงชั้นแยก
+   * → ตัดให้เหลือเฉพาะบนเนื้อตัว (destination-in กับชั้นตัวน้อง) → แปะทับแบบ screen (สว่างขึ้นตามสีแสง ไม่ขาวโพลน)
+   * ทำแค่ในกรอบรอบตัว · body = ผ้าใบที่มีตัวน้องอยู่ในกรอบ rect (พิกเซลจริง)
+   */
+  runLightUp(ctx, body, rect, lights) {
+    let c = this.runLit;
+    if (!c) c = this.runLit = document.createElement('canvas').getContext('2d');
+    const cv = c.canvas;
+    if (cv.width !== body.width || cv.height !== body.height) { cv.width = body.width; cv.height = body.height; }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = 'source-over';
+    c.clearRect(rect.x, rect.y, rect.w, rect.h);
+    c.save();
+    c.beginPath();
+    c.rect(rect.x, rect.y, rect.w, rect.h);
+    c.clip();
+    c.globalCompositeOperation = 'lighter';
+    for (const L of lights) {
+      const g = c.createRadialGradient(L.x, L.y, 0, L.x, L.y, L.R);
+      g.addColorStop(0, `rgba(${L.rgb},${L.k})`);
+      g.addColorStop(0.55, `rgba(${L.rgb},${L.k * 0.45})`);
+      g.addColorStop(1, `rgba(${L.rgb},0)`);
+      c.fillStyle = g;
+      c.fillRect(rect.x, rect.y, rect.w, rect.h);
+    }
+    c.globalCompositeOperation = 'destination-in';
+    c.drawImage(body, rect.x, rect.y, rect.w, rect.h, rect.x, rect.y, rect.w, rect.h);
+    c.restore();
+    blitLayer(ctx, cv, 'screen', rect);
+  }
+
+  /** ชั้นแยกขนาดเท่าจอสำหรับหรี่ตัวน้อง — ล้างเฉพาะกรอบรอบตัว (พิกเซลจริง) ตั้ง transform เดียวกับ ctx · คืน null ถ้ากรอบหลุดจอ */
+  runDimLayer(ctx, x, feet, sc) {
+    let c = this.runDim;
+    if (!c) c = this.runDim = document.createElement('canvas').getContext('2d');
+    const cv = c.canvas;
+    if (cv.width !== ctx.canvas.width || cv.height !== ctx.canvas.height) {
+      cv.width = ctx.canvas.width;
+      cv.height = ctx.canvas.height;
+    }
+    // กรอบรอบตัว (หน่วยเกม): กว้างพอรวมออร่า/ผ้าคลุมปลิว/ตีลังกา · ตัวสูง ~75×sc
+    const m = ctx.getTransform();
+    const pts = [[x - 95 * sc, feet - 135 * sc], [x + 95 * sc, feet - 135 * sc], [x - 95 * sc, feet + 40 * sc], [x + 95 * sc, feet + 40 * sc]]
+      .map(([px, py]) => m.transformPoint(new DOMPoint(px, py)));
+    const x0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p.x)))), x1 = Math.min(cv.width, Math.ceil(Math.max(...pts.map((p) => p.x))));
+    const y0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p.y)))), y1 = Math.min(cv.height, Math.ceil(Math.max(...pts.map((p) => p.y))));
+    if (x1 <= x0 || y1 <= y0) return null;
+    const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
+    c.clearRect(rect.x, rect.y, rect.w, rect.h);
+    c.setTransform(m);
+    return { c, rect };
   }
 
   /** รูปร่างท่าแอ็คของสกิน S ที่ใส่อยู่ตอนนี้ (null = ไม่มีท่าแอ็ค ยืนเฉยแบบเดิม) */

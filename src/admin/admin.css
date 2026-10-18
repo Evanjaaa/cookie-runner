@@ -857,6 +857,8 @@ code.uid {
 }
 .nl-row.off { opacity: .55; }
 .nl-thumb { flex: 0 0 auto; width: 120px; aspect-ratio: 2.6 / 1; border-radius: 8px; object-fit: cover; background: #150F1F; }
+span.nl-thumb { display: block; overflow: hidden; }   /* กรอบรูปย่อ — รูปข้างในครอบตัดตามที่จัดไว้ (src/crop.js) */
+span.nl-thumb img { display: block; }
 .nl-thumb.blank { background: linear-gradient(135deg, #FFB3D0, #B78CFF); opacity: .6; }
 .nl-main { flex: 1 1 auto; min-width: 0; display: grid; gap: 3px; }
 .nl-main b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -873,6 +875,212 @@ code.uid {
 @media (max-width: 640px) {
   .nl-row { flex-wrap: wrap; }
   .nl-acts { width: 100%; justify-content: flex-start; }
+}
+
+/* ── ครอบตัดรูป (ข่าวสาร + ป้ายตู้กาช่า) ───────────────────── */
+.cropable { cursor: grab; touch-action: none; user-select: none; position: relative; }
+.cropable.dragging { cursor: grabbing; }
+.cropable img { pointer-events: none; }
+.np-hero.cropable::after,
+.pv-banner.cropable::after {
+  /* ขอบประบอกว่าลากได้ */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .55);
+  pointer-events: none;
+}
+.np-hero.cropable { display: block; }
+.zoomrow { display: flex; align-items: center; gap: 10px; }
+.zoomrow input[type=range] { flex: 1; accent-color: var(--violet); }
+.zoomrow input:disabled { opacity: .4; }
+
+/* ── หน้าป้ายตู้กาช่า ──────────────────────────────────────── */
+.promoedit { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.promoright { display: grid; gap: 20px; }
+.promoright .mailform { max-width: none; }
+.promoside select, .promoright select {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #150F1F;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+.promoside label.btn { cursor: pointer; }
+.pickrow input[type=number] { max-width: 110px; flex: 0 0 auto; }
+.plist { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.pl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #150F1F;
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+.pl-row:hover { border-color: var(--line); }
+.pl-row.on { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet); }
+.pl-row.off { opacity: .55; }
+.pl-thumb { flex: 0 0 auto; width: 104px; aspect-ratio: 1.75 / 1; border-radius: 8px; overflow: hidden; background: #241D32; }
+.pl-thumb img { display: block; }
+.pl-main { flex: 1 1 auto; min-width: 0; display: grid; gap: 4px; }
+.pl-main b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-acts { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 150px; }
+.pl-acts .btn.small { padding: 4px 9px; }
+
+/* ป้ายตัวอย่าง = หน้าตู้สุ่มสกินในเกม: ป้ายรูป + ตู้หัวแมวทับขอบขวา (ตำแหน่ง/ขนาดจาก PV_GEO ใน main.js)
+   เผื่อที่ว่างบน/ขวาให้ตู้ที่ยื่นพ้นป้าย เหมือนในการ์ดของเกม */
+.pv-stage {
+  position: relative;
+  padding: 9% 24% 4% 3%;
+  border-radius: 16px;
+  background: radial-gradient(circle at 30% 20%, #4A2A6E, #23123A 70%);
+  border: 1px solid var(--line);
+}
+.pv-banner {
+  position: relative;
+  aspect-ratio: var(--r) / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #FFC6DD, #C8A8FF);
+}
+.pv-banner img { display: block; }
+.pv-stage.blank .pv-banner img { display: none; }
+.pv-empty { position: absolute; inset: 0; display: none; place-items: center; color: #fff; font-size: 13px; }
+.pv-stage.blank .pv-empty { display: grid; }
+.pv-name {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--bh, 300px) * .034);
+  left: calc(var(--bh, 300px) * .05);
+  max-width: 50%;
+  font-family: "Mali", var(--display);
+  font-weight: 800;
+  font-size: calc(var(--bh, 300px) * .054);
+  line-height: 1.18;
+  color: #FF4F9E;
+  text-shadow:
+    -2px -2px 0 #fff, 0 -2px 0 #fff, 2px -2px 0 #fff, -2px 0 0 #fff, 2px 0 0 #fff,
+    -2px 2px 0 #fff, 0 2px 0 #fff, 2px 2px 0 #fff, 0 4px 5px rgba(120, 40, 140, .35);
+  pointer-events: none;
+}
+.pv-machine { position: absolute; pointer-events: none; z-index: 3; }
+/* ปุ่มของเกมที่วางทับป้าย (ตำแหน่งจาก PV_GEO.ui) — โปร่งนิด ๆ ให้เห็นรูปข้างใต้ว่าโดนบังตรงไหน */
+.pv-ui {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-weight: 800;
+  font-size: calc(var(--bh, 300px) * .06);
+  color: #fff;
+  border-radius: 999px;
+  opacity: .88;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+}
+.pv-ui.p1 { background: linear-gradient(180deg, #5FC8FF, #1E8BEA); box-shadow: inset 0 0 0 2px #fff; }
+.pv-ui.p5 { background: linear-gradient(180deg, #FFE27A, #F2A92B); box-shadow: inset 0 0 0 2px #fff; }
+.pv-ui.more { background: rgba(255, 255, 255, .9); color: #A0428C; font-size: calc(var(--bh, 300px) * .03); text-shadow: none; }
+.pv-ui.odds { background: rgba(255, 255, 255, .85); color: #7A4AB0; text-shadow: none; border-radius: 50%; }
+.pv-ui.prev { background: none; }
+.pv-ui.prev::before { content: ""; width: 70%; height: 70%; background: #FFD84A; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.pv-noui .pv-ui { display: none; }
+.pv-row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
+.pv-col { display: grid; gap: 6px; }
+.pv-stage.swap .pv-banner img { animation: pvFade .5s ease; }
+@keyframes pvFade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 1100px) {
+  .promoedit { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .pv-row { grid-template-columns: 1fr; }
+  .pl-row { flex-wrap: wrap; }
+  .pl-acts { max-width: none; width: 100%; justify-content: flex-start; }
+}
+
+/* ── หน้ารูปการ์ดชุด ── การ์ดแบบเดียวกับ .oc-card ในเกม (src/style.css) ─────────── */
+.cardedit { display: grid; grid-template-columns: minmax(300px, 460px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.cardside .nf-head small { font-family: inherit; font-size: 12.5px; }
+.ocp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 10px; max-height: 70vh; overflow-y: auto; padding: 6px 4px; }
+.ocp-pick { position: relative; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 16px; }
+.ocp-pick.on { outline: 3px solid var(--mint); outline-offset: 3px; }
+.ocp-tags { position: absolute; top: -6px; left: -4px; right: -4px; display: flex; justify-content: space-between; gap: 2px; pointer-events: none; z-index: 4; }
+.ocp-tag { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.ocp-tag.has { background: var(--mint); color: #08302C; }
+.ocp-tag.off { background: #4A4060; color: #D6CCE8; }
+.ocp-tag.hid { background: rgba(255, 107, 125, .9); color: #fff; margin-left: auto; }
+
+.ocp-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px 5px 6px;
+  border-radius: 15px;
+  border: 2px solid rgba(244, 200, 255, .9);
+  background: linear-gradient(180deg, #C982E8, #AE5FD6);
+  box-shadow: 0 6px 14px rgba(70, 20, 130, .3), inset 0 1px 0 rgba(255, 255, 255, .5);
+  color: #fff;
+  font-family: "Mali", var(--display);
+  text-align: center;
+}
+.ocp-card.s {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(180deg, #BE6FE6, #9C4ACB) padding-box,
+    linear-gradient(135deg, #FFF0FA 0%, #FFB9E0 28%, #FFE6B6 52%, #E3AEFF 78%, #FFF2FB 100%) border-box;
+  box-shadow: 0 0 0 2px #6E2AA6, 0 8px 18px rgba(70, 20, 130, .34), 0 0 14px rgba(255, 186, 236, .5);
+}
+.ocp-art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 200 / 248;
+  border-radius: 11px;
+  background: #EEDFFC;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45);
+}
+.ocp-art canvas, .ocp-art img { display: block; width: 100%; height: 100%; }
+.ocp-card.locked .ocp-art canvas, .ocp-card.locked .ocp-art img { filter: grayscale(1) brightness(.88); opacity: .85; }
+.ocp-card b {
+  min-height: 2.5em;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  line-height: 1.22;
+  font-weight: 800;
+  text-shadow:
+    1.2px 0 0 #4E1C80, -1.2px 0 0 #4E1C80, 0 1.2px 0 #4E1C80, 0 -1.2px 0 #4E1C80,
+    1px 1px 0 #4E1C80, -1px 1px 0 #4E1C80, 1px -1px 0 #4E1C80, -1px -1px 0 #4E1C80;
+}
+.ocp-card.big { width: min(100%, 250px); padding: 8px 8px 10px; border-radius: 22px; gap: 8px; }
+.ocp-card.big .ocp-art { border-radius: 16px; }
+.ocp-card.big b { font-size: 15px; }
+.ce-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; }
+.ce-tools { display: grid; gap: 10px; }
+.ocp-stage {
+  padding: 14px 16px 18px;
+  border-radius: 16px;
+  background: radial-gradient(circle at 20% 0, #D8A6F2, transparent 60%), linear-gradient(180deg, #B983E8, #8E5CD3);
+}
+.ocp-title { font-family: "Mali", var(--display); font-weight: 800; font-size: 20px; color: #FFE7A8; text-shadow: 0 2px 0 #7A3FB4; margin-bottom: 10px; }
+.ocp-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 640px; }
+.ocp-row .cur { outline: 2px dashed rgba(255, 255, 255, .8); outline-offset: 4px; }
+
+@media (max-width: 1100px) {
+  .cardedit { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .ce-row { grid-template-columns: 1fr; }
+  .ocp-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── หน้าแจ้งปัญหา ─────────────────────────────────────────── */

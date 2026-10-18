@@ -61,3 +61,6 @@ create policy "แอดมินแก้รูปข่าว" on storage.obje
 drop policy if exists "แอดมินลบรูปข่าว" on storage.objects;
 create policy "แอดมินลบรูปข่าว" on storage.objects
   for delete using (bucket_id = 'news' and public.is_admin());
+
+-- ── ครอบตัดรูปข่าว { x, y, z } (ดู src/crop.js) — หลังบ้านลากจัดรูปได้ · null = กลางรูป ──
+alter table public.news add column if not exists image_crop jsonb;

@@ -14,15 +14,29 @@ export const OD_SCALE = 2.6;   // ขนาดน้องเดียวกั�
 export const OD_SKIP = 20;     // เฟรมที่ใช้ไหลจากท่าเปิดตัวเข้าท่าแอ็ค (SKIP_F ในหน้าทดสอบ)
 
 /**
+ * พรีเซนเตอร์ในวิดีโอท่าเปิดตัว — key → { skin: id สำหรับ skinById, tag: ต่อท้ายชื่อไฟล์ }
+ *   orange = น้องส้มตัวหลัก (เปิดจากคลังน้องด้วยแมวส้ม)
+ *   pearl  = น้องไข่มุก ตัวเมีย — พรีเซนเตอร์ตอนเปิดดูจากตู้กาช่า ทุกคนเห็นตัวนี้ (ผู้ใช้ 18 ต.ค.: เข้ากับชุดชมพู/ฟ้า)
+ */
+export const OD_CASTS = {
+  orange: { skin: 'orange', tag: '' },
+  pearl: { skin: 'cat:pearl', tag: '-pearl' },
+};
+/** พรีเซนเตอร์ของหน้ารายละเอียดชุดที่เปิดจากตู้กาช่า (ป้ายโปรโมท / สกินในตู้นี้) */
+export const OD_SHOP_CAST = 'pearl';
+/**
  * วิดีโอท่าเปิดตัวที่อัดไว้ (ผู้ใช้ขอ 15 ต.ค. — วาดสดกระตุกบนเครื่องอ่อน)
- * อัดด้วยน้องส้มตัวหลักเท่านั้น (skin) — ผู้เล่นเลือกตัวอื่นอยู่ เกมวาดสดแทน
+ * casts = พรีเซนเตอร์ที่อัดไว้ (OD_CASTS) — แมวตัวอื่น เกมวาดสดแทน
  * sizes = ขนาดที่อัดไว้ (กว้าง×สูง) หลายสัดส่วน — เลือกอันที่สัดส่วนใกล้การ์ดจริง (ดู odVideoPick)
+ * อัด/อัดใหม่: node tools/render-intro.mjs <ชุด> [ขนาด|all] [พรีเซนเตอร์]
  */
 export const OD_VIDEOS = {
-  sweet: { skin: 'orange', sizes: [[1440, 1080], [1920, 1080], [2340, 1080]] },
-  princess: { skin: 'orange', sizes: [[1440, 1080], [1920, 1080], [2340, 1080]] },
+  sweet: { casts: ['orange', 'pearl'], sizes: [[1440, 1080], [1920, 1080], [2340, 1080]] },
+  princess: { casts: ['orange', 'pearl'], sizes: [[1440, 1080], [1920, 1080], [2340, 1080]] },
 };
-export const odVideoSrc = (id, [w, h]) => `video/intro-${id}-${w}x${h}.mp4`;
+export const odVideoSrc = (id, [w, h], cast = 'orange') => `video/intro-${id}${OD_CASTS[cast].tag}-${w}x${h}.mp4`;
+/** พรีเซนเตอร์ที่มีวิดีโอของชุด id ตรงกับแมว skinId — null = ไม่มี (วาดสด) */
+export const odVideoCast = (id, skinId) => (OD_VIDEOS[id]?.casts || []).find((k) => OD_CASTS[k].skin === skinId) || null;
 
 /**
  * เลือกขนาดวิดีโอให้การ์ด W×H — เอาอันที่กว้างที่สุดแต่ไม่กว้างกว่าการ์ด

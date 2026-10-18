@@ -14,6 +14,11 @@
 //     ไม่ใช่กลไกความปลอดภัย ห้ามย้ายตรรกะสิทธิ์อะไรมาไว้ที่นี่เด็ดขาด
 // ─────────────────────────────────────────────────────────────
 import './admin.css';
+import { CROP0, CROP_ZMAX, normCrop, cropRect, cropStyle } from '../crop.js';
+import { GUMBALL, createGumball, drawGumballFrame } from '../render/gumball.js';
+import { ALL_OUTFITS, OUTFITS } from '../outfits.js';
+import { SKINS } from '../skins.js';
+import { OC_W, OC_H, drawOutfitArt } from '../render/outfit-art.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -227,7 +232,7 @@ async function signOut() {
 const PAGES = {};
 
 const PAGE_TITLE = {
-  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย', news: 'ข่าวสาร', reports: 'แจ้งปัญหา',
+  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย', news: 'ข่าวสาร', promo: 'ป้ายตู้กาช่า', cards: 'รูปการ์ดชุด', reports: 'แจ้งปัญหา',
   scores: 'คะแนน', pulls: 'กาช่า', audit: 'ตรวจผิดปกติ',
 };
 
@@ -1213,7 +1218,7 @@ const NEWS_IMG = { w: 1560, h: 600 };
 const NEWS_RATIO = NEWS_IMG.w / NEWS_IMG.h;
 
 const NEWS_TAGS = ['ประกาศ', 'กิจกรรม', 'อัปเดต', 'ของขวัญ', 'ปิดปรับปรุง'];
-const newsState = { editing: null, image: '' };
+const newsState = { editing: null, image: '', crop: { ...CROP0 } };
 
 const todayISO = () => {
   const d = new Date();
@@ -1227,6 +1232,7 @@ const newsDay = (d) => {
 PAGES.news = async () => {
   newsState.editing = null;
   newsState.image = '';
+  newsState.crop = { ...CROP0 };
   $('page').innerHTML = `
     ${pageHead('ข่าวสาร', 'ข่าวจะขึ้นในปุ่มโทรโข่งหน้าแรกของเกม ผู้เล่นที่ยังไม่เปิดอ่านจะเห็นจุดแดงบนปุ่ม')}
 
@@ -1253,6 +1259,7 @@ PAGES.news = async () => {
           </div>
           <small class="note" id="nImgMsg"></small>
           <small class="note img-size" id="nImgSize"></small>
+          <label class="zoomrow"><span class="note">ครอบตัด: ลากรูปในตัวอย่างทางขวา · ซูม</span><input id="nZoom" type="range" min="1" max="${CROP_ZMAX}" step="0.01" value="1"><button class="btn ghost small" id="nCropReset" type="button">กลางรูป</button></label>
         </div>
 
         <label class="fld"><span>รายละเอียด</span>
@@ -1280,10 +1287,13 @@ PAGES.news = async () => {
     <div id="nList"><div class="tablewrap"><div class="empty">กำลังโหลด…</div></div></div>`;
 
   ['nTitle', 'nTag', 'nDate', 'nBody'].forEach((id) => $(id).addEventListener('input', newsPreview));
-  $('nImgUrl').addEventListener('input', () => { newsState.image = $('nImgUrl').value.trim(); newsPreview(); });
+  $('nImgUrl').addEventListener('input', () => { newsState.image = $('nImgUrl').value.trim(); newsState.crop = { ...CROP0 }; newsPreview(); });
   $('nImgFile').addEventListener('change', uploadNewsImage);
+  $('nZoom').addEventListener('input', () => setNewsCrop(normCrop({ ...newsState.crop, z: +$('nZoom').value })));
+  $('nCropReset').addEventListener('click', () => setNewsCrop({ ...CROP0 }));
   $('nImgClear').addEventListener('click', () => {
     newsState.image = '';
+    newsState.crop = { ...CROP0 };
     $('nImgUrl').value = '';
     $('nImgMsg').textContent = '';
     newsPreview();
@@ -1324,12 +1334,16 @@ function newsPreview() {
   const body = $('nBody').value.trim() || 'รายละเอียดข่าวจะขึ้นตรงนี้';
   const img = newsState.image;
   $('nPrev').innerHTML = `
-    <div class="np-hero">${img ? `<img src="${esc(img)}" alt="">` : '<span>ยังไม่มีรูป</span>'}</div>
+    <div class="np-hero">${img ? `<img src="${esc(img)}" alt="" draggable="false" style="${cropStyle(newsState.crop)}">` : '<span>ยังไม่มีรูป</span>'}</div>
     <div class="np-meta"><span class="np-tag">${esc($('nTag').value.trim() || 'ประกาศ')}</span><time>${newsDay($('nDate').value)}</time></div>
     <h4>${esc(title)}</h4>
     <div class="np-body">${body.split(/\n\s*\n/).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
   const im = $('nPrev').querySelector('img');
+  $('nZoom').value = newsState.crop.z;
+  $('nZoom').disabled = $('nCropReset').disabled = !im;
   if (im) {
+    // ลากจัดรูปในตัวอย่าง (สูตรเดียวกับในเกม src/crop.js) — แก้แค่สไตล์รูป ไม่วาดตัวอย่างใหม่ทั้งก้อน (ไม่งั้นหลุดลากกลางทาง)
+    bindCrop(im.parentElement, im, () => newsState.crop, setNewsCrop);
     im.addEventListener('error', () => { im.parentElement.innerHTML = '<span>โหลดรูปไม่ได้ — เช็คลิงก์อีกที</span>'; }, { once: true });
     im.addEventListener('load', () => newsImgCheck(im.naturalWidth, im.naturalHeight), { once: true });
   } else {
@@ -1355,15 +1369,25 @@ async function uploadNewsImage(e) {
   }
   const { data } = c.storage.from('news').getPublicUrl(path);
   newsState.image = data.publicUrl;
+  newsState.crop = { ...CROP0 };
   $('nImgUrl').value = data.publicUrl;
   msg.textContent = 'อัปโหลดแล้ว ✓';
   newsPreview();
+}
+
+/** ตั้งค่าครอบตัดรูปข่าว → อัปเดตรูปในตัวอย่างทันที */
+function setNewsCrop(c) {
+  newsState.crop = c;
+  const im = $('nPrev').querySelector('img');
+  if (im) im.style.cssText = cropStyle(c);
+  $('nZoom').value = c.z;
 }
 
 /** ใส่ข่าวลงฟอร์ม (null = ล้างกลับเป็นลงข่าวใหม่) */
 function fillNewsForm(n) {
   newsState.editing = n ? n.id : null;
   newsState.image = n?.image_url || '';
+  newsState.crop = normCrop(n?.image_crop);
   $('nTitle').value = n?.title || '';
   $('nTag').value = n?.tag || NEWS_TAGS[0];
   $('nDate').value = n?.news_date || todayISO();
@@ -1387,6 +1411,7 @@ async function saveNews() {
     news_date: $('nDate').value || todayISO(),
     body: $('nBody').value.trim(),
     image_url: newsState.image || null,
+    image_crop: newsState.image ? newsState.crop : null,
     pinned: $('nPinned').checked,
     active: $('nActive').checked,
   };
@@ -1398,10 +1423,16 @@ async function saveNews() {
   const btn = $('nSave');
   btn.disabled = true;
   const c = await client();
-  const q = newsState.editing
-    ? c.from('news').update({ ...row, updated_at: new Date().toISOString() }).eq('id', newsState.editing)
-    : c.from('news').insert(row);
-  const { error } = await q;
+  const send = (r) => (newsState.editing
+    ? c.from('news').update({ ...r, updated_at: new Date().toISOString() }).eq('id', newsState.editing)
+    : c.from('news').insert(r));
+  let { error } = await send(row);
+  // ยังไม่ได้รัน SQL ที่เพิ่มคอลัมน์ครอบตัด → บันทึกข่าวได้ก่อน (ไม่เก็บการครอบตัด) แล้วบอกให้รัน
+  if (error && /image_crop/.test(error.message || '')) {
+    const { image_crop, ...rest } = row;
+    ({ error } = await send(rest));
+    if (!error) toast('บันทึกข่าวแล้ว แต่ยังเก็บการครอบตัดไม่ได้ — รัน supabase/gacha-promo.sql ใน Supabase ก่อน', 'bad');
+  }
   btn.disabled = false;
   if (error) {
     $('nHint').textContent = 'บันทึกไม่ได้: ' + errText(error);
@@ -1415,7 +1446,7 @@ async function saveNews() {
 async function loadNewsList() {
   const c = await client();
   const { data, error } = await c.from('news')
-    .select('id, title, body, image_url, tag, news_date, pinned, active, created_at, updated_at')
+    .select('*')   // รวม image_crop ถ้ามี (ยังไม่รัน SQL ก็ไม่พัง)
     .order('pinned', { ascending: false })
     .order('news_date', { ascending: false })
     .order('created_at', { ascending: false })
@@ -1428,7 +1459,7 @@ async function loadNewsList() {
   }
   $('nList').innerHTML = `<div class="newslist">${rows.map((n, i) => `
     <div class="nl-row${n.active ? '' : ' off'}" data-i="${i}">
-      ${n.image_url ? `<img class="nl-thumb" src="${esc(n.image_url)}" alt="" loading="lazy">` : '<span class="nl-thumb blank"></span>'}
+      ${n.image_url ? `<span class="nl-thumb"><img src="${esc(n.image_url)}" alt="" loading="lazy" style="${cropStyle(n.image_crop)}"></span>` : '<span class="nl-thumb blank"></span>'}
       <div class="nl-main">
         <div class="nl-pills"><span class="pill tag">${esc(n.tag)}</span>
           ${n.pinned ? '<span class="pill gold">ปักหมุด</span>' : ''}
@@ -1481,6 +1512,687 @@ async function newsAction(act, n) {
       : (n.active ? 'ซ่อนข่าวแล้ว' : 'โชว์ข่าวในเกมแล้ว'), 'good');
   }
   loadNewsList();
+}
+
+// ── ครอบตัดรูป (ใช้ร่วมกัน: ป้ายตู้กาช่า + ข่าวสาร) ─────────────────
+//
+// ลากรูป = เลื่อน · ล้อเมาส์ / แถบซูม = ซูม · ดับเบิลคลิก = กลับกลางรูป
+// ค่าที่ได้ { x, y, z } ใช้สูตรเดียวกับในเกม (src/crop.js) — ตัวอย่างตรงกับของจริงทุกขนาดจอ
+
+/** ผูกการลากจัดรูปกับกรอบ frame (overflow:hidden มี <img> ข้างใน) · get/set = อ่าน/เขียนค่าครอบตัด */
+function bindCrop(frame, img, get, set) {
+  let drag = null;
+  frame.classList.add('cropable');
+  frame.addEventListener('pointerdown', (e) => {
+    if (!img.naturalWidth || e.button > 0) return;
+    drag = { x: e.clientX, y: e.clientY, c: get() };
+    frame.setPointerCapture(e.pointerId);
+    frame.classList.add('dragging');
+  });
+  frame.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const W = frame.clientWidth, H = frame.clientHeight;
+    const r = cropRect(img.naturalWidth, img.naturalHeight, W, H, drag.c);
+    // รูปเลื่อนตามนิ้ว: ขอบรูปใหม่ = ขอบเดิม + ระยะลาก → แปลงกลับเป็นตำแหน่ง 0..1 (แกนที่รูปพอดีกรอบ = ไม่ขยับ)
+    const nx = Math.abs(W - r.w) > 0.5 ? (r.x + e.clientX - drag.x) / (W - r.w) : drag.c.x;
+    const ny = Math.abs(H - r.h) > 0.5 ? (r.y + e.clientY - drag.y) / (H - r.h) : drag.c.y;
+    set(normCrop({ ...drag.c, x: nx, y: ny }));
+  });
+  const end = () => { drag = null; frame.classList.remove('dragging'); };
+  frame.addEventListener('pointerup', end);
+  frame.addEventListener('pointercancel', end);
+  frame.addEventListener('wheel', (e) => {
+    if (!img.naturalWidth) return;
+    e.preventDefault();
+    const c = get();
+    set(normCrop({ ...c, z: c.z * Math.exp(-e.deltaY * 0.0015) }));
+  }, { passive: false });
+  frame.addEventListener('dblclick', () => set({ ...CROP0 }));
+}
+
+// ── หน้า: ป้ายตู้กาช่า ──────────────────────────────────────────
+//
+// รูปบนป้ายโปรโมทหน้าสุ่มสกินในเกม — ตาราง gacha_promos + รูปใน bucket "promo" (supabase/gacha-promo.sql)
+// อัปโหลดได้หลายรูป · เรียงลำดับ · ซ่อน/ลบ · ตั้งกี่วินาทีเปลี่ยนรูป · ลากครอบตัดในกรอบที่มีตู้หัวแมวทับจริง
+// ยังไม่มีรูปที่เปิดอยู่เลย = เกมใช้ภาพป้ายเดิมของตัวเอง (ชุดระดับ S ทีละชุด)
+
+/**
+ * สัดส่วนป้ายกับตำแหน่งตู้หัวแมว วัดจากเกมจริง 18 ต.ค. (หน่วย: r = กว้าง/สูงของป้าย · mx = ขอบซ้ายตู้ / กว้างป้าย
+ * · my = ขอบบนตู้ / สูงป้าย · mh = สูงตู้ / สูงป้าย) — แก้ขนาดป้ายใน src/style.css ต้องวัดใหม่
+ */
+const PV_GEO = {
+  ipad: { r: 1.748, mx: 0.783, my: -0.09, mh: 1.18, label: 'iPad / คอม',
+    // ปุ่มที่วางทับป้ายในเกม [ซ้าย, บน, กว้าง, สูง] สัดส่วนของป้าย (วัดจากเกม 1180×820) — ของสำคัญในรูปอย่าให้โดนบัง
+    ui: { p1: [0.034, 0.731, 0.254, 0.19], p5: [0.318, 0.731, 0.269, 0.19], more: [0.757, 0.051, 0.099, 0.051], prev: [0.021, 0.439, 0.057, 0.119], odds: [0.614, 0.785, 0.049, 0.085] } },
+  phone: { r: 1.6, mx: 0.76, my: -0.10, mh: 1.18, label: 'มือถือ',
+    ui: { p1: [0.031, 0.739, 0.277, 0.192], p5: [0.346, 0.739, 0.292, 0.192], more: [0.717, 0.045, 0.129, 0.059], prev: [0.02, 0.439, 0.063, 0.118], odds: [0.675, 0.791, 0.052, 0.084] } },
+};
+const PV_UI_TEXT = { p1: '1 ครั้ง', p5: '5 ครั้ง', more: 'ดูสกินอื่นๆ', prev: '', odds: '!' };
+const PROMO_REC = { w: 1750, h: 1000 };
+const promoState = { rows: [], sel: null, crop: { ...CROP0 }, play: 0, playI: 0 };
+const S_OUTFITS = ALL_OUTFITS.filter((o) => o.id !== 'none');
+const gmParts = new Map();
+
+/** ตู้หัวแมวตัวเดียวกับในเกม (src/render/gumball.js) วาดนิ่งลงผ้าใบ */
+function drawMachine(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
+  if (!W || !H) return;
+  if (cv.width === W && cv.height === H && cv.dataset.drawn) return;
+  cv.width = W;
+  cv.height = H;
+  const k = Math.min(W / GUMBALL.W, H / GUMBALL.H);
+  const key = W + 'x' + H;
+  if (!gmParts.has(key)) gmParts.set(key, createGumball(k));
+  const c = cv.getContext('2d');
+  c.setTransform(k, 0, 0, k, (W - GUMBALL.W * k) / 2, H - GUMBALL.H * k);
+  drawGumballFrame(c, gmParts.get(key), 0, 0);
+  cv.dataset.drawn = '1';
+}
+
+const stageHTML = (id, kind) => `
+  <div class="pv-stage ${kind}" id="${id}" style="--r:${PV_GEO[kind].r}">
+    <div class="pv-banner"><img alt="" draggable="false"><span class="pv-empty">ยังไม่มีรูป</span><b class="pv-name"></b>
+      ${Object.entries(PV_GEO[kind].ui).map(([k, [l, t, w, h]]) => `<i class="pv-ui ${k}" style="left:${l * 100}%;top:${t * 100}%;width:${w * 100}%;height:${h * 100}%">${PV_UI_TEXT[k]}</i>`).join('')}</div>
+    <canvas class="pv-machine" aria-hidden="true"></canvas>
+  </div>`;
+
+/** จัดตู้หัวแมว + ขนาดชื่อบนป้าย ตามขนาดป้ายจริงในหน้าจอนี้ */
+function layoutStage(st) {
+  const G = PV_GEO[st.classList.contains('phone') ? 'phone' : 'ipad'];
+  const b = st.querySelector('.pv-banner');
+  const w = b.clientWidth;
+  if (!w) return;
+  const bh = w / G.r;
+  const m = st.querySelector('.pv-machine');
+  const mh = bh * G.mh;
+  Object.assign(m.style, { left: b.offsetLeft + w * G.mx + 'px', top: b.offsetTop + bh * G.my + 'px', height: mh + 'px', width: mh * 0.721 + 'px' });
+  st.style.setProperty('--bh', bh + 'px');
+  delete m.dataset.drawn;
+  drawMachine(m);
+}
+
+/** ชื่อบนป้ายของแถวนี้ (ตรงกับเกม): ไม่โชว์ = '' · ตั้งเอง = ชื่อนั้น · ไม่ได้ตั้ง = ชื่อชุดที่ลิงก์ */
+function promoName(title, outfit) {
+  if (title != null) return title;
+  return S_OUTFITS.find((o) => o.id === outfit)?.name || '';
+}
+
+/** วาดแถว row (หรือค่าที่กำลังแก้) ลงป้ายตัวอย่าง st */
+function paintStage(st, url, crop, name) {
+  const img = st.querySelector('img');
+  st.classList.toggle('blank', !url);
+  if (url && img.getAttribute('src') !== url) img.src = url;
+  if (!url) img.removeAttribute('src');
+  img.style.cssText = cropStyle(crop);
+  st.querySelector('.pv-name').textContent = name || '';
+}
+
+PAGES.promo = async () => {
+  stopPromoPlay();
+  promoState.sel = null;
+  $('page').innerHTML = `
+    ${pageHead('ป้ายตู้กาช่า', 'รูปบนป้ายโปรโมทหน้าสุ่มสกิน เรียงตามลำดับ เปลี่ยนเองตามเวลาที่ตั้ง · ยังไม่มีรูปที่โชว์อยู่ = เกมใช้ภาพป้ายเดิม')}
+
+    <div class="promoedit">
+      <div class="mailform promoside">
+        <h3 class="nf-head">รูปบนป้าย</h3>
+        <div class="pickrow">
+          <label class="btn" for="pFiles">+ อัปโหลดรูป</label>
+          <input id="pFiles" type="file" accept="image/*" multiple hidden>
+          <span class="note">เลือกได้หลายรูปพร้อมกัน</span>
+        </div>
+        <small class="note">ขนาดแนะนำ <b>${PROMO_REC.w} × ${PROMO_REC.h} px</b> (แนวนอน 1.75 : 1) — ขอบขวาราว 20% โดนตู้หัวแมวบัง ลากจัดรูปได้ทีหลัง</small>
+        <small class="note" id="pUpMsg"></small>
+        <div id="pList" class="plist"><div class="empty">กำลังโหลด…</div></div>
+        <div class="fld"><span>เปลี่ยนรูปทุกกี่วินาที (3–60)</span>
+          <div class="pickrow">
+            <input id="pSec" type="number" min="3" max="60" step="1" value="10">
+            <button class="btn ghost" id="pSecSave" type="button">บันทึก</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="promoright">
+        <div class="mailform">
+          <h3 class="nf-head" id="peHead">จัดรูป</h3>
+          <span class="note">ลากรูปเพื่อเลื่อน · ล้อเมาส์หรือแถบข้างล่างเพื่อซูม · ดับเบิลคลิก = กลับกลางรูป — ตู้หัวแมวที่ทับขอบขวาคือของจริงในเกม</span>
+          ${stageHTML('peStage', 'ipad')}
+          <label class="zoomrow"><span class="note">ซูม</span><input id="peZoom" type="range" min="1" max="${CROP_ZMAX}" step="0.01" value="1"><button class="btn ghost small" id="peReset" type="button">กลางรูป</button></label>
+          <div class="giftrow">
+            <label class="fld"><span>ชุดที่ลิงก์ (แตะรูปในเกม = เปิดหน้าชุดนี้)</span>
+              <select id="peOutfit"><option value="">— ไม่ลิงก์ —</option>${S_OUTFITS.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></label>
+            <label class="fld"><span>ชื่อบนป้าย (เว้นว่าง = ชื่อชุดที่ลิงก์)</span>
+              <input id="peTitle" maxlength="40" placeholder="ชื่อชุดที่ลิงก์"></label>
+          </div>
+          <div class="nf-checks">
+            <label class="chk"><input type="checkbox" id="peNoName"> ไม่ต้องโชว์ชื่อบนป้าย</label>
+            <label class="chk"><input type="checkbox" id="peUi" checked> โชว์ปุ่มของเกมบนตัวอย่าง (ปุ่มสุ่ม ลูกศร)</label>
+          </div>
+          <div class="sendrow">
+            <button class="btn" id="peSave" type="button" disabled>บันทึกรูปนี้</button>
+            <span id="peHint" class="note">เลือกรูปจากรายการทางซ้าย</span>
+          </div>
+        </div>
+
+        <div class="mailform">
+          <h3 class="nf-head">ตัวอย่างหน้าตู้กาช่า</h3>
+          <div class="pv-row">
+            <div class="pv-col"><span class="note">${PV_GEO.ipad.label}</span>${stageHTML('pvIpad', 'ipad')}</div>
+            <div class="pv-col phone"><span class="note">${PV_GEO.phone.label}</span>${stageHTML('pvPhone', 'phone')}</div>
+          </div>
+          <div class="sendrow">
+            <button class="btn ghost" id="pvPlay" type="button">▶ เล่นสไลด์ตามเวลาที่ตั้ง</button>
+            <span class="note" id="pvNow"></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const stages = ['peStage', 'pvIpad', 'pvPhone'].map($);
+  const ro = new ResizeObserver(() => stages.forEach(layoutStage));
+  stages.forEach((st) => ro.observe(st));
+  stages.forEach(layoutStage);
+
+  const ed = $('peStage');
+  bindCrop(ed.querySelector('.pv-banner'), ed.querySelector('img'), () => promoState.crop, (c) => {
+    promoState.crop = c;
+    $('peZoom').value = c.z;
+    promoDirty();
+  });
+  $('peZoom').addEventListener('input', () => { promoState.crop = normCrop({ ...promoState.crop, z: +$('peZoom').value }); promoDirty(); });
+  $('peReset').addEventListener('click', () => { promoState.crop = { ...CROP0 }; $('peZoom').value = 1; promoDirty(); });
+  ['peOutfit', 'peTitle', 'peNoName'].forEach((id) => $(id).addEventListener('input', promoDirty));
+  $('peSave').addEventListener('click', savePromo);
+  $('peUi').addEventListener('change', () => $('page').classList.toggle('pv-noui', !$('peUi').checked));
+  $('pFiles').addEventListener('change', uploadPromos);
+  $('pSecSave').addEventListener('click', savePromoSec);
+  $('pvPlay').addEventListener('click', () => (promoState.play ? stopPromoPlay() : startPromoPlay()));
+  loadPromos();
+};
+
+/** ค่าที่กำลังแก้ → ป้ายแก้รูป + ตัวอย่าง (ระหว่างเล่นสไลด์ ตัวอย่างไม่ตามการแก้) */
+function promoDirty() {
+  const row = promoState.rows.find((r) => r.id === promoState.sel);
+  const title = $('peNoName').checked ? '' : ($('peTitle').value.trim() || null);
+  const outfit = $('peOutfit').value || null;
+  $('peTitle').disabled = $('peNoName').checked;
+  $('peTitle').placeholder = S_OUTFITS.find((o) => o.id === outfit)?.name || 'ชื่อบนป้าย';
+  const name = promoName(title, outfit);
+  paintStage($('peStage'), row?.image_url || '', promoState.crop, name);
+  if (!promoState.play) {
+    paintStage($('pvIpad'), row?.image_url || '', promoState.crop, name);
+    paintStage($('pvPhone'), row?.image_url || '', promoState.crop, name);
+  }
+  if (row) {
+    const changed = JSON.stringify(normCrop(row.crop)) !== JSON.stringify(promoState.crop) || (row.outfit_id || null) !== outfit || (row.title ?? null) !== title;
+    $('peSave').disabled = !changed;
+    $('peHint').textContent = changed ? 'ยังไม่ได้บันทึก' : 'บันทึกแล้ว';
+  }
+}
+
+async function loadPromos(selectId = null) {
+  const c = await client();
+  const [{ data, error }, cfg] = await Promise.all([
+    c.from('gacha_promos').select('*').order('sort', { ascending: true }).order('created_at', { ascending: true }),
+    c.from('gacha_promo_settings').select('interval_sec').eq('id', 1).maybeSingle(),
+  ]);
+  if (error) {
+    $('pList').innerHTML = `<div class="empty">อ่านรายการไม่ได้: ${esc(errText(error))}<br>รัน <b>supabase/gacha-promo.sql</b> ใน Supabase แล้วหรือยัง?</div>`;
+    return;
+  }
+  promoState.rows = data || [];
+  if (cfg?.data?.interval_sec) $('pSec').value = cfg.data.interval_sec;
+  renderPromoList();
+  const pick = promoState.rows.find((r) => r.id === (selectId || promoState.sel)) || promoState.rows[0] || null;
+  selectPromo(pick);
+}
+
+function renderPromoList() {
+  const rows = promoState.rows;
+  if (!rows.length) {
+    $('pList').innerHTML = '<div class="empty">ยังไม่มีรูป — เกมใช้ภาพป้ายเดิมอยู่ · กด "อัปโหลดรูป" เพื่อเริ่ม</div>';
+    return;
+  }
+  $('pList').innerHTML = rows.map((r, i) => `
+    <div class="pl-row${r.active ? '' : ' off'}${r.id === promoState.sel ? ' on' : ''}" data-i="${i}">
+      <span class="pl-thumb"><img src="${esc(r.image_url)}" alt="" loading="lazy" style="${cropStyle(r.crop)}"></span>
+      <div class="pl-main">
+        <b>${i + 1}. ${esc(promoName(r.title ?? null, r.outfit_id) || '(ไม่มีชื่อ)')}</b>
+        <div class="nl-pills">${r.active ? '<span class="pill tag">โชว์ในเกม</span>' : '<span class="pill guest">ซ่อนอยู่</span>'}</div>
+      </div>
+      <div class="pl-acts">
+        <button class="btn ghost small" data-act="up" type="button" ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">▲</button>
+        <button class="btn ghost small" data-act="down" type="button" ${i < rows.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">▼</button>
+        <button class="btn ghost small" data-act="show" type="button">${r.active ? 'ซ่อน' : 'โชว์'}</button>
+        <button class="btn ghost small danger" data-act="del" type="button">ลบ</button>
+      </div>
+    </div>`).join('');
+  $('pList').querySelectorAll('.pl-row').forEach((el) => {
+    const r = rows[+el.dataset.i];
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (b) promoAction(b.dataset.act, r);
+      else selectPromo(r);
+    });
+  });
+}
+
+function selectPromo(r) {
+  promoState.sel = r ? r.id : null;
+  promoState.crop = normCrop(r?.crop);
+  $('peZoom').value = promoState.crop.z;
+  $('peOutfit').value = r?.outfit_id || '';
+  $('peNoName').checked = r?.title === '';
+  $('peTitle').value = r?.title || '';
+  $('peHead').textContent = r ? `จัดรูปที่ ${promoState.rows.indexOf(r) + 1}` : 'จัดรูป';
+  $('peSave').disabled = true;
+  $('peHint').textContent = r ? '' : 'เลือกรูปจากรายการทางซ้าย';
+  $('pList').querySelectorAll('.pl-row').forEach((el) => el.classList.toggle('on', promoState.rows[+el.dataset.i]?.id === promoState.sel));
+  promoDirty();
+}
+
+async function savePromo() {
+  const r = promoState.rows.find((x) => x.id === promoState.sel);
+  if (!r) return;
+  const patch = {
+    crop: promoState.crop,
+    outfit_id: $('peOutfit').value || null,
+    title: $('peNoName').checked ? '' : ($('peTitle').value.trim() || null),
+    updated_at: new Date().toISOString(),
+  };
+  $('peSave').disabled = true;
+  const c = await client();
+  const { error } = await c.from('gacha_promos').update(patch).eq('id', r.id);
+  if (error) {
+    $('peSave').disabled = false;
+    $('peHint').textContent = 'บันทึกไม่ได้: ' + errText(error);
+    return;
+  }
+  Object.assign(r, patch);
+  toast('บันทึกรูปแล้ว — เกมจะเห็นภายในหนึ่งนาทีหลังเปิดตู้', 'good');
+  renderPromoList();
+  promoDirty();
+}
+
+async function uploadPromos(e) {
+  const files = [...(e.target.files || [])];
+  e.target.value = '';
+  if (!files.length) return;
+  const msg = $('pUpMsg');
+  const c = await client();
+  let sort = promoState.rows.reduce((m, r) => Math.max(m, r.sort || 0), 0);
+  let firstId = null, done = 0;
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) { toast(`${file.name} ไม่ใช่รูปภาพ — ข้าม`, 'bad'); continue; }
+    if (file.size > 8 * 1024 * 1024) { toast(`${file.name} ใหญ่เกิน 8 MB — ข้าม`, 'bad'); continue; }
+    msg.textContent = `กำลังอัปโหลด ${done + 1}/${files.length}…`;
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+    const path = `${todayISO()}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+    const up = await c.storage.from('promo').upload(path, file, { contentType: file.type, upsert: false });
+    if (up.error) {
+      msg.textContent = 'อัปโหลดไม่ได้: ' + errText(up.error) + ' (รัน supabase/gacha-promo.sql แล้วหรือยัง?)';
+      return;
+    }
+    const url = c.storage.from('promo').getPublicUrl(path).data.publicUrl;
+    const { data, error } = await c.from('gacha_promos').insert({ image_url: url, sort: ++sort, crop: { ...CROP0 } }).select('id').single();
+    if (error) { msg.textContent = 'บันทึกรูปไม่ได้: ' + errText(error); return; }
+    firstId ??= data.id;
+    done++;
+  }
+  msg.textContent = done ? `อัปโหลดแล้ว ${done} รูป ✓ — ลากจัดรูปทางขวาได้เลย` : '';
+  if (done) loadPromos(firstId);
+}
+
+async function promoAction(act, r) {
+  const c = await client();
+  const rows = promoState.rows;
+  const i = rows.indexOf(r);
+  if (act === 'up' || act === 'down') {
+    const j = act === 'up' ? i - 1 : i + 1;
+    if (j < 0 || j >= rows.length) return;
+    // สลับที่: ให้ลำดับเป็น 1..n ใหม่ทั้งชุด (กันเลขซ้ำจากข้อมูลเก่า)
+    const order = rows.slice();
+    [order[i], order[j]] = [order[j], order[i]];
+    const res = await Promise.all(order.map((x, k) => (x.sort === k + 1 ? null : c.from('gacha_promos').update({ sort: k + 1 }).eq('id', x.id))).filter(Boolean));
+    const bad = res.find((x) => x.error);
+    if (bad) return toast('เรียงลำดับไม่ได้: ' + errText(bad.error), 'bad');
+  } else if (act === 'show') {
+    const { error } = await c.from('gacha_promos').update({ active: !r.active }).eq('id', r.id);
+    if (error) return toast('แก้ไม่ได้: ' + errText(error), 'bad');
+    toast(r.active ? 'ซ่อนรูปแล้ว' : 'โชว์รูปในเกมแล้ว', 'good');
+  } else if (act === 'del') {
+    const ok = await ask({
+      title: 'ลบรูปนี้?',
+      body: 'รูปจะหายจากป้ายในเกมทันทีและกู้คืนไม่ได้<br>ถ้าแค่อยากพักไว้ก่อน ใช้ปุ่ม "ซ่อน" แทนได้',
+      okText: 'ลบรูป',
+    });
+    if (!ok) return;
+    const { error } = await c.from('gacha_promos').delete().eq('id', r.id);
+    if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+    const mark = '/storage/v1/object/public/promo/';
+    if (r.image_url.includes(mark)) await c.storage.from('promo').remove([decodeURIComponent(r.image_url.split(mark)[1])]);
+    if (promoState.sel === r.id) promoState.sel = null;
+    toast('ลบรูปแล้ว', 'good');
+  }
+  loadPromos();
+}
+
+async function savePromoSec() {
+  const sec = Math.round(+$('pSec').value);
+  if (!(sec >= 3 && sec <= 60)) { toast('ตั้งได้ 3–60 วินาที', 'bad'); return; }
+  const c = await client();
+  const { error } = await c.from('gacha_promo_settings').upsert({ id: 1, interval_sec: sec, updated_at: new Date().toISOString() });
+  if (error) return toast('บันทึกไม่ได้: ' + errText(error), 'bad');
+  toast(`ตั้งให้เปลี่ยนรูปทุก ${sec} วินาทีแล้ว`, 'good');
+  if (promoState.play) { stopPromoPlay(); startPromoPlay(); }
+}
+
+/** เล่นสไลด์ตัวอย่าง: รูปที่โชว์อยู่ทั้งหมดตามลำดับ เปลี่ยนตามเวลาที่ตั้ง (ใช้ค่าที่บันทึกแล้ว) */
+function startPromoPlay() {
+  const list = promoState.rows.filter((r) => r.active);
+  if (!list.length) { toast('ยังไม่มีรูปที่โชว์อยู่', 'bad'); return; }
+  const sec = Math.max(3, Math.min(60, Math.round(+$('pSec').value) || 10));
+  promoState.playI = 0;
+  const show = () => {
+    if (!$('pvIpad')) return stopPromoPlay();
+    const r = list[promoState.playI % list.length];
+    const name = promoName(r.title ?? null, r.outfit_id);
+    for (const id of ['pvIpad', 'pvPhone']) {
+      const st = $(id);
+      st.classList.remove('swap');
+      void st.offsetWidth;
+      st.classList.add('swap');
+      paintStage(st, r.image_url, r.crop, name);
+    }
+    $('pvNow').textContent = `รูปที่ ${(promoState.playI % list.length) + 1}/${list.length} · เปลี่ยนทุก ${sec} วินาที`;
+    promoState.playI++;
+  };
+  show();
+  promoState.play = setInterval(show, sec * 1000);
+  $('pvPlay').textContent = '■ หยุดสไลด์';
+}
+function stopPromoPlay() {
+  clearInterval(promoState.play);
+  promoState.play = 0;
+  if ($('pvPlay')) {
+    $('pvPlay').textContent = '▶ เล่นสไลด์ตามเวลาที่ตั้ง';
+    $('pvNow').textContent = '';
+    promoDirty();
+  }
+}
+
+// ── หน้า: รูปการ์ดชุด ──────────────────────────────────────────
+//
+// รูปบนการ์ดชุดในเกม (หน้าชุดแมวในคลังน้อง + หน้า "สกินในตู้นี้") — สกินละหนึ่งรูป
+// ตาราง outfit_cards (outfit_id เป็น primary key) + รูปใน bucket "cards" (supabase/outfit-cards.sql)
+// สกินที่ไม่มีรูป = เกมใช้ภาพเดิมที่วาดเอง (src/render/outfit-art.js — หน้านี้วาดภาพเดิมให้ดูด้วยตัววาดเดียวกัน)
+
+const CARD_REC = { w: 800, h: 992 };   // สัดส่วนเดียวกับกรอบรูปบนการ์ด (OC_W × OC_H = 200 × 248)
+const CARD_OUTFITS = ALL_OUTFITS;
+const HIDDEN_IDS = new Set(ALL_OUTFITS.filter((o) => !OUTFITS.some((x) => x.id === o.id)).map((o) => o.id));
+const cardState = { rows: new Map(), sel: null, image: '', crop: { ...CROP0 }, active: true, fresh: '', locked: false };
+const ART_SKIN = { ...SKINS[0], sex: 'm', outfit: null };
+const artCache = new Map();
+
+/** ภาพเดิมของชุด (ตัววาดเดียวกับในเกม · แมวส้ม) ลงผ้าใบ */
+function paintDefaultArt(cv, o) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let img = artCache.get(o.id);
+  if (!img) {
+    img = document.createElement('canvas');
+    img.width = OC_W * dpr;
+    img.height = OC_H * dpr;
+    const c = img.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    try { drawOutfitArt(c, ART_SKIN, o); } catch (e) { console.warn('วาดภาพเดิมไม่ได้', o.id, e); }
+    artCache.set(o.id, img);
+  }
+  cv.width = img.width;
+  cv.height = img.height;
+  cv.getContext('2d').drawImage(img, 0, 0);
+}
+
+/** การ์ดแบบในเกม (.oc-card) — มีรูป = <img> ครอบตัด · ไม่มี = ภาพเดิม (วาดหลังใส่ลงหน้าด้วย paintCardArts) */
+function cardHTML(o, { img = '', crop = null, locked = false, cls = '' } = {}) {
+  return `<div class="ocp-card${o.rarity === 'high' ? ' s' : ''}${locked ? ' locked' : ''} ${cls}" data-id="${esc(o.id)}">
+    <span class="ocp-art">${img ? `<img src="${esc(img)}" alt="" draggable="false" style="${cropStyle(crop)}">` : '<canvas></canvas>'}</span>
+    <b>${esc(o.name)}</b></div>`;
+}
+function paintCardArts(root) {
+  root.querySelectorAll('.ocp-card').forEach((el) => {
+    const cv = el.querySelector('.ocp-art > canvas');
+    const o = CARD_OUTFITS.find((x) => x.id === el.dataset.id);
+    if (cv && o) paintDefaultArt(cv, o);
+  });
+}
+
+PAGES.cards = async () => {
+  cardState.sel = null;
+  cardState.fresh = '';
+  $('page').innerHTML = `
+    ${pageHead('รูปการ์ดชุด', 'รูปบนการ์ดในหน้าชุดแมว (คลังน้อง) และหน้า "สกินในตู้นี้" ของตู้กาช่า — สกินละหนึ่งรูป · สกินที่ไม่มีรูปใช้ภาพเดิม')}
+
+    <div class="cardedit">
+      <div class="mailform cardside">
+        <h3 class="nf-head">สกินทั้งหมด <small class="note" id="cCount"></small></h3>
+        <span class="note">เลือกสกินที่จะใส่รูป · ป้ายมุมการ์ด: <b>มีรูป</b> = ใช้รูปที่อัปโหลด · <b>ซ่อนในเกม</b> = ชุดนี้ยังไม่เปิดในเกม</span>
+        <div id="cGrid" class="ocp-grid"><div class="empty">กำลังโหลด…</div></div>
+      </div>
+
+      <div class="promoright">
+        <div class="mailform">
+          <h3 class="nf-head" id="ceHead">เลือกสกินจากรายการทางซ้าย</h3>
+          <div class="ce-row">
+            <div class="ce-card-wrap" id="ceWrap"></div>
+            <div class="ce-tools">
+              <span class="note">ลากรูปในการ์ดเพื่อเลื่อน · ล้อเมาส์หรือแถบซูม · ดับเบิลคลิก = กลับกลางรูป</span>
+              <div class="pickrow">
+                <label class="btn" for="cFile" id="cFileBtn">อัปโหลดรูป</label>
+                <input id="cFile" type="file" accept="image/*" hidden>
+              </div>
+              <small class="note">ขนาดแนะนำ <b>${CARD_REC.w} × ${CARD_REC.h} px</b> (แนวตั้ง 200 : 248) · ไม่เกิน 5 MB</small>
+              <small class="note" id="cMsg"></small>
+              <label class="zoomrow"><span class="note">ซูม</span><input id="cZoom" type="range" min="1" max="${CROP_ZMAX}" step="0.01" value="1"><button class="btn ghost small" id="cReset" type="button">กลางรูป</button></label>
+              <label class="chk"><input type="checkbox" id="cActive" checked> โชว์รูปนี้ในเกม (ไม่ติ๊ก = เก็บไว้ก่อน เกมใช้ภาพเดิม)</label>
+              <div class="sendrow">
+                <button class="btn" id="cSave" type="button" disabled>บันทึก</button>
+                <button class="btn ghost danger" id="cDel" type="button" disabled>ลบรูป (กลับไปภาพเดิม)</button>
+              </div>
+              <span id="cHint" class="note"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mailform">
+          <h3 class="nf-head">ตัวอย่างในเกม</h3>
+          <label class="chk"><input type="checkbox" id="cLocked"> ดูแบบผู้เล่นยังไม่มีชุดนี้ (การ์ดขาวดำ)</label>
+          <div class="ocp-stage"><div class="ocp-title">ชุดแมว</div><div class="ocp-row" id="cPrev"></div></div>
+          <span class="note">การ์ดแรกคือสกินที่กำลังแก้ (ค่าที่ยังไม่บันทึกก็เห็นตรงนี้) · ใบอื่นเป็นสกินถัดไปตามที่บันทึกแล้ว · รูปที่อัปโหลดโชว์เหมือนกันทุกตัวแมว (ภาพเดิมวาดตามแมวที่ผู้เล่นใช้)</span>
+        </div>
+      </div>
+    </div>`;
+
+  $('cFile').addEventListener('change', uploadCardImage);
+  $('cZoom').addEventListener('input', () => setCardCrop(normCrop({ ...cardState.crop, z: +$('cZoom').value })));
+  $('cReset').addEventListener('click', () => setCardCrop({ ...CROP0 }));
+  $('cActive').addEventListener('change', () => { cardState.active = $('cActive').checked; cardDirty(); });
+  $('cLocked').addEventListener('change', () => { cardState.locked = $('cLocked').checked; renderCardPreview(); });
+  $('cSave').addEventListener('click', saveCard);
+  $('cDel').addEventListener('click', deleteCard);
+  loadCards();
+};
+
+async function loadCards(selectId = null) {
+  const c = await client();
+  const { data, error } = await c.from('outfit_cards').select('*');
+  if (error) {
+    $('cGrid').innerHTML = `<div class="empty">อ่านรายการไม่ได้: ${esc(errText(error))}<br>รัน <b>supabase/outfit-cards.sql</b> ใน Supabase แล้วหรือยัง?</div>`;
+    return;
+  }
+  cardState.rows = new Map((data || []).map((r) => [r.outfit_id, r]));
+  renderCardGrid();
+  selectCard(selectId || cardState.sel || CARD_OUTFITS[0].id, true);
+}
+
+function renderCardGrid() {
+  const n = CARD_OUTFITS.filter((o) => cardState.rows.has(o.id)).length;
+  $('cCount').textContent = `· มีรูปแล้ว ${n} / ${CARD_OUTFITS.length}`;
+  $('cGrid').innerHTML = CARD_OUTFITS.map((o) => {
+    const r = cardState.rows.get(o.id);
+    const tags = [r ? `<i class="ocp-tag ${r.active ? 'has' : 'off'}">${r.active ? 'มีรูป' : 'มีรูป · ซ่อน'}</i>` : '',
+      HIDDEN_IDS.has(o.id) ? '<i class="ocp-tag hid">ซ่อนในเกม</i>' : ''].join('');
+    return `<button type="button" class="ocp-pick${o.id === cardState.sel ? ' on' : ''}" data-id="${esc(o.id)}">${cardHTML(o, { img: r?.image_url, crop: r?.crop })}<span class="ocp-tags">${tags}</span></button>`;
+  }).join('');
+  paintCardArts($('cGrid'));
+  $('cGrid').querySelectorAll('.ocp-pick').forEach((b) => b.addEventListener('click', () => selectCard(b.dataset.id)));
+}
+
+const cardIsDirty = () => {
+  const r = cardState.rows.get(cardState.sel);
+  if (!r) return !!cardState.image;
+  return r.image_url !== cardState.image || r.active !== cardState.active
+    || JSON.stringify(normCrop(r.crop)) !== JSON.stringify(cardState.crop);
+};
+
+async function selectCard(id, force = false) {
+  if (!force && id === cardState.sel) return;
+  if (!force && cardIsDirty()) {
+    const ok = await ask({ title: 'ทิ้งการแก้ที่ยังไม่บันทึก?', body: 'รูปหรือการครอบตัดของสกินนี้ยังไม่ได้บันทึก', okText: 'ทิ้ง' });
+    if (!ok) return;
+  }
+  await dropFreshCard();
+  const o = CARD_OUTFITS.find((x) => x.id === id) || CARD_OUTFITS[0];
+  const r = cardState.rows.get(o.id);
+  cardState.sel = o.id;
+  cardState.image = r?.image_url || '';
+  cardState.crop = normCrop(r?.crop);
+  cardState.active = r ? r.active : true;
+  $('cActive').checked = cardState.active;
+  $('cMsg').textContent = '';
+  $('ceHead').textContent = o.name + (o.rarity === 'high' ? ' · ระดับ S' : '');
+  $('cFileBtn').textContent = cardState.image ? 'เปลี่ยนรูป' : 'อัปโหลดรูป';
+  $('cGrid').querySelectorAll('.ocp-pick').forEach((b) => b.classList.toggle('on', b.dataset.id === o.id));
+  renderCardEditor();
+  cardDirty();
+}
+
+/** การ์ดใหญ่สำหรับลากจัดรูป */
+function renderCardEditor() {
+  const o = CARD_OUTFITS.find((x) => x.id === cardState.sel);
+  $('ceWrap').innerHTML = cardHTML(o, { img: cardState.image, crop: cardState.crop, cls: 'big' });
+  paintCardArts($('ceWrap'));
+  const img = $('ceWrap').querySelector('img');
+  if (img) bindCrop(img.parentElement, img, () => cardState.crop, setCardCrop);
+  $('cZoom').disabled = $('cReset').disabled = !img;
+}
+
+function setCardCrop(c) {
+  cardState.crop = c;
+  const im = $('ceWrap').querySelector('img');
+  if (im) im.style.cssText = cropStyle(c);
+  $('cZoom').value = c.z;
+  cardDirty();
+}
+
+function cardDirty() {
+  const dirty = cardIsDirty();
+  const r = cardState.rows.get(cardState.sel);
+  $('cSave').disabled = !dirty || !cardState.image;
+  $('cDel').disabled = !r && !cardState.fresh;
+  $('cHint').textContent = !cardState.image ? 'ยังไม่มีรูป — เกมใช้ภาพเดิม' : dirty ? 'ยังไม่ได้บันทึก' : 'บันทึกแล้ว';
+  $('cZoom').value = cardState.crop.z;
+  renderCardPreview();
+}
+
+/** แถวการ์ดแบบหน้าชุดแมว: สกินที่แก้อยู่ + สกินถัดไปอีกสามใบ */
+function renderCardPreview() {
+  const i = CARD_OUTFITS.findIndex((x) => x.id === cardState.sel);
+  if (i < 0) return;
+  const list = [0, 1, 2, 3].map((k) => CARD_OUTFITS[(i + k) % CARD_OUTFITS.length]);
+  $('cPrev').innerHTML = list.map((o, k) => {
+    const r = cardState.rows.get(o.id);
+    const img = k === 0 ? cardState.image : r?.active ? r.image_url : '';
+    const crop = k === 0 ? cardState.crop : r?.crop;
+    return cardHTML(o, { img: k === 0 && !cardState.active ? '' : img, crop, locked: cardState.locked, cls: k === 0 ? 'cur' : '' });
+  }).join('');
+  paintCardArts($('cPrev'));
+}
+
+async function uploadCardImage(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file || !cardState.sel) return;
+  const msg = $('cMsg');
+  if (!file.type.startsWith('image/')) return (msg.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพ');
+  if (file.size > 5 * 1024 * 1024) return (msg.textContent = 'รูปใหญ่เกิน 5 MB ลองย่อก่อนนะ');
+  msg.textContent = 'กำลังอัปโหลด…';
+  const c = await client();
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `${cardState.sel}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const { error } = await c.storage.from('cards').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) {
+    msg.textContent = 'อัปโหลดไม่ได้: ' + errText(error) + ' (รัน supabase/outfit-cards.sql แล้วหรือยัง?)';
+    return;
+  }
+  await dropFreshCard();   // อัปโหลดซ้ำก่อนบันทึก = ทิ้งรูปที่อัปไปรอบก่อน
+  cardState.fresh = cardState.image = c.storage.from('cards').getPublicUrl(path).data.publicUrl;
+  cardState.crop = { ...CROP0 };
+  msg.textContent = 'อัปโหลดแล้ว ✓ — ลากจัดรูปในการ์ด แล้วกดบันทึก';
+  $('cFileBtn').textContent = 'เปลี่ยนรูป';
+  renderCardEditor();
+  cardDirty();
+}
+
+/** ลบไฟล์ใน bucket ของเราเอง (ลิงก์จากที่อื่นไม่แตะ) */
+async function removeCardFile(url) {
+  const mark = '/storage/v1/object/public/cards/';
+  if (!url || !url.includes(mark)) return;
+  const c = await client();
+  await c.storage.from('cards').remove([decodeURIComponent(url.split(mark)[1])]);
+}
+/** รูปที่อัปโหลดแต่ยังไม่บันทึก — ทิ้งไฟล์ไม่ให้ค้างในที่เก็บ */
+async function dropFreshCard() {
+  const url = cardState.fresh;
+  cardState.fresh = '';
+  if (url && url !== cardState.rows.get(cardState.sel)?.image_url) await removeCardFile(url);
+}
+
+async function saveCard() {
+  if (!cardState.sel || !cardState.image) return;
+  const old = cardState.rows.get(cardState.sel);
+  const row = { outfit_id: cardState.sel, image_url: cardState.image, crop: cardState.crop, active: cardState.active, updated_at: new Date().toISOString() };
+  $('cSave').disabled = true;
+  const c = await client();
+  const { error } = await c.from('outfit_cards').upsert(row);
+  if (error) {
+    $('cSave').disabled = false;
+    $('cHint').textContent = 'บันทึกไม่ได้: ' + errText(error);
+    return;
+  }
+  if (old && old.image_url !== row.image_url) await removeCardFile(old.image_url);   // เปลี่ยนรูป = ลบไฟล์รูปเก่า
+  cardState.fresh = '';
+  toast('บันทึกรูปการ์ดแล้ว — เกมจะเห็นภายในหนึ่งนาทีหลังเปิดหน้าชุด', 'good');
+  loadCards(cardState.sel);
+}
+
+async function deleteCard() {
+  const r = cardState.rows.get(cardState.sel);
+  const o = CARD_OUTFITS.find((x) => x.id === cardState.sel);
+  if (!r) { await dropFreshCard(); selectCard(cardState.sel, true); return; }   // ยังไม่เคยบันทึก = แค่ทิ้งรูปที่อัปไว้
+  const ok = await ask({
+    title: 'ลบรูปการ์ดนี้?',
+    body: `การ์ด <b>${esc(o?.name || '')}</b> จะกลับไปใช้ภาพเดิมทันที และกู้รูปคืนไม่ได้<br>ถ้าแค่อยากพักไว้ก่อน เอาติ๊ก "โชว์รูปนี้ในเกม" ออกแล้วบันทึกแทนได้`,
+    okText: 'ลบรูป',
+  });
+  if (!ok) return;
+  const c = await client();
+  const { error } = await c.from('outfit_cards').delete().eq('outfit_id', r.outfit_id);
+  if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+  await removeCardFile(r.image_url);
+  await dropFreshCard();
+  toast('ลบรูปแล้ว — การ์ดกลับไปใช้ภาพเดิม', 'good');
+  loadCards(cardState.sel);
 }
 
 // ── หน้า: แจ้งปัญหา ─────────────────────────────────────────
@@ -1840,6 +2552,14 @@ function failInto(id, error) {
 }
 
 // ── เริ่มทำงาน ──────────────────────────────────────────────
+
+// ตอนพัฒนาเท่านั้น (Vite ตัดทิ้งตอน build): สคริปต์ทดสอบเปิดหน้าใด ๆ ด้วยฐานข้อมูลจำลอง โดยไม่ต้องล็อกอิน/แตะฐานข้อมูลจริง
+if (import.meta.env.DEV) {
+  window.__admin = {
+    mock(fake) { sb = fake; $('gate').classList.add('hidden'); $('app').classList.remove('hidden'); },
+    go,
+  };
+}
 
 async function boot() {
   if (!URL_ || !ANON) {
