@@ -2593,6 +2593,22 @@ async function boot() {
     const b = e.target.closest('[data-page]');
     if (b) go(b.dataset.page);
   });
+  // ── ย่อ/ขยายแถบข้าง (จำไว้ในเครื่อง) — ย่อแล้วชี้ที่ไอคอนเห็นชื่อเมนูจาก title ──
+  for (const b of $('tabs').children) b.title = b.textContent.trim();
+  const setMini = (on) => {
+    $('app').classList.toggle('mini', on);
+    const t = $('sideToggle');
+    t.setAttribute('aria-expanded', on ? 'false' : 'true');
+    t.title = on ? 'ขยายแถบข้าง ([)' : 'ย่อแถบข้าง ([)';
+    t.setAttribute('aria-label', on ? 'ขยายแถบข้าง' : 'ย่อแถบข้าง');
+    try { localStorage.setItem('admin:sideMini', on ? '1' : '0'); } catch { /* โหมดส่วนตัว */ }
+  };
+  try { setMini(localStorage.getItem('admin:sideMini') === '1'); } catch { setMini(false); }
+  $('sideToggle').addEventListener('click', () => setMini(!$('app').classList.contains('mini')));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '[' || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    setMini(!$('app').classList.contains('mini'));
+  });
   // ค้นจากหัวหน้า — ไปหน้าผู้เล่นพร้อมคำค้น ถ้าเป็นไอดีตรงตัวเจอคนเดียวก็เปิดลิ้นชักให้เลย
   $('gq').addEventListener('keydown', async (e) => {
     if (e.key !== 'Enter') return;

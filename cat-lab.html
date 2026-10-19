@@ -129,7 +129,7 @@
     .brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .2px; }
     .brand h1 span { background: linear-gradient(90deg, var(--accent), var(--warn)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .brand p { margin: 0; color: var(--dim); font-size: 12px; }
-    .tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 4px 10px 10px; border-bottom: 1px solid var(--line); }
+    .tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 4px 10px 10px; border-bottom: 1px solid var(--line); }
     .tab {
       border: 0; border-radius: 12px; background: transparent; cursor: pointer; padding: 6px 2px 5px;
       display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 12px; color: var(--dim);
@@ -272,6 +272,7 @@
       <nav class="tabs" role="tablist">
         <button type="button" class="tab" data-tab="moves" role="tab"><i>🐱</i>ท่า</button>
         <button type="button" class="tab" data-tab="outfits" role="tab"><i>👗</i>ชุด</button>
+        <button type="button" class="tab" data-tab="kitten" role="tab"><i>🐣</i>ลูกแมว</button>
         <button type="button" class="tab star" data-tab="intro" role="tab"><i>✨</i>เปิดตัว S</button>
         <button type="button" class="tab" data-tab="settings" role="tab"><i>⚙️</i>ตั้งค่า</button>
         <button type="button" class="tab" data-tab="vals" role="tab"><i>📊</i>ค่า</button>
@@ -295,6 +296,21 @@
           </div>
           <div id="outfits"></div>
           <p class="note"><span class="tag new">ใหม่</span> วาดใหม่ให้เข้ากับน้องแล้ว · <span class="tag old">เดิม</span> ยังไม่ทำ (โชว์ตัวเดิมข้างน้องไว้เทียบ) · <span class="tag s">✨</span>มีท่าเปิดตัว</p>
+        </section>
+
+        <section class="pane" data-pane="kitten">
+          <p class="note" style="margin-top:0">🐣 <b>รอแบบลูกแมวใหม่</b> — ตอนนี้โชว์ลูกแมวจากตัววาดเดิม (หน้าตาเดียวกับในเกม) ไว้ดูสัดส่วนและเทียบขนาดกับตัวโต · ออกแบบเสร็จแล้วจะต่อแบบใหม่เข้าแท็บนี้</p>
+          <div class="sec">วัย <span class="line"></span></div>
+          <div class="opts">
+            <div class="opt"><span>แสดง</span><div class="seg" id="kAge"></div></div>
+          </div>
+          <div class="sec">สี <span class="line"></span></div>
+          <div class="moves" id="kCats"></div>
+          <ol class="steps">
+            <li>ลูกแมว (Lv1–2) ตัว 62% ของตัวโต · วัยรุ่น (Lv3–4) 82% · Lv5 โตเต็มวัย = น้องแบบใหม่</li>
+            <li>ท่าเลือกจากแท็บ 🐱 ท่า ได้ (ท่าเปิดตัว/ท่าแอ็คของสกิน S ลูกแมวยืนเฉย)</li>
+            <li>เทียบ 3 วัย = ลูกแมว · วัยรุ่น · ตัวโต ยืนเรียงกันบนพื้นเดียวกัน</li>
+          </ol>
         </section>
 
         <section class="pane" data-pane="intro">
@@ -388,7 +404,7 @@
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม
 
-    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all' };
+    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all', kAge: 'baby', kCat: 'orange' };
     window.__lab = st;   // เปิดให้สคริปต์ทดสอบปรับมุมกล้องได้
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -401,7 +417,7 @@
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { saved = null; }
     if (saved) {
-      for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter']) if (saved[k] !== undefined) st[k] = saved[k];
+      for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter', 'kAge', 'kCat']) if (saved[k] !== undefined) st[k] = saved[k];
       if (!saved.bgSkin) st.bg = 'skin';   // ฉากหลังประจำสกินมาใหม่ (14 ต.ค.) — เปิดให้เห็นครั้งแรก แล้วจำตามที่เลือกต่อ
       if (saved.outfit && outfitById(saved.outfit)) st.outfit = saved.outfit;
       st.skin = catById(saved.skin);
@@ -415,6 +431,7 @@
           move: plain ? st.move.id : 'idle', f: plain ? st.f : 0, playing: st.playing,
           outfit: st.outfit, skin: st.skin.id, wide: document.body.classList.contains('wide'), clean: isClean(), bgSkin: true,
           speed: st.speed, zoom: st.zoom, bg: st.bg, loop: st.loop, view: st.view, compare: st.compare, tab: st.tab, ofFilter: st.ofFilter,
+          kAge: st.kAge, kCat: st.kCat,
         }));
       } catch { /* ไม่มีที่เก็บก็ไม่เป็นไร */ }
     }
@@ -577,6 +594,24 @@
     seg('bg', 'bg', [['skin', 'ฉากสกิน', 'ฉากหลังประจำสกิน (ชุดระดับ S ที่มีฉาก) · ชุดอื่นใช้ม่วงอ่อน'], ['home', 'ม่วงอ่อน'], ['dark', 'มืด'], ['grid', 'ตาราง']]);
     seg('sound', 'sound', [[false, '🔇 ปิด'], [true, '🔊 เปิด']]);
     seg('ofFilter', 'ofFilter', [['all', 'ทั้งหมด'], ['new', 'แบบใหม่'], ['old', 'ยังไม่ทำ']], () => filterOutfits());
+    seg('kAge', 'kAge', [['baby', 'ลูกแมว', 'Lv1–2'], ['young', 'วัยรุ่น', 'Lv3–4'], ['all', 'เทียบ 3 วัย']]);
+
+    // ── แท็บลูกแมว: สีทุกสายพันธุ์ (ลูกแมวในเกมมาจากกล่อง สีตามสายพันธุ์) ──
+    for (const c of SKINS.filter((x) => x.id !== 'mine')) {   // น้องระบายสีเองไม่ใช่สายพันธุ์จากกล่อง — ไม่มีลูกแมว
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.dataset.kcat = c.id;
+      const dot = c.pal?.cat || c.cat || '#F8C08A';
+      b.innerHTML = `<span class="em" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${dot};border:2px solid #5A3420"></span><span class="tx">${c.name || c.id}<small>${c.note || ''}</small></span>`;
+      b.onclick = () => setKCat(c.id);
+      $('kCats').append(b);
+    }
+    function setKCat(id) {
+      st.kCat = SKINS.some((c) => c.id === id) ? id : 'orange';
+      for (const b of $('kCats').children) b.classList.toggle('on', b.dataset.kcat === st.kCat);
+    }
+    setKCat(st.kCat);
 
     // ── รายการชุดทุกระดับ (จาก outfits.js) + สถานะว่าแบบใหม่วาดแล้วหรือยัง ──
     {
@@ -869,6 +904,7 @@
       // ฉากหลังประจำสกิน (ภาพนิ่งวาดครั้งเดียว) — ติดพื้นใต้เท้าน้อง เลื่อน/ซูมไปกับกล้องของท่าเปิดตัว
       // res = พิกเซลต่อหน่วยเกมแบบไม่รวมกล้อง (กล้องซูมเข้า = ฉากนุ่มลงเหมือนชัดตื้น ไม่ต้องวาดใหม่)
       if (st.bg === 'skin' && cat2Backdrop(st.outfit)) drawCat2Backdrop(ctx, 0, 0, SCALE, st.outfit, { res: u });
+      if (st.tab === 'kitten') return renderKittens(w, u);
       const shape = shapeAt();
       const lift = (shape?.lift || 0) * SCALE;
       // เงาหดตอนลอย (เหมือนหน้าแรก)
@@ -905,6 +941,48 @@
         ctx.fillText('แบบเดิม', 0, 16);
         ctx.restore();
       }
+      showVals(shape);
+    }
+
+    // ── แท็บลูกแมว: ตัววาดเดิม (ยังไม่มีแบบใหม่) ขนาดเทียบตัวโตเหมือนในเกม ──
+    // ในเกม: ตัวโตแบบใหม่ = สเกล × 0.86 · ลูกแมวตัววาดเดิม = สเกล × ขนาดตามวัย (ดู drawStashCat ใน main.js / sizeOf ใน cats.js)
+    const K_SIZE = { baby: 0.62, young: 0.82 };
+    const K_NAME = { baby: 'ลูกแมว · Lv1–2', young: 'วัยรุ่น · Lv3–4', adult: 'โตเต็มวัย · Lv5' };
+    function renderKittens(w, u) {
+      const base = SKINS.find((c) => c.id === st.kCat) || SKINS[0];
+      const plain = !st.move.intro && st.move.id !== 'act';
+      const shape = plain ? shapeAt() : null;
+      const TURN = { qleft: 0.75, left: Math.PI / 2, qright: -0.75, right: -Math.PI / 2, back: Math.PI };
+      const sh = st.view !== 'front' ? { ...(shape || {}), turn: TURN[st.view] } : shape;
+      const arg = sh ? { k: 1, shape: sh, pose: st.move.id } : null;
+      const t = 600 + st.f;
+      const ages = st.kAge === 'all' ? ['baby', 'young', 'adult'] : [st.kAge];
+      const gap = Math.min(120, (w / 2) / u - 50);
+      ages.forEach((age, i) => {
+        const x = ages.length > 1 ? (i - 1) * gap : 0;
+        const k = K_SIZE[age] || 1;
+        const lift = (shape?.lift || 0) * SCALE * k;
+        ctx.globalAlpha = 0.28 * (1 - Math.min(0.42, lift / 40));
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.ellipse(x, 5, 44 * k, 8.5 * k, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (age === 'adult') {
+          // ตัวโต: แบบใหม่ถ้าสายพันธุ์นี้ออกแบบแล้ว (ส้ม ไข่มุก ขนมชั้น วิเชียรมาศ) — สีอื่นตัววาดเดิม
+          const nc = NEW_CATS.find((c) => c.id === base.id);
+          if (nc) drawCat2(ctx, x, -lift, SCALE, nc, t, arg);
+          else drawCatPose(ctx, x, -lift, SCALE / 0.86, base, t, arg);
+        } else {
+          drawCatPose(ctx, x, -lift, (SCALE / 0.86) * k, { ...base, age, noPhoto: true }, t, arg);
+        }
+        if (ages.length > 1 && !isClean()) {
+          ctx.fillStyle = 'rgba(42,15,34,.6)';
+          ctx.font = '600 9px Mitr, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(K_NAME[age], x, 18);
+        }
+      });
       showVals(shape);
     }
 

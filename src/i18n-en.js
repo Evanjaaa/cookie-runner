@@ -20,6 +20,7 @@ export const EN = {
   'สูงสุด': 'Max',
   'เลือกความละเอียดภาพ': 'Choose resolution',
   'อัตโนมัติ: ลดความละเอียดเหลือ': 'Auto: resolution lowered to',
+  'อัตโนมัติ: วาดท่าทางน้องเฟรมเว้นเฟรม': 'Auto: cat animation drawn every other frame',
   'ให้เกมลื่นบนเครื่องนี้': 'to keep this device smooth',
   'เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น': 'High frame rate / max resolution looks great but warms the device and uses more battery',
   'ตั้งค่าบ้านลูกเหมียว': 'Cat house settings',

@@ -16,6 +16,8 @@
 const BLUR_W = 40;      // ความละเอียดแนวนอนของสีที่ต่อ (ยิ่งน้อยยิ่งเบลอ)
 const SEAM = 46;        // ความสูง (หน่วยฉาก) ช่วงที่แถวขอบจริงค่อย ๆ จางเข้าสีเบลอ
 let tiny = null, seam = null;
+/** ผ้าใบย่อทีละครึ่ง (ดู shrinkRows) — คีย์ = ขนาด "กว้างxสูง" */
+const halves = new Map();
 
 function ensure(w, h) {
   if (!tiny) {
@@ -28,6 +30,48 @@ function ensure(w, h) {
     seam.canvas.width = w;
     seam.canvas.height = h;
   }
+}
+
+function halfCanvas(w, h) {
+  const key = w + 'x' + h;
+  let c = halves.get(key);
+  if (!c) {
+    if (halves.size > 24) halves.clear();   // ขนาดจอเปลี่ยนบ่อย (หมุนจอ) — ไม่สะสมของเก่า
+    c = document.createElement('canvas').getContext('2d');
+    c.canvas.width = w;
+    c.canvas.height = h;
+    halves.set(key, c);
+  }
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = 1;
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'low';
+  c.clearRect(0, 0, w, h);
+  return c;
+}
+
+/**
+ * เฉลี่ยสีของแถวขอบฉาก (W × rows จากผ้าใบหลัก) ลง tiny (BLUR_W × 1)
+ *
+ * ── ทำไมไม่ย่อครั้งเดียวด้วย imageSmoothingQuality 'high' แบบเดิม ──
+ * 'high' ตอนย่อ = เบราว์เซอร์ต้องสร้างภาพย่อหลายระดับ (mipmap) ของ "ทั้งผ้าใบหลัก" ก่อน
+ * ซึ่งการ์ดจอทำโดยก๊อปผ้าใบทั้งจอไปไว้อีกที่ทุกครั้ง (วัดใน Chrome: 2 ครั้ง/เฟรม ~19 มิลลิวินาที เฟรมตกครึ่งหนึ่ง)
+ * ย่อทีละครึ่งด้วยการเกลี่ยธรรมดา ('low' ที่อัตรา 2:1 = เฉลี่ย 2×2 พิกเซลพอดี) ได้สีเฉลี่ยเท่ากัน ไม่ต้องก๊อปอะไร
+ */
+function shrinkRows(cv, sy, rows) {
+  let src = cv, sx = 0, srcY = sy, w = cv.width, h = rows;
+  while (w > BLUR_W * 2 || h > 1) {
+    const nw = Math.max(BLUR_W, Math.ceil(w / 2)), nh = Math.max(1, Math.ceil(h / 2));
+    const c = halfCanvas(nw, nh);
+    c.drawImage(src, sx, srcY, w, h, 0, 0, nw, nh);
+    src = c.canvas; sx = 0; srcY = 0; w = nw; h = nh;
+  }
+  tiny.setTransform(1, 0, 0, 1, 0, 0);
+  tiny.imageSmoothingEnabled = true;
+  tiny.imageSmoothingQuality = 'low';
+  tiny.clearRect(0, 0, BLUR_W, 1);
+  tiny.drawImage(src, sx, srcY, w, h, 0, 0, BLUR_W, 1);
 }
 
 /**
@@ -50,12 +94,9 @@ function extendBand(ctx, cv, rowY, dir, len, dim, seamPx) {
   // rowY = แถวขอบในพิกเซลจริง · dir = -1 ต่อขึ้นบน / +1 ต่อลงล่าง · len = ความสูงพิกเซลจริงที่ต้องเติม
   const W = cv.width;
   const y0 = dir < 0 ? rowY - len : rowY + 1;
-  // 1) สีเบลอเต็มพื้นที่ (เอา 6 แถวใกล้ขอบมาเฉลี่ย)
+  // 1) สีเบลอเต็มพื้นที่ (เอา 6 แถวใกล้ขอบมาเฉลี่ย — ย่อทีละครึ่ง ดู shrinkRows)
   const sy = dir < 0 ? rowY : Math.max(0, rowY - 5);
-  tiny.imageSmoothingEnabled = true;
-  tiny.imageSmoothingQuality = 'high';
-  tiny.clearRect(0, 0, BLUR_W, 1);
-  tiny.drawImage(cv, 0, sy, W, 6, 0, 0, BLUR_W, 1);
+  shrinkRows(cv, sy, 6);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(tiny.canvas, 0, 0, BLUR_W, 1, 0, y0, W, len);
   // 2) แถวขอบจริงยืดออก แล้วจางลงตามระยะ (ไล่ความทึบด้วย destination-in)

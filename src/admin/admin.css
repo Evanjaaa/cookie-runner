@@ -196,6 +196,36 @@ select { cursor: pointer; }
 .brand-text { font-family: var(--display); font-weight: 600; font-size: 16px; line-height: 1.15; }
 .brand-text small { display: block; font-size: 12px; font-weight: 500; color: var(--violet); }
 
+/* ── ปุ่มย่อแถบข้าง + แถบข้างแบบย่อ (เหลือแต่ไอคอน) ── */
+.sidetoggle {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+}
+.sidetoggle:hover { background: var(--panel); color: var(--ink); }
+.sidetoggle svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s; }
+.app { transition: grid-template-columns .18s; }
+.app.mini { grid-template-columns: 68px minmax(0, 1fr); }
+.app.mini .side { padding: 18px 10px; align-items: center; }
+.app.mini .brand { flex-direction: column; gap: 8px; padding: 2px 0 6px; }
+.app.mini .brand-text,
+.app.mini .tab span,
+.app.mini .who-mail,
+.app.mini .who .linkbtn { display: none; }
+.app.mini .sidetoggle { margin-left: 0; }
+.app.mini .sidetoggle svg { transform: scaleX(-1); }
+.app.mini .tabs { width: 100%; }
+.app.mini .tab { justify-content: center; padding: 10px 0; }
+.app.mini .who { grid-template-columns: auto; justify-items: center; padding: 10px; background: none; }
+
 .tabs { display: flex; flex-direction: column; gap: 3px; }
 .tab {
   display: flex;
@@ -795,6 +825,9 @@ code.uid {
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex: 0 0 auto; padding: 7px 12px; }
+  .sidetoggle { display: none; }
+  .app.mini { grid-template-columns: minmax(0, 1fr); }
+  .app.mini .tab span, .app.mini .brand-text { display: inline; }
   .bar { position: static; padding: 12px 16px; }
   .gsearch kbd { display: none; }
   .page { padding: 18px 16px 50px; }

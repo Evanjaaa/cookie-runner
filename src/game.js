@@ -57,7 +57,7 @@ import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_SIZE } from './rend
 import { drawTrail } from './render/cat2.js';
 import { LIGHTS } from './render/props/kit.js';
 import { fillCoverExt, fillFullView, coverExt } from './render/cover-ext.js';
-import { gfxLevel, autoLite } from './graphics.js';
+import { gfxLevel, autoLite, catStride } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
 /* จอสัมผัสหรือเปล่า — ใช้เกณฑ์เดียวกับ input.js กับ main.js และตรงกับ
@@ -221,6 +221,29 @@ function blitLayer(ctx, layer, op = 'source-over', r = null) {
   // r = เฉพาะบริเวณนั้น (พิกเซลจริง) — แปะทั้งจอทุกเฟรมแพงบนมือถือ ทั้งที่ของอยู่แค่มุมเดียว
   if (r) ctx.drawImage(layer, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
   else ctx.drawImage(layer, 0, 0);
+  ctx.restore();
+}
+
+/**
+ * กรอบ r (พิกเซลจริงในชั้นแยก) ที่จะแปะเลื่อนไป dx, dy บนจอ — ตัดส่วนที่ล้นขอบผ้าใบ (W×H) ทิ้ง
+ * คืน { sx, sy } = มุมต้นทางในชั้นแยก · { x, y, w, h } = ปลายทางบนจอ · null = หลุดจอทั้งกรอบ
+ */
+function clipShift(r, dx, dy, W, H) {
+  // ตัดทั้งฝั่งปลายทาง (จอ 0..W) และต้นทาง (ชั้นแยกขนาดเท่าจอ 0..W) — Safari รุ่นเก่าไม่วาดเลยถ้ากรอบต้นทางล้นภาพ
+  const x0 = Math.max(0, r.x + dx, dx), y0 = Math.max(0, r.y + dy, dy);
+  const x1 = Math.min(W, r.x + r.w + dx, W + dx), y1 = Math.min(H, r.y + r.h + dy, H + dy);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { sx: x0 - dx, sy: y0 - dy, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/** แปะกรอบ r ของชั้นแยกลงจอ เลื่อนไป dx, dy พิกเซล (ภาพตัวน้องที่วาดไว้เฟรมก่อน ณ ตำแหน่งตอนนี้) */
+function blitLayerAt(ctx, layer, op, r, dx, dy) {
+  const d = clipShift(r, dx, dy, ctx.canvas.width, ctx.canvas.height);
+  if (!d) return;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = op;
+  ctx.drawImage(layer, d.sx, d.sy, d.w, d.h, d.x, d.y, d.w, d.h);
   ctx.restore();
 }
 
@@ -2910,25 +2933,44 @@ export class Game {
     ctx.save();
     if (dead && !faintSit) { ctx.translate(x, feet); ctx.rotate(P.tilt); ctx.translate(-x, -feet); }
     if (this.hurtFlash > 0) ctx.translate(-this.hurtFlash * 5, 0);   // ถูกผลักถอยหลังนิดหน่อยตอนโดนชน
-    const body = { ...r, parts: null, ribbon: null };
     const lights = this.runLightsNear(ctx, x, feet, catS * RUN_SIZE);
     const L = RUN_DIM.k > 0 || lights.length ? this.runDimLayer(ctx, x, feet, sc) : null;
-    if (!L) drawCat2Run(ctx, x, feet, sc, skin, this.tick, body);
+    if (!L) drawCat2Run(ctx, x, feet, sc, skin, this.tick, { ...r, parts: null, ribbon: null });
     else {
-      // ── หรี่แสงที่ตัวน้องนิดเดียว (ผู้ใช้ 18 ต.ค. · ค่าใน RUN_DIM) — ทาเฉพาะบนเนื้อตัว (source-atop)
-      // พื้นหลังรอบตัวไม่โดน · วาดในชั้นแยกเฉพาะกรอบรอบตัว แล้วแปะกลับ (ไม่แปะทั้งจอ)
+      // ── วาดตัวน้องใหม่ หรือแปะภาพเดิม (เครื่องอ่อน · ดู catStride ใน graphics.js) ──
+      // ตัวน้องเวกเตอร์คือของที่หนักที่สุดในฉาก: เฟรมเว้นเฟรมแปะภาพที่วาดไว้ ณ ตำแหน่งปัจจุบัน (ขยับลื่นทุกเฟรม)
+      // ท่าทางข้างในตัวจึงเปลี่ยน 30 ครั้ง/วิ · ตีลังกา (หมุนทั้งตัว) วาดใหม่ทุกเฟรมเสมอ ไม่งั้นการหมุนกระตุก
       const { c, rect } = L;
-      drawCat2Run(c, x, feet, sc, skin, this.tick, body);
-      if (RUN_DIM.k > 0) {
-        c.save();
+      const m = ctx.getTransform();
+      const at = m.transformPoint(new DOMPoint(x, feet));
+      const key = [skin.id, skin.outfit?.id, sc, m.a, m.b, m.c, m.d, c.canvas.width, c.canvas.height, faintSit].join('|');
+      const C = this.runCatCache;
+      const frame = (this.runCatFrame = (this.runCatFrame || 0) + 1);
+      if (C && !r.spin && !C.spin && C.key === key && frame - C.frame < catStride()) {
+        const dx = Math.round(at.x - C.ax), dy = Math.round(at.y - C.ay);
+        blitLayerAt(ctx, c.canvas, 'source-over', C.rect, dx, dy);
+        if (lights.length) this.runLightUp(ctx, c.canvas, C.rect, lights, dx, dy);
+      } else {
         c.setTransform(1, 0, 0, 1, 0, 0);
-        c.globalCompositeOperation = 'source-atop';
-        c.fillStyle = `rgba(${RUN_DIM.tint},${RUN_DIM.k})`;
-        c.fillRect(rect.x, rect.y, rect.w, rect.h);
-        c.restore();
+        c.globalAlpha = 1;
+        c.globalCompositeOperation = 'source-over';
+        c.clearRect(rect.x, rect.y, rect.w, rect.h);
+        c.setTransform(m);
+        drawCat2Run(c, x, feet, sc, skin, this.tick, { ...r, parts: null, ribbon: null });
+        // ── หรี่แสงที่ตัวน้องนิดเดียว (ผู้ใช้ 18 ต.ค. · ค่าใน RUN_DIM) — ทาเฉพาะบนเนื้อตัว (source-atop)
+        // พื้นหลังรอบตัวไม่โดน · วาดในชั้นแยกเฉพาะกรอบรอบตัว แล้วแปะกลับ (ไม่แปะทั้งจอ)
+        if (RUN_DIM.k > 0) {
+          c.save();
+          c.setTransform(1, 0, 0, 1, 0, 0);
+          c.globalCompositeOperation = 'source-atop';
+          c.fillStyle = `rgba(${RUN_DIM.tint},${RUN_DIM.k})`;
+          c.fillRect(rect.x, rect.y, rect.w, rect.h);
+          c.restore();
+        }
+        blitLayerAt(ctx, c.canvas, 'source-over', rect, 0, 0);
+        if (lights.length) this.runLightUp(ctx, c.canvas, rect, lights);
+        this.runCatCache = { key, frame, rect, ax: at.x, ay: at.y, spin: !!r.spin };
       }
-      blitLayer(ctx, c.canvas, 'source-over', rect);
-      if (lights.length) this.runLightUp(ctx, c.canvas, rect, lights);
     }
     ctx.restore();
   }
@@ -2964,18 +3006,21 @@ export class Game {
    * ส่องแสงลงบนตัวน้อง: วงแสงสีของแต่ละดวง (ศูนย์กลางที่ตัวแสง = ด้านที่หันเข้าหาแสงสว่างกว่า) ลงชั้นแยก
    * → ตัดให้เหลือเฉพาะบนเนื้อตัว (destination-in กับชั้นตัวน้อง) → แปะทับแบบ screen (สว่างขึ้นตามสีแสง ไม่ขาวโพลน)
    * ทำแค่ในกรอบรอบตัว · body = ผ้าใบที่มีตัวน้องอยู่ในกรอบ rect (พิกเซลจริง)
+   * dx, dy = ตัวน้องบนจอเลื่อนจากในชั้น body เท่านี้ (เฟรมที่แปะภาพเดิม — ดู drawRunCat)
    */
-  runLightUp(ctx, body, rect, lights) {
+  runLightUp(ctx, body, rect, lights, dx = 0, dy = 0) {
     let c = this.runLit;
     if (!c) c = this.runLit = document.createElement('canvas').getContext('2d');
     const cv = c.canvas;
     if (cv.width !== body.width || cv.height !== body.height) { cv.width = body.width; cv.height = body.height; }
+    const d = clipShift(rect, dx, dy, cv.width, cv.height);
+    if (!d) return;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = 'source-over';
-    c.clearRect(rect.x, rect.y, rect.w, rect.h);
+    c.clearRect(d.x, d.y, d.w, d.h);
     c.save();
     c.beginPath();
-    c.rect(rect.x, rect.y, rect.w, rect.h);
+    c.rect(d.x, d.y, d.w, d.h);
     c.clip();
     c.globalCompositeOperation = 'lighter';
     for (const L of lights) {
@@ -2984,15 +3029,18 @@ export class Game {
       g.addColorStop(0.55, `rgba(${L.rgb},${L.k * 0.45})`);
       g.addColorStop(1, `rgba(${L.rgb},0)`);
       c.fillStyle = g;
-      c.fillRect(rect.x, rect.y, rect.w, rect.h);
+      c.fillRect(d.x, d.y, d.w, d.h);
     }
     c.globalCompositeOperation = 'destination-in';
-    c.drawImage(body, rect.x, rect.y, rect.w, rect.h, rect.x, rect.y, rect.w, rect.h);
+    c.drawImage(body, d.sx, d.sy, d.w, d.h, d.x, d.y, d.w, d.h);
     c.restore();
-    blitLayer(ctx, cv, 'screen', rect);
+    blitLayer(ctx, cv, 'screen', d);
   }
 
-  /** ชั้นแยกขนาดเท่าจอสำหรับหรี่ตัวน้อง — ล้างเฉพาะกรอบรอบตัว (พิกเซลจริง) ตั้ง transform เดียวกับ ctx · คืน null ถ้ากรอบหลุดจอ */
+  /**
+   * ชั้นแยกขนาดเท่าจอสำหรับหรี่ตัวน้อง + กรอบรอบตัว (พิกเซลจริง) · คืน null ถ้ากรอบหลุดจอ
+   * ไม่ล้าง/ไม่ตั้ง transform เอง — ผู้เรียกล้างกรอบก่อนวาดใหม่เท่านั้น (เฟรมที่แปะภาพเดิมต้องไม่แตะภาพในชั้นนี้)
+   */
   runDimLayer(ctx, x, feet, sc) {
     let c = this.runDim;
     if (!c) c = this.runDim = document.createElement('canvas').getContext('2d');
@@ -3005,16 +3053,14 @@ export class Game {
     const m = ctx.getTransform();
     const pts = [[x - 95 * sc, feet - 135 * sc], [x + 95 * sc, feet - 135 * sc], [x - 95 * sc, feet + 40 * sc], [x + 95 * sc, feet + 40 * sc]]
       .map(([px, py]) => m.transformPoint(new DOMPoint(px, py)));
-    const x0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p.x)))), x1 = Math.min(cv.width, Math.ceil(Math.max(...pts.map((p) => p.x))));
-    const y0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p.y)))), y1 = Math.min(cv.height, Math.ceil(Math.max(...pts.map((p) => p.y))));
-    if (x1 <= x0 || y1 <= y0) return null;
-    const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.globalAlpha = 1;
-    c.globalCompositeOperation = 'source-over';
-    c.clearRect(rect.x, rect.y, rect.w, rect.h);
-    c.setTransform(m);
-    return { c, rect };
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    // ขนาดกรอบคิดจากสเกล/มุมเท่านั้น (ปัดขึ้นทีละ 8 พิกเซล) — ไม่แกว่งทีละพิกเซลตามเศษตำแหน่งตอนตัวลอยขึ้นลง
+    // (ภาพที่วาดไว้จะได้ใช้ซ้ำได้ตอนกระโดด · ดู drawRunCat) · ไม่ตัดตามขอบจอ — ผู้ใช้กรอบตัดเองตอนแปะ (clipShift)
+    const x0 = Math.floor(Math.min(...xs)), y0 = Math.floor(Math.min(...ys));
+    const w = Math.ceil((Math.max(...xs) - Math.min(...xs)) / 8) * 8 + 8;
+    const h = Math.ceil((Math.max(...ys) - Math.min(...ys)) / 8) * 8 + 8;
+    if (x0 >= cv.width || y0 >= cv.height || x0 + w <= 0 || y0 + h <= 0) return null;
+    return { c, rect: { x: x0, y: y0, w, h } };
   }
 
   /** รูปร่างท่าแอ็คของสกิน S ที่ใส่อยู่ตอนนี้ (null = ไม่มีท่าแอ็ค ยืนเฉยแบบเดิม) */
@@ -3430,7 +3476,10 @@ export class Game {
 
     // แสงฟุ้งลงก่อนวาดน้อง — ไม่งั้นสีห้อง (ครีม/เหลือง) ที่เบลอแล้วบวกทับตัวน้อง ตัวติดโทนเหลืองซีด (เหมือนหน้าแรก)
     postProcess(ctx, { edges: false });
-    drawCatAuto(ctx, x, GROUND_Y, 2.6, getSkin(), t, null, { fit: 1 });   // ห้องก่อนวิ่ง: แมวส้มใช้แบบใหม่
+    // ห้องก่อนวิ่ง: แมวส้มใช้แบบใหม่ (เครื่องอ่อนวาดเฟรมเว้นเฟรมเหมือนหน้าแรก — ดู drawHomeCat)
+    const skin = getSkin();
+    if (CAT2.ui && useCat2(skin)) this.drawHomeCat(ctx, x, GROUND_Y, 2.6, skin, t, null);
+    else drawCatAuto(ctx, x, GROUND_Y, 2.6, skin, t, null, { fit: 1 });
   }
 
   /**
@@ -3557,7 +3606,7 @@ export class Game {
     // ความละเอียดอัตโนมัติลดถึงขั้นลึก (เครื่องอ่อน) = ไม่ทำชั้นแสงตะเกียงบนตัวน้อง (ชั้นแยกเต็มความสูงจอ แปะสองรอบต่อเฟรม)
     const lit = gfxLevel() === 'high' && !autoLite() ? this.homeLitLayer(ctx, x) : null;
     // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
-    if (CAT2.home) drawCat2(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    if (CAT2.home) this.drawHomeCat(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
     else drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
     if (lit) blitLayer(ctx, lit.canvas, 'source-over', this.homeLitRect);
     this.drawHomeFx(ctx);
@@ -3588,6 +3637,45 @@ export class Game {
     }
   }
 
+  /**
+   * น้องแบบใหม่บนหน้าแรก — เครื่องอ่อน (catStride = 2) วาดเฟรมเว้นเฟรมลงชั้นแยก เฟรมที่ข้ามแปะภาพเดิม ณ ตำแหน่งปัจจุบัน
+   * (เหมือนตอนวิ่ง — ดู drawRunCat) · เครื่องแรงวาดตรงทุกเฟรมเหมือนเดิม ไม่มีชั้นเพิ่ม
+   * target = ผ้าใบที่ตัวน้องลง (จอ หรือชั้นแสงตะเกียง) — ขนาด/transform เดียวกับจอ
+   */
+  drawHomeCat(target, x, feet, scale, skin, t, pose) {
+    if (catStride() < 2) {
+      this.homeCatCache = null;
+      drawCat2(target, x, feet, scale, skin, t, pose);
+      return;
+    }
+    let c = this.homeCatC;
+    if (!c) c = this.homeCatC = document.createElement('canvas').getContext('2d');
+    const cv = c.canvas, W = target.canvas.width, H = target.canvas.height;
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const m = target.getTransform();
+    // กรอบรอบตัว (หน่วยฉาก ±200 ต่อสเกล 2.86): วัดแล้วของที่ไกลสุดคือออร่า/หิมะชุดองค์หญิงหิมะ ±164 · สูงเต็มจอ (ท่าลอย/ยกตัวสูง)
+    const x0 = Math.max(0, Math.floor(m.a * (x - 200 * scale / 2.86) + m.e));
+    const x1 = Math.min(W, Math.ceil(m.a * (x + 200 * scale / 2.86) + m.e));
+    if (x1 <= x0) return;
+    const rect = { x: x0, y: 0, w: x1 - x0, h: H };
+    const at = m.transformPoint(new DOMPoint(x, feet));
+    const key = [skin.id, skin.outfit?.id, skin.palette, scale, m.a, m.b, m.c, m.d, m.e, W, H].join('|');
+    const C = this.homeCatCache;
+    const frame = (this.homeCatFrame = (this.homeCatFrame || 0) + 1);
+    if (C && C.skin === skin && C.key === key && frame - C.frame < 2) {
+      blitLayerAt(target, cv, 'source-over', C.rect, 0, Math.round(at.y - C.ay));
+      return;
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
+    c.clearRect(rect.x, rect.y, rect.w, rect.h);
+    c.setTransform(m);
+    drawCat2(c, x, feet, scale, skin, t, pose);
+    blitLayer(target, cv, 'source-over', rect);
+    this.homeCatCache = { skin, key, frame, rect, ay: at.y };
+  }
+
   /** ผ้าใบชั้นแยกขนาดเท่าจอ ล้างแล้ว พร้อม transform เดียวกับ ctx (ใช้ซ้ำทุกเฟรม) */
   homeLitLayer(ctx, catX) {
     let c = this.homeLit;
@@ -3598,8 +3686,11 @@ export class Game {
       cv.height = ctx.canvas.height;
     }
     // ── ทำงานเฉพาะบริเวณที่มีตัวน้องกับกล่องแมว ── (หน่วยฉาก → พิกเซลจริงตาม transform ของจอ)
-    const x0 = Math.min(catX - 120, HOME_BOX.x - 100);
-    const x1 = Math.max(catX + 120, HOME_BOX.x + 100);
+    // ข้างละ 200 ต่อสเกล 2.86 = กว้างพอของที่ไกลสุดของชุด (วัดแล้ว: ออร่า/หิมะองค์หญิงหิมะ ±164)
+    // เดิม ±120 — ออร่าองค์หญิงหิมะถูกตัดเป็นเส้นตรงแนวตั้งข้างซ้ายตัวน้องบนหน้าแรก (เฉพาะความสวยสูงที่มีชั้นนี้)
+    const reach = 200 * this.catScaleHome / 2.86;
+    const x0 = Math.min(catX - reach, HOME_BOX.x - 100);
+    const x1 = Math.max(catX + reach, HOME_BOX.x + 100);
     // ขอบบนต้องเป็นยอดจอ: บนมือถือน้องตัวโตกว่า (สเกล 3) และท่าลอย/กระโดดยกตัวสูงขึ้นอีก
     // เคยตั้ง 110 ไว้ หัวน้องตอนลอยเลยโดนตัดแหว่งเป็นเส้นตรงเหมือนมีกรอบล่องหน
     const y0 = -(ctx.canvas.homeExtTop || 0);   // ฟ้าที่ต่อขึ้นไปบน iPad ก็นับด้วย

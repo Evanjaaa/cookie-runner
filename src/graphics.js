@@ -89,24 +89,36 @@ const listeners = [];
 // เดิม 'auto' = ตามระดับความสวยเฉย ๆ ทุกเครื่องได้เท่ากัน — iPad gen 9 (ชิปปี 2019 แต่ต้องวาดภาพใหญ่กว่า iPhone 2.7 เท่า
 // เพราะจอ 4:3 ต่อฟ้า/พื้นบนล่าง) จึงกระตุกหนัก ทั้งที่ iPhone รุ่นใหม่ลื่นสบาย (ผู้ใช้ทัก 15 ต.ค.)
 // ตอนนี้เกมวัดเอง: ช่วงห่างระหว่างเฟรมที่วาดจริง เฉลี่ยทุก 2 วินาที เทียบกับเพดานเฟรม (สูงสุด 60)
-// - ทำไม่ทันสองช่วงติด = ลดหนึ่งขั้น · ขั้น 1–3 = ตัวคูณความละเอียด · ตั้งแต่ขั้น AUTO_LITE ปิดแสงฟุ้ง + แสงตะเกียงบนตัวน้องด้วย
+// - ทำไม่ทันสองช่วงติด = ลดหนึ่งขั้น · ขั้นแรก = วาดตัวน้องแบบใหม่เฟรมเว้นเฟรม (ภาพคมเท่าเดิม — ดู catStride)
+//   ขั้นถัดไป = ตัวคูณความละเอียด · ตั้งแต่ขั้น AUTO_LITE ปิดแสงฟุ้ง + แสงตะเกียงบนตัวน้องด้วย
 //   (สองอย่างนี้ภาพเปลี่ยนน้อยแต่ประหยัดมาก) — เครื่องแรงไม่เคยลด สวยเต็มเหมือนเดิม
-// - ลดแล้วไม่ดีขึ้นอย่างน้อย 8% (เช่นโหมดประหยัดพลังงานของ iOS ล็อกไว้ 30 เฟรม) = คอขวดไม่ใช่ความละเอียด
+// - ลดความละเอียดแล้วไม่ดีขึ้นอย่างน้อย 8% (เช่นโหมดประหยัดพลังงานของ iOS ล็อกไว้ 30 เฟรม) = คอขวดไม่ใช่ความละเอียด
 //   คืนขั้นเดิมแล้วเลิกลดสิบนาที ภาพจะไม่นุ่มลงฟรี ๆ
 // - ลื่นนิ่งต่อเนื่องหนึ่งนาที = ลองขยับขึ้นหนึ่งขั้น (เครื่องหายร้อนแล้ว) · ขึ้นแล้วตกภายใน 12 วิ = ไม่ลองอีกห้านาที
 // - จำขั้นของแต่ละหน้า (หน้าแรก/บ้าน/วิ่ง หนักไม่เท่ากัน) ไว้ในเครื่อง เปิดเกมครั้งหน้าเริ่มที่ขั้นที่ใช้ได้เลย
 // - ผู้เล่นเลือกความละเอียดเอง (ต่ำ/กลาง/สูง/สูงสุด) = ระบบนี้ไม่ยุ่งเลย
-const AUTO_STEPS = [1, 0.85, 0.72, 0.6];
-const AUTO_LITE = 2;
-const AUTO_PREF = 'gfxAuto';
+//
+// scale = ตัวคูณความละเอียด · cat = วาดตัวน้องแบบใหม่ทุกกี่เฟรม (ตัวน้องเวกเตอร์คือของที่หนักที่สุดในฉาก — วัดใน Chrome
+// ชุดองค์หญิงหิมะกินการ์ดจอครึ่งเฟรม) · เฟรมที่ไม่วาดใหม่แปะภาพเดิมตามตำแหน่งปัจจุบัน ตัวยังขยับลื่นทุกเฟรม
+// มีแค่ท่าทางข้างในตัว (หูกระพือ ผ้าปลิว) ที่เปลี่ยน 30 ครั้ง/วิ แทน 60 — เท่าการ์ตูนทั่วไป ตาแทบไม่เห็นต่าง จึงเป็นขั้นแรกก่อนลดความคม
+const AUTO_STEPS = [
+  { scale: 1, cat: 1 },
+  { scale: 1, cat: 2 },
+  { scale: 0.85, cat: 2 },
+  { scale: 0.72, cat: 2 },
+  { scale: 0.6, cat: 2 },
+];
+const AUTO_LITE = 3;
+// คีย์ใหม่ (ขั้นเลื่อนไปหนึ่งเพราะเพิ่มขั้น "วาดตัวน้องเฟรมเว้นเฟรม" ไว้หน้าสุด) — ค่าที่จำไว้ในคีย์เดิมแปลงมาให้
+const AUTO_PREF = 'gfxAuto2';
 const autoStep = Object.fromEntries(SCENES.map((sc) => [sc, 0]));
 {
   const saved = loadPref(AUTO_PREF, null);
-  if (saved && typeof saved === 'object') {
-    for (const sc of SCENES) {
-      const v = saved[sc] | 0;
-      if (v > 0 && v < AUTO_STEPS.length) autoStep[sc] = v;
-    }
+  const old = saved ? null : loadPref('gfxAuto', null);
+  for (const sc of SCENES) {
+    const v = saved && typeof saved === 'object' ? saved[sc] | 0
+      : old && typeof old === 'object' && (old[sc] | 0) > 0 ? (old[sc] | 0) + 1 : 0;
+    if (v > 0 && v < AUTO_STEPS.length) autoStep[sc] = v;
   }
 }
 /** ตัววัดเฟรม (หน้าที่กำลังวัด ช่วงสะสม ตัวนับช่วงช้า/ลื่น ช่วงพักหลังเปลี่ยนขั้น ล็อก) */
@@ -124,7 +136,7 @@ export function quality(sc = scene) {
   if (RES[c.res]) q.scale = RES[c.res].scale;
   else if (autoStep[sc]) {
     // อัตโนมัติ: เครื่องวาดไม่ทัน → ลดความละเอียดตามขั้น (ไม่ต่ำกว่า 1 เท่าของฉาก) · ขั้นลึกปิดแสงฟุ้งด้วย
-    q.scale = Math.max(1, q.scale * AUTO_STEPS[autoStep[sc]]);
+    q.scale = Math.max(1, q.scale * AUTO_STEPS[autoStep[sc]].scale);
     if (autoStep[sc] >= AUTO_LITE) q.bloom = 0;
   }
   return q;
@@ -135,9 +147,20 @@ export function autoLite(sc = scene) {
   return sceneCfg(sc).res === 'auto' && autoStep[sc] >= AUTO_LITE;
 }
 
-/** สถานะความละเอียดอัตโนมัติของหน้าหนึ่ง — { on, step, scale } (หน้าตั้งค่าโชว์ว่าลดไปเท่าไหร่) */
+/**
+ * วาดตัวน้องแบบใหม่ (cat2) ใหม่ทุกกี่เฟรมของหน้านี้ — 1 = ทุกเฟรม · 2 = เฟรมเว้นเฟรม (เฟรมที่ข้ามแปะภาพเดิมตามตำแหน่งปัจจุบัน)
+ * ตามขั้นความละเอียดอัตโนมัติ (เครื่องแรง = 1 เสมอ) · ประหยัดแบต = 2 (ผู้เล่นเลือกแลกความลื่นของท่าทางกับแบตเอง)
+ */
+export function catStride(sc = scene) {
+  const c = sceneCfg(sc);
+  if (c.level === 'save') return 2;
+  return c.res === 'auto' ? AUTO_STEPS[autoStep[sc]].cat : 1;
+}
+
+/** สถานะความละเอียดอัตโนมัติของหน้าหนึ่ง — { on, step, scale, cat } (หน้าตั้งค่าโชว์ว่าลดไปเท่าไหร่) */
 export function autoInfo(sc = scene) {
-  return { on: sceneCfg(sc).res === 'auto', step: autoStep[sc], scale: AUTO_STEPS[autoStep[sc]] };
+  const s = AUTO_STEPS[autoStep[sc]];
+  return { on: sceneCfg(sc).res === 'auto', step: autoStep[sc], scale: s.scale, cat: s.cat };
 }
 
 function setAutoStep(sc, v, now) {
@@ -172,6 +195,18 @@ export function frameDrawn(now, full) {
     mon.last = 0;
     return;
   }
+  // ── ช่วงพักหลังเปลี่ยนขั้น: ไม่นับเฟรมเลย ──
+  // เฟรมแรก ๆ หลังเปลี่ยนความละเอียดช้าผิดปกติ (ผ้าใบใหม่ ภาพสำรองต่าง ๆ วาดใหม่หมด)
+  // เดิมนับเฟรมช่วงนี้รวมเข้าไปในช่วงวัดแรกด้วย ผลคือ "ลดแล้วไม่ดีขึ้น" ทั้งที่ดีขึ้นจริง → คืนขั้นเดิมแล้วล็อกสิบนาที
+  // (วัดใน Chrome: ลดแล้วเร็วขึ้น 12% แต่ถูกตีกลับทุกครั้ง iPad จึงค้างที่ความละเอียดเต็มทั้งที่กระตุก)
+  // ช่วงวัดแรกจึงเริ่มนับหลังพักจบเท่านั้น
+  if (now < mon.cool) {
+    mon.last = now;
+    mon.sum = 0;
+    mon.n = 0;
+    mon.win = now;
+    return;
+  }
   if (mon.last) {
     const d = now - mon.last;
     if (d < 400) {   // ช่วงสลับแท็บ/โหลดด่าน (ค้างเกิน 0.4 วิ) ไม่นับ
@@ -186,7 +221,7 @@ export function frameDrawn(now, full) {
   mon.sum = 0;
   mon.n = 0;
   // อย่างน้อย 12 เฟรมต่อช่วง (~6 เฟรม/วิ) — เครื่องที่อ่อนมากก็ยังได้ลด (เดิมตั้ง 30 แล้วเครื่องช้ามากไม่เคยถึง เลยไม่เคยลด)
-  if (now < mon.cool || n < 12) return;
+  if (n < 12) return;
   const target = 1000 / Math.min(60, sceneCfg(sc).fps);
   const slow = avg > target * 1.18;   // ต่ำกว่า ~51 จาก 60 เฟรม
   const st = autoStep[sc];
@@ -205,7 +240,9 @@ export function frameDrawn(now, full) {
     if (++mon.slow >= 2 && st < AUTO_STEPS.length - 1 && now >= (mon.lock[sc] || 0)) {
       mon.slow = 0;
       if (now - mon.probeAt < 12000) mon.lock[sc] = now + 300000;   // เพิ่งลองขยับขึ้นแล้วตก — ไม่ลองขึ้นอีกห้านาที
-      mon.check = { before: avg };
+      // ตรวจ "ดีขึ้นจริงไหม" เฉพาะขั้นที่ลดความคม — ขั้นวาดตัวน้องเฟรมเว้นเฟรมภาพเท่าเดิม ไม่ต้องตีกลับ
+      // (หน้าที่ตัวน้องไม่ใช่ของหนักจะไม่ดีขึ้นมาก ถ้าตีกลับแล้วล็อก ขั้นลดความละเอียดถัดไปจะไม่ได้ทำเลยสิบนาที)
+      mon.check = AUTO_STEPS[st + 1].scale !== AUTO_STEPS[st].scale ? { before: avg } : null;
       setAutoStep(sc, st + 1, now);
     }
   } else if (avg < target * 1.06) {

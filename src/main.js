@@ -34,7 +34,7 @@ import { getLang, setLang, applyLang, watchLang, onLang, t as tr } from './i18n.
 import { setSexText } from './utils.js';
 import {
   quality, onQuality, LEVEL_IDS, SCENES, FPS_OPTS, sceneCfg, setSceneCfg, sameAll, setSameAll,
-  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz, frameDrawn, autoInfo,
+  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz, frameDrawn, autoInfo, catStride,
 } from './graphics.js';
 import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
@@ -179,10 +179,7 @@ function fitDPR() {
     const d = Math.min(quality().scale, Math.max(1, (hv.cssW / hv.vw) * dpr));
     const tf = [d, 0, 0, d, -d * hv.ox, d * hv.extTop];
     const nw = Math.round(hv.vw * d), nh = Math.round(hv.vh * d);
-    if (canvas.width !== nw || canvas.height !== nh) {
-      canvas.width = nw;
-      canvas.height = nh;
-    }
+    if (canvas.width !== nw || canvas.height !== nh) resizeKeep(nw, nh);
     ctx.setTransform(...tf);
     return;
   }
@@ -202,6 +199,16 @@ function fitDPR() {
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     return;
   }
+  resizeKeep(nw, nh);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+}
+
+/**
+ * เปลี่ยนขนาดผ้าใบหลักโดยยกภาพเฟรมเดิมมาวางยืดไว้ก่อน (ดูหัวข้อ "ตอนหมุนจอฉากกะพริบ" ข้างบน)
+ * ใช้ทั้งจอปกติและจอ iPad (ต่อฉากบน-ล่าง) — เดิมทาง iPad ตั้งขนาดตรง ๆ: ทุกครั้งที่ความละเอียดอัตโนมัติขยับขั้นกลางเกม
+ * (ตั้งขนาดหลังวาดเฟรมไปแล้ว) จอว่างเป็นสีม่วงหนึ่งเฟรม = เห็นวูบ
+ */
+function resizeKeep(nw, nh) {
   let snap = null;
   if (canvas.width && canvas.height) {
     snap = document.createElement('canvas');
@@ -212,7 +219,6 @@ function fitDPR() {
   canvas.width = nw;
   canvas.height = nh;
   if (snap) ctx.drawImage(snap, 0, 0, nw, nh);
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 fitDPR();
 
@@ -417,13 +423,7 @@ document.addEventListener('scroll', (e) => {
  * ขนาดที่แสดงจริงคุมด้วย CSS ส่วนตรงนี้คุมแค่ความละเอียด
  */
 function paintMini(canvas, logical, draw) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = logical * dpr;
-  canvas.height = logical * dpr;
-  const c = canvas.getContext('2d');
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.clearRect(0, 0, logical, logical);
-  draw(c);
+  paintBox(canvas, logical, logical, draw);
 }
 
 /**
@@ -721,14 +721,49 @@ function refreshGold() {
 // ── ตู้กาช่า ───────────────────────────────────────────────
 
 /** เหมือน paintMini แต่ไม่บังคับสี่เหลี่ยมจัตุรัส ตู้กาช่าเป็นทรงสูง */
+/**
+ * วาดใหม่ทั้งผ้าใบเล็ก (พรีวิวน้อง ตู้ หีบ) ที่ความคมของจอ
+ *
+ * ── ตั้งขนาดผ้าใบเฉพาะตอนขนาดเปลี่ยน ──
+ * เดิมตั้ง canvas.width/height ทุกครั้งที่วาด ซึ่งในเบราว์เซอร์ = ทิ้งพื้นที่ภาพเดิมแล้วจองใหม่ทั้งผืน
+ * ช่องพรีวิวที่วาดทุกเฟรม (คลังน้อง โปรไฟล์ เช็คอิน หีบ) จึงจองหน่วยความจำการ์ดจอใหม่ 60 ครั้ง/วิ
+ * ตอนนี้ขนาดเท่าเดิม = ล้างภาพอย่างเดียว · ห่อด้วย save/restore ให้ค่าที่ตัววาดตั้งทิ้งไว้ (สี เส้น) ไม่ค้างไปเฟรมถัดไป
+ */
 function paintBox(canvas, w, h, draw) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
+  const W = Math.round(w * dpr), H = Math.round(h * dpr);
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width = W;
+    canvas.height = H;
+  }
   const c = canvas.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalAlpha = 1;
+  c.globalCompositeOperation = 'source-over';
+  c.clearRect(0, 0, W, H);
+  c.save();
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.clearRect(0, 0, w, h);
   draw(c);
+  c.restore();
+}
+
+/**
+ * จังหวะของลูปวาดพรีวิวน้องในแผง (เช็คอิน โปรไฟล์ คลังน้อง) — คืนเวลาที่ผ่านไปเป็น "เฟรมที่ 60fps" · 0 = ข้ามรอบนี้
+ *
+ * เดิมลูปพวกนี้นับเวลาทีละ 1 ต่อ requestAnimationFrame และวาดทุกรอบ:
+ *   - จอ 120Hz (iPad Pro / iPhone Pro) ท่าทางน้องเร็วเป็นสองเท่า และวาดตัวน้องเวกเตอร์ (ของหนักที่สุด) 120 ครั้ง/วิ
+ *   - ลูปหลักพักเหลือ 10 เฟรมตอนมีแผงคลุม แต่ช่องพรีวิวยังวาดเต็มทุกรอบ
+ * ตอนนี้นับตามเวลาจริง · วาดไม่เกิน 60 ครั้ง/วิ (เครื่องอ่อนที่ระบบลดการวาดตัวน้องแล้ว = 30 · ดู catStride)
+ */
+function frameClock() {
+  let last = 0;
+  return (now = performance.now()) => {
+    const gap = 1000 / (catStride() > 1 ? 30 : 60);
+    if (last && now - last < gap - 2) return 0;
+    const dt = last ? Math.max(0, Math.min(3, (now - last) / (1000 / 60))) : 1;
+    last = now;
+    return dt;
+  };
 }
 
 const CAPSULE_COLORS = ['#FF7FAE', '#FFC93C', '#8FE8FF', '#9DE86F', '#C77DFF', '#FF8A5C'];
@@ -1239,8 +1274,10 @@ function stepShowAnim(now) {
     A.mt = 0;
   }
 
-  const item = gPool().find((x) => x.id === gHeroId());
+  // วาดไม่เกิน 60 ครั้ง/วิ (เครื่องอ่อน 30) — จอ 120Hz ไม่ต้องวาดตัวน้องเวกเตอร์ซ้ำสองเท่า (เวลาท่าเดินตามจริงอยู่แล้ว)
+  const item = now - (A.drawAt || 0) >= 1000 / (catStride() > 1 ? 30 : 60) - 2 ? gPool().find((x) => x.id === gHeroId()) : null;
   if (item) {
+    A.drawAt = now;
     const cat = document.getElementById('showCat');
     const c = cat.getContext('2d');
     c.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
@@ -3977,10 +4014,14 @@ function paintDailyCat() {
   });
 }
 
-function dailyCatLoop() {
+const dlClock = frameClock();
+function dailyCatLoop(now) {
   if (dailyPanel.classList.contains('hidden')) { dlRAF = 0; return; }
-  dlTick++;
-  paintDailyCat();
+  const dt = dlClock(now);
+  if (dt) {
+    dlTick += dt;
+    paintDailyCat();
+  }
   dlRAF = requestAnimationFrame(dailyCatLoop);
 }
 
@@ -4721,10 +4762,14 @@ function paintPfCat() {
     (c) => drawCatAuto(c, 112, 220, 2.75, skin, pfTick));
 }
 
-function pfLoop() {
+const pfClock = frameClock();
+function pfLoop(now) {
   if (profilePanel.classList.contains('hidden')) { pfRAF = 0; return; }
-  pfTick++;
-  paintPfCat();
+  const dt = pfClock(now);
+  if (dt) {
+    pfTick += dt;
+    paintPfCat();
+  }
   pfRAF = requestAnimationFrame(pfLoop);
 }
 
@@ -5623,6 +5668,9 @@ function odFrame(now) {
     odVoices(f0, od.f);
     if (od.f >= cat2Intro(odCurrent).dur) odToAct();
   }
+  // วาดไม่เกิน 60 ครั้ง/วิ (เครื่องอ่อน 30) — เวลาท่า (od.f) เดินตามเวลาจริงทุกรอบอยู่แล้ว จอ 120Hz จึงแค่ไม่วาดซ้ำสองเท่า
+  if (now - (od.drawAt || 0) < 1000 / (catStride() > 1 ? 30 : 60) - 2) return;
+  od.drawAt = now;
   odDraw();
 }
 
@@ -5926,13 +5974,17 @@ function paintStashCat() {
  * ทางลัดไปตู้กาช่า) การไล่ปิดทีละทางพลาดง่ายมากเมื่อมีทางออกใหม่เพิ่มทีหลัง
  * แล้วลูปที่ค้างอยู่จะแย่งเฟรมกับตัวเกมโดยไม่มีใครสังเกต
  */
-function stashLoop() {
+const stashClock = frameClock();
+function stashLoop(now) {
   if (stashPanel.classList.contains('hidden') || stashTab !== 'skin') {   // หมวดชุดไม่มีช่องพรีวิวแล้ว
     stashRAF = 0;
     return;
   }
-  stashTick++;
-  paintStashCat();
+  const dt = stashClock(now);
+  if (dt) {
+    stashTick += dt;
+    paintStashCat();
+  }
   stashRAF = requestAnimationFrame(stashLoop);
 }
 
@@ -8564,7 +8616,8 @@ function paintGfxPick() {
   const ai = autoInfo(gfxScene);
   document.getElementById('gfxNote').textContent = c.fps > hz
     ? tr('จอเครื่องนี้ทำได้สูงสุด') + ' ' + hz + ' ' + tr('เฟรม — ตั้งสูงกว่านี้จะได้เท่าที่จอทำได้')
-    : ai.on && ai.step > 0 ? tr('อัตโนมัติ: ลดความละเอียดเหลือ') + ' ' + Math.round(ai.scale * 100) + '% ' + tr('ให้เกมลื่นบนเครื่องนี้')
+    : ai.on && ai.step > 0 ? (ai.scale < 1 ? tr('อัตโนมัติ: ลดความละเอียดเหลือ') + ' ' + Math.round(ai.scale * 100) + '% '
+      : tr('อัตโนมัติ: วาดท่าทางน้องเฟรมเว้นเฟรม') + ' ') + tr('ให้เกมลื่นบนเครื่องนี้')
       : c.fps >= 90 || c.res === 'max' ? tr('เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น')
         : tr('เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้');
 }

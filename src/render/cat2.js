@@ -9052,7 +9052,7 @@ function softGrad(ctx, s, pal) {
 
 // ══ พ่นสี (airbrush) แบบชีท: ขอบของแต่ละก้อนไล่เข้มเข้าด้านใน + เงาตกจากหัวลงอก ══
 // ทำบนผ้าใบเล็กครึ่งความละเอียด (ภาพเบลออยู่แล้ว ไม่ต้องคม) เฉพาะกรอบตัวน้อง ไม่ทั้งจอ
-const AB = { a: null, b: null, c: null, d: null, e: null };
+const AB = { a: null, b: null, c: null, d: null, e: null, f: null, g: null };
 function abCanvas(k, w, h) {
   let c = AB[k];
   if (!c) c = AB[k] = document.createElement('canvas').getContext('2d');
@@ -9085,11 +9085,25 @@ function blurInto(dst, src, W, H, px) {
   const k = Math.max(1, px * 0.75);
   const w2 = Math.max(1, Math.round(W / Math.sqrt(k))), h2 = Math.max(1, Math.round(H / Math.sqrt(k)));
   const w1 = Math.max(1, Math.round(W / k)), h1 = Math.max(1, Math.round(H / k));
-  const e = abCanvas('e', w2, h2), d = abCanvas('d', w1, h1);
-  for (const c of [e, d, dst]) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; }
-  e.drawImage(src.canvas, 0, 0, W, H, 0, 0, w2, h2);
-  d.drawImage(e.canvas, 0, 0, w2, h2, 0, 0, w1, h1);
-  e.clearRect(0, 0, w2, h2);
+  // ── ย่อ: ทีละไม่เกินครึ่งด้วยการเกลี่ยธรรมดา ('low') — ห้ามย่อด้วย 'high' ──
+  // 'high' ตอนย่อ = เบราว์เซอร์สร้างภาพย่อหลายระดับ (mipmap) ของผ้าใบต้นทาง ซึ่งการ์ดจอทำด้วยการก๊อปผ้าใบนั้นทั้งผืนทุกครั้ง
+  // เงาพ่นสีเรียกตรงนี้หลายสิบครั้งต่อเฟรม (วัดใน Chrome: ก๊อป 10–60 ครั้ง/เฟรม) · ย่อทีละครึ่ง = เฉลี่ย 2×2 พิกเซลพอดี ได้ภาพนุ่มเท่ากัน
+  let s = src, sw = W, sh = H, n = 0;
+  while (sw > w1 * 2 || sh > h1 * 2) {
+    const nw = Math.max(w1, Math.ceil(sw / 2)), nh = Math.max(h1, Math.ceil(sh / 2));
+    const c = abCanvas(n++ % 2 ? 'g' : 'f', nw, nh);
+    c.imageSmoothingEnabled = true;
+    c.imageSmoothingQuality = 'low';
+    c.drawImage(s.canvas, 0, 0, sw, sh, 0, 0, nw, nh);
+    s = c; sw = nw; sh = nh;
+  }
+  const d = abCanvas('d', w1, h1);
+  d.imageSmoothingEnabled = true;
+  d.imageSmoothingQuality = 'low';
+  d.drawImage(s.canvas, 0, 0, sw, sh, 0, 0, w1, h1);
+  // ── ขยายกลับสองขั้นแบบเดิม ('high' ตอนขยาย = เกลี่ยนุ่ม ไม่ต้องใช้ภาพย่อหลายระดับ ไม่ก๊อป) ──
+  const e = abCanvas('e', w2, h2);
+  for (const c of [e, dst]) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; }
   e.drawImage(d.canvas, 0, 0, w1, h1, 0, 0, w2, h2);
   dst.drawImage(e.canvas, 0, 0, w2, h2, 0, 0, W, H);
 }
