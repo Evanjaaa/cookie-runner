@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vercel deploy --prod --scope evanjaaas-projects",
+    "deploy:test": "node tools/deploy-test.mjs",
     "assets": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/render-icons.ps1 && powershell -NoProfile -ExecutionPolicy Bypass -File tools/render-bg.ps1 && node tools/make-ico.mjs"
   },
   "devDependencies": {

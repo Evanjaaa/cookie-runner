@@ -13,6 +13,7 @@
 
 import { drawCat2, cat2Faint, cat2Trail, drawTrail } from './cat2.js';
 import { gfxLevel } from '../graphics.js';
+import { GROUND_Y } from '../config.js';
 
 const TAU = Math.PI * 2;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -46,6 +47,25 @@ const JUMP_PREP = 4;
  */
 export const RUN_SIZE = 1.2;
 export const RUN_K = 0.86 * RUN_SIZE;
+
+/**
+ * เงาใต้ตัวน้องตอนวิ่ง — อยู่บนพื้นเสมอ จางและหดตามความสูงที่ลอย (ค่าเดียวกับตัวเดิม × RUN_SIZE)
+ * x = กลางตัว · feetY = เท้า · catS = สเกลตัวในเกม (ก่อนคูณ RUN_K)
+ * เกม (game.js) กับหน้าออกแบบด่านใช้ตัวนี้ตัวเดียว
+ */
+export function drawRunShadow(ctx, x, feetY, catS) {
+  const air = Math.max(0, GROUND_Y - feetY);
+  const a = Math.max(0, 0.32 - air / 500);
+  if (a <= 0) return;
+  const a0 = ctx.globalAlpha;
+  ctx.globalAlpha = a0 * a;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(x, GROUND_Y + 4, Math.max(0, 22 - air * 0.02) * catS * RUN_SIZE, 5 * catS * RUN_SIZE, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = a0;
+}
+
 export function createRunAnim() {
   return { sm: {}, air: 0, fall: 0, land: 99, j2: null, j2t: 0, prevJumps: 0, prevGround: true, slide: 0, t: 0 };
 }

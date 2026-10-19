@@ -1,5 +1,5 @@
 // src/player.js
-import { GROUND_Y, PLAYER_X, PHYSICS, BODY, VIEW } from './config.js';
+import { GROUND_Y, PLAYER_X, PHYSICS, BODY, VIEW, CAT_ANIM } from './config.js';
 import { NEUTRAL_MODS } from './talent-run.js';
 
 /** เอียงเกือบ 90° = นอนตะแคง ไม่เอาให้ถึง 90 เป๊ะเพราะดูแข็งเกินไป */
@@ -108,20 +108,20 @@ export class Player {
       // ยืดตัวตอนถีบขึ้น — ไม่มีท่าย่อก่อนกระโดด (anticipation) โดยตั้งใจ
       // เพราะท่าย่อต้องหน่วงการกระโดดจริงไว้สองสามเฟรม ซึ่งในเกมวิ่งหลบ
       // คือการทำให้ปุ่มหนืด ผู้เล่นจะรู้สึกทันทีว่ากดแล้วไม่ขึ้น
-      this.squash = -0.9;
+      this.squash = CAT_ANIM.squash.jump;
       return 'single';
     }
     if (this.jumps === 1) {
       this.vy = PHYSICS.doubleJumpV * m.jump;
       this.jumps = 2;
-      this.squash = -0.7;   // ชั้นสองเบากว่า ยืดน้อยกว่าตามแรงที่น้อยกว่า
+      this.squash = CAT_ANIM.squash.double;   // ชั้นสองเบากว่า ยืดน้อยกว่าตามแรงที่น้อยกว่า
       return 'double';
     }
     // จังหวะที่เพิ่มมาจากพรสวรรค์ — นับต่อจากสองชั้นปกติ
     if (this.jumps < 2 + m.airJumps) {
       this.vy = m.extraV * m.jump;
       this.jumps++;
-      this.squash = -0.6;
+      this.squash = CAT_ANIM.squash.extra;
       return 'extra';
     }
     return null;
@@ -152,10 +152,10 @@ export class Player {
     // เพดานความเร็วตก (ร่อน) — กันเฉพาะขาลง ขาขึ้นไม่แตะ
     if (this.vy > m.maxFall) this.vy = m.maxFall;
     this.y += this.vy * dt;
-    this.runPhase += game.speed * dt * 0.06;
+    this.runPhase += game.speed * dt * CAT_ANIM.phaseK;
 
     // สปริงคลายกลับหาศูนย์ทุกเฟรม ตัวดันให้ยืด/แบนคือ jump() กับจังหวะลงพื้น
-    this.squash += (0 - this.squash) * 0.16 * dt;
+    this.squash += (0 - this.squash) * CAT_ANIM.squash.decay * dt;
 
     const centerWorldX = PLAYER_X + this.ox + BODY.standW / 2 + game.camera;
     const prevWorldX = centerWorldX - game.speed * dt;
@@ -178,7 +178,7 @@ export class Player {
       if (!this.onGround) {
         justLanded = true;
         // ตกแรงแค่ไหนแบนแค่นั้น มีเพดานกันไม่ให้ตกจากที่สูงมากแล้วแบนเป็นแพนเค้ก
-        this.squash = Math.min(0.85, 0.28 + impactV * 0.03);
+        this.squash = CAT_ANIM.squash.land(impactV);
       }
       this.y = surface;
       this.vy = 0;
@@ -232,8 +232,8 @@ export class Player {
     this.y += (target - this.y) * Math.min(1, m.laneEase * dt);
     if (Math.abs(target - this.y) < 0.2) this.y = target;
     this.vy = (this.y - prevY) / Math.max(dt, 0.001);
-    this.runPhase += game.speed * dt * 0.06;
-    this.squash += (0 - this.squash) * 0.16 * dt;
+    this.runPhase += game.speed * dt * CAT_ANIM.phaseK;
+    this.squash += (0 - this.squash) * CAT_ANIM.squash.decay * dt;
 
     const wasGround = this.onGround;
     this.onGround = m.laneY >= GROUND_Y && this.y >= GROUND_Y - 1;

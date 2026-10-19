@@ -13,6 +13,15 @@
   * ทั้งสามหน้าเช็กแล้วเปิดได้จริง (ตอบ 200) — 17 ต.ค. 2026
   * cookie-runner.vercel.app ไม่ใช่ของเรา เป็นเว็บคนอื่นที่ชื่อชนกัน อย่าสับสน
 
+  ── ลิงก์ทดสอบ (เวอร์ชันใหม่ล่าสุดที่สั่ง npm run deploy:test — ผู้เล่นไม่เห็น) ──
+  หน้าเกม                 https://meowzing-test.vercel.app/
+  หลังบ้าน                https://meowzing-test.vercel.app/admin.html
+  โต๊ะออกแบบด่าน          https://meowzing-test.vercel.app/editor.html
+
+  * ต้องล็อกอิน Vercel ก่อนเปิด (ครั้งเดียวต่อเครื่อง/เบราว์เซอร์)
+  * ใช้ฐานข้อมูลเดียวกับเกมจริง — คะแนน/กาช่าตอนทดสอบบันทึกเป็นข้อมูลจริง
+  * deploy ครั้งแรก 19 ต.ค. 2026 (คอมมิต 78 + งานหน้าออกแบบด่านของคอมมิต 79)
+
 
 ┌─ 2. ⚠ เว็บจริงยังเป็นเวอร์ชันเก่า ───────────────────────────────────┐
 
@@ -21,13 +30,20 @@
            ฉากเปิดกาช่าแบบ Cinematic / หน้าชุดแมวแบบการ์ด
            แมวตัวใหม่ (ขนมชั้น วิเชียรมาศ) / ความละเอียดอัตโนมัติ ฯลฯ
 
-  โค้ดล่าสุดใน GitHub = คอมมิต 77 (push แล้ว แต่ Vercel ยังไม่ได้ deploy)
+  โค้ดล่าสุดใน GitHub = คอมมิต 79 (เว็บจริงยังไม่ได้ deploy · ลิงก์ทดสอบ deploy แล้ว)
   โปรเจกต์นี้ deploy ด้วยมือ ไม่ได้ต่อ auto-deploy กับ GitHub ไว้
   งานค้างยังเยอะ — ตั้งใจเก็บไว้ deploy ตอนไฟนอล
 
   สั่ง deploy เอง (เจ้าของโปรเจกต์ทำเอง):
-      npm run build
-      npm run deploy        (= vercel deploy --prod --scope evanjaaas-projects)
+      npm run deploy:test   ลิงก์ทดสอบ meowzing-test.vercel.app (เว็บจริงไม่เปลี่ยน)
+                            = deploy แบบ Preview แล้วผูกชื่อคงที่ให้ (tools/deploy-test.mjs)
+                            สั่งเสร็จปิดคอมได้เลย เปิดลิงก์บน iPad ได้ทุกที่
+      npm run deploy        ขึ้นเว็บจริง (= vercel deploy --prod --scope evanjaaas-projects)
+                            หรือกด "Promote to Production" ที่ deploy ทดสอบในหน้า Vercel
+      (ไม่ต้อง npm run build ก่อน — Vercel build เองบนเซิร์ฟเวอร์)
+
+  เวอร์ชันเก่าไม่หาย: ทุกครั้งที่ deploy มีลิงก์ของตัวเองในหน้า Vercel → Deployments
+  ขึ้นเว็บจริงแล้วไม่ชอบ → กด Instant Rollback ย้อนได้ทันที
 
 
 ┌─ 3. รันในเครื่องตัวเอง ──────────────────────────────────────────────┐
@@ -111,8 +127,10 @@
 ┌─ 6. Vercel (ที่เว็บอยู่) ────────────────────────────────────────────┐
 
   แดชบอร์ด               https://vercel.com/dashboard
-  ชื่อโปรเจกต์            cookie-runner   (scope: evanjaaas-projects)
+  ชื่อโปรเจกต์            meowzing   (scope: evanjaaas-projects)
   โดเมนที่ใช้จริง          meowzing.vercel.app
+  ลิงก์ทดสอบ (Preview)     meowzing-test.vercel.app   (npm run deploy:test ผูกให้ทุกครั้ง)
+  ค่าเชื่อม Supabase (VITE_SUPABASE_URL / ANON_KEY) ตั้งไว้ทั้ง Production และ Preview แล้ว
 
   ข้อมูลเชื่อมต่ออยู่ในไฟล์ .vercel/project.json (ไม่ต้องแก้เอง)
 

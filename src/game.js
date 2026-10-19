@@ -38,22 +38,14 @@ import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/tale
 import { drawHUD } from './render/hud.js';
 import { drawWarpBack, drawWarpFront, drawWarpArrive } from './render/warp.js';
 import { postProcess } from './render/post.js';
-import { drawOutlined, outlineSpans } from './render/outline.js';
+import { drawOutlined, outlineSpans, splitFish } from './render/outline.js';
 import { GateRun } from './gate-run.js';
 import { gateFor, GATE_LIST } from './gates.js';
 import { drawGateBack, drawGateFront, warmGateArt } from './render/gates/index.js';
-
-/** แยกของกินที่ไม่มีเส้นขอบ (ปลา เยลลี่) ออกจากของกินเด่นที่มีเส้นขอบ — ดู TREATS.outline */
-function splitFish(list) {
-  const plain = [];
-  const rare = [];
-  for (const t of list) (treatOf(t.kind).outline ? rare : plain).push(t);
-  return [plain, rare];
-}
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
 import { setCatEdgeScale } from './render/entities.js';
 import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2 } from './render/cat2.js';
-import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_SIZE } from './render/cat2-run.js';
+import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K, RUN_SIZE } from './render/cat2-run.js';
 import { drawTrail } from './render/cat2.js';
 import { LIGHTS } from './render/props/kit.js';
 import { fillCoverExt, fillFullView, coverExt } from './render/cover-ext.js';
@@ -2917,17 +2909,8 @@ export class Game {
     const faintSit = dead && P.fainting;
     const feet = faintSit ? GROUND_Y : P.y;
     const sc = catS * RUN_K;
-    const a0 = ctx.globalAlpha;
-    if (!dead || faintSit) {
-      // เงาใต้ตัว จางลงตามความสูง (ค่าเดียวกับตัวเดิม)
-      const air = Math.max(0, GROUND_Y - P.y);
-      ctx.globalAlpha = a0 * Math.max(0, 0.32 - air / 500);
-      ctx.fillStyle = '#000';
-      ctx.beginPath();
-      ctx.ellipse(x, GROUND_Y + 4, Math.max(0, 22 - air * 0.02) * catS * RUN_SIZE, 5 * catS * RUN_SIZE, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = a0;
-    }
+    // เงาใต้ตัว จางลงตามความสูง (ค่าเดียวกับตัวเดิม · ตัวเดียวกับหน้าออกแบบด่าน)
+    if (!dead || faintSit) drawRunShadow(ctx, x, P.y, catS);
     // ประกายจากชุด/หางคทา วาดตรงบนจอ (เป็นแสง ไม่หรี่ตาม) — ตัวน้องวาดลงชั้นแยกแล้วหรี่ (ข้างล่าง)
     if (r.parts || r.ribbon) drawTrail(ctx, r.parts, x, sc, r.ribbon);
     ctx.save();

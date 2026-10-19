@@ -18,7 +18,7 @@
 import './editor.css';
 import {
   GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD,
-  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD, TREATS, treatOf, BONUS, CAT_LOOK,
+  SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD, TREATS, treatOf, BONUS, CAT_LOOK, CAT_ANIM,
 } from '../config.js';
 import { BONUS_LAYOUTS, bonusGeometry, buildBonusMagnets } from '../bonus-layouts.js';
 import {
@@ -34,7 +34,11 @@ import { drawSky, drawGround, drawStageBackdrop, GROUND_ART } from '../render/ba
 import {
   drawObstacles, drawTreats, drawPlayer, drawFallers, drawHazards, drawClouds,
   drawNips, drawCans, drawMagnets, drawShields, drawPotions, drawLetters,
+  drawShieldRing, drawSuction, catView,
 } from '../render/entities.js';
+import { drawOutlined, outlineSpans, splitFish } from '../render/outline.js';
+import { CAT2, useCat2 } from '../render/cat2.js';
+import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K, RUN_SIZE } from '../render/cat2-run.js';
 import { SKINS } from '../skins.js';
 import { drawCatBoxes } from '../render/catbox.js';
 
@@ -120,9 +124,10 @@ const ITEM_DEFS = {
   // กล่องน้องแมว — ในเกมไม่ต้องเก็บ แค่วิ่งผ่านก็พบน้อง (ดู updateCatBox ใน game.js)
   // ระยะเก็บจึงกว้างมาก การจำลองจะนับว่า "พบ" ตั้งแต่เข้าใกล้ ซึ่งตรงกับในเกมที่พลาดไม่ได้
   // จุดที่วางเป็นแค่ "ที่ตั้งกล่อง" — ในเกมโผล่จริงเฉพาะรอบที่ระบบสุ่มให้เจอ (cats.js rollFind)
+  // outline: false = ไม่อยู่ในชั้นเส้นขอบ วาดหลังของกินทุกชนิดเหมือน Game.drawWorld (ของกินต้องไม่บังกล่อง)
   box: {
     label: 'กล่องน้องแมว', sub: 'วิ่งผ่านก็พบน้อง · ในเกมโผล่เฉพาะรอบที่สุ่มให้เจอ',
-    r: 32, pickR: 300, effect: 'box',
+    r: 32, pickR: 300, effect: 'box', outline: false,
     draw: (ctx, list, cam, tick) => drawCatBoxes(ctx, list, cam, tick, BOX_EARS),
   },
 };
@@ -1371,7 +1376,11 @@ const cv = document.getElementById('view');
 const ctx = cv.getContext('2d');
 const strip = document.getElementById('strip');
 const sctx = strip.getContext('2d');
-const skin = SKINS[0];
+/**
+ * น้องที่วิ่งในผลจำลอง = น้องส้มตัวหลัก ลายเส้นใหม่ ท่าวิ่งชุดเดียวกับเกม (render/cat2-run.js) ขนาดเท่าในเกม
+ * noPhoto: ไม่ใช้รูปหน้าที่เคยอัปโหลดไว้ในเครื่องนี้ (มีรูปหน้า = เกมกลับไปใช้ตัววาดเดิม)
+ */
+const skin = { ...SKINS[0], noPhoto: true };
 
 let tick = 0;
 let scene = null;       // ของจริงที่ build ไว้รอบล่าสุด
@@ -1565,6 +1574,20 @@ function drawGateMarks(cam, g) {
   ctx.restore();
 }
 
+/**
+ * ความละเอียดผ้าใบหลัก (พิกเซลจริงต่อหน่วยเกม) — แบบเดียวกับผ้าใบเกม (fitDPR ใน main.js):
+ * ขนาดที่เห็นบนจอ × devicePixelRatio เทียบกับ W ไม่ต่ำกว่า 1 · เพดาน 2 เท่า (= ระดับกราฟิก "สูง" ของเกม)
+ * ลายเส้นน้องแบบใหม่กับเส้นขอบของในด่านจึงคมเท่าในเกม — พิกัดทุกอย่างยังเป็นหน่วยเกม W×H
+ * (เมาส์แปลงพิกัดด้วย W / ความกว้างบนจอ ไม่ได้อ่านขนาดผ้าใบ จึงไม่กระทบ)
+ */
+function viewScale() {
+  const k = Math.min(2, Math.max(1, ((cv.clientWidth || W) * (window.devicePixelRatio || 1)) / W));
+  const w = Math.round(W * k);
+  const h = Math.round(H * k);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  return k;
+}
+
 function draw() {
   tick++;
   const st = stage();
@@ -1572,7 +1595,8 @@ function draw() {
   scene = active();
   const cam = view.cam;
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const px = viewScale();
+  ctx.setTransform(px, 0, 0, px, 0, 0);
   ctx.clearRect(0, 0, W, H);
   // ท่อนโบนัส = ฟ้าเปิดโล่งชุดเดียวกับตอนบินในเกม (Game.drawBonus) ไม่มีพื้น ไม่มีทางเข้าด่าน
   const bonusView = isBonus();
@@ -1597,11 +1621,22 @@ function draw() {
   if (view.grid) drawGrid(cam);
   if (view.arcs) drawArcs(cam, nearJumps);
 
-  drawObstacles(ctx, scene.obs, cam, st.theme);
-  drawSpecials(cam, st);
+  // ของทุกชิ้นในด่านวาดเป็นชั้นเดียวพร้อมเส้นขอบ ชุดและลำดับเดียวกับ Game.drawWorld (ดู render/outline.js)
+  // ยกเว้นเม็ดอาหารรูปปลา (TREATS.outline) วาดนอกชั้นเส้นขอบ · กล่องน้องแมว (outline: false) อยู่หน้าของกินทุกชนิด
+  const sp = drawSpecials(cam);
   hideEaten();
-  drawTreats(ctx, scene.fish, cam, tick);
-  drawItems(cam);
+  const [plainFish, rareTreats] = splitFish(scene.fish);
+  const items = itemGroups();
+  const lined = [...items].filter(([kind]) => ITEM_DEFS[kind]?.outline !== false).map(([, list]) => list);
+  drawOutlined(ctx, (c) => {
+    drawObstacles(c, scene.obs, cam, st.theme);
+    drawFallers(c, sp.fl, cam, st.theme);
+    drawHazards(c, sp.hz, cam, tick, st.palette);
+    drawTreats(c, rareTreats, cam, tick);
+    drawItems(c, items, cam, true);
+  }, outlineSpans([scene.obs, sp.fl, sp.hz, rareTreats, ...lined], cam, W));
+  drawTreats(ctx, plainFish, cam, tick);
+  drawItems(ctx, items, cam, false);
 
   // เงาท่อนถัดไปมีไว้ดูรอยต่อของท่อนเดียว — ทั้งด่านเห็นรอยต่อจริงอยู่แล้วไม่ต้องเดา
   if (bonusView) drawBonusGuides(cam);
@@ -1630,22 +1665,23 @@ function draw() {
  * สองชิ้นนี้ต่างจากของอื่นตรงที่ "ขยับเอง" ภาพนิ่งภาพเดียวจึงบอกความจริงไม่ครบ
  *   ผึ้ง     แกว่งขึ้นลงตลอด — วาดแถบคลุมช่วงที่มันกวาดถึง จะได้เห็นว่าชนอะไรได้บ้าง
  *   ของร่วง  ตกเป็นเส้นตรงลงพื้นเสมอ — เส้นประบอกว่าจะไปลงตรงไหน
- * ตัวของวาดด้วยฟังก์ชันเดียวกับเกมจริงเหมือนของทุกชิ้นบนหน้านี้
+ * วาดเส้นช่วยตรงนี้ (อยู่หลังของทุกชิ้น) แล้วคืนตำแหน่งของที่จะวาดเฟรมนี้ { fl: ของร่วง, hz: ผึ้ง/ลูกบอล }
+ * ตัวของวาดในชั้นเส้นขอบพร้อมสิ่งกีดขวาง (ดู draw) ด้วยฟังก์ชันเดียวกับเกมจริงเหมือนของทุกชิ้นบนหน้านี้
  */
-function drawSpecials(cam, st) {
+function drawSpecials(cam) {
   // ── กำลังเลื่อนดูผลจำลอง: วาดตำแหน่งจริง ณ เฟรมนั้น ──
   const fr = sim && scrubAt >= 0 && sim.frames[scrubAt];
   if (fr && fr.hz && fr.hz.length === (scene.hazards || []).length && fr.fl.length === (scene.fallers || []).length) {
     // ของร่วงที่ยังไม่เข้าจอ ในเกมยังมองไม่เห็นอะไรเลย แต่ในหน้าออกแบบวาดเงาจาง ๆ ไว้ให้รู้ว่ามี
-    const fls = fr.fl.filter((q) => !q.off).map((q) => (q.hold ? { ...q, warn: FALLER.warnFrames } : q));
-    drawFallers(ctx, fls, cam, st.theme);
-    drawHazards(ctx, fr.hz.filter((q) => !q.off), cam, tick, st.palette);
-    return;
+    return {
+      fl: fr.fl.filter((q) => !q.off).map((q) => (q.hold ? { ...q, warn: FALLER.warnFrames } : q)),
+      hz: fr.hz.filter((q) => !q.off),
+    };
   }
 
   const fs = scene.fallers || [];
   const hs = scene.hazards || [];
-  if (!fs.length && !hs.length) return;
+  if (!fs.length && !hs.length) return { fl: [], hz: [] };
 
   ctx.save();
   for (const h of hs) {
@@ -1668,30 +1704,36 @@ function drawSpecials(cam, st) {
   // ยังไม่ได้ตรวจด่าน: ผึ้งแกว่งโชว์ไปเรื่อย ๆ จากเฟสที่ตั้งไว้ ให้เห็นว่ามันขยับยังไง
   // สำเนาสำหรับวาดเท่านั้น: ของร่วง warn=0 คือ "ร่วงอยู่" ซึ่งเป็นท่าที่ผู้เล่นเห็นตอนต้องหลบจริง
   const b = HAZARD.bee;
-  const live = hs.map((h) => (h.kind === 'bee'
-    ? { ...h, y: b.midY + Math.sin(h.t + tick * b.speed) * b.amp }
-    : { ...h, spin: -tick * 0.05 }));
-  drawFallers(ctx, fs.map((f) => ({ ...f, warn: 0, y: FALL_Y })), cam, st.theme);
-  drawHazards(ctx, live, cam, tick, st.palette);
+  return {
+    fl: fs.map((f) => ({ ...f, warn: 0, y: FALL_Y })),
+    hz: hs.map((h) => (h.kind === 'bee'
+      ? { ...h, y: b.midY + Math.sin(h.t + tick * b.speed) * b.amp }
+      : { ...h, spin: -tick * 0.05 })),
+  };
 }
 
 /**
- * ไอเท็มตัวช่วย — วาดด้วยฟังก์ชันของเกมตามชนิด (ดู ITEM_DEFS.draw)
+ * ไอเท็มตัวช่วยแยกตามชนิด (kind → รายการ) สำหรับวาดด้วยฟังก์ชันของเกม (ดู ITEM_DEFS.draw)
  * ตอนเลื่อนดูผลจำลอง ชิ้นที่แมวเก็บไปแล้ว ณ เฟรมนั้นจะหายไปเหมือนในเกม
  */
-function drawItems(cam) {
+function itemGroups() {
   const ps = scene.pickups || [];
-  if (!ps.length) return;
-  const showSim = sim && scrubAt >= 0 && sim.itemAt.length === ps.length;
   const groups = new Map();
+  if (!ps.length) return groups;
+  const showSim = sim && scrubAt >= 0 && sim.itemAt.length === ps.length;
   ps.forEach((p, i) => {
     const got = showSim && sim.itemAt[i] <= scrubAt;
     if (!groups.has(p.kind)) groups.set(p.kind, []);
     groups.get(p.kind).push({ ...p, got });
   });
+  return groups;
+}
+
+/** วาดไอเท็ม — lined = true: ชนิดที่อยู่ในชั้นเส้นขอบ (ทุกชนิดยกเว้น outline: false) · false: ชนิดที่วาดนอกชั้น */
+function drawItems(c, groups, cam, lined) {
   for (const [kind, list] of groups) {
     const def = ITEM_DEFS[kind];
-    if (def) def.draw(ctx, list, cam, tick);
+    if (def && (def.outline !== false) === lined) def.draw(c, list, cam, tick);
   }
 }
 
@@ -1877,7 +1919,7 @@ function drawBounds(cam, width) {
   ctx.save();
   ctx.font = '11px system-ui';
   line(0, 'rgba(255,255,255,.55)', 'เริ่มท่อน');
-  line(width, 'rgba(255,143,184,.8)', 'จบท่อน ' + width);
+  line(width, 'rgba(255,143,184,.8)', 'จบท่อน ' + Math.round(width));   // ท่อนของเกมขยายตาม MAP_SPREAD = มีเศษทศนิยม
   ctx.restore();
 
   function line(x, color, text) {
@@ -1992,6 +2034,28 @@ function drawSimMarks(cam) {
   ctx.restore();
 }
 
+/**
+ * ท่าของน้องแบบใหม่ทุกเฟรมของผลจำลอง — ตัวคุมท่าของเกม (stepRunAnim) มีความจำ (จังหวะขา ตัวกรองนุ่ม
+ * ตีลังกาตอนกดชั้นสอง ตัวแบนตอนลงพื้น) จึงเดินเรียงจากเฟรมแรกครั้งเดียวแล้วเก็บไว้ เลื่อนดูย้อนไปมาได้ภาพเดิม
+ * ข้อมูลเข้าเหมือน Player ในเกม: runPhase เดินตามระยะวิ่ง (CAT_ANIM.phaseK) · ติดสปีด = เวลาจริงต่อก้าวโลกสั้นลง
+ * แม่เหล็ก = อ้าปากดูด · ตัวโต = ยิ้มสะใจ · เฟรมที่ชน = หน้าเจ็บ > < (ตายตกหลุมร่วงลงไปเฉย ๆ)
+ * ไม่มีประกายจากชุด (น้องส้มไม่ใส่ชุด)
+ */
+function runFrames(s) {
+  if (s.run) return s.run;
+  const A = createRunAnim();
+  const hitAt = s.death && s.death.what !== 'pit' ? s.death.frame : -1;
+  s.run = s.frames.map((f, i) => stepRunAnim(A, {
+    onGround: f.onGround, jumps: f.jumps, vy: f.vy, y: f.y, sliding: f.sliding, squash: f.squash,
+    runPhase: i * SPEED.run * CAT_ANIM.phaseK, fainting: false,
+  }, {
+    catId: skin.id, dt: f.fx.boost > 0 ? 1 / SPEEDUP.mult : 1,
+    mood: f.fx.big > 0 ? 'smug' : '', mouth: f.fx.magnet > 0, hurt: i === hitAt ? 1 : 0,
+    speed: SPEED.run, scale: CAT_LOOK * RUN_K,
+  }));
+  return s.run;
+}
+
 function drawCat(cam) {
   if (!sim || scrubAt < 0 || scrubAt >= sim.frames.length) return;
   const f = sim.frames[scrubAt];
@@ -2007,34 +2071,47 @@ function drawCat(cam) {
   ctx.stroke();
   ctx.restore();
 
-  // drawPlayer วาดที่ PLAYER_X เสมอ จึงเลื่อนผ้าใบให้ไปตรงกับตำแหน่งจำลองแทน
-  const shift = (f.cx - BODY.standW / 2 - cam) - PLAYER_X;
-  ctx.save();
-  ctx.translate(shift, 0);
-  const ghost = {
-    box: f.sliding
-      ? { x: PLAYER_X + BODY.slideOffsetX, y: f.y - BODY.slideH, w: BODY.slideW, h: BODY.slideH }
-      : { x: PLAYER_X, y: f.y - BODY.standH, w: BODY.standW, h: BODY.standH },
-    y: f.y, vy: f.vy, onGround: f.onGround, sliding: f.sliding,
-    runPhase: scrubAt * 0.4, squash: 0, tailLag: 0, tilt: 0,
-  };
+  // กล่องชนบนจอ — กลางกล่องคือ cx ทั้งตอนยืนและหมอบ (ตรงกับ Player.box ที่หมอบแล้วเลื่อน slideOffsetX)
+  const bw = f.sliding ? BODY.slideW : BODY.standW;
+  const bh = f.sliding ? BODY.slideH : BODY.standH;
+  const box = { x: f.cx - cam - bw / 2, y: f.y - bh, w: bw, h: bh };
   // ขนาดที่ตาเห็นเท่าในเกม (CAT_LOOK) — กล่องชนยังเท่าเดิม ช่องใต้คาน/ระยะเฉียดจึงดูได้ตรงกับที่ผู้เล่นเห็น
-  drawPlayer(ctx, ghost, false, skin, false, 0, '', CAT_LOOK, 1, {});
-  ctx.restore();
-
-  // ผลของไอเท็มที่ติดตัวอยู่ ณ เฟรมนี้ — วงโล่ + ป้ายเวลาที่เหลือ
+  // น้องแบบใหม่ใหญ่กว่าตัวเดิม RUN_SIZE — ของที่เกาะตัว (วงโล่ คลื่นดูด ป้ายบนหัว) โตตามแบบเดียวกับเกม
+  const cat2 = CAT2.run && useCat2(skin);
+  const lookS = cat2 ? CAT_LOOK * RUN_SIZE : CAT_LOOK;
   const s = f.fx;
-  if (!s) return;
-  const hx = f.cx - cam;
-  const hy = f.y - BODY.standH - 16;
-  ctx.save();
-  if (s.shielded) {
-    ctx.strokeStyle = 'rgba(255,243,226,.85)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(hx, f.y - BODY.standH / 2, 36, 0, Math.PI * 2);
-    ctx.stroke();
+  // วงโล่วาดก่อนตัว (เหมือน Game.drawWorld) — ตัววาดของเกม
+  if (s && s.shielded) drawShieldRing(ctx, { box }, tick, lookS);
+
+  if (cat2) {
+    // ท่าวิ่ง/กระโดด/ตีลังกา/หมอบของน้องแบบใหม่ — ตัวคุมท่าเดียวกับเกม เดินเรียงทุกเฟรมไว้แล้ว (runFrames)
+    const x = f.cx - cam;
+    // เฟรมที่ตกหลุมพ้นจอ = เกมนับว่าตายแล้ว ไม่มีเงา (Game.drawRunCat วาดเงาเฉพาะตอนยังไม่ตาย)
+    const fellOut = sim.death && sim.death.what === 'pit' && scrubAt === sim.death.frame;
+    if (!fellOut) drawRunShadow(ctx, x, f.y, CAT_LOOK);
+    drawCat2Run(ctx, x, f.y, CAT_LOOK * RUN_K, skin, scrubAt, runFrames(sim)[scrubAt]);
+  } else {
+    // ตัวเดิม (ปิด CAT2.run): drawPlayer วาดที่ PLAYER_X เสมอ จึงเลื่อนผ้าใบให้ไปตรงกับตำแหน่งจำลองแทน
+    const shift = (f.cx - BODY.standW / 2 - cam) - PLAYER_X;
+    ctx.save();
+    ctx.translate(shift, 0);
+    const ghost = {
+      box: f.sliding
+        ? { x: PLAYER_X + BODY.slideOffsetX, y: f.y - BODY.slideH, w: BODY.slideW, h: BODY.slideH }
+        : { x: PLAYER_X, y: f.y - BODY.standH, w: BODY.standW, h: BODY.standH },
+      y: f.y, vy: f.vy, onGround: f.onGround, sliding: f.sliding,
+      runPhase: scrubAt * 0.4, squash: 0, tailLag: 0, tilt: 0,
+    };
+    drawPlayer(ctx, ghost, false, skin, false, 0, '', CAT_LOOK, 1, {});
+    ctx.restore();
   }
+
+  // ผลของไอเท็มที่ติดตัวอยู่ ณ เฟรมนี้ — คลื่นดูดของแม่เหล็ก (ตัววาดของเกม) + ป้ายเวลาที่เหลือเหนือหัว
+  if (!s) return;
+  if (s.magnet > 0) drawSuction(ctx, { box }, tick, lookS);
+  const hx = f.cx - cam;
+  const hy = catView({ box }, lookS).top - 12;
+  ctx.save();
   const tags = [];
   if (s.boost > 0) tags.push(['สปีด', s.boost, '#7CFF8A']);
   if (s.big > 0) tags.push(['ตัวโต', s.big, '#FFC66B']);
@@ -2210,6 +2287,9 @@ function simulate(d, scIn) {
   let slideHeld = false;
   let sliding = false;
   let pi = 0;
+  // ตัวแบน/ยืด — ภาพล้วน ไม่แตะฟิสิกส์ (ค่าชุดเดียวกับ Player: CAT_ANIM.squash) ส่งต่อให้ท่าวิ่งของน้อง (runFrames)
+  const SQ = CAT_ANIM.squash;
+  let squash = 0;
 
   // ── ของที่ขยับได้ — สำเนาแยก ไม่แตะของที่วาดอยู่ในสนาม ──
   // hold = ยังไม่เข้าจอ ยังไม่เริ่มขยับ (กติกาเดียวกับ Level.updateFallers/updateHazards)
@@ -2242,8 +2322,8 @@ function simulate(d, scIn) {
 
     // 1) รับอินพุตตามเฉลย
     while (pi < press.length && cx + SPEED.run / 2 >= press[pi]) {
-      if (jumpsUsed === 0) { vy = PHYSICS.jumpV; jumpsUsed = 1; onGround = false; sliding = false; slideHeld = false; }
-      else if (jumpsUsed === 1) { vy = PHYSICS.doubleJumpV; jumpsUsed = 2; }
+      if (jumpsUsed === 0) { vy = PHYSICS.jumpV; jumpsUsed = 1; onGround = false; sliding = false; slideHeld = false; squash = SQ.jump; }
+      else if (jumpsUsed === 1) { vy = PHYSICS.doubleJumpV; jumpsUsed = 2; squash = SQ.double; }
       else missedPress.push(Math.round(press[pi]));
       pi++;
     }
@@ -2263,7 +2343,7 @@ function simulate(d, scIn) {
     const cy = y - h / 2;
 
     frames.push({
-      cx, y, vy, onGround, sliding,
+      cx, y, vy, onGround, sliding, jumps: jumpsUsed, squash,
       fx: { boost: fx.boost, big: fx.big, magnet: fx.magnet, shielded: fx.shielded },
       hz: hz.map((q) => ({ kind: q.kind, x: q.x, y: q.y, w: q.w, h: q.h, t: q.t, spin: q.spin, off: q.gone || q.smashed })),
       fl: fl.map((q) => ({ x: q.x, y: q.y, w: q.w, h: q.h, warn: q.warn, off: q.dead || q.smashed, hold: q.hold })),
@@ -2336,12 +2416,15 @@ function simulate(d, scIn) {
     fx.invuln = Math.max(0, fx.invuln - rdt);
 
     // 7) เดินหน้าหนึ่งเฟรม
+    const impactV = vy;   // ความเร็วตกก่อนเฟรมนี้ — ตกแรงแค่ไหนตัวแบนแค่นั้น (ลำดับเดียวกับ Player.update)
     cx += SPEED.run;
     vy += PHYSICS.gravity;
     y += vy;
+    squash += (0 - squash) * SQ.decay;
 
     const stand = footingOf(sc, cx, y - vy, y, onGround, fx.boost > 0 || fx.big > 0);
     if (stand !== null) {
+      if (!onGround) squash = SQ.land(impactV);
       y = stand; vy = 0; onGround = true; jumpsUsed = 0;
     } else {
       onGround = false;
