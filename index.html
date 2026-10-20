@@ -38,6 +38,11 @@
        น้องแมววาดด้วย SVG ไม่ใช่ canvas เพราะ canvas ต้องรอ JS มาวาดให้
        ส่วน SVG เบราว์เซอร์วาดเองจากมาร์กอัปได้เลย -->
   <style>
+    /* ══ หน้าโหลด (ออกแบบใหม่ 20 ต.ค. — ผู้ใช้: "เริ่ด ๆ สวย ๆ ไม่ทำให้เกมหนักขึ้น") ══
+       ฟ้ากลางคืนม่วง + ดาวระยิบ + แสงออโรร่า · น้องแมวในวงแสงจันทร์ มีวงประกายหมุนกับปลา/ดาวโคจรรอบ
+       โลโก้ตัวอักษรเด้งเป็นคลื่น · หลอดโหลดลายทางวิ่งมีปลาว่ายนำหน้า · รอยเท้าเดินข้ามจอ
+       ── เบาทุกอย่าง: CSS ล้วน ไม่มี JS ไม่มีรูปเพิ่ม (ใช้ไอคอนเดิมรูปเดียว)
+          แอนิเมชันขยับแค่ transform/opacity (การ์ดจอทำให้ ไม่วาดใหม่) — ไม่ขยับ filter/เงาเหมือนเดิม (iPad หนัก) */
     #splash {
       position: fixed;
       inset: 0;
@@ -46,118 +51,261 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: clamp(10px, 2.4dvh, 22px);
-      /* สีชุดเดียวกับเวทีของเกม หน้าโหลดจึงเป็น "ฉากก่อนหน้า" ไม่ใช่หน้าคนละเว็บ */
+      gap: clamp(8px, 2dvh, 18px);
       background:
-        radial-gradient(58% 46% at 50% 40%, #6B3A96 0%, transparent 70%),
-        linear-gradient(180deg, #3A1D50 0%, #1B0F2B 100%);
+        radial-gradient(42% 38% at 50% 42%, rgba(160,96,214,.55) 0%, transparent 70%),
+        radial-gradient(60% 40% at 12% 8%, rgba(255,128,190,.22) 0%, transparent 70%),
+        radial-gradient(55% 45% at 92% 96%, rgba(96,214,200,.16) 0%, transparent 70%),
+        linear-gradient(180deg, #2E1648 0%, #1E0F33 55%, #140A22 100%);
       font-family: "Mali", system-ui, sans-serif;
       color: #FFF3E2;
       overflow: hidden;
-      transition: opacity .45s ease;
+      transition: opacity .5s ease;
     }
     #splash.gone { opacity: 0; pointer-events: none; }
-    /* กันสกอลบาร์ของหน้าเกมโผล่ข้างหน้าโหลด — ตัวหน้าโหลดเป็น fixed ก็จริง
-       แต่เนื้อหาข้างหลังมันสูงเกินจอ เบราว์เซอร์จึงยังขึ้นแถบเลื่อนให้อยู่ดี
-       ผูกกับการมีอยู่ของ #splash เลย พอ boot.js ถอดมันออก กฎนี้ก็เลิกมีผลเอง */
+    /* กันสกอลบาร์ของหน้าเกมโผล่ข้างหน้าโหลด (ผูกกับการมีอยู่ของ #splash — boot.js ถอดออกแล้วเลิกมีผลเอง) */
     body:has(#splash) { overflow: hidden; }
 
-    /* ── ของลอยพื้นหลัง ──
-       ทั้งหมดใช้ animation ตัวเดียวกัน ต่างกันแค่ตำแหน่ง ขนาด และหน่วงเวลา
-       จึงได้ความรู้สึก "ลอยขึ้นเรื่อย ๆ" โดยเขียน keyframes ชุดเดียว */
+    /* ── ดาวระยิบสองชั้น (จุดเล็กจาก radial-gradient ซ้ำเป็นลาย) — กะพริบสลับกันด้วย opacity ล้วน ── */
+    #splash::before, #splash::after {
+      content: '';
+      position: absolute;
+      inset: -10%;
+      pointer-events: none;
+      background-repeat: repeat;
+    }
+    #splash::before {
+      background-image:
+        radial-gradient(1.6px 1.6px at 20px 30px, #FFF6DC 50%, transparent 52%),
+        radial-gradient(1.2px 1.2px at 140px 90px, #FFE7C4 50%, transparent 52%),
+        radial-gradient(2px 2px at 80px 160px, #FFFFFF 50%, transparent 52%),
+        radial-gradient(1.2px 1.2px at 190px 200px, #E8D9FF 50%, transparent 52%);
+      background-size: 220px 230px;
+      animation: spTwinkle 3.2s ease-in-out infinite;
+    }
+    #splash::after {
+      background-image:
+        radial-gradient(1.4px 1.4px at 60px 60px, #FFFFFF 50%, transparent 52%),
+        radial-gradient(2.2px 2.2px at 170px 140px, #FFE29A 50%, transparent 52%),
+        radial-gradient(1.2px 1.2px at 110px 230px, #F6E6FF 50%, transparent 52%);
+      background-size: 260px 270px;
+      animation: spTwinkle 4.1s ease-in-out -1.6s infinite;
+    }
+    @keyframes spTwinkle { 0%, 100% { opacity: .25; } 50% { opacity: .9; } }
+
+    /* ── ของลอยขึ้นช้า ๆ (อยู่หลังเนื้อหา) ── */
     .sp-float { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
     .sp-float i {
       position: absolute;
       bottom: -8%;
+      font-style: normal;
       font-size: var(--s, 22px);
       opacity: 0;
-      animation: spFloat var(--t, 9s) linear var(--d, 0s) infinite;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
+      animation: spFloat var(--t, 10s) linear var(--d, 0s) infinite;
     }
     @keyframes spFloat {
       0%   { opacity: 0; transform: translateY(0) rotate(0deg) scale(.7); }
-      12%  { opacity: .85; }
-      80%  { opacity: .6; }
-      100% { opacity: 0; transform: translateY(-115vh) rotate(var(--r, 40deg)) scale(1); }
+      15%  { opacity: .7; }
+      80%  { opacity: .45; }
+      100% { opacity: 0; transform: translateY(-112vh) rotate(var(--r, 40deg)) scale(1); }
     }
 
-    /* ── น้องแมว ──
-       ใช้โลโก้ตัวจริงของเกม (public/icon-512.png) ตัวเดียวกับไอคอนบนหน้าจอโฮม
-       และแท็บเบราว์เซอร์ หน้าโหลดจึงยืนยันให้คนที่กดไอคอนเข้ามาว่ามาถูกเกมแล้ว
-
-       เด้งขึ้นลงช้า ๆ เป็นจังหวะหายใจ พร้อมแสงเรืองที่หายใจคนละคาบกัน
-       ถ้าสองอย่างคาบเดียวกันจะอ่านเป็นรูปที่ถูกขยับ ไม่ใช่ของที่มีชีวิตอยู่ */
+    /* ── น้องแมวในวงแสงจันทร์ ── */
+    .sp-orb {
+      position: relative;
+      width: clamp(84px, 29dvh, 250px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+    }
+    /* แสงจันทร์นวลหลังตัว — หายใจด้วย opacity (ไม่ขยับเงา) */
+    .sp-glow {
+      position: absolute;
+      inset: -18%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,214,120,.55) 0%, rgba(255,170,90,.18) 38%, transparent 66%);
+      animation: spGlow 3.4s ease-in-out infinite;
+    }
+    @keyframes spGlow { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
+    /* วงประกายหมุน: เส้นประทองเป็นวงแหวน (mask ตัดตรงกลาง) */
+    .sp-ring {
+      position: absolute;
+      inset: -7%;
+      border-radius: 50%;
+      background: repeating-conic-gradient(from 0deg, rgba(255,226,154,.95) 0deg 3deg, transparent 3deg 15deg);
+      -webkit-mask: radial-gradient(circle, transparent 64%, #000 65%, #000 67%, transparent 68%);
+      mask: radial-gradient(circle, transparent 64%, #000 65%, #000 67%, transparent 68%);
+      animation: spSpin 16s linear infinite;
+      opacity: .75;
+    }
+    .sp-ring.b {
+      inset: -15%;
+      background: repeating-conic-gradient(from 7deg, rgba(255,159,196,.8) 0deg 1.6deg, transparent 1.6deg 24deg);
+      animation-duration: 26s;
+      animation-direction: reverse;
+      opacity: .6;
+    }
+    @keyframes spSpin { to { transform: rotate(360deg); } }
+    /* ของโคจรรอบน้อง: แขนหมุน + ตัวของหมุนสวนกลับ (ตั้งตรงตลอด) */
+    .sp-orbit { position: absolute; inset: -12%; animation: spSpin var(--t, 7s) linear var(--d, 0s) infinite; }
+    .sp-orbit b {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      font-weight: 400;
+      font-size: clamp(16px, 3.2dvh, 24px);
+      line-height: 1;
+      transform: translate(-50%, -50%);
+      animation: spSpin var(--t, 7s) linear var(--d, 0s) infinite reverse;
+    }
     .sp-cat {
       position: relative;
-      width: clamp(132px, 27dvh, 210px);
+      width: 82%;
       height: auto;
       display: block;
-      /* มุมโค้งมากับตัวรูปอยู่แล้ว ตรงนี้แค่กันขอบแข็งโผล่ตอนเบราว์เซอร์ย่อรูป */
       border-radius: 23%;
-      animation: spBob 2.6s ease-in-out infinite, spHalo 3.7s ease-in-out infinite;
+      box-shadow: 0 14px 30px rgba(10,3,22,.55), 0 0 0 3px rgba(255,231,196,.18);
+      animation: spBob 2.6s ease-in-out infinite;
     }
     @keyframes spBob {
-      0%, 100% { transform: translateY(0) rotate(-1.2deg); }
-      50%      { transform: translateY(-11px) rotate(1.2deg); }
-    }
-    @keyframes spHalo {
-      0%, 100% { filter: drop-shadow(0 12px 24px rgba(12,4,24,.6)) drop-shadow(0 0 16px rgba(255,201,60,.3)); }
-      50%      { filter: drop-shadow(0 12px 24px rgba(12,4,24,.6)) drop-shadow(0 0 34px rgba(255,201,60,.6)); }
+      0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+      50%      { transform: translateY(-9px) rotate(1.5deg); }
     }
 
+    /* ── โลโก้: ตัวอักษรเด้งเป็นคลื่นทีละตัว ── */
     .sp-logo {
-      font-weight: 600;
-      font-size: clamp(24px, 5.4dvh, 44px);
-      letter-spacing: .04em;
-      color: #FFE7C4;
-      text-shadow: 0 3px 0 rgba(58,29,80,.85), 0 0 26px rgba(255,201,60,.45);
+      position: relative;
+      z-index: 1;
+      display: flex;
+      font-weight: 700;
+      font-size: clamp(20px, 6.2dvh, 52px);
+      letter-spacing: .03em;
+      line-height: 1.15;
+      margin-top: clamp(8px, 3dvh, 24px);   /* เว้นที่ให้ของที่โคจรรอบน้อง ไม่ทับโลโก้ */
+    }
+    .sp-logo span {
+      display: inline-block;
+      background: linear-gradient(180deg, #FFF8E8 18%, #FFD36A 70%, #FF9E4A 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: none;
+      filter: drop-shadow(0 3px 0 rgba(58,22,84,.9));
+      animation: spWave 2.4s ease-in-out calc(var(--i) * .1s) infinite;
+    }
+    .sp-logo span.z { background: linear-gradient(180deg, #FFE6F2 15%, #FF9FC4 70%, #E9609A 100%); -webkit-background-clip: text; background-clip: text; }
+    @keyframes spWave {
+      0%, 60%, 100% { transform: translateY(0); }
+      30%           { transform: translateY(-7px); }
     }
 
-    /* ── หลอดโหลด ──
-       ไม่รู้เปอร์เซ็นต์จริง (การโหลดโมดูลไม่บอกความคืบหน้ามาให้) จึงให้มันไต่เอง
-       แบบช้าลงเรื่อย ๆ จนเกือบเต็มแล้วค้างรอ พอเกมพร้อมค่อยกระโดดไป 100%
-       ท่านี้ไม่โกหกผู้ใช้ เพราะมันไม่เคยอ้างว่าเสร็จก่อนเสร็จจริง */
+    /* ── หลอดโหลด: ลายทางวิ่ง + ปลาว่ายนำหน้า ──
+       ไม่รู้เปอร์เซ็นต์จริง (โหลดโมดูลไม่บอกความคืบหน้า) จึงไต่เองช้าลงเรื่อย ๆ จนเกือบเต็มแล้วรอ
+       เกมพร้อม (boot.js ใส่ .ready) ค่อยวิ่งไปสุด — ไม่เคยอ้างว่าเสร็จก่อนเสร็จจริง */
     .sp-barwrap {
       position: relative;
-      width: clamp(180px, 46vw, 320px);
-      height: clamp(10px, 1.8dvh, 15px);
+      z-index: 1;
+      width: clamp(200px, 44vw, 360px);
+      height: clamp(12px, 2dvh, 16px);
       border-radius: 999px;
-      background: rgba(12,4,24,.55);
-      border: 1px solid rgba(255,243,226,.24);
-      overflow: hidden;
-      box-shadow: inset 0 2px 5px rgba(0,0,0,.45);
+      background: rgba(10,4,22,.6);
+      border: 1.5px solid rgba(255,231,196,.28);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,.5), 0 0 0 4px rgba(255,159,196,.06);
+      margin-top: clamp(4px, 1dvh, 8px);
     }
     .sp-bar {
+      position: relative;
       width: 4%;
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg, #F2913D, #FFC93C 60%, #FFE7C4);
-      box-shadow: 0 0 14px rgba(255,201,60,.75);
+      overflow: hidden;
+      background: linear-gradient(90deg, #FF8A5C, #FFC93C 65%, #FFE7A8);
+      box-shadow: 0 0 12px rgba(255,201,60,.6);
       animation: spCrawl 9s cubic-bezier(.12,.75,.25,1) forwards;
     }
+    /* ลายทางเฉียงวิ่งในหลอด (เลื่อนด้วย transform — ไม่วาดใหม่) */
+    .sp-bar::before {
+      content: '';
+      position: absolute;
+      inset: 0 -40px 0 0;
+      background: repeating-linear-gradient(115deg, rgba(255,255,255,.32) 0 8px, transparent 8px 18px);
+      animation: spStripe .8s linear infinite;
+    }
+    @keyframes spStripe { to { transform: translateX(-19.6px); } }
     @keyframes spCrawl {
       0%   { width: 4%; }
       60%  { width: 72%; }
       100% { width: 92%; }
     }
-    /* เกมพร้อมแล้ว: ตัดแอนิเมชันไต่ทิ้งแล้ววิ่งไปสุด */
     #splash.ready .sp-bar { animation: none; width: 100%; transition: width .22s ease-out; }
+    /* ปลาว่ายที่หัวหลอด (อยู่นอก .sp-bar เพราะ .sp-bar ตัดขอบ) — ขยับตามความกว้างหลอดด้วยแอนิเมชันชุดเดียวกัน */
+    .sp-fish {
+      position: absolute;
+      top: 50%;
+      left: 4%;
+      font-size: clamp(18px, 3.4dvh, 26px);
+      line-height: 1;
+      transform: translate(-40%, -54%) scaleX(-1);   /* อีโมจิปลาหันซ้ายมาเอง → กลับด้านให้หันหัวไปทางที่หลอดวิ่ง */
+      animation: spFishGo 9s cubic-bezier(.12,.75,.25,1) forwards;
+      pointer-events: none;
+    }
+    .sp-fish i { display: inline-block; font-style: normal; animation: spSwim .5s ease-in-out infinite alternate; }
+    @keyframes spFishGo {
+      0%   { left: 4%; }
+      60%  { left: 72%; }
+      100% { left: 92%; }
+    }
+    @keyframes spSwim { from { transform: rotate(-8deg) translateY(1px); } to { transform: rotate(8deg) translateY(-1px); } }
+    #splash.ready .sp-fish { animation: none; left: 100%; transition: left .22s ease-out; }
 
+    /* ── ข้อความใต้หลอด: สามประโยคสลับกัน (ซ้อนกันที่เดียว ค่อย ๆ จางสลับ) ── */
+    .sp-tips { position: relative; z-index: 1; height: 1.5em; width: 100%; font-size: clamp(12px, 2dvh, 16px); }
     .sp-tip {
-      font-size: clamp(11px, 1.9dvh, 15px);
-      color: #C9AEE4;
+      position: absolute;
+      inset: 0;
+      text-align: center;
+      color: #D9C3F2;
       letter-spacing: .02em;
+      opacity: 0;
+      animation: spTip 7.5s ease-in-out calc(var(--i) * 2.5s) infinite;
     }
-    .sp-tip::after { content: ''; animation: spDots 1.4s steps(4, end) infinite; }
-    @keyframes spDots {
-      0%   { content: ''; }
-      25%  { content: '.'; }
-      50%  { content: '..'; }
-      75%  { content: '...'; }
+    @keyframes spTip {
+      0%, 34%, 100% { opacity: 0; transform: translateY(4px); }
+      4%, 30%       { opacity: 1; transform: translateY(0); }
     }
 
+    /* ── รอยเท้าน้องเดินข้ามล่างจอ (ปรากฏทีละรอยซ้ายไปขวา) ── */
+    .sp-paws {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(14px, 6dvh, 48px);
+      transform: translateX(-50%);
+      display: flex;
+      gap: clamp(14px, 3.6vw, 30px);
+      pointer-events: none;
+    }
+    .sp-paws i {
+      font-style: normal;
+      font-size: clamp(14px, 2.6dvh, 20px);
+      opacity: 0;
+      animation: spPaw 3.6s ease-out calc(var(--i) * .3s) infinite;
+    }
+    .sp-paws i:nth-child(odd) { transform: translateY(-7px) rotate(80deg); }
+    .sp-paws i:nth-child(even) { transform: translateY(7px) rotate(100deg); }
+    @keyframes spPaw { 0% { opacity: 0; } 8% { opacity: .5; } 45% { opacity: .18; } 60%, 100% { opacity: 0; } }
+
+    /* มือถือแนวนอน (จอเตี้ย): ย่อช่องไฟ วงประกายไม่กินที่บน-ล่าง · รอยเท้าซ่อน (ชนหลอด) */
+    @media (max-height: 480px) {
+      #splash { gap: 6px; }
+      .sp-orb { margin: 6px 0 2px; }
+      .sp-paws { display: none; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .sp-cat, .sp-float i, .sp-bar, .sp-tip::after { animation: none; }
+      #splash *, #splash::before, #splash::after { animation: none !important; }
+      .sp-tip:first-child { opacity: 1; }
+      .sp-bar { width: 60%; }
+      .sp-fish { left: 60%; }
     }
   </style>
 </head>
@@ -167,25 +315,38 @@
        boot.js เป็นคนถอดออกหลังเกมพร้อม (ดู hideSplash ในไฟล์นั้น) -->
   <div id="splash">
     <div class="sp-float" aria-hidden="true">
-      <i style="--s:26px;--d:0s;--t:9s;--r:50deg;left:8%">🐾</i>
-      <i style="--s:18px;--d:1.4s;--t:11s;--r:-40deg;left:22%">✨</i>
-      <i style="--s:22px;--d:3.1s;--t:8.5s;--r:70deg;left:36%">🐟</i>
-      <i style="--s:16px;--d:4.6s;--t:12s;--r:-60deg;left:52%">🐾</i>
-      <i style="--s:24px;--d:2.2s;--t:10s;--r:35deg;left:68%">✨</i>
-      <i style="--s:20px;--d:5.5s;--t:9.5s;--r:-30deg;left:80%">🧶</i>
-      <i style="--s:17px;--d:6.8s;--t:11.5s;--r:55deg;left:92%">🐾</i>
+      <i style="--s:24px;--d:0s;--t:10s;--r:50deg;left:7%">🐾</i>
+      <i style="--s:16px;--d:1.6s;--t:12s;--r:-40deg;left:20%">✨</i>
+      <i style="--s:20px;--d:3.2s;--t:9.5s;--r:70deg;left:33%">🐟</i>
+      <i style="--s:15px;--d:5s;--t:13s;--r:-60deg;left:62%">💗</i>
+      <i style="--s:22px;--d:2.4s;--t:11s;--r:35deg;left:74%">✨</i>
+      <i style="--s:19px;--d:6s;--t:10.5s;--r:-30deg;left:86%">🧶</i>
+      <i style="--s:16px;--d:7.2s;--t:12.5s;--r:55deg;left:94%">🐾</i>
     </div>
 
     <!-- หัวน้องแมว — รูปเดียวกับไอคอนหน้าจอโฮมและแท็บเบราว์เซอร์ (public/icon-512.png)
-         ถ้าเปลี่ยนโลโก้ ให้ทับ tools/logo_meowsing.jpg แล้วรัน npm run icons
-         รูปนี้จะเปลี่ยนตามเองพร้อมไอคอนที่เหลือทั้งชุด ไม่ต้องมาแก้ไฟล์นี้อีก -->
-    <img class="sp-cat" src="/icon-512.png" width="512" height="512"
-         alt="น้องแมวส้มกำลังรอ" decoding="async" fetchpriority="high">
+         ถ้าเปลี่ยนโลโก้ ให้ทับ tools/logo_meowsing.jpg แล้วรัน npm run icons รูปนี้เปลี่ยนตามเอง -->
+    <div class="sp-orb" aria-hidden="true">
+      <div class="sp-glow"></div>
+      <div class="sp-ring b"></div>
+      <div class="sp-ring"></div>
+      <div class="sp-orbit" style="--t:8s"><b>🐟</b></div>
+      <div class="sp-orbit" style="--t:8s;--d:-4s"><b>⭐</b></div>
+      <div class="sp-orbit" style="--t:11s;--d:-2s"><b>💗</b></div>
+      <img class="sp-cat" src="/icon-512.png" width="512" height="512"
+           alt="น้องแมวส้มกำลังรอ" decoding="async" fetchpriority="high">
+    </div>
 
-    <b class="sp-logo">MeowZing</b>
+    <b class="sp-logo" aria-label="MeowZing"><span style="--i:0">M</span><span style="--i:1">e</span><span style="--i:2">o</span><span style="--i:3">w</span><span class="z" style="--i:4">Z</span><span class="z" style="--i:5">i</span><span class="z" style="--i:6">n</span><span class="z" style="--i:7">g</span></b>
 
-    <div class="sp-barwrap"><div class="sp-bar"></div></div>
-    <small class="sp-tip">กำลังปลุกน้องแมว</small>
+    <div class="sp-barwrap"><div class="sp-bar"></div><span class="sp-fish" aria-hidden="true"><i>🐟</i></span></div>
+    <div class="sp-tips">
+      <small class="sp-tip" style="--i:0">กำลังปลุกน้องแมว...</small>
+      <small class="sp-tip" style="--i:1">กำลังเตรียมขนมปลาให้เต็มทาง...</small>
+      <small class="sp-tip" style="--i:2">กำลังปัดฝุ่นเส้นทางวิ่ง...</small>
+    </div>
+
+    <div class="sp-paws" aria-hidden="true"><i style="--i:0">🐾</i><i style="--i:1">🐾</i><i style="--i:2">🐾</i><i style="--i:3">🐾</i><i style="--i:4">🐾</i><i style="--i:5">🐾</i></div>
   </div>
 
   <div class="shell">

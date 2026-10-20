@@ -181,6 +181,9 @@ export const EN = {
   'แตะที่หน้าจอเพื่อข้ามเข้าสู่เกม': 'Tap anywhere to skip',
   'แตะเพื่อข้าม': 'Tap to skip',
   'กำลังปลุกน้องแมว': 'Waking the cat up',
+  'กำลังปลุกน้องแมว...': 'Waking the cat up...',
+  'กำลังเตรียมขนมปลาให้เต็มทาง...': 'Laying out fish treats...',
+  'กำลังปัดฝุ่นเส้นทางวิ่ง...': 'Dusting off the running track...',
   'หมุนเครื่องเป็นแนวนอนก่อนนะ': 'Turn your phone sideways first',
   'น้องรอเล่นอยู่นี่ — ถ้าหมุนแล้วจอยังไม่เปลี่ยน':
     'Your cat is waiting — if the screen does not rotate,',

@@ -146,6 +146,14 @@ export const SKINS = [
     stripes: false, blush: true,
   },
   {
+    id: 'konja',
+    name: 'โกนจา',
+    note: 'แมวดำตาสีทอง ขี้อ้อน',
+    cat: '#2F2627', line: '#4A1C10', dark: '#1A1314', cream: '#4A3E40', pink: '#F2A0A6',
+    eye: '#3E2512', ink: '#120A0A', whisker: 'rgba(255,236,226,.85)', rain: ['#3A2E30', '#FFD86B', '#1A1314'],
+    stripes: false, blush: true,
+  },
+  {
     id: 'siamese',
     name: 'วิเชียรมาศ',
     note: 'แมวไทยตาสีฟ้า',
