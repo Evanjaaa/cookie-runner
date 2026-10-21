@@ -387,7 +387,7 @@ function stepTrail(A, P, info, emit, bob = 0, spin = 0) {
         const [x, y] = at(e);
         let kind = e.kinds[Math.floor(Math.random() * e.kinds.length)];
         if (kind === 'sprinkle') kind = 'sprinkle' + Math.floor(Math.random() * 6);
-        const glit = kind === 'glitB' || kind === 'glitP' || kind.startsWith('dust');
+        const glit = kind.startsWith('glit') || kind.startsWith('dust');
         const spr = e.spread ?? 1;
         A.parts.push({
           x: x + (Math.random() - 0.5) * 1.6 * sc * spr, y: y + (Math.random() - 0.5) * 1.6 * sc * spr,

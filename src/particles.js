@@ -197,6 +197,17 @@ const SHAPES = {
     ctx.fill();
   },
 
+  /** บัตรวีไอพี — สี่เหลี่ยมผืนผ้ามุมมน หมุนตีลังกา (เงาร่างเหลี่ยมยาว ไม่ซ้ำทรงไหน) · ชุดพี่ชาวี */
+  card(ctx, x, y, r, spin = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(spin);
+    ctx.beginPath();
+    ctx.roundRect(-r * 1.15, -r * 0.72, r * 2.3, r * 1.44, r * 0.25);
+    ctx.fill();
+    ctx.restore();
+  },
+
   /** ใบไม้ — วงรีเอียง หมุนช้า ๆ ให้ดูเหมือนใบที่กำลังร่วง */
   leaf(ctx, x, y, r, spin = 0) {
     ctx.save();

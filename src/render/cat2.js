@@ -2736,11 +2736,18 @@ function sweetSitSleeve(c, band, upto, pal) {
   const q0 = pts[0], qe = pts[upto];
   const enx = -Math.sin(qe.a), eny = Math.cos(qe.a), etx = Math.cos(qe.a), ety = Math.sin(qe.a);
   const he = band.half(upto) + 7;
+  // ปลายแขนเสื้อโค้งรอบแขน (ผู้ใช้ 21 ต.ค.: "แขนเสื้อเหมือนโดนตัด" — เดิมปลายพอง แถบมิ้นต์ ลูกไม้ เป็นเส้นตรงขวางแขน
+  //   ท่าเกาท้องต้นแขนตั้งตรง ปลายแขนเสื้อจึงเป็นขอบตรงแนวนอนเหมือนกล่องโดนตัด) → ทุกชั้นไล่ตามโค้งเดียวกัน กลางโค้งลงไปทางอุ้งเท้า
+  const SAG = 8;
+  const C = (v, off) => { const k = off + SAG * (1 - Math.min(1, (v / he) ** 2)); return [qe.x + etx * k + enx * v, qe.y + ety * k + eny * v]; };
   const lace = [];
-  for (let i = 0; i <= 6; i++) { const v = -he + (2 * he * i) / 6; lace.push([qe.x + etx * 8 + enx * v, qe.y + ety * 8 + eny * v]); }
+  for (let i = 0; i <= 6; i++) lace.push(C(-he + (2 * he * i) / 6, 8));
   swLace(c, lace, 6.5, pal);
   const pf = new Path2D();
   swSmooth(pf, Lp, true);
+  // ปลายลูกพองโป่งตามโค้งปลายแขนเสื้อ (ไม่ตัดตรง)
+  const [mx, my] = C(0, 2);
+  pf.quadraticCurveTo(2 * mx - (Lp[upto][0] + Rp[upto][0]) / 2, 2 * my - (Lp[upto][1] + Rp[upto][1]) / 2, ...Rp[upto]);
   swSmooth(pf, Rp.slice().reverse(), false);
   // ปลายฝั่งโคนแขน: ครึ่งวงกลมรอบปลายท่อ ใหญ่กว่าปลายมนของแขน — ครอบโคนแขนมิด ไม่มีขนส้มโผล่ใต้แขนเสื้อ
   // (เดิมปิดด้วยโค้งตื้น ๆ ปลายมนของแขนจึงยื่นพ้นแขนเสื้อออกมาเป็นจุดส้ม)
@@ -2767,11 +2774,11 @@ function sweetSitSleeve(c, band, upto, pal) {
   }
   c.restore();
   outline(c, pf, pal, SOL);
+  // แถบมิ้นต์โค้งตามปลายแขนเสื้อ (ขอบบน/ล่างขนานกัน)
   const bd = new Path2D();
-  bd.moveTo(qe.x - etx * 4 + enx * (he + 2), qe.y - ety * 4 + eny * (he + 2));
-  bd.lineTo(qe.x + etx * 4 + enx * (he + 2), qe.y + ety * 4 + eny * (he + 2));
-  bd.lineTo(qe.x + etx * 4 - enx * (he + 2), qe.y + ety * 4 - eny * (he + 2));
-  bd.lineTo(qe.x - etx * 4 - enx * (he + 2), qe.y - ety * 4 - eny * (he + 2));
+  const NB2 = 10;
+  for (let i = 0; i <= NB2; i++) { const v = he + 2 - ((2 * he + 4) * i) / NB2; bd[i ? 'lineTo' : 'moveTo'](...C(v, -4)); }
+  for (let i = NB2; i >= 0; i--) { const v = he + 2 - ((2 * he + 4) * i) / NB2; bd.lineTo(...C(v, 4)); }
   bd.closePath();
   c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, SW.mint);
   c.fill(bd);
@@ -6617,7 +6624,7 @@ const SNOW_INTRO = {
 //   · ชายโค้ทบานสองข้าง แหวกหน้า (ซับฟ้า) ขอบหยักทอง ระบายลูกไม้ขาว · กางเกงพองกรมท่า แถบทอง โบว์ฟ้าปลายขา
 //   · สร้อยทองคาดเอว นาฬิกาพกทอง · กระเป๋าหนังสะพายข้าง ตราหัวใจมงกุฎ มาการองโผล่ มุกขอบ+พวงมุก
 //   · ถุงเท้าระบายลูกไม้ เพชรไพลิน · รองเท้าหนังแก้วกรมท่า สายรัดหัวเข็มขัดทอง
-//   · ของถือ: คทากุญแจทอง หัวใจไพลินกรอบทอง ม้วนทองสองข้าง มงกุฎบนยอด โบว์แดง ห้อยสายมุก+มงกุฎจิ๋ว / มาการอง · ปลายเป็นฟันกุญแจ
+//   · ของถือ: หนังสติ๊กทองยิงมาการอง (21 ต.ค. แทนคทากุญแจ) ง่ามทองหัวใจไพลินมงกุฎ ยางริบบิ้นแดง ห้อยสายมุก+มงกุฎจิ๋ว / มาการอง
 //   · เอฟเฟกต์: วงแหวนทองฉลุหลังตัว (มุกเรียง ม้วนทอง อัญมณี มงกุฎบนยอด) · มาการอง/มงกุฎลอย · กลีบกุหลาบปลิว · ประกายทอง
 //   ไม่ใช้แม่แบบของชุดอื่น (กฎ S ข้อ 1) — ใช้แค่ตัวช่วยพื้นฐาน + swGrad/swBlob/swSmooth
 const NB = {
@@ -7264,10 +7271,28 @@ function nbPuff(c, Q, pal) {
     }
     return [f[0] + f[2] * v, f[1] + f[3] * v];
   };
-  // ระบายลูกไม้ปลายแขน (ห้อยไปทางอุ้งเท้า · ข้อมือกรมท่าทับแนวเย็บ)
+  // แขนเสื้อยาวถึงข้อมือ (ผู้ใช้ 21 ต.ค.: ท่าโบกมือแขนท่อนล่างยืด เห็นขนระหว่างแขนเสื้อกับอุ้งเท้าเหมือนเสื้อขาด — ตามแบบแขนเสื้อยาวถึงอุ้งเท้า)
+  //   ระบายลูกไม้ปลายแขน (ห้อยคลุมโคนอุ้งเท้า · ข้อมือกรมท่าทับแนวเย็บ) → ท่อนล่างเข้ารูป → ลูกพองช่วงต้นแขนทับโคนท่อนล่าง
   const lace = [];
-  for (let v = 40; v >= -40.1; v -= 10) lace.push(L(50, v));
-  nbFrill(c, lace, 13, pal, { side: 1 });
+  for (let v = 36; v >= -36.1; v -= 9) lace.push(L(72, v));
+  nbFrill(c, lace, 12, pal, { side: 1 });
+  const lo = new Path2D();
+  lo.moveTo(...L(40, 36));
+  lo.quadraticCurveTo(...L(58, 35), ...L(74, 33));
+  lo.lineTo(...L(74, -33));
+  lo.quadraticCurveTo(...L(58, -35), ...L(40, -36));
+  lo.closePath();
+  const [l0x, l0y] = L(56, 34), [l1x, l1y] = L(56, -34);
+  c.fillStyle = swGrad(c, l0x, l0y, l1x, l1y, ['#FFFFFF', '#F6F2EE', '#D6DEF2']);
+  c.fill(lo);
+  c.save();
+  c.clip(lo);
+  c.strokeStyle = 'rgba(58,88,174,.15)';
+  c.lineWidth = 4;
+  c.lineCap = 'round';
+  for (const v of [-14, 10]) { c.beginPath(); c.moveTo(...L(46, v)); c.quadraticCurveTo(...L(58, v + 4), ...L(66, v)); c.stroke(); }
+  c.restore();
+  outline(c, lo, pal, NBO);
   const pf = new Path2D();
   pf.moveTo(...L(-10, 38));
   pf.bezierCurveTo(...L(4, 54), ...L(34, 54), ...L(48, 38));
@@ -7295,10 +7320,13 @@ function nbPuff(c, Q, pal) {
   }
   c.restore();
   outline(c, pf, pal, NBO);
-  // ข้อมือกรมท่า ขลิบทองสองขอบ กระดุมทองสามเม็ด
+  // ขอบทองปลายลูกพอง + ข้อมือกรมท่าขลิบทอง กระดุมทองสามเม็ด (ชิดอุ้งเท้า)
+  const gb = new Path2D();
+  gb.moveTo(...L(44, -40)); gb.quadraticCurveTo(...L(49, 0), ...L(44, 40));
+  nbGoldLine(c, gb, pal, 2.6);
   const bd = new Path2D();
-  bd.moveTo(...L(41, -45)); bd.lineTo(...L(53, -43)); bd.lineTo(...L(53, 43)); bd.lineTo(...L(41, 45)); bd.closePath();
-  const [b0x, b0y] = L(47, 44), [b1x, b1y] = L(47, -44);
+  bd.moveTo(...L(63, -37)); bd.lineTo(...L(75, -35)); bd.lineTo(...L(75, 35)); bd.lineTo(...L(63, 37)); bd.closePath();
+  const [b0x, b0y] = L(69, 36), [b1x, b1y] = L(69, -36);
   c.fillStyle = swGrad(c, b1x, b1y, b0x, b0y, NB.navy);
   c.fill(bd);
   c.save();
@@ -7306,14 +7334,36 @@ function nbPuff(c, Q, pal) {
   c.strokeStyle = NB.gold[1];
   c.lineWidth = 2.2;
   c.lineCap = 'butt';
-  for (const u of [43, 51]) { c.beginPath(); c.moveTo(...L(u, -46)); c.lineTo(...L(u, 46)); c.stroke(); }
+  for (const u of [65, 73]) { c.beginPath(); c.moveTo(...L(u, -38)); c.lineTo(...L(u, 38)); c.stroke(); }
   c.restore();
   outline(c, bd, pal, NBO * 0.75);
-  for (const v of [-22, 0, 22]) { const [px, py] = L(47, v); nbButton(c, px, py, 2.6, pal); }
+  for (const v of [-18, 0, 18]) { const [px, py] = L(69, v); nbButton(c, px, py, 2.4, pal); }
 }
-/** แขนพองบนแขนท่อ (นั่งเกา/ถือหัวใจ): ลูกพองช่วงต้นแขน · ข้อมือกรมท่าขลิบทอง + ระบายลูกไม้ที่จุด upto */
-function nbSitSleeve(c, band, upto, pal) {
-  const pts = band.pts;
+/** แขนพองบนแขนท่อ (นั่งเกา/ถือหัวใจ/เท้าคาง): ลูกพองช่วงต้นแขนถึงจุด upto · ท่อนล่างเข้ารูปยาวต่อจนใกล้อุ้งเท้า · ข้อมือกรมท่าขลิบทอง + ระบายลูกไม้ */
+function nbSitSleeve(c, band, upto, pal, o = {}) {
+  const pts = band.pts, N = pts.length - 1;
+  // o.open = ต้นแขนที่ต่อไปเป็นแขนท่อนล่าง (ท่าเกาท้อง): ยาวถึงศอก ปลายมนตามแขน ไม่มีข้อมือ/ลูกไม้ (แขนท่อนล่างใส่ต่อเอง — nbForearmSleeve)
+  const end = o.open ? N : Math.max(upto + 1, Math.min(N - 1, Math.round(upto + (N - upto) * 0.62)));
+  const side = (i, h) => { const q = pts[i], nx = -Math.sin(q.a), ny = Math.cos(q.a); return [[q.x + nx * h, q.y + ny * h], [q.x - nx * h, q.y - ny * h]]; };
+  const qe = pts[end];
+  const enx = -Math.sin(qe.a), eny = Math.cos(qe.a), etx = Math.cos(qe.a), ety = Math.sin(qe.a);
+  const he = band.half(end) + 5;
+  const lace = [];
+  for (let i = 0; i <= 6; i++) { const v = he - (2 * he * i) / 6; lace.push([qe.x + etx * 3 + enx * v, qe.y + ety * 3 + eny * v]); }
+  if (!o.open) nbFrill(c, lace, 11, pal, { side: 1 });
+  // ท่อนล่างเข้ารูป (upto-1 → end)
+  const LL = [], RR = [];
+  for (let i = Math.max(0, upto - 1); i <= end; i++) { const [l, r] = side(i, band.half(i) + 4); LL.push(l); RR.push(r); }
+  const lo = new Path2D();
+  swSmooth(lo, LL, true);
+  if (o.open) { const r = band.half(end) + 4; lo.arc(qe.x, qe.y, r, qe.a + Math.PI / 2, qe.a - Math.PI / 2, true); }   // ปลายมนตามข้อศอก
+  swSmooth(lo, RR.slice().reverse(), false);
+  lo.closePath();
+  const [[l0x, l0y], [l1x, l1y]] = side(end, he);
+  c.fillStyle = swGrad(c, l0x, l0y, l1x, l1y, ['#FFFFFF', '#F6F2EE', '#D6DEF2']);
+  c.fill(lo);
+  outline(c, lo, pal, NBO);
+  // ลูกพองช่วงต้นแขน
   const Lp = [], Rp = [];
   for (let i = 0; i <= upto; i++) {
     const q = pts[i], u = i / upto;
@@ -7322,12 +7372,7 @@ function nbSitSleeve(c, band, upto, pal) {
     Lp.push([q.x + nx * h, q.y + ny * h]);
     Rp.push([q.x - nx * h, q.y - ny * h]);
   }
-  const q0 = pts[0], qe = pts[upto];
-  const enx = -Math.sin(qe.a), eny = Math.cos(qe.a), etx = Math.cos(qe.a), ety = Math.sin(qe.a);
-  const he = band.half(upto) + 7;
-  const lace = [];
-  for (let i = 0; i <= 6; i++) { const v = he - (2 * he * i) / 6; lace.push([qe.x + etx * 3 + enx * v, qe.y + ety * 3 + eny * v]); }
-  nbFrill(c, lace, 11, pal, { side: 1 });
+  const q0 = pts[0];
   const pf = new Path2D();
   swSmooth(pf, Lp, true);
   swSmooth(pf, Rp.slice().reverse(), false);
@@ -7355,11 +7400,21 @@ function nbSitSleeve(c, band, upto, pal) {
   }
   c.restore();
   outline(c, pf, pal, NBO);
+  // ขอบทองโค้งตรงปลายลูกพอง (แบบแขนเสื้อตอนยืน) — ทับเส้นขอบตรงขวางแขนของปลายลูกพอง
+  {
+    const q = pts[upto], nx = -Math.sin(q.a), ny = Math.cos(q.a), h = band.half(upto) + 5 + Math.sin(Math.min(1, 1.15) * Math.PI) * 12;
+    const gb = new Path2D();
+    gb.moveTo(q.x + nx * h, q.y + ny * h);
+    gb.quadraticCurveTo(q.x + Math.cos(q.a) * 5, q.y + Math.sin(q.a) * 5, q.x - nx * h, q.y - ny * h);
+    nbGoldLine(c, gb, pal, 2.6);
+  }
+  if (o.open) return;
+  // ข้อมือกรมท่าขลิบทอง (ปลายท่อนล่าง)
   const bd = new Path2D();
-  bd.moveTo(qe.x - etx * 5 + enx * (he + 2), qe.y - ety * 5 + eny * (he + 2));
-  bd.lineTo(qe.x + etx * 4 + enx * (he + 2), qe.y + ety * 4 + eny * (he + 2));
-  bd.lineTo(qe.x + etx * 4 - enx * (he + 2), qe.y + ety * 4 - eny * (he + 2));
-  bd.lineTo(qe.x - etx * 5 - enx * (he + 2), qe.y - ety * 5 - eny * (he + 2));
+  bd.moveTo(qe.x - etx * 9 + enx * (he + 1), qe.y - ety * 9 + eny * (he + 1));
+  bd.lineTo(qe.x + etx * 2 + enx * (he + 1), qe.y + ety * 2 + eny * (he + 1));
+  bd.lineTo(qe.x + etx * 2 - enx * (he + 1), qe.y + ety * 2 - eny * (he + 1));
+  bd.lineTo(qe.x - etx * 9 - enx * (he + 1), qe.y - ety * 9 - eny * (he + 1));
   bd.closePath();
   c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, NB.navy);
   c.fill(bd);
@@ -7367,7 +7422,7 @@ function nbSitSleeve(c, band, upto, pal) {
   c.clip(bd);
   c.strokeStyle = NB.gold[1];
   c.lineWidth = 2;
-  for (const d of [-3.4, 2.6]) {
+  for (const d of [-7.4, 0.4]) {
     c.beginPath();
     c.moveTo(qe.x + etx * d + enx * (he + 4), qe.y + ety * d + eny * (he + 4));
     c.lineTo(qe.x + etx * d - enx * (he + 4), qe.y + ety * d - eny * (he + 4));
@@ -7375,6 +7430,183 @@ function nbSitSleeve(c, band, upto, pal) {
   }
   c.restore();
   outline(c, bd, pal, NBO * 0.7);
+}
+/**
+ * แขนเสื้อบนแขนท่อนล่างที่พับมาเกาพุง (ท่าเกาท้อง · ช่อง forearmSleeve): ต่อจากแขนเสื้อต้นแขนที่ศอก (วงศอกรัศมี capR)
+ * ลงสีในรูปแขน+ศอก ถึงเส้นข้อมือ (เส้นรอบแขนเดิมยังอยู่) · ไล่สีขวางแขนแบบท่อนล่างตอนยืน · ข้อมือกรมท่าขลิบทอง กระดุมทอง + ระบายลูกไม้ชิดอุ้งเท้า
+ * (ผู้ใช้ 21 ต.ค.: "แขนเสื้อเหมือนโดนตัด" — เดิมแขนเสื้อจบกลางต้นแขนเป็นขอบตรง แขนท่อนล่างเป็นขนเปล่า)
+ */
+function nbForearmSleeve(c, band, capR, pal) {
+  const pts = band.pts, N = pts.length - 1;
+  const end = Math.max(2, N - 2);
+  const nrm = (i) => [-Math.sin(pts[i].a), Math.cos(pts[i].a)];
+  const qe = pts[end], [enx, eny] = nrm(end), etx = Math.cos(qe.a), ety = Math.sin(qe.a);
+  const he = band.half(end) + 4;
+  const lace = [];
+  for (let i = 0; i <= 6; i++) { const v = he - (2 * he * i) / 6; lace.push([qe.x + etx * 2 + enx * v, qe.y + ety * 2 + eny * v]); }
+  nbFrill(c, lace, 10, pal, { side: 1 });
+  const area = new Path2D();
+  area.addPath(band.path);
+  area.moveTo(pts[0].x + capR, pts[0].y);
+  area.arc(pts[0].x, pts[0].y, capR, 0, TAU, true);   // ทวนเข็มเท่าแถบแขน — วนสวนกันแล้วส่วนซ้อนหักล้าง (เห็นขนส้มเป็นเสี้ยวตรงศอก)
+  c.save();
+  c.clip(area);
+  const T = 900;
+  const keep = new Path2D();
+  keep.moveTo(qe.x + enx * T, qe.y + eny * T);
+  keep.lineTo(qe.x - enx * T, qe.y - eny * T);
+  keep.lineTo(qe.x - enx * T - etx * T, qe.y - eny * T - ety * T);
+  keep.lineTo(qe.x + enx * T - etx * T, qe.y + eny * T - ety * T);
+  keep.closePath();
+  c.clip(keep);
+  const im = Math.round(end / 2), qm = pts[im], [mx, my] = nrm(im), hm = band.half(im) + 6;
+  const lg = c.createLinearGradient(qm.x + mx * hm, qm.y + my * hm, qm.x - mx * hm, qm.y - my * hm);
+  lg.addColorStop(0, '#FFFFFF');
+  lg.addColorStop(0.5, '#F6F2EE');
+  lg.addColorStop(1, '#D6DEF2');
+  c.fillStyle = lg;
+  c.fillRect(qe.x - 600, qe.y - 600, 1200, 1200);
+  c.strokeStyle = 'rgba(58,88,174,.14)';
+  c.lineWidth = 3.6;
+  c.lineCap = 'round';
+  for (const f of [-0.35, 0.3]) {
+    c.beginPath();
+    for (let i = 1; i <= end - 1; i++) { const q = pts[i], [nx, ny] = nrm(i), h = band.half(i) * f; c[i > 1 ? 'lineTo' : 'moveTo'](q.x + nx * h, q.y + ny * h); }
+    c.stroke();
+  }
+  c.restore();
+  const bd = new Path2D();
+  bd.moveTo(qe.x - etx * 9 + enx * (he + 1), qe.y - ety * 9 + eny * (he + 1));
+  bd.lineTo(qe.x + etx * 2 + enx * (he + 1), qe.y + ety * 2 + eny * (he + 1));
+  bd.lineTo(qe.x + etx * 2 - enx * (he + 1), qe.y + ety * 2 - eny * (he + 1));
+  bd.lineTo(qe.x - etx * 9 - enx * (he + 1), qe.y - ety * 9 - eny * (he + 1));
+  bd.closePath();
+  c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, NB.navy);
+  c.fill(bd);
+  c.save();
+  c.clip(bd);
+  c.strokeStyle = NB.gold[1];
+  c.lineWidth = 2;
+  for (const d of [-7.4, 0.4]) {
+    c.beginPath();
+    c.moveTo(qe.x + etx * d + enx * (he + 4), qe.y + ety * d + eny * (he + 4));
+    c.lineTo(qe.x + etx * d - enx * (he + 4), qe.y + ety * d - eny * (he + 4));
+    c.stroke();
+  }
+  c.restore();
+  outline(c, bd, pal, NBO * 0.7);
+  for (const f of [-0.5, 0, 0.5]) nbButton(c, qe.x - etx * 3.5 + enx * he * f, qe.y - ety * 3.5 + eny * he * f, 2.2, pal);
+}
+/**
+ * แขนเสื้อบนแขนที่ยกมาเลียอุ้งเท้า (ท่านั่ง · ช่อง groomSleeve) — แขนพับเป็นรูป S ศอกพับแหลม:
+ * ท่อนแขนลงสีในเงาแขนจริง (ตัดใน band.path) ตามรูปแขนเป๊ะ ไม่มีมุมหัก/รอยบากตรงข้อพับ (ผู้ใช้ 21 ต.ค. ทักว่าดูแปลก —
+ * เดิมขยายขอบจากแกนแขน ขอบด้านในศอกไขว้กันเป็นสามเหลี่ยมเห็นขน ลูกพองใหญ่คลุมทั้งศอกเป็นก้อน)
+ * (ต้นแขนท่านี้กลมพองเองเป็นลูกพอง) · ข้อมือกรมท่าขลิบทอง + ระบายลูกไม้ชิดอุ้งเท้า
+ */
+function nbGroomSleeve(c, band, pal) {
+  const pts = band.pts, N = pts.length - 1;
+  const end = Math.min(N - 2, 9);
+  const nrm = (i) => [-Math.sin(pts[i].a), Math.cos(pts[i].a)];
+  const qe = pts[end], [enx, eny] = nrm(end), etx = Math.cos(qe.a), ety = Math.sin(qe.a);
+  const he = band.half(end) + 4;
+  // ระบายลูกไม้ข้อมือ (ห้อยไปทางอุ้งเท้า · ข้อมือทับแนวเย็บ)
+  const lace = [];
+  for (let i = 0; i <= 6; i++) { const v = he - (2 * he * i) / 6; lace.push([qe.x + etx * 2 + enx * v, qe.y + ety * 2 + eny * v]); }
+  nbFrill(c, lace, 10, pal, { side: 1 });
+  // ท่อนแขน: ลากเส้นหนาเท่าแขนตามแกนแขน (ไหล่ → ข้อมือ) แล้วตัดที่เส้นข้อมือ — ได้เนื้อแขนเต็มทุกท่อนแม้ศอกพับแหลม
+  //   (ตัดในรูปแขนของตัววาดไม่ได้: ตรงข้อพับขอบรูปแขนไขว้กันเอง กลายเป็นช่องว่างเป็นลิ่มส้ม) · เส้นรอบแขนเดิมยังอยู่ครบ
+  c.save();
+  const T = 900;
+  const keep = new Path2D();
+  keep.moveTo(qe.x + enx * T, qe.y + eny * T);
+  keep.lineTo(qe.x - enx * T, qe.y - eny * T);
+  keep.lineTo(qe.x - enx * T - etx * T, qe.y - eny * T - ety * T);
+  keep.lineTo(qe.x + enx * T - etx * T, qe.y + eny * T - ety * T);
+  keep.closePath();
+  c.clip(keep);
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  // สีแบบแขนเสื้อตอนยืน (ผู้ใช้ 21 ต.ค.: "ขาวโพลน ต่างกับแขนเสื้อตอนยืน") — แยกสองชิ้นต่อกันใต้ขอบทอง (จุด GI หลังข้อพับศอก):
+  //   ลูกพอง (ไหล่ → GI) ไล่สีวงจากต้นแขน ขาว → ครีม → ฟ้า · ท่อนล่าง (GI → ข้อมือ) ไล่สีขวางแขน ขาว → ครีม → ฟ้า (เหมือนตอนยืน)
+  //   (ไล่สีซ้อนชั้นตามแกนแขนไม่ได้ — ตรงศอกแกนหักกลับ ชั้นสีเป็นแถบรูป V · เงาตามขอบเป็นแถบไขว้ในข้อพับ)
+  const GI = Math.min(5, end - 2);
+  const q1 = pts[1], [n1x, n1y] = nrm(1);
+  const pg = c.createRadialGradient(q1.x + n1x * 10, q1.y + n1y * 10, 4, q1.x, q1.y, band.half(1) * 2.3);
+  pg.addColorStop(0, '#FFFFFF');
+  pg.addColorStop(0.55, '#F8F4F0');
+  pg.addColorStop(1, '#D3DCF2');
+  c.strokeStyle = pg;
+  for (let i = 0; i < GI; i++) {
+    c.lineWidth = band.half(i) + band.half(i + 1) + 0.8;   // เลยขอบแขนนิดเดียว ปิดขอบส้มใต้เส้นรอบ
+    c.beginPath(); c.moveTo(pts[i].x, pts[i].y); c.lineTo(pts[i + 1].x, pts[i + 1].y); c.stroke();
+  }
+  {
+    const qm = pts[Math.round((GI + end) / 2)], [mx, my] = nrm(Math.round((GI + end) / 2)), hm = band.half(Math.round((GI + end) / 2));
+    // ฝั่งสว่างอยู่ด้านที่พับแนบต้นแขน (รอยต่อสองชิ้นสว่างชนสว่าง ไม่เป็นรอยเงา) · ฝั่งเงาฟ้าอยู่ขอบนอก
+    const lg = c.createLinearGradient(qm.x - mx * hm, qm.y - my * hm, qm.x + mx * hm, qm.y + my * hm);
+    lg.addColorStop(0, '#FFFFFF');
+    lg.addColorStop(0.5, '#F6F2EE');
+    lg.addColorStop(1, '#D6DEF2');
+    c.save();
+    c.clip(band.path);
+    c.strokeStyle = lg;
+    c.lineCap = 'butt';
+    c.lineWidth = band.half(GI) * 2 + 12;   // ตัดในรูปแขน (ท่อนนี้ไม่มีข้อพับ) — ปลายตัดตรงที่ GI ขอบทองทับพอดี
+    c.beginPath();
+    for (let i = GI; i <= Math.min(N, end + 1); i++) c[i > GI ? 'lineTo' : 'moveTo'](pts[i].x, pts[i].y);
+    c.stroke();
+    c.restore();
+  }
+  // ลูกพอง (ต้นแขน ไหล่ → ก่อนศอก): จีบผ้ารวบ เงาฟ้าจาง + ไฮไลต์ขาว เหมือนลูกพองตอนยืน
+  // along(i0, i1, f, k): เส้นตามแกนแขนที่ระยะ f×ครึ่งกว้าง · k = รวบเข้าหากลางแขนทางปลาย
+  const along = (i0, i1, f, k = 0) => {
+    c.beginPath();
+    for (let i = i0; i <= i1; i++) { const u = (i - i0) / Math.max(1, i1 - i0), q = pts[i], [nx, ny] = nrm(i), h = band.half(i) * f * (1 - k * u); c[i > i0 ? 'lineTo' : 'moveTo'](q.x + nx * h, q.y + ny * h); }
+    c.stroke();
+  };
+  for (const f of [-0.45, 0.1]) {
+    c.strokeStyle = 'rgba(58,88,174,.11)';
+    c.lineWidth = 4.5;
+    along(0, 3, f, 0.45);
+    c.strokeStyle = 'rgba(255,255,255,.8)';
+    c.lineWidth = 2.4;
+    along(0, 3, f + 0.2, 0.45);
+  }
+  // แขนท่อนล่างเข้ารูป: รอยพับนุ่มสองเส้น
+  c.strokeStyle = 'rgba(58,88,174,.14)';
+  c.lineWidth = 3.6;
+  for (const f of [-0.35, 0.3]) along(6, end - 1, f);
+  c.restore();
+  // ขอบทองปลายลูกพอง (ต้นแขนท่อนล่าง ถัดจากข้อพับศอก) — ทับรอยต่อสองชิ้นพอดี
+  {
+    const iq = GI, q = pts[iq], [nx, ny] = nrm(iq), h = band.half(iq) - 1.5;
+    const gb = new Path2D();
+    gb.moveTo(q.x + nx * h, q.y + ny * h);
+    gb.quadraticCurveTo(q.x + Math.cos(q.a) * 4, q.y + Math.sin(q.a) * 4, q.x - nx * h, q.y - ny * h);
+    nbGoldLine(c, gb, pal, 2.6);
+  }
+  // ข้อมือกรมท่าขลิบทอง
+  const bd = new Path2D();
+  bd.moveTo(qe.x - etx * 9 + enx * (he + 1), qe.y - ety * 9 + eny * (he + 1));
+  bd.lineTo(qe.x + etx * 2 + enx * (he + 1), qe.y + ety * 2 + eny * (he + 1));
+  bd.lineTo(qe.x + etx * 2 - enx * (he + 1), qe.y + ety * 2 - eny * (he + 1));
+  bd.lineTo(qe.x - etx * 9 - enx * (he + 1), qe.y - ety * 9 - eny * (he + 1));
+  bd.closePath();
+  c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, NB.navy);
+  c.fill(bd);
+  c.save();
+  c.clip(bd);
+  c.strokeStyle = NB.gold[1];
+  c.lineWidth = 2;
+  for (const d of [-7.4, 0.4]) {
+    c.beginPath();
+    c.moveTo(qe.x + etx * d + enx * (he + 4), qe.y + ety * d + eny * (he + 4));
+    c.lineTo(qe.x + etx * d - enx * (he + 4), qe.y + ety * d - eny * (he + 4));
+    c.stroke();
+  }
+  c.restore();
+  outline(c, bd, pal, NBO * 0.7);
+  for (const f of [-0.5, 0, 0.5]) nbButton(c, qe.x - etx * 3.5 + enx * he * f, qe.y - ety * 3.5 + eny * he * f, 2.4, pal);
 }
 /**
  * เสื้อโค้ท (ช่อง shirt): กรมท่าขลิบทอง เงาทรงกระบอกโทนน้ำเงิน · หน้า: ช่องเปิดเห็นแผงในฟ้าปักเถาทอง ลูกไม้จาบอตสี่ชั้นไหลลงกลางอก
@@ -7500,19 +7732,30 @@ function nobleCoat(c, k) {
   }
   c.restore();
 }
-/** ระบายคอลูกไม้สองชั้น (โค้งตามคาง หัวบังขอบบน) · หน้า: โบว์กรมท่าขลิบทอง เข็มกลัดทับทิมกรอบข้าวหลามตัด */
+/** เส้นขอบล่างของหัว (คาง) ในไฟล์ออกแบบ — วัดจาก cat-front.svg (#head) ทุก 15 หน่วย */
+const NB_CHIN = [[150, 338.5], [165, 355.5], [180, 366], [195, 374], [210, 380], [225, 385.5], [240, 389.5], [255, 390.5], [270, 390], [285, 389.5], [300, 389], [315, 389.5], [330, 390], [345, 390.5], [360, 389], [375, 384.5], [390, 379.5], [405, 372.5], [420, 364.5], [435, 353], [450, 335.5]];
+const nbChinY = (x) => {
+  const i = Math.max(0, Math.min(NB_CHIN.length - 2, Math.floor((x - 150) / 15)));
+  const [x0, y0] = NB_CHIN[i], [x1, y1] = NB_CHIN[i + 1];
+  return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+};
+/**
+ * ระบายคอลูกไม้สองชั้น — แนวเย็บไล่ตามเส้นคางจริง (เหนือขอบคางนิด หัวบังแนวเย็บ) ระบายจึงงอกจากใต้คางพอดีทุกท่า
+ * (ผู้ใช้ 21 ต.ค.: ท่าเกาท้อง/หมอบ/นอนขด พุ่มคอหลุดจากคอ ตกลงมาเอียง — เดิมแนวเย็บเป็นโค้งลึกกว่าคาง 30 หน่วย เห็นเสื้อคั่นกลาง)
+ * หน้า: โบว์กรมท่าขลิบทอง เข็มกลัดทับทิมกรอบข้าวหลามตัด (ใต้คางพอดี)
+ */
 function nobleRuff(c, k) {
   const pal = k.pal, t = k.t || 0;
   const P = k.cpt || ((x, y) => [x, y]);
-  for (const [x0, x1, y0, sag, dep] of [[192, 408, 382, 40, 28], [218, 382, 394, 34, 22]]) {
+  for (const [x0, x1, up, dep, n] of [[164, 436, 10, 36, 16], [196, 404, 8, 25, 12]]) {
     const pts = [];
-    for (let i = 0; i <= 12; i++) { const u = i / 12; pts.push(P(x0 + (x1 - x0) * u, y0 + Math.sin(u * Math.PI) * sag)); }
+    for (let i = 0; i <= n; i++) { const x = x0 + ((x1 - x0) * i) / n; pts.push(P(x, nbChinY(x) - up)); }
     nbFrill(c, pts, dep, pal, { side: 1 });
   }
   if (k.back) return;
   const sx = (k.cpt ? (k.hxShift || 0) : (k.faceShift || 0)) * 0.5;
-  const [bx, by] = P(300, 440);
-  nbBow(c, bx + sx, by, 22, NB.navy, pal, t, { tail: 0.95 });
+  const [bx, by] = P(300, 408);
+  nbBow(c, bx + sx, by, 21, NB.navy, pal, t, { tail: 0.95 });
   nbGem(c, bx + sx, by + 1, 6, 7.5, NB.ruby, pal, { frame: 'diamond' });
 }
 /** กางเกงพองกรมท่า: ผ้าตัดด้วยเงาตัวจริง (ตัว+ขา) · เส้นจีบรวบปลายขา · แถบทองเหนือชาย · โบว์ฟ้าปมทองด้านนอกปลายขา */
@@ -7945,6 +8188,8 @@ function nobleBeret(c, k) {
   c.save();
   if (back) { c.translate(600, 0); c.scale(-1, 1); }
   rotAt(c, { x: 320, y: 140 }, 0.06);
+  const knock = k.sv ? k.sv('beretKnock') || 0 : 0;   // ท่าเปิดตัว: ลงพื้นแรง หมวกเด้งเบี้ยวไปข้าง
+  if (knock) { c.translate(-48 * knock, -30 * knock); rotAt(c, { x: 320, y: 140 }, -0.6 * knock); }
   const fs = Math.sin(t * 0.05);
   for (const [len, ang, w, cols, ph] of [[116, 0.8, 26, NB.lav, 0.6], [138, 0.44, 32, ['#FFFFFF', '#FBF8FF', '#DCD0F4'], 0], [98, 0.14, 22, ['#FFFFFF', '#FFFFFF', '#ECE6FA'], 1.2]]) {
     nbFeather(c, 410, 118, len, ang + fs * 0.02, w, cols, pal, t, ph);
@@ -8030,27 +8275,50 @@ function nobleBeret(c, k) {
   }
 }
 
-// ── คทากุญแจทอง (ของถือ) ──
-/** ระยะจากด้ามถึงกลางหัวใจไพลิน */
-const NB_KEY_HEAD = 198;
-const nbKeyHead = (x, y, a, sc = 1) => [x + Math.sin(a) * NB_KEY_HEAD * sc, y - Math.cos(a) * NB_KEY_HEAD * sc];
+// ── หนังสติ๊กทองยิงมาการอง (ของถือ · ผู้ใช้เลือก 21 ต.ค. แทนคทากุญแจ — ได้ทั้ง "คุณหนู" และ "จอมซน") ──
+/** ระยะจากด้าม (จุดอุ้งเท้ากำ) ถึงกลางกระเปาะยางที่วางมาการอง */
+const NB_SLING_HEAD = 104;
+const NB_SLING_SC = 1.25;   // ขนาดในมือ (ตัวเลขในตัววาดเป็นขนาด 1)
+const nbSlingHead = (x, y, a, sc = 1) => [x + Math.sin(a) * NB_SLING_HEAD * sc, y - Math.cos(a) * NB_SLING_HEAD * sc];
 /**
- * คทากุญแจที่ด้าม (x,y) มุม a: ด้ามทองทรงกระบอก เกลียวเชือกช่วงบน ข้อลูกแก้วทองสามข้อ · ปลายล่างเป็นฟันกุญแจ (ยื่นขวา) + ลูกตุ้ม
- * หัว: หัวใจไพลินกรอบทอง ม้วนทองสองข้าง+ใต้หัวใจ มงกุฎบนยอด โบว์แดงขลิบทองที่คอ · ห้อย (ด้านนอก): สายมุก+มงกุฎจิ๋ว / สายทอง+มาการอง
- * lit = เรืองเต็ม (ลอย) · sc = ขนาด
+ * หนังสติ๊กทองที่ด้าม (x,y) มุม a (ง่ามชี้ขึ้น):
+ * ด้ามทองพันกำมะหยี่กรมท่า ปลอกทองสองวง · ปลายด้ามหัวใจไพลิน ห้อยสายมุก+มงกุฎจิ๋ว / สายทอง+มาการองจิ๋ว (ตามแรงโน้มถ่วง)
+ * ง่ามทองตัว Y โค้งมน ม้วนทองด้านนอก ปลายง่ามมุกในปลอกทอง · คอง่าม: หัวใจไพลินกรอบทอง มงกุฎบนยอด
+ * ยาง = ริบบิ้นแดงขลิบทองขึงจากปลายง่ามลงกระเปาะกำมะหยี่ · มาการองชมพูวางรอยิง (เด้งดึ๋งเบา ๆ)
+ * o.pull 0..1 = ง้างยาง (เผื่อท่าแอ็ค) · o.ammo = มีมาการองในกระเปาะ · lit = เรืองเต็ม (ลอย) · sc = ขนาด
  */
-function nbKeyDraw(c, x, y, a, pal, t, lit, sc = 1) {
+function nbSlingDraw(c, x, y, a, pal, t, lit, sc = 1, o = {}) {
+  const pull = o.pull || 0, ammo = o.ammo ?? true;
   c.save();
   c.translate(x, y);
   c.rotate(a);
   if (sc !== 1) c.scale(sc, sc);
-  const HY = -NB_KEY_HEAD, top = -150, bot = 92;
-  glowAt(c, 0, HY, 94 + 10 * Math.sin(t * 0.06), '255,214,140', 0.24 + 0.2 * lit);
-  glowAt(c, 0, HY, 46, '120,180,255', 0.2 + 0.12 * lit);
-  // ด้าม
+  const J = -36, TY = -128, TX = 44;
+  glowAt(c, 0, -92, 86 + 8 * Math.sin(t * 0.06), '255,214,140', 0.22 + 0.2 * lit);
+  glowAt(c, 0, J, 34, '120,180,255', 0.18 + 0.1 * lit);
+  // ห้อยจากปลายด้าม (วาดก่อน ด้ามทับต้นสาย)
+  for (const [dx, len, kind, ph] of [[-3, 40, 'crown', 0], [4, 54, 'mac', 1.7]]) {
+    const swg = a + Math.sin(t * 0.07 + ph) * 0.16;
+    const x0 = dx, y0 = 78, ux = Math.sin(swg), uy = Math.cos(swg);
+    const ex = x0 + ux * len, ey = y0 + uy * len;
+    if (kind === 'crown') {
+      const pp = [];
+      for (let i = 0; i <= 6; i++) pp.push([x0 + ux * len * (i / 6), y0 + uy * len * (i / 6)]);
+      nbPearls(c, pp, 2.4, pal);
+      c.save();
+      c.translate(ex + ux * 9, ey + uy * 9);
+      c.rotate(-swg);
+      nbCrown(c, 0, 4, 8, pal, { w: NBO * 0.5 });
+      c.restore();
+    } else {
+      nbChain(c, [[x0, y0], [ex - ux * 5, ey - uy * 5]], pal, 4.2, 1.5);
+      nbMacaron(c, ex + ux * 3, ey + uy * 3, 8.5, NB.blue, pal, -swg * 0.5, { w: NBO * 0.6 });
+    }
+  }
+  // ด้าม: ทองทรงกระบอก พันกำมะหยี่กรมท่าช่วงกำ
   const st = new Path2D();
-  st.roundRect(-5.5, top, 11, bot - top, 5);
-  const sg = c.createLinearGradient(-5.5, 0, 5.5, 0);
+  st.roundRect(-6.5, J, 13, 70 - J, 6);
+  const sg = c.createLinearGradient(-6.5, 0, 6.5, 0);
   sg.addColorStop(0, NB.gold[2]);
   sg.addColorStop(0.32, '#FFFBE8');
   sg.addColorStop(0.62, NB.gold[1]);
@@ -8059,102 +8327,163 @@ function nbKeyDraw(c, x, y, a, pal, t, lit, sc = 1) {
   c.fill(st);
   c.save();
   c.clip(st);
-  c.lineCap = 'round';
-  for (let yy = top + 8; yy < top + 74; yy += 9) {
-    c.strokeStyle = 'rgba(150,98,30,.85)';
-    c.lineWidth = 2.2;
-    c.beginPath(); c.moveTo(-7, yy); c.lineTo(7, yy + 6); c.stroke();
-    c.strokeStyle = 'rgba(255,255,255,.7)';
-    c.lineWidth = 1;
-    c.beginPath(); c.moveTo(-7, yy - 1.6); c.lineTo(7, yy + 4.4); c.stroke();
-  }
+  c.fillStyle = swGrad(c, -7, 0, 7, 0, NB.navy);
+  c.fillRect(-8, -14, 16, 46);
+  c.strokeStyle = 'rgba(255,255,255,.22)';
+  c.lineWidth = 2;
+  for (let yy = -12; yy < 32; yy += 7) { c.beginPath(); c.moveTo(-7, yy); c.lineTo(7, yy + 5); c.stroke(); }
   c.restore();
   outline(c, st, pal, NBO * 0.7);
-  for (const [yy, r] of [[top + 2, 9], [-44, 7.5], [32, 7]]) {
-    const b = new Path2D();
-    b.ellipse(0, yy, r, r * 0.62, 0, 0, TAU);
-    swBlob(c, b, swGrad(c, -r, yy - r, r, yy + r, NB.gold), pal, NBO * 0.55);
-    c.fillStyle = 'rgba(255,255,255,.85)';
-    c.beginPath(); c.ellipse(-r * 0.4, yy - r * 0.2, r * 0.26, r * 0.14, 0, 0, TAU); c.fill();
+  for (const yy of [-16, 34]) {
+    const ring = new Path2D();
+    ring.roundRect(-8.5, yy - 3.5, 17, 7, 3.5);
+    c.fillStyle = swGrad(c, 0, yy - 3.5, 0, yy + 3.5, NB.gold);
+    c.fill(ring);
+    outline(c, ring, pal, NBO * 0.55);
   }
-  // ฟันกุญแจปลายล่าง (ยื่นขวา) + ลูกตุ้มปลาย
-  const bit = new Path2D();
-  bit.moveTo(4, bot - 36);
-  bit.lineTo(27, bot - 36);
-  bit.lineTo(27, bot - 27);
-  bit.lineTo(20, bot - 27);
-  bit.lineTo(20, bot - 21);
-  bit.lineTo(27, bot - 21);
-  bit.lineTo(27, bot - 9);
-  bit.lineTo(14, bot - 9);
-  bit.lineTo(14, bot - 15);
-  bit.lineTo(4, bot - 15);
-  bit.closePath();
-  c.fillStyle = swGrad(c, 4, bot - 36, 27, bot - 9, NB.gold);
-  c.fill(bit);
-  outline(c, bit, pal, NBO * 0.65);
-  const knob = new Path2D();
-  knob.arc(0, bot + 6, 7, 0, TAU);
-  swBlob(c, knob, swGrad(c, -6, bot, 6, bot + 12, NB.gold), pal, NBO * 0.55);
-  // หัวคทา: ม้วนทองสองข้าง + ใต้หัวใจ
-  const scl = new Path2D();
+  nbGem(c, 0, 74, 8, 8, NB.sap, pal, { shape: 'heart', frame: true, w: NBO * 0.6 });
+  // ง่าม: ท่อทองตัว Y + ม้วนทองด้านนอกแต่ละข้าง
+  const fork = new Path2D();
   for (const d of [-1, 1]) {
-    scl.moveTo(0, HY + 38);
-    scl.bezierCurveTo(d * 18, HY + 42, d * 50, HY + 30, d * 52, HY + 4);
-    scl.bezierCurveTo(d * 54, HY - 16, d * 40, HY - 22, d * 34, HY - 10);
-    scl.quadraticCurveTo(d * 30, HY - 2, d * 38, HY + 2);
-    scl.moveTo(0, HY + 44);
-    scl.bezierCurveTo(d * 10, HY + 50, d * 22, HY + 58, d * 16, HY + 68);
-    scl.quadraticCurveTo(d * 12, HY + 74, d * 6, HY + 70);
+    fork.moveTo(0, J + 6);
+    fork.bezierCurveTo(d * 8, J - 20, d * TX, J - 34, d * TX, TY + 6);
   }
-  nbGoldLine(c, scl, pal, 4.4);
-  nbGem(c, 0, HY, 27, 27, NB.sap, pal, { shape: 'heart', frame: true, w: NBO * 0.7 });
-  nbCrown(c, 0, HY - 24, 17, pal);
-  // ห้อยด้านนอก (ทิศแรงโน้มถ่วงในพิกัดคทา = หมุนกลับมุมคทา)
-  for (const [dx, len, kind, ph] of [[-22, 48, 'crown', 0], [-8, 70, 'mac', 1.7]]) {
-    const swg = a + Math.sin(t * 0.07 + ph) * 0.14;
-    const x0 = dx, y0 = HY + 50;
-    const ux = Math.sin(swg), uy = Math.cos(swg);
-    const ex = x0 + ux * len, ey = y0 + uy * len;
-    if (kind === 'crown') {
-      const pp = [];
-      for (let i = 0; i <= 7; i++) pp.push([x0 + ux * len * (i / 7), y0 + uy * len * (i / 7)]);
-      nbPearls(c, pp, 2.6, pal);
-      c.save();
-      c.translate(ex + ux * 10, ey + uy * 10);
-      c.rotate(-swg);
-      nbCrown(c, 0, 4, 9, pal, { w: NBO * 0.5 });
-      c.restore();
-    } else {
-      nbChain(c, [[x0, y0], [ex - ux * 6, ey - uy * 6]], pal, 4.2, 1.5);
-      nbMacaron(c, ex + ux * 4, ey + uy * 4, 10, NB.pink, pal, -swg * 0.5);
-    }
+  nbGoldLine(c, fork, pal, 11);
+  const curl = new Path2D();
+  for (const d of [-1, 1]) {
+    curl.moveTo(d * (TX + 4), -92);
+    curl.bezierCurveTo(d * (TX + 20), -86, d * (TX + 22), -64, d * (TX + 8), -60);
+    curl.quadraticCurveTo(d * (TX + 1), -60, d * (TX + 5), -68);
+    curl.moveTo(d * 20, J - 20);
+    curl.quadraticCurveTo(d * 34, J - 8, d * 30, J + 4);
   }
-  nbBow(c, 0, HY + 46, 18, NB.red, pal, t, { tail: 1.8 });
+  nbGoldLine(c, curl, pal, 2.6);
+  // ปลายง่าม: ปลอกทอง + มุก
+  for (const d of [-1, 1]) {
+    const cap = new Path2D();
+    cap.roundRect(d * TX - 7.5, TY + 2, 15, 9, 3);
+    c.fillStyle = swGrad(c, 0, TY + 2, 0, TY + 11, NB.gold);
+    c.fill(cap);
+    outline(c, cap, pal, NBO * 0.55);
+  }
+  nbPearls(c, [[-TX, TY - 3], [TX, TY - 3]], 6, pal);
+  // คอง่าม: หัวใจไพลินกรอบทอง + มงกุฎบนยอด
+  nbGem(c, 0, J - 4, 13, 13, NB.sap, pal, { shape: 'heart', frame: true, w: NBO * 0.65 });
+  nbCrown(c, 0, J - 22, 12, pal, { w: NBO * 0.6 });
+  // ยางริบบิ้นแดงขลิบทอง → กระเปาะกำมะหยี่ + มาการองรอยิง
+  const bob = Math.sin(t * 0.09) * 1.6;
+  const py = -98 + bob + pull * 74;
+  const band = new Path2D();
+  for (const d of [-1, 1]) {
+    band.moveTo(d * TX, TY + 4);
+    band.quadraticCurveTo(d * (TX * 0.55), (TY + py) / 2 + 6, d * 13, py + 2);
+  }
+  c.save();
+  c.lineCap = 'round';
+  for (const [col, w] of [[pal.line, 6.2 + 2.2 * NBK], [NB.gold[1], 6.2], [NB.red[1], 3.8], ['rgba(255,255,255,.45)', 1]]) {
+    c.strokeStyle = col;
+    c.lineWidth = w;
+    c.stroke(band);
+  }
+  c.restore();
+  if (ammo) nbMacaron(c, 0, py - 5, 13, NB.pink, pal, Math.sin(t * 0.05) * 0.08);
+  const pc = new Path2D();
+  pc.moveTo(-15, py - 1);
+  pc.quadraticCurveTo(0, py + 4, 15, py - 1);
+  pc.quadraticCurveTo(16, py + 8, 0, py + 11);
+  pc.quadraticCurveTo(-16, py + 8, -15, py - 1);
+  pc.closePath();
+  c.fillStyle = swGrad(c, 0, py - 2, 0, py + 11, NB.navy);
+  c.fill(pc);
+  c.save();
+  c.clip(pc);
+  c.setLineDash([2.4, 2.2]);
+  c.strokeStyle = NB.gold[1];
+  c.lineWidth = 1;
+  c.beginPath(); c.moveTo(-12, py + 3); c.quadraticCurveTo(0, py + 9, 12, py + 3); c.stroke();
+  c.setLineDash([]);
+  c.restore();
+  outline(c, pc, pal, NBO * 0.6);
   for (let i = 0; i < 3; i++) {
-    const an = t * 0.045 + (i * TAU) / 3;
-    nbSparkle(c, Math.cos(an) * 64, HY + Math.sin(an) * 24, (6 + 3 * Math.sin(t * 0.1 + i)) * (0.7 + 0.3 * lit), 0.9, i === 1 ? '#D6E8FF' : '#FFF6D6');
+    const an = t * 0.05 + (i * TAU) / 3;
+    nbSparkle(c, Math.cos(an) * 58, -96 + Math.sin(an) * 22, (5.5 + 3 * Math.sin(t * 0.1 + i)) * (0.7 + 0.3 * lit), 0.9, i === 1 ? '#FFD6E6' : '#FFF6D6');
   }
   c.restore();
 }
 /**
- * คทากุญแจ (ของถือ): ถือในอุ้งเท้าซ้ายจอทุกมุม (หัวเอนออกนอกตัว) · อุ้งเท้าไม่ว่าง/นั่ง/หมอบ = ลอยเรืองข้างตัว
- * หางอยู่หลังมือกับคทาเสมอ (ตัววาดจัดลำดับให้เมื่อชุดมี prop)
+ * หนังสติ๊ก (ของถือ): ถือในอุ้งเท้าซ้ายจอทุกมุม (ง่ามเอนออกนอกตัว) · อุ้งเท้าไม่ว่าง/นั่ง/หมอบ = ลอยเรืองข้างตัว
+ * หางอยู่หลังมือกับหนังสติ๊กเสมอ (ตัววาดจัดลำดับให้เมื่อชุดมี prop) · k.sv('slingPull') = ง้างยาง (ช่องท่าทาง เผื่อท่าแอ็ค)
  */
-function nobleKey(c, k) {
+/** เชือกม่านทองที่น้องโหน (ท่าเปิดตัว): จากอุ้งเท้าขึ้นไปพ้นจอตามแนวตัว (ตัวเอียงตามเชือกอยู่แล้ว) + พู่ทองห้อยใต้อุ้งเท้า */
+function nbRopeDraw(c, g, pal, t) {
+  const rope = new Path2D();
+  rope.moveTo(g.x, g.y + 6);
+  rope.lineTo(g.x, g.y - 2400);
+  nbGoldLine(c, rope, pal, 8);
+  c.save();
+  c.strokeStyle = 'rgba(150,98,30,.6)';
+  c.lineWidth = 2;
+  c.beginPath();
+  for (let y = g.y - 20; y > g.y - 900; y -= 12) { c.moveTo(g.x - 4, y); c.lineTo(g.x + 4, y - 6); }
+  c.stroke();
+  c.restore();
+  const sw = Math.sin(t * 0.2) * 4;
+  const knot = new Path2D();
+  knot.arc(g.x, g.y + 24, 9, 0, TAU);
+  swBlob(c, knot, swGrad(c, g.x - 9, g.y + 15, g.x + 9, g.y + 33, NB.gold), pal, NBO * 0.6);
+  const fr = new Path2D();
+  fr.moveTo(g.x - 8, g.y + 30);
+  fr.lineTo(g.x + 8, g.y + 30);
+  fr.lineTo(g.x + 15 + sw, g.y + 84);
+  fr.lineTo(g.x - 15 + sw, g.y + 84);
+  fr.closePath();
+  swBlob(c, fr, swGrad(c, 0, g.y + 30, 0, g.y + 84, ['#FFE9AE', '#E7C374', '#C9973E']), pal, NBO * 0.6);
+  c.strokeStyle = 'rgba(150,98,30,.55)';
+  c.lineWidth = 1.4;
+  c.beginPath();
+  for (let i = -3; i <= 3; i++) { c.moveTo(g.x + i * 2.5, g.y + 36); c.lineTo(g.x + i * 4.2 + sw, g.y + 82); }
+  c.stroke();
+}
+/**
+ * หนังสติ๊ก (ของถือ): ถือในอุ้งเท้าซ้ายจอทุกมุม (ง่ามเอนออกนอกตัว) · อุ้งเท้าไม่ว่าง/นั่ง/หมอบ = ลอยเรืองข้างตัว
+ * ช่องท่าทาง: slingAim = ตั้งตรงเล็งกล้อง · slingPull = ง้างยาง · slingEmpty = ยิงไปแล้ว (กระเปาะว่าง) · slingShot = มาการองกำลังบิน (วาดใน nobleFront)
+ * ท่าเปิดตัว: ยังไม่ถือจนถึงจังหวะชัก (NBI.grab) — ระหว่างโหนเชือก วาดเชือกม่านแทน
+ */
+function nobleSling(c, k) {
   const pal = k.pal, t = k.t || 0;
   const b = ease(clamp01(k.busy ?? 1));
   const side = -1;
   const bob = Math.sin(t * 0.05) * 7;
-  const fx = 70, fy = 476 + (k.drop || 0) * 0.55 + bob;
-  const fa = side * (0.16 + Math.sin(t * 0.035) * 0.05);
+  const fx = 66, fy = 430 + (k.drop || 0) * 0.55 + bob;
+  const fa = side * (0.12 + Math.sin(t * 0.035) * 0.05);
   const g = k.grip;
-  const ha = g ? side * 0.3 - (g.d || 0) * 0.3 : fa;
+  const sv = (key) => (k.sv ? k.sv(key) || 0 : 0);
+  const aim = clamp01(sv('slingAim'));
+  const ha0 = g ? side * 0.12 - (g.d || 0) * 0.3 : fa;   // เอนออกนิดเดียว (หนังสติ๊กสั้น เอนมากแล้วยางพาดเฉียงดูล้ม)
+  const ha = ha0 + (0.04 - ha0) * aim * (g ? 1 : 0);   // เล็งกล้อง: ตั้งตรง ง่ามชี้ขึ้น
   const x = g ? g.x + (fx - g.x) * b : fx, y = g ? g.y + (fy - g.y) * b : fy;
   const a = g ? ha + (fa - ha) * b : fa;
   if (k.layer === 'front') return;
-  if (k.emit) { const [hx, hy] = nbKeyHead(x, y, a); k.emit('wand', c.getTransform().transformPoint(new DOMPoint(hx, hy))); }
-  nbKeyDraw(c, x, y, a, pal, t, g ? b : 1, 1);
+  const ii = k.intro != null && !(k.introSkip > 0) ? k.intro : null;
+  if (ii != null && ii < NBI.grab) {
+    if (g && ii >= NBI.swing && ii < NBI.release) nbRopeDraw(c, g, pal, t);
+    return;
+  }
+  let sc = NB_SLING_SC;
+  if (ii != null && ii < NBI.grab + 14) sc *= ktrack(ii, [[NBI.grab, 0.2], [NBI.grab + 6, 1.15, KE.out], [NBI.grab + 12, 1]]);
+  const [hx, hy] = nbSlingHead(x, y, a, sc);
+  const m = c.getTransform(), hp = m.transformPoint(new DOMPoint(hx, hy));
+  NB_SHOT_PX = { x: hp.x, y: hp.y, s: Math.hypot(m.a, m.b) };
+  if (k.emit) k.emit('wand', hp);
+  nbSlingDraw(c, x, y, a, pal, t, g ? b : 1, sc, { pull: clamp01(sv('slingPull')), ammo: sv('slingEmpty') < 0.5 });
+  // ชักออกมา: ประกายแตกรอบหนังสติ๊ก
+  if (ii != null && ii < NBI.grab + 16) {
+    const u = (ii - NBI.grab) / 16;
+    for (let i = 0; i < 6; i++) {
+      const an = (i / 6) * TAU + 0.4, r = 40 + 70 * u;
+      nbSparkle(c, hx + Math.cos(an) * r, hy + 30 + Math.sin(an) * r, 12 * (1 - u), 1 - u);
+    }
+  }
 }
 
 // ── เอฟเฟกต์ (ไม่ซ้ำ sweet/princess: วงแหวนทองฉลุนิ่ง · ของลอยอยู่กับที่ · กลีบกุหลาบปลิว) ──
@@ -8246,11 +8575,18 @@ function nbPetals(c, t, front) {
 function nobleAura(c, k) {
   const t = k.t || 0, pal = k.pal, lite = gfxLevel() === 'save';
   const hd = Math.min(220, k.headDrop || 0);
-  glowAt(c, 300, 420 + hd * 0.3, 330, '255,206,150', 0.3);
-  glowAt(c, 300, 300 + hd * 0.5, 190, '255,246,226', 0.26);
-  nbRing(c, 300, 384 + hd * 0.5, 340, pal, t, lite);
-  nbFloaters(c, t, pal);
-  if (lite) return;
+  const V = nbIntroVis(k);
+  const a0 = c.globalAlpha;
+  if (V.aura > 0.01) {
+    c.globalAlpha = a0 * V.aura;
+    glowAt(c, 300, 420 + hd * 0.3, 330, '255,206,150', 0.3);
+    glowAt(c, 300, 300 + hd * 0.5, 190, '255,246,226', 0.26);
+  }
+  if (V.ring > 0.01) { c.globalAlpha = a0 * V.ring; nbRing(c, 300, 384 + hd * 0.5, 340, pal, t, lite); }
+  if (V.float > 0.01) { c.globalAlpha = a0 * V.float; nbFloaters(c, t, pal); }
+  c.globalAlpha = a0;
+  if (lite || V.petals <= 0.01) return;
+  c.globalAlpha = a0 * V.petals;
   nbPetals(c, t, false);
   for (let i = 0; i < 6; i++) {
     const tw = Math.sin(t * 0.07 + i * 1.9);
@@ -8258,11 +8594,2566 @@ function nobleAura(c, k) {
     const an = hash(i * 11 + 520) * TAU, rr = 230 + hash(i * 13 + 521) * 90;
     nbSparkle(c, 300 + Math.cos(an) * rr, 380 + Math.sin(an) * rr * 0.8, 3 + (8 * (tw - 0.25)) / 0.75, 1);
   }
+  c.globalAlpha = a0;
 }
-/** หน้าตัว (front): กลีบกุหลาบชั้นหน้า เฉพาะสองข้างตัว (ไม่พาดชุด) */
+/** หน้าตัว (front): กลีบกุหลาบชั้นหน้า เฉพาะสองข้างตัว (ไม่พาดชุด) · มาการองจากหนังสติ๊กพุ่งเข้าหากล้อง (ท่าแอ็ค/ท่าเปิดตัว) */
 function nobleFront(c, k) {
+  const shot = k.sv ? k.sv('slingShot') || 0 : 0;
+  if (shot > 0) nbShotFx(c, shot, k.pal, k.intro != null && !(k.introSkip > 0), c.canvas.width, c.canvas.height);
   if (gfxLevel() === 'save') return;
+  const V = nbIntroVis(k);
+  if (V.petals <= 0.01) return;
+  const a0 = c.globalAlpha;
+  c.globalAlpha = a0 * V.petals;
   nbPetals(c, k.t || 0, true);
+  c.globalAlpha = a0;
+}
+
+// ══ ท่าเปิดตัว "พิธีเปิดตัวที่โดนป่วน" (ผู้ใช้เลือก 21 ต.ค.) · ~9.3 วิ (เฟรมจริง ไม่ยืดเวลา) ══
+//   0.0  ม่านชมพูปิด ฉากมืด สปอตไลต์ส่องกลางม่าน กลองรัว → ป้ายผ้าคลี่ลง "ยินดีต้อนรับ คุณหนู" → แตรประโคม (กล้องค่อย ๆ ดันเข้า)
+//   1.7  ม่านเปิด — เวทีว่าง! สปอตไลต์ส่ายหาซ้าย-ขวา (กล้องแพนตาม) "…?"
+//   3.3  ปุ๊! มาการองพุ่งมาจากซ้ายบนชนป้าย ป้ายพลิก → ด้านหลังลายมือขยุกขยิก "จอมซน!" หน้าแมวแลบลิ้น (กล้องดันเข้าป้าย)
+//   4.2  กล้องเหวี่ยงไปซ้าย → น้องโหนเชือกม่านเหวี่ยงเข้าฉาก (สปอตไลต์ตามไม่ทัน) → ปล่อยมือ ตีลังกา → ลงเวที "ตึง!" หมวกเด้งเบี้ยว
+//   5.6  ดันหมวกคืน (กล้องโคลสอัพหน้า) → ยืดอก โค้งคำนับแบบผู้ดี (เพลงมินูเอต์)
+//   6.7  ชักหนังสติ๊กออกมา → ง้าง เล็งกล้อง ขยิบตา แลบลิ้น → ยิง! มาการองพุ่งเข้าหากล้องแตกเป็นมงกุฎจิ๋ว ประกายทอง กลีบกุหลาบ
+//   7.7  ไฟเวทีสว่าง วงแหวนทอง/ของลอยผุดขึ้น → ไหลเข้าท่าแอ็ค
+//   ไม่ซ้ำ sweet (แอบมองขอบจอ คัพเค้กป๊อป คทาบิน) / princess (น้ำแข็งเกาะจอ ดอกน้ำแข็ง จอแตก)
+const NBI = {
+  unroll: 24, fanfare: 62, open: 100, search: 140, shoot: 200, hit: 214, flipEnd: 232,
+  swing: 250, rollUp: 252, release: 298, land: 322, fix: 336, fixEnd: 358, bow: 366, bowEnd: 398,
+  grab: 404, aim: 420, pull: 424, fire: 448, pop: 463, dur: 560,
+};
+/** ระยะยิงหนังสติ๊ก (เฟรม) — มาการองบินเข้าหากล้อง แตกที่ 55% */
+const NB_SHOT_LEN = 28;
+/** จุดหัวหนังสติ๊กบนจอ (พิกเซลของผ้าใบ) + พิกเซลต่อหน่วยไฟล์ — ของถือบันทึกทุกเฟรม เอฟเฟกต์ยิงชั้นหน้าใช้ */
+let NB_SHOT_PX = null;
+/** เชือกม่าน: จุดหมุนลูกตุ้ม (พิกัดพื้น) + ความยาวถึงเท้า */
+const NB_PIV = [-150, -650], NB_ROPE = 1230;
+/**
+ * ตำแหน่งเท้า/มุมตัวตอนโหนเชือก (swing → release) และตอนลอยตีลังกา (release → land) — พิกัดพื้น
+ * โหน: ลูกตุ้มเร็วสุดที่จุดต่ำสุด · ลอย: โค้งขึ้นแล้วตก หมุนหน้าหนึ่งรอบ (roll)
+ */
+function nbSwingAt(f) {
+  const A = NBI;
+  if (f < A.release) {
+    const s = clamp01((f - A.swing) / (A.release - A.swing));
+    const th = -0.95 + (1.37 * (1 - Math.cos(Math.PI * s))) / 2;
+    return { x: NB_PIV[0] + Math.sin(th) * NB_ROPE, y: NB_PIV[1] + Math.cos(th) * NB_ROPE, lean: -th, roll: 0 };
+  }
+  const r = nbSwingAt(A.release - 0.001);
+  const u = clamp01((f - A.release) / (A.land - A.release));
+  return {
+    x: r.x + (300 - r.x) * u,
+    y: r.y + (FEET_Y - r.y) * u - 440 * u * (1 - u),
+    lean: r.lean * (1 - KE.io(u)),
+    roll: (TAU / 1.25) * KE.io(u),
+  };
+}
+/** สปอตไลต์ ณ เฟรม f: กลางม่าน → เวที → ส่ายหา → ป้าย → ตามน้อง (ตามไม่ทัน) → น้องกลางเวที */
+function nbSpotAt(f) {
+  const A = NBI;
+  if (f < A.open) return { x: 300, y: 150, rx: 300, ry: 230 };
+  if (f < A.hit) {
+    const x = ktrack(f, [[A.open + 20, 300], [A.search + 4, 300], [A.search + 20, -160], [A.search + 40, 760], [A.shoot - 4, 330], [A.hit, 330]]);
+    const y = ktrack(f, [[A.open, 150], [A.open + 30, 520], [A.shoot - 4, 520], [A.hit, 150]]);
+    return { x, y, rx: 260, ry: 300 };
+  }
+  if (f < A.swing) return { x: 330, y: 140, rx: 280, ry: 230 };
+  if (f < A.land + 10) {
+    // ตามน้องช้ากว่าหนึ่งจังหวะ (คนคุมไฟตามไม่ทัน — ตลก)
+    const s = nbSwingAt(Math.max(A.swing, f - 9));
+    const w = ktrack(f, [[A.swing, 0], [A.swing + 14, 1], [A.land, 1], [A.land + 10, 0]]);
+    const q = clamp01((f - A.land) / 10), bx = 330 - 30 * q, by = 140 + 280 * q;
+    return { x: bx + (s.x - bx) * w, y: by + (s.y - 260 - by) * w, rx: 300, ry: 340 };
+  }
+  return { x: 300, y: 420, rx: 320, ry: 380 };
+}
+/** ท่าเปิดตัว: ความชัดของเอฟเฟกต์ประจำชุด — ผุดขึ้นตอนมาการองแตก (ไฟเวทีสว่าง) · กดข้าม = ขึ้นเต็มตามการข้าม */
+function nbIntroVis(k) {
+  if (k.intro == null) return { aura: 1, ring: 1, float: 1, petals: 1 };
+  const f = k.intro, s = k.introSkip || 0;
+  const v = (a, b) => Math.max(s, clamp01((f - a) / (b - a)));
+  const P = NBI.pop;
+  return { aura: v(P, P + 24), ring: v(P + 2, P + 32), float: v(P + 6, P + 40), petals: v(P, P + 50) };
+}
+function nobleIntroStage(f) {
+  return f < NBI.swing ? 'hidden' : 'show';
+}
+/**
+ * ท่าแอ็ค (ยืนค้างหน้าล็อบบี้ได้ · ตามภาพแบบผู้ใช้ 21 ต.ค. "คอเอียงนิดนึง ยืดแขนยืดขาชัดเจน"):
+ * ยืนกางขาเท่ ๆ ชูหนังสติ๊กขึ้นเฉียงข้างตัว แขนอีกข้างกางออก คอเอียงนิด ตาโตสองข้าง แลบลิ้นซน ๆ
+ * มีชีวิต: หายใจ เอียงหัวเบา ๆ มองค้าง-กระตุก · รอบ 6 วิ: ขยิบตาซน ๆ หนึ่งที → ง้างหนังสติ๊กยิงมาการองเข้าหากล้อง → บรรจุใหม่
+ */
+const NOBLE_ACT = {
+  shape(t) {
+    const T = t / 60, L = swLife(t), g = swGlance(T, 3.4);
+    const cy = T % 6;
+    const wink = kenv(cy, 1.6, 1.7, 2.25, 2.35);
+    const pull = ktrack(cy, [[3.5, 0], [4.05, 1, KE.io], [4.25, 1], [4.3, 0]]);
+    const shot = cy >= 4.3 && cy < 4.3 + NB_SHOT_LEN / 60 ? (cy - 4.3) / (NB_SHOT_LEN / 60) : 0;
+    const recoil = kenv(cy, 4.3, 4.34, 4.4, 4.62);
+    return {
+      raiseL: 1, tada: 0.78,                 // แขนซ้ายจอชูหนังสติ๊กเฉียงขึ้น · แขนขวาจอกางออกข้าง
+      kickL: 0.26, kickR: -0.26,             // ยืนกางขาชัด ๆ
+      slingPull: pull, slingShot: shot, slingEmpty: cy >= 4.3 && cy < 5.1 ? 1 : 0,
+      winkCute: wink > 0.5 ? 1 : 0, bleh: 1,
+      gaze: g.x * 0.5 - pull * 0.25, gazeY: g.y * 0.5 - pull * 0.2,
+      tilt: 0.11 + L.tilt + Math.sin(T * 0.8) * 0.025 - pull * 0.04,
+      lean: L.lean + recoil * 0.02,
+      sx: -recoil * 0.02, sy: recoil * 0.02,
+      ear: -0.05 + L.ear - recoil * 0.2,
+      mouth: 0,
+      wag: 0.4 + Math.sin(T * 1.7) * 0.6,
+    };
+  },
+};
+/** รูปร่างตัว ณ เฟรม f ของท่าเปิดตัว (t = เวลาของเกม) */
+function nobleIntroShape(f, t) {
+  const A = NBI, L = swLife(t, 0.6);
+  const air = f >= A.swing && f < A.land;
+  const sw = air ? nbSwingAt(f) : null;
+  const rope = f >= A.swing && f < A.release;
+  const flight = f >= A.release && f < A.land;
+  // ลงพื้น: ยุบรับน้ำหนัก เด้งคืน · หมวกเด้งเบี้ยว → ดันคืน
+  const landSq = ktrack(f, [[A.land - 1, 0], [A.land + 3, 1], [A.land + 9, -0.35], [A.land + 16, 0]]);
+  const knock = ktrack(f, [[A.land, 0], [A.land + 5, 1.15, KE.out], [A.land + 10, 1], [A.fix + 6, 1], [A.fixEnd - 4, 0, KE.io]]);
+  const shake = kenv(f, A.fix - 2, A.fix + 4, A.fixEnd - 8, A.fixEnd);   // สะบัดหัว — หมวกเด้งกลับเข้าที่
+  const bowK = kenv(f, A.bow, A.bow + 12, A.bowEnd - 10, A.bowEnd);
+  const raise = ktrack(f, [[A.grab - 2, 0], [A.grab + 4, 0.25], [A.aim, 0.55, KE.io]]);
+  const pull = ktrack(f, [[A.pull, 0], [A.fire - 4, 1, KE.out], [A.fire, 1], [A.fire + 3, 0]]);
+  const shot = f >= A.fire && f < A.fire + NB_SHOT_LEN ? (f - A.fire) / NB_SHOT_LEN : 0;
+  const recoil = kenv(f, A.fire, A.fire + 2, A.fire + 5, A.fire + 14);
+  const cheer = kenv(f, A.pop + 2, A.pop + 6, A.pop + 22, A.pop + 32);
+  const hopL = ktrack(f, [[A.pop + 2, 0], [A.pop + 10, 5, KE.out], [A.pop + 18, 0, KE.in]]);
+  const s = {
+    dx: air ? (sw.x - 300) * UNIT : 0,
+    lift: (air ? (FEET_Y - sw.y) * UNIT : 0) + hopL,
+    lean: (air ? sw.lean : 0) - 0.02 * pull + L.lean + recoil * 0.02,
+    roll: flight ? sw.roll : 0,
+    raiseL: rope ? 1 : flight ? ktrack(f, [[A.release, 1], [A.release + 8, 0]]) : raise,
+    tada: rope ? 0.55 : flight ? 0.35 : cheer * 0.6,
+    chinR: bowK * 0.7,
+    crouch: bowK * 0.6,
+    beretKnock: knock,
+    slingAim: ktrack(f, [[A.grab, 0], [A.aim, 1]]),
+    slingPull: pull, slingShot: shot, slingEmpty: f >= A.fire && f < A.pop + 30 ? 1 : 0,
+    sx: landSq * 0.07 - recoil * 0.025 - bowK * 0.01,
+    sy: -landSq * 0.11 + recoil * 0.02 - bowK * 0.035,
+    mood: rope || cheer > 0.3 ? 'happy' : flight ? 'happy' : f >= A.land && f < A.land + 14 ? 'hurt' : bowK > 0.4 || shake > 0.4 ? 'happy' : '',
+    winkCute: f >= A.aim + 8 && f < A.pop + 2 ? 1 : 0,
+    bleh: ktrack(f, [[A.aim + 8, 0], [A.aim + 14, 1], [A.pop, 1], [A.pop + 6, 0]]),
+    mouth: (rope ? 0.6 : 0) + (flight ? 0.35 : 0) + kenv(f, A.land, A.land + 2, A.land + 8, A.land + 14) * 0.35 + cheer * 0.5 + recoil * 0.3,
+    gaze: ktrack(f, [[A.grab - 2, 0], [A.grab + 4, -0.35], [A.aim - 4, -0.35], [A.aim + 4, 0]]),
+    gazeY: bowK * 0.7 + ktrack(f, [[A.grab - 2, 0], [A.grab + 4, 0.15], [A.aim - 4, 0.15], [A.aim + 4, 0]]),
+    tilt: (rope ? 0.12 * Math.sin(t * 0.18) : 0) + knock * 0.08 + shake * 0.16 * Math.sin((f - A.fix) * 0.75) - bowK * 0.06 + ktrack(f, [[A.aim, 0], [A.aim + 10, 0.08]]) + L.tilt,
+    ear: L.ear - kenv(f, A.land, A.land + 2, A.land + 10, A.land + 20) * 0.45 - recoil * 0.25 + (rope ? Math.sin(t * 0.4) * 0.12 : 0),
+    wag: 0.3 + (rope || flight ? Math.sin(t * 0.35) * 0.9 : 0) + cheer * Math.sin(t * 0.3) * 0.8,
+  };
+  // ปลายท่า: ไหลเข้าท่าแอ็คแบบนุ่ม
+  const u = KE.io(clamp01((f - (A.dur - 40)) / 40));
+  return u > 0 ? kmix(s, NOBLE_ACT.shape(t), u) : s;
+}
+/**
+ * กล้องท่าเปิดตัว — { z, fx, fy, dx, dy, rot } (ผู้เรียกใส่ให้ทั้งฉาก) · fx คงกลางจอ ใช้ dx เลื่อนตามของ
+ * skip 0..1 = กดข้าม → คืนที่เดิม
+ */
+function nobleCam(f, skip = 0) {
+  const A = NBI;
+  const z = ktrack(f, [[0, 1.28], [A.fanfare, 1.42], [A.open, 1.42], [A.open + 40, 1.08], [A.shoot, 1.06], [A.hit + 4, 1.4, KE.out], [A.flipEnd + 8, 1.55],
+    [A.swing - 6, 1.15], [A.release, 1.2], [A.land, 1.26], [A.fix, 1.7], [A.fixEnd, 1.72], [A.bow + 6, 1.28], [A.bowEnd, 1.3], [A.grab + 8, 1.5],
+    [A.aim + 10, 1.72], [A.fire, 1.82], [A.fire + 6, 2.0, KE.out], [A.pop + 6, 1.06, KE.out], [A.dur - 26, 1], [A.dur, 1]]);
+  const fy = ktrack(f, [[0, 260], [A.open, 260], [A.open + 40, 420], [A.hit, 220], [A.flipEnd + 8, 130], [A.swing - 6, 300], [A.land, 460],
+    [A.fix, 240], [A.fixEnd, 240], [A.bow + 6, 420], [A.grab + 8, 330], [A.aim + 10, 290], [A.pop + 6, 420], [A.dur - 26, 400]]);
+  // เลื่อนตามของ: ส่ายตามสปอตไลต์ตอนหา · เหวี่ยงไปซ้ายรอน้องโหนมา → ตามตัว → กลับกลาง
+  const spot = nbSpotAt(f);
+  let tx = 300, ty = null;
+  const searchK = kenv(f, A.search - 4, A.search + 8, A.shoot - 8, A.shoot);
+  tx += (spot.x - 300) * 0.4 * searchK;
+  if (f < A.swing) tx -= 600 * ktrack(f, [[A.flipEnd + 6, 0], [A.swing, 1, KE.io]]);
+  else if (f < A.land + 14) {
+    const w = ktrack(f, [[A.swing, 0], [A.swing + 24, 0.85], [A.land, 0.85], [A.land + 14, 1]]);
+    const cx = f < A.land ? nbSwingAt(f).x : 300;
+    tx = -300 * (1 - w) + cx * w;
+    if (f < A.land) ty = nbSwingAt(f).y - 300;
+  }
+  let dx = 300 - tx;
+  const wV = ktrack(f, [[A.swing, 0], [A.swing + 20, 0.75], [A.land - 6, 0.75], [A.land + 8, 0]]);
+  let dy = ty != null ? (330 - ty) * wV : 0;
+  let rot = f >= A.swing && f < A.land ? nbSwingAt(f).lean * 0.06 : 0;
+  rot += ktrack(f, [[A.aim, 0], [A.aim + 10, -0.03], [A.pop, -0.03], [A.pop + 10, 0]]);
+  // กล้องสั่น: ชนป้าย · ลงพื้น (แนวตั้ง) · มาการองแตกหน้ากล้อง
+  const sh = (f >= A.hit && f < A.hit + 18 ? 5 * Math.exp(-(f - A.hit) * 0.18) : 0)
+    + (f >= A.pop && f < A.pop + 30 ? 9 * Math.exp(-(f - A.pop) * 0.14) : 0);
+  const shV = f >= A.land && f < A.land + 16 ? 8 * Math.exp(-(f - A.land) * 0.22) : 0;
+  dx += Math.sin(f * 1.9) * sh;
+  dy += Math.cos(f * 2.7) * (sh + shV);
+  rot += Math.sin(f * 1.3) * sh * 0.002;
+  const k = 1 - clamp01(skip);
+  return { z: 1 + (z - 1) * k, fx: 300, fy, dx: dx * k, dy: dy * k, rot: rot * k };
+}
+// ── ฉากพิธี: ม่านเวที ป้ายผ้าต้อนรับ ไฟมืด + สปอตไลต์ มาการองชนป้าย คอนเฟตติ ──
+/** ม่านเวทีชมพูจีบ (ปิดกลางเวที → เปิดเลื่อนออกสองข้างพ้นจอ) + ระบายม่านบน ขอบทอง */
+function nbStageCurtain(c, u, t) {
+  if (u >= 1) return;
+  const Y0 = -1600, Y1 = 760;
+  for (const sd of [-1, 1]) {
+    const inner = 300 + sd * (4 + 1700 * u), outer = 300 + sd * 3200;
+    const N = 30, w = (outer - inner) / N;
+    for (let i = N - 1; i >= 0; i--) {
+      const x0 = inner + w * i, sway = Math.sin(t * 0.04 + i * 0.9) * 3 * (1 - u);
+      const g = c.createLinearGradient(x0, 0, x0 + w, 0);
+      g.addColorStop(0, '#E98DB0');
+      g.addColorStop(0.35, '#FFD3E2');
+      g.addColorStop(0.62, '#F7B4CB');
+      g.addColorStop(1, '#D97099');
+      c.fillStyle = g;
+      c.fillRect(Math.min(x0, x0 + w) - 1 + sway, Y0, Math.abs(w) + 2, Y1 - Y0);
+    }
+    // ชายม่านเป็นคลื่น + ขอบทอง + พู่ทอง
+    const hem = new Path2D();
+    hem.moveTo(inner, Y1 - 30);
+    for (let i = 0; i <= 30; i++) { const x = inner + ((outer - inner) * i) / 30; hem.lineTo(x, Y1 - 30 + Math.sin(i * 1.7) * 6); }
+    hem.lineTo(outer, Y1 + 40);
+    hem.lineTo(inner, Y1 + 40);
+    hem.closePath();
+    c.fillStyle = '#E7BE62';
+    c.fill(hem);
+    c.fillStyle = '#C9973E';
+    for (let x = inner; sd > 0 ? x < outer : x > outer; x += sd * 14) c.fillRect(x - 2, Y1 + 8, 4, 22);
+    // ขอบในม่าน: แถบถักทอง
+    c.strokeStyle = '#E7C374';
+    c.lineWidth = 12;
+    c.beginPath(); c.moveTo(inner, Y0); c.lineTo(inner, Y1); c.stroke();
+    c.strokeStyle = '#FFF0C4';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(inner - sd * 3, Y0); c.lineTo(inner - sd * 3, Y1); c.stroke();
+  }
+  // ระบายม่านบน (ผ้ากำมะหยี่กรมท่า โค้งเป็นช่วง ขอบทอง สายมุก) — ลอยขึ้นพ้นจอตอนม่านเปิด
+  const vy = -40 - 620 * u;
+  c.fillStyle = '#2C3F8E';
+  c.fillRect(-3000, vy - 900, 6600, 900);
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const x0 = -900 + i * 180, x1 = x0 + 180, mx = (x0 + x1) / 2;
+    const p = new Path2D();
+    p.moveTo(x0, vy - 2);
+    p.lineTo(x1, vy - 2);
+    p.quadraticCurveTo(mx, vy + 110, x0, vy - 2);
+    p.closePath();
+    const g = c.createLinearGradient(0, vy, 0, vy + 60);
+    g.addColorStop(0, '#2C3F8E');
+    g.addColorStop(1, '#4A63B8');
+    c.fillStyle = g;
+    c.fill(p);
+    c.strokeStyle = '#E7C374';
+    c.lineWidth = 6;
+    c.beginPath(); c.moveTo(x1, vy - 2); c.quadraticCurveTo(mx, vy + 110, x0, vy - 2); c.stroke();
+    c.fillStyle = '#FFFFFF';
+    for (let j = 1; j < 8; j++) { const uu = j / 8, px = x0 + 180 * uu, py = vy + 4 + Math.sin(uu * Math.PI) * 50 + 10; c.beginPath(); c.arc(px, py, 4, 0, TAU); c.fill(); }
+    c.fillStyle = '#E7C374';
+    c.beginPath(); c.arc(x0, vy + 2, 11, 0, TAU); c.fill();
+  }
+}
+/**
+ * ป้ายผ้าต้อนรับ (แขวนจากราวทองกลางเวที): ผ้าไหมครีม ขอบกรมท่าขลิบทอง ชายหางนกนางแอ่น มงกุฎกลาง "ยินดีต้อนรับ / คุณหนู"
+ * len = คลี่ลง (0..1) · flip 0..1 = พลิกกลับ (ครึ่งหลังเห็นด้านหลัง: ลายมือขยุกขยิก "จอมซน!" + หน้าแมวแลบลิ้น) · rot = แกว่ง
+ */
+function nbBanner(c, len, flip, rot, pal, t) {
+  if (len <= 0.01) return;
+  const W2 = 185, H = 250;
+  c.save();
+  c.translate(300, -16);
+  c.rotate(rot);
+  // เชือกแขวนขึ้นไปพ้นจอ
+  c.strokeStyle = '#C9973E';
+  c.lineWidth = 5;
+  c.beginPath(); c.moveTo(-150, 0); c.lineTo(-110, -900); c.moveTo(150, 0); c.lineTo(110, -900); c.stroke();
+  // ผืนผ้า (คลี่จากบนลงล่าง · พลิกรอบแกนตั้ง)
+  const cs = Math.cos(Math.PI * flip), back = cs < 0;
+  c.save();
+  c.scale(Math.max(0.03, Math.abs(cs)), 1);   // |cos| — ด้านหลังไม่กลับซ้ายขวา (ตัวหนังสืออ่านได้)
+  const L = H * len;
+  const cl = new Path2D();
+  cl.rect(-W2 - 20, 0, 2 * W2 + 40, 8 + L);
+  c.save();
+  c.clip(cl);
+  const cloth = new Path2D();
+  cloth.moveTo(-W2, 6);
+  cloth.lineTo(W2, 6);
+  cloth.lineTo(W2, H);
+  cloth.lineTo(0, H - 46);
+  cloth.lineTo(-W2, H);
+  cloth.closePath();
+  const g = c.createLinearGradient(0, 6, 0, H);
+  g.addColorStop(0, back ? '#F6EEDD' : '#FFFDF5');
+  g.addColorStop(1, back ? '#E9DCC4' : '#F5E9D2');
+  c.fillStyle = g;
+  c.fill(cloth);
+  c.save();
+  c.clip(cloth);
+  c.strokeStyle = '#2C3F8E';
+  c.lineWidth = 26;
+  c.stroke(cloth);
+  c.strokeStyle = '#E7C374';
+  c.lineWidth = 4;
+  const inner = new Path2D();
+  inner.moveTo(-W2 + 22, 28);
+  inner.lineTo(W2 - 22, 28);
+  inner.lineTo(W2 - 22, H - 22);
+  inner.lineTo(0, H - 62);
+  inner.lineTo(-W2 + 22, H - 22);
+  inner.closePath();
+  c.stroke(inner);
+  // รอยยับผ้า
+  c.strokeStyle = 'rgba(160,130,90,.14)';
+  c.lineWidth = 10;
+  for (const x of [-90, 20, 110]) { c.beginPath(); c.moveTo(x, 30); c.quadraticCurveTo(x + 12, 120, x - 4, 210); c.stroke(); }
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  if (!back) {
+    nbCrown(c, 0, 76, 22, pal);
+    c.font = '700 34px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif';
+    c.fillStyle = '#2C3F8E';
+    c.fillText('ยินดีต้อนรับ', 0, 116);
+    c.font = '800 52px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif';
+    c.lineWidth = 7;
+    c.strokeStyle = '#5A3420';
+    c.strokeText('คุณหนู', 0, 168);
+    c.fillStyle = '#F2C443';
+    c.fillText('คุณหนู', 0, 168);
+    for (const d of [-1, 1]) nbSparkle(c, d * 120, 168, 9 + 3 * Math.sin(t * 0.12 + d), 0.9);
+  } else {
+    // ด้านหลัง: ลายมือขยุกขยิกสีชมพู "จอมซน!" + หน้าแมวแลบลิ้นขยิบตา
+    c.save();
+    c.rotate(-0.08);
+    c.font = '800 58px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif';
+    c.lineWidth = 3;
+    c.strokeStyle = '#E84C7E';
+    c.fillStyle = '#FF6E9C';
+    c.fillText('จอมซน!', -30, 108);
+    c.strokeText('จอมซน!', -30, 108);
+    c.restore();
+    c.save();
+    c.translate(96, 170);
+    c.rotate(0.12);
+    c.strokeStyle = '#E84C7E';
+    c.lineWidth = 4;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(-34, -6); c.lineTo(-30, -40); c.lineTo(-12, -24);
+    c.quadraticCurveTo(0, -28, 12, -24); c.lineTo(30, -40); c.lineTo(34, -6);
+    c.quadraticCurveTo(36, 30, 0, 32); c.quadraticCurveTo(-36, 30, -34, -6);
+    c.stroke();
+    c.beginPath(); c.moveTo(-18, 0); c.quadraticCurveTo(-12, -8, -6, 0); c.stroke();   // ขยิบตา
+    c.beginPath(); c.arc(12, -2, 3.5, 0, TAU); c.stroke();
+    c.beginPath(); c.moveTo(-8, 12); c.quadraticCurveTo(0, 18, 8, 12); c.stroke();
+    c.fillStyle = '#FF8FA6';
+    c.beginPath(); c.moveTo(-2, 15); c.quadraticCurveTo(2, 30, 7, 15); c.fill(); c.stroke();
+    c.restore();
+    c.strokeStyle = '#E84C7E';
+    c.lineWidth = 3;
+    for (const [x, y] of [[-140, 190], [-100, 60], [140, 70]]) {
+      c.beginPath(); c.moveTo(x - 9, y); c.lineTo(x + 9, y); c.moveTo(x, y - 9); c.lineTo(x, y + 9); c.stroke();
+    }
+  }
+  c.restore();
+  c.strokeStyle = pal.line;
+  c.lineWidth = 3;
+  c.stroke(cloth);
+  c.restore();
+  // ม้วนผ้าที่ยังไม่คลี่ (ปลายล่าง)
+  if (len < 0.98) {
+    const ry = 8 + L;
+    const roll = new Path2D();
+    roll.roundRect(-W2 - 6, ry - 12, 2 * W2 + 12, 24, 12);
+    c.fillStyle = swGrad(c, 0, ry - 12, 0, ry + 12, ['#FFFDF5', '#EADCC2', '#C9B48E']);
+    c.fill(roll);
+    c.strokeStyle = pal.line;
+    c.lineWidth = 3;
+    c.stroke(roll);
+  }
+  c.restore();
+  // ราวทอง + ลูกปลายมงกุฎ
+  const rod = new Path2D();
+  rod.roundRect(-W2 - 24, -8, 2 * W2 + 48, 16, 8);
+  c.fillStyle = swGrad(c, 0, -8, 0, 8, NB.gold);
+  c.fill(rod);
+  c.strokeStyle = pal.line;
+  c.lineWidth = 3;
+  c.stroke(rod);
+  for (const d of [-1, 1]) nbPearls(c, [[d * (W2 + 30), 0]], 9, pal);
+  c.restore();
+}
+/** ไฟเวทีมืด + สปอตไลต์วงรีอุ่น ๆ (ชั้นหน้า) · a = ความมืดนอกวงไฟ */
+function nbStageDim(c, a, spot) {
+  if (a <= 0.01) return;
+  c.save();
+  c.translate(spot.x, spot.y);
+  c.scale(1, spot.ry / spot.rx);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, spot.rx * 1.25);
+  g.addColorStop(0, 'rgba(30,14,52,0)');
+  g.addColorStop(0.62, 'rgba(30,14,52,0)');
+  g.addColorStop(1, `rgba(30,14,52,${a})`);
+  c.fillStyle = g;
+  c.fillRect(-9000, -9000, 18000, 18000);
+  c.globalCompositeOperation = 'lighter';
+  const w = c.createRadialGradient(0, 0, 0, 0, 0, spot.rx);
+  w.addColorStop(0, `rgba(255,236,190,${0.04 * a})`);
+  w.addColorStop(1, 'rgba(255,236,190,0)');
+  c.fillStyle = w;
+  c.fillRect(-spot.rx, -spot.rx, spot.rx * 2, spot.rx * 2);
+  c.restore();
+  // ลำแสงจากบน
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  const top = spot.y - 1400;
+  const beam = new Path2D();
+  beam.moveTo(spot.x - 50, top);
+  beam.lineTo(spot.x + 50, top);
+  beam.lineTo(spot.x + spot.rx * 0.85, spot.y);
+  beam.lineTo(spot.x - spot.rx * 0.85, spot.y);
+  beam.closePath();
+  const bg = c.createLinearGradient(0, top, 0, spot.y);
+  bg.addColorStop(0, `rgba(255,240,205,${0.06 * a})`);
+  bg.addColorStop(1, `rgba(255,240,205,${0.01 * a})`);
+  c.fillStyle = bg;
+  c.fill(beam);
+  c.restore();
+}
+/** มาการองพุ่งจากซ้ายบน (คนแอบยิง) ชนป้าย → แตกเป็นเศษครีม/ประกาย */
+function nbBannerShot(c, f, pal, t) {
+  const A = NBI;
+  if (f >= A.shoot && f < A.hit) {
+    const u = (f - A.shoot) / (A.hit - A.shoot);
+    const x = -760 + (360 - -760) * u, y = -260 + (100 - -260) * u - 160 * 4 * u * (1 - u);
+    for (let i = 1; i <= 5; i++) {
+      const uu = Math.max(0, u - i * 0.05);
+      nbSparkle(c, -760 + 1120 * uu, -260 + 360 * uu - 640 * uu * (1 - uu), 6 - i * 0.8, 0.8 - i * 0.12, '#FFE1EC');
+    }
+    nbMacaron(c, x, y, 20, NB.pink, pal, u * 9);
+  }
+  if (f >= A.hit && f < A.hit + 26) {
+    const u = (f - A.hit) / 26, a = 1 - u;
+    for (let i = 0; i < 12; i++) {
+      const an = (i / 12) * TAU + 0.3, r = 20 + 140 * KE.out(u);
+      const x = 360 + Math.cos(an) * r, y = 100 + Math.sin(an) * r + 60 * u * u;
+      c.globalAlpha = a;
+      c.fillStyle = i % 3 ? '#FFB6CB' : '#FFF8EC';
+      c.beginPath(); c.arc(x, y, 6 - 3 * u, 0, TAU); c.fill();
+      c.globalAlpha = 1;
+      if (i % 2) nbSparkle(c, x, y, 10 * a, a);
+    }
+  }
+}
+/** คอนเฟตติฉลองตอนมาการองแตก: มงกุฎจิ๋ว มาการองจิ๋ว กลีบกุหลาบ ประกายทอง โปรยลงทั้งจอ ปลิวเป็นคลื่น */
+function nbConfetti(c, f, pal, lite) {
+  const P = NBI.pop, df = f - P;
+  if (df < 0 || df > NBI.dur - P) return;
+  const fade = clamp01((NBI.dur - f) / 40) * clamp01(df / 4);
+  const n = lite ? 18 : 40;
+  for (let i = 0; i < n; i++) {
+    const x0 = -620 + hash(i * 3 + 700) * 1840, v0 = 2 + hash(i * 5 + 701) * 3;
+    const y = -360 + hash(i * 7 + 702) * 260 + df * v0 + df * df * 0.012;
+    if (y > 900) continue;
+    const x = x0 + Math.sin(df * 0.06 + i) * 30;
+    const rot = df * 0.05 * (hash(i + 703) - 0.5) * 2 + i;
+    const kind = i % 4;
+    c.globalAlpha = fade;
+    if (kind === 0) { c.save(); c.translate(x, y); c.rotate(rot * 0.4); nbCrown(c, 0, 6, 11, pal, { w: 1.4 }); c.restore(); }
+    else if (kind === 1) nbPetal(c, x, y, 9, rot, 1);
+    else if (kind === 2) nbSparkle(c, x, y, 8 + 4 * Math.sin(df * 0.3 + i), 1);
+    else nbMacaron(c, x, y, 8, i % 8 === 3 ? NB.blue : NB.pink, pal, rot * 0.3, { w: 1.2 });
+  }
+  c.globalAlpha = 1;
+}
+/** เอฟเฟกต์ท่าเปิดตัว (พิกัดพื้น) — back: ไม่มี (ฉากหลังสกินอยู่แล้ว) · front: ม่าน ป้าย ไฟมืด/สปอตไลต์ มาการองชนป้าย คอนเฟตติ ไฟสว่างวาบ */
+function nobleIntroFx(c, k) {
+  if (k.layer !== 'front') return;
+  const f = k.intro, A = NBI, pal = k.pal, t = k.t || 0, s = k.introSkip || 0;
+  const lite = gfxLevel() === 'save';
+  c.save();
+  c.globalAlpha *= 1 - s;
+  nbStageCurtain(c, KE.io(clamp01((f - A.open) / 40)), t);
+  const len = ktrack(f, [[A.unroll, 0], [A.unroll + 36, 1, KE.out], [A.rollUp, 1], [A.rollUp + 12, 0, KE.in]]);
+  const flip = KE.io(clamp01((f - A.hit) / (A.flipEnd - A.hit)));
+  const swing = f >= A.hit ? 0.22 * Math.sin((f - A.hit) * 0.32) * Math.exp(-(f - A.hit) * 0.05) : 0;
+  nbBanner(c, len, flip, swing, pal, t);
+  nbBannerShot(c, f, pal, t);
+  const dim = ktrack(f, [[0, 0.7], [A.open, 0.7], [A.open + 40, 0.6], [A.pop - 1, 0.6], [A.pop + 18, 0]]);
+  nbStageDim(c, dim, nbSpotAt(f));
+  // ไฟเวทีสว่างวาบตอนมาการองแตก
+  const flash = kenv(f, A.pop - 1, A.pop + 2, A.pop + 5, A.pop + 22);
+  if (flash > 0.01) {
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = `rgba(255,236,200,${0.16 * flash})`;
+    c.fillRect(-4000, -4000, 8000, 8000);
+    c.restore();
+  }
+  nbConfetti(c, f, pal, lite);
+  c.restore();
+}
+/**
+ * ยิงหนังสติ๊ก (ชั้นหน้าสุด · พิกเซลของผ้าใบ): มาการองพุ่งจากหัวหนังสติ๊กเข้าหากล้อง (โตขึ้น หมุน) → แตกเป็นมงกุฎจิ๋ว ประกายทอง กลีบกุหลาบ
+ * u = ความคืบหน้า 0..1 · big = ท่าเปิดตัว (แตกใหญ่กว่า)
+ */
+function nbShotFx(c, u, pal, big, W, H) {
+  if (!NB_SHOT_PX || u <= 0 || u >= 1) return;
+  const { x: hx, y: hy, s } = NB_SHOT_PX;
+  // เป้า: เยื้องจากหัวหนังสติ๊กออกนอกตัว (ซ้ายบนจอ) — ไม่บินทับหน้าน้อง
+  const tx = Math.max(W * 0.18, Math.min(W * 0.82, hx - W * 0.12)), ty = Math.max(H * 0.18, hy - H * 0.16);
+  const POP = 0.55;
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  if (u < POP) {
+    const v = u / POP, e = v * v;
+    const x = hx + (tx - hx) * e, y = hy + (ty - hy) * e - 40 * s * Math.sin(Math.PI * v);
+    const sc = Math.min(s * NB_SLING_SC * (1 + 5 * e * e) * (big ? 1.25 : 1), (Math.min(W, H) * 0.16) / 13);
+    for (let i = 1; i <= 4; i++) {
+      const vv = Math.max(0, v - i * 0.06), ee = vv * vv;
+      nbSparkle(c, hx + (tx - hx) * ee, hy + (ty - hy) * ee, (6 + 10 * ee) * s * 1.6, 0.7 - i * 0.14, '#FFF1C2');
+    }
+    c.translate(x, y);
+    c.scale(sc, sc);
+    nbMacaron(c, 0, 0, 13, NB.pink, pal, v * 8);
+  } else {
+    const v = (u - POP) / (1 - POP), a = 1 - v;
+    const R = Math.min(W, H) * (big ? 0.55 : 0.32) * KE.out(v);
+    const sz = s * (big ? 3.2 : 2);
+    c.globalAlpha = a;
+    c.strokeStyle = `rgba(255,214,120,${0.8 * a})`;
+    c.lineWidth = 6 * a + 1;
+    c.beginPath(); c.arc(tx, ty, R * 0.8, 0, TAU); c.stroke();
+    for (let i = 0; i < 14; i++) {
+      const an = (i / 14) * TAU + 0.2, r = R * (0.6 + 0.4 * hash(i + 800));
+      const x = tx + Math.cos(an) * r, y = ty + Math.sin(an) * r + 40 * s * v * v;
+      if (i % 3 === 0) { c.save(); c.translate(x, y); c.rotate(an); c.scale(sz, sz); nbCrown(c, 0, 6, 10, pal, { w: 1.2 }); c.restore(); }
+      else if (i % 3 === 1) nbPetal(c, x, y, 7 * sz, an * 2, 1);
+      else nbSparkle(c, x, y, 9 * sz, 1);
+    }
+    nbSparkle(c, tx, ty, 26 * s * (big ? 1.6 : 1.1) * a, a, '#FFF6D6');
+  }
+  c.restore();
+}
+/** เสียงตามจังหวะ (เฟรมจริง · ชื่อใน sfx ของ audio.js) */
+const NB_VOICES = [[0, 'nobleDrumroll'], [NBI.unroll, 'nobleUnroll'], [NBI.fanfare, 'nobleFanfare'], [NBI.open, 'nobleCurtain'],
+  [NBI.search + 26, 'nobleHuh'], [NBI.shoot, 'nobleShoot'], [NBI.hit, 'nobleHit'], [NBI.hit + 4, 'nobleFlip'],
+  [NBI.swing, 'nobleSwing'], [NBI.release + 2, 'nobleSpin'], [NBI.land, 'nobleLand'], [NBI.fix + 2, 'nobleFix'],
+  [NBI.bow, 'nobleMinuet'], [NBI.grab, 'nobleGrab'], [NBI.pull, 'noblePull'], [NBI.aim + 12, 'nobleGiggle'],
+  [NBI.fire, 'nobleFire'], [NBI.pop, 'nobleBurst'], [NBI.pop + 40, 'nobleShimmer']];
+const NOBLE_INTRO = {
+  dur: NBI.dur,
+  appear: NBI.swing,
+  stage: nobleIntroStage,
+  cam: (f, skip) => nobleCam(f, skip),
+  ground: true,     // เอฟเฟกต์อยู่บนพื้น ไม่ลอยตามตัวตอนโหนเชือก/ตีลังกา
+  voices: NB_VOICES,
+  shape: nobleIntroShape,
+  fx: nobleIntroFx,
+};
+
+// ══ พี่ชาวี (Agent Chawee · ระดับ S) — วาดใหม่ทั้งชุดตามภาพแบบผู้ใช้ (21 ต.ค.: "สูทเท่ ๆ ปรับเพิ่มให้สมเป็นสกินระดับ S") ══
+//   แบบ: สูทดำกระดุมคู่ (กระดุมเงิน 2×2) ปกแหลมซาติน กระเป๋าฝาปิดที่สะโพก กระเป๋าอก · เชิ้ตขาว เนคไทกรมท่าลายทางเงิน
+//   · กางเกงสแล็คดำจีบหน้า · รองเท้าหนังดำมันวาว (อ็อกซ์ฟอร์ด เชือกผูก) · หูฟังบอดี้การ์ดข้างหัว สายขดลงคอปก
+//   เพิ่มให้สมระดับ S (ไม่มีในแบบ): ผ้าเช็ดหน้าเงินในกระเป๋าอก · เข็มกลัดทองรูปโล่อุ้งเท้าบนปก · ที่หนีบเนคไททอง · กระดุมข้อมือทอง
+//   · ของถือ: กระเป๋าเอกสารหนังดำขลิบทอง ตราโล่อุ้งเท้า · เอฟเฟกต์: สปอตไลต์ล็อบบี้ + แอ่งแสงบนพื้น · เสากั้นทองเชือกกำมะหยี่แดง (โซนวีไอพี)
+//     · แฟลชกล้องปาปารัสซี่วาบเป็นพัก ๆ สองข้างตัว · ผงทองลอยในลำแสง
+//   ภาษาดีไซน์ต่างจาก sweet/princess/noble: ไม่มีหมวก/ผ้าคลุม/ลูกไม้/ระบาย/ของลอยวน/วงแหวน — เรียบ คม หรู ดำ-เงิน-ทอง
+//   ไม่ใช้แม่แบบของชุดอื่น (กฎ S ข้อ 1) — ใช้แค่ตัวช่วยพื้นฐาน + swGrad/swSmooth (+ nbChinY = เส้นคางที่วัดจากแบบตัวน้อง)
+const CW = {
+  // ผู้ใช้ 21 ต.ค. "สีตัวเทากว่า แขนเทาเข้ม ขาเข้มสุด อยากให้สีเท่า ๆ กันหมด": ตัว แขน กางเกง ใช้สีชุดเดียวกัน ไล่สีแคบ (เดิมบนสุดเทาสว่าง ล่างดำ)
+  suit: ['#3B3E4A', '#2E313B', '#24262E'],
+  suitD: ['#3B3E4A', '#2E313B', '#24262E'],   // กางเกง = สีเดียวกับสูท
+  // แขนสูท: โทนเดียวกับตัวสูทช่วงไหล่-อก (ตัวสูทข้างตัวมีเงาเข้ม) — เดิมใช้ suit ไล่ขวางแขน ด้านบนแขนสว่างอมฟ้ากว่าตัวสูท ดูคนละชิ้น (ผู้ใช้ 21 ต.ค.)
+  sleeve: ['#3B3E4A', '#2E313B', '#24262E'],
+  lapel: ['#555969', '#454856', '#383B47'],   // ปกซาติน: โซนสีของตัวเอง อ่อนกว่าเนื้อสูทชัด ๆ (ผู้ใช้ 21 ต.ค. แบ่งโซนให้รู้ว่าเป็นปก) ไล่แคบ
+  shirt: ['#FFFFFF', '#F2F4F8', '#D3D8E3'],
+  tie: ['#5266A0', '#2B3A72', '#151D44'],
+  stripe: 'rgba(214,222,236,.9)',
+  silver: ['#FFFFFF', '#D3D8E1', '#7F8798'],
+  gold: ['#FFF7D6', '#F2C65A', '#B4842A'],
+  shoe: ['#62656F', '#1F2027', '#07070A'],
+  leather: ['#4A4C56', '#1E1F25', '#0A0A0D'],
+  velvet: ['#E0566A', '#A51D35', '#5E0B1C'],
+};
+/** เส้นขอบของชุดบางกว่าเส้นตัวน้อง (กฎชุดระดับ S ข้อ 7) */
+const CWK = 0.65;
+const CWO = OL * CWK;
+
+// ── ตัวช่วยพื้นฐาน ──
+/** ภาพประกายสำเร็จรูปโทนขาวเย็น (แสงฟุ้ง + ดาวสี่แฉกยาวบาง + แฉกเฉียงสั้น) — แฟลช/ประกายเงิน ทำครั้งเดียวต่อสี */
+const CW_SPARK = new Map();
+function cwSparkSprite(col, rgb) {
+  const key = col + rgb;
+  let cv = CW_SPARK.get(key);
+  if (cv) return cv;
+  const S = 160, h = 80, r = 34;
+  cv = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(S, S) : Object.assign(document.createElement('canvas'), { width: S, height: S });
+  const g = cv.getContext('2d');
+  const gr = g.createRadialGradient(h, h, 0, h, h, r * 2.2);
+  gr.addColorStop(0, `rgba(${rgb},.75)`);
+  gr.addColorStop(0.35, `rgba(${rgb},.22)`);
+  gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, S, S);
+  g.fillStyle = col;
+  g.beginPath();
+  g.moveTo(h, h - r);
+  g.quadraticCurveTo(h + r * 0.08, h - r * 0.08, h + r, h);
+  g.quadraticCurveTo(h + r * 0.08, h + r * 0.08, h, h + r);
+  g.quadraticCurveTo(h - r * 0.08, h + r * 0.08, h - r, h);
+  g.quadraticCurveTo(h - r * 0.08, h - r * 0.08, h, h - r);
+  g.fill();
+  g.strokeStyle = col;
+  g.lineWidth = 2.4;
+  g.lineCap = 'round';
+  g.globalAlpha = 0.7;
+  g.beginPath();
+  for (const [dx, dy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { g.moveTo(h, h); g.lineTo(h + dx * r * 0.36, h + dy * r * 0.36); }
+  g.stroke();
+  CW_SPARK.set(key, cv);
+  return cv;
+}
+function cwSparkle(c, x, y, r, a = 1, col = '#FFFFFF', rgb = '230,240,255') {
+  if (a <= 0.02 || r <= 0.3) return;
+  const S = 160 * (r / 34);
+  const a0 = c.globalAlpha;
+  c.globalAlpha = a0 * Math.min(1, a);
+  c.drawImage(cwSparkSprite(col, rgb), x - S / 2, y - S / 2, S, S);
+  c.globalAlpha = a0;
+}
+/** กระดุมโลหะเงินโดม: เงาใต้ · ไล่สีวง · ขอบวงใน · จุดสะท้อน */
+function cwButton(c, x, y, r, pal) {
+  c.fillStyle = 'rgba(0,0,0,.35)';
+  c.beginPath(); c.arc(x + r * 0.15, y + r * 0.3, r * 1.05, 0, TAU); c.fill();
+  const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+  g.addColorStop(0, CW.silver[0]);
+  g.addColorStop(0.55, CW.silver[1]);
+  g.addColorStop(1, CW.silver[2]);
+  c.fillStyle = g;
+  c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO * 0.55;
+  c.stroke();
+  c.strokeStyle = 'rgba(90,96,112,.55)';
+  c.lineWidth = 0.9;
+  c.beginPath(); c.arc(x, y, r * 0.58, 0, TAU); c.stroke();
+  c.fillStyle = '#FFFFFF';
+  c.beginPath(); c.arc(x - r * 0.38, y - r * 0.4, r * 0.26, 0, TAU); c.fill();
+}
+/** ทองนูนชิ้นเล็ก (ที่หนีบเนคไท กระดุมข้อมือ มุมกระเป๋า): ไล่สีทอง + ขอบ + เส้นสะท้อน */
+function cwGoldFill(c, path, x0, y0, x1, y1, pal, w = CWO * 0.6) {
+  c.fillStyle = swGrad(c, x0, y0, x1, y1, CW.gold);
+  c.fill(path);
+  c.strokeStyle = pal.line;
+  c.lineWidth = w;
+  c.lineJoin = 'round';
+  c.stroke(path);
+}
+/** โล่อุ้งเท้าทอง (เข็มกลัดปก · ตรากระเป๋า): โล่ขอบทอง พื้นดำ อุ้งเท้าทองกลาง */
+function cwPawShield(c, x, y, s, pal, w = CWO * 0.6) {
+  const q = new Path2D();
+  q.moveTo(x, y - s);
+  q.quadraticCurveTo(x + s * 0.55, y - s * 0.72, x + s * 0.86, y - s * 0.82);
+  q.quadraticCurveTo(x + s * 0.9, y + s * 0.2, x, y + s);
+  q.quadraticCurveTo(x - s * 0.9, y + s * 0.2, x - s * 0.86, y - s * 0.82);
+  q.quadraticCurveTo(x - s * 0.55, y - s * 0.72, x, y - s);
+  q.closePath();
+  cwGoldFill(c, q, x - s, y - s, x + s, y + s, pal, w);
+  c.save();
+  c.translate(x, y - s * 0.02);
+  c.scale(0.72, 0.72);
+  c.translate(-x, -y);
+  c.fillStyle = '#1A1B21';
+  c.fill(q);
+  c.restore();
+  c.fillStyle = swGrad(c, x - s * 0.5, y - s * 0.5, x + s * 0.5, y + s * 0.5, CW.gold);
+  c.beginPath(); c.ellipse(x, y + s * 0.2, s * 0.24, s * 0.2, 0, 0, TAU); c.fill();
+  for (const [dx, dy] of [[-0.28, -0.14], [-0.1, -0.3], [0.1, -0.3], [0.28, -0.14]]) {
+    c.beginPath(); c.arc(x + dx * s, y + dy * s, s * 0.09, 0, TAU); c.fill();
+  }
+}
+/** พิกัดบนแขนเสื้อ L(u ตามแขนจากไหล่, v ขวางแขน · v บวก = ด้านบนของแขน) จากแกนแขนที่ดัดแล้ว (ทรงแขนซ้ายในไฟล์ตัวน้อง) */
+function cwArmFrame(Q) {
+  const S0x = 214, S0y = 436, dx = -0.95, dy = 0.31, nx = -0.31, ny = -0.95;
+  const ax = (u) => Q(S0x + dx * u, S0y + dy * u);
+  const frames = new Map();
+  return (u, v) => {
+    let f = frames.get(u);
+    if (!f) {
+      const [x0, y0] = ax(u - 1.5), [x1, y1] = ax(u + 1.5), [px, py] = ax(u);
+      const l = Math.hypot(x1 - x0, y1 - y0) || 1;
+      let Nx = -(y1 - y0) / l, Ny = (x1 - x0) / l;
+      const [qx, qy] = Q(S0x + dx * u + nx, S0y + dy * u + ny);
+      if (Nx * (qx - px) + Ny * (qy - py) < 0) { Nx = -Nx; Ny = -Ny; }
+      const s = l / 3;
+      f = [px, py, Nx * s, Ny * s];
+      frames.set(u, f);
+    }
+    return [f[0] + f[2] * v, f[1] + f[3] * v];
+  };
+}
+/** แขนสูท (แขนยืน/ยกแขน): ปลอกเชิ้ตขาวโผล่ปลายแขน กระดุมข้อมือทอง · แขนสูทดำทรงตรง เงาทรงกระบอก ไฮไลต์บนแขน รอยย่นข้อพับ */
+function cwSleeve(c, Q, pal, path = null) {
+  const L = cwArmFrame(Q);
+  if (path) { cwSleeveFit(c, L, pal, path); return; }
+  // ปลอกเชิ้ต (ใต้แขนสูท โผล่ปลายแขน)
+  const cf = new Path2D();
+  cf.moveTo(...L(54, 28)); cf.lineTo(...L(71, 27)); cf.quadraticCurveTo(...L(73, 0), ...L(71, -27)); cf.lineTo(...L(54, -28)); cf.closePath();
+  const [c0x, c0y] = L(64, 28), [c1x, c1y] = L(64, -28);
+  c.fillStyle = swGrad(c, c0x, c0y, c1x, c1y, CW.shirt);
+  c.fill(cf);
+  outline(c, cf, pal, CWO);
+  { const [gx, gy] = L(66, -12); const g = new Path2D(); g.roundRect(gx - 3.4, gy - 3.4, 6.8, 6.8, 1.8); cwGoldFill(c, g, gx - 3, gy - 3, gx + 3, gy + 3, pal, CWO * 0.5); }
+  // แขนสูท
+  const sl = new Path2D();
+  sl.moveTo(...L(-4, 34));
+  sl.quadraticCurveTo(...L(30, 35), ...L(62, 31));
+  sl.quadraticCurveTo(...L(64, 0), ...L(62, -31));
+  sl.quadraticCurveTo(...L(30, -34), ...L(-4, -33));
+  sl.quadraticCurveTo(...L(-13, 0), ...L(-4, 34));
+  sl.closePath();
+  const [a0x, a0y] = L(28, 36), [a1x, a1y] = L(28, -36);
+  c.fillStyle = swGrad(c, a0x, a0y, a1x, a1y, CW.sleeve);
+  c.fill(sl);
+  c.save();
+  c.clip(sl);
+  c.lineCap = 'round';
+  // ไฮไลต์ผ้าบนแขน (แสงจากบน)
+  c.strokeStyle = 'rgba(255,255,255,.07)';
+  c.lineWidth = 9;
+  c.beginPath(); c.moveTo(...L(2, 20)); c.quadraticCurveTo(...L(30, 23), ...L(56, 18)); c.stroke();
+  // รอยย่นข้อพับ (เงาเข้ม + ขอบสว่าง)
+  for (const [u, v0, v1] of [[30, 14, -20], [40, 18, -10]]) {
+    c.strokeStyle = 'rgba(0,0,0,.4)';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(...L(u, v0)); c.quadraticCurveTo(...L(u + 6, (v0 + v1) / 2), ...L(u + 2, v1)); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.07)';
+    c.lineWidth = 1.6;
+    c.beginPath(); c.moveTo(...L(u + 3, v0)); c.quadraticCurveTo(...L(u + 9, (v0 + v1) / 2), ...L(u + 5, v1)); c.stroke();
+  }
+  // กระดุมแขนเสื้อสามเม็ด (ด้านล่างปลายแขน)
+  c.restore();
+  outline(c, sl, pal, CWO);
+  for (const u of [48, 53, 58]) { const [bx, by] = L(u, -24); cwButton(c, bx, by, 2.2, pal); }
+}
+/**
+ * แขนสูทเข้ารูป (ผู้ใช้ 21 ต.ค. "สูทไม่เข้ารูปสัดส่วนน้อง"): ลงสีในรูปแขนจริง (path) ตั้งแต่โคนแขนถึงข้อมือ
+ * เส้นรอบแขนสูท = เส้นแขนของน้อง (อยู่นอกรูปแขนพอดี) · ปลอกเชิ้ตขาวช่วงข้อมือ + เส้นปลายแขนสูท/ปลอก · กระดุมแขนเสื้อ กระดุมข้อมือทอง
+ */
+function cwSleeveFit(c, L, pal, path) {
+  c.save();
+  c.clip(path);
+  // พื้นที่ตามแกนแขน (ผู้ใช้ 21 ต.ค. "โบกมือเสื้อขาด"): เดิมเป็นสี่เหลี่ยมจากสี่มุม — แขนที่ยกโค้งงอ หลุดกรอบตรงกลางแขน เห็นขน
+  const band = (u0, u1, w = 90) => {
+    const us = [];
+    for (let u = u0; u < u1; u += 6) us.push(u);
+    us.push(u1);
+    const q = new Path2D();
+    q.moveTo(...L(us[0], w));
+    for (const u of us.slice(1)) q.lineTo(...L(u, w));
+    for (const u of us.slice().reverse()) q.lineTo(...L(u, -w));
+    q.closePath();
+    return q;
+  };
+  const sl = band(-40, 62);
+  // ผู้ใช้ 21 ต.ค. (สองรอบ) "สีแขนเสื้อกับชุดไม่เข้าพวก": ใช้การลงสีชุดเดียวกับตัวสูท — ไล่สีแนวตั้ง (ไหล่สว่าง → ล่างเข้ม)
+  //   + เงาข้างตัว (ข้างตัวเข้ม) พิกัดเดียวกับ chaweeJacket · แล้วค่อยเงาทรงแขนจาง ๆ (บนแขนสว่างนิด ใต้แขนเข้มนิด)
+  c.fillStyle = swGrad(c, 0, 384, 0, 600, CW.suit);
+  c.fill(sl);
+  // เงาข้างตัวของสูทตรงรอยต่อไหล่ (~.15) ทั้งแขน — แขนกางออกนอกตัวไม่จมเงาข้างตัวเต็มที่ (เข้มกว่าตัวสูทเป็นคนละผ้า)
+  // วัดสีจริงแล้วแขนเข้มกว่าตัว ~12 ระดับ (ผู้ใช้ 21 ต.ค. รอบสาม) — ตัวสูทได้แสงกลางตัว แขนไม่ได้ → ยกแขนสว่างขึ้นเท่าตัว ไม่ทาเงาทับ
+  c.fillStyle = 'rgba(255,255,255,.04)';
+  c.fill(sl);
+  const [a0x, a0y] = L(28, 34), [a1x, a1y] = L(28, -34);
+  const fg = c.createLinearGradient(a0x, a0y, a1x, a1y);
+  fg.addColorStop(0, 'rgba(255,255,255,.05)');
+  fg.addColorStop(0.55, 'rgba(255,255,255,.01)');
+  fg.addColorStop(1, 'rgba(0,0,0,.03)');
+  c.fillStyle = fg;
+  c.fill(sl);
+  // ปลอกเชิ้ตยาวถึงโคนอุ้งเท้า (u 79) — เดิมจบ u 72 เหลือขนส้มคั่นก่อนอุ้งเท้า
+  const cf = band(61, 79);
+  const [c0x, c0y] = L(70, 30), [c1x, c1y] = L(70, -30);
+  c.fillStyle = swGrad(c, c0x, c0y, c1x, c1y, CW.shirt);
+  c.fill(cf);
+  c.lineCap = 'round';
+  // ไฮไลต์ผ้าบนแขน + รอยย่นข้อพับ
+  c.strokeStyle = 'rgba(255,255,255,.07)';
+  c.lineWidth = 8;
+  c.beginPath(); c.moveTo(...L(0, 18)); c.quadraticCurveTo(...L(30, 21), ...L(56, 16)); c.stroke();
+  for (const [u, v0, v1] of [[30, 14, -18], [40, 16, -8]]) {
+    c.strokeStyle = 'rgba(0,0,0,.4)';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(...L(u, v0)); c.quadraticCurveTo(...L(u + 6, (v0 + v1) / 2), ...L(u + 2, v1)); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.07)';
+    c.lineWidth = 1.6;
+    c.beginPath(); c.moveTo(...L(u + 3, v0)); c.quadraticCurveTo(...L(u + 9, (v0 + v1) / 2), ...L(u + 5, v1)); c.stroke();
+  }
+  // เส้นปลายแขนสูท (ทับขอบปลอกเชิ้ต) + เส้นปลายปลอกเชิ้ต (ก่อนอุ้งเท้า)
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO;
+  c.beginPath(); c.moveTo(...L(62, 40)); c.quadraticCurveTo(...L(64, 0), ...L(62, -40)); c.stroke();
+  c.lineWidth = CWO * 0.8;
+  c.beginPath(); c.moveTo(...L(79, 40)); c.quadraticCurveTo(...L(80.5, 0), ...L(79, -40)); c.stroke();
+  c.restore();
+  for (const u of [48, 53, 58]) { const [bx, by] = L(u, -22); cwButton(c, bx, by, 2.2, pal); }
+  const [gx, gy] = L(71, -11);
+  const g = new Path2D(); g.roundRect(gx - 3.2, gy - 3.2, 6.4, 6.4, 1.6);
+  cwGoldFill(c, g, gx - 3, gy - 3, gx + 3, gy + 3, pal, CWO * 0.5);
+}
+/** แขนสูทบนแขนท่อ (นั่งเกา/ถือหัวใจ/เท้าคาง · ช่อง sitSleeve): สูทตรงยาวใกล้อุ้งเท้า ปลอกเชิ้ต + กระดุมข้อมือทอง · o.open = ต้นแขนต่อแขนท่อนล่าง (ไม่มีปลาย) */
+function cwTubeSleeve(c, band, upto, pal, o = {}) {
+  const pts = band.pts, N = pts.length - 1;
+  const end = o.open ? N : Math.max(2, N - 2);
+  const nrm = (i) => [-Math.sin(pts[i].a), Math.cos(pts[i].a)];
+  const L = [], R = [];
+  for (let i = 0; i <= end; i++) { const q = pts[i], [nx, ny] = nrm(i), h = band.half(i) + 4; L.push([q.x + nx * h, q.y + ny * h]); R.push([q.x - nx * h, q.y - ny * h]); }
+  const qe = pts[end], [enx, eny] = nrm(end), etx = Math.cos(qe.a), ety = Math.sin(qe.a), he = band.half(end) + 4;
+  if (!o.open) {
+    // ปลอกเชิ้ตโผล่ปลายแขน
+    const cf = new Path2D();
+    cf.moveTo(qe.x - etx * 6 + enx * (he - 1), qe.y - ety * 6 + eny * (he - 1));
+    cf.lineTo(qe.x + etx * 8 + enx * (he - 2), qe.y + ety * 8 + eny * (he - 2));
+    cf.lineTo(qe.x + etx * 8 - enx * (he - 2), qe.y + ety * 8 - eny * (he - 2));
+    cf.lineTo(qe.x - etx * 6 - enx * (he - 1), qe.y - ety * 6 - eny * (he - 1));
+    cf.closePath();
+    c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, CW.shirt);
+    c.fill(cf);
+    outline(c, cf, pal, CWO);
+  }
+  const sl = new Path2D();
+  swSmooth(sl, L, true);
+  if (o.open) sl.arc(qe.x, qe.y, he, qe.a + Math.PI / 2, qe.a - Math.PI / 2, true);
+  else sl.lineTo(...R[end]);
+  swSmooth(sl, R.slice().reverse(), false);
+  const q0 = pts[0];
+  sl.arc(q0.x, q0.y, band.half(0) + 8, q0.a - Math.PI / 2, q0.a + Math.PI / 2, true);   // ครอบโคนแขนมิด
+  sl.closePath();
+  const im = Math.round(end / 2), qm = pts[im], [mx, my] = nrm(im), hm = band.half(im) + 6;
+  c.fillStyle = swGrad(c, qm.x + mx * hm, qm.y + my * hm, qm.x - mx * hm, qm.y - my * hm, CW.sleeve);
+  c.fill(sl);
+  c.save();
+  c.clip(sl);
+  c.strokeStyle = 'rgba(255,255,255,.07)';
+  c.lineWidth = 7;
+  c.lineCap = 'round';
+  c.beginPath();
+  for (let i = 1; i < end; i++) { const q = pts[i], [nx, ny] = nrm(i), h = band.half(i) * 0.45; c[i > 1 ? 'lineTo' : 'moveTo'](q.x + nx * h, q.y + ny * h); }
+  c.stroke();
+  c.restore();
+  outline(c, sl, pal, CWO);
+  if (!o.open) { const [gx, gy] = [qe.x + etx * 3 - enx * he * 0.4, qe.y + ety * 3 - eny * he * 0.4]; const g = new Path2D(); g.roundRect(gx - 3.2, gy - 3.2, 6.4, 6.4, 1.6); cwGoldFill(c, g, gx - 3, gy - 3, gx + 3, gy + 3, pal, CWO * 0.5); }
+}
+/** แขนสูทแขนท่อนล่างท่าเกาท้อง (ช่อง forearmSleeve): ลงสีในรูปแขน+ศอก ถึงข้อมือ · ปลอกเชิ้ต + กระดุมข้อมือทอง */
+function cwForearmSleeve(c, band, capR, pal) {
+  const pts = band.pts, N = pts.length - 1, end = Math.max(2, N - 2);
+  const nrm = (i) => [-Math.sin(pts[i].a), Math.cos(pts[i].a)];
+  const qe = pts[end], [enx, eny] = nrm(end), etx = Math.cos(qe.a), ety = Math.sin(qe.a), he = band.half(end) + 4;
+  const cf = new Path2D();
+  cf.moveTo(qe.x - etx * 4 + enx * (he - 1), qe.y - ety * 4 + eny * (he - 1));
+  cf.lineTo(qe.x + etx * 8 + enx * (he - 2), qe.y + ety * 8 + eny * (he - 2));
+  cf.lineTo(qe.x + etx * 8 - enx * (he - 2), qe.y + ety * 8 - eny * (he - 2));
+  cf.lineTo(qe.x - etx * 4 - enx * (he - 1), qe.y - ety * 4 - eny * (he - 1));
+  cf.closePath();
+  c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, CW.shirt);
+  c.fill(cf);
+  outline(c, cf, pal, CWO);
+  const area = new Path2D();
+  area.addPath(band.path);
+  area.moveTo(pts[0].x + capR, pts[0].y);
+  area.arc(pts[0].x, pts[0].y, capR, 0, TAU, true);
+  c.save();
+  c.clip(area);
+  const T = 900, keep = new Path2D();
+  keep.moveTo(qe.x + enx * T, qe.y + eny * T);
+  keep.lineTo(qe.x - enx * T, qe.y - eny * T);
+  keep.lineTo(qe.x - enx * T - etx * T, qe.y - eny * T - ety * T);
+  keep.lineTo(qe.x + enx * T - etx * T, qe.y + eny * T - ety * T);
+  keep.closePath();
+  c.clip(keep);
+  const im = Math.round(end / 2), qm = pts[im], [mx, my] = nrm(im), hm = band.half(im) + 6;
+  c.fillStyle = swGrad(c, qm.x + mx * hm, qm.y + my * hm, qm.x - mx * hm, qm.y - my * hm, CW.sleeve);
+  c.fillRect(qe.x - 600, qe.y - 600, 1200, 1200);
+  c.restore();
+  // ขอบปลายแขนสูท (ขวางแขนที่ข้อมือ)
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO;
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(qe.x + enx * (he - 3), qe.y + eny * (he - 3)); c.lineTo(qe.x - enx * (he - 3), qe.y - eny * (he - 3)); c.stroke();
+  const [gx, gy] = [qe.x + etx * 3 - enx * he * 0.4, qe.y + ety * 3 - eny * he * 0.4];
+  const g = new Path2D(); g.roundRect(gx - 3.2, gy - 3.2, 6.4, 6.4, 1.6);
+  cwGoldFill(c, g, gx - 3, gy - 3, gx + 3, gy + 3, pal, CWO * 0.5);
+}
+/** แขนสูทบนแขนที่ยกมาเลียอุ้งเท้า (ท่านั่ง · ช่อง groomSleeve) — แขนพับรูป S: ลากเส้นหนาเท่าแขนตามแกน ตัดที่เส้นข้อมือ */
+function cwGroomSleeve(c, band, pal) {
+  const pts = band.pts, N = pts.length - 1, end = Math.min(N - 2, 9);
+  const nrm = (i) => [-Math.sin(pts[i].a), Math.cos(pts[i].a)];
+  const qe = pts[end], [enx, eny] = nrm(end), etx = Math.cos(qe.a), ety = Math.sin(qe.a), he = band.half(end) + 4;
+  const cf = new Path2D();
+  cf.moveTo(qe.x - etx * 4 + enx * (he - 1), qe.y - ety * 4 + eny * (he - 1));
+  cf.lineTo(qe.x + etx * 8 + enx * (he - 2), qe.y + ety * 8 + eny * (he - 2));
+  cf.lineTo(qe.x + etx * 8 - enx * (he - 2), qe.y + ety * 8 - eny * (he - 2));
+  cf.lineTo(qe.x - etx * 4 - enx * (he - 1), qe.y - ety * 4 - eny * (he - 1));
+  cf.closePath();
+  c.fillStyle = swGrad(c, qe.x + enx * he, qe.y + eny * he, qe.x - enx * he, qe.y - eny * he, CW.shirt);
+  c.fill(cf);
+  outline(c, cf, pal, CWO);
+  c.save();
+  const T = 900, keep = new Path2D();
+  keep.moveTo(qe.x + enx * T, qe.y + eny * T);
+  keep.lineTo(qe.x - enx * T, qe.y - eny * T);
+  keep.lineTo(qe.x - enx * T - etx * T, qe.y - eny * T - ety * T);
+  keep.lineTo(qe.x + enx * T - etx * T, qe.y + eny * T - ety * T);
+  keep.closePath();
+  c.clip(keep);
+  const qm = pts[Math.round(end / 2)], [mx, my] = nrm(Math.round(end / 2)), hm = band.half(Math.round(end / 2)) + 6;
+  c.strokeStyle = swGrad(c, qm.x - mx * hm, qm.y - my * hm, qm.x + mx * hm, qm.y + my * hm, CW.sleeve);
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  for (let i = 0; i < Math.min(N, end + 1); i++) {
+    c.lineWidth = band.half(i) + band.half(i + 1) + 0.8;
+    c.beginPath(); c.moveTo(pts[i].x, pts[i].y); c.lineTo(pts[i + 1].x, pts[i + 1].y); c.stroke();
+  }
+  c.restore();
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO;
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(qe.x + enx * (he - 3), qe.y + eny * (he - 3)); c.lineTo(qe.x - enx * (he - 3), qe.y - eny * (he - 3)); c.stroke();
+}
+/**
+ * สูทท่อนบน (ช่อง shirt): ผ้าดำเงาทรงกระบอก · หน้า: ช่อง V เห็นเชิ้ตขาว + เนคไทลายทางเงิน ที่หนีบทอง · ปกแหลมซาตินสองข้าง (ปลายปกชี้ขึ้นหาไหล่)
+ * เข็มกลัดโล่อุ้งเท้าทองบนปกซ้ายจอ · กระเป๋าอกขวาจอ + ผ้าเช็ดหน้าเงินพับสามยอด · กระดุมเงินแถวบน (คู่) · ขอบสาบทับซ้อนหน้า
+ * ยืน: ถึงเอว (ชายสูทต่อในช่อง skirt ทับกางเกง) · นั่ง/หมอบ: ยาวถึงชายในชิ้นเดียว · หลัง: ตะเข็บกลางหลัง
+ */
+function chaweeJacket(c, k) {
+  const pal = k.pal;
+  for (const a of k.arms || []) cwSleeve(c, a.pt, pal, a.path);
+  if (k.sleevesOnly) return;
+  const P = k.pt || ((x, y) => [x, y]);
+  const mode = k.mode || 'stand', sit = mode === 'sit', loaf = mode === 'loaf';
+  // ท่านั่ง: คอเสื้อ/ปก/คอเชิ้ตอยู่ใต้คางจริง (k.chinDrop = หัวลดลงเท่าไหร่ — ตัววาดส่งมา) · ผู้ใช้ 21 ต.ค. "เกาท้องคอปกตกลงมาข้างล่าง"
+  //   (ค่าคอเสื้อกลางของท่าเกาท้อง vy 78 ลึกกว่าคางจริง ~30 หน่วย — ชุดนี้ปกแหลม+เนคไท เห็นช่องว่างชัด)
+  const vy = sit && k.chinDrop != null ? k.chinDrop : k.vy ?? (sit ? 46 : 0);
+  const hemY = loaf ? 700 : sit ? 600 : 540;
+  // ไหล่มนนอกตัว (ท่าถือ/รับหัวใจ · เท้าคาง): ผ้าสูทคลุม (ผู้ใช้ 21 ต.ค. "หดแขนแล้วโชว์ไหล่ เสื้อขาด")
+  for (const sh of k.shoulders || []) {
+    c.save();
+    c.clip(sh);
+    c.fillStyle = swGrad(c, 0, 384, 0, 600, CW.suit);
+    c.fillRect(-200, 200, 1000, 500);
+    c.restore();
+  }
+  c.save();
+  if (k.body) c.clip(k.body);
+  const area = new Path2D();
+  area.moveTo(...P(20, 330 + vy));
+  area.lineTo(...P(580, 330 + vy));
+  area.lineTo(...P(580, hemY));
+  area.lineTo(...P(20, hemY));
+  area.closePath();
+  const [, ya] = P(300, 384 + vy), [, yb] = P(300, 600);
+  c.fillStyle = swGrad(c, 0, ya, 0, yb, CW.suit);
+  c.fill(area);
+  c.save();
+  c.clip(area);
+  // เงาทรงกระบอก: ข้างตัวเข้ม กลางสว่าง
+  const [lx] = P(168, 460), [rx] = P(432, 460);
+  const sg = cwSideShade(c, lx, rx);
+  c.fillStyle = sg;
+  c.fillRect(lx - 500, ya - 300, rx - lx + 1000, 900);
+  // ตะเข็บเข้ารูปเอว (ดาร์ท) สองข้าง
+  c.lineCap = 'round';
+  for (const x of [226, 374]) {
+    const s = x < 300 ? -1 : 1;
+    c.strokeStyle = 'rgba(0,0,0,.35)';
+    c.lineWidth = 2.6;
+    c.beginPath(); c.moveTo(...P(x, 470 + vy)); c.quadraticCurveTo(...P(x + s * 4, 505 + vy), ...P(x + s, hemY - 4)); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.08)';
+    c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(...P(x + 3, 470 + vy)); c.quadraticCurveTo(...P(x + s * 4 + 3, 505 + vy), ...P(x + s + 3, hemY - 4)); c.stroke();
+  }
+  const top = 396 + vy, vb = 478 + vy;   // คอ / ก้นตัว V (แถวกระดุมบน)
+  if (!k.back) {
+    // เชิ้ตขาวในช่อง V
+    const sh = new Path2D();
+    sh.moveTo(...P(258, top - 26)); sh.lineTo(...P(342, top - 26)); sh.lineTo(...P(304, vb + 2)); sh.lineTo(...P(296, vb + 2)); sh.closePath();
+    const [, s0] = P(300, top), [, s1] = P(300, vb);
+    c.fillStyle = swGrad(c, 0, s0, 0, s1, CW.shirt);
+    c.fill(sh);
+    c.save();
+    c.clip(sh);
+    // เนคไท: ใบไทกว้างขึ้นลงล่าง ลายทางเฉียงเงิน ที่หนีบทอง
+    const tw = (y) => 7 + 4.5 * clamp01((y - top) / Math.max(1, vb - top));
+    const ti = new Path2D();
+    ti.moveTo(...P(300 - tw(top), top + 6)); ti.lineTo(...P(300 + tw(top), top + 6));
+    ti.lineTo(...P(300 + tw(vb), vb + 8)); ti.lineTo(...P(300, vb + 18)); ti.lineTo(...P(300 - tw(vb), vb + 8)); ti.closePath();
+    const [t0x] = P(300 - 12, top), [t1x] = P(300 + 12, top);
+    c.fillStyle = swGrad(c, t0x, 0, t1x, 0, CW.tie);
+    c.fill(ti);
+    c.save();
+    c.clip(ti);
+    c.strokeStyle = CW.stripe;
+    c.lineWidth = 2.6;
+    for (let y = top - 20; y < vb + 30; y += 11) { c.beginPath(); c.moveTo(...P(286, y)); c.lineTo(...P(314, y + 16)); c.stroke(); }
+    c.strokeStyle = 'rgba(255,255,255,.18)';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(...P(297, top + 8)); c.lineTo(...P(297, vb + 8)); c.stroke();
+    c.restore();
+    outline(c, ti, pal, CWO * 0.8);
+    { const [x0, y0] = P(287, top + 44), [x1, y1] = P(313, top + 47); const tc = new Path2D(); tc.moveTo(x0, y0 - 2.4); tc.lineTo(x1, y1 - 2.4); tc.lineTo(x1, y1 + 2.4); tc.lineTo(x0, y0 + 2.4); tc.closePath(); cwGoldFill(c, tc, x0, y0 - 3, x1, y1 + 3, pal, CWO * 0.5); }
+    c.restore();
+    // คอเชิ้ต + ปมไท ติดเสื้อ (ผู้ใช้ 21 ต.ค.: หันแค่หน้า ไม่ได้หันตัว คอปกไม่ต้องตามหัว) — ระดับคางในพิกัดตัว (389 + vy) หัวบังขอบบน
+    chaweeCollarFront(c, { ...k, cpt: null, hxShift: 0, faceShift: 0 }, (x, y) => P(x, y + vy), pal);
+    // ปกแหลมซาติน (ซ้าย/ขวา): ขอบใน = ขอบช่อง V · ปลายปกชี้ขึ้นหาไหล่ · มีรอยบากระหว่างปกกับคอปกสูท
+    for (const d of [-1, 1]) {
+      const X = (x) => 300 + d * (300 - x);
+      const lp = new Path2D();
+      // ผู้ใช้ 21 ต.ค. "เส้นตัดปกขาด": ปลายปก/รอยบากเดิม (x 196/214) ลอดใต้แขนสูทที่ทับอกถึง x ~221 เส้นขอบเลยหาย
+      //   → ปลายปกแหลม x 229 รอยบาก x 240 อยู่บนอกทั้งชิ้น เส้นขอบลากต่อเนื่องครบรอบ
+      lp.moveTo(...P(X(262), top - 4));
+      lp.lineTo(...P(X(246), top - 6));
+      lp.quadraticCurveTo(...P(X(236), top + 6), ...P(X(229), top + 18));   // ปลายปกแหลมชี้ขึ้นออกนอก
+      lp.lineTo(...P(X(241), top + 32));   // รอยบาก
+      lp.quadraticCurveTo(...P(X(246), vb - 14), ...P(X(296), vb + 2));
+      lp.lineTo(...P(X(300), vb - 4));
+      lp.quadraticCurveTo(...P(X(278), top + 36), ...P(X(262), top - 4));
+      lp.closePath();
+      const [g0x, g0y] = P(X(214), top + 10), [g1x, g1y] = P(X(290), vb);
+      c.fillStyle = swGrad(c, g0x, g0y, g1x, g1y, CW.lapel);
+      c.fill(lp);
+      c.save();
+      c.clip(lp);
+      // เงาซาติน: แถบสว่างตามแนวพับปก
+      c.strokeStyle = 'rgba(255,255,255,.12)';
+      c.lineWidth = 5;
+      c.lineCap = 'round';
+      c.beginPath(); c.moveTo(...P(X(242), top + 14)); c.quadraticCurveTo(...P(X(256), top + 44), ...P(X(288), vb - 6)); c.stroke();
+      c.restore();
+      outline(c, lp, pal, CWO);
+    }
+    // เข็มกลัดโล่อุ้งเท้าทอง (ปกซ้ายจอ)
+    { const [px, py] = P(254, top + 50); cwPawShield(c, px, py, 9, pal, CWO * 0.55); cwSparkle(c, px + 6, py - 8, 7, 0.9, '#FFF6D6', '255,230,165'); }
+    // กระเป๋าอก (ขวาจอ) + ผ้าเช็ดหน้าเงินพับสามยอด
+    {
+      const sq = new Path2D();
+      sq.moveTo(...P(356, top + 54)); sq.lineTo(...P(361, top + 40)); sq.lineTo(...P(367, top + 50)); sq.lineTo(...P(373, top + 37));
+      sq.lineTo(...P(379, top + 49)); sq.lineTo(...P(386, top + 39)); sq.lineTo(...P(390, top + 52)); sq.closePath();
+      const [q0x, q0y] = P(356, top + 38), [q1x, q1y] = P(390, top + 54);
+      c.fillStyle = swGrad(c, q0x, q0y, q1x, q1y, CW.silver);
+      c.fill(sq);
+      outline(c, sq, pal, CWO * 0.55);
+      const wl = new Path2D();
+      wl.moveTo(...P(352, top + 55)); wl.lineTo(...P(394, top + 50)); wl.lineTo(...P(394, top + 55)); wl.lineTo(...P(352, top + 60)); wl.closePath();
+      c.fillStyle = 'rgba(0,0,0,.45)';
+      c.fill(wl);
+      c.strokeStyle = 'rgba(255,255,255,.14)';
+      c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(...P(352, top + 61)); c.lineTo(...P(394, top + 56)); c.stroke();
+    }
+    // สาบทับซ้อนหน้า (กระดุมคู่: แผงขวาทับแผงซ้าย) — จากก้นตัว V ลงชาย
+    c.strokeStyle = 'rgba(0,0,0,.5)';
+    c.lineWidth = 2.8;
+    c.beginPath(); c.moveTo(...P(304, vb)); c.quadraticCurveTo(...P(310, (vb + hemY) / 2), ...P(308, hemY)); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.12)';
+    c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(...P(307, vb + 2)); c.quadraticCurveTo(...P(313, (vb + hemY) / 2), ...P(311, hemY)); c.stroke();
+    // กระดุมเงินคู่ (แถวที่อยู่ในชิ้นนี้)
+    for (const y of sit ? [vb + 18, 578] : [vb + 18, vb + 54]) {
+      if (y > hemY - 8 || (!sit && !loaf && y > vb + 30)) continue;
+      for (const d of [-1, 1]) { const [bx, by] = P(300 + d * 25, y); cwButton(c, bx, by, 5.2, pal); }
+    }
+    if (sit || loaf) {
+      // กระเป๋าฝาปิดสองข้าง (ชิ้นเดียวถึงชาย)
+      for (const d of [-1, 1]) cwFlap(c, P, 300 + d * 84, hemY - 46, pal, d);
+    }
+  } else {
+    // หลัง: ตะเข็บกลางหลัง + ปกตั้งหลังคอ
+    c.strokeStyle = 'rgba(0,0,0,.5)';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(...P(300, top - 10)); c.lineTo(...P(300, hemY)); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.1)';
+    c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(...P(303, top - 10)); c.lineTo(...P(303, hemY)); c.stroke();
+  }
+  c.restore();
+  if (sit) {
+    c.strokeStyle = pal.line;
+    c.lineWidth = CWO;
+    c.lineCap = 'round';
+    c.beginPath(); c.moveTo(...P(20, hemY)); c.lineTo(...P(580, hemY)); c.stroke();
+  }
+  c.restore();
+}
+/** เงาข้างตัวสูท (ข้างตัวเข้ม กลางสว่างนิด) — ตัวสูท ชายสูท แขนสูท ใช้ชุดเดียวกัน สีต่อกันพอดีที่รอยต่อ */
+function cwSideShade(c, lx = 168, rx = 432) {
+  const sg = c.createLinearGradient(lx, 0, rx, 0);
+  sg.addColorStop(0, 'rgba(0,0,0,.2)');
+  sg.addColorStop(0.28, 'rgba(255,255,255,.02)');
+  sg.addColorStop(0.5, 'rgba(255,255,255,.04)');
+  sg.addColorStop(0.72, 'rgba(255,255,255,.02)');
+  sg.addColorStop(1, 'rgba(0,0,0,.2)');
+  return sg;
+}
+/** กระเป๋าฝาปิด (สะโพก): ฝาโค้งล่างนิด เงาใต้ฝา ขอบสว่างบน */
+function cwFlap(c, P, cx, y, pal, d) {
+  const w = 30;
+  const fl = new Path2D();
+  fl.moveTo(...P(cx - w, y)); fl.lineTo(...P(cx + w, y - d * 1.5));
+  fl.lineTo(...P(cx + w - 1, y + 13 - d * 1.5)); fl.quadraticCurveTo(...P(cx, y + 16), ...P(cx - w + 1, y + 13)); fl.closePath();
+  const [, f0] = P(cx, y), [, f1] = P(cx, y + 14);
+  c.fillStyle = 'rgba(0,0,0,.38)';
+  c.save(); c.translate(0, 3); c.fill(fl); c.restore();
+  c.fillStyle = swGrad(c, 0, f0, 0, f1, CW.suit);
+  c.fill(fl);
+  c.strokeStyle = 'rgba(255,255,255,.14)';
+  c.lineWidth = 1.4;
+  c.beginPath(); c.moveTo(...P(cx - w + 2, y + 2.4)); c.lineTo(...P(cx + w - 2, y + 0.6 - d * 1.5)); c.stroke();
+  outline(c, fl, pal, CWO * 0.7);
+}
+/** กางเกงสแล็คดำ: ผ้าตัดด้วยเงาตัวจริง (ตัว+ขา) · รอยจีบหน้าเป็นสันกลางขา · เงาข้างขา · ยืน: ถึงหลังเท้า (รองเท้าซ้อนใต้) */
+function cwTrousers(c, k, P, sit) {
+  const pal = k.pal;
+  const y0 = sit ? 590 : 530, y1 = sit ? 660 : 626;   // ยืน: เริ่มใต้ชายสูท (เดิม 508 โผล่เป็นเส้นระหว่างสูทท่อนบนกับชายสูท)
+  if (k.run) { cwRunTrousers(c, k, P, y0); return; }
+  const parts = k.bodies || (k.body ? [k.body] : [null]);
+  parts.forEach((part0, pi) => {
+    const clip = part0 && part0.clip ? part0.clip : part0;
+    const M = part0 && part0.pt ? part0.pt : P;
+    // ท่าเกาท้อง (นั่ง + bodies = ตัว, ต้นขาซ้าย, ต้นขาขวา): ต้นขาเป็นกางเกงทั้งชิ้น (ผู้ใช้ 21 ต.ค. "เกาท้องเสื้อขาด")
+    const ya = sit && k.bodies && pi > 0 ? 380 : y0;
+    const area = new Path2D();
+    area.moveTo(...M(60, ya)); area.lineTo(...M(540, ya)); area.lineTo(...M(540, y1)); area.lineTo(...M(60, y1)); area.closePath();
+    c.save();
+    if (clip) c.clip(clip);
+    const [, gy0] = M(300, y0), [, gy1] = M(300, y1);
+    c.fillStyle = swGrad(c, 0, gy0, 0, gy1, CW.suitD);
+    c.fill(area);
+    c.save();
+    c.clip(area);
+    c.lineCap = 'round';
+    if (!sit) {
+      // สันจีบหน้ากลางขาสองข้าง + เงาข้างขา
+      for (const x of [198, 402]) {
+        c.strokeStyle = 'rgba(255,255,255,.16)';
+        c.lineWidth = 2.6;
+        c.beginPath(); c.moveTo(...M(x, 560)); c.lineTo(...M(x + (x < 300 ? 2 : -2), y1)); c.stroke();
+        c.strokeStyle = 'rgba(0,0,0,.35)';
+        c.lineWidth = 2;
+        c.beginPath(); c.moveTo(...M(x + 4, 560)); c.lineTo(...M(x + 4 + (x < 300 ? 2 : -2), y1)); c.stroke();
+      }
+      c.strokeStyle = 'rgba(0,0,0,.5)';
+      c.lineWidth = 2.6;
+      c.beginPath(); c.moveTo(...M(300, 560)); c.lineTo(...M(300, 604)); c.stroke();
+      // รอยย่นปลายขา (ขากางเกงกองบนรองเท้า)
+      for (const x of [186, 214, 388, 414]) {
+        c.strokeStyle = 'rgba(0,0,0,.3)';
+        c.lineWidth = 2;
+        c.beginPath(); c.moveTo(...M(x, y1 - 14)); c.quadraticCurveTo(...M(x + 6, y1 - 9), ...M(x + 2, y1 - 3)); c.stroke();
+      }
+    }
+    c.restore();
+    c.restore();
+  });
+}
+/** กางเกงบนตัววิ่ง: ผ้า = ตัว+ขาใต้เอว ตัดปลายขาตามเส้น cuffs ของจังหวะนั้น */
+function cwRunTrousers(c, k, P, y0) {
+  const pal = k.pal, R = k.run;
+  const cut = new Path2D();
+  cut.rect(-2000, -2000, 5000, 5000);
+  for (const q of R.cuffs) {
+    const cs = Math.cos(q.ang), sn = Math.sin(q.ang), L = q.hw * 1.12, D = q.hw * 2.6;
+    const pt = (u, v) => [q.x + u * cs - v * sn, q.y + u * sn + v * cs];
+    cut.moveTo(...pt(-L, 0)); cut.lineTo(...pt(-L, D)); cut.lineTo(...pt(L, D)); cut.lineTo(...pt(L, 0)); cut.closePath();
+  }
+  const area = new Path2D();
+  area.moveTo(...P(-200, y0)); area.lineTo(...P(800, y0)); area.lineTo(...P(800, 760)); area.lineTo(...P(-200, 760)); area.closePath();
+  const [, gy0] = P(300, y0);
+  c.save();
+  c.clip(R.body);
+  c.save();
+  c.clip(cut, 'evenodd');
+  c.fillStyle = swGrad(c, 0, gy0, 0, gy0 + 110, CW.suitD);
+  c.fill(area);
+  c.restore();
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO;
+  c.lineCap = 'round';
+  for (const q of R.cuffs) {
+    const cs = Math.cos(q.ang), sn = Math.sin(q.ang), L = q.hw * 1.3;
+    c.beginPath(); c.moveTo(q.x - L * cs, q.y - L * sn); c.lineTo(q.x + L * cs, q.y + L * sn); c.stroke();
+  }
+  c.restore();
+}
+/**
+ * ชายสูท (ยืน · ต่อจากท่อนบนที่เอว ทับกางเกงและต้นขา): ลงสีในเงาตัว+ขาจริง ชายโค้งนิด
+ * หน้า: กระดุมเงินคู่แถวล่าง สาบทับซ้อน กระเป๋าฝาปิดสองข้าง · หลัง: ช่องผ่ากลาง (เวนต์)
+ */
+function cwJacketSkirt(c, k, P) {
+  const pal = k.pal;
+  const yT = 510, yH = 582 - 10 * (k.hold || 0);
+  // ผู้ใช้ 21 ต.ค. "สูทไม่เข้ารูปสัดส่วนน้อง": เดิมเป็นทรงตายตัวกว้างกว่าสะโพก (ชายยื่นเป็นมุมกล่อง) → ลงสีในเงาตัว+ขาจริงทีละชิ้น
+  //   ขอบข้างสูท = เส้นตัว/ขาของน้อง (อยู่นอกเงาพอดี) · ชายโค้งนิดตามตัว ลากเส้นชายในแต่ละชิ้น
+  const parts = k.bodies || (k.body ? [k.body] : [null]);
+  const [, ya] = P(300, 384), [, yb] = P(300, 600);
+  const [lx] = P(168, 460), [rx] = P(432, 460);
+  const sg = cwSideShade(c, lx, rx);
+  const hem = (M) => { const q = new Path2D(); for (let i = 0; i <= 20; i++) { const x = 100 + i * 20; q[i ? 'lineTo' : 'moveTo'](...M(x, yH + 6 * Math.sin((i / 20) * Math.PI))); } return q; };
+  for (const part0 of parts) {
+    const clip = part0 && part0.clip ? part0.clip : part0;
+    const M = part0 && part0.pt ? part0.pt : P;
+    const area = new Path2D();
+    area.moveTo(...M(-100, yT));
+    area.lineTo(...M(700, yT));
+    area.lineTo(...M(700, yH));
+    for (let i = 20; i >= 0; i--) { const x = 100 + i * 20; area.lineTo(...M(x, yH + 6 * Math.sin((i / 20) * Math.PI))); }
+    area.lineTo(...M(-100, yH));
+    area.closePath();
+    c.save();
+    if (clip) c.clip(clip);
+    c.fillStyle = swGrad(c, 0, ya, 0, yb, CW.suit);
+    c.fill(area);
+    c.save();
+    c.clip(area);
+    c.fillStyle = sg;
+    c.fillRect(lx - 300, yb - 400, rx - lx + 600, 600);
+    c.restore();
+    // ชายสูท: ไม่ลากเส้นน้ำตาลตัดตรงข้ามตัว-ขา (ผู้ใช้ 21 ต.ค.) — เงาเข้มนุ่มใต้ชาย + ขอบสว่างบาง ๆ แทน (ผ้าสูทซ้อนบนกางเกง)
+    c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,.35)';
+    c.lineWidth = 4;
+    c.save(); c.translate(0, 2); c.stroke(hem(M)); c.restore();
+    c.strokeStyle = 'rgba(255,255,255,.1)';
+    c.lineWidth = 1.4;
+    c.save(); c.translate(0, -1.5); c.stroke(hem(M)); c.restore();
+    c.restore();
+  }
+  c.lineCap = 'round';
+  if (!k.back) {
+    c.strokeStyle = 'rgba(0,0,0,.5)';
+    c.lineWidth = 2.8;
+    c.beginPath(); c.moveTo(...P(309, yT - 6)); c.quadraticCurveTo(...P(310, (yT + yH) / 2), ...P(309, yH + 5)); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.12)';
+    c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(...P(312, yT - 6)); c.quadraticCurveTo(...P(313, (yT + yH) / 2), ...P(312, yH + 5)); c.stroke();
+    for (const d of [-1, 1]) cwFlap(c, P, 300 + d * 84, yT + 34, pal, d);
+    for (const d of [-1, 1]) { const [bx, by] = P(300 + d * 25, yT + 22); cwButton(c, bx, by, 5.2, pal); }
+  } else {
+    // ช่องผ่าหลัง (เวนต์)
+    c.strokeStyle = 'rgba(0,0,0,.55)';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(...P(300, yT - 10)); c.lineTo(...P(300, yH + 4)); c.stroke();
+    c.beginPath(); c.moveTo(...P(300, yH - 22)); c.lineTo(...P(306, yH - 26)); c.stroke();
+  }
+}
+/** ช่อง skirt: กางเกงก่อน → ชายสูททับ (ยืน/ตัววิ่ง) · นั่ง: กางเกงเฉพาะตัก (สูทยาวถึงชายในท่อนบนแล้ว) */
+function chaweeBottom(c, k) {
+  const P = k.pt || ((x, y) => [x, y]);
+  const sit = k.mode === 'sit';
+  cwTrousers(c, k, P, sit);
+  if (!sit) cwJacketSkirt(c, k, P);
+}
+/**
+ * รองเท้าหนังอ็อกซ์ฟอร์ดดำมันวาว (ช่อง ankle · ต้องมี k.leg): คลุมอุ้งเท้าตามรูปเท้าจริงทุกท่า
+ * ปลายรองเท้า (หัวแก้ว) แถบแสงโค้ง + จุดสะท้อน · ตะเข็บหัวรองเท้า · เชือกผูกสามคู่ · ขอบพื้นรองเท้า
+ */
+function chaweeShoes(c, k) {
+  const pal = k.pal;
+  const left = k.side === 'left', sit = k.mode === 'sit';
+  let P = k.pt || ((x, y) => [x, y]);
+  const [cx, cy, hw] = sit ? (left ? [264, 616, 30] : [336, 616, 30]) : (left ? [224, 607, 41] : [376, 607, 41]);
+  if (k.ankleAt) P = runAnklePt(k.ankleAt, cx, cy, hw);
+  const yS = cy + 6;
+  const sag = (x) => { const v = (x - cx) / hw; return 1 - Math.min(1, v * v); };
+  const band = (ya, yb, s = 0) => {
+    const q = new Path2D(), N = 10, X0 = cx - hw * 1.7, X1 = cx + hw * 1.7;
+    for (let i = 0; i <= N; i++) { const x = X0 + ((X1 - X0) * i) / N; q[i ? 'lineTo' : 'moveTo'](...P(x, ya + s * sag(x))); }
+    for (let i = N; i >= 0; i--) { const x = X0 + ((X1 - X0) * i) / N; q.lineTo(...P(x, yb + s * sag(x))); }
+    q.closePath();
+    return q;
+  };
+  if (!k.leg) return;
+  c.save();
+  c.clip(k.leg);
+  if (sit) {
+    // ท่านั่ง: ขาหน้าคือแขน (ผู้ใช้ 21 ต.ค. "แขนไม่ควรมีเสื้อดำคลุมหมด ควรเห็นสีขน") — แขนสูทช่วงบน ปลอกเชิ้ตขาว กระดุมข้อมือทอง
+    //   ต่อด้วยขนแขน + อุ้งเท้าครีมของน้อง · ไม่มีกางเกง/รองเท้า (เดิมใส่รองเท้าแบบเท้า ดูเป็นขา)
+    const sv = band(560, 603, 2);
+    const [, t0] = P(cx, 384), [, t1] = P(cx, 600);
+    c.fillStyle = swGrad(c, 0, t0, 0, t1, CW.suit);
+    c.fill(sv);
+    const cf = band(603, 611, 2);
+    const [, f0] = P(cx, 603), [, f1] = P(cx, 611);
+    c.fillStyle = swGrad(c, 0, f0, 0, f1, CW.shirt);
+    c.fill(cf);
+    c.strokeStyle = pal.line;
+    c.lineWidth = CWO;
+    c.lineCap = 'round';
+    const edge = (y, s0) => { const q = new Path2D(); for (let i = 0; i <= 10; i++) { const x = cx - hw * 1.3 + (2.6 * hw * i) / 10; q[i ? 'lineTo' : 'moveTo'](...P(x, y + s0 * sag(x))); } return q; };
+    c.stroke(edge(603, 2));
+    c.lineWidth = CWO * 0.8;
+    c.stroke(edge(611, 2));
+    c.restore();
+    const [gx, gy] = P(cx + (left ? -1 : 1) * hw * 0.45, 607.5 + 2 * sag(cx + (left ? -1 : 1) * hw * 0.45));
+    const g = new Path2D(); g.roundRect(gx - 3.2, gy - 3.2, 6.4, 6.4, 1.6);
+    cwGoldFill(c, g, gx - 3, gy - 3, gx + 3, gy + 3, pal, CWO * 0.5);
+    return;
+  }
+  const shoe = band(yS, cy + 140, 3);
+  const [, y0] = P(cx, yS), [, y1] = P(cx, cy + 44);
+  c.fillStyle = swGrad(c, 0, y0, 0, y1, CW.shoe);
+  c.fill(shoe);
+  c.save();
+  c.clip(shoe);
+  // ตะเข็บหัวรองเท้า (โค้งขวางเท้า)
+  c.strokeStyle = 'rgba(120,124,140,.5)';
+  c.lineWidth = 1.3;
+  const cap = new Path2D();
+  for (let i = 0; i <= 10; i++) { const x = cx - hw * 1.1 + (2.2 * hw * i) / 10; cap[i ? 'lineTo' : 'moveTo'](...P(x, yS + 20 + 5 * sag(x))); }
+  c.stroke(cap);
+  // เชือกผูก (กลางหลังเท้า)
+  if (!k.back) {
+    c.strokeStyle = 'rgba(30,31,38,.95)';
+    c.lineWidth = 2.4;
+    c.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const y = yS + 4 + i * 4.4;
+      c.beginPath(); c.moveTo(...P(cx - 8, y)); c.lineTo(...P(cx + 8, y + 2)); c.stroke();
+    }
+    c.strokeStyle = 'rgba(160,165,182,.55)';
+    c.lineWidth = 0.9;
+    for (let i = 0; i < 3; i++) { const y = yS + 3.4 + i * 4.4; c.beginPath(); c.moveTo(...P(cx - 7, y)); c.lineTo(...P(cx + 7, y + 2)); c.stroke(); }
+  }
+  // เงาหนังแก้ว: แถบแสงโค้งบนหัวรองเท้า + จุดสะท้อน + ขอบพื้นรองเท้าเงา
+  const [hx, hy] = P(cx - hw * 0.3, yS + 25);
+  c.fillStyle = 'rgba(255,255,255,.5)';
+  c.beginPath(); c.ellipse(hx, hy, hw * 0.34, 3.2, -0.12, 0, TAU); c.fill();
+  const [jx, jy] = P(cx + hw * 0.34, yS + 22);
+  c.fillStyle = 'rgba(255,255,255,.85)';
+  c.beginPath(); c.arc(jx, jy, 2.3, 0, TAU); c.fill();
+  c.restore();
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO;
+  c.lineCap = 'round';
+  const top = new Path2D();
+  for (let i = 0; i <= 10; i++) { const x = cx - hw * 1.4 + (2.8 * hw * i) / 10; top[i ? 'lineTo' : 'moveTo'](...P(x, yS + 3 * sag(x))); }
+  c.stroke(top);
+  c.restore();
+}
+/**
+ * หูฟังบอดี้การ์ด (ช่อง hat — ตามหัว): ตัวหูฟังกลมดำขอบเงินที่ข้างแก้มขวาจอ (ใต้หนวด) · สายใสขดเข้าหู
+ * สายขดเกลียวดำไล่ลงข้างหัวถึงคอปก · หันหลัง = กลับซ้ายขวา
+ */
+function chaweeEarpiece(c, k) {
+  const pal = k.pal, t = k.t || 0;
+  c.save();
+  if (k.back) { c.translate(600, 0); c.scale(-1, 1); }
+  const ex = 462, ey = 318;
+  { const m = c.getTransform(), q = m.transformPoint(new DOMPoint(ex, ey)); CW_EAR_PX = { x: q.x, y: q.y, s: Math.hypot(m.a, m.b) }; }
+  // สายขดเกลียว (ผู้ใช้ 21 ต.ค. "ตอนโยกตัวสายดูขาด · อยากให้ยืดหดได้เหมือนของจริง"):
+  //   ปลายล่างยึดที่บ่าสูท (พิกัดตัว — k.toBody) หัวเอียง/ก้ม/เงยแล้วสายไม่ลอยหลุดจากตัว
+  //   จำนวนขดคงที่ → ระยะห่างขดยืด/หดตามระยะจริง · ยืด: ขดถี่ห่าง วงเล็กลง สายตึงตรง · หด: ขดชิด วงโตนิด สายหย่อนโค้งออกนอก
+  const sw = Math.sin(t * 0.04) * 2.5;
+  const A = [ex + 2, ey + 14];
+  // ใต้กรามฝั่งเดียวกับหูฟัง ติดคอปก (จุดนี้อยู่บนตัวทุกท่า) · หันหลัง: ช่องนี้วาดกลับซ้ายขวา — ถามจุดฝั่งตรงข้ามแล้วกลับคืน
+  let C2 = [ex - 64, ey + 92];
+  if (k.toBody) { const q = k.toBody(k.back ? 600 - 398 : 398, 410); C2 = k.back ? [600 - q[0], q[1]] : q; }
+  const L0 = 95, d = Math.hypot(C2[0] - A[0], C2[1] - A[1]) || 1;
+  const slack = Math.max(0, L0 * 1.1 - d), bow = Math.sqrt(slack * L0) * 0.55 + 4;
+  const mx = (A[0] + C2[0]) / 2, my = (A[1] + C2[1]) / 2;
+  let px0 = (C2[1] - A[1]) / d, py0 = -(C2[0] - A[0]) / d;   // ตั้งฉากแนวสาย ชี้ออกนอกหัว
+  if (px0 < 0) { px0 = -px0; py0 = -py0; }
+  const B = [mx + px0 * bow + sw, my + py0 * bow + bow * 0.25];
+  const Q = (u) => { const v = 1 - u; return [v * v * A[0] + 2 * v * u * B[0] + u * u * C2[0], v * v * A[1] + 2 * v * u * B[1] + u * u * C2[1]]; };
+  const rK = Math.max(0.78, Math.min(1.14, Math.sqrt(L0 / d)));   // ยืด = วงขดเล็กลง · หด = วงโตนิด
+  const coil = new Path2D();
+  const n = 140;
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, [x, y] = Q(u), [x1, y1] = Q(Math.min(1, u + 0.01));
+    const l = Math.hypot(x1 - x, y1 - y) || 1, nx = -(y1 - y) / l, ny = (x1 - x) / l;
+    const ph = u * 22 * TAU, r = 4.2 * rK * Math.min(1, u / 0.06, (1 - u) / 0.05);
+    const px = x + nx * Math.sin(ph) * r + (x1 - x) / l * Math.cos(ph) * r * 0.55, py = y + ny * Math.sin(ph) * r + (y1 - y) / l * Math.cos(ph) * r * 0.55;
+    coil[i ? 'lineTo' : 'moveTo'](px, py);
+  }
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.strokeStyle = pal.line;
+  c.lineWidth = 4.2;
+  c.stroke(coil);
+  c.strokeStyle = '#26272E';
+  c.lineWidth = 2.6;
+  c.stroke(coil);
+  c.strokeStyle = 'rgba(190,196,212,.55)';
+  c.lineWidth = 0.9;
+  c.stroke(coil);
+  // คลิปหนีบสายที่บ่าสูท
+  {
+    const [qx, qy] = C2, [rx, ry] = Q(0.96), an = Math.atan2(qy - ry, qx - rx);
+    c.save();
+    c.translate(qx, qy);
+    c.rotate(an);
+    const cl = new Path2D();
+    cl.roundRect(-5, -4, 10, 8, 2.4);
+    c.fillStyle = swGrad(c, 0, -4, 0, 4, ['#5E616C', '#26272E', '#0B0B0E']);
+    c.fill(cl);
+    c.strokeStyle = pal.line;
+    c.lineWidth = CWO * 0.6;
+    c.stroke(cl);
+    c.fillStyle = 'rgba(255,255,255,.5)';
+    c.fillRect(-3, -2.6, 5, 1.2);
+    c.restore();
+  }
+  // สายใสขดเข้าหู (ท่อเสียงโปร่ง)
+  const tube = new Path2D();
+  tube.moveTo(ex - 2, ey - 8);
+  tube.bezierCurveTo(ex - 14, ey - 24, ex + 4, ey - 34, ex - 6, ey - 44);
+  c.strokeStyle = 'rgba(230,236,248,.85)';
+  c.lineWidth = 3;
+  c.stroke(tube);
+  c.strokeStyle = 'rgba(255,255,255,.95)';
+  c.lineWidth = 1;
+  c.stroke(tube);
+  // ตัวหูฟัง: ทรงกลมดำ ขอบวงเงิน จุดไฟสถานะเขียว
+  const g = c.createRadialGradient(ex - 4, ey - 5, 1, ex, ey, 14);
+  g.addColorStop(0, '#5E616C');
+  g.addColorStop(0.6, '#24252C');
+  g.addColorStop(1, '#0B0B0E');
+  c.fillStyle = g;
+  c.beginPath(); c.arc(ex, ey, 13, 0, TAU); c.fill();
+  c.strokeStyle = pal.line;
+  c.lineWidth = CWO;
+  c.stroke();
+  c.strokeStyle = swGrad(c, ex - 10, ey - 10, ex + 10, ey + 10, CW.silver);
+  c.lineWidth = 2.4;
+  c.beginPath(); c.arc(ex, ey, 9, 0, TAU); c.stroke();
+  const blink = 0.5 + 0.5 * Math.sin(t * 0.12);
+  c.fillStyle = `rgba(110,255,160,${0.55 + 0.45 * blink})`;
+  c.beginPath(); c.arc(ex + 3.5, ey - 3, 2.1, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.75)';
+  c.beginPath(); c.arc(ex - 4, ey - 5, 2.4, 0, TAU); c.fill();
+  c.restore();
+}
+/**
+ * คอเชิ้ต + ปมเนคไท (ช่อง neck — ไล่ตามเส้นคางจริงด้วย nbChinY เหนือขอบคางนิด หัวบังแนวคอ):
+ * คอปกสูทดำสองข้างคอ · คอเชิ้ตขาวปลายแหลมชี้ลง · ปมเนคไทวินด์เซอร์กลาง
+ */
+function chaweeCollar(c, k) {
+  const pal = k.pal;
+  const P = k.cpt || ((x, y) => [x, y]);
+  // คอปกสูท (ดำ) รอบคอ — มองหลังเท่านั้น · มองหน้า: คอเชิ้ต + ปมไทวาดในช่องเสื้อ (ติดตัว ไม่ตามหัว)
+  //   ยกเว้นท่าหมอบ (ก้อนสูทไม่มีช่วงคอ) — วาดตรงนี้ใต้คาง
+  if (!k.back) { if (k.loaf) chaweeCollarFront(c, k, P, pal); return; }
+  const jc = new Path2D();
+  const pts = [];
+  for (let x = 196; x <= 404; x += 13) pts.push(P(x, nbChinY(x) - 6));
+  jc.moveTo(...pts[0]);
+  for (const p of pts.slice(1)) jc.lineTo(...p);
+  for (let x = 404; x >= 196; x -= 13) jc.lineTo(...P(x + (x < 300 ? 8 : -8), nbChinY(x) + 22));
+  jc.closePath();
+  const [, j0] = P(300, 380), [, j1] = P(300, 412);
+  c.fillStyle = swGrad(c, 0, j0, 0, j1, CW.lapel);
+  c.fill(jc);
+  outline(c, jc, pal, CWO);
+}
+function chaweeCollarFront(c, k, P, pal) {
+  const sx = (k.cpt ? (k.hxShift || 0) : (k.faceShift || 0)) * 0.5;
+  const cy0 = nbChinY(300);
+  // คอเชิ้ตขาว: สองปีกปลายแหลมชี้ลง-ออก
+  for (const d of [-1, 1]) {
+    const cp = new Path2D();
+    cp.moveTo(...P(300 + sx + d * 2, cy0 - 4));
+    cp.lineTo(...P(300 + sx + d * 30, cy0 - 6));
+    cp.quadraticCurveTo(...P(300 + sx + d * 34, cy0 + 10), ...P(300 + sx + d * 24, cy0 + 30));
+    cp.lineTo(...P(300 + sx + d * 6, cy0 + 12));
+    cp.closePath();
+    const [a0x, a0y] = P(300 + d * 6, cy0), [a1x, a1y] = P(300 + d * 30, cy0 + 28);
+    c.fillStyle = swGrad(c, a0x, a0y, a1x, a1y, CW.shirt);
+    c.fill(cp);
+    outline(c, cp, pal, CWO * 0.85);
+  }
+  // ปมเนคไท
+  const kn = new Path2D();
+  kn.moveTo(...P(300 + sx - 11, cy0 - 2)); kn.lineTo(...P(300 + sx + 11, cy0 - 2));
+  kn.lineTo(...P(300 + sx + 7, cy0 + 16)); kn.lineTo(...P(300 + sx - 7, cy0 + 16)); kn.closePath();
+  const [k0x] = P(300 - 11, cy0), [k1x] = P(300 + 11, cy0);
+  c.fillStyle = swGrad(c, k0x, 0, k1x, 0, CW.tie);
+  c.fill(kn);
+  c.save();
+  c.clip(kn);
+  c.strokeStyle = CW.stripe;
+  c.lineWidth = 2.2;
+  for (let i = -2; i <= 2; i++) { const [ax, ay] = P(300 + sx + i * 8 - 8, cy0 - 4), [bx, by] = P(300 + sx + i * 8 + 8, cy0 + 18); c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.stroke(); }
+  c.restore();
+  outline(c, kn, pal, CWO * 0.8);
+}
+/** กระเป๋าเอกสาร (ของถือ): หนังดำมันวาว มุมทองสี่มุม สลักทองสองตัว ตราโล่อุ้งเท้าทองกลาง ตะเข็บเงิน หูหิ้วเงิน · จุด (0,0) = หูหิ้ว */
+function cwCaseDraw(c, x, y, a, pal, t, lit, sc = 1, open = 0) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(a);
+  c.scale(sc, sc);
+  if (lit > 0.01) glowAt(c, 0, 44, 90, '255,225,160', 0.22 * lit);
+  // หูหิ้ว
+  const hd = new Path2D();
+  hd.moveTo(-15, 15); hd.lineTo(-15, 4); hd.quadraticCurveTo(-15, -3, -8, -3); hd.lineTo(8, -3); hd.quadraticCurveTo(15, -3, 15, 4); hd.lineTo(15, 15);
+  c.lineCap = 'round';
+  c.strokeStyle = pal.line;
+  c.lineWidth = 7.6;
+  c.stroke(hd);
+  c.strokeStyle = swGrad(c, -15, -3, 15, 15, CW.silver);
+  c.lineWidth = 5;
+  c.stroke(hd);
+  const drawBody = () => {
+  // ตัวกระเป๋า
+  const body = new Path2D();
+  body.roundRect(-48, 14, 96, 64, 7);
+  c.fillStyle = swGrad(c, 0, 14, 0, 78, CW.leather);
+  c.fill(body);
+  c.save();
+  c.clip(body);
+  // แถบเงาหนังแก้วเฉียง
+  c.fillStyle = 'rgba(255,255,255,.12)';
+  c.beginPath(); c.moveTo(-48, 30); c.lineTo(-20, 14); c.lineTo(4, 14); c.lineTo(-48, 50); c.closePath(); c.fill();
+  // ฝาเปิด + ตะเข็บเงิน
+  c.strokeStyle = 'rgba(0,0,0,.6)';
+  c.lineWidth = 2.4;
+  c.beginPath(); c.moveTo(-48, 30); c.lineTo(48, 30); c.stroke();
+  c.strokeStyle = 'rgba(205,210,224,.55)';
+  c.lineWidth = 1;
+  c.setLineDash([3, 2.6]);
+  c.beginPath(); c.roundRect(-43, 19, 86, 54, 4); c.stroke();
+  c.setLineDash([]);
+  c.restore();
+  outline(c, body, pal, CWO);
+  // มุมทองสี่มุม
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const cx = sx * 48, cy = sy < 0 ? 14 : 78;
+    const q = new Path2D();
+    q.moveTo(cx, cy - sy * 12); q.lineTo(cx, cy); q.lineTo(cx - sx * 12, cy); q.lineTo(cx - sx * 12, cy - sy * 3.4); q.lineTo(cx - sx * 3.4, cy - sy * 3.4); q.lineTo(cx - sx * 3.4, cy - sy * 12); q.closePath();
+    cwGoldFill(c, q, cx - 12, cy - 12, cx + 12, cy + 12, pal, CWO * 0.5);
+  }
+  // สลักทองสองตัว
+  for (const sx of [-1, 1]) {
+    const q = new Path2D();
+    q.roundRect(sx * 30 - 6, 25, 12, 10, 2.4);
+    cwGoldFill(c, q, sx * 30 - 6, 25, sx * 30 + 6, 35, pal, CWO * 0.5);
+    c.fillStyle = 'rgba(60,40,8,.7)';
+    c.fillRect(sx * 30 - 1, 29, 2, 4);
+  }
+  // ตราโล่อุ้งเท้าทองกลาง
+  cwPawShield(c, 0, 50, 13, pal, CWO * 0.6);
+  };
+  if (open <= 0.001) drawBody();
+  else {
+    // แง้มกระเป๋า (ท่าเปิดตัว): ตัวกระเป๋าหมุนลงรอบบานพับซ้าย ฝาบนติดหูหิ้วอยู่ที่เดิม — ช่องระหว่างเรืองแสงทอง
+    const ang = 0.36 * open;
+    c.save();
+    c.translate(-48, 30); c.rotate(ang); c.translate(48, -30);
+    const lo = new Path2D(); lo.rect(-90, 30, 180, 90);
+    c.clip(lo);
+    drawBody();
+    c.restore();
+    const ex = -48 + 96 * Math.cos(ang), ey = 30 + 96 * Math.sin(ang);
+    const wedge = new Path2D();
+    wedge.moveTo(-48, 30); wedge.lineTo(48, 30); wedge.lineTo(ex, ey); wedge.closePath();
+    const wg = c.createRadialGradient(30, 34, 2, 30, 34, 70);
+    wg.addColorStop(0, '#FFFBE6');
+    wg.addColorStop(0.5, '#FFD970');
+    wg.addColorStop(1, '#C88A28');
+    c.fillStyle = wg;
+    c.fill(wedge);
+    glowAt(c, 30, 36, 70 * open, '255,226,150', 0.7 * open);
+    c.save();
+    const up = new Path2D(); up.rect(-90, -30, 180, 60);
+    c.clip(up);
+    drawBody();
+    c.restore();
+    const m = c.getTransform(), q = m.transformPoint(new DOMPoint(-48 + 70 * Math.cos(ang / 2), 30 + 70 * Math.sin(ang / 2)));
+    CW_CASE_PX = { x: q.x, y: q.y, s: Math.hypot(m.a, m.b) };
+  }
+  c.restore();
+}
+/** ระยะของถือในมือ (หน่วยไฟล์) */
+const CW_CASE_SC = 0.92;
+/**
+ * ของถือ (ช่อง prop): กระเป๋าเอกสารห้อยจากอุ้งเท้าซ้ายจอ (หูหิ้วที่อุ้งเท้า แกว่งตามแรงเหวี่ยงนิด ๆ)
+ * อุ้งเท้าไม่ว่าง (นวด/ถือหัวใจ/เกาท้อง/เลีย) หรือนั่ง/หมอบ: ลอยเรืองข้างตัว ขึ้นลงช้า ๆ (k.busy เลื่อนเนียน)
+ */
+function chaweeCase(c, k) {
+  if (k.layer === 'front') return;
+  const pal = k.pal, t = k.t || 0;
+  const b = ease(clamp01(k.busy ?? 1));
+  const bob = Math.sin(t * 0.05) * 7;
+  const fx = 62, fy = 392 + (k.drop || 0) * 0.55 + bob;   // ลอย: หูหิ้วอยู่ตรงนี้ ตัวกระเป๋าห้อยลง
+  const fa = 0.06 + Math.sin(t * 0.035) * 0.05;
+  const g = k.grip;
+  const hang = Math.sin(t * 0.045) * 0.05 - (g?.d || 0) * 0.15;   // ห้อยตั้งตามแรงโน้มถ่วง (หักมุมที่แขนหมุนออก)
+  const x = g ? g.x + (fx - g.x) * b : fx, y = g ? g.y + 4 + (fy - g.y - 4) * b : fy;
+  const a = g ? hang + (fa - hang) * b : fa;
+  const m = c.getTransform(), hp = m.transformPoint(new DOMPoint(x, y + 50 * CW_CASE_SC));
+  if (k.emit) k.emit('wand', hp);
+  cwCaseDraw(c, x, y, a, pal, t, g ? b : 1, CW_CASE_SC, k.sv ? k.sv('caseOpen') || 0 : 0);
+}
+
+// ── เอฟเฟกต์ (ไม่ซ้ำ sweet/princess/noble: สปอตไลต์ล็อบบี้ · เชือกกั้นวีไอพี · แฟลชกล้อง · ผงทองในลำแสง) ──
+/** เสากั้นทอง (หัวกลม ฐานกลม) — พิกัดตัว */
+function cwStanchion(c, x, yTop, yBot, pal) {
+  const pole = new Path2D();
+  pole.roundRect(x - 4.5, yTop, 9, yBot - yTop, 3);
+  cwGoldFill(c, pole, x - 5, 0, x + 5, 0, pal, CWO * 0.6);
+  const base = new Path2D();
+  base.ellipse(x, yBot, 26, 7, 0, 0, TAU);
+  cwGoldFill(c, base, x - 26, yBot - 7, x + 26, yBot + 7, pal, CWO * 0.6);
+  const ball = new Path2D();
+  ball.arc(x, yTop - 4, 8.5, 0, TAU);
+  cwGoldFill(c, ball, x - 8, yTop - 12, x + 8, yTop + 4, pal, CWO * 0.6);
+  c.fillStyle = 'rgba(255,255,255,.7)';
+  c.beginPath(); c.arc(x - 3, yTop - 7, 2.4, 0, TAU); c.fill();
+}
+/** เชือกกำมะหยี่แดงห้อยโค้งระหว่างสองจุด */
+function cwRope(c, a, b, sag, pal) {
+  const q = new Path2D();
+  q.moveTo(...a);
+  q.quadraticCurveTo((a[0] + b[0]) / 2, Math.max(a[1], b[1]) + sag, ...b);
+  c.lineCap = 'round';
+  c.strokeStyle = pal.line;
+  c.lineWidth = 10;
+  c.stroke(q);
+  c.strokeStyle = swGrad(c, 0, a[1] - 4, 0, a[1] + sag, CW.velvet);
+  c.lineWidth = 7.4;
+  c.stroke(q);
+  c.strokeStyle = 'rgba(255,190,200,.35)';
+  c.lineWidth = 2;
+  c.stroke(q);
+}
+/** แฟลชกล้อง: จุดที่วาบ (พิกัดตัว · เว้นตรงชุด) — วาบทีละจุดตามรอบ */
+const CW_FLASH = [[40, 170], [560, 230], [-10, 380], [600, 420], [96, 30], [520, 60], [10, 560], [590, 590]];
+function cwFlashes(c, t, front) {
+  const P = 64;   // ทุก ~1 วินาทีวาบหนึ่งจุด
+  const n = Math.floor(t / P), f = t - n * P;
+  for (const back of [0, 1]) {
+    const m = n - back, ff = f + back * P;
+    if (ff > 14) continue;
+    const i = Math.floor(hash(m * 3.7 + 11) * CW_FLASH.length);
+    if ((i % 3 === 0) !== front) continue;   // หนึ่งในสามวาบหน้าตัว (เฉพาะจุดข้างตัว)
+    const [x, y] = CW_FLASH[i];
+    const u = ff / 14, a = u < 0.15 ? u / 0.15 : 1 - (u - 0.15) / 0.85;
+    glowAt(c, x, y, 70, '235,242,255', 0.55 * a);
+    cwSparkle(c, x, y, 26 * (0.6 + 0.4 * a), a);
+  }
+}
+/** หลังตัว (behind): สปอตไลต์จากเพดาน (ตั้งตรงเสมอ) · ฟุ้งอุ่น · ผงทองลอยในลำแสง · แฟลชกล้อง · ประหยัด: ตัดผงทอง/แฟลช
+ *  (เสากั้นทอง + เชือกกำมะหยี่วีไอพีอยู่ในฉากหลัง — ของบนพื้นต้องตั้งตรงอยู่กับพื้น ไม่ลอย/เอียงตามตัวตอนลอยฟ้า) */
+function chaweeAura(c, k) {
+  if (k.intro != null) {   // ท่าเปิดตัว: ผุดขึ้นตอนไฟล็อบบี้สว่าง (กดข้าม = ขึ้นเต็มตามการข้าม)
+    const V = Math.max(k.introSkip || 0, clamp01((k.intro - CWI.lights) / 36));
+    if (V <= 0.01) return;
+    c.globalAlpha *= V;
+  }
+  const t = k.t || 0, lite = gfxLevel() === 'save';
+  const hd = Math.min(220, k.headDrop || 0);
+  // ลำแสงตั้งตรงตามจอ: หมุนกลับมุมที่ตัวเอียงอยู่ (ลอยฟ้า/ตีลังกา) รอบกลางตัว
+  const m = c.getTransform(), ang = Math.atan2(m.b, m.a);
+  if (Math.abs(ang) > 0.002) { c.translate(300, 420); c.rotate(-ang); c.translate(-300, -420); }
+  // ลำสปอตไลต์ (กรวยจากบน) + ฟุ้งอุ่นหลังตัว
+  const beam = new Path2D();
+  beam.moveTo(240, -260); beam.lineTo(360, -260); beam.lineTo(590, 660); beam.lineTo(10, 660); beam.closePath();
+  const bg = c.createLinearGradient(0, -260, 0, 660);
+  bg.addColorStop(0, 'rgba(255,240,205,0)');
+  bg.addColorStop(0.35, 'rgba(255,240,205,.1)');
+  bg.addColorStop(1, 'rgba(255,236,196,.2)');
+  c.fillStyle = bg;
+  c.fill(beam);
+  glowAt(c, 300, 300 + hd * 0.4, 260, '255,236,200', 0.22);
+  if (lite) return;
+  // ผงทองลอยขึ้นช้า ๆ ในลำแสง
+  for (let i = 0; i < 16; i++) {
+    const p = (t * (0.0012 + hash(i * 5 + 701) * 0.001) + hash(i * 3 + 702)) % 1;
+    const y = 660 - p * 860, w = 120 + (660 - y) * -0.22;
+    const x = 300 + (hash(i * 7 + 703) * 2 - 1) * Math.max(60, 300 - (660 - y) * 0.25) + Math.sin(t * 0.02 + i) * 10;
+    const a = Math.min(1, p * 5, (1 - p) * 4) * (0.5 + 0.5 * Math.sin(t * 0.1 + i * 1.7));
+    void w;
+    c.fillStyle = `rgba(255,224,150,${0.75 * a})`;
+    c.beginPath(); c.arc(x, y, 1.6 + hash(i + 704) * 1.6, 0, TAU); c.fill();
+    if (i % 4 === 0 && a > 0.6) cwSparkle(c, x, y, 6, a, '#FFF3D0', '255,226,160');
+  }
+  cwFlashes(c, t, false);
+}
+/** หน้าตัว (front): แฟลชกล้องบางจังหวะ (เฉพาะจุดข้างตัว ไม่พาดชุด) */
+function chaweeFront(c, k) {
+  if (gfxLevel() === 'save') return;
+  if (k.intro != null && Math.max(k.introSkip || 0, clamp01((k.intro - CWI.lights) / 36)) < 0.5) return;   // ท่าเปิดตัวมีแฟลชของตัวเอง
+  cwFlashes(c, k.t || 0, true);
+}
+
+// ── ฉากหลัง (ภาพนิ่ง): "ล็อบบี้โรงแรมหรูยามค่ำ" ตามภาพแบบ ──
+/** โคมไฟผนัง (ทรงกระบอกเรืองแสง ขาทองเข้ม) */
+function bdCwSconce(c, x, y, s) {
+  bdGlow(c, x, y, 260 * s, '255,214,150', 0.5);
+  bdGlow(c, x, y, 90 * s, '255,240,210', 0.8);
+  const sh = c.createLinearGradient(x - 26 * s, 0, x + 26 * s, 0);
+  sh.addColorStop(0, '#E8B870');
+  sh.addColorStop(0.5, '#FFF4DC');
+  sh.addColorStop(1, '#E8B870');
+  c.fillStyle = sh;
+  c.beginPath(); c.roundRect(x - 26 * s, y - 52 * s, 52 * s, 104 * s, 8 * s); c.fill();
+  c.fillStyle = '#5A4128';
+  c.fillRect(x - 30 * s, y + 52 * s, 60 * s, 10 * s);
+  c.fillRect(x - 6 * s, y + 62 * s, 12 * s, 60 * s);
+}
+/** แถบไฟทองหลังแผงผนัง (แนวตั้ง) */
+function bdCwLightStrip(c, x, w, y0, y1) {
+  const g = c.createLinearGradient(x - w * 3, 0, x + w * 3, 0);
+  g.addColorStop(0, 'rgba(255,196,120,0)');
+  g.addColorStop(0.4, 'rgba(255,206,140,.45)');
+  g.addColorStop(0.5, 'rgba(255,240,205,.95)');
+  g.addColorStop(0.6, 'rgba(255,206,140,.45)');
+  g.addColorStop(1, 'rgba(255,196,120,0)');
+  c.fillStyle = g;
+  c.fillRect(x - w * 3, y0, w * 6, y1 - y0);
+}
+/** ต้นไม้ใบใหญ่ในกระถางดำ */
+function bdCwPlant(c, x, y, s) {
+  for (let i = 0; i < 11; i++) {
+    const an = -Math.PI / 2 + (hash(i * 3.1 + 900) - 0.5) * 2.4, len = (150 + hash(i * 1.7 + 901) * 130) * s;
+    const ex = x + Math.cos(an) * len, ey = y - 60 * s + Math.sin(an) * len;
+    c.strokeStyle = '#2D4A24';
+    c.lineWidth = 5 * s;
+    c.beginPath(); c.moveTo(x, y - 60 * s); c.quadraticCurveTo((x + ex) / 2, (y + ey) / 2 - 40 * s, ex, ey); c.stroke();
+    c.save();
+    c.translate(ex, ey);
+    c.rotate(an + Math.PI / 2);
+    const lg = c.createLinearGradient(-40 * s, 0, 40 * s, 0);
+    lg.addColorStop(0, '#2C5A2A');
+    lg.addColorStop(0.5, '#5C8E3E');
+    lg.addColorStop(1, '#244A22');
+    c.fillStyle = lg;
+    c.beginPath(); c.ellipse(0, 0, 34 * s, 78 * s, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(190,230,150,.35)';
+    c.lineWidth = 2 * s;
+    c.beginPath(); c.moveTo(0, 70 * s); c.lineTo(0, -70 * s); c.stroke();
+    c.restore();
+  }
+  const pg = c.createLinearGradient(x - 90 * s, 0, x + 90 * s, 0);
+  pg.addColorStop(0, '#16161A');
+  pg.addColorStop(0.45, '#4A4A52');
+  pg.addColorStop(1, '#101014');
+  c.fillStyle = pg;
+  c.beginPath();
+  c.moveTo(x - 90 * s, y - 70 * s); c.lineTo(x + 90 * s, y - 70 * s); c.lineTo(x + 70 * s, y + 120 * s); c.lineTo(x - 70 * s, y + 120 * s); c.closePath();
+  c.fill();
+  c.fillStyle = 'rgba(232,196,120,.85)';
+  c.fillRect(x - 90 * s, y - 74 * s, 180 * s, 8 * s);
+}
+function chaweeBackdropPaint(c) {
+  const [X0, Y0, X1, Y1] = BD_BOX, W = X1 - X0;
+  // ผนังหินอ่อนน้ำตาลเข้มอุ่น
+  const wall = c.createLinearGradient(0, Y0, 0, BD_HZ);
+  wall.addColorStop(0, '#1F1612');
+  wall.addColorStop(0.55, '#3A2A20');
+  wall.addColorStop(1, '#4A3628');
+  c.fillStyle = wall;
+  c.fillRect(X0, Y0, W, BD_HZ - Y0 + 40);
+  // ลายหินอ่อนจาง ๆ บนผนัง
+  c.lineCap = 'round';
+  for (let i = 0; i < 40; i++) {
+    const x = X0 + hash(i * 4.3 + 950) * W, y = Y0 + hash(i * 2.9 + 951) * (BD_HZ - Y0);
+    c.strokeStyle = `rgba(220,190,150,${0.05 + hash(i + 952) * 0.06})`;
+    c.lineWidth = 1.5 + hash(i + 953) * 2;
+    c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + 60, y + 30, x + 40, y + 120, x + 140, y + 170); c.stroke();
+  }
+  // แผงผนังแบ่งช่อง + แถบไฟทองหลังแผง
+  for (const x of [-700, -320, 920, 1300]) {
+    c.fillStyle = 'rgba(0,0,0,.25)';
+    c.fillRect(x - 70, Y0, 140, BD_HZ - Y0);
+    bdCwLightStrip(c, x, 9, Y0, BD_HZ);
+  }
+  // ผนังกลางหลังน้อง: แผงหินอ่อนสว่างนุ่ม (สงบ) + กรอบทองบาง
+  bdGlow(c, 300, 140, 620, '255,220,170', 0.28);
+  c.strokeStyle = 'rgba(232,196,120,.45)';
+  c.lineWidth = 6;
+  c.strokeRect(-120, -380, 840, BD_HZ + 360);
+  // โคมไฟผนังสองข้าง
+  bdCwSconce(c, -480, 150, 1.1);
+  bdCwSconce(c, 1080, 150, 1.1);
+  // โบเก้ไฟอุ่นด้านบน (แชนเดอเลียร์นอกโฟกัส)
+  for (let i = 0; i < 30; i++) {
+    const x = X0 + hash(i * 5.7 + 960) * W, y = Y0 + 40 + hash(i * 3.3 + 961) * 420;
+    if (Math.abs(x - 300) < 260 && y > -200) continue;
+    bdBokeh(c, x, y, 26 + hash(i + 962) * 46, i % 3 ? '255,210,140' : '255,240,210', 0.32);
+  }
+  // บัวเชิงผนัง
+  c.fillStyle = '#2A1E17';
+  c.fillRect(X0, BD_HZ - 20, W, 22);
+  c.fillStyle = 'rgba(232,196,120,.7)';
+  c.fillRect(X0, BD_HZ - 22, W, 4);
+  // พื้นหินอ่อนเงาดำ
+  const fl = c.createLinearGradient(0, BD_HZ, 0, Y1);
+  fl.addColorStop(0, '#3C2E25');
+  fl.addColorStop(0.4, '#241B16');
+  fl.addColorStop(1, '#140F0C');
+  c.fillStyle = fl;
+  c.fillRect(X0, BD_HZ, W, Y1 - BD_HZ);
+  // เงาสะท้อนไฟบนพื้น (แถบตั้งนุ่ม ใต้แถบไฟ/โคม)
+  for (const [x, w, a] of [[-700, 40, 0.3], [-320, 40, 0.3], [920, 40, 0.3], [1300, 40, 0.3], [-480, 90, 0.35], [1080, 90, 0.35]]) {
+    const g = c.createLinearGradient(0, BD_HZ, 0, BD_HZ + 420);
+    g.addColorStop(0, `rgba(255,214,150,${a})`);
+    g.addColorStop(1, 'rgba(255,214,150,0)');
+    c.fillStyle = g;
+    c.fillRect(x - w, BD_HZ, w * 2, 420);
+  }
+  // ลายหินอ่อนบนพื้น + เส้นแบ่งแผ่นหินมุมมองลึก
+  for (let i = 0; i < 26; i++) {
+    const x = X0 + hash(i * 6.1 + 970) * W, y = BD_HZ + 30 + hash(i * 2.3 + 971) * (Y1 - BD_HZ - 60);
+    c.strokeStyle = `rgba(230,205,170,${0.06 + hash(i + 972) * 0.07})`;
+    c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + 80, y + 10, x + 120, y + 50, x + 220, y + 40); c.stroke();
+  }
+  c.strokeStyle = 'rgba(0,0,0,.35)';
+  c.lineWidth = 2;
+  for (let i = -8; i <= 8; i++) { c.beginPath(); c.moveTo(300 + i * 60, BD_HZ); c.lineTo(300 + i * 420, Y1); c.stroke(); }
+  // พรมแดงทอดเข้าหาแท่น (ขอบทอง)
+  const cp = new Path2D();
+  cp.moveTo(250, BD_HZ); cp.lineTo(350, BD_HZ); cp.lineTo(560, Y1); cp.lineTo(40, Y1); cp.closePath();
+  const cg = c.createLinearGradient(0, BD_HZ, 0, Y1);
+  cg.addColorStop(0, '#5A0E1C');
+  cg.addColorStop(1, '#8C1A2C');
+  c.fillStyle = cg;
+  c.fill(cp);
+  c.strokeStyle = 'rgba(232,196,120,.8)';
+  c.lineWidth = 5;
+  c.beginPath(); c.moveTo(254, BD_HZ); c.lineTo(48, Y1); c.moveTo(346, BD_HZ); c.lineTo(552, Y1); c.stroke();
+  // ต้นไม้กระถางสองข้าง
+  bdCwPlant(c, -300, FEET_Y + 20, 1.05);
+  bdCwPlant(c, 900, FEET_Y + 10, 1.15);
+  // แท่นกลมหินอ่อนดำ ขอบทอง ตราอุ้งเท้าทองกลาง
+  c.save();
+  c.translate(0, 34);
+  bdStage(c, 430, 82, 24, ['#2E2A2C', '#141215'], ['#2A2426', '#0C0A0B'], 'rgba(232,196,120,.9)');
+  c.restore();
+  const st = bdStage(c, 352, 66, 40, ['#3E393C', '#1A1719'], ['#2E292B', '#0E0C0D'], 'rgba(240,206,130,1)');
+  c.save();
+  c.translate(st.cx, st.cy);
+  c.scale(1, st.ry / st.rx);
+  c.strokeStyle = 'rgba(240,206,130,.85)';
+  c.lineWidth = 4;
+  for (const r of [st.rx * 0.82, st.rx * 0.5]) { c.beginPath(); c.arc(0, 0, r, 0, TAU); c.stroke(); }
+  c.lineWidth = 2.5;
+  for (let i = 0; i < 24; i++) { const a = (i * TAU) / 24; c.beginPath(); c.moveTo(Math.cos(a) * st.rx * 0.5, Math.sin(a) * st.rx * 0.5); c.lineTo(Math.cos(a) * st.rx * 0.82, Math.sin(a) * st.rx * 0.82); c.stroke(); }
+  c.restore();
+  const sidePath = new Path2D();
+  sidePath.moveTo(st.cx - st.rx, st.cy);
+  sidePath.ellipse(st.cx, st.cy, st.rx, st.ry, 0, Math.PI, 0, true);
+  sidePath.lineTo(st.cx + st.rx, st.cy + st.h);
+  sidePath.ellipse(st.cx, st.cy + st.h, st.rx, st.ry, 0, 0, Math.PI, false);
+  sidePath.closePath();
+  c.save();
+  c.clip(sidePath);
+  c.strokeStyle = 'rgba(240,206,130,.9)';
+  c.lineWidth = 4;
+  for (const dy of [7, st.h - 6]) { c.beginPath(); c.ellipse(st.cx, st.cy + dy, st.rx, st.ry, 0, 0, Math.PI); c.stroke(); }
+  c.restore();
+  cwPawShield(c, st.cx, st.cy + st.ry + st.h * 0.5, 16, { line: '#2A1A10' }, 1.4);
+  // โซนวีไอพี: เสากั้นทองบนขอบแท่นสองข้าง เชือกกำมะหยี่แดงห้อยผ่านหลังตัว + ทอดออกไปข้างนอก
+  const vp = { line: '#2A1A10' };
+  c.save();
+  c.translate(300, FEET_Y);
+  c.scale(1.35, 1.35);
+  c.translate(-300, -FEET_Y);
+  cwRope(c, [20, FEET_Y - 100], [580, FEET_Y - 100], 46, vp);
+  cwRope(c, [20, FEET_Y - 100], [-210, FEET_Y - 86], 30, vp);
+  cwRope(c, [580, FEET_Y - 100], [810, FEET_Y - 86], 30, vp);
+  cwStanchion(c, 20, FEET_Y - 100, FEET_Y + 4, vp);
+  cwStanchion(c, 580, FEET_Y - 100, FEET_Y + 4, vp);
+  c.restore();
+  // ประกายทองนิ่งสองข้าง (ตรงตัวน้องเว้น)
+  for (let i = 0; i < 24; i++) {
+    const x = X0 + hash(i * 6.7 + 980) * W, y = Y0 + 80 + hash(i * 2.1 + 981) * (Y1 - Y0 - 200);
+    if (Math.abs(x - 300) < 320 && y > -60 && y < FEET_Y + 40) continue;
+    cwSparkle(c, x, y, 8 + hash(i + 982) * 12, 0.7, i % 3 ? '#FFF3D0' : '#FFFFFF', '255,226,160');
+  }
+  const vg = c.createRadialGradient(300, 340, 600, 300, 340, 1500);
+  vg.addColorStop(0, 'rgba(10,6,4,0)');
+  vg.addColorStop(1, 'rgba(10,6,4,.6)');
+  c.fillStyle = vg;
+  c.fillRect(X0, Y0, W, Y1 - Y0);
+  bdEdgeFade(c, 'rgba(22,15,12,1)');
+}
+const CHAWEE_BACKDROP = { paint: chaweeBackdropPaint, outer: '#16100C' };
+// ══ ท่าเปิดตัว "วีไอพีมาถึง" (ผู้ใช้เลือก 21 ต.ค. · ~10 วิ เฟรมจริง) — มองผ่านช่องมองภาพกล้องปาปารัสซี่ ══
+//   0.0  ล็อบบี้ยามค่ำ ไฟสลัว · ช่องมองภาพกล้อง (REC กะพริบ ไทม์โค้ด กรอบโฟกัสส่ายหา) · ประตูหมุนกระจกทองหมุนช้า ๆ
+//   0.5  เงาดำในประตูหมุน → โฟกัสล็อก "ปิ๊บ ๆ" → น้องใส่แว่นดำ หิ้วกระเป๋า ก้าวออกจากเงาประตู เดินเท่ ๆ ไปกลางล็อบบี้ (เสียงรองเท้าหนัง)
+//   1.7  ปาปารัสซี่แมว (เงาดำด้านหน้า) ยกกล้อง แฟลชรัวรอบตัว "แชะ แชะ" — น้องเดินต่อ ไม่หันมอง
+//   3.9  หยุดกลางล็อบบี้ หันหน้า → แตะหูฟัง ไฟเขียวกะพริบ คลื่นวิทยุ · ซับไตเติล "[วิทยุ] วีไอพีถึงแล้ว" → "รับทราบ พร้อมปฏิบัติการ"
+//   5.6  เลื่อนแว่นลงมาที่จมูก โชว์ตาโตแบ๊ว ๆ ขยิบตาใส่กล้อง → ดันแว่นกลับ
+//   6.9  ยกกระเป๋าเอกสาร สลัก "แกร๊ก แกร๊ก" → แง้มกระเป๋า แสงทองทะลัก บัตรวีไอพีทองปลิวหมุนเข้าหากล้อง
+//   8.1  แชะ! ชัตเตอร์ใหญ่ → ภาพค้างเป็นปกนิตยสาร "VIP · พี่ชาวี" → ไฟล็อบบี้สว่าง แจ๊สทองเหลือง → ไหลเข้าท่าแอ็ค
+//   ไม่ซ้ำลูกคุณหนู (ม่าน ป้ายผ้า สปอตไลต์ส่ายหา โหนเชือก ตีลังกา ยิงมาการอง คอนเฟตติ) / ขนมหวาน / องค์หญิงหิมะ
+const CWI = {
+  appear: 30, lock: 58, walk: 64, out: 150, flash: 104, stop: 212, face: 226,
+  ear: 238, radio: 254, reply: 290, earEnd: 328,
+  shades: 336, wink: 368, shadesEnd: 410,
+  case: 416, latch: 428, open: 438, cards: 444,
+  snap: 490, cover: 494, coverEnd: 552, lights: 530, dur: 600,
+};
+/** ประตูหมุน: กลาง x · รัศมี · ขอบบน (พิกัดตัว) */
+const CW_DOOR = { x: -390, R: 250, top: -110 };
+/** จุดบนจอ (พิกเซลของผ้าใบ) ที่ชั้นอื่นบันทึกไว้ทุกเฟรม: หัวน้อง · หูฟัง · ช่องกระเป๋า · ประตู */
+let CW_CAT_PX = null, CW_EAR_PX = null, CW_CASE_PX = null, CW_DOOR_PX = null;
+/** ตำแหน่ง x ของน้อง (พิกัดตัว) ณ เฟรม f — ในประตู → เดินไปกลางล็อบบี้ */
+function cwCatX(f) {
+  const u = clamp01((f - CWI.walk) / (CWI.stop - CWI.walk));
+  return CW_DOOR.x + (300 - CW_DOOR.x) * KE.io(u);
+}
+/** แฟลชปาปารัสซี่: [เฟรม, คนที่] */
+const CW_SHOTS = [[106, 0], [114, 2], [119, 1], [127, 3], [133, 0], [141, 2], [146, 1], [152, 3], [160, 0], [167, 2], [173, 1], [181, 3], [188, 0], [194, 2], [203, 1], [211, 3], [220, 2], [228, 0]];
+const cwFlashA = (df) => (df < 0 || df > 12 ? 0 : df < 2 ? df / 2 : 1 - (df - 2) / 10);
+/** ความสว่างแฟลชรวม ณ เฟรม f (0..1) */
+function cwFlashAmp(f) {
+  let a = 0;
+  for (const [fi] of CW_SHOTS) a = Math.max(a, cwFlashA(f - fi));
+  return a;
+}
+function chaweeIntroStage(f) {
+  return f < CWI.appear ? 'hidden' : 'show';
+}
+/**
+ * ท่าแอ็ค "เจ้าหน้าที่พร้อมปฏิบัติการ": ยืนเท้าห่างนิด อุ้งเท้าแตะหูฟัง หิ้วกระเป๋าเอกสาร ใส่แว่นดำ หน้านิ่งเท่ คอเอียงนิด
+ * รอบ 6 วิ: เลื่อนแว่นลงมองกล้องด้วยตาโต ขยิบตาหนึ่งที แล้วดันแว่นกลับ (แฟลชวาบข้างตัวจากเอฟเฟกต์ชุด)
+ */
+const CHAWEE_ACT = {
+  shape(t) {
+    const T = t / 60, L = swLife(t), g = swGlance(T, 3.6);
+    const cy = T % 6;
+    const peek = ktrack(cy, [[2.0, 0], [2.25, 1, KE.out], [3.35, 1], [3.6, 0]]);
+    const wink = kenv(cy, 2.6, 2.66, 2.92, 2.98);
+    return {
+      earR: 1, shades: 1, shadesDown: peek,
+      kickL: 0.1, kickR: -0.1,
+      winkCute: wink > 0.5 ? 1 : 0,
+      gaze: g.x * 0.4 * (1 - peek), gazeY: g.y * 0.4 * (1 - peek),
+      tilt: 0.06 + L.tilt + peek * 0.03,
+      lean: L.lean,
+      ear: L.ear,
+      mouth: 0,
+      wag: 0.3 + Math.sin(T * 1.4) * 0.5,
+    };
+  },
+};
+/** รูปร่างตัว ณ เฟรม f ของท่าเปิดตัว (t = เวลาของเกม) */
+function chaweeIntroShape(f, t) {
+  const A = CWI, L = swLife(t, 0.6);
+  const x = cwCatX(f);
+  // เดิน: ขาก้าวสลับ ตัวเด้งเบา ๆ · หันเฉียงไปทางที่เดิน (ขวาจอ) แล้วหันกลับมาหน้ากล้องตอนหยุด
+  const amp = kenv(f, A.walk, A.walk + 10, A.stop - 10, A.stop + 4);
+  const ph = (f - A.walk) * 0.24;
+  const turnK = kenv(f, A.walk - 6, A.walk + 10, A.stop - 4, A.face);
+  const ear1 = ktrack(f, [[A.ear, 0], [A.ear + 12, 1, KE.out], [A.earEnd - 10, 1], [A.earEnd, 0]]);
+  const ear2 = ktrack(f, [[A.snap - 10, 0], [A.snap, 1, KE.out]]);   // ปิดท่า: กลับมาแตะหูฟัง (ท่าเดียวกับท่าแอ็ค)
+  const talk = f >= A.reply && f < A.earEnd - 12 ? Math.abs(Math.sin((f - A.reply) * 0.32)) * 0.32 : 0;
+  const down = ktrack(f, [[A.shades, 0], [A.shades + 12, 1, KE.out], [A.shadesEnd - 12, 1], [A.shadesEnd, 0]]);
+  const raise = ktrack(f, [[A.case, 0], [A.case + 14, 0.5, KE.out], [A.snap - 10, 0.5], [A.snap, 0]]);
+  const open = ktrack(f, [[A.open, 0], [A.open + 10, 1, KE.out], [A.snap - 12, 1], [A.snap - 2, 0]]);
+  const flash = cwFlashAmp(f);
+  const latchJolt = kenv(f, A.latch, A.latch + 1, A.latch + 2, A.latch + 6) + kenv(f, A.latch + 6, A.latch + 7, A.latch + 8, A.latch + 12);
+  const s = {
+    dx: (x - 300) * UNIT,
+    lift: amp * 0.9 * Math.abs(Math.sin(ph)),
+    kickL: amp * 0.18 * Math.sin(ph), kickR: -amp * 0.18 * Math.sin(ph),
+    turn: -0.5 * turnK,
+    lean: L.lean + amp * 0.02,
+    shades: 1, shadesDown: down,
+    earR: Math.max(ear1, ear2),
+    raiseL: raise, caseOpen: open,
+    winkCute: f >= A.wink && f < A.wink + 16 ? 1 : 0,
+    gaze: ktrack(f, [[A.flash, 0], [A.flash + 20, 0.22], [A.stop, 0.22], [A.face, 0]]) + ktrack(f, [[A.case, 0], [A.case + 12, -0.3], [A.open + 20, -0.3], [A.snap - 8, 0]]),
+    gazeY: ktrack(f, [[A.case, 0], [A.case + 12, 0.18], [A.open + 20, 0.18], [A.snap - 8, 0]]),
+    tilt: L.tilt + Math.max(ear1, ear2) * 0.07 + down * 0.04 - raise * 0.03,
+    ear: L.ear - flash * 0.12 + latchJolt * 0.15,
+    mouth: talk,
+    wag: 0.3 + amp * Math.sin(t * 0.3) * 0.5,
+  };
+  // ปลายท่า: ไหลเข้าท่าแอ็คแบบนุ่ม
+  const u = KE.io(clamp01((f - (A.dur - 40)) / 40));
+  return u > 0 ? kmix(s, CHAWEE_ACT.shape(t), u) : s;
+}
+/** กล้องท่าเปิดตัว — { z, fx, fy, dx, dy, rot } · ตามตัวน้องตอนเดิน · โคลสอัพหูฟัง/แว่น/กระเป๋า · ถอยกว้างตอนปกนิตยสาร */
+function chaweeCam(f, skip = 0) {
+  const A = CWI;
+  const z = ktrack(f, [[0, 0.86], [A.appear, 0.98], [A.lock, 1.24], [A.walk + 20, 1.18], [A.flash + 10, 1.06], [A.stop, 1.1],
+    [A.ear - 2, 1.12], [A.ear + 14, 1.6], [A.earEnd, 1.64], [A.shades + 6, 2.05], [A.shadesEnd, 2.08],
+    [A.case + 10, 1.5], [A.open + 10, 1.62], [A.snap - 4, 1.66], [A.snap + 2, 1.0, KE.out], [A.coverEnd, 1.02], [A.dur, 1]]);
+  const fy = ktrack(f, [[0, 120], [A.appear, 230], [A.lock, 340], [A.walk, 360], [A.flash, 400], [A.stop, 390], [A.ear + 14, 270], [A.earEnd, 270], [A.shades + 6, 285],
+    [A.shadesEnd, 285], [A.case + 10, 440], [A.snap - 4, 440], [A.snap + 2, 380], [A.dur, 400]]);
+  const tx = f < A.stop ? cwCatX(f) : ktrack(f, [[A.stop, 300], [A.ear, 300], [A.ear + 14, 360], [A.earEnd, 360], [A.shades + 6, 300],
+    [A.shadesEnd, 300], [A.case + 10, 190], [A.snap - 4, 200], [A.snap + 2, 300]]);
+  let dx = 300 - tx, dy = ktrack(f, [[0, 170], [A.appear, 110], [A.lock, 0]]);   // เปิดเรื่อง: เลื่อนฉากลงให้เห็นหลังคาประตูป้าย VIP
+  // มุมเอียงนิด ๆ ช่วงแฟลชรัว (มุมกล้องปาปารัสซี่) · สั่นเบา ๆ ทุกแฟลช · กระชากตอนชัตเตอร์ใหญ่
+  const fl = cwFlashAmp(f), flK = kenv(f, A.flash - 6, A.flash + 14, A.stop - 10, A.stop + 8);
+  let rot = 0.022 * Math.sin(f * 0.045) * flK;
+  dx += Math.sin(f * 2.1) * 2.2 * fl;
+  dy += Math.cos(f * 2.9) * 1.6 * fl;
+  const sh = f >= A.snap && f < A.snap + 16 ? 6 * Math.exp(-(f - A.snap) * 0.25) : 0;
+  dx += Math.sin(f * 1.7) * sh;
+  dy += Math.cos(f * 2.3) * sh;
+  rot += ktrack(f, [[A.snap, 0], [A.snap + 2, -0.025], [A.coverEnd, -0.025], [A.coverEnd + 16, 0]]);
+  const k = 1 - clamp01(skip);
+  return { z: 1 + (z - 1) * k, fx: 300, fy, dx: dx * k, dy: dy * k, rot: rot * k };
+}
+
+// ── ฉาก: ประตูหมุนกระจกทอง ปาปารัสซี่แมว แฟลช คลื่นวิทยุ บัตรวีไอพี ──
+const cwDoorAngle = (f) => f * 0.016 + 1.5 * KE.io(clamp01((f - CWI.walk + 10) / (CWI.out - CWI.walk + 10)));
+/**
+ * ประตูหมุน (มองตรง): กระบอกกระจกรัศมี R · บานกระจกสี่บานหมุนรอบเสากลาง (x ปลายบาน = X + R sin φ · ลึก z = cos φ)
+ * front = false: พื้นวงกลม ผนังโค้งด้านหลัง เสากลาง บานด้านหลัง · front = true: บานด้านหน้า เงามืดในประตู ผนังโค้งข้าง เสาขอบ หลังคากลอง ป้าย VIP
+ */
+function cwRevolvingDoor(c, f, t, front, catX) {
+  const { x: X, R, top } = CW_DOOR, B = FEET_Y;
+  const th = cwDoorAngle(f);
+  const gold = (y0, y1) => swGrad(c, 0, y0, 0, y1, CW.gold);
+  const wing = (phi) => {
+    const x1 = X + R * Math.sin(phi), z = Math.cos(phi);
+    const xa = Math.min(X, x1), xb = Math.max(X, x1);
+    if (xb - xa < 2) return;
+    const yT = top + 14, yB = B - 10;
+    c.fillStyle = `rgba(170,205,240,${0.12 + 0.08 * Math.abs(z)})`;
+    c.fillRect(xa, yT, xb - xa, yB - yT);
+    // ประกายกระจกเฉียง
+    c.save();
+    c.beginPath(); c.rect(xa, yT, xb - xa, yB - yT); c.clip();
+    c.fillStyle = `rgba(255,255,255,${0.1 + 0.08 * z})`;
+    const sx = xa + (xb - xa) * (0.3 + 0.2 * Math.sin(phi * 2));
+    c.beginPath(); c.moveTo(sx, yT); c.lineTo(sx + 40, yT); c.lineTo(sx - 90, yB); c.lineTo(sx - 130, yB); c.closePath(); c.fill();
+    c.restore();
+    // ราวบน-ล่าง (โลหะเข้ม) + มือจับทองกลางบาน + ขอบปลายบานทอง
+    c.fillStyle = '#23242C';
+    c.fillRect(xa, yT - 6, xb - xa, 12);
+    c.fillRect(xa, yB - 22, xb - xa, 22);
+    c.fillStyle = gold(B - 220, B - 206);
+    c.fillRect(xa + (xb - xa) * 0.18, B - 220, (xb - xa) * 0.64, 14);
+    c.fillStyle = gold(yT, yB);
+    c.fillRect(x1 - 5, yT - 6, 10, yB - yT + 6);
+  };
+  const phis = [0, 1, 2, 3].map((i) => th + (i * Math.PI) / 2);
+  if (!front) {
+    // พื้นวงกลมหินอ่อนดำ ขอบทอง
+    c.save();
+    c.translate(X, B);
+    c.scale(1, 0.2);
+    const fg = c.createRadialGradient(0, 0, 0, 0, 0, R + 30);
+    fg.addColorStop(0, '#3A3236');
+    fg.addColorStop(1, '#141015');
+    c.fillStyle = fg;
+    c.beginPath(); c.arc(0, 0, R + 30, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(240,206,130,.9)';
+    c.lineWidth = 8;
+    c.beginPath(); c.arc(0, 0, R + 22, 0, TAU); c.stroke();
+    c.restore();
+    // ผนังโค้งด้านหลัง (กระจกมืด) + แสงล็อบบี้ด้านในประตู
+    const wg = c.createLinearGradient(X - R, 0, X + R, 0);
+    wg.addColorStop(0, 'rgba(40,46,62,.55)');
+    wg.addColorStop(0.5, 'rgba(90,100,124,.35)');
+    wg.addColorStop(1, 'rgba(40,46,62,.55)');
+    c.fillStyle = wg;
+    c.fillRect(X - R, top, R * 2, B - top);
+    bdGlow(c, X, B - 300, 260, '255,214,160', 0.25);
+    // บานด้านหลัง (ไกลก่อน)
+    phis.filter((p) => Math.cos(p) < 0).sort((a, b) => Math.cos(a) - Math.cos(b)).forEach(wing);
+    // เสากลาง
+    c.fillStyle = gold(top, B);
+    c.fillRect(X - 9, top, 18, B - top);
+    return;
+  }
+  // บานด้านหน้า
+  phis.filter((p) => Math.cos(p) >= 0).sort((a, b) => Math.cos(a) - Math.cos(b)).forEach(wing);
+  // เงามืดในประตู: น้องยังอยู่ข้างใน = เป็นเงาดำย้อนแสง · ก้าวออกมาแล้วจางหาย (ก้าวออกจากเงา)
+  const inside = clamp01(1 - (catX - X) / (R + 90));
+  if (inside > 0.01) {
+    c.fillStyle = `rgba(8,6,12,${0.62 * inside})`;
+    c.fillRect(X - R, top, R * 2, B - top + 6);
+  }
+  // ผนังกระจกโค้งสองข้าง (ส่วนหน้า) + เสาขอบทอง
+  for (const d of [-1, 1]) {
+    const xa = X + d * R * 0.78, xb = X + d * R;
+    const g = c.createLinearGradient(xa, 0, xb, 0);
+    g.addColorStop(0, 'rgba(170,205,240,.1)');
+    g.addColorStop(1, 'rgba(200,225,250,.3)');
+    c.fillStyle = g;
+    c.fillRect(Math.min(xa, xb), top, Math.abs(xb - xa), B - top);
+    c.fillStyle = gold(top, B);
+    c.fillRect(xb - 12, top, 24, B - top + 4);
+    c.fillStyle = 'rgba(255,255,255,.5)';
+    c.fillRect(xb - 6, top, 4, B - top);
+  }
+  // หลังคากลอง: แถบดำขลิบทอง ไฟหลอดเรียงกะพริบไล่ ป้าย VIP ทอง
+  const dt = top - 96, db = top;
+  c.fillStyle = swGrad(c, 0, dt, 0, db, ['#3A3540', '#1C1A20', '#0E0D11']);
+  c.fillRect(X - R - 24, dt, R * 2 + 48, db - dt);
+  c.fillStyle = gold(dt, dt + 10);
+  c.fillRect(X - R - 30, dt - 8, R * 2 + 60, 12);
+  c.fillRect(X - R - 30, db - 6, R * 2 + 60, 12);
+  for (let i = 0; i <= 16; i++) {
+    const bx = X - R - 4 + ((R * 2 + 8) * i) / 16, on = (Math.floor(f / 6) + i) % 3 !== 0;
+    if (on) glowAt(c, bx, db - 18, 18, '255,220,150', 0.5);
+    c.fillStyle = on ? '#FFF1C8' : '#7A6A50';
+    c.beginPath(); c.arc(bx, db - 18, 5, 0, TAU); c.fill();
+  }
+  c.save();
+  c.font = '900 64px Georgia, "Noto Sans Thai", serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.lineWidth = 6;
+  c.strokeStyle = '#1A1208';
+  c.strokeText('VIP', X, dt + 40);
+  c.fillStyle = swGrad(c, 0, dt + 12, 0, dt + 70, CW.gold);
+  c.fillText('VIP', X, dt + 40);
+  c.restore();
+}
+/** ปาปารัสซี่แมว (เงาดำด้านหน้าจอ หันหลังให้คนดู): [ฝั่ง, ห่างจากน้อง, ขนาด, ระดับ] */
+const CW_PAPS = [[-1, 560, 1.3, 30], [-1, 370, 1.12, 0], [1, 385, 1.15, 8], [1, 575, 1.32, 36]];
+function cwPaparazzi(c, f, t, catX, lite) {
+  const A = CWI, B = FEET_Y;
+  const inK = ktrack(f, [[A.flash - 16, 0], [A.flash - 2, 1, KE.out], [A.stop + 20, 1], [A.stop + 40, 0, KE.in]]);
+  if (inK <= 0.01) return;
+  CW_PAPS.forEach(([side, off, sc, lv], i) => {
+    const px = catX + side * off + Math.sin(t * 0.05 + i) * 6;
+    const base = B - 30 + lv + (1 - inK) * 560;
+    // แฟลชของคนนี้
+    let fa = 0;
+    for (const [fi, who] of CW_SHOTS) if (who === i) fa = Math.max(fa, cwFlashA(f - fi));
+    const recoil = fa * 6;
+    c.save();
+    c.translate(px, base);
+    c.scale(sc, sc);
+    const ink = 'rgba(12,9,15,.95)';
+    // ลำตัว + หัวแมว (หูแหลม) + แขนยกกล้อง
+    const body = new Path2D();
+    body.moveTo(-120, 400); body.quadraticCurveTo(-118, 120, -40, 96); body.lineTo(40, 96); body.quadraticCurveTo(118, 120, 120, 400); body.closePath();
+    const head = new Path2D();
+    head.ellipse(0, 40, 70, 64, 0, 0, TAU);
+    head.moveTo(-58, 8); head.lineTo(-48, -62); head.lineTo(-12, -20); head.closePath();
+    head.moveTo(58, 8); head.lineTo(48, -62); head.lineTo(12, -20); head.closePath();
+    c.fillStyle = ink;
+    c.fill(body);
+    c.fill(head);
+    c.strokeStyle = ink;
+    c.lineWidth = 26;
+    c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-70, 140); c.lineTo(-56, -90 + recoil); c.moveTo(70, 140); c.lineTo(56, -90 + recoil); c.stroke();
+    // กล้อง (เห็นด้านหลัง): ตัวกล้อง จอ LCD เรือง แฟลชบนหัว
+    const cy = -160 + recoil;   // ชูกล้องเหนือหัว (หูแมวโผล่ใต้กล้อง)
+    c.fillStyle = '#16141A';
+    c.beginPath(); c.roundRect(-74, cy, 148, 92, 12); c.fill();
+    c.fillStyle = `rgba(150,200,255,${0.35 + 0.4 * fa})`;
+    c.beginPath(); c.roundRect(-50, cy + 18, 72, 52, 6); c.fill();
+    c.fillStyle = '#26232C';
+    c.beginPath(); c.roundRect(18, cy - 46, 46, 50, 6); c.fill();
+    // ขอบแสงอุ่นจากเวที (ด้านบน)
+    c.strokeStyle = 'rgba(255,214,170,.28)';
+    c.lineWidth = 4;
+    c.beginPath(); c.ellipse(0, 40, 70, 64, 0, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
+    c.restore();
+    // แฟลชยิง: แสงขาวจ้า + ดาวแฉก
+    if (fa > 0.01) {
+      const fx = px + 41 * sc, fy = base + (cy - 22) * sc;
+      glowAt(c, fx, fy, 300 * fa, '255,252,245', 0.85 * fa);
+      cwSparkle(c, fx, fy, 90 * fa, fa);
+      if (!lite) glowAt(c, catX, 360, 420, '255,250,240', 0.12 * fa);   // แฟลชส่องน้อง
+    }
+  });
+}
+/** คลื่นวิทยุจากหูฟัง (พิกเซลของผ้าใบ): ส่วนโค้งสีเขียวขยายออกเป็นจังหวะ */
+function cwRadioRings(c, f) {
+  const A = CWI;
+  if (!CW_EAR_PX || f < A.radio || f > A.earEnd - 4) return;
+  const { x, y, s } = CW_EAR_PX;
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const p = ((f - A.radio) / 24 + i / 3) % 1, a = (1 - p) * clamp01((A.earEnd - 4 - f) / 10);
+    c.strokeStyle = `rgba(120,255,170,${0.85 * a})`;
+    c.lineWidth = (4 - 2 * p) * Math.max(1, s);
+    c.beginPath(); c.arc(x, y, (14 + 60 * p) * s, -1.1, 0.6); c.stroke();
+  }
+  c.restore();
+}
+/** บัตรวีไอพีทอง (พิกัดท้องถิ่น · กว้าง 2w สูง 2h) */
+function cwVipCard(c, w, h) {
+  const q = new Path2D();
+  q.roundRect(-w, -h, w * 2, h * 2, h * 0.22);
+  c.fillStyle = swGrad(c, -w, -h, w, h, ['#3A3540', '#16141A', '#050407']);
+  c.fill(q);
+  c.strokeStyle = swGrad(c, -w, -h, w, h, CW.gold);
+  c.lineWidth = h * 0.16;
+  c.stroke(q);
+  c.fillStyle = swGrad(c, 0, -h, 0, h, CW.gold);
+  c.font = `900 ${h * 0.95}px Georgia, serif`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText('VIP', w * 0.12, h * 0.05);
+  c.fillRect(-w * 0.78, -h * 0.3, w * 0.28, h * 0.5);
+}
+/** แสงทองทะลักจากกระเป๋า + บัตรวีไอพีปลิวหมุนเข้าหากล้อง (พิกเซลของผ้าใบ · ไม่บินทับหน้า — พุ่งออกซ้าย/ลง) */
+function cwCardBurst(c, f, lite) {
+  const A = CWI;
+  if (!CW_CASE_PX || f < A.open || f > A.snap + 4) return;
+  const { x, y, s } = CW_CASE_PX;
+  const W = c.canvas.width, H = c.canvas.height, M = Math.min(W, H);
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  const glow = kenv(f, A.open, A.open + 6, A.snap - 16, A.snap - 2);
+  if (glow > 0.01) {
+    c.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 7; i++) {
+      const an = -2.2 + i * 0.32 + Math.sin(f * 0.05 + i) * 0.05, L = M * (0.18 + 0.06 * Math.sin(f * 0.2 + i * 1.7)) * glow;
+      const g = c.createLinearGradient(x, y, x + Math.cos(an) * L, y + Math.sin(an) * L);
+      g.addColorStop(0, `rgba(255,220,130,${0.5 * glow})`);
+      g.addColorStop(1, 'rgba(255,220,130,0)');
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + Math.cos(an - 0.07) * L, y + Math.sin(an - 0.07) * L);
+      c.lineTo(x + Math.cos(an + 0.07) * L, y + Math.sin(an + 0.07) * L);
+      c.closePath();
+      c.fill();
+    }
+    const rg = c.createRadialGradient(x, y, 0, x, y, M * 0.12);
+    rg.addColorStop(0, `rgba(255,236,170,${0.7 * glow})`);
+    rg.addColorStop(1, 'rgba(255,236,170,0)');
+    c.fillStyle = rg;
+    c.fillRect(x - M * 0.12, y - M * 0.12, M * 0.24, M * 0.24);
+    c.globalCompositeOperation = 'source-over';
+  }
+  const n = lite ? 6 : 11;
+  for (let i = 0; i < n; i++) {
+    const f0 = A.cards + i * 3.2, u = (f - f0) / 40;
+    if (u <= 0 || u >= 1) continue;
+    const an = -2.6 + (i / (n - 1)) * 2.4 + (hash(i + 900) - 0.5) * 0.3;   // ซ้ายบน → ซ้าย → ลงล่าง (ไม่ผ่านหน้า)
+    const dist = M * (0.12 + 0.55 * KE.out(u));
+    const cx = x + Math.cos(an) * dist, cy = y + Math.sin(an) * dist + M * 0.08 * u * u;
+    const sc = (0.4 + 1.6 * u * u) * Math.max(0.5, s * 1.2);
+    const spin = f * 0.22 + i * 1.3;
+    c.save();
+    c.globalAlpha = Math.min(1, u * 6, (1 - u) * 4);
+    c.translate(cx, cy);
+    c.rotate(an * 0.3 + Math.sin(spin * 0.5) * 0.3);
+    c.scale(Math.cos(spin), 1);
+    cwVipCard(c, 26 * sc, 16 * sc);
+    c.restore();
+    if (!lite && i % 2 === 0) cwSparkle(c, cx, cy, 14 * sc, Math.min(1, (1 - u) * 3), '#FFF3D0', '255,226,160');
+  }
+  c.restore();
+}
+/** เอฟเฟกต์ท่าเปิดตัว (พิกัดพื้น) — back: ไฟล็อบบี้สลัว ประตูหมุนครึ่งหลัง · front: ประตูครึ่งหน้า ปาปารัสซี่ แฟลช คลื่นวิทยุ บัตรวีไอพี ไฟสว่าง */
+function chaweeIntroFx(c, k) {
+  const f = k.intro, A = CWI, t = k.t || 0, s = k.introSkip || 0;
+  const lite = gfxLevel() === 'save';
+  const x = cwCatX(f);
+  c.save();
+  c.globalAlpha *= 1 - s;
+  if (k.layer === 'back') {
+    const dim = ktrack(f, [[0, 0.52], [A.lights, 0.52], [A.lights + 36, 0]]);
+    if (dim > 0.01) { c.fillStyle = `rgba(10,7,14,${dim})`; c.fillRect(-4000, -3000, 8000, 7000); }
+    const doorA = ktrack(f, [[A.stop, 1], [A.ear + 10, 0]]);   // พ้นจากเฟรมแล้วไม่ต้องวาด
+    if (doorA > 0.01) { c.globalAlpha *= doorA; cwRevolvingDoor(c, f, t, false, x); }
+    c.restore();
+    return;
+  }
+  const doorA = ktrack(f, [[A.stop, 1], [A.ear + 10, 0]]);
+  if (doorA > 0.01) {
+    c.save();
+    c.globalAlpha *= doorA;
+    cwRevolvingDoor(c, f, t, true, x);
+    c.restore();
+  }
+  // จุดบนจอให้ช่องมองภาพ (หัวน้อง · ประตู)
+  const m = c.getTransform();
+  const hp = m.transformPoint(new DOMPoint(x, 250)), dp = m.transformPoint(new DOMPoint(CW_DOOR.x, 300));
+  CW_CAT_PX = { x: hp.x, y: hp.y, s: Math.hypot(m.a, m.b) };
+  CW_DOOR_PX = { x: dp.x, y: dp.y };
+  cwPaparazzi(c, f, t, x, lite);
+  // ไฟล็อบบี้สว่าง: แถบแสงอุ่นกวาดผ่าน + ฟุ้งทั้งฉาก
+  const sweep = clamp01((f - A.lights) / 34);
+  if (sweep > 0 && sweep < 1 && !lite) {
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    const bx = x - 1100 + 2200 * KE.io(sweep);
+    const g = c.createLinearGradient(bx - 260, 0, bx + 260, 0);
+    g.addColorStop(0, 'rgba(255,214,150,0)');
+    g.addColorStop(0.5, `rgba(255,224,170,${0.22 * Math.sin(Math.PI * sweep)})`);
+    g.addColorStop(1, 'rgba(255,214,150,0)');
+    c.fillStyle = g;
+    c.fillRect(bx - 260, -1600, 520, 3200);
+    c.restore();
+  }
+  c.restore();
+  if (s < 1) {
+    c.save();
+    c.globalAlpha *= 1 - s;
+    cwRadioRings(c, f);
+    cwCardBurst(c, f, lite);
+    c.restore();
+  }
+}
+/** ข้อความกล่องดำโปร่ง (ซับไตเติล/ป้าย HUD) — บรรทัดเดียว */
+function cwCaption(c, txt, x, y, size, a, col = '#FFFFFF') {
+  c.font = `700 ${size}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  const w = c.measureText(txt).width + size * 1.4, h = size * 1.7;
+  c.fillStyle = `rgba(0,0,0,${0.55 * a})`;
+  c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, h * 0.3); c.fill();
+  c.globalAlpha *= a;
+  c.fillStyle = col;
+  c.fillText(txt, x, y + size * 0.05);
+  c.globalAlpha /= a || 1;
+}
+/**
+ * ช่องมองภาพกล้องปาปารัสซี่ + ปกนิตยสาร (ทับทั้งผ้าใบ พิกัดพิกเซล):
+ * มุมกรอบ · REC กะพริบ · ไทม์โค้ด · ค่ากล้อง · แบตเตอรี่ + จำนวนแฟลช · กรอบโฟกัส (ส่ายหา → ล็อกหัวน้อง) · ซับไตเติลวิทยุ
+ * ชัตเตอร์ใหญ่ → ปกนิตยสาร "VIP · พี่ชาวี" ค้างครู่หนึ่งแล้วจางออก · แฟลชวาบทั้งจอเบา ๆ
+ */
+function chaweeLens(c, k) {
+  const f = k.intro, A = CWI, W = k.W, H = k.H, M = Math.min(W, H), S = M / 700;
+  const skip = k.introSkip || 0;
+  c.save();
+  c.globalAlpha *= 1 - skip;
+  // แฟลชวาบทั้งจอ
+  const fl = cwFlashAmp(f);
+  if (fl > 0.01) { c.fillStyle = `rgba(255,255,255,${0.14 * fl})`; c.fillRect(0, 0, W, H); }
+  const vis = ktrack(f, [[0, 0], [10, 1], [A.snap - 3, 1], [A.snap - 1, 0]]);
+  if (vis > 0.01) {
+    c.save();
+    c.globalAlpha *= vis;
+    const m = M * 0.055, L = M * 0.07;
+    c.strokeStyle = 'rgba(255,255,255,.88)';
+    c.lineWidth = 3.4 * S;
+    c.lineCap = 'round';
+    for (const [sx, sy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      const x = sx ? W - m : m, y = sy ? H - m : m, dx = sx ? -L : L, dy = sy ? -L : L;
+      c.beginPath(); c.moveTo(x + dx, y); c.lineTo(x, y); c.lineTo(x, y + dy); c.stroke();
+    }
+    c.font = `700 ${Math.round(17 * S)}px "Noto Sans Thai", monospace`;
+    c.textBaseline = 'middle';
+    if (f % 40 < 26) { c.fillStyle = '#FF3B3B'; c.beginPath(); c.arc(m + 18 * S, m + 22 * S, 7 * S, 0, TAU); c.fill(); }
+    c.fillStyle = '#FFFFFF';
+    c.textAlign = 'left';
+    c.fillText('REC', m + 32 * S, m + 22 * S);
+    const sec = Math.floor(f / 60), fr = Math.floor(f % 60 / 2);
+    c.textAlign = 'right';
+    c.fillText(`00:00:${String(sec).padStart(2, '0')}:${String(fr).padStart(2, '0')}`, W - m - 6 * S, m + 22 * S);
+    c.font = `600 ${Math.round(13 * S)}px "Noto Sans Thai", monospace`;
+    c.globalAlpha *= 0.75;
+    c.textAlign = 'left';
+    c.fillText('ISO 1600 · 1/250 · F2.8', m + 8 * S, H - m - 20 * S);
+    c.globalAlpha /= 0.75;
+    // แบตเตอรี่ + จำนวนแฟลชที่ยิงไป
+    const bx = W - m - 70 * S, by = H - m - 28 * S;
+    c.strokeStyle = '#FFFFFF';
+    c.lineWidth = 2 * S;
+    c.strokeRect(bx, by, 40 * S, 16 * S);
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(bx + 40 * S, by + 5 * S, 3 * S, 6 * S);
+    for (let i = 0; i < 3; i++) c.fillRect(bx + 3 * S + i * 12 * S, by + 3 * S, 10 * S, 10 * S);
+    const shots = CW_SHOTS.filter(([fi]) => fi <= f).length;
+    if (shots) {
+      c.textAlign = 'right';
+      c.font = `700 ${Math.round(15 * S)}px "Noto Sans Thai", monospace`;
+      c.fillText(`FLASH ×${shots}`, bx - 10 * S, by + 8 * S);
+    }
+    // กรอบโฟกัส: ส่ายหา (ขาว) → ล็อกหัวน้อง (เขียว) · โคลสอัพแล้วจางลง
+    const tgt = f < A.appear + 4 ? CW_DOOR_PX : CW_CAT_PX;
+    if (tgt) {
+      const locked = f >= A.lock;
+      const hunt = locked ? 0 : 1;
+      const fx = tgt.x + hunt * Math.sin(f * 0.21) * 60 * S, fy = tgt.y + hunt * Math.cos(f * 0.17) * 40 * S;
+      const hs = Math.min(M * 0.42, Math.max(M * 0.1, (CW_CAT_PX?.s || 0.3) * 200)) * (locked ? 1 - 0.12 * kenv(f, A.lock, A.lock + 3, A.lock + 6, A.lock + 12) : 1.1 + 0.08 * Math.sin(f * 0.4));
+      const fa = ktrack(f, [[A.ear + 4, 1], [A.ear + 16, 0.25], [A.case, 0.25], [A.case + 12, 0.6]]);
+      c.save();
+      c.globalAlpha *= fa;
+      c.strokeStyle = locked ? '#6DFF9C' : '#FFFFFF';
+      c.lineWidth = 2.6 * S;
+      const q = hs * 0.28;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const x = fx + sx * hs, y = fy + sy * hs;
+        c.beginPath(); c.moveTo(x - sx * q, y); c.lineTo(x, y); c.lineTo(x, y - sy * q); c.stroke();
+      }
+      if (locked && f < A.lock + 70 && (f - A.lock) % 16 < 11) {
+        c.fillStyle = '#6DFF9C';
+        c.textAlign = 'center';
+        c.font = `800 ${Math.round(14 * S)}px "Noto Sans Thai", monospace`;
+        c.fillText('LOCK', fx, fy + hs + 16 * S);
+      }
+      c.restore();
+    }
+    // ซับไตเติลวิทยุ
+    const sub1 = kenv(f, A.radio + 4, A.radio + 10, A.reply - 6, A.reply);
+    const sub2 = kenv(f, A.reply + 2, A.reply + 8, A.earEnd - 6, A.earEnd);
+    if (sub1 > 0.01) cwCaption(c, '[วิทยุ] วีไอพีถึงแล้ว เปิดทางด้วยครับ', W / 2, H - m - 64 * S, Math.round(20 * S), sub1, '#B9FFD0');
+    if (sub2 > 0.01) cwCaption(c, 'พี่ชาวี: รับทราบ พร้อมปฏิบัติการ', W / 2, H - m - 64 * S, Math.round(21 * S), sub2);
+    c.restore();
+  }
+  // ชัตเตอร์ใหญ่: ม่านดำปิด-เปิดแว้บ + ขาววาบ
+  const shut = ktrack(f, [[A.snap - 4, 0], [A.snap, 1], [A.snap + 4, 0]]);
+  if (shut > 0.01) {
+    c.fillStyle = '#000000';
+    c.fillRect(0, 0, W, (H / 2) * shut);
+    c.fillRect(0, H - (H / 2) * shut, W, (H / 2) * shut);
+  }
+  const white = f >= A.snap ? Math.exp(-(f - A.snap) * 0.16) * clamp01((f - A.snap + 1) / 2) : 0;
+  if (white > 0.01) { c.fillStyle = `rgba(255,255,255,${0.9 * white})`; c.fillRect(0, 0, W, H); }
+  // ปกนิตยสาร
+  const cv = ktrack(f, [[A.cover, 0], [A.cover + 6, 1, KE.out], [A.coverEnd, 1], [A.coverEnd + 16, 0]]);
+  if (cv > 0.01) {
+    c.save();
+    c.globalAlpha *= cv;
+    const b = M * 0.032;
+    const fr = new Path2D();
+    fr.rect(0, 0, W, H);
+    fr.rect(b, b, W - b * 2, H - b * 2);
+    c.fillStyle = '#FFFFFF';
+    c.fill(fr, 'evenodd');
+    c.strokeStyle = 'rgba(214,170,80,.9)';
+    c.lineWidth = 2 * S;
+    c.strokeRect(b + 6 * S, b + 6 * S, W - b * 2 - 12 * S, H - b * 2 - 12 * S);
+    const e = KE.out(clamp01((f - A.cover) / 14));
+    // หัวนิตยสาร VIP (บนซ้าย)
+    const mh = Math.round(M * 0.16);
+    c.font = `900 ${mh}px Georgia, "Noto Sans Thai", serif`;
+    c.textAlign = 'left';
+    c.textBaseline = 'top';
+    const tx = b + 20 * S, ty = b + 12 * S - (1 - e) * 30 * S;
+    c.lineWidth = 7 * S;
+    c.strokeStyle = 'rgba(20,14,8,.85)';
+    c.strokeText('VIP', tx, ty);
+    c.fillStyle = swGrad(c, 0, ty, 0, ty + mh, CW.gold);
+    c.fillText('VIP', tx, ty);
+    const vw = c.measureText('VIP').width;
+    c.font = `700 ${Math.round(M * 0.026)}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+    c.fillStyle = '#FFFFFF';
+    c.strokeStyle = 'rgba(0,0,0,.6)';
+    c.lineWidth = 4 * S;
+    c.strokeText('ฉบับพิเศษ · คืนนี้ที่ล็อบบี้', tx + vw + 16 * S, ty + mh * 0.55);
+    c.fillText('ฉบับพิเศษ · คืนนี้ที่ล็อบบี้', tx + vw + 16 * S, ty + mh * 0.55);
+    // พาดหัวล่างซ้าย
+    const hx = b + 22 * S - (1 - e) * 60 * S, hy = H - b - 26 * S;
+    c.textBaseline = 'bottom';
+    c.font = `700 ${Math.round(M * 0.032)}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+    c.lineWidth = 5 * S;
+    c.strokeText('บอดี้การ์ดสุดเท่แห่งปี', hx, hy);
+    c.fillStyle = '#FFE08A';
+    c.fillText('บอดี้การ์ดสุดเท่แห่งปี', hx, hy);
+    c.font = `900 ${Math.round(M * 0.085)}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+    c.lineWidth = 8 * S;
+    c.strokeStyle = 'rgba(20,14,8,.85)';
+    c.strokeText('พี่ชาวี', hx, hy - M * 0.04);
+    c.fillStyle = '#FFFFFF';
+    c.fillText('พี่ชาวี', hx, hy - M * 0.04);
+    // บาร์โค้ดล่างขวา
+    const bw = M * 0.13, bh = M * 0.07, bx = W - b - 18 * S - bw, by = H - b - 18 * S - bh;
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(bx, by, bw, bh);
+    c.fillStyle = '#111111';
+    for (let i = 0; i < 26; i++) { const w = (hash(i + 970) > 0.55 ? 2.4 : 1.1) * S; c.fillRect(bx + 6 * S + i * ((bw - 12 * S) / 26), by + 5 * S, w, bh - 18 * S); }
+    c.font = `700 ${Math.round(9 * S)}px monospace`;
+    c.textAlign = 'center';
+    c.textBaseline = 'bottom';
+    c.fillText('VIP 0 0 1', bx + bw / 2, by + bh - 2 * S);
+    c.restore();
+  }
+  c.restore();
+}
+/** เสียงตามจังหวะ (เฟรมจริง · ชื่อใน sfx ของ audio.js) */
+const CW_VOICES = [[0, 'chaweeLobby'], [8, 'chaweeRec'], [26, 'chaweeDoor'], [CWI.lock, 'chaweeLock'],
+  ...Array.from({ length: 11 }, (_, i) => [CWI.walk + 4 + i * 13, 'chaweeStep']),
+  ...CW_SHOTS.map(([fi]) => [fi, 'chaweeShutter']),
+  [CWI.radio, 'chaweeRadio'], [CWI.reply, 'chaweeRoger'], [CWI.shades, 'chaweeShades'], [CWI.wink, 'chaweeWink'],
+  [CWI.latch, 'chaweeLatch'], [CWI.latch + 6, 'chaweeLatch'], [CWI.open, 'chaweeGold'],
+  [CWI.snap - 4, 'chaweeSnap'], [CWI.lights, 'chaweeJazz']];
+const CHAWEE_INTRO = {
+  dur: CWI.dur,
+  appear: CWI.appear,
+  stage: chaweeIntroStage,
+  cam: (f, skip) => chaweeCam(f, skip),
+  ground: true,     // เอฟเฟกต์อยู่บนพื้น ไม่เด้งตามตัวตอนเดิน
+  voices: CW_VOICES,
+  shape: chaweeIntroShape,
+  fx: chaweeIntroFx,
+  lens: chaweeLens,   // ช่องมองภาพกล้องปาปารัสซี่ + ปกนิตยสาร (ทับทั้งจอ)
+};
+/**
+ * แว่นดำ (ช่อง eyes · เฉพาะท่าเปิดตัว/ท่าแอ็ค: ช่อง shades) — เลนส์ดำไล่เงา กรอบดำเงา สะพานทองคู่ ขาแว่นทอง
+ * shadesDown = เลื่อนแว่นลงมาที่จมูก (ตาโตโผล่เหนือแว่น)
+ */
+function chaweeShades(c, k) {
+  const on = k.sv ? k.sv('shades') : 0;
+  if (on <= 0.01) return;
+  const down = k.sv('shadesDown') || 0, pal = k.pal;
+  c.save();
+  c.globalAlpha *= clamp01(on);
+  c.translate(300, 262 + 66 * down);
+  c.rotate(-0.05 * down);
+  c.translate(-300, -262);
+  const lens = (cx) => {
+    const q = new Path2D();
+    q.moveTo(cx - 60, 214);
+    q.lineTo(cx + 60, 214);
+    q.quadraticCurveTo(cx + 70, 216, cx + 68, 244);
+    q.bezierCurveTo(cx + 64, 300, cx + 32, 322, cx, 322);
+    q.bezierCurveTo(cx - 32, 322, cx - 64, 300, cx - 68, 244);
+    q.quadraticCurveTo(cx - 70, 216, cx - 60, 214);
+    q.closePath();
+    return q;
+  };
+  // ขาแว่น (ลอดหลังหัว)
+  c.strokeStyle = '#121218';
+  c.lineWidth = 9;
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(160, 222); c.lineTo(134, 218); c.moveTo(440, 222); c.lineTo(466, 218); c.stroke();
+  c.strokeStyle = CW.gold[1];
+  c.lineWidth = 3;
+  c.beginPath(); c.moveTo(158, 222); c.lineTo(140, 219); c.moveTo(442, 222); c.lineTo(460, 219); c.stroke();
+  for (const cx of [227, 373]) {
+    const q = lens(cx);
+    const g = c.createLinearGradient(0, 214, 0, 322);
+    g.addColorStop(0, '#3A3F52');
+    g.addColorStop(0.55, '#171A24');
+    g.addColorStop(1, '#0B0C11');
+    c.fillStyle = g;
+    c.fill(q);
+    c.save();
+    c.clip(q);
+    c.fillStyle = 'rgba(255,255,255,.22)';
+    c.beginPath(); c.moveTo(cx - 40, 214); c.lineTo(cx - 14, 214); c.lineTo(cx - 64, 300); c.lineTo(cx - 76, 280); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.12)';
+    c.beginPath(); c.moveTo(cx + 2, 214); c.lineTo(cx + 12, 214); c.lineTo(cx - 34, 322); c.lineTo(cx - 44, 322); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,214,140,.35)';
+    c.beginPath(); c.ellipse(cx + 34, 292, 12, 6, -0.4, 0, TAU); c.fill();
+    c.restore();
+    // กรอบ: ขอบบนหนา (browline) + ขอบรอบบาง
+    c.strokeStyle = '#0B0B0F';
+    c.lineWidth = 6;
+    c.lineJoin = 'round';
+    c.stroke(q);
+    c.lineWidth = 12;
+    c.beginPath(); c.moveTo(cx - 62, 216); c.lineTo(cx + 62, 216); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.35)';
+    c.lineWidth = 2;
+    c.beginPath(); c.moveTo(cx - 54, 212); c.lineTo(cx + 40, 212); c.stroke();
+    c.fillStyle = CW.gold[1];
+    for (const d of [-1, 1]) { c.beginPath(); c.arc(cx + d * 58, 217, 3, 0, TAU); c.fill(); }
+  }
+  // สะพานทองคู่
+  c.strokeStyle = pal.line;
+  c.lineWidth = 7;
+  c.beginPath(); c.moveTo(287, 224); c.quadraticCurveTo(300, 216, 313, 224); c.stroke();
+  c.strokeStyle = CW.gold[1];
+  c.lineWidth = 4;
+  c.stroke();
+  c.beginPath(); c.moveTo(289, 236); c.lineTo(311, 236); c.stroke();
+  c.restore();
 }
 
 // ── จันทราแมวรัตติกาล ──
@@ -9061,6 +11952,390 @@ function snowBackdropPaint(c) {
 }
 const SNOW_BACKDROP = { paint: snowBackdropPaint, outer: '#0E123A' };
 
+// ── ลูกคุณหนูจอมซน: "สวนพระราชวังพาสเทล" (ตามภาพแบบ · ผู้ใช้ 21 ต.ค.) — ฟ้าใส เมฆขาว ปราสาทยอดฟ้าไกล ๆ สองข้าง
+//    ม่านชมพูซ้อนม่านฟ้า ผูกเชือกพู่ทอง สายมุกห้อย · เสาหินอ่อนหัวทอง · กระถางกุหลาบบนแท่น · น้ำพุ · ราวระเบียงขาว พุ่มไม้
+//    พื้นตารางฟ้า-ขาว · แท่นกลมสองชั้น (ผิวฟ้าลายทอง ข้างขาวขลิบทอง เพชรฟ้า ตราหัวใจมงกุฎ มุกห้อย) · กลีบกุหลาบ ประกายทอง
+//    สีอ่อนกว่าชุด (กรมท่า-ทอง ของชุดเด่นออกจากฉาก) · ตรงหลังตัวน้องโปร่ง ของชิ้นใหญ่อยู่สองข้าง
+function bdNbCloud(c, x, y, s, a = 1) {
+  c.save();
+  c.globalAlpha = a;
+  c.translate(x, y);
+  c.scale(s, s);
+  const puff = bdPuffs([[-120, 12, 50], [-66, -20, 64], [0, -40, 76], [66, -18, 60], [116, 14, 44], [-30, 22, 52], [44, 22, 54]]);
+  c.fillStyle = 'rgba(150,180,230,.26)';
+  c.save(); c.translate(5, 12); c.fill(puff); c.restore();
+  const g = c.createLinearGradient(0, -110, 0, 70);
+  g.addColorStop(0, '#FFFFFF');
+  g.addColorStop(0.6, '#F7F9FF');
+  g.addColorStop(1, '#DEE7F8');
+  c.fillStyle = g;
+  c.fill(puff);
+  c.fillStyle = 'rgba(255,255,255,.8)';
+  for (const [px, py, pr] of [[-66, -44, 24], [0, -66, 30], [66, -36, 20]]) { c.beginPath(); c.ellipse(px, py, pr, pr * 0.5, -0.2, 0, TAU); c.fill(); }
+  c.restore();
+}
+/** ปราสาทพาสเทลไกล ๆ: กำแพงขาวอมม่วง หลังคากรวยฟ้า ยอดทองธงชมพู หน้าต่างโค้งฟ้า (ตาม x กลาง · ฐาน base · ขนาด s) */
+function bdNbCastle(c, cx, base, s) {
+  c.save();
+  c.translate(cx, base);
+  c.scale(s, s);
+  const wall = c.createLinearGradient(0, -460, 0, 0);
+  wall.addColorStop(0, '#FCF8FF');
+  wall.addColorStop(1, '#DCD3EF');
+  const line = 'rgba(150,140,200,.65)';
+  const roof = (w) => { const g = c.createLinearGradient(-w, 0, w, 0); g.addColorStop(0, '#A8C2F0'); g.addColorStop(0.45, '#7598DC'); g.addColorStop(1, '#5677C4'); return g; };
+  const win = (x, y, w, h) => {
+    c.fillStyle = '#A9C1EE';
+    c.beginPath(); c.moveTo(x - w, y + h); c.lineTo(x - w, y + w); c.arc(x, y + w, w, Math.PI, 0); c.lineTo(x + w, y + h); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.55)';
+    c.fillRect(x - w * 0.5, y + w * 0.6, w * 0.35, h - w * 0.8);
+  };
+  const tower = (x, w, h, rh) => {
+    c.fillStyle = wall;
+    c.beginPath(); c.rect(x - w / 2, -h, w, h); c.fill();
+    c.strokeStyle = line; c.lineWidth = 2.5; c.stroke();
+    c.fillStyle = '#F2DCA0';
+    c.fillRect(x - w / 2 - 5, -h - 7, w + 10, 9);
+    c.save();
+    c.translate(x, -h - 4);
+    c.fillStyle = roof(w);
+    c.beginPath(); c.moveTo(-w * 0.68, 0); c.quadraticCurveTo(-w * 0.22, -rh * 0.45, 0, -rh); c.quadraticCurveTo(w * 0.22, -rh * 0.45, w * 0.68, 0); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(-w * 0.3, -6); c.quadraticCurveTo(-w * 0.12, -rh * 0.45, -2, -rh * 0.9); c.stroke();
+    c.strokeStyle = '#DDB45A'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(0, -rh); c.lineTo(0, -rh - 28); c.stroke();
+    c.fillStyle = '#F6AFC6';
+    c.beginPath(); c.moveTo(0, -rh - 28); c.lineTo(24, -rh - 21); c.lineTo(0, -rh - 14); c.closePath(); c.fill();
+    c.restore();
+    for (let k = 0; k < Math.floor(h / 86); k++) win(x, -h + 30 + k * 80, w * 0.13, 34);
+  };
+  c.fillStyle = wall;
+  c.beginPath(); c.rect(-230, -130, 460, 130); c.fill();
+  c.strokeStyle = line; c.lineWidth = 2.5; c.stroke();
+  for (let i = -5; i <= 5; i++) { c.fillStyle = wall; c.fillRect(i * 42 - 13, -148, 26, 20); c.strokeRect(i * 42 - 13, -148, 26, 20); }
+  for (const x of [-150, -80, 80, 150]) win(x, -104, 11, 52);
+  c.fillStyle = '#C7D6F4';
+  c.beginPath(); c.moveTo(-36, 0); c.lineTo(-36, -60); c.arc(0, -60, 36, Math.PI, 0); c.lineTo(36, 0); c.closePath(); c.fill(); c.stroke();
+  tower(-190, 58, 240, 120);
+  tower(190, 58, 260, 128);
+  tower(-102, 66, 320, 140);
+  tower(102, 66, 340, 150);
+  tower(0, 92, 420, 200);
+  c.restore();
+}
+/** เสาหินอ่อนขาว ร่องเสา หัวเสาทองม้วนคู่ ฐานขั้นทอง (กลาง x · พื้น base · สูง h · กว้าง w) */
+function bdNbColumn(c, x, base, h, w) {
+  c.save();
+  const top = base - h;
+  const sg = c.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
+  sg.addColorStop(0, '#DCD6EA'); sg.addColorStop(0.4, '#FFFFFF'); sg.addColorStop(1, '#CFC8E2');
+  c.fillStyle = sg;
+  c.fillRect(x - w / 2, top + 40, w, h - 80);
+  c.strokeStyle = 'rgba(170,160,205,.45)';
+  c.lineWidth = 3;
+  for (let i = 1; i < 6; i++) { const xx = x - w / 2 + (w * i) / 6; c.beginPath(); c.moveTo(xx, top + 46); c.lineTo(xx, base - 46); c.stroke(); }
+  const gold = (y, ww, hh) => {
+    const g = c.createLinearGradient(0, y, 0, y + hh);
+    g.addColorStop(0, '#FFF3CF'); g.addColorStop(0.5, '#F0CF7C'); g.addColorStop(1, '#C99A48');
+    c.fillStyle = g;
+    c.beginPath(); c.roundRect(x - ww / 2, y, ww, hh, 6); c.fill();
+  };
+  gold(top + 22, w * 1.3, 22);
+  gold(top, w * 1.5, 16);
+  for (const d of [-1, 1]) {
+    c.fillStyle = '#F0CF7C';
+    c.beginPath(); c.arc(x + d * w * 0.62, top + 30, 14, 0, TAU); c.fill();
+    c.strokeStyle = '#C99A48'; c.lineWidth = 3;
+    c.beginPath(); c.arc(x + d * w * 0.62, top + 30, 7, 0, TAU * 0.8); c.stroke();
+  }
+  gold(base - 46, w * 1.25, 18);
+  gold(base - 28, w * 1.45, 28);
+  c.restore();
+}
+/** กุหลาบชมพูในกระถางหินอ่อนบนแท่น (กลาง x · พื้น base · ขนาด s) */
+function bdNbRoses(c, x, base, s) {
+  c.save();
+  c.translate(x, base);
+  c.scale(s, s);
+  const ped = c.createLinearGradient(-50, 0, 50, 0);
+  ped.addColorStop(0, '#DAD3EA'); ped.addColorStop(0.45, '#FFFFFF'); ped.addColorStop(1, '#CEC6E1');
+  c.fillStyle = ped;
+  c.fillRect(-46, -150, 92, 150);
+  c.fillStyle = '#EED089';
+  c.fillRect(-56, -160, 112, 14);
+  c.fillRect(-54, -14, 108, 14);
+  c.fillStyle = ped;
+  c.beginPath(); c.moveTo(-60, -232); c.quadraticCurveTo(-58, -170, -26, -164); c.lineTo(26, -164); c.quadraticCurveTo(58, -170, 60, -232); c.closePath(); c.fill();
+  c.fillStyle = '#EED089';
+  c.fillRect(-66, -240, 132, 12);
+  const bush = bdPuffs([[-70, -262, 40], [-30, -290, 50], [20, -296, 52], [66, -268, 40], [0, -252, 50], [-46, -248, 36], [46, -248, 36]]);
+  const bg = c.createLinearGradient(0, -350, 0, -230);
+  bg.addColorStop(0, '#B6E2B9'); bg.addColorStop(1, '#79BE8E');
+  c.fillStyle = bg;
+  c.fill(bush);
+  for (let i = 0; i < 15; i++) {
+    const rx = -78 + hash(i * 3.7 + x) * 156, ry = -330 + hash(i * 5.1 + x) * 84, rr = 11 + hash(i * 1.3 + x) * 7;
+    const rg = c.createRadialGradient(rx - rr * 0.3, ry - rr * 0.3, 1, rx, ry, rr);
+    rg.addColorStop(0, '#FFE1EA'); rg.addColorStop(0.6, '#FFA9C2'); rg.addColorStop(1, '#F07FA2');
+    c.fillStyle = rg;
+    c.beginPath(); c.arc(rx, ry, rr, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(214,90,130,.55)'; c.lineWidth = 1.6;
+    c.beginPath(); c.arc(rx, ry, rr * 0.5, 0.3, 4.8); c.stroke();
+    c.beginPath(); c.arc(rx + 1, ry + 1, rr * 0.25, 2, 6.5); c.stroke();
+  }
+  c.restore();
+}
+/** น้ำพุสองชั้นไกล ๆ: อ่างหินอ่อน น้ำพุ่งโค้งใส ไอน้ำเรือง */
+function bdNbFountain(c, x, base, s) {
+  c.save();
+  c.translate(x, base);
+  c.scale(s, s);
+  bdGlow(c, 0, -110, 150, '210,235,255', 0.45);
+  const marble = c.createLinearGradient(0, -40, 0, 0);
+  marble.addColorStop(0, '#FFFFFF'); marble.addColorStop(1, '#D3CCE6');
+  c.fillStyle = marble;
+  c.beginPath(); c.ellipse(0, -20, 120, 26, 0, 0, TAU); c.fill();
+  c.fillRect(-120, -20, 240, 20);
+  c.beginPath(); c.ellipse(0, 0, 120, 26, 0, 0, Math.PI); c.fill();
+  c.fillStyle = '#B7D4F4';
+  c.beginPath(); c.ellipse(0, -22, 104, 18, 0, 0, TAU); c.fill();
+  c.fillStyle = marble;
+  c.fillRect(-12, -120, 24, 100);
+  c.beginPath(); c.ellipse(0, -120, 54, 13, 0, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(190,225,255,.85)';
+  c.lineWidth = 5;
+  c.lineCap = 'round';
+  for (const d of [-1, 1]) {
+    for (const [w, hgt] of [[60, 70], [100, 40]]) {
+      c.beginPath(); c.moveTo(0, -150); c.quadraticCurveTo(d * w * 0.5, -150 - hgt, d * w, -22); c.stroke();
+    }
+  }
+  c.strokeStyle = 'rgba(255,255,255,.85)';
+  c.lineWidth = 2;
+  c.beginPath(); c.moveTo(0, -130); c.lineTo(0, -196); c.stroke();
+  c.restore();
+}
+/** ม่านชมพูผูกเชือกพู่ทอง ซ้อนม่านฟ้า (side -1 = ซ้าย · +1 = ขวา) + ระบายม่านบนสายมุกห้อย */
+function bdNbCurtain(c, side) {
+  const [X0, Y0, X1] = BD_BOX;
+  const ox = side < 0 ? X0 : X1, S = -side;   // S = ทิศเข้าหากลางฉาก
+  const drape = (inner, tieY, low, cols, folds) => {
+    const p = new Path2D();
+    p.moveTo(ox, Y0);
+    p.lineTo(ox + S * inner, Y0);
+    p.bezierCurveTo(ox + S * inner * 0.97, tieY - 140, ox + S * inner * 0.76, tieY - 40, ox + S * inner * 0.5, tieY);
+    p.bezierCurveTo(ox + S * inner * 0.6, tieY + 90, ox + S * inner * 0.66, low - 80, ox + S * inner * 0.72, low);
+    p.lineTo(ox, low);
+    p.closePath();
+    const g = c.createLinearGradient(ox, 0, ox + S * inner, 0);
+    g.addColorStop(0, cols[2]); g.addColorStop(0.55, cols[1]); g.addColorStop(1, cols[0]);
+    c.fillStyle = g;
+    c.fill(p);
+    c.save();
+    c.clip(p);
+    for (let i = 1; i < folds; i++) {
+      const u = i / folds, xt = ox + S * inner * u, xb = ox + S * inner * 0.5 * u;
+      c.strokeStyle = 'rgba(190,90,140,.18)'; c.lineWidth = 16;
+      c.beginPath(); c.moveTo(xt, Y0); c.quadraticCurveTo(xt - S * 20, tieY - 120, xb, tieY); c.lineTo(xb + S * 12 * u, low); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 5;
+      c.beginPath(); c.moveTo(xt + S * 14, Y0); c.quadraticCurveTo(xt - S * 6, tieY - 120, xb + S * 10, tieY); c.lineTo(xb + S * (12 * u + 10), low); c.stroke();
+    }
+    c.restore();
+  };
+  drape(980, 220, 1100, ['#D6E6FB', '#B8D0F2', '#93B1E4'], 6);   // ม่านฟ้าข้างหลัง
+  drape(880, 200, 1100, ['#FFE2EC', '#F9C0D3', '#EE9EBA'], 8);   // ม่านชมพูหน้า (โค้งเข้ามาเป็นกรอบมุมบนของจอ)
+  // เชือกผูกม่าน + พู่ทอง
+  const tx = ox + S * 880 * 0.5, ty = 200;
+  c.strokeStyle = '#E7C374'; c.lineWidth = 12; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(ox, ty - 14); c.quadraticCurveTo(tx - S * 40, ty + 24, tx + S * 8, ty + 4); c.stroke();
+  c.strokeStyle = '#FFF0C4'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(ox, ty - 18); c.quadraticCurveTo(tx - S * 40, ty + 18, tx + S * 8, ty); c.stroke();
+  const tg = c.createLinearGradient(0, ty, 0, ty + 120);
+  tg.addColorStop(0, '#FFE9AE'); tg.addColorStop(1, '#C9973E');
+  c.fillStyle = tg;
+  c.beginPath(); c.arc(tx + S * 6, ty + 14, 16, 0, TAU); c.fill();
+  c.beginPath(); c.moveTo(tx + S * 6 - 12, ty + 26); c.lineTo(tx + S * 6 + 12, ty + 26); c.lineTo(tx + S * 6 + 22, ty + 120); c.lineTo(tx + S * 6 - 22, ty + 120); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(160,110,40,.45)'; c.lineWidth = 2;
+  for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(tx + S * 6 + i * 3, ty + 34); c.lineTo(tx + S * 6 + i * 6, ty + 118); c.stroke(); }
+}
+/** ระบายม่านบนสุด: ผ้าชมพูโค้งเป็นช่วง ๆ + สายมุกห้อย (บนฟ้าเหนือหัว — เห็นตอนกล้องเงย/จอกว้าง) */
+function bdNbValance(c) {
+  const [X0, Y0, X1] = BD_BOX;
+  const n = 9, w = (X1 - X0) / n;
+  for (let i = 0; i < n; i++) {
+    const x0 = X0 + i * w, x1 = x0 + w, mid = (x0 + x1) / 2;
+    const p = new Path2D();
+    p.moveTo(x0, Y0 - 10);
+    p.lineTo(x1, Y0 - 10);
+    p.lineTo(x1, Y0 + 40);
+    p.quadraticCurveTo(mid, Y0 + 150, x0, Y0 + 40);
+    p.closePath();
+    const g = c.createLinearGradient(0, Y0, 0, Y0 + 120);
+    g.addColorStop(0, '#F2A9C4'); g.addColorStop(1, '#FFD8E6');
+    c.fillStyle = g;
+    c.fill(p);
+    c.strokeStyle = '#EFCB7D'; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(x1, Y0 + 40); c.quadraticCurveTo(mid, Y0 + 150, x0, Y0 + 40); c.stroke();
+    c.fillStyle = '#FFFFFF';
+    for (let k = 1; k < 12; k++) {
+      const u = k / 12, px = x0 + w * u, py = Y0 + 40 + Math.sin(u * Math.PI) * 98 + 18;
+      c.beginPath(); c.arc(px, py, 5.5, 0, TAU); c.fill();
+    }
+    c.fillStyle = '#E7C374';
+    c.beginPath(); c.arc(x0, Y0 + 44, 13, 0, TAU); c.fill();
+  }
+}
+/** ราวระเบียงหินอ่อนขาว (ราวบน ราวล่าง ลูกกรงคอขวด) พาดขอบฟ้า */
+function bdNbBalustrade(c, y0, y1) {
+  const [X0, , X1] = BD_BOX;
+  const m = c.createLinearGradient(0, y0, 0, y1);
+  m.addColorStop(0, '#FFFFFF'); m.addColorStop(1, '#DCD5EC');
+  c.fillStyle = m;
+  for (let x = X0; x < X1; x += 30) {
+    // ลูกกรงคอขวด: คอแคบบน ป่องล่าง
+    const mid = (y0 + y1) / 2 + 6;
+    c.beginPath();
+    c.moveTo(x + 10, y0 + 12);
+    c.lineTo(x + 16, y0 + 12);
+    c.bezierCurveTo(x + 29, mid, x + 25, y1 - 14, x + 17, y1 - 10);
+    c.lineTo(x + 9, y1 - 10);
+    c.bezierCurveTo(x + 1, y1 - 14, x - 3, mid, x + 10, y0 + 12);
+    c.closePath();
+    c.fill();
+  }
+  c.fillRect(X0, y0, X1 - X0, 13);
+  c.fillRect(X0, y1 - 11, X1 - X0, 11);
+  c.fillStyle = 'rgba(170,160,205,.35)';
+  c.fillRect(X0, y0 + 11, X1 - X0, 3);
+  for (let x = X0; x < X1; x += 360) { c.fillStyle = m; c.fillRect(x - 16, y0 - 12, 32, y1 - y0 + 12); }
+}
+function nobleBackdropPaint(c) {
+  const [X0, Y0, X1, Y1] = BD_BOX, W = X1 - X0;
+  // ฟ้าใส: ฟ้าอ่อน → ฟ้าขาว → ชมพูนมที่ขอบฟ้า
+  const sky = c.createLinearGradient(0, Y0, 0, BD_HZ);
+  sky.addColorStop(0, '#9FC6EE');
+  sky.addColorStop(0.45, '#C9E0F8');
+  sky.addColorStop(0.85, '#F1E8F7');
+  sky.addColorStop(1, '#FBEFF4');
+  c.fillStyle = sky;
+  c.fillRect(X0, Y0, W, BD_HZ - Y0 + 40);
+  bdGlow(c, 300, 200, 760, '255,255,255', 0.42);
+  bdGlow(c, 300, BD_HZ, 900, '255,238,228', 0.4, 0.35);
+  // เมฆขาวนุ่มสองข้าง (ตรงหลังหัวน้องว่าง)
+  bdNbCloud(c, -360, -60, 0.9, 0.9);
+  bdNbCloud(c, 960, -120, 1, 0.9);
+  bdNbCloud(c, -120, 150, 0.7, 0.75);
+  bdNbCloud(c, 760, 120, 0.75, 0.75);
+  bdNbCloud(c, 300, -330, 0.8, 0.55);
+  // ปราสาทพาสเทลไกล ๆ สองข้าง + หมอกฟ้าดันไปข้างหลัง
+  bdNbCastle(c, -150, BD_HZ - 40, 0.78);
+  bdNbCastle(c, 840, BD_HZ - 30, 0.9);
+  const far = c.createLinearGradient(0, BD_HZ - 440, 0, BD_HZ);
+  far.addColorStop(0, 'rgba(225,232,250,0)');
+  far.addColorStop(1, 'rgba(225,232,250,.45)');
+  c.fillStyle = far;
+  c.fillRect(X0, BD_HZ - 440, W, 440);
+  // พุ่มไม้ตัดแต่งหลังระเบียง + ต้นไม้ทรงกลมสองข้าง
+  const hedge = bdPuffs(Array.from({ length: 70 }, (_, i) => [X0 + i * 40, BD_HZ - 58 - hash(i * 2.1 + 5) * 16, 30 + hash(i * 3.3 + 6) * 10]));
+  const hg = c.createLinearGradient(0, BD_HZ - 110, 0, BD_HZ);
+  hg.addColorStop(0, '#BFE6C3'); hg.addColorStop(1, '#8CCB9C');
+  c.fillStyle = hg;
+  c.fill(hedge);
+  c.fillRect(X0, BD_HZ - 60, W, 60);
+  for (const [x, r] of [[-560, 90], [-420, 70], [1160, 92], [1300, 72]]) {
+    c.fillStyle = '#A9D9B2';
+    c.beginPath(); c.arc(x, BD_HZ - 120 - r, r, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.3)';
+    c.beginPath(); c.arc(x - r * 0.3, BD_HZ - 130 - r * 1.3, r * 0.4, 0, TAU); c.fill();
+  }
+  bdNbFountain(c, 10, BD_HZ - 30, 0.75);
+  bdNbFountain(c, 600, BD_HZ - 30, 0.75);
+  bdNbBalustrade(c, BD_HZ - 66, BD_HZ + 4);
+  // พื้นตารางฟ้า-ขาวมันวาว จางเข้าขอบฟ้า
+  bdCheckerFloor(c, '#CFE0F7', '#FAFCFF');
+  const fh = c.createLinearGradient(0, BD_HZ, 0, BD_HZ + 120);
+  fh.addColorStop(0, 'rgba(248,244,255,.9)');
+  fh.addColorStop(1, 'rgba(248,244,255,0)');
+  c.fillStyle = fh;
+  c.fillRect(X0, BD_HZ, W, 120);
+  bdGlow(c, 300, FEET_Y + 40, 640, '255,252,255', 0.4, 0.3);
+  // เสาหินอ่อน + กระถางกุหลาบ สองข้าง (ห่างตัวน้อง)
+  bdNbColumn(c, -420, BD_HZ + 160, 760, 92);
+  bdNbColumn(c, 1020, BD_HZ + 160, 760, 92);
+  bdNbRoses(c, -230, FEET_Y + 40, 0.95);
+  bdNbRoses(c, 830, FEET_Y + 40, 0.95);
+  // ม่านสองข้าง + ระบายม่านบนสุด
+  bdNbCurtain(c, -1);
+  bdNbCurtain(c, 1);
+  bdNbValance(c);
+  // แท่นกลมสองชั้น: ชั้นล่างกว้างฟ้าอ่อนขอบทอง · ชั้นบนผิวฟ้าลายทอง ข้างขาวขลิบทอง
+  c.save();
+  c.translate(0, 40);
+  const lo = bdStage(c, 452, 88, 30, ['#F3F7FF', '#D3E0F6'], ['#C7D6F1', '#9FB5E2'], 'rgba(238,203,125,.95)');
+  c.restore();
+  const st = bdStage(c, 372, 70, 46, ['#DCE9FF', '#A9C3EE'], ['#FFFFFF', '#E3DEF2'], 'rgba(238,203,125,1)');
+  c.save();
+  c.translate(st.cx, st.cy);
+  c.scale(1, st.ry / st.rx);
+  c.strokeStyle = 'rgba(236,200,120,.9)';
+  c.lineWidth = 4;
+  for (const r of [st.rx * 0.86, st.rx * 0.6, st.rx * 0.22]) { c.beginPath(); c.arc(0, 0, r, 0, TAU); c.stroke(); }
+  c.lineWidth = 3;
+  for (let i = 0; i < 16; i++) {
+    const a = (i * TAU) / 16, a2 = a + TAU / 32;
+    c.beginPath();
+    c.moveTo(Math.cos(a) * st.rx * 0.22, Math.sin(a) * st.rx * 0.22);
+    c.quadraticCurveTo(Math.cos(a2) * st.rx * 0.5, Math.sin(a2) * st.rx * 0.5, Math.cos(a) * st.rx * 0.6, Math.sin(a) * st.rx * 0.6);
+    c.stroke();
+  }
+  c.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i = 0; i < 32; i++) { const a = (i * TAU) / 32; c.beginPath(); c.arc(Math.cos(a) * st.rx * 0.73, Math.sin(a) * st.rx * 0.73, 4, 0, TAU); c.fill(); }
+  c.restore();
+  // ข้างแท่นชั้นบน: แถบขลิบทองบน-ล่าง เพชรฟ้าเรียง ตราหัวใจมงกุฎกลางหน้า สายมุกห้อย
+  const sidePath = new Path2D();
+  sidePath.moveTo(st.cx - st.rx, st.cy);
+  sidePath.ellipse(st.cx, st.cy, st.rx, st.ry, 0, Math.PI, 0, true);
+  sidePath.lineTo(st.cx + st.rx, st.cy + st.h);
+  sidePath.ellipse(st.cx, st.cy + st.h, st.rx, st.ry, 0, 0, Math.PI, false);
+  sidePath.closePath();
+  c.save();
+  c.clip(sidePath);
+  c.strokeStyle = 'rgba(236,200,120,.95)';
+  c.lineWidth = 5;
+  for (const dy of [8, st.h - 6]) { c.beginPath(); c.ellipse(st.cx, st.cy + dy, st.rx, st.ry, 0, 0, Math.PI); c.stroke(); }
+  c.restore();
+  const pal0 = { line: '#5A3420' };
+  for (let i = 1; i < 10; i++) {
+    const a = Math.PI * (i / 10);
+    if (i === 5) continue;
+    const x = st.cx - Math.cos(a) * st.rx * 0.98, y = st.cy + Math.sin(a) * st.ry + st.h * 0.5;
+    nbGem(c, x, y, 7, 10, NB.sap, pal0, { frame: true, w: 1.2 });
+  }
+  nbGem(c, st.cx, st.cy + st.ry + st.h * 0.52, 15, 15, NB.sap, pal0, { shape: 'heart', frame: true, w: 1.4 });
+  nbCrown(c, st.cx, st.cy + st.ry + st.h * 0.52 - 18, 14, pal0, { w: 1.1 });
+  for (let i = 0; i < 10; i++) {
+    const a0 = Math.PI * (i / 10), a1 = Math.PI * ((i + 1) / 10);
+    const p0 = [st.cx - Math.cos(a0) * st.rx, st.cy + Math.sin(a0) * st.ry + st.h], p1 = [st.cx - Math.cos(a1) * st.rx, st.cy + Math.sin(a1) * st.ry + st.h];
+    nbPearls(c, nbSwag(p0, p1, 12, 8), 3.2, pal0);
+  }
+  void lo;
+  // กลีบกุหลาบนิ่ง + ประกายทอง (สองข้าง · ตรงตัวน้องเว้น)
+  for (let i = 0; i < 46; i++) {
+    const x = X0 + hash(i * 6.1 + 300) * W, y = Y0 + 80 + hash(i * 2.7 + 301) * (Y1 - Y0 - 200);
+    if (Math.abs(x - 300) < 300 && y > -40 && y < FEET_Y + 30) continue;
+    if (i % 2) nbPetal(c, x, y, 8 + hash(i + 302) * 8, hash(i + 303) * TAU, 0.75);
+    else nbSparkle(c, x, y, 6 + hash(i + 304) * 10, 0.7, i % 4 ? '#FFFFFF' : '#FFF1C2');
+  }
+  const vg = c.createRadialGradient(300, 340, 640, 300, 340, 1500);
+  vg.addColorStop(0, 'rgba(190,160,220,0)');
+  vg.addColorStop(1, 'rgba(190,160,220,.5)');
+  c.fillStyle = vg;
+  c.fillRect(X0, Y0, W, Y1 - Y0);
+  bdEdgeFade(c, 'rgba(205,190,232,1)');
+}
+const NOBLE_BACKDROP = { paint: nobleBackdropPaint, outer: '#CDBEE8' };
+
+
 /** ภาพสำรองของฉากหลังต่อสกิน: id → { cv, r } (r = พิกเซลต่อหน่วยไฟล์) */
 const BD_CACHE = new Map();
 /** ชุดนี้มีฉากหลังประจำสกินไหม */
@@ -9138,6 +12413,18 @@ const TRAIL = {
       { box: [428, 196, 458, 236], rate: 0.25, kinds: ['glitP', 'heart'], fall: 0.014, vy: 0 },                         // ริบบิ้นที่หู
     ],
   },
+  // ลูกคุณหนูจอมซน (ผู้ใช้ 21 ต.ค.): ไม่มีหางแสงเส้น (ผู้ใช้: "ไม่เอาเส้นแสง จำซ้ำกันเกิน") — หนังสติ๊กมีมาการองสี่สีไหลออกมาเป็นสายแทน
+  //   เม็ดทรงใหม่: มาการองจิ๋ว (ชมพู ฟ้า ม่วง มิ้นต์) · มงกุฎทองจิ๋ว · มุก · กลีบกุหลาบ + กากเพชรทองเล็กน้อย
+  noble: {
+    introLight: true,   // ฉากท่าเปิดตัวสว่าง (สวนวังพาสเทล) — ไม่ใช้แสงบวก
+    emit: [
+      { at: 'wand', fb: [70, 300], rate: 0.42, kinds: ['mac', 'macB', 'macL', 'macM'], fall: 0.016, vy: -0.05, sz: 2.5, spread: 1.6 },   // ห่างกันชิ้นละราว 2.5 เท่าของเดิม (ผู้ใช้: ให้ออกห่างกว่านี้)   // หัวหนังสติ๊ก: มาการองไหลออกมาเป็นสาย
+      { at: 'wand', fb: [70, 300], rate: 0.45, kinds: ['glitG', 'crown', 'glitG'], fall: 0.012, vy: -0.15, sz: 1 },                       // ประกายทอง/มงกุฎแซมในสาย
+      { box: [170, 588, 430, 600], rate: 1.1, kinds: ['petal', 'glitG', 'petal', 'pearl'], fall: 0.02, vy: 0.15, sz: 1.2 },   // ชายโค้ทลูกไม้
+      { box: [400, 40, 460, 90], rate: 0.3, kinds: ['glitG', 'petal'], fall: 0.01, vy: -0.2, sz: 1.1 },                       // ขนนกบนเบเร่ต์
+      { box: [415, 540, 450, 560], rate: 0.2, kinds: ['mac', 'macB'], fall: 0.018, vy: -0.1, sz: 2 },                      // มาการองหล่นจากกระเป๋า
+    ],
+  },
 };
 export const cat2Trail = (id) => TRAIL[id] || null;
 
@@ -9169,7 +12456,7 @@ function introTrail(id, F, x0, feetY, scale, only = null) {
         if (age >= life) continue;
         let kind = e.kinds[Math.floor(h(2) * e.kinds.length)];
         if (kind === 'sprinkle') kind = 'sprinkle' + Math.floor(h(3) * 6);
-        const glit = kind === 'glitB' || kind === 'glitP' || kind.startsWith('dust');
+        const glit = kind.startsWith('glit') || kind.startsWith('dust');
         const vx = (h(4) - 0.5) * 0.35 * spr, vy = e.vy + (h(5) - 0.5) * 0.3 * spr;
         const ux = q0[0] + (q[0] - q0[0]) * h(9), uy = q0[1] + (q[1] - q0[1]) * h(10);   // กระจายตามทางที่คทาผ่านในเฟรมนั้น
         parts.push({
@@ -9185,12 +12472,12 @@ function introTrail(id, F, x0, feetY, scale, only = null) {
   // หางคทา: ตำแหน่งหัวคทาย้อนหลัง 14 เฟรม (เฟรมไหนไม่มีข้าม — เฟรมนี้ยังไม่มีตอนวาดก่อนคทา: เริ่มจากเฟรมก่อน หัวคทาบังรอยต่อพอดี)
   const pts = [];
   if (only !== 'parts') for (let f = F; f > F - 14; f--) { const q = W.get(f); if (q) pts.push([sx(q[0]), sy(q[1])]); }
-  return { parts, ribbon: pts.length > 2 ? { ...T.ribbon, pts } : null };
+  return { parts, ribbon: T.ribbon && pts.length > 2 ? { ...T.ribbon, pts } : null };
 }
 const TRAIL_SPR = new Map();
 const SPRINKLE_COLS = ['#FF1F9E', '#2FC8FF', '#FFE21F', '#22E0B0', '#A86CFF', '#FF8A2E'];
 /** ชนิดที่วาดแบบแสงบวก (lighter) — เรืองสดบนฉากมืด */
-const TRAIL_GLOW = new Set(['glitB', 'glitP', 'starB', 'starP', 'dustP', 'dustW', 'dustG']);
+const TRAIL_GLOW = new Set(['glitB', 'glitP', 'glitG', 'starB', 'starP', 'dustP', 'dustW', 'dustG']);
 /** ภาพสำเร็จรูปของเม็ดประกาย (วาดครั้งเดียว · กฎสกิน S ข้อ 9) — ภาพ 64 พิกเซล เม็ดกว้างราวครึ่งภาพ */
 function trailSprite(kind) {
   if (kind === 'flake') return snFlakeSprite();
@@ -9223,9 +12510,9 @@ function trailSprite(kind) {
     glow(rgb, 1, 20);
     if (kind === 'dustW') { star4(22, 1.6, '#FFFFFF'); }
     else { g.fillStyle = kind === 'dustG' ? '#FFF6D0' : '#FFFFFF'; g.beginPath(); g.arc(h, h, 5, 0, TAU); g.fill(); }
-  } else if (kind === 'glitB' || kind === 'glitP') {
-    // กากเพชร: แกนขาวเล็กคม + แสงสีสด (ฟ้าน้ำแข็ง / ชมพูบาร์บี้)
-    glow(kind === 'glitB' ? '90,215,255' : '255,70,185', 1, 26);
+  } else if (kind === 'glitB' || kind === 'glitP' || kind === 'glitG') {
+    // กากเพชร: แกนขาวเล็กคม + แสงสีสด (ฟ้าน้ำแข็ง / ชมพูบาร์บี้ / ทองอุ่น — ลูกคุณหนู)
+    glow(kind === 'glitB' ? '90,215,255' : kind === 'glitG' ? '255,190,70' : '255,70,185', 1, 26);
     g.fillStyle = '#FFFFFF';
     g.beginPath(); g.arc(h, h, 5.6, 0, TAU); g.fill();
   } else if (kind === 'starB' || kind === 'starP') {
@@ -9255,6 +12542,71 @@ function trailSprite(kind) {
     g.strokeStyle = '#FFFFFF'; g.lineWidth = 1.6; g.stroke(q);
     g.fillStyle = '#FFFFFF';
     g.beginPath(); g.ellipse(h - 4.5, h - 3.5, 3, 1.7, -0.6, 0, TAU); g.fill();
+  } else if (kind === 'crown') {
+    // มงกุฎทองจิ๋ว (ลูกคุณหนู): ฐานโค้ง สามยอดปลายมุก แสงทองรอบ ๆ
+    glow('255,205,100', 0.65, 24);
+    const q = new Path2D();
+    q.moveTo(h - 14, h + 9);
+    q.lineTo(h - 15, h - 7);
+    q.lineTo(h - 7, h);
+    q.lineTo(h, h - 12);
+    q.lineTo(h + 7, h);
+    q.lineTo(h + 15, h - 7);
+    q.lineTo(h + 14, h + 9);
+    q.quadraticCurveTo(h, h + 12, h - 14, h + 9);
+    q.closePath();
+    g.fillStyle = swGrad(g, h, h - 12, h, h + 11, ['#FFF4C2', '#FFC93C', '#C98A1E']);
+    g.fill(q);
+    g.strokeStyle = '#8A5A14';
+    g.lineWidth = 1.6;
+    g.lineJoin = 'round';
+    g.stroke(q);
+    g.fillStyle = '#FFFFFF';
+    for (const [x, y] of [[h - 15, h - 8], [h, h - 13], [h + 15, h - 8]]) { g.beginPath(); g.arc(x, y, 2.6, 0, TAU); g.fill(); }
+    g.fillStyle = '#4C98F0';
+    g.beginPath(); g.arc(h, h + 4, 2.6, 0, TAU); g.fill();
+  } else if (kind === 'pearl') {
+    // มุก: วงขาวนวลเงาชมพูม่วง ไฮไลต์จุดขาว ขอบบาง
+    glow('255,230,245', 0.5, 20);
+    const gr = g.createRadialGradient(h - 3, h - 3, 1, h, h, 9);
+    gr.addColorStop(0, '#FFFFFF');
+    gr.addColorStop(0.6, '#F6EEFA');
+    gr.addColorStop(1, '#D4C2E6');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(h, h, 9, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(140,110,170,.8)';
+    g.lineWidth = 1.2;
+    g.stroke();
+    g.fillStyle = '#FFFFFF';
+    g.beginPath(); g.arc(h - 3, h - 3.5, 2.4, 0, TAU); g.fill();
+  } else if (kind === 'petal') {
+    // กลีบกุหลาบชมพู: หยดน้ำมน ปลายแหลมเว้านิด เส้นกลางกลีบ
+    const q = new Path2D();
+    q.moveTo(h, h + 13);
+    q.bezierCurveTo(h - 13, h + 5, h - 11, h - 11, h - 2, h - 12);
+    q.quadraticCurveTo(h, h - 9, h + 2, h - 12);
+    q.bezierCurveTo(h + 11, h - 11, h + 13, h + 5, h, h + 13);
+    q.closePath();
+    g.fillStyle = swGrad(g, h, h - 12, h, h + 13, ['#FFE6EF', '#FFAFC8', '#F07FA2']);
+    g.fill(q);
+    g.strokeStyle = 'rgba(214,90,130,.75)';
+    g.lineWidth = 1.2;
+    g.stroke(q);
+    g.strokeStyle = 'rgba(255,255,255,.8)';
+    g.beginPath(); g.moveTo(h, h + 9); g.quadraticCurveTo(h - 3, h, h - 1, h - 7); g.stroke();
+  } else if (kind.startsWith('mac')) {
+    // มาการองจิ๋ว: ฝาบน/ล่าง (ชมพู · ฟ้า · ม่วง · มิ้นต์) ไส้ครีม ขอบน้ำตาล
+    const cols = { mac: ['#FFE8F0', '#FFB6CB', '#F08AA9'], macB: ['#EDF6FF', '#AED2F6', '#78ABE8'], macL: ['#F6F0FF', '#D6C4F6', '#A98EE0'], macM: ['#EFFFF8', '#B4EBD6', '#6FCDAA'] }[kind];
+    g.strokeStyle = '#6E4430';
+    g.lineWidth = 1.5;
+    for (const y of [h + 4, h - 4]) {
+      g.fillStyle = swGrad(g, h, y - 5, h, y + 5, cols);
+      g.beginPath(); g.ellipse(h, y, 12, 5.5, 0, 0, TAU); g.fill(); g.stroke();
+    }
+    g.fillStyle = '#FFF8EC';
+    g.fillRect(h - 11, h - 1.5, 22, 3);
+    g.fillStyle = 'rgba(255,255,255,.8)';
+    g.beginPath(); g.ellipse(h - 4, h - 6, 4, 1.4, 0, 0, TAU); g.fill();
   } else if (kind.startsWith('sprinkle')) {
     // เม็ดน้ำตาลสีสด: แท่งมน ไฮไลต์ขาว แสงสีของตัวเอง
     const col = SPRINKLE_COLS[+kind.slice(8) || 0];
@@ -9306,7 +12658,46 @@ export function drawTrail(c, parts, x, scale, ribbon = null, light = false) {
       return g;
     };
     c.globalCompositeOperation = ADD;
-    if (ribbon.style === 'dust') {
+    if (ribbon.style === 'pearls') {
+      // หางสายมุก (ลูกคุณหนู): แสงทองจาง ๆ ตามทาง + สร้อยทองเส้นบาง + มุกร้อยเรียงเล็กลงทางปลาย (ทึบ ไม่ใช่แสงบวก)
+      c.fillStyle = gr(`rgba(${ribbon.col},${light ? 0.22 : 0.42})`, `rgba(${ribbon.col},0)`);
+      c.fill(band(4.6 * scale));
+      c.fillStyle = gr(`rgba(255,240,200,${light ? 0.3 : 0.5})`, 'rgba(255,240,200,0)');
+      c.fill(band(1.6 * scale));
+      c.globalCompositeOperation = op0;
+      const pts = P.map(([px, py]) => [x + px, py]);
+      c.strokeStyle = light ? 'rgba(201,151,62,.85)' : 'rgba(255,214,120,.85)';
+      c.lineWidth = 0.32 * scale;
+      c.lineCap = 'round';
+      c.beginPath();
+      pts.forEach(([px, py], i) => (i ? c.lineTo(px, py) : c.moveTo(px, py)));
+      c.stroke();
+      // มุกทุก ~2.2 หน่วยตามความยาวเส้น
+      const step = 2.9 * scale;
+      let acc = 0, len = 0;
+      for (let i = 1; i < n; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      let walked = 0;
+      for (let i = 1; i < n; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+        const seg = Math.hypot(bx - ax, by - ay);
+        while (acc <= seg) {
+          const u = len ? (walked + acc) / len : 0;
+          const px = ax + ((bx - ax) * acc) / (seg || 1), py = ay + ((by - ay) * acc) / (seg || 1);
+          const r = scale * 1.35 * (1 - u * 0.6);
+          c.globalAlpha = a0 * (1 - u * 0.85);
+          const pg = c.createRadialGradient(px - r * 0.35, py - r * 0.35, r * 0.1, px, py, r);
+          pg.addColorStop(0, '#FFFFFF');
+          pg.addColorStop(0.6, '#F6EEFA');
+          pg.addColorStop(1, '#CDB8E2');
+          c.fillStyle = pg;
+          c.beginPath(); c.arc(px, py, r, 0, TAU); c.fill();
+          acc += step;
+        }
+        acc -= seg;
+        walked += seg;
+      }
+      c.globalAlpha = a0;
+    } else if (ribbon.style === 'dust') {
       // หางผงกากเพชร: แค่แสงชมพูจาง ๆ เป็นแนวให้เห็นทาง — ตัวที่เห็นชัดคือผงกากเพชร (เม็ดจาก stepTrail)
       const col = light ? '255,40,160' : ribbon.col;
       c.fillStyle = gr(`rgba(${col},${light ? 0.22 : 0.28})`, `rgba(${col},0)`);
@@ -9459,19 +12850,48 @@ const CAT2_OUTFITS = {
     backdrop: SNOW_BACKDROP,    // ฉากหลังประจำสกิน (ภาพนิ่ง): คืนวังน้ำแข็ง
   },
   // ── ลูกคุณหนูจอมซน (Little Royal Mischief · ระดับ S) — วาดใหม่ทั้งชุดตามแบบผู้ใช้ (20 ต.ค.): เบเร่ต์ฟ้าช่อขนนก ·
-  //    ระบายคอลูกไม้ โบว์ทับทิม · โค้ทกรมท่าขลิบทอง ชายบานแหวกหน้า · กางเกงพอง · กระเป๋าสะพาย นาฬิกาพก · รองเท้าหนังแก้ว · คทากุญแจ ──
+  //    ระบายคอลูกไม้ โบว์ทับทิม · โค้ทกรมท่าขลิบทอง ชายบานแหวกหน้า · กางเกงพอง · กระเป๋าสะพาย นาฬิกาพก · รองเท้าหนังแก้ว · หนังสติ๊กทอง ──
   noble: {
     pants: true,
+    eyeSparkle: 0.45,   // ขยิบตา/ตาประกาย: ดาววิ้งดวงเดียวเล็ก ๆ (ผู้ใช้ 21 ต.ค. "ลดความวิ้งของตา")
+    sleeveOverHead: true,   // ท่ายกแขน: แขนเสื้อพองวาดซ้ำหลังแขนที่ทับหัว (ไม่งั้นเห็นขนแทรกเหมือนเสื้อขาด)
+    forearmSleeve: nbForearmSleeve,   // ท่าเกาท้อง: แขนเสื้อต่อลงแขนท่อนล่างถึงข้อมือ + วาดแขนเสื้อซ้ำหลังวาดแขนทับกระโปรง/ต้นขา (ผู้ใช้ 21 ต.ค.)
+    groomSleeve: nbGroomSleeve,   // ท่าเลียอุ้งเท้า (นั่ง): แขนที่ยกมาเลียมีแขนเสื้อ (ผู้ใช้ขอ 21 ต.ค.) — ลงสีตามรูปแขนพับ ไม่หักที่ศอก
     behind: nobleAura, behindBody: true, behindBack: true,
     chinShade: 'rgba(54,83,168,.12)',   // เงาใต้คางโทนกรมท่า (เงาน้ำตาลทำให้ลูกไม้หม่น)
     front: nobleFront,
-    prop: nobleKey,
+    prop: nobleSling,   // หนังสติ๊กทองยิงมาการอง (ผู้ใช้เลือก 21 ต.ค. แทนคทากุญแจ)
     sitSleeve: nbSitSleeve,
     shirt: nobleCoat,
     neck: nobleRuff,
     skirt: nobleBottom,
     ankle: nobleShoes,   // ถุงเท้าลูกไม้ + รองเท้า (ต้องได้ k.leg = เงาขา)
     hat: nobleBeret,
+    backdrop: NOBLE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง): สวนพระราชวังพาสเทล (ตามภาพแบบ)
+    intro: NOBLE_INTRO,   // ท่าเปิดตัว (~9.3 วิ มีกล้อง): พิธีเปิดตัวที่โดนป่วน — ม่าน ป้ายต้อนรับ → เวทีว่าง → มาการองชนป้าย "จอมซน!" → โหนเชือก ตีลังกา → โค้งคำนับ → ยิงหนังสติ๊ก
+    act: NOBLE_ACT,       // ท่าแอ็ค: ง้างหนังสติ๊กเล็งกล้อง ขยิบตา แลบลิ้น · ยิงมาการองเป็นพัก ๆ
+  },
+  // ── พี่ชาวี (Agent Chawee · ระดับ S) — วาดใหม่ทั้งชุดตามภาพแบบผู้ใช้ (21 ต.ค.): สูทดำกระดุมคู่ ปกแหลมซาติน เชิ้ตขาว เนคไทลายทาง ·
+  //    กางเกงสแล็ค รองเท้าหนังมันวาว · หูฟังบอดี้การ์ดสายขด · กระเป๋าเอกสารขลิบทอง · สปอตไลต์ เชือกกั้นวีไอพี แฟลชกล้อง ──
+  chawee: {
+    pants: true,
+    sleeveOverHead: true,   // ท่ายกแขน: แขนสูทวาดซ้ำหลังแขนที่ทับหัว
+    forearmSleeve: cwForearmSleeve,   // ท่าเกาท้อง: แขนสูทต่อลงแขนท่อนล่างถึงข้อมือ
+    groomSleeve: cwGroomSleeve,   // ท่าเลียอุ้งเท้า: แขนที่ยกมาเลียมีแขนสูท
+    behind: chaweeAura, behindBody: true, behindBack: true,
+    chinShade: 'rgba(0,0,0,.22)',   // สูทดำ: เงาใต้คางโทนดำจาง
+    front: chaweeFront,
+    prop: chaweeCase,   // กระเป๋าเอกสารหนังดำขลิบทอง ตราโล่อุ้งเท้า
+    sitSleeve: cwTubeSleeve,
+    shirt: chaweeJacket,
+    neck: chaweeCollar,
+    skirt: chaweeBottom,
+    ankle: chaweeShoes,   // รองเท้าหนังอ็อกซ์ฟอร์ด (ต้องได้ k.leg = เงาขา)
+    hat: chaweeEarpiece,   // หูฟังบอดี้การ์ด (ตามหัว)
+    eyes: chaweeShades,   // แว่นดำ — เฉพาะท่าเปิดตัว/ท่าแอ็ค (ช่องท่า shades · shadesDown)
+    backdrop: CHAWEE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง): ล็อบบี้โรงแรมหรูยามค่ำ
+    intro: CHAWEE_INTRO,   // ท่าเปิดตัว (~10 วิ มีกล้อง): วีไอพีมาถึง — ช่องมองภาพปาปารัสซี่ ประตูหมุน แฟลชรัว แตะหูฟัง เลื่อนแว่น บัตรวีไอพี ปกนิตยสาร
+    act: CHAWEE_ACT,       // ท่าแอ็ค: แตะหูฟัง หิ้วกระเป๋า แว่นดำ · ทุก 6 วิ เลื่อนแว่นลงขยิบตา
   },
   // ── ระดับ S (ร่างแรก) ──
   fruit: {
@@ -9490,6 +12910,7 @@ const CAT2_OUTFITS = {
     front: sweetFront,
     prop: sweetStaff,
     sitSleeve: sweetSitSleeve,
+    sitSleeveOnTop: true,   // ท่าเกาท้อง: แขนเสื้อพองวาดซ้ำหลังวาดแขนทับกระโปรง/ต้นขา (ผู้ใช้ 21 ต.ค.: แขนเสื้อเหมือนโดนตัด)
     shirt: sweetBodice,
     neck: sweetCollar,
     skirt: sweetSkirt,
@@ -9829,6 +13250,106 @@ const SIAMESE = {
   tailAll: 'd',
   paw: '#7A5038',
 };
+// ══ แมวลายสลิด (tabby) — ผู้ใช้ส่งแบบ 21 ต.ค.: "ตัวเมีย สีลายสลิด" ลายก้างปลา (mackerel): เส้นเทาเข้มพาดขวางทั้งตัว ══
+// ใช้ระบบลายของแมวสามสี (patch ของชิ้น ดัดตามท่า ลงสีเป็นขนก่อนพ่นเงา) — ลายแต่ละเส้นเป็นรูปปิดเรียวปลาย (tabbyStripe)
+// หัว: ตัว M + เส้นตั้งกลางหน้าผาก · คิ้ว · ลายแก้มสามเส้น · ตัว: เส้นตั้งโค้งข้างลำตัว · แขน/ขา: ปล้องขวาง · หาง: ปล้อง ปลายเข้ม
+// พิกัด = ไฟล์ออกแบบด้านหน้า (cat-front.svg) · ปาก แก้มใน อก ท้อง อุ้งเท้า เป็นครีม (ไม่มีลาย)
+/**
+ * ลายเส้นหนึ่งเส้น → จุดรอบรูปปิด (ส่งต่อให้ calicoOps ทำเป็นเส้นโค้งเรียบ) · โค้งผ่าน p0 → p1 → p2 (quadratic) ครึ่งความกว้าง w
+ * edge = โคนกว้างที่ขอบชิ้น (เริ่มนอกตัว ชิ้นตัดให้) แล้วเรียวแหลมเข้าใน · ไม่ใช่ = เรียวแหลมสองปลาย
+ */
+function tabbyStripe(p0, p1, p2, w, edge = false) {
+  const n = 10, L = [], R = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, v = 1 - u;
+    const x = v * v * p0[0] + 2 * v * u * p1[0] + u * u * p2[0], y = v * v * p0[1] + 2 * v * u * p1[1] + u * u * p2[1];
+    const dx = 2 * v * (p1[0] - p0[0]) + 2 * u * (p2[0] - p1[0]), dy = 2 * v * (p1[1] - p0[1]) + 2 * u * (p2[1] - p1[1]);
+    const l = Math.hypot(dx, dy) || 1;
+    const h = w * (edge ? Math.pow(1 - u, 0.65) : Math.pow(Math.sin(Math.PI * u), 0.6));
+    L.push([x - (dy / l) * h, y + (dx / l) * h]);
+    R.push([x + (dy / l) * h, y - (dx / l) * h]);
+  }
+  return [...L, ...R.reverse().slice(1, -1)];
+}
+/** ลายคู่ซ้าย-ขวา (กระจกรอบกลางตัว x 300) · only = ทาเฉพาะชิ้นนั้น (ฝั่งขวาสลับเป็น -right เอง) */
+const tabbyPair = (p0, p1, p2, w, edge, only) => {
+  const m = ([x, y]) => [600 - x, y];
+  const L = ['d', tabbyStripe(p0, p1, p2, w, edge)], R = ['d', tabbyStripe(m(p0), m(p1), m(p2), w, edge)];
+  if (only) { L.only = only; R.only = only.replace(/-left$/, '-right'); }
+  return [L, R];
+};
+/** ลายคู่ซ้าย-ขวา ระบุสี (k = ช่องสีใน TABBY) */
+const tabbyPairK = (k, ...args) => tabbyPair(...args).map((o) => { o[0] = k; return o; });
+const TABBY = {
+  d: '#3A3638',   // เทาถ่าน (เข้มกว่าที่เห็น — สนามไล่สีของขนทาทับให้สว่างขึ้น · แบบ: ลายเทาเข้มชัด)
+  h: '#211D1F',   // ลายหัว: เข้มกว่าลายตัว (ไฮไลต์บนหัวสว่างกว่า — สีเดียวกันแล้วลายหน้าผากจาง)
+  darkTip: true,  // ปลายหางเข้ม (ไม่ทาครีมปลายหางแบบแมวสามสี)
+  parts: {
+    head: [
+      ['h', tabbyStripe([300, 106], [300, 162], [300, 218], 8.5)],          // เส้นกลางหน้าผาก
+      ...tabbyPairK('h', [278, 112], [273, 158], [268, 204], 7.5),                  // ตัว M ด้านใน
+      ...tabbyPairK('h', [254, 144], [245, 176], [245, 208], 7),                    // คิ้ว
+      ...tabbyPairK('h', [228, 128], [212, 148], [200, 170], 6.5),                  // ข้างหน้าผากใกล้โคนหู
+      ...tabbyPairK('h', [122, 260], [150, 262], [178, 270], 7, true),              // แก้มสามเส้น (จากขอบหัวเข้าใน)
+      ...tabbyPairK('h', [124, 285], [152, 287], [180, 294], 7, true),
+      ...tabbyPairK('h', [130, 309], [156, 311], [182, 317], 6, true),
+    ],
+  },
+  // ตัว+แขน+ขา = แผ่นลายแผ่นเดียว · only = เส้นของชิ้นนั้น (เส้นพาดตัวแนวนอนไม่วิ่งยาวไปตามแขนที่กางออกข้าง)
+  body: [
+    // ลำตัว: เส้นพาดจากข้างตัวเข้าหาท้อง (โค้งลงนิดแบบก้างปลา) — ปลายในจมใต้ท้องครีม
+    ...tabbyPair([252, 394], [240, 410], [234, 426], 6.5, false, 'torso'),
+    ...tabbyPair([150, 430], [196, 434], [238, 448], 7.5, true, 'torso'),
+    ...tabbyPair([148, 458], [196, 462], [240, 476], 8, true, 'torso'),
+    ...tabbyPair([146, 486], [196, 490], [242, 504], 8, true, 'torso'),
+    ...tabbyPair([146, 514], [196, 518], [242, 530], 8, true, 'torso'),
+    ...tabbyPair([148, 542], [194, 546], [238, 556], 7.5, true, 'torso'),
+    ...tabbyPair([152, 570], [190, 574], [228, 582], 7, true, 'torso'),
+    // แขน: ปล้องขวางแขน
+    ...tabbyPair([186, 402], [181, 436], [177, 472], 7.5, false, 'arm-left'),
+    ...tabbyPair([165, 410], [160, 444], [156, 480], 7.5, false, 'arm-left'),
+    ...tabbyPair([145, 418], [141, 450], [138, 484], 7, false, 'arm-left'),
+    // ขา: ลายขวางจากขอบนอกเข้าใน
+    ...tabbyPair([146, 566], [172, 568], [200, 565], 7.5, true, 'leg-left'),
+    ...tabbyPair([146, 588], [172, 590], [200, 587], 7.5, true, 'leg-left'),
+    ...tabbyPair([148, 610], [172, 612], [198, 609], 6.5, true, 'leg-left'),
+  ],
+  bodyParts: ['torso', 'arm-left', 'arm-right', 'leg-left', 'leg-right'],
+  // ตัวนั่ง (ทรงระฆัง SIT2): เส้นพาดจากข้างตัวเข้าใน
+  sit: [
+    ...tabbyPair([188, 476], [214, 482], [238, 494], 7, true),
+    ...tabbyPair([166, 510], [200, 516], [234, 528], 7.5, true),
+    ...tabbyPair([148, 544], [186, 550], [226, 560], 8, true),
+    ...tabbyPair([134, 578], [176, 584], [216, 592], 8, true),
+    ...tabbyPair([126, 612], [166, 618], [206, 624], 7.5, true),
+  ],
+  // ขาหน้าท่านั่ง (SIT2.legL/legR x ~230–370 y 574–650): ปล้องขวางขา
+  sitLegs: [
+    ...tabbyPair([224, 590], [262, 595], [302, 590], 6.5),
+    ...tabbyPair([226, 612], [262, 617], [300, 612], 6.5),
+  ],
+  // ตัวนั่งเกาพุง (SIT.torso x ~156–446 y ~440–620) · ต้นขาหลัง (SIT.haunch)
+  sitOld: [
+    ...tabbyPair([150, 470], [186, 476], [222, 488], 7.5, true),
+    ...tabbyPair([148, 502], [186, 508], [224, 520], 8, true),
+    ...tabbyPair([150, 534], [186, 540], [222, 550], 7.5, true),
+    ...tabbyPair([156, 566], [188, 570], [220, 578], 7, true),
+  ],
+  haunch: [
+    ...tabbyPair([104, 580], [140, 572], [172, 577], 7.5, true),
+    ...tabbyPair([104, 606], [140, 599], [174, 604], 7.5, true),
+    ...tabbyPair([108, 630], [140, 625], [172, 629], 6.5, true),
+  ],
+  // ก้อนหมอบ (LOAF ฐานตัว x ~104–464 y ~526–648)
+  loaf: [
+    ...tabbyPair([152, 536], [144, 564], [142, 592], 8),
+    ...tabbyPair([190, 528], [182, 558], [180, 588], 8),
+  ],
+  // แขนแบบท่อ: ปล้องขวางสามปล้อง (สัดส่วนตามท่อจากไหล่ → ปลาย) · อุ้งเท้าครีมวาดทับทีหลัง
+  arm: [[0.28, 0.38, 'd'], [0.5, 0.6, 'd'], [0.72, 0.81, 'd']],
+  // หาง: ปล้องเท่า ๆ กัน ปลายหางเข้ม (ดัชนีจุดบนหาง 0–16)
+  tail: [[1, 1.9, 'd'], [3, 3.9, 'd'], [5, 5.9, 'd'], [7, 7.9, 'd'], [9, 9.9, 'd'], [11, 11.9, 'd'], [13, 16, 'd']],
+};
 /** เส้นโค้งปิดเรียบผ่านจุดทุกจุด (Catmull-Rom → Bézier) — คำสั่งรูปแบบเดียวกับไฟล์ออกแบบ (ดัดด้วย deformOps ได้) */
 function smoothCmds(pts) {
   const n = pts.length, at = (i) => pts[(i + n) % n];
@@ -10001,11 +13522,10 @@ function drawRoundEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidd
   const dot = eyeDots(c, ix, iy, ir, starDots, t, starOne);
   if (lidded) {
     dot(-0.3, 0.12, 0.2, true);
-    dot(0.3, 0.2, 0.08);
+    if (!starOne) dot(0.3, 0.2, 0.08);
   } else {
     dot(-0.3, -0.32, 0.28, true);
-    dot(0.36, -0.06, 0.11);
-    dot(0.2, 0.44, 0.07);
+    if (!starOne) dot(0.26, 0.42, 0.1);   // จุดขาว: ตัวผู้ = วงใหญ่บนวงเดียว · ตัวเมีย = วงใหญ่บน + จุดล่างหนึ่งจุด (กฎผู้ใช้ 21 ต.ค.)
   }
   if (sparkle > 0 && !starDots) {
     // ประกายวิ้ง: ดาวเหลืองอ่อนมีแสงเรือง (ผู้ใช้ขอให้เปลี่ยนจากดาวขาว)
@@ -10101,6 +13621,628 @@ function drawRoundLashes(c, side, sq = 1, cy = null) {
   }
 }
 
+/**
+ * วงอก/พุงสีอ่อน (ท่านั่ง · นั่งเกา · วิ่ง): ทึบแบบเดิม หรือขอบฟุ้ง (soft = art.bellySoft — ไล่จางจากกลางออกขอบ ไม่เห็นขอบวงรี
+ * เข้าชุดกับพุงฟุ้งตอนยืน · ศุภลักษณ์อกน้ำตาลอ่อนบนขนน้ำตาล ถ้าทึบจะเห็นเป็นวงแปะ)
+ */
+function bellyBlob(c, x, y, rx, ry, col, soft = false, rot = 0) {
+  c.fillStyle = col;
+  if (!soft) { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); c.fill(); return; }
+  const v = /^#[0-9a-f]{6}$/i.test(col) ? parseInt(col.slice(1), 16) : 0xffffff;
+  const rgb = `${v >> 16},${(v >> 8) & 255},${v & 255}`;
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  c.scale(rx, ry);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+  g.addColorStop(0, `rgba(${rgb},.85)`);
+  g.addColorStop(0.55, `rgba(${rgb},.6)`);
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  c.fillStyle = g;
+  c.beginPath(); c.arc(0, 0, 1, 0, TAU); c.fill();
+  c.restore();
+}
+/** ลายขาวขอบฟุ้ง (แมววิลาศ): เส้นโปร่งซ้อนสามชั้นตามขอบ (ครึ่งนอกไล่จางเข้าขนดำ) แล้วลงสีเต็ม — ไม่มีขอบเทาแข็งเป็นเส้น */
+function softMark(c, q, col) {
+  const a0 = c.globalAlpha;
+  c.strokeStyle = col;
+  c.lineJoin = 'round';
+  for (const [w, a] of [[6.5, 0.08], [4, 0.14], [2, 0.22]]) { c.globalAlpha = a0 * a; c.lineWidth = w; c.stroke(q); }
+  c.globalAlpha = a0;
+  c.fillStyle = col;
+  c.fill(q);
+}
+// ══ ตาแมววิลาศ (ผู้ใช้ส่งแบบ 21 ต.ค.: "วาดดีไซน์ตาใหม่ ตามแบบ สีก็เหมือนเลย") ══
+// ไม่มีตาขาว: ม่านตาเขียวเต็มดวง — ขอบล่างเขียวอมเหลืองสว่าง ไล่ขึ้นเป็นเขียวเข้มใต้เปลือกตา · วงเขียวเข้มรอบรูม่านตา
+// รูม่านตาดำโต (ไม่เต็มดวง เห็นวงเขียวรอบ ๆ ชัด) · ประกายขาววงเดียวมุมบนขวา (ตามแบบ — ทั้งสองตา)
+// เปลือกตาบนเป็นแถบเข้มหนาโอบครึ่งบน (เงาเปลือกตาตกลงในม่านตา) — วาดคู่กับ drawWilatLashes
+const WILAT_EYE = {
+  iris: ['#2C4A16', '#5E8E26', '#A9C846', '#DDE88A'], ring: '#1F3A10', pupilIn: '#1E1A12', pupilOut: '#0A0806',
+  // สำหรับตาตอนหันข้าง/ตาปรือ (ใช้ชุดสีแบบตาแบ๊ว)
+  rimTop: '#C8DC6E', rimBot: '#5E8E26', coreIn: '#1E1A12', coreOut: '#0A0806',
+};
+/**
+ * ทรงตาวิลาศ (ผู้ใช้ 21 ต.ค. รอบสาม: "ตาคมกว่านี้ เพิ่มขอบตาล่างเหมือนแบบ"): ทรงอัลมอนด์ — กว้างกว่าสูง
+ * ขอบบน = เส้นเปลือกตาโค้งแบน (Pi → Po) · ขอบล่าง = โค้งกลมลึกแบบตัว U (Po → Pi) · มุมหัวตา/หางตาแหลม
+ * หางตายื่นเลยวงตาและสูงกว่าหัวตา (ตาเชิดคม) · คืน { cx, cy, r, pi, po, pc, b1, b2, path } (พิกัดตาในไฟล์)
+ * lid = เปลือกตาเลื่อนลงมาบัง (0 = ลืมเต็ม · ตาปรือท่าลอยฟ้า ~0.55 · ง่วง ~0.8) — มุมหัวตา/หางตาอยู่ที่เดิม เส้นเปลือกตาแบนลงมา
+ *       ตาดำขนาดเท่าเดิม แค่โดนเปลือกตาบังด้านบน (ผู้ใช้ 21 ต.ค.: "ตาดำเล็กลง ให้ขนาดเท่าเดิม แค่ปิดเปลือกตาลงมา")
+ */
+function wilatEyeGeo(side, lid = 0) {
+  const W = EYE_WHITE[side], o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const r = EYE_WHITE.r * 0.86, cx = W.x + o * 1.5, cy = W.y + 4;
+  const pi = [cx - o * r * 1.0, cy - r * 0.14];        // หัวตา (ฝั่งจมูก)
+  const po = [cx + o * r * 1.16, cy - r * 0.44];       // หางตา: ยื่นออกและสูงกว่า
+  const pc = [cx + o * r * 0.05, cy - r * 1.14 + lid * r * 1.25];   // จุดดึงเส้นเปลือกตา (โค้งแบน) · เปลือกตาลง = จุดดึงต่ำลง
+  const b1 = [cx + o * r * 1.12, cy + r * 1.0], b2 = [cx - o * r * 0.98, cy + r * 1.14];   // ขอบล่างโค้ง U
+  const path = new Path2D();
+  path.moveTo(...pi);
+  path.quadraticCurveTo(...pc, ...po);
+  path.bezierCurveTo(...b1, ...b2, ...pi);
+  path.closePath();
+  return { cx, cy, r, pi, po, pc, b1, b2, path, o };
+}
+function drawWilatEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lid = 0, col = WILAT_EYE, line = '#3A1A12' } = {}) {
+  const E = wilatEyeGeo(side, lid), { cx, cy, r } = E;
+  c.save();
+  c.clip(E.path);
+  // ม่านตาเต็มดวง: เข้มด้านบน (ใต้เปลือกตา) → เขียวสด → เขียวอมเหลืองสว่างที่ขอบล่าง
+  const g = c.createLinearGradient(0, cy - r * 0.8, 0, cy + r);
+  g.addColorStop(0, col.iris[0]);
+  g.addColorStop(0.36, col.iris[1]);
+  g.addColorStop(0.78, col.iris[2]);
+  g.addColorStop(1, col.iris[3]);
+  c.fillStyle = g;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+  // ขอบม่านตาเข้มขึ้นนิด (ตาดูลึก)
+  const rg = c.createRadialGradient(cx, cy, r * 0.68, cx, cy, r + 2);
+  rg.addColorStop(0, 'rgba(20,40,10,0)');
+  rg.addColorStop(1, 'rgba(20,40,10,.45)');
+  c.fillStyle = rg;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+  // รูม่านตา (เลื่อนตามสายตา) + วงเขียวเข้มบาง ๆ รอบ
+  const px = cx + lx * 0.8, py = cy - 2 + ly * 0.8, pr = r * 0.6;   // ตาปรือก็ขนาดเท่าเดิม (เปลือกตาบังเอา)
+  c.fillStyle = col.ring;
+  c.globalAlpha = 0.55;
+  c.beginPath(); c.arc(px, py, pr + 4.5, 0, TAU); c.fill();
+  c.globalAlpha = 1;
+  const pg = c.createRadialGradient(px - pr * 0.2, py - pr * 0.3, pr * 0.1, px, py, pr);
+  pg.addColorStop(0, col.pupilIn);
+  pg.addColorStop(1, col.pupilOut);
+  c.fillStyle = pg;
+  c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill();
+  // แสงสะท้อนนุ่มครึ่งล่าง (ตาใส)
+  const gl = c.createRadialGradient(cx, cy + r * 0.6, 0, cx, cy + r * 0.6, r * 0.7);
+  gl.addColorStop(0, 'rgba(240,250,180,.38)');
+  gl.addColorStop(1, 'rgba(240,250,180,0)');
+  c.fillStyle = gl;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+  // เงาเปลือกตาตกลงในม่านตาใต้เส้นเปลือกตา
+  const ld = lid * r * 0.62;   // เปลือกตาลง → เงาเลื่อนลงตาม
+  const sh = c.createLinearGradient(0, cy - r * 0.8 + ld, 0, cy - r * 0.15 + ld);
+  sh.addColorStop(0, 'rgba(8,14,4,.62)');
+  sh.addColorStop(1, 'rgba(8,14,4,0)');
+  c.fillStyle = sh;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, r + ld);
+  // ประกายขาววงเดียวมุมบนขวาของรูม่านตา (ตามแบบ)
+  c.fillStyle = '#FFFFFF';
+  c.beginPath(); c.arc(px + pr * 0.4, py - pr * 0.3 + Math.min(1, lid) * pr * 0.4, r * 0.17, 0, TAU); c.fill();   // เปลือกตาลง: ประกายต่ำลงนิด ไม่จมใต้เปลือกตา
+  if (sparkle > 0) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, px - pr * 0.45, py + pr * 0.5, 8 * k);
+  }
+  c.restore();
+  // ขอบตาล่าง (ตามแบบ): เส้นเข้มหนากลางตา เรียวแหลมไปหาหัวตา/หางตา — ไล่ตามโค้งล่างของตา
+  const { po, pi, b1, b2 } = E;
+  const B = (u) => {
+    const v = 1 - u;
+    return [v * v * v * po[0] + 3 * v * v * u * b1[0] + 3 * v * u * u * b2[0] + u * u * u * pi[0], v * v * v * po[1] + 3 * v * v * u * b1[1] + 3 * v * u * u * b2[1] + u * u * u * pi[1]];
+  };
+  const n = 30, inn = [], out = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, [x, y] = B(u), [x0, y0] = B(Math.max(0, u - 0.01)), [x1, y1] = B(Math.min(1, u + 0.01));
+    const l = Math.hypot(x1 - x0, y1 - y0) || 1;
+    let nx = -(y1 - y0) / l, ny = (x1 - x0) / l;
+    if (ny < 0) { nx = -nx; ny = -ny; }   // ชี้ลง (ออกนอกตา)
+    const th = 1 + 4.2 * Math.pow(Math.sin(Math.PI * u), 0.7);
+    inn.push([x - nx * 0.8, y - ny * 0.8]);
+    out.push([x + nx * th, y + ny * th]);
+  }
+  const rim = new Path2D();
+  rim.moveTo(...inn[0]);
+  for (const q of inn.slice(1)) rim.lineTo(...q);
+  for (let i = n; i >= 0; i--) rim.lineTo(...out[i]);
+  rim.closePath();
+  c.fillStyle = line;
+  c.fill(rim);
+}
+/**
+ * เปลือกตาบนของตาวิลาศ (ตามแบบ): แถบดำหนาตามเส้นเปลือกตาโค้งแบน หนาสุดค่อนไปทางหางตา
+ * เลยหางตาออกไปเป็นปลายเชิดแหลม + ขนตางอนสองเส้นเล็กเหนือหางตา · sq/cy = ตาหรี่ (บีบรอบ cy) เหมือน drawLashes
+ */
+function drawWilatLashes(c, side, sq = 1, cyS = null, ink = '#0E0A08', lid = 0) {
+  const E = wilatEyeGeo(side, lid), { pi, po, pc, o, cx, r } = E;
+  const yc = cyS ?? EYE_WHITE[side].y;
+  const S = ([x, y]) => [x, yc + (y - yc) * sq];
+  const Q = (u) => {   // จุดบนเส้นเปลือกตา + ทิศตั้งฉากชี้ขึ้น
+    const v = 1 - u;
+    const x = v * v * pi[0] + 2 * v * u * pc[0] + u * u * po[0], y = v * v * pi[1] + 2 * v * u * pc[1] + u * u * po[1];
+    const dx = 2 * v * (pc[0] - pi[0]) + 2 * u * (po[0] - pc[0]), dy = 2 * v * (pc[1] - pi[1]) + 2 * u * (po[1] - pc[1]);
+    const l = Math.hypot(dx, dy) || 1;
+    let nx = dy / l, ny = -dx / l;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    return { x, y, nx, ny };
+  };
+  c.fillStyle = ink;
+  const n = 36, top = [], bot = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, q = Q(u);
+    const th = (2 + 8.5 * Math.pow(u, 0.9)) * Math.min(1, u * 6 + 0.25);   // หัวตาบาง → หางตาหนา
+    bot.push(S([q.x - q.nx * 2, q.y - q.ny * 2]));
+    top.push(S([q.x + q.nx * th, q.y + q.ny * th]));
+  }
+  // ปลายเชิดเลยหางตา (แหลม เชิดขึ้นออกนอกหน้า)
+  const tip = S([po[0] + o * 16, po[1] - 12]);
+  const band = new Path2D();
+  band.moveTo(...bot[0]);
+  for (const p of bot.slice(1)) band.lineTo(...p);
+  band.quadraticCurveTo(...S([po[0] + o * 8, po[1] + 1]), ...tip);
+  band.quadraticCurveTo(...S([po[0] + o * 6, po[1] - 12]), ...top[n]);
+  for (let i = n - 1; i >= 0; i--) band.lineTo(...top[i]);
+  band.closePath();
+  c.fill(band);
+  // ขนตางอนสองเส้นเล็กเหนือหางตา
+  for (const [u, len, w] of [[0.8, 12, 2.8], [0.6, 10, 2.4]]) {
+    const q = Q(u), th = 2 + 8.5 * Math.pow(u, 0.9);
+    const b = [q.x + q.nx * (th - 2), q.y + q.ny * (th - 2)];
+    const k = [b[0] + q.nx * len * 0.7, b[1] + q.ny * len * 0.7];
+    const tp = [k[0] + o * len * 0.55, k[1] - len * 0.1];
+    const sd = [-q.ny, q.nx];
+    const p = new Path2D();
+    p.moveTo(...S([b[0] + sd[0] * w, b[1] + sd[1] * w]));
+    p.quadraticCurveTo(...S([k[0] + sd[0] * w * 0.5, k[1] + sd[1] * w * 0.5]), ...S(tp));
+    p.quadraticCurveTo(...S([k[0] - sd[0] * w * 0.3, k[1] - sd[1] * w * 0.3]), ...S([b[0] - sd[0] * w, b[1] - sd[1] * w]));
+    p.closePath();
+    c.fill(p);
+  }
+  void cx; void r;
+}
+// ══ ตาแมวศุภลักษณ์ (ผู้ใช้ส่งแบบ 21 ต.ค.: ตาเหลืองอำพัน · ตัวผู้) ══
+// ทรงกลมโต ตัดด้วยเส้นเปลือกตาบนที่เอียงต่ำลงหาจมูก (หน้าเท่ ๆ ดุนิด ๆ ตามแบบ) — หางตาสูง หัวตาอยู่ระดับกลางตา
+// ไม่มีตาขาว: ม่านตาอำพันเต็มดวง เข้มใต้เปลือกตา → ทอง → เหลืองสว่างขอบล่าง · รูม่านตาน้ำตาลดำโต เยื้องเข้าหาจมูกนิด (มองตรงมาที่คนดู)
+// ประกายขาววงเดียวบนรูม่านตา (ตามแบบ) · เปลือกตาบนแถบเข้มหนาไปทางหางตา + ปลายตวัดสั้น ๆ (ตัวผู้ ไม่มีขนตา)
+const SUPHA_EYE = {
+  iris: ['#7A4A12', '#C88A1E', '#EDB838', '#F7D874'], ring: '#6E4210', pupilIn: '#6A3A16', pupilOut: '#180A04',
+  // สำหรับตาตอนหันข้าง (sideEye ใช้ชุดสีแบบตาแบ๊ว)
+  rimTop: '#F7D874', rimBot: '#D99A22', coreIn: '#4A2A12', coreOut: '#160A04',
+};
+/**
+ * ทรงตาศุภลักษณ์: วงกลม (r) ตัดด้านบนด้วยเส้นเปลือกตา Pi (หัวตา ระดับกลางตา) → Po (หางตา สูง บนวงตา) ผ่านจุดดึง Pc
+ * lid = เปลือกตาเลื่อนลง (ตาปรือ/ง่วง — ตาดำขนาดเท่าเดิม แบบวิลาศ) · คืน { cx, cy, r, pi, po, pc, ai, ao, path, o }
+ */
+function suphaEyeGeo(side, lid = 0) {
+  const W = EYE_WHITE[side], o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const r = EYE_WHITE.r * 0.98, cx = W.x, cy = W.y + 4;
+  // มุมหัวตา (ฝั่งจมูก) / หางตา บนวงตา · เปลือกตาลง: หางตาเลื่อนลงตามวงตาด้วย (เส้นเปลือกตาแบนลง ไม่หักเป็นตัว V ดูโกรธ)
+  const ai = Math.atan2(-0.04, -o), ao = Math.atan2(-0.5, o * 0.866) + o * lid * 0.45;
+  const pi = [cx + r * Math.cos(ai), cy + r * Math.sin(ai)], po = [cx + r * Math.cos(ao), cy + r * Math.sin(ao)];
+  const pc = [cx - o * r * 0.05, cy - r * 0.74 + lid * r];   // เส้นเปลือกตาโก่งขึ้นนิด · เปลือกตาลง = จุดดึงต่ำลง
+  const path = new Path2D();
+  path.moveTo(...pi);
+  path.quadraticCurveTo(...pc, ...po);
+  path.arc(cx, cy, r, ao, ai, o < 0);   // ขอบล่างวนตามวงตาจากหางตาผ่านใต้ตากลับหัวตา
+  path.closePath();
+  return { cx, cy, r, pi, po, pc, ai, ao, path, o };
+}
+function drawSuphaEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lid = 0, col = SUPHA_EYE, line = '#3A1C0E' } = {}) {
+  const E = suphaEyeGeo(side, lid), { cx, cy, r, o } = E;
+  c.save();
+  c.clip(E.path);
+  // ม่านตาอำพันเต็มดวง: เข้มด้านบน → ทอง → เหลืองสว่างขอบล่าง
+  const g = c.createLinearGradient(0, cy - r * 0.7, 0, cy + r);
+  g.addColorStop(0, col.iris[0]);
+  g.addColorStop(0.34, col.iris[1]);
+  g.addColorStop(0.72, col.iris[2]);
+  g.addColorStop(1, col.iris[3]);
+  c.fillStyle = g;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+  // ขอบม่านตาเข้มขึ้นนิด (ตาดูลึก กลม)
+  const rg = c.createRadialGradient(cx, cy, r * 0.66, cx, cy, r + 2);
+  rg.addColorStop(0, 'rgba(90,50,8,0)');
+  rg.addColorStop(1, 'rgba(90,50,8,.5)');
+  c.fillStyle = rg;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+  // รูม่านตาโต เยื้องเข้าหาจมูกนิด (ตามแบบ) + วงอำพันเข้มบาง ๆ รอบ
+  const px = cx - o * r * 0.14 + lx * 0.8, py = cy + 1 + ly * 0.8, pr = r * 0.52;
+  c.fillStyle = col.ring;
+  c.globalAlpha = 0.5;
+  c.beginPath(); c.arc(px, py, pr + 4, 0, TAU); c.fill();
+  c.globalAlpha = 1;
+  const pg = c.createRadialGradient(px, py + pr * 0.45, pr * 0.1, px, py, pr);
+  pg.addColorStop(0, col.pupilIn);
+  pg.addColorStop(1, col.pupilOut);
+  c.fillStyle = pg;
+  c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill();
+  // แสงสะท้อนนุ่มครึ่งล่าง (ตาใสเป็นแก้วอำพัน)
+  const gl = c.createRadialGradient(cx, cy + r * 0.62, 0, cx, cy + r * 0.62, r * 0.7);
+  gl.addColorStop(0, 'rgba(255,196,80,.32)');
+  gl.addColorStop(1, 'rgba(255,196,80,0)');
+  c.fillStyle = gl;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+  // เงาเปลือกตาตกลงในม่านตาใต้เส้นเปลือกตา (เลื่อนตามเปลือกตาที่ลง)
+  const ld = lid * r * 0.65;
+  const sh = c.createLinearGradient(0, cy - r * 0.62 + ld, 0, cy - r * 0.05 + ld);
+  sh.addColorStop(0, 'rgba(40,18,2,.6)');
+  sh.addColorStop(1, 'rgba(40,18,2,0)');
+  c.fillStyle = sh;
+  c.fillRect(cx - r - 6, cy - r - 6, (r + 6) * 2, r + 6 + ld);
+  // ประกายขาววงเดียวบนรูม่านตา (ตามแบบ) — เปลือกตาลงต่ำ ประกายลงตามนิด ไม่จมใต้เปลือกตา
+  c.fillStyle = '#FFFFFF';
+  c.beginPath(); c.arc(px + pr * 0.12, py - pr * 0.58 + Math.min(1, lid) * pr * 0.5, r * 0.15, 0, TAU); c.fill();
+  if (sparkle > 0) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, px - pr * 0.5, py + pr * 0.45, 8 * k);
+  }
+  c.restore();
+  // ขอบตา: เส้นบางรอบวงตาด้านล่าง (เปลือกตาบนวาดใน drawSuphaLashes)
+  c.strokeStyle = line;
+  c.lineWidth = EYE_RIM_W;
+  c.lineJoin = 'round';
+  c.stroke(E.path);
+}
+/**
+ * เปลือกตาบนตาศุภลักษณ์ (ตามแบบ): แถบน้ำตาลดำหนาตามเส้นเปลือกตาเอียง บางที่หัวตา หนาไปทางหางตา
+ * เลยหางตาออกไปเป็นปลายตวัดสั้น ๆ (ตัวผู้ ไม่มีขนตา) · sq/cy = ตาหรี่ (บีบรอบ cy) · lid = เปลือกตาเลื่อนลง
+ */
+function drawSuphaLashes(c, side, sq = 1, cyS = null, ink = '#22100A', lid = 0) {
+  const { pi, po, pc, o } = suphaEyeGeo(side, lid);
+  const yc = cyS ?? EYE_WHITE[side].y;
+  const S = ([x, y]) => [x, yc + (y - yc) * sq];
+  const Q = (u) => {   // จุดบนเส้นเปลือกตา + ทิศตั้งฉากชี้ขึ้น
+    const v = 1 - u;
+    const x = v * v * pi[0] + 2 * v * u * pc[0] + u * u * po[0], y = v * v * pi[1] + 2 * v * u * pc[1] + u * u * po[1];
+    const dx = 2 * v * (pc[0] - pi[0]) + 2 * u * (po[0] - pc[0]), dy = 2 * v * (pc[1] - pi[1]) + 2 * u * (po[1] - pc[1]);
+    const l = Math.hypot(dx, dy) || 1;
+    let nx = dy / l, ny = -dx / l;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    return { x, y, nx, ny, tx: dx / l, ty: dy / l };
+  };
+  const n = 32, top = [], bot = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, q = Q(u);
+    const th = (2 + 7 * Math.pow(u, 0.9)) * Math.min(1, u * 6 + 0.25);   // หัวตาบาง → หางตาหนา
+    bot.push(S([q.x - q.nx * 2, q.y - q.ny * 2]));
+    top.push(S([q.x + q.nx * th, q.y + q.ny * th]));
+  }
+  // ปลายตวัดสั้น ๆ เลยหางตา (ต่อทิศเส้นเปลือกตาออกไปแล้วเชิดขึ้นนิด)
+  const e = Q(1);
+  const tip = S([po[0] + e.tx * 11 + o * 2, po[1] + e.ty * 11 - 5]);
+  const band = new Path2D();
+  band.moveTo(...bot[0]);
+  for (const p of bot.slice(1)) band.lineTo(...p);
+  band.quadraticCurveTo(...S([po[0] + e.tx * 6, po[1] + e.ty * 6 + 1]), ...tip);
+  band.quadraticCurveTo(...S([po[0] + e.tx * 4, po[1] + e.ty * 4 - 7]), ...top[n]);
+  for (let i = n - 1; i >= 0; i--) band.lineTo(...top[i]);
+  band.closePath();
+  c.fillStyle = ink;
+  c.fill(band);
+}
+// ══ ตาแมวโคราช (ผู้ใช้ส่งแบบ 21 ต.ค.: ตาเขียวสดใส/เขียวมรกต · ตัวผู้) ══
+// ตากลมโต ม่านตาเต็มดวง: ขอบนอกเขียวมินต์อ่อน → เขียวมรกต → วงเขียวเข้มรอบรูม่านตา · รูม่านตาดำอมเขียวโตปานกลาง (เห็นวงเขียวชัด)
+// ประกายขาว: วงใหญ่บนซ้าย + จุดเล็กล่างขวา (ตามแบบ) · เปลือกตาบนเส้นเข้มบาง หนาขึ้นกลางตาค่อนหางตา (ตัวผู้ ไม่มีขนตา)
+const KORAT_EYE = {
+  iris: ['#2C8048', '#46A866', '#8CD39C', '#BDEBC4'], ring: '#1A5230', top: 'rgba(10,40,22,.55)', glow: 'rgba(206,255,214,.4)',
+  pupilIn: '#21402C', pupilOut: '#06140C',
+  // สำหรับตาตอนหันข้าง (sideEye ใช้ชุดสีแบบตาแบ๊ว)
+  rimTop: '#BDEBC4', rimBot: '#3F9E5E', coreIn: '#21402C', coreOut: '#06140C',
+};
+function drawKoratEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidded = false, col = KORAT_EYE, starDots = false, starOne = false } = {}) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, d = side === 'left' ? 1 : -1;   // d = ทิศไปหาจมูก
+  c.save();
+  c.clip(white);
+  // ม่านตาเต็มดวง: กลางเขียวมรกตเข้ม → ขอบนอกเขียวมินต์สว่าง
+  const g = c.createRadialGradient(W.x, W.y, 0, W.x, W.y, R + 2);
+  g.addColorStop(0, col.iris[0]);
+  g.addColorStop(0.58, col.iris[1]);
+  g.addColorStop(0.86, col.iris[2]);
+  g.addColorStop(1, col.iris[3]);
+  c.fillStyle = g;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // เงาเปลือกตาด้านบน (ตาดูลึก ครึ่งล่างสว่าง)
+  const sh = c.createLinearGradient(0, W.y - R, 0, W.y);
+  sh.addColorStop(0, col.top);
+  sh.addColorStop(1, 'rgba(10,40,22,0)');
+  c.fillStyle = sh;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, R + 6);
+  // รูม่านตา (เลื่อนตามสายตา) + วงเขียวเข้มรอบ
+  // วงเขียวเข้มด้านในโตขึ้น (ผู้ใช้ 21 ต.ค. "ตาข้างในสีเขียวเข้มกลมใหญ่กว่านี้") — รูม่านตา 0.5R → 0.6R · วงเข้มรอบหนาขึ้น
+  const ix = W.x + d * 2 + lx * 0.9, iy = W.y - 1 + ly * 0.9, pr = R * 0.6;
+  c.fillStyle = col.ring;
+  c.globalAlpha = 0.75;
+  c.beginPath(); c.arc(ix, iy, pr + 9, 0, TAU); c.fill();
+  c.globalAlpha = 1;
+  const pg = c.createRadialGradient(ix, iy + pr * 0.4, pr * 0.1, ix, iy, pr);
+  pg.addColorStop(0, col.pupilIn);
+  pg.addColorStop(1, col.pupilOut);
+  c.fillStyle = pg;
+  c.beginPath(); c.arc(ix, iy, pr, 0, TAU); c.fill();
+  // แสงสะท้อนนุ่มครึ่งล่าง (ตาใสเป็นแก้ว)
+  const gl = c.createRadialGradient(W.x, W.y + R * 0.6, 0, W.x, W.y + R * 0.6, R * 0.75);
+  gl.addColorStop(0, col.glow);
+  gl.addColorStop(1, 'rgba(206,255,214,0)');
+  c.fillStyle = gl;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // ประกาย (ทิศแสงบนซ้ายทั้งสองตา): วงใหญ่บนซ้าย + จุดเล็กล่างขวา · ตาปรือย้ายลงครึ่งล่างที่ยังเห็น
+  const ir = R * 0.72;   // ตามรูม่านตาที่โตขึ้น (ประกายยังอยู่บนรูม่านตา)
+  const dot = eyeDots(c, ix, iy, ir, starDots, t, starOne);
+  if (lidded) { dot(-0.3, 0.08, 0.24, true); if (!starOne) dot(0.5, 0.42, 0.1); }
+  else { dot(-0.26, -0.42, 0.3, true); if (!starOne) dot(0.52, 0.26, 0.12); }   // ตัวผู้: วงใหญ่วงเดียว (กฎผู้ใช้)
+  if (sparkle > 0 && !starDots) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, ix + 16, iy - 14, 12 * k);
+    if (sparkle > 0.6) star4(c, ix - 8, iy + 18, 6 * k);
+  }
+  c.restore();
+}
+/**
+ * เปลือกตาบนของตาโคราช (ตามแบบ): เส้นเข้มโค้งตามขอบตาด้านบน เรียวที่หัวตา/หางตา หนาสุดกลางค่อนหางตา — ตัวผู้ไม่มีขนตา
+ * sq/cy = ตาหรี่ (ฐานเกาะขอบตาที่หรี่) เหมือน drawRoundLashes
+ */
+function drawKoratLashes(c, side, sq = 1, cy = null, ink = '#2A1E1C') {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const yc = cy ?? W.y;
+  const P = (a, r) => [W.x + o * Math.cos(a) * r, yc + (W.y + Math.sin(a) * r - yc) * sq];
+  const N = (a) => { const nx = o * Math.cos(a) * sq, ny = Math.sin(a), l = Math.hypot(nx, ny) || 1; return [nx / l, ny / l]; };
+  c.fillStyle = ink;
+  // หัวตาด้านบน (a −2.7) → หางตา (a −0.12)
+  const a0 = -2.7, a1 = -0.12, n = 40, lid = new Path2D(), out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * (i / n), u = i / n;
+    const taper = Math.pow(Math.sin(Math.PI * u), 0.7);
+    const th = (3.5 + 6.5 * Math.pow(u, 0.9)) * taper;   // หนากว่าเส้นขอบตาชัด ๆ (ตามแบบ)
+    const b = P(a, R - 1 - 2 * taper), nn = N(a);
+    if (!i) lid.moveTo(...b); else lid.lineTo(...b);
+    out.push([b[0] + nn[0] * th, b[1] + nn[1] * th]);
+  }
+  for (let i = n; i >= 0; i--) lid.lineTo(...out[i]);
+  lid.closePath();
+  c.fill(lid);
+}
+/**
+ * ตาหลับแปลงจากตาลืมของแต่ละตัว (ผู้ใช้ 21 ต.ค. เริ่มที่วิลาศ แล้วสั่ง "ทำแบบนี้ทุกสี เปลือกตาใครเปลือกตามัน")
+ * เส้นเปลือกตาปิด = โค้งจากหัวตา (a) ถึงหางตา (b) ผ่านจุดดึง k · หนาตามเปลือกตาบนของตาลืมแบบนั้น (th(u): u 0 = หัวตา → 1 = หางตา)
+ * ปลายหางตา: wing = ปลายเชิดแหลมแบบตาแมว (วิลาศ · โกนจา) · ไม่มี = ปลายมน (ไลเนอร์/เปลือกตาของตากลม)
+ * ขนตา (ตัวเมีย — ทรงตามขนตาตอนลืมของตัวนั้น): ยิ้มหยี ∩ งอกขึ้นจากขอบบน · หลับ ∪ ห้อยลงจากขอบล่างงอนออกนอกหน้า
+ * lower = ขนตาล่างจิ๋ว (โกนจา · เฉพาะ ∩) · ไม่มีจุดประกาย (ปิดตาแล้วไม่มีแสงสะท้อน)
+ * kind: 'blink' = หลับ/กะพริบ (โค้งลง ∪) · 'happy' = ยิ้มหยี/ขยิบ (โค้งขึ้น ∩) · 'yawn' = หาว (โค้งลงลึก หนาขึ้น)
+ */
+function drawClosedLid(c, kind, L) {
+  const { a, b, k, o, th: thAt } = L;
+  const up = kind === 'happy', above = 0.55;   // ส่วนของความหนาที่อยู่เหนือเส้นโค้ง
+  const Q = (u) => {   // จุดบนเส้นเปลือกตา + ทิศตั้งฉากชี้ขึ้น + ทิศเดินหน้า
+    const v = 1 - u;
+    const x = v * v * a[0] + 2 * v * u * k[0] + u * u * b[0], y = v * v * a[1] + 2 * v * u * k[1] + u * u * b[1];
+    const dx = 2 * v * (k[0] - a[0]) + 2 * u * (b[0] - k[0]), dy = 2 * v * (k[1] - a[1]) + 2 * u * (b[1] - k[1]);
+    const l = Math.hypot(dx, dy) || 1;
+    let nx = dy / l, ny = -dx / l;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    return { x, y, nx, ny, tx: dx / l, ty: dy / l };
+  };
+  const n = 36, top = [], bot = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, q = Q(u), th = thAt(u);
+    top.push([q.x + q.nx * th * above, q.y + q.ny * th * above]);
+    bot.push([q.x - q.nx * th * (1 - above), q.y - q.ny * th * (1 - above)]);
+  }
+  // ปลายมน: ครึ่งวงรอบปลายเส้น (t = ทิศออกจากปลาย)
+  const cap = (p, from, to, t, r) => {
+    p.quadraticCurveTo(from[0] + t[0] * r, from[1] + t[1] * r, (from[0] + to[0]) / 2 + t[0] * r, (from[1] + to[1]) / 2 + t[1] * r);
+    p.quadraticCurveTo(to[0] + t[0] * r, to[1] + t[1] * r, ...to);
+  };
+  const e = Q(1), s0 = Q(0);
+  const p = new Path2D();
+  p.moveTo(...bot[0]);
+  for (const q of bot.slice(1)) p.lineTo(...q);
+  if (L.wing) {
+    // ปลายเชิดเลยหางตา: ต่อทิศเส้นออกไปแล้วงอนขึ้น (ตัวเดียวกับปลายเปลือกตาตอนลืม)
+    const { len, out, rise, lift } = L.wing;
+    const tip = [b[0] + e.tx * len + o * out, b[1] + e.ty * len - rise];
+    p.quadraticCurveTo(b[0] + e.tx * len * 0.54, b[1] + e.ty * len * 0.54 + 1, ...tip);
+    p.quadraticCurveTo(b[0] + e.tx * len * 0.38 - o, b[1] + e.ty * len * 0.38 - lift, ...top[n]);
+  } else cap(p, bot[n], top[n], [e.tx, e.ty], thAt(1) / 2);
+  for (let i = n - 1; i >= 0; i--) p.lineTo(...top[i]);
+  cap(p, top[0], bot[0], [-s0.tx, -s0.ty], thAt(0) / 2);
+  p.closePath();
+  c.save();
+  c.fillStyle = L.ink;
+  c.strokeStyle = L.ink;
+  c.lineJoin = 'round';
+  c.lineWidth = 1.6;   // ขอบมน ไม่แตกเป็นหยัก
+  c.fill(p);
+  c.stroke(p);
+  // ขนตา: [u บนเส้น, ยาว, ครึ่งกว้างฐาน, แรงงอนออกนอกหน้า]
+  for (const [u, len, w, curl = 1] of L.lashes || []) {
+    const q = Q(u), th = thAt(u);
+    const sg = up ? 1 : -1;   // ทิศงอก (ตั้งฉากชี้ขึ้น / ลง)
+    const nx = q.nx * sg, ny = q.ny * sg;
+    const h = th * (up ? above : 1 - above) - 1.5;
+    const b0 = [q.x + nx * h, q.y + ny * h];
+    const kk = [b0[0] + nx * len * 0.7, b0[1] + ny * len * 0.7];
+    const tp = [kk[0] + o * len * 0.55 * curl, kk[1] + (up ? -len * 0.1 : len * 0.05)];
+    const sd = [-ny, nx];
+    const P = new Path2D();
+    P.moveTo(b0[0] + sd[0] * w, b0[1] + sd[1] * w);
+    P.quadraticCurveTo(kk[0] + sd[0] * w * 0.5, kk[1] + sd[1] * w * 0.5, ...tp);
+    P.quadraticCurveTo(kk[0] - sd[0] * w * 0.3, kk[1] - sd[1] * w * 0.3, b0[0] - sd[0] * w, b0[1] - sd[1] * w);
+    P.closePath();
+    c.fill(P);
+  }
+  // ขนตาล่างจิ๋ว (∩ เท่านั้น): จากขอบล่างชี้ลง-ออกนอก
+  if (up) for (const [u, len, w] of L.lower || []) {
+    const q = Q(u), h = thAt(u) * (1 - above) - 1;
+    const b0 = [q.x - q.nx * h, q.y - q.ny * h];
+    const tip = [b0[0] - q.nx * len + o * len * 0.35, b0[1] - q.ny * len];
+    const P = new Path2D();
+    P.moveTo(b0[0] - q.ny * w, b0[1] + q.nx * w);
+    P.quadraticCurveTo(b0[0] - q.nx * len * 0.6, b0[1] - q.ny * len * 0.6, ...tip);
+    P.lineTo(b0[0] + q.ny * w, b0[1] - q.nx * w);
+    P.closePath();
+    c.fill(P);
+  }
+  c.restore();
+}
+/**
+ * เปลือกตาปิดของแต่ละแบบตา (คู่กับ drawClosedLid) — ดึงจากตาลืมของตัวนั้น:
+ *   วิลาศ: มุมตาอัลมอนด์ (wilatEyeGeo) · หนาไปหางตา + ปลายเชิด + ขนตาสองเส้น
+ *   ตาแบ๊ว (น้องส้ม ไข่มุก): ไลเนอร์โอบหางตา หนาสุดที่หางตา ปลายมน · ตัวเมียขนตาสามเส้นแบบแฉกขนตาตอนลืม
+ *   ขนตาพัด (โกนจา): เส้นบางกว่า + หางไลเนอร์ตวัดยาวแบบตาแมว + ขนตาม้วนสามเส้น + ขนตาล่างจิ๋ว
+ *   ตากลม (ขนมชั้น): เปลือกตาเรียว → หนาที่หางตา ปลายมน + ขนตางอนยาวสามเส้น
+ *   ศุภลักษณ์: เส้นเปลือกตาเอียง (หางตาสูง) หนาไปหางตา + ปลายตวัดสั้น
+ *   โคราช: เส้นเปลือกตาบาง หนาขึ้นค่อนหางตา ปลายมน (ตัวผู้ ไม่มีขนตา)
+ *   ลายสลิด: ไลเนอร์หนาไปหางตา หางตวัดสั้น + ขนตาพัดสี่เส้น
+ *   หน้ากวน (วิเชียรมาศ): เส้นเปลือกตาหนาเท่ากันตลอด ปลายมนสองข้าง หางตาสูงหัวตาต่ำแบบตาลืม · สีเส้นตัว
+ */
+function closedLidSpec(side, kind, s, female, pal) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const up = kind === 'happy', deep = kind === 'yawn', D = deep ? 1.15 : 1;
+  const ramp = (u) => Math.min(1, u * 5 + 0.3);   // หัวตาเรียวเล็ก
+  const lashes = (list) => (female ? list : []);
+  if (s?.eyeStyle === 'wilat') {
+    const { pi, po, cx, cy, r } = wilatEyeGeo(side);
+    return {
+      o, ink: pal.closedInk || '#0E0A08',
+      // ยิ้มหยี: มุมตาต่ำลงนิด (แก้มดันขึ้น) แล้วโค้งขึ้น · หลับ: มุมตาที่เดิม เปลือกตาโค้งลงมาปิด
+      a: up ? [pi[0], pi[1] + r * 0.3] : pi, b: up ? [po[0], po[1] + r * 0.36] : po,
+      k: up ? [cx + o * r * 0.05, cy - r * 0.62] : [cx + o * r * 0.12, cy + r * (deep ? 0.95 : 0.58)],
+      th: (u) => (1.6 + 7.4 * Math.pow(u, 0.85)) * ramp(u) * D,
+      wing: { len: 13, out: 3, rise: up ? 9 : 7, lift: 6 },
+      lashes: lashes([[0.8, 11, 2.6], [0.6, 9, 2.2]]),
+    };
+  }
+  if (s?.eyeStyle === 'supha') {
+    // ศุภลักษณ์: หัวตาระดับกลางตา หางตาสูง (เส้นเปลือกตาเอียงแบบตาลืม) · หนาไปหางตา + ปลายตวัดสั้น · ตัวผู้ไม่มีขนตา
+    const { pi, po, cx, cy, r } = suphaEyeGeo(side);
+    return {
+      o, ink: pal.closedInk || '#22100A',
+      a: up ? [pi[0], pi[1] + r * 0.3] : deep ? [pi[0], pi[1] - r * 0.1] : pi,
+      b: up ? [po[0], po[1] + r * 0.42] : deep ? [po[0], po[1] - r * 0.05] : [po[0], po[1] + r * 0.12],
+      k: up ? [cx, cy - r * 0.5] : [cx + o * r * 0.1, cy + r * (deep ? 0.95 : 0.6)],
+      th: (u) => (2 + 7.5 * Math.pow(u, 0.9)) * ramp(u) * D,
+      wing: { len: 10, out: 2, rise: up ? 6 : 5, lift: 5 },
+      lashes: lashes([[0.8, 11, 2.6], [0.6, 9, 2.2]]),
+    };
+  }
+  if (s?.art?.grumpy) {
+    // หน้ากวน: หางตาสูง หัวตา (ข้างจมูก) ต่ำ เหมือนเส้นเปลือกตาตอนลืม — ปิดลงมาทั้งเส้น
+    const lw = 8 * LINE_K * D;
+    return {
+      o, ink: pal.line,
+      a: [W.x - o * (R + 2), W.y + (up ? 16 : deep ? 2 : 10)], b: [W.x + o * (R + 2), W.y + (up ? 8 : deep ? -8 : -2)],
+      k: up ? [W.x, W.y - 22] : [W.x + o * 4, W.y + (deep ? 44 : 26)],   // ∩ โก่งพอ ไม่แบนจนดูเป็นคิ้ว
+      th: () => lw,
+    };
+  }
+  // ตาวงกลม (ตาแบ๊ว · ตากลม · ขนตาพัด): มุมตาสองข้างที่แนวกลางตา
+  const base = {
+    o,
+    a: up ? [W.x - o * R * 0.86, W.y + 16] : deep ? [W.x - o * R * 0.8, W.y - 2] : [W.x - o * R * 0.9, W.y + 4],
+    b: up ? [W.x + o * R * 0.94, W.y + 13] : deep ? [W.x + o * R * 0.9, W.y - 6] : [W.x + o * R * 0.98, W.y],
+    k: up ? [W.x, W.y - 28] : [W.x + o * 3, W.y + (deep ? 56 : 40)],
+  };
+  if (s?.eyeStyle === 'korat') return {
+    // โคราช: เปลือกตาเส้นเข้มบาง หนาขึ้นค่อนหางตา ปลายมน · ตัวผู้ไม่มีขนตา
+    ...base, ink: pal.closedInk || '#2A1E1C',
+    th: (u) => (2.2 + 6.4 * Math.pow(u, 0.9)) * ramp(u) * D,
+  };
+  if (s?.lashStyle === 'salid') return {
+    // ลายสลิด: ไลเนอร์หนาไปหางตา + หางตวัดสั้น + ขนตาพัดสี่เส้น
+    ...base, ink: pal.closedInk || '#24150D',
+    th: (u) => (2 + 6.4 * Math.pow(u, 1.05)) * ramp(u) * D,
+    wing: { len: 12, out: 3, rise: up ? 8 : 6, lift: 6 },
+    lashes: lashes([[0.92, 13, 2.8, 1], [0.8, 13, 2.7, 0.85], [0.68, 11, 2.5, 0.7], [0.56, 9, 2.3, 0.55]]),
+  };
+  if (s?.lashStyle === 'fan') return {
+    ...base, ink: pal.closedInk || '#080303',
+    th: (u) => (1.4 + 6 * Math.pow(u, 1.3)) * ramp(u) * D,
+    wing: { len: 18, out: 4, rise: up ? 15 : 12, lift: 10 },
+    lashes: lashes([[0.88, 15, 3.2, 1], [0.74, 15, 3, 0.8], [0.6, 11, 2.8, 0.6]]),
+    lower: female ? [[0.9, 7, 2], [0.97, 6, 1.8]] : [],
+  };
+  if (s?.eyeStyle === 'round') return {
+    ...base, ink: pal.closedInk || '#24140C',
+    th: (u) => (2.4 + 7.6 * Math.pow(u, 1.1)) * ramp(u) * D,
+    lashes: lashes([[0.9, 17, 3.6, 1], [0.75, 15, 3.4, 0.75], [0.6, 12, 3, 0.5]]),
+  };
+  return {
+    ...base, ink: pal.closedInk || '#2A170E',
+    th: (u) => (2.2 + 8.6 * Math.pow(u, 1.1)) * ramp(u) * D,   // ตาโต — เส้นหนากว่าแบบอื่นนิด ไม่งั้นดูจางเทียบกับขนาดตา
+    lashes: lashes([[0.9, 12, 3, 0.9], [0.76, 14, 3.2, 0.7], [0.62, 9, 2.6, 0.5]]),
+  };
+}
+/**
+ * ลายขาวอกแมววิลาศ (ตามแบบ): ผ้ากันเปื้อนขนฟูกว้างใต้คาง ขอบเป็นปอยขน → เรียวลงเป็นเส้นบางกลางท้องถึงหว่างขา
+ * cx/y0/y1 = กลาง/บน/ล่าง (พิกัดชิ้น) · k = สเกลความกว้าง · M = ตัวแปลงจุด (ตัววิ่ง)
+ */
+function wilatChestPath(cx, y0, y1, k = 1, M = null) {
+  const prof = [[0, 34], [0.05, 42], [0.11, 46], [0.17, 40], [0.24, 28], [0.32, 16], [0.42, 10], [0.6, 8], [0.8, 6], [0.94, 3.5], [1, 1]];
+  const wAt = (u) => {
+    for (let i = 1; i < prof.length; i++) if (u <= prof[i][0]) { const [u0, w0] = prof[i - 1], [u1, w1] = prof[i]; return w0 + ((w1 - w0) * (u - u0)) / (u1 - u0); }
+    return 1;
+  };
+  const R = [], L = [];
+  const n = 26;
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, y = y0 + (y1 - y0) * u;
+    const fur = u > 0.03 && u < 0.34 ? (i % 2 ? 6 : -3) * (1 - u * 1.6) : 0;    // ปอยขนตามขอบผ้ากันเปื้อน (เล็กลงทางล่าง)
+    const fur2 = u > 0.03 && u < 0.34 ? (i % 2 ? -2.5 : 5.5) * (1 - u * 1.6) : 0;
+    R.push([cx + (wAt(u) + fur) * k, y]);
+    L.push([cx - (wAt(u) + fur2) * k, y]);
+  }
+  const pts = [...R, ...L.reverse()];
+  return smoothLoop(M ? pts.map((p) => M(p)) : pts);
+}
+
+/**
+ * ขนตาแมวลายสลิด (ผู้ใช้ 21 ต.ค.: "ขนตาแอบแปลก วาดใหม่" — ตามแบบ): อายไลเนอร์ดำหนาตามขอบตาบน (หัวตาบาง → หางตาหนา)
+ * ตวัดหางสั้นเชิดออกนอกหน้าที่หางตา + ขนตางอนสี่เส้นเรียงเป็นพัดที่มุมบนนอก (เส้นนอกยาวงอนสุด) · ไม่มีแถบโอบใต้ตา
+ * sq/cy = ตาหรี่ (ฐานเกาะขอบตาที่หรี่) เหมือน drawRoundLashes
+ */
+function drawSalidLashes(c, side, sq = 1, cy = null, ink = '#24150D') {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const yc = cy ?? W.y;
+  const P = (a, r) => [W.x + o * Math.cos(a) * r, yc + (W.y + Math.sin(a) * r - yc) * sq];
+  const N = (a) => { const nx = o * Math.cos(a) * sq, ny = Math.sin(a), l = Math.hypot(nx, ny) || 1; return [nx / l, ny / l]; };
+  c.fillStyle = ink;
+  // อายไลเนอร์: หัวตาบน (a −2.7) → หางตา (a −0.08) หนา 1.5 → 7
+  const a0 = -2.7, a1 = -0.08, n = 40, lid = new Path2D(), out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * (i / n), u = i / n;
+    const th = (1.5 + 5.5 * Math.pow(u, 1.1)) * Math.min(1, u * 5 + 0.3);
+    const b = P(a, R - 1.5), nn = N(a);
+    if (!i) lid.moveTo(...b); else lid.lineTo(...b);
+    out.push([b[0] + nn[0] * th, b[1] + nn[1] * th]);
+  }
+  // หางตวัดสั้นเชิดออกนอกหน้า
+  const e = P(a1, R - 1.5);
+  lid.quadraticCurveTo(W.x + o * (R + 7), yc + (W.y - 1 - yc) * sq, W.x + o * (R + 13), yc + (W.y - 9 - yc) * sq);
+  lid.quadraticCurveTo(W.x + o * (R + 6), yc + (W.y - 9 - yc) * sq, ...out[n]);
+  for (let i = n - 1; i >= 0; i--) lid.lineTo(...out[i]);
+  lid.closePath();
+  c.fill(lid);
+  void e;
+  // ขนตางอนสี่เส้น (พัดที่มุมบนนอก): ฐานฝังในไลเนอร์ → ขึ้นตามแนวตั้งฉากขอบตา → ปลายม้วนออกนอกหน้า
+  for (const [a, len, w, curl] of [[-0.34, 15, 3.1, 1], [-0.62, 15, 3, 0.85], [-0.9, 13, 2.8, 0.7], [-1.18, 10, 2.5, 0.55]]) {
+    const b = P(a, R + 3), nn = N(a), sd = [-nn[1], nn[0]];
+    const k = [b[0] + nn[0] * len * 0.72, b[1] + nn[1] * len * 0.72];
+    const tip = [k[0] + o * len * 0.5 * curl + nn[0] * len * 0.12, k[1] + nn[1] * len * 0.12 + len * 0.06 * curl];
+    const q = new Path2D();
+    q.moveTo(b[0] + sd[0] * w - nn[0] * 3, b[1] + sd[1] * w - nn[1] * 3);
+    q.quadraticCurveTo(k[0] + sd[0] * w * 0.55, k[1] + sd[1] * w * 0.55, ...tip);
+    q.quadraticCurveTo(k[0] - sd[0] * w * 0.4, k[1] - sd[1] * w * 0.4, b[0] - sd[0] * w - nn[0] * 3, b[1] - sd[1] * w - nn[1] * 3);
+    q.closePath();
+    c.fill(q);
+  }
+}
 /**
  * ขนตาแบบตาแมว (โกนจา · ผู้ใช้ขอ "ดีไซน์ขนตาใหม่ไม่ซ้ำกับตัวอื่น"):
  *   อายไลเนอร์โอบขอบตาบนแล้ว "ตวัดหาง" เลยหางตาออกไปเป็นปลายแหลมเชิดขึ้น (cat-eye — ตัวอื่นไม่มีหางไลเนอร์)
@@ -10251,6 +14393,89 @@ export const CAT2_BREEDS = [
     cat: '#2F2627', line: '#4A1C10', dark: '#1A1314', cream: '#2F2627', pink: '#F2A0A6', eye: '#3E2512', ink: '#120A0A',
     whisker: 'rgba(74,28,16,.85)', rain: ['#3A2E30', '#FFD86B', '#1A1314'],
   },
+  {
+    // ผู้ใช้ส่งแบบ 21 ต.ค.: "แมวไทย สีวิลาศ" — ดำเกือบทั้งตัว มีขาวตัด: ใบหู (ปอยขนขาวในหู) เท้าทั้งสี่ ปากล่าง/คาง หน้าอก ท้อง
+    //   แถบขาวกลางหน้าผากลงถึงจมูก (แนวกลางหัว-หลัง-หาง ตามตำรา: มองหน้าเห็นที่หน้าผาก มองหลังเห็นกลางหลัง) · หางขาวด้านใน
+    //   ตาเขียวสด "ดีไซน์ตาใหม่" (drawWilatEye + drawWilatLashes) · จมูกชมพู · ตัวเมีย (มีขนตาตามแบบ)
+    id: 'wilat', name: 'วิลาศ', note: 'แมวไทยสีวิลาศ ดำแต้มขาว ตาเขียว · ตัวเมีย', sex: 'f', stripes: false,
+    pal: {
+      cat: '#2B2325', stripe: '#1A1416', shade: '#211A1C', cream: '#FBF6F1',
+      line: '#3A1A12', ear: '#F2A3A6', cheek: 'rgba(0,0,0,0)', nose: '#F3A0AB', mouth: '#1A1012',   // ไม่มีแก้มแดง (ผู้ใช้สั่ง 21 ต.ค.)
+      air: '#0B0708',                          // พ่นเงาขอบดำลึก (แบบโกนจา)
+      glow: '#4C4044',                         // จุดสว่างขนดำมันวาว
+      earIn: '#F7B2B4', earEdge: '#E08A94',    // หูในชมพู + ปอยขนขาว (earFur)
+      oneDot: true, closedInk: '#0A0606',
+    },
+    eyeStyle: 'wilat', lashStyle: 'wilat', eyes: { left: WILAT_EYE, right: WILAT_EYE },
+    // ลายขาว: blaze = แถบหน้าผาก+ปาก-คาง (วาดเอง ไม่ใช้ครีมหน้าแบบน้องส้ม) · chestStripe = แถบอก-ท้องแคบ (แทนวงพุง)
+    //   tailStripe = หางขาวด้านใน · earFur = ปอยขนขาวในหู · อุ้งเท้า/เท้า = ครีมของไฟล์ (pal.cream ขาว) · solid = ขนดำไล่เงา (แบบโกนจา)
+    art: { faceCream: false, blaze: true, chestStripe: true, plainTail: true, tailStripe: true, earFur: true, solid: true },
+    eyeDots: 1,
+    cat: '#2B2325', line: '#3A1A12', dark: '#1A1416', cream: '#FBF6F1', pink: '#F2A3A6', eye: '#2C4A16', ink: '#1A1012',
+    whisker: 'rgba(58,26,18,.85)', rain: ['#2B2325', '#FBF6F1', '#8FC23A'],
+  },
+  {
+    // ผู้ใช้ส่งแบบ 21 ต.ค.: "แมวศุภลักษณ์ ตัวผู้" — น้ำตาลช็อกโกแลตอมทองแดงสม่ำเสมอทั้งตัว (ไม่มีแต้ม/ลายเข้ม — ลายผีจาง ๆ ที่หน้าผาก/ข้างตัวตามภาพ)
+    //   อกสีอ่อนกว่าฟุ้ง ๆ · ตาเหลืองอำพัน (drawSuphaEye: วงกลมตัดเปลือกตาเอียงต่ำลงหาจมูก หน้าเท่) · หูในชมพูส้ม + ปอยขนอ่อน
+    //   อุ้งเท้าชมพูส้ม (pawTip = ปลายมือ/เท้าตอนยืน · paw = ท่านั่ง/วิ่ง) · จมูกน้ำตาลเข้มมีเงาวาว · แก้มชมพูส้ม
+    id: 'supha', name: 'ศุภลักษณ์', note: 'แมวไทยสีทองแดง ตาอำพัน · ตัวผู้', sex: 'm', stripes: true,
+    pal: {
+      cat: '#86502E', stripe: '#6A3B1F', shade: '#79462A', cream: '#A8714A',
+      line: '#3A1C0E', ear: '#E9A08E', cheek: '#F2A08F', nose: '#3A1D12', noseGloss: true, mouth: '#3A1C0E',
+      air: '#4A2412',                          // พ่นเงาขอบน้ำตาลเข้ม
+      glow: '#A56C45',                         // จุดสว่างกลางตัว/หน้า (ทองแดงสะท้อนแสง)
+      earIn: '#EFA594', earEdge: '#D27C6A', earFur: '#F3D8C6',   // หูในชมพูส้ม + ปอยขนอ่อน
+      paw: '#EDA38E', pawTip: '#EDA38E',       // อุ้งเท้าชมพูส้ม
+      closedInk: '#22100A',
+    },
+    eyeStyle: 'supha', lashStyle: 'supha', eyes: { left: SUPHA_EYE, right: SUPHA_EYE },
+    // bellySoft = อกอ่อนกว่าขอบฟุ้ง (ไม่ใช่วงขาว) · ลายจาง (stripeA) · หางเรียบ · solid = ขนสีเดียวไล่เงาทุกจุด (แบบโกนจา)
+    art: { faceCream: false, bellySoft: true, plainTail: true, earFur: true, solid: true, stripeA: 0.3 },
+    eyeDots: 1,
+    cat: '#86502E', line: '#3A1C0E', dark: '#6A3B1F', cream: '#A8714A', pink: '#E9A08E', eye: '#C88A1E', ink: '#3A1C0E',
+    whisker: 'rgba(58,28,14,.85)', rain: ['#86502E', '#EDB838', '#A8714A'],
+  },
+  {
+    // ผู้ใช้ส่งแบบ 21 ต.ค.: "แมวโคราช ตัวผู้" — ขนเทาเงินอมฟ้า (Silver Blue) ปลายขนเงิน สม่ำเสมอทั้งตัว ไม่มีลาย · อกสว่างกว่าฟุ้ง ๆ
+    //   ตาเขียวมรกตกลมโต (drawKoratEye) · จมูก/อุ้งเท้า: เงินอมม่วงอ่อน · หูในชมพูอมส้ม + ปอยขนเทา · ไม่มีแก้มแดง (ตามแบบ)
+    id: 'korat', name: 'โคราช', note: 'แมวไทยสีเทาเงิน ตาเขียวมรกต · ตัวผู้', sex: 'm', stripes: false,
+    pal: {
+      cat: '#8E9099', stripe: '#767882', shade: '#81838D', cream: '#A9ABB4',
+      line: '#3A2A26', ear: '#DC9A90', cheek: 'rgba(0,0,0,0)', nose: '#7A6670', noseGloss: true, mouth: '#3A2A26',
+      air: '#555864',                          // พ่นเงาขอบเทาเข้มอมฟ้า
+      glow: '#BEC1CA',                         // ปลายขนสีเงินสะท้อนแสงกลางตัว/หน้า
+      earIn: '#E2A298', earEdge: '#C47F77', earFur: '#C4C6CE',   // หูในชมพูอมส้ม + ปอยขนเทาเงิน
+      paw: '#B4AEBE', pawTip: '#B4AEBE',       // อุ้งเท้าเงินอมม่วงอ่อน (ตามตำรา)
+      closedInk: '#2A1E1C',
+    },
+    eyeStyle: 'korat', lashStyle: 'korat', eyes: { left: KORAT_EYE, right: KORAT_EYE },
+    // bellySoft = อกอ่อนกว่าขอบฟุ้ง · หางเรียบ · solid = ขนสีเดียวไล่เงาทุกจุด
+    art: { faceCream: false, bellySoft: true, plainTail: true, earFur: true, solid: true },
+    cat: '#8E9099', line: '#3A2A26', dark: '#767882', cream: '#A9ABB4', pink: '#DC9A90', eye: '#46A866', ink: '#3A2A26',
+    whisker: 'rgba(58,42,38,.85)', rain: ['#8E9099', '#46A866', '#C4C6CE'],
+  },
+  {
+    // ผู้ใช้ส่งแบบ 21 ต.ค.: "ตัวเมีย สีลายสลิด" — ลายก้างปลา (mackerel tabby): พื้นครีมอมเทา ลายเส้นเทาเข้มพาดขวางทั้งตัว
+    //   หัว: ตัว M + เส้นตั้งกลางหน้าผาก คิ้ว ลายแก้ม (TABBY ระบบปื้นแบบสามสี) · ปาก แก้มใน อก ท้อง อุ้งเท้าครีม · หางปล้อง ปลายเข้ม
+    //   ตาแบ๊วสีเขียวอมเหลือง (รูม่านตาดำโต เสี้ยวขอบล่างเหลืองอ่อน ประกายสามจุด) + ขนตาตัวเมีย · แก้มชมพู · หูในชมพู + ปอยขนครีม
+    id: 'salid', name: 'ลายสลิด', note: 'แมวลายสลิด (ลายก้างปลา) ตาเขียวอมเหลือง · ตัวเมีย', sex: 'f', stripes: false,
+    pal: {
+      cat: '#CEC5B9', stripe: '#6A6466', shade: '#BCB2A5', cream: '#F7EFE3',
+      line: '#4A2C1C', ear: '#F2AAA8', cheek: '#F5A6A6', nose: '#C4847E', mouth: '#4A2C1C',
+      air: '#8C8278',                          // พ่นเงาขอบเทาอุ่น
+      glow: '#ECE5DB',                         // จุดสว่างกลางตัว/หน้า
+      earIn: '#F4B4B0', earEdge: '#DA8C8E', earFur: '#FBF5EC',   // หูในชมพู + ปอยขนครีม
+    },
+    eyes: {
+      left: { rimTop: '#9CC044', rimBot: '#F2EFA0', coreIn: '#3A3C1C', coreOut: '#0C0C05', coreInset: 11, coreDy: 5 },
+      right: { rimTop: '#9CC044', rimBot: '#F2EFA0', coreIn: '#3A3C1C', coreOut: '#0C0C05', coreInset: 11, coreDy: 5 },
+    },
+    // tabby = ลายเส้น (ระบบ patch ของสามสี) · muzzle = ครีมปาก-แก้ม (ไม่ใช้ครีมหน้าแบบน้องส้มที่มีแถบขึ้นหน้าผาก) · bellySoft = อก-ท้องครีมขอบฟุ้ง
+    art: { tabby: TABBY, faceCream: false, muzzle: true, bellySoft: true, plainTail: true, earFur: true },
+    lashStyle: 'salid',   // ขนตาใหม่ตามแบบ (ผู้ใช้ 21 ต.ค. — ขนตาตัวเมียของตาแบ๊วโอบใต้ตาดูแปลก)
+    cat: '#CEC5B9', line: '#4A2C1C', dark: '#6A6466', cream: '#F7EFE3', pink: '#F2AAA8', eye: '#3A3C1C', ink: '#4A2C1C',
+    whisker: 'rgba(74,44,28,.85)', rain: ['#CEC5B9', '#6A6466', '#A9C64A'],
+  },
 ];
 
 function mix(a, b, k) {
@@ -10261,7 +14486,7 @@ function mix(a, b, k) {
 }
 /** จานสีตามสกินของแมว — แมวส้มใช้สีของแบบ ตัวอื่นสลับตามช่องสีของสกิน */
 const palCache = new WeakMap();
-const CAT2_BREED_IDS = new Set(['pearl', 'calico', 'siamese', 'konja']);
+const CAT2_BREED_IDS = new Set(['pearl', 'calico', 'siamese', 'konja', 'wilat', 'supha', 'korat', 'salid']);
 /** น้องจากกล่องสายพันธุ์แบบใหม่ → เติมจานสี/ตา/ลายของ CAT2_BREEDS (เพศของตัวน้องเอง) — ก้อนเดิมต่อสกิน (ไม่สร้างใหม่ทุกเฟรม) */
 const breedCache = new WeakMap();
 function withBreed(s) {
@@ -10578,7 +14803,7 @@ function drawOps(ctx, ops, pal, hooks, opt) {
       } else if (op.fill) {
         // คูณกับความโปร่งที่ hook ตั้งไว้ (เช่น ครีมหน้าจาง) — ไม่ทับค่าเดิม
         const a0 = ctx.globalAlpha;
-        ctx.globalAlpha = a0 * op.fillAlpha;
+        ctx.globalAlpha = a0 * op.fillAlpha * (ROLE[op.fill] === 'stripe' ? opt.stripeA ?? 1 : 1);   // ลายเติมสี: จางตามสายพันธุ์
         ctx.fillStyle = color(op.fill, pal);
         ctx.fill(op.path);
         ctx.globalAlpha = a0;
@@ -11023,6 +15248,26 @@ function tailDetails(ctx, G, pal, opt = {}) {
     ctx.fillRect(-2000, -2000, 5000, 5000);
     return;
   }
+  // หางขาวด้านใน (แมววิลาศ): แถบขาวเลียบข้างหนึ่งของหาง จากโคนเกือบถึงปลาย (ปลายหางดำ) ขอบฟุ้งนิด ๆ
+  if (opt.tailStripe) {
+    const side = (i, f) => { const p = pts[i], h = half(i) + 3, nx = -Math.sin(p.a), ny = Math.cos(p.a); return [p.x + nx * h * f, p.y + ny * h * f]; };
+    const e = Math.max(2, N - 3);
+    const strip = (k) => {
+      const q = new Path2D();
+      const out = [], inn = [];
+      for (let i = 0; i <= e; i++) {
+        const u = i / e, w = 0.15 + 0.85 * Math.sin(Math.PI * Math.min(1, 0.15 + u * 0.95));
+        out.push(side(i, 1.4));
+        inn.push(side(i, 1 - 0.95 * w * k));
+      }
+      q.moveTo(...out[0]);
+      for (const p of out.slice(1)) q.lineTo(...p);
+      for (const p of inn.reverse()) q.lineTo(...p);
+      q.closePath();
+      return q;
+    };
+    softMark(ctx, strip(0.92), opt.tailStripe);
+  }
   // เงาด้านใต้หาง ให้ดูกลมเหมือนแขนขา
   ctx.strokeStyle = flatShade(pal);
   ctx.lineWidth = 5;
@@ -11047,7 +15292,7 @@ function tailDetails(ctx, G, pal, opt = {}) {
     }
   }
   // ปลายหางสีครีม เข้าชุดกับอุ้งเท้า (แมวสามสี: ปล้องทาเป็นสีขนตอนลงสีพื้น — ดู calPatch)
-  if (plain && !opt.calico) return;
+  if (plain && (!opt.calico || opt.calico.darkTip)) return;   // ลายสลิด: ปลายหางเข้ม (ปล้องสุดท้ายถึงปลาย)
   const tip = pts[N];
   ctx.fillStyle = pal.cream;
   ctx.beginPath();
@@ -11057,45 +15302,6 @@ function tailDetails(ctx, G, pal, opt = {}) {
 
 // ══ ตา ══
 /** ตาปิด: โค้งลง (กะพริบ/หลับ) · ^ (ดีใจ) · > < (เจ็บ) */
-/**
- * ขนตาตอนหลับตา (ตัวเมีย): สองเส้นเรียวงอนขึ้นที่หางตาด้านนอก — งอกจากเส้นตาปิด สีเดียวกับเส้นตา
- * kind: 'blink' (∪ หลับ) · 'happy' (∩ ยิ้ม) · 'yawn' (U หาว)
- * ฐานขนตาทุกเส้นฝังลงในเนื้อเส้นตาปิด (จุดบนขอบเส้นจริง แล้วดันเข้าในอีกนิด) — เดิมเส้นที่สองตั้งเหนือขอบเส้น
- * (ตาหาวลอยกลางช่อง U) เห็นเป็นขนตาขาดจากเปลือกตา (ผู้ใช้ทัก 14 ต.ค.)
- */
-function closedLashes(c, e, side, kind, ink = BABY.coreIn, fan = false) {
-  const o = side === 'left' ? -1 : 1;
-  // ขนตาหนึ่งเส้น: ฐานกว้างฝังในเส้นตา → เรียวโค้งงอนไปที่ปลาย (b = ฐาน · k = จุดโค้ง · t = ปลาย · w = ครึ่งความกว้างฐาน)
-  const lash = ([x0, y0], [cx, cy], [tx, ty], w) => {
-    const dx = cx - x0, dy = cy - y0, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
-    const q = new Path2D();
-    q.moveTo(x0 + nx * w, y0 + ny * w);
-    q.quadraticCurveTo(cx + nx * w * 0.45, cy + ny * w * 0.45, tx, ty);
-    q.quadraticCurveTo(cx - nx * w * 0.45, cy - ny * w * 0.45, x0 - nx * w, y0 - ny * w);
-    q.closePath();
-    c.fill(q);
-  };
-  const P = (dx, dy) => [e.x + o * dx, e.y + dy];
-  c.fillStyle = ink;
-  if (kind === 'yawn') {
-    // ตัว U: ปลายแขน U อยู่ที่ (±30, −12) · ขอบนอกแขนช่วงบนอยู่ราว x ±29..31
-    lash(P(28.5, -7), P(40, -14), P(46, -27), 3.4);        // เส้นยาว: จากปลายแขน U งอนออกนอก
-    lash(P(29, 2), P(38, -1), P(45, -10), 3);              // เส้นสั้น: จากข้างแขน U ใต้ปลายลงมา
-    if (fan) lash(P(26, -11), P(32, -22), P(31, -33), 2.8);   // ขนตาแบบพัด: เส้นที่สามชี้ขึ้น
-    return;
-  }
-  if (kind === 'happy') {
-    // ∩ ยิ้ม: ปลายตาที่ (±38, +12) · ขอบบนที่ x 27 ≈ y 0 (เนื้อเส้นถึง y 7)
-    lash(P(34, 9), P(46, 7), P(53, -5), 3.4);
-    lash(P(26, 3), P(31, -6), P(33, -15), 3);
-    if (fan) { lash(P(31, 6), P(41, -2), P(46, -15), 3.2); lash(P(36, 12), P(44, 16), P(50, 22), 2.4); }   // พัด: เส้นกลาง + ขนตาล่าง
-    return;
-  }
-  // ∪ หลับ: ปลายตาที่ (±40, +4) · ขอบบนเกือบตรง (ที่ x 28 อยู่ราว y 5) เนื้อเส้นหนาลงล่าง
-  lash(P(36, 5.5), P(49, 3), P(56, -9), 3.4);
-  lash(P(27, 7), P(32, -2), P(35, -12), 3);
-  if (fan) { lash(P(32, 6), P(42, -1), P(47, -13), 3.2); lash(P(38, 8), P(46, 13), P(52, 18), 2.4); }   // พัด: เส้นกลาง + ขนตาล่าง
-}
 /** ขนแก้ม (ตามแบบแมวขาว): เส้นโค้งสั้น ๆ จาง ๆ สามเส้นที่ขอบแก้มสองข้าง ใต้ระดับตา */
 function cheekFur(c, pal, opt) {
   c.save();
@@ -11302,7 +15508,7 @@ function drawGrumpyEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, col
   // ประกาย: ใต้เปลือกตาพอดี (ทิศแสงบนซ้าย)
   const dot = eyeDots(c, ix, iy, ir, starDots, t, starOne);
   dot(-0.32, 0.12, 0.2, true);
-  dot(0.3, 0.42, 0.1);
+  if (!starOne) dot(0.3, 0.42, 0.1);   // ตัวผู้: วงใหญ่วงเดียว (กฎผู้ใช้ 21 ต.ค.)
   if (sparkle > 0 && !starDots) star4(c, ix + 14, iy + 4, 9 * sparkle);
   c.restore();
   // ── ขอบตา ──
@@ -11441,7 +15647,8 @@ function drawBabyEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidde
   c.fillStyle = rim;
   c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
   // วงเข้มเยื้องขึ้นบน (และเข้าหาจมูกนิด) = เหลือเสี้ยวทองที่ขอบล่างด้านนอก
-  const ix = W.x + d * 3 + lx, iy = W.y - 11 + ly, ir = R - 5;
+  // col.coreInset / coreDy (ไม่ใส่ = ค่าเดิม 5 / 11): วงเข้มเล็กลงและเลื่อนลง = เห็นวงม่านตาสีรอบรูม่านตาทั้งวง (ลายสลิด)
+  const ix = W.x + d * 3 + lx, iy = W.y - (col.coreDy ?? 11) + ly, ir = R - (col.coreInset ?? 5);
   const core = c.createRadialGradient(ix - 6, iy - 8, 2, ix, iy, ir);
   core.addColorStop(0, col.coreIn);
   core.addColorStop(1, col.coreOut);
@@ -11456,17 +15663,20 @@ function drawBabyEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidde
     // ตาปรือ (ท่าลอยเฟี้ยว): ครึ่งบนโดนเปลือกตาบัง — ย้ายประกายลงมาครึ่งล่างที่ยังเห็น ทิศแสงเดิม
     dot(-0.3, 0.16, 0.2, true);
     // ดาว (ชุด starEyes) โตกว่าจุดเดิม — ขยับห่างวงใหญ่ (ผู้ใช้ทัก 15 ต.ค. "อยู่ใกล้วงขาวใหญ่ไป")
-    if (starDots) { dot(0.32, 0.1, 0.08); dot(0.04, 0.52, 0.1); }
-    else if (!oneDot) { dot(0.02, 0.06, 0.08); dot(0.34, 0.46, 0.1); }
+    // จุดเล็ก (ไม่นับวงใหญ่): ตัวผู้ 1 จุด · ตัวเมีย 2 จุด (กฎผู้ใช้ 21 ต.ค.) — starOne = ตัวผู้
+    if (starDots) { dot(0.32, 0.1, 0.08); if (!starOne) dot(0.04, 0.52, 0.1); }
+    else if (!oneDot && !starOne) dot(0.34, 0.46, 0.1);
   } else {
     dot(-0.32, -0.32, 0.26, true);
-    if (starDots) { dot(0.38, -0.26, 0.1); starOne ? dot(0.36, 0.36, 0.12) : dot(0.04, 0.48, 0.12); }   // ตัวผู้: จุดขาวที่เดิม
-    else if (!oneDot) { dot(0.06, -0.5, 0.1); dot(0.36, 0.36, 0.12); }   // oneDot (สายพันธุ์ eyeDots 1): ประกายขาววงใหญ่วงเดียว
+    // จุดเล็ก: ตัวผู้ 1 จุด (มุมล่างขวา) · ตัวเมีย 2 จุด (บนขวา + ล่างขวา) · ชุดที่มี starEyes: จุดเล็กเป็นดาวตามจำนวนเดียวกัน
+    // จุดขาว (กฎผู้ใช้ 21 ต.ค.): ตัวผู้ = วงใหญ่บนวงเดียว · ตัวเมีย = วงใหญ่บน + จุดล่างหนึ่งจุด · ชุด starEyes: ตัวผู้ดาวหนึ่ง ตัวเมียดาวสอง (กฎดาวเดิม)
+    if (starDots) { if (starOne) dot(0.36, 0.36, 0.12); else { dot(0.38, -0.26, 0.1); dot(0.04, 0.48, 0.12); } }
+    else if (!oneDot && !starOne) dot(0.36, 0.36, 0.12);   // oneDot (สายพันธุ์ eyeDots 1): ประกายขาววงใหญ่วงเดียว
   }
   if (sparkle > 0 && !starDots) {
     const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
     star4(c, ix + 16, iy - 14, 12 * k);
-    star4(c, ix - 8, iy + 18, 6 * k);
+    if (sparkle > 0.6) star4(c, ix - 8, iy + 18, 6 * k);   // วิ้งน้อย (eyeSparkle ต่ำ): ดาวดวงเดียว
   }
   c.restore();
 }
@@ -11912,7 +16122,9 @@ function pawOf(band, pal, rx, ry) {
   };
   return { blob, det };
 }
-function sitStripes(c, pal, list) {
+function sitStripes(c, pal, list, a = 1) {
+  const a0 = c.globalAlpha;
+  c.globalAlpha = a0 * a;   // a = opt.stripeA (ความเข้มลายของสายพันธุ์)
   c.strokeStyle = pal.stripe;
   c.lineWidth = 5;
   c.lineCap = 'round';
@@ -11922,6 +16134,7 @@ function sitStripes(c, pal, list) {
     c.quadraticCurveTo((x0 + x1) / 2, Math.min(y0, y1) - 4, x1, y1);
     c.stroke();
   }
+  c.globalAlpha = a0;
 }
 
 // ══ ท่าถือหัวใจ/กอด (ยืน) — แขนวาดใหม่ตามภาพอ้างอิง ══
@@ -12076,7 +16289,7 @@ function drawSideView(ctx, pal, opt, a) {
     (i) => TAIL_HALF(i));
   const tail = { sil: [TL.path], all: TL.path, xf: bodyXf, det: (c) => tailDetails(c, TL, pal, opt), patch: opt.calico ? (c) => calicoTail(c, TL, opt.calico) : null };
   const it = (path, xf, det, soft) => ({ sil: [path], all: path, xf, det: det || (() => {}), soft });
-  const stripes = (list) => (c) => { if (!opt.noStripes) sitStripes(c, pal, list); };
+  const stripes = (list) => (c) => { if (!opt.noStripes) sitStripes(c, pal, list, opt.stripeA); };
   // ── ชั้นตัว: หาง ขาหน้า ตัว ต้นขาหลัง เท้า (กลืนเป็นก้อนเดียว) ──
   drawLayer(ctx, [
     tail,
@@ -12305,8 +16518,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const pal = paletteOf(s);
   // art = ลายเฉพาะตัวของแมวแบบใหม่ (CAT2_BREEDS) · stripeK/stripeA = ความหนา/ความเข้มของลาย
   const art = s?.art || {};
-  const opt = { noStripes: s && s.id !== 'orange' && s.stripes === false, plainTail: !!art.plainTail, stripeK: art.stripeK ?? 1, stripeA: art.stripeA ?? 1, calico: art.calico || art.points || null };
-  const marks = art.calico || art.points || null;   // ลายสามสี / แต้มวิเชียรมาศ — ระบบ patch เดียวกัน
+  const opt = { tailStripe: art.tailStripe ? pal.cream : null, noStripes: s && s.id !== 'orange' && s.stripes === false, plainTail: !!art.plainTail, stripeK: art.stripeK ?? 1, stripeA: art.stripeA ?? 1, calico: art.calico || art.points || art.tabby || null };
+  const marks = art.calico || art.points || art.tabby || null;   // ลายสามสี / แต้มวิเชียรมาศ / ลายสลิด — ระบบ patch เดียวกัน
   // แมวสามสี: ลายของชิ้นที่ไม่ได้มาจากไฟล์ออกแบบ (หาง แขนท่อ ตัวนั่ง ก้อนหมอบ) — ทาเป็นสีขนตอนลงสีพื้น (drawLayer 2a) ไม่มีเส้นรอยต่อ
   const calPatch = {
     tail: (G) => (marks ? (c) => calicoTail(c, G, marks) : null),
@@ -12335,6 +16548,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const scratch = v('scratch'), scratchT = raw('scratchT');
   const reachL = v('reachL'), paw = v('paw');
   const lick = shape?.lick ? Math.max(0, Math.sin(t * 0.22)) * v('lick') : 0;
+  const bleh = v('bleh');   // แลบลิ้นแบบซน ๆ (ค้าง ไม่ขยับเลีย) — ท่าแอ็คลูกคุณหนูจอมซน
   const turn = raw('turn') * k;
   const tailShort = v('tailShort');
   // ปากขยับเอง (ไม่ได้เล่นท่าก็มีชีวิต): ทุก ~3.3 วินาที สุ่มว่าจะ "เมี้ยว" เบา ๆ หนึ่งที หรือ "งุบงิบ" สองที
@@ -12542,6 +16756,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       [[496, 490], yawn],
       [[336, 384], v('chinR')],                                  // ลอยเฟี้ยว: อุ้งเท้าเท้าคาง
       [[496, 404], v('tada')],
+      [[446, 352], v('earR')],                                   // แตะหูฟังข้างหัว (พี่ชาวี · ท่าเปิดตัว/ท่าแอ็ค)
     ];
     const tg = armTarget(list);
     if (tg) {
@@ -12818,9 +17033,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // ของบนหัว (หมวก มงกุฎ): ตามหัว เลื่อนตามมุมหันแบบชิ้นหน้า (น้อยกว่า เพราะอยู่บนกระหม่อม)
     if (OUT?.hat) {
       ctx.save();
+      // toBody(x, y) = จุดบนตัว (ระดับคอ-บ่า) → พิกัดของช่องหมวก: หัวเอียง/กลอกตา/หายใจช้ากว่าตัว แต่จุดนี้อยู่กับตัว
+      //   (สายหูฟังพี่ชาวียึดบ่าสูท — ชุดที่ไม่ใช้ช่องนี้ไม่มีผล)
+      const mBody = ctx.getTransform();   // ตัวแปลงของตัว (ก่อนหัว) — จุดบนตัวผ่าน upperPt (ลดระดับนั่ง · หายใจ · ถ่ายน้ำหนัก · มุมหัน)
       head(ctx);
       ctx.translate(172 * Math.sin(yF) * 0.3, 0);
-      OUT.hat(ctx, { ...outK, back, headPath: M.headShaped.all, shift: 172 * Math.sin(yF) * 0.3, fx: yaw ? (x) => yawX(x) : null });
+      const mHatI = ctx.getTransform().inverse();
+      const toBody = (x, y) => { const [bx, by] = upperPt(x, y); const q = mHatI.transformPoint(mBody.transformPoint(new DOMPoint(bx, by))); return [q.x, q.y]; };
+      OUT.hat(ctx, { ...outK, back, headPath: M.headShaped.all, shift: 172 * Math.sin(yF) * 0.3, fx: yaw ? (x) => yawX(x) : null, toBody: loafMode ? null : toBody });   // หมอบ: ตัวเป็นก้อนใต้คาง (ไม่ใช้ upperPt) — ใช้จุดใต้คางในพิกัดหัว
       ctx.restore();
     }
   };
@@ -12927,13 +17147,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     g.addColorStop(1, 'rgba(255,255,255,.3)');
     c.fillStyle = g;
     c.fill(op.path);
-    if (art.earFur) earFur(c, b, left, pal);
     // เส้นหูในชมพูเข้ม บางกว่าเส้นตัว (แบบไม่มีเส้นน้ำตาลในหู)
     c.strokeStyle = pal.earEdge || pal.ear;
     c.lineWidth = 2.6;
     c.lineCap = 'round';
     c.lineJoin = 'round';
     c.stroke(op.path);
+    // ปอยขนในหูวาดทีหลังเส้น — ขนอ่อนทับเส้นขอบหูใน ไม่โดนเส้นตัดขาด (ผู้ใช้ 21 ต.ค. ทุกตัวที่มีปอยขน)
+    if (art.earFur) earFur(c, b, left, pal);
   };
   const earTuft = (c, draw, op) => {
     if (!op?.path) return draw();
@@ -13007,17 +17228,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.translate(bx, 0);
       c.scale(0.8 + 0.2 * Math.cos(yB), 1);
       c.translate(-300, 0);
-      if (art.bellySoft) {
-        // พุงขาวขอบฟุ้ง (ตามแบบแมวขาว): ลงสีจาง ๆ ซ้อนกันหลายชั้น แต่ละชั้นหดเข้าหากลางพุง — ขอบจางหาย กลางสว่าง
-        const b = earBox(op), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, a0 = c.globalAlpha;
-        for (const k of [1.04, 0.94, 0.84, 0.72]) {
-          c.save();
-          c.translate(cx, cy); c.scale(k, k); c.translate(-cx, -cy);
-          c.globalAlpha = a0 * 0.3;
-          c.fill(op.path);
-          c.restore();
-        }
-        c.globalAlpha = a0;
+      if (art.chestStripe) {
+        // แมววิลาศ: ผ้ากันเปื้อนขนฟูใต้คาง → เรียวลงเป็นเส้นบางกลางท้อง (ตามแบบ) ขอบฟุ้ง
+        const b = earBox(op);
+        softMark(c, wilatChestPath(300, 382, b.y1 + 4, 1), pal.cream);
+      } else if (art.bellySoft) {
+        // พุงขอบฟุ้ง (แมวขาว · ศุภลักษณ์): ไล่จางจากกลางพุงออกขอบ — ไม่เห็นขอบวง (เดิมซ้อนสี่ชั้นแล้วเห็นเป็นวงซ้อนบนขนน้ำตาล)
+        const b = earBox(op);
+        bellyBlob(c, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.x1 - b.x0) * 0.56, (b.y1 - b.y0) * 0.6, pal.cream, true);
       } else c.fill(op.path);
       c.restore();
     },
@@ -13041,7 +17259,24 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // แถบขาวจึงเลื่อนไปอยู่กึ่งกลางระหว่างตาตามมุมหัน · ขอบหัวไม่ขยับ (จุดที่ขอบหัวหมุนแล้วยังอยู่ที่ขอบ)
     // ขอบขาว-ส้มนุ่ม (ช่วงแก้ม): ลากเส้นโปร่งซ้อนตามขอบ — ฝั่งนอกครีมจางเข้าส้ม ฝั่งในส้มจางเข้าครีม
     cream: (c, draw, op) => {
-      if (art.faceCream === false) return;   // แมวหน้าขาวล้วน (ไม่มีแถบครีมแบบน้องส้ม)
+      if (art.faceCream === false) {   // แมวหน้าขาวล้วน (ไม่มีแถบครีมแบบน้องส้ม)
+        if (!art.blaze && !art.muzzle) return;
+        // แมววิลาศ: แถบขาวแคบกลางหน้าผาก → ไหลลงระหว่างตาถึงจมูก → บานเป็นปาก-คางขาว (แก้มดำ ตามแบบ)
+        // จุดในพิกัดหัวตรง ๆ แล้วดัดตามผิวทรงกลมตอนหัน (yawX แบบครีมหน้าน้องส้ม) · ขอบฟุ้งสองชั้น
+        const edgeKeep = (x) => { const r = Math.abs(x - 300) / 172; return 1 - ease(clamp01((r - 0.62) / 0.3)); };
+        const X = (x) => (yaw ? x + (yawX(x) - x) * edgeKeep(x) : x);
+        // แถบหน้าผากเรียว → ระหว่างตากว้างขึ้นนิด → ใต้ตาบานออกเร็วเป็นปากกลมป่อง (โค้งนูน ไม่ใช่เส้นทแยงตรง) → คางเต็มกว้าง
+        // คาง (ผู้ใช้: "คางเหลี่ยม"): โค้งเข้าเป็นตัว U ก่อนถึงขอบหัวด้านล่าง — มุมคางมน ไม่ชนเส้นหัวเป็นมุม
+        // เล็กลง (ผู้ใช้ 21 ต.ค. "ขนขาวตรงหน้าเล็กลงหน่อย"): แถบหน้าผากแคบลง · บานช้าลง (เริ่มที่จมูก) · ปากกว้างสุด ~50 แทน 63
+        // ลายสลิด (art.muzzle): ครีมเฉพาะปาก-แก้มใน เริ่มระหว่างตาแคบ ๆ ใต้ตาบานออกถึงแก้ม แล้วเต็มคาง (ตามแบบ — แก้มนอกเป็นลาย)
+        const half = art.muzzle ? [[250, 0], [256, 5], [268, 10], [282, 20], [294, 40], [304, 70], [314, 98], [326, 120], [340, 134], [356, 140], [372, 137], [386, 124], [396, 100], [403, 60], [406, 0]] : [[178, 0], [188, 2.2], [215, 3.6], [245, 5], [275, 7], [298, 11], [310, 17], [321, 27], [333, 37], [345, 44], [355, 47], [364, 45], [371, 39], [376, 30], [379.5, 19], [381.5, 8], [382, 0]];   // ก้นขาวโค้งกลมจบในหัว (ไม่ให้เส้นคางน้ำตาลตัดเป็นขอบแบน — ผู้ใช้ 21 ต.ค.)   // แถบหน้าผากสั้นลง (เริ่มต่ำลง) เรียวบางลง — ผู้ใช้ 21 ต.ค. "เส้นขาวตรงหัวลดลงหน่อย"
+        // ตอนกลอกตา/หันมอง ชิ้นหน้า (ตา จมูก ปาก) เลื่อน hx*8, hy*5 (ดู face()) — ขาวต้องเลื่อนตามไปด้วย ไม่งั้นจมูกตกขอบขาว (ผู้ใช้ 21 ต.ค.)
+        // ปลายแถบบนหน้าผากอยู่ลึกบนกระหม่อม เลื่อนน้อยกว่าช่วงตา-ปาก
+        const F = (x, y) => { const f = 0.45 + 0.55 * ease(clamp01((y - 178) / 90)); return [x + hx * 8 * f, y + hy * 5 * f]; };
+        const pts = [...half.map(([y, w]) => F(X(300 + w), y)), ...half.slice().reverse().filter(([, w]) => w > 0).map(([y, w]) => F(X(300 - w), y))];
+        softMark(c, smoothLoop(pts), pal.cream);
+        return;
+      }
       if (!op) return draw();
       // ดัดเฉพาะรูปขนขาว — กรอบตัด (หน้ากากรูปหัว) คงที่เดิม ไม่งั้นขอบหัวฝั่งไกลหดเข้ามาเป็นเส้นคมกลางแก้ม
       const keepClip = (list, f) => list.map((q) => (q.kind === 'clip' ? { ...q, ops: deformOps(q.ops, f) }
@@ -13088,6 +17323,26 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.quadraticCurveTo(14, 5, 17, -4);
         c.stroke();
         c.restore();
+        return;
+      }
+      if (bleh > 0.12) {
+        // แลบลิ้นซน ๆ: ลิ้นชมพูห้อยออกมาจากใต้ปาก ω เยื้องขวานิด มีร่องกลางลิ้น
+        draw();
+        const b = Math.min(1, bleh);
+        const tg = new Path2D();
+        tg.moveTo(292, 354);
+        tg.bezierCurveTo(291, 354 + 19 * b, 313, 354 + 21 * b, 312, 354);
+        tg.closePath();
+        c.fillStyle = '#FF8FA6';
+        c.fill(tg);
+        c.strokeStyle = pal.line;
+        c.lineWidth = 3.4 * LINE_K;
+        c.lineJoin = 'round';
+        c.stroke(tg);
+        c.strokeStyle = 'rgba(200,60,100,.55)';
+        c.lineWidth = 1.8;
+        c.lineCap = 'round';
+        c.beginPath(); c.moveTo(302, 357); c.lineTo(302.5, 354 + 11 * b); c.stroke();
         return;
       }
       if (lick > 0.12) {
@@ -13198,6 +17453,10 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     c.restore();
   };
   // แก้มลงสีอย่างเดียว ไม่มีเส้นขอบ (ตามแบบตาแบ๊ว)
+  // ปลายมือ/เท้า (ชิ้น cream-paw ในแบบ ใช้สีครีมช่องเดียวกับอก): สายพันธุ์ที่มี pal.pawTip ทาสีของตัวเอง (ศุภลักษณ์: ชมพูส้ม)
+  if (pal.pawTip) for (const id of ['cream-paw', 'cream-paw_2', 'cream-paw_3', 'cream-paw_4']) {
+    hooks[id] = (c, draw, op) => drawOps(c, op.ops, { ...pal, cream: pal.pawTip }, hooks, opt);
+  }
   for (const id of ['cheek-left', 'cheek-right']) {
     const op = findOp(P.face?.det || [], id);
     // แก้มเป็นวงสีเรียบตามรูปในแบบ (ผู้ใช้ไม่เอาแบบฟุ้ง) ไม่มีเส้นขอบ
@@ -13209,7 +17468,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     if (!e || !ops) continue;
     hooks[`eye-${side}-open`] = (c) => {
       // ตาปิด + ขนตาสองเส้นงอนที่หางตา (ตัวเมีย — ผู้ใช้ขอให้หลับตาก็ยังมีขนตาเหมือนตอนลืมตา)
-      const closedEye = (cc, ee, pp, kind, sd) => { closedEyeBase(cc, ee, pp, kind, sd); if (female && kind !== 'hurt') closedLashes(cc, ee, side, kind, pp.closedInk, s?.lashStyle === 'fan'); };
+      // ตาหลับ (∪ ∩ U): แปลงจากตาลืมของแต่ละตัว — เปลือกตาใครเปลือกตามัน (ผู้ใช้ 21 ต.ค.) · ตาเจ็บ > < ใช้แบบกลาง
+      const closedEye = (cc, ee, pp, kind, sd) => (kind === 'hurt' ? closedEyeBase(cc, ee, pp, kind, sd) : drawClosedLid(cc, kind, closedLidSpec(side, kind, s, female, pp)));
       if (loafMode) return closedEye(c, e, pal, 'blink');   // ลงมาหมอบแล้ว = หลับตาตลอด
       if (yawn > 0.3) return closedEye(c, e, pal, 'yawn');   // หาว: ตาตกเป็นตัว U
       if (sit > 0.5 && v('paw') > 0.6) return closedEye(c, e, pal, 'blink');   // นั่งเลียอุ้งเท้า: หลับตาพริ้ม
@@ -13227,9 +17487,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       const lid = mood === 'tired' ? 0.5 : 0;
       const shut = Math.max(lid, blink, v('shut'));
       if (shut > 0.75) return closedEye(c, e, pal, 'blink');
+      // ตาที่มีเปลือกตาของตัวเอง (วิลาศ · ศุภลักษณ์ — รูปตาไม่ใช่วงกลม): ตาเฟี้ยว/ตาง่วง ไม่ใช้เปลือกตาวงกลมของตาแบบอื่น
+      const lidEye = s?.eyeStyle === 'wilat' || s?.eyeStyle === 'supha';
+      // ตาปรือ (ท่าลอยฟ้า) / ง่วง / เหนื่อย = เปลือกตาเลื่อนลงมาบัง ตาดำขนาดเท่าเดิม ไม่บีบตา (ผู้ใช้ 21 ต.ค.) · กะพริบยังบีบตาเหมือนเดิม
+      const wLid = lidEye ? Math.max(cool ? 0.55 : 0, sleepy ? 0.8 : 0, lid ? 0.6 : 0) : 0;
+      const squash = lidEye ? Math.max(blink, v('shut')) : sleepy ? 0 : shut;
       c.save();
       c.translate(e.x, e.y);
-      c.scale(1, 1 - (sleepy ? 0 : shut) * 0.9);   // ตาง่วง: ไม่บีบตา — กะพริบด้วยเปลือกตาที่เลื่อนลงมาแทน (ข้างล่าง)
+      c.scale(1, 1 - squash * 0.9);   // ตาง่วง: ไม่บีบตา — กะพริบด้วยเปลือกตาที่เลื่อนลงมาแทน (ข้างล่าง)
       c.translate(-e.x, -e.y);
       // ตาขาว → ตาดำกลอกไปตามสายตา (ตัดอยู่ในตาขาว) → ขอบตาทับอีกรอบ
       // ตาแบ๊ว (วงเข้ม + เสี้ยวทอง) ไม่มีเส้นขอบตา — ใช้แค่รูปทรงตาขาวจากแบบเป็นกรอบ
@@ -13237,11 +17502,12 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // หน้ากวน (วิเชียรมาศ): ตาครึ่งดวงวาดใหม่ทั้งดวง ใช้ทุกท่า — ไม่มีตากลมแบบเดิมโผล่เลย (ผู้ใช้สั่ง 15 ต.ค. รวมท่าเปิดตัว)
       // ตาประกาย/ดีใจ: ยังเป็นตาทรงเดิมของน้อง แค่มีดาววิ้งเพิ่ม · ตาปิด (กะพริบ ยิ้ม ∩ ขยิบ) ใช้ตาปิดตามปกติ
       const grumpyNow = !!art.grumpy;
-      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
+      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
         lx: gx * 7 - hx * 2, ly: gy * 5 + (sleepy ? 7 : 0),
-        sparkle: starry || eyesOpenHappy || cute ? 1 : 0,
+        sparkle: (starry || eyesOpenHappy || cute ? 1 : 0) * (OUT?.eyeSparkle ?? 1),   // OUT.eyeSparkle = ชุดที่อยากให้ตาวิ้งน้อยลง (0..1)
         t,
         lidded: cool || sleepy,
+        lid: wLid,
         line: pal.line,
         col: s?.eyes?.[side] || BABY,   // สีตาของแมวแต่ละตัว (ตาสองสีได้)
         starDots: OUT?.starEyes || false,   // ชุดขนมหวาน/องค์หญิงหิมะ: จุดประกายเล็กเป็นดาว (สีตามชุด)
@@ -13249,27 +17515,31 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         oneDot: s?.eyeDots === 1,   // โกนจา: ประกายขาวจุดเดียว (ผู้ใช้ขอ)
       });
       // ขอบตานอกเส้นบาง ๆ (บางกว่าเส้นตัวมาก) ให้ตาแยกจากขนส้มชัดขึ้น
-      if (!grumpyNow) {   // ตาหน้ากวนวาดขอบของตัวเองแล้ว (รูปตาไม่ใช่วงกลม)
+      if (!grumpyNow && !lidEye) {   // ตาหน้ากวน/วิลาศ/ศุภลักษณ์วาดขอบของตัวเองแล้ว (รูปตาไม่ใช่วงกลม)
         c.strokeStyle = pal.line;
         c.lineWidth = EYE_RIM_W;
         c.stroke(white.path);
       }
       c.restore();
       // ขนตา (ไม่วาดตอนตาปรือของท่าเฟี้ยว — เปลือกตาหนาทำหน้าที่นั้นแล้ว) · วาดนอกการบีบตา ขนตาจึงไม่แบนตอนหรี่
-      if (!cool && !sleepy && !grumpyNow) {
-        if (s?.lashStyle === 'fan') drawFanLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk);   // โกนจา: ขนตาแบบพัด
+      if ((lidEye || (!cool && !sleepy)) && !grumpyNow) {
+        if (s?.lashStyle === 'wilat') drawWilatLashes(c, side, 1 - squash * 0.9, e.y, pal.closedInk, wLid);   // วิลาศ: เปลือกตาหนาเข้ม + ปลายเชิด
+        else if (s?.lashStyle === 'supha') drawSuphaLashes(c, side, 1 - squash * 0.9, e.y, pal.closedInk, wLid);   // ศุภลักษณ์: เปลือกตาเอียงหนา + ปลายตวัด
+        else if (s?.lashStyle === 'korat') drawKoratLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk);   // โคราช: เปลือกตาเส้นบาง ไม่มีขนตา
+        else if (s?.lashStyle === 'salid') drawSalidLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk || '#24150D');   // ลายสลิด: ไลเนอร์หนา หางตวัด ขนตาพัดสี่เส้น
+        else if (s?.lashStyle === 'fan') drawFanLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk);   // โกนจา: ขนตาแบบพัด
         else if (s?.eyeStyle === 'round') drawRoundLashes(c, side, 1 - shut * 0.9, e.y);   // แมวสามสี: ขนตาแบบใหม่
         else drawLashes(c, side, female, 1 - shut * 0.9, e.y);
       }
       // ตาเฟี้ยว: เปลือกตาปรือ (ตอนกะพริบไม่วาด ไม่งั้นซ้อนกับตาที่กำลังหลับ)
       // เปลือกตาเอียงไปกับหัว (เดิมหมุนสวนให้ตรงจอ แล้วไม่เข้ากับตา/ประกายที่เอียงตามตัว)
-      if (cool && shut < 0.25 && !grumpyNow) coolLid(c, white.path, pal, side, 0, female);
+      if (cool && shut < 0.25 && !grumpyNow && !lidEye) coolLid(c, white.path, pal, side, 0, female);
       // ตาง่วง: เปลือกตาลงมาถึงกลางตา ขอบโค้งห้อยลงนิด (หนังตาหนัก) — ขนตาตัวเมียต่อปลายเปลือกตาเหมือนตาปรือ
-      if (sleepy && !grumpyNow) coolLid(c, white.path, pal, side, 0, female, shut * 34, 16);   // กะพริบ = เปลือกตาเลื่อนลงจนปิด แล้วลืมกลับมาครึ่งดวง (ไม่มีตาเต็มดวงแว้บ — ผู้ใช้ทัก)
+      if (sleepy && !grumpyNow && !lidEye) coolLid(c, white.path, pal, side, 0, female, shut * 34, 16);   // กะพริบ = เปลือกตาเลื่อนลงจนปิด แล้วลืมกลับมาครึ่งดวง (ไม่มีตาเต็มดวงแว้บ — ผู้ใช้ทัก)
 
       // ตาเศร้า: เปลือกตาละห้อย + น้ำตา
       if (mood === 'sad' && shut < 0.25) {
-        if (!grumpyNow) sadLid(c, white.path, pal, side);
+        if (!grumpyNow && !lidEye) sadLid(c, white.path, pal, side);
         tearDrop(c, pal, side, t);
       }
     };
@@ -13328,7 +17598,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     drawBehind();
     drawLayer(ctx, [{ small: true, sil: [LOAF.base], all: LOAF.base, xf: grow, det: (c) => loafBaseDetails(c, pal, opt.noStripes), patch: calPatch.area('loaf') }], pal, hooks, opt);
     if (OUT?.shirt) { ctx.save(); grow(ctx); OUT.shirt(ctx, { ...outK, mode: 'loaf', body: LOAF.base, arms: [] }); outline(ctx, LOAF.base, pal); ctx.restore(); }
-    drawLayer(ctx, [{ small: true, sil: [TL.path], all: TL.path, xf: grow, det: (c) => (opt.calico?.tailAll ? tailDetails(c, TL, pal, opt) : loafTailDetails(c, TL, pal, opt.noStripes)), patch: calPatch.tail(TL) }], pal, hooks, opt);
+    drawLayer(ctx, [{ small: true, sil: [TL.path], all: TL.path, xf: grow, det: (c) => (opt.calico?.tailAll || opt.tailStripe ? tailDetails(c, TL, pal, opt) : loafTailDetails(c, TL, pal, opt.noStripes)), patch: calPatch.tail(TL) }], pal, hooks, opt);
     drawTailBow(TL, 9, grow);
     drawProp();   // ของถือลอยอยู่หน้าหาง (หางอยู่หลังของถือเสมอ)
     drawHeadLayers();
@@ -13435,6 +17705,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       const sw = TLf.sway * 1.3 + TLf.swish * 2.2, sw2 = TLf.lag * 1.3 + TLf.swishLag * 2.4 + TLf.flick * 0.5;
       const TS2 = spineBand([[216, 632], [160, 638], [112 + sw * 3, 637], [74 + sw * 8, 628 - Math.abs(sw) * 3],
         [54 + sw2 * 16 + tw * 0.3, 610 - Math.abs(sw2) * 4], [50 + sw2 * 24 + tw * 0.6, 588 + sw2 * 4]], 16, (i) => TAIL_HALF(i));
+      // วิลาศ: แถบขาวอกวาดครั้งเดียวหลังชั้นขาหน้า (ทับเส้นขอบขา) — เส้นขอบขาอยู่นอกตัวขา ลายในชั้นขาจึงทาไม่ถึง
+      // เส้นน้ำตาลเลยพาดทับขาว · ผู้ใช้ 21 ต.ค. "ให้ขนสีขาวทับสีน้ำตาลแทน" (ใส่เสื้อ/กระโปรง: แบบเดิม ไม่ทับชุด)
+      const stripeOver = art.chestStripe && !(OUT?.skirt && !OUT.pants) && !OUT?.shirt;
       const bodyDet = (c) => {
         // เงาข้างตัว · อกครีมใต้คาง · ลายบนสะโพก
         c.fillStyle = flatShade(pal);
@@ -13442,13 +17715,11 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.ellipse(168, 580, 32, 84, 0, 0, TAU);
         c.ellipse(432, 580, 32, 84, 0, 0, TAU);
         c.fill();
-        c.fillStyle = pal.cream;
-        c.beginPath();
-        c.ellipse(300, 512, 52, 60, 0, 0, TAU);
-        c.fill();
+        if (art.chestStripe) { if (!stripeOver) softMark(c, wilatChestPath(300, 440, 600, 0.9), pal.cream); }   // วิลาศ: ผ้ากันเปื้อน → เส้นบาง
+        else bellyBlob(c, 300, 512, 52, 60, pal.cream, art.bellySoft);
         if (!opt.noStripes) {
           sitStripes(c, pal, [[160, 600, 184, 594], [158, 624, 184, 619], [440, 600, 416, 594], [442, 624, 416, 619],
-            [206, 504, 224, 510], [394, 504, 376, 510]]);
+            [206, 504, 224, 510], [394, 504, 376, 510]], opt.stripeA);
         }
       };
       drawBehind();
@@ -13458,7 +17729,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ], pal, hooks, opt);
       drawTailBow(TS2, 11, grow);
       drawProp();   // ของถือลอยอยู่หน้าหาง
-      if (OUT?.shirt) { ctx.save(); grow(ctx); OUT.shirt(ctx, { ...outK, mode: 'sit', body: SIT2.body, arms: [] }); ctx.restore(); }
+      if (OUT?.shirt) { ctx.save(); grow(ctx); OUT.shirt(ctx, { ...outK, mode: 'sit', chinDrop: headDrop, body: SIT2.body, arms: [] }); ctx.restore(); }
       // กระโปรงตอนนั่ง: คลุมตัก แผ่ลงพื้น — ขาหน้าวาดทับ (ขาอยู่หน้ากระโปรง)
       if (OUT?.skirt) { ctx.save(); grow(ctx); OUT.skirt(ctx, { ...outK, mode: 'sit', body: SIT2.body }); ctx.restore(); }
       // ── ขาหน้า (ตามแบบ): สองท่อนอวบตั้งตรงหน้าตัว ปลายเป็นอุ้งเท้ากลมครีม มีขีดนิ้ว ──
@@ -13492,13 +17763,11 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
           c.fillStyle = g;
           c.fillRect(cx - 46, 594, 92, 92);
         }
-      } : null;
+      } : marks?.sitLegs ? calPatch.area('sitLegs') : null;   // ลายสลิด: ปล้องขวางขาหน้า
       drawLayer(lc, [{ small: true, sil: legSil, all: legAll, xf: grow, patch: legPatch, det: (c) => {
         if (!skirtLegs) {
-          c.fillStyle = pal.cream;
-          c.beginPath();
-          c.ellipse(300, 512, 52, 60, 0, 0, TAU);   // อกครีมไหลต่อลงมาบนโคนขา (ไม่โดนขาตัดเป็นขอบตรง)
-          c.fill();
+          if (art.chestStripe) { if (!stripeOver) softMark(c, wilatChestPath(300, 440, 600, 0.9), pal.cream); }
+          else bellyBlob(c, 300, 512, 52, 60, pal.cream, art.bellySoft);   // อกครีมไหลต่อลงมาบนโคนขา (ไม่โดนขาตัดเป็นขอบตรง)
         }
         c.fillStyle = pal.paw || pal.cream;
         c.beginPath();
@@ -13515,6 +17784,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         }
       } }], pal, hooks, opt);
       lc.restore();
+      if (stripeOver) { ctx.save(); grow(ctx); softMark(ctx, wilatChestPath(300, 440, 600, 0.9), pal.cream); ctx.restore(); }
       if (skirtLegs) {
         // ไล่จางโคนขา: บนสุดใส → ลงมา ~42 หน่วยทึบเต็ม แล้วแปะชั้นขาลงจอ
         const y0 = OUT.sitLegTop ?? 480;   // ทึบเต็มที่ y 522 = เหนือเชือกเอว (เอวนั่ง 530) — ขาบังเชือก/โบว์หมด
@@ -13559,7 +17829,18 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         all.addPath(pw.blob);
         all.addPath(cap);
         // เนื้อแขนสีขนเรียบ ๆ ไม่ใส่เงา/ลายส้มเข้ม (บนแขนที่พับเป็นรูป S มันอ่านเป็นขีดแปลก ๆ) — เหลือแค่อุ้งเท้าครีม
-        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => pw.det(c, all), patch: calPatch.arm(band) }], pal, hooks, opt);
+        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => pw.det(c, all), patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
+        // ชุดที่ตั้ง groomSleeve: แขนเสื้อบนแขนที่ยกมาเลีย (ผู้ใช้ 21 ต.ค. ชุดลูกคุณหนู) — ลูกพองถึงข้อศอก (จุด 4) ท่อนล่างต่อไปใกล้อุ้งเท้า
+        //   ค่อย ๆ ขึ้นตามแขนที่ยก (ต้นท่าแขนยังวางพื้น ขาเปล่าไม่มีแขนเสื้อ) · ชุดอื่นคงแบบเดิมที่ผู้ใช้ตรวจแล้ว
+        //   groomSleeve = ฟังก์ชัน (c, band, pal) วาดเอง · true = ใช้ sitSleeve แบบท่อ (ลูกพองถึงจุด 4)
+        if (OUT?.groomSleeve && lift > 0.15) {
+          ctx.save();
+          grow(ctx);
+          ctx.globalAlpha *= clamp01((lift - 0.15) / 0.25);
+          if (typeof OUT.groomSleeve === 'function') OUT.groomSleeve(ctx, band, pal);
+          else if (typeof OUT.sitSleeve === 'function') OUT.sitSleeve(ctx, band, 4, pal);
+          ctx.restore();
+        }
       }
       drawFront();
       ctx.restore();
@@ -13572,10 +17853,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.ellipse(180, 528, 24, 80, 0, 0, TAU);
       c.fill();
       if (art.noBelly) return;   // แมวพื้นขาว (สามสี): ไม่มีวงพุงครีม
-      c.fillStyle = pal.cream;
-      c.beginPath();
-      c.ellipse(298, 544, 72, 80, 0, 0, TAU);
-      c.fill();
+      if (art.chestStripe) { softMark(c, wilatChestPath(298, 446, 618, 0.95), pal.cream); return; }   // วิลาศ: ผ้ากันเปื้อน → เส้นบาง
+      bellyBlob(c, 298, 544, 72, 80, pal.cream, art.bellySoft);
     };
     const haunchDet = (c) => {
       c.fillStyle = flatShade(pal);
@@ -13585,11 +17864,11 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.fill();
       if (!opt.noStripes) {
         sitStripes(c, pal, [[160, 574, 182, 568], [154, 598, 178, 594], [158, 622, 180, 619],
-          [440, 574, 418, 568], [446, 598, 422, 594], [442, 622, 420, 619]]);
+          [440, 574, 418, 568], [446, 598, 422, 594], [442, 622, 420, 619]], opt.stripeA);
       }
     };
     const armDet = (c) => {
-      if (!opt.noStripes) sitStripes(c, pal, [[420, 486, 402, 492], [424, 510, 406, 515], [182, 474, 200, 479], [178, 496, 196, 500]]);
+      if (!opt.noStripes) sitStripes(c, pal, [[420, 486, 402, 492], [424, 510, 406, 515], [182, 474, 200, 479], [178, 496, 196, 500]], opt.stripeA);
     };
     drawBehind();
     // ── เงาก้อนเดียว: หาง ตัว แขนท่อนบนซ้าย แขนขวา ต้นขา ──
@@ -13630,14 +17909,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.restore();
     };
     if (OUT?.shirt) {
-      ctx.save(); grow(ctx); OUT.shirt(ctx, { ...outK, mode: 'sit', vy: 78, body: SIT.torso, arms: [] }); ctx.restore();   // หัวต่ำกว่าท่านั่งอื่น คอเสื้อลึกลงตาม
+      ctx.save(); grow(ctx); OUT.shirt(ctx, { ...outK, mode: 'sit', vy: 78, chinDrop: headDrop, body: SIT.torso, arms: [] }); ctx.restore();   // หัวต่ำกว่าท่านั่งอื่น คอเสื้อลึกลงตาม
       // แขนอยู่หน้าเสื้อ: ลงแค่เนื้อแขน (ไม่มีเส้นรอบ) — เส้นแขนใช้ชุดเดียวกับตอนไม่ใส่ชุด (เส้นในสั้น ๆ ที่วาดทีหลัง)
       armSkin();
       // ชุดแขนสั้นตอนนั่งเกา (เช่นเชฟ): แขนเสื้อคลุมต้นแขนถึงก่อนศอก สีเดียวกับตัวเสื้อ
       if (OUT.sitSleeve) {
         ctx.save(); grow(ctx);
         if (typeof OUT.sitSleeve === 'function') {
-          OUT.sitSleeve(ctx, bandUpL, 6, pal);
+          OUT.sitSleeve(ctx, bandUpL, 6, pal, OUT.forearmSleeve && !symArms ? { open: true } : undefined);   // forearmSleeve: ต้นแขนยาวถึงศอก (แขนท่อนล่างใส่ต่อ)
           OUT.sitSleeve(ctx, bandR, 5, pal);
         } else {
           tubeSleeve(ctx, bandUpL, 6, pal, OUT.sitSleeve);
@@ -13767,6 +18046,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.lineCap = 'round';
       ctx.stroke(bandEdge(bandA, innerSide(bandA), 5, bandA.N));
       ctx.restore();
+      // ชุดที่มี forearmSleeve / sitSleeveOnTop: แขนเสื้อวาดซ้ำทับแขนที่เพิ่งวาดทับต้นขา/กระโปรง (ไม่งั้นแขนเสื้อขาดเป็นขอบตรง เห็นขนข้างล่าง — ผู้ใช้ 21 ต.ค.)
+      if ((OUT?.forearmSleeve || OUT?.sitSleeveOnTop) && typeof OUT.sitSleeve === 'function') { ctx.save(); grow(ctx); OUT.sitSleeve(ctx, bandA, 5, pal); ctx.restore(); }
     }
     // เท้าหลังครีม — ขอบนอกมาจากเงาก้อนตัวแล้ว ตรงนี้ลงครีม + เส้นขอบบนเท้า (เส้นในบางเท่าเส้นอื่น) + ขีดนิ้ว
     {
@@ -13796,10 +18077,25 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.restore();
     }
     if (!symArms) {   // แขนสมมาตร (ท่าหมดแรง): ไม่มีแขนท่อนล่างพับเกา
+      // ชุดที่มี forearmSleeve: แขนเสื้อต้นแขนซ้ายวาดซ้ำ (ทับแขนที่วาดหน้ากระโปรง) ก่อนจำภาพต้นแขนไว้เกลี่ยศอก
+      if ((OUT?.forearmSleeve || OUT?.sitSleeveOnTop) && typeof OUT.sitSleeve === 'function') { ctx.save(); grow(ctx); OUT.sitSleeve(ctx, bandUpL, 6, pal, OUT.forearmSleeve ? { open: true } : undefined); ctx.restore(); }
       // ── แขนท่อนล่างซ้าย: พับมาอยู่หน้าพุง มีเส้นของตัวเอง เว้นช่วงที่ซ้อนแขนท่อนบน (ศอกกลืนกัน) ──
-      // แมวลาย (สามสี/วิเชียรมาศ): จำภาพแขนท่อนบนไว้ก่อน แล้วเกลี่ยกลับทับรอยต่อศอกแบบไล่จาง — ไม่เห็นเส้นแบ่งสีเลย (ผู้ใช้ทัก 15 ต.ค.)
-      const elbowBlend = (marks || art.solid) && !OUT?.armCover && !OUT?.shirt ? fadeLayer(ctx) : null;
-      if (elbowBlend) elbowBlend.drawImage(ctx.canvas, 0, 0);
+      // จำภาพแขนท่อนบนไว้ก่อน แล้วเกลี่ยกลับทับรอยต่อศอกแบบไล่จาง — ไม่เห็นเส้นแบ่งสีเลย (เดิมเฉพาะแมวลาย/ขนสีเดียว 15 ต.ค.)
+      // ผู้ใช้ 21 ต.ค. (ทุกสีทุกตัว): "แขนเห็นเส้นและสีแบ่งชัดเกินไป" — สาเหตุ: แมวสีอื่นใช้วิธีเก่า ตัดแขนท่อนล่างเป็นสองช่วงที่เส้นศอกแนวนอน
+      //   แล้วทาแถบสีเรียบ 6 หน่วยกลบรอย → เห็นเป็นแถบสีอ่อนตรง + สามเหลี่ยม (เงาพ่นของแขนท่อนล่างกับต้นแขนคนละชุด) — ใช้วิธีเกลี่ยกับทุกตัว ทุกชุด
+      //   (ยกเว้นชุดแขนยาวสีเสื้อ armCover) · ทำงานเฉพาะกรอบรอบต้นแขน (เดิมคัดลอกทั้งจอทุกเฟรม)
+      let elbowR = null;
+      if (!OUT?.armCover) {
+        ctx.save();
+        grow(ctx);
+        const mg = ctx.getTransform();
+        ctx.restore();
+        let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+        for (const q of [...bandUpL.pts, ...bandLoL.pts.slice(0, 4)]) { bx0 = Math.min(bx0, q.x); by0 = Math.min(by0, q.y); bx1 = Math.max(bx1, q.x); by1 = Math.max(by1, q.y); }
+        elbowR = catPxRect(mg, ctx.canvas.width, ctx.canvas.height, [bx0 - 70, by0 - 70, bx1 + 70, by1 + 70]);
+      }
+      const elbowBlend = elbowR && elbowR.w > 0 && elbowR.h > 0 ? fadeLayer(ctx, elbowR) : null;
+      if (elbowBlend) elbowBlend.drawImage(ctx.canvas, elbowR.x, elbowR.y, elbowR.w, elbowR.h, elbowR.x, elbowR.y, elbowR.w, elbowR.h);
       const outUp = new Path2D();
       outUp.rect(-600, -600, 1800, 2000);
       outUp.addPath(bandUpL.path);
@@ -13808,7 +18104,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.save();
       grow(ctx);
       // วิเชียรมาศ: พื้นรองเฉพาะใต้ศอก — ส่วนเหนือศอกทับปลายแขนท่อนบนที่มีเงาพ่นเข้ม เห็นเป็นสามเหลี่ยมสีอ่อน (ผู้ใช้ทัก)
-      if ((marks || art.solid) && !OUT?.armCover) {
+      if ((elbowBlend || marks || art.solid) && !OUT?.armCover) {
         const r = new Path2D();
         r.rect(-600, bandLoL.pts[0].y, 1800, 2000);
         ctx.clip(r);
@@ -13848,7 +18144,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         ctx.setTransform(m1);
         drawLayer(ctx, [{ small: true, sil: [bandLoL.path, pl.blob, elbowCap], all: allL, xf: grow, patch: OUT?.armCover || !marks ? null : art.points ? (c) => {
           pointsTip(c, bandLoL, art.points);
-        } : (c) => {   // แขนท่อนล่าง+ข้อศอก: ส้มเต็มท่อน (อุ้งเท้าครีมวาดทับทีหลัง)
+        } : art.tabby ? (c) => calicoArm(c, bandLoL, art.tabby) : (c) => {   // แขนท่อนล่าง+ข้อศอก: ส้มเต็มท่อน (อุ้งเท้าครีมวาดทับทีหลัง)
           calicoBand(c, bandLoL, [[0, bandLoL.N, 'o']], art.calico);
           c.fillStyle = art.calico.o;
           c.fill(elbowCap);
@@ -13859,12 +18155,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
             c.fill(elbowCap);
           } else if (!opt.noStripes) {
             const q = bandLoL.pts[3], nx = -Math.sin(q.a), ny = Math.cos(q.a);
-            sitStripes(c, pal, [[q.x + nx * 17, q.y + ny * 17, q.x + nx * 4, q.y + ny * 4]]);
+            sitStripes(c, pal, [[q.x + nx * 17, q.y + ny * 17, q.x + nx * 4, q.y + ny * 4]], opt.stripeA);
           }
           pl.det(c, allL);
         } }], pal, hooks, opt);
         ctx.restore();
       }
+      // แขนเสื้อแขนท่อนล่าง (ก่อนคืนภาพต้นแขน — ศอกเกลี่ยแขนเสื้อสองท่อนเข้าหากันเหมือนขน)
+      if (OUT?.forearmSleeve) { ctx.save(); grow(ctx); OUT.forearmSleeve(ctx, bandLoL, bandUpL.half(bandUpL.N), pal); ctx.restore(); }
       if (elbowBlend) {
         // ภาพแขนท่อนบน (ก่อนวาดแขนท่อนล่าง) คืนทับในเนื้อแขนท่อนบน
         const mE = ctx.getTransform();
@@ -13884,7 +18182,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         grow(ctx);
         ctx.clip(bandUpL.path);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.drawImage(E.canvas, 0, 0);
+        ctx.drawImage(E.canvas, elbowR.x, elbowR.y, elbowR.w, elbowR.h, elbowR.x, elbowR.y, elbowR.w, elbowR.h);
         ctx.restore();
       }
       // วิเชียรมาศ / เกลี่ยศอกแล้ว: ไม่ทาแถบกลบรอยศอก — แถบสีเรียบโผล่เป็นแถบ/สามเหลี่ยมสีอ่อน (ผู้ใช้ทัก)
@@ -14119,7 +18417,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       }
       c.restore();
     };
-    RB.bellyPath = ell(RB.belly);
+    RB.bellyAt = rp([RB.belly[0], RB.belly[1]]);   // กลางพุง (พิกัดจอ) — พุงฟุ้งวาดเองรอบจุดนี้
+    RB.bellyPath = art.chestStripe ? wilatChestPath(RB.belly[0] - 6, RB.belly[1] - RB.belly[3] * 2.4, RB.belly[1] + RB.belly[3] * 0.95, 0.85, rp) : ell(RB.belly);   // วิลาศ: ผ้ากันเปื้อน → เส้นบาง
     RB.pt = (x, y) => rp([x, y]);   // ตัวดัดจุดของชุดบนตัววิ่ง (ไม่เลื่อนตามผิวทรงกระบอกซ้ำ — ตัววิ่งเป็นภาพที่หันแล้ว)
     // เส้นขวางขาของชุด (ปลายขากางเกง/ข้อเท้า) → จุดกลาง มุม ครึ่งความกว้าง · หมุนให้แกน +y ชี้ไปฝั่งเท้าเสมอ
     const seg = ([x0, y0, x1, y1, fx, fy]) => {
@@ -14181,6 +18480,15 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     }
     drawProp(propGrip('left'), 0);   // มองหลัง: หางพาดไปทางขวาจอ — ถือด้วยมือซ้ายจอ หางจึงไม่พาดทับมือ/ของถือ
     drawLayer(ctx, limbs, pal, hooks, opt);
+    // แมววิลาศ (ตามตำรา): แถบขาวจากท้ายทอยพาดกลางหลังลงไปหาโคนหาง — ตัดในลำตัว ขอบฟุ้ง
+    if (art.blaze) {
+      ctx.save();
+      torso.xf?.(ctx);
+      ctx.clip(torso.all);
+      const half = [[380, 9], [420, 11], [470, 10], [520, 8], [556, 5], [572, 0]];
+      softMark(ctx, smoothLoop([...half.map(([y, w]) => [300 + w, y]), ...half.slice().reverse().filter(([, w]) => w > 0).map(([y, w]) => [300 - w, y])]), pal.cream);
+      ctx.restore();
+    }
     // ด้านหลัง: กระโปรงอยู่ใต้หาง (หางพาดทับกระโปรง)
     if (OUT?.skirt) OUT.skirt(ctx, { ...outK, back: true, pt: torsoPt, bodies: [{ clip: torso.all, pt: torsoPt }, { clip: legL.all, pt: legPt('left') }, { clip: legR.all, pt: legPt('right') }] });
     // ผ้าคลุมด้านหลัง (ชุดระดับ S) — คลุมหลังทับกระโปรง หางพาดทับผ้าคลุม
@@ -14269,6 +18577,18 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.clip(hc);
       ctx.setTransform(m0);
       drawLayer(ctx, [{ ...it, small: true }], pal, hooks, opt);
+      // แตะหูฟัง (earR): อุ้งเท้าอยู่ตรงขอบแก้ม — วาดซ้ำรอบอุ้งเท้าด้วย (ทับเส้นขอบหัวกับสายหูฟัง · ผู้ใช้ 21 ต.ค. "เอามือทับเส้น")
+      //   วาดซ้ำส่วนที่ซ้อนกับรอบแรกได้ภาพเท่าเดิม (เนื้อทึบลงทับก่อนลงเงา)
+      if (side === 'right' && v('earR') > 0.3) {
+        ctx.restore();
+        ctx.save();
+        ctx.clip(hole, 'evenodd');
+        const [px, py] = upperPt(446, 352);
+        const pc = new Path2D();
+        pc.arc(px, py, 66, 0, TAU);
+        ctx.clip(pc);
+        drawLayer(ctx, [{ ...it, small: true }], pal, hooks, opt);
+      }
     } else {
       // แขนอยู่บนตัว: เนื้อ/สี/เงาได้ไปแล้วตอนอยู่ในชั้นตัว — วาดแค่เส้นขอบแขนทับตัว
       // (เคยวาดเนื้อซ้ำ = ทับเงาขอบกับเงาใต้คางที่พ่นไว้ แขนเลยสว่างกว่าตัว เห็นเป็นรอยแบ่งตรงไหล่)
@@ -14286,7 +18606,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     ctx.restore();
   };
   // แขนที่ยกขึ้นข้างหน้า (โบกมือ / ยกอุ้งเท้ามาเลีย) อยู่หน้าหัว วาดหลังหัว
-  const raisedL = paw > 0.3, raisedR = wave > 0.3 || (v('chinR') > 0.3 && !useChin);
+  const raisedL = paw > 0.3, raisedR = wave > 0.3 || (v('chinR') > 0.3 && !useChin) || v('earR') > 0.3;   // earR: อุ้งเท้าแตะหูฟังอยู่หน้าหัว
 
   let shirtArms = [];
   if (!back) {
@@ -14299,8 +18619,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // ตัววิ่งสี่จังหวะ: พุงวาดหลังชั้นตัว (แขนในชั้นเดียวกันไม่บังพุง) ตัดในตัว
       ctx.save();
       ctx.clip(torso.all);
-      ctx.fillStyle = pal.cream;
-      ctx.fill(RB.bellyPath);
+      if (art.chestStripe) softMark(ctx, RB.bellyPath, pal.cream);
+      else if (art.bellySoft) bellyBlob(ctx, ...RB.bellyAt, RB.belly[2], RB.belly[3], pal.cream, true, RB.belly[4] || 0);   // พุงฟุ้ง (ศุภลักษณ์)
+      else { ctx.fillStyle = pal.cream; ctx.fill(RB.bellyPath); }
       ctx.restore();
     }
     if (OUT?.shirt) {
@@ -14313,7 +18634,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         if (raisedL) arms.push({ path: armL.all, pt: armPt('left', armAngles('left')), cuff: 156 });
         if (raisedR) arms.push({ path: armR.all, pt: (x, y) => armPt('right', armAngles('right'))(600 - x, y), cuff: 156 });
       }
-      OUT.shirt(ctx, { ...outK, body: torso.all, pt: torsoPt, arms: [] });
+      // shoulders = ก้อนไหล่มนนอกตัว (ท่าถือหัวใจ/เท้าคาง) — เสื้อคลุมได้ (ชุดที่ไม่อ่านช่องนี้ = แบบเดิม)
+      OUT.shirt(ctx, { ...outK, body: torso.all, pt: torsoPt, arms: [], shoulders: useHold ? armItems.map((it) => it.all) : useChin ? [chin.sh] : null });
       shirtArms = arms;
     }
     if (useHold) {
@@ -14365,6 +18687,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   ctx.save();
   if (back) {
     head(ctx);
+    // แมววิลาศ: แถบขาวกลางหัวด้านหลัง (แนวเดียวกับแถบหน้าผาก) ลงถึงท้ายทอย ต่อกับแถบกลางหลัง
+    if (art.blaze && P.head?.all) {
+      ctx.save();
+      ctx.clip(P.head.all);
+      const half = [[150, 0], [170, 5], [250, 8], [330, 9], [395, 10]];
+      softMark(ctx, smoothLoop([...half.map(([y, w]) => [300 + w, y]), ...half.slice().reverse().filter(([, w]) => w > 0).map(([y, w]) => [300 - w, y])]), pal.cream);
+      ctx.restore();
+    }
     drawOps(ctx, P.whiskers.det, pal, hooks, opt);
   } else {
     face(ctx);
@@ -14376,6 +18706,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   if (!back && !useHold) {
     if (raisedL) frontArm('left', armL, true);
     if (raisedR) frontArm('right', armR, true);
+    // แขนที่ยกวาดซ้ำเฉพาะส่วนที่ทับหัว — ทับแขนเสื้อที่วาดไปแล้วตรงนั้นจนเห็นขนเหมือนเสื้อขาด (ผู้ใช้ทักชุดลูกคุณหนู 21 ต.ค.)
+    // ชุดที่ตั้ง sleeveOverHead: วาดแขนเสื้อของแขนที่ยกซ้ำทับอีกรอบ (ชุดอื่นคงแบบเดิมที่ผู้ใช้ตรวจแล้ว)
+    if (OUT?.shirt && OUT.sleeveOverHead && (raisedL || raisedR)) {
+      const ra = [];
+      if (raisedL) ra.push({ path: armL.all, pt: armPt('left', armAngles('left')), cuff: 156 });
+      if (raisedR) ra.push({ path: armR.all, pt: (x, y) => armPt('right', armAngles('right'))(600 - x, y), cuff: 156 });
+      OUT.shirt(ctx, { ...outK, arms: ra, sleevesOnly: true });
+    }
   }
   if (useChin) {
     // แขนเท้าคางวาดหลังหัว อุ้งเท้าจึงแตะคางอยู่หน้าหน้า — ท่อเดียวมีเส้นรอบครบ หนาเท่ากันตลอด
@@ -14391,7 +18729,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
           const q = H.bLo.pts[i], nx = -Math.sin(q.a), ny = Math.cos(q.a);
           st.push([q.x + nx * 19, q.y + ny * 19, q.x + nx * 6, q.y + ny * 6]);
         }
-        sitStripes(c, pal, st);
+        sitStripes(c, pal, st, opt.stripeA);
       }
       H.pw.det(c, H.all);
     } }], pal, hooks, opt);
@@ -14418,7 +18756,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
             const q = H.bLo.pts[i], nx = -Math.sin(q.a), ny = Math.cos(q.a);
             st.push([q.x + nx * 19, q.y + ny * 19, q.x + nx * 6, q.y + ny * 6]);
           }
-          sitStripes(c, pal, st);
+          sitStripes(c, pal, st, opt.stripeA);
         }
         H.pw.det(c, H.all);
       } }], pal, hooks, opt);

@@ -65,6 +65,10 @@ export const BREEDS = [
   { id: 'pearl', w: 0, tier: 'rare' },
   { id: 'calico', w: 0, tier: 'rare' },
   { id: 'konja', w: 0, tier: 'rare' },
+  { id: 'wilat', w: 0, tier: 'rare' },
+  { id: 'supha', w: 0, tier: 'rare' },
+  { id: 'korat', w: 0, tier: 'rare' },
+  { id: 'salid', w: 0, tier: 'rare' },
 ];
 
 /**

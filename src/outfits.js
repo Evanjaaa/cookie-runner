@@ -592,6 +592,79 @@ const LIST = [
     },
   },
   {
+    id: 'chawee',
+    rarity: 'high',
+    name: 'พี่ชาวี',
+    note: 'สูทดำกระดุมคู่กับหูฟังบอดี้การ์ด',
+    // โบนัสไทม์เปลี่ยนเป็นค่ำคืนล็อบบี้หรู: น้ำตาลดำอุ่น แสงทอง
+    bonus: {
+      sky: ['#140F0C', '#3A2A1E', '#7A5A34'],
+      glow: 'rgba(240,200,120,.32)',
+      speck: 'rgba(255,230,170,.6)',
+      cloud: '#B89A6A',
+      cloudSoft: '#6E5636',
+      sparkle: '#FFE3A0',
+    },
+    rain: ['#F2C65A', '#FFF3C4', '#8C6420'],
+    rainShape: 'coin',
+    glow: '#FFF0C0',
+
+    // บัตรวีไอพีทอง/ดำหมุนตีลังกา — ทรงใหม่ (สี่เหลี่ยมยาว) ไม่ซ้ำเงาร่างของชุดไหน
+    // every 5 + life 44 = มีอยู่ราว 9 ใบพร้อมกัน · gravity 0.05 ตก ~48px ก่อนหมดอายุ
+    trail: {
+      every: 5, shape: 'card',
+      colors: ['#F2C65A', '#FFF3C4', '#2A2C36'],
+      r: [2.4, 4], life: 44, gravity: 0.05, drift: -0.5, spin: 0.12,
+    },
+    back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      const cy = pose === 'slide' ? 2 : 4;
+      // สปอตไลต์จากบน — แสงอุ่นนุ่ม ๆ หลังตัว
+      ctx.save();
+      const g = ctx.createLinearGradient(0, cy - 40, 0, cy + 24);
+      g.addColorStop(0, 'rgba(255,236,190,0)');
+      g.addColorStop(1, 'rgba(255,236,190,.28)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-6, cy - 40); ctx.lineTo(6, cy - 40); ctx.lineTo(26, cy + 24); ctx.lineTo(-26, cy + 24);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      sparkleAura(ctx, pose, '#FFD86B', '#FFF3C4');
+      // แฟลชกล้องวาบเป็นพัก ๆ ข้างตัว
+      const f = (t * 0.9) % 1;
+      if (f < 0.12) {
+        ctx.save();
+        ctx.globalAlpha = 1 - f / 0.12;
+        ctx.fillStyle = '#FFFFFF';
+        star4(ctx, (Math.floor(t * 0.9) % 2 ? 1 : -1) * 30, cy - 20, 5);
+        ctx.restore();
+      }
+    },
+    body(ctx, s, pose) {
+      fullSuit(ctx, pose, '#22242C');            // สูทดำ
+      clipBody(ctx, pose, () => {
+        // ช่อง V เชิ้ตขาว + เนคไทกรมท่า
+        ctx.fillStyle = '#F4F5F8';
+        ctx.beginPath(); ctx.moveTo(-6, -12); ctx.lineTo(6, -12); ctx.lineTo(0, 4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#2B3A72';
+        ctx.beginPath(); ctx.moveTo(-1.6, -11); ctx.lineTo(1.6, -11); ctx.lineTo(2.2, 2); ctx.lineTo(0, 4); ctx.lineTo(-2.2, 2); ctx.closePath(); ctx.fill();
+        // กระดุมเงินคู่
+        ctx.fillStyle = '#D3D8E1';
+        for (const [x, y] of [[-4, 7], [4, 7], [-4, 13], [4, 13]]) { ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill(); }
+      });
+    },
+    head(ctx) {
+      // หูฟังบอดี้การ์ด: ตัวหูฟังดำข้างหัว + สายขดลงคอ
+      ctx.fillStyle = '#1C1D22';
+      ctx.beginPath(); ctx.arc(11, 4, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#1C1D22';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 10; i++) { const y = 6 + i * 1.1; ctx.lineTo(11 + Math.sin(i * 2.2) * 1.2, y); }
+      ctx.stroke();
+    },
+  },
+  {
     id: 'princess',
     rarity: 'high',
     name: 'องค์หญิงหิมะ',
@@ -1666,7 +1739,7 @@ export const ALL_OUTFITS = LIST.map((o) => ({
  * ที่เหลือยังเป็นร่างแรก รอวาดใหม่ตามกฎ S (S_TIER_SKINS.md) — ซ่อนจากทุกที่: ตู้กาช่า (สุ่มไม่ออก) คลัง ป้ายโปรโมท
  * คนที่เคยได้ไปแล้ว: ยังจำไว้ในบัญชี แต่ใส่ไม่ได้/ไม่นับ จนกว่าจะเอาออกจากรายการนี้ · เปิดชุดไหนแล้วลบ id ออกจากตรงนี้ที่เดียว
  */
-export const HIDDEN_OUTFITS = new Set(['noble', 'fruit', 'lunar', 'rainbow', 'dryad']);
+export const HIDDEN_OUTFITS = new Set(['chawee', 'fruit', 'lunar', 'rainbow', 'dryad']);   // ลูกคุณหนู (noble) เปิดแล้ว — ผู้ใช้สั่ง 21 ต.ค.
 export const OUTFITS = ALL_OUTFITS.filter((o) => !HIDDEN_OUTFITS.has(o.id));
 
 export const OUTFIT_COST = 5000;      // ทองต่อการสุ่มหนึ่งครั้ง
