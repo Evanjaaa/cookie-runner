@@ -299,7 +299,7 @@
         </section>
 
         <section class="pane" data-pane="kitten">
-          <p class="note" style="margin-top:0">🐣 <b>รอแบบลูกแมวใหม่</b> — ตอนนี้โชว์ลูกแมวจากตัววาดเดิม (หน้าตาเดียวกับในเกม) ไว้ดูสัดส่วนและเทียบขนาดกับตัวโต · ออกแบบเสร็จแล้วจะต่อแบบใหม่เข้าแท็บนี้</p>
+          <p class="note" style="margin-top:0">🐣 <b>ร่างลูกแมวแบบใหม่ (น้องส้ม)</b> — ดัดสัดส่วนจากน้องตัวโต: หัวโต ตาโต หูปลายมน มีปอยขนบนหัว ตัวป้อม ขาสั้น แขนสั้น หางสั้น · ใช้ได้ทุกท่าในแท็บ 🐱 ท่า · สีอื่นยังเป็นลูกแมวตัววาดเดิม (หน้าตาเดียวกับในเกมตอนนี้)</p>
           <div class="sec">วัย <span class="line"></span></div>
           <div class="opts">
             <div class="opt"><span>แสดง</span><div class="seg" id="kAge"></div></div>
@@ -973,6 +973,9 @@
           const nc = NEW_CATS.find((c) => c.id === base.id);
           if (nc) drawCat2(ctx, x, -lift, SCALE, nc, t, arg);
           else drawCatPose(ctx, x, -lift, SCALE / 0.86, base, t, arg);
+        } else if (base.id === 'orange') {
+          // ร่างลูกแมวแบบใหม่ (ผู้ใช้ 22 ต.ค. — เริ่มที่น้องส้ม): น้องตัวโตตัวเดิมดัดสัดส่วนตามวัย (KIT ใน cat2.js) ขนาดตัวตามวัยเท่าในเกม
+          drawCat2(ctx, x, -lift, SCALE * k, { ...NEW_CATS.find((c) => c.id === 'orange'), age }, t, arg);
         } else {
           drawCatPose(ctx, x, -lift, (SCALE / 0.86) * k, { ...base, age, noPhoto: true }, t, arg);
         }

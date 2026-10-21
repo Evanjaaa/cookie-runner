@@ -186,6 +186,22 @@ export const SKINS = [
     stripes: true, blush: true,
   },
   {
+    id: 'tortie',
+    name: 'สีเปรอะ',
+    note: 'แมวสีเปรอะ ดำแซมส้ม ตัวผู้หายาก',
+    cat: '#2C2220', line: '#2E1A12', dark: '#C9692A', cream: '#E3A05A', pink: '#E9A39A',
+    eye: '#B4561C', ink: '#24120C', whisker: 'rgba(255,236,226,.85)', rain: ['#2C2220', '#C9692A', '#E3A05A'],
+    stripes: false, blush: true,
+  },
+  {
+    id: 'cow',
+    name: 'ลายวัว',
+    note: 'แมวลายวัว ขาวปื้นดำ ตาเขียวอมเหลือง',
+    cat: '#FFFDFB', line: '#3A2622', dark: '#25201F', cream: '#FFFFFF', pink: '#F2A9B0',
+    eye: '#8E9E26', ink: '#3A2622', whisker: 'rgba(58,38,34,.85)', rain: ['#FFFFFF', '#25201F', '#D0D550'],
+    stripes: false, blush: true,
+  },
+  {
     id: 'siamese',
     name: 'วิเชียรมาศ',
     note: 'แมวไทยตาสีฟ้า',

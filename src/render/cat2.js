@@ -8609,19 +8609,21 @@ function nobleFront(c, k) {
   c.globalAlpha = a0;
 }
 
-// ══ ท่าเปิดตัว "พิธีเปิดตัวที่โดนป่วน" (ผู้ใช้เลือก 21 ต.ค.) · ~9.3 วิ (เฟรมจริง ไม่ยืดเวลา) ══
+// ══ ท่าเปิดตัว "พิธีเปิดตัวที่โดนป่วน" (ผู้ใช้เลือก 21 ต.ค.) · ~13.7 วิ (เฟรมจริง ไม่ยืดเวลา) ══
 //   0.0  ม่านชมพูปิด ฉากมืด สปอตไลต์ส่องกลางม่าน กลองรัว → ป้ายผ้าคลี่ลง "ยินดีต้อนรับ คุณหนู" → แตรประโคม (กล้องค่อย ๆ ดันเข้า)
-//   1.7  ม่านเปิด — เวทีว่าง! สปอตไลต์ส่ายหาซ้าย-ขวา (กล้องแพนตาม) "…?"
-//   3.3  ปุ๊! มาการองพุ่งมาจากซ้ายบนชนป้าย ป้ายพลิก → ด้านหลังลายมือขยุกขยิก "จอมซน!" หน้าแมวแลบลิ้น (กล้องดันเข้าป้าย)
-//   4.2  กล้องเหวี่ยงไปซ้าย → น้องโหนเชือกม่านเหวี่ยงเข้าฉาก (สปอตไลต์ตามไม่ทัน) → ปล่อยมือ ตีลังกา → ลงเวที "ตึง!" หมวกเด้งเบี้ยว
-//   5.6  ดันหมวกคืน (กล้องโคลสอัพหน้า) → ยืดอก โค้งคำนับแบบผู้ดี (เพลงมินูเอต์)
-//   6.7  ชักหนังสติ๊กออกมา → ง้าง เล็งกล้อง ขยิบตา แลบลิ้น → ยิง! มาการองพุ่งเข้าหากล้องแตกเป็นมงกุฎจิ๋ว ประกายทอง กลีบกุหลาบ
-//   7.7  ไฟเวทีสว่าง วงแหวนทอง/ของลอยผุดขึ้น → ไหลเข้าท่าแอ็ค
+//   2.2  ม่านเปิด — เวทีว่าง! สปอตไลต์ส่ายหาซ้าย-ขวา (กล้องแพนตาม) "…?"
+//   4.2  ปุ๊! มาการองพุ่งมาจากซ้ายบนชนป้าย ป้ายพลิก → ด้านหลังลายมือขยุกขยิก "จอมซน!" หน้าแมวแลบลิ้น (กล้องดันเข้าป้าย ค้างให้อ่าน · หัวเราะคิกคักหลังม่าน)
+//   5.9  กล้องเหวี่ยงไปซ้าย → น้องโหนเชือกม่านเหวี่ยงเข้าฉาก (สปอตไลต์ตามไม่ทัน) → ปล่อยมือ ตีลังกา → ลงเวที "ตึง!" หมวกเด้งเบี้ยว
+//   7.4  ดันหมวกคืน (กล้องโคลสอัพหน้า) → ยืดอก โค้งคำนับแบบผู้ดี ค้างจนจบวลีเพลงมินูเอต์
+//   9.4  ชักหนังสติ๊กออกมา → เล็งกล้อง ขยิบตา แลบลิ้น (ค้างแซว) → ง้าง → ยิง! มาการองพุ่งเข้าหากล้องแตกเป็นมงกุฎจิ๋ว ประกายทอง กลีบกุหลาบ
+//   11.1 ไฟเวทีสว่าง วงแหวนทอง/ของลอยผุดขึ้น คอนเฟตติสองระลอก กระโดดดีใจสองที → ไหลเข้าท่าแอ็ค
+//   ผู้ใช้ 21 ต.ค.: เดิม 9.3 วิ "ขยายตรงที่เห็นว่าควรขยาย" → ป้ายต้อนรับรอแตรจบ · เวทีว่างส่ายหาช้าลง · ป้าย "จอมซน!" ค้าง ~1 วิ (เดิม 0.3)
+//   · โค้งคำนับยาวเท่าวลีมินูเอต์ · ช่วงเล็งแซวก่อนง้าง · ฉลองยาวขึ้น — โหนเชือก/ตีลังกา/ลงเวทีคงเดิม (แอ็คชันเร็วอยู่แล้ว)
 //   ไม่ซ้ำ sweet (แอบมองขอบจอ คัพเค้กป๊อป คทาบิน) / princess (น้ำแข็งเกาะจอ ดอกน้ำแข็ง จอแตก)
 const NBI = {
-  unroll: 24, fanfare: 62, open: 100, search: 140, shoot: 200, hit: 214, flipEnd: 232,
-  swing: 250, rollUp: 252, release: 298, land: 322, fix: 336, fixEnd: 358, bow: 366, bowEnd: 398,
-  grab: 404, aim: 420, pull: 424, fire: 448, pop: 463, dur: 560,
+  unroll: 24, fanfare: 62, open: 132, search: 172, shoot: 252, hit: 266, flipEnd: 284,
+  swing: 356, rollUp: 358, release: 404, land: 428, fix: 442, fixEnd: 464, bow: 472, bowEnd: 556,
+  grab: 564, aim: 580, pull: 620, fire: 648, pop: 663, dur: 823,
 };
 /** ระยะยิงหนังสติ๊ก (เฟรม) — มาการองบินเข้าหากล้อง แตกที่ 55% */
 const NB_SHOT_LEN = 28;
@@ -8654,7 +8656,7 @@ function nbSpotAt(f) {
   const A = NBI;
   if (f < A.open) return { x: 300, y: 150, rx: 300, ry: 230 };
   if (f < A.hit) {
-    const x = ktrack(f, [[A.open + 20, 300], [A.search + 4, 300], [A.search + 20, -160], [A.search + 40, 760], [A.shoot - 4, 330], [A.hit, 330]]);
+    const x = ktrack(f, [[A.open + 20, 300], [A.search + 4, 300], [A.search + 28, -160], [A.search + 56, 760], [A.shoot - 4, 330], [A.hit, 330]]);
     const y = ktrack(f, [[A.open, 150], [A.open + 30, 520], [A.shoot - 4, 520], [A.hit, 150]]);
     return { x, y, rx: 260, ry: 300 };
   }
@@ -8723,8 +8725,11 @@ function nobleIntroShape(f, t) {
   const pull = ktrack(f, [[A.pull, 0], [A.fire - 4, 1, KE.out], [A.fire, 1], [A.fire + 3, 0]]);
   const shot = f >= A.fire && f < A.fire + NB_SHOT_LEN ? (f - A.fire) / NB_SHOT_LEN : 0;
   const recoil = kenv(f, A.fire, A.fire + 2, A.fire + 5, A.fire + 14);
-  const cheer = kenv(f, A.pop + 2, A.pop + 6, A.pop + 22, A.pop + 32);
-  const hopL = ktrack(f, [[A.pop + 2, 0], [A.pop + 10, 5, KE.out], [A.pop + 18, 0, KE.in]]);
+  // ฉลอง: ดีใจค้างนานขึ้น + กระโดดสองที (ท่าเปิดตัวยาวขึ้น 21 ต.ค.)
+  const cheer = kenv(f, A.pop + 2, A.pop + 6, A.pop + 50, A.pop + 62);
+  const hopL = ktrack(f, [[A.pop + 2, 0], [A.pop + 10, 5, KE.out], [A.pop + 18, 0, KE.in]])
+    + ktrack(f, [[A.pop + 26, 0], [A.pop + 34, 4, KE.out], [A.pop + 42, 0, KE.in]]);
+  const bowSway = bowK * Math.sin((f - A.bow) * 0.08) * 0.03;   // โค้งค้างนาน: โยกช้า ๆ ตามเพลงมินูเอต์ ไม่แข็งค้าง
   const s = {
     dx: air ? (sw.x - 300) * UNIT : 0,
     lift: (air ? (FEET_Y - sw.y) * UNIT : 0) + hopL,
@@ -8745,7 +8750,7 @@ function nobleIntroShape(f, t) {
     mouth: (rope ? 0.6 : 0) + (flight ? 0.35 : 0) + kenv(f, A.land, A.land + 2, A.land + 8, A.land + 14) * 0.35 + cheer * 0.5 + recoil * 0.3,
     gaze: ktrack(f, [[A.grab - 2, 0], [A.grab + 4, -0.35], [A.aim - 4, -0.35], [A.aim + 4, 0]]),
     gazeY: bowK * 0.7 + ktrack(f, [[A.grab - 2, 0], [A.grab + 4, 0.15], [A.aim - 4, 0.15], [A.aim + 4, 0]]),
-    tilt: (rope ? 0.12 * Math.sin(t * 0.18) : 0) + knock * 0.08 + shake * 0.16 * Math.sin((f - A.fix) * 0.75) - bowK * 0.06 + ktrack(f, [[A.aim, 0], [A.aim + 10, 0.08]]) + L.tilt,
+    tilt: (rope ? 0.12 * Math.sin(t * 0.18) : 0) + knock * 0.08 + shake * 0.16 * Math.sin((f - A.fix) * 0.75) - bowK * 0.06 + bowSway + ktrack(f, [[A.aim, 0], [A.aim + 10, 0.08]]) + L.tilt,
     ear: L.ear - kenv(f, A.land, A.land + 2, A.land + 10, A.land + 20) * 0.45 - recoil * 0.25 + (rope ? Math.sin(t * 0.4) * 0.12 : 0),
     wag: 0.3 + (rope || flight ? Math.sin(t * 0.35) * 0.9 : 0) + cheer * Math.sin(t * 0.3) * 0.8,
   };
@@ -8759,17 +8764,18 @@ function nobleIntroShape(f, t) {
  */
 function nobleCam(f, skip = 0) {
   const A = NBI;
-  const z = ktrack(f, [[0, 1.28], [A.fanfare, 1.42], [A.open, 1.42], [A.open + 40, 1.08], [A.shoot, 1.06], [A.hit + 4, 1.4, KE.out], [A.flipEnd + 8, 1.55],
-    [A.swing - 6, 1.15], [A.release, 1.2], [A.land, 1.26], [A.fix, 1.7], [A.fixEnd, 1.72], [A.bow + 6, 1.28], [A.bowEnd, 1.3], [A.grab + 8, 1.5],
+  // ค้างบนป้าย "จอมซน!" (ดันเข้าช้า ๆ) แล้วค่อยเหวี่ยงออกเร็วเท่าเดิม (swing − 10 → − 6) · โค้งคำนับ: ดันเข้าช้า ๆ ตลอดเพลง
+  const z = ktrack(f, [[0, 1.28], [A.fanfare, 1.42], [A.open, 1.48], [A.open + 40, 1.08], [A.shoot, 1.06], [A.hit + 4, 1.4, KE.out], [A.flipEnd + 8, 1.55],
+    [A.swing - 10, 1.58], [A.swing - 6, 1.15], [A.release, 1.2], [A.land, 1.26], [A.fix, 1.7], [A.fixEnd, 1.72], [A.bow + 6, 1.28], [A.bowEnd, 1.38], [A.grab + 8, 1.5],
     [A.aim + 10, 1.72], [A.fire, 1.82], [A.fire + 6, 2.0, KE.out], [A.pop + 6, 1.06, KE.out], [A.dur - 26, 1], [A.dur, 1]]);
-  const fy = ktrack(f, [[0, 260], [A.open, 260], [A.open + 40, 420], [A.hit, 220], [A.flipEnd + 8, 130], [A.swing - 6, 300], [A.land, 460],
-    [A.fix, 240], [A.fixEnd, 240], [A.bow + 6, 420], [A.grab + 8, 330], [A.aim + 10, 290], [A.pop + 6, 420], [A.dur - 26, 400]]);
+  const fy = ktrack(f, [[0, 260], [A.open, 260], [A.open + 40, 420], [A.hit, 220], [A.flipEnd + 8, 130], [A.swing - 10, 130], [A.swing - 6, 300], [A.land, 460],
+    [A.fix, 240], [A.fixEnd, 240], [A.bow + 6, 420], [A.bowEnd, 400], [A.grab + 8, 330], [A.aim + 10, 290], [A.pop + 6, 420], [A.dur - 26, 400]]);
   // เลื่อนตามของ: ส่ายตามสปอตไลต์ตอนหา · เหวี่ยงไปซ้ายรอน้องโหนมา → ตามตัว → กลับกลาง
   const spot = nbSpotAt(f);
   let tx = 300, ty = null;
   const searchK = kenv(f, A.search - 4, A.search + 8, A.shoot - 8, A.shoot);
   tx += (spot.x - 300) * 0.4 * searchK;
-  if (f < A.swing) tx -= 600 * ktrack(f, [[A.flipEnd + 6, 0], [A.swing, 1, KE.io]]);
+  if (f < A.swing) tx -= 600 * ktrack(f, [[A.swing - 12, 0], [A.swing, 1, KE.io]]);
   else if (f < A.land + 14) {
     const w = ktrack(f, [[A.swing, 0], [A.swing + 24, 0.85], [A.land, 0.85], [A.land + 14, 1]]);
     const cx = f < A.land ? nbSwingAt(f).x : 300;
@@ -9048,22 +9054,27 @@ function nbBannerShot(c, f, pal, t) {
 }
 /** คอนเฟตติฉลองตอนมาการองแตก: มงกุฎจิ๋ว มาการองจิ๋ว กลีบกุหลาบ ประกายทอง โปรยลงทั้งจอ ปลิวเป็นคลื่น */
 function nbConfetti(c, f, pal, lite) {
-  const P = NBI.pop, df = f - P;
-  if (df < 0 || df > NBI.dur - P) return;
-  const fade = clamp01((NBI.dur - f) / 40) * clamp01(df / 4);
+  const P = NBI.pop;
+  if (f < P || f > NBI.dur) return;
   const n = lite ? 18 : 40;
-  for (let i = 0; i < n; i++) {
-    const x0 = -620 + hash(i * 3 + 700) * 1840, v0 = 2 + hash(i * 5 + 701) * 3;
-    const y = -360 + hash(i * 7 + 702) * 260 + df * v0 + df * df * 0.012;
-    if (y > 900) continue;
-    const x = x0 + Math.sin(df * 0.06 + i) * 30;
-    const rot = df * 0.05 * (hash(i + 703) - 0.5) * 2 + i;
-    const kind = i % 4;
-    c.globalAlpha = fade;
-    if (kind === 0) { c.save(); c.translate(x, y); c.rotate(rot * 0.4); nbCrown(c, 0, 6, 11, pal, { w: 1.4 }); c.restore(); }
-    else if (kind === 1) nbPetal(c, x, y, 9, rot, 1);
-    else if (kind === 2) nbSparkle(c, x, y, 8 + 4 * Math.sin(df * 0.3 + i), 1);
-    else nbMacaron(c, x, y, 8, i % 8 === 3 ? NB.blue : NB.pink, pal, rot * 0.3, { w: 1.2 });
+  // สองระลอก (ท่าเปิดตัวยาวขึ้น 21 ต.ค.): ระลอกแรกระเบิดตอนมาการองแตก ร่วงพ้นจอราว 2 วิ · ระลอกสองโปรยจากบนต่อจนจบท่า
+  for (const [w0, seed, m] of [[0, 0, n], [64, 400, Math.round(n * 0.6)]]) {
+    const df = f - P - w0;
+    if (df < 0) continue;
+    const fade = clamp01((NBI.dur - f) / 40) * (w0 ? 1 : clamp01(df / 4));
+    for (let i = 0; i < m; i++) {
+      const x0 = -620 + hash(i * 3 + 700 + seed) * 1840, v0 = 2 + hash(i * 5 + 701 + seed) * 3;
+      const y = (w0 ? -620 + hash(i * 7 + 702 + seed) * 360 : -360 + hash(i * 7 + 702) * 260) + df * v0 + df * df * 0.012;
+      if (y > 900 || y < -1200) continue;
+      const x = x0 + Math.sin(df * 0.06 + i) * 30;
+      const rot = df * 0.05 * (hash(i + 703 + seed) - 0.5) * 2 + i;
+      const kind = i % 4;
+      c.globalAlpha = fade;
+      if (kind === 0) { c.save(); c.translate(x, y); c.rotate(rot * 0.4); nbCrown(c, 0, 6, 11, pal, { w: 1.4 }); c.restore(); }
+      else if (kind === 1) nbPetal(c, x, y, 9, rot, 1);
+      else if (kind === 2) nbSparkle(c, x, y, 8 + 4 * Math.sin(df * 0.3 + i), 1);
+      else nbMacaron(c, x, y, 8, i % 8 === 3 ? NB.blue : NB.pink, pal, rot * 0.3, { w: 1.2 });
+    }
   }
   c.globalAlpha = 1;
 }
@@ -9138,10 +9149,11 @@ function nbShotFx(c, u, pal, big, W, H) {
 }
 /** เสียงตามจังหวะ (เฟรมจริง · ชื่อใน sfx ของ audio.js) */
 const NB_VOICES = [[0, 'nobleDrumroll'], [NBI.unroll, 'nobleUnroll'], [NBI.fanfare, 'nobleFanfare'], [NBI.open, 'nobleCurtain'],
-  [NBI.search + 26, 'nobleHuh'], [NBI.shoot, 'nobleShoot'], [NBI.hit, 'nobleHit'], [NBI.hit + 4, 'nobleFlip'],
+  [NBI.search + 30, 'nobleHuh'], [NBI.shoot, 'nobleShoot'], [NBI.hit, 'nobleHit'], [NBI.hit + 4, 'nobleFlip'],
+  [NBI.flipEnd + 22, 'nobleGiggle'],   // ป้าย "จอมซน!" ค้าง: หัวเราะคิกคักหลังม่าน (ยังไม่เห็นตัว — ใบ้ว่าใครแกล้ง)
   [NBI.swing, 'nobleSwing'], [NBI.release + 2, 'nobleSpin'], [NBI.land, 'nobleLand'], [NBI.fix + 2, 'nobleFix'],
-  [NBI.bow, 'nobleMinuet'], [NBI.grab, 'nobleGrab'], [NBI.pull, 'noblePull'], [NBI.aim + 12, 'nobleGiggle'],
-  [NBI.fire, 'nobleFire'], [NBI.pop, 'nobleBurst'], [NBI.pop + 40, 'nobleShimmer']];
+  [NBI.bow, 'nobleMinuet'], [NBI.grab, 'nobleGrab'], [NBI.aim + 12, 'nobleGiggle'], [NBI.pull, 'noblePull'],
+  [NBI.fire, 'nobleFire'], [NBI.pop, 'nobleBurst'], [NBI.pop + 60, 'nobleShimmer']];
 const NOBLE_INTRO = {
   dur: NBI.dur,
   appear: NBI.swing,
@@ -10481,21 +10493,24 @@ function chaweeBackdropPaint(c) {
   bdEdgeFade(c, 'rgba(22,15,12,1)');
 }
 const CHAWEE_BACKDROP = { paint: chaweeBackdropPaint, outer: '#16100C' };
-// ══ ท่าเปิดตัว "วีไอพีมาถึง" (ผู้ใช้เลือก 21 ต.ค. · ~10 วิ เฟรมจริง) — มองผ่านช่องมองภาพกล้องปาปารัสซี่ ══
+// ══ ท่าเปิดตัว "วีไอพีมาถึง" (ผู้ใช้เลือก 21 ต.ค. · ~15.7 วิ เฟรมจริง) — มองผ่านช่องมองภาพกล้องปาปารัสซี่ ══
 //   0.0  ล็อบบี้ยามค่ำ ไฟสลัว · ช่องมองภาพกล้อง (REC กะพริบ ไทม์โค้ด กรอบโฟกัสส่ายหา) · ประตูหมุนกระจกทองหมุนช้า ๆ
 //   0.5  เงาดำในประตูหมุน → โฟกัสล็อก "ปิ๊บ ๆ" → น้องใส่แว่นดำ หิ้วกระเป๋า ก้าวออกจากเงาประตู เดินเท่ ๆ ไปกลางล็อบบี้ (เสียงรองเท้าหนัง)
 //   1.7  ปาปารัสซี่แมว (เงาดำด้านหน้า) ยกกล้อง แฟลชรัวรอบตัว "แชะ แชะ" — น้องเดินต่อ ไม่หันมอง
 //   3.9  หยุดกลางล็อบบี้ หันหน้า → แตะหูฟัง ไฟเขียวกะพริบ คลื่นวิทยุ · ซับไตเติล "[วิทยุ] วีไอพีถึงแล้ว" → "รับทราบ พร้อมปฏิบัติการ"
-//   5.6  เลื่อนแว่นลงมาที่จมูก โชว์ตาโตแบ๊ว ๆ ขยิบตาใส่กล้อง → ดันแว่นกลับ
-//   6.9  ยกกระเป๋าเอกสาร สลัก "แกร๊ก แกร๊ก" → แง้มกระเป๋า แสงทองทะลัก บัตรวีไอพีทองปลิวหมุนเข้าหากล้อง
-//   8.1  แชะ! ชัตเตอร์ใหญ่ → ภาพค้างเป็นปกนิตยสาร "VIP · พี่ชาวี" → ไฟล็อบบี้สว่าง แจ๊สทองเหลือง → ไหลเข้าท่าแอ็ค
+//   8.0  เลื่อนแว่นลงมาที่จมูก โชว์ตาโตแบ๊ว ๆ ขยิบตาใส่กล้อง → ดันแว่นกลับ
+//   9.8  ยกกระเป๋าเอกสาร สลัก "แกร๊ก แกร๊ก" → แง้มกระเป๋า แสงทองทะลัก บัตรวีไอพีทองปลิวหมุนเข้าหากล้อง
+//   11.5 แชะ! ชัตเตอร์ใหญ่ → ภาพค้างเป็นปกนิตยสาร "VIP · พี่ชาวี" (ตัวหนังสือทยอยขึ้น) → ไฟล็อบบี้สว่าง แจ๊สทองเหลือง
+//        แฟลชวาบรอบตัวใต้ปก (ถ่ายแบบต่อ) → ปกจางออก → ไหลเข้าท่าแอ็ค
+//   ผู้ใช้ 21 ต.ค.: เดิม 10 วิ "ช่วงรับวิทยุกับถ่ายรูปเร็วไป ขยายเป็น 15–20 วิ · ฉากเดินออกจากประตูดีแล้ว ไม่ต้องขยาย"
+//   → เดินคงเดิมทุกเฟรม (0–212) · วิทยุ 1.5 → 3.7 วิ · ปกนิตยสารค้าง 1 → 3.2 วิ · แว่น/กระเป๋ายืดนิดหน่อย
 //   ไม่ซ้ำลูกคุณหนู (ม่าน ป้ายผ้า สปอตไลต์ส่ายหา โหนเชือก ตีลังกา ยิงมาการอง คอนเฟตติ) / ขนมหวาน / องค์หญิงหิมะ
 const CWI = {
   appear: 30, lock: 58, walk: 64, out: 150, flash: 104, stop: 212, face: 226,
-  ear: 238, radio: 254, reply: 290, earEnd: 328,
-  shades: 336, wink: 368, shadesEnd: 410,
-  case: 416, latch: 428, open: 438, cards: 444,
-  snap: 490, cover: 494, coverEnd: 552, lights: 530, dur: 600,
+  ear: 238, radio: 254, reply: 374, earEnd: 474,
+  shades: 482, wink: 522, shadesEnd: 582,
+  case: 588, latch: 600, open: 610, cards: 616,
+  snap: 690, cover: 694, lights: 736, coverEnd: 882, dur: 940,
 };
 /** ประตูหมุน: กลาง x · รัศมี · ขอบบน (พิกัดตัว) */
 const CW_DOOR = { x: -390, R: 250, top: -110 };
@@ -10582,8 +10597,9 @@ function chaweeIntroShape(f, t) {
 function chaweeCam(f, skip = 0) {
   const A = CWI;
   const z = ktrack(f, [[0, 0.86], [A.appear, 0.98], [A.lock, 1.24], [A.walk + 20, 1.18], [A.flash + 10, 1.06], [A.stop, 1.1],
-    [A.ear - 2, 1.12], [A.ear + 14, 1.6], [A.earEnd, 1.64], [A.shades + 6, 2.05], [A.shadesEnd, 2.08],
-    [A.case + 10, 1.5], [A.open + 10, 1.62], [A.snap - 4, 1.66], [A.snap + 2, 1.0, KE.out], [A.coverEnd, 1.02], [A.dur, 1]]);
+    // คุยวิทยุ: ดันเข้าช้า ๆ ตลอดบทสนทนา · ปกนิตยสาร: ซูมช้า ๆ ใต้ปก (ภาพไม่นิ่งตาย) แล้วคืนตอนไหลเข้าท่าแอ็ค
+    [A.ear - 2, 1.12], [A.ear + 14, 1.6], [A.earEnd, 1.74], [A.shades + 6, 2.05], [A.shadesEnd, 2.1],
+    [A.case + 10, 1.5], [A.open + 10, 1.62], [A.snap - 4, 1.68], [A.snap + 2, 1.0, KE.out], [A.coverEnd, 1.07], [A.dur, 1]]);
   const fy = ktrack(f, [[0, 120], [A.appear, 230], [A.lock, 340], [A.walk, 360], [A.flash, 400], [A.stop, 390], [A.ear + 14, 270], [A.earEnd, 270], [A.shades + 6, 285],
     [A.shadesEnd, 285], [A.case + 10, 440], [A.snap - 4, 440], [A.snap + 2, 380], [A.dur, 400]]);
   const tx = f < A.stop ? cwCatX(f) : ktrack(f, [[A.stop, 300], [A.ear, 300], [A.ear + 14, 360], [A.earEnd, 360], [A.shades + 6, 300],
@@ -11018,7 +11034,10 @@ function chaweeLens(c, k) {
     c.strokeStyle = 'rgba(214,170,80,.9)';
     c.lineWidth = 2 * S;
     c.strokeRect(b + 6 * S, b + 6 * S, W - b * 2 - 12 * S, H - b * 2 - 12 * S);
+    // ตัวหนังสือทยอยขึ้น (ปกค้างนาน ~3 วิ): หัวนิตยสาร → ชื่อ + พาดหัว → บาร์โค้ด
     const e = KE.out(clamp01((f - A.cover) / 14));
+    const eName = KE.out(clamp01((f - A.cover - 18) / 16));
+    const eBar = clamp01((f - A.cover - 36) / 12);
     // หัวนิตยสาร VIP (บนซ้าย)
     const mh = Math.round(M * 0.16);
     c.font = `900 ${mh}px Georgia, "Noto Sans Thai", serif`;
@@ -11038,7 +11057,9 @@ function chaweeLens(c, k) {
     c.strokeText('ฉบับพิเศษ · คืนนี้ที่ล็อบบี้', tx + vw + 16 * S, ty + mh * 0.55);
     c.fillText('ฉบับพิเศษ · คืนนี้ที่ล็อบบี้', tx + vw + 16 * S, ty + mh * 0.55);
     // พาดหัวล่างซ้าย
-    const hx = b + 22 * S - (1 - e) * 60 * S, hy = H - b - 26 * S;
+    const hx = b + 22 * S - (1 - eName) * 60 * S, hy = H - b - 26 * S;
+    const a0 = c.globalAlpha;
+    c.globalAlpha = a0 * eName;
     c.textBaseline = 'bottom';
     c.font = `700 ${Math.round(M * 0.032)}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
     c.lineWidth = 5 * S;
@@ -11052,6 +11073,7 @@ function chaweeLens(c, k) {
     c.fillStyle = '#FFFFFF';
     c.fillText('พี่ชาวี', hx, hy - M * 0.04);
     // บาร์โค้ดล่างขวา
+    c.globalAlpha = a0 * eBar;
     const bw = M * 0.13, bh = M * 0.07, bx = W - b - 18 * S - bw, by = H - b - 18 * S - bh;
     c.fillStyle = '#FFFFFF';
     c.fillRect(bx, by, bw, bh);
@@ -12868,7 +12890,7 @@ const CAT2_OUTFITS = {
     ankle: nobleShoes,   // ถุงเท้าลูกไม้ + รองเท้า (ต้องได้ k.leg = เงาขา)
     hat: nobleBeret,
     backdrop: NOBLE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง): สวนพระราชวังพาสเทล (ตามภาพแบบ)
-    intro: NOBLE_INTRO,   // ท่าเปิดตัว (~9.3 วิ มีกล้อง): พิธีเปิดตัวที่โดนป่วน — ม่าน ป้ายต้อนรับ → เวทีว่าง → มาการองชนป้าย "จอมซน!" → โหนเชือก ตีลังกา → โค้งคำนับ → ยิงหนังสติ๊ก
+    intro: NOBLE_INTRO,   // ท่าเปิดตัว (~13.7 วิ มีกล้อง): พิธีเปิดตัวที่โดนป่วน — ม่าน ป้ายต้อนรับ → เวทีว่าง → มาการองชนป้าย "จอมซน!" → โหนเชือก ตีลังกา → โค้งคำนับ → ยิงหนังสติ๊ก
     act: NOBLE_ACT,       // ท่าแอ็ค: ง้างหนังสติ๊กเล็งกล้อง ขยิบตา แลบลิ้น · ยิงมาการองเป็นพัก ๆ
   },
   // ── พี่ชาวี (Agent Chawee · ระดับ S) — วาดใหม่ทั้งชุดตามภาพแบบผู้ใช้ (21 ต.ค.): สูทดำกระดุมคู่ ปกแหลมซาติน เชิ้ตขาว เนคไทลายทาง ·
@@ -12890,7 +12912,7 @@ const CAT2_OUTFITS = {
     hat: chaweeEarpiece,   // หูฟังบอดี้การ์ด (ตามหัว)
     eyes: chaweeShades,   // แว่นดำ — เฉพาะท่าเปิดตัว/ท่าแอ็ค (ช่องท่า shades · shadesDown)
     backdrop: CHAWEE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง): ล็อบบี้โรงแรมหรูยามค่ำ
-    intro: CHAWEE_INTRO,   // ท่าเปิดตัว (~10 วิ มีกล้อง): วีไอพีมาถึง — ช่องมองภาพปาปารัสซี่ ประตูหมุน แฟลชรัว แตะหูฟัง เลื่อนแว่น บัตรวีไอพี ปกนิตยสาร
+    intro: CHAWEE_INTRO,   // ท่าเปิดตัว (~15.7 วิ มีกล้อง): วีไอพีมาถึง — ช่องมองภาพปาปารัสซี่ ประตูหมุน แฟลชรัว แตะหูฟัง เลื่อนแว่น บัตรวีไอพี ปกนิตยสาร
     act: CHAWEE_ACT,       // ท่าแอ็ค: แตะหูฟัง หิ้วกระเป๋า แว่นดำ · ทุก 6 วิ เลื่อนแว่นลงขยิบตา
   },
   // ── ระดับ S (ร่างแรก) ──
@@ -13350,6 +13372,215 @@ const TABBY = {
   // หาง: ปล้องเท่า ๆ กัน ปลายหางเข้ม (ดัชนีจุดบนหาง 0–16)
   tail: [[1, 1.9, 'd'], [3, 3.9, 'd'], [5, 5.9, 'd'], [7, 7.9, 'd'], [9, 9.9, 'd'], [11, 11.9, 'd'], [13, 16, 'd']],
 };
+/**
+ * ขอบปื้นแบบขนนุ่ม (สีเปรอะ · ลายวัว): แบ่งขอบปื้นเป็นช่วงสั้น ๆ ทุก step หน่วย แล้วดันเข้า-ออกสลับกัน (ปอยขน)
+ * จุดที่ได้ส่งต่อให้ calicoOps ทำเป็นเส้นโค้งเรียบ → ขอบปื้นเป็นคลื่นเล็ก ๆ แบบขนสัตว์ ไม่ใช่วงรีเรียบเหมือนสติกเกอร์
+ * amp = ความลึกปอยขน · seed = ให้แต่ละปื้นไม่ซ้ำลายกัน (คงที่ทุกเฟรม — ไม่ใช่สุ่ม)
+ */
+function furEdge(pts, amp = 4, step = 13, seed = 0) {
+  const out = [];
+  let k = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length];
+    const L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.round(L / step));
+    const nx = -(y1 - y0) / (L || 1), ny = (x1 - x0) / (L || 1);
+    for (let j = 0; j < n; j++) {
+      const u = j / n, h = amp * (k % 2 ? 1 : -0.55) * (0.55 + 0.45 * hash(seed * 31 + k));
+      out.push([x0 + (x1 - x0) * u + nx * h, y0 + (y1 - y0) * u + ny * h]);
+      k++;
+    }
+  }
+  return out;
+}
+/** ป้ายของปื้น (only = เฉพาะชิ้น · front = เฉพาะด้านหน้า) — ติดไปกับปื้นที่แปลงรูปแล้ว */
+function keepTags(src, dst) {
+  if (src.only) dst.only = src.only;
+  if (src.front) dst.front = true;
+  return dst;
+}
+/** ติดป้าย front (มีเฉพาะด้านหน้า — มองหลังไม่แสดง) ให้ทุกปื้นในรายการ */
+const frontOnly = (list) => list.map((it) => { if (Array.isArray(it)) it.front = true; return it; });
+/** ชุดปื้นที่ขอบเป็นขน — แปลงทุกปื้นในรายการ [สี, จุด, ความเข้ม?] (ปื้นวงรีไล่สีปล่อยผ่าน) */
+const furList = (list, amp, step, seed) => list.map((it, i) => {
+  if (!Array.isArray(it)) return it;
+  return keepTags(it, [it[0], furEdge(it[1], amp, step, seed + i * 7), ...it.slice(2)]);
+});
+/** แปลงทุกรายการปื้นของลาย (หัว หู ตัว ท่านั่ง …) ให้ขอบเป็นขน — หูไม่แปลง (ทั้งใบสีเดียว) */
+function furMarks(M, amp, step) {
+  const o = { ...M, parts: {} };
+  let s = 0;
+  for (const [k, list] of Object.entries(M.parts)) o.parts[k] = /^ear-/.test(k) ? list : furList(list, amp, step, (s += 100));
+  for (const k of ['body', 'sit', 'sitOld', 'haunch', 'loaf']) if (M[k]) o[k] = furList(M[k], amp, step, (s += 100));
+  return o;
+}
+// ══ แมวลายวัว (cow · ผู้ใช้ส่งแบบ 21 ต.ค.: "ตัวเมีย สีแมวลายวัว" — พื้นขาว ปื้นดำแบบลายวัว harlequin/bicolor) ══
+// ตามแบบ: หูดำสองใบ · หัวซีกซ้ายจอดำจากหูถึงคิ้ว (ตาซ้ายอยู่บนขาว) · ซีกขวาดำคลุมรอบตาขวาลงถึงแก้ม
+//   เส้นขาวกลางหน้าผากขึ้นไปถึงกลางหัว · อกซ้ายบนมีปื้น · ข้างตัวขวาปื้นใหญ่ · ข้างตัวซ้ายล่าง/ต้นขา · ขาขวา · แขน/อุ้งเท้า/เท้าขาว
+//   หาง: ปล้องดำ ปลายขาว · ใช้ระบบปื้น (art.marks) + pal.patchOver 'top' (ปื้นดำทาหลังเงาพ่น — ไม่โดนแสงกลางตัวทาจนเทา)
+const COW = furMarks({
+  k: '#25201F',   // ดำอมน้ำตาลนิด (ดำสนิทแข็งเกินบนลายเส้นนุ่ม)
+  earOver: true,  // หูดำมองหลัง: ปื้นทับเงาปลายหู (ไม่งั้นเป็นหูเทา)
+  lashOnBlack: true,   // ขนตา/เส้นตาส่วนที่ทับปื้นดำบนหัวเป็นสีขาว (ผู้ใช้ 22 ต.ค. — ตาขวาอยู่บนปื้นดำ ขนตาดำจมหาย)
+  parts: {
+    head: [
+      ['k', [[126, 250], [130, 200], [148, 150], [180, 118], [222, 104], [262, 102], [288, 110], [292, 132], [278, 160], [260, 186], [246, 208], [226, 214], [200, 212], [176, 220], [154, 236], [136, 262]]],
+      ['k', [[316, 106], [342, 100], [382, 102], [422, 118], [454, 150], [470, 200], [474, 250], [468, 296], [450, 324], [424, 338], [396, 332], [368, 324], [342, 312], [326, 292], [320, 262], [324, 226], [326, 190], [322, 148]]],
+    ],
+    'ear-left': [['k', [[140, 40], [290, 40], [290, 240], [140, 240]]]],
+    'ear-right': [['k', [[310, 40], [460, 40], [460, 240], [310, 240]]]],
+  },
+  // ตัว+แขน+ขา (แผ่นลายแผ่นเดียว พิกัดไฟล์ด้านหน้า)
+  body: [
+    ['k', [[214, 404], [250, 396], [278, 402], [284, 428], [274, 456], [250, 470], [224, 466], [208, 446], [204, 422]]],   // อกซ้ายบน
+    ['k', [[332, 402], [372, 394], [410, 400], [426, 424], [430, 470], [426, 520], [412, 560], [390, 566], [372, 546], [366, 510], [350, 480], [336, 452], [328, 428]]],   // ข้างตัวขวา
+    ['k', [[186, 512], [214, 500], [244, 506], [262, 530], [262, 566], [250, 598], [226, 612], [202, 606], [186, 580], [180, 544]]],   // ข้างตัวซ้ายล่าง → ต้นขา
+    ['k', [[370, 592], [394, 582], [416, 592], [422, 616], [410, 636], [386, 638], [372, 620]]],   // ขาขวา
+  ],
+  bodyParts: ['torso', 'arm-left', 'arm-right', 'leg-left', 'leg-right'],
+  // ตัวนั่ง (SIT2 x ~136–464 y ~460–648) · นั่งเกาพุง (SIT.torso) · ต้นขาหลัง · ก้อนหมอบ
+  sit: [
+    ['k', [[148, 476], [196, 462], [226, 486], [222, 532], [190, 552], [156, 540], [140, 508]]],
+    ['k', [[392, 470], [440, 470], [462, 520], [464, 590], [446, 640], [410, 636], [392, 590], [400, 540], [388, 500]]],
+  ],
+  sitOld: [
+    ['k', [[158, 520], [200, 510], [228, 540], [220, 588], [176, 602], [152, 570]]],
+    ['k', [[388, 452], [440, 468], [450, 548], [424, 600], [396, 588], [386, 540], [376, 490]]],
+  ],
+  haunch: [['k', [[104, 580], [160, 560], [204, 575], [206, 640], [130, 648]]]],
+  loaf: [
+    ['k', [[400, 532], [458, 556], [468, 630], [420, 646], [396, 596]]],
+    ['k', [[150, 540], [210, 530], [236, 560], [224, 610], [176, 620], [150, 590]]],
+  ],
+  arm: [],   // แขนขาวล้วน
+  tail: [[2, 6, 'k'], [7.6, 11, 'k'], [12.4, 14, 'k']],   // ปลายหางขาว
+}, 3.6, 13);
+// ══ แมวสีเปรอะ (tortie · ผู้ใช้ส่งแบบ 21 ต.ค.: "ตัวผู้ แมวสีเปรอะ" — ดำ + ส้ม/แดง แทรกซึมกันทั่วตัว ลายไม่ซ้ำ · ตัวผู้หายากมาก) ══
+// ตามแบบ: พื้นน้ำตาลดำ ปื้นส้มขิงเปรอะทั่วตัว ขอบปื้นเป็นขน (ปอยลึกกว่าลายวัว — เปรอะแทรกกัน)
+//   หัว: แนวกลางหน้าผากเข้ม สองข้างหน้าผากส้ม · ปาก-คางส้มอ่อน · แก้มซ้ายส้ม ขวาเปรอะ · อกส้มอ่อน (ผ้ากันเปื้อนนุ่ม) · หางปล้องส้ม ปลายเข้ม
+//   pal.patchOver 'rim' (ปื้นส้มทาหลังสนามไล่สี — พื้นดำมีจุดสว่างกลางตัวไม่ทำส้มขุ่น · ยังเข้มลงตามขอบตัวด้วยเงาพ่น)
+//   ปื้นใหญ่ขอบขน + ปอยขนรี (streaks) โปรยคร่อมขอบปื้น: ส้มบนดำ และดำ ('d') แทรกบนส้ม → สองสีแทรกซึมกัน ไม่เป็นก้อนลายพราง
+/**
+ * ปอยขนเปรอะ: ปื้นรีเล็ก ๆ ยาวตามแนวขน (ตั้งเกือบตรง ปลายล่างเรียวแหลม) โปรยในวงรี [cx, cy, rx, ry] จำนวน n
+ * คงที่ทุกเฟรม (hash) · only = ทาเฉพาะชิ้นนั้น (ปอยเล็กไม่ต้องคร่อมรอยต่อชิ้น — ลดงานดัดลายต่อเฟรม) · size = ขนาดปอย
+ */
+function streaks(cx, cy, rx, ry, n, k, seed, only = null, size = 1) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const h = (j) => hash(seed * 17.3 + i * 5.3 + j * 1.7);
+    const a = h(1) * TAU, r = Math.sqrt(h(2));
+    const x = cx + Math.cos(a) * rx * r, y = cy + Math.sin(a) * ry * r;
+    const w = (5 + h(3) * 7) * size, L = (13 + h(4) * 15) * size, tilt = (h(5) - 0.5) * 0.7;
+    const pts = [];
+    for (let j = 0; j < 10; j++) {
+      const t = (j / 10) * TAU, s = Math.sin(t);
+      const ex = Math.cos(t) * w * (s > 0 ? 1 - 0.55 * s : 1), ey = s * L;
+      pts.push([x + ex * Math.cos(tilt) - ey * Math.sin(tilt), y + ex * Math.sin(tilt) + ey * Math.cos(tilt)]);
+    }
+    const it = [k, furEdge(pts, 1.6, 7, seed * 3 + i)];
+    if (only) it.only = only;
+    out.push(...softEdge([it], 1.5, 0.36));
+  }
+  return out;
+}
+/**
+ * ขอบฟุ้ง: ใต้ปื้นแต่ละปื้นวางสำเนาขยายจากกลางปื้น (k เท่า) สีเดียวกันแบบจาง (a) — ขอบสองสีกลืนกันนุ่ม ๆ แบบขนเปรอะจริง
+ * ไม่ใช่ขอบคมเหมือนกระดาษฉีก (ปื้นสีเรียบในชั้น patchOver ไม่ได้ผ่านการพ่นเงาให้ขอบนุ่ม)
+ */
+function softEdge(list, k, a) {
+  return list.flatMap((it) => {
+    if (!Array.isArray(it)) return [it];
+    const pts = it[1], cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    const halo = keepTags(it, [it[0], pts.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]), a]);
+    return [halo, it];
+  });
+}
+const TORTIE = (() => {
+  const big = (list, seed) => softEdge(furList(list, 4.2, 10, seed), 1.1, 0.42);
+  return {
+    o: '#C9692A',   // ส้มขิง
+    y: '#DE9A55',   // ส้มอ่อน (ปาก-คาง อก)
+    d: '#2C2220',   // สีพื้น — ปอยดำแทรกบนปื้นส้ม
+    darkTip: true,
+    parts: {
+      head: [
+        ...big([
+          ['o', [[176, 128], [210, 108], [252, 110], [272, 132], [262, 164], [242, 192], [222, 198], [204, 180], [188, 158]]],   // หน้าผากซ้าย
+          ['o', [[336, 120], [374, 110], [418, 126], [442, 160], [436, 194], [406, 204], [376, 194], [352, 176], [336, 150]]],   // หน้าผากขวา
+          ['o', [[132, 268], [158, 262], [182, 288], [186, 324], [170, 348], [148, 342], [134, 314]]],                         // แก้มซ้าย
+        ], 300),
+        ...big(frontOnly([['y', [[258, 326], [282, 318], [300, 322], [318, 318], [342, 326], [350, 348], [336, 372], [314, 384], [300, 386], [286, 384], [264, 372], [250, 348]]]]), 310),   // ปาก-คาง (หน้าเท่านั้น)
+        ...streaks(224, 210, 40, 30, 7, 'o', 1),            // ใต้หน้าผากซ้ายไหลลงหาตา
+        ...streaks(206, 150, 34, 28, 5, 'd', 2),            // ปอยดำแทรกบนหน้าผากซ้าย
+        ...streaks(392, 160, 40, 32, 5, 'd', 3),            // ปอยดำแทรกบนหน้าผากขวา
+        ...streaks(380, 214, 44, 22, 5, 'o', 4),            // ขอบล่างหน้าผากขวาแตกเป็นปอย
+        ...streaks(450, 262, 20, 64, 8, 'o', 5),            // ขมับ-แก้มขวาเปรอะ
+        ...streaks(300, 128, 18, 22, 3, 'o', 6, null, 0.8), // กลางหน้าผากแซมส้มนิด ๆ
+        ...streaks(158, 312, 22, 36, 4, 'd', 7),            // ปอยดำแทรกแก้มซ้าย
+        ...frontOnly(streaks(300, 372, 62, 18, 7, 'o', 8)), // รอบปาก-คางเปรอะ (หน้าเท่านั้น)
+      ],
+      'ear-left': [],
+      'ear-right': [],
+    },
+    // ตัว+แขน+ขา: ปื้นใหญ่ใช้แผ่นเดียวกันทุกชิ้น (ต่อเนื่องข้ามรอยต่อ) · ปอยเล็กแยกตามชิ้น (only)
+    body: [
+      ...big(frontOnly([['y', [[276, 404], [300, 398], [324, 404], [330, 430], [320, 462], [300, 478], [280, 462], [270, 430]]]]), 390),   // อก (หน้าเท่านั้น)
+      ...big([
+        ['o', [[192, 404], [230, 398], [254, 416], [250, 450], [224, 464], [198, 452], [184, 428]]],               // ไหล่ซ้าย
+        ['o', [[196, 488], [230, 478], [258, 496], [258, 532], [238, 556], [206, 552], [190, 522]]],               // ท้องซ้าย
+        ['o', [[358, 496], [392, 484], [420, 498], [424, 540], [400, 562], [372, 554], [354, 528]]],               // ข้างตัวขวา
+        ['o', [[366, 568], [400, 562], [420, 582], [414, 612], [388, 620], [368, 600]]],                           // ขาขวา
+      ], 400),
+      ...frontOnly(streaks(300, 446, 48, 40, 7, 'o', 10, 'torso')),
+      ...streaks(222, 432, 32, 28, 5, 'd', 11, 'torso'),
+      ...streaks(258, 522, 46, 40, 8, 'o', 12, 'torso'),
+      ...streaks(378, 466, 38, 36, 7, 'o', 13, 'torso'),
+      ...streaks(390, 522, 28, 34, 5, 'd', 14, 'torso'),
+      ...streaks(300, 562, 52, 26, 6, 'o', 15, 'torso'),
+      ...streaks(150, 456, 40, 24, 7, 'o', 16, 'arm-left'),
+      ...streaks(450, 456, 40, 24, 7, 'o', 17, 'arm-right'),
+      ...streaks(216, 598, 30, 28, 6, 'o', 18, 'leg-left'),
+      ...streaks(392, 594, 26, 28, 4, 'd', 19, 'leg-right'),
+    ],
+    bodyParts: ['torso', 'arm-left', 'arm-right', 'leg-left', 'leg-right'],
+    // ตัวนั่ง (SIT2) · นั่งเกาพุง (SIT.torso) · ต้นขาหลัง · ก้อนหมอบ — ปื้นใหญ่ + ปอย
+    sit: [
+      ...big([
+        ['y', [[274, 462], [300, 456], [326, 462], [330, 496], [300, 514], [270, 496]]],
+        ['o', [[150, 500], [196, 488], [220, 520], [206, 566], [168, 574], [146, 540]]],
+        ['o', [[404, 520], [446, 512], [464, 560], [450, 600], [416, 596], [400, 560]]],
+      ], 500),
+      ...streaks(260, 560, 60, 40, 8, 'o', 20),
+      ...streaks(380, 490, 40, 30, 5, 'o', 21),
+      ...streaks(180, 530, 30, 34, 4, 'd', 22),
+    ],
+    sitOld: [
+      ...big([
+        ['y', [[268, 440], [300, 432], [332, 440], [326, 474], [300, 488], [274, 476]]],
+        ['o', [[160, 470], [204, 460], [226, 490], [210, 526], [172, 530], [154, 500]]],
+        ['o', [[380, 500], [430, 490], [448, 540], [426, 580], [392, 570]]],
+      ], 600),
+      ...streaks(260, 540, 50, 34, 6, 'o', 23),
+      ...streaks(410, 530, 26, 30, 4, 'd', 24),
+    ],
+    haunch: [...big([['o', [[110, 570], [170, 560], [200, 590], [180, 630], [124, 632]]]], 700), ...streaks(150, 600, 40, 30, 4, 'd', 25)],
+    loaf: [
+      ...big([
+        ['o', [[120, 560], [176, 540], [204, 566], [190, 610], [140, 618]]],
+        ['o', [[400, 540], [450, 556], [462, 606], [424, 626], [400, 596]]],
+      ], 800),
+      ...streaks(280, 570, 60, 30, 7, 'o', 26),
+      ...streaks(160, 580, 30, 26, 4, 'd', 27),
+    ],
+    // แขนท่อ/หาง: ปื้นนุ่มเหลื่อมกันตามท่อ (calicoBlobs) — ไม่ใช่ปล้องขอบคม (ผู้ใช้ทัก 21 ต.ค.: แขนเป็นลายเสือ สีเพี้ยน)
+    //   ปื้นนุ่มจาง ๆ เป็นพื้นให้สีกลืน + ปอยขน (ส้ม ส้มอ่อน และดำแทรก) เป็นเนื้อลายเดียวกับลำตัว
+    arm: [],
+    armBlobs: [[0.22, 0.25, 0.9, 'o', 0.55], [0.55, -0.3, 0.85, 'o', 0.5], [0.84, 0.2, 0.7, 'o', 0.45]],
+    armStreaks: tubeStreaks(10, 41, ['o', 'o', 'd', 'y', 'o', 'd', 'o', 'o', 'd', 'o']),
+    tail: [],
+    tailBlobs: [[0.12, 0.2, 1, 'o', 0.5], [0.4, -0.25, 0.95, 'o', 0.45], [0.64, 0.25, 0.85, 'o', 0.4]],   // ปลายหางเข้ม
+    tailStreaks: tubeStreaks(12, 53, ['o', 'd', 'o', 'y', 'o', 'd', 'o', 'o'], 0.02, 0.8),
+  };
+})();
 /** เส้นโค้งปิดเรียบผ่านจุดทุกจุด (Catmull-Rom → Bézier) — คำสั่งรูปแบบเดียวกับไฟล์ออกแบบ (ดัดด้วย deformOps ได้) */
 function smoothCmds(pts) {
   const n = pts.length, at = (i) => pts[(i + n) % n];
@@ -13401,7 +13632,9 @@ function calicoParts(M, cal, back) {
   for (const id of Object.keys(M.parts)) {
     // หัว/หู: ลายของชิ้นนั้น · ตัว แขน ขา: แผ่นลายตัวทั้งแผ่น (ต่อเนื่องข้ามรอยต่อ)
     const ownId = back ? swapLR(id) : id;
-    const list = cal.bodyParts.includes(id) ? cal.body.filter((o) => !o.only || o.only === ownId) : back && cal.backSkip?.includes(id) ? null : cal.parts[ownId];
+    // front = ปื้นที่มีแต่ด้านหน้า (ปาก-คาง อกของสีเปรอะ) — มองหลังไม่กลับซ้ายขวามาโผล่ที่ท้ายทอย/กลางหลัง
+    const list0 = cal.bodyParts.includes(id) ? cal.body.filter((o) => !o.only || o.only === ownId) : back && cal.backSkip?.includes(id) ? null : cal.parts[ownId];
+    const list = list0 && back ? list0.filter((o) => !o.front) : list0;
     if (!list) continue;
     const ops = calicoOps(list, cal, back);
     const p = M.parts[id];
@@ -13426,7 +13659,8 @@ function calicoParts(M, cal, back) {
         if (/^ear-inline2_/.test(o.id || '')) det.push(...alt);
         det.push(o);
       }
-      if (!sfx) det = [...ops, ...p.det];   // หูด้านหลัง (ไม่มีชมพูในหู): ปื้นทั้งใบ
+      // หูด้านหลัง (ไม่มีชมพูในหู): ปื้นทั้งใบ · earOver (ลายวัว) = ปื้นทับเงาปลายหู (เงาสีอ่อนของพื้นขาวทาทับปื้นดำแล้วเป็นหูเทา)
+      if (!sfx) det = cal.earOver ? [...p.det, ...ops] : [...ops, ...p.det];
     } else det = [...ops, ...p.det];
     parts[id] = { ...p, det };
   }
@@ -13466,10 +13700,96 @@ function calicoBand(ctx, G, ranges, cal) {
 const calicoTail = (ctx, G, cal) => {
   // หางสีเดียวทั้งเส้น (วิเชียรมาศ): ทาเต็มกรอบ — ชั้นของหางตัดให้ในเนื้อหางเอง
   if (cal.tailAll) return;   // หางสีเดียว (วิเชียรมาศ): ทาในชั้นลวดลายแทน (tailDetails) — ชั้นนี้โดนไล่สีขนทาซีด
+  if (cal.tailBlobs || cal.tailStreaks) {   // สีเปรอะ: ปื้นนุ่ม + ปอยขนตามหาง (ไม่ใช่ปล้อง)
+    if (cal.tailBlobs) calicoBlobs(ctx, G, cal.tailBlobs, cal);
+    if (cal.tailStreaks) calicoStreaks(ctx, G, cal.tailStreaks, cal);
+    return;
+  }
   calicoBand(ctx, G, cal.tail, cal);
 };
-/** แขนแบบท่อ: เทาโคนไหล่ ส้มช่วงกลาง (สัดส่วนตามความยาวท่อ) */
-const calicoArm = (ctx, G, cal) => (cal.armTip ? pointsTip(ctx, G, cal) : calicoBand(ctx, G, cal.arm.map(([u0, u1, k]) => [u0 * G.N, u1 * G.N, k]), cal));
+/** แขนแบบท่อ: เทาโคนไหล่ ส้มช่วงกลาง (สัดส่วนตามความยาวท่อ) · สีเปรอะ: ปื้นนุ่ม + ปอยขนตามแขน (armBlobs / armStreaks) */
+const calicoArm = (ctx, G, cal) => {
+  if (cal.armTip) return pointsTip(ctx, G, cal);
+  if (cal.armBlobs || cal.armStreaks) {
+    if (cal.armBlobs) calicoBlobs(ctx, G, cal.armBlobs, cal);
+    if (cal.armStreaks) calicoStreaks(ctx, G, cal.armStreaks, cal);
+    return;
+  }
+  calicoBand(ctx, G, cal.arm.map(([u0, u1, k]) => [u0 * G.N, u1 * G.N, k]), cal);
+};
+/** จุดบนท่อ ณ สัดส่วน uf (0 โคน → 1 ปลาย) เลื่อนขวางท่อ off (−1..1 ของครึ่งความกว้าง): { x, y, ang ทิศท่อ, hw ครึ่งความกว้าง } */
+function tubePoint(G, uf, off) {
+  const { pts, half, N } = G;
+  const u = uf * N, i = Math.max(0, Math.min(N - 1, Math.floor(u))), f = Math.max(0, Math.min(1, u - i));
+  const p = pts[i], q = pts[Math.min(N, i + 1)];
+  const ang = p.a + (q.a - p.a) * f;
+  const hw = half(i) + (half(Math.min(N, i + 1)) - half(i)) * f;
+  return { x: p.x + (q.x - p.x) * f - Math.sin(ang) * off * hw, y: p.y + (q.y - p.y) * f + Math.cos(ang) * off * hw, ang, hw };
+}
+/**
+ * ปอยขนตามท่อ (สีเปรอะ — ผู้ใช้ 21 ต.ค.: แขนต้องเปรอะเหมือนตัว ไม่ใช่ท่อส้มเรียบ): ปื้นรีขอบขนยาวไปตามท่อ (ขนไหลตามแขน/หาง)
+ * ขนาดตามความกว้างท่อ ณ จุดนั้น + ขอบฟุ้ง (สำเนาขยายจาง) — เนื้อลายเดียวกับปอยบนลำตัว (streaks)
+ * list = [[u, off, สี, ความเข้ม, ยาว (× ครึ่งกว้าง), กว้าง, seed]] — รูปทรงทำครั้งเดียวต่อปอย (เก็บในรายการ)
+ */
+function calicoStreaks(ctx, G, list, cal) {
+  for (const it of list) {
+    const [uf, off, k, a, L, W, seed] = it;
+    if (!it.path) {
+      const pts = [];
+      for (let j = 0; j < 12; j++) { const t = (j / 12) * TAU; pts.push([Math.cos(t) * L * 0.5 * 40, Math.sin(t) * W * 0.5 * 40]); }
+      it.path = smoothLoop(furEdge(pts, 2.2, 6, seed).map(([x, y]) => [x / 40, y / 40]));
+    }
+    const q = tubePoint(G, uf, off);
+    ctx.save();
+    ctx.translate(q.x, q.y);
+    ctx.rotate(q.ang);
+    ctx.scale(q.hw, q.hw);
+    // ขอบฟุ้งสองชั้น (กว้างจาง → แคบเข้มขึ้น) — ชั้นเดียวเห็นเป็นขั้นบันได
+    ctx.fillStyle = hexA(cal[k], a * 0.18);
+    ctx.save(); ctx.scale(1.4, 1.7); ctx.fill(it.path); ctx.restore();
+    ctx.fillStyle = hexA(cal[k], a * 0.3);
+    ctx.save(); ctx.scale(1.18, 1.32); ctx.fill(it.path); ctx.restore();
+    ctx.fillStyle = hexA(cal[k], a);
+    ctx.fill(it.path);
+    ctx.restore();
+  }
+}
+/** ชุดปอยขนตามท่อแบบโปรยเอง (คงที่ — hash): n ปอยเรียงตามท่อ สีวนตาม kinds */
+function tubeStreaks(n, seed, kinds, u0 = 0.04, u1 = 0.96) {
+  return Array.from({ length: n }, (_, i) => {
+    const h = (j) => hash(seed * 11.7 + i * 3.1 + j * 1.3);
+    return [u0 + ((i + 0.2 + h(1) * 0.6) / n) * (u1 - u0), (h(2) - 0.5) * 1.3, kinds[i % kinds.length], 0.9, 1.1 + h(3) * 0.8, 0.34 + h(4) * 0.24, seed + i];
+  });
+}
+/** สี #rrggbb → rgba ความเข้ม a */
+const hexA = (h, a) => `rgba(${[1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(',')},${a})`;
+/**
+ * ปื้นนุ่มตามท่อ (สีเปรอะ — แขนท่อ/หาง · ผู้ใช้ 21 ต.ค. "สีตรงแขนเพี้ยนหมด"): ปล้องขอบคมสลับส้ม-ดำบนแขนท่อดูเป็นลายเสือ
+ * → วงรีไล่สีจางที่ขอบ (ไม่มีขอบคม) วางเหลื่อมกันตามความยาวท่อ ยาวไปตามท่อ — สีกลืนกับขนรอบ ๆ แบบปื้นบนตัว
+ * blobs = [[u 0..1 ตามท่อ (โคน → ปลาย), off −1..1 ขวางท่อ, r เท่าของครึ่งความกว้างท่อ, สี, ความเข้ม?]] — ตัดในเนื้อท่อโดยชั้นของท่อเอง
+ */
+function calicoBlobs(ctx, G, blobs, cal) {
+  const { pts, half, N } = G;
+  for (const [uf, off, r, k, a = 1] of blobs) {
+    const u = uf * N, i = Math.max(0, Math.min(N - 1, Math.floor(u))), f = Math.max(0, Math.min(1, u - i));
+    const p = pts[i], q = pts[Math.min(N, i + 1)];
+    const ang = p.a + (q.a - p.a) * f;
+    const hw = half(i) + (half(Math.min(N, i + 1)) - half(i)) * f;
+    const nx = -Math.sin(ang), ny = Math.cos(ang);
+    const R = r * hw;
+    ctx.save();
+    ctx.translate(p.x + (q.x - p.x) * f + nx * off * hw, p.y + (q.y - p.y) * f + ny * off * hw);
+    ctx.rotate(ang);
+    ctx.scale(1.6, 1);   // ยาวไปตามท่อ
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+    g.addColorStop(0, hexA(cal[k], a));
+    g.addColorStop(0.5, hexA(cal[k], a * 0.85));
+    g.addColorStop(1, hexA(cal[k], 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+}
 /** แต้มสีปลายท่อ (แขน/ขา วิเชียรมาศ): วงไล่สีที่ปลายท่อ รัศมีตามความยาวท่อ — เข้มที่อุ้งเท้า จางลงไปทางไหล่ */
 function pointsTip(ctx, G, cal) {
   const { pts, N } = G, q = pts[N], q0 = pts[0];
@@ -14008,6 +14328,194 @@ function drawKoratLashes(c, side, sq = 1, cy = null, ink = '#2A1E1C') {
   lid.closePath();
   c.fill(lid);
 }
+// ══ ตาแมวสีเปรอะ (ตัวผู้ · ผู้ใช้ 21 ต.ค. "เปลี่ยนตาได้เลย อยากให้น้องแตกต่างกัน") — ตาเฮเซลสองชั้น ══
+// ม่านตาเต็มดวง: วงในรอบรูม่านตาทองแดง → อำพัน → เขียวอมเหลือง → ขอบนอกเขียวมะกอกเข้ม (เข้ากับขนส้ม-ดำ — ตัวอื่นไม่มีตาสองชั้น)
+// เส้นใยม่านตาเป็นรัศมีรอบรูม่านตา (สว่าง/เข้มสลับ) · รูม่านตารีตั้งนุ่ม ๆ (ตาแมวซน — ตัวอื่นกลมหมด) · ประกายวงใหญ่บนซ้ายวงเดียว (ตัวผู้)
+const HAZEL_EYE = {
+  iris: ['#B4561C', '#DE9632', '#CDB540', '#86A63C', '#476A2C'], fiber: 'rgba(255,222,150,.38)', fiberD: 'rgba(72,40,12,.3)',
+  top: 'rgba(28,18,8,.5)', glow: 'rgba(255,236,170,.3)', pupilIn: '#2C1A0E', pupilOut: '#070403',
+  // สำหรับตาตอนหันข้าง (sideEye ใช้ชุดสีแบบตาแบ๊ว)
+  rimTop: '#E2C25E', rimBot: '#7FA23A', coreIn: '#2C1A0E', coreOut: '#070403',
+};
+function drawHazelEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidded = false, col = HAZEL_EYE, starDots = false, starOne = false } = {}) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, d = side === 'left' ? 1 : -1;   // d = ทิศไปหาจมูก
+  c.save();
+  c.clip(white);
+  const ix = W.x + d * 2 + lx * 0.9, iy = W.y - 1 + ly * 0.9;
+  // ม่านตา: ศูนย์กลางตามรูม่านตา (กลอกตาแล้ววงทองแดงตามไป) ไล่ออกถึงขอบเขียวมะกอก
+  const g = c.createRadialGradient(ix, iy, R * 0.16, ix, iy, R + 4);
+  [0, 0.34, 0.54, 0.78, 1].forEach((o, i) => g.addColorStop(o, col.iris[i]));
+  c.fillStyle = g;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // เส้นใยม่านตา: ขีดรัศมีบาง ๆ สลับสว่าง/เข้ม จากขอบรูม่านตาออกไปกลางม่านตา
+  c.lineCap = 'round';
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * TAU + 0.13, r0 = R * 0.36, r1 = R * (0.6 + 0.2 * hash(i + 931));
+    c.strokeStyle = i % 2 ? col.fiber : col.fiberD;
+    c.lineWidth = i % 2 ? 2.2 : 1.6;
+    c.beginPath(); c.moveTo(ix + Math.cos(a) * r0, iy + Math.sin(a) * r0); c.lineTo(ix + Math.cos(a) * r1, iy + Math.sin(a) * r1); c.stroke();
+  }
+  // เงาเปลือกตาบน (ตาลึก ครึ่งล่างสว่าง)
+  const sh = c.createLinearGradient(0, W.y - R, 0, W.y + 4);
+  sh.addColorStop(0, col.top);
+  sh.addColorStop(1, 'rgba(28,18,8,0)');
+  c.fillStyle = sh;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, R + 10);
+  // รูม่านตารีตั้งนุ่ม ๆ
+  const prx = R * 0.34, pry = R * 0.5;
+  const pg = c.createRadialGradient(ix - prx * 0.2, iy - pry * 0.25, 1, ix, iy, pry);
+  pg.addColorStop(0, col.pupilIn);
+  pg.addColorStop(1, col.pupilOut);
+  c.fillStyle = pg;
+  c.beginPath(); c.ellipse(ix, iy, prx, pry, 0, 0, TAU); c.fill();
+  // แสงสะท้อนนุ่มครึ่งล่าง (ตาใส)
+  const gl = c.createRadialGradient(W.x, W.y + R * 0.62, 0, W.x, W.y + R * 0.62, R * 0.7);
+  gl.addColorStop(0, col.glow);
+  gl.addColorStop(1, 'rgba(255,236,170,0)');
+  c.fillStyle = gl;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // ประกาย: วงใหญ่บนซ้าย · จุดเล็กล่างขวาเฉพาะตัวเมีย (กฎผู้ใช้) — ชุดที่มี starEyes: ดาวหนึ่งดวงแบบตัวผู้ตัวอื่น
+  const ir = R * 0.7;
+  const dot = eyeDots(c, ix, iy, ir, starDots, t, starOne);
+  if (lidded) { dot(-0.32, 0.1, 0.24, true); if (starDots || !starOne) dot(0.46, 0.44, 0.1); }
+  else { dot(-0.3, -0.4, 0.3, true); if (starDots || !starOne) dot(0.5, 0.3, 0.11); }
+  if (sparkle > 0 && !starDots) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, ix + 16, iy - 14, 12 * k);
+    if (sparkle > 0.6) star4(c, ix - 8, iy + 18, 6 * k);
+  }
+  c.restore();
+}
+/**
+ * เปลือกตาของตาสีเปรอะ (ตัวผู้ ไม่มีขนตา): เส้นเปลือกตาบนหนาขึ้นไปทางหางตา ปลายมนยื่นเลยหางตานิด
+ * + ขีดใต้หางตาสั้น ๆ (เส้นขอบตาล่างด้านนอก — ตาดูคมแบบหนุ่มซน · ต่างจากโคราช/ศุภลักษณ์)
+ * sq/cy = ตาหรี่ (ฐานเกาะขอบตาที่หรี่) เหมือน drawRoundLashes
+ */
+function drawHazelLashes(c, side, sq = 1, cy = null, ink = '#1E120C') {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const yc = cy ?? W.y;
+  const P = (a, r) => [W.x + o * Math.cos(a) * r, yc + (W.y + Math.sin(a) * r - yc) * sq];
+  const N = (a) => { const nx = o * Math.cos(a) * sq, ny = Math.sin(a), l = Math.hypot(nx, ny) || 1; return [nx / l, ny / l]; };
+  c.fillStyle = ink;
+  // เปลือกตาบน: หัวตา (a −2.75) → หางตา (a 0.02) หนา 2 → 9 แล้วปลายมนยื่นออกไป
+  const a0 = -2.75, a1 = 0.02, n = 40, lid = new Path2D(), out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * (i / n), u = i / n;
+    const th = (2 + 7 * Math.pow(u, 1.25)) * Math.min(1, u * 5 + 0.3);
+    const b = P(a, R - 1.5), nn = N(a);
+    if (!i) lid.moveTo(...b); else lid.lineTo(...b);
+    out.push([b[0] + nn[0] * th, b[1] + nn[1] * th]);
+  }
+  const e = P(a1, R - 1.5), et = out[n];
+  lid.quadraticCurveTo(W.x + o * (R + 9), yc + (W.y + 3 - yc) * sq, (e[0] + et[0]) / 2 + o * 7, (e[1] + et[1]) / 2);
+  lid.quadraticCurveTo(W.x + o * (R + 9), yc + (W.y - 9 - yc) * sq, ...et);
+  for (let i = n - 1; i >= 0; i--) lid.lineTo(...out[i]);
+  lid.closePath();
+  c.fill(lid);
+  // ขีดใต้หางตา: เส้นโค้งตามขอบตาล่างด้านนอก (a 0.32 → 0.95) เรียวสองปลาย
+  const b0 = 0.32, b1 = 0.95, m = 16, low = new Path2D(), lo = [];
+  for (let i = 0; i <= m; i++) {
+    const a = b0 + (b1 - b0) * (i / m), th = 3.2 * Math.sin(Math.PI * (i / m));
+    const b = P(a, R + 1), nn = N(a);
+    if (!i) low.moveTo(...b); else low.lineTo(...b);
+    lo.push([b[0] + nn[0] * th, b[1] + nn[1] * th]);
+  }
+  for (let i = m; i >= 0; i--) low.lineTo(...lo[i]);
+  low.closePath();
+  c.fill(low);
+}
+// ══ ตาแมวลายวัว (ตัวเมีย · ผู้ใช้ 21 ต.ค. "เปลี่ยนตาได้เลย") — ตาตุ๊กตา ══
+// ม่านตาเขียวมะนาวอมเหลือง (ตามแบบ) เล็กกว่าดวงตานิด เยื้องขึ้น → เห็นตาขาวเป็นเสี้ยวที่ขอบล่าง (ตัวอื่นไม่มีตาขาว)
+// ไม่มีวงขอบม่านตาเข้ม (ผู้ใช้สั่งเอาออก 21 ต.ค.) · รูม่านตากลมโต · ประกาย: วงใหญ่บนซ้าย + จุดเล็กล่างขวา (ตัวเมีย)
+const DOLL_EYE = {
+  white: '#FFFFFF', iris: ['#3C4614', '#8E9E26', '#D0D550', '#F2EE9C'], glow: 'rgba(250,246,176,.45)',
+  top: 'rgba(30,34,10,.42)', pupilIn: '#20200C', pupilOut: '#060602',
+  // สำหรับตาตอนหันข้าง (sideEye ใช้ชุดสีแบบตาแบ๊ว)
+  rimTop: '#F2EE9C', rimBot: '#8E9E26', coreIn: '#20200C', coreOut: '#060602',
+};
+function drawDollEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidded = false, col = DOLL_EYE, starDots = false, starOne = false } = {}) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, d = side === 'left' ? 1 : -1;
+  c.save();
+  c.clip(white);
+  c.fillStyle = col.white;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // ม่านตา: เยื้องขึ้นและเข้าหาจมูกนิด (เสี้ยวขาวล่างด้านนอก) · เลื่อนตามสายตา
+  const ix = W.x + d * 2.5 + lx * 0.9, iy = W.y - 6 + ly * 0.9, ir = R - 6;
+  const g = c.createRadialGradient(ix, iy, ir * 0.3, ix, iy, ir);
+  [0, 0.42, 0.78, 1].forEach((o, i) => g.addColorStop(o, col.iris[i]));
+  c.fillStyle = g;
+  c.beginPath(); c.arc(ix, iy, ir, 0, TAU); c.fill();
+  // (ไม่มีวงขอบม่านตาเข้ม — ผู้ใช้ 21 ต.ค. "ขอบตาสีเขียวเข้มที่คลุมสีเขียวในตาอยู่ ให้เอาออก")
+  // เงาเปลือกตาบน
+  const sh = c.createLinearGradient(0, W.y - R, 0, W.y);
+  sh.addColorStop(0, col.top);
+  sh.addColorStop(1, 'rgba(30,34,10,0)');
+  c.fillStyle = sh;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, R + 6);
+  // รูม่านตากลมโต (ตาขี้อ้อน)
+  const pr = ir * 0.5;
+  const pg = c.createRadialGradient(ix - pr * 0.25, iy - pr * 0.3, pr * 0.1, ix, iy, pr);
+  pg.addColorStop(0, col.pupilIn);
+  pg.addColorStop(1, col.pupilOut);
+  c.fillStyle = pg;
+  c.beginPath(); c.arc(ix, iy, pr, 0, TAU); c.fill();
+  // แสงสะท้อนนุ่มครึ่งล่างของม่านตา
+  const gl = c.createRadialGradient(ix, iy + ir * 0.55, 0, ix, iy + ir * 0.55, ir * 0.7);
+  gl.addColorStop(0, col.glow);
+  gl.addColorStop(1, 'rgba(250,246,176,0)');
+  c.fillStyle = gl;
+  c.beginPath(); c.arc(ix, iy, ir - 4, 0, TAU); c.fill();
+  // ประกาย: ตัวเมีย = วงใหญ่บนซ้าย + จุดเล็กล่างขวา (กฎผู้ใช้) · ชุด starEyes: จุดเล็กเป็นดาว
+  const dot = eyeDots(c, ix, iy, ir, starDots, t, starOne);
+  if (lidded) { dot(-0.3, 0.14, 0.22, true); if (starDots || !starOne) dot(0.36, 0.44, 0.1); }
+  else { dot(-0.32, -0.34, 0.28, true); if (starDots || !starOne) dot(0.38, 0.38, 0.11); }
+  if (sparkle > 0 && !starDots) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, ix + 16, iy - 14, 12 * k);
+    if (sparkle > 0.6) star4(c, ix - 8, iy + 18, 6 * k);
+  }
+  c.restore();
+}
+/**
+ * ขนตาตุ๊กตา (แมวลายวัว): ไลเนอร์บนบาง หนาขึ้นนิดทางหางตา + ขนตาสั้นห้าเส้นเรียงทั้งแนวเปลือกตา (หัวตาสั้น → หางตายาว งอนออกนอกหน้า)
+ * + ขนตาล่างสั้นสามเส้นที่ขอบล่างด้านนอก — ขนตาเยอะแต่สั้นแบบตาตุ๊กตา (ตัวอื่นขนตายาวไม่กี่เส้น)
+ * sq/cy = ตาหรี่ (ฐานเกาะขอบตาที่หรี่) เหมือน drawRoundLashes
+ */
+function drawDollLashes(c, side, sq = 1, cy = null, ink = '#2A1E1C') {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const yc = cy ?? W.y;
+  const P = (a, r) => [W.x + o * Math.cos(a) * r, yc + (W.y + Math.sin(a) * r - yc) * sq];
+  const N = (a) => { const nx = o * Math.cos(a) * sq, ny = Math.sin(a), l = Math.hypot(nx, ny) || 1; return [nx / l, ny / l]; };
+  c.fillStyle = ink;
+  // ไลเนอร์บน: หัวตา (a −2.7) → หางตา (a 0.1) หนา 1.8 → 6.4 (ฐานแน่นให้ขนตาเกาะ ไม่ลอยเป็นหนามบนขนขาว)
+  const a0 = -2.7, a1 = 0.1, n = 40, lid = new Path2D(), out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * (i / n), u = i / n;
+    const th = (1.8 + 4.6 * Math.pow(u, 1.1)) * Math.min(1, u * 5 + 0.3);
+    const b = P(a, R - 1.5), nn = N(a);
+    if (!i) lid.moveTo(...b); else lid.lineTo(...b);
+    out.push([b[0] + nn[0] * th, b[1] + nn[1] * th]);
+  }
+  for (let i = n; i >= 0; i--) lid.lineTo(...out[i]);
+  lid.closePath();
+  c.fill(lid);
+  // ขนตาหนึ่งเส้น: ฐานกว้างฝังในไลเนอร์ → ตั้งฉากขอบตา → ปลายงอนออกนอกหน้า
+  const lash = (a, len, w, curl) => {
+    const b = P(a, R + 2), nn = N(a), sd = [-nn[1], nn[0]];
+    const k = [b[0] + nn[0] * len * 0.7, b[1] + nn[1] * len * 0.7];
+    const tip = [k[0] + o * len * 0.45 * curl + nn[0] * len * 0.25, k[1] + nn[1] * len * 0.25];
+    const q = new Path2D();
+    q.moveTo(b[0] + sd[0] * w - nn[0] * 3, b[1] + sd[1] * w - nn[1] * 3);
+    q.quadraticCurveTo(k[0] + sd[0] * w * 0.55, k[1] + sd[1] * w * 0.55, ...tip);
+    q.quadraticCurveTo(k[0] - sd[0] * w * 0.45, k[1] - sd[1] * w * 0.45, b[0] - sd[0] * w - nn[0] * 3, b[1] - sd[1] * w - nn[1] * 3);
+    q.closePath();
+    c.fill(q);
+  };
+  // บน: [มุมบนขอบตา, ยาว, ครึ่งกว้างฐาน, แรงงอน] — ห้าเส้นสั้นเรียงชิดจากหางตาถึงกลางเปลือกตา (หางตายาวสุด)
+  for (const [a, len, w, curl] of [[-0.14, 14, 3.6, 1], [-0.46, 13, 3.4, 0.85], [-0.78, 12, 3.2, 0.7], [-1.1, 10, 3, 0.55], [-1.42, 8, 2.6, 0.4]]) lash(a, len, w, curl);
+  // ล่าง: สั้นสองเส้นที่มุมล่างนอก ชี้ลง-ออกนอก
+  for (const [a, len, w] of [[0.4, 8, 2.5], [0.78, 7, 2.2]]) lash(a, len, w, 0.5);
+}
 /**
  * ตาหลับแปลงจากตาลืมของแต่ละตัว (ผู้ใช้ 21 ต.ค. เริ่มที่วิลาศ แล้วสั่ง "ทำแบบนี้ทุกสี เปลือกตาใครเปลือกตามัน")
  * เส้นเปลือกตาปิด = โค้งจากหัวตา (a) ถึงหางตา (b) ผ่านจุดดึง k · หนาตามเปลือกตาบนของตาลืมแบบนั้น (th(u): u 0 = หัวตา → 1 = หางตา)
@@ -14054,9 +14562,16 @@ function drawClosedLid(c, kind, L) {
   cap(p, top[0], bot[0], [-s0.tx, -s0.ty], thAt(0) / 2);
   p.closePath();
   c.save();
+  c.lineJoin = 'round';
+  // edge = ขอบสว่างรอบเส้นตาหลับ (ตาที่อยู่บนขนเข้ม — สีเปรอะ: เส้นดำกลืนกับขนจนมองไม่เห็นว่าหลับตา)
+  //   บนขนสีอ่อนขอบสีอ่อนกลืนหายเอง ไม่ต้องแยกข้าง · ปื้นดำบนพื้นขาว (ลายวัว) ใช้เส้นขาวแทน (inkOver ใน drawCat2)
+  if (L.edge) {
+    c.strokeStyle = L.edge;
+    c.lineWidth = 5;
+    c.stroke(p);
+  }
   c.fillStyle = L.ink;
   c.strokeStyle = L.ink;
-  c.lineJoin = 'round';
   c.lineWidth = 1.6;   // ขอบมน ไม่แตกเป็นหยัก
   c.fill(p);
   c.stroke(p);
@@ -14153,6 +14668,19 @@ function closedLidSpec(side, kind, s, female, pal) {
     // โคราช: เปลือกตาเส้นเข้มบาง หนาขึ้นค่อนหางตา ปลายมน · ตัวผู้ไม่มีขนตา
     ...base, ink: pal.closedInk || '#2A1E1C',
     th: (u) => (2.2 + 6.4 * Math.pow(u, 0.9)) * ramp(u) * D,
+  };
+  if (s?.eyeStyle === 'hazel') return {
+    // สีเปรอะ: เปลือกตาหนาไปทางหางตาแบบตาลืม ปลายมน · ตัวผู้ไม่มีขนตา · ขอบส้มอ่อนรอบเส้น (ขนเข้มรอบตา)
+    ...base, ink: pal.closedInk || '#1E120C', edge: 'rgba(240,190,130,.55)',
+    th: (u) => (2.2 + 7.4 * Math.pow(u, 1.25)) * ramp(u) * D,
+  };
+  if (s?.eyeStyle === 'doll') return {
+    // ลายวัว: ไลเนอร์บาง + ขนตาสั้นเรียงทั้งแนว (ตาตุ๊กตา) · ยิ้มหยี ∩ มีขนตาล่างสั้นด้วย
+    // ตาขวาอยู่บนปื้นดำ: ส่วนที่ทับปื้นวาดซ้ำเป็นเส้นขาว (inkOver ใน drawCat2) — ไม่ต้องมีขอบขาวรอบเส้นแล้ว
+    ...base, ink: pal.closedInk || '#2A1E1C',
+    th: (u) => (1.8 + 4.4 * Math.pow(u, 1.1)) * ramp(u) * D,
+    lashes: lashes([[0.92, 11, 2.5, 0.8], [0.76, 10, 2.4, 0.65], [0.6, 9, 2.2, 0.5], [0.44, 8, 2, 0.35], [0.28, 6, 1.8, 0.25]]),
+    lower: female ? [[0.84, 6, 1.7], [0.94, 5, 1.5]] : [],
   };
   if (s?.lashStyle === 'salid') return {
     // ลายสลิด: ไลเนอร์หนาไปหางตา + หางตวัดสั้น + ขนตาพัดสี่เส้น
@@ -14476,6 +15004,48 @@ export const CAT2_BREEDS = [
     cat: '#CEC5B9', line: '#4A2C1C', dark: '#6A6466', cream: '#F7EFE3', pink: '#F2AAA8', eye: '#3A3C1C', ink: '#4A2C1C',
     whisker: 'rgba(74,44,28,.85)', rain: ['#CEC5B9', '#6A6466', '#A9C64A'],
   },
+  {
+    // ผู้ใช้ส่งแบบ 21 ต.ค.: "ตัวผู้ แมวสีเปรอะ" (tortoiseshell — ปกติ 99% เป็นตัวเมีย ตัวผู้หายากมาก) · "เปลี่ยนตาได้เลย อยากให้น้องแตกต่างกัน"
+    //   พื้นน้ำตาลดำ ปื้นส้มขิงเปรอะทั่วตัว (TORTIE) · ปาก-คาง/อก ส้มอ่อน · หูในชมพู + ปอยขนส้มอ่อน · แก้มชมพู · จมูกน้ำตาลอมชมพู
+    //   ตาเฮเซลสองชั้น (drawHazelEye: ทองแดงรอบรูม่านตา → เขียวมะกอก · รูม่านตารีตั้ง) + เปลือกตาหนาปลายมน ขีดใต้หางตา (ตัวผู้ ไม่มีขนตา)
+    id: 'tortie', name: 'สีเปรอะ', note: 'แมวสีเปรอะ (ดำแซมส้ม) ตาเฮเซล · ตัวผู้ หายาก', sex: 'm', stripes: false,
+    pal: {
+      // cream/paw โปร่งใส (แบบโกนจา): ท่านั่ง/เกาพุง/เลียอุ้งเท้าไม่ทาวงครีมทับขนที่ไล่เงา · ชุดใช้ outfitCream เป็นผ้า
+      cat: '#2C2220', stripe: '#1A1210', shade: '#221817', cream: 'rgba(0,0,0,0)', outfitCream: '#FFF4EE',
+      line: '#2E1A12', ear: '#E9A39A', cheek: '#E99490', nose: '#8E4E40', noseGloss: true, mouth: '#24120C',
+      air: '#110A08',                          // พ่นเงาขอบดำอมน้ำตาล (ปื้นส้มเข้มลงตามขอบตัวด้วย — patchOver 'rim')
+      glow: '#4E3C36',                         // จุดสว่างกลางตัว/หน้า: ขนดำอมน้ำตาลวาวนิด ๆ
+      earIn: '#EDA59C', earEdge: '#C97B72', earFur: '#E8B07A',   // หูในชมพู + ปอยขนส้มอ่อน
+      paw: 'rgba(0,0,0,0)',
+      closedInk: '#140A06',
+      patchOver: 'rim',
+    },
+    eyeStyle: 'hazel', lashStyle: 'hazel', eyes: { left: HAZEL_EYE, right: HAZEL_EYE },
+    // marks = ปื้นส้ม (ระบบเดียวกับลายสลิด) · ไม่มีพุงแยกสี (อกส้มอ่อนเป็นปื้นแล้ว) · หางปล้องจากปื้น · solid = ขนเข้มไล่เงาทุกจุด (แบบโกนจา)
+    art: { marks: TORTIE, faceCream: false, noBelly: true, plainTail: true, earFur: true, solid: true },
+    cat: '#2C2220', line: '#2E1A12', dark: '#C9692A', cream: '#E3A05A', pink: '#E9A39A', eye: '#B4561C', ink: '#24120C',
+    whisker: 'rgba(46,26,18,.85)', rain: ['#2C2220', '#C9692A', '#E3A05A'],
+  },
+  {
+    // ผู้ใช้ส่งแบบ 21 ต.ค.: "ตัวเมีย สีแมวลายวัว" — พื้นขาว ปื้นดำแบบวัว (harlequin/bicolor ไม่ใช่ทักซิโด้) · "เปลี่ยนตาได้เลย"
+    //   ปื้นดำตามแบบ (COW) · หูในชมพู + ปอยขนขาว · แก้มชมพู · จมูกชมพู
+    //   ตาตุ๊กตา (drawDollEye: เขียวมะนาวอมเหลือง เสี้ยวตาขาวล่าง) + ขนตาสั้นเรียงทั้งแนว + ขนตาล่าง (ตัวเมีย)
+    id: 'cow', name: 'ลายวัว', note: 'แมวลายวัว (ขาวปื้นดำ) ตาเขียวอมเหลือง · ตัวเมีย', sex: 'f', stripes: false,
+    pal: {
+      cat: '#FFFDFB', stripe: '#D9D2D2', shade: '#EEE8E8', cream: '#FFFFFF',
+      line: '#3A2622', ear: '#F2A9B0', cheek: '#F7A3A8', nose: '#F29AA6', mouth: '#3A2622',
+      air: '#CFC6C8',                          // พ่นเงาขอบเทาอมชมพูอ่อน (พื้นขาว)
+      glow: '#FFFFFF',
+      earIn: '#F7B6BA', earEdge: '#E48E98', earFur: '#FFFFFF',   // หูในชมพู + ปอยขนขาว (ตามแบบ)
+      closedInk: '#2A1E1C',
+      patchOver: 'top',
+    },
+    eyeStyle: 'doll', lashStyle: 'doll', eyes: { left: DOLL_EYE, right: DOLL_EYE },
+    // marks = ปื้นดำ (ระบบเดียวกับลายสลิด) · พื้นขาวไม่มีพุงแยกสี · หางปล้องดำปลายขาว
+    art: { marks: COW, faceCream: false, noBelly: true, plainTail: true, earFur: true },
+    cat: '#FFFDFB', line: '#3A2622', dark: '#25201F', cream: '#FFFFFF', pink: '#F2A9B0', eye: '#8E9E26', ink: '#3A2622',
+    whisker: 'rgba(58,38,34,.85)', rain: ['#FFFFFF', '#25201F', '#D0D550'],
+  },
 ];
 
 function mix(a, b, k) {
@@ -14486,7 +15056,7 @@ function mix(a, b, k) {
 }
 /** จานสีตามสกินของแมว — แมวส้มใช้สีของแบบ ตัวอื่นสลับตามช่องสีของสกิน */
 const palCache = new WeakMap();
-const CAT2_BREED_IDS = new Set(['pearl', 'calico', 'siamese', 'konja', 'wilat', 'supha', 'korat', 'salid']);
+const CAT2_BREED_IDS = new Set(['pearl', 'calico', 'siamese', 'konja', 'wilat', 'supha', 'korat', 'salid', 'tortie', 'cow']);
 /** น้องจากกล่องสายพันธุ์แบบใหม่ → เติมจานสี/ตา/ลายของ CAT2_BREEDS (เพศของตัวน้องเอง) — ก้อนเดิมต่อสกิน (ไม่สร้างใหม่ทุกเฟรม) */
 const breedCache = new WeakMap();
 function withBreed(s) {
@@ -14774,6 +15344,23 @@ function opsBox(ops, b = { x0: 1e9, y0: 1e9, x1: -1e9, y1: -1e9 }) {
   }
   return b;
 }
+/** สีเกือบดำ (ความสว่างสัมพัทธ์ < 0.05) — ขนตา/เส้นตาสีเข้มบนสีนี้จมหาย */
+function nearBlack(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const lin = (x) => ((x /= 255) <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) < 0.05;
+}
+/** สีขนตา/เส้นตาส่วนที่อยู่บนปื้นดำ (ผู้ใช้ 22 ต.ค.: "ให้ขนตากลายเป็นสีขาวช่วงที่โดนสีดำ") */
+const LASH_LIGHT = '#FFFFFF';
+/** ปื้นสีเกือบดำบนหัว (ทำครั้งเดียวต่อชุดปื้น) + กรอบของแต่ละปื้น */
+const INK_PATCHES = new WeakMap();
+function inkPatchesOf(ops) {
+  let r = INK_PATCHES.get(ops);
+  if (!r) INK_PATCHES.set(ops, (r = ops.filter((o) => o.path && (o.fillAlpha ?? 1) > 0.5 && nearBlack(o.fill)).map((o) => ({ path: o.path, fill: o.fill, box: opsBox([o]) }))));
+  return r;
+}
 function drawOps(ctx, ops, pal, hooks, opt) {
   for (const op of ops) {
     if (op.kind === 'group') {
@@ -14982,8 +15569,11 @@ function rimShade(ctx, items, rgba, passes) {
     ctx.restore();
   }
 }
-/** เงาตก: เงาของ caster (เลื่อนลง dy) ตกบน receiver เฉพาะในเนื้อ receiver */
-function castShade(ctx, caster, receiver, rgba, blur, dy) {
+/**
+ * เงาตก: เงาของ caster (เลื่อนลง dy) ตกบน receiver เฉพาะในเนื้อ receiver
+ * op = วิธีทาเงาลงผ้าใบ ('multiply' = คูณสี: แมวลายวัว — เงาสีอ่อนของพื้นขาวทาทับปื้นดำแล้วเป็นหมอกขาว · คูณสีแล้วบนดำยังดำ)
+ */
+function castShade(ctx, caster, receiver, rgba, blur, dy, op = 'source-over') {
   const m = ctx.getTransform();
   const box = abBox(m);
   const sc = Math.hypot(m.c, m.d) * AB_RES;   // สเกลแนวตั้ง: ไม่แกว่งตอนตัวหมุน (หมุน = บีบแนวนอน)
@@ -15002,6 +15592,7 @@ function castShade(ctx, caster, receiver, rgba, blur, dy) {
   sh.drawImage(rec.canvas, 0, 0);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = op;
   ctx.drawImage(sh.canvas, 0, 0, W, H, box.x0, box.y0, W / AB_RES, H / AB_RES);
   ctx.restore();
 }
@@ -15035,29 +15626,35 @@ function drawLayer(ctx, items, pal, hooks, opt) {
   // 2a) ลายสีขน (แมวสามสี: it.patch) ทาเป็นสีผิวของชิ้น — ตัดในเนื้อชิ้นตัวเอง ไม่เจาะรูชิ้นข้างหน้า
   //     ชิ้นที่ซ้อนกัน (ตัว/แขน/ขา) ทาปื้นสีเดียวกันทับกันพอดี จึงไม่มีเส้นรอยต่อ · ชิ้นข้างหน้าทาทีหลังจึงอยู่บนเสมอ (ยกแขนก็ถูกชั้น)
   //     ทาก่อนสนามไล่สี/เงาพ่นสี — ปื้นได้มิติกลม ๆ แบบเดียวกับขน (ไม่แบนเป็นสติกเกอร์)
+  //     pal.patchOver (ปื้นสีตัดกับพื้นขนแรง): สนามไล่สีทาจุดสว่างกลางหน้า/อกทึบเกือบเต็ม → ปื้นดำบนพื้นขาวกลายเป็นเทา ปื้นส้มบนพื้นดำขุ่น
+  //       'rim' = ทาหลังสนามไล่สี ก่อนเงาพ่นขอบ (สีเปรอะ: ปื้นส้มสดแต่ยังเข้มลงตามขอบตัว)
+  //       'top' = ทาหลังเงาพ่นขอบ (ลายวัว: ปื้นดำล้วน — เงาพ่นสีอ่อนของพื้นขาวทับแล้วเป็นขอบเทารอบปื้น)
   const mP = ctx.getTransform();
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i];
-    if (!it.patch || !it.sil.length) continue;
-    ctx.save();
-    // เว้นชิ้นข้างหน้าที่ไม่ได้อยู่ในแผ่นลายเดียวกัน (เช่นหางที่ตวัดผ่านหน้าขา) — ไม่งั้นปื้นของขาทับหาง (ผู้ใช้ทัก 15 ต.ค.)
-    for (let j = i + 1; j < items.length; j++) {
-      const o = items[j];
-      if (!o.sil.length || (it.sheet && o.sheet)) continue;
+  const paintPatches = () => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (!it.patch || !it.sil.length) continue;
+      ctx.save();
+      // เว้นชิ้นข้างหน้าที่ไม่ได้อยู่ในแผ่นลายเดียวกัน (เช่นหางที่ตวัดผ่านหน้าขา) — ไม่งั้นปื้นของขาทับหาง (ผู้ใช้ทัก 15 ต.ค.)
+      for (let j = i + 1; j < items.length; j++) {
+        const o = items[j];
+        if (!o.sil.length || (it.sheet && o.sheet)) continue;
+        ctx.setTransform(mP);
+        o.xf?.(ctx);
+        const hole = new Path2D();
+        hole.rect(...HOLE_BOX);
+        hole.addPath(o.all);
+        ctx.clip(hole, 'evenodd');
+      }
       ctx.setTransform(mP);
-      o.xf?.(ctx);
-      const hole = new Path2D();
-      hole.rect(...HOLE_BOX);
-      hole.addPath(o.all);
-      ctx.clip(hole, 'evenodd');
+      it.xf?.(ctx);
+      ctx.clip(it.all);
+      if (typeof it.patch === 'function') it.patch(ctx);   // หาง/แขนท่อ/ตัวนั่ง: ทาแถบ/ปื้นเอง
+      else drawOps(ctx, it.patch, pal, {}, {});
+      ctx.restore();
     }
-    ctx.setTransform(mP);
-    it.xf?.(ctx);
-    ctx.clip(it.all);
-    if (typeof it.patch === 'function') it.patch(ctx);   // หาง/แขนท่อ/ตัวนั่ง: ทาแถบ/ปื้นเอง
-    else drawOps(ctx, it.patch, pal, {}, {});
-    ctx.restore();
-  }
+  };
+  if (!pal.patchOver) paintPatches();
   // 2b) สีผิวแบบพ่นสี: สนามไล่สีเดียว (กลางสว่าง → ขอบเข้ม) ทาทุกชิ้นด้วยพิกัดเดียวกัน
   //     ชิ้นที่ซ้อนกันได้สีเท่ากันตรงรอยต่อพอดี จึงไม่มีขอบเงาโผล่กลางตัว
   const softOwner = items.find((it) => it.soft);
@@ -15091,6 +15688,7 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     }
     ctx.restore();
   }
+  if (pal.patchOver === 'rim') paintPatches();
   // 2c) เงาขอบด้านในแบบพ่นสี — ขอบก้อนไล่เข้มเข้าไปด้านในตามรูปทรง (ทั้งชั้นเป็นก้อนเดียว ไม่มีรอยต่อ)
   if (airbrushOn() && !opt?.noAirbrush) {
     // วาดสองชั้น: ฟุ้งกว้างจาง + ฟุ้งแคบเข้มกว่าที่ขอบ (เหมือนพ่นสีหลายรอบ)
@@ -15099,6 +15697,7 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     const small = ab.length && ab.every((it) => it.small);
     rimShade(ctx, ab, shadeRgba(pal, 1), small ? [[16, 0.55], [7, 0.4]] : [[42, 0.85], [14, 0.6]]);
   }
+  if (pal.patchOver === 'top') paintPatches();
   // 3) รายละเอียดของแต่ละชิ้น ตัดให้อยู่ในเนื้อของชิ้นตัวเอง (ลายไม่ล้นออกนอกเส้น)
   //    และเว้นบริเวณที่ชิ้นข้างหน้าบังอยู่ — ไม่งั้นลาย/เงาของหางจะโผล่ทับขา ดูเหมือนหางมาอยู่ข้างหน้า
   const m0 = ctx.getTransform();
@@ -15582,10 +16181,21 @@ function coolLid(c, white, pal, side, ang = 0, lashes = false, drop = -14, bow =
   c.clip(white);
   // หมุนสวนมุมเอียงของตัว+หัว — บนจอเปลือกตาจึงเกือบแนวนอนเหมือนในภาพ ไม่เฉียงตามตัว
   rotAt(c, W, -ang);
+  // pal.inkCover = รอบวาดซ้ำบนปื้นดำ (inkOver ใน drawCat2): เปลือกตาคลุมเต็มความกว้างตาเหนือปลายเปลือกตา
+  //   (ตอนกะพริบปลายเปลือกตาต่ำกว่ากลางตา ข้างตาเหลือเสี้ยวตาขาวโผล่ — บนขนสีอ่อนกลืนหาย บนปื้นดำเห็นเป็นขีดขาว)
+  //   + เส้นเกลี่ยขนกว้างขึ้นข้างละ ~1.5px ทับขอบเบลอของขนสีอ่อนรอบแรกให้มิด (ไม่เหลือวงเทาจาง ๆ บนปื้นดำ)
+  const wide = pal.inkCover ? R + 30 : 0;
   const cover = new Path2D();
   cover.addPath(lid);
-  cover.lineTo(x1, W.y - R - 20);
-  cover.lineTo(x0, W.y - R - 20);
+  if (wide) {
+    cover.lineTo(W.x + d * wide, y1);
+    cover.lineTo(W.x + d * wide, W.y - R - 20);
+    cover.lineTo(W.x - d * wide, W.y - R - 20);
+    cover.lineTo(W.x - d * wide, y0);
+  } else {
+    cover.lineTo(x1, W.y - R - 20);
+    cover.lineTo(x0, W.y - R - 20);
+  }
   cover.closePath();
   c.fillStyle = pal.cat;
   c.fill(cover);
@@ -15593,10 +16203,11 @@ function coolLid(c, white, pal, side, ang = 0, lashes = false, drop = -14, bow =
   // ขอบตาไม่มีเส้นแล้ว — เกลี่ยขนทับขอบตาส่วนที่เปลือกตาปิด ไม่ให้เหลือขอบจาง ๆ จากการตัดภาพ
   c.save();
   rotAt(c, W, -ang);
+  const m = c.getTransform(), g = pal.inkCover ? 1.5 / Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) : 0;
   c.clip(cover);
   rotAt(c, W, ang);
   c.strokeStyle = pal.cat;
-  c.lineWidth = 4;
+  c.lineWidth = 4 + 2 * g;
   c.stroke(white);
   c.restore();
   c.save();
@@ -15944,10 +16555,12 @@ function spineBand(ctrl, N, half) {
   return { path, pts, half, N };
 }
 /** หางตอนหมอบ: โคนซ่อนใต้หัว วนอ้อมข้างซ้ายลงมาข้างหน้า ปลายสะบัดเบา ๆ */
-function loafTail(T, flick) {
+function loafTail(T, flick, len = 1) {
   const L = tailLife(T);
   const f = L.lag * 3 + L.flick * 9 + L.swish * 5 + flick * 8;   // หมอบ: ปลายหางฟาดพื้นเบา ๆ เป็นพัก ๆ
-  return spineBand([[178, 520], [118, 534], [86, 584], [94, 628], [132, 644], [178 + f * 0.3, 632 - f]], 16, (i) => TAIL_HALF(i));
+  const ctrl = [[178, 520], [118, 534], [86, 584], [94, 628], [132, 644], [178 + f * 0.3, 632 - f]];
+  // len < 1 = หางสั้นลงเข้าหาโคน (ลูกแมว)
+  return spineBand(len === 1 ? ctrl : ctrl.map(([x, y]) => [ctrl[0][0] + (x - ctrl[0][0]) * len, ctrl[0][1] + (y - ctrl[0][1]) * len]), 16, (i) => TAIL_HALF(i));
 }
 
 // ══ ท่านั่ง — วาดใหม่ทั้งตัวตามภาพอ้างอิง (หัว/หน้าใช้จากแบบเดิม) ══
@@ -16512,14 +17125,45 @@ function drawSparks(c, cx, cy, sz, t, w) {
 /** บริบทวาดเปล่าไว้เช็คว่าจุดอยู่ในรูปไหม (พิกัดไฟล์ ไม่มีการแปลง) */
 let hitCv = null;
 const hitCtx = () => (hitCv ||= (typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1) : document.createElement('canvas'))).getContext('2d');
+/**
+ * ลูกแมวแบบใหม่ (ผู้ใช้ 22 ต.ค.: "ออกแบบแมวตัวน้อย แบบจิบิน่ารัก ๆ คงลายเส้นใหม่ไว้ เริ่มจากแมวส้ม")
+ * ไม่ได้วาดตัวใหม่ — ดัดสัดส่วนน้องตัวโตตัวเดิม ลูกแมวจึงได้ทุกท่า ทุกสีหน้า ทุกมุมหันของตัวโตทันที
+ * kit = ความเป็นลูกแมว 0..1 (s.age: 'baby' = 1 · 'young' = 0.5 วัยรุ่นอยู่กึ่งกลางเอง) · ตัวเล็กลงเท่าไหร่ = ผู้เรียกกำหนดสเกล
+ *   head  หัวโตขึ้นรอบจุดคอ (หู หน้า ตา ขยายตาม)        drop/leg  ตัวท่อนบนลดต่ำ ขาพับสั้นป้อม (ทางเดียวกับท่าย่อ — เท้าติดพื้น)
+ *   arm   แขนสั้นลงรอบไหล่ อุ้งเท้าจิ๋ว                    eye/eyeDy ตาโตขึ้นอีกและต่ำลงนิด (หน้าผากกว้างแบบเด็ก)
+ *   tail  หางสั้น                                         ear      ปลายหูมน ใบกว้างขึ้นนิด (ทรงหูท่าวิ่ง)
+ *   ปอยขนตั้งบนกระหม่อม (kitTuftPath) — ชั้นเดียวกับหัว+หู เส้นขอบต่อกับหัวเป็นเส้นเดียว
+ */
+const KIT = { head: 1.14, drop: 34, leg: 0.42, arm: 0.86, eye: 1.08, eyeDy: 5, tail: 0.42, ear: 0.8 };
+/** ปอยขนบนกระหม่อมลูกแมว (พิกัดหัว · fx = เลื่อนตามมุมหัน): ปอยใหญ่ปลายมนม้วนไปขวา + ปอยเล็กข้างซ้าย (นุ่ม ๆ ไม่แหลม) */
+function kitTuftPath(fx = (x) => x) {
+  const P = (x, y) => [fx(x), y];
+  const q = new Path2D();
+  q.moveTo(...P(272, 152));
+  q.bezierCurveTo(...P(268, 132), ...P(272, 116), ...P(281, 110));   // ปอยเล็กซ้าย: ขึ้น
+  q.bezierCurveTo(...P(286, 108), ...P(289, 114), ...P(289, 120));   //   ปลายมน
+  q.bezierCurveTo(...P(290, 104), ...P(298, 90), ...P(312, 86));      // ปอยใหญ่: ขึ้นเอียงขวา
+  q.bezierCurveTo(...P(324, 83), ...P(334, 90), ...P(331, 100));      //   ปลายมนม้วนลง
+  q.bezierCurveTo(...P(329, 107), ...P(321, 106), ...P(318, 101));    //   ม้วนเข้า
+  q.bezierCurveTo(...P(322, 118), ...P(332, 132), ...P(330, 152));    // ขอบขวาลงโคน
+  q.closePath();
+  return q;
+}
+
 export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   s = withBreed(s);   // น้องจากกล่องสายพันธุ์แบบใหม่: เติมจานสี/ตา/ลาย
+  // ลูกแมว (KIT): idle.kitten บังคับค่าได้ (หน้าทดลอง) · ไม่งั้นอ่านจากวัยของน้อง
+  const kit = idle?.kitten ?? (s?.age === 'baby' ? 1 : s?.age === 'young' ? 0.5 : 0);
+  // ลูกแมว: หางของท่าอื่น (นั่ง เกาท้อง หมอบ หันหลัง) สั้นลงเข้าหาโคนหาง — หางท่ายืนสั้นผ่าน tailShort
+  const kitTailK = 1 - 0.32 * kit;
+  const kitBand = (ctrl, N, half) => spineBand(kit ? ctrl.map(([px, py]) => [ctrl[0][0] + (px - ctrl[0][0]) * kitTailK, ctrl[0][1] + (py - ctrl[0][1]) * kitTailK]) : ctrl, N, half);
   const m0 = ctx.getTransform();   // ตัวแปลงของผู้เรียก — เอฟเฟกต์ท่าเปิดตัววาดในพิกัดพื้น ไม่ยืด/เอียง/เด้งตามตัว
   const pal = paletteOf(s);
   // art = ลายเฉพาะตัวของแมวแบบใหม่ (CAT2_BREEDS) · stripeK/stripeA = ความหนา/ความเข้มของลาย
   const art = s?.art || {};
-  const opt = { tailStripe: art.tailStripe ? pal.cream : null, noStripes: s && s.id !== 'orange' && s.stripes === false, plainTail: !!art.plainTail, stripeK: art.stripeK ?? 1, stripeA: art.stripeA ?? 1, calico: art.calico || art.points || art.tabby || null };
-  const marks = art.calico || art.points || art.tabby || null;   // ลายสามสี / แต้มวิเชียรมาศ / ลายสลิด — ระบบ patch เดียวกัน
+  const opt = { tailStripe: art.tailStripe ? pal.cream : null, noStripes: s && s.id !== 'orange' && s.stripes === false, plainTail: !!art.plainTail, stripeK: art.stripeK ?? 1, stripeA: art.stripeA ?? 1, calico: art.calico || art.points || art.tabby || art.marks || null };
+  // ลายสามสี / แต้มวิเชียรมาศ / ลายสลิด / ปื้นทั่วไป (art.marks: สีเปรอะ ลายวัว — ใช้ทางเดียวกับลายสลิด) — ระบบ patch เดียวกัน
+  const marks = art.calico || art.points || art.tabby || art.marks || null;
   // แมวสามสี: ลายของชิ้นที่ไม่ได้มาจากไฟล์ออกแบบ (หาง แขนท่อ ตัวนั่ง ก้อนหมอบ) — ทาเป็นสีขนตอนลงสีพื้น (drawLayer 2a) ไม่มีเส้นรอยต่อ
   const calPatch = {
     tail: (G) => (marks ? (c) => calicoTail(c, G, marks) : null),
@@ -16550,7 +17194,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const lick = shape?.lick ? Math.max(0, Math.sin(t * 0.22)) * v('lick') : 0;
   const bleh = v('bleh');   // แลบลิ้นแบบซน ๆ (ค้าง ไม่ขยับเลีย) — ท่าแอ็คลูกคุณหนูจอมซน
   const turn = raw('turn') * k;
-  const tailShort = v('tailShort');
+  const tailShort = Math.max(v('tailShort'), KIT.tail * kit);   // ลูกแมว: หางสั้น
   // ปากขยับเอง (ไม่ได้เล่นท่าก็มีชีวิต): ทุก ~3.3 วินาที สุ่มว่าจะ "เมี้ยว" เบา ๆ หนึ่งที หรือ "งุบงิบ" สองที
   const mn = Math.floor((t / 60) / 3.3), mc = (t / 60) - mn * 3.3, mh = hash(mn + 21);
   const mew = mh > 0.5 && mc < 0.5 ? Math.sin((mc / 0.5) * Math.PI) * (0.4 + 0.3 * hash(mn + 5)) : 0;
@@ -16593,8 +17237,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const pop = k > 0 ? Math.sin(Math.min(1, k) * Math.PI) * 0.03 : 0;
 
   // ── ทรงตัว: นั่ง/ย่อ/หมอบ = ตัวช่วงบนลดลง ขาพับสั้นลงและกางออก ลำตัวยุบนิด ๆ ──
-  const drop = 58 * sit + 24 * crouch + 74 * loaf;
-  const legK = 1 - 0.5 * sit - 0.28 * crouch - 0.72 * loaf;
+  // ลูกแมว: ตัวท่อนบนลดต่ำ + ขาพับสั้นตลอด (เท้าติดพื้น) = ตัวเตี้ยป้อม ขาสั้นแบบลูกแมว
+  const drop = 58 * sit + 24 * crouch + 74 * loaf + KIT.drop * kit;
+  const legK = (1 - 0.5 * sit - 0.28 * crouch - 0.72 * loaf) * (1 - KIT.leg * kit);
   const spread = 12 * sit + 6 * crouch + 12 * loaf;
   const SY = (1 + breath * 0.012) * (1 - 0.06 * sit - 0.14 * loaf);
 
@@ -16769,10 +17414,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     t2 += v(L ? 'elbowL' : 'elbowR');
     return { t1, t2 };
   };
+  const armK = 1 + (KIT.arm - 1) * kit;   // ลูกแมว: แขนสั้นลงรอบไหล่ (อุ้งเท้าจิ๋ว)
   const armPt = (side, ang) => {
     const L = side === 'left';
     const S = M.piv[`shoulder-${side}`], E0 = ARM_REST[side].E0;
-    return (x, y) => {
+    return (ax, ay) => {
+      // ย่อเฉพาะช่วงที่ยื่นพ้นไหล่ออกไป — โคนแขนที่ติดตัวอยู่ที่เดิม (ย่อทั้งท่อน = ขอบบนแขนหดลงจนเห็นมุมไหล่เป็นรอยหยัก)
+      const f = armK !== 1 ? 1 - (1 - armK) * ease(clamp01((L ? S.x - ax : ax - S.x) / 60)) : 1;
+      const x = S.x + (ax - S.x) * f, y = S.y + (ay - S.y) * f;
       // เริ่มงอเอียงตามขอบตัว (ใต้รักแร้ขอบกางกว่าบนไหล่) มุมโคนแขนจึงไม่ปลิ้น
       const x0 = 300 + (L ? -1 : 1) * (100 + (y - 446) * 0.2);
       const w1 = ease(clamp01((L ? x0 - x : x - x0) / 46));
@@ -16796,13 +17445,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const headDrop = loafMode ? 120 + (LOAF_HEAD - 120) * loafU
     : sitMode ? 29 + (SIT_HEAD - 29) * sitU + crouch * 6
     : headStand;
+  const headK = 1 + (KIT.head - 1) * kit;   // ลูกแมว: หัวโตขึ้นรอบจุดคอ (คางอยู่ที่เดิมบนตัว)
   const head = (c) => {
     rotAt(c, HIP, sway);
     c.translate(0, headDrop - breathLag * 2.2);
+    if (headK !== 1) { const N = M.piv.neck; c.translate(N.x, N.y); c.scale(headK, headK); c.translate(-N.x, -N.y); }
     rotAt(c, M.piv.neck, tilt);
     c.translate(hx * 3, hy * 2);
   };
-  const earRun = clamp01(raw('earRun'));
+  // ลูกแมว: ปลายหูมน ใบกว้างขึ้นนิด — ใช้ทรงหูท่าวิ่งตัวเดียวกัน
+  const earRun = Math.max(clamp01(raw('earRun')), KIT.ear * kit);
   const earPt = (side) => {
     const d = side === 'left' ? 1 : -1;
     const a = earLag + d * v('ear') * 0.3 + (twitchSide === side || twitchSide === 'both' ? -d * twitch : 0);
@@ -17013,7 +17665,12 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.restore();
     }
     // หูกับหัวกลืนเป็นก้อนเดียว: ไม่มีเส้นตัดโคนหู เส้นกระหม่อมระหว่างหูยังอยู่ (เป็นขอบนอก)
-    drawLayer(ctx, [...ears, headPart()], pal, hooks, opt);
+    // ลูกแมว: ปอยขนบนกระหม่อมอยู่ชั้นเดียวกัน (โคนจมใต้หัว เส้นขอบต่อกับหัวเป็นเส้นเดียว) · ค่อย ๆ โผล่ตามวัย
+    const tuft = kit > 0.05 ? (() => {
+      const p = kitTuftPath(yaw ? (x) => yawX(x) : undefined);
+      return { sil: [p], all: p, det: () => {}, xf: (c) => { head(c); const g = 0.55 + 0.45 * kit; c.translate(300, 150); c.scale(g, g); c.translate(-300, -150); } };
+    })() : null;
+    drawLayer(ctx, [...ears, ...(tuft ? [tuft] : []), headPart()], pal, hooks, opt);
     // ของบนหู: หมุนตามหูขวาที่กระดิก
     if (OUT?.ear) {
       ctx.save();
@@ -17044,8 +17701,11 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.restore();
     }
   };
+  // faceHeadM = ตัวแปลงของหัวตอนวาดหน้า — ขนตาบนปื้นดำตัดตามปื้นที่ทาในพิกัดหัว ไม่เลื่อนตามหน้า (inkOver)
+  let faceHeadM = null;
   const face = (c) => {
     head(c);
+    faceHeadM = c.getTransform();
     c.translate(hx * 8, hy * 5);         // หน้าเลื่อนมากกว่าโครงหัว = หันหน้า
   };
 
@@ -17462,14 +18122,59 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // แก้มเป็นวงสีเรียบตามรูปในแบบ (ผู้ใช้ไม่เอาแบบฟุ้ง) ไม่มีเส้นขอบ
     if (op) hooks[id] = (c) => { c.fillStyle = pal.cheek; c.fill(op.path); };
   }
+  // ปื้นดำบนหัวของแมวพื้นขนสีอ่อน (ลาย marks.lashOnBlack — ลายวัว): ขนตา/เส้นตาส่วนที่ทับปื้นวาดซ้ำเป็นสีขาว (ผู้ใช้ 22 ต.ค.)
+  //   ส่วนที่อยู่บนขนขาวยังเข้มเหมือนเดิม · เปิดทีละลาย: ลายเส้นบาง ๆ (ลายสลิด) ปลายขนตาแตะเส้นลายแล้วเป็นจุดขาวแปลก ๆ
+  // แมวพื้นขนเข้ม (โกนจาดำทั้งตัว · วิลาศ · สีเปรอะ) ไม่โดน — ทั้งหน้าเป็นขนเข้ม ใช้สีขนตาตามแบบของตัวเอง
+  const inkPatches = !back && marks?.lashOnBlack && Array.isArray(P.head?.patch) && !nearBlack(pal.cat) ? inkPatchesOf(P.head.patch) : [];
+  /** วาดซ้ำ draw(c, สีปื้น) เฉพาะส่วนที่ทับปื้นดำ: ตัดตามปื้น ∩ หัว ในพิกัดหัวตอนวาดหน้า แล้ววาดด้วยตัวแปลงของตาตามเดิม
+   *  hole = { path, m } ช่องตาที่เปิดอยู่ (ไม่ใช่ขน — ไลเนอร์ส่วนที่อยู่ในตายังเข้มเป็นขอบตา) · ข้ามปื้นที่อยู่ไกลจากตา e */
+  const inkOver = (c, e, draw, hole = null) => {
+    if (!inkPatches.length || !faceHeadM) return;
+    const m = c.getTransform();
+    // กรอบรอบตา (ขนตา/ปลายเปลือกตายื่นไม่เกิน ~80 จากกลางตา) → พิกัดหัว (รวมตาโตของลูกแมว · ตาบีบตอนหัน)
+    const toHead = faceHeadM.inverse().multiply(m);
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const [dx, dy] of [[-82, -82], [82, -82], [-82, 82], [82, 82]]) {
+      const p = toHead.transformPoint(new DOMPoint(e.x + dx, e.y + dy));
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+    }
+    for (const ip of inkPatches) {
+      const b = ip.box;
+      if (x1 < b.x0 || x0 > b.x1 || y1 < b.y0 || y0 > b.y1) continue;
+      c.save();
+      c.setTransform(faceHeadM);
+      c.clip(M.headShaped.all);
+      c.clip(ip.path);
+      c.setTransform(m);
+      if (hole) {
+        const h = new Path2D();
+        h.rect(...HOLE_BOX);
+        h.addPath(hole.path, hole.m);
+        c.clip(h, 'evenodd');
+      }
+      draw(c, ip.fill);
+      c.restore();
+    }
+  };
+  // จานสีของรอบวาดซ้ำบนปื้น: เส้น/ขนตาเป็นสีขาว · ขนบนเปลือกตา (ตาปรือ ตาเศร้า) เป็นสีปื้น
+  const inkPal = (fur) => ({ ...pal, cat: fur, line: LASH_LIGHT, closedInk: LASH_LIGHT, inkCover: true });
   for (const side of ['left', 'right']) {
     const e = M.eye[side];
     const ops = M.groups[`eye-${side}-open`];
     if (!e || !ops) continue;
-    hooks[`eye-${side}-open`] = (c) => {
+    const eyeHook = (c) => {
       // ตาปิด + ขนตาสองเส้นงอนที่หางตา (ตัวเมีย — ผู้ใช้ขอให้หลับตาก็ยังมีขนตาเหมือนตอนลืมตา)
       // ตาหลับ (∪ ∩ U): แปลงจากตาลืมของแต่ละตัว — เปลือกตาใครเปลือกตามัน (ผู้ใช้ 21 ต.ค.) · ตาเจ็บ > < ใช้แบบกลาง
-      const closedEye = (cc, ee, pp, kind, sd) => (kind === 'hurt' ? closedEyeBase(cc, ee, pp, kind, sd) : drawClosedLid(cc, kind, closedLidSpec(side, kind, s, female, pp)));
+      // บนปื้นดำ: วาดซ้ำเป็นเส้นขาว (inkOver) · ขอบสว่างรอบเส้น (edge ของแบบที่มี) ลบด้วยสีปื้น
+      const closedEye = (cc, ee, pp, kind, sd) => {
+        const one = (q, p, fur) => {
+          if (kind === 'hurt') return closedEyeBase(q, ee, p, kind, sd);
+          const L = closedLidSpec(side, kind, s, female, p);
+          drawClosedLid(q, kind, fur && L.edge ? { ...L, edge: fur } : L);
+        };
+        one(cc, pp);
+        inkOver(cc, ee, (q, fur) => one(q, inkPal(fur), fur));
+      };
       if (loafMode) return closedEye(c, e, pal, 'blink');   // ลงมาหมอบแล้ว = หลับตาตลอด
       if (yawn > 0.3) return closedEye(c, e, pal, 'yawn');   // หาว: ตาตกเป็นตัว U
       if (sit > 0.5 && v('paw') > 0.6) return closedEye(c, e, pal, 'blink');   // นั่งเลียอุ้งเท้า: หลับตาพริ้ม
@@ -17477,7 +18182,10 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       if (happy && !eyesOpenHappy) return closedEye(c, e, pal, 'happy');
       if (eyesOpenHappy && v('shut') > 0.5) return closedEye(c, e, pal, 'happy');
       if (mood === 'hurt') return closedEye(c, e, pal, 'hurt', side);   // > <
-      if (mood === 'dizzy') return dizzyEye(c, e, pal, t);               // @ @
+      if (mood === 'dizzy') {                                             // @ @
+        dizzyEye(c, e, pal, t);
+        return inkOver(c, e, (q, fur) => dizzyEye(q, e, inkPal(fur), t));
+      }
       const cool = v('wink') > 0.5;
       const cute = v('winkCute') > 0.5;   // ขยิบตาน่ารัก (ท่าแอ็ค): ตาขวาโค้ง ∩ ตาซ้ายเปิดเป็นประกาย ไม่ปรือแบบท่าเฟี้ยว
       const coolAng = roll * 1.25 + tilt;   // มุมเอียงรวมของตัว (roll) กับหัว (tilt) บนจอ
@@ -17502,7 +18210,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // หน้ากวน (วิเชียรมาศ): ตาครึ่งดวงวาดใหม่ทั้งดวง ใช้ทุกท่า — ไม่มีตากลมแบบเดิมโผล่เลย (ผู้ใช้สั่ง 15 ต.ค. รวมท่าเปิดตัว)
       // ตาประกาย/ดีใจ: ยังเป็นตาทรงเดิมของน้อง แค่มีดาววิ้งเพิ่ม · ตาปิด (กะพริบ ยิ้ม ∩ ขยิบ) ใช้ตาปิดตามปกติ
       const grumpyNow = !!art.grumpy;
-      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
+      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : s?.eyeStyle === 'hazel' ? drawHazelEye : s?.eyeStyle === 'doll' ? drawDollEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
         lx: gx * 7 - hx * 2, ly: gy * 5 + (sleepy ? 7 : 0),
         sparkle: (starry || eyesOpenHappy || cute ? 1 : 0) * (OUT?.eyeSparkle ?? 1),   // OUT.eyeSparkle = ชุดที่อยากให้ตาวิ้งน้อยลง (0..1)
         t,
@@ -17522,27 +18230,57 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       }
       c.restore();
       // ขนตา (ไม่วาดตอนตาปรือของท่าเฟี้ยว — เปลือกตาหนาทำหน้าที่นั้นแล้ว) · วาดนอกการบีบตา ขนตาจึงไม่แบนตอนหรี่
+      // ink = สีเส้นของรอบวาดซ้ำบนปื้นดำ (inkOver) · ขนตาที่ไม่รับสี (ตาแบ๊ว · ตากลม — สีในตัว) ไม่วาดซ้ำ ยังไม่มีตัวไหนอยู่บนปื้นดำ
+      const lashSet = (q, ink) => {
+        if (s?.lashStyle === 'wilat') drawWilatLashes(q, side, 1 - squash * 0.9, e.y, ink ?? pal.closedInk, wLid);   // วิลาศ: เปลือกตาหนาเข้ม + ปลายเชิด
+        else if (s?.lashStyle === 'supha') drawSuphaLashes(q, side, 1 - squash * 0.9, e.y, ink ?? pal.closedInk, wLid);   // ศุภลักษณ์: เปลือกตาเอียงหนา + ปลายตวัด
+        else if (s?.lashStyle === 'korat') drawKoratLashes(q, side, 1 - shut * 0.9, e.y, ink ?? pal.closedInk);   // โคราช: เปลือกตาเส้นบาง ไม่มีขนตา
+        else if (s?.lashStyle === 'hazel') drawHazelLashes(q, side, 1 - shut * 0.9, e.y, ink ?? pal.closedInk);   // สีเปรอะ: เปลือกตาหนาปลายมน + ขีดใต้หางตา
+        else if (s?.lashStyle === 'doll') drawDollLashes(q, side, 1 - shut * 0.9, e.y, ink ?? pal.closedInk);    // ลายวัว: ขนตาตุ๊กตาสั้นเรียงทั้งแนว + ขนตาล่าง
+        else if (s?.lashStyle === 'salid') drawSalidLashes(q, side, 1 - shut * 0.9, e.y, ink ?? (pal.closedInk || '#24150D'));   // ลายสลิด: ไลเนอร์หนา หางตวัด ขนตาพัดสี่เส้น
+        else if (s?.lashStyle === 'fan') drawFanLashes(q, side, 1 - shut * 0.9, e.y, ink ?? pal.closedInk);   // โกนจา: ขนตาแบบพัด
+        else if (ink) return;
+        else if (s?.eyeStyle === 'round') drawRoundLashes(q, side, 1 - shut * 0.9, e.y);   // แมวสามสี: ขนตาแบบใหม่
+        else drawLashes(q, side, female, 1 - shut * 0.9, e.y);
+      };
       if ((lidEye || (!cool && !sleepy)) && !grumpyNow) {
-        if (s?.lashStyle === 'wilat') drawWilatLashes(c, side, 1 - squash * 0.9, e.y, pal.closedInk, wLid);   // วิลาศ: เปลือกตาหนาเข้ม + ปลายเชิด
-        else if (s?.lashStyle === 'supha') drawSuphaLashes(c, side, 1 - squash * 0.9, e.y, pal.closedInk, wLid);   // ศุภลักษณ์: เปลือกตาเอียงหนา + ปลายตวัด
-        else if (s?.lashStyle === 'korat') drawKoratLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk);   // โคราช: เปลือกตาเส้นบาง ไม่มีขนตา
-        else if (s?.lashStyle === 'salid') drawSalidLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk || '#24150D');   // ลายสลิด: ไลเนอร์หนา หางตวัด ขนตาพัดสี่เส้น
-        else if (s?.lashStyle === 'fan') drawFanLashes(c, side, 1 - shut * 0.9, e.y, pal.closedInk);   // โกนจา: ขนตาแบบพัด
-        else if (s?.eyeStyle === 'round') drawRoundLashes(c, side, 1 - shut * 0.9, e.y);   // แมวสามสี: ขนตาแบบใหม่
-        else drawLashes(c, side, female, 1 - shut * 0.9, e.y);
+        lashSet(c);
+        // บนปื้นดำ: ส่วนที่ทับปื้นเป็นสีขาว · เว้นช่องตา (บีบตามตาหรี่) — ขอบในของไลเนอร์ยังเข้มเป็นขอบตา
+        if (inkPatches.length) inkOver(c, e, (q) => lashSet(q, LASH_LIGHT), { path: white.path, m: new DOMMatrix().translate(e.x, e.y).scale(1, 1 - squash * 0.9).translate(-e.x, -e.y) });
       }
       // ตาเฟี้ยว: เปลือกตาปรือ (ตอนกะพริบไม่วาด ไม่งั้นซ้อนกับตาที่กำลังหลับ)
       // เปลือกตาเอียงไปกับหัว (เดิมหมุนสวนให้ตรงจอ แล้วไม่เข้ากับตา/ประกายที่เอียงตามตัว)
-      if (cool && shut < 0.25 && !grumpyNow && !lidEye) coolLid(c, white.path, pal, side, 0, female);
+      // บนปื้นดำ: เปลือกตาเป็นขนสีปื้น เส้นเปลือกตา + ขนตาเป็นสีขาว (inkPal)
+      if (cool && shut < 0.25 && !grumpyNow && !lidEye) {
+        coolLid(c, white.path, pal, side, 0, female);
+        inkOver(c, e, (q, fur) => coolLid(q, white.path, inkPal(fur), side, 0, female));
+      }
       // ตาง่วง: เปลือกตาลงมาถึงกลางตา ขอบโค้งห้อยลงนิด (หนังตาหนัก) — ขนตาตัวเมียต่อปลายเปลือกตาเหมือนตาปรือ
-      if (sleepy && !grumpyNow && !lidEye) coolLid(c, white.path, pal, side, 0, female, shut * 34, 16);   // กะพริบ = เปลือกตาเลื่อนลงจนปิด แล้วลืมกลับมาครึ่งดวง (ไม่มีตาเต็มดวงแว้บ — ผู้ใช้ทัก)
+      // กะพริบ = เปลือกตาเลื่อนลงจนปิด แล้วลืมกลับมาครึ่งดวง (ไม่มีตาเต็มดวงแว้บ — ผู้ใช้ทัก)
+      if (sleepy && !grumpyNow && !lidEye) {
+        coolLid(c, white.path, pal, side, 0, female, shut * 34, 16);
+        inkOver(c, e, (q, fur) => coolLid(q, white.path, inkPal(fur), side, 0, female, shut * 34, 16));
+      }
 
       // ตาเศร้า: เปลือกตาละห้อย + น้ำตา
       if (mood === 'sad' && shut < 0.25) {
-        if (!grumpyNow && !lidEye) sadLid(c, white.path, pal, side);
+        if (!grumpyNow && !lidEye) {
+          sadLid(c, white.path, pal, side);
+          inkOver(c, e, (q, fur) => sadLid(q, white.path, inkPal(fur), side));
+        }
         tearDrop(c, pal, side, t);
       }
     };
+    // ลูกแมว: ตาโตขึ้นอีกและต่ำลงนิดรอบกลางตา (ตาลืม ตาปิด ขนตา เปลือกตา ขยายไปด้วยกันทั้งชุด)
+    const eyeK = 1 + (KIT.eye - 1) * kit;
+    hooks[`eye-${side}-open`] = kit ? (c) => {
+      c.save();
+      c.translate(e.x, e.y + KIT.eyeDy * kit);
+      c.scale(eyeK, eyeK);
+      c.translate(-e.x, -e.y);
+      eyeHook(c);
+      c.restore();
+    } : eyeHook;
   }
 
   const bent = (id, f, xf) => ({ ...deformPart(P[id], f), xf });
@@ -17593,7 +18331,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.translate(-300, -FEET_Y);
     };
     const flick = shape?.wag != null ? Math.sin(shape.wag * 1.5) * k : 0;
-    const TL = loafTail(T, flick);
+    const TL = loafTail(T, flick, kitTailK);
     // ฐานตัว → หาง → หัว → อกครีม + เส้นขาหน้า → หน้า
     drawBehind();
     drawLayer(ctx, [{ small: true, sil: [LOAF.base], all: LOAF.base, xf: grow, det: (c) => loafBaseDetails(c, pal, opt.noStripes), patch: calPatch.area('loaf') }], pal, hooks, opt);
@@ -17690,7 +18428,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const TLf = tailLife(T);
     const tw = TLf.lag * 5 + TLf.flick * 7 + TLf.swishLag * 10 + flick * 10;
     const bandItem = (b, det) => ({ sil: [b.path], all: b.path, xf: grow, det });
-    const TS = spineBand([[214, 612], [152, 614], [116, 562], [120, 502], [148 + tw * 0.4, 462], [186 + tw, 450 - tw * 0.3]], 16, (i) => TAIL_HALF(i));
+    const TS = kitBand([[214, 612], [152, 614], [116, 562], [120, 502], [148 + tw * 0.4, 462], [186 + tw, 450 - tw * 0.3]], 16, (i) => TAIL_HALF(i));
     // ท่าเกาท้องใช้ตัวนั่งแบบเดิม (สะโพกกลม เท้าหลังครีม แขนพับ) ตลอดทั้งท่า — ผู้ใช้ชอบทรงนี้
     // ตัดสินจาก "เป็นท่าเกา" ไม่ใช่น้ำหนักแขน ไม่งั้นต้นท่าจะเห็นตัวนั่งแบบใหม่แว้บหนึ่งก่อนสลับ
     const scratchMove = shape != null && shape.scratch !== undefined;
@@ -17703,7 +18441,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // หางวางพื้น: โคนนิ่ง กลางหางกวาดช้า ๆ ปลายตามหลัง (lag) + กระดิกปลายเป็นพัก ๆ
       // นั่งเฉย ๆ ตวัดหางกวาดพื้นไปมา: กวาดช้า ๆ + ตวัดแรงเป็นพัก ๆ (ปลายตามหลังกลางหาง)
       const sw = TLf.sway * 1.3 + TLf.swish * 2.2, sw2 = TLf.lag * 1.3 + TLf.swishLag * 2.4 + TLf.flick * 0.5;
-      const TS2 = spineBand([[216, 632], [160, 638], [112 + sw * 3, 637], [74 + sw * 8, 628 - Math.abs(sw) * 3],
+      const TS2 = kitBand([[216, 632], [160, 638], [112 + sw * 3, 637], [74 + sw * 8, 628 - Math.abs(sw) * 3],
         [54 + sw2 * 16 + tw * 0.3, 610 - Math.abs(sw2) * 4], [50 + sw2 * 24 + tw * 0.6, 588 + sw2 * 4]], 16, (i) => TAIL_HALF(i));
       // วิลาศ: แถบขาวอกวาดครั้งเดียวหลังชั้นขาหน้า (ทับเส้นขอบขา) — เส้นขอบขาอยู่นอกตัวขา ลายในชั้นขาจึงทาไม่ถึง
       // เส้นน้ำตาลเลยพาดทับขาว · ผู้ใช้ 21 ต.ค. "ให้ขนสีขาวทับสีน้ำตาลแทน" (ใส่เสื้อ/กระโปรง: แบบเดิม ไม่ทับชุด)
@@ -17829,7 +18567,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         all.addPath(pw.blob);
         all.addPath(cap);
         // เนื้อแขนสีขนเรียบ ๆ ไม่ใส่เงา/ลายส้มเข้ม (บนแขนที่พับเป็นรูป S มันอ่านเป็นขีดแปลก ๆ) — เหลือแค่อุ้งเท้าครีม
-        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => pw.det(c, all), patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
+        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => pw.det(c, all), patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง · สีเปรอะ: ปื้นนุ่ม (ไม่มีขอบคมตรงรอยพับ) (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
         // ชุดที่ตั้ง groomSleeve: แขนเสื้อบนแขนที่ยกมาเลีย (ผู้ใช้ 21 ต.ค. ชุดลูกคุณหนู) — ลูกพองถึงข้อศอก (จุด 4) ท่อนล่างต่อไปใกล้อุ้งเท้า
         //   ค่อย ๆ ขึ้นตามแขนที่ยก (ต้นท่าแขนยังวางพื้น ขาเปล่าไม่มีแขนเสื้อ) · ชุดอื่นคงแบบเดิมที่ผู้ใช้ตรวจแล้ว
         //   groomSleeve = ฟังก์ชัน (c, band, pal) วาดเอง · true = ใช้ sitSleeve แบบท่อ (ลูกพองถึงจุด 4)
@@ -18144,7 +18882,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         ctx.setTransform(m1);
         drawLayer(ctx, [{ small: true, sil: [bandLoL.path, pl.blob, elbowCap], all: allL, xf: grow, patch: OUT?.armCover || !marks ? null : art.points ? (c) => {
           pointsTip(c, bandLoL, art.points);
-        } : art.tabby ? (c) => calicoArm(c, bandLoL, art.tabby) : (c) => {   // แขนท่อนล่าง+ข้อศอก: ส้มเต็มท่อน (อุ้งเท้าครีมวาดทับทีหลัง)
+        } : art.tabby || art.marks ? (c) => calicoArm(c, bandLoL, art.tabby || art.marks) : (c) => {   // แขนท่อนล่าง+ข้อศอก: ส้มเต็มท่อน (อุ้งเท้าครีมวาดทับทีหลัง)
           calicoBand(c, bandLoL, [[0, bandLoL.N, 'o']], art.calico);
           c.fillStyle = art.calico.o;
           c.fill(elbowCap);
@@ -18255,7 +18993,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const BL = tailLife(T);
   const bw = BL.lag * 9 + BL.flick * 6 + BL.swishLag * 13 + wagOff * 12;
   const TG = back
-    ? spineBand([[302, 540 + drop * 0.9], [384, 550 + drop * 0.9], [466, 544 + drop * 0.9],
+    ? kitBand([[302, 540 + drop * 0.9], [384, 550 + drop * 0.9], [466, 544 + drop * 0.9],
       [532 + bw * 0.3, 518 + drop * 0.9 - bw * 0.2], [560 + bw * 0.6, 478 + drop * 0.9 - bw * 0.4], [548 + bw, 444 + drop * 0.9 - bw * 0.5]],
     16, (i) => TAIL_HALF(i))
     : tailGeom(T, 1 - k * 0.5, tailBase, wagOff, tailShort);
@@ -18681,7 +19419,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     OUT.skirt(ctx, { ...outK, back, hold: clamp01(skF / 0.08), pt: RB ? runSkirtPt : skirtPt, bodies: parts, run: RB ? { body: torso.all, cuffs: RB.cuffsAt, span: (y) => runBodySpan(RB.out, y) } : null });
   }
   // เงาหัวตกบนอก (พ่นสีใต้คาง ตามชีท)
-  if (!back && airbrushOn()) castShade(ctx, [{ sil: M.headShaped.sil, xf: head }], limbs, OUT?.shirt ? OUT.chinShade || 'rgba(70,45,35,.16)' : shadeRgba(pal, 0.85), 26, 18);   // ใส่เสื้อ: เงากลาง ไม่ใช่ส้มขนทับเสื้อ
+  if (!back && airbrushOn()) castShade(ctx, [{ sil: M.headShaped.sil, xf: head }], limbs, OUT?.shirt ? OUT.chinShade || 'rgba(70,45,35,.16)' : shadeRgba(pal, 0.85), 26, 18, !OUT?.shirt && pal.patchOver === 'top' ? 'multiply' : 'source-over');   // ใส่เสื้อ: เงากลาง ไม่ใช่ส้มขนทับเสื้อ · ลายวัว: คูณสี (ปื้นดำไม่เป็นหมอกขาว)
   // ── ชั้นหัว: หู + หัว (เส้นคางคั่นกับตัวตามแบบ) แล้วหน้า/หนวด ──
   drawHeadLayers();
   ctx.save();
