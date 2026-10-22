@@ -665,6 +665,62 @@ const LIST = [
     },
   },
   {
+    id: 'sabai',
+    rarity: 'high',
+    name: 'สไบไทย',
+    note: 'สไบชมพูยกดอกทองกับผ้านุ่งจีบ',
+    // โบนัสไทม์เปลี่ยนเป็นฟ้ายามเย็นม่วงชมพู แสงทองอุ่นแบบลานวัด
+    bonus: {
+      sky: ['#3B1838', '#8C4374', '#E7A9BE'],
+      glow: 'rgba(250,196,150,.34)',
+      speck: 'rgba(255,226,180,.62)',
+      cloud: '#F4CDDB',
+      cloudSoft: '#B97E9A',
+      sparkle: '#FFE08A',
+    },
+    rain: ['#F6C14E', '#FFF3C4', '#D9649C'],
+    rainShape: 'flower',
+    glow: '#FFE7B0',
+
+    // ดอกพิกุลทอง — ทรงใหม่ (ดอกแปดกลีบมน) เงาร่างกลมหยักไม่ซ้ำทรงไหน ลอยร่วงช้า ๆ หมุนตัว
+    // every 5 + life 46 ≈ 9 ดอกพร้อมกัน · gravity 0.03 ตก ~32px ก่อนหมดอายุ
+    trail: {
+      every: 5, shape: 'flower',
+      colors: ['#F6C14E', '#FFD6E7', '#FFF3C4'],
+      r: [2.4, 4], life: 46, gravity: 0.03, drift: -0.45, spin: 0.08,
+    },
+    back(ctx, s, pose) {
+      const t = performance.now() * 0.003;
+      sparkleAura(ctx, pose, '#F6C14E', '#FFE0EC');
+      // ดอกพิกุลทองร่วงข้างตัว
+      ctx.save();
+      ctx.fillStyle = '#F6C14E';
+      for (let i = 0; i < 3; i++) {
+        const f = (t * 0.25 + i / 3) % 1;
+        const x = (i % 2 ? 1 : -1) * (22 + i * 3), y = -26 + f * 46;
+        ctx.globalAlpha = Math.sin(f * Math.PI) * 0.85;
+        for (let j = 0; j < 4; j++) { const a = (j * Math.PI) / 2 + t; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 1.6, y + Math.sin(a) * 1.6, 1.3, 0, Math.PI * 2); ctx.fill(); }
+      }
+      ctx.restore();
+    },
+    body(ctx, s, pose) {
+      skirt(ctx, pose, '#78202D', '#F6C14E');          // ผ้านุ่งแดงเลือดหมูเชิงทอง (สไบบนยังชมพู)
+      sash(ctx, pose, '#FCAFCF', '#F6C14E');           // สไบพาดเฉียง ขอบทอง
+      collar(ctx, pose, '#F6C14E', 1.6, (x, y) => gem(ctx, x, y + 1.6, 1.8, '#FF8EC0'));   // สร้อยคอทองจี้ทับทิม
+    },
+    head(ctx) {
+      // ปิ่นดอกไม้ขาวเกสรชมพู + ใบทอง ข้างหู
+      leaf(ctx, 12.5, -10, 5, 2, -0.6, '#F6C14E', '#BF8A2C');
+      ctx.fillStyle = '#FFFDF6';
+      for (let i = 0; i < 5; i++) { const a = (i * Math.PI * 2) / 5; ctx.beginPath(); ctx.arc(9 + Math.cos(a) * 1.9, -8 + Math.sin(a) * 1.9, 1.5, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = '#FF8EC0';
+      ctx.beginPath(); ctx.arc(9, -8, 1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#F6C14E';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(10, -6.5); ctx.lineTo(10.6, -2); ctx.stroke();
+    },
+  },
+  {
     id: 'princess',
     rarity: 'high',
     name: 'องค์หญิงหิมะ',
@@ -1739,7 +1795,7 @@ export const ALL_OUTFITS = LIST.map((o) => ({
  * ที่เหลือยังเป็นร่างแรก รอวาดใหม่ตามกฎ S (S_TIER_SKINS.md) — ซ่อนจากทุกที่: ตู้กาช่า (สุ่มไม่ออก) คลัง ป้ายโปรโมท
  * คนที่เคยได้ไปแล้ว: ยังจำไว้ในบัญชี แต่ใส่ไม่ได้/ไม่นับ จนกว่าจะเอาออกจากรายการนี้ · เปิดชุดไหนแล้วลบ id ออกจากตรงนี้ที่เดียว
  */
-export const HIDDEN_OUTFITS = new Set(['chawee', 'fruit', 'lunar', 'rainbow', 'dryad']);   // ลูกคุณหนู (noble) เปิดแล้ว — ผู้ใช้สั่ง 21 ต.ค.
+export const HIDDEN_OUTFITS = new Set(['chawee', 'sabai', 'fruit', 'lunar', 'rainbow', 'dryad']);   // ลูกคุณหนู (noble) เปิดแล้ว — ผู้ใช้สั่ง 21 ต.ค.
 export const OUTFITS = ALL_OUTFITS.filter((o) => !HIDDEN_OUTFITS.has(o.id));
 
 export const OUTFIT_COST = 5000;      // ทองต่อการสุ่มหนึ่งครั้ง

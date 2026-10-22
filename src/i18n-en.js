@@ -903,6 +903,8 @@ export const EN = {
   'เสื้อฮู้ดกับหมวกกลับหลัง': 'Hoodie and backwards cap',
   'ลูกคุณหนูจอมซน': 'Mischievous Little Noble',
   'หมวกสูงกับเสื้อกั๊กแดงทอง': 'Top hat and red-gold vest',
+  'สไบไทย': 'Thai Sabai',
+  'สไบชมพูยกดอกทองกับผ้านุ่งจีบ': 'Pink gold-brocade sabai and a pleated wrap',
   'องค์หญิงหิมะ': 'Snow Princess',
   'มงกุฎเล็กกับเกล็ดหิมะ': 'Small crown and snowflakes',
   'นางไม้มรกต': 'Emerald Dryad',

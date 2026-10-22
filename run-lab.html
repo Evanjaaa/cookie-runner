@@ -523,7 +523,7 @@
       c.fillStyle = 'rgba(60,30,10,.18)';
       c.beginPath(); c.ellipse(cx, gy + 2, px * 0.3 * (R.bob > 2 ? 0.88 : 1), px * 0.05, 0, 0, Math.PI * 2); c.fill();
       c.restore();
-      drawCat2(c, cx, gy - R.bob * sc, sc, newSkin(), t, { k: 1, shape: R.shape, noBlink: true, onRunBody });
+      drawCat2(c, cx, gy - R.bob * sc, sc, newSkin(), t, { k: 1, shape: R.shape, noBlink: true, onRunBody, runner: true });
     }
     function render4() {
       const dpr = Math.min(2, window.devicePixelRatio || 1);

@@ -2250,7 +2250,30 @@ function rainSweet(ctx, x, y, r, t, main, lite, dark, seed = 0) {
   ctx.restore();
 }
 
-const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rainFruit, drop: rainDrop, star: rainStar, sweet: rainSweet };
+/** ดอกพิกุลทอง (ชุดสไบไทย): แปดกลีบมน เกสรชมพู หมุนช้า ๆ ระหว่างร่วง */
+function rainFlower(ctx, x, y, r, t, main, lite, dark) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 0.02 + x * 0.01);
+  ctx.shadowColor = main;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = main;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4, px = Math.cos(a) * r * 0.62, py = Math.sin(a) * r * 0.62;
+    ctx.moveTo(px + r * 0.44, py);
+    ctx.arc(px, py, r * 0.44, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = lite;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = dark;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+const RAIN_SHAPES = { leaf: rainLeaf, snow: rainSnow, coin: rainCoin, fruit: rainFruit, drop: rainDrop, star: rainStar, sweet: rainSweet, flower: rainFlower };
 
 /**
  * เม็ดที่โปรยลงมาตอนใช้ความสามารถ

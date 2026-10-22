@@ -419,7 +419,7 @@ export function drawCat2Run(ctx, x, feetY, scale, s, t, r) {
   ctx.save();
   const fxM = r.spin ? ctx.getTransform() : null;   // เอฟเฟกต์ชุดไม่หมุนตามตอนตีลังกา (idle.fxM ใน drawCat2)
   if (r.spin) { ctx.translate(x, py); ctx.rotate(r.spin); ctx.translate(-x, -py); }
-  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit });   // bob = ตัวลอยตอนจังหวะ Up
+  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit, runner: true });   // bob = ตัวลอยตอนจังหวะ Up · runner = วิ่งในเกม (ชุดที่วางของต่างจากหน้าคลัง)
   ctx.restore();
 }
 

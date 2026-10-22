@@ -208,6 +208,17 @@ const SHAPES = {
     ctx.restore();
   },
 
+  /** ดอกพิกุล — แปดกลีบมนรอบวง (เงาร่างกลมหยักเป็นลอน ไม่ซ้ำทรงไหน) · ชุดสไบไทย */
+  flower(ctx, x, y, r, spin = 0) {
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = spin + (i * Math.PI) / 4, px = x + Math.cos(a) * r * 0.62, py = y + Math.sin(a) * r * 0.62;
+      ctx.moveTo(px + r * 0.42, py);
+      ctx.arc(px, py, r * 0.42, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  },
+
   /** ใบไม้ — วงรีเอียง หมุนช้า ๆ ให้ดูเหมือนใบที่กำลังร่วง */
   leaf(ctx, x, y, r, spin = 0) {
     ctx.save();
