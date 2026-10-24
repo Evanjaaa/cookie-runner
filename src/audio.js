@@ -199,8 +199,35 @@ let sfxRoute = 'sfx';
 export function setSfxRoute(ch) {
   sfxRoute = ch in level ? ch : 'sfx';
 }
+/**
+ * ขยายเสียงเอฟเฟกต์ทั้งก้อน (หน้ารายละเอียดชุดระดับ S ในเกม — ผู้ใช้ 25 ต.ค. "ในเกมเสียงคลิปพรีวิวเบา")
+ * boost ≠ 1 = เสียงใหม่วิ่งผ่านปมขยาย → ตัวกันเสียงแตก (compressor) → ช่องเดิม · เสียงที่ดังอยู่แล้วไม่เปลี่ยน
+ */
+let sfxBoost = 1, boostIn = null, boostTo = null;
+export function setSfxBoost(x) {
+  sfxBoost = x > 0 ? x : 1;
+  if (boostIn) boostIn.gain.value = sfxBoost;
+}
 /** ปมปลายทางของเสียงเอฟเฟกต์ ณ ตอนนี้ (เปลี่ยนตาม setSfxRoute) */
-function routeOut() { return chanOut(sfxRoute); }
+function routeOut() {
+  const out = chanOut(sfxRoute);
+  if (sfxBoost === 1) return out;
+  if (!boostIn || boostTo !== out) {
+    const a = ctx();
+    boostIn = a.createGain();
+    const comp = a.createDynamicsCompressor();
+    comp.threshold.value = -10;
+    comp.knee.value = 8;
+    comp.ratio.value = 6;
+    comp.attack.value = 0.004;
+    comp.release.value = 0.2;
+    boostIn.connect(comp);
+    comp.connect(out);
+    boostTo = out;
+  }
+  boostIn.gain.value = sfxBoost;
+  return boostIn;
+}
 /** ระดับของช่องที่เสียงเอฟเฟกต์กำลังไป — ใช้ตัดตั้งแต่ต้นทางเวลาเงียบอยู่ */
 const routeLevel = () => eff(sfxRoute);
 
@@ -842,6 +869,108 @@ export function stopAudioFile(src, fade = 0.3) {
   c.gain.gain.setValueAtTime(Math.max(0.0001, c.gain.gain.value), t);
   c.gain.gain.exponentialRampToValueAtTime(0.0001, t + fade);
   c.timer = setTimeout(() => c.el.pause(), fade * 1000 + 40);
+}
+
+/**
+ * เพลงไทยโรแมนติกของท่าเปิดตัวคู่ (สไบไทย / หนุ่มไทยโจงกระเบน) — ท่อนละ 4 จังหวะที่ 72 bpm (3.33 วิ = 200 เฟรม)
+ * ทำนอง [จังหวะ, ความถี่, ยาวกี่จังหวะ] · คอร์ด = เบส + เสียงประสานค้าง · ท่อน 4 = ปิดเพลง (ลงโด ค้างยาว)
+ * เสียงยาว (≥ 1 จังหวะ) = ขิมรัว (ตีซ้ำถี่ ๆ ค่อย ๆ เบาลง) · เสียงสั้น = ระนาดเอก (ไม้นวม)
+ */
+const PAIR_SONG = [
+  { mel: [[0, 659, 1], [1, 784, 0.5], [1.5, 880, 0.5], [2, 784, 1], [3, 659, 0.5], [3.5, 587, 0.5]], bass: [131, 196], pad: [262, 330, 392] },
+  { mel: [[0, 587, 1], [1, 659, 0.5], [1.5, 784, 0.5], [2, 659, 1.5], [3.5, 587, 0.5]], bass: [110, 165], pad: [220, 262, 330] },
+  { mel: [[0, 523, 0.5], [0.5, 587, 0.5], [1, 659, 1], [2, 784, 0.5], [2.5, 880, 0.5], [3, 1046, 1]], bass: [98, 147], pad: [196, 294, 392] },
+  { mel: [[0, 880, 0.75], [0.75, 784, 0.25], [1, 659, 1], [2, 587, 0.5], [2.5, 659, 0.5], [3, 523, 1]], bass: [131, 196], pad: [262, 330, 392] },
+  { mel: [[0, 784, 0.5], [0.5, 880, 0.5], [1, 1046, 3]], bass: [131, 98], pad: [262, 330, 392, 523] },
+  // ท่อนสั้นครึ่งท่อน (2 จังหวะ) — เติมช่องก่อนเพลงหยุดรอโลกสีชมพู
+  { mel: [[0, 659, 1], [1, 587, 1]], bass: [131], pad: [262, 330, 392], beats: 2 },
+];
+/** ความดังรวมของเพลงประกอบ (ผู้ใช้ 24 ต.ค. "เบากว่านี้หน่อย" — เดิม 1) */
+const PAIR_SONG_VOL = 0.3;   // รอบสอง (ผู้ใช้ 24 ต.ค.): เบาแบบคลอ ๆ ใต้เสียงเอฟเฟกต์ แต่ยังได้ยิน
+/**
+ * เพลงประกอบท่าเปิดตัวสกิน S ที่เหลือ (ผู้ใช้ 25 ต.ค. "สร้างเพลงประกอบให้คลิปพรีวิวระดับ S ทั้งหมด")
+ * ท่อนละ 4 จังหวะ (ความยาวเฟรม = 14400 / bpm — ตัวท่าเปิดตัวใน cat2.js เรียกทีละท่อนด้วยความยาวนี้) · ท่อน 0–3 วน · ท่อน 4 = ปิดเพลง
+ * mel = [จังหวะ, ความถี่, ยาวกี่จังหวะ] · bass = เบสตามจังหวะ (ระยะห่าง bassEvery) · pad = คอร์ดค้างบาง ๆ
+ *   sweet    = กล่องดนตรีวอลทซ์หวาน ๆ C major 120 bpm + เบสดีด
+ *   princess = เซเลสตาเกล็ดหิมะ A minor 80 bpm + คอร์ดลอย ๆ
+ *   noble    = มินูเอต์ฮาร์ปซิคอร์ด G major 120 bpm
+ *   chawee   = แจ๊สล็อบบี้ไวบราโฟน D minor 96 bpm + ดับเบิลเบสเดิน + แปรงกลอง
+ */
+const S_SONGS = {
+  sweet: { bpm: 120, inst: 'box', bassInst: 'pluck', bassEvery: 2, pad: 0.6, phrases: [
+    { mel: [[0, 659, 0.5], [0.5, 784, 0.5], [1, 1046, 1], [2, 988, 0.5], [2.5, 880, 0.5], [3, 784, 1]], bass: [131, 196], chord: [262, 330, 392] },
+    { mel: [[0, 698, 0.5], [0.5, 880, 0.5], [1, 1046, 0.5], [1.5, 880, 0.5], [2, 784, 1.5], [3.5, 659, 0.5]], bass: [175, 131], chord: [262, 349, 440] },
+    { mel: [[0, 587, 0.5], [0.5, 659, 0.5], [1, 698, 0.5], [1.5, 784, 0.5], [2, 880, 0.5], [2.5, 988, 0.5], [3, 1046, 1]], bass: [196, 147], chord: [247, 294, 392] },
+    { mel: [[0, 1319, 0.5], [0.5, 1175, 0.5], [1, 1046, 1], [2, 784, 0.5], [2.5, 659, 0.5], [3, 523, 1]], bass: [131, 196], chord: [262, 330, 392] },
+    { mel: [[0, 784, 0.5], [0.5, 1319, 0.5], [1, 1046, 3]], bass: [131, 98], chord: [262, 330, 392, 523] },
+  ] },
+  princess: { bpm: 80, inst: 'celesta', bassInst: 'soft', bassEvery: 2, pad: 1, phrases: [
+    { mel: [[0, 659, 1], [1, 880, 1], [2, 988, 0.5], [2.5, 1046, 0.5], [3, 988, 1]], bass: [110, 165], chord: [220, 262, 330] },
+    { mel: [[0, 880, 1], [1, 784, 1], [2, 659, 1.5], [3.5, 784, 0.5]], bass: [87, 131], chord: [175, 220, 262] },
+    { mel: [[0, 698, 1], [1, 880, 1], [2, 1046, 1], [3, 1319, 1]], bass: [131, 196], chord: [262, 330, 392] },
+    { mel: [[0, 1175, 0.5], [0.5, 1046, 0.5], [1, 988, 1], [2, 831, 1], [3, 880, 1]], bass: [82, 123], chord: [165, 208, 247] },
+    { mel: [[0, 1319, 1], [1, 880, 3]], bass: [110, 82], chord: [220, 262, 330, 440] },
+  ] },
+  noble: { bpm: 120, inst: 'harpsi', bassInst: 'harpsi', bassEvery: 1, pad: 0, phrases: [
+    { mel: [[0, 587, 0.5], [0.5, 784, 0.5], [1, 880, 0.5], [1.5, 988, 0.5], [2, 1046, 0.5], [2.5, 1175, 0.5], [3, 784, 1]], bass: [98, 147, 196, 147], chord: [] },
+    { mel: [[0, 1319, 0.5], [0.5, 1046, 0.5], [1, 1175, 0.5], [1.5, 1319, 0.5], [2, 1480, 0.5], [2.5, 1568, 0.5], [3, 784, 1]], bass: [131, 196, 262, 196], chord: [] },
+    { mel: [[0, 1046, 0.5], [0.5, 1175, 0.5], [1, 1046, 0.5], [1.5, 988, 0.5], [2, 880, 0.5], [2.5, 988, 0.5], [3, 1046, 1]], bass: [147, 220, 294, 220], chord: [] },
+    { mel: [[0, 988, 0.5], [0.5, 1046, 0.5], [1, 988, 0.5], [1.5, 880, 0.5], [2, 784, 0.5], [2.5, 740, 0.5], [3, 784, 1]], bass: [98, 147, 196, 98], chord: [] },
+    { mel: [[0, 1175, 0.5], [0.5, 988, 0.5], [1, 784, 3]], bass: [98, 196], chord: [] },
+  ] },
+  chawee: { bpm: 96, inst: 'vibes', bassInst: 'walk', bassEvery: 1, pad: 0.5, brush: true, phrases: [
+    { mel: [[0, 880, 0.75], [0.75, 698, 0.25], [1, 587, 1], [2, 659, 0.5], [2.5, 698, 0.5], [3, 880, 1]], bass: [73, 87, 110, 131], chord: [294, 349, 440] },
+    { mel: [[0, 784, 0.75], [0.75, 659, 0.25], [1, 523, 1], [2, 587, 0.5], [2.5, 659, 0.5], [3, 784, 1]], bass: [98, 123, 147, 175], chord: [247, 294, 349] },
+    { mel: [[0, 698, 0.5], [0.5, 880, 0.5], [1, 1046, 1], [2, 988, 0.5], [2.5, 880, 0.5], [3, 784, 1]], bass: [110, 139, 165, 196], chord: [277, 330, 392] },
+    { mel: [[0, 698, 1], [1, 659, 0.5], [1.5, 587, 0.5], [2, 554, 1], [3, 587, 1]], bass: [73, 110, 147, 110], chord: [294, 349, 440] },
+    { mel: [[0, 880, 0.5], [0.5, 1175, 3.5]], bass: [73], chord: [294, 349, 440, 523] },
+  ] },
+};
+/** ความดังรวมเพลงประกอบสกิน S (เท่าเพลงชุดคู่) */
+const S_SONG_VOL = 0.3;
+function sPhrase(id, i) {
+  const S = S_SONGS[id], P = S.phrases[i], B = 60000 / S.bpm, V = S_SONG_VOL;
+  const end = i === 4;
+  for (const [b, f, d] of P.mel) {
+    later(() => {
+      if (S.inst === 'box') musicBox(f, Math.max(0.5, d * 0.5), 0.06 * V);
+      else if (S.inst === 'celesta') { glassBell(f, 0.6 + d * 0.5, 0.05 * V); tone(f / 2, null, d * 0.6, 'sine', 0.012 * V); }
+      else if (S.inst === 'harpsi') { tone(f, null, 0.35, 'sawtooth', 0.016 * V); tone(f * 2, null, 0.18, 'triangle', 0.014 * V); tone(f, null, 0.5, 'triangle', 0.02 * V); }
+      else { tone(f, null, 0.5 + d * 0.6, 'sine', 0.045 * V); tone(f * 4, null, 0.12, 'sine', 0.008 * V); }   // vibes
+    }, b * B);
+  }
+  P.bass.forEach((f, k) => later(() => {
+    if (S.bassInst === 'pluck') tone(f, null, 0.3, 'triangle', 0.07 * V);
+    else if (S.bassInst === 'soft') tone(f, f * 0.995, 1.6, 'sine', 0.06 * V);
+    else if (S.bassInst === 'harpsi') { tone(f, null, 0.3, 'sawtooth', 0.012 * V); tone(f, null, 0.4, 'triangle', 0.04 * V); }
+    else { tone(f, f * 0.98, 0.42, 'triangle', 0.09 * V); tone(f * 2, null, 0.2, 'sine', 0.02 * V); }   // ดับเบิลเบสเดิน
+  }, k * S.bassEvery * B));
+  if (S.pad) for (const f of P.chord) tone(f, f * 1.002, end ? 3.6 : (4 * B) / 1000 + 0.1, 'sine', 0.009 * S.pad * V);
+  // แปรงกลองปัดจังหวะ 2, 4 (แจ๊ส)
+  if (S.brush && !end) for (const b of [1, 3]) later(() => noise({ dur: 0.18, vol: 0.03 * V, freq: 4200, q: 0.6, attack: 0.04 }), b * B);
+}
+function pairPhrase(i) {
+  const P = PAIR_SONG[i], B = 833, V = PAIR_SONG_VOL;
+  for (const [b, f, d] of P.mel) {
+    later(() => {
+      if (d >= 1) {
+        // ขิมรัว: ตีถี่ ๆ ตลอดความยาวโน้ต เบาลงเรื่อย ๆ
+        const n = Math.round((d * B) / 110);
+        for (let k = 0; k < n; k++) later(() => { tone(f, null, 0.22, 'triangle', 0.03 * V * (1 - (k / n) * 0.6)); tone(f * 2, null, 0.1, 'sine', 0.006 * V); }, k * 110);
+      } else {
+        tone(f, null, 0.45, 'triangle', 0.038 * V);
+        tone(f * 4, null, 0.08, 'sine', 0.006 * V);
+      }
+    }, b * B);
+  }
+  // เบสนุ่มจังหวะ 1 กับ 3 + คอร์ดค้างบาง ๆ
+  P.bass.forEach((f, k) => later(() => tone(f, f * 0.995, 1.4, 'sine', 0.05 * V), k * 2 * B));
+  const beats = P.beats || 4;
+  for (const f of P.pad) tone(f, f * 1.002, i === 4 ? 4.5 : (beats * B) / 1000 + 0.1, 'sine', 0.008 * V);
+  // ฉิ่ง (เปิด) จังหวะ 1, 3 · ฉับ (ปิด) จังหวะ 2, 4 — ท่อนปิดเพลงตีฉิ่งครั้งเดียว
+  for (let b = 0; b < (i === 4 ? 1 : beats); b++) {
+    later(() => (b % 2 === 0 ? glassBell(2794, 0.5, 0.012 * V) : noise({ dur: 0.05, vol: 0.02 * V, type: 'highpass', freq: 5200, attack: 0.002 })), b * B);
+  }
 }
 
 export const sfx = {
@@ -1668,6 +1797,148 @@ export const sfx = {
     later(() => { brass(523, 0.7, 0.016); brass(659, 0.7, 0.013); brass(784, 0.7, 0.013); brass(988, 0.7, 0.01); }, 200);
     later(() => tone(73.4, 72, 0.6, 'triangle', 0.09), 200);
     later(() => noise({ dur: 0.9, vol: 0.03, type: 'highpass', freq: 5200, attack: 0.01 }), 200);
+  },
+
+  // ══ ท่าเปิดตัวชุดคู่ "สไบไทย" + "หนุ่มไทยโจงกระเบน" (ริมแม่น้ำยามเย็น: ยื่นดอกบัว เขิน ๆ · หนุ่มวิ่งจู๊ด เสกดอกบัว) ══
+  // โทนรวม: ระนาดเอก/ขิมห้าเสียงไทย (โด เร มี ซอล ลา) หวาน ๆ ช้า ๆ + น้ำไหลเบา ๆ — ตลกตอนหนุ่มวิ่ง/ย่อง
+  // ริมน้ำยามเย็น: น้ำไหลเบา ๆ + กระดิ่งใสแว่ว (ทำนองหลักอยู่ในเพลงประกอบ pairSong*)
+  pairRiver: () => {
+    noise({ dur: 2.6, vol: 0.022, type: 'bandpass', freq: 700, freqTo: 900, q: 0.6, attack: 0.8 });
+    [2093, 2637, 3136].forEach((f, i) => later(() => glassBell(f, 0.7, 0.012), 400 + i * 300));
+  },
+  // หันมาหากล้อง: ผ้าไหวฟึ่บ + ขิมกรีดขึ้น
+  pairTurn: () => {
+    noise({ dur: 0.3, vol: 0.03, freq: 900, freqTo: 2200, q: 1, attack: 0.1 });
+    [1046, 1175, 1319, 1568].forEach((f, i) => later(() => glassBell(f, 0.4, 0.016), 80 + i * 45));
+  },
+  // ฝันหวาน ตาวิ้ง: กริ๊งใส ๆ สามเม็ดห่าง ๆ
+  pairDream: () => {
+    [2093, 2637, 3136].forEach((f, i) => later(() => glassBell(f, 0.6, 0.02), i * 240));
+  },
+  // แขนยื่นดอกบัวเข้าเฟรม: ผ้าเสียดสีเบา ๆ
+  pairPaw: () => noise({ dur: 0.25, vol: 0.025, freq: 1200, freqTo: 600, q: 1.1, attack: 0.08 }),
+  // ตาวาวเหลือบเห็น: "ติ๊ง!" ใสสูง
+  pairTing: () => {
+    glassBell(2637, 0.5, 0.05);
+    later(() => glassBell(3951, 0.4, 0.03), 60);
+  },
+  // หนุ่มยิ้มนิด ๆ: ระนาดสองโน้ตอุ่น ๆ
+  pairSmile: () => {
+    [[659, 0], [784, 140]].forEach(([f, ms]) => later(() => { tone(f, null, 0.5, 'triangle', 0.04); tone(f * 2, null, 0.2, 'sine', 0.01); }, ms));
+  },
+  // ค่อย ๆ ลุกยืน: ขิมรัวไล่ขึ้นช้า ๆ
+  pairRise: () => {
+    [523, 587, 659, 784, 880, 1046, 1175, 1319].forEach((f, i) => later(() => glassBell(f, 0.5, 0.018), i * 110));
+  },
+  // รับดอกบัว: กระดิ่งทองพรั่งพรูเบา ๆ + คอร์ดหวานค้าง
+  pairGive: () => {
+    [1568, 1319, 1175, 1046, 1319, 1568, 2093].forEach((f, i) => later(() => glassBell(f, 0.6, 0.02), i * 60));
+    later(() => [523, 659, 784].forEach((f) => tone(f, null, 1.3, 'triangle', 0.014)), 120);
+  },
+  // เขิน: เมี้ยวเบา ๆ อ้อน ๆ สองตัว (หญิงสูง ชายทุ้ม) + หัวใจป๊อปเบา ๆ
+  pairShy: () => {
+    meow({ start: 880, peak: 1180, end: 900, dur: 0.22, vol: 0.1, q: 5, wobble: 14 });
+    later(() => meow({ start: 520, peak: 680, end: 520, dur: 0.24, vol: 0.1, q: 5, wobble: 10 }), 380);
+    [0, 260, 520].forEach((ms) => later(() => tone(1200, 1700, 0.07, 'sine', 0.025), 700 + ms));
+  },
+  // สบตากัน โลกสีชมพู: ฮาร์ปกวาดขึ้นหวาน ๆ + คอร์ดค้างอุ่น ๆ + กระดิ่งวิ้ง (ผู้ใช้ 24 ต.ค. "โลกสีชมพูสุดโรแมนติก")
+  pairRomance: () => {
+    [523, 659, 784, 1046, 1319, 1568, 2093].forEach((f, i) => later(() => tone(f, null, 0.9, 'triangle', 0.03), i * 70));
+    later(() => [392, 523, 659, 784].forEach((f) => tone(f, f * 1.003, 3.2, 'sine', 0.018)), 300);
+    [2637, 3136, 3520].forEach((f, i) => later(() => glassBell(f, 0.8, 0.016), 700 + i * 380));
+  },
+  // ตัดไปหน้าหนุ่ม: ถอนใจหวาน ๆ + กระดิ่งสองเม็ด
+  pairSigh2: () => {
+    meow({ start: 560, peak: 640, end: 470, dur: 0.6, vol: 0.08, q: 5, wobble: 10 });
+    [1568, 2093].forEach((f, i) => later(() => glassBell(f, 0.6, 0.018), 260 + i * 200));
+  },
+  // สะดุ้ง! เสียงกระดิ่งแตก + "ปึ๊ง" + เมี้ยวตกใจสองตัว
+  pairStartle: () => {
+    tone(880, 1760, 0.06, 'square', 0.03);
+    noise({ dur: 0.12, vol: 0.06, type: 'highpass', freq: 2500, attack: 0.002 });
+    later(() => meow({ start: 900, peak: 1500, end: 1300, dur: 0.14, vol: 0.12, q: 4, wobble: 20 }), 40);
+    later(() => meow({ start: 600, peak: 1000, end: 860, dur: 0.15, vol: 0.12, q: 4, wobble: 20 }), 90);
+  },
+  // หัวเราะเขิน ๆ: เมี้ยวคิกคักสลับสองเสียง + ระนาดเบา ๆ
+  pairLaugh: () => {
+    [[0, 1200], [150, 1300], [300, 760], [450, 840], [620, 1250], [780, 800]].forEach(([ms, f]) => later(() => meow({ start: f * 0.9, peak: f, end: f * 0.92, dur: 0.1, vol: 0.09, q: 4, wobble: 16 }), ms));
+    [[784, 200], [880, 500], [1046, 800]].forEach(([f, ms]) => later(() => tone(f, null, 0.4, 'triangle', 0.025), ms));
+  },
+  // ── เพลงประกอบท่าเปิดตัวคู่ (ผู้ใช้ 24 ต.ค. "เพลงไทยโรแมนติก ทำนองเพราะ ๆ") ──
+  // ทำนองห้าเสียงไทย (โด เร มี ซอล ลา) ช้า 72 bpm · ขิมรัวเสียงยาว · ฉิ่ง-ฉับ · เบสกับคอร์ดนุ่ม ๆ
+  // ตัดเป็นท่อนละ 4 จังหวะ (200 เฟรม) ท่อน A–D วนต่อกัน — ตัวท่าเปิดตัวเรียกทีละท่อน (กดข้าม/หยุด เพลงหยุดตามท่อน)
+  pairSongA: () => pairPhrase(0),
+  pairSongB: () => pairPhrase(1),
+  pairSongC: () => pairPhrase(2),
+  pairSongD: () => pairPhrase(3),
+  pairSongEnd: () => pairPhrase(4),
+  pairSongH: () => pairPhrase(5),
+  ...Object.fromEntries(Object.keys(S_SONGS).flatMap((id) => [0, 1, 2, 3, 4].map((i) => [id + 'Song' + 'ABCDE'[i], () => sPhrase(id, i)]))),   // sweetSongA … chaweeSongE (E = ปิดเพลง)
+  // ก้าวเดินบนหญ้า: ฟุบนุ่ม ๆ
+  pairStep: () => noise({ dur: 0.06, vol: 0.03, type: 'lowpass', freq: 900, freqTo: 400 }),
+  // ดมดอกไม้: สูดลม "ฟืด" + ถอนใจสุข "อืมม"
+  pairSniff: () => {
+    noise({ dur: 0.35, vol: 0.03, type: 'highpass', freq: 2500, freqTo: 4000, attack: 0.15 });
+    later(() => meow({ start: 700, peak: 760, end: 560, dur: 0.5, vol: 0.08, q: 6, wobble: 8 }), 420);
+  },
+  // ลัลลา: เมี้ยวเป็นทำนองห้าเสียงสั้น ๆ + ระนาดตาม
+  pairLala: () => {
+    [[1046, 0], [1175, 200], [1319, 400], [1175, 600], [1046, 800], [880, 1000], [1046, 1300]].forEach(([f, ms]) => later(() => {
+      meow({ start: f * 0.9, peak: f, end: f * 0.95, dur: 0.16, vol: 0.07, q: 5, wobble: 10 });
+      tone(f / 2, null, 0.25, 'triangle', 0.025);
+    }, ms));
+  },
+  // บัวอีกดอกลอยมาตามน้ำ: ประกายทองแว่ว ๆ (แอบใบ้)
+  pairHint: () => {
+    [2349, 2637, 3136, 3520].forEach((f, i) => later(() => glassBell(f, 0.7, 0.014), i * 120));
+  },
+  // ปิดท่า: ระนาดสามโน้ตจบวลี + กระดิ่งค้าง
+  pairPose: () => {
+    [[784, 0], [880, 120], [1046, 260]].forEach(([f, ms]) => later(() => { tone(f, null, 0.6, 'triangle', 0.045); tone(f * 4, null, 0.15, 'sine', 0.008); }, ms));
+    later(() => glassBell(2093, 1.2, 0.02), 300);
+  },
+  // กล้องเหวี่ยง: ลมวืด
+  pairWhip: () => noise({ dur: 0.35, vol: 0.05, type: 'bandpass', freq: 400, freqTo: 2600, q: 0.8, attack: 0.12 }),
+  // หลงรัก ถอนหายใจ: เมี้ยวทุ้มยาวลากลง "เฮ้อ~"
+  pairSigh: () => {
+    meow({ start: 620, peak: 700, end: 420, dur: 0.8, vol: 0.1, q: 5, wobble: 12 });
+    later(() => [1319, 1175, 1046].forEach((f, i) => later(() => glassBell(f, 0.5, 0.015), i * 160)), 300);
+  },
+  // ปิ๊ง! ไอเดียผุด
+  pairPing: () => {
+    tone(1568, 3136, 0.08, 'sine', 0.07);
+    later(() => glassBell(3136, 0.5, 0.05), 70);
+  },
+  // วิ่งจู๊ด: ซิปลมพุ่งสูงขึ้นเร็ว ๆ
+  pairDash: () => {
+    noise({ dur: 0.28, vol: 0.07, type: 'bandpass', freq: 800, freqTo: 5000, q: 1.4, attack: 0.02 });
+    tone(400, 1800, 0.2, 'triangle', 0.03);
+  },
+  // ไถลหยุด: เอี๊ยด + ฝุ่นฟุ้ง
+  pairSkid: () => {
+    tone(1300, 900, 0.18, 'sawtooth', 0.012);
+    noise({ dur: 0.3, vol: 0.05, type: 'lowpass', freq: 1400, freqTo: 400, attack: 0.01 });
+  },
+  // ร่ายเวทแมว: เสียงวิ้งหมุนไต่ขึ้น + คอร์ดทองค้าง
+  pairCast: () => {
+    noise({ dur: 0.8, vol: 0.03, freq: 1200, freqTo: 5200, q: 2, attack: 0.3 });
+    [1046, 1319, 1568, 2093, 2637].forEach((f, i) => later(() => glassBell(f, 0.5, 0.02), i * 90));
+    later(() => meow({ start: 520, peak: 700, end: 600, dur: 0.22, vol: 0.09, q: 4, wobble: 10 }), 120);
+  },
+  // บัวผุดจากน้ำ: จ๋อม + ประกาย
+  pairLotusRise: () => {
+    tone(520, 200, 0.14, 'sine', 0.08);
+    noise({ dur: 0.18, vol: 0.04, type: 'highpass', freq: 3000, attack: 0.005 });
+    later(() => [1568, 2093, 2637].forEach((f, i) => later(() => glassBell(f, 0.5, 0.02), i * 70)), 160);
+  },
+  // รับดอกบัวไว้ในมือ: ป๊อปเบา ๆ + เมี้ยวพอใจ
+  pairCatch: () => {
+    tone(700, 1100, 0.07, 'sine', 0.05);
+    later(() => meow({ start: 560, peak: 720, end: 640, dur: 0.18, vol: 0.1, q: 4, wobble: 10 }), 140);
+  },
+  // ย่อง ๆ: พิซซิคาโต้ปลายเท้าขึ้นลงแบบการ์ตูน
+  pairTiptoe: () => {
+    [523, 659, 587, 698, 659, 784, 698, 880].forEach((f, i) => later(() => tone(f, null, 0.08, 'triangle', 0.035), i * 170));
   },
 
   // แสงขาวปิดคลิป — ประกายไล่ขึ้นห้าเม็ด แล้วค้างเสียงใสสูงไว้ให้หายไปพร้อมแสง

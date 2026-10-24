@@ -364,7 +364,7 @@ function stepTrail(A, P, info, emit, bob = 0, spin = 0) {
   if (T?.ribbon) {
     const R = (A.ribbon ||= []);
     for (const q of R) q[0] -= sp * dt;
-    const wand = T.emit.find((e) => e.at === 'wand');
+    const wand = T.emit.find((e) => e.at === 'wand' && !e.introOnly);
     if (emit && wand) {
       const p = at(wand);
       // หัวคทากระโดดไกลผิดปกติในเฟรมเดียว (ถูกย้ายที่ เช่นชุบชีวิต/กล้องถอย) = เริ่มหางใหม่ ไม่ลากเส้นเชื่อมข้ามจอ
@@ -380,6 +380,7 @@ function stepTrail(A, P, info, emit, bob = 0, spin = 0) {
     const k = (lite ? 0.5 : 1) * (spin ? 1.7 : 1);
     A.trailAcc ||= T.emit.map(() => 0);
     T.emit.forEach((e, i) => {
+      if (e.introOnly) return;   // จุดปล่อยของท่าเปิดตัวเท่านั้น (introTrail)
       A.trailAcc[i] += e.rate * k * dt;
       while (A.trailAcc[i] >= 1) {
         A.trailAcc[i] -= 1;
@@ -393,7 +394,7 @@ function stepTrail(A, P, info, emit, bob = 0, spin = 0) {
           x: x + (Math.random() - 0.5) * 1.6 * sc * spr, y: y + (Math.random() - 0.5) * 1.6 * sc * spr,
           vx: (Math.random() - 0.5) * 0.35 * spr, vy: e.vy + (Math.random() - 0.5) * 0.3 * spr,   // แทบไม่กระจาย = เป็นเส้นสายจากจุดเกิด
           fall: e.fall, sway: glit ? 0.08 : 0.2,
-          age: 0, life: 28 + Math.random() * 24, kind, seed: Math.random(),
+          age: 0, life: e.life ? e.life * (0.75 + Math.random() * 0.5) : 28 + Math.random() * 24, kind, seed: Math.random(),   // e.life = ชนิดที่อยู่นาน (ดอกพิกุลสไบ)
           size: (e.sz ?? 1) * (glit ? 0.5 + Math.random() * 0.45 : kind.startsWith('star') ? 0.7 + Math.random() * 0.5 : kind.startsWith('sprinkle') ? 0.75 + Math.random() * 0.35 : 0.6 + Math.random() * 0.35) * 1.5,   // ผู้ใช้: เล็กไปกลืนพื้นหลัง → ×1.5
           rot: glit ? 0 : Math.random() * TAU, vr: (Math.random() - 0.5) * 0.12,
         });

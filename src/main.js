@@ -3,7 +3,7 @@ import './style.css';
 import { VIEW, SCORING, REVIVE, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx, fadeSfx } from './audio.js';
+import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx, fadeSfx, setSfxBoost } from './audio.js';
 import { startMusic, stopMusic, primeMusicFile, SONG_LISTS, songIndex, setSong } from './music.js';
 import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
 import {
@@ -105,7 +105,7 @@ import { SKILLS, isSkillUnlocked } from './skills.js';
 import { registerFresh, isFresh, hasFresh, markSeen, onFresh, setDot } from './fresh.js';
 import { setupSkillUI } from './skill-ui.js';
 import { HOME_MOVES } from './home-moves.js';
-import { drawOdScene, odGeo, odGeoCover, odIntroAt, odVideoPick, odVideoSrc, odVideoCast, OD_CASTS, OD_SHOP_CAST } from './od-stage.js';
+import { drawOdScene, odGeo, odGeoCover, odIntroAt, odVideoPick, odVideoSrc, odVideoCast, OD_CASTS, odShopCast } from './od-stage.js';
 import { GUMBALL, createGumball, drawGumballFrame } from './render/gumball.js';
 import {
   playIntroVideo, preloadIntroVideo, introVideoOpen, introVideoEnabled, setIntroVideoEnabled, introCovering,
@@ -5565,8 +5565,8 @@ const OD_VIDEO_WAIT = 2500;   // วิดีโอยังไม่ขึ้�
 
 /** เริ่มเล่นใหม่ตั้งแต่ต้น — ชุดที่มีท่าเปิดตัวเริ่มที่ท่าเปิดตัว (มีวิดีโอ = เล่นวิดีโอ) */
 function odStart() {
-  // เปิดจากตู้กาช่า (ป้ายโปรโมท / สกินในตู้นี้) = พรีเซนเตอร์ประจำร้าน (น้องไข่มุก — ผู้ใช้ 18 ต.ค.) · จากคลังน้อง = แมวของผู้เล่น
-  od.skin = odFrom === gachaPanel || odFrom === gListPanel ? skinById(OD_CASTS[OD_SHOP_CAST].skin) : getSkin();
+  // เปิดจากตู้กาช่า (ป้ายโปรโมท / สกินในตู้นี้) = พรีเซนเตอร์ประจำร้าน (น้องไข่มุก — ผู้ใช้ 18 ต.ค. · หนุ่มไทยโจงกระเบนใช้น้องส้ม) · จากคลังน้อง = แมวของผู้เล่น
+  od.skin = odFrom === gachaPanel || odFrom === gListPanel ? skinById(OD_CASTS[odShopCast(odCurrent)].skin) : getSkin();
   const s = { ...od.skin, outfit: outfitById(odCurrent) };
   const live = CAT2.ui && useCat2(s);   // ท่าเปิดตัว/ท่าแอ็คมีเฉพาะตัววาดแบบใหม่
   od.mode = live && cat2Intro(odCurrent) ? 'intro' : live && cat2Act(odCurrent) ? 'act' : 'idle';
@@ -5680,6 +5680,8 @@ function stopOdCat() {
   odRAF = 0;
   odVideoOff();
   fadeSfx(0.25);
+  // ออกจากหน้ารายละเอียดชุด (ทุกทางออกผ่านตรงนี้) — เปิดเพลงหน้าแรกคืนถ้าหยุดไว้
+  if (odMusicOff) { odMusicOff = false; startMusic(); setSfxBoost(1); }
 }
 
 // แตะเวทีระหว่างท่าเปิดตัว = ข้าม (ไหลเข้าท่าแอ็ค เสียงจางออก) — ตอนวิดีโอเล่น ตัวที่โดนแตะคือวิดีโอ
@@ -5776,12 +5778,17 @@ function paintOutfitDetail() {
     got ? '' : 'ชุดนี้ลุ้นได้ที่ตู้กาช่า');
 }
 
+/** หน้ารายละเอียดชุดระดับ S หยุดเพลงหน้าแรกไว้ (ท่าเปิดตัวมีเพลงประกอบของตัวเอง — ผู้ใช้ 24 ต.ค.) */
+let odMusicOff = false;
+const OD_SFX_BOOST = 1.9;
 function openOutfitDetail(id, from = outfitPanel) {
   odCurrent = id;
   odFrom = from;
   setOdMax(false);
   paintOutfitDetail();
   swapPanel(from, odPanel);
+  // + ขยายเสียงคลิป (เอฟเฟกต์ + เพลงประกอบ) — ในเกมจริงเบากว่าหน้าทดสอบ (ผู้ใช้ 25 ต.ค.)
+  if (outfitById(id)?.rarity === 'high' && !odMusicOff) { stopMusic(); odMusicOff = true; setSfxBoost(OD_SFX_BOOST); }
   odStart();
   if (!odRAF) odRAF = requestAnimationFrame(odFrame);
 }

@@ -24,6 +24,9 @@ export const OD_CASTS = {
 };
 /** พรีเซนเตอร์ของหน้ารายละเอียดชุดที่เปิดจากตู้กาช่า (ป้ายโปรโมท / สกินในตู้นี้) */
 export const OD_SHOP_CAST = 'pearl';
+/** ชุดที่พรีเซนเตอร์ประจำร้านต่างจากค่ากลาง — หนุ่มไทยโจงกระเบน = น้องส้ม (ตัวชายในท่าเปิดตัวคู่ · ผู้ใช้ 24 ต.ค.) */
+const OD_SHOP_CAST_BY = { jong: 'orange' };
+export const odShopCast = (id) => OD_SHOP_CAST_BY[id] || OD_SHOP_CAST;
 /**
  * วิดีโอท่าเปิดตัวที่อัดไว้ (ผู้ใช้ขอ 15 ต.ค. — วาดสดกระตุกบนเครื่องอ่อน)
  * casts = พรีเซนเตอร์ที่อัดไว้ (OD_CASTS) — แมวตัวอื่น เกมวาดสดแทน
@@ -132,7 +135,7 @@ export function drawOdScene(ctx, W, H, st, geo = odGeo(W, H)) {
   ctx.globalAlpha = 0.28 * hopK * appear;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(0, 5, 44 * hopK, 8.5 * hopK, 0, 0, Math.PI * 2);
+  ctx.ellipse((shape?.dx || 0) * OD_SCALE, 5, 44 * hopK, 8.5 * hopK, 0, 0, Math.PI * 2);   // ตัวเลื่อน (dx) เงาเลื่อนตาม (แบบหน้าทดสอบ)
   ctx.fill();
   ctx.globalAlpha = 1;
   if (st.mode === 'idle') drawCatAuto(ctx, 0, 0, OD_SCALE, skin, t, null, { fit: 1 });

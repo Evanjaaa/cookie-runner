@@ -662,6 +662,17 @@ const LIST = [
       ctx.beginPath();
       for (let i = 0; i <= 10; i++) { const y = 6 + i * 1.1; ctx.lineTo(11 + Math.sin(i * 2.2) * 1.2, y); }
       ctx.stroke();
+      // แว่นดำ (ใส่ตลอด — ผู้ใช้ 24 ต.ค.): เลนส์ดำสองข้าง สะพานทอง เงาสะท้อนเฉียง
+      ctx.fillStyle = '#121218';
+      ctx.beginPath(); ctx.roundRect(-11, -5, 10.5, 7, 2.4); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(2, -5, 10.5, 7, 2.4); ctx.fill();
+      ctx.fillStyle = '#E2B865';
+      ctx.fillRect(-1, -3.6, 3.4, 1.6);
+      ctx.strokeStyle = 'rgba(255,255,255,.45)';
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-9, 0.6); ctx.lineTo(-6, -3.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4, 0.6); ctx.lineTo(7, -3.4); ctx.stroke();
     },
   },
   {
@@ -718,6 +729,37 @@ const LIST = [
       ctx.strokeStyle = '#F6C14E';
       ctx.lineWidth = 0.8;
       ctx.beginPath(); ctx.moveTo(10, -6.5); ctx.lineTo(10.6, -2); ctx.stroke();
+    },
+  },
+  {
+    id: 'jong',
+    rarity: 'high',
+    name: 'หนุ่มไทยโจงกระเบน',
+    note: 'เสื้อฟ้าลายไทยกับโจงกระเบนยกทอง',
+    // ชุดคู่ของสไบไทย — โบนัสไทม์/ฝน/ดอกพิกุลแบบเดียวกัน
+    bonus: {
+      sky: ['#1E2E5C', '#4C6BA8', '#E7C98E'],
+      glow: 'rgba(250,206,150,.34)',
+      speck: 'rgba(255,226,180,.62)',
+      cloud: '#DCE6F6',
+      cloudSoft: '#8EA2C8',
+      sparkle: '#FFE08A',
+    },
+    rain: ['#F6C14E', '#FFF3C4', '#B63A35'],
+    rainShape: 'flower',
+    glow: '#FFE7B0',
+    trail: {
+      every: 5, shape: 'flower',
+      colors: ['#F6C14E', '#C4D9F4', '#FFF3C4'],
+      r: [2.4, 4], life: 46, gravity: 0.03, drift: -0.45, spin: 0.08,
+    },
+    back(ctx, s, pose) {
+      sparkleAura(ctx, pose, '#F6C14E', '#E3EEFC');
+    },
+    body(ctx, s, pose) {
+      fullSuit(ctx, pose, '#C4D9F4');                  // เสื้อฟ้าอ่อน
+      skirt(ctx, pose, '#DDAD4C', '#B63A35');          // โจงกระเบนยกทอง แถบแดง
+      bowKnot(ctx, 8, pose === 'slide' ? 4 : 8, 3, '#C9773A', '#F6C14E');   // โบว์ผ้าคาดเอวข้างสะโพก
     },
   },
   {
@@ -1795,7 +1837,8 @@ export const ALL_OUTFITS = LIST.map((o) => ({
  * ที่เหลือยังเป็นร่างแรก รอวาดใหม่ตามกฎ S (S_TIER_SKINS.md) — ซ่อนจากทุกที่: ตู้กาช่า (สุ่มไม่ออก) คลัง ป้ายโปรโมท
  * คนที่เคยได้ไปแล้ว: ยังจำไว้ในบัญชี แต่ใส่ไม่ได้/ไม่นับ จนกว่าจะเอาออกจากรายการนี้ · เปิดชุดไหนแล้วลบ id ออกจากตรงนี้ที่เดียว
  */
-export const HIDDEN_OUTFITS = new Set(['chawee', 'sabai', 'fruit', 'lunar', 'rainbow', 'dryad']);   // ลูกคุณหนู (noble) เปิดแล้ว — ผู้ใช้สั่ง 21 ต.ค.
+// ลูกคุณหนู (noble) เปิดแล้ว — ผู้ใช้สั่ง 21 ต.ค. · พี่ชาวี สไบไทย หนุ่มไทยโจงกระเบน เปิดแล้ว — ผู้ใช้สั่ง 24 ต.ค. (ชื่อสองชุดไทยจะเปลี่ยนทีหลัง)
+export const HIDDEN_OUTFITS = new Set(['fruit', 'lunar', 'rainbow', 'dryad']);
 export const OUTFITS = ALL_OUTFITS.filter((o) => !HIDDEN_OUTFITS.has(o.id));
 
 export const OUTFIT_COST = 5000;      // ทองต่อการสุ่มหนึ่งครั้ง
