@@ -391,6 +391,14 @@ export const PICKUPS = {
   box: { list: 'boxes', make: (x) => ({ x, y: GROUND_Y, got: false, open: 0 }) },
 };
 
+/**
+ * ไอเท็มที่เลิกใช้แล้ว (เกมเพลย์ใหม่ ผู้ใช้ตกลง 25 ต.ค. 2026 · GAME_PLAN.md ข้อ 8 — หนีให้ไม่เหมือน Cookie Run)
+ * ต้นหญ้าแมว · อาหารกระป๋องตัวโต · แม่เหล็ก · โล่ · ขวดพลัง · ตัวอักษรโบนัส — ไม่วางในด่านอีก
+ * ท่อนที่ออกแบบไว้แล้วมีของพวกนี้ = ข้ามไปเฉย ๆ (ไม่ต้องแก้ข้อมูลท่อน) · หน้าออกแบบด่านอ่านชุดนี้แล้วซ่อนเหมือนกัน
+ * ผลของไอเท็มเดิมจะกลับมาเป็นสกิลของเกจพุงอิ่มในเฟสถัดไป (ฤทธิ์ออกแบบใหม่)
+ */
+export const RETIRED_PICKUPS = new Set(['nip', 'can', 'magnet', 'shield', 'potion', 'letter']);
+
 
 // ─────────────────────────────────────────────────────────────
 // พื้นเหยียบได้ — ผิวที่ไม่ใช่เส้นพื้นหลัก
@@ -3729,7 +3737,7 @@ export class Level {
     this.pits.push(...c.pit);
     this.fishes.push(...c.fish);
 
-    if (step.shield) {
+    if (step.shield && !RETIRED_PICKUPS.has('shield')) {
       this.shields.push({
         x: this.nextChunkX + w / 2,
         y: SHIELD.y,
@@ -3753,10 +3761,10 @@ export class Level {
     // ไอเท็มที่ท่อนวางเอง — ต่างจาก step.magnet/letter ที่ให้ระบบหาที่โล่งให้
     if (c.pickups) for (const p of c.pickups) this.addPickup(p.kind, p.x);
 
-    if (step.magnet) this.spawnMagnet(this.nextChunkX, w);
-    if (step.letter) this.spawnLetter(this.nextChunkX, w);
-    if (step.nip) this.spawnNip(this.nextChunkX, w);
-    if (step.can) this.spawnCan(this.nextChunkX, w);
+    if (step.magnet && !RETIRED_PICKUPS.has('magnet')) this.spawnMagnet(this.nextChunkX, w);
+    if (step.letter && !RETIRED_PICKUPS.has('letter')) this.spawnLetter(this.nextChunkX, w);
+    if (step.nip && !RETIRED_PICKUPS.has('nip')) this.spawnNip(this.nextChunkX, w);
+    if (step.can && !RETIRED_PICKUPS.has('can')) this.spawnCan(this.nextChunkX, w);
 
     this.nextChunkX += w;
     this.chunkIndex++;
@@ -3778,6 +3786,7 @@ export class Level {
    * แล้วได้จุด "โล่ง" ปลอม ๆ ที่พอวิ่งถึงจริงกลับมีหนามอยู่
    */
   spawnPotion(fromX) {
+    if (RETIRED_PICKUPS.has('potion')) return;   // เลิกใช้ (แมวเก้าชีวิตไม่มีหลอดพลัง)
     const limit = Math.min(fromX + chunkW, this.knownTo);
     for (let x = fromX; x < limit; x += 24) {
       if (this.isClearSpot(x)) {
@@ -3853,7 +3862,7 @@ export class Level {
    */
   addPickup(kind, x) {
     const def = PICKUPS[kind];
-    if (!def) return;
+    if (!def || RETIRED_PICKUPS.has(kind)) return;
     // กล่องน้องแมวที่ท่อนวางไว้ = "จุดที่กล่องจะไปตั้ง" ถ้ารอบนี้ได้เจอ
     // ไม่ได้เจอ (เกือบทุกรอบ) = ข้ามไปเฉย ๆ ไม่มีอะไรโผล่
     if (kind === 'box') {

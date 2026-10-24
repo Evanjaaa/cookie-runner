@@ -232,9 +232,12 @@ export const talentById = (id) => TALENTS.find((t) => t.id === id) || null;
 // ติดได้ทีละใบ (ตามแผนเวอร์ชันแรก) — เก็บเป็น id เดียว ไม่ใช่รายการ
 
 const PREF = 'talent';
+/** เลิกใช้พรสวรรค์ในเกม (เกมเพลย์ใหม่ 25 ต.ค. 2026 — พลังใหม่มาจากการเลี้ยงน้อง · GAME_PLAN.md ข้อ 9) · ข้อมูลที่ผู้เล่นมียังเก็บไว้ */
+export const TALENTS_RETIRED = true;
 
 /** ใบที่ติดตั้งอยู่ — null ถ้าไม่ได้ติด หรือใบที่บันทึกไว้ถูกปิดใช้ไปแล้ว */
 export function getEquippedTalent() {
+  if (TALENTS_RETIRED) return null;
   const t = talentById(loadPref(PREF, null));
   return t && isUnlocked(t) ? t : null;
 }

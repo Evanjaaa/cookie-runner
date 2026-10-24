@@ -22,7 +22,7 @@ import {
 } from '../config.js';
 import { BONUS_LAYOUTS, bonusGeometry, buildBonusMagnets } from '../bonus-layouts.js';
 import {
-  AUTHOR, PATTERNS, PATTERN_META, PICKUPS, Level, composeRoute,
+  AUTHOR, PATTERNS, PATTERN_META, PICKUPS, RETIRED_PICKUPS, Level, composeRoute,
   platTop, highestTop, footing, thinFood, spreadChunk,
 } from '../level.js';
 import { drawPlats, PLAT_THEMES } from '../render/platforms.js';
@@ -196,8 +196,8 @@ const KIT = [
   { t: 'bee', group: 'sp', pal: 'sp', label: 'ผึ้งแกว่ง', sub: 'หมอบลอดได้เสมอ', wide: true },
   { t: 'ball', group: 'sp', pal: 'sp', label: 'ลูกบอลกลิ้งสวน', sub: 'เร็วกว่าฉาก 35%', wide: true },
 
-  // ── ไอเท็มตัวช่วย — สร้างจาก ITEM_DEFS ทั้งหมด ──
-  ...Object.entries(ITEM_DEFS).map(([kind, def]) => ({
+  // ── ไอเท็มตัวช่วย — สร้างจาก ITEM_DEFS (ยกเว้นชนิดที่เกมเลิกใช้แล้ว RETIRED_PICKUPS · เกมเพลย์ใหม่ 25 ต.ค. 2026) ──
+  ...Object.entries(ITEM_DEFS).filter(([kind]) => !RETIRED_PICKUPS.has(kind)).map(([kind, def]) => ({
     t: 'item', kind, group: 'item', pal: 'item', label: def.label, sub: def.sub, wide: true,
   })),
 
@@ -1291,7 +1291,8 @@ function build(d, off = 0) {
       case 'item': {
         // รูปร่างตอนเกิดมาจาก PICKUPS ตัวเดียวกับเกม — ตำแหน่งสูงจึงตรงกับของที่ระบบวางเองเสมอ
         const def = PICKUPS[it.kind];
-        if (def) pickups.push(tag({ ...def.make(x, it.letter || 0), kind: it.kind }, it));
+        // ชนิดที่เกมเลิกวางแล้ว (RETIRED_PICKUPS) — ท่อนเก่าที่มีอยู่ไม่แสดง/ไม่จำลอง ให้ตรงกับเกม
+        if (def && !RETIRED_PICKUPS.has(it.kind)) pickups.push(tag({ ...def.make(x, it.letter || 0), kind: it.kind }, it));
         break;
       }
       case 'ball': {
@@ -1408,7 +1409,7 @@ function active() {
     const refW = spreadChunk(p, 0, p.width || chunkW);
     p.fish = thinFood(p.fish);
     // ไอเท็มในท่อนเก็บแค่ชนิดกับ x — แปลงเป็นรูปร่างตอนเกิดจริงก่อนวาด
-    const pickups = (p.pickups || []).map((q) => ({ ...PICKUPS[q.kind].make(q.x, 0), kind: q.kind }));
+    const pickups = (p.pickups || []).filter((q) => !RETIRED_PICKUPS.has(q.kind)).map((q) => ({ ...PICKUPS[q.kind].make(q.x, 0), kind: q.kind }));
     return {
       ...p, pickups, fallers: p.fallers || [], hazards: [], plats: p.plats || [],
       width: refW, partial: !!p.partial, readonly: true, gate: g ? g.id : null,

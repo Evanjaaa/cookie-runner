@@ -731,7 +731,8 @@
               <button type="button" class="stab" id="tabStashOutfit" role="tab">
                 <span class="stab-ico" aria-hidden="true">👕</span>ชุดแมว
               </button>
-              <button type="button" class="stab" id="tabStashTreasure" role="tab">
+              <!-- สมบัติเลิกใช้ในเกมแล้ว (เกมเพลย์ใหม่ 25 ต.ค. 2026) — ซ่อนแท็บไว้ ของในคลังยังอยู่ -->
+              <button type="button" class="stab" id="tabStashTreasure" role="tab" style="display:none">
                 <span class="stab-ico" aria-hidden="true">🧰</span>สมบัติ
               </button>
             </div>
@@ -839,7 +840,8 @@
                  แยกคนละช่องติดตั้ง ใส่พร้อมกันได้ — ปุ่มล็อบบี้มีปุ่มเดียว ไม่ต้องเพิ่มปุ่มใหม่ -->
             <div class="fsort tl-tabs" id="tlTabs" role="tablist" aria-label="หมวด">
               <button type="button" class="fchip on" data-tab="skill" role="tab" aria-selected="true">สกิล</button>
-              <button type="button" class="fchip" data-tab="talent" role="tab" aria-selected="false">พรสวรรค์</button>
+              <!-- พรสวรรค์เลิกใช้ในเกมแล้ว (เกมเพลย์ใหม่ 25 ต.ค. 2026) — ซ่อนแท็บไว้ ข้อมูลยังอยู่ -->
+              <button type="button" class="fchip" data-tab="talent" role="tab" aria-selected="false" style="display:none">พรสวรรค์</button>
             </div>
             <span class="tl-count" aria-label="สะสมแล้ว">
               <b id="tlOwned">0</b><span class="tl-count-sep">/</span><span id="tlTotal">0</span>
@@ -871,7 +873,7 @@
             <aside class="tl-side">
               <p class="tl-side-label">ติดตั้งอยู่</p>
               <div class="tl-equipped sk-equipped" id="skEquipped"></div>
-              <p class="tl-side-note">ติดตั้งได้ทีละ 1 สกิล<br>หลอดบนหัวเต็มทุก 20 วิ<br>แล้วออกฤทธิ์เอง</p>
+              <p class="tl-side-note">ติดตั้งได้ทีละ 1 สกิล<br>กินจนเกจพุงอิ่มเต็ม<br>แล้วกดปุ่มสกิลใช้เอง</p>
               <!-- ปุ่มอ่านวิธีใช้ — ชิดขอบล่างของช่องซ้าย เปิดแผ่นอธิบาย (#tlHelp) -->
               <button type="button" class="tl-help" data-help="skill">
                 <span>การ์ดสกิลมีไว้ทำอะไร?</span><i class="tl-help-i" aria-hidden="true">!</i>

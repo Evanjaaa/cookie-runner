@@ -173,8 +173,11 @@ export function getEquipped() {
   return out;
 }
 
+export const TREASURES_RETIRED = true;
 /** สมบัติที่ติดตั้งอยู่จริง พร้อมขั้นตีบวก — รูปแบบที่ตัวรันในเกมใช้ได้เลย */
 export function equippedTreasures() {
+  // เลิกใช้สมบัติในเกม (เกมเพลย์ใหม่ 25 ต.ค. 2026 — แทนด้วยเครื่องรางจากการเลี้ยง · GAME_PLAN.md ข้อ 7) · ของในคลังยังเก็บไว้
+  if (TREASURES_RETIRED) return [];
   return getEquipped()
     .filter(Boolean)
     .map((id) => ({ treasure: treasureById(id), level: treasureLevel(id) }));

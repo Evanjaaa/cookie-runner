@@ -1874,6 +1874,28 @@ export const sfx = {
   pairSongEnd: () => pairPhrase(4),
   pairSongH: () => pairPhrase(5),
   ...Object.fromEntries(Object.keys(S_SONGS).flatMap((id) => [0, 1, 2, 3, 4].map((i) => [id + 'Song' + 'ABCDE'[i], () => sPhrase(id, i)]))),   // sweetSongA … chaweeSongE (E = ปิดเพลง)
+  // ── เหตุการณ์สุ่มระหว่างวิ่ง (run-extras.js · เกมเพลย์ใหม่ 25 ต.ค. 2026) ──
+  // หมาไล่: เห่า "โฮ่ง โฮ่ง" ทุ้ม ๆ
+  eventDog: () => {
+    [0, 180].forEach((ms) => later(() => {
+      noise({ dur: 0.12, vol: 0.06, type: 'bandpass', freq: 520, freqTo: 300, q: 1.6, attack: 0.01 });
+      tone(240, 150, 0.12, 'sawtooth', 0.03);
+    }, ms));
+  },
+  // ฝนตก: ฟ้าร้องไกล ๆ + ฝนซ่า
+  eventRain: () => {
+    noise({ dur: 1.4, vol: 0.06, type: 'lowpass', freq: 300, freqTo: 120, attack: 0.08 });
+    later(() => noise({ dur: 2.4, vol: 0.03, type: 'highpass', freq: 3500, attack: 0.5 }), 300);
+  },
+  // ตลาดนัด: กระดิ่งร้านค้าไล่ขึ้นสดใส
+  eventMarket: () => {
+    [784, 988, 1175, 1568].forEach((f, i) => later(() => glassBell(f, 0.5, 0.03), i * 90));
+  },
+  // กลางคืน: คอร์ดต่ำนุ่ม ๆ + นกฮูก "ฮู้ ฮู้"
+  eventNight: () => {
+    [196, 247, 294].forEach((f) => tone(f, null, 1.4, 'sine', 0.02));
+    [400, 700].forEach((ms) => later(() => tone(420, 380, 0.3, 'sine', 0.05), ms));
+  },
   // ก้าวเดินบนหญ้า: ฟุบนุ่ม ๆ
   pairStep: () => noise({ dur: 0.06, vol: 0.03, type: 'lowpass', freq: 900, freqTo: 400 }),
   // ดมดอกไม้: สูดลม "ฟืด" + ถอนใจสุข "อืมม"

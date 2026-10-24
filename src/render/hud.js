@@ -1,6 +1,6 @@
 // src/render/hud.js
 import { coverExt } from './cover-ext.js';
-import { VIEW, HEALTH, WORD, LETTER_COLORS, COLORS as C, BONUS, SCENE } from '../config.js';
+import { VIEW, COLORS as C, BONUS, SCENE, LIVES, comboMult } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
 import { CAT2, useCat2, drawCatFaceAuto } from './cat2.js';
@@ -177,8 +177,10 @@ export function drawHUD(ctx, game) {
 
   ctx.save();
   ctx.translate(0, -ext.top);   // แถบบนทั้งชุดชิดขอบจอจริงเหมือนกัน (ดูข้างบน)
-  drawWord(ctx, game);
-  drawHealthBar(ctx, game);
+  // เกมเพลย์ใหม่ (25 ต.ค. 2026): ตัวอักษรโบนัส → คอมโบความอร่อย · หลอดพลัง → หัวใจเก้าดวง
+  drawCombo(ctx, game);
+  drawHearts(ctx, game);
+  drawMission(ctx, game);
   drawRunBar(ctx, game);
 
   if (game.notice > 0) drawNotice(ctx, game);
@@ -191,66 +193,6 @@ export function drawHUD(ctx, game) {
     ctx.fillStyle = `rgba(255,92,110,${0.3 * game.hurtFlash})`;
     ctx.fillRect(0, -ext.top, W, H + ext.top + ext.bottom);   // คลุมทั้งจอจริงรวมส่วนต่อ
   }
-}
-
-/**
- * แถบสะสมตัวอักษร MEOWZING — ซ้ายบนสุด เป็นของชิ้นเดียวที่อยู่มุมนั้น
- * ตัวที่ยังไม่ได้เก็บวาดเป็นโครงจาง ๆ ไม่ใช่ซ่อนไว้
- * เพราะผู้เล่นต้องเห็นตั้งแต่ต้นว่าเป้าหมายคือกี่ตัว ไม่งั้นไม่รู้ว่าต้องเก็บอะไรอยู่
- */
-function drawWord(ctx, game) {
-  const pal = game.pal;
-  // 19 -> 23 ให้สมส่วนกับหลอดพลังกับค่าขนมเปียกที่อยู่แถวเดียวกัน
-  // เพดานอยู่ที่หลอดพลังซึ่งเริ่มที่ x=331 — แปดตัวอักษรที่ขนาดนี้จบราว 277
-  // ยังเหลือช่องไฟก่อนถึงหลอด ถ้าจะขยายอีกต้องขยับหลอดด้วย
-  const size = 23;
-  const gap = 4;
-  // ฝั่งซ้ายเจอรอยบากได้เหมือนกันเวลาหมุนจอกลับด้าน จึงคิดระยะขอบด้วยกฎเดียวกัน
-  const x0 = edgeInset(safeInsets(ctx).left);
-  const y = WORD_TOP;
-
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '700 14px Mali, sans-serif';
-
-  for (let i = 0; i < WORD.length; i++) {
-    const x = x0 + i * (size + gap);
-    const got = i < game.letters;
-
-    ctx.save();
-    ctx.translate(x + size / 2, y + size / 2);
-
-    if (got) {
-      // ใช้สีประจำตัวเดียวกับลูกอมในฉาก ผู้เล่นจึงโยงได้ทันทีว่าเก็บตัวไหนไปแล้ว
-      // ถ้าช่องที่เก็บแล้วเป็นสีเดียวกันหมด แถบนี้จะบอกได้แค่ "จำนวน" ไม่ได้บอก "ตัวไหน"
-      const col = LETTER_COLORS[i % LETTER_COLORS.length];
-      ctx.fillStyle = col.main;
-      ctx.beginPath();
-      ctx.roundRect(-size / 2, -size / 2, size, size, 7);
-      ctx.fill();
-      // เส้นขอบอ่อนด้านบน ทำให้ช่องดูนูนเข้าชุดกับลูกอม
-      ctx.strokeStyle = col.lite;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.roundRect(-size / 2 + 0.7, -size / 2 + 0.7, size - 1.4, size - 1.4, 6);
-      ctx.stroke();
-      ctx.fillStyle = col.lite;
-      ctx.fillText(WORD[i], 0, 0.5);
-    } else {
-      ctx.globalAlpha = 0.36;
-      ctx.strokeStyle = pal.ink;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.roundRect(-size / 2, -size / 2, size, size, 7);
-      ctx.stroke();
-      ctx.fillStyle = pal.ink;
-      ctx.fillText(WORD[i], 0, 0.5);
-    }
-    ctx.restore();
-  }
-
-  ctx.restore();
 }
 
 // ── ป้ายกลางจอแบบลูกกวาด (โบนัส / ผ่านด่าน) ─────────────────────
@@ -551,69 +493,159 @@ function drawCatBadge(ctx, cx, cy, r) {
   ctx.restore();
 }
 
+/** หัวใจหนึ่งดวง (กลางที่ x,y รัศมี r) */
+function heartPath(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + r * 0.9);
+  ctx.bezierCurveTo(x - r * 1.45, y - r * 0.1, x - r * 0.65, y - r * 1.15, x, y - r * 0.38);
+  ctx.bezierCurveTo(x + r * 0.65, y - r * 1.15, x + r * 1.45, y - r * 0.1, x, y + r * 0.9);
+  ctx.closePath();
+}
+
 /**
- * ขวดพลังกลางบน พร้อมเหรียญหน้าแมวที่หัวหลอด
- *
- * 320x20 — ใหญ่กว่าของเดิม (300x16) พอให้อ่านออกโดยไม่ต้องเพ่ง
- * แต่ไม่ถึงกับกินแถบบนทั้งแถบเหมือนรอบที่ลองไว้ 400x26
- *
- * สีเป็นชุดตายตัวไม่อิงจานสีของด่าน — หลอดต้องอ่านออกเท่ากันทั้งด่านกลางคืน
- * และด่านกลางวัน ถ้าอิงจานสีจะมีด่านหนึ่งที่หลอดกลืนพื้นหลังเสมอ
+ * แมวเก้าชีวิต — หัวใจเก้าดวงกลางบน (แทนหลอดพลัง) พร้อมเหรียญหน้าแมวหัวแถว
+ * ดวงที่เสียแล้ว = โครงจาง · ดวงที่เพิ่งเสีย = แตกกระเด็นเล็ก ๆ (game.lifeLost)
+ * เหลือ ≤ LIVES.lowAt = ดวงที่เหลือเต้นตุบ ๆ เตือน
  */
-function drawHealthBar(ctx, game) {
-  const w = 320;
-  const h = 20;
-  const badgeR = 16;
-
-  // เหรียญเกยหัวหลอดเข้าไป 6 ทั้งชุด (เหรียญ+ขวด) จึงกว้าง w+30
-  // คำนวณ x จากตรงนั้นย้อนกลับ เพื่อให้ "ทั้งชุด" อยู่กลางจอ ไม่ใช่แค่ตัวขวด
-  const x = Math.round((W - w + 22) / 2);
-  const y = 34;
-  const p = Math.max(0, Math.min(1, game.hp / HEALTH.max));
-  const low = p <= HEALTH.lowAt;
-
+function drawHearts(ctx, game) {
+  const n = LIVES.max, r = 9, gap = 23;
+  const w = (n - 1) * gap;
+  const x0 = Math.round((W - w + 30) / 2);
+  const y = 44;
+  const lives = Math.max(0, Math.min(n, game.lives ?? n));
+  const low = lives > 0 && lives <= LIVES.lowAt;
   ctx.save();
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'center';
-
-  // ตัวขวด — วงนอกหนาให้ดูเป็นภาชนะจริง ไม่ใช่แถบสีลอย ๆ
+  // พื้นหลังแคปซูลอ่านออกทุกฉาก
   ctx.fillStyle = C.hpCase;
-  ctx.beginPath(); ctx.roundRect(x - 4, y - 4, w + 8, h + 8, (h + 8) / 2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(x0 - 16, y - 15, w + 32, 30, 15); ctx.fill();
   ctx.fillStyle = C.hpTrack;
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill();
-
-  const fw = w * p;
-  if (fw > 0.5) {
-    // กะพริบเฉพาะตอนใกล้หมด ให้รู้ตัวโดยไม่ต้องละสายตาจากตัวละคร
-    ctx.globalAlpha = low ? 0.55 + Math.sin(game.tick * 0.28) * 0.45 : 1;
-
-    if (low) {
-      ctx.fillStyle = C.hpLow;
-    } else {
-      // ไล่สีตามความยาวน้ำที่เหลือจริง ไม่ใช่ตามความยาวขวด
-      // หลอดสั้นลงก็ยังเห็นส้ม→แดงครบ ไม่ใช่เหลือแต่ปลายส้มด้านเดียว
-      const g = ctx.createLinearGradient(x, 0, x + fw, 0);
-      g.addColorStop(0, C.hpWarm);
-      g.addColorStop(1, C.hpHot);
+  ctx.beginPath(); ctx.roundRect(x0 - 12, y - 11, w + 24, 22, 11); ctx.fill();
+  for (let i = 0; i < n; i++) {
+    const x = x0 + i * gap;
+    if (i < lives) {
+      const beat = low ? 1 + 0.14 * Math.max(0, Math.sin(game.tick * 0.22)) : 1;
+      const g = ctx.createLinearGradient(0, y - r, 0, y + r);
+      g.addColorStop(0, '#FF8FB0');
+      g.addColorStop(1, '#E8325E');
       ctx.fillStyle = g;
-    }
-
-    ctx.beginPath();
-    ctx.roundRect(x, y, fw, h, Math.min(h / 2, fw / 2));
-    ctx.fill();
-
-    // ไฮไลต์บนให้ดูเป็นแก้วมีน้ำอยู่ข้างใน แทนที่จะเป็นแถบแบน
-    if (fw > 14) {
-      ctx.globalAlpha *= 0.34;
-      ctx.fillStyle = '#FFF';
-      ctx.beginPath();
-      ctx.roundRect(x + 5, y + 4, fw - 10, 5, 2.5);
+      heartPath(ctx, x, y + 1, r * beat);
       ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.7)';
+      ctx.beginPath(); ctx.ellipse(x - r * 0.42, y - r * 0.3, r * 0.22, r * 0.14, -0.6, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,.35)';
+      ctx.lineWidth = 1.6;
+      heartPath(ctx, x, y + 1, r * 0.9);
+      ctx.stroke();
+      // ดวงที่เพิ่งเสีย: ขยายแล้วจางหาย
+      if (i === lives && game.lifeLost > 0) {
+        const u = 1 - game.lifeLost / 40;
+        ctx.globalAlpha = 1 - u;
+        ctx.fillStyle = '#FF5C84';
+        heartPath(ctx, x, y + 1 - u * 10, r * (1 + u * 0.8));
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
   }
-
-  ctx.globalAlpha = 1;
-  drawCatBadge(ctx, x - 10, y + h / 2, badgeR);
-
+  drawCatBadge(ctx, x0 - 26, y, 16);
   ctx.restore();
 }
+
+/**
+ * ภารกิจในรอบ (game.extras.mission) — ซ้ายบน ใต้คอมโบ: ข้อความภารกิจ + หลอดความคืบหน้า
+ * ทำสำเร็จ = ป้าย "สำเร็จ!" สีทองค้างสั้น ๆ (game.extras.missionDone)
+ */
+function drawMission(ctx, game) {
+  const ex = game.extras;
+  if (!ex || game.bonus > 0) return;
+  const m = ex.mission;
+  if (!m && !(ex.missionDone > 0)) return;
+  const x0 = edgeInset(safeInsets(ctx).left) + 8;
+  const y = WORD_TOP + 50;
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.font = "600 12px Mali, sans-serif";
+  if (m) {
+    const lab = '🎯 ' + t(m.text);
+    const w = Math.max(150, textWidth(ctx, lab) + 20);
+    ctx.fillStyle = C.hpCase;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.roundRect(x0 - 8, y - 13, w, 34, 12); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#FFE9F0';
+    ctx.fillText(lab, x0, y - 2);
+    const p = Math.max(0, Math.min(1, m.n / m.goal));
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.beginPath(); ctx.roundRect(x0, y + 10, w - 16, 5, 2.5); ctx.fill();
+    ctx.fillStyle = '#FFD86B';
+    if (p > 0) { ctx.beginPath(); ctx.roundRect(x0, y + 10, (w - 16) * p, 5, 2.5); ctx.fill(); }
+  } else {
+    const lab = '🎯 ' + t('ภารกิจสำเร็จ!');
+    ctx.globalAlpha = Math.min(1, ex.missionDone / 30);
+    ctx.fillStyle = '#FFB800';
+    ctx.beginPath(); ctx.roundRect(x0 - 8, y - 13, textWidth(ctx, lab) + 20, 26, 12); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(lab, x0, y);
+  }
+  ctx.restore();
+}
+
+/**
+ * คอมโบความอร่อย — ซ้ายบนสุด (ที่เดิมของแถบตัวอักษร): "คอมโบ 23" + ป้ายตัวคูณ ×1.5
+ * ขึ้นขั้นตัวคูณ = ตัวเลขเด้ง (game.comboPop) · คอมโบหลุด = ข้อความ "คอมโบหลุด" จางหาย (game.comboBreak)
+ */
+function drawCombo(ctx, game) {
+  const x0 = edgeInset(safeInsets(ctx).left) + 8;
+  const y = WORD_TOP + 12;
+  const n = game.combo || 0;
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  if (n > 0) {
+    const m = comboMult(n);
+    const pop = game.comboPop > 0 ? 1 + 0.35 * Math.sin((game.comboPop / 30) * Math.PI) : 1;
+    // แคปซูลรองหลังให้อ่านออกทุกฉาก (สีเดียวกับแคปซูลหัวใจ)
+    ctx.font = '700 20px Mali, sans-serif';
+    const bw = 64 + textWidth(ctx, String(n)) + (m > 1 ? 44 : 0);
+    ctx.fillStyle = C.hpCase;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.roundRect(x0 - 8, y - 15, bw, 30, 15); ctx.fill();
+    ctx.globalAlpha = 0.9;
+    ctx.font = "600 13px Mali, sans-serif";
+    ctx.fillStyle = '#FFE9F0';
+    const lab = t('คอมโบ');
+    ctx.fillText(lab, x0, y);
+    ctx.globalAlpha = 1;
+    const lw = textWidth(ctx, lab);
+    ctx.save();
+    ctx.translate(x0 + lw + 6, y);
+    ctx.scale(pop, pop);
+    ctx.font = '700 20px Mali, sans-serif';
+    ctx.fillStyle = '#FFD86B';
+    ctx.fillText(String(n), 0, 1);
+    const nw = textWidth(ctx, String(n));
+    ctx.restore();
+    if (m > 1) {
+      const px = x0 + lw + 12 + nw * pop;
+      const label = '×' + m;
+      ctx.font = '700 13px Mali, sans-serif';
+      const tw = textWidth(ctx, label);
+      ctx.fillStyle = m >= 3 ? '#FF7EC8' : m >= 2 ? '#FFA928' : '#3FC3D8';
+      ctx.beginPath(); ctx.roundRect(px, y - 10, tw + 12, 20, 10); ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(label, px + 6, y + 1);
+    }
+  } else if (game.comboBreak > 0) {
+    ctx.globalAlpha = Math.min(1, game.comboBreak / 25);
+    ctx.font = "700 14px Mali, sans-serif";
+    const lab = t('คอมโบหลุด!');
+    ctx.fillStyle = C.hpCase;
+    ctx.beginPath(); ctx.roundRect(x0 - 8, y - 15, textWidth(ctx, lab) + 16, 30, 15); ctx.fill();
+    ctx.fillStyle = '#FF8FB0';
+    ctx.fillText(lab, x0, y);
+  }
+  ctx.restore();
+}
+

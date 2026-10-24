@@ -2,7 +2,7 @@
 import {
   VIEW, GROUND_Y, PLAYER_X, SPEED, SCORING, SHIELD, HEALTH, POTION, MAGNET, BODY,
   LEVEL, LETTER, WORD, BONUS, SKILL, SPEEDUP, BIGCAN, BONUS_MAGNET, BONUS_PULL, PHYSICS, SCENE, FALLER, HAZARD, REVIVE,
-  CAT_LOOK, treatOf, foodLook,
+  CAT_LOOK, treatOf, foodLook, LIVES, COMBO, comboMult, BELLY,
 } from './config.js';
 import { rectHit, seek } from './utils.js';
 import { buildBonusField, buildBonusMagnets, bonusGeometry } from './bonus-layouts.js';
@@ -32,6 +32,7 @@ import { TreasureRun, catAnchor } from './treasure-run.js';
 import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treasure-fx.js';
 import { drawTreasureSlots } from './render/treasure-hud.js';
 import { TalentRun } from './talent-run.js';
+import { RunExtras } from './run-extras.js';
 import { getEquippedSkill } from './skills.js';
 import { drawSkillBack, drawSkillWorld, drawSkillScreen, skillLift } from './render/skill-fx.js';
 import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/talent-fx.js';
@@ -335,6 +336,8 @@ export class Game {
     this.treasures = new TreasureRun();
     // พรสวรรค์ — เปลี่ยน "วิธีเคลื่อนที่" ของตัวน้อง คนละหน้าที่กับสมบัติ (ดู talent-run.js)
     this.talents = new TalentRun();
+    // ของใหม่ระหว่างวิ่ง: จุดเลเซอร์แดง (ทางเข้าโบนัส) · ปลาทอง (หัวใจคืน) · ภารกิจในรอบ (ดู run-extras.js)
+    this.extras = new RunExtras();
     this.onGameOver = onGameOver || (() => {});
     // ตกหลุมแล้วมีคนรับช่วงต่อไหม — ผู้เรียกจะถามผู้เล่นว่าจ่ายทองดึงขึ้นมาไหม
     // แล้วตัดสินใจเองว่าจะเรียก revive() หรือ onGameOver()
@@ -386,6 +389,61 @@ export class Game {
    */
   get skillOn() {
     return this.skill > 0 || this.skillBlink > 0;
+  }
+
+  /** สกิลชุดใหม่: อมตะ + เหยียบหลุมได้ เฉพาะสกิลที่ตั้ง tune.invuln (เดิมทุกสกิลอมตะหมด) */
+  get skillSafe() {
+    return this.skillOn && !!this.skillDef.tune.invuln;
+  }
+
+  /**
+   * สถานะเกจพุงอิ่มสำหรับปุ่มท่าพิเศษ (main.js updateSkillPad) — รูปแบบเดียวกับ talents.gauge() เดิม
+   * active = กำลังออกฤทธิ์ · cool = กำลังกินให้เต็ม · ready = เต็มแล้ว กดใช้ได้
+   */
+  skillGauge() {
+    const sk = this.skillDef;
+    const t = { id: sk.id, icon: sk.icon, name: sk.name, button: sk.button || sk.name, type: 'active' };
+    if (this.skill > 0) return { state: 'active', ratio: this.skill / Math.max(1, sk.tune.active), t };
+    if (this.belly >= BELLY.full && this.skillBlink <= 0) return { state: 'ready', ratio: 1, t };
+    return { state: 'cool', ratio: this.belly / BELLY.full, t };
+  }
+
+  /**
+   * กดใช้สกิล (ปุ่มท่าพิเศษ / E X Shift) — ต้องเกจพุงอิ่มเต็ม และไม่ได้ออกฤทธิ์/กะพริบอยู่
+   * ฤทธิ์ที่เกิดทันทีตอนกด: กระโจน (leap) · ร้องคลื่น (shout) · ปิดยอดคอมโบ (cash) · กันชน (hits)
+   */
+  useSkill() {
+    if (this.state !== STATE.RUN || this.bonus > 0 || this.boxScene) return false;
+    if (this.skill > 0 || this.skillBlink > 0 || this.belly < BELLY.full) return false;
+    const tn = this.skillDef.tune;
+    this.belly = 0;
+    this.skill = tn.active;
+    this.rainTick = 0;
+    this.skyTrain = tn.trainEvery || 0;
+    this.skyLane = 1;
+    this.pulseT = tn.pulse ? tn.pulse.every : 0;   // ร้องทันทีที่กด
+    this.skillHits = tn.hits || 0;
+    if (tn.leap) {
+      const p = this.player;
+      p.vy = BELLY.leapV;
+      p.jumps = 2;
+      p.onGround = false;
+      p.sliding = false;
+      this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 10);
+    }
+    if (tn.cash) {
+      const pts = Math.round(this.combo * tn.cash * this.comboMult);
+      this.treat += pts;
+      this.noticeText = pts > 0 ? 'ฉลอง! +' + pts.toLocaleString('en-US') : 'ฉลอง!';
+      this.notice = 90;
+      this.combo = 0;
+      this.comboMiss = 0;
+      this.particles.burst(this.camera + PLAYER_X, this.player.y - 40, 26, 'letter', 7);
+    }
+    this.extras.onSkill();
+    sfx.skill();
+    this.syncMusic();
+    return true;
   }
 
   /**
@@ -445,7 +503,7 @@ export class Game {
   get pitsSolid() {
     // แมวลอยไม่เคยแตะพื้น หลุมจึงไม่มีความหมายสำหรับมัน
     // หลังดึงขึ้นจากหลุม: หลุมแข็งจนตัวกระพริบหมด (ดู reviveGuard) — ขึ้นมาแล้วต้องไม่ร่วงซ้ำทันที
-    return this.skillOn || this.boost > 0 || this.big > 0 || this.talents.floating || this.reviveGuard;
+    return this.skillSafe || this.boost > 0 || this.big > 0 || this.talents.floating || this.reviveGuard;
   }
 
   /**
@@ -584,6 +642,8 @@ export class Game {
     this.skillDef = getEquippedSkill();
     this.charge = 0;       // เฟรมที่ชาร์จไปแล้ว
     this.skill = 0;        // เฟรมที่เหลือของช่วงออกฤทธิ์
+    this.belly = 0;        // เกจพุงอิ่ม (ของกินที่กินไปตั้งแต่ใช้สกิลครั้งล่าสุด · เต็มที่ BELLY.full)
+    this.skillHits = 0;    // บอลหิมะ: กันชนได้อีกกี่ครั้ง
     this.skillBlink = 0;   // เฟรมที่เหลือของช่วงกะพริบ (ยังอมตะ)
     this.rain = [];        // เม็ดที่โปรยลงมา
     this.skyLane = 1;      // ระดับบินของสกิลบิน (ดัชนีใน tune.lanes) — เริ่มกลาง
@@ -598,7 +658,17 @@ export class Game {
     this.stepAcc = 0;      // เศษเวลาที่ยังไม่ครบหนึ่งก้าวฟิสิกส์
     this.syncMusic();      // เผื่อรอบก่อนจบตอนกำลังออกฤทธิ์หรืออยู่บนฟ้า
     this.invuln = 0;
+    // แมวเก้าชีวิต (แทนหลอดพลังไหล — ดู LIVES ใน config.js) · hp เหลือไว้ให้โค้ดเก่าที่ยังอ่าน (ไม่ได้ใช้ตัดสินแล้ว)
+    this.lives = LIVES.max;
+    this.lifeLost = 0;     // เฟรมนับถอยหลังของแอนิเมชันหัวใจแตกบน HUD
     this.hp = HEALTH.max;
+    // คอมโบความอร่อย (ดู COMBO)
+    this.combo = 0;
+    this.comboBest = 0;
+    this.extras?.reset();
+    this.comboMiss = 0;    // ของกินที่หลุดผ่านตัวไปติดกันตั้งแต่ชิ้นที่เก็บล่าสุด
+    this.comboPop = 0;     // เฟรมเด้งของตัวเลขคอมโบบน HUD
+    this.comboBreak = 0;   // เฟรมนับถอยหลังของ "คอมโบหลุด" บน HUD
     this.dying = 0;   // นับเฟรมที่พลังแตะศูนย์แล้วแต่ยังไม่ตาย
     this.hurtFlash = 0;
     this.notice = 0;                          // เฟรมที่เหลือของข้อความแจ้งเตือน
@@ -959,7 +1029,8 @@ export class Game {
     }
     // พรสวรรค์คูณเวลาโลกเพิ่มอีกชั้น (พุ่ง = เร็วขึ้นช่วงสั้น / หยุดจังหวะ = ช้าลง)
     // ใช้กลไกเดียวกับสปีดจากต้นหญ้าแมว ตัวจับเวลาทุกตัวจึงยังเดินด้วยเวลาจริงเหมือนเดิม
-    const gdt = dt * (this.dashing ? SPEEDUP.mult : 1) * this.talents.timeK;
+    // เหตุการณ์สุ่ม "หมาไล่" เร่งโลกด้วยกลไกเดียวกัน (run-extras.js speedK)
+    const gdt = dt * (this.dashing ? SPEEDUP.mult : 1) * this.talents.timeK * this.extras.speedK;
 
     if (this.bonus > 0) return this.updateBonus(dt, gdt);
 
@@ -970,19 +1041,11 @@ export class Game {
     //
     // หารด้วย SCENE.frames ตรงนี้ ค่าที่ตั้งไว้จึงเป็น "พลังต่อฉาก" เสมอ
     // เปลี่ยนความยาวฉากเมื่อไหร่ สมดุลก็ยังเท่าเดิมโดยไม่ต้องแก้ตัวเลขตาม
-    const perScene = HEALTH.drainFirstScene + HEALTH.drainPerScene * this.sceneIndex;
-    this.hp -= (perScene / SCENE.frames) * dt;
-    if (this.hp <= 0) {
-      this.hp = 0;
-      // ── ยังไม่ตายทันที ──
-      // ปล่อยให้เฟรมนี้เดินต่อจนจบก่อน เพราะการเก็บตัวอักษร (ซึ่งเป็นตัวจุดโบนัส)
-      // อยู่ "ท้ายเฟรม" หลังจุดนี้ ถ้าคืนค่าออกไปเลย คนที่กำลังจะแตะตัวที่ 8 พอดี
-      // จะตายทั้งที่โบนัสควรมารับไปแล้ว
-      this.dying += dt;
-      if (this.dying > HEALTH.graceFrames) return this.die();
-    } else {
-      this.dying = 0;
-    }
+    // ── เลิกแล้ว (เกมเพลย์ใหม่ 25 ต.ค. 2026): หลอดพลังไหลลงเองตามเวลา ──
+    // เปลี่ยนเป็นแมวเก้าชีวิต (LIVES) — หัวใจลดเฉพาะตอนชน/ตกหลุม ความยาวรอบขึ้นกับฝีมือ
+    if (this.lifeLost > 0) this.lifeLost = Math.max(0, this.lifeLost - dt);
+    if (this.comboPop > 0) this.comboPop = Math.max(0, this.comboPop - dt);
+    if (this.comboBreak > 0) this.comboBreak = Math.max(0, this.comboBreak - dt);
 
     // เดินโลกด้วยก้าวขนาด 1 เฟรมอ้างอิงเป๊ะ ๆ เศษที่เหลือเก็บไว้เฟรมถัดไป
     //
@@ -1026,7 +1089,12 @@ export class Game {
       this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 4);
       sfx.slide();
     }
-    if (fellOut) return this.die('fall');
+    if (fellOut) {
+      // ตกหลุม = เสียหัวใจ 1 ดวง แล้วเด้งกลับขึ้นมาก่อนปากหลุมเดิม (ฟรี) · ดวงสุดท้าย = จบรอบ
+      if (this.lives > 1) return this.pitBounce();
+      this.lives = 0;
+      return this.die('fall');
+    }
 
     const b = this.player.box;
     const bx = b.x + this.camera;
@@ -1060,7 +1128,7 @@ export class Game {
           this.smashObstacle(o);
           continue;
         }
-        if (this.skillOn) break;               // ความสามารถทำงาน ทะลุผ่านได้เลย
+        if (this.skillSafe) break;             // สกิลที่อมตะ (tune.invuln) ทะลุผ่านได้เลย
         if (this.talents.phasing) break;       // พรสวรรค์แมวเงา ทะลุผ่านได้
         if (this.invuln > 0) break;            // กำลังอมตะ ผ่านได้
         if (this.shielded) {                   // มีโล่ → โล่แตกแทนที่จะตาย
@@ -1207,8 +1275,9 @@ export class Game {
       }
     }
 
-    // เก็บของกิน — คะแนนล้วน ไม่ฟื้นพลัง พลังมาจากขวดยาอย่างเดียว
+    // เก็บของกิน — คะแนนล้วน (คูณคอมโบ)
     this.pickTreats(cx, cy, !this.player.onGround);
+    this.checkComboMiss();
     // แมวสองโลก: ร่างเงาเก็บของพร้อมกับตัวจริงด้วยกติกาเดียวกันทุกข้อ (คะแนน สมบัติ เสียง)
     // นับเป็น "เก็บกลางอากาศ" เสมอ เพราะร่างเงาไม่เคยแตะพื้น
     if (this.talents.twinCollects) {
@@ -1315,6 +1384,7 @@ export class Game {
     // ต้องอยู่หลัง ensureAhead เสมอ เพราะ spawnPotion อ่านหนาม/หลุมข้างหน้า
     // เพื่อหาจุดโล่ง ถ้าเรียกก่อนจะได้จุด "โล่ง" ปลอมที่พอวิ่งถึงจริงกลับมีหนามอยู่
     this.updateScene(dt);
+    this.extras.update(this, dt, cx, cy);
     this.updateFallers(dt, cx, cy);
     this.updateHazards(dt, cx, cy);
     this.updateCatBox(dt);
@@ -1352,7 +1422,17 @@ export class Game {
         markGot(f, this.tick);
         // อุ้งเท้าแมวคูณคะแนนของกินทุกชิ้น คูณหลังบวกโบนัสชุดแล้ว
         // ทั้งสองอย่างจึงทบกันได้จริงตามที่ตั้งใจ
-        const m = this.treasures.treatMult * this.skillTreatMult;
+        // คอมโบความอร่อย: เก็บต่อเนื่อง ตัวคูณขึ้นเป็นขั้น (ดู COMBO)
+        this.combo++;
+        this.comboMiss = 0;
+        if (this.combo > this.comboBest) this.comboBest = this.combo;
+        if (COMBO.tiers.some(([at]) => at > 0 && at === this.combo)) this.comboPop = 30;
+        const m = this.treasures.treatMult * this.skillTreatMult * this.comboMult * this.skillComboX;
+        // เกจพุงอิ่ม: ระหว่างออกฤทธิ์/กะพริบไม่ชาร์จ
+        if (this.skill <= 0 && this.skillBlink <= 0 && this.belly < BELLY.full) {
+          this.belly++;
+          if (this.belly === BELLY.full) sfx.double();
+        }
         // อุ้งเท้าทองคำ: ประกายทองเพิ่มตอนเก็บ ให้รู้ว่าชิ้นนี้ได้คะแนนคูณ
         if (this.skillTreatMult > 1) this.particles.burst(f.x, f.y, 8, 'letter', 4);
         this.treat += Math.round((def.points + this.foodBonus) * m);
@@ -1360,6 +1440,7 @@ export class Game {
         sfx[def.sfx]();
         // นับให้สมบัติที่ผูกกับการเก็บของ — midAir ตัดสินจากเท้าลอยพ้นพื้นจริง ๆ
         this.treasures.onTreat(this, midAir);
+        this.extras.onTreat(midAir);
       }
     }
   }
@@ -1451,8 +1532,68 @@ export class Game {
     sfx.smash();
   }
 
-  /** ชนแล้วเจ็บ ไม่ตายทันที — ตายก็ต่อเมื่อพลังหมดเกลี้ยง */
+  /** เสียหัวใจ 1 ดวง + คอมโบหาย (ชน / ตกหลุม) */
+  loseLife() {
+    this.extras.onHit();
+    this.lives = Math.max(0, this.lives - 1);
+    this.lifeLost = 40;
+    this.breakCombo();
+  }
+
+  /** คอมโบหาย — จำยอดสูงสุดของรอบไว้ */
+  breakCombo() {
+    if (this.combo >= 5) this.comboBreak = 50;
+    this.combo = 0;
+    this.comboMiss = 0;
+  }
+
+  /** ตัวคูณคะแนนของกินจากคอมโบตอนนี้ */
+  get comboMult() { return comboMult(this.combo); }
+
+  /** สกิลคูณคอมโบเพิ่ม (พุ่งตะครุบ ×2) — นอกช่วงออกฤทธิ์เป็น 1 */
+  get skillComboX() { return this.skill > 0 ? this.skillDef.tune.comboX || 1 : 1; }
+
+  /**
+   * ของกินที่ไหลเลยตัวน้องไปโดยไม่ถูกเก็บ — หลุดติดกันเกิน COMBO.missBreak ชิ้น = คอมโบหาย
+   * นับครั้งเดียวต่อชิ้น (f.missed) · ของที่ปลิว/ถูกดูดอยู่ไม่นับ
+   */
+  checkComboMiss() {
+    if (this.combo <= 0) return;
+    if (this.skill > 0 && this.skillDef.tune.comboLock) return;   // อุ้งเท้าทอง: หลุดผ่านตัวไม่นับ
+    const line = this.camera + PLAYER_X - COMBO.missBehind;
+    for (const f of this.level.fishes) {
+      if (f.got || f.missed || f.x > line || f.x < line - 200) continue;
+      f.missed = true;
+      if (++this.comboMiss >= COMBO.missBreak) { this.breakCombo(); return; }
+    }
+  }
+
+  /**
+   * ตกหลุมแต่ยังมีหัวใจเหลือ: เสีย 1 ดวงแล้วเด้งกลับขึ้นมายืนก่อนปากหลุมเดิม วิ่งต่อทันที
+   * ใช้ตัววางจุดเดียวกับการดึงขึ้นจากหลุมแบบเดิม (placeBackAtPit) — ด่านไม่ถูกปูใหม่
+   */
+  pitBounce() {
+    this.loseLife();
+    this.placeBackAtPit();
+    this.hurtFlash = 1;
+    this.shake = 10;
+    this.notice = LIVES.pitNoticeFrames;
+    this.noticeText = 'ตกหลุม! หัวใจ -1';
+    sfx.hurt();
+  }
+
+  /** ชนแล้วเจ็บ ไม่ตายทันที — ตายก็ต่อเมื่อหัวใจหมด */
   takeHit(x, y) {
+    // บอลหิมะ: ก้อนหิมะรับแทน (ไม่เสียหัวใจ ไม่เสียคอมโบ) — รับครบแล้วแตก หมดฤทธิ์
+    if (this.skill > 0 && this.skillHits > 0) {
+      this.skillHits--;
+      this.invuln = 60;
+      this.shake = 8;
+      this.particles.burst(x, y, 18, 'dust', 7);
+      sfx.shield();
+      if (this.skillHits <= 0) { this.skill = 0; this.skillBlink = SKILL.blinkFrames; }
+      return;
+    }
     // นมวิเศษรับไว้ให้ครั้งแรกของตา — ไม่เสียพลังเลย แถมได้โล่ต่อ
     // เช็คก่อนหักพลังเสมอ ไม่งั้นจะเจ็บไปแล้วค่อยรู้ว่ากันได้
     if (this.treasures.onHit(this)) {
@@ -1463,17 +1604,14 @@ export class Game {
       return;
     }
 
-    this.hp -= HEALTH.hitDamage;
+    this.loseLife();
     this.invuln = HEALTH.invulnAfterHit;
     this.shake = 12;
     this.hurtFlash = 1;
     this.particles.burst(x, y, 14, 'crumb', 6);
     sfx.hurt();
 
-    if (this.hp <= 0) {
-      this.hp = 0;
-      this.die();
-    }
+    if (this.lives <= 0) this.die();
   }
 
   /**
@@ -1624,7 +1762,7 @@ export class Game {
       if (f.warn > 0) continue;                   // ยังไม่ร่วง ยังไม่อันตราย
       if (!rectHit(bx, b.y, b.w, b.h, f.x, f.y, f.w, f.h)) continue;
 
-      if (this.skillOn || this.talents.phasing || this.invuln > 0) break;
+      if (this.skillSafe || this.talents.phasing || this.invuln > 0) break;
       // ของร่วงเป็นก้อนแข็งเหมือนสิ่งกีดขวาง ตัวโตจึงต้องทุบแตกด้วยกติกาเดียวกัน
       if (this.dashing || this.big > 0) { f.dead = true; break; }
       if (this.shielded) {
@@ -1690,7 +1828,7 @@ export class Game {
         this.smashHazard(h);
         continue;
       }
-      if (this.skillOn || this.talents.phasing || this.invuln > 0) break;
+      if (this.skillSafe || this.talents.phasing || this.invuln > 0) break;
       if (this.shielded) {
         this.shielded = false;
         this.invuln = SHIELD.invulnFrames;
@@ -1852,7 +1990,7 @@ export class Game {
       // โปรยเม็ดใหม่จากเหนือจอเป็นจังหวะ กระจายทั่วความกว้างจอ
       this.rainTick = (this.rainTick || 0) + dt;
       const every = tn.rainEvery || SKILL.rainEvery;
-      while (tn.rain !== 'sky' && this.rainTick >= every) {
+      while (tn.rain === 'fall' && this.rainTick >= every) {
         this.rainTick -= every;
         this.rain.push({
           x: this.camera + 120 + Math.random() * (VIEW.W - 140),
@@ -1876,20 +2014,8 @@ export class Game {
       // คืนเพลงหลักตอนกะพริบจบ ไม่ใช่ตอนฤทธิ์หมด
       // จะได้ยังรู้สึกว่าอยู่ในช่วงพิเศษจนกว่าจะกลับปกติจริง ๆ
       if (this.skillBlink === 0) this.syncMusic();
-    } else {
-      // ชาร์จเฉพาะตอนไม่ได้ออกฤทธิ์ เต็มเมื่อไหร่ติดเมื่อนั้น ไม่ต้องกดอะไร
-      this.charge += dt;
-      if (this.charge >= SKILL.chargeFrames) {
-        this.charge = 0;
-        this.skill = this.skillDef.tune.active;
-        this.rainTick = 0;
-        this.skyTrain = this.skillDef.tune.trainEvery || 0;   // ขบวนแรกมาทันที ไม่ต้องรอ
-        this.skyLane = 1;
-        this.pulseT = this.skillDef.tune.pulse ? this.skillDef.tune.pulse.every : 0;   // ร้องทันทีที่ติด
-        sfx.skill();
-        this.syncMusic();
-      }
     }
+    // ── เลิกชาร์จเองตามเวลาแล้ว (เกมเพลย์ใหม่ 25 ต.ค. 2026) ── เกจพุงอิ่มเต็มจากการกิน (pickTreats) แล้วผู้เล่นกดใช้เอง (useSkill)
 
     // เม็ดที่โปรยแล้ว: ร่วงลงมาก่อน พอเข้าระยะก็พุ่งเข้าตัวเอง
     const pullRange = this.skillDef.tune.pull || SKILL.pullRange;
@@ -1920,7 +2046,10 @@ export class Game {
 
       if (dist < SKILL.pickR) {
         d.got = true;
-        this.treat += Math.round((SCORING.pointsPerRain + this.foodBonus) * this.skillTreatMult);
+        this.combo++;
+        this.comboMiss = 0;
+        if (this.combo > this.comboBest) this.comboBest = this.combo;
+        this.treat += Math.round((SCORING.pointsPerRain + this.foodBonus) * this.skillTreatMult * this.comboMult * this.skillComboX);
         this.particles.burst(d.x, d.y, 9, 'kibble');
         sfx.kibble();
       }
@@ -2466,6 +2595,7 @@ export class Game {
   die(cause = 'faint') {
     if (this.state === STATE.DEAD) return;
     this.state = STATE.DEAD;
+    this.lifeLost = 0;   // ตัวจับเวลาไม่เดินหลังตาย — ไม่งั้นหัวใจดวงที่แตกค้างเต็มดวงบน HUD
     this.talents.onDeath();
 
     if (cause === 'faint') {
@@ -2494,7 +2624,8 @@ export class Game {
     //
     // หน่วงเท่ากันทั้งสองทาง เพราะ 750ms คือเวลาที่แอนิเมชันตกใช้จริง
     // ถ้าถามเร็วกว่านั้น กล่องจะเด้งทับภาพน้องที่ยังร่วงไม่พ้นจอ
-    setTimeout(() => (cause === 'fall' && this.onPitFall ? this.onPitFall() : this.onGameOver()), 750);
+    // เกมเพลย์ใหม่ (25 ต.ค. 2026): หัวใจหมด = จบรอบ ไม่มีจ่ายทองดึงขึ้นจากหลุมแล้ว (ผู้ใช้เลือก)
+    setTimeout(() => this.onGameOver(), 750);
   }
 
   /**
@@ -2556,6 +2687,16 @@ export class Game {
 
     // นับก่อนทำอย่างอื่น ครั้งถัดไปจะได้แพงขึ้นทันทีแม้ผู้เล่นตกซ้ำในวินาทีเดียวกัน
     this.revives++;
+    this.placeBackAtPit();
+    this.hp = Math.max(this.hp, HEALTH.max * REVIVE.hpFloor);
+    this.notice = 90;
+    this.noticeText = 'ดึงน้องขึ้นมาแล้ว!';
+    this.syncMusic();   // เพลงหยุดไปตอนตาย ต้องสั่งเล่นใหม่เอง
+    return true;
+  }
+
+  /** วางน้องกลับไปยืนก่อนปากหลุมที่เพิ่งตก แล้ววิ่งต่อ (ใช้ทั้งดึงขึ้นด้วยทองแบบเดิม และตกหลุมเสียหัวใจ) */
+  placeBackAtPit() {
 
     // ── กลับไปยืนที่เดิม โดยไม่แตะด่านเลยสักชิ้น ──
     // เดิมตรงนี้ปูด่านใหม่ทั้งผืน (ทางเรียบหนึ่งท่อน + ท่อนที่เหลือ) ซึ่งแก้ปัญหา
@@ -2584,16 +2725,10 @@ export class Game {
       const pit = this.level.pits.filter((q) => q.x + q.w > px).sort((a, b) => a.x - b.x)[0];
       this.reviveUntil = pit ? pit.x + pit.w + 30 : px;
     }
-    this.hp = Math.max(this.hp, HEALTH.max * REVIVE.hpFloor);
     this.shake = 0;
     this.hurtFlash = 0;
-    this.notice = 90;
-    this.noticeText = 'ดึงน้องขึ้นมาแล้ว!';
-
     this.particles.dust(PLAYER_X + this.camera, GROUND_Y, 12);
     sfx.land();
-    this.syncMusic();   // เพลงหยุดไปตอนตาย ต้องสั่งเล่นใหม่เอง
-    return true;
   }
 
   // ── ลูปวาด ─────────────────────────────────────────────────
@@ -2688,6 +2823,7 @@ export class Game {
     const blinking =
       this.state === STATE.RUN && this.invuln > 0 && Math.floor(this.tick / 4) % 2 === 0;
     drawRain(ctx, this.rain, this.camera, getSkin(), this.tick, this.skillDef.tune.look);
+    if (this.state !== STATE.READY && this.bonus <= 0) this.extras.draw(ctx, this);   // ปลาทอง · จุดเลเซอร์แดง
 
     // อ้าปากกับคลื่นดูดโผล่ทั้งตอนมีไอเทมแม่เหล็กและตอนใช้ความสามารถ
     // เพราะทั้งสองกรณีคือ "กำลังดูดของเข้าตัว" เหมือนกัน ต้องอ่านออกเหมือนกัน
@@ -2729,7 +2865,8 @@ export class Game {
       // เหนื่อยเริ่มตั้งแต่แตะเส้นเตือน (HEALTH.lowAt) แล้วไล่แรงขึ้นจนถึงศูนย์
       // ใช้เส้นเดียวกับที่หลอดพลังเปลี่ยนเป็นแดง ตัวละครกับ HUD จึงเตือนพร้อมกัน
       // ไม่ใช่คนละจังหวะจนผู้เล่นสับสนว่าอันไหนคือสัญญาณจริง
-      const lowK = Math.max(0, 1 - (this.hp / HEALTH.max) / HEALTH.lowAt);
+      // เหนื่อยตอนหัวใจใกล้หมด (เหลือ ≤ LIVES.lowAt) — แรงขึ้นเมื่อเหลือดวงเดียว
+      const lowK = this.lives <= LIVES.lowAt ? (LIVES.lowAt + 1 - this.lives) / LIVES.lowAt * 0.8 : 0;
       // ── ท่าของสกิล ──
       // เต้น = ส่ายตัวเด้งบนท่าวิ่งเดิม (ส่ง tick เป็นจังหวะเต้น)
       // ฮีโร่ = เอนพุ่ง ยืดตัว ยื่นอุ้งเท้าไปข้างหน้า (fx.hero) — ทั้งคู่บิดท่าวิ่งเดิม
@@ -2786,7 +2923,7 @@ export class Game {
     if (this.state !== STATE.DEAD) {
       ctx.save();
       ctx.translate(0, -liftY);
-      drawSkillGauge(ctx, this.player, this.charge / SKILL.chargeFrames, this.skillOn, this.tick, lookS);
+      drawSkillGauge(ctx, this.player, this.belly / BELLY.full, this.skillOn, this.tick, lookS);   // เกจพุงอิ่ม
       ctx.restore();
     }
 
@@ -2805,6 +2942,8 @@ export class Game {
     drawTalentScreen(ctx, this);
     // ขอบจอเรือง/หัวใจลอยของช่วงสกิล — ใต้ HUD เหมือนฟิลเตอร์พรสวรรค์ ตัวเลขยังอ่านชัด
     drawSkillScreen(ctx, this);
+    // เหตุการณ์สุ่ม (ฝน กลางคืน หมาไล่ ธงตลาดนัด) — ใต้ HUD
+    if (this.state === STATE.RUN || this.state === STATE.PAUSE) this.extras.drawScreen(ctx, this);
     drawHUD(ctx, this);
 
     // ช่องสมบัติอยู่นอก ctx.save() ของการสั่นจอโดยตั้งใจ — ตัวเลขนับถอยหลัง
@@ -2813,7 +2952,7 @@ export class Game {
     if (this.state !== STATE.DEAD) {
       // การ์ดพรสวรรค์ที่ทำงานเอง (ไม่มีปุ่มกด) โชว์ต่อขวาช่องสมบัติ ให้รู้ว่าใช้ใบไหนอยู่
       const passive = this.talents.t && !this.talents.hasButton ? this.talents.t : null;
-      drawTreasureSlots(ctx, this.treasures.gauges(), this.tick, passive);
+      if (this.treasures.slots.length || passive) drawTreasureSlots(ctx, this.treasures.gauges(), this.tick, passive);   // ระบบสมบัติเลิกแล้ว = ไม่มีช่อง ไม่วาด
     }
 
     this.drawFlash(ctx);

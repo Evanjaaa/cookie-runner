@@ -2863,7 +2863,7 @@ const THEME_OBSTACLES = {
 function showStageInfo(stage) {
   document.getElementById('siTitle').textContent = stage.name;
   document.getElementById('siLead').textContent =
-    'เริ่มจากฉากนี้ แล้วไล่ไปฉากถัดไปทุก 1 นาที · จบแต่ละฉากได้ขวดพลังใหญ่';
+    'เริ่มจากฉากนี้ แล้วไล่ไปฉากถัดไปทุก 1 นาที · มีหัวใจ 9 ดวง ชนหรือตกหลุมเสียทีละดวง';
 
   const list = document.getElementById('siList');
   list.innerHTML = '';
@@ -8405,7 +8405,7 @@ setupInput(document.getElementById('stage'), {
   onSlideEnd: () => game.setSlide(false),
   onTogglePause: () => setPaused(game.state === STATE.RUN),
   onJumpEnd: () => game.jumpRelease(),
-  onSkill: () => { unlockAudio(); game.useTalent(); },
+  onSkill: () => { unlockAudio(); game.useSkill(); },   // เกจพุงอิ่มเต็ม = กดใช้สกิล (เดิม: ท่าพิเศษของพรสวรรค์)
 });
 
 // ── แผงที่ "เพิ่งเปิด" ──────────────────────────────────────
@@ -8453,7 +8453,7 @@ const skillBtn = document.getElementById('btnSkill');
 const skillShown = { on: null, id: null, state: null, pct: -1 };
 
 function updateSkillPad() {
-  const g = game.talents.gauge();
+  const g = game.skillGauge();   // เกจพุงอิ่ม + สกิลที่ติดตั้ง (เดิม: พรสวรรค์)
   const on = !!g && game.state === STATE.RUN && game.bonus <= 0;
   if (on !== skillShown.on) {
     skillShown.on = on;

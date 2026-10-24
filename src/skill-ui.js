@@ -10,7 +10,7 @@
 // การ์ดสกิลกว้างพอจะใส่ผลในเกมครบทุกบรรทัดอยู่แล้ว ไม่มีอะไรต้องไปดูต่อ
 // และติดตั้งได้ทีละอันเสมอ (ถอดจนว่างไม่ได้) กดผิดก็แค่กดอีกใบ
 
-import { SKILL } from './config.js';
+import { BELLY } from './config.js';
 import { stageById } from './stages.js';
 import {
   SKILLS, skillProgress, isSkillUnlocked, getEquippedSkill, setEquippedSkill, skillSeconds,
@@ -36,7 +36,7 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
   let tab = 'skill';
 
   const stageName = (sk) => {
-    const st = stageById(sk.stage);
+    const st = sk.stage ? stageById(sk.stage) : null;   // สกิลชุดใหม่ไม่ผูกด่าน
     // ขึ้นต้นด้วยคำยาวเฉพาะ กฎแปลใน i18n-en.js จะได้จับเฉพาะป้ายนี้ ไม่ไปโดนประโยคอื่นที่ขึ้นต้นว่า "ด่าน"
     return st ? 'สกิลประจำด่าน' + st.name : '';
   };
@@ -107,7 +107,8 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
     name.textContent = sk.name;
     const chips = document.createElement('span');
     chips.className = 'sk-chips';
-    chips.append(chip(stageName(sk), 'sk-chip-stage'), chip(`ออกฤทธิ์ ${skillSeconds(sk)} วิ`));
+    if (sk.stage) chips.append(chip(stageName(sk), 'sk-chip-stage'));   // สกิลชุดใหม่ไม่ผูกด่าน — ไม่มีป้ายด่าน
+    chips.append(chip(`ออกฤทธิ์ ${skillSeconds(sk)} วิ`));
     titles.append(name, chips);
     head.append(artNode(sk), titles);
 
@@ -164,11 +165,11 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
     desc.textContent = sk.short;
     side.replaceChildren(artNode(sk), name, desc);
     side.setAttribute('aria-label', 'ใช้งานอยู่: ' + sk.name);
-    // เวลาชาร์จมาจาก config ตัวเดียวกับเกม — ปรับที่นั่นแล้วข้อความตามเอง
+    // เกจพุงอิ่ม (BELLY ใน config.js ตัวเดียวกับเกม) — เกมเพลย์ใหม่ 25 ต.ค. 2026
     $('#skBody .tl-side-note').replaceChildren(
       'ติดตั้งได้ทีละ 1 สกิล', document.createElement('br'),
-      `หลอดบนหัวเต็มทุก ${Math.round(SKILL.chargeFrames / 60)} วิ`, document.createElement('br'),
-      'แล้วออกฤทธิ์เอง',
+      'กินจนเกจพุงอิ่มเต็ม', document.createElement('br'),
+      'แล้วกดปุ่มสกิลใช้เอง',
     );
   }
 
@@ -202,7 +203,6 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
   const helpLayer = $('#tlHelp');
   let helpFrom = null;
   function helpText(kind) {
-    const secs = Math.round(SKILL.chargeFrames / 60);
     const lvs = Object.keys(TALENT_AT).map(Number);
     const lvFrom = Math.min(...lvs), lvTo = Math.max(...lvs);
     // ข้อความมีตัวหนาแทรกกลางประโยค ตัวแปลภาษาแบบกวาดโหนดข้อความแปลทีละชิ้นไม่ได้
@@ -212,11 +212,10 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
         icon: '⚡',
         title: 'What are Skill cards for?',
         lines: [
-          `<b>Kitty's special move</b> — the bar over its head fills by itself every ${secs}s while running, then the skill fires automatically`,
-          'While active, kitty is <b>invincible</b>, walks over pits, pulls in nearby snacks, and snacks rain from the sky',
-          'Each card adds its own twist — smash obstacles, fly between heights, double snack points, and more',
-          '<b>Unlock new cards with stage quests</b> — clear that stage the number of times shown on the card',
-          'Equip one at a time, alongside a Talent card. Takes effect from your next run',
+          `<b>Kitty's special move</b> — eat treats to fill the <b>belly gauge</b> (${BELLY.full} treats), then tap the skill button yourself`,
+          'Each skill helps differently — survive (leap, wings, snowball), score (pounce, gold paw) or cash in your combo (party)',
+          'Every skill is free to try for now',
+          'Equip one at a time. Takes effect from your next run',
         ],
       } : {
         icon: '🃏',
@@ -235,11 +234,10 @@ export function setupSkillUI({ panel, talentUI, sfx, unlockAudio, markScrollable
         icon: '⚡',
         title: 'การ์ดสกิลมีไว้ทำอะไร?',
         lines: [
-          `<b>ท่าไม้ตายของน้อง</b> — ระหว่างวิ่ง หลอดบนหัวน้องชาร์จเอง เต็มทุก ${secs} วิ แล้วสกิลออกฤทธิ์อัตโนมัติ ไม่ต้องกดอะไร`,
-          'ช่วงออกฤทธิ์น้อง<b>อมตะ</b> ข้ามหลุมได้ ดูดของรอบตัว และมีขนมโปรยลงมาจากฟ้า',
-          'แต่ละใบมีลูกเล่นของตัวเอง เช่น พุ่งชนของแตก บินเลือกระดับ ของกินคะแนนคูณสอง',
-          '<b>ได้การ์ดใหม่จากภารกิจประจำด่าน</b> — วิ่งผ่านด่านนั้นให้ครบตามจำนวนที่การ์ดบอก',
-          'ติดตั้งได้ทีละ 1 ใบ ใส่คู่กับการ์ดพรสวรรค์ได้ มีผลตั้งแต่เริ่มวิ่งตาถัดไป',
+          `<b>ท่าไม้ตายของน้อง</b> — กินของกินให้<b>เกจพุงอิ่ม</b>เต็ม (${BELLY.full} ชิ้น) แล้วกดปุ่มสกิลใช้เองตอนไหนก็ได้`,
+          'แต่ละสกิลช่วยคนละแบบ — เอาตัวรอด (กระโจน ปีกผีเสื้อ บอลหิมะ) · คะแนน (พุ่งตะครุบ อุ้งเท้าทอง) · ปิดยอดคอมโบ (เต้นฉลอง)',
+          'ช่วงนี้ทุกสกิลแจกให้ลองเล่นฟรี',
+          'ติดตั้งได้ทีละ 1 ใบ มีผลตั้งแต่เริ่มวิ่งตาถัดไป',
         ],
       };
     }

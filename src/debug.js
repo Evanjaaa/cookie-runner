@@ -12,7 +12,8 @@
 // ปุ่มทั้งสองไม่ได้เขียนตรรกะซ้ำ แต่ไปกดสวิตช์ตัวเดียวกับที่เกมใช้จริง
 // ผลที่เห็นจึงตรงกับตอนเล่นจริงเป๊ะ ไม่ใช่ทางลัดที่ทำงานคนละทาง
 // ─────────────────────────────────────────────────────────────
-import { SKILL } from './config.js';
+import { BELLY, LIVES } from './config.js';
+import { EVENTS } from './run-extras.js';
 import { STATE } from './game.js';
 import { STAGES } from './stages.js';
 import { Level } from './level.js';
@@ -211,7 +212,7 @@ function fillGold(hooks) {
  * ไอดีผู้ทดสอบ — รหัสแมวน้อย (รหัสเพื่อน) ที่ได้แผงนี้บนเว็บจริงด้วย
  * คนอื่นทุกคนบนเว็บจริงไม่เห็นแผงนี้เหมือนเดิม (main.js เช็ครหัสหลังเข้าสู่ระบบแล้วเรียก setupDebug ด้วย force)
  */
-export const TESTER_CODES = ['8QQMVX2X'];
+export const TESTER_CODES = ['8QQMVX2X', 'ZRTKTQD8'];   // ZRTKTQD8 เพิ่ม 25 ต.ค. 2026 (ผู้ใช้สั่ง)
 
 let mounted = false;
 
@@ -299,16 +300,74 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
   // ── ความสามารถประจำตัว ──
   // ดันหลอดชาร์จให้เต็มแทนการตั้ง skill เอง เกมจะได้ยิงเข้าช่วงออกฤทธิ์
   // ผ่านทางเดิมของมันเองทุกขั้น ทั้งเสียง เพลง และการรีเซ็ตตัวนับเม็ดที่โปรย
-  add('⚡ สกิลน้องแมว', () => {
+  // เกมเพลย์ใหม่ (25 ต.ค. 2026): เกจพุงอิ่มเต็มทันที แล้วกดปุ่มสกิลเอง
+  add('⚡ เกจพุงอิ่มเต็ม', () => {
     if (game.state !== STATE.RUN || game.bonus > 0 || game.skillOn) return false;
-    game.charge = SKILL.chargeFrames;
+    game.belly = BELLY.full;
+    toast('⚡ เกจเต็มแล้ว — กดปุ่มสกิลได้เลย');
+    return true;
+  });
+  // ── เกมเพลย์ใหม่: ของระหว่างวิ่ง (run-extras.js) ──
+  const running = () => game.state === STATE.RUN && game.bonus <= 0;
+  const startEvent = (id) => {
+    if (!running()) return false;
+    const x = game.extras, cfg = EVENTS.list[id];
+    x.ev = { id, t: 0, dur: cfg.dur, cfg };
+    x.evLast = id;
+    x.evTick = 0;
+    game.noticeText = cfg.name;
+    game.notice = 130;
+    return true;
+  };
+  add('🐕 เหตุการณ์: หมาไล่', () => startEvent('dog'));
+  add('🌧 เหตุการณ์: ฝนตก', () => startEvent('rain'));
+  add('🛍 เหตุการณ์: ตลาดนัด', () => startEvent('market'));
+  add('🌙 เหตุการณ์: กลางคืน', () => startEvent('night'));
+  add('⏹ จบเหตุการณ์', () => {
+    if (!game.extras.ev) return false;
+    game.extras.ev.t = game.extras.ev.dur - 1;
+    return true;
+  });
+  add('🔴 จุดเลเซอร์แดงโผล่', () => {
+    if (!running() || game.extras.laser) return false;
+    game.extras.ev = null;
+    game.extras.laserAt = game.extras.t;
+    return true;
+  });
+  add('🐟 ปลาทองโผล่', () => {
+    if (!running() || game.extras.fish) return false;
+    game.extras.fishAt = game.extras.t;
+    return true;
+  });
+  add('🎯 ภารกิจสำเร็จทันที', () => {
+    const m = game.extras.mission;
+    if (!running() || !m) return false;
+    m.n = m.goal;
+    if (m.kind === 'nohit') game.extras.noHit = m.goal;
+    if (m.kind === 'combo') game.combo = Math.max(game.combo, m.goal);
+    return true;
+  });
+  add('💔 หัวใจเหลือ 1', () => {
+    if (!running()) return false;
+    game.lives = 1;
+    return true;
+  });
+  add('❤️ หัวใจเต็ม', () => {
+    if (!running()) return false;
+    game.lives = LIVES.max;
+    return true;
+  });
+  add('🔥 คอมโบ +40', () => {
+    if (!running()) return false;
+    game.combo += 40;
+    game.comboBest = Math.max(game.comboBest, game.combo);
     return true;
   });
 
   // ── โบนัสตัวอักษร SPEEDCAT ──
   // เรียกจุดเริ่มตัวจริง ไม่ใช่แค่ยัดตัวอักษรให้ครบ เพราะการนับครบ
   // เกิดในลูปเก็บของ ซึ่งจะไม่ทำงานถ้าไม่มีตัวอักษรอยู่บนจอพอดี
-  add('⭐ โบนัสตัวอักษร', () => {
+  add('⭐ เข้าโบนัสทันที', () => {
     if (game.state !== STATE.RUN || game.bonus > 0) return false;
     game.startBonus();
     return true;
