@@ -23,6 +23,8 @@ import {
 } from './outfits.js';
 import { getGold, addGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest, loadPref, savePref } from './storage.js';
+import { drawItemIcon } from './render/items.js';
+import { EXCHANGE, SHOP_TABS, SHOP_ITEMS, SHOP_LIVE, shopToday, addTodayTreats, treatsToGold, exchangeTreats } from './shop.js';
 import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
@@ -34,7 +36,7 @@ import { getLang, setLang, applyLang, watchLang, onLang, t as tr } from './i18n.
 import { setSexText } from './utils.js';
 import {
   quality, onQuality, LEVEL_IDS, SCENES, FPS_OPTS, sceneCfg, setSceneCfg, sameAll, setSameAll,
-  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz, frameDrawn, autoInfo, catStride,
+  setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz, catStride,
 } from './graphics.js';
 import {
   getGems, addGems, ownsTreasure, treasureLevel, ownedCount as treasureCount,
@@ -362,7 +364,7 @@ for (const [id, theme] of [
   ['loadoutPanel', 'treasure'], ['gListPanel', 'outfit'], ['foundPanel', 'cat'], ['catStoryPanel', 'cat'],
   ['catCardsPanel', 'mail'], ['catSendPanel', 'mail'], ['miniPanel', 'play'], ['mgPickPanel', 'cat'],
   ['tipPanel', 'cat'], ['pausePanel', 'system'], ['reportPanel', 'system'], ['overPanel', 'royal'],
-  ['createLockPanel', 'cat'], ['confirmPanel', 'system'],
+  ['createLockPanel', 'cat'], ['shopPanel', 'cat'], ['confirmPanel', 'system'],
 ]) {
   const el = document.getElementById(id);
   if (el) attachSubBg(el, theme, id.length);
@@ -507,6 +509,65 @@ function alphaBounds(c, w, h) {
  *
  * @param fill สัดส่วนของกรอบที่ยอมให้รูปกิน เว้นขอบไว้นิดหน่อยกันดูอึดอัด
  */
+/**
+ * ไอคอนร้านเหมียว (กรอบ 76) — ซุ้มร้านหลังคาผ้าใบลายทางชมพู-ครีมชายหยัก หูแมวบนหลังคา
+ * ป้ายกลมรูปอุ้งเท้า เคาน์เตอร์ไม้มีปลากับขนมวางขาย
+ */
+function drawShopStall(c) {
+  const ink = '#6B3A2A';
+  c.save();
+  c.lineJoin = 'round';
+  c.lineCap = 'round';
+  c.lineWidth = 2.2;
+  c.strokeStyle = ink;
+  // หูแมวบนหลังคา
+  for (const [x, d] of [[18, -1], [58, 1]]) {
+    c.fillStyle = '#FF8FB7';
+    c.beginPath(); c.moveTo(x - 8 * d, 20); c.lineTo(x + 2 * d, 5); c.lineTo(x + 9 * d, 20); c.closePath();
+    c.fill();
+    c.fillStyle = '#FFD3E3';
+    c.beginPath(); c.moveTo(x - 3 * d, 18); c.lineTo(x + 2 * d, 10); c.lineTo(x + 5 * d, 18); c.closePath(); c.fill();
+  }
+  // ตัวร้าน
+  c.fillStyle = '#FFF4E4';
+  c.beginPath(); c.roundRect(10, 30, 56, 38, 4); c.fill();
+  // ช่องหน้าต่างร้าน
+  c.fillStyle = '#8B5CC9';
+  c.beginPath(); c.roundRect(16, 38, 44, 16, 3); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.25)';
+  c.fillRect(18, 40, 40, 4);
+  // ของขาย: ปลา + ขนมกลม
+  c.fillStyle = '#5ED3D0';
+  c.beginPath(); c.ellipse(28, 49, 6, 3.4, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.moveTo(33, 49); c.lineTo(37, 46); c.lineTo(37, 52); c.closePath(); c.fill();
+  c.fillStyle = '#FF9A3D';
+  c.beginPath(); c.arc(47, 49, 4, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#FFE066';
+  c.beginPath(); c.arc(54, 50, 3, 0, Math.PI * 2); c.fill();
+  // เคาน์เตอร์ไม้
+  c.fillStyle = '#E6A867';
+  c.beginPath(); c.roundRect(8, 54, 60, 9, 3); c.fill();
+  // หลังคาผ้าใบลายทาง ชายหยัก
+  c.save();
+  c.beginPath();
+  c.moveTo(6, 30); c.lineTo(12, 16); c.lineTo(64, 16); c.lineTo(70, 30);
+  for (let i = 0; i < 6; i++) { const x = 70 - i * 64 / 6; c.quadraticCurveTo(x - 64 / 12, 38, x - 64 / 6, 30); }
+  c.closePath();
+  c.clip();
+  for (let i = 0; i < 6; i++) {
+    c.fillStyle = i % 2 ? '#FFF4E4' : '#FF7EB0';
+    c.fillRect(6 + i * 64 / 6, 14, 64 / 6 + 0.5, 26);
+  }
+  c.restore();
+  // ป้ายกลมอุ้งเท้าบนหลังคา
+  c.fillStyle = '#FFD45A';
+  c.beginPath(); c.arc(38, 15, 8.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = ink;
+  c.beginPath(); c.ellipse(38, 17, 3.2, 2.6, 0, 0, Math.PI * 2); c.fill();
+  for (const [dx, dy] of [[-3.6, 12.6], [0, 11], [3.6, 12.6]]) { c.beginPath(); c.arc(38 + dx, dy, 1.4, 0, Math.PI * 2); c.fill(); }
+  c.restore();
+}
+
 function paintFitted(canvas, logical, fill, draw) {
   const probe = document.createElement('canvas');
   probe.width = logical;
@@ -687,6 +748,7 @@ function refreshHome() {
   paintFitted(document.getElementById('gachaIcon'), 76, 0.96, (c) => {
     c.save(); c.scale(76 / 150, 76 / 170); drawGachaMachine(c); c.restore();
   });
+  paintFitted(document.getElementById('shopIcon'), 76, 0.96, drawShopStall);
   // ความคืบหน้ากาช่าเคยโชว์ตรงนี้ ย้ายไปดูในแผงกาช่าอย่างเดียวแล้ว (.gacha-owned)
   refreshGold();
   refreshLove();   // คูลดาวน์อาจหมดไปแล้วระหว่างที่เปิดแผงอื่นค้างไว้
@@ -713,6 +775,7 @@ function refreshGold() {
   document.getElementById('goldUp').textContent = gold;
   // บ้านน้องแมวมีกระเป๋าทองของตัวเอง (ซื้ออาหาร/ของเล่น)
   document.getElementById('goldRoom').textContent = gold;
+  document.getElementById('goldShop').textContent = gold;   // ร้านเหมียว
   // ตู้เปิดค้างอยู่ = ปุ่มสุ่มต้องตามเงินล่าสุดด้วย (ดู paintPullAfford)
   // เช็คแผงก่อน: ตอนเกมเพิ่งโหลด ตัวแปรของตู้ยังไม่ถูกประกาศ แต่ตอนนั้นตู้ก็ยังไม่เคยเปิด
   if (!gachaPanel.classList.contains('hidden')) paintPullAfford();
@@ -7055,6 +7118,134 @@ function showCreateLock(on) {
   startPanel.classList.toggle('hidden', on);
 }
 
+// ── ร้านเหมียว — ปุ่มบนตู้กาช่า (ข้อมูล/ราคาอยู่ใน shop.js · ตอนนี้หน้าตาอย่างเดียว ปุ่มแลก/ซื้อยังไม่ทำงาน) ──
+const shopPanel = document.getElementById('shopPanel');
+const fmtN = (n) => n.toLocaleString('en-US');
+let shopTab = 'exchange';
+let shopStep = EXCHANGE.steps[EXCHANGE.steps.length - 1];
+{
+  const tabs = document.getElementById('shopTabs');
+  for (const tb of SHOP_TABS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'stab';
+    b.setAttribute('role', 'tab');
+    b.dataset.shop = tb.id;
+    b.innerHTML = `<span class="stab-ico" aria-hidden="true">${tb.ico}</span>${tr(tb.name)}`;
+    b.addEventListener('click', () => { unlockAudio(); sfx.fish(); shopTab = tb.id; paintShop(); });
+    tabs.appendChild(b);
+  }
+  const steps = document.getElementById('shopSteps');
+  for (const k of EXCHANGE.steps) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'fchip';
+    b.dataset.step = k;
+    b.textContent = k === 1 ? tr('ทั้งหมด') : k === 0.5 ? '½' : '¼';
+    b.addEventListener('click', () => { unlockAudio(); sfx.fish(); shopStep = k; paintShop(); });
+    steps.appendChild(b);
+  }
+}
+/** การ์ดสินค้าหนึ่งใบ — ไอคอน (ภาพวาดจาก items.js หรืออีโมจิ) · ชื่อ · คำอธิบาย · ราคา · ปุ่มซื้อ (ยังไม่เปิด) */
+function shopCard(it) {
+  const el = document.createElement('div');
+  el.className = 'shop-card';
+  const ico = document.createElement('div');
+  ico.className = 'shop-ico';
+  if (/^[a-z]+$/.test(it.icon)) {
+    const cv = document.createElement('canvas');
+    cv.width = 40; cv.height = 40;
+    paintMini(cv, 40, (c) => drawItemIcon(c, it.icon));
+    ico.appendChild(cv);
+  } else ico.textContent = it.icon;
+  if (it.pack) {
+    const p = document.createElement('i');
+    p.className = 'shop-pack';
+    p.textContent = '×' + it.pack[0];
+    ico.appendChild(p);
+  }
+  el.appendChild(ico);
+  if (it.tag) {
+    const t = document.createElement('b');
+    t.className = 'shop-tag';
+    t.textContent = tr(it.tag);
+    el.appendChild(t);
+  }
+  const nm = document.createElement('b');
+  nm.className = 'shop-name';
+  nm.textContent = tr(it.name);
+  const ds = document.createElement('small');
+  ds.className = 'shop-desc';
+  ds.textContent = tr(it.desc) + (it.pack ? ' · ' + tr('ลด') + ' ' + it.pack[1] + '%' : '');
+  const buy = document.createElement('button');
+  buy.type = 'button';
+  buy.className = 'shop-buy';
+  buy.disabled = true;
+  buy.innerHTML = `<i class="shop-coin" aria-hidden="true"></i>${fmtN(it.price)}`;
+  buy.title = tr('ร้านยังไม่เปิด');
+  el.append(nm, ds, buy);
+  return el;
+}
+function paintShop() {
+  const tab = SHOP_TABS.find((x) => x.id === shopTab) || SHOP_TABS[0];
+  for (const b of document.querySelectorAll('#shopTabs .stab')) b.classList.toggle('on', b.dataset.shop === tab.id);
+  document.getElementById('shopTitle').textContent = tr(tab.title);
+  document.getElementById('shopSoon').textContent = tr(SHOP_LIVE && tab.id === 'exchange'
+    ? 'โหมดทดสอบ — แลกทองได้จริงเฉพาะเซิร์ฟเวอร์ทดสอบ (เกมจริงยังปิดอยู่)'
+    : 'ร้านยังไม่เปิดจริง — ราคาและตัวเลขเป็นค่าทดลอง ยังกดซื้อไม่ได้');
+  document.getElementById('goldShop').textContent = fmtN(getGold());
+  const ex = tab.id === 'exchange';
+  document.getElementById('shopEx').classList.toggle('hidden', !ex);
+  const grid = document.getElementById('shopGrid');
+  grid.classList.toggle('hidden', ex);
+  if (ex) {
+    const { got, used, left, cap } = shopToday();
+    document.getElementById('shopGot').textContent = fmtN(got);
+    document.getElementById('shopCap').textContent = fmtN(cap);
+    document.getElementById('shopBar').style.width = Math.min(100, (got / cap) * 100) + '%';
+    document.getElementById('shopUsed').textContent = fmtN(used);
+    document.getElementById('shopLeft').textContent = fmtN(left);
+    document.getElementById('shopRateT').textContent = fmtN(EXCHANGE.treats);
+    document.getElementById('shopRateG').textContent = fmtN(EXCHANGE.gold);
+    for (const b of document.querySelectorAll('#shopSteps .fchip')) b.classList.toggle('on', +b.dataset.step === shopStep);
+    // จำนวนที่จะแลก = สัดส่วนของยอดที่ยังแลกได้ ปัดลงให้ลงตัวกับทองเต็มเหรียญ
+    const per = EXCHANGE.treats / EXCHANGE.gold;
+    const pick = Math.floor((left * shopStep) / per) * per;
+    document.getElementById('shopPickT').textContent = fmtN(pick);
+    document.getElementById('shopPickG').textContent = fmtN(treatsToGold(pick));
+    const go = document.getElementById('shopExGo');
+    go.disabled = !SHOP_LIVE || pick < per;
+    go.innerHTML = SHOP_LIVE ? tr('แลกเลย') : tr('แลกเลย') + ' <small>(' + tr('เร็ว ๆ นี้') + ')</small>';
+  } else {
+    grid.replaceChildren(...(SHOP_ITEMS[tab.id] || []).map(shopCard));
+  }
+}
+document.getElementById('shopExGo').addEventListener('click', () => {
+  unlockAudio();
+  const { left } = shopToday();
+  const gold = exchangeTreats(Math.floor(left * shopStep));
+  const msg = document.getElementById('shopExMsg');
+  if (gold > 0) {
+    sfx.bonus();
+    refreshGold();
+    msg.textContent = tr('แลกสำเร็จ! ได้') + ' ' + fmtN(gold) + ' ' + tr('ทอง');
+  } else {
+    sfx.fish();
+    msg.textContent = tr('ค่าขนมยังไม่พอแลก');
+  }
+  paintShop();
+});
+function openShop(on) {
+  if (on) { shopTab = 'exchange'; document.getElementById('shopExMsg').textContent = ''; paintShop(); }
+  shopPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+}
+document.getElementById('btnShop').addEventListener('click', () => {
+  unlockAudio(); sfx.fish(); startMusic();
+  openShop(true);
+});
+document.getElementById('shopBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); openShop(false); });
+
 document.getElementById('btnCreate').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); startMusic();
   if (!createUnlocked()) return showCreateLock(true);
@@ -8114,6 +8305,7 @@ document.getElementById('guestNote').addEventListener('click', (e) => {
 });
 
 function showGameOver(quit = false) {
+  addTodayTreats(game.treat);   // ร้านเหมียว: ค่าขนมที่เก็บได้วันนี้ (เทียบเพดานรายวัน — shop.js)
   // มาจากปุ่ม "เลิกเล่น" ในหน้าหยุด = เพลงถูกหยุดไว้ตอนกดหยุด (ดู setPaused)
   // ต้องเปิดคืนตรงนี้ ไม่งั้นหน้าสรุปเงียบสนิททั้งหน้า
   // ทางที่มาจากการตายเพลงยังเล่นอยู่ startMusic() จึงไม่ทำอะไร เรียกซ้ำได้อยู่แล้ว
@@ -8606,7 +8798,7 @@ function paintGfxPick() {
   }
   document.getElementById('gfxScenePick').classList.toggle('off', same);
   for (const id of LEVEL_IDS) document.getElementById(GFX_BTN[id]).classList.toggle('on', id === c.level);
-  for (const b of document.querySelectorAll('#resPick .langbtn')) b.classList.toggle('on', b.dataset.res === (c.res || 'auto'));
+  for (const b of document.querySelectorAll('#resPick .langbtn')) b.classList.toggle('on', b.dataset.res === c.res);
   const hz = maxDisplayHz();
   for (const b of fpsBox.children) {
     const f = +b.dataset.fps;
@@ -8619,13 +8811,9 @@ function paintGfxPick() {
   sw.classList.toggle('on', !same);
   sw.setAttribute('aria-checked', same ? 'false' : 'true');
   document.getElementById('gfxSceneRow').classList.toggle('hidden', same);
-  // ความละเอียดอัตโนมัติกำลังลดอยู่ (เครื่องวาดไม่ทัน) — บอกให้รู้ว่าลดเหลือเท่าไหร่
-  const ai = autoInfo(gfxScene);
   document.getElementById('gfxNote').textContent = c.fps > hz
     ? tr('จอเครื่องนี้ทำได้สูงสุด') + ' ' + hz + ' ' + tr('เฟรม — ตั้งสูงกว่านี้จะได้เท่าที่จอทำได้')
-    : ai.on && ai.step > 0 ? (ai.scale < 1 ? tr('อัตโนมัติ: ลดความละเอียดเหลือ') + ' ' + Math.round(ai.scale * 100) + '% '
-      : tr('อัตโนมัติ: วาดท่าทางน้องเฟรมเว้นเฟรม') + ' ') + tr('ให้เกมลื่นบนเครื่องนี้')
-      : c.fps >= 90 || c.res === 'max' ? tr('เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น')
+    : c.fps >= 90 || c.res === 'max' ? tr('เฟรมสูง/ภาพคมสุดสวยมาก แต่เครื่องอาจร้อนและเปลืองแบตขึ้น')
         : tr('เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้');
 }
 for (const b of document.querySelectorAll('#gfxScenePick .langbtn')) {
@@ -8800,8 +8988,6 @@ function loop(now) {
   if (now - lastDraw >= (menu ? MENU_MS : idleHome ? IDLE_DRAW_MS - 1.5 : 0)) {
     lastDraw = now;
     game.draw(ctx);
-    // ความละเอียดอัตโนมัติวัดจากเฟรมที่วาดตามจังหวะปกติเท่านั้น (ช่วงที่ตั้งใจวาดห่างไม่นับ) — ดู graphics.js
-    frameDrawn(now, !menu && !idleHome);
   }
   updateSkillPad();
 
@@ -8856,7 +9042,6 @@ setupFilterBar({
 // Vite ตัดทิ้งทั้งบรรทัดตอน build จริง ไม่หลุดไปอยู่ใน bundle
 if (import.meta.env.DEV) {
   window.__game = game;
-  window.__gfxAuto = autoInfo;   // สคริปต์ทดสอบดูขั้นความละเอียดอัตโนมัติ
   window.__od = od;              // สคริปต์ทดสอบกระโดดไปเฟรมของท่าเปิดตัว/ท่าแอ็คในหน้ารายละเอียดชุด
   // เปิดหน้าสรุปผลด้วยตัวเลขที่ตั้งเองได้ ไม่ต้องเล่นจนตายทุกครั้งที่จะดูหน้านี้
   window.__showGameOver = showGameOver;

@@ -309,14 +309,10 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
   });
   // ── เกมเพลย์ใหม่: ของระหว่างวิ่ง (run-extras.js) ──
   const running = () => game.state === STATE.RUN && game.bonus <= 0;
+  // อันตราย (หมา/ฝน/กลางคืน) = ขึ้นป้ายเตือน + เสียงหวอ 3 วิก่อนเหมือนในเกมจริง
   const startEvent = (id) => {
-    if (!running()) return false;
-    const x = game.extras, cfg = EVENTS.list[id];
-    x.ev = { id, t: 0, dur: cfg.dur, cfg };
-    x.evLast = id;
-    x.evTick = 0;
-    game.noticeText = cfg.name;
-    game.notice = 130;
+    if (!running() || !EVENTS.list[id]) return false;
+    game.extras.startEvent(game, id);
     return true;
   };
   add('🐕 เหตุการณ์: หมาไล่', () => startEvent('dog'));
@@ -324,8 +320,10 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
   add('🛍 เหตุการณ์: ตลาดนัด', () => startEvent('market'));
   add('🌙 เหตุการณ์: กลางคืน', () => startEvent('night'));
   add('⏹ จบเหตุการณ์', () => {
-    if (!game.extras.ev) return false;
-    game.extras.ev.t = game.extras.ev.dur - 1;
+    const x = game.extras;
+    if (x.warn) { x.warn = null; return true; }
+    if (!x.ev) return false;
+    x.ev.t = x.ev.dur - 1;
     return true;
   });
   add('🔴 จุดเลเซอร์แดงโผล่', () => {
@@ -351,6 +349,11 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
     if (!running()) return false;
     game.lives = 1;
     return true;
+  });
+  add('💖 หัวใจคืน 1 (ดูแอนิเมชัน)', () => {
+    if (!running()) return false;
+    if (game.lives >= LIVES.max) game.lives = LIVES.max - 1;
+    return game.gainLife({ x: 300, y: 200, world: false });
   });
   add('❤️ หัวใจเต็ม', () => {
     if (!running()) return false;

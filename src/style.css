@@ -9813,12 +9813,14 @@ canvas[hidden] { display: none; }
   }
   /* ปุ่มนี้ลอยอยู่เหนือทางที่ของพุ่งเข้ามาพอดี ต้องโปร่งแบบเดียวกับปุ่มกระโดด/หมอบ
      (ดูเหตุผลที่ .touchpad button) ความชัดมาจากวงแหวนกับไอคอน ไม่ใช่จากพื้นทึบ */
+  /* เดิมพื้นใส .4 → จมหายบนฉากสว่าง (รูปชายหาดที่ผู้ใช้ส่ง 25 ต.ค.) · ม่วงทึบขึ้นให้อ่านสถานะออกทุกฉาก */
   #btnSkill {
-    background: radial-gradient(circle at 50% 35%, rgba(122,53,99,.42), rgba(43,18,66,.38));
-    border: 2px solid rgba(255,243,226,.55);
+    background: radial-gradient(circle at 50% 35%, rgba(147,118,219,.8), rgba(74,42,128,.82));
+    border: 1px solid rgba(255,246,232,.8);
+    box-shadow: 0 3px 0 rgba(60,25,100,.3), inset 0 2px 0 rgba(255,255,255,.3);
   }
   #btnSkill[data-state="active"] {
-    background: radial-gradient(circle at 50% 35%, rgba(255,211,107,.55), rgba(160,80,30,.45));
+    background: radial-gradient(circle at 50% 35%, rgba(255,231,160,.9), rgba(214,130,40,.85));
   }
 }
 #btnSkill:active { transform: scale(.94); }
@@ -9844,7 +9846,7 @@ canvas[hidden] { display: none; }
 }
 /* รอคูลดาวน์: ตัวไอคอนจางลง ให้เห็นว่ายังกดไม่ได้ */
 #btnSkill[data-state="cool"] .sk-ico,
-#btnSkill[data-state="cool"] .sk-label { opacity: .5; }
+#btnSkill[data-state="cool"] .sk-label { opacity: .45; filter: grayscale(.6); }
 /* ใบที่ทำงานเอง (ไม่มีอะไรให้กด) — ปุ่มเล็กลงและไม่รับการกด เป็นแค่ตัวบอกสถานะ */
 #btnSkill.passive { cursor: default; transform: scale(.82); pointer-events: none; }
 #btnSkill.passive .sk-key { display: none; }
@@ -11392,8 +11394,8 @@ canvas[hidden] { display: none; }
 .cl-feat small { font-size: clamp(9.5px, 1.6dvh, 12px); color: #FFFFFF; }
 @media (prefers-reduced-motion: reduce) { .cl-lock canvas, .cl-padlock { animation: none; } }
 /* กระชับให้ลงจอเดียวทุกขนาด: หัวเรื่องบรรทัดเดียว · ฟีเจอร์เป็นชิปแนวนอน (ไอคอนซ้าย ข้อความขวา) */
-#createLockPanel .cl-pop { width: min(580px, 94%); gap: clamp(5px, 1.3dvh, 11px); padding-block: clamp(10px, 2.4dvh, 22px); }
-#createLockPanel .skin-title { white-space: nowrap; font-size: clamp(18px, 4dvh, 30px); margin: 0; }
+:is(#createLockPanel, #shopPanel) .cl-pop { width: min(580px, 94%); gap: clamp(5px, 1.3dvh, 11px); padding-block: clamp(10px, 2.4dvh, 22px); }
+:is(#createLockPanel, #shopPanel) .skin-title { white-space: nowrap; font-size: clamp(18px, 4dvh, 30px); margin: 0; }
 .cl-lock { width: clamp(48px, 12dvh, 84px); }
 .cl-padlock { font-size: clamp(18px, 4.2dvh, 30px); right: -8px; }
 .cl-lead { font-size: clamp(11.5px, 2.2dvh, 15px); line-height: 1.5; }
@@ -11402,17 +11404,17 @@ canvas[hidden] { display: none; }
 .cl-feat b, .cl-feat small { display: block; }
 .cl-feat { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; }
 .cl-feat .cl-ico { grid-row: 1 / 3; }
-#createLockPanel .btnrow { margin-top: clamp(0px, .6dvh, 6px); }
+:is(#createLockPanel, #shopPanel) .btnrow { margin-top: clamp(0px, .6dvh, 6px); }
 @media (max-height: 460px) {
-  #createLockPanel .cl-pop { gap: 4px; padding-block: 8px 12px; }
-  #createLockPanel .skin-title { font-size: 17px; }
+  :is(#createLockPanel, #shopPanel) .cl-pop { gap: 4px; padding-block: 8px 12px; }
+  :is(#createLockPanel, #shopPanel) .skin-title { font-size: 17px; }
   .cl-lock { width: 38px; }
   .cl-padlock { font-size: 16px; }
   .cl-lead { font-size: 11px; line-height: 1.4; }
   .cl-bar { height: 9px; }
   .cl-feat { padding: 3px 8px; }
   .cl-ico { font-size: 18px; }
-  #createLockPanel .btnrow .btn { padding: 6px 20px; font-size: 13px; }
+  :is(#createLockPanel, #shopPanel) .btnrow .btn { padding: 6px 20px; font-size: 13px; }
 }
 
 /* ── ปุ่มคู่ "เลือกลงสีน้อน / ลงสีทั้งตัวน้อน": เห็นชัดว่าเลือกอันไหนอยู่ ──
@@ -15500,3 +15502,128 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   cursor: pointer;
 }
 #gachaPanel .gc-skip:active { transform: scale(.94); }
+
+/* ═══ ร้านเหมียว (#shopPanel · shop.js) ═══════════════════════════
+   โครงคลังน้อง (หมวดซ้าย เนื้อหาขวา) · หมวดแลกทอง = การ์ดสามใบเรียงลง · หมวดสินค้า = ตารางการ์ด
+   ตอนนี้หน้าตาอย่างเดียว — ปุ่มแลก/ซื้อ disabled (ผู้ใช้ 25 ต.ค. 2026: จัดวางไว้ก่อน เดี๋ยวมาแก้) */
+.shop-pop { background: linear-gradient(180deg, #8F62C9 0%, #6C43A8 100%); }
+#shopPanel .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#shopPanel .skin-title { margin: 0; }
+.shop-wallet {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 12px 3px 5px;
+  border-radius: 999px;
+  background: rgba(40,14,70,.45);
+  border: 1px solid rgba(255,231,160,.55);
+  color: #FFE7A0;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 2.4dvh, 17px);
+}
+/* เหรียญทองวาดด้วย CSS — วงทองขอบเข้มกับรูเท้าแมวจาง ๆ */
+.shop-coin {
+  display: inline-block; flex: 0 0 auto;
+  width: 1.15em; height: 1.15em; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #FFF6B0 0 18%, #FFD45A 40%, #E0A21F 100%);
+  box-shadow: inset 0 -1.5px 0 rgba(150,90,0,.45);
+}
+.shop-fish {
+  display: inline-block; width: 1.3em; height: .8em; flex: 0 0 auto;
+  background: #5ED3D0;
+  border-radius: 50% 40% 40% 50% / 50%;
+  clip-path: polygon(0 50%, 22% 0, 78% 0, 100% 20%, 86% 50%, 100% 80%, 78% 100%, 22% 100%);
+}
+
+/* ── หมวดแลกทอง ── */
+.shop-ex { display: flex; flex-direction: column; gap: clamp(6px, 1.4dvh, 12px); overflow: auto; min-height: 0; }
+.shop-ex-card {
+  padding: clamp(8px, 1.6dvh, 14px) clamp(10px, 1.6vw, 18px);
+  border-radius: 14px;
+  background: rgba(255,250,242,.96);
+  color: #3E2A78;
+  box-shadow: 0 2px 0 rgba(40,14,70,.25);
+}
+.shop-ex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.shop-ex-lab { font-family: "Mali", sans-serif; font-weight: 700; font-size: clamp(12px, 2.2dvh, 15px); }
+.shop-ex-num { font-weight: 700; color: #6B54B0; font-size: clamp(12px, 2.2dvh, 15px); }
+.shop-ex-num b { color: #3E2A78; font-size: 1.15em; }
+.shop-bar { height: clamp(8px, 1.6dvh, 11px); margin-top: 6px; border-radius: 999px; background: #E3D8F8; overflow: hidden; }
+.shop-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #9376DB, #F28DB7); }
+.shop-ex-note { display: block; margin-top: 4px; color: #8A78B8; font-size: clamp(10px, 1.7dvh, 12px); }
+.shop-ex-left { margin-top: 4px; font-size: clamp(11px, 1.9dvh, 13px); color: #6B54B0; }
+.shop-ex-left b { color: #3E2A78; }
+.shop-ex-msg { display: block; min-height: 1.3em; margin-top: 4px; text-align: center; color: #B07A00; font-weight: 700; font-size: clamp(11px, 1.9dvh, 13px); }
+.shop-rate { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 2vw, 18px); }
+.shop-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 999px;
+  font-family: "Mali", sans-serif; font-weight: 800; font-size: clamp(13px, 2.4dvh, 17px);
+}
+.shop-chip.treat { background: #DDF6F4; color: #1E7F7C; }
+.shop-chip.gold { background: #FFF1C4; color: #8A5A00; }
+.shop-arrow { color: #9376DB; font-size: clamp(14px, 2.6dvh, 20px); }
+.shop-steps { display: flex; gap: 6px; }
+.shop-steps .fchip { color: #3E2A78; background: #EFE7FC; border-color: #CDBDF0; }
+.shop-steps .fchip.on { color: #FFFFFF; background: #9376DB; border-color: #9376DB; }
+.shop-ex-sum { margin-top: 6px; font-size: clamp(12px, 2.1dvh, 14px); color: #6B54B0; }
+.shop-ex-sum b { color: #3E2A78; }
+.shop-gold-txt { color: #B07A00 !important; }
+.shop-go { display: block; margin: 8px auto 0; }
+.shop-go small { font-size: .75em; opacity: .85; }
+.shop-go:disabled, .shop-buy:disabled { cursor: not-allowed; filter: saturate(.75); }
+
+/* ── หมวดสินค้า: การ์ดเรียงตาราง ── */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(112px, 15vw, 150px), 1fr));
+  gap: clamp(6px, 1.2dvh, 12px);
+  overflow: auto;
+  min-height: 0;
+  padding: 2px 2px 6px;
+  align-content: start;
+}
+.shop-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: clamp(6px, 1.2dvh, 10px) 8px clamp(7px, 1.3dvh, 10px);
+  border-radius: 14px;
+  background: rgba(255,250,242,.96);
+  color: #3E2A78;
+  text-align: center;
+  box-shadow: 0 2px 0 rgba(40,14,70,.25);
+}
+.shop-ico {
+  position: relative;
+  display: grid; place-items: center;
+  width: clamp(40px, 8dvh, 56px); height: clamp(40px, 8dvh, 56px);
+  border-radius: 12px;
+  background: #F1E8FF;
+  font-size: clamp(22px, 4.6dvh, 32px);
+}
+.shop-ico canvas { width: 82%; height: 82%; }
+.shop-pack {
+  position: absolute; right: -6px; bottom: -4px;
+  padding: 0 5px; border-radius: 999px;
+  background: #9376DB; color: #FFFFFF;
+  font-style: normal; font-weight: 800; font-size: 10px;
+}
+.shop-tag {
+  position: absolute; top: 6px; left: 6px;
+  padding: 1px 7px; border-radius: 999px;
+  background: #F28DB7; color: #FFFFFF;
+  font-size: 10px; font-weight: 800;
+}
+.shop-name { font-family: "Mali", sans-serif; font-size: clamp(12px, 2.1dvh, 14px); line-height: 1.3; margin-top: 2px; }
+.shop-desc { color: #8A78B8; font-size: clamp(9.5px, 1.6dvh, 11.5px); line-height: 1.35; min-height: 2.7em; }
+.shop-buy {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 4px;
+  padding: 3px 12px;
+  border: 0; border-radius: 999px;
+  background: linear-gradient(180deg, #FFE7A0, #FFC94A);
+  color: #7A4300;
+  font: inherit; font-weight: 800; font-size: clamp(11.5px, 2dvh, 14px);
+  box-shadow: 0 2px 0 rgba(150,90,0,.35);
+}
+.shop-soon { color: rgba(255,243,226,.75); font-size: clamp(10px, 1.7dvh, 12px); text-align: center; }
+.shop-ex.hidden, .shop-grid.hidden { display: none; }

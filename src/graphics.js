@@ -13,7 +13,7 @@
 //   bloom   แสงฟุ้งทั้งเฟรม: 1 = ทุกเฟรม, 2 = เฟรมเว้นเฟรม, 0 = ปิด
 //   parts   ตัวคูณจำนวนอนุภาค
 //
-// ความละเอียด "อัตโนมัติ" (ค่าเริ่มต้น) ปรับตามแรงเครื่องจริง — ดูหัวข้อ "ความละเอียดอัตโนมัติ" ข้างล่าง
+// ไม่มีการปรับเองอัตโนมัติ (ผู้ใช้สั่งถอด 25 ต.ค. 2026) — ผู้เล่นเลือกแบบไหน เกมแสดงแบบนั้นตลอด ไม่ลดคุณภาพเอง
 //
 // ไฟล์นี้ไม่รู้จักหน้าจอและไม่วาดอะไรเอง — ใครอยากรู้ค่าก็เรียก quality()
 // และถ้าอยากรู้ตอนค่าเปลี่ยนให้ลงทะเบียนผ่าน onQuality()
@@ -52,9 +52,10 @@ export const FPS_OPTS = [30, 45, 60, 90, 120];
 /**
  * ความละเอียดภาพ (แยกจากความสวย) — เหมือนเกมมือถือทั่วไป
  * scale = เพดานความคมของจอเกมหลัก (เท่าของ 960×420) · dpr = เพดานของผ้าใบรอง (มินิเกม)
- * auto = ตามระดับความสวยเหมือนเดิม
+ * ตัวเลือก "อัตโนมัติ" ถูกถอดแล้ว — ค่าที่เคยเก็บเป็น auto แปลงเป็นระดับที่ตรงกับความสวยที่เลือกไว้ (resFor)
  */
-export const RES_OPTS = ['auto', 'low', 'mid', 'high', 'max'];
+export const RES_OPTS = ['low', 'mid', 'high', 'max'];
+const resFor = (lv) => (lv === 'save' ? 'low' : lv === 'mid' ? 'mid' : 'high');
 const RES = {
   low: { scale: 1, dpr: 1 },
   mid: { scale: 1.4, dpr: 1.25 },
@@ -73,10 +74,11 @@ function loadCfg() {
   if (raw && typeof raw === 'object') cfg.same = raw.same !== false;
   for (const sc of SCENES) {
     const r = raw?.scenes?.[sc] || {};
+    const level = LEVEL_IDS.includes(r.level) ? r.level : legacy;
     cfg.scenes[sc] = {
-      level: LEVEL_IDS.includes(r.level) ? r.level : legacy,
+      level,
       fps: FPS_OPTS.includes(r.fps) ? r.fps : legacyFps(legacy),
-      res: RES_OPTS.includes(r.res) ? r.res : 'auto',
+      res: RES_OPTS.includes(r.res) ? r.res : resFor(level),
     };
   }
   return cfg;
@@ -84,45 +86,6 @@ function loadCfg() {
 const cfg = loadCfg();
 let scene = 'home';
 const listeners = [];
-
-// ══ ความละเอียดอัตโนมัติตามแรงเครื่อง (res = 'auto') ══════════════════════════════
-// เดิม 'auto' = ตามระดับความสวยเฉย ๆ ทุกเครื่องได้เท่ากัน — iPad gen 9 (ชิปปี 2019 แต่ต้องวาดภาพใหญ่กว่า iPhone 2.7 เท่า
-// เพราะจอ 4:3 ต่อฟ้า/พื้นบนล่าง) จึงกระตุกหนัก ทั้งที่ iPhone รุ่นใหม่ลื่นสบาย (ผู้ใช้ทัก 15 ต.ค.)
-// ตอนนี้เกมวัดเอง: ช่วงห่างระหว่างเฟรมที่วาดจริง เฉลี่ยทุก 2 วินาที เทียบกับเพดานเฟรม (สูงสุด 60)
-// - ทำไม่ทันสองช่วงติด = ลดหนึ่งขั้น · ขั้นแรก = วาดตัวน้องแบบใหม่เฟรมเว้นเฟรม (ภาพคมเท่าเดิม — ดู catStride)
-//   ขั้นถัดไป = ตัวคูณความละเอียด · ตั้งแต่ขั้น AUTO_LITE ปิดแสงฟุ้ง + แสงตะเกียงบนตัวน้องด้วย
-//   (สองอย่างนี้ภาพเปลี่ยนน้อยแต่ประหยัดมาก) — เครื่องแรงไม่เคยลด สวยเต็มเหมือนเดิม
-// - ลดความละเอียดแล้วไม่ดีขึ้นอย่างน้อย 8% (เช่นโหมดประหยัดพลังงานของ iOS ล็อกไว้ 30 เฟรม) = คอขวดไม่ใช่ความละเอียด
-//   คืนขั้นเดิมแล้วเลิกลดสิบนาที ภาพจะไม่นุ่มลงฟรี ๆ
-// - ลื่นนิ่งต่อเนื่องหนึ่งนาที = ลองขยับขึ้นหนึ่งขั้น (เครื่องหายร้อนแล้ว) · ขึ้นแล้วตกภายใน 12 วิ = ไม่ลองอีกห้านาที
-// - จำขั้นของแต่ละหน้า (หน้าแรก/บ้าน/วิ่ง หนักไม่เท่ากัน) ไว้ในเครื่อง เปิดเกมครั้งหน้าเริ่มที่ขั้นที่ใช้ได้เลย
-// - ผู้เล่นเลือกความละเอียดเอง (ต่ำ/กลาง/สูง/สูงสุด) = ระบบนี้ไม่ยุ่งเลย
-//
-// scale = ตัวคูณความละเอียด · cat = วาดตัวน้องแบบใหม่ทุกกี่เฟรม (ตัวน้องเวกเตอร์คือของที่หนักที่สุดในฉาก — วัดใน Chrome
-// ชุดองค์หญิงหิมะกินการ์ดจอครึ่งเฟรม) · เฟรมที่ไม่วาดใหม่แปะภาพเดิมตามตำแหน่งปัจจุบัน ตัวยังขยับลื่นทุกเฟรม
-// มีแค่ท่าทางข้างในตัว (หูกระพือ ผ้าปลิว) ที่เปลี่ยน 30 ครั้ง/วิ แทน 60 — เท่าการ์ตูนทั่วไป ตาแทบไม่เห็นต่าง จึงเป็นขั้นแรกก่อนลดความคม
-const AUTO_STEPS = [
-  { scale: 1, cat: 1 },
-  { scale: 1, cat: 2 },
-  { scale: 0.85, cat: 2 },
-  { scale: 0.72, cat: 2 },
-  { scale: 0.6, cat: 2 },
-];
-const AUTO_LITE = 3;
-// คีย์ใหม่ (ขั้นเลื่อนไปหนึ่งเพราะเพิ่มขั้น "วาดตัวน้องเฟรมเว้นเฟรม" ไว้หน้าสุด) — ค่าที่จำไว้ในคีย์เดิมแปลงมาให้
-const AUTO_PREF = 'gfxAuto2';
-const autoStep = Object.fromEntries(SCENES.map((sc) => [sc, 0]));
-{
-  const saved = loadPref(AUTO_PREF, null);
-  const old = saved ? null : loadPref('gfxAuto', null);
-  for (const sc of SCENES) {
-    const v = saved && typeof saved === 'object' ? saved[sc] | 0
-      : old && typeof old === 'object' && (old[sc] | 0) > 0 ? (old[sc] | 0) + 1 : 0;
-    if (v > 0 && v < AUTO_STEPS.length) autoStep[sc] = v;
-  }
-}
-/** ตัววัดเฟรม (หน้าที่กำลังวัด ช่วงสะสม ตัวนับช่วงช้า/ลื่น ช่วงพักหลังเปลี่ยนขั้น ล็อก) */
-const mon = { sc: null, last: 0, sum: 0, n: 0, win: 0, slow: 0, fast: 0, cool: 0, check: null, probeAt: 0, lock: {} };
 
 /** ค่าที่ใช้ของหน้าหนึ่ง (same = ทุกหน้าใช้ค่าของหน้าแรก) */
 export function sceneCfg(sc = scene) {
@@ -134,128 +97,15 @@ export function quality(sc = scene) {
   const c = sceneCfg(sc);
   const q = { ...ACTIVE[c.level], fps: c.fps };
   if (RES[c.res]) q.scale = RES[c.res].scale;
-  else if (autoStep[sc]) {
-    // อัตโนมัติ: เครื่องวาดไม่ทัน → ลดความละเอียดตามขั้น (ไม่ต่ำกว่า 1 เท่าของฉาก) · ขั้นลึกปิดแสงฟุ้งด้วย
-    q.scale = Math.max(1, q.scale * AUTO_STEPS[autoStep[sc]].scale);
-    if (autoStep[sc] >= AUTO_LITE) q.bloom = 0;
-  }
   return q;
 }
 
-/** อัตโนมัติลดถึงขั้นปิดแสงหนัก ๆ แล้วหรือยัง (ผู้วาดใช้ปิดแสงตะเกียงบนตัวน้องในหน้าแรก) */
-export function autoLite(sc = scene) {
-  return sceneCfg(sc).res === 'auto' && autoStep[sc] >= AUTO_LITE;
-}
-
 /**
- * วาดตัวน้องแบบใหม่ (cat2) ใหม่ทุกกี่เฟรมของหน้านี้ — 1 = ทุกเฟรม · 2 = เฟรมเว้นเฟรม (เฟรมที่ข้ามแปะภาพเดิมตามตำแหน่งปัจจุบัน)
- * ตามขั้นความละเอียดอัตโนมัติ (เครื่องแรง = 1 เสมอ) · ประหยัดแบต = 2 (ผู้เล่นเลือกแลกความลื่นของท่าทางกับแบตเอง)
+ * วาดตัวน้องแบบใหม่ (cat2) ใหม่ทุกกี่เฟรม — 1 = ทุกเฟรม · 2 = เฟรมเว้นเฟรม (เฟรมที่ข้ามแปะภาพเดิมตามตำแหน่งปัจจุบัน)
+ * ประหยัดแบต = 2 (ผู้เล่นเลือกแลกความลื่นของท่าทางกับแบตเอง)
  */
 export function catStride(sc = scene) {
-  const c = sceneCfg(sc);
-  if (c.level === 'save') return 2;
-  return c.res === 'auto' ? AUTO_STEPS[autoStep[sc]].cat : 1;
-}
-
-/** สถานะความละเอียดอัตโนมัติของหน้าหนึ่ง — { on, step, scale, cat } (หน้าตั้งค่าโชว์ว่าลดไปเท่าไหร่) */
-export function autoInfo(sc = scene) {
-  const s = AUTO_STEPS[autoStep[sc]];
-  return { on: sceneCfg(sc).res === 'auto', step: autoStep[sc], scale: s.scale, cat: s.cat };
-}
-
-function setAutoStep(sc, v, now) {
-  autoStep[sc] = Math.max(0, Math.min(AUTO_STEPS.length - 1, v));
-  // ภาพสำรองต่าง ๆ ต้องวาดใหม่ตามขนาดผ้าใบใหม่ — พักการตัดสินสักครู่ ไม่เอาช่วงนั้นมาคิด
-  mon.cool = now + 1500;
-  mon.last = 0;
-  mon.sum = 0;
-  mon.n = 0;
-  mon.win = now;
-  savePref(AUTO_PREF, { ...autoStep });
-  notify();
-}
-
-/**
- * ลูปหลักแจ้งทุกครั้งที่วาดเฟรม — full = เฟรมวาดตามจังหวะปกติ
- * (ไม่ใช่ช่วงที่ตั้งใจวาดห่าง เช่นมีแผงเมนูคลุม หรือหน้าแรกที่วางทิ้งไว้) เฟรมพวกนั้นไม่เอามาวัด
- */
-export function frameDrawn(now, full) {
-  const sc = scene;
-  if (mon.sc !== sc) {
-    mon.sc = sc;
-    mon.slow = 0;
-    mon.fast = 0;
-    mon.check = null;
-    mon.win = now;
-    mon.sum = 0;
-    mon.n = 0;
-    mon.last = 0;
-  }
-  if (sceneCfg(sc).res !== 'auto' || !full) {
-    mon.last = 0;
-    return;
-  }
-  // ── ช่วงพักหลังเปลี่ยนขั้น: ไม่นับเฟรมเลย ──
-  // เฟรมแรก ๆ หลังเปลี่ยนความละเอียดช้าผิดปกติ (ผ้าใบใหม่ ภาพสำรองต่าง ๆ วาดใหม่หมด)
-  // เดิมนับเฟรมช่วงนี้รวมเข้าไปในช่วงวัดแรกด้วย ผลคือ "ลดแล้วไม่ดีขึ้น" ทั้งที่ดีขึ้นจริง → คืนขั้นเดิมแล้วล็อกสิบนาที
-  // (วัดใน Chrome: ลดแล้วเร็วขึ้น 12% แต่ถูกตีกลับทุกครั้ง iPad จึงค้างที่ความละเอียดเต็มทั้งที่กระตุก)
-  // ช่วงวัดแรกจึงเริ่มนับหลังพักจบเท่านั้น
-  if (now < mon.cool) {
-    mon.last = now;
-    mon.sum = 0;
-    mon.n = 0;
-    mon.win = now;
-    return;
-  }
-  if (mon.last) {
-    const d = now - mon.last;
-    if (d < 400) {   // ช่วงสลับแท็บ/โหลดด่าน (ค้างเกิน 0.4 วิ) ไม่นับ
-      mon.sum += d;
-      mon.n++;
-    }
-  }
-  mon.last = now;
-  if (now - mon.win < 2000) return;
-  const n = mon.n, avg = n ? mon.sum / n : 0;
-  mon.win = now;
-  mon.sum = 0;
-  mon.n = 0;
-  // อย่างน้อย 12 เฟรมต่อช่วง (~6 เฟรม/วิ) — เครื่องที่อ่อนมากก็ยังได้ลด (เดิมตั้ง 30 แล้วเครื่องช้ามากไม่เคยถึง เลยไม่เคยลด)
-  if (n < 12) return;
-  const target = 1000 / Math.min(60, sceneCfg(sc).fps);
-  const slow = avg > target * 1.18;   // ต่ำกว่า ~51 จาก 60 เฟรม
-  const st = autoStep[sc];
-  // เพิ่งลดขั้นไป: ดีขึ้นไหม — ยังช้าและดีขึ้นไม่ถึง 8% = คอขวดไม่ใช่ความละเอียด คืนขั้นเดิม เลิกลดสิบนาที
-  if (mon.check) {
-    const { before } = mon.check;
-    mon.check = null;
-    if (slow && avg > before * 0.92) {
-      mon.lock[sc] = now + 600000;
-      setAutoStep(sc, st - 1, now);
-      return;
-    }
-  }
-  if (slow) {
-    mon.fast = 0;
-    if (++mon.slow >= 2 && st < AUTO_STEPS.length - 1 && now >= (mon.lock[sc] || 0)) {
-      mon.slow = 0;
-      if (now - mon.probeAt < 12000) mon.lock[sc] = now + 300000;   // เพิ่งลองขยับขึ้นแล้วตก — ไม่ลองขึ้นอีกห้านาที
-      // ตรวจ "ดีขึ้นจริงไหม" เฉพาะขั้นที่ลดความคม — ขั้นวาดตัวน้องเฟรมเว้นเฟรมภาพเท่าเดิม ไม่ต้องตีกลับ
-      // (หน้าที่ตัวน้องไม่ใช่ของหนักจะไม่ดีขึ้นมาก ถ้าตีกลับแล้วล็อก ขั้นลดความละเอียดถัดไปจะไม่ได้ทำเลยสิบนาที)
-      mon.check = AUTO_STEPS[st + 1].scale !== AUTO_STEPS[st].scale ? { before: avg } : null;
-      setAutoStep(sc, st + 1, now);
-    }
-  } else if (avg < target * 1.06) {
-    mon.slow = 0;
-    if (++mon.fast >= 30 && st > 0 && now >= (mon.lock[sc] || 0)) {
-      mon.fast = 0;
-      mon.probeAt = now;
-      setAutoStep(sc, st - 1, now);
-    }
-  } else {
-    mon.slow = 0;
-    mon.fast = 0;
-  }
+  return sceneCfg(sc).level === 'save' ? 2 : 1;
 }
 
 export function gfxLevel(sc = scene) {

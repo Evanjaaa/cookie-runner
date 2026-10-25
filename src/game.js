@@ -32,7 +32,7 @@ import { TreasureRun, catAnchor } from './treasure-run.js';
 import { drawTreasureShows, drawScorePops, drawMilkBubble } from './render/treasure-fx.js';
 import { drawTreasureSlots } from './render/treasure-hud.js';
 import { TalentRun } from './talent-run.js';
-import { RunExtras } from './run-extras.js';
+import { RunExtras, drawScared, dogBark } from './run-extras.js';
 import { getEquippedSkill } from './skills.js';
 import { drawSkillBack, drawSkillWorld, drawSkillScreen, skillLift } from './render/skill-fx.js';
 import { drawTalentBack, drawTalentFront, drawTalentScreen } from './render/talent-fx.js';
@@ -50,7 +50,7 @@ import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K, RUN_SIZE
 import { drawTrail } from './render/cat2.js';
 import { LIGHTS } from './render/props/kit.js';
 import { fillCoverExt, fillFullView, coverExt } from './render/cover-ext.js';
-import { gfxLevel, autoLite, catStride } from './graphics.js';
+import { gfxLevel, catStride } from './graphics.js';
 import { drawRoomScene } from './render/room/index.js';
 
 /* จอสัมผัสหรือเปล่า — ใช้เกณฑ์เดียวกับ input.js กับ main.js และตรงกับ
@@ -661,6 +661,7 @@ export class Game {
     // แมวเก้าชีวิต (แทนหลอดพลังไหล — ดู LIVES ใน config.js) · hp เหลือไว้ให้โค้ดเก่าที่ยังอ่าน (ไม่ได้ใช้ตัดสินแล้ว)
     this.lives = LIVES.max;
     this.lifeLost = 0;     // เฟรมนับถอยหลังของแอนิเมชันหัวใจแตกบน HUD
+    this.heartFx = null;   // หัวใจคืนกำลังบินกลับช่อง { t, src: {x, y, world}, slot } — HUD วาด (drawHeartFx)
     this.hp = HEALTH.max;
     // คอมโบความอร่อย (ดู COMBO)
     this.combo = 0;
@@ -1044,6 +1045,12 @@ export class Game {
     // ── เลิกแล้ว (เกมเพลย์ใหม่ 25 ต.ค. 2026): หลอดพลังไหลลงเองตามเวลา ──
     // เปลี่ยนเป็นแมวเก้าชีวิต (LIVES) — หัวใจลดเฉพาะตอนชน/ตกหลุม ความยาวรอบขึ้นกับฝีมือ
     if (this.lifeLost > 0) this.lifeLost = Math.max(0, this.lifeLost - dt);
+    if (this.heartFx) {
+      const f = this.heartFx, fx = LIVES.fx, at = fx.revive + fx.fly;
+      if (f.t < at && f.t + dt >= at) sfx.heartLand();
+      f.t += dt;
+      if (f.t >= at + fx.land) this.heartFx = null;
+    }
     if (this.comboPop > 0) this.comboPop = Math.max(0, this.comboPop - dt);
     if (this.comboBreak > 0) this.comboBreak = Math.max(0, this.comboBreak - dt);
 
@@ -1538,6 +1545,18 @@ export class Game {
     this.lives = Math.max(0, this.lives - 1);
     this.lifeLost = 40;
     this.breakCombo();
+  }
+
+  /**
+   * ได้หัวใจคืน 1 ดวง — นับทันที แต่บน HUD ช่องจะยังว่างจนหัวใจบินกลับไปถึง
+   * src = จุดที่ได้: { x, y, world: true } = พิกัดโลก (ปลาทอง) · world: false = พิกัด HUD (การ์ดภารกิจ)
+   */
+  gainLife(src) {
+    if (this.lives >= LIVES.max) return false;
+    this.lives++;
+    this.heartFx = { t: 0, src, slot: this.lives - 1 };
+    sfx.heartRevive();
+    return true;
   }
 
   /** คอมโบหาย — จำยอดสูงสุดของรอบไว้ */
@@ -2596,6 +2615,7 @@ export class Game {
     if (this.state === STATE.DEAD) return;
     this.state = STATE.DEAD;
     this.lifeLost = 0;   // ตัวจับเวลาไม่เดินหลังตาย — ไม่งั้นหัวใจดวงที่แตกค้างเต็มดวงบน HUD
+    this.heartFx = null;
     this.talents.onDeath();
 
     if (cause === 'faint') {
@@ -2881,7 +2901,8 @@ export class Game {
       ctx.translate(0, -liftY);
       const runSkin = getSkin();
       const runMood = this.boxScene && !(this.boxScene.walk > 0) ? (this.boxScene.t < 64 ? 'hurt' : 'happy')
-        : this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy' : this.catMood;
+        : this.big > 0 || hero || gold || pose === 'shout' ? 'smug' : pose === 'fly' || pose === 'ball' ? 'happy'
+        : this.extras.ev?.id === 'dog' && this.extras.evK > 0.5 && dogBark(this.tick) > 0.3 ? 'hurt' : this.catMood;
       const runTired = this.big > 0 || pose ? 0 : lowK;
       const runGait = 1 + (BIGCAN.gait - 1) * this.bigK;
       // น้องแบบใหม่: ท่าวิ่งสี่จังหวะ/กระโดด/ตีลังกา/เหนื่อย/หมดแรง + ประกายจากชุด S (cat2-run.js) — ปิดได้ที่ CAT2.run
@@ -2911,6 +2932,11 @@ export class Game {
       ctx.textBaseline = 'middle';
       ctx.fillText('!', 0, 1);
       ctx.restore();
+    }
+    // หมาไล่: น้องตกใจวิ่งหนี — "!" + เส้นตกใจ + เหงื่อปลิว เหนือหัวเยื้องหน้า (หลอดสกิลอยู่กลางหัว)
+    if (this.extras.ev?.id === 'dog' && this.state !== STATE.DEAD && this.bonus <= 0) {
+      const pb = this.player.box;
+      drawScared(ctx, pb.x + pb.w / 2 + 22, pb.y - 26 * lookS - liftY, this.tick, Math.max(0, this.extras.evK));
     }
     if (sucking) drawSuction(ctx, this.player, this.tick, lookS);
     if (this.state !== STATE.DEAD) drawTalentFront(ctx, this);
@@ -3100,7 +3126,7 @@ export class Game {
   /**
    * แสงจากสิ่งกีดขวางที่ส่องถึงตัวน้องเฟรมนี้ (ผู้ใช้ 18 ต.ค.) — คืน [{ x, y, R, rgb, k }] พิกเซลจริง เรียงแรงสุดก่อน ไม่เกิน 3 ดวง
    * ความแรงลดตามระยะจากแสงถึงตัว: ใกล้ = เต็ม · พ้นรัศมีส่อง (ขนาดแสง × 2.2 + 55 หน่วยเกม) = ไม่ส่อง → วิ่งผ่านไปแล้วแสงจางหายเอง
-   * โหมดประหยัดกราฟิก = ไม่ส่อง (ความละเอียดอัตโนมัติลดลึกยังส่อง — เบามาก ทำแค่ในกรอบรอบตัว · iPad ที่ลดความละเอียดเองจะได้เห็น)
+   * โหมดประหยัดกราฟิก = ไม่ส่อง
    */
   runLightsNear(ctx, x, feet, catS) {
     const src = this.runLights;
@@ -3725,8 +3751,7 @@ export class Game {
     // แสงฟุ้ง (bloom) ลงก่อนวาดน้อง — bloom บวกสีฉากหลังที่เบลอแล้ว (ชมพู/เหลือง) ทับทั้งจอ
     // ถ้าลงหลังน้อง ตัวน้องจะติดโทนเหลืองซีดทั้งตัว ไม่ใช่สีจริงของแบบ (ผู้ใช้เห็นบนหน้าแรก)
     postProcess(ctx, { edges: false });
-    // ความละเอียดอัตโนมัติลดถึงขั้นลึก (เครื่องอ่อน) = ไม่ทำชั้นแสงตะเกียงบนตัวน้อง (ชั้นแยกเต็มความสูงจอ แปะสองรอบต่อเฟรม)
-    const lit = gfxLevel() === 'high' && !autoLite() ? this.homeLitLayer(ctx, x) : null;
+    const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
     // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
     if (CAT2.home) this.drawHomeCat(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
     else drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);

@@ -572,6 +572,12 @@
           <!-- บรรทัดคำอธิบายใต้ชื่อถูกถอดออกแล้ว ข้อมูลที่เคยอยู่ตรงนี้ยังดูได้ครบ
                ตอนเปิดแผงนั้น ๆ (ความคืบหน้ากาช่าอยู่ใน .gacha-owned / ชื่อชุดกับ
                ชื่อด่านอยู่บนการ์ดที่เลือกอยู่) จึงไม่มีข้อมูลไหนหายไปจริง ๆ -->
+          <!-- ร้านเหมียว — บนสุดของแถวซ้าย เหนือตู้กาช่า (ผู้ใช้ 25 ต.ค. 2026)
+               เปิดหน้าร้าน (#shopPanel · openShop ใน main.js) — ตอนนี้หน้าตาอย่างเดียว ยังซื้อไม่ได้ -->
+          <button class="lobby-btn" id="btnShop">
+            <canvas id="shopIcon" width="76" height="76"></canvas>
+            <b>ร้านเหมียว</b>
+          </button>
           <button class="lobby-btn" id="btnGacha">
             <canvas id="gachaIcon" width="76" height="76"></canvas>
             <b>ตู้กาช่า</b>
@@ -594,7 +600,8 @@
           <!-- สร้างสรรค์ = ระบายสีน้อง + ใส่รูปหน้าน้อง สองโหมดในแผงเดียว
                รวมเพราะทั้งคู่คือ "แต่งหน้าตาน้องด้วยตัวเอง" เหมือนกัน
                ใช้โครงสองแท็บชุดเดียวกับคลังน้อง -->
-          <button class="lobby-btn" id="btnCreate">
+          <!-- ซ่อนไว้ก่อน (ผู้ใช้ 25 ต.ค. 2026) — ระบบยังอยู่ครบ เอา style ออกก็กลับมา -->
+          <button class="lobby-btn" id="btnCreate" style="display:none">
             <canvas id="createIcon" width="76" height="76"></canvas>
             <b>สร้างสรรค์</b>
             <!-- ล็อกจนกว่าจะถึงเลเวล CREATE_LEVEL (main.js) — ป้ายกุญแจเกาะมุมปุ่ม -->
@@ -1973,7 +1980,6 @@
               <div class="setrow gfx-row">
                 <span class="setlabel">ความละเอียด</span>
                 <div class="langpick gfxpick" id="resPick" role="group" aria-label="เลือกความละเอียดภาพ">
-                  <button type="button" class="langbtn" data-res="auto">อัตโนมัติ</button>
                   <button type="button" class="langbtn" data-res="low">ต่ำ</button>
                   <button type="button" class="langbtn" data-res="mid">กลาง</button>
                   <button type="button" class="langbtn" data-res="high">สูง</button>
@@ -2469,6 +2475,72 @@
             <button class="btn" id="clGo">ไปวิ่งเก็บ XP กัน!</button>
           </div>
           <button class="backbtn" id="clBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── ร้านเหมียว ──────────────────────────────────────
+           โครงเดียวกับคลังน้อง (stash-pop / stash-tabs / stash-main): หมวดซ้าย เนื้อหาขวา
+           หมวดแลกทอง = ยอดค่าขนมวันนี้เทียบเพดาน + อัตราแลก + เลือกจำนวน · หมวดอื่น = การ์ดสินค้า (สร้างจาก SHOP_ITEMS ใน shop.js)
+           ตอนนี้หน้าตาอย่างเดียว — ปุ่มแลก/ซื้อยังไม่ทำงาน (ดูหัวไฟล์ shop.js) -->
+      <div class="panel hidden" id="shopPanel">
+        <div class="pop stash-pop shop-pop">
+          <div class="stash-body">
+            <div class="stash-tabs" role="tablist" aria-label="เลือกหมวด" id="shopTabs"></div>
+
+            <div class="stash-main">
+              <div class="panel-head">
+                <h2 class="skin-title" id="shopTitle">ร้านเหมียว</h2>
+                <span class="shop-wallet" aria-label="ทองที่มี">
+                  <i class="shop-coin" aria-hidden="true"></i><b id="goldShop">0</b>
+                </span>
+              </div>
+
+              <!-- ── หมวดแลกทอง ── -->
+              <div class="shop-ex" id="shopEx">
+                <div class="shop-ex-card">
+                  <div class="shop-ex-row">
+                    <span class="shop-ex-lab">ค่าขนมที่เก็บได้วันนี้</span>
+                    <span class="shop-ex-num"><b id="shopGot">0</b> / <span id="shopCap">0</span></span>
+                  </div>
+                  <div class="shop-bar"><i id="shopBar"></i></div>
+                  <div class="shop-ex-row shop-ex-left">
+                    <span>แลกไปแล้ว <b id="shopUsed">0</b></span>
+                    <span>ยังแลกได้ <b id="shopLeft">0</b></span>
+                  </div>
+                  <small class="shop-ex-note">เพดานต่อวัน — เก็บเกินนี้จะไม่นับเพิ่ม เริ่มนับใหม่ทุกเที่ยงคืน</small>
+                </div>
+                <div class="shop-ex-card shop-rate">
+                  <span class="shop-chip treat"><i class="shop-fish" aria-hidden="true"></i><b id="shopRateT">1,000,000</b></span>
+                  <span class="shop-arrow" aria-hidden="true">➜</span>
+                  <span class="shop-chip gold"><i class="shop-coin" aria-hidden="true"></i><b id="shopRateG">10,000</b></span>
+                </div>
+                <div class="shop-ex-card">
+                  <div class="shop-ex-row">
+                    <span class="shop-ex-lab">เลือกจำนวนที่จะแลก</span>
+                    <div class="shop-steps" id="shopSteps" role="group" aria-label="จำนวนที่จะแลก"></div>
+                  </div>
+                  <div class="shop-ex-row shop-ex-sum">
+                    <span>แลก <b id="shopPickT">0</b> ค่าขนม</span>
+                    <span>ได้ <b class="shop-gold-txt" id="shopPickG">0</b> ทอง</span>
+                  </div>
+                  <button type="button" class="btn shop-go" id="shopExGo" disabled>แลกเลย</button>
+                  <small class="shop-ex-msg" id="shopExMsg" aria-live="polite"></small>
+                </div>
+              </div>
+
+              <!-- ── หมวดสินค้า ── -->
+              <div class="shop-grid hidden" id="shopGrid"></div>
+
+              <small class="shop-soon" id="shopSoon">ร้านยังไม่เปิดจริง — ราคาและตัวเลขเป็นค่าทดลอง ยังกดแลก/ซื้อไม่ได้</small>
+            </div>
+          </div>
+
+          <button class="backbtn" id="shopBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
