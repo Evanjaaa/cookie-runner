@@ -16,6 +16,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html'),
         editor: resolve(__dirname, 'editor.html'),
+        // เมืองแมวเหมียว — หน้าทดลองแยก ยังไม่มีลิงก์จากเกม (GAME_PLAN.md ข้อ 11)
+        town: resolve(__dirname, 'town.html'),
       },
     },
   },

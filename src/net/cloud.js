@@ -60,6 +60,21 @@ export function userId() {
   return uid;
 }
 
+/**
+ * เรียกฟังก์ชันฝั่งฐานข้อมูลตรง ๆ — ตอนนี้ใช้แค่หน้าเมือง (src/town/wallet.js · supabase/town.sql)
+ * คืน { data, error } ไม่โยน · error.offline = ยังไม่ได้เข้าสู่ระบบ/ไม่มีคีย์ · error.code = รหัสจาก PostgREST
+ */
+export async function callRpc(name, params = {}) {
+  const c = await client();
+  if (!c || !uid) return { data: null, error: { offline: true, message: 'offline' } };
+  try {
+    const { data, error } = await c.rpc(name, params);
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: { message: e.message || String(e) } };
+  }
+}
+
 /** ข้อมูลบัญชีที่กำลังใช้อยู่ ให้หน้าตั้งค่าเอาไปโชว์ — null = ยังไม่ได้เข้าสู่ระบบ */
 export function currentAccount() {
   return account;

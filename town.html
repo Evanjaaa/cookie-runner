@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>เมืองแมวเหมียว — MeowZing Town</title>
+  <!-- หน้าทดลองแยก ยังไม่รวมเข้าเกมจริง (GAME_PLAN.md ข้อ 11) — ไม่มีลิงก์จากหน้าเกม -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#421268">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/town/town.css">
+</head>
+<body>
+  <canvas id="town" aria-label="เมืองแมวเหมียว"></canvas>
+
+  <!-- แถบบน: กลับหน้าเกม · โหมด (เซิร์ฟเวอร์/ทดลอง) · ทอง · กระเป๋า -->
+  <div class="topbar">
+    <a class="backbtn" href="./index.html" aria-label="กลับหน้าเกม">
+      <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+        <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+    <span class="mode" id="modeTag">กำลังเชื่อมต่อ…</span>
+    <span class="gold"><i class="coin" aria-hidden="true"></i><b id="goldNum">0</b></span>
+    <button type="button" class="bagbtn" id="btnBag" aria-label="กระเป๋า">🎒</button>
+  </div>
+
+  <!-- ปุ่มบนจอ (มือถือเท่านั้น — คอมซ่อนทั้งแถบ ใช้คีย์บอร์ดตามแถบบอกปุ่มข้างล่าง) -->
+  <div class="pad">
+    <!-- จอยเดิน: ลากปุ่มกลมไปซ้าย/ขวา -->
+    <div class="joy" id="joy" aria-label="จอยเดินซ้ายขวา">
+      <svg class="joy-arrows" viewBox="0 0 100 100" aria-hidden="true">
+        <path class="al" d="M15 50l10-9v18z" fill="currentColor"/>
+        <path class="ar" d="M85 50l-10-9v18z" fill="currentColor"/>
+      </svg>
+      <div class="joy-knob" id="joyKnob"></div>
+    </div>
+    <button type="button" class="act off" id="btnAct">ใช้งาน</button>
+    <div class="rightpad">
+      <!-- ปุ่มวิ่ง: กดสลับเดิน/วิ่ง -->
+      <button type="button" class="runbtn" id="btnRun" aria-label="สลับเดินหรือวิ่ง" aria-pressed="false">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <g class="speed"><path d="M3 15h9M1 21h10M4 27h8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></g>
+          <ellipse cx="25" cy="25" rx="7.4" ry="6.2" fill="currentColor"/>
+          <ellipse cx="16.8" cy="19" rx="2.9" ry="3.5" fill="currentColor"/>
+          <ellipse cx="21.6" cy="13.6" rx="2.9" ry="3.5" fill="currentColor"/>
+          <ellipse cx="28.4" cy="13.6" rx="2.9" ry="3.5" fill="currentColor"/>
+          <ellipse cx="33.2" cy="19" rx="2.9" ry="3.5" fill="currentColor"/>
+        </svg>
+        <b id="runLab">เดิน</b>
+      </button>
+      <!-- ปุ่มกระโดด (ขวาสุด) — กดกลางอากาศอีกที = กระโดดสองชั้น -->
+      <button type="button" class="jumpbtn" id="btnJump" aria-label="กระโดด">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <path d="M9 24l11-11 11 11" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path class="j2" d="M13 31l7-7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <b>กระโดด</b>
+      </button>
+    </div>
+  </div>
+
+  <!-- แถบบอกปุ่ม (คอมเท่านั้น) -->
+  <div class="keyhint" aria-label="ปุ่มบนคีย์บอร์ด">
+    <span class="kh"><kbd>←</kbd><kbd>→</kbd>เดิน</span>
+    <span class="kh"><kbd class="wide">Shift</kbd>ค้าง = วิ่ง</span>
+    <span class="kh"><kbd class="big">Enter</kbd><kbd class="wide">Space</kbd>กระโดด</span>
+    <span class="kh"><kbd>E</kbd>เข้าร้าน · นั่ง</span>
+    <span class="kh soft">คลิกพื้น = เดินไปตรงนั้น</span>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ── ร้าน ──────────────────────────────────────────────
+       ฉากในร้าน (เคาน์เตอร์ ชั้นวาง เจ้าของร้าน) วาดบน canvas ตัวเดิม (src/town/interior.js)
+       แผงสินค้าชุดเดียวทุกร้าน — สีประจำร้านตาม data-shop (town.css) · ควบคุมใน main.js (buildShop / refreshShop) -->
+  <div class="shop hidden" id="shopOv" data-shop="food">
+    <button type="button" class="backbtn shop-out" id="shopX" aria-label="ออกจากร้าน">
+      <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+        <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="keeper-say" id="shopSay" aria-live="polite"></div>
+    <section class="sp" aria-labelledby="shopName">
+      <header class="sp-head">
+        <div class="sp-title"><h2 id="shopName">ร้าน</h2><small id="shopSub"></small></div>
+        <span class="gold sp-gold"><i class="coin" aria-hidden="true"></i><b id="shopGold">0</b></span>
+      </header>
+      <div class="sp-body">
+        <div class="sp-grid" id="shopGrid" role="listbox" aria-label="สินค้า"></div>
+        <aside class="sp-detail" id="shopDetail">
+          <div class="sd-top">
+            <div class="sd-ico" id="sdIco"></div>
+            <div class="sd-head">
+              <b class="sd-name" id="sdName"></b>
+              <span class="sd-tag hidden" id="sdTag"></span>
+            </div>
+          </div>
+          <p class="sd-desc" id="sdDesc"></p>
+          <ul class="sd-facts" id="sdFacts"></ul>
+          <div class="sd-buy">
+            <div class="sd-price"><i class="coin" aria-hidden="true"></i><b id="sdPrice">0</b></div>
+            <small class="sd-state" id="sdState" aria-live="polite"></small>
+            <button type="button" class="sd-btn" id="sdBtn">ซื้อเลย</button>
+          </div>
+        </aside>
+        <div class="sp-ex hidden" id="shopEx"></div>
+      </div>
+      <div class="sp-pop" id="shopPop" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <!-- กระเป๋า -->
+  <div class="ov hidden" id="bagOv">
+    <div class="sheet bag">
+      <button type="button" class="xbtn" id="bagX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2>กระเป๋า</h2><small>ของที่ซื้อจากร้านในเมือง</small></div></div>
+      <div class="baglist" id="bagList"></div>
+      <p class="bagempty" id="bagEmpty">ยังไม่มีของในกระเป๋า แวะซื้อที่ร้านในเมืองได้เลย</p>
+    </div>
+  </div>
+
+  <script type="module" src="./src/town/main.js"></script>
+</body>
+</html>
