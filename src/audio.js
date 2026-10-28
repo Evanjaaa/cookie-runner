@@ -41,6 +41,9 @@ const legacyVol = readVol(LEGACY_VOL_KEY, VOL_DEFAULT);
 // อยู่ในห้อง (setRoomAudio(true)) = ช่อง music/sfx ใช้ค่าชุดนี้แทน · ค่าตั้งต้น = ค่าของทั้งเกม
 const ROOM_KEY = { music: 'cookie-runner:vol:room:music', sfx: 'cookie-runner:vol:room:sfx' };
 let roomMode = false;
+// หน้าเมืองแมวเหมียว (town.html) มีระดับเสียงของตัวเองอีกชุด — ตั้งในหน้าตั้งค่าของเมือง ไม่แตะค่าของเกม
+const TOWN_KEY = { music: 'cookie-runner:vol:town:music', sfx: 'cookie-runner:vol:town:sfx' };
+let townMode = false;
 const level = {
   music: readVol(MIX_KEY.music, legacyVol),
   sfx: readVol(MIX_KEY.sfx, legacyVol),
@@ -171,7 +174,10 @@ export function audioOut() {
 
 /** ปมของช่องหนึ่ง — ทุกเสียงต้องต่อผ่านช่องของตัวเอง ไม่ต่อปมรวมตรง ๆ */
 /** ระดับที่ใช้จริงตอนนี้ (ในห้อง = ค่าห้อง) */
-function eff(ch) { return roomMode && ch in roomLevel ? roomLevel[ch] : level[ch]; }
+function eff(ch) {
+  if (townMode && ch in townLevel) return townLevel[ch];
+  return roomMode && ch in roomLevel ? roomLevel[ch] : level[ch];
+}
 
 function chanOut(ch) {
   const a = ctx();
@@ -243,6 +249,26 @@ export function setRoomAudio(on) {
   }
 }
 export function getRoomMix(ch) { return roomLevel[ch] ?? 0; }
+
+const townLevel = {
+  music: readVol(TOWN_KEY.music, level.music),
+  sfx: readVol(TOWN_KEY.sfx, level.sfx),
+};
+/** หน้าเมือง — ใช้ระดับเสียงชุดของเมือง (เรียกครั้งเดียวตอนเปิดหน้า town.html) */
+export function setTownAudio(on) {
+  townMode = !!on;
+  for (const ch of Object.keys(subBus)) {
+    if (subBus[ch]) subBus[ch].gain.setTargetAtTime(eff(ch), ctx().currentTime, 0.05);
+  }
+}
+export function getTownMix(ch) { return townLevel[ch] ?? 0; }
+export function setTownMix(ch, v) {
+  if (!(ch in townLevel)) return 0;
+  townLevel[ch] = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+  try { localStorage.setItem(TOWN_KEY[ch], String(townLevel[ch])); } catch { /* รอบนี้ยังใช้ได้ */ }
+  if (subBus[ch] && townMode) subBus[ch].gain.setTargetAtTime(eff(ch), ctx().currentTime, 0.03);
+  return townLevel[ch];
+}
 export function setRoomMix(ch, v) {
   if (!(ch in roomLevel)) return 0;
   roomLevel[ch] = Math.max(0, Math.min(1, Math.round(v * 100) / 100));

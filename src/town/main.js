@@ -15,13 +15,17 @@
 // ─────────────────────────────────────────────────────────────
 import { H, GY, WORLD_W, START_X, PLACES, drawSky, drawFar, drawClouds, drawHills, drawMidTrees, drawBackRow, drawGround, drawStreet, drawFront, drawPrompt, clearCache } from './world.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_TURN } from '../render/cat2-run.js';
-import { drawCat2 } from '../render/cat2.js';
+import { drawCat2, drawTrail } from '../render/cat2.js';
 import { getSkin } from '../skins.js';
+import { OUTFITS, wearable, isOwned, getOutfit, setOutfit, RARITY } from '../outfits.js';
 import { CAT_LOOK, PHYSICS, CAT_ANIM } from '../config.js';
 import { drawItemIcon } from '../render/items.js';
 import { SHOP_TABS, SHOP_ITEMS, EXCHANGE } from '../shop.js';
 import { initWallet, wallet, catalogItem, buy, exchange } from './wallet.js';
 import { drawInterior, clearInterior } from './interior.js';
+import { MeowSong, GameSfx } from './meow-audio.js';
+import { audioCtx, musicOut, sfxOut, unlockAudio, setTownAudio, getTownMix, setTownMix, } from '../audio.js';
+import { emoteList, emoteId, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx } from './emotes.js';
 
 const cv = document.getElementById('town');
 const ctx = cv.getContext('2d');
@@ -35,6 +39,7 @@ const SC = CAT_LOOK * RUN_K; // ขนาดตัวน้องเท่าต
 const cat = {
   x: START_X, dir: 1, moving: false, target: null, pending: null, sit: null,
   h: 0,                      // ความสูงเท้าจากพื้น (กระโดด)
+  still: 0, face: 1,         // เฟรมที่ยืนนิ่ง · 1 = หันข้างตามทางเดิน → 0 = หันหน้าตรงมองผู้เล่น (ยืนนิ่งเกิน 5 วิ)
   A: createRunAnim(),
   P: { onGround: true, jumps: 0, vy: 0, runPhase: 0, squash: 0, sliding: false, y: GY, fainting: false },
 };
@@ -50,6 +55,44 @@ let mark = null;             // รอยอุ้งเท้าตรงจุ
 let k = 1, vw = 960, camX = 0, tick = 0, last = performance.now();
 let paused = false;   // มีหน้าต่างเปิดอยู่ = ไม่รับปุ่มเดิน
 let scene = 'town';   // 'town' | 'shop' (ในร้าน — ดูหัวข้อร้านข้างล่าง) · ประกาศก่อน resize() ที่รันตอนโหลด
+
+// ── เสียง ─────────────────────────────────────────────────────
+// เพลง "เจ้าเหมียววิ่งเร็ว" + เสียงเอฟเฟกต์ (meow-audio.js ไฟล์จากผู้ใช้ 28 ต.ค.) — สร้างสดด้วย Web Audio
+// ใช้ AudioContext ตัวเดียวกับเกม · ระดับเสียงเป็นชุดของเมืองเอง (setTownAudio ใน audio.js) ตั้งในหน้าตั้งค่าของเมือง
+//   ไม่แตะระดับเสียงของเกม · เสียงร้องของน้องตอนทำท่า (sfx ของเกม) ก็ไหลช่องเอฟเฟกต์ชุดเดียวกัน
+// เบราว์เซอร์ให้เริ่มเสียงหลังผู้เล่นแตะ/กดปุ่มเท่านั้น · เพลงหรี่จน 0 = หยุดเพลงจริง (ไม่สร้างเสียงทิ้ง) · สลับแท็บ = พักเพลง
+setTownAudio(true);
+let song = null, sfxKit = null;
+const musicWanted = () => getTownMix('music') > 0 && !document.hidden;
+function wakeAudio() {
+  unlockAudio();
+  if (!song) {
+    const a = audioCtx();
+    song = new MeowSong(a, musicOut());
+    sfxKit = new GameSfx(a, sfxOut());
+  }
+  if (musicWanted()) song.start();
+}
+const sfx = (name, ...args) => { if (sfxKit) sfxKit.play(name, ...args); };
+window.addEventListener('pointerdown', wakeAudio, { capture: true });
+window.addEventListener('keydown', wakeAudio, { capture: true });
+document.addEventListener('visibilitychange', () => {
+  if (!song) return;
+  if (musicWanted()) song.start();
+  else song.pause();
+});
+
+// ── ชุดที่ใส่ในเมือง ───────────────────────────────────────────
+// โหมดทดลอง (ไม่ได้เชื่อมเซิร์ฟเวอร์): ห้องแต่งตัวโชว์ทุกชุดในเกม — ชุดที่ยังไม่มีลองใส่ได้ในเมือง (tryOutfit) ไม่บันทึก
+// ชุดที่มีอยู่แล้ว = ใส่จริง (setOutfit ตัวเดียวกับเกม) · ทุกที่ในเมืองอ่านสกินผ่าน townSkin() ที่เดียว
+let tryOutfit = null;
+let skinMemo = { base: null, o: null, v: null };
+function townSkin() {
+  const base = getSkin();
+  if (!tryOutfit) return base;
+  if (skinMemo.base !== base || skinMemo.o !== tryOutfit) skinMemo = { base, o: tryOutfit, v: { ...base, outfit: tryOutfit } };
+  return skinMemo.v;
+}
 
 // ── ขนาดจอ ────────────────────────────────────────────────────
 function resize() {
@@ -87,7 +130,7 @@ function use(p) {
   if (p.kind === 'shop') openShop(p);
   else if (p.kind === 'bench') {
     if (cat.sit === p) cat.sit = null;
-    else { cat.sit = p; cat.x = p.door; cat.target = null; }
+    else { cat.sit = p; cat.x = p.door; cat.target = null; stopEmote(true); }
   } else if (p.kind === 'castle') toast('ปราสาทแมวเหมียวกำลังเตรียมเปิด รอติดตามนะเหมียว');
 }
 
@@ -96,11 +139,13 @@ function jump() {
   if (paused) return;
   const P = cat.P;
   if (P.jumps >= 2) return;
+  sfx(P.jumps === 0 ? 'jump' : 'doubleJump');
   P.vy = P.jumps === 0 ? PHYSICS.jumpV : PHYSICS.doubleJumpV;
   P.squash = P.jumps === 0 ? CAT_ANIM.squash.jump : CAT_ANIM.squash.double;
   P.jumps++;
   P.onGround = false;
   cat.sit = null;
+  stopEmote(true);
 }
 
 // ── อัปเดต ─────────────────────────────────────────────────────
@@ -126,6 +171,7 @@ function update(dt) {
   }
   if (dir) {
     cat.sit = null;
+    stopEmote(true);   // เดิน = เลิกทำท่า
     cat.dir = dir;
     cat.x = Math.max(40, Math.min(WORLD_W - 40, cat.x + dir * sp * dt));
     // จังหวะก้าวตามความเร็ว — วิ่งก้าวถี่ขึ้น (ท่าวิ่งสี่จังหวะของเกม)
@@ -143,10 +189,20 @@ function update(dt) {
       P.vy = 0;
       P.jumps = 0;
       P.onGround = true;
+      sfx('land');
     }
   }
   P.squash += (0 - P.squash) * CAT_ANIM.squash.decay * dt;
   P.y = GY - cat.h;
+  // ยืนนิ่งเกิน 5 วิ = ค่อย ๆ หันหน้าตรงมองผู้เล่น (ผู้ใช้ 28 ต.ค.) · ขยับ/กระโดด = หันข้างตามทางเดินทันที
+  if (cat.moving || !P.onGround) { cat.still = 0; cat.face = 1; }
+  else {
+    cat.still += dt;
+    cat.face += ((cat.still > 300 ? 0 : 1) - cat.face) * Math.min(1, 0.05 * dt);
+  }
+  // ท่าทาง (emotes.js): เดินท่า + เสียงร้อง + ของประกอบ ปล่อยจากตัวที่ยกขึ้นตามท่า
+  const em = emotePose(tick);
+  stepEmote(dt, emoteAnchors(cat.x, GY - emoteLift(em) * SC, SC));
   // กล้องตามตัว (น้องอยู่ราว 40% ของจอ) เลื่อนนุ่ม
   const want = Math.max(0, Math.min(WORLD_W - vw, cat.x - vw * 0.4));
   camX += (want - camX) * Math.min(1, 0.12 * dt);
@@ -159,12 +215,35 @@ function update(dt) {
 }
 
 // ── วาด ────────────────────────────────────────────────────────
+/**
+ * ประกาย/ของโปรยจากชุดระดับ S ค้างอยู่ในฉาก (ผู้ใช้ 28 ต.ค.: ไหลแล้วไหลเลย ไม่ตามน้องตอนกระโดด/หันกลับ)
+ * ตัวคุมท่า (stepTrail ใน cat2-run.js) เก็บเม็ดเป็นพิกัด "สัมพัทธ์กับตัว" ในกรอบที่หันขวา — ในเกมฉากเลื่อนจึงลบความเร็วฉากออกเอง
+ * ในเมืองตัวน้องเดินเองและกลับภาพตามทิศ: จำตำแหน่งโลก (wx) ของแต่ละเม็ดไว้ แล้วแปลงกลับเป็นพิกัดสัมพัทธ์ในกรอบปัจจุบันทุกเฟรม
+ *   ก่อนเดินท่า: จำ x เดิม (_rx) · หลังเดินท่า: เม็ดใหม่ = ตั้ง wx จากตำแหน่งตัวตอนนี้ · เม็ดเก่า = บวกการลอยของเม็ดเอง · ตั้ง x ใหม่จาก wx
+ */
+function trailMark(A) {
+  for (const p of A.parts || []) p._rx = p.x;
+  for (const q of A.ribbon || []) q._rx = q[0];
+}
+function trailWorld(A, r, D) {
+  for (const p of A.parts || []) {
+    if (p.wx == null) p.wx = cat.x + D * p.x;
+    else p.wx += D * (p.x - p._rx);
+    p.x = (p.wx - cat.x) * D;
+  }
+  for (const q of A.ribbon || []) {
+    if (q.wx == null) q.wx = cat.x + D * q[0];
+    q[0] = (q.wx - cat.x) * D;
+  }
+  if (r?.ribbon && A.ribbon) r.ribbon.pts = A.ribbon.map((q) => [q[0], q[1]]);
+}
+
 function drawCat(c) {
-  const skin = getSkin();
+  const skin = townSkin();
   const x = cat.x;
   const P = cat.P;
-  // เงา — ยิ่งลอยสูงยิ่งเล็กและจาง
-  const up = Math.min(1, cat.h / 160);
+  // เงา — ยิ่งลอยสูงยิ่งเล็กและจาง (กระโดด หรือท่าที่ลอยตัว)
+  const up = Math.min(1, (cat.h + (cat.moving || cat.sit ? 0 : emoteLift(emotePose(tick)) * SC)) / 160);
   c.save();
   c.globalAlpha = 0.22 * (1 - up * 0.6);
   c.fillStyle = '#4A2A5A';
@@ -173,16 +252,37 @@ function drawCat(c) {
   c.restore();
   // เดิน / ลอยกลางอากาศ / ยังตัวแบนจากการลงพื้น = ท่าวิ่งของเกม (มีท่าถีบ ลอย ร่วง ลงพื้นครบ)
   if (cat.moving || !P.onGround || P.squash > 0.05) {
+    trailMark(cat.A);
     const r = stepRunAnim(cat.A, P, { catId: skin.id, dt: 1, outfit: skin.outfit?.id, speed: 0, scale: SC, stand: !cat.moving });
+    trailWorld(cat.A, r, cat.dir < 0 ? -1 : 1);
     c.save();
     if (cat.dir < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }   // หันซ้าย = กลับภาพท่าวิ่ง (ท่าวิ่งวาดหันขวา)
-    drawCat2Run(c, x, GY - cat.h, SC, skin, tick, { ...r, parts: null, ribbon: null });
+    // ประกาย/ของโปรยจากชุดระดับ S (TRAIL) — ค้างอยู่ในฉาก (trailWorld) น้องเดิน/กระโดดผ่านไป เม็ดไม่ตาม
+    drawCat2Run(c, x, GY - cat.h, SC, skin, tick, r);
     c.restore();
   } else {
-    cat.A = createRunAnim();   // หยุดแล้วเริ่มเดินใหม่ ท่าไม่ค้างกลางก้าว
-    const turn = cat.sit ? 0 : cat.dir > 0 ? RUN_TURN * 0.6 : -RUN_TURN * 0.6;
-    const shape = cat.sit ? { sit: 1, turn: 0 } : { turn };
-    drawCat2(c, x, cat.sit ? GY - 22 : GY, SC, skin, tick, { k: 1, shape });
+    // หยุดแล้ว: ประกายชุดที่ปล่อยไว้ร่วงต่อจนหมด (dead = หยุดปล่อยเม็ดใหม่) แล้วค่อยล้างตัวคุมท่า — เริ่มเดินใหม่ท่าไม่ค้างกลางก้าว
+    let trail = null;
+    if (cat.A.parts?.length || cat.A.ribbon?.length) {
+      trailMark(cat.A);
+      trail = stepRunAnim(cat.A, P, { catId: skin.id, dt: 1, outfit: skin.outfit?.id, speed: 0, scale: SC, dead: true });
+      trailWorld(cat.A, trail, cat.dir < 0 ? -1 : 1);
+    }
+    else cat.A = createRunAnim();
+    // ท่าทางที่เลือกจากแผง (ท่าหน้าแรก / ท่าแอ็คสกิน S) — หันหน้าตรงแบบหน้าแรก · ท่าที่ลอยยกเท้าขึ้นทั้งตัว
+    const em = cat.sit ? null : emotePose(tick);
+    // ท่ายืนวาดหันขวา หางอยู่ซ้าย — หันซ้าย = กลับภาพทั้งตัว หางจึงอยู่ฝั่งตรงข้ามหน้าเสมอ (ผู้ใช้ 28 ต.ค.)
+    // (เดิมใช้ turn ติดลบ หน้าหันซ้ายแต่หางค้างฝั่งซ้าย) · ท่าทางก็กลับภาพตาม ไม่สลับฝั่งหางตอนเริ่มท่า
+    c.save();
+    if (cat.dir < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }
+    if (trail && (trail.parts || trail.ribbon)) drawTrail(c, trail.parts, x, SC, trail.ribbon);
+    // noHang = ไม่มีของประกอบฉากห้อยด้านหลัง (พวงมาลัยยาวของชุดสไบไทย) — ค่าสูงไว้ให้ยังเกิน 0.5 ตอนท่าค่อย ๆ คลาย (คูณ k)
+    if (em) drawCat2(c, x, GY - emoteLift(em) * SC, SC, skin, tick, { k: em.k, shape: { ...em.shape, noHang: 9 } });
+    else {
+      const shape = cat.sit ? { sit: 1, turn: 0, noHang: 1 } : { turn: RUN_TURN * 0.6 * cat.face, noHang: 1 };
+      drawCat2(c, x, cat.sit ? GY - 22 : GY, SC, skin, tick, { k: 1, shape });
+    }
+    c.restore();
   }
 }
 
@@ -249,6 +349,7 @@ function draw() {
   const p = nearPlace();
   if (p && !paused && !cat.moving && cat.P.onGround) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick);
   drawCat(ctx);
+  drawEmoteFx(ctx);
   // ชั้นหน้าสุด (ใกล้ตากว่าตัวน้อง) — เลื่อนเร็วกว่ากล้อง
   ctx.setTransform(k, 0, 0, k, 0, 0);
   drawFront(ctx, camX, vw, tick);
@@ -308,14 +409,247 @@ function loop(now) {
 })();
 // ปุ่มกระโดด: ขึ้นทันทีที่นิ้วแตะ (ไม่รอปล่อยนิ้ว) — กดอีกทีกลางอากาศ = ชั้นสอง
 $('btnJump').addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
-$('btnAct').addEventListener('click', () => { if (!paused) use(nearPlace()); });
+/**
+ * ปุ่มที่ต้องกดได้ระหว่างอีกนิ้วจับจอยอยู่ (ผู้ใช้ 28 ต.ค.: สลับเดิน/วิ่งขณะเคลื่อนที่)
+ * มือถือส่ง click ให้เฉพาะนิ้วแรก — นิ้วที่สองแตะปุ่มจึงเงียบ · ใช้ pointerdown แทน (ทำงานทันทีที่แตะ)
+ * click ที่ตามมาจากนิ้วเดียวกันถูกเมิน · click ที่ไม่ได้มาจากนิ้ว/เมาส์ (Enter/Space บนปุ่มที่โฟกัส) ยังใช้ได้
+ */
+function onTap(el, fn) {
+  let fromPointer = false;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    fromPointer = true;
+    fn();
+  });
+  el.addEventListener('click', (e) => {
+    if (fromPointer || e.detail > 0) { fromPointer = false; return; }
+    fn();
+  });
+}
+onTap($('btnAct'), () => { if (!paused) use(nearPlace()); });
+
+// ── วงล้อท่าทาง (ปุ่มข้างจอย / Q) ─────────────────────────────
+// ผู้ใช้ 28 ต.ค.: กดแล้วเป็นวงล้อกลางจอ ท่าเรียงรอบวง (ท่าค้างโทนม่วง · ท่าเล่นโทนชมพู)
+// กลางวง = ท่าแอ็คของชุดระดับ S ที่ใส่อยู่ · ชุดที่ไม่มีท่าแอ็ค = กลางวงเป็นปุ่มปิด
+// สร้างใหม่ทุกครั้งที่เปิด (เปลี่ยนชุดแล้วกลางวงเปลี่ยนตาม) · กดท่าที่ทำค้างอยู่ซ้ำ = เลิกท่า · แตะนอกวง / Esc = ปิด
+const emotePick = $('emotePick');
+const emoteOpen = () => !emotePick.classList.contains('hidden');
+const X_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+function paintEmotes() {
+  const list = emoteList(townSkin().outfit);
+  const on = emoteId();
+  const ring = list.filter((d) => d.kind !== 'act');
+  const act = list.find((d) => d.kind === 'act');
+  const wheel = document.createElement('div');
+  wheel.className = 'emowheel';
+  ring.forEach((d, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'emo ' + d.kind + (on === d.id ? ' on' : '');
+    b.dataset.id = d.id;
+    b.setAttribute('role', 'menuitem');
+    b.setAttribute('aria-label', d.name);
+    b.style.setProperty('--a', (i / ring.length) * 360 + 'deg');   // เริ่มบนสุด วนตามเข็ม
+    b.style.setProperty('--i', String(i));
+    b.innerHTML = '<i aria-hidden="true"></i><span></span>';
+    b.firstChild.textContent = d.icon;
+    b.lastChild.textContent = d.name;
+    wheel.append(b);
+  });
+  const core = document.createElement('button');
+  core.type = 'button';
+  if (act) {
+    core.className = 'emocore s emo-act' + (on === 'act' ? ' on' : '');
+    core.dataset.id = 'act';
+    core.setAttribute('role', 'menuitem');
+    core.setAttribute('aria-label', act.name);
+    core.innerHTML = '<i aria-hidden="true">✨</i><b>ท่าแอ็ค</b><small></small>';
+    core.querySelector('small').textContent = townSkin().outfit.name;
+  } else {
+    core.className = 'emocore x';
+    core.setAttribute('aria-label', 'ปิด');
+    core.innerHTML = X_ICON + '<small>ปิด</small>';
+  }
+  wheel.append(core);
+  emotePick.replaceChildren(wheel);
+}
+function toggleEmotes(open = !emoteOpen()) {
+  if (open && paused) return;
+  if (open) paintEmotes();
+  emotePick.classList.toggle('hidden', !open);
+  $('btnEmote').setAttribute('aria-expanded', open ? 'true' : 'false');
+  $('btnEmote').classList.toggle('on', open);
+}
+emotePick.addEventListener('click', (e) => {
+  const b = e.target.closest('.emo, .emo-act');
+  if (!b && e.target.closest('.emowheel') && !e.target.closest('.emocore')) return;   // แตะช่องว่างในวง = ไม่ปิด
+  if (b) {
+    if (emoteId() === b.dataset.id) stopEmote();
+    else {
+      // หยุดเดินไปจุดหมาย / ลุกจากม้านั่ง ก่อนทำท่า
+      cat.target = null; cat.pending = null; mark = null; cat.sit = null;
+      startEmote(b.dataset.id, townSkin().outfit, tick);
+    }
+  }
+  toggleEmotes(false);   // เลือกแล้ว / กดปุ่มปิดกลางวง / แตะนอกวง = ปิด
+});
+onTap($('btnEmote'), () => toggleEmotes());
+
+// ── ห้องแต่งตัว (ปุ่มไม้แขวนเสื้อขวาบน) ──────────────────────────
+// ชุดที่มีอยู่ทั้งหมด (wearable) วาดเป็นรูปน้องตัวจริงใส่ชุดนั้น · แตะ = ใส่ทันที (setOutfit ตัวเดียวกับเกม จำไว้ในบัญชี)
+// รูปชุดวาดครั้งเดียวต่อการเปิดห้อง (ไม่วาดทุกเฟรม) · เปลี่ยนชุดแล้วเลิกท่าทางที่ทำอยู่ (ท่าแอ็คเป็นของชุดเดิม)
+const WARD_PX = 92;
+function paintWardrobe() {
+  const grid = $('wardGrid');
+  grid.replaceChildren();
+  const base = getSkin();
+  const now = (tryOutfit || getOutfit()).id;
+  const test = wallet().mode !== 'server';
+  $('wardSub').textContent = test
+    ? 'โหมดทดลอง: มีครบทุกชุด · ชุดที่ยังไม่มี = ลองใส่ในเมือง (ไม่บันทึก)'
+    : 'แตะชุดเพื่อใส่ได้เลย · ได้ชุดเพิ่มจากตู้กาช่าในเกม';
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const o of test ? OUTFITS : wearable()) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ward' + (o.id === now ? ' on' : '');
+    b.dataset.id = o.id;
+    b.setAttribute('role', 'option');
+    b.setAttribute('aria-selected', o.id === now ? 'true' : 'false');
+    const pic = document.createElement('canvas');
+    pic.width = pic.height = WARD_PX * dpr;
+    const g = pic.getContext('2d');
+    g.scale(dpr, dpr);
+    // ตัวน้องสูงราว 110 หน่วยที่สเกล SC — ย่อให้สูง ~70% ของกรอบ เท้าชิดล่าง
+    const sc = (WARD_PX * 0.7) * SC / 110;
+    drawCat2(g, WARD_PX / 2, WARD_PX * 0.93, sc, { ...base, outfit: o }, 0, { k: 1, shape: { turn: 0, noHang: 1 } });
+    const name = document.createElement('span');
+    name.textContent = o.name;
+    b.append(pic, name);
+    if (o.rarity) {
+      const tag = document.createElement('i');
+      tag.className = 'wtag';
+      tag.textContent = RARITY[o.rarity].short;
+      tag.style.background = RARITY[o.rarity].color;
+      b.append(tag);
+    }
+    if (!isOwned(o.id)) {
+      b.classList.add('try');
+      const t = document.createElement('i');
+      t.className = 'wtry';
+      t.textContent = 'ลองใส่';
+      b.append(t);
+    }
+    grid.append(b);
+  }
+}
+$('btnWard').addEventListener('click', () => {
+  if (paused) return;
+  toggleEmotes(false);
+  paused = true;
+  paintWardrobe();
+  $('wardOv').classList.remove('hidden');
+});
+$('wardX').addEventListener('click', closeAll);
+$('wardOv').addEventListener('click', (e) => { if (e.target === $('wardOv')) closeAll(); });
+$('wardGrid').addEventListener('click', (e) => {
+  const b = e.target.closest('.ward');
+  if (!b || b.classList.contains('on')) return;
+  if (isOwned(b.dataset.id)) { setOutfit(b.dataset.id); tryOutfit = null; }
+  else tryOutfit = OUTFITS.find((o) => o.id === b.dataset.id) || null;
+  stopEmote(true);
+  sfx('collect');
+  for (const x of $('wardGrid').querySelectorAll('.ward')) {
+    const on = x === b;
+    x.classList.toggle('on', on);
+    x.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+});
+
+// ── ตั้งค่า (เฉพาะหน้าเมือง) ───────────────────────────────────
+// หัวข้อเสียง: เพลง / เอฟเฟกต์ — เก็บระดับแยกจากเกม (setTownMix ใน audio.js) · เพลง 0% = หยุดเพลงจริง
+function paintVol(id, ch) {
+  const v = Math.round(getTownMix(ch) * 100);
+  $(id).value = String(v);
+  $(id + 'Out').textContent = v + '%';
+  $(id).style.setProperty('--fill', v + '%');
+}
+function openSettings() {
+  toggleEmotes(false);
+  paused = true;
+  paintVol('volMusic', 'music');
+  paintVol('volSfx', 'sfx');
+  paintMute('volMusic', 'music', 'เสียงเพลง');
+  paintMute('volSfx', 'sfx', 'เสียงเอฟเฟกต์');
+  $('setOv').classList.remove('hidden');
+}
+$('btnSet').addEventListener('click', openSettings);
+$('setX').addEventListener('click', closeAll);
+$('setOv').addEventListener('click', (e) => { if (e.target === $('setOv')) closeAll(); });
+$('volMusic').addEventListener('input', () => {
+  setTownMix('music', Number($('volMusic').value) / 100);
+  paintVol('volMusic', 'music');
+  paintMute('volMusic', 'music', 'เสียงเพลง');
+  applyVol('music');
+});
+// ปุ่มลำโพง (เหมือนหน้าแรก): ดังอยู่ = คลื่นเสียง · เงียบ = กากบาทพื้นแดง · กดปิดแล้วเปิดคืน = กลับระดับเดิมของช่องนั้น
+const volBeforeMute = { music: 0, sfx: 0 };
+function paintMute(id, ch, name) {
+  const b = $(id + 'Mute');
+  const muted = getTownMix(ch) <= 0;
+  b.classList.toggle('muted', muted);
+  b.setAttribute('aria-pressed', String(muted));
+  b.setAttribute('aria-label', (muted ? 'เปิด' : 'ปิด') + name);
+}
+function applyVol(ch) {
+  wakeAudio();
+  if (ch === 'music' && song && !musicWanted()) song.pause();
+}
+for (const [id, ch, name] of [['volMusic', 'music', 'เสียงเพลง'], ['volSfx', 'sfx', 'เสียงเอฟเฟกต์']]) {
+  $(id + 'Mute').addEventListener('click', () => {
+    if (getTownMix(ch) > 0) { volBeforeMute[ch] = getTownMix(ch); setTownMix(ch, 0); }
+    else setTownMix(ch, volBeforeMute[ch] > 0 ? volBeforeMute[ch] : 0.8);
+    paintVol(id, ch);
+    paintMute(id, ch, name);
+    applyVol(ch);
+    if (ch === 'sfx' && getTownMix('sfx') > 0) sfx('jump');
+  });
+}
+
+// แตะพื้นเพื่อเดิน (ผู้ใช้ 28 ต.ค.: ค่าเริ่มต้น = ปิด) — ปิด: แตะพื้นไม่เดิน · แตะร้านเข้าได้เฉพาะตอนยืนหน้าประตู
+const TAP_KEY = 'cookie-runner:town:tapMove';
+let tapMove = false;
+try { tapMove = localStorage.getItem(TAP_KEY) === '1'; } catch { /* ใช้ค่าเริ่มต้น */ }
+function paintTapMove() {
+  $('tapMove').setAttribute('aria-checked', String(tapMove));
+  document.body.classList.toggle('tapmove', tapMove);
+}
+$('tapMove').addEventListener('click', () => {
+  tapMove = !tapMove;
+  try { localStorage.setItem(TAP_KEY, tapMove ? '1' : '0'); } catch { /* รอบนี้ยังใช้ได้ */ }
+  if (!tapMove) { cat.target = null; cat.pending = null; mark = null; }
+  paintTapMove();
+});
+paintTapMove();
+
+let sfxPreviewAt = 0;
+$('volSfx').addEventListener('input', () => {
+  setTownMix('sfx', Number($('volSfx').value) / 100);
+  paintVol('volSfx', 'sfx');
+  paintMute('volSfx', 'sfx', 'เสียงเอฟเฟกต์');
+  wakeAudio();
+  // ฟังตัวอย่างตอนเลื่อน (เว้นช่วงกันเสียงรัว)
+  const now = performance.now();
+  if (now - sfxPreviewAt > 220) { sfxPreviewAt = now; sfx('jump'); }
+});
 function paintRun() {
   const b = $('btnRun');
   b.classList.toggle('on', running);
   b.setAttribute('aria-pressed', running ? 'true' : 'false');
   $('runLab').textContent = running ? 'วิ่ง!' : 'เดิน';
 }
-$('btnRun').addEventListener('click', () => { running = !running; paintRun(); });
+onTap($('btnRun'), () => { running = !running; paintRun(); });
 paintRun();
 
 const JUMP_KEYS = ['Enter', ' ', 'ArrowUp', 'w', 'W'];
@@ -330,6 +664,7 @@ window.addEventListener('keydown', (e) => {
     if (!e.repeat) jump();   // กดค้างไม่เด้งรัว
   }
   else if ((e.key === 'e' || e.key === 'E') && !paused) use(nearPlace());
+  else if ((e.key === 'q' || e.key === 'Q') && !paused) toggleEmotes();
   else if (e.key === 'Escape') closeAll();
 });
 window.addEventListener('keyup', (e) => {
@@ -350,8 +685,8 @@ cv.addEventListener('pointerdown', (e) => {
   if (hit) {
     mark = null;
     if (Math.abs(cat.x - hit.door) < NEAR) use(hit);
-    else { cat.target = hit.door; cat.pending = hit; }
-  } else {
+    else if (tapMove) { cat.target = hit.door; cat.pending = hit; }
+  } else if (tapMove) {
     cat.target = Math.max(40, Math.min(WORLD_W - 40, wx));
     cat.pending = null;
     mark = { x: cat.target, t: tick };   // รอยอุ้งเท้าตรงจุดหมาย
@@ -421,6 +756,9 @@ function openShop(p) {
   if (fadeDir) return;
   shopPlace = p;
   paused = true;
+  sfx('meow');      // เจ้าของร้านทักตอนเข้าร้าน
+  toggleEmotes(false);
+  stopEmote(true);
   keys.left = keys.right = false;
   mark = null;
   fadeDir = 1;
@@ -456,12 +794,15 @@ function stepFade(dt) {
   else if (fadeDir < 0 && fade <= 0) fadeDir = 0;
 }
 function closeAll() {
+  if (emoteOpen()) { toggleEmotes(false); return; }
+  if (!$('wardOv').classList.contains('hidden')) { $('wardOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
+  if (!$('setOv').classList.contains('hidden')) { $('setOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('bagOv').classList.contains('hidden')) { $('bagOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (scene === 'shop') leaveShop();
 }
 $('shopX').addEventListener('click', leaveShop);
 $('bagX').addEventListener('click', closeAll);
-$('btnBag').addEventListener('click', () => { paused = true; paintBag(); $('bagOv').classList.remove('hidden'); });
+$('btnBag').addEventListener('click', () => { toggleEmotes(false); paused = true; paintBag(); $('bagOv').classList.remove('hidden'); });
 
 // ── ไอคอนสินค้า: วาดครั้งเดียว เก็บเป็นภาพ ──
 const iconCache = new Map();
@@ -612,6 +953,7 @@ $('sdBtn').addEventListener('click', async () => {
 /** ป้ายสำเร็จกลางแผง + เหรียญเด้ง (องค์ประกอบเดียวใช้ซ้ำ) */
 let popT = 0;
 function popDone(text) {
+  sfx('collect');   // ซื้อ/แลกสำเร็จ "ติ๊ง-ติ๊ง"
   const el = $('shopPop');
   el.textContent = text;
   el.classList.remove('on');
@@ -706,4 +1048,4 @@ function paintBag() {
   document.fonts?.ready.then(() => clearCache());
 })();
 
-if (import.meta.env.DEV) window.__town = { cat, wallet, PLACES };
+if (import.meta.env.DEV) window.__town = { cat, wallet, PLACES, song: () => song, emote: () => emoteId() };

@@ -25,11 +25,27 @@
     </a>
     <span class="mode" id="modeTag">กำลังเชื่อมต่อ…</span>
     <span class="gold"><i class="coin" aria-hidden="true"></i><b id="goldNum">0</b></span>
+    <!-- ตั้งค่าของหน้าเมือง (เสียงเพลง / เสียงเอฟเฟกต์) -->
+    <button type="button" class="bagbtn setbtn" id="btnSet" aria-label="ตั้งค่า">
+      <svg viewBox="0 0 24 24" width="56%" height="56%" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="3.6" stroke-dasharray="3.2 3.24"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="3.2"/>
+      </svg>
+    </button>
     <button type="button" class="bagbtn" id="btnBag" aria-label="กระเป๋า">🎒</button>
   </div>
 
+  <!-- ปุ่มห้องแต่งตัว (ขวาบน ใต้แถวปุ่มตั้งค่า/กระเป๋า) — ไม้แขวนเสื้อหูแมว -->
+  <button type="button" class="wardbtn" id="btnWard" aria-label="ห้องแต่งตัว">
+    <svg viewBox="0 2.3 40 32" aria-hidden="true">
+      <path d="M13.5 8.5 15 4l3 3.2M26.5 8.5 25 4l-3 3.2" fill="#FFB3D2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M16.5 11.5a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.2-1.5 2.3v1.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M20 18.2 5.5 28.4c-1.3.9-.7 2.9.9 2.9h27.2c1.6 0 2.2-2 .9-2.9z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>
+    </svg>
+  </button>
+
   <!-- ปุ่มบนจอ (มือถือเท่านั้น — คอมซ่อนทั้งแถบ ใช้คีย์บอร์ดตามแถบบอกปุ่มข้างล่าง) -->
   <div class="pad">
+    <div class="leftpad">
     <!-- จอยเดิน: ลากปุ่มกลมไปซ้าย/ขวา -->
     <div class="joy" id="joy" aria-label="จอยเดินซ้ายขวา">
       <svg class="joy-arrows" viewBox="0 0 100 100" aria-hidden="true">
@@ -37,6 +53,17 @@
         <path class="ar" d="M85 50l-10-9v18z" fill="currentColor"/>
       </svg>
       <div class="joy-knob" id="joyKnob"></div>
+    </div>
+    <!-- ปุ่มท่าทาง (ข้างจอย) — เปิดแผงเลือกท่า -->
+    <button type="button" class="emobtn" id="btnEmote" aria-label="ท่าทาง" aria-expanded="false" aria-controls="emotePick">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <path d="M9 13 11 5l6 5h6l6-5 2 8c2 2.4 3 5 3 8 0 7.7-6.3 13-14 13S6 28.7 6 21c0-3 1-5.6 3-8z" fill="currentColor"/>
+        <circle cx="15" cy="20" r="2.1" fill="#7A4BB8"/><circle cx="25" cy="20" r="2.1" fill="#7A4BB8"/>
+        <path d="M17 25.5q3 2.6 6 0" fill="none" stroke="#7A4BB8" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M31.5 4.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z" fill="#FFE7A0"/>
+      </svg>
+      <b>ท่าทาง</b>
+    </button>
     </div>
     <button type="button" class="act off" id="btnAct">ใช้งาน</button>
     <div class="rightpad">
@@ -54,10 +81,6 @@
       </button>
       <!-- ปุ่มกระโดด (ขวาสุด) — กดกลางอากาศอีกที = กระโดดสองชั้น -->
       <button type="button" class="jumpbtn" id="btnJump" aria-label="กระโดด">
-        <svg viewBox="0 0 40 40" aria-hidden="true">
-          <path d="M9 24l11-11 11 11" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path class="j2" d="M13 31l7-7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
         <b>กระโดด</b>
       </button>
     </div>
@@ -69,7 +92,8 @@
     <span class="kh"><kbd class="wide">Shift</kbd>ค้าง = วิ่ง</span>
     <span class="kh"><kbd class="big">Enter</kbd><kbd class="wide">Space</kbd>กระโดด</span>
     <span class="kh"><kbd>E</kbd>เข้าร้าน · นั่ง</span>
-    <span class="kh soft">คลิกพื้น = เดินไปตรงนั้น</span>
+    <span class="kh"><kbd>Q</kbd>ท่าทาง</span>
+    <span class="kh soft kh-tap">คลิกพื้น = เดินไปตรงนั้น</span>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -113,6 +137,9 @@
     </section>
   </div>
 
+  <!-- วงล้อเลือกท่าทาง (ปุ่มท่าทาง / Q) — ท่าหน้าแรกรอบวง · กลางวง = ท่าแอ็คชุดระดับ S · สร้างใน main.js (paintEmotes) -->
+  <div class="emopick hidden" id="emotePick" role="menu" aria-label="เลือกท่าทาง"></div>
+
   <!-- กระเป๋า -->
   <div class="ov hidden" id="bagOv">
     <div class="sheet bag">
@@ -122,6 +149,61 @@
       <div class="sh-head"><div><h2>กระเป๋า</h2><small>ของที่ซื้อจากร้านในเมือง</small></div></div>
       <div class="baglist" id="bagList"></div>
       <p class="bagempty" id="bagEmpty">ยังไม่มีของในกระเป๋า แวะซื้อที่ร้านในเมืองได้เลย</p>
+    </div>
+  </div>
+
+  <!-- ห้องแต่งตัว — แตะชุด = ใส่ทันที (ชุดเดียวกับที่ใส่ในเกม) · รายการสร้างใน main.js (paintWardrobe) -->
+  <div class="ov hidden" id="wardOv">
+    <div class="sheet wardsheet" role="dialog" aria-labelledby="wardTitle">
+      <button type="button" class="xbtn" id="wardX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2 id="wardTitle">ห้องแต่งตัว</h2><small id="wardSub">แตะชุดเพื่อใส่ได้เลย · ได้ชุดเพิ่มจากตู้กาช่าในเกม</small></div></div>
+      <div class="wardgrid" id="wardGrid" role="listbox" aria-label="ชุด"></div>
+    </div>
+  </div>
+
+  <!-- ตั้งค่า (ของหน้าเมืองเท่านั้น ไม่แตะค่าของเกม) -->
+  <div class="ov hidden" id="setOv">
+    <div class="sheet setsheet" role="dialog" aria-labelledby="setTitle">
+      <button type="button" class="xbtn" id="setX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2 id="setTitle">ตั้งค่า</h2><small>ใช้เฉพาะในเมืองแมวเหมียว</small></div></div>
+      <section class="setsec">
+        <h3>เสียง</h3>
+        <div class="setrow">
+          <button type="button" class="mutebtn" id="volMusicMute" aria-label="ปิดเสียงเพลง" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+              <g class="wave" fill="none" stroke-linecap="round"><path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/><path d="M17.9 7a7.2 7.2 0 0 1 0 10"/></g>
+              <g class="cross" fill="none" stroke-linecap="round"><path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/></g>
+            </svg>
+          </button>
+          <span class="setlab"><b>เสียงเพลง</b><small>เพลงประกอบในเมือง</small></span>
+          <input type="range" id="volMusic" min="0" max="100" step="5" aria-label="ระดับเสียงเพลง">
+          <output id="volMusicOut" for="volMusic">0%</output>
+        </div>
+        <div class="setrow">
+          <button type="button" class="mutebtn" id="volSfxMute" aria-label="ปิดเสียงเอฟเฟกต์" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="spk" d="M4 9.3h3.4L12 5.3v13.4L7.4 14.7H4z"/>
+              <g class="wave" fill="none" stroke-linecap="round"><path d="M15.4 9.4a3.8 3.8 0 0 1 0 5.2"/><path d="M17.9 7a7.2 7.2 0 0 1 0 10"/></g>
+              <g class="cross" fill="none" stroke-linecap="round"><path d="M16 9.9l5 4.2M21 9.9l-5 4.2"/></g>
+            </svg>
+          </button>
+          <span class="setlab"><b>เสียงเอฟเฟกต์</b><small>กระโดด ท่าทาง ซื้อของ</small></span>
+          <input type="range" id="volSfx" min="0" max="100" step="5" aria-label="ระดับเสียงเอฟเฟกต์">
+          <output id="volSfxOut" for="volSfx">0%</output>
+        </div>
+      </section>
+      <section class="setsec">
+        <h3>การบังคับ</h3>
+        <div class="setrow sw">
+          <span class="setlab"><b>แตะพื้นเพื่อเดิน</b><small>แตะที่ว่างบนพื้น = น้องเดินไปเอง (มีรอยอุ้งเท้าบอกจุด) · แตะร้าน = เดินไปเข้าร้าน</small></span>
+          <button type="button" class="tswitch" id="tapMove" role="switch" aria-checked="false" aria-label="แตะพื้นเพื่อเดิน"><i></i></button>
+        </div>
+      </section>
     </div>
   </div>
 

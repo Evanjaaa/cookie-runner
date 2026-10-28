@@ -10294,7 +10294,9 @@ function chaweeAura(c, k) {
   const t = k.t || 0, lite = gfxLevel() === 'save';
   const hd = Math.min(220, k.headDrop || 0);
   // ลำแสงตั้งตรงตามจอ: หมุนกลับมุมที่ตัวเอียงอยู่ (ลอยฟ้า/ตีลังกา) รอบกลางตัว
-  const m = c.getTransform(), ang = Math.atan2(m.b, m.a);
+  // วาดกลับด้าน (หน้าเมือง: หันซ้าย = scale(-1, 1)) มุมจาก atan2 ตรง ๆ ได้ 180° → ลำแสงกลับหัวตกลงพื้น · ถอดการกลับด้านออกก่อนวัดมุม
+  const m = c.getTransform(), flip = m.a * m.d - m.b * m.c < 0;
+  const ang = flip ? -Math.atan2(-m.b, -m.a) : Math.atan2(m.b, m.a);
   if (Math.abs(ang) > 0.002) { c.translate(300, 420); c.rotate(-ang); c.translate(-300, -420); }
   // ลำสปอตไลต์ (กรวยจากบน) + ฟุ้งอุ่นหลังตัว
   const beam = new Path2D();
@@ -12786,7 +12788,8 @@ function sabaiAura(c, k) {
   glowAt(c, 300, 320, 170, '255,246,226', 0.3);
   // วิ่งในเกม: ไม่มีพวงมาลัย (ผู้ใช้ 23 ต.ค. — หน้าคลัง/ฉากพรีวิวยังมี)
   // ท่าเปิดตัวคู่: ริมแม่น้ำไม่มีพวงมาลัยห้อย — ค่อย ๆ ปรากฏตอนเข้าท่าแอ็ค · ตัวคู่ในฉาก (noGarland) ไม่มีเลย
-  if (!k.runner) sbGarlands(c, t, prActVis(k, SBI.dur));
+  // ช่อง noHang (หน้าเมือง town.html · ผู้ใช้ 28 ต.ค.): ยืน/ทำท่าในเมืองไม่มีพวงมาลัยยาวห้อยด้านหลัง (ดอกพิกุลยังโปรยตามเดิม)
+  if (!k.runner && !((k.sv?.('noHang') || 0) > 0.5)) sbGarlands(c, t, prActVis(k, SBI.dur));
   if (!k.runner) sbPikul(c, t, false, lite, prActVis(k, SBI.dur));   // วิ่งในเกม: ดอกพิกุลเป็นเม็ดประกายของฉาก (TRAIL sabai) — มีแรงโน้มถ่วง โค้งตามทางกระโดด
   if (!k.back && !k.capeApart) sabaiTail(c, k);   // capeApart = ตีลังกา: ชายสไบวาดแยกให้หมุนไปกับตัว (behindCape)
 }

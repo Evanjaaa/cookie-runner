@@ -5,6 +5,8 @@
   --sub: #6B54B0;
   --backbtn: clamp(38px, 9dvh, 52px);
   --backbtn-x: clamp(8px, 1.4vw, 16px);
+  /* จอยกับปุ่มกระโดด ขนาดเท่ากัน ฐานบรรทัดเดียวกัน (ผู้ใช้ 28 ต.ค.) */
+  --padbig: clamp(72px, 21dvh, 92px);
 }
 * { box-sizing: border-box; }
 html, body {
@@ -101,6 +103,9 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
   box-shadow: 0 3px 0 rgba(20,8,32,.65);
 }
 .bagbtn:active { transform: translateY(3px); box-shadow: none; }
+/* ปุ่มตั้งค่า: ทรงเดียวกับปุ่มกระเป๋า ไอคอนเฟือง */
+.setbtn { display: grid; place-items: center; color: #FFF3E2; }
+.setbtn svg { width: calc(var(--backbtn) * 0.56); height: calc(var(--backbtn) * 0.56); }
 
 /* ── ปุ่มบนจอ (มือถือ): จอยซ้าย · ใช้งานกลาง · วิ่ง + กระโดดขวา ── */
 .pad {
@@ -114,7 +119,7 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 /* จอย — วงใสแบบปุ่มเดิม · ปุ่มกลมลากได้รอบวง (main.js ตั้ง transform) ปล่อยแล้วเด้งกลับกลาง · ลูกศรฝั่งที่เดินอยู่เป็นสีชมพู */
 .joy {
   position: relative;
-  width: clamp(84px, 26dvh, 118px); height: clamp(84px, 26dvh, 118px);
+  width: var(--padbig); height: var(--padbig);
   border-radius: 50%;
   border: 1px solid rgba(255,246,232,.85);
   background: radial-gradient(circle, rgba(120,80,170,.12) 0 42%, rgba(120,80,170,.3) 100%);
@@ -152,11 +157,11 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 }
 .act:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(150,40,95,.35); }
 .act.off { opacity: 0; pointer-events: none; }
-.rightpad { display: flex; align-items: flex-end; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
+.rightpad { display: flex; align-items: center; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
 /* ปุ่มวิ่ง — กลมเล็ก ยกสูงกว่าปุ่มกระโดด อุ้งเท้า + เส้นความเร็ว · เปิดอยู่ = ชมพูเรือง เส้นความเร็วขยับ */
 .runbtn {
   width: clamp(44px, 12dvh, 58px); height: clamp(44px, 12dvh, 58px);
-  margin-bottom: clamp(16px, 5.5dvh, 30px);
+  margin-bottom: 0;
   border-radius: 50%;
   border: 1px solid rgba(255,246,232,.9);
   background: linear-gradient(180deg, #C9B2F5, #9376DB);
@@ -173,9 +178,9 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 .runbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(60,25,100,.32); }
 @keyframes runSpeed { from { transform: translateX(2px); } to { transform: translateX(-2px); } }
 @media (prefers-reduced-motion: reduce) { .runbtn.on .speed { animation: none; } }
-/* ปุ่มกระโดด (ขวาสุด) — ใสแบบจอย ลูกศรขึ้นสองชั้น (กดกลางอากาศ = ชั้นสอง) */
+/* ปุ่มกระโดด (ขวาสุด) — ใสแบบจอย ขนาดเท่าจอย มีแต่คำว่า "กระโดด" (กดกลางอากาศ = ชั้นสอง) */
 .jumpbtn {
-  width: clamp(58px, 16dvh, 76px); height: clamp(58px, 16dvh, 76px);
+  width: var(--padbig); height: var(--padbig);
   border-radius: 50%;
   border: 1px solid rgba(255,246,232,.85);
   background: rgba(120,80,170,.3);
@@ -184,9 +189,7 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
   backdrop-filter: blur(2px);
   box-shadow: 0 3px 0 rgba(60,20,80,.25);
 }
-.jumpbtn svg { width: 52%; height: 52%; display: block; filter: drop-shadow(0 1px 2px rgba(60,20,80,.55)); }
-.jumpbtn .j2 { opacity: .6; }
-.jumpbtn b { font-size: clamp(9px, 2.1dvh, 11.5px); line-height: 1; text-shadow: 0 1px 2px rgba(60,20,80,.7); }
+.jumpbtn b { font-size: clamp(14px, 3.6dvh, 17px); line-height: 1.2; text-shadow: 0 1px 3px rgba(60,20,80,.75); }
 .jumpbtn:active { background: rgba(255,182,212,.55); transform: translateY(2px); box-shadow: 0 1px 0 rgba(60,20,80,.25); }
 
 /* ── แถบบอกปุ่มคีย์บอร์ด (คอมเท่านั้น — body.desk ตั้งจาก main.js) · คอมไม่มีปุ่มบนจอ ── */
@@ -518,3 +521,206 @@ body.in-shop .topbar, body.in-shop .pad { display: none; }
   .sp-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
   .keeper-say { top: 8dvh; max-width: 70vw; }
 }
+
+/* ── ปุ่มท่าทาง (ข้างจอย) + แผงเลือกท่า ── */
+.leftpad { display: flex; align-items: center; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
+.emobtn {
+  width: clamp(44px, 12dvh, 58px); height: clamp(44px, 12dvh, 58px);
+  margin-bottom: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255,246,232,.9);
+  background: linear-gradient(180deg, #FFC7DE, #F29BC0);
+  color: #FFFFFF;
+  display: grid; place-items: center; align-content: center; gap: 0;
+  box-shadow: 0 4px 0 rgba(150,40,95,.32);
+}
+.emobtn svg { width: 62%; height: 62%; display: block; filter: drop-shadow(0 1px 1px rgba(120,30,80,.35)); }
+.emobtn b { font-size: clamp(9px, 2.1dvh, 11.5px); line-height: 1; text-shadow: 0 1px 0 rgba(150,40,95,.6); }
+.emobtn:active, .emobtn.on { transform: translateY(3px); box-shadow: 0 1px 0 rgba(150,40,95,.32); }
+.emobtn.on { background: linear-gradient(180deg, #F29BC0, #E2779F); }
+
+/* วงล้อท่าทาง (ผู้ใช้ 28 ต.ค.) — กลางจอ ท่าเรียงรอบวง · กลางวง = ท่าแอ็คชุดระดับ S (ไม่มี = ปุ่มปิด)
+   --D เส้นผ่านศูนย์กลางวง · --R รัศมีที่วางปุ่ม · ปุ่มแต่ละอันหมุนไปมุมของตัวเอง (--a ตั้งจาก main.js) แล้วหมุนกลับให้ตั้งตรง */
+.emopick {
+  position: fixed; inset: 0; z-index: 7;
+  display: grid; place-items: center;
+  background: rgba(40,14,70,.32);
+  --D: min(330px, 84dvh, 92vw);
+  --R: calc(var(--D) * 0.37);
+  --B: calc(var(--D) * 0.19);
+}
+.emopick.hidden { display: none; }
+.emowheel {
+  position: relative;
+  width: var(--D); height: var(--D);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,250,246,.96) 0 30%, rgba(246,238,255,.94) 31% 100%);
+  box-shadow: 0 12px 34px rgba(40,10,60,.35), inset 0 0 0 2px rgba(255,255,255,.8);
+  animation: wheelIn .24s cubic-bezier(.3,1.5,.5,1);
+}
+/* เส้นวงในบาง ๆ แบ่งกลางวงกับวงนอก */
+.emowheel::before {
+  content: ""; position: absolute; inset: calc(50% - var(--D) * 0.2); border-radius: 50%;
+  border: 2px dashed rgba(180,150,220,.45);
+}
+@keyframes wheelIn { from { transform: scale(.6) rotate(-25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.emo {
+  position: absolute; left: 50%; top: 50%;
+  width: var(--B); height: var(--B);
+  margin: calc(var(--B) / -2) 0 0 calc(var(--B) / -2);
+  transform: rotate(var(--a)) translateY(calc(var(--R) * -1)) rotate(calc(var(--a) * -1));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  padding: 0;
+  border: 2px solid transparent; border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(60,20,90,.18);
+  font: inherit; color: #4A2A6A; cursor: pointer;
+  animation: emoPop .3s cubic-bezier(.3,1.6,.5,1) both;
+  animation-delay: calc(var(--i) * 18ms);
+}
+@keyframes emoPop { from { opacity: 0; scale: .3; } to { opacity: 1; scale: 1; } }
+.emo.hold { background: #F3ECFF; }
+.emo.move { background: #FFF0F6; }
+.emo i { font-style: normal; font-size: calc(var(--B) * 0.4); line-height: 1; }
+.emo span { font-size: calc(var(--B) * 0.17); font-weight: 700; line-height: 1.15; text-align: center; max-width: 118%; }
+.emo:active { scale: .92; }
+.emo.on { border-color: #FF8FB3; box-shadow: 0 0 0 3px rgba(255,143,179,.35); }
+/* กลางวง: ท่าแอ็คชุด S (ทองชมพู) หรือปุ่มปิด */
+.emocore {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--D) * 0.34); height: calc(var(--D) * 0.34);
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 4px;
+  border: 0; border-radius: 50%;
+  font: inherit; cursor: pointer;
+  animation: emoPop .3s cubic-bezier(.3,1.6,.5,1) both;
+}
+.emocore.s {
+  background: radial-gradient(circle at 40% 30%, #FFF8D6, #FFD9A8 55%, #FFB3D2 100%);
+  box-shadow: 0 0 0 3px #FFFFFF, 0 0 18px rgba(255,200,90,.75);
+  color: #7A3A10;
+}
+.emocore.s i { font-style: normal; font-size: calc(var(--D) * 0.1); line-height: 1; animation: actTwinkle 1.4s ease-in-out infinite; }
+.emocore.s b { font-size: calc(var(--D) * 0.05); line-height: 1.2; }
+.emocore.s small { font-size: calc(var(--D) * 0.036); line-height: 1.2; opacity: .85; text-align: center; }
+.emocore.s.on { box-shadow: 0 0 0 3px #FF8FB3, 0 0 18px rgba(255,143,179,.8); }
+@keyframes actTwinkle { 50% { scale: 1.15; rotate: 12deg; } }
+.emocore.x { background: transparent; color: #8A4BB8; }
+.emocore.x svg { width: 34%; height: 34%; }
+.emocore.x small { font-size: calc(var(--D) * 0.04); font-weight: 700; }
+.emocore:active { scale: .94; }
+@media (prefers-reduced-motion: reduce) { .emowheel, .emo, .emocore, .emocore.s i { animation: none; } }
+
+/* ── หน้าตั้งค่า (เฉพาะเมือง) ── */
+.sheet.setsheet { width: min(460px, 94vw); }
+.setsec { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-radius: 16px; background: rgba(255,250,242,.97); }
+.setsec h3 { margin: 0 0 2px; color: #8A4BB8; font-size: clamp(14px, 3dvh, 17px); }
+.setrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, 1.2fr) 3.2em; align-items: center; gap: 10px; }
+.setlab { display: flex; flex-direction: column; line-height: 1.3; }
+.setlab b { color: #4A2A6A; font-size: clamp(13px, 2.8dvh, 15px); }
+.setlab small { color: #8C7A9E; font-size: clamp(10.5px, 2.2dvh, 12px); }
+.setrow output { text-align: right; font-weight: 700; color: #8A4BB8; font-variant-numeric: tabular-nums; }
+.setrow input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, #FF8FB3 0 var(--fill, 50%), #E8DDF4 var(--fill, 50%) 100%);
+  outline: none; cursor: pointer;
+}
+.setrow input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #FFFFFF; border: 3px solid #FF8FB3;
+  box-shadow: 0 2px 4px rgba(60,20,90,.3);
+}
+.setrow input[type=range]::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #FFFFFF; border: 3px solid #FF8FB3;
+}
+.setrow input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(255,143,179,.45); }
+
+/* ── ปุ่มห้องแต่งตัว (ขวาบน ใต้แถวปุ่มตั้งค่า/กระเป๋า) + ห้องแต่งตัว ── */
+.wardbtn {
+  position: fixed; z-index: 5;
+  right: calc(var(--backbtn-x) + env(safe-area-inset-right));
+  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + clamp(10px, 2.4dvh, 18px));
+  width: calc(var(--backbtn) * 1.08); height: calc(var(--backbtn) * 1.08);
+  border-radius: 50%;
+  border: 2px solid rgba(255,246,232,.9);
+  background: linear-gradient(180deg, #FFC7DE, #F29BC0);
+  color: #FFFFFF;
+  display: grid; place-items: center; align-content: center; gap: 0;
+  font-family: inherit; cursor: pointer;
+  box-shadow: 0 3px 0 rgba(150,40,95,.35);
+}
+.wardbtn svg { width: calc(var(--backbtn) * 0.74); height: calc(var(--backbtn) * 0.59); display: block; filter: drop-shadow(0 1px 1px rgba(120,30,80,.35)); }
+.wardbtn b { margin-top: -2px; font-size: clamp(8.5px, 1.9dvh, 10.5px); line-height: 1; text-shadow: 0 1px 0 rgba(150,40,95,.6); }
+.wardbtn:active { transform: translateY(3px); box-shadow: none; }
+body.in-shop .wardbtn { display: none; }
+.sheet.wardsheet { width: min(640px, 94vw); }
+.wardgrid {
+  overflow: auto; min-height: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px; padding: 2px;
+}
+.ward {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 4px 8px;
+  border: 3px solid transparent; border-radius: 16px;
+  background: rgba(255,250,242,.97);
+  font: inherit; color: #4A2A6A; cursor: pointer;
+  box-shadow: 0 2px 0 rgba(40,14,70,.25);
+}
+.ward canvas { width: 92px; height: 92px; display: block; }
+.ward span { font-size: 12px; font-weight: 700; line-height: 1.3; text-align: center; }
+.ward.on { border-color: #FF8FB3; background: #FFF0F6; }
+.ward.on::after {
+  content: "ใส่อยู่"; position: absolute; right: 6px; top: 6px;
+  padding: 1px 7px; border-radius: 999px; background: #FF8FB3; color: #FFFFFF; font-size: 10px; font-weight: 700;
+}
+.ward:active { transform: scale(.96); }
+.wtag { position: absolute; left: 6px; top: 6px; padding: 1px 6px; border-radius: 999px; color: #4A2A00; font-style: normal; font-size: 10px; font-weight: 700; }
+
+/* ห้องแต่งตัว (โหมดทดลอง): ชุดที่ยังไม่มี = ลองใส่ในเมืองได้ ไม่บันทึก */
+.ward.try .wtag { opacity: .85; }
+.wtry { position: absolute; right: 6px; top: 6px; padding: 1px 7px; border-radius: 999px; background: #8A4BB8; color: #FFFFFF; font-style: normal; font-size: 10px; font-weight: 700; }
+.ward.on .wtry { display: none; }
+
+/* ── หน้าตั้งค่า: ปุ่มลำโพงปิด/เปิด (ทรงเดียวกับหน้าแรก .mutebtn) + สวิตช์ ── */
+.setrow { grid-template-columns: auto minmax(0, 1fr) minmax(100px, 1.2fr) 3.2em; }
+.setrow.sw { grid-template-columns: minmax(0, 1fr) auto; }
+.setsheet { overflow: auto; }
+.mutebtn {
+  width: 36px; height: 36px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255,243,226,.4);
+  background: linear-gradient(180deg, #7A3563 0%, #45205C 100%);
+  color: #FFF3E2; cursor: pointer;
+}
+.mutebtn svg { width: 21px; height: 21px; }
+.mutebtn .spk { fill: currentColor; }
+.mutebtn .wave, .mutebtn .cross { stroke: currentColor; stroke-width: 2; }
+.mutebtn .cross { display: none; }
+.mutebtn.muted .wave { display: none; }
+.mutebtn.muted .cross { display: block; }
+.mutebtn.muted { border-color: rgba(255,122,138,.6); background: linear-gradient(180deg, #7A2E3C 0%, #4A1B28 100%); color: #FFC2C9; }
+.mutebtn:active { transform: translateY(2px); }
+.tswitch {
+  position: relative; flex: none;
+  width: 52px; height: 30px; padding: 0;
+  border: 0; border-radius: 999px;
+  background: #D9CDE8; cursor: pointer;
+  transition: background .15s;
+}
+.tswitch i {
+  position: absolute; left: 3px; top: 3px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #FFFFFF; box-shadow: 0 2px 4px rgba(60,20,90,.3);
+  transition: transform .18s cubic-bezier(.3,1.4,.5,1);
+}
+.tswitch[aria-checked="true"] { background: #FF8FB3; }
+.tswitch[aria-checked="true"] i { transform: translateX(22px); }
+.tswitch:focus-visible { outline: 3px solid rgba(255,143,179,.5); outline-offset: 2px; }
+body:not(.tapmove) .kh-tap { display: none; }
