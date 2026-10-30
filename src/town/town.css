@@ -107,7 +107,7 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 .setbtn { display: grid; place-items: center; color: #FFF3E2; }
 .setbtn svg { width: calc(var(--backbtn) * 0.56); height: calc(var(--backbtn) * 0.56); }
 
-/* ── ปุ่มบนจอ (มือถือ): จอยซ้าย · ใช้งานกลาง · วิ่ง + กระโดดขวา ── */
+/* ── ปุ่มบนจอ (มือถือ): จอยซ้าย · ใช้งานกลาง · ท่าทาง + วิ่ง + กระโดดขวา ── */
 .pad {
   position: fixed; left: 0; right: 0;
   bottom: calc(clamp(10px, 2.4dvh, 22px) + env(safe-area-inset-bottom));
@@ -157,7 +157,8 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 }
 .act:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(150,40,95,.35); }
 .act.off { opacity: 0; pointer-events: none; }
-.rightpad { display: flex; align-items: center; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
+/* ซ้าย/ขวากว้างเท่ากัน (flex 1) — ปุ่มใช้งานอยู่กลางจอเสมอ แม้ฝั่งขวามีปุ่มมากกว่า */
+.rightpad { flex: 1 1 0; display: flex; align-items: center; justify-content: flex-end; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
 /* ปุ่มวิ่ง — กลมเล็ก ยกสูงกว่าปุ่มกระโดด อุ้งเท้า + เส้นความเร็ว · เปิดอยู่ = ชมพูเรือง เส้นความเร็วขยับ */
 .runbtn {
   width: clamp(44px, 12dvh, 58px); height: clamp(44px, 12dvh, 58px);
@@ -354,6 +355,10 @@ body.desk.in-shop .keyhint { display: none; }
 .shop[data-shop="toy"] { --sp-a: #5CC6B4; --sp-b: #3FA897; --sp-ink: #1E6B5E; --sp-soft: #EEFBF7; }
 .shop[data-shop="exchange"] { --sp-a: #4E78E0; --sp-b: #2C418E; --sp-ink: #1E2E6E; --sp-soft: #EEF3FF; }
 body.in-shop .topbar, body.in-shop .pad { display: none; }
+/* ล่องเรือ: ซ่อนปุ่มบังคับ/แถบบอกปุ่มชั่วคราว (ไม่รับปุ่มอยู่แล้ว) ให้เห็นเรือที่แล่นเลียบขอบล่างจอ */
+.pad, .keyhint { transition: opacity .3s; }
+body.riding .pad, body.riding .keyhint { opacity: 0; pointer-events: none; }
+body.riding .pad button { pointer-events: none; }
 .shop-out { left: calc(var(--backbtn-x) + env(safe-area-inset-left)); }
 
 /* ฟองคำพูดเจ้าของร้าน (ตำแหน่ง x ตั้งจาก main.js measureKeep) */
@@ -522,8 +527,8 @@ body.in-shop .topbar, body.in-shop .pad { display: none; }
   .keeper-say { top: 8dvh; max-width: 70vw; }
 }
 
-/* ── ปุ่มท่าทาง (ข้างจอย) + แผงเลือกท่า ── */
-.leftpad { display: flex; align-items: center; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
+/* ── ปุ่มท่าทาง (ฝั่งขวา ข้างปุ่มเดิน/วิ่ง) + แผงเลือกท่า ── */
+.leftpad { flex: 1 1 0; display: flex; align-items: center; gap: clamp(8px, 1.6vw, 14px); pointer-events: none; }
 .emobtn {
   width: clamp(44px, 12dvh, 58px); height: clamp(44px, 12dvh, 58px);
   margin-bottom: 0;
@@ -686,6 +691,19 @@ body.in-shop .wardbtn { display: none; }
 .ward.try .wtag { opacity: .85; }
 .wtry { position: absolute; right: 6px; top: 6px; padding: 1px 7px; border-radius: 999px; background: #8A4BB8; color: #FFFFFF; font-style: normal; font-size: 10px; font-weight: 700; }
 .ward.on .wtry { display: none; }
+
+/* แท็บห้องแต่งตัว: ชุด · น้องแมว */
+.wardtabs { display: flex; gap: 6px; padding: 4px; border-radius: 999px; background: rgba(40,14,70,.28); align-self: flex-start; }
+.wtab {
+  min-width: 92px; padding: 7px 16px;
+  border: 0; border-radius: 999px;
+  background: transparent; color: rgba(255,243,226,.85);
+  font: inherit; font-weight: 700; font-size: clamp(13px, 2.6dvh, 15px); cursor: pointer;
+}
+.wtab.on { background: linear-gradient(180deg, #FFC7DE, #F29BC0); color: #FFFFFF; text-shadow: 0 1px 0 rgba(150,40,95,.6); box-shadow: 0 2px 0 rgba(150,40,95,.35); }
+.wtab:active { transform: translateY(2px); }
+.wardgrid.cats .ward.on::after { content: "ตัวนี้อยู่"; }
+.ward small { font-size: 10.5px; line-height: 1.2; color: #8A6AA8; text-align: center; }
 
 /* ── หน้าตั้งค่า: ปุ่มลำโพงปิด/เปิด (ทรงเดียวกับหน้าแรก .mutebtn) + สวิตช์ ── */
 .setrow { grid-template-columns: auto minmax(0, 1fr) minmax(100px, 1.2fr) 3.2em; }

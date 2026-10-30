@@ -54,19 +54,19 @@
       </svg>
       <div class="joy-knob" id="joyKnob"></div>
     </div>
-    <!-- ปุ่มท่าทาง (ข้างจอย) — เปิดแผงเลือกท่า -->
-    <button type="button" class="emobtn" id="btnEmote" aria-label="ท่าทาง" aria-expanded="false" aria-controls="emotePick">
-      <svg viewBox="0 0 40 40" aria-hidden="true">
-        <path d="M9 13 11 5l6 5h6l6-5 2 8c2 2.4 3 5 3 8 0 7.7-6.3 13-14 13S6 28.7 6 21c0-3 1-5.6 3-8z" fill="currentColor"/>
-        <circle cx="15" cy="20" r="2.1" fill="#7A4BB8"/><circle cx="25" cy="20" r="2.1" fill="#7A4BB8"/>
-        <path d="M17 25.5q3 2.6 6 0" fill="none" stroke="#7A4BB8" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M31.5 4.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z" fill="#FFE7A0"/>
-      </svg>
-      <b>ท่าทาง</b>
-    </button>
     </div>
     <button type="button" class="act off" id="btnAct">ใช้งาน</button>
     <div class="rightpad">
+      <!-- ปุ่มท่าทาง (ข้างปุ่มเดิน/วิ่ง — ผู้ใช้ 31 ต.ค.) — เปิดแผงเลือกท่า -->
+      <button type="button" class="emobtn" id="btnEmote" aria-label="ท่าทาง" aria-expanded="false" aria-controls="emotePick">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <path d="M9 13 11 5l6 5h6l6-5 2 8c2 2.4 3 5 3 8 0 7.7-6.3 13-14 13S6 28.7 6 21c0-3 1-5.6 3-8z" fill="currentColor"/>
+          <circle cx="15" cy="20" r="2.1" fill="#7A4BB8"/><circle cx="25" cy="20" r="2.1" fill="#7A4BB8"/>
+          <path d="M17 25.5q3 2.6 6 0" fill="none" stroke="#7A4BB8" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M31.5 4.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z" fill="#FFE7A0"/>
+        </svg>
+        <b>ท่าทาง</b>
+      </button>
       <!-- ปุ่มวิ่ง: กดสลับเดิน/วิ่ง -->
       <button type="button" class="runbtn" id="btnRun" aria-label="สลับเดินหรือวิ่ง" aria-pressed="false">
         <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -91,7 +91,8 @@
     <span class="kh"><kbd>←</kbd><kbd>→</kbd>เดิน</span>
     <span class="kh"><kbd class="wide">Shift</kbd>ค้าง = วิ่ง</span>
     <span class="kh"><kbd class="big">Enter</kbd><kbd class="wide">Space</kbd>กระโดด</span>
-    <span class="kh"><kbd>E</kbd>เข้าร้าน · นั่ง</span>
+    <span class="kh"><kbd>↓</kbd>ลงจากที่สูง</span>
+    <span class="kh"><kbd>E</kbd>เข้าร้าน · นั่ง · ล่องเรือ</span>
     <span class="kh"><kbd>Q</kbd>ท่าทาง</span>
     <span class="kh soft kh-tap">คลิกพื้น = เดินไปตรงนั้น</span>
   </div>
@@ -152,13 +153,17 @@
     </div>
   </div>
 
-  <!-- ห้องแต่งตัว — แตะชุด = ใส่ทันที (ชุดเดียวกับที่ใส่ในเกม) · รายการสร้างใน main.js (paintWardrobe) -->
+  <!-- ห้องแต่งตัว — สองหน้า: ชุด (แตะ = ใส่ทันที ชุดเดียวกับในเกม) · น้องแมว (แตะ = เปลี่ยนตัว) · รายการสร้างใน main.js (paintWardrobe) -->
   <div class="ov hidden" id="wardOv">
     <div class="sheet wardsheet" role="dialog" aria-labelledby="wardTitle">
       <button type="button" class="xbtn" id="wardX" aria-label="ปิด">
         <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="sh-head"><div><h2 id="wardTitle">ห้องแต่งตัว</h2><small id="wardSub">แตะชุดเพื่อใส่ได้เลย · ได้ชุดเพิ่มจากตู้กาช่าในเกม</small></div></div>
+      <div class="wardtabs" role="tablist" aria-label="หมวดห้องแต่งตัว">
+        <button type="button" class="wtab on" role="tab" data-tab="outfit" aria-selected="true" aria-controls="wardGrid">ชุด</button>
+        <button type="button" class="wtab" role="tab" data-tab="cat" aria-selected="false" aria-controls="wardGrid">น้องแมว</button>
+      </div>
       <div class="wardgrid" id="wardGrid" role="listbox" aria-label="ชุด"></div>
     </div>
   </div>

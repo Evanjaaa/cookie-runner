@@ -8,8 +8,9 @@
 //   ร้านแลกของรางวัล = เต็นท์ลายทางฟ้า-ขาว ดาวทอง หีบสมบัติ · ลานกลางเมือง = น้ำพุ ม้านั่ง แปลงดอกไม้
 //   ปราสาทแมวเหมียว = หอคอยหลายหลัง ตราหน้าแมว มงกุฎ ธง
 //
-// หน่วยโลก: สูง 420 (เท่าจอเกม) · เท้าน้องอยู่ที่ GY · กว้าง WORLD_W
+// หน่วยโลก: สูง 420 (เท่าจอเกม) · เท้าน้องอยู่ที่ GY · กว้าง WORLD_W — ตำแหน่งทุกอย่างอยู่ใน layout.js
 // ชั้นภาพ (ไกล → ใกล้): ฟ้า+รุ้ง · ปราสาทไกล เกาะลอย เรือเหาะ · เขา/กังหันลม · ต้นไม้กลาง · ถนน + อาคาร · คันหิน + แม่น้ำ
+// แม่น้ำกลางเมือง + สะพาน = bridge.js · ของเล่น ท่าเรือ เรือ = play.js · ฉากหลังเว้นช่องให้แม่น้ำ (gap = riverGap ใน bridge.js)
 // ของนิ่งวาดครั้งเดียวเก็บเป็นภาพตามความละเอียดจอ (cached) · ของขยับ (ควัน ลูกโป่ง ฟองยา ไฟเตา ธง น้ำ) วาดสด
 //
 // ── ใส่ภาพจริงแทนภาพวาดด้วยโค้ด ──
@@ -20,43 +21,16 @@
 import { drawItemIcon } from '../render/items.js';
 import { drawCat2 } from '../render/cat2.js';
 import { skinById } from '../skins.js';
-
-export const H = 420;
-export const GY = 330;            // เส้นเท้าน้อง = ขอบหลังของถนน
-const ROAD_B = 382;               // ขอบหน้าถนน → คันหิน → แม่น้ำ
-export const WORLD_W = 3520;
-export const START_X = 150;
+import { H, GY, ROAD_B, WORLD_W, START_X, PLACES, LAMPS, PROPS, NPCS, BRIDGE } from './layout.js';
+export { H, GY, WORLD_W, START_X, PLACES };
 const TAU = Math.PI * 2;
-
-/**
- * สถานที่ในเมือง — kind: shop (เปิดหน้าร้านหมวด tab) · bench (นั่งพัก) · castle (ยังไม่เปิด) · deco (ตกแต่ง)
- * doorK = ประตูอยู่ที่สัดส่วนนี้ของความกว้าง (น้องยืนตรงนั้นแล้วใช้งาน) · sprite = ไฟล์ภาพแทนภาพวาด (ดูหัวไฟล์)
- */
-export const PLACES = [
-  // ระยะห่างระหว่างร้าน ~150 หน่วย (ผู้ใช้ 27 ต.ค.: ห่างขึ้น — ช่องว่างโชว์แถวบ้านด้านหลัง เพิ่มความลึก)
-  { id: 'food', kind: 'shop', tab: 'food', name: 'ร้านแลกของกิน', x: 300, w: 270, h: 255, doorK: 0.79, sprite: null },
-  { id: 'care', kind: 'shop', tab: 'care', name: 'ร้านขายยา', x: 720, w: 235, h: 290, doorK: 0.76, sprite: null },
-  { id: 'home', kind: 'shop', tab: 'home', name: 'ร้านอัปเกรดอุปกรณ์', x: 1105, w: 260, h: 270, doorK: 0.78, sprite: null },
-  { id: 'bench1', kind: 'bench', name: 'ม้านั่ง', x: 1500, w: 72, h: 46 },
-  { id: 'fountain', kind: 'deco', name: 'ลานกลางเมือง', x: 1610, w: 170, h: 150 },
-  { id: 'bench2', kind: 'bench', name: 'ม้านั่ง', x: 1820, w: 72, h: 46 },
-  { id: 'toy', kind: 'shop', tab: 'toy', name: 'ร้านของเล่น', x: 2060, w: 270, h: 280, doorK: 0.77, sprite: null },
-  { id: 'exchange', kind: 'shop', tab: 'exchange', name: 'ร้านแลกของรางวัล', x: 2480, w: 265, h: 270, doorK: 0.78, sprite: null },
-  { id: 'castle', kind: 'castle', name: 'ปราสาทแมวเหมียว', x: 2900, w: 540, h: 330, doorK: 0.5, sprite: null },
-];
-for (const p of PLACES) p.door = p.x + p.w * (p.doorK ?? 0.5);
-
-/** ตะเกียงริมถนน (บางต้นมีธงห้อย) — เว้นหน้าประตูร้าน */
-const LAMPS = [[240, 1], [645, 0], [1030, 1], [1430, 0], [1990, 1], [2405, 0], [2822, 1]];
-/** ของตกแต่งในช่องระหว่างร้าน (กระถาง พุ่มไม้ ป้ายบอกทาง ถังไม้) */
-const PROPS = [['pot', 690], ['bush', 1068], ['sign', 1470], ['bush', 1950], ['pot', 2445], ['barrel', 2862], ['bush', 3470]];
 
 // ── แคชภาพนิ่ง ────────────────────────────────────────────────
 const cache = new Map();
 export function clearCache() { cache.clear(); }
 
 /** วาดก้อนนิ่งลงภาพแยกตามสเกลจอปัจจุบัน แล้วแปะ (กรอบ x,y,w,h หน่วยโลก) */
-function cached(ctx, key, x, y, w, h, draw) {
+export function cached(ctx, key, x, y, w, h, draw) {
   const k = ctx.getTransform().a;
   let e = cache.get(key);
   if (!e || Math.abs(e.k - k) > 0.01) {
@@ -77,7 +51,7 @@ function cached(ctx, key, x, y, w, h, draw) {
  * แสงเงาให้ตึกดูมีปริมาตร (ทาเฉพาะพิกเซลของตึกในภาพแคช — source-atop ไม่เลอะฟ้า)
  * แดดมาจากขวาบน (ดวงอาทิตย์ใน drawSky) → ซีกซ้ายมืดอมม่วง ซีกขวาอุ่นขึ้น · โคนตึกมืดลง (เงาพื้น)
  */
-function light(c, x, y, w, h) {
+export function light(c, x, y, w, h) {
   c.save();
   c.globalCompositeOperation = 'source-atop';
   c.fillStyle = lg(c, x, 0, x + w, 0, [[0, 'rgba(70,40,110,.22)'], [0.45, 'rgba(70,40,110,0)'], [1, 'rgba(255,240,200,.16)']]);
@@ -87,7 +61,7 @@ function light(c, x, y, w, h) {
   c.restore();
 }
 /** เงาตึกตกบนถนน (วงรีจางใต้ฐาน) */
-function contactShadow(c, x, w) {
+export function contactShadow(c, x, w) {
   c.fillStyle = 'rgba(80,40,110,.16)';
   c.beginPath(); c.ellipse(x + w / 2, GY + 5, w * 0.56, 9, 0, 0, TAU); c.fill();
 }
@@ -167,7 +141,7 @@ export function catFace(c, x, y, r, happy = true, ink = '#5A3420') {
   c.restore();
 }
 /** ป้ายชื่อร้าน — style: { bg, ink, edge, shape: 'round'|'wood'|'ribbon', size } */
-function plaque(c, x, y, text, st) {
+export function plaque(c, x, y, text, st) {
   c.save();
   c.font = `700 ${st.size || 14}px Mali, sans-serif`;
   c.textAlign = 'center';
@@ -786,7 +760,7 @@ function drawFountainWater(c, p, t) {
   c.restore();
 }
 function drawBench(c, p) {
-  const x = p.x, y = GY;
+  const x = p.x, y = p.gy ?? GY;
   c.fillStyle = '#9A6A42';
   c.fillRect(x + 6, y - 20, 6, 20); c.fillRect(x + p.w - 12, y - 20, 6, 20);
   c.fillStyle = '#E3A86E';
@@ -931,14 +905,7 @@ function drawWelcome(c) {
   c.fillText('เมืองแมวเหมียว', x + w / 2, GY - 150);
 }
 
-// ══ แมวเจ้าของร้าน (NPC) — ตัววาดน้องตัวเดียวกับเกม ท่านั่ง วาดครั้งเดียวเก็บเป็นภาพ ══
-const NPCS = [
-  { skin: 'snow', x: 600, flip: true },       // ข้างร้านแลกของกิน
-  { skin: 'midnight', x: 985, flip: true },   // ข้างร้านขายยา
-  { skin: 'grey', x: 1395, flip: true },      // ข้างร้านอัปเกรดอุปกรณ์
-  { skin: 'calico', x: 2030, flip: false },   // ข้างร้านของเล่น
-  { skin: 'pearl', x: 2780, flip: true },     // ข้างร้านแลกของรางวัล
-];
+// ══ แมวเจ้าของร้าน (NPC — ตำแหน่งใน layout.js) — ตัววาดน้องตัวเดียวกับเกม ท่านั่ง วาดครั้งเดียวเก็บเป็นภาพ ══
 const NPC_SC = 0.6;
 function drawNpc(c, n) {
   const s = skinById(n.skin);
@@ -1027,7 +994,13 @@ export function drawClouds(c, camX, vw, t) {
   }
 }
 
-export function drawHills(c, camX, vw, t = 0) {
+/** ช่องแม่น้ำในชั้นฉากหลัง (par) ทับช่วง x..x+w ไหม — gap(par) = [ซ้าย, ขวา] พิกัดจอ */
+const onRiver = (gap, par, x, w) => {
+  const g = gap?.(par);
+  return !!g && x + w > g[0] && x < g[1];
+};
+
+export function drawHills(c, camX, vw, t = 0, gap = null) {
   const layer = (par, base, amp, col, step) => {
     c.fillStyle = col;
     c.beginPath();
@@ -1048,6 +1021,7 @@ export function drawHills(c, camX, vw, t = 0) {
     const wx = Math.floor(off / 150) + i;
     const x = wx * 150 - off + 40 + (Math.abs(wx) % 3) * 20;
     const y = 262 - (Math.abs(wx * 37) % 3) * 6;
+    if (onRiver(gap, 0.22, x - 4, 34)) continue;
     c.fillStyle = '#E9DCFF';
     c.fillRect(x, y - 22, 26, 26);
     c.fillStyle = Math.abs(wx) % 2 ? '#C5ADF0' : '#F4B8D2';
@@ -1081,7 +1055,7 @@ function haze(c, vw, y0, y1, k) {
  * แถวบ้านด้านหลังถนน (เลื่อน 0.72 เท่าของกล้อง) — โผล่ให้เห็นในช่องระหว่างร้าน = ความลึก
  * สีจางกว่าร้านหน้า + หมอกทับนิด ๆ · หลังคาสีต่างกัน บางหลังมีหูแมว/ปล่องไฟ
  */
-export function drawBackRow(c, camX, vw) {
+export function drawBackRow(c, camX, vw, gap = null) {
   const par = 0.72, step = 150;
   const off = camX * par;
   // สีจางอมม่วงกว่าร้านหน้า (อยู่ไกลกว่า) — ผนังไม่ขาวจั๊วะ ไม่งั้นอ่านเป็นส่วนหนึ่งของร้านหน้า
@@ -1094,6 +1068,7 @@ export function drawBackRow(c, camX, vw) {
     const h = 104 + (Math.abs(n * 53) % 4) * 16;
     const x = n * step - off + (Math.abs(n * 29) % 30);
     const top = GY - h;
+    if (onRiver(gap, par, x - 10, w + 20)) continue;   // แม่น้ำไหลผ่านแถวนี้ = เว้นบ้าน
     c.fillStyle = walls[k];
     c.fillRect(x, top, w, h);
     c.fillStyle = 'rgba(120,90,160,.12)';
@@ -1158,7 +1133,8 @@ export function drawFront(c, camX, vw, t) {
   }
 }
 
-/** ของตกแต่งในช่องระหว่างร้าน */
+/** ของตกแต่งในช่องระหว่างร้าน (ชนิดอื่นใน PROPS วาดที่ play.js) */
+const OLD_PROPS = new Set(['pot', 'bush', 'barrel', 'sign']);
 function drawProp(c, k, x) {
   c.fillStyle = 'rgba(80,40,110,.14)';
   c.beginPath(); c.ellipse(x, GY + 3, 18, 4, 0, 0, TAU); c.fill();
@@ -1188,13 +1164,14 @@ function drawProp(c, k, x) {
   }
 }
 
-export function drawMidTrees(c, camX, vw) {
+export function drawMidTrees(c, camX, vw, gap = null) {
   const off = camX * 0.55;
   for (let i = -1; i < vw / 110 + 2; i++) {
     const wx = Math.floor(off / 110) + i;
     const x = wx * 110 - off + (Math.abs(wx * 53) % 40);
     const s = 0.8 + (Math.abs(wx * 29) % 4) * 0.08;
     const kind = Math.abs(wx * 7) % 4;
+    if (onRiver(gap, 0.55, x - 26 * s, 52 * s)) continue;
     c.fillStyle = '#A97B5A';
     c.fillRect(x - 3, GY - 40 * s, 6, 40 * s);
     if (kind === 1) {
@@ -1211,7 +1188,7 @@ export function drawMidTrees(c, camX, vw) {
   }
 }
 
-/** ถนน + ขอบถนน + คันหิน + แม่น้ำ (พิกัดโลก — ผู้เรียก translate กล้องแล้ว) */
+/** ถนน + ขอบถนน + คันหิน + แม่น้ำ (พิกัดโลก — ผู้เรียก translate กล้องแล้ว) · ช่วงแม่น้ำกลางเมืองลอดใต้สะพาน = ถนนขาด เห็นน้ำ */
 export function drawGround(c, camX, vw, t = 0) {
   c.fillStyle = '#B7E3A8';
   c.fillRect(camX - 10, GY - 8, vw + 20, 10);
@@ -1245,6 +1222,18 @@ export function drawGround(c, camX, vw, t = 0) {
     const sy = ROAD_B + 24 + (Math.abs(x / 60) % 2) * 9;
     c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + 16, sy); c.stroke();
   }
+  // แม่น้ำกลางเมือง: ตลิ่งหินสองฝั่ง + น้ำในร่อง (ส่วนใหญ่โดนตัวสะพานบัง — เห็นผ่านซุ้มโค้งใต้สะพาน)
+  const L = BRIDGE.rx - BRIDGE.half, R = BRIDGE.rx + BRIDGE.half;
+  if (R > camX - 20 && L < camX + vw + 20) {
+    c.fillStyle = lg(c, 0, GY - 10, 0, H, [[0, '#7FB9E6'], [0.5, '#79BDEB'], [1, '#6AB4EA']]);
+    c.fillRect(L, GY - 10, R - L, ROAD_B + 16 - GY + 10);
+    for (const [ex, d] of [[L, -1], [R, 1]]) {
+      c.fillStyle = '#BBA7DA';
+      c.fillRect(ex + (d < 0 ? 0 : -8), GY - 8, 8, ROAD_B + 16 - GY + 8);
+      c.fillStyle = 'rgba(90,60,140,.25)';
+      c.fillRect(ex + (d < 0 ? 6 : -8), GY - 8, 2, ROAD_B + 16 - GY + 8);
+    }
+  }
 }
 
 /** ทุกอย่างบนถนน (ร้าน ปราสาท ลาน ม้านั่ง ตะเกียง ซุ้ม แมว NPC) ที่อยู่ในจอ */
@@ -1254,7 +1243,7 @@ export function drawStreet(c, camX, vw, t) {
   const ART = { food: drawBakery, care: drawPotion, home: drawWorkshop, toy: drawToy, exchange: drawReward };
   const LIVE = { care: drawPotionLive, home: drawWorkshopLive, toy: drawToyLive, exchange: drawRewardLive };
   for (const p of PLACES) {
-    if (!inView(p.x - 60, p.w + 120)) continue;
+    if (!inView(p.x - 60, p.w + 120) || p.art === false) continue;
     const img = spriteOf(p);
     if (img) { drawSprite(c, p, img); continue; }
     if (p.kind === 'shop') {
@@ -1271,7 +1260,7 @@ export function drawStreet(c, camX, vw, t) {
       drawFountainWater(c, p, t);
     }
   }
-  for (const [k, x] of PROPS) if (inView(x - 40, 80)) drawProp(c, k, x);
+  for (const [k, x] of PROPS) if (OLD_PROPS.has(k) && inView(x - 40, 80)) drawProp(c, k, x);
   for (const [x, flag] of LAMPS) if (inView(x - 40, 80)) drawLamp(c, x, flag, t);
   for (const n of NPCS) if (inView(n.x - 40, 80)) cached(c, 'npc:' + n.skin, n.x - 40, GY - 90, 80, 92, (cc) => drawNpc(cc, n));
 }
@@ -1279,7 +1268,8 @@ export function drawStreet(c, camX, vw, t) {
 /** ป้ายลอยเหนือที่ที่ใช้งานได้ตอนน้องยืนใกล้ ("เข้าร้าน") */
 export function drawPrompt(c, p, text, t) {
   // เหนือหัวน้อง (ตัวน้องสูงราว 110 หน่วย) — ไม่บังหน้า
-  const x = p.door, y = (p.kind === 'bench' ? GY - 150 : GY - 140) + Math.sin(t * 0.12) * 3;
+  const gy = p.gy ?? GY;
+  const x = p.door, y = (p.kind === 'bench' ? gy - 150 : gy - 140) + Math.sin(t * 0.12) * 3;
   c.save();
   c.font = '700 13px Mali, sans-serif';
   c.textAlign = 'center';

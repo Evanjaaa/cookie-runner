@@ -12790,11 +12790,12 @@ function sabaiAura(c, k) {
   // ท่าเปิดตัวคู่: ริมแม่น้ำไม่มีพวงมาลัยห้อย — ค่อย ๆ ปรากฏตอนเข้าท่าแอ็ค · ตัวคู่ในฉาก (noGarland) ไม่มีเลย
   // ช่อง noHang (หน้าเมือง town.html · ผู้ใช้ 28 ต.ค.): ยืน/ทำท่าในเมืองไม่มีพวงมาลัยยาวห้อยด้านหลัง (ดอกพิกุลยังโปรยตามเดิม)
   if (!k.runner && !((k.sv?.('noHang') || 0) > 0.5)) sbGarlands(c, t, prActVis(k, SBI.dur));
-  if (!k.runner) sbPikul(c, t, false, lite, prActVis(k, SBI.dur));   // วิ่งในเกม: ดอกพิกุลเป็นเม็ดประกายของฉาก (TRAIL sabai) — มีแรงโน้มถ่วง โค้งตามทางกระโดด
+  // ดอกพิกุลร่วงข้างตัว: ท่าเปิดตัวเท่านั้น (ผู้ใช้ 31 ต.ค. — ยืนเฉย/หน้าแรก/เมืองไม่มี) · วิ่งในเกมเป็นเม็ดของฉาก (TRAIL sabai) ร่วงตามหลัง
+  if (k.intro != null && !k.runner) sbPikul(c, t, false, lite, prActVis(k, SBI.dur));
   if (!k.back && !k.capeApart) sabaiTail(c, k);   // capeApart = ตีลังกา: ชายสไบวาดแยกให้หมุนไปกับตัว (behindCape)
 }
 function sabaiFront(c, k) {
-  if (!k.runner) sbPikul(c, k.t || 0, true, gfxLevel() === 'save', prActVis(k, SBI.dur));
+  if (k.intro != null && !k.runner) sbPikul(c, k.t || 0, true, gfxLevel() === 'save', prActVis(k, SBI.dur));   // ท่าเปิดตัวเท่านั้น (ดู sabaiAura)
 }
 // ── ฉากหลัง "ลานวัดยามเย็นพาสเทล" (ตามภาพแบบ): ฟ้าม่วงชมพู เจดีย์ทอง โบสถ์หลังคาแดงช่อฟ้าทอง สระบัว ราวระเบียงขาวทอง เสาลายทอง พื้นหินอ่อนชมพู ──
 function bdSbChedi(c, x, base, h, haze) {
@@ -14284,10 +14285,10 @@ function jongAura(c, k) {
   const pulse = 1 + 0.05 * Math.sin(t * 0.05);
   glowAt(c, 300, 430, 320 * pulse, '255,206,140', 0.28);
   glowAt(c, 300, 330, 180, '230,240,255', 0.26);
-  if (!k.runner) sbPikul(c, t, false, lite, prActVis(k, JGI.dur));
+  if (k.intro != null && !k.runner) sbPikul(c, t, false, lite, prActVis(k, JGI.dur));   // ดอกพิกุลข้างตัว: ท่าเปิดตัวเท่านั้น (ผู้ใช้ 31 ต.ค. — เหมือนสไบไทย)
 }
 function jongFront(c, k) {
-  if (!k.runner) sbPikul(c, k.t || 0, true, gfxLevel() === 'save', prActVis(k, JGI.dur));
+  if (k.intro != null && !k.runner) sbPikul(c, k.t || 0, true, gfxLevel() === 'save', prActVis(k, JGI.dur));
   if (!k.back && !k.runner) jgSpellOrb(c, k);
 }
 // ══ ฉากริมน้ำยามเย็น + ท่าเปิดตัวชุดคู่ สไบไทย / หนุ่มไทยโจงกระเบน (ตามเรื่องที่ผู้ใช้เขียน 24 ต.ค.) ══
