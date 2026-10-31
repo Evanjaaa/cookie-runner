@@ -410,7 +410,8 @@ function stepTrail(A, P, info, emit, bob = 0, spin = 0) {
  * วาดน้องท่าวิ่ง (ตัวน้องแบบใหม่หันเฉียงขวา + ขาวิ่งวาดใหม่) รวมการหมุนตีลังกา + รอยลม
  * x = กลางตัว feetY = เท้า (หน่วยเกม) · r = ผลจาก stepRunAnim · scale = สเกลแบบ drawCat2
  */
-export function drawCat2Run(ctx, x, feetY, scale, s, t, r) {
+/** more = ช่องเพิ่มของผู้เรียก (เช่น held = ของที่ผู้เล่นถือ — ดู drawCat2) */
+export function drawCat2Run(ctx, x, feetY, scale, s, t, r, more = null) {
   if (r.parts || r.ribbon) drawTrail(ctx, r.parts, x, scale, r.ribbon);   // ประกายหลุดจากชุด — อยู่หลังตัว
   const py = feetY - SPIN_Y * scale;
   // ตัววาดบอกตำแหน่งหัวคทา/ปลายผ้าคลุมจริง (พิกเซล) → แปลงกลับเป็นหน่วยเกมสัมพัทธ์กับตัว ส่งให้ stepTrail เฟรมถัดไป
@@ -420,7 +421,7 @@ export function drawCat2Run(ctx, x, feetY, scale, s, t, r) {
   ctx.save();
   const fxM = r.spin ? ctx.getTransform() : null;   // เอฟเฟกต์ชุดไม่หมุนตามตอนตีลังกา (idle.fxM ใน drawCat2)
   if (r.spin) { ctx.translate(x, py); ctx.rotate(r.spin); ctx.translate(-x, -py); }
-  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit, runner: true });   // bob = ตัวลอยตอนจังหวะ Up · runner = วิ่งในเกม (ชุดที่วางของต่างจากหน้าคลัง)
+  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit, runner: true, ...more });   // bob = ตัวลอยตอนจังหวะ Up · runner = วิ่งในเกม (ชุดที่วางของต่างจากหน้าคลัง)
   ctx.restore();
 }
 

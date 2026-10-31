@@ -12,6 +12,7 @@ import { H, GY, ROAD_B, PLACES, PROPS, TOWER, BLOCKS, ARCH, TRAMPS, YARN } from 
 import { cached, lg, ears, catFace, star, bush, flowers, plaque } from './world.js';
 import { drawCat2 } from '../render/cat2.js';
 import { skinById } from '../skins.js';
+import { drawPortal } from './garden.js';
 
 const TAU = Math.PI * 2;
 const SWING = PLACES.find((p) => p.kind === 'swing');
@@ -249,11 +250,17 @@ function drawSwingFrame(c) {
 }
 function drawSwingSeat(c) {
   const { px, py, a, L } = swingFrame();
+  // เชือกผูกตายกับคานที่ห่วงสองจุด (ไม่หมุนตาม) แล้วลากลงไปปลายที่นั่งที่แกว่ง — เดิมหมุนทั้งเส้น หัวเชือกหลุดออกจากคานดูเหมือนขาด (ผู้ใช้ 31 ต.ค.)
+  const ca = Math.cos(a), sa = Math.sin(a), hy = py - 4;
+  c.strokeStyle = '#B08A6A'; c.lineWidth = 1.6; c.lineCap = 'round';
+  for (const d of [-17, 17]) {
+    c.beginPath(); c.moveTo(px + d, hy); c.lineTo(px + d * ca - L * sa, py + d * sa + L * ca); c.stroke();
+  }
+  c.strokeStyle = '#7A5BB0'; c.lineWidth = 1.4;
+  for (const d of [-17, 17]) { c.beginPath(); c.arc(px + d, hy, 2.2, 0, TAU); c.stroke(); }
   c.save();
   c.translate(px, py);
   c.rotate(a);
-  c.strokeStyle = '#B08A6A'; c.lineWidth = 1.6;
-  for (const d of [-17, 17]) { c.beginPath(); c.moveTo(d, 0); c.lineTo(d, L); c.stroke(); }
   c.fillStyle = '#E9A2C2';
   c.beginPath(); c.roundRect(-22, L - 2, 44, 7, 3.5); c.fill();
   c.fillStyle = '#FF8FB3';
@@ -291,49 +298,240 @@ function boxFront(c) {
   c.fillText('เหมียว', x + w - 18, GY - 14);
 }
 
-// ── ท่าเรือ ───────────────────────────────────────────────────
+// ── ท่าเรือ (ผู้ใช้ 31 ต.ค. อัปเกรดให้เป็นท่าเรือจริง สวยขึ้น — กว้าง 180) ─────────────
+// หลังถนน: ศาลาท่าเรือ หลังคาจั่วฟ้าขอบขาว ตราพวงมาลัยเรือทอง ป้ายชื่อท่า ระบายขาว · ผนังไม้ฟ้า หน้าต่างกลมแบบเรือ แผนที่เส้นทางเรือ
+//          ห่วงชูชีพบนเสา โคมแขวนชายคา ธงบนยอด (สด) · ถังไม้ + ขดเชือกฝั่งหนึ่ง · เสาโคมท่าเรือฝั่งที่เรือจอด (แทนตะเกียงถนน)
+// พื้นท่า: กระดานยื่นจากถนนลงน้ำ คานข้าง หมุด · เสาเข็มคาดขาว บันไดลงน้ำ · หลักผูกเรือ + เชือกโยงไปทางเรือ
+// ผิวยืน (หลังคาศาลา · ยอดเสาโคม) อยู่ใน layout.js
+const NAVY = '#4F86D8', SKY = '#8CC0F0';
+const PIER_S = 1.25;   // ขนาดศาลา/ของประดับ (ผู้ใช้ 31 ต.ค. ขอให้ใหญ่ขึ้น) — ผิวยืนใน layout.js คูณตามนี้
+/** วาดชิ้นหลังถนนของท่า (ศาลา โคม ลัง) ขยาย PIER_S รอบโคนกลางท่า */
+const grow = (c, d) => { c.translate(d, GY); c.scale(PIER_S, PIER_S); c.translate(-d, -GY); };
+function pierSide(p) { return Math.sign(PLACES.find((q) => q.id === p.to).door - p.door); }
+function lifebuoy(c, x, y, r) {
+  c.strokeStyle = '#E8D2A8'; c.lineWidth = 1.4;
+  c.beginPath(); c.arc(x, y, r + 1.5, 0, TAU); c.stroke();
+  c.lineWidth = r * 0.55;
+  for (let i = 0; i < 8; i++) {
+    c.strokeStyle = i % 2 ? '#FF7FAE' : '#FFFFFF';
+    c.beginPath(); c.arc(x, y, r * 0.72, (i * TAU) / 8, ((i + 1) * TAU) / 8); c.stroke();
+  }
+  c.fillStyle = 'rgba(255,255,255,.6)';
+  c.beginPath(); c.arc(x - r * 0.45, y - r * 0.5, r * 0.18, 0, TAU); c.fill();
+}
+function shipWheel(c, x, y, r) {
+  c.strokeStyle = '#E3A11F'; c.lineWidth = 2.2; c.lineCap = 'round';
+  for (let i = 0; i < 8; i++) {
+    const a = (i * TAU) / 8;
+    c.beginPath(); c.moveTo(x + Math.cos(a) * 2, y + Math.sin(a) * 2); c.lineTo(x + Math.cos(a) * (r + 3), y + Math.sin(a) * (r + 3)); c.stroke();
+  }
+  c.lineWidth = 2.6;
+  c.beginPath(); c.arc(x, y, r * 0.78, 0, TAU); c.stroke();
+  c.fillStyle = '#FFD45A';
+  c.beginPath(); c.arc(x, y, 3, 0, TAU); c.fill();
+}
 function drawPier(c, p) {
-  const x0 = p.x + 14, x1 = p.x + p.w - 14;
-  // เสาท่า (ปักลงน้ำ)
-  c.fillStyle = '#7A4E30';
-  for (const px of [x0 + 4, (x0 + x1) / 2, x1 - 4]) c.fillRect(px - 3, ROAD_B + 6, 6, H - ROAD_B);
-  // พื้นไม้ยื่นจากถนนลงน้ำ
-  c.fillStyle = lg(c, 0, GY + 6, 0, ROAD_B + 14, [[0, '#D9A26C'], [1, '#B87C48']]);
-  c.beginPath(); c.moveTo(x0 + 6, GY + 6); c.lineTo(x1 - 6, GY + 6); c.lineTo(x1, ROAD_B + 14); c.lineTo(x0, ROAD_B + 14); c.closePath(); c.fill();
-  c.strokeStyle = 'rgba(90,50,20,.3)'; c.lineWidth = 1;
-  for (let y = GY + 14; y < ROAD_B + 14; y += 8) { c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); }
-  c.fillStyle = '#9A6436';
-  c.fillRect(x0, ROAD_B + 12, x1 - x0, 5);
-  // หลักผูกเรือ + เชือก
-  c.fillStyle = '#6B4A2E';
-  c.beginPath(); c.roundRect(x1 - 10, ROAD_B - 6, 8, 18, 3); c.fill();
-  c.strokeStyle = '#E8D2A8'; c.lineWidth = 1.5;
-  c.beginPath(); c.moveTo(x1 - 6, ROAD_B); c.quadraticCurveTo(x1 + 12, ROAD_B + 22, x1 + 26, ROAD_B + 18); c.stroke();
-  // ป้ายท่าเรือ (ฝั่งหลัง) + โคม
-  const sx = p.x + 10;
+  const d = p.door, side = pierSide(p);
+  // ── พื้นท่า (กระดานยื่นจากหลังถนนลงน้ำ) ──
+  const bx0 = d - 78, bx1 = d + 78, fx0 = d - 95, fx1 = d + 95, fy = ROAD_B + 12;
+  // เสาเข็ม (คาดขาว) + บันไดลงน้ำกลางท่า
+  for (const px of [d - 85, d - 30, d + 30, d + 85]) {
+    c.fillStyle = lg(c, px - 5, 0, px + 5, 0, [[0, '#6B4228'], [0.5, '#93603C'], [1, '#6B4228']]);
+    c.fillRect(px - 5, fy, 10, H - fy);
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(px - 5, fy + 9, 10, 3);
+  }
+  c.fillStyle = '#C08A5A';
+  for (const lx of [d - 10, d + 10]) c.fillRect(lx - 1.5, fy, 3, H - fy);
+  for (let y = fy + 5; y < H; y += 6) c.fillRect(d - 10, y, 20, 2);
+  // พื้นกระดาน (ลายไม้สลับ หมุด รอยต่อเหลื่อม)
+  const deck = () => { c.beginPath(); c.moveTo(bx0, GY + 3); c.lineTo(bx1, GY + 3); c.lineTo(fx1, fy); c.lineTo(fx0, fy); c.closePath(); };
+  c.fillStyle = '#C98F5C';
+  deck(); c.fill();
+  c.save();
+  deck(); c.clip();
+  for (let y = GY + 3, r = 0; y < fy; y += 7, r++) {
+    c.fillStyle = r % 2 ? '#DDA874' : '#D39C66';
+    c.fillRect(fx0, y, fx1 - fx0, 6);
+    c.fillStyle = 'rgba(90,50,20,.28)';
+    for (let x = fx0 + (r % 3) * 22; x < fx1; x += 66) c.fillRect(x, y, 1.2, 6);
+    c.fillStyle = 'rgba(90,50,20,.35)';
+    for (let x = fx0 + 6 + (r % 2) * 11; x < fx1; x += 22) { c.beginPath(); c.arc(x, y + 3, 0.9, 0, TAU); c.fill(); }
+  }
+  c.restore();
+  c.strokeStyle = '#8E5A34'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(bx0, GY + 3); c.lineTo(fx0, fy); c.moveTo(bx1, GY + 3); c.lineTo(fx1, fy); c.stroke();
   c.fillStyle = '#8E5A34';
-  c.fillRect(sx - 2, GY - 70, 4, 70);
-  c.fillStyle = '#F2D2A4';
-  c.beginPath(); c.roundRect(sx - 2, GY - 78, 58, 24, 6); c.fill();
-  c.strokeStyle = '#8E5A34'; c.lineWidth = 2;
-  c.beginPath(); c.roundRect(sx - 2, GY - 78, 58, 24, 6); c.stroke();
-  // เรือใบเล็กบนป้าย
-  c.fillStyle = '#4E78E0';
-  c.beginPath(); c.moveTo(sx + 6, GY - 63); c.lineTo(sx + 22, GY - 63); c.lineTo(sx + 19, GY - 59); c.lineTo(sx + 9, GY - 59); c.closePath(); c.fill();
-  c.fillStyle = '#FF8FB3';
-  c.beginPath(); c.moveTo(sx + 14, GY - 64); c.lineTo(sx + 14, GY - 74); c.lineTo(sx + 21, GY - 65); c.closePath(); c.fill();
-  c.fillStyle = '#7A4BB8';
-  c.font = '700 10px Mali, sans-serif';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.fillText('ท่าเรือ', sx + 38, GY - 65.5);
+  c.beginPath(); c.roundRect(fx0 - 3, fy - 1, fx1 - fx0 + 6, 6, 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.25)';
+  c.fillRect(fx0 - 2, fy - 1, fx1 - fx0 + 4, 1.4);
+  // หลักผูกเรือหัวท่าสองข้าง + เชือกโยงไปทางเรือ
+  for (const dx of [-1, 1]) {
+    const hx = d + dx * 82;
+    c.fillStyle = '#5E4A78';
+    c.beginPath(); c.roundRect(hx - 5, fy - 14, 10, 14, [5, 5, 1, 1]); c.fill();
+    c.fillStyle = '#E8C26A';
+    c.beginPath(); c.ellipse(hx, fy - 14, 6, 2.4, 0, 0, TAU); c.fill();
+  }
+  c.strokeStyle = '#E8D2A8'; c.lineWidth = 1.6;
+  const rx = d + side * 82;
+  c.beginPath(); c.moveTo(rx, fy - 9); c.quadraticCurveTo(rx + side * 14, fy + 16, rx + side * 34, fy + 10); c.stroke();
+  c.beginPath(); c.ellipse(rx - side * 1, fy - 6, 6, 2.6, 0, 0, TAU); c.stroke();
+  // ── ศาลาท่าเรือ (หลังถนน · ขยาย PIER_S) ──
+  c.save();
+  grow(c, d);
+  c.fillStyle = 'rgba(60,70,120,.14)';
+  c.beginPath(); c.ellipse(d, GY + 3, 76, 5, 0, 0, TAU); c.fill();
+  // ผนังไม้ฟ้า + บัวล่าง
+  for (let x = d - 50, i = 0; x < d + 50; x += 10, i++) {
+    c.fillStyle = i % 2 ? '#E3F1FC' : '#D4E9F8';
+    c.fillRect(x, GY - 98, 10, 98);
+  }
+  c.fillStyle = 'rgba(79,134,216,.18)';
+  c.fillRect(d - 50, GY - 98, 100, 6);
+  c.fillStyle = '#B9D7F0';
+  c.fillRect(d - 50, GY - 14, 100, 14);
+  c.fillStyle = '#FFFFFF';
+  c.fillRect(d - 50, GY - 15, 100, 2);
+  // หน้าต่างกลมแบบเรือ
+  for (const dx of [-30, 30]) {
+    c.fillStyle = '#E8C26A';
+    c.beginPath(); c.arc(d + dx, GY - 64, 10, 0, TAU); c.fill();
+    const g = c.createRadialGradient(d + dx - 3, GY - 67, 1, d + dx, GY - 64, 8);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(1, '#9ED0F2');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(d + dx, GY - 64, 7.5, 0, TAU); c.fill();
+    c.fillStyle = '#C79A3A';
+    for (let i = 0; i < 6; i++) { const a = (i * TAU) / 6; c.beginPath(); c.arc(d + dx + Math.cos(a) * 8.8, GY - 64 + Math.sin(a) * 8.8, 0.9, 0, TAU); c.fill(); }
+  }
+  // แผนที่เส้นทางเรือ (กลางผนัง)
+  c.fillStyle = '#FFFDF6';
+  c.beginPath(); c.roundRect(d - 15, GY - 76, 30, 24, 3); c.fill();
+  c.strokeStyle = NAVY; c.lineWidth = 1.6;
+  c.beginPath(); c.roundRect(d - 15, GY - 76, 30, 24, 3); c.stroke();
+  c.strokeStyle = '#7FC4F0'; c.lineWidth = 1.4;
+  c.beginPath(); c.moveTo(d - 11, GY - 60); c.quadraticCurveTo(d - 4, GY - 66, d + 2, GY - 60); c.quadraticCurveTo(d + 7, GY - 55, d + 11, GY - 61); c.stroke();
+  c.fillStyle = '#FF7FAE';
+  for (const [mx, my] of [[-11, -60], [2, -60], [11, -61]]) { c.beginPath(); c.arc(d + mx, GY + my, 1.8, 0, TAU); c.fill(); }
+  c.fillStyle = NAVY;
+  c.beginPath(); c.moveTo(d - 6, GY - 70); c.lineTo(d + 4, GY - 70); c.lineTo(d + 2, GY - 67); c.lineTo(d - 4, GY - 67); c.closePath(); c.fill();
+  // เสาศาลา (ขาว พันเชือก) + ห่วงชูชีพบนเสาฝั่งตรงข้ามเรือ
+  for (const dx of [-54, 54]) {
+    c.fillStyle = lg(c, d + dx - 4, 0, d + dx + 4, 0, [[0, '#E6E2F2'], [0.5, '#FFFFFF'], [1, '#E2DDF0']]);
+    c.fillRect(d + dx - 4, GY - 100, 8, 100);
+    c.strokeStyle = '#D9B98A'; c.lineWidth = 1.6;
+    for (let y = GY - 44; y < GY - 22; y += 4) { c.beginPath(); c.moveTo(d + dx - 4, y); c.lineTo(d + dx + 4, y + 3); c.stroke(); }
+    c.fillStyle = '#B9D7F0';
+    c.fillRect(d + dx - 5.5, GY - 6, 11, 6);
+  }
+  lifebuoy(c, d - side * 54, GY - 60, 11);
+  // ป้ายชื่อท่า (ใต้ชายคา) + ระบายขาว
+  c.fillStyle = NAVY;
+  c.beginPath(); c.roundRect(d - 66, GY - 106, 132, 22, 5); c.fill();
+  c.fillStyle = '#E8C26A';
+  for (const dx of [-60, 60]) { c.beginPath(); c.arc(d + dx, GY - 95, 2, 0, TAU); c.fill(); }
+  c.font = '700 11px Mali, sans-serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#FFFFFF';
+  c.fillText(p.name, d, GY - 94.5);
+  for (let x = d - 62; x <= d + 62; x += 8) { c.beginPath(); c.arc(x, GY - 84, 4, 0, Math.PI); c.fill(); }
+  // หลังคาจั่วฟ้า (ขอบขาว ลายเส้นชมพู) + ตราพวงมาลัยเรือ
+  const gable = () => { c.beginPath(); c.moveTo(d - 74, GY - 104); c.lineTo(d, GY - 142); c.lineTo(d + 74, GY - 104); c.closePath(); };
+  c.fillStyle = lg(c, d - 72, 0, d + 72, 0, [[0, '#6E9EE0'], [0.55, SKY], [1, '#76A6E4']]);
+  gable(); c.fill();
+  c.save();
+  gable(); c.clip();
+  c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 1;
+  for (let y = GY - 110; y > GY - 142; y -= 7) { c.beginPath(); c.moveTo(d - 80, y); c.lineTo(d + 80, y); c.stroke(); }
+  c.restore();
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 5; c.lineJoin = 'round'; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(d - 76, GY - 102); c.lineTo(d, GY - 141); c.lineTo(d + 76, GY - 102); c.stroke();
+  c.strokeStyle = '#FF9CC0'; c.lineWidth = 1.6;
+  c.beginPath(); c.moveTo(d - 66, GY - 106); c.lineTo(d, GY - 136); c.lineTo(d + 66, GY - 106); c.stroke();
+  c.fillStyle = '#FFFDF6';
+  c.beginPath(); c.arc(d, GY - 119, 12, 0, TAU); c.fill();
+  shipWheel(c, d, GY - 119, 8);
+  // ยอดจั่ว: เสาธง (ธงสดวาดใน drawPierLive)
+  c.strokeStyle = '#8A6BC8'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(d, GY - 141); c.lineTo(d, GY - 164); c.stroke();
+  c.fillStyle = '#FFD45A';
+  c.beginPath(); c.arc(d, GY - 165, 2.6, 0, TAU); c.fill();
+  // โคมแขวนชายคาฝั่งเรือ
+  const lx = d + side * 62;
+  c.strokeStyle = '#C79A3A'; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(lx, GY - 84); c.lineTo(lx, GY - 76); c.stroke();
+  c.fillStyle = '#C79A3A';
+  c.beginPath(); c.roundRect(lx - 6, GY - 77, 12, 3, 1.5); c.fill();
+  c.fillStyle = lg(c, 0, GY - 74, 0, GY - 62, [[0, '#FFF6CF'], [1, '#FFD08E']]);
+  c.beginPath(); c.roundRect(lx - 5, GY - 74, 10, 12, 3); c.fill();
+  c.fillStyle = '#C79A3A';
+  c.beginPath(); c.roundRect(lx - 4, GY - 62, 8, 2.5, 1); c.fill();
+  // ลังไม้สองใบซ้อน (ลายสมอ) + ขดเชือกพิงเสา (ฝั่งตรงข้ามเรือ)
+  const bxx = d - side * 80;
+  crate(c, bxx - 13, GY - 24, 26, 24);
+  crate(c, bxx - 9 + side * 3, GY - 40, 18, 16);
+  c.strokeStyle = 'rgba(79,134,216,.75)'; c.lineWidth = 1.6; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(bxx, GY - 19); c.lineTo(bxx, GY - 7); c.moveTo(bxx - 4, GY - 16); c.lineTo(bxx + 4, GY - 16); c.stroke();
+  c.beginPath(); c.arc(bxx, GY - 10, 5, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+  c.beginPath(); c.arc(bxx, GY - 20.5, 1.6, 0, TAU); c.stroke();
+  const cx2 = d - side * 62;
+  c.strokeStyle = '#D9B98A'; c.lineWidth = 2.4;
+  for (const r of [8, 5.5, 3]) { c.beginPath(); c.ellipse(cx2, GY - 4, r * 1.25, r * 0.5, 0, 0, TAU); c.stroke(); }
+  // กระถางดอกไม้ข้างศาลาฝั่งเรือ
+  const fx = d + side * 68;
+  flowers(c, fx - 7, GY - 15, 3, ['#FF8FB3', '#FFFFFF', '#FFD45A']);
+  c.fillStyle = NAVY;
+  c.beginPath(); c.moveTo(fx - 8, GY - 11); c.lineTo(fx + 8, GY - 11); c.lineTo(fx + 6, GY); c.lineTo(fx - 6, GY); c.closePath(); c.fill();
+  c.fillStyle = '#FFFFFF';
+  c.fillRect(fx - 8, GY - 11, 16, 2);
+  // เสาโคมท่าเรือ (ฝั่งเรือ) — ห่วงชูชีพเล็ก + โคมทองเหลือง
+  const px = d + side * 84;
+  c.fillStyle = NAVY;
+  c.beginPath(); c.roundRect(px - 8, GY - 7, 16, 7, [3, 3, 0, 0]); c.fill();
+  c.fillStyle = lg(c, px - 2.5, 0, px + 2.5, 0, [[0, '#3E6EBE'], [0.5, '#7FA9EA'], [1, '#3E6EBE']]);
+  c.fillRect(px - 2.5, GY - 112, 5, 106);
+  c.fillStyle = '#FFFFFF';
+  for (const y of [GY - 40, GY - 90]) c.fillRect(px - 3, y, 6, 3);
+  c.fillStyle = '#C79A3A';
+  c.beginPath(); c.moveTo(px - 9, GY - 112); c.lineTo(px + 9, GY - 112); c.lineTo(px + 6, GY - 108); c.lineTo(px - 6, GY - 108); c.closePath(); c.fill();
+  c.fillStyle = lg(c, 0, GY - 126, 0, GY - 112, [[0, '#FFF6CF'], [1, '#FFD08E']]);
+  c.beginPath(); c.roundRect(px - 6.5, GY - 126, 13, 14, 3); c.fill();
+  c.fillStyle = '#C79A3A';
+  c.beginPath(); c.moveTo(px - 8, GY - 125); c.lineTo(px, GY - 133); c.lineTo(px + 8, GY - 125); c.closePath(); c.fill();
+  c.beginPath(); c.arc(px, GY - 134, 1.8, 0, TAU); c.fill();
+  lifebuoy(c, px, GY - 66, 7);
+  c.restore();
+}
+/** ของสดของท่าเรือ: ธงโบกบนยอดศาลา · แสงโคม · วงคลื่นรอบเสาเข็ม */
+function drawPierLive(c, p, t) {
+  const d = p.door, side = pierSide(p);
+  c.save();
+  grow(c, d);
+  const s = Math.sin(t * 0.09 + d) * 2.5, s2 = Math.sin(t * 0.09 + d + 1.4) * 2;
+  c.fillStyle = '#FF7EB0';
+  c.beginPath(); c.moveTo(d + 1, GY - 163); c.quadraticCurveTo(d + 10, GY - 162 + s, d + 19, GY - 158 + s2); c.quadraticCurveTo(d + 10, GY - 154 + s, d + 1, GY - 152); c.closePath(); c.fill();
+  for (const [gx, gy, r] of [[d + side * 62, GY - 68, 16], [d + side * 84, GY - 119, 26]]) {
+    const g = c.createRadialGradient(gx, gy, 1, gx, gy, r);
+    g.addColorStop(0, `rgba(255,236,170,${0.5 + 0.1 * Math.sin(t * 0.13 + gx)})`);
+    g.addColorStop(1, 'rgba(255,236,170,0)');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(gx, gy, r, 0, TAU); c.fill();
+  }
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.2;
+  [-85, -30, 30, 85].forEach((dx, i) => {
+    const u = (t * 0.02 + i * 0.27) % 1;
+    c.globalAlpha = (1 - u) * 0.8;
+    c.beginPath(); c.ellipse(d + dx, ROAD_B + 30, 7 + u * 10, 1.6 + u * 2, 0, 0, TAU); c.stroke();
+  });
+  c.globalAlpha = 1;
 }
 
 // ── เรือแมว ───────────────────────────────────────────────────
 export const BOAT_Y = H - 6;   // ระดับน้ำที่เรือลอย
 /** ทิศที่เรือของท่านี้หันหัว (ไปหาอีกท่า) · ตำแหน่งจอด = ข้างปลายท่า ฝั่งที่หัวเรือชี้ (ไม่จมใต้พื้นท่า) */
 export const pierDir = (p) => Math.sign(PLACES.find((q) => q.id === p.to).door - p.door);
-export const mooredX = (p) => p.door + pierDir(p) * 100;
+export const mooredX = (p) => p.door + pierDir(p) * 140;   // จอดเลยหัวท่า (พื้นท่ากว้าง ±95)
 /** ที่นั่งผู้โดยสาร (กลางลำค่อนหัว) — เท้าน้องตอนนั่ง (ท่านั่งวาดที่ seatTop + 4) */
 export function boatSeat(x, dir) { return { x: x + dir * 14, y: BOAT_Y - 12 }; }
 
@@ -398,7 +596,7 @@ export function drawBoat(c, x, dir, t, passenger) {
 }
 
 // ── เป็ด / ผีเสื้อ ────────────────────────────────────────────
-const DUCKS = [{ x: 820, r: 160, v: 0.22 }, { x: 2350, r: 220, v: 0.18 }, { x: 4180, r: 180, v: 0.24 }, { x: 5400, r: 150, v: 0.2 }];
+const DUCKS = [{ x: 820, r: 160, v: 0.22 }, { x: 2470, r: 220, v: 0.18 }, { x: 4300, r: 180, v: 0.24 }, { x: 5615, r: 150, v: 0.2 }, { x: 6635, r: 200, v: 0.19 }];
 function drawDuck(c, d, t, camX, vw) {
   const ph = (t * d.v) / d.r;
   const x = d.x + Math.sin(ph) * d.r;
@@ -422,7 +620,7 @@ function drawDuck(c, d, t, camX, vw) {
   c.beginPath(); c.arc(9, -6.8, 1.4, 0, TAU); c.fill();
   c.restore();
 }
-const FLIES = [[640, 250, '#FF9CC0'], [1880, 262, '#FFD45A'], [2420, 240, '#C8A8F5'], [3735, 236, '#9FD3FF'], [3900, 256, '#FF9CC0'], [4975, 252, '#FFD45A']];
+const FLIES = [[640, 250, '#FF9CC0'], [2000, 262, '#FFD45A'], [2540, 240, '#C8A8F5'], [3855, 236, '#9FD3FF'], [4020, 256, '#FF9CC0'], [5190, 252, '#FFD45A']];
 function drawButterflies(c, t, camX, vw) {
   FLIES.forEach(([bx, by, col], i) => {
     const x = bx + Math.sin(t * 0.013 + i * 2) * 46 + Math.sin(t * 0.031 + i) * 12;
@@ -465,14 +663,15 @@ function drawYarn(c) {
 const vis = (camX, vw, x, w) => x + w > camX - 60 && x < camX + vw + 60;
 
 /** ในน้ำ (ก่อนตัวสะพาน): ท่าเรือ · เรือจอด · เป็ด · ride = เรือที่น้องนั่งอยู่ ไม่วาดตรงนี้ (main วาดทับทุกชั้นทีหลัง) */
-export function drawWater(c, camX, vw, t, ride) {
+export function drawWater(c, camX, vw, t, boat) {
   for (const d of DUCKS) drawDuck(c, d, t, camX, vw);
   for (const p of PIERS) {
     if (!vis(camX, vw, p.x - 200, p.w + 400)) continue;
-    cached(c, 'pier:' + p.id, p.x - 4, GY - 82, p.w + 50, H - GY + 82, (cc) => drawPier(cc, p));
-    const busy = ride && (ride.from === p || ride.to === p);
-    if (!busy) drawBoat(c, mooredX(p), pierDir(p), t, null);
+    cached(c, 'pier:' + p.id, p.door - 150, GY - 215, 300, H - GY + 215, (cc) => drawPier(cc, p));
+    drawPierLive(c, p, t);
   }
+  // เรือมีลำเดียวทั้งเมือง (ผู้ใช้ 31 ต.ค.) — boat = ตอนไม่มีคนนั่ง (จอดที่ท่า / กำลังพายมารับ) · ตอนน้องนั่ง main.js วาดเอง
+  if (boat && vis(camX, vw, boat.x - 120, 240)) drawBoat(c, boat.x, boat.dir, t, null);
 }
 
 /** บนถนน (หลังร้าน ก่อนตัวน้อง): ของเล่น ของตกแต่ง · inBox = น้องมุดกล่องอยู่ (ผนังหน้ากล่องรอวาดทับตัวน้อง) */
@@ -480,7 +679,10 @@ export function drawPlay(c, camX, vw, t, inBox) {
   for (const [k, x] of PROPS) if (vis(camX, vw, x - 60, 120) && k !== 'pot' && k !== 'bush' && k !== 'sign' && k !== 'barrel') cached(c, 'deco:' + k + x, x - 60, GY - 150, 120, 154, (cc) => drawDeco(cc, k, x));
   if (vis(camX, vw, TOWER.x - 60, 120)) cached(c, 'tower', TOWER.x - 56, GY - 210, 112, 214, drawTower);
   if (vis(camX, vw, BLOCKS.x - 60, 120)) cached(c, 'blocks', BLOCKS.x - 56, GY - 96, 112, 100, drawBlocks);
-  if (vis(camX, vw, ARCH.x - 20, ARCH.w + 40)) cached(c, 'arch', ARCH.x - 14, GY - 160, ARCH.w + 28, 164, drawArch);
+  if (vis(camX, vw, ARCH.x - 20, ARCH.w + 40)) {
+    cached(c, 'arch', ARCH.x - 14, GY - 160, ARCH.w + 28, 164, drawArch);
+    drawPortal(c, ARCH.x + ARCH.w / 2, GY - 56, ARCH.w / 2 - 16, 54, t, 0.7);   // ประตูวาปไปสวนดอกไม้ (garden.js)
+  }
   for (const tr of TRAMPS) if (vis(camX, vw, tr.x - 40, 80)) drawTramp(c, tr);
   if (vis(camX, vw, SWING.x - 30, SWING.w + 60)) {
     cached(c, 'swing', SWING.x - 30, GY - 162, SWING.w + 60, 166, drawSwingFrame);

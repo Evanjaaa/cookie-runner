@@ -10,7 +10,7 @@
 //
 // บังคับ (ผู้ใช้ 27 ต.ค.): กระโดดได้ กดกลางอากาศ = ชั้นสอง · 31 ต.ค. ผู้ใช้ให้แยกแรงกระโดดของเมืองเอง (JUMP ใน layout.js) ลอยนุ่ม สูงกว่าเกมวิ่ง
 //   มือถือ: จอยซ้าย (ลากหมุนได้รอบวง ใช้แค่แกนซ้าย–ขวา) · ปุ่มกลาง = ใช้งาน · ขวา = ปุ่มท่าทาง + ปุ่มวิ่ง (สลับ) + ปุ่มกระโดด (ขวาสุด)
-//   คอม: ไม่มีปุ่มบนจอ มีแถบบอกปุ่มแทน — ← → / A D เดิน · Shift ค้าง วิ่ง · Enter / Space / ↑ / W กระโดด · E ใช้งาน
+//   คอม: ไม่มีปุ่มบนจอ มีแถบบอกปุ่มแทน — ← → / A D เดิน · Shift กดสลับเดิน/วิ่ง (ผู้ใช้ 31 ต.ค. — ไม่ต้องกดค้าง) · Enter / Space / ↑ / W กระโดด · E ใช้งาน
 //   ทั้งสองแบบ: แตะ/คลิกพื้น = เดินไปเอง (ขึ้นรอยอุ้งเท้าตรงจุดหมาย) · แตะร้าน = เดินไปหน้าประตูแล้วเข้า
 //
 // ขยายเมือง (ผู้ใช้ 31 ต.ค.): แม่น้ำ + สะพานไทยโค้ง (bridge.js) · เรือทางลัดระหว่างท่าเรือสองฝั่ง · ของเล่น (play.js)
@@ -18,10 +18,12 @@
 //   ลงจากที่สูง: ลากจอยลง / ↓ / S · พื้นสะพานโค้ง (groundY) เป็นพื้นแข็งเหมือนถนน
 //   กล้องเลื่อนขึ้นตามเวลาน้องอยู่สูง (camY) — ฉากหลังเลื่อนน้อยกว่าตามความลึก
 // ─────────────────────────────────────────────────────────────
-import { H, GY, WORLD_W, START_X, PLACES, drawSky, drawFar, drawClouds, drawHills, drawMidTrees, drawBackRow, drawGround, drawStreet, drawFront, drawPrompt, clearCache } from './world.js';
-import { SURFACES, surfY, groundY, placeById, JUMP } from './layout.js';
+import { H, GY, WORLD_W, START_X, PLACES, splashAt, drawSplashes, dustAt, drawDust, drawSky, drawFar, drawClouds, drawHills, drawMidTrees, drawBackRow, drawGround, drawStreet, drawFront, drawPrompt, clearCache } from './world.js';
+import { SURFACES, surfY, groundY, placeById, JUMP, BOAT_STOPS, REALM, WORLD_W as TOWN_W } from './layout.js';
+import { drawRealmGround, drawRealm } from './castle.js';
 import { riverGap, drawRiverSource, drawRiverFar, drawBridgeWater, drawBridge, drawBridgeArch, drawBridgeFront } from './bridge.js';
-import { stepPlay, swingFrame, bump, drawWater, drawPlay, drawPlayFront, drawBoat, boatSeat, mooredX } from './play.js';
+import { stepPlay, swingFrame, bump, drawWater, drawPlay, drawPlayFront, drawBoat, boatSeat, mooredX, pierDir } from './play.js';
+import { GW, G_PLACES, G_SURFACES, G_SPAWN, stepGarden, squish, drawGardenSky, drawGardenFar, drawGardenHillsFar, drawGardenHillsNear, drawGardenTrees, drawGardenWorld, drawGardenAirWorld, drawGardenFront, drawGardenOverlay, drawWarp, drawPhotoFrameOverlay, pickBurst } from './garden.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_TURN } from '../render/cat2-run.js';
 import { drawCat2, drawTrail } from '../render/cat2.js';
 import { getSkin, setSkin, skinById, SKINS, catSkin, catSkinId } from '../skins.js';
@@ -33,9 +35,13 @@ import { drawItemIcon } from '../render/items.js';
 import { SHOP_TABS, SHOP_ITEMS, EXCHANGE } from '../shop.js';
 import { initWallet, wallet, catalogItem, buy, exchange } from './wallet.js';
 import { drawInterior, clearInterior } from './interior.js';
-import { MeowSong, GameSfx } from './meow-audio.js';
+import { MeowSong } from './meow-audio.js';
+import { DreamSong } from './garden-song.js';
+import { randomFlower, drawHeldFlower, spawnMote, drawFlowerMotes } from './flower.js';
+import { MAP_H, mapW, mapX, drawMapArt, drawMapLive, STOP_INFO } from './route-map.js';
+import { TownSfx } from './town-sfx.js';
 import { audioCtx, musicOut, sfxOut, unlockAudio, setTownAudio, getTownMix, setTownMix, } from '../audio.js';
-import { emoteList, emoteId, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx } from './emotes.js';
+import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx } from './emotes.js';
 
 const cv = document.getElementById('town');
 const ctx = cv.getContext('2d');
@@ -55,7 +61,7 @@ const cat = {
   A: createRunAnim(),
   P: { onGround: true, jumps: 0, vy: 0, runPhase: 0, squash: 0, sliding: false, y: GY, fainting: false },
 };
-const keys = { left: false, right: false, shift: false };
+const keys = { left: false, right: false };
 let joyDir = 0;              // จอยมือถือ: -1 ซ้าย · 0 ปล่อย · 1 ขวา
 let joyDown = false;         // จอยถูกลากลงอยู่ (ลงจากที่สูง)
 let running = false;         // ปุ่มวิ่ง (สลับ)
@@ -70,6 +76,11 @@ let ride = null;             // กำลังล่องเรือ { from, 
 let k = 1, vw = 960, camX = 0, camY = 0, tick = 0, last = performance.now();
 let paused = false;   // มีหน้าต่างเปิดอยู่ = ไม่รับปุ่มเดิน
 let scene = 'town';   // 'town' | 'shop' (ในร้าน — ดูหัวข้อร้านข้างล่าง) · ประกาศก่อน resize() ที่รันตอนโหลด
+// โลกที่เดินอยู่ (ผู้ใช้ 31 ต.ค. — สวนดอกไม้ในฝัน garden.js): ผัง · ผิวที่ยืนได้ · พื้น · ความกว้าง — เดิน/กระโดด/นั่งใช้โค้ดชุดเดียวกัน
+const TOWN = { id: 'town', w: WORLD_W, places: PLACES, surfaces: SURFACES, ground: groundY };
+const GARDEN = { id: 'garden', w: GW, places: G_PLACES, surfaces: G_SURFACES, ground: () => GY };
+let WD = TOWN;
+let photo = null;     // จุดถ่ายรูปในสวน { p, phase: pose|count|shoot|shot, t, pose, wait } — ดูหัวข้อจุดถ่ายรูป
 
 // ── เสียง ─────────────────────────────────────────────────────
 // เพลง "เจ้าเหมียววิ่งเร็ว" + เสียงเอฟเฟกต์ (meow-audio.js ไฟล์จากผู้ใช้ 28 ต.ค.) — สร้างสดด้วย Web Audio
@@ -77,25 +88,30 @@ let scene = 'town';   // 'town' | 'shop' (ในร้าน — ดูหัว
 //   ไม่แตะระดับเสียงของเกม · เสียงร้องของน้องตอนทำท่า (sfx ของเกม) ก็ไหลช่องเอฟเฟกต์ชุดเดียวกัน
 // เบราว์เซอร์ให้เริ่มเสียงหลังผู้เล่นแตะ/กดปุ่มเท่านั้น · เพลงหรี่จน 0 = หยุดเพลงจริง (ไม่สร้างเสียงทิ้ง) · สลับแท็บ = พักเพลง
 setTownAudio(true);
-let song = null, sfxKit = null;
+// เพลงตามโลกที่อยู่ (ผู้ใช้ 31 ต.ค.): เมือง = เพลงเมือง (MeowSong) · สวนดอกไม้ = เพลงฝัน (DreamSong ใน garden-song.js)
+let song = null, gardenSong = null, sfxKit = null;
 const musicWanted = () => getTownMix('music') > 0 && !document.hidden;
 function wakeAudio() {
   unlockAudio();
   if (!song) {
     const a = audioCtx();
     song = new MeowSong(a, musicOut());
-    sfxKit = new GameSfx(a, sfxOut());
+    gardenSong = new DreamSong(a, musicOut());
+    sfxKit = new TownSfx(a, sfxOut());   // เสียงเกม + เสียงของเมือง (town-sfx.js)
   }
-  if (musicWanted()) song.start();
+  syncMusic();
+}
+/** เล่นเพลงของโลกที่น้องอยู่ อีกเพลงพัก (เพลงเมืองเล่นต่อจากที่ค้าง) · หรี่เสียงเพลงจน 0 / สลับแท็บ = พักทั้งคู่ */
+function syncMusic() {
+  if (!song) return;
+  const want = musicWanted(), cur = WD === GARDEN ? gardenSong : song;
+  for (const s of [song, gardenSong]) if (s !== cur || !want) s.pause();
+  if (want) cur.start();
 }
 const sfx = (name, ...args) => { if (sfxKit) sfxKit.play(name, ...args); };
 window.addEventListener('pointerdown', wakeAudio, { capture: true });
 window.addEventListener('keydown', wakeAudio, { capture: true });
-document.addEventListener('visibilitychange', () => {
-  if (!song) return;
-  if (musicWanted()) song.start();
-  else song.pause();
-});
+document.addEventListener('visibilitychange', syncMusic);
 
 // ── ชุดที่ใส่ในเมือง ───────────────────────────────────────────
 // โหมดทดลอง (ไม่ได้เชื่อมเซิร์ฟเวอร์): ห้องแต่งตัวโชว์ทุกชุดในเกม — ชุดที่ยังไม่มีลองใส่ได้ในเมือง (tryOutfit) ไม่บันทึก
@@ -138,7 +154,7 @@ resize();
 function nearPlace() {
   if (ride || !cat.P.onGround) return null;
   let best = null, bd = NEAR;
-  for (const p of PLACES) {
+  for (const p of WD.places) {
     if (p.kind === 'deco' || Math.abs(cat.y - (p.gy ?? GY)) > 3) continue;
     const d = Math.abs(cat.x - p.door);
     if (d < bd) { bd = d; best = p; }
@@ -152,7 +168,10 @@ function actionLabel(p) {
   if (p.kind === 'shop') return 'เข้าร้าน';
   if (SEAT[p.kind]) return SEAT[p.kind][cat.sit === p ? 1 : 0];
   if (p.kind === 'castle') return 'ดูปราสาท';
-  if (p.kind === 'pier') return 'ล่องเรือ';
+  if (p.kind === 'pier') return boat.at === p.id ? 'ล่องเรือ' : boat.trip?.to === p ? 'เรือกำลังมา…' : 'เรียกเรือ';
+  if (p.kind === 'gate') return p.to === 'garden' ? 'เข้าสวนดอกไม้' : 'กลับเมือง';
+  if (p.kind === 'photo') return 'ถ่ายรูป';
+  if (p.kind === 'pick') return heldFlower ? 'เปลี่ยนดอกไม้' : 'เก็บดอกไม้';
   return '';
 }
 function use(p) {
@@ -162,18 +181,254 @@ function use(p) {
     if (cat.sit === p) cat.sit = null;
     else {
       cat.sit = p; cat.x = p.door; cat.target = null; stopEmote(true);
-      if (p.kind === 'box') sfx('purr');
+      if (p.kind === 'box') { sfx('box'); setTimeout(() => sfx('purr'), 380); }
+      else sfx('sit');
     }
   } else if (p.kind === 'castle') toast('ปราสาทแมวเหมียวกำลังเตรียมเปิด รอติดตามนะเหมียว');
-  else if (p.kind === 'pier') startRide(p);
+  else if (p.kind === 'pier') {
+    if (boat.at === p.id) openRoute(p);
+    else if (boat.trip?.to === p) toast('เรือกำลังพายมารับ รอแป๊บนะเหมียว');
+    else callBoat(p);
+  }
+  else if (p.kind === 'gate') warp(p.to === 'garden' ? GARDEN : TOWN);
+  else if (p.kind === 'photo') startPhoto(p);
+  else if (p.kind === 'pick') pickFlower(p);
+}
+
+// ── ดอกไม้ที่เก็บจากแปลงในสวน (ผู้ใช้ 31 ต.ค.) — flower.js ──
+// สุ่มสี (ไม่ซ้ำดอกที่ถืออยู่) · ถือมือขวาจอ (คนละข้างกับคทาชุด S) · ถือออกไปเดินในเมืองได้
+// เก็บไว้แค่ในหน้านี้ (ไม่บันทึก) — ออกจากหน้าเมืองแล้วเข้าใหม่ = มือว่าง · ดอกไม้โปรยกลีบ/ประกายร่วงเบา ๆ ค้างในฉาก
+let heldFlower = null, moteT = -99;
+function pickFlower(p) {
+  heldFlower = randomFlower(heldFlower);
+  pickBurst(p.door);
+  sfx('pick', !!heldFlower.rare);
+  toast('ได้ดอกไม้สี' + heldFlower.name + (heldFlower.rare ? ' หายากมาก!' : ''));
+}
+/** ช่องของที่ถือให้ตัววาดน้อง (drawCat2 idle.held) — ไม่ถืออะไร = ว่าง */
+function heldOpt() {
+  if (!heldFlower) return null;
+  return { held: (c, k) => drawHeldFlower(c, k, heldFlower, tick, flowerEmit) };
+}
+/** หัวดอกอยู่ตรงไหนบนผ้าใบ (พิกเซล) → พิกัดโลก แล้วปล่อยกลีบ/ประกายทุก ~10 เฟรม (ไม่ถี่ ไม่รก) */
+function flowerEmit(pt) {
+  if (tick - moteT < 10 || paused) return;
+  moteT = tick;
+  spawnMote(pt.x / k + camX, pt.y / k - camY, heldFlower, tick);
+}
+
+// ── วาประหว่างเมือง ↔ สวนดอกไม้ ─────────────────────────────────
+// ม่านแสงชมพูกลีบดอกหมุน (drawWarp) แทนม่านขาวของร้าน · ไปสวน = ยืนข้างซุ้มในสวน · กลับ = ยืนใต้ซุ้มในเมือง
+let warping = false;
+function warp(to) {
+  if (fadeDir || WD === to) return;
+  paused = true;
+  warping = true;
+  toggleEmotes(false);
+  stopEmote(true);
+  cat.sit = null; cat.target = null; cat.pending = null; mark = null;
+  keys.left = keys.right = false;
+  sfx('warp');
+  fadeDir = 1;
+  fadeThen = () => {
+    WD = to;
+    const P = cat.P;
+    cat.x = to === GARDEN ? G_SPAWN : placeById('gardenGate').door;
+    cat.y = GY; cat.on = null; cat.drop = null; cat.dir = 1;
+    P.onGround = true; P.vy = 0; P.jumps = 0; P.y = GY;
+    cat.A = createRunAnim();   // ประกายชุดของฉากเดิมไม่ตามข้ามโลก
+    camX = Math.max(0, Math.min(WD.w - vw, cat.x - vw * 0.4));
+    camY = 0;
+    paused = false;
+    fadeDir = -1;
+    toast(to === GARDEN ? 'ยินดีต้อนรับสู่สวนดอกไม้ในฝัน' : 'กลับมาที่เมืองแมวเหมียว');
+    gardenSong?.stop();   // เข้าสวนทุกครั้งเริ่มเพลงฝันจากอินโทร
+    syncMusic();
+  };
+}
+
+// ── จุดถ่ายรูป (ซุ้มหัวใจในสวน) ───────────────────────────────────
+// ผู้ใช้ 31 ต.ค.: ซ่อนปุ่มเกม → แถบถ่ายรูป (เลือกท่า · ตั้งเวลา ทันที/3/10 วิ · ปุ่มกล้อง) → นับถอยหลัง (ถ้าตั้ง)
+//   → น้องเข้าท่าที่เลือก แฟลชตอนท่าเต็มที่ → กรอบรูปค้างให้แคปหน้าจอ · แตะ/กดปุ่ม = กลับมาเลือกใหม่ · ปุ่มปิด / Esc = ออก
+const photoBar = $('photoBar');
+let photoSec = 3;   // ตั้งเวลาที่เลือกไว้ล่าสุด (วินาที · 0 = ถ่ายทันที)
+function startPhoto(p) {
+  if (photo) return;
+  photo = { p, phase: 'pose', t: 0, pose: emoteId(), wait: 0 };
+  paused = true;
+  toggleEmotes(false);
+  cat.sit = null; cat.target = null; cat.pending = null; mark = null;
+  keys.left = keys.right = false;
+  cat.x = p.door; cat.dir = 1;
+  cat.still = 400;   // หันหน้าตรงมองกล้อง
+  document.body.classList.add('photo');
+  paintPhotoBar();
+  photoBar.classList.remove('hidden', 'busy');
+}
+/** ชิปท่าทาง (ท่าเดียวกับแผงท่าทาง + "ยืนเฉย") · ตั้งเวลา */
+function paintPhotoBar() {
+  const box = $('phPoses');
+  box.replaceChildren();
+  for (const e of [{ id: '', name: 'ยืนเฉย', icon: '🐱' }, ...emoteList(townSkin().outfit)]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ph-pose' + ((photo.pose || '') === e.id ? ' on' : '');
+    b.dataset.id = e.id;
+    b.setAttribute('role', 'option');
+    b.setAttribute('aria-selected', (photo.pose || '') === e.id ? 'true' : 'false');
+    const i = document.createElement('i');
+    i.textContent = e.icon;
+    const n = document.createElement('span');
+    n.textContent = e.kind === 'act' ? 'ท่าแอ็ค' : e.name;
+    b.append(i, n);
+    box.append(b);
+  }
+  for (const b of photoBar.querySelectorAll('.ph-timer button')) {
+    const on = Number(b.dataset.sec) === photoSec;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+}
+$('phPoses').addEventListener('click', (e) => {
+  const b = e.target.closest('.ph-pose');
+  if (!b || !photo || photo.phase !== 'pose') return;
+  photo.pose = b.dataset.id || null;
+  if (photo.pose) startEmote(photo.pose, townSkin().outfit, tick);   // ทำท่าให้ดูก่อนเลย
+  else stopEmote();
+  sfx('click');
+  for (const x of $('phPoses').querySelectorAll('.ph-pose')) {
+    const on = x === b;
+    x.classList.toggle('on', on);
+    x.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+});
+for (const b of photoBar.querySelectorAll('.ph-timer button')) {
+  b.addEventListener('click', () => { photoSec = Number(b.dataset.sec); sfx('click'); paintPhotoBar(); });
+}
+$('phCam').addEventListener('click', shutter);
+$('photoX').addEventListener('click', endPhoto);
+/** กดชัตเตอร์: ซ่อนแถบ → นับถอยหลัง (ถ้าตั้ง) → เข้าท่า → แฟลช */
+function shutter() {
+  if (!photo || photo.phase !== 'pose') return;
+  photoBar.classList.add('busy');
+  if (photoSec > 0) { photo.phase = 'count'; photo.t = 0; photo.lastS = 0; }
+  else beginShoot();
+}
+function beginShoot() {
+  photo.phase = 'shoot';
+  photo.t = 0;
+  const id = photo.pose;
+  if (!id) { stopEmote(true); photo.wait = 4; return; }
+  // ท่าค้างที่ทำอยู่แล้ว = ถ่ายได้เลย · ท่าขยับ = เริ่มใหม่ แฟลชตอนท่าเต็มที่
+  if (emoteHolds(id) && emoteId() === id) photo.wait = 4;
+  else { startEmote(id, townSkin().outfit, tick); photo.wait = emotePeak(id); }
+}
+function stepPhoto(dt) {
+  photo.t += dt;
+  if (photo.phase === 'count') {
+    const s = Math.ceil((photoSec * 60 - photo.t) / 60);
+    if (s !== photo.lastS && s > 0) { photo.lastS = s; sfx('tick'); }   // ติ๊ดทุกวินาทีที่นับ
+    if (photo.t >= photoSec * 60) beginShoot();
+  } else if (photo.phase === 'shoot' && photo.t >= photo.wait) {
+    photo.phase = 'shot';
+    photo.t = 0;
+    sfx('shutter');
+  }
+}
+/** หลังถ่าย: กลับมาหน้าเลือกท่า (ถ่ายใหม่ได้) */
+function photoAgain() {
+  photo.phase = 'pose';
+  photo.t = 0;
+  photoBar.classList.remove('busy');
+  paintPhotoBar();
+}
+function endPhoto() {
+  if (!photo) return;
+  photo = null;
+  paused = false;
+  stopEmote();
+  photoBar.classList.add('hidden');
+  document.body.classList.remove('photo');
+}
+/** นับถอยหลัง · แฟลช · กรอบรูป · บอกวิธีถ่ายใหม่ (พิกัดจอ) */
+function drawPhoto() {
+  if (!photo) return;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  const t = photo.t;
+  if (photo.phase === 'count') {
+    const left = photoSec * 60 - t, n = Math.max(1, Math.ceil(left / 60)), u = 1 - ((left / 60) % 1 || 1);
+    ctx.save();
+    ctx.globalAlpha = 1 - u * 0.6;
+    ctx.font = `700 ${Math.round(64 + (1 - u) * 18)}px Mali, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(255,255,255,.95)';
+    ctx.strokeText(String(n), vw / 2, 70);
+    ctx.fillStyle = '#FF7FAE';
+    ctx.fillText(String(n), vw / 2, 70);
+    ctx.restore();
+    return;
+  }
+  if (photo.phase !== 'shot') return;
+  drawPhotoFrameOverlay(ctx, vw, Math.min(1, t / 12));
+  if (t < 24) { ctx.fillStyle = `rgba(255,255,255,${1 - t / 24})`; ctx.fillRect(0, 0, vw, H); }
+  if (t > 90) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (t - 90) / 30) * (0.75 + 0.25 * Math.sin(tick * 0.08));
+    ctx.font = '700 12px Mali, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(90,40,120,.55)';
+    const msg = desk ? 'กดปุ่มใดก็ได้ เพื่อถ่ายใหม่' : 'แตะจอ เพื่อถ่ายใหม่';
+    const w = ctx.measureText(msg).width + 24;
+    ctx.beginPath(); ctx.roundRect(vw / 2 - w / 2, 26, w, 24, 12); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(msg, vw / 2, 38.5);
+    ctx.restore();
+  }
+}
+
+// ── ป้ายบอกเหนือหัว (วงรีขาว "นั่งพัก · กด E") ───────────────────────
+// ผู้ใช้ 31 ต.ค.: นั่ง/ใช้อยู่แล้วไม่ขึ้น ("ลุกขึ้น" ดูที่ปุ่มชมพูพอ)
+//   มือถือ: ขึ้นแค่ครั้งแรกที่เดินผ่านแต่ละที่ (จำในเครื่อง) — ต่อจากนั้นมีแค่ปุ่มชมพู · คอมขึ้นทุกครั้ง (บอกปุ่ม E)
+const SEEN_KEY = 'meowTown.seenPrompts';
+let seenPrompts = new Set();
+try { seenPrompts = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); } catch { /* โหมดส่วนตัว */ }
+let lastNear = null;
+function markSeen(p) {
+  if (seenPrompts.has(p.id)) return;
+  seenPrompts.add(p.id);
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seenPrompts])); } catch { /* เก็บไม่ได้ก็แค่ขึ้นซ้ำ */ }
+}
+function bubbleFor(p) {
+  if (!p || paused || cat.moving || cat.sit === p) return false;
+  return desk || !seenPrompts.has(p.id);
+}
+
+// ── เสียงชิงช้าตามจังหวะแกว่ง: ลมวูบตอนผ่านจุดต่ำสุด · เอี๊ยดเบา ๆ ตอนสุดทาง ──
+let swPrev = 0, swPeak = 0, swUp = false;
+function swingSound() {
+  if (WD !== TOWN || cat.sit?.kind !== 'swing') { swPrev = 0; swPeak = 0; return; }
+  const a = swingFrame().a, m = Math.abs(a);
+  if (swPrev && Math.sign(a) !== Math.sign(swPrev) && swPeak > 0.05) { sfx('swing', Math.min(1, swPeak / 0.5)); swPeak = 0; }
+  if (m > Math.abs(swPrev)) swUp = true;
+  else if (swUp) { swUp = false; if (m > 0.1) sfx('squeak', Math.min(1, m / 0.5)); }
+  swPeak = Math.max(swPeak, m);
+  swPrev = a;
+}
+
+// ── เสียงน้ำพุ: ดังขึ้นตอนเดินเข้าใกล้ลานน้ำพุ เบาลงตอนเดินห่าง (ในร้าน/ในสวน = เงียบ) ──
+const FOUNTAIN_X = placeById('fountain').door;
+function fountainSound() {
+  if (!sfxKit) return;
+  const d = WD === TOWN && scene === 'town' ? Math.abs((ride ? ride.bx : cat.x) - FOUNTAIN_X) : 1e9;
+  sfxKit.play('fountain', Math.max(0, 1 - d / 560) ** 1.6);
 }
 
 // ── ยืนบนของ ──────────────────────────────────────────────────
 const STEP = 10;   // ก้าวขึ้น/ลงต่างระดับไม่เกินเท่านี้ = เดินต่อ (ไม่ร่วง)
 /** ผิวที่สูงที่สุดตรง x ที่อยู่ไม่เหนือเท้า (y) เกิน tol — ถนน/พื้นสะพานรองรับเสมอ */
 function floorAt(x, y, tol) {
-  let best = null, by = groundY(x);
-  for (const s of SURFACES) {
+  let best = null, by = WD.ground(x);
+  for (const s of WD.surfaces) {
     if (s === cat.drop || x < s.x0 || x > s.x1) continue;
     const sy = surfY(s, x);
     if (sy >= y - tol && sy < by) { by = sy; best = s; }
@@ -181,6 +436,17 @@ function floorAt(x, y, tol) {
   return { s: best, y: by };
 }
 let climbHint = false;
+let wadeT = 0;   // นับเฟรมก้าวตอนเดินลุยน้ำในน้ำพุ
+// เดินลอดซุ้มประตูเขตเข้าดินแดนปราสาท (ไปทางขวา) = ทักทาย · เว้น 1 นาทีกันขึ้นถี่ตอนเดินกลับไปมา
+let realmX = null, realmT = -1e9;
+function realmEnter() {
+  const was = realmX;
+  realmX = cat.x;
+  if (was == null || ride || !(was < REALM.gate && cat.x >= REALM.gate) || tick - realmT < 3600) return;
+  realmT = tick;
+  toast('ยินดีต้อนรับสู่ดินแดนปราสาทแมวเหมียว');
+  sfx('bell');
+}
 function land(f) {
   const P = cat.P;
   cat.y = f.y;
@@ -191,31 +457,238 @@ function land(f) {
     P.jumps = 1;
     P.squash = CAT_ANIM.squash.jump;
     bump(f.s.id);
-    sfx('doubleJump');
+    sfx('trampoline');
     return;
   }
+  const fall = P.vy;
+  // ลงพื้นหลังกระโดดสองชั้น = ฝุ่นฟุ้งน่ารัก ๆ (ลงน้ำในน้ำพุมีน้ำกระเด็นแทน) · เสียงลงพื้นเดิม (ผู้ใช้ 31 ต.ค. ไม่เอาเสียงใหม่)
+  if (P.jumps >= 2 && !f.s?.water) dustAt(cat.x, f.y, fall, tick);
+  if (f.s?.squish) squish(f.s.id, fall);   // เห็ด/ทิวลิปนุ่มในสวน: ยุบแล้วเด้งดึ๋ง
   P.squash = CAT_ANIM.squash.land(P.vy);
   P.vy = 0;
   P.jumps = 0;
   P.onGround = true;
   cat.on = f.s;
-  sfx('land');
+  // เสียงลงจอด: เห็ด "บุ๋ง" · ทิวลิป "ปุ๊ง" · น้ำในน้ำพุ "จ๋อม" + น้ำกระเด็น · ที่อื่น "ตุ้บ"
+  if (f.s?.squish) sfx(f.s.id.startsWith('tulip') ? 'tulip' : 'mushroom', fall);
+  else if (f.s?.water) { splashAt(cat.x, f.y, fall, tick); sfx('waterSplash', fall); }
+  else sfx('land');
   if (f.s && !climbHint) {
     climbHint = true;
     toast(desk ? 'กด ↓ เพื่อลงจากที่สูง' : 'ลากจอยลง เพื่อลงจากที่สูง');
   }
 }
 
-// ── ล่องเรือ (ทางลัดระหว่างท่าเรือสองฝั่ง) ──────────────────────
-// กระโดดลงเรือ (board) → เรือแล่นไปอีกท่า กล้องตามเรือ ลอดใต้สะพาน (sail) → กระโดดขึ้นฝั่ง (land) · ระหว่างนั้นไม่รับปุ่ม
+// ── ล่องเรือ + จุดแวะ (ผู้ใช้ 31 ต.ค.) ─────────────────────────────
+// ท่าเรือ → หน้าเลือกจุดแวะ (แตะเรียงตามลำดับ · BOAT_STOPS ใน layout.js) → กระโดดลงเรือ (board)
+//   → แล่นไปทีละจุด (sail) → ถึงจุดแวะ: ระฆัง + ปุ่ม "ขึ้นฝั่งที่นี่ / ไปต่อ" (dock) · จุดสุดท้าย = ขึ้นฝั่งเลย (land)
+//   เรือกลับลำได้ (จุดถัดไปอยู่อีกทาง) · กล้องตามเรือ · ระหว่างนั้นไม่รับปุ่มเดิน
 const HOP = 26;   // เฟรมที่ใช้กระโดดลง/ขึ้นเรือ
-function startRide(from) {
-  const to = placeById(from.to);
-  if (!to || fadeDir) return;
-  const dir = Math.sign(to.door - from.door);
-  // เรือออกจากที่จอดของท่านี้ ไปจอดตรงที่จอดของอีกท่า (mooredX — ข้างปลายท่า ฝั่งหัวเรือ)
-  const x0 = mooredX(from), x1 = mooredX(to);
-  ride = { from, to, dir, ph: 'board', u: 0, x0, x1, bx: x0, dur: Math.max(170, Math.abs(x1 - x0) / 13) };
+const DOCK_GAP = 64;   // เรือจอดห่างจุดขึ้นฝั่งเท่านี้ (ฝั่งที่แล่นมา) — น้องกระโดดไปข้างหน้าขึ้นฝั่ง
+// เรือลำเดียว: at = จอดอยู่ท่าไหน (null = กำลังพาย/มีคนนั่ง) · trip = พายเปล่าไปจอดท่า (เรียกเรือ / กลับท่าหลังส่งน้อง)
+const boat = { at: 'pierA', x: mooredX(placeById('pierA')), dir: pierDir(placeById('pierA')), trip: null };
+/** เรียกเรือมาท่านี้: เรือพายเปล่ามาจอด (เดินเล่นรอได้) */
+function callBoat(p) {
+  sailBoat(p);
+  sfx('bell');
+  toast('เรียกเรือแล้ว เรือกำลังพายมารับ');
+}
+function sailBoat(p) {
+  const x1 = mooredX(p);
+  boat.at = null;
+  boat.dir = Math.sign(x1 - boat.x) || boat.dir;
+  boat.trip = { to: p, x0: boat.x, x1, u: 0, dur: Math.max(90, Math.abs(x1 - boat.x) / 9) };
+}
+/** เดินเรือเปล่า (ทุกเฟรม) — ถึงแล้วหันหัวเรือตามท่า */
+function stepBoat(dt) {
+  const tr = boat.trip;
+  if (!tr) return;
+  tr.u += dt;
+  const k = Math.min(1, tr.u / tr.dur);
+  boat.x = tr.x0 + (tr.x1 - tr.x0) * (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+  // เรือเปล่าพายมารับ: ได้ยินเสียงพายเมื่ออยู่ใกล้ (ดังตามระยะ)
+  if ((tr.pt = (tr.pt || 0) + dt) >= 50) {
+    tr.pt = 0;
+    if (WD === TOWN && scene === 'town') sfx('paddle', 1 - Math.abs(boat.x - cat.x) / 700);
+  }
+  if (k >= 1) {
+    boat.trip = null;
+    boat.at = tr.to.id;
+    boat.dir = pierDir(tr.to);
+    if (WD === TOWN && Math.abs(boat.x - cat.x) < vw) sfx('bell');
+  }
+}
+let routeFrom = null, routePick = [];
+const routeOv = $('routeOv');
+function openRoute(p) {
+  if (fadeDir || ride) return;
+  routeFrom = p;
+  // เปิดใหม่ทุกครั้ง = ยังไม่เลือกจุดไหน (ผู้ใช้ 31 ต.ค. — ไม่เลือกท่าฝั่งตรงข้ามไว้ให้ก่อน) · ปุ่มออกเรือรอจนแตะเลือก
+  routePick = [];
+  paused = true;
+  toggleEmotes(false);
+  keys.left = keys.right = false;
+  rmFocus = BOAT_STOPS.find((s) => s.id === p.id) || null;
+  routeOv.classList.remove('hidden');   // เปิดก่อน — วัดความสูงแผนที่ได้
+  layoutRouteMap();
+  paintRoute();
+  const box = $('routeMap');
+  box.scrollLeft = mapX(p.id) * rmScaleS - box.clientWidth / 2;   // เลื่อนให้ท่าที่ยืนอยู่อยู่กลาง
+  rmEdges();
+  if (!rmRaf) rmRaf = requestAnimationFrame(rmTick);
+}
+// ── แผนที่เมืองย่อส่วน (ผู้ใช้ 31 ต.ค. — แบบแผนที่สวนสนุก · route-map.js) ──
+// ภาพนิ่งวาดครั้งเดียวต่อขนาด · ชั้นสด (เรือโยก เส้นทางเรือวิ่ง) วาดทุกเฟรมตอนเปิดอยู่ · ปุ่มจุดแวะเป็น HTML
+// ท่าที่ยืนอยู่ = ป้ายฟ้า "อยู่ที่นี่" (เลือกไม่ได้) · แตะที่อื่น = เพิ่ม/เอาออกจากลำดับ + ช่องข้อมูลบอกว่าที่นั่นคือที่ไหน
+let rmFocus = null, rmKey = 0, rmScaleS = 1, rmRaf = 0;
+function layoutRouteMap() {
+  const box = $('routeMap'), W = mapW();
+  const s = Math.min(1.2, box.clientHeight / MAP_H), key = s * Math.min(2, window.devicePixelRatio || 1);
+  rmScaleS = s;
+  box.style.setProperty('--s', s);
+  Object.assign($('rmSize').style, { width: W * s + 'px', height: MAP_H * s + 'px' });
+  Object.assign($('rmInner').style, { width: W + 'px', height: MAP_H + 'px', transform: `scale(${s})` });
+  if (!$('rmInner').querySelector('.rm-stop')) {
+    for (const st of BOAT_STOPS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rm-stop';
+      b.dataset.id = st.id;
+      b.setAttribute('role', 'option');
+      b.style.left = mapX(st.id) + 'px';
+      const lab = document.createElement('span');
+      lab.className = 'rm-lab';
+      lab.textContent = st.name;
+      b.append(lab);
+      $('rmInner').append(b);
+    }
+  }
+  if (Math.abs(key - rmKey) < 0.001) return;
+  rmKey = key;
+  for (const cv of [$('rmArt'), $('rmLive')]) {
+    cv.width = Math.ceil(W * key); cv.height = Math.ceil(MAP_H * key);
+    cv.style.width = W + 'px'; cv.style.height = MAP_H + 'px';
+  }
+  const g = $('rmArt').getContext('2d');
+  g.setTransform(key, 0, 0, key, 0, 0);
+  drawMapArt(g);
+}
+function rmTick(ts) {
+  if (routeOv.classList.contains('hidden') || !routeFrom) { rmRaf = 0; return; }
+  const g = $('rmLive').getContext('2d');
+  g.setTransform(rmKey, 0, 0, rmKey, 0, 0);
+  drawMapLive(g, routeFrom.id, routePick, ts);
+  rmRaf = requestAnimationFrame(rmTick);
+}
+window.addEventListener('resize', () => { if (!routeOv.classList.contains('hidden')) { layoutRouteMap(); paintRoute(); } });
+// คอม (ผู้ใช้ 31 ต.ค. "เลื่อนยาก"): ลูกกลิ้งเมาส์ = เลื่อนซ้าย-ขวา · คลิกค้างลาก · ปุ่มลูกศรขอบแผนที่ · ←/→ บนคีย์บอร์ด
+// มือถือปัดนิ้วเหมือนเดิม (ลากด้วยนิ้วไม่ผ่านตัวนี้ — เบราว์เซอร์เลื่อนเอง)
+/** ปุ่มลูกศรซ่อนเองเมื่อเลื่อนถึงสุดทาง */
+function rmEdges() {
+  const box = $('routeMap'), max = box.scrollWidth - box.clientWidth;
+  $('rmLeft').classList.toggle('off', box.scrollLeft <= 2);
+  $('rmRight').classList.toggle('off', box.scrollLeft >= max - 2);
+}
+/** เลื่อนแผนที่ไปทางซ้าย (−1) / ขวา (1) ทีละ 60% ของกรอบ */
+function rmStep(d) { const box = $('routeMap'); box.scrollBy({ left: d * box.clientWidth * 0.6, behavior: 'smooth' }); }
+{
+  const box = $('routeMap');
+  let drag = null, swallow = false;
+  box.addEventListener('scroll', rmEdges, { passive: true });
+  box.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // แทร็กแพดปัดแนวนอนเองอยู่แล้ว
+    e.preventDefault();
+    box.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 32 : 1);
+  }, { passive: false });
+  box.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    drag = { x: e.clientX, s: box.scrollLeft, moved: false };
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 6) { drag.moved = true; box.classList.add('dragging'); }
+    if (drag.moved) box.scrollLeft = drag.s - dx;
+  });
+  window.addEventListener('pointerup', () => {
+    if (drag?.moved) swallow = true;   // ลากเสร็จ = ไม่นับเป็นการแตะเลือกจุดแวะ
+    drag = null;
+    box.classList.remove('dragging');
+  });
+  box.addEventListener('click', (e) => { if (swallow) { swallow = false; e.stopPropagation(); } }, true);
+  $('rmLeft').addEventListener('click', () => rmStep(-1));
+  $('rmRight').addEventListener('click', () => rmStep(1));
+}
+function paintRoute() {
+  for (const b of $('rmInner').querySelectorAll('.rm-stop')) {
+    const st = BOAT_STOPS.find((q) => q.id === b.dataset.id);
+    const here = st.id === routeFrom.id, n = routePick.indexOf(st) + 1;
+    b.classList.toggle('here', here);
+    b.classList.toggle('on', !!n);
+    b.disabled = false;
+    b.setAttribute('aria-selected', n ? 'true' : 'false');
+    b.setAttribute('aria-label', here ? 'อยู่ที่นี่ ' + st.name : st.name + (n ? ' ลำดับที่ ' + n : ''));
+    let pin = b.querySelector('.rm-pin');
+    if (n && !pin) { pin = document.createElement('span'); pin.className = 'rm-pin'; pin.append(document.createElement('b')); b.prepend(pin); }
+    if (!n && pin) pin.remove();
+    if (pin) pin.firstChild.textContent = n;
+  }
+  const f = rmFocus;
+  $('rmIco').textContent = f ? f.icon : '🗺️';
+  $('rmName').textContent = f ? (f.id === routeFrom.id ? 'อยู่ที่ ' : '') + f.name : 'แผนที่เมืองแมวเหมียว';
+  $('rmDesc').textContent = f ? STOP_INFO[f.id] || '' : 'แตะสถานที่บนแผนที่เพื่อเลือกจุดแวะ';
+  const last = routePick[routePick.length - 1];
+  $('routeSum').textContent = routePick.length
+    ? (routePick.length > 1 ? `แวะ ${routePick.length} จุด · จบที่ ${last.name}` : `ไป ${last.name}`)
+    : 'แตะเลือกจุดที่อยากไปก่อนนะ';
+  $('routeGo').disabled = !routePick.length;
+}
+$('routeMap').addEventListener('click', (e) => {
+  const b = e.target.closest('.rm-stop');
+  if (!b) return;
+  const s = BOAT_STOPS.find((q) => q.id === b.dataset.id);
+  rmFocus = s;
+  if (s.id === routeFrom.id) { paintRoute(); return; }   // ท่าที่ยืนอยู่: ดูข้อมูลได้ เลือกไม่ได้
+  const i = routePick.indexOf(s);
+  if (i >= 0) routePick.splice(i, 1);   // แตะซ้ำ = เอาออก (ลำดับที่เหลือเลื่อนขึ้น)
+  else routePick.push(s);
+  sfx('click');
+  paintRoute();
+});
+$('routeClear').addEventListener('click', () => { routePick = []; sfx('click'); paintRoute(); });
+$('routeX').addEventListener('click', closeAll);
+routeOv.addEventListener('click', (e) => { if (e.target === routeOv) closeAll(); });
+$('routeGo').addEventListener('click', () => {
+  if (!routePick.length) return;
+  routeOv.classList.add('hidden');
+  startRide(routeFrom, routePick.slice());
+});
+$('bsOff').addEventListener('click', () => dockChoice(false));
+$('bsGo').addEventListener('click', () => dockChoice(true));
+
+/** ตำแหน่งจอดเรือของจุดแวะ (ท่าเรือ = ข้างปลายท่า · ที่อื่น = ก่อนถึงจุดขึ้นฝั่งนิดหนึ่ง) */
+function dockX(s, dir) {
+  const x = s.pier ? mooredX(s.pier) : s.sides ? s.sides[dir > 0 ? 'L' : 'R'].dock : s.x - dir * DOCK_GAP;
+  return Math.max(70, Math.min(TOWN_W - 70, x));
+}
+/** ออกแล่นไปจุดถัดไป (หันหัวเรือตามทาง) */
+function legTo(r, s) {
+  r.x0 = r.bx;
+  r.dir = Math.sign(s.x - r.bx) || r.dir;
+  r.x1 = dockX(s, r.dir);
+  r.dur = Math.max(110, Math.abs(r.x1 - r.x0) / 13);
+  r.u = 0;
+  r.ph = 'sail';
+  r.to = s.pier;
+  r.side = r.dir > 0 ? 'L' : 'R';   // จุดแวะสองฝั่ง (ศาลาสะพาน): ขึ้นฝั่งด้านที่แล่นมา
+  cat.dir = r.dir;
+}
+function startRide(from, route) {
+  if (!route.length || fadeDir) return;
+  const x0 = boat.x;
+  boat.at = null;   // เรือลำเดียวออกไปพร้อมน้อง
+  const dir = Math.sign(route[0].x - from.door) || 1;
+  ride = { from, route, i: 0, to: null, dir, ph: 'board', u: 0, x0, x1: x0, bx: x0, dur: 1, pt: 0 };
   paused = true;
   toggleEmotes(false);
   stopEmote(true);
@@ -224,7 +697,15 @@ function startRide(from) {
   cat.dir = dir;
   document.body.classList.add('riding');
   sfx('jump');
-  toast('ล่องเรือไป' + to.name);
+  toast(route.length > 1 ? `ล่องเรือ แวะ ${route.length} จุด` : 'ล่องเรือไป' + route[0].name);
+}
+/** ถึงจุดแวะแล้วเลือก: ไปต่อ = จุดถัดไป · ไม่งั้นขึ้นฝั่งตรงนี้ */
+function dockChoice(go) {
+  const r = ride;
+  if (!r || r.ph !== 'dock') return;
+  $('boatStop').classList.add('hidden');
+  if (go && r.i < r.route.length - 1) { r.i++; legTo(r, r.route[r.i]); sfx('splash'); }
+  else { r.ph = 'land'; r.u = 0; sfx('jump'); }
 }
 /** กระโดดเป็นโค้งจาก (ax,ay) ไป (bx,by) ตามสัดส่วน k — ใช้ท่ากระโดดของท่าวิ่ง */
 function hop(ax, ay, bx, by, k) {
@@ -236,24 +717,44 @@ function hop(ax, ay, bx, by, k) {
 function stepRide(dt) {
   const r = ride, P = cat.P;
   r.u += dt;
+  const seat = () => {
+    const s = boatSeat(r.bx, r.dir);
+    cat.x = s.x; cat.y = s.y;
+    P.onGround = true; P.vy = 0;   // นั่งนิ่งในเรือ (ตัวคุมท่าไม่คิดว่ายังลอย/ร่วงอยู่)
+  };
   if (r.ph === 'board') {
     const k = Math.min(1, r.u / HOP), s = boatSeat(r.x0, r.dir);
     hop(r.from.door, GY, s.x, s.y, k);
-    if (k >= 1) { r.ph = 'sail'; r.u = 0; sfx('land'); }
+    if (k >= 1) { sfx('splash'); legTo(r, r.route[0]); }
   } else if (r.ph === 'sail') {
     const k = Math.min(1, r.u / r.dur);
     const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
     r.bx = r.x0 + (r.x1 - r.x0) * e;
-    const s = boatSeat(r.bx, r.dir);
-    cat.x = s.x; cat.y = s.y;
-    P.onGround = true; P.vy = 0;   // นั่งนิ่งในเรือ (ตัวคุมท่าไม่คิดว่ายังลอย/ร่วงอยู่)
-    if (k >= 1) { r.ph = 'land'; r.u = 0; sfx('jump'); }
+    seat();
+    if ((r.pt += dt) >= 50) { r.pt = 0; sfx('paddle'); }   // พายเป็นจังหวะ
+    if (k >= 1) {
+      const s = r.route[r.i];
+      if (r.i === r.route.length - 1) { r.ph = 'land'; r.u = 0; sfx('jump'); }
+      else {
+        r.ph = 'dock'; r.u = 0;
+        sfx('bell');
+        $('bsName').textContent = 'แวะ' + s.name;
+        $('bsGo').textContent = 'ไปต่อ · ' + r.route[r.i + 1].name;
+        $('boatStop').classList.remove('hidden');
+      }
+    }
+  } else if (r.ph === 'dock') {
+    seat();
   } else {
-    const k = Math.min(1, r.u / HOP), s = boatSeat(r.x1, r.dir);
-    hop(s.x, s.y, r.to.door, GY, k);
+    const st = r.route[r.i], tx = st.pier ? st.pier.door : st.sides ? st.sides[r.side].land : st.x, ty = groundY(tx);
+    const k = Math.min(1, r.u / HOP), s = boatSeat(r.bx, r.dir);
+    hop(s.x, s.y, tx, ty, k);   // ขึ้นฝั่ง = พื้นจริงตรงนั้น (บนสะพาน = สูงตามเนิน)
     if (k >= 1) {
       ride = null;
-      cat.x = r.to.door; cat.y = GY; cat.on = null;
+      boat.x = r.bx; boat.dir = r.dir;
+      if (st.pier) boat.at = st.pier.id;   // จอดค้างที่ท่านี้
+      else sailBoat([placeById('pierA'), placeById('pierB')].sort((a, b) => Math.abs(mooredX(a) - r.bx) - Math.abs(mooredX(b) - r.bx))[0]);
+      cat.x = tx; cat.y = ty; cat.on = null;
       P.onGround = true; P.vy = 0; P.jumps = 0; P.squash = CAT_ANIM.squash.land(6);
       sfx('land');
       paused = false;
@@ -265,7 +766,7 @@ function stepRide(dt) {
 function drawPassenger(c) {
   c.save();
   if (ride.dir < 0) c.scale(-1, 1);
-  drawCat2(c, 14, -8, SC * 0.88, townSkin(), tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 } });
+  drawCat2(c, 14, -8, SC * 0.88, townSkin(), tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 }, ...heldOpt() });
   c.restore();
 }
 
@@ -279,6 +780,8 @@ function jump() {
   P.squash = P.jumps === 0 ? CAT_ANIM.squash.jump : CAT_ANIM.squash.double;
   P.jumps++;
   P.onGround = false;
+  if (cat.on?.squish) squish(cat.on.id, 4);   // ดีดตัวจากของนุ่ม = ยุบนิดแล้วเด้งกลับ
+  if (cat.on?.water) { splashAt(cat.x, cat.y, 3, tick); sfx('waterStep'); }   // ถีบตัวขึ้นจากน้ำ = กระเซ็นเบา ๆ
   cat.on = null;
   cat.drop = null;
   cat.sit = null;
@@ -289,6 +792,8 @@ function jump() {
 function update(dt) {
   tick += dt;
   stepFade(dt);
+  stepBoat(dt);
+  fountainSound();
   if (ride) {
     stepRide(dt);
     cat.P.y = cat.y;   // จุดปล่อยประกายชุด S อิง P.y — ไม่ตั้ง = เม็ดเกิดค้างที่ท่าเรือ แล้ววาปตามมาตอนขึ้นฝั่ง
@@ -297,13 +802,14 @@ function update(dt) {
     follow(dt);
     return;
   }
+  if (photo) stepPhoto(dt);
   let dir = 0;
   if (!paused) {
     if (keys.left && !keys.right) dir = -1;
     else if (keys.right && !keys.left) dir = 1;
     else if (joyDir) dir = joyDir;
   }
-  const sp = running || keys.shift ? RUN : WALK;
+  const sp = running ? RUN : WALK;
   if (dir) { cat.target = null; cat.pending = null; mark = null; }
   else if (cat.target != null) {
     const d = cat.target - cat.x;
@@ -318,7 +824,7 @@ function update(dt) {
     cat.sit = null;
     stopEmote(true);   // เดิน = เลิกทำท่า
     cat.dir = dir;
-    cat.x = Math.max(40, Math.min(WORLD_W - 40, cat.x + dir * sp * dt));
+    cat.x = Math.max(40, Math.min(WD.w - 40, cat.x + dir * sp * dt));
     // จังหวะก้าวตามความเร็ว — วิ่งก้าวถี่ขึ้น (ท่าวิ่งสี่จังหวะของเกม)
     cat.P.runPhase += 0.408 * (sp / 6.8) * (sp === RUN ? 1.05 : 1.25) * dt;
   }
@@ -359,8 +865,17 @@ function update(dt) {
   }
   P.squash += (0 - P.squash) * CAT_ANIM.squash.decay * dt;
   P.y = cat.y;
-  const ev = stepPlay(dt, { x: cat.x, y: cat.y, dir: cat.dir, moving: cat.moving, speed: sp, onGround: P.onGround, swinging: cat.sit?.kind === 'swing' });
-  if (ev === 'kick') sfx('click');
+  if (WD === GARDEN) stepGarden(dt, cat);
+  else {
+    const ev = stepPlay(dt, { x: cat.x, y: cat.y, dir: cat.dir, moving: cat.moving, speed: sp, onGround: P.onGround, swinging: cat.sit?.kind === 'swing' });
+    if (ev === 'kick') sfx('boop');
+    swingSound();
+    realmEnter();
+  }
+  // เดินลุยน้ำในอ่างน้ำพุ: กระเซ็นเบา ๆ ตามจังหวะก้าว
+  if (cat.moving && P.onGround && cat.on?.water) {
+    if ((wadeT += dt) >= 16) { wadeT = 0; splashAt(cat.x + cat.dir * 6, cat.y, 1.5, tick); sfx('waterStep'); }
+  } else wadeT = 12;   // เริ่มเดินในน้ำ = กระเซ็นก้าวแรกเร็ว
   // ยืนนิ่งเกิน 5 วิ = ค่อย ๆ หันหน้าตรงมองผู้เล่น (ผู้ใช้ 28 ต.ค.) · ขยับ/กระโดด = หันข้างตามทางเดินทันที
   if (cat.moving || !P.onGround) { cat.still = 0; cat.face = 1; }
   else {
@@ -375,16 +890,19 @@ function update(dt) {
 
 /** กล้องตามตัว (น้องอยู่ราว 40% ของจอ · ตอนล่องเรือตามเรือ) เลื่อนนุ่ม · น้องขึ้นที่สูง = กล้องยกตามให้หัวยังอยู่ในจอ · ปุ่มใช้งาน */
 function follow(dt) {
-  const fx = ride?.ph === 'sail' ? ride.bx : cat.x;
-  const want = Math.max(0, Math.min(WORLD_W - vw, fx - vw * 0.4));
+  const fx = ride?.ph === 'sail' || ride?.ph === 'dock' ? ride.bx : cat.x;
+  // ถ่ายรูป = จัดน้องกลางจอ (กลางซุ้มหัวใจ)
+  const want = Math.max(0, Math.min(WD.w - vw, photo ? cat.x - vw / 2 : fx - vw * 0.4));
   camX += (want - camX) * Math.min(1, 0.12 * dt);
   const wantY = Math.max(0, 140 - cat.y);
   camY += (wantY - camY) * Math.min(1, 0.1 * dt);
   const p = nearPlace();
+  if (lastNear && lastNear !== p) markSeen(lastNear);   // เดินพ้นที่นั้นแล้ว = เคยเห็นป้ายแล้ว
+  lastNear = p;
   const act = $('btnAct');
   const lab = actionLabel(p);
   act.textContent = lab || 'ใช้งาน';
-  act.classList.toggle('off', !lab);
+  act.classList.toggle('off', !lab || warping);   // กำลังวาป = ซ่อนปุ่มใช้งาน
 }
 
 // ── วาด ────────────────────────────────────────────────────────
@@ -434,7 +952,7 @@ function drawCat(c) {
     c.save();
     if (cat.dir < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }   // หันซ้าย = กลับภาพท่าวิ่ง (ท่าวิ่งวาดหันขวา)
     // ประกาย/ของโปรยจากชุดระดับ S (TRAIL) — ค้างอยู่ในฉาก (trailWorld) น้องเดิน/กระโดดผ่านไป เม็ดไม่ตาม
-    drawCat2Run(c, x, cat.y, SC, skin, tick, r);
+    drawCat2Run(c, x, cat.y, SC, skin, tick, r, heldOpt());
     c.restore();
   } else {
     // หยุดแล้ว: ประกายชุดที่ปล่อยไว้ร่วงต่อจนหมด (dead = หยุดปล่อยเม็ดใหม่) แล้วค่อยล้างตัวคุมท่า — เริ่มเดินใหม่ท่าไม่ค้างกลางก้าว
@@ -452,7 +970,7 @@ function drawCat(c) {
       c.translate(px, py);
       c.rotate(a);
       if (cat.dir < 0) c.scale(-1, 1);
-      drawCat2(c, 0, L + 2, SC, skin, tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 } });
+      drawCat2(c, 0, L + 2, SC, skin, tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 }, ...heldOpt() });
       c.restore();
       return;
     }
@@ -464,12 +982,12 @@ function drawCat(c) {
     if (cat.dir < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }
     if (trail && (trail.parts || trail.ribbon)) drawTrail(c, trail.parts, x, SC, trail.ribbon);
     // noHang = ไม่มีของประกอบฉากห้อยด้านหลัง (พวงมาลัยยาวของชุดสไบไทย) — ค่าสูงไว้ให้ยังเกิน 0.5 ตอนท่าค่อย ๆ คลาย (คูณ k)
-    if (em) drawCat2(c, x, cat.y - emoteLift(em) * SC, SC, skin, tick, { k: em.k, shape: { ...em.shape, noHang: 9 } });
+    if (em) drawCat2(c, x, cat.y - emoteLift(em) * SC, SC, skin, tick, { k: em.k, shape: { ...em.shape, noHang: 9 }, ...heldOpt() });
     else {
       const shape = cat.sit ? { sit: 1, turn: 0, noHang: 1 } : { turn: RUN_TURN * 0.6 * cat.face, noHang: 1 };
       // นั่งม้านั่ง = บนเบาะ · มุดกล่อง = นั่งจมลงในกล่อง (ผนังหน้ากล่องวาดทับทีหลัง)
       const y = !cat.sit ? cat.y : cat.sit.kind === 'box' ? cat.y - 2 : cat.y - 22;
-      drawCat2(c, x, y, SC, skin, tick, { k: 1, shape });
+      drawCat2(c, x, y, SC, skin, tick, { k: 1, shape, ...heldOpt() });
     }
     c.restore();
   }
@@ -481,7 +999,7 @@ function drawMark(c) {
   const u = tick - mark.t;
   const pop = Math.min(1, u / 12);
   const s = pop < 1 ? 0.3 + 0.9 * Math.sin(pop * Math.PI * 0.62) : 1 + 0.06 * Math.sin(u * 0.15);
-  const x = mark.x, y = groundY(mark.x) + 16;
+  const x = mark.x, y = WD.ground(mark.x) + 16;
   c.save();
   // วงคลื่นบนพื้น
   const r = (u % 40) / 40;
@@ -527,6 +1045,7 @@ function draw() {
   }
   // ฉากหลัง: แต่ละชั้นเลื่อนตามกล้องแนวตั้งน้อยกว่าตามความลึก (ชั้นไกลแทบไม่ขยับ)
   const lay = (par) => ctx.setTransform(k, 0, 0, k, 0, camY * par * k);
+  if (WD === GARDEN) return drawGarden(lay);
   const gap = riverGap(camX, vw);
   drawSky(ctx, vw);
   lay(0.06);
@@ -545,18 +1064,23 @@ function draw() {
   drawRiverFar(ctx, camX, vw, tick, true);
   ctx.setTransform(k, 0, 0, k, -camX * k, camY * k);
   drawGround(ctx, camX, vw, tick);
+  drawRealmGround(ctx, camX, vw);   // ถนนหลวงปูกระเบื้อง + พรมหน้าประตูปราสาท
   // น้ำใต้สะพาน → ตัวสะพาน → เรือ/เป็ด → ซุ้มโค้ง+เสาตอม่อ (เรือลอดใต้) → ร้าน → ของเล่น
   drawBridgeWater(ctx, camX, vw, tick);
   drawBridge(ctx, camX, vw);
-  drawWater(ctx, camX, vw, tick, ride);
+  drawWater(ctx, camX, vw, tick, ride ? null : boat);
   drawBridgeArch(ctx, camX, vw);
+  drawRealm(ctx, camX, vw, tick);   // ซุ้มประตูเขต รั้ว สวนหลวง โคม ปราสาท (castle.js)
   drawStreet(ctx, camX, vw, tick);
   const inBox = cat.sit?.kind === 'box';
   drawPlay(ctx, camX, vw, tick, inBox);
   drawMark(ctx);
   const p = nearPlace();
-  if (p && !paused && !cat.moving) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick);
+  if (bubbleFor(p)) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick);
   if (!ride) drawCat(ctx);
+  drawSplashes(ctx, tick);   // น้ำกระเด็นในน้ำพุ (ทับตัวน้อง)
+  drawDust(ctx, tick);        // ฝุ่นฟุ้งตอนลงจากกระโดดสองชั้น
+  drawFlowerMotes(ctx, tick); // กลีบ/ประกายร่วงจากดอกไม้ที่ถือ
   drawPlayFront(ctx, camX, vw, tick, inBox);
   drawBridgeFront(ctx, camX, vw, tick);
   drawEmoteFx(ctx);
@@ -564,6 +1088,35 @@ function draw() {
   ctx.setTransform(k, 0, 0, k, 0, camY * 1.3 * k);
   drawFront(ctx, camX, vw, tick);
   if (ride) drawRide();
+  drawFade();
+}
+
+/** สวนดอกไม้ในฝัน — ชั้นภาพตาม garden.js · ตัวน้อง/ป้าย/ท่าทางชุดเดียวกับเมือง */
+function drawGarden(lay) {
+  drawGardenSky(ctx, vw, tick);
+  lay(0.06);
+  drawGardenFar(ctx, camX, vw, tick);
+  lay(0.2);
+  drawGardenHillsFar(ctx, camX, vw);
+  lay(0.35);
+  drawGardenHillsNear(ctx, camX, vw);
+  lay(0.55);
+  drawGardenTrees(ctx, camX, vw);
+  ctx.setTransform(k, 0, 0, k, -camX * k, camY * k);
+  drawGardenWorld(ctx, camX, vw, tick);
+  drawMark(ctx);
+  const p = nearPlace();
+  if (bubbleFor(p)) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick);
+  drawCat(ctx);
+  drawDust(ctx, tick);
+  drawFlowerMotes(ctx, tick);
+  drawGardenAirWorld(ctx, camX, vw, tick);
+  drawEmoteFx(ctx);
+  ctx.setTransform(k, 0, 0, k, 0, camY * 1.3 * k);
+  drawGardenFront(ctx, camX, vw, tick);
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  drawGardenOverlay(ctx, vw, tick);
+  drawPhoto();
   drawFade();
 }
 
@@ -595,12 +1148,16 @@ function drawRide() {
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, rideCv.width, rideCv.height);
   g.setTransform(k, 0, 0, k, -camX * k, camY * k);
-  if (ride.ph === 'sail') drawRideTrail(g);
-  drawBoat(g, ride.bx, ride.dir, tick, ride.ph === 'sail' ? drawPassenger : null);
-  if (ride.ph !== 'sail') drawCat(g);
-  g.globalCompositeOperation = 'source-atop';
-  drawBridgeArch(g, camX, vw);
-  g.globalCompositeOperation = 'source-over';
+  const seated = ride.ph === 'sail' || ride.ph === 'dock';
+  if (seated) drawRideTrail(g);
+  drawBoat(g, ride.bx, ride.dir, tick, seated ? drawPassenger : null);
+  if (!seated) drawCat(g);
+  // ลอดใต้ซุ้มเฉพาะตอนนั่งในเรือ · กระโดดขึ้น/ลงเรือ (เช่นขึ้นศาลาสะพาน) อยู่หน้าหน้าสะพาน ไม่โดนบัง
+  if (seated) {
+    g.globalCompositeOperation = 'source-atop';
+    drawBridgeArch(g, camX, vw);
+    g.globalCompositeOperation = 'source-over';
+  }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(rideCv, 0, 0);
 }
@@ -608,6 +1165,7 @@ function drawRide() {
 /** ม่านจางตอนเปลี่ยนฉาก (เมือง ↔ ในร้าน) */
 function drawFade() {
   if (fade <= 0) return;
+  if (warping) { ctx.setTransform(k, 0, 0, k, 0, 0); drawWarp(ctx, vw, fade, tick); return; }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = `rgba(255,246,251,${fade})`;
   ctx.fillRect(0, 0, cv.width, cv.height);
@@ -929,8 +1487,7 @@ function paintMute(id, ch, name) {
   b.setAttribute('aria-label', (muted ? 'เปิด' : 'ปิด') + name);
 }
 function applyVol(ch) {
-  wakeAudio();
-  if (ch === 'music' && song && !musicWanted()) song.pause();
+  wakeAudio();   // พัก/เล่นเพลงตามระดับใหม่ (syncMusic)
 }
 for (const [id, ch, name] of [['volMusic', 'music', 'เสียงเพลง'], ['volSfx', 'sfx', 'เสียงเอฟเฟกต์']]) {
   $(id + 'Mute').addEventListener('click', () => {
@@ -959,6 +1516,26 @@ $('tapMove').addEventListener('click', () => {
 });
 paintTapMove();
 
+// แถบสอนปุ่มด้านล่าง (คอม): ผู้เล่นซ่อนได้ (ผู้ใช้ 31 ต.ค.) — กด H หรือสวิตช์ในตั้งค่า · จำไว้ในเครื่องนี้ (ค่าเริ่มต้น = แสดง)
+const KEYHINT_KEY = 'cookie-runner:town:keyHint';
+let keyHint = true;
+try { keyHint = localStorage.getItem(KEYHINT_KEY) !== '0'; } catch { /* ใช้ค่าเริ่มต้น */ }
+function paintKeyHint() {
+  $('keyHintSw').setAttribute('aria-checked', String(keyHint));
+  document.body.classList.toggle('hide-keyhint', !keyHint);
+  // ปุ่มแยกมุมขวาล่าง (ผู้ใช้ 31 ต.ค.): บอกว่ากดแล้วจะเกิดอะไร — ซ่อนอยู่ = "แสดงปุ่มสอน"
+  $('khToggleText').textContent = keyHint ? 'ซ่อนปุ่มสอน' : 'แสดงปุ่มสอน';
+  $('khToggle').setAttribute('aria-pressed', String(!keyHint));
+}
+function setKeyHint(on) {
+  keyHint = on;
+  try { localStorage.setItem(KEYHINT_KEY, on ? '1' : '0'); } catch { /* รอบนี้ยังใช้ได้ */ }
+  paintKeyHint();
+}
+$('keyHintSw').addEventListener('click', () => setKeyHint(!keyHint));
+$('khToggle').addEventListener('click', (e) => { setKeyHint(!keyHint); e.currentTarget.blur(); sfx('click'); });
+paintKeyHint();
+
 let sfxPreviewAt = 0;
 $('volSfx').addEventListener('input', () => {
   setTownMix('sfx', Number($('volSfx').value) / 100);
@@ -984,8 +1561,28 @@ const keyOf = (e) => ({ KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRig
   ShiftLeft: 'shift', ShiftRight: 'shift', Escape: 'esc' })[e.code]
   || ({ Enter: 'jump', ' ': 'jump', Shift: 'shift', Escape: 'esc' })[e.key];
 window.addEventListener('keydown', (e) => {
+  if (ride?.ph === 'dock' && !e.repeat) {
+    if (e.code === 'KeyE') { dockChoice(false); return; }
+    if (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter') { e.preventDefault(); dockChoice(true); return; }
+  }
+  if (photo) {
+    // ถ่ายรูปอยู่: Esc = ออก · ถ่ายเสร็จแล้ว ปุ่มใดก็ได้ = ถ่ายใหม่ · หน้าเลือกท่า Enter/Space = กดชัตเตอร์
+    if (e.repeat) return;
+    if (e.key === 'Escape') endPhoto();
+    else if (photo.phase === 'shot') { e.preventDefault(); photoAgain(); }
+    else if (photo.phase === 'pose' && (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter')) {
+      if (e.target !== document.body && e.target.matches?.(':focus-visible')) return;   // ปุ่มที่เลือกด้วย Tab = กดปุ่มนั้น
+      e.preventDefault(); shutter();
+    }
+    return;
+  }
   const k = keyOf(e);
-  if (k === 'shift') keys.shift = true;
+  if (!routeOv.classList.contains('hidden') && (k === 'left' || k === 'right')) {   // หน้าแผนที่ล่องเรือ: ←/→ เลื่อนแผนที่
+    e.preventDefault();
+    if (!e.repeat) rmStep(k === 'left' ? -1 : 1);
+    return;
+  }
+  if (k === 'shift') { if (!e.repeat && !paused) { running = !running; paintRun(); toast(running ? 'วิ่ง' : 'เดิน'); } }   // สลับเหมือนปุ่มวิ่งบนมือถือ
   else if (k === 'left') keys.left = true;
   else if (k === 'right') keys.right = true;
   else if (k === 'down' && !paused) {
@@ -1001,15 +1598,17 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'use' && !paused && !e.repeat) use(nearPlace());
   else if (k === 'emote' && !paused && !e.repeat) toggleEmotes();
   else if (k === 'esc') closeAll();
+  else if (e.code === 'KeyH' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) setKeyHint(!keyHint);   // e.code: แป้นไทยก็กดได้
 });
 window.addEventListener('keyup', (e) => {
   const k = keyOf(e);
-  if (k === 'shift') keys.shift = false;
-  else if (k === 'left') keys.left = false;
+  if (k === 'left') keys.left = false;
   else if (k === 'right') keys.right = false;
 });
 
 // แตะในฉาก: โดนร้าน/ม้านั่ง/ปราสาท = เดินไปหน้าประตูแล้วใช้งาน · โดนที่อื่น = เดินไปตรงนั้น
+// ถ่ายรูปอยู่: แตะตรงไหนก็ได้ = กลับ (จับก่อนปุ่มอื่น ๆ — ปุ่มซ่อนอยู่แล้ว)
+window.addEventListener('pointerdown', (e) => { if (photo?.phase === 'shot') { e.stopPropagation(); e.preventDefault(); photoAgain(); } }, { capture: true });
 cv.addEventListener('pointerdown', (e) => {
   if (paused) return;
   const r = cv.getBoundingClientRect();
@@ -1017,7 +1616,7 @@ cv.addEventListener('pointerdown', (e) => {
   const sy = ((e.clientY - r.top) / r.height) * cv.height / k;
   const wx = sx + camX, wy = sy - camY;
   // แตะตัวตึก (เหนือเส้นถนน) = ไปเข้าร้าน · แตะถนนหน้าร้าน = แค่เดินไปตรงนั้น (ไม่เปิดร้านเอง)
-  const hit = PLACES.find((p) => {
+  const hit = WD.places.find((p) => {
     const gy = p.gy ?? GY;
     return p.kind !== 'deco' && wx >= p.x && wx <= p.x + p.w && wy >= gy - p.h - 20 && wy <= gy - 4;
   });
@@ -1026,7 +1625,7 @@ cv.addEventListener('pointerdown', (e) => {
     if (nearPlace() === hit) use(hit);
     else if (tapMove) { cat.target = hit.door; cat.pending = hit; }
   } else if (tapMove) {
-    cat.target = Math.max(40, Math.min(WORLD_W - 40, wx));
+    cat.target = Math.max(40, Math.min(WD.w - 40, wx));
     cat.pending = null;
     mark = { x: cat.target, t: tick };   // รอยอุ้งเท้าตรงจุดหมาย
   }
@@ -1128,15 +1727,16 @@ function leaveShop() {
 /** ม่านจาง (เรียกจาก update) */
 function stepFade(dt) {
   if (!fadeDir) return;
-  fade = Math.max(0, Math.min(1, fade + fadeDir * dt / 14));
+  fade = Math.max(0, Math.min(1, fade + fadeDir * dt / (warping ? 30 : 14)));
   if (fadeDir > 0 && fade >= 1) { const f = fadeThen; fadeThen = null; f?.(); }
-  else if (fadeDir < 0 && fade <= 0) fadeDir = 0;
+  else if (fadeDir < 0 && fade <= 0) { fadeDir = 0; warping = false; }
 }
 function closeAll() {
   if (emoteOpen()) { toggleEmotes(false); return; }
   if (!$('wardOv').classList.contains('hidden')) { $('wardOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('setOv').classList.contains('hidden')) { $('setOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('bagOv').classList.contains('hidden')) { $('bagOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
+  if (!routeOv.classList.contains('hidden')) { routeOv.classList.add('hidden'); paused = false; return; }
   if (scene === 'shop') leaveShop();
 }
 $('shopX').addEventListener('click', leaveShop);
@@ -1387,4 +1987,4 @@ function paintBag() {
   document.fonts?.ready.then(() => clearCache());
 })();
 
-if (import.meta.env.DEV) window.__town = { cat, wallet, PLACES, song: () => song, emote: () => emoteId(), ride: () => ride, cam: () => ({ camX, camY }), use: (id) => use(placeById(id)) };
+if (import.meta.env.DEV) window.__town = { cat, wallet, PLACES, song: () => song, gardenSong: () => gardenSong, emote: () => emoteId(), ride: () => ride, cam: () => ({ camX, camY }), use: (id) => use(placeById(id) || G_PLACES.find((p) => p.id === id)), world: () => WD.id, photo: () => photo };

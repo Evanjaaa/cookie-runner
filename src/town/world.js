@@ -19,9 +19,7 @@
 // ภาพยังไม่โหลด/หาไม่เจอ = วาดด้วยโค้ดตามเดิม · ของขยับ (ควัน ลูกโป่ง ฯลฯ) ปิดเองเมื่อใช้ภาพ
 // ─────────────────────────────────────────────────────────────
 import { drawItemIcon } from '../render/items.js';
-import { drawCat2 } from '../render/cat2.js';
-import { skinById } from '../skins.js';
-import { H, GY, ROAD_B, WORLD_W, START_X, PLACES, LAMPS, PROPS, NPCS, BRIDGE } from './layout.js';
+import { H, GY, ROAD_B, WORLD_W, START_X, PLACES, LAMPS, PROPS, BRIDGE, FNT } from './layout.js';
 export { H, GY, WORLD_W, START_X, PLACES };
 const TAU = Math.PI * 2;
 
@@ -601,7 +599,39 @@ function drawToyLive(c, p, t) {
       c.fillStyle = 'rgba(255,255,255,.55)';
       c.beginPath(); c.ellipse(sx - 4, sy - 5, 3, 4.5, -0.4, 0, TAU); c.fill();
     }
+    ribbonBow(c, bx, by + 60, d > 0 ? '#C8A8F5' : '#FF8FB3', t);
   }
+}
+/** โบว์ผูกรวบเชือกลูกโป่ง (ปลายช่อ) — ห่วงสองข้าง ปมกลาง หางริบบิ้นไหวเบา ๆ */
+function ribbonBow(c, x, y, col, t) {
+  const sw = Math.sin(t * 0.05 + x) * 1.5;
+  c.save();
+  c.fillStyle = col;
+  c.strokeStyle = 'rgba(120,60,110,.35)'; c.lineWidth = 0.8;
+  // หางริบบิ้น (ปลายตัดเว้า)
+  for (const s of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(x + s * 1.5, y + 1);
+    c.quadraticCurveTo(x + s * 4 + sw, y + 7, x + s * 4.5 + sw, y + 13);
+    c.lineTo(x + s * 2 + sw, y + 11);
+    c.lineTo(x + s * 1 + sw, y + 13.5);
+    c.quadraticCurveTo(x + s * 1 + sw * 0.5, y + 6, x, y + 1);
+    c.closePath(); c.fill(); c.stroke();
+  }
+  // ห่วงสองข้าง
+  for (const s of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(x, y);
+    c.bezierCurveTo(x + s * 4, y - 8, x + s * 11, y - 7, x + s * 9.5, y - 1);
+    c.bezierCurveTo(x + s * 9, y + 4, x + s * 4, y + 3, x, y);
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.45)';
+    c.beginPath(); c.ellipse(x + s * 5.5, y - 3.5, 2.2, 1.2, s * -0.4, 0, TAU); c.fill();
+    c.fillStyle = col;
+  }
+  // ปมกลาง
+  c.beginPath(); c.roundRect(x - 2.4, y - 2.6, 4.8, 5.2, 1.8); c.fill(); c.stroke();
+  c.restore();
 }
 
 // ══ ร้านแลกของรางวัล — เต็นท์ลายทางฟ้า-ขาว ดาวทอง หีบสมบัติ ══════════
@@ -697,10 +727,15 @@ function drawRewardLive(c, p, t) {
   c.globalAlpha = 1;
 }
 
-// ══ ลานกลางเมือง — ลานกระเบื้อง น้ำพุสองชั้นแมวหิน แปลงดอกไม้ ต้นไม้ดอก ══
+// ══ ลานกลางเมือง — ลานกระเบื้อง แปลงดอกไม้ ต้นไม้ดอก + น้ำพุสามชั้นแมวหินสวมมงกุฎ (ผู้ใช้ 31 ต.ค. อัปเกรดให้อลังการ) ══
+// ภาพนิ่ง (แคช): อ่างใหญ่ผนังหินอ่อนลาเวนเดอร์ขอบทอง ช่องโค้ง เหรียญหน้าแมว · เสาลายร่อง · อ่างกลางทรงเปลือกหอย · อ่างบน · แมวหินมงกุฎทอง
+// น้ำ (วาดสดทุกเฟรม drawFountainWater): ม่านน้ำล้นจากอ่างบน/อ่างกลาง สายน้ำไหลลง · น้ำพุ่งจากมงกุฎแมวแตกเป็นละออง
+//   สายน้ำโค้งจากหัวแมวทองสองข้างอ่าง · วงคลื่นตรงที่น้ำตก · ประกายบนผิวน้ำ · รุ้งจาง ๆ ในละอองน้ำ
+// ขนาดอ่าง (FNT) อยู่ใน layout.js ชุดเดียวกับผิวยืน fnt:* · หัวแมวหิน GY-207
 function drawPlaza(c, p) {
-  const cx = p.x + p.w / 2;
-  for (const [tx, s] of [[cx - 180, 1], [cx + 180, 0.92]]) {
+  const cx = p.x + p.w / 2, { W, rim, mid, midR, top, topR } = FNT;
+  // ต้นไม้ดอกหลังม้านั่งสองข้าง
+  for (const [tx, s] of [[cx - 202, 1], [cx + 202, 0.92]]) {
     c.fillStyle = '#A97B5A';
     c.fillRect(tx - 4, GY - 70 * s, 8, 70 * s);
     c.fillStyle = '#FFC4DC';
@@ -708,54 +743,229 @@ function drawPlaza(c, p) {
     c.fillStyle = '#FFE0EE';
     for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(tx - 18 * s + i * 7 * s, GY - (96 - (i % 2) * 12) * s, 3.4 * s, 0, TAU); c.fill(); }
   }
+  // ลานกระเบื้องวงรี — ขอบซ้ายต้องไม่ทับพื้นไม้ท่าเรือ pierA (ไม้ถึง ~x 1635 · ลานวาดทีหลังท่า)
   c.fillStyle = '#F1E3FF';
-  c.beginPath(); c.ellipse(cx, GY + 12, 250, 20, 0, 0, TAU); c.fill();
+  c.beginPath(); c.ellipse(cx, GY + 12, 262, 22, 0, 0, TAU); c.fill();
   c.strokeStyle = 'rgba(160,130,210,.35)';
   c.lineWidth = 1;
-  for (const r of [0.45, 0.75]) { c.beginPath(); c.ellipse(cx, GY + 12, 250 * r, 20 * r, 0, 0, TAU); c.stroke(); }
-  for (const fx of [cx - 122, cx + 96]) {
+  for (const r of [0.55, 0.8]) { c.beginPath(); c.ellipse(cx, GY + 12, 262 * r, 22 * r, 0, 0, TAU); c.stroke(); }
+  const GOLD = '#E8C26A';
+  // ── อ่างใหญ่ ──
+  c.fillStyle = 'rgba(120,80,170,.18)';
+  c.beginPath(); c.ellipse(cx, GY + 4, W + 10, 10, 0, 0, TAU); c.fill();
+  c.fillStyle = '#F7F0FF';
+  c.beginPath(); c.ellipse(cx, GY - rim, W, 13, 0, 0, TAU); c.fill();
+  c.fillStyle = lg(c, 0, GY - rim - 9, 0, GY - rim + 9, [[0, '#6FC2F2'], [1, '#B4E4FF']]);
+  c.beginPath(); c.ellipse(cx, GY - rim, W - 11, 9, 0, 0, TAU); c.fill();
+  // ผนังหน้าอ่าง
+  c.fillStyle = lg(c, 0, GY - rim, 0, GY, [[0, '#FFFFFF'], [0.55, '#F0E6FD'], [1, '#D6C4F2']]);
+  c.beginPath(); c.ellipse(cx, GY - rim, W, 13, 0, 0, Math.PI); c.lineTo(cx - W + 2, GY - 3); c.quadraticCurveTo(cx, GY + 11, cx + W - 2, GY - 3); c.closePath(); c.fill();
+  // ช่องโค้งเจ็ดช่อง + ลายในช่อง (หน้าแมวทองกลาง · หัวใจ · อุ้งเท้า)
+  for (let i = -3; i <= 3; i++) {
+    const px = cx + i * 38, py = GY - 34 + Math.abs(i) * 1.2;
+    c.fillStyle = 'rgba(255,255,255,.6)';
+    c.strokeStyle = 'rgba(170,140,220,.45)'; c.lineWidth = 1;
+    c.beginPath(); c.roundRect(px - 14, py, 28, 26, [14, 14, 4, 4]); c.fill(); c.stroke();
+    if (i === 0) {
+      c.fillStyle = GOLD; c.beginPath(); c.arc(px, py + 13, 9, 0, TAU); c.fill();
+      c.fillStyle = '#FFF6DA'; c.beginPath(); c.arc(px, py + 13, 7, 0, TAU); c.fill();
+      ears(c, px, py + 7, 4.5, 4, GOLD, '#FFE9A8');
+      catFace(c, px, py + 13, 6, true, '#B88A2A');
+    } else if (Math.abs(i) % 2) { c.fillStyle = '#FF9CC0'; heart(c, px, py + 13, 6); c.fill(); }
+    else {
+      c.fillStyle = '#C9A0E6';
+      c.beginPath(); c.ellipse(px, py + 16, 5, 4, 0, 0, TAU); c.fill();
+      for (const [dx, dy] of [[-5, -3], [-2, -7], [2, -7], [5, -3]]) { c.beginPath(); c.arc(px + dx, py + 16 + dy, 1.8, 0, TAU); c.fill(); }
+    }
+  }
+  // ขอบทองบน/ล่าง + ขอบหินมน
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 5;
+  c.beginPath(); c.ellipse(cx, GY - rim, W - 2, 12, 0, 0, Math.PI); c.stroke();
+  c.strokeStyle = GOLD; c.lineWidth = 2;
+  c.beginPath(); c.ellipse(cx, GY - rim + 4, W - 1, 12, 0, 0.05, Math.PI - 0.05); c.stroke();
+  c.beginPath(); c.moveTo(cx - W + 3, GY - 6); c.quadraticCurveTo(cx, GY + 8, cx + W - 3, GY - 6); c.stroke();
+  // หัวแมวทองพ่นน้ำ สองข้างอ่าง
+  for (const d of [-1, 1]) {
+    const hx = cx + d * (W - 5), hy = GY - rim - 4;
+    ears(c, hx, hy - 4, 4, 4.5, GOLD, '#FFE9A8');
+    c.fillStyle = GOLD; c.beginPath(); c.arc(hx, hy, 6.5, 0, TAU); c.fill();
+    c.fillStyle = '#FFF2C8'; c.beginPath(); c.arc(hx - d * 1.5, hy - 1.5, 2, 0, TAU); c.fill();
+    c.fillStyle = '#B88A2A'; c.beginPath(); c.arc(hx - d * 4.5, hy + 1.5, 1.6, 0, TAU); c.fill();
+  }
+  // กระถางดอกไม้ชิดมุมอ่างสองข้าง
+  for (const d of [-1, 1]) {
+    const fx = cx + d * (W - 4) - 15;
     c.fillStyle = '#C9A0E6';
-    c.beginPath(); c.roundRect(fx, GY - 12, 26, 12, 4); c.fill();
-    flowers(c, fx + 5, GY - 15, 3, ['#FF8FB3', '#FFFFFF', '#FFD45A']);
+    c.beginPath(); c.roundRect(fx, GY - 12, 30, 12, 4); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)';
+    c.fillRect(fx + 3, GY - 10, 24, 2);
+    flowers(c, fx + 7, GY - 15, 3, ['#FF8FB3', '#FFFFFF', '#FFD45A']);
   }
-  c.fillStyle = lg(c, 0, GY - 46, 0, GY, [[0, '#FFFFFF'], [1, '#D8C6F2']]);
-  c.beginPath(); c.roundRect(cx - 86, GY - 44, 172, 44, 16); c.fill();
-  c.strokeStyle = 'rgba(150,120,200,.35)';
-  for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(cx - 86 + i * 29, GY - 40); c.lineTo(cx - 86 + i * 29, GY - 4); c.stroke(); }
-  c.fillStyle = '#8FD3FF';
-  c.beginPath(); c.ellipse(cx, GY - 42, 78, 8, 0, 0, TAU); c.fill();
-  c.fillStyle = '#EADCFB';
-  c.fillRect(cx - 10, GY - 104, 20, 62);
+  // ── เสาลายร่อง ──
+  c.fillStyle = lg(c, cx - 26, 0, cx + 26, 0, [[0, '#DCCBF5'], [0.5, '#FFFFFF'], [1, '#D2BFF0']]);
+  c.beginPath();
+  c.moveTo(cx - 26, GY - rim); c.quadraticCurveTo(cx - 14, GY - rim - 8, cx - 13, GY - 72);
+  c.lineTo(cx - 13, GY - mid + 8); c.lineTo(cx - 20, GY - mid + 2); c.lineTo(cx + 20, GY - mid + 2); c.lineTo(cx + 13, GY - mid + 8);
+  c.lineTo(cx + 13, GY - 72); c.quadraticCurveTo(cx + 14, GY - rim - 8, cx + 26, GY - rim); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(160,130,210,.35)'; c.lineWidth = 1;
+  for (const dx of [-7, 0, 7]) { c.beginPath(); c.moveTo(cx + dx, GY - 70); c.lineTo(cx + dx, GY - mid + 10); c.stroke(); }
+  c.strokeStyle = GOLD; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(cx - 14, GY - 74); c.lineTo(cx + 14, GY - 74); c.stroke();
+  // ── อ่างกลางทรงเปลือกหอย ──
+  c.fillStyle = lg(c, 0, GY - mid, 0, GY - mid + 25, [[0, '#FFFFFF'], [1, '#D8C6F2']]);
+  c.beginPath(); c.ellipse(cx, GY - mid, midR, 25, 0, 0, Math.PI); c.fill();
+  c.strokeStyle = 'rgba(160,130,210,.4)'; c.lineWidth = 1;
+  for (let i = 1; i < 10; i++) {
+    const a = (i / 10) * Math.PI, ex = cx + Math.cos(a) * midR, ey = GY - mid + Math.sin(a) * 25;
+    c.beginPath(); c.moveTo(cx + Math.cos(a) * midR * 0.35, GY - mid + 4); c.lineTo(ex, ey); c.stroke();
+  }
+  c.fillStyle = '#FBF6FF';
+  c.beginPath(); c.ellipse(cx, GY - mid, midR, 9, 0, 0, TAU); c.fill();
+  c.strokeStyle = GOLD; c.lineWidth = 1.6;
+  c.beginPath(); c.ellipse(cx, GY - mid, midR, 9, 0, 0, TAU); c.stroke();
+  c.fillStyle = lg(c, 0, GY - mid - 6, 0, GY - mid + 6, [[0, '#6FC2F2'], [1, '#B4E4FF']]);
+  c.beginPath(); c.ellipse(cx, GY - mid, midR - 8, 6, 0, 0, TAU); c.fill();
+  // ── ก้านบน + อ่างบน ──
+  c.fillStyle = lg(c, cx - 9, 0, cx + 9, 0, [[0, '#DCCBF5'], [0.5, '#FFFFFF'], [1, '#D2BFF0']]);
+  c.fillRect(cx - 8, GY - top + 2, 16, top - mid - 4);
+  c.strokeStyle = GOLD; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(cx - 9, GY - 138); c.lineTo(cx + 9, GY - 138); c.stroke();
+  c.fillStyle = lg(c, 0, GY - top, 0, GY - top + 13, [[0, '#FFFFFF'], [1, '#D8C6F2']]);
+  c.beginPath(); c.ellipse(cx, GY - top, topR, 13, 0, 0, Math.PI); c.fill();
+  c.fillStyle = '#FBF6FF';
+  c.beginPath(); c.ellipse(cx, GY - top, topR, 6, 0, 0, TAU); c.fill();
+  c.strokeStyle = GOLD; c.lineWidth = 1.4;
+  c.beginPath(); c.ellipse(cx, GY - top, topR, 6, 0, 0, TAU); c.stroke();
+  c.fillStyle = '#9ED8FF';
+  c.beginPath(); c.ellipse(cx, GY - top, topR - 6, 4, 0, 0, TAU); c.fill();
+  // ── แมวหินสวมมงกุฎ (นั่งกลางอ่างบน) ──
+  const M = '#F6EEFF', MI = '#E9D8FF';
+  c.strokeStyle = '#EFE4FF'; c.lineWidth = 4; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(cx + 8, GY - 166); c.quadraticCurveTo(cx + 20, GY - 170, cx + 15, GY - 184); c.stroke();
+  c.fillStyle = M;
+  c.beginPath(); c.ellipse(cx, GY - 177, 11, 14, 0, 0, TAU); c.fill();
   c.fillStyle = '#FFFFFF';
-  c.beginPath(); c.ellipse(cx, GY - 104, 44, 10, 0, 0, TAU); c.fill();
-  c.fillStyle = '#9FDCFF';
-  c.beginPath(); c.ellipse(cx, GY - 106, 36, 6, 0, 0, TAU); c.fill();
-  c.fillStyle = '#F6EEFF';
-  c.beginPath(); c.ellipse(cx, GY - 120, 13, 15, 0, 0, TAU); c.fill();
-  ears(c, cx, GY - 148, 8, 7, '#F6EEFF', '#E9D8FF');
-  c.fillStyle = '#F6EEFF';
-  c.beginPath(); c.arc(cx, GY - 140, 13, 0, TAU); c.fill();
-  catFace(c, cx, GY - 140, 11, true, '#9C80D8');
+  c.beginPath(); c.ellipse(cx - 4, GY - 164, 4, 3, 0, 0, TAU); c.ellipse(cx + 4, GY - 164, 4, 3, 0, 0, TAU); c.fill();
+  c.fillStyle = '#FFB3CF'; heart(c, cx, GY - 176, 3.4); c.fill();
+  ears(c, cx, GY - 203, 7, 6.5, M, MI);
+  c.fillStyle = M;
+  c.beginPath(); c.arc(cx, GY - 195, 12, 0, TAU); c.fill();
+  catFace(c, cx, GY - 195, 10, true, '#9C80D8');
+  c.fillStyle = GOLD;
+  c.beginPath();
+  c.moveTo(cx - 7, GY - 205); c.lineTo(cx - 7.5, GY - 212); c.lineTo(cx - 3.5, GY - 208.5); c.lineTo(cx, GY - 214);
+  c.lineTo(cx + 3.5, GY - 208.5); c.lineTo(cx + 7.5, GY - 212); c.lineTo(cx + 7, GY - 205); c.closePath(); c.fill();
+  c.fillStyle = '#FF7FAE'; c.beginPath(); c.arc(cx, GY - 207.5, 1.6, 0, TAU); c.fill();
 }
+
+/** น้ำพุ (วาดสดทุกเฟรม — ไหลจริง) · t = เฟรม */
 function drawFountainWater(c, p, t) {
-  const cx = p.x + p.w / 2;
+  const cx = p.x + p.w / 2, { W, rim, mid, midR, top, topR } = FNT;
+  const h = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
   c.save();
-  c.strokeStyle = 'rgba(160,220,255,.85)';
-  c.lineWidth = 2.4;
   c.lineCap = 'round';
-  for (let i = -2; i <= 2; i++) {
-    if (!i) continue;
-    const s = i * 16;
-    c.beginPath();
-    c.moveTo(cx + i * 3, GY - 128);
-    c.quadraticCurveTo(cx + s * 1.6, GY - 150 - Math.sin(t * 0.08 + i) * 3, cx + s * 2.7, GY - 106);
-    c.stroke();
+  // ประกายบนผิวน้ำอ่างใหญ่ + วงคลื่นตรงที่น้ำตกลง
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.2;
+  const span = 2 * (W - 30), fall = Math.round(W * 0.7);   // fall = ระยะที่สายน้ำจากหัวแมวทองตกลงอ่าง
+  for (let i = 0; i < 9; i++) {
+    const x = cx - W + 30 + ((t * 0.35 + i * 31) % span);
+    c.globalAlpha = 0.35 + 0.35 * Math.sin(t * 0.07 + i);
+    c.beginPath(); c.moveTo(x - 6, GY - rim + (i % 3) * 2 - 2); c.lineTo(x + 6, GY - rim + (i % 3) * 2 - 2); c.stroke();
   }
-  c.fillStyle = 'rgba(255,255,255,.9)';
-  for (let i = 0; i < 6; i++) {
-    const u = ((t * 0.02 + i / 6) % 1);
-    c.globalAlpha = 1 - u;
-    c.beginPath(); c.arc(cx + (i - 2.5) * 24 * u, GY - 46 + u * 3, 1.6 + u * 3, 0, TAU); c.fill();
+  for (const [rx, ph] of [[cx - fall, 0], [cx + fall, 0.5], [cx - 40, 0.25], [cx + 40, 0.75]]) {
+    const u = (t * 0.018 + ph) % 1;
+    c.globalAlpha = (1 - u) * 0.7;
+    c.beginPath(); c.ellipse(rx, GY - rim + 1, 4 + u * 16, 1.5 + u * 3.5, 0, 0, TAU); c.stroke();
+  }
+  c.globalAlpha = 1;
+  // ม่านน้ำล้นจากอ่าง (บน → อ่างกลาง · อ่างกลาง → อ่างใหญ่) สายน้ำไหลลงเป็นริ้ว
+  const veil = (y0, r0, y1, r1, sag0, sag1) => {
+    c.save();
+    c.beginPath();
+    c.moveTo(cx - r0, y0); c.quadraticCurveTo(cx, y0 + sag0, cx + r0, y0);
+    c.quadraticCurveTo(cx + r1 - 2, (y0 + y1) / 2, cx + r1, y1);
+    c.quadraticCurveTo(cx, y1 + sag1, cx - r1, y1);
+    c.quadraticCurveTo(cx - r1 + 2, (y0 + y1) / 2, cx - r0, y0);
+    c.closePath();
+    c.fillStyle = lg(c, 0, y0, 0, y1, [[0, 'rgba(200,236,255,.62)'], [1, 'rgba(160,214,255,.32)']]);
+    c.fill();
+    c.clip();
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.3;
+    c.setLineDash([9, 13]);
+    const n = Math.round(r1 / 4);
+    for (let i = 0; i <= n; i++) {
+      const u = i / n;
+      c.lineDashOffset = -t * 2.4 + i * 7;
+      c.beginPath(); c.moveTo(cx - r0 + u * 2 * r0, y0 + 2); c.lineTo(cx - r1 + u * 2 * r1, y1 + sag1); c.stroke();
+    }
+    c.restore();
+    // ฟองตรงที่ม่านน้ำกระทบผิวน้ำข้างล่าง
+    c.fillStyle = 'rgba(255,255,255,.85)';
+    for (let i = 0; i < 9; i++) {
+      const u = i / 8, x = cx - r1 + u * 2 * r1, b = Math.sin(t * 0.2 + i * 1.7);
+      c.beginPath(); c.ellipse(x, y1 + sag1 * (1 - Math.abs(u - 0.5) * 2) * 0.6 - 1, 3 + b * 1.2, 1.6 + b * 0.5, 0, 0, TAU); c.fill();
+    }
+  };
+  veil(GY - mid + 1, midR - 1, GY - rim - 2, midR + 12, 10, 6);
+  veil(GY - top + 1, topR - 1, GY - mid - 2, topR + 7, 6, 4);
+  // สายน้ำโค้งจากหัวแมวทองสองข้าง ตกลงอ่าง
+  for (const d of [-1, 1]) {
+    const x0 = cx + d * (W - 9), y0 = GY - rim - 3, x1 = cx + d * fall, y1 = GY - rim;
+    const qx = cx + d * (W * 0.88), qy = GY - rim - 48 + Math.sin(t * 0.06 + d) * 2;
+    c.strokeStyle = 'rgba(150,212,255,.75)'; c.lineWidth = 3.4; c.setLineDash([]);
+    c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(qx, qy, x1, y1); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.4;
+    c.setLineDash([5, 9]); c.lineDashOffset = -t * 1.8;
+    c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(qx, qy, x1, y1); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = 0; i < 4; i++) {
+      const u = (t * 0.04 + i / 4) % 1;
+      c.globalAlpha = 1 - u;
+      c.beginPath(); c.arc(x1 + d * (u * 7 - 3) + (i - 1.5) * 2, y1 - 2 - Math.sin(u * Math.PI) * 7, 1.3, 0, TAU); c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+  // น้ำพุ่งจากมงกุฎแมว → แตกเป็นละอองตกลงอ่างต่าง ๆ
+  const ny = GY - 214, ay = GY - 262 + Math.sin(t * 0.09) * 3;
+  c.fillStyle = lg(c, 0, ay, 0, ny, [[0, 'rgba(230,246,255,.9)'], [1, 'rgba(160,214,255,.75)']]);
+  c.beginPath(); c.moveTo(cx - 2.6, ny); c.quadraticCurveTo(cx - 1.4, (ay + ny) / 2, cx - 4, ay + 4); c.quadraticCurveTo(cx, ay - 4, cx + 4, ay + 4); c.quadraticCurveTo(cx + 1.4, (ay + ny) / 2, cx + 2.6, ny); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 1.2;
+  c.setLineDash([4, 7]); c.lineDashOffset = t * 2.6;
+  c.beginPath(); c.moveTo(cx, ny); c.lineTo(cx, ay + 2); c.stroke();
+  c.setLineDash([]);
+  const mist = c.createRadialGradient(cx, ay + 6, 0, cx, ay + 6, 34);
+  mist.addColorStop(0, 'rgba(255,255,255,.55)');
+  mist.addColorStop(1, 'rgba(220,240,255,0)');
+  c.fillStyle = mist;
+  c.beginPath(); c.arc(cx, ay + 6, 34, 0, TAU); c.fill();
+  // รุ้งจาง ๆ ในละอองน้ำ
+  c.lineWidth = 2.4;
+  ['rgba(255,150,190,.22)', 'rgba(255,220,130,.22)', 'rgba(150,230,170,.2)', 'rgba(150,190,255,.22)'].forEach((col, i) => {
+    c.strokeStyle = col;
+    c.beginPath(); c.arc(cx, ay + 34, 40 - i * 2.6, Math.PI * 1.08, Math.PI * 1.92); c.stroke();
+  });
+  // ละอองน้ำ: วิถีโค้งตามแรงโน้มถ่วง (คำนวณจากเวลา ไม่ต้องเก็บสถานะ) — หายตรงผิวน้ำของอ่างที่ตกลง
+  for (let i = 0; i < 34; i++) {
+    const T = 70, s = ((t * 0.9 + h(i) * T) % T);
+    const vx = (h(i + 11) - 0.5) * 2.8, vy = -0.5 - h(i + 23) * 0.9;
+    const x = cx + vx * s, y = ay + vy * s + 0.045 * s * s;
+    const dx = Math.abs(x - cx);
+    const land = dx < topR - 3 ? GY - top : dx < midR - 4 ? GY - mid : GY - rim;
+    if (y > land) continue;
+    c.globalAlpha = 0.9 - (s / T) * 0.4;
+    c.fillStyle = i % 4 ? 'rgba(200,236,255,1)' : '#FFFFFF';
+    c.beginPath(); c.arc(x, y, i % 3 ? 1.5 : 2.1, 0, TAU); c.fill();
+  }
+  c.globalAlpha = 1;
+  // ประกายระยิบ
+  for (let i = 0; i < 5; i++) {
+    const a = Math.max(0, Math.sin(t * 0.06 + i * 2.3));
+    if (a < 0.1) continue;
+    c.globalAlpha = a;
+    c.fillStyle = '#FFFFFF';
+    const sx = cx + (h(i * 3) - 0.5) * 210, sy = GY - rim - 4 - h(i * 5) * 170;
+    star(c, sx, sy, 2 + a * 1.6); c.fill();
   }
   c.restore();
 }
@@ -764,99 +974,13 @@ function drawBench(c, p) {
   c.fillStyle = '#9A6A42';
   c.fillRect(x + 6, y - 20, 6, 20); c.fillRect(x + p.w - 12, y - 20, 6, 20);
   c.fillStyle = '#E3A86E';
-  c.beginPath(); c.roundRect(x, y - 26, p.w, 8, 3); c.fill();
   c.beginPath(); c.roundRect(x + 2, y - 48, p.w - 4, 7, 3); c.fill();
   c.beginPath(); c.roundRect(x + 2, y - 38, p.w - 4, 5, 2); c.fill();
+  // เสาพนักพิงม่วง: จากไม้บนสุดลงมาจบที่ผิวที่นั่ง (ที่นั่งวาดทับรอยต่อ ไม่ทะลุลงมาทับที่นั่ง — ผู้ใช้ 31 ต.ค.)
   c.fillStyle = '#7A5BB0';
-  c.fillRect(x + 4, y - 50, 4, 30); c.fillRect(x + p.w - 8, y - 50, 4, 30);
-}
-
-// ══ ปราสาทแมวเหมียว — หอคอยหลายหลัง ตราหน้าแมว มงกุฎ ธง ════════════
-function drawCastle(c, p) {
-  const { x, w } = p, cx = x + w / 2;
-  const stone = (X, Y, W, Hh, a, b) => {
-    c.fillStyle = lg(c, 0, Y, 0, Y + Hh, [[0, a], [1, b]]);
-    c.fillRect(X, Y, W, Hh);
-    c.strokeStyle = 'rgba(170,120,170,.18)';
-    c.lineWidth = 1;
-    for (let yy = Y + 16; yy < Y + Hh; yy += 16) { c.beginPath(); c.moveTo(X, yy); c.lineTo(X + W, yy); c.stroke(); }
-  };
-  const cone = (tx, ty, tw, th) => {
-    c.fillStyle = '#A98AE8';
-    c.beginPath(); c.moveTo(tx - 10, ty); c.quadraticCurveTo(tx + tw / 2 - 6, ty - th * 0.5, tx + tw / 2, ty - th); c.quadraticCurveTo(tx + tw / 2 + 6, ty - th * 0.5, tx + tw + 10, ty); c.closePath(); c.fill();
-    c.fillStyle = '#8C6AD6';
-    c.beginPath(); c.moveTo(tx + tw / 2, ty - th); c.quadraticCurveTo(tx + tw / 2 + 6, ty - th * 0.5, tx + tw + 10, ty); c.lineTo(tx + tw / 2 + 6, ty); c.closePath(); c.fill();
-    c.fillStyle = '#FFE680';
-    c.fillRect(tx - 10, ty - 3, tw + 20, 4);
-  };
-  const tower = (tx, top, tw, th, win) => {
-    stone(tx, top, tw, GY - top, '#FFF4FA', '#F2D3E8');
-    cone(tx, top, tw, th);
-    if (win) {
-      const wx = tx + tw / 2;
-      c.fillStyle = '#6E4CB8';
-      c.beginPath(); c.roundRect(wx - 8, top + 30, 16, 24, [8, 8, 2, 2]); c.fill();
-      c.fillStyle = '#FFE89A';
-      c.beginPath(); c.roundRect(wx - 5, top + 33, 10, 19, [5, 5, 1, 1]); c.fill();
-    }
-  };
-  stone(x + 30, GY - 176, w - 60, 176, '#FFEFF7', '#F0CEE4');
-  c.fillStyle = '#FFEFF7';
-  for (let bx = x + 30; bx < x + w - 40; bx += 30) c.fillRect(bx, GY - 190, 18, 15);
-  // หอคอย 5 หลัง — ยอดสูงสุดต้องอยู่ในจอ (ฟ้าเหนือถนนมี GY หน่วย)
-  tower(x, GY - 210, 66, 64, true);
-  tower(x + w - 66, GY - 210, 66, 64, true);
-  tower(x + 92, GY - 236, 58, 62, true);
-  tower(x + w - 150, GY - 236, 58, 62, true);
-  tower(cx - 62, GY - 246, 124, 70, false);
-  // ตราโล่หน้าแมว + มงกุฎ (หอกลาง)
-  const sy = GY - 200;
-  c.fillStyle = '#E7B640';
-  c.beginPath(); c.moveTo(cx - 32, sy - 26); c.lineTo(cx + 32, sy - 26); c.lineTo(cx + 32, sy + 8); c.quadraticCurveTo(cx, sy + 38, cx - 32, sy + 8); c.closePath(); c.fill();
-  c.fillStyle = '#8C6AD6';
-  c.beginPath(); c.moveTo(cx - 26, sy - 20); c.lineTo(cx + 26, sy - 20); c.lineTo(cx + 26, sy + 6); c.quadraticCurveTo(cx, sy + 30, cx - 26, sy + 6); c.closePath(); c.fill();
-  ears(c, cx, sy - 8, 10, 8, '#FFF4FA', '#FFC9D4');
-  c.fillStyle = '#FFF4FA';
-  c.beginPath(); c.arc(cx, sy + 2, 15, 0, TAU); c.fill();
-  catFace(c, cx, sy + 3, 13, true, '#6E4CB8');
-  c.fillStyle = '#FFD45A';
-  c.beginPath(); c.moveTo(cx - 16, sy - 30); c.lineTo(cx - 16, sy - 44); c.lineTo(cx - 8, sy - 36); c.lineTo(cx, sy - 48); c.lineTo(cx + 8, sy - 36); c.lineTo(cx + 16, sy - 44); c.lineTo(cx + 16, sy - 30); c.closePath(); c.fill();
-  // ธงห้อยชมพูลายอุ้งเท้าบนกำแพง
-  for (const bx of [x + 168, x + w - 194]) {
-    c.fillStyle = '#FF8FB3';
-    c.beginPath(); c.moveTo(bx, GY - 168); c.lineTo(bx + 26, GY - 168); c.lineTo(bx + 26, GY - 112); c.lineTo(bx + 13, GY - 122); c.lineTo(bx, GY - 112); c.closePath(); c.fill();
-    c.fillStyle = '#FFFFFF';
-    c.beginPath(); c.ellipse(bx + 13, GY - 140, 5, 4, 0, 0, TAU); c.fill();
-    for (const [dx, dy] of [[-5, -7], [0, -10], [5, -7]]) { c.beginPath(); c.arc(bx + 13 + dx, GY - 140 + dy, 2, 0, TAU); c.fill(); }
-  }
-  // ประตูใหญ่ + ซี่ประตูเหล็ก
-  const gw = 112, gh = 140;
-  const gate = (r) => { c.beginPath(); c.moveTo(cx - gw / 2 - r, GY); c.lineTo(cx - gw / 2 - r, GY - gh + gw / 2); c.arc(cx, GY - gh + gw / 2, gw / 2 + r, Math.PI, 0); c.lineTo(cx + gw / 2 + r, GY); c.closePath(); };
-  c.fillStyle = '#C9A0E6';
-  gate(9); c.fill();
-  c.fillStyle = lg(c, 0, GY - gh, 0, GY, [[0, '#8E5BC8'], [1, '#5E3A96']]);
-  gate(0); c.fill();
-  c.save();
-  gate(0); c.clip();
-  c.strokeStyle = 'rgba(255,230,160,.4)';
-  c.lineWidth = 2.4;
-  for (let gx = cx - gw / 2 + 12; gx < cx + gw / 2; gx += 14) { c.beginPath(); c.moveTo(gx, GY - gh); c.lineTo(gx, GY); c.stroke(); }
-  for (let gy = GY - gh + 40; gy < GY; gy += 26) { c.beginPath(); c.moveTo(cx - gw / 2, gy); c.lineTo(cx + gw / 2, gy); c.stroke(); }
-  c.restore();
-  plaque(c, cx, GY - 152, p.name, { bg: '#FFF9EC', ink: '#7A4BB8', edge: '#C9A0E6', shape: 'round', size: 15 });
-  plaque(c, cx, GY - 58, 'เปิดเร็ว ๆ นี้', { bg: '#FFF9EC', ink: '#8A4BB8', edge: '#E7B640', shape: 'round', size: 12 });
-  for (const bx of [x + 50, x + 180, x + w - 180, x + w - 50]) bush(c, bx, GY, 16, '#A6DDA0');
-}
-function drawCastleLive(c, p, t) {
-  const { x, w } = p, cx = x + w / 2;
-  for (const [fx, fy] of [[x + 33, GY - 274], [x + 121, GY - 298], [cx, GY - 316], [x + w - 121, GY - 298], [x + w - 33, GY - 274]]) {
-    c.strokeStyle = '#8A6BC8';
-    c.lineWidth = 2;
-    c.beginPath(); c.moveTo(fx, fy + 4); c.lineTo(fx, fy - 12); c.stroke();
-    const s = Math.sin(t * 0.09 + fx) * 2.5;
-    c.fillStyle = '#FF7EB0';
-    c.beginPath(); c.moveTo(fx + 1, fy - 12); c.quadraticCurveTo(fx + 9, fy - 10 + s, fx + 17, fy - 7); c.quadraticCurveTo(fx + 9, fy - 4 + s, fx + 1, fy - 2); c.closePath(); c.fill();
-  }
+  c.fillRect(x + 4, y - 50, 4, 25); c.fillRect(x + p.w - 8, y - 50, 4, 25);
+  c.fillStyle = '#E3A86E';
+  c.beginPath(); c.roundRect(x, y - 26, p.w, 8, 3); c.fill();
 }
 
 // ══ ตะเกียงริมถนน (ธงห้อยบางต้น) ═════════════════════════════════
@@ -903,18 +1027,6 @@ function drawWelcome(c) {
   c.textBaseline = 'middle';
   c.fillStyle = '#8A4BB8';
   c.fillText('เมืองแมวเหมียว', x + w / 2, GY - 150);
-}
-
-// ══ แมวเจ้าของร้าน (NPC — ตำแหน่งใน layout.js) — ตัววาดน้องตัวเดียวกับเกม ท่านั่ง วาดครั้งเดียวเก็บเป็นภาพ ══
-const NPC_SC = 0.6;
-function drawNpc(c, n) {
-  const s = skinById(n.skin);
-  if (!s) return;
-  c.save();
-  c.translate(n.x, 0);
-  if (n.flip) c.scale(-1, 1);
-  drawCat2(c, 0, GY - 1, NPC_SC, s, 0, { k: 1, shape: { sit: 1, turn: -0.35 } });
-  c.restore();
 }
 
 // ── ฉากหลัง ───────────────────────────────────────────────────
@@ -1250,26 +1362,116 @@ export function drawStreet(c, camX, vw, t) {
       contactShadow(c, p.x, p.w);
       cached(c, 'shop:' + p.id, p.x - 40, GY - p.h - 10, p.w + 80, p.h + 12, (cc) => { ART[p.id](cc, p); light(cc, p.x - 40, GY - p.h - 10, p.w + 80, p.h + 12); });
       LIVE[p.id]?.(c, p, t);
-    } else if (p.kind === 'castle') {
-      contactShadow(c, p.x, p.w);
-      cached(c, 'castle', p.x - 14, 0, p.w + 28, GY + 2, (cc) => { drawCastle(cc, p); light(cc, p.x - 14, GY - 330, p.w + 28, 332); });
-      drawCastleLive(c, p, t);
-    } else if (p.kind === 'bench') cached(c, 'bench:' + p.id, p.x - 2, GY - 52, p.w + 4, 54, (cc) => drawBench(cc, p));
+    } else if (p.kind === 'castle') continue;   // ปราสาท + ดินแดนปราสาทวาดใน castle.js (drawRealm)
+    else if (p.kind === 'bench') cached(c, 'bench:' + p.id, p.x - 2, GY - 52, p.w + 4, 54, (cc) => drawBench(cc, p));
     else if (p.id === 'fountain') {
-      cached(c, 'plaza', p.x - 260, GY - 170, p.w + 520, 204, (cc) => drawPlaza(cc, p));
+      cached(c, 'plaza', p.x + p.w / 2 - 320, GY - 222, 640, 256, (cc) => drawPlaza(cc, p));
       drawFountainWater(c, p, t);
     }
   }
   for (const [k, x] of PROPS) if (OLD_PROPS.has(k) && inView(x - 40, 80)) drawProp(c, k, x);
   for (const [x, flag] of LAMPS) if (inView(x - 40, 80)) drawLamp(c, x, flag, t);
-  for (const n of NPCS) if (inView(n.x - 40, 80)) cached(c, 'npc:' + n.skin, n.x - 40, GY - 90, 80, 92, (cc) => drawNpc(cc, n));
+}
+
+// ── น้ำกระเด็นในน้ำพุ (ผู้ใช้ 31 ต.ค.) — น้องกระโดดลง/เดินลุยน้ำในอ่าง ──
+// หยดน้ำเป็นวิถีโค้งคำนวณจากเวลาที่เกิด (ไม่ต้องเดินทีละเฟรม) · วงคลื่นแผ่บนผิวน้ำ · ฟองขาวแวบตรงจุดตก
+const splashes = [];
+/** ให้น้ำกระเด็นตรง (x, y = ผิวน้ำ) · power = แรงตก (ความเร็ว) · t = เฟรมตอนนี้ */
+export function splashAt(x, y, power, t) {
+  const k = Math.min(1.4, 0.35 + Math.abs(power) / 12);
+  const drops = [];
+  const n = Math.round(8 + k * 12);
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? 1 : -1;
+    // เกิดที่ข้างเท้า กระเด็นออกด้านข้างเตี้ย ๆ (ไม่พุ่งทับตัวน้อง)
+    drops.push({ ox: side * (9 + Math.random() * 6), vx: side * (0.9 + Math.random() * 1.6) * k, vy: -(1.1 + Math.random() * 1.5) * k, r: 1.2 + Math.random() * 1.5, white: Math.random() < 0.35 });
+  }
+  splashes.push({ x, y, t0: t, k, drops });
+  if (splashes.length > 12) splashes.shift();
+}
+/** วาดน้ำกระเด็น (ทับตัวน้อง — เรียกหลังวาดน้อง) */
+export function drawSplashes(c, t) {
+  for (let i = splashes.length - 1; i >= 0; i--) {
+    const s = splashes[i], a = t - s.t0;
+    if (a > 60) { splashes.splice(i, 1); continue; }
+    c.save();
+    // วงคลื่นสองวง
+    c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1.4;
+    for (const d of [0, 9]) {
+      const u = (a - d) / 40;
+      if (u <= 0 || u >= 1) continue;
+      c.globalAlpha = (1 - u) * 0.85;
+      c.beginPath(); c.ellipse(s.x, s.y + 1, (6 + u * 26) * s.k, (1.6 + u * 4.5) * s.k, 0, 0, TAU); c.stroke();
+    }
+    // ฟองขาวแวบตรงจุดตก
+    if (a < 14) {
+      c.globalAlpha = 1 - a / 14;
+      c.fillStyle = '#FFFFFF';
+      c.beginPath(); c.ellipse(s.x, s.y - 1, (10 + a) * s.k, (3 + a * 0.3) * s.k, 0, 0, TAU); c.fill();
+    }
+    // หยดน้ำ
+    for (const d of s.drops) {
+      const x = s.x + d.ox + d.vx * a, y = s.y - 2 + d.vy * a + 0.11 * a * a;
+      if (y > s.y + 2 && a > 4) continue;
+      c.globalAlpha = Math.max(0, 1 - a / 50);
+      c.fillStyle = d.white ? '#FFFFFF' : 'rgba(170,222,255,1)';
+      c.beginPath(); c.ellipse(x, y, d.r, d.r * 1.25, 0, 0, TAU); c.fill();
+    }
+    c.restore();
+  }
+}
+
+// ── ฝุ่นฟุ้งตอนลงพื้นหลังกระโดดสองชั้น (ผู้ใช้ 31 ต.ค.) — ปุยเมฆกลมพาสเทลแผ่ออกสองข้างเท้า + ดาว/หัวใจจิ๋วกระเด็น ──
+// ปุยแต่ละก้อนพุ่งออกแล้วชะลอ (ระยะ 1 − e^(−t)) ลอยขึ้นนิด ๆ พองแล้วจาง · คำนวณจากเวลาที่เกิด ไม่ต้องเดินทีละเฟรม
+const dusts = [];
+const DUST_LIFE = 54;
+/** ฝุ่นฟุ้งที่เท้า (x, y = พื้นที่ลง) · power = แรงตก · t = เฟรมตอนนี้ */
+export function dustAt(x, y, power, t) {
+  const k = Math.min(1.3, 0.8 + Math.abs(power) / 30);
+  const puffs = [], bits = [];
+  for (let i = 0; i < 12; i++) {
+    puffs.push({
+      side: i % 2 ? 1 : -1, v: (14 + Math.random() * 24) * k, up: 3 + Math.random() * 9,
+      r: (6 + Math.random() * 4.5) * k, col: ['#FFFFFF', '#FFF0F6', '#F1E6FF', '#FFF4E4'][i % 4],
+    });
+  }
+  for (let i = 0; i < 6; i++) bits.push({ side: i % 2 ? 1 : -1, vx: 0.7 + Math.random() * 1, vy: -(1.8 + Math.random() * 1.3), heart: i % 3 === 0 });
+  dusts.push({ x, y, t0: t, puffs, bits });
+  if (dusts.length > 6) dusts.shift();
+}
+/** วาดฝุ่น (หลังวาดตัวน้อง — ปุยอยู่ข้างเท้า) */
+export function drawDust(c, t) {
+  for (let i = dusts.length - 1; i >= 0; i--) {
+    const d = dusts[i], a = t - d.t0;
+    if (a > DUST_LIFE) { dusts.splice(i, 1); continue; }
+    const u = a / DUST_LIFE, out = 1 - Math.exp(-a / 8);
+    c.save();
+    for (const p of d.puffs) {
+      const x = d.x + p.side * (7 + p.v * out), y = d.y - 2 - p.up * out - a * 0.08, r = p.r * (0.55 + 0.75 * out);
+      c.globalAlpha = 0.9 * (1 - u) ** 1.3;
+      c.fillStyle = 'rgba(170,140,210,.28)';
+      c.beginPath(); c.arc(x + 0.8, y + 1.4, r, 0, TAU); c.fill();
+      c.fillStyle = p.col;
+      c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    }
+    for (const b of d.bits) {
+      const x = d.x + b.side * (10 + b.vx * a), y = d.y - 6 + b.vy * a + 0.06 * a * a;
+      c.globalAlpha = Math.max(0, 1 - u * 1.1);
+      c.fillStyle = b.heart ? '#FF8FB3' : '#FFD45A';
+      if (b.heart) heart(c, x, y, 4.2); else star(c, x, y, 4.6);
+      c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 1;
+      c.stroke();
+    }
+    c.restore();
+  }
 }
 
 /** ป้ายลอยเหนือที่ที่ใช้งานได้ตอนน้องยืนใกล้ ("เข้าร้าน") */
 export function drawPrompt(c, p, text, t) {
   // เหนือหัวน้อง (ตัวน้องสูงราว 110 หน่วย) — ไม่บังหน้า
   const gy = p.gy ?? GY;
-  const x = p.door, y = (p.kind === 'bench' ? gy - 150 : gy - 140) + Math.sin(t * 0.12) * 3;
+  const x = p.door, y = (p.kind === 'gate' ? gy - 178 : p.kind === 'pier' ? gy - 152 : p.kind === 'bench' ? gy - 150 : gy - 140) + Math.sin(t * 0.12) * 3;   // ซุ้มวาป: เหนือป้ายชื่อซุ้ม · ท่าเรือ: บนหน้าจั่วศาลา (ไม่บังป้ายชื่อท่า)
   c.save();
   c.font = '700 13px Mali, sans-serif';
   c.textAlign = 'center';

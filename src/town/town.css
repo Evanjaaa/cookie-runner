@@ -212,6 +212,36 @@ body.desk .keyhint {
   pointer-events: none;
 }
 body.desk.in-shop .keyhint { display: none; }
+/* ผู้เล่นซ่อนแถบเองได้ (ผู้ใช้ 31 ต.ค.) — ปุ่มแยกมุมขวาล่าง / กด H / สวิตช์ในตั้งค่า · มีเฉพาะบนคอม */
+body.desk.hide-keyhint .keyhint { display: none; }
+body:not(.desk) .deskonly { display: none; }
+/* แถบอยู่แถวเดียวเสมอ + ปุ่มซ่อน/แสดงอยู่แถวเดียวกันชิดขวา (ผู้ใช้ 31 ต.ค.) — แถบเลื่อนไปกึ่งกลางที่ว่างทางซ้ายของปุ่ม (ไม่ทับกัน) · ช่องไฟหดตามจอ */
+body.desk .keyhint { flex-wrap: nowrap; gap: 6px clamp(8px, 1.1vw, 16px); left: calc(50% - 76px); }
+@media (max-width: 1040px) { body.desk .keyhint { font-size: 12px; padding: 6px 12px; } }
+.khtoggle { display: none; }
+body.desk .khtoggle {
+  position: fixed; z-index: 5;
+  right: calc(clamp(10px, 1.4vw, 18px) + env(safe-area-inset-right));
+  bottom: calc(clamp(8px, 1.8dvh, 16px) + env(safe-area-inset-bottom));   /* แถวเดียวกับแถบสอน ชิดขวา */
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 14px 6px 8px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.35);
+  background: rgba(50,20,80,.48); backdrop-filter: blur(3px);
+  color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 600;
+  text-shadow: 0 1px 2px rgba(30,8,50,.5);
+  cursor: pointer; transition: background .15s, transform .1s;
+}
+body.desk .khtoggle:hover { background: rgba(70,30,110,.62); }
+body.desk .khtoggle:active { transform: translateY(2px); }
+body.desk .khtoggle kbd {
+  min-width: 24px; height: 24px; padding: 0 6px; display: inline-grid; place-items: center;
+  border-radius: 7px; background: linear-gradient(180deg, #FFFFFF, #EDE4F7);
+  color: #5A2E86; font-family: inherit; font-weight: 700; font-size: 12px; text-shadow: none;
+  box-shadow: 0 2px 0 #B9A3D6;
+}
+/* ซ่อนแถบแล้ว: ปุ่มเป็นสีชมพูเด่นขึ้นนิด บอกว่ากดแสดงคืนได้ */
+body.desk.hide-keyhint .khtoggle { background: rgba(214,80,140,.6); }
+body.desk.in-shop .khtoggle, body.riding .khtoggle, body.photo .khtoggle { display: none; }
 .kh { flex: none; display: inline-flex; align-items: center; gap: 5px; }
 .kh.soft { opacity: .8; font-weight: 500; }
 .keyhint kbd {
@@ -359,6 +389,169 @@ body.in-shop .topbar, body.in-shop .pad { display: none; }
 .pad, .keyhint { transition: opacity .3s; }
 body.riding .pad, body.riding .keyhint { opacity: 0; pointer-events: none; }
 body.riding .pad button { pointer-events: none; }
+/* ── ล่องเรือ: หน้าเลือกจุดแวะ + ป้ายตอนเรือจอดแวะ ── */
+.sheet.routesheet { width: min(980px, 96vw); }
+/* แผนที่เมืองย่อส่วน (ผู้ใช้ 31 ต.ค. — แบบแผนที่สวนสนุก): ภาพจาก route-map.js · ทั้งก้อนย่อตามความสูงจอ (--s)
+   ปุ่มจุดแวะวางในพิกัดแผนที่ (สูง 250) · ตัวหนังสือหาร --s ให้อ่านขนาดเท่าเดิมบนจอเล็ก */
+.routemap {
+  --s: 1;
+  position: relative; flex: 0 0 auto;
+  height: clamp(150px, 46dvh, 300px);
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain;
+  border-radius: 16px; border: 2px solid rgba(255,243,226,.6);
+  background: #A3D99C;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.25), 0 3px 0 rgba(40,14,70,.25);
+  scrollbar-width: thin; scrollbar-color: rgba(255,243,226,.7) transparent;
+}
+.rm-size { position: relative; }
+.rm-wrap { position: relative; flex: 0 0 auto; display: flex; flex-direction: column; }
+/* คอม: ปุ่มลูกศรเลื่อนแผนที่ + แถบเลื่อนหนาจับง่าย + ลากด้วยเมาส์ (main.js) · มือถือปัดนิ้วเหมือนเดิม */
+.rm-arrow { display: none; }
+body.desk .rm-arrow {
+  position: absolute; top: 50%; z-index: 2; width: 46px; height: 46px; margin-top: -23px;
+  display: grid; place-items: center; padding: 0;
+  border-radius: 50%; border: 2px solid #FFFFFF;
+  background: linear-gradient(180deg, #FFF9F0, #F3E4FF); color: #7A4BB8;
+  box-shadow: 0 4px 0 rgba(60,20,100,.3), 0 6px 14px rgba(40,10,70,.25);
+  cursor: pointer; transition: opacity .2s, transform .1s;
+}
+body.desk .rm-arrow svg { width: 26px; height: 26px; }
+body.desk .rm-arrow.l { left: 10px; }
+body.desk .rm-arrow.r { right: 10px; }
+body.desk .rm-arrow:hover { transform: scale(1.06); }
+body.desk .rm-arrow:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(60,20,100,.3); }
+body.desk .rm-arrow.off { opacity: 0; pointer-events: none; }
+body.desk .routemap { cursor: grab; scrollbar-width: auto; }
+body.desk .routemap.dragging { cursor: grabbing; }
+body.desk .routemap.dragging .rm-stop { cursor: grabbing; }
+.rm-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.rm-inner canvas { position: absolute; left: 0; top: 0; }
+.rm-stop {
+  position: absolute; top: 30px; width: 116px; height: 176px; margin-left: -58px;
+  padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* วงแสงใต้สถานที่ตอนเลือก */
+.rm-stop::before {
+  content: ""; position: absolute; left: 50%; top: 88px; width: 104px; height: 34px; margin-left: -52px;
+  border-radius: 50%; background: radial-gradient(closest-side, rgba(255,111,165,.55), rgba(255,111,165,0));
+  opacity: 0; transition: opacity .2s;
+}
+.rm-stop.on::before { opacity: 1; }
+.rm-lab {
+  position: absolute; left: 50%; top: 126px; transform: translateX(-50%);
+  width: max-content; max-width: min(calc(clamp(90px, 12dvh, 110px) / var(--s)), 116px);
+  padding: calc(3px / var(--s)) calc(7px / var(--s)); border-radius: calc(10px / var(--s));
+  background: rgba(255,250,242,.96); color: #4A2A6A;
+  font-size: calc(clamp(11px, 1.6dvh, 13px) / var(--s)); font-weight: 700; line-height: 1.22; text-align: center;
+  box-shadow: 0 2px 0 rgba(40,14,70,.22);
+  transition: background .15s, color .15s;
+}
+.rm-stop:hover .rm-lab, .rm-stop:focus-visible .rm-lab { background: #FFF0F6; }
+.rm-stop.on .rm-lab { background: #FF6FA5; color: #FFFFFF; }
+.rm-stop.here { cursor: default; }
+.rm-stop.here .rm-lab { background: #4F86D8; color: #FFFFFF; max-width: min(calc(clamp(118px, 15dvh, 140px) / var(--s)), 124px); }   /* มีคำว่า "อยู่ที่นี่" นำหน้า — กว้างกว่านิด ไม่ตกสามบรรทัดทับเรือ (ห่างป้ายข้าง ๆ ยังไม่ชน) */
+.rm-stop.here .rm-lab::before { content: "อยู่ที่นี่ · "; }
+.rm-stop:not(.here):active .rm-lab { transform: translateX(-50%) scale(.94); }
+/* หมุดเลขลำดับ (หยดชมพู) เหนือสถานที่ */
+.rm-pin {
+  position: absolute; left: 50%; top: -4px; width: 30px; height: 30px; margin-left: -15px;
+  border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: linear-gradient(135deg, #FFA3C8, #F0609A); border: 2px solid #FFFFFF;
+  box-shadow: -2px 3px 0 rgba(120,30,80,.25);
+  display: grid; place-items: center;
+  animation: rm-drop .35s cubic-bezier(.3,1.6,.5,1);
+}
+.rm-pin b { transform: rotate(45deg); color: #FFFFFF; font-size: 14px; font-style: normal; }
+@keyframes rm-drop { from { transform: translateY(-18px) rotate(-45deg); opacity: 0; } to { transform: rotate(-45deg); opacity: 1; } }
+/* ช่องบอกว่าสถานที่นี้คือที่ไหน */
+.rm-info {
+  display: flex; align-items: center; gap: 10px; min-height: 2.6em;
+  padding: 6px 12px; border-radius: 14px; background: rgba(255,250,242,.14);
+  color: #FFF3E2; font-size: clamp(11.5px, 2.3dvh, 14px);
+}
+.rm-info i { font-style: normal; font-size: 1.7em; line-height: 1; }
+.rm-info div { display: flex; flex-wrap: wrap; column-gap: 8px; align-items: baseline; min-width: 0; }
+.rm-info b { color: #FFE7A0; }
+.rm-info span { color: rgba(255,243,226,.9); }
+.routefoot { display: flex; align-items: center; gap: 10px; }
+.routefoot span { flex: 1 1 auto; min-width: 0; color: rgba(255,243,226,.9); font-size: clamp(12px, 2.4dvh, 14px); font-weight: 700; }
+.rt-clear, .rt-go, .bs-off, .bs-go {
+  border-radius: 999px; font: inherit; font-weight: 700; cursor: pointer;
+  padding: clamp(8px, 2dvh, 12px) 20px; font-size: clamp(13px, 3dvh, 16px);
+}
+.rt-clear, .bs-off { border: 2px solid rgba(255,243,226,.6); background: transparent; color: #FFF3E2; }
+.rt-go, .bs-go {
+  border: 1px solid rgba(255,246,232,.9);
+  background: linear-gradient(180deg, #FFB3D2, #F28DB7); color: #FFFFFF;
+  text-shadow: 0 2px 0 #A2306A; box-shadow: 0 4px 0 rgba(150,40,95,.35);
+}
+.rt-go:disabled { opacity: .45; cursor: default; }
+.rt-go:not(:disabled):active, .bs-go:active, .bs-off:active { transform: translateY(3px); }
+.boatstop {
+  position: fixed; left: 0; right: 0; margin: 0 auto; width: max-content; max-width: 92vw; z-index: 8;
+  top: calc(clamp(64px, 16dvh, 96px) + env(safe-area-inset-top));
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 12px 16px 14px; border-radius: 20px;
+  background: linear-gradient(180deg, rgba(143,98,201,.95), rgba(108,67,168,.95));
+  border: 1px solid rgba(255,243,226,.5);
+  box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  animation: wheelIn .24s cubic-bezier(.3,1.5,.5,1);
+}
+.boatstop b { color: #FFE7A0; font-size: clamp(15px, 3.4dvh, 19px); text-shadow: 0 2px 0 rgba(60,20,90,.6); }
+.bs-row { display: flex; gap: 10px; }
+
+/* แถบถ่ายรูป (สวนดอกไม้): ชิปท่าทางเลื่อนได้ · ตั้งเวลา · ปุ่มกล้องกลมใหญ่ — กดชัตเตอร์แล้วจางหาย (busy) ให้จอสะอาด */
+.photobar {
+  position: fixed; left: 0; right: 0; z-index: 8;
+  bottom: calc(clamp(8px, 2dvh, 18px) + env(safe-area-inset-bottom));
+  padding: 0 calc(clamp(10px, 2vw, 22px) + env(safe-area-inset-right)) 0 calc(clamp(10px, 2vw, 22px) + env(safe-area-inset-left));
+  display: flex; align-items: flex-end; gap: 12px;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.photobar.busy { opacity: 0; }
+.photobar.busy * { pointer-events: none !important; }
+.xbtn.photox { position: fixed; z-index: 9; pointer-events: auto; }
+.photobar.busy .photox { opacity: 0; }
+.ph-poses {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  padding: 8px; border-radius: 20px;
+  background: rgba(60,20,90,.38); backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+.ph-poses::-webkit-scrollbar { display: none; }
+.ph-pose {
+  flex: none; width: clamp(58px, 15dvh, 70px); height: clamp(54px, 14dvh, 64px);
+  display: grid; place-items: center; align-content: center; gap: 2px;
+  border: 3px solid transparent; border-radius: 16px;
+  background: rgba(255,250,242,.96);
+  font: inherit; font-size: 11px; font-weight: 700; line-height: 1.15; color: #4A2A6A; cursor: pointer;
+  box-shadow: 0 2px 0 rgba(40,14,70,.25);
+}
+.ph-pose i { font-style: normal; font-size: clamp(18px, 5dvh, 22px); line-height: 1; }
+.ph-pose.on { border-color: #FF8FB3; background: #FFF0F6; }
+.ph-pose:active { transform: scale(.95); }
+.ph-shoot { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: auto; }
+.ph-timer { display: flex; gap: 3px; padding: 4px; border-radius: 999px; background: rgba(60,20,90,.45); backdrop-filter: blur(4px); }
+.ph-timer button {
+  border: 0; border-radius: 999px; padding: 5px 10px;
+  background: transparent; color: rgba(255,243,226,.9);
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.ph-timer button.on { background: linear-gradient(180deg, #FFC7DE, #F29BC0); color: #FFFFFF; text-shadow: 0 1px 0 rgba(150,40,95,.6); }
+.ph-cam {
+  width: clamp(62px, 17dvh, 78px); height: clamp(62px, 17dvh, 78px);
+  border-radius: 50%; border: 4px solid #FFFFFF;
+  background: radial-gradient(circle at 50% 40%, #FFC2DA, #F27FAE);
+  color: #FFFFFF; display: grid; place-items: center; cursor: pointer;
+  box-shadow: 0 4px 0 rgba(150,40,95,.4), 0 0 0 5px rgba(255,143,179,.35), 0 0 18px rgba(255,143,179,.6);
+}
+.ph-cam svg { width: 56%; height: 56%; display: block; filter: drop-shadow(0 1px 1px rgba(120,30,80,.35)); }
+.ph-cam:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(150,40,95,.4), 0 0 0 5px rgba(255,143,179,.35); }
+/* จุดถ่ายรูปในสวนดอกไม้: ซ่อนปุ่ม/แถบของเกมทั้งหมด ให้จอสะอาดพร้อมแคป (เหลือแถบถ่ายรูป) */
+body.photo .topbar, body.photo .wardbtn, body.photo .pad, body.photo .keyhint, body.photo .toast { opacity: 0; pointer-events: none; transition: opacity .3s; }
 .shop-out { left: calc(var(--backbtn-x) + env(safe-area-inset-left)); }
 
 /* ฟองคำพูดเจ้าของร้าน (ตำแหน่ง x ตั้งจาก main.js measureKeep) */

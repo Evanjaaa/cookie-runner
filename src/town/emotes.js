@@ -55,6 +55,17 @@ const fx = [];      // ของประกอบ (พิกัดโลก) �
 
 export const emoteId = () => (cur && cur.out < 0 ? cur.id : null);
 
+/** เฟรมหลังเริ่มท่าที่ท่าเต็มที่ (จุดถ่ายรูปกดแฟลชตรงนี้) — ท่าค้าง = เข้าท่าเสร็จ · ท่าขยับ = ราวกลางท่า */
+export function emotePeak(id) {
+  if (id === 'act') return 40;
+  const def = LIST.find((d) => d.id === id);
+  if (!def) return 0;
+  if (def.kind === 'hold') return HOLD[id].ease + 8;
+  return Math.round(MOVES[id].dur * 0.45);
+}
+/** ท่าค้าง (นั่ง หมอบ ...) — ทำค้างไว้แล้วไม่ต้องเริ่มใหม่ตอนถ่าย */
+export const emoteHolds = (id) => LIST.find((d) => d.id === id)?.kind === 'hold';
+
 /** เริ่มท่า — outfit ใช้หาท่าแอ็คของชุดที่ใส่อยู่ */
 export function startEmote(id, outfit, tick) {
   const def = id === 'act' ? { kind: 'act' } : LIST.find((d) => d.id === id);

@@ -14,12 +14,12 @@ export const H = 420;
 export const GY = 330;            // เส้นเท้าน้อง = ขอบหลังของถนน
 export const ROAD_B = 382;        // ขอบหน้าถนน → คันหิน → แม่น้ำหน้าเมือง
 export const DEPTH = ROAD_B - GY; // ความลึกของถนน/พื้นสะพาน (หลัง → หน้า)
-export const WORLD_W = 5820;
+export const WORLD_W = 7115;     // ท้ายเมือง = ดินแดนปราสาทแมวเหมียว (REALM ข้างล่าง · ภาพ castle.js)
 export const START_X = 150;
 
 // ── สะพาน ─────────────────────────────────────────────────────
 // พื้นสะพานโค้งขึ้นจากถนนสองฝั่ง (ทางลาดนุ่ม smoothstep) แล้วราบตรงกลางที่ศาลาตั้ง · แม่น้ำลอดใต้ช่วง rx ± half
-export const BRIDGE = { x0: 2820, x1: 3560, ramp: 250, rise: 88, rx: 3190, half: 150 };
+export const BRIDGE = { x0: 2940, x1: 3680, ramp: 250, rise: 88, rx: 3310, half: 150 };
 export const DECK_Y = GY - BRIDGE.rise;   // ระดับพื้นศาลา (ยอดสะพาน)
 
 /** สะพานยกพื้นสูงจากถนนเท่าไรตรง x (0 = ถนนปกติ) */
@@ -55,52 +55,85 @@ export const PLACES = [
   { id: 'food', kind: 'shop', tab: 'food', name: 'ร้านแลกของกิน', x: 300, w: 270, h: 255, doorK: 0.79, sprite: null },
   { id: 'care', kind: 'shop', tab: 'care', name: 'ร้านขายยา', x: 720, w: 235, h: 290, doorK: 0.76, sprite: null },
   { id: 'home', kind: 'shop', tab: 'home', name: 'ร้านอัปเกรดอุปกรณ์', x: 1105, w: 260, h: 270, doorK: 0.78, sprite: null },
-  { id: 'pierA', kind: 'pier', name: 'ท่าเรือฝั่งร้านค้า', to: 'pierB', x: 1440, w: 120, h: 70, doorK: 0.5 },
-  { id: 'bench1', kind: 'bench', name: 'ม้านั่ง', x: 1650, w: 72, h: 46 },
-  { id: 'fountain', kind: 'deco', name: 'ลานกลางเมือง', x: 1760, w: 170, h: 150 },
-  { id: 'bench2', kind: 'bench', name: 'ม้านั่ง', x: 1970, w: 72, h: 46 },
-  { id: 'swing', kind: 'swing', name: 'ชิงช้า', x: 2330, w: 100, h: 156, doorK: 0.5 },
-  { id: 'box', kind: 'box', name: 'กล่องกระดาษ', x: 2650, w: 70, h: 50, doorK: 0.5 },
+  // ท่าเรือ (ผู้ใช้ 31 ต.ค. อัปเกรด — ศาลาท่าเรือ + พื้นท่ากว้าง · ภาพ play.js drawPier ขยาย PIER_S) กว้าง 240
+  //   เว้นระยะจากร้าน/ม้านั่งข้าง ๆ ราว 50 · เสาโคมท่าเรือแทนตะเกียงถนน
+  { id: 'pierA', kind: 'pier', name: 'ท่าเรือฝั่งร้านค้า', to: 'pierB', x: 1420, w: 240, h: 70, doorK: 0.5 },
+  // ลานน้ำพุมาก่อนม้านั่ง = วาดก่อน (ต้นไม้ดอกในลานอยู่หลังม้านั่ง) · อ่างกว้าง 2 × FNT.W (ผู้ใช้ 31 ต.ค. ขอให้กว้างขึ้น)
+  { id: 'fountain', kind: 'deco', name: 'ลานกลางเมือง', x: 1790, w: 310, h: 150 },
+  { id: 'bench1', kind: 'bench', name: 'ม้านั่ง', x: 1706, w: 72, h: 46 },
+  { id: 'bench2', kind: 'bench', name: 'ม้านั่ง', x: 2112, w: 72, h: 46 },
+  { id: 'swing', kind: 'swing', name: 'ชิงช้า', x: 2450, w: 100, h: 156, doorK: 0.5 },
+  { id: 'box', kind: 'box', name: 'กล่องกระดาษ', x: 2770, w: 70, h: 50, doorK: 0.5 },
   // ── บนสะพาน ──
   { id: 'bench3', kind: 'bench', name: 'ตั่งในศาลา', x: SX - 36, w: 72, h: 46, gy: DECK_Y, art: false },
   // ── ฝั่งปราสาท ──
-  { id: 'toy', kind: 'shop', tab: 'toy', name: 'ร้านของเล่น', x: 4000, w: 270, h: 280, doorK: 0.77, sprite: null },
-  { id: 'exchange', kind: 'shop', tab: 'exchange', name: 'ร้านแลกของรางวัล', x: 4420, w: 265, h: 270, doorK: 0.78, sprite: null },
-  { id: 'pierB', kind: 'pier', name: 'ท่าเรือฝั่งปราสาท', to: 'pierA', x: 4780, w: 120, h: 70, doorK: 0.5 },
-  { id: 'castle', kind: 'castle', name: 'ปราสาทแมวเหมียว', x: 5120, w: 540, h: 330, doorK: 0.5, sprite: null },
+  { id: 'toy', kind: 'shop', tab: 'toy', name: 'ร้านของเล่น', x: 4120, w: 270, h: 280, doorK: 0.77, sprite: null },
+  { id: 'exchange', kind: 'shop', tab: 'exchange', name: 'ร้านแลกของรางวัล', x: 4540, w: 265, h: 270, doorK: 0.78, sprite: null },
+  { id: 'pierB', kind: 'pier', name: 'ท่าเรือฝั่งปราสาท', to: 'pierA', x: 4870, w: 240, h: 70, doorK: 0.5 },
+  { id: 'castle', kind: 'castle', name: 'ปราสาทแมวเหมียว', x: 6055, w: 760, h: 330, doorK: 0.5, sprite: null },
 ];
 for (const p of PLACES) p.door = p.x + p.w * (p.doorK ?? 0.5);
 export const placeById = (id) => PLACES.find((p) => p.id === id);
+/** น้ำพุสามชั้น (ภาพ world.js drawPlaza · ผิวยืน fnt:* ข้างล่าง ใช้ชุดเดียวกัน) — W/midR/topR = ครึ่งความกว้างอ่างใหญ่/กลาง/บน · rim/mid/top = ความสูงผิวน้ำจากพื้น */
+export const FNT = { W: 150, rim: 46, mid: 114, midR: 64, top: 160, topR: 32 };
 
 /** ตะเกียงริมถนน [x, มีธงห้อย] — เว้นหน้าประตูร้าน */
-export const LAMPS = [[240, 1], [645, 0], [1030, 1], [1600, 0], [2120, 1], [2745, 0], [3640, 1], [4345, 0], [4745, 1]];
+export const LAMPS = [[240, 1], [645, 0], [1030, 1], [2252, 1], [2865, 0], [3760, 1], [4465, 0]];
 /** ของตกแต่งตามทาง [ชนิด, x] — ชนิดเดิม (world.js drawProp) + ชนิดใหม่ (play.js drawDeco) */
 export const PROPS = [
-  ['crate', 690], ['bush', 1068], ['sign', 2085], ['bush', 2290], ['cart', 2595],
-  ['mailbox', 3932], ['pot', 4392], ['cart', 4960], ['bush', 5700], ['endarch', 5752],
+  ['crate', 690], ['bush', 1068], ['sign', 2214], ['bush', 2410], ['cart', 2715],
+  ['mailbox', 4052], ['pot', 4512], ['cart', 5200], ['bush', 6985], ['endarch', 7055],
 ];
 
 // ── ของเล่น ───────────────────────────────────────────────────
-export const TOWER = { x: 2200 };                    // คอนโดแมว (ปีนขึ้นชั้น ๆ ได้)
-export const BLOCKS = { x: 3860 };                   // กองตัวต่อ ABC
-export const ARCH = { x: 3680, w: 110 };             // ซุ้มดอกไม้ (ยืนบนโค้งได้)
-export const TRAMPS = [{ id: 'trampA', x: 2510 }, { id: 'trampB', x: 5060 }];   // แทรมโพลีนหัวแมว เด้งสูง
-export const TRAMP_V = 17.5;                         // แรงเด้ง (ต่อเฟรม) — สูง ~245 เกินกระโดดสองชั้น (แรงโน้มถ่วงคือ JUMP.gravity)
+export const TOWER = { x: 2320 };                    // คอนโดแมว (ปีนขึ้นชั้น ๆ ได้)
+export const BLOCKS = { x: 3980 };                   // กองตัวต่อ ABC
+export const ARCH = { x: 3800, w: 110 };             // ซุ้มดอกไม้ (ยืนบนโค้งได้) · เป็นประตูวาปไปสวนดอกไม้ (garden.js)
+// ── จุดแวะของเรือ (ผู้ใช้ 31 ต.ค.) — แม่น้ำหน้าเมืองยาวตลอดแนว เรือแวะหน้าที่เหล่านี้ได้ (เรียงตาม x · เว้นช่วงสะพาน)
+// x = จุดที่น้องกระโดดขึ้นฝั่ง (หน้าประตู) · pier = ท่าเรือ (เรือจอดข้างท่าตาม mooredX ใน play.js)
+const BOAT_STOP_DEFS = [
+  ['food', 'ร้านแลกของกิน', '🍞'], ['care', 'ร้านขายยา', '🧪'], ['home', 'ร้านอัปเกรดอุปกรณ์', '🔨'],
+  ['pierA', 'ท่าเรือฝั่งร้านค้า', '⚓'], ['fountain', 'ลานน้ำพุ', '⛲'], ['swing', 'สนามเด็กเล่น', '🎠'],
+  ['gardenGate', 'ซุ้มสวนดอกไม้', '🌸'], ['toy', 'ร้านของเล่น', '🧸'], ['exchange', 'ร้านแลกของรางวัล', '🏆'],
+  ['pierB', 'ท่าเรือฝั่งปราสาท', '⚓'], ['castle', 'ปราสาทแมวเหมียว', '🏰'],
+];
+export const BOAT_STOPS = [];   // เติมหลังวางซุ้มสวน (ข้างล่าง)
+
+// ประตูวาปไปสวนดอกไม้ในฝัน (ผู้ใช้ 31 ต.ค.) — ยืนใต้ซุ้มแล้วใช้งาน · ภาพซุ้มวาดใน play.js (art: false)
+PLACES.push({ id: 'gardenGate', kind: 'gate', to: 'garden', name: 'สวนดอกไม้', x: ARCH.x, w: ARCH.w, h: 150, door: ARCH.x + ARCH.w / 2, art: false });
+for (const [id, name, icon] of BOAT_STOP_DEFS) {
+  const p = placeById(id);
+  BOAT_STOPS.push({ id, name, icon, x: p.door, pier: p.kind === 'pier' ? p : null });
+}
+// ศาลากลางสะพาน (ผู้ใช้ 31 ต.ค.): เรือจอดข้างตอม่อฝั่งที่แล่นมา (นอกซุ้มโค้ง) แล้วน้องกระโดดขึ้นเนินสะพานข้างศาลา
+//   sides.L = มาจากซ้าย · sides.R = มาจากขวา — dock = ที่เรือจอด · land = จุดลงบนพื้นสะพาน (สูงตาม groundY)
+BOAT_STOPS.push({ id: 'sala', name: 'ศาลากลางสะพาน', icon: '🌉', x: SX, pier: null,
+  sides: { L: { dock: SX - BRIDGE.half - 54, land: SX - 140 }, R: { dock: SX + BRIDGE.half + 54, land: SX + 140 } } });
+BOAT_STOPS.sort((a, b) => a.x - b.x);
+export const TRAMPS = [{ id: 'trampA', x: 2630 }, { id: 'trampB', x: 5275 }];   // แทรมโพลีนหัวแมว เด้งสูง
+// ── ดินแดนปราสาทแมวเหมียว (ผู้ใช้ 31 ต.ค.: ปราสาทคือคีย์หลักของเกม — แยกเป็นเขตชัด ๆ มีรั้ว เว้นระยะจากร้าน) ──
+// gate = กลางซุ้มประตูเขต (เสาหินคู่ห่างกลาง ±120) · ถนนตั้งแต่ซุ้มไปจนสุดเมืองปูกระเบื้องหลวง
+// fence = ช่วงรั้ว [x0, x1] (เว้นซุ้มประตู · ปลายรั้วสอดหลังหอมุมปราสาท) · lanterns = โคมหลวงหน้ารั้ว
+// garden = ของในสวนหลวงหลังรั้ว [ชนิด, x] · ภาพทั้งหมดใน castle.js
+const CAS = PLACES.find((p) => p.id === 'castle');
+export const REALM = {
+  gate: 5515,
+  fence: [[5319, 5373], [5657, CAS.x + 14], [CAS.x + CAS.w - 14, WORLD_W + 10]],
+  lanterns: [5775, 5975, 6895],
+  garden: [
+    ['cone', 5345], ['sakura', 5695], ['topcat', 5735], ['cone', 5825], ['sakura', 5895], ['topcat', 5985],
+    ['cone', 6845], ['sakura', 6935], ['topcat', 7015], ['sakura', 7095],
+  ],
+};
+export const TRAMP_V = 17.5;                        // แรงเด้ง (ต่อเฟรม) — สูง ~245 เกินกระโดดสองชั้น (แรงโน้มถ่วงคือ JUMP.gravity)
 
 // ── กระโดดในเมือง (แยกจาก PHYSICS ของเกมวิ่ง — เกมวิ่งผูกกับระยะหลุม/แนวปลา ห้ามแตะ) ──
 // ลอยนุ่มกว่าเกมวิ่ง เห็นตัวน้องลอยชัด · ชั้นแรก ~140 (ขึ้นกันสาดร้าน/ตะเกียงได้ทีเดียว) · สองชั้น ~220 (กำแพงปราสาท ยอดคอนโด สันหลังคาศาลา)
 // ความสูงจริงต่อเฟรม ≈ v² / (2 × gravity) − v/2 (ชั้นแรก ~146 · กันสาดสูงสุด 132 ต้องเหลือเผื่อ)
 export const JUMP = { gravity: 0.62, v1: -13.8, v2: -10 };
-export const YARN = { x: 3780, r: 13, min: 3640, max: 3985 };   // ลูกไหมพรม (เดินชนแล้วกลิ้ง)
+export const YARN = { x: 3900, r: 13, min: 3760, max: 4105 };   // ลูกไหมพรม (เดินชนแล้วกลิ้ง)
 
-// ── แมวเจ้าของร้าน (NPC) — วางข้างร้านของตัวเอง ──
-export const NPCS = [
-  { skin: 'snow', x: 600, flip: true },        // ข้างร้านแลกของกิน
-  { skin: 'midnight', x: 985, flip: true },    // ข้างร้านขายยา
-  { skin: 'grey', x: 1393, flip: true },       // ข้างร้านอัปเกรดอุปกรณ์
-  { skin: 'calico', x: 3970, flip: false },    // ข้างร้านของเล่น
-  { skin: 'pearl', x: 4712, flip: true },      // ข้างร้านแลกของรางวัล
-];
+// แมวเจ้าของร้านไม่นั่งข้างร้านในเมืองแล้ว (ผู้ใช้ 31 ต.ค.) — อยู่ในร้านอย่างเดียว (keeper ใน interior.js)
 
 // ── พื้นที่ยืนได้ ─────────────────────────────────────────────
 /**
@@ -108,9 +141,9 @@ export const NPCS = [
  * pts = จุดเรียงตาม x ([x, y] ต่อเป็นเส้นหัก ยืนบนเนินได้) · bounce = แทรมโพลีน (ลงแล้วเด้งขึ้นด้วยแรงนี้)
  * ตัวเลขทุกชุดตรงกับภาพใน world.js / bridge.js / play.js — แก้ภาพตรงไหนต้องแก้ตรงนี้ด้วย
  */
-const flat = (id, x0, x1, y, o) => ({ id, pts: [[x0, y], [x1, y]], ...o });
+export const flat = (id, x0, x1, y, o) => ({ id, pts: [[x0, y], [x1, y]], ...o });
 /** ขอบบนวงรี (กลาง cx,cy รัศมี rx,ry) ช่วง u = a..b (−1 ซ้ายสุด · 1 ขวาสุด) */
-function arcTop(id, cx, cy, rx, ry, a, b, n = 10) {
+export function arcTop(id, cx, cy, rx, ry, a, b, n = 10) {
   const pts = [];
   for (let i = 0; i <= n; i++) {
     const u = a + ((b - a) * i) / n;
@@ -176,16 +209,27 @@ function buildSurfaces() {
       S.push(flat(p.id + ':seat', p.x, p.x + p.w, y - 26));
       if (p.art !== false) S.push(flat(p.id + ':back', p.x + 2, p.x + p.w - 2, y - 50));
     } else if (p.id === 'fountain') {
-      const cx = p.x + p.w / 2;
-      S.push(flat('fnt:rim', cx - 86, cx + 86, GY - 44), flat('fnt:bowl', cx - 44, cx + 44, GY - 112), flat('fnt:cat', cx - 12, cx + 12, GY - 154));
-    } else if (p.kind === 'castle') {
-      // ป้าย "เปิดเร็ว ๆ นี้" → ป้ายชื่อเหนือประตู → ทางเดินบนกำแพงระหว่างหอคอย
-      const { x, w } = p, cx = x + w / 2, y = GY - 176;
+      const cx = p.x + p.w / 2, { W, rim, mid, midR, top, topR } = FNT;
+      // น้ำพุสามชั้น: ขอบอ่างใหญ่ → อ่างกลาง → อ่างบน → หัวแมวหิน · water = ลงแล้วน้ำกระเด็น (world.js splashAt)
       S.push(
-        flat('cas:sign', cx - 48, cx + 48, GY - 70), flat('cas:name', cx - 62, cx + 62, GY - 166),
-        flat('cas:w1', x + 66, x + 92, y), flat('cas:w2', x + 150, cx - 62, y),
-        flat('cas:w3', cx + 62, x + w - 150, y), flat('cas:w4', x + w - 92, x + w - 66, y),
+        flat('fnt:rim', cx - W + 4, cx + W - 4, GY - rim, { water: true }), flat('fnt:bowl', cx - midR + 2, cx + midR - 2, GY - mid, { water: true }),
+        flat('fnt:top', cx - topR + 1, cx + topR - 1, GY - top, { water: true }), flat('fnt:cat', cx - 9, cx + 9, GY - 207),
       );
+    } else if (p.kind === 'castle') {
+      // ปราสาท (castle.js): ป้าย "เปิดเร็ว ๆ นี้" · แท่นรูปปั้นองครักษ์ → ทางเดินบนกำแพง (ยาวตลอดถึงหน้าป้อมประตู)
+      //   → ใบเสมาป้อมประตูสองข้าง → หน้าจั่วโค้งตราโล่กลาง
+      const { x, w } = p, cx = x + w / 2;
+      S.push(
+        flat('cas:sign', cx - 48, cx + 48, GY - 70),
+        flat('cas:pedL', cx - 190, cx - 146, GY - 50), flat('cas:pedR', cx + 146, cx + 190, GY - 50),
+        flat('cas:wall', x + 104, x + w - 104, GY - 180),
+        flat('cas:gateL', cx - 100, cx - 52, GY - 236), flat('cas:gateR', cx + 52, cx + 100, GY - 236),
+        arcTop('cas:ped', cx, GY - 224, 52, 40, -0.85, 0.85, 8),
+      );
+    } else if (p.kind === 'pier') {
+      // ศาลาท่าเรือ: หลังคาจั่ว (ปีนขึ้นสันได้) · ยอดเสาโคมท่าเรือ (play.js drawPier)
+      const d = p.door, side = Math.sign(PLACES.find((q) => q.id === p.to).door - d);
+      S.push({ id: p.id + ':roof', pts: [[d - 90, GY - 128], [d, GY - 178], [d + 90, GY - 128]] }, flat(p.id + ':lamp', d + side * 105 - 11, d + side * 105 + 11, GY - 155));
     } else if (p.kind === 'box') S.push(flat('box:top', p.x + 4, p.x + p.w - 4, GY - 44));
     else if (p.kind === 'swing') S.push(flat('swing:beam', p.x - 4, p.x + p.w + 4, GY - 156));
   }
@@ -199,6 +243,10 @@ function buildSurfaces() {
   }
   // ซุ้มทางเข้าเมือง (ป้ายบนสุด)
   S.push(flat('welcome', 16, 194, GY - 176));
+  // ซุ้มประตูดินแดนปราสาท: คานป้ายสองข้าง + หัวแมวโค้งกลาง · โคมหลวง (ยอดมงกุฎ)
+  const g = REALM.gate;
+  S.push(flat('realm:l', g - 120, g - 44, GY - 180), arcTop('realm:crest', g, GY - 178, 52, 30, -0.85, 0.85, 8), flat('realm:r', g + 44, g + 120, GY - 180));
+  for (const lx of REALM.lanterns) S.push(flat('rlamp:' + lx, lx - 9, lx + 9, GY - 154));
   // สะพาน: ศาลา (ชายคาล่าง → ชั้นบน → สัน) + รูปปั้นแมวเฝ้าหัวสะพาน
   const { low, up, eave } = SALA;
   S.push({ id: 'sala:roof', pts: [
@@ -224,12 +272,12 @@ export const SURFACES = buildSurfaces();
 /** ความสูงผิว s ตรง x (null = ไม่อยู่ในช่วงผิว) */
 export function surfY(s, x) {
   if (x < s.x0 || x > s.x1) return null;
-  const P = s.pts;
+  const P = s.pts, dy = s.dy || 0;   // dy = ผิวนุ่มที่กำลังยุบ (เห็ด/ทิวลิปในสวน garden.js)
   for (let i = 1; i < P.length; i++) {
     if (x <= P[i][0]) {
       const [ax, ay] = P[i - 1], [bx, by] = P[i];
-      return bx === ax ? Math.min(ay, by) : ay + ((by - ay) * (x - ax)) / (bx - ax);
+      return dy + (bx === ax ? Math.min(ay, by) : ay + ((by - ay) * (x - ax)) / (bx - ax));
     }
   }
-  return P[P.length - 1][1];
+  return dy + P[P.length - 1][1];
 }
