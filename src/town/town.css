@@ -6,7 +6,7 @@
   --backbtn: clamp(38px, 9dvh, 52px);
   --backbtn-x: clamp(8px, 1.4vw, 16px);
   /* จอยกับปุ่มกระโดด ขนาดเท่ากัน ฐานบรรทัดเดียวกัน (ผู้ใช้ 28 ต.ค.) */
-  --padbig: clamp(72px, 21dvh, 92px);
+  --padbig: clamp(86px, 26dvh, 116px);   /* ผู้ใช้ 1 พ.ย.: ขยายจาก clamp(72px, 21dvh, 92px) */
 }
 * { box-sizing: border-box; }
 html, body {
@@ -190,7 +190,7 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
   backdrop-filter: blur(2px);
   box-shadow: 0 3px 0 rgba(60,20,80,.25);
 }
-.jumpbtn b { font-size: clamp(14px, 3.6dvh, 17px); line-height: 1.2; text-shadow: 0 1px 3px rgba(60,20,80,.75); }
+.jumpbtn b { font-size: clamp(15px, 4.2dvh, 20px); line-height: 1.2; text-shadow: 0 1px 3px rgba(60,20,80,.75); }
 .jumpbtn:active { background: rgba(255,182,212,.55); transform: translateY(2px); box-shadow: 0 1px 0 rgba(60,20,80,.25); }
 
 /* ── แถบบอกปุ่มคีย์บอร์ด (คอมเท่านั้น — body.desk ตั้งจาก main.js) · คอมไม่มีปุ่มบนจอ ── */
@@ -572,7 +572,7 @@ body.photo .topbar, body.photo .wardbtn, body.photo .pad, body.photo .keyhint, b
   pointer-events: none;
 }
 .keeper-say::after {
-  content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -8px;
+  content: ""; position: absolute; left: calc(50% + var(--tail, 0px)); bottom: -8px; margin-left: -8px;
   border: 8px solid transparent; border-bottom: 0; border-top-color: #FFFFFF;
 }
 .keeper-say.pop { animation: sayPop .35s cubic-bezier(.3,1.6,.5,1); }
@@ -691,6 +691,195 @@ body.photo .topbar, body.photo .wardbtn, body.photo .pad, body.photo .keyhint, b
 .sd-btn:disabled { cursor: default; background: #E6DEEE; color: #8A7A9E; box-shadow: none; transform: none; }
 .sp-ex .ex { background: var(--sp-soft); }
 .sp-ex .sd-btn { align-self: center; padding-inline: 34px; }
+/* ── โซนโปรโมชั่น (ผู้ใช้ 1 พ.ย.): ป้ายสไลด์ของเด่นบนสุดของแผง · สีตามชนิดโปร ── */
+.sp-body.has-promo { grid-template-rows: auto minmax(0, 1fr); }
+.sp-promo { grid-column: 1 / -1; position: relative; height: clamp(58px, 15dvh, 86px); }
+.pr-slide {
+  --pr-a: var(--sp-a); --pr-b: var(--sp-b); --pr-shade: var(--sp-b); --pr-soft: var(--sp-soft);
+  position: absolute; inset: 0;
+  display: flex; align-items: center; gap: clamp(8px, 1.4vw, 14px);
+  padding: 0 clamp(10px, 1.6vw, 16px) 0 clamp(8px, 1.2vw, 12px);
+  border: 0; border-radius: 18px;
+  font: inherit; color: #FFFFFF; text-align: left;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.2) 2.2px, transparent 2.8px) 0 0 / 20px 20px,
+    linear-gradient(115deg, var(--pr-a), var(--pr-b));
+  box-shadow: 0 4px 0 var(--pr-shade), 0 8px 16px rgba(40,10,60,.14);
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0; transform: translateX(28px) scale(.97); pointer-events: none;
+  transition: opacity .16s ease, transform .5s cubic-bezier(.2,1.25,.4,1);
+}
+/* ป้ายเก่าจางหายก่อน (.16s) แล้วป้ายใหม่ค่อยเลื่อนเข้า — ไม่เห็นสองป้ายซ้อนกันตอนเปลี่ยน */
+.pr-slide.on { opacity: 1; transform: none; pointer-events: auto; transition: opacity .3s ease .14s, transform .5s cubic-bezier(.2,1.25,.4,1) .14s; }
+.pr-slide:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--pr-shade), 0 4px 10px rgba(40,10,60,.12); }
+.pr-slide.sel { box-shadow: 0 4px 0 var(--pr-shade), 0 0 0 3px rgba(255,255,255,.85) inset, 0 8px 16px rgba(40,10,60,.14); }
+.pr-slide[data-kind="hot"] { --pr-a: #FF6F95; --pr-b: #FFA06A; --pr-shade: #D9506E; --pr-soft: #FFE1EA; }
+.pr-slide[data-kind="deal"] { --pr-a: #FFB238; --pr-b: #FF7E8E; --pr-shade: #D9782A; --pr-soft: #FFF0C8; }
+.pr-slide[data-kind="new"] { --pr-a: #34C7A6; --pr-b: #66AEF5; --pr-shade: #23977E; --pr-soft: #D8FBF1; }
+/* แสงวิ่งผ่านป้าย */
+.pr-slide::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 26%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+  transform: skewX(-18deg);
+  animation: prShine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes prShine { 0%, 55% { left: -40%; } 100% { left: 135%; } }
+/* วงแสงหมุน + หูแมว รองไอคอนของเด่น */
+.pr-burst {
+  position: relative; flex: 0 0 auto;
+  width: clamp(44px, 12dvh, 64px); height: clamp(44px, 12dvh, 64px);
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.45), 0 3px 8px rgba(40,10,60,.18);
+  display: grid; place-items: center;
+}
+.pr-ear {
+  position: absolute; top: -7px; width: 17px; height: 17px;
+  background: #FFFFFF;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.pr-ear::after { content: ""; position: absolute; inset: 6px 4.5px 0; background: #FFB5CF; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.pr-ear.l { left: 3px; transform: rotate(-24deg); }
+.pr-ear.r { right: 3px; transform: rotate(24deg); }
+.pr-ray {
+  position: absolute; inset: 3px; border-radius: 50%;
+  background: repeating-conic-gradient(var(--pr-soft) 0 12deg, #FFFFFF 12deg 24deg);
+  animation: prSpin 16s linear infinite;
+}
+@keyframes prSpin { to { transform: rotate(360deg); } }
+.pr-ico { position: relative; width: 80%; height: 80%; display: grid; place-items: center; font-size: clamp(22px, 5dvh, 32px); }
+.pr-ico img { width: 100%; height: 100%; object-fit: contain; animation: prBob 2.4s ease-in-out infinite; }
+.pr-ico .pack { right: -8px; bottom: -4px; }
+@keyframes prBob { 50% { transform: translateY(-3px) rotate(-4deg); } }
+.pr-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.pr-kick {
+  padding: 1px 9px; border-radius: 999px;
+  background: #FFFFFF; color: var(--pr-shade);
+  font-weight: 700; font-size: clamp(9.5px, 2dvh, 11.5px);
+  box-shadow: 0 2px 0 rgba(40,10,60,.1);
+}
+.pr-kick::before { content: "✦ "; }
+.pr-name { width: 100%; font-size: clamp(13px, 3dvh, 17px); line-height: 1.25; text-shadow: 0 1.5px 0 rgba(0,0,0,.16); }
+.pr-deal { font-size: clamp(10px, 2.1dvh, 12px); line-height: 1.3; opacity: .95; }
+.pr-cost { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.pr-was { font-size: clamp(10px, 2dvh, 12px); font-weight: 700; opacity: .9; text-decoration-thickness: 2px; }
+.pr-was:empty { display: none; }
+.pr-price {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 11px; border-radius: 999px;
+  background: #FFF6D6; color: #9A5C00;
+  font-weight: 700; font-size: clamp(12px, 2.8dvh, 15px);
+  box-shadow: 0 2px 0 rgba(150,90,0,.28);
+}
+.pr-slide.owned .pr-price { background: #E6FFF0; color: #2E8E58; box-shadow: 0 2px 0 rgba(30,120,70,.25); }
+.pr-spark { position: absolute; font-style: normal; color: #FFFFFF; pointer-events: none; animation: prTw 2.2s ease-in-out infinite; }
+.pr-spark.a { left: clamp(56px, 15dvh, 80px); top: 5px; font-size: 10px; }
+.pr-spark.b { right: 30%; top: 4px; font-size: 13px; animation-delay: .7s; }
+.pr-spark.c { right: 36%; bottom: 5px; font-size: 9px; animation-delay: 1.4s; }
+@keyframes prTw { 0%, 100% { opacity: .15; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.1); } }
+.pr-dots { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); display: flex; gap: 5px; z-index: 2; }
+.pr-dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: rgba(255,255,255,.55); cursor: pointer; transition: width .25s, background .25s; }
+.pr-dots button.on { width: 18px; background: #FFFFFF; }
+/* จอเตี้ย (มือถือแนวนอน): ป้ายเตี้ยลง ให้ตาราง/ปุ่มซื้อมีที่พอ */
+@media (max-height: 430px) {
+  .sp-promo { height: 50px; }
+  .pr-burst { width: 40px; height: 40px; }
+  .pr-ear { width: 13px; height: 13px; top: -5px; }
+  .pr-ear::after { inset: 5px 3.5px 0; }
+}
+
+/* ── การ์ดสินค้า: จานรองไอคอน · ป้ายริบบิ้นสีตามชนิด · ราคาเม็ดยา · เลือกแล้วยกขึ้น + อุ้งเท้า ── */
+.sp-grid { padding: 8px 6px 6px; }
+.sp-card {
+  padding: 10px 6px 8px;
+  background: linear-gradient(180deg, #FFFFFF 30%, var(--sp-soft));
+  border-color: color-mix(in srgb, var(--sp-a) 20%, transparent);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--sp-a) 18%, transparent);
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+@media (hover: hover) { .sp-card:hover { transform: translateY(-2px); } }
+.sp-card.sel {
+  border-color: var(--sp-a); background: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 var(--sp-b), 0 8px 16px rgba(40,10,60,.14);
+}
+.sp-card.sel::after {
+  content: ""; position: absolute; top: -7px; right: -5px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--sp-a) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='white'%3E%3Cellipse cx='12' cy='15.5' rx='4.8' ry='4'/%3E%3Ccircle cx='5.8' cy='10' r='2.2'/%3E%3Ccircle cx='9.8' cy='6.4' r='2.2'/%3E%3Ccircle cx='14.2' cy='6.4' r='2.2'/%3E%3Ccircle cx='18.2' cy='10' r='2.2'/%3E%3C/g%3E%3C/svg%3E") center / 15px no-repeat;
+  box-shadow: 0 2px 0 var(--sp-b);
+}
+.sc-ico::before {
+  content: ""; position: absolute; inset: 6% -4% -2%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--sp-a) 22%, #FFFFFF) 0 52%, transparent 70%);
+}
+.sc-ico img { position: relative; }
+.sc-name { width: 100%; }   /* เต็มความกว้างการ์ด — ให้ตัวย่อชื่อ (fitOneLine) วัดช่องได้ */
+.sd-head { flex: 1 1 auto; }
+.sd-name { width: 100%; }
+.sc-price { margin-top: 3px; padding: 1px 9px; border-radius: 999px; background: #FFF6DC; }
+.sp-card.poor .sc-price { background: #FFEDF0; }
+.sp-card.owned .sc-price { background: #E6FFF0; }
+.sc-tag, .sd-tag { padding: 2px 11px 2px 8px; border-radius: 6px 0 0 6px; clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%); }
+.sc-tag { top: 6px; left: 6px; }
+.sc-tag[data-kind="hot"], .sd-tag[data-kind="hot"] { background: linear-gradient(90deg, #FF5E86, #FF8C6B); }
+.sc-tag[data-kind="deal"], .sd-tag[data-kind="deal"] { background: linear-gradient(90deg, #FF9A2E, #FFBE45); }
+.sc-tag[data-kind="new"], .sd-tag[data-kind="new"] { background: linear-gradient(90deg, #22B894, #56ACF2); }
+
+/* ── แผงรายละเอียด: ไอคอนบนแท่นกลม มีประกาย · ปุ่มซื้อมีแสงวิ่ง ── */
+.sp-detail {
+  background: linear-gradient(180deg, var(--sp-soft), #FFFFFF 70%);
+  border: 2px solid color-mix(in srgb, var(--sp-a) 16%, transparent);
+}
+.sd-ico {
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 58%, #FFFFFF 0 54%, color-mix(in srgb, var(--sp-a) 20%, #FFFFFF) 56% 100%);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--sp-a) 28%, transparent), 0 0 0 3px #FFFFFF;
+}
+.sd-ico::after {
+  content: "✦"; position: absolute; top: -4px; right: -2px;
+  color: var(--sp-a); font-size: 15px;
+  animation: prTw 2.4s ease-in-out infinite;
+}
+.sd-price { gap: 7px; }
+.sd-btn { position: relative; overflow: hidden; }
+.sd-btn:not(:disabled)::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.6), transparent);
+  transform: skewX(-18deg);
+  animation: prShine 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-slide, .pr-slide::after, .pr-ray, .pr-ico img, .pr-spark, .sd-ico::after, .sd-btn::after { animation: none !important; transition-duration: .01s; }
+}
+
+/* ── แถบเลื่อนในแผงร้าน (ผู้ใช้ 1 พ.ย.): ราวสีอ่อน + ปุ่มเม็ดยาไล่สีประจำร้าน มีอุ้งเท้าขาวกลางปุ่ม · ไม่มีลูกศร ──
+   ใช้กับตารางสินค้า แผงรายละเอียด แผงแลกทอง · iPad/iPhone ใช้แถบลอยของระบบ (เบราว์เซอร์ไม่ให้แต่ง) */
+.sp ::-webkit-scrollbar { width: 9px; height: 9px; }
+.sp ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.sp ::-webkit-scrollbar-track {
+  margin: 6px 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sp-a) 14%, #FFFFFF);
+  box-shadow: inset 0 0 0 1.5px #FFFFFF;
+}
+.sp ::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 1.5px solid #FFFFFF;
+  border-radius: 999px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='white'%3E%3Cellipse cx='12' cy='15.5' rx='4.8' ry='4'/%3E%3Ccircle cx='5.8' cy='10' r='2.2'/%3E%3Ccircle cx='9.8' cy='6.4' r='2.2'/%3E%3Ccircle cx='14.2' cy='6.4' r='2.2'/%3E%3Ccircle cx='18.2' cy='10' r='2.2'/%3E%3C/g%3E%3C/svg%3E") center / 6px no-repeat,
+    linear-gradient(180deg, var(--sp-a), var(--sp-b));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.35);
+}
+.sp ::-webkit-scrollbar-thumb:hover { background-size: 7px, auto; filter: brightness(1.05); }
+.sp ::-webkit-scrollbar-corner { background: transparent; }
+@supports not selector(::-webkit-scrollbar) {
+  .sp-grid, .sp-detail, .sp-ex { scrollbar-width: thin; scrollbar-color: var(--sp-a) color-mix(in srgb, var(--sp-a) 14%, #FFFFFF); }
+}
+
 /* ป้ายซื้อสำเร็จ + เหรียญเด้ง */
 .sp-pop {
   position: absolute; left: 50%; top: 42%;
@@ -717,7 +906,68 @@ body.photo .topbar, body.photo .wardbtn, body.photo .pad, body.photo .keyhint, b
 @media (max-aspect-ratio: 1/1) {
   .sp { left: 8px; right: 8px; top: auto; height: 64dvh; width: auto; }
   .sp-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .sp-body.has-promo { grid-template-rows: auto minmax(0, 1fr) auto; }
+}
+/* มือถือแนวตั้ง: ตารางต้องเหลือที่ (ป้ายโปร + รายละเอียดกินที่) — รายละเอียดย่อเหลือชื่อ คำอธิบาย ราคา ปุ่ม */
+@media (max-aspect-ratio: 1/1) and (max-width: 699px) {
+  .sp { height: 70dvh; }
+  .sd-facts { display: none; }
   .keeper-say { top: 8dvh; max-width: 70vw; }
+}
+
+/* ── จอใหญ่ (ผู้ใช้ 1 พ.ย.: iPad ดูบีบ) — iPad แนวนอน/แนวตั้ง + คอมจอใหญ่: ขยายแผงและทุกชิ้นให้สมส่วน ──
+   ค่าเดิมเป็น clamp ตามความสูงจอที่ตันเพดานตั้งแต่จอ ~720px — จอสูงกว่านั้นของเลยดูเล็กลีบในแผงใหญ่ */
+@media (min-width: 900px) and (min-height: 740px), (max-aspect-ratio: 1/1) and (min-width: 700px) {
+  .sp { width: min(60vw, 820px); }
+  .sp-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .sp-title h2 { font-size: 26px; }
+  .sp-title small { font-size: 15px; }
+  .sp-body { gap: 16px; padding: 16px; }
+  .sp-promo { height: 104px; }
+  .pr-slide { gap: 16px; padding: 0 20px 0 14px; border-radius: 22px; }
+  .pr-burst { width: 80px; height: 80px; }
+  .pr-ear { width: 21px; height: 21px; top: -8px; }
+  .pr-ear::after { inset: 7px 5.5px 0; }
+  .pr-ico { font-size: 40px; }
+  .pr-kick { font-size: 13px; padding: 2px 11px; }
+  .pr-name { font-size: 21px; }
+  .pr-deal { font-size: 14px; }
+  .pr-was { font-size: 14px; }
+  .pr-price { font-size: 18px; padding: 5px 15px; }
+  .pr-spark.a { left: 104px; }
+  .pr-dots button { width: 9px; height: 9px; }
+  .pr-dots button.on { width: 22px; }
+  .sp-grid { grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 12px; padding: 10px 8px 8px; }
+  .sp-card { padding: 14px 8px 12px; border-radius: 20px; gap: 4px; }
+  .sc-ico { width: 78px; height: 78px; font-size: 44px; }
+  .sc-name { font-size: 16px; }
+  .sc-price { font-size: 16px; padding: 2px 12px; }
+  .sc-tag, .sd-tag { font-size: 12px; }
+  .pack { font-size: 12px; padding: 0 6px; }
+  .sp-card.sel::after { width: 26px; height: 26px; background-size: 18px; }
+  .sp-detail { padding: 14px; gap: 10px; border-radius: 22px; }
+  .sd-top { gap: 12px; }
+  .sd-ico { width: 88px; height: 88px; font-size: 48px; }
+  .sd-ico::after { font-size: 19px; }
+  .sd-name { font-size: 23px; }
+  .sd-desc { font-size: 16px; }
+  .sd-facts { font-size: 15px; }
+  .sd-price { font-size: 28px; }
+  .sd-state { font-size: 14px; }
+  .sd-btn { font-size: 21px; padding: 15px 18px; }
+  .sp-pop { font-size: 20px; }
+  .keeper-say { font-size: 17px; max-width: min(380px, 40vw); padding: 10px 18px; }
+}
+/* iPad แนวตั้ง: แผงล่างกว้างพอเรียงตาราง|รายละเอียด ซ้าย-ขวาแบบคอม (ไม่ซ้อนบน-ล่างแบบมือถือ) */
+@media (max-aspect-ratio: 1/1) and (min-width: 700px) {
+  .sp { left: 16px; right: 16px; bottom: 16px; height: 56dvh; width: auto; }
+  .sp-body, .sp-body.has-promo { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .sp-body.has-promo { grid-template-rows: auto minmax(0, 1fr); }
+  .keeper-say { max-width: 70vw; }
+}
+/* มือถือแนวนอน (ผู้ใช้ 1 พ.ย.): แผงชิดขวาขึ้น — ใช้ขอบรอยบากแค่บางส่วน (มุมแผงโค้งรับมุมจออยู่แล้ว) */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) {
+  .sp { right: calc(6px + env(safe-area-inset-right) * .4); }
 }
 
 /* ── ปุ่มท่าทาง (ฝั่งขวา ข้างปุ่มเดิน/วิ่ง) + แผงเลือกท่า ── */

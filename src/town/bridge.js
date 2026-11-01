@@ -22,13 +22,16 @@ const ARCH = { cx: RX, cy: 340, rx: 128, ry: 26 }; // ซุ้มโค้ง�
 
 // ── แม่น้ำไกล (พิกัดจอ) ───────────────────────────────────────
 // s = 0 ต้นน้ำ (น้ำตก) → 1 ถึงแนวถนน · p(s) = อัตราเลื่อนตามกล้อง (ความลึก) · y(s) ไล่ลงตรง ๆ
+// ผู้ใช้ 1 พ.ย.: กล้องยกขึ้น (น้องบนหลังคาศาลา) แม่น้ำเคยเลื่อนทั้งเส้นเท่าชั้น 0.3 → ปลายบนหลุดจากน้ำตก ปลายล่างลอยเหนือสะพาน
+//   ตอนนี้แต่ละจุดเลื่อนแนวตั้งตามความลึกของตัวเอง (camY × p(s)) — ต้นน้ำเท่าชั้นน้ำตก ปลายน้ำเท่าพื้นถนน ต่อกันตลอด
 const SRC_Y = 150;
 const depthP = (s) => 0.1 + 0.9 * s ** 2.2;
+export const RIVER_SRC_P = depthP(0);   // ชั้นน้ำตก/ภูเขาต้นน้ำเลื่อนตามกล้องเท่านี้ (main.js)
 const riverY = (s) => SRC_Y + (GY - SRC_Y) * s;
 const bend = (s) => 560 * (1 - s) ** 1.4 * Math.sin(4.6 * s + 0.6);   // คดเคี้ยว (หน่วยชั้นของตัวเอง)
-function riverPt(s, camX, vw) {
+function riverPt(s, camX, vw, camY = 0) {
   const p = depthP(s), C = vw / 2;
-  return { x: C + (RX - camX - C + bend(s)) * p, y: riverY(s), hw: HALF * p, p };
+  return { x: C + (RX - camX - C + bend(s)) * p, y: riverY(s) + camY * p, hw: HALF * p, p };
 }
 
 /** ช่องแม่น้ำในชั้นฉากหลังที่เลื่อน par เท่าของกล้อง → [ซ้าย, ขวา] พิกัดจอ (ให้ชั้นนั้นเว้นบ้าน/ต้นไม้) */
@@ -41,7 +44,10 @@ export function riverGap(camX, vw) {
   };
 }
 
-/** ภูเขาต้นน้ำ + น้ำตก (ไกลมาก — วาดก่อนชั้นเนิน) */
+/**
+ * ภูเขาต้นน้ำ + หน้าผาน้ำตก + แอ่งน้ำ (ไกลมาก — วาดก่อนชั้นเนิน · main.js เลื่อนชั้นนี้ RIVER_SRC_P)
+ * น้ำตกไหลจากร่องหน้าผาลงแอ่งฟอง → แม่น้ำเริ่มจากแอ่ง (กว้างเท่าลำน้ำต้นทาง) ไม่ลอย
+ */
 export function drawRiverSource(c, camX, vw, t) {
   const r = riverPt(0, camX, vw);
   const x = r.x;
@@ -52,16 +58,16 @@ export function drawRiverSource(c, camX, vw, t) {
   c.beginPath();
   c.moveTo(x - 230, 262);
   c.quadraticCurveTo(x - 150, 150, x - 78, 100);
-  c.quadraticCurveTo(x - 40, 118, x - 6, SRC_Y - 22);
-  c.lineTo(x + 6, SRC_Y - 22);
-  c.quadraticCurveTo(x + 40, 112, x + 84, 88);
+  c.quadraticCurveTo(x - 40, 112, x - 14, SRC_Y - 40);
+  c.lineTo(x + 14, SRC_Y - 40);
+  c.quadraticCurveTo(x + 40, 108, x + 84, 88);
   c.quadraticCurveTo(x + 160, 150, x + 240, 262);
   c.closePath();
   c.fill();
   // ซีกเงา (แดดมาจากขวาบน)
   c.fillStyle = 'rgba(120,90,180,.16)';
   c.beginPath(); c.moveTo(x - 230, 262); c.quadraticCurveTo(x - 150, 150, x - 78, 100); c.quadraticCurveTo(x - 92, 170, x - 60, 262); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(x + 84, 88); c.quadraticCurveTo(x + 50, 160, x + 70, 262); c.lineTo(x + 6, 262); c.lineTo(x + 6, SRC_Y - 22); c.quadraticCurveTo(x + 40, 112, x + 84, 88); c.fill();
+  c.beginPath(); c.moveTo(x + 84, 88); c.quadraticCurveTo(x + 50, 160, x + 70, 262); c.lineTo(x + 14, 262); c.lineTo(x + 14, SRC_Y - 40); c.quadraticCurveTo(x + 40, 108, x + 84, 88); c.fill();
   // หมวกหิมะชมพูอ่อน
   c.fillStyle = 'rgba(255,246,252,.9)';
   for (const [px, py, d] of [[x - 78, 100, -1], [x + 84, 88, 1]]) {
@@ -70,53 +76,117 @@ export function drawRiverSource(c, camX, vw, t) {
     c.lineTo(px + 12, py + 14); c.lineTo(px + 4 * d, py + 22); c.lineTo(px - 8, py + 14);
     c.closePath(); c.fill();
   }
-  // น้ำตก
-  c.fillStyle = 'rgba(236,248,255,.92)';
-  c.fillRect(x - 6, SRC_Y - 22, 12, 24);
-  c.fillStyle = 'rgba(170,215,250,.8)';
-  for (let i = 0; i < 4; i++) c.fillRect(x - 5 + i * 3, SRC_Y - 22 + ((t * 0.9 + i * 7) % 20), 1.4, 6);
-  // ละอองน้ำตก
-  c.fillStyle = 'rgba(255,255,255,.55)';
-  for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(x - 8 + i * 8, SRC_Y + 1 + Math.sin(t * 0.06 + i) * 1.2, 5, 0, TAU); c.fill(); }
-  // หมอกไกล (เท่าชั้นเนินไกล)
-  c.fillStyle = 'rgba(236,230,255,.32)';
-  c.fillRect(x - 240, 80, 480, 182);
+  // หมอกไกลวงรีจางออก (เดิมเป็นสี่เหลี่ยม — เห็นขอบตั้งสองข้าง ดูเป็นแผ่นแปะ)
+  c.save();
+  c.translate(x, 180); c.scale(1, 0.42);
+  const hz = c.createRadialGradient(0, 0, 0, 0, 0, 250);
+  hz.addColorStop(0, 'rgba(236,230,255,.34)'); hz.addColorStop(0.7, 'rgba(236,230,255,.2)'); hz.addColorStop(1, 'rgba(236,230,255,0)');
+  c.fillStyle = hz; c.beginPath(); c.arc(0, 0, 250, 0, TAU); c.fill();
+  c.restore();
+  // ร่องเขา (ทางน้ำตก): เงาม่วงจาง ๆ กลางร่อง ขอบสองข้างไล่ใส — กลืนกับเนื้อภูเขา
+  c.fillStyle = lg(c, x - 30, 0, x + 30, 0, [[0, 'rgba(120,96,180,0)'], [0.5, 'rgba(120,96,180,.22)'], [1, 'rgba(120,96,180,0)']]);
+  c.beginPath();
+  c.moveTo(x - 30, SRC_Y + 4); c.quadraticCurveTo(x - 20, SRC_Y - 24, x - 11, SRC_Y - 44);
+  c.lineTo(x + 11, SRC_Y - 44); c.quadraticCurveTo(x + 20, SRC_Y - 24, x + 30, SRC_Y + 4); c.closePath(); c.fill();
+  // เชิงผา: แสงทุ่งหญ้าไล่จากแอ่งน้ำออกไป (วงรีจาง — ต่อกับทุ่งริมแม่น้ำ ไม่มีขอบ)
+  c.save();
+  c.translate(x, SRC_Y + 12); c.scale(1, 0.36);
+  const md = c.createRadialGradient(0, 0, 0, 0, 0, 110);
+  md.addColorStop(0, 'rgba(208,222,222,.85)'); md.addColorStop(0.55, 'rgba(210,220,230,.45)'); md.addColorStop(1, 'rgba(214,214,240,0)');
+  c.fillStyle = md; c.beginPath(); c.arc(0, 0, 110, 0, TAU); c.fill();
+  c.restore();
+  // น้ำตก: สายน้ำกว้างเท่าลำน้ำต้นทาง ไล่ขาว→ฟ้า + เส้นน้ำไหลลง
+  const ww = r.hw + 2;
+  c.fillStyle = lg(c, 0, SRC_Y - 44, 0, SRC_Y + 2, [[0, 'rgba(244,251,255,.6)'], [0.25, '#F4FBFF'], [1, '#B4DDF8']]);
+  c.beginPath(); c.moveTo(x - 7, SRC_Y - 44); c.lineTo(x + 7, SRC_Y - 44); c.quadraticCurveTo(x + ww * 0.6, SRC_Y - 20, x + ww, SRC_Y + 2); c.lineTo(x - ww, SRC_Y + 2); c.quadraticCurveTo(x - ww * 0.6, SRC_Y - 20, x - 7, SRC_Y - 44); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(150,200,240,.75)'; c.lineWidth = 1.2; c.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    // เส้นน้ำไหลตามสายที่บานออก (บนแคบ ล่างกว้าง)
+    const u = (i + 0.5) / 6 - 0.5, y0 = SRC_Y - 40 + ((t * 0.8 + i * 9) % 38), y1 = Math.min(SRC_Y, y0 + 8);
+    const wAt = (y) => 7 + (ww - 7) * ((y - (SRC_Y - 44)) / 46) ** 1.6;
+    c.beginPath(); c.moveTo(x + u * 1.6 * wAt(y0), y0); c.lineTo(x + u * 1.6 * wAt(y1), y1); c.stroke();
+  }
+  // แอ่งน้ำเชิงผา + ฟองขาว + ละออง
+  c.fillStyle = '#A4D4F6';
+  c.beginPath(); c.ellipse(x, SRC_Y + 3, ww + 8, 6, 0, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i = 0; i < 5; i++) { const fx = x - ww + (i * ww * 2) / 4; c.beginPath(); c.arc(fx, SRC_Y + 1 + Math.sin(t * 0.07 + i * 1.7) * 1.2, 3.6 + (i % 2), 0, TAU); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,.35)';
+  for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(x - 10 + i * 10, SRC_Y - 6 + Math.sin(t * 0.05 + i) * 2, 8, 0, TAU); c.fill(); }
+  // หินก้อนกลมสองข้างแอ่ง
+  for (const [dx, rr] of [[-ww - 10, 5], [ww + 9, 4], [ww + 15, 2.6]]) {
+    c.fillStyle = '#B7A6DA'; c.beginPath(); c.ellipse(x + dx, SRC_Y + 4, rr * 1.3, rr, 0, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(x + dx - rr * 0.3, SRC_Y + 4 - rr * 0.4, rr * 0.5, rr * 0.3, 0, 0, TAU); c.fill();
+  }
   c.restore();
 }
 
 /**
- * แม่น้ำคดเคี้ยวจากน้ำตกลงมาถึงแนวถนน — วาดสองรอบ:
- *   รอบไกล (near = false) หลังชั้นเนิน ก่อนต้นไม้/แถวบ้าน → โดนหมอกของชั้นหลังทับ จางตามระยะ
+ * แม่น้ำคดเคี้ยวจากน้ำตกลงมาถึงแนวถนน — วาดสองรอบ (ในพิกัดจอ ไม่เลื่อนตามกล้อง — แต่ละจุดบวก camY × p(s) เอง):
+ *   รอบไกล (near = false) หลังชั้นเนิน ก่อนต้นไม้/แถวบ้าน → ทุ่งหญ้าสองฝั่ง + ลำน้ำ จางตามระยะ
  *   รอบใกล้ (near = true) หลังแถวบ้าน เฉพาะช่วงใกล้ (ไม่มีหมอกทับ สีใส) ขอบบนค่อย ๆ จางเข้าหารอบไกล ไม่เห็นรอยต่อ
+ * ทุ่งหญ้า (ผู้ใช้ 1 พ.ย. — แม่น้ำเคยลอยบนภูเขา): แผ่กว้างกว่าลำน้ำ ไล่จากเขียวอมหมอก (ไกล) → เขียวใส (ใกล้) พุ่มไม้/ดอกไม้ริมตลิ่ง
  */
 const NEAR_S = 0.8;
-export function drawRiverFar(c, camX, vw, t, near = false) {
-  const s0 = near ? NEAR_S : 0, N = near ? 16 : 40, Lp = [], Rp = [];
+export function drawRiverFar(c, camX, camY, vw, t, near = false) {
+  const s0 = near ? NEAR_S : 0, N = near ? 16 : 40, Lp = [], Rp = [], pts = [];
   for (let i = 0; i <= N; i++) {
-    const r = riverPt(s0 + ((1 - s0) * i) / N, camX, vw);
+    const r = riverPt(s0 + ((1 - s0) * i) / N, camX, vw, camY);
+    pts.push(r);
     Lp.push([r.x - r.hw, r.y]);
     Rp.push([r.x + r.hw, r.y]);
   }
-  const minX = Math.min(...Lp.map((q) => q[0])), maxX = Math.max(...Rp.map((q) => q[0]));
+  const meadowW = (r) => r.hw * 1.35 + 6 + 30 * r.p;
+  const minX = Math.min(...pts.map((r) => r.x - meadowW(r))), maxX = Math.max(...pts.map((r) => r.x + meadowW(r)));
   if (maxX < -20 || minX > vw + 20) return;
   const sAt = (i) => s0 + ((1 - s0) * i) / N;
-  const y0 = riverY(s0), fadeK = near ? (y) => Math.min(1, (y - y0) / ((GY - y0) * 0.55)) : () => 1;
+  const yTop = pts[0].y, yBot = pts[N].y;
+  const fadeK = near ? (y) => Math.min(1, (y - yTop) / ((yBot - yTop) * 0.55)) : () => 1;
   // สะพานอยู่ไกลเกินจอหนึ่งช่วง = แม่น้ำค่อย ๆ จางหาย (ไม่ให้เห็นลำน้ำพาดเฉียงข้ามฟ้าตอนอยู่ปลายเมือง)
   const far = Math.abs(RX - camX - vw * 0.5) - vw * 0.85;
   if (far > 520) return;
   c.save();
   const base = far > 0 ? 1 - far / 520 : 1;
   c.globalAlpha = base;
-  // ตลิ่งหญ้าเขียวอ่อนรอบลำน้ำ (กว้างกว่าน้ำนิดหนึ่ง)
-  c.fillStyle = near ? lg(c, 0, y0, 0, GY, [[0, 'rgba(178,226,170,0)'], [0.55, 'rgba(178,226,170,.95)'], [1, 'rgba(178,226,170,.95)']]) : 'rgba(186,230,178,.9)';
-  c.beginPath();
-  Lp.forEach(([x, y], i) => { const w = 1.5 + 8 * depthP(sAt(i)); i ? c.lineTo(x - w, y) : c.moveTo(x - w, y); });
-  for (let i = N; i >= 0; i--) { const w = 1.5 + 8 * depthP(sAt(i)); c.lineTo(Rp[i][0] + w, Rp[i][1]); }
-  c.closePath(); c.fill();
+  const band = (wf) => {
+    c.beginPath();
+    pts.forEach((r, i) => { const w = wf(r, i); i ? c.lineTo(r.x - w, r.y) : c.moveTo(r.x - w, r.y); });
+    for (let i = N; i >= 0; i--) { const r = pts[i], w = wf(r, i); c.lineTo(r.x + w, r.y); }
+    c.closePath();
+  };
+  if (!near) {
+    // ทุ่งหญ้าสองฝั่ง: ขอบจางหลายชั้น (ไม่มีเส้นขอบแข็ง) · ไกล (ใกล้น้ำตก) อมม่วงหมอกกลืนกับภูเขา → ใกล้เมืองเขียวใส
+    const meadowCol = lg(c, 0, yTop, 0, yBot, [[0, '#D9D8EE'], [0.25, '#D2E0DA'], [0.6, '#C6E3BE'], [1, '#B9E0AC']]);
+    for (const [k, a] of [[1.9, 0.12], [1.6, 0.2], [1.36, 0.32], [1.16, 0.5], [1, 0.9]]) {
+      c.globalAlpha = base * a;
+      c.fillStyle = meadowCol;
+      band((r) => meadowW(r) * k + 2);
+      c.fill();
+    }
+    c.globalAlpha = base;
+    // พุ่มไม้กลม + ดอกไม้จุดริมทุ่ง (สลับฝั่ง · ใกล้ใหญ่ ไกลเล็ก)
+    for (let i = 2; i < N; i += 2) {
+      const r = pts[i], side = i % 4 ? 1 : -1, h = Math.sin(i * 12.9898) * 0.5 + 0.5;
+      if (r.p < 0.14) continue;
+      const bx = r.x + side * (meadowW(r) * (0.72 + 0.2 * h)), br = 1.6 + 6 * r.p;
+      c.fillStyle = `rgba(140,200,140,${0.45 + 0.45 * Math.min(1, r.p * 2)})`;
+      c.beginPath(); c.arc(bx - br * 0.7, r.y, br * 0.8, 0, TAU); c.arc(bx + br * 0.6, r.y + br * 0.1, br * 0.75, 0, TAU); c.arc(bx, r.y - br * 0.45, br, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(bx - br * 0.3, r.y - br * 0.75, br * 0.35, 0, TAU); c.fill();
+      if (r.p > 0.18) {
+        c.fillStyle = i % 3 ? '#FFB3CF' : '#FFF2A8';
+        const fx = r.x - side * (r.hw + (meadowW(r) - r.hw) * 0.55);
+        for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(fx + (k - 1) * 3.2 * r.p * 3, r.y + (k % 2) * 2 * r.p, 0.8 + 1.4 * r.p, 0, TAU); c.fill(); }
+      }
+    }
+  }
+  // ตลิ่งหญ้าเข้มริมน้ำ (กว้างกว่าน้ำนิดหนึ่ง)
+  c.fillStyle = near ? lg(c, 0, yTop, 0, yBot, [[0, 'rgba(160,214,150,0)'], [0.55, 'rgba(160,214,150,.95)'], [1, 'rgba(160,214,150,.95)']]) : 'rgba(160,212,152,.95)';
+  band((r, i) => r.hw + 1.5 + 8 * depthP(sAt(i)));
+  c.fill();
   // ผิวน้ำ: ไกลอมหมอก → ใกล้ฟ้าใส
   c.fillStyle = near
-    ? lg(c, 0, y0, 0, GY, [[0, 'rgba(150,208,246,0)'], [0.55, 'rgba(140,204,245,1)'], [1, '#7EC4F0']])
-    : lg(c, 0, SRC_Y, 0, GY, [[0, '#D2E8FB'], [0.4, '#A4D4F6'], [1, '#86C8F2']]);
+    ? lg(c, 0, yTop, 0, yBot, [[0, 'rgba(150,208,246,0)'], [0.55, 'rgba(140,204,245,1)'], [1, '#7EC4F0']])
+    : lg(c, 0, yTop, 0, yBot, [[0, '#C4E2FA'], [0.4, '#A4D4F6'], [1, '#86C8F2']]);
   c.beginPath();
   Lp.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
   for (let i = N; i >= 0; i--) c.lineTo(Rp[i][0], Rp[i][1]);
@@ -132,8 +202,8 @@ export function drawRiverFar(c, camX, vw, t, near = false) {
   for (let i = 0; i < 14; i++) {
     const s = (i / 14 + t * 0.0016) % 1;
     if (s < s0) continue;
-    c.globalAlpha = base * fadeK(riverY(s));
-    const r = riverPt(s, camX, vw);
+    const r = riverPt(s, camX, vw, camY);
+    c.globalAlpha = base * fadeK(r.y);
     const off = Math.sin(i * 2.3) * r.hw * 0.55;
     c.strokeStyle = `rgba(255,255,255,${0.25 + 0.5 * r.p})`;
     c.lineWidth = 0.8 + 1.4 * r.p;

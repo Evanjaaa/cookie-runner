@@ -1348,12 +1348,32 @@ export function drawGround(c, camX, vw, t = 0) {
   }
 }
 
+const ART = { food: drawBakery, care: drawPotion, home: drawWorkshop, toy: drawToy, exchange: drawReward };
+const LIVE = { care: drawPotionLive, home: drawWorkshopLive, toy: drawToyLive, exchange: drawRewardLive };
+
+/**
+ * ร้านหนึ่งร้าน (ภาพเดียวกับบนถนน) วางที่ไหนก็ได้: กลางร้าน cx · ฐาน baseY · สเกล s
+ * ใช้ในฉากหน้าแรกของเกม (src/render/riverside.js) — เมืองอีกฝั่งแม่น้ำข้างปราสาท
+ * t = เฟรม (ของขยับ: ควัน ลูกโป่ง ฟองยา ธง) · ไม่ส่ง = วาดแค่ภาพนิ่ง · live = เฉพาะของขยับ
+ */
+export function drawShopAt(c, id, cx, baseY, s, t = null, live = false) {
+  const p = PLACES.find((q) => q.id === id);
+  c.save();
+  c.translate(cx, baseY);
+  c.scale(s, s);
+  c.translate(-(p.x + p.w / 2), -GY);
+  if (!live) {
+    contactShadow(c, p.x, p.w);
+    cached(c, 'solo:' + p.id, p.x - 40, GY - p.h - 10, p.w + 80, p.h + 12, (cc) => { ART[p.id](cc, p); light(cc, p.x - 40, GY - p.h - 10, p.w + 80, p.h + 12); });
+  }
+  if (t != null) LIVE[p.id]?.(c, p, t);
+  c.restore();
+}
+
 /** ทุกอย่างบนถนน (ร้าน ปราสาท ลาน ม้านั่ง ตะเกียง ซุ้ม แมว NPC) ที่อยู่ในจอ */
 export function drawStreet(c, camX, vw, t) {
   const inView = (x, w) => x + w > camX - 80 && x < camX + vw + 80;
   if (inView(0, 220)) cached(c, 'welcome', 0, GY - 200, 220, 202, drawWelcome);
-  const ART = { food: drawBakery, care: drawPotion, home: drawWorkshop, toy: drawToy, exchange: drawReward };
-  const LIVE = { care: drawPotionLive, home: drawWorkshopLive, toy: drawToyLive, exchange: drawRewardLive };
   for (const p of PLACES) {
     if (!inView(p.x - 60, p.w + 120) || p.art === false) continue;
     const img = spriteOf(p);

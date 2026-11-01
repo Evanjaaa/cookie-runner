@@ -8,9 +8,9 @@
 // ท่าเรือสองฝั่ง: เรือแมวจอดรอ (โบว์ผ้าแพรหัวเรือแบบไทย คนพายเป็นน้องแมว) · ล่องเรือ = เรือลำนี้แล่นไปอีกท่า (main.js)
 // เป็ดในแม่น้ำหน้าเมือง · ผีเสื้อบินรอบแปลงดอกไม้
 // ─────────────────────────────────────────────────────────────
-import { H, GY, ROAD_B, PLACES, PROPS, TOWER, BLOCKS, ARCH, TRAMPS, YARN } from './layout.js';
+import { H, GY, ROAD_B, PLACES, PROPS, TOWER, BLOCKS, ARCH, TRAMPS, YARN, BRIDGE } from './layout.js';
 import { cached, lg, ears, catFace, star, bush, flowers, plaque } from './world.js';
-import { drawCat2 } from '../render/cat2.js';
+import { drawCat2, CAT2_BREEDS } from '../render/cat2.js';
 import { skinById } from '../skins.js';
 import { drawPortal } from './garden.js';
 
@@ -57,7 +57,8 @@ export function stepPlay(dt, cat) {
 
 /** ชิงช้าตอนนี้: จุดแขวน (px,py) มุมแกว่ง a · ความยาวเชือก L (ที่นั่งอยู่ที่ระยะ L ใต้จุดแขวน) */
 export function swingFrame() {
-  return { px: SWING.door, py: GY - 148, a: swing.amp * Math.sin(swing.ph), L: 104 };
+  // v = ความเร็วแกว่ง (ทิศ + แรง) · amp = ความกว้างแกว่งตอนนี้ — ท่านั่งชิงช้าใช้ทำหางห้อยแกว่งตาม/หน้ายิ้ม
+  return { px: SWING.door, py: GY - 148, a: swing.amp * Math.sin(swing.ph), v: swing.amp * Math.cos(swing.ph), amp: swing.amp, L: 104 };
 }
 
 // ── ของตกแต่ง ─────────────────────────────────────────────────
@@ -535,12 +536,25 @@ export const mooredX = (p) => p.door + pierDir(p) * 140;   // จอดเลย
 /** ที่นั่งผู้โดยสาร (กลางลำค่อนหัว) — เท้าน้องตอนนั่ง (ท่านั่งวาดที่ seatTop + 4) */
 export function boatSeat(x, dir) { return { x: x + dir * 14, y: BOAT_Y - 12 }; }
 
-const FERRY = skinById('orange');
+// คนพาย (ผู้ใช้ 1 พ.ย.): ลูกแมววิเชียรมาศวัยเด็ก ใส่ชุดกะลาสีน้อย (เดิมน้องแมวส้มตัวโต)
+// ลงข้อมูลสายพันธุ์เอง (สีแต้ม/หน้ากาก/ตาฟ้า) เพื่อแต่งตาได้: ประกายในตาจุดเดียวแต่ใหญ่ขึ้น (ผู้ใช้ 1 พ.ย. — สมเป็นแมวเด็ก)
+const FERRY = (() => {
+  const s = skinById('siamese'), b = CAT2_BREEDS.find((x) => x.id === 'siamese');
+  if (!s || !b) return skinById('orange');
+  const eye = (e) => ({ ...e, hlK: 1.75 });
+  return { ...s, palette: 'siamese', age: 'baby', outfit: { id: 'sailor' }, pal: b.pal, art: b.art, eyeStyle: b.eyeStyle, lashStyle: b.lashStyle,
+    eyeDots: b.eyeDots, stripes: b.stripes, sex: b.sex, eyes: { left: eye(b.eyes.left), right: eye(b.eyes.right) } };
+})();
+/** หัวคนพาย (พิกัดโลก) — ฟองคำพูดลอยเหนือจุดนี้ (main.js) */
+export function ferryHead(x, dir, t) {
+  return { x: x - dir * 46, y: BOAT_Y + Math.sin(t * 0.05 + x * 0.01) * 1.2 - 62 };
+}
 /**
- * เรือไม้ทาสีแบบไทย: หัวเรืองอนสูงผูกผ้าแพรสามสี · ท้ายเรือเป็นหางแมวทองม้วน · คนพาย (น้องแมวส้ม) ท้ายเรือถือพาย
+ * เรือไม้ทาสีแบบไทย: หัวเรืองอนสูงผูกผ้าแพรสามสี · ท้ายเรือเป็นหางแมวทองม้วน · คนพาย (ลูกแมววิเชียรมาศกะลาสี) ท้ายเรือถือพาย
  * dir = ทางที่หัวเรือชี้ · passenger(c, seat) = วาดผู้โดยสาร (ระหว่างลำเรือกับขอบเรือหน้า)
+ * moving = เรือกำลังแล่น → ฟองคลื่นท้ายเรือ + ละอองหัวเรือ · พายจ้วงน้ำทุกจังหวะ = ละอองน้ำกระเซ็น + วงคลื่น (จอดอยู่ก็พายเบา ๆ)
  */
-export function drawBoat(c, x, dir, t, passenger) {
+export function drawBoat(c, x, dir, t, passenger, moving = false) {
   const y = BOAT_Y + Math.sin(t * 0.05 + x * 0.01) * 1.2;
   c.save();
   c.translate(x, y);
@@ -548,13 +562,14 @@ export function drawBoat(c, x, dir, t, passenger) {
   // เงา/คลื่นรอบเรือ
   c.fillStyle = 'rgba(255,255,255,.45)';
   c.beginPath(); c.ellipse(0, 4, 82, 5, 0, 0, TAU); c.fill();
+  const row = Math.sin(t * 0.06) * 6;
+  boatWater(c, t, row, moving);
   // คนพาย + พาย (ท้ายเรือ)
   c.strokeStyle = '#8E5A34'; c.lineWidth = 3; c.lineCap = 'round';
-  const row = Math.sin(t * 0.06) * 6;
-  c.beginPath(); c.moveTo(-44 + row * 0.4, -46); c.lineTo(-62 - row, 8); c.stroke();
+  c.beginPath(); c.moveTo(-42 + row * 0.4, -30); c.lineTo(-62 - row, 8); c.stroke();
   c.fillStyle = '#C98A55';
   c.beginPath(); c.ellipse(-63 - row, 9, 4, 8, 0.3, 0, TAU); c.fill();
-  if (FERRY) drawCat2(c, -46, -12, 0.78, FERRY, t, { k: 1, shape: { sit: 1, turn: -0.2, noHang: 1 } });
+  if (FERRY) drawCat2(c, -46, -10, 0.86, FERRY, t, { k: 1, shape: { sit: 1, turn: -0.2, noHang: 1 } });   // ก้นจมในลำเรือ (ไม่ลอย) · อกกับปกกะลาสีพ้นขอบเรือ
   // ด้านในลำเรือ (ขอบหลัง)
   c.fillStyle = '#6E3A2A';
   c.beginPath(); c.moveTo(-64, -16); c.quadraticCurveTo(0, -10, 62, -18); c.lineTo(62, -12); c.quadraticCurveTo(0, -4, -64, -10); c.closePath(); c.fill();
@@ -592,6 +607,58 @@ export function drawBoat(c, x, dir, t, passenger) {
   c.beginPath(); c.moveTo(-68, -20); c.bezierCurveTo(-82, -24, -84, -42, -72, -44); c.stroke();
   c.fillStyle = '#FFD45A';
   c.beginPath(); c.arc(-72, -44, 3, 0, TAU); c.fill();
+  boatSpray(c, t, row, moving);
+  c.restore();
+}
+/** ผิวน้ำรอบเรือ (หลังลำเรือ): วงคลื่นตรงที่พายจ้วง · แล่นอยู่ = ฟองคลื่นแตกเป็นทางท้ายเรือ + คลื่นรูปตัว V */
+function boatWater(c, t, row, moving) {
+  c.save();
+  for (let j = 0; j < 2; j++) {
+    const u = (t * 0.0095 + j * 0.5) % 1;
+    c.strokeStyle = `rgba(255,255,255,${0.65 * (1 - u)})`; c.lineWidth = 1.4;
+    c.beginPath(); c.ellipse(-64 - row * 0.5, 8, 5 + 24 * u, 1.6 + 3.4 * u, 0, 0, TAU); c.stroke();
+  }
+  if (moving) {
+    c.lineCap = 'round';
+    for (let i = 0; i < 10; i++) {
+      const u = (t * 0.02 + i / 10) % 1, side = i % 2 ? 1 : -1;
+      c.fillStyle = `rgba(255,255,255,${0.6 * (1 - u)})`;
+      c.beginPath(); c.ellipse(-72 - u * 120, 6 + side * u * 7, 3 + 6 * u, 1.4 + 1.6 * u, 0, 0, TAU); c.fill();
+    }
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.6;
+    const sh = (t * 0.6) % 14;
+    for (const s of [-1, 1]) {
+      c.setLineDash([8, 6]); c.lineDashOffset = -sh;
+      c.beginPath(); c.moveTo(60, 6); c.quadraticCurveTo(-20, 7 + s * 6, -110, 8 + s * 15); c.stroke();
+    }
+    c.setLineDash([]);
+  }
+  c.restore();
+}
+/** ละอองน้ำหน้าเรือ (ทับลำเรือ): หยดน้ำกระเซ็นจากใบพายเป็นวงโค้ง · แล่นอยู่ = ละอองแตกที่หัวเรือ */
+function boatSpray(c, t, row, moving) {
+  c.save();
+  // จังหวะพาย: ใบพายถูกดึงไปท้ายเรือ (row ลดลง) = น้ำกระเซ็นขึ้นตามแรงดึง
+  const ph = t * 0.06;
+  for (let i = 0; i < 7; i++) {
+    const u = (((ph + i * 0.55) % TAU) + TAU) % TAU / TAU;
+    if (u > 0.7) continue;
+    const k = u / 0.7, sx = -63 - row + (i % 2 ? -1 : 0.4) * (6 + 22 * k), sy = 6 - 26 * k + 34 * k * k;
+    c.globalAlpha = 0.85 * (1 - k);
+    c.fillStyle = i % 3 ? '#FFFFFF' : '#CDEBFF';
+    c.beginPath(); c.arc(sx, sy, 1.2 + (i % 3) * 0.6, 0, TAU); c.fill();
+  }
+  if (moving) {
+    for (let i = 0; i < 8; i++) {
+      const u = (t * 0.035 + i / 8) % 1, side = i % 2 ? 1 : -0.6;
+      c.globalAlpha = 0.8 * (1 - u);
+      c.fillStyle = i % 3 ? '#FFFFFF' : '#CDEBFF';
+      c.beginPath(); c.arc(70 + u * 18, 2 - 16 * u + 18 * u * u + side * 3 * u, 1.3 + (i % 3) * 0.5, 0, TAU); c.fill();
+    }
+    c.globalAlpha = 0.7;
+    c.fillStyle = '#FFFFFF';
+    for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(64 + i * 5, 4 + Math.sin(t * 0.3 + i) * 1.2, 3 - i * 0.6, 0, TAU); c.fill(); }
+  }
   c.restore();
 }
 
@@ -671,7 +738,16 @@ export function drawWater(c, camX, vw, t, boat) {
     drawPierLive(c, p, t);
   }
   // เรือมีลำเดียวทั้งเมือง (ผู้ใช้ 31 ต.ค.) — boat = ตอนไม่มีคนนั่ง (จอดที่ท่า / กำลังพายมารับ) · ตอนน้องนั่ง main.js วาดเอง
-  if (boat && vis(camX, vw, boat.x - 120, 240)) drawBoat(c, boat.x, boat.dir, t, null);
+  // ตรงนี้วาดเฉพาะช่วงลอดใต้สะพาน (ต้องอยู่หลังเสาตอม่อ/ซุ้ม) · ที่อื่นวาดทีหลังใน drawBoatFront
+  if (boat && underBridge(boat.x) && vis(camX, vw, boat.x - 120, 240)) drawBoat(c, boat.x, boat.dir, t, null, !!boat.trip);
+}
+const underBridge = (x) => Math.abs(x - BRIDGE.rx) < BRIDGE.half + 110;
+/**
+ * เรือเปล่านอกช่วงสะพาน — วาดหลังถนน/ลานน้ำพุ/ตัวน้อง (ผู้ใช้ 1 พ.ย.: หัวคนพายโดนขอบลานน้ำพุทับ)
+ * แม่น้ำหน้าเมืองอยู่ใกล้สายตากว่าถนน เรือจึงต้องทับของบนถนนเสมอ
+ */
+export function drawBoatFront(c, camX, vw, t, boat) {
+  if (boat && !underBridge(boat.x) && vis(camX, vw, boat.x - 120, 240)) drawBoat(c, boat.x, boat.dir, t, null, !!boat.trip);
 }
 
 /** บนถนน (หลังร้าน ก่อนตัวน้อง): ของเล่น ของตกแต่ง · inBox = น้องมุดกล่องอยู่ (ผนังหน้ากล่องรอวาดทับตัวน้อง) */

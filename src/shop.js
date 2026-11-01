@@ -59,13 +59,13 @@ export const SHOP_ITEMS = {
     { id: 'mouse', icon: 'mouse', name: 'หนูของเล่น', desc: 'ซื้อครั้งเดียวเล่นได้ตลอด', price: 4000, tag: 'ใหม่' },
   ],
   care: [
-    { id: 'grow', icon: '🧪', name: 'ยาเร่งโต', desc: 'น้องโตเร็วขึ้น 1 ขั้น', price: 3000 },
-    { id: 'shampoo', icon: '🧴', name: 'แชมพูหอม', desc: 'อาบน้ำแล้วสะอาดนานขึ้น', price: 500 },
-    { id: 'vitamin', icon: '💊', name: 'วิตามินขนสวย', desc: 'ความผูกพัน +2 วันละครั้ง', price: 800 },
+    { id: 'grow', icon: 'grow', name: 'ยาเร่งโต', desc: 'น้องโตเร็วขึ้น 1 ขั้น', price: 3000 },
+    { id: 'shampoo', icon: 'shampoo', name: 'แชมพูหอม', desc: 'อาบน้ำแล้วสะอาดนานขึ้น', price: 500 },
+    { id: 'vitamin', icon: 'vitamin', name: 'วิตามินขนสวย', desc: 'ความผูกพัน +2 วันละครั้ง', price: 800 },
   ],
   home: [
-    { id: 'tub', icon: '🛁', name: 'อ่างอาบน้ำใหญ่', desc: 'อาบน้ำเร็วขึ้น', price: 8000 },
-    { id: 'bed', icon: '🛏️', name: 'เบาะนุ่มพิเศษ', desc: 'นอนพักฟื้นเร็วขึ้น', price: 6000 },
+    { id: 'tub', icon: 'tub', name: 'อ่างอาบน้ำใหญ่', desc: 'อาบน้ำเร็วขึ้น', price: 8000 },
+    { id: 'bed', icon: 'bed', name: 'เบาะนุ่มพิเศษ', desc: 'นอนพักฟื้นเร็วขึ้น', price: 6000 },
     { id: 'tree', icon: 'tree', name: 'คอนโดแมวสูง', desc: 'เล่นสนุกขึ้น ความผูกพัน +1', price: 10000 },
   ],
 };

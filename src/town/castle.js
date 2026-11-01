@@ -314,9 +314,9 @@ function cone(c, x) {
   star(c, x, GY - 124, 5); c.fill();
 }
 const GARDEN = { sakura, topcat, cone };
-/** รั้วช่วง a..b (แคชเป็นท่อน ๆ) — สวนหลวงข้างหลัง → พุ่มไม้ดอก → ซี่เหล็กดัด → เสาหินหัวแมวทอง */
-function drawFencePiece(c, a, b, x0, x1) {
-  for (const [k, gx] of REALM.garden) if (gx > x0 - 50 && gx < x1 + 50) GARDEN[k](c, gx);
+/** รั้วช่วง a..b (แคชเป็นท่อน ๆ) — สวนหลวงข้างหลัง → พุ่มไม้ดอก → ซี่เหล็กดัด → เสาหินหัวแมวทอง · garden = ต้นไม้ในสวน [ชนิด, x] */
+function drawFencePiece(c, a, b, x0, x1, garden = REALM.garden) {
+  for (const [k, gx] of garden) if (gx > x0 - 50 && gx < x1 + 50) GARDEN[k](c, gx);
   // พุ่มไม้ดอกแนวหลังรั้ว
   c.fillStyle = '#93D392';
   c.fillRect(Math.max(a, x0 - 4), GY - 26, Math.min(b, x1 + 4) - Math.max(a, x0 - 4), 26);
@@ -666,6 +666,61 @@ function aura(c, cx, t) {
   }
   c.restore();
 }
+
+// ── ปราสาท/โคมชิ้นเดียว วางที่ไหนก็ได้ (ฉากหน้าแรกของเกม src/render/riverside.js — ปราสาทอีกฝั่งแม่น้ำ) ──
+/**
+ * ปราสาทภาพเดียวกับในเมือง: กลาง cx · ฐาน baseY · สเกล s
+ * part: 'art' = ภาพนิ่ง (แคช) + แสงเรืองหลังปราสาท · 'still' = ภาพนิ่งอย่างเดียว (เงาสะท้อนในน้ำ)
+ *       'live' = ธงโบก แสงหน้าต่าง ประกาย ละอองดาว (t = เฟรม)
+ */
+export function drawCastleAt(c, cx, baseY, s, t, part) {
+  const { x, w } = CASTLE;
+  c.save();
+  c.translate(cx, baseY);
+  c.scale(s, s);
+  c.translate(-(x + w / 2), -GY);
+  if (part === 'live') drawCastleLive(c, t);
+  else {
+    // แสงเรืองหลังปราสาทเบาลงครึ่งหนึ่ง — หน้าแรกมีแสงฟุ้ง (bloom) ทับอีกชั้น เต็มแรงแล้วกลางฉากขาวโพลน
+    if (part === 'art') { c.globalAlpha = 0.38; aura(c, x + w / 2, t); c.globalAlpha = 1; }
+    cached(c, 'castle:solo', x - 20, 0, w + 40, GY + 8, (cc) => { drawCastleArt(cc); light(cc, x - 20, 0, w + 40, GY + 8); });
+  }
+  c.restore();
+}
+/** โคมหลวง (ภาพเดียวกับหน้ารั้วปราสาท): ฐาน (x, baseY) · สเกล s · i = สลับสีธง · คืนจุดกลางหัวโคม (ไว้วาดแสง) */
+export function drawRoyalLampAt(c, x, baseY, s, i) {
+  c.save();
+  c.translate(x, baseY);
+  c.scale(s, s);
+  c.translate(0, -GY);
+  drawRoyalLamp(c, 0, i);
+  c.restore();
+  return { x, y: baseY - 142 * s };
+}
+/** รูปปั้นแมวองครักษ์บนแท่น (ภาพเดียวกับหน้าปราสาท): ฐาน (x, baseY) · สเกล s · d = หันไปทาง */
+export function drawGuardAt(c, x, baseY, s, d) {
+  c.save();
+  c.translate(x, baseY);
+  c.scale(s, s);
+  c.translate(0, -GY);
+  guard(c, 0, d);
+  c.restore();
+}
+/**
+ * รั้วหลวง + สวนหลวงหลังรั้ว (ภาพเดียวกับข้างปราสาทในเมือง) วางที่ไหนก็ได้
+ * ปลายซ้ายของรั้วอยู่ที่ (x, baseY) · ยาว len หน่วยของรั้ว (ก่อนย่อ) · สเกล s · garden = [[ชนิด, ระยะจากปลายซ้าย], ...]
+ * key = ชื่อแคช (ภาพนิ่ง วาดครั้งเดียวต่อสเกลจอ)
+ */
+export function drawFenceAt(c, key, x, baseY, s, len, garden) {
+  c.save();
+  c.translate(x, baseY);
+  c.scale(s, s);
+  c.translate(0, -GY);
+  cached(c, 'fence:solo:' + key, -60, GY - 175, len + 120, 178, (cc) => drawFencePiece(cc, 0, len, -60, len + 60, garden));
+  c.restore();
+}
+/** แสงเรืองหัวโคมหลวง (ของสด) */
+export function lampGlow(c, x, y, r, a) { glow(c, x, y, r, a); }
 
 // ── วาดทั้งเขต (ผู้เรียก translate กล้องแล้ว) ──────────────────────
 export function drawRealm(c, camX, vw, t) {

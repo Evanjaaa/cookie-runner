@@ -21,8 +21,8 @@
 import { H, GY, WORLD_W, START_X, PLACES, splashAt, drawSplashes, dustAt, drawDust, drawSky, drawFar, drawClouds, drawHills, drawMidTrees, drawBackRow, drawGround, drawStreet, drawFront, drawPrompt, clearCache } from './world.js';
 import { SURFACES, surfY, groundY, placeById, JUMP, BOAT_STOPS, REALM, WORLD_W as TOWN_W } from './layout.js';
 import { drawRealmGround, drawRealm } from './castle.js';
-import { riverGap, drawRiverSource, drawRiverFar, drawBridgeWater, drawBridge, drawBridgeArch, drawBridgeFront } from './bridge.js';
-import { stepPlay, swingFrame, bump, drawWater, drawPlay, drawPlayFront, drawBoat, boatSeat, mooredX, pierDir } from './play.js';
+import { riverGap, RIVER_SRC_P, drawRiverSource, drawRiverFar, drawBridgeWater, drawBridge, drawBridgeArch, drawBridgeFront } from './bridge.js';
+import { stepPlay, swingFrame, bump, drawWater, drawPlay, drawPlayFront, drawBoat, drawBoatFront, boatSeat, mooredX, pierDir, ferryHead } from './play.js';
 import { GW, G_PLACES, G_SURFACES, G_SPAWN, stepGarden, squish, drawGardenSky, drawGardenFar, drawGardenHillsFar, drawGardenHillsNear, drawGardenTrees, drawGardenWorld, drawGardenAirWorld, drawGardenFront, drawGardenOverlay, drawWarp, drawPhotoFrameOverlay, pickBurst } from './garden.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_TURN } from '../render/cat2-run.js';
 import { drawCat2, drawTrail } from '../render/cat2.js';
@@ -34,7 +34,8 @@ import { CAT_LOOK, CAT_ANIM } from '../config.js';
 import { drawItemIcon } from '../render/items.js';
 import { SHOP_TABS, SHOP_ITEMS, EXCHANGE } from '../shop.js';
 import { initWallet, wallet, catalogItem, buy, exchange } from './wallet.js';
-import { drawInterior, clearInterior } from './interior.js';
+import { drawInterior, clearInterior, keeperLook, KEEP_TOP } from './interior.js';
+import { COUNTER } from './interior-art.js';
 import { MeowSong } from './meow-audio.js';
 import { DreamSong } from './garden-song.js';
 import { randomFlower, drawHeldFlower, spawnMote, drawFlowerMotes } from './flower.js';
@@ -64,7 +65,8 @@ const cat = {
 const keys = { left: false, right: false };
 let joyDir = 0;              // จอยมือถือ: -1 ซ้าย · 0 ปล่อย · 1 ขวา
 let joyDown = false;         // จอยถูกลากลงอยู่ (ลงจากที่สูง)
-let running = false;         // ปุ่มวิ่ง (สลับ)
+let joyReset = () => {};     // ปล่อยจอยกลับกลาง (ตั้งในตัวจอยข้างล่าง) — เรียกทุกครั้งที่หยุดบังคับ (เข้าร้าน เปิดแผง ล่องเรือ ถ่ายรูป วาป)
+let running = true;          // ปุ่มวิ่ง (สลับ) — เข้าเมืองทุกครั้งเริ่มที่วิ่ง (ผู้ใช้ 1 พ.ย.) ผู้เล่นกดเปลี่ยนเป็นเดินเอง
 // คอม (มีเมาส์ชี้ได้) = ซ่อนปุ่มบนจอ โชว์แถบบอกปุ่มคีย์บอร์ดแทน · จอสัมผัส = จอย + ปุ่ม
 const deskMq = matchMedia('(hover: hover) and (pointer: fine)');
 let desk = deskMq.matches;
@@ -228,6 +230,7 @@ function warp(to) {
   stopEmote(true);
   cat.sit = null; cat.target = null; cat.pending = null; mark = null;
   keys.left = keys.right = false;
+  joyReset();
   sfx('warp');
   fadeDir = 1;
   fadeThen = () => {
@@ -259,6 +262,7 @@ function startPhoto(p) {
   toggleEmotes(false);
   cat.sit = null; cat.target = null; cat.pending = null; mark = null;
   keys.left = keys.right = false;
+  joyReset();
   cat.x = p.door; cat.dir = 1;
   cat.still = 400;   // หันหน้าตรงมองกล้อง
   document.body.classList.add('photo');
@@ -437,6 +441,112 @@ function floorAt(x, y, tol) {
 }
 let climbHint = false;
 let wadeT = 0;   // นับเฟรมก้าวตอนเดินลุยน้ำในน้ำพุ
+let stepT = 0, stepAlt = false;   // เสียงก้าวเท้าบนพื้น (ผู้ใช้ 1 พ.ย.) — นับเฟรม · เท้าซ้าย/ขวา
+
+// ── ลูกแมวพายเรือคุยได้ (ผู้ใช้ 1 พ.ย.): ฟองก้อนเมฆเหนือหัวคนพาย ──
+// เดินเข้าใกล้ท่าที่เรือจอด = ทักว่าพร้อมออกเรือ · ออกเรือ = พายโลด · ทางยาว = ใกล้ถึงแล้ว · ถึงที่ = บอกนัยของที่นั้น
+// สุ่มจากหลายประโยค (ไม่ซ้ำประโยคล่าสุด) · ข้อความสั้นพอบรรทัดเดียว/สองบรรทัด (ตัดคำเองใน drawFerryTalk)
+const FERRY_LINES = {
+  greet: ['พร้อมออกเรือแล้วนะครับ~', 'จะไปไหนดีครับ กัปตันพร้อม!', 'ขึ้นเรือได้เลยครับ เหมียว~', 'วันนี้ลมดี ล่องเรือกันไหมครับ'],
+  go: ['พายโลด~!', 'ออกเรือ! จับแน่น ๆ นะครับ', 'ฮุยเล ฮุยเล~', 'ไปกันเลยครับ!'],
+  next: ['ไปต่อกันเลยครับ!', 'พายต่อ~ ฮึบ ๆ', 'จุดต่อไป ออกเรือ!'],
+  near: ['อีกนิดเดียวก็ถึง{n}แล้วครับ', 'ใกล้ถึง{n}แล้วน้า~', 'เห็น{n}แล้วครับ!'],
+  arrive: ['ถึงแล้วครับ ขอให้สนุกนะ~', 'มาส่งถึงที่แล้วครับ!'],
+};
+const FERRY_ARRIVE = {
+  food: ['ร้านขนมหอมฟุ้งเลยครับ!', 'ซื้อขนมมาฝากผมด้วยน้า~'],
+  care: ['ร้านยาครับ ดูแลน้อง ๆ ด้วยนะ', 'ระวังยาวิเศษ กินแล้วโตไวนะครับ'],
+  home: ['โรงช่างครับ แต่งบ้านให้สวยเลย!', 'อยากได้คอนโดแมวสูง ๆ จังครับ'],
+  pierA: ['ฝั่งร้านค้าครับ ช้อปให้สนุกนะ!', 'ถึงท่าเรือแล้วครับ ระวังก้าวนะ~'],
+  fountain: ['ลานน้ำพุครับ ระวังเปียกนะ!', 'ไปเล่นน้ำพุกันเถอะครับ~'],
+  swing: ['สนามเด็กเล่น! ชิงช้าสนุกมากครับ', 'ไปกระโดดแทรมโพลีนกันครับ!'],
+  gardenGate: ['ซุ้มนี้พาไปสวนดอกไม้ในฝันครับ', 'สวนดอกไม้สวยมาก เก็บดอกไม้กันครับ'],
+  toy: ['ร้านของเล่นครับ ของเล่นใหม่เพียบ!', 'ซื้อบอลมาเล่นด้วยกันนะครับ~'],
+  exchange: ['ร้านแลกของรางวัลครับ ขอให้โชคดี!', 'เก็บค่าขนมเยอะ ๆ มาแลกนะครับ'],
+  pierB: ['ฝั่งปราสาทครับ เที่ยวให้สนุกนะ!', 'ถึงท่าเรือแล้วครับ ปราสาทอยู่ทางขวา~'],
+  castle: ['ปราสาทแมวเหมียวสวยมากเลยครับ', 'ระวังเจอเจ้าหญิงแมวนะครับ~'],
+  sala: ['วิวบนศาลาสวยมากนะครับ', 'ขึ้นไปชมวิวบนหลังคาศาลาได้ด้วยนะ!'],
+};
+let ferryTalk = null;    // { text, t0, life }
+let ferryLast = '';
+let ferryNear = false;   // ยืนใกล้ท่าที่เรือจอดอยู่ (ทักครั้งเดียวต่อการเดินเข้ามา)
+function pickLine(list) {
+  const pool = list.length > 1 ? list.filter((s) => s !== ferryLast) : list;
+  return (ferryLast = pool[Math.floor(Math.random() * pool.length)]);
+}
+function ferrySay(text, life = 230) { if (ferryTalkOn) ferryTalk = { text, t0: tick, life }; }
+/** ทักตอนเดินเข้าใกล้เรือที่จอดรอ (เรียกทุกเฟรมจาก update) */
+function ferryGreet() {
+  // ใกล้ = ยืนแถวหน้าท่าที่เรือจอด หรือใกล้ตัวเรือ (เรือจอดเลยหัวท่าออกไป)
+  const pier = boat.at && placeById(boat.at);
+  const near = WD === TOWN && scene === 'town' && !ride && !!pier && (Math.abs(cat.x - pier.door) < 170 || Math.abs(cat.x - boat.x) < 190);
+  if (near && !ferryNear) ferrySay(pickLine(FERRY_LINES.greet));
+  ferryNear = near;
+  if (ferryTalk && tick - ferryTalk.t0 > ferryTalk.life) ferryTalk = null;
+}
+/** ตัดเป็นสองบรรทัดที่ช่องว่าง (ความยาวใกล้กันที่สุด — ไม่ให้คำเดียวตกบรรทัด) ถ้าบรรทัดเดียวกว้างเกิน max */
+function wrapTwo(c, text, max) {
+  if (c.measureText(text).width <= max) return [text];
+  let best = null;
+  text.split(' ').forEach((_, i, w) => {
+    if (i === 0) return;
+    const a = w.slice(0, i).join(' '), b = w.slice(i).join(' ');
+    const m = Math.max(c.measureText(a).width, c.measureText(b).width);
+    if (!best || m < best.m) best = { m, l: [a, b] };
+  });
+  return best ? best.l : [text];
+}
+/** ฟองวงรีเหนือหัวคนพาย (ผู้ใช้ 1 พ.ย.: วงรีแทนก้อนเมฆ): ขอบม่วงพาสเทล ประกาย+หัวใจจิ๋ว · เด้งเข้า ลอยโยก จางหาย · หยดกลมสองดวงชี้ลงหาหัว */
+function drawFerryTalk() {
+  const ft = ferryTalk;
+  if (!ft || WD !== TOWN || scene !== 'town') return;
+  const age = tick - ft.t0, left = ft.life - age;
+  if (left <= 0) return;
+  const bx = ride ? ride.bx : boat.x, dir = ride ? ride.dir : boat.dir;
+  const h = ferryHead(bx, dir, tick);
+  if (h.x < camX - 200 || h.x > camX + vw + 200) return;
+  const pop = age < 14 ? 0.6 + 0.4 * Math.sin((age / 14) * Math.PI * 0.62) / Math.sin(Math.PI * 0.62) * 1.0 : 1;
+  const s = age < 14 ? pop + Math.sin((age / 14) * Math.PI) * 0.08 : 1;
+  const a = Math.min(1, left / 20, age / 6);
+  const c = ctx;
+  c.setTransform(k, 0, 0, k, -camX * k, camY * k);
+  c.save();
+  c.font = '700 13px Mali, sans-serif';
+  const lines = wrapTwo(c, ft.text, 170);
+  const tw = Math.max(...lines.map((l) => c.measureText(l).width));
+  const bw = tw * 1.12 + 32, bh = lines.length * 17 + 30;   // วงรีครอบมุมข้อความได้ (ปลายวงรีแคบ — กว้างกว่าข้อความ 12% + ขอบ)
+  // ฟองอยู่ในจอเสมอ (เรือชิดขอบจอตอนส่งถึงที่) · หยดเมฆเล็กยังชี้ไปที่หัวคนพาย
+  const cx = Math.max(camX + bw / 2 + 10, Math.min(camX + vw - bw / 2 - 10, h.x)), cy = h.y - 22 - bh / 2 + Math.sin(tick * 0.06) * 1.5;
+  const tx = Math.max(-bw / 2 + 14, Math.min(bw / 2 - 14, h.x - cx));
+  c.globalAlpha = a;
+  c.translate(cx, cy + bh / 2);
+  c.scale(s, s);
+  c.translate(0, -bh / 2);
+  // ฟองวงรี: เงานุ่ม → ขาว → ขอบม่วงพาสเทล · แสงวาวโค้งมุมบนซ้าย · ประกายกับหัวใจจิ๋วที่ขอบ
+  const rx = bw / 2, ry = bh / 2;
+  const oval = () => { c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); };
+  c.save(); c.translate(0, 3); c.fillStyle = 'rgba(70,40,110,.16)'; oval(); c.fill(); c.restore();
+  c.fillStyle = '#FFFFFF'; oval(); c.fill();
+  c.strokeStyle = '#E3D2FA'; c.lineWidth = 2; oval(); c.stroke();
+  c.strokeStyle = 'rgba(214,236,255,.9)'; c.lineWidth = 2.2; c.lineCap = 'round';
+  c.beginPath(); c.ellipse(0, 0, rx - 6, ry - 5, 0, Math.PI * 1.08, Math.PI * 1.32); c.stroke();
+  // หยดกลมสองดวงชี้ลงหาหัว (ขอบเดียวกับฟอง)
+  for (const [px, py, r] of [[tx * 0.8, ry + 9, 5], [tx * 0.95, ry + 18, 3]]) {
+    c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fillStyle = '#FFFFFF'; c.fill(); c.strokeStyle = '#E3D2FA'; c.lineWidth = 1.5; c.stroke();
+  }
+  // ประกายสี่แฉกทอง (มุมขวาบน กะพริบ) + หัวใจชมพูจิ๋ว (มุมซ้ายล่าง)
+  const tw4 = 0.6 + 0.4 * Math.sin(tick * 0.12);
+  const sx = rx * 0.78, sy = -ry * 0.78, sr = 5 * tw4;
+  c.fillStyle = '#FFD45A';
+  c.beginPath(); c.moveTo(sx, sy - sr); c.quadraticCurveTo(sx, sy, sx + sr, sy); c.quadraticCurveTo(sx, sy, sx, sy + sr); c.quadraticCurveTo(sx, sy, sx - sr, sy); c.quadraticCurveTo(sx, sy, sx, sy - sr); c.fill();
+  const hx = -rx * 0.8, hy = ry * 0.62, hr = 3.6;
+  c.fillStyle = '#FF9CC0';
+  c.beginPath(); c.moveTo(hx, hy + hr * 0.9); c.bezierCurveTo(hx - hr * 1.45, hy - hr * 0.1, hx - hr * 0.65, hy - hr * 1.15, hx, hy - hr * 0.38); c.bezierCurveTo(hx + hr * 0.65, hy - hr * 1.15, hx + hr * 1.45, hy - hr * 0.1, hx, hy + hr * 0.9); c.fill();
+  c.fillStyle = '#5A3E8A';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  lines.forEach((l, i) => c.fillText(l, 0, (i - (lines.length - 1) / 2) * 17 + 1));
+  c.restore();
+}
 // เดินลอดซุ้มประตูเขตเข้าดินแดนปราสาท (ไปทางขวา) = ทักทาย · เว้น 1 นาทีกันขึ้นถี่ตอนเดินกลับไปมา
 let realmX = null, realmT = -1e9;
 function realmEnter() {
@@ -493,16 +603,21 @@ function callBoat(p) {
   sfx('bell');
   toast('เรียกเรือแล้ว เรือกำลังพายมารับ');
 }
-function sailBoat(p) {
+/** wait = รอกี่เฟรมก่อนออก (ส่งน้องถึงที่แล้ว ค้างให้อ่านคำพูดลูกแมวก่อน — หันหัวเรือตอนออกจริง) */
+function sailBoat(p, wait = 0) {
   const x1 = mooredX(p);
   boat.at = null;
-  boat.dir = Math.sign(x1 - boat.x) || boat.dir;
-  boat.trip = { to: p, x0: boat.x, x1, u: 0, dur: Math.max(90, Math.abs(x1 - boat.x) / 9) };
+  if (!wait) boat.dir = Math.sign(x1 - boat.x) || boat.dir;
+  boat.trip = { to: p, x0: boat.x, x1, u: 0, wait, dur: Math.max(90, Math.abs(x1 - boat.x) / 9) };
 }
 /** เดินเรือเปล่า (ทุกเฟรม) — ถึงแล้วหันหัวเรือตามท่า */
 function stepBoat(dt) {
   const tr = boat.trip;
   if (!tr) return;
+  if (tr.wait > 0) {
+    if ((tr.wait -= dt) <= 0) boat.dir = Math.sign(tr.x1 - boat.x) || boat.dir;
+    return;
+  }
   tr.u += dt;
   const k = Math.min(1, tr.u / tr.dur);
   boat.x = tr.x0 + (tr.x1 - tr.x0) * (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
@@ -528,6 +643,7 @@ function openRoute(p) {
   paused = true;
   toggleEmotes(false);
   keys.left = keys.right = false;
+  joyReset();
   rmFocus = BOAT_STOPS.find((s) => s.id === p.id) || null;
   routeOv.classList.remove('hidden');   // เปิดก่อน — วัดความสูงแผนที่ได้
   layoutRouteMap();
@@ -694,6 +810,7 @@ function startRide(from, route) {
   stopEmote(true);
   cat.sit = null; cat.target = null; cat.pending = null; mark = null;
   keys.left = keys.right = false;
+  joyReset();
   cat.dir = dir;
   document.body.classList.add('riding');
   sfx('jump');
@@ -704,7 +821,7 @@ function dockChoice(go) {
   const r = ride;
   if (!r || r.ph !== 'dock') return;
   $('boatStop').classList.add('hidden');
-  if (go && r.i < r.route.length - 1) { r.i++; legTo(r, r.route[r.i]); sfx('splash'); }
+  if (go && r.i < r.route.length - 1) { r.i++; legTo(r, r.route[r.i]); sfx('splash'); ferrySay(pickLine(FERRY_LINES.next)); }
   else { r.ph = 'land'; r.u = 0; sfx('jump'); }
 }
 /** กระโดดเป็นโค้งจาก (ax,ay) ไป (bx,by) ตามสัดส่วน k — ใช้ท่ากระโดดของท่าวิ่ง */
@@ -725,15 +842,19 @@ function stepRide(dt) {
   if (r.ph === 'board') {
     const k = Math.min(1, r.u / HOP), s = boatSeat(r.x0, r.dir);
     hop(r.from.door, GY, s.x, s.y, k);
-    if (k >= 1) { sfx('splash'); legTo(r, r.route[0]); }
+    if (k >= 1) { sfx('splash'); legTo(r, r.route[0]); ferrySay(pickLine(FERRY_LINES.go)); }
   } else if (r.ph === 'sail') {
     const k = Math.min(1, r.u / r.dur);
     const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
     r.bx = r.x0 + (r.x1 - r.x0) * e;
     seat();
     if ((r.pt += dt) >= 50) { r.pt = 0; sfx('paddle'); }   // พายเป็นจังหวะ
+    // ขาเดินทางยาว: กลางทางบอกว่าใกล้ถึงแล้ว (ถ้าคำพูดเดิมจบแล้ว)
+    if (r.dur > 240 && !r.mid && k > 0.58 && !ferryTalk) { r.mid = true; ferrySay(pickLine(FERRY_LINES.near).replace('{n}', r.route[r.i].name)); }
     if (k >= 1) {
       const s = r.route[r.i];
+      r.mid = false;
+      ferrySay(pickLine(FERRY_ARRIVE[s.id] || FERRY_LINES.arrive), 300);
       if (r.i === r.route.length - 1) { r.ph = 'land'; r.u = 0; sfx('jump'); }
       else {
         r.ph = 'dock'; r.u = 0;
@@ -753,7 +874,8 @@ function stepRide(dt) {
       ride = null;
       boat.x = r.bx; boat.dir = r.dir;
       if (st.pier) boat.at = st.pier.id;   // จอดค้างที่ท่านี้
-      else sailBoat([placeById('pierA'), placeById('pierB')].sort((a, b) => Math.abs(mooredX(a) - r.bx) - Math.abs(mooredX(b) - r.bx))[0]);
+      // ส่งถึงที่ (ไม่ใช่ท่าเรือ): ค้างอยู่ ~2.5 วิให้อ่านคำพูดลูกแมว (ผู้ใช้ 1 พ.ย.) แล้วค่อยพายกลับท่าใกล้สุด
+      else sailBoat([placeById('pierA'), placeById('pierB')].sort((a, b) => Math.abs(mooredX(a) - r.bx) - Math.abs(mooredX(b) - r.bx))[0], 150);
       cat.x = tx; cat.y = ty; cat.on = null;
       P.onGround = true; P.vy = 0; P.jumps = 0; P.squash = CAT_ANIM.squash.land(6);
       sfx('land');
@@ -794,6 +916,7 @@ function update(dt) {
   stepFade(dt);
   stepBoat(dt);
   fountainSound();
+  ferryGreet();   // ลูกแมวพายเรือทัก/หมดเวลาฟองคำพูด
   if (ride) {
     stepRide(dt);
     cat.P.y = cat.y;   // จุดปล่อยประกายชุด S อิง P.y — ไม่ตั้ง = เม็ดเกิดค้างที่ท่าเรือ แล้ววาปตามมาตอนขึ้นฝั่ง
@@ -876,6 +999,10 @@ function update(dt) {
   if (cat.moving && P.onGround && cat.on?.water) {
     if ((wadeT += dt) >= 16) { wadeT = 0; splashAt(cat.x + cat.dir * 6, cat.y, 1.5, tick); sfx('waterStep'); }
   } else wadeT = 12;   // เริ่มเดินในน้ำ = กระเซ็นก้าวแรกเร็ว
+  // เสียงก้าวเท้าบนพื้น: ทุกครึ่งรอบก้าว (วิ่งถี่กว่าเดิน) สลับซ้ายขวา · ในน้ำใช้เสียงลุยน้ำข้างบนแทน
+  if (cat.moving && P.onGround && !cat.on?.water && !ride && !paused) {
+    if ((stepT += dt) >= (running ? 13 : 19)) { stepT = 0; stepAlt = !stepAlt; sfx('step', running, stepAlt); }
+  } else stepT = 12;   // เริ่มก้าว = ได้ยินก้าวแรกเร็ว
   // ยืนนิ่งเกิน 5 วิ = ค่อย ๆ หันหน้าตรงมองผู้เล่น (ผู้ใช้ 28 ต.ค.) · ขยับ/กระโดด = หันข้างตามทางเดินทันที
   if (cat.moving || !P.onGround) { cat.still = 0; cat.face = 1; }
   else {
@@ -965,12 +1092,21 @@ function drawCat(c) {
     else cat.A = createRunAnim();
     // ชิงช้า: นั่งบนที่นั่งที่แกว่งตามมุม (หมุนทั้งตัวรอบจุดแขวน)
     if (cat.sit?.kind === 'swing') {
-      const { px, py, a, L } = swingFrame();
+      const { px, py, a, v, amp, L } = swingFrame();
       c.save();
       c.translate(px, py);
       c.rotate(a);
-      if (cat.dir < 0) c.scale(-1, 1);
-      drawCat2(c, 0, L + 2, SC, skin, tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 }, ...heldOpt() });
+      const fl = cat.dir < 0 ? -1 : 1;
+      if (fl < 0) c.scale(-1, 1);
+      // ผู้ใช้ 1 พ.ย.: หางห้อยลงจากที่นั่ง หมุนสวนมุมชิงช้า (ห้อยตามแรงโน้มถ่วง) + ปลายเหวี่ยงตามหลังความเร็ว
+      // หน้ายิ้มตาปิดสุขใจ · หัวเอียงตามแรงเหวี่ยงช้ากว่าตัวนิด · หูลู่ลมตอนแกว่งแรง · ปลายสุดทางอ้าปากหัวเราะคิกเบา ๆ
+      const peak = amp > 0.12 ? Math.max(0, Math.abs(a) / amp - 0.8) * 5 : 0;
+      const shape = {
+        sit: 1, turn: 0, noHang: 1,
+        tailHang: 1, hangRot: -a * fl * 0.95, hangLag: -v * fl * 0.9,
+        mood: 'happy', tilt: v * fl * 0.22, ear: Math.min(0.5, amp) * 0.6, mouth: peak * 0.55,
+      };
+      drawCat2(c, 0, L + 2, SC, skin, tick, { k: 1, shape, ...heldOpt() });
       c.restore();
       return;
     }
@@ -1039,7 +1175,7 @@ function draw() {
   ctx.setTransform(k, 0, 0, k, 0, 0);
   if (scene === 'shop') {
     // ในร้าน: ภาพฉากในร้านจากแคช + ของขยับ (ไม่วาดเมือง)
-    drawInterior(ctx, shopPlace.tab, vw, keepX, tick);
+    drawInterior(ctx, shopPlace.tab, vw, keepX, tick, shopView);
     drawFade();
     return;
   }
@@ -1048,20 +1184,22 @@ function draw() {
   if (WD === GARDEN) return drawGarden(lay);
   const gap = riverGap(camX, vw);
   drawSky(ctx, vw);
-  lay(0.06);
+  // แม่น้ำ: น้ำตกเลื่อนเท่าต้นน้ำ (RIVER_SRC_P) · ลำน้ำวาดในพิกัดจอ (lay 0) แต่ละจุดเลื่อนตามความลึกของตัวเอง — ต่อกันตลอดตอนกล้องยกขึ้น
+  lay(RIVER_SRC_P);
   drawRiverSource(ctx, camX, vw, tick);
+  lay(0.06);
   drawFar(ctx, camX, vw, tick);
   drawClouds(ctx, camX, vw, tick);
   lay(0.2);
   drawHills(ctx, camX, vw, tick, gap);
-  lay(0.3);
-  drawRiverFar(ctx, camX, vw, tick);
+  lay(0);
+  drawRiverFar(ctx, camX, camY, vw, tick);
   lay(0.55);
   drawMidTrees(ctx, camX, vw, gap);
   lay(0.72);
   drawBackRow(ctx, camX, vw, gap);
-  lay(0.3);
-  drawRiverFar(ctx, camX, vw, tick, true);
+  lay(0);
+  drawRiverFar(ctx, camX, camY, vw, tick, true);
   ctx.setTransform(k, 0, 0, k, -camX * k, camY * k);
   drawGround(ctx, camX, vw, tick);
   drawRealmGround(ctx, camX, vw);   // ถนนหลวงปูกระเบื้อง + พรมหน้าประตูปราสาท
@@ -1082,12 +1220,14 @@ function draw() {
   drawDust(ctx, tick);        // ฝุ่นฟุ้งตอนลงจากกระโดดสองชั้น
   drawFlowerMotes(ctx, tick); // กลีบ/ประกายร่วงจากดอกไม้ที่ถือ
   drawPlayFront(ctx, camX, vw, tick, inBox);
+  drawBoatFront(ctx, camX, vw, tick, ride ? null : boat);   // เรือเปล่าในแม่น้ำหน้าเมือง ทับถนน/ลานน้ำพุ
   drawBridgeFront(ctx, camX, vw, tick);
   drawEmoteFx(ctx);
   // ชั้นหน้าสุด (ใกล้ตากว่าตัวน้อง) — เลื่อนเร็วกว่ากล้อง
   ctx.setTransform(k, 0, 0, k, 0, camY * 1.3 * k);
   drawFront(ctx, camX, vw, tick);
   if (ride) drawRide();
+  drawFerryTalk();
   drawFade();
 }
 
@@ -1150,7 +1290,7 @@ function drawRide() {
   g.setTransform(k, 0, 0, k, -camX * k, camY * k);
   const seated = ride.ph === 'sail' || ride.ph === 'dock';
   if (seated) drawRideTrail(g);
-  drawBoat(g, ride.bx, ride.dir, tick, seated ? drawPassenger : null);
+  drawBoat(g, ride.bx, ride.dir, tick, seated ? drawPassenger : null, ride.ph === 'sail');
   if (!seated) drawCat(g);
   // ลอดใต้ซุ้มเฉพาะตอนนั่งในเรือ · กระโดดขึ้น/ลงเรือ (เช่นขึ้นศาลาสะพาน) อยู่หน้าหน้าสะพาน ไม่โดนบัง
   if (seated) {
@@ -1199,25 +1339,42 @@ function loop(now) {
     base.classList.toggle('l', joyDir < 0);
     base.classList.toggle('r', joyDir > 0);
   };
-  const end = (e) => {
-    if (e.pointerId !== id) return;
+  let lastX = 0, lastY = 0;
+  const reset = () => {
     id = null;
     joyDir = 0;
     joyDown = false;
     knob.style.transform = '';
     base.classList.remove('on', 'l', 'r');
   };
+  joyReset = reset;
+  const end = (e) => { if (id !== null && e.pointerId === id) reset(); };
   base.addEventListener('pointerdown', (e) => {
     if (id !== null) return;
     e.preventDefault();
     id = e.pointerId;
-    base.setPointerCapture(id);
+    lastX = e.clientX; lastY = e.clientY;
+    try { base.setPointerCapture(id); } catch {}
     base.classList.add('on');
     move(e);
   });
-  base.addEventListener('pointermove', (e) => { if (e.pointerId === id) move(e); });
+  base.addEventListener('pointermove', (e) => { if (e.pointerId === id) { lastX = e.clientX; lastY = e.clientY; move(e); } });
   base.addEventListener('pointerup', end);
   base.addEventListener('pointercancel', end);
+  // จอยค้าง/เดินเอง (ผู้ใช้ 1 พ.ย.): iOS บางจังหวะไม่ส่ง pointerup ให้ปุ่ม (นิ้วลากหลุดขอบจอ · นิ้วที่สองแตะปุ่มอื่น · แจ้งเตือนเด้ง)
+  // ทางสำรอง: เสีย capture · pointerup/cancel ที่หน้าต่าง · สลับแอป/หน้าต่างหลุดโฟกัส · ยกนิ้วแล้วไม่มีนิ้วไหนอยู่ใกล้จุดที่จอยถูกลากล่าสุด
+  base.addEventListener('lostpointercapture', end);
+  window.addEventListener('pointerup', end, true);
+  window.addEventListener('pointercancel', end, true);
+  window.addEventListener('blur', reset);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
+  const touchGone = (e) => {
+    if (id === null) return;
+    const near = [...e.touches].some((tc) => Math.hypot(tc.clientX - lastX, tc.clientY - lastY) < 90);
+    if (!near) reset();
+  };
+  window.addEventListener('touchend', touchGone, { capture: true, passive: true });
+  window.addEventListener('touchcancel', touchGone, { capture: true, passive: true });
 })();
 // ปุ่มกระโดด: ขึ้นทันทีที่นิ้วแตะ (ไม่รอปล่อยนิ้ว) — กดอีกทีกลางอากาศ = ชั้นสอง
 $('btnJump').addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
@@ -1516,6 +1673,19 @@ $('tapMove').addEventListener('click', () => {
 });
 paintTapMove();
 
+// คำพูดลูกแมวพายเรือ: เปิด/ปิดในตั้งค่า (ผู้ใช้ 1 พ.ย.) · จำไว้ในเครื่องนี้ (ค่าเริ่มต้น = เปิด)
+const FERRY_TALK_KEY = 'cookie-runner:town:ferryTalk';
+let ferryTalkOn = true;
+try { ferryTalkOn = localStorage.getItem(FERRY_TALK_KEY) !== '0'; } catch { /* ใช้ค่าเริ่มต้น */ }
+function paintFerryTalk() { $('ferryTalkSw').setAttribute('aria-checked', String(ferryTalkOn)); }
+$('ferryTalkSw').addEventListener('click', () => {
+  ferryTalkOn = !ferryTalkOn;
+  try { localStorage.setItem(FERRY_TALK_KEY, ferryTalkOn ? '1' : '0'); } catch { /* รอบนี้ยังใช้ได้ */ }
+  if (!ferryTalkOn) ferryTalk = null;   // ปิด = ฟองที่ค้างอยู่หายทันที
+  paintFerryTalk();
+});
+paintFerryTalk();
+
 // แถบสอนปุ่มด้านล่าง (คอม): ผู้เล่นซ่อนได้ (ผู้ใช้ 31 ต.ค.) — กด H หรือสวิตช์ในตั้งค่า · จำไว้ในเครื่องนี้ (ค่าเริ่มต้น = แสดง)
 const KEYHINT_KEY = 'cookie-runner:town:keyHint';
 let keyHint = true;
@@ -1673,18 +1843,86 @@ let fade = 0, fadeDir = 0, fadeThen = null;
 let keepX = 220;               // กึ่งกลางเจ้าของร้าน (หน่วยโลก) — ซ้ายของแผงสินค้า
 const shopOv = $('shopOv');
 
-/** วางเจ้าของร้านกลางพื้นที่ว่างซ้ายของแผง + ฟองคำพูดเหนือหัว */
+let shopView = { s: 1, oy: 0 };   // ฉากในร้าน: ย่อ s เท่า เลื่อนลง oy (หน่วยโลก) — จอแนวตั้ง
+/**
+ * วางเจ้าของร้านในพื้นที่ที่แผงไม่บัง + ฟองคำพูดเหนือหัว
+ * จอแนวนอน: น้องกลางพื้นที่ซ้ายของแผง (เคาน์เตอร์ล้นขอบได้ แต่ตัวน้องต้องพ้นแผง — จอ iPad แคบกว่าคอม)
+ * จอแนวตั้ง (แผงอยู่ล่าง): ย่อฉากให้ช่วงเหนือหัวน้อง..ขอบเคาน์เตอร์ พอดีพื้นที่เหนือแผง
+ */
 function measureKeep() {
-  const r = shopOv.querySelector('.sp').getBoundingClientRect();
-  const W = window.innerWidth;
-  const freeCss = r.left > 120 ? r.left : W;
-  keepX = Math.max(170, (freeCss / W) * vw / 2);
-  const say = $('shopSay');
-  say.style.left = (keepX * (W / vw)) + 'px';
+  // ตำแหน่งแผงจริง (offset ไม่นับ transform — ตอนเปิดร้านแผงยังเลื่อนเข้าอยู่ 40px)
+  const sp = shopOv.querySelector('.sp');
+  const r = { left: sp.offsetLeft, top: sp.offsetTop };
+  const W = window.innerWidth, Hc = window.innerHeight, px = H / Hc;   // css → หน่วยโลก
+  if (Hc >= W) {
+    const Hv = r.top * px, y0 = KEEP_TOP - 60, y1 = COUNTER + 26;   // เว้นเหนือหัวไว้ให้ฟองคำพูดสองบรรทัด
+    const s = Math.min(1, Hv / (y1 - y0));
+    shopView = { s, oy: Hv - y1 * s };
+    keepX = vw / s / 2;
+  } else {
+    shopView = { s: 1, oy: 0 };
+    const free = (r.left > 120 ? r.left : W) * px;
+    keepX = Math.max(Math.min(170, free - 80), free / 2, 80);
+  }
+  // ปลายฟองชี้ลงเหนือหัวน้องพอดี (ยึดขอบล่าง — ข้อความกี่บรรทัดก็ไม่ทับหัว)
+  const { s, oy } = shopView;
+  sayGeo = { kx: keepX * s / px, free: Hc >= W ? W : (r.left > 120 ? r.left : W) };
+  const el = $('shopSay');
+  el.style.maxWidth = '';
+  const cssMax = parseFloat(getComputedStyle(el).maxWidth) || 300;
+  el.style.maxWidth = Math.min(cssMax, sayGeo.free - 24) + 'px';
+  el.style.top = 'auto';
+  el.style.bottom = (Hc - (oy + KEEP_TOP * s) / px + 4) + 'px';
+  placeSay();
+  fitShopNames();
 }
+/**
+ * ชื่อของบรรทัดเดียว (ผู้ใช้ 1 พ.ย.: iPad ชื่อตกสองบรรทัด) — ชื่อยาวเกินช่อง = ย่อตัวอักษรลงพอดีช่อง
+ * ย่อได้ถึง 72% ของขนาดเดิม · ยังไม่พอจริง ๆ ค่อยตัดเป็นสองบรรทัด (text-wrap: balance เดิม)
+ */
+function fitOneLine(el, minK = 0.72) {
+  if (!el || !el.isConnected) return;
+  el.style.fontSize = '';
+  const have = el.clientWidth;
+  if (!have) return;
+  const base = parseFloat(getComputedStyle(el).fontSize);
+  el.style.whiteSpace = 'nowrap';   // วัดความยาว/ความสูงบรรทัดเดียวจริง (คืนค่าเดิมทันที)
+  const need = el.scrollWidth, one = el.offsetHeight;
+  el.style.whiteSpace = '';
+  const single = (f) => el.offsetHeight <= one * (f / base) + 1.5;
+  if (single(base)) return;
+  // ความกว้างวัดได้ปัดเศษพิกเซล — เผื่อ 3px แล้วเช็คความสูงจริง ยังสองบรรทัด = ย่ออีกทีละ 5%
+  let f = Math.max(base * minK, (base * (have - 3)) / need);
+  for (let i = 0; i < 5; i++) {
+    el.style.fontSize = f.toFixed(2) + 'px';
+    if (single(f) || f <= base * minK) break;
+    f = Math.max(base * minK, f * 0.95);
+  }
+}
+function fitShopNames() {
+  if (scene !== 'shop') return;
+  for (const el of shopOv.querySelectorAll('.sc-name, .pr-name, .sd-name')) fitOneLine(el);
+}
+document.fonts?.ready.then(() => fitShopNames());   // ฟอนต์มาทีหลัง = ความกว้างเปลี่ยน
+/** ฟองคำพูดอยู่ในพื้นที่ว่างซ้ายของแผงเสมอ — ถ้าต้องเลื่อนตัวฟอง ปลายฟอง (--tail) ยังชี้หัวน้อง */
+let sayGeo = { kx: 0, free: 0 };
+function placeSay() {
+  const el = $('shopSay');
+  const w = el.offsetWidth || 200, { kx, free } = sayGeo;
+  const left = Math.max(w / 2 + 8, Math.min(kx, free - w / 2 - 8));
+  const tail = Math.max(-(w / 2 - 18), Math.min(w / 2 - 18, kx - left));
+  el.style.left = left + 'px';
+  el.style.setProperty('--tail', tail + 'px');
+}
+// แม่ค้ามองตามผู้เล่น: คอม = เมาส์ขยับ (มองค้าง 4 วิหลังหยุด) · จิ้ม/คลิกเลือกของ = มองจุดนั้น 2.5 วิ
+// พิกัดจอ → หน่วยโลก: canvas เต็มจอ สเกลเท่ากันสองแกน (H / ความสูงจอ)
+const lookAt = (e, hold) => { if (scene === 'shop') keeperLook(e.clientX * H / window.innerHeight, e.clientY * H / window.innerHeight, hold); };
+window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') lookAt(e, 240); }, { passive: true });
+window.addEventListener('pointerdown', (e) => lookAt(e, e.pointerType === 'mouse' ? 240 : 150), { passive: true, capture: true });
 function say(text) {
   const el = $('shopSay');
   el.textContent = text;
+  placeSay();
   el.classList.remove('pop');
   void el.offsetWidth;   // เล่นแอนิเมชันเด้งซ้ำ
   el.classList.add('pop');
@@ -1698,6 +1936,7 @@ function openShop(p) {
   toggleEmotes(false);
   stopEmote(true);
   keys.left = keys.right = false;
+  joyReset();
   mark = null;
   fadeDir = 1;
   fadeThen = () => {
@@ -1719,6 +1958,7 @@ function leaveShop() {
     scene = 'town';
     shopOv.classList.add('hidden');
     document.body.classList.remove('in-shop');
+    clearInterval(promo.timer);
     clearInterior();
     paused = false;
     fadeDir = -1;
@@ -1790,6 +2030,7 @@ function buildShop() {
   $('shopDetail').classList.toggle('hidden', ex);
   $('shopEx').classList.toggle('hidden', !ex);
   $('shopPop').classList.remove('on');
+  buildPromo(ex);
   if (ex) { paintExchange(); refreshShop(); return; }
   const grid = $('shopGrid');
   grid.replaceChildren();
@@ -1800,7 +2041,7 @@ function buildShop() {
     b.dataset.id = it.id;
     b.setAttribute('role', 'option');
     b.appendChild(iconEl(it, 'sc-ico'));
-    if (it.tag) { const t = document.createElement('b'); t.className = 'sc-tag'; t.textContent = it.tag; b.appendChild(t); }
+    if (it.tag) { const t = document.createElement('b'); t.className = 'sc-tag'; t.dataset.kind = TAG_KIND[it.tag] || 'hot'; t.textContent = it.tag; b.appendChild(t); }
     const nm = document.createElement('span'); nm.className = 'sc-name'; nm.textContent = it.name;
     const pr = document.createElement('span'); pr.className = 'sc-price';
     b.append(nm, pr);
@@ -1809,6 +2050,99 @@ function buildShop() {
   selId = shopItems()[0]?.id || null;
   refreshShop();
 }
+
+// ── โซนโปรโมชั่น (ผู้ใช้ 1 พ.ย.): ป้ายสไลด์ของเด่นประจำร้านบนสุดของแผง ──
+// ของเด่น = ของที่มีป้าย (โปรวันนี้ / คุ้ม / ใหม่) หรือแพ็ก · ร้านที่ไม่มี = ชิ้นแรก "แม่ค้าแนะนำ"
+// ข้อความในป้ายเป็นตัวเลขจริงเท่านั้น: แพ็ก = ราคาปกติ (ราคาชิ้นเดี่ยว × จำนวน) ขีดฆ่า + ประหยัดกี่ทอง
+// ไม่มีนับถอยหลัง/ลดราคาปลอม (กฎ Play · ผู้เล่นเด็ก) · แตะป้าย = เลือกของชิ้นนั้นในแผง
+const TAG_KIND = { 'โปรวันนี้': 'hot', 'คุ้ม': 'deal', 'ใหม่': 'new' };
+const PROMO_MS = 4500;
+let promo = { list: [], at: 0, timer: 0 };
+function promoInfo(it) {
+  const st = itemState(it);
+  let kicker = 'แม่ค้าแนะนำ', kind = 'rec', deal = it.desc, was = 0;
+  if (it.pack) {
+    kicker = 'แพ็กสุดคุ้ม'; kind = 'deal';
+    const base = shopItems().find((x) => x.icon === it.icon && !x.pack);
+    const full = base ? itemState(base).price * it.pack[0] : 0;
+    if (full > st.price) { was = full; deal = `${it.pack[0]} ชิ้น ประหยัด ${fmt(full - st.price)} ทอง`; }
+  } else if (it.tag) { kicker = it.tag === 'ใหม่' ? 'มาใหม่!' : it.tag; kind = TAG_KIND[it.tag] || 'hot'; }
+  return { st, kicker, kind, deal, was };
+}
+function buildPromo(ex) {
+  clearInterval(promo.timer);
+  const box = $('shopPromo');
+  box.replaceChildren();
+  const tagged = ex ? [] : shopItems().filter((it) => it.tag || it.pack);
+  const list = ex ? [] : tagged.length ? tagged : shopItems().slice(0, 1);
+  promo = { list, at: 0, timer: 0 };
+  box.classList.toggle('hidden', !list.length);
+  box.parentElement.classList.toggle('has-promo', list.length > 0);
+  if (!list.length) return;
+  const dots = document.createElement('div');
+  dots.className = 'pr-dots';
+  list.forEach((it, i) => {
+    const info = promoInfo(it);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pr-slide';
+    b.dataset.id = it.id;
+    b.dataset.kind = info.kind;
+    b.innerHTML = '<span class="pr-burst"><i class="pr-ear l"></i><i class="pr-ear r"></i><span class="pr-ray"></span></span>'
+      + '<span class="pr-txt"><span class="pr-kick"></span><b class="pr-name"></b><small class="pr-deal"></small></span>'
+      + '<span class="pr-cost"><s class="pr-was"></s><span class="pr-price"></span></span>'
+      + '<i class="pr-spark a">✦</i><i class="pr-spark b">✦</i><i class="pr-spark c">✦</i>';
+    b.querySelector('.pr-burst').appendChild(iconEl(it, 'pr-ico'));
+    b.querySelector('.pr-kick').textContent = info.kicker;
+    b.querySelector('.pr-name').textContent = it.name;
+    b.querySelector('.pr-deal').textContent = info.deal;
+    b.setAttribute('aria-label', `${info.kicker}: ${it.name}`);
+    box.appendChild(b);
+    if (list.length > 1) {
+      const d = document.createElement('button');
+      d.type = 'button';
+      d.setAttribute('aria-label', `โปร ${i + 1}`);
+      d.addEventListener('click', (e) => { e.stopPropagation(); showPromo(i, true); });
+      dots.appendChild(d);
+    }
+  });
+  if (list.length > 1) box.appendChild(dots);
+  showPromo(0, true);
+}
+/** แสดงป้ายที่ i (restart = เริ่มนับเวลาเลื่อนใหม่ — ผู้เล่นเพิ่งแตะเอง) */
+function showPromo(i, restart) {
+  const box = $('shopPromo');
+  const n = promo.list.length;
+  if (!n) return;
+  promo.at = ((i % n) + n) % n;
+  box.querySelectorAll('.pr-slide').forEach((s, k) => s.classList.toggle('on', k === promo.at));
+  box.querySelectorAll('.pr-dots button').forEach((d, k) => d.classList.toggle('on', k === promo.at));
+  if (restart && n > 1) {
+    clearInterval(promo.timer);
+    promo.timer = setInterval(() => { if (scene === 'shop' && !document.hidden) showPromo(promo.at + 1); }, PROMO_MS);
+  }
+}
+/** ราคา/สถานะบนป้าย (ซื้อแล้ว · ทองเปลี่ยน) — เรียกจาก refreshShop */
+function refreshPromo() {
+  for (const s of $('shopPromo').querySelectorAll('.pr-slide')) {
+    const it = shopItems().find((x) => x.id === s.dataset.id);
+    if (!it) continue;
+    const info = promoInfo(it);
+    s.querySelector('.pr-was').textContent = info.was && !info.st.maxed ? fmt(info.was) : '';
+    s.querySelector('.pr-price').innerHTML = info.st.maxed ? 'มีแล้ว' : `<i class="coin"></i>${fmt(info.st.price)}`;
+    s.classList.toggle('owned', info.st.maxed);
+    s.classList.toggle('sel', it.id === selId);
+  }
+}
+$('shopPromo').addEventListener('click', (e) => {
+  const s = e.target.closest('.pr-slide');
+  if (!s) return;
+  selId = s.dataset.id;
+  refreshShop();
+  $('shopGrid').querySelector(`.sp-card[data-id="${selId}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  showPromo(promo.at, true);   // แตะแล้วค้างป้ายนี้ไว้อีกรอบเต็ม
+});
+
 // ตัวรับคลิกตัวเดียวทั้งตาราง
 $('shopGrid').addEventListener('click', (e) => {
   const b = e.target.closest('.sp-card');
@@ -1822,6 +2156,7 @@ function refreshShop() {
   const W = wallet();
   $('shopGold').textContent = fmt(W.gold);
   if (shopPlace?.tab === 'exchange') return;
+  refreshPromo();
   for (const b of $('shopGrid').children) {
     const it = shopItems().find((x) => x.id === b.dataset.id);
     const st = itemState(it);
@@ -1837,8 +2172,10 @@ function refreshShop() {
   const ico = $('sdIco');
   ico.replaceChildren(...iconEl(it, 'sd-ico-in').childNodes);
   $('sdName').textContent = it.name;
+  fitOneLine($('sdName'));
   const tag = $('sdTag');
   tag.textContent = it.tag || '';
+  tag.dataset.kind = TAG_KIND[it.tag] || 'hot';
   tag.classList.toggle('hidden', !it.tag);
   $('sdDesc').textContent = it.desc;
   const facts = [

@@ -174,6 +174,8 @@
         <span class="gold sp-gold"><i class="coin" aria-hidden="true"></i><b id="shopGold">0</b></span>
       </header>
       <div class="sp-body">
+        <!-- โซนโปรโมชั่น: ป้ายสไลด์ของเด่นประจำร้าน (สร้างใน main.js buildPromo) -->
+        <div class="sp-promo hidden" id="shopPromo" role="region" aria-label="โปรโมชั่น"></div>
         <div class="sp-grid" id="shopGrid" role="listbox" aria-label="สินค้า"></div>
         <aside class="sp-detail" id="shopDetail">
           <div class="sd-top">
@@ -270,6 +272,13 @@
         <div class="setrow sw deskonly">
           <span class="setlab"><b>แถบสอนปุ่มด้านล่าง</b><small>บอกปุ่มบนคีย์บอร์ดที่ขอบล่างจอ · กด H เพื่อซ่อน/แสดงได้ทุกเมื่อ</small></span>
           <button type="button" class="tswitch" id="keyHintSw" role="switch" aria-checked="true" aria-label="แถบสอนปุ่มด้านล่าง"><i></i></button>
+        </div>
+      </section>
+      <section class="setsec">
+        <h3>ข้อความ</h3>
+        <div class="setrow sw">
+          <span class="setlab"><b>คำพูดลูกแมวพายเรือ</b><small>ฟองข้อความเหนือหัวคนพาย ตอนเดินมาท่าเรือ ออกเรือ และส่งถึงที่</small></span>
+          <button type="button" class="tswitch" id="ferryTalkSw" role="switch" aria-checked="true" aria-label="คำพูดลูกแมวพายเรือ"><i></i></button>
         </div>
       </section>
     </div>

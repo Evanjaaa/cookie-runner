@@ -16,7 +16,7 @@ import { drawSky, drawHills, drawGround, drawProps, BACKDROPS, GROUND_ART } from
 import { drawPlats } from './render/platforms.js';
 import {
   drawObstacles, drawTreats, drawPlayer, drawShields, drawShieldRing, drawPotions,
-  drawCatPose, drawFish, drawKibble, drawMagnets, drawSuction, drawLetters, drawClouds,
+  drawCatPose, drawMagnets, drawSuction, drawLetters, drawClouds,
   drawBigFish,
   drawBonusSparkle,
   drawRain, drawSkillGauge, drawNips, drawCans, drawFallers, drawHazards,
@@ -44,6 +44,13 @@ import { GateRun } from './gate-run.js';
 import { gateFor, GATE_LIST } from './gates.js';
 import { drawGateBack, drawGateFront, warmGateArt } from './render/gates/index.js';
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
+import { drawRiverside, riversideLightMask } from './render/riverside.js';
+/**
+ * ฉากหลังหน้าแรก — 'riverside' = ริมแม่น้ำหน้าสะพานหลวง มองข้ามน้ำไปปราสาท+เมือง (ผู้ใช้ 1 พ.ย. 2026 · render/riverside.js)
+ * 'kingdom' = อาณาจักรแมวขนมหวานแบบเดิม (render/kingdom/) — ยังใช้ในคลิปเปิดเกม · สลับกลับได้ที่บรรทัดนี้บรรทัดเดียว
+ */
+const HOME_SCENE = 'riverside';
+const drawHomeScene = HOME_SCENE === 'riverside' ? drawRiverside : drawKingdom;
 import { setCatEdgeScale } from './render/entities.js';
 import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2 } from './render/cat2.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K, RUN_SIZE } from './render/cat2-run.js';
@@ -175,14 +182,6 @@ const LOVE = {
 };
 const LOVE_TOTAL = LOVE.fly + LOVE.hold;
 
-/** ของกินตกแต่งบนหน้าแรก พิกัดวัดจากเท้าตัวละคร (dx ไปขวา, dy ขึ้นบนเป็นลบ) */
-const HOME_DECO = [
-  { dx: -180, dy: -62 },
-  { dx: -152, dy: -156, kibble: true },
-  { dx: -92, dy: -238 },
-  { dx: 104, dy: -206, kibble: true },
-  { dx: 152, dy: -104 },
-];
 
 /**
  * แต่งแสงฉากหลังหน้าแรก
@@ -3674,7 +3673,7 @@ export class Game {
     if (t - far.at >= HOME_FAR_STEP || t < far.at) {
       far.at = t;
       far.c.setTransform(ctx.getTransform());
-      drawKingdom(far.c, t, { fx, part: 'far', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
+      drawHomeScene(far.c, t, { fx, part: 'far', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
     }
     if (t - bg.at >= HOME_BG_STEP || t < bg.at) {
       bg.at = t;
@@ -3682,7 +3681,7 @@ export class Game {
       bg.c.drawImage(far, 0, 0);
       bg.c.setTransform(ctx.getTransform());
       // กราฟิกระดับสูง = ฉากเต็มแสง (แดด ลำแสง โคม ละออง ดู kingdom/glow.js)
-      drawKingdom(bg.c, t, { fx, part: 'near', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
+      drawHomeScene(bg.c, t, { fx, part: 'near', extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0 });
       dimForUiCached(bg.c, 0.45, ctx.canvas.homeExtBottom || 0);
     }
     ctx.save();
@@ -3714,13 +3713,7 @@ export class Game {
     ctx.fillStyle = glow;
     ctx.fillRect(x - 190, GROUND_Y - 245, 380, 305);
 
-    // ของกินลอยรอบตัว — กันฝั่งซ้ายโล่ง และบอกใบ้ว่าเกมนี้ต้องเก็บอะไร
-    // ตำแหน่งวัดจากตัวละคร ทุกจุดอยู่ซ้ายของแผงเมนูจึงไม่มีอะไรถูกบัง
-    HOME_DECO.forEach((d, i) => {
-      const y = GROUND_Y + d.dy + Math.sin(t * 0.03 + i * 1.7) * 5;
-      if (d.kibble) drawKibble(ctx, x + d.dx, y, 11);
-      else drawFish(ctx, x + d.dx, y, 11);
-    });
+    // ของกินลอยรอบตัว (ปลา 3 + เม็ดอาหาร 2 — ของตั้งแต่ยุคแรก) เอาออกทั้งหมดแล้ว (ผู้ใช้ 1 พ.ย.) ไม่เข้ากับฉากริมแม่น้ำ
 
     // เงาใต้เท้าหดขยายสวนจังหวะหายใจ ทำให้ตัวละครดูมีน้ำหนัก
     /* น้องยืนบนเบาะพอดีเพราะ drawCatPose วัดจาก "ตำแหน่งเท้า" ไม่ใช่กลางตัว
@@ -3778,7 +3771,8 @@ export class Game {
       lit.beginPath();
       lit.rect(w.x, w.y, w.w, w.h);
       lit.clip();
-      lanternLightMask(lit, 0, t);
+      if (HOME_SCENE === 'riverside') riversideLightMask(lit, t);
+      else lanternLightMask(lit, 0, t);
       lit.restore();
       blitLayer(ctx, lit.canvas, 'lighter', this.homeLitRect);
     }
