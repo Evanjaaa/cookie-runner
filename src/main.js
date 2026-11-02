@@ -118,6 +118,7 @@ import { setupCatRoomUI } from './catroom-ui.js';
 import { setupCatCardsUI } from './catcards-ui.js';
 import { makeEventBg } from './render/event-bg.js';
 import { syncServerClock } from './net/cloud.js';
+import { initJelly } from './jelly-btn.js';   // ปุ่มเยลลี่เด้งดึ๋ง (.jelly ใน style.css)
 
 // หน้าจอระบบน้องแมว (บ้านน้อง หน้าพบน้อง เรื่องราว เคล็ดลับน้องส้ม) — สร้างทีหลังใน setupCatRoomUI
 // ประกาศไว้บนสุดเพราะ refreshHome() ถูกเรียกตั้งแต่ก่อนถึงบรรทัดที่สร้าง
@@ -158,7 +159,9 @@ function homeCoverView() {
   if (a >= W / H - 0.01) return null;
   // ฉากอื่นนอกจากหน้าแรก (วิ่ง โบนัส ห้องก่อนวิ่ง บ้านลูกเหมียว): เห็นเต็มความกว้าง 960 เท่าเดิม
   // ส่วนสูงที่เกินต่อเป็นฉากบน-ล่างครึ่ง ๆ (render/cover-ext.js) — การเล่นเหมือนเดิมทุกอย่าง ไม่มีแถบม่วง
-  if (!stage.classList.contains('home-cover')) {
+  // .home-bg = ฉากหน้าแรกอยู่ข้างหลัง (หน้าแรกเอง หรือหน้าต่างย่อยที่เปิดทับหน้าแรก) — มุมมองเต็มจอแบบเดียวกัน
+  // ผู้ใช้ 2 พ.ย.: เปิดหน้าต่างย่อย (เช็คอิน ร้าน ฯลฯ) บน iPad แล้วฉากข้างหลังหดเหลือ 960×420 มีแถบดำบน-ล่าง
+  if (!stage.classList.contains('home-cover') && !stage.classList.contains('home-bg')) {
     if (!COVER_ALL_MQ.matches) return null;
     const vh = W / a, extra = Math.max(0, vh - H), extTop = extra * 0.5;
     return { vw: W, vh, ox: 0, extTop, extBottom: extra - extTop, cssW: r.width, home: false };
@@ -3741,7 +3744,8 @@ function fitTopBar() {
   if (hudTopEl) {
     hudTopEl.style.translate = '';
     if (stageEl.classList.contains('home-cover')) {
-      const pr = pfRow.getBoundingClientRect(), hr = hudTopEl.getBoundingClientRect();
+      // iPad: ปุ่มกลมอยู่แถวสองใต้แถบเงิน (style.css) — เทียบกึ่งกลาง "แถบเงิน" กับการ์ด ไม่ใช่ทั้งก้อนสองแถว
+      const pr = pfRow.getBoundingClientRect(), hr = walletEl.getBoundingClientRect();
       if (pr.height && hr.height) hudTopEl.style.translate = `0 ${Math.round(pr.top + pr.height / 2 - (hr.top + hr.height / 2))}px`;
     }
   }
@@ -7240,11 +7244,16 @@ function openShop(on) {
   shopPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
 }
+initJelly();   // ปุ่มเยลลี่ (ต้นแบบที่ปุ่มร้านเหมียว — ผู้ใช้ 2 พ.ย.) กดยุบ ปล่อยเด้ง · คลิกเลื่อนไปนิดให้เห็นท่าเด้งก่อนหน้าต่างเปิด
 document.getElementById('btnShop').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); startMusic();
   openShop(true);
 });
 document.getElementById('shopBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); openShop(false); });
+// ปุ่มบวกท้ายแถบเพชร/ทอง (ผู้ใช้ 2 พ.ย.) — กดปุ่มเมนูเดิมให้ (ทางเดียวกับที่ผู้เล่นกดเอง ไม่ต้องจำขั้นตอนเปิดซ้ำ)
+// เพชรได้จากภารกิจ → หน้ากิจกรรม · ทองแลกในร้าน → ร้านเหมียว (เปิดที่หน้าแลกทองอยู่แล้ว)
+document.getElementById('gemPlus').addEventListener('click', () => document.getElementById('btnQuests').click());
+document.getElementById('goldPlus').addEventListener('click', () => document.getElementById('btnShop').click());
 
 document.getElementById('btnCreate').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); startMusic();
@@ -8972,6 +8981,12 @@ function loop(now) {
   // หน้าเปิดเกม (titlePanel) ก็เห็นฉากหน้าแรกเต็ม ๆ ข้างหลังเหมือนกัน — ใช้มุมมองเดียวกัน
   const homeCover = game.state === STATE.READY && !game.catRoom && !game.inRoom
     && (!startPanel.classList.contains('hidden') || !titlePanel.classList.contains('hidden'));
+  // ฉากหน้าแรกอยู่ข้างหลังหน้าต่างย่อยด้วย (ไม่ใช่แค่ตอนเห็นล็อบบี้) — ผ้าใบยังเต็มจอ ไม่มีแถบดำ (homeCoverView)
+  const homeBg = game.state === STATE.READY && !game.catRoom && !game.inRoom;
+  if (stageEl.classList.contains('home-bg') !== homeBg) {
+    stageEl.classList.toggle('home-bg', homeBg);
+    fitDPR();
+  }
   if (stageEl.classList.contains('home-cover') !== homeCover) {
     stageEl.classList.toggle('home-cover', homeCover);
     // ผ้าใบเปลี่ยนมุมมองทันที (ไม่รอ ResizeObserver — ขนาดกล่อง CSS อาจไม่เปลี่ยน แต่ transform เปลี่ยน)

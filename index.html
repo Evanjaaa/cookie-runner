@@ -574,17 +574,17 @@
                ชื่อด่านอยู่บนการ์ดที่เลือกอยู่) จึงไม่มีข้อมูลไหนหายไปจริง ๆ -->
           <!-- ร้านเหมียว — บนสุดของแถวซ้าย เหนือตู้กาช่า (ผู้ใช้ 25 ต.ค. 2026)
                เปิดหน้าร้าน (#shopPanel · openShop ใน main.js) — ตอนนี้หน้าตาอย่างเดียว ยังซื้อไม่ได้ -->
-          <button class="lobby-btn" id="btnShop">
+          <button class="lobby-btn jelly" id="btnShop">
             <canvas id="shopIcon" width="76" height="76"></canvas>
             <b>ร้านเหมียว</b>
           </button>
-          <button class="lobby-btn" id="btnGacha">
+          <button class="lobby-btn jelly" id="btnGacha">
             <canvas id="gachaIcon" width="76" height="76"></canvas>
             <b>ตู้กาช่า</b>
           </button>
           <!-- พรสวรรค์ — ที่เดิมของปุ่ม "แมวน้อย" ซึ่งย้ายไปเป็นหมวดแรกในคลังน้องแล้ว
                เปิดหน้าพรสวรรค์ (#talentPanel) เลือกใบที่เปลี่ยนวิธีเคลื่อนที่ของน้อง -->
-          <button class="lobby-btn" id="btnTalent">
+          <button class="lobby-btn jelly" id="btnTalent">
             <canvas id="talentIcon" width="76" height="76"></canvas>
             <b>การ์ดพลัง</b>
             <i class="dot hidden" id="cardDot" aria-hidden="true"></i>
@@ -592,7 +592,7 @@
           <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
                รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
                ทำให้แถวปุ่มล็อบบี้ยาวจนต้องเลื่อนบนจอเตี้ย -->
-          <button class="lobby-btn" id="btnStash">
+          <button class="lobby-btn jelly" id="btnStash">
             <canvas id="stashIcon" width="76" height="76"></canvas>
             <b>คลังน้อง</b>
             <i class="dot hidden" id="stashDot" aria-hidden="true"></i>
@@ -613,16 +613,16 @@
           <!-- กิจกรรมอยู่บนสุดของแถวขวา เหนือปุ่มด่าน — เป็นที่ที่ตาไปถึงก่อน
                ปุ่มเล่นที่มุมขวาล่าง จึงเห็นว่ามีของค้างรับก่อนจะกดลงเล่น
                จุดแดงใช้กฎเดียวกับกล่องจดหมาย (ดู .dot ใน style.css) -->
-          <button class="lobby-btn" id="btnQuests">
+          <button class="lobby-btn jelly" id="btnQuests">
             <canvas id="questIcon" width="76" height="76"></canvas>
             <b>กิจกรรม</b>
             <i class="dot hidden" id="questDot" aria-hidden="true"></i>
           </button>
-          <button class="lobby-btn" id="btnStages">
+          <button class="lobby-btn jelly" id="btnStages">
             <canvas id="stageIcon" width="210" height="92"></canvas>
             <b>ด่าน</b>
           </button>
-          <button class="lobby-btn" id="btnRank">
+          <button class="lobby-btn jelly" id="btnRank">
             <canvas id="rankIcon" width="76" height="76"></canvas>
             <b>อันดับ</b>
           </button>
@@ -2756,10 +2756,14 @@
           <div class="gembar" aria-label="เพชรชมพู">
             <span class="gem" aria-hidden="true"></span>
             <b id="gemTop">0</b>
+            <!-- ปุ่มบวก (ผู้ใช้ 2 พ.ย.): เพชรได้จากภารกิจ → เปิดหน้ากิจกรรม (main.js) · วุ้นม่วงเด้งแบบปุ่มเยลลี่ -->
+            <button type="button" class="wallet-plus jelly" id="gemPlus" aria-label="หาเพชรเพิ่ม (กิจกรรม)"></button>
           </div>
           <div class="goldbar" aria-label="เหรียญทอง">
             <span class="coin" aria-hidden="true"></span>
             <b id="goldTop">0</b>
+            <!-- ปุ่มบวก: ทองแลกได้ในร้านเหมียว → เปิดร้าน หน้าแลกทอง (main.js) -->
+            <button type="button" class="wallet-plus jelly" id="goldPlus" aria-label="แลกทองเพิ่ม (ร้านเหมียว)"></button>
           </div>
         </div>
         <div class="hudbtns">
@@ -2769,64 +2773,23 @@
           <button id="btnPause" aria-label="หยุดชั่วคราว"></button>
           <!-- เพื่อนแมว: หัวแมวเส้นขาว ทรงปุ่มเดียวกับจดหมาย/ตั้งค่า (.hudbtns button)
                ป้ายแดง = จำนวนคำขอเป็นเพื่อนที่รอเราตอบ -->
-          <button id="btnFriends" aria-label="เพื่อนแมว">
-            <svg class="ico-color" viewBox="0 0 32 32" aria-hidden="true">
-              <defs><linearGradient id="icoCatG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC56E"/><stop offset="1" stop-color="#F28A2E"/></linearGradient></defs>
-              <g>
-                <path d="M5.2 15.5 6.4 4.6l7.2 5.2Z" fill="#F7963A"/>
-                <path d="M26.8 15.5 25.6 4.6l-7.2 5.2Z" fill="#F7963A"/>
-                <ellipse cx="16" cy="18.6" rx="11.6" ry="9.6" fill="url(#icoCatG)"/>
-              </g>
-              <path d="M7.6 7.8 8 12.2l3.3-2.4ZM24.4 7.8 24 12.2l-3.3-2.4Z" fill="#FF9EC4"/>
-              <path d="M16 9.4v3.4M12.6 10.2l.8 2.6M19.4 10.2l-.8 2.6" stroke="#D96B1E" stroke-width="1.5" stroke-linecap="round"/>
-              <ellipse cx="11.4" cy="18.4" rx="1.9" ry="2.3" fill="#3A1D50"/>
-              <ellipse cx="20.6" cy="18.4" rx="1.9" ry="2.3" fill="#3A1D50"/>
-              <circle cx="12" cy="17.6" r=".75" fill="#fff"/><circle cx="21.2" cy="17.6" r=".75" fill="#fff"/>
-              <circle cx="8.4" cy="22" r="1.7" fill="#FF8FB1" opacity=".75"/><circle cx="23.6" cy="22" r="1.7" fill="#FF8FB1" opacity=".75"/>
-              <path d="M14.8 21.3h2.4L16 22.6Z" fill="#FF6F9C" stroke="#FF6F9C" stroke-width=".8" stroke-linejoin="round"/>
-              <path d="M13.6 23.6q1.2 1.3 2.4 0 1.2 1.3 2.4 0" fill="none" stroke="#3A1D50" stroke-width="1.2" stroke-linecap="round"/>
-            </svg>
+          <button class="jelly" id="btnFriends" aria-label="เพื่อนแมว">
+            <svg class="ico-color ico-jelly" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="jfB" gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="29"><stop offset="0" stop-color="#FFB8DC" stop-opacity=".92"/><stop offset=".55" stop-color="#FF7DBE" stop-opacity=".88"/><stop offset="1" stop-color="#E04E9A" stop-opacity=".94"/></linearGradient><radialGradient id="jfG" gradientUnits="userSpaceOnUse" cx="16" cy="30" r="13"><stop offset="0" stop-color="#FFE4F6" stop-opacity=".85"/><stop offset="1" stop-color="#FFE4F6" stop-opacity="0"/></radialGradient><linearGradient id="jfW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".92"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient><clipPath id="jfC"><path d="M5.4 15.6C5.4 10 5.8 6.2 6.9 4.9 7.6 4.1 9.6 5.4 14 9.4Z"/><path d="M26.6 15.6C26.6 10 26.2 6.2 25.1 4.9 24.4 4.1 22.4 5.4 18 9.4Z"/><ellipse cx="16" cy="18.6" rx="11.8" ry="9.8"/></clipPath><g id="jfS"><path d="M5.4 15.6C5.4 10 5.8 6.2 6.9 4.9 7.6 4.1 9.6 5.4 14 9.4Z"/><path d="M26.6 15.6C26.6 10 26.2 6.2 25.1 4.9 24.4 4.1 22.4 5.4 18 9.4Z"/><ellipse cx="16" cy="18.6" rx="11.8" ry="9.8"/></g></defs><use href="#jfS" fill="none" stroke="#A22E6C" stroke-width="2.3" stroke-linejoin="round"/><use href="#jfS" fill="url(#jfB)"/><use href="#jfS" fill="url(#jfG)"/><g clip-path="url(#jfC)"><ellipse cx="12.6" cy="13" rx="7.6" ry="3.2" transform="rotate(-16 12.6 13)" fill="url(#jfW)"/><g class="ico-sheen"><path d="M2 -1h4.4L-4.6 33H-9Z" fill="#fff" opacity=".5"/><path d="M8 -1h1.6L-1.4 33H-3Z" fill="#fff" opacity=".4"/></g></g><circle cx="9.4" cy="13.4" r="1.1" fill="#fff"/><circle cx="11.2" cy="12.1" r="0.5" fill="#fff"/><path d="M7.8 8.2 8.2 12.3l3.2-2.4ZM24.2 8.2 23.8 12.3l-3.2-2.4Z" fill="#FFE6F3" opacity=".95"/><path d="M16 10.2v2.8M13 11l.7 2.3M19 11l-.7 2.3" stroke="#FFE6F3" stroke-width="1.3" stroke-linecap="round" opacity=".85"/><ellipse cx="11.4" cy="18.6" rx="2" ry="2.4" fill="#2A1044"/><ellipse cx="20.6" cy="18.6" rx="2" ry="2.4" fill="#2A1044"/><circle cx="12.1" cy="17.7" r=".85" fill="#fff"/><circle cx="21.3" cy="17.7" r=".85" fill="#fff"/><circle cx="10.9" cy="19.6" r=".4" fill="#fff" opacity=".8"/><circle cx="20.1" cy="19.6" r=".4" fill="#fff" opacity=".8"/><circle cx="8.3" cy="22.2" r="1.8" fill="#F0428C" opacity=".55"/><circle cx="23.7" cy="22.2" r="1.8" fill="#F0428C" opacity=".55"/><path d="M14.9 21.4h2.2L16 22.6Z" fill="#B8236A" stroke="#B8236A" stroke-width=".8" stroke-linejoin="round"/><path d="M13.7 23.6q1.15 1.2 2.3 0 1.15 1.2 2.3 0" fill="none" stroke="#2A1044" stroke-width="1.15" stroke-linecap="round"/></svg>
             <i class="dot hidden" id="friendsDot" aria-hidden="true"></i>
           </button>
           <!-- ข่าวสาร — โทรโข่ง จุดแดงโผล่เมื่อมีข่าวที่ยังไม่เปิดอ่าน -->
-          <button id="btnNews" aria-label="ข่าวสาร">
-            <svg class="ico-color" viewBox="0 0 32 32" aria-hidden="true">
-              <defs><linearGradient id="icoHornG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8FB1"/><stop offset="1" stop-color="#E8435F"/></linearGradient></defs>
-              <g>
-                <path d="m9.6 20.6 1.9 6.2a1.3 1.3 0 0 0 1.6.9l1.4-.4a1.3 1.3 0 0 0 .9-1.6l-1.5-4.9Z" fill="#9B6BEA"/>
-                <rect x="3" y="11.6" width="6.6" height="9.4" rx="2.4" fill="#FFD166"/>
-                <path d="M9.2 12.2 21 5.4v21.8L9.2 20.4Z" fill="url(#icoHornG)"/>
-                <ellipse cx="21.2" cy="16.3" rx="2.6" ry="10.9" fill="#FFE7A0"/>
-              </g>
-              <path d="M11.4 13.2 18.6 9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
-              <g fill="none" stroke="#FFD166" stroke-width="2" stroke-linecap="round">
-                <path d="M25.6 12.4q1.8 3.9 0 7.8"/>
-                <path d="M28.4 9.8q3 6.5 0 13"/>
-              </g>
-            </svg>
+          <button class="jelly" id="btnNews" aria-label="ข่าวสาร">
+            <svg class="ico-color ico-jelly" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="jnB" gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="29"><stop offset="0" stop-color="#FFB8DC" stop-opacity=".92"/><stop offset=".55" stop-color="#FF7DBE" stop-opacity=".88"/><stop offset="1" stop-color="#E04E9A" stop-opacity=".94"/></linearGradient><radialGradient id="jnG" gradientUnits="userSpaceOnUse" cx="16" cy="30" r="13"><stop offset="0" stop-color="#FFE4F6" stop-opacity=".85"/><stop offset="1" stop-color="#FFE4F6" stop-opacity="0"/></radialGradient><linearGradient id="jnW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".92"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient><clipPath id="jnC"><path d="m9.6 20.6 1.9 6.2a1.3 1.3 0 0 0 1.6.9l1.4-.4a1.3 1.3 0 0 0 .9-1.6l-1.5-4.9Z"/><rect x="3" y="11.6" width="6.6" height="9.4" rx="2.4"/><path d="M9.2 12.2 21 5.4v21.8L9.2 20.4Z"/><ellipse cx="21.2" cy="16.3" rx="2.6" ry="10.9"/></clipPath><g id="jnS"><path d="m9.6 20.6 1.9 6.2a1.3 1.3 0 0 0 1.6.9l1.4-.4a1.3 1.3 0 0 0 .9-1.6l-1.5-4.9Z"/><rect x="3" y="11.6" width="6.6" height="9.4" rx="2.4"/><path d="M9.2 12.2 21 5.4v21.8L9.2 20.4Z"/><ellipse cx="21.2" cy="16.3" rx="2.6" ry="10.9"/></g></defs><use href="#jnS" fill="none" stroke="#A22E6C" stroke-width="2.3" stroke-linejoin="round"/><use href="#jnS" fill="url(#jnB)"/><use href="#jnS" fill="url(#jnG)"/><g clip-path="url(#jnC)"><ellipse cx="13.6" cy="10.6" rx="6.4" ry="1.9" transform="rotate(-30 13.6 10.6)" fill="url(#jnW)"/><g class="ico-sheen"><path d="M2 -1h4.4L-4.6 33H-9Z" fill="#fff" opacity=".5"/><path d="M8 -1h1.6L-1.4 33H-3Z" fill="#fff" opacity=".4"/></g></g><circle cx="6.2" cy="13.6" r="0.95" fill="#fff"/><circle cx="12.4" cy="12.6" r="0.55" fill="#fff"/><path d="M9.4 12.4v7.8" stroke="#B98CFF" stroke-width="1.6" stroke-linecap="round" opacity=".9"/><ellipse cx="21.2" cy="16.3" rx="1.6" ry="8.8" fill="#FFE3F2" opacity=".85"/><ellipse cx="21.5" cy="16.6" rx=".8" ry="6.6" fill="#E35A9F" opacity=".85"/><g fill="none" stroke="#B98CFF" stroke-width="2" stroke-linecap="round"><path d="M25.6 12.4q1.8 3.9 0 7.8"/><path d="M28.4 9.8q3 6.5 0 13"/></g><g fill="none" stroke="#fff" stroke-width=".7" stroke-linecap="round" opacity=".8"><path d="M26 13.2q.7 1.5.5 3"/><path d="M28.9 10.9q1 2.4.9 4.6"/></g></svg>
             <i class="dot hidden" id="newsDot" aria-hidden="true"></i>
           </button>
           <!-- กล่องจดหมายอยู่ซ้ายของปุ่มตั้งค่า จุดแดงโผล่เมื่อมีของค้างรับหรือยังไม่อ่าน
                ซองวาดด้วย SVG ในตัว ไม่ใช้อีโมจิ ✉ เพราะหน้าตาต่างกันทุกระบบ -->
-          <button id="btnMail" aria-label="กล่องจดหมาย">
-            <svg class="ico-color" viewBox="0 0 32 32" aria-hidden="true">
-              <g>
-                <rect x="3.4" y="7.4" width="25.2" height="18.2" rx="3.2" fill="#FFF3E2"/>
-                <path d="M4.6 24.4 13 16.6M27.4 24.4 19 16.6" fill="none" stroke="#E7C9D9"/>
-                <path d="M4.2 9.2 16 18.6 27.8 9.2a3 3 0 0 0-2.4-1.8H6.6a3 3 0 0 0-2.4 1.8Z" fill="#FFB3CF"/>
-              </g>
-              <path d="M16 22.6s-3.6-2.2-3.6-4.6a1.9 1.9 0 0 1 3.6-.9 1.9 1.9 0 0 1 3.6.9c0 2.4-3.6 4.6-3.6 4.6Z" fill="#FF4F6E"/>
-            </svg>
+          <button class="jelly" id="btnMail" aria-label="กล่องจดหมาย">
+            <svg class="ico-color ico-jelly" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="jmB" gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="29"><stop offset="0" stop-color="#FFB8DC" stop-opacity=".92"/><stop offset=".55" stop-color="#FF7DBE" stop-opacity=".88"/><stop offset="1" stop-color="#E04E9A" stop-opacity=".94"/></linearGradient><radialGradient id="jmG" gradientUnits="userSpaceOnUse" cx="16" cy="30" r="13"><stop offset="0" stop-color="#FFE4F6" stop-opacity=".85"/><stop offset="1" stop-color="#FFE4F6" stop-opacity="0"/></radialGradient><linearGradient id="jmW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".92"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient><clipPath id="jmC"><rect x="3.2" y="7.2" width="25.6" height="18.6" rx="3.6"/></clipPath><g id="jmS"><rect x="3.2" y="7.2" width="25.6" height="18.6" rx="3.6"/></g></defs><use href="#jmS" fill="none" stroke="#A22E6C" stroke-width="2.3" stroke-linejoin="round"/><use href="#jmS" fill="url(#jmB)"/><use href="#jmS" fill="url(#jmG)"/><g clip-path="url(#jmC)"><ellipse cx="11.6" cy="9.6" rx="7.4" ry="2" fill="url(#jmW)"/><g class="ico-sheen"><path d="M2 -1h4.4L-4.6 33H-9Z" fill="#fff" opacity=".5"/><path d="M8 -1h1.6L-1.4 33H-3Z" fill="#fff" opacity=".4"/></g></g><circle cx="6.6" cy="10.4" r="0.95" fill="#fff"/><circle cx="8.6" cy="9.6" r="0.45" fill="#fff"/><path d="M4.2 9 16 18.6 27.8 9a3 3 0 0 0-2.6-1.8H6.8A3 3 0 0 0 4.2 9Z" fill="#FFD6EC" opacity=".6"/><path d="M4.6 9.3 16 18.6 27.4 9.3" fill="none" stroke="#A22E6C" stroke-width="1.1" stroke-linejoin="round" opacity=".55"/><path d="M4.8 24.6 13 17.4M27.2 24.6 19 17.4" stroke="#A22E6C" stroke-width="1" stroke-linecap="round" opacity=".4"/><path d="M16 23.4s-4-2.4-4-5.1a2.1 2.1 0 0 1 4-1 2.1 2.1 0 0 1 4 1c0 2.7-4 5.1-4 5.1Z" fill="#9A5DF0" stroke="#5A28A6" stroke-width=".7" stroke-linejoin="round"/><ellipse cx="14.3" cy="18" rx="1.1" ry=".7" transform="rotate(-30 14.3 18)" fill="#fff" opacity=".85"/></svg>
             <i class="dot hidden" id="mailDot" aria-hidden="true"></i>
           </button>
-          <button id="btnSettings" aria-label="ตั้งค่า">
-            <svg class="ico-color" viewBox="0 0 32 32" aria-hidden="true">
-              <defs><linearGradient id="icoGearG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9C9FF"/><stop offset="1" stop-color="#8E6BE0"/></linearGradient></defs>
-              <g fill="url(#icoGearG)"><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(45 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(90 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(135 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(180 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(225 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(270 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(315 16 16)"/><circle cx="16" cy="16" r="9.6"/></g>
-              <circle cx="16" cy="16" r="4.4" fill="#FFD166"/>
-              <circle cx="14.8" cy="14.8" r="1.2" fill="#fff" opacity=".8"/>
-              <path d="M9.4 12.4a7.6 7.6 0 0 1 4-4" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>
-            </svg>
+          <button class="jelly" id="btnSettings" aria-label="ตั้งค่า">
+            <svg class="ico-color ico-jelly" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="jsB" gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="0" y2="29"><stop offset="0" stop-color="#FFB8DC" stop-opacity=".92"/><stop offset=".55" stop-color="#FF7DBE" stop-opacity=".88"/><stop offset="1" stop-color="#E04E9A" stop-opacity=".94"/></linearGradient><radialGradient id="jsG" gradientUnits="userSpaceOnUse" cx="16" cy="30" r="13"><stop offset="0" stop-color="#FFE4F6" stop-opacity=".85"/><stop offset="1" stop-color="#FFE4F6" stop-opacity="0"/></radialGradient><linearGradient id="jsW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".92"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient><clipPath id="jsC"><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(45 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(90 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(135 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(180 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(225 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(270 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(315 16 16)"/><circle cx="16" cy="16" r="9.6"/></clipPath><linearGradient id="jsY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A0"/><stop offset="1" stop-color="#F5AE35"/></linearGradient><g id="jsS"><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(45 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(90 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(135 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(180 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(225 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(270 16 16)"/><rect x="13.2" y="2.4" width="5.6" height="7" rx="1.6" transform="rotate(315 16 16)"/><circle cx="16" cy="16" r="9.6"/></g></defs><use href="#jsS" fill="none" stroke="#A22E6C" stroke-width="2.3" stroke-linejoin="round"/><use href="#jsS" fill="url(#jsB)"/><use href="#jsS" fill="url(#jsG)"/><g clip-path="url(#jsC)"><ellipse cx="12.4" cy="10.4" rx="6.6" ry="2.6" transform="rotate(-28 12.4 10.4)" fill="url(#jsW)"/><g class="ico-sheen"><path d="M2 -1h4.4L-4.6 33H-9Z" fill="#fff" opacity=".5"/><path d="M8 -1h1.6L-1.4 33H-3Z" fill="#fff" opacity=".4"/></g></g><circle cx="9.4" cy="11.6" r="1" fill="#fff"/><circle cx="11" cy="9.9" r="0.5" fill="#fff"/><circle cx="16" cy="16" r="4.6" fill="url(#jsY)" stroke="#C98A1E" stroke-width=".8"/><circle cx="14.8" cy="14.7" r="1.25" fill="#fff" opacity=".9"/></svg>
           </button>
         </div>
       </div>

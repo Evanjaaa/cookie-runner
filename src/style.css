@@ -4583,7 +4583,8 @@ canvas[hidden] { display: none; }
    ปุ่มใสบนฉาก (หัวใจ ตัวน้อง กล่องแมว) main.js วัดกรอบฉากจริงแล้ววางตาม
    เฉพาะหน้าแรก (main.js ใส่ .home-cover) — ตอนวิ่งยังเป็นผ้าใบ 960:420 แบบเดิม */
 @media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) {
-  .stage.home-cover > canvas {
+  .stage.home-cover > canvas,
+  .stage.home-bg > canvas {
     width: 100%;
     height: var(--app-h, 100dvh);
   }
@@ -15627,3 +15628,320 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .shop-soon { color: rgba(255,243,226,.75); font-size: clamp(10px, 1.7dvh, 12px); text-align: center; }
 .shop-ex.hidden, .shop-grid.hidden { display: none; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   ปุ่มเยลลี่ (ผู้ใช้ 2 พ.ย. 2026 — ต้นแบบที่ปุ่มร้านเหมียว #btnShop · ผ่านแล้วจะใช้กับทุกปุ่มบนหน้าแรก)
+   ──────────────────────────────────────────────────────────────────────
+   "ใสนิด ๆ แบบใสทึบ เด้งดึ๋ง เล่นแสง นุ่มนวล เข้ากับแมว" — วุ้นม่วงโทนเดิมของเกม (ไม่ซีด):
+     เนื้อ   = ม่วงสดโปร่งแสง ~85% + เบลอฉากข้างหลังนิดหน่อย (เห็นสีข้างหลังลอดมาแบบกระจกฝ้า ไม่ใช่ใสแจ๋ว)
+     แสงลอดเนื้อ = แสงชมพูเรืองรวมที่ก้นปุ่ม (วุ้นจริงแสงทะลุไปรวมด้านล่าง) · ขอบบนรับแสงขาวบาง ๆ
+     เงาวาว = แคปซูลขาวไล่จางด้านบน + จุดแสงเม็ดเล็กแบบลูกอม (::before)
+     แสงวิ้ง = แถบแสงเฉียงปาดผ่านทุก ~6 วิ (::after — ขยับแค่ตำแหน่งพื้นหลังของชั้นนี้ ไม่วาดทั้งปุ่มใหม่)
+     ความหนา = ฐานม่วงเข้มโปร่ง ๆ ใต้ปุ่ม + เงาม่วงฟุ้ง (แสงลอดวุ้นเป็นเงาสี)
+   ท่า (jelly-btn.js ใส่คลาส): กด = ยุบแบนติดพื้น · ปล่อย = เด้งยืด-หด-ยืดแล้วนิ่ง · เมาส์ชี้ = ดึ๋งเบา ๆ
+   ขนาด/ตำแหน่งยังมาจากกฎ .lobby-btn เดิมทุกจอ — กฎชุดนี้เปลี่ยนแค่วัสดุกับท่า
+   ══════════════════════════════════════════════════════════════════════ */
+#startPanel .lobby-btn.jelly {
+  border: 1.5px solid rgba(255,255,255,.38);
+  border-radius: 32%;
+  background:
+    radial-gradient(92% 60% at 50% 114%, rgba(255,184,242,.88) 0%, rgba(255,184,242,0) 72%),
+    radial-gradient(60% 45% at 24% 12%, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(192,140,252,.76) 0%, rgba(150,92,236,.72) 48%, rgba(118,60,210,.84) 100%);
+  -webkit-backdrop-filter: blur(4px) saturate(1.4);
+  backdrop-filter: blur(4px) saturate(1.4);
+  box-shadow:
+    0 2px 0 rgba(150,96,234,.92),
+    0 4px 0 rgba(104,50,186,.78),
+    0 11px 18px -6px rgba(124,56,214,.62),
+    0 2px 5px rgba(40,10,72,.2),
+    inset 0 -9px 13px -4px rgba(255,184,242,.7),
+    inset 0 0 9px rgba(112,50,206,.38),
+    inset 0 2px 1px rgba(255,255,255,.66),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), box-shadow .1s ease, filter .15s ease;
+}
+#startPanel .lobby-btn.jelly:hover { filter: brightness(1.06) saturate(1.05); }
+/* กดค้าง = ยุบแบนติดพื้น ฐานหนาหดตาม (ทั้งคลาสจากนิ้ว และ :active สำรองเผื่อคีย์บอร์ด) */
+#startPanel .lobby-btn.jelly.jelly-press,
+#startPanel .lobby-btn.jelly:active {
+  transform: scale(1.1, .86) translateY(3px);
+  box-shadow:
+    0 1px 0 rgba(150,96,234,.92),
+    0 1px 0 rgba(104,50,186,.78),
+    0 5px 10px -4px rgba(124,56,214,.55),
+    0 1px 3px rgba(40,10,72,.2),
+    inset 0 -9px 13px -4px rgba(255,184,242,.7),
+    inset 0 0 9px rgba(112,50,206,.38),
+    inset 0 2px 1px rgba(255,255,255,.66),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+}
+#startPanel .lobby-btn.jelly.jelly-boing { animation: jellyBoing .62s linear both; }
+#startPanel .lobby-btn.jelly.jelly-wiggle { animation: jellyWiggle .55s ease-out both; }
+@keyframes jellyBoing {
+  0%   { transform: scale(1.1, .86) translateY(3px); }
+  22%  { transform: scale(.9, 1.12) translateY(-5px); }
+  42%  { transform: scale(1.06, .94) translateY(0); }
+  60%  { transform: scale(.97, 1.04) translateY(-1px); }
+  78%  { transform: scale(1.015, .985) translateY(0); }
+  100% { transform: none; }
+}
+@keyframes jellyWiggle {
+  0%   { transform: none; }
+  28%  { transform: scale(1.07, .93); }
+  52%  { transform: scale(.96, 1.05); }
+  76%  { transform: scale(1.02, .98); }
+  100% { transform: none; }
+}
+/* เงาวาวด้านบน: แคปซูลขาวไล่จาง + จุดแสงเม็ดเล็กสองเม็ดแบบลูกอม (อยู่ใต้ไอคอน/ชื่อ ไม่กลบลายเส้น) */
+#startPanel .lobby-btn.jelly::before {
+  content: '';
+  position: absolute;
+  left: 11%;
+  right: 11%;
+  top: 5%;
+  height: 36%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 13% 46%, rgba(255,255,255,.95) 0 7%, rgba(255,255,255,0) 8.5%),
+    radial-gradient(circle at 24% 30%, rgba(255,255,255,.85) 0 4%, rgba(255,255,255,0) 5.5%),
+    linear-gradient(180deg, rgba(255,255,255,.58) 0%, rgba(255,255,255,.16) 70%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+/* แสงวิ้งปาดเฉียงผ่านทั้งปุ่มเป็นระยะ (ทับไอคอนด้วย — แสงวิ่งบนผิววุ้น) */
+#startPanel .lobby-btn.jelly::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(112deg, rgba(255,255,255,0) 36%, rgba(255,255,255,.55) 44%, rgba(255,255,255,.2) 49%, rgba(255,255,255,0) 52%,
+    rgba(255,255,255,0) 55%, rgba(255,255,255,.42) 57%, rgba(255,255,255,0) 60%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 110% 0;
+  animation: jellySheen 6s ease-in-out 1.2s infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+@keyframes jellySheen {
+  0%, 74% { background-position: 110% 0; }
+  92%, 100% { background-position: -10% 0; }
+}
+#startPanel .lobby-btn.jelly > canvas,
+#startPanel .lobby-btn.jelly > b { position: relative; z-index: 2; }
+/* จุดแดงแจ้งเตือนอยู่บนสุด (เหนือแสงวิ้ง) */
+#startPanel .lobby-btn.jelly > .dot { z-index: 4; }
+/* แสงวิ้งไล่ลงทีละปุ่มเป็นคลื่น (แถวซ้ายบน→ล่าง แถวขวาบน→ล่าง) ไม่วาบพร้อมกันทั้งหน้า */
+#startPanel #btnGacha::after  { animation-delay: 1.6s; }
+#startPanel #btnTalent::after { animation-delay: 2s; }
+#startPanel #btnStash::after  { animation-delay: 2.4s; }
+#startPanel #btnQuests::after { animation-delay: 1.4s; }
+#startPanel #btnStages::after { animation-delay: 1.8s; }
+#startPanel #btnRank::after   { animation-delay: 2.2s; }
+#startPanel .lobby-btn.jelly > canvas { filter: drop-shadow(0 2px 2px rgba(58,18,110,.45)); }
+#startPanel .lobby-btn.jelly > b {
+  color: #FFF8FD;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(84,34,150,.75), 0 0 6px rgba(84,34,150,.45);
+}
+@media (prefers-reduced-motion: reduce) {
+  #startPanel .lobby-btn.jelly.jelly-boing,
+  #startPanel .lobby-btn.jelly.jelly-wiggle,
+  #startPanel .lobby-btn.jelly::after { animation: none; }
+}
+
+/* ── ปุ่มขวาบนสี่ปุ่ม (เพื่อน / ข่าว / จดหมาย / ตั้งค่า): ไม่มีกรอบวงกลม ตัวไอคอนเป็นวุ้นชมพูใส (ผู้ใช้ 2 พ.ย. 2026 — รอบแรกม่วง ผู้ใช้ขอลองชมพูเป็นสีหลัก) ──
+   ภาษาเดียวกับปุ่มเยลลี่ฝั่งล็อบบี้: เนื้อวุ้นชมพูโปร่ง · แสงชมพูขาวเรืองที่ก้น · ลาเวนเดอร์เป็นสีรอง · เงาวาว + จุดแสงแบบลูกอม · แสงวิ้งปาดผ่านเป็นระยะ
+   (ภาพทั้งหมดอยู่ใน SVG ของแต่ละปุ่มใน index.html — ขอบชมพูกุหลาบเข้มวาดใต้เนื้อ จึงอ่านออกบนฟ้าสีอ่อน)
+   กด = ยุบแบน · ปล่อย = เด้งดึ๋ง (jelly-btn.js ชุดเดียวกับปุ่มล็อบบี้) · ขนาดปุ่ม/พื้นที่แตะเท่าเดิม · ปุ่มหยุด #btnPause ไม่โดน */
+.hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings) {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  transform-origin: 50% 85%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), filter .15s ease;
+}
+.hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings) svg.ico-color {
+  width: 96%;
+  height: 96%;
+  overflow: visible;
+  filter: drop-shadow(0 1.5px 1px rgba(140,24,80,.32)) drop-shadow(0 3px 5px rgba(235,80,160,.36));
+}
+.hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings):hover { filter: brightness(1.07); }
+.hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings):is(.jelly-press, :active) {
+  transform: scale(1.14, .84) translateY(2px);
+  box-shadow: none;
+}
+.hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings).jelly-boing { animation: jellyBoing .62s linear both; }
+.hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings).jelly-wiggle { animation: jellyWiggle .55s ease-out both; }
+/* แสงวิ้งในตัวไอคอน (แถบขาวเฉียงเลื่อนผ่าน ตัดตามรูปไอคอน) — ไล่ทีละปุ่มจากซ้ายไปขวา */
+.ico-jelly .ico-sheen { animation: icoSheen 6s ease-in-out 1s infinite; }
+#btnNews .ico-sheen { animation-delay: 1.4s; }
+#btnMail .ico-sheen { animation-delay: 1.8s; }
+#btnSettings .ico-sheen { animation-delay: 2.2s; }
+@keyframes icoSheen {
+  0%, 74% { transform: translateX(-8px); }
+  92%, 100% { transform: translateX(44px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ico-jelly .ico-sheen { animation: none; }
+  .hudbtns :is(#btnFriends, #btnNews, #btnMail, #btnSettings):is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+
+/* ══ ไอคอนเพชรชมพู + เหรียญทอง วาดใหม่ (ผู้ใช้ 2 พ.ย. 2026: "อัปเกรดให้ชัดเจนและสวยขึ้น") ══════════
+   ทุกที่ในเกมที่ใช้ <span class="gem"> / <span class="coin"> เปลี่ยนตามพร้อมกัน (แถบบน ตู้กาช่า ร้าน จดหมาย รางวัล ฯลฯ)
+   ภาพเป็น SVG ฝังเป็นพื้นหลัง (คมทุกขนาด ตั้งแต่ 11px ในป้ายราคาถึงการ์ดรางวัลใหญ่) — ขนาดยังมาจากกฎเดิมของแต่ละที่
+     เพชร  = เจียระไนทรงบริลเลียนต์ 6 เหลี่ยมหลายเฉดชมพู · ขอบชมพูกุหลาบเข้มอ่านชัด · หน้าตัดบนสว่างใส · เส้นเหลี่ยมขาวบาง
+             แสงในเม็ด (ขาวกลาง + ชมพูนวลที่ก้นแบบวุ้น) · ประกายสี่แฉกมุมขวาบน
+     เหรียญ = ขอบหนาไล่ทองสามเฉด · หน้าเหรียญยุบลงจากขอบ · รอยเท้าแมวนูน (เงาล่างขวา + ไฮไลต์บนซ้าย) · แสงวาวโค้งบนขอบ · ประกาย
+   เดิม: เพชรใช้ clip-path (ตัดเงา/แสงเรืองทิ้งไปด้วย) · เหรียญซ้อนสามชั้นด้วย ::before/::after — ถอดชั้นเก่าออกหมด */
+.gem {
+  clip-path: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E %3Cdefs%3E %3CradialGradient id=%22g%22 cx=%2216%22 cy=%2213%22 r=%2215%22 gradientUnits=%22userSpaceOnUse%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22 stop-opacity=%22.2%22/%3E%3Cstop offset=%221%22 stop-color=%22%23fff%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E %3CradialGradient id=%22b%22 cx=%2216%22 cy=%2227%22 r=%227%22 gradientUnits=%22userSpaceOnUse%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFE0F0%22 stop-opacity=%22.55%22/%3E%3Cstop offset=%221%22 stop-color=%22%23FFE0F0%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E %3ClinearGradient id=%22t%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFF0F7%22/%3E%3Cstop offset=%221%22 stop-color=%22%23FFB0D5%22/%3E%3C/linearGradient%3E %3C/defs%3E %3Cpath d=%22M9.4 5.4h13.2L29 12.6 16 28.8 3 12.6Z%22 fill=%22none%22 stroke=%22%23B8236A%22 stroke-width=%222.6%22 stroke-linejoin=%22round%22/%3E %3Cpath d=%22M3 12.6 9.4 5.4 11.2 12.6Z%22 fill=%22%23FF8CC0%22/%3E %3Cpath d=%22M9.4 5.4h13.2l-1.8 7.2H11.2Z%22 fill=%22url(%23t)%22/%3E %3Cpath d=%22M22.6 5.4 29 12.6h-8.2Z%22 fill=%22%23FF62A8%22/%3E %3Cpath d=%22M3 12.6h8.2L16 28.8Z%22 fill=%22%23FF5AA3%22/%3E %3Cpath d=%22M11.2 12.6h9.6L16 28.8Z%22 fill=%22%23FF93C6%22/%3E %3Cpath d=%22M20.8 12.6H29L16 28.8Z%22 fill=%22%23DB2F82%22/%3E %3Cpath d=%22M9.4 5.4h13.2L29 12.6 16 28.8 3 12.6Z%22 fill=%22url(%23g)%22/%3E %3Cpath d=%22M9.4 5.4h13.2L29 12.6 16 28.8 3 12.6Z%22 fill=%22url(%23b)%22/%3E %3Cpath d=%22M3 12.6h26M11.2 12.6 16 28.8l4.8-16.2M9.4 5.4l1.8 7.2M22.6 5.4l-1.8 7.2%22 fill=%22none%22 stroke=%22%23fff%22 stroke-opacity=%22.6%22 stroke-width=%22.7%22 stroke-linejoin=%22round%22/%3E %3Cpath d=%22M11.4 6.6h3.2l-1.6 4.8h-2.4Z%22 fill=%22%23fff%22 opacity=%22.9%22/%3E %3Cpath d=%22M6.2 13.6h2.6l3.6 9.4Z%22 fill=%22%23fff%22 opacity=%22.35%22/%3E %3Cpath d=%22M25.4 2.2 26 4 27.8 4.6 26 5.2 25.4 7 24.8 5.2 23 4.6 24.8 4Z%22 fill=%22%23fff%22/%3E %3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 1px 1.5px rgba(120,10,60,.35)) drop-shadow(0 0 3px rgba(255,120,180,.45));
+}
+.gem::before, .gem::after { content: none; }
+.coin {
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E %3Cdefs%3E %3ClinearGradient id=%22r%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFEFA8%22/%3E%3Cstop offset=%22.5%22 stop-color=%22%23F8BE38%22/%3E%3Cstop offset=%221%22 stop-color=%22%23D98814%22/%3E%3C/linearGradient%3E %3CradialGradient id=%22f%22 cx=%2212%22 cy=%2210.5%22 r=%2215%22 gradientUnits=%22userSpaceOnUse%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFF7D4%22/%3E%3Cstop offset=%22.45%22 stop-color=%22%23FFDA62%22/%3E%3Cstop offset=%221%22 stop-color=%22%23F1A923%22/%3E%3C/radialGradient%3E %3C/defs%3E %3Ccircle cx=%2216%22 cy=%2216%22 r=%2214.9%22 fill=%22url(%23r)%22 stroke=%22%23A8620B%22 stroke-width=%221.2%22/%3E %3Ccircle cx=%2216%22 cy=%2216%22 r=%2211.6%22 fill=%22url(%23f)%22 stroke=%22%23C47E12%22 stroke-width=%221%22/%3E %3Cpath d=%22M5.6 13.2A10.8 10.8 0 0 1 13.4 5.4%22 fill=%22none%22 stroke=%22%23fff%22 stroke-opacity=%22.85%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/%3E %3Cg fill=%22%23B36E0C%22 opacity=%22.75%22 transform=%22translate(.5 .7)%22%3E %3Cpath d=%22M16 15.6c2.6 0 4.9 2 4.9 4.1 0 1.6-1.4 2.4-2.6 2.1-.9-.2-1.5-.6-2.3-.6s-1.4.4-2.3.6c-1.2.3-2.6-.5-2.6-2.1 0-2.1 2.3-4.1 4.9-4.1Z%22/%3E %3Cellipse cx=%2210.6%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(-20 10.6 14)%22/%3E%3Cellipse cx=%2213.7%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2218.3%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2221.4%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(20 21.4 14)%22/%3E %3C/g%3E %3Cg fill=%22%23FFF6D2%22 transform=%22translate(-.35 -.45)%22%3E %3Cpath d=%22M16 15.6c2.6 0 4.9 2 4.9 4.1 0 1.6-1.4 2.4-2.6 2.1-.9-.2-1.5-.6-2.3-.6s-1.4.4-2.3.6c-1.2.3-2.6-.5-2.6-2.1 0-2.1 2.3-4.1 4.9-4.1Z%22/%3E %3Cellipse cx=%2210.6%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(-20 10.6 14)%22/%3E%3Cellipse cx=%2213.7%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2218.3%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2221.4%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(20 21.4 14)%22/%3E %3C/g%3E %3Cg fill=%22%23EDA321%22%3E %3Cpath d=%22M16 15.6c2.6 0 4.9 2 4.9 4.1 0 1.6-1.4 2.4-2.6 2.1-.9-.2-1.5-.6-2.3-.6s-1.4.4-2.3.6c-1.2.3-2.6-.5-2.6-2.1 0-2.1 2.3-4.1 4.9-4.1Z%22/%3E %3Cellipse cx=%2210.6%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(-20 10.6 14)%22/%3E%3Cellipse cx=%2213.7%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2218.3%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2221.4%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(20 21.4 14)%22/%3E %3C/g%3E %3Cellipse cx=%2211.6%22 cy=%229.4%22 rx=%223.2%22 ry=%221.4%22 transform=%22rotate(-38 11.6 9.4)%22 fill=%22%23fff%22 opacity=%22.6%22/%3E %3Cpath d=%22M25.6 4.4 26.1 5.9 27.6 6.4 26.1 6.9 25.6 8.4 25.1 6.9 23.6 6.4 25.1 5.9Z%22 fill=%22%23fff%22/%3E %3C/svg%3E") center / contain no-repeat;
+  box-shadow: 0 1px 2px rgba(90,45,0,.35);
+}
+.coin::before, .coin::after { content: none; }
+
+/* ══ แถบเพชร/ทองหน้าแรก: วุ้นสีสดโปร่งแสง + ปุ่มบวกท้ายแถบ (ผู้ใช้ 2 พ.ย. 2026) ══════════════════
+   เดิมพื้นเทาม่วงทึบ → วุ้นสีสดแบบปุ่มเยลลี่: เพชร = วุ้นชมพูบานเย็น · ทอง = วุ้นน้ำผึ้งทอง
+   (ลองแบบสีอ่อนพาสเทลแล้ว ผู้ใช้ขอกลับมาแบบสีสด + ใสนุ่มขึ้นอีกนิด)
+     เนื้อโปร่งแสง + เบลอฉากข้างหลังนิดหน่อย (กระจกฝ้า) · เงาวาวด้านบน · แสงลอดเรืองที่ก้น · ขอบในนวล
+     ฐานหนาโปร่ง ๆ สีเข้มของแต่ละแถบ · เงาฟุ้งสีเดียวกับแถบ
+     ตัวเลขขาวตีขอบสีเข้มของแถบ (ขาวบนพื้นสว่างต้องมีขอบถึงจะอ่านออก — ท่าเดียวกับปุ่มเล่น)
+     วงขาวนวลรองหลังไอคอน — เพชรชมพูบนแถบชมพู/เหรียญทองบนแถบทองจะกลืนกันถ้าไม่มีพื้นรอง
+   ปุ่มบวก = วุ้นม่วงกลมเล็ก (สีหลักของปุ่มเมนู) กดยุบ-เด้งแบบปุ่มเยลลี่ (.jelly / jelly-btn.js)
+     เพชร + → หน้ากิจกรรม (เพชรได้จากภารกิจ) · ทอง + → ร้านเหมียว หน้าแลกทอง (main.js)
+   ปุ่มบวกโชว์เฉพาะตอนเห็นล็อบบี้ — เปิดหน้าต่างอื่นทับแล้วซ่อน (ไม่ให้เปิดหน้าต่างซ้อนกัน)
+   แสงวาบกวาด/ประกายวิบ/เพชรลอย/เหรียญพลิก ของเดิมยังอยู่ครบ */
+.hud-top .wallet .gembar,
+.hud-top .wallet .goldbar {
+  --pl: 7px;                            /* ขอบซ้าย = ระยะถึงไอคอน */
+  --ic: calc(var(--hud-h) * .9);        /* ขนาดไอคอนเพชร/เหรียญ (ตรงกับกฎข้างบน) */
+  --halo: radial-gradient(circle calc(var(--ic) * .62) at calc(var(--pl) + var(--ic) / 2) 50%, rgba(255,255,255,.9) 0%, rgba(255,255,255,.82) 72%, rgba(255,255,255,0) 100%);
+  padding: 0 calc(var(--hud-h) * .17) 0 var(--pl);
+  border: 1.5px solid rgba(255,255,255,.68);
+  -webkit-backdrop-filter: blur(4px) saturate(1.35);
+  backdrop-filter: blur(4px) saturate(1.35);
+}
+/* แถบเพชร = วุ้นขาวมุก (เดิมชมพูบานเย็น — ผู้ใช้ 2 พ.ย.: "สีชมพูเยอะแล้ว") · ฐาน/เงาฟุ้งอมชมพูจาง ๆ ยังเข้าคู่กับเพชร */
+.hud-top .wallet .gembar {
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,232,244,.9) 0%, rgba(255,232,244,0) 70%),
+    linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(252,246,252,.84) 52%, rgba(244,232,246,.9) 100%);
+  box-shadow:
+    0 3px 0 rgba(226,196,222,.95),
+    0 8px 14px -5px rgba(220,140,190,.4),
+    inset 0 2px 1px rgba(255,255,255,.95),
+    inset 0 -6px 9px -3px rgba(255,226,242,.6),
+    inset 0 0 6px rgba(255,255,255,.35);
+}
+.hud-top .wallet .goldbar {
+  background:
+    var(--halo),
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,246,206,.88) 0%, rgba(255,246,206,0) 70%),
+    linear-gradient(180deg, rgba(255,232,140,.86) 0%, rgba(255,201,64,.82) 52%, rgba(246,166,34,.88) 100%);
+  box-shadow:
+    0 3px 0 rgba(210,134,15,.78),
+    0 8px 14px -5px rgba(255,170,30,.5),
+    inset 0 2px 1px rgba(255,255,255,.8),
+    inset 0 -6px 9px -3px rgba(255,246,206,.75),
+    inset 0 0 6px rgba(255,255,255,.22);
+}
+.hud-top .wallet .gembar b,
+.hud-top .wallet .goldbar b {
+  position: relative;
+  z-index: 1;
+  color: #FFFFFF;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.hud-top .wallet .gembar b {
+  text-shadow: 0 1.6px 0 #D2468D, 1.3px 0 0 #D2468D, -1.3px 0 0 #D2468D, 0 -1.3px 0 #D2468D,
+    .9px .9px 0 #D2468D, -.9px .9px 0 #D2468D, .9px -.9px 0 #D2468D, -.9px -.9px 0 #D2468D;
+}
+.hud-top .wallet .goldbar b {
+  text-shadow: 0 1.6px 0 #B06209, 1.3px 0 0 #B06209, -1.3px 0 0 #B06209, 0 -1.3px 0 #B06209,
+    .9px .9px 0 #B06209, -.9px .9px 0 #B06209, .9px -.9px 0 #B06209, -.9px -.9px 0 #B06209;
+}
+
+/* ── ปุ่มบวก: วุ้นฟ้าอ่อนกลมเล็ก เครื่องหมายบวกขาวขอบฟ้าเข้ม (เดิมม่วง — ผู้ใช้ขอฟ้าอ่อนนุ่ม ๆ) ── */
+.wallet-plus {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: calc(var(--hud-h) * .94);
+  height: calc(var(--hud-h) * .94);
+  margin-left: calc(var(--hud-h) * -.04);
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,.85);
+  background:
+    radial-gradient(60% 40% at 40% 20%, rgba(255,255,255,.8) 0%, rgba(255,255,255,0) 75%),
+    radial-gradient(80% 55% at 50% 115%, rgba(226,246,255,.8) 0%, rgba(226,246,255,0) 70%),
+    linear-gradient(180deg, rgba(214,240,255,.95) 0%, rgba(160,214,248,.93) 55%, rgba(122,190,238,.95) 100%);
+  box-shadow:
+    0 2px 0 rgba(92,158,214,.8),
+    0 4px 6px -2px rgba(60,120,180,.32),
+    inset 0 1.5px 1px rgba(255,255,255,.8);
+  cursor: pointer;
+  pointer-events: auto;
+  transform-origin: 50% 80%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), filter .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+/* เครื่องหมายบวก: วาดเป็นชิ้นเดียว (SVG) ขาวมุมมน ขอบฟ้าเข้มล้อมรอบทั้งตัว
+   เดิมเป็นสองแท่งซ้อนกัน แต่ละแท่งมีขอบของตัวเอง → ขอบแท่งตั้งพาดทับแท่งนอนเป็นเส้นแปลก ๆ (ผู้ใช้ทักมา) */
+.wallet-plus::before {
+  content: '';
+  position: absolute;
+  inset: 16%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 4.6v10.8M4.6 10h10.8' fill='none' stroke='%234A90CC' stroke-width='6.4' stroke-linecap='round'/%3E%3Cpath d='M10 4.6v10.8M4.6 10h10.8' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.wallet-plus:hover { filter: brightness(1.08); }
+.wallet-plus:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
+.wallet-plus:is(.jelly-press, :active) { transform: scale(1.16, .82) translateY(1px); }
+.wallet-plus.jelly-boing { animation: jellyBoing .62s linear both; }
+.wallet-plus.jelly-wiggle { animation: jellyWiggle .55s ease-out both; }
+.stage:not(:has(#startPanel:not(.hidden))) .wallet-plus { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .wallet-plus:is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+@media (hover: none) and (pointer: coarse) {
+  .hud-top .wallet .gembar,
+  .hud-top .wallet .goldbar { --pl: 6px; --ic: calc(var(--hud-h) * .81); padding: 0 calc(var(--hud-h) * .15) 0 var(--pl); }
+  .wallet-plus { width: calc(var(--hud-h) * .86); height: calc(var(--hud-h) * .86); }
+}
+
+/* ── iPad (หน้าแรกเต็มจอ): แถบเพชร/ทองใหญ่ขึ้น ~15% + ปุ่มกลมสี่ปุ่มลงแถวที่สอง (ผู้ใช้ 2 พ.ย.) ──
+   "เพิ่มขนาดให้ใหญ่ขึ้นหน่อย — ปรับแค่ในไอแพด มือถือไม่ต้อง" → มือถือ/คอมขนาดเดิมทุกอย่าง
+   แถวบนของจอ 4:3 แน่นเกิน (การ์ดโปรไฟล์ + ปุ่มรางวัล/เช็คอิน + แถบเงินสองแถบ + ปุ่มกลมสี่ปุ่ม ขยายตามจอทั้งหมด)
+   แถบเงินเลยโดนย่อจนเหลือ 72–78% (fitTopBar) ตัวเลขเล็กอ่านยาก → ย้ายปุ่มกลมลงไปแถวสอง (ชิดขวา) แถบเงินได้ขนาดเต็ม
+   แถวสองอยู่เหนือแถวปุ่มเมนูขวา (กิจกรรม) พอดี ไม่ชนกัน · กึ่งกลางแถบเงินยังตรงกับการ์ดโปรไฟล์ (main.js fitTopBar)
+   ขนาด = ค่าของจอสัมผัส × 1.15 ทั้งชุด (ความสูง ไอคอน ตัวเลข ปุ่มบวก) · --ic ใช้ร่วมกับวงขาวรองหลังไอคอนและประกายวิบ */
+@media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px) {
+  .stage.home-cover .hud-top {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: clamp(8px, 1.4dvh, 14px);
+  }
+  .stage.home-cover .hud-top .wallet .gembar,
+  .stage.home-cover .hud-top .wallet .goldbar {
+    --ic: calc(var(--hud-h) * .93);
+    height: calc(var(--hud-h) * 1.39);
+    gap: 10px;
+  }
+  .stage.home-cover .hud-top .wallet .gembar b,
+  .stage.home-cover .hud-top .wallet .goldbar b { font-size: clamp(17px, 2.96dvh, 21.7px); }
+  .stage.home-cover .hud-top .wallet .gem,
+  .stage.home-cover .hud-top .wallet .coin { width: var(--ic); height: var(--ic); }
+  .stage.home-cover .hud-top .wallet .gembar::before,
+  .stage.home-cover .hud-top .wallet .goldbar::before { left: calc(var(--pl) + var(--ic) * .8); }
+  .stage.home-cover .wallet-plus { width: calc(var(--hud-h) * .99); height: calc(var(--hud-h) * .99); }
+}
