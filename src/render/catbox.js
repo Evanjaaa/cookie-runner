@@ -114,29 +114,34 @@ export function drawCatBoxes(ctx, boxes, camera, t, ears) {
 
 /**
  * กล่องแมวบนหน้าแรก — ทางเข้า "บ้านลูกเหมียว" (แทนปุ่มบ้านน้องในแถวขวา)
- * กล่องกระดาษเปิดฝา ผ้าห่มชมพูข้างใน หัวใจกับรอยเท้าหน้ากล่อง
- * ออร่าเรืองเป็นจังหวะหายใจ + ประกายลอยขึ้น = บอกว่า "แตะได้"
- * @param pop 0-1 ตอนเพิ่งถูกแตะ — กล่องเด้งขยาย ฝากางออก (ไล่ลงเองจากผู้เรียก)
+ * วาดใหม่รอบ 2 (ผู้ใช้ 3 พ.ย. 2026: "วาดใหม่ ไม่ต้องมีแมวในกล่อง") — บ้านกล่องกระดาษทรงหัวแมว
+ *   ทรง     = กล่องกระดาษตั้งตรงมุมมน หูแมวสองข้างงอกจากมุมบน (ในหูชมพู) · มีความหนาด้านหลังให้ดูเป็นกล่องจริง
+ *   ผิว     = พีชไล่เฉด เงาวาวด้านบน + เงาในล่าง (นูนนุ่มแบบปุ่มวุ้นของหน้าแรก) · เส้นขอบโกโก้มน
+ *   หน้ากล่อง = ป้ายครีมขอบชมพู "บ้านลูกเหมียว" · ประตูโค้งข้างในอุ่น ๆ มีเบาะชมพู (บอกว่า "เข้าไปได้")
+ *               หนวดแมวสามเส้นสองข้าง · รอยเท้ามุมล่าง
+ *   ออร่าเรืองหายใจ + ประกายลอยขึ้น = บอกว่า "แตะได้" (ชุดเดิม) · หูกระดิกเป็นระยะ
+ * @param pop 0-1 ตอนเพิ่งถูกแตะ — กล่องเด้ง หูกางออก (ไล่ลงเองจากผู้เรียก)
  */
 export function drawHomeBox(ctx, x, y, t, pop = 0) {
   const breathe = (Math.sin(t * 0.06) + 1) / 2;
+  const TAU = Math.PI * 2;
   ctx.save();
   ctx.translate(x, y);
 
   // ── ออร่า: วงแสงอุ่นหลังกล่อง หายใจเข้าออก ──
-  const r = 74 + breathe * 10 + pop * 20;
-  const g = ctx.createRadialGradient(0, -34, 8, 0, -34, r);
-  g.addColorStop(0, `rgba(255,236,160,${0.5 + breathe * 0.25})`);
-  g.addColorStop(0.55, `rgba(255,190,225,${0.22 + breathe * 0.12})`);
+  const r = 78 + breathe * 10 + pop * 20;
+  const g = ctx.createRadialGradient(0, -44, 8, 0, -44, r);
+  g.addColorStop(0, `rgba(255,236,170,${0.42 + breathe * 0.2})`);
+  g.addColorStop(0.55, `rgba(255,190,225,${0.2 + breathe * 0.1})`);
   g.addColorStop(1, 'rgba(255,190,225,0)');
   ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(0, -34, r, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -44, r, 0, TAU); ctx.fill();
 
   // ประกายลอยขึ้นจากกล่องวนเรื่อย ๆ
   for (let i = 0; i < 5; i++) {
     const ph = (t * 0.008 + i / 5) % 1;
-    const sx = Math.sin(i * 2.3) * 34 + Math.sin(t * 0.03 + i) * 4;
-    const sy = -40 - ph * 70;
+    const sx = Math.sin(i * 2.3) * 44 + Math.sin(t * 0.03 + i) * 4;
+    const sy = -70 - ph * 60;
     const sr = (1 - ph) * 3.6 + 1.2;
     ctx.globalAlpha = Math.sin(ph * Math.PI);
     ctx.fillStyle = i % 2 ? '#FFF3B0' : '#FFD1E6';
@@ -147,69 +152,133 @@ export function drawHomeBox(ctx, x, y, t, pop = 0) {
   }
   ctx.globalAlpha = 1;
 
-  // ── กล่อง ── เด้งตามจังหวะหายใจนิดหนึ่ง + เด้งแรงตอนถูกแตะ
-  const k = 1 + breathe * 0.02 + Math.sin(pop * Math.PI) * 0.12;
-  ctx.scale(k, k);
+  // ── ตัวกล่อง ── ยืด-ยุบแบบวุ้นตามจังหวะหายใจ (ฐานติดพื้น) + เด้งแรงตอนถูกแตะ
+  const sq = Math.sin(t * 0.06) * 0.018;
+  const kp = Math.sin(pop * Math.PI) * 0.12;
+  ctx.scale(1 + kp - sq, 1 + kp + sq);
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  ctx.strokeStyle = LINE;
-  ctx.lineWidth = 2.2 * BOX_K;
-  const W = 46, H = 40, top = -H, back = top - 12;
+  const INK = '#6B4128';
+  const W = 50, TOP = -76, EAR = 26, R = 12;
+  // หูกระดิก: ทุก ~5 วิ หูข้างหนึ่งกระดิกสองที · ถูกแตะ = หูกางออกทั้งคู่
+  const tw = t % 300;
+  const twitch = tw < 22 ? Math.sin(tw / 22 * Math.PI * 2) * 3 : 0;
+  const earL = pop * 5, earR = pop * 5 + twitch;
 
-  // เงา
-  ctx.fillStyle = 'rgba(0,0,0,.2)';
-  ctx.beginPath(); ctx.ellipse(0, 3, 52, 8, 0, 0, Math.PI * 2); ctx.fill();
-  // ฝาหลังตั้งชัน
-  ctx.beginPath();
-  ctx.moveTo(-W + 6, back); ctx.lineTo(-W + 12, back - 30 - pop * 6);
-  ctx.lineTo(W - 12, back - 30 - pop * 6); ctx.lineTo(W - 6, back); ctx.closePath();
-  ctx.fillStyle = CARD_LIGHT; ctx.fill(); ctx.stroke();
-  // ปากกล่อง (ด้านในเข้ม) + ผ้าห่มชมพู
-  ctx.beginPath();
-  ctx.moveTo(-W, top); ctx.lineTo(-W + 6, back); ctx.lineTo(W - 6, back); ctx.lineTo(W, top); ctx.closePath();
-  ctx.fillStyle = '#8C6136'; ctx.fill(); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(-W + 8, back + 2);
-  ctx.quadraticCurveTo(-16, back - 6, 0, back + 3);
-  ctx.quadraticCurveTo(18, back - 5, W - 8, back + 2);
-  ctx.lineTo(W - 4, top); ctx.lineTo(-W + 4, top); ctx.closePath();
-  ctx.fillStyle = '#FFD3E1'; ctx.fill();
-  ctx.lineWidth = 1.4 * BOX_K; ctx.stroke(); ctx.lineWidth = 2.2 * BOX_K;
-  // ฝาข้างกางออก (กางกว้างขึ้นตอนถูกแตะ)
-  for (const side of [-1, 1]) {
-    const open = 18 + pop * 10;
+  /** ทรงกล่องหัวแมว (มุมมน หูสองข้างงอกจากมุมบน) — เลื่อน ox/oy ได้ (ใช้วาดความหนาด้านหลัง) */
+  const body = (ox = 0, oy = 0) => {
     ctx.beginPath();
-    ctx.moveTo(side * W, top);
-    ctx.lineTo(side * (W + open), top - 16 - pop * 4);
-    ctx.lineTo(side * (W + open - 4), top - 26 - pop * 6);
-    ctx.lineTo(side * (W - 4), top - 12);
+    ctx.moveTo(-W + R + ox, oy);
+    ctx.lineTo(W - R + ox, oy);
+    ctx.quadraticCurveTo(W + ox, oy, W + ox, -R + oy);
+    ctx.lineTo(W + ox, TOP + 8 + oy);
+    ctx.lineTo(W - 1 + earR + ox, TOP - EAR + 7 + oy);
+    ctx.quadraticCurveTo(W - 2 + earR + ox, TOP - EAR - 2 + oy, W - 10 + earR * 0.6 + ox, TOP - EAR + 3 + oy);
+    ctx.lineTo(W - 32 + ox, TOP + oy);
+    ctx.lineTo(-W + 32 + ox, TOP + oy);
+    ctx.lineTo(-W + 10 - earL * 0.6 + ox, TOP - EAR + 3 + oy);
+    ctx.quadraticCurveTo(-W + 2 - earL + ox, TOP - EAR - 2 + oy, -W + 1 - earL + ox, TOP - EAR + 7 + oy);
+    ctx.lineTo(-W + ox, TOP + 8 + oy);
+    ctx.lineTo(-W + ox, -R + oy);
+    ctx.quadraticCurveTo(-W + ox, oy, -W + R + ox, oy);
     ctx.closePath();
-    ctx.fillStyle = CARD_LIGHT; ctx.fill(); ctx.stroke();
-  }
-  // ผนังหน้า
-  ctx.beginPath();
-  ctx.moveTo(-W + 3, top); ctx.lineTo(W - 3, top);
-  ctx.arcTo(W, top, W, top + 3, 3); ctx.lineTo(W, -3);
-  ctx.arcTo(W, 0, W - 3, 0, 3); ctx.lineTo(-W + 3, 0);
-  ctx.arcTo(-W, 0, -W, -3, 3); ctx.lineTo(-W, top + 3);
-  ctx.arcTo(-W, top, -W + 3, top, 3); ctx.closePath();
-  ctx.fillStyle = CARD; ctx.fill(); ctx.stroke();
-  // ฝาหน้าพับห้อย
-  ctx.beginPath();
-  ctx.moveTo(-W + 2, top); ctx.lineTo(W - 2, top); ctx.lineTo(W - 6, top + 13); ctx.lineTo(-W + 6, top + 13); ctx.closePath();
-  ctx.fillStyle = CARD_LIGHT; ctx.fill(); ctx.stroke();
-  // เทป + หัวใจ + รอยเท้า
-  ctx.fillStyle = 'rgba(255,240,205,.7)';
-  ctx.fillRect(-7, top + 13, 14, H - 15);
+  };
+
+  // เงานุ่มใต้กล่อง
+  ctx.fillStyle = 'rgba(70,30,60,.2)';
+  ctx.beginPath(); ctx.ellipse(4, 3, 60, 8, 0, 0, TAU); ctx.fill();
+
+  // ความหนาด้านหลัง (กล่องจริงมีมิติ) — ทรงเดียวกัน เลื่อนขึ้นขวา สีเข้มกว่า
+  body(8, -6);
+  ctx.fillStyle = '#D9935A'; ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
+
+  // หน้ากล่อง: ไล่สีพีช · เงาวาวบน · เงาในล่าง
+  const wg = ctx.createLinearGradient(0, TOP - EAR, 0, 0);
+  wg.addColorStop(0, '#FDD7A8'); wg.addColorStop(0.55, '#F3B57A'); wg.addColorStop(1, '#E6A062');
+  body(); ctx.fillStyle = wg; ctx.fill();
   ctx.save();
-  ctx.translate(-22, top + 26);
-  ctx.beginPath();
-  ctx.moveTo(0, 7); ctx.bezierCurveTo(-9, 1, -7, -7, 0, -3); ctx.bezierCurveTo(7, -7, 9, 1, 0, 7); ctx.closePath();
-  ctx.fillStyle = '#FF8FB8'; ctx.fill(); ctx.lineWidth = 1.6 * BOX_K; ctx.stroke();
+  body(); ctx.clip();
+  const sh = ctx.createLinearGradient(0, -16, 0, 0);
+  sh.addColorStop(0, 'rgba(150,70,30,0)'); sh.addColorStop(1, 'rgba(150,70,30,.26)');
+  ctx.fillStyle = sh; ctx.fillRect(-W, -16, W * 2, 16);
+  ctx.fillStyle = 'rgba(255,255,255,.42)';
+  ctx.beginPath(); ctx.ellipse(-W * 0.36, TOP + 7, W * 0.42, 4.2, -0.05, 0, TAU); ctx.fill();
   ctx.restore();
-  ctx.fillStyle = CARD_DARK;
-  ctx.beginPath(); ctx.ellipse(24, top + 28, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
-  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(20 + i * 4, top + 21, 1.8, 0, Math.PI * 2); ctx.fill(); }
+  body(); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // ในหูชมพู
+  ctx.fillStyle = '#FFB8D2';
+  ctx.beginPath(); ctx.moveTo(-W + 7, TOP + 2); ctx.lineTo(-W + 6 - earL * 0.8, TOP - EAR + 11); ctx.lineTo(-W + 24, TOP + 1); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(W - 7, TOP + 2); ctx.lineTo(W - 6 + earR * 0.8, TOP - EAR + 11); ctx.lineTo(W - 24, TOP + 1); ctx.closePath(); ctx.fill();
+
+  // หนวดแมวสามเส้นสองข้าง (ลายพิมพ์บนกล่อง)
+  ctx.strokeStyle = 'rgba(120,60,30,.45)';
+  ctx.lineWidth = 1.2;
+  for (const d of [-1, 1]) {
+    for (const [dy, tilt] of [[-3, -2.5], [1, 0], [5, 2.5]]) {
+      ctx.beginPath(); ctx.moveTo(d * (W - 4), -24 + dy + tilt); ctx.lineTo(d * (W - 15), -24 + dy); ctx.stroke();
+    }
+  }
+
+  // ป้ายหน้ากล่อง "บ้านลูกเหมียว" — ครีมขอบชมพู
+  const pw = 84, ph = 19, py = TOP + 12;
+  ctx.beginPath(); ctx.roundRect(-pw / 2, py, pw, ph, ph / 2);
+  ctx.fillStyle = '#FFF6EA'; ctx.fill();
+  ctx.strokeStyle = '#FF9CC0'; ctx.lineWidth = 1.3; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.beginPath(); ctx.roundRect(-pw / 2 + 7, py + 2.5, pw - 14, 3, 1.5); ctx.fill();
+  let fs = 11.5;
+  ctx.font = `700 ${fs}px Mali, sans-serif`;
+  const label = 'บ้านลูกเหมียว';
+  const tw2 = ctx.measureText(label).width;
+  if (tw2 > pw - 14) { fs *= (pw - 14) / tw2; ctx.font = `700 ${fs}px Mali, sans-serif`; }
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#8A4B2A';
+  ctx.fillText(label, 0, py + ph / 2 + 1);
+
+  // ประตูโค้ง: ขอบกระดาษอ่อน · ข้างในอุ่น ๆ · เบาะชมพู · หัวใจเล็กเหนือประตู
+  const dw = 17, dTop = -36;
+  const door = (pad) => {
+    ctx.beginPath();
+    ctx.moveTo(-dw - pad, -1);
+    ctx.lineTo(-dw - pad, dTop + dw);
+    ctx.arc(0, dTop + dw, dw + pad, Math.PI, 0);
+    ctx.lineTo(dw + pad, -1);
+    ctx.closePath();
+  };
+  door(3.5); ctx.fillStyle = '#FBD3A2'; ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  const dg = ctx.createLinearGradient(0, dTop, 0, 0);
+  dg.addColorStop(0, '#7A4A2A'); dg.addColorStop(1, '#5A3420');
+  door(0); ctx.fillStyle = dg; ctx.fill();
+  ctx.save();
+  door(0); ctx.clip();
+  ctx.fillStyle = '#FFB3CE';
+  ctx.beginPath(); ctx.ellipse(0, -2, dw + 2, 7, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.ellipse(-5, -6, 6, 1.8, 0, 0, TAU); ctx.fill();
+  // แสงอุ่นในบ้าน
+  const lg2 = ctx.createRadialGradient(0, dTop + 10, 1, 0, dTop + 10, 22);
+  lg2.addColorStop(0, `rgba(255,220,150,${0.35 + breathe * 0.15})`); lg2.addColorStop(1, 'rgba(255,220,150,0)');
+  ctx.fillStyle = lg2; ctx.fillRect(-dw, dTop, dw * 2, 40);
+  ctx.restore();
+  door(0); ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.stroke();
+  // หัวใจเล็กเหนือประตู
+  ctx.save();
+  ctx.translate(0, dTop - 7);
+  ctx.beginPath();
+  ctx.moveTo(0, 4); ctx.bezierCurveTo(-5.5, 0.5, -4.4, -4.6, 0, -1.8); ctx.bezierCurveTo(4.4, -4.6, 5.5, 0.5, 0, 4); ctx.closePath();
+  ctx.fillStyle = '#FF7FB0'; ctx.fill();
+  ctx.restore();
+
+  // รอยเท้าแมวสองมุมล่าง
+  ctx.fillStyle = 'rgba(160,80,30,.35)';
+  for (const [px, py2] of [[-W + 14, -9], [W - 14, -9]]) {
+    ctx.beginPath(); ctx.ellipse(px, py2, 3.6, 3, 0, 0, TAU); ctx.fill();
+    for (const [dx, dy] of [[-3.6, -3.8], [0, -5.4], [3.6, -3.8]]) { ctx.beginPath(); ctx.arc(px + dx, py2 + dy, 1.4, 0, TAU); ctx.fill(); }
+  }
   ctx.restore();
 }
 

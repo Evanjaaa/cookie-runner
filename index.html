@@ -524,27 +524,30 @@
              ทุกเครื่อง (ชื่อผู้เล่นยาวสั้นไม่เท่ากัน) ถ้าวางปุ่มด้วยระยะตายตัวจะทับกันเอง
              ตำแหน่งมุมซ้ายบนย้ายมาอยู่ที่แถวนี้แล้ว การ์ดข้างในจึงไม่ลอยเองอีก -->
         <div class="pf-row">
-        <button type="button" class="profile" id="profileCard" aria-label="ดูโปรไฟล์">
-          <!-- ชั้นดาวกับแสงเรืองของทรงนี้ (Uiverse by StealthWorm)
-               อยู่หลังเนื้อหาทั้งหมด ไม่มีข้อความ ไม่ต้องให้โปรแกรมอ่านหน้าจออ่าน -->
-          <span class="pf-stars" aria-hidden="true"><i></i></span>
-          <span class="pf-glow" aria-hidden="true"><i></i><i></i></span>
+        <span class="pf-cardwrap">
+        <!-- หางแมวอยู่นอกปุ่ม (ชั้นหลังการ์ด) — การ์ดบังโคนหาง หางเลยดูงอกออกมาจากข้างหลังจริง ๆ (ผู้ใช้ 3 พ.ย.) -->
+        <i class="pf-tail" aria-hidden="true"></i>
+        <button type="button" class="profile jelly" id="profileCard" aria-label="ดูโปรไฟล์">
+          <!-- การ์ดโปรไฟล์แบบใหม่ (ผู้ใช้ 3 พ.ย.): รูปหน้าวงขาวมีหูแมว (style.css .pf-face::before)
+               เลขเลเวลย้ายออกจากรูปมาเป็นป้ายทองหน้าชื่อ — ไม่บังหน้าน้องแล้ว · ตัวเลข EXP อยู่ในหลอด -->
           <span class="pf-face">
             <canvas id="pfAvatar" width="96" height="96"></canvas>
-            <b class="pf-lv" id="pfLv">1</b>
           </span>
           <span class="pf-info">
-            <b class="pf-name" id="pfName">แมวนิรนาม</b>
-            <span class="pf-bar"><i id="pfFill"></i></span>
-            <small class="pf-xp" id="pfXp">0 / 270</small>
+            <span class="pf-namerow">
+              <b class="pf-lv" id="pfLv">1</b>
+              <b class="pf-name" id="pfName">แมวนิรนาม</b>
+            </span>
+            <span class="pf-bar"><i id="pfFill"></i><small class="pf-xp" id="pfXp">0 / 270</small></span>
           </span>
         </button>
+        </span>
 
         <!-- ── ปุ่มรางวัลเลเวล ──
              กล่องของขวัญที่มีป้ายเลเวลติดอยู่ = "ขึ้นเลเวลแล้วได้ของ" อ่านออกตั้งแต่ยังไม่กด
              กล่องวาดด้วย CSS ล้วน ไม่ใช่อีโมจิ จะได้เป็นวัสดุชุดเดียวกับปุ่มอื่นในเกม
              จุดแดงใช้กฎ .dot ตัวเดียวกับปุ่มกิจกรรมและกล่องจดหมาย -->
-        <button type="button" class="lvgift" id="btnLvGift" aria-label="รางวัลเลเวล">
+        <button type="button" class="lvgift jelly" id="btnLvGift" aria-label="รางวัลเลเวล">
           <span class="lg-box" aria-hidden="true">
             <i class="lg-lid"></i>
             <i class="lg-band"></i>
@@ -558,7 +561,7 @@
              ปฏิทินฉีกที่มีรอยตีนแมวปั๊มอยู่ = "แวะมาวันละครั้ง" อ่านออกโดยไม่ต้องมีคำอธิบาย
              ใช้ทรงปุ่มร่วมกับปุ่มรางวัลเลเวล (.lvgift) ต่างกันแค่ของที่อยู่ข้างใน
              สองปุ่มนี้เป็นของชุดเดียวกัน — "ของแจกที่รออยู่" จึงควรหน้าตาเป็นพี่น้องกัน -->
-        <button type="button" class="lvgift daily" id="btnDaily" aria-label="เช็คอินรายวัน">
+        <button type="button" class="lvgift daily jelly" id="btnDaily" aria-label="เช็คอินรายวัน">
           <span class="dl-cal" aria-hidden="true">
             <i class="dl-ring"></i>
             <i class="dl-top"></i>
@@ -618,13 +621,11 @@
             <b>กิจกรรม</b>
             <i class="dot hidden" id="questDot" aria-hidden="true"></i>
           </button>
-          <button class="lobby-btn jelly" id="btnStages">
-            <canvas id="stageIcon" width="210" height="92"></canvas>
-            <b>ด่าน</b>
-          </button>
-          <button class="lobby-btn jelly" id="btnRank">
-            <canvas id="rankIcon" width="76" height="76"></canvas>
-            <b>อันดับ</b>
+          <!-- แผนที่เมืองแมว (ผู้ใช้ 3 พ.ย.) — เลือกโซน เมืองแมว / ดินแดนปราสาท → เปิด town.html
+               ปุ่มด่านกับอันดับเดิมย้ายเข้าไปอยู่ในหน้าเลือกโหมด (กดปุ่ม "ลุย~") -->
+          <button class="lobby-btn jelly" id="btnMap">
+            <canvas id="mapIcon" width="76" height="76"></canvas>
+            <b>แผนที่</b>
           </button>
         </div>
 
@@ -644,8 +645,8 @@
         <!-- ── กล่องแมว = ทางเข้าบ้านลูกเหมียว ──
              ตัวกล่องวาดบน canvas (drawHomeBox) ปุ่มนี้ใส ทับกล่องพอดีจาก HOME_BOX ใน game.js
              ป้ายชื่อใต้กล่องเป็น HTML จะได้แปลภาษาได้ จุดแดง = มีน้องที่ดูแลแล้วได้ EXP -->
+        <!-- ชื่อ "บ้านลูกเหมียว" พิมพ์อยู่บนหน้ากล่องในภาพแล้ว (drawHomeBox) — ไม่มีป้ายลอยใต้กล่องแล้ว (ผู้ใช้ 3 พ.ย.) -->
         <button class="homebox" id="btnHomeBox" aria-label="บ้านลูกเหมียว">
-          <span class="homebox-label">บ้านลูกเหมียว</span>
           <i class="dot hidden" id="catRoomDot" aria-hidden="true"></i>
         </button>
 
@@ -660,7 +661,7 @@
 
              ตำแหน่งมาจาก LOVE_BTN ใน game.js ผ่านตัวแปร --love-x / --love-y
              ที่ main.js เขียนลงมา หัวใจที่วาดบน canvas จึงออกจากตัวปุ่มพอดีเป๊ะ -->
-        <button class="lovebtn" id="btnLove" aria-label="ให้หัวใจน้อง">
+        <button class="lovebtn jelly" id="btnLove" aria-label="ให้หัวใจน้อง">
           <span class="love-ring" aria-hidden="true"></span>
           <svg viewBox="0 0 32 30" aria-hidden="true">
             <path d="M16 27.6C16 27.6 2.4 19.2 2.4 10.9C2.4 6.2 5.9 2.6 10.2 2.6
@@ -670,9 +671,10 @@
         </button>
         <!-- ป้ายอยู่นอกปุ่ม ไม่ได้อยู่ข้างใน — ข้างในจะโดนวงกลมของปุ่มตัดหาย
              และตัวเลขนับถอยหลังจะไปดันไอคอนหัวใจให้เบี้ยวทุกวินาที -->
-        <b class="love-tag" id="loveTag" aria-hidden="true">ให้หัวใจ</b>
+        <!-- ผู้ใช้ 3 พ.ย.: ไม่มีป้าย "ให้หัวใจ" แล้ว — ป้ายโผล่เฉพาะตอนนับถอยหลัง (refreshLove ใส่/ถอดคลาส off) -->
+        <b class="love-tag off" id="loveTag" aria-hidden="true"></b>
 
-        <button class="btn play" id="startBtn">เล่น!</button>
+        <button class="btn play jelly" id="startBtn">ลุย~</button>
       </div>
 
       <!-- หน้าเลือกด่าน ภาพตัวอย่างคือฉากจริงของด่านนั้นย่อส่วนลงมา -->
@@ -685,8 +687,70 @@
           <div class="stage-grid" id="stageGrid"></div>
           <!-- ทางเข้าหน้าติดตั้งสมบัติ อยู่ตรงนี้เพราะเป็นสิ่งสุดท้ายที่ควรเช็ค
                ก่อนลงเล่น — เลือกด่านเสร็จแล้วค่อยจัดของที่จะพกไป -->
-          <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
+          <div class="stage-foot">
+            <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
+            <!-- เริ่มวิ่งด่านที่เลือกอยู่ (เดิมปุ่มเล่นหน้าแรกเริ่มวิ่งเลย — ตอนนี้ปุ่มนั้นเปิดหน้าเลือกโหมด) -->
+            <button type="button" class="stage-go jelly" id="stageGo">ลุย~</button>
+          </div>
           <button class="backbtn" id="stageBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── หน้าเลือกโหมด (ผู้ใช้ 3 พ.ย.) ─────────────────────────
+           ปุ่ม "ลุย~" หน้าแรกเปิดหน้านี้ → เลือกโหมด → หน้าเลือกด่าน → ลุย~ เริ่มวิ่ง
+           ตอนนี้มีโหมดเดียว "ผจญภัยภารกิจ" (เกมวิ่งตามด่าน) · ปุ่มอันดับย้ายมาอยู่หน้านี้ (เดิมอยู่หน้าแรก) -->
+      <div class="panel hidden" id="modePanel">
+        <div class="pop">
+          <canvas class="stage-bg" id="modeBg" aria-hidden="true"></canvas>
+          <h2 class="skin-title">เลือกโหมด</h2>
+          <div class="mode-list">
+            <button type="button" class="mode-card jelly" id="modeAdventure">
+              <span class="mode-art"><canvas id="modeArt" width="420" height="184"></canvas></span>
+              <span class="mode-txt">
+                <b class="mode-name">ผจญภัยภารกิจ</b>
+                <small class="mode-desc">วิ่งผ่านด่าน เก็บของ ทำภารกิจ</small>
+                <span class="mode-stage">ด่าน <b id="modeStageName">ครัวกลางคืน</b> · สถิติ <b id="modeBest">0</b></span>
+              </span>
+            </button>
+          </div>
+          <button type="button" class="mode-rank jelly" id="modeRank">
+            <canvas id="rankIcon" width="76" height="76"></canvas>
+            <b>อันดับ</b>
+          </button>
+          <button class="backbtn" id="modeBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── แผนที่เมืองแมว (ผู้ใช้ 3 พ.ย.) ── เลือกโซนแล้วไปหน้าเมือง (town.html) ผ่านม่านอุ้งเท้า
+           ดินแดนปราสาท = เริ่มยืนหน้าปราสาท (town.html?spot=castle) · โซนใหม่ในอนาคตเพิ่มการ์ดที่นี่ -->
+      <div class="panel hidden" id="mapPanel">
+        <div class="pop">
+          <canvas class="stage-bg" id="mapBg" aria-hidden="true"></canvas>
+          <h2 class="skin-title">แผนที่เมืองแมว</h2>
+          <p class="map-lead">อยากไปเที่ยวโซนไหนดี</p>
+          <div class="map-zones">
+            <button type="button" class="zone-card jelly" id="zoneTown" data-spot="town">
+              <span class="zone-art"><canvas id="zoneTownArt" width="360" height="190"></canvas></span>
+              <b class="zone-name">เมืองแมว</b>
+              <small class="zone-desc">ร้านค้า · ลานน้ำพุ · ท่าเรือ</small>
+            </button>
+            <button type="button" class="zone-card jelly" id="zoneCastle" data-spot="castle">
+              <span class="zone-art"><canvas id="zoneCastleArt" width="360" height="190"></canvas></span>
+              <b class="zone-name">ดินแดนปราสาท</b>
+              <small class="zone-desc">ปราสาทแมวเหมียว · สวนหลวง</small>
+            </button>
+          </div>
+          <button class="backbtn" id="mapBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>

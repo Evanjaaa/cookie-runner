@@ -53,8 +53,15 @@ const RUN = 5.6;             // ตอนวิ่ง (ปุ่มวิ่ง 
 const NEAR = 46;             // ยืนห่างประตูไม่เกินเท่านี้ = ใช้งานได้
 const SC = CAT_LOOK * RUN_K; // ขนาดตัวน้องเท่าตอนวิ่งในเกม
 
+/** จุดเริ่มยืนในเมือง — ?spot=castle (แผนที่/แตะปราสาทในหน้าแรกของเกม · ผู้ใช้ 3 พ.ย.) = หน้าปราสาท · ไม่ส่ง = ต้นเมือง */
+function startX() {
+  const spot = new URLSearchParams(location.search).get('spot');
+  const cas = PLACES.find((p) => p.id === 'castle');
+  if (spot === 'castle' && cas) return cas.door - 260;
+  return START_X;
+}
 const cat = {
-  x: START_X, dir: 1, moving: false, target: null, pending: null, sit: null,
+  x: startX(), dir: 1, moving: false, target: null, pending: null, sit: null,
   y: GY,                     // ระดับเท้า (หน่วยโลก) — บนถนน = GY · บนสะพาน/ของ = สูงขึ้น (น้อยกว่า)
   on: null,                  // ผิวที่ยืนอยู่ (SURFACES) · null = ถนน/พื้นสะพาน
   drop: null,                // ผิวที่กำลังลงผ่าน (ไม่ลงจอดบนผิวนี้จนกว่าจะพ้น)

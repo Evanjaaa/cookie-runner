@@ -15736,8 +15736,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #startPanel #btnTalent::after { animation-delay: 2s; }
 #startPanel #btnStash::after  { animation-delay: 2.4s; }
 #startPanel #btnQuests::after { animation-delay: 1.4s; }
-#startPanel #btnStages::after { animation-delay: 1.8s; }
-#startPanel #btnRank::after   { animation-delay: 2.2s; }
 #startPanel .lobby-btn.jelly > canvas { filter: drop-shadow(0 2px 2px rgba(58,18,110,.45)); }
 #startPanel .lobby-btn.jelly > b {
   color: #FFF8FD;
@@ -15862,9 +15860,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   font-weight: 800;
   letter-spacing: .01em;
 }
+/* ตัวเลขเพชร: ชมพูทึบทั้งตัว (สีเดียวกับขอบเดิม — ผู้ใช้ 3 พ.ย.) บนพื้นขาว อ่านชัดโดยไม่ต้องตีขอบ · เงาขาวบาง ๆ ให้นูนเข้ากับวุ้น */
 .hud-top .wallet .gembar b {
-  text-shadow: 0 1.6px 0 #D2468D, 1.3px 0 0 #D2468D, -1.3px 0 0 #D2468D, 0 -1.3px 0 #D2468D,
-    .9px .9px 0 #D2468D, -.9px .9px 0 #D2468D, .9px -.9px 0 #D2468D, -.9px -.9px 0 #D2468D;
+  color: #D2468D;
+  text-shadow: 0 1.5px 0 rgba(255,255,255,.9), 0 2px 4px rgba(210,70,141,.25);
 }
 .hud-top .wallet .goldbar b {
   text-shadow: 0 1.6px 0 #B06209, 1.3px 0 0 #B06209, -1.3px 0 0 #B06209, 0 -1.3px 0 #B06209,
@@ -15944,4 +15943,711 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .stage.home-cover .hud-top .wallet .gembar::before,
   .stage.home-cover .hud-top .wallet .goldbar::before { left: calc(var(--pl) + var(--ic) * .8); }
   .stage.home-cover .wallet-plus { width: calc(var(--hud-h) * .99); height: calc(var(--hud-h) * .99); }
+}
+
+/* ══ การ์ดโปรไฟล์ + ปุ่มรางวัลเลเวล + ปุ่มเช็คอิน: วุ้นใสเด้งดึ๋ง ชุดเดียวกับปุ่มเมนู (ผู้ใช้ 3 พ.ย. 2026) ══════════
+   เดิม: การ์ดดำขอบรุ้งวิ่ง ดาวไหล แสงเบลอ / ปุ่มม่วงเข้มทึบ / ปุ่มบานเย็นทึบ
+   ตอนนี้: การ์ด + ปุ่มรางวัลเลเวล = วุ้นม่วง (สีเดียวกับปุ่มเมนูเยลลี่) · ปุ่มเช็คอิน = วุ้นชมพู (สีเดียวกับไอคอนขวาบน)
+     เนื้อโปร่ง + เบลอฉากข้างหลังนิด ๆ · เงาวาวแคปซูลด้านบน · แสงลอดเรืองที่ก้น · ฐานหนาโปร่ง · เงาฟุ้งสีเดียวกัน
+     แสงวิ้งปาดผ่านเป็นระยะ (ไล่จากการ์ด → รางวัลเลเวล → เช็คอิน) · กดยุบ-ปล่อยเด้ง (.jelly / jelly-btn.js)
+   การ์ดกว้างกว่าปุ่มมาก จึงยุบ/เด้งเบากว่าครึ่งหนึ่ง (jellyBoingSoft) ไม่ให้ตัวหนังสือบิดจนอ่านไม่ออก
+   ถอดดาวไหล/แสงเบลอ/ขอบรุ้งวิ่ง (แอนิเมชันที่ทำงานตลอดเวลา) — ประหยัดแรงเครื่องไปด้วย */
+#profileCard {
+  border: 1.5px solid rgba(255,255,255,.45);
+  background:
+    radial-gradient(70% 70% at 50% 120%, rgba(255,176,236,.7) 0%, rgba(255,176,236,0) 70%),
+    radial-gradient(45% 60% at 20% 10%, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(188,134,250,.84) 0%, rgba(146,88,232,.82) 48%, rgba(112,56,204,.88) 100%);
+  background-size: auto;
+  -webkit-backdrop-filter: blur(4px) saturate(1.35);
+  backdrop-filter: blur(4px) saturate(1.35);
+  animation: none;
+  box-shadow:
+    0 4px 0 rgba(86,38,156,.82),
+    0 11px 18px -6px rgba(118,52,206,.6),
+    0 2px 5px rgba(40,10,72,.22),
+    inset 0 -8px 12px -4px rgba(255,178,238,.55),
+    inset 0 2px 1px rgba(255,255,255,.6),
+    inset 0 0 0 1px rgba(255,255,255,.12);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), box-shadow .1s ease, filter .15s ease;
+}
+#profileCard .pf-stars, #profileCard .pf-glow { display: none; }
+#profileCard #pfAvatar {
+  border: 2px solid rgba(255,255,255,.85);
+  background: radial-gradient(circle at 50% 38%, rgba(255,236,250,.55), rgba(110,56,190,.85) 74%);
+}
+#profileCard .pf-lv { border-color: #6A34BC; }
+#profileCard .pf-name { color: #FFF8FD; text-shadow: 0 1px 0 rgba(84,34,150,.75), 0 0 6px rgba(84,34,150,.45); }
+#profileCard .pf-bar { background: rgba(70,24,128,.5); box-shadow: inset 0 1px 2px rgba(40,10,80,.45); }
+#profileCard .pf-xp { color: #F3E8FF; text-shadow: 0 1px 0 rgba(84,34,150,.6); }
+#profileCard:hover { filter: brightness(1.05); }
+
+/* ปุ่มรางวัลเลเวล (วุ้นม่วง) / เช็คอิน (วุ้นชมพู) */
+#btnLvGift, #btnDaily {
+  border-radius: 32%;
+  border: 1.5px solid rgba(255,255,255,.42);
+  -webkit-backdrop-filter: blur(4px) saturate(1.35);
+  backdrop-filter: blur(4px) saturate(1.35);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), box-shadow .1s ease, filter .15s ease;
+}
+#btnLvGift {
+  background:
+    radial-gradient(90% 58% at 50% 114%, rgba(255,184,242,.85) 0%, rgba(255,184,242,0) 72%),
+    radial-gradient(60% 45% at 24% 12%, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(192,140,252,.78) 0%, rgba(150,92,236,.74) 48%, rgba(118,60,210,.86) 100%);
+  box-shadow:
+    0 2px 0 rgba(150,96,234,.92),
+    0 4px 0 rgba(104,50,186,.8),
+    0 11px 18px -6px rgba(124,56,214,.6),
+    inset 0 -9px 13px -4px rgba(255,184,242,.7),
+    inset 0 0 9px rgba(112,50,206,.38),
+    inset 0 2px 1px rgba(255,255,255,.66);
+}
+#btnDaily {
+  background:
+    radial-gradient(90% 58% at 50% 114%, rgba(255,228,246,.85) 0%, rgba(255,228,246,0) 72%),
+    radial-gradient(60% 45% at 24% 12%, rgba(255,255,255,.26) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(255,176,214,.82) 0%, rgba(252,112,176,.78) 48%, rgba(222,70,146,.88) 100%);
+  box-shadow:
+    0 2px 0 rgba(255,128,186,.92),
+    0 4px 0 rgba(184,44,114,.8),
+    0 11px 18px -6px rgba(236,72,150,.55),
+    inset 0 -9px 13px -4px rgba(255,228,246,.7),
+    inset 0 0 9px rgba(200,50,130,.32),
+    inset 0 2px 1px rgba(255,255,255,.7);
+}
+#btnLvGift:hover, #btnDaily:hover { filter: brightness(1.06); }
+
+/* เงาวาว + แสงวิ้ง (ทั้งสามชิ้น) — ของข้างในยกขึ้นเหนือเงาวาว · ป้าย LV กับจุดแดงอยู่บนสุด */
+#profileCard::before, #btnLvGift::before, #btnDaily::before {
+  content: '';
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 5%;
+  height: 38%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 10% 46%, rgba(255,255,255,.9) 0 5%, rgba(255,255,255,0) 6.5%),
+    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.14) 70%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+#profileCard::before { left: 4%; right: 4%; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.1) 70%, rgba(255,255,255,0) 100%); }
+#profileCard::after, #btnLvGift::after, #btnDaily::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(112deg, rgba(255,255,255,0) 36%, rgba(255,255,255,.5) 44%, rgba(255,255,255,.18) 49%, rgba(255,255,255,0) 52%,
+    rgba(255,255,255,0) 55%, rgba(255,255,255,.38) 57%, rgba(255,255,255,0) 60%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 110% 0;
+  animation: jellySheen 6s ease-in-out .8s infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+#btnLvGift::after { animation-delay: 1.1s; }
+#btnDaily::after { animation-delay: 1.4s; }
+#btnLvGift > :not(.dot):not(.lg-tag), #btnDaily > :not(.dot) { position: relative; z-index: 2; }
+#btnLvGift > .lg-tag { z-index: 4; border-color: rgba(255,255,255,.9); }
+#btnLvGift > .dot, #btnDaily > .dot { z-index: 5; }
+
+/* ท่ากด/เด้ง */
+#btnLvGift:is(.jelly-press, :active), #btnDaily:is(.jelly-press, :active) { transform: scale(1.1, .86) translateY(3px); }
+#btnLvGift.jelly-boing, #btnDaily.jelly-boing { animation: jellyBoing .62s linear both; }
+#btnLvGift.jelly-wiggle, #btnDaily.jelly-wiggle { animation: jellyWiggle .55s ease-out both; }
+#profileCard:is(.jelly-press, :active) { transform: scale(1.035, .92) translateY(2px); }
+#profileCard.jelly-boing { animation: jellyBoingSoft .62s linear both; }
+#profileCard.jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
+@keyframes jellyBoingSoft {
+  0%   { transform: scale(1.035, .92) translateY(2px); }
+  22%  { transform: scale(.97, 1.06) translateY(-3px); }
+  42%  { transform: scale(1.02, .97) translateY(0); }
+  60%  { transform: scale(.99, 1.02); }
+  100% { transform: none; }
+}
+@keyframes jellyWiggleSoft {
+  0%   { transform: none; }
+  30%  { transform: scale(1.025, .965); }
+  55%  { transform: scale(.985, 1.025); }
+  80%  { transform: scale(1.008, .992); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #profileCard::after, #btnLvGift::after, #btnDaily::after { animation: none; }
+  :is(#profileCard, #btnLvGift, #btnDaily):is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+
+/* ══ แสงวิ้งปาดผ่าน: เหลือแค่แถบเพชร/ทอง (ผู้ใช้ 3 พ.ย.) ══
+   ปุ่มเมนูเจ็ดปุ่ม การ์ดโปรไฟล์ ปุ่มรางวัลเลเวล/เช็คอิน ไอคอนขวาบน = ไม่มีแสงวิ้งแล้ว (เงาวาวนิ่งยังอยู่) */
+#startPanel .lobby-btn.jelly::after,
+#profileCard::after, #btnLvGift::after, #btnDaily::after { content: none; animation: none; }
+.ico-jelly .ico-sheen { display: none; }
+
+/* ══ แถบทอง: เหลืองอ่อนลง · ตัวเลขสีเข้มทึบแบบแถบเพชร (ผู้ใช้ 3 พ.ย.) ══ */
+.hud-top .wallet .goldbar {
+  background:
+    var(--halo),
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,250,228,.9) 0%, rgba(255,250,228,0) 70%),
+    linear-gradient(180deg, rgba(255,250,222,.92) 0%, rgba(255,238,176,.88) 52%, rgba(252,224,140,.92) 100%);
+  box-shadow:
+    0 3px 0 rgba(234,196,110,.95),
+    0 8px 14px -5px rgba(240,180,60,.4),
+    inset 0 2px 1px rgba(255,255,255,.95),
+    inset 0 -6px 9px -3px rgba(255,248,220,.7),
+    inset 0 0 6px rgba(255,255,255,.35);
+}
+.hud-top .wallet .goldbar b {
+  color: #B06A0C;
+  text-shadow: 0 1.5px 0 rgba(255,255,255,.9), 0 2px 4px rgba(190,120,20,.25);
+}
+
+/* ══ การ์ดโปรไฟล์ออกแบบใหม่ (ผู้ใช้ 3 พ.ย.: "ดูเก่า ทำใหม่ให้สวยน่ารัก · ให้เห็นรูปหน้าชัด เลขเลเวลบังรูปอยู่") ══
+     รูปหน้า   = วงกลมขอบขาวหนา + วงชมพูนวล · หูแมวขาวในชมพูโผล่จากขอบบนของวง (โผล่พ้นการ์ดนิด ๆ น่ารัก)
+               เลขเลเวลย้ายออกจากรูปแล้ว — เห็นหน้าน้องเต็มวง
+     ชื่อ      = ขาวเงาม่วง
+     แถวเลเวล = ป้ายทอง "Lv 59" แบบเม็ดวุ้น + หลอด EXP วุ้นชมพูมีเงาวาว ตัวเลข EXP อยู่ในหลอด
+   เนื้อการ์ดยังเป็นวุ้นม่วงชุดเดียวกับปุ่มเมนู (กฎข้างบน) */
+#profileCard {
+  overflow: visible;
+  gap: calc(var(--pf) * .22);
+  padding: calc(var(--pf) * .13) calc(var(--pf) * .32) calc(var(--pf) * .13) calc(var(--pf) * .13);
+}
+#profileCard .pf-face { z-index: 2; }
+#profileCard .pf-face::before {
+  content: '';
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: -26%;
+  height: 56%;
+  z-index: -1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Cpath d='M6 46C5 30 7 14 12 6c2-3 5-3 8-1l20 16Z' fill='%23fff' stroke='%23D9B8F5' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M94 46c1-16-1-32-6-40-2-3-5-3-8-1L60 21Z' fill='%23fff' stroke='%23D9B8F5' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M13 30c0-8 1-15 4-19l14 11Z' fill='%23FFB3D6'/%3E%3Cpath d='M87 30c0-8-1-15-4-19L69 22Z' fill='%23FFB3D6'/%3E%3C/svg%3E") center top / contain no-repeat;
+}
+#profileCard #pfAvatar {
+  position: relative;
+  border: calc(var(--pf) * .05) solid #FFFFFF;
+  background: radial-gradient(circle at 50% 40%, #FFF6FC 0%, #F6E6FF 60%, #E4CCFA 100%);
+  box-shadow: 0 0 0 calc(var(--pf) * .035) rgba(255,170,215,.95), 0 3px 6px rgba(60,20,110,.35);
+}
+#profileCard .pf-info {
+  gap: calc(var(--pf) * .1);
+  min-width: calc(var(--pf) * 2.1);
+  max-width: calc(var(--pf) * 2.8);
+}
+#profileCard .pf-name {
+  font-size: calc(var(--pf) * .29);
+  font-weight: 700;
+}
+#profileCard .pf-lvrow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--pf) * .08);
+}
+/* ป้ายเลเวล: เม็ดวุ้นทองขอบขาว "Lv 59" */
+#profileCard .pf-lv {
+  position: static;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .12em;
+  min-width: 0;
+  height: auto;
+  padding: calc(var(--pf) * .035) calc(var(--pf) * .11);
+  border-radius: 999px;
+  border: 1.5px solid #FFFFFF;
+  background:
+    radial-gradient(70% 50% at 40% 18%, rgba(255,255,255,.75) 0%, rgba(255,255,255,0) 75%),
+    linear-gradient(180deg, #FFEA9A 0%, #FFCB45 60%, #F5AE22 100%);
+  color: #7A4300;
+  font-size: calc(var(--pf) * .25);
+  font-weight: 800;
+  line-height: 1.1;
+  box-shadow: 0 2px 0 #CC8A18, 0 3px 5px rgba(110,50,0,.3);
+}
+#profileCard .pf-lv::before {
+  content: 'Lv';
+  font-size: .72em;
+  font-weight: 700;
+  opacity: .85;
+}
+/* หลอด EXP: ร่องม่วงใส ขอบขาว · เนื้อวุ้นชมพูมีแถบวาวด้านบน · ตัวเลขอยู่กลางหลอด */
+#profileCard .pf-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: calc(var(--pf) * .32);
+  border-radius: 999px;
+  background: rgba(64,20,120,.48);
+  box-shadow: inset 0 1.5px 3px rgba(30,5,60,.5), 0 0 0 1.5px rgba(255,255,255,.55);
+  overflow: hidden;
+}
+#profileCard .pf-bar i {
+  position: relative;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.6) 0%, rgba(255,255,255,.15) 45%, rgba(255,255,255,0) 50%),
+    linear-gradient(90deg, #FF86C2 0%, #FFA8D4 60%, #FFC8E4 100%);
+  box-shadow: inset 0 -2px 3px rgba(210,60,140,.35);
+}
+#profileCard .pf-xp {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--pf) * .19);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: #FFFFFF;
+  text-shadow: 0 1px 0 rgba(84,24,140,.85), 1px 0 0 rgba(84,24,140,.6), -1px 0 0 rgba(84,24,140,.6), 0 -1px 0 rgba(84,24,140,.6);
+}
+
+/* ══ การ์ดโปรไฟล์ รอบ 2 (ผู้ใช้ 3 พ.ย.) ══
+   - ป้ายเลเวลแบน (ไม่นูน) ย้ายขึ้นไปหน้าชื่อ — แถวล่างเหลือหลอด EXP เต็มความกว้าง ตัวเลขไม่ล้นหลอดแล้ว
+     (รอบแรกป้าย + หลอดอยู่แถวเดียวกัน → อัด และ "18,781 / 21,810" ล้นหลอด)
+   - กรอบ: ขอบไล่สีชมพู-เหลือง-ม่วงพาสเทลเลื่อนช้า ๆ (เล่นสี) · เนื้อการ์ดเข้มกว่าปุ่มอื่นนิดหนึ่ง ม่วง → ชมพูกุหลาบ
+     มีแสงทองนวลมุมล่างขวา · แสงวิ้งปาดผ่านเป็นระยะ (ชิ้นเดียวนอกจากแถบเงินที่มีแสงวิ้ง — ให้การ์ดเด่น)
+   - ปุ่มบวกฟ้า: ถอดฐานนูนใต้ปุ่มออก (แบน) */
+#profileCard {
+  border: 2.5px solid transparent;
+  background:
+    radial-gradient(55% 80% at 92% 110%, rgba(255,214,130,.55) 0%, rgba(255,214,130,0) 70%) padding-box,
+    radial-gradient(50% 70% at 22% 0%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 70%) padding-box,
+    linear-gradient(115deg, rgba(150,104,224,.92) 0%, rgba(186,112,206,.9) 55%, rgba(232,140,184,.9) 100%) padding-box,
+    linear-gradient(115deg, #FFB3D6 0%, #FFE08A 25%, #C9A6FF 50%, #FFB3D6 75%, #FFE08A 100%) border-box;
+  background-size: auto, auto, auto, 300% 300%;
+  background-position: 0 0, 0 0, 0 0, 0% 50%;
+  animation: pfIri 9s ease-in-out infinite;
+  /* นูนด้วยแสงเงาล้วนแบบปุ่มเล่น ไม่มีฐานขอบล่างสีเข้ม (ผู้ใช้ 3 พ.ย.) — เงาในล่างม่วงพลัมนุ่ม ๆ = การ์ดอวบ
+     แสงในบน = ผิวรับแสง · ขอบล่างสุดมีแสงชมพูลอดบาง ๆ · เงาฟุ้งใต้การ์ดแบบเบลอ */
+  box-shadow:
+    0 12px 20px -7px rgba(150,70,180,.55),
+    0 3px 7px rgba(60,20,90,.18),
+    inset 0 -12px 16px -6px rgba(104,40,140,.5),
+    inset 0 9px 12px -7px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(255,214,236,.6),
+    inset 0 0 0 1px rgba(255,255,255,.12);
+}
+#profileCard:is(.jelly-press, :active) {
+  box-shadow:
+    0 5px 10px -5px rgba(150,70,180,.5),
+    0 1px 3px rgba(60,20,90,.18),
+    inset 0 -8px 12px -6px rgba(104,40,140,.45),
+    inset 0 7px 10px -7px rgba(255,255,255,.55),
+    inset 0 -2px 2px rgba(255,214,236,.6),
+    inset 0 0 0 1px rgba(255,255,255,.12);
+}
+@keyframes pfIri {
+  0%, 100% { background-position: 0 0, 0 0, 0 0, 0% 50%; }
+  50% { background-position: 0 0, 0 0, 0 0, 100% 50%; }
+}
+#profileCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(112deg, rgba(255,255,255,0) 38%, rgba(255,255,255,.4) 46%, rgba(255,255,255,.12) 51%, rgba(255,255,255,0) 56%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 110% 0;
+  animation: jellySheen 7s ease-in-out 1s infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+#profileCard #pfAvatar { box-shadow: 0 0 0 calc(var(--pf) * .035) rgba(255,190,222,.95), 0 3px 6px rgba(60,20,110,.35); }
+
+/* แถวบน: ป้ายเลเวล + ชื่อ · แถวล่าง: หลอด EXP เต็มความกว้าง */
+#profileCard .pf-info { gap: calc(var(--pf) * .12); min-width: calc(var(--pf) * 2.2); }
+#profileCard .pf-namerow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--pf) * .1);
+  min-width: 0;
+}
+#profileCard .pf-name { min-width: 0; font-size: calc(var(--pf) * .28); }
+/* ป้ายเลเวล: เม็ดทองแบน ขอบขาวบาง — ไม่มีฐานนูน ไม่มีเงาวาว */
+#profileCard .pf-lv {
+  flex: 0 0 auto;
+  padding: calc(var(--pf) * .03) calc(var(--pf) * .1) calc(var(--pf) * .025);
+  border: 1.5px solid rgba(255,255,255,.9);
+  background: linear-gradient(180deg, #FFE48C 0%, #FFCB52 100%);
+  color: #7A4300;
+  font-size: calc(var(--pf) * .2);
+  line-height: 1.15;
+  letter-spacing: .02em;
+  box-shadow: none;
+}
+#profileCard .pf-lv::before { margin-right: .05em; }
+#profileCard .pf-bar { flex: none; width: 100%; height: calc(var(--pf) * .3); }
+#profileCard .pf-xp { font-size: calc(var(--pf) * .185); letter-spacing: .02em; }
+
+/* ปุ่มบวกฟ้า: แบน ไม่มีฐานนูนใต้ปุ่ม */
+.wallet-plus { box-shadow: 0 2px 5px -1px rgba(60,120,180,.28), inset 0 1.5px 1px rgba(255,255,255,.8); }
+.wallet-plus:is(.jelly-press, :active) { box-shadow: 0 1px 3px rgba(60,120,180,.25), inset 0 1.5px 1px rgba(255,255,255,.8); }
+@media (prefers-reduced-motion: reduce) {
+  #profileCard, #profileCard::after { animation: none; }
+}
+
+/* ══ ปุ่มเล่น: วุ้นมิ้นต์ชุดเดียวกับปุ่มเยลลี่ (ผู้ใช้ 3 พ.ย.: "คงสีเดิมไว้ ปรับให้เข้ากับเกม") ══
+   สีมิ้นต์เดิม (--mint #4ECDC4) · เนื้อโปร่งนิด ๆ + เบลอฉากข้างหลัง · เงาวาวแคปซูลด้านบน + จุดแสง
+   แสงลอดเรืองที่ก้น · ฐานหนาโปร่งแบบปุ่มเมนู · ตัวหนังสือขาวตีขอบมิ้นต์เข้ม (เบาลงจากขอบเขียวดำเดิม)
+   กดยุบ-ปล่อยเด้ง (.jelly / jelly-btn.js — เด้งเบาแบบการ์ดโปรไฟล์เพราะปุ่มกว้าง) · ไม่มีแสงวิ้ง (มีแค่แถบเงิน/การ์ด) */
+#startPanel #startBtn {
+  border: 2px solid rgba(255,255,255,.62);
+  background:
+    radial-gradient(70% 40% at 50% 112%, rgba(222,255,250,.55) 0%, rgba(222,255,250,0) 70%),
+    radial-gradient(50% 50% at 26% 10%, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(128,232,222,.92) 0%, rgba(78,205,196,.9) 50%, rgba(50,178,170,.94) 100%);
+  -webkit-backdrop-filter: blur(4px) saturate(1.3);
+  backdrop-filter: blur(4px) saturate(1.3);
+  color: #FFFFFF;
+  text-shadow:
+    0 2px 0 #1E7A72,
+    1.7px 0 0 #1E7A72, -1.7px 0 0 #1E7A72, 0 -1.7px 0 #1E7A72,
+    1.2px 1.2px 0 #1E7A72, -1.2px 1.2px 0 #1E7A72, 1.2px -1.2px 0 #1E7A72, -1.2px -1.2px 0 #1E7A72,
+    0 4px 10px rgba(20,100,92,.3);
+  /* นูนด้วยแสงเงาล้วน ไม่มีฐานขอบล่างสีเข้ม (ผู้ใช้ 3 พ.ย.): เงาในล่างมิ้นต์เข้มนุ่ม ๆ = ปุ่มอวบ · แสงในบน = ผิวรับแสง
+     ขอบล่างสุดมีแสงลอดบาง ๆ (วุ้น) · เงาฟุ้งใต้ปุ่มแบบเบลอ ไม่มีเส้นแข็ง */
+  box-shadow:
+    0 12px 20px -7px rgba(30,140,130,.55),
+    0 3px 7px rgba(20,90,84,.18),
+    inset 0 -12px 16px -6px rgba(22,128,120,.5),
+    inset 0 9px 12px -7px rgba(255,255,255,.7),
+    inset 0 -2px 2px rgba(222,255,250,.6),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), box-shadow .1s ease, filter .15s ease;
+}
+#startPanel #startBtn:hover { animation: none; filter: brightness(1.05); }
+/* เงาวาวแคปซูล + จุดแสงสองเม็ด (แทนขีดแสงบาง ๆ เดิม) */
+#startPanel #startBtn::before {
+  top: 7%;
+  left: 7%;
+  right: 7%;
+  width: auto;
+  height: 40%;
+  border-radius: 999px;
+  filter: none;
+  background:
+    radial-gradient(circle at 6% 52%, rgba(255,255,255,.95) 0 .17em, rgba(255,255,255,0) .22em),
+    radial-gradient(circle at 11% 30%, rgba(255,255,255,.85) 0 .08em, rgba(255,255,255,0) .12em),
+    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.12) 75%, rgba(255,255,255,0) 100%);
+  background-color: transparent;
+}
+#startPanel #startBtn::after { display: none; }
+#startPanel #startBtn:is(.jelly-press, :active) {
+  transform: scale(1.05, .9) translateY(3px);
+  box-shadow:
+    0 5px 10px -5px rgba(30,140,130,.5),
+    0 1px 3px rgba(20,90,84,.18),
+    inset 0 -8px 12px -6px rgba(22,128,120,.45),
+    inset 0 7px 10px -7px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(222,255,250,.6),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+}
+#startPanel #startBtn.jelly-boing { animation: jellyBoingSoft .62s linear both; }
+#startPanel #startBtn.jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  #startPanel #startBtn:is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+
+/* ══ หางแมวท้ายการ์ดโปรไฟล์ (ผู้ใช้ 3 พ.ย.) — คู่กับหูแมวบนวงรูปหน้า ══
+   ขาวขอบลาเวนเดอร์เหมือนหู ปลายหางเป็นวงกลมชมพู (เหมือนในหู · ผู้ใช้ขอเป็นวงกลม) · ไม่เด่นเกินการ์ด (สูงราว 3/4 ของรูปหน้า)
+   โผล่จากใต้ขอบล่างช่วงท้ายการ์ด (โคนหางตัดตรงพอดีขอบการ์ด เลยดูงอกออกมาจากตัวการ์ด ไม่ใช่สติกเกอร์แปะทับ)
+   แกว่งช้า ๆ รอบโคนหาง · ชั้น z-index -1 = อยู่ใต้ตัวหนังสือ/รูปทุกอย่างในการ์ด */
+/* หางอยู่ชั้นหลังการ์ด: ห่อการ์ดกับหางไว้ใน .pf-cardwrap (การ์ดมี backdrop-filter = ชั้นซ้อนของตัวเอง
+   ของข้างในการ์ดยังไงก็วาดทับพื้นการ์ด) · โคนหางซ่อนใต้การ์ด ชิดมุมท้ายการ์ด */
+.pf-cardwrap { position: relative; display: inline-flex; flex: 0 0 auto; }
+.pf-cardwrap > #profileCard { z-index: 1; }
+.pf-cardwrap .pf-tail {
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - var(--pf) * .25);   /* โคนหาง (ส่วนบนสุด) ซ่อนอยู่หลังการ์ด */
+  right: calc(var(--pf) * .2);
+  width: calc(var(--pf) * .62);
+  height: calc(var(--pf) * .99);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -24 60 96'%3E%3Cpath d='M44 -32L44.4 -6C46 18 45 38 33 51C23 62 10 62 7 51' fill='none' stroke='%23D9B8F5' stroke-width='14' stroke-linecap='round'/%3E%3Cpath d='M44 -32L44.4 -6C46 18 45 38 33 51C23 62 10 62 7 51' fill='none' stroke='%23fff' stroke-width='11' stroke-linecap='round'/%3E%3Cpath d='M47.5 -20L47.8 0C49 20 47.5 39 35.5 53' fill='none' stroke='%23EFE3FA' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='7.6' cy='51.6' r='4.3' fill='%23FFB3D6'/%3E%3Ccircle cx='6.4' cy='50.2' r='1.1' fill='%23fff' opacity='.8'/%3E%3C/svg%3E") center top / contain no-repeat;
+  filter: drop-shadow(0 2px 2px rgba(80,30,120,.22));
+  transform-origin: 73% 25%;   /* หมุนรอบจุดที่หางโผล่พ้นขอบการ์ด */
+  animation: pfTail 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pfTail {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(9deg); }
+}
+@media (prefers-reduced-motion: reduce) { .pf-cardwrap .pf-tail { animation: none; } }
+
+/* ══ ชื่อภาษาไทยสระ/วรรณยุกต์ซ้อนโดนตัด (ผู้ใช้ 3 พ.ย.) ══
+   กล่องชื่อที่ตัดท้ายเป็น "…" ต้อง overflow: hidden ซึ่งตัดที่ขอบกล่องบรรทัด — สูงไม่พอให้สระบน + วรรณยุกต์ซ้อนสองชั้น
+   (ปิ๊ ดี้ ญี่ ฉึ่ ฯลฯ) เลยเหลือแต่เงาหรือหายไปทั้งตัว
+   ขยายกล่องตัดขึ้น-ลงด้วย padding แล้วดึงคืนด้วย margin ติดลบเท่ากัน — ตำแหน่งตัวหนังสือกับขนาดแถวเท่าเดิมทุกพิกเซล
+   (ท่าเดียวกับชื่อปุ่มเมนู .lobby-btn b) · ป้ายชื่อในหน้าโปรไฟล์มีพื้นสี ใช้ระยะบรรทัดสูงขึ้นแทน */
+.pf-name, .rank-row .who, .mail-title, .cs-friend b, .cr-chip b {
+  padding-block: .42em .26em;
+  margin-block: -.42em -.26em;
+}
+.pf-id-name { line-height: 1.75; padding-block: 0; }
+
+/* ══ หน้าเลือกโหมด · แผนที่เมืองแมว · ปุ่มลุยในหน้าเลือกด่าน (ผู้ใช้ 3 พ.ย. 2026) ══════════
+   ทางเดินใหม่: หน้าแรก "ลุย~" → เลือกโหมด (ผจญภัยภารกิจ — โหมดเดียวตอนนี้ + ปุ่มอันดับ) → เลือกด่าน → "ลุย~" เริ่มวิ่ง
+               หน้าแรก "แผนที่" → เลือกโซน (เมืองแมว / ดินแดนปราสาท) → ม่านอุ้งเท้า → town.html
+               (แตะปราสาทในฉากหลังเพื่อไปปราสาท — ลองแล้วผู้ใช้ไม่เอา 3 พ.ย. · ไปปราสาทผ่านแผนที่อย่างเดียว)
+   พื้นหลังสองหน้าใหม่ใช้ประตูสู่การผจญภัยชุดเดียวกับหน้าเลือกด่าน (render/stagebg.js) · การ์ด/ปุ่มเป็นวุ้นใสชุดเดียวกับหน้าแรก */
+#modePanel > .pop, #mapPanel > .pop { background: #8556C7; }
+#modePanel > .pop > :not(.stage-bg):not(.backbtn):not(.mode-rank),
+#mapPanel > .pop > :not(.stage-bg):not(.backbtn) { position: relative; z-index: 1; }
+#modePanel > .pop > .backbtn, #mapPanel > .pop > .backbtn, #modePanel > .pop > .mode-rank { z-index: 2; }
+#modePanel .skin-title, #mapPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
+#mapPanel .map-lead {
+  margin: 0;
+  color: var(--cream);
+  font-size: clamp(12px, 2.4dvh, 15px);
+  text-shadow: 0 1px 4px rgba(72,28,124,.55);
+}
+
+/* วัสดุวุ้นร่วมของการ์ดโหมด/การ์ดโซน/ปุ่มอันดับ: ม่วงใส นูนด้วยแสงเงา (ไม่มีขอบล่างเข้ม แบบปุ่มเล่น) */
+.mode-card, .zone-card, .mode-rank {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid rgba(255,255,255,.5);
+  background:
+    radial-gradient(80% 50% at 50% 112%, rgba(255,190,236,.6) 0%, rgba(255,190,236,0) 70%),
+    radial-gradient(55% 45% at 22% 8%, rgba(255,255,255,.26) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(190,140,250,.9) 0%, rgba(150,96,236,.88) 50%, rgba(120,64,212,.92) 100%);
+  color: #FFF8FD;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow:
+    0 12px 22px -8px rgba(60,20,120,.55),
+    0 3px 7px rgba(40,10,80,.2),
+    inset 0 -12px 16px -6px rgba(84,30,150,.45),
+    inset 0 9px 12px -7px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(255,200,240,.55);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), filter .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mode-card:hover, .zone-card:hover, .mode-rank:hover { filter: brightness(1.06); }
+.mode-card:is(.jelly-press, :active), .zone-card:is(.jelly-press, :active) { transform: scale(1.03, .95) translateY(3px); }
+.mode-rank:is(.jelly-press, :active) { transform: scale(1.1, .86) translateY(3px); }
+.mode-card.jelly-boing, .zone-card.jelly-boing { animation: jellyBoingSoft .62s linear both; }
+.mode-card.jelly-wiggle, .zone-card.jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
+.mode-rank.jelly-boing { animation: jellyBoing .62s linear both; }
+.mode-rank.jelly-wiggle { animation: jellyWiggle .55s ease-out both; }
+
+/* ── การ์ดโหมด "ผจญภัยภารกิจ": ภาพด่านที่เลือกอยู่ + ชื่อโหมด + คำอธิบาย + ด่าน/สถิติ ── */
+.mode-list { display: flex; justify-content: center; }
+.mode-card {
+  width: clamp(250px, 44vw, 440px);
+  gap: clamp(6px, 1.4dvh, 10px);
+  padding: clamp(8px, 1.6dvh, 12px) clamp(8px, 1.6dvh, 12px) clamp(12px, 2.4dvh, 18px);
+  border-radius: clamp(22px, 4vw, 34px);
+}
+.mode-art {
+  display: block;
+  width: 100%;
+  border-radius: clamp(16px, 3vw, 26px);
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.75), 0 4px 10px rgba(40,10,80,.3);
+}
+.mode-art canvas { display: block; width: 100%; height: auto; aspect-ratio: 960 / 420; }
+.mode-txt { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.mode-name {
+  font-family: "Mali", sans-serif;
+  font-size: clamp(20px, 4.4dvh, 30px);
+  font-weight: 800;
+  line-height: 1.3;
+  text-shadow: 0 2px 0 rgba(84,30,150,.8), 0 0 10px rgba(84,30,150,.4);
+}
+.mode-desc { font-size: clamp(11px, 2.2dvh, 14px); font-weight: 600; color: #F3E8FF; }
+.mode-stage {
+  margin-top: 4px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(70,24,128,.45);
+  box-shadow: inset 0 1px 2px rgba(30,5,60,.35);
+  font-size: clamp(11px, 2.1dvh, 13px);
+  color: #FFF4FB;
+}
+.mode-stage b { color: #FFE48A; font-weight: 700; }
+
+/* ── ปุ่มอันดับ (มุมขวาบนของหน้าเลือกโหมด — ย้ายมาจากหน้าแรก) ── */
+.mode-rank {
+  position: absolute;
+  top: clamp(10px, 2.4dvh, 22px);
+  right: clamp(10px, 2.4vw, 24px);
+  width: clamp(56px, 11dvh, 72px);
+  height: clamp(56px, 11dvh, 72px);
+  justify-content: center;
+  gap: 1px;
+  padding: 4px;
+  border-radius: 30%;
+}
+.mode-rank canvas { width: 56%; height: 56%; filter: drop-shadow(0 2px 2px rgba(58,18,110,.45)); }
+.mode-rank b { font-size: clamp(10px, 1.9dvh, 12px); font-weight: 700; text-shadow: 0 1px 0 rgba(84,34,150,.75); }
+
+/* ── หน้าเลือกด่าน: แถวล่าง = ติดตั้งสมบัติ + ลุย~ ── */
+#stagePanel > .pop > .stage-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 20px);
+}
+.stage-foot #loadoutOpen { margin: 0; }
+.stage-go {
+  padding: clamp(8px, 1.6dvh, 12px) clamp(26px, 4vw, 42px);
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.62);
+  background:
+    radial-gradient(70% 40% at 50% 112%, rgba(222,255,250,.55) 0%, rgba(222,255,250,0) 70%),
+    radial-gradient(50% 50% at 26% 10%, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(128,232,222,.95) 0%, rgba(78,205,196,.93) 50%, rgba(50,178,170,.96) 100%);
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  font-weight: 800;
+  font-size: clamp(18px, 3.6dvh, 24px);
+  line-height: 1.2;
+  cursor: pointer;
+  text-shadow: 0 2px 0 #1E7A72, 1.4px 0 0 #1E7A72, -1.4px 0 0 #1E7A72, 0 -1.4px 0 #1E7A72,
+    1px 1px 0 #1E7A72, -1px 1px 0 #1E7A72, 1px -1px 0 #1E7A72, -1px -1px 0 #1E7A72;
+  box-shadow:
+    0 10px 18px -7px rgba(30,140,130,.55),
+    0 3px 6px rgba(20,90,84,.18),
+    inset 0 -10px 14px -6px rgba(22,128,120,.5),
+    inset 0 8px 11px -7px rgba(255,255,255,.7),
+    inset 0 -2px 2px rgba(222,255,250,.6);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), filter .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.stage-go:hover { filter: brightness(1.05); }
+.stage-go:is(.jelly-press, :active) { transform: scale(1.06, .9) translateY(3px); }
+.stage-go.jelly-boing { animation: jellyBoingSoft .62s linear both; }
+.stage-go.jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
+
+/* ── แผนที่: การ์ดโซนสองใบเคียงกัน ── */
+.map-zones { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(12px, 2.4vw, 24px); }
+.zone-card {
+  width: clamp(190px, 28vw, 290px);
+  gap: 3px;
+  padding: clamp(7px, 1.4dvh, 10px) clamp(7px, 1.4dvh, 10px) clamp(10px, 2dvh, 14px);
+  border-radius: clamp(20px, 3.4vw, 30px);
+}
+#zoneCastle {
+  background:
+    radial-gradient(80% 50% at 50% 112%, rgba(255,232,170,.6) 0%, rgba(255,232,170,0) 70%),
+    radial-gradient(55% 45% at 22% 8%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(255,170,212,.9) 0%, rgba(240,118,176,.88) 50%, rgba(214,80,150,.92) 100%);
+  box-shadow:
+    0 12px 22px -8px rgba(150,30,90,.5),
+    0 3px 7px rgba(80,10,50,.2),
+    inset 0 -12px 16px -6px rgba(170,40,110,.42),
+    inset 0 9px 12px -7px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(255,236,200,.55);
+}
+.zone-art {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  border-radius: clamp(14px, 2.6vw, 22px);
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.75), 0 4px 10px rgba(40,10,80,.28);
+}
+.zone-art canvas { display: block; width: 100%; height: auto; aspect-ratio: 180 / 95; }
+.zone-name {
+  font-family: "Mali", sans-serif;
+  font-size: clamp(16px, 3.4dvh, 22px);
+  font-weight: 800;
+  line-height: 1.3;
+  text-shadow: 0 2px 0 rgba(84,30,150,.75);
+}
+#zoneCastle .zone-name { text-shadow: 0 2px 0 rgba(160,30,100,.7); }
+.zone-desc { font-size: clamp(10.5px, 2dvh, 13px); font-weight: 600; opacity: .95; }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.mode-card, .zone-card, .mode-rank, .stage-go):is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+
+/* ══ ปุ่มหัวใจหน้าแรก: วุ้นชมพูใส นุ่ม เด้ง (ผู้ใช้ 3 พ.ย. 2026) ══
+   เนื้อวุ้นชมพูโปร่ง · เงาวาวแคปซูลด้านบน + จุดแสง · นูนด้วยแสงเงา (ไม่มีขอบล่างเข้ม แบบปุ่มเล่น) · หัวใจขาวเต้นตุบ ๆ
+   ป้าย "ให้หัวใจ" เอาออกแล้ว — ป้ายโผล่เฉพาะตอนนับถอยหลัง (เวลาอย่างเดียว เม็ดวุ้นขาวตัวหนังสือชมพู)
+   ตำแหน่งใช้ property translate แทน transform — transform ว่างไว้ให้ท่ากดยุบ/เด้งของปุ่มเยลลี่ (jelly-btn.js) */
+#startPanel .lovebtn {
+  transform: none;
+  translate: -50% -50%;
+  border: 2px solid rgba(255,255,255,.7);
+  background:
+    radial-gradient(70% 45% at 50% 112%, rgba(255,226,240,.7) 0%, rgba(255,226,240,0) 70%),
+    radial-gradient(50% 40% at 34% 18%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(180deg, rgba(255,160,200,.92) 0%, rgba(250,104,160,.9) 55%, rgba(226,70,134,.94) 100%);
+  -webkit-backdrop-filter: blur(3px) saturate(1.3);
+  backdrop-filter: blur(3px) saturate(1.3);
+  box-shadow:
+    0 9px 16px -6px rgba(220,60,130,.55),
+    0 2px 5px rgba(120,20,70,.2),
+    inset 0 -9px 12px -5px rgba(170,30,100,.45),
+    inset 0 7px 9px -6px rgba(255,255,255,.75),
+    inset 0 -2px 2px rgba(255,220,236,.6);
+  transform-origin: 50% 100%;
+  transition: transform .1s cubic-bezier(.3,.7,.4,1), filter .2s ease;
+}
+#startPanel .lovebtn::before {
+  content: '';
+  position: absolute;
+  left: 22%;
+  top: 12%;
+  width: 26%;
+  height: 16%;
+  border-radius: 50%;
+  background: rgba(255,255,255,.75);
+  transform: rotate(-30deg);
+  pointer-events: none;
+}
+#startPanel .lovebtn svg {
+  width: 54%;
+  height: 54%;
+  fill: #FFFFFF;
+  filter: drop-shadow(0 1.5px 0 rgba(190,40,110,.55)) drop-shadow(0 0 3px rgba(255,255,255,.5));
+  animation: loveBeat 1.6s ease-in-out infinite;
+}
+@keyframes loveBeat {
+  0%, 52%, 100% { transform: scale(1); }
+  12% { transform: scale(1.16); }
+  24% { transform: scale(.96); }
+  36% { transform: scale(1.1); }
+}
+#startPanel .lovebtn:hover { filter: brightness(1.06); }
+#startPanel .lovebtn:is(.jelly-press, :active) { transform: scale(1.12, .86) translateY(2px); box-shadow: 0 4px 8px -4px rgba(220,60,130,.5), inset 0 -7px 10px -5px rgba(170,30,100,.45), inset 0 6px 8px -6px rgba(255,255,255,.75); }
+#startPanel .lovebtn.jelly-boing { animation: jellyBoing .62s linear both; }
+#startPanel .lovebtn.jelly-wiggle { animation: jellyWiggle .55s ease-out both; }
+/* วงชีพจรรอบปุ่ม (พร้อมให้) — ชมพูขาวนุ่มกว่าเดิม */
+#startPanel .love-ring { border-color: rgba(255,200,226,.9); }
+/* นับถอยหลัง: ปุ่มจางลงนุ่ม ๆ หัวใจหยุดเต้น */
+#startPanel .lovebtn[disabled] {
+  filter: saturate(.5) brightness(1.06);
+  opacity: .8;
+}
+#startPanel .lovebtn[disabled] svg { animation: none; }
+/* ป้ายเวลา (เฉพาะตอนนับถอยหลัง) — เม็ดวุ้นขาว ตัวเลขชมพูเข้ม */
+#startPanel .love-tag.off { display: none; }
+#startPanel .love-tag {
+  padding: 1px 9px;
+  border: 1.5px solid rgba(255,255,255,.9);
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,236,246,.88));
+  color: #D2468D;
+  font-weight: 800;
+  box-shadow: 0 3px 8px -3px rgba(200,60,130,.45), inset 0 -2px 3px rgba(255,190,220,.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  #startPanel .lovebtn svg { animation: none; }
+  #startPanel .lovebtn:is(.jelly-boing, .jelly-wiggle) { animation: none; }
 }

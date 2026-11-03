@@ -119,6 +119,8 @@ import { setupCatCardsUI } from './catcards-ui.js';
 import { makeEventBg } from './render/event-bg.js';
 import { syncServerClock } from './net/cloud.js';
 import { initJelly } from './jelly-btn.js';   // ปุ่มเยลลี่เด้งดึ๋ง (.jelly ใน style.css)
+import { drawCastleAt, drawFenceAt } from './town/castle.js';   // การ์ดโซนในหน้าแผนที่ (ภาพชุดเดียวกับในเมือง)
+import { drawShopAt } from './town/world.js';
 
 // หน้าจอระบบน้องแมว (บ้านน้อง หน้าพบน้อง เรื่องราว เคล็ดลับน้องส้ม) — สร้างทีหลังใน setupCatRoomUI
 // ประกาศไว้บนสุดเพราะ refreshHome() ถูกเรียกตั้งแต่ก่อนถึงบรรทัดที่สร้าง
@@ -513,6 +515,55 @@ function alphaBounds(c, w, h) {
  * @param fill สัดส่วนของกรอบที่ยอมให้รูปกิน เว้นขอบไว้นิดหน่อยกันดูอึดอัด
  */
 /**
+ * ไอคอนแผนที่ (กรอบ 76) — แผนที่กระดาษพับสามทบ (สลับสีครีม/ครีมเข้มให้เห็นรอยพับ) แม่น้ำฟ้าคดผ่านกลาง
+ * เนินเขียว ทางเดินจุดประชมพู ปลายทางเป็นหมุดชมพูหัวอุ้งเท้า (ผู้ใช้ 3 พ.ย. — ปุ่มแผนที่แทนปุ่มด่าน)
+ */
+function drawMapIcon(c) {
+  c.save();
+  c.lineJoin = 'round';
+  c.lineCap = 'round';
+  // แผ่นแผนที่สามทบ (ขอบบน/ล่างเป็นฟันปลาเบา ๆ ให้อ่านเป็นกระดาษพับ)
+  const panels = [[8, 20, '#FFF4E4'], [28, 16, '#F6E2C6'], [48, 20, '#FFF4E4']];
+  panels.forEach(([x, y, col], i) => {
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(x, y); c.lineTo(x + 20, i === 1 ? 20 : 16); c.lineTo(x + 20, i === 1 ? 64 : 60); c.lineTo(x, y + 44); c.closePath();
+    c.fill();
+  });
+  c.save();
+  c.beginPath();
+  c.moveTo(8, 20); c.lineTo(28, 16); c.lineTo(48, 20); c.lineTo(68, 16); c.lineTo(68, 60); c.lineTo(48, 64); c.lineTo(28, 60); c.lineTo(8, 64); c.closePath();
+  c.clip();
+  // เนินเขียวมุมล่างซ้าย + แม่น้ำ
+  c.fillStyle = '#9ED79A';
+  c.beginPath(); c.ellipse(20, 62, 18, 12, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#7CC6F0';
+  c.lineWidth = 6;
+  c.beginPath(); c.moveTo(36, 14); c.quadraticCurveTo(26, 34, 44, 42); c.quadraticCurveTo(58, 48, 54, 68); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.6)';
+  c.lineWidth = 1.6;
+  c.beginPath(); c.moveTo(34, 22); c.quadraticCurveTo(30, 32, 40, 38); c.stroke();
+  // ทางเดินจุดประชมพู
+  c.strokeStyle = '#FF7EB0';
+  c.lineWidth = 2.4;
+  c.setLineDash([3, 4]);
+  c.beginPath(); c.moveTo(16, 50); c.quadraticCurveTo(30, 52, 40, 30); c.stroke();
+  c.setLineDash([]);
+  c.restore();
+  // รอยพับ
+  c.strokeStyle = 'rgba(107,58,42,.25)';
+  c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(28, 16); c.lineTo(28, 60); c.moveTo(48, 20); c.lineTo(48, 64); c.stroke();
+  // หมุดหัวอุ้งเท้า
+  c.fillStyle = '#FF6FAE';
+  c.beginPath(); c.arc(42, 22, 9, Math.PI * 0.85, Math.PI * 0.15); c.lineTo(42, 38); c.closePath(); c.fill();
+  c.fillStyle = '#FFFFFF';
+  c.beginPath(); c.ellipse(42, 24, 3.2, 2.6, 0, 0, Math.PI * 2); c.fill();
+  for (const [dx, dy] of [[-3.4, -3.6], [0, -5.4], [3.4, -3.6]]) { c.beginPath(); c.arc(42 + dx, 24 + dy, 1.3, 0, Math.PI * 2); c.fill(); }
+  c.restore();
+}
+
+/**
  * ไอคอนร้านเหมียว (กรอบ 76) — ซุ้มร้านหลังคาผ้าใบลายทางชมพู-ครีมชายหยัก หูแมวบนหลังคา
  * ป้ายกลมรูปอุ้งเท้า เคาน์เตอร์ไม้มีปลากับขนมวางขาย
  */
@@ -736,7 +787,7 @@ function refreshHome() {
   paintFitted(document.getElementById('talentIcon'), 76, 0.96, drawTalentCards);
   catRoomUI?.paintIcon();
   catRoomUI?.refreshDot();
-  paintStageScene(document.getElementById('stageIcon'), st, 210);
+  paintFitted(document.getElementById('mapIcon'), 76, 0.96, drawMapIcon);
   paintStashIcon();
   paintQuestIcon();
   refreshCreateIcon();
@@ -2842,16 +2893,6 @@ const rankBg = makeRankBg(document.getElementById('rankBg'),
   () => !rankPanel.classList.contains('hidden'), rankPanel.querySelector('.pop'));
 new MutationObserver(() => rankBg.kick()).observe(rankPanel, { attributes: true, attributeFilter: ['class'] });
 
-function showRank(on) {
-  rankPanel.classList.toggle('hidden', !on);
-  startPanel.classList.toggle('hidden', on);
-  if (on) {
-    rankStageId = getStage().id;
-    buildRankStages();
-    buildRank();
-  }
-}
-
 function buildStageGrid() {
   const grid = document.getElementById('stageGrid');
   grid.innerHTML = '';
@@ -2872,7 +2913,7 @@ function buildStageGrid() {
     paintStageScene(card.querySelector('canvas'), st, 232);
 
     card.addEventListener('click', () => {
-      if (st.id === getStage().id) return showStages(false);
+      if (st.id === getStage().id) return;   // เลือกอยู่แล้ว — เริ่มวิ่งด้วยปุ่ม ลุย~ ข้างล่าง
       setStage(st.id);
       unlockAudio();
       sfx.potion();
@@ -2906,10 +2947,6 @@ const stageBg = makeStageBg(document.getElementById('stageBg'),
   () => !stagePanel.classList.contains('hidden'), stagePanel.querySelector('.pop'));
 new MutationObserver(() => stageBg.kick()).observe(stagePanel, { attributes: true, attributeFilter: ['class'] });
 
-function showStages(on) {
-  stagePanel.classList.toggle('hidden', !on);
-  startPanel.classList.toggle('hidden', on);
-}
 
 // ── รายละเอียดด่าน ─────────────────────────────────────────
 //
@@ -3621,7 +3658,9 @@ function refreshLove() {
   const left = petLeftMs();
   const ready = left === 0;
   loveBtn.disabled = !ready;
-  loveTag.textContent = ready ? 'ให้หัวใจ' : petLeftText(left);
+  // พร้อมให้ = ไม่มีป้าย (ตัวปุ่มหัวใจเต้นตุบ ๆ บอกเองแล้ว) · นับถอยหลัง = ป้ายเวลาอย่างเดียว (ผู้ใช้ 3 พ.ย.)
+  loveTag.textContent = ready ? '' : petLeftText(left);
+  loveTag.classList.toggle('off', ready);
   // ป้ายเป็น aria-hidden (มันคือของประดับตัวปุ่ม) ข้อความสำหรับโปรแกรมอ่านจอ
   // จึงต้องอยู่ที่ตัวปุ่มเอง ไม่งั้นคนที่ใช้เสียงอ่านจะได้ยินแค่ "ให้หัวใจน้อง"
   // ตลอดเวลา โดยไม่มีทางรู้เลยว่าตอนนี้กดไม่ได้เพราะอะไร
@@ -6728,12 +6767,108 @@ document.getElementById('btnTalent').addEventListener('click', () => {
   // ปุ่มล็อบบี้ชื่อ "สกิล" เปิดมาเจอหมวดสกิลเสมอ
   skillUI.open('skill');
 });
-document.getElementById('btnStages').addEventListener('click', () => {
-  unlockAudio(); startMusic();
-  buildStageGrid();
-  showStages(true);
+// ── หน้าเลือกโหมด (ผู้ใช้ 3 พ.ย.) ── ปุ่ม ลุย~ หน้าแรก → เลือกโหมด → เลือกด่าน → ลุย~ เริ่มวิ่ง
+// ตอนนี้มีโหมดเดียว "ผจญภัยภารกิจ" · ปุ่มอันดับย้ายจากหน้าแรกมาอยู่ที่นี่
+const modePanel = document.getElementById('modePanel');
+const mapPanel = document.getElementById('mapPanel');
+function paintModeCard() {
+  const st = getStage();
+  document.getElementById('modeStageName').textContent = st.name;
+  document.getElementById('modeBest').textContent = loadBest(st.id).toLocaleString('en-US');
+  paintStageScene(document.getElementById('modeArt'), st, 420);
+}
+function showModes(on) {
+  if (on) paintModeCard();
+  modePanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+}
+document.getElementById('startBtn').addEventListener('click', () => {
+  unlockAudio(); startMusic(); sfx.fish();
+  showModes(true);
 });
-document.getElementById('stageBack').addEventListener('click', () => showStages(false));
+document.getElementById('modeBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); showModes(false); });
+document.getElementById('modeAdventure').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  buildStageGrid();
+  swapPanel(modePanel, stagePanel);
+});
+// เลือกด่านเสร็จ กลับไปหน้าเลือกโหมด (การ์ดโหมดโชว์ด่านที่เพิ่งเลือก)
+document.getElementById('stageBack').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  paintModeCard();
+  swapPanel(stagePanel, modePanel);
+});
+document.getElementById('stageGo').addEventListener('click', showIntro);
+const modeBgArt = makeStageBg(document.getElementById('modeBg'),
+  () => !modePanel.classList.contains('hidden'), modePanel.querySelector('.pop'));
+new MutationObserver(() => modeBgArt.kick()).observe(modePanel, { attributes: true, attributeFilter: ['class'] });
+
+// ── แผนที่เมืองแมว (ผู้ใช้ 3 พ.ย.) ── เลือกโซน → ม่านอุ้งเท้าปิดจอ → ไปหน้าเมือง (town.html)
+const mapBgArt = makeStageBg(document.getElementById('mapBg'),
+  () => !mapPanel.classList.contains('hidden'), mapPanel.querySelector('.pop'));
+new MutationObserver(() => mapBgArt.kick()).observe(mapPanel, { attributes: true, attributeFilter: ['class'] });
+/** ภาพการ์ดโซน: ฟ้าเมือง + ของจริงในโซนนั้น (ร้าน/ปราสาท ภาพชุดเดียวกับใน town.html) */
+function paintZoneArt() {
+  const sky = (c) => {
+    const g = c.createLinearGradient(0, 0, 0, 95);
+    g.addColorStop(0, '#BCD8FF'); g.addColorStop(0.55, '#E2D8FF'); g.addColorStop(1, '#FFE9F3');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 180, 95);
+    c.fillStyle = 'rgba(255,255,255,.85)';
+    for (const [x, y, r] of [[30, 18, 9], [42, 14, 11], [54, 19, 8], [140, 24, 8], [150, 20, 10], [160, 25, 7]]) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+  };
+  const street = (c, royal) => {
+    c.fillStyle = royal ? '#EBDDF8' : '#F6DDC4';
+    c.fillRect(0, 82, 180, 13);
+    c.fillStyle = royal ? '#E8C26A' : 'rgba(255,255,255,.45)';
+    c.fillRect(0, 83, 180, 1.2);
+  };
+  paintBox(document.getElementById('zoneTownArt'), 180, 95, (c) => {
+    sky(c);
+    drawShopAt(c, 'care', 34, 84, 0.25);
+    drawShopAt(c, 'food', 90, 85, 0.26);
+    drawShopAt(c, 'toy', 148, 84, 0.25);
+    street(c, false);
+  });
+  paintBox(document.getElementById('zoneCastleArt'), 180, 95, (c) => {
+    sky(c);
+    drawFenceAt(c, 'zoneL', -10, 84, 0.2, 260, [['sakura', 70], ['cone', 150], ['topcat', 220]]);
+    drawFenceAt(c, 'zoneR', 128, 84, 0.2, 320, [['topcat', 60], ['cone', 140], ['sakura', 230]]);
+    drawCastleAt(c, 90, 84, 0.2, 0, 'art');
+    street(c, true);
+  });
+}
+function showMap(on) {
+  if (on) paintZoneArt();
+  mapPanel.classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+}
+/** ไปหน้าเมือง: ม่านอุ้งเท้าขยายจากปุ่มที่กด แล้วเปลี่ยนหน้า · spot = 'castle' เริ่มยืนหน้าปราสาท */
+let goingTown = false;
+function goTown(spot, fromEl) {
+  if (goingTown) return;
+  goingTown = true;
+  unlockAudio(); sfx.fish();
+  const wipe = document.getElementById('roomWipe');
+  const r = fromEl.getBoundingClientRect();
+  const st = wipe.parentElement.getBoundingClientRect();
+  wipe.style.setProperty('--wx', ((r.left + r.width / 2 - st.left) / st.width * 100) + '%');
+  wipe.style.setProperty('--wy', ((r.top + r.height / 2 - st.top) / st.height * 100) + '%');
+  wipe.className = 'room-wipe in';
+  setTimeout(() => { location.href = './town.html' + (spot === 'castle' ? '?spot=castle' : ''); }, 460);
+}
+document.getElementById('btnMap').addEventListener('click', () => { unlockAudio(); startMusic(); sfx.fish(); showMap(true); });
+document.getElementById('mapBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); showMap(false); });
+for (const id of ['zoneTown', 'zoneCastle']) {
+  const el = document.getElementById(id);
+  el.addEventListener('click', () => goTown(el.dataset.spot, el));
+}
+// กลับมาจากหน้าเมืองด้วยปุ่มย้อนกลับของเบราว์เซอร์ (หน้าเดิมจากแคช) — ม่านต้องไม่ค้างปิดจอ
+window.addEventListener('pageshow', () => {
+  goingTown = false;
+  const wipe = document.getElementById('roomWipe');
+  if (wipe.classList.contains('in')) wipe.className = 'room-wipe';
+});
 document.getElementById('siBack').addEventListener('click', () => {
   swapPanel(stageInfoPanel, stagePanel);
 });
@@ -7267,7 +7402,7 @@ document.getElementById('clBack').addEventListener('click', () => {
 document.getElementById('clGo').addEventListener('click', () => {
   unlockAudio();
   showCreateLock(false);
-  document.getElementById('startBtn').click();
+  showIntro();
 });
 document.getElementById('createBack').addEventListener('click', () => {
   unlockAudio(); sfx.fish(); showFace(false);
@@ -8138,11 +8273,17 @@ gotBox.addEventListener('click', () => {
   sfx.fish();
   closeResult();
 });
-document.getElementById('btnRank').addEventListener('click', () => {
-  unlockAudio(); startMusic();
-  showRank(true);
+document.getElementById('modeRank').addEventListener('click', () => {
+  unlockAudio(); startMusic(); sfx.fish();
+  rankStageId = getStage().id;
+  buildRankStages();
+  buildRank();
+  swapPanel(modePanel, rankPanel);
 });
-document.getElementById('rankBack').addEventListener('click', () => showRank(false));
+document.getElementById('rankBack').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  swapPanel(rankPanel, modePanel);
+});
 // จำนวนครั้งของปุ่มใบที่สองต่างกันคนละช่อง (สมบัติ 3 / ชุด 5) จึงถามจากช่องที่เปิดอยู่
 document.getElementById('pull1').addEventListener('click', () => doPull(1));
 document.getElementById('gpPull1').addEventListener('click', () => doPull(1));
@@ -8730,7 +8871,7 @@ document.addEventListener('pointerdown', goImmersive);
 // การกดครั้งไหนก็ได้จึงควรได้ลองปลุกซ้ำ — เรียกซ้ำไม่มีผลข้างเคียงถ้าตื่นอยู่แล้ว
 document.addEventListener('pointerdown', () => unlockAudio(), { passive: true });
 
-document.getElementById('startBtn').addEventListener('click', showIntro);
+// ปุ่ม ลุย~ หน้าแรกเปิดหน้าเลือกโหมด (ผูกไว้ตรงหน้าเลือกโหมด) — เริ่มวิ่งจริงคือปุ่ม ลุย~ ในหน้าเลือกด่าน (stageGo)
 document.getElementById('retryBtn').addEventListener('click', () => { sfx.restart(); showIntro(); });
 
 // แตะที่ไหนก็ได้ตอนอยู่ในห้อง = ข้ามไปเริ่มวิ่งเลย
@@ -9110,3 +9251,15 @@ setInterval(async () => {
 
 requestAnimationFrame(loop);
 game.draw(ctx);
+
+// ── กลับมาจากเมืองแมว (town.html ปุ่มย้อนกลับ → index.html?from=town · ผู้ใช้ 3 พ.ย.) ──
+// มีบัญชี + ตั้งชื่อแล้ว = เข้าหน้าแรกเลย ไม่ผ่านหน้าชื่อเกม/คลิปเปิดเกม (คลิปเล่นเฉพาะตอนเพิ่งเข้าเกมครั้งแรกของรอบ)
+// เพลงจะเริ่มเองตอนแตะครั้งแรก (เบราว์เซอร์ไม่ให้เล่นเสียงก่อนผู้เล่นแตะ) · ล้างพารามิเตอร์ทิ้ง รีเฟรชหน้าเองจึงเป็นหน้าชื่อเกมตามปกติ
+if (new URLSearchParams(location.search).get('from') === 'town') {
+  try { history.replaceState(null, '', location.pathname); } catch { /* ไม่เป็นไร */ }
+  if (hasAccount() && chosenName()) {
+    goHome();
+    // ไม่ได้ผ่านปุ่ม "เข้าเกม" (ที่ปลดเสียง+เริ่มเพลง) — แตะครั้งแรกที่ไหนก็ได้ให้เพลงหน้าแรกเริ่ม
+    document.addEventListener('pointerdown', () => { unlockAudio(); startMusic(); }, { once: true, passive: true });
+  }
+}

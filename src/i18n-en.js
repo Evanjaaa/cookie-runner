@@ -107,6 +107,17 @@ export const EN = {
   // ── ปุ่มและหัวข้อหลัก ──
   'เข้าเกม': 'Play',
   'เล่น!': 'Play!',
+  'ลุย~': "Let's go~",
+  'เลือกโหมด': 'Choose a mode',
+  'ผจญภัยภารกิจ': 'Adventure Quest',
+  'วิ่งผ่านด่าน เก็บของ ทำภารกิจ': 'Run through stages, collect treats, clear quests',
+  'แผนที่': 'Map',
+  'แผนที่เมืองแมว': 'Meow Town Map',
+  'อยากไปเที่ยวโซนไหนดี': 'Where shall we go?',
+  'เมืองแมว': 'Meow Town',
+  'ร้านค้า · ลานน้ำพุ · ท่าเรือ': 'Shops · Fountain plaza · Pier',
+  'ดินแดนปราสาท': 'Castle Realm',
+  'ปราสาทแมวเหมียว · สวนหลวง': 'Meow Castle · Royal garden',   // ปุ่มเล่นหน้าแรก (ผู้ใช้ 3 พ.ย. เปลี่ยนจาก "เล่น!")
   'เริ่มเล่น': 'Start',
   'เริ่มใหม่': 'Restart',
   'วิ่งอีกรอบ': 'Run again',
