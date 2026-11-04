@@ -24,7 +24,8 @@ const FRAME_MS = 1000 / 30;     // 30 fps พอสำหรับของท�
 // ── สี ── ม่วงเป็นหลัก แต้มสีพาสเทลเล่นสีให้ทั้งฉาก (สีที่ผู้ใช้เลือก):
 //   ชมพู #F7C7E8 · ชมพูพีช #F1B4B1 · เหลืองเนย #FEE0AF — ครีม/มิ้นต์เป็นแค่แต้มเล็ก
 // พื้นเข้มกว่าลาเวนเดอร์อ่อนหนึ่งขั้น — ตัวหนังสือสีครีมทั้งหน้ายังต้องอ่านออกบนพื้นนี้
-const SKY = ['#B48FE8', '#9A6AD8', '#7C4CC0'];
+// อ่อนลงหนึ่งขั้นเท่าพื้นหลังหน้าอื่น (src/render/softbg.js — ผู้ใช้ 4 พ.ย. 2026: "สีพื้นไม่เข้มเกิน ให้อ่อนกว่านี้")
+const SKY = ['#CDAEF3', '#B590E8', '#9E78DC'];
 const ROSE = '247,199,232';     // #F7C7E8
 const PEACH = '241,180,177';    // #F1B4B1
 const BUTTER = '254,224,175';   // #FEE0AF
@@ -64,13 +65,16 @@ export function createCloud(rand, { ears = false } = {}) {
   return { puffs, ears };
 }
 
-/** วาดเมฆที่ (x, y) กว้าง w — ไล่สีขาวลงลาเวนเดอร์จาง ๆ ขอบล่างเรียบ */
-export function drawCloud(ctx, cloud, x, y, w, alpha, tint = CREAM) {
+/**
+ * วาดเมฆที่ (x, y) กว้าง w — ไล่สีขาวลงลาเวนเดอร์จาง ๆ ขอบล่างเรียบ
+ * solid = ก้นเมฆทึบเต็ม (ใช้ตอนวาดเป็นกลุ่มลงผ้าใบสำรอง — ดู drawCloudGroup)
+ */
+export function drawCloud(ctx, cloud, x, y, w, alpha, tint = CREAM, solid = false) {
   ctx.save();
   ctx.globalAlpha = alpha;
   const g = ctx.createLinearGradient(0, y - w * 0.4, 0, y + w * 0.12);
   g.addColorStop(0, `rgba(${tint},1)`);
-  g.addColorStop(1, 'rgba(230,214,255,0.86)');
+  g.addColorStop(1, solid ? 'rgb(230,214,255)' : 'rgba(230,214,255,0.86)');
   ctx.fillStyle = g;
   ctx.beginPath();
   // ฐาน: แคปซูลแบน ตัวที่ทำให้ก้นเมฆเรียบแบบเมฆการ์ตูน
@@ -84,13 +88,50 @@ export function drawCloud(ctx, cloud, x, y, w, alpha, tint = CREAM) {
     // หูแมวบนลูกที่สูงที่สุด — สามเหลี่ยมมนสองอัน
     const top = cloud.puffs.reduce((a, b) => (a.y - a.r < b.y - b.r ? a : b));
     const cx = x + top.x * w, cy = y + (top.y - top.r * 0.78) * w, s = top.r * w;
+    // ── หูสองข้างต้องวนทิศเดียวกับก้อนเมฆ (ตามเข็ม) ──
+    // เติมสีแบบ nonzero: ส่วนที่ทับกันแต่วนกลับทิศ = หักล้างเป็นรู → เดิมหูขวาวาดทวนเข็ม
+    // ตรงที่ซ้อนลูกเมฆเลยโดนเจาะเป็นรอยแหว่ง (ผู้ใช้เห็นเป็น "เส้นขาด/รอยต่อแปลก ๆ") — หูขวาจึงวาดย้อนลำดับจุด
     for (const side of [-1, 1]) {
-      ctx.moveTo(cx + side * s * 0.62, cy + s * 0.2);
-      ctx.quadraticCurveTo(cx + side * s * 0.6, cy - s * 0.55, cx + side * s * 0.3, cy - s * 0.42);
-      ctx.quadraticCurveTo(cx + side * s * 0.12, cy - s * 0.1, cx + side * s * 0.18, cy + s * 0.2);
+      const p0x = cx + side * s * 0.62, p0y = cy + s * 0.2;
+      const c1x = cx + side * s * 0.6, c1y = cy - s * 0.55;
+      const p1x = cx + side * s * 0.3, p1y = cy - s * 0.42;
+      const c2x = cx + side * s * 0.12, c2y = cy - s * 0.1;
+      const p2x = cx + side * s * 0.18, p2y = cy + s * 0.2;
+      if (side < 0) {
+        ctx.moveTo(p0x, p0y);
+        ctx.quadraticCurveTo(c1x, c1y, p1x, p1y);
+        ctx.quadraticCurveTo(c2x, c2y, p2x, p2y);
+      } else {
+        ctx.moveTo(p2x, p2y);
+        ctx.quadraticCurveTo(c2x, c2y, p1x, p1y);
+        ctx.quadraticCurveTo(c1x, c1y, p0x, p0y);
+      }
     }
   }
   ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * เมฆหลายก้อนที่ซ้อนกันเป็นกองเดียว — วาดทึบลงผ้าใบสำรองก่อน แล้วค่อยแปะทั้งกองด้วยความโปร่งเดียว
+ * ── ทำไม ── วาดทีละก้อนแบบโปร่งแสง ตรงที่สองก้อนซ้อนกันจะทึบขึ้นเป็นวงชัด ๆ = เห็นรอยต่อ/ขอบวงกลมกลางกองเมฆ
+ * items = [{ c, x, y, w, t }] (สัดส่วน 0..1) · dx(i) = ระยะแกว่งของก้อนที่ i (สัดส่วนความกว้าง)
+ */
+let groupCanvas = null;
+export function drawCloudGroup(ctx, items, w, h, alpha, dx = () => 0) {
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  if (!W || !H) return;
+  if (!groupCanvas) groupCanvas = document.createElement('canvas');
+  if (groupCanvas.width !== W || groupCanvas.height !== H) { groupCanvas.width = W; groupCanvas.height = H; }
+  const g = groupCanvas.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+  g.setTransform(ctx.getTransform());
+  items.forEach((c, i) => drawCloud(g, c.c, (c.x + dx(i)) * w, c.y * h, c.w * w, 1, c.t, true));
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(groupCanvas, 0, 0);
   ctx.restore();
 }
 
@@ -281,10 +322,8 @@ function drawLive(ctx, w, h, L, t) {
     drawStar(ctx, s.x * w, s.y * h, s.r * u * (0.8 + tw * 0.25), 0.18 + tw * 0.36, s.col);
   }
   drawFloatingParticles(ctx, w, h, L, t);
-  for (const [i, c] of L.near.entries()) {
-    const sway = Math.sin(t * 0.25 + i * 1.7) * 0.004;
-    drawCloud(ctx, c.c, (c.x + sway) * w, c.y * h, c.w * w, c.a, c.t);
-  }
+  // เมฆมุมล่างวาดเป็นกองเดียว (ไม่มีรอยซ้อนระหว่างก้อน) — ความโปร่งของกองเท่าก้อนใหญ่เดิม
+  drawCloudGroup(ctx, L.near, w, h, 0.44, (i) => Math.sin(t * 0.25 + i * 1.7) * 0.004);
 }
 
 // ─────────────────────────────────────────────────────────────

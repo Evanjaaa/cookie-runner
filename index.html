@@ -690,7 +690,7 @@
           <div class="stage-foot">
             <button class="btn ghost" id="loadoutOpen">ติดตั้งสมบัติ <b id="loadoutCount">0/3</b></button>
             <!-- เริ่มวิ่งด่านที่เลือกอยู่ (เดิมปุ่มเล่นหน้าแรกเริ่มวิ่งเลย — ตอนนี้ปุ่มนั้นเปิดหน้าเลือกโหมด) -->
-            <button type="button" class="stage-go jelly" id="stageGo">ลุย~</button>
+            <button type="button" class="stage-go" id="stageGo">ลุย~</button>
           </div>
           <button class="backbtn" id="stageBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
@@ -709,7 +709,7 @@
           <canvas class="stage-bg" id="modeBg" aria-hidden="true"></canvas>
           <h2 class="skin-title">เลือกโหมด</h2>
           <div class="mode-list">
-            <button type="button" class="mode-card jelly" id="modeAdventure">
+            <button type="button" class="mode-card" id="modeAdventure">
               <span class="mode-art"><canvas id="modeArt" width="420" height="184"></canvas></span>
               <span class="mode-txt">
                 <b class="mode-name">ผจญภัยภารกิจ</b>
@@ -718,7 +718,7 @@
               </span>
             </button>
           </div>
-          <button type="button" class="mode-rank jelly" id="modeRank">
+          <button type="button" class="mode-rank" id="modeRank">
             <canvas id="rankIcon" width="76" height="76"></canvas>
             <b>อันดับ</b>
           </button>
@@ -739,12 +739,12 @@
           <h2 class="skin-title">แผนที่เมืองแมว</h2>
           <p class="map-lead">อยากไปเที่ยวโซนไหนดี</p>
           <div class="map-zones">
-            <button type="button" class="zone-card jelly" id="zoneTown" data-spot="town">
+            <button type="button" class="zone-card" id="zoneTown" data-spot="town">
               <span class="zone-art"><canvas id="zoneTownArt" width="360" height="190"></canvas></span>
               <b class="zone-name">เมืองแมว</b>
               <small class="zone-desc">ร้านค้า · ลานน้ำพุ · ท่าเรือ</small>
             </button>
-            <button type="button" class="zone-card jelly" id="zoneCastle" data-spot="castle">
+            <button type="button" class="zone-card" id="zoneCastle" data-spot="castle">
               <span class="zone-art"><canvas id="zoneCastleArt" width="360" height="190"></canvas></span>
               <b class="zone-name">ดินแดนปราสาท</b>
               <small class="zone-desc">ปราสาทแมวเหมียว · สวนหลวง</small>
@@ -1017,15 +1017,16 @@
               <h2 class="skin-title">เพื่อนแมว</h2>
             </div>
             <div class="fsort fr-tabs" role="tablist" aria-label="เลือกหน้า">
+              <!-- ชื่อแท็บสั้นลง (เดิม "คำขอเป็นเพื่อน" / "คำขอที่เราส่งไป") — จอมือถือแนวนอนจะได้ไม่เบียดชื่อหน้า -->
               <button type="button" class="fchip on" id="frTabList" role="tab">
                 เพื่อนแมว<b class="fr-num" id="frCount"></b>
               </button>
               <button type="button" class="fchip" id="frTabReq" role="tab">
-                คำขอเป็นเพื่อน<b class="fr-num fr-red hidden" id="frReqCount"></b>
+                คำขอ<b class="fr-num fr-red hidden" id="frReqCount"></b>
               </button>
-              <!-- คำขอที่เราส่งไป — หน้าแยกของตัวเอง (เดิมต่อท้ายหน้าคำขอเป็นเพื่อน) -->
+              <!-- คำขอที่เราส่งไปแล้ว รออีกฝ่ายตอบ -->
               <button type="button" class="fchip" id="frTabSent" role="tab">
-                คำขอที่เราส่งไป<b class="fr-num" id="frSentCount"></b>
+                รอตอบรับ<b class="fr-num" id="frSentCount"></b>
               </button>
             </div>
           </div>
@@ -1038,30 +1039,41 @@
                 <canvas class="fr-me-face" id="frMeFace" width="96" height="96" aria-hidden="true"></canvas>
                 <small class="fr-me-label">รหัสแมวน้อย</small>
                 <b class="fr-me-code" id="frMyCode">— — —</b>
+                <!-- คัดลอก = ปุ่มเปลี่ยนเป็น "คัดลอกแล้ว ✓" เองครู่หนึ่ง -->
                 <button type="button" class="fr-copy" id="frCopy" aria-label="คัดลอกรหัสแมวน้อย">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>
-                  <span>คัดลอก</span>
+                  <svg class="ico-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>
+                  <svg class="ico-done" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+                  <span id="frCopyText">คัดลอก</span>
                 </button>
               </div>
-              <!-- ผลการคัดลอกอยู่ใต้บัตรทันที ไม่ใช่ท้ายแผงที่ห่างออกไปครึ่งจอ -->
+              <!-- ส่งรหัสผ่านแผ่นแชร์ของเครื่อง (LINE / ข้อความ) — นอกบัตร เพราะช่องซ้ายแคบ วางคู่ปุ่มคัดลอกแล้วคำตกบรรทัด
+                   โชว์เฉพาะเครื่องที่มีแผ่นแชร์ -->
+              <button type="button" class="fr-share hidden" id="frShare">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M8 11H6.5A1.5 1.5 0 0 0 5 12.5v6A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-6a1.5 1.5 0 0 0-1.5-1.5H16"/></svg>
+                <span>ส่งให้เพื่อน</span>
+              </button>
+              <!-- คัดลอกไม่ได้ (เช่นยังไม่ได้เข้าสู่ระบบ) บอกใต้บัตรทันที -->
               <small class="form-msg fr-copy-msg" id="frCopyMsg"></small>
-              <p class="tl-side-note">ส่งรหัสนี้ให้เพื่อน<br>ค้นหาแล้วกดเพิ่มกัน&#8288;ได้&#8288;เลย</p>
+              <p class="tl-side-note">ส่งรหัสนี้ให้เพื่อน<br>แล้วเพิ่มเป็นเพื่อนกัน&#8288;ได้&#8288;เลย</p>
             </aside>
 
             <div class="fr-main">
-              <div class="fr-grid" id="frListPage"></div>
-
-              <div class="fr-req hidden" id="frReqPage">
-                <!-- ค้นได้ทั้งรหัสแมวน้อย 8 ตัว และชื่อ (ชื่อห้ามซ้ำกันแล้ว จึงเจอคนเดียว) -->
-                <form class="form-row fr-search" id="frSearch" autocomplete="off">
+              <!-- ช่องค้นหาอยู่บนสุดทุกแท็บ (เดิมซ่อนในแท็บคำขอ — คนหาไม่เจอ)
+                   ค้นได้ทั้งรหัสแมวน้อย 8 ตัว และชื่อ (ชื่อห้ามซ้ำกันแล้ว จึงเจอคนเดียว) -->
+              <form class="fr-search" id="frSearch" autocomplete="off" role="search">
+                <label class="fr-search-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
                   <input id="frSearchInput" maxlength="20" enterkeyhint="search"
-                         placeholder="ใส่รหัสแมวน้อย หรือชื่อเพื่อน" aria-label="ค้นหาเพื่อน">
-                  <button class="btn" type="submit" id="frSearchGo">ค้นหา</button>
-                </form>
-                <div class="fr-grid" id="frReqList"></div>
-              </div>
+                         placeholder="ค้นหาเพื่อนด้วยรหัสแมวน้อย หรือชื่อ" aria-label="ค้นหาเพื่อน">
+                </label>
+                <button class="btn" type="submit" id="frSearchGo">ค้นหา</button>
+              </form>
 
+              <div class="fr-grid" id="frListPage"></div>
+              <div class="fr-grid hidden" id="frReqPage"></div>
               <div class="fr-grid hidden" id="frSentPage"></div>
+              <!-- ผลการค้นหา — หน้าแยก ไม่ใช่แท็บ (กด "ล้าง" หรือแตะแท็บไหนก็ได้ = กลับ) -->
+              <div class="fr-grid hidden" id="frFoundPage"></div>
             </div>
           </div>
 

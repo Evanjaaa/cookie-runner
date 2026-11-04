@@ -75,20 +75,10 @@ function drawStashCat(c, x, feetY, scale, s, t, { head = false, logical = 190 } 
 import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.js';
 import { drawPlats } from './render/platforms.js';
 import { makeDreamBg } from './render/dreambg.js';
-import { makeSkillBg } from './render/skillbg.js';
-import { makeGachaBg } from './render/gachabg.js';
+import { makeSoftBg } from './render/softbg.js';
 import { makeCreativeBg } from './render/creativebg.js';
-import { makeStageBg } from './render/stagebg.js';
-import { makeRankBg } from './render/rankbg.js';
-import { makeFriendsBg } from './render/friendsbg.js';
-import { makeNewsBg } from './render/newsbg.js';
-import { makeMailBg } from './render/mailbg.js';
-import { makeSettingsBg } from './render/settingsbg.js';
 import { makeCelebrateBg } from './render/celebratebg.js';
-import { makeProfileBg } from './render/profilebg.js';
 import { attachSubBg } from './render/subbg.js';
-import { makeLevelBg } from './render/levelbg.js';
-import { makeDailyBg } from './render/dailybg.js';
 import { PROP_LIST } from './obstacles.js';
 import { drawChest, CHEST } from './render/chest.js';
 import {
@@ -116,7 +106,6 @@ import {
 import { setupDebug, TESTER_CODES } from './debug.js';   // แผงปุ่มทดสอบชั่วคราว ลบได้ทั้งบรรทัด
 import { setupCatRoomUI } from './catroom-ui.js';
 import { setupCatCardsUI } from './catcards-ui.js';
-import { makeEventBg } from './render/event-bg.js';
 import { syncServerClock } from './net/cloud.js';
 import { initJelly } from './jelly-btn.js';   // ปุ่มเยลลี่เด้งดึ๋ง (.jelly ใน style.css)
 import { drawCastleAt, drawFenceAt } from './town/castle.js';   // การ์ดโซนในหน้าแผนที่ (ภาพชุดเดียวกับในเมือง)
@@ -294,8 +283,8 @@ const gachaPanel = document.getElementById('gachaPanel');
 const rankPanel = document.getElementById('rankPanel');
 const settingsPanel = document.getElementById('settingsPanel');
 // ── พื้นหลังมุมสงบของหน้าตั้งค่า ── ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด ลูปหยุดเองเมื่อแผงปิด
-const settingsBg = makeSettingsBg(document.getElementById('settingsBg'),
-  () => !settingsPanel.classList.contains('hidden'), settingsPanel.querySelector('.pop'));
+const settingsBg = makeSoftBg(document.getElementById('settingsBg'),
+  () => !settingsPanel.classList.contains('hidden'), 'sky', 1);
 new MutationObserver(() => settingsBg.kick()).observe(settingsPanel, { attributes: true, attributeFilter: ['class'] });
 const introPanel = document.getElementById('introPanel');
 const titlePanel = document.getElementById('titlePanel');
@@ -2889,8 +2878,8 @@ function showSettings(on) {
 
 // ── พื้นหลังหอเกียรติยศของหน้าอันดับ ──
 // ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากโปรไฟล์ผู้เล่น) ลูปหยุดเองเมื่อแผงปิด
-const rankBg = makeRankBg(document.getElementById('rankBg'),
-  () => !rankPanel.classList.contains('hidden'), rankPanel.querySelector('.pop'));
+const rankBg = makeSoftBg(document.getElementById('rankBg'),
+  () => !rankPanel.classList.contains('hidden'), 'butter', 2);
 new MutationObserver(() => rankBg.kick()).observe(rankPanel, { attributes: true, attributeFilter: ['class'] });
 
 function buildStageGrid() {
@@ -2943,8 +2932,8 @@ function buildStageGrid() {
 
 // ── พื้นหลังประตูสู่การผจญภัยของหน้าเลือกด่าน ──
 // ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากหน้ารายละเอียดด่าน/ติดตั้งสมบัติ) ลูปหยุดเองเมื่อแผงปิด
-const stageBg = makeStageBg(document.getElementById('stageBg'),
-  () => !stagePanel.classList.contains('hidden'), stagePanel.querySelector('.pop'));
+const stageBg = makeSoftBg(document.getElementById('stageBg'),
+  () => !stagePanel.classList.contains('hidden'), 'mint', 3);
 new MutationObserver(() => stageBg.kick()).observe(stagePanel, { attributes: true, attributeFilter: ['class'] });
 
 
@@ -3419,8 +3408,8 @@ function buildOutfitGrid() {
 
 const newsPanel = document.getElementById('newsPanel');
 // ── พื้นหลังบอร์ดข่าว ── ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด ลูปหยุดเองเมื่อแผงปิด
-const newsBg = makeNewsBg(document.getElementById('newsBg'),
-  () => !newsPanel.classList.contains('hidden'), newsPanel.querySelector('.pop'));
+const newsBg = makeSoftBg(document.getElementById('newsBg'),
+  () => !newsPanel.classList.contains('hidden'), 'peach', 4);
 new MutationObserver(() => newsBg.kick()).observe(newsPanel, { attributes: true, attributeFilter: ['class'] });
 let newsPick = null;
 
@@ -3464,8 +3453,8 @@ document.getElementById('newsBack').addEventListener('click', () => {
 
 const inboxPanel = document.getElementById('inboxPanel');
 // ── พื้นหลังกล่องจดหมายวิเศษ ── ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (รวมกลับจากหน้าอ่านจดหมาย) ลูปหยุดเองเมื่อแผงปิด
-const mailBg = makeMailBg(document.getElementById('mailBg'),
-  () => !inboxPanel.classList.contains('hidden'), inboxPanel.querySelector('.pop'));
+const mailBg = makeSoftBg(document.getElementById('mailBg'),
+  () => !inboxPanel.classList.contains('hidden'), 'rose', 5);
 new MutationObserver(() => mailBg.kick()).observe(inboxPanel, { attributes: true, attributeFilter: ['class'] });
 const mailReadPanel = document.getElementById('mailReadPanel');
 let mrCurrent = null;
@@ -4015,8 +4004,8 @@ paintLangPick();
 
 const dailyPanel = document.getElementById('dailyPanel');
 // ── พื้นหลังเช้าวันใหม่ของหน้าเช็คอินรายวัน ── ตัวเฝ้าคลาสปลุกลูปและเริ่มจังหวะสว่างขึ้นตอนเปิด ลูปหยุดเองเมื่อแผงปิด
-const dailyBg = makeDailyBg(document.getElementById('dailyBg'),
-  () => !dailyPanel.classList.contains('hidden'), dailyPanel.querySelector('.pop'));
+const dailyBg = makeSoftBg(document.getElementById('dailyBg'),
+  () => !dailyPanel.classList.contains('hidden'), 'butter', 6);
 new MutationObserver(() => dailyBg.kick()).observe(dailyPanel, { attributes: true, attributeFilter: ['class'] });
 
 /** จุดแดงบนปุ่มเช็คอิน — วันนี้ยังไม่ได้รับก็ขึ้นจุด (ไม่ต้องมีตัวเลข มีได้วันละชิ้นเดียว) */
@@ -4191,8 +4180,8 @@ function maybePopDaily() {
 
 const lvPanel = document.getElementById('lvPanel');
 // ── พื้นหลังเส้นทางเติบโตของหน้ารางวัลเลเวล ── ตัวเฝ้าคลาสของแผงปลุกลูป ลูปหยุดเองเมื่อแผงปิด
-const levelBg = makeLevelBg(document.getElementById('levelBg'),
-  () => !lvPanel.classList.contains('hidden'), lvPanel.querySelector('.pop'));
+const levelBg = makeSoftBg(document.getElementById('levelBg'),
+  () => !lvPanel.classList.contains('hidden'), 'peach', 7);
 new MutationObserver(() => levelBg.kick()).observe(lvPanel, { attributes: true, attributeFilter: ['class'] });
 
 /** เลเวลตอนนี้ — อ่านสด ๆ ทุกครั้ง เพราะ XP ขึ้นได้ระหว่างเปิดหน้าอื่นค้างอยู่ */
@@ -4613,8 +4602,8 @@ function doClaimQuest(id) {
 const profilePanel = document.getElementById('profilePanel');
 const pfPop = document.getElementById('pfPop');
 // ── พื้นหลังโชว์รูมน้องแมวของหน้าโปรไฟล์ ── (ของเรา + ส่องคนอื่น) ตัวเฝ้าคลาสของแผงปลุกลูป ลูปหยุดเองเมื่อแผงปิด
-const profileBg = makeProfileBg(document.getElementById('profileBg'),
-  () => !profilePanel.classList.contains('hidden'), pfPop);
+const profileBg = makeSoftBg(document.getElementById('profileBg'),
+  () => !profilePanel.classList.contains('hidden'), 'rose', 8);
 new MutationObserver(() => profileBg.kick()).observe(profilePanel, { attributes: true, attributeFilter: ['class'] });
 
 /**
@@ -5227,7 +5216,7 @@ startPresence();
 
 // ══ เพื่อนแมว ═══════════════════════════════════════════════════
 //
-// ปุ่มหัวแมวบนแถบขวาบน → แผงสองแท็บ: รายชื่อเพื่อน / คำขอเป็นเพื่อน (+ ช่องค้นหา)
+// ปุ่มหัวแมวบนแถบขวาบน → แผงสามแท็บ: เพื่อน / คำขอ / รอตอบรับ + ช่องค้นหาบนสุดทุกแท็บ (ผลค้นหาเป็นหน้าแยก)
 // ข้อมูลทั้งหน้ามาจากคลาวด์ก้อนเดียว (frData) โหลดใหม่ทุกครั้งที่เปิดหรือหลังกดอะไรสำเร็จ
 // แล้ววาดทั้งสองแท็บจากก้อนนั้น — สถานะปุ่มในผลค้นหาจึงตรงกับรายการคำขอเสมอ
 // โดยไม่ต้องถามเซิร์ฟเวอร์ทีละคน
@@ -5235,8 +5224,8 @@ startPresence();
 const friendsPanel = document.getElementById('friendsPanel');
 // ── พื้นหลังสวนเพื่อนแมว ── (ทั้งสามแท็บ) ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้
 // รวมกลับจากโปรไฟล์เพื่อน/เยี่ยมบ้านเพื่อน) ลูปหยุดเองเมื่อแผงปิด
-const friendsBg = makeFriendsBg(document.getElementById('friendsBg'),
-  () => !friendsPanel.classList.contains('hidden'), friendsPanel.querySelector('.pop'));
+const friendsBg = makeSoftBg(document.getElementById('friendsBg'),
+  () => !friendsPanel.classList.contains('hidden'), 'peach', 9);
 new MutationObserver(() => friendsBg.kick()).observe(friendsPanel, { attributes: true, attributeFilter: ['class'] });
 let frData = null;          // { friends, incoming, outgoing } | { reason } | null = กำลังโหลด
 let frGen = 0;              // กันผลโหลดรอบเก่ามาวาดทับรอบใหม่
@@ -5282,16 +5271,73 @@ function relationOf(id) {
   return 'none';
 }
 
-function frHead(list, text) {
-  const h = document.createElement('p');
-  h.className = 'fr-head';
-  h.textContent = text;
-  list.appendChild(h);
+// ไอคอนเส้นของปุ่มในหน้าเพื่อน (สีตามตัวหนังสือของปุ่ม)
+const FR_ICO = {
+  home: '<path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v8.5a1 1 0 0 0 1 1h3v-5h3v5h3a1 1 0 0 0 1-1V10"/>',
+  add: '<circle cx="9.5" cy="8" r="3.5"/><path d="M3.5 19c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5"/><path d="M18.5 7.5v5M16 10h5"/>',
+  remove: '<circle cx="9.5" cy="8" r="3.5"/><path d="M3.5 19c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5"/><path d="M16 10h5"/>',
+  check: '<path d="M5 12.5 10 17.5 19 7"/>',
+  close: '<path d="M7 7l10 10M17 7 7 17"/>',
+};
+function frIcon(name) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${FR_ICO[name]}</svg>`;
 }
 
 /**
- * แถวผู้เล่นหนึ่งคน — หน้าน้อง ชื่อ เลเวล สถานะออนไลน์ + ปุ่มท้ายแถว
+ * หน้าว่างของหน้าเพื่อน — หัวเรื่อง + คำอธิบาย + ปุ่มทำต่อได้ทันที (แทนข้อความบอกทางเฉย ๆ)
+ * cats = รูปหน้าน้องของเรา ♥ หน้าน้องเพื่อน (ใช้ตอนยังไม่มีเพื่อนเลย)
+ * คลาส grid-empty คงไว้ — พื้นหลังสวน (friendsbg.js) ใช้หาที่ว่างรอบข้อความนี้
+ */
+function frEmpty(list, { title, text, cats = false, acts = [] }) {
+  const box = document.createElement('div');
+  box.className = 'grid-empty fr-empty';
+  if (cats) {
+    const art = document.createElement('span');
+    art.className = 'fr-empty-art';
+    const mine = getSkin();
+    const pal = { ...skinById(mine.id === 'snow' ? 'orange' : 'snow'), outfit: outfitById('none') };
+    const face = (skin, cls) => {
+      const c = document.createElement('canvas');
+      c.className = cls;
+      paintMini(c, 96, (g) => drawCatFaceAuto(g, 48, 56, 2.5, skin));
+      return c;
+    };
+    const heart = document.createElement('i');
+    heart.className = 'fr-empty-heart';
+    heart.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5C6 16.6 3 13.4 3 9.6 3 7 5 5 7.5 5c1.9 0 3.5 1.1 4.5 2.7C13 6.1 14.6 5 16.5 5 19 5 21 7 21 9.6c0 3.8-3 7-9 10.9Z"/></svg>';
+    art.append(face(mine, 'me'), heart, face(pal, 'pal'));
+    box.appendChild(art);
+  }
+  const h = document.createElement('b');
+  h.className = 'fr-empty-title';
+  h.textContent = title;
+  box.appendChild(h);
+  if (text) {
+    const p = document.createElement('small');
+    p.className = 'fr-empty-text';
+    p.textContent = text;
+    box.appendChild(p);
+  }
+  if (acts.length) {
+    const row = document.createElement('span');
+    row.className = 'fr-empty-acts';
+    for (const a of acts) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn tiny' + (a.ghost ? ' ghost' : '');
+      b.textContent = a.text;
+      b.addEventListener('click', () => { unlockAudio(); sfx.fish(); a.run(); });
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  }
+  list.appendChild(box);
+}
+
+/**
+ * แถวผู้เล่นหนึ่งคน — หน้าน้อง (จุดเขียว = ออนไลน์) ชื่อ เลเวล สถานะ + ปุ่มท้ายแถว
  * แตะตัวแถว (นอกปุ่ม) = ส่องโปรไฟล์
+ * ปุ่ม: main = มิ้นต์ (ทำต่อ) · soft = แก้วใส (ปฏิเสธ/ยกเลิก) · icon = ปุ่มกลมไอคอนอย่างเดียว (ลบเพื่อน — ไม่ให้เด่นแย่งปุ่มหลัก)
  */
 function friendRow(list, row, { sub, acts = [] } = {}) {
   const p = remoteProfile(row);
@@ -5300,9 +5346,12 @@ function friendRow(list, row, { sub, acts = [] } = {}) {
   item.setAttribute('role', 'button');
   item.tabIndex = 0;
 
+  const ava = document.createElement('span');
+  ava.className = 'fr-ava' + (p.online.on ? ' on' : '');
   const face = document.createElement('canvas');
   face.className = 'fr-face';
   paintMini(face, 96, (c) => drawCatFaceAuto(c, 48, 56, 2.5, p.skin));
+  ava.appendChild(face);
 
   const main = document.createElement('span');
   main.className = 'mail-main';
@@ -5319,8 +5368,16 @@ function friendRow(list, row, { sub, acts = [] } = {}) {
   for (const a of acts) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'btn tiny' + (a.ghost ? ' ghost' : '');
-    b.textContent = a.text;
+    const kind = a.kind || 'main';
+    b.className = kind === 'icon' ? 'fr-ico' : kind === 'soft' ? 'fr-soft' : 'btn tiny';
+    if (kind === 'icon') {
+      b.innerHTML = frIcon(a.icon);
+      b.setAttribute('aria-label', a.text);
+      b.title = a.text;
+    } else {
+      b.innerHTML = a.icon ? frIcon(a.icon) : '';
+      b.append(a.text);
+    }
     b.disabled = Boolean(a.disabled) || frBusy.has(row.id);
     if (a.run) {
       b.addEventListener('click', (e) => {
@@ -5332,7 +5389,7 @@ function friendRow(list, row, { sub, acts = [] } = {}) {
     box.appendChild(b);
   }
 
-  item.append(face, main, box);
+  item.append(ava, main, box);
   const open = () => { unlockAudio(); openFriendProfile(row); };
   item.addEventListener('click', open);
   item.addEventListener('keydown', (e) => {
@@ -5344,83 +5401,144 @@ function friendRow(list, row, { sub, acts = [] } = {}) {
 /** ปุ่มท้ายแถวตามความสัมพันธ์ — ใช้กับผลค้นหา */
 function relationActs(id) {
   switch (relationOf(id)) {
-    case 'friends': return [{ text: 'เป็นเพื่อนแล้ว', disabled: true }];
-    case 'sent': return [{ text: 'ยกเลิกคำขอ', ghost: true, run: frCancel }];
-    case 'received': return [{ text: 'ตอบรับ', run: (r, p) => frRespond(r, p, true) }];
-    default: return [{ text: 'เพิ่มเพื่อน', run: frSend }];
+    case 'friends': return [{ text: 'เป็นเพื่อนแล้ว', kind: 'soft', icon: 'check', disabled: true }];
+    case 'sent': return [{ text: 'ยกเลิกคำขอ', kind: 'soft', run: frCancel }];
+    case 'received': return [{ text: 'ตอบรับ', icon: 'check', run: (r, p) => frRespond(r, p, true) }];
+    default: return [{ text: 'เพิ่มเพื่อน', icon: 'add', run: frSend }];
   }
+}
+
+/** ออนไลน์อยู่ขึ้นก่อน แล้วเรียงตามเห็นล่าสุด — เพื่อนที่ทักได้ตอนนี้อยู่บนสุดเสมอ */
+function byPresence(a, b) {
+  const on = (r) => (onlineInfo(r.last_seen).on ? 1 : 0);
+  const seen = (r) => Date.parse(r.last_seen) || 0;
+  return on(b) - on(a) || seen(b) - seen(a);
+}
+
+/** ช่องค้นหาบนสุด — ปุ่ม "ค้นหาเพื่อน" ในหน้าว่างพามาที่นี่ */
+function focusFrSearch() {
+  const input = document.getElementById('frSearchInput');
+  input.focus();
+  input.select();
 }
 
 function paintFriends() {
   const d = frData;
+  const loading = (list) => frEmpty(list, { title: 'กำลังโหลด…' });
+  const failed = (list) => frEmpty(list, { title: reasonText(d.reason) });
   document.getElementById('frCount').textContent = d && d.friends && d.friends.length ? String(d.friends.length) : '';
 
-  // ── แท็บรายชื่อเพื่อน ──
+  // ── แท็บเพื่อน ──
   const list = document.getElementById('frListPage');
   list.innerHTML = '';
-  if (!d) emptyNote(list, 'กำลังโหลด…');
-  else if (d.reason) emptyNote(list, reasonText(d.reason));
-  else if (!d.friends.length) emptyNote(list, 'ยังไม่มีเพื่อนแมว ไปที่แท็บ “คำขอเป็นเพื่อน” แล้วค้นหาเพื่อนได้เลย');
-  else {
-    for (const row of d.friends) {
+  if (!d) loading(list);
+  else if (d.reason) failed(list);
+  else if (!d.friends.length) {
+    frEmpty(list, {
+      cats: true,
+      title: 'ยังไม่มีเพื่อนแมวเลย',
+      text: 'ส่งรหัสแมวน้อยให้เพื่อน หรือค้นหาเพื่อนจากช่องด้านบนได้เลย',
+      acts: [
+        { text: 'คัดลอกรหัสของเรา', run: () => copyMyCode(true) },
+        { text: 'ค้นหาเพื่อน', ghost: true, run: focusFrSearch },
+      ],
+    });
+  } else {
+    for (const row of [...d.friends].sort(byPresence)) {
       friendRow(list, row, {
         acts: [
-          { text: 'เยี่ยมบ้าน', run: visitFriendHome },
-          { text: 'ลบเพื่อน', ghost: true, run: frRemove },
+          { text: 'เยี่ยมบ้าน', icon: 'home', run: visitFriendHome },
+          { text: 'ลบเพื่อน', kind: 'icon', icon: 'remove', run: frRemove },
         ],
       });
     }
   }
   markScrollable(list);
 
-  // ── แท็บคำขอ ──
-  const req = document.getElementById('frReqList');
+  // ── แท็บคำขอ (ที่ส่งมาหาเรา) ──
+  const req = document.getElementById('frReqPage');
   req.innerHTML = '';
-  if (frFound) {
-    frHead(req, 'ผลการค้นหา');
-    if (!frFound.players.length) emptyNote(req, `ไม่พบผู้เล่นที่ตรงกับ “${frFound.query}”`);
-    for (const row of frFound.players) friendRow(req, row, { acts: relationActs(row.id) });
-  }
-  if (!d) emptyNote(req, 'กำลังโหลด…');
-  else if (d.reason) emptyNote(req, reasonText(d.reason));
-  else {
-    frHead(req, 'คำขอที่ส่งมาหาเรา');
-    if (!d.incoming.length) emptyNote(req, 'ยังไม่มีคำขอเป็นเพื่อนใหม่');
+  if (!d) loading(req);
+  else if (d.reason) failed(req);
+  else if (!d.incoming.length) {
+    frEmpty(req, { title: 'ยังไม่มีคำขอเป็นเพื่อนใหม่', text: 'มีคนส่งคำขอมาเมื่อไหร่ จะขึ้นที่นี่พร้อมป้ายแดงบนแท็บ' });
+  } else {
     for (const row of d.incoming) {
       friendRow(req, row, {
+        sub: 'อยากเป็นเพื่อนกับเรา',
         acts: [
-          { text: 'ตอบรับ', run: (r, p) => frRespond(r, p, true) },
-          { text: 'ปฏิเสธ', ghost: true, run: (r, p) => frRespond(r, p, false) },
+          { text: 'ตอบรับ', icon: 'check', run: (r, p) => frRespond(r, p, true) },
+          { text: 'ปฏิเสธ', kind: 'soft', run: (r, p) => frRespond(r, p, false) },
         ],
       });
     }
   }
   markScrollable(req);
 
-  // ── แท็บคำขอที่เราส่งไป ──
+  // ── แท็บรอตอบรับ (คำขอที่เราส่งไป) ──
   const sent = document.getElementById('frSentPage');
   sent.innerHTML = '';
   document.getElementById('frSentCount').textContent = d && d.outgoing && d.outgoing.length ? String(d.outgoing.length) : '';
-  if (!d) emptyNote(sent, 'กำลังโหลด…');
-  else if (d.reason) emptyNote(sent, reasonText(d.reason));
-  else if (!d.outgoing.length) emptyNote(sent, 'ยังไม่ได้ส่งคำขอถึงใคร ค้นหาเพื่อนได้ที่แท็บ “คำขอเป็นเพื่อน”');
-  else {
+  if (!d) loading(sent);
+  else if (d.reason) failed(sent);
+  else if (!d.outgoing.length) {
+    frEmpty(sent, {
+      title: 'ยังไม่ได้ส่งคำขอถึงใคร',
+      text: 'ค้นหาเพื่อนจากช่องด้านบน แล้วกด “เพิ่มเพื่อน”',
+      acts: [{ text: 'ค้นหาเพื่อน', ghost: true, run: focusFrSearch }],
+    });
+  } else {
     for (const row of d.outgoing) {
-      friendRow(sent, row, { sub: 'รอตอบรับ', acts: [{ text: 'ยกเลิกคำขอ', ghost: true, run: frCancel }] });
+      friendRow(sent, row, { sub: 'รอตอบรับ', acts: [{ text: 'ยกเลิก', kind: 'soft', run: frCancel }] });
     }
   }
   markScrollable(sent);
+
+  // ── ผลการค้นหา ──
+  const found = document.getElementById('frFoundPage');
+  found.innerHTML = '';
+  if (frFound) {
+    const head = document.createElement('div');
+    head.className = 'fr-found-head';
+    const label = document.createElement('b');
+    label.textContent = `ผลการค้นหา “${frFound.query}”`;
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'fr-soft';
+    clear.innerHTML = frIcon('close');
+    clear.append('ล้าง');
+    clear.addEventListener('click', () => { sfx.fish(); clearFrSearch(); });
+    head.append(label, clear);
+    found.appendChild(head);
+    if (!frFound.players.length) {
+      frEmpty(found, { title: `ไม่พบผู้เล่นที่ตรงกับ “${frFound.query}”`, text: 'ลองเช็ครหัสแมวน้อย 8 ตัวอีกครั้ง หรือพิมพ์ชื่อให้ครบ' });
+    }
+    for (const row of frFound.players) friendRow(found, row, { acts: relationActs(row.id) });
+  }
+  markScrollable(found);
 }
 
-/** สามแท็บ: list = เพื่อนแมว / req = คำขอเป็นเพื่อน (ค้นหา + ที่ส่งมาหาเรา) / sent = คำขอที่เราส่งไป */
+/** สามแท็บ + หน้าผลค้นหา: list = เพื่อน / req = คำขอ / sent = รอตอบรับ / found = ผลการค้นหา (ไม่มีแท็บติด) */
+let frTab = 'list';
 function setFrTab(tab) {
-  const tabs = { list: ['frTabList', 'frListPage'], req: ['frTabReq', 'frReqPage'], sent: ['frTabSent', 'frSentPage'] };
-  for (const [key, [btn, page]] of Object.entries(tabs)) {
+  if (tab !== 'found') frTab = tab;
+  const pages = { list: ['frTabList', 'frListPage'], req: ['frTabReq', 'frReqPage'], sent: ['frTabSent', 'frSentPage'], found: [null, 'frFoundPage'] };
+  for (const [key, [btn, page]] of Object.entries(pages)) {
     const on = key === tab;
-    document.getElementById(btn).classList.toggle('on', on);
-    document.getElementById(btn).setAttribute('aria-selected', String(on));
+    if (btn) {
+      document.getElementById(btn).classList.toggle('on', on);
+      document.getElementById(btn).setAttribute('aria-selected', String(on));
+    }
     document.getElementById(page).classList.toggle('hidden', !on);
   }
+}
+
+/** ล้างผลค้นหา → กลับแท็บที่เปิดอยู่ก่อนค้น */
+function clearFrSearch() {
+  frFound = null;
+  document.getElementById('frSearchInput').value = '';
+  paintFriends();
+  setFrTab(frTab);
 }
 
 /** ครอบงานที่ต้องรอเซิร์ฟเวอร์: ล็อกปุ่มแถวนั้น → ทำ → บอกผล → โหลดข้อมูลใหม่ */
@@ -5496,7 +5614,8 @@ async function frSearchNow() {
   frSay('');
   frFound = { query, players: r.players };
   paintFriends();
-  document.getElementById('frReqList').scrollTop = 0;
+  setFrTab('found');
+  document.getElementById('frFoundPage').scrollTop = 0;
 }
 
 function showFriends(on, tab) {
@@ -5558,24 +5677,50 @@ document.getElementById('friendsBack').addEventListener('click', () => {
   unlockAudio(); sfx.fish();
   showFriends(false);
 });
-document.getElementById('frTabList').addEventListener('click', () => { sfx.fish(); setFrTab('list'); });
-document.getElementById('frTabReq').addEventListener('click', () => { sfx.fish(); setFrTab('req'); });
-document.getElementById('frTabSent').addEventListener('click', () => { sfx.fish(); setFrTab('sent'); });
+// แตะแท็บตอนดูผลค้นหา = ล้างผลค้นหาไปด้วย (ไม่ให้คำค้นค้างในช่องทั้งที่ไม่ได้ดูผลแล้ว)
+for (const [id, tab] of [['frTabList', 'list'], ['frTabReq', 'req'], ['frTabSent', 'sent']]) {
+  document.getElementById(id).addEventListener('click', () => {
+    sfx.fish();
+    if (frFound) { frTab = tab; clearFrSearch(); } else setFrTab(tab);
+  });
+}
 document.getElementById('frSearch').addEventListener('submit', (e) => {
   e.preventDefault();
   unlockAudio(); sfx.fish();
   frSearchNow();
 });
-document.getElementById('frCopy').addEventListener('click', async () => {
-  sfx.fish();
+/**
+ * คัดลอกรหัสของเรา — ปุ่มบนบัตรเปลี่ยนเป็น "คัดลอกแล้ว ✓" ครู่หนึ่ง · คัดลอกไม่ได้ = บอกใต้บัตร
+ * กดจากปุ่มในหน้าว่าง (ฝั่งขวา) บอกผลที่แถบข้อความล่างด้วย เพราะบัตรอยู่ไกลสายตา
+ */
+async function copyMyCode(sayBelow = false) {
+  const m = document.getElementById('frCopyMsg');
   const say = (text, bad = false) => {
-    const m = document.getElementById('frCopyMsg');
     setMsg(m, text, bad);
-    clearTimeout(say.t);
-    say.t = setTimeout(() => setMsg(m, ''), 2600);
+    clearTimeout(copyMyCode.t);
+    copyMyCode.t = setTimeout(() => setMsg(m, ''), 2600);
   };
   if (!pfMyCode) { say(reasonText(cloudReady && userId() ? 'schema' : 'offline'), true); return; }
-  say(await copyText(pfMyCode) ? 'คัดลอกรหัสแมวน้อยแล้ว ✓' : 'รหัสแมวน้อยของเรา: ' + pfMyCode);
+  if (!(await copyText(pfMyCode))) { say('รหัสแมวน้อยของเรา: ' + pfMyCode); return; }
+  const btn = document.getElementById('frCopy');
+  const label = document.getElementById('frCopyText');
+  btn.classList.add('done');
+  label.textContent = 'คัดลอกแล้ว';
+  if (sayBelow) frSay('คัดลอกรหัสแมวน้อยแล้ว ส่งให้เพื่อนได้เลย');
+  clearTimeout(copyMyCode.d);
+  copyMyCode.d = setTimeout(() => { btn.classList.remove('done'); label.textContent = 'คัดลอก'; }, 1800);
+}
+document.getElementById('frCopy').addEventListener('click', () => { sfx.fish(); copyMyCode(); });
+
+// ส่งรหัสผ่านแผ่นแชร์ของเครื่อง (LINE / ข้อความ ฯลฯ) — เครื่องที่ไม่มีแผ่นแชร์ (คอมส่วนใหญ่) ซ่อนปุ่มไว้ ใช้คัดลอกแทน
+const frShare = document.getElementById('frShare');
+frShare.classList.toggle('hidden', typeof navigator.share !== 'function');
+frShare.addEventListener('click', async () => {
+  unlockAudio(); sfx.fish();
+  if (!pfMyCode) { copyMyCode(); return; }   // ยังไม่มีรหัส = บอกเหตุผลใต้บัตรแบบเดียวกับปุ่มคัดลอก
+  try {
+    await navigator.share({ text: tr(`มาเป็นเพื่อนแมวกันนะ รหัสแมวน้อยของเรา ${pfMyCode}`), url: location.origin });
+  } catch { /* ปิดแผ่นแชร์เอง = ไม่ต้องทำอะไร */ }
 });
 
 // แตะบัตรแมวน้อยของเรา = เปิดโปรไฟล์ของเรา (ปิดแล้วกลับมาหน้าเพื่อนเหมือนส่องเพื่อน)
@@ -5621,8 +5766,8 @@ if (import.meta.env.DEV) {
 
 // ── พื้นหลังบอร์ดกิจกรรม ── (ภาพล้วน ไม่แตะข้อมูลภารกิจ) ตัวคุมผ้าใบชุดเดียวกับคลังน้อง/สกิล/กาช่า
 // ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้) ลูปหยุดเองเมื่อแผงปิด
-const questBg = makeEventBg(document.getElementById('questBg'),
-  () => !questPanel.classList.contains('hidden'), questPanel.querySelector('.pop'));
+const questBg = makeSoftBg(document.getElementById('questBg'),
+  () => !questPanel.classList.contains('hidden'), 'mint', 10);
 new MutationObserver(() => questBg.kick()).observe(questPanel, { attributes: true, attributeFilter: ['class'] });
 
 function showQuests(on) {
@@ -6756,8 +6901,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) sync
 // ── พื้นหลังห้องพลังพิเศษของหน้าสกิล/พรสวรรค์ (ทั้งสองหมวด) ──
 // ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด ลูปหยุดเองเมื่อแผงปิด
 const talentPanelEl = document.getElementById('talentPanel');
-const skillMagic = makeSkillBg(document.getElementById('skillMagic'),
-  () => !talentPanelEl.classList.contains('hidden'));
+const skillMagic = makeSoftBg(document.getElementById('skillMagic'),
+  () => !talentPanelEl.classList.contains('hidden'), 'lilac', 11);
 new MutationObserver(() => skillMagic.kick()).observe(talentPanelEl, { attributes: true, attributeFilter: ['class'] });
 
 document.getElementById('btnTalent').addEventListener('click', () => {
@@ -6799,13 +6944,13 @@ document.getElementById('stageBack').addEventListener('click', () => {
   swapPanel(stagePanel, modePanel);
 });
 document.getElementById('stageGo').addEventListener('click', showIntro);
-const modeBgArt = makeStageBg(document.getElementById('modeBg'),
-  () => !modePanel.classList.contains('hidden'), modePanel.querySelector('.pop'));
+const modeBgArt = makeSoftBg(document.getElementById('modeBg'),
+  () => !modePanel.classList.contains('hidden'), 'sky', 12);
 new MutationObserver(() => modeBgArt.kick()).observe(modePanel, { attributes: true, attributeFilter: ['class'] });
 
 // ── แผนที่เมืองแมว (ผู้ใช้ 3 พ.ย.) ── เลือกโซน → ม่านอุ้งเท้าปิดจอ → ไปหน้าเมือง (town.html)
-const mapBgArt = makeStageBg(document.getElementById('mapBg'),
-  () => !mapPanel.classList.contains('hidden'), mapPanel.querySelector('.pop'));
+const mapBgArt = makeSoftBg(document.getElementById('mapBg'),
+  () => !mapPanel.classList.contains('hidden'), 'mint', 13);
 new MutationObserver(() => mapBgArt.kick()).observe(mapPanel, { attributes: true, attributeFilter: ['class'] });
 /** ภาพการ์ดโซน: ฟ้าเมือง + ของจริงในโซนนั้น (ร้าน/ปราสาท ภาพชุดเดียวกับใน town.html) */
 function paintZoneArt() {
@@ -8228,8 +8373,8 @@ document.getElementById('loadBack').addEventListener('click', () => showLoadout(
 // ── พื้นหลังร้านเซอร์ไพรส์ของหน้าตู้กาช่า (ทั้งสองตู้) ──
 // ตัวเฝ้าคลาสของแผงปลุกลูปตอนแผงเปิด (ทางไหนก็ได้ รวมกลับจากหน้ารายการ "ดูอื่นๆ") ลูปหยุดเองเมื่อแผงปิด
 const gachaPanelEl = document.getElementById('gachaPanel');
-const gachaMagic = makeGachaBg(document.getElementById('gachaMagic'),
-  () => !gachaPanelEl.classList.contains('hidden') && !cineRun);   // พักระหว่างฉากเปิดกาช่า (ฉากคลุมทั้งเวที)
+const gachaMagic = makeSoftBg(document.getElementById('gachaMagic'),
+  () => !gachaPanelEl.classList.contains('hidden') && !cineRun, 'lilac', 14);   // พักระหว่างฉากเปิดกาช่า (ฉากคลุมทั้งเวที)
 new MutationObserver(() => gachaMagic.kick()).observe(gachaPanelEl, { attributes: true, attributeFilter: ['class'] });
 
 document.getElementById('btnGacha').addEventListener('click', () => {

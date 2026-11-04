@@ -13453,7 +13453,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   cursor: pointer;
   white-space: nowrap;
 }
-.cc-btn:active { transform: translateY(2px); box-shadow: none !important; }
+.cc-btn:active { transform: none; filter: brightness(.93); }
 .cc-btn:disabled { opacity: .45; cursor: default; transform: none; filter: grayscale(.5); }
 .cc-btn.yes { border-color: #1F8F78; background: linear-gradient(180deg, #8FF0D8, #4ECDB4); color: #0C4A3E; box-shadow: 0 3px 0 #1F8F78; }
 .cc-btn.main { border-color: #B8467A; background: linear-gradient(180deg, #FFB3CF, #FF7FAE); color: #4A0F2A; box-shadow: 0 3px 0 #B8467A; }
@@ -13946,36 +13946,58 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 
 /* Mail heading: solid cream fill stays above the plum outline. */
 #inboxPanel h2.skin-title {
-  color: #FFF0B8;
+  color: #FFF4CC;
   background: none;
   -webkit-text-fill-color: #FFF0B8;
   -webkit-text-stroke: 0;
   font-weight: 700;
   line-height: 1.5;
   text-shadow:
-    -2px -2px 0 #9745BC, 0 -2px 0 #9745BC, 2px -2px 0 #9745BC,
-    -2px 0 0 #9745BC, 2px 0 0 #9745BC,
-    -2px 2px 0 #9745BC, 0 2px 0 #9745BC, 2px 2px 0 #9745BC,
-    0 4px 0 #713298, 0 5px 5px #51217955;
+    1.6px 0px 0 #9246BC, 1.48px 0.61px 0 #9246BC, 1.13px 1.13px 0 #9246BC, 0.61px 1.48px 0 #9246BC,
+    0px 1.6px 0 #9246BC, -0.61px 1.48px 0 #9246BC, -1.13px 1.13px 0 #9246BC, -1.48px 0.61px 0 #9246BC,
+    -1.6px 0px 0 #9246BC, -1.48px -0.61px 0 #9246BC, -1.13px -1.13px 0 #9246BC, -0.61px -1.48px 0 #9246BC,
+    -0px -1.6px 0 #9246BC, 0.61px -1.48px 0 #9246BC, 1.13px -1.13px 0 #9246BC, 1.48px -0.61px 0 #9246BC,
+    0 0 1px #9246BC, 0 0 12px rgba(255,196,244,.6), 0 0 26px rgba(255,170,236,.36);
   filter: none;
 }
 
-/* Shared heading colors match the mailbox title across game panels. */
+/* Shared heading colors match the mailbox title across game panels.
+   ขอบตัวอักษรหัวข้อ (ผู้ใช้ 4 พ.ย. 2026: "ขอบม่วงเข้มดูเหลี่ยมเหมือนโดนตัด อยากให้มีออร่า เด่นชัด")
+   เดิมเงาแปดทิศห่าง 2px — มุมทแยงยื่นไกลกว่าด้านตรง ขอบเลยเป็นเหลี่ยม
+   → วงกลม 16 ทิศรัศมีเท่ากัน 1.6px (ขอบมน บาง) + ออร่าชมพูขาวฟุ้งรอบตัวหนังสือ
+   ไม่มีฐานเลื่อนลง/เงาตกด้านล่างแล้ว (ผู้ใช้: "ขอบหนาเกิน ไม่ต้องใส่ความนูนหรือขอบข้างล่าง") */
 #stage .panel :is(h2, .skin-title, .got-title, .tl-sheet-name) {
-  color: #FFF0B8;
+  color: #FFF4CC;
   background: none;
   -webkit-text-fill-color: #FFF0B8;
   -webkit-text-stroke: 0;
   font-weight: 700;
   text-shadow:
-    -2px -2px 0 #9745BC, 0 -2px 0 #9745BC, 2px -2px 0 #9745BC,
-    -2px 0 0 #9745BC, 2px 0 0 #9745BC,
-    -2px 2px 0 #9745BC, 0 2px 0 #9745BC, 2px 2px 0 #9745BC,
-    0 4px 0 #713298, 0 5px 5px #51217955;
+    1.6px 0px 0 #9246BC, 1.48px 0.61px 0 #9246BC, 1.13px 1.13px 0 #9246BC, 0.61px 1.48px 0 #9246BC,
+    0px 1.6px 0 #9246BC, -0.61px 1.48px 0 #9246BC, -1.13px 1.13px 0 #9246BC, -1.48px 0.61px 0 #9246BC,
+    -1.6px 0px 0 #9246BC, -1.48px -0.61px 0 #9246BC, -1.13px -1.13px 0 #9246BC, -0.61px -1.48px 0 #9246BC,
+    -0px -1.6px 0 #9246BC, 0.61px -1.48px 0 #9246BC, 1.13px -1.13px 0 #9246BC, 1.48px -0.61px 0 #9246BC,
+    0 0 1px #9246BC, 0 0 12px rgba(255,196,244,.6), 0 0 26px rgba(255,170,236,.36);
   filter: none;
 }
 
-/* Glass cards: fixed-size circular highlights keep their shape on any card. */
+/* Glass cards: fixed-size circular highlights keep their shape on any card.
+   ขอบขาวบางลง (ผู้ใช้ 4 พ.ย. 2026: "เอาเหมือนเดิม แค่ลดขอบตัดกรอบสีขาวหน่อย") — เดิมขอบลาเวนเดอร์ 2px + วงขาวด้านในอีกชั้น
+   = เห็นเป็นกรอบขาวหนาสองเส้น → เหลือเส้นเดียวบาง 1.5px สีลาเวนเดอร์จาง ไม่มีวงขาวด้านใน */
+/* วุ้นชมพู — ใช้กับแถบเมนูข้าง (.stab / .gtab) เท่านั้น (ผู้ใช้ลองกรอบย่อยทั้งเกมเป็นชมพูแล้วขอกลับเป็นม่วง) */
+:root {
+  --pk-body: linear-gradient(165deg, rgba(255,162,212,.88) 0%, rgba(242,118,188,.86) 52%, rgba(222,106,192,.88) 100%);
+  --pk-play:
+    radial-gradient(85% 130% at 0% 0%, rgba(255,226,200,.42) 0%, rgba(255,226,200,0) 55%),
+    radial-gradient(70% 120% at 100% 100%, rgba(200,160,255,.4) 0%, rgba(200,160,255,0) 62%);
+  --pk-edge: rgba(255,222,240,.55);
+  --pk-shadow:
+    0 10px 18px -10px rgba(120,20,80,.5),
+    0 2px 5px rgba(90,20,70,.12),
+    inset 0 1.5px 1px rgba(255,255,255,.55),
+    inset 0 -12px 18px -12px rgba(170,36,110,.5),
+    inset 0 10px 14px -12px rgba(255,255,255,.6);
+}
 #stage .panel.panel :is(
   .mail-item, .news-item, .quest-row, .rank-row, .scene-row, .stage-card,
   .skin-card, .tl-card, .tl-equipped, .cc-card, .cs-friend, .cr-card,
@@ -13983,14 +14005,15 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   .dl-card, .lv-what, .mr-body, .tdetail, .odetail,
   .grid-empty, .cc-empty, .setrow, .sk-quest, .fr-row, .got-card, .mail-body
 ) {
-  --glass-edge: #E4BDFF;
+  --glass-edge: #E4BDFF8C;
   border-color: var(--glass-edge);
+  border-width: 1.5px;
   background:
     var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 2px, #FFFFFF00 2.8px)) 9px 2px / 6px 6px no-repeat,
     var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1px, #FFFFFF00 1.7px)) 18px 1px / 4px 4px no-repeat,
     linear-gradient(180deg, #AC76E0D9, #945ACBCC 35%, #7945B5D9);
   box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
-    inset 0 0 0 2px #FFFFFF28, inset 0 3px 8px #EACDFF55;
+    inset 0 3px 8px #EACDFF55;
   color: #FFFFFF;
 }
 /* Selection and rarity keep distinct outlines within the shared glass style. */
@@ -16435,8 +16458,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   -webkit-tap-highlight-color: transparent;
 }
 .mode-card:hover, .zone-card:hover, .mode-rank:hover { filter: brightness(1.06); }
-.mode-card:is(.jelly-press, :active), .zone-card:is(.jelly-press, :active) { transform: scale(1.03, .95) translateY(3px); }
-.mode-rank:is(.jelly-press, :active) { transform: scale(1.1, .86) translateY(3px); }
+.mode-card:active, .zone-card:active { filter: brightness(.94); }   /* หน้าย่อยกดแล้วไม่เด้ง (ผู้ใช้ 4 พ.ย.) */
+.mode-rank:active { filter: brightness(.94); }
 .mode-card.jelly-boing, .zone-card.jelly-boing { animation: jellyBoingSoft .62s linear both; }
 .mode-card.jelly-wiggle, .zone-card.jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
 .mode-rank.jelly-boing { animation: jellyBoing .62s linear both; }
@@ -16530,7 +16553,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   -webkit-tap-highlight-color: transparent;
 }
 .stage-go:hover { filter: brightness(1.05); }
-.stage-go:is(.jelly-press, :active) { transform: scale(1.06, .9) translateY(3px); }
+.stage-go:active { filter: brightness(.94); }
 .stage-go.jelly-boing { animation: jellyBoingSoft .62s linear both; }
 .stage-go.jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
 
@@ -16650,4 +16673,808 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) {
   #startPanel .lovebtn svg { animation: none; }
   #startPanel .lovebtn:is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+
+/* ══ ปุ่มในหน้าย่อยทั้งเกม: วุ้นใสมินิมอลชุดเดียวกับหน้าแรก — กดแล้วไม่เด้ง (ผู้ใช้ 4 พ.ย. 2026) ══════════
+   ปุ่มกลับ/ปุ่มปิด (.backbtn .xbtn) · ปุ่มหลักมิ้นต์ (.btn) · ปุ่มรองม่วง (.btn.ghost) · ปุ่มที่ยังกดไม่ได้
+   เนื้อโปร่งแสง + เงาวาวด้านบน · นูนด้วยแสงเงา (ไม่มีฐานขอบล่างสีเข้ม) · เงาฟุ้งนุ่มใต้ปุ่ม
+   กด = สว่างลดนิดเดียว ไม่ยุบ ไม่ยืด ไม่เด้ง (ปุ่มเด้งดึ๋งมีแค่หน้าแรก)
+   ปุ่มที่มีหน้าตาของตัวเอง (ปุ่มเล่น .play · ปุ่มเข้าเกม .big · ปุ่มสุ่ม .pull) ไม่โดนกฎนี้ */
+
+/* ── ปุ่มกลับ / ปุ่มปิด: วุ้นม่วงพลัมโทนเดิมแต่สว่างกว่า โปร่งแสง นูนนุ่ม ──
+   (ผู้ใช้ 4 พ.ย. 2026: "โทนสีอันเดิมแต่ไม่เข้มเท่า ใส ๆ ตุ่น cute")
+   ชั้นพื้นหลังจากบนลงล่าง: จุดแสงลูกอม · แสงชมพูลอดเนื้อที่ก้น · เงาวาวนุ่มด้านบน · เนื้อพลัมโปร่ง
+   ค่าอยู่ที่ตัวแปร --rb-* ชุดเดียว ปุ่มกลมบนพื้นม่วงอื่น ๆ (ห้องน้อง ตั้งค่า มินิเกม) ใช้ร่วมกัน */
+:root {
+  --rb-body: linear-gradient(180deg, rgba(206,140,212,.86) 0%, rgba(166,96,186,.84) 55%, rgba(134,66,164,.88) 100%);
+  --rb-glow: radial-gradient(70% 42% at 50% 112%, rgba(255,198,234,.62) 0%, rgba(255,198,234,0) 70%);
+  --rb-gloss: radial-gradient(62% 46% at 40% 16%, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 74%);
+  --rb-dot: radial-gradient(19% 11% at 32% 22%, rgba(255,255,255,.92) 0%, rgba(255,255,255,.92) 45%, rgba(255,255,255,0) 100%);
+  --rb-border: rgba(255,236,250,.78);
+  --rb-shadow:
+    0 8px 14px -6px rgba(84,24,124,.55),
+    0 2px 4px rgba(40,10,70,.15),
+    inset 0 -7px 10px -5px rgba(96,34,134,.45),
+    inset 0 6px 8px -5px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(255,214,240,.55);
+  --rb-shadow-press:
+    0 5px 9px -6px rgba(84,24,124,.5),
+    inset 0 -7px 10px -5px rgba(96,34,134,.45),
+    inset 0 6px 8px -5px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(255,214,240,.55);
+}
+.backbtn,
+.xbtn,
+#createPanel.paint-full .paint-max {
+  border: 1.5px solid var(--rb-border);
+  background: var(--rb-dot), var(--rb-glow), var(--rb-gloss), var(--rb-body);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  backdrop-filter: blur(4px) saturate(1.2);
+  color: #FFFFFF;
+  box-shadow: var(--rb-shadow);
+  transition: filter .12s ease;
+}
+.backbtn svg, .xbtn svg { filter: drop-shadow(0 1px 1px rgba(110,40,140,.5)); }
+.backbtn:hover, .xbtn:hover, #createPanel.paint-full .paint-max:hover { filter: brightness(1.08); }
+.backbtn:active,
+.xbtn:active,
+#createPanel.paint-full .paint-max:active {
+  transform: none;
+  filter: brightness(.93);
+  box-shadow: var(--rb-shadow-press);
+}
+
+/* ── ปุ่มหลัก (มิ้นต์) ── */
+.btn:not(.play):not(.big):not(.pull) {
+  border: 1.5px solid rgba(255,255,255,.62);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(222,255,250,.55) 0%, rgba(222,255,250,0) 70%),
+    linear-gradient(180deg, rgba(150,240,230,.95) 0%, rgba(88,212,202,.93) 52%, rgba(56,184,175,.95) 100%);
+  color: #0E4A40;
+  box-shadow:
+    0 8px 14px -6px rgba(30,140,130,.5),
+    0 2px 4px rgba(20,90,84,.15),
+    inset 0 -8px 12px -6px rgba(22,128,120,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.75);
+  transition: filter .12s ease;
+}
+.btn:not(.play):not(.big):not(.pull)::before { background: linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0)); }
+.btn:not(.play):not(.big):not(.pull):hover { filter: brightness(1.05); }
+.btn:not(.play):not(.big):not(.pull):active {
+  transform: none;
+  filter: brightness(.93);
+  box-shadow:
+    0 5px 10px -6px rgba(30,140,130,.45),
+    inset 0 -8px 12px -6px rgba(22,128,120,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.75);
+}
+
+/* ── ปุ่มรอง (ม่วง) ── */
+.btn.ghost:not(.play):not(.big):not(.pull) {
+  border: 1.5px solid rgba(255,255,255,.55);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,200,240,.45) 0%, rgba(255,200,240,0) 70%),
+    linear-gradient(180deg, rgba(196,150,252,.9) 0%, rgba(154,100,238,.88) 52%, rgba(124,68,214,.92) 100%);
+  color: #FFFFFF;
+  text-shadow: 0 1px 0 rgba(70,24,128,.55);
+  box-shadow:
+    0 8px 14px -6px rgba(90,40,170,.5),
+    0 2px 4px rgba(40,10,80,.15),
+    inset 0 -8px 12px -6px rgba(84,30,150,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.65);
+}
+.btn.ghost:not(.play):not(.big):not(.pull):active {
+  transform: none;
+  box-shadow:
+    0 5px 10px -6px rgba(90,40,170,.45),
+    inset 0 -8px 12px -6px rgba(84,30,150,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.65);
+}
+
+/* ── ปุ่มที่ยังกดไม่ได้ (เช่น "ยังไม่ครบ"): เม็ดลาเวนเดอร์จาง ตัวหนังสือขาว — อ่านออกทั้งบนพื้นม่วงและการ์ดครีม ── */
+.btn:disabled:not(.play):not(.big):not(.pull) {
+  opacity: 1;
+  color: #FFFFFF;
+  text-shadow: 0 1px 1px rgba(80,40,140,.35);
+  border-color: rgba(255,255,255,.5);
+  background: linear-gradient(180deg, rgba(200,180,236,.66) 0%, rgba(172,146,220,.62) 100%);
+  box-shadow:
+    0 4px 8px -5px rgba(40,10,80,.3),
+    inset 0 1.5px 1px rgba(255,255,255,.45),
+    inset 0 -5px 8px -5px rgba(90,50,160,.3);
+}
+.btn:disabled:not(.play):not(.big):not(.pull)::after { content: none; }
+.btn:disabled:not(.play):not(.big):not(.pull)::before { opacity: .5; }
+
+/* ── ปุ่มเฉพาะของแต่ละหน้า: เปลี่ยนเป็นวุ้นใสชุดเดียวกัน (ต่อจากชุดบน · ผู้ใช้ 4 พ.ย. 2026) ──
+   สีตามหน้าที่: ทอง = จ่ายเงิน/รับของ · ชมพู = ส่ง/ยืนยันฝั่งหัวใจ · มิ้นต์ = ตกลง · ขาว = ทางเลือกรอง
+   ปุ่มกลม/แคปซูลบนพื้นม่วง (ห้องน้อง ตั้งค่า มินิเกม) = วุ้นพลัมแบบปุ่มกลับ (ตัวแปร --rb-*)
+   ทุกปุ่ม: นูนด้วยแสงเงา ไม่มีฐานขอบล่างสีเข้ม · กดแล้วสว่างลดนิดเดียว ไม่ขยับ ไม่ยุบ ไม่ยืด */
+
+/* ทอง: ซื้อด้วยทอง · ปุ่มดูแลน้อง · ราคาในร้านเหมียว */
+.btn.buy:not(.play):not(.big):not(.pull):not(:disabled),
+.cr-act,
+.shop-buy {
+  border: 1.5px solid rgba(255,255,255,.7);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,250,222,.6) 0%, rgba(255,250,222,0) 70%),
+    linear-gradient(180deg, rgba(255,242,178,.98) 0%, rgba(255,216,110,.96) 52%, rgba(247,186,66,.97) 100%);
+  color: #7A4300;
+  box-shadow:
+    0 8px 14px -6px rgba(220,150,30,.5),
+    0 2px 4px rgba(120,70,0,.14),
+    inset 0 -8px 12px -6px rgba(196,118,10,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.85);
+  transition: filter .12s ease;
+}
+.shop-buy {
+  box-shadow:
+    0 5px 9px -5px rgba(220,150,30,.5),
+    inset 0 -5px 8px -5px rgba(196,118,10,.42),
+    inset 0 4px 6px -4px rgba(255,255,255,.85);
+}
+.btn.buy .coin { box-shadow: none; }
+
+/* ปุ่ม "รับ!" ในหน้ารางวัลเลเวล: วุ้นทอง แสงเรืองเต้นช้า ๆ แทนการกระโดด */
+.lv-row.ready .lv-claim {
+  border: 1.5px solid rgba(255,255,255,.75);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,250,222,.6) 0%, rgba(255,250,222,0) 70%),
+    linear-gradient(180deg, rgba(255,242,178,.98) 0%, rgba(255,216,110,.96) 52%, rgba(247,186,66,.97) 100%);
+  color: #7A4300;
+  box-shadow:
+    0 6px 11px -5px rgba(220,150,30,.55),
+    0 0 10px rgba(255,214,90,.35),
+    inset 0 -6px 9px -5px rgba(196,118,10,.45),
+    inset 0 5px 7px -5px rgba(255,255,255,.85);
+  animation: lvClaimGlow 1.8s ease-in-out infinite;
+}
+@keyframes lvClaimGlow {
+  50% {
+    box-shadow:
+      0 6px 11px -5px rgba(220,150,30,.55),
+      0 0 16px 2px rgba(255,214,90,.7),
+      inset 0 -6px 9px -5px rgba(196,118,10,.45),
+      inset 0 5px 7px -5px rgba(255,255,255,.85);
+  }
+}
+
+/* แดงชมพู: ปุ่มหยุดตอนตีรัว — วงแสงขยายออกยังอยู่ (บอกว่ากำลังทำงาน) แต่ไม่มีฐานเข้ม */
+.btn.ghost.stopping:not(.play):not(.big):not(.pull) {
+  border-color: rgba(255,255,255,.62);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,226,236,.55) 0%, rgba(255,226,236,0) 70%),
+    linear-gradient(180deg, rgba(255,190,210,.96) 0%, rgba(255,140,178,.94) 52%, rgba(240,104,150,.96) 100%);
+  color: #5A1030;
+  text-shadow: none;
+  box-shadow:
+    0 8px 14px -6px rgba(220,70,120,.5),
+    inset 0 -8px 12px -6px rgba(190,50,100,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.8);
+  animation: stopPulseSoft 1.2s ease-out infinite;
+}
+.btn.ghost.stopping:not(.play):not(.big):not(.pull):active { box-shadow: 0 5px 10px -6px rgba(220,70,120,.45), inset 0 -8px 12px -6px rgba(190,50,100,.42), inset 0 6px 9px -6px rgba(255,255,255,.8); }
+@keyframes stopPulseSoft {
+  0%   { box-shadow: 0 8px 14px -6px rgba(220,70,120,.5), 0 0 0 0 rgba(255,148,180,.7), inset 0 -8px 12px -6px rgba(190,50,100,.42), inset 0 6px 9px -6px rgba(255,255,255,.8); }
+  100% { box-shadow: 0 8px 14px -6px rgba(220,70,120,.5), 0 0 0 14px rgba(255,148,180,0), inset 0 -8px 12px -6px rgba(190,50,100,.42), inset 0 6px 9px -6px rgba(255,255,255,.8); }
+}
+
+/* ชมพู: ส่งต่อน้อง · ยืนยันฝั่งหัวใจในการ์ดน้อง */
+.cr-send,
+.cc-btn.main {
+  border: 1.5px solid rgba(255,255,255,.65);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,226,240,.6) 0%, rgba(255,226,240,0) 70%),
+    linear-gradient(180deg, rgba(255,184,212,.96) 0%, rgba(255,140,186,.94) 52%, rgba(236,104,156,.96) 100%);
+  color: #4A0F2A;
+  box-shadow:
+    0 6px 11px -5px rgba(220,70,130,.5),
+    inset 0 -6px 9px -5px rgba(180,40,100,.42),
+    inset 0 5px 7px -5px rgba(255,255,255,.8);
+}
+/* มิ้นต์: ตกลง */
+.cc-btn.yes {
+  border: 1.5px solid rgba(255,255,255,.65);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(222,255,250,.55) 0%, rgba(222,255,250,0) 70%),
+    linear-gradient(180deg, rgba(150,240,230,.96) 0%, rgba(88,212,202,.94) 52%, rgba(56,184,175,.96) 100%);
+  color: #0E4A40;
+  box-shadow:
+    0 6px 11px -5px rgba(30,140,130,.5),
+    inset 0 -6px 9px -5px rgba(22,128,120,.42),
+    inset 0 5px 7px -5px rgba(255,255,255,.75);
+}
+/* ขาว: ทางเลือกรอง / ยกเลิก — ตัวหนังสือสีเดิม (ม่วง / แดงอมชมพู) */
+.cc-btn.soft,
+.cc-btn.warn {
+  border: 1.5px solid rgba(255,255,255,.85);
+  background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(250,242,255,.92) 100%);
+  box-shadow:
+    0 6px 11px -5px rgba(90,40,150,.35),
+    inset 0 -6px 9px -5px rgba(150,110,200,.32),
+    inset 0 5px 7px -5px rgba(255,255,255,1);
+}
+.cc-btn.warn { background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(255,240,244,.92) 100%); box-shadow: 0 6px 11px -5px rgba(200,60,95,.3), inset 0 -6px 9px -5px rgba(235,140,165,.35), inset 0 5px 7px -5px rgba(255,255,255,1); }
+
+/* ลาเวนเดอร์: ปุ่มแก้ไข / เสร็จแล้ว / เพิ่มเพื่อน ในหน้าโปรไฟล์ */
+.pf-action {
+  border: 1.5px solid rgba(255,255,255,.75);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,240,255,.6) 0%, rgba(255,240,255,0) 70%),
+    linear-gradient(180deg, rgba(246,226,255,.98) 0%, rgba(228,192,250,.96) 52%, rgba(208,160,240,.97) 100%);
+  color: #2A1238;
+  box-shadow:
+    0 8px 14px -6px rgba(110,50,170,.5),
+    0 2px 4px rgba(40,10,80,.14),
+    inset 0 -8px 12px -6px rgba(130,70,190,.4),
+    inset 0 6px 9px -6px rgba(255,255,255,.85);
+}
+.pf-action .ico-edit { stroke: #F0DCFF; }
+
+/* ชุดแต่งตัว: ปุ่มสวมชุด — ขอบไล่สีชมพู-ทองเดิม ถอดฐานม่วงเข้ม */
+#odPanel .btn.od-wear,
+#odPanel .btn.od-wear:disabled,
+#odPanel .btn.od-wear.ghost {
+  border: 3px solid transparent;
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,236,255,.55) 0%, rgba(255,236,255,0) 70%) padding-box,
+    linear-gradient(180deg, rgba(244,196,252,.97), rgba(220,142,242,.96)) padding-box,
+    linear-gradient(100deg, #FF8FC8, #FFC2E2 45%, #FFD877) border-box;
+  box-shadow:
+    0 10px 18px -7px rgba(150,60,190,.55),
+    0 2px 5px rgba(80,20,110,.15),
+    inset 0 -10px 14px -7px rgba(150,70,200,.42),
+    inset 0 8px 10px -7px rgba(255,255,255,.75);
+}
+#odPanel .btn.od-wear:active { transform: none; filter: brightness(.93); box-shadow: 0 6px 12px -7px rgba(150,60,190,.5), inset 0 -10px 14px -7px rgba(150,70,200,.42), inset 0 8px 10px -7px rgba(255,255,255,.75); }
+
+/* คลังน้อง (ธีมความฝัน): ปุ่มหลักมิ้นต์ / รองลาเวนเดอร์พาสเทล / กดไม่ได้ = แก้วขาว — ถอดฐานสีเข้มทั้งหมด */
+#stashPanel .dream .stash-btns .btn:not(.ghost):not(:disabled):not(.buy) {
+  box-shadow:
+    0 8px 14px -6px rgba(30,140,130,.45),
+    0 2px 4px rgba(20,90,84,.12),
+    inset 0 -8px 12px -6px rgba(22,128,120,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.75);
+}
+#stashPanel .dream .stash-btns .btn.ghost {
+  border-color: rgba(255,255,255,.8);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,246,255,.6) 0%, rgba(255,246,255,0) 70%),
+    linear-gradient(180deg, rgba(246,232,255,.98) 0%, rgba(222,192,248,.96) 100%);
+  color: #5A2A86;
+  text-shadow: none;
+  box-shadow:
+    0 8px 14px -6px rgba(96,46,170,.35),
+    inset 0 -8px 12px -6px rgba(140,90,200,.38),
+    inset 0 6px 9px -6px rgba(255,255,255,.9);
+}
+#stashPanel .dream .stash-btns .btn:disabled {
+  background: linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.22));
+  color: #5A2A86;
+  border-color: rgba(255,255,255,.65);
+  box-shadow:
+    0 5px 10px -6px rgba(90,45,150,.3),
+    inset 0 1.5px 1px rgba(255,255,255,.6),
+    inset 0 -5px 8px -5px rgba(90,45,150,.2);
+}
+
+/* ห้องพลัง / ตู้กาช่า: ปุ่มกลับใช้แก้วฝ้าตัวกลาง เติมแค่แสงลาเวนเดอร์จาง ๆ รอบปุ่มให้เข้ากับห้องเดิม */
+#talentPanel .backbtn,
+#gachaPanel .backbtn { box-shadow: var(--rb-shadow), 0 0 16px rgba(226,190,255,.4); }
+
+/* วุ้นพลัมชุดเดียวกับปุ่มกลับ: ปุ่มแคปซูลบนหัวห้องน้อง · ดูเต็มจอ · − / + เสียง · เลื่อนเพลง · พักมินิเกม */
+.cr-pill,
+#catRoomPanel .cr-full,
+.stepbtn,
+.vinyl-arrow,
+.cw-pause {
+  border: 1.5px solid var(--rb-border);
+  background: var(--rb-dot), var(--rb-glow), var(--rb-gloss), var(--rb-body);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  backdrop-filter: blur(4px) saturate(1.2);
+  color: #FFFFFF;
+  text-shadow: 0 1px 1px rgba(110,40,140,.5);
+  box-shadow: var(--rb-shadow);
+  transition: filter .12s ease;
+}
+/* แคปซูลยาว: จุดแสงลูกอมจะยืดเป็นขีด — ใช้แค่เงาวาวนุ่ม */
+.cr-pill { background: var(--rb-glow), var(--rb-gloss), var(--rb-body); }
+.stepbtn:disabled { opacity: .4; box-shadow: none; }
+/* เงียบอยู่ = วุ้นชมพูอมแดง (อ่านออกจากหางตาเหมือนเดิม) */
+.mutebtn.muted {
+  border-color: rgba(255,214,222,.8);
+  background: var(--rb-dot), var(--rb-gloss), linear-gradient(180deg, rgba(255,150,168,.88) 0%, rgba(232,96,124,.86) 55%, rgba(204,70,102,.9) 100%);
+  color: #FFFFFF;
+}
+
+/* ห้องน้อง: ชิปน้องครีมชมพู — นูนนุ่มแทนฐาน · ตัวที่เลือกอยู่ = วงทอง ไม่ยกตัว */
+#catRoomPanel .cr-chip {
+  box-shadow:
+    0 6px 12px -5px rgba(90,42,134,.4),
+    inset 0 -6px 9px -5px rgba(200,140,190,.35),
+    inset 0 5px 7px -5px rgba(255,255,255,1);
+  transition: filter .12s ease;
+}
+#catRoomPanel .cr-chip.on {
+  transform: none;
+  box-shadow:
+    0 0 0 3px rgba(255,200,74,.45),
+    0 6px 12px -5px rgba(176,110,20,.45),
+    inset 0 -6px 9px -5px rgba(230,170,80,.35),
+    inset 0 5px 7px -5px rgba(255,255,255,1);
+}
+#catRoomPanel .cr-chip.empty { box-shadow: none; }
+
+/* ปุ่มสุ่มกาช่า (ฟ้า 1 ครั้ง / ทอง 5 ครั้ง) — เม็ดยาขอบขาวเดิม ถอดฐานสีเข้ม เหลือแสงเงาในเนื้อ */
+#gachaPanel .btn.pull.gp-one {
+  box-shadow:
+    0 calc(var(--h) * .16) calc(var(--h) * .26) calc(var(--h) * -.08) rgba(20,110,200,.5),
+    inset 0 calc(var(--h) * -.16) calc(var(--h) * .2) calc(var(--h) * -.08) rgba(0,70,160,.4),
+    inset 0 calc(var(--h) * .1) calc(var(--h) * .14) calc(var(--h) * -.08) rgba(255,255,255,.6);
+}
+#gachaPanel .btn.pull.gp-five {
+  box-shadow:
+    0 calc(var(--h) * .16) calc(var(--h) * .26) calc(var(--h) * -.08) rgba(230,150,30,.55),
+    0 0 calc(var(--h) * .25) rgba(255,214,90,.5),
+    inset 0 calc(var(--h) * -.16) calc(var(--h) * .2) calc(var(--h) * -.08) rgba(190,110,0,.4),
+    inset 0 calc(var(--h) * .1) calc(var(--h) * .14) calc(var(--h) * -.08) rgba(255,255,255,.65);
+}
+#gachaPanel .btn.pull.gp-pull { transition: filter .12s ease; }
+#gachaPanel .btn.pull.gp-pull:active { transform: none; filter: brightness(.93); }
+/* ปุ่มสุ่มแบบเก่า (เขียว / ม่วง) — ถอดฐานสีเข้มเหมือนกัน */
+.btn.pull {
+  box-shadow:
+    0 10px 18px -7px var(--glow),
+    inset 0 -9px 14px -6px rgba(0,0,0,.2),
+    inset 0 7px 10px -6px rgba(255,255,255,.65),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+}
+.btn.pull:active { transform: none; animation: none; filter: brightness(.93); }
+.btn.pull:disabled { transform: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+@media (hover: hover) {
+  .btn.pull:not(:disabled):hover { transform: none; box-shadow: 0 12px 22px -7px var(--glow), inset 0 -9px 14px -6px rgba(0,0,0,.18), inset 0 7px 10px -6px rgba(255,255,255,.7), inset 0 0 0 1px rgba(255,255,255,.2); }
+}
+
+/* กดทุกปุ่มในหน้าย่อย = สว่างลดนิดเดียว ไม่ขยับ (ปุ่มที่วางตำแหน่งด้วย transform คงตำแหน่งเดิมไว้) */
+:is(.btn.buy, .cr-act, .cr-pill, .cr-send, .cc-btn, .pf-action, .stepbtn, .vinyl-arrow, .cw-pause,
+    .fr-copy, .pf-copy, .pf-find, .pf-pen, .auth-info, .stab, .more-btn, .info-btn, .tl-help,
+    .gp-more, .gp-arrow, .dl-card, .lv-card):active,
+#catRoomPanel :is(.cr-full, .cr-chip):active,
+#gachaPanel .gc-skip:active,
+#odPanel .od-max:active {
+  transform: none;
+  filter: brightness(.93);
+}
+.btn.buy:not(.play):not(.big):not(.pull):active { box-shadow: 0 5px 10px -6px rgba(220,150,30,.45), inset 0 -8px 12px -6px rgba(196,118,10,.42), inset 0 6px 9px -6px rgba(255,255,255,.85); }
+.cr-act:active { box-shadow: 0 5px 10px -6px rgba(220,150,30,.45), inset 0 -8px 12px -6px rgba(196,118,10,.42), inset 0 6px 9px -6px rgba(255,255,255,.85); }
+.cr-pill:active, #catRoomPanel .cr-full:active, .stepbtn:active, .vinyl-arrow:active, .cw-pause:active { box-shadow: var(--rb-shadow-press); }
+.cr-send:active { box-shadow: 0 4px 8px -5px rgba(220,70,130,.45), inset 0 -6px 9px -5px rgba(180,40,100,.42), inset 0 5px 7px -5px rgba(255,255,255,.8); }
+#catRoomPanel .cr-chip:active { box-shadow: 0 4px 8px -5px rgba(90,42,134,.4), inset 0 -6px 9px -5px rgba(200,140,190,.35), inset 0 5px 7px -5px rgba(255,255,255,1); }
+.stepbtn:disabled:active { filter: none; }
+#createPanel .pcol-fold:active { transform: translateY(-50%); filter: brightness(.93); }
+.found-dice:active { transform: translateY(-50%); filter: brightness(.93); }
+@media (prefers-reduced-motion: reduce) {
+  .lv-row.ready .lv-claim, .btn.ghost.stopping:not(.play):not(.big):not(.pull) { animation: none; }
+}
+
+/* ══ หน้าเพื่อนแมวแบบใหม่ (ผู้ใช้ 4 พ.ย. 2026: "ใช้งานง่ายขึ้นและดูดีขึ้น") ══════════════════════
+   ช่องค้นหาอยู่บนสุดทุกแท็บ (เดิมซ่อนในแท็บคำขอ) · ผลค้นหาเป็นหน้าแยกมีปุ่ม "ล้าง"
+   แถวเพื่อนกระชับ: หน้าน้อง (จุดเขียว = ออนไลน์) · ชื่อบรรทัดเดียว · ปุ่มเล็กท้ายแถว — จอแคบได้คอลัมน์เดียว ชื่อไม่โดนบีบ
+   ลบเพื่อน = ปุ่มกลมไอคอนจาง ๆ ไม่แย่งความเด่นจากปุ่มเยี่ยมบ้าน · หน้าว่างมีรูปน้อง + ปุ่มทำต่อได้ทันที
+   ทุกชิ้นวุ้นใสไม่มีฐานขอบล่างเข้ม กดแล้วสว่างลดนิดเดียว ไม่ขยับ */
+
+/* ── ช่องค้นหา: ร่องแก้วเว้าลงไป (ช่องพิมพ์) + ปุ่มมิ้นต์ ── */
+#friendsPanel .fr-search {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 6px clamp(6px, 1.4dvh, 12px);
+}
+#friendsPanel .fr-search-box {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: clamp(34px, 7dvh, 46px);
+  padding: 0 16px 0 13px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,.5);
+  background: linear-gradient(180deg, rgba(60,20,110,.3) 0%, rgba(255,255,255,.1) 100%);
+  box-shadow: inset 0 2px 6px rgba(50,14,96,.35), 0 1px 0 rgba(255,255,255,.22);
+  cursor: text;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+#friendsPanel .fr-search-box:focus-within {
+  border-color: rgba(170,248,236,.95);
+  box-shadow: inset 0 2px 6px rgba(50,14,96,.35), 0 0 0 3px rgba(141,243,234,.3);
+}
+#friendsPanel .fr-search-box svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: rgba(255,255,255,.85);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+#friendsPanel .fr-search input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  font-weight: 600;
+  font-size: clamp(12.5px, 2.4dvh, 15px);
+  line-height: 1.6;   /* ที่ให้สระบน/วรรณยุกต์ไทย */
+  text-align: left;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#friendsPanel .fr-search input::placeholder { color: rgba(255,255,255,.72); }
+#friendsPanel .fr-search .btn {
+  flex: 0 0 auto;
+  height: clamp(34px, 7dvh, 46px);
+  margin: 0;
+  padding: 0 clamp(14px, 2vw, 24px);
+  font-size: clamp(12.5px, 2.4dvh, 15px);
+}
+
+/* ── กริด: แถวกว้างอย่างน้อย ~400px — มือถือ/ไอแพดได้คอลัมน์เดียว (ชื่อกับสถานะไม่โดนตัด) จอคอมกว้าง ๆ ได้สอง ── */
+#friendsPanel .fr-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: clamp(6px, 1.2dvh, 10px) clamp(8px, 1.2vw, 12px);
+  padding: 2px 6px 14px;
+}
+
+/* ── แถวเพื่อน ── */
+#stage #friendsPanel .fr-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.2vw, 12px);
+  padding: clamp(6px, 1.2dvh, 9px) clamp(8px, 1.2vw, 12px) clamp(6px, 1.2dvh, 9px) clamp(6px, 1dvh, 8px);
+  border: 1.5px solid rgba(255,255,255,.3);
+  border-radius: 18px;
+  background:
+    radial-gradient(80% 70% at 18% 0%, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(180,130,234,.72) 0%, rgba(142,90,208,.7) 100%);
+  box-shadow:
+    0 8px 16px -9px rgba(40,10,80,.5),
+    inset 0 1.5px 1px rgba(255,255,255,.45),
+    inset 0 -6px 10px -6px rgba(60,20,110,.35);
+  transition: filter .12s ease;
+}
+#stage #friendsPanel .fr-row.tap:active { transform: none; filter: brightness(.95); }
+/* หน้าน้อง + จุดเขียวมุมล่างขวาตอนออนไลน์ */
+#friendsPanel .fr-ava { position: relative; flex: 0 0 auto; display: block; line-height: 0; }
+#friendsPanel .fr-face {
+  display: block;
+  width: clamp(38px, 7.6dvh, 50px);
+  height: clamp(38px, 7.6dvh, 50px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.38), rgba(255,255,255,.12));
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55), 0 3px 6px -2px rgba(40,10,80,.35);
+}
+#friendsPanel .fr-ava.on::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  background: #5BE08A;
+  box-shadow: 0 0 6px rgba(91,224,138,.8);
+}
+/* ชื่อ + เลเวล/สถานะ — บรรทัดเดียวทั้งคู่ ยาวเกินตัดด้วย … */
+#friendsPanel .fr-row .mail-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0; }
+#friendsPanel .fr-row .mail-title {
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 2.6dvh, 16px);
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#friendsPanel .fr-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(10.5px, 2dvh, 12.5px);
+  color: rgba(255,255,255,.82);
+}
+#friendsPanel .fr-sub::before { content: none; }
+#friendsPanel .fr-sub.on { color: #A8F7E6; }
+
+/* ── ปุ่มท้ายแถว: มิ้นต์ (ทำต่อ) · แก้วใส (ปฏิเสธ/ยกเลิก) · กลมไอคอน (ลบเพื่อน) ── */
+#friendsPanel .fr-acts { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+#friendsPanel :is(.fr-acts .btn.tiny, .fr-soft) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: clamp(30px, 6dvh, 38px);
+  margin: 0;
+  padding: 0 clamp(11px, 1.6vw, 15px);
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(11.5px, 2.2dvh, 13.5px);
+  white-space: nowrap;
+}
+#friendsPanel :is(.fr-acts, .fr-found-head, .fr-ico) svg {
+  flex: 0 0 auto;
+  width: 1.2em;
+  height: 1.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#friendsPanel .fr-soft {
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,.55);
+  background: linear-gradient(180deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.12) 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 8px -5px rgba(40,10,80,.35), inset 0 1.5px 1px rgba(255,255,255,.5);
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+#friendsPanel .fr-soft:disabled { cursor: default; color: #A8F7E6; border-color: rgba(168,247,230,.55); }
+#friendsPanel .fr-ico {
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 6dvh, 38px);
+  height: clamp(30px, 6dvh, 38px);
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,.45);
+  background: linear-gradient(180deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.07) 100%);
+  color: rgba(255,255,255,.88);
+  box-shadow: 0 4px 8px -5px rgba(40,10,80,.35), inset 0 1.5px 1px rgba(255,255,255,.4);
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+#friendsPanel .fr-ico svg { width: 56%; height: 56%; }
+#friendsPanel :is(.fr-soft, .fr-ico):not(:disabled):active { filter: brightness(.9); }
+#friendsPanel .fr-ico:disabled { opacity: .5; cursor: default; }
+
+/* ── หัวผลค้นหา: "ผลการค้นหา “…”" ซ้าย · ปุ่มล้างขวา ── */
+#friendsPanel .fr-found-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px;
+}
+#friendsPanel .fr-found-head b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(12px, 2.4dvh, 14.5px);
+  color: #FFFFFF;
+  text-shadow: 0 1px 4px rgba(72,28,124,.55);
+}
+#friendsPanel .fr-found-head .fr-soft { height: clamp(26px, 5dvh, 32px); padding: 0 11px; font-size: clamp(11px, 2dvh, 12.5px); }
+
+/* ── หน้าว่าง: การ์ดแก้วกลางพื้นที่ — รูปน้อง ♥ น้องเพื่อน · หัวเรื่อง · คำอธิบาย · ปุ่มทำต่อ ── */
+#stage #friendsPanel .fr-empty {
+  justify-self: center;
+  width: min(100%, 460px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1dvh, 8px);
+  padding: clamp(14px, 3dvh, 26px) clamp(16px, 3vw, 28px);
+  border: 1.5px solid rgba(255,255,255,.3);
+  border-radius: 22px;
+  background:
+    radial-gradient(70% 60% at 50% 0%, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(180,130,234,.55) 0%, rgba(142,90,208,.5) 100%);
+  box-shadow:
+    0 10px 22px -12px rgba(40,10,80,.5),
+    inset 0 1.5px 1px rgba(255,255,255,.45),
+    inset 0 -8px 14px -8px rgba(60,20,110,.3);
+  color: #FFFFFF;
+  text-align: center;
+}
+#friendsPanel .fr-empty-art { display: flex; align-items: center; gap: clamp(2px, .6vw, 6px); margin-bottom: 2px; }
+#friendsPanel .fr-empty-art canvas {
+  width: clamp(46px, 10dvh, 70px);
+  height: clamp(46px, 10dvh, 70px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.45), rgba(255,255,255,.14));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.6), 0 6px 12px -6px rgba(40,10,80,.45);
+}
+#friendsPanel .fr-empty-art .me { rotate: -6deg; }
+#friendsPanel .fr-empty-art .pal { rotate: 6deg; }
+#friendsPanel .fr-empty-heart { display: block; line-height: 0; }
+#friendsPanel .fr-empty-heart svg {
+  width: clamp(20px, 4.4dvh, 30px);
+  height: clamp(20px, 4.4dvh, 30px);
+  fill: #FF9EC8;
+  stroke: #FFFFFF;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 2px 3px rgba(200,60,130,.45));
+  animation: loveBeat 1.6s ease-in-out infinite;
+}
+#friendsPanel .fr-empty-title {
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(14px, 2.9dvh, 18px);
+  text-shadow: 0 1px 4px rgba(72,28,124,.5);
+}
+#friendsPanel .fr-empty-text {
+  max-width: 34em;
+  font-size: clamp(11px, 2.2dvh, 13px);
+  line-height: 1.5;
+  color: rgba(255,255,255,.88);
+}
+#friendsPanel .fr-empty-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: clamp(2px, .8dvh, 6px); }
+#friendsPanel .fr-empty-acts .btn { margin: 0; padding: clamp(6px, 1.4dvh, 9px) clamp(14px, 2vw, 20px); font-size: clamp(11.5px, 2.2dvh, 13.5px); }
+
+/* ── บัตรแมวน้อยของเรา: วงมิ้นต์เดิม ถอดฐานเข้ม · แตะแล้วไม่ยก/ไม่ยุบ ── */
+#stage #friendsPanel .fr-me {
+  box-shadow:
+    0 0 0 2px rgba(141,243,234,.5),
+    0 10px 20px -10px rgba(40,10,80,.55),
+    inset 0 1.5px 1px rgba(255,255,255,.5),
+    inset 0 -8px 14px -8px rgba(60,20,110,.35);
+}
+#frMeCard:hover { transform: none; }
+#frMeCard:active { transform: none; filter: brightness(.95); }
+#friendsPanel .fr-me .fr-copy,
+#friendsPanel .fr-share {
+  height: clamp(28px, 5.4dvh, 34px);
+  border: 1.5px solid rgba(255,255,255,.9);
+  background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(242,228,255,.94) 100%);
+  color: #5A2A86;
+  box-shadow:
+    0 6px 10px -6px rgba(60,20,110,.5),
+    inset 0 -4px 6px -4px rgba(150,110,200,.45),
+    inset 0 3px 4px -3px #FFFFFF;
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+#friendsPanel .fr-me .fr-copy { padding: 0 13px; gap: 5px; white-space: nowrap; }
+#friendsPanel .fr-me .fr-copy .ico-done { display: none; stroke-width: 3; }
+#friendsPanel .fr-me .fr-copy.done .ico-copy { display: none; }
+#friendsPanel .fr-me .fr-copy.done .ico-done { display: block; }
+#friendsPanel .fr-me .fr-copy.done {
+  border-color: rgba(255,255,255,.8);
+  background: linear-gradient(180deg, rgba(170,246,236,.98) 0%, rgba(96,214,204,.96) 100%);
+  color: #0E4A40;
+}
+/* ปุ่มส่งรหัสให้เพื่อน — ใต้บัตร กว้างเต็มช่อง */
+#friendsPanel .fr-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(10.5px, 2dvh, 12.5px);
+  white-space: nowrap;
+}
+#friendsPanel .fr-share.hidden { display: none; }
+#friendsPanel .fr-share svg { flex: 0 0 auto; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+#friendsPanel :is(.fr-me .fr-copy, .fr-share):active { filter: brightness(.93); }
+
+@media (prefers-reduced-motion: reduce) {
+  #friendsPanel .fr-empty-heart svg { animation: none; }
+}
+
+/* ══ แถบเมนูข้าง (ร้านเหมียว คลังน้อง ตั้งค่า ตู้กาช่า) = วุ้นชมพู (ผู้ใช้ 4 พ.ย. 2026 — ชมพูเฉพาะตรงนี้ กรอบย่อยอื่นยังม่วง) ══
+   ช่องที่ไม่ได้เลือก = แก้วชมพูจาง ขอบบาง · ช่องที่เปิดอยู่ = วุ้นชมพูเต็ม (--pk-*) นูนนุ่ม
+   แตะแล้วไม่ยุบ (สว่างลดนิดเดียว) · เขียนผ่าน #stage .panel ให้ชนะกฎเฉพาะหน้าเดิม (คลังน้องธีมฝัน / ตู้กาช่า) */
+#stage .panel :is(.stab, .gtab) {
+  border: 1px solid rgba(255,214,236,.26);
+  background:
+    radial-gradient(80% 120% at 0% 0%, rgba(255,226,200,.18) 0%, rgba(255,226,200,0) 60%),
+    linear-gradient(165deg, rgba(255,170,216,.3) 0%, rgba(236,120,190,.2) 100%);
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(120,30,90,.35);
+  box-shadow:
+    0 6px 12px -8px rgba(120,20,80,.4),
+    inset 0 1.5px 1px rgba(255,255,255,.3),
+    inset 0 -8px 12px -8px rgba(170,36,110,.3);
+  transition: filter .12s ease, background .15s ease;
+}
+#stage .panel :is(.stab, .gtab).on {
+  border-color: rgba(255,222,240,.42);
+  background: var(--pk-play), var(--pk-body);
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(140,30,90,.45);
+  box-shadow: var(--pk-shadow), 0 0 16px rgba(255,150,206,.35);
+}
+#stage .panel :is(.stab, .gtab):active { transform: none; filter: brightness(.94); }
+
+/* ══ แถบเพชร/ทองในหน้าต่าง (ตู้กาช่า ตีบวก บ้านลูกเหมียว ร้านเหมียว) = แบบเดียวกับแถบบนหน้าแรก (ผู้ใช้ 4 พ.ย. 2026) ══
+   เพชร = วุ้นขาวมุก เลขชมพูทึบ · ทอง = วุ้นเนยอ่อน เลขน้ำตาลทอง · ขอบขาวบาง เบลอฉากหลังนิด ๆ */
+#stage .panel :is(.gembar, .goldbar, .shop-wallet) {
+  position: relative;
+  z-index: 2;   /* ลอยเหนือขอบกรอบข้างล่าง (จอคอม หัวตู้กาช่าเตี้ยกว่า แถบไปแตะขอบแผ่นตู้) */
+  border: 1.5px solid rgba(255,255,255,.7);
+  -webkit-backdrop-filter: blur(4px) saturate(1.35);
+  backdrop-filter: blur(4px) saturate(1.35);
+}
+#stage .panel .gembar {
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,232,244,.9) 0%, rgba(255,232,244,0) 70%),
+    linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(252,246,252,.96) 52%, rgba(244,232,246,.98) 100%);
+  box-shadow:
+    0 3px 0 rgba(226,196,222,.95),
+    0 8px 14px -5px rgba(220,140,190,.4),
+    inset 0 2px 1px rgba(255,255,255,.95),
+    inset 0 -6px 9px -3px rgba(255,226,242,.6);
+}
+#stage .panel .gembar b {
+  color: #D2468D;
+  font-weight: 800;
+  text-shadow: 0 1.5px 0 rgba(255,255,255,.9), 0 2px 4px rgba(210,70,141,.25);
+}
+#stage .panel :is(.goldbar, .shop-wallet) {
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,250,228,.9) 0%, rgba(255,250,228,0) 70%),
+    linear-gradient(180deg, rgba(255,250,222,.99) 0%, rgba(255,238,176,.97) 52%, rgba(252,224,140,.99) 100%);
+  box-shadow:
+    0 3px 0 rgba(234,196,110,.95),
+    0 8px 14px -5px rgba(240,180,60,.4),
+    inset 0 2px 1px rgba(255,255,255,.95),
+    inset 0 -6px 9px -3px rgba(255,248,220,.7);
+}
+#stage .panel :is(.goldbar, .shop-wallet) b {
+  color: #B06A0C;
+  font-weight: 800;
+  text-shadow: 0 1.5px 0 rgba(255,255,255,.9), 0 2px 4px rgba(190,120,20,.25);
+}
+
+/* ══ ตัวหนังสือที่วางบนพื้นหลังตรง ๆ — พื้นหลังใหม่อ่อนลง (src/render/softbg.js) ต้องมีเงาม่วงนุ่มรองถึงอ่านชัด ══
+   วัด contrast ทุกหน้าแล้ว: ตัวที่จางเกินบนพื้นลาเวนเดอร์อ่อน = ป้ายมิ้นต์เหนือบัตร · วันที่กิจกรรม · ป้ายเลเวลข้างเส้นเวลา · หมายเหตุ */
+#stage .panel .tl-side-label { color: #FFFFFF; text-shadow: 0 1px 3px rgba(96,44,160,.65); }
+#stage .panel :is(.shop-soon, .lv-when, .lv-here-info, .setnote, .tl-side-note, .form-msg, .show-note, .tg-hint, .gacha-owned) {
+  text-shadow: 0 1px 3px rgba(96,44,160,.55);
+}
+#stage .panel .shop-soon { color: #FFFFFF; }
+#stage .panel .quest-when {
+  border-color: rgba(255,255,255,.4);
+  background: rgba(110,60,180,.45);
+  color: #FFFFFF;
+}
+
+/* ══ กรอบกลุ่มตัวกรอง (ล่าสุด/เลเวล/หายาก · ดูเฉพาะสิ่งที่มี · ตัวนับ 2/16 · แท็บเพื่อน/สกิล) ══
+   พื้นหลังหน้าต่างอ่อนลงแล้ว กรอบม่วงจางเดิมกลืนกับพื้น → เข้มขึ้น ~20% · ตัวหนังสือขาวชัดมีเงารอง (ผู้ใช้ 4 พ.ย. 2026) */
+#stage .panel :is(.fsort, .fonly, .count-pill, .tl-count) {
+  border-color: rgba(255,255,255,.32);
+  background: rgba(84,40,150,.46);
+  color: #FFFFFF;
+}
+#stage .panel :is(.fsort .fchip, .fonly, .count-pill, .tl-count) {
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(60,20,110,.6);
+}
+#stage .panel :is(.count-pill, .tl-count) b { color: #FFFFFF; }
+#stage .panel .fsort .fchip.on {
+  background: rgba(255,255,255,.36);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
 }

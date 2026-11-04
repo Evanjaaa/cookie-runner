@@ -1185,3 +1185,177 @@ body.in-shop .wardbtn { display: none; }
 .tswitch[aria-checked="true"] i { transform: translateX(22px); }
 .tswitch:focus-visible { outline: 3px solid rgba(255,143,179,.5); outline-offset: 2px; }
 body:not(.tapmove) .kh-tap { display: none; }
+
+/* ══ ปุ่มเมืองแบบใหม่ — วุ้นใสนุ่มชุดเดียวกับหน้าแรก (ผู้ใช้ 4 พ.ย. 2026) ══════════════════════
+   ปุ่มกลับ / ปุ่มปิด / ปุ่มลำโพง = วุ้นม่วงพลัมโปร่ง จุดแสงลูกอม (ตัวแปร --rb-* ค่าเดียวกับ src/style.css)
+   ปุ่มตั้งค่า กระเป๋า ห้องแต่งตัว ท่าทาง วิ่ง ใช้งาน ออกเรือ = วุ้นชมพู · แถบทอง/ปุ่มซื้อ = วุ้นเนยแบบแถบทองหน้าแรก
+   จอยกับปุ่มกระโดด = แก้วใสนูน (ยังเห็นฉากลอดมา)
+   ทุกปุ่ม: นูนด้วยแสงเงา ไม่มีฐานขอบล่างทึบ · กดแล้วสว่างลดนิดเดียว ไม่ยุบ (ปุ่มบังคับต้องตอบไว ไม่มีท่าเด้ง) */
+:root {
+  --rb-body: linear-gradient(180deg, rgba(206,140,212,.9) 0%, rgba(166,96,186,.88) 55%, rgba(134,66,164,.92) 100%);
+  --rb-glow: radial-gradient(70% 42% at 50% 112%, rgba(255,198,234,.62) 0%, rgba(255,198,234,0) 70%);
+  --rb-gloss: radial-gradient(62% 46% at 40% 16%, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 74%);
+  --rb-dot: radial-gradient(19% 11% at 32% 22%, rgba(255,255,255,.92) 0%, rgba(255,255,255,.92) 45%, rgba(255,255,255,0) 100%);
+  --rb-shadow:
+    0 8px 14px -6px rgba(84,24,124,.55),
+    0 2px 4px rgba(40,10,70,.15),
+    inset 0 -7px 10px -5px rgba(96,34,134,.45),
+    inset 0 6px 8px -5px rgba(255,255,255,.6),
+    inset 0 -2px 2px rgba(255,214,240,.55);
+  /* วุ้นชมพู (แบบปุ่มหัวใจหน้าแรก) */
+  --tp-body: linear-gradient(180deg, rgba(255,166,208,.94) 0%, rgba(250,112,170,.92) 55%, rgba(228,76,140,.95) 100%);
+  --tp-glow: radial-gradient(70% 45% at 50% 112%, rgba(255,226,240,.7) 0%, rgba(255,226,240,0) 70%);
+  --tp-shadow:
+    0 9px 16px -6px rgba(220,60,130,.55),
+    0 2px 5px rgba(120,20,70,.2),
+    inset 0 -9px 12px -5px rgba(170,30,100,.45),
+    inset 0 7px 9px -6px rgba(255,255,255,.75),
+    inset 0 -2px 2px rgba(255,220,236,.6);
+}
+
+/* ── ปุ่มกลับ / ปุ่มปิด ── */
+.backbtn,
+.xbtn {
+  border: 1.5px solid rgba(255,236,250,.78);
+  background: var(--rb-dot), var(--rb-glow), var(--rb-gloss), var(--rb-body);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  backdrop-filter: blur(4px) saturate(1.2);
+  color: #FFFFFF;
+  box-shadow: var(--rb-shadow);
+  transition: filter .12s ease;
+}
+.backbtn svg, .xbtn svg { filter: drop-shadow(0 1px 1px rgba(110,40,140,.5)); }
+
+/* ── ปุ่มตั้งค่า / กระเป๋า / ห้องแต่งตัว: วุ้นชมพูกลม ไอคอนขาว ── */
+.bagbtn,
+.wardbtn {
+  border: 1.5px solid rgba(255,255,255,.72);
+  background: var(--rb-dot), var(--tp-glow), var(--rb-gloss), var(--tp-body);
+  -webkit-backdrop-filter: blur(3px) saturate(1.3);
+  backdrop-filter: blur(3px) saturate(1.3);
+  color: #FFFFFF;
+  box-shadow: var(--tp-shadow);
+  transition: filter .12s ease;
+}
+.setbtn { color: #FFFFFF; }
+.setbtn svg { filter: drop-shadow(0 1px 1px rgba(170,30,100,.5)); }
+
+/* ── ปุ่มบังคับ: ท่าทาง (ชมพู) · วิ่ง (ลาเวนเดอร์ → เปิดอยู่ = ชมพูเรือง) · ใช้งาน (เม็ดชมพู) ── */
+.emobtn,
+.act,
+.rt-go,
+.bs-go {
+  border: 1.5px solid rgba(255,255,255,.72);
+  background: var(--rb-dot), var(--tp-glow), var(--rb-gloss), var(--tp-body);
+  color: #FFFFFF;
+  box-shadow: var(--tp-shadow);
+  transition: filter .12s ease, opacity .15s;
+}
+.act, .rt-go, .bs-go { background: var(--tp-glow), var(--rb-gloss), var(--tp-body); text-shadow: 0 1px 2px rgba(162,48,106,.7); }
+.emobtn.on { background: var(--rb-dot), var(--tp-glow), var(--tp-body); filter: brightness(.92); }
+.runbtn {
+  border: 1.5px solid rgba(255,255,255,.72);
+  background:
+    var(--rb-dot),
+    radial-gradient(70% 45% at 50% 112%, rgba(236,226,255,.7) 0%, rgba(236,226,255,0) 70%),
+    var(--rb-gloss),
+    linear-gradient(180deg, rgba(204,182,250,.94) 0%, rgba(160,128,232,.92) 55%, rgba(128,96,210,.95) 100%);
+  box-shadow:
+    0 9px 16px -6px rgba(110,70,200,.5),
+    0 2px 5px rgba(50,20,100,.18),
+    inset 0 -9px 12px -5px rgba(80,50,160,.42),
+    inset 0 7px 9px -6px rgba(255,255,255,.75),
+    inset 0 -2px 2px rgba(236,226,255,.6);
+}
+.runbtn.on {
+  background: var(--rb-dot), var(--tp-glow), var(--rb-gloss), var(--tp-body);
+  box-shadow: var(--tp-shadow), 0 0 14px rgba(255,143,179,.7);
+}
+/* ทางเลือกรอง (ล้างเส้นทาง / ขึ้นฝั่งที่นี่) — แก้วใส */
+.rt-clear,
+.bs-off {
+  border: 1.5px solid rgba(255,255,255,.6);
+  background: linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,.12) 100%);
+  box-shadow: 0 6px 12px -6px rgba(40,10,80,.35), inset 0 1.5px 1px rgba(255,255,255,.5);
+  transition: filter .12s ease;
+}
+
+/* ── จอย + ปุ่มกระโดด: แก้วใสนูน เห็นฉากลอดมา ── */
+.joy,
+.jumpbtn {
+  border: 1.5px solid rgba(255,255,255,.75);
+  background:
+    radial-gradient(62% 40% at 40% 18%, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 74%),
+    radial-gradient(circle, rgba(150,100,200,.1) 0 40%, rgba(150,100,200,.28) 100%);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  box-shadow:
+    0 8px 16px -8px rgba(60,20,80,.45),
+    inset 0 2px 2px rgba(255,255,255,.45),
+    inset 0 -10px 16px -8px rgba(90,40,130,.35);
+}
+.jumpbtn:active { background: radial-gradient(62% 40% at 40% 18%, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 74%), rgba(255,182,212,.5); }
+.joy-knob {
+  border: 1.5px solid rgba(255,255,255,.95);
+  background:
+    radial-gradient(40% 26% at 36% 26%, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+    radial-gradient(circle at 50% 40%, rgba(255,255,255,.96), rgba(244,232,250,.78) 74%);
+  box-shadow: 0 6px 10px -4px rgba(60,20,80,.45), inset 0 -4px 6px -3px rgba(170,120,200,.4);
+}
+
+/* ── แถบทอง: วุ้นเนยแบบแถบทองหน้าแรก ตัวเลขน้ำตาลทอง · เหรียญแบบเดียวกับหน้าแรก ── */
+.gold {
+  border: 1.5px solid rgba(255,255,255,.75);
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,250,228,.9) 0%, rgba(255,250,228,0) 70%),
+    linear-gradient(180deg, rgba(255,250,222,.94) 0%, rgba(255,238,176,.9) 52%, rgba(252,224,140,.94) 100%);
+  -webkit-backdrop-filter: blur(4px) saturate(1.35);
+  backdrop-filter: blur(4px) saturate(1.35);
+  color: #B06A0C;
+  text-shadow: 0 1.5px 0 rgba(255,255,255,.9);
+  box-shadow:
+    0 8px 14px -6px rgba(240,180,60,.45),
+    inset 0 2px 1px rgba(255,255,255,.95),
+    inset 0 -6px 9px -3px rgba(250,214,130,.6);
+}
+.coin {
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E %3Cdefs%3E %3ClinearGradient id=%22r%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFEFA8%22/%3E%3Cstop offset=%22.5%22 stop-color=%22%23F8BE38%22/%3E%3Cstop offset=%221%22 stop-color=%22%23D98814%22/%3E%3C/linearGradient%3E %3CradialGradient id=%22f%22 cx=%2212%22 cy=%2210.5%22 r=%2215%22 gradientUnits=%22userSpaceOnUse%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFF7D4%22/%3E%3Cstop offset=%22.45%22 stop-color=%22%23FFDA62%22/%3E%3Cstop offset=%221%22 stop-color=%22%23F1A923%22/%3E%3C/radialGradient%3E %3C/defs%3E %3Ccircle cx=%2216%22 cy=%2216%22 r=%2214.9%22 fill=%22url(%23r)%22 stroke=%22%23A8620B%22 stroke-width=%221.2%22/%3E %3Ccircle cx=%2216%22 cy=%2216%22 r=%2211.6%22 fill=%22url(%23f)%22 stroke=%22%23C47E12%22 stroke-width=%221%22/%3E %3Cpath d=%22M5.6 13.2A10.8 10.8 0 0 1 13.4 5.4%22 fill=%22none%22 stroke=%22%23fff%22 stroke-opacity=%22.85%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/%3E %3Cg fill=%22%23B36E0C%22 opacity=%22.75%22 transform=%22translate(.5 .7)%22%3E %3Cpath d=%22M16 15.6c2.6 0 4.9 2 4.9 4.1 0 1.6-1.4 2.4-2.6 2.1-.9-.2-1.5-.6-2.3-.6s-1.4.4-2.3.6c-1.2.3-2.6-.5-2.6-2.1 0-2.1 2.3-4.1 4.9-4.1Z%22/%3E %3Cellipse cx=%2210.6%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(-20 10.6 14)%22/%3E%3Cellipse cx=%2213.7%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2218.3%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2221.4%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(20 21.4 14)%22/%3E %3C/g%3E %3Cg fill=%22%23FFF6D2%22 transform=%22translate(-.35 -.45)%22%3E %3Cpath d=%22M16 15.6c2.6 0 4.9 2 4.9 4.1 0 1.6-1.4 2.4-2.6 2.1-.9-.2-1.5-.6-2.3-.6s-1.4.4-2.3.6c-1.2.3-2.6-.5-2.6-2.1 0-2.1 2.3-4.1 4.9-4.1Z%22/%3E %3Cellipse cx=%2210.6%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(-20 10.6 14)%22/%3E%3Cellipse cx=%2213.7%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2218.3%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2221.4%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(20 21.4 14)%22/%3E %3C/g%3E %3Cg fill=%22%23EDA321%22%3E %3Cpath d=%22M16 15.6c2.6 0 4.9 2 4.9 4.1 0 1.6-1.4 2.4-2.6 2.1-.9-.2-1.5-.6-2.3-.6s-1.4.4-2.3.6c-1.2.3-2.6-.5-2.6-2.1 0-2.1 2.3-4.1 4.9-4.1Z%22/%3E %3Cellipse cx=%2210.6%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(-20 10.6 14)%22/%3E%3Cellipse cx=%2213.7%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2218.3%22 cy=%2210.9%22 rx=%221.8%22 ry=%222.2%22/%3E%3Cellipse cx=%2221.4%22 cy=%2214%22 rx=%221.7%22 ry=%222.1%22 transform=%22rotate(20 21.4 14)%22/%3E %3C/g%3E %3Cellipse cx=%2211.6%22 cy=%229.4%22 rx=%223.2%22 ry=%221.4%22 transform=%22rotate(-38 11.6 9.4)%22 fill=%22%23fff%22 opacity=%22.6%22/%3E %3Cpath d=%22M25.6 4.4 26.1 5.9 27.6 6.4 26.1 6.9 25.6 8.4 25.1 6.9 23.6 6.4 25.1 5.9Z%22 fill=%22%23fff%22/%3E %3C/svg%3E") center / contain no-repeat;
+  box-shadow: 0 1px 2px rgba(90,45,0,.35);
+}
+
+/* ── ปุ่มซื้อในร้าน: วุ้นทอง ── */
+.sd-btn {
+  border: 1.5px solid rgba(255,255,255,.75);
+  background:
+    radial-gradient(70% 45% at 50% 115%, rgba(255,250,222,.6) 0%, rgba(255,250,222,0) 70%),
+    linear-gradient(180deg, rgba(255,242,178,.98) 0%, rgba(255,216,110,.96) 52%, rgba(247,186,66,.97) 100%);
+  color: #7A4300;
+  box-shadow:
+    0 8px 14px -6px rgba(220,150,30,.5),
+    0 2px 4px rgba(120,70,0,.14),
+    inset 0 -8px 12px -6px rgba(196,118,10,.42),
+    inset 0 6px 9px -6px rgba(255,255,255,.85);
+  transition: filter .12s ease;
+}
+.sd-btn:disabled { border-color: rgba(255,255,255,.6); background: linear-gradient(180deg, #EFE6F6, #E2D6EE); color: #8A7A9E; box-shadow: inset 0 1.5px 1px rgba(255,255,255,.7); }
+
+/* ── ปุ่มลำโพงในหน้าตั้งค่า: วุ้นพลัมแบบปุ่มกลับ ── */
+.mutebtn {
+  border: 1.5px solid rgba(255,236,250,.78);
+  background: var(--rb-dot), var(--rb-glow), var(--rb-gloss), var(--rb-body);
+  color: #FFFFFF;
+  box-shadow: var(--rb-shadow);
+  transition: filter .12s ease;
+}
+/* แท็บห้องแต่งตัว: ตัวที่เลือก = วุ้นชมพู ไม่มีฐานเข้ม */
+.wtab.on { background: var(--tp-glow), var(--rb-gloss), var(--tp-body); box-shadow: var(--tp-shadow); }
+
+/* ── กด = สว่างลดนิดเดียว ไม่ยุบ ไม่ขยับ ── */
+:is(.backbtn, .xbtn, .bagbtn, .wardbtn, .emobtn, .runbtn, .act, .rt-go, .bs-go, .rt-clear, .bs-off, .jumpbtn, .sd-btn, .mutebtn, .wtab):active {
+  transform: none;
+  filter: brightness(.92);
+}
+.act:active, .runbtn:active, .emobtn:active, .bagbtn:active, .wardbtn:active, .backbtn:active, .xbtn:active, .mutebtn:active, .sd-btn:active { box-shadow: inherit; }
+.rt-go:not(:disabled):active, .bs-go:active, .bs-off:active { transform: none; }
+.sd-btn:disabled:active { filter: none; }
