@@ -95,18 +95,27 @@ function layout() {
   return L;
 }
 
-/** ชั้นนิ่ง — ม่วงเข้ม ขอบมืด (สปอตไลต์วาดในชั้นเคลื่อนไหว เพราะต้องตามของที่ได้) */
+/**
+ * ชั้นนิ่ง — ฟ้าฝันลาเวนเดอร์สว่าง (ผู้ใช้ 5 พ.ย. 2026: "พื้นหลังไม่ค่อยสวย ไม่เข้า" — เดิมม่วงเข้มขอบมืด)
+ * สีพื้นชุดเดียวกับพื้นหลังหน้าอื่น (src/render/softbg.js) + แสงนวลชมพู/พีช/เนยตามมุม ขอบม่วงจางนิดเดียว
+ * (สปอตไลต์ ลำแสง ประกาย วาดในชั้นเคลื่อนไหว เพราะต้องตามของที่ได้)
+ */
 export function drawRewardBackground(ctx, w, h) {
   const R = Math.max(w, h);
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#7A3FB0');
-  g.addColorStop(0.5, '#5A2A8C');
-  g.addColorStop(1, '#341457');
+  g.addColorStop(0, '#D2B4F5');
+  g.addColorStop(0.55, '#B892EA');
+  g.addColorStop(1, '#9C74DA');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
-  const v = ctx.createRadialGradient(w / 2, h * 0.45, R * 0.2, w / 2, h * 0.45, R * 0.75);
+  drawMagicGlow(ctx, w * 0.5, h * 0.42, R * 0.55, CREAM, 0.34);
+  drawMagicGlow(ctx, w * 0.9, h * 0.06, R * 0.42, ROSE, 0.45);
+  drawMagicGlow(ctx, w * 0.06, h * 0.1, R * 0.34, GOLD, 0.24);
+  drawMagicGlow(ctx, w * 0.95, h * 0.95, R * 0.36, '241,180,177', 0.36);
+  drawMagicGlow(ctx, w * 0.04, h * 0.9, R * 0.3, ROSE, 0.3);
+  const v = ctx.createRadialGradient(w / 2, h * 0.45, R * 0.3, w / 2, h * 0.45, R * 0.8);
   v.addColorStop(0, `rgba(${PLUM},0)`);
-  v.addColorStop(1, `rgba(${PLUM},0.55)`);
+  v.addColorStop(1, `rgba(${PLUM},0.16)`);
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, w, h);
 }
@@ -125,7 +134,7 @@ export function drawRewardRays(ctx, cx, cy, R, L, t, k) {
     const a = r.a + spin;
     const len = Math.min(R * r.len, Math.min(R, 900) * 0.42);   // จางก่อนถึงขอบ — การ์ดใหญ่ไม่ยาวเป็นไฟฉาย
     const g = ctx.createLinearGradient(cx, cy, cx + Math.cos(a) * len, cy + Math.sin(a) * len);
-    g.addColorStop(0, `rgba(${r.c},${0.085 * k})`);
+    g.addColorStop(0, `rgba(${r.c},${0.16 * k})`);   // พื้นสว่างแล้ว ลำแสงต้องชัดขึ้นนิดถึงจะเห็น
     g.addColorStop(1, `rgba(${r.c},0)`);
     ctx.fillStyle = g;
     ctx.beginPath();

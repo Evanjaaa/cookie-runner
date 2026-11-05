@@ -1557,18 +1557,20 @@ function bindCrop(frame, img, get, set) {
 // ยังไม่มีรูปที่เปิดอยู่เลย = เกมใช้ภาพป้ายเดิมของตัวเอง (ชุดระดับ S ทีละชุด)
 
 /**
- * สัดส่วนป้ายกับตำแหน่งตู้หัวแมว วัดจากเกมจริง 18 ต.ค. (หน่วย: r = กว้าง/สูงของป้าย · mx = ขอบซ้ายตู้ / กว้างป้าย
+ * สัดส่วนป้ายกับตำแหน่งตู้หัวแมว วัดจากเกมจริง (หน่วย: r = กว้าง/สูงของป้าย · mx = ขอบซ้ายตู้ / กว้างป้าย
  * · my = ขอบบนตู้ / สูงป้าย · mh = สูงตู้ / สูงป้าย) — แก้ขนาดป้ายใน src/style.css ต้องวัดใหม่
+ * วัดใหม่ 5 พ.ย. 2026: หน้าสุ่มสกินเอาหัวข้อออก ป้ายสูงเกือบเต็มการ์ด ตู้หัวแมวยืนมุมขวาล่างของป้าย
+ * (iPad 1180×820 ป้าย 1.23 : 1 ยาวไปหลังตู้จนเกือบชนขอบการ์ด · มือถือ 900×414 ป้าย 1.7 : 1)
  */
 const PV_GEO = {
-  ipad: { r: 1.748, mx: 0.783, my: -0.09, mh: 1.18, label: 'iPad / คอม',
+  ipad: { r: 1.227, mx: 0.675, my: 0.334, mh: 0.715, label: 'iPad / คอม',
     // ปุ่มที่วางทับป้ายในเกม [ซ้าย, บน, กว้าง, สูง] สัดส่วนของป้าย (วัดจากเกม 1180×820) — ของสำคัญในรูปอย่าให้โดนบัง
-    ui: { p1: [0.034, 0.731, 0.254, 0.19], p5: [0.318, 0.731, 0.269, 0.19], more: [0.757, 0.051, 0.099, 0.051], prev: [0.021, 0.439, 0.057, 0.119], odds: [0.614, 0.785, 0.049, 0.085] } },
-  phone: { r: 1.6, mx: 0.76, my: -0.10, mh: 1.18, label: 'มือถือ',
-    ui: { p1: [0.031, 0.739, 0.277, 0.192], p5: [0.346, 0.739, 0.292, 0.192], more: [0.717, 0.045, 0.129, 0.059], prev: [0.02, 0.439, 0.063, 0.118], odds: [0.675, 0.791, 0.052, 0.084] } },
+    ui: { p1: [0.027, 0.839, 0.217, 0.115], p5: [0.269, 0.839, 0.229, 0.115], more: [0.896, 0.031, 0.081, 0.031], prev: [0.018, 0.464, 0.049, 0.073], odds: [0.523, 0.871, 0.042, 0.051] } },
+  phone: { r: 1.703, mx: 0.789, my: -0.033, mh: 1.106, label: 'มือถือ',
+    ui: { p1: [0.028, 0.756, 0.244, 0.178], p5: [0.305, 0.756, 0.257, 0.178], more: [0.753, 0.043, 0.11, 0.054], prev: [0.017, 0.444, 0.055, 0.112], odds: [0.595, 0.805, 0.047, 0.08] } },
 };
 const PV_UI_TEXT = { p1: '1 ครั้ง', p5: '5 ครั้ง', more: 'ดูสกินอื่นๆ', prev: '', odds: '!' };
-const PROMO_REC = { w: 1750, h: 1000 };
+const PROMO_REC = { w: 1600, h: 1200 };
 const promoState = { rows: [], sel: null, crop: { ...CROP0 }, play: 0, playI: 0 };
 const S_OUTFITS = ALL_OUTFITS.filter((o) => o.id !== 'none');
 const gmParts = new Map();
@@ -1592,7 +1594,8 @@ function drawMachine(cv) {
 
 const stageHTML = (id, kind) => `
   <div class="pv-stage ${kind}" id="${id}" style="--r:${PV_GEO[kind].r}">
-    <div class="pv-banner"><img alt="" draggable="false"><span class="pv-empty">ยังไม่มีรูป</span><b class="pv-name"></b>
+    <b class="pv-name"></b>
+    <div class="pv-banner"><img alt="" draggable="false"><span class="pv-empty">ยังไม่มีรูป</span>
       ${Object.entries(PV_GEO[kind].ui).map(([k, [l, t, w, h]]) => `<i class="pv-ui ${k}" style="left:${l * 100}%;top:${t * 100}%;width:${w * 100}%;height:${h * 100}%">${PV_UI_TEXT[k]}</i>`).join('')}</div>
     <canvas class="pv-machine" aria-hidden="true"></canvas>
   </div>`;
@@ -1608,8 +1611,46 @@ function layoutStage(st) {
   const mh = bh * G.mh;
   Object.assign(m.style, { left: b.offsetLeft + w * G.mx + 'px', top: b.offsetTop + bh * G.my + 'px', height: mh + 'px', width: mh * 0.721 + 'px' });
   st.style.setProperty('--bh', bh + 'px');
+  st.style.setProperty('--sw', st.clientWidth + 'px');   // ชื่อสกินอยู่ในแถบบนของกรอบ (เหนือป้าย — แบบเกมตั้งแต่ 5 พ.ย.)
   delete m.dataset.drawn;
   drawMachine(m);
+}
+
+/**
+ * ตัวอย่างหน้าตู้กาช่าแบบเต็มจอ — กรอบเดียวกับตัวอย่างเล็ก (PV_GEO = สัดส่วนที่วัดจากเกมจริง) แค่ขยายให้เต็มหน้าต่าง
+ * โชว์รูปที่กำลังจัด (ค่าครอบตัดล่าสุด แม้ยังไม่บันทึก) · ปุ่มของเกมตามช่องติ๊ก · ปิด: ปุ่ม / แตะพื้นมืด / Esc
+ */
+function openPvZoom(kind) {
+  closePvZoom();
+  const G = PV_GEO[kind];
+  const wrap = document.createElement('div');
+  wrap.className = 'pv-zoom' + ($('page').classList.contains('pv-noui') ? ' pv-noui' : '');
+  wrap.id = 'pvZoom';
+  wrap.innerHTML = `<div class="pv-zoom-box">${stageHTML('pvZoomStage', kind)}</div>
+    <div class="pv-zoom-bar"><span>${G.label} — สัดส่วนป้าย ${G.r.toFixed(2)} : 1 เท่าในเกม</span><button class="btn ghost small" type="button">ปิด ✕</button></div>`;
+  document.body.appendChild(wrap);
+  const st = wrap.querySelector('.pv-stage');
+  const row = promoState.rows.find((r) => r.id === promoState.sel);
+  const title = $('peNoName').checked ? '' : ($('peTitle').value.trim() || null);
+  paintStage(st, row?.image_url || '', promoState.crop, promoName(title, $('peOutfit').value || null));
+  // กรอบตัวอย่าง: ขอบใน บน 9% ขวา 24% ล่าง 4% ซ้าย 3% ของความกว้าง (admin.css .pv-stage) → กว้างเท่าไหร่ถึงพอดีจอ
+  const fit = () => {
+    const w = Math.min(window.innerWidth * 0.94, (window.innerHeight * 0.84) / (0.13 + 0.73 / G.r));
+    st.style.width = Math.floor(w) + 'px';
+    layoutStage(st);
+  };
+  fit();
+  const onKey = (e) => { if (e.key === 'Escape') closePvZoom(); };
+  wrap.__off = () => { window.removeEventListener('resize', fit); document.removeEventListener('keydown', onKey); };
+  window.addEventListener('resize', fit);
+  document.addEventListener('keydown', onKey);
+  wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('.pv-zoom-bar button')) closePvZoom(); });
+}
+function closePvZoom() {
+  const z = document.getElementById('pvZoom');
+  if (!z) return;
+  z.__off?.();
+  z.remove();
 }
 
 /** ชื่อบนป้ายของแถวนี้ (ตรงกับเกม): ไม่โชว์ = '' · ตั้งเอง = ชื่อนั้น · ไม่ได้ตั้ง = ชื่อชุดที่ลิงก์ */
@@ -1630,6 +1671,7 @@ function paintStage(st, url, crop, name) {
 
 PAGES.promo = async () => {
   stopPromoPlay();
+  closePvZoom();
   promoState.sel = null;
   $('page').innerHTML = `
     ${pageHead('ป้ายตู้กาช่า', 'รูปบนป้ายโปรโมทหน้าสุ่มสกิน เรียงตามลำดับ เปลี่ยนเองตามเวลาที่ตั้ง · ยังไม่มีรูปที่โชว์อยู่ = เกมใช้ภาพป้ายเดิม')}
@@ -1642,7 +1684,7 @@ PAGES.promo = async () => {
           <input id="pFiles" type="file" accept="image/*" multiple hidden>
           <span class="note">เลือกได้หลายรูปพร้อมกัน</span>
         </div>
-        <small class="note">ขนาดแนะนำ <b>${PROMO_REC.w} × ${PROMO_REC.h} px</b> (แนวนอน 1.75 : 1) — ขอบขวาราว 20% โดนตู้หัวแมวบัง ลากจัดรูปได้ทีหลัง</small>
+        <small class="note">ขนาดแนะนำ <b>${PROMO_REC.w} × ${PROMO_REC.h} px</b> (แนวนอน 4 : 3) — ป้ายในเกมเปลี่ยนสัดส่วนตามจอ: iPad 1.2 : 1 (ตัดซ้าย-ขวานิดหน่อย) · มือถือ 1.7 : 1 (ตัดบน-ล่าง) วางของสำคัญไว้กลางรูป · มุมขวาล่างโดนตู้หัวแมวบัง · ลากจัดรูปได้ทีหลัง (ดูตัวอย่างทั้งสองจอข้างล่าง)</small>
         <small class="note" id="pUpMsg"></small>
         <div id="pList" class="plist"><div class="empty">กำลังโหลด…</div></div>
         <div class="fld"><span>เปลี่ยนรูปทุกกี่วินาที (3–60)</span>
@@ -1678,8 +1720,8 @@ PAGES.promo = async () => {
         <div class="mailform">
           <h3 class="nf-head">ตัวอย่างหน้าตู้กาช่า</h3>
           <div class="pv-row">
-            <div class="pv-col"><span class="note">${PV_GEO.ipad.label}</span>${stageHTML('pvIpad', 'ipad')}</div>
-            <div class="pv-col phone"><span class="note">${PV_GEO.phone.label}</span>${stageHTML('pvPhone', 'phone')}</div>
+            <div class="pv-col"><span class="pv-colhead"><span class="note">${PV_GEO.ipad.label}</span><button class="btn ghost small pv-zoombtn" type="button" data-kind="ipad">⤢ ดูเต็มจอ</button></span>${stageHTML('pvIpad', 'ipad')}</div>
+            <div class="pv-col phone"><span class="pv-colhead"><span class="note">${PV_GEO.phone.label}</span><button class="btn ghost small pv-zoombtn" type="button" data-kind="phone">⤢ ดูเต็มจอ</button></span>${stageHTML('pvPhone', 'phone')}</div>
           </div>
           <div class="sendrow">
             <button class="btn ghost" id="pvPlay" type="button">▶ เล่นสไลด์ตามเวลาที่ตั้ง</button>
@@ -1708,6 +1750,10 @@ PAGES.promo = async () => {
   $('pFiles').addEventListener('change', uploadPromos);
   $('pSecSave').addEventListener('click', savePromoSec);
   $('pvPlay').addEventListener('click', () => (promoState.play ? stopPromoPlay() : startPromoPlay()));
+  // ดูตัวอย่างเต็มจอ (ผู้ใช้ 5 พ.ย. 2026 — "อยากเห็นชัด ๆ สัดส่วนเท่าของจริง"): ปุ่ม ⤢ หรือแตะที่ตัวอย่าง
+  for (const b of document.querySelectorAll('.pv-zoombtn')) b.addEventListener('click', () => openPvZoom(b.dataset.kind));
+  $('pvIpad').addEventListener('click', () => openPvZoom('ipad'));
+  $('pvPhone').addEventListener('click', () => openPvZoom('phone'));
   loadPromos();
 };
 

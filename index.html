@@ -1318,16 +1318,24 @@
           <canvas id="gachaCineCv" aria-hidden="true"></canvas>
           <button type="button" class="gc-skip" id="gachaCineSkip">ข้าม ›</button>
         </div>
+        <!-- โชว์ท่าเปิดตัวสกินระดับ S ตอนสุ่มได้ (ผู้ใช้ 5 พ.ย. 2026 · main.js playSkinReveals) — คลุมทั้งเวที
+             มีวิดีโอ = เล่นวิดีโอ (ทับผ้าใบ) · ไม่มี = วาดสดบนผ้าใบ · แตะ = กลับไปหน้ารับรางวัล (ได้หลายชุด = แตะไปชุดถัดไป) -->
+        <div class="gacha-svid hidden" id="gachaSvid" role="button" tabindex="0" aria-label="แตะเพื่อดูรางวัล">
+          <canvas id="gachaSvidCv" aria-hidden="true"></canvas>
+          <video id="gachaSvidVideo" playsinline muted preload="auto"></video>
+          <span class="gsv-hint">แตะเพื่อดูรางวัล ✨</span>
+        </div>
         <div class="pop gacha-pop">
           <!-- พื้นหลังร้านเซอร์ไพรส์เวทมนตร์ (src/render/gachabg.js) — ทั้งสองตู้ -->
           <canvas class="gacha-bg" id="gachaMagic" aria-hidden="true"></canvas>
           <div class="gacha-body">
             <!-- ซ้าย: เลือกว่าจะสุ่มตู้ไหน — อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
             <div class="gacha-tabs" role="tablist" aria-label="เลือกตู้">
-              <button type="button" class="gtab on" id="tabTreasure" role="tab">
+              <!-- ช่องสุ่มสมบัติปิดไว้ (ผู้ใช้ 5 พ.ย. 2026 "เอาหน้าสุ่มสมบัติออก") — ตู้เปิดที่สุ่มสกินเสมอ · โค้ดยังอยู่ ลบ style ออก = กลับมา -->
+              <button type="button" class="gtab" id="tabTreasure" role="tab" style="display:none">
                 <span class="gtab-ico" aria-hidden="true">🧰</span>สุ่มสมบัติ
               </button>
-              <button type="button" class="gtab" id="tabSkin" role="tab">
+              <button type="button" class="gtab on" id="tabSkin" role="tab">
                 <span class="gtab-ico" aria-hidden="true">👕</span>สุ่มสกิน
               </button>
             </div>
@@ -1340,14 +1348,19 @@
                    ไม่งั้นหน้าที่ใช้เงินมากที่สุดกลับเป็นหน้าเดียวที่ไม่เห็นเงิน -->
               <div class="gacha-head">
                 <h2 class="skin-title">ตู้กาช่า</h2>
+                <!-- ชื่อสกินบนป้าย — อยู่เหนือกรอบรูป (ผู้ใช้ 5 พ.ย. 2026 · เดิมทับมุมซ้ายบนของรูป) ฟอนต์/สีเดิม -->
+                <b class="gp-name" id="gpName"></b>
                 <div class="wallet gacha-wallet">
                   <div class="gembar" aria-label="เพชรชมพู">
                     <span class="gem" aria-hidden="true"></span>
                     <b id="gemGacha">0</b>
+                    <!-- ปุ่มบวกแบบหน้าแรก (ผู้ใช้ 5 พ.ย. 2026): เพชร → หน้ากิจกรรม · ทอง → ร้านเหมียว (main.js) · หน้าย่อย = ไม่เด้ง -->
+                    <button type="button" class="wallet-plus" id="gemPlusG" aria-label="หาเพชรเพิ่ม (กิจกรรม)"></button>
                   </div>
                   <div class="goldbar" aria-label="เหรียญทอง">
                     <span class="coin" aria-hidden="true"></span>
                     <b id="goldGacha">0</b>
+                    <button type="button" class="wallet-plus" id="goldPlusG" aria-label="แลกทองเพิ่ม (ร้านเหมียว)"></button>
                   </div>
                 </div>
               </div>
@@ -1361,7 +1374,6 @@
                   <canvas class="gp-art on" id="gpArtA" aria-hidden="true"></canvas>
                   <canvas class="gp-art" id="gpArtB" aria-hidden="true"></canvas>
                   <button type="button" class="gp-hit" id="gpOpen" aria-label="ดูรายละเอียดสกินนี้"></button>
-                  <b class="gp-name" id="gpName"></b>
                   <button type="button" class="gp-more" id="gpMore">ดูสกินอื่นๆ</button>
                   <button type="button" class="gp-arrow gp-prev" id="gpPrev" aria-label="สกินก่อนหน้า"></button>
                   <button type="button" class="gp-arrow gp-next" id="gpNext" aria-label="สกินถัดไป"></button>
@@ -1457,7 +1469,7 @@
             <div class="confetti" id="gotConfetti" aria-hidden="true"></div>
             <b class="got-title" id="gotTitle">ได้รับ!</b>
             <div class="got-row" id="gotRow"></div>
-            <button class="btn" id="gotClose">ตกลง</button>
+            <button class="btn okbtn" id="gotClose">ตกลง</button>
           </div>
 
           <button class="backbtn" id="gachaBack" aria-label="กลับ">
@@ -2516,7 +2528,7 @@
                บนจอแคบเพื่อเอาที่ไปให้ปุ่ม ซึ่งจะทำให้กล่องนี้ว่างเปล่าบนมือถือพอดี
                ทั้งที่บรรทัดนี้คือเนื้อหาเดียวที่มีในกรณีนั้น -->
           <small class="got-note hidden" id="rewardNote"></small>
-          <button class="btn" id="rewardClose">ตกลง</button>
+          <button class="btn okbtn" id="rewardClose">ตกลง</button>
         </div>
       </div>
 

@@ -14012,9 +14012,27 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
     var(--glass-dot-large, radial-gradient(circle, #FFFFFF 0 2px, #FFFFFF00 2.8px)) 9px 2px / 6px 6px no-repeat,
     var(--glass-dot-small, radial-gradient(circle, #FFFFFFE6 0 1px, #FFFFFF00 1.7px)) 18px 1px / 4px 4px no-repeat,
     linear-gradient(180deg, #AC76E0D9, #945ACBCC 35%, #7945B5D9);
-  box-shadow: 0 3px 0 #663398, 0 5px 10px #48237138,
-    inset 0 3px 8px #EACDFF55;
+  box-shadow: var(--card-vol);
   color: #FFFFFF;
+}
+/* ── กรอบย่อยแบบใหม่ (ผู้ใช้ 5 พ.ย. 2026): ม่วงเดิม แต่ "นุ่มใส ตุ๋น ๆ" — ถอดฐานขอบล่างสีเข้ม (0 3px 0 #663398) ออก
+   นูนด้วยแสงเงาในเนื้อแทน: แสงขาวขอบบน + เงาม่วงเข้มนุ่มที่ก้น + เงาฟุ้งใต้การ์ด · กดแล้วแค่สว่างลด ไม่ยุบ ไม่เด้ง */
+:root {
+  --card-vol:
+    0 10px 18px -10px rgba(52,16,100,.5),
+    0 2px 5px rgba(52,16,100,.12),
+    inset 0 1.5px 1px rgba(255,255,255,.42),
+    inset 0 -12px 18px -12px rgba(64,22,124,.55),
+    inset 0 10px 14px -12px rgba(234,205,255,.55);
+}
+#stage .panel.panel :is(
+  .mail-item, .news-item, .quest-row, .rank-row, .scene-row, .stage-card,
+  .skin-card, .tl-card, .tl-equipped, .cc-card, .cs-friend, .cr-card,
+  .dl-card, .got-card, .fr-row, .oc-card, .mgpick-card, .mini-game
+):active {
+  transform: none;
+  translate: none;
+  filter: brightness(.95);
 }
 /* Selection and rarity keep distinct outlines within the shared glass style. */
 #stage .panel.panel :is(.rank-s, .high, .gold) { --glass-edge: #FFD66E; }
@@ -17477,4 +17495,487 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   background: rgba(255,255,255,.36);
   color: #FFFFFF;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+/* ── กรอบย่อยที่เขียนเงาแยกของตัวเอง → นุ่มใสชุดเดียวกับกฎกลาง (--card-vol) ไม่มีฐานขอบล่างเข้ม ── */
+#stage #questPanel .quest-row:not(.ready) { box-shadow: var(--card-vol); }
+#stage #questPanel .quest-row.ready { box-shadow: var(--card-vol), 0 0 16px rgba(143,244,226,.28); }
+#stage .panel .vinyl-row { box-shadow: var(--card-vol); }
+#stage .panel :is(.mgpick-card:not(.on), .over-card, .name-card) { box-shadow: var(--card-vol); }
+#stage .panel .oc-card {
+  box-shadow:
+    0 10px 18px -10px rgba(70,20,130,.45),
+    inset 0 1.5px 1px rgba(255,255,255,.5),
+    inset 0 -12px 18px -12px rgba(90,30,150,.5);
+}
+#stage .panel .oc-card:active { transform: none; filter: brightness(.95); }
+
+/* ══ กำลังโหลดรูป (การ์ดชุดแมว · ป้ายตู้กาช่า) — อุ้งเท้าชมพูกระโดดดึ๋ง ๆ + แสงวาวปาดผ่าน (ผู้ใช้ 5 พ.ย. 2026) ══
+   main.js ใส่คลาส .loading ตอนรูปจากหลังบ้านยังไม่มา (แทนการโชว์ภาพเก่า/กรอบว่าง) แล้วถอดออกเองเมื่อรูปพร้อม */
+:is(.oc-art, .gp-banner).loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(110deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 70%) 0 0 / 250% 100% no-repeat;
+  animation: imgShimmer 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+:is(.oc-art, .gp-banner).loading::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  width: clamp(26px, 22%, 54px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23F27BB0'%3E%3Cellipse cx='20' cy='26' rx='8.5' ry='7'/%3E%3Cellipse cx='10.5' cy='16.5' rx='3.6' ry='4.4'/%3E%3Cellipse cx='16.5' cy='10.5' rx='3.6' ry='4.4'/%3E%3Cellipse cx='23.5' cy='10.5' rx='3.6' ry='4.4'/%3E%3Cellipse cx='29.5' cy='16.5' rx='3.6' ry='4.4'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 4px 4px rgba(200,80,150,.3));
+  animation: pawHop .9s ease-in-out infinite;
+  pointer-events: none;
+}
+.gp-banner.loading::after { width: clamp(36px, 9%, 70px); }
+@keyframes imgShimmer { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@keyframes pawHop {
+  0%, 100% { transform: translateY(0) rotate(-8deg) scale(1, 1); }
+  30% { transform: translateY(-38%) rotate(6deg) scale(.96, 1.04); }
+  55% { transform: translateY(0) rotate(-2deg) scale(1.08, .9); }
+  70% { transform: translateY(-8%) rotate(-6deg) scale(1, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.oc-art, .gp-banner).loading::before, :is(.oc-art, .gp-banner).loading::after { animation: none; }
+}
+
+/* ══ หน้าสุ่มสกินแบบใหม่ (ผู้ใช้ 5 พ.ย. 2026) ══════════════════════════════
+   แถบแท็บซ้ายคงไว้ (อนาคตมีตู้อื่นเพิ่ม) · ไม่มีหัวข้อ "ตู้กาช่า" · ป้ายรูปขยายเต็มที่ฝั่งขวาของเส้นคั่น
+   ตู้หัวแมวอยู่ที่เดิม (ทับขอบขวาของป้าย) · แถบเพชร/ทองอยู่ที่เดิม (ขวาบน) · แถวบนสูงเท่าปุ่มกลับ ป้ายจึงไม่โดนปุ่มกลับบัง
+   ขนาดป้าย/ตู้ใช้สูตรเดิม (.gacha-promo > * : --bh --mh --mw) แค่กล่องได้ที่ทั้งหมดของการ์ด
+   หลังบ้าน (src/admin/main.js PV_GEO) วัดสัดส่วนป้ายใหม่ตามนี้ — แก้ตรงนี้ต้องวัดใหม่ */
+/* การ์ดสูงเต็มขอบเขตทุกจอ (เดิมไอแพดสูงตามเนื้อหา — ป้ายใหม่ยืดตามที่ว่าง จึงต้องมีความสูงให้ยืด) */
+#stage #gachaPanel.skin-mode > .pop.gacha-pop {
+  width: 100%;
+  height: calc(100% - var(--card-inset) * 2);
+  max-height: calc(100% - var(--card-inset) * 2);
+  /* ซ้ายไม่ต้องเว้นที่ให้ปุ่มกลับ (ปุ่มกลับอยู่มุมบน แถบแท็บอยู่กลางแนวตั้ง ไม่ชนกัน) — ป้ายได้ที่เพิ่ม
+     ขวาเว้นเท่าเดิม: ตู้หัวแมวยื่นเข้าไปในที่เว้นนั้น (--ms) */
+  padding-left: clamp(12px, 2vw, 24px);
+}
+#gachaPanel.skin-mode .gacha-head {
+  justify-content: space-between;
+  min-height: var(--backbtn);
+}
+/* ชื่อสกินเหนือกรอบรูป ชิดขอบซ้ายของป้าย (ผู้ใช้ 5 พ.ย. 2026) — ฟอนต์ สี ขอบขาว เหมือนตอนอยู่บนรูปทุกอย่าง
+   บรรทัดเดียว ยาวเกินตัดด้วย … (เว้นที่บน-ล่างให้สระ/วรรณยุกต์ไทยไม่โดนตัด) */
+#gachaPanel .gacha-head .gp-name {
+  position: static;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: .42em 6px .26em clamp(6px, 1vw, 12px);   /* ชิดซ้ายใกล้เส้นคั่น แต่ไม่ติดเส้น (แบบหัวข้อเดิม) */
+  margin-block: -.42em -.26em;
+  text-align: left;
+  font-size: clamp(15px, 4dvh, 28px);
+}
+#gachaPanel:not(.skin-mode) .gacha-head .gp-name { display: none; }
+#gachaPanel.skin-mode .gacha-head h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#gachaPanel.skin-mode .gacha-main { gap: clamp(2px, .8dvh, 8px); }
+#gachaPanel.skin-mode .gacha-promo {
+  aspect-ratio: auto;
+  flex: 1 1 auto;
+  max-height: none;
+  padding-bottom: clamp(2px, .8dvh, 8px);
+}
+/* ป้ายสูงเกือบเต็มกล่อง (ผู้ใช้: "ที่ให้ขยายคือความสูงของรูปภาพ") — --bfull = ความสูงป้าย
+   --bh เดิมยังเป็นฐานขนาดของตู้หัวแมว ปุ่มสุ่ม ชื่อ ลูกศร (ตู้จึงขนาด/ที่เดิม ยืนชิดขอบล่างขวาของป้าย) */
+#gachaPanel.skin-mode .gacha-promo > * { --bfull: max(var(--bh), calc(100cqh * .97)); }
+#gachaPanel.skin-mode .gp-banner { height: var(--bfull); }
+#gachaPanel.skin-mode .gp-machine { top: calc(50% + var(--bfull) * .5 + var(--bh) * .02 - var(--mh) * .945); }
+/* iPad / คอม: ป้ายยาวไปทางขวาจนเกือบชนขอบการ์ด เลยไปอยู่หลังตู้หัวแมว (ผู้ใช้ร่างลูกศรให้ — ไม่ให้เหลือช่องว่างเหนือตู้)
+   ตู้ยืนทับมุมขวาล่างของป้าย · ปุ่ม "ดูสกินอื่นๆ" ไปมุมขวาบนของป้าย (เหนือตู้ ว่างแล้ว)
+   มือถือ: ตู้สูงเกินป้าย (หัวโผล่เหนือป้าย) — คงความกว้างเดิม (ดูกฎมือถือข้างล่าง) */
+#gachaPanel.skin-mode .gp-banner { width: calc(100% + var(--ms) - 6px); }
+#gachaPanel.skin-mode .gp-more { right: clamp(12px, calc(var(--bh) * .03), 24px); }
+@media (pointer: coarse) and (max-height: 520px) {
+  #gachaPanel.skin-mode .gp-banner { width: calc(100% - var(--mw) + var(--mo) + var(--ms)); }
+  #gachaPanel.skin-mode .gp-more { right: calc(var(--mo) * .62); }
+}
+
+/* ── ปุ่มสุ่ม: วุ้นใสนุ่ม (ฟ้า 1 ครั้ง / ทอง 5 ครั้ง) — เนื้อโปร่ง เงาวาวบน แสงลอดเรืองที่ก้น ขอบขาวบางลง
+   ไม่มีฐานขอบล่างทึบ · กดแล้วสว่างลดนิดเดียว ไม่ยุบ ไม่บีบ ── */
+#gachaPanel .btn.pull.gp-pull {
+  border: calc(var(--h) * .04) solid rgba(255,255,255,.85);
+  -webkit-backdrop-filter: blur(4px) saturate(1.3);
+  backdrop-filter: blur(4px) saturate(1.3);
+  transition: filter .12s ease;
+}
+#gachaPanel .btn.pull.gp-one {
+  background:
+    radial-gradient(70% 45% at 50% 112%, rgba(206,246,255,.75) 0%, rgba(206,246,255,0) 70%),
+    radial-gradient(60% 40% at 34% 16%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(180deg, rgba(120,214,255,.9) 0%, rgba(54,174,240,.86) 55%, rgba(30,138,222,.9) 100%);
+  box-shadow:
+    0 calc(var(--h) * .18) calc(var(--h) * .3) calc(var(--h) * -.1) rgba(20,110,200,.5),
+    inset 0 calc(var(--h) * -.16) calc(var(--h) * .2) calc(var(--h) * -.08) rgba(0,70,160,.4),
+    inset 0 calc(var(--h) * .12) calc(var(--h) * .14) calc(var(--h) * -.08) rgba(255,255,255,.7);
+}
+#gachaPanel .btn.pull.gp-five {
+  background:
+    radial-gradient(70% 45% at 50% 112%, rgba(255,250,214,.8) 0%, rgba(255,250,214,0) 70%),
+    radial-gradient(60% 40% at 34% 16%, rgba(255,255,255,.7) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(180deg, rgba(255,240,160,.94) 0%, rgba(255,210,84,.9) 52%, rgba(244,170,46,.92) 100%);
+  box-shadow:
+    0 calc(var(--h) * .18) calc(var(--h) * .3) calc(var(--h) * -.1) rgba(230,150,30,.55),
+    0 0 calc(var(--h) * .25) rgba(255,214,90,.45),
+    inset 0 calc(var(--h) * -.16) calc(var(--h) * .2) calc(var(--h) * -.08) rgba(190,110,0,.4),
+    inset 0 calc(var(--h) * .12) calc(var(--h) * .14) calc(var(--h) * -.08) rgba(255,255,255,.75);
+}
+#gachaPanel .btn.pull.gp-pull::before {
+  left: 14%;
+  right: 30%;
+  top: 9%;
+  height: 26%;
+  background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,0));
+}
+#gachaPanel .btn.pull.gp-pull:active { transform: none; filter: brightness(.93); }
+#gachaPanel .gp-paw { box-shadow: inset 0 2px 3px rgba(0,30,80,.3), 0 1px 0 rgba(255,255,255,.5); }
+
+/* ══ หน้ารับรางวัลตู้กาช่า (ผู้ใช้ 5 พ.ย. 2026) ══════════════════════════
+   การ์ดผลสกิน = การ์ดแบบหน้าชุดแมว (รูปจากหลังบ้าน + ชื่อ + "ใหม่!") · พื้นหลังฟ้าฝันสว่าง (celebratebg.js)
+   การ์ดเท่ากันทุกใบ กว้างตามจอ (สุ่ม 5 ใบเรียงแถวเดียวได้ทุกจอ) */
+#gachaPanel .gacha-result {
+  background: linear-gradient(180deg, #CDAEF3 0%, #B590E8 55%, #9E78DC 100%);   /* สีรองระหว่างผ้าใบยังไม่วาดเฟรมแรก */
+  gap: clamp(8px, 2dvh, 18px);
+}
+#gachaPanel .got-row { gap: clamp(8px, 1.6vw, 16px); }
+#gachaPanel .got-card.got-oc {
+  width: clamp(84px, min(13vw, 23dvh), 146px);   /* เล็กลงนิด (ผู้ใช้ 5 พ.ย.: "ไม่ต้องให้การ์ดขนาดนั้น") */
+  min-width: 0;
+  padding: clamp(5px, 1dvh, 8px) clamp(5px, 1dvh, 8px) clamp(6px, 1.2dvh, 10px);
+  gap: clamp(3px, .7dvh, 6px);
+  border-radius: clamp(14px, 2.6dvh, 22px);
+  border: 2px solid rgba(244,200,255,.9);
+  background: linear-gradient(180deg, #C982E8, #AE5FD6);
+  box-shadow:
+    0 12px 22px -10px rgba(70,20,130,.55),
+    inset 0 1.5px 1px rgba(255,255,255,.5),
+    inset 0 -12px 18px -12px rgba(90,30,150,.5);
+  animation: gotPop .5s cubic-bezier(.2,.9,.3,1.25) var(--d, 0s) backwards;
+}
+#gachaPanel .got-card.got-oc .oc-art { width: 100%; border-radius: clamp(10px, 2dvh, 16px); }
+#gachaPanel .got-card.got-oc .oc-art canvas { width: 100%; height: 100%; aspect-ratio: auto; }
+#gachaPanel .got-card.got-oc b {
+  font-size: clamp(10.5px, 2dvh, 14.5px);
+  font-weight: 700;
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(80,20,120,.5);
+  text-align: center;
+}
+#gachaPanel .got-card.got-oc small {
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: clamp(9.5px, 1.7dvh, 12px);
+  background: rgba(70,30,120,.35);
+  color: rgba(255,255,255,.8);
+}
+#gachaPanel .got-card.got-oc small.new {
+  color: #D2468D;
+  background: linear-gradient(180deg, #FFFFFF, #FFF0F8);
+  box-shadow: 0 2px 6px -2px rgba(200,60,140,.5);
+  animation: newPulse 1.6s ease-in-out infinite;
+}
+/* ระดับ S: กรอบทองชมพูเรืองแบบการ์ดชุดระดับ S */
+#gachaPanel .got-card.got-oc.high {
+  border-color: #FFD66E;
+  background: linear-gradient(180deg, #E58BD8, #B45FD6);
+  box-shadow:
+    0 0 22px rgba(255,214,110,.6),
+    0 12px 22px -10px rgba(70,20,130,.55),
+    inset 0 1.5px 1px rgba(255,255,255,.55),
+    inset 0 -12px 18px -12px rgba(120,30,150,.5);
+}
+#gachaPanel .got-card.got-oc.high small.new { color: #B8730C; background: linear-gradient(180deg, #FFFDF0, #FFF1C2); }
+/* ได้ซ้ำ: รูปจางลง (ไม่ใช่ทั้งการ์ด — เม็ดทองข้างล่างต้องสดชัด) */
+#gachaPanel .got-card.got-oc.dupe { opacity: 1; }
+#gachaPanel .got-card.got-oc.dupe .oc-art { opacity: .6; filter: saturate(.75); }
+/* "ซ้ำ [เหรียญ] +1,200" — ตัวหนังสือเปล่า ไม่มีเม็ด/กรอบ (ผู้ใช้ 5 พ.ย. 2026: "เอากรอบเหลืองอ่อนออก เหลือแค่ตัวอักษร เหรียญ และจำนวน")
+   ทองอ่อนบนการ์ดม่วง + เงาม่วงนุ่มรอบตัว ให้อ่านชัดโดยไม่ต้องมีพื้น */
+#gachaPanel .got-card.got-oc small.got-dupe {
+  display: inline-flex;
+  align-items: center;
+  gap: .3em;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: none;
+  color: #FFE9A0;
+  font-weight: 800;
+  font-size: clamp(10.5px, 1.9dvh, 13.5px);
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(110,40,150,.8), 0 0 5px rgba(90,26,130,.55);
+  box-shadow: none;
+}
+#gachaPanel .got-card.got-oc small.got-dupe .coin { width: 1.3em; height: 1.3em; filter: drop-shadow(0 1px 1px rgba(90,26,130,.5)); }
+#gachaPanel .got-card.got-oc .tier-badge { top: -8px; right: -6px; }
+@keyframes gotPop { from { opacity: 0; transform: translateY(14px) scale(.86); } }
+@keyframes newPulse { 50% { transform: scale(1.08); } }
+
+/* ── วิดีโอเปิดตัวสกินระดับ S (ผู้ใช้ 5 พ.ย. 2026) — คลุมทั้งเวที โชว์แค่วิดีโอ + "แตะเพื่อดูรางวัล" ── */
+#gachaPanel .gacha-svid {
+  position: absolute;
+  inset: 0;
+  z-index: 61;
+  background: #1B0B2E;
+  cursor: pointer;
+  animation: svidIn .35s ease backwards;
+  transition: opacity .32s ease;
+}
+#gachaPanel .gacha-svid.hidden { display: none; }
+#gachaPanel .gacha-svid.fade { opacity: 0; pointer-events: none; }
+#gachaPanel .gacha-svid :is(video, canvas) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+/* วิดีโอโชว์ทับผ้าใบเฉพาะตอนขึ้นภาพแล้ว (.on) — ก่อนนั้น/เล่นไม่ได้ ผ้าใบวาดท่าเดียวกันอยู่ข้างใต้ */
+#gachaPanel .gacha-svid video { opacity: 0; }
+#gachaPanel .gacha-svid video.on { opacity: 1; }
+#gachaPanel .gsv-hint {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px), 4dvh);
+  translate: -50% 0;
+  padding: clamp(6px, 1.4dvh, 10px) clamp(16px, 3vw, 26px);
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,.8);
+  background: rgba(120,60,170,.38);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  font-size: clamp(12px, 2.6dvh, 17px);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(60,20,110,.6);
+  box-shadow: 0 8px 18px -8px rgba(30,8,60,.6);
+  opacity: 0;
+  transition: opacity .4s ease;
+  pointer-events: none;
+}
+#gachaPanel .gacha-svid.hint .gsv-hint { opacity: 1; animation: hintBreathe 2s ease-in-out infinite; }
+@keyframes svidIn { from { opacity: 0; } }
+@keyframes hintBreathe { 50% { opacity: .65; } }
+@media (prefers-reduced-motion: reduce) {
+  #gachaPanel .got-card.got-oc, #gachaPanel .got-card.got-oc small.new, #gachaPanel .gacha-svid.hint .gsv-hint { animation: none; }
+}
+
+/* ── ปุ่มบวกบนแถบเพชร/ทองของหน้าตู้กาช่า (แบบเดียวกับหน้าแรก — วุ้นฟ้าอ่อน บวกขาวขอบฟ้า) ──
+   กฎหน้าแรกซ่อนปุ่มบวกตอนล็อบบี้ไม่อยู่บนจอ → หน้านี้เปิดไว้เอง · หน้าย่อยกดแล้วไม่เด้ง (สว่างลดนิดเดียว) */
+#stage #gachaPanel .gacha-wallet .wallet-plus { display: block; width: calc(var(--hud-h) * .86); height: calc(var(--hud-h) * .86); margin-left: 0; }
+#stage #gachaPanel .gacha-wallet .wallet-plus:active { transform: none; filter: brightness(.93); }
+#stage #gachaPanel .gacha-wallet :is(.gembar, .goldbar) { padding-right: 3px; }
+@media (pointer: coarse) and (max-height: 520px) {
+  #stage #gachaPanel .gacha-wallet .wallet-plus { width: 20px; height: 20px; }
+}
+
+/* การ์ดเหรียญทองคืน (ได้ทองแทนชุด) ในหน้ารับรางวัล — ขนาดเท่าการ์ดชุด เหรียญกับจำนวนอยู่กลางการ์ด (ผู้ใช้ 5 พ.ย. 2026) */
+#gachaPanel .got-card.gold {
+  width: clamp(84px, min(13vw, 23dvh), 146px);
+  justify-content: center;
+  gap: clamp(4px, 1dvh, 8px);
+  border: 2px solid #FFD66E;
+  border-radius: clamp(14px, 2.6dvh, 22px);
+  background: linear-gradient(180deg, #C982E8, #AE5FD6);
+  box-shadow: 0 0 18px rgba(255,214,110,.45), 0 12px 22px -10px rgba(70,20,130,.55), inset 0 1.5px 1px rgba(255,255,255,.5);
+}
+#gachaPanel .got-card.gold .coin.big { width: 58%; margin: 0; }
+#gachaPanel .got-card.gold b { color: #FFE48A; font-size: clamp(14px, 2.8dvh, 20px); }
+
+/* ══ ชื่อสกินบนหน้าตู้กาช่า — ชมพูเดิม ขอบขาวเนียน (ไม่หยักแบบเงา 8 ทิศ) + นูน + ใส (ผู้ใช้ 5 พ.ย. 2026) ══
+   ขอบขาว = ตัวหนังสือชุดเดียวกันซ้อนข้างหลัง (::before ← data-text จาก main.js) ลากเส้นขอบเวกเตอร์หนา → ขอบมนลื่นทุกโค้ง
+   ตัวหน้า = ไล่ชมพูอ่อนบน → ชมพูเข้มล่าง แถบแสงขาวพาดครึ่งบน (ใสแบบวุ้น) · ฐานชมพูอ่อน + เงานุ่มใต้ขอบขาว (นูน) */
+#gachaPanel .gacha-head .gp-name {
+  position: relative;
+  color: transparent;            /* ตัวจริงจองที่/ตัด … เฉย ๆ — ภาพมาจากสองชั้นข้างล่าง */
+  text-shadow: none;
+}
+/* ชั้นหลัง: ขอบขาวหนาเส้นเวกเตอร์ (มนลื่นทุกโค้ง) + ฐานชมพูอ่อน + เงานุ่ม = นูน */
+#gachaPanel .gacha-head .gp-name::before,
+#gachaPanel .gacha-head .gp-name::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#gachaPanel .gacha-head .gp-name::before {
+  color: #FFFFFF;
+  -webkit-text-stroke: .2em #FFFFFF;
+  text-shadow: 0 .1em 0 #FFD3E8, 0 .16em .22em rgba(200,40,120,.4);
+}
+/* ชั้นหน้า: ชมพูเดิม ไล่อ่อนบน → เข้มล่าง แสงขาวพาดครึ่งบน = ใสแบบวุ้น */
+#gachaPanel .gacha-head .gp-name::after {
+  color: transparent;
+  background: linear-gradient(180deg, #FFC2E0 0%, #FF86C0 34%, #FF4F9E 58%, #E83A8C 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ══ หน้าอ่านจดหมาย (ผู้ใช้ 5 พ.ย. 2026: "แต่งหน้ารับจดหมายใหม่") ═══════════════════
+   ผู้ส่ง = ป้ายแคปซูลใส มีไอคอนซองจดหมาย · เนื้อจดหมาย = กระดาษครีมมีเส้นบรรทัดชมพูจาง + ตราหัวใจมุมขวาบน
+   ของขวัญ = เม็ดวุ้นแบบแถบเงินหน้าแรก (เพชร = ขาวมุก เลขชมพู · ทอง = เนยอ่อน เลขน้ำตาลทอง) */
+#mailReadPanel .mail-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 3px 12px 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.5);
+  background: rgba(255,255,255,.24);
+  color: #FFFFFF;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(96,44,160,.5);
+  width: fit-content;
+}
+#mailReadPanel .mail-meta::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 1.35em;
+  height: 1.35em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='5.5' width='18' height='13' rx='3' fill='%23fff'/%3E%3Cpath d='M4.5 7.5 12 13l7.5-5.5' fill='none' stroke='%23E8609F' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+#stage #mailReadPanel .mail-body {
+  --line: 1.75em;
+  position: relative;
+  border: 2px solid #FFFFFF;
+  border-radius: 18px;
+  padding: 14px clamp(14px, 2.6vw, 24px) 14px clamp(14px, 2.6vw, 24px);
+  padding-right: clamp(44px, 6vw, 56px);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='17' fill='%23F27BB0'/%3E%3Ccircle cx='20' cy='20' r='13.5' fill='none' stroke='%23fff' stroke-opacity='.6' stroke-width='1.2' stroke-dasharray='2 2.2'/%3E%3Cpath d='M20 28c-5-3.4-8-6.2-8-9.4 0-2.3 1.8-4.1 4-4.1 1.6 0 3 .9 4 2.3 1-1.4 2.4-2.3 4-2.3 2.2 0 4 1.8 4 4.1 0 3.2-3 6-8 9.4z' fill='%23fff'/%3E%3C/svg%3E") right 10px top 10px / clamp(26px, 5dvh, 34px) no-repeat local,
+    repeating-linear-gradient(180deg, rgba(255,255,255,0) 0, rgba(255,255,255,0) calc(var(--line) - 1px), rgba(236,170,206,.45) calc(var(--line) - 1px), rgba(236,170,206,.45) var(--line)) 0 14px / 100% 100% local,
+    linear-gradient(180deg, #FFFCF6 0%, #FFF5EA 100%);
+  box-shadow:
+    0 14px 26px -14px rgba(60,20,110,.55),
+    0 0 0 4px rgba(255,214,236,.35),
+    inset 0 -6px 12px -8px rgba(230,170,200,.45);
+  color: #5A3A7A;
+  font-weight: 500;
+  line-height: var(--line);
+  text-shadow: none;
+}
+#mailReadPanel .mail-gift-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "Mali", sans-serif;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: #FFFFFF;
+  text-shadow: 0 1px 3px rgba(96,44,160,.6);
+}
+#mailReadPanel .mail-gift-lead::before,
+#mailReadPanel .mail-gift-lead::after { content: '✦'; color: #FFE48A; font-size: .9em; }
+/* ชิปของขวัญ (หน้าอ่าน + รายการจดหมาย) = เม็ดวุ้นแบบแถบเงินหน้าแรก */
+#stage .panel .mail-reward {
+  gap: .4em;
+  padding: .3em .95em .3em .55em;
+  border: 1.5px solid rgba(255,255,255,.85);
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(180deg, #FFFFFF 0%, #FCF4FB 52%, #F4E6F6 100%);
+  color: #D2468D;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgba(255,255,255,.9);
+  box-shadow: 0 3px 0 rgba(226,196,222,.95), 0 8px 14px -6px rgba(220,140,190,.45), inset 0 2px 1px rgba(255,255,255,.95);
+}
+#stage .panel .mail-reward:has(.coin) {
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(180deg, #FFFADE 0%, #FFEEB0 52%, #FCE08C 100%);
+  color: #B06A0C;
+  box-shadow: 0 3px 0 rgba(234,196,110,.95), 0 8px 14px -6px rgba(240,180,60,.45), inset 0 2px 1px rgba(255,255,255,.95);
+}
+#stage .panel .mail-reward :is(.coin, .gem) { width: 1.3em; height: 1.3em; }
+#mailReadPanel .mail-reward { font-size: clamp(13px, 2.4dvh, 18px); }
+
+/* ══ ปุ่ม "ตกลง" ทั้งเกม = วุ้นมิ้นต์ใสแบบปุ่มเล่นหน้าแรก (ผู้ใช้ 5 พ.ย. 2026: "เพิ่มขนาด ดูใสน่ารัก เข้ากับหน้าแรก ใช้กับทุกหน้าที่เป็นคำว่าตกลง") ══
+   ใส่คลาส .okbtn ให้ปุ่มตกลง: #gotClose (ผลตู้กาช่า) · #rewardClose (รับของขวัญ) · #confirmYes ตอน okText = 'ตกลง' (main.js confirmBox)
+   สี/ขอบ/เงาวาว/ตัวหนังสือขาวขอบมิ้นต์เข้ม = ชุดเดียวกับ #startBtn · หน้าย่อยไม่เด้ง: กดแล้วสว่างลดนิดเดียว ไม่ยุบ
+   ผูก #stage ไว้เพราะ #gachaPanel .btn บนจอเตี้ยย่อปุ่มทั้งหน้าเหลือ 11px */
+#stage .btn.okbtn:not(.play):not(.big):not(.pull) {
+  flex: 0 0 auto;
+  min-width: clamp(132px, 20vw, 210px);
+  padding: clamp(8px, 1.9dvh, 14px) clamp(34px, 5.4vw, 56px);
+  font-size: clamp(16px, 3.7dvh, 25px);
+  letter-spacing: .02em;
+  border: 2px solid rgba(255,255,255,.62);
+  background:
+    radial-gradient(70% 40% at 50% 112%, rgba(222,255,250,.55) 0%, rgba(222,255,250,0) 70%),
+    radial-gradient(50% 50% at 26% 10%, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(128,232,222,.92) 0%, rgba(78,205,196,.9) 50%, rgba(50,178,170,.94) 100%);
+  -webkit-backdrop-filter: blur(4px) saturate(1.3);
+  backdrop-filter: blur(4px) saturate(1.3);
+  color: #FFFFFF;
+  text-shadow:
+    0 2px 0 #1E7A72,
+    1.6px 0 0 #1E7A72, -1.6px 0 0 #1E7A72, 0 -1.6px 0 #1E7A72,
+    1.13px 1.13px 0 #1E7A72, -1.13px 1.13px 0 #1E7A72, 1.13px -1.13px 0 #1E7A72, -1.13px -1.13px 0 #1E7A72,
+    0 4px 10px rgba(20,100,92,.3);
+  box-shadow:
+    0 12px 20px -7px rgba(30,140,130,.55),
+    0 3px 7px rgba(20,90,84,.18),
+    inset 0 -12px 16px -6px rgba(22,128,120,.5),
+    inset 0 9px 12px -7px rgba(255,255,255,.7),
+    inset 0 -2px 2px rgba(222,255,250,.6),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+  transition: filter .12s ease;
+}
+/* เงาวาวแคปซูล + จุดแสงสองเม็ด (แบบปุ่มเล่น) */
+#stage .btn.okbtn:not(.play):not(.big):not(.pull)::before {
+  inset: 8% 8% auto 8%;
+  height: 42%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 6% 52%, rgba(255,255,255,.95) 0 .17em, rgba(255,255,255,0) .22em),
+    radial-gradient(circle at 11% 30%, rgba(255,255,255,.85) 0 .08em, rgba(255,255,255,0) .12em),
+    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.12) 75%, rgba(255,255,255,0) 100%);
+}
+#stage .btn.okbtn:not(.play):not(.big):not(.pull)::after { content: none; }
+#stage .btn.okbtn:not(.play):not(.big):not(.pull):hover { filter: brightness(1.05); }
+#stage .btn.okbtn:not(.play):not(.big):not(.pull):active {
+  transform: none;
+  filter: brightness(.93);
+}
+/* กล่องแจ้งเตือนปุ่มเดียว: ปุ่มตกลงขนาดของมันเอง ไม่ยืดเต็มแถว */
+#stage .confirm-btns .btn.okbtn { flex: 0 0 auto; padding-inline: clamp(34px, 5.4vw, 56px); }
+
+/* ══ หน้ารับรางวัลตู้กาช่า: หัวข้อใหญ่ขึ้น + ยกการ์ดขึ้นข้างบน (ผู้ใช้ 5 พ.ย. 2026) ══
+   ยังจัดกลางแนวตั้งอยู่ (ของน้อย/มากก็สมดุล) แต่จองที่ล่างมากกว่าบน → กลุ่มหัวข้อ-การ์ด-ปุ่มลอยสูงกว่ากึ่งกลาง */
+#gachaPanel .gacha-result {
+  padding-top: clamp(8px, 2dvh, 20px);
+  padding-bottom: clamp(30px, 22dvh, 210px);
+}
+#stage #gachaPanel .gacha-result .got-title {
+  font-size: clamp(24px, 6.2dvh, 46px);
+  line-height: 1.15;
 }

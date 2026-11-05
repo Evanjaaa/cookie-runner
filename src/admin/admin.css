@@ -986,12 +986,18 @@ span.nl-thumb img { display: block; }
 .pv-stage.blank .pv-banner img { display: none; }
 .pv-empty { position: absolute; inset: 0; display: none; place-items: center; color: #fff; font-size: 13px; }
 .pv-stage.blank .pv-empty { display: grid; }
+/* ชื่อสกิน = เหนือป้าย กลางแถบบนของกรอบ (เกม 5 พ.ย. 2026 ย้ายชื่อออกจากมุมรูป) */
 .pv-name {
   position: absolute;
-  z-index: 2;
-  top: calc(var(--bh, 300px) * .034);
-  left: calc(var(--bh, 300px) * .05);
-  max-width: 50%;
+  z-index: 4;
+  left: 3%;
+  right: 24%;
+  top: 0;
+  height: calc(var(--sw, 400px) * .09);
+  display: grid;
+  place-items: center start;
+  overflow: hidden;
+  white-space: nowrap;
   font-family: "Mali", var(--display);
   font-weight: 800;
   font-size: calc(var(--bh, 300px) * .054);
@@ -1020,12 +1026,12 @@ span.nl-thumb img { display: block; }
 }
 .pv-ui.p1 { background: linear-gradient(180deg, #5FC8FF, #1E8BEA); box-shadow: inset 0 0 0 2px #fff; }
 .pv-ui.p5 { background: linear-gradient(180deg, #FFE27A, #F2A92B); box-shadow: inset 0 0 0 2px #fff; }
-.pv-ui.more { background: rgba(255, 255, 255, .9); color: #A0428C; font-size: calc(var(--bh, 300px) * .03); text-shadow: none; }
+.pv-ui.more { background: rgba(255, 255, 255, .9); color: #A0428C; font-size: calc(var(--bh, 300px) * .03); text-shadow: none; white-space: nowrap; }
 .pv-ui.odds { background: rgba(255, 255, 255, .85); color: #7A4AB0; text-shadow: none; border-radius: 50%; }
 .pv-ui.prev { background: none; }
 .pv-ui.prev::before { content: ""; width: 70%; height: 70%; background: #FFD84A; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
 .pv-noui .pv-ui { display: none; }
-.pv-row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
+.pv-row { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; align-items: start; }   /* ป้าย iPad เกือบจัตุรัส · มือถือยาว 1.7 : 1 — ให้คอลัมน์มือถือกว้างกว่า */
 .pv-col { display: grid; gap: 6px; }
 .pv-stage.swap .pv-banner img { animation: pvFade .5s ease; }
 @keyframes pvFade { from { opacity: 0; } to { opacity: 1; } }
@@ -1149,3 +1155,27 @@ span.nl-thumb img { display: block; }
 .img-size:empty { display: none; }
 .img-size.good { color: var(--mint); }
 .img-size.warn { color: var(--gold); }
+
+/* ── ตัวอย่างหน้าตู้กาช่าแบบเต็มจอ (openPvZoom ใน main.js) — สัดส่วนเท่าในเกม ── */
+.pv-colhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pv-row .pv-stage { cursor: zoom-in; }
+.pv-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(10, 4, 20, .82);
+  backdrop-filter: blur(4px);
+  cursor: zoom-out;
+  animation: pvFade .2s ease;
+}
+.pv-zoom-box { cursor: default; }
+.pv-zoom .pv-stage { margin: 0 auto; }
+.pv-zoom-bar { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 14px; cursor: default; }
+.pv-zoom.pv-noui .pv-ui { display: none; }
+/* iPad: ปุ่ม "ดูสกินอื่นๆ" อยู่มุมขวาบนของป้าย (กว้างตามตัวหนังสือ) */
+.pv-stage.ipad .pv-ui.more { left: auto !important; right: 2.5%; width: auto !important; padding: 0 .8em; }

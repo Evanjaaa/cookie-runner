@@ -17758,6 +17758,220 @@ function sweetBackdropPaint(c) {
 }
 const SWEET_BACKDROP = { paint: sweetBackdropPaint, outer: '#C48CD6' };
 
+// ── โบว์หวาน: "ห้องแต่งตัวโบว์ชมพู" (ผู้ใช้ 5 พ.ย. 2026: "เรียบง่าย น่ารัก เข้ากับชุด") ──
+//   ผนังชมพูนมลายจุดขาว (ลายเดียวกับโบว์บนหู) · บัวผนังห้อยระบายลูกไม้ (แบบปลอกคอ/ชายกระโปรง) · ไม้ฝาลาเวนเดอร์
+//   ม่านชมพูสองข้างผูกโบว์ + ระบายบน · กรอบรูปหัวใจ (โบว์) / กรอบรี (กระดิ่งทอง) · พื้นไม้อ่อน พรมกลมขอบลูกไม้ใต้เท้า
+//   ทุกชิ้นสีอ่อนกว่าชุด (กระโปรง/โบว์ชมพูสดต้องเด่น) · หลังตัวน้องโล่ง มีแสงนวล · ของชิ้นใหญ่อยู่ด้านข้าง
+const BOW_BD = { rail: 418, wall: 576, line: '#C97FA2' };
+const BOW_BD_PAL = { line: BOW_BD.line };
+const BOW_BD_PINK = { light: '#FFE6F0', mid: '#FFB6D1', dark: '#F28DB6', deep: '#D9709E', fold: 'rgba(217,112,158,.4)' };
+/** ระบายลูกไม้: ครึ่งวงกลมห้อยลงจากแนว y เรียงจาก x0 ถึง x1 + รูตาไก่ */
+function bowLace(c, x0, x1, y, r, col = '#FFFFFF') {
+  c.fillStyle = col;
+  c.beginPath();
+  for (let x = x0; x <= x1; x += r * 2) { c.moveTo(x + r * 2, y); c.arc(x + r, y, r, 0, Math.PI); }
+  c.fill();
+  c.fillStyle = 'rgba(232,150,190,.5)';
+  for (let x = x0; x <= x1; x += r * 2) { c.beginPath(); c.arc(x + r, y + r * 0.45, r * 0.22, 0, TAU); c.fill(); }
+}
+/** ม่านข้าง (side -1 = ซ้าย · 1 = ขวา สะท้อนรอบกลางตัว x 300) — ตกลงถึงพื้น ผูกโบว์รวบเอว */
+function bowCurtain(c, side) {
+  const X = (x) => (side < 0 ? x : 600 - x);
+  const tieY = 352, foot = BOW_BD.wall + 34;
+  const p = new Path2D();
+  p.moveTo(X(-1000), -520);
+  p.lineTo(X(-205), -520);
+  p.lineTo(X(-205), -40);
+  p.bezierCurveTo(X(-205), 130, X(-330), 290, X(-372), tieY);
+  p.bezierCurveTo(X(-392), 430, X(-262), 520, X(-236), foot);
+  p.lineTo(X(-1000), foot);
+  p.closePath();
+  // จีบผ้า: แถบสว่าง-เข้มสลับแนวตั้ง
+  const g = c.createLinearGradient(X(-1000), 0, X(-205), 0);
+  for (let i = 0; i <= 12; i++) g.addColorStop(i / 12, i % 2 ? '#F2B0CB' : '#FBCFE0');
+  c.fillStyle = g;
+  c.fill(p);
+  c.save();
+  c.clip(p);
+  // เงาขอบด้านใน (ผ้าพับเข้า)
+  const sh = c.createLinearGradient(X(-205), 0, X(-300), 0);
+  sh.addColorStop(0, 'rgba(214,120,166,.35)');
+  sh.addColorStop(1, 'rgba(214,120,166,0)');
+  c.fillStyle = sh;
+  c.fillRect(-1000, -520, 2600, 1200);
+  bowLace(c, side < 0 ? -1000 : 300, side < 0 ? 300 : 1600, foot - 16, 11);
+  c.restore();
+  outline(c, p, BOW_BD_PAL, 4);
+  ribbonBow(c, X(-372), tieY, 44, BOW_BD_PAL, 0, BOW_BD_PINK);
+}
+function bowBackdropPaint(c) {
+  const [X0, Y0, X1, Y1] = BD_BOX, W = X1 - X0;
+  const { rail, wall } = BOW_BD;
+  // ผนังชมพูนม
+  const wg = c.createLinearGradient(0, Y0, 0, rail);
+  wg.addColorStop(0, '#F5C7DD');
+  wg.addColorStop(0.55, '#FAD9E8');
+  wg.addColorStop(1, '#FDE6EF');
+  c.fillStyle = wg;
+  c.fillRect(X0, Y0, W, rail - Y0);
+  // ลายจุดขาว (ลายเดียวกับโบว์)
+  c.fillStyle = 'rgba(255,255,255,.72)';
+  for (let j = 0, y = Y0 + 20; y < rail; j++, y += 58) {
+    for (let x = X0 + (j % 2) * 32; x < X1; x += 64) { c.beginPath(); c.arc(x, y, 7, 0, TAU); c.fill(); }
+  }
+  // แสงนวลหลังตัวน้อง (ลายจุดตรงนั้นจางลง ตัวน้องเด่น)
+  bdGlow(c, 300, 330, 540, '255,250,253', 0.62);
+  // ไม้ฝาลาเวนเดอร์ + ช่องลูกฟัก
+  const pg = c.createLinearGradient(0, rail, 0, wall);
+  pg.addColorStop(0, '#F1DBF4');
+  pg.addColorStop(1, '#E6CBEE');
+  c.fillStyle = pg;
+  c.fillRect(X0, rail, W, wall - rail);
+  for (let x = X0 + 20; x < X1; x += 232) {
+    const r = new Path2D();
+    r.roundRect(x, rail + 40, 196, wall - rail - 70, 14);
+    c.strokeStyle = 'rgba(190,140,196,.38)';
+    c.lineWidth = 4;
+    c.stroke(r);
+    c.save();
+    c.translate(1.5, 2);
+    c.strokeStyle = 'rgba(255,255,255,.6)';
+    c.lineWidth = 2.5;
+    c.stroke(r);
+    c.restore();
+  }
+  // บัวผนัง + ระบายลูกไม้ห้อย · บัวพื้น
+  c.fillStyle = 'rgba(170,110,160,.2)';
+  c.fillRect(X0, rail + 12, W, 8);
+  bowLace(c, X0, X1, rail + 11, 10);
+  const rg = c.createLinearGradient(0, rail - 12, 0, rail + 12);
+  rg.addColorStop(0, '#FFFFFF');
+  rg.addColorStop(1, '#F6E2EE');
+  c.fillStyle = rg;
+  c.fillRect(X0, rail - 12, W, 24);
+  const bb = c.createLinearGradient(0, wall - 20, 0, wall);
+  bb.addColorStop(0, '#FFFFFF');
+  bb.addColorStop(1, '#F1D9E8');
+  c.fillStyle = bb;
+  c.fillRect(X0, wall - 20, W, 20);
+  // พื้นไม้อ่อน (แผ่นไม้วิ่งเข้าหาจุดลึกกลางจอ)
+  const fg = c.createLinearGradient(0, wall, 0, Y1);
+  fg.addColorStop(0, '#F4DDC8');
+  fg.addColorStop(1, '#E6C3A3');
+  c.fillStyle = fg;
+  c.fillRect(X0, wall, W, Y1 - wall);
+  c.strokeStyle = 'rgba(196,148,116,.3)';
+  c.lineWidth = 2;
+  const VY = 150;
+  for (let i = -40; i <= 40; i++) {
+    const xw = 300 + i * 58;
+    c.beginPath();
+    c.moveTo(xw, wall);
+    c.lineTo(300 + ((xw - 300) * (Y1 - VY)) / (wall - VY), Y1);
+    c.stroke();
+  }
+  const fs = c.createLinearGradient(0, wall, 0, wall + 70);
+  fs.addColorStop(0, 'rgba(170,110,120,.22)');
+  fs.addColorStop(1, 'rgba(170,110,120,0)');
+  c.fillStyle = fs;
+  c.fillRect(X0, wall, W, 70);
+  // กรอบรูปบนผนัง: หัวใจ (โบว์) ซ้าย · วงรี (กระดิ่งทอง) ขวา — แขวนด้วยโบว์เล็ก
+  const gold = (y0, y1) => {
+    const g = c.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, '#FFF0C4');
+    g.addColorStop(1, '#EFC575');
+    return g;
+  };
+  const hf = heartPath(-30, 178, 64);
+  c.fillStyle = gold(110, 240);
+  c.fill(hf);
+  outline(c, hf, BOW_BD_PAL, 3.5);
+  c.fillStyle = '#FFF5F9';
+  c.fill(heartPath(-30, 180, 50));
+  ribbonBow(c, -30, 190, 20, BOW_BD_PAL, 0, BOW_BD_PINK);
+  ribbonBow(c, -30, 128, 14, BOW_BD_PAL, 0, BOW_BD_PINK, false);
+  const of = new Path2D();
+  of.ellipse(632, 186, 58, 72, 0, 0, TAU);
+  c.fillStyle = gold(114, 258);
+  c.fill(of);
+  outline(c, of, BOW_BD_PAL, 3.5);
+  c.fillStyle = '#FFF5F9';
+  c.beginPath(); c.ellipse(632, 186, 45, 59, 0, 0, TAU); c.fill();
+  bell(c, 632, 168, 24, BOW_BD_PAL);
+  ribbonBow(c, 632, 112, 15, BOW_BD_PAL, 0, BOW_BD_PINK, false);
+  // ม่านสองข้าง + ระบายบน (โค้งห้อยเป็นลอน มีโบว์จิ๋วตรงรอยต่อ)
+  bowCurtain(c, -1);
+  bowCurtain(c, 1);
+  const vp = new Path2D();
+  vp.moveTo(X0, Y0);
+  vp.lineTo(X1, Y0);
+  vp.lineTo(X1, -24);
+  for (let x = X1; x > X0; x -= 150) vp.quadraticCurveTo(x - 75, 54, x - 150, -24);
+  vp.closePath();
+  const vg0 = c.createLinearGradient(0, -140, 0, 30);
+  vg0.addColorStop(0, '#F3AECB');
+  vg0.addColorStop(1, '#FAC8DC');
+  c.fillStyle = vg0;
+  c.fill(vp);
+  c.save();
+  c.clip(vp);
+  c.fillStyle = 'rgba(255,255,255,.55)';
+  for (let x = X0 + 40; x < X1; x += 64) { c.beginPath(); c.arc(x, -60, 6, 0, TAU); c.fill(); }
+  c.restore();
+  c.strokeStyle = '#FFFFFF';
+  c.lineWidth = 9;
+  c.stroke(vp);
+  outline(c, vp, BOW_BD_PAL, 3);
+  for (let x = X1 - 150; x > X0; x -= 150) ribbonBow(c, x, -22, 16, BOW_BD_PAL, 0, BOW_BD_PINK, false);
+  // พรมกลมขอบลูกไม้ใต้เท้า
+  const cx = 300, cy = FEET_Y + 8, rx = 330, ry = 66;
+  c.fillStyle = 'rgba(160,96,120,.16)';
+  c.beginPath(); c.ellipse(cx, cy + 10, rx + 20, ry + 10, 0, 0, TAU); c.fill();
+  c.fillStyle = '#FFFFFF';
+  for (let i = 0; i < 60; i++) {
+    const a = TAU * (i / 60);
+    c.beginPath(); c.arc(cx + Math.cos(a) * (rx + 4), cy + Math.sin(a) * (ry + 2), 14, 0, TAU); c.fill();
+  }
+  const rug = new Path2D();
+  rug.ellipse(cx, cy, rx, ry, 0, 0, TAU);
+  const rgg = c.createRadialGradient(cx, cy - 10, 20, cx, cy, rx);
+  rgg.addColorStop(0, '#FFEAF2');
+  rgg.addColorStop(1, '#F7C3DA');
+  c.fillStyle = rgg;
+  c.fill(rug);
+  c.save();
+  c.clip(rug);
+  c.fillStyle = 'rgba(255,255,255,.55)';
+  for (let j = -3; j <= 3; j++) {
+    for (let i = -8; i <= 8; i++) {
+      c.beginPath(); c.ellipse(cx + i * 44 + (j % 2 ? 22 : 0), cy + j * 20, 5, 3, 0, 0, TAU); c.fill();
+    }
+  }
+  c.restore();
+  c.save();
+  c.setLineDash([12, 10]);
+  c.strokeStyle = 'rgba(255,255,255,.95)';
+  c.lineWidth = 3;
+  c.beginPath(); c.ellipse(cx, cy, rx - 32, ry - 8, 0, 0, TAU); c.stroke();
+  c.restore();
+  // หัวใจลอย + ประกายนิ่ง (เว้นหลังตัวน้องกับกรอบรูป)
+  for (let i = 0; i < 30; i++) {
+    const x = -560 + hash(i * 4.3 + 500) * 1720, y = 30 + hash(i * 3.1 + 501) * 360;
+    if (Math.abs(x - 300) < 250) continue;
+    if (Math.hypot(x + 30, y - 178) < 110 || Math.hypot(x - 632, y - 186) < 110) continue;
+    if (i % 3) swSparkle(c, x, y, 6 + hash(i + 502) * 8, 0.75, '#FFFFFF');
+    else { c.fillStyle = 'rgba(255,150,192,.45)'; c.fill(heartPath(x, y, 9 + hash(i + 503) * 7)); }
+  }
+  // ขอบภาพนุ่มเข้ากลาง
+  const vg = c.createRadialGradient(300, 340, 620, 300, 340, 1500);
+  vg.addColorStop(0, 'rgba(214,140,180,0)');
+  vg.addColorStop(1, 'rgba(214,140,180,.4)');
+  c.fillStyle = vg;
+  c.fillRect(X0, Y0, W, Y1 - Y0);
+  bdEdgeFade(c, 'rgba(232,180,206,1)');
+}
+const BOW_BACKDROP = { paint: bowBackdropPaint, outer: '#E8B4CE' };
+
 // ── องค์หญิงหิมะ: "คืนวังน้ำแข็ง" — ฟ้ากลางคืนกรมท่า ดาว แสงเหนือ พระจันทร์ ภูเขาน้ำแข็ง วังน้ำแข็ง สนคลุมหิมะ ผลึกน้ำแข็ง ทะเลสาบน้ำแข็ง ──
 function bdMountains(c, base, hi, lo, seed, fill, snow) {
   const [X0, , X1] = BD_BOX;
@@ -18923,6 +19137,7 @@ const CAT2_OUTFITS = {
       if (!k.back) bell(c, 300 + (k.faceShift || 0), 428, 15, k.pal, Math.sin(k.t * 0.08) * 0.12);
     },
     skirt(c, k) { tutuSkirt(c, k, PINK); },
+    backdrop: BOW_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง): ห้องแต่งตัวโบว์ชมพู ผนังลายจุด ม่านผูกโบว์ พรมลูกไม้ (ผู้ใช้ 5 พ.ย. 2026)
     ear(c, k) {
       // บนหูขวาจอ เอียงตามหู
       c.save();

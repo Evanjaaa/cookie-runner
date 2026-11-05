@@ -267,6 +267,7 @@ export const EN = {
   'ใหม่': 'New',
   'ใหม่!': 'New!',
   'ซ้ำ +': 'Duplicate +',
+  'ซ้ำ': 'Dupe',
   'ชุดที่มี': 'Outfits owned',
   'สมบัติที่มี': 'Treasures owned',
   'แมวที่มี': 'Cats owned',
@@ -1079,6 +1080,8 @@ export const EN = {
   'ยังไม่มีเพื่อนแมว ไปที่แท็บ “คำขอเป็นเพื่อน” แล้วค้นหาเพื่อนได้เลย': 'No cat friends yet — search for friends in the “Friend Requests” tab',
   // หน้าเพื่อนแมวแบบใหม่ (4 พ.ย. 2026)
   'บัตรแมวน้อยของเรา': 'My kitty card',
+  'แตะเพื่อดูรางวัล ✨': 'Tap to see your rewards ✨',
+  'แตะเพื่อดูรางวัล': 'Tap to see your rewards',
   'คำขอ': 'Requests',
   'คัดลอก': 'Copy',
   'คัดลอกแล้ว': 'Copied',
