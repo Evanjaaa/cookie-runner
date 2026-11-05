@@ -116,7 +116,6 @@ select:focus, input:focus, textarea:focus { border-color: var(--hot); }
 .wrap {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 268px minmax(0, 1fr) 268px;
   gap: 12px;
   padding: 12px;
   min-height: 0;
@@ -231,7 +230,6 @@ select:focus, input:focus, textarea:focus { border-color: var(--hot); }
   width: 100%;
   height: auto;
   aspect-ratio: 960 / 420;
-  max-height: 48vh;
   display: block;
   touch-action: none;
   cursor: crosshair;
@@ -283,7 +281,6 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
   color: var(--soft);
   overflow-y: auto;
   flex: 1 1 auto;
-  min-height: 74px;
 }
 
 .report b { color: var(--ink); }
@@ -422,7 +419,6 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
 
   .report {
     flex: 0 0 auto;
-    min-height: 110px;
   }
 }
 
@@ -462,7 +458,7 @@ input[type=range] { accent-color: var(--hot); width: 190px; }
    (วัดที่ 1093x614: หน้าสูง 3221px แผงซ้ายเริ่มที่ y=658 คือพ้นจอไปแล้ว)
    ความกว้างเท่านี้ยังวางสามคอลัมน์ได้สบาย ถ้าย่อแผงข้างลงหน่อย */
 @media (max-width: 1180px) and (min-width: 861px) {
-  .wrap { grid-template-columns: 212px minmax(0, 1fr) 212px; gap: 8px; padding: 8px; }
+  .wrap { gap: 8px; padding: 8px; }
   .panel { padding: 9px; }
   .panel h2 { font-size: 12px; }
   .kit { grid-template-columns: 1fr 1fr; gap: 5px; }
