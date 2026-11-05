@@ -5286,7 +5286,7 @@ function frIcon(name) {
 /**
  * หน้าว่างของหน้าเพื่อน — หัวเรื่อง + คำอธิบาย + ปุ่มทำต่อได้ทันที (แทนข้อความบอกทางเฉย ๆ)
  * cats = รูปหน้าน้องของเรา ♥ หน้าน้องเพื่อน (ใช้ตอนยังไม่มีเพื่อนเลย)
- * คลาส grid-empty คงไว้ — พื้นหลังสวน (friendsbg.js) ใช้หาที่ว่างรอบข้อความนี้
+ * คลาส grid-empty คงไว้ — CSS ให้กินเต็มแถวของกริด (.fr-grid > .grid-empty)
  */
 function frEmpty(list, { title, text, cats = false, acts = [] }) {
   const box = document.createElement('div');

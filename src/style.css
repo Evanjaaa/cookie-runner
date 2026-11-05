@@ -12956,7 +12956,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 /* ══ หน้าสกิล/พรสวรรค์: ห้องพลังพิเศษของน้องแมว ══════════════════════
    ทั้งสองหมวดของ #talentPanel (สกิล + พรสวรรค์) — ผูกกับ #talentPanel หน้าอื่นที่ยืมคลาส tl-*
    (เช่นหน้าเพื่อนแมว) ไม่โดนกฎในบล็อกนี้
-   พื้นหลังวาดด้วย Canvas 2D (src/render/skillbg.js) — บล็อกนี้แต่งของที่ลอยอยู่บนพื้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แต่งของที่ลอยอยู่บนพื้น
    แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ข้อความ ไอคอน ใช้ของเดิมทั้งหมด
 
    ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
@@ -12964,7 +12964,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
      2. การ์ดสกิล/พรสวรรค์  แผ่นม่วงใสลอย ขอบขาวบาง (หรือสีตามระดับ) เงานุ่ม
      3. หัวเรื่อง/ข้อมูล     "สกิล" มีแสงนวลด้านหลังนิดหนึ่ง
      4. แท็บ/ตัวนับ          ใสเกือบกลืนพื้น
-     5. พื้นหลัง + ละออง     จางที่สุด (ปรับใน skillbg.js) */
+     5. พื้นหลัง + ละออง     จางที่สุด (ปรับใน softbg.js) */
 #talentPanel .magic-bg { display: none; }
 #talentPanel .tl-pop {
   background: #8457C9;   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
@@ -13140,7 +13140,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 
 /* ══ ตู้กาช่า: ร้านเซอร์ไพรส์เวทมนตร์ ═══════════════════════════════════
    ทั้งสองตู้ของ #gachaPanel (สุ่มสมบัติ / สุ่มสกิน) — ผูกกับ #gachaPanel หน้าอื่นไม่โดน
-   พื้นหลังวาดด้วย Canvas 2D (src/render/gachabg.js) — บล็อกนี้แต่งแผ่นที่ลอยอยู่บนพื้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แต่งแผ่นที่ลอยอยู่บนพื้น
    แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ตัวตู้ ของรางวัล ราคา ปุ่มสุ่ม ตัวนับเงิน ใช้ของเดิมทั้งหมด
 
    ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
@@ -13622,7 +13622,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   .cc-stamp { width: 44px; }
 }
 
-/* ── หน้ากิจกรรม: พื้นหลังบอร์ดกิจกรรม (Canvas 2D, src/render/event-bg.js) ──
+/* ── หน้ากิจกรรม: พื้นหลังบอร์ดกิจกรรม (Canvas 2D, src/render/softbg.js) ──
    ผ้าใบเป็นชั้นล่างสุดในการ์ดใหญ่ ทุกอย่างในการ์ดยกขึ้นมาอยู่เหนือมัน (ปุ่มกลับเป็น absolute อยู่แล้ว ยกแค่ z) */
 #questPanel > .pop { isolation: isolate; }
 .quest-bg {
@@ -13672,7 +13672,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #createPanel .face-note { text-shadow: 0 1px 4px rgba(72,28,124,.55); }
 
 /* ══ หน้าเลือกด่าน: ประตูสู่การผจญภัยของน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/stagebg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะการ์ดด่าน หัวเรื่อง หรือปุ่มใด ๆ (ผูกกับ #stagePanel อย่างเดียว) */
 #stagePanel > .pop { background: #8556C7; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .stage-bg {
@@ -13694,7 +13694,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #stagePanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 
 /* ══ หน้าอันดับ: หอเกียรติยศน่ารักของน้องแมว ═══════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/rankbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะแถวอันดับ รายการด่าน หรือปุ่มใด ๆ (ผูกกับ #rankPanel อย่างเดียว) */
 #rankPanel > .pop { background: #8455C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .rank-bg {
@@ -13766,7 +13766,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* ══ หน้าเพื่อนแมว: สวนเล็ก ๆ ที่น้องแมวมาเจอกัน ══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/friendsbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะบัตรแมวน้อย แท็บ รายชื่อ หรือปุ่มใด ๆ (ผูกกับ #friendsPanel อย่างเดียว หน้าสกิลที่ใช้ tl-pop ร่วมไม่โดน) */
 #friendsPanel > .pop { background: #8957C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .friends-bg {
@@ -13799,7 +13799,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* ══ หน้าข่าวสาร: บอร์ดข่าวน่ารักของโลกน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/newsbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะรายการข่าว กรอบบทความ หรือปุ่มปิด (ผูกกับ #newsPanel อย่างเดียว) */
 #newsPanel > .pop { background: #8253C4; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .news-bg {
@@ -13817,7 +13817,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #newsPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 
 /* ══ หน้ากล่องจดหมาย: กล่องจดหมายวิเศษของน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/mailbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะการ์ดจดหมาย ปุ่มรับของ หรือปุ่มปิด (ผูกกับ #inboxPanel อย่างเดียว) */
 #inboxPanel > .pop { background: #8856C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .mail-bg {
@@ -13837,7 +13837,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #inboxPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 
 /* ══ หน้าตั้งค่า: มุมสงบ ๆ ของน้องแมว ═══════════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/settingsbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะแท็บ แถวตั้งค่า ปุ่ม หรือปุ่มปิด (ผูกกับ #settingsPanel อย่างเดียว) */
 #settingsPanel > .pop { background: #7A4CBB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .settings-bg {
@@ -14088,7 +14088,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* ══ หน้าโปรไฟล์: โชว์รูมเล็ก ๆ ของน้องแมวเรา ═════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/profilebg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะการ์ด ตัวน้อง สถิติ หรือปุ่ม (ผูกกับ #pfPop อย่างเดียว) */
 #pfPop { background: #8A58CB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .profile-bg {
@@ -14103,7 +14103,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #pfPop > .pf-body { position: relative; z-index: 1; }
 
 /* ══ หน้ารางวัลเลเวล: เส้นทางเติบโตวิเศษของน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/levelbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะแถบสรุป ราง หมุด การ์ด หรือปุ่ม (ผูกกับ #lvPanel อย่างเดียว) */
 #lvPanel > .pop { background: #8657C8; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .level-bg {
@@ -14120,7 +14120,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #lvPanel .skin-title { text-shadow: 0 2px 8px rgba(60,22,110,.5); }
 
 /* ══ หน้าเช็คอินรายวัน: เช้าวันใหม่ที่น้องแมวรออยู่ ════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/dailybg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะกระดานรางวัล ตัวน้อง คำทัก หรือปุ่ม (ผูกกับ #dailyPanel อย่างเดียว) */
 #dailyPanel > .pop { background: #8C5ACB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .daily-bg {
@@ -16420,7 +16420,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    ทางเดินใหม่: หน้าแรก "ลุย~" → เลือกโหมด (ผจญภัยภารกิจ — โหมดเดียวตอนนี้ + ปุ่มอันดับ) → เลือกด่าน → "ลุย~" เริ่มวิ่ง
                หน้าแรก "แผนที่" → เลือกโซน (เมืองแมว / ดินแดนปราสาท) → ม่านอุ้งเท้า → town.html
                (แตะปราสาทในฉากหลังเพื่อไปปราสาท — ลองแล้วผู้ใช้ไม่เอา 3 พ.ย. · ไปปราสาทผ่านแผนที่อย่างเดียว)
-   พื้นหลังสองหน้าใหม่ใช้ประตูสู่การผจญภัยชุดเดียวกับหน้าเลือกด่าน (render/stagebg.js) · การ์ด/ปุ่มเป็นวุ้นใสชุดเดียวกับหน้าแรก */
+   พื้นหลังสองหน้าใหม่ใช้ประตูสู่การผจญภัยชุดเดียวกับหน้าเลือกด่าน (render/softbg.js) · การ์ด/ปุ่มเป็นวุ้นใสชุดเดียวกับหน้าแรก */
 #modePanel > .pop, #mapPanel > .pop { background: #8556C7; }
 #modePanel > .pop > :not(.stage-bg):not(.backbtn):not(.mode-rank),
 #mapPanel > .pop > :not(.stage-bg):not(.backbtn) { position: relative; z-index: 1; }
