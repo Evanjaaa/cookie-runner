@@ -205,6 +205,46 @@ function drawCatHead(ctx, x, y, r, alpha) {
   ctx.restore();
 }
 
+/* ── ชิ้นที่พื้นหลังหน้าอื่นใช้ร่วม (creativebg / celebratebg) — ย้ายมาจาก skillbg.js เดิม ── */
+
+/** แสงฟุ้งวงกลม — จางจากกลางออกไปหมดที่ขอบ */
+export function drawMagicGlow(ctx, x, y, r, color, alpha) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${color},${alpha})`);
+  g.addColorStop(1, `rgba(${color},0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+/** ประกายสี่แฉกเว้าโค้ง */
+export function drawSparkle(ctx, x, y, r, alpha, color = CREAM) {
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = `rgb(${color})`;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.quadraticCurveTo(x, y, x, y + r);
+  ctx.quadraticCurveTo(x, y, x - r, y);
+  ctx.quadraticCurveTo(x, y, x, y - r);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+/** ดาวจิ๋วห้าแฉกมน ๆ */
+export function drawTinyStar(ctx, x, y, r, alpha, color = BUTTER) {
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = `rgb(${color})`;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.48 : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
 // ─────────────────────────────────────────────────────────────
 // ฉาก
 // ─────────────────────────────────────────────────────────────
@@ -436,4 +476,64 @@ export function makeCanvasBg(canvas, isActive, scene) {
 /** พื้นหลังโลกพาสเทลของคลังน้อง */
 export function makeDreamBg(canvas, isActive) {
   return makeCanvasBg(canvas, isActive, { layout, still: drawBackground, live: drawLive });
+}
+
+// ─────────────────────────────────────────────────────────────
+// วัดตำแหน่งของในการ์ด — ย้ายมาจาก event-bg.js เดิม (creativebg / celebratebg ใช้)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * ตำแหน่งของ el ในการ์ดใหญ่ตามเลย์เอาต์ (offsetLeft/Top ไล่ขึ้นไปจนถึงการ์ด หักระยะที่เลื่อนรายการไว้)
+ *
+ * ── ทำไมไม่ใช้ getBoundingClientRect ──
+ * ตอนเปิดหน้า การ์ดใหญ่เด้งเข้า (ย่อ → ขยาย) และของข้างในไล่ขึ้นทีละชิ้น (เลื่อนขึ้น 14px)
+ * getBoundingClientRect ได้ตำแหน่ง "ระหว่างแอนิเมชัน" — ทางจุดไข่ปลา ดาว แสงรอบการ์ด
+ * จึงถูกวางตามรายการที่ยังลอยต่ำอยู่ แล้ววัดใหม่ทีหลังกระโดดขึ้นไป (ที่ผู้ใช้เห็นว่า "เด้งขึ้น")
+ * ค่า offset* เป็นตำแหน่งตามเลย์เอาต์ ไม่สนแอนิเมชันเลย จึงถูกตั้งแต่เฟรมแรก
+ */
+export function layoutRect(pop, el, scrolled = true) {
+  let x = 0;
+  let y = 0;
+  let n = el;
+  while (n && n !== pop) {
+    x += n.offsetLeft;
+    y += n.offsetTop;
+    const p = n.offsetParent;
+    if (!p) return null;
+    // ระยะที่กล่องเลื่อนได้ (รายการภารกิจ) เลื่อนไว้ — ของข้างในขยับขึ้นตามนั้นจริงบนจอ
+    // scrolled = false → ตำแหน่งตอนยังไม่เลื่อน (นิ่งตลอดการเลื่อน) ใช้กับเขตห้ามวางของตกแต่ง
+    // ถ้านับระยะเลื่อน เขตห้ามวางขยับตามนิ้ว ของตกแต่งโผล่-หายสลับไปมา = เห็นเป็นกะพริบตอนเลื่อน
+    if (scrolled) for (let a = n.parentElement; a && a !== p; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
+    if (p !== pop) { x += p.clientLeft - (scrolled ? p.scrollLeft : 0); y += p.clientTop - (scrolled ? p.scrollTop : 0); }
+    n = p;
+  }
+  return n === pop ? { x, y, w: el.offsetWidth, h: el.offsetHeight } : null;
+}
+
+/**
+ * ตำแหน่ง "ที่ตาเห็น" ของ el ในพิกัดผ้าใบ + ความทึบที่ตาเห็น — สำหรับแสงที่ต้องเกาะของชิ้นนั้นติด
+ * (แสงหลังตัวน้อง / การ์ดด่านที่เลือก / แถวอันดับ 1-3) วัดได้ทุกเฟรม (ถูก เพราะใช้กับของไม่กี่ชิ้น)
+ *
+ * ── ทำไมไม่ใช้ layoutRect กับแสงพวกนี้ ──
+ * ตอนเปิดหน้า เนื้อหาในการ์ดใหญ่เลื่อนขึ้น 14px และจางเข้า (0 → 1) แต่ผ้าใบนิ่งอยู่กับการ์ด
+ * แสงที่วาดตำแหน่งสุดท้ายเต็มความสว่างตั้งแต่เฟรมแรก จะเห็นเป็นหมอกขยับ แล้ว "แสงวาบ" มาก่อนเนื้อหา
+ * (ผู้ใช้เจอทั้งสองอาการในหน้าสร้างสรรค์) — ค่านี้หารสัดส่วนที่การ์ดถูกย่ออยู่ออก แล้วคูณความทึบทุกชั้น
+ * แสงจึงเลื่อนขึ้นและจางเข้าพร้อมของจริงพอดี
+ *
+ * @param out ก้อนผลลัพธ์ที่ใช้ซ้ำ { x, y, w, h, a } — คืน out หรือ null ถ้า el ไม่ได้อยู่บนจอ
+ */
+export function trackRect(canvas, pop, el, w, out) {
+  if (!el || !el.isConnected || !el.offsetParent) return null;
+  const cr = canvas.getBoundingClientRect();
+  if (!cr.width) return null;
+  const r = el.getBoundingClientRect();
+  const k = w / cr.width;
+  out.x = (r.left - cr.left) * k;
+  out.y = (r.top - cr.top) * k;
+  out.w = r.width * k;
+  out.h = r.height * k;
+  let a = 1;
+  for (let n = el; n && n !== pop; n = n.parentElement) a *= +getComputedStyle(n).opacity || 0;
+  out.a = a;
+  return out;
 }
