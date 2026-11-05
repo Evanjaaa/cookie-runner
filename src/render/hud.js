@@ -1,6 +1,6 @@
 // src/render/hud.js
 import { coverExt } from './cover-ext.js';
-import { VIEW, COLORS as C, BONUS, SCENE, LIVES, comboMult } from '../config.js';
+import { VIEW, BONUS, SCENE, LIVES, comboMult } from '../config.js';
 import { drawFish, drawCatFace } from './entities.js';
 import { getSkin } from '../skins.js';
 import { CAT2, useCat2, drawCatFaceAuto } from './cat2.js';

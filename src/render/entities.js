@@ -2619,7 +2619,6 @@ export function drawLetters(ctx, letters, camera, tick) {
 
 const FISH_BODY = '#FF9A3C';
 const FISH_LITE = '#FFC983';
-const FISH_BELLY = '#FFE3B8';
 const FISH_FIN = 'rgba(255,190,110,.94)';        // ครีบทึบ (หลัง ก้น ท้อง)
 const FISH_FIN_EDGE = 'rgba(255,247,224,.5)';    // ขอบรับแสง ใช้ทั้งขอบหางและสันหลัง
 const FISH_INK = '#7A3410';

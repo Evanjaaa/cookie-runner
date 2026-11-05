@@ -1,13 +1,13 @@
 ﻿// src/main.js
 import './style.css';
-import { VIEW, SCORING, REVIVE, BODY } from './config.js';
+import { VIEW, SCORING, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
 import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx, fadeSfx, setSfxBoost } from './audio.js';
 import { startMusic, stopMusic, primeMusicFile, SONG_LISTS, songIndex, setSong } from './music.js';
 import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
 import {
-  allCats, roomCats, waitingCats, grownCats, catById, breedOf, BREEDS, levelOf, nameOf, sizeOf, reloadCats,
+  allCats, breedOf, BREEDS, levelOf, nameOf, sizeOf,
   homePublic,
 } from './cats.js';
 import {
@@ -18,14 +18,14 @@ import {
 } from './paint.js';
 import { STAGES, getStage, setStage, journeyOf } from './stages.js';
 import {
-  RARITY, OUTFITS, outfitById, wearable, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
+  RARITY, OUTFITS, outfitById, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
   ownedOrder as outfitOrder,
 } from './outfits.js';
 import { getGold, addGold, pull, MULTI_PULLS, GOLD_RATE, DUPE_REFUND } from './gacha.js';
 import { loadBest, loadPref, savePref } from './storage.js';
 import { drawItemIcon } from './render/items.js';
 import { EXCHANGE, SHOP_TABS, SHOP_ITEMS, SHOP_LIVE, shopToday, addTodayTreats, treatsToGold, exchangeTreats } from './shop.js';
-import { getFace, hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
+import { hasFace, saveFace, clearFace, setDraft, FACE_SIZE } from './face.js';
 import { levelFromXp, loadXp, awardRun, LEVEL_CAP } from './progress.js';
 import {
   FIRST_REWARD_LEVEL, rewardFor, isClaimed, canClaim, claim as claimLevel,
@@ -35,7 +35,7 @@ import { CYCLE, rewardOfDay, dayState, claimToday as claimDaily } from './daily.
 import { getLang, setLang, applyLang, watchLang, onLang, t as tr } from './i18n.js';
 import { setSexText } from './utils.js';
 import {
-  quality, onQuality, LEVEL_IDS, SCENES, FPS_OPTS, sceneCfg, setSceneCfg, sameAll, setSameAll,
+  quality, onQuality, LEVEL_IDS, FPS_OPTS, sceneCfg, setSceneCfg, sameAll, setSameAll,
   setScene, framePacer, measureDisplayHz, maxDisplayHz, onDisplayHz, catStride,
 } from './graphics.js';
 import {
@@ -61,7 +61,7 @@ import { OC_W, OC_H, drawOutfitArt } from './render/outfit-art.js';
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Backdrop, drawCat2Backdrop, cat2Intro, cat2Act } from './render/cat2.js';
+import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act } from './render/cat2.js';
 /** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
 function drawStashCat(c, x, feetY, scale, s, t, { head = false, logical = 190 } = {}) {
   if (CAT2.stash && useCat2(s)) {
@@ -89,7 +89,7 @@ import { loadStatus, saveStatus, statusWords, cleanStatus, STATUS_WORDS } from '
 import {
   startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
 } from './friends.js';
-import { QUESTS, questList, questState, claimQuest, claimableCount, seasonText } from './quests.js';
+import { QUESTS, questList, claimQuest, claimableCount, seasonText } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI, RANKS as T_RANKS } from './talent-ui.js';
 import { talentById, TALENTS, isUnlocked as talentUnlocked } from './talents.js';
@@ -873,11 +873,6 @@ function frameClock() {
 }
 
 const CAPSULE_COLORS = ['#FF7FAE', '#FFC93C', '#8FE8FF', '#9DE86F', '#C77DFF', '#FF8A5C'];
-
-// ตู้วาดในพิกัด 150x170 เสมอ แล้วค่อยขยายที่ ctx
-// พิกัดทุกจุดในฟังก์ชันวาดจึงไม่ต้องแก้ตามขนาดที่แสดงจริง
-const MACHINE_W = 200;
-const MACHINE_H = 226;
 
 // ── สถานะแอนิเมชันเปิดกาช่า ────────────────────────────────
 // pullProgress เดินจาก 0 ถึง 1 ตลอดช่วงเปิด แล้วค้างที่ 0 ตอนไม่ได้สุ่ม
@@ -6129,10 +6124,6 @@ function showStash(on, tab = stashTab) {
   if (on) setStashTab(tab);
 }
 
-// ชื่อเดิมสองตัวนี้ยังมีที่เรียกอยู่หลายจุด เก็บไว้เป็นทางเข้าแบบระบุหมวด
-function showOutfits(on) { showStash(on, 'outfit'); }
-function showTreasures(on) { showStash(on, 'treasure'); }
-
 function setStashTab(tab) {
   stashTab = tab;
 
@@ -6361,7 +6352,6 @@ function paintStashShow() {
 // ไม่ใช่เดาจากลำดับ ซึ่งจะพังทันทีที่มีทางเข้าหน้าเดียวกันมากกว่าหนึ่งทาง
 // (หน้าติดตั้งเข้าได้จากหน้าเลือกด่าน ส่วนรายละเอียดเข้าได้จากรายการ)
 
-const treasurePanel = stashPanel;   // ดูเหตุผลที่ตอนประกาศ stashPanel
 const tDetailPanel = document.getElementById('tDetailPanel');
 const upPanel = document.getElementById('upPanel');
 const loadoutPanel = document.getElementById('loadoutPanel');
@@ -7658,7 +7648,6 @@ function drawPickMap() {
 // ตัวเลขต้องตรงกับ paintBase() เป๊ะ ถ้าแก้ที่นั่นต้องแก้ที่นี่ด้วย
 const HEAD_AT = { x: 1, y: -12 };   // ตำแหน่งหัวในท่ายืน (hx/hy ใน drawCatStand)
 const HEAD_R = 13;
-const BODY_AT = { x: 0, y: 6, rx: 14, ry: 13 };
 
 /** พิกัดท้องถิ่นของจุดที่นิ้วแตะ */
 function localAt(ev) {

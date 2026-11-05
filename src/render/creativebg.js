@@ -26,7 +26,7 @@
 //   ชั้นนิ่ง: ไล่สีพื้น + ขอบเข้ม (ไม่ขึ้นกับเลย์เอาต์)
 //   ทุกเฟรม: แสง 4 (หลังตัวน้อง/จานสีนิ่ง มุมหายใจ) · ก้อนสี 4 · กระดาษ 3 · รอยพู่กัน 3 · กระเซ็น 5 · ดูเดิล 11 · หยดสี 6 · ประกาย 7 · ละอองสี 14
 
-import { makeCanvasBg, drawPawPrint, drawHeart, drawMagicGlow, drawSparkle, layoutRect, trackRect } from './dreambg.js';
+import { makeCanvasBg, drawPawPrint, drawMagicGlow, drawSparkle, layoutRect, trackRect } from './dreambg.js';
 
 const TAU = Math.PI * 2;
 

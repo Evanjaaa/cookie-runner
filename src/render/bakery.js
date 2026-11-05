@@ -62,11 +62,6 @@ function wrap(v, m) {
   return r < 0 ? r + m : r;
 }
 
-function ease(t) {
-  const u = clamp01(t);
-  return u * u * (3 - 2 * u);
-}
-
 const SPR = {};
 
 export function bakerySprite(key, w, h, paint) {
@@ -641,11 +636,3 @@ export function drawBakeryBackdrop(ctx, cam, tick, opts = {}) {
   drawAir(ctx, cam, tick);
 }
 
-export function warmBakeryArt() {
-  wallSheet();
-  windowSprite();
-  shelfBand();
-  ovenSprite();
-  hangBand();
-  counterBand();
-}

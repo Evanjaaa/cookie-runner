@@ -486,8 +486,3 @@ export class TalentRun {
   }
 }
 
-/** จุดอ้างอิงของเอฟเฟกต์ — กลางกล่องชนในพิกัดจอ (รวมระยะเลื่อน ox แล้ว) */
-export function talentAnchor(game) {
-  const b = game.player.box;
-  return { x: b.x + b.w / 2, y: b.y + b.h / 2, feet: game.player.y, px: PLAYER_X };
-}

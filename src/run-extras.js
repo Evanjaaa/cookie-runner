@@ -14,7 +14,7 @@
 //   onTreat(midAir) / onHit() / onSkill() จากจุดที่เกิดเหตุ · draw(ctx, game) ในชั้นฉาก
 // HUD อ่าน mission / missionDone ไปวาดเอง (render/hud.js drawMission)
 
-import { VIEW, GROUND_Y, PLAYER_X, LIVES, LEVEL } from './config.js';
+import { VIEW, GROUND_Y, PLAYER_X, LEVEL } from './config.js';
 import { sfx } from './audio.js';
 import { t as t2 } from './i18n.js';
 

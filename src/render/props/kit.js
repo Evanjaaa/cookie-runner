@@ -30,14 +30,6 @@ export function vgrad(ctx, y0, y1, a, b) {
   return g;
 }
 
-/** ไล่สีแนวนอน */
-export function hgrad(ctx, x0, x1, a, b) {
-  const g = ctx.createLinearGradient(x0, 0, x1, 0);
-  g.addColorStop(0, a);
-  g.addColorStop(1, b);
-  return g;
-}
-
 export function circle(ctx, x, y, r, fill) {
   ctx.fillStyle = fill;
   ctx.beginPath();

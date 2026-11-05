@@ -79,15 +79,6 @@ export function faceOn() {
   }
 }
 
-export function setFaceOn(on) {
-  try {
-    localStorage.setItem(ON_KEY, on ? '1' : '0');
-    load(on ? localStorage.getItem(KEY) : null);
-  } catch {
-    /* เขียนไม่ได้ก็ปล่อย */
-  }
-}
-
 /**
  * บันทึกรูปที่ตัดแล้ว
  * @returns true ถ้าบันทึกสำเร็จ / false ถ้าที่เก็บในเครื่องเต็ม

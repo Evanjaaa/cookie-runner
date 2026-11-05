@@ -1647,7 +1647,3 @@ export function drawCatRoomFront(ctx, cam, t) {
   ctx.restore();
 }
 
-/** ล้างภาพแคช (เช่นตอนเปลี่ยนระดับกราฟิก) */
-export function resetCatRoomCache() {
-  cache = null;
-}

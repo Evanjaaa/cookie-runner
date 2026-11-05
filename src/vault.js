@@ -63,11 +63,6 @@ export function ownedOrder() {
   return Object.keys(owned);
 }
 
-/** เฉพาะชิ้นที่มีแล้ว เรียงตามลำดับในตาราง ไม่ใช่ตามลำดับที่สุ่มได้ */
-export function ownedTreasures() {
-  return TREASURES.filter((t) => ownsTreasure(t.id));
-}
-
 function grant(id) {
   if (ownsTreasure(id)) return false;
   owned[id] = 0;

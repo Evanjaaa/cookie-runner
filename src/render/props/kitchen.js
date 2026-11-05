@@ -1,6 +1,6 @@
 // src/render/props/kitchen.js — 🌙 ครัวกลางคืน (nightKitchen_*)
 // โทนไม้อุ่น โลหะครัว และแสงไฟจากเตา ให้เข้ากับครัวยามดึกของด่าน
-import { TAU, now, rr, vgrad, hgrad, circle, ellipse, poly, line, sparkle, glow, groundShadow, hanger } from './kit.js';
+import { TAU, now, rr, vgrad, circle, ellipse, poly, line, sparkle, glow, groundShadow, hanger } from './kit.js';
 
 /** ถุงแป้งสาลี 46×40 — ปากถุงมัดเชือก ฝุ่นแป้งลอยเบา ๆ */
 function flourSack(ctx, x, y, w, h) {
