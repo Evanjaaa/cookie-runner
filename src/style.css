@@ -15516,7 +15516,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   filter: drop-shadow(0 2px 2px rgba(80,30,120,.22));
   transform-origin: 73% 25%;   /* หมุนรอบจุดที่หางโผล่พ้นขอบการ์ด */
   animation: pfTail 3.2s ease-in-out infinite;
-  pointer-events: none;
+  pointer-events: none;
 }
 @keyframes pfTail {
   0%, 100% { transform: rotate(-7deg); }
@@ -17080,3 +17080,193 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   font-size: clamp(24px, 6.2dvh, 46px);
   line-height: 1.15;
 }
+
+/* ══ คลังน้องแมว: การ์ดวุ้นใสนุ่ม ห้าใบต่อแถว (ผู้ใช้ 6 พ.ย. 2026: "กรอบใส นุ่ม ตุ่น ๆ เข้ากับหน้าแรก") ══
+   ไม่มีช่องพรีวิวซ้ายแล้ว — แตะการ์ด = หน้ารายละเอียดน้องเต็มตัว (main.js openCatDetail ใช้แผง #odPanel ร่วมกับชุด)
+   ตัวการ์ด = แก้วขาวขุ่นอมลาเวนเดอร์ (เห็นพื้นหลังฝันลอดนิด ๆ) ขอบขาวบาง จุดแสงลูกอมมุมซ้ายบน
+   นูนด้วยแสงในเนื้อ (ขาวขอบบน + ลาเวนเดอร์นุ่มที่ก้น) + เงาฟุ้งใต้การ์ด · ไม่มีฐานขอบล่างสีเข้ม · กดแล้วแค่สว่างลด
+   ไม่ใช้ backdrop-filter — พื้นหลังฝันวาดใหม่ทุกเฟรม เบลอซ้ำ 16 ใบทุกเฟรมเปลืองเครื่อง */
+#stashPanel.cat-mode .stash-show { display: none; }
+#stashPanel #skinStashGrid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(9px, 2dvh, 18px) clamp(8px, 1.4vw, 18px);
+  padding: clamp(6px, 1.4dvh, 12px) clamp(4px, 1.6vw, 22px) clamp(14px, 2.8dvh, 24px);
+  justify-items: center;
+}
+.ck-card {
+  position: relative;
+  width: 100%;
+  max-width: 168px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(3px, .8dvh, 7px);
+  padding: clamp(6px, 1.2dvh, 10px) clamp(6px, 1.2dvh, 10px) clamp(7px, 1.4dvh, 12px);
+  border-radius: clamp(16px, 3dvh, 26px);
+  /* รอบสอง (ผู้ใช้ 6 พ.ย.: "ไม่เอาขาวขุ่น อยากได้ม่วงแบบการ์ดตู้เสื้อผ้า แต่ไม่ต้องเหมือนมาก")
+     → วุ้นม่วงอมชมพูโปร่งนิด ๆ (อ่อน/ใสกว่าการ์ดชุด #C982E8→#AE5FD6) ขอบลาเวนเดอร์ขาวบาง จุดแสงลูกอม แสงชมพูลอดที่ก้น */
+  border: 2px solid rgba(246,214,255,.85);
+  background:
+    radial-gradient(9px 6px at 22px 12px, rgba(255,255,255,.95) 0 55%, rgba(255,255,255,0) 100%),
+    radial-gradient(4px 3px at 34px 9px, rgba(255,255,255,.85) 0 50%, rgba(255,255,255,0) 100%),
+    radial-gradient(80% 42% at 50% 112%, rgba(255,196,238,.55) 0%, rgba(255,196,238,0) 72%),
+    linear-gradient(180deg, rgba(214,152,240,.9) 0%, rgba(186,118,226,.88) 52%, rgba(160,94,212,.9) 100%);
+  box-shadow:
+    0 12px 22px -10px rgba(80,24,140,.5),
+    0 2px 5px rgba(80,24,140,.12),
+    inset 0 2px 1px rgba(255,255,255,.55),
+    inset 0 10px 14px -10px rgba(255,236,255,.5),
+    inset 0 -12px 18px -12px rgba(104,42,170,.55);
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+.ck-card:hover { filter: brightness(1.05); }
+.ck-card:active { transform: none; filter: brightness(.95); }
+.ck-card:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+/* ช่องรูปน้อง: สปอตไลต์ขาวนวลกลางช่อง ไล่ลาเวนเดอร์ชมพูที่ขอบ ขอบในขาว */
+.ck-face {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: clamp(12px, 2.4dvh, 20px);
+  background: radial-gradient(circle at 50% 58%, #FFFFFF 0%, #FCF2FF 36%, #F0DDFF 66%, #E0C6F8 100%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.95),
+    inset 0 -8px 14px -8px rgba(170,120,226,.4),
+    0 2px 6px rgba(110,60,170,.14);
+}
+.ck-face canvas { display: block; width: 100%; height: 100%; }
+.ck-card b {
+  display: block;
+  text-align: center;
+  font-size: clamp(10.5px, 1.95dvh, 14.5px);
+  font-weight: 800;
+  line-height: 1.2;
+  color: #FFFFFF;
+  /* ขาวขอบม่วงมน (วงกลม 8 ทิศรัศมีเท่ากัน — ไม่เหลี่ยม) + เงานุ่ม */
+  text-shadow:
+    1.3px 0 0 #7A3AB0, -1.3px 0 0 #7A3AB0, 0 1.3px 0 #7A3AB0, 0 -1.3px 0 #7A3AB0,
+    .92px .92px 0 #7A3AB0, -.92px .92px 0 #7A3AB0, .92px -.92px 0 #7A3AB0, -.92px -.92px 0 #7A3AB0,
+    0 2px 4px rgba(70,20,120,.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* ใต้ชื่อไม่มีป้ายสายพันธุ์/สถานะแล้ว — เหลือแค่ชื่อน้อง (ผู้ใช้ 7 พ.ย. 2026) ข้อมูลอยู่ในหน้ารายละเอียด */
+/* สัญลักษณ์เพศ: เม็ดขาวกลมมุมซ้ายบนของช่องรูป */
+.ck-card .sex-tag {
+  position: absolute;
+  z-index: 2;
+  top: clamp(10px, 1.9dvh, 15px);
+  left: clamp(10px, 1.9dvh, 15px);
+  width: clamp(18px, 3.4dvh, 24px);
+  height: clamp(18px, 3.4dvh, 24px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 2px 5px rgba(110,60,170,.22);
+  font-size: clamp(11px, 2dvh, 14px);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+.ck-card .sex-tag.f { color: #F0609E; }
+.ck-card .sex-tag.m { color: #4F8FE0; }
+/* ตัวที่ลงวิ่งอยู่: ขอบมิ้นต์เรือง + เม็ดติ๊กมิ้นต์มุมขวาบน (ความหมายของเกม ไม่ใช่การตกแต่ง) */
+.ck-card.on {
+  border-color: #9DF3EA;
+  box-shadow:
+    0 0 0 2.5px rgba(110,226,214,.55),
+    0 0 18px rgba(110,226,214,.45),
+    0 12px 22px -10px rgba(80,24,140,.5),
+    inset 0 2px 1px rgba(255,255,255,.55),
+    inset 0 10px 14px -10px rgba(255,236,255,.5),
+    inset 0 -12px 18px -12px rgba(104,42,170,.55);
+}
+.ck-card.on::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: clamp(10px, 1.9dvh, 15px);
+  right: clamp(10px, 1.9dvh, 15px);
+  width: clamp(18px, 3.4dvh, 24px);
+  height: clamp(18px, 3.4dvh, 24px);
+  border-radius: 50%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 12.5l3.6 3.6 7.4-8' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 72% no-repeat,
+    linear-gradient(180deg, #8FEDE2, #42C2B6);
+  box-shadow: 0 2px 5px rgba(30,140,130,.35), inset 0 1px 0 rgba(255,255,255,.7);
+}
+/* สายพันธุ์ที่ยังไม่เคยพบ: แก้วจางลง ช่องรูปลาเวนเดอร์หม่น (เงาดำยังอ่านออกว่าเป็นแมว) */
+.ck-card.locked {
+  border-color: rgba(236,214,255,.55);
+  background: linear-gradient(180deg, rgba(178,130,222,.55), rgba(140,94,196,.55));
+  box-shadow: 0 8px 16px -10px rgba(80,24,140,.35), inset 0 1.5px 1px rgba(255,255,255,.35);
+}
+.ck-card.locked .ck-face { background: radial-gradient(circle at 50% 58%, #F4EAFF 0%, #DCC8F4 70%, #CDB4EE 100%); opacity: .85; }
+.ck-card.locked b { color: rgba(255,255,255,.8); }
+.ck-card .new-dot { z-index: 3; }
+
+/* ── หน้ารายละเอียดน้องแมว (แผงเดียวกับรายละเอียดชุด) — ปุ่มรอง "เรื่องราว" คู่ปุ่มหลัก ── */
+#odPanel .od-btns {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 14px);
+}
+#odPanel .btn.od-more[hidden] { display: none; }
+#odPanel .btn.od-more {
+  margin: 0;
+  min-width: clamp(104px, 14vw, 170px);
+  padding: clamp(8px, 1.8dvh, 14px) clamp(14px, 2.4vw, 26px);
+  border-radius: 999px;
+  font-family: "Mali", sans-serif;
+  font-weight: 800;
+  font-size: clamp(14px, 2.8dvh, 22px);
+}
+@media (max-height: 500px) {
+  #odPanel .btn.od-more { min-width: 92px; font-size: 14px; padding: 7px 14px; }
+}
+
+/* ── ลูกศรเลื่อนดูตัวก่อน/ถัดไปในหน้ารายละเอียดชุด/น้องแมว (ผู้ใช้ 7 พ.ย. 2026) ──
+   สามเหลี่ยมทองแบบลูกศรหน้าตู้กาช่า (.gp-arrow — ผู้ใช้ขอให้เหมือนกัน) กลางขอบซ้าย-ขวาของเวที
+   เงาส้มนุ่ม + แสงขาวฟุ้งรอบ (อยู่ที่ตัวปุ่ม — clip-path ของ ::before ตัดเงาของตัวเอง) · กดแล้วสว่างลดนิดเดียว ไม่ยุบ (กฎปุ่มหน้าย่อย)
+   ซ่อนในโหมดเต็มจอ (เหลือแต่น้อง) · เวทีรับปัดซ้าย-ขวาได้ (touch-action: none ให้นิ้วปัดไม่กลายเป็นเลื่อนหน้า) */
+#odPanel .od-stage { touch-action: none; }
+#odPanel .od-nav {
+  --od-nav-glow: drop-shadow(0 2px 3px rgba(150,80,20,.35)) drop-shadow(0 0 6px rgba(255,255,255,.8));
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  translate: 0 -50%;
+  width: clamp(28px, 6.4dvh, 54px);
+  height: clamp(34px, 7.6dvh, 64px);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: var(--od-nav-glow);
+  transition: filter .12s ease;
+}
+#odPanel .od-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #FFF28A, #FFC21E);
+  clip-path: polygon(100% 0, 0 50%, 100% 100%, 72% 50%);
+}
+#odPanel .od-next::before {
+  background: linear-gradient(225deg, #FFF28A, #FFC21E);
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%);
+}
+#odPanel .od-nav svg { display: none; }
+#odPanel .od-nav[hidden] { display: none; }
+#odPanel .od-prev { left: var(--backbtn-x); }
+#odPanel .od-next { right: var(--backbtn-x); }
+#odPanel .od-nav:hover { filter: var(--od-nav-glow) brightness(1.06); }
+#odPanel .od-nav:active { transform: none; filter: var(--od-nav-glow) brightness(.93); }
+#odPanel .od-nav:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+#odPanel.od-full .od-nav { display: none; }

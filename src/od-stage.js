@@ -86,7 +86,7 @@ function odRoom(ctx, w, h, wide, high) {
 
 /**
  * วาดเวทีหนึ่งเฟรม
- * st = { id, skin (ใส่ชุดแล้ว), high, mode: 'intro'|'act'|'idle', f, tBase, from }
+ * st = { id, skin (ใส่ชุดแล้ว), high, mode: 'intro'|'act'|'idle', f, tBase, from, k? (ขนาดตัว — ท่ายืนเฉยเท่านั้น), bd? (คีย์ฉากแทนฉากของชุด) }
  *   f = เฟรมในท่า · tBase = เวลาชีวิตตอนเริ่มท่า (หายใจ กะพริบ ต่อเนื่องข้ามท่า) · from = ท่าเปิดตัว ณ จุดที่ออก
  * geo = ตำแหน่งเวที (odGeo / odGeoCover)
  */
@@ -110,10 +110,12 @@ export function drawOdScene(ctx, W, H, st, geo = odGeo(W, H)) {
   }
   const base = ctx.getTransform();
   ctx.setTransform(base.multiply(cam));
-  const hasBd = !!cat2Backdrop(id);
+  // st.bd = ฉากที่ไม่ผูกชุด (เช่น 'room:cats' ห้องนั่งเล่นแมวน้อยของหน้าน้องแมว) — ไม่ส่ง = ฉากประจำชุด id
+  const bdId = st.bd || id;
+  const hasBd = !!cat2Backdrop(bdId);
   if (!hasBd) odRoom(ctx, W, H, !cam.isIdentity, st.high);
   ctx.setTransform(base.multiply(cam).multiply(new DOMMatrix([u, 0, 0, u, cx, gy])));
-  if (hasBd) drawCat2Backdrop(ctx, 0, 0, OD_SCALE, id, { res: u });
+  if (hasBd) drawCat2Backdrop(ctx, 0, 0, OD_SCALE, bdId, { res: u });
 
   let shape = null, idleArg = null, t = st.tBase + st.f;
   if (st.mode === 'intro') {
@@ -135,10 +137,12 @@ export function drawOdScene(ctx, W, H, st, geo = odGeo(W, H)) {
   ctx.globalAlpha = 0.28 * hopK * appear;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse((shape?.dx || 0) * OD_SCALE, 5, 44 * hopK, 8.5 * hopK, 0, 0, Math.PI * 2);   // ตัวเลื่อน (dx) เงาเลื่อนตาม (แบบหน้าทดสอบ)
+  // st.k = ขนาดตัวตามวัย (ลูกแมวในหน้ารายละเอียดน้อง) — เงาย่อตาม · ค่าตั้งต้น 1
+  const sk = st.k || 1;
+  ctx.ellipse((shape?.dx || 0) * OD_SCALE, 5, 44 * hopK * sk, 8.5 * hopK * sk, 0, 0, Math.PI * 2);   // ตัวเลื่อน (dx) เงาเลื่อนตาม (แบบหน้าทดสอบ)
   ctx.fill();
   ctx.globalAlpha = 1;
-  if (st.mode === 'idle') drawCatAuto(ctx, 0, 0, OD_SCALE, skin, t, null, { fit: 1 });
+  if (st.mode === 'idle') drawCatAuto(ctx, 0, 0, OD_SCALE * sk, skin, t, null, { fit: 1 });
   else drawCat2(ctx, 0, -lift, OD_SCALE, skin, t, idleArg);
   ctx.setTransform(base);
 }

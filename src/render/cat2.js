@@ -17759,146 +17759,142 @@ function sweetBackdropPaint(c) {
 const SWEET_BACKDROP = { paint: sweetBackdropPaint, outer: '#C48CD6' };
 
 // ── โบว์หวาน: "ห้องแต่งตัวโบว์ชมพู" (ผู้ใช้ 5 พ.ย. 2026: "เรียบง่าย น่ารัก เข้ากับชุด") ──
-//   ผนังชมพูนมลายจุดขาว (ลายเดียวกับโบว์บนหู) · บัวผนังห้อยระบายลูกไม้ (แบบปลอกคอ/ชายกระโปรง) · ไม้ฝาลาเวนเดอร์
-//   ม่านชมพูสองข้างผูกโบว์ + ระบายบน · กรอบรูปหัวใจ (โบว์) / กรอบรี (กระดิ่งทอง) · พื้นไม้อ่อน พรมกลมขอบลูกไม้ใต้เท้า
+//   รอบสอง (ผู้ใช้ 6 พ.ย.: "ฉากดูแข็ง ๆ ไปนิด") → ไม่มีเส้นตรงแข็งแล้ว: ไม่มีบัวผนัง/ช่องลูกฟัก/เส้นพื้นไม้ · เส้นขอบชมพูอ่อนบาง
+//   ผนังชมพูนมลายจุดขาวขนาดไม่เท่ากัน (จางลงหลังตัวน้อง) · แสงลอดม่านเป็นลำนุ่ม ๆ · โบเก้ลอย
+//   ผนังล่างลาเวนเดอร์ขอบระบายลูกไม้ ไล่กลืนลงพื้นครีมพีชมันวาว · ม่านผ้าโปร่งจีบโค้งผูกโบว์ + ระบายบน
+//   กรอบหัวใจ (โบว์) / กรอบรี (กระดิ่งทอง) · พรมกลมขอบลูกไม้ใต้เท้า
+//   ท้ายสุดเบลอทั้งฉากนิด ๆ (ชัดตื้นแบบถ่ายรูป — ตัวน้องคมอยู่หน้าฉากนุ่ม) แล้วค่อยโรยประกายคมทับ
 //   ทุกชิ้นสีอ่อนกว่าชุด (กระโปรง/โบว์ชมพูสดต้องเด่น) · หลังตัวน้องโล่ง มีแสงนวล · ของชิ้นใหญ่อยู่ด้านข้าง
-const BOW_BD = { rail: 418, wall: 576, line: '#C97FA2' };
+const BOW_BD = { band: 452, wall: 580, line: '#E7A2C2' };
 const BOW_BD_PAL = { line: BOW_BD.line };
-const BOW_BD_PINK = { light: '#FFE6F0', mid: '#FFB6D1', dark: '#F28DB6', deep: '#D9709E', fold: 'rgba(217,112,158,.4)' };
+const BOW_BD_PINK = { light: '#FFEAF2', mid: '#FFBCD5', dark: '#F497BD', deep: '#DF7FA8', fold: 'rgba(223,127,168,.35)' };
 /** ระบายลูกไม้: ครึ่งวงกลมห้อยลงจากแนว y เรียงจาก x0 ถึง x1 + รูตาไก่ */
 function bowLace(c, x0, x1, y, r, col = '#FFFFFF') {
   c.fillStyle = col;
   c.beginPath();
   for (let x = x0; x <= x1; x += r * 2) { c.moveTo(x + r * 2, y); c.arc(x + r, y, r, 0, Math.PI); }
   c.fill();
-  c.fillStyle = 'rgba(232,150,190,.5)';
+  c.fillStyle = 'rgba(240,170,204,.45)';
   for (let x = x0; x <= x1; x += r * 2) { c.beginPath(); c.arc(x + r, y + r * 0.45, r * 0.22, 0, TAU); c.fill(); }
 }
-/** ม่านข้าง (side -1 = ซ้าย · 1 = ขวา สะท้อนรอบกลางตัว x 300) — ตกลงถึงพื้น ผูกโบว์รวบเอว */
+/** ม่านผ้าโปร่งข้าง (side -1 = ซ้าย · 1 = ขวา สะท้อนรอบกลางตัว x 300) — จีบเป็นคลื่นนุ่ม ผูกโบว์รวบเอว ชายบานกองพื้น */
 function bowCurtain(c, side) {
   const X = (x) => (side < 0 ? x : 600 - x);
-  const tieY = 352, foot = BOW_BD.wall + 34;
+  const tieY = 350, foot = BOW_BD.wall + 40;
   const p = new Path2D();
   p.moveTo(X(-1000), -520);
-  p.lineTo(X(-205), -520);
-  p.lineTo(X(-205), -40);
-  p.bezierCurveTo(X(-205), 130, X(-330), 290, X(-372), tieY);
-  p.bezierCurveTo(X(-392), 430, X(-262), 520, X(-236), foot);
-  p.lineTo(X(-1000), foot);
+  p.lineTo(X(-215), -520);
+  p.bezierCurveTo(X(-200), -200, X(-200), 120, X(-372), tieY);
+  p.bezierCurveTo(X(-400), 440, X(-250), 520, X(-214), foot - 6);
+  // ชายผ้าบานโค้งเป็นลอนนุ่มแตะพื้น
+  for (let i = 0; i < 6; i++) {
+    const xa = -214 - i * 131, xb = xa - 131;
+    p.quadraticCurveTo(X((xa + xb) / 2), foot + 14, X(xb), foot - 2);
+  }
+  p.lineTo(X(-1000), -520);
   p.closePath();
-  // จีบผ้า: แถบสว่าง-เข้มสลับแนวตั้ง
-  const g = c.createLinearGradient(X(-1000), 0, X(-205), 0);
-  for (let i = 0; i <= 12; i++) g.addColorStop(i / 12, i % 2 ? '#F2B0CB' : '#FBCFE0');
+  // จีบผ้า: ไล่สีเป็นคลื่น (ไม่ใช่แถบแข็ง) + โปร่งนิด ๆ เห็นผนังลอด
+  const g = c.createLinearGradient(X(-1000), 0, X(-200), 0);
+  for (let i = 0; i <= 24; i++) {
+    const w = 0.5 + 0.5 * Math.sin(i * 1.1);
+    g.addColorStop(i / 24, `rgba(${Math.round(246 + 7 * w)},${Math.round(178 + 30 * w)},${Math.round(206 + 20 * w)},.88)`);
+  }
   c.fillStyle = g;
   c.fill(p);
   c.save();
   c.clip(p);
-  // เงาขอบด้านใน (ผ้าพับเข้า)
-  const sh = c.createLinearGradient(X(-205), 0, X(-300), 0);
-  sh.addColorStop(0, 'rgba(214,120,166,.35)');
-  sh.addColorStop(1, 'rgba(214,120,166,0)');
+  // เงานุ่มขอบด้านใน (ผ้าม้วนเข้า) + แสงลอดผ้าครึ่งบน
+  const sh = c.createLinearGradient(X(-200), 0, X(-330), 0);
+  sh.addColorStop(0, 'rgba(226,128,176,.28)');
+  sh.addColorStop(1, 'rgba(226,128,176,0)');
   c.fillStyle = sh;
   c.fillRect(-1000, -520, 2600, 1200);
-  bowLace(c, side < 0 ? -1000 : 300, side < 0 ? 300 : 1600, foot - 16, 11);
+  bdGlow(c, X(-420), 80, 260, '255,245,250', 0.35, 1.6);
   c.restore();
-  outline(c, p, BOW_BD_PAL, 4);
+  c.strokeStyle = 'rgba(231,162,194,.7)';
+  c.lineWidth = 2.5;
+  c.stroke(p);
   ribbonBow(c, X(-372), tieY, 44, BOW_BD_PAL, 0, BOW_BD_PINK);
 }
 function bowBackdropPaint(c) {
   const [X0, Y0, X1, Y1] = BD_BOX, W = X1 - X0;
-  const { rail, wall } = BOW_BD;
-  // ผนังชมพูนม
-  const wg = c.createLinearGradient(0, Y0, 0, rail);
-  wg.addColorStop(0, '#F5C7DD');
-  wg.addColorStop(0.55, '#FAD9E8');
-  wg.addColorStop(1, '#FDE6EF');
+  const { band, wall } = BOW_BD;
+  // ผนังชมพูนม → ลาเวนเดอร์ล่าง → พื้นครีมพีช (ไล่ต่อกันนุ่ม ๆ ไม่มีเส้นแบ่งแข็ง)
+  const wg = c.createLinearGradient(0, Y0, 0, Y1);
+  const at = (y) => (y - Y0) / (Y1 - Y0);
+  wg.addColorStop(0, '#F6C9DE');
+  wg.addColorStop(at(200), '#FBDCEA');
+  wg.addColorStop(at(band - 4), '#FDE7F0');
+  wg.addColorStop(at(band + 4), '#F2DDF4');
+  wg.addColorStop(at(wall - 26), '#EBD3F0');
+  wg.addColorStop(at(wall + 18), '#F7E2D6');
+  wg.addColorStop(1, '#EFCDB8');
   c.fillStyle = wg;
-  c.fillRect(X0, Y0, W, rail - Y0);
-  // ลายจุดขาว (ลายเดียวกับโบว์)
-  c.fillStyle = 'rgba(255,255,255,.72)';
-  for (let j = 0, y = Y0 + 20; y < rail; j++, y += 58) {
-    for (let x = X0 + (j % 2) * 32; x < X1; x += 64) { c.beginPath(); c.arc(x, y, 7, 0, TAU); c.fill(); }
-  }
-  // แสงนวลหลังตัวน้อง (ลายจุดตรงนั้นจางลง ตัวน้องเด่น)
-  bdGlow(c, 300, 330, 540, '255,250,253', 0.62);
-  // ไม้ฝาลาเวนเดอร์ + ช่องลูกฟัก
-  const pg = c.createLinearGradient(0, rail, 0, wall);
-  pg.addColorStop(0, '#F1DBF4');
-  pg.addColorStop(1, '#E6CBEE');
-  c.fillStyle = pg;
-  c.fillRect(X0, rail, W, wall - rail);
-  for (let x = X0 + 20; x < X1; x += 232) {
-    const r = new Path2D();
-    r.roundRect(x, rail + 40, 196, wall - rail - 70, 14);
-    c.strokeStyle = 'rgba(190,140,196,.38)';
-    c.lineWidth = 4;
-    c.stroke(r);
-    c.save();
-    c.translate(1.5, 2);
-    c.strokeStyle = 'rgba(255,255,255,.6)';
-    c.lineWidth = 2.5;
-    c.stroke(r);
-    c.restore();
-  }
-  // บัวผนัง + ระบายลูกไม้ห้อย · บัวพื้น
-  c.fillStyle = 'rgba(170,110,160,.2)';
-  c.fillRect(X0, rail + 12, W, 8);
-  bowLace(c, X0, X1, rail + 11, 10);
-  const rg = c.createLinearGradient(0, rail - 12, 0, rail + 12);
-  rg.addColorStop(0, '#FFFFFF');
-  rg.addColorStop(1, '#F6E2EE');
-  c.fillStyle = rg;
-  c.fillRect(X0, rail - 12, W, 24);
-  const bb = c.createLinearGradient(0, wall - 20, 0, wall);
-  bb.addColorStop(0, '#FFFFFF');
-  bb.addColorStop(1, '#F1D9E8');
-  c.fillStyle = bb;
-  c.fillRect(X0, wall - 20, W, 20);
-  // พื้นไม้อ่อน (แผ่นไม้วิ่งเข้าหาจุดลึกกลางจอ)
-  const fg = c.createLinearGradient(0, wall, 0, Y1);
-  fg.addColorStop(0, '#F4DDC8');
-  fg.addColorStop(1, '#E6C3A3');
-  c.fillStyle = fg;
-  c.fillRect(X0, wall, W, Y1 - wall);
-  c.strokeStyle = 'rgba(196,148,116,.3)';
-  c.lineWidth = 2;
-  const VY = 150;
-  for (let i = -40; i <= 40; i++) {
-    const xw = 300 + i * 58;
+  c.fillRect(X0, Y0, W, Y1 - Y0);
+  // ลำแสงนุ่มจากบนลงมาหาตัวน้อง (เหมือนแดดลอดหน้าต่าง)
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, w, a] of [[180, 150, 0.07], [330, 110, 0.06], [470, 170, 0.05]]) {
+    const r = c.createLinearGradient(0, -400, 0, wall);
+    r.addColorStop(0, `rgba(255,240,248,${a})`);
+    r.addColorStop(1, 'rgba(255,240,248,0)');
+    c.fillStyle = r;
     c.beginPath();
-    c.moveTo(xw, wall);
-    c.lineTo(300 + ((xw - 300) * (Y1 - VY)) / (wall - VY), Y1);
-    c.stroke();
+    c.moveTo(x - w * 0.3, -400); c.lineTo(x + w * 0.3, -400);
+    c.lineTo(x + w * 1.2 - 60, wall); c.lineTo(x - w * 1.2 - 60, wall);
+    c.fill();
   }
-  const fs = c.createLinearGradient(0, wall, 0, wall + 70);
-  fs.addColorStop(0, 'rgba(170,110,120,.22)');
-  fs.addColorStop(1, 'rgba(170,110,120,0)');
+  c.restore();
+  // ลายจุดขาวขนาดไม่เท่ากัน เยื้องนิด ๆ (ไม่เป็นตารางแข็ง) · จางลงหลังตัวน้อง
+  for (let j = 0, y = Y0 + 20; y < band - 10; j++, y += 56) {
+    for (let i = 0, x = X0 + (j % 2) * 30; x < X1; i++, x += 60) {
+      const jx = (hash(i * 3.3 + j * 7.1) - 0.5) * 14, jy = (hash(i * 5.7 + j * 2.9) - 0.5) * 12;
+      const d = Math.hypot((x - 300) / 1.3, y - 320);
+      const a = 0.35 + 0.45 * Math.min(1, Math.max(0, (d - 180) / 320));
+      c.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+      c.beginPath(); c.arc(x + jx, y + jy, 5 + hash(i * 1.7 + j * 4.1) * 4.5, 0, TAU); c.fill();
+    }
+  }
+  // แสงนวลหลังตัวน้อง
+  bdGlow(c, 300, 330, 560, '255,251,253', 0.6);
+  // ผนังล่าง: ขอบระบายลูกไม้ (โค้งทั้งแถว) แทนบัวผนังเส้นตรง
+  bowLace(c, X0, X1, band, 12, 'rgba(255,255,255,.92)');
+  c.fillStyle = 'rgba(255,255,255,.75)';
+  c.fillRect(X0, band - 5, W, 6);
+  // เงานุ่มตรงผนังจรดพื้น + แสงมันวาวบนพื้น
+  bdGlow(c, 300, wall, 1500, '196,140,190', 0.18, 0.05);
+  const fs = c.createLinearGradient(0, wall, 0, wall + 120);
+  fs.addColorStop(0, 'rgba(255,248,250,.5)');
+  fs.addColorStop(1, 'rgba(255,248,250,0)');
   c.fillStyle = fs;
-  c.fillRect(X0, wall, W, 70);
+  c.fillRect(X0, wall, W, 120);
   // กรอบรูปบนผนัง: หัวใจ (โบว์) ซ้าย · วงรี (กระดิ่งทอง) ขวา — แขวนด้วยโบว์เล็ก
   const gold = (y0, y1) => {
     const g = c.createLinearGradient(0, y0, 0, y1);
-    g.addColorStop(0, '#FFF0C4');
-    g.addColorStop(1, '#EFC575');
+    g.addColorStop(0, '#FFF3D2');
+    g.addColorStop(1, '#F3D08E');
     return g;
   };
   const hf = heartPath(-30, 178, 64);
   c.fillStyle = gold(110, 240);
   c.fill(hf);
-  outline(c, hf, BOW_BD_PAL, 3.5);
-  c.fillStyle = '#FFF5F9';
+  c.fillStyle = '#FFF6FA';
   c.fill(heartPath(-30, 180, 50));
   ribbonBow(c, -30, 190, 20, BOW_BD_PAL, 0, BOW_BD_PINK);
   ribbonBow(c, -30, 128, 14, BOW_BD_PAL, 0, BOW_BD_PINK, false);
-  const of = new Path2D();
-  of.ellipse(632, 186, 58, 72, 0, 0, TAU);
   c.fillStyle = gold(114, 258);
-  c.fill(of);
-  outline(c, of, BOW_BD_PAL, 3.5);
-  c.fillStyle = '#FFF5F9';
+  c.beginPath(); c.ellipse(632, 186, 58, 72, 0, 0, TAU); c.fill();
+  c.fillStyle = '#FFF6FA';
   c.beginPath(); c.ellipse(632, 186, 45, 59, 0, 0, TAU); c.fill();
-  bell(c, 632, 168, 24, BOW_BD_PAL);
+  bell(c, 632, 168, 24, { line: '#D8A25A' });
   ribbonBow(c, 632, 112, 15, BOW_BD_PAL, 0, BOW_BD_PINK, false);
+  // โบเก้ลอย (ไกล ๆ หลังม่าน — ก่อนม่าน)
+  const BK = ['255,214,232', '255,255,255', '236,214,255', '255,232,214'];
+  for (let i = 0; i < 26; i++) {
+    const x = X0 + hash(i * 3.9 + 610) * W, y = -60 + hash(i * 6.1 + 611) * 460;
+    if (Math.abs(x - 300) < 260) continue;
+    bdBokeh(c, x, y, 18 + hash(i * 2.3 + 612) * 40, BK[i % BK.length], 0.45);
+  }
   // ม่านสองข้าง + ระบายบน (โค้งห้อยเป็นลอน มีโบว์จิ๋วตรงรอยต่อ)
   bowCurtain(c, -1);
   bowCurtain(c, 1);
@@ -17909,24 +17905,17 @@ function bowBackdropPaint(c) {
   for (let x = X1; x > X0; x -= 150) vp.quadraticCurveTo(x - 75, 54, x - 150, -24);
   vp.closePath();
   const vg0 = c.createLinearGradient(0, -140, 0, 30);
-  vg0.addColorStop(0, '#F3AECB');
-  vg0.addColorStop(1, '#FAC8DC');
+  vg0.addColorStop(0, '#F5B8D2');
+  vg0.addColorStop(1, '#FBD0E1');
   c.fillStyle = vg0;
   c.fill(vp);
-  c.save();
-  c.clip(vp);
-  c.fillStyle = 'rgba(255,255,255,.55)';
-  for (let x = X0 + 40; x < X1; x += 64) { c.beginPath(); c.arc(x, -60, 6, 0, TAU); c.fill(); }
-  c.restore();
-  c.strokeStyle = '#FFFFFF';
-  c.lineWidth = 9;
+  c.strokeStyle = 'rgba(255,255,255,.9)';
+  c.lineWidth = 8;
   c.stroke(vp);
-  outline(c, vp, BOW_BD_PAL, 3);
   for (let x = X1 - 150; x > X0; x -= 150) ribbonBow(c, x, -22, 16, BOW_BD_PAL, 0, BOW_BD_PINK, false);
   // พรมกลมขอบลูกไม้ใต้เท้า
   const cx = 300, cy = FEET_Y + 8, rx = 330, ry = 66;
-  c.fillStyle = 'rgba(160,96,120,.16)';
-  c.beginPath(); c.ellipse(cx, cy + 10, rx + 20, ry + 10, 0, 0, TAU); c.fill();
+  bdGlow(c, cx, cy + 12, rx + 40, '170,110,140', 0.2, ry / rx);
   c.fillStyle = '#FFFFFF';
   for (let i = 0; i < 60; i++) {
     const a = TAU * (i / 60);
@@ -17935,13 +17924,13 @@ function bowBackdropPaint(c) {
   const rug = new Path2D();
   rug.ellipse(cx, cy, rx, ry, 0, 0, TAU);
   const rgg = c.createRadialGradient(cx, cy - 10, 20, cx, cy, rx);
-  rgg.addColorStop(0, '#FFEAF2');
-  rgg.addColorStop(1, '#F7C3DA');
+  rgg.addColorStop(0, '#FFEEF4');
+  rgg.addColorStop(1, '#F9CADF');
   c.fillStyle = rgg;
   c.fill(rug);
   c.save();
   c.clip(rug);
-  c.fillStyle = 'rgba(255,255,255,.55)';
+  c.fillStyle = 'rgba(255,255,255,.5)';
   for (let j = -3; j <= 3; j++) {
     for (let i = -8; i <= 8; i++) {
       c.beginPath(); c.ellipse(cx + i * 44 + (j % 2 ? 22 : 0), cy + j * 20, 5, 3, 0, 0, TAU); c.fill();
@@ -17950,27 +17939,770 @@ function bowBackdropPaint(c) {
   c.restore();
   c.save();
   c.setLineDash([12, 10]);
-  c.strokeStyle = 'rgba(255,255,255,.95)';
+  c.strokeStyle = 'rgba(255,255,255,.9)';
   c.lineWidth = 3;
   c.beginPath(); c.ellipse(cx, cy, rx - 32, ry - 8, 0, 0, TAU); c.stroke();
   c.restore();
-  // หัวใจลอย + ประกายนิ่ง (เว้นหลังตัวน้องกับกรอบรูป)
+  // ชัดตื้น: เบลอทั้งฉากนิด ๆ (ขอบทุกชิ้นนุ่มลง) — เบราว์เซอร์ที่ไม่มี ctx.filter ข้ามไป ภาพยังครบ
+  const cv = c.canvas;
+  if ('filter' in c && cv) {
+    const tmp = document.createElement('canvas');
+    tmp.width = cv.width;
+    tmp.height = cv.height;
+    tmp.getContext('2d').drawImage(cv, 0, 0);
+    const k = Math.hypot(c.getTransform().a, c.getTransform().b);
+    c.save();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.filter = `blur(${(1.9 * k).toFixed(2)}px)`;
+    c.drawImage(tmp, 0, 0);
+    c.restore();
+  }
+  // หัวใจลอย + ประกายนิ่ง คมทับฉากนุ่ม (เว้นหลังตัวน้องกับกรอบรูป)
   for (let i = 0; i < 30; i++) {
     const x = -560 + hash(i * 4.3 + 500) * 1720, y = 30 + hash(i * 3.1 + 501) * 360;
     if (Math.abs(x - 300) < 250) continue;
     if (Math.hypot(x + 30, y - 178) < 110 || Math.hypot(x - 632, y - 186) < 110) continue;
-    if (i % 3) swSparkle(c, x, y, 6 + hash(i + 502) * 8, 0.75, '#FFFFFF');
-    else { c.fillStyle = 'rgba(255,150,192,.45)'; c.fill(heartPath(x, y, 9 + hash(i + 503) * 7)); }
+    if (i % 3) swSparkle(c, x, y, 6 + hash(i + 502) * 8, 0.8, '#FFFFFF');
+    else { c.fillStyle = 'rgba(255,160,198,.5)'; c.fill(heartPath(x, y, 9 + hash(i + 503) * 7)); }
   }
   // ขอบภาพนุ่มเข้ากลาง
   const vg = c.createRadialGradient(300, 340, 620, 300, 340, 1500);
-  vg.addColorStop(0, 'rgba(214,140,180,0)');
-  vg.addColorStop(1, 'rgba(214,140,180,.4)');
+  vg.addColorStop(0, 'rgba(220,150,190,0)');
+  vg.addColorStop(1, 'rgba(220,150,190,.35)');
   c.fillStyle = vg;
   c.fillRect(X0, Y0, W, Y1 - Y0);
-  bdEdgeFade(c, 'rgba(232,180,206,1)');
+  bdEdgeFade(c, 'rgba(236,190,212,1)');
 }
-const BOW_BACKDROP = { paint: bowBackdropPaint, outer: '#E8B4CE' };
+const BOW_BACKDROP = { paint: bowBackdropPaint, outer: '#ECBED4' };
+
+
+// ══ ฉากหลังสกินระดับธรรมดา (ผู้ใช้ 6 พ.ย. 2026: "วาดฉากให้สกินธรรมดาทั้ง 9 ตัว" — สไตล์เดียวกับโบว์หวานรอบสอง) ══
+// กติกาเดียวกันทุกฉาก: นุ่ม โค้ง ไม่มีเส้นขอบเข้ม · สีอ่อนกว่าชุดเสมอ (ชุดต้องเด่น) · หลังตัวน้องโล่งมีแสงนวล
+// ของชิ้นใหญ่อยู่ด้านข้าง (มือถือแนวนอนเห็นกว้างถึง x −630…1230 · iPad −316…916 · รูปการ์ดชุด −34…634)
+// ลำดับ: วาดฉาก → skBlur (ชัดตื้นนิด ๆ) → ประกาย/ของคม ๆ ทับ → skEnd (ขอบภาพนุ่ม)
+/** ไล่สีแนวตั้งทั้งกรอบฉาก — stops = [[y พิกัดไฟล์, สี], ...] */
+function skGrad(c, stops) {
+  const [X0, Y0, X1, Y1] = BD_BOX;
+  const g = c.createLinearGradient(0, Y0, 0, Y1);
+  for (const [y, col] of stops) g.addColorStop(Math.min(1, Math.max(0, (y - Y0) / (Y1 - Y0))), col);
+  c.fillStyle = g;
+  c.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+}
+/** ชัดตื้น: เบลอทั้งภาพที่วาดมาแล้ว u หน่วยไฟล์ (เบราว์เซอร์ที่ไม่มี ctx.filter ข้ามไป ภาพยังครบ) */
+function skBlur(c, u = 1.9) {
+  const cv = c.canvas;
+  if (!('filter' in c) || !cv) return;
+  const tmp = document.createElement('canvas');
+  tmp.width = cv.width;
+  tmp.height = cv.height;
+  tmp.getContext('2d').drawImage(cv, 0, 0);
+  const m = c.getTransform(), k = Math.hypot(m.a, m.b);
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.filter = `blur(${(u * k).toFixed(2)}px)`;
+  c.drawImage(tmp, 0, 0);
+  c.restore();
+}
+/** ขอบภาพนุ่มเข้ากลาง + กลืนขอบเป็นสีรอบนอก */
+function skEnd(c, rgb, edge, a = 0.35) {
+  const [X0, Y0, X1, Y1] = BD_BOX;
+  const vg = c.createRadialGradient(300, 340, 620, 300, 340, 1500);
+  vg.addColorStop(0, `rgba(${rgb},0)`);
+  vg.addColorStop(1, `rgba(${rgb},${a})`);
+  c.fillStyle = vg;
+  c.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+  bdEdgeFade(c, edge);
+}
+/** จุดนี้อยู่นอกตัวน้องไหม (ไว้เว้นของตกแต่งไม่ให้ทับหลังตัว) */
+const skFree = (x, y, pad = 0) => Math.abs(x - 300) > 250 + pad || y < 40 - pad || y > 700 + pad;
+/** ประกายคมโรยรอบ ๆ (หลังเบลอ) */
+function skSparkles(c, n, seed, cols, y0 = 20, y1 = 420, a = 0.8) {
+  for (let i = 0; i < n; i++) {
+    const x = -600 + hash(i * 4.3 + seed) * 1800, y = y0 + hash(i * 3.1 + seed + 1) * (y1 - y0);
+    if (!skFree(x, y)) continue;
+    swSparkle(c, x, y, 5 + hash(i + seed + 2) * 9, a, cols[i % cols.length]);
+  }
+}
+/** พรม/แท่นวงรีใต้เท้า: เงาฟุ้ง + (ขอบลูกไม้) + พื้นไล่สี + วงเย็บประ */
+function skMat(c, rx, ry, inner, outer, opt = {}) {
+  const cx = 300, cy = FEET_Y + 8;
+  bdGlow(c, cx, cy + 12, rx + 40, opt.shade || '150,100,130', 0.2, ry / rx);
+  if (opt.lace) {
+    c.fillStyle = opt.lace;
+    for (let i = 0; i < 60; i++) {
+      const a = TAU * (i / 60);
+      c.beginPath(); c.arc(cx + Math.cos(a) * (rx + 4), cy + Math.sin(a) * (ry + 2), 13, 0, TAU); c.fill();
+    }
+  }
+  const g = c.createRadialGradient(cx, cy - 10, 20, cx, cy, rx);
+  g.addColorStop(0, inner);
+  g.addColorStop(1, outer);
+  c.fillStyle = g;
+  c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.fill();
+  if (opt.ring) {
+    c.save();
+    c.setLineDash(opt.dash || [12, 10]);
+    c.strokeStyle = opt.ring;
+    c.lineWidth = opt.ringW || 3;
+    c.beginPath(); c.ellipse(cx, cy, rx - 30, ry - 8, 0, 0, TAU); c.stroke();
+    c.restore();
+  }
+}
+/** สี่เหลี่ยมมุมมน (เติม + เส้นอ่อน) */
+function skRR(c, x, y, w, h, r, fill, stroke, lw = 3) {
+  const p = new Path2D();
+  p.roundRect(x, y, w, h, r);
+  c.fillStyle = fill;
+  c.fill(p);
+  if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.stroke(p); }
+  return p;
+}
+/** วงรีเติมสี */
+function skOval(c, x, y, rx, ry, fill, rot = 0) {
+  c.fillStyle = fill;
+  c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); c.fill();
+}
+/** เมฆขาวก้อนกลม (ฟ้าใส) */
+function skCloud(c, x, y, s, a = 0.9) {
+  c.save();
+  c.globalAlpha = a;
+  c.translate(x, y);
+  c.scale(s, s);
+  const puff = bdPuffs([[-90, 10, 44], [-40, -18, 56], [20, -30, 64], [80, -8, 50], [120, 16, 36], [0, 18, 48]]);
+  c.fillStyle = 'rgba(150,190,230,.3)';
+  c.save(); c.translate(5, 12); c.fill(puff); c.restore();
+  const g = c.createLinearGradient(0, -90, 0, 60);
+  g.addColorStop(0, '#FFFFFF');
+  g.addColorStop(1, '#EAF4FF');
+  c.fillStyle = g;
+  c.fill(puff);
+  c.restore();
+}
+/** ดาวห้าแฉกมน (r = รัศมีนอก) */
+function skStar(c, x, y, r, fill, rot = -Math.PI / 2) {
+  c.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const rr = i % 2 ? r * 0.48 : r, a = rot + (i * Math.PI) / 5;
+    c[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  c.closePath();
+  c.fillStyle = fill;
+  c.lineJoin = 'round';
+  c.fill();
+}
+
+// ── นินจาส้ม: "ลานบ้านญี่ปุ่นยามซากุระ" — ฟ้าพีชชมพู ภูเขาลาเวนเดอร์ไกล รั้วดินเหลืองหลังคามน ต้นซากุระสองข้าง โคมกระดาษ โคมหิน กลีบร่วง เสื่อกลม ──
+function ninjaBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX, W = X1 - X0;
+  skGrad(c, [[-520, '#F7C9D8'], [150, '#FCDDE0'], [430, '#FFEFE4'], [560, '#FFF3E8'], [585, '#EEDCC4'], [1100, '#DDBF9F']]);
+  bdGlow(c, 300, 200, 360, '255,240,226', 0.7);
+  // ภูเขาไกลยอดหิมะ (เยื้องขวา ไม่อยู่หลังหัว)
+  const mt = new Path2D();
+  mt.moveTo(420, 470); mt.bezierCurveTo(600, 380, 700, 250, 790, 250); mt.bezierCurveTo(880, 250, 980, 380, 1200, 470); mt.closePath();
+  c.fillStyle = '#E9D6EE'; c.fill(mt);
+  c.save(); c.clip(mt); skOval(c, 790, 250, 90, 60, '#FFFFFF'); c.restore();
+  const mt2 = new Path2D();
+  mt2.moveTo(-800, 470); mt2.bezierCurveTo(-600, 360, -400, 330, -250, 380); mt2.bezierCurveTo(-120, 420, 0, 450, 120, 470); mt2.closePath();
+  c.fillStyle = '#EEDDF0'; c.fill(mt2);
+  // รั้วดินเหลืองหลังคามน
+  skRR(c, X0, 455, W, 125, 0, '#FFF6EA');
+  skRR(c, X0, 432, W, 30, 15, '#C9B3D3');
+  skRR(c, X0, 428, W, 12, 6, '#DCCAE3');
+  for (let x = X0 + 60; x < X1; x += 260) skRR(c, x, 462, 22, 118, 10, '#EBD2B6');
+  // ต้นซากุระสองข้าง (ลำต้นโค้ง + พุ่มดอกฟูนุ่ม)
+  const tree = (bx, dir) => {
+    const tr = new Path2D();
+    // ทุกจุดคูณ dir (สะท้อนครบ) — เดิมโคนต้นไม่ได้คูณ ต้นขวาเส้นขอบไขว้กันเป็นเกลียว (ผู้ใช้ 6 พ.ย.)
+    tr.moveTo(bx - dir * 34, 600); tr.bezierCurveTo(bx - dir * 20, 420, bx + dir * 40, 260, bx + dir * 140, 80);
+    tr.lineTo(bx + dir * 170, 96); tr.bezierCurveTo(bx + dir * 80, 270, bx + dir * 30, 420, bx + dir * 36, 600); tr.closePath();
+    c.fillStyle = '#B98C93'; c.fill(tr);
+    const cl = [[0, -40, 150], [dir * 150, -10, 130], [dir * 260, 60, 110], [-dir * 110, 20, 120], [dir * 60, 110, 110], [dir * 330, 150, 80]];
+    const puff = bdPuffs(cl.map(([dx, dy, r]) => [bx + dir * 60 + dx, dy, r]));
+    c.fillStyle = '#F9B8CF'; c.fill(puff);
+    c.fillStyle = 'rgba(255,226,236,.9)';
+    for (const [dx, dy, r] of cl) { c.beginPath(); c.arc(bx + dir * 60 + dx - 20, dy - 24, r * 0.6, 0, TAU); c.fill(); }
+  };
+  tree(-470, 1);
+  tree(1070, -1);
+  // โคมกระดาษห้อยกิ่งซ้าย · โคมหินขวา
+  c.strokeStyle = 'rgba(160,120,130,.7)'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(-150, 120); c.lineTo(-150, 170); c.stroke();
+  bdGlow(c, -150, 220, 110, '255,190,150', 0.45);
+  skOval(c, -150, 220, 42, 52, '#FFAE9E');
+  c.fillStyle = 'rgba(255,255,255,.35)';
+  for (const dy of [-26, 0, 26]) { c.beginPath(); c.ellipse(-150, 220 + dy, 42, 4, 0, 0, TAU); c.fill(); }
+  skRR(c, -168, 164, 36, 10, 4, '#C98C86'); skRR(c, -168, 268, 36, 10, 4, '#C98C86');
+  skRR(c, 790, 500, 90, 90, 18, '#D7CDE0'); skRR(c, 760, 470, 150, 34, 17, '#C9BED6');
+  skRR(c, 800, 395, 70, 78, 16, '#E4DBEA'); bdGlow(c, 835, 434, 60, '255,226,180', 0.6);
+  skRR(c, 770, 368, 130, 30, 15, '#C9BED6');
+  // เสื่อกลมใต้เท้า
+  skMat(c, 320, 64, '#FBEBD3', '#EBCFA9', { ring: 'rgba(205,160,110,.6)', dash: [], ringW: 4 });
+  skBlur(c);
+  // กลีบซากุระร่วง (คมหลังเบลอ)
+  for (let i = 0; i < 46; i++) {
+    const x = -620 + hash(i * 5.1 + 700) * 1840, y = -20 + hash(i * 2.3 + 701) * 700;
+    if (!skFree(x, y, -60)) continue;
+    skOval(c, x, y, 7 + hash(i + 702) * 4, 4.5, i % 3 ? '#FFC4D8' : '#FFE1EA', hash(i + 703) * TAU);
+  }
+  skEnd(c, '224,150,180', 'rgba(240,196,210,1)');
+}
+const NINJA_BACKDROP = { paint: ninjaBackdropPaint, outer: '#F0C4D2' };
+
+// ── เชฟน้อย: "ครัวขนมพาสเทล" — ผนังเนยลายทางจาง ชั้นวางโหลขนม ที่แขวนช้อนตะกร้อ เคาน์เตอร์มิ้นต์ เค้กสามชั้น คัพเค้ก พื้นตารางมิ้นต์ ──
+function chefBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX;
+  skGrad(c, [[-520, '#FFE9C9'], [200, '#FFF3DD'], [500, '#FFF7E8']]);
+  c.fillStyle = 'rgba(255,214,214,.28)';
+  for (let x = X0; x < X1; x += 90) c.fillRect(x, -520, 45, 1020);
+  bdGlow(c, 300, 300, 520, '255,252,244', 0.7);
+  bdCheckerFloor(c, '#CDEFE2', '#FFF9F0', 130);
+  const fs = c.createLinearGradient(0, BD_HZ, 0, BD_HZ + 90);
+  fs.addColorStop(0, 'rgba(255,248,236,.85)'); fs.addColorStop(1, 'rgba(255,248,236,0)');
+  c.fillStyle = fs; c.fillRect(X0, BD_HZ, X1 - X0, 90);
+  // ชั้นวางซ้าย + โหลขนมกลม ๆ
+  skRR(c, -620, 150, 520, 22, 11, '#F2C9A2');
+  const jars = [[-560, '#FFC9DC', '#F59AB9'], [-450, '#CFEFFF', '#8FCDEB'], [-340, '#E2D6FF', '#B49CF0'], [-230, '#FFE7A8', '#F2C460']];
+  for (const [x, glass, candy] of jars) {
+    skRR(c, x, 52, 84, 98, 26, 'rgba(255,255,255,.75)');
+    skRR(c, x + 8, 86, 68, 58, 20, candy);
+    for (let i = 0; i < 4; i++) skOval(c, x + 22 + i * 14, 98 + (i % 2) * 18, 7, 7, 'rgba(255,255,255,.55)');
+    skRR(c, x + 6, 40, 72, 18, 9, glass);
+  }
+  // ราวแขวนช้อน/ตะกร้อ (ขวาบน)
+  skRR(c, 700, 40, 420, 12, 6, '#E8C29C');
+  for (const [x, kind] of [[740, 0], [820, 1], [900, 0], [980, 1], [1060, 0]]) {
+    c.strokeStyle = '#D9B391'; c.lineWidth = 8; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x, 52); c.lineTo(x, 150); c.stroke();
+    if (kind) {
+      c.strokeStyle = '#E6D9EE'; c.lineWidth = 5;
+      for (const w of [10, 22, 34]) { c.beginPath(); c.ellipse(x, 186, w * 0.6, 40, 0, 0, TAU); c.stroke(); }
+    } else skOval(c, x, 170, 22, 30, '#F2D7C0');
+  }
+  // เคาน์เตอร์มิ้นต์สองข้าง
+  for (const [x, w] of [[-1000, 870], [700, 900]]) {
+    skRR(c, x, 450, w, 140, 18, '#BFE8DA');
+    skRR(c, x - 10, 436, w + 20, 26, 13, '#FFF8F0');
+    for (let dx = 40; dx < w - 120; dx += 230) skRR(c, x + dx, 480, 190, 90, 16, 'rgba(255,255,255,.35)');
+  }
+  // เค้กสามชั้นบนขาตั้ง (ขวา) · คัพเค้ก (ซ้าย)
+  skRR(c, 830, 418, 140, 14, 7, '#FFFFFF'); skRR(c, 892, 380, 16, 40, 8, '#FFFFFF');
+  const tiers = [[790, 300, 220, 82, '#FFD3E2'], [818, 228, 164, 74, '#FFF1D6'], [846, 166, 108, 64, '#FFD3E2']];
+  for (const [x, y, w, h, col] of tiers) {
+    skRR(c, x, y, w, h, 22, col);
+    c.fillStyle = '#FFFFFF';
+    for (let i = 0; i <= 6; i++) { c.beginPath(); c.arc(x + 12 + i * ((w - 24) / 6), y + 8, 11, 0, TAU); c.fill(); }
+  }
+  skOval(c, 900, 150, 14, 14, '#F2647E');
+  for (const x of [-560, -440, -320]) {
+    const p = new Path2D();
+    p.moveTo(x - 40, 380); p.lineTo(x + 40, 380); p.lineTo(x + 30, 436); p.lineTo(x - 30, 436); p.closePath();
+    c.fillStyle = '#F7C2A4'; c.fill(p);
+    c.fillStyle = x === -440 ? '#CDE9FF' : '#FFD6E6';
+    c.fill(bdPuffs([[x - 22, 372, 24], [x + 22, 372, 24], [x, 350, 28]]));
+    skOval(c, x + 4, 326, 8, 8, '#F2647E');
+  }
+  skMat(c, 310, 62, '#FFFFFF', '#FFE2EA', { lace: '#FFFFFF', ring: 'rgba(240,150,170,.7)' });
+  skBlur(c);
+  skSparkles(c, 26, 820, ['#FFFFFF', '#FFF1C2']);
+  skEnd(c, '230,170,120', 'rgba(245,214,180,1)', 0.3);
+}
+const CHEF_BACKDROP = { paint: chefBackdropPaint, outer: '#F5D6B4' };
+
+// ── โจรสลัดน้อย: "ชายหาดเกาะสมบัติ" — ฟ้าใส ทะเลเขียวมรกต คลื่นฟองขาว เรือใบไกล ต้นมะพร้าวซ้าย หีบสมบัติขวา เปลือกหอยปลาดาว ──
+function pirateBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX, W = X1 - X0;
+  skGrad(c, [[-520, '#A9DBFF'], [200, '#D3EEFF'], [418, '#EFF9FF'], [430, '#9EDCEB'], [500, '#BDEEF0'], [535, '#FFF2D6'], [1100, '#F2D2A0']]);
+  bdGlow(c, 820, -60, 300, '255,250,220', 0.8);
+  skCloud(c, -320, 40, 0.9); skCloud(c, 760, 120, 0.7); skCloud(c, 1180, -20, 1);
+  // เรือใบไกลบนขอบฟ้า (ขวา)
+  const hull = new Path2D();
+  hull.moveTo(800, 400); hull.lineTo(960, 400); hull.quadraticCurveTo(940, 438, 880, 440); hull.quadraticCurveTo(820, 438, 800, 400); hull.closePath();
+  c.fillStyle = '#C79A7B'; c.fill(hull);
+  c.fillStyle = '#B48468'; c.fillRect(876, 270, 8, 132);
+  const sail = (x0, h, w) => { const s = new Path2D(); s.moveTo(x0, 280); s.quadraticCurveTo(x0 + w, 280 + h * 0.5, x0, 280 + h); s.closePath(); c.fillStyle = '#FFF8EC'; c.fill(s); };
+  sail(884, 110, 70); sail(872, 100, -56);
+  // คลื่นฟองขาวริมหาด (เส้นโค้งคลื่น ไม่ตรง)
+  c.fillStyle = 'rgba(255,255,255,.85)';
+  c.beginPath(); c.moveTo(X0, 545);
+  for (let x = X0; x <= X1; x += 40) c.quadraticCurveTo(x + 20, 520 + Math.sin(x * 0.02) * 6, x + 40, 532 + Math.sin(x * 0.013) * 8);
+  c.lineTo(X1, 560); c.lineTo(X0, 560); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 4;
+  for (const y of [452, 478]) { c.beginPath(); for (let x = X0; x <= X1; x += 60) c[x === X0 ? 'moveTo' : 'lineTo'](x, y + Math.sin(x * 0.03 + y) * 4); c.stroke(); }
+  // ต้นมะพร้าวซ้าย
+  const tr = new Path2D();
+  tr.moveTo(-430, 620); tr.bezierCurveTo(-420, 400, -330, 220, -240, 70); tr.lineTo(-208, 84); tr.bezierCurveTo(-290, 230, -372, 400, -380, 620); tr.closePath();
+  c.fillStyle = '#D6A777'; c.fill(tr);
+  c.strokeStyle = 'rgba(180,130,90,.5)'; c.lineWidth = 4;
+  for (let t = 0.1; t < 0.95; t += 0.09) { const y = 620 - t * 540, x = -405 + t * 175 + t * t * 15; c.beginPath(); c.moveTo(x - 22, y); c.quadraticCurveTo(x, y + 8, x + 24, y); c.stroke(); }
+  const leaf = (a, len) => {
+    c.save(); c.translate(-226, 76); c.rotate(a);
+    const l = new Path2D(); l.moveTo(0, 0); l.quadraticCurveTo(len * 0.5, -48, len, 16); l.quadraticCurveTo(len * 0.5, -6, 0, 0); l.closePath();
+    c.fillStyle = '#8FD39A'; c.fill(l);
+    c.strokeStyle = 'rgba(90,170,110,.5)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(len * 0.5, -22, len, 16); c.stroke();
+    c.restore();
+  };
+  for (const [a, len] of [[-2.9, 260], [-2.3, 230], [-0.3, 250], [0.25, 230], [-1.6, 200], [2.6, 210], [0.9, 190]]) leaf(a, len);
+  skOval(c, -236, 100, 22, 22, '#B7864F'); skOval(c, -206, 108, 20, 20, '#A8794A');
+  // หีบสมบัติ (ขวาหน้า) + เหรียญกอง
+  bdGlow(c, 860, 600, 170, '255,220,120', 0.55, 0.6);
+  skRR(c, 770, 560, 180, 100, 18, '#C98E5E');
+  const lid = new Path2D(); lid.moveTo(770, 570); lid.quadraticCurveTo(860, 490, 950, 570); lid.closePath();
+  c.fillStyle = '#B57B4E'; c.fill(lid);
+  for (const x of [800, 900]) skRR(c, x, 520, 20, 140, 6, '#F2C75C');
+  skRR(c, 848, 584, 24, 30, 8, '#F2C75C');
+  for (let i = 0; i < 9; i++) skOval(c, 700 + i * 14 + (i % 3) * 6, 650 - (i % 3) * 10, 16, 8, i % 2 ? '#FFD86A' : '#F5C04A');
+  // เปลือกหอย / ปลาดาวบนทราย
+  skStar(c, -120, 700, 26, '#FFA98F', -1.2);
+  skOval(c, 640, 735, 20, 14, '#FFE1D6'); skOval(c, -260, 760, 16, 11, '#FFD9E6');
+  skMat(c, 330, 66, 'rgba(255,248,232,.95)', 'rgba(246,224,184,.9)', { shade: '170,130,80' });
+  skBlur(c);
+  // นกนางนวลไกล ๆ (โค้งคู่ คม)
+  c.strokeStyle = 'rgba(120,150,190,.8)'; c.lineWidth = 3.5; c.lineCap = 'round';
+  for (const [x, y, s] of [[-80, 0, 1], [20, -40, 0.8], [680, 40, 0.9]]) {
+    c.beginPath(); c.moveTo(x - 18 * s, y); c.quadraticCurveTo(x - 8 * s, y - 12 * s, x, y); c.quadraticCurveTo(x + 8 * s, y - 12 * s, x + 18 * s, y); c.stroke();
+  }
+  skSparkles(c, 18, 900, ['#FFFFFF', '#FFF3B0'], 360, 520);
+  skEnd(c, '120,170,210', 'rgba(200,226,240,1)', 0.3);
+  void W;
+}
+const PIRATE_BACKDROP = { paint: pirateBackdropPaint, outer: '#C8E2F0' };
+
+// ── ฮู้ดสตรีท: "กำแพงกราฟฟิตี้น่ารัก" — กำแพงอิฐลาเวนเดอร์ลบมุม รูปพ่นสีดาว หัวใจ มงกุฎ อุ้งเท้า เสาไฟ สเก็ตบอร์ด ทางเท้า วงชอล์กใต้เท้า ──
+function hoodieBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX;
+  skGrad(c, [[-520, '#DCCDF6'], [300, '#EDE3FC'], [548, '#F4EEFF'], [560, '#E3DEEC'], [1100, '#CFC7DD']]);
+  // อิฐลบมุม สีต่างกันนิด ๆ
+  for (let j = 0, y = -500; y < 540; j++, y += 56) {
+    for (let x = X0 + (j % 2) * 60; x < X1; x += 120) {
+      const t = hash(x * 0.37 + j * 3.1);
+      skRR(c, x + 4, y + 4, 112, 48, 14, t < 0.5 ? 'rgba(255,255,255,.22)' : 'rgba(190,170,230,.18)');
+    }
+  }
+  bdGlow(c, 300, 320, 520, '250,246,255', 0.65);
+  // รูปพ่นสี: ขอบขาวหนา + สีพาสเทลสด (ข้าง ๆ ตัวน้อง)
+  const spray = (draw, fill) => { c.save(); c.lineJoin = 'round'; c.strokeStyle = '#FFFFFF'; c.lineWidth = 14; draw(); c.stroke(); c.fillStyle = fill; c.fill(); c.restore(); };
+  spray(() => { c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 42 : 90, a = -Math.PI / 2 + (i * Math.PI) / 5; c[i ? 'lineTo' : 'moveTo'](-150 + Math.cos(a) * r, 150 + Math.sin(a) * r); } c.closePath(); }, '#9FE6CF');
+  c.save(); c.strokeStyle = '#FFFFFF'; c.lineWidth = 14; c.stroke(heartPath(720, 140, 62)); c.fillStyle = '#FFA8C8'; c.fill(heartPath(720, 140, 62)); c.restore();
+  const crown = new Path2D();
+  crown.moveTo(790, 400); crown.lineTo(800, 320); crown.lineTo(840, 360); crown.lineTo(870, 300); crown.lineTo(900, 360); crown.lineTo(940, 320); crown.lineTo(950, 400); crown.closePath();
+  c.save(); c.lineJoin = 'round'; c.strokeStyle = '#FFFFFF'; c.lineWidth = 12; c.stroke(crown); c.fillStyle = '#FFE38A'; c.fill(crown); c.restore();
+  for (const [x, y, r] of [[-300, 360, 46], [-342, 300, 20], [-300, 286, 20], [-258, 300, 20]]) { c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, y, r + 6, 0, TAU); c.fill(); }
+  for (const [x, y, r] of [[-300, 360, 46], [-342, 300, 20], [-300, 286, 20], [-258, 300, 20]]) skOval(c, x, y, r, r, '#C6B4FF');
+  // หยดสีย้อยใต้ดาว
+  for (const [x, h] of [[-190, 50], [-120, 34], [-160, 70]]) skRR(c, x, 210, 12, h, 6, '#9FE6CF');
+  // ทางเท้า + ขอบฟุตบาท
+  skRR(c, X0, 552, X1 - X0, 22, 11, '#EDE8F5');
+  // เสาไฟซ้าย
+  skRR(c, -560, -60, 26, 640, 13, '#B7A9D6');
+  skRR(c, -600, -90, 110, 40, 20, '#C9BCE4');
+  bdGlow(c, -545, -40, 160, '255,236,180', 0.55);
+  // สเก็ตบอร์ดขวา
+  skRR(c, 620, 600, 200, 24, 12, '#FF9DBE');
+  skRR(c, 630, 604, 180, 8, 4, 'rgba(255,255,255,.45)');
+  for (const x of [656, 784]) skOval(c, x, 632, 13, 13, '#FFE38A');
+  // วงชอล์กใต้เท้า
+  bdGlow(c, 300, FEET_Y + 20, 360, '140,120,170', 0.18, 0.2);
+  c.save(); c.setLineDash([22, 14]); c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 6;
+  c.beginPath(); c.ellipse(300, FEET_Y + 8, 300, 60, 0, 0, TAU); c.stroke(); c.restore();
+  skBlur(c);
+  skSparkles(c, 26, 960, ['#FFFFFF', '#FFF1C2', '#D9FFF2']);
+  skEnd(c, '150,120,200', 'rgba(214,202,236,1)', 0.32);
+}
+const HOODIE_BACKDROP = { paint: hoodieBackdropPaint, outer: '#D6CAEC' };
+
+// ── มงกุฎจิ๋ว: "สวนหิมะวิบวับ" — ฟ้าลาเวนเดอร์ชมพู เนินหิมะสองชั้น สนหิมะกลมมน หิมะโปรย ลานน้ำแข็งใต้เท้า ประกายทอง ──
+function tiaraBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX;
+  skGrad(c, [[-520, '#CFC2F2'], [100, '#E6D8FA'], [380, '#FBEAF8'], [520, '#FFFFFF'], [1100, '#ECE6F8']]);
+  bdGlow(c, 300, 260, 520, '255,248,255', 0.7);
+  const hill = (base, amp, ph, fill) => {
+    const p = new Path2D(); p.moveTo(X0, 620);
+    for (let x = X0; x <= X1; x += 20) p.lineTo(x, base - amp * (0.5 + 0.5 * Math.sin(x * 0.004 + ph)));
+    p.lineTo(X1, 620); p.closePath(); c.fillStyle = fill; c.fill(p);
+  };
+  hill(470, 90, 1.2, '#EFE6FB');
+  hill(520, 60, 3.1, '#FFFFFF');
+  const pine = (x, y, s, col) => {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    skRR(c, -12, -10, 24, 50, 8, '#C9A9A6');
+    for (const [ty, w] of [[-60, 120], [-130, 96], [-190, 70]]) {
+      const t = new Path2D(); t.moveTo(-w, ty + 50); t.quadraticCurveTo(-w * 0.2, ty - 10, 0, ty - 40); t.quadraticCurveTo(w * 0.2, ty - 10, w, ty + 50); t.quadraticCurveTo(0, ty + 66, -w, ty + 50); t.closePath();
+      c.fillStyle = col; c.fill(t);
+      c.fillStyle = '#FFFFFF'; c.beginPath(); c.ellipse(0, ty - 20, w * 0.45, 16, 0, 0, TAU); c.fill();
+    }
+    c.restore();
+  };
+  pine(-560, 470, 1.15, '#B8D6E6'); pine(-330, 500, 0.85, '#C6CCF0'); pine(880, 480, 1.05, '#C6CCF0'); pine(1100, 450, 1.25, '#B8D6E6');
+  // ไฟประดับสายทองห้อยข้างบน
+  c.strokeStyle = 'rgba(200,170,120,.6)'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(X0, -40); for (let x = X0; x < X1; x += 220) c.quadraticCurveTo(x + 110, 30, x + 220, -40); c.stroke();
+  for (let x = X0 + 30; x < X1; x += 55) { const u = ((x - X0) % 220) / 220, y = -40 + 4 * u * (1 - u) * 35; bdGlow(c, x, y + 8, 22, '255,226,140', 0.8); skOval(c, x, y + 8, 6, 8, '#FFE9A8'); }
+  // ลานน้ำแข็งใต้เท้า
+  skMat(c, 320, 64, '#FFFFFF', '#DCE6FB', { shade: '140,130,190', ring: 'rgba(255,255,255,.95)' });
+  c.fillStyle = 'rgba(255,255,255,.7)';
+  c.beginPath(); c.ellipse(230, FEET_Y - 6, 90, 10, -0.08, 0, TAU); c.fill();
+  skBlur(c);
+  // เกล็ดหิมะคม ๆ + จุดหิมะ
+  for (let i = 0; i < 60; i++) {
+    const x = -620 + hash(i * 3.7 + 1100) * 1840, y = -40 + hash(i * 6.3 + 1101) * 640;
+    if (!skFree(x, y, -40)) continue;
+    const r = 3 + hash(i + 1102) * 4;
+    if (i % 5) skOval(c, x, y, r, r, 'rgba(255,255,255,.95)');
+    else {
+      c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 2.5; c.lineCap = 'round';
+      for (let k = 0; k < 3; k++) { const a = (k * Math.PI) / 3; c.beginPath(); c.moveTo(x - Math.cos(a) * 12, y - Math.sin(a) * 12); c.lineTo(x + Math.cos(a) * 12, y + Math.sin(a) * 12); c.stroke(); }
+    }
+  }
+  skSparkles(c, 20, 1150, ['#FFF1C2', '#FFFFFF']);
+  skEnd(c, '160,140,210', 'rgba(220,208,244,1)', 0.32);
+}
+const TIARA_BACKDROP = { paint: tiaraBackdropPaint, outer: '#DCD0F4' };
+
+// ── ร็อกเกอร์: "เวทีคอนเสิร์ตไฟสี" — ฉากหลังม่วงกลาง ลำไฟสามสี โบเก้ไฟ ลำโพงมนสองข้าง ป้ายนีออนสายฟ้า/หัวใจ เวทีมันวาว วงสปอตไลต์ใต้เท้า ──
+function rockerBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX, W = X1 - X0;
+  skGrad(c, [[-520, '#4E3488'], [200, '#7350AE'], [540, '#9C74D2'], [560, '#5E3F96'], [1100, '#3F2A6E']]);
+  const BK = ['255,140,200', '120,230,255', '255,226,120', '190,150,255'];
+  for (let i = 0; i < 40; i++) {
+    const x = X0 + hash(i * 3.3 + 1200) * W, y = -200 + hash(i * 7.1 + 1201) * 640;
+    bdBokeh(c, x, y, 16 + hash(i + 1202) * 34, BK[i % 4], skFree(x, y) ? 0.55 : 0.2);
+  }
+  bdGlow(c, 300, 330, 520, '255,236,250', 0.4);
+  c.save(); c.globalCompositeOperation = 'lighter';
+  for (const [x, rgb, lean] of [[-260, '255,120,190', 260], [300, '255,240,200', 0], [860, '110,220,255', -260]]) {
+    const g = c.createLinearGradient(0, -520, 0, 600);
+    g.addColorStop(0, `rgba(${rgb},.32)`); g.addColorStop(1, `rgba(${rgb},0)`);
+    c.fillStyle = g;
+    c.beginPath(); c.moveTo(x - 30, -520); c.lineTo(x + 30, -520); c.lineTo(x + lean + 220, 600); c.lineTo(x + lean - 220, 600); c.fill();
+  }
+  c.restore();
+  // ลำโพงมนสองข้าง
+  for (const x of [-620, 860]) {
+    skRR(c, x, 250, 300, 330, 34, '#3A2660');
+    for (const [cy, r] of [[340, 62], [490, 82]]) { skOval(c, x + 150, cy, r, r, '#5A4290'); skOval(c, x + 150, cy, r * 0.45, r * 0.45, '#2C1C4A'); skOval(c, x + 132, cy - r * 0.5, r * 0.2, r * 0.12, 'rgba(255,255,255,.25)'); }
+  }
+  // ป้ายนีออน: สายฟ้าซ้าย · หัวใจขวา
+  const neon = (draw, rgb) => { c.save(); c.lineJoin = 'round'; c.lineCap = 'round'; c.shadowColor = `rgb(${rgb})`; c.shadowBlur = 30; c.strokeStyle = `rgb(${rgb})`; c.lineWidth = 12; draw(); c.shadowBlur = 0; c.strokeStyle = '#FFFFFF'; c.lineWidth = 4; draw(); c.restore(); };
+  neon(() => { c.beginPath(); c.moveTo(-170, 20); c.lineTo(-230, 130); c.lineTo(-170, 130); c.lineTo(-220, 230); c.stroke(); }, '255,214,90');
+  neon(() => c.stroke(heartPath(740, 120, 52)), '255,120,190');
+  // พื้นเวทีมันวาว + สปอตไลต์ใต้เท้า
+  const sh = c.createLinearGradient(0, 560, 0, 700);
+  sh.addColorStop(0, 'rgba(200,170,255,.35)'); sh.addColorStop(1, 'rgba(200,170,255,0)');
+  c.fillStyle = sh; c.fillRect(X0, 560, W, 140);
+  bdGlow(c, 300, FEET_Y + 8, 360, '255,236,250', 0.55, 0.2);
+  skMat(c, 300, 58, 'rgba(255,240,252,.55)', 'rgba(220,180,255,.25)', { shade: '30,10,60', ring: 'rgba(255,255,255,.7)', dash: [] });
+  skBlur(c, 2.2);
+  // คอนเฟตตีคม ๆ
+  const CF = ['#FF9AC8', '#8FE8FF', '#FFE27A', '#C9A8FF'];
+  for (let i = 0; i < 40; i++) {
+    const x = -620 + hash(i * 2.9 + 1300) * 1840, y = -20 + hash(i * 5.3 + 1301) * 560;
+    if (!skFree(x, y)) continue;
+    c.save(); c.translate(x, y); c.rotate(hash(i + 1302) * TAU); skRR(c, -7, -3, 14, 6, 3, CF[i % 4]); c.restore();
+  }
+  skEnd(c, '30,10,60', 'rgba(70,46,120,1)', 0.4);
+}
+const ROCKER_BACKDROP = { paint: rockerBackdropPaint, outer: '#462E78' };
+
+// ── พยาบาลน้อย: "ห้องพยาบาลมิ้นต์" — ผนังมิ้นต์ลายบวกจาง หน้าต่างกลมฟ้า ม่านกั้นมิ้นต์ ป้ายหัวใจกากบาท ชั้นขวดยา กระถางต้นไม้ พรมขาวขอบมิ้นต์ ──
+function nurseBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX;
+  skGrad(c, [[-520, '#CDEFE6'], [300, '#E2F7F0'], [470, '#EEFBF6'], [478, '#FFFFFF'], [575, '#F7FBFA'], [590, '#EFEAF4'], [1100, '#E0D8EA']]);
+  c.fillStyle = 'rgba(255,255,255,.6)';
+  for (let j = 0, y = -480; y < 450; j++, y += 70) for (let x = X0 + (j % 2) * 40; x < X1; x += 80) { skRR(c, x - 3, y - 10, 6, 20, 3, 'rgba(255,255,255,.55)'); skRR(c, x - 10, y - 3, 20, 6, 3, 'rgba(255,255,255,.55)'); }
+  bdGlow(c, 300, 300, 520, '255,255,255', 0.6);
+  // ผนังล่างขาวขอบคลื่นนุ่ม
+  c.fillStyle = '#FFFFFF';
+  c.beginPath(); c.moveTo(X0, 470);
+  for (let x = X0; x < X1; x += 60) c.quadraticCurveTo(x + 30, 456, x + 60, 470);
+  c.lineTo(X1, 580); c.lineTo(X0, 580); c.closePath(); c.fill();
+  // หน้าต่างกลมฟ้า (ซ้าย)
+  skOval(c, -170, 150, 108, 108, '#F4E6EE');
+  skOval(c, -170, 150, 92, 92, '#BFE6FF');
+  c.save(); c.beginPath(); c.arc(-170, 150, 92, 0, TAU); c.clip(); skCloud(c, -200, 190, 0.6); skCloud(c, -110, 110, 0.4); c.restore();
+  bdGlow(c, -170, 150, 140, '255,255,255', 0.35);
+  // ม่านกั้นมิ้นต์ (ซ้ายสุด)
+  skRR(c, -1000, -110, 660, 12, 6, '#D7C9DE');
+  const cu = new Path2D(); cu.moveTo(-1000, -100);
+  for (let x = -1000; x < -380; x += 60) cu.quadraticCurveTo(x + 30, -86, x + 60, -100);
+  cu.lineTo(-400, 560); for (let x = -400; x > -1000; x -= 60) cu.quadraticCurveTo(x - 30, 586, x - 60, 560); cu.closePath();
+  const cg = c.createLinearGradient(-1000, 0, -380, 0);
+  for (let i = 0; i <= 14; i++) cg.addColorStop(i / 14, i % 2 ? '#A9E2D2' : '#C6F0E4');
+  c.fillStyle = cg; c.fill(cu);
+  // ป้ายหัวใจกากบาท (ขวาบน) + ชั้นขวดยา + กระถาง
+  c.fillStyle = '#FFC2D6'; c.fill(heartPath(640, 150, 56));
+  skRR(c, 627, 112, 26, 74, 10, '#FFFFFF'); skRR(c, 603, 136, 74, 26, 10, '#FFFFFF');
+  skRR(c, 760, 300, 380, 18, 9, '#E6D3C4');
+  for (const [x, h, col] of [[790, 70, '#FFD1DE'], [860, 90, '#CDEBFF'], [930, 60, '#FFEFB8'], [1000, 80, '#D9F3E6']]) {
+    skRR(c, x, 300 - h, 48, h, 14, col); skRR(c, x + 10, 290 - h, 28, 16, 6, '#FFFFFF');
+  }
+  skRR(c, 800, 520, 110, 90, 26, '#FFD6C2');
+  c.fillStyle = '#9EDDB4'; c.fill(bdPuffs([[830, 500, 40], [880, 490, 44], [855, 450, 46]]));
+  skMat(c, 320, 64, '#FFFFFF', '#F4FBF8', { lace: '#BFEBDD', ring: 'rgba(150,215,195,.8)' });
+  skBlur(c);
+  skSparkles(c, 22, 1400, ['#FFFFFF', '#FFE1EC']);
+  for (let i = 0; i < 10; i++) {
+    const x = -560 + hash(i * 4.1 + 1450) * 1720, y = 40 + hash(i * 2.7 + 1451) * 380;
+    if (skFree(x, y, 20)) { c.fillStyle = 'rgba(255,170,200,.55)'; c.fill(heartPath(x, y, 9 + hash(i + 1452) * 6)); }
+  }
+  skEnd(c, '120,190,170', 'rgba(206,236,226,1)', 0.3);
+}
+const NURSE_BACKDROP = { paint: nurseBackdropPaint, outer: '#CEECE2' };
+
+// ── พ่อมดน้อย: "ห้องหนังสือเวทมนตร์" — ผนังพีชอุ่น ชั้นหนังสือสีพาสเทลซ้าย หน้าต่างโค้งคืนเดือนเสี้ยวขวา เทียนลอย ลูกแก้ววิเศษ พรมม่วงลายดาว ──
+function wizardBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX;
+  skGrad(c, [[-520, '#EED9F0'], [200, '#F8E6E2'], [560, '#FBEBDD'], [578, '#EBCDB0'], [1100, '#D9B48F']]);
+  bdGlow(c, 300, 300, 540, '255,246,232', 0.65);
+  // หน้าต่างโค้งยามค่ำ (ขวา)
+  const win = new Path2D();
+  win.moveTo(570, 380); win.lineTo(570, 120); win.arc(680, 120, 110, Math.PI, 0); win.lineTo(790, 380); win.closePath();
+  c.fillStyle = '#E7CDB4'; c.save(); c.translate(0, 0); c.lineWidth = 26; c.strokeStyle = '#E7CDB4'; c.stroke(win); c.restore();
+  const ng = c.createLinearGradient(0, 10, 0, 380);
+  ng.addColorStop(0, '#6E66C2'); ng.addColorStop(1, '#A796E6');
+  c.fillStyle = ng; c.fill(win);
+  c.save(); c.clip(win);
+  skOval(c, 720, 110, 40, 40, '#FFF1B8'); skOval(c, 740, 98, 36, 36, '#8D82D8');
+  for (let i = 0; i < 12; i++) skOval(c, 590 + hash(i + 1500) * 190, 40 + hash(i + 1501) * 320, 3, 3, '#FFFFFF');
+  c.restore();
+  skRR(c, 556, 376, 248, 20, 10, '#E2C2A4');
+  // ชั้นหนังสือซ้าย
+  skRR(c, -1000, -140, 820, 720, 26, '#D6A982');
+  const BOOK = ['#F4A6BE', '#A9D8F2', '#C8B6F6', '#FFE19A', '#A8E2C6', '#F8C3A0'];
+  for (let r = 0; r < 5; r++) {
+    const sy = -100 + r * 132;
+    skRR(c, -980, sy, 780, 112, 14, '#B98762');
+    let x = -966;
+    for (let i = 0; x < -220; i++) {
+      const w = 26 + hash(r * 31 + i * 1.7 + 1600) * 22, h = 68 + hash(r * 17 + i * 2.3 + 1601) * 34;
+      skRR(c, x, sy + 112 - h, w, h, 8, BOOK[(i + r) % BOOK.length]);
+      skRR(c, x + 5, sy + 112 - h + 14, w - 10, 6, 3, 'rgba(255,255,255,.45)');
+      x += w + 4;
+    }
+    skRR(c, -990, sy + 108, 800, 18, 9, '#CF9E78');
+  }
+  // ลูกแก้ววิเศษบนขาตั้ง (ขวาหน้า)
+  skRR(c, 820, 590, 90, 30, 14, '#C99A74');
+  bdGlow(c, 865, 540, 120, '210,180,255', 0.6);
+  skOval(c, 865, 540, 54, 54, 'rgba(214,196,255,.9)');
+  skOval(c, 848, 520, 16, 10, 'rgba(255,255,255,.75)', -0.5);
+  // พรมม่วงลายดาว
+  skMat(c, 330, 66, '#CDBEF6', '#A996E6', { shade: '120,80,150', ring: 'rgba(255,236,170,.9)' });
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; skStar(c, 300 + Math.cos(a) * 250, FEET_Y + 8 + Math.sin(a) * 42, 10, '#FFE7A0'); }
+  skBlur(c);
+  // เทียนลอย + ดาวทอง
+  for (const [x, y] of [[-110, 40], [10, -10], [560, -20], [870, 230], [-140, 300]]) {
+    bdGlow(c, x, y - 34, 44, '255,214,140', 0.8);
+    skRR(c, x - 10, y - 20, 20, 50, 6, '#FFF4E0');
+    const f = new Path2D(); f.moveTo(x, y - 46); f.quadraticCurveTo(x + 9, y - 30, x, y - 22); f.quadraticCurveTo(x - 9, y - 30, x, y - 46); f.closePath();
+    c.fillStyle = '#FFC85A'; c.fill(f);
+  }
+  for (let i = 0; i < 16; i++) {
+    const x = -600 + hash(i * 3.9 + 1700) * 1800, y = -20 + hash(i * 6.7 + 1701) * 440;
+    if (skFree(x, y)) skStar(c, x, y, 7 + hash(i + 1702) * 6, '#FFE27A', hash(i + 1703));
+  }
+  skSparkles(c, 16, 1750, ['#FFFFFF', '#FFF1C2']);
+  skEnd(c, '170,120,140', 'rgba(232,206,200,1)', 0.32);
+  void X1;
+}
+const WIZARD_BACKDROP = { paint: wizardBackdropPaint, outer: '#E8CEC8' };
+
+// ── กะลาสีน้อย: "ดาดฟ้าเรือทะเลฟ้า" — ฟ้าใสเมฆขาว ทะเลน้ำเงินอ่อน ราวเรือขาวเสามน ห่วงชูชีพ ธงราวสัญญาณ สมอ เชือกขด พรมเชือกใต้เท้า นกนางนวล ──
+function sailorBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX, W = X1 - X0;
+  skGrad(c, [[-520, '#A6D8FF'], [200, '#D2EDFF'], [400, '#ECF8FF'], [410, '#86C8EA'], [470, '#B3E2F4'], [520, '#F0DDC2'], [1100, '#DDBB92']]);
+  bdGlow(c, -200, -80, 320, '255,252,226', 0.75);
+  skCloud(c, -420, 60, 0.9); skCloud(c, 820, 20, 1.1); skCloud(c, 300, -140, 0.7, 0.7);
+  c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 4;
+  for (const y of [428, 452]) { c.beginPath(); for (let x = X0; x <= X1; x += 50) c[x === X0 ? 'moveTo' : 'lineTo'](x, y + Math.sin(x * 0.025 + y) * 4); c.stroke(); }
+  // ราวเรือ: เสาขาวมน + ราวบน (ทะเลมองลอดได้)
+  for (let x = X0 + 40; x < X1; x += 120) skRR(c, x, 440, 22, 100, 11, '#FFFFFF');
+  skRR(c, X0, 426, W, 26, 13, '#FFFFFF');
+  skRR(c, X0, 500, W, 12, 6, 'rgba(255,255,255,.85)');
+  skRR(c, X0, 536, W, 30, 0, '#F5E6D2');
+  // ห่วงชูชีพบนราว (ซ้าย)
+  c.lineWidth = 30; c.strokeStyle = '#FFFFFF'; c.beginPath(); c.arc(-260, 470, 62, 0, TAU); c.stroke();
+  c.strokeStyle = '#FF9C9C';
+  for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(-260, 470, 62, k * Math.PI / 2 + 0.2, k * Math.PI / 2 + 0.75); c.stroke(); }
+  // ธงราวสัญญาณ
+  c.strokeStyle = 'rgba(150,170,200,.7)'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(X0, -40); for (let x = X0; x < X1; x += 400) c.quadraticCurveTo(x + 200, 60, x + 400, -40); c.stroke();
+  const FL = ['#FF9C9C', '#8EC9F5', '#FFE08A', '#FFFFFF'];
+  for (let x = X0 + 30, i = 0; x < X1; x += 66, i++) {
+    const u = ((x - X0) % 400) / 400, y = -40 + 4 * u * (1 - u) * 50;
+    const f = new Path2D(); f.moveTo(x - 20, y); f.lineTo(x + 20, y + 2); f.quadraticCurveTo(x + 4, y + 30, x, y + 46); f.quadraticCurveTo(x - 4, y + 30, x - 20, y); f.closePath();
+    c.fillStyle = FL[i % 4]; c.fill(f);
+  }
+  // สมอ + เชือกขด (ขวาหน้า)
+  c.strokeStyle = '#9FB4CC'; c.lineWidth = 16; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(860, 540); c.lineTo(860, 650); c.stroke();
+  c.beginPath(); c.arc(860, 610, 50, 0.3, Math.PI - 0.3); c.stroke();
+  c.beginPath(); c.moveTo(830, 560); c.lineTo(890, 560); c.stroke();
+  c.lineWidth = 8; c.beginPath(); c.arc(860, 528, 14, 0, TAU); c.stroke();
+  for (const [r, a] of [[60, 1], [44, 0.9], [28, 0.8]]) { c.strokeStyle = `rgba(222,190,140,${a})`; c.lineWidth = 12; c.beginPath(); c.ellipse(-300, 680, r, r * 0.35, 0, 0, TAU); c.stroke(); }
+  // พรมเชือกใต้เท้า
+  skMat(c, 320, 64, '#FFF6E8', '#F2DDC0', { shade: '140,110,80', ring: 'rgba(214,176,124,.9)', dash: [6, 6], ringW: 6 });
+  skBlur(c);
+  c.strokeStyle = 'rgba(110,140,180,.8)'; c.lineWidth = 3.5; c.lineCap = 'round';
+  for (const [x, y, s] of [[-60, 120, 1], [40, 80, 0.8], [700, 200, 0.9], [1000, 150, 1]]) {
+    c.beginPath(); c.moveTo(x - 18 * s, y); c.quadraticCurveTo(x - 8 * s, y - 12 * s, x, y); c.quadraticCurveTo(x + 8 * s, y - 12 * s, x + 18 * s, y); c.stroke();
+  }
+  skSparkles(c, 18, 1800, ['#FFFFFF'], 400, 500);
+  skEnd(c, '110,160,210', 'rgba(196,222,242,1)', 0.3);
+}
+const SAILOR_BACKDROP = { paint: sailorBackdropPaint, outer: '#C4DEF2' };
+
+
+// ══ ห้องนั่งเล่นแมวน้อย — ฉากหน้ารายละเอียดน้องแมว (คลังน้องแมว · ผู้ใช้ 7 พ.ย. 2026: "ห้องน่ารัก ๆ ห้องนั่งเล่นแมวน้อย") ══
+// ไม่ใช่ฉากประจำชุด — เรียกผ่านคีย์ 'room:cats' (EXTRA_BACKDROPS ข้างล่าง · od-stage.js st.bd) สไตล์เดียวกับฉากสกินธรรมดา
+// ผนังลาเวนเดอร์ชมพูลายอุ้งเท้าจาง ๆ · หน้าต่างโค้งฟ้าใสม่านชมพู แดดลอดเป็นลำ · คอนโดแมวซ้าย (เสาเชือก เบาะ บ้านโดม ปอมปอมห้อย)
+// ชั้นวางต้นไม้ + กรอบรูปอุ้งเท้า · พื้นไม้น้ำผึ้งอ่อน พรมกลมขอบลูกไม้ · เบาะนอนกลม + ไหมพรมขวา · ฝุ่นแดดวิ้ง ๆ
+// สีอ่อนกว่าตัวน้องทุกตัว (ส้ม เทา ขาว ดำ) · หลังตัวน้องโล่งมีแสงนวล · ของชิ้นใหญ่อยู่ด้านข้าง
+/** รอยอุ้งเท้า (ปุ่มใหญ่ + นิ้วสี่) กลาง (x, y) ขนาด s */
+function crPaw(c, x, y, s, fill, rot = 0) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  c.fillStyle = fill;
+  c.beginPath(); c.ellipse(0, s * 0.35, s * 0.55, s * 0.45, 0, 0, TAU); c.fill();
+  for (const [dx, dy] of [[-0.62, -0.25], [-0.22, -0.62], [0.22, -0.62], [0.62, -0.25]]) {
+    c.beginPath(); c.ellipse(dx * s, dy * s, s * 0.2, s * 0.25, dx * 0.4, 0, TAU); c.fill();
+  }
+  c.restore();
+}
+function catRoomBackdropPaint(c) {
+  const [X0, , X1] = BD_BOX, W = X1 - X0;
+  const WALL = 572;
+  skGrad(c, [[-520, '#EED7F4'], [200, '#F8E4F3'], [WALL - 30, '#FCEEF6'], [WALL, '#FFF4F0'], [WALL + 14, '#F2DCC2'], [1100, '#E4C29E']]);
+  // ลายอุ้งเท้าขาวจาง ๆ เยื้องกันทีละแถว (จางลงหลังตัวน้อง)
+  for (let j = 0, y = -480; y < WALL - 40; j++, y += 92) {
+    for (let i = 0, x = X0 + (j % 2) * 55; x < X1; i++, x += 110) {
+      const d = Math.hypot((x - 300) / 1.3, y - 320);
+      const a = 0.18 + 0.3 * Math.min(1, Math.max(0, (d - 200) / 320));
+      crPaw(c, x, y, 13, `rgba(255,255,255,${a.toFixed(3)})`, (hash(i * 2.1 + j * 5.3) - 0.5) * 0.8);
+    }
+  }
+  bdGlow(c, 300, 330, 540, '255,250,253', 0.6);
+  // บัวพื้นขาวนวล + เงานุ่มตรงผนังจรดพื้น
+  skRR(c, X0, WALL - 22, W, 26, 0, '#FFF8F6');
+  bdGlow(c, 300, WALL + 6, 1500, '190,130,150', 0.16, 0.04);
+
+  // ── หน้าต่างโค้ง (ขวา) ฟ้าใส เมฆ + ม่านชมพูผูกโบว์ ──
+  const win = new Path2D();
+  win.moveTo(632, 330); win.lineTo(632, 70); win.arc(740, 70, 108, Math.PI, 0); win.lineTo(848, 330); win.closePath();
+  c.save();
+  c.lineJoin = 'round';
+  c.strokeStyle = '#FFF7F2'; c.lineWidth = 22; c.stroke(win);
+  const sky = c.createLinearGradient(0, -40, 0, 330);
+  sky.addColorStop(0, '#BFE4FF'); sky.addColorStop(1, '#EAF7FF');
+  c.fillStyle = sky; c.fill(win);
+  c.clip(win);
+  skCloud(c, 700, 120, 0.55); skCloud(c, 820, 40, 0.4);
+  bdGlow(c, 800, -10, 120, '255,252,226', 0.8);
+  c.restore();
+  c.fillStyle = 'rgba(255,247,242,.95)';
+  c.fillRect(734, -40, 12, 370); c.fillRect(632, 168, 216, 12);
+  skRR(c, 610, 326, 260, 22, 11, '#FFF4EE');
+  for (const side of [-1, 1]) {
+    const x0 = side < 0 ? 586 : 894;
+    const cu = new Path2D();
+    cu.moveTo(x0 - side * 0, -60);
+    cu.lineTo(x0 + side * 70, -60);
+    cu.bezierCurveTo(x0 + side * 64, 80, x0 + side * 20, 170, x0 + side * 26, 230);
+    cu.bezierCurveTo(x0 + side * 40, 280, x0 + side * 60, 330, x0 + side * 54, 380);
+    cu.lineTo(x0 - side * 6, 380);
+    cu.bezierCurveTo(x0 - side * 2, 300, x0 - side * 10, 260, x0 - side * 4, 230);
+    cu.bezierCurveTo(x0 + side * 4, 160, x0 - side * 6, 60, x0, -60);
+    cu.closePath();
+    const g = c.createLinearGradient(x0, 0, x0 + side * 70, 0);
+    g.addColorStop(0, 'rgba(250,186,214,.95)'); g.addColorStop(0.5, 'rgba(255,214,232,.95)'); g.addColorStop(1, 'rgba(246,174,206,.95)');
+    c.fillStyle = g; c.fill(cu);
+    ribbonBow(c, x0 + side * 22, 232, 18, { line: '#E7A2C2' }, 0, BOW_BD_PINK, false);
+  }
+  skRR(c, 560, -72, 360, 16, 8, '#E8CDB6');
+
+  // ── ชั้นวางลอย (ซ้ายบน) ต้นไม้กระถาง + กรอบรูปอุ้งเท้า ──
+  skRR(c, -250, 150, 250, 16, 8, '#E7C9AE');
+  skRR(c, -214, 96, 56, 56, 14, '#F7BFA6');
+  c.fillStyle = '#9EDDB4';
+  c.fill(bdPuffs([[-200, 84, 22], [-172, 78, 24], [-186, 58, 22]]));
+  c.fillStyle = 'rgba(255,255,255,.35)';
+  c.beginPath(); c.arc(-192, 60, 9, 0, TAU); c.fill();
+  skRR(c, -120, 60, 92, 90, 14, '#FFF3D9', '#EBCB95', 6);
+  skRR(c, -110, 70, 72, 70, 9, '#FFE3EE');
+  crPaw(c, -74, 108, 17, '#F49CC0');
+
+  // ── คอนโดแมว (ซ้าย): เสาเชือก เบาะสองชั้น บ้านโดม ปอมปอมห้อย ──
+  const post = (x, y0, y1) => {
+    skRR(c, x, y0, 34, y1 - y0, 10, '#EBD1AE');
+    c.strokeStyle = 'rgba(196,158,112,.45)'; c.lineWidth = 3;
+    for (let y = y0 + 10; y < y1 - 4; y += 12) { c.beginPath(); c.moveTo(x + 4, y); c.quadraticCurveTo(x + 17, y + 4, x + 30, y); c.stroke(); }
+  };
+  post(-470, 190, 596);
+  post(-300, 340, 596);
+  skRR(c, -610, 584, 470, 34, 17, '#D8C4F2');
+  skRR(c, -560, 168, 250, 30, 15, '#D8C4F2');
+  skRR(c, -556, 160, 242, 12, 6, 'rgba(255,255,255,.45)');
+  skRR(c, -380, 318, 210, 30, 15, '#F8C6DA');
+  skRR(c, -376, 310, 202, 12, 6, 'rgba(255,255,255,.45)');
+  // บ้านโดมบนพื้นคอนโด
+  const dome = new Path2D();
+  dome.moveTo(-600, 586); dome.lineTo(-600, 520); dome.arc(-530, 520, 70, Math.PI, 0); dome.lineTo(-460, 586); dome.closePath();
+  c.fillStyle = '#F7CFE0'; c.fill(dome);
+  skOval(c, -530, 548, 34, 38, '#B98AA4');
+  skOval(c, -530, 556, 28, 30, '#9E6F8B');
+  // ปอมปอมห้อยจากชั้นบน
+  c.strokeStyle = 'rgba(200,160,190,.9)'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(-330, 198); c.quadraticCurveTo(-322, 250, -328, 282); c.stroke();
+  c.fillStyle = '#FFB5D2'; c.fill(bdPuffs([[-328, 292, 14], [-318, 300, 12], [-338, 302, 12], [-328, 310, 12]]));
+
+  // ── แดดลอดหน้าต่างเป็นลำนุ่ม ๆ จากขอบล่างหน้าต่างลงมาที่พื้น (เบา ๆ — ผนังสว่างอยู่แล้ว บวกแสงแรงจะขาวโพลน) ──
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  const sun = c.createLinearGradient(740, 330, 430, 680);
+  sun.addColorStop(0, 'rgba(255,240,214,.09)'); sun.addColorStop(1, 'rgba(255,240,214,0)');
+  c.fillStyle = sun;
+  c.beginPath(); c.moveTo(650, 330); c.lineTo(840, 330); c.lineTo(640, 690); c.lineTo(380, 690); c.closePath(); c.fill();
+  c.restore();
+
+  // ── พื้น: แสงมันวาวใกล้ผนัง ──
+  const fs = c.createLinearGradient(0, WALL, 0, WALL + 110);
+  fs.addColorStop(0, 'rgba(255,246,236,.55)'); fs.addColorStop(1, 'rgba(255,246,236,0)');
+  c.fillStyle = fs; c.fillRect(X0, WALL, W, 110);
+
+  // ── เบาะนอนกลม + ไหมพรม (ขวา) ──
+  bdGlow(c, 760, 628, 140, '150,100,130', 0.22, 0.3);
+  skOval(c, 760, 610, 120, 42, '#CBB4EE');
+  skOval(c, 760, 600, 96, 30, '#FFF2F8');
+  skOval(c, 744, 594, 40, 12, 'rgba(255,255,255,.7)');
+
+  // ── พรมกลมใต้เท้า ขอบลูกไม้ + อุ้งเท้าจางสองข้าง ──
+  skMat(c, 320, 64, '#FFF6FA', '#F7D2E4', { lace: '#FFFFFF', ring: 'rgba(240,160,196,.8)', shade: '160,100,130' });
+  crPaw(c, 70, FEET_Y + 6, 11, 'rgba(240,150,190,.45)', -0.3);
+  crPaw(c, 530, FEET_Y + 6, 11, 'rgba(240,150,190,.45)', 0.3);
+  // ไหมพรมกลิ้งอยู่ข้างพรม (วาดหลังพรม — ไม่ให้ขอบลูกไม้ทับ)
+  bdGlow(c, 676, 676, 44, '150,100,130', 0.22, 0.35);
+  skOval(c, 676, 652, 26, 26, '#FFA9C9');
+  skOval(c, 668, 644, 9, 6, 'rgba(255,255,255,.6)', -0.5);
+  c.strokeStyle = 'rgba(232,110,162,.75)'; c.lineWidth = 3;
+  for (const a of [-0.6, 0.1, 0.8]) { c.beginPath(); c.ellipse(676, 652, 20, 8, a, 0, TAU); c.stroke(); }
+  c.beginPath(); c.moveTo(698, 664); c.quadraticCurveTo(730, 690, 772, 670); c.stroke();
+
+  skBlur(c);
+  // ฝุ่นแดดวิ้ง ๆ ในลำแสง + หัวใจลอยเล็ก ๆ
+  for (let i = 0; i < 22; i++) {
+    const x = 440 + hash(i * 3.7 + 2100) * 420, y = 60 + hash(i * 5.9 + 2101) * 520;
+    if (!skFree(x, y, -40)) continue;
+    swSparkle(c, x, y, 4 + hash(i + 2102) * 6, 0.7, i % 3 ? '#FFFFFF' : '#FFF3C4');
+  }
+  for (let i = 0; i < 8; i++) {
+    const x = -560 + hash(i * 4.1 + 2150) * 1700, y = 20 + hash(i * 2.7 + 2151) * 360;
+    if (skFree(x, y, 30)) { c.fillStyle = 'rgba(255,160,198,.5)'; c.fill(heartPath(x, y, 8 + hash(i + 2152) * 5)); }
+  }
+  skEnd(c, '200,150,190', 'rgba(236,212,236,1)', 0.3);
+}
+const CAT_ROOM_BACKDROP = { paint: catRoomBackdropPaint, outer: '#ECD4EC' };
+/** ฉากที่ไม่ผูกกับชุด — เรียกด้วยคีย์แทน id ชุด (cat2Backdrop / drawCat2Backdrop) */
+const EXTRA_BACKDROPS = { 'room:cats': CAT_ROOM_BACKDROP };
 
 // ── องค์หญิงหิมะ: "คืนวังน้ำแข็ง" — ฟ้ากลางคืนกรมท่า ดาว แสงเหนือ พระจันทร์ ภูเขาน้ำแข็ง วังน้ำแข็ง สนคลุมหิมะ ผลึกน้ำแข็ง ทะเลสาบน้ำแข็ง ──
 function bdMountains(c, base, hi, lo, seed, fill, snow) {
@@ -18652,14 +19384,14 @@ const NOBLE_BACKDROP = { paint: nobleBackdropPaint, outer: '#CDBEE8' };
 /** ภาพสำรองของฉากหลังต่อสกิน: id → { cv, r } (r = พิกเซลต่อหน่วยไฟล์) */
 const BD_CACHE = new Map();
 /** ชุดนี้มีฉากหลังประจำสกินไหม */
-export const cat2Backdrop = (id) => CAT2_OUTFITS[id]?.backdrop || null;
+export const cat2Backdrop = (id) => CAT2_OUTFITS[id]?.backdrop || EXTRA_BACKDROPS[id] || null;
 /**
  * วาดฉากหลังประจำสกินใต้ตัวน้อง (เรียกก่อน drawCat2 ด้วย x/เท้า/scale ชุดเดียวกัน)
  * opt.res = พิกเซลจริงต่อหน่วยเกม "ไม่รวมกล้อง" (ใช้เลือกความละเอียดภาพสำรอง — กล้องซูมเข้าไม่ต้องวาดใหม่ ฉากนุ่มลงเหมือนชัดตื้น)
  * ไม่ส่ง = คิดจาก transform ปัจจุบัน · คืน false ถ้าชุดนี้ไม่มีฉาก
  */
 export function drawCat2Backdrop(ctx, x, feetY, scale, id, opt = {}) {
-  const B = CAT2_OUTFITS[id]?.backdrop;
+  const B = cat2Backdrop(id);   // ฉากประจำชุด หรือฉากที่ไม่ผูกชุด (EXTRA_BACKDROPS เช่น 'room:cats')
   if (!B) return false;
   const [X0, Y0, X1, Y1] = BD_BOX, BW = X1 - X0, BH = Y1 - Y0;
   const k = scale * UNIT;
@@ -19148,6 +19880,7 @@ const CAT2_OUTFITS = {
   },
   // ── กะลาสีน้อย (ตามแบบผู้ใช้): เสื้อขาวแขนสั้น ปกฟ้าแถบขาว ผ้าผูกคอฟ้า · กางเกงขาสั้นฟ้ากระดุมทอง · หมวกขาวแถบฟ้า ──
   sailor: {
+    backdrop: SAILOR_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     pants: true,
     shirt: sailorShirt,
     collarPath() { const q = new Path2D(); for (const { lap } of sailorLaps()) q.addPath(lap); return q; },
@@ -19159,6 +19892,7 @@ const CAT2_OUTFITS = {
   // ── มงกุฎจิ๋ว (ตามแบบผู้ใช้): มงกุฎทองเพชรฟ้า · ผ้าคลุมไหล่ฟ้าแหวกหน้าขอบลูกไม้ ดาวทอง · โบว์ฟ้าเข็มกลัดทอง ──
   // ── เชฟน้อย: เสื้อเชฟขาวกระดุมสองแถว · ผ้าพันคอแดงผูกข้าง · กางเกงลายตาราง · หมวกเชฟทรงสูง ──
   chef: {
+    backdrop: CHEF_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     pants: true,
     sitSleeve: CHEF_T.body,   // ท่าเกาท้อง: แขนเสื้อสั้นถึงก่อนศอก (แขนยาวทั้งท่อนดูขาด ๆ)
     shirt: (c, k) => sailorShirt(c, { ...k, T: CHEF_T }),
@@ -19168,6 +19902,7 @@ const CAT2_OUTFITS = {
   },
   // ── พยาบาลน้อย: เดรสชมพูพาสเทล ปกบัวขาว กระเป๋ากากบาทแดง · กระโปรงทรงเอชายขาว · หมวกพยาบาล ──
   nurse: {
+    backdrop: NURSE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     shirt: (c, k) => sailorShirt(c, { ...k, T: NURSE_T }),
     neck: nurseCollar,
     skirt: nurseSkirt,
@@ -19175,6 +19910,7 @@ const CAT2_OUTFITS = {
   },
   // ── ฮู้ดสตรีท: ฮู้ดมัสตาร์ด กระเป๋าจิงโจ้ ฮู้ดกองรอบคอ เชือกผูก · จ็อกเกอร์เทา · แก๊ปแดงกลับหลัง ──
   hoodie: {
+    backdrop: HOODIE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     pants: true,
     sitSleeve: MUSTARD,
     shirt: (c, k) => sailorShirt(c, { ...k, T: HOODIE_T }),
@@ -19185,6 +19921,7 @@ const CAT2_OUTFITS = {
   },
   // ── ร็อกเกอร์: เสื้อยืดแดงลายหน้ายิ้มปีศาจ · เสื้อกั๊กหนังดำปกเทา · ขาสั้นเทาเข้ม เข็มขัด · แว่นดำบนตา ──
   rocker: {
+    backdrop: ROCKER_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     pants: true,
     sitSleeve: ROCK_RED,
     shirt: (c, k) => sailorShirt(c, { ...k, T: ROCK_T }),
@@ -19195,6 +19932,7 @@ const CAT2_OUTFITS = {
   },
   // ── พ่อมดน้อย: เสื้อคลุมน้ำเงินม่วงดาวเดือนทอง · กระโปรงคลุมยาวชายทอง · หมวกกรวยปลายงอ · เข็มกลัดดาว ──
   wizard: {
+    backdrop: WIZARD_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     sitSleeve: WIZ,
     shirt: (c, k) => sailorShirt(c, { ...k, T: WIZ_T }),
     neck: wizardClasp,
@@ -19203,6 +19941,7 @@ const CAT2_OUTFITS = {
   },
   // ── โจรสลัดน้อย: เสื้อลายทางแดงคอวี ผ้าคาดเอวแดง · กางเกงน้ำตาลปะผ้า · หมวกสามเหลี่ยมกะโหลก · ผ้าปิดตา ──
   pirate: {
+    backdrop: PIRATE_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     pants: true,
     shirt: (c, k) => sailorShirt(c, { ...k, T: PIR_T }),
     skirt: (c, k) => sailorShorts(c, { ...k, T: PIR_P }),
@@ -19211,6 +19950,7 @@ const CAT2_OUTFITS = {
   },
   // ── นินจาส้ม: ชุดนินจาส้มแขนยาว ปกไขว้กรมท่า เข็มขัดผูกปม · กางเกงกรมท่า · ผ้าคาดหัวแผ่นเหล็ก ──
   ninja: {
+    backdrop: NINJA_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     pants: true,
     sitSleeve: NJ,
     shirt: (c, k) => sailorShirt(c, { ...k, T: NINJA_T }),
@@ -19383,6 +20123,7 @@ const CAT2_OUTFITS = {
     hat: dryadHat,
   },
   tiara: {
+    backdrop: TIARA_BACKDROP,   // ฉากหลังประจำสกิน (ภาพนิ่ง · ผู้ใช้ 6 พ.ย. 2026)
     neck: princessCape,
     hat: goldCrown,
   },

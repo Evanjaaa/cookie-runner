@@ -1130,6 +1130,8 @@ export const EN = {
   'เปลี่ยนชื่อ': 'Rename',
   'เรื่องราวของน้อง': "Kitten's story",
   'เรื่องราว': 'Story',
+  'ก่อนหน้า': 'Previous',
+  'ถัดไป': 'Next',
   'อิ่ม': 'Full',
   'สนุก': 'Fun',
   'สะอาด': 'Clean',

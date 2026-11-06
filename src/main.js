@@ -2003,7 +2003,7 @@ function buildGList() {
         unlockAudio();
         sfx.fish();
         setHeroId(item.id);
-        openOutfitDetail(item.id, gListPanel);
+        openOutfitDetail(item.id, gListPanel, gPool().map((x) => x.id));
       });
       grid.appendChild(card);
       continue;
@@ -3234,6 +3234,11 @@ function emptyNote(grid, text) {
  *   raising  น้องที่ยังเลี้ยงอยู่ในบ้าน (แตะแล้วพาไปบ้านน้อง)
  *   locked   สายพันธุ์ที่ยังไม่เคยพบ โชว์เป็นเงาดำ
  */
+/**
+ * การ์ด "น้องของเรา" (ระบายสีเอง แบบเก่า) ในคลังน้องแมว — ซ่อนไว้ก่อน (ผู้ใช้ 7 พ.ย. 2026) · เปิดคืน = คืนค่า true
+ * เป็นฟังก์ชันไม่ใช่ const — โค้ดตอนบูตอาจเรียกก่อนบรรทัดนี้ (เหตุผลเดียวกับ catSilhouette)
+ */
+function showPaintCat() { return false; }
 function catEntries() {
   const out = [
     { id: 'orange', kind: 'main', skin: skinById('orange') },
@@ -3303,7 +3308,8 @@ function buildSkinStashGrid() {
   const grid = document.getElementById('skinStashGrid');
   grid.innerHTML = '';
 
-  const all = catEntries();
+  // น้องระบายสี (แบบเก่า) ซ่อนไว้ก่อน (ผู้ใช้ 7 พ.ย. 2026) — ข้อมูล/หน้าสร้างสรรค์ยังอยู่ครบ เปิดคืน = showPaintCat()
+  const all = catEntries().filter((x) => showPaintCat() || x.kind !== 'paint');
   const pinned = all.filter((x) => x.kind === 'main' || x.kind === 'paint');
   const rest = applyFilter('skin', all.filter((x) => !pinned.includes(x)), {
     owned: (x) => x.kind !== 'locked',
@@ -3319,11 +3325,13 @@ function buildSkinStashGrid() {
     const on = x.id === using;
     const locked = x.kind === 'locked';
 
+    // การ์ดวุ้นใสนุ่ม (.ck-card — ผู้ใช้ 6 พ.ย. 2026) ห้าใบต่อแถว ไม่มีช่องพรีวิวซ้ายแล้ว
     const card = document.createElement('button');
-    card.className = 'skin-card outfit-card cat-card kind-' + x.kind + (on ? ' on' : '') + (locked ? ' locked' : '');
-    card.innerHTML = '<canvas width="96" height="96"></canvas><b></b><small class="cat-tag"></small>';
+    card.type = 'button';
+    card.className = 'ck-card cat-card kind-' + x.kind + (on ? ' on' : '') + (locked ? ' locked' : '');
+    // บนการ์ดเหลือแค่ชื่อน้อง (ผู้ใช้ 7 พ.ย. 2026) — สายพันธุ์/สถานะไปดูในหน้ารายละเอียด (catEntryTag / catEntryHint)
+    card.innerHTML = '<span class="ck-face"><canvas width="140" height="140"></canvas></span><b></b>';
     card.querySelector('b').textContent = locked ? '???' : (x.cat ? nameOf(x.cat) : x.skin.name);
-    card.querySelector('.cat-tag').textContent = catEntryTag(x);
     if (x.cat) {
       const sex = document.createElement('i');
       sex.className = 'sex-tag ' + x.cat.sex;
@@ -3335,14 +3343,16 @@ function buildSkinStashGrid() {
     // t=60 ไม่ใช่ 0 เพราะที่ t=0 แมวกำลังหลับตาพอดี รูปตัวอย่างจะดูเหมือนหลับ
     // น้องที่ยังเด็กวาดตัวเล็กลงตามวัย ให้เห็นตั้งแต่ในกริดว่ายังเป็นลูกแมว
     const k = x.kind === 'raising' ? sizeOf(levelOf(x.cat)) : 1;
-    paintMini(card.querySelector('canvas'), 96, (c) => drawStashCat(c, 55, 88, 1.5 * k, x.skin, 60, { head: true, logical: 96 }));
+    paintMini(card.querySelector('canvas'), 140, (c) => drawStashCat(c, 80, 128, 2.19 * k, x.skin, 60, { head: true, logical: 140 }));
 
-    if (x.id === stashSel.skin) card.classList.add('sel');
     setDot(card, !locked && isFresh('skin', x.id));
+    // แตะ = เข้าหน้ารายละเอียดน้องเต็มตัวเลย (แบบหน้าชุด "ขนล้วน" — ผู้ใช้ 6 พ.ย. 2026)
     card.addEventListener('click', () => {
       unlockAudio();
       sfx.fish();
-      selectStash('skin', x.id);
+      stashSel.skin = x.id;
+      markSeen('skin', x.id);
+      openCatDetail(x.id, list.map((e) => e.id));
     });
 
     grid.appendChild(card);
@@ -3579,7 +3589,8 @@ function buildOutfitGrid() {
       sfx.fish();
       stashSel.outfit = o.id;
       markSeen('outfit', o.id);
-      openOutfitDetail(o.id, stashPanel);
+      // ส่งรายการตามลำดับที่เห็นในกริด — ลูกศรในหน้ารายละเอียดเลื่อนดูชุดอื่นต่อได้เลย
+      openOutfitDetail(o.id, stashPanel, list.map((x) => x.id));
     });
 
     grid.appendChild(card);
@@ -6005,14 +6016,22 @@ let odRAF = 0;
 // mode: 'intro' | 'act' | 'idle' · f = เฟรมในท่า · tBase = เวลาชีวิต (หายใจ กะพริบ) ต่อเนื่องข้ามท่า
 // from = ท่าเปิดตัว ณ จุดที่ออก (ผสมเข้าท่าแอ็คช่วงแรก) · w/h = ขนาดผ้าใบที่วัดไว้ (ResizeObserver)
 // vid = ขนาดวิดีโอที่ใช้กับการเปิดหน้านี้ (null = วาดสดล้วน) · vplay = วิดีโอกำลังรับหน้าที่ท่าเปิดตัว · vStart = เวลาที่สั่งเล่น
-const od = { mode: 'idle', f: 0, tBase: 600, from: null, last: 0, w: 0, h: 0, vid: null, vplay: false, vStart: 0, skin: null };
+const od = { mode: 'idle', f: 0, tBase: 600, from: null, last: 0, w: 0, h: 0, vid: null, vplay: false, vStart: 0, skin: null, k: 1 };
+// หน้านี้เปิดเป็น "รายละเอียดน้องแมว" อยู่ (id ใน catEntries) — null = รายละเอียดชุดตามปกติ (openCatDetail)
+let odCat = null;
+// รายการ id ตามลำดับของหน้าที่เปิดมา (กริดคลังชุด / คลังน้อง / สกินในตู้นี้) — ลูกศรซ้าย-ขวาเลื่อนดูในรายการนี้ · null = ไม่มีลูกศร
+let odList = null;
 new ResizeObserver(([e]) => { od.w = e.contentRect.width; od.h = e.contentRect.height; }).observe(odStage);
 const OD_VIDEO_WAIT = 2500;   // วิดีโอยังไม่ขึ้นภาพเกินเท่านี้ (มิลลิวินาที) = วาดสดแทน
 
 /** เริ่มเล่นใหม่ตั้งแต่ต้น — ชุดที่มีท่าเปิดตัวเริ่มที่ท่าเปิดตัว (มีวิดีโอ = เล่นวิดีโอ) */
 function odStart() {
   // เปิดจากตู้กาช่า (ป้ายโปรโมท / สกินในตู้นี้) = พรีเซนเตอร์ประจำร้าน (น้องไข่มุก — ผู้ใช้ 18 ต.ค. · หนุ่มไทยโจงกระเบนใช้น้องส้ม) · จากคลังน้อง = แมวของผู้เล่น
-  od.skin = odFrom === gachaPanel || odFrom === gListPanel ? skinById(OD_CASTS[odShopCast(odCurrent)].skin) : getSkin();
+  // หน้ารายละเอียดน้องแมว (odCat) = ตัวน้องตัวนั้นล้วน ๆ ไม่ใส่ชุด · ลูกแมวตัวเล็กตามวัย
+  const ce = odCat ? catEntryById(odCat) : null;
+  od.k = ce?.kind === 'raising' ? sizeOf(levelOf(ce.cat)) : 1;
+  od.skin = ce ? ce.skin
+    : odFrom === gachaPanel || odFrom === gListPanel ? skinById(OD_CASTS[odShopCast(odCurrent)].skin) : getSkin();
   const s = { ...od.skin, outfit: outfitById(odCurrent) };
   const live = CAT2.ui && useCat2(s);   // ท่าเปิดตัว/ท่าแอ็คมีเฉพาะตัววาดแบบใหม่
   od.mode = live && cat2Intro(odCurrent) ? 'intro' : live && cat2Act(odCurrent) ? 'act' : 'idle';
@@ -6073,7 +6092,8 @@ function odDraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawOdScene(ctx, W, H, {
     id: odCurrent, skin: { ...(od.skin || getSkin()), outfit: o }, high: o.rarity === 'high',
-    mode: od.mode, f: od.f, tBase: od.tBase, from: od.from,
+    mode: od.mode, f: od.f, tBase: od.tBase, from: od.from, k: od.k,
+    bd: odCat ? 'room:cats' : undefined,   // หน้าน้องแมว = ห้องนั่งเล่นแมวน้อย (cat2.js CAT_ROOM_BACKDROP)
   }, od.vid ? odGeoCover(W, H, od.vid) : odGeo(W, H));
 }
 
@@ -6132,6 +6152,7 @@ function stopOdCat() {
 
 // แตะเวทีระหว่างท่าเปิดตัว = ข้าม (ไหลเข้าท่าแอ็ค เสียงจางออก) — ตอนวิดีโอเล่น ตัวที่โดนแตะคือวิดีโอ
 function odSkip() {
+  if (performance.now() - odSwipeAt < 450) return;   // ปัดเปลี่ยนตัว ไม่ใช่แตะข้ามท่า
   if (od.mode !== 'intro') return;
   if (od.vplay && odVideo.classList.contains('on')) od.f = Math.min(cat2Intro(odCurrent).dur, odVideo.currentTime * 60);
   fadeSfx(0.3);
@@ -6172,8 +6193,11 @@ function outfitPerks(o) {
 }
 
 function paintOutfitDetail() {
+  if (odCat) { paintCatDetail(); return; }
   const o = outfitById(odCurrent);
   if (!o) return;
+  odPanel.classList.remove('cat-mode');
+  document.getElementById('odMore').hidden = true;
   const got = isOwned(o.id);
   const on = got && o.id === getSkin().outfit.id;
   const tier = o.rarity ? RARITY[o.rarity] : null;
@@ -6227,9 +6251,12 @@ function paintOutfitDetail() {
 /** หน้ารายละเอียดชุดระดับ S หยุดเพลงหน้าแรกไว้ (ท่าเปิดตัวมีเพลงประกอบของตัวเอง — ผู้ใช้ 24 ต.ค.) */
 let odMusicOff = false;
 const OD_SFX_BOOST = 1.9;
-function openOutfitDetail(id, from = outfitPanel) {
+function openOutfitDetail(id, from = outfitPanel, list = null) {
+  odCat = null;
   odCurrent = id;
   odFrom = from;
+  odList = list;
+  paintOdNav();
   setOdMax(false);
   paintOutfitDetail();
   swapPanel(from, odPanel);
@@ -6241,6 +6268,8 @@ function openOutfitDetail(id, from = outfitPanel) {
 
 function closeOutfitDetail() {
   stopOdCat();
+  odCat = null;
+  odList = null;
   // กลับไปแผงที่เปิดมา — รายการในตู้ต้องวาดใหม่ (อาจเพิ่งใส่ชุดไป การ์ดที่ "ใส่อยู่" เปลี่ยน)
   if (odFrom === gListPanel) {
     odFrom = null;
@@ -6266,6 +6295,7 @@ document.getElementById('odBack').addEventListener('click', () => {
 });
 
 document.getElementById('odWear').addEventListener('click', () => {
+  if (odCat) { catDetailAct(); return; }
   const o = outfitById(odCurrent);
   if (!o) return;
   unlockAudio();
@@ -6294,6 +6324,162 @@ document.getElementById('odWear').addEventListener('click', () => {
   paintOutfitDetail();
   refreshHome();
 });
+
+// ── หน้ารายละเอียดน้องแมว (ผู้ใช้ 6 พ.ย. 2026: "กดน้องแมวแล้วเข้าไปดูตัวน้องเต็ม ๆ เหมือนหน้าชุดขนล้วน") ──
+// ใช้แผงเดียวกับรายละเอียดชุด (odPanel) — เวทีห้องลาเวนเดอร์ น้องตัวนั้นยืนหายใจไม่ใส่ชุด (ลูกแมวตัวเล็กตามวัย)
+// กล่องซ้ายล่าง = สายพันธุ์ + เพศ/สถานะทีละบรรทัด · ขวาล่าง = เรื่องราว (น้องจากกล่อง) + เลือกลงวิ่ง / ไปบ้านน้อง
+function openCatDetail(id, list = null) {
+  odCat = id;
+  odCurrent = 'none';
+  odFrom = stashPanel;
+  odList = list;
+  paintOdNav();
+  setOdMax(false);
+  paintCatDetail();
+  swapPanel(stashPanel, odPanel);
+  odStart();
+  if (!odRAF) odRAF = requestAnimationFrame(odFrame);
+}
+
+function paintCatDetail() {
+  const x = catEntryById(odCat);
+  if (!x) return;
+  const locked = x.kind === 'locked';
+  const on = x.id === getSkin().id;
+  odPanel.classList.add('cat-mode');
+  odPanel.classList.toggle('locked', locked);
+
+  document.getElementById('odName').textContent = locked ? '???' : (x.cat ? nameOf(x.cat) : x.skin.name);
+  document.getElementById('odTag').textContent = locked ? 'ยังไม่เคยพบ' : catEntryTag(x);
+
+  // คำบอกเดียวกับใต้ช่องพรีวิวเดิม — น้องจากกล่องแตกเป็นบรรทัดละเรื่อง (เพศ · สายพันธุ์ · สถานะ) อ่านง่ายกว่าบรรทัดยาว
+  const hint = tr(catEntryHint(x));
+  const perks = document.getElementById('odPerks');
+  const sub = document.getElementById('odSub');
+  perks.innerHTML = '';
+  sub.textContent = '';
+  if (x.cat) {
+    for (const part of hint.split(' · ')) {
+      if (part === tr(catEntryTag(x))) continue;   // สายพันธุ์อยู่บนป้ายแล้ว ไม่พูดซ้ำ
+      const li = document.createElement('li');
+      const icon = document.createElement('img');
+      icon.src = import.meta.env.BASE_URL + TIER_ART.normal.cat;
+      icon.alt = '';
+      li.appendChild(icon);
+      const span = document.createElement('span');
+      setSexText(span, part);
+      li.appendChild(span);
+      perks.appendChild(li);
+    }
+  } else setSexText(sub, hint);
+
+  const wear = document.getElementById('odWear');
+  wear.classList.remove('ghost');
+  if (x.kind === 'raising') {
+    wear.textContent = 'ไปบ้านน้อง';
+    wear.disabled = false;
+  } else if (locked) {
+    wear.textContent = 'ยังไม่เคยพบ';
+    wear.disabled = true;
+  } else {
+    wear.textContent = on ? 'กำลังใช้อยู่' : 'เลือกลงวิ่ง';
+    wear.disabled = on;
+    wear.classList.toggle('ghost', on);
+  }
+  document.getElementById('odMore').hidden = !x.cat;
+  setMsg(document.getElementById('odMsg'), '');
+}
+
+/** ปุ่มหลักของหน้าน้องแมว: เลือกลงวิ่ง / ลูกแมวที่ยังเลี้ยงอยู่ = ทางลัดไปหาน้องที่บ้าน */
+function catDetailAct() {
+  const x = catEntryById(odCat);
+  if (!x || x.kind === 'locked') return;
+  unlockAudio();
+  if (x.kind === 'raising') {
+    sfx.fish();
+    stopOdCat();
+    odCat = null;
+    odFrom = null;
+    odPanel.classList.add('hidden');
+    openCatRoom(x.cat.id);
+    return;
+  }
+  setSkin(x.id);
+  sfx.potion();
+  refreshHome();
+  paintCatDetail();
+}
+
+// เรื่องราวน้อง — เปิดทับหน้านี้ (ปิดแล้วกลับมาเจอน้องตัวเดิม)
+document.getElementById('odMore').addEventListener('click', () => {
+  const x = odCat ? catEntryById(odCat) : null;
+  if (!x?.cat) return;
+  unlockAudio();
+  sfx.fish();
+  openCatStory(x.cat.id);
+});
+
+// ── ลูกศรเลื่อนดูตัวก่อน/ถัดไป (ผู้ใช้ 7 พ.ย. 2026: "ไม่ต้องกดย้อนกลับเพื่อเปลี่ยนสกินดูข้างใน" — คลังชุด + คลังน้องแมว) ──
+// เลื่อนในรายการตามลำดับที่เห็นในกริดตอนเปิดมา (odList) วนรอบหัว-ท้าย · ปุ่มลูกศร / ปุ่มลูกศรบนคีย์บอร์ด / ปัดบนเวที
+let odSwipeAt = -1e9;
+function paintOdNav() {
+  const on = Boolean(odList && odList.length > 1);
+  document.getElementById('odPrev').hidden = !on;
+  document.getElementById('odNext').hidden = !on;
+}
+function odNav(dir) {
+  if (!odList || odList.length < 2) return;
+  const cur = odCat || odCurrent;
+  const i = odList.indexOf(cur);
+  const id = odList[((i < 0 ? 0 : i) + dir + odList.length) % odList.length];
+  unlockAudio();
+  sfx.fish();
+  fadeSfx(0.25);   // เสียงท่าเปิดตัวของตัวก่อนหน้าที่ยังค้าง
+  if (odCat) {
+    odCat = id;
+    stashSel.skin = id;
+    markSeen('skin', id);
+    paintCatDetail();
+  } else {
+    odCurrent = id;
+    if (odFrom === stashPanel) { stashSel.outfit = id; markSeen('outfit', id); }
+    if (odFrom === gListPanel) setHeroId(id);
+    paintOutfitDetail();
+    // ชุดระดับ S หยุดเพลงหน้าแรก (ท่าเปิดตัวมีเพลงของตัวเอง) · เลื่อนไปชุดธรรมดา = เปิดเพลงคืน
+    const high = outfitById(id)?.rarity === 'high';
+    if (high && !odMusicOff) { stopMusic(); odMusicOff = true; setSfxBoost(OD_SFX_BOOST); }
+    else if (!high && odMusicOff) { odMusicOff = false; startMusic(); setSfxBoost(1); }
+  }
+  odStart();
+  if (!odRAF) odRAF = requestAnimationFrame(odFrame);
+  odStage.animate?.([{ opacity: 0.35 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+}
+document.getElementById('odPrev').addEventListener('click', () => odNav(-1));
+document.getElementById('odNext').addEventListener('click', () => odNav(1));
+// ปุ่มลูกศรบนคีย์บอร์ด — e.code (แป้นไทยก็ใช้ได้)
+document.addEventListener('keydown', (e) => {
+  if (odPanel.classList.contains('hidden') || !odList) return;
+  if (e.code === 'ArrowLeft') { e.preventDefault(); odNav(-1); }
+  else if (e.code === 'ArrowRight') { e.preventDefault(); odNav(1); }
+});
+// ปัดซ้าย-ขวาบนเวที (มือถือ) — ปัดแล้วไม่นับเป็นแตะข้ามท่าเปิดตัว (odSkip ดู odSwipeAt)
+{
+  let sx = 0, sy = 0, down = false;
+  const start = (e) => { down = true; sx = e.clientX; sy = e.clientY; };
+  const end = (e) => {
+    if (!down) return;
+    down = false;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!odList || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    odSwipeAt = performance.now();
+    odNav(dx < 0 ? 1 : -1);
+  };
+  for (const el of [odStage, odVideo]) {
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', () => { down = false; });
+  }
+}
 
 // ── คลังน้อง: สลับหมวด เลือกของ และช่องพรีวิว ─────────────
 //
@@ -6336,6 +6522,8 @@ function setStashTab(tab) {
   document.getElementById('stashTitle').textContent = STASH_TABS[tab].title;
   // หมวดชุด: ไม่มีช่องพรีวิวซ้าย — การ์ดใหญ่เต็มแถว แตะแล้วเข้าหน้ารายละเอียดเลย (style.css .outfit-mode)
   stashPanel.classList.toggle('outfit-mode', tab === 'outfit');
+  // หมวดน้องแมวก็เหมือนกันแล้ว (ผู้ใช้ 6 พ.ย. 2026) — แตะการ์ด = หน้ารายละเอียดน้องเต็มตัว (openCatDetail)
+  stashPanel.classList.toggle('cat-mode', tab === 'skin');
   if (tab === 'outfit') syncOutfitCards();   // รูปการ์ดจากหลังบ้าน (ไม่รอ — ได้แล้ววาดการ์ดใหม่เอง)
   stashDream.kick();
   paintStashCount(tab);
@@ -6354,10 +6542,11 @@ function paintStashCount(tab) {
   // หมวดน้องแมว: ไม่มี "ทั้งหมด" ตายตัว (รับเลี้ยงได้ไม่จำกัด) จึงนับเป็นสายพันธุ์ที่เคยพบ
   // จากสายพันธุ์ทั้งหมด + น้องส้มกับน้องระบายสีที่ทุกคนมี
   const seenBreeds = new Set(allCats().map((c) => c.breed)).size;
-  const got = tab === 'skin' ? 2 + seenBreeds
+  const pin = showPaintCat() ? 2 : 1;   // น้องส้ม (+ น้องระบายสีถ้าไม่ได้ซ่อน)
+  const got = tab === 'skin' ? pin + seenBreeds
     : tab === 'outfit' ? OUTFITS.filter((o) => isOwned(o.id)).length
     : TREASURES.filter((t) => ownsTreasure(t.id)).length;
-  const all = tab === 'skin' ? 2 + BREEDS.length : tab === 'outfit' ? OUTFITS.length : TREASURES.length;
+  const all = tab === 'skin' ? pin + BREEDS.length : tab === 'outfit' ? OUTFITS.length : TREASURES.length;
   document.getElementById('stashGot').textContent = got;
   document.getElementById('stashAll').textContent = all;
 }
@@ -6372,7 +6561,9 @@ function refreshStash() {
   else if (stashTab === 'outfit') buildOutfitGrid();
   else buildTreasureGrid();
   paintStashCount(stashTab);
-  paintStashShow();
+  // ช่องพรีวิวซ้ายเหลือแค่หมวดสมบัติ (น้องแมว/ชุด แตะแล้วเข้าหน้ารายละเอียด) — ไม่วาด/วนลูปน้องที่มองไม่เห็น
+  if (stashTab === 'treasure') paintStashShow();
+  else document.getElementById('stashHint').classList.add('hidden');
 }
 
 /**

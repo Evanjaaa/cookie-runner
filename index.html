@@ -1168,6 +1168,19 @@
                     fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+          <!-- ลูกศรเลื่อนดูตัวก่อน/ถัดไปในรายการที่เปิดมา (คลังชุด / คลังน้องแมว / สกินในตู้นี้) — main.js odNav · ผู้ใช้ 7 พ.ย. 2026 -->
+          <button type="button" class="od-nav od-prev" id="odPrev" aria-label="ก่อนหน้า" hidden>
+            <svg viewBox="0 0 24 24" width="56%" height="56%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button type="button" class="od-nav od-next" id="odNext" aria-label="ถัดไป" hidden>
+            <svg viewBox="0 0 24 24" width="56%" height="56%" aria-hidden="true">
+              <path d="M8.5 4.5 16 12l-7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
           <div class="od-info">
             <span class="od-tag" id="odTag"></span>
             <p class="odetail-sub" id="odSub"></p>
@@ -1175,7 +1188,12 @@
           </div>
           <div class="od-act">
             <small class="form-msg" id="odMsg"></small>
-            <button class="btn od-wear" id="odWear">ใส่ชุดนี้</button>
+            <!-- หน้ารายละเอียดน้องแมว (เปิดจากคลังน้องแมว — main.js openCatDetail) ใช้หน้านี้ร่วมกัน:
+                 ปุ่มหลัก = เลือกลงวิ่ง / ไปบ้านน้อง · ปุ่มรอง "เรื่องราว" มีเฉพาะน้องจากกล่อง -->
+            <div class="od-btns">
+              <button class="btn ghost od-more" id="odMore" hidden>เรื่องราว</button>
+              <button class="btn od-wear" id="odWear">ใส่ชุดนี้</button>
+            </div>
           </div>
           <button class="backbtn" id="odBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
