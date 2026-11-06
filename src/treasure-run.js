@@ -271,4 +271,3 @@ export function catAnchor(game) {
   return { x: b.x + b.w / 2, y: b.y + half + half * (1 - s), s };
 }
 
-export const SCREEN = { W: VIEW.W, H: VIEW.H };

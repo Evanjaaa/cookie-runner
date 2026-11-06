@@ -1,6 +1,6 @@
 // src/render/props/snow.js — ❄️ ทุ่งหิมะ (snowfield_*)
 // น้ำแข็งฟ้าใส หิมะขาวอมฟ้า ขอบเข้มพอให้อ่านออกบนพื้นหิมะขาวทั้งจอ
-import { TAU, now, rr, vgrad, circle, ellipse, poly, line, sparkle, glow, groundShadow, hanger } from './kit.js';
+import { TAU, now, rr, vgrad, circle, ellipse, poly, line, sparkle, groundShadow, hanger } from './kit.js';
 
 const ICE = ['#E6F7FF', '#6FB8E6'];
 

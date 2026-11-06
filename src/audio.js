@@ -388,11 +388,6 @@ export function unlockAudio() {
   return waking;
 }
 
-/** รอจนเสียงพร้อมใช้จริง — true = ตื่นแล้ว / false = เบราว์เซอร์ยังไม่ยอม (ยังไม่มีการกด) */
-export function audioReady() {
-  return ctx().state === 'running' ? Promise.resolve(true) : unlockAudio();
-}
-
 /** ให้โมดูลเพลงใช้ context เดียวกัน ไม่งั้นจะได้ AudioContext ซ้อนสองตัว */
 export function audioCtx() {
   return ctx();

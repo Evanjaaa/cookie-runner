@@ -103,11 +103,6 @@ export function savePalette(p) {
   savePref(STORE_KEY, out);
 }
 
-/** เคยระบายอะไรไปแล้วหรือยัง — ใช้ตัดสินว่าจะโชว์ป้าย "ยังไม่ได้ระบาย" ไหม */
-export function isBlank(p) {
-  return KEYS.every((k) => (p[k] || '').toLowerCase() === BLANK[k].toLowerCase());
-}
-
 // ── คณิตศาสตร์สี ───────────────────────────────────────────
 const hex2rgb = (h) => {
   const n = parseInt(h.slice(1), 16);
@@ -259,20 +254,9 @@ function ensureLayers() {
   }
 }
 
-/**
- * เลขรุ่นของชั้นสี — ขยับทุกครั้งที่มีการระบาย
- * โค้ดวาดใช้เทียบว่าต้องล้างแคชอะไรไหม และ getSkin() ใช้รู้ว่าต้องประกอบสกินใหม่
- */
-let layerRev = 0;
+/** ชั้นสีเปลี่ยน — getSkin() ต้องประกอบสกินใหม่ */
 function bumpLayers() {
-  layerRev++;
   built = null;
-}
-export function layerVersion() { return layerRev; }
-
-export function paintLayers() {
-  ensureLayers();
-  return layers;
 }
 
 /** แปลงพิกัดท้องถิ่นของชิ้นนั้น เป็นพิกเซลบนผ้าใบของชั้นนั้น */
@@ -339,17 +323,6 @@ function inkLayer(k, mask, wipe, draw) {
   bumpLayers();
 }
 
-/** ป้ายสีหนึ่งจุด — ผู้เรียกส่งพิกัดท้องถิ่นมา ที่นี่ไม่รู้จักหน้าจอเลย */
-export function dab(k, lx, ly, hex, radius, mask = null) {
-  const p = toLayerPx(k, lx, ly);
-  inkLayer(k, mask, false, (g) => {
-    g.fillStyle = hex;
-    g.beginPath();
-    g.arc(p.x, p.y, radius * LAYER.ppu, 0, Math.PI * 2);
-    g.fill();
-  });
-}
-
 /** ตั้งปากกาแล้วลากเส้นหนึ่งเส้น — ใช้ร่วมกันทั้งพู่กันและยางลบ */
 function lineOn(g, a, b, radius) {
   g.lineWidth = radius * 2 * LAYER.ppu;
@@ -383,17 +356,6 @@ export function clearLayers() {
   }
   bumpLayers();
   saveLayers();
-}
-
-export function hasStrokes() {
-  ensureLayers();
-  for (const k of LAYER_KEYS) {
-    const c = layers[k];
-    const d = c.getContext('2d', { willReadFrequently: true })
-      .getImageData(0, 0, c.width, c.height).data;
-    for (let i = 3; i < d.length; i += 4) if (d[i] > 8) return true;
-  }
-  return false;
 }
 
 /**
@@ -458,10 +420,6 @@ export function setPalette(p) {
   built = null;   // บังคับให้ประกอบสกินใหม่รอบหน้า
   live = { ...BLANK, ...p };
   savePalette(live);
-}
-
-export function resetPalette() {
-  setPalette(BLANK);
 }
 
 /**

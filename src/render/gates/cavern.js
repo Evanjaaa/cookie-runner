@@ -21,7 +21,6 @@
 // ประกายลอยใช้ชุดอนุภาคขนาดคงที่ 22 ชิ้น หมุนใช้ซ้ำ ไม่สร้าง/ทิ้งกลางรอบ
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../../config.js';
-import { stageById } from '../../stages.js';
 import { drawCaveBackdrop, warmCaveArt } from '../cave.js';
 
 const { W, H } = VIEW;

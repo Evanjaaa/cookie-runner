@@ -680,7 +680,7 @@
       <!-- หน้าเลือกด่าน ภาพตัวอย่างคือฉากจริงของด่านนั้นย่อส่วนลงมา -->
       <div class="panel hidden" id="stagePanel">
         <div class="pop">
-          <!-- พื้นหลังประตูสู่การผจญภัย (src/render/stagebg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังประตูสู่การผจญภัย (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="stage-bg" id="stageBg" aria-hidden="true"></canvas>
           <h2 class="skin-title">เลือกด่าน</h2>
           <p class="stage-lead">หนึ่งตาวิ่งผ่านหลายฉากต่อกัน — ด่านที่เลือกคือฉากเริ่มต้น</p>
@@ -901,7 +901,7 @@
            หน้ารายละเอียดเปิดเป็นแผ่นซ้อนในการ์ดเดียวกัน ไม่ได้สลับไปอีกแผง -->
       <div class="panel hidden" id="talentPanel">
         <div class="pop tl-pop">
-          <!-- พื้นหลังห้องพลังพิเศษ (src/render/skillbg.js) — ทั้งหมวดสกิลและพรสวรรค์ -->
+          <!-- พื้นหลังห้องพลังพิเศษ (src/render/softbg.js) — ทั้งหมวดสกิลและพรสวรรค์ -->
           <canvas class="magic-bg" id="skillMagic" aria-hidden="true"></canvas>
           <div class="tl-head">
             <div class="tl-titles">
@@ -1010,7 +1010,7 @@
            ช่องค้นหาอยู่บนสุดของแท็บคำขอ เพราะการเพิ่มเพื่อนเริ่มจากตรงนั้นเสมอ -->
       <div class="panel hidden" id="friendsPanel">
         <div class="pop tl-pop fr-pop">
-          <!-- พื้นหลังสวนเพื่อนแมว (src/render/friendsbg.js) — ทั้งสามแท็บ ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังสวนเพื่อนแมว (src/render/softbg.js) — ทั้งสามแท็บ ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="friends-bg" id="friendsBg" aria-hidden="true"></canvas>
           <div class="tl-head">
             <div class="tl-titles">
@@ -1090,7 +1090,7 @@
            ข่าวมาจากตาราง news (แอดมินเพิ่มจาก admin.html แท็บ "ข่าวสาร") -->
       <div class="panel hidden" id="newsPanel">
         <div class="pop news-pop">
-          <!-- พื้นหลังบอร์ดข่าว (src/render/newsbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังบอร์ดข่าว (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="news-bg" id="newsBg" aria-hidden="true"></canvas>
           <div class="panel-head"><h2 class="skin-title">ข่าวสาร</h2></div>
           <div class="news-wrap">
@@ -1108,7 +1108,7 @@
            รายการ → อ่านฉบับเดียว   ของขวัญกดรับได้จากทั้งสองหน้า -->
       <div class="panel hidden" id="inboxPanel">
         <div class="pop">
-          <!-- พื้นหลังกล่องจดหมายวิเศษ (src/render/mailbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังกล่องจดหมายวิเศษ (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="mail-bg" id="mailBg" aria-hidden="true"></canvas>
           <div class="panel-head"><h2 class="skin-title">กล่องจดหมาย</h2></div>
           <div class="mail-list" id="mailList"></div>
@@ -1326,7 +1326,7 @@
           <span class="gsv-hint">แตะเพื่อดูรางวัล ✨</span>
         </div>
         <div class="pop gacha-pop">
-          <!-- พื้นหลังร้านเซอร์ไพรส์เวทมนตร์ (src/render/gachabg.js) — ทั้งสองตู้ -->
+          <!-- พื้นหลังร้านเซอร์ไพรส์เวทมนตร์ (src/render/softbg.js) — ทั้งสองตู้ -->
           <canvas class="gacha-bg" id="gachaMagic" aria-hidden="true"></canvas>
           <div class="gacha-body">
             <!-- ซ้าย: เลือกว่าจะสุ่มตู้ไหน — อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
@@ -1501,7 +1501,7 @@
       <!-- กระดานคะแนนรวม ดึงจาก Supabase ตอนเปิดหน้านี้ -->
       <div class="panel hidden" id="rankPanel">
         <div class="pop">
-          <!-- พื้นหลังหอเกียรติยศ (src/render/rankbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังหอเกียรติยศ (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="rank-bg" id="rankBg" aria-hidden="true"></canvas>
           <h2 class="skin-title">อันดับ — <span id="rankStage">ครัวกลางคืน</span></h2>
           <!-- เปลี่ยนชื่อได้ที่หน้าโปรไฟล์ที่เดียว (ดินสอข้างชื่อ)
@@ -1958,7 +1958,7 @@
            id ของทุกปุ่มยังเดิม — โค้ดใน main.js ไม่ต้องรู้ว่าแถวย้ายไปอยู่หมวดไหน -->
       <div class="panel hidden" id="settingsPanel">
         <div class="pop stash-pop set-pop">
-          <!-- พื้นหลังมุมสงบ (src/render/settingsbg.js) — ทั้งสี่หมวด ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังมุมสงบ (src/render/softbg.js) — ทั้งสี่หมวด ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="settings-bg" id="settingsBg" aria-hidden="true"></canvas>
           <div class="stash-body">
             <div class="stash-tabs set-tabs" role="tablist" aria-label="เลือกหมวด">
@@ -2211,7 +2211,7 @@
              .other = ของคนอื่น (ซ่อนปุ่มแก้ไขทั้งหมด ปุ่มล่างเป็นเพิ่มเพื่อน)
              .editing = กดแก้ไขแล้ว ดินสอสามจุดโผล่ขึ้นมา -->
         <div class="pop pf-pop" id="pfPop">
-          <!-- พื้นหลังโชว์รูมน้องแมว (src/render/profilebg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังโชว์รูมน้องแมว (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="profile-bg" id="profileBg" aria-hidden="true"></canvas>
           <h2 class="pf-title">โปรไฟล์เหมียว</h2>
           <!-- ปุ่มปิดทุกอันในเกมใช้เทมเพลต .xbtn เดียวกัน (ดู style.css) -->
@@ -2405,7 +2405,7 @@
            ใบที่เจ็ดใหญ่กว่าเพื่อนเพราะเป็นวันที่ทั้งรอบกำลังเดินไปหา -->
       <div class="panel hidden" id="dailyPanel">
         <div class="pop daily-pop">
-          <!-- พื้นหลังเช้าวันใหม่ (src/render/dailybg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังเช้าวันใหม่ (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="daily-bg" id="dailyBg" aria-hidden="true"></canvas>
           <div class="panel-head dl-head">
             <h2 class="skin-title">เช็คอินรายวัน</h2>
@@ -2446,7 +2446,7 @@
            ของรางวัลที่ยังไม่ได้กำหนดขึ้นเป็นกล่องปริศนา (ดูตาราง REWARDS ใน level-rewards.js) -->
       <div class="panel hidden" id="lvPanel">
         <div class="pop">
-          <!-- พื้นหลังเส้นทางเติบโต (src/render/levelbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังเส้นทางเติบโต (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="level-bg" id="levelBg" aria-hidden="true"></canvas>
           <div class="panel-head lv-head">
             <h2 class="skin-title">รางวัลเลเวล</h2>
@@ -2489,7 +2489,7 @@
 
       <div class="panel hidden" id="questPanel">
         <div class="pop">
-          <!-- พื้นหลังบอร์ดกิจกรรม วาดสดด้วย Canvas 2D (src/render/event-bg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
+          <!-- พื้นหลังบอร์ดกิจกรรม วาดสดด้วย Canvas 2D (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="quest-bg" id="questBg" aria-hidden="true"></canvas>
           <div class="quest-head">
             <div class="quest-title">

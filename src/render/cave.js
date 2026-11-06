@@ -20,7 +20,7 @@
 // ละอองแร่เป็นพูลคงที่ 18 เม็ด ไม่มีการสร้างอ็อบเจกต์ใหม่ระหว่างเล่น
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../config.js';
-import { placed, minGap } from './scenery.js';
+import { placed } from './scenery.js';
 import { stageById } from '../stages.js';
 
 const { W, H } = VIEW;

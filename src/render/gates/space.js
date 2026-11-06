@@ -30,7 +30,7 @@
 import { VIEW, GROUND_Y } from '../../config.js';
 import { drawSeaBackdrop } from '../sea.js';
 import {
-  SPACE_C as C, spaceHash as hash, drawSpaceBackdrop, spaceSprite, warmSpaceArt,
+  SPACE_C as C, spaceHash as hash, drawSpaceBackdrop, warmSpaceArt,
 } from '../space.js';
 
 const { W, H } = VIEW;

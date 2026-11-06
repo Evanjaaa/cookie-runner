@@ -15,7 +15,6 @@
 // กลีบดอกไม้กับผีเสื้อใช้ชุดอนุภาคขนาดคงที่ ไม่สร้าง/ทิ้งระหว่างเล่น
 // ─────────────────────────────────────────────────────────────
 import { VIEW, GROUND_Y } from '../../config.js';
-import { stageById } from '../../stages.js';
 import { drawMeadowBackdrop, warmMeadowArt } from '../meadow.js';
 
 const { W, H } = VIEW;

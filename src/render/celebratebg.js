@@ -24,9 +24,7 @@
 //
 // ── แสงที่เกาะของจริง ── สปอตไลต์ตามแถวการ์ด / แสงใต้หัวเรื่อง ใช้ trackRect (ตามตำแหน่ง+ความทึบที่ตาเห็น)
 
-import { makeCanvasBg, drawPawPrint, drawHeart } from './dreambg.js';
-import { drawMagicGlow, drawSparkle, drawTinyStar } from './skillbg.js';
-import { trackRect } from './event-bg.js';
+import { makeCanvasBg, drawPawPrint, drawHeart, drawMagicGlow, drawSparkle, drawTinyStar, trackRect } from './dreambg.js';
 
 const TAU = Math.PI * 2;
 

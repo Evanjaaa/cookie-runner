@@ -79,11 +79,6 @@ export function cleanStatus(raw) {
   return chars.length > STATUS_MAX ? chars.slice(0, STATUS_MAX).join('') : text;
 }
 
-/** นับความยาวแบบเดียวกับที่ cleanStatus ใช้ — ตัวนับใต้กล่องพิมพ์ต้องตรงกับของจริง */
-export function statusLength(text) {
-  return Array.from(typeof text === 'string' ? text : '').length;
-}
-
 export function loadStatus() {
   return cleanStatus(loadPref(KEY, ''));
 }

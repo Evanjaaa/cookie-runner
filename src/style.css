@@ -8,10 +8,6 @@
   --card-inset: 3.5%;
   --night: #1B0F2B;
   --plum: #3A1D50;
-  --berry: #7A3563;
-  --caramel: #C9743E;
-  --crust: #EFA657;
-  --dough: #F3C173;
   --mint: #4ECDC4;
   --mint-lite: #8DF3EA;
   --danger: #FF5C6E;
@@ -27,7 +23,6 @@
    * lift/press เป็นคู่กัน — ขอบล่างหนาคือ "ความหนา" ของแผ่น พอกดแล้วยุบลง
    * ระยะที่ยุบต้องเท่ากับความหนาที่หายไปพอดี ปุ่มถึงจะดูเหมือนถูกกดจริง */
   --plate-face: linear-gradient(180deg, rgba(146,94,196,.94), rgba(96,53,148,.96));
-  --plate-top: rgba(146,94,196,.96);   /* เฉดบนสุดของ face — ใช้กับชิ้นที่ต้องต่อเนื่องกับขอบบน */
   --plate-line: rgba(255,243,226,.44);
   /* ขอบไล่สีของกรอบในหน้าแรก (ท่าตาม Uiverse by adamgiebl)
      สว่างที่ขอบบน เข้มที่ขอบล่าง = อ่านเป็นแผ่นนูนรับแสงจากด้านบน
@@ -213,7 +208,6 @@ canvas[hidden] { display: none; }
   max-height: calc(100% - var(--card-inset) * 2);
   padding: clamp(12px, 3dvh, 30px) clamp(16px, 3.4vw, 40px);
   border-radius: clamp(16px, 3vw, 28px);
-  background: linear-gradient(180deg, rgba(96,47,131,.94), rgba(35,16,55,.97));
   border: 1px solid rgba(255,243,226,.2);
   box-shadow:
     0 22px 55px rgba(0,0,0,.6),
@@ -397,17 +391,9 @@ canvas[hidden] { display: none; }
   height: var(--backbtn);
   padding: 0;
   border-radius: 50%;
-  border: 2px solid rgba(255,243,226,.44);
-  background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
-  color: var(--cream);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow:
-    0 3px 0 rgba(20,8,32,.65),
-    0 8px 18px rgba(0,0,0,.42),
-    inset 0 1px 0 rgba(255,255,255,.22);
-  transition: transform .06s ease, box-shadow .06s ease;
 }
 .backbtn svg,
 .xbtn svg,
@@ -630,167 +616,6 @@ canvas[hidden] { display: none; }
   --pf-clear: calc(var(--pf-top) + var(--pf) * 1.34 + 12px);
 }
 
-/* ── ป้ายชื่อเกม ทรงโล่ปลายแหลม พร้อมหูแมวสองข้าง ───────
- *
- * ทำไมต้องมีป้าย: ฉากหลังเป็นภาพปราสาทที่มีทั้งส่วนสว่างและส่วนเข้มปนกัน
- * ตัวอักษรที่ลอยอยู่เฉย ๆ จะอ่านออกบ้างไม่ออกบ้างแล้วแต่ว่าไปทับตรงไหนพอดี
- * เงาตัวอักษรอย่างเดียวช่วยไม่พอ ต้องมีพื้นของตัวเองถึงจะอ่านออกเท่ากันทุกจุด
- *
- * ── ทำไมพื้นป้ายเป็น ::before/::after ไม่ใช่ background ของตัวเอง ──
- * ทรงโล่ทำด้วย clip-path ซึ่ง "ตัดลูกทุกตัว" ที่อยู่ในอิลิเมนต์เดียวกันด้วย
- * ถ้าใส่ clip-path ที่ตัวป้ายตรง ๆ หูแมวที่โผล่พ้นขอบบนจะโดนตัดหายทันที
- * ย้ายรูปทรงไปไว้ในชั้นพื้นหลังสองชั้นแทน ตัวป้ายจึงไม่มี clip-path เลย
- * หูกับปลาที่ยื่นออกนอกกรอบจึงรอด
- *
- * สองชั้นซ้อนกัน (ท่าเดียวกับหู): ::before = สีขอบครีม, ::after = สีพื้นย่อเข้ามา
- * ใช้ border ตรง ๆ ไม่ได้ เพราะ clip-path ตัดเส้น border ทิ้งตามแนวเฉียง
- *
- * ทุกอย่างข้างในวัดเป็น em จึงย่อขยายตามกันเองหมดโดยไม่ต้องเขียน media query ซ้ำ */
-.logo-plate {
-  /* ห้ามใส่ position ตรงนี้ — ที่ที่ใช้คลาสนี้ตั้ง position เองอยู่แล้ว
-     (.title-logo = relative) ซึ่งพอเป็นที่ยึดให้หูแมวแล้ว
-     ถ้าเขียนตรงนี้ทับลงไป จะไปลบค่าของที่นั่นทิ้งเพราะกฎนี้อยู่ทีหลังและจำเพาะเท่ากัน */
-
-  /* สร้าง stacking context ให้พื้นป้ายกับหู (z-index ติดลบ) จมอยู่หลังตัวหนังสือ
-     ไม่งั้นมันจะทะลุลงไปอยู่หลังฉากทั้งหมดจนมองไม่เห็น */
-  isolation: isolate;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .04em;
-
-  /* เผื่อที่ให้หูที่โผล่พ้นขอบบน — ต้องเป็น em เท่านั้น ห้ามใช้ %
-     ความสูงที่หูโผล่ขึ้นไปวัดเป็น em (ผูกกับขนาดตัวอักษร) ส่วน % ผูกกับ
-     ความสูงเวที สองอย่างนี้ไม่ได้โตตามกัน ใช้ % แล้วจอบางขนาดหูจะโดนตัด */
-  /* ต้องมากกว่าระยะที่หูโผล่ขึ้นไป (top: -1.02em) ไม่งั้นปลายหูจะโดนขอบเวทีตัด */
-  margin-top: 1.12em;
-  /* ล่างหนากว่าบนมาก เพราะครึ่งล่างของกรอบคือส่วนที่สอบเข้าเป็นปลายแหลม
-     ถ้าเว้นเท่ากันทุกด้าน ริบบิ้นจะไปนั่งคร่อมตรงที่ทรงเริ่มสอบพอดี */
-  padding: .46em 1.05em 1.02em;
-}
-/* ชั้นขอบครีม — ทรงโล่เต็มใบ */
-.logo-plate::before,
-.logo-plate::after {
-  content: '';
-  position: absolute;
-  /* ปลายแหลมกินความสูงราวหนึ่งในสามของใบ ด้านบนเป็นสี่เหลี่ยมมุมมนตามปกติ */
-  clip-path: polygon(0 0, 100% 0, 100% 66%, 50% 100%, 0 66%);
-  border-radius: .3em;
-  pointer-events: none;
-}
-.logo-plate::before {
-  inset: 0;
-  z-index: -2;
-  background: #FFF3E2;
-  /* clip-path ตัด box-shadow ทิ้งด้วย เงาจึงต้องเป็น filter ที่เกาะรูปทรงจริงหลังตัด */
-  filter: drop-shadow(0 7px 0 rgba(20,8,32,.5)) drop-shadow(0 14px 30px rgba(0,0,0,.5));
-}
-/* ชั้นพื้นป้าย ย่อเข้ามาให้เหลือขอบครีมโผล่เป็นเส้นรอบรูป */
-.logo-plate::after {
-  inset: .075em;
-  z-index: -1;
-  background: var(--plate-face);
-}
-
-/* ── หูแมวสองข้างบนป้าย ───────────────────────
- * ตัวป้ายทำหน้าที่เป็น "หัวแมว" เอง หูจึงงอกจากขอบบนแทนที่จะเป็นหัวมาแปะ
- *
- * ซ้อนสามชั้นด้วยเหตุผลเดียวกับตัวป้าย — clip-path ตัด border ทิ้ง
- * ต้องวางสามเหลี่ยมซ้อนกันเอา:
- *   ตัว span     สีขอบครีม (สามเหลี่ยมใหญ่สุด)
- *   ::before     สีป้าย ย่อเข้ามาให้เหลือขอบครีมโผล่เป็นเส้น
- *   ::after      ชมพูในหู เล็กและอยู่ล่าง เหมือนหูแมวจริง
- *
- * z-index -3 ทำให้โคนหูจมอยู่หลังพื้นป้ายทั้งสองชั้น เห็นแค่ส่วนที่โผล่พ้นขอบบน */
-.logo-plate .plate-ear {
-  position: absolute;
-  z-index: -3;
-  width: 1.32em;
-  height: 1.42em;
-  /* ยึดจากขอบบนของป้ายเป็น em คงที่ ไม่ใช่ % ของความสูงป้าย
-     ถ้าใช้ % ระยะที่หูโผล่จะเปลี่ยนตามความสูงป้ายจนคุมไม่ได้
-     โผล่ขึ้นไปราวหนึ่งในสี่ของความสูงป้าย หูถึงจะอ่านเป็นหูแมว ไม่ใช่ติ่งสามเหลี่ยม */
-  top: -1.02em;
-  pointer-events: none;
-  /* ทึบล้วน ไม่ใช่ครีมโปร่ง — หูโผล่พ้นขอบป้ายไปอยู่บนท้องฟ้าสว่างของฉากหลัง
-     สีโปร่งตรงนั้นจะจางจนอ่านไม่ออกว่าเป็นหู เห็นเป็นแค่คราบสามเหลี่ยม */
-  background: #FFF3E2;
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-.logo-plate .plate-ear::before,
-.logo-plate .plate-ear::after {
-  content: '';
-  position: absolute;
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-/* สีทึบตระกูลเดียวกับเฉดบนสุดของป้าย (--plate-top) แต่ไม่มีอัลฟา
-   ด้วยเหตุผลเดียวกับตัวหู — ตรงนี้อยู่บนท้องฟ้า ไม่ได้อยู่บนพื้นป้าย */
-.logo-plate .plate-ear::before {
-  inset: .1em .09em 0;
-  background: #8E5AC2;
-}
-/* ชมพูในหู สีเดียวกับหูแมวในเกม (COLORS.catPink) */
-.logo-plate .plate-ear::after {
-  left: 50%;
-  bottom: 0;
-  width: 46%;
-  height: 56%;
-  transform: translateX(-50%);
-  background: #FF9BB0;
-}
-/* กางออกคนละทางเหมือนหูแมวจริง ข้างขวากางน้อยกว่านิดหน่อยจะได้ไม่สมมาตรเป๊ะจนดูแข็ง
-   ชิดขอบซ้าย-ขวาของป้าย ไม่ใช่กลาง เพื่อให้ทั้งใบอ่านเป็นหัวแมวกว้าง ๆ */
-.logo-plate .plate-ear.left { left: .6em; transform: rotate(-13deg); }
-.logo-plate .plate-ear.right { right: .6em; transform: rotate(11deg); }
-
-/* รอยตีนแมวเหนือชื่อ */
-.logo-paw {
-  width: .62em;
-  height: auto;
-  fill: #FFC2D2;
-  filter: drop-shadow(0 .04em 0 rgba(58,29,80,.5));
-}
-
-/* ริบบิ้นส้มใต้ชื่อ — แถบเดียวในป้ายที่ไม่ใช่โทนม่วง จึงเป็นตัวดึงสายตา
-   สีชุดเดียวกับหลอดโหลดในหน้าโหลด (#F2913D → #FFC93C) ให้เป็นเกมเดียวกัน */
-.logo-ribbon {
-  align-self: stretch;
-  margin-top: .12em;
-  padding: .1em .5em .13em;
-  border-radius: 999px;
-  border: .045em solid rgba(255,243,226,.55);
-  background: linear-gradient(180deg, #FBA85A 0%, #F08A2E 55%, #D9701C 100%);
-  box-shadow: inset 0 .05em 0 rgba(255,255,255,.45), 0 .06em 0 rgba(120,52,10,.45);
-  font-family: "Mali", sans-serif;
-  font-weight: 700;
-  /* ชื่อไทย "เหมียวซิ่ง" — ตัวไทยมีสระบน-ล่าง ต้องใหญ่กว่าตัวพิมพ์ใหญ่อังกฤษเดิม (.235em)
-     และช่องไฟแคบลง ช่องไฟกว้างทำให้สระกับวรรณยุกต์ลอยห่างจากพยัญชนะจนอ่านสะดุด */
-  font-size: .42em;
-  line-height: 1.3;
-  letter-spacing: .1em;
-  /* letter-spacing ใส่ช่องไฟไว้ "ท้ายตัวสุดท้าย" ด้วย ข้อความจึงเบี้ยวไปทางซ้าย
-     ดันกลับมาเท่าช่องไฟ ตัวหนังสือถึงจะอยู่กลางริบบิ้นจริง ๆ */
-  text-indent: .1em;
-  color: #FFF6E6;
-  text-shadow: 0 .06em 0 rgba(140,62,12,.75);
-  white-space: nowrap;
-}
-
-/* ปลาห้อยที่ปลายแหลม — absolute เพราะมันต้องยื่นลงไปในส่วนที่ทรงสอบเข้าแล้ว
-   ถ้าปล่อยอยู่ในสายไหลปกติ มันจะไปดันให้ป้ายสูงขึ้นแล้วปลายแหลมยาวเกินจริง */
-.logo-fish {
-  position: absolute;
-  left: 50%;
-  bottom: .16em;
-  transform: translateX(-50%);
-  width: .72em;
-  height: auto;
-  filter: drop-shadow(0 .05em .08em rgba(20,8,32,.55));
-}
-.logo-fish .fish-body, .logo-fish .fish-tail { fill: #F2913D; }
-.logo-fish .fish-eye { fill: #3A1D50; }
-
 /* ── การ์ดบัญชีมุมซ้ายบน ──────────────────────
  * รูปแมว + ชื่อ + เลเวล + หลอดความคืบหน้า
  *
@@ -989,68 +814,14 @@ canvas[hidden] { display: none; }
 .profile > .pf-face,
 .profile > .pf-info { position: relative; z-index: 2; }
 
-/* ── สนามดาว ──
-   จุดขาวเรียงเป็นตารางแล้วเลื่อนขึ้นช้า ๆ อ่านเป็นดาวไหลผ่าน
-   ต้นฉบับใช้กล่อง 200rem เพราะปุ่มมันเล็กและต้องการดาวเยอะ ๆ ไหลผ่าน
-   การ์ดนี้เตี้ยกว่ามาก ใช้ 400% ของการ์ดพอ ไม่งั้นเบราว์เซอร์ต้องวาดพื้นที่
-   ใหญ่กว่าที่เห็นจริงหลายสิบเท่าโดยเปล่าประโยชน์ */
-.pf-stars {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  border-radius: inherit;
-}
-.pf-stars i {
-  position: absolute;
-  left: -50%;
-  top: 0;
-  width: 200%;
-  height: 400%;
-  background-image: radial-gradient(#ffffff 1px, transparent 1%);
-  background-size: 34px 34px;
-  opacity: .55;
-  animation: pfStars 26s linear infinite;
-}
-
-/* ── แสงเรืองสองก้อน ──
-   เบลอจัดจนไม่เห็นเป็นวงกลม เหลือแค่ไอสีชมพู-ม่วงเต้นอยู่หลังเนื้อหา */
-.pf-glow {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.pf-glow i {
-  flex: 1 1 0;
-  height: 45%;
-  filter: blur(1.6rem);
-  animation: pfPulse 4s infinite;
-}
-.pf-glow i:nth-child(1) { background: rgba(254, 83, 186, .64); }
-.pf-glow i:nth-child(2) { background: rgba(142, 81, 234, .70); }
-
 @keyframes pfGradient {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
-@keyframes pfStars {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-75%); }
-}
-@keyframes pfPulse {
-  0%   { transform: scale(.75); }
-  70%  { transform: scale(1); }
-  100% { transform: scale(.75); }
-}
 /* เครื่องที่ตั้งค่าลดการเคลื่อนไหวไว้ ต้องหยุดทั้งสามอย่าง ไม่ใช่แค่ตัวใดตัวหนึ่ง */
 @media (prefers-reduced-motion: reduce) {
   .profile { animation: none; }
-  .pf-stars i, .pf-glow i { animation: none; }
 }
 
 /* ── รูปโปรไฟล์ ── */
@@ -1260,18 +1031,6 @@ canvas[hidden] { display: none; }
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
-  filter: drop-shadow(0 2px 3px rgba(20,8,32,.55));
-}
-/* ภาพตัวอย่างด่านเป็นแนวนอน อัตราส่วนเดียวกับจอเกม (960:420)
-   เตี้ยกว่าไอคอนสี่เหลี่ยมของใบอื่น 15px จึงเว้นขอบบนล่างชดเชยให้กินที่เท่ากัน
-   ปุ่มทั้งห้าใบจะได้สูงเท่ากันพอดี ไม่ใช่มีใบหนึ่งเตี้ยกว่าเพื่อน */
-.lobby-btn #stageIcon {
-  width: 46px;
-  height: 20px;
-  border-radius: 6px;
-  /* เว้นบน-ล่างชดเชยให้กินความสูงเท่าไอคอนสี่เหลี่ยม (34px) พอดี
-     ปุ่มด่านจึงสูงเท่าปุ่มอื่นทั้งที่ภาพข้างในเป็นคนละอัตราส่วน */
-  margin-block: 7px;
 }
 
 .lobby-btn b {
@@ -1656,11 +1415,6 @@ canvas[hidden] { display: none; }
   width: 232px;
   padding: 10px 10px 12px;
   border-radius: 16px;
-  /* กรอบม่วงสดใสชุดเดียวกับแท็บที่เลือกอยู่ในตู้กาช่า (.gtab.on) ทุกใบมีกรอบ
-     เห็นชัดตั้งแต่ยังไม่ได้เลือก ส่วนใบที่เลือกอยู่แล้วยังชนะด้วยสีมิ้นต์ (.stage-card.on) */
-  border: 2px solid rgba(196,143,243,.5);
-  background: rgba(255,243,226,.06);
-  box-shadow: 0 0 16px rgba(156,94,220,.24);
   color: var(--cream);
   font-family: inherit;
   cursor: pointer;
@@ -1762,8 +1516,6 @@ canvas[hidden] { display: none; }
   gap: clamp(9px, 1.8vw, 15px);
   padding: clamp(6px, 1.2dvh, 10px) clamp(10px, 2vw, 16px);
   border-radius: 15px;
-  border: 1.5px solid rgba(196,143,243,.45);
-  background: linear-gradient(180deg, rgba(255,243,226,.1), rgba(255,243,226,.04));
   text-align: left;
 }
 /* ฉากแรกคือฉากที่กดเลือก เน้นให้ต่างจากฉากที่จะไปเจอทีหลัง */
@@ -1839,7 +1591,6 @@ canvas[hidden] { display: none; }
    จนบรรทัด "กำลังใส่" ใต้การ์ดหายไปครึ่งตัว ดูเหมือนหน้าเสีย */
 .panel .skin-grid.scrolls,
 .panel .stage-grid.scrolls,
-.panel .pf-side.scrolls,
 .panel .rank-list.scrolls {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
@@ -1849,10 +1600,6 @@ canvas[hidden] { display: none; }
 
 /* ใช้ทรงแผ่นม่วงนูนชุดเดียวกับปุ่มล็อบบี้ การ์ดบัญชี และป้ายชื่อเกม */
 .skin-card {
-  position: relative;   /* ยึดป้ายระดับไว้ที่มุมการ์ด */
-  /* ขอบล่างของรูป = padding-top + ความสูงรูป ป้ายราคาเกาะค่านี้
-     ทุกเบรกพอยต์ที่ย่อการ์ดต้องอัปเดตค่านี้ด้วย ไม่งั้นป้ายจะลอยผิดที่ */
-  --thumb-bottom: 96px;
   width: 124px;
   padding: 10px 9px 11px;
   border-radius: 16px;
@@ -2072,53 +1819,6 @@ canvas[hidden] { display: none; }
 /* ป้ายระดับห้ามจาง — เป็นข้อมูลชิ้นเดียวที่บอกว่าชิ้นนี้คุ้มค่าตามเก็บแค่ไหน */
 .t-card.locked .tier-badge, .skin-card.locked .tier-badge { opacity: 1; }
 
-/* กุญแจล็อกบนการ์ดแมวที่ยังไม่ได้ซื้อ
-   วางมุมบนขวาที่เดียวกับป้ายระดับ เพราะเป็นข้อมูล "สถานะการ์ด" เหมือนกัน
-   ห้ามจางตาม .locked เพราะเป็นตัวบอกเหตุผลว่าทำไมการ์ดถึงจาง */
-.skin-card .lock-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(24,12,40,.82);
-  border: 1.5px solid rgba(255,255,255,.28);
-  font-size: 12px;
-  line-height: 1;
-  pointer-events: none;
-}
-.skin-card.locked .lock-badge { opacity: 1; }
-
-/* ราคาแปะทับขอบล่างของรูป — วางแบบ absolute จึงไม่กินความสูงของการ์ด
-   การ์ดที่ล็อกกับไม่ล็อกเลยสูงเท่ากันทุกจอ
-   ห้ามจางตาม .locked เพราะราคาคือข้อมูลที่ต้องอ่านออกที่สุดบนการ์ดใบนั้น */
-.skin-card .price-tag {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: calc(var(--thumb-bottom) - 9px);
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 7px 1px 4px;
-  border-radius: 999px;
-  background: rgba(24,12,40,.9);
-  border: 1.5px solid rgba(255,228,155,.5);
-  color: #FFE49B;
-  font-family: "Mali", sans-serif;
-  font-weight: 700;
-  font-size: 10.5px;
-  line-height: 1.5;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 1;
-}
-.skin-card.locked .price-tag { opacity: 1; }
-.skin-card .price-tag .coin { width: 11px; height: 11px; flex: none; }
-
 /* หน้ารายละเอียดของชิ้นที่ยังไม่มี — ไอคอนใหญ่ต้องขาวดำเหมือนบนการ์ด
    ไม่งั้นกดจากการ์ดขาวดำเข้ามาแล้วเจอไอคอนสีสด จะอ่านผิดว่า "มีแล้ว" */
 #tDetailPanel.locked .tdetail-emoji { filter: grayscale(1) brightness(.72); }
@@ -2331,7 +2031,7 @@ canvas[hidden] { display: none; }
 /* ── แถวกราฟิก ──
    ใช้ทรงเดียวกับตัวเลือกภาษา ต่างแค่มีสามปุ่มจึงต้องยอมให้ตกบรรทัดบนจอแคบ
    คำอธิบายใต้แถวบอกว่า "ลดแล้วได้อะไร" เพราะคนส่วนใหญ่ไม่รู้ว่ากราฟิกเกี่ยวกับความร้อน */
-.gfxpick { flex-wrap: wrap; justify-content: center; }
+.gfxpick { justify-content: center; }
 .setnote {
   margin-top: calc(clamp(4px, 1dvh, 9px) * -1);
   font-size: clamp(9px, 1.4dvh, 11.5px);
@@ -2581,15 +2281,12 @@ canvas[hidden] { display: none; }
    ตราเลเวลกลม + ชื่อเลเวล + XP ตอนนี้ ▶ XP ที่ต้องใช้ (ตามแบบที่วางไว้) */
 .lv-now {
   flex: 0 0 auto;
-  width: min(88vw, 500px);
   display: flex;
   align-items: center;
   gap: clamp(8px, 1.8vw, 16px);
   margin-bottom: clamp(6px, 1.4dvh, 12px);
   padding: clamp(6px, 1.3dvh, 12px) clamp(12px, 2.2vw, 22px);
   border-radius: clamp(14px, 2.2vw, 22px);
-  border: 1.5px solid rgba(255,243,226,.34);
-  background: rgba(27,15,43,.5);
 }
 .lv-now-badge {
   flex: 0 0 auto;
@@ -2756,12 +2453,7 @@ canvas[hidden] { display: none; }
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: clamp(4px, 1vw, 9px);
   padding: clamp(6px, 1.3dvh, 12px) clamp(10px, 2vw, 20px);
-  border-radius: 999px;
-  border: 2px solid rgba(255,243,226,.5);
-  background: #C77DEA;
   color: var(--cream);
   font-family: "Mali", sans-serif;
   font-weight: 600;
@@ -2774,42 +2466,14 @@ canvas[hidden] { display: none; }
   overflow-wrap: anywhere;
 }
 .lv-what .coin, .lv-what .gem { flex: none; }
-/* การ์ดพรสวรรค์ในแถวรางวัลเลเวล — แคปซูลเข้มในแถว ขอบตามระดับการ์ด (A ม่วง / S ทอง / SS รุ้ง)
-   ให้แยกออกทันทีว่าเลเวลนี้ "ได้การ์ด" ไม่ใช่แค่ทองเพิ่ม */
-.lv-talent {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 9px 1px 4px;
-  border-radius: 999px;
-  border: 1.5px solid rgba(240,215,255,.7);
-  background: rgba(40,16,64,.55);
-  white-space: nowrap;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.lv-talent > i { font-style: normal; line-height: 1; }
-.lv-talent.rank-s { border-color: #FFD65C; }
-.lv-talent.rank-ss {
-  border-color: transparent;
-  background:
-    linear-gradient(rgba(40,16,64,.85), rgba(40,16,64,.85)) padding-box,
-    linear-gradient(90deg, #FF8FB0, #FFD65C, #8DF3EA, #C77DFF) border-box;
-}
 /* เลเวลที่มีการ์ดทั้งแถวเด่นขึ้นนิดหนึ่ง — เห็นเป้าหมายระหว่างเลื่อนผ่านแถวทอง */
 .lv-row.has-talent .lv-what { box-shadow: 0 0 0 2px rgba(255,214,92,.25), 0 0 14px rgba(199,125,255,.35); }
 
 /* ── สามสถานะของขั้นตอน ── */
 /* ถึงแล้วและยังไม่ได้กด = เรืองทอง (ภาษาสีเดียวกันทั้งเกม: ทองเรือง = อันนี้แหละที่ต้องกด) */
 .lv-row.ready .lv-node { border-color: #FFD65C; box-shadow: 0 0 16px rgba(255,201,60,.55); }
-.lv-row.ready .lv-what { border-color: #FFD65C; background: linear-gradient(180deg, #D98CF0, #B45FD8); }
-.lv-row.ready .lv-tap { color: #FFE9A8; }
-.lv-tap { font-size: clamp(9px, 1.4dvh, 12px); }
-.lv-row.done { opacity: .45; }
 /* ยังไปไม่ถึง — จางแต่ยังอ่านออก ครึ่งหนึ่งของคุณค่าหน้านี้คือ "รู้ว่ารออะไรอยู่" */
 .lv-row.locked .lv-node { background: linear-gradient(180deg, #5B3480, #40205E); border-color: rgba(240,215,255,.45); }
-.lv-row.locked .lv-what { background: #9E63C2; }
 
 /* หมุด "ตอนนี้อยู่ตรงนี้" — XP สะสมกับหน้าน้อง วางคั่นระหว่างขั้นเหมือนในแบบ */
 .lv-here {
@@ -2855,19 +2519,7 @@ canvas[hidden] { display: none; }
   gap: clamp(10px, 2vw, 18px);
   padding: clamp(8px, 1.6dvh, 14px) clamp(12px, 2.2vw, 20px);
   border-radius: 16px;
-  /* กรอบม่วงสดใสชุดเดียวกับหน้าเลือกด่าน (.stage-card) — ข้อที่ทำครบแล้ว
-     ยังชนะด้วยกรอบทองอยู่ดี (.quest-row.ready) */
-  border: 1.5px solid rgba(196,143,243,.45);
-  background: rgba(255,243,226,.05);
-  box-shadow: 0 0 12px rgba(156,94,220,.16);
   text-align: left;
-}
-/* ทำครบแล้วยังไม่ได้กดรับ = เรืองขอบทองให้สะดุดตาก่อนข้ออื่นทั้งแถบ
-   นี่คือข้อเดียวในหน้าที่ต้องการให้ผู้เล่นทำอะไรต่อ */
-.quest-row.ready {
-  border-color: rgba(255,201,60,.75);
-  background: linear-gradient(180deg, rgba(255,201,60,.16), rgba(255,201,60,.04));
-  box-shadow: 0 0 18px rgba(255,201,60,.3);
 }
 .quest-row.done { opacity: .5; }
 
@@ -2949,13 +2601,6 @@ canvas[hidden] { display: none; }
 .reward-pop .got-title, .reward-pop .got-row, .reward-pop .btn { position: relative; z-index: 2; }
 /* การ์ดในกล่องนี้ไม่มี --gs ของหน้ากาช่ามาคุมความกว้าง ต้องตั้งของตัวเอง */
 .reward-pop .got-card { width: clamp(84px, 15dvh, 124px); }
-/* ชื่อคลาสต้องเป็น .gems ไม่ใช่ .gem — .gem เป็นคลาสของไอคอนเพชรซึ่งมี
-   width/height กับ clip-path ข้าวหลามตัดติดมาด้วย เอามาใส่ที่การ์ดแล้วการ์ดจะโดนตัดหาย
-   (คู่กับกฎที่ rewardCard ใน main.js) */
-.got-card.gems {
-  border-color: rgba(255,143,176,.6);
-  background: linear-gradient(180deg, rgba(255,143,176,.24), rgba(255,143,176,.07));
-}
 .got-card.gems b { color: #FFB3CC; }
 .got-card .gem.big {
   width: 52%;
@@ -3108,15 +2753,6 @@ canvas[hidden] { display: none; }
   line-height: 1;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
 }
-/* กำลังรัวอยู่ = ปุ่มเปลี่ยนเป็นสีแดงเตือน เพราะตอนนี้มันคือปุ่ม "หยุด" ไม่ใช่ปุ่ม "เริ่ม"
-   ต้องเขียนคู่กับ .btn.ghost ให้ชนะกฎสีม่วงที่ความจำเพาะเท่ากันแต่มาก่อน */
-.btn.ghost.stopping {
-  background: linear-gradient(180deg, #FF8A96 0%, #F2555F 52%, #C4303C 100%);
-  box-shadow:
-    0 6px 0 #8E1F28,
-    0 12px 24px rgba(196,48,60,.36),
-    inset 0 1px 0 rgba(255,255,255,.45);
-}
 .btn.ghost.stopping:active {
   transform: translateY(4px);
   box-shadow: 0 2px 0 #8E1F28, inset 0 1px 0 rgba(255,255,255,.45);
@@ -3175,32 +2811,17 @@ canvas[hidden] { display: none; }
 .up-arrow i { font-style: normal; color: #8E76A8; }
 .up-odds { font-size: clamp(9.5px, 1.6dvh, 12.5px); color: #FFFFFF; }
 .up-odds b { color: #FFD97A; }
-
-/* ── ป้ายบอกผล ────────────────────────────────
-   เป็นคำตอบของสิ่งที่ผู้เล่นเพิ่งจ่ายทองไปลุ้น จึงต้องเด่นที่สุดในหน้าตอนมันโผล่
-   เดิมเป็นกล่องสี่เหลี่ยมสีจาง ๆ ที่กลืนไปกับพื้นการ์ด อ่านเป็นหมายเหตุมากกว่าผลลัพธ์
-
-   เด้งเข้ามาเกินขนาดจริงนิดหนึ่งก่อนหดกลับ (60% ที่ 1.08) — จังหวะนี้ทำให้รู้สึกว่า
-   ป้าย "ปรากฏขึ้น" ไม่ใช่ "ถูกเปลี่ยนค่า" ซึ่งเป็นความต่างที่รู้สึกได้แต่บอกไม่ถูกว่าทำไม */
-@keyframes resultIn {
-  0%   { opacity: 0; transform: scale(.5) translateY(10px); }
-  60%  { opacity: 1; transform: scale(1.08) translateY(0); }
-  100% { opacity: 1; transform: scale(1); }
-}
 .up-result {
   position: relative;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 2px;
   /* กว้างขั้นต่ำเท่ากันทั้งสำเร็จและพลาด กรอบจึงไม่หดขยายไปมาตอนตีรัว
      ซึ่งเป็นจังหวะที่ข้อความเปลี่ยนทุก ๆ ไม่กี่ร้อยมิลลิวินาที */
   min-width: min(100%, 20ch);
   padding: clamp(9px, 1.6dvh, 14px) clamp(22px, 3.8vw, 38px);
-  border-radius: 18px;
   font-size: clamp(10px, 1.7dvh, 13px);
-  animation: resultIn .42s cubic-bezier(.2,.9,.3,1.35) backwards;
 }
 /* แสงพาดเฉียงบนครึ่งบนของกรอบ ตัวที่ทำให้อ่านเป็นแผ่นวัสดุมีผิว
    ไม่ใช่กล่องสีทึบ — ใช้สูตรเดียวกับไฮไลต์บนปุ่มลูกอมทั้งเกม */
@@ -3229,25 +2850,11 @@ canvas[hidden] { display: none; }
 /* คำถามชวนตีต่อ เน้นให้เห็นชัดว่ากดปุ่มเดิมได้เลย ไม่ต้องออกไปแล้วเข้ามาใหม่ */
 .up-result em { font-style: normal; font-weight: 700; margin-top: 3px; color: #FFE9A8; }
 .up-result.win {
-  background: linear-gradient(180deg, rgba(141,243,234,.36), rgba(78,205,196,.12));
   border: 1.5px solid rgba(141,243,234,.85);
-  color: var(--mint-lite);
-  box-shadow:
-    0 0 30px rgba(78,205,196,.5),
-    0 6px 16px rgba(0,0,0,.4),
-    inset 0 1px 0 rgba(255,255,255,.4);
 }
-.up-result.win b { color: #EAFFFC; text-shadow: 0 2px 0 rgba(8,60,55,.55), 0 0 18px rgba(141,243,234,.95); }
 .up-result.fail {
-  background: linear-gradient(180deg, rgba(255,92,110,.3), rgba(255,92,110,.09));
   border: 1.5px solid rgba(255,122,138,.7);
-  color: #FFC2C9;
-  box-shadow:
-    0 0 22px rgba(255,92,110,.34),
-    0 6px 16px rgba(0,0,0,.4),
-    inset 0 1px 0 rgba(255,255,255,.22);
 }
-.up-result.fail b { color: #FFEAEC; text-shadow: 0 2px 0 rgba(92,16,26,.5); }
 
 /* ── ตู้สุ่มสมบัติ ──────────────────────────── */
 /* อัตราออกของช่องสมบัติเคยกางเป็นชิปอยู่กลางหน้าตลอดเวลา ย้ายไปซ่อนใต้ปุ่ม !
@@ -3303,11 +2910,9 @@ canvas[hidden] { display: none; }
   /* ค่าข้างบนคือทรง "จุดเปล่า" ส่วนป้ายที่มีตัวเลขทับค่าพวกนี้ด้วยกฎ
      :not(:empty) ข้างล่าง — จุดกับป้ายจึงเป็นของชิ้นเดียวกันที่โตตามเนื้อหา */
   border-radius: 50%;
-  background: #E8434F;
   /* ขอบหนาตามขนาดป้าย ไม่ใช่ 2px ตายตัว — 2px บนป้าย 14px คือขอบหนา 29%
      ของตัวป้าย ซึ่งทำให้มันดูเป็นก้อนตันมากกว่าป้ายที่มีตัวเลขอยู่ข้างใน */
   border: var(--badge-bd) solid #3A1D50;
-  box-shadow: 0 0 8px rgba(232,67,79,.85);
   animation: mailPulse 1.6s ease-in-out infinite;
 }
 
@@ -3363,9 +2968,7 @@ canvas[hidden] { display: none; }
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: #E8434F;
   border: 2px solid #3A1D50;
-  box-shadow: 0 0 8px rgba(232,67,79,.85);
   pointer-events: none;
   animation: mailPulse 1.6s ease-in-out infinite;
 }
@@ -3515,7 +3118,7 @@ canvas[hidden] { display: none; }
 /* ── โครงหน้าเพื่อน (ยืมโครง .tl-pop ของหน้าการ์ดพลัง) ──
    แท็บชิดขวาเหมือนหน้าการ์ดพลัง / ช่องซ้ายคือบัตรของเรา / ขวาเป็นกริดการ์ดเพื่อน */
 .fr-pop .fr-tabs { margin-left: auto; }
-.fr-grid.hidden, .fr-req.hidden { display: none; }
+.fr-grid.hidden { display: none; }
 .fr-main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 
 /* บัตรของเรา — ทรงเดียวกับช่อง "ติดตั้งอยู่" (.tl-equipped) แต่แตะไม่ได้ ไม่ยก/ไม่ยุบ */
@@ -3566,10 +3169,9 @@ canvas[hidden] { display: none; }
   scrollbar-width: none;
 }
 .fr-grid::-webkit-scrollbar { display: none; }
-.fr-grid > .fr-head, .fr-grid > .grid-empty { grid-column: 1 / -1; }
+.fr-grid > .grid-empty { grid-column: 1 / -1; }
 /* หัวข้อกลุ่มกับข้อความว่างอยู่กลางพื้นที่ฝั่งขวาเสมอ
    ต้องเขียน .panel p.xxx — กฎกลาง .panel p จำกัดความกว้างไว้ ข้อความจึงเคยไปกองชิดซ้ายไม่ตรงกลาง */
-.panel .fr-grid > p.fr-head,
 .panel .fr-grid > p.grid-empty {
   max-width: none;
   justify-self: stretch;
@@ -3582,45 +3184,12 @@ canvas[hidden] { display: none; }
 .fr-grid .fr-row { width: auto; min-width: 0; }
 .fr-grid .fr-row .mail-main { min-width: 0; }
 .fr-grid .fr-row .mail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* ── หน้าคำขอเลื่อนทั้งหน้า ไม่ใช่เลื่อนแค่รายการ ──
-   บนมือถือแนวนอน ช่องค้นหากับแถวรหัสกินความสูงไปเกือบหมด ถ้าให้เลื่อนเฉพาะรายการ
-   จะเหลือช่องมองรายการแค่ไม่กี่พิกเซล (วัดแล้วเห็นแถวแรกแค่ขอบบน)
-   ให้ทั้งหน้าเลื่อนไปด้วยกัน ช่องค้นหาเลื่อนพ้นจอไปแล้วรายการได้ความสูงทั้งหมด */
-.fr-req {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: clamp(6px, 1.4dvh, 11px);
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  padding: 2px;
-}
-.fr-req::-webkit-scrollbar { display: none; }
-.fr-req > .fr-grid { flex: 0 0 auto; overflow: visible; }
 @media (max-height: 520px) {
   .fr-search input { padding: 7px 12px; font-size: 13px; }
   .fr-search .btn { padding: 7px 18px; font-size: 13px; }
 }
 .fr-search { flex-wrap: nowrap; width: auto; margin: 2px 6px 0; }
 .fr-search input { flex: 1 1 auto; width: auto; min-width: 0; }
-
-.fr-mycode {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: clamp(11px, 1.6dvh, 12.5px);
-  color: #FFFFFF;
-}
-.fr-mycode b {
-  font-family: "Mali", monospace;
-  font-weight: 700;
-  letter-spacing: .12em;
-  color: var(--cream);
-  font-size: clamp(12.5px, 1.9dvh, 15px);
-}
 .fr-copy {
   display: grid;
   place-items: center;
@@ -3635,16 +3204,6 @@ canvas[hidden] { display: none; }
 }
 .fr-copy svg { width: 60%; height: 60%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .fr-copy:active { transform: scale(.9); }
-
-/* หัวข้อกลุ่มในหน้าคำขอ (ผลการค้นหา / ส่งมาหาเรา / ที่เราส่งไป) */
-.fr-head {
-  margin: clamp(2px, .6dvh, 6px) 4px 0;
-  font-family: "Mali", sans-serif;
-  font-weight: 600;
-  font-size: clamp(11px, 1.6dvh, 12.5px);
-  color: #FFFFFF;
-}
-.fr-list .grid-empty { padding-block: clamp(6px, 2dvh, 16px); }
 
 .fr-row { cursor: default; }
 .fr-row.tap { cursor: pointer; }
@@ -3740,92 +3299,6 @@ canvas[hidden] { display: none; }
   min-height: 0;
 }
 
-/* คอลัมน์ซ้าย: กรอบรูป แล้วบรรทัดโบนัสอยู่ใต้กรอบ ไม่ใช่ไปปนอยู่ในกล่องข้อมูล
-   เพราะมันคือ "ค่าของชุดนี้" ซึ่งควรอ่านคู่กับรูปในสายตาเดียว */
-.odetail-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(6px, 1.4dvh, 12px);
-  flex: 0 1 auto;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  justify-content: center;
-}
-
-.odetail-show {
-  position: relative;
-  flex: 0 1 auto;
-  /* พื้นขั้นต่ำของกรอบรูป — ต่ำกว่านี้ตัวน้องเล็กจนดูไม่ออกว่าใส่อะไรอยู่ */
-  min-height: 88px;
-  aspect-ratio: 1;
-  border-radius: 20px;
-  border: 2px solid var(--plate-line);
-  background: rgba(34,14,54,.55);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,243,226,.12);
-}
-/* ผ้าใบเต็มกรอบ ความสูงมาจาก flex แล้ว aspect-ratio คำนวณความกว้างตาม
-   (กฎเดียวกับกรอบตัดรูปในหน้าใส่รูป — ห้ามวัดของใหญ่จาก dvh เพราะ dvh คือ
-   ความสูงหน้าต่าง ไม่ใช่ความสูงการ์ด สองค่านี้ต่างกันได้เกินเท่าตัว) */
-.odetail-show canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 220px;
-  max-height: 220px;
-}
-
-/* ── ป้ายระดับ (sign-s / sign-a) ──
-   เกาะมุมบนขวาแล้วยื่นออกนอกกรอบครึ่งตัว ให้อ่านเป็นตราที่ "แปะทับ" กรอบ
-   ไม่ใช่ไอคอนที่วางอยู่ข้างในกรอบเฉย ๆ */
-.od-sign {
-  position: absolute;
-  top: -7%;
-  right: -7%;
-  /* 38% ทำให้ตราใหญ่เกือบเท่าหัวน้องในกรอบ แย่งสายตาไปจากตัวชุดซึ่งเป็นพระเอก
-     ของหน้า 29% ยังอ่านตัวอักษรบนตราออกสบายแต่ไม่ข่มรูป */
-  width: 20%;
-  max-width: 44px;
-  height: auto;
-  pointer-events: none;
-  filter: drop-shadow(0 3px 6px rgba(12,4,24,.6));
-}
-.od-sign[hidden] { display: none; }
-
-.odetail-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: clamp(5px, 1.2dvh, 11px);
-  /* ── ทำไม basis ต้องเล็กกว่าที่ตาเห็นว่าควรเป็น ──
-     กล่องนี้อยู่แถวเดียวกับกรอบรูป ซึ่งเป็นจัตุรัสที่ความกว้างมาจากความสูง
-     ถ้ากล่องนี้ขอที่ไว้เยอะ (basis 300 + min-width กว้าง) บนการ์ดแคบมันจะกินไปหมด
-     เหลือให้กรอบรูปแค่ 52px — ซึ่งเล็กจนมองไม่ออกว่าชุดหน้าตายังไง
-     ทั้งที่ "ดูชุด" คือเหตุผลเดียวที่คนเปิดหน้านี้
-     ยอมให้กล่องนี้แคบแล้วเลื่อนอ่านเอา (overflow-y ข้างล่าง) ดีกว่าให้รูปหาย */
-  flex: 1 1 230px;
-  min-width: 170px;
-  max-width: 360px;
-  /* ── สูงเท่าเนื้อหา ไม่ใช่ยืดเต็มความสูงเสมอ ──
-     ชุดระดับ A มีของแถมสองบรรทัด ส่วนระดับ S มีสี่ ถ้าบังคับ height:100%
-     ทั้งคู่ กล่องของ A จะเหลือที่ว่างค้างอยู่ครึ่งกล่องโดยไม่มีอะไรอยู่
-     ปล่อยให้หดตามเนื้อหาแล้วมันจะจัดกลางคู่กับกรอบรูปเอง (.odetail align-items: center) */
-  height: auto;
-  max-height: 100%;
-  min-height: 0;
-  text-align: left;
-  padding: clamp(10px, 2dvh, 18px) clamp(11px, 1.8vw, 20px);
-  border-radius: 18px;
-  background: rgba(255,243,226,.07);
-  border: 1px solid rgba(255,243,226,.1);
-  /* รายการของที่ได้ยาวไม่เท่ากันในแต่ละชุด ให้เลื่อนในกล่องเมื่อยาวเกิน
-     ดีกว่าดันกล่องจนล้นการ์ดแล้วโดน overflow:hidden ของ .pop เฉือนหาย */
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.odetail-info::-webkit-scrollbar { display: none; }
-
 /* ป้ายชื่อเล่นของชุด — เม็ดม่วงเข้มที่เป็นบรรทัดแรกสุดของกล่อง
    ใช้ชื่อเล่น (note) ไม่ใช่ชื่อชุด เพราะชื่อชุดอยู่บนหัวเรื่องของหน้าแล้ว */
 .od-tag {
@@ -3888,22 +3361,9 @@ canvas[hidden] { display: none; }
   aspect-ratio: 1;
   filter: drop-shadow(0 2px 3px rgba(12,4,24,.5));
 }
-
-/* บรรทัดโบนัสใต้กรอบรูป — ตัวเลขคือเหตุผลเดียวที่ชุดหนึ่งมีค่ากว่าอีกชุด */
-.odetail-bonus {
-  margin: 0;
-  flex: 0 0 auto;
-  text-align: center;
-  font-family: "Mali", sans-serif;
-  font-weight: 700;
-  font-size: clamp(11px, 2dvh, 16px);
-  color: #FFD97A;
-  line-height: 1.3;
-  white-space: nowrap;
-}
 /* .panel p ถูกซ่อนทิ้งบนจอแคบเพื่อเอาที่ไปให้ปุ่ม แต่สองบรรทัดนี้คือเนื้อหาหลัก
    ของทั้งหน้า ถ้าหายไปด้วยจะเหลือแค่รูปแมวกับปุ่ม ซึ่งไม่ได้บอกอะไรเลย */
-.panel p.odetail-bonus, .panel p.odetail-sub { display: block; }
+.panel p.odetail-sub { display: block; }
 
 /* หน้านี้ต้องให้แถวเนื้อหากินที่ที่เหลือทั้งหมด กรอบรูปจึงโตได้เต็มการ์ด */
 #odPanel .pop { justify-content: center; }
@@ -3917,9 +3377,6 @@ canvas[hidden] { display: none; }
    ไม่ได้เสียข้อมูลอะไรไป แต่ได้ความสูงคืนมาให้กรอบรูปซึ่งเป็นของชิ้นเดียว
    ที่แทนด้วยตัวหนังสือไม่ได้ — ไม่งั้นบรรทัดนี้จะถูกดันทะลุลงไปทับปุ่ม */
 @media (max-height: 430px) {
-  /* ต้องเขียนเป็น .panel p.odetail-bonus ให้เท่ากับกฎที่บังคับ display:block ไว้ข้างบน
-     (0,2,1 ต่อ 0,2,1 — ตัวหลังชนะ) เขียนสั้นเป็น .odetail-bonus เฉย ๆ จะแพ้แล้วไม่มีผลเลย */
-  .panel p.odetail-bonus { display: none; }
   #odPanel .pop > .panel-head { margin-bottom: 4px; }
 }
 
@@ -4251,11 +3708,8 @@ canvas[hidden] { display: none; }
   width: 19px;
   height: 19px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #FFE79A 0%, #E9A227 48%, #9E6412 100%);
-  box-shadow: 0 1px 2px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6);
 }
 .coin::before {
-  content: '';
   position: absolute;
   inset: 14%;
   border-radius: 50%;
@@ -4263,7 +3717,6 @@ canvas[hidden] { display: none; }
   box-shadow: inset 0 -1px 2px rgba(130,80,10,.55);
 }
 .coin::after {
-  content: '';
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -4314,22 +3767,14 @@ canvas[hidden] { display: none; }
   flex: 0 0 auto;
   width: 19px;
   height: 19px;
-  clip-path: polygon(50% 0%, 100% 36%, 50% 100%, 0% 36%);
-  background: conic-gradient(from 200deg at 50% 36%,
-    #FFA8CB 0deg, #FF7FAE 70deg, #FF5C98 140deg, #E84A87 200deg,
-    #FF6FA4 260deg, #FFA0C6 310deg, #FFA8CB 360deg);
-  /* เงาให้ลอย + เรืองชมพูอ่อน ๆ ให้ดูเป็นของมีค่า ไม่ใช่รูปทรงแบน ๆ */
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)) drop-shadow(0 0 4px rgba(255,110,165,.65));
 }
 .gem::before {
-  content: '';
   position: absolute;
   inset: 0;
   clip-path: polygon(50% 9%, 72% 34%, 50% 44%, 28% 34%);
   background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.32));
 }
 .gem::after {
-  content: '';
   position: absolute;
   inset: 0;
   clip-path: polygon(28% 34%, 50% 44%, 44% 62%);
@@ -4907,10 +4352,6 @@ canvas[hidden] { display: none; }
   gap: 11px;
   padding: 11px 16px;
   border-radius: 18px;
-  /* ไล่สีอ่อน ๆ บนลงล่างแทนแผ่นสีเดียว อ่านเป็นแถบวัสดุมีผิว ไม่ใช่กล่องใสจาง ๆ */
-  background: linear-gradient(180deg, rgba(255,243,226,.11), rgba(255,243,226,.045));
-  border: 1px solid rgba(255,243,226,.2);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 3px 10px rgba(0,0,0,.28);
 }
 /* ดันทุกอย่างที่อยู่หลังป้ายไปชิดขวา "พร้อมกันทั้งกลุ่ม"
    ใส่ที่ป้ายชื่อแถวจุดเดียว ไม่ใช่ไปใส่ margin-left:auto ที่ตัวควบคุมสักตัว
@@ -5233,7 +4674,6 @@ canvas[hidden] { display: none; }
   font-family: "Mali", sans-serif;
   font-weight: 600;
   font-size: calc(var(--u) * 10);
-  line-height: 1.2;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5266,7 +4706,7 @@ canvas[hidden] { display: none; }
   background: rgba(27,15,43,.95);
   box-shadow: 0 10px 26px rgba(12,4,24,.6);
 }
-.pf-name-edit input { flex: 1 1 auto; min-width: 0; }
+.pf-name-edit input { min-width: 0; }
 /* กติกาชื่อใต้ช่องพิมพ์ — หน้าตั้งชื่อ และช่องแก้ชื่อในโปรไฟล์ */
 .pf-name-edit { flex-wrap: wrap; }
 /* basis 0 = ช่องพิมพ์ไม่ดันปุ่มให้ตกบรรทัด เหลือแค่ป้ายกติกาที่ขึ้นบรรทัดใหม่ */
@@ -5534,19 +4974,15 @@ canvas[hidden] { display: none; }
   gap: clamp(8px, 1.2vw, 16px);
   padding: calc(var(--u) * 3) calc(var(--u) * 10);
   border-radius: 999px;
-  border: clamp(2px, .3vw, 3px) solid #6A3F8C;
-  background: linear-gradient(180deg, #F2D5FF, #E1B6F5);
-  color: #2A1238;
   font-family: "Mali", sans-serif;
   font-weight: 600;
   font-size: calc(var(--u) * 8);
   line-height: 1.3;
-  box-shadow: 0 3px 0 rgba(58,29,80,.45), 0 6px 14px rgba(12,4,24,.3);
   cursor: pointer;
   white-space: nowrap;
 }
 .pf-action svg { width: calc(var(--u) * 11); height: calc(var(--u) * 11); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pf-action .ico-edit { fill: currentColor; stroke: #F2D5FF; stroke-width: 1.2; }
+.pf-action .ico-edit { fill: currentColor; stroke-width: 1.2; }
 .pf-action .ico-done, .pf-action .ico-add { display: none; }
 .pf-pop.editing .pf-action .ico-edit { display: none; }
 .pf-pop.editing .pf-action .ico-done { display: block; stroke-width: 3; }
@@ -5680,13 +5116,6 @@ canvas[hidden] { display: none; }
 .mutebtn .cross { display: none; }
 .mutebtn.muted .wave { display: none; }
 .mutebtn.muted .cross { display: block; }
-/* ตอนปิดเสียงปุ่มเปลี่ยนเป็นแดงจาง ๆ — อ่านออกจากหางตาว่าเกมกำลังเงียบอยู่
-   ไม่ต้องเพ่งดูว่าไอคอนมีกากบาทหรือเปล่า */
-.mutebtn.muted {
-  border-color: rgba(255,122,138,.6);
-  background: linear-gradient(180deg, #7A2E3C 0%, #4A1B28 100%);
-  color: #FFC2C9;
-}
 
 /* ปุ่ม − / + กลมเล็ก กดแล้วยุบเหมือนปุ่มบน */
 .stepbtn {
@@ -5694,21 +5123,16 @@ canvas[hidden] { display: none; }
   height: 32px;
   flex: 0 0 auto;
   border-radius: 50%;
-  border: 2px solid rgba(255,243,226,.4);
-  background: linear-gradient(180deg, #7A3563 0%, #45205C 100%);
-  color: var(--cream);
   font-size: 19px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 2px 0 rgba(20,8,32,.6), inset 0 1px 0 rgba(255,255,255,.2);
-  transition: transform .06s ease, box-shadow .06s ease;
 }
 .stepbtn:active {
   transform: translateY(2px);
   box-shadow: 0 0 0 rgba(20,8,32,.6), inset 0 1px 0 rgba(255,255,255,.2);
 }
-.stepbtn:disabled { opacity: .35; box-shadow: none; transform: none; cursor: default; }
+.stepbtn:disabled { transform: none; cursor: default; }
 .stepbtn:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
 
 /* ระดับเสียงเป็นขีด 10 ขีด อ่านออกทันทีว่าอยู่กี่ขั้นจากกี่ขั้น
@@ -6182,15 +5606,6 @@ canvas[hidden] { display: none; }
   background:
     radial-gradient(118% 92% at 50% -20%, rgba(255,255,255,.5), rgba(255,255,255,0) 64%),
     linear-gradient(180deg, #74DC93 0%, #4CBB79 55%, #38A066 100%);
-  box-shadow:
-    0 var(--lift) 0 var(--base),
-    /* เงาสีใต้ปุ่ม กว้างและฟุ้งกว่าเดิม ปุ่มจึงดูวางอยู่บนพื้นนุ่ม ๆ ไม่ใช่แปะติดพื้นแข็ง */
-    0 calc(var(--lift) + 8px) 26px var(--glow),
-    /* สามชั้นในนี้คือความ "นิ่ม" ทั้งหมด: แสงหนาที่ขอบบน เงานุ่มที่ก้น และรัศมีขอบจาง ๆ
-       ถ้าเหลือแค่เส้นไฮไลต์ 1px เหมือนเดิม ผิวจะกลับไปแบนทันที */
-    inset 0 2px 0 rgba(255,255,255,.6),
-    inset 0 -7px 14px rgba(0,0,0,.15),
-    inset 0 0 0 1px rgba(255,255,255,.14);
   color: #0E2C1C;
   overflow: hidden;
   /* สั้นมากโดยตั้งใจ — ปุ่มแบบนี้ต้องรู้สึกว่า "คลิก" ไม่ใช่ "ค่อย ๆ จม" */
@@ -6302,8 +5717,6 @@ canvas[hidden] { display: none; }
 .btn.pull:disabled {
   opacity: .45;
   filter: grayscale(.55);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
-  transform: translateY(var(--lift));
   cursor: not-allowed;
 }
 .btn.pull:disabled::after { display: none; }
@@ -6532,7 +5945,6 @@ canvas[hidden] { display: none; }
 
 /* การ์ดผลหนึ่งใบ — กว้างอิง --gs ตัวเดียวกับทั้งหน้ากาช่า จึงย่อขยายไปพร้อมกัน */
 .got-card {
-  position: relative;
   width: calc(var(--gs) * 0.62);
   min-width: 68px;
   padding: clamp(5px, 1.1dvh, 10px) 5px clamp(5px, 1.1dvh, 9px);
@@ -6541,9 +5953,6 @@ canvas[hidden] { display: none; }
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  border: 1px solid rgba(255,243,226,.22);
-  background: linear-gradient(180deg, rgba(255,243,226,.12), rgba(255,243,226,.05));
-  box-shadow: 0 6px 14px rgba(0,0,0,.4);
 }
 .got-card canvas { width: 72%; height: auto; aspect-ratio: 1; }
 .got-card b {
@@ -6564,10 +5973,6 @@ canvas[hidden] { display: none; }
   box-shadow: 0 0 18px rgba(255,201,60,.4), 0 6px 14px rgba(0,0,0,.4);
 }
 .got-card.dupe { opacity: .55; }
-.got-card.gold {
-  border-color: rgba(255,201,60,.5);
-  background: linear-gradient(180deg, rgba(255,201,60,.2), rgba(255,201,60,.06));
-}
 .got-card.gold b { color: #FFD97A; }
 .got-card .coin.big { width: 52%; height: auto; aspect-ratio: 1; margin: 8% 0 4%; }
 /* การ์ดพรสวรรค์ในกล่องฉลอง (talentGotCard ใน main.js) — ขอบตามระดับ ภาษาเดียวกับหน้าพรสวรรค์ */
@@ -6608,10 +6013,9 @@ canvas[hidden] { display: none; }
 @media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
   /* ปุ่มล็อบบี้ย่อลง แต่ยังเป็นสี่เหลี่ยมกดง่าย ไม่ใช่แถวยาวแบบเดิม */
   .lobby { gap: 5px; }
-  .lobby-btn { width: 48px; padding: 4px 3px 5px; border-radius: 11px; }
+  .lobby-btn { border-radius: 11px; }
   .lobby-btn { width: 52px; height: 52px; padding: 4px 3px; }
   .lobby-btn canvas { width: 27px; height: 27px; border-radius: 8px; }
-  .lobby-btn #stageIcon { width: 38px; height: 17px; border-radius: 5px; margin-block: 5px; }
   .lobby-btn b { font-size: 9px; }
   .btn.play { padding: 10px 30px; }
   /* เดิม 92% ของการ์ด — แต่การ์ดหดตามเนื้อหา รายการเลยแคบจนชื่อกับคะแนนเบียดกัน
@@ -6665,7 +6069,7 @@ canvas[hidden] { display: none; }
   .gacha-wallet .gem, .gacha-wallet .coin { width: 14px; height: 14px; }
   #gachaPanel .btn { font-size: 11px; padding: 6px 11px; }
 
-  #skinPanel, #outfitPanel { padding: 6px 10px; gap: 4px; }
+  #outfitPanel { padding: 6px 10px; gap: 4px; }
   /* ต้องเขียนเป็น .panel h2 ไม่ใช่ .skin-title เฉย ๆ
      .panel h2 (คลาส+ชนิด = 0,1,1) จำเพาะกว่า .skin-title (0,1,0) กฎย่อจึงแพ้ตลอด
      ผลคือหัวเรื่องยังเป็น 40px กินไป 57px จากจอสูง 390px ทั้งที่ตั้งใจย่อไว้ 14px */
@@ -6678,7 +6082,7 @@ canvas[hidden] { display: none; }
      ต้องเขียนซ้ำในบล็อกนี้ เพราะกฎ .panel h2 ข้างบนจำเพาะเท่ากันแต่อยู่ก่อนหน้า */
   .gacha-head h2 { font-size: 21px; }
   .skin-grid { gap: 6px; }
-  .skin-card { width: 78px; padding: 4px 4px 6px; gap: 2px; border-radius: 11px; --thumb-bottom: 48px; }
+  .skin-card { width: 78px; padding: 4px 4px 6px; gap: 2px; border-radius: 11px; }
   .skin-card canvas { width: 44px; height: 44px; border-radius: 8px; }
   .skin-card b { font-size: 11px; }
   /* ต้องย่อ .t-card ในทุกบล็อกที่ย่อ .t-card เอง ไม่งั้นกฎ .skin-card ที่อยู่
@@ -6704,7 +6108,6 @@ canvas[hidden] { display: none; }
   .lobby { gap: 4px; }
   .lobby-btn { width: 40px; padding: 4px; border-radius: 10px; }
   .lobby-btn canvas { width: 30px; height: 30px; border-radius: 8px; }
-  .lobby-btn #stageIcon { width: 30px; height: 14px; margin-block: 8px; }
   .lobby-btn b { display: none; }
   .btn.play { padding: 9px 24px; font-size: 15px; bottom: 5%; }
 }
@@ -6731,15 +6134,6 @@ canvas[hidden] { display: none; }
     width: clamp(28px, 8.4dvh, 42px);
     height: clamp(28px, 8.4dvh, 42px);
     border-radius: 9px;
-  }
-  /* ไอคอนด่านเป็นแนวนอน (210x92) จึงคุมด้วยความกว้างแล้วให้สูงตามสัดส่วน
-     ไม่งั้นมันจะถูกยืดจนภาพตัวอย่างด่านผิดรูป */
-  .lobby-btn #stageIcon {
-    width: clamp(38px, 11dvh, 56px);
-    height: auto;
-    aspect-ratio: 210 / 92;
-    border-radius: 6px;
-    margin-block: 4px;
   }
   .lobby-btn b { font-size: clamp(9px, 2.4dvh, 12px); }
 
@@ -6823,7 +6217,7 @@ canvas[hidden] { display: none; }
    *
    * ผลพลอยได้: การ์ดเต็มจอมากขึ้น ซึ่งเป็นทรงที่ถูกต้องกว่าบนมือถืออยู่แล้ว */
   .panel:not(.home)::before { inset: 2%; }
-  #skinPanel, #outfitPanel, #stagePanel, #gachaPanel, #rankPanel { padding: 3.2% 12px; }
+  #outfitPanel, #stagePanel, #gachaPanel, #rankPanel { padding: 3.2% 12px; }
 
   /* ── เป้าแตะบนมือถือ ──────────────────────────
    * ปุ่มพวกนี้เคยเล็กกว่า 32px ซึ่งแตะพลาดบ่อยด้วยนิ้วโป้ง
@@ -6875,7 +6269,7 @@ canvas[hidden] { display: none; }
    * บนจอกว้างขนาดนี้การ์ดเล็กแบบนั้นลอยเป็นจุดเล็ก ๆ กลางแผงว่างเปล่า
    *
    * ขยายตามความกว้างที่มีจริง แต่คุมความสูงไว้ให้ยังเหลือที่ให้เลื่อนดูแถวสอง */
-  .skin-card { width: 108px; padding: 7px 7px 9px; gap: 3px; border-radius: 14px; --thumb-bottom: 73px; }
+  .skin-card { width: 108px; padding: 7px 7px 9px; gap: 3px; border-radius: 14px; }
   .skin-card canvas { width: 66px; height: 66px; border-radius: 11px; }
   .skin-card b { font-size: 12.5px; min-height: 2.4em; }
   .t-card { width: 80px; padding: 6px 5px 7px; gap: 2px; border-radius: 12px; }
@@ -6960,13 +6354,6 @@ canvas[hidden] { display: none; }
      ตัวแรกเป็นค่าสำรองของเบราว์เซอร์ที่ไม่รู้จัก cqw */
   font-size: clamp(22px, 4.2vw, 52px);
   font-size: 4.2cqw;
-}
-.title-logo.logo-plate {
-  /* ลอยขึ้นลงแทนการเรืองแสง — พื้นป้ายเป็น clip-path ซึ่ง box-shadow ใช้ไม่ได้
-     (โดนตัดทิ้งไปกับรูปทรง) ส่วน transform ทำงานกับทั้งกล่องตามปกติ */
-  animation:
-    logoPop .55s cubic-bezier(.34, 1.56, .64, 1) both,
-    logoBob 4.2s ease-in-out .55s infinite;
 }
 @keyframes logoPop {
   from { opacity: 0; transform: scale(.75) translateY(-14px); }
@@ -7104,7 +6491,6 @@ canvas[hidden] { display: none; }
 .auth-actions {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
   gap: clamp(10px, 2.1dvh, 18px);
   width: 100%;
   margin-top: clamp(2px, .8dvh, 8px);
@@ -7173,7 +6559,6 @@ canvas[hidden] { display: none; }
   #authPanel .pop > .panel-head { margin-bottom: 5px; }
   .auth-actions { gap: 7px; margin-top: 0; }
   #authPanel .auth-actions .btn { font-size: 13px; padding: 8px 18px; }
-  .auth-info { width: 21px; height: 21px; font-size: 13px; margin-left: 6px; }
   /* .form-msg จองที่ไว้ 1.2em ตลอดเวลาเพื่อกันแผงกระตุกตอนข้อความโผล่
      บนเวทีเตี้ยที่ไม่กระตุกก็ไม่พออยู่ดี ยอมให้ขยับดีกว่าให้ปุ่มโดนเฉือน */
   #authPanel .form-msg { min-height: 0; }
@@ -7348,9 +6733,6 @@ canvas[hidden] { display: none; }
   #gachaMachine { animation: none; }
   .panel:not(.home):not(.hidden) > .pop,
   .panel:not(.home):not(.hidden) > .pop > * { animation: none; }
-  /* หน้าเข้าเกม: ป้ายลอยขึ้นลง กับปุ่มเรืองแสง — ทั้งคู่เป็นแอนิเมชันประดับล้วน ๆ
-     ปิดแล้วยังกดเข้าเกมได้ปกติ */
-  .title-logo.logo-plate, .title-logo.logo-img { animation: none; }
   .btn.big { animation: none; }
 }
 
@@ -7469,29 +6851,12 @@ canvas[hidden] { display: none; }
   white-space: nowrap;
 }
 
-/* ══ ใส่รูปเป็นหน้าน้องแมว (Game Face) ══════════════════════
-   ── ทำไมเป็นสองคอลัมน์ ไม่ใช่เรียงลงมาเป็นแถว ──
-   เวทีเกมถูกบังคับสัดส่วน 960:420 การ์ดทุกใบจึง "กว้างแต่เตี้ย" เสมอ
-   วัดจริงบนหน้าต่าง 738x665 ได้การ์ด 620x287 — กว้างเหลือเฟือ สูงไม่พอ
-   เรียงลงมาเป็นแถวเดียวแล้วกรอบตัดเหลือ 64px ซึ่งเล็กเกินกว่าจะเล็งรูปได้จริง
-
-   ซ้าย = กรอบตัด + แถบซูม (ของที่ต้องใหญ่)
-   ขวา = ตัวอย่างน้อง + ปุ่ม + คำอธิบาย (ของที่เป็นตัวหนังสือกับปุ่ม)
-   ความสูงจึงถูกแบ่งกันใช้แทนที่จะบวกกันไปเรื่อย ๆ
-
-   ── กฎที่ทั้งบล็อกนี้ยึด ──
-   ห้ามวัดขนาดของชิ้นใหญ่จาก dvh เพราะ dvh คือความสูงหน้าต่าง ไม่ใช่ความสูงการ์ด
-   สองค่านี้ต่างกันได้เกินเท่าตัวเมื่อหน้าต่างแคบแต่สูง ให้ flex เป็นคนบอก
-   "ที่ที่เหลือจริง" แล้วใช้ aspect-ratio คำนวณความกว้างตาม */
-.face-pop { width: min(620px, 100%); }
-
 .face-work {
   display: flex;
   /* กินที่ที่เหลือในการ์ดทั้งหมด "และหดได้" — min-height: 0 คือตัวปลดล็อกการหด
      ของ flex item ซึ่งปกติหดไม่ต่ำกว่าความสูงเนื้อหาตัวเอง
      ถ้าไม่ปลด ของข้างในจะล้นทะลุลงไปทับปุ่มข้างล่าง (overflow ของแถวเป็น visible) */
   flex: 1 1 auto;
-  min-height: 0;
   width: 100%;
   /* ── ช่องไฟระหว่างกรอบตัดกับคอลัมน์ขวา ──
      26px แคบไป — กรอบตัดเป็นกล่องทึบขอบชัด ตัวอย่างน้องกับปุ่มที่อยู่ติดกันเลย
@@ -7810,8 +7175,6 @@ canvas[hidden] { display: none; }
      มันจะดูเหมือนชนขอบ เพราะเงานูนของปุ่มกินที่ลงไปอีกหลายพิกเซล */
   padding: clamp(8px, 1.8dvh, 16px) clamp(6px, 1vw, 12px) clamp(13px, 2.8dvh, 24px);
   border-radius: 18px;
-  background: rgba(255,243,226,.06);
-  border: 1px solid rgba(255,243,226,.14);
 }
 .stash-face {
   position: relative;
@@ -7936,18 +7299,6 @@ canvas[hidden] { display: none; }
   max-width: 20px;
 }
 .stash-grid .t-card .t-emoji { font-size: clamp(21px, 4dvh, 32px); }
-/* กุญแจบนการ์ดแมวที่ยังไม่ได้ วัดเป็น % ของการ์ดด้วยเหตุผลเดียวกับป้ายระดับข้างบน
-   ขนาด 24px ตายตัวของหน้าแมวน้อยเดิมกินหน้าการ์ดไปเกือบครึ่งบนจอมือถือ */
-.stash-grid .lock-badge {
-  top: 5%;
-  right: 5%;
-  width: 24%;
-  height: auto;
-  min-width: 15px;
-  max-width: 24px;
-  aspect-ratio: 1;
-  font-size: clamp(8px, 1.5dvh, 12px);
-}
 /* หมวดแมวน้อยเหลือปุ่มเดียว ปุ่ม "ดูเพิ่มเติม" ต้องหายไปจริง ๆ ไม่ใช่แค่ถูกติด hidden
    เพราะ .btn ตั้ง display ของตัวเองไว้ ทับ [hidden] ของเบราว์เซอร์ ปุ่มที่เหลือจึงยืดเต็มแถวเอง */
 .stash-btns .btn[hidden] { display: none; }
@@ -7974,9 +7325,6 @@ canvas[hidden] { display: none; }
 .btn.buy .coin {
   width: 1.2em;
   height: 1.2em;
-  box-shadow:
-    0 0 0 1.5px rgba(110,60,0,.55),
-    inset 0 1px 0 rgba(255,255,255,.6);
 }
 .btn.buy b { font-weight: 700; }
 
@@ -7990,7 +7338,7 @@ canvas[hidden] { display: none; }
    เปลี่ยนเป็น auto 1fr แล้วแถบกรองได้ที่ที่เหลือทั้งหมด อยู่บรรทัดเดียวได้ทั้งสองหมวด */
 .stash-main > .panel-head { grid-template-columns: auto 1fr; }
 .stash-main > .panel-head > h2 { grid-column: 1; justify-self: start; }
-.stash-main > .panel-head .filterbar { grid-column: 2; flex-wrap: nowrap; }
+.stash-main > .panel-head .filterbar { grid-column: 2; }
 
 /* จอเตี้ย/แคบ: วางของที่เลือกไว้บนหัวชั้นวางแทนที่จะเรียงข้างกัน
    สองคอลัมน์บนจอแคบทำให้ทั้งคู่แคบจนใช้ไม่ได้สักอัน */
@@ -8015,7 +7363,6 @@ canvas[hidden] { display: none; }
   /* ยอมหดได้ ผ้าใบเล็กลงยังระบายได้ แต่ถ้าเครื่องมือถูกตัดหายคือใช้ไม่ได้เลย
      ถ้าตั้ง shrink เป็น 0 ทั้งสองคอลัมน์ แถวจะล้นแล้วโดน .pop ตัดทิ้งเงียบ ๆ */
   flex: 0 1 auto;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -8413,11 +7760,7 @@ canvas[hidden] { display: none; }
   flex: 1 1 0;
   min-width: 0;
   padding-block: clamp(4px, calc(var(--ph) * 1.65), 11px);
-  padding-inline: clamp(3px, .5vw, 9px);
   border-radius: 999px;
-  border: 1px solid rgba(255, 246, 230, .28);
-  background: linear-gradient(180deg, #B478E8, #8B4FC9);
-  color: #fff;
   font: inherit;
   font-size: clamp(9.5px, .98vw, 13px);
   font-weight: 700;
@@ -8427,9 +7770,7 @@ canvas[hidden] { display: none; }
 }
 /* ตัวที่เลือกอยู่ใช้สีฟ้าชุดเดียวกับปุ่มยืนยันหลักของเกม */
 .pmode.on {
-  background: linear-gradient(180deg, #6FE3D6, #3FBFB2);
   border-color: rgba(255, 255, 255, .55);
-  color: #0C2E2B;
 }
 
 /* ช่องเลือกสีอิสระ อยู่ใต้จานสีตามแบบ */
@@ -8612,7 +7953,7 @@ canvas[hidden] { display: none; }
      บนมือถือคอลัมน์เหลือราว 105px ซึ่ง "ลงสีทั้งตัวน้อน" ยังยาวเกิน
      ตัดคำทิ้งแล้วอ่านไม่ออกว่าปุ่มไหนทำอะไร สองบรรทัดสั้น ๆ อ่านออกกว่า
      และคอลัมน์ยังมีความสูงเหลือ (วัดแล้วไม่ต้องเลื่อนเลย) */
-  .pmode { font-size: 8.5px; padding-block: 4px; padding-inline: 3px;
+  .pmode { font-size: 8.5px; padding-block: 4px;
            white-space: normal; line-height: 1.15; }
   .paint-acts .btn, .paint-color-col > .btn { font-size: 9.5px; padding: 4px 6px; min-width: 0; }
   /* คอลัมน์บนจอเตี้ยเหลือ ~112px สามใบรวมตัวหนังสือ 81px จึงเหลือที่ให้ขอบกับช่องไฟ
@@ -8659,9 +8000,6 @@ canvas[hidden] { display: none; }
   .paint-free-row { font-size: 9px; }
   .psize-dot { width: 16px; height: 16px; }
   /* เม็ดหมวดหมู่: จุดสีเล็กลงและระยะขอบแคบลง คืนที่ให้ชื่อจนไม่ต้องตัดคำ */
-  /* ชื่อยาวสุดคือ "หนวด" ผูกขนาดกับความกว้างจอ ไม่ใช่ค่าตายตัว
-     จอแคบลงคอลัมน์ก็แคบลงตาม ตัวอักษรต้องหดตามด้วยถึงจะไม่ถูกตัด */
-  .ppart { font-size: clamp(7px, .88vw, 9px); gap: 1px; padding: 3px 2px; }
   /* ช่องไฟระหว่างสองคอลัมน์ของตาราง คืนที่ให้ชื่อโดยตรง */
   #createPanel:not(.paint-full) .paint-parts { column-gap: 4px; }
   .ppart i { width: 6px; height: 6px; }
@@ -8696,9 +8034,6 @@ canvas[hidden] { display: none; }
   .pswatch { max-width: 26px; }
   .paint-swatches { justify-content: start; }
 
-  /* บนมือถือคำใบ้ถูกซ่อนไปแล้ว จึงไม่มีแถบให้กันที่ไว้ */
-  .paint-tools-col::after, .paint-color-col::after { flex-basis: 0; margin-top: 0; }
-
   /* หน้ารูป: ฝั่งขวาของเดิมเล็กจนตัวอย่างน้องเป็นรูปจิ๋ว ขยายให้สมส่วนกับกรอบตัดรูป */
   .face-side { min-width: 210px; flex: 0 0 auto; }
   /* 17dvh บนจอสูง 390px ได้แค่ 66px ซึ่งต่ำกว่าพื้น 84 เลยติดพื้นตลอด ไม่ได้ใหญ่ขึ้นจริง
@@ -8721,9 +8056,6 @@ canvas[hidden] { display: none; }
 #createPanel.paint-full .stash-body { gap: 0; }
 /* ปุ่มกลับซ้อนกับปุ่มย่อในโหมดนี้ ซ่อนไปเลย — ปุ่มย่อพากลับมาหน้าปกติได้อยู่แล้ว */
 #createPanel.paint-full .backbtn { display: none; }
-/* ปุ่มปิดย้ายออกจากมุมผ้าใบไปอยู่มุมขวาบนของทั้งแผงตามแบบ
-   ต้องหลุดออกจาก .paint-canvas ที่มัน absolute อยู่ จึงตรึงกับ .pop แทน */
-#createPanel.paint-full .paint-canvas { position: static; }
 /* หน้าตาทั้งหมดมาจากกฎเดียวกับ .backbtn ข้างบน (ปุ่มถูกเติมเข้าไปในรายชื่อตัวเลือกนั้น)
    เหลือต่างกันแค่ "อยู่มุมขวา" แทนมุมซ้าย จึงต้องล้าง left ที่รับมาด้วย
    ไม่งั้นปุ่มจะถูกตรึงสองด้านพร้อมกันแล้วยืดเต็มความกว้างการ์ด */
@@ -9820,9 +9152,6 @@ canvas[hidden] { display: none; }
     border: 1px solid rgba(255,246,232,.8);
     box-shadow: 0 3px 0 rgba(60,25,100,.3), inset 0 2px 0 rgba(255,255,255,.3);
   }
-  #btnSkill[data-state="active"] {
-    background: radial-gradient(circle at 50% 35%, rgba(255,231,160,.9), rgba(214,130,40,.85));
-  }
 }
 #btnSkill:active { transform: scale(.94); }
 
@@ -10150,7 +9479,6 @@ canvas[hidden] { display: none; }
 .setrow,
 .stage-card,
 .scene-row,
-.odetail-info,
 .stash-show,
 .lv-now,
 .got-card {
@@ -10282,14 +9610,6 @@ canvas[hidden] { display: none; }
   font-size: clamp(11px, 1.9dvh, 15px);
   color: #FFFFFF;
 }
-.lv-row.ready .lv-claim {
-  background: linear-gradient(180deg, #FFF08A, #FFB21F);
-  border: 1.5px solid #FFF6E6;
-  color: #6A3A00;
-  box-shadow: 0 3px 0 #B8740C, 0 0 12px rgba(255,201,60,.6);
-  animation: lvClaimBob 1.4s ease-in-out infinite;
-}
-@keyframes lvClaimBob { 50% { transform: translateY(-3px) scale(1.06); } }
 .lv-row.done .lv-claim { color: #8DF3EA; }
 .lv-row.done .lv-node .lg-box { opacity: .5; }
 
@@ -10378,7 +9698,6 @@ canvas[hidden] { display: none; }
   position: relative;
   overflow: hidden;
   height: calc(var(--hud-h) * 1.34);
-  padding: 0 18px 0 7px;
   gap: 10px;
 }
 .hud-top .wallet .gembar b,
@@ -10467,7 +9786,6 @@ canvas[hidden] { display: none; }
   width: 100%;
   display: grid;
   grid-template-columns: minmax(170px, 31%) 1fr;
-  gap: clamp(8px, 1.6vw, 18px);
 }
 .news-list {
   display: flex;
@@ -10486,10 +9804,8 @@ canvas[hidden] { display: none; }
   position: relative;
   display: flex;
   align-items: center;
-  gap: clamp(7px, 1.2vw, 11px);
   width: 100%;
   padding: clamp(6px, 1.2dvh, 9px);
-  border-radius: 14px;
   border: 2px solid var(--plate-line);
   background: var(--plate-face);
   box-shadow: var(--plate-lift);
@@ -10522,7 +9838,7 @@ canvas[hidden] { display: none; }
     radial-gradient(circle at 30% 30%, rgba(255,214,107,.5), transparent 55%),
     linear-gradient(135deg, #FF9EC4, #B78CFF);
 }
-.news-item-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.news-item-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .news-item-meta { display: flex; gap: 4px; flex-wrap: wrap; }
 .news-item b {
   font-family: "Mali", sans-serif;
@@ -10531,11 +9847,10 @@ canvas[hidden] { display: none; }
   line-height: 1.3;
   /* หัวข้อยาวตัดที่สองบรรทัด ไม่ดันรายการให้สูงไม่เท่ากัน */
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.news-item small { font-size: clamp(10px, 1.4dvh, 11.5px); color: #FFFFFF; }
+.news-item small { font-size: clamp(10px, 1.4dvh, 11.5px); }
 /* ยังไม่อ่าน = จุดชมพูเต้นตุบ ๆ มุมขวาบน */
 .news-new {
   position: absolute;
@@ -10571,11 +9886,9 @@ canvas[hidden] { display: none; }
   scrollbar-width: thin;
   scrollbar-color: rgba(120,70,160,.5) transparent;
   padding: clamp(8px, 1.6dvh, 14px);
-  border-radius: 18px;
   background:
     radial-gradient(circle at 100% 0, rgba(255,190,220,.45), transparent 40%),
     #FFF7EC;
-  box-shadow: inset 0 0 0 3px #FFE1EE, 0 8px 22px rgba(0,0,0,.35);
   color: #4A2A5E;
   text-align: left;
 }
@@ -10653,12 +9966,9 @@ canvas[hidden] { display: none; }
 /* จอเตี้ย (มือถือแนวนอน) — รายการแคบลง รูปย่อเล็กลง ให้ฝั่งรูปใหญ่ได้เนื้อที่ */
 /* รายการเหลือแค่ป้าย+หัวข้อ+วันที่ (ไม่มีรูปย่อ) ป้ายเรียงแถวเดียว ฝั่งรูปใหญ่ได้เนื้อที่ */
 @media (max-height: 460px) {
-  .news-wrap { grid-template-columns: minmax(130px, 28%) 1fr; }
   .news-list .news-thumb { display: none; }
   .news-item-meta { gap: 3px; }
   .news-item-meta .news-tag, .news-item-meta .news-pin { padding: 0 7px; font-size: 9.5px; }
-  .news-item b { font-size: 12px; }
-  .news-view { padding: 7px; }
   .news-hero { max-height: max(70px, calc(100cqh - 4em)); }
   .news-title { font-size: 15px; margin-top: 8px; }
   .news-meta { margin-top: 6px; }
@@ -10678,7 +9988,6 @@ canvas[hidden] { display: none; }
    ด่านที่เลือกอยู่ = ขอบฟ้าอมเขียวแบบการ์ด "กำลังเล่น" ในหน้าเลือกด่าน */
 .rank-wrap {
   display: flex;
-  gap: clamp(8px, 1.6vw, 16px);
   min-height: 0;
   flex: 1 1 auto;
 }
@@ -10688,7 +9997,6 @@ canvas[hidden] { display: none; }
   flex-direction: column;
   gap: clamp(5px, 1dvh, 8px);
   flex: 0 0 auto;
-  width: clamp(120px, 17vw, 176px);
   min-height: 0;
   overflow-y: auto;
   padding: 3px 3px 8px;
@@ -10736,7 +10044,7 @@ canvas[hidden] { display: none; }
 }
 /* จอเตี้ย (มือถือแนวนอน): เหลือแค่ชื่อด่าน ไม่มีรูปย่อ ให้รายการอันดับได้ที่เต็ม */
 @media (max-height: 460px) {
-  .rank-stages { width: clamp(92px, 15vw, 120px); gap: 4px; }
+  .rank-stages { gap: 4px; }
   .rank-stage { padding: 5px 8px; font-size: 11px; border-radius: 10px; }
   .rank-stage canvas { display: none; }
   .rank-wrap .rank-list { width: min(560px, 56vw); }
@@ -10936,7 +10244,6 @@ canvas[hidden] { display: none; }
   .hud-top .wallet .gembar,
   .hud-top .wallet .goldbar {
     height: calc(var(--hud-h) * 1.206);
-    padding: 0 16px 0 6px;
     gap: 9px;
   }
   .hud-top .wallet .gembar b,
@@ -10985,8 +10292,6 @@ canvas[hidden] { display: none; }
 .news-pinimg {
   position: absolute;
   --pin-w: clamp(12px, 2.3dvh, 18px);
-  top: calc(var(--pin-w) * -2.08 + 7px);
-  right: clamp(14px, 2vw, 22px);
   width: var(--pin-w);
   height: auto;
   filter: drop-shadow(1px 3px 2px rgba(40,10,50,.45));
@@ -11041,9 +10346,6 @@ canvas[hidden] { display: none; }
 }
 .news-view .news-body {
   margin-top: clamp(6px, 1.3dvh, 12px);
-  /* เว้นขวานิดเดียว — ลายเส้นประอยู่มุมขวาล่าง ตัวหนังสือบรรทัดบน ๆ ไม่ชน
-     pretty แทน balance: บรรทัดเต็มความกว้างตามแบบ แต่ยังกันคำเดี่ยวตกบรรทัดท้าย (กติกา CLAUDE.md) */
-  padding-right: clamp(20px, 6%, 60px);
   text-wrap: pretty;
   font-size: clamp(12px, 2.2dvh, 18px);
   line-height: 1.6;
@@ -11058,9 +10360,7 @@ canvas[hidden] { display: none; }
   .news-list { gap: 7px; }
   .news-item { padding: 5px; gap: 7px; }
   .news-list .news-item .news-thumb { width: 44%; }
-  .news-item-meta .news-tag { font-size: 9px; padding: 0 7px; }
-  .news-item b { font-size: 11.5px; }
-  .news-item small { font-size: 9.5px; }
+  .news-item-meta .news-tag { padding: 0 7px; }
   .news-view { padding: 8px 12px; }
   .news-top { margin-bottom: 5px; }
   .news-paws { width: 34px; }
@@ -11362,7 +10662,6 @@ canvas[hidden] { display: none; }
 .cl-lock canvas { width: 100%; height: 100%; filter: grayscale(.4); animation: clBob 2.4s ease-in-out infinite; }
 .cl-padlock {
   position: absolute;
-  right: -6px;
   bottom: -2px;
   font-size: clamp(24px, 5.5dvh, 38px);
   filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
@@ -11370,7 +10669,7 @@ canvas[hidden] { display: none; }
 }
 @keyframes clBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes clWiggle { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-12deg); } 86% { transform: rotate(10deg); } 94% { transform: rotate(-5deg); } }
-.cl-lead { font-size: clamp(12.5px, 2.4dvh, 16px); line-height: 1.6; color: #E4D4F5; }
+.cl-lead { font-size: clamp(12.5px, 2.4dvh, 16px); color: #E4D4F5; }
 .cl-lead b { color: #FFD86E; }
 .cl-progress { width: min(320px, 100%); display: grid; gap: 4px; }
 .cl-bar { height: 12px; border-radius: 999px; background: rgba(27,15,43,.65); box-shadow: inset 0 1px 3px rgba(0,0,0,.5); overflow: hidden; }
@@ -11379,10 +10678,6 @@ canvas[hidden] { display: none; }
 .cl-feats { display: flex; gap: 10px; width: 100%; justify-content: center; }
 .cl-feat {
   flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
   padding: clamp(6px, 1.4dvh, 12px) 8px;
   border-radius: 14px;
   border: 2px solid var(--plate-line);
@@ -11582,7 +10877,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   width: var(--nc-w);
   height: clamp(118px, 27dvh, 220px);
   display: grid;
-  place-items: center;
   border-radius: clamp(20px, 3.4dvh, 30px) clamp(20px, 3.4dvh, 30px) 0 0;
   border: clamp(3px, .6dvh, 5px) solid transparent;
   border-bottom: 0;
@@ -11590,11 +10884,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
     linear-gradient(180deg, #C372DA, #B266D2) padding-box,
     linear-gradient(90deg, #FF6FB4 0%, #FFB27A 55%, #FFE066 100%) border-box;
   box-shadow: inset 0 2px 0 rgba(255,255,255,.25);
-}
-.name-card #nameCat {
-  width: clamp(96px, 22dvh, 176px);
-  height: clamp(96px, 22dvh, 176px);
-  margin-top: clamp(4px, 1.4dvh, 14px);
 }
 .name-heart {
   position: absolute;
@@ -11608,18 +10897,12 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 @keyframes nameHeart { 0%, 100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.06); } }
 /* ป้ายชื่อทับขอบล่างการ์ด กว้างกว่าการ์ดนิดหนึ่งทั้งสองข้าง */
-.name-stage .form-row { margin-top: calc(clamp(26px, 5.6dvh, 40px) * -1); position: relative; z-index: 1; }
+.name-stage .form-row { position: relative; z-index: 1; }
 .name-stage .name-tag { width: calc(var(--nc-w) + clamp(40px, 8vw, 70px)); }
 @media (prefers-reduced-motion: reduce) { .name-heart { animation: none; } }
 /* จอเตี้ย (มือถือแนวนอน): กรอบเตี้ยลงให้ปุ่มเริ่มเล่นยังอยู่ในจอ */
 @media (max-height: 460px) {
-  .name-stage { --nc-w: clamp(200px, 36vw, 300px); margin-top: 0; }
-  .name-card { height: clamp(74px, 22dvh, 104px); }
-  .name-card #nameCat { width: clamp(64px, 19dvh, 92px); height: clamp(64px, 19dvh, 92px); margin-top: 2px; }
-  .name-heart { width: 28px; top: 6px; left: 10px; }
-  .name-stage .form-row { margin-top: -20px; }
-  .name-stage .name-tag { padding-block: 1px; }
-  .form-row .name-tag input { padding-block: 1px; font-size: 14px; }
+  .name-heart { width: 28px; }
   #namePanel .pop { gap: 4px; }
 }
 /* น้องยืนเต็มตัวเหนือป้ายชื่อ (แบบที่วางไว้) — การ์ดสูง = ตัวน้อง + ส่วนที่ป้ายชื่อทับ
@@ -11633,19 +10916,14 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 .name-card #nameCat { width: var(--nc-cat); height: var(--nc-cat); margin-top: 0; }
 .name-stage .form-row { margin-top: calc(var(--nc-lap) * -1); }
 @media (max-height: 460px) {
-  .name-stage { --nc-cat: clamp(56px, 16dvh, 76px); --nc-lap: 20px; }
-  .name-card { height: calc(var(--nc-cat) + var(--nc-lap) + 4px); padding-top: 2px; }
+  .name-stage { --nc-cat: clamp(56px, 16dvh, 76px); }
   .name-card #nameCat { width: var(--nc-cat); height: var(--nc-cat); }
 }
 /* เท้าน้องอยู่ชิดก้นผ้าใบ — เผื่อที่อีก 10% ของตัวน้อง ให้ขอบป้ายชื่อไม่ทับปลายเท้า */
 .name-card { height: calc(var(--nc-cat) * 1.1 + var(--nc-lap) + clamp(6px, 1.4dvh, 14px)); }
-@media (max-height: 460px) { .name-card { height: calc(var(--nc-cat) * 1.1 + var(--nc-lap) + 4px); } }
 @media (max-height: 460px) {
-  .name-stage { --nc-cat: clamp(52px, 14.5dvh, 70px); --nc-lap: 18px; }
-  .name-card { height: calc(var(--nc-cat) * 1.06 + var(--nc-lap) + 2px); }
-  #namePanel .name-rule { margin-top: 2px; font-size: 10.5px; }
+  .name-stage { --nc-cat: clamp(52px, 14.5dvh, 70px); }
   #namePanel .form-msg:empty { display: none; }
-  #namePanel .pop { padding-block: 8px 10px; }
 }
 
 /* ── เทมเพลตกรอบการ์ดทุกหน้า (.pop): สว่างขึ้น 20% ──
@@ -11762,7 +11040,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
    ความสูงที่ใช้คิดจากจอ 390px: หัวข้อ ~44 + การ์ด+ป้าย ~150 + กติกา ~20 + ปุ่ม ~44 + ช่องไฟ */
 @media (max-height: 460px) {
   #namePanel .pop { gap: clamp(6px, 2.4dvh, 12px); padding-block: 10px 14px; }
-  .name-stage { --nc-w: clamp(230px, 42vw, 340px); --nc-cat: clamp(62px, 22dvh, 96px); --nc-lap: 20px; margin-top: 2px; }
+  .name-stage { --nc-cat: clamp(62px, 22dvh, 96px); margin-top: 2px; }
   .name-card { height: calc(var(--nc-cat) * 1.08 + var(--nc-lap) + 6px); padding-top: 4px; }
   .name-heart { width: clamp(30px, 10dvh, 42px); top: 8px; left: 12px; }
   .name-stage .name-tag { padding-block: 2px; }
@@ -11772,7 +11050,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 @media (max-height: 460px) {
   #namePanel .panel-head h2, #namePanel .skin-title { font-size: clamp(18px, 6dvh, 24px); }
-  .name-stage { --nc-w: clamp(240px, 44vw, 360px); --nc-cat: clamp(66px, 25dvh, 108px); --nc-lap: 22px; }
+  .name-stage { --nc-w: clamp(240px, 44vw, 360px); --nc-cat: clamp(66px, 25dvh, 108px); }
   #namePanel .pop { gap: clamp(6px, 2.8dvh, 14px); }
 }
 /* มือถือ: สระบน/วรรณยุกต์ของหัวข้อ "ตั้งชื่อตัวละคร" ชนขอบบนการ์ด — เว้นบนเพิ่ม + บรรทัดสูงพอให้สระซ้อน */
@@ -11827,7 +11105,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #catRoomPanel .cr-title {
   position: absolute;
   z-index: 2;
-  top: clamp(10px, 2dvh, 20px);
   left: calc(var(--backbtn-x) + var(--backbtn) + 12px);
   margin: 0;
   font-family: "Mali", sans-serif;
@@ -11849,13 +11126,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: clamp(11px, 2.4dvh, 14px);
-  color: var(--cream);
   height: var(--hud-h);
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255,243,226,.4);
-  background: linear-gradient(180deg, #8A4AB8, #5A2A86);
-  box-shadow: 0 3px 0 rgba(20,8,32,.6);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -11888,13 +11161,10 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #catRoomPanel .cr-cats {
   position: absolute;
   z-index: 2;
-  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + 8px);
   left: var(--backbtn-x);
   display: flex;
-  gap: 6px;
 }
 .cr-chip {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -12000,10 +11270,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   min-width: clamp(104px, 22dvh, 136px);
   padding: clamp(4px, 1.2dvh, 8px) 12px clamp(4px, 1.2dvh, 8px) 6px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.45);
-  background: linear-gradient(180deg, #FFE7B0, #F6C063 60%, #E09A3A);
-  box-shadow: 0 4px 0 #A8661E, 0 8px 14px rgba(0,0,0,.3);
-  color: #5A2E0E;
   font-family: "Mali", sans-serif;
   cursor: pointer;
 }
@@ -12369,13 +11635,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   height: clamp(32px, 7dvh, 44px);
   padding: 0;
   border-radius: 50%;
-  border: 2px solid rgba(255,243,226,.6);
-  background: linear-gradient(180deg, #8A4AB8, #5A2A86);
-  color: var(--cream);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(20,8,32,.6), 0 6px 14px rgba(0,0,0,.35);
 }
 #catRoomPanel .cr-full:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(20,8,32,.6); }
 #catRoomPanel .cr-full svg { grid-area: 1 / 1; }
@@ -12649,22 +11911,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 
 /* ── ปุ่ม ── ทรงเม็ดยาเดิม หลักเป็นมิ้นต์ รองเป็นลาเวนเดอร์พาสเทล เงานุ่มลง */
 #stashPanel .dream .stash-btns .btn { text-shadow: none; }
-#stashPanel .dream .stash-btns .btn:not(.ghost):not(:disabled):not(.buy) {
-  box-shadow: 0 4px 0 #36ABA1, 0 10px 20px rgba(78,205,196,.3), inset 0 1px 0 rgba(255,255,255,.65);
-}
-#stashPanel .dream .stash-btns .btn.ghost {
-  background: linear-gradient(180deg, #F4E4FF 0%, #D6B2F7 100%);
-  color: #5A2A86;
-  border-color: rgba(255,255,255,.8);
-  box-shadow: 0 4px 0 #9C70D2, 0 8px 18px rgba(96,46,170,.25), inset 0 1px 0 #FFFFFF;
-}
 #stashPanel .dream .stash-btns .btn:disabled {
-  background: linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,.2));
-  color: #5A2A86;
-  border-color: rgba(255,255,255,.6);
   filter: none;
   opacity: 1;
-  box-shadow: 0 3px 0 rgba(90,45,150,.26), inset 0 1px 0 rgba(255,255,255,.7);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -12911,10 +12160,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   min-width: clamp(140px, 22vw, 240px);
   padding: clamp(8px, 1.8dvh, 14px) clamp(18px, 3vw, 34px);
   border-radius: 999px;
-  border: 3px solid transparent;
-  background:
-    linear-gradient(180deg, #F1B6FA, #D98BF0) padding-box,
-    linear-gradient(100deg, #FF8FC8, #FFC2E2 45%, #FFD877) border-box;
   color: #FFFFFF;
   font-family: "Mali", sans-serif;
   font-weight: 800;
@@ -12922,14 +12167,12 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   text-shadow:
     1.5px 0 0 #8A3BB8, -1.5px 0 0 #8A3BB8, 0 1.5px 0 #8A3BB8, 0 -1.5px 0 #8A3BB8,
     1px 1px 0 #8A3BB8, -1px 1px 0 #8A3BB8, 1px -1px 0 #8A3BB8, -1px -1px 0 #8A3BB8;
-  box-shadow: 0 5px 0 #B866D8, 0 10px 22px rgba(150,60,190,.3), inset 0 1px 0 rgba(255,255,255,.7);
 }
 #odPanel .btn.od-wear:active { transform: translateY(4px); box-shadow: 0 1px 0 #B866D8, 0 4px 10px rgba(150,60,190,.3); }
 #odPanel .btn.od-wear:disabled,
 #odPanel .btn.od-wear.ghost {
   filter: saturate(.7);
   opacity: .9;
-  box-shadow: 0 3px 0 #B866D8, inset 0 1px 0 rgba(255,255,255,.7);
 }
 
 /* ── โหมดขยายเต็มจอ: การ์ดเต็มเวที ซ่อนข้อมูลทั้งหมด เหลือน้อง + ปุ่มปิด (.xbtn) ── */
@@ -12952,20 +12195,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   #odPanel .od-perks img { width: 18px; }
   #odPanel .btn.od-wear { min-width: 120px; font-size: 15px; padding: 7px 16px; }
 }
-
-/* ══ หน้าสกิล/พรสวรรค์: ห้องพลังพิเศษของน้องแมว ══════════════════════
-   ทั้งสองหมวดของ #talentPanel (สกิล + พรสวรรค์) — ผูกกับ #talentPanel หน้าอื่นที่ยืมคลาส tl-*
-   (เช่นหน้าเพื่อนแมว) ไม่โดนกฎในบล็อกนี้
-   พื้นหลังวาดด้วย Canvas 2D (src/render/skillbg.js) — บล็อกนี้แต่งของที่ลอยอยู่บนพื้น
-   แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ข้อความ ไอคอน ใช้ของเดิมทั้งหมด
-
-   ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
-     1. ใบที่ติดตั้งอยู่     ขอบมิ้นต์ + ออร่ามิ้นต์/ลาเวนเดอร์หายใจช้า ๆ (2.8 วิ)
-     2. การ์ดสกิล/พรสวรรค์  แผ่นม่วงใสลอย ขอบขาวบาง (หรือสีตามระดับ) เงานุ่ม
-     3. หัวเรื่อง/ข้อมูล     "สกิล" มีแสงนวลด้านหลังนิดหนึ่ง
-     4. แท็บ/ตัวนับ          ใสเกือบกลืนพื้น
-     5. พื้นหลัง + ละออง     จางที่สุด (ปรับใน skillbg.js) */
-#talentPanel .magic-bg { display: none; }
 #talentPanel .tl-pop {
   background: #8457C9;   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
   border-color: rgba(255,255,255,.34);
@@ -13017,15 +12246,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #talentPanel .tl-help {
   border-color: rgba(255,255,255,.3);
   background: rgba(70,32,130,.34);
-}
-
-/* ── ปุ่มกลับ ── ทรงเดิม เพิ่มแสงลาเวนเดอร์จาง ๆ รอบปุ่มให้เข้ากับห้อง */
-#talentPanel .backbtn {
-  box-shadow:
-    0 3px 0 rgba(20,8,32,.65),
-    0 8px 18px rgba(0,0,0,.36),
-    0 0 16px rgba(226,190,255,.45),
-    inset 0 1px 0 rgba(255,255,255,.22);
 }
 
 /* ── 2. การ์ดสกิล ── แผ่นพลังม่วงใสลอยอยู่ในห้อง ขอบขาวบาง เงานุ่ม (ไม่ดำ) */
@@ -13140,7 +12360,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 
 /* ══ ตู้กาช่า: ร้านเซอร์ไพรส์เวทมนตร์ ═══════════════════════════════════
    ทั้งสองตู้ของ #gachaPanel (สุ่มสมบัติ / สุ่มสกิน) — ผูกกับ #gachaPanel หน้าอื่นไม่โดน
-   พื้นหลังวาดด้วย Canvas 2D (src/render/gachabg.js) — บล็อกนี้แต่งแผ่นที่ลอยอยู่บนพื้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แต่งแผ่นที่ลอยอยู่บนพื้น
    แก้แค่สี ขอบ เงา แสง — ขนาด ระยะ ตำแหน่ง ตัวตู้ ของรางวัล ราคา ปุ่มสุ่ม ตัวนับเงิน ใช้ของเดิมทั้งหมด
 
    ── ลำดับความเด่น (เด่นสุด → จางสุด) ──
@@ -13224,15 +12444,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #gachaPanel .gacha-owned,
 #gachaPanel .show-note { color: rgba(244,234,255,.86); }
 
-/* ── ปุ่มกลับ ── ทรงเดิม แสงลาเวนเดอร์จาง ๆ รอบปุ่ม */
-#gachaPanel .backbtn {
-  box-shadow:
-    0 3px 0 rgba(20,8,32,.65),
-    0 8px 18px rgba(0,0,0,.36),
-    0 0 16px rgba(226,190,255,.45),
-    inset 0 1px 0 rgba(255,255,255,.22);
-}
-
 /* ─────────────────────────────────────────────────────────────
    การ์ดส่งต่อน้อง (catcards-ui.js) + เยี่ยมบ้านเพื่อน
    ───────────────────────────────────────────────────────────── */
@@ -13248,13 +12459,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   margin-top: 2px;
   padding: 3px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255,186,214,.6);
-  background: linear-gradient(180deg, #FF9EC0, #E0709A);
-  color: #3A0F24;
   font-family: "Mali", sans-serif;
   font-weight: 700;
   font-size: clamp(10px, 2.1dvh, 12px);
-  box-shadow: 0 2px 0 rgba(58,15,36,.45);
   cursor: pointer;
 }
 .cr-send:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(58,15,36,.45); }
@@ -13455,10 +12662,10 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 .cc-btn:active { transform: none; filter: brightness(.93); }
 .cc-btn:disabled { opacity: .45; cursor: default; transform: none; filter: grayscale(.5); }
-.cc-btn.yes { border-color: #1F8F78; background: linear-gradient(180deg, #8FF0D8, #4ECDB4); color: #0C4A3E; box-shadow: 0 3px 0 #1F8F78; }
-.cc-btn.main { border-color: #B8467A; background: linear-gradient(180deg, #FFB3CF, #FF7FAE); color: #4A0F2A; box-shadow: 0 3px 0 #B8467A; }
-.cc-btn.soft { border-color: #B79AD6; background: #fff; color: #5A2E7E; box-shadow: 0 3px 0 #B79AD6; }
-.cc-btn.warn { border-color: #EBA3B4; background: #fff; color: #C2405F; box-shadow: 0 3px 0 #EBA3B4; }
+.cc-btn.yes { border-color: #1F8F78; }
+.cc-btn.main { border-color: #B8467A; }
+.cc-btn.soft { border-color: #B79AD6; color: #5A2E7E; }
+.cc-btn.warn { border-color: #EBA3B4; color: #C2405F; }
 
 .cc-msg { min-height: 1.3em; font-size: clamp(10.5px, 2.2dvh, 12.5px); color: #9DF2C8; font-weight: 700; }
 .cc-msg.bad { color: #FFB3B3; }
@@ -13622,7 +12829,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   .cc-stamp { width: 44px; }
 }
 
-/* ── หน้ากิจกรรม: พื้นหลังบอร์ดกิจกรรม (Canvas 2D, src/render/event-bg.js) ──
+/* ── หน้ากิจกรรม: พื้นหลังบอร์ดกิจกรรม (Canvas 2D, src/render/softbg.js) ──
    ผ้าใบเป็นชั้นล่างสุดในการ์ดใหญ่ ทุกอย่างในการ์ดยกขึ้นมาอยู่เหนือมัน (ปุ่มกลับเป็น absolute อยู่แล้ว ยกแค่ z) */
 #questPanel > .pop { isolation: isolate; }
 .quest-bg {
@@ -13672,7 +12879,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #createPanel .face-note { text-shadow: 0 1px 4px rgba(72,28,124,.55); }
 
 /* ══ หน้าเลือกด่าน: ประตูสู่การผจญภัยของน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/stagebg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะการ์ดด่าน หัวเรื่อง หรือปุ่มใด ๆ (ผูกกับ #stagePanel อย่างเดียว) */
 #stagePanel > .pop { background: #8556C7; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .stage-bg {
@@ -13694,7 +12901,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #stagePanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 
 /* ══ หน้าอันดับ: หอเกียรติยศน่ารักของน้องแมว ═══════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/rankbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะแถวอันดับ รายการด่าน หรือปุ่มใด ๆ (ผูกกับ #rankPanel อย่างเดียว) */
 #rankPanel > .pop { background: #8455C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .rank-bg {
@@ -13766,7 +12973,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* ══ หน้าเพื่อนแมว: สวนเล็ก ๆ ที่น้องแมวมาเจอกัน ══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/friendsbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะบัตรแมวน้อย แท็บ รายชื่อ หรือปุ่มใด ๆ (ผูกกับ #friendsPanel อย่างเดียว หน้าสกิลที่ใช้ tl-pop ร่วมไม่โดน) */
 #friendsPanel > .pop { background: #8957C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .friends-bg {
@@ -13799,7 +13006,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* ══ หน้าข่าวสาร: บอร์ดข่าวน่ารักของโลกน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/newsbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะรายการข่าว กรอบบทความ หรือปุ่มปิด (ผูกกับ #newsPanel อย่างเดียว) */
 #newsPanel > .pop { background: #8253C4; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .news-bg {
@@ -13817,7 +13024,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #newsPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 
 /* ══ หน้ากล่องจดหมาย: กล่องจดหมายวิเศษของน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/mailbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะการ์ดจดหมาย ปุ่มรับของ หรือปุ่มปิด (ผูกกับ #inboxPanel อย่างเดียว) */
 #inboxPanel > .pop { background: #8856C6; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .mail-bg {
@@ -13837,7 +13044,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #inboxPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 
 /* ══ หน้าตั้งค่า: มุมสงบ ๆ ของน้องแมว ═══════════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/settingsbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะแท็บ แถวตั้งค่า ปุ่ม หรือปุ่มปิด (ผูกกับ #settingsPanel อย่างเดียว) */
 #settingsPanel > .pop { background: #7A4CBB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .settings-bg {
@@ -13990,7 +13197,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   --pk-play:
     radial-gradient(85% 130% at 0% 0%, rgba(255,226,200,.42) 0%, rgba(255,226,200,0) 55%),
     radial-gradient(70% 120% at 100% 100%, rgba(200,160,255,.4) 0%, rgba(200,160,255,0) 62%);
-  --pk-edge: rgba(255,222,240,.55);
   --pk-shadow:
     0 10px 18px -10px rgba(120,20,80,.5),
     0 2px 5px rgba(90,20,70,.12),
@@ -14106,7 +13312,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 
 /* ══ หน้าโปรไฟล์: โชว์รูมเล็ก ๆ ของน้องแมวเรา ═════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/profilebg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะการ์ด ตัวน้อง สถิติ หรือปุ่ม (ผูกกับ #pfPop อย่างเดียว) */
 #pfPop { background: #8A58CB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .profile-bg {
@@ -14121,7 +13327,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #pfPop > .pf-body { position: relative; z-index: 1; }
 
 /* ══ หน้ารางวัลเลเวล: เส้นทางเติบโตวิเศษของน้องแมว ═══════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/levelbg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะแถบสรุป ราง หมุด การ์ด หรือปุ่ม (ผูกกับ #lvPanel อย่างเดียว) */
 #lvPanel > .pop { background: #8657C8; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .level-bg {
@@ -14138,7 +13344,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #lvPanel .skin-title { text-shadow: 0 2px 8px rgba(60,22,110,.5); }
 
 /* ══ หน้าเช็คอินรายวัน: เช้าวันใหม่ที่น้องแมวรออยู่ ════════════════════════
-   พื้นหลังวาดด้วย Canvas 2D (src/render/dailybg.js) — บล็อกนี้แค่วางชั้น
+   พื้นหลังวาดด้วย Canvas 2D (src/render/softbg.js) — บล็อกนี้แค่วางชั้น
    ไม่แตะกระดานรางวัล ตัวน้อง คำทัก หรือปุ่ม (ผูกกับ #dailyPanel อย่างเดียว) */
 #dailyPanel > .pop { background: #8C5ACB; }   /* สีรองระหว่างผ้าใบยังไม่ได้วาดเฟรมแรก */
 .daily-bg {
@@ -14214,7 +13420,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
    ปุ่มเล่น/ปุ่มใหญ่/ปุ่มสุ่มมี ::after ของตัวเองอยู่แล้ว — คงแบบเดิม */
 .btn:disabled:not(.play):not(.big):not(.pull) { filter: none; }
 .btn:disabled:not(.play):not(.big):not(.pull)::after {
-  content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -14254,14 +13459,9 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   height: var(--backbtn);
   padding: 0;
   border-radius: 50%;
-  border: 2px solid rgba(255,243,226,.44);
-  background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
-  color: var(--cream);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(20,8,32,.65), 0 8px 18px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.22);
-  transition: transform .06s ease, box-shadow .06s ease;
 }
 .cw-pause:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(20,8,32,.65), 0 3px 9px rgba(0,0,0,.4); }
 .cw-pause svg { display: block; }
@@ -14466,7 +13666,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
    ชิปครีมพาสเทล ขอบขาว รูปหน้าน้องในวงชมพู ชื่อสีม่วงเข้มอ่านชัดบนฉากห้อง
    ตัวที่เลือก = ไล่เหลือง-ชมพู ขอบทอง ยกขึ้นนิด · แถวชิปเลื่อนลง 8px พ้นเงาใต้ปุ่มย้อนกลับ (การ์ดน้องเลื่อนตาม) */
 #catRoomPanel .cr-cats {
-  top: calc(clamp(8px, 1.4dvh, 16px) + var(--backbtn) + 16px);
   gap: 8px;
 }
 #catRoomPanel .cr-card {
@@ -14478,8 +13677,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   border: 2px solid #FFFFFF;
   background: linear-gradient(180deg, #FFFBF1 0%, #FFEAF3 100%);
   color: #5A2A86;
-  box-shadow: 0 3px 0 rgba(90,42,134,.35), 0 6px 14px rgba(40,16,70,.25);
-  transition: transform .08s ease, box-shadow .08s ease;
 }
 #catRoomPanel .cr-chip:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(90,42,134,.35); }
 #catRoomPanel .cr-chip canvas {
@@ -14491,8 +13688,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #catRoomPanel .cr-chip.on {
   border-color: #FFC84A;
   background: linear-gradient(180deg, #FFF6C8 0%, #FFD9EC 100%);
-  box-shadow: 0 0 0 3px rgba(255,200,74,.45), 0 3px 0 rgba(176,110,20,.45), 0 8px 16px rgba(40,16,70,.3);
-  transform: translateY(-1px);
 }
 #catRoomPanel .cr-chip.on canvas { box-shadow: 0 0 0 2px #FFC84A; }
 #catRoomPanel .cr-chip.wait { border-style: dashed; border-color: #F7B7C9; }
@@ -14501,7 +13696,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   color: #B0477A;
   border: 2px dashed rgba(255,255,255,.85);
   background: rgba(255,248,234,.55);
-  box-shadow: none;
 }
 
 /* ══ หน้ามินิเกม: ซ้าย = น้องที่พาไปเล่น · ขวา = กรอบเกม 4 กรอบ (2×2) ═════════════
@@ -14725,14 +13919,13 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 }
 /* ชื่อเกมใต้กรอบภาพ: เผื่อที่ให้สระ/วรรณยุกต์บน (ี ้ ำ) ไม่ชนขอบล่างของกรอบภาพ */
 #miniPanel .mini-gname {
-  line-height: 1.5;
   padding-top: clamp(2px, .6dvh, 5px);
 }
 /* มือถือแนวนอน: เตี้ยมาก — คืนความสูงให้กรอบภาพ (ช่องไฟแถวแคบลง ไอคอนแทนภาพเล็กลงให้อยู่ในกรอบ) */
 @media (max-height: 520px) {
   #miniPanel .mini-games { row-gap: 10px; }
   #miniPanel .mini-game { gap: 2px; }
-  #miniPanel .mini-gname { line-height: 1.4; padding-top: 2px; font-size: 14px; }
+  #miniPanel .mini-gname { font-size: 14px; }
   #miniPanel .mini-art-ph { font-size: 24px; }
   #miniPanel .mini-chips i { padding: 1px 8px; }
 }
@@ -14828,7 +14021,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
    สามแถว (หน้า / เฟรมเรท / ความสวย) + ปุ่ม "ใช้ทุกหน้าเหมือนกัน" · แท็บนี้ของเยอะ เลื่อนได้บนจอเตี้ย */
 #settingsPanel .set-sec[data-set="display"] { justify-content: flex-start; overflow-y: auto; scrollbar-width: none; padding-block: 2px; }
 #settingsPanel .set-sec[data-set="display"]::-webkit-scrollbar { display: none; }
-#settingsPanel .gfx-row .setlabel { flex: 0 0 4.6em; text-align: left; }
+#settingsPanel .gfx-row .setlabel { text-align: left; }
 #settingsPanel .gfx-row .gfxpick { max-width: none; }
 #gfxScenePick.off { opacity: .45; }
 #gfxScenePick .langbtn:disabled { cursor: default; }
@@ -14836,11 +14029,6 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 /* เกินที่จอเครื่องนี้ทำได้ — ยังกดได้ แต่จางให้รู้ */
 .fpspick .langbtn.over { opacity: .45; text-decoration: line-through dotted; }
 .fpspick .langbtn.over.on { opacity: .75; }
-.gfx-foot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.gfx-foot .gfx-same { margin-top: 0; }
-.gfx-foot .gfx-same:not(.on) { filter: saturate(.5); opacity: .8; }
-
-#settingsPanel .gfx-foot .setnote { margin: 0; position: static; line-height: 1.45; text-align: center; max-width: 34em; }
 @media (max-height: 520px) {
   #settingsPanel .set-sec[data-set="display"] { gap: 6px; }
   #settingsPanel .gfx-row { padding-block: 5px; }
@@ -14850,8 +14038,8 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
    แถวเท่ากันทุกแถว: ป้ายซ้ายกว้างเท่ากัน · ตัวเลือกเต็มที่เหลือ · สวิตช์ "ตั้งแยกแต่ละหน้า" ชิดขวา
    แถวเลือกหน้าโผล่เฉพาะตอนเปิดสวิตช์ · ข้อความเตือนเล็กใต้แถวความสวย */
 #settingsPanel .gfx-row { gap: 12px; }
-#settingsPanel .gfx-row .setlabel { flex: 0 0 5.2em; white-space: nowrap; }
-#settingsPanel .gfx-row .gfxpick { flex: 1 1 auto; margin-left: 0; }
+#settingsPanel .gfx-row .setlabel { white-space: nowrap; }
+#settingsPanel .gfx-row .gfxpick { margin-left: 0; }
 #settingsPanel .gfx-split-row .setlabel { flex: 1 1 auto; }
 #settingsPanel .gfx-scene-row.hidden { display: none; }
 #settingsPanel .gfx-scene-row .langbtn { padding-inline: 6px; }
@@ -14983,14 +14171,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   height: 34px;
   padding: 0 0 3px;
   border-radius: 50%;
-  border: 2px solid rgba(255,243,226,.44);
-  background: linear-gradient(180deg, #7A3563 0%, #47215F 62%, #351A4C 100%);
-  color: var(--cream);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(20,8,32,.65);
-  transition: transform .06s ease, box-shadow .06s ease;
 }
 .vinyl-arrow:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(20,8,32,.65); }
 /* สองแผ่น (หน้าแรก / บ้านลูกเหมียว) — ระยะห่างเท่าแถวอื่น · ฉลากแผ่นบ้านลูกเหมียวเป็นโทนส้มอุ่น (hue จาก ROOM_SONGS) */
@@ -15011,8 +14194,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  max-width: 40%;
-  flex-wrap: wrap;
 }
 .gr-tools.hidden, .gr-acc-row.hidden, .gr-next.hidden, .gr-reveal.hidden { display: none; }
 .gr-tool {
@@ -15029,9 +14210,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .gr-tool.pop { animation: grPop .4s cubic-bezier(.34, 1.56, .64, 1); }
 @keyframes grPop { from { transform: scale(.7); } }
-.gr-tool-ico { font-size: 28px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: #FFE9B8; }
+.gr-tool-ico { display: grid; place-items: center; border-radius: 50%; background: #FFE9B8; }
 .gr-tool-txt { display: flex; flex-direction: column; text-align: left; line-height: 1.35; }
-.gr-tool-name { font-size: 15px; }
 .gr-tool-hint { font-size: 11.5px; opacity: .85; max-width: 22em; }
 .gr-next { margin-top: 0; }
 .gr-acc-row { display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: rgba(255,248,234,.92); border: 3px solid #4E3527; }
@@ -15082,7 +14262,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #groomPanel .cw-box { max-height: 94%; overflow-y: auto; }
 @media (max-height: 520px) {
   .gr-tool-hint { display: none; }
-  .gr-tool-name { font-size: 13px; }
   #groomPanel .cw-box { padding-block: 10px; gap: 6px; }
 }
 /* ตัดขนแมว: แถวเครื่องประดับเป็นคอลัมน์ขวา (ไม่ทับตัวน้องกลางจอ) · หน้าสรุปบนจอเตี้ยกระชับ */
@@ -15233,7 +14412,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .gp-name.fade { opacity: 0; }
 .gp-more {
   position: absolute;
-  z-index: 2;
   top: clamp(8px, calc(var(--bh) * 0.036), 26px);
   /* ขยับขวาเข้าไปใกล้ตู้ (ผู้ใช้ขอ) — อยู่ชั้นบนตู้ ไม่โดนเครื่องหมายรอบหัวแมวบัง */
   z-index: 4;
@@ -15310,19 +14488,16 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   animation: none;
   font-family: "Mali", sans-serif;
   color: #FFFFFF;
-  transition: transform .09s ease, box-shadow .09s ease;
 }
 #gachaPanel .btn.pull.gp-one {
   background:
     radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%),
     linear-gradient(180deg, #5FE0FF 0%, #22B6F0 52%, #1188D8 100%);
-  box-shadow: 0 calc(var(--h) * .07) 0 #0C67A8, 0 calc(var(--h) * .16) calc(var(--h) * .3) rgba(20,110,200,.35), inset 0 -4px 10px rgba(0,60,140,.18);
 }
 #gachaPanel .btn.pull.gp-five {
   background:
     radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.65), rgba(255,255,255,0) 60%),
     linear-gradient(180deg, #FFF09A 0%, #FFD24A 50%, #F4A92A 100%);
-  box-shadow: 0 calc(var(--h) * .07) 0 #C27A12, 0 calc(var(--h) * .16) calc(var(--h) * .3) rgba(230,150,30,.4), 0 0 calc(var(--h) * .25) rgba(255,214,90,.55), inset 0 -4px 10px rgba(160,90,0,.18);
 }
 /* ไฮไลต์แก้วครึ่งบน */
 #gachaPanel .btn.pull.gp-pull::before {
@@ -15660,12 +14835,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .shop-buy {
   display: inline-flex; align-items: center; gap: 5px;
   margin-top: 4px;
-  padding: 3px 12px;
-  border: 0; border-radius: 999px;
-  background: linear-gradient(180deg, #FFE7A0, #FFC94A);
-  color: #7A4300;
+  padding: 3px 12px; border-radius: 999px;
   font: inherit; font-weight: 800; font-size: clamp(11.5px, 2dvh, 14px);
-  box-shadow: 0 2px 0 rgba(150,90,0,.35);
 }
 .shop-soon { color: rgba(255,243,226,.75); font-size: clamp(10px, 1.7dvh, 12px); text-align: center; }
 .shop-ex.hidden, .shop-grid.hidden { display: none; }
@@ -15752,7 +14923,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 /* แสงวิ้งปาดเฉียงผ่านทั้งปุ่มเป็นระยะ (ทับไอคอนด้วย — แสงวิ่งบนผิววุ้น) */
 #startPanel .lobby-btn.jelly::after {
-  content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -15760,7 +14930,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     rgba(255,255,255,0) 55%, rgba(255,255,255,.42) 57%, rgba(255,255,255,0) 60%) no-repeat;
   background-size: 260% 100%;
   background-position: 110% 0;
-  animation: jellySheen 6s ease-in-out 1.2s infinite;
   pointer-events: none;
   z-index: 3;
 }
@@ -15880,24 +15049,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     inset 0 -6px 9px -3px rgba(255,226,242,.6),
     inset 0 0 6px rgba(255,255,255,.35);
 }
-.hud-top .wallet .goldbar {
-  background:
-    var(--halo),
-    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 72%),
-    radial-gradient(80% 62% at 50% 118%, rgba(255,246,206,.88) 0%, rgba(255,246,206,0) 70%),
-    linear-gradient(180deg, rgba(255,232,140,.86) 0%, rgba(255,201,64,.82) 52%, rgba(246,166,34,.88) 100%);
-  box-shadow:
-    0 3px 0 rgba(210,134,15,.78),
-    0 8px 14px -5px rgba(255,170,30,.5),
-    inset 0 2px 1px rgba(255,255,255,.8),
-    inset 0 -6px 9px -3px rgba(255,246,206,.75),
-    inset 0 0 6px rgba(255,255,255,.22);
-}
 .hud-top .wallet .gembar b,
 .hud-top .wallet .goldbar b {
   position: relative;
   z-index: 1;
-  color: #FFFFFF;
   font-weight: 800;
   letter-spacing: .01em;
 }
@@ -15905,10 +15060,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .hud-top .wallet .gembar b {
   color: #D2468D;
   text-shadow: 0 1.5px 0 rgba(255,255,255,.9), 0 2px 4px rgba(210,70,141,.25);
-}
-.hud-top .wallet .goldbar b {
-  text-shadow: 0 1.6px 0 #B06209, 1.3px 0 0 #B06209, -1.3px 0 0 #B06209, 0 -1.3px 0 #B06209,
-    .9px .9px 0 #B06209, -.9px .9px 0 #B06209, .9px -.9px 0 #B06209, -.9px -.9px 0 #B06209;
 }
 
 /* ── ปุ่มบวก: วุ้นฟ้าอ่อนกลมเล็ก เครื่องหมายบวกขาวขอบฟ้าเข้ม (เดิมม่วง — ผู้ใช้ขอฟ้าอ่อนนุ่ม ๆ) ── */
@@ -15926,10 +15077,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     radial-gradient(60% 40% at 40% 20%, rgba(255,255,255,.8) 0%, rgba(255,255,255,0) 75%),
     radial-gradient(80% 55% at 50% 115%, rgba(226,246,255,.8) 0%, rgba(226,246,255,0) 70%),
     linear-gradient(180deg, rgba(214,240,255,.95) 0%, rgba(160,214,248,.93) 55%, rgba(122,190,238,.95) 100%);
-  box-shadow:
-    0 2px 0 rgba(92,158,214,.8),
-    0 4px 6px -2px rgba(60,120,180,.32),
-    inset 0 1.5px 1px rgba(255,255,255,.8);
   cursor: pointer;
   pointer-events: auto;
   transform-origin: 50% 80%;
@@ -15994,34 +15141,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    การ์ดกว้างกว่าปุ่มมาก จึงยุบ/เด้งเบากว่าครึ่งหนึ่ง (jellyBoingSoft) ไม่ให้ตัวหนังสือบิดจนอ่านไม่ออก
    ถอดดาวไหล/แสงเบลอ/ขอบรุ้งวิ่ง (แอนิเมชันที่ทำงานตลอดเวลา) — ประหยัดแรงเครื่องไปด้วย */
 #profileCard {
-  border: 1.5px solid rgba(255,255,255,.45);
-  background:
-    radial-gradient(70% 70% at 50% 120%, rgba(255,176,236,.7) 0%, rgba(255,176,236,0) 70%),
-    radial-gradient(45% 60% at 20% 10%, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 70%),
-    linear-gradient(180deg, rgba(188,134,250,.84) 0%, rgba(146,88,232,.82) 48%, rgba(112,56,204,.88) 100%);
-  background-size: auto;
   -webkit-backdrop-filter: blur(4px) saturate(1.35);
   backdrop-filter: blur(4px) saturate(1.35);
-  animation: none;
-  box-shadow:
-    0 4px 0 rgba(86,38,156,.82),
-    0 11px 18px -6px rgba(118,52,206,.6),
-    0 2px 5px rgba(40,10,72,.22),
-    inset 0 -8px 12px -4px rgba(255,178,238,.55),
-    inset 0 2px 1px rgba(255,255,255,.6),
-    inset 0 0 0 1px rgba(255,255,255,.12);
   transform-origin: 50% 100%;
   transition: transform .1s cubic-bezier(.3,.7,.4,1), box-shadow .1s ease, filter .15s ease;
 }
-#profileCard .pf-stars, #profileCard .pf-glow { display: none; }
-#profileCard #pfAvatar {
-  border: 2px solid rgba(255,255,255,.85);
-  background: radial-gradient(circle at 50% 38%, rgba(255,236,250,.55), rgba(110,56,190,.85) 74%);
-}
 #profileCard .pf-lv { border-color: #6A34BC; }
 #profileCard .pf-name { color: #FFF8FD; text-shadow: 0 1px 0 rgba(84,34,150,.75), 0 0 6px rgba(84,34,150,.45); }
-#profileCard .pf-bar { background: rgba(70,24,128,.5); box-shadow: inset 0 1px 2px rgba(40,10,80,.45); }
-#profileCard .pf-xp { color: #F3E8FF; text-shadow: 0 1px 0 rgba(84,34,150,.6); }
 #profileCard:hover { filter: brightness(1.05); }
 
 /* ปุ่มรางวัลเลเวล (วุ้นม่วง) / เช็คอิน (วุ้นชมพู) */
@@ -16078,7 +15204,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 #profileCard::before { left: 4%; right: 4%; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.1) 70%, rgba(255,255,255,0) 100%); }
 #profileCard::after, #btnLvGift::after, #btnDaily::after {
-  content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -16086,7 +15211,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     rgba(255,255,255,0) 55%, rgba(255,255,255,.38) 57%, rgba(255,255,255,0) 60%) no-repeat;
   background-size: 260% 100%;
   background-position: 110% 0;
-  animation: jellySheen 6s ease-in-out .8s infinite;
   pointer-events: none;
   z-index: 3;
 }
@@ -16118,7 +15242,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   100% { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #profileCard::after, #btnLvGift::after, #btnDaily::after { animation: none; }
   :is(#profileCard, #btnLvGift, #btnDaily):is(.jelly-boing, .jelly-wiggle) { animation: none; }
 }
 
@@ -16173,42 +15296,23 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   position: relative;
   border: calc(var(--pf) * .05) solid #FFFFFF;
   background: radial-gradient(circle at 50% 40%, #FFF6FC 0%, #F6E6FF 60%, #E4CCFA 100%);
-  box-shadow: 0 0 0 calc(var(--pf) * .035) rgba(255,170,215,.95), 0 3px 6px rgba(60,20,110,.35);
 }
 #profileCard .pf-info {
-  gap: calc(var(--pf) * .1);
-  min-width: calc(var(--pf) * 2.1);
   max-width: calc(var(--pf) * 2.8);
 }
 #profileCard .pf-name {
-  font-size: calc(var(--pf) * .29);
   font-weight: 700;
-}
-#profileCard .pf-lvrow {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--pf) * .08);
 }
 /* ป้ายเลเวล: เม็ดวุ้นทองขอบขาว "Lv 59" */
 #profileCard .pf-lv {
   position: static;
-  flex: 0 0 auto;
   display: inline-flex;
   align-items: baseline;
   gap: .12em;
   min-width: 0;
   height: auto;
-  padding: calc(var(--pf) * .035) calc(var(--pf) * .11);
   border-radius: 999px;
-  border: 1.5px solid #FFFFFF;
-  background:
-    radial-gradient(70% 50% at 40% 18%, rgba(255,255,255,.75) 0%, rgba(255,255,255,0) 75%),
-    linear-gradient(180deg, #FFEA9A 0%, #FFCB45 60%, #F5AE22 100%);
-  color: #7A4300;
-  font-size: calc(var(--pf) * .25);
   font-weight: 800;
-  line-height: 1.1;
-  box-shadow: 0 2px 0 #CC8A18, 0 3px 5px rgba(110,50,0,.3);
 }
 #profileCard .pf-lv::before {
   content: 'Lv';
@@ -16219,8 +15323,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* หลอด EXP: ร่องม่วงใส ขอบขาว · เนื้อวุ้นชมพูมีแถบวาวด้านบน · ตัวเลขอยู่กลางหลอด */
 #profileCard .pf-bar {
   position: relative;
-  flex: 1 1 auto;
-  height: calc(var(--pf) * .32);
   border-radius: 999px;
   background: rgba(64,20,120,.48);
   box-shadow: inset 0 1.5px 3px rgba(30,5,60,.5), 0 0 0 1.5px rgba(255,255,255,.55);
@@ -16240,7 +15342,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--pf) * .19);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -16438,7 +15539,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    ทางเดินใหม่: หน้าแรก "ลุย~" → เลือกโหมด (ผจญภัยภารกิจ — โหมดเดียวตอนนี้ + ปุ่มอันดับ) → เลือกด่าน → "ลุย~" เริ่มวิ่ง
                หน้าแรก "แผนที่" → เลือกโซน (เมืองแมว / ดินแดนปราสาท) → ม่านอุ้งเท้า → town.html
                (แตะปราสาทในฉากหลังเพื่อไปปราสาท — ลองแล้วผู้ใช้ไม่เอา 3 พ.ย. · ไปปราสาทผ่านแผนที่อย่างเดียว)
-   พื้นหลังสองหน้าใหม่ใช้ประตูสู่การผจญภัยชุดเดียวกับหน้าเลือกด่าน (render/stagebg.js) · การ์ด/ปุ่มเป็นวุ้นใสชุดเดียวกับหน้าแรก */
+   พื้นหลังสองหน้าใหม่ใช้ประตูสู่การผจญภัยชุดเดียวกับหน้าเลือกด่าน (render/softbg.js) · การ์ด/ปุ่มเป็นวุ้นใสชุดเดียวกับหน้าแรก */
 #modePanel > .pop, #mapPanel > .pop { background: #8556C7; }
 #modePanel > .pop > :not(.stage-bg):not(.backbtn):not(.mode-rank),
 #mapPanel > .pop > :not(.stage-bg):not(.backbtn) { position: relative; z-index: 1; }

@@ -69,11 +69,6 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function ease(t) {
-  const u = clamp01(t);
-  return u * u * (3 - 2 * u);
-}
-
 function mixHex(a, b, t) {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);

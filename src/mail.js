@@ -99,16 +99,6 @@ export function mailById(id) {
   return loadInbox().find((m) => m.id === id) || null;
 }
 
-/** ยังไม่ได้เปิดอ่านกี่ฉบับ — ตัวเลขนี้คุมจุดแดงบนไอคอน */
-export function unreadCount() {
-  return loadInbox().filter((m) => !m.read).length;
-}
-
-/** ยังมีของขวัญค้างให้รับไหม — จุดแดงต้องขึ้นด้วยถ้ามี ถึงจะอ่านไปแล้วก็ตาม */
-export function unclaimedCount() {
-  return loadInbox().filter((m) => m.reward && !m.claimed).length;
-}
-
 /** จุดแดงขึ้นเมื่อ "ยังไม่อ่าน" หรือ "ยังมีของค้างรับ" อย่างใดอย่างหนึ่ง */
 export function badgeCount() {
   return loadInbox().filter((m) => !m.read || (m.reward && !m.claimed)).length;

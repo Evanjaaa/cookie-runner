@@ -564,8 +564,6 @@ export function setSong(kind, i) {
   if (track === kind && master && !fileFailed) playFile(FILE_TRACKS[kind], kind === 'room' ? ROOM_FADE_IN : FADE_IN);
   return songIdx[kind];
 }
-export const homeSongIndex = () => songIndex('home');
-export const setHomeSong = (i) => setSong('home', i);
 
 const FILE_TRACKS = {
   home: songSrc('home'),

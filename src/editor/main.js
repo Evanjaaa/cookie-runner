@@ -23,7 +23,7 @@ import {
 import { BONUS_LAYOUTS, bonusGeometry, buildBonusMagnets } from '../bonus-layouts.js';
 import {
   AUTHOR, PATTERNS, PATTERN_META, PICKUPS, RETIRED_PICKUPS, Level, composeRoute,
-  platTop, highestTop, footing, thinFood, spreadChunk,
+  highestTop, footing, thinFood, spreadChunk,
 } from '../level.js';
 import { drawPlats, PLAT_THEMES } from '../render/platforms.js';
 import { GATES, GATE_LIST, gateMarks } from '../gates.js';
