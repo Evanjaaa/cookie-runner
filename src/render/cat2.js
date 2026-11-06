@@ -19872,31 +19872,92 @@ const widenStripes = (list, k) => list.map((o) => {
   if (o.only) q.only = o.only;
   return q;
 });
+// ── ลายพู่กันธรรมชาติ (เสือน้อย · ส้มซ่า — ผู้ใช้ 6 พ.ย.: "ดูเป็นธรรมชาติ ไม่แข็ง ไม่เป็นเส้นตรง ละมุน") ──
+//   เส้นกลางโค้ง + คลื่นเบา ๆ · กว้างไม่เท่ากันตลอดเส้น · ปลายเรียวยาว · ซ้าย-ขวาไม่ใช่ภาพกระจกเป๊ะ (seed ต่างกัน)
+//   ขอบนุ่ม: ใต้ลายมีเงาลายกว้างกว่าจาง ๆ (halo) แล้วลายจริงโปร่งนิด → ขอบไล่จางแทนขอบคมแข็ง
+/** ลายหนึ่งเส้น → จุดรอบรูปปิด (โค้งผ่าน p0 → p1 → p2 · w = ครึ่งความกว้าง · edge = โคนอยู่นอกขอบชิ้น) */
+function brushStripe(p0, p1, p2, w, edge, seed) {
+  const n = 16, L = [], R = [];
+  // คลื่นตามความยาวเส้น — ขีดสั้น (คิ้ว) คลื่นเท่าเส้นยาวแล้วเป็นตัวหนอน
+  const ph = hash(seed) * TAU, ph2 = hash(seed + 7) * TAU, amp = (1.4 + hash(seed + 3) * 1.6) * Math.min(1, Math.hypot(p2[0] - p0[0], p2[1] - p0[1]) / 70);
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, v = 1 - u;
+    const x = v * v * p0[0] + 2 * v * u * p1[0] + u * u * p2[0], y = v * v * p0[1] + 2 * v * u * p1[1] + u * u * p2[1];
+    const dx = 2 * v * (p1[0] - p0[0]) + 2 * u * (p2[0] - p1[0]), dy = 2 * v * (p1[1] - p0[1]) + 2 * u * (p2[1] - p1[1]);
+    const l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+    const off = amp * Math.sin(u * TAU * 0.9 + ph) * Math.sin(Math.PI * u);   // คลื่นเบา ๆ (ปลายสองข้างอยู่ที่เดิม)
+    const taper = edge ? Math.pow(1 - u, 0.8) : Math.pow(Math.sin(Math.PI * u), 0.85);
+    const h = w * taper * (0.82 + 0.28 * Math.sin(u * TAU * 1.2 + ph2));
+    const cx = x + nx * off, cy = y + ny * off;
+    L.push([cx + nx * h, cy + ny * h]);
+    R.push([cx - nx * h, cy - ny * h]);
+  }
+  return [...L, ...R.reverse().slice(1, -1)];
+}
+const BRUSH_SOFT = [[1.75, 0.08], [1.5, 0.11], [1.28, 0.16], [1.1, 0.24], [1, 0.8]];   // [เท่าความกว้าง, ความเข้ม]: เงาลายซ้อนหลายชั้นไล่จาง (ชั้นเดียวเห็นเป็นขอบ) · ลายจริง
+/** ลายคู่ซ้าย-ขวาแบบพู่กัน (ขอบนุ่ม) · only = ทาเฉพาะชิ้นนั้น (ฝั่งขวาสลับเป็น -right เอง) */
+function brushPair(p0, p1, p2, w, edge, only, seed, key = 'd', ak = 1) {   // key = ช่องสี · ak = คูณความเข้ม
+  const m = ([x, y]) => [600 - x, y], out = [];
+  for (const [k, a] of BRUSH_SOFT) {
+    const L = [key, brushStripe(p0, p1, p2, w * k, edge, seed), a * ak], R = [key, brushStripe(m(p0), m(p1), m(p2), w * k, edge, seed + 50), a * ak];
+    if (only) { L.only = only; R.only = only.replace(/-left$/, '-right'); }
+    out.push(L, R);
+  }
+  return out;
+}
+/** ลายสลิดเดิม (แขน ขา ท่านั่ง ก้อนหมอบ) → ขอบนุ่มแบบเดียวกัน (k = ความกว้าง) · ป้าย only/back ติดไปด้วย */
+const softStripes = (list, k) => BRUSH_SOFT.flatMap(([kk, a]) => widenStripes(list, k * kk).map((o, i) => { o[2] = a; if (list[i].back) o.back = true; return o; }));
+/**
+ * ลายข้างตัวท่ายืนแบบพู่กัน (ฝั่งซ้าย — ขวาสะท้อนเอง) [p0, p1, p2, ครึ่งกว้าง, edge, seed, ความเข้ม, อก?]
+ * อกบน: ตัววีสองแถวพาดเข้ากลางอก บางและจางกว่า (ผู้ใช้: "ตรงอกยังแข็ง") · ข้างตัว: เส้นยาวโค้งตามความกลมของตัว ปลายเรียวจมใต้ครีมท้อง
+ */
+const BRUSH_TORSO = [
+  [[232, 398], [256, 404], [288, 421], 5, false, 11, 0.78, true],
+  [[210, 416], [240, 424], [276, 442], 5, false, 12, 0.78, true],
+  [[150, 446], [200, 442], [252, 466], 7.5, true, 13],
+  [[148, 474], [198, 470], [248, 494], 7.5, true, 14],
+  [[146, 502], [198, 498], [252, 522], 8, true, 15],
+  [[146, 530], [194, 527], [244, 548], 7.5, true, 16],
+  [[148, 558], [190, 556], [234, 574], 7, true, 17],
+  [[152, 584], [184, 583], [218, 596], 6, true, 18],
+];
+/** k = คูณความกว้าง · noChest = ไม่มีลายตัววีที่อก (ส้มซ่าอกขาว) */
+const brushTorso = (k = 1, noChest = false) => BRUSH_TORSO.filter((s) => !(noChest && s[7]))
+  .flatMap(([p0, p1, p2, w, edge, seed, ak = 1]) => brushPair(p0, p1, p2, w * k, edge, 'torso', seed, 'd', ak));
 const SOMSA_W = 1.4;   // ลายกว้างกว่าลายสลิด (แบบ: ลายพู่กันกว้างนุ่ม)
-/** ปื้นขาวคู่ซ้าย-ขวา (กระจกรอบ x 300) ทาเฉพาะชิ้น only — ขาด้านใน / ใต้แขน ของส้มซ่า · front = มองหลังไม่แสดง */
-const whitePair = (pts, only, front = false) => {
-  const L = ['w', pts], R = ['w', pts.map(([x, y]) => [600 - x, y])];
-  L.only = only; R.only = only.replace(/-left$/, '-right');
-  if (front) L.front = R.front = true;
-  return [L, R];
-};
 const SOMSA_TABBY = {
   ...TABBY,
-  d: '#E08A3E',   // ส้มเข้ม (เข้มกว่าที่เห็นนิด — สนามไล่สีของขนทาทับให้สว่างขึ้น · แบบ: ลาย #E9994F บนขน #F9C484)
-  h: '#CC6E22',   // ลายหัว: เข้มกว่าลายตัว (กลางหัวสว่างสุด สีเดียวกันแล้วตัว M จาง)
-  w: '#FFFAF2',   // ขาวครีม: ขาด้านใน (ต่อจากอกขาวลงเท้า) · ใต้แขน (ต่อจากอุ้งเท้า)
+  d: '#D47828',   // ส้มเข้ม (เข้มกว่าที่เห็น — สนามไล่สีของขนทาทับให้สว่างขึ้น + ขอบลายไล่จาง · แบบ: ลาย #E9994F บนขน #F9C484)
+  h: '#C0601A',   // ลายหัว: เข้มกว่าลายตัว (กลางหัวสว่างสุด สีเดียวกันแล้วตัว M จาง)
   darkTip: false,
-  parts: { head: widenStripes(TABBY.parts.head.slice(1), 1.2) },   // ลายหัวกว้างน้อยกว่าตัว (กว้างเท่ากันแล้วหน้าผากเป็นแท่ง ๆ)
+  // ลายแบบพู่กันขอบนุ่ม (ผู้ใช้ 6 พ.ย. "ปรับลายเส้นส้มซ่าให้ดูดีขึ้น" — เดิมเป็นแท่งตรงขอบแข็ง) · ระบบเดียวกับเสือน้อย (brushPair)
+  // หัว: ตัว M ด้านใน + คิ้ว + ข้างหน้าผาก + แก้มสามเส้น · ไม่มีเส้นกลางหน้าผาก (แถบขาว SOMSA_FACE)
+  parts: {
+    head: [
+      ...brushPair([278, 112], [270, 158], [268, 204], 7, false, null, 41, 'h'),
+      ...brushPair([252, 140], [243, 174], [246, 208], 7, false, null, 42, 'h'),
+      ...brushPair([228, 126], [210, 146], [200, 170], 6, false, null, 43, 'h'),
+      ...brushPair([122, 260], [150, 264], [178, 270], 7.5, true, null, 44, 'h'),
+      ...brushPair([124, 285], [152, 289], [180, 294], 7.5, true, null, 45, 'h'),
+      ...brushPair([130, 309], [156, 312], [182, 317], 6.5, true, null, 46, 'h'),
+    ],
+  },
   body: [
-    ...widenStripes(TABBY.body, SOMSA_W),
-    ...whitePair([[252, 516], [314, 516], [314, 656], [222, 656], [232, 612], [242, 566]], 'leg-left', true),   // มองหลังเห็นเป็นแผ่นขาวขอบตรงที่ก้น — ด้านหน้าเท่านั้น
-    ...whitePair([[100, 474], [146, 466], [190, 458], [228, 452], [228, 504], [96, 504]], 'arm-left'),
+    ...brushTorso(1.45, true),   // ข้างตัว (อกขาว — ไม่มีลายตัววีที่อก)
+    // แขน: ส้มทั้งแขน (ผู้ใช้ 6 พ.ย. "เติมสีตรงแขน" — ไม่มีขาวใต้แขน) · ปล้องพู่กันขวางแขนตลอดความกว้าง ปลายเรียวสองข้าง
+    ...brushPair([187, 398], [183, 436], [178, 474], 6.5, false, 'arm-left', 51),
+    ...brushPair([166, 405], [161, 442], [157, 480], 6.5, false, 'arm-left', 52),
+    ...brushPair([146, 412], [141, 448], [138, 484], 6, false, 'arm-left', 53),
+    // ขา: ส้มทั้งขา (ผู้ใช้ 6 พ.ย.: ขาด้านในไม่ใช่ขาว — ขาวมีแค่อก) · พู่กันจากขอบนอกเข้าใน โค้งตามขา ปลายเรียว
+    ...brushPair([144, 564], [178, 562], [218, 567], 8.5, true, 'leg-left', 54),
+    ...brushPair([144, 588], [178, 586], [218, 591], 8.5, true, 'leg-left', 55),
+    ...brushPair([146, 612], [176, 610], [212, 614], 7.5, true, 'leg-left', 56),
   ],
-  sit: widenStripes(TABBY.sit, SOMSA_W),
-  sitLegs: widenStripes(TABBY.sitLegs, SOMSA_W),
-  sitOld: widenStripes(TABBY.sitOld, SOMSA_W),
-  haunch: widenStripes(TABBY.haunch, SOMSA_W),
-  loaf: widenStripes(TABBY.loaf, SOMSA_W),
+  sit: softStripes(TABBY.sit, SOMSA_W),
+  sitLegs: softStripes(TABBY.sitLegs, SOMSA_W),
+  sitOld: softStripes(TABBY.sitOld, SOMSA_W),
+  haunch: softStripes(TABBY.haunch, SOMSA_W),
+  loaf: softStripes(TABBY.loaf, SOMSA_W),
   tail: [[1, 2.1, 'd'], [3, 4.1, 'd'], [5, 6.1, 'd'], [7, 8.1, 'd'], [9, 10.1, 'd'], [11, 12.1, 'd']],
 };
 // แถบขาวกลางหน้าของส้มซ่า (ตามแบบ): ปลายแหลมบนหน้าผากระหว่างขาตัว M → กว้างขึ้นระหว่างตา → ใต้ตาบานเต็มปาก-แก้มล่าง-คาง
@@ -19904,6 +19965,57 @@ const SOMSA_TABBY = {
 //   ใต้ตาโอบขอบล่างตาออกไปถึงแก้ม (แก้มแดงอยู่บนขาว) · ส้มเหลือแค่ขอบแก้มข้างหัวที่มีลายสามเส้น
 const SOMSA_FACE = [[152, 0], [162, 4], [178, 8], [196, 13], [212, 17], [230, 22], [248, 28], [262, 40], [276, 70], [288, 105], [300, 130],
   [314, 146], [330, 152], [350, 152], [372, 150], [392, 150], [404, 80], [408, 0]];
+// ══ แมวลายเสือ "เสือน้อย" (ผู้ใช้ส่งแบบ 6 พ.ย.: แมวลายเสือตัวผู้ สีน้ำตาลทอง) — ลายน้ำตาลเข้มบนพื้นกากีอมทอง ระบบเดียวกับลายสลิด ══
+// หัว: เส้นกลางหน้าผาก + ตัว M + คิ้ว + ข้างหน้าผาก + แก้มสามเส้น (แบบมีครบ) · หาง: ปล้องเข้ม ปลายหางเข้ม (ตามแบบ)
+const SUEA_TABBY = {
+  ...TABBY,
+  d: '#24120A',   // น้ำตาลเข้ม (เข้มกว่าที่เห็น — สนามไล่สีของขนทาทับให้สว่างขึ้น · แบบ: ลาย #4A2C18 บนขน #C99A64)
+  h: '#1A0C04',   // ลายหัว: เข้มกว่าลายตัว
+  // หัวในชั้นขน: แก้มสามเส้น + ลายท้ายทอย (เส้นหน้าผากของลายสลิด เฉพาะมองหลัง) · ด้านหน้าตัว M วาดหลังลงเงา (SUEA_HEAD_MARKS)
+  parts: {
+    head: [
+      // แก้มสามเส้น: พู่กันจากขอบหัวเข้าใน (ตำแหน่งเดียวกับลายสลิด)
+      ...brushPair([122, 260], [150, 264], [178, 270], 6, true, null, 31, 'h'),
+      ...brushPair([124, 285], [152, 289], [180, 294], 6, true, null, 32, 'h'),
+      ...brushPair([130, 309], [156, 312], [182, 317], 5, true, null, 33, 'h'),
+      ...softStripes(TABBY.parts.head.slice(0, 7).map((o) => Object.assign([...o], { back: true })), 1.35),
+    ],
+  },
+  // ตัว: ลายพู่กันข้างตัว + ตัววีที่อก (BRUSH_TORSO) · แขน/ขา = ปล้องบางของลายสลิดขอบนุ่ม
+  body: [
+    ...brushTorso(),
+    ...softStripes(TABBY.body.slice(14, 20), 0.95),   // แขน
+    ...softStripes(TABBY.body.slice(20), 0.85),      // ขา
+  ],
+  sit: softStripes(TABBY.sit, 0.85),
+  sitLegs: softStripes(TABBY.sitLegs, 0.85),
+  sitOld: softStripes(TABBY.sitOld, 0.85),
+  haunch: softStripes(TABBY.haunch, 0.85),
+  loaf: softStripes(TABBY.loaf, 0.9),
+};
+/**
+ * ตัว M บนหน้าผากเสือน้อย (วัดจากแบบ): เส้นกลางกระหม่อม + ∩ สองตัวเหนือตา + ขีดคิ้วนอก + ขีดข้างหน้าผาก
+ * วาดหลังลงเงา (ช่องครีมหน้า แบบแถบขาววิลาศ) — ถ้าวาดในชั้นขน ไฮไลต์กลางหัวทาทับจนลายจางเป็นเทา
+ * รอบสี่ (ผู้ใช้: "เส้นตรงหัวยังแข็ง"): เส้นพู่กันเดียวกับลายตัว (brushStripe) · ∩ = เส้นโค้งเส้นเดียว ยอดมน ปลายเรียว
+ *   ขอบไล่จางหลายชั้น (BRUSH_SOFT) · ขีดคิ้วเกือบแนวนอน (เอียงลงหาหัวตามากแล้วเป็นคิ้วขมวด)
+ * [p0, p1, p2, ครึ่งกว้าง, โคนกว้าง (edge), seed] — ฝั่งซ้าย (ขวาสะท้อนเอง ยกเว้นเส้นกลาง)
+ */
+const SUEA_HEAD_STROKES = [
+  [[300, 100], [300, 146], [300, 194], 6.5, true, 21],
+  [[246, 216], [266, 112], [288, 214], 5.5, false, 22],
+  [[204, 186], [218, 183], [233, 190], 3.6, false, 23],
+  [[220, 140], [210, 156], [205, 174], 4, false, 24],
+];
+const SUEA_HEAD_MARKS = {
+  col: '#54341C',
+  list: BRUSH_SOFT.flatMap(([k, a]) => SUEA_HEAD_STROKES.flatMap(([p0, p1, p2, w, edge, seed], i) => {
+    const m = ([x, y]) => [600 - x, y];
+    const L = [brushStripe(p0, p1, p2, w * k, edge, seed), a];
+    return i ? [L, [brushStripe(m(p0), m(p1), m(p2), w * k, edge, seed + 50), a]] : [L];
+  })),
+};
+// ครีมหน้าเสือน้อย [y, ครึ่งกว้าง]: เริ่มเหนือจมูกนิดเดียว (ระหว่างตาเป็นขนน้ำตาล — แบบ) → บานเต็มปาก-แก้มล่าง-คาง
+const SUEA_FACE = [[292, 0], [298, 8], [306, 24], [314, 48], [322, 78], [332, 106], [344, 126], [358, 137], [374, 138], [388, 126], [398, 100], [404, 60], [406, 0]];
 /**
  * ขอบปื้นแบบขนนุ่ม (สีเปรอะ · ลายวัว): แบ่งขอบปื้นเป็นช่วงสั้น ๆ ทุก step หน่วย แล้วดันเข้า-ออกสลับกัน (ปอยขน)
  * จุดที่ได้ส่งต่อให้ calicoOps ทำเป็นเส้นโค้งเรียบ → ขอบปื้นเป็นคลื่นเล็ก ๆ แบบขนสัตว์ ไม่ใช่วงรีเรียบเหมือนสติกเกอร์
@@ -20167,7 +20279,8 @@ function calicoParts(M, cal, back) {
     const ownId = back ? swapLR(id) : id;
     // front = ปื้นที่มีแต่ด้านหน้า (ปาก-คาง อกของสีเปรอะ) — มองหลังไม่กลับซ้ายขวามาโผล่ที่ท้ายทอย/กลางหลัง
     const list0 = cal.bodyParts.includes(id) ? cal.body.filter((o) => !o.only || o.only === ownId) : back && cal.backSkip?.includes(id) ? null : cal.parts[ownId];
-    const list = list0 && back ? list0.filter((o) => !o.front) : list0;
+    // back = ลายที่มีแต่ด้านหลัง (ท้ายทอยเสือน้อย — ด้านหน้ามีตัว M ที่วาดหลังลงเงาแทน)
+    const list = list0 && (back ? list0.filter((o) => !o.front) : list0.filter((o) => !o.back));
     if (!list) continue;
     const ops = calicoOps(list, cal, back);
     const p = M.parts[id];
@@ -21587,24 +21700,86 @@ function drawSomsaLashes(c, side, sq = 1, cy = null, ink = '#2E1608') {
   c.fillStyle = ink;
   c.fill(lid);
 }
-/** หนวดขาวเส้นบาง (ขาวมณี ตามแบบ): สามเส้นจากขอบนอกแก้มแผ่ออกพ้นขอบหน้า · เส้นเทาม่วงจางรองใต้ ให้เห็นบนขนขาว */
-function whiteWhiskers(c, left) {
-  const o = left ? -1 : 1;
+// ══ ตาเสือน้อย (eyeStyle 'suea' · ผู้ใช้ส่งแบบ 6 พ.ย. แมวลายเสือตัวผู้) ══
+// ตามแบบ (วัดสีจากภาพ): ตากลมโตมาก ขอบตาน้ำตาลเข้มหนา · ทองสดเต็มดวง เหลือเป็นเสี้ยวกว้างด้านล่าง-นอก
+// แผ่นม่านตาน้ำตาลเข้มวงใหญ่เยื้องขึ้นบนเข้าหาจมูก · ตาดำวงเข้มกว่าซ้อนในแผ่น เยื้องลงนิด (เห็นวงน้ำตาลรอบตาดำ)
+// ประกายวงใหญ่บนซ้ายของแผ่นม่านตา (ตัวผู้วงเดียว — แบบมีสามจุด ใช้กฎจุดขาวของผู้ใช้แทน)
+const SUEA_EYE = {
+  gold: ['#FFE688', '#FAD054', '#E8A630'], disk: ['#6E4522', '#4A2C14'], pupil: '#1C0C04', edge: 'rgba(120,70,10,.55)',
+  // สำหรับตาตอนหันข้าง (sideEye ใช้ชุดสีแบบตาแบ๊ว)
+  rimTop: '#5C3A1C', rimBot: '#FCD55C', coreIn: '#3C2210', coreOut: '#1C0C04',
+};
+function drawSueaEye(c, white, side, { lx = 0, ly = 0, sparkle = 0, t = 0, lidded = false, col = SUEA_EYE, starDots = false, starOne = false, line = '#3A1E0E' } = {}) {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, d = side === 'left' ? 1 : -1;   // d = ทิศไปหาจมูก
   c.save();
-  c.lineCap = 'round';
-  // [ต้นเส้น y, ปลายเส้นห่างกลางหน้า, ปลายเส้น y, โค้ง] — ต้นเส้นห่างกลางหน้า 122 (ขอบนอกแก้มแดง)
-  for (const [y0, x1, y1, bow] of [[318, 192, 309, -3], [328, 190, 332, -2], [338, 194, 360, 3]]) {   // เส้นบนต่ำกว่าขีดหนวดน้ำตาลล่างสุด (ไม่ทับกัน)
-    const p = new Path2D(), xa = 300 + o * 122, xb = 300 + o * x1;
-    p.moveTo(xa, y0);
-    p.quadraticCurveTo((xa + xb) / 2, (y0 + y1) / 2 + bow, xb, y1);
-    c.strokeStyle = 'rgba(150,130,176,.35)';
-    c.lineWidth = 3.4;
-    c.stroke(p);
-    c.strokeStyle = 'rgba(255,255,255,.96)';
-    c.lineWidth = 2;
-    c.stroke(p);
+  c.clip(white);
+  // ทองทั้งดวง: สว่างสุดที่เสี้ยวล่าง-นอก → เข้มขึ้นเป็นทองอมส้มใกล้ขอบ
+  const gx = W.x - d * R * 0.3, gy = W.y + R * 0.5;
+  const g = c.createRadialGradient(gx, gy, 0, gx, gy, R * 1.5);
+  g.addColorStop(0, col.gold[0]);
+  g.addColorStop(0.45, col.gold[1]);
+  g.addColorStop(1, col.gold[2]);
+  c.fillStyle = g;
+  c.fillRect(W.x - R - 6, W.y - R - 6, (R + 6) * 2, (R + 6) * 2);
+  // แผ่นม่านตาน้ำตาลเข้ม (เลื่อนตามสายตา) เยื้องขึ้นบนเข้าหาจมูก
+  const ix = W.x + d * R * 0.13 + lx * 0.9, iy = W.y - R * 0.13 + ly * 0.9, ir = R * 0.8;
+  const disk = new Path2D(); disk.arc(ix, iy, ir, 0, TAU);
+  const dg = c.createRadialGradient(ix, iy + ir * 0.25, ir * 0.3, ix, iy, ir);
+  dg.addColorStop(0, col.disk[0]);
+  dg.addColorStop(1, col.disk[1]);
+  c.fillStyle = dg;
+  c.fill(disk);
+  c.strokeStyle = col.edge;
+  c.lineWidth = 2;
+  c.stroke(disk);
+  // ตาดำในแผ่น (เยื้องลงเข้าหาจมูกนิด) ขอบนุ่ม
+  const px = ix + d * R * 0.05, py = iy + R * 0.08, pr = R * 0.5;
+  const pg = c.createRadialGradient(px, py, pr * 0.5, px, py, pr * 1.06);
+  pg.addColorStop(0, col.pupil);
+  pg.addColorStop(0.86, col.pupil);
+  pg.addColorStop(1, 'rgba(28,12,4,0)');
+  c.fillStyle = pg;
+  c.beginPath(); c.arc(px, py, pr * 1.06, 0, TAU); c.fill();
+  // ขอบตาหนา (ครึ่งในของเส้น — ครึ่งนอกเป็นเส้นขอบตาบางของตัววาดกลาง)
+  c.strokeStyle = line;
+  c.lineWidth = 7;
+  c.stroke(white);
+  // จุดประกายวัดจากแผ่นม่านตา (แบบ: จุดใหญ่บนซ้ายของแผ่น · จุดรองล่างขวา)
+  const dot = eyeDots(c, ix, iy, ir, starDots, t, starOne);
+  if (lidded) { dot(-0.4, -0.02, 0.3, true); if (!starOne) dot(0.46, 0.42, 0.13); }
+  else { dot(-0.38, -0.4, 0.32, true); if (!starOne) dot(0.5, 0.38, 0.14); }
+  if (sparkle > 0 && !starDots) {
+    const k = sparkle * (0.75 + 0.25 * Math.sin(t * 0.25));
+    star4(c, px + 16, py - 14, 12 * k);
+    if (sparkle > 0.6) star4(c, px - 8, py + 18, 6 * k);
   }
   c.restore();
+}
+/** ไลเนอร์บนของตาเสือน้อย: ตามขอบตาบนทั้งเส้น บางที่หัวตา หนาไปหางตา แล้วตวัดปลายแหลมสั้นออกนอกหน้า · ตัวผู้ไม่มีขนตา */
+function drawSueaLashes(c, side, sq = 1, cy = null, ink = '#2A1608') {
+  const W = EYE_WHITE[side], R = EYE_WHITE.r, o = side === 'left' ? -1 : 1;   // o = ทิศออกนอกหน้า
+  const yc = cy ?? W.y;
+  const P = (a, r) => [W.x + o * Math.cos(a) * r, yc + (W.y + Math.sin(a) * r - yc) * sq];
+  const N = (a) => { const nx = o * Math.cos(a) * sq, ny = Math.sin(a), l = Math.hypot(nx, ny) || 1; return [nx / l, ny / l]; };
+  c.fillStyle = ink;
+  const a0 = -2.7, a1 = -0.5, n = 40, lid = new Path2D(), out = [];
+  const thAt = (u) => (2 + 4.4 * Math.pow(u, 1.1)) * Math.min(1, u * 6 + 0.15);
+  const B = (a) => P(a, R - 1.4);
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, a = a0 + (a1 - a0) * u, th = thAt(u);
+    const b = B(a), nn = N(a);
+    if (!i) lid.moveTo(...b); else lid.lineTo(...b);
+    out.push([b[0] + nn[0] * th, b[1] + nn[1] * th]);
+  }
+  // ปลายตวัดสั้นเฉียงขึ้นออกนอกหน้า → ย้อนกลับตามขอบนอกของไลเนอร์
+  const e = B(a1 + 0.2), [nx, ny] = N(a1);
+  const tip = [e[0] + o * 11, e[1] - 7 * sq];
+  lid.quadraticCurveTo(...B(a1 + 0.1), ...e);
+  lid.quadraticCurveTo(e[0] + o * 7, e[1] - 1 * sq, ...tip);
+  lid.quadraticCurveTo(out[n][0] + o * 2 + nx * 2, out[n][1] + ny * 2, ...out[n]);
+  for (let i = n - 1; i >= 0; i--) lid.lineTo(...out[i]);
+  lid.closePath();
+  c.fill(lid);
 }
 /**
  * ตาหลับแปลงจากตาลืมของแต่ละตัว (ผู้ใช้ 21 ต.ค. เริ่มที่วิลาศ แล้วสั่ง "ทำแบบนี้ทุกสี เปลือกตาใครเปลือกตามัน")
@@ -21769,6 +21944,12 @@ function closedLidSpec(side, kind, s, female, pal) {
     ...base, ink: pal.closedInk || '#3A2218',
     th: (u) => (1.6 + 5.2 * Math.pow(u, 1.2)) * ramp(u) * D,
     wing: { len: 12, out: 3, rise: up ? 8 : 6, lift: 4 },
+  };
+  if (s?.eyeStyle === 'suea') return {
+    // เสือน้อย: ไลเนอร์บางที่หัวตา หนาไปหางตา + ปลายตวัดสั้นแบบตาลืม · ตัวผู้ไม่มีขนตา
+    ...base, ink: pal.closedInk || '#2A1608',
+    th: (u) => (2.4 + 5.6 * Math.pow(u, 1.1)) * ramp(u) * D,
+    wing: { len: 10, out: 3, rise: up ? 8 : 6, lift: 4 },
   };
   if (s?.eyeStyle === 'hazel') return {
     // สีเปรอะ: เปลือกตาหนาไปทางหางตาแบบตาลืม ปลายมน · ตัวผู้ไม่มีขนตา · ขอบส้มอ่อนรอบเส้น (ขนเข้มรอบตา)
@@ -22209,7 +22390,7 @@ export const CAT2_BREEDS = [
   {
     // ผู้ใช้ส่งแบบ 5 พ.ย.: "ตัวผู้สีขาว" — ขาวสะอาดทั้งตัว ไม่มีสีอื่นปน · ตาเขียวอมเหลือง (ทรงตาใหม่ของตัวเอง) · ลงหน้าทดลองก่อน (ยังไม่เข้าเกม)
     //   สีวัดจากภาพแบบ: ขนขาวอมงาช้างนิด ๆ (#FDFAF8) เงาขนม่วงเทาอ่อนมาก · ลายขนจาง ๆ สีม่วงเทาแทนลาย (หน้าผากสามขีดตามแบบ)
-    //   หูใน/จมูก/แก้มชมพูพีช (#FEC2BE) · จมูกสามเหลี่ยมมนกว้าง โตกว่าตัวอื่น (art.nose) · ปากน้ำตาลเข้ม · หนวดขีดน้ำตาลเข้มนอกหน้า + หนวดขาวเส้นบางพาดแก้ม
+    //   หูใน/จมูก/แก้มชมพูพีช (#FEC2BE) · จมูกสามเหลี่ยมมนกว้าง โตกว่าตัวอื่น (art.nose) · ปากน้ำตาลเข้ม · หนวดขีดน้ำตาลเข้มนอกหน้า (หนวดขาวเส้นบางเอาออกแล้ว — ผู้ใช้ 6 พ.ย.)
     id: 'manee', name: 'ขาวมณี', note: 'แมวขาวล้วน ตาเขียวอมเหลือง · ตัวผู้', sex: 'm',
     pal: {
       cat: '#FFFDFA', stripe: '#DED2DF', shade: '#FBF8F9', cream: '#FFFEFC',   // shade อ่อนมาก — เงาขอบตัว/หางไม่เทา (ขาวล้วนตามแบบ)
@@ -22220,8 +22401,8 @@ export const CAT2_BREEDS = [
       closedInk: '#3A2218',
     },
     eyeStyle: 'manee', lashStyle: 'manee', eyes: { left: MANEE_EYE, right: MANEE_EYE },
-    // หน้าขาวล้วน · พุงขาวขอบฟุ้ง · หางขาวล้วน · ลายจาง (เป็นแค่เงาขนม่วงเทา) · ปอยขนหู · หนวดขาวเส้นบาง
-    art: { faceCream: false, bellySoft: true, plainTail: true, earFur: true, stripeK: 0.8, stripeA: 0.55, whiteWhiskers: true, nose: [1.95, 1.3] },
+    // หน้าขาวล้วน · พุงขาวขอบฟุ้ง · หางขาวล้วน · ลายจาง (เป็นแค่เงาขนม่วงเทา) · ปอยขนหู
+    art: { faceCream: false, bellySoft: true, plainTail: true, earFur: true, stripeK: 0.8, stripeA: 0.55, nose: [1.95, 1.3] },
     cat: '#FFFDFA', line: '#45241A', dark: '#DED2DF', cream: '#FFFEFC', pink: '#F7B0B2', eye: '#6E6A2A', ink: '#3A2218',
     whisker: 'rgba(69,36,26,.75)', rain: ['#FFFFFF', '#EEF3A2', '#DED2DF'],
   },
@@ -22244,6 +22425,26 @@ export const CAT2_BREEDS = [
     art: { tabby: SOMSA_TABBY, faceCream: false, faceMark: SOMSA_FACE, bib: true, plainTail: true, earFur: true, nose: [1.3, 1.15] },
     cat: '#F9C384', line: '#5A3420', dark: '#E9994F', cream: '#FFFAF2', pink: '#F5A99F', eye: '#D69A30', ink: '#2E1608',
     whisker: 'rgba(90,52,32,.8)', rain: ['#F9C384', '#FFFAF2', '#E9994F'],
+  },
+  {
+    // ผู้ใช้ส่งแบบ 6 พ.ย.: "แมวลายเสือ ตัวผู้ ลายเส้นเดิม" (brown tabby — ลายน้ำตาลเข้มพาดบนพื้นน้ำตาลทอง/กากี) · "ทรงตาใหม่ได้เลย"
+    //   ขนกากีอมทอง ลายเสือน้ำตาลเข้ม (ระบบ TABBY) · ปาก-คาง อก ท้อง อุ้งเท้าครีม · หางปล้อง ปลายเข้ม · หูในชมพู + ปอยขนครีม
+    //   ตาทองโตทรงใหม่ (SUEA_EYE) · จมูกชมพูอิฐ · แก้มชมพู · หนวดแบบตัวอื่น (ขีดหนวดข้างจมูกผู้ใช้ให้เอาออก 6 พ.ย.)
+    //   ลงหน้าทดลองก่อน (ยังไม่เข้าเกม) · ชื่อตั้งชั่วคราว
+    id: 'suea', name: 'เสือน้อย', note: 'แมวลายเสือสีน้ำตาลทอง ตาทองโต · ตัวผู้', sex: 'm', stripes: false,
+    pal: {
+      cat: '#D8A466', stripe: '#5A3A22', shade: '#CE9A5C', cream: '#FCE4BE',
+      line: '#3A1E0E', ear: '#F2A891', cheek: '#F9A596', nose: '#D47C6A', mouth: '#3A1E0E',
+      air: '#A87444',                          // พ่นเงาขอบน้ำตาลทองอุ่น (ไม่หม่นเทา)
+      glow: '#E6B478',                         // จุดสว่างกลางตัว/หน้าใกล้สีขน (สว่างมากแล้วลายจางเป็นเทา)
+      earIn: '#F6B09A', earEdge: '#DE8C78', earFur: '#FBE2C0',   // หูในชมพู + ปอยขนครีม
+      closedInk: '#2A1608',
+    },
+    eyeStyle: 'suea', lashStyle: 'suea', eyes: { left: SUEA_EYE, right: SUEA_EYE },
+    // tabby = ลายเสือ · faceMark = ครีมปาก-แก้มล่าง-คาง · bellySoft = อก-ท้องครีมขอบฟุ้ง · nose = จมูกโตขึ้น
+    art: { tabby: SUEA_TABBY, headMarks: SUEA_HEAD_MARKS, faceCream: false, faceMark: SUEA_FACE, nose: [1.8, 1.55], bellySoft: true, plainTail: true, earFur: true },
+    cat: '#C99A64', line: '#3A1E0E', dark: '#4A2C18', cream: '#FCE4BE', pink: '#F2A891', eye: '#E8B83A', ink: '#2A1608',
+    whisker: 'rgba(58,30,14,.85)', rain: ['#C99A64', '#4A2C18', '#FAD054'],
   },
 ];
 
@@ -25434,6 +25635,13 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         const pts = [...half.map(([y, w]) => F(X(300 + w), y)), ...half.slice().reverse().filter(([, w]) => w > 0).map(([y, w]) => F(X(300 - w), y))];
         blazeHeadPath = smoothLoop(pts);
         softMark(c, blazeHeadPath, pal.cream);
+        // art.headMarks = ลายบนหน้าผากที่ต้องเข้มชัด (เสือน้อย: ตัว M) — ดัดตามหัน/สายตาแบบเดียวกับแถบขาว
+        if (art.headMarks) {   // [จุด, ความเข้ม] ทีละชั้น (ขอบไล่จาง)
+          const a0 = c.globalAlpha;
+          c.fillStyle = art.headMarks.col;
+          for (const [m, a] of art.headMarks.list) { c.globalAlpha = a0 * a; c.fill(smoothLoop(m.map(([x, y]) => F(X(x), y)))); }
+          c.globalAlpha = a0;
+        }
         return;
       }
       if (!op) return draw();
@@ -25635,7 +25843,6 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // แก้มเป็นวงสีเรียบตามรูปในแบบ (ผู้ใช้ไม่เอาแบบฟุ้ง) ไม่มีเส้นขอบ
     if (op) hooks[id] = (c) => {
       c.fillStyle = pal.cheek; c.fill(op.path);
-      if (art.whiteWhiskers) whiteWhiskers(c, id === 'cheek-left');   // ขาวมณี: หนวดขาวเส้นบางจากขอบแก้ม (เลื่อนตามแก้มตอนหัน)
     };
   }
   // ปื้นดำบนหัวของแมวพื้นขนสีอ่อน (ลาย marks.lashOnBlack — ลายวัว): ขนตา/เส้นตาส่วนที่ทับปื้นวาดซ้ำเป็นสีขาว (ผู้ใช้ 22 ต.ค.)
@@ -25740,7 +25947,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // หน้ากวน (วิเชียรมาศ): ตาครึ่งดวงวาดใหม่ทั้งดวง ใช้ทุกท่า — ไม่มีตากลมแบบเดิมโผล่เลย (ผู้ใช้สั่ง 15 ต.ค. รวมท่าเปิดตัว)
       // ตาประกาย/ดีใจ: ยังเป็นตาทรงเดิมของน้อง แค่มีดาววิ้งเพิ่ม · ตาปิด (กะพริบ ยิ้ม ∩ ขยิบ) ใช้ตาปิดตามปกติ
       const grumpyNow = !!art.grumpy;
-      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : s?.eyeStyle === 'manee' ? drawManeeEye : s?.eyeStyle === 'somsa' ? drawSomsaEye : s?.eyeStyle === 'hazel' ? drawHazelEye : s?.eyeStyle === 'doll' ? drawDollEye : s?.eyeStyle === 'baker' ? drawBakerEye : s?.eyeStyle === 'xchg' ? drawXchgEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
+      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : s?.eyeStyle === 'manee' ? drawManeeEye : s?.eyeStyle === 'somsa' ? drawSomsaEye : s?.eyeStyle === 'suea' ? drawSueaEye :s?.eyeStyle === 'hazel' ? drawHazelEye : s?.eyeStyle === 'doll' ? drawDollEye : s?.eyeStyle === 'baker' ? drawBakerEye : s?.eyeStyle === 'xchg' ? drawXchgEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
         lx: gx * 7 - hx * 2 + v('pupilX') * 20, ly: gy * 5 + (sleepy ? 7 : 0) + v('pupilY') * 17,   // pupilX/Y = กรอกตาดำชัด ๆ (ท่าเปิดตัว)
         sparkle: (starry || eyesOpenHappy || cute ? 1 : 0) * (OUT?.eyeSparkle ?? 1),   // OUT.eyeSparkle = ชุดที่อยากให้ตาวิ้งน้อยลง (0..1)
         t,
@@ -25769,6 +25976,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         else if (s?.lashStyle === 'supha') drawSuphaLashes(q, side, 1 - squash * 0.9, e.y, ink ?? pal.closedInk, wLid);   // ศุภลักษณ์: เปลือกตาเอียงหนา + ปลายตวัด
         else if (s?.lashStyle === 'korat') drawKoratLashes(q, side, 1 - shut * 0.9, e.y, ink ?? pal.closedInk);   // โคราช: เปลือกตาเส้นบาง ไม่มีขนตา
         else if (s?.lashStyle === 'somsa') drawSomsaLashes(q, side, 1 - shut * 0.9, e.y, ink ?? (pal.closedInk || '#2E1608'));   // ส้มซ่า: ขอบตาบนหนาขึ้นนิด ไม่มีขนตา
+        else if (s?.lashStyle === 'suea') drawSueaLashes(q, side, 1 - shut * 0.9, e.y, ink ?? (pal.closedInk || '#2A1608'));   // เสือน้อย: ไลเนอร์หนาไปหางตา + ปลายตวัดสั้น
         else if (s?.lashStyle === 'manee') drawManeeLashes(q, side, 1 - shut * 0.9, e.y, ink ?? (pal.closedInk || '#3A2218'));   // ขาวมณี: ไลเนอร์หนาไปหางตา + ปลายสองแฉกสั้น
         else if (s?.lashStyle === 'hazel') drawHazelLashes(q, side, 1 - shut * 0.9, e.y, ink ?? pal.closedInk);   // สีเปรอะ: เปลือกตาหนาปลายมน + ขีดใต้หางตา
         else if (s?.lashStyle === 'doll') drawDollLashes(q, side, 1 - squash * 0.9, e.y, ink ?? pal.closedInk, wLid);    // ลายวัว: ไลเนอร์หนา ปลายเชิด ขนตาสามเส้น + ขอบตาล่างบาง
