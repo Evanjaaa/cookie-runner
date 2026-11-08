@@ -21,6 +21,8 @@
 //   m = 1 สมาชิก (ผูกอีเมลแล้ว) — ชื่อดึงจากตาราง players เอง ปลอมชื่อไม่ได้ · m = 0 ผู้มาเยือน/ไม่ล็อกอิน — เดินเล่น ทำท่าได้ พิมพ์คุยไม่ได้
 //   ต้องตั้ง SUPABASE_URL + SUPABASE_ANON_KEY (README) · ไม่ตั้ง = ทุกคนเป็นผู้มาเยือน (เกมยังเล่นได้ปกติ)
 //   say { k, v } → say { id, w, k, v } ให้ทุกตัวในชั้นเดียวกัน · ไม่ผ่าน = sayno { why: fast|member|link|number|word|same|bad }
+//   lamp { on } → lamp { on, id } ให้ทุกตัว · welcome มี room { lamp } (ของในห้องที่ทุกคนเห็นเหมือนกัน)
+//   st มี j (กระโดดครั้งที่) · ac/aa (กิจกรรม + อายุ — จิบชา กินขนม ส่องกล้อง ขอพร พิมพ์แชต)
 // รายงาน/บล็อกทำฝั่งเกม: บล็อก = ซ่อนข้อความของรหัสนั้นในเครื่อง · รายงาน = ส่งเข้ากล่องแจ้งปัญหาเดิม (bug_reports) พร้อมรหัส u
 // ─────────────────────────────────────────────────────────────
 import { DurableObject } from 'cloudflare:workers';
@@ -106,6 +108,8 @@ function cleanState(m) {
     air: m.air ? 1 : 0, vy: num(m.vy, -40, 40),
     on: ident(m.on), sit: ident(m.sit),
     em: ident(m.em), ea: num(m.ea, 0, 100000),
+    j: Math.max(0, Math.min(3, Math.round(Number(m.j) || 0))),   // กระโดดครั้งที่ (2 = กระโดดสองชั้น → คนอื่นเห็นม้วนตัว)
+    ac: ident(m.ac), aa: num(m.aa, 0, 100000),                    // กิจกรรม (จิบชา/กินขนม/ส่องกล้อง/ขอพร …) + เดินมาแล้วกี่เฟรม
   };
 }
 
@@ -153,6 +157,12 @@ export class CastleRoom extends DurableObject {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  /** ของในห้องที่ทุกคนเห็นเหมือนกัน — ตอนนี้มีโคมไฟชั้น 2 (เปิด/ปิด) · อ่านจาก storage ครั้งแรกหลังห้องตื่น */
+  async room() {
+    if (!this.shared) this.shared = { lamp: (await this.ctx.storage.get('lamp')) ?? true };
+    return this.shared;
+  }
+
   /** ส่งให้ทุกตัวในห้องที่เข้าห้องเรียบร้อยแล้ว (ยกเว้น skip) */
   broadcast(obj, skip = null) {
     const msg = JSON.stringify(obj);
@@ -197,7 +207,7 @@ export class CastleRoom extends DurableObject {
         const o = s.deserializeAttachment();
         if (o?.ready) peers.push({ id: o.id, ...o.look, ...o.st });
       }
-      ws.send(JSON.stringify({ t: 'welcome', id: b.id, me: { m: b.look.m, name: b.look.name, u: b.look.u }, peers }));
+      ws.send(JSON.stringify({ t: 'welcome', id: b.id, me: { m: b.look.m, name: b.look.name, u: b.look.u }, peers, room: await this.room() }));
       this.broadcast({ t: 'join', p: { id: b.id, ...b.look, ...b.st } }, ws);
       return;
     }
@@ -212,6 +222,13 @@ export class CastleRoom extends DurableObject {
       this.broadcast({ t: 'look', id: a.id, ...a.look }, ws);
     } else if (m.t === 'say') {
       this.say(ws, a, m);
+    } else if (m.t === 'lamp') {
+      // โคมไฟชั้น 2: ใครกดก็เปลี่ยนให้ทุกคน (คนอยู่ชั้น 2 ได้ยินเสียงด้วย — เกมเล่นเอง)
+      ws.serializeAttachment(a);
+      const r = await this.room();
+      r.lamp = !!m.on;
+      await this.ctx.storage.put('lamp', r.lamp);
+      this.broadcast({ t: 'lamp', on: r.lamp, id: a.id }, ws);
     } else ws.serializeAttachment(a);
   }
 

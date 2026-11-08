@@ -19,9 +19,13 @@ let ws = null, want = false, room = 1, backoff = 1000, retry = null, ping = null
 let myId = null;
 let me = { m: 0, name: '', u: '' };   // ห้องบอกว่าเราเป็นใคร: m = 1 สมาชิก (ผูกอีเมล · พิมพ์คุยได้) · 0 ผู้มาเยือน
 let hello = () => ({});
-let on = { reset() {}, join() {}, state() {}, look() {}, leave() {}, nosit() {}, say() {}, sayno() {} };
+let on = { reset() {}, join() {}, state() {}, look() {}, leave() {}, nosit() {}, say() {}, sayno() {}, room() {}, lamp() {} };
 
-/** ตัวรับเหตุการณ์จาก main.js: reset() · join(p) · state(id, st) · look(id, look) · leave(id) · nosit({ w, sit, x }) · say(m) · sayno(why) */
+/**
+ * ตัวรับเหตุการณ์จาก main.js: reset() · join(p, isNew) · state(id, st) · look(id, look) · leave(id) · nosit({ w, sit, x })
+ * say(m) · sayno(why) · room({ lamp }) ของในห้องตอนเพิ่งเข้า · lamp({ on, id }) มีคนกดโคมไฟ
+ * isNew = เพิ่งเข้าปราสาทตอนนี้ (ไม่ใช่คนที่อยู่ก่อนเราเข้า) → ออร่าเข้าห้อง
+ */
 export function onlineHandlers(h) { on = { ...on, ...h }; }
 /** ต่อห้องแล้วหรือยัง (ได้ welcome แล้ว) */
 export const online = () => !!myId;
@@ -72,11 +76,17 @@ function connect() {
     let m;
     try { m = JSON.parse(e.data); } catch { return; }
     if (m.t === 'full') { room = (room % 9) + 1; backoff = 200; return; }   // ห้องเต็ม → ลองห้องถัดไป (เซิร์ฟเวอร์ปิดสายให้เอง)
-    if (m.t === 'welcome') { myId = m.id; me = { m: m.me?.m ? 1 : 0, name: m.me?.name || '', u: m.me?.u || '' }; on.reset(); for (const p of m.peers || []) on.join(p); }
+    if (m.t === 'welcome') {
+      myId = m.id; me = { m: m.me?.m ? 1 : 0, name: m.me?.name || '', u: m.me?.u || '' };
+      on.reset();
+      for (const p of m.peers || []) on.join(p, false);
+      if (m.room) on.room(m.room);
+    }
+    else if (m.t === 'lamp') on.lamp(m);
     else if (m.t === 'nosit') on.nosit(m);
     else if (m.t === 'say') on.say(m);
     else if (m.t === 'sayno') on.sayno(m.why);
-    else if (m.t === 'join' && m.p) on.join(m.p);
+    else if (m.t === 'join' && m.p) on.join(m.p, true);
     else if (m.t === 'st') on.state(m.id, m);
     else if (m.t === 'look') on.look(m.id, m);
     else if (m.t === 'leave') on.leave(m.id);
@@ -103,3 +113,5 @@ export const sendState = (st) => send({ t: 'st', ...st });
 export const sendLook = (look) => send({ t: 'look', ...look });
 /** แชต: k = 'p' ประโยคสำเร็จรูป · 's' สติกเกอร์ · 'x' พิมพ์เอง (สมาชิก) — ห้องตรวจแล้วส่งกลับมาให้ทุกตัวในชั้น */
 export const sendSay = (k, v) => send({ t: 'say', k, v });
+/** กดโคมไฟชั้น 2 — ทุกคนในห้องเห็นเปิด/ปิดตาม */
+export const sendLamp = (lampOn) => send({ t: 'lamp', on: !!lampOn });

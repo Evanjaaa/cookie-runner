@@ -9,6 +9,12 @@
 //   รายงาน: ส่งเข้ากล่องแจ้งปัญหาเดิม (bug_reports หมวด "แชตปราสาท") พร้อมชื่อ รหัส และข้อความล่าสุด แล้วซ่อนให้เลย
 //   (กฎ Play Store เรื่องเนื้อหาที่ผู้เล่นสร้าง: กรองคำ · รายงาน · บล็อก · จำกัดความถี่)
 //
+// รอบ 2 (ผู้ใช้ 9 พ.ย. "ใช้งานยากไปนิด ปรับ UI ให้ลื่น"):
+//   ไม่มีแท็บแล้ว — แถบล่างมีช่องพิมพ์ตลอด + ปุ่ม "ประโยค" / "สติกเกอร์" เปิดแผงเลือกเหนือแถบ
+//   เลือกประโยค/สติกเกอร์ = ส่งแล้วปิดแชตเลย (แตะครั้งเดียวจบ) · พิมพ์ = ส่งแล้วแผงยังเปิดคุยต่อได้
+//   แชตไม่หยุดเกม (เดินคุยไปได้) · แตะฉากนอกแผง = ปิด · มือถือ: แผงยกขึ้นพ้นคีย์บอร์ดเอง
+//   แชตปิดอยู่มีข้อความใหม่ = ป้ายเล็ก "ชื่อ: ข้อความ" โผล่ข้างปุ่มแชตสักครู่ (แตะ = เปิดแชต)
+//
 // ข้อความแสดงเมื่อห้องส่งกลับมาแล้วเท่านั้น (ของเราก็ด้วย) = ข้อความที่ห้องไม่ให้ผ่านจะไม่โผล่
 // ─────────────────────────────────────────────────────────────
 import { STICKERS, STICKER_IDS, drawSticker, stickerCanvas } from './stickers.js';
@@ -38,9 +44,9 @@ const NO = {
 const BLOCK_KEY = 'cookie-runner:chat-block';
 
 const $ = (id) => document.getElementById(id);
-let api = null;   // { send(k, v), canType(), floor(), toast(text), pause(on), report({ category, body }) }
-let open = false, tab = 'p', unread = false;
-const logs = new Map();      // ชั้น → [{ id, name, u, m, mine, k, v, at }]
+let api = null;   // { send(k, v), canType(), floor(), toast(text), report({ category, body }), desk() }
+let open = false, pick = null;   // pick = แผงเลือกที่เปิดอยู่: null | 'p' ประโยค | 's' สติกเกอร์
+const logs = new Map();      // ชั้น → [{ id, name, u, m, mine, k, v, text, at }]
 const bubbles = new Map();   // รหัสในห้อง → { k, v, at, lines, w }
 let blocked = new Set();
 try { blocked = new Set(JSON.parse(localStorage.getItem(BLOCK_KEY) || '[]')); } catch { /* โหมดส่วนตัว */ }
@@ -92,21 +98,22 @@ export function chatReceive(msg, who) {
   logs.set(msg.w, list);
   bubbles.set(who.id, { k: msg.k, v: msg.v, at, w: msg.w, lines: msg.k === 's' ? null : wrapText(text) });
   if (msg.w === api?.floor()) {
-    if (open) renderLog(); else if (!who.mine) setUnread(true);
+    if (open) renderLog(); else if (!who.mine) peek(row);
   }
 }
 /** ห้องไม่ให้ผ่าน → บอกผู้เล่น */
 export function chatSayNo(why) { api?.toast(NO[why] || NO.bad); }
 /** สายหลุด/ออกจากปราสาท — ฟองหายหมด (ประวัติยังอยู่จนปิดหน้า) */
-export function chatReset() { bubbles.clear(); setUnread(false); }
+export function chatReset() { bubbles.clear(); hidePeek(); }
 
 /** ฟองของรหัสนี้ (ยังไม่หมดเวลา และอยู่ชั้นนี้) */
 export function bubbleOf(id) {
   if (!id) return null;
   const b = bubbles.get(id);
   if (!b) return null;
-  if (performance.now() - b.at > LIFE[b.k] || b.w !== api?.floor()) { if (performance.now() - b.at > LIFE[b.k]) bubbles.delete(id); return null; }
-  return b;
+  const age = performance.now() - b.at;
+  if (age > LIFE[b.k]) { bubbles.delete(id); return null; }
+  return b.w === api?.floor() ? b : null;
 }
 /** วาดฟองเหนือจุด (x, y = ขอบล่างของฟอง) — เด้งเข้า ค่อยจางตอนหมดเวลา */
 export function drawBubble(c, x, y, b) {
@@ -135,6 +142,19 @@ export function drawBubble(c, x, y, b) {
   c.restore();
 }
 
+// ── ป้ายข้อความใหม่ข้างปุ่มแชต (แชตปิดอยู่) ──
+let peekTimer = null;
+function peek(r) {
+  const el = $('chatPeek');
+  if (!el) return;
+  el.textContent = `${r.name}: ${r.k === 's' ? 'ส่งสติกเกอร์' : r.text}`;
+  el.classList.remove('hidden');
+  $('btnChat')?.classList.add('new');
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => el.classList.add('hidden'), 4200);
+}
+function hidePeek() { clearTimeout(peekTimer); $('chatPeek')?.classList.add('hidden'); $('btnChat')?.classList.remove('new'); }
+
 // ── แผงแชต ──
 export const chatOpen = () => open;
 export function toggleChat(on = !open) {
@@ -142,19 +162,33 @@ export function toggleChat(on = !open) {
   open = on;
   $('chatPanel').classList.toggle('hidden', !open);
   $('btnChat')?.setAttribute('aria-expanded', String(open));
-  api.pause(open);
-  if (open) { setUnread(false); paintChat(); renderLog(); }
-  else document.activeElement?.blur?.();
+  if (open) {
+    hidePeek();
+    pick = api.canType() ? null : 'p';   // ผู้มาเยือนพิมพ์ไม่ได้ → เปิดแผงประโยคให้เลย
+    paintChat();
+    renderLog();
+    fitKeyboard();
+    if (api.desk() && api.canType()) setTimeout(() => $('chatText').focus(), 30);
+  } else {
+    document.activeElement?.blur?.();
+    $('chatPanel').style.bottom = '';
+  }
 }
 export const closeChat = () => toggleChat(false);
-function setUnread(on) { unread = on; $('btnChat')?.classList.toggle('new', on); }
+/** เปิดแผงแล้ว (คอมกด Enter) → ไปที่ช่องพิมพ์ */
+export function focusChat() { if (open && api?.canType()) $('chatText').focus(); }
 
-/** ชื่อชั้น + แท็บ + ช่องพิมพ์ (สมาชิก/ผู้มาเยือน) — เรียกตอนเปิดแผง / สถานะสมาชิกเปลี่ยน */
+/** ชื่อชั้น + แผงเลือก + ช่องพิมพ์ (สมาชิก/ผู้มาเยือน) — เรียกตอนเปิดแผง / สถานะเปลี่ยน */
 export function paintChat() {
   if (!api) return;
   $('chatTitle').textContent = 'แชต · ' + (FLOOR_NAME[api.floor()] || 'ปราสาท');
-  for (const b of document.querySelectorAll('.chat-tab')) b.classList.toggle('on', b.dataset.tab === tab);
-  for (const k of ['p', 's', 'x']) $('chatPane' + k.toUpperCase()).classList.toggle('hidden', k !== tab);
+  $('chatPick').classList.toggle('hidden', !pick);
+  $('chatPaneP').classList.toggle('hidden', pick !== 'p');
+  $('chatPaneS').classList.toggle('hidden', pick !== 's');
+  $('chatToolP').classList.toggle('on', pick === 'p');
+  $('chatToolS').classList.toggle('on', pick === 's');
+  $('chatToolP').setAttribute('aria-expanded', String(pick === 'p'));
+  $('chatToolS').setAttribute('aria-expanded', String(pick === 's'));
   const can = api.canType();
   $('chatForm').classList.toggle('hidden', !can);
   $('chatLock').classList.toggle('hidden', can);
@@ -182,10 +216,13 @@ function renderLog() {
     else msg.textContent = r.text;
     li.append(who, msg);
     if (!r.mine) {
-      li.tabIndex = 0;
-      li.setAttribute('role', 'button');
-      li.setAttribute('aria-label', `${r.name}: ${r.k === 's' ? 'สติกเกอร์' : r.text} — แตะเพื่อซ่อนหรือรายงาน`);
-      li.addEventListener('click', () => toggleActs(li, r));
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'chat-more';
+      more.setAttribute('aria-label', `ซ่อนหรือรายงาน ${r.name}`);
+      more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.5" cy="12" r="2"/></svg>';
+      more.addEventListener('click', (e) => { e.stopPropagation(); toggleActs(li, r); });
+      li.append(more);
     }
     ol.append(li);
   }
@@ -202,7 +239,7 @@ function renderLog() {
   }
   ol.scrollTop = ol.scrollHeight;
 }
-/** แตะแถวของคนอื่น = ปุ่มซ่อนข้อความ / รายงาน (แตะรายงานสองครั้งเพื่อยืนยัน กันพลาด) */
+/** ปุ่ม ⋯ ท้ายแถวของคนอื่น = ซ่อนข้อความ / รายงาน (แตะรายงานสองครั้งเพื่อยืนยัน กันพลาด) */
 function toggleActs(li, r) {
   const old = li.nextElementSibling?.classList.contains('chat-acts') ? li.nextElementSibling : null;
   document.querySelectorAll('.chat-acts').forEach((e) => e.remove());
@@ -237,6 +274,16 @@ function block(r) {
   renderLog();
 }
 
+/** มือถือ: คีย์บอร์ดขึ้น = ยกแผงขึ้นพ้นคีย์บอร์ด (visualViewport) */
+function fitKeyboard() {
+  const vv = window.visualViewport;
+  const el = $('chatPanel');
+  if (!vv || !open) return;
+  const hidden = window.innerHeight - vv.height - vv.offsetTop;   // ส่วนที่คีย์บอร์ดบัง
+  el.style.bottom = hidden > 40 ? `${Math.round(hidden + 8)}px` : '';
+  el.classList.toggle('kb', hidden > 40);
+}
+
 /** ต่อแผงแชตกับเกม — เรียกครั้งเดียว */
 export function initChat(a) {
   api = a;
@@ -244,7 +291,7 @@ export function initChat(a) {
   for (const p of PRESETS) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'chat-chip'; b.textContent = p.text;
-    b.addEventListener('click', () => api.send('p', p.id));
+    b.addEventListener('click', () => { api.send('p', p.id); closeChat(); });   // แตะครั้งเดียวจบ
     pP.append(b);
   }
   const pS = $('chatPaneS');
@@ -252,13 +299,17 @@ export function initChat(a) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'chat-stk'; b.setAttribute('aria-label', 'สติกเกอร์' + s.name);
     b.append(stickerCanvas(s.id, 40));
-    b.addEventListener('click', () => api.send('s', s.id));
+    b.addEventListener('click', () => { api.send('s', s.id); closeChat(); });
     pS.append(b);
   }
-  for (const b of document.querySelectorAll('.chat-tab')) b.addEventListener('click', () => { tab = b.dataset.tab; paintChat(); });
+  const tool = (k) => () => { pick = pick === k ? null : k; paintChat(); };
+  $('chatToolP').addEventListener('click', tool('p'));
+  $('chatToolS').addEventListener('click', tool('s'));
   const input = $('chatText');
   const count = () => { $('chatSend').disabled = !input.value.trim(); };
   input.addEventListener('input', count);
+  input.addEventListener('focus', () => { if (pick) { pick = null; paintChat(); } setTimeout(fitKeyboard, 250); });
+  input.addEventListener('blur', () => setTimeout(fitKeyboard, 250));
   $('chatForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const v = input.value.trim();
@@ -270,4 +321,8 @@ export function initChat(a) {
   count();
   $('chatX').addEventListener('click', closeChat);
   $('btnChat')?.addEventListener('click', () => toggleChat());
+  $('chatPeek')?.addEventListener('click', () => toggleChat(true));
+  $('chatLock')?.addEventListener('click', () => api.toast(NO.member));
+  window.visualViewport?.addEventListener('resize', fitKeyboard);
+  window.visualViewport?.addEventListener('scroll', fitKeyboard);
 }

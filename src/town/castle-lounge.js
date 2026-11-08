@@ -79,6 +79,8 @@ export const SNACK_POP = { x: X.snack - 20, y: GY - SNACK.h + 50 };
 const lamp = { on: true, t: -1e4 };
 export const lampOn = () => lamp.on;
 export function toggleLamp(t) { lamp.on = !lamp.on; lamp.t = t; return lamp.on; }
+/** โคมไฟจากห้องออนไลน์ (คนอื่นกด / เพิ่งเข้าห้อง) — t = เวลาเปลี่ยน (ไฟกะพริบ/หรี่ตามเดิม) · ไม่ส่ง = ตั้งเงียบ ๆ · คืน true ถ้าเปลี่ยนจริง */
+export function setLamp(on, t = -1e4) { if (lamp.on === !!on) return false; lamp.on = !!on; lamp.t = t; return true; }
 function lampLevel(t) {
   const u = t - lamp.t;
   if (!lamp.on) return Math.max(0, 1 - u / 7);
