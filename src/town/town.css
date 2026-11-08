@@ -324,6 +324,30 @@ body.desk.in-shop .khtoggle, body.riding .khtoggle, body.photo .khtoggle { displ
 .go { align-self: center; padding: 8px 28px; font-size: clamp(14px, 2.8dvh, 17px); }
 
 .baglist { display: flex; flex-direction: column; gap: 6px; overflow: auto; }
+
+/* กระจกวาป (ปราสาทชั้น 1) — แถววุ้นใส ไม่มีฐานเข้ม กดแล้วสว่างลดนิดเดียว (กฎปุ่มหน้าย่อย) · กดไม่ได้ = เม็ดลาเวนเดอร์จาง */
+.sheet.mirsheet { width: min(460px, 94vw); }
+.mw-list { display: flex; flex-direction: column; gap: clamp(5px, 1.1dvh, 8px); overflow: auto; min-height: 0; }
+.mw-sec { margin: 4px 2px 0; color: #FFE7A0; font-size: clamp(11px, 2dvh, 13px); font-weight: 700; }
+.mw-go {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: clamp(6px, 1.4dvh, 10px) 14px;
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.97), rgba(247,238,255,.94));
+  box-shadow: inset 0 1px 0 #FFFFFF, inset 0 -3px 6px rgba(150,110,210,.18), 0 4px 12px rgba(40,10,70,.22);
+  color: #5B3A8E; font: inherit; text-align: left;
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+.mw-go:active { filter: brightness(.93); }
+.mw-go i { flex: 0 0 auto; font-style: normal; font-size: clamp(20px, 4.4dvh, 26px); }
+.mw-go span { display: flex; flex-direction: column; min-width: 0; }
+.mw-go b { font-size: clamp(13px, 2.5dvh, 15px); }
+.mw-go small { color: #9A83C4; font-size: clamp(10.5px, 1.9dvh, 12px); }
+.mw-go:disabled { cursor: default; background: rgba(230,220,250,.55); border-color: rgba(255,255,255,.4); box-shadow: none; color: rgba(91,58,142,.6); }
+.mw-go:disabled small { color: rgba(91,58,142,.55); }
 .bagrow { display: flex; align-items: center; gap: 10px; padding: 6px 12px; }
 .bagrow b { flex: 1 1 auto; font-size: clamp(12.5px, 2.4dvh, 15px); }
 .qty { font-weight: 700; color: var(--sub); }
@@ -502,6 +526,74 @@ body.desk .routemap.dragging .rm-stop { cursor: grabbing; }
 .ph-cam:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(150,40,95,.4), 0 0 0 5px rgba(255,143,179,.35); }
 /* จุดถ่ายรูปในสวนดอกไม้: ซ่อนปุ่ม/แถบของเกมทั้งหมด ให้จอสะอาดพร้อมแคป (เหลือแถบถ่ายรูป) */
 body.photo .topbar, body.photo .wardbtn, body.photo .pad, body.photo .keyhint, body.photo .toast { opacity: 0; pointer-events: none; transition: opacity .3s; }
+/* ขอพรกับดวงดาว (ปราสาทชั้น 3): การ์ดฟ้ากลางคืนดาวระยิบ · ช่องพิมพ์วุ้นใส · ปุ่มส่งวุ้นชมพู (ส่ง/ยืนยันฝั่งหัวใจ) ไม่มีฐานเข้ม */
+.sheet.wishsheet {
+  width: min(430px, 92vw); align-items: center; text-align: center; overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,.9) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 82% 12%, rgba(255,231,160,.95) 0 1.6px, transparent 2.4px),
+    radial-gradient(circle at 70% 70%, rgba(255,255,255,.8) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 24% 80%, rgba(255,214,234,.9) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 92% 46%, rgba(255,255,255,.75) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 50% 0%, rgba(255,214,234,.28), transparent 60%),
+    linear-gradient(180deg, #3E2F8A 0%, #2A1F66 55%, #4B2E86 100%);
+  border: 1px solid rgba(255,231,160,.55);
+}
+.wish-moon { width: clamp(46px, 10dvh, 62px); height: clamp(46px, 10dvh, 62px); filter: drop-shadow(0 0 12px rgba(255,231,160,.65)); animation: wishFloat 3s ease-in-out infinite; }
+.wish-moon svg { width: 100%; height: 100%; display: block; }
+@keyframes wishFloat { 50% { transform: translateY(-4px); } }
+.wishsheet h2 { margin: 0; color: #FFE7A0; font-size: clamp(18px, 4.2dvh, 24px); text-shadow: 0 2px 8px rgba(255,214,234,.35); }
+.wish-sub { margin: 0; color: rgba(255,243,226,.88); font-size: clamp(11.5px, 2.2dvh, 13.5px); }
+.wishsheet textarea {
+  width: 100%; box-sizing: border-box; resize: none; text-wrap: wrap;
+  padding: 10px 14px; border-radius: 16px;
+  border: 1.5px solid rgba(255,231,160,.55);
+  background: rgba(255,255,255,.14); color: #FFFFFF;
+  box-shadow: inset 0 2px 6px rgba(20,10,60,.35);
+  font: inherit; font-weight: 600; font-size: clamp(14px, 2.8dvh, 16px); line-height: 1.5;
+  outline: none;
+}
+.wishsheet textarea::placeholder { color: rgba(255,243,226,.5); }
+.wishsheet textarea:focus { border-color: #FFE7A0; background: rgba(255,255,255,.2); }
+.wish-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wish-row small { color: rgba(255,243,226,.7); font-size: 12px; }
+.wish-send {
+  padding: clamp(8px, 1.8dvh, 11px) clamp(18px, 4vw, 26px); border-radius: 999px;
+  border: 1.5px solid rgba(255,240,248,.7);
+  background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.6), rgba(255,160,200,.85) 45%, rgba(236,110,165,.95));
+  box-shadow: inset 0 2px 4px rgba(255,255,255,.6), inset 0 -4px 8px rgba(160,40,100,.25), 0 6px 16px rgba(236,110,165,.4);
+  color: #FFFFFF; font: inherit; font-weight: 700; font-size: clamp(13px, 2.6dvh, 15px);
+  text-shadow: 0 1px 2px rgba(160,40,100,.5); cursor: pointer;
+}
+.wish-send:active { filter: brightness(.93); }
+.wish-send:disabled { cursor: default; background: rgba(220,210,250,.35); border-color: rgba(255,255,255,.3); box-shadow: none; color: rgba(255,255,255,.6); text-shadow: none; }
+
+/* ส่องกล้องดูดาว ปราสาทชั้น 3 (castle-scope.js): ซ่อนปุ่มเกมทั้งหมด เหลือปุ่มปิด · ซูม + − · คำแนะนำ */
+body.scope .topbar, body.scope .wardbtn, body.scope .pad, body.scope .keyhint, body.scope .toast, body.scope .khtoggle { opacity: 0; pointer-events: none; transition: opacity .3s; }
+.scope-ui { position: fixed; inset: 0; z-index: 8; pointer-events: none; }
+.xbtn.scopex { position: fixed; z-index: 9; pointer-events: auto; }
+.scope-zoom {
+  position: fixed; display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
+  right: calc(clamp(12px, 2.4vw, 26px) + env(safe-area-inset-right));
+  bottom: calc(clamp(12px, 3dvh, 26px) + env(safe-area-inset-bottom));
+}
+.scope-zoom button {
+  width: clamp(42px, 9dvh, 54px); height: clamp(42px, 9dvh, 54px); padding: 0;
+  border-radius: 50%; border: 1.5px solid rgba(255,240,250,.55);
+  background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.55), rgba(196,164,236,.55) 45%, rgba(126,88,200,.62));
+  box-shadow: inset 0 2px 4px rgba(255,255,255,.55), inset 0 -4px 8px rgba(70,30,120,.28), 0 6px 16px rgba(40,10,70,.35);
+  backdrop-filter: blur(3px);
+  color: #FFFFFF; display: grid; place-items: center; cursor: pointer;
+}
+.scope-zoom button svg { width: 52%; height: 52%; display: block; filter: drop-shadow(0 1px 1px rgba(80,30,120,.5)); }
+.scope-zoom button:active { filter: brightness(.93); }
+.scope-hint {
+  position: fixed; left: 50%; transform: translateX(-50%); margin: 0;
+  bottom: calc(clamp(10px, 2.4dvh, 22px) + env(safe-area-inset-bottom));
+  max-width: min(520px, 64vw); padding: 7px 16px; border-radius: 999px;
+  background: rgba(42,29,78,.6); color: #FFF4D2; font-weight: 700; font-size: clamp(11px, 2.4dvh, 14px);
+  text-align: center; pointer-events: none;
+}
 .shop-out { left: calc(var(--backbtn-x) + env(safe-area-inset-left)); }
 
 /* ฟองคำพูดเจ้าของร้าน (ตำแหน่ง x ตั้งจาก main.js measureKeep) */

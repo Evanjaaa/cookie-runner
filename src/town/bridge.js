@@ -645,6 +645,22 @@ export function drawBridgeArch(c, camX, vw) {
   cached(c, 'bridgeArch', ARCH_BOX.x, ARCH_BOX.y, ARCH_BOX.w, ARCH_BOX.h, (cc) => { drawFace(cc, 'arch'); light(cc, BODY.x, BODY.y, BODY.w, BODY.h); });
 }
 
+/**
+ * สะพานศาลาทั้งชิ้น (ตัวสะพาน ซุ้มโค้ง ศาลา เสาหน้า) วางที่ไหนก็ได้ — แผนที่โลกเหมียว (src/render/world-map.js)
+ * cx = กลางช่องน้ำใต้สะพาน · baseY = ระดับถนน (GY) · สเกล s · ภาพนิ่ง (ไม่มีโคมแกว่ง)
+ */
+export function drawSalaBridgeAt(c, cx, baseY, s) {
+  c.save();
+  c.translate(cx, baseY);
+  c.scale(s, s);
+  c.translate(-RX, -GY);
+  cached(c, 'bridge', BODY.x, BODY.y, BODY.w, BODY.h, (cc) => { drawBody(cc); light(cc, BODY.x, BODY.y, BODY.w, BODY.h); });
+  cached(c, 'sala', SALA_BOX.x, SALA_BOX.y, SALA_BOX.w, SALA_BOX.h, drawSalaBack);
+  cached(c, 'bridgeArch', ARCH_BOX.x, ARCH_BOX.y, ARCH_BOX.w, ARCH_BOX.h, (cc) => { drawFace(cc, 'arch'); light(cc, BODY.x, BODY.y, BODY.w, BODY.h); });
+  cached(c, 'salaF', SX - 110, EAVE, 220, DECK_Y + DEPTH - EAVE, drawSalaFront);
+  c.restore();
+}
+
 /** เสาหน้าศาลา + โคมห้อย (ทับตัวน้อง — เดินลอดใต้ศาลาแล้วผ่านหลังเสา) */
 export function drawBridgeFront(c, camX, vw, t) {
   if (!(SALA_BOX.x + SALA_BOX.w > camX && SALA_BOX.x < camX + vw)) return;

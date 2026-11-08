@@ -229,15 +229,99 @@ export class TownSfx extends GameSfx {
    * ก้าวเท้า (ผู้ใช้ 1 พ.ย.): อุ้งเท้านุ่มแตะพื้น "ตึ๊บ" ต่ำ ๆ + เสียดพื้นสั้น ๆ
    * run = หนักแน่นขึ้นนิด · alt = เท้าซ้าย/ขวาสลับระดับเสียงเล็กน้อย (ไม่ซ้ำซากแบบเครื่องจักร)
    */
-  step(run = false, alt = false) {
-    const t = this._now(), f = this._vary(alt ? 150 : 172, 0.12);
-    this._tone(f, t, 0.06, 'sine', run ? 0.22 : 0.17, f * 0.6);
-    this._noiseHit(t, run ? 0.05 : 0.045, 'lowpass', alt ? 640 : 780, run ? 0.15 : 0.11);
+  step(run = false, alt = false, kind = '') {
+    const t = this._now(), v = run ? 1.25 : 1;
+    // เสียงเท้าตามพื้น (ผู้ใช้ 8 พ.ย. "เดินบนพื้นต่างกัน เสียงต่างกัน"): main.js stepKind() เลือกชนิด
+    if (kind === 'tile') {          // กระเบื้อง/หินอ่อนขัดมัน: ก๊อกใส ๆ สั้น
+      const f = this._vary(alt ? 520 : 590, 0.1);
+      this._tone(f, t, 0.035, 'sine', 0.11 * v, f * 0.7);
+      this._noiseHit(t, 0.022, 'highpass', 2600, 0.13 * v);
+    } else if (kind === 'stone') {  // หินปูพื้นกลางแจ้ง: แตะหนัก ๆ แห้ง ๆ
+      const f = this._vary(alt ? 200 : 230, 0.12);
+      this._tone(f, t, 0.05, 'sine', 0.15 * v, f * 0.6);
+      this._noiseHit(t, 0.035, 'bandpass', this._vary(1500, 0.2), 0.14 * v);
+    } else if (kind === 'wood') {   // พื้นไม้: ป๊อกกลวง ๆ มีเสียงก้องนิด
+      const f = this._vary(alt ? 230 : 262, 0.08);
+      this._tone(f, t, 0.08, 'triangle', 0.15 * v, f * 0.82);
+      this._tone(f * 2.02, t, 0.04, 'sine', 0.05 * v);
+      this._noiseHit(t, 0.03, 'bandpass', 950, 0.1 * v);
+    } else if (kind === 'rug') {    // พรมนุ่ม: ตุ้บอู้อี้เบา ๆ
+      this._noiseHit(t, 0.07, 'lowpass', alt ? 360 : 420, 0.17 * v);
+      this._tone(this._vary(115, 0.1), t, 0.05, 'sine', 0.08 * v, 85);
+    } else if (kind === 'grass') {  // หญ้า: ซวบ ๆ กรอบแกรบเบา ๆ
+      this._noiseHit(t, 0.08, 'highpass', this._vary(3400, 0.2), 0.07 * v);
+      this._noiseHit(t + 0.015, 0.06, 'bandpass', this._vary(1800, 0.2), 0.08 * v);
+    } else if (kind === 'soft') {   // เบาะ/โซฟา/ชั้นคอนโดบุผ้า: ปุ๊บนุ่ม
+      this._noiseHit(t, 0.06, 'lowpass', 300, 0.15 * v);
+      this._tone(this._vary(150, 0.1), t, 0.06, 'sine', 0.1 * v, 105);
+    } else {                        // เดิม (ถนนในเมือง)
+      const f = this._vary(alt ? 150 : 172, 0.12);
+      this._tone(f, t, 0.06, 'sine', run ? 0.22 : 0.17, f * 0.6);
+      this._noiseHit(t, run ? 0.05 : 0.045, 'lowpass', alt ? 640 : 780, run ? 0.15 : 0.11);
+    }
   }
 
   /** ชนลูกไหมพรม: บุ๊บ */
   boop() {
     const t = this._now(), f = this._vary(420);
     this._tone(f, t, 0.1, 'sine', 0.35, f * 0.7);
+  }
+
+  // ── ปราสาท (ผู้ใช้ 8 พ.ย.) ──
+  /** เปิดโคมไฟ: สวิตช์ "แต๊ก" + ไฟติด "ปิ๊ง~" อุ่น ๆ */
+  lampOn() {
+    const t = this._now();
+    this._noiseHit(t, 0.02, 'highpass', 2600, 0.3);
+    this._tone(1800, t, 0.02, 'square', 0.08);
+    [79, 83, 86].forEach((m, i) => this._bell(this._midi(m), t + 0.05 + i * 0.05, 0.35, 0.12));
+  }
+  /** ปิดโคมไฟ: สวิตช์ "แต๊ก" + เสียงหรี่ลง */
+  lampOff() {
+    const t = this._now();
+    this._noiseHit(t, 0.02, 'highpass', 2200, 0.3);
+    this._tone(1500, t, 0.02, 'square', 0.07);
+    this._tone(620, t + 0.03, 0.18, 'sine', 0.12, 260);
+  }
+  /** จิบชา: "ซู้ด~" (ลมกรองไล่ความถี่ขึ้น) */
+  sip() {
+    const t = this._now(), src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 3;
+    bp.frequency.setValueAtTime(900, t);
+    bp.frequency.exponentialRampToValueAtTime(2600, t + 0.35);
+    src.connect(bp).connect(this._env(t, 0.06, 0.4, 0.22));
+    src.start(t); src.stop(t + 0.45);
+    this._tone(this._vary(520), t + 0.4, 0.08, 'sine', 0.12, 700);
+  }
+  /** อร่อย! ระฆังแก้วไต่ขึ้นสดใส */
+  yum() {
+    const t = this._now();
+    [84, 88, 91, 96].forEach((m, i) => this._bell(this._midi(m), t + i * 0.07, 0.4, 0.14));
+  }
+  /** งับขนม: "หงึบ" กรอบ ๆ สองจังหวะ */
+  nom() {
+    const t = this._now();
+    this._noiseHit(t, 0.05, 'bandpass', this._vary(2400, 0.2), 0.32);
+    this._tone(this._vary(260), t, 0.06, 'sine', 0.2, 180);
+    this._noiseHit(t + 0.09, 0.04, 'bandpass', this._vary(3000, 0.2), 0.22);
+  }
+  /** ขนมเด้งออกจากตู้: "ป๊อก!" + ประกาย */
+  pop() {
+    const t = this._now();
+    this._tone(this._vary(380), t, 0.08, 'sine', 0.32, 900);
+    [88, 93].forEach((m, i) => this._bell(this._midi(m), t + 0.08 + i * 0.07, 0.35, 0.12));
+  }
+  /** ส่องกล้องดูดาว: เลนส์หมุน "ฟิ้ว" + ระยิบ */
+  scope() {
+    const t = this._now(), src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 2;
+    bp.frequency.setValueAtTime(3000, t);
+    bp.frequency.exponentialRampToValueAtTime(700, t + 0.4);
+    src.connect(bp).connect(this._env(t, 0.05, 0.45, 0.16));
+    src.start(t); src.stop(t + 0.5);
+    [91, 95, 98, 103].forEach((m, i) => this._bell(this._midi(m), t + 0.3 + i * 0.08, 0.5, 0.09));
   }
 }

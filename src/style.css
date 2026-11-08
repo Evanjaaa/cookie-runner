@@ -15357,29 +15357,30 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    - ปุ่มบวกฟ้า: ถอดฐานนูนใต้ปุ่มออก (แบน) */
 #profileCard {
   border: 2.5px solid transparent;
+  /* เนื้อการ์ดไล่ 5 สี (ผู้ใช้ 7 พ.ย. 2026: "เล่นสีเหมือนไอคอนปุ่ม แต่เพิ่มสี") ฟ้าอ่อน → เหลืองอ่อน → ชมพูอ่อน → ม่วงอ่อน → ม่วงเข้ม
+     ขอบขาวนวลแบบวุ้น (ขอบรุ้งเลื่อนเดิมถอดออก — สีอยู่ที่เนื้อการ์ดแล้ว) */
   background:
-    radial-gradient(55% 80% at 92% 110%, rgba(255,214,130,.55) 0%, rgba(255,214,130,0) 70%) padding-box,
-    radial-gradient(50% 70% at 22% 0%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 70%) padding-box,
-    linear-gradient(115deg, rgba(150,104,224,.92) 0%, rgba(186,112,206,.9) 55%, rgba(232,140,184,.9) 100%) padding-box,
-    linear-gradient(115deg, #FFB3D6 0%, #FFE08A 25%, #C9A6FF 50%, #FFB3D6 75%, #FFE08A 100%) border-box;
-  background-size: auto, auto, auto, 300% 300%;
-  background-position: 0 0, 0 0, 0 0, 0% 50%;
-  animation: pfIri 9s ease-in-out infinite;
+    radial-gradient(50% 70% at 22% 0%, rgba(255,255,255,.3) 0%, rgba(255,255,255,0) 70%) padding-box,
+    linear-gradient(100deg, #8CCBF6 0%, #A9D8FA 28%, #FFECA8 42%, #FFB2D6 60%, #C7A9F5 80%, #7E4ECC 100%) padding-box,
+    linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(255,236,248,.88) 100%) border-box;
+  background-size: auto;
+  background-position: 0 0;
+  animation: none;
   /* นูนด้วยแสงเงาล้วนแบบปุ่มเล่น ไม่มีฐานขอบล่างสีเข้ม (ผู้ใช้ 3 พ.ย.) — เงาในล่างม่วงพลัมนุ่ม ๆ = การ์ดอวบ
      แสงในบน = ผิวรับแสง · ขอบล่างสุดมีแสงชมพูลอดบาง ๆ · เงาฟุ้งใต้การ์ดแบบเบลอ */
   box-shadow:
     0 12px 20px -7px rgba(150,70,180,.55),
     0 3px 7px rgba(60,20,90,.18),
-    inset 0 -12px 16px -6px rgba(104,40,140,.5),
-    inset 0 9px 12px -7px rgba(255,255,255,.6),
-    inset 0 -2px 2px rgba(255,214,236,.6),
+    inset 0 -12px 16px -6px rgba(120,60,170,.38),
+    inset 0 9px 12px -7px rgba(255,255,255,.75),
+    inset 0 -2px 2px rgba(255,236,248,.7),
     inset 0 0 0 1px rgba(255,255,255,.12);
 }
 #profileCard:is(.jelly-press, :active) {
   box-shadow:
     0 5px 10px -5px rgba(150,70,180,.5),
     0 1px 3px rgba(60,20,90,.18),
-    inset 0 -8px 12px -6px rgba(104,40,140,.45),
+    inset 0 -8px 12px -6px rgba(120,60,170,.34),
     inset 0 7px 10px -7px rgba(255,255,255,.55),
     inset 0 -2px 2px rgba(255,214,236,.6),
     inset 0 0 0 1px rgba(255,255,255,.12);
@@ -15410,7 +15411,14 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   gap: calc(var(--pf) * .1);
   min-width: 0;
 }
-#profileCard .pf-name { min-width: 0; font-size: calc(var(--pf) * .28); }
+#profileCard .pf-name {
+  min-width: 0;
+  font-size: calc(var(--pf) * .28);
+  padding-inline: 2px;
+  color: #FFFFFF;
+  text-shadow: 0 1.5px 0 #7A3FB8, 1.2px 0 0 #7A3FB8, -1.2px 0 0 #7A3FB8, 0 -1.2px 0 #7A3FB8,
+    .9px .9px 0 #7A3FB8, -.9px .9px 0 #7A3FB8, .9px -.9px 0 #7A3FB8, -.9px -.9px 0 #7A3FB8, 0 2px 5px rgba(90,30,150,.35);
+}
 /* ป้ายเลเวล: เม็ดทองแบน ขอบขาวบาง — ไม่มีฐานนูน ไม่มีเงาวาว */
 #profileCard .pf-lv {
   flex: 0 0 auto;
@@ -15540,10 +15548,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
                หน้าแรก "แผนที่" → เลือกโซน (เมืองแมว / ดินแดนปราสาท) → ม่านอุ้งเท้า → town.html
                (แตะปราสาทในฉากหลังเพื่อไปปราสาท — ลองแล้วผู้ใช้ไม่เอา 3 พ.ย. · ไปปราสาทผ่านแผนที่อย่างเดียว)
    พื้นหลังสองหน้าใหม่ใช้ประตูสู่การผจญภัยชุดเดียวกับหน้าเลือกด่าน (render/softbg.js) · การ์ด/ปุ่มเป็นวุ้นใสชุดเดียวกับหน้าแรก */
-#modePanel > .pop, #mapPanel > .pop { background: #8556C7; }
-#modePanel > .pop > :not(.stage-bg):not(.backbtn):not(.mode-rank),
-#mapPanel > .pop > :not(.stage-bg):not(.backbtn) { position: relative; z-index: 1; }
-#modePanel > .pop > .backbtn, #mapPanel > .pop > .backbtn, #modePanel > .pop > .mode-rank { z-index: 2; }
+#modePanel > .pop { background: #8556C7; }
+#modePanel > .pop > :not(.stage-bg):not(.backbtn):not(.mode-rank) { position: relative; z-index: 1; }
+#modePanel > .pop > .backbtn, #modePanel > .pop > .mode-rank { z-index: 2; }
+#mapPanel > .pop > .backbtn, #wildPanel > .pop > .backbtn { z-index: 4; }
 #modePanel .skin-title, #mapPanel .skin-title { text-shadow: 0 2px 8px rgba(72,28,124,.5); }
 #mapPanel .map-lead {
   margin: 0;
@@ -17072,10 +17080,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /* ══ หน้ารับรางวัลตู้กาช่า: หัวข้อใหญ่ขึ้น + ยกการ์ดขึ้นข้างบน (ผู้ใช้ 5 พ.ย. 2026) ══
    ยังจัดกลางแนวตั้งอยู่ (ของน้อย/มากก็สมดุล) แต่จองที่ล่างมากกว่าบน → กลุ่มหัวข้อ-การ์ด-ปุ่มลอยสูงกว่ากึ่งกลาง */
+/* ผู้ใช้ 7 พ.ย. 2026: "ไม่อยู่กลางหน้า" → ระยะบน-ล่างเท่ากัน จัดกลางจริง (เดิมจองล่าง 22dvh จอเตี้ยแถวการ์ดโดนบีบจนหัวการ์ดถูกตัด) */
 #gachaPanel .gacha-result {
   padding-top: clamp(8px, 2dvh, 20px);
-  padding-bottom: clamp(30px, 22dvh, 210px);
+  padding-bottom: clamp(8px, 2dvh, 20px);
 }
+/* ป้ายระดับมุมการ์ดยื่นพ้นขอบบน — เว้นที่ในแถวไว้ ไม่ให้แถว (overflow: auto) ตัดทิ้ง */
+#gachaPanel .gacha-result .got-row { padding-block: clamp(6px, 1.4dvh, 12px); }
 #stage #gachaPanel .gacha-result .got-title {
   font-size: clamp(24px, 6.2dvh, 46px);
   line-height: 1.15;
@@ -17270,3 +17281,265 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #odPanel .od-nav:active { transform: none; filter: var(--od-nav-glow) brightness(.93); }
 #odPanel .od-nav:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 #odPanel.od-full .od-nav { display: none; }
+
+/* ฉากหลังมืด (main.js odMarkDark) — ไอคอนขยายเป็นขาว เรืองม่วงอ่อนรอบ ๆ ให้อ่านออก (ผู้ใช้ 7 พ.ย. 2026) */
+#odPanel.bd-dark .od-max {
+  color: #FFFFFF;
+  filter: drop-shadow(0 0 4px rgba(200,150,255,.95)) drop-shadow(0 1px 3px rgba(40,10,80,.6));
+}
+#odPanel.bd-dark .od-max:active { filter: drop-shadow(0 0 4px rgba(200,150,255,.95)) drop-shadow(0 1px 3px rgba(40,10,80,.6)) brightness(.93); }
+
+/* ══ หน้าเต็มจอ (ผู้ใช้ 7 พ.ย. 2026: "เข้าหน้าจากหน้าแรกแล้วให้เต็มหน้าจอ" — เริ่มที่กาช่า แล้วทุกหน้า) ══
+   หน้าที่เปิดจากปุ่มบนหน้าแรกแบบการ์ดใหญ่: การ์ดกินทั้งเวที ไม่มีมุมมน/ขอบ/เงา · เว้นขอบในตามรอยบากจอ (safe-area)
+   กล่องเล็ก (เช็คอิน แผนที่ เลือกโหมด ล็อกหน้าสร้าง) คงเป็นการ์ดเหมือนเดิม
+   รายชื่อต้องตรงกับ FULL_PANELS ใน main.js (หน้าย่อยที่เปิดซ้อนจะเห็นหน้าพวกนี้เบลออยู่ข้างหลัง) */
+#stage :is(#stashPanel, #shopPanel, #talentPanel, #questPanel, #profilePanel, #lvPanel,
+           #friendsPanel, #newsPanel, #inboxPanel, #settingsPanel).panel { padding: 0; }
+#stage :is(#stashPanel, #shopPanel, #talentPanel, #questPanel, #profilePanel, #lvPanel,
+           #friendsPanel, #newsPanel, #inboxPanel, #settingsPanel).panel > .pop {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+/* หน้าย่อยที่เปิดซ้อนหน้าเต็มจอ (main.js swapPanel) — พื้นรอบการ์ดเบลอหน้าข้างหลังให้เห็นว่ายังอยู่ในหน้านั้น */
+#stage .panel.over {
+  background: linear-gradient(180deg, rgba(40,18,70,.32), rgba(40,18,70,.5));
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+#stage .panel.under { pointer-events: none; }
+#stage #gachaPanel.panel { padding: 0; }
+#stage #gachaPanel.panel > .pop.gacha-pop {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  padding-top: max(clamp(8px, 2dvh, 18px), env(safe-area-inset-top));
+  padding-bottom: max(clamp(8px, 2dvh, 18px), env(safe-area-inset-bottom));
+  padding-left: max(clamp(12px, 2vw, 24px), env(safe-area-inset-left));
+  padding-right: max(clamp(18px, 3vw, 40px), calc(var(--app-h, 100dvh) * .07), env(safe-area-inset-right));   /* ตู้หัวแมวยื่นเลยป้ายไปทางขวา — เว้นให้ไม่ชิดขอบจอ */
+}
+
+/* แท็บเลือกหมวดทุกหน้าไม่มีอีโมจิแล้ว (ผู้ใช้ 7 พ.ย. 2026: ตั้งค่า ร้านเหมียว คลัง ตู้กาช่า หน้าสร้าง) — ชื่อแท็บอยู่กลางปุ่ม */
+.stab, .gtab { justify-content: center; text-align: center; }
+
+/* ══ คอมก็เต็มจอ (ผู้ใช้ 7 พ.ย. 2026: "ให้ทั้งหน้าเกมเต็มหน้าจอบนคอม ไม่ต้องเป็นกรอบอยู่ตรงกลาง") ══
+   ใช้ระบบเดียวกับจอสัมผัส (บล็อก "เต็มจอบนมือถือ" + .home-cover/.home-bg ของ iPad) แต่ไม่มีปุ่มสัมผัส
+   ไม่มีขอบ/มุมมน/เงา/บรรทัดเครดิต · ผ้าใบคงสัดส่วน 960:420 เป็นค่าตั้งต้น แล้วต่อฉากบน-ล่างตามกฎข้างล่าง
+   JS ฝั่งเดียวกัน: main.js COVER_MQ / COVER_ALL_MQ ไม่ผูกกับจอสัมผัสแล้ว */
+@media (not ((hover: none) and (pointer: coarse))) {
+  body { padding: 0; }
+  .footnote { display: none; }
+  .shell {
+    width: 100%;
+    height: var(--app-h, 100dvh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage {
+    width: 100%;
+    height: var(--app-h, 100dvh);
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage > canvas {
+    width: min(100vw, calc(var(--app-h, 100dvh) * 2.2857));
+    height: auto;
+  }
+  /* หน้าที่คิดขนาดจากความสูงเวทีจริง — เวทีเต็มจอแล้ว */
+  #gachaPanel, #createPanel { --stage-h: var(--app-h, 100dvh); }
+}
+/* หน้าต่างยาวกว่าผ้าใบนิดหน่อย (2.1–2.45): ยืดเต็มแบบมือถือ (บิดไม่เกิน ~7%) · ยาวกว่านั้นคงสัดส่วน มีขอบข้างสีพื้นเวที */
+@media (not ((hover: none) and (pointer: coarse))) and (min-aspect-ratio: 21/10) and (max-aspect-ratio: 245/100) {
+  .stage > canvas { width: 100%; height: var(--app-h, 100dvh); }
+}
+/* หน้าต่างเตี้ยกว่าผ้าใบ: หน้าแรกต่อฟ้า/พื้น (เหมือน iPad) · ฉากอื่นต่อบน-ล่างเมื่อสูง ≥ 600 */
+@media (not ((hover: none) and (pointer: coarse))) and (max-aspect-ratio: 21/10) {
+  .stage.home-cover > canvas,
+  .stage.home-bg > canvas { width: 100%; height: var(--app-h, 100dvh); }
+}
+@media (not ((hover: none) and (pointer: coarse))) and (max-aspect-ratio: 21/10) and (min-height: 600px) {
+  .stage > canvas#game { width: 100%; height: var(--app-h, 100dvh); }
+}
+/* ปุ่มหน้าแรกโตตามความสูงจอ (--home-ui ตัวเดียวกับ iPad — main.js placeHomeOverlays คิดจากความสูงเวที)
+   เฉพาะหน้าต่างสูง ≥ 600 · ไม่ย้ายปุ่มกลมลงแถวสองแบบ iPad (คอมจอกว้าง แถวบนพอ) */
+@media (not ((hover: none) and (pointer: coarse))) and (min-height: 600px) {
+  .stage.home-cover { --home-ui: var(--home-ui-js, 1.3); }
+  .stage.home-cover #startPanel .pf-row > *,
+  .stage.home-cover .hud-top > * { zoom: var(--home-ui); }
+  .stage.home-cover #startPanel .lobby { gap: calc(var(--app-h, 100dvh) * .022); }
+  .stage.home-cover #startPanel .lobby-btn { zoom: var(--home-ui); }
+  .stage.home-cover #startPanel #startBtn { scale: var(--home-ui); transform-origin: bottom right; }
+  .stage.home-cover #startPanel .lovebtn { scale: var(--home-ui); }
+  .stage.home-cover #startPanel .homebox-label {
+    font-size: calc(10.5px * var(--home-ui));
+    padding: calc(2px * var(--home-ui)) calc(9px * var(--home-ui)) calc(1.5px * var(--home-ui));
+  }
+  .stage.home-cover #titlePanel .title-logo { scale: var(--home-ui); transform-origin: top left; }
+  .stage.home-cover #titlePanel #enterBtn { scale: var(--home-ui); transform-origin: bottom right; }
+}
+/* หน้าต่างกว้างเกิน 2.45 เท่าของความสูง: ทั้งเวที (รวมปุ่ม/หน้าต่าง) คงสัดส่วนอยู่กลาง — ปุ่มไม่ไปลอยบนแถบข้าง */
+@media (not ((hover: none) and (pointer: coarse))) and (min-aspect-ratio: 245/100) {
+  .stage { width: calc(var(--app-h, 100dvh) * 2.2857); }
+}
+/* หมวดชุดแมวบนคอม (ผู้ใช้ 7 พ.ย. 2026: "อัดการ์ดให้ใกล้กันเหมือนมือถือ 5 ใบต่อแถว") — การ์ดยืดเต็มช่อง ช่องไฟเท่ามือถือ */
+@media (not ((hover: none) and (pointer: coarse))) {
+  #stashPanel #outfitGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: clamp(9px, 2.2dvh, 18px) clamp(8px, 1.2vw, 16px);
+  }
+  #stashPanel #outfitGrid .oc-card { max-width: none; }
+}
+
+/* ══ แผนที่โลกเหมียว + หน้ารอดินแดนใหม่ (ผู้ใช้ 7 พ.ย. 2026) — เต็มจอทุกเครื่อง ══
+   ภาพแผนที่วาดบนผ้าใบ (src/render/world-map.js) · ป้ายชื่อโซนเป็นปุ่ม HTML (main.js placeWmLabels) */
+#stage :is(#mapPanel, #wildPanel).panel { padding: 0; }
+#stage :is(#mapPanel, #wildPanel).panel > .pop {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  background: #B2E0A8;
+}
+.wm-canvas, .wild-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+#mapPanel .wm-title {
+  position: absolute;
+  z-index: 2;
+  top: clamp(10px, 2dvh, 18px);
+  left: calc(var(--backbtn-x) + var(--backbtn) + 12px);
+  margin: 0;
+  pointer-events: none;
+}
+.wm-labels { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+/* ป้ายชื่อโซน: เม็ดวุ้นนุ่ม ชื่อตัวโต + คำอธิบายเล็ก · ยึดกลางด้านบนของป้ายกับจุด label ใน ZONES */
+.wm-label {
+  position: absolute;
+  translate: -50% 0;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: clamp(3px, .8dvh, 6px) clamp(10px, 2.4dvh, 18px) clamp(4px, .9dvh, 7px);
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.95);
+  background: linear-gradient(180deg, #FFF8FC 0%, #FFE2F0 100%);
+  box-shadow:
+    0 6px 14px -6px rgba(120,40,110,.5),
+    inset 0 -4px 7px -4px rgba(232,120,172,.45),
+    inset 0 2px 2px rgba(255,255,255,.95);
+  color: #B23C7E;
+  font-family: "Mali", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+.wm-label b { font-size: clamp(11px, 3.1dvh, 18px); line-height: 1.25; font-weight: 700; }
+.wm-label small { font-size: clamp(8.5px, 2.2dvh, 12.5px); line-height: 1.2; color: #A0679A; }
+.wm-label.wm-soon, .wm-label.wm-wild, .wm-label.wm-castle { background: linear-gradient(180deg, #FCFAFF 0%, #ECE4FB 100%); color: #7650B4; box-shadow: 0 6px 14px -6px rgba(90,50,150,.5), inset 0 -4px 7px -4px rgba(160,130,230,.45), inset 0 2px 2px rgba(255,255,255,.95); }
+.wm-label.wm-soon small, .wm-label.wm-wild small, .wm-label.wm-castle small { color: #8C78B8; }
+.wm-label.wm-home { background: linear-gradient(180deg, #FFFCEB 0%, #FFEDB0 100%); color: #A6621A; box-shadow: 0 6px 14px -6px rgba(150,100,30,.5), inset 0 -4px 7px -4px rgba(236,180,80,.45), inset 0 2px 2px rgba(255,255,255,.95); }
+.wm-label.wm-home small { color: #B5803A; }
+.wm-label:hover, .wm-label.hot { filter: brightness(1.05) drop-shadow(0 0 6px rgba(255,255,255,.85)); }
+.wm-label:active { transform: none; filter: brightness(.93); }
+.wm-label:focus-visible { outline: 3px solid #FFFFFF; outline-offset: 2px; }
+/* ข้อความ "เร็ว ๆ นี้" ลอยกลางล่าง */
+.wm-toast {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: clamp(14px, 6dvh, 44px);
+  translate: -50% 8px;
+  max-width: min(86%, 520px);
+  padding: clamp(6px, 1.4dvh, 10px) clamp(14px, 3dvh, 24px);
+  border-radius: 999px;
+  border: 2px solid #FFFFFF;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 8px 18px -8px rgba(110,40,120,.55);
+  color: #9C3F86;
+  font-family: "Mali", sans-serif;
+  font-size: clamp(11px, 3dvh, 16px);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, translate .2s ease;
+}
+.wm-toast.show { opacity: 1; translate: -50% 0; }
+
+/* แผนที่เลื่อนซ้าย-ขวา (ผู้ใช้ 7 พ.ย. รอบ 3) — ลากได้ทั้งจอ (นิ้วไม่กลายเป็นเลื่อนหน้า/ซูม) · ลูกศรทองสองข้างแบบลูกศรหน้าตู้กาช่า
+   จางหายเมื่อสุดทาง · กดแล้วสว่างลดนิดเดียว (กฎปุ่มหน้าย่อย) */
+#mapPanel .wm-pop, #mapPanel .wm-canvas { touch-action: none; user-select: none; -webkit-user-select: none; }
+#mapPanel .wm-pop.dragging, #mapPanel .wm-pop.dragging * { cursor: grabbing !important; }
+#mapPanel .wm-nav {
+  --wm-nav-glow: drop-shadow(0 2px 3px rgba(150,80,20,.35)) drop-shadow(0 0 6px rgba(255,255,255,.8));
+  position: absolute;
+  z-index: 3;
+  top: 57%;
+  translate: 0 -50%;
+  width: clamp(26px, 6dvh, 48px);
+  height: clamp(32px, 7.2dvh, 58px);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: var(--wm-nav-glow);
+  transition: filter .12s ease, opacity .25s ease;
+}
+#mapPanel .wm-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #FFF28A, #FFC21E);
+  clip-path: polygon(100% 0, 0 50%, 100% 100%, 72% 50%);
+}
+#mapPanel .wm-next::before {
+  background: linear-gradient(225deg, #FFF28A, #FFC21E);
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%);
+}
+#mapPanel .wm-prev { left: max(8px, env(safe-area-inset-left)); }
+#mapPanel .wm-next { right: max(8px, env(safe-area-inset-right)); }
+#mapPanel .wm-nav:active { transform: none; filter: var(--wm-nav-glow) brightness(.93); }
+#mapPanel .wm-nav.off { opacity: 0; pointer-events: none; }
+
+/* หน้ารอดินแดนใหม่: การ์ดวุ้นกลางจอ */
+.wild-card {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.6dvh, 12px);
+  width: min(86%, 440px);
+  padding: clamp(14px, 3.4dvh, 26px) clamp(16px, 4dvh, 32px);
+  border-radius: clamp(20px, 4dvh, 30px);
+  border: 2px solid rgba(255,255,255,.95);
+  background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(250,236,255,.92));
+  box-shadow: 0 16px 32px -14px rgba(90,40,130,.5), inset 0 2px 2px #FFFFFF;
+  text-align: center;
+}
+.wild-title { font-family: "Mali", sans-serif; font-size: clamp(20px, 6dvh, 34px); color: #9A4FC8; line-height: 1.2; }
+.wild-text { font-family: "Mali", sans-serif; font-size: clamp(12px, 3dvh, 16px); color: #7E6A9A; }

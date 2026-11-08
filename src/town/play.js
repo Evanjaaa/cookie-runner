@@ -771,6 +771,34 @@ export function drawPlay(c, camX, vw, t, inBox) {
   if (vis(camX, vw, YARN.min - 30, YARN.max - YARN.min + 60)) drawYarn(c);
 }
 
+/**
+ * ของในเมืองชิ้นเดียว (ภาพเดียวกับในเมือง) วางที่ไหนก็ได้ — แผนที่โลกเหมียว (src/render/world-map.js)
+ * kind: 'pierA' / 'pierB' ท่าเรือ (cx = กลางท่า) · 'arch' ซุ้มสวนดอกไม้ · 'tower' คอนโดแมว · 'blocks' กองตัวต่อ
+ *       'swing' ชิงช้า · 'tramp' แทรมโพลีน · 'box' กล่องกระดาษ
+ * ฐาน baseY (ระดับถนน GY) · สเกล s · ภาพนิ่ง
+ */
+export function drawPlayPieceAt(c, kind, cx, baseY, s) {
+  c.save();
+  c.translate(cx, baseY);
+  c.scale(s, s);
+  const at = (x) => c.translate(-x, -GY);
+  if (kind === 'pierA' || kind === 'pierB') {
+    const p = PIERS.find((q) => q.id === kind);
+    at(p.door);
+    cached(c, 'pier:' + p.id, p.door - 150, GY - 215, 300, H - GY + 215, (cc) => drawPier(cc, p));
+  } else if (kind === 'arch') { at(ARCH.x + ARCH.w / 2); cached(c, 'arch', ARCH.x - 14, GY - 160, ARCH.w + 28, 164, drawArch); }
+  else if (kind === 'tower') { at(TOWER.x); cached(c, 'tower', TOWER.x - 56, GY - 210, 112, 214, drawTower); }
+  else if (kind === 'blocks') { at(BLOCKS.x); cached(c, 'blocks', BLOCKS.x - 56, GY - 96, 112, 100, drawBlocks); }
+  else if (kind === 'swing') { at(SWING.x + SWING.w / 2); cached(c, 'swing', SWING.x - 30, GY - 162, SWING.w + 60, 166, drawSwingFrame); drawSwingSeat(c); }
+  else if (kind === 'tramp') { at(TRAMPS[0].x); drawTramp(c, TRAMPS[0]); }
+  else if (kind === 'box') {
+    at(BOX.x + BOX.w / 2);
+    cached(c, 'boxB', BOX.x - 20, GY - 70, BOX.w + 40, 74, boxBack);
+    cached(c, 'boxF', BOX.x - 2, GY - 46, BOX.w + 4, 48, boxFront);
+  }
+  c.restore();
+}
+
 /** ทับตัวน้อง: ผนังหน้ากล่อง (ตอนมุดอยู่) · ผีเสื้อ */
 export function drawPlayFront(c, camX, vw, t, inBox) {
   if (inBox && vis(camX, vw, BOX.x - 20, BOX.w + 40)) cached(c, 'boxF', BOX.x - 2, GY - 46, BOX.w + 4, 48, boxFront);

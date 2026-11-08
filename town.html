@@ -136,6 +136,41 @@
     </div>
   </div>
 
+  <!-- ขอพรกับดวงดาว ปราสาทชั้น 3 (main.js หัวข้อขอพร · ดาวลอยขึ้นฟ้า castle-roof.js) -->
+  <div class="ov hidden" id="wishOv">
+    <div class="sheet wishsheet" role="dialog" aria-labelledby="wishTitle">
+      <button type="button" class="xbtn" id="wishX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="wish-moon" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M40 6a26 26 0 1 0 18 40A22 22 0 0 1 40 6z" fill="#FFE7A0"/><path d="M21 22l2 5 5 .6-3.8 3.3 1.2 5-4.4-2.7-4.4 2.7 1.2-5L14 27.6l5-.6z" fill="#FFFFFF"/></svg>
+      </div>
+      <h2 id="wishTitle">ขอพรกับดวงดาว</h2>
+      <p class="wish-sub">พิมพ์คำอธิษฐานของเรา แล้วส่งขึ้นไปให้ดวงดาวช่วยนะเหมียว</p>
+      <textarea id="wishText" maxlength="60" rows="3" placeholder="ขอให้…" aria-label="คำอธิษฐาน"></textarea>
+      <div class="wish-row">
+        <small id="wishCount">0/60</small>
+        <button type="button" class="wish-send" id="wishSend" disabled>ส่งคำอธิษฐาน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ส่องกล้องดูดาว ปราสาทชั้น 3: ภาพในกล้องวาดบน canvas (castle-scope.js) · ปุ่มปิด + ซูม + คำแนะนำ -->
+  <div class="scope-ui hidden" id="scopeUi">
+    <button type="button" class="xbtn scopex" id="scopeX" aria-label="ปิด">
+      <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="scope-zoom">
+      <button type="button" id="scopeIn" aria-label="ซูมเข้า">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      </button>
+      <button type="button" id="scopeOut" aria-label="ซูมออก">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <p class="scope-hint" id="scopeHint"></p>
+  </div>
+
   <!-- จุดถ่ายรูปในสวนดอกไม้: เลือกท่า · ตั้งเวลา · ปุ่มกล้อง (main.js หัวข้อจุดถ่ายรูป) -->
   <div class="photobar hidden" id="photoBar">
     <button type="button" class="xbtn photox" id="photoX" aria-label="ปิด">
@@ -201,6 +236,25 @@
 
   <!-- วงล้อเลือกท่าทาง (ปุ่มท่าทาง / Q) — ท่าหน้าแรกรอบวง · กลางวง = ท่าแอ็คชุดระดับ S · สร้างใน main.js (paintEmotes) -->
   <div class="emopick hidden" id="emotePick" role="menu" aria-label="เลือกท่าทาง"></div>
+
+  <!-- เคาน์เตอร์ต้อนรับ: วาปไปที่ต่าง ๆ (ปราสาทชั้น 1 · castle-hall.js) — main.js openMirror -->
+  <div class="ov hidden" id="mirrorOv">
+    <div class="sheet mirsheet" role="dialog" aria-labelledby="mirTitle">
+      <button type="button" class="xbtn" id="mirrorX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2 id="mirTitle">เคาน์เตอร์ต้อนรับ</h2><small>อยากไปไหนบอกได้เลยเหมียว แตะที่ที่อยากไป วาปไปได้ทันที</small></div></div>
+      <div class="mw-list">
+        <h3 class="mw-sec">ในปราสาท</h3>
+        <button type="button" class="mw-go" data-to="f2"><i aria-hidden="true">🛋️</i><span><b>ชั้น 2 · Cozy Lounge</b><small>โซฟา ชาอุ่น ๆ ชั้นหนังสือ คอนโดแมว</small></span></button>
+        <button type="button" class="mw-go" data-to="f3"><i aria-hidden="true">🔭</i><span><b>ชั้น 3 · Starry Rooftop</b><small>ดาดฟ้าชมดาว กล้องส่องดาว ขอพรดาวตก</small></span></button>
+        <h3 class="mw-sec">นอกปราสาท</h3>
+        <button type="button" class="mw-go" data-to="home"><i aria-hidden="true">🏠</i><span><b>หน้าแรก</b><small>กลับไปหน้าแรกของเกม</small></span></button>
+        <button type="button" class="mw-go" data-to="room"><i aria-hidden="true">🐾</i><span><b>ห้องน้อง</b><small>บ้านลูกเหมียวของเรา</small></span></button>
+        <button type="button" class="mw-go" data-to="town"><i aria-hidden="true">🏘️</i><span><b>เมืองแมวเหมียว</b><small>ลานน้ำพุกลางเมือง</small></span></button>
+      </div>
+    </div>
+  </div>
 
   <!-- กระเป๋า -->
   <div class="ov hidden" id="bagOv">

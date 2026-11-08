@@ -733,24 +733,35 @@
 
       <!-- ── แผนที่เมืองแมว (ผู้ใช้ 3 พ.ย.) ── เลือกโซนแล้วไปหน้าเมือง (town.html) ผ่านม่านอุ้งเท้า
            ดินแดนปราสาท = เริ่มยืนหน้าปราสาท (town.html?spot=castle) · โซนใหม่ในอนาคตเพิ่มการ์ดที่นี่ -->
+      <!-- แผนที่โลกเหมียว (ผู้ใช้ 7 พ.ย. 2026 วาดผังร่างมาให้) — เต็มจอ · ภาพวาดสดด้วย src/render/world-map.js
+           ป้ายชื่อโซนสร้างจาก ZONES ใน world-map.js (main.js placeWmLabels) · กดป้ายหรือกดบนพื้นที่โซนก็ได้ -->
       <div class="panel hidden" id="mapPanel">
-        <div class="pop">
-          <canvas class="stage-bg" id="mapBg" aria-hidden="true"></canvas>
-          <h2 class="skin-title">แผนที่เมืองแมว</h2>
-          <p class="map-lead">อยากไปเที่ยวโซนไหนดี</p>
-          <div class="map-zones">
-            <button type="button" class="zone-card" id="zoneTown" data-spot="town">
-              <span class="zone-art"><canvas id="zoneTownArt" width="360" height="190"></canvas></span>
-              <b class="zone-name">เมืองแมว</b>
-              <small class="zone-desc">ร้านค้า · ลานน้ำพุ · ท่าเรือ</small>
-            </button>
-            <button type="button" class="zone-card" id="zoneCastle" data-spot="castle">
-              <span class="zone-art"><canvas id="zoneCastleArt" width="360" height="190"></canvas></span>
-              <b class="zone-name">ดินแดนปราสาท</b>
-              <small class="zone-desc">ปราสาทแมวเหมียว · สวนหลวง</small>
-            </button>
-          </div>
+        <div class="pop wm-pop">
+          <canvas class="wm-canvas" id="wmCanvas" aria-hidden="true"></canvas>
+          <div class="wm-labels" id="wmLabels"></div>
+          <h2 class="skin-title wm-title">แผนที่โลกเหมียว</h2>
+          <div class="wm-toast" id="wmToast" role="status" aria-live="polite"></div>
+          <button type="button" class="wm-nav wm-prev" id="wmPrev" aria-label="เลื่อนแผนที่ไปทางซ้าย"></button>
+          <button type="button" class="wm-nav wm-next" id="wmNext" aria-label="เลื่อนแผนที่ไปทางขวา"></button>
           <button class="backbtn" id="mapBack" aria-label="กลับ">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
+              <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- หน้ารอของ "ดินแดนใหม่" (โซนเขียวในแผนที่ — ผู้ใช้: "ให้กดได้ ทำเป็นหน้าวาปรอไว้") ฉากวาดด้วย drawWildScene -->
+      <div class="panel hidden" id="wildPanel">
+        <div class="pop wild-pop">
+          <canvas class="wild-canvas" id="wildCanvas" aria-hidden="true"></canvas>
+          <div class="wild-card">
+            <b class="wild-title">ดินแดนใหม่</b>
+            <span class="wild-text">ที่นี่กำลังก่อสร้างอยู่นะ อีกไม่นานได้มาเที่ยวกัน</span>
+            <button type="button" class="btn ghost" id="wildToMap">กลับแผนที่</button>
+          </div>
+          <button class="backbtn" id="wildBack" aria-label="กลับ">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -796,15 +807,12 @@
             <div class="stash-tabs" role="tablist" aria-label="เลือกหมวด">
               <!-- แมวน้อยอยู่บนสุด และเป็นหมวดที่เปิดขึ้นมาก่อนเสมอ
                    เลือกตัวน้องก่อน แล้วค่อยแต่งชุดกับติดสมบัติให้ตัวนั้น — ลำดับเดียวกับที่คนคิด -->
-              <button type="button" class="stab on" id="tabStashSkin" role="tab">
-                <span class="stab-ico" aria-hidden="true">🐱</span>น้องแมว
+              <button type="button" class="stab on" id="tabStashSkin" role="tab">น้องแมว
               </button>
-              <button type="button" class="stab" id="tabStashOutfit" role="tab">
-                <span class="stab-ico" aria-hidden="true">👕</span>ชุดแมว
+              <button type="button" class="stab" id="tabStashOutfit" role="tab">ชุดแมว
               </button>
               <!-- สมบัติเลิกใช้ในเกมแล้ว (เกมเพลย์ใหม่ 25 ต.ค. 2026) — ซ่อนแท็บไว้ ของในคลังยังอยู่ -->
-              <button type="button" class="stab" id="tabStashTreasure" role="tab" style="display:none">
-                <span class="stab-ico" aria-hidden="true">🧰</span>สมบัติ
+              <button type="button" class="stab" id="tabStashTreasure" role="tab" style="display:none">สมบัติ
               </button>
             </div>
 
@@ -1341,7 +1349,7 @@
         <div class="gacha-svid hidden" id="gachaSvid" role="button" tabindex="0" aria-label="แตะเพื่อดูรางวัล">
           <canvas id="gachaSvidCv" aria-hidden="true"></canvas>
           <video id="gachaSvidVideo" playsinline muted preload="auto"></video>
-          <span class="gsv-hint">แตะเพื่อดูรางวัล ✨</span>
+          <span class="gsv-hint">แตะเพื่อดูรางวัล &gt;&lt;</span>
         </div>
         <div class="pop gacha-pop">
           <!-- พื้นหลังร้านเซอร์ไพรส์เวทมนตร์ (src/render/softbg.js) — ทั้งสองตู้ -->
@@ -1350,11 +1358,9 @@
             <!-- ซ้าย: เลือกว่าจะสุ่มตู้ไหน — อยู่นอกเส้นคั่น คู่กับปุ่มกลับที่มุมบน -->
             <div class="gacha-tabs" role="tablist" aria-label="เลือกตู้">
               <!-- ช่องสุ่มสมบัติปิดไว้ (ผู้ใช้ 5 พ.ย. 2026 "เอาหน้าสุ่มสมบัติออก") — ตู้เปิดที่สุ่มสกินเสมอ · โค้ดยังอยู่ ลบ style ออก = กลับมา -->
-              <button type="button" class="gtab" id="tabTreasure" role="tab" style="display:none">
-                <span class="gtab-ico" aria-hidden="true">🧰</span>สุ่มสมบัติ
+              <button type="button" class="gtab" id="tabTreasure" role="tab" style="display:none">สุ่มสมบัติ
               </button>
-              <button type="button" class="gtab on" id="tabSkin" role="tab">
-                <span class="gtab-ico" aria-hidden="true">👕</span>สุ่มสกิน
+              <button type="button" class="gtab on" id="tabSkin" role="tab">สุ่มสกิน
               </button>
             </div>
 
@@ -1980,17 +1986,13 @@
           <canvas class="settings-bg" id="settingsBg" aria-hidden="true"></canvas>
           <div class="stash-body">
             <div class="stash-tabs set-tabs" role="tablist" aria-label="เลือกหมวด">
-              <button type="button" class="stab on" data-set="general" role="tab" aria-selected="true">
-                <span class="stab-ico" aria-hidden="true">⚙️</span>ทั่วไป
+              <button type="button" class="stab on" data-set="general" role="tab" aria-selected="true">ทั่วไป
               </button>
-              <button type="button" class="stab" data-set="sound" role="tab" aria-selected="false">
-                <span class="stab-ico" aria-hidden="true">🔊</span>เสียง
+              <button type="button" class="stab" data-set="sound" role="tab" aria-selected="false">เสียง
               </button>
-              <button type="button" class="stab" data-set="display" role="tab" aria-selected="false">
-                <span class="stab-ico" aria-hidden="true">✨</span>การแสดงผล
+              <button type="button" class="stab" data-set="display" role="tab" aria-selected="false">การแสดงผล
               </button>
-              <button type="button" class="stab" data-set="help" role="tab" aria-selected="false">
-                <span class="stab-ico" aria-hidden="true">🛟</span>ช่วยเหลือ
+              <button type="button" class="stab" data-set="help" role="tab" aria-selected="false">ช่วยเหลือ
               </button>
             </div>
 
@@ -2661,11 +2663,9 @@
           <canvas class="create-bg" id="createBg" aria-hidden="true"></canvas>
           <div class="stash-body">
             <div class="stash-tabs" role="tablist" aria-label="เลือกโหมด">
-              <button type="button" class="stab on" id="tabPaint" role="tab">
-                <span class="stab-ico" aria-hidden="true">🎨</span>ระบายสี
+              <button type="button" class="stab on" id="tabPaint" role="tab">ระบายสี
               </button>
-              <button type="button" class="stab" id="tabFace" role="tab">
-                <span class="stab-ico" aria-hidden="true">📷</span>หน้าน้อง
+              <button type="button" class="stab" id="tabFace" role="tab">หน้าน้อง
               </button>
             </div>
 

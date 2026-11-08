@@ -682,8 +682,9 @@ export function drawCastleAt(c, cx, baseY, s, t, part) {
   if (part === 'live') drawCastleLive(c, t);
   else {
     // แสงเรืองหลังปราสาทเบาลงครึ่งหนึ่ง — หน้าแรกมีแสงฟุ้ง (bloom) ทับอีกชั้น เต็มแรงแล้วกลางฉากขาวโพลน
-    if (part === 'art') { c.globalAlpha = 0.38; aura(c, x + w / 2, t); c.globalAlpha = 1; }
-    cached(c, 'castle:solo', x - 20, 0, w + 40, GY + 8, (cc) => { drawCastleArt(cc); light(cc, x - 20, 0, w + 40, GY + 8); });
+    // 'aura' = แสงเรืองอย่างเดียว · 'body' = ตัวปราสาทอย่างเดียว (แผนที่โลกเหมียวแยกชั้น — ตัวปราสาทเด้งได้ แสงอยู่กับที่)
+    if (part === 'art' || part === 'aura') { c.globalAlpha = 0.38; aura(c, x + w / 2, t); c.globalAlpha = 1; }
+    if (part !== 'aura') cached(c, 'castle:solo', x - 20, 0, w + 40, GY + 8, (cc) => { drawCastleArt(cc); light(cc, x - 20, 0, w + 40, GY + 8); });
   }
   c.restore();
 }
@@ -717,6 +718,15 @@ export function drawFenceAt(c, key, x, baseY, s, len, garden) {
   c.scale(s, s);
   c.translate(0, -GY);
   cached(c, 'fence:solo:' + key, -60, GY - 175, len + 120, 178, (cc) => drawFencePiece(cc, 0, len, -60, len + 60, garden));
+  c.restore();
+}
+/** ซุ้มประตูเขต "ดินแดนปราสาทแมวเหมียว" (ภาพเดียวกับในเมือง): กลาง (x, baseY) · สเกล s — แผนที่โลกเหมียว */
+export function drawRealmGateAt(c, x, baseY, s) {
+  c.save();
+  c.translate(x, baseY);
+  c.scale(s, s);
+  c.translate(-REALM.gate, -GY);
+  cached(c, 'realm:gate', REALM.gate - 170, GY - 240, 340, 246, drawRealmGate);
   c.restore();
 }
 /** แสงเรืองหัวโคมหลวง (ของสด) */

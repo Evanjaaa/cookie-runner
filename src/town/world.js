@@ -749,6 +749,14 @@ function drawPlaza(c, p) {
   c.strokeStyle = 'rgba(160,130,210,.35)';
   c.lineWidth = 1;
   for (const r of [0.55, 0.8]) { c.beginPath(); c.ellipse(cx, GY + 12, 262 * r, 22 * r, 0, 0, TAU); c.stroke(); }
+  drawFountainBody(c, cx);
+}
+/**
+ * ตัวน้ำพุสามชั้น (อ่างใหญ่ → เสา → อ่างกลาง → อ่างบน → แมวหินมงกุฎ) กลางอ่างที่ cx · ภาพนิ่ง
+ * ใช้ร่วม: ลานกลางเมือง (drawPlaza) · โถงปราสาทชั้น 1 (castle-hall.js — ผู้ใช้ 8 พ.ย. "น้ำพุให้สวยเหมือนในเมือง")
+ */
+export function drawFountainBody(c, cx, castle = false) {
+  const { W, rim, mid, midR, top, topR } = FNT;
   const GOLD = '#E8C26A';
   // ── อ่างใหญ่ ──
   c.fillStyle = 'rgba(120,80,170,.18)';
@@ -760,8 +768,28 @@ function drawPlaza(c, p) {
   // ผนังหน้าอ่าง
   c.fillStyle = lg(c, 0, GY - rim, 0, GY, [[0, '#FFFFFF'], [0.55, '#F0E6FD'], [1, '#D6C4F2']]);
   c.beginPath(); c.ellipse(cx, GY - rim, W, 13, 0, 0, Math.PI); c.lineTo(cx - W + 2, GY - 3); c.quadraticCurveTo(cx, GY + 11, cx + W - 2, GY - 3); c.closePath(); c.fill();
-  // ช่องโค้งเจ็ดช่อง + ลายในช่อง (หน้าแมวทองกลาง · หัวใจ · อุ้งเท้า)
-  for (let i = -3; i <= 3; i++) {
+  // ปราสาท (ผู้ใช้ 8 พ.ย. "เอาช่องสี่เหลี่ยมเจ็ดช่องออก ให้ต่างจากของเมือง"): ระบายผ้าชมพูโค้งห้อยรอบอ่าง + มุกทองตรงรอยต่อ
+  if (castle) {
+    const n = 5, x0 = cx - W + 6, sw = (2 * W - 12) / n, top = GY - rim + 10;
+    for (let i = 0; i < n; i++) {
+      const a = x0 + i * sw, b = a + sw, m = (a + b) / 2, dep = 15 - Math.abs(i - 2) * 1.5;
+      c.fillStyle = lg(c, 0, top, 0, top + dep + 6, [[0, '#FFD3E6'], [1, '#F29CC6']]);
+      c.beginPath(); c.moveTo(a, top); c.quadraticCurveTo(m, top + dep * 2, b, top); c.quadraticCurveTo(m, top + dep * 1.1, a, top); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(a + 4, top + 2); c.quadraticCurveTo(m, top + dep * 1.5, b - 4, top + 2); c.stroke();
+      c.strokeStyle = GOLD; c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(a, top); c.quadraticCurveTo(m, top + dep * 2, b, top); c.stroke();
+    }
+    for (let i = 0; i <= n; i++) {
+      const px = x0 + i * sw;
+      c.fillStyle = GOLD; c.beginPath(); c.arc(px, top, 3.6, 0, TAU); c.fill();
+      c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(px - 1, top - 1, 1.2, 0, TAU); c.fill();
+      if (i > 0 && i < n) { c.fillStyle = '#FFF4F0'; c.beginPath(); c.arc(px, top + 8, 2.4, 0, TAU); c.fill(); }
+    }
+    for (let i = 0; i < n; i++) { c.fillStyle = 'rgba(255,255,255,.8)'; heart(c, x0 + (i + 0.5) * sw, GY - 12, 3.4); c.fill(); }
+  }
+  // ช่องโค้งเจ็ดช่อง + ลายในช่อง (หน้าแมวทองกลาง · หัวใจ · อุ้งเท้า) — เฉพาะในเมือง
+  for (let i = -3; i <= 3 && !castle; i++) {
     const px = cx + i * 38, py = GY - 34 + Math.abs(i) * 1.2;
     c.fillStyle = 'rgba(255,255,255,.6)';
     c.strokeStyle = 'rgba(170,140,220,.45)'; c.lineWidth = 1;
@@ -859,8 +887,10 @@ function drawPlaza(c, p) {
 }
 
 /** น้ำพุ (วาดสดทุกเฟรม — ไหลจริง) · t = เฟรม */
-function drawFountainWater(c, p, t) {
-  const cx = p.x + p.w / 2, { W, rim, mid, midR, top, topR } = FNT;
+function drawFountainWater(c, p, t) { fountainWaterAt(c, p.x + p.w / 2, t); }
+/** น้ำไหล/ละอองของน้ำพุสามชั้นที่กลางอ่าง cx (ใช้ร่วมกับโถงปราสาทชั้น 1) */
+export function fountainWaterAt(c, cx, t) {
+  const { W, rim, mid, midR, top, topR } = FNT;
   const h = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
   c.save();
   c.lineCap = 'round';
@@ -1370,6 +1400,37 @@ export function drawShopAt(c, id, cx, baseY, s, t = null, live = false) {
   c.restore();
 }
 
+/**
+ * ชิ้นบนถนนเมืองชิ้นเดียว (ภาพเดียวกับบนถนน) วางที่ไหนก็ได้ — แผนที่โลกเหมียว (src/render/world-map.js)
+ * kind: 'plaza' ลานน้ำพุ (cx = กลางอ่าง) · 'lamp' / 'lampFlag' ตะเกียงริมถนน (มีธง) · 'bench' ม้านั่ง
+ *       'welcome' ซุ้มทางเข้าเมือง · 'bush' / 'pot' / 'sign' / 'barrel' ของตกแต่งริมทาง
+ * ฐาน baseY (ระดับถนน) · สเกล s · ภาพนิ่ง (แคชแยกจากในเมือง)
+ */
+export function drawTownPieceAt(c, kind, cx, baseY, s) {
+  c.save();
+  c.translate(cx, baseY);
+  c.scale(s, s);
+  if (kind === 'plaza') {
+    const p = PLACES.find((q) => q.id === 'fountain'), x = p.x + p.w / 2;
+    c.translate(-x, -GY);
+    cached(c, 'solo:plaza', x - 320, GY - 222, 640, 256, (cc) => { drawPlaza(cc, p); drawFountainWater(cc, p, 0); });
+  } else if (kind === 'lamp' || kind === 'lampFlag') {
+    c.translate(0, -GY);
+    cached(c, 'solo:' + kind, -40, GY - 140, 80, 142, (cc) => drawLamp(cc, 0, kind === 'lampFlag', 0));
+  } else if (kind === 'bench') {
+    const p = PLACES.find((q) => q.id === 'bench1');
+    c.translate(-(p.x + p.w / 2), -GY);
+    cached(c, 'solo:bench', p.x - 2, GY - 52, p.w + 4, 54, (cc) => drawBench(cc, p));
+  } else if (kind === 'welcome') {
+    c.translate(-105, -GY);
+    cached(c, 'solo:welcome', 0, GY - 200, 220, 202, drawWelcome);
+  } else {
+    c.translate(0, -GY);
+    drawProp(c, kind, 0);
+  }
+  c.restore();
+}
+
 /** ทุกอย่างบนถนน (ร้าน ปราสาท ลาน ม้านั่ง ตะเกียง ซุ้ม แมว NPC) ที่อยู่ในจอ */
 export function drawStreet(c, camX, vw, t) {
   const inView = (x, w) => x + w > camX - 80 && x < camX + vw + 80;
@@ -1488,19 +1549,22 @@ export function drawDust(c, t) {
 }
 
 /** ป้ายลอยเหนือที่ที่ใช้งานได้ตอนน้องยืนใกล้ ("เข้าร้าน") */
-export function drawPrompt(c, p, text, t) {
+export function drawPrompt(c, p, text, t, view) {
   // เหนือหัวน้อง (ตัวน้องสูงราว 110 หน่วย) — ไม่บังหน้า
+  // view = [x0, x1] ขอบจอในพิกัดโลก (ถ้าส่งมา): ป้ายเลื่อนเข้าจอ ไม่ตกขอบ/ไม่มุดใต้ปุ่มมุมขวาบน · หางป้ายยังชี้ที่ประตูเดิม
   const gy = p.gy ?? GY;
-  const x = p.door, y = (p.kind === 'gate' ? gy - 178 : p.kind === 'pier' ? gy - 152 : p.kind === 'bench' ? gy - 150 : gy - 140) + Math.sin(t * 0.12) * 3;   // ซุ้มวาป: เหนือป้ายชื่อซุ้ม · ท่าเรือ: บนหน้าจั่วศาลา (ไม่บังป้ายชื่อท่า)
+  const tx = p.door, y = (p.promptDy != null ? gy - p.promptDy : p.kind === 'gate' ? gy - 178 : p.kind === 'pier' ? gy - 152 : p.kind === 'bench' ? gy - 150 : gy - 140) + Math.sin(t * 0.12) * 3;   // ซุ้มวาป: เหนือป้ายชื่อซุ้ม · ท่าเรือ: บนหน้าจั่วศาลา (ไม่บังป้ายชื่อท่า)
   c.save();
   c.font = '700 13px Mali, sans-serif';
   c.textAlign = 'center';
   c.textBaseline = 'middle';
   const w = c.measureText(text).width + 22;
+  const x = view ? Math.max(view[0] + w / 2, Math.min(view[1] - w / 2, tx)) : tx;
+  const tip = Math.max(x - w / 2 + 14, Math.min(x + w / 2 - 14, tx));
   c.fillStyle = 'rgba(60,20,90,.25)';
   c.beginPath(); c.roundRect(x - w / 2, y - 13 + 2, w, 26, 13); c.fill();
   c.fillStyle = '#FFFFFF';
-  c.beginPath(); c.roundRect(x - w / 2, y - 13, w, 26, 13); c.moveTo(x - 6, y + 12); c.lineTo(x, y + 19); c.lineTo(x + 6, y + 12); c.fill();
+  c.beginPath(); c.roundRect(x - w / 2, y - 13, w, 26, 13); c.moveTo(tip - 6, y + 12); c.lineTo(tip, y + 19); c.lineTo(tip + 6, y + 12); c.fill();
   c.fillStyle = '#8A4BB8';
   c.fillText(text, x, y + 1);
   c.restore();

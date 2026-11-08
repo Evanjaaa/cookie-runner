@@ -61,9 +61,12 @@ import { OC_W, OC_H, drawOutfitArt } from './render/outfit-art.js';
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act } from './render/cat2.js';
+import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act, cat2Backdrop } from './render/cat2.js';
 /** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
-function drawStashCat(c, x, feetY, scale, s, t, { head = false, logical = 190 } = {}) {
+function drawStashCat(c, x, feetY, scale, s, t, opts = {}) {
+  // เงาน้องที่ยังไม่เคยพบ — วาดทรงจริงแล้วระบายเป็นเงา
+  if (s.shade) return drawShaded(c, (g) => drawStashCat(g, x, feetY, scale, { ...s, id: 'orange', shade: false }, t, opts));
+  const { head = false, logical = 190 } = opts;
   if (CAT2.stash && useCat2(s)) {
     // การ์ดเล็ก: โชว์แค่หัวน้องเต็มกรอบ (หู-หนวดพอดีกรอบ) ตัวล้นลงไปใต้กรอบ
     if (head) return drawCat2(c, logical / 2, logical * 1.42, logical / 50, s, t, null);
@@ -74,6 +77,8 @@ function drawStashCat(c, x, feetY, scale, s, t, { head = false, logical = 190 } 
 }
 import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.js';
 import { drawPlats } from './render/platforms.js';
+import { drawShaded } from './render/shade.js';
+import { lobbyIconImage } from './render/lobby-icons.js';
 import { makeDreamBg } from './render/dreambg.js';
 import { makeSoftBg } from './render/softbg.js';
 import { makeCreativeBg } from './render/creativebg.js';
@@ -108,8 +113,7 @@ import { setupCatRoomUI } from './catroom-ui.js';
 import { setupCatCardsUI } from './catcards-ui.js';
 import { syncServerClock } from './net/cloud.js';
 import { initJelly } from './jelly-btn.js';   // ปุ่มเยลลี่เด้งดึ๋ง (.jelly ใน style.css)
-import { drawCastleAt, drawFenceAt } from './town/castle.js';   // การ์ดโซนในหน้าแผนที่ (ภาพชุดเดียวกับในเมือง)
-import { drawShopAt } from './town/world.js';
+import { ZONES, WORLD_EXT, HOME_X, fitWorld, clampCam, zoneAt, drawWorldStatic, drawWorldLive, drawWildScene } from './render/world-map.js';   // แผนที่โลกเหมียว
 
 // หน้าจอระบบน้องแมว (บ้านน้อง หน้าพบน้อง เรื่องราว เคล็ดลับน้องส้ม) — สร้างทีหลังใน setupCatRoomUI
 // ประกาศไว้บนสุดเพราะ refreshHome() ถูกเรียกตั้งแต่ก่อนถึงบรรทัดที่สร้าง
@@ -138,9 +142,10 @@ const ctx = canvas.getContext('2d');
  */
 const HOME_KEEP = 0.84;   // เห็นอย่างน้อย 84% ของความกว้างฉาก (ตัดข้างละไม่เกิน 8%)
 const HOME_CAT_MID = 222; // ความสูงกลางตัวน้องในพิกัดฉาก (เท้าที่ GROUND_Y 320 ตัวสูงราว 200 ที่สเกลมือถือ)
-const COVER_MQ = matchMedia('(hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10)');
+// คอมเต็มจอแล้ว (ผู้ใช้ 7 พ.ย. 2026) — ไม่ผูกกับจอสัมผัส ใช้กับทุกเครื่อง (ตรงกับบล็อก "คอมก็เต็มจอ" ท้าย style.css)
+const COVER_MQ = matchMedia('(max-aspect-ratio: 21/10)');
 /** ฉากอื่นนอกจากหน้าแรกต่อบน-ล่างเฉพาะจอสูงแบบ iPad (ตรงกับ style.css) */
-const COVER_ALL_MQ = matchMedia('(hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px)');
+const COVER_ALL_MQ = matchMedia('(max-aspect-ratio: 21/10) and (min-height: 600px)');
 function homeCoverView() {
   const stage = canvas.parentElement;
   if (!stage || !COVER_MQ.matches) return null;
@@ -694,36 +699,23 @@ function paintAvatar() {
  * ฝาเปิดเมื่อมีของติดตั้งอยู่ ปิดเมื่อยังไม่ได้ติดตั้ง — บอกสถานะด้วยท่าของหีบเอง
  * โดยไม่ต้องมีป้ายตัวเลขมาเบียดในกรอบ 76px
  */
-/**
- * ไอคอนปุ่มคลังน้อง — หีบสมบัติกับน้องแมวใส่ชุดอยู่ในกรอบเดียว
- *
- * ปุ่มเดียวแทนสองปุ่มเดิม ไอคอนจึงต้องบอกให้ได้ว่าข้างในมีทั้งสองอย่าง
- * ใช้ของจริงจากทั้งสองหมวดมาซ้อนกัน ไม่ใช่วาดไอคอนกล่องกลาง ๆ ขึ้นมาใหม่
- * — น้องที่โผล่มาคือน้องที่ใส่ชุดอยู่จริง เปลี่ยนชุดแล้วไอคอนเปลี่ยนตาม
- *
- * หีบอยู่หลังขวาและเล็กกว่า น้องอยู่หน้าซ้าย จึงอ่านเป็น "น้องกับคลังของน้อง"
- * ไม่ใช่ของสองชิ้นวางเรียงกันเฉย ๆ
- */
+/** ไอคอนปุ่มคลังน้อง — หีบสมบัติฟีลกระเป๋า ไม่มีน้องแมวยืน (ผู้ใช้ 7 พ.ย. 2026 · lobby-icons.js) */
 function paintStashIcon() {
-  const equipped = getEquipped().filter(Boolean).length;
-  const s = getSkin();
-  paintBox(document.getElementById('stashIcon'), 76, 76, (c) => {
-    // หีบวาดในกรอบ 200x184 แต่ตัวหีบจริงกินแค่ราว x 22-178 y 38-170
-    // ย่อจาก "ขนาดของหีบ" ไม่ใช่ขนาดกรอบ ไม่งั้นจะได้หีบจิ๋วลอยกลางที่ว่าง
-    // หีบกินครึ่งขวาล่างของกรอบ ใหญ่พอให้อ่านออกว่าเป็นหีบ ไม่ใช่ก้อนสีน้ำตาล
-    const box = { x: 22, y: 38, w: 156, h: 132 };
-    const k = 45 / box.w;
-    c.save();
-    c.translate(31 - box.x * k, 33 - box.y * k);
-    c.scale(k, k);
-    drawChest(c, equipped ? 1 : 0, chestTick);
-    c.restore();
+  paintLobbyIcon('stashIcon', 'stash');
+}
 
-    // น้องยืนหน้าหีบชิดซ้าย วาดทีหลังจึงบังหีบ = อ่านเป็นความลึก ไม่ใช่ของทับกัน
-    c.save();
-    drawCatAuto(c, 27, 72, 0.98, s, 60);
-    c.restore();
-  });
+/**
+ * ไอคอนวุ้นฟ้าของปุ่มเมนูหน้าแรก (src/render/lobby-icons.js — ผู้ใช้ 7 พ.ย. 2026)
+ * ภาพ SVG แปะลงผ้าใบเดิมของปุ่ม ขนาด/เงาจึงใช้กฎ .lobby-btn canvas เดิมทั้งหมด
+ * ภาพยังโหลดไม่เสร็จ (ครั้งแรกหลังเปิดเกม) → รอโหลดแล้ววาดเอง
+ */
+function paintLobbyIcon(id, key) {
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  const img = lobbyIconImage(key);
+  const draw = () => paintMini(cv, 76, (c) => c.drawImage(img, 0, 0, 76, 76));
+  if (img.complete && img.naturalWidth) draw();
+  else img.addEventListener('load', draw, { once: true });
 }
 
 /** การ์ดบัญชีมุมซ้ายบน — ชื่อ รูป เลเวล และหลอดความคืบหน้า */
@@ -773,10 +765,10 @@ function refreshHome() {
   // ยกเว้นสมบัติ (วัดกล่องหีบไว้เองอยู่แล้ว) กับด่าน (เป็นภาพฉากเต็มกรอบ ไม่ใช่ไอคอน)
   // พรสวรรค์เป็นไพ่สองใบ ไม่มีตัวน้องอยู่ในรูป — ปุ่มคลังน้องกับปุ่มสร้างสรรค์มีน้องอยู่แล้ว
   // ถ้าอันนี้มีน้องด้วยอีกใบ สามปุ่มจะหน้าตาคล้ายกันจนแยกไม่ออกว่ากดอันไหนได้อะไร
-  paintFitted(document.getElementById('talentIcon'), 76, 0.96, drawTalentCards);
+  paintLobbyIcon('talentIcon', 'talent');
   catRoomUI?.paintIcon();
   catRoomUI?.refreshDot();
-  paintFitted(document.getElementById('mapIcon'), 76, 0.96, drawMapIcon);
+  paintLobbyIcon('mapIcon', 'map');
   paintStashIcon();
   paintQuestIcon();
   refreshCreateIcon();
@@ -788,10 +780,8 @@ function refreshHome() {
   paintMuteBadge();
   refreshEquipCount();
   paintFitted(document.getElementById('rankIcon'), 76, 0.96, drawTrophy);
-  paintFitted(document.getElementById('gachaIcon'), 76, 0.96, (c) => {
-    c.save(); c.scale(76 / 150, 76 / 170); drawGachaMachine(c); c.restore();
-  });
-  paintFitted(document.getElementById('shopIcon'), 76, 0.96, drawShopStall);
+  paintLobbyIcon('gachaIcon', 'gacha');
+  paintLobbyIcon('shopIcon', 'shop');
   // ความคืบหน้ากาช่าเคยโชว์ตรงนี้ ย้ายไปดูในแผงกาช่าอย่างเดียวแล้ว (.gacha-owned)
   refreshGold();
   refreshLove();   // คูลดาวน์อาจหมดไปแล้วระหว่างที่เปิดแผงอื่นค้างไว้
@@ -3264,11 +3254,8 @@ function catEntries() {
 function catSilhouette() {
   // จำผลไว้ที่ตัวฟังก์ชันเอง — ตัวแปร let ระดับไฟล์ก็ติดปัญหาเดียวกับ const
   if (!catSilhouette.skin) {
-    catSilhouette.skin = {
-      ...SKINS[0], id: 'silhouette', cat: '#5B4A78', dark: '#4E3F69', cream: '#5B4A78', pink: '#5B4A78',
-      eye: '#3A2D52', ink: '#3A2D52', nose: '#3A2D52', line: '#2E2342', whisker: 'rgba(0,0,0,0)',
-      rain: ['#5B4A78', '#5B4A78', '#2E2342'], stripes: false, blush: false, points: false, noPhoto: true,
-    };
+    // ทรงน้องส้มแบบใหม่ แต่ตอนวาด shade = ระบายทั้งตัวเป็นเงาม่วงนุ่มเรืองขาว (render/shade.js — ผู้ใช้ 7 พ.ย. 2026)
+    catSilhouette.skin = { ...skinById('orange'), id: 'silhouette', noPhoto: true, shade: true };
   }
   return catSilhouette.skin;
 }
@@ -3547,6 +3534,33 @@ function paintOutfitArt(canvas, s, o) {
   canvas.height = img.height;
   canvas.getContext('2d').drawImage(img, 0, 0);
 }
+/**
+ * เรียง "หายาก" ในหมวดชุดแมว (ผู้ใช้ 7 พ.ย. 2026) — ระดับ S ตามลำดับที่ผู้ใช้กำหนด แล้วตามด้วยที่เหลือตามเดิม
+ * หนุ่มไทยโจงกระเบน (ซ้าย) + สไบไทย (ขวา) ต้องติดกันในแถวเดียวกันเสมอ รูปน้องจะหันหน้าเข้าหากัน
+ * ถ้าหนุ่มไทยตกช่องสุดท้ายของแถว → ทั้งคู่ขึ้นแถวใหม่ ใบถัดไปเลื่อนขึ้นมาแทนที่
+ * ใช้เฉพาะเรียงแบบ "หายาก" — "ล่าสุด" เรียงตามลำดับที่ได้มาตามปกติ · list ถูกจัดใหม่ในตัว
+ */
+const RARE_ORDER = ['sweet', 'princess', 'chawee', 'jong', 'sabai', 'noble'];
+function arrangeRare(list, grid) {
+  const pos = (o) => { const i = RARE_ORDER.indexOf(o.id); return i < 0 ? RARE_ORDER.length : i; };
+  const base = new Map(list.map((o, i) => [o.id, i]));
+  list.sort((a, b) => (pos(a) - pos(b)) || (base.get(a.id) - base.get(b.id)));
+  const ji = list.findIndex((o) => o.id === 'jong');
+  const si = list.findIndex((o) => o.id === 'sabai');
+  if (ji < 0 || si < 0) return;
+  const [sab] = list.splice(si, 1);
+  const j = list.findIndex((o) => o.id === 'jong');
+  list.splice(j + 1, 0, sab);
+  // จำนวนใบต่อแถวตามที่กริดวางจริง (คอม 5 · จอสัมผัส 4) — กริดยังซ่อนอยู่ใช้ค่าตามชนิดเครื่อง
+  const tpl = getComputedStyle(grid).gridTemplateColumns;
+  const cols = tpl && tpl !== 'none' ? tpl.split(' ').length
+    : matchMedia('(hover: none) and (pointer: coarse)').matches ? 4 : 5;
+  if (cols > 1 && j % cols === cols - 1 && j + 2 < list.length) {
+    const [next] = list.splice(j + 2, 1);
+    list.splice(j, 0, next);
+  }
+}
+
 function buildOutfitGrid() {
   const grid = document.getElementById('outfitGrid');
   grid.innerHTML = '';
@@ -3562,6 +3576,7 @@ function buildOutfitGrid() {
     order: outfitOrder,
     level: () => 0,
   });
+  if (filterState.outfit?.sort === 'rarity') arrangeRare(list, grid);
 
   if (!list.length) {
     emptyNote(grid, 'ยังไม่มีชุดเลย ไปสุ่มที่ตู้กาช่าก่อนนะ');
@@ -4695,12 +4710,7 @@ function refreshQuestDot() {
 
 /** ไอคอนปุ่มกิจกรรม — กล่องของขวัญ ตัวเดิมที่เคยอยู่บนปุ่มสมบัติ */
 function paintQuestIcon() {
-  paintFitted(document.getElementById('questIcon'), 76, 0.96, (c) => {
-    c.font = '46px serif';
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.fillText('🎁', 38, 42);
-  });
+  paintLobbyIcon('questIcon', 'quest');
 }
 
 function buildQuestList() {
@@ -6192,7 +6202,22 @@ function outfitPerks(o) {
   return list;
 }
 
+/**
+ * ฉากหลังมืด (ร็อกเกอร์ หิมะ พี่ชาวี) → ปุ่มขยายเป็นไอคอนขาวเรืองม่วง ไม่งั้นม่วงจมหายในฉาก (ผู้ใช้ 7 พ.ย. 2026)
+ * ตัดสินจากสีขอบฉาก (backdrop.outer) — ฉากใหม่ที่มืดได้ผลเองไม่ต้องจดรายชื่อ
+ */
+function odMarkDark(bdId) {
+  const hex = cat2Backdrop(bdId)?.outer;
+  let dark = false;
+  if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
+    const n = parseInt(hex.slice(1), 16);
+    dark = (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255 < 0.4;
+  }
+  odPanel.classList.toggle('bd-dark', dark);
+}
+
 function paintOutfitDetail() {
+  odMarkDark(odCat ? 'room:cats' : odCurrent);
   if (odCat) { paintCatDetail(); return; }
   const o = outfitById(odCurrent);
   if (!o) return;
@@ -6751,8 +6776,48 @@ let tCurrent = null;   // id ของสมบัติที่กำลัง
 let tFrom = null;      // แผงที่เปิดหน้านี้มา
 
 /** สลับแผงแบบจำทางกลับ — ไม่ใช้ showPanel() เพราะอันนั้นล้างที่มาทิ้ง */
+/**
+ * หน้าเต็มจอ (เข้าจากปุ่มบนหน้าแรก) กับหน้าย่อยที่เปิดซ้อนจากมัน — ผู้ใช้ 7 พ.ย. 2026
+ * หน้าย่อยยังเป็นการ์ดเหมือนเดิม แต่หน้าเต็มจอที่เปิดมาไม่ถูกซ่อน: ค้างอยู่ข้างหลัง (.under)
+ * แล้วพื้นเบลอรอบการ์ดหน้าย่อย (.over) จึงเห็นเป็นหน้านั้นเบลอ ๆ ไม่ใช่หน้าแรก
+ * (ขนาดเต็มจออยู่ใน style.css บล็อก "หน้าเต็มจอ" — รายชื่อสองชุดนี้ต้องตรงกัน)
+ */
+const FULL_PANELS = new Set(['gachaPanel', 'stashPanel', 'shopPanel', 'talentPanel', 'questPanel', 'profilePanel',
+  'lvPanel', 'friendsPanel', 'newsPanel', 'inboxPanel', 'settingsPanel']);
+const SUB_PANELS = new Set(['gListPanel', 'odPanel', 'mailReadPanel', 'reportPanel', 'tDetailPanel', 'upPanel']);
+/** หน้าย่อย → หน้าเต็มจอที่ค้างอยู่ข้างหลัง */
+const underOf = new Map();
+function setOver(child, root) {
+  child.classList.add('over');
+  root.classList.add('under');
+  underOf.set(child, root);
+  // หน้าย่อยที่อยู่ก่อนหน้าเต็มจอใน DOM (หน้าดูชุดกับตู้กาช่า) ต้องยกขึ้นเอง ไม่งั้นโดนหน้าเต็มจอทับ
+  child.style.zIndex = root.compareDocumentPosition(child) & Node.DOCUMENT_POSITION_PRECEDING ? '2' : '';
+}
+function clearOver(child) {
+  child.classList.remove('over');
+  child.style.zIndex = '';
+  underOf.delete(child);
+}
 function swapPanel(from, to) {
+  const root = underOf.get(from);
+  // เปิดหน้าย่อยจากหน้าเต็มจอ → หน้าเต็มจอค้างไว้ข้างหลัง
+  if (!root && FULL_PANELS.has(from.id) && SUB_PANELS.has(to.id)) {
+    setOver(to, from);
+    to.classList.remove('hidden');
+    return;
+  }
   from.classList.add('hidden');
+  if (root) {
+    clearOver(from);
+    if (root === to) {   // กลับหน้าเต็มจอที่ค้างอยู่แล้ว
+      root.classList.remove('under');
+      return;
+    }
+    // หน้าย่อยไปหน้าย่อย (รายการในตู้ → หน้าดูชุด) — หน้าเต็มจอยังค้างข้างหลังเหมือนเดิม
+    if (SUB_PANELS.has(to.id)) setOver(to, root);
+    else { root.classList.add('hidden'); root.classList.remove('under'); }
+  }
   to.classList.remove('hidden');
 }
 
@@ -7329,45 +7394,344 @@ const modeBgArt = makeSoftBg(document.getElementById('modeBg'),
   () => !modePanel.classList.contains('hidden'), 'sky', 12);
 new MutationObserver(() => modeBgArt.kick()).observe(modePanel, { attributes: true, attributeFilter: ['class'] });
 
-// ── แผนที่เมืองแมว (ผู้ใช้ 3 พ.ย.) ── เลือกโซน → ม่านอุ้งเท้าปิดจอ → ไปหน้าเมือง (town.html)
-const mapBgArt = makeSoftBg(document.getElementById('mapBg'),
-  () => !mapPanel.classList.contains('hidden'), 'mint', 13);
-new MutationObserver(() => mapBgArt.kick()).observe(mapPanel, { attributes: true, attributeFilter: ['class'] });
-/** ภาพการ์ดโซน: ฟ้าเมือง + ของจริงในโซนนั้น (ร้าน/ปราสาท ภาพชุดเดียวกับใน town.html) */
-function paintZoneArt() {
-  const sky = (c) => {
-    const g = c.createLinearGradient(0, 0, 0, 95);
-    g.addColorStop(0, '#BCD8FF'); g.addColorStop(0.55, '#E2D8FF'); g.addColorStop(1, '#FFE9F3');
-    c.fillStyle = g;
-    c.fillRect(0, 0, 180, 95);
-    c.fillStyle = 'rgba(255,255,255,.85)';
-    for (const [x, y, r] of [[30, 18, 9], [42, 14, 11], [54, 19, 8], [140, 24, 8], [150, 20, 10], [160, 25, 7]]) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+// ── แผนที่โลกเหมียว (ผู้ใช้ 7 พ.ย. 2026 — ผังร่างของผู้ใช้ · ภาพ src/render/world-map.js) ──
+// ภาพนิ่งวาดครั้งเดียวต่อขนาดจอ (เป็นแผ่น ๆ) · ชั้นสด 30 ภาพ/วิ เฉพาะตอนแผนที่เปิดอยู่
+// ป้ายชื่อโซน = ปุ่ม HTML วางตามพิกัดเดียวกับภาพ · กดบนพื้นที่โซนก็ได้ (ไฮไลต์ป้ายตามเมาส์บนคอม)
+// แผนที่กว้างกว่าจอ (ผู้ใช้ 7 พ.ย. รอบ 3: "ไม่ต้องหวงพื้นที่ อนาคตแผนที่จะเลื่อนไปทางขวาได้") — สูงพอดีจอ เลื่อนซ้าย-ขวา
+//   ลากด้วยนิ้ว/เมาส์ (ปล่อยแล้วไหลต่อ) · ล้อเมาส์ · ลูกศรทองสองข้าง · ปุ่มลูกศรบนคีย์บอร์ด · เปิดครั้งแรกให้หน้าแรกอยู่กลางจอ
+//   ภาพนิ่งแบ่งเป็นแผ่นกว้าง WM_TILE พิกเซลจริง วาดเมื่อต้องใช้ (แผ่นที่เหลือวาดตอนว่าง) — ไม่ต้องมีผ้าใบยักษ์ผืนเดียว
+const wm = {
+  raf: 0, last: 0, key: '', fit: null, k: 1, H: 0, tiles: new Map(), tileQ: 0,
+  camX: null, cam: 0, labCam: null, vel: 0, target: null, drag: null, dragEndT: 0,
+  hover: null, hot: null, t0: performance.now(), pops: new Map(),
+};
+// ── เอาเมาส์ชี้โซน (คอม) → ของเด่นในโซนเด้งขึ้นทีละชิ้นเป็นคลื่น ค้างตัวโตนิด ๆ จนเอาเมาส์ออกแล้วยุบกลับ ──
+// pops: โซน → { on: เวลาเริ่มชี้, off: เวลาเลิกชี้ | null } (มิลลิวินาที)
+const WM_POP_GAP = 0.045;   // วินาที ห่างกันต่อชิ้น (คลื่นซ้าย → ขวา)
+function wmPopIn(u) {
+  if (u <= 0) return { k: 1, hp: 0, sq: 0 };
+  return {
+    k: 1 + 0.05 * (1 - Math.exp(-7 * u) * Math.cos(16 * u)),
+    hp: u < 0.3 ? Math.sin(Math.PI * u / 0.3) : 0,
+    sq: u >= 0.3 && u < 0.46 ? Math.sin(Math.PI * (u - 0.3) / 0.16) : 0,
   };
-  const street = (c, royal) => {
-    c.fillStyle = royal ? '#EBDDF8' : '#F6DDC4';
-    c.fillRect(0, 82, 180, 13);
-    c.fillStyle = royal ? '#E8C26A' : 'rgba(255,255,255,.45)';
-    c.fillRect(0, 83, 180, 1.2);
-  };
-  paintBox(document.getElementById('zoneTownArt'), 180, 95, (c) => {
-    sky(c);
-    drawShopAt(c, 'care', 34, 84, 0.25);
-    drawShopAt(c, 'food', 90, 85, 0.26);
-    drawShopAt(c, 'toy', 148, 84, 0.25);
-    street(c, false);
+}
+function wmPopAt(now, zone, i) {
+  const p = wm.pops.get(zone);
+  if (!p) return null;
+  const d = i * WM_POP_GAP;
+  if (p.off == null) { const u = (now - p.on) / 1000 - d; return u > 0 ? wmPopIn(u) : null; }
+  const a = wmPopIn((p.off - p.on) / 1000 - d), v = (now - p.off) / 1000;
+  const k = 1 + (a.k - 1) * Math.exp(-9 * v), hp = a.hp * Math.exp(-14 * v);
+  return k - 1 < 0.002 && hp < 0.01 ? null : { k, hp, sq: 0 };
+}
+/** ยังมีโซนกำลังเด้ง/ยุบอยู่ไหม (ช่วงนี้วาดเต็มจังหวะจอให้ลื่น) · ล้างโซนที่ยุบจบแล้ว */
+function wmPopping(now) {
+  let busy = false;
+  for (const [z, p] of wm.pops) {
+    if (p.off == null && p.until && now >= p.until) p.off = p.until;   // เด้งจากการแตะ (มือถือ) หมดเวลาแล้วยุบเอง
+    if (p.off == null) { if (now - p.on < 1700) busy = true; }
+    else if (now - p.off < 700) busy = true;
+    else wm.pops.delete(z);
+  }
+  return busy;
+}
+const WM_TILE = 1024;
+const wmCanvas = document.getElementById('wmCanvas');
+const wmPop = mapPanel.querySelector('.wm-pop');
+const wmPrev = document.getElementById('wmPrev');
+const wmNext = document.getElementById('wmNext');
+const wmBase = () => Math.round(WORLD_EXT.x0 * wm.k);
+const wmTileCount = () => Math.ceil((Math.round(WORLD_EXT.x1 * wm.k) - wmBase()) / WM_TILE);
+/** แผ่นภาพนิ่งแผ่นที่ i — ทุกแผ่นวาดฉากชุดเดียวกัน (WORLD_EXT) แค่เลื่อนจุดเริ่ม ลายจึงต่อกันสนิท */
+function wmTile(i) {
+  let cv = wm.tiles.get(i);
+  if (!cv) {
+    cv = document.createElement('canvas');
+    cv.width = WM_TILE; cv.height = wm.H;
+    const g = cv.getContext('2d');
+    g.setTransform(wm.k, 0, 0, wm.k, -wmBase() - i * WM_TILE, 0);
+    drawWorldStatic(g, WORLD_EXT);
+    wm.tiles.set(i, cv);
+  }
+  return cv;
+}
+const wmMoving = () => !!wm.drag?.moved || Math.abs(wm.vel) > 0.004 || wm.target != null;
+/** วาดแผ่นที่ยังไม่มีทีละแผ่นตอนว่าง (ไม่วาดระหว่างกำลังเลื่อน — กันสะดุด) */
+function wmWarmTiles() {
+  clearTimeout(wm.tileQ);
+  wm.tileQ = setTimeout(() => {
+    if (mapPanel.classList.contains('hidden') || !wm.fit) return;
+    if (wmMoving()) { wmWarmTiles(); return; }
+    for (let i = 0; i < wmTileCount(); i++) if (!wm.tiles.has(i)) { wmTile(i); wmWarmTiles(); return; }
+  }, 80);
+}
+function wmKick() { if (!wm.raf && !mapPanel.classList.contains('hidden')) wm.raf = requestAnimationFrame(wmFrame); }
+function wmFrame(now) {
+  wm.raf = 0;
+  if (mapPanel.classList.contains('hidden')) return;
+  wm.raf = requestAnimationFrame(wmFrame);
+  // นิ่ง = 30 ภาพ/วิ · กำลังเลื่อน = เต็มจังหวะจอ (ลากลื่น)
+  if (!wmMoving() && !wmPopping(now) && now - wm.last < 1000 / 30 - 1.5) return;
+  const dt = Math.min(50, now - (wm.last || now));
+  wm.last = now;
+  const cw = wmCanvas.clientWidth, ch = wmCanvas.clientHeight;
+  if (!cw || !ch) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
+  if (wm.key !== W + 'x' + H) {
+    // ขนาดจอเปลี่ยน: จุดกลางจอเดิมยังอยู่กลางจอ · เปิดครั้งแรก = หน้าแรกอยู่กลางจอ
+    const mid = wm.fit && wm.camX != null ? wm.camX + wm.fit.viewW / 2 : HOME_X;
+    wm.key = W + 'x' + H;
+    wm.fit = fitWorld(cw, ch);
+    wm.k = dpr * wm.fit.s;
+    wm.H = H;
+    wm.tiles.clear();
+    wm.camX = clampCam(mid - wm.fit.viewW / 2, wm.fit.viewW);
+    wm.target = null; wm.vel = 0; wm.labCam = null;
+    wmCanvas.width = W; wmCanvas.height = H;
+    wmWarmTiles();
+  }
+  const { viewW } = wm.fit;
+  if (!wm.drag?.moved) {
+    if (wm.target != null) {
+      const d = wm.target - wm.camX;
+      wm.camX += d * Math.min(1, dt * 0.012);
+      if (Math.abs(d) < 0.5) { wm.camX = wm.target; wm.target = null; }
+    } else if (Math.abs(wm.vel) > 0.004) {
+      wm.camX += wm.vel * dt;
+      wm.vel *= Math.pow(0.94, dt / 16.7);
+      const cl = clampCam(wm.camX, viewW);
+      if (cl !== wm.camX) { wm.camX = cl; wm.vel = 0; }
+    }
+  }
+  wm.camX = clampCam(wm.camX, viewW);
+  // ตำแหน่งกล้องลงตัวที่พิกเซลจริง — แผ่นภาพนิ่งกับชั้นสดตรงกันพอดี ไม่เบลอ
+  const camPx = Math.round(wm.camX * wm.k);
+  wm.cam = camPx / wm.k;
+  const c = wmCanvas.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  const base = wmBase(), n = wmTileCount();
+  for (let i = Math.max(0, Math.floor((camPx - base) / WM_TILE)); i < n; i++) {
+    const x = base + i * WM_TILE - camPx;
+    if (x >= W) break;
+    c.drawImage(wmTile(i), x, 0);
+  }
+  c.setTransform(wm.k, 0, 0, wm.k, -camPx, 0);
+  if (wm.hot !== wm.hover) {
+    if (wm.hot && wm.pops.get(wm.hot)?.off == null) wm.pops.get(wm.hot).off = now;
+    if (wm.hover) {
+      // ชี้ซ้ำตอนยังยุบไม่จบ: เริ่มเด้งใหม่ (ไม่กระตุก — ยุบเหลือนิดเดียวแล้ว หรือยังโตอยู่ก็เด้งต่อ)
+      wm.pops.set(wm.hover, { on: now, off: null });
+    }
+  }
+  drawWorldLive(c, (now - wm.t0) / (1000 / 60), WORLD_EXT, {
+    drawCat: (cc, x, fy, k, t) => drawCatAuto(cc, x, fy, k, getSkin(), t),
+    pop: wm.pops.size ? (zone, i) => wmPopAt(now, zone, i) : null,
   });
-  paintBox(document.getElementById('zoneCastleArt'), 180, 95, (c) => {
-    sky(c);
-    drawFenceAt(c, 'zoneL', -10, 84, 0.2, 260, [['sakura', 70], ['cone', 150], ['topcat', 220]]);
-    drawFenceAt(c, 'zoneR', 128, 84, 0.2, 320, [['topcat', 60], ['cone', 140], ['sakura', 230]]);
-    drawCastleAt(c, 90, 84, 0.2, 0, 'art');
-    street(c, true);
+  if (wm.labCam !== wm.cam) { wm.labCam = wm.cam; placeWmLabels(); }
+  wmPrev.classList.toggle('off', wm.cam <= clampCam(-1e9, viewW) + 1);
+  wmNext.classList.toggle('off', wm.cam >= clampCam(1e9, viewW) - 1);
+  if (wm.hot !== wm.hover) {
+    wm.hot = wm.hover;
+    for (const b of document.getElementById('wmLabels').children) b.classList.toggle('hot', b.dataset.zone === wm.hover);
+  }
+}
+/** ป้ายชื่อโซน (สร้างครั้งแรก แล้วจัดตำแหน่งตามกล้อง/ขนาดจอ) */
+function placeWmLabels() {
+  const box = document.getElementById('wmLabels');
+  if (!box.children.length) {
+    for (const z of ZONES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wm-label wm-' + z.act;
+      b.dataset.zone = z.id;
+      b.innerHTML = '<b></b><small></small>';
+      b.querySelector('b').textContent = z.name;
+      b.querySelector('small').textContent = z.sub;
+      b.addEventListener('click', () => { if (!wmJustDragged()) wmAct(z, b); });
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !wm.drag?.moved) wm.hover = z.id; });
+      b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && wm.hover === z.id) wm.hover = null; });
+      box.appendChild(b);
+    }
+  }
+  const { s } = wm.fit;
+  for (const b of box.children) {
+    const z = ZONES.find((q) => q.id === b.dataset.zone);
+    b.style.left = ((z.label[0] - wm.cam) * s) + 'px';
+    b.style.top = (z.label[1] * s) + 'px';
+  }
+}
+/** เพิ่งลากแผนที่จบ — คลิกที่ตามมาไม่นับเป็นการกดโซน */
+const wmJustDragged = () => performance.now() - wm.dragEndT < 300;
+/** จุดบนจอ → โซน */
+function wmZoneAt(e) {
+  if (!wm.fit) return null;
+  const r = wmCanvas.getBoundingClientRect();
+  return zoneAt((e.clientX - r.left) / wm.fit.s + wm.cam, (e.clientY - r.top) / wm.fit.s);
+}
+// ── ลากเลื่อนแผนที่ (นิ้ว/เมาส์) — ขยับเกิน 6 px ถึงนับเป็นลาก ไม่งั้นเป็นการกด ──
+wmPop.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (e.target.closest('.backbtn, .wm-nav')) return;
+  wm.drag = { id: e.pointerId, x0: e.clientX, cam0: wm.camX, moved: false, lx: e.clientX, lt: e.timeStamp, v: 0 };
+  wm.vel = 0;
+  wm.target = null;
+});
+wmPop.addEventListener('pointermove', (e) => {
+  const d = wm.drag;
+  if (d && e.pointerId === d.id) {
+    const dx = e.clientX - d.x0;
+    if (!d.moved && Math.abs(dx) > 6) {
+      d.moved = true;
+      try { wmPop.setPointerCapture(e.pointerId); } catch { /* ไม่เป็นไร */ }
+      wmPop.classList.add('dragging');
+      wm.hover = null;
+    }
+    if (d.moved && wm.fit) {
+      wm.camX = clampCam(d.cam0 - dx / wm.fit.s, wm.fit.viewW);
+      const dt = e.timeStamp - d.lt;
+      if (dt > 0) { d.v = 0.7 * (-(e.clientX - d.lx) / dt / wm.fit.s) + 0.3 * d.v; d.lx = e.clientX; d.lt = e.timeStamp; }
+      wmKick();
+    }
+    return;
+  }
+  if (e.pointerType === 'mouse' && !e.target.closest('.wm-label, .backbtn, .wm-nav')) {
+    const z = wmZoneAt(e);
+    wm.hover = z ? z.id : null;
+    wmCanvas.style.cursor = z ? 'pointer' : '';
+  }
+});
+function wmDragEnd(e) {
+  const d = wm.drag;
+  if (!d || e.pointerId !== d.id) return;
+  wm.drag = null;
+  if (!d.moved) return;
+  wm.dragEndT = performance.now();
+  wm.vel = e.timeStamp - d.lt < 90 ? d.v : 0;   // ปล่อยตอนยังปัดอยู่ = ไหลต่อแล้วค่อย ๆ หยุด
+  wmPop.classList.remove('dragging');
+  wmKick();
+}
+wmPop.addEventListener('pointerup', wmDragEnd);
+wmPop.addEventListener('pointercancel', wmDragEnd);
+wmPop.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !wm.drag) wm.hover = null; });
+// ล้อเมาส์ / ทัชแพด = เลื่อนแนวนอน (ล้อแนวตั้งก็เลื่อนซ้าย-ขวา)
+wmPop.addEventListener('wheel', (e) => {
+  if (!wm.fit) return;
+  e.preventDefault();
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  const px = e.deltaMode === 1 ? d * 32 : e.deltaMode === 2 ? d * wmCanvas.clientWidth : d;
+  wm.vel = 0;
+  wm.target = clampCam((wm.target ?? wm.camX) + px / wm.fit.s, wm.fit.viewW);
+  wmKick();
+}, { passive: false });
+/** เลื่อนแผนที่ไปทาง dir (−1 ซ้าย · 1 ขวา) เป็นสัดส่วนของความกว้างจอ */
+function wmGlide(dir) {
+  if (!wm.fit) return;
+  wm.vel = 0;
+  wm.target = clampCam((wm.target ?? wm.camX) + dir * wm.fit.viewW, wm.fit.viewW);
+  wmKick();
+}
+wmPrev.addEventListener('click', () => { unlockAudio(); wmGlide(-0.6); });
+wmNext.addEventListener('click', () => { unlockAudio(); wmGlide(0.6); });
+window.addEventListener('keydown', (e) => {
+  if (mapPanel.classList.contains('hidden')) return;
+  if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); wmGlide(e.code === 'ArrowLeft' ? -0.35 : 0.35); }
+});
+wmCanvas.addEventListener('click', (e) => {
+  if (wmJustDragged()) return;
+  const z = wmZoneAt(e);
+  if (z) wmAct(z, document.querySelector(`#wmLabels [data-zone="${z.id}"]`));
+});
+let wmToastTimer = 0;
+function wmToast(text) {
+  const el = document.getElementById('wmToast');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(wmToastTimer);
+  wmToastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+/** กดโซน: เมือง = ไปหน้าเมือง · ปราสาท/ดินแดนปริศนา = เร็ว ๆ นี้ · ดินแดนใหม่ = วาปไปหน้ารอ · หน้าแรก = ปิดแผนที่ */
+/**
+ * แตะ/คลิกเลือกโซน → ของในโซนเด้ง + ออร่าล้อมรอบก่อน (มือถือไม่มีเมาส์ชี้ เห็นตอนเลือกแทน) แล้วค่อยไป
+ * โซนที่พาไปหน้าอื่นรอให้เห็นท่าเด้งแป๊บหนึ่ง · กดรัว ๆ ระหว่างรอไม่นับซ้ำ
+ */
+function wmAct(z, el) {
+  const now = performance.now(), p = wm.pops.get(z.id);
+  if (!(p && p.off == null && !p.until)) wm.pops.set(z.id, { on: now, off: null, until: now + 1300 });
+  else p.until = 0;   // เมาส์ชี้อยู่แล้ว (เด้งค้างอยู่) — ไม่เริ่มใหม่
+  wmKick();
+  unlockAudio();   // ต้องอยู่ในจังหวะกดจริง (iOS) — ไม่ใช่ใน setTimeout
+  if (z.act !== 'town' && z.act !== 'castle' && !wm.actT) sfx.fish();   // เสียงตอบทันทีที่แตะ
+  if (z.act === 'soon') { wmActNow(z, el); return; }
+  if (wm.actT) return;
+  wm.actT = setTimeout(() => { wm.actT = 0; if (!mapPanel.classList.contains('hidden')) wmActNow(z, el); }, 420);
+}
+function wmActNow(z, el) {
+  unlockAudio();
+  if (z.act === 'town') { goTown('town', el); return; }
+  if (z.act === 'castle') { goTown('hall', el); return; }   // ปราสาทชั้น 1 (โถงต้อนรับ)
+  if (z.act === 'home') showMap(false);
+  else if (z.act === 'soon') wmToast(z.msg);
+  else if (z.act === 'wild') goWild(el);
+}
+
+// ── หน้ารอของดินแดนใหม่ ──
+const wildPanel = document.getElementById('wildPanel');
+const wildCanvas = document.getElementById('wildCanvas');
+const wild = { raf: 0, last: 0, t0: performance.now() };
+function wildFrame(now) {
+  wild.raf = 0;
+  if (wildPanel.classList.contains('hidden')) return;
+  wild.raf = requestAnimationFrame(wildFrame);
+  if (now - wild.last < 1000 / 30 - 1.5) return;
+  wild.last = now;
+  const cw = wildCanvas.clientWidth, ch = wildCanvas.clientHeight;
+  if (!cw || !ch) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
+  if (wildCanvas.width !== W || wildCanvas.height !== H) { wildCanvas.width = W; wildCanvas.height = H; }
+  const c = wildCanvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawWildScene(c, cw, ch, (now - wild.t0) / (1000 / 60));
+}
+/** ม่านอุ้งเท้าปิดจอจากจุด el (null = กลางจอ) → สลับหน้า → เปิดม่าน */
+function pawSwap(el, swap) {
+  const wipe = document.getElementById('roomWipe');
+  if (el) {
+    const r = el.getBoundingClientRect();
+    const st = wipe.parentElement.getBoundingClientRect();
+    wipe.style.setProperty('--wx', ((r.left + r.width / 2 - st.left) / st.width * 100) + '%');
+    wipe.style.setProperty('--wy', ((r.top + r.height / 2 - st.top) / st.height * 100) + '%');
+    wipe.className = 'room-wipe in';
+  } else wipe.className = 'room-wipe in-center';
+  setTimeout(() => {
+    swap();
+    wipe.className = el ? 'room-wipe out' : 'room-wipe out-box';
+    setTimeout(() => { wipe.className = 'room-wipe'; }, 560);
+  }, 460);
+}
+function goWild(el) {
+  pawSwap(el, () => {
+    mapPanel.classList.add('hidden');
+    wildPanel.classList.remove('hidden');
+    if (!wild.raf) wild.raf = requestAnimationFrame(wildFrame);
   });
 }
+function backFromWild() {
+  unlockAudio(); sfx.fish();
+  pawSwap(null, () => {
+    wildPanel.classList.add('hidden');
+    showMap(true);
+  });
+}
+document.getElementById('wildBack').addEventListener('click', backFromWild);
+document.getElementById('wildToMap').addEventListener('click', backFromWild);
+
 function showMap(on) {
-  if (on) paintZoneArt();
   mapPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
+  if (on && !wm.raf) wm.raf = requestAnimationFrame(wmFrame);
 }
 /** ไปหน้าเมือง: ม่านอุ้งเท้าขยายจากปุ่มที่กด แล้วเปลี่ยนหน้า · spot = 'castle' เริ่มยืนหน้าปราสาท */
 let goingTown = false;
@@ -7381,14 +7745,10 @@ function goTown(spot, fromEl) {
   wipe.style.setProperty('--wx', ((r.left + r.width / 2 - st.left) / st.width * 100) + '%');
   wipe.style.setProperty('--wy', ((r.top + r.height / 2 - st.top) / st.height * 100) + '%');
   wipe.className = 'room-wipe in';
-  setTimeout(() => { location.href = './town.html' + (spot === 'castle' ? '?spot=castle' : ''); }, 460);
+  setTimeout(() => { location.href = './town.html' + (spot === 'castle' || spot === 'hall' ? '?spot=' + spot : ''); }, 460);
 }
 document.getElementById('btnMap').addEventListener('click', () => { unlockAudio(); startMusic(); sfx.fish(); showMap(true); });
 document.getElementById('mapBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); showMap(false); });
-for (const id of ['zoneTown', 'zoneCastle']) {
-  const el = document.getElementById(id);
-  el.addEventListener('click', () => goTown(el.dataset.spot, el));
-}
 // กลับมาจากหน้าเมืองด้วยปุ่มย้อนกลับของเบราว์เซอร์ (หน้าเดิมจากแคช) — ม่านต้องไม่ค้างปิดจอ
 window.addEventListener('pageshow', () => {
   goingTown = false;
@@ -7796,7 +8156,7 @@ let shopStep = EXCHANGE.steps[EXCHANGE.steps.length - 1];
     b.className = 'stab';
     b.setAttribute('role', 'tab');
     b.dataset.shop = tb.id;
-    b.innerHTML = `<span class="stab-ico" aria-hidden="true">${tb.ico}</span>${tr(tb.name)}`;
+    b.textContent = tr(tb.name);   // แท็บไม่มีอีโมจิแล้ว (ผู้ใช้ 7 พ.ย. 2026)
     b.addEventListener('click', () => { unlockAudio(); sfx.fish(); shopTab = tb.id; paintShop(); });
     tabs.appendChild(b);
   }
@@ -9162,6 +9522,8 @@ function closeAllPanels() {
   // (showFace(false) ล้างให้อยู่แล้ว แต่ยังออกจากหน้านี้ได้ทางอื่น เช่นกดปุ่มเล่น)
   setDraft(null);
   document.querySelectorAll('.stage .panel').forEach((el) => el.classList.add('hidden'));
+  for (const el of [...underOf.keys()]) clearOver(el);
+  document.querySelectorAll('.stage .panel.under').forEach((el) => el.classList.remove('under'));
   // บ้านน้องแมววาดแทนหน้าแรกบนผ้าใบเดียวกัน — ปิดแผงแล้วต้องเลิกวาดห้องด้วย
   // ไม่งั้นกดเล่นจากที่อื่นแล้วฉากห้องก่อนวิ่งจะกลายเป็นบ้านน้องค้างอยู่
   // เพลงบ้านน้องต้องหยุดตามด้วย (ทางที่ไปต่อจะสั่งเพลงของตัวเองอีกที)
@@ -9787,6 +10149,7 @@ if (new URLSearchParams(location.search).get('from') === 'town') {
   try { history.replaceState(null, '', location.pathname); } catch { /* ไม่เป็นไร */ }
   if (hasAccount() && chosenName()) {
     goHome();
+    if (new URLSearchParams(location.search).get('go') === 'room') catRoomUI.open();   // กระจกวาปในปราสาท → ห้องน้อง
     // ไม่ได้ผ่านปุ่ม "เข้าเกม" (ที่ปลดเสียง+เริ่มเพลง) — แตะครั้งแรกที่ไหนก็ได้ให้เพลงหน้าแรกเริ่ม
     document.addEventListener('pointerdown', () => { unlockAudio(); startMusic(); }, { once: true, passive: true });
   }

@@ -20380,6 +20380,7 @@ function smoothLoop(pts) {
 }
 /** หน่วยในไฟล์ → หน่วยเกม ต่อ scale 1 (scale 2.6 = สูงราว 160 เท่าน้องเดิมบนหน้าแรก) */
 const UNIT = 0.104;
+export const CAT2_UNIT = UNIT;   // ให้ฉากคำนวณระยะในตัวน้อง (เช่น ยกเท้าบนขั้นบันได town/main.js) ด้วยหน่วยเดียวกัน
 /** เส้นขอบบางลงจากในไฟล์ ให้หนาเท่าเส้นของหน้าอื่นเมื่อย่อลงขนาดในเกม */
 const LINE_K = 0.8;
 /** ความหนาเส้นขอบรอบนอก (หน่วยในไฟล์) */
@@ -25686,13 +25687,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const yB = yaw * 0.7;
   // เลื่อนเนื้อกลางตัว (พุง ลาย ขา) ไปทางที่หัน แต่ขอบตัวอยู่ที่เดิม — ไม่มีจุดพับ เส้นข้างตัวไม่เป็นแนวตั้งแข็ง
   // แขนที่ยื่นเลยขอบตัว: ฝั่งไกลหดสั้น (หุบไปข้างหลัง) ฝั่งใกล้หดนิดเดียว
+  // shape.armFar (ท่ายืนนิ่งในเมือง · ผู้ใช้ 8 พ.ย. "แขนพับนิดนึงตรงมือ"): แขนฝั่งไกลหดน้อยลง — หดแนวนอนอย่างเดียวมาก ๆ
+  //   ทำให้แขนชันลง อุ้งเท้าแคบเหมือนข้อมือพับ · ท่าวิ่ง (ไม่ตั้งค่านี้) เหมือนเดิม
+  const farK = 0.5 + 0.38 * clamp01(v('armFar'));
   const bodyX = (x) => {
     if (!yB) return x;
     const R = 128, d = x - 300, ad = Math.abs(d), sg = Math.sign(d) || 1;
     const sh = R * Math.sin(yB) * 0.45;
     if (ad <= R) return x + sh * (1 - (d / R) ** 2);
     const far = sg * yB > 0;
-    return 300 + sg * R + sg * (ad - R) * (far ? 0.5 : 0.92);
+    return 300 + sg * R + sg * (ad - R) * (far ? farK : 0.92);
   };
 
   /** ย้ายชิ้นหน้า (จุดกลาง fx) ไปตำแหน่งใหม่ + บีบตามความเอียงของผิว */
@@ -27597,11 +27601,13 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   if (useHold) {
     const u = ease(clamp01((holdK - 0.4) / 0.6));
     const lift = offer * 22;   // ยื่นหัวใจ: มือเลื่อนลงมาข้างหน้านิด
+    // shape.sip (ปราสาทชั้น 2 · ผู้ใช้ 8 พ.ย. จิบชา/กินขนม): ยกของที่ประคองสองมือขึ้นหาปาก — ศอกขึ้นนิด อุ้งเท้าขึ้นเต็ม
+    const sip = v('sip');
     const mk = (side) => {
       const m = side === 'right';
       const mp = (a) => (m ? mirrorPts(a) : a);
       const kn = (m ? -1 : 1) * kneadT * 4 * (1 - clasp);   // นวดสลับ (ท่ากอดไม่มีหัวใจ)
-      const H = mp(HOLD_ARM.loHold).map(([x, y], i) => [x, y + (i ? lift * (i / 3) + kn : 0)]);
+      const H = mp(HOLD_ARM.loHold).map(([x, y], i) => [x, y + (i ? lift * (i / 3) + kn : 0) - sip * (22 + 44 * (i / 3))]);
       const lo = mixPts(mp(HOLD_ARM.loRest), [[H, u], [mp(HOLD_ARM.loGrip), u * v('grip')]]).map(([x, y]) => upperPt(x, y));
       // ศอกอวบ เรียวลงหาข้อมือ แล้วอุ้งเท้าป่องนิด ๆ
       const bLo = spineBand(lo, 10, (i) => 29 - 7 * (i / 10));
@@ -28062,6 +28068,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const hs = 40 * ease(clamp01(clasp * 1.4)) * (1 + 0.25 * offer);
     // idle.onHoldTips = ขอตำแหน่งปลายแขนสองข้าง (x, y, a พิกัดไฟล์) — ฉากกาช่าใช้ตัดอุ้งเท้าจริงไปแปะเกาะขอบ
     idle?.onHoldTips?.(ctx, tl0, tr0, 25 + LW);
+    // idle.holdBehind (ถ้วยชาในปราสาท · ผู้ใช้ 8 พ.ย. "แขนน้องต้องบังแก้วให้หมด"): ของอยู่หลังแขนทั้งท่อน — วาดก่อนแขน
+    const behind = !!idle?.holdBehind && clasp > 0.05 && idle?.holdDraw;
+    if (behind) { ctx.save(); idle.holdDraw(ctx, hx0, hy0, t, clasp); ctx.restore(); }
     // แขนสองข้างเป็นท่อเดียวต่อเส้น มีเส้นรอบครบ หนาเท่ากันตลอด · อุ้งเท้าครีมแตะใต้คาง
     for (const H of [hold.L, hold.R]) {
       drawLayer(ctx, [{ small: true, sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, patch: calPatch.arm(H.bLo), det: (c) => {
@@ -28082,7 +28091,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       } }], pal, hooks, opt);
       if (typeof OUT?.sitSleeve === 'function') OUT.sitSleeve(ctx, H.bLo, 3, pal);
     }
-    if (clasp > 0.05) {
+    if (clasp > 0.05 && !behind) {
       // หัวใจอยู่หน้าอก ระหว่างแขน แล้วอุ้งเท้าสองข้างวาดทับขอบบนของหัวใจ = กำลังประคองไว้
       // หัวใจวาดทับแขน แต่เว้นตรงอุ้งเท้า (รวมเส้นขอบอุ้งเท้า) — อุ้งเท้าจึงอยู่หน้าหัวใจ
       ctx.save();
