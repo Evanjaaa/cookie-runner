@@ -1,0 +1,13 @@
+{
+  "name": "meowzing-castle",
+  "private": true,
+  "description": "ห้องออนไลน์ปราสาทแมวเหมียว — Cloudflare Worker + Durable Object (ดู realtime/README.md)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

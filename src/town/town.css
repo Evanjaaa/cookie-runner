@@ -1378,3 +1378,18 @@ body:not(.tapmove) .kh-tap { display: none; }
 .act:active, .runbtn:active, .emobtn:active, .bagbtn:active, .wardbtn:active, .backbtn:active, .xbtn:active, .mutebtn:active, .sd-btn:active { box-shadow: inherit; }
 .rt-go:not(:disabled):active, .bs-go:active, .bs-off:active { transform: none; }
 .sd-btn:disabled:active { filter: none; }
+
+/* ออนไลน์ในปราสาท (online.js): ป้ายเม็ดเล็กใต้ป้ายโหมด — จุดเขียวเต้นเบา ๆ บอกว่าต่อห้องอยู่ */
+.online {
+  position: fixed; z-index: 5;
+  top: calc(var(--backbtn) + clamp(16px, 2.8dvh, 32px) - 4px);
+  left: calc(var(--backbtn-x) + env(safe-area-inset-left) + var(--backbtn) + 14px);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 11px 3px 9px; border-radius: 999px;
+  background: rgba(255,255,255,.85); color: #6A3FA0;
+  font-size: clamp(10px, 1.9dvh, 12.5px); font-weight: 700;
+  pointer-events: none;
+}
+.online-dot { width: 7px; height: 7px; border-radius: 50%; background: #3CC985; animation: onlinePulse 2s ease-out infinite; }
+@keyframes onlinePulse { 0% { box-shadow: 0 0 0 0 rgba(60,201,133,.55); } 70%, 100% { box-shadow: 0 0 0 6px rgba(60,201,133,0); } }
+body.photo .online, body.scope .online, body.in-shop .online { opacity: 0; transition: opacity .3s; }

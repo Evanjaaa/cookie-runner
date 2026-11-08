@@ -142,6 +142,31 @@ export function emotePose(tick) {
   return { k, shape };
 }
 
+/** เฟรมที่ท่าตอนนี้เดินมาแล้ว (ส่งให้แมวตัวอื่นในห้องออนไลน์เริ่มท่าตรงจังหวะเดียวกัน) · 0 = ไม่ได้ทำท่า */
+export const emoteAge = () => (cur && cur.out < 0 ? Math.round(cur.t) : 0);
+
+/**
+ * รูปร่างของท่า id ที่เดินมาแล้ว u เฟรม — ไม่มีสถานะในตัว ใช้วาดแมวของผู้เล่นคนอื่น (ห้องออนไลน์ปราสาท)
+ * ไม่มีเสียงร้อง/ของประกอบ · ท่าขยับจบแล้ว / หาวครบเวลา = null (กลับยืน)
+ */
+export function emoteShapeAt(id, outfit, u, tick) {
+  if (id === 'act') {
+    const act = cat2Act(outfit?.id);
+    return act ? { k: E.io(Math.min(1, u / 30)), shape: act.shape(tick) } : null;
+  }
+  const def = LIST.find((d) => d.id === id);
+  if (!def) return null;
+  if (def.kind === 'move') {
+    const m = MOVES[id];
+    return u >= m.dur ? null : { k: 1, shape: m.shape(Math.max(0, u)) };
+  }
+  const h = HOLD[id];
+  if (h.hold && u >= h.hold + FADE_OUT) return null;
+  let k = E.io(Math.min(1, Math.max(0, u) / h.ease));
+  if (h.hold && u > h.hold) k *= 1 - E.io(Math.min(1, (u - h.hold) / FADE_OUT));
+  return { k, shape: poseShape(id) };
+}
+
 /** ความสูงที่ท่ายกตัวน้องขึ้น (หน่วยตัวแมว คูณสเกลเอง) */
 export function emoteLift(pose) {
   return pose ? (pose.shape.lift || 0) * pose.k : 0;

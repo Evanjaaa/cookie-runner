@@ -21,3 +21,6 @@ undefined-*.png
 
 # โปรไฟล์ Chrome ของสคริปต์ทดสอบ (มีคุกกี้/ประวัติ/ข้อมูลล็อกอินของเบราว์เซอร์) ห้ามขึ้น git
 .button-chrome/
+
+# Cloudflare (realtime/) — ไฟล์ชั่วคราวของ wrangler dev
+.wrangler/

@@ -29,7 +29,7 @@ import { drawCat2, drawTrail, CAT2_UNIT } from '../render/cat2.js';
 import { getSkin, setSkin, skinById, SKINS, catSkin, catSkinId } from '../skins.js';
 import { CUSTOM_ID } from '../paint.js';
 import { grownCats } from '../cats.js';
-import { OUTFITS, wearable, isOwned, getOutfit, setOutfit, RARITY } from '../outfits.js';
+import { OUTFITS, wearable, isOwned, getOutfit, setOutfit, RARITY, outfitById } from '../outfits.js';
 import { CAT_LOOK, CAT_ANIM } from '../config.js';
 import { drawItemIcon } from '../render/items.js';
 import { SHOP_TABS, SHOP_ITEMS, EXCHANGE } from '../shop.js';
@@ -47,7 +47,8 @@ import { LW, L_PLACES, L_SURFACES, L_SPAWN, L_STAIRS_X, SNACK_POP, lampOn, toggl
 import { startAct, stepAct, actPose, randomSnack, drawSnackFlight, burst, stepActFx, drawActFx } from './castle-acts.js';
 import { openScope, scopeStep, scopeDrag, scopeZoom, drawScope, lensOf } from './castle-scope.js';
 import { RW, R_PLACES, R_SURFACES, R_SPAWN, STAR_LINES, roofWish, roofWishSend, drawRoofBack, drawRoofWorld } from './castle-roof.js';
-import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx } from './emotes.js';
+import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx, emoteAge, emoteShapeAt } from './emotes.js';
+import { online, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook } from './online.js';
 
 const cv = document.getElementById('town');
 const ctx = cv.getContext('2d');
@@ -96,7 +97,14 @@ const GARDEN = { id: 'garden', w: GW, places: G_PLACES, surfaces: G_SURFACES, gr
 // ปราสาทแมวเหมียว ชั้น 1 · โซนต้อนรับ (ผู้ใช้ 7 พ.ย. — castle-hall.js) · เข้าจากประตูปราสาทในเมือง หรือ ?spot=hall (แผนที่โลกเหมียว)
 const HALL = { id: 'hall', w: HW, places: H_PLACES, surfaces: H_SURFACES, ground: () => GY };
 // on the stairs = behind the railing; mid-air keeps the last value (no flicker while jumping on the stairs)
-const stairsPre = () => { if (cat.P.onGround) setStairsCat(cat.on?.id || null); };
+// แมวตัวอื่น (ออนไลน์) อยู่บนบันได = ราวก็วาดหน้าแมวเหมือนกัน
+let myStairs = null;
+const stairsPre = () => {
+  if (cat.P.onGround) myStairs = cat.on && /stairs/.test(cat.on.id) ? cat.on.id : null;
+  let id = myStairs;
+  if (!id) for (const q of peers.values()) if (q.w === WD.id && !q.air && q.on && /stairs/.test(q.on.id)) { id = q.on.id; break; }
+  setStairsCat(id);
+};
 HALL.pre = stairsPre;
 HALL.front = (c) => drawStairsFront(c);
 // ปราสาทชั้น 2 · Cozy Lounge (castle-lounge.js) · ขึ้นบันไดชั้น 1 / เคาน์เตอร์วาป / ?spot=lounge
@@ -622,13 +630,7 @@ function fountainSound() {
 const STEP = 10;   // ก้าวขึ้น/ลงต่างระดับไม่เกินเท่านี้ = เดินต่อ (ไม่ร่วง)
 /** ผิวที่สูงที่สุดตรง x ที่อยู่ไม่เหนือเท้า (y) เกิน tol — ถนน/พื้นสะพานรองรับเสมอ */
 function floorAt(x, y, tol) {
-  let best = null, by = WD.ground(x);
-  for (const s of WD.surfaces) {
-    if (s === cat.drop || x < s.x0 || x > s.x1) continue;
-    const sy = surfY(s, x);
-    if (sy >= y - tol && sy < by) { by = sy; best = s; }
-  }
-  return { s: best, y: by };
+  return floorIn(WD, x, y, tol, cat.drop);
 }
 /**
  * เสียงเท้าตามพื้นที่ยืนอยู่ (ผู้ใช้ 8 พ.ย.): กระเบื้อง (โถงชั้น 1) · ไม้ (ชั้น 2 · สะพาน · ท่าเรือ · โต๊ะ/ตู้) · พรม (พรมใหญ่ชั้น 2)
@@ -1146,6 +1148,7 @@ function update(dt) {
   if (scope && !scopeStep(scope, dt, skeys, lensOf(vw, H).R)) { scope = null; paused = false; document.body.classList.remove('scope'); }
   stepActFx(dt);
   stepSoft(dt);
+  stepPeers(dt);   // แมวตัวอื่นในห้องออนไลน์เดินต่อแม้หน้าต่างเราเปิดอยู่
   if (wishBurstAt != null && tick >= wishBurstAt) { wishBurstAt = null; sfx('pick', true); }
   if (wishToastAt != null && tick >= wishToastAt) { wishToastAt = null; if (WD === ROOF) toast('🌠 ดาวตกรับคำอธิษฐานแล้ว ขอให้เป็นจริงนะเหมียว'); }
   let dir = 0;
@@ -1246,6 +1249,7 @@ function update(dt) {
   // ท่าทาง (emotes.js): เดินท่า + เสียงร้อง + ของประกอบ ปล่อยจากตัวที่ยกขึ้นตามท่า
   const em = emotePose(tick);
   stepEmote(dt, emoteAnchors(cat.x, cat.y - emoteLift(em) * SC, SC));
+  syncOnline();
   follow(dt);
 }
 
@@ -1288,6 +1292,217 @@ function trailWorld(A, r, D) {
     q[0] = (q.wx - cat.x) * D;
   }
   if (r?.ribbon && A.ribbon) r.ribbon.pts = A.ribbon.map((q) => [q[0], q[1]]);
+}
+
+// ── ออนไลน์ในปราสาท (ผู้ใช้ 8 พ.ย. — online.js · เซิร์ฟเวอร์ realtime/) ──
+// เห็นแมวของผู้เล่นคนอื่นในชั้นเดียวกัน: เดิน วิ่ง กระโดด นั่ง ทำท่า · ป้ายชื่อเหนือหัว
+// ส่งเฉพาะตอนสถานะเปลี่ยน + ย้ำตำแหน่งทุก ~1.5 วิตอนเดิน/ลอย — เครื่องนี้เดินแมวตัวอื่นต่อเองด้วยความเร็ว/แรงโน้มถ่วง/ผิวพื้นชุดเดียวกับตัวเรา
+// ได้ตำแหน่งใหม่ = เลื่อนเข้าหาเนียน ๆ (ox/oy ค่อย ๆ หด) ไม่วาร์ป
+const peers = new Map();
+const WORLD_OF = { hall: HALL, lounge: LOUNGE, roof: ROOF };
+// ยังไม่ตั้งชื่อ = ชื่อชั่วคราว "เหมียว123" — จำไว้ในเครื่อง เปิดหน้าใหม่ชื่อเดิม (ไม่สุ่มใหม่ทุกครั้ง)
+const guestName = (() => {
+  const fresh = 'เหมียว' + (100 + Math.floor(Math.random() * 900));
+  try {
+    const n = localStorage.getItem('cookie-runner:guest-name');
+    if (n) return n;
+    localStorage.setItem('cookie-runner:guest-name', fresh);
+  } catch { /* โหมดส่วนตัว */ }
+  return fresh;
+})();
+function myName() { try { return localStorage.getItem('cookie-runner:name') || ''; } catch { return ''; } }
+function netLook() {
+  const s = townSkin();
+  return { name: myName() || guestName, skin: s.id || 'orange', outfit: s.outfit?.id || 'none' };
+}
+function netState() {
+  const P = cat.P;
+  return {
+    w: WD.id, x: Math.round(cat.x * 10) / 10, y: Math.round(cat.y * 10) / 10, dir: cat.dir,
+    mv: cat.moving ? 1 : 0, run: running ? 1 : 0, air: P.onGround ? 0 : 1, vy: Math.round(P.vy * 100) / 100,
+    on: cat.on?.id || '', sit: cat.sit?.id || '', em: emoteId() || '', ea: emoteAge(),
+  };
+}
+let netKey = '', netAt = -1e9, netDirty = false, lookKey = '', netLookAt = -1e9;
+/** ทุกเฟรม: อยู่ในปราสาท = ต่อห้อง · สถานะเปลี่ยน = ส่ง (ห่างกันอย่างน้อย 3 เฟรม) · เดิน/ลอยอยู่ = ย้ำทุก 90 เฟรม */
+function syncOnline() {
+  if (!IN_CASTLE()) { leaveCastle(); paintOnline(); return; }
+  joinCastle(() => ({ ...netLook(), ...netState() }));
+  paintOnline();
+  if (!online()) return;
+  const P = cat.P;
+  const key = [WD.id, cat.moving ? cat.dir : 0, cat.moving ? +running : 0, P.onGround ? 0 : 1, P.jumps, cat.on?.id || '', cat.sit?.id || '', emoteId() || ''].join('|');
+  if (key !== netKey) { netKey = key; netDirty = true; }
+  if (!netDirty && (cat.moving || !P.onGround) && tick - netAt > 90) netDirty = true;
+  if (netDirty && tick - netAt >= 3) { sendState(netState()); netAt = tick; netDirty = false; }
+  if (tick - netLookAt > 60) {
+    netLookAt = tick;
+    const L = netLook(), lk = L.name + '|' + L.skin + '|' + L.outfit;
+    if (lookKey && lk !== lookKey) sendLook(L);
+    lookKey = lk;
+  }
+}
+function newPeer(id) {
+  return {
+    id, name: 'เหมียว', skin: 'orange', outfit: 'none', skinObj: null, skinKey: '',
+    w: 'hall', x: 0, y: GY, ox: 0, oy: 0, dir: 1, mv: 0, run: 0, air: false, vy: 0, on: null, sit: null,
+    emId: null, emT0: 0, still: 0, face: 1,
+    A: createRunAnim(), P: { onGround: true, jumps: 0, vy: 0, runPhase: 0, squash: 0, sliding: false, y: GY, fainting: false },
+  };
+}
+function setLook(q, l) { q.name = l.name || 'เหมียว'; q.skin = l.skin || 'orange'; q.outfit = l.outfit || 'none'; }
+function peerSkin(q) {
+  const key = q.skin + '|' + q.outfit;
+  if (q.skinKey !== key) { q.skinKey = key; q.skinObj = { ...skinById(q.skin), outfit: outfitById(q.outfit) }; }
+  return q.skinObj;
+}
+function applyPeer(q, s, first = false) {
+  const W = WORLD_OF[s.w] || HALL;
+  // อยู่ชั้นเดิม เดินบนพื้นอยู่ = เก็บระยะต่างไว้เลื่อนเข้าหาเนียน ๆ · กระโดด/เปลี่ยนชั้น/ห่างมาก = ไปตำแหน่งใหม่เลย
+  if (!first && q.w === s.w && !s.air && !q.air) { q.ox += q.x - s.x; q.oy += q.y - s.y; } else { q.ox = 0; q.oy = 0; }
+  if (Math.abs(q.ox) > 160 || Math.abs(q.oy) > 160) { q.ox = 0; q.oy = 0; }
+  const wasAir = q.air;
+  q.w = s.w; q.x = s.x; q.y = s.y; q.dir = s.dir < 0 ? -1 : 1; q.mv = s.mv ? 1 : 0; q.run = s.run ? 1 : 0;
+  q.air = !!s.air; q.vy = s.vy || 0;
+  if (q.air && !wasAir) q.P.squash = CAT_ANIM.squash.jump;
+  q.on = s.on ? W.surfaces.find((o) => o.id === s.on) || null : null;
+  q.sit = s.sit ? W.places.find((o) => o.id === s.sit) || null : null;
+  if (s.em) { if (q.emId !== s.em) { q.emId = s.em; q.emT0 = tick - (s.ea || 0); } } else q.emId = null;
+  q.P.onGround = !q.air; q.P.vy = q.vy;
+}
+onlineHandlers({
+  reset() { peers.clear(); },
+  join(p) { const q = newPeer(p.id); setLook(q, p); applyPeer(q, p, true); peers.set(p.id, q); },
+  state(id, st) { const q = peers.get(id); if (q) applyPeer(q, st); },
+  look(id, l) { const q = peers.get(id); if (q) setLook(q, l); },
+  leave(id) { peers.delete(id); },
+});
+/** พื้นใต้จุด x ในโลก W (สูตรเดียวกับ floorAt ของตัวเรา) */
+function floorIn(W, x, y, tol, drop = null) {
+  let best = null, by = W.ground(x);
+  for (const s of W.surfaces) {
+    if (s === drop || x < s.x0 || x > s.x1) continue;
+    const sy = surfY(s, x);
+    if (sy >= y - tol && sy < by) { by = sy; best = s; }
+  }
+  return { s: best, y: by };
+}
+/** เดินแมวตัวอื่นต่อเองทุกเฟรม — ความเร็วเดิน/วิ่ง แรงโน้มถ่วง ผิวพื้น ชุดเดียวกับตัวเรา */
+function stepPeers(dt) {
+  const fade = Math.pow(0.86, dt);
+  for (const q of peers.values()) {
+    const W = WORLD_OF[q.w];
+    if (!W) continue;
+    const P = q.P;
+    if (!q.sit) {
+      const sp = q.run ? RUN : WALK, x0 = q.x;
+      const x1 = q.mv ? Math.max(40, Math.min(W.w - 40, q.x + q.dir * sp * dt)) : q.x;
+      if (q.mv) P.runPhase += 0.408 * (sp / 6.8) * (sp === RUN ? 1.05 : 1.25) * dt;
+      if (q.air) {
+        q.x = x1;
+        const prevY = q.y;
+        q.vy += JUMP.gravity * dt;
+        q.y += q.vy * dt;
+        if (q.vy > 0) {
+          const f = floorIn(W, q.x, prevY, 0.5);
+          if (q.y >= f.y) { P.squash = CAT_ANIM.squash.land(q.vy); q.y = f.y; q.on = f.s; q.air = false; q.vy = 0; }
+        }
+      } else {
+        const n = Math.max(1, Math.ceil(Math.abs(x1 - x0) / 4));
+        for (let i = 1; i <= n && !q.air; i++) {
+          q.x = x0 + ((x1 - x0) * i) / n;
+          const y = q.on ? surfY(q.on, q.x) : null;
+          if (y != null) q.y = y;
+          else {
+            const f = floorIn(W, q.x, q.y, STEP);
+            if (f.y - q.y <= STEP) { q.y = f.y; q.on = f.s; } else { q.air = true; q.vy = 0; q.on = null; }
+          }
+        }
+        q.x = x1;
+      }
+      P.onGround = !q.air; P.vy = q.vy;
+    }
+    P.squash += (0 - P.squash) * CAT_ANIM.squash.decay * dt;
+    q.ox *= fade; q.oy *= fade;
+    if (q.mv || q.air) { q.still = 0; q.face = 1; }
+    else { q.still += dt; q.face += ((q.still > 300 ? 0 : 1) - q.face) * Math.min(1, 0.05 * dt); }
+  }
+}
+/** แมวตัวอื่นที่อยู่ชั้นนี้ในจอ — วาดก่อนตัวเรา (ตัวเราอยู่หน้าสุดเสมอ) */
+function drawPeers(c) {
+  for (const q of peers.values()) {
+    if (q.w !== WD.id) continue;
+    const x = q.x + q.ox;
+    if (x < camX - 90 || x > camX + vw + 90) continue;
+    drawPeer(c, q);
+  }
+}
+function drawPeer(c, q) {
+  const skin = peerSkin(q), P = q.P, W = WORLD_OF[q.w], x = q.x + q.ox, y = q.y + q.oy;
+  const floor = q.air ? floorIn(W, x, y, 0.5).y : y;
+  const up = Math.min(1, Math.max(0, floor - y) / 160);
+  if (q.sit?.kind !== 'tent') {
+    c.save();
+    c.globalAlpha = 0.22 * (1 - up * 0.6);
+    c.fillStyle = '#4A2A5A';
+    const sw = 1 - up * 0.45;
+    c.beginPath(); c.ellipse(x, floor + 3, 26 * SC / 1.4 * sw, 5.5 * sw, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+  c.save();
+  // บนบันได: ตัดตามโครงขั้นแบบตัวเรา (ขาไม่ทะลุขั้น)
+  if (!q.air && q.on && /stairs/.test(q.on.id)) {
+    const p = new Path2D(), xL = x - 90, xR = x + 90;
+    p.moveTo(xL, y - 400); p.lineTo(xR, y - 400);
+    stairsProfilePath(p, STAIRS_X0(q.on), xL, xR, 1.5);
+    p.closePath();
+    c.clip(p);
+  }
+  let head = y - 122;
+  if (q.mv || q.air || P.squash > 0.05) {
+    const r = stepRunAnim(q.A, P, { catId: skin.id, dt: 1, outfit: skin.outfit?.id, speed: 0, scale: SC, stand: !q.mv });
+    if (q.dir < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }
+    drawCat2Run(c, x, y, SC, skin, tick, r, null);
+  } else {
+    if (q.dir < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }
+    const pose = q.emId && !q.sit ? emoteShapeAt(q.emId, skin.outfit, tick - q.emT0, tick) : null;
+    if (q.sit) {
+      const sy = y - (q.sit.sitDy ?? 22);
+      head = sy - 104;
+      drawCat2(c, x, sy, SC, skin, tick, { k: 1, shape: q.sit.kind === 'tent' ? { loaf: 1, shut: 1, noHang: 1 } : { sit: 1, turn: 0, noHang: 1 } });
+    } else if (pose) {
+      const ly = emoteLift(pose) * SC;
+      head -= ly;
+      drawCat2(c, x, y - ly, SC, skin, tick, { k: pose.k, shape: { ...pose.shape, noHang: 9 } });
+    } else drawCat2(c, x, y, SC, skin, tick, { k: 1, shape: { turn: RUN_TURN * 0.6 * q.face, noHang: 1, armFar: 1 } });
+  }
+  c.restore();
+  nameTag(c, x, head, q.name);
+}
+/** ป้ายชื่อเหนือหัวแมวตัวอื่น — เม็ดม่วงโปร่ง ตัวหนังสือขาว (ไม่มีเส้นขอบ) */
+function nameTag(c, x, y, name) {
+  c.save();
+  c.font = '700 10.5px Mali, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  const w = c.measureText(name).width + 16;
+  c.fillStyle = 'rgba(74,42,120,.55)';
+  c.beginPath(); c.roundRect(x - w / 2, y - 9, w, 18, 9); c.fill();
+  c.fillStyle = '#FFFFFF';
+  c.fillText(name, x, y + 0.5);
+  c.restore();
+}
+/** ป้าย "แมวในปราสาท N ตัว · ชั้นนี้ M" ใต้ป้ายโหมด (ต่อห้องได้เท่านั้น) */
+let onlineTxt = null;
+function paintOnline() {
+  const on = online() && IN_CASTLE();
+  let here = 1;
+  if (on) for (const q of peers.values()) if (q.w === WD.id) here++;
+  const txt = on ? `แมวในปราสาท ${peers.size + 1} ตัว · ชั้นนี้ ${here}` : '';
+  if (txt === onlineTxt) return;
+  onlineTxt = txt;
+  $('onlineTag').classList.toggle('hidden', !on);
+  $('onlineNum').textContent = txt;
 }
 
 // ── ตัวน้องบนเบาะนุ่ม / บนบันได (ผู้ใช้ 8 พ.ย.) ──
@@ -1526,6 +1741,7 @@ function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช
   back(ctx, camX, vw, tick);
   world(ctx, camX, vw, tick);
   drawMark(ctx);
+  drawPeers(ctx);   // แมวผู้เล่นคนอื่น (ออนไลน์) — หลังของในฉาก หน้าป้าย/ตัวเรา
   const p = nearPlace();
   if (bubbleFor(p) && !act) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick, promptView());
   drawCat(ctx);

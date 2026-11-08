@@ -1,0 +1,20 @@
+# ห้องออนไลน์ปราสาทแมวเหมียว (Cloudflare Workers · แผนฟรีใช้ได้)
+#   ในเครื่อง:  cd realtime && npm run dev     → ws://localhost:8787/castle (ไม่ต้องล็อกอิน Cloudflare)
+#   ขึ้นจริง:   npx wrangler login แล้ว npm run deploy  (เจ้าของบัญชีทำเอง) — ดู README.md
+name = "meowzing-castle"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+
+# 1 ห้อง = 1 Durable Object (ทั้งปราสาท 3 ชั้น ไม่เกิน 20 ตัว) · แผนฟรีต้องเป็นแบบ SQLite
+[[durable_objects.bindings]]
+name = "CASTLE"
+class_name = "CastleRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CastleRoom"]
+
+# เปิดให้มือถือในวง Wi-Fi เดียวกันต่อเข้ามาตอนทดสอบ (เช่น ws://192.168.1.34:8787)
+[dev]
+ip = "0.0.0.0"
+port = 8787
