@@ -24,3 +24,5 @@ undefined-*.png
 
 # Cloudflare (realtime/) — ไฟล์ชั่วคราวของ wrangler dev
 .wrangler/
+# ค่า Supabase ของห้องตอนลองในเครื่อง (realtime/README.md)
+.dev.vars

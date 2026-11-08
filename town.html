@@ -35,7 +35,39 @@
   </div>
 
   <!-- ออนไลน์ในปราสาท (online.js): จำนวนแมวในห้อง — ใต้ป้ายโหมด · ซ่อนนอกปราสาท/ต่อห้องไม่ได้ -->
-  <div class="online hidden" id="onlineTag" role="status"><i class="online-dot" aria-hidden="true"></i><span id="onlineNum"></span></div>
+  <div class="online hidden" id="onlineTag">
+    <span class="online-pill" role="status"><i class="online-dot" aria-hidden="true"></i><span id="onlineNum"></span></span>
+    <!-- แชตแยกชั้น (chat.js) — คอมกด T -->
+    <button type="button" class="chatbtn" id="btnChat" aria-label="แชต" aria-expanded="false" aria-controls="chatPanel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14a2.5 2.5 0 0 1 2.5 2.5v8a2.5 2.5 0 0 1-2.5 2.5h-7.2L7 21v-3.5H5A2.5 2.5 0 0 1 2.5 15V7A2.5 2.5 0 0 1 5 4.5z" fill="currentColor"/><circle cx="8" cy="11" r="1.3" fill="#8A5FD6"/><circle cx="12" cy="11" r="1.3" fill="#8A5FD6"/><circle cx="16" cy="11" r="1.3" fill="#8A5FD6"/></svg>
+      <b>แชต</b><i class="chat-new" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <!-- แผงแชตชั้นนี้ (chat.js): ย้อนหลัง · ประโยคสำเร็จรูป · สติกเกอร์ · พิมพ์ (สมาชิก) — ชิดขวาล่าง น้องยังอยู่ในจอ -->
+  <section class="chat hidden" id="chatPanel" aria-labelledby="chatTitle">
+    <header class="chat-head">
+      <b id="chatTitle">แชต</b>
+      <button type="button" class="xbtn chat-x" id="chatX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </header>
+    <ol class="chat-log" id="chatLog" aria-live="polite"></ol>
+    <div class="chat-tabs" role="tablist" aria-label="แบบข้อความ">
+      <button type="button" class="chat-tab on" role="tab" data-tab="p">ประโยค</button>
+      <button type="button" class="chat-tab" role="tab" data-tab="s">สติกเกอร์</button>
+      <button type="button" class="chat-tab" role="tab" data-tab="x">พิมพ์</button>
+    </div>
+    <div class="chat-pane chat-chips" id="chatPaneP"></div>
+    <div class="chat-pane chat-stks hidden" id="chatPaneS"></div>
+    <div class="chat-pane hidden" id="chatPaneX">
+      <form class="chat-form" id="chatForm">
+        <input id="chatText" type="text" maxlength="60" autocomplete="off" enterkeyhint="send" placeholder="พิมพ์ข้อความ…" aria-label="ข้อความแชต">
+        <button type="submit" class="chat-send" id="chatSend">ส่ง</button>
+      </form>
+      <p class="chat-lock hidden" id="chatLock">พิมพ์คุยได้เฉพาะคนที่ล็อกอินด้วยอีเมล<br>ส่งประโยคกับสติกเกอร์ได้เลยนะเหมียว</p>
+    </div>
+  </section>
 
   <!-- ปุ่มห้องแต่งตัว (ขวาบน ใต้แถวปุ่มตั้งค่า/กระเป๋า) — ไม้แขวนเสื้อหูแมว -->
   <button type="button" class="wardbtn" id="btnWard" aria-label="ห้องแต่งตัว">
@@ -97,6 +129,7 @@
     <span class="kh"><kbd>↓</kbd>ลงจากที่สูง</span>
     <span class="kh"><kbd>E</kbd>เข้าร้าน · นั่ง · ล่องเรือ</span>
     <span class="kh"><kbd>Q</kbd>ท่าทาง</span>
+    <span class="kh kh-chat"><kbd>T</kbd>แชต</span>
     <span class="kh soft kh-tap">คลิกพื้น = เดินไปตรงนั้น</span>
   </div>
   <!-- ปุ่มซ่อน/แสดงแถบสอนปุ่ม (คอมเท่านั้น · แยกจากแถบ อยู่มุมขวาล่าง · กด H ก็ได้) -->

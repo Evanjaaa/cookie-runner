@@ -81,6 +81,21 @@ export function currentAccount() {
 }
 
 /**
+ * ตั๋วล็อกอินปัจจุบัน (access token) — ส่งให้ห้องออนไลน์ปราสาทตรวจกับ Supabase เองว่าเราเป็นใคร (src/town/online.js)
+ * ไม่มี session / ยังไม่ตั้งคีย์ = null (เข้าห้องแบบผู้มาเยือน)
+ */
+export async function accessToken() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data } = await c.auth.getSession();
+    return data?.session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * จำผู้ใช้ที่เพิ่งได้มา
  *
  * นิยาม "ผู้มาเยือน" ที่นี่คือ "ยังไม่มีอีเมลผูกไว้" ไม่ได้ดูธง is_anonymous

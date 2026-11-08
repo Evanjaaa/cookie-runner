@@ -48,7 +48,9 @@ import { startAct, stepAct, actPose, randomSnack, drawSnackFlight, burst, stepAc
 import { openScope, scopeStep, scopeDrag, scopeZoom, drawScope, lensOf } from './castle-scope.js';
 import { RW, R_PLACES, R_SURFACES, R_SPAWN, STAR_LINES, roofWish, roofWishSend, drawRoofBack, drawRoofWorld } from './castle-roof.js';
 import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx, emoteAge, emoteShapeAt } from './emotes.js';
-import { online, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook } from './online.js';
+import { online, onlineMember, onlineMe, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook, sendSay } from './online.js';
+import { initChat, chatReceive, chatSayNo, chatReset, bubbleOf, drawBubble, toggleChat, closeChat, chatOpen, paintChat } from './chat.js';
+import { sendReport } from '../net/cloud.js';
 
 const cv = document.getElementById('town');
 const ctx = cv.getContext('2d');
@@ -224,11 +226,14 @@ function nearPlace() {
  * เดินไปตรงไหนของม้านั่งก็นั่งช่องที่ใกล้สุด · ที่อื่น (ไม่มี seats) = ประตูจุดเดียวเหมือนเดิม
  * (ออนไลน์ทีหลัง: เซิร์ฟเวอร์จองช่องที่นั่ง ช่องที่มีคนนั่งแล้วข้ามไป)
  */
-function seatX(p, x) {
-  if (!p.seats) return p.door;
-  let best = p.seats[0];
-  for (const s of p.seats) if (Math.abs(s - x) < Math.abs(best - x)) best = s;
-  return best;
+function seatX(p, x, taken = null) {
+  const list = p.seats || [p.door];
+  let best = null;
+  for (const s of list) {
+    if (taken?.some((t) => Math.abs(t - s) < 8)) continue;   // แมวตัวอื่นนั่งช่องนี้อยู่ (ออนไลน์)
+    if (best == null || Math.abs(s - x) < Math.abs(best - x)) best = s;
+  }
+  return best;   // null = เต็มทุกช่อง
 }
 // ที่นั่งได้ (แตะซ้ำ = ลุก): ม้านั่ง/ตั่งในศาลา · ชิงช้า · กล่องกระดาษ
 const SEAT = {
@@ -254,7 +259,9 @@ function use(p) {
   else if (SEAT[p.kind]) {
     if (cat.sit === p) cat.sit = null;
     else {
-      cat.sit = p; cat.x = seatX(p, cat.x); cat.target = null; stopEmote(true);
+      const sx = seatX(p, cat.x, seatsTaken(p));
+      if (sx == null) { toast('ที่นั่งตรงนี้มีเพื่อนนั่งเต็มแล้ว ไว้มาใหม่นะเหมียว'); return; }
+      cat.sit = p; cat.x = sx; cat.target = null; stopEmote(true);
       if (softSeat(p)) softKick(9);   // นั่งลงบนเบาะนุ่มในปราสาท = ยุบลงแล้วเด้งดึ๋ง
       if (p.kind === 'box') { sfx('box'); setTimeout(() => sfx('purr'), 380); }
       else sfx('sit');
@@ -1350,7 +1357,7 @@ function newPeer(id) {
     A: createRunAnim(), P: { onGround: true, jumps: 0, vy: 0, runPhase: 0, squash: 0, sliding: false, y: GY, fainting: false },
   };
 }
-function setLook(q, l) { q.name = l.name || 'เหมียว'; q.skin = l.skin || 'orange'; q.outfit = l.outfit || 'none'; }
+function setLook(q, l) { q.name = l.name || 'เหมียว'; q.skin = l.skin || 'orange'; q.outfit = l.outfit || 'none'; q.m = l.m ? 1 : 0; q.u = l.u || ''; }
 function peerSkin(q) {
   const key = q.skin + '|' + q.outfit;
   if (q.skinKey !== key) { q.skinKey = key; q.skinObj = { ...skinById(q.skin), outfit: outfitById(q.outfit) }; }
@@ -1370,8 +1377,25 @@ function applyPeer(q, s, first = false) {
   if (s.em) { if (q.emId !== s.em) { q.emId = s.em; q.emT0 = tick - (s.ea || 0); } } else q.emId = null;
   q.P.onGround = !q.air; q.P.vy = q.vy;
 }
+/** ช่องที่แมวตัวอื่น (ชั้นนี้) นั่งอยู่ในที่ p — ให้ seatX ข้ามไป */
+function seatsTaken(p) {
+  let out = null;
+  for (const q of peers.values()) if (q.w === WD.id && q.sit === p) (out ||= []).push(q.x);
+  return out;
+}
 onlineHandlers({
-  reset() { peers.clear(); },
+  reset() { peers.clear(); chatReset(); paintChat(); },
+  // แชต (chat.js): ข้อความที่ห้องส่งกลับมา — ของเราเองก็มาทางนี้ (ห้องไม่ให้ผ่าน = ไม่โผล่)
+  say(m) {
+    const me = onlineMe();
+    if (me && m.id === me.id) chatReceive(m, { id: m.id, name: me.name || netLook().name, u: me.u, m: me.m, mine: true });
+    else { const q = peers.get(m.id); if (q) chatReceive(m, { id: q.id, name: q.name, u: q.u, m: q.m }); }
+  },
+  sayno(why) { chatSayNo(why); },
+  // ห้องบอกว่ามีคนนั่งช่องนี้ก่อน (กดพร้อมกัน) — ลุกขึ้นยืนหน้าที่นั่ง
+  nosit(m) {
+    if (cat.sit && cat.sit.id === m.sit && WD.id === m.w) { cat.sit = null; toast('เพื่อนนั่งช่องนี้ก่อนแล้ว ลองช่องอื่นนะเหมียว'); }
+  },
   join(p) { const q = newPeer(p.id); setLook(q, p); applyPeer(q, p, true); peers.set(p.id, q); },
   state(id, st) { const q = peers.get(id); if (q) applyPeer(q, st); },
   look(id, l) { const q = peers.get(id); if (q) setLook(q, l); },
@@ -1477,16 +1501,25 @@ function drawPeer(c, q) {
     } else drawCat2(c, x, y, SC, skin, tick, { k: 1, shape: { turn: RUN_TURN * 0.6 * q.face, noHang: 1, armFar: 1 } });
   }
   c.restore();
-  nameTag(c, x, head, q.name);
+  nameTag(c, x, head, q.name, q.m);
+  const b = bubbleOf(q.id);
+  if (b) drawBubble(c, x, head - 13, b);   // ฟองแชตเหนือป้ายชื่อ
 }
-/** ป้ายชื่อเหนือหัวแมวตัวอื่น — เม็ดม่วงโปร่ง ตัวหนังสือขาว (ไม่มีเส้นขอบ) */
-function nameTag(c, x, y, name) {
+/** ฟองแชตของตัวเราเหนือหัว (ไม่มีป้ายชื่อ) */
+function drawMyBubble(c) {
+  const b = bubbleOf(onlineMe()?.id);
+  if (!b) return;
+  const top = cat.sit ? cat.y - (cat.sit.sitDy ?? 22) - 108 : cat.y - 124 - emoteLift(emotePose(tick)) * SC;
+  drawBubble(c, cat.x, top, b);
+}
+/** ป้ายชื่อเหนือหัวแมวตัวอื่น — เม็ดโปร่ง ตัวหนังสือขาว (ไม่มีเส้นขอบ) · สมาชิกที่ห้องตรวจแล้ว = ม่วงเข้ม · ผู้มาเยือน = เทาม่วงอ่อน */
+function nameTag(c, x, y, name, member = 0) {
   c.save();
   c.font = '700 10.5px Mali, sans-serif';
   c.textAlign = 'center';
   c.textBaseline = 'middle';
   const w = c.measureText(name).width + 16;
-  c.fillStyle = 'rgba(74,42,120,.55)';
+  c.fillStyle = member ? 'rgba(74,42,120,.6)' : 'rgba(120,108,150,.42)';
   c.beginPath(); c.roundRect(x - w / 2, y - 9, w, 18, 9); c.fill();
   c.fillStyle = '#FFFFFF';
   c.fillText(name, x, y + 0.5);
@@ -1503,7 +1536,18 @@ function paintOnline() {
   onlineTxt = txt;
   $('onlineTag').classList.toggle('hidden', !on);
   $('onlineNum').textContent = txt;
+  document.body.classList.toggle('chat-on', on);
+  if (!on) closeChat();
+  paintChat();
 }
+initChat({
+  send: (k, v) => sendSay(k, v),
+  canType: () => onlineMember(),
+  floor: () => WD.id,
+  toast: (t) => toast(t),
+  pause: (on) => { paused = on; if (on) { keys.left = keys.right = false; joyReset(); toggleEmotes(false); } },
+  report: (r) => sendReport({ ...r, device: navigator.userAgent.slice(0, 160) }),
+});
 
 // ── ตัวน้องบนเบาะนุ่ม / บนบันได (ผู้ใช้ 8 พ.ย.) ──
 // เบาะ โซฟา ม้านั่งบุนวม คอนโด (พื้น soft) + นั่งบนเบาะในปราสาท: ลงพื้น/นั่ง/ก้าวเดิน = ตัวยุบลง (เตี้ยกว้าง) แล้วเด้งกลับแบบสปริง ยืนนิ่งจมเบาะนิดหน่อย
@@ -1745,6 +1789,7 @@ function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช
   const p = nearPlace();
   if (bubbleFor(p) && !act) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick, promptView());
   drawCat(ctx);
+  drawMyBubble(ctx);   // ฟองแชตของเรา (ออนไลน์)
   WD.front?.(ctx, camX, vw, tick);   // ชั้น 2: ผ้าหน้าเต็นท์ทับน้องที่นอนอยู่ข้างใน (ไม่บังใครที่อยู่ข้างนอก)
   drawSplashes(ctx, tick);   // น้ำกระเซ็นในน้ำพุโถงชั้น 1
   if (act) drawSnackFlight(ctx, act, SNACK_POP, { x: cat.x, y: cat.y - 236 * U }, U * 1.3, tick);
@@ -2260,7 +2305,10 @@ const keyOf = (e) => ({ KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRig
 const SCOPE_KEY = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down' };
 window.addEventListener('keydown', (e) => {
   // พิมพ์ในช่องข้อความ (ขอพร) = ไม่ใช่ปุ่มเดิน/กระโดด · Esc = ปิดหน้าต่าง
-  if (e.target?.matches?.('textarea, input')) { if (e.code === 'Escape') closeWish(); return; }
+  if (e.target?.matches?.('textarea, input')) { if (e.code === 'Escape') { closeWish(); closeChat(); } return; }
+  // แชต (ออนไลน์ในปราสาท): T เปิด/ปิดแผง · Esc ปิด
+  if (e.code === 'KeyT' && online() && !e.repeat && (chatOpen() || !paused)) { e.preventDefault(); toggleChat(); return; }
+  if (e.code === 'Escape' && chatOpen()) { closeChat(); return; }
   if (scope) {
     // ส่องกล้องอยู่: ลูกศร/WASD เลื่อน · + − ซูม · Esc / E ออก (e.code — แป้นไทยก็กดได้)
     const m = SCOPE_KEY[e.code];
@@ -2338,7 +2386,7 @@ cv.addEventListener('pointerdown', (e) => {
     mark = null;
     if (hit.tap) use(hit);   // โคมไฟ: แตะแล้วเปิด/ปิดทันที ไม่ต้องเดินไป
     else if (nearPlace() === hit) use(hit);
-    else if (tapMove) { cat.target = seatX(hit, wx); cat.pending = hit; }
+    else if (tapMove) { cat.target = (SEAT[hit.kind] && seatX(hit, wx, seatsTaken(hit))) ?? seatX(hit, wx); cat.pending = hit; }   // แตะที่นั่ง = เดินไปช่องว่างที่ใกล้สุด
   } else if (tapMove) {
     cat.target = Math.max(40, Math.min(WD.w - 40, wx));
     cat.pending = null;
