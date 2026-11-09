@@ -14192,73 +14192,7 @@ function sbPikul(c, t, front, lite, vis = 1) {
   }
 }
 /**
- * อุบะดอกมะลิ (พวงมาลัยห้อยสองข้างบน · ภาพสำเร็จรูปต่อความยาว): สายมะลิตูมแน่น คั่นห่วงทองทับทิม
- * ปลายดอกกุหลาบชมพู ลูกปัดทอง แตกเป็นอุบะสามสาย ปลายตูมกุหลาบ — แกว่งช้า ๆ (หมุนทั้งภาพรอบจุดแขวน)
- */
-function sbGarlandSprite(len) {
-  const W = 60, H = len + 70;
-  return sbSprite('garland' + len, W, H, (g) => {
-    const cx = W / 2, pal0 = { line: '#5A3420' };
-    const bud = (x, y, r, a) => {
-      g.save();
-      g.translate(x, y);
-      g.rotate(a);
-      g.fillStyle = sbGrad(g, -r, -r, r, r, ['#FFFFFF', '#FFF7EA', '#E9DCC6']);
-      g.beginPath(); g.ellipse(0, 0, r * 0.62, r, 0, 0, TAU); g.fill();
-      g.strokeStyle = 'rgba(150,120,90,.45)';
-      g.lineWidth = 0.6;
-      g.stroke();
-      g.fillStyle = '#A6C77A';
-      g.beginPath(); g.ellipse(0, -r * 0.92, r * 0.28, r * 0.2, 0, 0, TAU); g.fill();
-      g.restore();
-    };
-    for (let y = 0; y < len; y += 4.2) {
-      const i = Math.round(y / 4.2);
-      for (const [dx, a] of [[-4.6, -0.5], [0, 0], [4.6, 0.5]]) bud(cx + dx + (i % 2 ? 1.2 : -1.2), y + (dx ? 1.5 : 0), 3.6, a);
-      if (i % 12 === 6) {
-        g.fillStyle = sbGrad(g, cx - 8, y - 3, cx + 8, y + 3, [SB.gold[0], SB.gold[2], SB.gold[3]]);
-        g.beginPath(); g.ellipse(cx, y, 8.5, 3.2, 0, 0, TAU); g.fill();
-        g.fillStyle = SB.gem[1];
-        g.beginPath(); g.arc(cx, y, 2, 0, TAU); g.fill();
-      }
-    }
-    // ดอกกุหลาบชมพูปลายสาย
-    const ry = len + 8;
-    g.fillStyle = sbGrad(g, cx - 11, ry - 11, cx + 11, ry + 11, ['#FFD3E5', '#F583B4', '#D44C8C']);
-    g.beginPath(); g.arc(cx, ry, 11, 0, TAU); g.fill();
-    g.strokeStyle = 'rgba(160,40,90,.6)';
-    g.lineWidth = 1;
-    for (let j = 0; j < 3; j++) { g.beginPath(); g.arc(cx + 1, ry - 1, 3 + j * 2.6, 0.4 + j, 4.2 + j); g.stroke(); }
-    g.strokeStyle = pal0.line;
-    g.lineWidth = 0.9;
-    g.beginPath(); g.arc(cx, ry, 11, 0, TAU); g.stroke();
-    sbBeads(g, [[cx, ry + 11], [cx, ry + 17]], 3, 1.5);
-    // อุบะสามสาย
-    for (const [dx, l] of [[-9, 30], [0, 40], [9, 30]]) {
-      for (let y = ry + 20; y < ry + 20 + l; y += 4) bud(cx + dx * ((y - ry - 20) / l) * 1.1 + dx * 0.2, y, 2.8, dx * 0.03);
-      const ex = cx + dx * 1.3, ey = ry + 24 + l;
-      g.fillStyle = sbGrad(g, ex - 4, ey - 4, ex + 4, ey + 4, ['#FFC4DC', '#EE6FA7', '#C9437F']);
-      g.beginPath(); g.ellipse(ex, ey, 3.4, 4.6, 0, 0, TAU); g.fill();
-      g.fillStyle = '#8FBF66';
-      g.beginPath(); g.moveTo(ex - 3.4, ey - 2.6); g.lineTo(ex, ey - 6.4); g.lineTo(ex + 3.4, ey - 2.6); g.closePath(); g.fill();
-    }
-  });
-}
-const SB_GARLANDS = [[-36, 330, 0], [8, 240, 1.3], [592, 240, 2.1], [636, 330, 0.7]];
-function sbGarlands(c, t, vis) {
-  if (vis <= 0.01) return;
-  for (const [x, len, ph] of SB_GARLANDS) {
-    const img = sbGarlandSprite(len), W = 60, H = len + 70;
-    c.save();
-    c.globalAlpha *= vis;
-    c.translate(x, -150);
-    c.rotate(Math.sin(t * 0.028 + ph) * 0.035);
-    c.drawImage(img, -W / 2, 0, W, H);
-    c.restore();
-  }
-}
-/**
- * เอฟเฟกต์ประจำชุดที่ปิดระหว่างท่าเปิดตัวคู่ (ดอกพิกุลโปรย · พวงมาลัย): 0 ตลอดเรื่อง → ค่อย ๆ ขึ้นช่วงเข้าท่าแอ็ค (80 เฟรมท้าย)
+ * เอฟเฟกต์ประจำชุดที่ปิดระหว่างท่าเปิดตัวคู่ (ดอกพิกุลโปรย): 0 ตลอดเรื่อง → ค่อย ๆ ขึ้นช่วงเข้าท่าแอ็ค (80 เฟรมท้าย)
  * กดข้าม = ขึ้นตามการข้าม · ตัวคู่ในฉาก (shape.noGarland) = 0 · นอกท่าเปิดตัว = 1
  */
 function prActVis(k, dur) {
@@ -14273,10 +14207,7 @@ function sabaiAura(c, k) {
   glowAt(c, 300, 430, 320 * pulse, '255,190,150', 0.3);
   glowAt(c, 300, 470, 230, '255,140,190', 0.2);
   glowAt(c, 300, 320, 170, '255,246,226', 0.3);
-  // วิ่งในเกม: ไม่มีพวงมาลัย (ผู้ใช้ 23 ต.ค. — หน้าคลัง/ฉากพรีวิวยังมี)
-  // ท่าเปิดตัวคู่: ริมแม่น้ำไม่มีพวงมาลัยห้อย — ค่อย ๆ ปรากฏตอนเข้าท่าแอ็ค · ตัวคู่ในฉาก (noGarland) ไม่มีเลย
-  // ช่อง noHang (หน้าเมือง town.html · ผู้ใช้ 28 ต.ค.): ยืน/ทำท่าในเมืองไม่มีพวงมาลัยยาวห้อยด้านหลัง (ดอกพิกุลยังโปรยตามเดิม)
-  if (!k.runner && !((k.sv?.('noHang') || 0) > 0.5)) sbGarlands(c, t, prActVis(k, SBI.dur));
+  // ไม่มีพวงมาลัยห้อยแล้วทุกหน้า (ผู้ใช้ 9 พ.ย. 2026)
   // ดอกพิกุลร่วงข้างตัว: ท่าเปิดตัวเท่านั้น (ผู้ใช้ 31 ต.ค. — ยืนเฉย/หน้าแรก/เมืองไม่มี) · วิ่งในเกมเป็นเม็ดของฉาก (TRAIL sabai) ร่วงตามหลัง
   if (k.intro != null && !k.runner) sbPikul(c, t, false, lite, prActVis(k, SBI.dur));
   if (!k.back && !k.capeApart) sabaiTail(c, k);   // capeApart = ตีลังกา: ชายสไบวาดแยกให้หมุนไปกับตัว (behindCape)

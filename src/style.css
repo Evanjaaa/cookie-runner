@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   /* ความสูงของทุกอย่างบนแถบมุมขวาบน — แถบเพชร แถบทอง และปุ่มตั้งค่า
      ผูกไว้ตัวเดียวกันเพื่อให้ "สูงเท่ากัน" เป็นจริงโดยโครงสร้าง ไม่ใช่บังเอิญตรงกัน
      ปุ่มยังกลมอยู่เพราะกว้างเท่าสูงเป๊ะแล้วมี border-radius 50% */
@@ -6155,12 +6155,12 @@ canvas[hidden] { display: none; }
    *
    * max() ทำให้ทั้งสองฝั่งได้ค่าเดียวกันเสมอ: เครื่องไม่มีรอยบากใช้ 5% ตามเดิม
    * เครื่องมีรอยบากใช้ระยะปลอดภัยที่เครื่องบอก ซึ่งเป็นตัวเดียวกับที่ canvas ใช้ */
-  .lobby.left  { left: max(5%, env(safe-area-inset-left, 0px)); }
-  .lobby.right { right: max(5%, env(safe-area-inset-right, 0px)); }
-  .pf-row      { left: max(5%, env(safe-area-inset-left, 0px)); }
+  .lobby.left  { left: max(3.2%, calc(env(safe-area-inset-left, 0px) * .6)); }   /* ชิดขอบขึ้น (ผู้ใช้ 9 พ.ย. 2026) สูตรเดียวกับ HUD ตอนวิ่ง */
+  .lobby.right { right: max(3.2%, calc(env(safe-area-inset-right, 0px) * .6)); }
+  .pf-row      { left: max(3.2%, calc(env(safe-area-inset-left, 0px) * .6)); }
   .hud-top {
-    padding-left: max(5%, env(safe-area-inset-left, 0px));
-    padding-right: max(5%, env(safe-area-inset-right, 0px));
+    padding-left: max(3.2%, calc(env(safe-area-inset-left, 0px) * .6));
+    padding-right: max(3.2%, calc(env(safe-area-inset-right, 0px) * .6));
   }
 
   /* ── แถบบนตอนกำลังวิ่ง ──
@@ -6169,7 +6169,7 @@ canvas[hidden] { display: none; }
    *
    * ใช้สูตรเดียวกับ edgeInset() ใน hud.js เป๊ะ ๆ (3.2% หรือ 60% ของระยะปลอดภัย
    * แล้วแต่ว่าอันไหนมากกว่า) สองฝั่งจึงได้ระยะขอบตัวเดียวกันเสมอ
-   * ในล็อบบี้ยังใช้ 5% ตามเดิม เพราะที่นั่นเป็นเมนู ไม่ใช่ HUD ตอนวิ่ง */
+   * ล็อบบี้ใช้สูตรเดียวกันแล้ว (ผู้ใช้ 9 พ.ย. 2026 ขอให้ปุ่มชิดขอบขึ้น) */
   .stage:not(:has(.panel:not(.hidden))) .hud-top {
     padding-left: max(3.2%, calc(env(safe-area-inset-left, 0px) * .6));
     padding-right: max(3.2%, calc(env(safe-area-inset-right, 0px) * .6));
@@ -17293,9 +17293,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    หน้าที่เปิดจากปุ่มบนหน้าแรกแบบการ์ดใหญ่: การ์ดกินทั้งเวที ไม่มีมุมมน/ขอบ/เงา · เว้นขอบในตามรอยบากจอ (safe-area)
    กล่องเล็ก (เช็คอิน แผนที่ เลือกโหมด ล็อกหน้าสร้าง) คงเป็นการ์ดเหมือนเดิม
    รายชื่อต้องตรงกับ FULL_PANELS ใน main.js (หน้าย่อยที่เปิดซ้อนจะเห็นหน้าพวกนี้เบลออยู่ข้างหลัง) */
-#stage :is(#stashPanel, #shopPanel, #talentPanel, #questPanel, #profilePanel, #lvPanel,
+#stage :is(#stashPanel, #shopPanel, #blankPanel, #talentPanel, #questPanel, #profilePanel, #lvPanel,
            #friendsPanel, #newsPanel, #inboxPanel, #settingsPanel).panel { padding: 0; }
-#stage :is(#stashPanel, #shopPanel, #talentPanel, #questPanel, #profilePanel, #lvPanel,
+#stage :is(#stashPanel, #shopPanel, #blankPanel, #talentPanel, #questPanel, #profilePanel, #lvPanel,
            #friendsPanel, #newsPanel, #inboxPanel, #settingsPanel).panel > .pop {
   width: 100%;
   height: 100%;
@@ -17400,6 +17400,14 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     gap: clamp(9px, 2.2dvh, 18px) clamp(8px, 1.2vw, 16px);
   }
   #stashPanel #outfitGrid .oc-card { max-width: none; }
+  /* หมวดน้องแมวบนคอม (ผู้ใช้ 9 พ.ย. 2026: "การ์ดติดกัน จอกว้างขึ้นดันการ์ดขึ้นมาได้ 7-8 ใบ" · หน้าชุดแมวคงเดิม) — ช่องไฟเท่าหน้าชุด
+     จำนวนต่อแถวตามความกว้างจริง 5 ถึง 8 ใบ (18% = อย่างน้อย 5 · 165px = ขนาดปกติ · 11% = ไม่เกิน 8) */
+  #stashPanel #skinStashGrid {
+    grid-template-columns: repeat(auto-fill, minmax(min(18%, max(165px, 11%)), 1fr));
+    gap: clamp(9px, 2.2dvh, 18px) clamp(8px, 1.2vw, 16px);
+    padding: clamp(6px, 1.4dvh, 12px) clamp(4px, 2vw, 26px) clamp(12px, 2.6dvh, 22px);
+  }
+  #stashPanel #skinStashGrid .ck-card { max-width: none; }
 }
 
 /* ══ แผนที่โลกเหมียว + หน้ารอดินแดนใหม่ (ผู้ใช้ 7 พ.ย. 2026) — เต็มจอทุกเครื่อง ══
@@ -17543,3 +17551,302 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .wild-title { font-family: "Mali", sans-serif; font-size: clamp(20px, 6dvh, 34px); color: #9A4FC8; line-height: 1.2; }
 .wild-text { font-family: "Mali", sans-serif; font-size: clamp(12px, 3dvh, 16px); color: #7E6A9A; }
+
+/* ══ หน้ากิจกรรม (ผู้ใช้ 9 พ.ย. 2026 ส่งภาพสไตล์): แถบบนม่วง = หัวข้อ + แท็บเม็ดยา · รูปเต็มพื้น · แผงภารกิจครีมลอยขวา
+   แท็บที่เลือกสีทอง · ปุ่มรับของสีทองตามกฎปุ่ม · แตะแล้วแค่สว่างลด ══ */
+#stage #questPanel.panel > .pop { padding: 0; gap: 0; }
+#questPanel > .pop > :is(.ev-body) { position: relative; z-index: 1; }
+/* แถบบนสองแถว (ผู้ใช้ 9 พ.ย. 2026): หัวข้ออยู่กลางบน · แท็บเรียงชิดซ้ายแถวล่าง */
+#stage #questPanel .quest-head {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: clamp(3px, 1.1dvh, 12px);
+  width: 100%;
+  margin: 0;
+  padding: clamp(6px, 2dvh, 20px) clamp(16px, 4.3vw, 84px) clamp(2px, .5dvh, 6px);   /* หัวข้อ + ปุ่มปิดไม่ชิดขอบจอบน */
+  background: none;   /* เห็นลายพื้นหลังของเกม (ลำแสง ประกาย — ผ้าใบ #questBg) ตามที่ผู้ใช้ขอคืน 9 พ.ย. 2026 */
+  border-bottom: 2px solid rgba(255,255,255,.55);
+  box-shadow: 0 5px 14px -4px rgba(90,40,160,.45);
+  z-index: 2;
+}
+#stage #questPanel.panel .quest-title h2.skin-title { font-size: clamp(25px, 6dvh, 50px); line-height: 1.2; }
+#stage #questPanel .quest-title { grid-column: auto; justify-content: center; }   /* หัวข้อเป็นตัวอักษรล้วนแบบหน้าอื่น ไม่มีกรอบ (ผู้ใช้ 9 พ.ย. 2026) */
+.ev-tabs {
+  justify-self: stretch;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, .7vw, 10px);
+  padding: 7px 7px 7px 2px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.ev-tabs::-webkit-scrollbar { display: none; }
+.ev-tab {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: clamp(28px, 5.2dvh, 46px);
+  padding: 0 clamp(13px, 1.5vw, 26px);
+  border-radius: clamp(9px, 1.8dvh, 15px);
+  border: 2px solid rgba(255,255,255,.9);
+  background: linear-gradient(180deg, #F6EDFF, #E2CFF8);
+  box-shadow: inset 0 -5px 8px -5px rgba(130,80,200,.45), 0 3px 8px -3px rgba(70,20,130,.45);
+  color: #6A3FA8;
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+  transition: filter .12s ease;
+}
+.ev-tab:active { filter: brightness(.93); }
+.ev-tab:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+.ev-tab.on {
+  border-color: #FFF6D8;
+  background: linear-gradient(180deg, #FFE08A, #F7B64A);
+  box-shadow: inset 0 2px 1px rgba(255,255,255,.65), inset 0 -5px 8px -5px rgba(190,110,10,.55), 0 3px 10px -3px rgba(170,90,10,.55);
+  color: #5E3410;
+}
+.ev-tab > b { font-size: clamp(11px, 2.1dvh, 17px); font-weight: 800; white-space: nowrap; }
+
+.ev-body { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
+.ev-art { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(160deg, #FFEBD8, #FBD9C4); }
+.ev-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); filter: blur(22px) saturate(1.05) brightness(1.06); }
+.ev-fg {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 64%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 86%, transparent 100%);
+}
+.ev-fg > canvas { position: absolute; inset: 0; display: block; }
+.ev-art-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(8px, 2dvh, 20px);
+  text-align: center;
+  font-family: "Mali", sans-serif;
+  font-size: clamp(16px, 4dvh, 34px);
+  font-weight: 800;
+  color: #FFFFFF;
+  text-shadow: 1.5px 0 0 #A23F94, -1.5px 0 0 #A23F94, 0 1.5px 0 #A23F94, 0 -1.5px 0 #A23F94, 0 3px 6px rgba(90,20,110,.35);
+}
+.ev-panel {
+  position: absolute;
+  top: clamp(8px, 3dvh, 30px);
+  right: clamp(8px, 1.3vw, 26px);
+  bottom: clamp(8px, 2.4dvh, 24px);
+  width: 42%;   /* แผงแคบลง รูปกิจกรรมได้ที่เต็มอิ่ม (ผู้ใช้ 9 พ.ย. 2026) */
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2dvh, 12px);
+  padding: clamp(7px, 1.3dvh, 14px);
+  border-radius: clamp(18px, 3.6dvh, 34px);
+  border: 3px solid #FFFFFF;
+  outline: 2px solid #D9C2F3;
+  background: linear-gradient(180deg, #F8F0FF, #EFE1FC);
+  box-shadow: 0 12px 26px -10px rgba(90,40,150,.5);
+}
+#stage #questPanel .ev-panel .quest-list { flex: 1 1 0; width: 100%; padding: 2px; gap: clamp(5px, 1dvh, 10px); }
+#stage #questPanel .ev-panel .quest-row,
+#stage #questPanel .ev-panel .quest-row:hover,
+#stage #questPanel .ev-panel .quest-row:active {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) clamp(104px, 11vw, 170px) auto;
+  align-items: center;
+  gap: clamp(7px, 1vw, 16px);
+  padding: clamp(5px, 1dvh, 10px);
+  border-radius: clamp(14px, 2.6dvh, 24px);
+  border: 2px solid #DCC6F2;
+  background: linear-gradient(180deg, #FFFCF7, #FFF4E8);
+  box-shadow: 0 3px 8px -3px rgba(110,60,170,.3), inset 0 1px 0 #FFFFFF;
+  transform: none;
+  animation: none;
+}
+#stage #questPanel .ev-panel .quest-row.ready { border-color: #F7B64A; box-shadow: 0 0 10px rgba(247,182,74,.55), inset 0 1px 0 #FFFFFF; }
+#stage #questPanel .ev-panel .quest-row.done { opacity: .62; }
+.ev-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(44px, 11dvh, 92px);
+  aspect-ratio: 1;
+  border-radius: clamp(10px, 2dvh, 18px);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.75);
+}
+.ev-thumb.t0 { background: linear-gradient(145deg, #E6C9FA, #C79BF0); }
+.ev-thumb.t1 { background: linear-gradient(145deg, #FFE3A0, #FBBE62); }
+.ev-thumb.t2 { background: linear-gradient(145deg, #D9E2FF, #B3C3F5); }
+.ev-thumb.t3 { background: linear-gradient(145deg, #FFEFB5, #FFD978); }
+#stage #questPanel .ev-thumb .quest-ico { font-size: clamp(22px, 6dvh, 50px); filter: drop-shadow(0 2px 3px rgba(90,50,30,.3)); }
+.ev-thumb-img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.ev-ribbon {
+  position: absolute;
+  top: 3px;
+  left: -5px;
+  padding: 1px 7px;
+  border-radius: 6px 8px 8px 2px;
+  background: linear-gradient(180deg, #FF7FB6, #EE4E98);
+  color: #FFFFFF;
+  font: 800 clamp(9px, 1.7dvh, 13px)/1.25 "Mali", sans-serif;
+  font-style: normal;
+  transform: rotate(-14deg);
+  box-shadow: 0 2px 4px rgba(150,20,90,.35);
+}
+#stage #questPanel .ev-panel .quest-name { color: #5E3550; font-size: clamp(12.5px, 2.5dvh, 20px); font-weight: 800; line-height: 1.2; }
+#stage #questPanel .ev-panel .quest-note { color: #84656E; font-size: clamp(10.5px, 1.9dvh, 15px); line-height: 1.25; }
+.ev-mid { display: flex; flex-direction: column; gap: clamp(3px, .8dvh, 8px); min-width: 0; }
+#stage #questPanel .ev-panel .quest-prize {
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #F7ECDF;
+  color: #7A4A2A;
+  font-size: clamp(11.5px, 2.1dvh, 17px);
+}
+.ev-prog { --ev-star: clamp(20px, 3.6dvh, 30px); position: relative; display: flex; align-items: center; min-width: 0; }   /* หลอดเต็มกว้าง ดาวซ้อนบนหัวหลอด (ผู้ใช้ 9 พ.ย. 2026) */
+.ev-star { position: absolute; left: 0; top: 50%; z-index: 1; width: var(--ev-star); text-align: center; transform: translateY(-50%); font-size: clamp(13px, 2.5dvh, 20px); line-height: 1; }
+#stage #questPanel .ev-panel .quest-bar {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: clamp(16px, 3.1dvh, 26px);
+  margin: 0;
+  border-radius: 999px;
+  background: #A993B8;
+}
+#stage #questPanel .ev-panel .quest-bar i { background: linear-gradient(90deg, #BE5F78 0%, #B283D4 42%, #8FC6EE 74%, #F3DD94 100%); }   /* เลือดหมูอ่อน → ม่วง → ฟ้า → เหลือง: ไม่กลืนกับดาวทอง (ผู้ใช้ 9 พ.ย. 2026) */
+#stage #questPanel .ev-panel .quest-bar em {
+  position: absolute;
+  inset: 0;
+  padding-left: var(--ev-star);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font: 800 clamp(9.5px, 1.8dvh, 14px)/1 "Mali", sans-serif;
+  font-style: normal;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(70,30,90,.65);
+}
+#stage #questPanel .ev-panel .btn.quest-get:not(.play):not(.big):not(.pull) {
+  min-width: clamp(70px, 7.4vw, 130px);
+  padding: clamp(5px, 1.4dvh, 13px) clamp(8px, 1vw, 16px);
+  font-size: clamp(11px, 2.2dvh, 18px);
+}
+#stage #questPanel .ev-panel .quest-row.ready .btn.quest-get:not(.play):not(.big):not(.pull):not(:disabled) {
+  border-color: #FFF6D8;
+  background: linear-gradient(180deg, #FFE08A, #F7B64A);
+  color: #5E3410;
+  text-shadow: none;
+  box-shadow: inset 0 2px 1px rgba(255,255,255,.65), inset 0 -6px 9px -6px rgba(190,110,10,.55), 0 6px 12px -6px rgba(170,90,10,.6);
+}
+.ev-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(7px, 1vw, 14px);
+  padding: clamp(3px, .7dvh, 7px) clamp(8px, 1vw, 14px);
+  border-radius: 999px;
+  background: #E0CDF6;
+}
+#stage #questPanel .ev-foot .quest-when { padding: 0; border: 0; background: none; color: #65409E; font-size: clamp(10.5px, 2dvh, 16px); font-weight: 700; }
+#stage #questPanel .ev-foot .quest-all { flex: 0 0 auto; }
+#questPanel > .pop > .form-msg { position: absolute; left: 0; right: 0; bottom: 4px; z-index: 3; margin: 0; text-align: center; }
+/* จอแคบ/เตี้ย: แผงกว้างขึ้น ซ่อนคำอธิบายให้แถวเตี้ย */
+@media (max-width: 1250px) {
+  .ev-panel { width: 50%; }
+  .ev-fg { width: 56%; }
+  #stage #questPanel .ev-panel .quest-row,
+  #stage #questPanel .ev-panel .quest-row:hover,
+  #stage #questPanel .ev-panel .quest-row:active { grid-template-columns: auto minmax(0, 1fr) clamp(92px, 11vw, 130px) auto; }
+}
+@media (max-height: 520px) {
+  .ev-panel { width: 49%; }
+  .ev-fg { width: 57%; }
+  #stage #questPanel .ev-panel .quest-note { display: none; }
+}
+
+/* หน้าแรก: กรอบทางเข้ากิจกรรม (src/event-banner.css) เลื่อนลงแล้ว ปุ่มแผนที่บนมือถือต้องลงตาม ไม่ให้จุดบอกหน้าชนปุ่ม */
+@media (max-height: 520px) {
+  .panel.home .lobby.right { top: calc(var(--pf-clear) + 48px); }
+}
+
+/* ── แถวปุ่มแบบใหม่ด้านล่างของหน้าแรก (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) ──
+   สืบท่ากดและจุดแดงจาก .lobby-btn.jelly · ขนาดทุกอย่างคิดจาก --dock */
+#startPanel { --dock: clamp(104px, 22dvh, 190px); }
+/* แถวปุ่มซ้ายหยุดเหนือปุ่มแถวล่าง (รวมน้องที่โผล่พ้นขอบบน) */
+#startPanel .lobby.left { bottom: calc(1.6% + var(--dock) * .86 + 8px); }
+@media (max-height: 520px) {
+  #startPanel .lobby.left { justify-content: flex-start; gap: 1.3dvh; bottom: calc(1.6% + var(--dock) * .84); }   /* มือถือ: ดันขึ้นชิดใต้การ์ดโปรไฟล์ */
+  /* ย่อให้สี่ปุ่มพอดีเหนือปุ่มแถวล่าง (ผู้ใช้ 9 พ.ย. 2026) */
+  #startPanel .lobby-btn { width: 12.4dvh; height: 12.4dvh; padding: 3px 2px; }
+  #startPanel .lobby-btn canvas { width: 6.9dvh; height: 6.9dvh; }
+  #startPanel .lobby-btn b { font-size: 2.3dvh; }
+}
+#startPanel .home-dock {
+  position: absolute;
+  left: 2.2%;
+  bottom: 1.6%;
+  display: flex;
+  gap: calc(var(--dock) * .08);
+  pointer-events: none;
+}
+@media (pointer: coarse) and (max-height: 520px) {
+  #startPanel .home-dock { left: max(3.2%, calc(env(safe-area-inset-left, 0px) * .6)); }   /* ตรงแนวแถวปุ่มซ้าย */
+}
+#startPanel .lobby-btn.jelly.dock-btn,
+.stage.home-cover #startPanel .lobby-btn.jelly.dock-btn {
+  zoom: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--dock);
+  height: calc(var(--dock) * .56);
+  padding: 0 0 calc(var(--dock) * .05);
+  border-radius: calc(var(--dock) * .15);
+  pointer-events: auto;
+}
+#startPanel .lobby-btn.jelly.dock-btn canvas {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--dock) * -.3);
+  width: calc(var(--dock) * 1.02);
+  height: calc(var(--dock) * .612);
+  margin: 0;
+  border-radius: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(60,20,100,.35));
+}
+#startPanel .lobby-btn.jelly.dock-btn b {
+  position: relative;
+  display: block;
+  font-size: calc(var(--dock) * .118);
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #FFFFFF;
+  -webkit-text-stroke: calc(var(--dock) * .026) #6B3FB5;
+  paint-order: stroke fill;
+}
+#startPanel .lobby-btn.jelly.dock-btn .dot {
+  top: calc(var(--dock) * -.06);
+  right: calc(var(--dock) * -.03);
+  width: calc(var(--dock) * .15);
+  min-width: 0;
+  height: calc(var(--dock) * .15);
+  padding: 0;
+  font-size: calc(var(--dock) * .1);
+  line-height: calc(var(--dock) * .15);
+}
+
+/* หน้าว่างของปุ่มคลังน้องอันเก่า */
+#blankPanel .blank-pop { display: grid; grid-template-rows: auto 1fr; justify-items: center; align-items: center; }
+#blankPanel .blank-note { margin: 0; color: #8A6BB0; font-size: clamp(14px, 3dvh, 22px); font-weight: 700; }

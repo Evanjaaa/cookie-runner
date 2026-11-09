@@ -13,11 +13,14 @@
 //   - การเช็คสิทธิ์ในไฟล์นี้มีไว้เพื่อ "บอกผู้ใช้ว่าเข้าไม่ได้" เท่านั้น
 //     ไม่ใช่กลไกความปลอดภัย ห้ามย้ายตรรกะสิทธิ์อะไรมาไว้ที่นี่เด็ดขาด
 // ─────────────────────────────────────────────────────────────
+import '../event-banner.css';
 import './admin.css';
 import { CROP0, CROP_ZMAX, normCrop, cropRect, cropStyle } from '../crop.js';
 import { GUMBALL, createGumball, drawGumballFrame } from '../render/gumball.js';
 import { ALL_OUTFITS, OUTFITS } from '../outfits.js';
 import { SKINS } from '../skins.js';
+import { QUEST_EVENTS, QUEST_STATS, daysLeft } from '../quests.js';
+import { BANNER_BGS, EV_BANNER_INNER, paintBannerCat, fillBanner } from '../render/event-banner.js';
 import { OC_W, OC_H, drawOutfitArt } from '../render/outfit-art.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
@@ -232,7 +235,7 @@ async function signOut() {
 const PAGES = {};
 
 const PAGE_TITLE = {
-  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย', news: 'ข่าวสาร', promo: 'ป้ายตู้กาช่า', cards: 'รูปการ์ดชุด', reports: 'แจ้งปัญหา',
+  overview: 'ภาพรวม', players: 'ผู้เล่น', mail: 'จดหมาย', news: 'ข่าวสาร', promo: 'ป้ายตู้กาช่า', cards: 'รูปการ์ดชุด', banners: 'กรอบกิจกรรม', events: 'รูปกิจกรรม', reports: 'แจ้งปัญหา',
   scores: 'คะแนน', pulls: 'กาช่า', audit: 'ตรวจผิดปกติ',
 };
 
@@ -2239,6 +2242,771 @@ async function deleteCard() {
   await dropFreshCard();
   toast('ลบรูปแล้ว — การ์ดกลับไปใช้ภาพเดิม', 'good');
   loadCards(cardState.sel);
+}
+
+// ── หน้า: กรอบกิจกรรม ──────────────────────────────────────────
+//
+// กรอบทางเข้ากิจกรรมบนหน้าแรก — หน้าตาเป็นเทมเพลตตายตัว (src/render/event-banner.js ตัวเดียวกับเกม) แก้ได้แค่ข้อความ รูป และวันสิ้นสุด
+// ตาราง event_banners (supabase/event-banners.sql) · รูปเก็บใน bucket "promo" · เวลาที่เหลือเกมคำนวณเอง เลยวันสิ้นสุดแล้วเลิกโชว์เอง
+const BANNER_KICKER = 'อีเวนต์พิเศษ';
+const BANNER_REC = { w: 800, h: 800 };
+const BANNER_BG_REC = { w: 1100, h: 400 };
+const bannerState = { rows: [], sel: null, image: '', crop: { ...CROP0 }, fresh: '', bg: 'pink', bgImage: '', freshBg: '' };
+const bannerRow = () => bannerState.rows.find((r) => r.id === bannerState.sel) || null;
+const bannerBlank = () => ({ kicker: BANNER_KICKER, title: '', end_date: '', event_id: '', active: true, image_url: '', crop: null, bg: 'pink', bg_image: '' });
+const bannerForm = () => ({ kicker: $('bnKicker').value.trim(), title: $('bnTitle').value.trim(), end_date: $('bnEnd').value, event_id: $('bnEvent').value, active: $('bnActive').checked, image_url: bannerState.image, crop: bannerState.crop, bg: bannerState.bg, bg_image: bannerState.bgImage });
+const bannerDirty = () => {
+  const r = bannerRow() || bannerBlank(), f = bannerForm();
+  return f.kicker !== r.kicker || f.title !== r.title || f.end_date !== r.end_date || f.event_id !== (r.event_id || '') || f.active !== r.active
+    || f.image_url !== (r.image_url || '') || JSON.stringify(f.crop) !== JSON.stringify(normCrop(r.crop))
+    || f.bg !== (r.bg || 'pink') || f.bg_image !== (r.bg_image || '');
+};
+
+PAGES.banners = async () => {
+  bannerState.sel = null;
+  bannerState.fresh = bannerState.freshBg = '';
+  bannerState.image = bannerState.bgImage = '';
+  bannerState.bg = 'pink';
+  bannerState.crop = { ...CROP0 };
+  $('page').innerHTML = `
+    ${pageHead('กรอบกิจกรรม', 'กรอบบนหน้าแรกของเกม หน้าตาล็อกตามเทมเพลต เปลี่ยนได้แค่ข้อความ รูป พื้นหลัง และวันสิ้นสุด · เวลาที่เหลือคำนวณเอง เลยวันสิ้นสุดแล้วเกมเลิกโชว์เอง · หลายกรอบ = เกมสลับให้ทุก 5 วินาที')}
+    <div class="cardedit">
+      <div class="mailform cardside">
+        <h3 class="nf-head">กรอบทั้งหมด</h3>
+        <button class="btn" id="bnNew" type="button">+ เพิ่มกรอบใหม่</button>
+        <div id="bnList" class="plist"><div class="empty">กำลังโหลด…</div></div>
+      </div>
+      <div class="promoright">
+        <div class="mailform">
+          <h3 class="nf-head" id="bnHead">กรอบใหม่</h3>
+          <div class="ev-banner-wrap bn-pv"><div class="ev-banner" id="bnPv">${EV_BANNER_INNER}</div></div>
+          <span class="note">ลากรูปในกรอบเพื่อเลื่อน · ล้อเมาส์หรือแถบซูม · ดับเบิลคลิก = กลับกลางรูป · ไม่ใส่รูป = น้องส้มกอดปลา</span>
+          <div class="pickrow">
+            <label class="btn" for="bnFile" id="bnFileBtn">อัปโหลดรูป</label>
+            <input id="bnFile" type="file" accept="image/*" hidden>
+            <button class="btn ghost danger" id="bnPicDel" type="button" disabled>เอารูปออก</button>
+          </div>
+          <small class="note">ขนาดแนะนำ <b>${BANNER_REC.w} × ${BANNER_REC.h} px</b> (จัตุรัส) ไฟล์ PNG พื้นโปร่งจะสวยที่สุด · ไม่เกิน 5 MB</small>
+          <small class="note" id="bnMsg"></small>
+          <label class="zoomrow"><span class="note">ซูม</span><input id="bnZoom" type="range" min="1" max="${CROP_ZMAX}" step="0.01" value="1"><button class="btn ghost small" id="bnReset" type="button">กลางรูป</button></label>
+          <div class="fld"><span>พื้นหลังกรอบ</span>
+            <div class="bn-bgs" id="bnBgs">${BANNER_BGS.map((b) => `<button type="button" class="bn-bg" data-pick="${b.id}"><span class="bn-bg-art"><span class="evb-clip" data-bg="${b.id}"></span></span>${esc(b.name)}</button>`).join('')}</div>
+          </div>
+          <div class="pickrow">
+            <label class="btn ghost" for="bnBgFile" id="bnBgBtn">อัปโหลดพื้นหลังเอง</label>
+            <input id="bnBgFile" type="file" accept="image/*" hidden>
+            <button class="btn ghost danger" id="bnBgDel" type="button" disabled>เอาพื้นหลังที่อัปโหลดออก</button>
+          </div>
+          <small class="note">ขนาดแนะนำ <b>${BANNER_BG_REC.w} × ${BANNER_BG_REC.h} px</b> · ไม่เกิน 5 MB · รูปถูกตัดให้เต็มกรอบจากกึ่งกลาง</small>
+          <small class="note" id="bnBgMsg"></small>
+          <label class="fld"><span>ข้อความบรรทัดบน (สีทอง)</span><input id="bnKicker" maxlength="20"></label>
+          <label class="fld"><span>ชื่อกิจกรรม (บรรทัดใหญ่สีขาว)</span><input id="bnTitle" maxlength="24" placeholder="เช่น เทศกาลแมวเหมียว"></label>
+          <label class="fld"><span>วันสิ้นสุดกิจกรรม (วันสุดท้ายที่ยังโชว์)</span><input id="bnEnd" type="date"></label>
+          <label class="fld"><span>แตะกรอบแล้วเปิดแท็บไหนในหน้ากิจกรรม</span>
+            <select id="bnEvent"></select></label>
+          <small class="note">เลือกกิจกรรมไว้ ตอนบันทึกวันสิ้นสุดของกิจกรรมนั้นจะเปลี่ยนตามกรอบนี้ด้วย</small>
+          <label class="chk"><input type="checkbox" id="bnActive" checked> โชว์กรอบนี้ในเกม</label>
+          <div class="sendrow">
+            <button class="btn" id="bnSave" type="button" disabled>บันทึก</button>
+            <span id="bnHint" class="note"></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  paintBannerCat($('bnPv').querySelector('.evb-cat'));
+  for (const id of ['bnKicker', 'bnTitle', 'bnEnd', 'bnEvent', 'bnActive']) $(id).addEventListener('input', renderBannerForm);
+  const pic = $('bnPv').querySelector('.evb-pic');
+  bindCrop(pic, pic.firstChild, () => bannerState.crop, setBannerCrop);
+  $('bnFile').addEventListener('change', uploadBannerImage);
+  $('bnZoom').addEventListener('input', () => setBannerCrop(normCrop({ ...bannerState.crop, z: +$('bnZoom').value })));
+  $('bnReset').addEventListener('click', () => setBannerCrop({ ...CROP0 }));
+  $('bnPicDel').addEventListener('click', async () => {
+    await dropFreshBanner();
+    bannerState.image = '';
+    bannerState.crop = { ...CROP0 };
+    renderBannerForm();
+  });
+  $('bnBgs').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pick]');
+    if (!b) return;
+    await dropFreshBanner('freshBg', 'bg_image');
+    bannerState.bg = b.dataset.pick;
+    bannerState.bgImage = '';
+    renderBannerForm();
+  });
+  $('bnBgFile').addEventListener('change', uploadBannerBg);
+  $('bnBgDel').addEventListener('click', async () => {
+    await dropFreshBanner('freshBg', 'bg_image');
+    bannerState.bgImage = '';
+    renderBannerForm();
+  });
+  $('bnNew').addEventListener('click', () => selectBanner(null));
+  $('bnSave').addEventListener('click', saveBanner);
+  fillBannerEvents();
+  await loadEventCatalog();
+  if (!$('bnEvent')) return;   // เปลี่ยนหน้าไปแล้วระหว่างรอ
+  fillBannerEvents();
+  loadBanners();
+};
+
+function fillBannerEvents() {
+  const was = $('bnEvent').value;
+  $('bnEvent').innerHTML = '<option value="">แท็บแรก</option>' + eventCatalog().filter((e) => !e.removed).map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('');
+  $('bnEvent').value = was;
+}
+
+async function loadBanners(selectId = null) {
+  const c = await client();
+  const { data, error } = await c.from('event_banners').select('*').order('sort', { ascending: true }).order('created_at', { ascending: true });
+  if (error) {
+    $('bnList').innerHTML = `<div class="empty">อ่านรายการไม่ได้: ${esc(errText(error))}<br>รัน <b>supabase/event-banners.sql</b> ใน Supabase แล้วหรือยัง?</div>`;
+    return;
+  }
+  bannerState.rows = data || [];
+  renderBannerList();
+  selectBanner(selectId || bannerState.rows[0]?.id || null, true);
+}
+
+function renderBannerList() {
+  const rows = bannerState.rows;
+  if (!rows.length) {
+    $('bnList').innerHTML = '<div class="empty">ยังไม่มีกรอบ — เกมโชว์กิจกรรมในโค้ดอยู่</div>';
+    return;
+  }
+  $('bnList').innerHTML = rows.map((r, i) => {
+    const n = daysLeft({ end: r.end_date });
+    return `<div class="pl-row${r.active && n ? '' : ' off'}${r.id === bannerState.sel ? ' on' : ''}" data-i="${i}">
+      ${r.image_url ? `<span class="pl-thumb"><img src="${esc(r.image_url)}" alt="" loading="lazy" style="${cropStyle(r.crop)}"></span>` : ''}
+      <div class="pl-main">
+        <b>${i + 1}. ${esc(r.title)}</b>
+        <div class="nl-pills">${!n ? '<span class="pill guest">หมดเวลาแล้ว</span>' : r.active ? `<span class="pill tag">โชว์ · เหลืออีก ${n} วัน</span>` : '<span class="pill guest">ซ่อนอยู่</span>'}</div>
+      </div>
+      <div class="pl-acts">
+        <button class="btn ghost small" data-act="up" type="button" ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">▲</button>
+        <button class="btn ghost small" data-act="down" type="button" ${i < rows.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">▼</button>
+        <button class="btn ghost small danger" data-act="del" type="button">ลบ</button>
+      </div>
+    </div>`;
+  }).join('');
+  $('bnList').querySelectorAll('.pl-row').forEach((el) => {
+    const r = rows[+el.dataset.i];
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (b) bannerAction(b.dataset.act, r);
+      else selectBanner(r.id);
+    });
+  });
+}
+
+async function selectBanner(id, force = false) {
+  if (!force && id === bannerState.sel) return;
+  if (!force && bannerDirty()) {
+    const ok = await ask({ title: 'ทิ้งการแก้ที่ยังไม่บันทึก?', body: 'ข้อความหรือวันที่ของกรอบนี้ยังไม่ได้บันทึก', okText: 'ทิ้ง' });
+    if (!ok) return;
+  }
+  await dropFreshBanner();
+  await dropFreshBanner('freshBg', 'bg_image');
+  bannerState.sel = id;
+  const r = bannerRow() || bannerBlank();
+  bannerState.image = r.image_url || '';
+  bannerState.crop = normCrop(r.crop);
+  bannerState.bg = r.bg || 'pink';
+  bannerState.bgImage = r.bg_image || '';
+  $('bnMsg').textContent = $('bnBgMsg').textContent = '';
+  $('bnKicker').value = r.kicker;
+  $('bnTitle').value = r.title;
+  $('bnEnd').value = r.end_date;
+  $('bnEvent').value = r.event_id || '';
+  $('bnActive').checked = r.active;
+  $('bnHead').textContent = id ? 'แก้กรอบ' : 'กรอบใหม่';
+  $('bnList').querySelectorAll('.pl-row').forEach((el) => el.classList.toggle('on', bannerState.rows[+el.dataset.i]?.id === id));
+  renderBannerForm();
+}
+
+function renderBannerForm() {
+  const f = bannerForm(), expired = f.end_date && !daysLeft({ end: f.end_date });
+  fillBanner($('bnPv'), { kicker: f.kicker, title: f.title || 'ชื่อกิจกรรม', end: f.end_date, image: f.image_url, crop: f.crop, bg: f.bg, bgImage: f.bg_image });
+  $('bnBgs').querySelectorAll('[data-pick]').forEach((b) => b.classList.toggle('on', !f.bg_image && b.dataset.pick === f.bg));
+  $('bnBgBtn').textContent = f.bg_image ? 'เปลี่ยนพื้นหลังที่อัปโหลด' : 'อัปโหลดพื้นหลังเอง';
+  $('bnBgDel').disabled = !f.bg_image;
+  $('bnFileBtn').textContent = f.image_url ? 'เปลี่ยนรูป' : 'อัปโหลดรูป';
+  $('bnPicDel').disabled = $('bnZoom').disabled = $('bnReset').disabled = !f.image_url;
+  $('bnZoom').value = f.crop.z;
+  const ready = f.kicker && f.title && f.end_date;
+  $('bnSave').disabled = !ready || !bannerDirty();
+  $('bnHint').textContent = !ready ? 'กรอกข้อความสองบรรทัดและวันสิ้นสุดก่อนบันทึก' : expired ? 'วันสิ้นสุดเลยไปแล้ว บันทึกได้ แต่เกมจะไม่โชว์กรอบนี้' : bannerDirty() ? 'ยังไม่ได้บันทึก' : 'บันทึกแล้ว';
+}
+
+function setBannerCrop(c) {
+  bannerState.crop = c;
+  renderBannerForm();
+}
+
+/** รูปที่อัปโหลดแต่ยังไม่บันทึก — ทิ้งไฟล์ไม่ให้ค้างในที่เก็บ · key/col = ช่องรูปน้อง หรือช่องพื้นหลัง */
+async function dropFreshBanner(key = 'fresh', col = 'image_url') {
+  const url = bannerState[key];
+  bannerState[key] = '';
+  if (url && url !== bannerRow()?.[col]) await removeEventFile(url);
+}
+
+/** ตรวจไฟล์แล้วอัปโหลด → ลิงก์รูป · ไม่สำเร็จ = null (เขียนเหตุผลลง msg) */
+async function putBannerFile(e, msg) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return null;
+  if (!file.type.startsWith('image/')) { msg.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพ'; return null; }
+  if (file.size > 5 * 1024 * 1024) { msg.textContent = 'รูปใหญ่เกิน 5 MB ลองย่อก่อนนะ'; return null; }
+  msg.textContent = 'กำลังอัปโหลด…';
+  const c = await client();
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `banners/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const { error } = await c.storage.from('promo').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) { msg.textContent = 'อัปโหลดไม่ได้: ' + errText(error) + ' (รัน supabase/gacha-promo.sql แล้วหรือยัง?)'; return null; }
+  return c.storage.from('promo').getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadBannerImage(e) {
+  const url = await putBannerFile(e, $('bnMsg'));
+  if (!url) return;
+  await dropFreshBanner();
+  bannerState.fresh = bannerState.image = url;
+  bannerState.crop = { ...CROP0 };
+  $('bnMsg').textContent = 'อัปโหลดแล้ว ✓ — ลากจัดรูปในกรอบ แล้วกดบันทึก';
+  renderBannerForm();
+}
+
+async function uploadBannerBg(e) {
+  const url = await putBannerFile(e, $('bnBgMsg'));
+  if (!url) return;
+  await dropFreshBanner('freshBg', 'bg_image');
+  bannerState.freshBg = bannerState.bgImage = url;
+  $('bnBgMsg').textContent = 'อัปโหลดแล้ว ✓ — กดบันทึกเพื่อใช้พื้นหลังนี้';
+  renderBannerForm();
+}
+
+async function saveBanner() {
+  const f = bannerForm();
+  const old = bannerRow();
+  const row = { ...f, event_id: f.event_id || null, image_url: f.image_url || null, bg_image: f.bg_image || null, updated_at: new Date().toISOString() };
+  $('bnSave').disabled = true;
+  const c = await client();
+  const res = bannerState.sel
+    ? await c.from('event_banners').update(row).eq('id', bannerState.sel).select('id').single()
+    : await c.from('event_banners').insert({ ...row, sort: bannerState.rows.reduce((m, r) => Math.max(m, r.sort || 0), 0) + 1 }).select('id').single();
+  if (res.error) {
+    $('bnSave').disabled = false;
+    $('bnHint').textContent = 'บันทึกไม่ได้: ' + errText(res.error) + ' (รัน supabase/event-banners.sql รุ่นล่าสุดแล้วหรือยัง?)';
+    return;
+  }
+  if (old?.image_url && old.image_url !== row.image_url) await removeEventFile(old.image_url);   // เปลี่ยน/เอารูปออก = ลบไฟล์เก่า
+  if (old?.bg_image && old.bg_image !== row.bg_image) await removeEventFile(old.bg_image);
+  bannerState.fresh = bannerState.freshBg = '';
+  const synced = await syncBannerEventDate(c, row, old);
+  toast(synced ? 'บันทึกกรอบแล้ว — เกมจะเห็นเมื่อเปิดหน้าแรกครั้งถัดไป' : 'บันทึกกรอบแล้ว แต่เปลี่ยนวันที่หน้ากิจกรรมไม่ได้ — รัน supabase/event-pages.sql แล้วหรือยัง?', synced ? 'good' : 'bad');
+  loadBanners(res.data.id);
+}
+
+/** กรอบที่ลิงก์กิจกรรมไว้: วันสิ้นสุดของกิจกรรมเปลี่ยนตามกรอบ · คืน false ถ้าเขียนไม่ได้ */
+async function syncBannerEventDate(c, row, old) {
+  if (!row.event_id || (old && old.end_date === row.end_date && old.event_id === row.event_id)) return true;
+  const ev = eventCatalog().find((e) => e.id === row.event_id);
+  const up = { id: row.event_id, end_date: row.end_date, updated_at: row.updated_at };
+  if (ev?.start && ev.start > row.end_date) up.start_date = row.end_date;   // ไม่ให้วันเริ่มเลยวันจบ
+  const { error } = await c.from('event_pages').upsert(up);
+  if (error) return false;
+  await loadEventCatalog();
+  return true;
+}
+
+async function bannerAction(act, r) {
+  const c = await client();
+  const rows = bannerState.rows, i = rows.indexOf(r);
+  if (act === 'up' || act === 'down') {
+    const j = act === 'up' ? i - 1 : i + 1;
+    if (j < 0 || j >= rows.length) return;
+    const order = rows.slice();
+    [order[i], order[j]] = [order[j], order[i]];
+    const res = await Promise.all(order.map((x, k) => (x.sort === k + 1 ? null : c.from('event_banners').update({ sort: k + 1 }).eq('id', x.id))).filter(Boolean));
+    const bad = res.find((x) => x.error);
+    if (bad) return toast('เรียงลำดับไม่ได้: ' + errText(bad.error), 'bad');
+    return loadBanners(bannerState.sel);
+  }
+  const ok = await ask({ title: 'ลบกรอบนี้?', body: `กรอบ <b>${esc(r.title)}</b> จะหายจากเกมทันทีและกู้คืนไม่ได้<br>ถ้าแค่อยากพักไว้ก่อน เอาติ๊ก "โชว์กรอบนี้ในเกม" ออกแล้วบันทึกแทนได้`, okText: 'ลบกรอบ' });
+  if (!ok) return;
+  const { error } = await c.from('event_banners').delete().eq('id', r.id);
+  if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+  await removeEventFile(r.image_url);
+  await removeEventFile(r.bg_image);
+  toast('ลบกรอบแล้ว', 'good');
+  loadBanners(bannerState.sel === r.id ? null : bannerState.sel);
+}
+// ── หน้า: รูปกิจกรรม ──────────────────────────────────────────
+//
+// รูปใหญ่บนหน้ากิจกรรมในเกม + รูปบนแถบเลือกกิจกรรม — กิจกรรมละหนึ่งรูป
+// ตาราง event_arts (supabase/event-arts.sql) · ไฟล์เก็บใน bucket "promo" ร่วมกับป้ายตู้กาช่า · รายชื่อกิจกรรมมาจาก QUEST_EVENTS
+const EVENT_REC = { w: 1600, h: 1200 };
+const EVENT_MARK = '/storage/v1/object/public/promo/';
+const eventState = { rows: new Map(), pages: new Map(), pagesError: null, sel: null, image: '', crop: { ...CROP0 }, active: true, fresh: '' };
+const EV_NEW = '__new__';
+const EV_PURGED = '__purged__';   // event_pages.name ของกิจกรรมในโค้ดที่ลบถาวร: หายทั้งจากเกมและหลังบ้าน
+const ICON_REC = 256;
+let pg = null;   // ฟอร์มรายละเอียดกิจกรรมที่เปิดอยู่
+
+/** กิจกรรมทั้งหมดที่หลังบ้านรู้จัก: ในโค้ด (ทับวันที่จากตาราง) + ที่สร้างเอง */
+function eventCatalog() {
+  const built = QUEST_EVENTS.filter((e) => eventState.pages.get(e.id)?.name !== EV_PURGED).map((e) => {
+    const p = eventState.pages.get(e.id);
+    return { ...e, start: p?.start_date || e.start, end: p?.end_date || e.end, custom: false, active: true, removed: Array.isArray(p?.quests) && !p.quests.length };
+  });
+  const own = [...eventState.pages.values()].filter((p) => Array.isArray(p.quests) && !QUEST_EVENTS.some((e) => e.id === p.id))
+    .sort((a, b) => (a.sort || 0) - (b.sort || 0))
+    .map((p) => ({ id: p.id, name: p.name, start: p.start_date, end: p.end_date, custom: true, active: p.active, quests: p.quests }));
+  return [...built, ...own];
+}
+
+async function loadEventCatalog() {
+  const c = await client();
+  const { data, error } = await c.from('event_pages').select('*');
+  eventState.pagesError = error || null;
+  eventState.pages = new Map((data || []).map((r) => [r.id, r]));
+}
+
+async function removeEventFile(url) {
+  if (!url || !url.includes(EVENT_MARK)) return;
+  const c = await client();
+  await c.storage.from('promo').remove([decodeURIComponent(url.split(EVENT_MARK)[1])]);
+}
+async function dropFreshEvent() {
+  const url = eventState.fresh;
+  eventState.fresh = '';
+  if (url && url !== eventState.rows.get(eventState.sel)?.image_url) await removeEventFile(url);
+}
+
+PAGES.events = async () => {
+  eventState.sel = null;
+  eventState.fresh = '';
+  $('page').innerHTML = `
+    ${pageHead('รูปกิจกรรม', 'สร้างกิจกรรมใหม่ ตั้งวันที่ ภารกิจ รูปเล็ก และรูปใหญ่ของแต่ละกิจกรรม · กิจกรรมที่ไม่มีรูป เกมวาดน้องแมวแทน')}
+    <div class="cardedit">
+      <div class="mailform cardside">
+        <h3 class="nf-head">กิจกรรมทั้งหมด</h3>
+        <button class="btn" id="evNew" type="button">+ สร้างกิจกรรมใหม่</button>
+        <div id="evList" class="plist"><div class="empty">กำลังโหลด…</div></div>
+      </div>
+      <div class="promoright">
+        <div class="mailform">
+          <h3 class="nf-head" id="pgHead">รายละเอียดกิจกรรม</h3>
+          <small class="note" id="pgWarn"></small>
+          <label class="fld" id="pgNameWrap"><span>ชื่อกิจกรรม (ชื่อบนแท็บ)</span><input id="pgName" maxlength="24" placeholder="เช่น เทศกาลแมวเหมียว"></label>
+          <div class="pg-dates">
+            <label class="fld"><span>วันเริ่ม</span><input id="pgStart" type="date"></label>
+            <label class="fld"><span>วันสิ้นสุด (วันสุดท้าย)</span><input id="pgEnd" type="date"></label>
+          </div>
+          <label class="chk" id="pgActiveWrap"><input type="checkbox" id="pgActive" checked> โชว์กิจกรรมนี้ในเกม</label>
+          <div class="fld"><span>ภารกิจและรูปเล็ก</span><div id="pgQuests" class="pg-quests"></div></div>
+          <button class="btn ghost" id="pgAdd" type="button">+ เพิ่มภารกิจ</button>
+          <small class="note">รูปเล็กแนะนำ <b>${ICON_REC} × ${ICON_REC} px</b> (จัตุรัส) · ไม่เกิน 2 MB · ไม่ใส่รูป = ใช้อีโมจิตามประเภท</small>
+          <small class="note" id="pgCountNote">ภารกิจนับจากสถิติสะสมทั้งหมดของผู้เล่น รวมที่เคยเล่นมาก่อนเริ่มกิจกรรม · ตั้งเป้าให้สูงพอ</small>
+          <div class="sendrow">
+            <button class="btn" id="pgSave" type="button" disabled>บันทึกกิจกรรม</button>
+            <button class="btn ghost danger" id="pgDel" type="button">ลบกิจกรรม</button>
+            <button class="btn ghost danger hidden" id="pgPurge" type="button">ลบถาวร</button>
+          </div>
+          <span id="pgHint" class="note"></span>
+        </div>
+        <div class="mailform">
+          <h3 class="nf-head" id="evHead">เลือกกิจกรรมจากรายการทางซ้าย</h3>
+          <div class="pv-banner" id="evFrame" style="width:100%;max-width:560px;aspect-ratio:4/3;overflow:hidden;border-radius:18px;background:#E9DAF8"></div>
+          <span class="note">ลากรูปเพื่อเลื่อน · ล้อเมาส์หรือแถบซูม · ดับเบิลคลิก = กลับกลางรูป</span>
+          <div class="pickrow">
+            <label class="btn" for="evFile" id="evFileBtn">อัปโหลดรูป</label>
+            <input id="evFile" type="file" accept="image/*" hidden>
+          </div>
+          <small class="note">ขนาดแนะนำ <b>${EVENT_REC.w} × ${EVENT_REC.h} px</b> (4 : 3) · ไม่เกิน 8 MB · กรอบในเกมเปลี่ยนสัดส่วนตามจอ วางของสำคัญไว้กลางรูป</small>
+          <small class="note" id="evMsg"></small>
+          <label class="zoomrow"><span class="note">ซูม</span><input id="evZoom" type="range" min="1" max="${CROP_ZMAX}" step="0.01" value="1"><button class="btn ghost small" id="evReset" type="button">กลางรูป</button></label>
+          <label class="chk"><input type="checkbox" id="evActive" checked> โชว์รูปนี้ในเกม</label>
+          <div class="sendrow">
+            <button class="btn" id="evSave" type="button" disabled>บันทึก</button>
+            <button class="btn ghost danger" id="evDel" type="button" disabled>ลบรูป</button>
+          </div>
+          <span id="evHint" class="note"></span>
+        </div>
+      </div>
+    </div>`;
+  $('evFile').addEventListener('change', uploadEventImage);
+  $('evZoom').addEventListener('input', () => setEventCrop(normCrop({ ...eventState.crop, z: +$('evZoom').value })));
+  $('evReset').addEventListener('click', () => setEventCrop({ ...CROP0 }));
+  $('evActive').addEventListener('change', () => { eventState.active = $('evActive').checked; eventDirty(); });
+  $('evSave').addEventListener('click', saveEventArt);
+  $('evDel').addEventListener('click', deleteEventArt);
+  $('evNew').addEventListener('click', () => selectEventArt(EV_NEW));
+  for (const [id, key] of [['pgName', 'name'], ['pgStart', 'start'], ['pgEnd', 'end']]) $(id).addEventListener('input', (e) => { pg[key] = e.target.value; pageDirty(); });
+  $('pgActive').addEventListener('change', (e) => { pg.active = e.target.checked; pageDirty(); });
+  $('pgAdd').addEventListener('click', () => { pg.quests.push(blankQuest()); renderPageQuests(); pageDirty(); });
+  $('pgQuests').addEventListener('input', onPageQuestInput);
+  $('pgQuests').addEventListener('change', onPageQuestFile);
+  $('pgQuests').addEventListener('click', onPageQuestClick);
+  $('pgSave').addEventListener('click', savePage);
+  $('pgDel').addEventListener('click', deletePage);
+  $('pgPurge').addEventListener('click', purgeBuiltInEvent);
+  loadEventArts();
+};
+
+const uid36 = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const blankQuest = () => ({ id: 'q-' + uid36(), name: '', note: '', stat: 'runs', goal: '', gems: '', gold: '', image: '' });
+const pageData = () => JSON.stringify({ name: pg.name, start: pg.start, end: pg.end, active: pg.active, quests: pg.quests });
+const pageIsDirty = () => !!pg && pageData() !== pg.saved;
+
+function fillPage(ev, isNew) {
+  const row = eventState.pages.get(ev.id);
+  const icons = row?.icons || {};
+  const quests = ev.quests.map((q) => {
+    if (!ev.custom) return { id: q.id, name: q.name, note: q.note, stat: q.stat, emoji: q.icon, image: icons[q.id] || '', ro: true };
+    const st = QUEST_STATS.find((x) => x.id === q.stat) || QUEST_STATS[1];
+    return { id: q.id, name: q.name, note: q.note || '', stat: st.id, goal: String(q.goal / st.scale), gems: q.gems ? String(q.gems) : '', gold: q.gold ? String(q.gold) : '', image: icons[q.id] || '' };
+  });
+  pg = { id: ev.id, isNew, custom: ev.custom, removed: !!ev.removed, name: ev.name, start: ev.start || '', end: ev.end || '', active: ev.active !== false, quests, fresh: [] };
+  if (isNew) pg.quests.push(blankQuest());
+  pg.saved = isNew ? '' : pageData();
+  $('pgHead').textContent = isNew ? 'สร้างกิจกรรมใหม่' : 'รายละเอียดกิจกรรม';
+  $('pgName').value = pg.name;
+  $('pgStart').value = pg.start;
+  $('pgEnd').value = pg.end;
+  $('pgActive').checked = pg.active;
+  for (const id of ['pgNameWrap', 'pgActiveWrap', 'pgAdd', 'pgCountNote']) $(id).classList.toggle('hidden', !ev.custom);
+  $('pgDel').classList.toggle('hidden', isNew);
+  $('pgDel').textContent = ev.removed ? 'กู้คืนกิจกรรม' : 'ลบกิจกรรม';
+  $('pgPurge').classList.toggle('hidden', !ev.removed);
+  $('pgWarn').textContent = eventState.pagesError ? 'ยังบันทึกส่วนนี้ไม่ได้ — รัน supabase/event-pages.sql ใน Supabase ก่อน' : ev.custom ? '' : 'กิจกรรมในโค้ด: เปลี่ยนได้เฉพาะวันที่และรูปเล็กของภารกิจ';
+  renderPageQuests();
+  pageDirty();
+}
+
+function renderPageQuests() {
+  const stats = (v) => QUEST_STATS.map((s) => `<option value="${s.id}"${s.id === v ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
+  $('pgQuests').innerHTML = pg.quests.map((q, i) => {
+    const st = QUEST_STATS.find((x) => x.id === q.stat);
+    const pic = `<div class="pg-pic">
+        <span class="pg-thumb">${q.image ? `<img src="${esc(q.image)}" alt="">` : esc(q.emoji || st?.icon || '')}</span>
+        <label class="btn ghost small">${q.image ? 'เปลี่ยน' : 'อัปโหลด'}<input type="file" accept="image/*" hidden data-file="${i}"></label>
+        ${q.image ? `<button class="btn ghost small danger" type="button" data-unpic="${i}">เอาออก</button>` : ''}
+      </div>`;
+    if (q.ro) return `<div class="pg-q ro">${pic}<div class="pg-ro"><b>${esc(q.name)}</b><small class="note">${esc(q.note)}</small></div></div>`;
+    return `<div class="pg-q" data-i="${i}">${pic}
+      <div class="pg-fields">
+        <label class="fld"><span>ชื่อภารกิจ</span><input data-k="name" maxlength="30" value="${esc(q.name)}"></label>
+        <label class="fld"><span>คำอธิบาย (เว้นว่าง = เขียนให้เอง)</span><input data-k="note" maxlength="50" value="${esc(q.note)}"></label>
+        <label class="fld"><span>นับจาก</span><select data-k="stat">${stats(q.stat)}</select></label>
+        <label class="fld"><span>เป้าหมาย (${esc(st.unit)})</span><input data-k="goal" type="number" min="1" step="1" value="${esc(q.goal)}"></label>
+        <label class="fld"><span>รางวัลเพชร</span><input data-k="gems" type="number" min="0" step="1" value="${esc(q.gems)}"></label>
+        <label class="fld"><span>รางวัลทอง</span><input data-k="gold" type="number" min="0" step="1" value="${esc(q.gold)}"></label>
+        <button class="btn ghost small danger" type="button" data-rm="${i}">ลบภารกิจนี้</button>
+      </div></div>`;
+  }).join('') || '<div class="empty">ยังไม่มีภารกิจ</div>';
+}
+
+function onPageQuestInput(e) {
+  const k = e.target.dataset.k, box = e.target.closest('[data-i]');
+  if (!k || !box) return;
+  pg.quests[+box.dataset.i][k] = e.target.value;
+  if (k === 'stat') renderPageQuests();
+  pageDirty();
+}
+
+function onPageQuestClick(e) {
+  const rm = e.target.closest('[data-rm]'), un = e.target.closest('[data-unpic]');
+  if (rm) pg.quests.splice(+rm.dataset.rm, 1);
+  else if (un) pg.quests[+un.dataset.unpic].image = '';
+  else return;
+  renderPageQuests();
+  pageDirty();
+}
+
+async function onPageQuestFile(e) {
+  if (e.target.dataset.file === undefined) return;
+  const q = pg.quests[+e.target.dataset.file], file = e.target.files?.[0], msg = $('pgHint');
+  e.target.value = '';
+  if (!file || !q) return;
+  if (!file.type.startsWith('image/')) return (msg.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพ');
+  if (file.size > 2 * 1024 * 1024) return (msg.textContent = 'รูปใหญ่เกิน 2 MB ลองย่อก่อนนะ');
+  msg.textContent = 'กำลังอัปโหลด…';
+  const c = await client(), owner = pg;
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `events/${owner.id}/icons/${uid36()}.${ext}`;
+  const { error } = await c.storage.from('promo').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) return (msg.textContent = 'อัปโหลดไม่ได้: ' + errText(error));
+  const url = c.storage.from('promo').getPublicUrl(path).data.publicUrl;
+  owner.fresh.push(url);
+  q.image = url;
+  if (owner !== pg) return;
+  renderPageQuests();
+  pageDirty();
+}
+
+/** ข้อความบอกว่ายังขาดอะไร · ครบแล้วคืน '' */
+function pageProblem() {
+  if (pg.custom && !pg.name.trim()) return 'ใส่ชื่อกิจกรรมก่อน';
+  if (!pg.start || !pg.end) return 'เลือกวันเริ่มและวันสิ้นสุดก่อน';
+  if (pg.start > pg.end) return 'วันเริ่มอยู่หลังวันสิ้นสุด';
+  if (!pg.custom) return '';
+  if (!pg.quests.length) return 'เพิ่มภารกิจอย่างน้อย 1 ข้อ';
+  for (const q of pg.quests) {
+    if (!q.name.trim()) return 'ภารกิจทุกข้อต้องมีชื่อ';
+    if (!(Number(q.goal) > 0) || !Number.isInteger(Number(q.goal))) return `"${q.name}" ต้องมีเป้าหมายเป็นจำนวนเต็มมากกว่า 0`;
+    for (const v of [q.gems, q.gold]) if (v !== '' && (!(Number(v) >= 0) || !Number.isInteger(Number(v)))) return `รางวัลของ "${q.name}" ต้องเป็นจำนวนเต็ม`;
+    if (!(Number(q.gems) > 0) && !(Number(q.gold) > 0)) return `"${q.name}" ต้องมีรางวัลเพชรหรือทอง`;
+  }
+  return '';
+}
+
+function pageDirty() {
+  if (!pg) return;
+  const bad = pageProblem(), dirty = pageIsDirty();
+  $('pgSave').disabled = !!bad || !dirty || !!eventState.pagesError;
+  $('pgHint').textContent = bad || (dirty ? 'ยังไม่ได้บันทึก' : 'บันทึกแล้ว');
+}
+
+async function dropFreshPage() {
+  if (!pg) return;
+  const used = new Set(Object.values(eventState.pages.get(pg.id)?.icons || {}));
+  const list = pg.fresh;
+  pg.fresh = [];
+  for (const u of list) if (!used.has(u)) await removeEventFile(u);
+}
+
+async function savePage() {
+  if (pageProblem()) return;
+  const old = eventState.pages.get(pg.id), now = new Date().toISOString();
+  const icons = Object.fromEntries(pg.quests.filter((q) => q.image).map((q) => [q.id, q.image]));
+  const row = { id: pg.id, start_date: pg.start, end_date: pg.end, icons, updated_at: now };
+  if (pg.custom) {
+    row.name = pg.name.trim();
+    row.active = pg.active;
+    row.sort = old?.sort ?? [...eventState.pages.values()].reduce((m, r) => Math.max(m, r.sort || 0), 0) + 1;
+    row.quests = pg.quests.map((q) => {
+      const st = QUEST_STATS.find((x) => x.id === q.stat);
+      const goal = Number(q.goal);
+      return { id: q.id, name: q.name.trim(), note: q.note.trim() || st.note.replace('{n}', goal.toLocaleString('en-US')), stat: st.id, goal: goal * st.scale, gems: Number(q.gems) || 0, gold: Number(q.gold) || 0 };
+    });
+  }
+  $('pgSave').disabled = true;
+  const c = await client();
+  const { error } = await c.from('event_pages').upsert(row);
+  if (error) {
+    $('pgSave').disabled = false;
+    $('pgHint').textContent = 'บันทึกไม่ได้: ' + errText(error) + ' (รัน supabase/event-pages.sql แล้วหรือยัง?)';
+    return;
+  }
+  const keep = new Set(Object.values(icons));
+  for (const u of new Set([...pg.fresh, ...Object.values(old?.icons || {})])) if (!keep.has(u)) await removeEventFile(u);
+  pg.fresh = [];
+  // วันจบเปลี่ยน = กรอบหน้าแรกที่ลิงก์กิจกรรมนี้ไว้ต้องจบวันเดียวกัน
+  const was = old?.end_date || eventCatalog().find((e) => e.id === pg.id)?.end;
+  let bannerOk = true;
+  if (was !== row.end_date) bannerOk = !(await c.from('event_banners').update({ end_date: row.end_date, updated_at: now }).eq('event_id', pg.id)).error;
+  toast(bannerOk ? 'บันทึกกิจกรรมแล้ว — เกมจะเห็นเมื่อเปิดหน้ากิจกรรมครั้งถัดไป' : 'บันทึกกิจกรรมแล้ว แต่เปลี่ยนวันที่ในกรอบหน้าแรกไม่ได้', bannerOk ? 'good' : 'bad');
+  loadEventArts(pg.id, 'art');
+}
+
+/** กรอบหน้าแรกที่ลิงก์กิจกรรมที่ถูกลบ = พักไว้ ไม่ให้ค้างโชว์แล้วเปิดไปแท็บอื่น */
+async function hideLinkedBanners(c, id) {
+  return !(await c.from('event_banners').update({ active: false, updated_at: new Date().toISOString() }).eq('event_id', id)).error;
+}
+
+/** กิจกรรมในโค้ด: ลบ = บันทึก quests เป็น [] ให้เกมไม่โชว์ · กู้คืน = กลับเป็น null */
+async function toggleBuiltInEvent() {
+  const removing = !pg.removed, id = pg.id;
+  if (removing) {
+    const ok = await ask({ title: 'ลบกิจกรรมนี้ออกจากเกม?', body: `กิจกรรม <b>${esc(pg.name)}</b> จะหายจากเกม ผู้เล่นจะกดรับรางวัลที่ค้างอยู่ไม่ได้ และกรอบหน้าแรกที่ลิงก์ไว้จะถูกซ่อน<br>กิจกรรมนี้อยู่ในโค้ด จึงยังกดกู้คืนได้จากหน้านี้`, okText: 'ลบกิจกรรม' });
+    if (!ok) return;
+  }
+  const c = await client();
+  const { error } = await c.from('event_pages').upsert({ id, quests: removing ? [] : null, updated_at: new Date().toISOString() });
+  if (error) return toast((removing ? 'ลบไม่ได้: ' : 'กู้คืนไม่ได้: ') + errText(error) + ' (รัน supabase/event-pages.sql แล้วหรือยัง?)', 'bad');
+  const linked = removing ? await hideLinkedBanners(c, id) : true;
+  toast(!linked ? 'ลบกิจกรรมแล้ว แต่ซ่อนกรอบหน้าแรกไม่ได้' : removing ? 'ลบกิจกรรมออกจากเกมแล้ว' : 'กู้คืนกิจกรรมแล้ว', linked ? 'good' : 'bad');
+  loadEventArts(id);
+}
+
+/** ลบกิจกรรมในโค้ดถาวร: เอารูปทั้งหมดออก และไม่โชว์ในหลังบ้านอีก */
+async function purgeBuiltInEvent() {
+  if (!pg?.removed) return;
+  const ok = await ask({ title: 'ลบกิจกรรมนี้ถาวร?', body: `กิจกรรม <b>${esc(pg.name)}</b> จะหายจากรายการหลังบ้าน รูปใหญ่และรูปเล็กจะถูกลบ และกดกู้คืนไม่ได้อีก`, okText: 'ลบถาวร' });
+  if (!ok) return;
+  const c = await client(), id = pg.id, old = eventState.pages.get(id), art = eventState.rows.get(id);
+  const { error } = await c.from('event_pages').upsert({ id, name: EV_PURGED, quests: [], icons: {}, start_date: null, end_date: null, updated_at: new Date().toISOString() });
+  if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+  for (const u of new Set([...pg.fresh, ...Object.values(old?.icons || {})])) await removeEventFile(u);
+  if (art) {
+    await c.from('event_arts').delete().eq('event_id', id);
+    await removeEventFile(art.image_url);
+  }
+  await dropFreshEvent();
+  await hideLinkedBanners(c, id);
+  pg = null;
+  eventState.sel = null;
+  toast('ลบกิจกรรมถาวรแล้ว', 'good');
+  loadEventArts();
+}
+
+async function deletePage() {
+  if (!pg || pg.isNew) return;
+  if (!pg.custom) return toggleBuiltInEvent();
+  const ok = await ask({ title: 'ลบกิจกรรมนี้?', body: `กิจกรรม <b>${esc(pg.name)}</b> จะหายจากเกมทันทีและกู้คืนไม่ได้ ผู้เล่นจะกดรับรางวัลที่ค้างอยู่ไม่ได้ และกรอบหน้าแรกที่ลิงก์ไว้จะถูกซ่อน<br>ถ้าแค่อยากพักไว้ก่อน เอาติ๊ก "โชว์กิจกรรมนี้ในเกม" ออกแล้วบันทึกแทนได้`, okText: 'ลบกิจกรรม' });
+  if (!ok) return;
+  const c = await client(), id = pg.id, old = eventState.pages.get(id), art = eventState.rows.get(id);
+  const { error } = await c.from('event_pages').delete().eq('id', id);
+  if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+  await hideLinkedBanners(c, id);
+  for (const u of new Set([...pg.fresh, ...Object.values(old?.icons || {})])) await removeEventFile(u);
+  if (art) {
+    await c.from('event_arts').delete().eq('event_id', id);
+    await removeEventFile(art.image_url);
+  }
+  await dropFreshEvent();
+  pg = null;
+  eventState.sel = null;
+  toast('ลบกิจกรรมแล้ว', 'good');
+  loadEventArts();
+}
+
+async function loadEventArts(selectId = null, keep = '') {
+  const c = await client();
+  const { data, error } = await c.from('event_arts').select('*');
+  await loadEventCatalog();
+  if (error) {
+    $('evList').innerHTML = `<div class="empty">อ่านรายการไม่ได้: ${esc(errText(error))}<br>รัน <b>supabase/event-arts.sql</b> ใน Supabase แล้วหรือยัง?</div>`;
+    return;
+  }
+  eventState.rows = new Map((data || []).map((r) => [r.event_id, r]));
+  const catalog = eventCatalog();
+  $('evList').innerHTML = catalog.map((ev) => {
+    const r = eventState.rows.get(ev.id);
+    const left = ev.custom ? daysLeft(ev) : 0;
+    const when = ev.removed ? '<span class="pill guest">ลบออกจากเกมแล้ว</span>' : !ev.custom ? '' : !ev.active ? '<span class="pill guest">ซ่อนกิจกรรม</span>' : left ? `<span class="pill tag">เหลืออีก ${left} วัน</span>` : '<span class="pill guest">หมดเวลาแล้ว</span>';
+    return `<div class="pl-row" data-id="${esc(ev.id)}">
+      <span class="pl-thumb">${r ? `<img src="${esc(r.image_url)}" alt="" style="${cropStyle(r.crop)}">` : ''}</span>
+      <div class="pl-main"><b>${esc(ev.name)}</b><div class="nl-pills">${r ? (r.active ? '<span class="pill tag">โชว์ในเกม</span>' : '<span class="pill guest">ซ่อนอยู่</span>') : '<span class="pill guest">ยังไม่มีรูป</span>'}${when}</div></div>
+    </div>`;
+  }).join('');
+  $('evList').querySelectorAll('.pl-row').forEach((el) => el.addEventListener('click', () => selectEventArt(el.dataset.id)));
+  selectEventArt(selectId || eventState.sel || catalog[0]?.id || EV_NEW, true, keep);   // ไม่เหลือกิจกรรมเลย = เปิดฟอร์มสร้างใหม่
+}
+
+const eventIsDirty = () => {
+  const r = eventState.rows.get(eventState.sel);
+  if (!r) return !!eventState.image;
+  return r.image_url !== eventState.image || r.active !== eventState.active || JSON.stringify(normCrop(r.crop)) !== JSON.stringify(eventState.crop);
+};
+
+// keep: 'art' = บันทึกรายละเอียดแล้วไม่แตะรูปที่กำลังจัด · 'page' = บันทึกรูปแล้วไม่แตะฟอร์มรายละเอียด
+async function selectEventArt(id, force = false, keep = '') {
+  if (!force && id === eventState.sel) return;
+  if (!force && (eventIsDirty() || pageIsDirty())) {
+    const ok = await ask({ title: 'ทิ้งการแก้ที่ยังไม่บันทึก?', body: 'ข้อมูลหรือรูปของกิจกรรมนี้ยังไม่ได้บันทึก', okText: 'ทิ้ง' });
+    if (!ok) return;
+  }
+  const isNew = id === EV_NEW, catalog = eventCatalog();
+  const ev = isNew ? { id: 'ev-' + uid36(), name: '', start: '', end: '', custom: true, active: true, quests: [] } : catalog.find((x) => x.id === id) || catalog[0];
+  if (keep !== 'page') await dropFreshPage();
+  if (keep !== 'art') {
+    await dropFreshEvent();
+    const r = eventState.rows.get(ev.id);
+    eventState.image = r?.image_url || '';
+    eventState.crop = normCrop(r?.crop);
+    eventState.active = r ? r.active : true;
+  }
+  eventState.sel = ev.id;
+  eventState.isNew = isNew;
+  if (keep !== 'page') fillPage(ev, isNew);
+  $('evActive').checked = eventState.active;
+  if (keep !== 'art') $('evMsg').textContent = '';
+  $('evHead').textContent = isNew ? 'รูปใหญ่' : ev.name || 'รูปใหญ่';
+  $('evList').querySelectorAll('.pl-row').forEach((el) => el.classList.toggle('on', el.dataset.id === ev.id));
+  renderEventFrame();
+  eventDirty();
+}
+
+function renderEventFrame() {
+  const frame = $('evFrame');
+  frame.innerHTML = eventState.image ? `<img src="${esc(eventState.image)}" alt="" draggable="false" style="${cropStyle(eventState.crop)}">` : '<span class="pv-empty">ยังไม่มีรูป</span>';
+  // เปลี่ยนรูป = กรอบต้องผูกการลากครั้งเดียว ตัวรับอ่านรูปปัจจุบันผ่านตัวกลาง
+  if (!frame.dataset.bound) {
+    frame.dataset.bound = '1';
+    bindCrop(frame, { get naturalWidth() { return frame.querySelector('img')?.naturalWidth || 0; }, get naturalHeight() { return frame.querySelector('img')?.naturalHeight || 0; } }, () => eventState.crop, setEventCrop);
+  }
+  $('evFileBtn').textContent = eventState.image ? 'เปลี่ยนรูป' : 'อัปโหลดรูป';
+  $('evZoom').disabled = $('evReset').disabled = !eventState.image;
+}
+
+function setEventCrop(c) {
+  eventState.crop = c;
+  const im = $('evFrame').querySelector('img');
+  if (im) im.style.cssText = cropStyle(c);
+  eventDirty();
+}
+
+function eventDirty() {
+  const dirty = eventIsDirty();
+  $('evSave').disabled = !dirty || !eventState.image;
+  $('evDel').disabled = !eventState.rows.get(eventState.sel) && !eventState.fresh;
+  $('evHint').textContent = eventState.isNew ? 'บันทึกกิจกรรมด้านบนก่อน แล้วค่อยใส่รูปใหญ่' : !eventState.image ? 'ยังไม่มีรูป — เกมวาดน้องแมวแทน' : dirty ? 'ยังไม่ได้บันทึก' : 'บันทึกแล้ว';
+  $('evZoom').value = eventState.crop.z;
+}
+
+async function uploadEventImage(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file || !eventState.sel) return;
+  const msg = $('evMsg');
+  if (eventState.isNew) return (msg.textContent = 'บันทึกกิจกรรมด้านบนก่อน แล้วค่อยใส่รูปใหญ่');
+  if (!file.type.startsWith('image/')) return (msg.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพ');
+  if (file.size > 8 * 1024 * 1024) return (msg.textContent = 'รูปใหญ่เกิน 8 MB ลองย่อก่อนนะ');
+  msg.textContent = 'กำลังอัปโหลด…';
+  const c = await client();
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `events/${eventState.sel}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const { error } = await c.storage.from('promo').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) return (msg.textContent = 'อัปโหลดไม่ได้: ' + errText(error));
+  await dropFreshEvent();
+  eventState.fresh = eventState.image = c.storage.from('promo').getPublicUrl(path).data.publicUrl;
+  eventState.crop = { ...CROP0 };
+  msg.textContent = 'อัปโหลดแล้ว ✓ — ลากจัดรูป แล้วกดบันทึก';
+  renderEventFrame();
+  eventDirty();
+}
+
+async function saveEventArt() {
+  if (!eventState.sel || !eventState.image) return;
+  const old = eventState.rows.get(eventState.sel);
+  const row = { event_id: eventState.sel, image_url: eventState.image, crop: eventState.crop, active: eventState.active, updated_at: new Date().toISOString() };
+  $('evSave').disabled = true;
+  const c = await client();
+  const { error } = await c.from('event_arts').upsert(row);
+  if (error) {
+    $('evSave').disabled = false;
+    $('evHint').textContent = 'บันทึกไม่ได้: ' + errText(error);
+    return;
+  }
+  if (old && old.image_url !== row.image_url) await removeEventFile(old.image_url);
+  eventState.fresh = '';
+  toast('บันทึกรูปกิจกรรมแล้ว — เกมจะเห็นเมื่อเปิดหน้ากิจกรรมครั้งถัดไป', 'good');
+  loadEventArts(eventState.sel, 'page');
+}
+
+async function deleteEventArt() {
+  const r = eventState.rows.get(eventState.sel);
+  if (!r) { await dropFreshEvent(); selectEventArt(eventState.sel, true, 'page'); return; }
+  const ok = await ask({ title: 'ลบรูปกิจกรรมนี้?', body: 'เกมจะกลับไปวาดน้องแมวแทนทันที และกู้รูปคืนไม่ได้<br>ถ้าแค่อยากพักไว้ก่อน เอาติ๊ก "โชว์รูปนี้ในเกม" ออกแล้วบันทึกแทนได้', okText: 'ลบรูป' });
+  if (!ok) return;
+  const c = await client();
+  const { error } = await c.from('event_arts').delete().eq('event_id', r.event_id);
+  if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
+  await removeEventFile(r.image_url);
+  await dropFreshEvent();
+  toast('ลบรูปแล้ว', 'good');
+  loadEventArts(eventState.sel, 'page');
 }
 
 // ── หน้า: แจ้งปัญหา ─────────────────────────────────────────

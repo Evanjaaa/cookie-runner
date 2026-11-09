@@ -1171,3 +1171,24 @@ span.nl-thumb img { display: block; }
 .pv-zoom.pv-noui .pv-ui { display: none; }
 /* iPad: ปุ่ม "ดูสกินอื่นๆ" อยู่มุมขวาบนของป้าย (กว้างตามตัวหนังสือ) */
 .pv-stage.ipad .pv-ui.more { left: auto !important; right: 2.5%; width: auto !important; padding: 0 .8em; }
+
+/* ตัวอย่างกรอบกิจกรรม (แท็บ "กรอบกิจกรรม") — เทมเพลตจริง src/event-banner.css แค่เลิกลอยตามจอ */
+.ev-banner-wrap.bn-pv { position: static; --b: min(403px, 78vw); margin-bottom: 8px; }
+.bn-bgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.bn-bg { --b: 170px; display: grid; gap: 5px; padding: 0; border: 0; background: none; color: var(--dim); font: inherit; font-size: 12.5px; cursor: pointer; }
+.bn-bg-art { position: relative; display: block; aspect-ratio: 2.72; overflow: hidden; border-radius: 10px; outline: 2px solid rgba(255,255,255,.12); }
+.bn-bg-art .evb-clip { inset: 0; border-radius: 0; }
+.bn-bg.on { color: #FFFFFF; }
+.bn-bg.on .bn-bg-art { outline: 3px solid var(--violet); }
+
+/* รายละเอียดกิจกรรม + รูปเล็กของภารกิจ (หน้า "รูปกิจกรรม") */
+.pg-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.pg-quests { display: grid; gap: 10px; }
+.pg-q { display: flex; gap: 14px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); }
+.pg-q.ro { align-items: center; }
+.pg-pic { flex: 0 0 auto; width: 92px; display: grid; gap: 6px; justify-items: stretch; text-align: center; align-content: start; }
+.pg-thumb { display: grid; place-items: center; width: 92px; height: 92px; overflow: hidden; border-radius: 14px; background: linear-gradient(145deg, #E6C9FA, #C79BF0); font-size: 44px; }
+.pg-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pg-ro { display: grid; gap: 3px; min-width: 0; }
+.pg-fields { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end; }
+.pg-fields select { width: 100%; padding: 9px 11px; }

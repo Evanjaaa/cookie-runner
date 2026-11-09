@@ -595,10 +595,10 @@
           <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
                รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
                ทำให้แถวปุ่มล็อบบี้ยาวจนต้องเลื่อนบนจอเตี้ย -->
+          <!-- ผู้ใช้ 9 พ.ย. 2026: ลิงก์คลังจริงและจุดแดงย้ายไปปุ่ม #btnCatStore แถวล่างแล้ว · ปุ่มนี้เปิดหน้าว่าง (#blankPanel) รอเปลี่ยนเป็นปุ่มอื่น -->
           <button class="lobby-btn jelly" id="btnStash">
             <canvas id="stashIcon" width="76" height="76"></canvas>
             <b>คลังน้อง</b>
-            <i class="dot hidden" id="stashDot" aria-hidden="true"></i>
           </button>
           <!-- สร้างสรรค์ = ระบายสีน้อง + ใส่รูปหน้าน้อง สองโหมดในแผงเดียว
                รวมเพราะทั้งคู่คือ "แต่งหน้าตาน้องด้วยตัวเอง" เหมือนกัน
@@ -616,7 +616,8 @@
           <!-- กิจกรรมอยู่บนสุดของแถวขวา เหนือปุ่มด่าน — เป็นที่ที่ตาไปถึงก่อน
                ปุ่มเล่นที่มุมขวาล่าง จึงเห็นว่ามีของค้างรับก่อนจะกดลงเล่น
                จุดแดงใช้กฎเดียวกับกล่องจดหมาย (ดู .dot ใน style.css) -->
-          <button class="lobby-btn jelly" id="btnQuests">
+          <!-- ซ่อนไว้ก่อน (ผู้ใช้ 9 พ.ย. 2026 — ใช้กรอบ #evBanner แทน) ระบบยังอยู่ครบ เอา style ออกก็กลับมา -->
+          <button class="lobby-btn jelly" id="btnQuests" style="display:none">
             <canvas id="questIcon" width="76" height="76"></canvas>
             <b>กิจกรรม</b>
             <i class="dot hidden" id="questDot" aria-hidden="true"></i>
@@ -626,6 +627,24 @@
           <button class="lobby-btn jelly" id="btnMap">
             <canvas id="mapIcon" width="76" height="76"></canvas>
             <b>แผนที่</b>
+          </button>
+        </div>
+
+        <!-- กรอบทางเข้ากิจกรรม ใต้แถวปุ่มตั้งค่า (ผู้ใช้ 9 พ.ย. 2026) · ตำแหน่ง main.js placeEvBanner · มีหลายกิจกรรม = สลับเองพร้อมจุดบอกหน้า -->
+        <div class="ev-banner-wrap" id="evBannerWrap">
+          <button type="button" class="ev-banner jelly" id="evBanner" aria-label="เปิดหน้ากิจกรรม">
+            <!-- ข้างในมาจากเทมเพลต src/render/event-banner.js -->
+            <i class="dot hidden" id="evBannerDot" aria-hidden="true"></i>
+          </button>
+          <div class="evb-dots" id="evBannerDots" aria-hidden="true"></div>
+        </div>
+
+        <!-- แถวปุ่มแบบใหม่ด้านล่าง (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) · กดแล้วเปิดคลังน้อง (#stashPanel) · น้องในปุ่มวาดโดย paintDockCats ใน main.js -->
+        <div class="home-dock" id="homeDock">
+          <button type="button" class="lobby-btn jelly dock-btn" id="btnCatStore" aria-label="คลังน้องแมว">
+            <canvas id="dockCats" width="400" height="240" aria-hidden="true"></canvas>
+            <b>คลังน้องแมว</b>
+            <i class="dot hidden" id="stashDot" aria-hidden="true"></i>
           </button>
         </div>
 
@@ -2511,15 +2530,24 @@
         <div class="pop">
           <!-- พื้นหลังบอร์ดกิจกรรม วาดสดด้วย Canvas 2D (src/render/softbg.js) — ชั้นล่างสุดของการ์ด ไม่รับนิ้ว -->
           <canvas class="quest-bg" id="questBg" aria-hidden="true"></canvas>
+          <!-- แถบบน: หัวข้อหน้ากลางบน + แถวแท็บเลือกกิจกรรม (main.js buildEventTabs) · ใต้แถบ: รูปกิจกรรมเต็มพื้น + แผงภารกิจลอยด้านขวา (ผู้ใช้ 9 พ.ย. 2026) -->
           <div class="quest-head">
             <div class="quest-title">
               <h2 class="skin-title">กิจกรรม</h2>
-              <span class="quest-when" id="questWhen"></span>
             </div>
-            <!-- รับทุกข้อที่ทำครบแล้วรวดเดียว — ทรงเดียวกับปุ่มรับทั้งหมดในหน้ารางวัลเลเวล -->
-            <button type="button" class="btn ghost tiny quest-all" id="questClaimAll">รับทั้งหมด</button>
+            <div class="ev-tabs" id="evTabs" role="tablist" aria-label="เลือกกิจกรรม"></div>
           </div>
-          <div class="quest-list" id="questList"></div>
+          <div class="ev-body">
+            <div class="ev-art" id="evArt"></div>
+            <div class="ev-panel">
+              <div class="quest-list" id="questList"></div>
+              <div class="ev-foot">
+                <span class="quest-when" id="questWhen"></span>
+                <!-- รับทุกข้อที่ทำครบแล้วของกิจกรรมที่เปิดอยู่ -->
+                <button type="button" class="btn ghost tiny quest-all" id="questClaimAll">รับทั้งหมด</button>
+              </div>
+            </div>
+          </div>
           <small class="form-msg" id="questMsg"></small>
           <!-- ปุ่มปิดมุมขวาบน — เทมเพลต .xbtn (pop-x = การ์ดเว้นที่ให้ปุ่มเหมือนปุ่มกลับ) -->
           <button type="button" class="xbtn pop-x" id="questBack" aria-label="ปิด">
@@ -2653,6 +2681,17 @@
               <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor"
                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- หน้าว่างของปุ่มคลังน้องอันเก่า (ผู้ใช้ 9 พ.ย. 2026) รอเปลี่ยนเป็นปุ่มอื่น -->
+      <div class="panel hidden" id="blankPanel">
+        <div class="pop blank-pop">
+          <h2 class="skin-title">คลังน้อง</h2>
+          <p class="blank-note">ยังไม่มีอะไรในหน้านี้</p>
+          <button type="button" class="xbtn pop-x" id="blankBack" aria-label="ปิด">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>

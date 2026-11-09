@@ -335,6 +335,55 @@ export async function fetchGachaPromos() {
 }
 
 /**
+ * กรอบทางเข้ากิจกรรมบนหน้าแรก (แท็บ "กรอบกิจกรรม" ในหลังบ้าน · supabase/event-banners.sql)
+ * → [{ id, kicker, title, end, event, image, crop, bg, bgImage }] · null = อ่านไม่ได้ (ยังไม่รัน SQL / ออฟไลน์)
+ */
+export async function fetchEventBanners() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data, error } = await c.from('event_banners').select('*').eq('active', true).order('sort', { ascending: true }).order('created_at', { ascending: true }).limit(30);
+    if (error) throw error;
+    return (data || []).map((b) => ({ id: b.id, kicker: b.kicker, title: b.title, end: b.end_date, event: b.event_id || null, image: b.image_url || null, crop: b.crop || null, bg: b.bg || null, bgImage: b.bg_image || null }));
+  } catch (e) {
+    console.warn('[cloud] อ่านกรอบกิจกรรมไม่ได้', e.message || e);
+    return null;
+  }
+}
+
+/**
+ * รูปประกอบกิจกรรม (แท็บ "รูปกิจกรรม" ในหลังบ้าน · supabase/event-arts.sql) — กิจกรรมละหนึ่งรูป
+ * → { [id กิจกรรม]: { image, crop } } · null = อ่านไม่ได้ (ยังไม่รัน SQL / ออฟไลน์)
+ */
+export async function fetchEventArts() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data, error } = await c.from('event_arts').select('*').eq('active', true).limit(100);
+    if (error) throw error;
+    return Object.fromEntries((data || []).filter((r) => r.image_url && r.event_id)
+      .map((r) => [r.event_id, { image: r.image_url, crop: r.crop || null }]));
+  } catch (e) {
+    console.warn('[cloud] อ่านรูปกิจกรรมไม่ได้', e.message || e);
+    return null;
+  }
+}
+
+/** วันที่ / รูปภารกิจ / กิจกรรมที่สร้างเอง (แท็บ "รูปกิจกรรม" ในหลังบ้าน · supabase/event-pages.sql) · null = อ่านไม่ได้ */
+export async function fetchEventPages() {
+  const c = await client();
+  if (!c) return null;
+  try {
+    const { data, error } = await c.from('event_pages').select('*').eq('active', true).order('sort', { ascending: true }).limit(100);
+    if (error) throw error;
+    return (data || []).map((r) => ({ id: r.id, name: r.name || '', start: r.start_date || '', end: r.end_date || '', quests: r.quests || null, icons: r.icons || {} }));
+  } catch (e) {
+    console.warn('[cloud] อ่านข้อมูลกิจกรรมไม่ได้', e.message || e);
+    return null;
+  }
+}
+
+/**
  * รูปบนการ์ดชุด (แท็บ "รูปการ์ดชุด" ในหลังบ้าน · supabase/outfit-cards.sql) — สกินละหนึ่งรูป
  * → { [id ชุด]: { image, crop } } · null = อ่านไม่ได้ (ยังไม่รัน SQL / ออฟไลน์)
  */

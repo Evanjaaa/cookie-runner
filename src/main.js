@@ -1,5 +1,6 @@
-﻿// src/main.js
+// src/main.js
 import './style.css';
+import './event-banner.css';
 import { VIEW, SCORING, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
@@ -54,14 +55,14 @@ import {
   sendLoginCode, verifyLoginCode, sendLinkCode, verifyLinkCode, signOut,
   fetchMyFriendCode, fetchProfileByCode, claimName, nameAvailable,
   friendStatus, sendFriendRequest, respondFriendRequest, cancelFriendRequest, removeFriend,
-  fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers, fetchGachaPromos, fetchOutfitCards,
+  fetchFriends, fetchFriendRequests, countFriendRequests, searchPlayers, fetchGachaPromos, fetchOutfitCards, fetchEventArts, fetchEventBanners, fetchEventPages,
 } from './net/cloud.js';
-import { cropRect } from './crop.js';
+import { cropRect, cropStyle } from './crop.js';
 import { OC_W, OC_H, drawOutfitArt } from './render/outfit-art.js';
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { CAT2, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act, cat2Backdrop } from './render/cat2.js';
+import { CAT2, CAT2_BREEDS, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act, cat2Backdrop } from './render/cat2.js';
 /** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
 function drawStashCat(c, x, feetY, scale, s, t, opts = {}) {
   // เงาน้องที่ยังไม่เคยพบ — วาดทรงจริงแล้วระบายเป็นเงา
@@ -79,6 +80,7 @@ import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.j
 import { drawPlats } from './render/platforms.js';
 import { drawShaded } from './render/shade.js';
 import { lobbyIconImage } from './render/lobby-icons.js';
+import { EV_BANNER_INNER, paintBannerCat, fillBanner } from './render/event-banner.js';
 import { makeDreamBg } from './render/dreambg.js';
 import { makeSoftBg } from './render/softbg.js';
 import { makeCreativeBg } from './render/creativebg.js';
@@ -94,7 +96,7 @@ import { loadStatus, saveStatus, statusWords, cleanStatus, STATUS_WORDS } from '
 import {
   startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
 } from './friends.js';
-import { QUESTS, questList, claimQuest, claimableCount, seasonText } from './quests.js';
+import { QUEST_EVENTS, applyEventPages, questList, claimQuest, claimableCount, seasonText, daysLeft } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI, RANKS as T_RANKS } from './talent-ui.js';
 import { talentById, TALENTS, isUnlocked as talentUnlocked } from './talents.js';
@@ -363,7 +365,7 @@ for (const [id, theme] of [
   ['loadoutPanel', 'treasure'], ['gListPanel', 'outfit'], ['foundPanel', 'cat'], ['catStoryPanel', 'cat'],
   ['catCardsPanel', 'mail'], ['catSendPanel', 'mail'], ['miniPanel', 'play'], ['mgPickPanel', 'cat'],
   ['tipPanel', 'cat'], ['pausePanel', 'system'], ['reportPanel', 'system'], ['overPanel', 'royal'],
-  ['createLockPanel', 'cat'], ['shopPanel', 'cat'], ['confirmPanel', 'system'],
+  ['createLockPanel', 'cat'], ['shopPanel', 'cat'], ['blankPanel', 'cat'], ['confirmPanel', 'system'],
 ]) {
   const el = document.getElementById(id);
   if (el) attachSubBg(el, theme, id.length);
@@ -3330,7 +3332,8 @@ function buildSkinStashGrid() {
     // t=60 ไม่ใช่ 0 เพราะที่ t=0 แมวกำลังหลับตาพอดี รูปตัวอย่างจะดูเหมือนหลับ
     // น้องที่ยังเด็กวาดตัวเล็กลงตามวัย ให้เห็นตั้งแต่ในกริดว่ายังเป็นลูกแมว
     const k = x.kind === 'raising' ? sizeOf(levelOf(x.cat)) : 1;
-    paintMini(card.querySelector('canvas'), 140, (c) => drawStashCat(c, 80, 128, 2.19 * k, x.skin, 60, { head: true, logical: 140 }));
+    // ผ้าใบละเอียด 200 แต่พิกัดวาดยังเป็น 140 — การ์ดยืดตามจอแล้วรูปไม่เบลอ
+    paintMini(card.querySelector('canvas'), 200, (c) => { c.scale(200 / 140, 200 / 140); drawStashCat(c, 80, 128, 2.19 * k, x.skin, 60, { head: true, logical: 140 }); });
 
     setDot(card, !locked && isFresh('skin', x.id));
     // แตะ = เข้าหน้ารายละเอียดน้องเต็มตัวเลย (แบบหน้าชุด "ขนล้วน" — ผู้ใช้ 6 พ.ย. 2026)
@@ -3929,7 +3932,8 @@ function placeHomeOverlays() {
     const sr = stageEl.getBoundingClientRect();
     const pxPerWorld = (b.w * sr.width) / VIEW.W;
     const col = startPanel.querySelector('.lobby.left')?.getBoundingClientRect();
-    const colRight = col && col.width ? col.right - sr.left : 0.11 * sr.width;
+    const dock = document.getElementById('homeDock').getBoundingClientRect();   // ปุ่มคลังน้องแมวแถวล่างกว้างกว่าแถวปุ่ม — กล่องต้องพ้นปุ่มนี้ด้วย
+    const colRight = col && col.width ? Math.max(col.right, dock.right) - sr.left : 0.11 * sr.width;
     const halfPx = (65 * s / 0.88) * pxPerWorld;
     // ป้ายชื่อเหนือกล่องกว้างกว่าตัวกล่อง — เว้นจากแถวปุ่มตามครึ่งความกว้างป้าย ไม่ให้ป้ายทับปุ่มล่างสุด
     const lab = document.querySelector('#btnHomeBox .homebox-label')?.getBoundingClientRect();
@@ -4200,7 +4204,7 @@ onLang(() => {
   // หน้าสกิล/พรสวรรค์สร้างการ์ดใหม่ทุกครั้งที่เปิด สั่งเปิดซ้ำ (หมวดเดิม) จึงเท่ากับวาดใหม่ทั้งหน้า
   if (!talentPanel.classList.contains('hidden')) skillUI.open();
   // วันที่กิจกรรมเขียนตามภาษา (พ.ศ./ค.ศ.) ไม่ได้ผ่านพจนานุกรม
-  document.getElementById('questWhen').textContent = seasonText(getLang());
+  document.getElementById('questWhen').textContent = eventWhenText(currentEvent());
 });
 
 // แปลรอบแรกตอนเปิดเกม แล้วเฝ้าดูของที่ถูกสร้างใหม่ตลอดอายุการเล่น
@@ -4706,42 +4710,185 @@ function refreshQuestDot() {
   // เกิน 9 ใส่ 9+ แทนตัวเลขจริง ไม่งั้นป้ายจะยืดจนเบียดชื่อปุ่ม
   dot.textContent = n === 0 ? '' : n > 9 ? '9+' : n;
   dot.classList.toggle('hidden', n === 0);
+  const bd = document.getElementById('evBannerDot');   // จุดเดียวกันบนกรอบทางเข้ากิจกรรม (ปุ่มเดิมซ่อนอยู่)
+  bd.textContent = dot.textContent;
+  bd.classList.toggle('hidden', n === 0);
 }
+
+/** น้องแมวนอนกองกันบนปุ่มคลังน้องแมว — ใช้ท่าหมอบหลับตัวจริงของเกม */
+function paintDockCats() {
+  const cv = document.getElementById('dockCats'), c = cv.getContext('2d');
+  c.clearRect(0, 0, cv.width, cv.height);
+  const cat = (id, x, y, sc, turn) => {
+    const breed = CAT2_BREEDS.find((b) => b.id === id);
+    if (breed) drawCat2(c, x, y, sc, breed, 0, { k: 1, shape: { loaf: 1, shut: 1, turn } });
+  };
+  cat('korat', 268, 226, 3.7, -0.3);
+  cat('calico', 148, 236, 4.2, 0.3);
+}
+paintDockCats();
 
 /** ไอคอนปุ่มกิจกรรม — กล่องของขวัญ ตัวเดิมที่เคยอยู่บนปุ่มสมบัติ */
 function paintQuestIcon() {
   paintLobbyIcon('questIcon', 'quest');
 }
 
+// ── แถบกิจกรรม + รูปประกอบ (ผู้ใช้ 9 พ.ย. 2026) ──
+// รูปมาจากหลังบ้าน (ตาราง event_arts) · จำรายการล่าสุดไว้ในเครื่อง เปิดหน้าแล้วขึ้นทันที · ไม่มีรูป = วาดน้องที่ใช้อยู่แทน
+const EVENT_ART_KEY = 'cookie-runner:event-arts';
+let eventArts = (() => {
+  try { return JSON.parse(localStorage.getItem(EVENT_ART_KEY) || 'null') || {}; } catch { return {}; }
+})();
+let eventArtSyncAt = 0;
+async function syncEventArts() {
+  if (Date.now() - eventArtSyncAt < 60_000) return;
+  eventArtSyncAt = Date.now();
+  const got = await fetchEventArts();
+  if (!got || JSON.stringify(got) === JSON.stringify(eventArts)) return;
+  eventArts = got;
+  try { localStorage.setItem(EVENT_ART_KEY, JSON.stringify(got)); } catch {}
+  if (!questPanel.classList.contains('hidden')) buildQuestList();
+}
+// วันที่ / รูปภารกิจ / กิจกรรมที่สร้างเองจากหลังบ้าน · จำไว้ในเครื่อง เปิดเกมแล้วขึ้นทันที
+const EVENT_PAGES_KEY = 'cookie-runner:event-pages';
+let eventPages = (() => {
+  try { const c = JSON.parse(localStorage.getItem(EVENT_PAGES_KEY) || 'null'); return Array.isArray(c) ? c : []; } catch { return []; }
+})();
+applyEventPages(eventPages);
+let eventPagesSyncAt = 0;
+async function syncEventPages() {
+  if (Date.now() - eventPagesSyncAt < 60_000) return;
+  eventPagesSyncAt = Date.now();
+  const got = await fetchEventPages();
+  if (!got || JSON.stringify(got) === JSON.stringify(eventPages)) return;
+  eventPages = got;
+  try { localStorage.setItem(EVENT_PAGES_KEY, JSON.stringify(got)); } catch {}
+  applyEventPages(got);
+  refreshQuestDot();
+  paintEvBanner();
+  if (!questPanel.classList.contains('hidden')) buildQuestList();
+}
+let eventSel = QUEST_EVENTS[0]?.id || '';
+// ลบกิจกรรมหมดทุกอันได้จากหลังบ้าน — หน้ากิจกรรมต้องไม่พัง
+const NO_EVENT = { id: '', name: 'ยังไม่มีกิจกรรม', start: '', end: '', quests: [] };
+const currentEvent = () => QUEST_EVENTS.find((e) => e.id === eventSel) || QUEST_EVENTS[0] || NO_EVENT;
+/** ป้ายท้ายแผงภารกิจ: ช่วงวันที่ + เหลืออีกกี่วัน (เขียนตามภาษา ไม่ผ่านพจนานุกรม) */
+function eventWhenText(ev) {
+  if (!ev.start) return '';
+  const n = daysLeft(ev), en = getLang() === 'en';
+  return seasonText(ev, getLang()) + (n ? (en ? ` · ${n} days left` : ` · เหลืออีก ${n} วัน`) : '');
+}
+
+function buildEventTabs() {
+  const bar = document.getElementById('evTabs');
+  const scroll = bar.scrollLeft;
+  bar.innerHTML = '';
+  for (const ev of QUEST_EVENTS) {
+    const on = ev.id === eventSel;
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'ev-tab' + (on ? ' on' : '');
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    tab.innerHTML = '<b></b>';
+    tab.querySelector('b').textContent = ev.name;
+    setDot(tab, claimableCount(ev) > 0);
+    tab.addEventListener('click', () => {
+      if (ev.id === eventSel) return;
+      unlockAudio();
+      sfx.fish();
+      eventSel = ev.id;
+      setMsg(document.getElementById('questMsg'), '');
+      buildQuestList();
+      document.getElementById('questList').scrollTop = 0;
+    });
+    bar.appendChild(tab);
+  }
+  bar.scrollLeft = scroll;
+}
+// เมาส์ล้อหมุน = เลื่อนแถบแนวนอน (จอสัมผัสปัดได้เอง)
+document.getElementById('evTabs').addEventListener('wheel', (e) => {
+  const bar = e.currentTarget;
+  if (bar.scrollWidth <= bar.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  e.preventDefault();
+  bar.scrollLeft += e.deltaY;
+}, { passive: false });
+
+/**
+ * รูปกิจกรรมเต็มพื้นใต้แถบบน: ชั้นล่าง = รูปเดียวกันเบลอเต็มกว้าง (ต่อใต้แผงภารกิจ) · ชั้นบน = รูปคมฝั่งซ้าย ขอบขวาจางเข้าชั้นล่าง
+ * รูปจึงไม่ถูกแผงบัง และครอบตัดแบบเดียวกับตัวอย่างในหลังบ้าน · ยังไม่มีรูป/โหลดไม่ได้ = น้องที่ใช้อยู่ + ชื่อกิจกรรม
+ */
+function paintEventArt() {
+  const box = document.getElementById('evArt');
+  const ev = currentEvent();
+  const art = eventArts[ev.id];
+  const fallback = () => {
+    box.dataset.art = '';
+    box.innerHTML = '<div class="ev-fg"><canvas aria-hidden="true"></canvas><b class="ev-art-name"></b></div>';
+    box.querySelector('b').textContent = ev.name;
+    const fg = box.firstChild, w = fg.clientWidth, h = fg.clientHeight;
+    if (!w || !h) return;
+    const cv = fg.querySelector('canvas');
+    cv.style.width = w + 'px';
+    cv.style.height = h + 'px';
+    paintBox(cv, w, h, (c) => drawStashCat(c, w / 2, h * 0.84, (h * 0.68) / 62, getSkin(), 60));
+  };
+  if (!art) return fallback();
+  const key = art.image + JSON.stringify(art.crop);
+  if (box.dataset.art === key && box.querySelector('img')) return;
+  box.dataset.art = key;
+  box.innerHTML = '<img class="ev-bg" alt="" draggable="false"><div class="ev-fg"><img alt="" draggable="false"></div>';
+  const fg = box.querySelector('.ev-fg img');
+  fg.style.cssText = cropStyle(art.crop);
+  fg.onerror = fallback;
+  fg.src = box.querySelector('.ev-bg').src = art.image;
+}
+window.addEventListener('resize', () => { if (!questPanel.classList.contains('hidden') && !eventArts[currentEvent().id]) paintEventArt(); });
+
 function buildQuestList() {
+  const ev = currentEvent();
   const list = document.getElementById('questList');
   list.innerHTML = '';
+  buildEventTabs();
+  paintEventArt();
 
-  for (const { q, st } of questList()) {
+  let rowI = 0;
+  for (const { q, st } of questList(ev)) {
     const row = document.createElement('div');
     row.className = 'quest-row' + (st.claimed ? ' done' : st.done ? ' ready' : '');
     row.innerHTML =
-      '<span class="quest-ico"></span>'
+      `<span class="ev-thumb t${rowI++ % 4}"><span class="quest-ico"></span>${st.done && !st.claimed ? '<i class="ev-ribbon">รับได้!</i>' : ''}</span>`
       + '<div class="quest-info">'
       + '<b class="quest-name"></b>'
       + '<small class="quest-note"></small>'
-      + '<span class="quest-bar"><i></i></span>'
       + '</div>'
-      + '<div class="quest-side">'
+      + '<div class="ev-mid">'
       + '<span class="quest-prize"></span>'
-      + '<button type="button" class="btn quest-get"></button>'
-      + '</div>';
+      + '<span class="ev-prog"><span class="ev-star" aria-hidden="true">⭐</span><span class="quest-bar"><i></i><em></em></span></span>'
+      + '</div>'
+      + '<button type="button" class="btn quest-get"></button>';
 
-    row.querySelector('.quest-ico').textContent = q.icon;
+    const ico = row.querySelector('.quest-ico');
+    ico.textContent = q.icon;
+    if (q.image) {   // รูปเล็กจากหลังบ้าน · โหลดไม่ได้ = กลับไปใช้อีโมจิ
+      const im = document.createElement('img');
+      im.className = 'ev-thumb-img';
+      im.alt = '';
+      im.draggable = false;
+      im.onerror = () => { im.remove(); ico.style.display = ''; };
+      ico.style.display = 'none';
+      im.src = q.image;
+      ico.after(im);
+    }
     row.querySelector('.quest-name').textContent = q.name;
 
     // ความคืบหน้าเขียนด้วยหน่วยที่คนอ่านรู้เรื่อง (วินาที → นาที) ไม่ใช่ค่าดิบ
     const shown = q.show ? q.show(st.cur) : st.cur;
     const goal = q.show ? q.show(q.goal) : q.goal;
-    row.querySelector('.quest-note').textContent =
-      q.note + ' · ' + shown.toLocaleString('en-US') + '/' + goal.toLocaleString('en-US')
-      + (q.unit ? ' ' + q.unit : '');
-    row.querySelector('.quest-bar i').style.width = Math.round(st.ratio * 100) + '%';
+    row.querySelector('.quest-note').textContent = q.note;
+    row.querySelector('.quest-bar em').textContent = shown.toLocaleString('en-US') + ' / ' + goal.toLocaleString('en-US');
+    // เริ่มนับจากหลังดาว (ดาวบังหัวหลอด) — ไม่งั้นความคืบหน้าน้อย ๆ จะมองไม่เห็น
+    row.querySelector('.quest-bar i').style.width = st.ratio > 0 ? `calc(var(--ev-star) + (100% - var(--ev-star)) * ${st.ratio})` : '0';
 
     const bits = [];
     if (q.reward.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + q.reward.gems.toLocaleString('en-US'));
@@ -4757,23 +4904,23 @@ function buildQuestList() {
   }
   markScrollable(list);
   refreshQuestDot();
-  document.getElementById('questClaimAll').disabled = claimableCount() === 0;
-  document.getElementById('questWhen').textContent = seasonText(getLang());
+  document.getElementById('questClaimAll').disabled = claimableCount(ev) === 0;
+  document.getElementById('questWhen').textContent = eventWhenText(ev);
 }
 
-/** รับทุกข้อที่ทำครบแล้วรวดเดียว — จ่ายรวมก้อนเดียว กล่องฉลองขึ้นครั้งเดียว (ไม่เด้งทีละข้อ) */
+/** รับทุกข้อที่ทำครบแล้วของกิจกรรมที่เปิดอยู่รวดเดียว — จ่ายรวมก้อนเดียว กล่องฉลองขึ้นครั้งเดียว (ไม่เด้งทีละข้อ) */
 function doClaimAllQuests() {
   unlockAudio();
   const got = { gold: 0, gems: 0 };
   let n = 0;
-  for (const q of QUESTS) {
+  for (const q of currentEvent().quests) {
     const r = claimQuest(q.id);
     if (!r.ok) continue;
     got.gold += r.reward.gold || 0;
     got.gems += r.reward.gems || 0;
     n++;
   }
-  if (!n) return;
+  if (!n) return setMsg(document.getElementById('questMsg'), 'กิจกรรมทดสอบ — กดรับจริงไม่ได้', true);
   payReward(got);
   setMsg(document.getElementById('questMsg'), '');
   buildQuestList();
@@ -5993,6 +6140,8 @@ function showQuests(on) {
     setMsg(document.getElementById('questMsg'), '');
     refreshGold();
     buildQuestList();
+    syncEventArts();
+    syncEventPages();
   }
 }
 
@@ -6002,6 +6151,133 @@ document.getElementById('btnQuests').addEventListener('click', () => {
   showQuests(true);
 });
 document.getElementById('questBack').addEventListener('click', () => showQuests(false));
+
+// ── กรอบทางเข้ากิจกรรมบนหน้าแรก (ผู้ใช้ 9 พ.ย. 2026) ──
+// วางใต้แถวปุ่มตั้งค่า อ่านตำแหน่งจริงจากแถวปุ่ม (จอ iPad แถวบนเลื่อน/ขยายไม่เท่ามือถือ) · กิจกรรมเดียว = ไม่มีจุด ไม่สลับ
+const EV_BANNER_MS = 5000;
+const evBanner = document.getElementById('evBanner');
+evBanner.insertAdjacentHTML('afterbegin', EV_BANNER_INNER);
+const evBannerWrap = document.getElementById('evBannerWrap');
+let evBannerI = 0;
+
+function placeEvBanner() {
+  const row = document.querySelector('.hudbtns')?.getBoundingClientRect();
+  const p = startPanel.getBoundingClientRect();
+  if (!row?.height || !p.width) return;
+  const k = startPanel.offsetWidth / p.width;   // เวทีถูกย่อด้วย transform ได้
+  evBannerWrap.style.top = Math.round((row.bottom - p.top + row.height * 0.72) * k) + 'px';   // เว้นตามขนาดปุ่ม ไม่ชิดแถวบน
+  evBannerWrap.style.right = Math.round((p.right - row.right) * k) + 'px';
+}
+
+// รายการกรอบ: จากหลังบ้าน (เฉพาะที่ยังไม่หมดเวลา) · ไม่มีเลย/อ่านไม่ได้ = กิจกรรมในโค้ด · จำรายการล่าสุดไว้ในเครื่อง เปิดเกมแล้วขึ้นทันที
+const EV_BANNER_KEY = 'cookie-runner:event-banners';
+let evBanners = (() => {
+  try { const c = JSON.parse(localStorage.getItem(EV_BANNER_KEY) || 'null'); return Array.isArray(c) ? c : []; } catch { return []; }
+})();
+let evBannerSyncAt = 0;
+const evBannerItems = () => {
+  const live = evBanners.filter((b) => daysLeft({ end: b.end }) > 0);
+  return live.length ? live : QUEST_EVENTS.map((e) => ({ id: e.id, kicker: 'อีเวนต์พิเศษ', title: e.name, end: e.end, event: e.id }));
+};
+async function syncEvBanners() {
+  if (Date.now() - evBannerSyncAt < 60_000) return;
+  evBannerSyncAt = Date.now();
+  const got = await fetchEventBanners();
+  if (!got || JSON.stringify(got) === JSON.stringify(evBanners)) return;
+  evBanners = got;
+  try { localStorage.setItem(EV_BANNER_KEY, JSON.stringify(got)); } catch {}
+  preloadEvBanners();
+  paintEvBanner();
+}
+/** โหลดรูปทุกกรอบรอไว้ — ตอนสลับกรอบรูปจะได้ขึ้นทันที */
+function preloadEvBanners() {
+  for (const b of evBanners) for (const u of [b.image, b.bgImage]) if (u) new Image().src = u;
+}
+
+function paintEvBanner() {
+  const list = evBannerItems();
+  evBannerWrap.style.visibility = list.length ? '' : 'hidden';   // ไม่มีกิจกรรมเลย = ไม่โชว์กรอบ
+  if (!list.length) return;
+  if (evBannerI >= list.length) evBannerI = 0;
+  fillBanner(evBanner, list[evBannerI], getLang(), tr);
+  document.getElementById('evBannerDots').innerHTML = list.length > 1 ? list.map((e, i) => `<i${i === evBannerI ? ' class="on"' : ''}></i>`).join('') : '';
+}
+
+evBanner.addEventListener('click', () => {
+  if (evSwiped) return;   // เพิ่งปัดเลื่อนกรอบ ไม่ใช่แตะเปิด
+  unlockAudio(); startMusic();
+  sfx.fish();
+  const to = evBannerItems()[evBannerI]?.event;   // เปิดที่กิจกรรมที่กรอบโชว์อยู่
+  eventSel = QUEST_EVENTS.some((e) => e.id === to) ? to : QUEST_EVENTS[0]?.id || '';
+  showQuests(true);
+});
+let evBannerTimer = 0;
+function startEvRotate() {
+  clearInterval(evBannerTimer);
+  evBannerTimer = setInterval(() => {
+    const n = evBannerItems().length;
+    if (startPanel.classList.contains('hidden') || n < 2 || evDrag) return;
+    evBannerI = (evBannerI + 1) % n;
+    paintEvBanner();
+  }, EV_BANNER_MS);
+}
+startEvRotate();
+
+// ปัดซ้าย-ขวาบนกรอบ = เลื่อนดูกิจกรรมเอง (ผู้ใช้ 9 พ.ย. 2026) · เนื้อหาตามนิ้ว ปล่อยแล้วเลื่อนต่อหรือดีดกลับ · ปัดแล้วนับเวลาสลับอัตโนมัติใหม่
+const EV_SWIPE_START = 6, EV_SWIPE_MIN = 28, EV_DRAG_MAX = 40;
+let evDrag = null, evSwiped = false;
+evBanner.addEventListener('pointerdown', (e) => {
+  if (e.button > 0 || evBannerItems().length < 2) return;
+  evDrag = { x: e.clientX, y: e.clientY, dx: 0, moved: false };
+});
+evBanner.addEventListener('pointermove', (e) => {
+  if (!evDrag) return;
+  evDrag.dx = e.clientX - evDrag.x;
+  if (!evDrag.moved) {
+    if (Math.abs(evDrag.dx) < EV_SWIPE_START || Math.abs(evDrag.dx) < Math.abs(e.clientY - evDrag.y)) return;
+    evDrag.moved = true;
+    evBanner.setPointerCapture(e.pointerId);
+    evBanner.classList.add('evb-drag');
+    evBanner.classList.remove('evb-slide');
+  }
+  const d = Math.max(-EV_DRAG_MAX, Math.min(EV_DRAG_MAX, evDrag.dx));
+  evBanner.style.setProperty('--evb-dx', d + 'px');
+  evBanner.style.setProperty('--evb-a', (1 - (Math.abs(d) / EV_DRAG_MAX) * 0.65).toFixed(2));
+});
+function endEvDrag() {
+  const d = evDrag;
+  evDrag = null;
+  if (!d?.moved) return;
+  evBanner.classList.remove('evb-drag');
+  evBanner.style.removeProperty('--evb-dx');
+  evBanner.style.removeProperty('--evb-a');
+  evSwiped = true;   // click ที่ตามหลังการปัดไม่นับเป็นแตะ
+  setTimeout(() => { evSwiped = false; }, 350);
+  if (Math.abs(d.dx) < EV_SWIPE_MIN) return;
+  const dir = d.dx < 0 ? 1 : -1, n = evBannerItems().length;
+  evBannerI = (evBannerI + dir + n) % n;
+  paintEvBanner();
+  evBanner.style.setProperty('--evb-from', dir * EV_DRAG_MAX + 'px');
+  void evBanner.offsetWidth;   // เริ่มอนิเมชันใหม่ทุกครั้ง
+  evBanner.classList.add('evb-slide');
+  startEvRotate();
+}
+evBanner.addEventListener('pointerup', endEvDrag);
+evBanner.addEventListener('pointercancel', endEvDrag);
+function showEvBanner() {
+  if (startPanel.classList.contains('hidden')) return;
+  placeEvBanner();
+  paintEvBanner();
+  syncEvBanners();
+  syncEventPages();
+}
+new MutationObserver(() => requestAnimationFrame(showEvBanner)).observe(startPanel, { attributes: true, attributeFilter: ['class'] });
+new ResizeObserver(() => requestAnimationFrame(showEvBanner)).observe(document.getElementById('stage'));
+new MutationObserver(placeEvBanner).observe(hudTopEl, { attributes: true, attributeFilter: ['style'] });   // iPad: fitTopBar เลื่อนแถวบนทีหลัง
+onLang(showEvBanner);
+paintBannerCat(evBanner.querySelector('.evb-cat'));
+preloadEvBanners();
+paintEvBanner();
 
 // ── หน้ารายละเอียดชุด ──────────────────────────────────────
 //
@@ -6782,7 +7058,7 @@ let tFrom = null;      // แผงที่เปิดหน้านี้ม
  * แล้วพื้นเบลอรอบการ์ดหน้าย่อย (.over) จึงเห็นเป็นหน้านั้นเบลอ ๆ ไม่ใช่หน้าแรก
  * (ขนาดเต็มจออยู่ใน style.css บล็อก "หน้าเต็มจอ" — รายชื่อสองชุดนี้ต้องตรงกัน)
  */
-const FULL_PANELS = new Set(['gachaPanel', 'stashPanel', 'shopPanel', 'talentPanel', 'questPanel', 'profilePanel',
+const FULL_PANELS = new Set(['gachaPanel', 'stashPanel', 'shopPanel', 'blankPanel', 'talentPanel', 'questPanel', 'profilePanel',
   'lvPanel', 'friendsPanel', 'newsPanel', 'inboxPanel', 'settingsPanel']);
 const SUB_PANELS = new Set(['gListPanel', 'odPanel', 'mailReadPanel', 'reportPanel', 'tDetailPanel', 'upPanel']);
 /** หน้าย่อย → หน้าเต็มจอที่ค้างอยู่ข้างหลัง */
@@ -7758,7 +8034,7 @@ window.addEventListener('pageshow', () => {
 document.getElementById('siBack').addEventListener('click', () => {
   swapPanel(stageInfoPanel, stagePanel);
 });
-document.getElementById('btnStash').addEventListener('click', () => {
+document.getElementById('btnCatStore').addEventListener('click', () => {
   unlockAudio(); startMusic();
   // เปิดจากล็อบบี้ต้องเจอแมวน้อยก่อนเสมอ ไม่ใช่หมวดที่ค้างไว้รอบก่อน
   showStash(true, 'skin');
@@ -8271,6 +8547,15 @@ document.getElementById('btnShop').addEventListener('click', () => {
   openShop(true);
 });
 document.getElementById('shopBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); openShop(false); });
+// ปุ่มคลังน้องอันเก่า: หน้าว่างรอเปลี่ยนเป็นปุ่มอื่น (ผู้ใช้ 9 พ.ย. 2026)
+function openBlank(on) {
+  unlockAudio(); sfx.fish();
+  if (on) startMusic();
+  document.getElementById('blankPanel').classList.toggle('hidden', !on);
+  startPanel.classList.toggle('hidden', on);
+}
+document.getElementById('btnStash').addEventListener('click', () => openBlank(true));
+document.getElementById('blankBack').addEventListener('click', () => openBlank(false));
 // ปุ่มบวกท้ายแถบเพชร/ทอง (ผู้ใช้ 2 พ.ย.) — กดปุ่มเมนูเดิมให้ (ทางเดียวกับที่ผู้เล่นกดเอง ไม่ต้องจำขั้นตอนเปิดซ้ำ)
 // เพชรได้จากภารกิจ → หน้ากิจกรรม · ทองแลกในร้าน → ร้านเหมียว (เปิดที่หน้าแลกทองอยู่แล้ว)
 document.getElementById('gemPlus').addEventListener('click', () => document.getElementById('btnQuests').click());

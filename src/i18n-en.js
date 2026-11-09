@@ -189,6 +189,8 @@ export const EN = {
   'พรสวรรค์': 'Talents',
   // ป้ายปุ่มล็อบบี้ยาวเกิน 7-8 ตัวอักษรจะถูกตัดท้าย (วัดแล้ว: Collection กลายเป็น Collecti…)
   'คลังน้อง': 'Stash',
+  'คลังน้องแมว': 'Cat Storage',
+  'ยังไม่มีอะไรในหน้านี้': 'Nothing here yet',
   'สร้างสรรค์': 'Create',
   'กิจกรรม': 'Quests',
   'ด่าน': 'Stages',
@@ -361,6 +363,9 @@ export const EN = {
   'รับแล้ว': 'Claimed',
   'รับไปแล้ว': 'Already claimed',
   'ยังไม่ครบ': 'Not finished',
+  'ภารกิจสะสม': 'Collection Quests',
+  'รับได้!': 'Ready!',
+  'อีเวนต์พิเศษ': 'Special Event',
   'ยังไม่ถึง': 'Not yet',
   'ยังทำไม่ครบ': 'Not finished yet',
   'รับรางวัลนี้ไปแล้ว': 'You already claimed this reward.',

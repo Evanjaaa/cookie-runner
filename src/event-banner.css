@@ -1,0 +1,158 @@
+/* src/event-banner.css — เทมเพลตกรอบทางเข้ากิจกรรม ใช้ร่วมกันทั้งหน้าแรกของเกมและตัวอย่างในหลังบ้าน (แท็บ "กรอบกิจกรรม") */
+/* ══ กรอบทางเข้ากิจกรรมบนหน้าแรก (ผู้ใช้ 9 พ.ย. 2026) — กรอบม่วง พื้นชมพูลำแสง น้องกอดปลา · ขนาดทุกชิ้นผูกกับ --b จึงย่อขยายเป็นก้อนเดียว
+   top/right เขียนจาก main.js placeEvBanner (ค่านี้ใช้ก่อน JS ทำงาน) · หน้าแรกจึงใช้ปุ่มเด้ง .jelly ได้ */
+.ev-banner-wrap {
+  --b: clamp(170px, min(21vw, 46dvh), 430px);
+  position: absolute;
+  top: 14%;
+  right: 2.2%;
+  z-index: 3;
+  width: var(--b);
+  pointer-events: auto;
+}
+.ev-banner {
+  touch-action: pan-y;   /* ปัดแนวนอน = เลื่อนกรอบ (main.js) */
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2.72;
+  padding: 0;
+  border: calc(var(--b) * .007) solid #7A4CC0;
+  border-radius: calc(var(--b) * .085);
+  background: #F7A9DD;
+  box-shadow: inset 0 0 0 calc(var(--b) * .007) rgba(255,255,255,.9), 0 calc(var(--b) * .025) calc(var(--b) * .05) rgba(80,30,150,.38);
+  font-family: "Mali", sans-serif;
+  cursor: pointer;
+}
+.evb-clip {
+  position: absolute;
+  inset: calc(var(--b) * .007);
+  overflow: hidden;
+  border-radius: calc(var(--b) * .07);
+  background:
+    repeating-conic-gradient(from 0deg at 21% 62%, rgba(255,255,255,.2) 0 9deg, rgba(255,255,255,0) 9deg 20deg),
+    radial-gradient(70% 120% at 21% 62%, rgba(255,240,250,.85) 0%, rgba(255,240,250,0) 70%),
+    linear-gradient(100deg, #FFB8E2 0%, #F49ADB 48%, #D795EC 100%);
+}
+.evb-clip::before, .evb-clip::after { content: "✦"; position: absolute; color: #FFFFFF; line-height: 1; }
+.evb-clip::before { left: 6%; top: 13%; font-size: calc(var(--b) * .05); }
+.evb-clip::after { left: 36%; top: 11%; font-size: calc(var(--b) * .04); }
+.evb-cat { position: absolute; left: 3%; bottom: 0; width: 37%; height: auto; aspect-ratio: 200 / 190; }
+/* รูปจากหลังบ้านแทนน้องส้ม ช่องเดียวกับน้อง (สัดส่วนเกือบจัตุรัส) · เขียนสองคลาสให้ชนะ .cropable ของหลังบ้าน */
+.ev-banner .evb-pic { position: absolute; left: 2%; top: 0; bottom: 0; width: 38%; overflow: hidden; }
+.evb-text {
+  position: absolute;
+  left: 40%;
+  right: 3.5%;
+  top: 7%;
+  bottom: 8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+.evb-kick, .evb-name {
+  display: block;
+  width: 100%;
+  text-align: center;
+  max-width: 100%;   /* ไม่ใส่ overflow: hidden — สระบน/วรรณยุกต์ไทยกับขอบตัวอักษรจะโดนตัดขาด */
+  white-space: nowrap;
+  font-weight: 800;
+  line-height: 1.25;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+}
+.evb-kick { font-size: calc(var(--b) * .055); color: #FFE570; -webkit-text-stroke: calc(var(--b) * .012) #7A3DB0; }
+.evb-name { width: 100%; text-align: center; font-size: calc(var(--b) * .072); color: #FFFFFF; -webkit-text-stroke: calc(var(--b) * .015) #6F35AC; }
+.evb-time {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--b) * .014);
+  padding: calc(var(--b) * .009) calc(var(--b) * .03) calc(var(--b) * .009) calc(var(--b) * .012);
+  border-radius: 999px;
+  background: rgba(255,248,238,.88);
+  color: #5E3A70;
+  font-size: calc(var(--b) * .044);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.evb-time svg { width: calc(var(--b) * .062); height: calc(var(--b) * .062); flex: 0 0 auto; }
+.evb-go {
+  position: absolute;
+  right: 3.2%;
+  bottom: 9%;
+  display: grid;
+  place-items: center;
+  width: calc(var(--b) * .092);
+  height: calc(var(--b) * .092);
+  border-radius: 50%;
+  border: calc(var(--b) * .008) solid #FFFFFF;
+  background: linear-gradient(180deg, #9D70E0, #7445BE);
+  color: #FFFFFF;
+  box-shadow: 0 calc(var(--b) * .006) calc(var(--b) * .014) rgba(70,20,130,.45);
+}
+.evb-go svg { width: 66%; height: 66%; }
+.evb-dots { display: flex; justify-content: center; gap: calc(var(--b) * .022); margin-top: calc(var(--b) * .018); }
+.evb-dots:empty { display: none; }
+.evb-dots i { width: calc(var(--b) * .024); height: calc(var(--b) * .024); border-radius: 50%; background: rgba(150,105,214,.6); }
+.evb-dots i.on { background: #FFFFFF; box-shadow: 0 0 0 calc(var(--b) * .005) rgba(150,105,214,.7); }
+/* มือถือแนวนอน: กรอบใหญ่ขึ้น (ผู้ใช้ 9 พ.ย. 2026) · จำกัดด้วยความสูงจอ ไม่ให้ชนปุ่มแผนที่ · คอม/iPad ขนาดเดิม */
+@media (max-height: 520px) {
+  .ev-banner-wrap { --b: clamp(190px, min(26vw, 54dvh), 260px); }
+}
+
+/* ปัดเลื่อนกรอบ: รูปกับข้อความตามนิ้ว พื้นกรอบและปุ่มลูกศรอยู่กับที่ (--evb-dx --evb-a เขียนจาก main.js) */
+.ev-banner :is(.evb-text, .evb-cat, .evb-pic) {
+  translate: var(--evb-dx, 0px) 0;
+  opacity: var(--evb-a, 1);
+  transition: translate .18s ease, opacity .18s ease;
+}
+.ev-banner.evb-drag :is(.evb-text, .evb-cat, .evb-pic) { transition: none; }
+.ev-banner.evb-slide :is(.evb-text, .evb-cat, .evb-pic) { animation: evbSlide .24s ease-out; }
+@keyframes evbSlide {
+  from { translate: var(--evb-from, 0px) 0; opacity: .3; }
+  to { translate: 0 0; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ev-banner.evb-slide :is(.evb-text, .evb-cat, .evb-pic) { animation: none; }
+}
+
+/* พื้นหลังสำเร็จรูป 5 แบบ (ชมพูลำแสง = ค่าตั้งต้นของ .evb-clip) — รายชื่อใน BANNER_BGS (src/render/event-banner.js) */
+.evb-clip[data-bg="sky"] {
+  background:
+    radial-gradient(26% 46% at 8% 108%, #FFFFFF 97%, rgba(255,255,255,0)),
+    radial-gradient(22% 38% at 30% 112%, #FFFFFF 97%, rgba(255,255,255,0)),
+    radial-gradient(30% 44% at 62% 116%, rgba(255,255,255,.9) 97%, rgba(255,255,255,0)),
+    radial-gradient(24% 40% at 92% 108%, #FFFFFF 97%, rgba(255,255,255,0)),
+    radial-gradient(9% 13% at 82% 24%, rgba(255,255,255,.8) 97%, rgba(255,255,255,0)),
+    radial-gradient(7% 10% at 76% 28%, rgba(255,255,255,.8) 97%, rgba(255,255,255,0)),
+    radial-gradient(7% 9% at 88% 28%, rgba(255,255,255,.8) 97%, rgba(255,255,255,0)),
+    linear-gradient(180deg, #86D2FF 0%, #CDEFFF 100%);
+}
+.evb-clip[data-bg="mint"] {
+  background:
+    radial-gradient(circle, rgba(255,255,255,.6) 0 28%, rgba(255,255,255,0) 31%) 0 0 / calc(var(--b) * .09) calc(var(--b) * .09),
+    radial-gradient(circle, rgba(255,255,255,.6) 0 28%, rgba(255,255,255,0) 31%) calc(var(--b) * .045) calc(var(--b) * .045) / calc(var(--b) * .09) calc(var(--b) * .09),
+    linear-gradient(120deg, #C6F5E3 0%, #86E3C8 100%);
+}
+.evb-clip[data-bg="lemon"] {
+  background:
+    repeating-conic-gradient(from 0deg at 21% 62%, rgba(255,255,255,.3) 0 9deg, rgba(255,255,255,0) 9deg 20deg),
+    radial-gradient(70% 120% at 21% 62%, rgba(255,252,226,.9) 0%, rgba(255,252,226,0) 70%),
+    linear-gradient(100deg, #FFEFA8 0%, #FFD478 100%);
+}
+.evb-clip[data-bg="night"] {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='%23FFE9A8' d='M27 4a16 16 0 1 0 9 26A14 14 0 0 1 27 4z'/%3E%3C/svg%3E") no-repeat 97% 8% / calc(var(--b) * .1) auto,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg fill='%23FFFFFF'%3E%3Ccircle cx='8' cy='12' r='1.300'/%3E%3Ccircle cx='34' cy='6' r='.9'/%3E%3Ccircle cx='52' cy='24' r='1.200'/%3E%3Ccircle cx='20' cy='36' r='.9'/%3E%3Ccircle cx='44' cy='50' r='1.300'/%3E%3Cpath fill='%23FFE9A8' d='M28 24l1 3 3 1-3 1-1 3-1-3-3-1 3-1z'/%3E%3C/g%3E%3C/svg%3E") 0 0 / calc(var(--b) * .16) auto,
+    linear-gradient(120deg, #7F62DA 0%, #4A369E 100%);
+}
+.evb-clip[data-bg="peach"] {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg fill='%23FFFFFF' fill-opacity='.5'%3E%3Cpath d='M15 25C5 18 7 9 12 9c2 0 3 1 3 3 0-2 1-3 3-3 5 0 7 9-3 16z'/%3E%3Cpath d='M45 55C35 48 37 39 42 39c2 0 3 1 3 3 0-2 1-3 3-3 5 0 7 9-3 16z'/%3E%3C/g%3E%3C/svg%3E") 0 0 / calc(var(--b) * .15) auto,
+    linear-gradient(110deg, #FFE0CC 0%, #FFB79E 100%);
+}
+.evb-clip.evb-own::before, .evb-clip.evb-own::after { display: none; }
