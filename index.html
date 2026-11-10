@@ -639,11 +639,13 @@
           <div class="evb-dots" id="evBannerDots" aria-hidden="true"></div>
         </div>
 
-        <!-- แถวปุ่มแบบใหม่ด้านล่าง (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) · ข้างในยังว่าง (#blankPanel · ผู้ใช้ 10 พ.ย. 2026) · น้องในปุ่มวาดโดย paintDockCats ใน main.js -->
+        <!-- แถวปุ่มแบบใหม่ด้านล่าง (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) · ปุ่มใหญ่ = ปราสาทออนไลน์ เปิดหน้าเลือกห้อง (#roomPanel · ผู้ใช้ 10 พ.ย. 2026)
+             น้องในปุ่มวาดโดย paintDockCats ใน main.js · ป้ายจุดเขียว = คนออนไลน์ในห้องสาธารณะ -->
         <div class="home-dock" id="homeDock">
-          <button type="button" class="lobby-btn jelly dock-btn" id="btnCatStore" aria-label="คลังน้องแมว">
+          <button type="button" class="lobby-btn jelly dock-btn" id="btnCatStore" aria-label="ปราสาทออนไลน์">
             <canvas id="dockCats" width="400" height="240" aria-hidden="true"></canvas>
-            <b>คลังน้องแมว</b>
+            <span class="dock-live hidden" id="dockLive"><i aria-hidden="true"></i><span id="dockLiveNum">0</span></span>
+            <b>ปราสาทออนไลน์</b>
           </button>
         </div>
 
@@ -2538,6 +2540,22 @@
           </div>
           <div class="ev-body">
             <div class="ev-art" id="evArt"></div>
+            <!-- รางวัลใหญ่ทำครบทุกภารกิจ (main.js paintEventBonus · ผู้ใช้ 10 พ.ย. 2026)
+                 ปกติ = กล่องของขวัญน่ารักลอยมุมขวาล่างของรูป (ไม่บังรูป) · เปิดหน้า/สลับแท็บ = กล่องข้อความเด้งออกจากของขวัญ ค้าง 3 วิ แล้วหดกลับ
+                 แตะของขวัญ = เปิดดูอีกรอบ (แตะอีกที/แตะกล่อง = ปิด · ค้างเกิน 10 วิปิดเอง) · ครบแล้ว = กล่องเรืองทอง แตะกล่องรับรางวัล -->
+            <div class="ev-bonus-wrap hidden" id="evBonusWrap">
+              <button type="button" class="ev-bonus" id="evBonus" tabindex="-1">
+                <span class="ev-bonus-txt">
+                  <b id="evBonusTitle">รางวัลใหญ่ เมื่อทำครบทุกภารกิจ</b>
+                  <span class="ev-bonus-prize" id="evBonusPrize"></span>
+                </span>
+                <span class="ev-bonus-state" id="evBonusState"></span>
+              </button>
+              <button type="button" class="ev-bonus-gift" id="evBonusGift" aria-expanded="false" aria-controls="evBonus" aria-label="ดูรางวัลใหญ่">
+                <span class="ev-gift"><svg viewBox="0 0 48 48"><rect x="7" y="20" width="34" height="22" rx="4" fill="#FF8FBF"/><rect x="5" y="14" width="38" height="9" rx="3.5" fill="#FFB3D4"/><rect x="21" y="14" width="6" height="28" fill="#FFE08A"/><path d="M24 14c-3-7-12-8-12-3 0 4 7 4 12 3zM24 14c3-7 12-8 12-3 0 4-7 4-12 3z" fill="#FFD066"/><rect x="7" y="20" width="34" height="3" fill="#E9679F" opacity=".35"/><circle cx="14" cy="30" r="1.6" fill="#FFF" opacity=".8"/><circle cx="33" cy="35" r="1.3" fill="#FFF" opacity=".7"/></svg></span>
+                <i class="gs g1" aria-hidden="true"></i><i class="gs g2" aria-hidden="true"></i><i class="gs g3" aria-hidden="true"></i>
+              </button>
+            </div>
             <div class="ev-panel">
               <div class="quest-list" id="questList"></div>
               <div class="ev-foot">
@@ -2685,11 +2703,40 @@
       </div>
 
       <!-- หน้าว่างของปุ่มคลังน้องแมวแถวล่าง (ผู้ใช้ 10 พ.ย. 2026) ยังไม่มีของข้างใน -->
-      <div class="panel hidden" id="blankPanel">
-        <div class="pop blank-pop">
-          <h2 class="skin-title">คลังน้องแมว</h2>
-          <p class="blank-note">ยังไม่มีอะไรในหน้านี้</p>
-          <button type="button" class="xbtn pop-x" id="blankBack" aria-label="ปิด">
+      <!-- เลือกห้องปราสาทออนไลน์ (ผู้ใช้ 10 พ.ย. 2026 · main.js หัวข้อ "ห้องปราสาทออนไลน์" · src/castle-lobby.js)
+           ห้องสุ่ม = ห้องสาธารณะ · สร้างห้อง = ได้รหัส 4 หลักไว้ชวนเพื่อน · เข้าห้องเพื่อน = กรอกรหัส -->
+      <div class="panel hidden" id="roomPanel">
+        <div class="pop room-pop">
+          <h2 class="skin-title">ปราสาทออนไลน์</h2>
+          <p class="room-sub" id="roomSub">เลือกห้องที่อยากเข้าไปเล่นกับเพื่อน ๆ</p>
+          <div class="room-cards">
+            <section class="room-card rc-random">
+              <span class="room-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M8 40V20l4-5 4 5v4h4v-8l4-6 4 6v8h4v-4l4-5 4 5v20z" fill="#FFF3FB"/><path d="M8 20l4-5 4 5M20 16l4-6 4 6M32 20l4-5 4 5" fill="none" stroke="#FF9CC8" stroke-width="2.4" stroke-linejoin="round"/><path d="M21 40v-7a3 3 0 0 1 6 0v7" fill="#C9A6F2"/><circle cx="24" cy="23" r="2" fill="#FFD066"/></svg></span>
+              <b>ห้องสุ่ม</b>
+              <small>เข้าปราสาทเจอเพื่อนใหม่</small>
+              <span class="room-live" id="roomLive"><i aria-hidden="true"></i><span id="roomLiveTxt">กำลังดู…</span></span>
+              <button type="button" class="btn room-go" id="roomRandomGo">เข้าเลย</button>
+            </section>
+            <section class="room-card rc-make">
+              <span class="room-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="9" y="12" width="30" height="26" rx="7" fill="#FFF3FB"/><path d="M24 18v14M17 25h14" stroke="#B184E8" stroke-width="3.4" stroke-linecap="round"/><circle cx="37" cy="13" r="5" fill="#FFD066"/><path d="M37 10.5v5M34.5 13h5" stroke="#FFF" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+              <b>สร้างห้องส่วนตัว</b>
+              <small>ได้รหัส 4 หลักไว้ชวนเพื่อน</small>
+              <div class="room-code hidden" id="roomNewCode">
+                <span class="room-digits" id="roomNewDigits">----</span>
+                <button type="button" class="room-copy" id="roomCopy">คัดลอก</button>
+              </div>
+              <button type="button" class="btn ghost room-make" id="roomMake">สร้างห้อง</button>
+            </section>
+            <section class="room-card rc-join">
+              <span class="room-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="12" y="8" width="24" height="32" rx="5" fill="#FFF3FB"/><circle cx="30" cy="25" r="2" fill="#FF9CC8"/><path d="M4 25h13M12 20l5 5-5 5" fill="none" stroke="#B184E8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <b>เข้าห้องเพื่อน</b>
+              <small>กรอกรหัส 4 หลักที่เพื่อนส่งมา</small>
+              <input class="room-input" id="roomCodeIn" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="0000" autocomplete="off" aria-label="รหัสห้อง 4 หลัก">
+              <button type="button" class="btn room-join" id="roomJoin" disabled>เข้าห้อง</button>
+            </section>
+          </div>
+          <small class="form-msg" id="roomMsg"></small>
+          <button type="button" class="xbtn pop-x" id="roomBack" aria-label="ปิด">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>

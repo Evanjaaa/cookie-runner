@@ -96,7 +96,8 @@ import { loadStatus, saveStatus, statusWords, cleanStatus, STATUS_WORDS } from '
 import {
   startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
 } from './friends.js';
-import { QUEST_EVENTS, applyEventPages, questList, claimQuest, claimableCount, seasonText, daysLeft } from './quests.js';
+import { lobbyReady, lobbyCount, roomInfo, newRoomCode } from './castle-lobby.js';
+import { QUEST_EVENTS, applyEventPages, questList, questState, claimQuest, claimableCount, seasonText, daysLeft, msLeft, bonusState, claimBonus } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI, RANKS as T_RANKS } from './talent-ui.js';
 import { talentById, TALENTS, isUnlocked as talentUnlocked } from './talents.js';
@@ -365,7 +366,7 @@ for (const [id, theme] of [
   ['loadoutPanel', 'treasure'], ['gListPanel', 'outfit'], ['foundPanel', 'cat'], ['catStoryPanel', 'cat'],
   ['catCardsPanel', 'mail'], ['catSendPanel', 'mail'], ['miniPanel', 'play'], ['mgPickPanel', 'cat'],
   ['tipPanel', 'cat'], ['pausePanel', 'system'], ['reportPanel', 'system'], ['overPanel', 'royal'],
-  ['createLockPanel', 'cat'], ['shopPanel', 'cat'], ['blankPanel', 'cat'], ['confirmPanel', 'system'],
+  ['createLockPanel', 'cat'], ['shopPanel', 'cat'], ['roomPanel', 'cat'], ['confirmPanel', 'system'],
 ]) {
   const el = document.getElementById(id);
   if (el) attachSubBg(el, theme, id.length);
@@ -4820,6 +4821,139 @@ function eventWhenText(ev) {
   const n = daysLeft(ev), en = getLang() === 'en';
   return seasonText(ev, getLang()) + (n ? (en ? ` · ${n} days left` : ` · เหลืออีก ${n} วัน`) : '');
 }
+/**
+ * ป้ายเวลาท้ายแผง (ผู้ใช้ 10 พ.ย. 2026): เหลือไม่ถึง 3 วัน = ชิปชมพูเด่น นับเป็นวัน+ชั่วโมง ("เหลือ 1 วัน 5 ชม." / "เหลือ 7 ชม.")
+ * เกินนั้น = ข้อความเดิม · หมดเวลา = "หมดเวลาแล้ว"
+ */
+function paintEventWhen(ev) {
+  const el = document.getElementById('questWhen');
+  el.replaceChildren();
+  if (!ev.start) return;
+  const ms = msLeft(ev), en = getLang() === 'en';
+  if (!ms || ms > 3 * 86400000) { el.textContent = eventWhenText(ev) || (en ? 'Ended' : 'หมดเวลาแล้ว'); return; }
+  el.append(seasonText(ev, getLang()) + ' · ');
+  const h = Math.floor(ms / 3600000), d = Math.floor(h / 24), hh = h % 24;
+  const chip = document.createElement('b');
+  chip.className = 'ev-soon';
+  chip.textContent = en ? (d ? `${d}d ${hh}h left` : `${Math.max(1, h)}h left`) : (d ? `เหลือ ${d} วัน ${hh} ชม.` : `เหลือ ${Math.max(1, h)} ชม.`);
+  el.append(chip);
+}
+// แผงเปิดอยู่ = อัปเดตเวลาที่เหลือทุกนาที
+setInterval(() => { if (!questPanel.classList.contains('hidden')) paintEventWhen(currentEvent()); }, 60_000);
+
+/** ปุ่ม "ไปทำ" ของภารกิจที่ยังไม่ครบ — พาไปหน้าที่ทำภารกิจนั้นได้ (วิ่ง → หน้าเลือกโหมด · สุ่ม → ตู้กาช่า · ตีบวก → คลังน้อง) */
+function goDoQuest(q) {
+  unlockAudio(); sfx.fish();
+  showQuests(false);
+  if (q.stat === 'pulls') showGacha(true);
+  else if (q.stat === 'upgrades') document.getElementById('btnStash').click();
+  else document.getElementById('startBtn').click();
+}
+
+/** เหรียญ/เพชรเด้งออกจากปุ่มที่กดรับ + ตัวเลข +N ลอยขึ้น (ผู้ใช้ 10 พ.ย. 2026 — รู้สึกว่าได้ของจริง) */
+function flyReward(btn, reward) {
+  const r = btn?.getBoundingClientRect?.();
+  if (!r || !r.width || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const kinds = [];
+  if (reward.gems) kinds.push(['gem', reward.gems]);
+  if (reward.gold) kinds.push(['coin', reward.gold]);
+  kinds.forEach(([k, amt], ki) => {
+    for (let i = 0; i < 9; i++) {
+      const s = document.createElement('span');
+      s.className = k + ' fly-bit';
+      s.style.left = cx + 'px';
+      s.style.top = cy + 'px';
+      document.body.appendChild(s);
+      const dx = (Math.random() - 0.5) * 170, up = 70 + Math.random() * 90, fall = 30 + Math.random() * 30;
+      s.animate([
+        { transform: 'translate(-50%,-50%) scale(.4)', opacity: 0 },
+        { transform: `translate(calc(-50% + ${dx * 0.6}px), calc(-50% - ${up}px)) scale(1.15)`, opacity: 1, offset: 0.45 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% - ${up - fall}px)) scale(.9)`, opacity: 0 },
+      ], { duration: 900 + Math.random() * 300, delay: ki * 120 + i * 25, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'both' }).finished.then(() => s.remove());
+    }
+    const t = document.createElement('b');
+    t.className = 'fly-plus is-' + k;
+    t.textContent = '+' + amt.toLocaleString('en-US');
+    t.style.left = cx + 'px';
+    t.style.top = (cy - 6 - ki * 30) + 'px';
+    document.body.appendChild(t);
+    t.animate([
+      { transform: 'translate(-50%,-50%) scale(.6)', opacity: 0 },
+      { transform: 'translate(-50%,calc(-50% - 34px)) scale(1.1)', opacity: 1, offset: 0.3 },
+      { transform: 'translate(-50%,calc(-50% - 70px)) scale(1)', opacity: 0 },
+    ], { duration: 1300, delay: ki * 140, easing: 'ease-out', fill: 'both' }).finished.then(() => t.remove());
+  });
+}
+
+/**
+ * รางวัลใหญ่ (ผู้ใช้ 10 พ.ย. 2026): กล่องของขวัญลอยมุมขวาล่างของรูปกิจกรรม · กล่องข้อความเด้งออกจากของขวัญเป็นพัก ๆ
+ *   ของที่จะได้ + ป้ายความคืบหน้า · ครบแล้ว = กล่องเรืองทอง แตะกล่องรับ · ของขวัญเด้งดึ๋งเรียก
+ */
+function paintEventBonus(ev) {
+  const wrap = document.getElementById('evBonusWrap');
+  const st = bonusState(ev);
+  wrap.classList.toggle('hidden', !st);
+  if (!st) { closeBonus(); return; }
+  const bits = [];
+  if (ev.bonus.gems) bits.push('<span class="gem" aria-hidden="true"></span>' + ev.bonus.gems.toLocaleString('en-US'));
+  if (ev.bonus.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + ev.bonus.gold.toLocaleString('en-US'));
+  document.getElementById('evBonusPrize').innerHTML = bits.join('');
+  const ready = st.done && !st.claimed;
+  wrap.classList.toggle('ready', ready);
+  wrap.classList.toggle('done', st.claimed);
+  document.getElementById('evBonusTitle').textContent = ready ? 'ครบทุกภารกิจแล้ว! แตะรับรางวัลใหญ่' : st.claimed ? 'รับรางวัลใหญ่แล้ว' : 'รางวัลใหญ่ เมื่อทำครบทุกภารกิจ';
+  document.getElementById('evBonusState').textContent = st.claimed ? '✓' : ready ? 'แตะรับ' : `${st.got} / ${st.n}`;
+  document.getElementById('evBonus').setAttribute('aria-label', ready ? 'รับรางวัลใหญ่' : `รางวัลใหญ่ ทำแล้ว ${st.got} จาก ${st.n} · แตะเพื่อปิด`);
+  setDot(document.getElementById('evBonusGift'), ready);
+}
+let bonusTimer = 0;
+/** กล่องข้อความเด้งออกจากของขวัญ แล้วหดกลับเองหลัง ms */
+function openBonus(ms) {
+  const wrap = document.getElementById('evBonusWrap');
+  if (wrap.classList.contains('hidden')) return;
+  wrap.classList.add('open');
+  document.getElementById('evBonusGift').setAttribute('aria-expanded', 'true');
+  document.getElementById('evBonus').tabIndex = 0;
+  clearTimeout(bonusTimer);
+  bonusTimer = setTimeout(closeBonus, ms);
+}
+function closeBonus() {
+  clearTimeout(bonusTimer);
+  const wrap = document.getElementById('evBonusWrap');
+  wrap.classList.remove('open');
+  document.getElementById('evBonusGift').setAttribute('aria-expanded', 'false');
+  document.getElementById('evBonus').tabIndex = -1;
+}
+/** เพิ่งเปิดหน้ากิจกรรม/สลับแท็บ: โชว์รางวัลใหญ่ 3 วิ (หน่วงนิดให้หน้าขึ้นก่อน) */
+function peekBonus() {
+  closeBonus();
+  setTimeout(() => { if (!questPanel.classList.contains('hidden')) openBonus(3000); }, 450);
+}
+/** รับรางวัลใหญ่ของกิจกรรมที่เปิดอยู่ (ถ้ารับได้) — คืนของที่ได้ หรือ null */
+function takeEventBonus() {
+  const r = claimBonus(currentEvent());
+  return r.ok ? r.reward : null;
+}
+// แตะของขวัญ = เปิด/ปิดกล่อง (เปิดค้างได้ 10 วิ)
+document.getElementById('evBonusGift').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  if (document.getElementById('evBonusWrap').classList.contains('open')) closeBonus(); else openBonus(10_000);
+});
+// แตะกล่อง: ครบแล้ว = รับรางวัล · ยังไม่ครบ = ปิดกล่อง
+document.getElementById('evBonus').addEventListener('click', (e) => {
+  unlockAudio();
+  const wrap = document.getElementById('evBonusWrap');
+  if (!wrap.classList.contains('ready')) { sfx.fish(); return closeBonus(); }
+  const reward = takeEventBonus();
+  if (!reward) { sfx.shieldBreak(); return; }
+  flyReward(e.currentTarget, reward);
+  payReward(reward);
+  setMsg(document.getElementById('questMsg'), '');
+  buildQuestList();
+  closeBonus();
+  showReward('รางวัลใหญ่ ' + currentEvent().name + '!', reward);
+});
 
 function buildEventTabs() {
   const bar = document.getElementById('evTabs');
@@ -4843,6 +4977,7 @@ function buildEventTabs() {
       setMsg(document.getElementById('questMsg'), '');
       buildQuestList();
       document.getElementById('questList').scrollTop = 0;
+      peekBonus();
     });
     bar.appendChild(tab);
   }
@@ -4899,7 +5034,7 @@ function buildQuestList() {
     const row = document.createElement('div');
     row.className = 'quest-row' + (st.claimed ? ' done' : st.done ? ' ready' : '');
     row.innerHTML =
-      `<span class="ev-thumb t${rowI++ % 4}"><span class="quest-ico"></span>${st.done && !st.claimed ? '<i class="ev-ribbon">รับได้!</i>' : ''}</span>`
+      `<span class="ev-thumb t${rowI++ % 4}"><span class="quest-ico"></span>${st.done && !st.claimed ? '<i class="ev-ribbon">รับได้!</i>' : ''}${st.claimed ? '<i class="ev-check" aria-label="รับแล้ว"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></i>' : ''}</span>`
       + '<div class="quest-info">'
       + '<b class="quest-name"></b>'
       + '<small class="quest-note"></small>'
@@ -4937,17 +5072,20 @@ function buildQuestList() {
     if (q.reward.gold) bits.push('<span class="coin" aria-hidden="true"></span>' + q.reward.gold.toLocaleString('en-US'));
     row.querySelector('.quest-prize').innerHTML = bits.join('');
 
+    // ปุ่ม: ครบแล้ว = รับรางวัล · รับไปแล้ว = ปิด · ยังไม่ครบ = "ไปทำ" พาไปหน้าที่ทำภารกิจนั้นได้ (ผู้ใช้ 10 พ.ย. 2026)
     const get = row.querySelector('.quest-get');
-    get.textContent = st.claimed ? 'รับแล้ว' : st.done ? 'รับรางวัล' : 'ยังไม่ครบ';
-    get.disabled = !st.done || st.claimed;
-    get.addEventListener('click', () => doClaimQuest(q.id));
+    get.textContent = st.claimed ? 'รับแล้ว' : st.done ? 'รับรางวัล' : 'ไปทำ';
+    get.disabled = st.claimed;
+    get.classList.toggle('go', !st.done && !st.claimed);
+    get.addEventListener('click', (e) => (st.done ? doClaimQuest(q.id, e.currentTarget) : goDoQuest(q)));
 
     list.appendChild(row);
   }
   markScrollable(list);
   refreshQuestDot();
   document.getElementById('questClaimAll').disabled = claimableCount(ev) === 0;
-  document.getElementById('questWhen').textContent = eventWhenText(ev);
+  paintEventWhen(ev);
+  paintEventBonus(ev);
 }
 
 /** รับทุกข้อที่ทำครบแล้วของกิจกรรมที่เปิดอยู่รวดเดียว — จ่ายรวมก้อนเดียว กล่องฉลองขึ้นครั้งเดียว (ไม่เด้งทีละข้อ) */
@@ -4962,7 +5100,11 @@ function doClaimAllQuests() {
     got.gems += r.reward.gems || 0;
     n++;
   }
+  // รับครบทุกข้อแล้ว = รางวัลใหญ่มาในก้อนเดียวกันเลย (ผู้ใช้ 10 พ.ย. 2026 "รับทั้งหมดลิงก์กับรางวัลใหญ่")
+  const big = takeEventBonus();
+  if (big) { got.gold += big.gold || 0; got.gems += big.gems || 0; n++; }
   if (!n) return setMsg(document.getElementById('questMsg'), 'กิจกรรมทดสอบ — กดรับจริงไม่ได้', true);
+  flyReward(document.getElementById('questClaimAll'), got);
   payReward(got);
   setMsg(document.getElementById('questMsg'), '');
   buildQuestList();
@@ -4970,13 +5112,14 @@ function doClaimAllQuests() {
 }
 document.getElementById('questClaimAll').addEventListener('click', doClaimAllQuests);
 
-function doClaimQuest(id) {
+function doClaimQuest(id, btn = null) {
   const r = claimQuest(id);
   unlockAudio();
   if (!r.ok) {
     sfx.shieldBreak();
     return setMsg(document.getElementById('questMsg'), r.reason, true);
   }
+  flyReward(btn, r.reward);
   payReward(r.reward);
   setMsg(document.getElementById('questMsg'), '');
   buildQuestList();
@@ -6182,6 +6325,7 @@ function showQuests(on) {
     setMsg(document.getElementById('questMsg'), '');
     refreshGold();
     buildQuestList();
+    peekBonus();
     syncEventArts();
     syncEventPages();
   }
@@ -7103,7 +7247,7 @@ let tFrom = null;      // แผงที่เปิดหน้านี้ม
  * แล้วพื้นเบลอรอบการ์ดหน้าย่อย (.over) จึงเห็นเป็นหน้านั้นเบลอ ๆ ไม่ใช่หน้าแรก
  * (ขนาดเต็มจออยู่ใน style.css บล็อก "หน้าเต็มจอ" — รายชื่อสองชุดนี้ต้องตรงกัน)
  */
-const FULL_PANELS = new Set(['gachaPanel', 'stashPanel', 'shopPanel', 'blankPanel', 'talentPanel', 'questPanel', 'profilePanel',
+const FULL_PANELS = new Set(['gachaPanel', 'stashPanel', 'shopPanel', 'roomPanel', 'talentPanel', 'questPanel', 'profilePanel',
   'lvPanel', 'friendsPanel', 'newsPanel', 'inboxPanel', 'settingsPanel']);
 const SUB_PANELS = new Set(['gListPanel', 'odPanel', 'mailReadPanel', 'reportPanel', 'tDetailPanel', 'upPanel']);
 /** หน้าย่อย → หน้าเต็มจอที่ค้างอยู่ข้างหลัง */
@@ -8056,7 +8200,7 @@ function showMap(on) {
 }
 /** ไปหน้าเมือง: ม่านอุ้งเท้าขยายจากปุ่มที่กด แล้วเปลี่ยนหน้า · spot = 'castle' เริ่มยืนหน้าปราสาท */
 let goingTown = false;
-function goTown(spot, fromEl) {
+function goTown(spot, fromEl, room = '') {
   if (goingTown) return;
   goingTown = true;
   unlockAudio(); sfx.fish();
@@ -8066,7 +8210,10 @@ function goTown(spot, fromEl) {
   wipe.style.setProperty('--wx', ((r.left + r.width / 2 - st.left) / st.width * 100) + '%');
   wipe.style.setProperty('--wy', ((r.top + r.height / 2 - st.top) / st.height * 100) + '%');
   wipe.className = 'room-wipe in';
-  setTimeout(() => { location.href = './town.html' + (spot === 'castle' || spot === 'hall' ? '?spot=' + spot : ''); }, 460);
+  const q = new URLSearchParams();
+  if (spot === 'castle' || spot === 'hall') q.set('spot', spot);
+  if (room) q.set('room', room);   // ห้องส่วนตัวรหัส 4 หลัก (หน้าเลือกห้องปราสาทออนไลน์)
+  setTimeout(() => { location.href = './town.html' + (q.size ? '?' + q : ''); }, 460);
 }
 document.getElementById('btnMap').addEventListener('click', () => { unlockAudio(); startMusic(); sfx.fish(); showMap(true); });
 document.getElementById('mapBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); showMap(false); });
@@ -8592,15 +8739,93 @@ document.getElementById('btnShop').addEventListener('click', () => {
   openShop(true);
 });
 document.getElementById('shopBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); openShop(false); });
-// ปุ่มคลังน้องแมวแถวล่าง: หน้าว่างไว้ก่อน (ผู้ใช้ 10 พ.ย. 2026 — คลังจริงอยู่ที่ปุ่มคลังน้องอันเดิม)
-function openBlank(on) {
+// ── ห้องปราสาทออนไลน์ (ผู้ใช้ 10 พ.ย. 2026) — ปุ่มใหญ่แถวล่าง → หน้าเลือกห้อง (src/castle-lobby.js · ห้องอยู่ที่ realtime/) ──
+//   ห้องสุ่ม → town.html?spot=hall · สร้างห้อง/เข้าห้องเพื่อน → town.html?spot=hall&room=1234
+//   ออนไลน์ยังไม่เปิด (เว็บไม่ได้ตั้ง VITE_CASTLE_WS) = ห้องสุ่มกลายเป็น "เข้าปราสาท" เล่นคนเดียว ปิดการ์ดอีกสองใบ
+const roomPanel = document.getElementById('roomPanel');
+let roomNew = '';
+function openRoom(on) {
   unlockAudio(); sfx.fish();
   if (on) startMusic();
-  document.getElementById('blankPanel').classList.toggle('hidden', !on);
+  roomPanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
+  if (!on) return;
+  setMsg(document.getElementById('roomMsg'), '');
+  const off = !lobbyReady;
+  document.getElementById('roomSub').textContent = off ? 'ตอนนี้ยังเล่นออนไลน์ไม่ได้ — เข้าปราสาทแบบเล่นคนเดียวได้เลยนะ' : 'เลือกห้องที่อยากเข้าไปเล่นกับเพื่อน ๆ';
+  document.getElementById('roomRandomGo').textContent = off ? 'เข้าปราสาท' : 'เข้าเลย';
+  for (const id of ['roomMake', 'roomCodeIn']) document.getElementById(id).disabled = off;
+  roomPanel.classList.toggle('offline', off);
+  paintRoomLive();
 }
-document.getElementById('btnCatStore').addEventListener('click', () => openBlank(true));
-document.getElementById('blankBack').addEventListener('click', () => openBlank(false));
+async function paintRoomLive() {
+  const n = await lobbyCount();
+  document.getElementById('roomLiveTxt').textContent = n == null ? (lobbyReady ? 'ต่อห้องไม่ได้ ลองใหม่อีกที' : 'เล่นคนเดียว') : `ออนไลน์ ${n} ตัว`;
+  document.getElementById('roomLive').classList.toggle('on', n != null && n > 0);
+  paintDockLive(n);
+}
+/** ป้ายจุดเขียวบนปุ่มปราสาทออนไลน์ — มีคนอยู่ถึงโชว์ */
+function paintDockLive(n) {
+  document.getElementById('dockLive').classList.toggle('hidden', !(n > 0));
+  if (n > 0) document.getElementById('dockLiveNum').textContent = n;
+}
+// หน้าแรกเปิดอยู่ = ดูคนออนไลน์ทุก 45 วิ (ไม่ถี่ — แต่ละครั้งนับเป็นคำขอของ Cloudflare)
+if (lobbyReady) {
+  lobbyCount().then(paintDockLive);
+  setInterval(() => { if (!document.hidden && !startPanel.classList.contains('hidden')) lobbyCount().then(paintDockLive); }, 45_000);
+}
+document.getElementById('btnCatStore').addEventListener('click', () => openRoom(true));
+document.getElementById('roomBack').addEventListener('click', () => openRoom(false));
+document.getElementById('roomRandomGo').addEventListener('click', (e) => goTown('hall', e.currentTarget));
+document.getElementById('roomMake').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  unlockAudio(); sfx.fish();
+  if (roomNew) return goTown('hall', btn, roomNew);   // สร้างแล้ว → ปุ่มนี้กลายเป็น "เข้าห้องนี้"
+  btn.disabled = true;
+  btn.textContent = 'กำลังสร้าง…';
+  const code = await newRoomCode();
+  btn.disabled = false;
+  if (!code) { btn.textContent = 'สร้างห้อง'; return setMsg(document.getElementById('roomMsg'), 'ต่อห้องออนไลน์ไม่ได้ ลองใหม่อีกทีนะ', true); }
+  roomNew = code;
+  document.getElementById('roomNewDigits').textContent = code;
+  document.getElementById('roomNewCode').classList.remove('hidden');
+  btn.textContent = 'เข้าห้องนี้';
+  btn.classList.remove('ghost');
+  setMsg(document.getElementById('roomMsg'), `ส่งรหัส ${code} ให้เพื่อน แล้วเข้าห้องไปรอกันเลย`);
+});
+document.getElementById('roomCopy').addEventListener('click', async () => {
+  unlockAudio(); sfx.fish();
+  const text = `มาเล่นในปราสาทแมวเหมียวด้วยกันนะ! รหัสห้อง ${roomNew}`;
+  try { await navigator.clipboard.writeText(text); setMsg(document.getElementById('roomMsg'), 'คัดลอกรหัสห้องแล้ว ส่งให้เพื่อนได้เลย'); }
+  catch { setMsg(document.getElementById('roomMsg'), 'รหัสห้อง ' + roomNew); }
+});
+const roomIn = document.getElementById('roomCodeIn');
+let joinArmed = '';   // ห้องว่าง: แตะอีกครั้ง = เข้าไปรอเพื่อน
+roomIn.addEventListener('input', () => {
+  roomIn.value = roomIn.value.replace(/\D/g, '').slice(0, 4);
+  document.getElementById('roomJoin').disabled = roomIn.value.length !== 4;
+  joinArmed = '';
+  document.getElementById('roomJoin').textContent = 'เข้าห้อง';
+});
+roomIn.addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'NumpadEnter') document.getElementById('roomJoin').click(); });
+document.getElementById('roomJoin').addEventListener('click', async (e) => {
+  const btn = e.currentTarget, code = roomIn.value;
+  if (!/^\d{4}$/.test(code)) return;
+  unlockAudio(); sfx.fish();
+  if (joinArmed === code) return goTown('hall', btn, code);
+  btn.disabled = true;
+  const r = await roomInfo(code);
+  btn.disabled = false;
+  const msg = document.getElementById('roomMsg');
+  if (!r) return setMsg(msg, 'ต่อห้องออนไลน์ไม่ได้ ลองใหม่อีกทีนะ', true);
+  if (r.n >= r.max) return setMsg(msg, `ห้อง ${code} เต็มแล้ว (${r.max} ตัว)`, true);
+  if (!r.n) {
+    joinArmed = code;
+    btn.textContent = 'เข้าไปรอเพื่อน';
+    return setMsg(msg, `ห้อง ${code} ยังไม่มีใครอยู่ แตะอีกครั้งเพื่อเข้าไปรอเพื่อน`);
+  }
+  goTown('hall', btn, code);
+});
 // ปุ่มบวกท้ายแถบเพชร/ทอง (ผู้ใช้ 2 พ.ย.) — กดปุ่มเมนูเดิมให้ (ทางเดียวกับที่ผู้เล่นกดเอง ไม่ต้องจำขั้นตอนเปิดซ้ำ)
 // เพชรได้จากภารกิจ → หน้ากิจกรรม · ทองแลกในร้าน → ร้านเหมียว (เปิดที่หน้าแลกทองอยู่แล้ว)
 document.getElementById('gemPlus').addEventListener('click', () => document.getElementById('btnQuests').click());

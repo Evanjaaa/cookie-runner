@@ -16,10 +16,14 @@ const BASE = (import.meta.env.VITE_CASTLE_WS || (import.meta.env.DEV ? `ws://${l
 export const onlineReady = !!BASE;
 
 let ws = null, want = false, room = 1, backoff = 1000, retry = null, ping = null;
+// ห้องส่วนตัว: town.html?room=1234 (สร้าง/กรอกรหัสจากหน้าเลือกห้องในหน้าแรก) · ไม่มี = ห้องสุ่ม (ห้องสาธารณะ castle-1 …)
+let code = /^\d{4}$/.test(new URLSearchParams(location.search).get('room') || '') ? new URLSearchParams(location.search).get('room') : '';
+/** รหัสห้องส่วนตัวที่อยู่ ('' = ห้องสุ่ม) */
+export const onlineRoom = () => code;
 let myId = null;
 let me = { m: 0, name: '', u: '' };   // ห้องบอกว่าเราเป็นใคร: m = 1 สมาชิก (ผูกอีเมล · พิมพ์คุยได้) · 0 ผู้มาเยือน
 let hello = () => ({});
-let on = { reset() {}, join() {}, state() {}, look() {}, leave() {}, nosit() {}, say() {}, sayno() {}, room() {}, lamp() {} };
+let on = { reset() {}, join() {}, state() {}, look() {}, leave() {}, nosit() {}, say() {}, sayno() {}, room() {}, lamp() {}, full() {} };
 
 /**
  * ตัวรับเหตุการณ์จาก main.js: reset() · join(p, isNew) · state(id, st) · look(id, look) · leave(id) · nosit({ w, sit, x })
@@ -60,7 +64,7 @@ function drop() {
 function connect() {
   if (!want) return;
   let s;
-  try { s = new WebSocket(`${BASE}/castle?room=castle-${room}`); } catch { schedule(); return; }
+  try { s = new WebSocket(`${BASE}/castle?room=${code ? 'r-' + code : 'castle-' + room}`); } catch { schedule(); return; }
   ws = s;
   s.onopen = async () => {
     backoff = 1000;
@@ -75,7 +79,12 @@ function connect() {
     if (e.data === 'pong') return;
     let m;
     try { m = JSON.parse(e.data); } catch { return; }
-    if (m.t === 'full') { room = (room % 9) + 1; backoff = 200; return; }   // ห้องเต็ม → ลองห้องถัดไป (เซิร์ฟเวอร์ปิดสายให้เอง)
+    if (m.t === 'full') {   // ห้องเต็ม (เซิร์ฟเวอร์ปิดสายให้เอง)
+      if (code) { on.full(code); code = ''; }   // ห้องส่วนตัวเต็ม → บอกผู้เล่น แล้วไปห้องสุ่มแทน
+      else room = (room % 9) + 1;               // ห้องสุ่มเต็ม → ลองห้องถัดไป
+      backoff = 200;
+      return;
+    }
     if (m.t === 'welcome') {
       myId = m.id; me = { m: m.me?.m ? 1 : 0, name: m.me?.name || '', u: m.me?.u || '' };
       on.reset();

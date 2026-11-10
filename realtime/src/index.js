@@ -41,17 +41,44 @@ const ORIGINS = [
   /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/,
 ];
 
+// ห้อง (ผู้ใช้ 10 พ.ย. 2026 "เลือกห้องก่อน: ห้องสุ่ม / สร้างห้อง / กรอกรหัส 4 หลัก"):
+//   castle-1 … castle-9 = ห้องสาธารณะ (ห้องสุ่ม — เต็มแล้วเกมย้ายไปห้องถัดไปเอง)
+//   r-0000 … r-9999     = ห้องส่วนตัว รหัส 4 หลัก (สร้างแล้วส่งรหัสให้เพื่อน)
+const ROOM_RE = /^(castle-[1-9]|r-\d{4})$/;
+const PUBLIC_ROOMS = ['castle-1', 'castle-2', 'castle-3'];   // ที่หน้าแรกนับคนออนไลน์ (ห้องสุ่มเริ่มจาก castle-1 เสมอ)
+const json = (obj, origin) => new Response(JSON.stringify(obj), {
+  headers: { 'content-type': 'application/json', 'access-control-allow-origin': origin, 'cache-control': 'no-store', vary: 'Origin' },
+});
+const roomStub = (env, room) => env.CASTLE.get(env.CASTLE.idFromName(room));
+async function roomCount(env, room) {
+  try { const r = await roomStub(env, room).fetch('https://room/info'); return (await r.json()).n || 0; } catch { return 0; }
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/health') return new Response('ok');
+    const origin = req.headers.get('Origin') || '';
+    const okOrigin = ORIGINS.some((re) => re.test(origin));
+    // หน้าแรก: คนออนไลน์ในห้องสาธารณะทั้งหมด (ป้ายบนปุ่มปราสาทออนไลน์ / หน้าเลือกห้อง)
+    if (url.pathname === '/lobby') {
+      if (!okOrigin) return new Response('forbidden', { status: 403 });
+      const counts = await Promise.all(PUBLIC_ROOMS.map((r) => roomCount(env, r)));
+      return json({ total: counts.reduce((a, b) => a + b, 0) }, origin);
+    }
+    // ห้องส่วนตัวรหัสนี้มีคนอยู่กี่ตัว (สร้างห้อง = หารหัสที่ว่าง · เข้าห้องเพื่อน = เช็คว่ามีห้องนี้จริง)
+    if (url.pathname === '/room') {
+      if (!okOrigin) return new Response('forbidden', { status: 403 });
+      const code = url.searchParams.get('code') || '';
+      if (!/^\d{4}$/.test(code)) return json({ error: 'code' }, origin);
+      return json({ n: await roomCount(env, 'r-' + code), max: MAX }, origin);
+    }
     if (url.pathname !== '/castle') return new Response('not found', { status: 404 });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', { status: 426 });
-    const origin = req.headers.get('Origin') || '';
-    if (!ORIGINS.some((re) => re.test(origin))) return new Response('forbidden', { status: 403 });
+    if (!okOrigin) return new Response('forbidden', { status: 403 });
     const want = url.searchParams.get('room') || '';
-    const room = /^castle-\d{1,2}$/.test(want) ? want : 'castle-1';
-    return env.CASTLE.get(env.CASTLE.idFromName(room)).fetch(req);
+    const room = ROOM_RE.test(want) ? want : 'castle-1';
+    return roomStub(env, room).fetch(req);
   },
 };
 
@@ -143,7 +170,12 @@ export class CastleRoom extends DurableObject {
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
-  async fetch() {
+  async fetch(req) {
+    // นับคนในห้อง (Worker ถามมาจาก /lobby · /room) — ไม่ใช่การต่อสาย
+    if (req.headers.get('Upgrade') !== 'websocket') {
+      const n = this.ctx.getWebSockets().filter((s) => s.deserializeAttachment()?.ready).length;
+      return new Response(JSON.stringify({ n }), { headers: { 'content-type': 'application/json' } });
+    }
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);

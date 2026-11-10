@@ -48,7 +48,7 @@ import { SNACKS, startAct, stepAct, actPose, randomSnack, drawSnackFlight, burst
 import { openScope, scopeStep, scopeDrag, scopeZoom, drawScope, lensOf } from './castle-scope.js';
 import { RW, R_PLACES, R_SURFACES, R_SPAWN, STAR_LINES, roofWish, roofWishSend, drawRoofBack, drawRoofWorld } from './castle-roof.js';
 import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx, emoteAge, emoteShapeAt } from './emotes.js';
-import { online, onlineMember, onlineMe, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook, sendSay, sendLamp } from './online.js';
+import { online, onlineRoom, onlineMember, onlineMe, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook, sendSay, sendLamp } from './online.js';
 import { initChat, chatReceive, chatSayNo, chatReset, bubbleOf, drawBubble, toggleChat, closeChat, chatOpen, paintChat, focusChat } from './chat.js';
 import { sendReport } from '../net/cloud.js';
 
@@ -1431,6 +1431,7 @@ onlineHandlers({
   join(p, isNew) { const q = newPeer(p.id); setLook(q, p); applyPeer(q, p, true); if (isNew) q.aura = performance.now(); peers.set(p.id, q); },
   // โคมไฟชั้น 2 ของห้อง: เพิ่งเข้าห้อง = ตั้งเงียบ ๆ · มีคนกด = ไฟกะพริบ/หรี่ + เสียง (ถ้าเราอยู่ชั้น 2)
   room(r) { if (typeof r.lamp === 'boolean') setLamp(r.lamp); },
+  full(c) { toast(`ห้อง ${c} เต็มแล้ว (20 ตัว) พาไปห้องสุ่มแทนนะเหมียว`); },
   lamp(m) { if (setLamp(m.on, tick) && WD === LOUNGE) sfx(m.on ? 'lampOn' : 'lampOff'); },
   state(id, st) { const q = peers.get(id); if (q) applyPeer(q, st); },
   look(id, l) { const q = peers.get(id); if (q) setLook(q, l); },
@@ -1662,7 +1663,8 @@ function paintOnline() {
   const on = online() && IN_CASTLE();
   let here = 1;
   if (on) for (const q of peers.values()) if (q.w === WD.id) here++;
-  const txt = on ? `แมวในปราสาท ${peers.size + 1} ตัว · อยู่ชั้นนี้ ${here} ตัว` : '';
+  const rc = onlineRoom();
+  const txt = on ? `${rc ? `ห้อง ${rc} · ` : ''}แมวในปราสาท ${peers.size + 1} ตัว · อยู่ชั้นนี้ ${here} ตัว` : '';
   if (txt === onlineTxt) return;
   onlineTxt = txt;
   $('onlineTag').classList.toggle('hidden', !on);

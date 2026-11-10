@@ -38,6 +38,12 @@ export function seasonText(ev, lang = 'th') {
   return `${d(a)} – ${d(b)}`;
 }
 
+/** มิลลิวินาทีที่เหลือจนจบวันสุดท้ายของกิจกรรม · หมดเวลาแล้ว = 0 */
+export function msLeft(ev) {
+  const [y, m, d] = ev.end.split('-').map(Number);
+  return Math.max(0, new Date(y, m - 1, d + 1) - Date.now());
+}
+
 /** เหลืออีกกี่วันถึงวันสุดท้ายของกิจกรรม (นับวันสุดท้ายรวมด้วย) · หมดเวลาแล้ว = 0 */
 export function daysLeft(ev) {
   const [y, m, d] = ev.end.split('-').map(Number);
@@ -123,12 +129,12 @@ export const QUEST_EVENTS = [
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('testevents')) {
   const fake = (id, name, note, stat, goal, unit, reward, icon) => ({ id: 'test-' + id, name, note, stat, goal, unit, reward, icon, test: true });
   QUEST_EVENTS.push(
-    { id: 'test-treasure', name: 'สมบัติแห่งความสุข', start: '2026-11-01', end: '2026-11-14', test: true, quests: [
+    { id: 'test-treasure', name: 'สมบัติแห่งความสุข', start: '2026-11-01', end: '2026-11-12', test: true, bonus: { gems: 300, gold: 5000 }, quests: [
       fake('t1', 'นักล่าสมบัติ', 'วิ่งสะสมครบ 5,000 เมตร', 'meters', 5000, 'ม.', { gems: 100 }, '🧭'),
       fake('t2', 'หีบใบแรก', 'เล่นจบครบ 3 ตา', 'runs', 3, 'ตา', { gold: 1500 }, '🧰'),
       fake('t3', 'มงกุฎเพชร', 'ทำคะแนนสะสมครบ 500,000', 'score', 500000, 'คะแนน', { gems: 300 }, '👑'),
     ] },
-    { id: 'test-chef', name: 'เชฟเหมียวมือโปร', start: '2026-11-05', end: '2026-11-22', test: true, quests: [
+    { id: 'test-chef', name: 'เชฟเหมียวมือโปร', start: '2026-11-05', end: '2026-11-22', test: true, bonus: { gems: 500 }, quests: [
       fake('c1', 'ลูกมือในครัว', 'เล่นจบครบ 5 ตา', 'runs', 5, 'ตา', { gold: 2000 }, '🥄'),
       fake('c2', 'อบคุกกี้', 'วิ่งสะสมครบ 10 นาที', 'seconds', 600, 'วินาที', { gems: 80 }, '🍪'),
       fake('c3', 'เค้กสามชั้น', 'วิ่งสะสมครบ 20,000 เมตร', 'meters', 20000, 'ม.', { gems: 200 }, '🎂'),
@@ -143,7 +149,7 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('testevents'
       fake('a2', 'ผจญภัยในป่า', 'เล่นจบครบ 15 ตา', 'runs', 15, 'ตา', { gems: 150 }, '🌲'),
       fake('a3', 'ฟักทองยักษ์', 'ทำคะแนนสะสมครบ 3,000,000', 'score', 3000000, 'คะแนน', { gems: 400 }, '🎃'),
     ] },
-    { id: 'test-star', name: 'เทศกาลดาวตก', start: '2026-12-01', end: '2026-12-25', test: true, quests: [
+    { id: 'test-star', name: 'เทศกาลดาวตก', start: '2026-12-01', end: '2026-12-25', test: true, bonus: { gems: 1000, gold: 20000 }, quests: [
       fake('s1', 'ขอพรดวงแรก', 'กดสุ่มกาช่าครบ 5 ครั้ง', 'pulls', 5, 'ครั้ง', { gems: 60 }, '⭐'),
       fake('s2', 'นักดูดาว', 'วิ่งสะสมครบ 45 นาที', 'seconds', 2700, 'วินาที', { gold: 6000 }, '🔭'),
       fake('s3', 'ช่างตีบวกดวงดาว', 'ตีบวกสมบัติสำเร็จ 10 ครั้ง', 'upgrades', 10, 'ครั้ง', { gems: 250 }, '🔨'),
@@ -249,13 +255,37 @@ export function questList(ev) {
   });
 }
 
-/** มีของค้างให้กดรับกี่ข้อ — ตัวเลขนี้คุมจุดแดงบนปุ่มกิจกรรม */
+/** มีของค้างให้กดรับกี่ข้อ (รวมรางวัลใหญ่ที่รับได้) — ตัวเลขนี้คุมจุดแดงบนปุ่มกิจกรรม */
 export function claimableCount(ev = null) {
-  const list = ev ? ev.quests : QUEST_EVENTS.filter((e) => !e.test).flatMap((e) => e.quests);
-  return list.filter((q) => {
-    const st = questState(q);
-    return st.done && !st.claimed;
-  }).length;
+  const evs = ev ? [ev] : QUEST_EVENTS.filter((e) => !e.test);
+  let n = 0;
+  for (const e of evs) {
+    n += e.quests.filter((q) => { const st = questState(q); return st.done && !st.claimed; }).length;
+    const b = bonusState(e);
+    if (b?.done && !b.claimed) n++;
+  }
+  return n;
+}
+
+/**
+ * รางวัลใหญ่ท้ายกิจกรรม (ผู้ใช้ 10 พ.ย. 2026): รับรางวัลครบทุกภารกิจของกิจกรรมนั้น = ได้ของพิเศษเพิ่ม
+ * กิจกรรมที่มี bonus: { gems, gold } เท่านั้น · จำว่ารับแล้วด้วยกุญแจ 'bonus:<id กิจกรรม>' ในรายการเดียวกับภารกิจ
+ * @returns {{ n, got, done, claimed } | null}
+ */
+export function bonusState(ev) {
+  if (!ev?.bonus || !ev.quests?.length) return null;
+  const got = ev.quests.filter((q) => isClaimed(q.id)).length;
+  return { n: ev.quests.length, got, done: got === ev.quests.length, claimed: isClaimed('bonus:' + ev.id) };
+}
+export function claimBonus(ev) {
+  const st = bonusState(ev);
+  if (!st) return { ok: false, reason: 'กิจกรรมนี้ไม่มีรางวัลใหญ่' };
+  if (ev.test) return { ok: false, reason: 'กิจกรรมทดสอบ — กดรับจริงไม่ได้' };
+  if (!st.done) return { ok: false, reason: 'รับรางวัลให้ครบทุกภารกิจก่อนนะ' };
+  if (st.claimed) return { ok: false, reason: 'รับรางวัลใหญ่ไปแล้ว' };
+  loadClaimed().push('bonus:' + ev.id);
+  savePref(KEY, claimed);
+  return { ok: true, reward: ev.bonus };
 }
 
 /**
