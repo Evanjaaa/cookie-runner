@@ -4048,9 +4048,9 @@ canvas[hidden] { display: none; }
    ช่องไฟแถวซ้าย-ขวาคิดจากความสูงจอ ระยะห่างจึงพอดีกับจอทุกขนาด
    ปุ่มเล่น/หัวใจใช้ property `scale` (ไม่ชนท่ากดของปุ่ม) จุดยึดอยู่มุมที่ปุ่มเกาะ */
 @media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px) {
-  .stage.home-cover { --home-ui: var(--home-ui-js, 1.3); }   /* ค่าจริง main.js คิดจากความสูงจอ */
+  .stage:is(.home-cover, .hud-keep) { --home-ui: var(--home-ui-js, 1.3); }   /* ค่าจริง main.js คิดจากความสูงจอ */
   .stage.home-cover #startPanel .pf-row > *,
-  .stage.home-cover .hud-top > * { zoom: var(--home-ui); }
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top > * { zoom: var(--home-ui); }
   .stage.home-cover #startPanel .lobby { gap: calc(var(--app-h, 100dvh) * .022); }
   .stage.home-cover #startPanel .lobby-btn { zoom: var(--home-ui); }
   .stage.home-cover #startPanel #startBtn { scale: var(--home-ui); transform-origin: bottom right; }
@@ -15113,24 +15113,24 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    แถวสองอยู่เหนือแถวปุ่มเมนูขวา (กิจกรรม) พอดี ไม่ชนกัน · กึ่งกลางแถบเงินยังตรงกับการ์ดโปรไฟล์ (main.js fitTopBar)
    ขนาด = ค่าของจอสัมผัส × 1.15 ทั้งชุด (ความสูง ไอคอน ตัวเลข ปุ่มบวก) · --ic ใช้ร่วมกับวงขาวรองหลังไอคอนและประกายวิบ */
 @media (hover: none) and (pointer: coarse) and (max-aspect-ratio: 21/10) and (min-height: 600px) {
-  .stage.home-cover .hud-top {
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top {
     flex-direction: column;
     align-items: flex-end;
     gap: clamp(8px, 1.4dvh, 14px);
   }
-  .stage.home-cover .hud-top .wallet .gembar,
-  .stage.home-cover .hud-top .wallet .goldbar {
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .gembar,
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .goldbar {
     --ic: calc(var(--hud-h) * .93);
     height: calc(var(--hud-h) * 1.39);
     gap: 10px;
   }
-  .stage.home-cover .hud-top .wallet .gembar b,
-  .stage.home-cover .hud-top .wallet .goldbar b { font-size: clamp(17px, 2.96dvh, 21.7px); }
-  .stage.home-cover .hud-top .wallet .gem,
-  .stage.home-cover .hud-top .wallet .coin { width: var(--ic); height: var(--ic); }
-  .stage.home-cover .hud-top .wallet .gembar::before,
-  .stage.home-cover .hud-top .wallet .goldbar::before { left: calc(var(--pl) + var(--ic) * .8); }
-  .stage.home-cover .wallet-plus { width: calc(var(--hud-h) * .99); height: calc(var(--hud-h) * .99); }
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .gembar b,
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .goldbar b { font-size: clamp(17px, 2.96dvh, 21.7px); }
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .gem,
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .coin { width: var(--ic); height: var(--ic); }
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .gembar::before,
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top .wallet .goldbar::before { left: calc(var(--pl) + var(--ic) * .8); }
+  .stage:is(.home-cover, .hud-keep) .wallet-plus { width: calc(var(--hud-h) * .99); height: calc(var(--hud-h) * .99); }
 }
 
 /* ══ การ์ดโปรไฟล์ + ปุ่มรางวัลเลเวล + ปุ่มเช็คอิน: วุ้นใสเด้งดึ๋ง ชุดเดียวกับปุ่มเมนู (ผู้ใช้ 3 พ.ย. 2026) ══════════
@@ -17375,9 +17375,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* ปุ่มหน้าแรกโตตามความสูงจอ (--home-ui ตัวเดียวกับ iPad — main.js placeHomeOverlays คิดจากความสูงเวที)
    เฉพาะหน้าต่างสูง ≥ 600 · ไม่ย้ายปุ่มกลมลงแถวสองแบบ iPad (คอมจอกว้าง แถวบนพอ) */
 @media (not ((hover: none) and (pointer: coarse))) and (min-height: 600px) {
-  .stage.home-cover { --home-ui: var(--home-ui-js, 1.3); }
+  .stage:is(.home-cover, .hud-keep) { --home-ui: var(--home-ui-js, 1.3); }
   .stage.home-cover #startPanel .pf-row > *,
-  .stage.home-cover .hud-top > * { zoom: var(--home-ui); }
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top > * { zoom: var(--home-ui); }
   .stage.home-cover #startPanel .lobby { gap: calc(var(--app-h, 100dvh) * .022); }
   .stage.home-cover #startPanel .lobby-btn { zoom: var(--home-ui); }
   .stage.home-cover #startPanel #startBtn { scale: var(--home-ui); transform-origin: bottom right; }
@@ -17780,11 +17780,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 /* ── แถวปุ่มแบบใหม่ด้านล่างของหน้าแรก (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) ──
    สืบท่ากดและจุดแดงจาก .lobby-btn.jelly · ขนาดทุกอย่างคิดจาก --dock */
-#startPanel { --dock: clamp(104px, 22dvh, 190px); }
+#startPanel { --dock: clamp(104px, 22dvh, 190px); --dock-b: 3.6%; }   /* --dock-b = ระยะจากขอบล่าง (ผู้ใช้ 10 พ.ย. ขยับขึ้น) */
+/* ปุ่มลุยตั้งขอบล่างแถวเดียวกับปุ่มแถวล่าง ทุกจอ (ผู้ใช้ 10 พ.ย. 2026) */
+#startPanel #startBtn { bottom: var(--dock-b); }
 /* แถวปุ่มซ้ายหยุดเหนือปุ่มแถวล่าง (รวมน้องที่โผล่พ้นขอบบน) */
-#startPanel .lobby.left { bottom: calc(1.6% + var(--dock) * .86 + 8px); }
+#startPanel .lobby.left { bottom: calc(var(--dock-b) + var(--dock) * .86 + 8px); }
 @media (max-height: 520px) {
-  #startPanel .lobby.left { justify-content: flex-start; gap: 1.3dvh; bottom: calc(1.6% + var(--dock) * .84); }   /* มือถือ: ดันขึ้นชิดใต้การ์ดโปรไฟล์ */
+  #startPanel .lobby.left { justify-content: flex-start; gap: 1.3dvh; bottom: calc(var(--dock-b) + var(--dock) * .78); }   /* มือถือ: ดันขึ้นชิดใต้การ์ดโปรไฟล์ */
   /* ย่อให้สี่ปุ่มพอดีเหนือปุ่มแถวล่าง (ผู้ใช้ 9 พ.ย. 2026) */
   #startPanel .lobby-btn { width: 12.4dvh; height: 12.4dvh; padding: 3px 2px; }
   #startPanel .lobby-btn canvas { width: 6.9dvh; height: 6.9dvh; }
@@ -17793,7 +17795,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #startPanel .home-dock {
   position: absolute;
   left: 2.2%;
-  bottom: 1.6%;
+  bottom: var(--dock-b);
   display: flex;
   gap: calc(var(--dock) * .08);
   pointer-events: none;
@@ -17847,6 +17849,51 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   line-height: calc(var(--dock) * .15);
 }
 
-/* หน้าว่างของปุ่มคลังน้องอันเก่า */
+/* หน้าว่างของปุ่มคลังน้องแมวแถวล่าง */
 #blankPanel .blank-pop { display: grid; grid-template-rows: auto 1fr; justify-items: center; align-items: center; }
 #blankPanel .blank-note { margin: 0; color: #8A6BB0; font-size: clamp(14px, 3dvh, 22px); font-weight: 700; }
+
+/* ── ผู้ใช้ 10 พ.ย. 2026 ──
+   ปุ่มล็อบบี้ 5 ปุ่ม (ร้านเหมียว ตู้กาช่า การ์ดพลัง คลังน้อง แผนที่) กว้าง = สูง × 1.15 ทุกจอ
+   ตั้งกว้าง/สูงตรง ๆ จาก --lb-h (ห้ามใช้ aspect-ratio: แถวที่หดตามเนื้อหาคิดกว้างผิด → ตัวหนังสือโดนตัด และหมุนจอแล้วปุ่มแผนที่ยืด) */
+#startPanel { --lb-h: 62px; }
+@media (max-width: 560px) { #startPanel { --lb-h: 52px; } }
+@media (max-height: 520px) { #startPanel { --lb-h: 12.4dvh; } }
+#startPanel .lobby > .lobby-btn:not(.dock-btn) { width: calc(var(--lb-h) * 1.15); height: var(--lb-h); }
+/* มือถือมีรอยบาก/Dynamic Island: แถวปุ่มซ้ายถอยพ้นระยะปลอดภัยเต็ม ๆ (ผู้ใช้ 10 พ.ย. 2026) */
+@media (pointer: coarse) and (max-height: 520px) {
+  #startPanel .lobby.left { left: max(3.2%, calc(env(safe-area-inset-left, 0px) * .8)); }   /* +6px เกินไป → ตามเส้นที่ผู้ใช้ขีด ≈ ×0.8 */
+}
+/* แถบเพชร/ทองบนหน้าแรกสูงเท่าปุ่มกลมแถวเดียวกัน (สูตรเดียวกับ .hudbtns button) */
+.hud-top .wallet .gembar,
+.hud-top .wallet .goldbar { height: calc(var(--hud-h) + clamp(4px, .8dvh, 8px)); }
+
+/* ปุ่มแผนที่ชิดใต้กรอบกิจกรรม (ผู้ใช้ 10 พ.ย. 2026) · --evb-bottom มาจาก placeEvBanner ใน main.js · ไม่มีกรอบ = ตำแหน่งเดิม */
+#startPanel .lobby.right { top: var(--evb-bottom, var(--pf-clear)); justify-content: flex-start; padding-top: calc(9px + clamp(8px, 2.4dvh, 22px)); }
+
+/* ── แถวบนขวา (ผู้ใช้ 10 พ.ย. 2026): แถบเพชร/ทอง + ปุ่มกลมสี่ปุ่ม เล็กลง 10% และขยับขึ้น ทุกจอ ──
+   zoom คูณกับ --home-ui ของหน้าแรกเต็มจอ (iPad) · fitTopBar วัดขนาดหลังย่อเอง */
+.hud-top > :is(.wallet, .hudbtns) { zoom: .9; }
+:is(.stage.home-cover, .stage.hud-keep) .hud-top > :is(.wallet, .hudbtns) { zoom: calc(var(--home-ui, 1) * .9); }
+/* ขยับขึ้น: หน้าแรกเต็มจอ fitTopBar (main.js) เลื่อนทั้งแถวเอง · จออื่นเลื่อนตรงนี้ */
+.stage:not(.home-cover):not(.hud-keep) .hud-top > :is(.wallet, .hudbtns) { position: relative; top: calc(var(--hud-h) * -.45); }
+
+/* ── หน้าตู้กาช่า + ร้านเหมียว: แถวขวาบนของหน้าแรก (เพชร/ทอง + ปุ่มกลมสี่ปุ่ม) ตามมาด้วย ขนาด/ที่เดิม (ผู้ใช้ 10 พ.ย. 2026) ──
+   .hud-keep = main.js ใส่ตอนเปิดกาช่าจากหน้าแรก — กฎขนาดของหน้าแรกเต็มจอใช้คลาสนี้ร่วมกับ .home-cover
+   หน้าย่อยที่ซ้อนบนกาช่า (รายชื่อสกิน ผลสุ่ม ฯลฯ) ยังซ่อนแถบตามกฎเดิม */
+.stage.hud-keep:not(:has(.panel:not(.home):not(#gachaPanel):not(#shopPanel):not(.hidden))) .hud-top { display: flex; z-index: 30; }
+.stage.hud-keep:not(:has(.panel:not(.home):not(#gachaPanel):not(#shopPanel):not(.hidden))) .wallet-plus { display: grid; }
+.stage.hud-keep :is(#gachaPanel .gacha-wallet, #shopPanel .shop-wallet) { visibility: hidden; }
+
+/* ── คอมเท่านั้น (ผู้ใช้ 10 พ.ย. 2026): แถวบนทั้งหมดเล็กลง 15% ──
+   การ์ดโปรไฟล์ + ปุ่มรางวัล/เช็คอิน (.pf-row) และแถบเพชร/ทอง + ปุ่มกลม (ซึ่งย่อ 10% ไว้แล้ว) · มือถือ/iPad ไม่เปลี่ยน */
+@media (not ((hover: none) and (pointer: coarse))) {
+  #startPanel .pf-row > * { zoom: .85; }
+  .hud-top > :is(.wallet, .hudbtns) { zoom: .765; }
+  /* ขึ้นสูงกว่ามือถือ (ผู้ใช้ 10 พ.ย. 2026) · หน้าแรกเต็มจอใช้ fitTopBar ใน main.js แทน */
+  .stage:not(.home-cover):not(.hud-keep) .hud-top > :is(.wallet, .hudbtns) { top: calc(var(--hud-h) * -.8); }
+}
+@media (not ((hover: none) and (pointer: coarse))) and (min-height: 600px) {
+  .stage.home-cover #startPanel .pf-row > * { zoom: calc(var(--home-ui) * .85); }
+  :is(.stage.home-cover, .stage.hud-keep) .hud-top > :is(.wallet, .hudbtns) { zoom: calc(var(--home-ui) * .765); }
+}

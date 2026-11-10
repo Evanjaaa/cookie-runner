@@ -3979,8 +3979,49 @@ const pfRow = startPanel.querySelector('.pf-row');
 const walletEl = document.querySelector('.hud-top .wallet');
 const TOPBAR_GAP = 8;      // ระยะเว้นขั้นต่ำระหว่างสองก้อน (px จอ)
 const hudTopEl = document.querySelector('.hud-top');
+/**
+ * ตำแหน่งกระเป๋าเงินบนหน้าแรกล่าสุด (px จากมุมเวที) — หน้ากาช่าวางแถวบนให้ตรงจุดเดิม
+ * จดเฉพาะตอนหน้าแรกจัดเสร็จแล้ว (หลัง fitTopBar) ห้ามจดตอนเปิดกาช่า: กลับจากหน้าตั้งค่าแล้วเด้งเข้ากาช่าทันที
+ * ตอนนั้นแถวบนยังไม่ได้จัดแบบหน้าแรก ค่าที่จดจะผิด แล้วปุ่มเด้งขึ้นข้างบน (ผู้ใช้ 10 พ.ย. 2026)
+ */
+let hudHomeAt = null;
+function rememberHudHome() {
+  const w = walletEl?.getBoundingClientRect(), st = stageEl.getBoundingClientRect();
+  if (w?.width && !startPanel.classList.contains('hidden') && !stageEl.classList.contains('hud-keep')) hudHomeAt = { x: w.right - st.left, y: w.top - st.top };
+}
+/** หน้าตู้กาช่า: เลื่อนแถวบนให้กระเป๋าเงินอยู่ที่เดียวกับบนหน้าแรกเป๊ะ (หน้าแรกจัดกลางแถวกับของที่หน้ากาช่าไม่มี) */
+function alignHudToHome() {
+  if (!hudHomeAt || !stageEl.classList.contains('hud-keep')) return;
+  hudTopEl.style.translate = '';
+  const w = walletEl.getBoundingClientRect(), st = stageEl.getBoundingClientRect();
+  if (!w.width) return;
+  hudTopEl.style.translate = `${Math.round(hudHomeAt.x - (w.right - st.left))}px ${Math.round(hudHomeAt.y - (w.top - st.top))}px`;
+  // หัวหน้าสั้น เนื้อหาเริ่มสูง — ดันเนื้อหาลงให้พ้นแถวบนที่ยืมมา (ร้านเหมียว · ตู้กาช่าบนจอกว้าง)
+  for (const p of HUD_KEEP_PAGES) p.el().querySelector(p.head).style.marginBottom = '';
+  const page = hudKeepPage();
+  // ตู้กาช่าบนคอม: ชื่อสกิน (ชมพู) ลงมาอยู่บรรทัดเดียวกับแถบเพชร/ทอง (ผู้ใช้ 10 พ.ย. 2026) · มือถืออยู่บรรทัดเดียวกันอยู่แล้ว
+  const gpName = document.getElementById('gpName');
+  gpName.style.translate = '';
+  if (page?.head === '.gacha-head' && DESKTOP_UI.matches) {
+    const kk = stageEl.offsetWidth / st.width, wr = walletEl.getBoundingClientRect();
+    let ny = gpName.offsetHeight / 2;
+    for (let el = gpName; el && el !== stageEl; el = el.offsetParent) ny += el.offsetTop;
+    gpName.style.translate = `0 ${Math.round((wr.top + wr.height / 2 - st.top) * kk - ny)}px`;
+  }
+  if (!page) return;
+  const head = page.el().querySelector(page.head);
+  // วัดเป็นพิกัดเลย์เอาต์ (offsetTop) ไม่ใช่ getBoundingClientRect ของหน้าร้าน — การ์ดยังเล่นท่าเด้งเข้า (scale) อยู่ ค่าที่วัดได้จะเพี้ยน
+  const k = stageEl.offsetWidth / st.width;
+  const hb = (Math.max(walletEl.getBoundingClientRect().bottom, document.querySelector('.hudbtns').getBoundingClientRect().bottom) - st.top) * k;
+  let y = head.offsetHeight;
+  for (let el = head; el && el !== stageEl; el = el.offsetParent) y += el.offsetTop;
+  const over = hb + 6 - y;
+  if (over > 0) head.style.marginBottom = Math.round(over) + 'px';
+}
+const DESKTOP_UI = matchMedia('(not ((hover: none) and (pointer: coarse)))');
 function fitTopBar() {
   if (!pfRow || !walletEl) return;
+  if (stageEl.classList.contains('hud-keep')) return alignHudToHome();   // หน้ากาช่ายืมแถวบนไป — วางตามจุดที่จดจากหน้าแรก ไม่จัดใหม่
   pfRow.style.transform = '';
   walletEl.style.transform = '';
   // หน้าแรกบน iPad ปุ่มโตขึ้นคนละขนาด (การ์ดโปรไฟล์สูงกว่าปุ่มกลม) — เลื่อนแถวขวาลงให้กึ่งกลางตรงกับการ์ด
@@ -3990,7 +4031,8 @@ function fitTopBar() {
     if (stageEl.classList.contains('home-cover')) {
       // iPad: ปุ่มกลมอยู่แถวสองใต้แถบเงิน (style.css) — เทียบกึ่งกลาง "แถบเงิน" กับการ์ด ไม่ใช่ทั้งก้อนสองแถว
       const pr = pfRow.getBoundingClientRect(), hr = walletEl.getBoundingClientRect();
-      if (pr.height && hr.height) hudTopEl.style.translate = `0 ${Math.round(pr.top + pr.height / 2 - (hr.top + hr.height / 2))}px`;
+      // แถบเงินอยู่สูงกว่ากึ่งกลางการ์ดนิดหน่อย (ผู้ใช้ 10 พ.ย. 2026 "ดันขึ้นไปข้างบนหน่อย")
+      if (pr.height && hr.height) hudTopEl.style.translate = `0 ${Math.round(pr.top + pr.height / 2 - (hr.top + hr.height / 2) - hr.height * (DESKTOP_UI.matches ? 0.7 : 0.32))}px`;   // คอมขึ้นสูงกว่า (ผู้ใช้ 10 พ.ย. 2026)
     }
   }
   const p = pfRow.getBoundingClientRect();
@@ -4010,7 +4052,7 @@ function fitTopBar() {
 // transform ไม่เปลี่ยนขนาดที่ ResizeObserver เห็น — ย่อแล้วจึงไม่วนเรียกตัวเองซ้ำ
 // ดูทั้งตัวจอ การ์ด (ชื่อ/เลเวลเปลี่ยน, แผงหน้าแรกโผล่) และกระเป๋าเงิน (ตัวเลขยาวขึ้น)
 if (window.ResizeObserver && pfRow && walletEl) {
-  const ro = new ResizeObserver(() => fitTopBar());
+  const ro = new ResizeObserver(() => { fitTopBar(); rememberHudHome(); });
   [document.getElementById('stage'), pfRow, walletEl].forEach((el) => el && ro.observe(el));
 }
 
@@ -6167,6 +6209,9 @@ function placeEvBanner() {
   const k = startPanel.offsetWidth / p.width;   // เวทีถูกย่อด้วย transform ได้
   evBannerWrap.style.top = Math.round((row.bottom - p.top + row.height * 0.72) * k) + 'px';   // เว้นตามขนาดปุ่ม ไม่ชิดแถวบน
   evBannerWrap.style.right = Math.round((p.right - row.right) * k) + 'px';
+  // ขอบล่างกรอบ (รวมจุดบอกหน้า) → แถวปุ่มขวา (แผนที่) ตั้งต้นใต้กรอบ (ผู้ใช้ 10 พ.ย. 2026)
+  const wb = evBannerWrap.getBoundingClientRect();
+  if (wb.height) startPanel.style.setProperty('--evb-bottom', Math.round((wb.bottom - p.top) * k) + 'px');
 }
 
 // รายการกรอบ: จากหลังบ้าน (เฉพาะที่ยังไม่หมดเวลา) · ไม่มีเลย/อ่านไม่ได้ = กิจกรรมในโค้ด · จำรายการล่าสุดไว้ในเครื่อง เปิดเกมแล้วขึ้นทันที
@@ -8034,7 +8079,7 @@ window.addEventListener('pageshow', () => {
 document.getElementById('siBack').addEventListener('click', () => {
   swapPanel(stageInfoPanel, stagePanel);
 });
-document.getElementById('btnCatStore').addEventListener('click', () => {
+document.getElementById('btnStash').addEventListener('click', () => {
   unlockAudio(); startMusic();
   // เปิดจากล็อบบี้ต้องเจอแมวน้อยก่อนเสมอ ไม่ใช่หมวดที่ค้างไว้รอบก่อน
   showStash(true, 'skin');
@@ -8547,14 +8592,14 @@ document.getElementById('btnShop').addEventListener('click', () => {
   openShop(true);
 });
 document.getElementById('shopBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); openShop(false); });
-// ปุ่มคลังน้องอันเก่า: หน้าว่างรอเปลี่ยนเป็นปุ่มอื่น (ผู้ใช้ 9 พ.ย. 2026)
+// ปุ่มคลังน้องแมวแถวล่าง: หน้าว่างไว้ก่อน (ผู้ใช้ 10 พ.ย. 2026 — คลังจริงอยู่ที่ปุ่มคลังน้องอันเดิม)
 function openBlank(on) {
   unlockAudio(); sfx.fish();
   if (on) startMusic();
   document.getElementById('blankPanel').classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
 }
-document.getElementById('btnStash').addEventListener('click', () => openBlank(true));
+document.getElementById('btnCatStore').addEventListener('click', () => openBlank(true));
 document.getElementById('blankBack').addEventListener('click', () => openBlank(false));
 // ปุ่มบวกท้ายแถบเพชร/ทอง (ผู้ใช้ 2 พ.ย.) — กดปุ่มเมนูเดิมให้ (ทางเดียวกับที่ผู้เล่นกดเอง ไม่ต้องจำขั้นตอนเปิดซ้ำ)
 // เพชรได้จากภารกิจ → หน้ากิจกรรม · ทองแลกในร้าน → ร้านเหมียว (เปิดที่หน้าแลกทองอยู่แล้ว)
@@ -9430,11 +9475,31 @@ document.getElementById('glBack').addEventListener('click', () => showGList(fals
 
 // อัตราการสุ่มซ่อนอยู่ใต้ปุ่ม ! — เปิดค้างไว้ไม่ได้ เพราะมันบังปุ่มสุ่มข้างใต้
 const oddsPop = document.getElementById('oddsPop');
-const showOdds = (on) => oddsPop.classList.toggle('hidden', !on);
-document.getElementById('oddsBtn').addEventListener('click', () => {
+/**
+ * เปิดป๊อปอัพข้าง ๆ ปุ่ม ! ที่กด (ผู้ใช้ 10 พ.ย. 2026) — ลอยเหนือปุ่ม กลางตรงปุ่ม ไม่พอที่ข้างบน = ไว้ใต้ปุ่ม
+ * ดันเข้าในกรอบการ์ดเสมอ · ไม่มีปุ่ม = กลางการ์ดแบบเดิม
+ */
+function showOdds(on, btn = null) {
+  oddsPop.classList.toggle('hidden', !on);
+  oddsPop.style.left = oddsPop.style.top = oddsPop.style.transform = '';
+  const box = oddsPop.offsetParent;
+  if (!on || !btn || !box) return;
+  const b = btn.getBoundingClientRect(), r = box.getBoundingClientRect();
+  if (!b.width || !r.width) return;
+  const k = box.offsetWidth / r.width;   // เวทีถูกย่อด้วย transform ได้
+  const w = oddsPop.offsetWidth, h = oddsPop.offsetHeight, gap = 8, pad = 8;
+  const bx = (b.left - r.left) * k, by = (b.top - r.top) * k, bw = b.width * k, bh = b.height * k;
+  const x = Math.min(Math.max(bx + bw / 2 - w / 2, pad), box.clientWidth - w - pad);
+  let y = by - gap - h;
+  if (y < pad) y = Math.min(by + bh + gap, box.clientHeight - h - pad);
+  oddsPop.style.left = Math.round(x) + 'px';
+  oddsPop.style.top = Math.round(y) + 'px';
+  oddsPop.style.transform = 'none';
+}
+document.getElementById('oddsBtn').addEventListener('click', (e) => {
   unlockAudio(); sfx.fish();
   sfx.fish();
-  showOdds(oddsPop.classList.contains('hidden'));
+  showOdds(oddsPop.classList.contains('hidden'), e.currentTarget);
 });
 document.getElementById('oddsClose').addEventListener('click', () => showOdds(false));
 
@@ -9464,9 +9529,9 @@ document.getElementById('gpPull5').addEventListener('click', () => doPull(gMulti
 document.getElementById('gpPrev').addEventListener('click', () => { unlockAudio(); sfx.fish(); paintPromo(-1); });
 document.getElementById('gpNext').addEventListener('click', () => { unlockAudio(); sfx.fish(); paintPromo(1); });
 document.getElementById('gpMore').addEventListener('click', () => { unlockAudio(); sfx.fish(); showGList(true); });
-document.getElementById('gpOdds').addEventListener('click', () => {
+document.getElementById('gpOdds').addEventListener('click', (e) => {
   unlockAudio(); sfx.fish();
-  showOdds(oddsPop.classList.contains('hidden'));
+  showOdds(oddsPop.classList.contains('hidden'), e.currentTarget);
 });
 // แตะรูปโปรโมท = หน้ารายละเอียดของสกินนั้น (ท่าเปิดตัว) — กลับมาที่ตู้นี้
 // ปัดรูปซ้าย/ขวา = เลื่อนสกิน (แบบมีลูกศรซ้ายอันเดียว ทางขวาถูกตู้บัง)
@@ -10060,6 +10125,33 @@ document.getElementById('btnSettings').addEventListener('click', () => {
 });
 document.getElementById('settingsBack').addEventListener('click', () => showSettings(false));
 
+// ── หน้าที่ยืมแถวขวาบนของหน้าแรกไปใช้ (ผู้ใช้ 10 พ.ย. 2026: ตู้กาช่า → ร้านเหมียว) ──
+// เพิ่มหน้าใหม่ = เติมที่นี่ + เติม id ในกฎ .hud-keep ท้าย style.css
+// กดปุ่มในแถวนั้น: ปิดหน้านี้ก่อนให้ปุ่มทำงานแบบเดิมจากหน้าแรก แล้วพอปิดหน้าที่เปิดกลับหน้าแรก = เปิดหน้านี้คืนให้
+const HUD_KEEP_PAGES = [
+  { el: () => gachaPanel, head: '.gacha-head', open: () => showGacha(true), close: () => showGacha(false) },
+  // เปิดคืนโดยไม่รีเซ็ตหมวดที่ดูค้างไว้ (openShop(true) จะกลับไปหมวดแลกทอง)
+  { el: () => shopPanel, head: '.panel-head', open: () => { shopPanel.classList.remove('hidden'); startPanel.classList.add('hidden'); }, close: () => openShop(false), self: '#goldPlus' },
+];
+const hudKeepPage = () => HUD_KEEP_PAGES.find((p) => !p.el().classList.contains('hidden')) || null;
+let hudBackTo = null;
+document.querySelector('.hud-top').addEventListener('click', (e) => {
+  const b = e.target.closest('#btnFriends, #btnNews, #btnMail, #btnSettings, #gemPlus, #goldPlus');
+  const page = b && hudKeepPage();
+  if (!page || (page.self && b.matches(page.self))) return;   // + ทองในร้านเหมียว = อยู่หน้าเดิม
+  page.close();
+  setTimeout(() => {
+    if (!startPanel.classList.contains('hidden')) page.open();   // ปุ่มไม่ได้เปิดหน้าไหน = กลับทันที
+    else hudBackTo = page;
+  }, 0);
+}, true);
+new MutationObserver(() => {
+  if (!hudBackTo || startPanel.classList.contains('hidden')) return;
+  const page = hudBackTo;
+  hudBackTo = null;
+  page.open();
+}).observe(startPanel, { attributes: true, attributeFilter: ['class'] });
+
 // ── หมวดในหน้าตั้งค่า ── (ทั่วไป / เสียง / การแสดงผล) สลับด้วยแถบซ้าย ทีละหมวด
 const setTabs = [...document.querySelectorAll('#settingsPanel .set-tabs .stab')];
 function showSetTab(key) {
@@ -10303,12 +10395,18 @@ function loop(now) {
     stageEl.classList.toggle('home-bg', homeBg);
     fitDPR();
   }
+  // หน้าตู้กาช่า/ร้านเหมียวเปิดจากหน้าแรก: แถวขวาบนตามมาด้วย ขนาดเท่าหน้าแรก (style.css .hud-keep · ผู้ใช้ 10 พ.ย. 2026)
+  const hudKeep = homeBg && !!hudKeepPage();
+  if (stageEl.classList.contains('hud-keep') !== hudKeep) {
+    stageEl.classList.toggle('hud-keep', hudKeep);
+    requestAnimationFrame(hudKeep ? alignHudToHome : fitTopBar);   // กลับหน้าแรก = ล้างการเลื่อนของหน้ากาช่าแล้วจัดแบบหน้าแรกใหม่
+  }
   if (stageEl.classList.contains('home-cover') !== homeCover) {
     stageEl.classList.toggle('home-cover', homeCover);
     // ผ้าใบเปลี่ยนมุมมองทันที (ไม่รอ ResizeObserver — ขนาดกล่อง CSS อาจไม่เปลี่ยน แต่ transform เปลี่ยน)
     fitDPR();
     // ปุ่มบนแถวบนขยายตามโหมดนี้ (style.css) — วัดกันชนแถวบนใหม่ + วางกล่องแมวใหม่หลังเลย์เอาต์เปลี่ยน
-    requestAnimationFrame(() => { fitTopBar(); placeHomeOverlays(); });
+    requestAnimationFrame(() => { fitTopBar(); placeHomeOverlays(); rememberHudHome(); });
   }
 
   // วาดเมื่อถึงรอบของสถานะนั้น ๆ เท่านั้น — เฟรมที่ข้ามไปผ้าใบยังค้างภาพเดิมอยู่

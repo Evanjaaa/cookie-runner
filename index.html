@@ -595,10 +595,10 @@
           <!-- คลังน้อง = ชุดกับสมบัติรวมกัน สองหมวดในแผงเดียว
                รวมเพราะทั้งคู่คือ "ของที่น้องสะสมไว้" เหมือนกัน และการแยกเป็นสองปุ่ม
                ทำให้แถวปุ่มล็อบบี้ยาวจนต้องเลื่อนบนจอเตี้ย -->
-          <!-- ผู้ใช้ 9 พ.ย. 2026: ลิงก์คลังจริงและจุดแดงย้ายไปปุ่ม #btnCatStore แถวล่างแล้ว · ปุ่มนี้เปิดหน้าว่าง (#blankPanel) รอเปลี่ยนเป็นปุ่มอื่น -->
           <button class="lobby-btn jelly" id="btnStash">
             <canvas id="stashIcon" width="76" height="76"></canvas>
             <b>คลังน้อง</b>
+            <i class="dot hidden" id="stashDot" aria-hidden="true"></i>
           </button>
           <!-- สร้างสรรค์ = ระบายสีน้อง + ใส่รูปหน้าน้อง สองโหมดในแผงเดียว
                รวมเพราะทั้งคู่คือ "แต่งหน้าตาน้องด้วยตัวเอง" เหมือนกัน
@@ -639,12 +639,11 @@
           <div class="evb-dots" id="evBannerDots" aria-hidden="true"></div>
         </div>
 
-        <!-- แถวปุ่มแบบใหม่ด้านล่าง (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) · กดแล้วเปิดคลังน้อง (#stashPanel) · น้องในปุ่มวาดโดย paintDockCats ใน main.js -->
+        <!-- แถวปุ่มแบบใหม่ด้านล่าง (ผู้ใช้ 9 พ.ย. 2026 ส่งแบบ) · ข้างในยังว่าง (#blankPanel · ผู้ใช้ 10 พ.ย. 2026) · น้องในปุ่มวาดโดย paintDockCats ใน main.js -->
         <div class="home-dock" id="homeDock">
           <button type="button" class="lobby-btn jelly dock-btn" id="btnCatStore" aria-label="คลังน้องแมว">
             <canvas id="dockCats" width="400" height="240" aria-hidden="true"></canvas>
             <b>คลังน้องแมว</b>
-            <i class="dot hidden" id="stashDot" aria-hidden="true"></i>
           </button>
         </div>
 
@@ -2685,10 +2684,10 @@
         </div>
       </div>
 
-      <!-- หน้าว่างของปุ่มคลังน้องอันเก่า (ผู้ใช้ 9 พ.ย. 2026) รอเปลี่ยนเป็นปุ่มอื่น -->
+      <!-- หน้าว่างของปุ่มคลังน้องแมวแถวล่าง (ผู้ใช้ 10 พ.ย. 2026) ยังไม่มีของข้างใน -->
       <div class="panel hidden" id="blankPanel">
         <div class="pop blank-pop">
-          <h2 class="skin-title">คลังน้อง</h2>
+          <h2 class="skin-title">คลังน้องแมว</h2>
           <p class="blank-note">ยังไม่มีอะไรในหน้านี้</p>
           <button type="button" class="xbtn pop-x" id="blankBack" aria-label="ปิด">
             <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
