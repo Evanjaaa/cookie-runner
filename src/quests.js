@@ -12,7 +12,7 @@
 //
 // ที่ผูกทุกข้อไว้กับตัวนับใน stats.js แทนที่จะให้แต่ละข้อนับเอง เพราะตัวนับ
 // พวกนั้นเพิ่มอย่างเดียวไม่เคยลด ภารกิจที่เคยครบแล้วจึงไม่มีทางกลับไปไม่ครบ
-// ต่อให้เพิ่มภารกิจใหม่ทีหลัง ของเก่าที่ทำไว้แล้วก็นับให้ย้อนหลังเองทันที
+// ความคืบหน้า = ตัวนับตอนนี้ ลบ ค่าตอนกิจกรรมเริ่ม (ดู questBase ข้างล่าง · ผู้ใช้ 11 พ.ย. 2026 ไม่นับย้อนหลัง)
 //
 // ── เพิ่มภารกิจใหม่ยังไง ──
 // เติมอ็อบเจกต์ในอาเรย์ข้างล่างพอ หน้าจอสร้างรายการจาก QUESTS ตรง ๆ
@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────────────────────
 import { loadPref, savePref } from './storage.js';
 import { loadStats } from './stats.js';
+import { pushMail } from './mail.js';
 
 const KEY = 'questsClaimed';
 
@@ -117,47 +118,11 @@ export const QUESTS = [
 /**
  * กิจกรรม = แท็บหนึ่งใบบนหน้ากิจกรรม (ผู้ใช้ 9 พ.ย. 2026: "อนาคตมีหลายกิจกรรมพร้อมกัน")
  * เพิ่มกิจกรรมใหม่ = เติมอ็อบเจกต์ที่นี่ (id ห้ามซ้ำ) แล้วใส่รูปได้ที่หลังบ้านแท็บ "รูปกิจกรรม"
- * start / end = ปี ค.ศ. ปปปป-ดด-วว · ตอนนี้ใช้แสดงผลอย่างเดียว ยังไม่ได้ปิดภารกิจเมื่อหมดเวลา
+ * start / end = ปี ค.ศ. ปปปป-ดด-วว · เกมโชว์เฉพาะช่วงนี้ (เลยวันสิ้นสุด = หาย หยุดนับ ข้อที่ครบแต่ลืมรับส่งเข้าจดหมาย)
  */
 export const QUEST_EVENTS = [
   { id: 'season-1', name: 'ภารกิจสะสม', start: '2026-09-01', end: '2026-12-31', quests: QUESTS },
 ];
-
-// ── กิจกรรมปลอมไว้ดูหน้าตาแถบแท็บ (ผู้ใช้ 9 พ.ย. 2026) — ลบบล็อกนี้ทั้งก้อนได้เมื่อมีกิจกรรมจริง ──
-// โผล่เฉพาะตอนพัฒนา (npm run dev) หรือเปิดลิงก์ที่ต่อท้าย ?testevents · ผู้เล่นทั่วไปไม่เห็น
-// test: true = กดรับไม่ได้ (claimQuest ปฏิเสธ) และไม่นับจุดแดงบนปุ่มกิจกรรม — ไม่มีทางได้เพชร/ทองปลอมเข้ากระเป๋า
-if (import.meta.env.DEV || new URLSearchParams(location.search).has('testevents')) {
-  const fake = (id, name, note, stat, goal, unit, reward, icon) => ({ id: 'test-' + id, name, note, stat, goal, unit, reward, icon, test: true });
-  QUEST_EVENTS.push(
-    { id: 'test-treasure', name: 'สมบัติแห่งความสุข', start: '2026-11-01', end: '2026-11-12', test: true, bonus: { gems: 300, gold: 5000 }, quests: [
-      fake('t1', 'นักล่าสมบัติ', 'วิ่งสะสมครบ 5,000 เมตร', 'meters', 5000, 'ม.', { gems: 100 }, '🧭'),
-      fake('t2', 'หีบใบแรก', 'เล่นจบครบ 3 ตา', 'runs', 3, 'ตา', { gold: 1500 }, '🧰'),
-      fake('t3', 'มงกุฎเพชร', 'ทำคะแนนสะสมครบ 500,000', 'score', 500000, 'คะแนน', { gems: 300 }, '👑'),
-    ] },
-    { id: 'test-chef', name: 'เชฟเหมียวมือโปร', start: '2026-11-05', end: '2026-11-22', test: true, bonus: { gems: 500 }, quests: [
-      fake('c1', 'ลูกมือในครัว', 'เล่นจบครบ 5 ตา', 'runs', 5, 'ตา', { gold: 2000 }, '🥄'),
-      fake('c2', 'อบคุกกี้', 'วิ่งสะสมครบ 10 นาที', 'seconds', 600, 'วินาที', { gems: 80 }, '🍪'),
-      fake('c3', 'เค้กสามชั้น', 'วิ่งสะสมครบ 20,000 เมตร', 'meters', 20000, 'ม.', { gems: 200 }, '🎂'),
-      fake('c4', 'เชฟใหญ่', 'ทำคะแนนสะสมครบ 2,000,000', 'score', 2000000, 'คะแนน', { gold: 8000 }, '👨‍🍳'),
-    ] },
-    { id: 'test-daily', name: 'ของขวัญรายวัน', start: '2026-11-01', end: '2026-12-05', test: true, quests: [
-      fake('d1', 'แวะมาทักทาย', 'เล่นจบครบ 1 ตา', 'runs', 1, 'ตา', { gold: 500 }, '👋'),
-      fake('d2', 'ลองเสี่ยงดวง', 'กดสุ่มกาช่าครบ 1 ครั้ง', 'pulls', 1, 'ครั้ง', { gems: 30 }, '🎲'),
-    ] },
-    { id: 'test-autumn', name: 'อีเวนต์ใบไม้ร่วง', start: '2026-11-01', end: '2026-11-30', test: true, quests: [
-      fake('a1', 'เก็บใบไม้', 'วิ่งสะสมครบ 3,000 เมตร', 'meters', 3000, 'ม.', { gold: 1000 }, '🍂'),
-      fake('a2', 'ผจญภัยในป่า', 'เล่นจบครบ 15 ตา', 'runs', 15, 'ตา', { gems: 150 }, '🌲'),
-      fake('a3', 'ฟักทองยักษ์', 'ทำคะแนนสะสมครบ 3,000,000', 'score', 3000000, 'คะแนน', { gems: 400 }, '🎃'),
-    ] },
-    { id: 'test-star', name: 'เทศกาลดาวตก', start: '2026-12-01', end: '2026-12-25', test: true, bonus: { gems: 1000, gold: 20000 }, quests: [
-      fake('s1', 'ขอพรดวงแรก', 'กดสุ่มกาช่าครบ 5 ครั้ง', 'pulls', 5, 'ครั้ง', { gems: 60 }, '⭐'),
-      fake('s2', 'นักดูดาว', 'วิ่งสะสมครบ 45 นาที', 'seconds', 2700, 'วินาที', { gold: 6000 }, '🔭'),
-      fake('s3', 'ช่างตีบวกดวงดาว', 'ตีบวกสมบัติสำเร็จ 10 ครั้ง', 'upgrades', 10, 'ครั้ง', { gems: 250 }, '🔨'),
-      fake('s4', 'พรแห่งปี', 'วิ่งสะสมครบ 50,000 เมตร', 'meters', 50000, 'ม.', { gems: 500 }, '🌌'),
-      fake('s5', 'ดาวดวงสุดท้าย', 'ทำคะแนนสะสมครบ 5,000,000', 'score', 5000000, 'คะแนน', { gold: 20000 }, '💫'),
-    ] },
-  );
-}
 
 // ── กิจกรรมจากหลังบ้าน (ผู้ใช้ 9 พ.ย. 2026) — ตาราง event_pages (supabase/event-pages.sql) ──
 // แถวที่ id ตรงกับกิจกรรมในโค้ด = ทับแค่วันที่กับรูปภารกิจ · แถวอื่น = กิจกรรมที่สร้างเองทั้งหน้า
@@ -191,7 +156,10 @@ const todayKey = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-/** รวมข้อมูลจากหลังบ้านเข้า QUEST_EVENTS · กิจกรรมที่สร้างเองโชว์เฉพาะช่วงวันที่ตั้งไว้ · กิจกรรมในโค้ดยังโชว์ตลอดเหมือนเดิม */
+/**
+ * รวมข้อมูลจากหลังบ้านเข้า QUEST_EVENTS — ทุกกิจกรรม (ในโค้ดและที่สร้างเอง) โชว์เฉพาะช่วงวันเริ่ม–วันสิ้นสุด (ผู้ใช้ 11 พ.ย. 2026)
+ * กิจกรรมที่จบแล้ว: ภารกิจที่ทำครบแต่ลืมกดรับ ส่งเข้าจดหมายให้ (settleEnded)
+ */
 export function applyEventPages(pages) {
   const list = Array.isArray(pages) ? pages : [];
   // แถวของกิจกรรมในโค้ดที่ quests เป็น [] = แอดมินกดลบ (กู้คืนได้จากหลังบ้าน)
@@ -203,14 +171,103 @@ export function applyEventPages(pages) {
     return { ...e, start: p.start || e.start, end: p.end || e.end, quests: e.quests.map((q) => (icons[q.id] ? { ...q, image: icons[q.id] } : q)) };
   });
   const today = todayKey();
-  const custom = list.filter((p) => !BUILT_IN_EVENTS.some((e) => e.id === p.id) && Array.isArray(p.quests) && p.name && p.start && p.end
-    && p.start <= today && daysLeft(p) > 0).map((p) => ({
-    id: p.id, name: p.name, start: p.start, end: p.end,
-    quests: p.quests.map((r) => customQuest(r, p.icons || {})).filter(Boolean),
-  })).filter((e) => e.quests.length);
+  const custom = list.filter((p) => !BUILT_IN_EVENTS.some((e) => e.id === p.id) && Array.isArray(p.quests) && p.name && p.start && p.end)
+    .map((p) => ({
+      id: p.id, name: p.name, start: p.start, end: p.end,
+      quests: p.quests.map((r) => customQuest(r, p.icons || {})).filter(Boolean),
+    })).filter((e) => e.quests.length);
+  const all = [...built, ...custom];
+  settleEnded(all);
   QUEST_EVENTS.length = 0;
-  QUEST_EVENTS.push(...built, ...custom);
+  QUEST_EVENTS.push(...all.filter((e) => (!e.start || e.start <= today) && daysLeft(e) > 0));
+  tagQuests();
 }
+
+/**
+ * กิจกรรมที่จบแล้ว (เลยวันสิ้นสุด): ข้อที่ทำครบแต่ยังไม่ได้กดรับ → จดหมายรางวัลฉบับเดียวต่อกิจกรรม
+ * ทำครั้งเดียวต่อกิจกรรม — จำด้วยกุญแจ 'ended:<id>' ในรายการรับแล้ว (ขึ้นคลาวด์ไปด้วย)
+ * นับด้วยค่าตัวนับตอนต้นวันนี้ (statsDay): วันนี้เลยวันจบแล้ว และค่าต้นวันจดก่อนเล่นตาแรกของวัน
+ * จึงเท่ากับค่าตอนกิจกรรมจบพอดี — ที่วิ่งหลังกิจกรรมจบไม่นับ
+ * ไม่เคยเห็นกิจกรรมนี้ (ไม่มีค่าตั้งต้น) / กิจกรรมทดสอบ = ไม่มีอะไรให้ส่ง
+ */
+function settleEnded(events) {
+  const c = loadClaimed();
+  const bases = loadPref(BASE_KEY, null) || {};
+  let dirty = false;
+  for (const ev of events) {
+    if (daysLeft(ev) > 0 || c.includes('ended:' + ev.id)) continue;
+    c.push('ended:' + ev.id);
+    dirty = true;
+    const base = bases[ev.id];
+    if (!base || ev.test) continue;
+    const now = dayStart();
+    const got = { gold: 0, gems: 0 }, names = [];
+    for (const q of ev.quests) {
+      if (c.includes(String(q.id))) continue;
+      if ((now[q.stat] || 0) - (base[q.stat] || 0) < q.goal) continue;
+      c.push(String(q.id));
+      got.gold += q.reward.gold || 0;
+      got.gems += q.reward.gems || 0;
+      names.push(q.name);
+    }
+    if (ev.bonus && ev.quests.every((q) => c.includes(String(q.id))) && !c.includes('bonus:' + ev.id)) {
+      c.push('bonus:' + ev.id);
+      got.gold += ev.bonus.gold || 0;
+      got.gems += ev.bonus.gems || 0;
+      names.push('รางวัลใหญ่ทำครบทุกภารกิจ');
+    }
+    if (!names.length) continue;
+    const reward = {};
+    if (got.gold) reward.gold = got.gold;
+    if (got.gems) reward.gems = got.gems;
+    pushMail({
+      id: 'quest-end-' + ev.id,
+      from: 'ทีมงาน MeowZing',
+      title: `รางวัลกิจกรรม "${ev.name}"`,
+      body: `กิจกรรม "${ev.name}" จบแล้ว ภารกิจที่ทำครบแต่ยังไม่ได้กดรับ ส่งรางวัลมาให้ทางจดหมายนะ` + '\n\n• ' + names.join('\n• '),
+      at: todayKey(),
+      reward,
+    });
+  }
+  if (dirty) savePref(KEY, c);
+}
+
+// ── ภารกิจนับจากวันเริ่มกิจกรรม (ผู้ใช้ 11 พ.ย. 2026) ──
+// ตัวนับใน stats.js เป็นยอดสะสมตลอดชีพ — ภารกิจของแต่ละกิจกรรมนับเฉพาะส่วนที่เพิ่มหลังกิจกรรมเริ่ม
+//   statsDay   ค่าตัวนับตอนเปิดเกมครั้งแรกของวัน (ก่อนเล่นตาแรกของวันนั้น)
+//   questBase  { [id กิจกรรม]: ค่าตัวนับ } — จดครั้งแรกที่เกมเห็นกิจกรรมที่เริ่มแล้ว = ค่าตอนต้นวันนั้น
+// เล่นไม่ได้ถ้าไม่เปิดเกม ค่าต้นวันแรกที่เปิดหลังกิจกรรมเริ่มจึงเท่ากับค่าตอนกิจกรรมเริ่มพอดี
+// สองคีย์นี้ขึ้นคลาวด์เองในก้อน extra (storage.js) · ข้อที่รับไปแล้วยังนับว่ารับแล้วเหมือนเดิม
+const DAY_KEY = 'statsDay';
+const BASE_KEY = 'questBase';
+
+function dayStart() {
+  const today = todayKey();
+  let d = loadPref(DAY_KEY, null);
+  if (!d || d.date !== today || !d.stats) {
+    d = { date: today, stats: { ...loadStats() } };
+    savePref(DAY_KEY, d);
+  }
+  return d.stats;
+}
+
+/** ค่าตัวนับตอนกิจกรรมนี้เริ่ม (ของผู้เล่นคนนี้) · ยังไม่เคยจด + กิจกรรมเริ่มแล้ว = จดเดี๋ยวนี้ */
+function baseOf(evId) {
+  const all = loadPref(BASE_KEY, null) || {};
+  if (all[evId]) return all[evId];
+  const ev = QUEST_EVENTS.find((e) => e.id === evId);
+  if (!ev || (ev.start && ev.start > todayKey())) return null;
+  all[evId] = { ...dayStart() };
+  savePref(BASE_KEY, all);
+  return all[evId];
+}
+
+/** ภารกิจรู้ว่าตัวเองอยู่กิจกรรมไหน (ใช้หาค่าตั้งต้น) */
+function tagQuests() {
+  for (const ev of QUEST_EVENTS) for (const q of ev.quests) q.ev = ev.id;
+}
+dayStart();   // จดค่าต้นวันตั้งแต่เปิดเกม ก่อนเล่นตาแรก
+tagQuests();
 
 let claimed = null;
 
@@ -232,7 +289,8 @@ export function isClaimed(id) {
  * ส่วน ratio ใช้กับความยาวหลอด จึงต้องอยู่ในช่วง 0-1 เสมอ
  */
 export function questState(q) {
-  const raw = loadStats()[q.stat] || 0;
+  const base = q.ev ? baseOf(q.ev) : null;
+  const raw = Math.max(0, (loadStats()[q.stat] || 0) - (base?.[q.stat] || 0));
   const cur = Math.min(raw, q.goal);
   const done = raw >= q.goal;
   return {

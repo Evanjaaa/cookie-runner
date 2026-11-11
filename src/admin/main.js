@@ -2606,7 +2606,7 @@ PAGES.events = async () => {
           <div class="fld"><span>ภารกิจและรูปเล็ก</span><div id="pgQuests" class="pg-quests"></div></div>
           <button class="btn ghost" id="pgAdd" type="button">+ เพิ่มภารกิจ</button>
           <small class="note">รูปเล็กแนะนำ <b>${ICON_REC} × ${ICON_REC} px</b> (จัตุรัส) · ไม่เกิน 2 MB · ไม่ใส่รูป = ใช้อีโมจิตามประเภท</small>
-          <small class="note" id="pgCountNote">ภารกิจนับจากสถิติสะสมทั้งหมดของผู้เล่น รวมที่เคยเล่นมาก่อนเริ่มกิจกรรม · ตั้งเป้าให้สูงพอ</small>
+          <small class="note" id="pgCountNote">ภารกิจนับเฉพาะที่เล่นตั้งแต่วันเริ่มกิจกรรม (คนที่เปิดเกมครั้งแรกหลังวันเริ่ม นับจากวันที่เปิด)</small>
           <div class="sendrow">
             <button class="btn" id="pgSave" type="button" disabled>บันทึกกิจกรรม</button>
             <button class="btn ghost danger" id="pgDel" type="button">ลบกิจกรรม</button>
