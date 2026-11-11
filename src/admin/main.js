@@ -19,7 +19,7 @@ import { CROP0, CROP_ZMAX, normCrop, cropRect, cropStyle } from '../crop.js';
 import { GUMBALL, createGumball, drawGumballFrame } from '../render/gumball.js';
 import { ALL_OUTFITS, OUTFITS } from '../outfits.js';
 import { SKINS } from '../skins.js';
-import { QUEST_EVENTS, QUEST_STATS, daysLeft } from '../quests.js';
+import { QUEST_EVENTS, QUEST_STATS, daysLeft, readBonus, BONUS_KEY } from '../quests.js';
 import { BANNER_BGS, EV_BANNER_INNER, paintBannerCat, fillBanner } from '../render/event-banner.js';
 import { OC_W, OC_H, drawOutfitArt } from '../render/outfit-art.js';
 
@@ -2607,6 +2607,13 @@ PAGES.events = async () => {
           <button class="btn ghost" id="pgAdd" type="button">+ เพิ่มภารกิจ</button>
           <small class="note">รูปเล็กแนะนำ <b>${ICON_REC} × ${ICON_REC} px</b> (จัตุรัส) · ไม่เกิน 2 MB · ไม่ใส่รูป = ใช้อีโมจิตามประเภท</small>
           <small class="note" id="pgCountNote">ภารกิจนับเฉพาะที่เล่นตั้งแต่วันเริ่มกิจกรรม (คนที่เปิดเกมครั้งแรกหลังวันเริ่ม นับจากวันที่เปิด)</small>
+          <div class="fld"><span>🎁 รางวัลใหญ่ — ได้เมื่อรับรางวัลครบทุกภารกิจ (เว้นว่างทั้งคู่ = ไม่มี)</span>
+            <div class="pg-dates">
+              <label class="fld"><span>เพชร</span><input id="pgBonusGems" type="number" min="0" step="1" placeholder="0"></label>
+              <label class="fld"><span>ทอง</span><input id="pgBonusGold" type="number" min="0" step="1" placeholder="0"></label>
+            </div>
+          </div>
+          <small class="note">ในเกม: กล่องของขวัญมุมรูปกิจกรรม เด้งกล่องข้อความตอนเปิดหน้า · ลืมรับ = ส่งเข้าจดหมายตอนกิจกรรมจบ</small>
           <div class="sendrow">
             <button class="btn" id="pgSave" type="button" disabled>บันทึกกิจกรรม</button>
             <button class="btn ghost danger" id="pgDel" type="button">ลบกิจกรรม</button>
@@ -2643,6 +2650,7 @@ PAGES.events = async () => {
   $('evNew').addEventListener('click', () => selectEventArt(EV_NEW));
   for (const [id, key] of [['pgName', 'name'], ['pgStart', 'start'], ['pgEnd', 'end']]) $(id).addEventListener('input', (e) => { pg[key] = e.target.value; pageDirty(); });
   $('pgActive').addEventListener('change', (e) => { pg.active = e.target.checked; pageDirty(); });
+  for (const [id, key] of [['pgBonusGems', 'bonusGems'], ['pgBonusGold', 'bonusGold']]) $(id).addEventListener('input', (e) => { pg[key] = e.target.value; pageDirty(); });
   $('pgAdd').addEventListener('click', () => { pg.quests.push(blankQuest()); renderPageQuests(); pageDirty(); });
   $('pgQuests').addEventListener('input', onPageQuestInput);
   $('pgQuests').addEventListener('change', onPageQuestFile);
@@ -2655,7 +2663,9 @@ PAGES.events = async () => {
 
 const uid36 = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const blankQuest = () => ({ id: 'q-' + uid36(), name: '', note: '', stat: 'runs', goal: '', gems: '', gold: '', image: '' });
-const pageData = () => JSON.stringify({ name: pg.name, start: pg.start, end: pg.end, active: pg.active, quests: pg.quests });
+const pageData = () => JSON.stringify({ name: pg.name, start: pg.start, end: pg.end, active: pg.active, quests: pg.quests, bonusGems: pg.bonusGems, bonusGold: pg.bonusGold });
+/** ลิงก์รูปเล็กใน icons (ไม่รวมช่องรางวัลใหญ่ __bonus) — ใช้ตอนลบไฟล์ที่ไม่ได้ใช้แล้ว */
+const iconUrls = (icons) => Object.entries(icons || {}).filter(([k, v]) => k !== BONUS_KEY && typeof v === 'string').map(([, v]) => v);
 const pageIsDirty = () => !!pg && pageData() !== pg.saved;
 
 function fillPage(ev, isNew) {
@@ -2666,7 +2676,9 @@ function fillPage(ev, isNew) {
     const st = QUEST_STATS.find((x) => x.id === q.stat) || QUEST_STATS[1];
     return { id: q.id, name: q.name, note: q.note || '', stat: st.id, goal: String(q.goal / st.scale), gems: q.gems ? String(q.gems) : '', gold: q.gold ? String(q.gold) : '', image: icons[q.id] || '' };
   });
-  pg = { id: ev.id, isNew, custom: ev.custom, removed: !!ev.removed, name: ev.name, start: ev.start || '', end: ev.end || '', active: ev.active !== false, quests, fresh: [] };
+  const bonus = readBonus(icons) || ev.bonus;   // กิจกรรมในโค้ดตั้งรางวัลใหญ่ไว้แล้ว = โชว์ค่านั้น (แก้ทับได้)
+  pg = { id: ev.id, isNew, custom: ev.custom, removed: !!ev.removed, name: ev.name, start: ev.start || '', end: ev.end || '', active: ev.active !== false, quests, fresh: [],
+    bonusGems: bonus?.gems ? String(bonus.gems) : '', bonusGold: bonus?.gold ? String(bonus.gold) : '' };
   if (isNew) pg.quests.push(blankQuest());
   pg.saved = isNew ? '' : pageData();
   $('pgHead').textContent = isNew ? 'สร้างกิจกรรมใหม่' : 'รายละเอียดกิจกรรม';
@@ -2674,6 +2686,8 @@ function fillPage(ev, isNew) {
   $('pgStart').value = pg.start;
   $('pgEnd').value = pg.end;
   $('pgActive').checked = pg.active;
+  $('pgBonusGems').value = pg.bonusGems;
+  $('pgBonusGold').value = pg.bonusGold;
   for (const id of ['pgNameWrap', 'pgActiveWrap', 'pgAdd', 'pgCountNote']) $(id).classList.toggle('hidden', !ev.custom);
   $('pgDel').classList.toggle('hidden', isNew);
   $('pgDel').textContent = ev.removed ? 'กู้คืนกิจกรรม' : 'ลบกิจกรรม';
@@ -2749,6 +2763,7 @@ function pageProblem() {
   if (pg.custom && !pg.name.trim()) return 'ใส่ชื่อกิจกรรมก่อน';
   if (!pg.start || !pg.end) return 'เลือกวันเริ่มและวันสิ้นสุดก่อน';
   if (pg.start > pg.end) return 'วันเริ่มอยู่หลังวันสิ้นสุด';
+  for (const v of [pg.bonusGems, pg.bonusGold]) if (v !== '' && (!(Number(v) >= 0) || !Number.isInteger(Number(v)))) return 'รางวัลใหญ่ต้องเป็นจำนวนเต็ม';
   if (!pg.custom) return '';
   if (!pg.quests.length) return 'เพิ่มภารกิจอย่างน้อย 1 ข้อ';
   for (const q of pg.quests) {
@@ -2769,7 +2784,7 @@ function pageDirty() {
 
 async function dropFreshPage() {
   if (!pg) return;
-  const used = new Set(Object.values(eventState.pages.get(pg.id)?.icons || {}));
+  const used = new Set(iconUrls(eventState.pages.get(pg.id)?.icons));
   const list = pg.fresh;
   pg.fresh = [];
   for (const u of list) if (!used.has(u)) await removeEventFile(u);
@@ -2779,6 +2794,8 @@ async function savePage() {
   if (pageProblem()) return;
   const old = eventState.pages.get(pg.id), now = new Date().toISOString();
   const icons = Object.fromEntries(pg.quests.filter((q) => q.image).map((q) => [q.id, q.image]));
+  const bGems = Number(pg.bonusGems) || 0, bGold = Number(pg.bonusGold) || 0;
+  if (bGems || bGold) icons[BONUS_KEY] = { gems: bGems, gold: bGold };   // รางวัลใหญ่ อยู่ในคอลัมน์ icons ช่องพิเศษ (ไม่ต้องรัน SQL)
   const row = { id: pg.id, start_date: pg.start, end_date: pg.end, icons, updated_at: now };
   if (pg.custom) {
     row.name = pg.name.trim();
@@ -2798,8 +2815,8 @@ async function savePage() {
     $('pgHint').textContent = 'บันทึกไม่ได้: ' + errText(error) + ' (รัน supabase/event-pages.sql แล้วหรือยัง?)';
     return;
   }
-  const keep = new Set(Object.values(icons));
-  for (const u of new Set([...pg.fresh, ...Object.values(old?.icons || {})])) if (!keep.has(u)) await removeEventFile(u);
+  const keep = new Set(iconUrls(icons));
+  for (const u of new Set([...pg.fresh, ...iconUrls(old?.icons)])) if (!keep.has(u)) await removeEventFile(u);
   pg.fresh = [];
   // วันจบเปลี่ยน = กรอบหน้าแรกที่ลิงก์กิจกรรมนี้ไว้ต้องจบวันเดียวกัน
   const was = old?.end_date || eventCatalog().find((e) => e.id === pg.id)?.end;
@@ -2837,7 +2854,7 @@ async function purgeBuiltInEvent() {
   const c = await client(), id = pg.id, old = eventState.pages.get(id), art = eventState.rows.get(id);
   const { error } = await c.from('event_pages').upsert({ id, name: EV_PURGED, quests: [], icons: {}, start_date: null, end_date: null, updated_at: new Date().toISOString() });
   if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
-  for (const u of new Set([...pg.fresh, ...Object.values(old?.icons || {})])) await removeEventFile(u);
+  for (const u of new Set([...pg.fresh, ...iconUrls(old?.icons)])) await removeEventFile(u);
   if (art) {
     await c.from('event_arts').delete().eq('event_id', id);
     await removeEventFile(art.image_url);
@@ -2859,7 +2876,7 @@ async function deletePage() {
   const { error } = await c.from('event_pages').delete().eq('id', id);
   if (error) return toast('ลบไม่ได้: ' + errText(error), 'bad');
   await hideLinkedBanners(c, id);
-  for (const u of new Set([...pg.fresh, ...Object.values(old?.icons || {})])) await removeEventFile(u);
+  for (const u of new Set([...pg.fresh, ...iconUrls(old?.icons)])) await removeEventFile(u);
   if (art) {
     await c.from('event_arts').delete().eq('event_id', id);
     await removeEventFile(art.image_url);

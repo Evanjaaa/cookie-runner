@@ -326,6 +326,16 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 // (มีแท็บ ป้ายวันที่ ปุ่มรับทั้งหมดอยู่แถวเดียวกัน) ปุ่มจึงเยื้องต่ำกว่าหัวข้อ 4-13px แล้วแต่หน้า
 // วัดจากเลย์เอาต์จริงตอนเปิดแผง (offset* ไม่สนแอนิเมชันย่อขยายตอนเปิด) แล้วตั้ง top ให้ตรงกลางหัวข้อ
 const CORNER_TITLE = 'h2, .skin-title, .quest-title, .pf-title';
+/** ระยะขั้นต่ำจากขอบบนของปุ่มมุม (px) = ค่า --backbtn-y ตอนนี้ (จอสัมผัสห่างขอบกว่าคอม) */
+let cornerProbe = null;
+function cornerMinTop() {
+  if (!cornerProbe) {
+    cornerProbe = document.createElement('i');
+    cornerProbe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;width:0;height:0;top:var(--backbtn-y)';
+    document.body.appendChild(cornerProbe);
+  }
+  return Math.max(4, parseFloat(getComputedStyle(cornerProbe).top) || 4);
+}
 function alignCornerBtns(panel) {
   const pop = panel.querySelector(':scope > .pop');
   if (!pop || !pop.offsetWidth) return;
@@ -343,8 +353,10 @@ function alignCornerBtns(panel) {
       mid = y + pt + (title.offsetHeight - pt - pb) / 2;
     }
   }
+  // ห้ามชิดขอบบนเกินระยะขั้นต่ำ --backbtn-y (มือถือ/iPad จอมุมมน — ผู้ใช้ 11 พ.ย. 2026) · วัดจากตัววัดที่วางด้วยตัวแปรเดียวกับ CSS
+  const minTop = cornerMinTop();
   for (const b of btns) {
-    b.style.top = mid == null || !b.offsetHeight ? '' : `${Math.max(4, Math.round(mid - b.offsetHeight / 2))}px`;
+    b.style.top = mid == null || !b.offsetHeight ? '' : `${Math.max(minTop, Math.round(mid - b.offsetHeight / 2))}px`;
   }
 }
 for (const panel of document.querySelectorAll('#stage .panel')) {
@@ -4905,7 +4917,7 @@ function paintEventBonus(ev) {
   document.getElementById('evBonusTitle').textContent = ready ? 'ครบทุกภารกิจแล้ว! แตะรับรางวัลใหญ่' : st.claimed ? 'รับรางวัลใหญ่แล้ว' : 'รางวัลใหญ่ เมื่อทำครบทุกภารกิจ';
   document.getElementById('evBonusState').textContent = st.claimed ? '✓' : ready ? 'แตะรับ' : `${st.got} / ${st.n}`;
   document.getElementById('evBonus').setAttribute('aria-label', ready ? 'รับรางวัลใหญ่' : `รางวัลใหญ่ ทำแล้ว ${st.got} จาก ${st.n} · แตะเพื่อปิด`);
-  setDot(document.getElementById('evBonusGift'), ready);
+  setDot(wrap, ready);   // จุดแดงเกาะมุมแคปซูล (อยู่นอกตัวแคปซูลที่ตัดขอบ)
 }
 let bonusTimer = 0;
 /** กล่องข้อความเด้งออกจากของขวัญ แล้วหดกลับเองหลัง ms */

@@ -5,6 +5,7 @@
   --sub: #6B54B0;
   --backbtn: clamp(38px, 9dvh, 52px);
   --backbtn-x: clamp(8px, 1.4vw, 16px);
+  --backbtn-y: clamp(8px, 1.4dvh, 16px);   /* ระยะปุ่มมุมจากขอบบน — จอสัมผัสดันเข้ามามากขึ้น (ท้ายไฟล์) */
   /* จอยกับปุ่มกระโดด ขนาดเท่ากัน ฐานบรรทัดเดียวกัน (ผู้ใช้ 28 ต.ค.) */
   --padbig: clamp(86px, 26dvh, 116px);   /* ผู้ใช้ 1 พ.ย.: ขยายจาก clamp(72px, 21dvh, 92px) */
 }
@@ -31,7 +32,7 @@ canvas#town { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 .xbtn {
   position: absolute;
   left: var(--backbtn-x);
-  top: clamp(8px, 1.4dvh, 16px);
+  top: var(--backbtn-y);
   z-index: 5;
   width: var(--backbtn);
   height: var(--backbtn);
@@ -1533,3 +1534,14 @@ body.chat-on .kh-chat { display: inline-flex; }
 .chat-lock.hidden { display: none; }
 .chat-lock:active { filter: brightness(.93); }
 body.photo .chat, body.scope .chat, body.in-shop .chat { display: none; }
+
+/* ══ ปุ่มมุมจอ (ปุ่มปิด กากบาท / ปุ่มย้อนกลับ / ปุ่มมุมอื่นที่จะเพิ่มทีหลัง) บนมือถือ/iPad (ผู้ใช้ 11 พ.ย. 2026) ══
+   จอมือถือ/iPad มุมมน — ปุ่มชิดมุมโดนขอบจอบัง กดยาก → จอสัมผัสดันปุ่มเข้ามาจากขอบซ้าย/ขวาและขอบบนมากขึ้น
+   ปรับที่ตัวแปร --backbtn-x / --backbtn-y ที่เดียว ทุกปุ่มที่วางด้วยตัวแปรนี้ (และที่จองที่ว่างในการ์ด) ขยับตามเอง
+   ปุ่มมุมใหม่ต้องวางด้วย var(--backbtn-x) / var(--backbtn-y) เสมอ ห้ามใช้ px ตายตัว */
+@media (hover: none), (pointer: coarse) {
+  :root {
+    --backbtn-x: max(clamp(11px, 1.2vw, 14px), calc(env(safe-area-inset-left, 0px) * .4), calc(env(safe-area-inset-right, 0px) * .4));   /* เขตปลอดภัยคิดแค่ 40% แบบปุ่มหน้าแรก (.lobby) ไม่งั้นมือถือจริงปุ่มถอยลึกเกิน */
+    --backbtn-y: max(clamp(7px, 1.4dvh, 9px), calc(env(safe-area-inset-top, 0px) * .5));
+  }
+}

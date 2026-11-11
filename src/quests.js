@@ -121,7 +121,8 @@ export const QUESTS = [
  * start / end = ปี ค.ศ. ปปปป-ดด-วว · เกมโชว์เฉพาะช่วงนี้ (เลยวันสิ้นสุด = หาย หยุดนับ ข้อที่ครบแต่ลืมรับส่งเข้าจดหมาย)
  */
 export const QUEST_EVENTS = [
-  { id: 'season-1', name: 'ภารกิจสะสม', start: '2026-09-01', end: '2026-12-31', quests: QUESTS },
+  // bonus = รางวัลใหญ่เมื่อรับครบทุกข้อ (ผู้ใช้ 11 พ.ย. 2026) · หลังบ้านตั้งทับได้ (ช่องรางวัลใหญ่ในแท็บรูปกิจกรรม)
+  { id: 'season-1', name: 'ภารกิจสะสม', start: '2026-09-01', end: '2026-12-31', bonus: { gems: 500, gold: 10000 }, quests: QUESTS },
 ];
 
 // ── กิจกรรมจากหลังบ้าน (ผู้ใช้ 9 พ.ย. 2026) — ตาราง event_pages (supabase/event-pages.sql) ──
@@ -137,6 +138,18 @@ export const QUEST_STATS = [
   { id: 'pulls', label: 'สุ่มกาช่า', unit: 'ครั้ง', scale: 1, note: 'กดสุ่มกาช่าครบ {n} ครั้ง', icon: '🎰' },
   { id: 'upgrades', label: 'ตีบวกสำเร็จ', unit: 'ครั้ง', scale: 1, note: 'ตีบวกสมบัติสำเร็จ {n} ครั้ง', icon: '🔨' },
 ];
+
+/**
+ * รางวัลใหญ่ที่แอดมินตั้งในหลังบ้าน (ผู้ใช้ 11 พ.ย. 2026) — เก็บใน event_pages.icons ช่องพิเศษ '__bonus': { gems, gold }
+ * (ใช้คอลัมน์ icons เดิม ไม่ต้องรัน SQL เพิ่ม) · ไม่มี / ศูนย์ทั้งคู่ = null (กิจกรรมนี้ไม่มีรางวัลใหญ่)
+ */
+export const BONUS_KEY = '__bonus';
+export function readBonus(icons) {
+  const b = icons?.[BONUS_KEY];
+  const gems = Math.max(0, Math.floor(Number(b?.gems) || 0)), gold = Math.max(0, Math.floor(Number(b?.gold) || 0));
+  if (!gems && !gold) return null;
+  return { ...(gems ? { gems } : {}), ...(gold ? { gold } : {}) };
+}
 
 function customQuest(r, icons) {
   const st = QUEST_STATS.find((x) => x.id === r?.stat);
@@ -168,12 +181,14 @@ export function applyEventPages(pages) {
     const p = list.find((x) => x.id === e.id);
     if (!p) return e;
     const icons = p.icons || {};
-    return { ...e, start: p.start || e.start, end: p.end || e.end, quests: e.quests.map((q) => (icons[q.id] ? { ...q, image: icons[q.id] } : q)) };
+    const bonus = readBonus(icons) || e.bonus;
+    return { ...e, start: p.start || e.start, end: p.end || e.end, ...(bonus ? { bonus } : {}), quests: e.quests.map((q) => (icons[q.id] ? { ...q, image: icons[q.id] } : q)) };
   });
   const today = todayKey();
   const custom = list.filter((p) => !BUILT_IN_EVENTS.some((e) => e.id === p.id) && Array.isArray(p.quests) && p.name && p.start && p.end)
     .map((p) => ({
       id: p.id, name: p.name, start: p.start, end: p.end,
+      ...(readBonus(p.icons) ? { bonus: readBonus(p.icons) } : {}),
       quests: p.quests.map((r) => customQuest(r, p.icons || {})).filter(Boolean),
     })).filter((e) => e.quests.length);
   const all = [...built, ...custom];

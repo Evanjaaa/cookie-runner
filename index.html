@@ -2544,17 +2544,22 @@
                  ปกติ = กล่องของขวัญน่ารักลอยมุมขวาล่างของรูป (ไม่บังรูป) · เปิดหน้า/สลับแท็บ = กล่องข้อความเด้งออกจากของขวัญ ค้าง 3 วิ แล้วหดกลับ
                  แตะของขวัญ = เปิดดูอีกรอบ (แตะอีกที/แตะกล่อง = ปิด · ค้างเกิน 10 วิปิดเอง) · ครบแล้ว = กล่องเรืองทอง แตะกล่องรับรางวัล -->
             <div class="ev-bonus-wrap hidden" id="evBonusWrap">
-              <button type="button" class="ev-bonus" id="evBonus" tabindex="-1">
-                <span class="ev-bonus-txt">
-                  <b id="evBonusTitle">รางวัลใหญ่ เมื่อทำครบทุกภารกิจ</b>
-                  <span class="ev-bonus-prize" id="evBonusPrize"></span>
-                </span>
-                <span class="ev-bonus-state" id="evBonusState"></span>
-              </button>
-              <button type="button" class="ev-bonus-gift" id="evBonusGift" aria-expanded="false" aria-controls="evBonus" aria-label="ดูรางวัลใหญ่">
-                <span class="ev-gift"><svg viewBox="0 0 48 48"><rect x="7" y="20" width="34" height="22" rx="4" fill="#FF8FBF"/><rect x="5" y="14" width="38" height="9" rx="3.5" fill="#FFB3D4"/><rect x="21" y="14" width="6" height="28" fill="#FFE08A"/><path d="M24 14c-3-7-12-8-12-3 0 4 7 4 12 3zM24 14c3-7 12-8 12-3 0 4-7 4-12 3z" fill="#FFD066"/><rect x="7" y="20" width="34" height="3" fill="#E9679F" opacity=".35"/><circle cx="14" cy="30" r="1.6" fill="#FFF" opacity=".8"/><circle cx="33" cy="35" r="1.3" fill="#FFF" opacity=".7"/></svg></span>
-                <i class="gs g1" aria-hidden="true"></i><i class="gs g2" aria-hidden="true"></i><i class="gs g3" aria-hidden="true"></i>
-              </button>
+              <!-- แคปซูลชิ้นเดียว: ปิด = วงกลมมีของขวัญ · เปิด = ตัวแคปซูลยืดออกทางซ้ายแบบสไลด์ ข้อความเลื่อนตามออกมา (ของขวัญอยู่ปลายขวาตลอด) -->
+              <div class="ev-bonus">
+                <div class="ev-bonus-in">
+                  <button type="button" class="ev-bonus-main" id="evBonus" tabindex="-1">
+                    <span class="ev-bonus-txt">
+                      <b id="evBonusTitle">รางวัลใหญ่ เมื่อทำครบทุกภารกิจ</b>
+                      <span class="ev-bonus-prize" id="evBonusPrize"></span>
+                    </span>
+                    <span class="ev-bonus-state" id="evBonusState"></span>
+                  </button>
+                  <button type="button" class="ev-bonus-gift" id="evBonusGift" aria-expanded="false" aria-controls="evBonus" aria-label="ดูรางวัลใหญ่">
+                    <span class="ev-gift"><svg viewBox="0 0 48 48"><rect x="7" y="20" width="34" height="22" rx="4" fill="#FF8FBF"/><rect x="5" y="14" width="38" height="9" rx="3.5" fill="#FFB3D4"/><rect x="21" y="14" width="6" height="28" fill="#FFE08A"/><path d="M24 14c-3-7-12-8-12-3 0 4 7 4 12 3zM24 14c3-7 12-8 12-3 0 4-7 4-12 3z" fill="#FFD066"/><rect x="7" y="20" width="34" height="3" fill="#E9679F" opacity=".35"/><circle cx="14" cy="30" r="1.6" fill="#FFF" opacity=".8"/><circle cx="33" cy="35" r="1.3" fill="#FFF" opacity=".7"/></svg></span>
+                  </button>
+                </div>
+              </div>
+              <i class="gs g1" aria-hidden="true"></i><i class="gs g2" aria-hidden="true"></i><i class="gs g3" aria-hidden="true"></i>
             </div>
             <div class="ev-panel">
               <div class="quest-list" id="questList"></div>

@@ -372,6 +372,7 @@ canvas[hidden] { display: none; }
 :root {
   --backbtn: clamp(30px, 6.5dvh, 46px);
   --backbtn-x: clamp(8px, 1.4vw, 16px);
+  --backbtn-y: clamp(8px, 1.4dvh, 16px);   /* ระยะปุ่มมุมจากขอบบน — จอสัมผัสดันเข้ามามากขึ้น (ท้ายไฟล์) */
   /* พื้นการ์ดม่วงอ่อน — อ่อนกว่าพื้นการ์ดปกติ (.pop) หนึ่งขั้น
      ใช้กับหน้าที่เป็น "จังหวะของตา" ไม่ใช่หน้าเมนู: จบรอบ / น้องตกหลุม / พักก่อน
      ประกาศที่เดียวเพราะสามหน้านี้ต้องเป็นสีเดียวกันเสมอ ไม่งั้นสลับหน้าแล้วเห็นว่าเพี้ยน */
@@ -385,7 +386,7 @@ canvas[hidden] { display: none; }
   /* เกาะมุมการ์ด (.pop) ไม่ใช่มุมเวที — พอการ์ดหดตามเนื้อหา ปุ่มต้องหดตามไปด้วย
      ใช้ px ไม่ใช่ % เพราะการ์ดแต่ละหน้ากว้างไม่เท่ากัน ถ้าใช้ % ปุ่มจะเยื้องไม่เท่ากันทุกหน้า */
   left: var(--backbtn-x);
-  top: clamp(8px, 1.4dvh, 16px);
+  top: var(--backbtn-y);
   z-index: 5;
   width: var(--backbtn);
   height: var(--backbtn);
@@ -11116,7 +11117,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #catRoomPanel .cr-tools {
   position: absolute;
   z-index: 2;
-  top: clamp(8px, 1.4dvh, 16px);
+  top: var(--backbtn-y);
   right: var(--backbtn-x);
   display: flex;
   align-items: center;
@@ -12072,7 +12073,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
 #odPanel .od-title {
   position: absolute;
   z-index: 2;
-  top: clamp(8px, 1.4dvh, 16px);
+  top: var(--backbtn-y);
   left: calc(var(--backbtn-x) + var(--backbtn) + clamp(8px, 1.4vw, 16px));
   right: calc(var(--backbtn-x) + var(--backbtn) + clamp(8px, 1.4vw, 16px));
   margin: 0;
@@ -12185,7 +12186,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
   border: 0;
 }
 #odPanel.od-full :is(.od-title, .od-max, .od-info, .od-act, .backbtn) { display: none; }
-#odPanel.od-full .od-x { display: grid; top: clamp(8px, 1.4dvh, 16px); }
+#odPanel.od-full .od-x { display: grid; top: var(--backbtn-y); }
 
 /* จอเตี้ย (มือถือแนวนอน): กล่องข้อมูลกับปุ่มเล็กลง ไม่บังตัวน้อง */
 @media (max-height: 500px) {
@@ -13933,7 +13934,7 @@ input.name-taken { border-color: #FF6B7D !important; box-shadow: 0 0 0 2px rgba(
    แผงนี้ไม่มี .pop (ตัวจัดปุ่มอัตโนมัติ alignCornerBtns จึงไม่ครอบ) — เดิมหัวข้อตั้ง top ของตัวเอง
    แต่ปุ่มย้อนกลับบนมือถือ/จอเล็กใช้ top: 5% → หัวข้อลอยสูงกว่าปุ่ม ~15px
    ตอนนี้ใช้ตำแหน่งเดียวกับปุ่ม (--cr-top) แล้วจัดกลางในความสูงปุ่ม · แถวชิปน้องอิงค่าเดียวกัน ไม่ชิดปุ่ม */
-#catRoomPanel { --cr-top: clamp(8px, 1.4dvh, 16px); }
+#catRoomPanel { --cr-top: var(--backbtn-y); }
 @media (max-width: 560px), (pointer: coarse) and (max-height: 520px) {
   #catRoomPanel { --cr-top: 5%; }
 }
@@ -18002,88 +18003,105 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .ev-body { position: relative; --evp-w: 42%; }
 @media (max-width: 1250px) { .ev-body { --evp-w: 50%; } }
 @media (max-height: 520px) { .ev-body { --evp-w: 49%; } }
-/* รางวัลใหญ่ (ผู้ใช้ 10 พ.ย. 2026): ของขวัญลอยมุมขวาล่างของรูปกิจกรรม (ข้างแผงภารกิจ แถวเดียวกับแถบรับทั้งหมด) ไม่บังรูป
-   กล่องข้อความสีสดเด้งออกจากของขวัญไปทางซ้าย (ยืดจากขวา + เด้งเกินนิด) แล้วหดกลับเข้าของขวัญ · ประกายวิ้งวิ่งผ่านกล่อง
-   ครบแล้ว = กล่องทองชมพูเรือง ของขวัญเด้งเรียก มีจุดแดง */
+/* รางวัลใหญ่ — แคปซูลชิ้นเดียว (ผู้ใช้ 11 พ.ย. 2026 "ของขวัญกับกรอบเป็นชิ้นเดียวกัน สไลด์ออกสมูท ไม่ใช่เด้งออกจากของขวัญ")
+   ปิด = แคปซูลกลมสีสด มีของขวัญข้างใน ลอยมุมขวาล่างของรูปกิจกรรม (ไม่บังรูป)
+   เปิด = ตัวแคปซูลเดิมยืดออกทางซ้ายลื่น ๆ (ความกว้างเปลี่ยน ไม่บีบ/ไม่ขยายเนื้อหา) ข้อความเลื่อน+ค่อย ๆ ชัดตามออกมา · ของขวัญอยู่ปลายขวาตลอด
+   เนื้อหาข้างใน (.ev-bonus-in) กว้างคงที่เท่าแคปซูลตอนเปิดเต็ม (100cqw ของ wrap) ชิดขวา — ตอนยืด/หดข้อความไม่ตัดบรรทัดใหม่
+   ครบแล้ว = ชมพูส้มทองเรือง ของขวัญโยกเรียก จุดแดง · แสงวิ้งวิ่งผ่านตอนเปิด */
 .ev-bonus-wrap {
   position: absolute; z-index: 2;
   right: calc(var(--evp-w) + clamp(8px, 1.3vw, 26px) + clamp(10px, 1.4vw, 24px));
-  bottom: calc(clamp(8px, 2.4dvh, 24px) + 3px + clamp(7px, 1.3dvh, 14px));
-  width: min(560px, calc(100% - var(--evp-w) - clamp(8px, 1.3vw, 26px) - clamp(20px, 3vw, 52px)));
-  --gift: clamp(46px, 11dvh, 78px);
+  bottom: calc(clamp(8px, 2.4dvh, 24px) + 3px + clamp(4px, .8dvh, 10px));
+  width: min(540px, calc(100% - var(--evp-w) - clamp(8px, 1.3vw, 26px) - clamp(20px, 3vw, 52px)));
+  --cap: clamp(46px, 11dvh, 72px);
+  display: flex; justify-content: flex-end;
+  container-type: inline-size;
   pointer-events: none;
 }
 .ev-bonus-wrap.hidden { display: none; }
 .ev-bonus {
   position: relative; overflow: hidden;
-  width: 100%;
-  display: flex; align-items: center; gap: clamp(8px, 1vw, 14px);
-  padding: clamp(6px, 1.2dvh, 11px) calc(var(--gift) * .95) clamp(6px, 1.2dvh, 11px) clamp(14px, 1.6vw, 22px);
+  flex: none;
+  width: var(--cap); height: var(--cap);
   border-radius: 999px;
   border: 2px solid #FFFFFF;
   background:
-    radial-gradient(60% 140% at 10% 0%, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 60%),
-    linear-gradient(110deg, #FF7DBA 0%, #C77DFF 55%, #7FA8FF 100%);
-  box-shadow: 0 10px 22px -10px rgba(140,40,150,.65), inset 0 2px 2px rgba(255,255,255,.7), inset 0 -8px 14px -8px rgba(90,30,140,.45);
-  font: inherit; text-align: left; color: #FFFFFF; cursor: pointer;
-  transform-origin: calc(100% - var(--gift) / 2) 50%;
-  transform: scale(.12, .35); opacity: 0; visibility: hidden;
-  transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .25s ease, visibility 0s linear .5s;
-  pointer-events: none;
+    radial-gradient(120px 90% at 100% 0%, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(110deg, #7FA8FF 0%, #C77DFF 45%, #FF7DBA 100%);
+  box-shadow: 0 10px 20px -10px rgba(140,40,150,.7), inset 0 2px 2px rgba(255,255,255,.7), inset 0 -8px 14px -8px rgba(90,30,140,.45);
+  pointer-events: auto;
+  transition: width .5s cubic-bezier(.4,0,.2,1), box-shadow .3s ease, background-color .3s ease;
 }
-.ev-bonus-wrap.open .ev-bonus { transform: none; opacity: 1; visibility: visible; transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .2s ease, visibility 0s; pointer-events: auto; }
-/* ประกายวิ้งวิ่งผ่านกล่อง */
-.ev-bonus::after {
-  content: ""; position: absolute; inset: -20% auto -20% -30%; width: 30%;
-  background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.65) 50%, rgba(255,255,255,0) 100%);
-  transform: skewX(-18deg); animation: evShine 2.2s ease-in-out infinite; pointer-events: none;
+.ev-bonus-wrap.open .ev-bonus { width: 100%; transition: width .65s cubic-bezier(.22,1,.36,1), box-shadow .3s ease; }
+.ev-bonus-in {
+  position: absolute; top: 0; right: 0; height: 100%;
+  width: max-content;
+  width: calc(100cqw - 4px);
+  display: flex; align-items: stretch;
 }
-@keyframes evShine { 0% { left: -30%; } 60%, 100% { left: 120%; } }
-.ev-bonus:active { filter: brightness(.93); }
-.ev-bonus-wrap.ready .ev-bonus {
-  background:
-    radial-gradient(60% 140% at 10% 0%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 60%),
-    linear-gradient(110deg, #FF6FA8 0%, #FF9A6B 50%, #FFC84A 100%);
-  box-shadow: 0 0 0 3px rgba(255,236,170,.55), 0 0 26px rgba(255,170,120,.8), inset 0 2px 2px rgba(255,255,255,.75), inset 0 -8px 14px -8px rgba(200,80,40,.45);
+.ev-bonus-main {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: clamp(8px, 1vw, 14px);
+  padding: 0 4px 0 clamp(16px, 1.8vw, 26px);
+  border: 0; background: none; font: inherit; color: #FFFFFF; text-align: left; cursor: pointer;
+  opacity: 0; transform: translateX(22px); pointer-events: none;
+  transition: opacity .16s ease, transform .3s ease;
 }
-.ev-bonus-wrap.done .ev-bonus { filter: saturate(.6); }
+.ev-bonus-wrap.open .ev-bonus-main { opacity: 1; transform: none; pointer-events: auto; transition: opacity .35s ease .18s, transform .55s cubic-bezier(.22,1,.36,1) .1s; }
+.ev-bonus-main:active { filter: brightness(.93); }
 .ev-bonus-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-.ev-bonus-txt b { color: #FFFFFF; font-size: clamp(11.5px, 2.3dvh, 17px); font-weight: 800; line-height: 1.2; text-shadow: 0 1px 2px rgba(110,30,120,.55); }
-.ev-bonus-prize { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; color: #FFFFFF; font-weight: 800; font-size: clamp(11px, 2.1dvh, 16px); text-shadow: 0 1px 2px rgba(110,30,120,.55); }
+.ev-bonus-txt b { color: #FFFFFF; font-size: clamp(11.5px, 2.3dvh, 17px); font-weight: 800; line-height: 1.2; text-shadow: 0 1px 2px rgba(90,30,120,.55); }
+.ev-bonus-prize { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; color: #FFFFFF; font-weight: 800; font-size: clamp(11px, 2.1dvh, 16px); text-shadow: 0 1px 2px rgba(90,30,120,.55); }
 .ev-bonus-prize .gem, .ev-bonus-prize .coin { width: 1.15em; height: 1.15em; flex: none; margin-right: 3px; filter: drop-shadow(0 1px 1px rgba(80,20,90,.35)); }
 .ev-bonus-state {
   flex: none;
   padding: 3px 12px; border-radius: 999px;
-  background: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.92);
   box-shadow: inset 0 -3px 5px rgba(170,120,210,.25);
   color: #8A4FD0; font-weight: 800; font-size: clamp(11px, 2.1dvh, 15px); white-space: nowrap;
 }
-.ev-bonus-wrap.ready .ev-bonus-state { background: #FFF6D8; color: #A0520E; }
-.ev-bonus-wrap.done .ev-bonus-state { background: linear-gradient(180deg, #A8EED0, #5CCB9F); color: #FFFFFF; }
-/* ของขวัญ: ลอยขึ้นลงเบา ๆ ดาวระยิบรอบ ๆ · เปิดกล่อง = เด้งรับ · ครบแล้ว = โยกเรียกแรงขึ้น */
+/* ของขวัญ = ปลายขวาของแคปซูล (กว้างเท่าความสูงแคปซูล) · ลอยขึ้นลงเบา ๆ ในตัว */
 .ev-bonus-gift {
-  position: absolute; right: 0; top: 50%;
-  width: var(--gift); height: var(--gift);
-  margin-top: calc(var(--gift) / -2);
-  padding: 0; border: 0; background: none; cursor: pointer;
-  pointer-events: auto;
-  animation: evGiftFloat 2.6s ease-in-out infinite;
+  flex: none; width: calc(var(--cap) - 4px);
+  display: grid; place-items: center;
+  padding: 0; border: 0; cursor: pointer;
+  background: radial-gradient(circle, rgba(255,255,255,.6) 0 40%, rgba(255,255,255,0) 68%);   /* แสงขาวนวลหลังของขวัญ — ของขวัญชมพูไม่กลืนกับแคปซูล */
 }
-.ev-bonus-gift .ev-gift { display: block; width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(160,50,120,.45)) drop-shadow(0 0 10px rgba(255,255,255,.6)); }
+.ev-bonus-gift .ev-gift { display: block; width: 74%; aspect-ratio: 1; filter: drop-shadow(0 3px 4px rgba(120,30,110,.45)); animation: evGiftFloat 2.6s ease-in-out infinite; }
 .ev-bonus-gift .ev-gift svg { width: 100%; height: 100%; display: block; }
 .ev-bonus-gift:active { filter: brightness(.93); }
-@keyframes evGiftFloat { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-5px) rotate(3deg); } }
-.ev-bonus-wrap.open .ev-bonus-gift { animation: evGiftPop .5s cubic-bezier(.34,1.56,.64,1), evGiftFloat 2.6s ease-in-out .5s infinite; }
-@keyframes evGiftPop { 0% { transform: scale(.85); } 60% { transform: scale(1.18) rotate(-6deg); } 100% { transform: scale(1); } }
-.ev-bonus-wrap.ready .ev-bonus-gift { animation: evGiftCall 1.2s ease-in-out infinite; }
-@keyframes evGiftCall { 0%, 100% { transform: rotate(0) scale(1); } 15% { transform: rotate(-10deg) scale(1.1); } 30% { transform: rotate(10deg) scale(1.1); } 45% { transform: rotate(0) scale(1); } }
-.ev-bonus-gift .gs { position: absolute; width: 22%; aspect-ratio: 1; background: #FFF6C8; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: evTwinkle 1.8s ease-in-out infinite; }
-.ev-bonus-gift .g1 { left: -6%; top: 6%; }
-.ev-bonus-gift .g2 { right: -8%; top: 30%; width: 16%; animation-delay: .6s; background: #FFFFFF; }
-.ev-bonus-gift .g3 { left: 30%; top: -14%; width: 14%; animation-delay: 1.2s; background: #FFC8E2; }
+@keyframes evGiftFloat { 0%, 100% { transform: translateY(1px) rotate(-3deg); } 50% { transform: translateY(-2px) rotate(3deg); } }
+/* แสงวิ้งวิ่งผ่านตอนเปิด */
+.ev-bonus::after {
+  content: ""; position: absolute; top: -20%; bottom: -20%; left: -40%; width: 28%;
+  background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.6) 50%, rgba(255,255,255,0) 100%);
+  transform: skewX(-18deg); opacity: 0; pointer-events: none;
+}
+.ev-bonus-wrap.open .ev-bonus::after { opacity: 1; animation: evShine 2.4s ease-in-out .5s infinite; }
+@keyframes evShine { 0% { left: -40%; } 55%, 100% { left: 125%; } }
+/* ครบแล้ว */
+.ev-bonus-wrap.ready .ev-bonus {
+  background:
+    radial-gradient(120px 90% at 100% 0%, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(110deg, #FF6FA8 0%, #FF9A6B 50%, #FFC84A 100%);
+  box-shadow: 0 0 0 3px rgba(255,236,170,.55), 0 0 24px rgba(255,170,120,.8), inset 0 2px 2px rgba(255,255,255,.75), inset 0 -8px 14px -8px rgba(200,80,40,.45);
+}
+.ev-bonus-wrap.ready .ev-bonus-state { background: #FFF6D8; color: #A0520E; }
+.ev-bonus-wrap.ready .ev-gift { animation: evGiftCall 1.2s ease-in-out infinite; }
+@keyframes evGiftCall { 0%, 100% { transform: rotate(0) scale(1); } 15% { transform: rotate(-10deg) scale(1.12); } 30% { transform: rotate(10deg) scale(1.12); } 45% { transform: rotate(0) scale(1); } }
+.ev-bonus-wrap.done .ev-bonus { filter: saturate(.55); }
+.ev-bonus-wrap.done .ev-bonus-state { background: linear-gradient(180deg, #A8EED0, #5CCB9F); color: #FFFFFF; }
+.ev-bonus-wrap > .new-dot { position: absolute; top: -3px; right: -3px; z-index: 3; }
+/* ดาวระยิบรอบแคปซูลตอนปิด */
+.ev-bonus-wrap .gs { position: absolute; width: calc(var(--cap) * .2); aspect-ratio: 1; background: #FFF6C8; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: evTwinkle 1.8s ease-in-out infinite; transition: opacity .2s ease; }
+.ev-bonus-wrap .g1 { right: calc(var(--cap) * .92); top: -6%; }
+.ev-bonus-wrap .g2 { right: calc(var(--cap) * -.16); top: 58%; width: calc(var(--cap) * .15); animation-delay: .6s; background: #FFFFFF; }
+.ev-bonus-wrap .g3 { right: calc(var(--cap) * .2); top: -22%; width: calc(var(--cap) * .14); animation-delay: 1.2s; background: #FFC8E2; }
+.ev-bonus-wrap.open .gs { opacity: 0; animation: none; }
 @keyframes evTwinkle { 0%, 100% { transform: scale(.3); opacity: 0; } 50% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .ev-bonus::after, .ev-bonus-gift, .ev-bonus-gift .gs { animation: none; }
+  .ev-bonus, .ev-bonus-main { transition: none; }
+  .ev-bonus::after, .ev-gift, .ev-bonus-wrap .gs { animation: none !important; }
 }
 .fly-bit { position: fixed; z-index: 9999; width: 22px; height: 22px; pointer-events: none; }
 .fly-plus {
@@ -18095,3 +18113,17 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .fly-plus.is-gem { color: #D2468D; }
 .fly-plus.is-coin { color: #B07A12; }
+
+/* ══ ปุ่มมุมจอ (ปุ่มปิด กากบาท / ปุ่มย้อนกลับ / ปุ่มมุมอื่นที่จะเพิ่มทีหลัง) บนมือถือ/iPad (ผู้ใช้ 11 พ.ย. 2026) ══
+   จอมือถือ/iPad มุมมน — ปุ่มชิดมุมโดนขอบจอบัง กดยาก → จอสัมผัสดันปุ่มเข้ามาจากขอบซ้าย/ขวาและขอบบนมากขึ้น
+   ปรับที่ตัวแปร --backbtn-x / --backbtn-y ที่เดียว ทุกปุ่มที่วางด้วยตัวแปรนี้ (และที่จองที่ว่างในการ์ด) ขยับตามเอง
+   ปุ่มมุมใหม่ต้องวางด้วย var(--backbtn-x) / var(--backbtn-y) เสมอ ห้ามใช้ px ตายตัว */
+@media (hover: none), (pointer: coarse) {
+  :root {
+    --backbtn-x: max(clamp(11px, 1.2vw, 14px), calc(env(safe-area-inset-left, 0px) * .4), calc(env(safe-area-inset-right, 0px) * .4));   /* เขตปลอดภัยคิดแค่ 40% แบบปุ่มหน้าแรก (.lobby) ไม่งั้นมือถือจริงปุ่มถอยลึกเกิน */
+    --backbtn-y: max(clamp(7px, 1.4dvh, 9px), calc(env(safe-area-inset-top, 0px) * .5));
+  }
+  .backbtn,
+  .xbtn:not(.tl-close),
+  #createPanel.paint-full .paint-max { top: var(--backbtn-y); }
+}
