@@ -22723,7 +22723,8 @@ function wilatChestPath(cx, y0, y1, k = 1, M = null) {
  * ขอบเป็นปอยขนเล็ก ๆ สลับเข้า-ออก (ไม่ใช่วงรีเรียบ) · cx/y0/y1 = กลาง/บน/ล่าง · k = สเกลความกว้าง · M = ตัวแปลงจุด (ตัววิ่ง)
  */
 function bibPath(cx, y0, y1, k = 1, M = null) {
-  const prof = [[0, 62], [0.1, 76], [0.25, 84], [0.45, 86], [0.62, 82], [0.76, 72], [0.88, 56], [0.96, 34], [1, 12]];
+  // ขอบบนมุมสอบเข้า (ผู้ใช้ 13 พ.ย. 2026): มุมบนกว้างเกินจนทับเส้นขอบคอตอนตัวบิด (ท่าไล่หาง)
+  const prof = [[0, 40], [0.08, 70], [0.25, 84], [0.45, 86], [0.62, 82], [0.76, 72], [0.88, 56], [0.96, 34], [1, 12]];
   const wAt = (u) => {
     for (let i = 1; i < prof.length; i++) if (u <= prof[i][0]) { const [u0, w0] = prof[i - 1], [u1, w1] = prof[i]; return w0 + ((w1 - w0) * (u - u0)) / (u1 - u0); }
     return 4;
@@ -24975,6 +24976,25 @@ function pawOf(band, pal, rx, ry) {
   };
   return { blob, det };
 }
+/**
+ * ลายขวางบนแขนท่อ (แขนที่ยกมาเลียมือ · แมวลายสลิด/ลายเสือ) — ผู้ใช้ 13 พ.ย. 2026: แขนที่ยกไม่มีลายส้มเข้ม
+ * แถบขวางท่อนุ่ม ๆ แบบลายบนขาหน้าตอนนั่ง (วงรีแบนขอบฟุ้ง ข้ามทั้งความกว้างแขน) · ตัดตามแขนโดย drawLayer เอง
+ */
+function tabbyBandStripes(band, pal) {
+  return (c) => {
+    c.save();
+    c.fillStyle = pal.stripe;
+    c.filter = 'blur(1.2px)';
+    for (const i of [3, 5.5, 8]) {
+      const j = Math.round(i), q = band.pts[j], h = band.half(j);
+      c.globalAlpha = 0.8;
+      c.beginPath();
+      c.ellipse(q.x, q.y, 5.5, h * 1.15, q.a, 0, TAU);   // แกนยาวขวางท่อ (ตั้งฉากกับทิศแขน)
+      c.fill();
+    }
+    c.restore();
+  };
+}
 function sitStripes(c, pal, list, a = 1) {
   const a0 = c.globalAlpha;
   c.globalAlpha = a0 * a;   // a = opt.stripeA (ความเข้มลายของสายพันธุ์)
@@ -27007,7 +27027,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       drawLayer(lc, [{ small: true, sil: legSil, all: legAll, xf: grow, patch: legPatch, det: (c) => {
         if (!skirtLegs) {
           if (art.chestStripe) { if (!stripeOver) softMark(c, wilatChestPath(300, 440, 600, 0.9), pal.cream); }
-          else if (art.bib) softMark(c, bibPath(300, 440, 640, 0.86), pal.cream);
+          else if (art.bib) { /* ส้มซ่า: ขาหน้าตอนนั่งเป็นสีส้มทั้งขา (ผู้ใช้ 13 พ.ย. 2026 — อกขาวไหลทับขาเหลือส้มเป็นเศษ ๆ ไม่สม่ำเสมอ) */ }
           else bellyBlob(c, 300, 512, 52, 60, pal.cream, art.bellySoft);   // อกครีมไหลต่อลงมาบนโคนขา (ไม่โดนขาตัดเป็นขอบตรง)
         }
         c.fillStyle = pal.paw || pal.cream;
@@ -27070,7 +27090,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         all.addPath(pw.blob);
         all.addPath(cap);
         // เนื้อแขนสีขนเรียบ ๆ ไม่ใส่เงา/ลายส้มเข้ม (บนแขนที่พับเป็นรูป S มันอ่านเป็นขีดแปลก ๆ) — เหลือแค่อุ้งเท้าครีม
-        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => pw.det(c, all), patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง · สีเปรอะ: ปื้นนุ่ม (ไม่มีขอบคมตรงรอยพับ) (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
+        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => { if (art.tabby) tabbyBandStripes(band, pal)(c); pw.det(c, all); }, patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง · สีเปรอะ: ปื้นนุ่ม (ไม่มีขอบคมตรงรอยพับ) (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
         // ชุดที่ตั้ง groomSleeve: แขนเสื้อบนแขนที่ยกมาเลีย (ผู้ใช้ 21 ต.ค. ชุดลูกคุณหนู) — ลูกพองถึงข้อศอก (จุด 4) ท่อนล่างต่อไปใกล้อุ้งเท้า
         //   ค่อย ๆ ขึ้นตามแขนที่ยก (ต้นท่าแขนยังวางพื้น ขาเปล่าไม่มีแขนเสื้อ) · ชุดอื่นคงแบบเดิมที่ผู้ใช้ตรวจแล้ว
         //   groomSleeve = ฟังก์ชัน (c, band, pal) วาดเอง · true = ใช้ sitSleeve แบบท่อ (ลูกพองถึงจุด 4)
