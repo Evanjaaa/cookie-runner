@@ -18127,3 +18127,157 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .xbtn:not(.tl-close),
   #createPanel.paint-full .paint-max { top: var(--backbtn-y); }
 }
+
+/* ปุ่มใหญ่แถวล่างสองปุ่ม (ปราสาทออนไลน์ · บ้านของฉัน) = วุ้นม่วงเป็นหลัก ชมพูผสมนิด ๆ (ผู้ใช้ 14 พ.ย. 2026) — ท่ากด/เงาวาวใช้ของ .lobby-btn.jelly เดิม */
+#startPanel .lobby-btn.jelly.dock-btn {
+  border-color: rgba(255,236,246,.5);
+  background:
+    radial-gradient(92% 60% at 50% 114%, rgba(255,190,236,.85) 0%, rgba(255,190,236,0) 72%),
+    radial-gradient(60% 45% at 24% 12%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(214,146,246,.8) 0%, rgba(168,98,234,.76) 46%, rgba(124,62,212,.86) 100%);
+  box-shadow:
+    0 2px 0 rgba(178,108,236,.92),
+    0 4px 0 rgba(110,52,190,.8),
+    0 11px 18px -6px rgba(150,64,200,.6),
+    0 2px 5px rgba(60,10,60,.2),
+    inset 0 -9px 13px -4px rgba(255,186,236,.72),
+    inset 0 0 9px rgba(124,54,200,.36),
+    inset 0 2px 1px rgba(255,255,255,.7),
+    inset 0 0 0 1px rgba(255,255,255,.16);
+}
+#startPanel .lobby-btn.jelly.dock-btn.jelly-press,
+#startPanel .lobby-btn.jelly.dock-btn:active {
+  box-shadow:
+    0 1px 0 rgba(178,108,236,.92),
+    0 1px 0 rgba(110,52,190,.8),
+    0 5px 10px -4px rgba(150,64,200,.55),
+    0 1px 3px rgba(60,10,60,.2),
+    inset 0 -9px 13px -4px rgba(255,186,236,.72),
+    inset 0 0 9px rgba(124,54,200,.36),
+    inset 0 2px 1px rgba(255,255,255,.7),
+    inset 0 0 0 1px rgba(255,255,255,.16);
+}
+#startPanel .lobby-btn.jelly.dock-btn b { -webkit-text-stroke-color: #7440B0; }
+
+/* เงาวาวของสองปุ่มนี้: ไอคอนใหญ่บังช่วงบน → จุดแสงลูกอมคมสองเม็ดแบบปุ่มอื่น ย้ายมาขอบซ้าย (ไม่มีฝั่งขวา · ไม่มีแสงเบลอ — ผู้ใช้ 14 พ.ย. 2026) */
+#startPanel .lobby-btn.jelly.dock-btn::before {
+  left: 0; right: 0; top: 0; height: 100%;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 7.5% 30%, rgba(255,255,255,.95) 0 calc(var(--dock) * .028), rgba(255,255,255,0) calc(var(--dock) * .034)),
+    radial-gradient(circle at 11.8% 18%, rgba(255,255,255,.85) 0 calc(var(--dock) * .015), rgba(255,255,255,0) calc(var(--dock) * .021));
+}
+
+/* ไอคอนพิเศษบนปุ่มใหญ่ (ปราสาท · ห้องนอน) ต่ำลงนิด ใหญ่ขึ้นนิด (ผู้ใช้ 15 พ.ย. 2026) */
+#startPanel .lobby-btn.jelly.dock-btn canvas {
+  top: calc(var(--dock) * -.25);
+  width: calc(var(--dock) * 1.1);
+  height: calc(var(--dock) * .66);
+}
+/* ปุ่มปราสาทออนไลน์หน้าแรก: ไม่โชว์จำนวนคนออนไลน์บนปุ่ม (ผู้ใช้ 15 พ.ย. 2026 — โชว์ในหน้าเลือกห้องพอ) */
+#startPanel .dock-btn .dock-live { display: none !important; }
+
+/* ══════════ ปุ่มพิเศษแถวล่าง แบบใหม่ (ผู้ใช้ 15 พ.ย. 2026 ส่งภาพแบบ + brief) ══════════
+   ปราสาทออนไลน์ · บ้านของฉัน = ป้ายวุ้นทรงเมฆ ขอบขาวแบบสติกเกอร์ ผิวม่วง-ชมพูมันวาว + ภาพประกอบยื่นพ้นขอบบน (src/render/dock-art.js)
+   ตัวปุ่ม (พื้นที่กด) = ตัวป้ายพอดี — viewBox 300×260 ป้ายอยู่ x 8–292 · y 100–248 → ภาพวางเลยขอบปุ่มตามสัดส่วนนั้น
+   ท่ากด/เด้ง = .jelly เดิม (jelly-btn.js) · ชี้/แตะ = ภาพยกขึ้นขยายนิด ประกายถี่ขึ้น · แสงวิ่งผ่านผิวป้ายเป็นครั้งคราว
+   ขยับด้วย transform/opacity เท่านั้น (ภาพเป็นรูปนิ่ง ไม่วาดใหม่ทุกเฟรม) */
+#startPanel :is(#btnCatStore, #btnMyHome) {
+  height: calc(var(--dock) * .521);
+  padding: 0 0 calc(var(--dock) * .062);
+  border: 0;
+  border-radius: calc(var(--dock) * .162);
+  background: none;
+  box-shadow: none;
+  /* วุ้นใส: ฉากหลังเบลอผ่านเนื้อป้าย (เนื้อป้ายใน dock-art.js โปร่งแสง) — ท่ากดยุบ-เด้งดึ๋งจาก .jelly เดิม */
+  -webkit-backdrop-filter: blur(5px) saturate(1.4);
+  backdrop-filter: blur(5px) saturate(1.4);
+}
+#startPanel :is(#btnCatStore, #btnMyHome):is(.jelly-press, :active) { box-shadow: none; }
+#startPanel :is(#btnCatStore, #btnMyHome)::before { content: none; }
+#startPanel .dock2 .dock-art {
+  position: absolute;
+  left: calc(var(--dock) * -.0282);
+  top: calc(var(--dock) * -.352);
+  width: calc(var(--dock) * 1.0563);
+  height: calc(var(--dock) * .9155);
+  z-index: 1;
+  pointer-events: none;
+  transform-origin: 50% 75%;
+  transition: transform .28s cubic-bezier(.3,1.5,.5,1);
+}
+#startPanel .dock2 .dock-art img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; user-select: none; }
+@media (hover: hover) {
+  #startPanel .dock2:hover .dock-art { transform: translateY(-2.5%) scale(1.035); }
+}
+/* id สองตัว — ชนะกฎ .lobby-btn.jelly.dock-btn b เดิม (เส้นขอบตัด #7440B0) */
+#startPanel :is(#btnCatStore, #btnMyHome) > b {
+  z-index: 3;
+  font-size: calc(var(--dock) * .13);
+  letter-spacing: .01em;
+  /* ไม่มีเส้นขอบตัดตัวอักษร (ผู้ใช้ 15 พ.ย. 2026) — อ่านง่ายด้วยเงาฟุ้งม่วงนุ่ม ๆ แทน */
+  -webkit-text-stroke: 0;
+  paint-order: normal;
+  text-shadow: 0 calc(var(--dock) * .008) calc(var(--dock) * .03) rgba(70,20,140,.7), 0 0 calc(var(--dock) * .05) rgba(90,40,170,.45);
+}
+/* แสงวิ่งผ่านผิวป้ายเป็นครั้งคราว (แถบขาวเฉียง · ปุ่มที่สองช้ากว่านิด ไม่วาบพร้อมกัน) */
+#startPanel .dock2 .dock-shine {
+  position: absolute;
+  inset: calc(var(--dock) * .006);
+  z-index: 2;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+#startPanel .dock2 .dock-shine::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 26%;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.5) 45%, rgba(255,255,255,.18) 60%, rgba(255,255,255,0));
+  transform: translateX(-130%) skewX(-20deg);
+  animation: dockShine 7.5s ease-in-out infinite;
+}
+#startPanel #btnMyHome .dock-shine::before { animation-delay: 1.3s; }
+@keyframes dockShine {
+  0%, 80% { transform: translateX(-130%) skewX(-20deg); }
+  94%, 100% { transform: translateX(520%) skewX(-20deg); }
+}
+/* ประกายดาวสามดวงรอบภาพ: กะพริบเบา ๆ คนละจังหวะ (ไม่ใช่อนุภาคพ่นเยอะ) */
+#startPanel .dock2 .dk-sp {
+  position: absolute;
+  z-index: 2;
+  left: var(--x);
+  top: var(--y);
+  width: calc(var(--dock) * var(--s, .07));
+  height: calc(var(--dock) * var(--s, .07));
+  margin: calc(var(--dock) * var(--s, .07) * -.5) 0 0 calc(var(--dock) * var(--s, .07) * -.5);
+  background: var(--c, #FFF6C8);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  pointer-events: none;
+  opacity: .25;
+  transform: scale(.45);
+  animation: dockTwinkle 2.8s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes dockTwinkle {
+  0%, 100% { opacity: .2; transform: scale(.4) rotate(0deg); }
+  45% { opacity: 1; transform: scale(1) rotate(18deg); }
+  60% { opacity: .9; transform: scale(.85) rotate(24deg); }
+}
+#startPanel #btnCatStore .dk-sp:nth-of-type(1) { --x: 14%; --y: -24%; --d: 0s; }
+#startPanel #btnCatStore .dk-sp:nth-of-type(2) { --x: 87%; --y: -30%; --d: .9s; --s: .055; --c: #FFFFFF; }
+#startPanel #btnCatStore .dk-sp:nth-of-type(3) { --x: 93%; --y: 30%; --d: 1.8s; --s: .05; }
+#startPanel #btnMyHome .dk-sp:nth-of-type(1) { --x: 19%; --y: -22%; --d: .4s; --s: .06; }
+#startPanel #btnMyHome .dk-sp:nth-of-type(2) { --x: 25%; --y: -46%; --d: 1.4s; --s: .045; --c: #FFFFFF; }
+#startPanel #btnMyHome .dk-sp:nth-of-type(3) { --x: 96%; --y: -6%; --d: 2.2s; --s: .055; }
+@media (hover: hover) {
+  #startPanel .dock2:hover .dk-sp { animation-duration: 1.3s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #startPanel .dock2 .dock-shine::before, #startPanel .dock2 .dk-sp { animation: none; }
+  #startPanel .dock2 .dk-sp { opacity: .8; transform: none; }
+  #startPanel .dock2 .dock-art { transition: none; }
+}

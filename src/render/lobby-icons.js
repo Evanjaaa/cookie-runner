@@ -1,4 +1,4 @@
-// ไอคอนปุ่มเมนูหน้าแรก (ร้านเหมียว ตู้กาช่า การ์ดพลัง คลังน้อง กิจกรรม แผนที่) — ผู้ใช้ 7 พ.ย. 2026
+// ไอคอนปุ่มเมนูหน้าแรก (ร้านเหมียว ตู้กาช่า การ์ดพลัง คลังน้อง กิจกรรม แผนที่ บ้านลูกเหมียว) — ผู้ใช้ 7 พ.ย. 2026
 // สไตล์เดียวกับไอคอนวุ้นแถบบน (เพื่อน ข่าวสาร จดหมาย ตั้งค่า — .ico-jelly ใน index.html):
 //   เส้นขอบเข้มรอบตัว → เนื้อวุ้นไล่สีบนลงล่าง → แสงฟุ้งก้นวุ้น → แสงขาวมุมบน (ตัดตามรูปทรง) → รายละเอียด + จุดประกาย
 // เนื้อวุ้นไล่สามสี เหลืองอ่อน → ชมพู → ฟ้าอ่อน (ผู้ใช้ 7 พ.ย. 2026: ลองฟ้า → ชมพู → "ผสมสีไล่สีเล่นสี")
@@ -161,7 +161,104 @@ const MAP = jelly('map', [
     ${dots(5.8, 11.4)}`,
 });
 
-export const LOBBY_ICON_SVG = { shop: SHOP, gacha: GACHA, talent: TALENT, stash: STASH, quest: QUEST, map: MAP };
+// ── บ้านลูกเหมียว (ผู้ใช้ 14 พ.ย. 2026 — แทนกล่องแมวบนพื้น): บ้านกล่องทรงหัวแมว หูสองข้าง ประตูโค้งมีเบาะ หนวด (ไม่มีป้ายกลางหน้า — ผู้ใช้ว่าดูเหมือนเอเลี่ยน) ──
+const KHOUSE = jelly('khouse', [
+  '<path d="M6.2 13.4L7.6 3.8l6.4 5.4Z M25.8 13.4L24.4 3.8l-6.4 5.4Z"/>',
+  '<rect x="4.4" y="8.4" width="23.2" height="20" rx="4.6"/>',
+], {
+  shine: '<ellipse cx="11.4" cy="11" rx="6.2" ry="1.6" transform="rotate(-8 11.4 11)"/>',
+  after: `
+    <path d="M8.1 9.6l.7-3.9 2.9 2.6Z M23.9 9.6l-.7-3.9-2.9 2.6Z" fill="${P.pinkSoft}"/>
+    <path d="M11.4 28.4v-5.2a4.6 4.6 0 0 1 9.2 0v5.2Z" fill="${P.line}" opacity=".78"/>
+    <path d="M12.6 28.4v-4.9a3.4 3.4 0 0 1 6.8 0v4.9Z" fill="${P.yelSoft}"/>
+    <ellipse cx="16" cy="27" rx="3.5" ry="1.3" fill="${P.pink}"/>
+    <path d="M3 18.8l3 .5M2.8 21.6l3.1-.1M28.9 18.8l-3 .5M29.2 21.6l-3.1-.1" stroke="${P.line}" stroke-width=".9" stroke-linecap="round" opacity=".75"/>
+    <circle cx="7.6" cy="25.2" r=".9" fill="#fff" opacity=".8"/><circle cx="6.6" cy="23.9" r=".45" fill="#fff" opacity=".8"/><circle cx="7.6" cy="23.5" r=".45" fill="#fff" opacity=".8"/><circle cx="8.5" cy="23.9" r=".45" fill="#fff" opacity=".8"/>
+    ${twinkle(28.2, 6.2, 1.6, P.yel)}
+    ${dots(23.4, 24.6)}`,
+});
+
+// ══ ไอคอนพิเศษปุ่มใหญ่แถวล่าง (ผู้ใช้ 14 พ.ย. 2026) ══════════════════════════════
+// วุ้นใสเด้งชุดเดียวกับไอคอนเมนู แต่สีไล่ชุดพิเศษ (ทองครีม → ชมพู → ลาเวนเดอร์ → ฟ้า) ขอบม่วงเข้มเข้ากับตัวหนังสือปุ่ม (#6B3FB5)
+// เส้นขอบบางกว่าไอคอนเมนู (ผู้ใช้ 14 พ.ย.: "ลดความหนาเส้นขอบตัด") + ขอบในขาวบาง ๆ รอบทุกชิ้น (ดูเป็นวุ้นหนาขึ้น) · ใหญ่กว่าไอคอนอื่น — วางบนผ้าใบปุ่มใหญ่ (main.js paintDockIcon) ยื่นพ้นขอบบนปุ่ม
+// กรอบกว้างกว่าสูง (vb) ให้ปราสาท/ห้องนอนไม่โดนบีบ
+const SP = {
+  castle: { grad: [[0, '#FFF3B0'], [0.32, '#FFB9DE'], [0.66, '#C4A3FF'], [1, '#86D9F5']], line: '#5E2F9E', glow: '#FFFFFF' },
+  myhome: { grad: [[0, '#FFE9B8'], [0.35, '#FFB8CF'], [0.7, '#E9A0F0'], [1, '#A9B4FF']], line: '#6A2E95', glow: '#FFF8FD' },
+};
+function special(key, [W, H], layers, { shine, after = '' }) {
+  const id = 'sp' + key, pal = SP[key];
+  // วุ้นใสนุ่มเด้งแบบไอคอนเมนู (ผู้ใช้ 15 พ.ย. 2026): ทุกชิ้นมีแสงวาวขาวช่วงบน + แสงฟุ้งก้น + ขอบในขาว · ชิ้นบนสุดมีแสงรีเงาวาว
+  const body = layers.map((shape, i) => `
+    <g fill="none" stroke="${pal.line}" stroke-width=".85" stroke-linejoin="round" stroke-linecap="round">${shape}</g>
+    <g fill="url(#${id}B)">${shape}</g>
+    <g fill="url(#${id}G)">${shape}</g>
+    <g clip-path="url(#${id}C${i})" fill="url(#${id}T)"><rect x="0" y="0" width="${W}" height="${H}"/></g>
+    <g clip-path="url(#${id}C${i})" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="1.1">${shape}</g>
+    ${i === layers.length - 1 ? `<g clip-path="url(#${id}C${i})" fill="url(#${id}W)">${shine}</g>` : ''}`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W * 6}" height="${H * 6}">
+  <defs>
+    <linearGradient id="${id}B" gradientUnits="userSpaceOnUse" x1="2" y1="1" x2="${W - 2}" y2="${H - 1}">
+      ${pal.grad.map(([o, c]) => `<stop offset="${o}" stop-color="${c}" stop-opacity=".97"/>`).join('')}
+    </linearGradient>
+    <radialGradient id="${id}G" gradientUnits="userSpaceOnUse" cx="${W / 2}" cy="${H}" r="${H * 0.5}">
+      <stop offset="0" stop-color="${pal.glow}" stop-opacity=".95"/>
+      <stop offset="1" stop-color="${pal.glow}" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="${id}T" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">
+      <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".42" stop-color="#fff" stop-opacity=".12"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="${id}W" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".1"/>
+    </linearGradient>
+    ${layers.map((shape, i) => `<clipPath id="${id}C${i}">${shape}</clipPath>`).join('')}
+  </defs>
+  ${body}${after}
+</svg>`;
+}
+/** มงกุฎทองเล็ก (ฐานกลาง x,y · กว้าง w) */
+const crownSvg = (x, y, w, line) => {
+  const h = w * 0.62, l = x - w / 2;
+  return `<path d="M${l} ${y}l-.4-${h}l${w * 0.27} ${h * 0.45}l${w * 0.23}-${h * 0.7}l${w * 0.23} ${h * 0.7}l${w * 0.27}-${h * 0.45}l-.4 ${h}Z" fill="${P.yel}" stroke="${line}" stroke-width="0.56" stroke-linejoin="round"/>
+    <circle cx="${x}" cy="${y - h * 0.45}" r="${w * 0.08}" fill="${P.pink}"/>`;
+};
+
+// ── ปราสาทออนไลน์ (มินิมอล — ผู้ใช้ 15 พ.ย. 2026 "มินิ ๆ รายละเอียดน้อย เส้นขอบบาง"):
+//   หอกลางโดมหูแมว + หอข้างหลังคากรวยสองหอ · ประตูโค้ง · หน้าต่างหัวใจเดียว · มงกุฎจิ๋ว · ประกายเดียว
+const CL = SP.castle.line;
+const CASTLE = special('castle', [40, 34], [
+  '<rect x="4" y="15" width="8" height="16.4" rx="2"/><path d="M3.4 16 8 5.6l4.6 10.4Z"/><rect x="28" y="15" width="8" height="16.4" rx="2"/><path d="M27.4 16 32 5.6l4.6 10.4Z"/>',
+  '<rect x="11" y="13" width="18" height="18.4" rx="2.6"/><path d="M11.4 14.4Q20 1.4 28.6 14.4Z"/><path d="M13.6 9.8l-.5-4.6 3.6 2.4Z M26.4 9.8l.5-4.6-3.6 2.4Z"/>',
+], {
+  shine: '<ellipse cx="16.6" cy="8.6" rx="3.6" ry="1.2" transform="rotate(-24 16.6 8.6)"/>',
+  after: `
+    ${crownSvg(20, 4.4, 3.6, CL)}
+    <path d="M20 19.6s-1.5-.9-1.5-1.9a.78.78 0 0 1 1.5-.4.78.78 0 0 1 1.5.4c0 1-1.5 1.9-1.5 1.9Z" fill="${P.pink}"/>
+    <path d="M16.4 31.4v-4.2a3.6 3.6 0 0 1 7.2 0v4.2Z" fill="#fff" opacity=".75"/>
+    ${twinkle(37.4, 7.4, 1.5, P.yel)}
+    <circle cx="14" cy="17.6" r="1.1" fill="#fff"/><circle cx="15.7" cy="16.6" r=".55" fill="#fff"/>`,
+});
+
+// ── บ้านของฉัน (มินิมอล): เตียงหลังคามุมข้าง · หมอน · ผ้าห่ม · น้องแมวขดหลับ · พระจันทร์เสี้ยวจิ๋ว ──
+const HL = SP.myhome.line;
+const MYHOME = special('myhome', [36, 32], [
+  '<rect x="4" y="6.4" width="2.4" height="23" rx="1.2"/><rect x="29.6" y="6.4" width="2.4" height="23" rx="1.2"/><rect x="3" y="4.4" width="30" height="4" rx="2"/>',
+  '<path d="M5.6 28.4V18a3.2 3.2 0 0 1 6.4 0v10.4Z"/><rect x="7" y="21" width="23.6" height="7" rx="3"/>',
+], {
+  shine: '<ellipse cx="13" cy="22.2" rx="4" ry=".8"/>',
+  after: `
+    <path d="M16.8 10.2a1.8 1.8 0 1 0 2.4 2 1.4 1.4 0 1 1-2.4-2Z" fill="${P.yel}"/>
+    <ellipse cx="13.6" cy="20.6" rx="3" ry="1.6" fill="#fff"/>
+    <path d="M17 21.4q6-1 13.4 0V28H17Z" fill="${P.pinkSoft}"/>
+    <ellipse cx="22.4" cy="19.8" rx="4.2" ry="2.1" fill="${P.yelSoft}" stroke="${HL}" stroke-width=".5"/>
+    <path d="M18.8 19.4l-.2-1.7 1.3.9M21 18.6l.5-1.5.6 1.5" fill="${P.yelSoft}" stroke="${HL}" stroke-width=".45" stroke-linejoin="round"/>
+    <path d="M19 19.9q.4.3.8 0M20.6 19.7q.4.3.8 0" fill="none" stroke="${HL}" stroke-width=".45" stroke-linecap="round"/>
+    ${twinkle(33.8, 13.6, 1.3, P.yel)}
+    <circle cx="9.4" cy="23.4" r="1" fill="#fff"/><circle cx="10.9" cy="22.5" r=".5" fill="#fff"/>`,
+});
+
+export const LOBBY_ICON_SVG = { shop: SHOP, gacha: GACHA, talent: TALENT, stash: STASH, quest: QUEST, map: MAP, khouse: KHOUSE, castle: CASTLE, myhome: MYHOME };
 
 const imgs = {};
 /** ภาพของไอคอน key (โหลดครั้งเดียว ใช้ซ้ำ) */

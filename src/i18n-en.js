@@ -112,6 +112,7 @@ export const EN = {
   'ผจญภัยภารกิจ': 'Adventure Quest',
   'วิ่งผ่านด่าน เก็บของ ทำภารกิจ': 'Run through stages, collect treats, clear quests',
   'แผนที่': 'Map',
+  'บ้านของฉัน': 'My Home',
   'แผนที่เมืองแมว': 'Meow Town Map',
   // แผนที่โลกเหมียว (ผู้ใช้ 7 พ.ย. 2026)
   'แผนที่โลกเหมียว': 'Meow World Map',

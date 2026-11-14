@@ -70,7 +70,7 @@ function drawStashCat(c, x, feetY, scale, s, t, opts = {}) {
   const { head = false, logical = 190 } = opts;
   if (CAT2.stash && useCat2(s)) {
     // การ์ดเล็ก: โชว์แค่หัวน้องเต็มกรอบ (หู-หนวดพอดีกรอบ) ตัวล้นลงไปใต้กรอบ
-    if (head) return drawCat2(c, logical / 2, logical * 1.42, logical / 50, s, t, null);
+    if (head) return drawCat2(c, logical / 2, logical * 1.42, logical / 50, s, t, s.chibi ? { headOnly: true } : null);   // จิบิ: ตัวเล็ก — การ์ดใช้ขนาดหัวเต็มกรอบ
     // กรอบใหญ่: แบบใหม่หัวโต-หูสูงกว่าตัวเดิม ย่อลงให้หูไม่ชนขอบบน
     return drawCat2(c, x, feetY, scale * 0.86, s, t, null);
   }
@@ -80,6 +80,8 @@ import { drawGround, drawStageBackdrop, GROUND_ART } from './render/background.j
 import { drawPlats } from './render/platforms.js';
 import { drawShaded } from './render/shade.js';
 import { lobbyIconImage } from './render/lobby-icons.js';
+import { initFitLabels } from './fit-labels.js';   // ชื่อปุ่มเมนูย่อเองให้พอดีกรอบ
+import { dockArtURL } from './render/dock-art.js';
 import { EV_BANNER_INNER, paintBannerCat, fillBanner } from './render/event-banner.js';
 import { makeDreamBg } from './render/dreambg.js';
 import { makeSoftBg } from './render/softbg.js';
@@ -3311,7 +3313,9 @@ function buildSkinStashGrid() {
   grid.innerHTML = '';
 
   // น้องระบายสี (แบบเก่า) ซ่อนไว้ก่อน (ผู้ใช้ 7 พ.ย. 2026) — ข้อมูล/หน้าสร้างสรรค์ยังอยู่ครบ เปิดคืน = showPaintCat()
-  const all = catEntries().filter((x) => showPaintCat() || x.kind !== 'paint');
+  // น้องที่ยังวาดด้วยลายเส้นเก่า (ลูกแมว/วัยรุ่นตัววาดเดิม · สายพันธุ์ที่ยังไม่ได้วาดใหม่) ซ่อนไว้ก่อน (ผู้ใช้ 14 พ.ย. 2026)
+  //   ข้อมูลน้องยังอยู่ครบ (เลี้ยงที่บ้านน้องได้ตามเดิม) — โชว์ = น้องแบบใหม่ (useCat2) รวมน้องจิบิ
+  const all = catEntries().filter((x) => (showPaintCat() || x.kind !== 'paint') && (!x.cat || useCat2(x.skin)));
   const pinned = all.filter((x) => x.kind === 'main' || x.kind === 'paint');
   const rest = applyFilter('skin', all.filter((x) => !pinned.includes(x)), {
     owned: (x) => x.kind !== 'locked',
@@ -4770,18 +4774,19 @@ function refreshQuestDot() {
   bd.classList.toggle('hidden', n === 0);
 }
 
-/** น้องแมวนอนกองกันบนปุ่มคลังน้องแมว — ใช้ท่าหมอบหลับตัวจริงของเกม */
-function paintDockCats() {
-  const cv = document.getElementById('dockCats'), c = cv.getContext('2d');
-  c.clearRect(0, 0, cv.width, cv.height);
-  const cat = (id, x, y, sc, turn) => {
-    const breed = CAT2_BREEDS.find((b) => b.id === id);
-    if (breed) drawCat2(c, x, y, sc, breed, 0, { k: 1, shape: { loaf: 1, shut: 1, turn } });
-  };
-  cat('korat', 268, 226, 3.7, -0.3);
-  cat('calico', 148, 236, 4.2, 0.3);
+/**
+ * ภาพปุ่มใหญ่แถวล่าง (ผู้ใช้ 15 พ.ย. 2026 ออกแบบใหม่): ป้ายวุ้นทรงเมฆ + ภาพประกอบยื่นพ้นขอบบน — src/render/dock-art.js
+ * ปราสาทออนไลน์ = ปราสาทแมวบนเมฆ · บ้านของฉัน = หน้าต่างห้องนอน น้องแมวหลับ · ภาพนิ่ง SVG (คมทุกขนาดจอ) ประกาย/แสงวิ่งเป็น CSS
+ */
+function paintDockIcon(id, key) {
+  const img = document.getElementById(id);
+  if (img) img.src = dockArtURL(key);
 }
-paintDockCats();
+paintDockIcon('dockCats', 'castle');
+paintDockIcon('myHomeArt', 'myhome');
+/** ไอคอนปุ่มบ้านลูกเหมียว — วุ้นใสเทมเพลตเดียวกับปุ่มร้าน/กาช่า/คลัง/แผนที่ (lobby-icons.js khouse · ผู้ใช้ 14 พ.ย. 2026) */
+paintLobbyIcon('homeBoxIcon', 'khouse');
+initFitLabels();
 
 /** ไอคอนปุ่มกิจกรรม — กล่องของขวัญ ตัวเดิมที่เคยอยู่บนปุ่มสมบัติ */
 function paintQuestIcon() {
@@ -7808,9 +7813,9 @@ function visitFriendHome(row) {
   });
 }
 
-/** ทางลัดจากหน้าอื่น (คลังน้อง) — เปิดบ้านน้องแล้วเลือกตัวนี้ไว้ */
+/** ทางลัดจากหน้าอื่น (คลังน้อง) — ไปห้องเลี้ยงแมวแบบใหม่ (ห้องเก่า catRoomUI ไม่ใช้เป็นทางเข้าแล้ว — ผู้ใช้ 14 พ.ย. 2026) */
 function openCatRoom(id) {
-  catRoomUI.open(id);
+  goTown('nursery', document.getElementById('btnHomeBox'));
 }
 
 /** เรื่องราวของน้อง เปิดทับหน้าที่อยู่ (คลังน้อง / บ้านน้อง) */
@@ -8223,11 +8228,19 @@ function goTown(spot, fromEl, room = '') {
   wipe.style.setProperty('--wy', ((r.top + r.height / 2 - st.top) / st.height * 100) + '%');
   wipe.className = 'room-wipe in';
   const q = new URLSearchParams();
-  if (spot === 'castle' || spot === 'hall') q.set('spot', spot);
+  if (spot === 'castle' || spot === 'hall' || spot === 'home' || spot === 'nursery') q.set('spot', spot);
   if (room) q.set('room', room);   // ห้องส่วนตัวรหัส 4 หลัก (หน้าเลือกห้องปราสาทออนไลน์)
   setTimeout(() => { location.href = './town.html' + (q.size ? '?' + q : ''); }, 460);
 }
 document.getElementById('btnMap').addEventListener('click', () => { unlockAudio(); startMusic(); sfx.fish(); showMap(true); });
+// บ้านของฉัน (ผู้ใช้ 14 พ.ย. 2026) — ห้องนอน + ห้องเลี้ยงน้องในปราสาท (หน้าเมือง ?spot=home)
+document.getElementById('btnMyHome').addEventListener('click', (e) => goTown('home', e.currentTarget));
+// บ้านลูกเหมียว = ห้องเลี้ยงแมวแบบใหม่ในปราสาท (ผู้ใช้ 14 พ.ย. 2026 "เปลี่ยนเป็นอันใหม่") — ดักก่อนตัวเปิดห้องเก่าใน catroom-ui.js
+document.getElementById('btnHomeBox').addEventListener('click', (e) => {
+  e.stopImmediatePropagation();
+  unlockAudio(); startMusic();
+  goTown('nursery', e.currentTarget);
+}, { capture: true });
 document.getElementById('mapBack').addEventListener('click', () => { unlockAudio(); sfx.fish(); showMap(false); });
 // กลับมาจากหน้าเมืองด้วยปุ่มย้อนกลับของเบราว์เซอร์ (หน้าเดิมจากแคช) — ม่านต้องไม่ค้างปิดจอ
 window.addEventListener('pageshow', () => {
@@ -10769,7 +10782,7 @@ if (new URLSearchParams(location.search).get('from') === 'town') {
   try { history.replaceState(null, '', location.pathname); } catch { /* ไม่เป็นไร */ }
   if (hasAccount() && chosenName()) {
     goHome();
-    if (new URLSearchParams(location.search).get('go') === 'room') catRoomUI.open();   // กระจกวาปในปราสาท → ห้องน้อง
+    if (new URLSearchParams(location.search).get('go') === 'room') goTown('nursery', document.getElementById('btnHomeBox'));   // ลิงก์เก่า go=room → ห้องเลี้ยงแมวใหม่
     // ไม่ได้ผ่านปุ่ม "เข้าเกม" (ที่ปลดเสียง+เริ่มเพลง) — แตะครั้งแรกที่ไหนก็ได้ให้เพลงหน้าแรกเริ่ม
     document.addEventListener('pointerdown', () => { unlockAudio(); startMusic(); }, { once: true, passive: true });
   }

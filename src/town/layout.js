@@ -216,11 +216,10 @@ function buildSurfaces() {
         flat('fnt:top', cx - topR + 1, cx + topR - 1, GY - top, { water: true }), flat('fnt:cat', cx - 9, cx + 9, GY - 207),
       );
     } else if (p.kind === 'castle') {
-      // ปราสาท (castle.js): ป้าย "เปิดเร็ว ๆ นี้" · แท่นรูปปั้นองครักษ์ → ทางเดินบนกำแพง (ยาวตลอดถึงหน้าป้อมประตู)
+      // ปราสาท (castle.js): แท่นรูปปั้นองครักษ์ → ทางเดินบนกำแพง (ยาวตลอดถึงหน้าป้อมประตู)
       //   → ใบเสมาป้อมประตูสองข้าง → หน้าจั่วโค้งตราโล่กลาง
       const { x, w } = p, cx = x + w / 2;
       S.push(
-        flat('cas:sign', cx - 48, cx + 48, GY - 70),
         flat('cas:pedL', cx - 190, cx - 146, GY - 50), flat('cas:pedR', cx + 146, cx + 190, GY - 50),
         flat('cas:wall', x + 104, x + w - 104, GY - 180),
         flat('cas:gateL', cx - 100, cx - 52, GY - 236), flat('cas:gateR', cx + 52, cx + 100, GY - 236),

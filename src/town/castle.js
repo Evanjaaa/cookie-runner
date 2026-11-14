@@ -540,7 +540,7 @@ function drawCastleArt(c) {
   c.beginPath(); c.arc(cx, GY - gh - 6, 7, 0, TAU); c.fill();
   catFace(c, cx, GY - gh - 5, 6, true, '#B88A2A');
   plaque(c, cx, GY - 190, CASTLE.name, { bg: '#FFF9EC', ink: '#7A4BB8', edge: GOLD, shape: 'ribbon', size: 15 });
-  plaque(c, cx, GY - 58, 'เปิดเร็ว ๆ นี้', { bg: '#FFF9EC', ink: '#8A4BB8', edge: '#E7B640', shape: 'round', size: 12 });
+  // ป้าย "เปิดเร็ว ๆ นี้" หน้าประตูเอาออกแล้ว (ผู้ใช้ 15 พ.ย. 2026 — เข้าปราสาทได้จริงแล้ว)
   // บันไดหน้าประตู
   for (const [hw, y0, y1] of [[gw / 2 + 30, GY - 6, GY + 2], [gw / 2 + 20, GY - 12, GY - 6]]) {
     c.fillStyle = lg(c, 0, y0, 0, y1, [[0, '#FFFFFF'], [1, '#E2D0F2']]);

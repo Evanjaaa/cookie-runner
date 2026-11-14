@@ -1,0 +1,70 @@
+บ้านของฉัน — ของที่ต้องออกแบบ + prompt หาดีไซน์ห้อง
+(ห้องนอนผู้เล่น + ห้องเลี้ยงแมว ในปราสาทแมวเหมียว)
+
+==================================================
+ข้อบอกนักออกแบบ (สำคัญ ไม่งั้นเอามาใช้ในเกมยาก)
+==================================================
+1. มองด้านข้าง เป็นภาพยาวแนวนอนแบบเกมเลื่อนซ้าย-ขวา (เหมือนเมือง/ปราสาท)
+   ห้องนอนยาวราว 1.5 จอ (8:3) · ห้องแมวราว 2 จอ (32:9)
+2. ต้องมีทางเดินโล่งด้านหน้า ให้น้องเดินผ่านหน้าเฟอร์นิเจอร์ได้ — ของวางชิดผนังหลัง
+3. ขอห้องเปล่า กับ เฟอร์นิเจอร์แยกเป็นชิ้น ๆ (พื้นขาว) — ของจะค่อย ๆ โผล่ตามที่ได้/ซื้อ
+   ภาพห้องแต่งเต็มภาพเดียว ใช้ดูอารมณ์เท่านั้น
+4. ไม่มีแมว ไม่มีคน ไม่มีตัวหนังสือในภาพ (เกมวาดน้องเอง)
+5. ลายเส้นเดียวกับเมือง/ปราสาท: แสงเงานุ่ม ไม่มีเส้นขอบดำรอบของ โทนอบอุ่น
+6. หน้าต่างต้องเข้าได้ทั้งกลางวัน/กลางคืน (ฟ้าในเกมเปลี่ยนตามเวลาจริง)
+
+==================================================
+ห้องที่ 1 — ห้องนอนผู้เล่น
+==================================================
+โครงห้อง: ผนังหินครีม คานไม้ พื้นไม้ พรม หน้าต่างบานใหญ่
+          ประตูออกโถงปราสาท · ประตูไปห้องแมว
+ของที่กด E ใช้ได้:
+  - เตียง (นอน)
+  - โต๊ะ + เก้าอี้ + โคม (นั่ง)
+  - ม้านั่งริมหน้าต่าง (ดูวิว)
+  - ตู้เสื้อผ้า + กระจกบานยาว (เปิดหน้าแต่งตัว)
+  - ชั้นโชว์ถ้วยรางวัล
+  - โซฟาเล็ก / เบาะนั่ง
+  - เครื่องเล่นแผ่นเสียง / กล่องดนตรี (เปลี่ยนเพลง)
+ของตกแต่ง: กรอบรูปผนัง ต้นไม้ ชั้นหนังสือ เทียน โคมแขวน ผ้าม่าน
+ต้องมี 2 แบบ: ผู้เล่นใหม่ (ของพื้นฐาน) · แต่งเต็ม
+
+==================================================
+ห้องที่ 2 — ห้องเลี้ยงแมว (สูงสุด 5 ตัว)
+==================================================
+โครงห้อง: สไตล์เดียวกับห้องนอน · ประตูจากห้องนอน · หน้าต่าง 1–2 บาน
+จุดดูแลน้อง:
+  - ตู้อาหาร + ชามอาหาร 5 ใบ + ชามน้ำ
+  - อ่างอาบน้ำแมว
+  - หีบของเล่น + ลูกบอล
+  - ที่นอนแมว 5 ที่ (ตะกร้า / เบาะ / เตียงหลังคา)
+  - คอนโดแมว · ที่ลับเล็บ
+  - ชั้นนอนบนผนัง · เปลญวน
+  - ม้านั่งริมหน้าต่าง (น้องนั่ง)
+  - โต๊ะแต่งตัว + ตู้โบว์
+  - กล่องกระดาษหน้าประตู (น้องที่รอเข้าห้อง)
+ของตกแต่ง: กรอบรูปความทรงจำน้อง พรมนุ่ม ต้นไม้ โคมไฟ
+ต้องมี 3 แบบ:
+  - ห้องโล่ง (ยังไม่มีแมว): หน้าต่าง + กล่องกระดาษ 1 ใบ + ป้ายว่าง
+  - ชุดเริ่มต้น: ชาม 1 + ที่นอน 1 + กล่อง 1
+  - แต่งเต็ม
+
+==================================================
+PROMPT (ก๊อปไปวางได้เลย)
+==================================================
+
+---- 1) ห้องนอนเปล่า (ฉากพื้นหลัง) ----
+2D side-view game background, wide panoramic strip (aspect 8:3), cozy private bedroom inside a fairytale cat castle. Cream stone walls, warm wooden ceiling beams, wooden floor, one large arched window, an arched door on the left (to castle hall) and a door on the right (to the cat room). Empty room, no furniture, clear open floor along the bottom for a character to walk. Soft painterly shading, warm lantern light, NO black outlines, pastel warm palette, cute kawaii mobile game style. No characters, no animals, no text. Orthographic side view, straight horizon.
+
+---- 2) เฟอร์นิเจอร์ห้องนอน (แยกชิ้น) ----
+Game asset sheet, 2D side view, separate isolated furniture pieces on plain white background, evenly spaced, for a cozy bedroom in a fairytale cat castle: canopy bed, writing desk with chair and lamp, window bench with cushions, tall wardrobe with full-length mirror, trophy display shelf, small loveseat, record player on a stand, bookshelf, potted plants, wall picture frames, candles, hanging lantern, round rug, curtains. Same light direction from the left, soft painterly shading, NO black outlines, warm pastel palette, cute kawaii mobile game style. No characters, no text.
+
+---- 3) ห้องเลี้ยงแมวเปล่า (ฉากพื้นหลัง) ----
+2D side-view game background, wide panoramic strip (aspect 32:9), cat nursery room inside a fairytale cat castle, matching style of a cozy castle bedroom: cream stone walls, wooden beams, warm wooden floor, two arched windows, a door on the left. Empty room except one small cardboard box near the door. Clear open floor along the bottom for cats to walk. Soft painterly shading, warm light, NO black outlines, pastel warm palette, cute kawaii mobile game style. No characters, no animals, no text.
+
+---- 4) ของเลี้ยงแมว (แยกชิ้น) ----
+Game asset sheet, 2D side view, separate isolated pieces on plain white background, evenly spaced, cat care furniture for a fairytale castle cat nursery: food cabinet, five food bowls, water bowl, clawfoot cat bathtub, toy chest with yarn balls, five different cat beds (basket, cushion, canopy bed, round bed, box bed), cat condo tree, scratching post, wall-mounted cat shelves, cat hammock, window seat, grooming table with ribbon cabinet, cardboard welcome box, framed cat memory photos (empty frames), soft rug. Same light direction from the left, soft painterly shading, NO black outlines, warm pastel palette, cute kawaii mobile game style. No characters, no animals, no text.
+
+---- 5) (ถ้าอยากได้) ห้องแต่งเต็มไว้ดูอารมณ์ ----
+เอา prompt ข้อ 1 หรือ 3 แล้วเปลี่ยนคำว่า "Empty room, no furniture" / "Empty room except one small cardboard box near the door"
+เป็น "fully furnished with" + รายการของจากข้อ 2 หรือ 4

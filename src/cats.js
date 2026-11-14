@@ -587,6 +587,7 @@ export function adoptFound(where = {}, pre = {}) {
     state: full ? 'foster' : roomCats().length < ROOM_SLOTS ? 'room' : 'wait',
     seed: Math.floor(Math.random() * 1e6),
     card: null,
+    ...(pre.chibi ? { chibi: true } : {}),   // ลูกแมวลายเส้นใหม่ (น้องจิบิ render/chibi.js) — ทุกหน้าที่วาดผ่าน catSkin เห็นแบบใหม่
   };
   // หน้าต้องตรงกับสายพันธุ์และเพศของตัวจริง — ลูกแมวที่ขี่คอระหว่างวิ่งใช้หน้าเดียวกันนี้
   if (!cat.face) cat.face = rollFaceId(cat.breed, cat.sex);
@@ -656,16 +657,16 @@ export function debugForceFind() {
   save();
 }
 
-/** พบน้องทันทีโดยไม่ต้องวิ่ง */
-export function debugAdopt() {
-  const c = adoptFound({ stage: '', stageName: 'สวนหลังบ้าน' });
+/** พบน้องทันทีโดยไม่ต้องวิ่ง · pre = { breed, sex, chibi } (ปุ่มทดสอบเสกลูกแมวลายเส้นใหม่) */
+export function debugAdopt(pre = {}) {
+  const c = adoptFound({ stage: '', stageName: 'สวนหลังบ้าน' }, pre);
   if (c) state.finds.day = '';
   save();
   return c;
 }
 
 /** ทดสอบ: เสกน้องโตเต็มวัยสายพันธุ์ที่ระบุ (ลงวิ่งได้ทันที ไม่กินช่องห้อง) */
-export function debugGrantGrown(breed, sex) {
+export function debugGrantGrown(breed, sex, extra = {}) {
   const t = now();
   const need = {};
   for (const k of NEED_KEYS) need[k] = [100, t];
@@ -674,6 +675,7 @@ export function debugGrantGrown(breed, sex) {
     foundAt: t, where: { stage: '', stageName: 'ปุ่มเสก' }, from: null,
     exp: LV_EXP[GROWN_LV], aff: 0, need, state: 'grown',
     seed: Math.floor(Math.random() * 1e6), card: null,
+    ...extra,
   };
   state.list.push(cat);
   save();

@@ -19,6 +19,7 @@ import FRONT_SVG from './cat2/cat-front.svg?raw';
 import BACK_SVG from './cat2/cat-back.svg?raw';
 import { IDLE_SHAPE, drawCatPose, drawCatFace } from './entities.js';
 import { getFace } from '../face.js';
+import { drawChibi, chibiLookFor } from './chibi.js';
 import { gfxLevel } from '../graphics.js';
 import { track as ktrack, env as kenv, E as KE, mixShape as kmix } from '../home-moves.js';
 
@@ -29,6 +30,7 @@ export const CAT2 = { home: true, stash: true, ui: true, run: true };
  * (สีอื่น ลูกแมว ชุดแต่งตัว แมวระบายสีเอง รอออกแบบใหม่ — ใช้ตัววาดเดิม)
  */
 export function useCat2(s) {
+  if (s?.chibi) return true;   // น้องจิบิ: drawCat2 ส่งต่อให้ตัววาดจิบิ
   // แมวแบบใหม่จากกล่อง (ไข่มุก ขนมชั้น วิเชียรมาศ) ตัวโตแล้ว: ตัววาดใหม่ · ลูกแมว (age) ยังใช้ตัววาดเดิม
   if (s && !s.age && CAT2_BREED_IDS.has(s.palette) && (!s.outfit || s.outfit.id === 'none' || !!CAT2_OUTFITS[s.outfit.id])) return true;
   // มีรูปหน้าที่ผู้เล่นอัปโหลดอยู่ = ใช้ตัววาดเดิม (กรอบรูปหน้ายังผูกกับหัวแบบเดิม)
@@ -22984,7 +22986,7 @@ export const CAT2_BREEDS = [
     id: 'korat', name: 'โคราช', note: 'แมวไทยสีเทาเงิน ตาเขียวมรกต · ตัวผู้', sex: 'm', stripes: false,
     pal: {
       cat: '#8E9099', stripe: '#767882', shade: '#81838D', cream: '#A9ABB4',
-      line: '#3A2A26', ear: '#DC9A90', cheek: 'rgba(0,0,0,0)', nose: '#7A6670', noseGloss: true, mouth: '#3A2A26',
+      line: '#3A2A26', ear: '#DC9A90', cheek: '#E8A3A0', nose: '#7A6670', noseGloss: true, mouth: '#3A2A26',   // แก้มชมพูอมพีชนุ่ม (ผู้ใช้ 14 พ.ย. — เดิมไม่มีแก้ม)
       air: '#555864',                          // พ่นเงาขอบเทาเข้มอมฟ้า
       glow: '#BEC1CA',                         // ปลายขนสีเงินสะท้อนแสงกลางตัว/หน้า
       earIn: '#E2A298', earEdge: '#C47F77', earFur: '#C4C6CE',   // หูในชมพูอมส้ม + ปอยขนเทาเงิน
@@ -23286,6 +23288,23 @@ export function drawCatAuto(ctx, x, feetY, scale, s, t = 0, idle = null, { fit =
   if (CAT2.ui && useCat2(s)) return drawCat2(ctx, x, feetY, scale * fit, s, t, toIdle(idle));
   return drawCatPose(ctx, x, feetY, scale, s, t, idle);
 }
+/** ตอนวิ่งในด่าน: น้องจิบิยังไม่มีท่าวิ่ง → ใช้ตัววาดเดิม (ท่าวิ่ง cat2-run.js เป็นของตัวโต) */
+export const useCat2Run = (s) => !s?.chibi && useCat2(s);
+
+/**
+ * น้องจิบิในจุดที่เรียก drawCat2 (หน้าแรก คลังแมว รูปหน้า) — ขนาดเทียบหัวตัวโต
+ * หัวจิบิกว้าง ~258 หน่วยชีท ↔ หัวตัวโต ~420 หน่วยไฟล์ออกแบบ × UNIT → k = 0.17 × scale
+ * headOnly (รูปหน้า): วางกลางหัวตรงกลางหัวตัวโต · ทั้งตัว: เท้าบนพื้นเดียวกัน
+ * ยืนนิ่งหน้าตรง รวมท่าเอง (กะพริบ หูกระดิก หางแกว่ง ร้องเหมียว/หาวเป็นพัก ๆ) — ท่าของหน้าแรก/มุมหันยังไม่ใช้
+ */
+function drawChibiAs2(ctx, x, feetY, scale, s, t, idle) {
+  // ทั้งตัว: เด็กน้อย สูงราว 62% ของตัวโต (เท่าลูกแมว sizeOf ใน cats.js — ผู้ใช้ 14 พ.ย.) · รูปหน้า/การ์ดหัว: หัวกว้างเท่าหัวตัวโต
+  const k = (idle?.headOnly ? 0.17 : 0.11) * scale;
+  const look = chibiLookFor(s.palette || s.breed || s.id);
+  const feet = idle?.headOnly ? feetY - (FEET_Y - 222) * UNIT * scale + 230 * k : feetY;
+  drawChibi(ctx, x, feet, k, { view: 'front', t, look, act: 'auto' });
+}
+
 /** วาดเฉพาะหน้า (รูปโปรไฟล์ อันดับ เพื่อน) — ตำแหน่ง/ขนาดเท่าของ drawCatFace เดิม */
 export function drawCatFaceAuto(ctx, cx, cy, scale, s, opts = {}) {
   if (!(CAT2.ui && useCat2({ ...s, noPhoto: s.noPhoto || opts.noPhoto }))) return drawCatFace(ctx, cx, cy, scale, s, opts);
@@ -25487,6 +25506,7 @@ function kitTuftPath(fx = (x) => x) {
 }
 
 export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
+  if (s?.chibi) return drawChibiAs2(ctx, x, feetY, scale, s, t, idle);
   s = withBreed(s);   // น้องจากกล่องสายพันธุ์แบบใหม่: เติมจานสี/ตา/ลาย
   // ลูกแมว (KIT): idle.kitten บังคับค่าได้ (หน้าทดลอง) · ไม่งั้นอ่านจากวัยของน้อง
   const kit = idle?.kitten ?? (s?.age === 'baby' ? 1 : s?.age === 'young' ? 0.5 : 0);

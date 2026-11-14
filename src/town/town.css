@@ -1545,3 +1545,430 @@ body.photo .chat, body.scope .chat, body.in-shop .chat { display: none; }
     --backbtn-y: max(clamp(7px, 1.4dvh, 9px), calc(env(safe-area-inset-top, 0px) * .5));
   }
 }
+
+/* ══════════ UI รอบจอแบบใหม่ (ผู้ใช้ 15 พ.ย. 2026 ส่งแบบ) ══════════
+   ไอคอนวุ้นใสลาเวนเดอร์ (hud-icons.js) ไม่มีแผ่นรอง — ทรงเดียวกับไอคอนแถบบนหน้าแรก สีต่างกัน
+   ประตูออกซ้ายบน (แผ่นแก้วกลมอ่อน) · แถวไอคอนขวาบน · กล่องแชตชั้นนี้ซ้ายบน (พับเก็บได้) · ท่าทาง|วิ่ง วงกลมผ่าครึ่ง */
+.hico { display: block; width: 100%; height: 100%; }
+.hico svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hudico {
+  position: relative; flex: 0 0 auto;
+  width: calc(var(--backbtn) * 1.12); height: calc(var(--backbtn) * 1.12);
+  padding: calc(var(--backbtn) * .06);
+  border: 0; border-radius: 30%;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 4px rgba(70,30,130,.32));
+  transition: filter .12s ease;
+}
+.hudico:active { filter: drop-shadow(0 3px 4px rgba(70,30,130,.32)) brightness(.93); }
+.hudico:focus-visible { outline: 3px solid #FFFFFF; outline-offset: 2px; }
+/* ป้ายจำนวนแมวในห้องบนหัวแมว (12/20) */
+.mem-badge {
+  position: absolute; right: -6%; bottom: 2%;
+  padding: 1px 6px; border-radius: 999px;
+  background: linear-gradient(180deg, #FFB3D6, #F27FB4); color: #FFFFFF;
+  border: 1.5px solid #FFFFFF;
+  font: 800 clamp(9px, 1.7dvh, 11px)/1.25 "Mali", sans-serif;
+  box-shadow: 0 2px 4px rgba(160,40,100,.35);
+  pointer-events: none;
+}
+/* ประตูออก: แผ่นแก้วกลมลาเวนเดอร์อ่อน (ตามแบบ) */
+.backbtn.hud-door {
+  border: 1.5px solid rgba(255,255,255,.8);
+  background:
+    radial-gradient(60% 40% at 40% 20%, rgba(255,255,255,.7) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(180deg, rgba(246,238,255,.82), rgba(214,192,248,.78));
+  box-shadow: 0 6px 12px -6px rgba(80,40,140,.45), inset 0 -5px 8px -4px rgba(150,110,220,.4), inset 0 2px 2px rgba(255,255,255,.8);
+}
+.backbtn.hud-door .hico { width: 84%; height: 84%; }
+/* ทอง/กระเป๋า = ซื้อของในเมือง — ในปราสาท/บ้านซ่อน (แบบไม่มี) */
+body:not([data-w="town"]):not([data-w="garden"]) .topbar .gold,
+body:not([data-w="town"]):not([data-w="garden"]) #btnBag { display: none; }
+body.in-shop .hudico { display: none; }
+body.photo .online, body.scope .online { pointer-events: none; }
+
+/* ── กล่องแชตชั้นนี้ (ซ้ายบน ใต้ประตู) + ปุ่มแชตใต้กล่อง ── */
+.online {
+  top: calc(var(--backbtn) + clamp(16px, 2.8dvh, 32px) + 10px);
+  left: calc(var(--backbtn-x) + env(safe-area-inset-left) + 6px);
+  flex-direction: column; align-items: flex-start; gap: 6px;
+}
+.online-pill { display: none; }
+.chatfeed {
+  position: relative; pointer-events: auto;
+  width: min(330px, 36vw);
+  padding: 22px 14px 12px 14px;
+  border-radius: 18px;
+  border: 2px solid rgba(196,164,240,.95);
+  background: linear-gradient(180deg, rgba(255,247,251,.93), rgba(255,236,246,.9));
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 18px -10px rgba(90,40,150,.5), inset 0 2px 2px rgba(255,255,255,.9);
+}
+.cf-tab {
+  position: absolute; left: -6px; top: -12px;
+  padding: 4px 14px; border-radius: 999px;
+  background: linear-gradient(180deg, #FFD3E6, #F7AACF);
+  color: #5A2E7A; font-size: clamp(11px, 2dvh, 13px); font-weight: 700;
+  box-shadow: 0 3px 8px -3px rgba(200,80,140,.5), inset 0 1.5px 1px rgba(255,255,255,.8);
+}
+.cf-log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.cf-log li { font-size: clamp(11px, 2dvh, 13px); line-height: 1.5; color: #4A2A6E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-log li b { color: #7A3FB0; }
+.cf-log li.cf-empty { color: #9C86BC; white-space: normal; }
+.cf-fold {
+  position: absolute; right: -8px; bottom: -10px;
+  width: 26px; height: 26px; padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(160,120,220,.9);
+  background: linear-gradient(180deg, #FFFFFF, #F1E6FF);
+  color: #8A5FD6; display: grid; place-items: center; cursor: pointer;
+  box-shadow: 0 3px 8px -3px rgba(90,40,150,.45);
+  transition: filter .12s ease;
+}
+.cf-fold svg { width: 70%; height: 70%; transition: transform .2s ease; }
+.cf-fold:active { filter: brightness(.93); }
+/* พับเก็บ = เหลือแค่ป้ายชั้น + ปุ่มกาง */
+.chatfeed.fold { width: auto; min-width: 150px; padding: 12px 32px 8px 14px; }
+.chatfeed.fold .cf-log { display: none; }
+.chatfeed.fold .cf-fold svg { transform: rotate(180deg); }
+.cf-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; pointer-events: none; }
+.cf-row > * { pointer-events: auto; }
+.chatbtn.hudico { padding: calc(var(--backbtn) * .04); border: 0; background: none; box-shadow: none; width: calc(var(--backbtn) * .92); height: calc(var(--backbtn) * .92); border-radius: 30%; }
+.chatbtn.hudico .chat-new { top: 6%; right: 2%; width: 11px; height: 11px; background: #FF4F7E; }
+
+/* ── รายชื่อสมาชิก ── */
+.sheet.mem { width: min(440px, 94vw); }
+.memlist { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 58dvh; overflow-y: auto; }
+.memlist li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 14px;
+  background: rgba(255,255,255,.14); color: #FFF3E2; font-weight: 700;
+}
+.memlist li.me { background: rgba(255,214,234,.24); }
+.memlist .m-dot { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto; border: 2px solid rgba(255,255,255,.85); }
+.memlist .m-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memlist .m-floor { font-size: 12px; font-weight: 700; color: #FFE7A0; }
+.memlist .m-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: rgba(255,255,255,.22); }
+.memlist li.m-empty { justify-content: center; font-weight: 600; color: rgba(255,243,226,.85); background: none; }
+
+/* ── ท่าทาง | วิ่ง: วงกลมผ่าครึ่ง นุ่ม ๆ ใส ๆ (ตามแบบ — รู้ว่ากดได้ แต่ไม่แย่งซีน) ── */
+.duo {
+  position: relative; display: flex; flex: 0 0 auto;
+  width: calc(var(--padbig) * .92); height: calc(var(--padbig) * .92);
+  border-radius: 50%; overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,.72);
+  box-shadow: 0 8px 16px -8px rgba(60,20,80,.45), inset 0 2px 2px rgba(255,255,255,.5);
+  pointer-events: auto;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.duo::after { content: ""; position: absolute; left: 50%; top: 14%; bottom: 14%; width: 1.5px; margin-left: -.75px; background: rgba(255,255,255,.65); pointer-events: none; }
+.pad .duo > .emobtn,
+.pad .duo > .runbtn {
+  flex: 1 1 50%; width: auto; height: 100%; min-width: 0;
+  margin: 0; padding: 0; border: 0; border-radius: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: #FFFFFF;
+  box-shadow: inset 0 -8px 12px -6px rgba(120,60,160,.3);
+}
+.pad .duo > .emobtn {
+  padding-left: 8%;
+  background: radial-gradient(70% 45% at 50% 18%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 72%), linear-gradient(180deg, rgba(255,202,226,.7), rgba(242,150,196,.66));
+}
+.pad .duo > .runbtn {
+  padding-right: 8%;
+  background: radial-gradient(70% 45% at 50% 18%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 72%), linear-gradient(180deg, rgba(228,208,255,.7), rgba(184,150,240,.66));
+}
+.pad .duo .hico { width: 62%; height: auto; aspect-ratio: 1; }
+.pad .duo b { font-size: clamp(10px, 2.3dvh, 12.5px); line-height: 1; text-shadow: 0 1px 2px rgba(110,40,120,.6); }
+.pad .duo > .emobtn.on { filter: brightness(.92); }
+.pad .duo > .runbtn.on { background: radial-gradient(70% 45% at 50% 18%, rgba(255,255,255,.4) 0%, rgba(255,255,255,0) 72%), linear-gradient(180deg, rgba(255,214,236,.82), rgba(236,140,196,.78)); }
+.pad .duo > :active { filter: brightness(.92); transform: none; }
+/* มือถือแนวนอน (จอเตี้ย): กล่องแชตเล็กลง ไม่บังฉาก */
+@media (max-height: 500px) {
+  .chatfeed { width: min(280px, 32vw); padding: 18px 12px 10px; }
+  .cf-log { gap: 2px; }
+  .cf-log li { font-size: 11px; line-height: 1.45; }
+}
+/* เพชรชมพู — ภาพเดียวกับหน้าแรก (style.css .gem) */
+.gem { display: inline-block; background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E %3Cdefs%3E %3CradialGradient id=%22g%22 cx=%2216%22 cy=%2213%22 r=%2215%22 gradientUnits=%22userSpaceOnUse%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22 stop-opacity=%22.2%22/%3E%3Cstop offset=%221%22 stop-color=%22%23fff%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E %3CradialGradient id=%22b%22 cx=%2216%22 cy=%2227%22 r=%227%22 gradientUnits=%22userSpaceOnUse%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFE0F0%22 stop-opacity=%22.55%22/%3E%3Cstop offset=%221%22 stop-color=%22%23FFE0F0%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E %3ClinearGradient id=%22t%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23FFF0F7%22/%3E%3Cstop offset=%221%22 stop-color=%22%23FFB0D5%22/%3E%3C/linearGradient%3E %3C/defs%3E %3Cpath d=%22M9.4 5.4h13.2L29 12.6 16 28.8 3 12.6Z%22 fill=%22none%22 stroke=%22%23B8236A%22 stroke-width=%222.6%22 stroke-linejoin=%22round%22/%3E %3Cpath d=%22M3 12.6 9.4 5.4 11.2 12.6Z%22 fill=%22%23FF8CC0%22/%3E %3Cpath d=%22M9.4 5.4h13.2l-1.8 7.2H11.2Z%22 fill=%22url(%23t)%22/%3E %3Cpath d=%22M22.6 5.4 29 12.6h-8.2Z%22 fill=%22%23FF62A8%22/%3E %3Cpath d=%22M3 12.6h8.2L16 28.8Z%22 fill=%22%23FF5AA3%22/%3E %3Cpath d=%22M11.2 12.6h9.6L16 28.8Z%22 fill=%22%23FF93C6%22/%3E %3Cpath d=%22M20.8 12.6H29L16 28.8Z%22 fill=%22%23DB2F82%22/%3E %3Cpath d=%22M9.4 5.4h13.2L29 12.6 16 28.8 3 12.6Z%22 fill=%22url(%23g)%22/%3E %3Cpath d=%22M9.4 5.4h13.2L29 12.6 16 28.8 3 12.6Z%22 fill=%22url(%23b)%22/%3E %3Cpath d=%22M3 12.6h26M11.2 12.6 16 28.8l4.8-16.2M9.4 5.4l1.8 7.2M22.6 5.4l-1.8 7.2%22 fill=%22none%22 stroke=%22%23fff%22 stroke-opacity=%22.6%22 stroke-width=%22.7%22 stroke-linejoin=%22round%22/%3E %3Cpath d=%22M11.4 6.6h3.2l-1.6 4.8h-2.4Z%22 fill=%22%23fff%22 opacity=%22.9%22/%3E %3Cpath d=%22M6.2 13.6h2.6l3.6 9.4Z%22 fill=%22%23fff%22 opacity=%22.35%22/%3E %3Cpath d=%22M25.4 2.2 26 4 27.8 4.6 26 5.2 25.4 7 24.8 5.2 23 4.6 24.8 4Z%22 fill=%22%23fff%22/%3E %3C/svg%3E") center / contain no-repeat; filter: drop-shadow(0 1px 1.5px rgba(120,10,60,.35)) drop-shadow(0 0 3px rgba(255,120,180,.45)); }
+
+
+/* ══════════ UI รอบจอ รอบ 2 (ผู้ใช้ 15 พ.ย. 2026) ══════════ */
+/* ปุ่มแถวบนชิดขอบจอขึ้น — --backbtn-x คิดเขตปลอดภัยรอยบาก 40% ไว้แล้ว ไม่ต้องบวกเต็มอีกรอบ */
+.topbar { padding: 0 var(--backbtn-x); gap: clamp(4px, .8vw, 8px); }
+.topbar .backbtn { left: var(--backbtn-x); }
+.online { left: calc(var(--backbtn-x) + 4px); }
+
+/* ปุ่มแต่ละที่ (body[data-w]) — เมือง/สวน: กระเป๋า เพชร/ทอง · บ้าน/ห้องแมว: เพชร/ทอง · ปราสาท: หัวแมว (ไม่มีเงิน) */
+body:not([data-w="town"]):not([data-w="garden"]) #btnBag { display: none; }
+body:is([data-w="hall"], [data-w="lounge"], [data-w="roof"]) .twallet { display: none; }
+body:not([data-w="hall"]):not([data-w="lounge"]):not([data-w="roof"]) #btnMembers { display: none; }
+body.in-shop .twallet { display: flex; }
+
+/* ── กรอบเพชร/ทอง + ปุ่มบวก (แบบหน้าแรก: วุ้นขาวมุก / วุ้นเนย · บวกวุ้นฟ้า) ── */
+.twallet { display: flex; align-items: center; gap: 6px; margin-right: 2px; }
+.tbar {
+  --th: calc(var(--backbtn) * .78);
+  position: relative; display: flex; align-items: center; gap: 6px;
+  height: var(--th); padding: 0 calc(var(--th) * .1) 0 5px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,.75);
+  -webkit-backdrop-filter: blur(4px) saturate(1.35);
+  backdrop-filter: blur(4px) saturate(1.35);
+}
+.tbar b { font-weight: 800; font-size: clamp(12px, 2.4dvh, 16px); letter-spacing: .01em; line-height: 1; }
+.tbar .gem, .tbar .coin { flex: 0 0 auto; width: calc(var(--th) * .74); height: calc(var(--th) * .74); }
+.tgem {
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,232,244,.9) 0%, rgba(255,232,244,0) 70%),
+    linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(252,246,252,.86) 52%, rgba(244,232,246,.92) 100%);
+  box-shadow: 0 3px 0 rgba(226,196,222,.95), 0 8px 14px -5px rgba(220,140,190,.4), inset 0 2px 1px rgba(255,255,255,.95), inset 0 -6px 9px -3px rgba(255,226,242,.6);
+}
+.tgem b { color: #D2468D; text-shadow: 0 1.5px 0 rgba(255,255,255,.9); }
+.tgold {
+  background:
+    radial-gradient(70% 48% at 42% 14%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 72%),
+    radial-gradient(80% 62% at 50% 118%, rgba(255,250,228,.9) 0%, rgba(255,250,228,0) 70%),
+    linear-gradient(180deg, rgba(255,250,222,.94) 0%, rgba(255,238,176,.9) 52%, rgba(252,224,140,.94) 100%);
+  box-shadow: 0 3px 0 rgba(236,200,120,.9), 0 8px 14px -6px rgba(240,180,60,.45), inset 0 2px 1px rgba(255,255,255,.95), inset 0 -6px 9px -3px rgba(250,214,130,.6);
+}
+.tgold b { color: #B06A0C; text-shadow: 0 1.5px 0 rgba(255,255,255,.9); }
+.tplus {
+  position: relative; flex: 0 0 auto;
+  width: calc(var(--th) * .8); height: calc(var(--th) * .8);
+  padding: 0; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,.85);
+  background:
+    radial-gradient(60% 40% at 40% 20%, rgba(255,255,255,.8) 0%, rgba(255,255,255,0) 75%),
+    radial-gradient(80% 55% at 50% 115%, rgba(226,246,255,.8) 0%, rgba(226,246,255,0) 70%),
+    linear-gradient(180deg, rgba(214,240,255,.95) 0%, rgba(160,214,248,.93) 55%, rgba(122,190,238,.95) 100%);
+  cursor: pointer; transition: filter .12s ease;
+}
+.tplus::before {
+  content: ""; position: absolute; inset: 16%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 4.6v10.8M4.6 10h10.8' fill='none' stroke='%234A90CC' stroke-width='6.4' stroke-linecap='round'/%3E%3Cpath d='M10 4.6v10.8M4.6 10h10.8' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.tplus:active { filter: brightness(.93); }
+@media (max-height: 500px) {
+  .tbar b { font-size: 12px; }
+}
+
+/* ป้ายจำนวนบนหัวแมว: ใต้คาง ไม่ทับดวงตา (ผู้ใช้ 15 พ.ย.) — ทับหู/แก้มได้ */
+.mem-badge { right: 50%; bottom: -16%; transform: translateX(50%); padding: 0 6px; font-size: clamp(8.5px, 1.6dvh, 10.5px); }
+
+/* ── กล่องแชตชั้นนี้ รอบ 2: ป้ายชั้น + ปุ่มพับอยู่คู่กัน · พับ/กางลื่น ๆ (grid rows) · ตอนพับไม่เหลือกรอบโล่ง ── */
+.chatfeed { width: min(310px, 34vw); padding: 0; border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.cf-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; margin-bottom: -11px; padding-left: 0; }
+.cf-tab { position: static; padding: 3px 12px; font-size: clamp(10.5px, 1.9dvh, 12px); }
+.cf-fold { position: static; flex: 0 0 auto; width: 22px; height: 22px; }
+.chatfeed.fold .cf-fold svg { transform: rotate(180deg); }
+.cf-body {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows .32s cubic-bezier(.3,.8,.3,1), opacity .26s ease, transform .32s cubic-bezier(.3,.8,.3,1);
+  transform-origin: 0 0;
+}
+.cf-inner {
+  min-height: 0; overflow: hidden;
+  border-radius: 16px;
+  border: 1.5px solid rgba(196,164,240,.95);
+  background: linear-gradient(180deg, rgba(255,247,251,.93), rgba(255,236,246,.9));
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 18px -10px rgba(90,40,150,.5), inset 0 2px 2px rgba(255,255,255,.9);
+}
+.cf-log { padding: 17px 12px 9px; gap: 2px; }
+.cf-log li { font-size: clamp(10px, 1.8dvh, 11.5px); line-height: 1.45; }
+.chatfeed.fold { width: min(310px, 34vw); min-width: 0; padding: 0; }
+.chatfeed.fold .cf-body { grid-template-rows: 0fr; opacity: 0; transform: scaleY(.6); }
+.chatfeed.fold .cf-inner { border-width: 0; box-shadow: none; }
+.chatfeed.fold .cf-log { display: flex; }
+.chatfeed.fold .cf-head { margin-bottom: 0; }
+/* แผงแชตใหญ่เปิด = กล่องเล็กหาย (ข้อความโชว์ในแผงใหญ่แทน) */
+body.chat-open .chatfeed, body.chat-open .cf-row { opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+.chatfeed, .cf-row { transition: opacity .2s ease; }
+@media (prefers-reduced-motion: reduce) { .cf-body { transition: none; } }
+
+/* ── แผงแชตใหญ่ รอบ 2: ชิดซ้าย · หน้าตาแบบกล่องแชตเล็ก (การ์ดครีมชมพู ขอบลาเวนเดอร์ ป้ายชมพู) · ตัวหนังสือเล็กลง ── */
+.chat {
+  left: calc(var(--backbtn-x) + 4px); right: auto;
+  width: min(380px, 46vw);
+  max-height: calc(100dvh - var(--backbtn) - clamp(16px, 2.8dvh, 32px) - 24px);
+  padding: 10px 11px 11px;
+  border-radius: 18px;
+  border: 1.5px solid rgba(196,164,240,.95);
+  background: linear-gradient(180deg, rgba(255,248,252,.96), rgba(252,236,248,.95));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 12px 28px -10px rgba(80,30,140,.45), inset 0 2px 2px rgba(255,255,255,.9);
+  color: #4A2A6E;
+  animation: chatIn .28s cubic-bezier(.3,.8,.3,1);
+}
+@keyframes chatIn { from { opacity: 0; transform: translateX(-14px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) { .chat { width: calc(100vw - 24px); } }
+.chat-head b {
+  padding: 3px 12px; border-radius: 999px;
+  background: linear-gradient(180deg, #FFD3E6, #F7AACF);
+  color: #5A2E7A; font-size: clamp(11px, 2dvh, 12.5px);
+  box-shadow: 0 3px 8px -3px rgba(200,80,140,.5), inset 0 1.5px 1px rgba(255,255,255,.8);
+}
+.chat-x { width: 26px; height: 26px; }
+.chat-log { background: rgba(255,255,255,.66); box-shadow: inset 0 1px 4px rgba(150,110,200,.22); border: 1px solid rgba(214,190,244,.7); }
+.chat-row { font-size: 12px; color: #4A2A6E; }
+.chat-row .who { background: rgba(196,168,240,.9); color: #FFFFFF; font-size: 10.5px; }
+.chat-row.guest .who { background: rgba(176,166,200,.85); }
+.chat-row.mine .who { background: rgba(255,150,196,.9); }
+.chat-more { background: rgba(160,120,220,.15); color: #8A5FD6; }
+.chat-empty, .chat-unblock { font-size: 11px; color: #9C86BC; }
+.chat-link { color: #8A4FD0; }
+.chat-chip { min-height: 28px; padding: 3px 11px; font-size: 11.5px; border-color: rgba(214,190,244,.9); }
+.chat-tool { height: 32px; font-size: 11.5px; border-color: rgba(196,164,240,.9); background: rgba(255,255,255,.7); color: #7A4FC0; box-shadow: inset 0 2px 3px rgba(255,255,255,.7); }
+.chat-tool svg { width: 17px; height: 17px; }
+.chat-tool svg path[fill="currentColor"], .chat-tool svg circle[fill="currentColor"] { fill: #B998F0; }
+.chat-tool.on { background: linear-gradient(180deg, #E7D6FF, #CDB2F6); color: #5A2E9A; border-color: #FFFFFF; }
+.chat-form input { height: 32px; border-color: rgba(196,164,240,.9); background: rgba(255,255,255,.85); color: #4A2A6E; }
+.chat-form input::placeholder { color: #B5A2CF; }
+.chat-form input:focus { border-color: #B998F0; background: #FFFFFF; }
+.chat-send { height: 32px; padding: 0 14px; font-size: 12.5px; }
+.chat-lock { height: 32px; font-size: 11px; border-color: rgba(176,140,226,.7); background: rgba(240,230,255,.7); color: #8A6BB0; }
+
+/* ── ท่าทาง | วิ่ง รอบ 2: เอากรอบวงกลมชมพูออก เหลือไอคอน + ข้อความ (มือถือ/iPad ทุกที่) ── */
+.duo { width: auto; height: auto; gap: clamp(6px, 1.4vw, 12px); overflow: visible; border: 0; border-radius: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.duo::after { content: none; }
+.pad .duo > .emobtn,
+.pad .duo > .runbtn {
+  flex: 0 0 auto; width: clamp(48px, 13dvh, 64px); height: auto; padding: 0;
+  background: none; box-shadow: none;
+  filter: drop-shadow(0 3px 4px rgba(70,30,130,.35));
+}
+.pad .duo .hico { width: 82%; }
+.pad .duo b { font-size: clamp(10px, 2.2dvh, 12px); text-shadow: 0 1px 2px rgba(80,30,110,.75), 0 0 6px rgba(80,30,110,.45); }
+.pad .duo > .runbtn.on { background: none; filter: drop-shadow(0 0 8px rgba(255,150,200,.85)) drop-shadow(0 3px 4px rgba(70,30,130,.35)); }
+.pad .duo > .emobtn.on { filter: drop-shadow(0 0 8px rgba(160,240,210,.85)) brightness(.95); }
+
+/* ══════════ UI รอบจอ รอบ 3 (ผู้ใช้ 15 พ.ย. 2026): ปุ่มแถวบนขนาด/ตำแหน่งเท่าปุ่มตั้งค่าหน้าแรก ══════════
+   วัดจากหน้าแรกจริง: มือถือ 27px ห่างขอบบน ~17 ขวา ~28 · คอม 40px บน 34 ขวา 30 · iPad 48px · ช่องห่างปุ่ม 7–8px */
+:root {
+  --hs: clamp(27px, 5dvh, 40px);      /* ขนาดปุ่มกลม/ไอคอนแถวบน (= ปุ่มตั้งค่าหน้าแรก) */
+  --ht: clamp(16px, 4.3dvh, 34px);    /* ห่างขอบบน */
+  --hr: clamp(26px, 2.2vw, 30px);     /* ห่างขอบซ้าย/ขวา */
+}
+@media (pointer: coarse) and (min-height: 700px) { :root { --hs: 48px; --ht: 30px; } }
+@media (hover: none), (pointer: coarse) {
+  :root { --hr: max(clamp(26px, 2.2vw, 30px), calc(env(safe-area-inset-right, 0px) * .4 + 10px), calc(env(safe-area-inset-left, 0px) * .4 + 10px)); }
+}
+.topbar {
+  height: calc(var(--ht) + var(--hs) + 6px);
+  padding: var(--ht) var(--hr) 0;
+  align-items: flex-start;
+  gap: 7px;
+}
+.topbar .backbtn { left: var(--hr); top: var(--ht); width: var(--hs); height: var(--hs); }
+.backbtn.hud-door .hico { width: 82%; height: 82%; }
+.mode { margin-left: calc(var(--hs) + 10px); align-self: center; padding: 3px 10px; font-size: clamp(10px, 1.8dvh, 12.5px); }
+.topbar .mode { margin-top: 0; }
+.hudico { width: var(--hs); height: var(--hs); padding: 0; }
+.twallet { gap: 7px; }
+.tbar { --th: var(--hs); }
+.tbar b { font-size: clamp(11.5px, 2.4dvh, 17px); }
+.mem-badge { bottom: -30%; font-size: clamp(8px, 1.5dvh, 10px); padding: 0 5px; }
+/* กล่องแชต/แผงแชตเริ่มใต้แถวบนพอดี */
+.online { top: calc(var(--ht) + var(--hs) + 14px); left: calc(var(--hr) + 2px); }
+.chat { left: calc(var(--hr) + 2px); max-height: calc(100dvh - var(--ht) - var(--hs) - 26px); }
+
+/* ── ท่าทาง | วิ่ง รอบ 3: เล็กลง · ต่ำลงชิดฐานปุ่มกระโดด · ไม่มีข้อความใต้ไอคอน (ชื่อยังอยู่ใน aria-label) ── */
+.duo { align-self: flex-end; margin-bottom: clamp(2px, 1dvh, 8px); gap: clamp(4px, 1vw, 10px); }
+.pad .duo > .emobtn,
+.pad .duo > .runbtn { width: clamp(36px, 9.6dvh, 50px); }
+.pad .duo .hico { width: 100%; }
+.pad .duo b { display: none; }
+
+/* ══════════ UI รอบจอ รอบ 4 (ผู้ใช้ 15 พ.ย. 2026) ══════════ */
+/* ประตูออก: เหลือแต่ไอคอน ไม่มีวงกลมรอง */
+.backbtn.hud-door { border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; filter: drop-shadow(0 3px 4px rgba(70,30,130,.32)); }
+.backbtn.hud-door .hico { width: 100%; height: 100%; }
+
+/* ป้ายจำนวนคนบนหัวแมว: ขวาของไอคอน ระดับปาก (ทับจมูก/ปาก/แก้มได้ ห้ามทับตา — ตาอยู่ราว 50–66% ของความสูง) */
+.mem-badge { left: 56%; right: auto; top: 66%; bottom: auto; transform: none; }
+
+/* toast (ข้อความขึ้นแป๊บเดียว) อยู่ใต้ชั้นปุ่ม/กล่องสถานะ · ตำแหน่งกลางจอเหมือนหน้าอื่น (ผู้ใช้สั่งคืนที่เดิม 15 พ.ย. 2026) */
+.toast { z-index: 4; }
+
+/* กล่องแชตซ้ายบน: แก้วฝ้าเบลอโปร่งใส (ไม่ใช่กรอบทึบชัด) — ยังโทนชมพูลาเวนเดอร์ของเกม */
+.cf-inner {
+  border: 1px solid rgba(255,255,255,.6);
+  background: linear-gradient(180deg, rgba(255,246,252,.46), rgba(246,232,255,.34));
+  -webkit-backdrop-filter: blur(12px) saturate(1.35);
+  backdrop-filter: blur(12px) saturate(1.35);
+  box-shadow: 0 8px 20px -12px rgba(90,40,150,.45), inset 0 1px 1px rgba(255,255,255,.75);
+}
+.cf-log li { color: #45235F; text-shadow: 0 1px 0 rgba(255,255,255,.55); }
+.cf-log li b { color: #7A3FB0; }
+.cf-log li.cf-empty { color: #6F5590; }
+
+/* ปุ่มปิดแผงแชต: อยู่ในแถวหัวแผง ตรงกับป้ายชื่อชั้น (ไม่ลอยเยื้องลงมาทับกล่องข้อความ) */
+.chat-head { align-items: center; margin-bottom: 2px; }
+.chat .chat-x { position: relative; left: auto; right: auto; top: auto; width: 26px; height: 26px; margin: 0; flex: none; }
+
+/* มือถือแนวนอน: กล่องแชต + ปุ่มแชตเลื่อนพ้นเกาะไดนามิกฝั่งซ้ายนิดหน่อย */
+@media (pointer: coarse) and (max-height: 500px) {
+  .online, .chat { left: calc(var(--hr) + 4vw); }
+}
+
+/* ── ท่าทาง | วิ่ง รอบ 4: ไอคอนเท่าปุ่มแถวบน (พื้นที่แตะกว้างกว่าภาพนิดหน่อย) · วิ่ง = ออร่าชมพูเต้นข้างหลัง · เดิน = อุ้งเท้าโทนลาเวนเดอร์ ── */
+.pad .duo > .emobtn,
+.pad .duo > .runbtn { position: relative; width: calc(var(--hs) + 16px); height: calc(var(--hs) + 16px); display: grid; place-items: center; }
+.pad .duo .hico { width: var(--hs); height: var(--hs); aspect-ratio: auto; }
+.pad .duo > .runbtn:not(.on) .hico { filter: hue-rotate(235deg) saturate(.75) brightness(1.05); }
+.pad .duo > .runbtn::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: calc(var(--hs) * 1.9); height: calc(var(--hs) * 1.9); margin: calc(var(--hs) * -.95) 0 0 calc(var(--hs) * -.95);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,236,246,1) 0%, rgba(255,150,205,.9) 32%, rgba(255,186,120,.5) 52%, rgba(255,150,200,0) 70%);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 0 14px 4px rgba(255,140,200,.55);
+  opacity: 0; transform: scale(.7); transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none; z-index: -1;
+}
+.pad .duo > .runbtn.on::before { opacity: 1; transform: scale(1); animation: runAura 1s ease-in-out infinite alternate; }
+.pad .duo > .runbtn.on { filter: drop-shadow(0 3px 4px rgba(70,30,130,.35)); }
+@keyframes runAura { from { transform: scale(.88); opacity: .75; } to { transform: scale(1.08); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pad .duo > .runbtn.on::before { animation: none; } }
+
+/* ── จอยเดิน รอบ 4: ไม่มีวงแก้วเบลอ ไม่มีลูกศร — ปุ่มลากเป็นอุ้งเท้าวุ้นใส ชมพู ม่วง เหลือง (hud-icons.js joypaw) ── */
+.joy { border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.joy-arrows { display: none; }
+.joy-knob, .joy.on .joy-knob {
+  width: 62%; height: 62%; margin: -31% 0 0 -31%;
+  border: 0; background: none; box-shadow: none;
+  filter: drop-shadow(0 5px 6px rgba(90,40,130,.35));
+}
+.joy-knob .hico { width: 100%; height: 100%; }
+.joy.on .joy-knob { filter: drop-shadow(0 5px 6px rgba(90,40,130,.35)) brightness(1.06); }
+/* ── รอบ 5 (ผู้ใช้ 15 พ.ย. 2026) ── ออร่าตอนวิ่งอ่อนลง ไม่มีวงขาว · ประกายวิ้งตอนลากจอย */
+.pad .duo > .runbtn::before {
+  background: radial-gradient(circle, rgba(255,226,240,.7) 0%, rgba(255,160,208,.42) 34%, rgba(255,190,130,.16) 54%, rgba(255,150,200,0) 70%);
+  box-shadow: none;
+}
+@keyframes runAura { from { transform: scale(.9); opacity: .6; } to { transform: scale(1.04); opacity: .85; } }
+.joy-spark {
+  position: absolute; z-index: 2; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  pointer-events: none;
+  background: var(--c, #FFFFFF);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 4px rgba(255,170,220,.95));
+  animation: joySpark .7s ease-out forwards;
+}
+.joy-spark.dot { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; clip-path: none; }
+@keyframes joySpark {
+  0% { opacity: 0; transform: scale(.2) rotate(0deg); }
+  30% { opacity: 1; transform: scale(var(--s, 1)) rotate(25deg); }
+  100% { opacity: 0; transform: translateY(-10px) scale(.4) rotate(70deg); }
+}
+.joy-knob { z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .joy-spark { display: none; } }
+/* ปุ่มไอคอนแถวบนห่างกันขึ้นนิดหน่อย · หัวแมว (สมาชิก) เผื่อที่ขวาให้ป้าย 1/20 ไม่ชนปุ่มตั้งค่า (ผู้ใช้ 15 พ.ย. 2026) */
+.topbar { gap: max(9px, calc(var(--hs) * .3)); }
+#btnMembers { margin-right: max(16px, calc(var(--hs) * .32)); }

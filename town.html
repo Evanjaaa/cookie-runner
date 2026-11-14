@@ -16,34 +16,44 @@
 <body>
   <canvas id="town" aria-label="เมืองแมวเหมียว"></canvas>
 
-  <!-- แถบบน: กลับหน้าเกม · โหมด (เซิร์ฟเวอร์/ทดลอง) · ทอง · กระเป๋า -->
+  <!-- แถบบน (ผู้ใช้ 15 พ.ย. 2026 ส่งแบบ UI ใหม่): ประตูออก (ซ้าย) · โหมด · [ทอง กระเป๋า — เฉพาะในเมือง] ไม้แขวนเสื้อ แผนที่ กล้อง หัวแมว(สมาชิก) ตั้งค่า (ขวา)
+       ไอคอนวุ้นใสลาเวนเดอร์ (hud-icons.js · data-ico) — เทมเพลตเดียวกับไอคอนแถบบนหน้าแรก สีต่างกัน -->
   <div class="topbar">
-    <a class="backbtn" href="./index.html?from=town" aria-label="กลับหน้าแรก">
-      <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true">
-        <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </a>
+    <a class="backbtn hud-door" href="./index.html?from=town" aria-label="ออกกลับหน้าแรก"><span class="hico" data-ico="door"></span></a>
     <span class="mode" id="modeTag">กำลังเชื่อมต่อ…</span>
-    <span class="gold"><i class="coin" aria-hidden="true"></i><b id="goldNum">0</b></span>
-    <!-- ตั้งค่าของหน้าเมือง (เสียงเพลง / เสียงเอฟเฟกต์) -->
-    <button type="button" class="bagbtn setbtn" id="btnSet" aria-label="ตั้งค่า">
-      <svg viewBox="0 0 24 24" width="56%" height="56%" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="3.6" stroke-dasharray="3.2 3.24"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="3.2"/>
-      </svg>
-    </button>
-    <button type="button" class="bagbtn" id="btnBag" aria-label="กระเป๋า">🎒</button>
+    <!-- ปุ่มแต่ละที่ (ผู้ใช้ 15 พ.ย. 2026 · CSS ตาม body[data-w]): เมือง = กระเป๋า เพชร/ทอง ไม้แขวน แผนที่ กล้อง ตั้งค่า
+         บ้าน/ห้องแมว = เพชร/ทอง ไม้แขวน แผนที่ กล้อง ตั้งค่า · ปราสาท = ไม้แขวน แผนที่ กล้อง หัวแมว ตั้งค่า (ไม่มีเงิน) -->
+    <div class="twallet" id="twallet">
+      <div class="tbar tgem" aria-label="เพชรชมพู"><span class="gem" aria-hidden="true"></span><b id="gemNum">0</b><button type="button" class="tplus" id="gemPlus" aria-label="หาเพชรเพิ่ม"></button></div>
+      <div class="tbar tgold" aria-label="เหรียญทอง"><span class="coin" aria-hidden="true"></span><b id="goldNum">0</b><button type="button" class="tplus" id="goldPlus" aria-label="หาทองเพิ่ม"></button></div>
+    </div>
+    <button type="button" class="hudico" id="btnBag" aria-label="กระเป๋า"><span class="hico" data-ico="bag"></span></button>
+    <button type="button" class="hudico" id="btnWard" aria-label="ห้องแต่งตัว เปลี่ยนตัวละครและชุด"><span class="hico" data-ico="hanger"></span></button>
+    <button type="button" class="hudico" id="btnMap" aria-label="แผนที่ปราสาท"><span class="hico" data-ico="map"></span></button>
+    <button type="button" class="hudico" id="btnCam" aria-label="ถ่ายรูปตรงนี้"><span class="hico" data-ico="camera"></span></button>
+    <button type="button" class="hudico" id="btnMembers" aria-label="รายชื่อสมาชิกในปราสาท"><span class="hico" data-ico="cat"></span><span class="mem-badge hidden" id="memNum"></span></button>
+    <button type="button" class="hudico" id="btnSet" aria-label="ตั้งค่า"><span class="hico" data-ico="gear"></span></button>
   </div>
 
-  <!-- ออนไลน์ในปราสาท (online.js): จำนวนแมวในห้อง — ใต้ป้ายโหมด · ซ่อนนอกปราสาท/ต่อห้องไม่ได้ -->
+  <!-- ออนไลน์ในปราสาท (online.js) — ซ้ายบนใต้ประตู: กล่องแชตชั้นนี้ (ข้อความล่าสุด · ปุ่มพับเก็บมุมขวาล่าง) + ปุ่มแชต (เปิดแผงพิมพ์/สติกเกอร์)
+       ซ่อนนอกปราสาท/ต่อห้องไม่ได้ · ตัวเลขคนในห้องย้ายไปป้ายบนไอคอนหัวแมว (#memNum) -->
   <div class="online hidden" id="onlineTag">
     <span class="online-pill" role="status"><i class="online-dot" aria-hidden="true"></i><span id="onlineNum"></span></span>
-    <!-- แชตแยกชั้น (chat.js) — คอมกด T -->
-    <button type="button" class="chatbtn" id="btnChat" aria-label="แชต" aria-expanded="false" aria-controls="chatPanel">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14a2.5 2.5 0 0 1 2.5 2.5v8a2.5 2.5 0 0 1-2.5 2.5h-7.2L7 21v-3.5H5A2.5 2.5 0 0 1 2.5 15V7A2.5 2.5 0 0 1 5 4.5z" fill="currentColor"/><circle cx="8" cy="11" r="1.3" fill="#8A5FD6"/><circle cx="12" cy="11" r="1.3" fill="#8A5FD6"/><circle cx="16" cy="11" r="1.3" fill="#8A5FD6"/></svg>
-      <b>แชต</b><i class="chat-new" aria-hidden="true"></i>
-    </button>
-    <!-- ข้อความใหม่ตอนแชตปิด (แตะ = เปิดแชต) -->
-    <button type="button" class="chat-peek hidden" id="chatPeek" aria-label="เปิดแชตดูข้อความใหม่"></button>
+    <section class="chatfeed" id="chatFeed" aria-label="แชตชั้นนี้">
+      <div class="cf-head">
+        <b class="cf-tab" id="cfTitle">แชตชั้นที่ 1</b>
+        <button type="button" class="cf-fold" id="cfFold" aria-label="พับเก็บกล่องแชต" aria-expanded="true" aria-controls="cfBody">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 14.5 12 9l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="cf-body" id="cfBody"><div class="cf-inner"><ol class="cf-log" id="cfLog"></ol></div></div>
+    </section>
+    <div class="cf-row">
+      <!-- แชตแยกชั้น (chat.js) — คอมกด T -->
+      <button type="button" class="chatbtn hudico" id="btnChat" aria-label="แชต" aria-expanded="false" aria-controls="chatPanel"><span class="hico" data-ico="chat"></span><i class="chat-new" aria-hidden="true"></i></button>
+      <!-- ข้อความใหม่ตอนแชตปิด (แตะ = เปิดแชต) -->
+      <button type="button" class="chat-peek hidden" id="chatPeek" aria-label="เปิดแชตดูข้อความใหม่"></button>
+    </div>
   </div>
 
   <!-- แผงแชตชั้นนี้ (chat.js): ย้อนหลัง · ประโยคสำเร็จรูป · สติกเกอร์ · พิมพ์ (สมาชิก) — ชิดขวาล่าง น้องยังอยู่ในจอ -->
@@ -77,14 +87,6 @@
     </div>
   </section>
 
-  <!-- ปุ่มห้องแต่งตัว (ขวาบน ใต้แถวปุ่มตั้งค่า/กระเป๋า) — ไม้แขวนเสื้อหูแมว -->
-  <button type="button" class="wardbtn" id="btnWard" aria-label="ห้องแต่งตัว">
-    <svg viewBox="0 2.3 40 32" aria-hidden="true">
-      <path d="M13.5 8.5 15 4l3 3.2M26.5 8.5 25 4l-3 3.2" fill="#FFB3D2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-      <path d="M16.5 11.5a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.2-1.5 2.3v1.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
-      <path d="M20 18.2 5.5 28.4c-1.3.9-.7 2.9.9 2.9h27.2c1.6 0 2.2-2 .9-2.9z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>
-    </svg>
-  </button>
 
   <!-- ปุ่มบนจอ (มือถือเท่านั้น — คอมซ่อนทั้งแถบ ใช้คีย์บอร์ดตามแถบบอกปุ่มข้างล่าง) -->
   <div class="pad">
@@ -95,33 +97,16 @@
         <path class="al" d="M15 50l10-9v18z" fill="currentColor"/>
         <path class="ar" d="M85 50l-10-9v18z" fill="currentColor"/>
       </svg>
-      <div class="joy-knob" id="joyKnob"></div>
+      <div class="joy-knob" id="joyKnob"><span class="hico" data-ico="joypaw"></span></div>
     </div>
     </div>
     <button type="button" class="act off" id="btnAct">ใช้งาน</button>
     <div class="rightpad">
-      <!-- ปุ่มท่าทาง (ข้างปุ่มเดิน/วิ่ง — ผู้ใช้ 31 ต.ค.) — เปิดแผงเลือกท่า -->
-      <button type="button" class="emobtn" id="btnEmote" aria-label="ท่าทาง" aria-expanded="false" aria-controls="emotePick">
-        <svg viewBox="0 0 40 40" aria-hidden="true">
-          <path d="M9 13 11 5l6 5h6l6-5 2 8c2 2.4 3 5 3 8 0 7.7-6.3 13-14 13S6 28.7 6 21c0-3 1-5.6 3-8z" fill="currentColor"/>
-          <circle cx="15" cy="20" r="2.1" fill="#7A4BB8"/><circle cx="25" cy="20" r="2.1" fill="#7A4BB8"/>
-          <path d="M17 25.5q3 2.6 6 0" fill="none" stroke="#7A4BB8" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M31.5 4.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z" fill="#FFE7A0"/>
-        </svg>
-        <b>ท่าทาง</b>
-      </button>
-      <!-- ปุ่มวิ่ง: กดสลับเดิน/วิ่ง -->
-      <button type="button" class="runbtn" id="btnRun" aria-label="สลับเดินหรือวิ่ง" aria-pressed="false">
-        <svg viewBox="0 0 40 40" aria-hidden="true">
-          <g class="speed"><path d="M3 15h9M1 21h10M4 27h8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></g>
-          <ellipse cx="25" cy="25" rx="7.4" ry="6.2" fill="currentColor"/>
-          <ellipse cx="16.8" cy="19" rx="2.9" ry="3.5" fill="currentColor"/>
-          <ellipse cx="21.6" cy="13.6" rx="2.9" ry="3.5" fill="currentColor"/>
-          <ellipse cx="28.4" cy="13.6" rx="2.9" ry="3.5" fill="currentColor"/>
-          <ellipse cx="33.2" cy="19" rx="2.9" ry="3.5" fill="currentColor"/>
-        </svg>
-        <b id="runLab">เดิน</b>
-      </button>
+      <!-- ท่าทาง | วิ่ง = วงกลมผ่าครึ่ง (ผู้ใช้ 15 พ.ย. 2026): ซีกซ้ายชมพู หน้าแมว · ซีกขวาลาเวนเดอร์ อุ้งเท้า — นุ่ม ๆ ไม่เด่นเกิน -->
+      <div class="duo">
+        <button type="button" class="emobtn" id="btnEmote" aria-label="ท่าทาง" aria-expanded="false" aria-controls="emotePick"><span class="hico" data-ico="emote"></span><b>ท่าทาง</b></button>
+        <button type="button" class="runbtn" id="btnRun" aria-label="สลับเดินหรือวิ่ง" aria-pressed="false"><span class="hico" data-ico="run"></span><b id="runLab">เดิน</b></button>
+      </div>
       <!-- ปุ่มกระโดด (ขวาสุด) — กดกลางอากาศอีกที = กระโดดสองชั้น -->
       <button type="button" class="jumpbtn" id="btnJump" aria-label="กระโดด">
         <b>กระโดด</b>
@@ -309,6 +294,17 @@
       <div class="sh-head"><div><h2>กระเป๋า</h2><small>ของที่ซื้อจากร้านในเมือง</small></div></div>
       <div class="baglist" id="bagList"></div>
       <p class="bagempty" id="bagEmpty">ยังไม่มีของในกระเป๋า แวะซื้อที่ร้านในเมืองได้เลย</p>
+    </div>
+  </div>
+
+  <!-- รายชื่อสมาชิกในปราสาท (ไอคอนหัวแมว · ผู้ใช้ 15 พ.ย. 2026 ให้ลองออกแบบก่อน) — เรา + แมวทุกตัวในห้องนี้ · อยู่ชั้นไหน -->
+  <div class="ov hidden" id="memOv">
+    <div class="sheet mem">
+      <button type="button" class="xbtn" id="memX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2>สมาชิกในปราสาท</h2><small id="memSub">แมวที่อยู่ในห้องเดียวกับเรา</small></div></div>
+      <ul class="memlist" id="memList"></ul>
     </div>
   </div>
 

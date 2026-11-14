@@ -52,7 +52,7 @@ import { drawRiverside, riversideLightMask } from './render/riverside.js';
 const HOME_SCENE = 'riverside';
 const drawHomeScene = HOME_SCENE === 'riverside' ? drawRiverside : drawKingdom;
 import { setCatEdgeScale } from './render/entities.js';
-import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2 } from './render/cat2.js';
+import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2, useCat2Run } from './render/cat2.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K, RUN_SIZE } from './render/cat2-run.js';
 import { drawTrail } from './render/cat2.js';
 import { LIGHTS } from './render/props/kit.js';
@@ -2569,12 +2569,12 @@ export class Game {
     // ลูกแมวในเป้ไปโบนัสด้วย (นั่งบนหลังน้องที่ขี่ปลาอยู่)
     // น้องแบบใหม่ (ผู้ใช้ 18 ต.ค.): ยืนบนหลังปลาด้วยท่าวิ่งตัวใหม่ — ฉากเลื่อน (ขึ้นฟ้า/บิน) = วิ่งสี่จังหวะ
     // ฉากหยุด (ปลามารับ/ร่อนลง/วางลงพื้น) = ยืนเท้าใต้ตัว · หน้าตามอารมณ์โบนัส (ดีใจ → ตาประกาย → เศร้า)
-    if (CAT2.run && useCat2(skin)) {
+    if (CAT2.run && useCat2Run(skin)) {
       this.runLights = [];   // แสงสิ่งกีดขวางของเฟรมวิ่งก่อนหน้าไม่ใช้กับฉากโบนัส
       const moving = this.bonusPhase === 'rise' || this.bonusPhase === 'fly';
       this.drawRunCat(ctx, skin, this.catMood, this.magnet > 0, CAT_LOOK, 0, 1, { speed: moving ? this.speed : 0, stand: !moving });
     } else drawPlayer(ctx, this.player, false, skin, this.magnet > 0, 0, this.catMood, CAT_LOOK, 1, this.carrierFx());
-    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT2.run && useCat2(skin) ? CAT_LOOK * RUN_SIZE : CAT_LOOK);
+    if (this.magnet > 0) drawSuction(ctx, this.player, this.tick, CAT2.run && useCat2Run(skin) ? CAT_LOOK * RUN_SIZE : CAT_LOOK);
     if (warp.rise > 0) drawWarpFront(ctx, wx, wy, warp.rise, this.tick);
     if (warp.arrive >= 0) drawWarpArrive(ctx, wx, wy, warp.arrive);
 
@@ -2625,7 +2625,7 @@ export class Game {
       this.shake = 16;
       // น้องตัวใหม่ (ท่าวิ่ง cat2-run): ร่วงตรงลงหลุมต่อไปเฉย ๆ ไม่เด้งกลับขึ้นมาม้วนตัว — ผู้ใช้ 18 ต.ค.
       // (เด้งขึ้นแล้วหมุน = หางคทาลากตามขึ้นมาจากหลุมอีกรอบ) · ตัวเดิมยังปลิวหมุนตกจอแบบเดิม
-      if (CAT2.run && useCat2(getSkin())) {
+      if (CAT2.run && useCat2Run(getSkin())) {
         this.player.calmFall = true;
         this.player.vy = Math.max(this.player.vy, 3);
       } else this.player.vy = -9;
@@ -2851,7 +2851,7 @@ export class Game {
     const skillFlicker = this.skillBlink > 0 && Math.floor(this.tick / 5) % 2 === 0;
     const catS = this.catScale;
     // ของที่เกาะตัวน้อง (วงโล่ หลอดสกิล คลื่นดูด "!") ตามขนาดที่ตาเห็น — น้องแบบใหม่ใหญ่กว่าตัวเดิม RUN_SIZE
-    const lookS = CAT2.run && useCat2(getSkin()) ? catS * RUN_SIZE : catS;
+    const lookS = CAT2.run && useCat2Run(getSkin()) ? catS * RUN_SIZE : catS;
 
     // ── วงโล่วาดก่อนตัว ──
     // ตอนขนาดปกติวงกว้างกว่าตัวทุกด้านอยู่แล้ว วาดหน้าหรือหลังจึงเห็นเหมือนกันเป๊ะ
@@ -2905,7 +2905,7 @@ export class Game {
       const runTired = this.big > 0 || pose ? 0 : lowK;
       const runGait = 1 + (BIGCAN.gait - 1) * this.bigK;
       // น้องแบบใหม่: ท่าวิ่งสี่จังหวะ/กระโดด/ตีลังกา/เหนื่อย/หมดแรง + ประกายจากชุด S (cat2-run.js) — ปิดได้ที่ CAT2.run
-      if (CAT2.run && useCat2(runSkin)) this.drawRunCat(ctx, runSkin, runMood, sucking || shout, catS, runTired, runGait);
+      if (CAT2.run && useCat2Run(runSkin)) this.drawRunCat(ctx, runSkin, runMood, sucking || shout, catS, runTired, runGait);
       else drawPlayer(ctx, this.player, this.state === STATE.DEAD, runSkin, sucking || shout,
         pose === 'dance' ? this.tick : 0, runMood, catS, runGait,
         { tired: runTired, hurt: this.hurtFlash, hero: hero ? 1 : 0,
@@ -3761,10 +3761,10 @@ export class Game {
       drawHomeBox(c, 0, 0, t, this.homeBoxPop || 0);
       c.restore();
     };
-    box(ctx);
+    if (HOME_BOX.onFloor) box(ctx);   // กล่องย้ายไปเป็นปุ่มข้างปุ่มแผนที่แล้ว (ผู้ใช้ 14 พ.ย. 2026) — ไม่วาดบนพื้นหน้าแรก
     // แสงตะเกียงตกบนตัวน้องกับกล่อง — เฉพาะบนเนื้อของ ไม่ฟุ้งทั้งบริเวณ (ดู lanternLightMask)
     if (lit) {
-      box(lit);
+      if (HOME_BOX.onFloor) box(lit);
       // ระบายแสงเฉพาะบริเวณตัวน้อง+กล่อง (clip) — source-in ทั้งผืนแพงเท่าวาดทั้งจอ
       const w = this.homeLitWorld;
       lit.save();

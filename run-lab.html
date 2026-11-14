@@ -117,6 +117,10 @@
     body:not(.wide) #showSide { display: none; }
     body.four .lvl { display: none !important; }
     body:not(.four) .fourOnly { display: none !important; }
+    body:not(.kid) .kidOnly { display: none !important; }
+    /* ซ่อนปุ่มบนจอภาพ (ผู้ใช้ 14 พ.ย.) — เหลือปุ่ม 👁 จาง ๆ ไว้กดคืน */
+    .view.clean .ov > *:not(#cleanBtn) { display: none !important; }
+    .view.clean #cleanBtn { opacity: .45; }
     @media (max-width: 900px) {
       .wrap { grid-template-columns: minmax(0, 1fr); }
       .stage { top: 0; }
@@ -143,7 +147,7 @@
           </div>
           <button class="pill" id="trailBtn" title="ภาพซ้อนเห็นเส้นทางกระโดด (ปุ่ม T)">👻 ภาพซ้อน</button>
         </div>
-        <div class="ov tr"><button class="pill" id="showSide" title="แสดงแผงข้าง (F)">☰ แผงตั้งค่า</button></div>
+        <div class="ov tr"><button class="pill" id="cleanBtn" title="ซ่อน/โชว์ปุ่มบนจอภาพ (H)" aria-label="ซ่อนปุ่มบนจอภาพ" aria-pressed="false">👁</button><button class="pill" id="showSide" title="แสดงแผงข้าง (F)">☰ แผงตั้งค่า</button></div>
         <div class="ov bl lvl"><span class="pill tag" id="poseTag">—</span></div>
         <div class="ov tl fourOnly">
           <span class="pill tag">🐾 วิ่ง 4 จังหวะ · หน้านิ่ง</span>
@@ -173,6 +177,7 @@
       <nav class="modes" id="modes">
         <button data-mode="level">🏃 วิ่งในด่าน</button>
         <button data-mode="four">🐾 วิ่ง 4 จังหวะ</button>
+        <button data-mode="kid4">🍼 เดิน 4 จังหวะ (เด็ก)</button>
       </nav>
       <div class="now" id="nowLine"></div>
       <nav class="tabs" id="tabs" role="tablist">
@@ -191,6 +196,8 @@
           </select></div>
           <div class="row"><label>พื้นหลัง</label><select id="fourBg"><option value="plain">ขาวครีม (แบบภาพแบบ)</option><option value="stage">ฉากด่าน</option></select></div>
           <p class="note">กด 🧅 ซ้อนแบบ เทียบกับภาพแบบได้ทุกจังหวะ</p>
+          <div class="row kidOnly"><label>สีแมวเด็ก</label><select id="kidLook"></select></div>
+          <p class="note kidOnly">🍼 แมวเด็ก (จิบิ) เดินหันเฉียงขวา — ตามแบบที่ผู้ใช้วาดขาให้ <b>ref/chibi-walk-4beat-v2.jpg</b> · หัว/ตัวท่อนบน/แขน เหมือนท่ายืน · ขา/เท้า/หาง ตามแต่ละจังหวะ</p>
         </div>
         <div class="card lvl">
           <h2>ท่าตอนวิ่งในด่าน</h2>
@@ -248,6 +255,7 @@
     import { drawCat2, cat2Outfits, CAT2_BREEDS } from './src/render/cat2.js';
     import { createRunAnim, stepRunAnim, drawCat2Run, JUMP2, RUN4, run4At, RUN_K } from './src/render/cat2-run.js';
     import { SKINS } from './src/skins.js';
+    import { drawChibi, CHIBI_LOOKS, CHIBI_WALK4, chibiWalk4Motion, chibiLookFor } from './src/render/chibi.js';
     import { ALL_OUTFITS } from './src/outfits.js';
 
     const $ = (id) => document.getElementById(id);
@@ -364,14 +372,14 @@
     const st = {
       pose: 'jump1', view: 'close', draw: 'new', trail: false, tab: 'pose', wide: false, zoom: 1.5, f: 0, playing: true, speed: 1,
       stage: STAGES[0].id, cat: 'orange', outfit: 'none', manual: false,
-      mode: 'level', beat: 0, beatRate: 8, smooth: false, ref: false, onion: false, fourBg: 'plain',
+      mode: 'level', beat: 0, beatRate: 8, smooth: false, ref: false, onion: false, fourBg: 'plain', kidLook: 'orange', clean: false,
     };
     try {
       const sv = JSON.parse(localStorage.getItem('runlab.v1') || '{}');
       if (sv.v !== 2) sv.draw = 'new';   // จัดหน้าใหม่ (19 ต.ค.): ตั้งต้นตัวใหม่ — ตัวที่เกมใช้แล้ว
       Object.assign(st, sv, { playing: true, manual: false });
     } catch {}
-    const save = () => { try { localStorage.setItem('runlab.v1', JSON.stringify({ onion: st.onion, mode: st.mode, beatRate: st.beatRate, smooth: st.smooth, ref: st.ref, fourBg: st.fourBg, pose: st.pose, view: st.view, draw: st.draw, trail: st.trail, zoom: st.zoom, stage: st.stage, cat: st.cat, outfit: st.outfit, speed: st.speed, tab: st.tab, wide: st.wide, v: 2 })); } catch {} };
+    const save = () => { try { localStorage.setItem('runlab.v1', JSON.stringify({ clean: st.clean, kidLook: st.kidLook, onion: st.onion, mode: st.mode, beatRate: st.beatRate, smooth: st.smooth, ref: st.ref, fourBg: st.fourBg, pose: st.pose, view: st.view, draw: st.draw, trail: st.trail, zoom: st.zoom, stage: st.stage, cat: st.cat, outfit: st.outfit, speed: st.speed, tab: st.tab, wide: st.wide, v: 2 })); } catch {} };
     let sim = [];
     const resim = () => { sim = simulate(poseById(st.pose), poseById(st.pose).dur); };
 
@@ -601,6 +609,72 @@
       }
     }
 
+    // ══ หน้า "เดิน 4 จังหวะ (เด็ก)" — น้องจิบิ (src/render/chibi.js · opt.walk4) ══
+    // ภาพแบบ v2 (ผู้ใช้วาดขาทับตัวจิบิ 14 พ.ย.) 1800×450 = 4 ช่อง ช่องละ 450: จุดยึด = กลางหัวที่แถวกว้างสุด (hx, wy) ↔ หัวจิบิมุมเฉียง (x 0, y −207 − ยกตัว)
+    const KREF = [0, 1, 2, 3].map((i) => ({ hx: i * 450 + 188.75, wy: 180 }));
+    const KREF_K = 256 / 287.5;   // หน่วยชีทต่อพิกเซลภาพแบบ (หัวจิบิกว้าง 256 · หัวในแบบ 287.5)
+    const kidImg = new Image();
+    kidImg.src = './ref/chibi-walk-4beat-v2.jpg';
+    // เวลาของน้อง (กะพริบตา/หายใจ/หางไหว) เดินต่อเฉพาะตอนเล่น · ph = จังหวะต่อเนื่อง (ตัวขึ้นลง/เอียง/หู/หาง)
+    let kidT = 2070;
+    function drawKid(c, cx, gy, px, b, ph) {
+      const s = px / 350;   // ตัวจิบิสูง ~350 หน่วยชีท (หูถึงเท้า)
+      const air = (CHIBI_WALK4[Math.floor(b) % 4]?.air || 0) + chibiWalk4Motion(ph).lift;   // เท้าลอยสูง → เงาเล็ก/จางลง
+      const k = Math.max(0.72, 1 - air * 0.017);
+      c.save();
+      c.fillStyle = 'rgba(60,30,10,' + (0.18 * k).toFixed(3) + ')';
+      c.beginPath(); c.ellipse(cx, gy + 2, px * 0.28 * k, px * 0.045 * k, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+      drawChibi(c, cx, gy, s, { view: 'q', t: kidT, look: st.kidLook, act: 'idle', walk4: b, walkPhase: ph, faceRight: true });
+    }
+    function renderKid4() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#FFFDF9'); g.addColorStop(1, '#F6EBDD');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      const bi = Math.floor(st.beat) % 4, b = st.smooth ? st.beat : bi;
+      const topH = h * 0.6, big = topH * 0.8, gy = topH * 0.93;
+      ctx.strokeStyle = 'rgba(120,80,50,.25)'; ctx.lineWidth = 2 * dpr;
+      ctx.beginPath(); ctx.moveTo(w * 0.2, gy + 2 * dpr); ctx.lineTo(w * 0.8, gy + 2 * dpr); ctx.stroke();
+      // พักอยู่ที่ต้นจังหวะพอดี (กดปุ่มเลือกจังหวะ) = โชว์กลางจังหวะ (ยอด Up / ก้น Down) · เล่นอยู่ = ไหลต่อเนื่อง
+      const ph = st.beat % 1 === 0 ? st.beat + 0.5 : st.beat;
+      if (!st.onionOnly) drawKid(ctx, w / 2, gy, big, b, ph);
+      if (st.onion && kidImg.complete && kidImg.naturalWidth) {
+        const s = big / 350, k = KREF_K * s, R = KREF[bi], bob = (CHIBI_WALK4[bi].bob + chibiWalk4Motion(ph).lift) * s;
+        const sx0 = bi * 450, sy0 = 0, sw = 450, sh = 450;
+        ctx.save();
+        ctx.globalAlpha = st.onionOnly ? 1 : 0.42;
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(kidImg, sx0, sy0, sw, sh, w / 2 + (sx0 - R.hx) * k, gy + (-207 * s - bob) + (sy0 - R.wy) * k, sw * k, sh * k);
+        ctx.restore();
+      }
+      ctx.font = '600 ' + Math.round(16 * dpr) + 'px Mitr, sans-serif';
+      ctx.textAlign = 'left'; ctx.fillStyle = '#6A3E22';
+      ctx.fillText('🍼 จังหวะ ' + (bi + 1) + ' · ' + CHIBI_WALK4[bi].label, 16 * dpr, topH * 0.12);
+      const rowY = topH, rowH = h - topH;
+      const withRef = st.ref && kidImg.complete && kidImg.naturalWidth;
+      const framesH = withRef ? rowH * 0.5 : rowH;
+      const cw = w / 4;
+      cells4 = [];
+      for (let i = 0; i < 4; i++) {
+        const x0 = i * cw;
+        cells4.push([x0, rowY, cw, framesH]);
+        if (i === bi) { ctx.fillStyle = 'rgba(255,159,196,.22)'; ctx.fillRect(x0 + 4 * dpr, rowY + 4 * dpr, cw - 8 * dpr, framesH - 8 * dpr); }
+        const px = Math.min(framesH * 0.66, cw * 0.66);
+        drawKid(ctx, x0 + cw / 2, rowY + framesH * 0.8, px, i, i + 0.5);
+        ctx.font = '600 ' + Math.round(13 * dpr) + 'px Mitr, sans-serif';
+        ctx.textAlign = 'center'; ctx.fillStyle = '#6A3E22';
+        ctx.fillText((i + 1) + ' · ' + CHIBI_WALK4[i].label, x0 + cw / 2, rowY + framesH * 0.96);
+      }
+      if (withRef) {
+        const iw = kidImg.naturalWidth, ih = kidImg.naturalHeight, dh = rowH - framesH, dw = Math.min(w, dh * (iw / ih));
+        ctx.drawImage(kidImg, 0, 0, iw, ih, (w - dw) / 2, rowY + framesH, dw, dh);
+      }
+    }
+
     let lastVals = '';
     function showVals(fr) {
       const { p, S } = fr;
@@ -716,7 +790,8 @@
     }
     $('stageSel').onchange = (e) => { st.stage = e.target.value; markNow(); save(); };
     const markCat = () => { for (const b of $('catChips').querySelectorAll('[data-cat]')) b.classList.toggle('on', b.dataset.cat === st.cat); markNow(); };
-    $('catChips').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (b) { st.cat = b.dataset.cat; markCat(); resim(); save(); } };
+    const syncKid = () => { if (chibiLookFor(st.cat) === st.cat) { st.kidLook = st.cat; if ($('kidLook')) $('kidLook').value = st.cat; } };
+    $('catChips').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (b) { st.cat = b.dataset.cat; syncKid(); markCat(); resim(); save(); } };
     const markOf = () => { for (const b of $('ofChips').children) b.classList.toggle('on', b.dataset.of === st.outfit); markNow(); };
     $('ofChips').onclick = (e) => { const b = e.target.closest('[data-of]'); if (b) { st.outfit = b.dataset.of; markOf(); save(); } };
     markCat();
@@ -731,6 +806,16 @@
     $('tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); };
     setTab(st.tab);
     function setWide(on) { st.wide = on; document.body.classList.toggle('wide', on); save(); }
+    function setClean(on) {
+      st.clean = on;
+      document.querySelector('.view').classList.toggle('clean', on);
+      $('cleanBtn').textContent = on ? '🙈' : '👁';
+      $('cleanBtn').setAttribute('aria-pressed', String(on));
+      $('cleanBtn').setAttribute('aria-label', on ? 'โชว์ปุ่มบนจอภาพ' : 'ซ่อนปุ่มบนจอภาพ');
+      save();
+    }
+    $('cleanBtn').onclick = () => setClean(!st.clean);
+    setClean(!!st.clean);
     $('hideSide').onclick = () => setWide(true);
     $('showSide').onclick = () => setWide(false);
     setWide(st.wide);
@@ -740,9 +825,10 @@
     // ── หน้า 4 จังหวะ ──
     function setMode(m) {
       st.mode = m;
-      document.body.classList.toggle('four', m === 'four');
+      document.body.classList.toggle('four', m === 'four' || m === 'kid4');   // แมวเด็กใช้ปุ่ม/แผงชุดเดียวกับวิ่ง 4 จังหวะ
+      document.body.classList.toggle('kid', m === 'kid4');
       for (const b of $('modes').children) b.classList.toggle('on', b.dataset.mode === m);
-      if (m !== 'four') pick(st.pose);
+      if (m !== 'four' && m !== 'kid4') pick(st.pose);
       save();
     }
     $('modes').onclick = (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); };
@@ -755,16 +841,28 @@
     $('onionBtn').onclick = () => { st.onion = !st.onion; markFour(); save(); };
     $('smoothBtn').onclick = () => { st.smooth = !st.smooth; markFour(); save(); };
     markFour();
+    // สีแมวเด็ก: สีจิบิที่ลงสีแล้วทั้งหมด
+    for (const id of Object.keys(CHIBI_LOOKS).filter((k) => chibiLookFor(k) === k)) {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = ({ orange: 'ส้มน้อย', pearl: 'ไข่มุก', calico: 'ขนมชั้น', siamese: 'วิเชียรมาศ', konja: 'โกนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'ลายสลิด', tortie: 'สีเปรอะ', cow: 'ลายวัว', manee: 'ขาวมณี', somsa: 'ส้มซ่า', suea: 'เสือน้อย' })[id] || id;
+      $('kidLook').append(o);
+    }
+    $('kidLook').value = st.kidLook;
+    $('kidLook').onchange = (e) => {
+      st.kidLook = e.target.value;
+      if ($('catChips').querySelector('[data-cat="' + st.kidLook + '"]')) { st.cat = st.kidLook; markCat(); resim(); }   // ชิปแมวเลือกตาม
+      save();
+    };
     cv.addEventListener('click', (e) => {
-      if (st.mode !== 'four') return;
+      if (st.mode !== 'four' && st.mode !== 'kid4') return;
       const r = cv.getBoundingClientRect(), k = cv.width / r.width, x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k;
       const i = cells4.findIndex(([x0, y0, w0, h0]) => x >= x0 && x < x0 + w0 && y >= y0 && y < y0 + h0);
       if (i >= 0) { st.playing = false; st.beat = i; }
     });
     setMode(st.mode);
-    $('stepB').onclick = () => { if (st.mode === 'four') { st.playing = false; st.beat = (Math.floor(st.beat) + 3) % 4; return; } if (live) return; st.playing = false; st.f = Math.max(0, Math.floor(st.f) - 1); };
-    $('stepF').onclick = () => { if (st.mode === 'four') { st.playing = false; st.beat = (Math.floor(st.beat) + 1) % 4; return; } if (live) { st.playing = false; stepManual(); return; } st.playing = false; st.f = Math.min(poseById(st.pose).dur, Math.floor(st.f) + 1); };
-    $('track').oninput = (e) => { if (st.mode === 'four') { st.playing = false; st.beat = +e.target.value; return; } if (live) return; st.playing = false; st.f = +e.target.value; };
+    $('stepB').onclick = () => { if ((st.mode === 'four' || st.mode === 'kid4')) { st.playing = false; st.beat = (Math.floor(st.beat) + 3) % 4; return; } if (live) return; st.playing = false; st.f = Math.max(0, Math.floor(st.f) - 1); };
+    $('stepF').onclick = () => { if ((st.mode === 'four' || st.mode === 'kid4')) { st.playing = false; st.beat = (Math.floor(st.beat) + 1) % 4; return; } if (live) { st.playing = false; stepManual(); return; } st.playing = false; st.f = Math.min(poseById(st.pose).dur, Math.floor(st.f) + 1); };
+    $('track').oninput = (e) => { if ((st.mode === 'four' || st.mode === 'kid4')) { st.playing = false; st.beat = +e.target.value; return; } if (live) return; st.playing = false; st.f = +e.target.value; };
     $('manual').onclick = () => (live ? stopManual() : startManual());
     cv.addEventListener('pointerdown', () => { if (live) manualJump(); });
 
@@ -783,8 +881,9 @@
       if (e.key === 'v' || e.key === 'V') { const order = ['full', 'close', 'follow']; setSeg('viewSeg', 'view', order[(order.indexOf(st.view) + 1) % 3]); }
       if (e.key === 't' || e.key === 'T') $('trailBtn').click();
       if (e.key === 'f' || e.key === 'F') setWide(!st.wide);
-      if ((e.key === 'r' || e.key === 'R') && st.mode === 'four') $('refBtn').click();
-      if ((e.key === 'o' || e.key === 'O') && st.mode === 'four') $('onionBtn').click();
+      if (e.code === 'KeyH') setClean(!st.clean);
+      if ((e.key === 'r' || e.key === 'R') && (st.mode === 'four' || st.mode === 'kid4')) $('refBtn').click();
+      if ((e.key === 'o' || e.key === 'O') && (st.mode === 'four' || st.mode === 'kid4')) $('onionBtn').click();
       if (e.key === '[' || e.key === ']') {
         const i = POSES.findIndex((p) => p.id === st.pose);
         pick(POSES[(i + (e.key === ']' ? 1 : POSES.length - 1)) % POSES.length].id);
@@ -798,12 +897,12 @@
       requestAnimationFrame(frame);
       const df = Math.min(4, ((now - last) / 1000) * 60);
       last = now;
-      if (st.mode === 'four') {
-        if (st.playing) st.beat = (st.beat + (df / 60) * st.beatRate * st.speed) % 4;
+      if (st.mode === 'four' || st.mode === 'kid4') {
+        if (st.playing) { st.beat = (st.beat + (df / 60) * st.beatRate * st.speed) % 4; kidT += df * st.speed; }
         $('track').max = 3.99; $('track').step = 0.01; $('track').value = st.beat;
         $('fnum').textContent = 'จังหวะ ' + (Math.floor(st.beat) + 1) + ' / 4';
         $('play').textContent = st.playing ? '⏸' : '▶';
-        try { render4(); window.__err4 = null; } catch (e) { window.__err4 = String(e.stack || e); }
+        try { (st.mode === 'kid4' ? renderKid4 : render4)(); window.__err4 = null; } catch (e) { window.__err4 = String(e.stack || e); }
         return;
       }
       $('track').step = 1;

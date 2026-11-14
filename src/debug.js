@@ -424,11 +424,13 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
     toast('📦 กดเล่นรอบหน้าจะเจอกล่องน้องแมว (ต้องเลเวล 5 ขึ้นไป)');
     return true;
   });
-  add('🐱 พบน้องทันที', () => {
-    const c = debugAdopt();
+  // เสกลูกแมวลายเส้นใหม่ (ผู้ใช้ 14 พ.ย. 2026): สุ่มสีที่วาดน้องจิบิไว้แล้ว · ไปดูที่บ้านลูกเหมียว (ห้องเลี้ยงแมวใหม่)
+  add('🐱 เสกลูกแมวลายเส้นใหม่', () => {
+    const NEW = ['pearl', 'calico', 'siamese', 'konja', 'wilat', 'supha', 'korat', 'salid', 'tortie', 'cow'];
+    const c = debugAdopt({ breed: NEW[Math.floor(Math.random() * NEW.length)], chibi: true });
     if (!c) { toast('🐱 บ้านเต็มแล้ว (ห้อง 3 + กล่องรอ 1)'); return false; }
     hooks.refreshCats?.();
-    toast('🐱 ได้น้องใหม่แล้ว — ไปดูที่บ้านน้อง');
+    toast('🐱 ได้ลูกแมวลายเส้นใหม่แล้ว — ไปดูที่บ้านลูกเหมียว');
     return true;
   });
   // แมวแบบใหม่สิบตัว (ไข่มุก · ขนมชั้น · วิเชียรมาศ · โกนจา · วิลาศ · ศุภลักษณ์ · โคราช · ลายสลิด · สีเปรอะ · ลายวัว) โตเต็มวัย — เลือกลงวิ่งได้ที่คลังน้อง
@@ -436,6 +438,13 @@ export function setupDebug(game, hooks = {}, { force = false } = {}) {
     for (const [b, sx] of [['pearl', 'f'], ['calico', 'f'], ['siamese', 'm'], ['konja', 'f'], ['wilat', 'f'], ['supha', 'm'], ['korat', 'm'], ['salid', 'f'], ['tortie', 'm'], ['cow', 'f']]) debugGrantGrown(b, sx);
     hooks.refreshCats?.();
     toast('✨ ได้ ไข่มุก · ขนมชั้น · วิเชียรมาศ · โกนจา · วิลาศ · ศุภลักษณ์ · โคราช · ลายสลิด · สีเปรอะ · ลายวัว (โตแล้ว) — ไปเลือกที่คลังน้อง > น้องแมว');
+    return true;
+  });
+  // น้องจิบิส้ม (ทดสอบ 14 พ.ย. — ผู้ใช้สั่ง): น้องส้มตัวหลักแบบเด็ก วาดด้วย render/chibi.js · โตแล้ว (เลือกขึ้นหน้าแรกได้ที่คลังน้อง)
+  add('🍼 แอดน้องจิบิส้ม', () => {
+    debugGrantGrown('orange', 'm', { chibi: true, name: 'จิบิส้ม' });
+    hooks.refreshCats?.();
+    toast('🍼 ได้น้องจิบิส้มแล้ว — ไปเลือกให้อยู่หน้าแรกที่คลังน้อง > น้องแมว');
     return true;
   });
   add('⏩ เวลาผ่านไป 6 ชม.', () => {

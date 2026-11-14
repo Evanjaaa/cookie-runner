@@ -77,6 +77,10 @@
     }
     .icon:hover { background: rgba(21,11,33,.85); }
     .icon.on { background: rgba(127,227,208,.3); border-color: var(--accent2); }
+    .view.lens-on #cv { cursor: none; touch-action: none; }
+    .ov.br { display: flex; gap: 6px; }
+    .ov .seg.zoomstep button { font-size: 16px; font-weight: 700; min-width: 38px; }
+    .view.zoomed:not(.lens-on) #cv { cursor: grab; touch-action: none; }
     .ov .seg { background: var(--glass); backdrop-filter: blur(8px); border-color: rgba(255,244,220,.12); flex: none; }
     .ov .seg button { padding: 7px 11px; font-size: 12.5px; }
 
@@ -197,6 +201,12 @@
     .seg button + button { border-left: 1px solid var(--line); }
     .seg button:hover { background: rgba(255,244,220,.07); }
     .seg button.on { background: rgba(127,227,208,.24); color: var(--accent2); font-weight: 500; }
+    /* ปุ่มท่าทางลูกแมว: 6 ปุ่ม แถวเดียวล้นแผง → ตาราง 3 คอลัมน์ ปุ่มใหญ่กดง่าย (ผู้ใช้ 14 พ.ย.) */
+    .seg.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; border: 0; overflow: visible; }
+    .seg.grid3 button { border: 1px solid var(--line); border-radius: 10px; padding: 9px 2px; min-height: 40px; font-size: 12.5px; }
+    .seg.grid3 button + button { border-left: 1px solid var(--line); }
+    .opt.wrap { align-items: flex-start; }
+    .opt.wrap > span { padding-top: 10px; }
     select {
       flex: 1; padding: 8px 10px; border-radius: 11px; border: 1px solid var(--line);
       background: var(--panel2); color: var(--ink); font: inherit; min-width: 0;
@@ -242,12 +252,13 @@
           <div class="pill" id="now"></div>
         </div>
         <div class="ov tr">
+          <button type="button" class="icon" id="lens" title="แว่นขยาย: เลื่อนเมาส์/ลากนิ้วบนจอ · หมุนล้อปรับขยาย (Z)" aria-label="แว่นขยาย" aria-pressed="false">🔍</button>
           <button type="button" class="icon" id="clean" title="ซ่อน/โชว์ปุ่มบนจอภาพ (H)" aria-label="ซ่อนปุ่มบนจอภาพ" aria-pressed="false">👁</button>
           <button type="button" class="icon" id="shot" title="บันทึกภาพเฟรมนี้ (P)" aria-label="บันทึกภาพ">📷</button>
           <button type="button" class="icon" id="wide" title="ขยายจอภาพ ซ่อนแผงข้าง (F)" aria-label="ขยายจอภาพ">⛶</button>
         </div>
         <div class="ov bl"><div class="seg" id="view" aria-label="มุมมอง"></div></div>
-        <div class="ov br"><div class="seg" id="zoom" aria-label="ขนาด"></div></div>
+        <div class="ov br"><div class="seg zoomstep"><button type="button" id="zoomOut" title="ซูมออก (−)" aria-label="ซูมออก">－</button><button type="button" id="zoomIn" title="ซูมเข้า (+) · ซูมอยู่ลากจอเพื่อเลื่อน" aria-label="ซูมเข้า">＋</button></div><div class="seg" id="zoom" aria-label="ขนาด"></div></div>
       </div>
       <div class="transport">
         <div class="track" id="track" role="slider" aria-label="ตำแหน่งในท่า" tabindex="0">
@@ -309,10 +320,12 @@
         </section>
 
         <section class="pane" data-pane="kitten">
-          <p class="note" style="margin-top:0">🐣 <b>ร่างลูกแมวแบบใหม่ (น้องส้ม)</b> — ดัดสัดส่วนจากน้องตัวโต: หัวโต ตาโต หูปลายมน มีปอยขนบนหัว ตัวป้อม ขาสั้น แขนสั้น หางสั้น · ใช้ได้ทุกท่าในแท็บ 🐱 ท่า · สีอื่นยังเป็นลูกแมวตัววาดเดิม (หน้าตาเดียวกับในเกมตอนนี้)</p>
+          <p class="note" style="margin-top:0">🍼 <b>ลูกแมว (Lv1–2) = น้องจิบิแล้ว</b> (13 พ.ย.) — เริ่มที่ยืนนิ่ง: กะพริบ หูกระดิก หางแกว่ง ร้องเหมียว/หาวแทรกเป็นพัก ๆ · มุมจากปุ่มมุมมอง (หน้า/เฉียง/หลัง) · ยังเป็นสีขาวทุกสายพันธุ์ · ท่าจากแท็บ 🐱 ยังไม่ใช้กับน้องจิบิ</p>
+          <p class="note">🐣 <b>วัยรุ่น (Lv3–4) — ร่างเดิม (น้องส้ม)</b> — ดัดสัดส่วนจากน้องตัวโต: หัวโต ตาโต หูปลายมน มีปอยขนบนหัว ตัวป้อม ขาสั้น แขนสั้น หางสั้น · ใช้ได้ทุกท่าในแท็บ 🐱 ท่า · สีอื่นยังเป็นลูกแมวตัววาดเดิม (หน้าตาเดียวกับในเกมตอนนี้)</p>
           <div class="sec">วัย <span class="line"></span></div>
           <div class="opts">
-            <div class="opt"><span>แสดง</span><div class="seg" id="kAge"></div></div>
+            <div class="opt"><span>แสดง</span><div class="seg" id="kAges" title="กดเปิด/ปิดแต่ละวัย · เปิดหลายวัย = ยืนเทียบกัน"></div></div>
+            <div class="opt wrap"><span>ท่าทาง</span><div class="seg grid3" id="kPose"></div></div>
           </div>
           <div class="sec">สี <span class="line"></span></div>
           <div class="moves" id="kCats"></div>
@@ -324,16 +337,17 @@
         </section>
 
         <section class="pane" data-pane="chibi">
-          <p class="note" style="margin-top:0">🍼 <b>แมวจิบิวัยเด็ก</b> — วาดตามชีทของผู้ใช้ (12 พ.ย.) หัวโต ตาโตสีน้ำตาลเข้ม ตัวป้อม แขนกาง หางผอมยาว · ตัววาดแยก <code>src/render/chibi.js</code> ยังไม่เข้าเกม</p>
+          <p class="note" style="margin-top:0">🍼 <b>แมวจิบิวัยเด็ก</b> — วาดตามชีทมาตรฐานของผู้ใช้ (ชีทรอบ 3 · 13 พ.ย.) หัวกลมโต ตากลมน้ำตาลเข้ม ตัวเล็กป้อม ยืนนิ่งแขนห้อยแนบตัว หางโค้งมน · ตัววาดแยก <code>src/render/chibi.js</code> ยังไม่เข้าเกม</p>
           <div class="sec">มุม <span class="line"></span></div>
           <div class="opts">
             <div class="opt"><span>แสดง</span><div class="seg" id="cbView"></div></div>
-            <div class="opt"><span>ท่า</span><div class="seg" id="cbPose"></div></div>
+            <div class="opt"><span>ท่า</span><div class="seg" id="cbMove"></div></div>
+            <div class="opt"><span>ท่าทาง</span><div class="seg" id="cbAct"></div></div>
             <div class="opt"><span>สี</span><div class="seg" id="cbLook"></div></div>
             <div class="opt"><span>ภาพแบบ</span><div class="seg" id="cbRef"></div></div>
           </div>
           <div class="sec">ชีทแบบของผู้ใช้ <span class="line"></span></div>
-          <img src="./ref/chibi-sheet.jpg" alt="ชีทแบบแมวจิบิของผู้ใช้" style="width:100%;border-radius:10px;background:#fff">
+          <img src="./ref/chibi-sheet-v3.jpg" alt="ชีทแบบแมวจิบิของผู้ใช้" style="width:100%;border-radius:10px;background:#fff">
           <ol class="steps">
             <li>เรียงครบ = นั่ง · หน้า · เฉียง · ข้าง · หลัง เรียงแบบชีท</li>
             <li>ขยับเอง: หายใจ กะพริบตา หูกระดิก หางส่าย (ผูกกับหลอดเวลา ลากกลับมาได้ภาพเดิม)</li>
@@ -401,7 +415,7 @@
   <div class="toast" id="toast"></div>
 
   <script type="module">
-    import { drawChibi, CHIBI_VIEWS } from './src/render/chibi.js';
+    import { drawChibi, CHIBI_VIEWS, chibiLookFor, CHIBI_WALK_SPEED, CHIBI_WALK4_SPEED, chibiWalk4At } from './src/render/chibi.js';
     import { drawCat2, cat2Outfits, cat2Intro, cat2Act, CAT2_BREEDS, CAT2_KEEPERS, cat2Backdrop, drawCat2Backdrop } from './src/render/cat2.js';
     import { ALL_OUTFITS as OUTFITS, RARITY } from './src/outfits.js';
     // หน้าทดสอบเห็นทุกชุด รวมชุดที่ยังซ่อนในเกม (HIDDEN_OUTFITS)
@@ -445,7 +459,7 @@
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม
 
-    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all', kAge: 'baby', kCat: 'orange', keeper: 'food', cbView: 'all', cbLook: 'sketch', cbRef: false, cbPose: 'idle' };
+    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all', kAge: 'baby', kAges: ['baby'], kCat: 'orange', keeper: 'food', kPose: 'auto', cbView: 'all', cbLook: 'sketch', cbRef: false, cbPose: 'idle', cbAct: 'idle', cbMove: 'stand' };
     window.__lab = st;   // เปิดให้สคริปต์ทดสอบปรับมุมกล้องได้
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -458,7 +472,7 @@
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { saved = null; }
     if (saved) {
-      for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter', 'kAge', 'kCat', 'keeper', 'cbView', 'cbLook', 'cbRef', 'cbPose']) if (saved[k] !== undefined) st[k] = saved[k];
+      for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter', 'kAge', 'kAges', 'kCat', 'keeper', 'kPose', 'cbView', 'cbLook', 'cbRef', 'cbPose', 'cbAct', 'cbMove']) if (saved[k] !== undefined) st[k] = saved[k];
       if (!saved.bgSkin) st.bg = 'skin';   // ฉากหลังประจำสกินมาใหม่ (14 ต.ค.) — เปิดให้เห็นครั้งแรก แล้วจำตามที่เลือกต่อ
       if (saved.outfit && outfitById(saved.outfit)) st.outfit = saved.outfit;
       st.skin = catById(saved.skin);
@@ -472,7 +486,7 @@
           move: plain ? st.move.id : 'idle', f: plain ? st.f : 0, playing: st.playing,
           outfit: st.outfit, skin: st.skin.id, wide: document.body.classList.contains('wide'), clean: isClean(), bgSkin: true,
           speed: st.speed, zoom: st.zoom, bg: st.bg, loop: st.loop, view: st.view, compare: st.compare, tab: st.tab, ofFilter: st.ofFilter,
-          kAge: st.kAge, kCat: st.kCat, keeper: st.keeper, cbView: st.cbView, cbLook: st.cbLook, cbRef: st.cbRef, cbPose: st.cbPose,
+          kAge: st.kAge, kAges: st.kAges, kCat: st.kCat, keeper: st.keeper, kPose: st.kPose, cbView: st.cbView, cbLook: st.cbLook, cbRef: st.cbRef, cbPose: st.cbPose, cbAct: st.cbAct, cbMove: st.cbMove,
         }));
       } catch { /* ไม่มีที่เก็บก็ไม่เป็นไร */ }
     }
@@ -695,7 +709,7 @@
     /** ตั้งค่าแบบแถบจากปุ่มลัด (ซิงก์ปุ่มด้วย) */
     const setSeg = (id, val) => [...$(id).children].find((b) => b.dataset.val === String(val))?.click();
     seg('speed', 'speed', [[0.1, '0.1×', 'ช้ามาก'], [0.25, '¼×', 'ช้า ¼'], [0.5, '½×', 'ช้า ½'], [1, '1×', 'ความเร็วจริง']]);
-    seg('zoom', 'zoom', [[1, 'เต็มตัว'], [1.6, 'ขยาย'], [2.6, 'หน้า']]);
+    seg('zoom', 'zoom', [[1, 'เต็มตัว'], [1.6, 'ขยาย'], [2.6, 'หน้า']], () => { st.focus = null; st.focusX = 0; document.querySelector('.view').classList.toggle('zoomed', st.zoom > 1.01); });
     // มุมมอง: บังคับหมุนตัว (ช่อง turn ของท่า) — ตรวจตัวด้านข้าง/ด้านหลังโดยไม่ต้องรอท่าไล่หาง
     seg('view', 'view', [['front', 'หน้า'], ['qleft', '◤ ซ้าย', 'เฉียงซ้าย'], ['qright', 'ขวา ◥', 'เฉียงขวา'], ['back', 'หลัง']]);
     seg('compare', 'compare', [[true, 'โชว์'], [false, 'ซ่อน']]);
@@ -704,13 +718,39 @@
     seg('sound', 'sound', [[false, '🔇 ปิด'], [true, '🔊 เปิด']]);
     seg('ofFilter', 'ofFilter', [['all', 'ทั้งหมด'], ['new', 'แบบใหม่'], ['old', 'ยังไม่ทำ']], () => filterOutfits());
     seg('cbView', 'cbView', [['all', 'เรียงครบ'], ['sit', 'นั่ง'], ['front', 'หน้า'], ['q', 'เฉียง'], ['side', 'ข้าง'], ['back', 'หลัง']]);
-    seg('cbPose', 'cbPose', [['idle', 'ยืนนิ่ง'], ['tpose', 'กางแขน (ชีท)']]);
-    seg('cbLook', 'cbLook', [['sketch', 'ขาวตามแบบ'], ['soft', 'ใส่สีอ่อน']]);
+    seg('cbMove', 'cbMove', [['stand', '🧍 ยืน'], ['walk4', '🚶 เดิน 4 จังหวะ'], ['walk', '↔ เดินมุมข้าง']]);
+    seg('cbAct', 'cbAct', [['auto', '🎬 รวมท่า'], ['idle', 'ปกติ'], ['sleep', '😴 หลับตา'], ['meow', '😺 ร้องเหมียว'], ['yawn', '🥱 หาว']]);
+    seg('cbLook', 'cbLook', [['sketch', 'ขาวตามแบบ'], ['soft', 'ใส่สีอ่อน'], ['orange', '🧡 ส้ม'], ['pearl', '🤍 ไข่มุก'], ['calico', 'ขนมชั้น'], ['siamese', 'วิเชียรมาศ'], ['konja', 'โกนจา'], ['wilat', 'วิลาศ'], ['supha', 'ศุภลักษณ์'], ['korat', 'โคราช'], ['salid', 'ลายสลิด'], ['tortie', 'สีเปรอะ'], ['cow', 'ลายวัว'], ['manee', 'ขาวมณี'], ['somsa', 'ส้มซ่า'], ['suea', 'เสือน้อย']]);
     seg('cbRef', 'cbRef', [[false, 'ซ่อน'], [true, 'ซ้อน']]);
-    seg('kAge', 'kAge', [['baby', 'ลูกแมว', 'Lv1–2'], ['young', 'วัยรุ่น', 'Lv3–4'], ['all', 'เทียบ 3 วัย']]);
+    // ท่าทางของลูกแมว (น้องจิบิ) — นั่ง = มุมท่านั่ง · ที่เหลือ = ท่าทางใบหน้า (act ของ drawChibi)
+    seg('kPose', 'kPose', [['auto', '🎬 รวมท่า'], ['idle', '🧍 ยืนนิ่ง'], ['walk', '🚶 เดิน'], ['sit', '🐈 นั่ง'], ['sleep', '😴 หลับตา'], ['meow', '😺 ร้องเหมียว'], ['yawn', '🥱 หาว']]);
+    // เลือกวัยที่โชว์ (ผู้ใช้ 14 พ.ย.): กดเปิด/ปิดทีละวัย — เปิดหลายวัย = ยืนเทียบกันกลางจอ · ต้องเหลืออย่างน้อยหนึ่งวัย
+    const K_AGES = [['baby', 'ลูกแมว', 'Lv1–2'], ['young', 'วัยรุ่น', 'Lv3–4'], ['adult', 'โตเต็มวัย', 'Lv5']];
+    if (!Array.isArray(st.kAges) || !st.kAges.length) st.kAges = st.kAge === 'all' ? ['baby', 'young', 'adult'] : [st.kAge || 'baby'];
+    for (const [val, label, tip] of K_AGES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.title = tip + ' · กดเปิด/ปิด';
+      b.dataset.val = val;
+      b.classList.toggle('on', st.kAges.includes(val));
+      b.setAttribute('aria-pressed', String(st.kAges.includes(val)));
+      b.onclick = () => {
+        const on = st.kAges.includes(val);
+        if (on && st.kAges.length === 1) { toast('ต้องเปิดไว้อย่างน้อยหนึ่งวัย'); return; }
+        st.kAges = on ? st.kAges.filter((a) => a !== val) : K_AGES.map(([a]) => a).filter((a) => a === val || st.kAges.includes(a));
+        b.classList.toggle('on', !on);
+        b.setAttribute('aria-pressed', String(!on));
+        save();
+      };
+      $('kAges').append(b);
+    }
 
     // ── แท็บลูกแมว: สีทุกสายพันธุ์ (ลูกแมวในเกมมาจากกล่อง สีตามสายพันธุ์) ──
-    for (const c of SKINS.filter((x) => x.id !== 'mine')) {   // น้องระบายสีเองไม่ใช่สายพันธุ์จากกล่อง — ไม่มีลูกแมว
+    // เฉพาะสีที่ตัวโตมีและน้องจิบิลงสีแล้ว (ผู้ใช้ 14 พ.ย.: เอาสีเก่าที่ไม่มีตอนตัวโตออก — ขาวมุก ดำสนิท ปลาสลิด ฯลฯ)
+    // + แมวแบบใหม่ที่อยู่แค่หน้าทดลอง (ขาวมณี ส้มซ่า เสือน้อย) — ไม่ซ้ำ id กับ SKINS
+    const K_CATS = [...SKINS, ...CAT2_BREEDS.filter((b) => !SKINS.some((x) => x.id === b.id))].filter((x) => x.id !== 'mine' && chibiLookFor(x.id) !== 'soft');
+    for (const c of K_CATS) {   // น้องระบายสีเองไม่ใช่สายพันธุ์จากกล่อง — ไม่มีลูกแมว
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip';
@@ -721,7 +761,7 @@
       $('kCats').append(b);
     }
     function setKCat(id) {
-      st.kCat = SKINS.some((c) => c.id === id) ? id : 'orange';
+      st.kCat = K_CATS.some((c) => c.id === id) ? id : 'orange';
       for (const b of $('kCats').children) b.classList.toggle('on', b.dataset.kcat === st.kCat);
     }
     setKCat(st.kCat);
@@ -898,7 +938,108 @@
       sync();
     };
     $('play').onclick = toggle;
-    cv.onclick = toggle;
+    cv.onclick = () => { if (!lens.on && !pan.moved) toggle(); pan.moved = false; };
+    // ── แว่นขยาย (ผู้ใช้ 14 พ.ย.): กด 🔍 แล้วเลื่อนเมาส์/ลากนิ้วบนจอภาพ = วงกลมขยายตามไป · หมุนล้อเมาส์ = ปรับขยาย 2–8 เท่า ──
+    // ขยายจากภาพที่วาดแล้ว (คมเท่าความละเอียดจอ) — ไม่ยุ่งกับกล้อง/ท่า · เปิดอยู่ แตะจอไม่สลับเล่น/หยุด
+    const lens = { on: false, x: 0, y: 0, inside: false, mag: 3 };
+    const lensCv = document.createElement('canvas');
+    function setLens(on) {
+      lens.on = on;
+      $('lens').classList.toggle('on', on);
+      $('lens').setAttribute('aria-pressed', String(on));
+      document.querySelector('.view').classList.toggle('lens-on', on);
+      toast(on ? '🔍 แว่นขยาย: เลื่อน/ลากบนจอ · หมุนล้อปรับขยาย' : 'ปิดแว่นขยาย');
+    }
+    $('lens').onclick = () => setLens(!lens.on);
+    const lensMove = (e) => {
+      const r = cv.getBoundingClientRect();
+      lens.x = (e.clientX - r.left) * (cv.width / r.width);
+      lens.y = (e.clientY - r.top) * (cv.height / r.height);
+      lens.inside = true;
+    };
+    cv.addEventListener('pointermove', (e) => { if (lens.on) lensMove(e); });
+    cv.addEventListener('pointerdown', (e) => { if (lens.on) { lensMove(e); cv.setPointerCapture?.(e.pointerId); } });
+    cv.addEventListener('pointerleave', (e) => { if (lens.on && e.pointerType === 'mouse') lens.inside = false; });
+    cv.addEventListener('wheel', (e) => {
+      if (!lens.on) return;
+      e.preventDefault();
+      lens.mag = Math.max(2, Math.min(8, lens.mag * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    }, { passive: false });
+    // ── ซูม ＋/－ (ผู้ใช้ 14 พ.ย.): ขั้นละ 1.25 เท่า 1–8 เท่า วาดตัวน้องใหม่ทุกครั้ง (คมไม่แตก) · ซูมอยู่ลากจอ = เลื่อนดู ──
+    const ZMIN = 1, ZMAX = 8;
+    /** จุดเล็งกลางจอที่ใช้อยู่ (หน่วยเกมเหนือเท้า) — ตรงกับใน render */
+    const focusNow = () => st.focus ?? (st.zoom > 2 ? 104 : st.zoom > 1.2 ? 72 : (cv.height * 0.3) / ((cv.height / 250) * st.zoom));
+    function zoomBy(k) {
+      const f = focusNow();
+      st.zoom = Math.max(ZMIN, Math.min(ZMAX, Math.round(st.zoom * k * 100) / 100));
+      if (st.zoom <= ZMIN + 0.001) { st.focus = null; st.focusX = 0; }
+      else st.focus = f;   // ซูมรอบจุดเดิมกลางจอ (ไม่กระโดด)
+      for (const b of $('zoom').children) b.classList.toggle('on', Number(b.dataset.val) === st.zoom);
+      document.querySelector('.view').classList.toggle('zoomed', st.zoom > 1.01);
+      toast(`ซูม ${st.zoom.toFixed(2).replace(/\.?0+$/, '')}×`);
+    }
+    $('zoomIn').onclick = () => zoomBy(1.25);
+    $('zoomOut').onclick = () => zoomBy(1 / 1.25);
+    // ลากเลื่อนตอนซูม (แว่นขยายปิดอยู่) — ลากเกิน 4px = เลื่อน ไม่นับเป็นแตะสลับเล่น/หยุด
+    const pan = { on: false, moved: false, x: 0, y: 0 };
+    cv.addEventListener('pointerdown', (e) => {
+      if (lens.on || st.zoom <= 1.01) return;
+      pan.on = true; pan.moved = false; pan.x = e.clientX; pan.y = e.clientY;
+      if (st.focus == null) st.focus = focusNow();
+      cv.setPointerCapture?.(e.pointerId);
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!pan.on) return;
+      const dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (!pan.moved && Math.hypot(dx, dy) < 4) return;
+      pan.moved = true;
+      const r = cv.getBoundingClientRect(), k = cv.width / r.width, u = (cv.height / 250) * st.zoom;
+      st.focusX = (st.focusX || 0) - (dx * k) / u;
+      st.focus = st.focus + (dy * k) / u;
+      pan.x = e.clientX; pan.y = e.clientY;
+    });
+    const panEnd = () => { setTimeout(() => { pan.on = false; }, 0); };
+    cv.addEventListener('pointerup', panEnd);
+    cv.addEventListener('pointercancel', panEnd);
+    document.querySelector('.view').classList.toggle('zoomed', st.zoom > 1.01);
+    /** วาดวงแว่นทับจอ (หลัง render ทุกเฟรม) */
+    function drawLens() {
+      if (!lens.on || !lens.inside) return;
+      const W = cv.width, H = cv.height;
+      if (lensCv.width !== W || lensCv.height !== H) { lensCv.width = W; lensCv.height = H; }
+      const lc = lensCv.getContext('2d');
+      lc.setTransform(1, 0, 0, 1, 0, 0);
+      lc.clearRect(0, 0, W, H);
+      lc.drawImage(cv, 0, 0);
+      const R = Math.min(W, H) * 0.24, m = lens.mag, src = R / m;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.beginPath();
+      ctx.arc(lens.x, lens.y, R, 0, Math.PI * 2);
+      ctx.save();
+      ctx.clip();
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(lensCv, lens.x - src, lens.y - src, src * 2, src * 2, lens.x - R, lens.y - R, R * 2, R * 2);
+      ctx.restore();
+      ctx.lineWidth = Math.max(3, R * 0.035);
+      ctx.strokeStyle = 'rgba(255,255,255,.95)';
+      ctx.shadowColor = 'rgba(30,10,50,.45)';
+      ctx.shadowBlur = R * 0.12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(30,14,46,.75)';
+      const label = m.toFixed(1) + '×', fs = Math.max(12, R * 0.12);
+      ctx.font = `600 ${fs}px Mitr, sans-serif`;
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(label).width + fs;
+      ctx.beginPath();
+      ctx.roundRect(lens.x - tw / 2, lens.y + R - fs * 1.9, tw, fs * 1.5, fs * 0.75);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(label, lens.x, lens.y + R - fs * 0.78);
+      ctx.restore();
+    }
+
     $('stop').onclick = () => { fadeSfx(0.15); st.playing = false; st.f = 0; sync(); };
     $('back').onclick = () => step(-1);
     $('fwd').onclick = () => step(1);
@@ -930,6 +1071,9 @@
       else if (e.key === 'f' || e.key === 'F') toggleWide();
       else if (e.key === 'p' || e.key === 'P') shot();
       else if (e.key === 'h' || e.key === 'H') toggleClean();
+      else if (e.code === 'KeyZ') setLens(!lens.on);
+      else if (e.key === '+' || e.key === '=') zoomBy(1.25);
+      else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.25);
     });
 
     /** อัปเดตหลอด ปุ่ม และป้าย ให้ตรงกับสถานะ */
@@ -1062,19 +1206,20 @@
     // ── แท็บลูกแมว: ตัววาดเดิม (ยังไม่มีแบบใหม่) ขนาดเทียบตัวโตเหมือนในเกม ──
     // ในเกม: ตัวโตแบบใหม่ = สเกล × 0.86 · ลูกแมวตัววาดเดิม = สเกล × ขนาดตามวัย (ดู drawStashCat ใน main.js / sizeOf ใน cats.js)
     const K_SIZE = { baby: 0.62, young: 0.82 };
+    const KIT_CHIBI_S = 0.3;   // น้องจิบิ (หน่วยชีท สูง ~350) → สูงราว 105 หน่วยเกม ใกล้ลูกแมวเดิม (ตัวโต × 0.62)
     const K_NAME = { baby: 'ลูกแมว · Lv1–2', young: 'วัยรุ่น · Lv3–4', adult: 'โตเต็มวัย · Lv5' };
     function renderKittens(w, u) {
-      const base = SKINS.find((c) => c.id === st.kCat) || SKINS[0];
+      const base = K_CATS.find((c) => c.id === st.kCat) || SKINS[0];
       const plain = !st.move.intro && st.move.id !== 'act';
       const shape = plain ? shapeAt() : null;
       const TURN = { qleft: 0.75, left: Math.PI / 2, qright: -0.75, right: -Math.PI / 2, back: Math.PI };
       const sh = st.view !== 'front' ? { ...(shape || {}), turn: TURN[st.view] } : shape;
       const arg = sh ? { k: 1, shape: sh, pose: st.move.id } : null;
       const t = 600 + st.f;
-      const ages = st.kAge === 'all' ? ['baby', 'young', 'adult'] : [st.kAge];
-      const gap = Math.min(120, (w / 2) / u - 50);
+      const ages = st.kAges?.length ? st.kAges : ['baby'];
+      const gap = Math.min(ages.length === 2 ? 130 : 120, (w / 2) / u - 50);   // สองวัย: ห่างพอให้หางตัวโตไม่ทับ
       ages.forEach((age, i) => {
-        const x = ages.length > 1 ? (i - 1) * gap : 0;
+        const x = (i - (ages.length - 1) / 2) * gap;   // วางกลางจอตามจำนวนวัยที่เปิด
         const k = K_SIZE[age] || 1;
         const lift = (shape?.lift || 0) * SCALE * k;
         ctx.globalAlpha = 0.28 * (1 - Math.min(0.42, lift / 40));
@@ -1088,6 +1233,19 @@
           const nc = NEW_CATS.find((c) => c.id === base.id);
           if (nc) drawCat2(ctx, x, -lift, SCALE, nc, t, arg);
           else drawCatPose(ctx, x, -lift, SCALE / 0.86, base, t, arg);
+        } else if (age === 'baby') {
+          // ลูกแมว Lv1–2 = น้องจิบิ (ผู้ใช้ 13 พ.ย.: แทนลูกแมวตัวเก่า) — เริ่มที่ยืนนิ่ง (รวมท่า: กะพริบ หูกระดิก หางแกว่ง ร้องเหมียว/หาวเป็นพัก ๆ)
+          // มุมจากปุ่มมุมมอง: หน้า / เฉียงซ้าย / เฉียงขวา (กลับด้าน) / หลัง · ท่าจากแท็บ 🐱 ยังไม่ใช้กับน้องจิบิ · สีขนยังเป็นขาวตามแบบ
+          // เดิน = ท่าเดิน 4 จังหวะมุมเฉียง (ผู้ใช้วาดขาให้ 14 พ.ย.) ใช้ได้ทุกสี · ตัวขึ้นลงตามจังหวะ
+          const walk = st.kPose === 'walk';
+          const v = walk ? 'q' : st.kPose === 'sit' ? 'sit' : st.view === 'back' ? 'back' : st.view === 'front' ? 'front' : 'q';
+          const act = st.kPose === 'sit' || walk ? 'auto' : st.kPose || 'auto';
+          if (walk) walkGround(x, KIT_CHIBI_S, t, st.view === 'qright' ? 1 : -1, CHIBI_WALK4_SPEED);
+          ctx.save();
+          ctx.translate(x, 0);
+          if (st.view === 'qright') ctx.scale(-1, 1);
+          drawChibi(ctx, 0, 0, KIT_CHIBI_S, { view: v, t, look: chibiLookFor(base.id), act, ...(walk ? chibiWalk4At(t) : {}) });   // ลงสีแล้ว: น้องส้ม · ไข่มุก   // น้องส้ม = ลงสีแล้ว · สีอื่นยังขาว
+          ctx.restore();
         } else if (base.id === 'orange') {
           // ร่างลูกแมวแบบใหม่ (ผู้ใช้ 22 ต.ค. — เริ่มที่น้องส้ม): น้องตัวโตตัวเดิมดัดสัดส่วนตามวัย (KIT ใน cat2.js) ขนาดตัวตามวัยเท่าในเกม
           drawCat2(ctx, x, -lift, SCALE * k, { ...NEW_CATS.find((c) => c.id === 'orange'), age }, t, arg);
@@ -1104,23 +1262,41 @@
       showVals(shape);
     }
 
+    /**
+     * พื้นเลื่อนใต้น้องตอนเดิน (เส้นประบนพื้น) — ความเร็วเท่าก้าวเท้า (มุมข้าง CHIBI_WALK_SPEED · 4 จังหวะ CHIBI_WALK4_SPEED) เท้าที่แตะพื้นจึงไม่ไถล
+     * dir = ทิศที่น้องหัน (−1 ซ้าย) → พื้นไหลไปทางตรงข้าม
+     */
+    function walkGround(x, s, t, dir, speed = CHIBI_WALK_SPEED) {
+      const gap = 60 * s, off = ((-dir * t * speed * s) % gap + gap) % gap;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(120,80,50,.35)';
+      ctx.lineWidth = 2.2 * s;
+      ctx.lineCap = 'round';
+      for (let k = -4; k <= 4; k++) {
+        const gx = x + off + k * gap;
+        ctx.beginPath(); ctx.moveTo(gx - 9 * s, 14 * s); ctx.lineTo(gx + 9 * s, 14 * s); ctx.stroke();
+      }
+      ctx.restore();
+    }
     // ── แท็บจิบิ: แมวจิบิวัยเด็กตามชีทของผู้ใช้ (src/render/chibi.js) ──
     const CB_NAME = { sit: 'sit down', front: 'Front', q: 'Perspective', side: 'Side', back: 'Back' };
     const cbImg = new Image();
-    cbImg.src = './ref/chibi-sheet.jpg';
+    cbImg.src = './ref/chibi-sheet-v3.jpg';
     function renderChibi(w, u) {
-      const views = st.cbView === 'all' ? CHIBI_VIEWS : [st.cbView];
+      const walk = st.cbMove === 'walk', walk4 = st.cbMove === 'walk4';
+      const views = walk ? ['side'] : walk4 ? ['q'] : st.cbView === 'all' ? CHIBI_VIEWS : [st.cbView];   // เดินมุมข้าง = มุมข้าง · เดิน 4 จังหวะ = มุมเฉียง
       const half = (w / 2) / u;
       // ชีทกว้าง ~1350 หน่วยแบบ (5 ตัว ห่างกัน 290) · ตัวเดียว = สูง ~150 หน่วยเกม
-      const gap = 290;
+      const gap = 300;
       const s = views.length > 1 ? Math.min(0.5, (half * 2 * 0.94) / (gap * 5)) : 0.5;
       if (st.cbRef && cbImg.complete && cbImg.naturalWidth) {
         // ภาพแบบจาง ๆ ใต้ตัว: วางให้เท้าในชีท (y≈860) ตรงพื้น · ตัวหน้าตรงในชีทอยู่ x≈480
-        const sheetX = { sit: 200, front: 482, q: 768, side: 1062, back: 1350 };
+        const sheetX = { sit: 172, front: 482, q: 788, side: 1086, back: 1376 };
+        const sheetY = { sit: 725, front: 727, q: 734, side: 732, back: 732 };   // เส้นเท้าของแต่ละตัวในชีท
         ctx.save();
         ctx.globalAlpha = 0.35;
-        if (views.length > 1) ctx.drawImage(cbImg, -sheetX.q * s, -860 * s, cbImg.naturalWidth * s, cbImg.naturalHeight * s);
-        else ctx.drawImage(cbImg, -sheetX[views[0]] * s, -860 * s, cbImg.naturalWidth * s, cbImg.naturalHeight * s);
+        if (views.length > 1) ctx.drawImage(cbImg, -sheetX.q * s, -sheetY.q * s, cbImg.naturalWidth * s, cbImg.naturalHeight * s);
+        else ctx.drawImage(cbImg, -sheetX[views[0]] * s, -sheetY[views[0]] * s, cbImg.naturalWidth * s, cbImg.naturalHeight * s);
         ctx.restore();
       }
       views.forEach((v, i) => {
@@ -1131,7 +1307,9 @@
         ctx.ellipse(x, 3, 62 * s, 10 * s, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-        drawChibi(ctx, x, 0, s, { view: v, t: 600 + st.f, look: st.cbLook, pose: st.cbPose });
+        if (walk) walkGround(x, s, 600 + st.f, -1);
+        if (walk4) walkGround(x, s, 600 + st.f, -1, CHIBI_WALK4_SPEED);
+        drawChibi(ctx, x, 0, s, { view: v, t: 600 + st.f, look: st.cbLook, act: st.cbAct, walk, ...(walk4 ? chibiWalk4At(600 + st.f) : {}) });
         if (views.length > 1 && !isClean()) {
           ctx.fillStyle = 'rgba(42,15,34,.6)';
           ctx.font = '600 9px Mitr, sans-serif';
@@ -1172,6 +1350,7 @@
         sync();
       }
       render();
+      drawLens();
     }
     setTab(st.tab);
     setOutfit(st.outfit);

@@ -313,6 +313,7 @@ export function catSkin(cat) {
     palette: cat.breed,
     catId: cat.id,
     sex: cat.sex,   // ตัววาดแบบใหม่ (cat2) ใช้: เพศเมียมีแพขนตา
+    ...(cat.chibi ? { chibi: true } : {}),   // น้องจิบิ (ทดสอบ 14 พ.ย.) — drawCat2 วาดด้วย render/chibi.js แทน
   };
 }
 
