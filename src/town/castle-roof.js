@@ -861,6 +861,23 @@ function drawGazeboLive(c, t) {
   c.fillStyle = '#FFFFFF'; star(c, x, ly, 3.4, -Math.PI / 2); c.fill();
 }
 
+/**
+ * จุดไฟบนดาดฟ้า (พิกัดโลก) ให้ชั้นแสง light-fx.js เรืองทับ — r = รัศมีแสง · w = น้ำหนัก (ใหญ่ = สว่าง)
+ * โคมดาวบนยอดเสา · โคมกลมบนสายไฟ (ทุกดวงที่สอง) · โคมดาวห้อยกลางศาลา
+ */
+export function roofLights() {
+  const top = RAIL_T - 120, out = [];
+  for (const [i, px] of POLES.entries()) {
+    out.push({ x: px, y: top - 8, r: 120, w: 1 });
+    const nx = POLES[i + 1];
+    if (nx == null) continue;
+    const n = Math.round((nx - px) / 50), sag = 34;
+    for (let k = 2; k < n; k += 2) { const u = k / n; out.push({ x: px + (nx - px) * u, y: top + 4 + 4 * sag * u * (1 - u) + 7, r: 60, w: 0.55 }); }
+  }
+  out.push({ x: X.gazebo, y: GZ.eave + 34, r: 150, w: 1.1 });
+  return out;
+}
+
 // ── ส่วนที่ main.js เรียก ───────────────────────────────────────
 /** ฟ้า เนินไกล พื้น ราวระเบียง โคม (พิกัดโลก) */
 export function drawRoofBack(c, camX, vw, t) {

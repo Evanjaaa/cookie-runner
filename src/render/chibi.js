@@ -1775,6 +1775,14 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
   const L0 = life(t);
   const F = faceAct(opt.act || 'idle', t, L0);
   const L = { ...L0, open: F.open, breathe: F.breathe, tilt: F.tilt, mouth: F.mouth, yawn: !!F.yawn, t };
+  // ท่าทางเพิ่ม (chibi-acts.js — วิ่ง กระโดด กินข้าว อาบน้ำ · ผู้ใช้ 15 พ.ย. 2026): ตัวปรับทับจังหวะชีวิตปกติ
+  //   ear/tilt = บวกเพิ่ม · open/mouth = แทนที่ (ตาหลับพริ้ม/ปากเคี้ยว) · sx/sy = ยืดยุบทั้งตัวจากเท้า (ยุบก่อนกระโดด ยืดตอนพุ่ง)
+  //   head = { dx, dy, rot } หัวเลื่อน/ก้ม รอบกลางหัว · tailRot = หมุนหางรอบโคน · under/over = วาดของเพิ่มใต้หาง/บนหัว (พิกัดตัว)
+  const FX = opt.fx || {};
+  L.ear += FX.ear || 0;
+  L.tilt += FX.tilt || 0;
+  if (FX.open != null) L.open = FX.open;
+  if (FX.mouth != null) L.mouth = FX.mouth;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
@@ -1794,8 +1802,9 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
   ctx.rotate(L.tilt * (view === 'sit' ? 0.6 : 1));
 
   // หายใจ: ตัวยืดยุบที่พื้น (กว้างหดสวนนิด ๆ ให้ดูนุ่ม) หัวขยับตาม
-  const sy = 1 + L.breathe * 0.016 + (M4 ? M4.stretch : 0);       // เดิน: ยืดตอนลอย ยุบตอนเท้าลง
-  const sx = 1 - L.breathe * 0.008 - (M4 ? M4.stretch * 0.6 : 0);
+  const sy = (1 + L.breathe * 0.016 + (M4 ? M4.stretch : 0)) * (FX.sy || 1);       // เดิน: ยืดตอนลอย ยุบตอนเท้าลง
+  const sx = (1 - L.breathe * 0.008 - (M4 ? M4.stretch * 0.6 : 0)) * (FX.sx || 1);
+  if (opt.under) opt.under(ctx, L);
 
   // ── หาง (อยู่หลังตัว ยกเว้นมองหลัง) ──
   // หางเรียว: โคนอวบ (TAIL_W + 3) → ปลายเล็กลง (TAIL_W - 4)
@@ -1803,11 +1812,12 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
   const SWING = { q: 0.2, side: 0.2, front: 0.12, sit: 0 };
   const tailPts = W4 ? tailWave(rotAbout(W4.tail, W4.tail[0], M4.tail), t, 0.5, false, 0)   // เดิน 4 จังหวะ: หางตามแบบแต่ละจังหวะ สะบัดตามก้าว
     : TAILS[view] && tailWave(TAILS[view], t, view === 'sit' ? 1.3 : 1, view === 'sit' || view === 'front', SWING[view] || 0);
-  const tail = tailPts && taperTail(tailPts, TAIL_W + 3, TAIL_W - 4);
+  const tailUse = tailPts && FX.tailRot ? rotAbout(tailPts, tailPts[0], FX.tailRot) : tailPts;
+  const tail = tailUse && taperTail(tailUse, TAIL_W + 3, TAIL_W - 4);
   if (tail) {
     ctx.save();
     layer(ctx, [{ path: tail }], look.fur);
-    if (look.deco) decoTail(ctx, look, tail, tailPts);
+    if (look.deco) decoTail(ctx, look, tail, tailUse);
     ctx.restore();
   }
 
@@ -1860,7 +1870,7 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
     ctx.rect(-400, -45, 800, 400);
     ctx.clip();
     layer(ctx, [{ path: tail }], look.fur);
-    if (look.deco) decoTail(ctx, look, tail, tailPts);
+    if (look.deco) decoTail(ctx, look, tail, tailUse);
     ctx.restore();
   }
 
@@ -1869,8 +1879,15 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
   ctx.save();
   // หัววางบนคอ: ขึ้นลงเท่ากับยอดตัว (คอ y ≈ -125) ที่ยืดยุบตามลมหายใจพอดี — ไม่บ็อบแยกเกินตัว (ผู้ใช้ 14 พ.ย.)
   ctx.translate(0, -125 * (sy - 1) + (W ? W.bob - W.headBob : 0) + (M4 ? M4.headLag : 0));   // เดิน: หัวโยกช้ากว่าตัวนิด
+  if (FX.head) {
+    const H = FX.head;
+    ctx.translate(hc.x + (H.dx || 0), hc.y + (H.dy || 0));
+    ctx.rotate(H.rot || 0);
+    ctx.translate(-hc.x, -hc.y);
+  }
   drawHead(ctx, view, look, L);
   ctx.restore();
+  if (opt.over) opt.over(ctx, L, sy);
 
   // มุมหลัง: หางชี้ขึ้นกลางหลัง ปลายทับคางนิด — เรียวขนาดเดียวกับหางมุมอื่น (ผู้ใช้ 13 พ.ย.: แคปซูลเดิมอ้วนเกิน)
   // แกว่งซ้าย-ขวาแบบซุกซน (จังหวะเดียวกับหางมุมอื่นที่แกว่งขึ้น-ลง) ปลายตามโคนช้ากว่านิด
@@ -1888,6 +1905,25 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
 
   ctx.restore();
 }
+
+/**
+ * แขน/ขาเสริมเป็นท่อปลายมน (ท่าใหม่ใน chibi-acts.js — แบบแขนท่อของแมวตัวโต) · pts = แกนจากไหล่ถึงอุ้งมือ (พิกัดตัว)
+ * w = เนื้อ (ไม่รวมเส้น) · เส้นรอบนอกเส้นเดียวหนา LW เท่าเส้นอื่น · อุ้งมือแต้มครีมแบบมือ/เท้าในตัว (look.paw / cream)
+ */
+export function chibiTube(ctx, pts, w, lookId) {
+  const look = CHIBI_LOOKS[lookId] || CHIBI_LOOKS.sketch;
+  const axis = resample(pts, 6);
+  const path = taperTail(axis, w + 1, w - 1);
+  layer(ctx, [{ path }], look.fur);
+  if (look.deco && look.pawCream !== false) {
+    const [ex, ey] = axis[axis.length - 1];
+    ctx.save(); ctx.clip(path); softBlob(ctx, ex, ey, w * 0.55, w * 0.5, look.paw || look.cream, 0.6); ctx.restore();
+  }
+}
+/** สีขนของหน้าตานี้ (ของประกอบท่า เช่น ฟองสบู่บนหัว ใช้ตัดสี) */
+export const chibiFur = (lookId) => (CHIBI_LOOKS[lookId] || CHIBI_LOOKS.sketch).fur;
+export const CHIBI_INK = INK;
+export const CHIBI_LW = LW;
 
 /** เส้นข้างในตัว (หนาเท่าเส้นรอบนอก) */
 function bodyDetails(ctx, view) {

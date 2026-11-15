@@ -1972,3 +1972,137 @@ body.chat-open .chatfeed, body.chat-open .cf-row { opacity: 0; pointer-events: n
 /* ปุ่มไอคอนแถวบนห่างกันขึ้นนิดหน่อย · หัวแมว (สมาชิก) เผื่อที่ขวาให้ป้าย 1/20 ไม่ชนปุ่มตั้งค่า (ผู้ใช้ 15 พ.ย. 2026) */
 .topbar { gap: max(9px, calc(var(--hs) * .3)); }
 #btnMembers { margin-right: max(16px, calc(var(--hs) * .32)); }
+
+/* ══════════ หน้าเทอาหาร ห้องเลี้ยงน้อง (ผู้ใช้ 15 พ.ย. 2026 · src/town/feed.js) ══════════
+   ชาม 5 ใบเรียงกัน สีเดียวกับชามในห้อง (--bc/--bd จาก home.js BOWL_COLS) · รูปน้องเจ้าของ + ชื่อ + หลอดอิ่ม
+   เลือกแล้ว = กรอบเรืองชมพู ยกขึ้นนิด · ปุ่มตามกฎหน้าย่อย: วุ้นใส ไม่มีฐานเข้ม กดแล้วสว่างลดนิดเดียว · เทอาหาร = มิ้นต์ (ปุ่มหลัก) */
+.sheet.feedsheet {
+  width: min(820px, 96vw);
+  background:
+    radial-gradient(circle at 10% 8%, rgba(255,255,255,.22), transparent 40%),
+    radial-gradient(circle at 90% 100%, rgba(255,190,226,.35), transparent 50%),
+    linear-gradient(180deg, #9A6FD2 0%, #7650B4 100%);
+}
+.fd-bowls {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(5px, 1.2vw, 12px);
+}
+.fd-bowl {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 0;
+  padding: clamp(6px, 1.4dvh, 10px) 4px clamp(5px, 1dvh, 8px);
+  border-radius: 18px;
+  border: 1.5px solid rgba(255,255,255,.7);
+  background:
+    radial-gradient(80% 50% at 50% 0%, rgba(255,255,255,.95), rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, #FFFBFE, color-mix(in srgb, var(--bc) 55%, #FFFFFF));
+  box-shadow: inset 0 2px 2px rgba(255,255,255,.9), inset 0 -8px 14px -8px color-mix(in srgb, var(--bd) 70%, transparent), 0 8px 16px -10px rgba(40,10,70,.55);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.fd-bowl:active { filter: brightness(.93); }
+.fd-bowl.on {
+  transform: translateY(-3px);
+  border-color: #FFFFFF;
+  box-shadow: inset 0 2px 2px rgba(255,255,255,.9), 0 0 0 3px #FF9CC8, 0 0 18px 2px rgba(255,156,200,.7), 0 10px 18px -10px rgba(40,10,70,.6);
+}
+.fd-bowl.empty { cursor: default; opacity: .78; background: rgba(255,255,255,.35); border-style: dashed; box-shadow: none; }
+.fd-num {
+  position: absolute; top: 5px; left: 6px;
+  display: grid; place-items: center;
+  width: clamp(16px, 3.2dvh, 20px); height: clamp(16px, 3.2dvh, 20px); border-radius: 50%;
+  background: var(--bd); color: #FFFFFF;
+  font-style: normal; font-weight: 800; font-size: clamp(9px, 1.8dvh, 11px);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.6);
+}
+.fd-cat { width: clamp(42px, 10dvh, 64px); height: clamp(42px, 10dvh, 64px); }
+.fd-ghost {
+  display: grid; place-items: center;
+  width: clamp(42px, 10dvh, 64px); height: clamp(42px, 10dvh, 64px); border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,.85); color: rgba(255,255,255,.95);
+  font-size: clamp(18px, 4dvh, 26px); font-weight: 800;
+}
+.fd-bowl b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(11.5px, 2.3dvh, 14px); line-height: 1.3; }
+.fd-bowl.empty b, .fd-bowl.empty small { color: #FFFFFF; }
+.fd-bowl small { font-size: clamp(9.5px, 1.8dvh, 11.5px); line-height: 1.3; color: var(--sub); }
+.fd-bar { width: 78%; height: 6px; border-radius: 999px; background: rgba(120,90,170,.18); overflow: hidden; }
+.fd-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7DDCC0, #5BC9A8); }
+.fd-bar i.low { background: linear-gradient(90deg, #FFB0CF, #F27FB2); }
+.fd-tag { font-weight: 700; }
+.fd-tag.hungry { color: #E0559F; animation: fdBeat 1.2s ease-in-out infinite; }
+.fd-tag.ok { color: #2E9C7E; }
+@keyframes fdBeat { 50% { transform: scale(1.08); } }
+.fd-dish { width: clamp(52px, 11dvh, 72px); height: clamp(29px, 6.1dvh, 40px); margin-top: 1px; }
+.fd-own {
+  padding: 1px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--bc) 70%, #FFFFFF); color: #6A3D8E !important; font-weight: 700;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* อาหารร่วงลงชาม + ตัวเลขลอย (feed.js doPour) */
+.fd-drop { position: absolute; left: 50%; bottom: 22%; width: 34px; height: 34px; margin-left: -17px; pointer-events: none; animation: fdDrop .62s cubic-bezier(.5,0,.8,.4) both; }
+.fd-drop canvas { width: 100%; height: 100%; }
+@keyframes fdDrop {
+  0% { transform: translateY(-90px) rotate(-20deg); opacity: 0; }
+  20% { opacity: 1; }
+  85% { transform: translateY(0) rotate(8deg) scale(1); opacity: 1; }
+  100% { transform: translateY(4px) scale(.6); opacity: 0; }
+}
+.fd-float {
+  position: absolute; left: 50%; top: 30%; transform: translateX(-50%);
+  padding: 2px 10px; border-radius: 999px;
+  background: #FFF4C2; color: #A0601A; font-weight: 800; font-size: clamp(11px, 2.2dvh, 13px); white-space: nowrap;
+  box-shadow: 0 4px 10px -4px rgba(120,70,0,.5);
+  pointer-events: none;
+  animation: fdFloat 1.4s ease-out .5s both;
+}
+@keyframes fdFloat { 0% { opacity: 0; transform: translate(-50%, 6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px); } }
+
+.fd-menu {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: clamp(8px, 1.6dvh, 12px);
+  border-radius: 18px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.28);
+}
+.fd-h { margin: 0; color: #FFE7A0; font-size: clamp(13px, 2.6dvh, 16px); }
+.fd-foods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(6px, 1.2vw, 10px); }
+.fd-food {
+  position: relative;
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center;
+  padding: 6px 10px; border-radius: 16px; text-align: left;
+  border: 1.5px solid rgba(255,255,255,.75);
+  background: radial-gradient(70% 60% at 30% 0%, rgba(255,255,255,.95), rgba(255,255,255,0) 70%), linear-gradient(180deg, #FFFDF6, #FFF0DA);
+  box-shadow: inset 0 2px 2px rgba(255,255,255,.9), inset 0 -6px 10px -6px rgba(230,170,90,.45), 0 6px 12px -8px rgba(40,10,70,.5);
+  color: var(--ink); font: inherit; cursor: pointer;
+}
+.fd-food:active { filter: brightness(.93); }
+.fd-food.on { border-color: #FFFFFF; box-shadow: inset 0 2px 2px rgba(255,255,255,.9), 0 0 0 3px #FFC94A, 0 0 14px 1px rgba(255,201,74,.7); }
+.fd-food:disabled { cursor: default; background: rgba(230,220,250,.55); box-shadow: none; opacity: .75; }
+.fd-ico { grid-row: 1 / 3; width: clamp(30px, 6.4dvh, 40px); height: clamp(30px, 6.4dvh, 40px); }
+.fd-food b { font-size: clamp(11.5px, 2.3dvh, 14px); line-height: 1.25; }
+.fd-aff { grid-column: 2; color: #E0559F; font-size: clamp(9.5px, 1.8dvh, 11px); }
+.fd-qty { grid-row: 1 / 3; grid-column: 3; padding: 2px 8px; border-radius: 999px; background: #F1E8FF; color: var(--sub); font-weight: 800; font-size: clamp(11px, 2.2dvh, 13px); }
+.fd-none { margin: 0; color: rgba(255,243,226,.9); font-size: clamp(11px, 2dvh, 13px); text-align: center; }
+.fd-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fd-row small { color: rgba(255,243,226,.92); font-size: clamp(11px, 2.1dvh, 13.5px); font-weight: 600; }
+.fd-pour {
+  flex: none;
+  padding: clamp(8px, 1.8dvh, 11px) clamp(20px, 4vw, 30px); border-radius: 999px;
+  border: 1.5px solid rgba(235,255,250,.8);
+  background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.6), rgba(110,226,200,.9) 45%, rgba(46,184,160,.96));
+  box-shadow: inset 0 2px 4px rgba(255,255,255,.6), inset 0 -4px 8px rgba(20,110,95,.25), 0 6px 16px rgba(46,184,160,.4);
+  color: #FFFFFF; font: inherit; font-weight: 800; font-size: clamp(13px, 2.6dvh, 16px);
+  text-shadow: 0 1px 2px rgba(20,110,95,.55); cursor: pointer;
+}
+.fd-pour:active { filter: brightness(.93); }
+.fd-pour:disabled { cursor: default; background: rgba(220,210,250,.35); border-color: rgba(255,255,255,.3); box-shadow: none; color: rgba(255,255,255,.6); text-shadow: none; }
+/* จอเตี้ย (มือถือแนวนอน): ชามเตี้ยลง เมนูแถวเดียว */
+@media (max-height: 520px) {
+  .fd-bowl { gap: 1px; padding-top: 5px; }
+  .fd-own { display: none; }
+  .fd-food { padding: 4px 8px; }
+  .fd-aff { display: none; }
+}

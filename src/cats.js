@@ -8,7 +8,7 @@
 // น้องส้มไม่อยู่ในไฟล์นี้ — เป็นตัวหลักของเกม ไม่ต้องเลี้ยง ไม่กินช่องห้อง
 //
 // ── ช่อง ──
-//   ห้องเลี้ยง 3 ตัว + ฝากรอในกล่องหน้าประตู 1 ตัว   (ตัวที่โตแล้วไม่นับ ไม่จำกัดจำนวน)
+//   ห้องเลี้ยง 5 ตัว (เดิม 3 — ผู้ใช้ 15 พ.ย. 2026) + ฝากรอในกล่องหน้าประตู 1 ตัว   (ตัวที่โตแล้วไม่นับ ไม่จำกัดจำนวน)
 //   ห้องกับกล่องเต็มทั้งคู่ = กล่องไม่โผล่ระหว่างวิ่ง — เว้นแต่มีเพื่อนให้ส่งต่อ
 //   ตอนนั้นน้องที่พบจะ "รอบ้านใหม่" (state 'foster') ไม่กินช่อง แต่ต้องส่งการ์ดหาบ้านให้
 //   มีน้องรอบ้านใหม่ได้ทีละตัว
@@ -34,7 +34,7 @@ import { loadPref, savePref } from './storage.js';
 import { now, dayKey } from './clock.js';
 import { rollFaceId } from './faces.js';
 
-export const ROOM_SLOTS = 3;
+export const ROOM_SLOTS = 5;   // ห้องเลี้ยงรับได้ 5 ตัว (ผู้ใช้ 15 พ.ย. 2026 · เดิม 3) — ชามอาหาร 5 ใบ ใบละตัว (BOWL_MAX)
 export const WAIT_SLOTS = 1;
 export const GROWN_LV = 5;
 /** ส่งต่อให้เพื่อนได้ถึงเลเวลนี้ (ลูกแมว) — โตกว่านี้ผูกพันกับบ้านแล้ว */
@@ -349,6 +349,56 @@ export function petCat(id) {
   return 1;
 }
 
+// ─────────────────────────────────────────────────────────────
+// ชามอาหาร (ห้องเลี้ยงแบบใหม่ในปราสาท — town/feed.js · ผู้ใช้ 15 พ.ย. 2026)
+//   ชาม 5 ใบ ใบละตัว ผูกถาวร (cat.bowl = ลำดับชาม 0–4) — น้องเข้าห้องใหม่ได้ชามว่างใบแรก · ออกจากห้อง = ชามว่าง
+//   เทอาหาร = ดูแลแบบให้อาหาร (care 'feed' — EXP/ความผูกพันตามเดิม) + อาหารค้างในชาม (cat.dish) จนน้องเดินมากิน
+// ─────────────────────────────────────────────────────────────
+export const BOWL_MAX = 5;
+
+/** ชามของน้องในห้องทุกตัว — ตัวที่ยังไม่มีชามได้ใบว่างที่เลขน้อยสุด · คืน array ยาว BOWL_MAX (cat | null) */
+export function bowlCats() {
+  const out = Array(BOWL_MAX).fill(null);
+  const room = roomCats();
+  let changed = false;
+  for (const c of room) {
+    if (Number.isInteger(c.bowl) && c.bowl >= 0 && c.bowl < BOWL_MAX && !out[c.bowl]) out[c.bowl] = c;
+    else c.bowl = null;
+  }
+  for (const c of room) {
+    if (c.bowl != null) continue;
+    const i = out.indexOf(null);
+    if (i < 0) break;
+    c.bowl = i; out[i] = c; changed = true;
+  }
+  if (changed) save();
+  return out;
+}
+/** ลำดับชามของน้องตัวนี้ (null = ไม่มีชาม) */
+export function bowlOf(cat) {
+  const i = bowlCats().indexOf(catById(cat?.id));
+  return i < 0 ? null : i;
+}
+/** อาหารที่เทค้างไว้ในชาม (น้องยังกินไม่หมด) — { food, at } | null */
+export const dishOf = (cat) => (cat?.dish && !cat.dish.eaten ? cat.dish : null);
+
+/** เทอาหารลงชามของน้อง: นับเป็นการให้อาหาร (care) + อาหารค้างในชามรอน้องมากิน · คืนผลของ care() */
+export function pourBowl(id, food, aff = 1) {
+  const res = care(id, 'feed', { aff });
+  const cat = catById(id);
+  if (!res || !cat) return res;
+  cat.dish = { food, at: now(), eaten: false };
+  save();
+  return res;
+}
+/** น้องกินอาหารในชามหมดแล้ว */
+export function eatDish(id) {
+  const cat = catById(id);
+  if (!cat?.dish || cat.dish.eaten) return;
+  cat.dish.eaten = true;
+  save();
+}
+
 export function renameCat(id, name) {
   const cat = catById(id);
   const clean = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 16);
@@ -384,6 +434,21 @@ export function graduate(id) {
  * ย้ายไปหน้าแรก แล้วรับน้องจากกล่องฝากเข้าห้องถ้ามีที่ว่าง
  * คืน { grown, moved } ให้หน้าจอบอกผู้เล่น
  */
+/**
+ * ย้ายน้องที่รออยู่ (กล่องหน้าประตู / รอบ้านใหม่) เข้าห้องจนเต็ม ROOM_SLOTS — ห้องเลี้ยงใหม่ในปราสาทเรียกตอนเปิดห้อง
+ * (ผู้ใช้ 15 พ.ย. 2026: ห้องรับได้ 5 ตัวแล้วแต่ยังโชว์ 3 — น้องที่เกินเคยค้างอยู่ในกล่อง และห้องใหม่ไม่เคยย้ายเข้ามา)
+ * ไม่ย้ายน้องที่โตแล้วออก (settleHome ทำ + มีฉากฉลองในห้องเก่า) · คืนจำนวนตัวที่ย้ายเข้า
+ */
+export function fillRoom() {
+  let n = 0;
+  for (let i = 0; i < ROOM_SLOTS + 2 && roomCats().length < ROOM_SLOTS; i++) {
+    if (!promoteWaiting()) break;
+    n++;
+  }
+  if (n) save();
+  return n;
+}
+
 export function settleHome() {
   const grown = [];
   for (const c of roomCats()) {
@@ -683,6 +748,18 @@ export function debugGrantGrown(breed, sex, extra = {}) {
 }
 
 /** ล้างน้องทั้งหมด */
+/** ทดสอบ (แผงทดสอบห้องเลี้ยง town/home-debug.js): ตั้งค่าความต้องการของน้องในห้องทุกตัว (เช่น 20 = หิว/มอม/ง่วง) */
+export function debugNeeds(value, keys = NEED_KEYS) {
+  const t = now();
+  for (const c of roomCats()) for (const k of keys) c.need[k] = [value, t];
+  save();
+}
+/** ทดสอบ: ล้างอาหารที่ค้างในชามทุกใบ */
+export function debugClearDishes() {
+  for (const c of roomCats()) c.dish = null;
+  save();
+}
+
 export function debugClearCats() {
   state = blank();
   save();

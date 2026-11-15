@@ -17800,7 +17800,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* แถวปุ่มซ้ายหยุดเหนือปุ่มแถวล่าง (รวมน้องที่โผล่พ้นขอบบน) */
 #startPanel .lobby.left { bottom: calc(var(--dock-b) + var(--dock) * .86 + 8px); }
 @media (max-height: 520px) {
-  #startPanel .lobby.left { justify-content: flex-start; gap: 1.3dvh; bottom: calc(var(--dock-b) + var(--dock) * .78); }   /* มือถือ: ดันขึ้นชิดใต้การ์ดโปรไฟล์ */
+  #startPanel .lobby.left { justify-content: safe center; gap: 2.4dvh; bottom: calc(var(--dock-b) + var(--dock) * .78); }   /* มือถือ: เหลือ 3 ปุ่ม (การ์ดพลังซ่อน — ผู้ใช้ 15 พ.ย. 2026) → อยู่กลางช่องระหว่างการ์ดโปรไฟล์กับปุ่มแถวล่าง ห่างกันขึ้น · เดิมชิดบน gap 1.3dvh ตอนมี 4 ปุ่ม */
   /* ย่อให้สี่ปุ่มพอดีเหนือปุ่มแถวล่าง (ผู้ใช้ 9 พ.ย. 2026) */
   #startPanel .lobby-btn { width: 12.4dvh; height: 12.4dvh; padding: 3px 2px; }
   #startPanel .lobby-btn canvas { width: 6.9dvh; height: 6.9dvh; }
@@ -18128,45 +18128,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #createPanel.paint-full .paint-max { top: var(--backbtn-y); }
 }
 
-/* ปุ่มใหญ่แถวล่างสองปุ่ม (ปราสาทออนไลน์ · บ้านของฉัน) = วุ้นม่วงเป็นหลัก ชมพูผสมนิด ๆ (ผู้ใช้ 14 พ.ย. 2026) — ท่ากด/เงาวาวใช้ของ .lobby-btn.jelly เดิม */
-#startPanel .lobby-btn.jelly.dock-btn {
-  border-color: rgba(255,236,246,.5);
-  background:
-    radial-gradient(92% 60% at 50% 114%, rgba(255,190,236,.85) 0%, rgba(255,190,236,0) 72%),
-    radial-gradient(60% 45% at 24% 12%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 70%),
-    linear-gradient(180deg, rgba(214,146,246,.8) 0%, rgba(168,98,234,.76) 46%, rgba(124,62,212,.86) 100%);
-  box-shadow:
-    0 2px 0 rgba(178,108,236,.92),
-    0 4px 0 rgba(110,52,190,.8),
-    0 11px 18px -6px rgba(150,64,200,.6),
-    0 2px 5px rgba(60,10,60,.2),
-    inset 0 -9px 13px -4px rgba(255,186,236,.72),
-    inset 0 0 9px rgba(124,54,200,.36),
-    inset 0 2px 1px rgba(255,255,255,.7),
-    inset 0 0 0 1px rgba(255,255,255,.16);
-}
-#startPanel .lobby-btn.jelly.dock-btn.jelly-press,
-#startPanel .lobby-btn.jelly.dock-btn:active {
-  box-shadow:
-    0 1px 0 rgba(178,108,236,.92),
-    0 1px 0 rgba(110,52,190,.8),
-    0 5px 10px -4px rgba(150,64,200,.55),
-    0 1px 3px rgba(60,10,60,.2),
-    inset 0 -9px 13px -4px rgba(255,186,236,.72),
-    inset 0 0 9px rgba(124,54,200,.36),
-    inset 0 2px 1px rgba(255,255,255,.7),
-    inset 0 0 0 1px rgba(255,255,255,.16);
-}
-#startPanel .lobby-btn.jelly.dock-btn b { -webkit-text-stroke-color: #7440B0; }
-
-/* เงาวาวของสองปุ่มนี้: ไอคอนใหญ่บังช่วงบน → จุดแสงลูกอมคมสองเม็ดแบบปุ่มอื่น ย้ายมาขอบซ้าย (ไม่มีฝั่งขวา · ไม่มีแสงเบลอ — ผู้ใช้ 14 พ.ย. 2026) */
-#startPanel .lobby-btn.jelly.dock-btn::before {
-  left: 0; right: 0; top: 0; height: 100%;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 7.5% 30%, rgba(255,255,255,.95) 0 calc(var(--dock) * .028), rgba(255,255,255,0) calc(var(--dock) * .034)),
-    radial-gradient(circle at 11.8% 18%, rgba(255,255,255,.85) 0 calc(var(--dock) * .015), rgba(255,255,255,0) calc(var(--dock) * .021));
-}
+/* ปุ่มใหญ่แถวล่างสองปุ่ม: สี/เงา/ท่ากด = ของ #startPanel .lobby-btn.jelly เดิม (ผู้ใช้ 15 พ.ย. 2026 — กรอบเหมือนปุ่มร้านเหมียว/คลังน้อง) */
 
 /* ไอคอนพิเศษบนปุ่มใหญ่ (ปราสาท · ห้องนอน) ต่ำลงนิด ใหญ่ขึ้นนิด (ผู้ใช้ 15 พ.ย. 2026) */
 #startPanel .lobby-btn.jelly.dock-btn canvas {
@@ -18185,16 +18147,11 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #startPanel :is(#btnCatStore, #btnMyHome) {
   height: calc(var(--dock) * .521);
   padding: 0 0 calc(var(--dock) * .062);
-  border: 0;
-  border-radius: calc(var(--dock) * .162);
-  background: none;
-  box-shadow: none;
-  /* วุ้นใส: ฉากหลังเบลอผ่านเนื้อป้าย (เนื้อป้ายใน dock-art.js โปร่งแสง) — ท่ากดยุบ-เด้งดึ๋งจาก .jelly เดิม */
-  -webkit-backdrop-filter: blur(5px) saturate(1.4);
-  backdrop-filter: blur(5px) saturate(1.4);
+  /* กรอบ = วุ้นม่วงของปุ่มเมนู (.lobby-btn.jelly) ทั้งสี ขอบ เงา เงาวาว ท่ากด (ผู้ใช้ 15 พ.ย. 2026) · ปุ่มกว้าง จึงใช้มุมมนเป็น px แทน 32% (กันมุมรี) */
+  border-radius: calc(var(--dock) * .15);
 }
-#startPanel :is(#btnCatStore, #btnMyHome):is(.jelly-press, :active) { box-shadow: none; }
-#startPanel :is(#btnCatStore, #btnMyHome)::before { content: none; }
+/* แสงวิ่งผ่านผิวป้ายเมฆเดิม — ปุ่มเมนูไม่มีแสงวิ่ง จึงปิดให้เหมือนกัน */
+#startPanel .dock2 .dock-shine { display: none; }
 #startPanel .dock2 .dock-art {
   position: absolute;
   left: calc(var(--dock) * -.0282);
@@ -18210,16 +18167,19 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (hover: hover) {
   #startPanel .dock2:hover .dock-art { transform: translateY(-2.5%) scale(1.035); }
 }
-/* id สองตัว — ชนะกฎ .lobby-btn.jelly.dock-btn b เดิม (เส้นขอบตัด #7440B0) */
+/* ชื่อปุ่ม = ขนาด/สี/เงาเดียวกับชื่อปุ่มเมนู (ผู้ใช้ 15 พ.ย. 2026) · id สองตัวชนะกฎ .lobby-btn.jelly.dock-btn b เดิม
+   ปุ่มเมนูขยายด้วย zoom: var(--home-ui) แต่สองปุ่มนี้ zoom 1 → คูณ --home-ui เองให้ตัวอักษรเท่ากัน */
 #startPanel :is(#btnCatStore, #btnMyHome) > b {
   z-index: 3;
-  font-size: calc(var(--dock) * .13);
-  letter-spacing: .01em;
-  /* ไม่มีเส้นขอบตัดตัวอักษร (ผู้ใช้ 15 พ.ย. 2026) — อ่านง่ายด้วยเงาฟุ้งม่วงนุ่ม ๆ แทน */
+  font-size: calc(10.5px * var(--home-ui, 1));
+  font-weight: 700;
+  color: #FFF8FD;
   -webkit-text-stroke: 0;
   paint-order: normal;
-  text-shadow: 0 calc(var(--dock) * .008) calc(var(--dock) * .03) rgba(70,20,140,.7), 0 0 calc(var(--dock) * .05) rgba(90,40,170,.45);
+  text-shadow: 0 1px 0 rgba(84,34,150,.75), 0 0 6px rgba(84,34,150,.45);
 }
+@media (max-width: 560px) { #startPanel :is(#btnCatStore, #btnMyHome) > b { font-size: 9px; } }
+@media (max-height: 520px) { #startPanel :is(#btnCatStore, #btnMyHome) > b { font-size: 2.3dvh; } }   /* เท่า #startPanel .lobby-btn b จอเตี้ย */
 /* แสงวิ่งผ่านผิวป้ายเป็นครั้งคราว (แถบขาวเฉียง · ปุ่มที่สองช้ากว่านิด ไม่วาบพร้อมกัน) */
 #startPanel .dock2 .dock-shine {
   position: absolute;

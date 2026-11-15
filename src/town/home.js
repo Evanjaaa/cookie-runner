@@ -19,7 +19,8 @@ import {
   shaded, drawFloorSegs, chandelier, drawPlantArt, label,
 } from './castle-hall.js';
 import { sky, windowSky, windowTwinkles } from './castle-sky.js';
-import { roomCats } from '../cats.js';
+import { roomCats, fillRoom } from '../cats.js';
+import { foam } from '../render/chibi-acts.js';
 
 // ── สี (จากภาพแบบ) ──────────────────────────────────────────────
 const LV = ['#EEE2FB', '#D9C4F4', '#C3A6EA', '#A587D8', '#8A6BC2'];   // ลาเวนเดอร์ อ่อน → เข้ม
@@ -730,6 +731,193 @@ function drawBooksArt(c) {
   c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x0 + 10, top + 12, 2.4, BOOKS.h - 30);
 }
 
+
+// ═════════ อัปเกรดห้องนอน (ผู้ใช้ 15 พ.ย. 2026 "อัปเกรดทุกอย่าง") — รายละเอียดเพิ่มทับของเดิมแต่ละชิ้น (ขนาด/ผิวเหยียบเดิมทุกชิ้น) ═════════
+/** ระบายลูกไม้ขาว (ครึ่งวงกลมเรียงตามเส้นตรง y) */
+function lace(c, x0, x1, y, r = 3, col = '#FFFFFF') {
+  c.fillStyle = col; c.beginPath();
+  for (let x = x0; x <= x1 + 0.1; x += r * 1.8) { c.moveTo(x + r, y); c.arc(x, y, r, 0, Math.PI); }
+  c.fill();
+  c.fillStyle = 'rgba(200,180,230,.45)'; for (let x = x0; x <= x1 + 0.1; x += r * 1.8) { c.beginPath(); c.arc(x, y + r * 0.45, r * 0.25, 0, TAU); c.fill(); }
+}
+/** ผ้าห่มถักลายทาง (สี่เหลี่ยมคางหมูพาด) + พู่ขอบล่าง */
+function throwBlanket(c, pts, cols, fringeY = null) {
+  c.save();
+  const P = new Path2D(); P.moveTo(...pts[0]); for (const q of pts.slice(1)) P.lineTo(...q); P.closePath();
+  c.clip(P);
+  const minX = Math.min(...pts.map((q) => q[0])), maxX = Math.max(...pts.map((q) => q[0])), minY = Math.min(...pts.map((q) => q[1])), maxY = Math.max(...pts.map((q) => q[1]));
+  for (let x = minX - 20, i = 0; x < maxX + 20; x += 6, i++) { c.fillStyle = cols[i % cols.length]; c.beginPath(); c.moveTo(x, minY); c.lineTo(x + 6, minY); c.lineTo(x + 6 + (maxY - minY) * 0.15, maxY); c.lineTo(x + (maxY - minY) * 0.15, maxY); c.fill(); }
+  c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.7; for (let y = minY + 3; y < maxY; y += 4) { c.beginPath(); c.moveTo(minX, y); c.lineTo(maxX, y + 1); c.stroke(); }
+  c.restore();
+  if (fringeY != null) { c.strokeStyle = cols[0]; c.lineWidth = 1; for (let x = pts[pts.length - 1][0] + 2; x < pts[2][0] - 1; x += 3) { c.beginPath(); c.moveTo(x, fringeY); c.lineTo(x + 0.5, fringeY + 4); c.stroke(); } }
+}
+/** ตุ๊กตาแมวนุ่มนั่ง (ตัวกลม + หน้าแมว + หาง) */
+function plushCat(c, x, y, s, col, colD) {
+  c.fillStyle = lg(c, 0, y - 14 * s, 0, y, [[0, col], [1, colD]]); c.beginPath(); c.ellipse(x, y - 7 * s, 11 * s, 8 * s, 0, 0, TAU); c.fill();
+  c.strokeStyle = colD; c.lineWidth = 3 * s; c.lineCap = 'round'; c.beginPath(); c.moveTo(x + 9 * s, y - 3 * s); c.quadraticCurveTo(x + 17 * s, y - 6 * s, x + 14 * s, y - 15 * s); c.stroke();
+  catFace(c, x, y - 20 * s, 9 * s, col);
+  c.fillStyle = PK[2]; heart(c, x, y - 7 * s, 2.6 * s); c.fill();
+}
+function bedExtras(c) {
+  const cx = X.bed, x0 = cx - BED.w / 2, x1 = cx + BED.w / 2;
+  // ตราหัวใจมงกุฎบนหัวเตียง
+  c.fillStyle = goldV(c, GY - 162, GY - 140); heart(c, cx, GY - 150, 9); c.fill();
+  c.fillStyle = PK[1]; heart(c, cx, GY - 150, 6.5); c.fill();
+  crownIcon(c, cx, GY - 163, 0.45);
+  // ลูกไม้ขอบผ้าห่ม + ลายอุ้งเท้าสลับหัวใจ
+  for (let i = 0; i <= 16; i++) {
+    const u = i / 16, bx = (1 - u) * (1 - u) * (x0 + 12) + 2 * (1 - u) * u * cx + u * u * (x1 - 12), by = (1 - u) * (1 - u) * (GY - 22) + 2 * (1 - u) * u * (GY - 14) + u * u * (GY - 22);
+    c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(bx, by + 1, 3, 0, Math.PI); c.fill();
+  }
+  for (let i = -3; i <= 2; i++) pawIcon(c, cx + i * 32 + 16, GY - 30, 0.42, 'rgba(255,255,255,.4)');
+  // ผ้าห่มถักชมพูพาดปลายเตียง
+  throwBlanket(c, [[x1 - 84, GY - 58], [x1 - 24, GY - 56], [x1 - 16, GY - 16], [x1 - 70, GY - 18]], ['#FFD3E6', '#F7B8D3', '#FFE6F1'], GY - 17);
+  // ระบายกระโปรงเตียง
+  c.fillStyle = PK[1]; c.beginPath();
+  for (let x = x0 + 12; x <= x1 - 12; x += 7) { c.moveTo(x + 4, GY - 10); c.arc(x, GY - 10, 4, 0, Math.PI); }
+  c.fill();
+  // ตุ๊กตาแมวนุ่มบนเตียง (ซ้าย)
+  plushCat(c, x0 + 62, GY - 60, 1, PK[0], PK[2]);
+}
+function bedShelfExtras(c) {
+  const cx = X.bed, y = 92;
+  frameArt(c, cx - 2, y - 14, 20, 24, '#FFE7C4', [PK[0], LV[0]]);
+  // เทียนในแก้ว
+  c.fillStyle = 'rgba(230,240,255,.8)'; c.beginPath(); c.roundRect(cx + 62, y - 16, 12, 16, 3); c.fill();
+  c.fillStyle = CR[0]; c.fillRect(cx + 64, y - 11, 8, 10);
+  c.fillStyle = '#FFD86B'; c.beginPath(); c.ellipse(cx + 68, y - 14, 1.8, 3, 0, 0, TAU); c.fill();
+}
+function nightstandExtras(c, x) {
+  lace(c, x - 28, x + 28, GY - 55, 2.6);
+  // นาฬิกาปลุกทองหูแมว (ซ้าย) · แก้วนม (ขวา)
+  const kx = x - 21, ky = GY - 69;
+  for (const d of [-1, 1]) { c.fillStyle = goldV(c, ky - 10, ky); c.beginPath(); c.arc(kx + d * 4, ky - 6, 2.2, 0, TAU); c.fill(); }
+  c.fillStyle = goldV(c, ky - 6, ky + 7); c.beginPath(); c.arc(kx, ky, 6.5, 0, TAU); c.fill();
+  c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(kx, ky, 5, 0, TAU); c.fill();
+  c.strokeStyle = '#5A3420'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(kx, ky); c.lineTo(kx, ky - 3.4); c.moveTo(kx, ky); c.lineTo(kx + 2.4, ky + 0.6); c.stroke();
+  c.fillStyle = 'rgba(230,240,255,.85)'; c.beginPath(); c.roundRect(x + 16, GY - 74, 9, 12, [1, 1, 2, 2]); c.fill();
+  c.fillStyle = '#FFFFFF'; c.fillRect(x + 17, GY - 70, 7, 7);
+}
+function deskExtras(c) {
+  const cx = X.desk, x0 = cx - DESK.w / 2, x1 = cx + DESK.w / 2, top = GY - DESK.h;
+  lace(c, x0 + 4, x1 - 4, top + 10, 2.6);
+  // แก้วใส่ดินสอลาเวนเดอร์ + ดินสอสี
+  const px = cx + 26;
+  for (const [dx, col, h] of [[-3, PK[2], 18], [0, '#9FC9E8', 21], [3, '#FFE2A8', 17]]) { c.strokeStyle = col; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(px + dx, top - 8); c.lineTo(px + dx * 1.6, top - h); c.stroke(); }
+  c.fillStyle = lg(c, 0, top - 12, 0, top, [[0, LV[1]], [1, LV[2]]]); c.beginPath(); c.roundRect(px - 6, top - 12, 12, 12, [2, 2, 3, 3]); c.fill();
+  pawIcon(c, px, top - 5.5, 0.32, 'rgba(255,255,255,.85)');
+}
+/** ธงราวสามเหลี่ยมพาสเทลเหนือโต๊ะ (บนผนัง) */
+function deskBuntingArt(c) {
+  const x0 = X.desk - 92, x1 = X.desk + 92, y = 100, sag = 14;
+  c.strokeStyle = 'rgba(160,120,90,.7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x0, y); c.quadraticCurveTo(X.desk, y + sag * 2, x1, y); c.stroke();
+  const cols = [PK[1], LV[1], '#CDE6F6', '#FFE2A8', '#CFF0DD'];
+  for (let i = 0; i < 9; i++) {
+    const u = (i + 0.5) / 9, fx = x0 + (x1 - x0) * u, fy = y + 4 * sag * u * (1 - u) * 1;
+    c.fillStyle = cols[i % 5]; c.beginPath(); c.moveTo(fx - 7, fy); c.lineTo(fx + 7, fy); c.lineTo(fx, fy + 13); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.7)'; heart(c, fx, fy + 4.5, 1.8); c.fill();
+  }
+  for (const x of [x0, x1]) { c.fillStyle = goldV(c, y - 3, y + 3); c.beginPath(); c.arc(x, y, 2.6, 0, TAU); c.fill(); }
+}
+function chairExtras(c) {
+  const x = X.chair, seat = GY - 34;
+  for (const [dx, dy] of [[-7, -42], [7, -42], [-7, -24], [7, -24]]) { c.fillStyle = 'rgba(110,80,170,.3)'; c.beginPath(); c.arc(x + dx, seat + dy, 1.4, 0, TAU); c.fill(); }
+  bow(c, x, seat - 58, 0.5, PK[1], PK[3]);
+}
+function benchExtras(c) {
+  const cx = X.win, x0 = cx - BENCH.w / 2, top = GY - BENCH.h;
+  lace(c, x0, x0 + BENCH.w, top + 10, 3);
+  plushCat(c, cx, top - 6, 1.1, LV[0], LV[2]);
+  throwBlanket(c, [[x0 + BENCH.w - 46, top - 6], [x0 + BENCH.w + 2, top - 6], [x0 + BENCH.w + 2, top + 34], [x0 + BENCH.w - 40, top + 30]], ['#CDE6F6', '#A9CDEB', '#E6F2FC'], top + 31);
+}
+function wardExtras(c) {
+  const cx = X.ward, w = WARD.w, top = GY - WARD.h;
+  // ลายอุ้งเท้าบนบานบน + มุมทองม้วน
+  for (const d of [-1, 1]) {
+    pawIcon(c, cx + d * (w / 4) - d * 1, top + 92, 1.1, 'rgba(165,135,216,.35)');
+    c.strokeStyle = goldV(c, top + 52, top + 66); c.lineWidth = 1.4; c.lineCap = 'round';
+    const px = d < 0 ? cx - w / 2 + 18 : cx + w / 2 - 18;
+    c.beginPath(); c.arc(px, top + 58, 4, d < 0 ? Math.PI : -0.2, d < 0 ? Math.PI * 1.7 : Math.PI * 0.5); c.stroke();
+  }
+}
+function mirrorExtras(c) {
+  const cx = X.mirror, top = GY - MIRROR.h, w = MIRROR.w;
+  // โพลารอยด์เสียบขอบกระจก + สติกเกอร์หัวใจ
+  c.save(); c.translate(cx + w / 2 - 6, top + 70); c.rotate(0.18);
+  c.fillStyle = '#FFFFFF'; c.fillRect(-8, -9, 16, 19); c.fillStyle = '#FFDDB8'; c.fillRect(-6.5, -7.5, 13, 12);
+  catFace(c, 0, -1.5, 4.5, '#FFDDB8');
+  c.restore();
+  c.fillStyle = PK[2]; heart(c, cx - w / 2 + 8, top + 112, 4); c.fill();
+  c.fillStyle = LV[2]; heart(c, cx - w / 2 + 12, top + 124, 3); c.fill();
+}
+function trophyExtras(c) {
+  const cx = X.trophy, w = TROPHY.w, x0 = cx - w / 2, top = GY - TROPHY.h;
+  // แสงสปอตไลต์ใต้ชั้นบน + กระจกสะท้อน
+  c.fillStyle = 'rgba(255,240,190,.28)'; c.beginPath(); c.moveTo(cx - 14, top + 24); c.lineTo(cx + 14, top + 24); c.lineTo(cx + 44, top + 82); c.lineTo(cx - 44, top + 82); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.moveTo(x0 + 20, top + 30); c.lineTo(x0 + 34, top + 30); c.lineTo(x0 + 14, GY - 30); c.lineTo(x0 + 10, GY - 40); c.closePath(); c.fill();
+  // โบว์รางวัลห้อยข้างตู้
+  const rx = x0 + w - 2, ry = top + 104;
+  c.fillStyle = PK[2]; c.beginPath(); c.moveTo(rx - 4, ry); c.lineTo(rx - 7, ry + 20); c.lineTo(rx - 3, ry + 16); c.lineTo(rx, ry + 21); c.lineTo(rx + 3, ry); c.closePath(); c.fill();
+  for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; c.fillStyle = i % 2 ? PK[1] : PK[2]; c.beginPath(); c.arc(rx + Math.cos(a) * 6, ry + Math.sin(a) * 6, 3, 0, TAU); c.fill(); }
+  c.fillStyle = goldV(c, ry - 5, ry + 5); c.beginPath(); c.arc(rx, ry, 4.5, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.75)'; star(c, rx, ry, 2.4); c.fill();
+}
+function sofaExtras(c) {
+  const cx = X.sofa, w = SOFA.w, x0 = cx - w / 2;
+  // ลายหัวใจบนเบาะ + ขาทอง
+  for (const o of [-80, -40, 40, 80]) { c.fillStyle = 'rgba(255,255,255,.35)'; heart(c, cx + o, GY - 28, 3); c.fill(); }
+  for (const d of [-1, 1]) { c.fillStyle = goldV(c, GY - 6, GY); c.beginPath(); c.ellipse(cx + d * (w / 2 - 22), GY - 2, 6, 2.6, 0, 0, TAU); c.fill(); }
+  // ผ้าห่มถักพาดที่วางแขนซ้าย
+  throwBlanket(c, [[x0 - 2, GY - 74], [x0 + 30, GY - 72], [x0 + 32, GY - 22], [x0 - 4, GY - 26]], ['#FFE2A8', '#FFF1CF', '#F7CE7A'], GY - 23);
+}
+function recordExtras(c) {
+  const cx = X.record, top = GY - 66;
+  // โน้ตดนตรีบนบานตู้ + ขลิบทอง
+  for (const d of [-1, 1]) {
+    const nx = cx + d * 19, ny = top + 40;
+    c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(nx - 2, ny + 6, 3, 2.2, -0.4, 0, TAU); c.fill(); c.fillRect(nx, ny - 6, 1.4, 12);
+    if (d > 0) c.fillRect(nx, ny - 6, 6, 1.6);
+  }
+  c.strokeStyle = goldV(c, top + 8, GY - 10); c.lineWidth = 1.2; c.beginPath(); c.roundRect(cx - 40, top + 10, 80, GY - top - 22, 3); c.stroke();
+}
+function booksExtras(c) {
+  const cx = X.books, w = BOOKS.w, x0 = cx - w / 2, top = GY - BOOKS.h;
+  // เถาไม้เลื้อยห้อยจากยอดตู้ (ขวา)
+  c.strokeStyle = '#7FB27A'; c.lineWidth = 1.4;
+  for (const [dx, len] of [[w / 2 - 10, 54], [w / 2 - 22, 36]]) {
+    c.beginPath(); c.moveTo(cx + dx, top + 4); c.bezierCurveTo(cx + dx + 6, top + len * 0.4, cx + dx - 6, top + len * 0.7, cx + dx + 2, top + len); c.stroke();
+    for (let k = 0; k < 5; k++) { const u = (k + 1) / 6; c.fillStyle = k % 2 ? '#93C78C' : '#7DB678'; c.beginPath(); c.ellipse(cx + dx + Math.sin(u * 5) * 4, top + 4 + len * u, 3.6, 2.3, u * 2, 0, TAU); c.fill(); }
+  }
+  // ที่กั้นหนังสือหัวแมว (ชั้นล่าง ซ้าย)
+  catFace(c, x0 + 6, GY - 26, 7, PK[0]);
+  // ป้ายชื่อทองบนตู้
+  c.fillStyle = goldV(c, top + 2, top + 9); c.beginPath(); c.roundRect(cx - 16, top + 2, 32, 7, 3.5); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.7)'; heart(c, cx, top + 5.6, 2); c.fill();
+}
+/**
+ * ไฟประดับดวงเล็กห้อยตามคาน (ทั้งห้อง) + พาดระบายเตียง — วาดสด กะพริบคนละจังหวะ สีพาสเทล · กลางคืนสว่างขึ้น
+ */
+function drawFairyLights(c, camX, vw, t) {
+  const n = sky().night, glowA = 0.25 + 0.45 * n;
+  const cols = ['255,214,234', '220,200,255', '255,240,170', '200,235,255'];
+  const string = (xa, xb, y, sag, seed) => {
+    if (xb < camX - 20 || xa > camX + vw + 20) return;
+    c.strokeStyle = 'rgba(150,110,80,.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(xa, y); c.quadraticCurveTo((xa + xb) / 2, y + sag * 2, xb, y); c.stroke();
+    const k = Math.max(3, Math.round((xb - xa) / 26));
+    for (let i = 1; i < k; i++) {
+      const u = i / k, bx = xa + (xb - xa) * u, by = y + 4 * sag * u * (1 - u) + 3, col = cols[(i + seed) % 4];
+      const tw = 0.55 + 0.45 * Math.sin(t * 0.05 + i * 1.7 + seed);
+      c.fillStyle = `rgba(${col},${(glowA * tw).toFixed(3)})`; c.beginPath(); c.arc(bx, by, 6, 0, TAU); c.fill();
+      c.fillStyle = `rgba(${col},${(0.75 + 0.25 * tw).toFixed(3)})`; c.beginPath(); c.ellipse(bx, by, 2, 2.6, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.arc(bx - 0.6, by - 0.8, 0.7, 0, TAU); c.fill();
+    }
+  };
+  const y = BEAM_B + 6;
+  for (let x = 0, i = 0; x < HOME_W; x += 200, i++) string(x, Math.min(HOME_W, x + 200), y, 10, i);
+  // พาดระบายหลังคาเตียง
+  string(X.bed - BED.w / 2 + 6, X.bed + BED.w / 2 - 6, BED.top + 30, 8, 7);
+}
+
 /** เพดาน ผนัง พื้น (ห้องนอน) */
 export function drawHomeBack(c, camX, vw, t) {
   c.fillStyle = '#B57F52'; c.fillRect(camX - 10, -400, vw + 20, 400);
@@ -747,31 +935,33 @@ export function drawHomeWorld(c, camX, vw, t) {
   if (vis(X.plantL - 40, X.plantL + 40)) { c.save(); c.translate(X.plantL, GY); shaded(c, 'hall:plant3:0', -40, -130, 80, 132, (g) => drawPlantArt(g, 0)); c.restore(); }
   if (vis(X.plantR - 40, X.plantR + 40)) { c.save(); c.translate(X.plantR, GY); shaded(c, 'hall:plant3:1', -40, -130, 80, 132, (g) => drawPlantArt(g, 1)); c.restore(); }
   if (vis(X.bed - 160, X.bed + 160)) {
-    shaded(c, 'home:bedshelf', X.bed - 84, 50, 168, 110, drawBedShelfArt);
-    shaded(c, 'home:bed', X.bed - BED.w / 2 - 14, BED.top - 18, BED.w + 28, GY - BED.top + 26, drawBedArt);
+    shaded(c, 'home:bedshelf:v2', X.bed - 84, 50, 168, 110, (g) => { drawBedShelfArt(g); bedShelfExtras(g); });
+    shaded(c, 'home:bed:v2', X.bed - BED.w / 2 - 14, BED.top - 18, BED.w + 28, GY - BED.top + 26, (g) => { drawBedArt(g); bedExtras(g); });
   }
-  for (const x of [X.nsL, X.nsR]) if (vis(x - 40, x + 40)) shaded(c, 'home:ns:' + x, x - 38, GY - 112, 76, 120, (g) => nightstandArt(g, x));
+  for (const x of [X.nsL, X.nsR]) if (vis(x - 40, x + 40)) shaded(c, 'home:ns2:' + x, x - 38, GY - 112, 76, 120, (g) => { nightstandArt(g, x); nightstandExtras(g, x); });
   if (vis(X.desk - 130, X.desk + 130)) {
     shaded(c, 'home:frames:desk', X.desk - 90, 110, 160, 90, drawWallFramesArtDesk);
-    shaded(c, 'home:desk', X.desk - DESK.w / 2 - 14, GY - DESK.h - 70, DESK.w + 28, DESK.h + 78, drawDeskArt);
-    shaded(c, 'home:chair', X.chair - 30, GY - 106, 60, 108, drawChairArt);
+    shaded(c, 'home:bunting', X.desk - 100, 92, 200, 40, deskBuntingArt);
+    shaded(c, 'home:desk:v2', X.desk - DESK.w / 2 - 14, GY - DESK.h - 70, DESK.w + 28, DESK.h + 78, (g) => { drawDeskArt(g); deskExtras(g); });
+    shaded(c, 'home:chair:v2', X.chair - 30, GY - 106, 60, 108, (g) => { drawChairArt(g); chairExtras(g); });
   }
   if (vis(X.win - 260, X.win + 260)) {
     cached(c, 'home:win' + skyK, X.win - WINB.w / 2 - 20, WINB.top - 16, WINB.w + 40, WINB.bot - WINB.top + 32, (g) => windowArt(g, X.win, WINB.w, WINB.top, WINB.bot, 1.7));
     twinkle(c, X.win, WINB.w, WINB.top, WINB.bot, 1.7, t);
     sunShaft(c, X.win, WINB, t);
     shaded(c, 'home:curtain', X.win - WINB.w / 2 - 90, BEAM_B, WINB.w + 180, GY - 40 - BEAM_B, (g) => curtainArt(g, X.win, WINB.w, BEAM_B + 10, 168, GY - 64));
-    shaded(c, 'home:bench', X.win - BENCH.w / 2 - 14, GY - BENCH.h - 46, BENCH.w + 28, BENCH.h + 54, drawBenchArt);
+    shaded(c, 'home:bench:v2', X.win - BENCH.w / 2 - 14, GY - BENCH.h - 46, BENCH.w + 28, BENCH.h + 54, (g) => { drawBenchArt(g); benchExtras(g); });
   }
-  if (vis(X.ward - 90, X.ward + 90)) shaded(c, 'home:ward', X.ward - WARD.w / 2 - 10, GY - WARD.h - 14, WARD.w + 20, WARD.h + 22, drawWardArt);
-  if (vis(X.mirror - 50, X.mirror + 50)) shaded(c, 'home:mirror', X.mirror - 46, GY - MIRROR.h - 14, 92, MIRROR.h + 22, drawMirrorArt);
-  if (vis(X.trophy - 80, X.trophy + 80)) shaded(c, 'home:trophy', X.trophy - TROPHY.w / 2 - 10, GY - TROPHY.h - 20, TROPHY.w + 20, TROPHY.h + 28, drawTrophyArt);
+  if (vis(X.ward - 90, X.ward + 90)) shaded(c, 'home:ward:v3', X.ward - WARD.w / 2 - 10, GY - WARD.h - 14, WARD.w + 20, WARD.h + 22, (g) => { drawWardArt(g); wardExtras(g); });
+  if (vis(X.mirror - 50, X.mirror + 50)) shaded(c, 'home:mirror:v2', X.mirror - 46, GY - MIRROR.h - 14, 92, MIRROR.h + 22, (g) => { drawMirrorArt(g); mirrorExtras(g); });
+  if (vis(X.trophy - 80, X.trophy + 80)) shaded(c, 'home:trophy:v2', X.trophy - TROPHY.w / 2 - 10, GY - TROPHY.h - 20, TROPHY.w + 24, TROPHY.h + 28, (g) => { drawTrophyArt(g); trophyExtras(g); });
   if (vis(X.sofa - 140, X.sofa + 140)) {
     shaded(c, 'home:frames:sofa', X.sofa - 70, 100, 140, 80, drawWallFramesArtSofa);
-    shaded(c, 'home:sofa', X.sofa - SOFA.w / 2 - 16, GY - SOFA.h - 16, SOFA.w + 32, SOFA.h + 24, drawSofaArt);
+    shaded(c, 'home:sofa:v2', X.sofa - SOFA.w / 2 - 16, GY - SOFA.h - 16, SOFA.w + 32, SOFA.h + 24, (g) => { drawSofaArt(g); sofaExtras(g); });
   }
-  if (vis(X.record - 60, X.record + 60)) { shaded(c, 'home:record', X.record - 54, GY - 176, 108, 184, drawRecordArt); drawRecordLive(c, t); }
-  if (vis(X.books - 80, X.books + 80)) shaded(c, 'home:books', X.books - BOOKS.w / 2 - 10, GY - BOOKS.h - 76, BOOKS.w + 20, BOOKS.h + 84, drawBooksArt);
+  if (vis(X.record - 60, X.record + 60)) { shaded(c, 'home:record:v2', X.record - 54, GY - 176, 108, 184, (g) => { drawRecordArt(g); recordExtras(g); }); drawRecordLive(c, t); }
+  if (vis(X.books - 80, X.books + 80)) shaded(c, 'home:books:v2', X.books - BOOKS.w / 2 - 10, GY - BOOKS.h - 76, BOOKS.w + 20, BOOKS.h + 84, (g) => { drawBooksArt(g); booksExtras(g); });
+  drawFairyLights(c, camX, vw, t);   // ไฟประดับตามคาน + ระบายเตียง (อัปเกรด 15 พ.ย.)
   // โคมแขวน + โคมระย้า + แสงโคม (วาดสด)
   for (const [i, x] of [X.lantA, X.lantB].entries()) if (vis(x - 30, x + 30)) { shaded(c, 'home:lant', x - 16, BEAM_B - 2, 32, 132, (g) => hangLanternArt(g, x, 72)); glow(c, x, BEAM_B + 100, 46, 0.42, t, i); }
   if (vis(X.desk - 140, X.desk + 140)) chandelier(c, X.desk, t, 0, 0.78, 1 + 0.5 * S.night);
@@ -803,7 +993,7 @@ export const NURSE_W = 2400;
 const N = {
   door: 80, scon: 150, ban: 204, box: 160, cab: 296, bowls: [384, 424, 464, 504, 544], water: 600, win1: 580, tub: 724,
   condo: 906, dome: 1016, round: 1104, canopy: 1210, house: 1318, basket: 1420, chest: 1520, win2: 1664, plant1: 1792,
-  vanity: 1916, gallery: 2068, plant2: 2128, tower: 2214, box2: 2316, sign: 1180,
+  vanity: 1916, gallery: 2068, plant2: 2128, tower: 2214, box2: 2316, sign: 1180, litter: 2052,
 };
 const NWIN = { w: 200, top: 84, bot: 232 };
 const N_BRACKETS = [760, 1480, 2160];   // เว้นตรงคอนโด/ชั้นผนัง/โคมแขวน
@@ -823,7 +1013,7 @@ export const NURSE_STAGE = (() => {
   if (q === 'starter') return 1;
   if (q === 'full') return 2;
   if (new URLSearchParams(location.search).get('kits')) return 2;   // น้องตัวอย่าง (home-cats.js) = ห้องของครบ
-  try { return roomCats().length ? 2 : 0; } catch { return 0; }
+  try { fillRoom(); return roomCats().length ? 2 : 0; } catch { return 0; }   // น้องที่รออยู่ย้ายเข้าห้องก่อน (home-cats.js ก็เรียก)
 })();
 const has = (tier) => NURSE_STAGE >= tier;
 
@@ -839,15 +1029,24 @@ export const NURSE_SPOTS = {
     : has(1) ? [{ x: N.round, y: GY - 14 }] : [],
   bowls: (has(2) ? N.bowls : has(1) ? [N.bowls[0]] : []).map((x, i) => ({ x, y: GY, side: i % 2 ? 1 : -1 })),
   seat: has(2) ? { spots: [{ x: N.win2 - 50, y: GY - 46 }, { x: N.win2 + 50, y: GY - 46 }] } : null,
+  // เครื่องให้น้ำ (ดื่มน้ำ — ยืนข้างขวา หันซ้ายเข้าหาอ่างน้ำ) · ห้องน้ำแมว (ประตูหน้ากระบะ) — ผู้ใช้ 15 พ.ย. 2026
+  water: has(1) ? { x: N.water, stand: N.water + 5, sy: GY - 17, rim: GY - 30 } : null,   // ดื่มน้ำ: นั่งหลังน้ำพุ (sy) ก้มหน้าลงอ่างแบบกินข้าว
+  litter: has(2) ? { x: N.litter, door: GY - 18 } : null,
+  // ไต่ชั้นผนัง: พื้น → ชั้น 0 → ชั้น 1 → เปลญวน (นอนพัก) → ชั้น 2 → ชั้น 3 → พื้น (ระดับผิวเบาะ)
+  shelves: has(2) ? { start: WSHELF[0][0] - 46, path: [[0, 0], [1, 0], ['h', 150], [2, 0], [3, 0]].map(([i, rest]) => (i === 'h' ? { x: (HAMMOCK.x0 + HAMMOCK.x1) / 2, y: HAMMOCK.y + HAMMOCK.sag - 4, rest, sit: true } : { x: WSHELF[i][0], y: WSHELF[i][1] - 6 })), end: WSHELF[3][0] + 48 } : null,
+  // อ่างอาบน้ำ (ผู้ใช้ 15 พ.ย. 2026 ระบบอาบน้ำ — town/bath.js): น้องนั่งในอ่าง เท้าจมใต้ปากอ่าง · rim = ปากอ่าง (ตัดตัวน้องใต้นี้) · out = จุดยืนข้างอ่าง
+  tub: has(2) ? { x: N.tub + 6, y: GY - 60, rim: GY - 70, out: N.tub + 104 } : null,   // นั่งสูงพอให้หน้าโผล่พ้นปากอ่าง
+  // คอนโดแมว: เบาะ 4 ชั้นจากล่างขึ้นบน (y = ผิวเบาะ) · base = จุดยืนก่อนกระโดดขึ้นชั้นแรก (ข้างบันได)
+  condo: has(2) ? { base: N.condo - 96, perches: CPERCH.map(([x, h]) => ({ x, y: GY - h - 3 })) } : null,
 };
 
 export const NURSE_PLACES = [
   { id: 'nDoor', kind: 'door', to: 'home', act: 'กลับห้องนอน', name: 'ประตูกลับห้องนอน', x: N.door - 50, w: 100, h: 214 },
   { id: 'nBox', kind: 'box', name: 'กล่องต้อนรับ', x: N.box - 30, w: 60, h: 44 },
   ...(NURSE_STAGE === 0 ? [{ id: 'nSign', kind: 'soon', act: 'อ่านป้าย', name: 'ป้ายห้องว่าง', x: N.sign - 40, w: 80, h: 110, msg: 'ยังไม่มีน้องมาอยู่เลย · ไปเปิดตู้กาช่าหรือรับเลี้ยงน้องที่หน้าแรกของเกมได้นะ แล้วห้องนี้จะมีของใช้ให้น้อง' }] : []),
-  ...(has(1) ? [{ id: 'nFood', kind: 'soon', act: 'ให้อาหาร', name: 'มุมให้อาหาร', x: N.cab - 70, w: 280, h: 100, msg: 'มุมให้อาหาร · ขั้นถัดไปจะเทอาหารลงชามให้น้อง ๆ ได้ที่นี่' }] : []),
+  ...(has(1) ? [{ id: 'nFood', kind: 'feed', act: 'ให้อาหาร', name: 'มุมให้อาหาร', x: N.cab - 70, w: 280, h: 100 }] : []),   // เปิดหน้าเทอาหาร (town/feed.js)
   ...(has(2) ? [
-    { id: 'nTub', kind: 'soon', act: 'อาบน้ำ', name: 'อ่างอาบน้ำแมว', x: N.tub - 70, w: 140, h: 96, msg: 'อ่างอาบน้ำ · ขั้นถัดไปจะพาน้องมาอาบน้ำได้ที่นี่' },
+    { id: 'nTub', kind: 'bath', act: 'อาบน้ำ', name: 'อ่างอาบน้ำแมว', x: N.tub - 70, w: 140, h: 96, msg: 'อ่างอาบน้ำ · ขั้นถัดไปจะพาน้องมาอาบน้ำได้ที่นี่' },
     { id: 'nChest', kind: 'soon', act: 'เล่นกับน้อง', name: 'หีบของเล่น', x: N.chest - 36, w: 72, h: 60, msg: 'หีบของเล่น · ขั้นถัดไปจะหยิบลูกบอลมาโยนเล่นกับน้องได้' },
     { id: 'nSeat', kind: 'bench', name: 'ม้านั่งริมหน้าต่าง', x: N.win2 - 90, w: 180, h: 70, seats: [N.win2 - 48, N.win2 + 48], sitDy: 42 },
     { id: 'nVanity', kind: 'soon', act: 'แต่งตัวน้อง', name: 'โต๊ะแต่งตัวน้อง', x: N.vanity - 80, w: 160, h: 100, msg: 'โต๊ะแต่งตัวน้อง · ขั้นถัดไปจะใส่โบว์ใส่ชุดให้น้องได้ที่นี่' },
@@ -860,7 +1059,7 @@ export const NURSE_SURFACES = (() => {
   const S = [];
   if (has(1)) S.push(flat('nCab', N.cab - 66, N.cab + 66, GY - 98));
   if (has(2)) {
-    S.push(flat('nTub', N.tub - 64, N.tub + 64, GY - 72));
+    S.push(flat('nTub', N.tub - 64, N.tub + 64, GY - 72, { water: true, foam: true }));   // ในอ่าง = ลุยน้ำแบบน้ำพุ + ฟองกระเด็น (main.js)
     for (const [i, [x, h, hw]] of CPERCH.entries()) S.push(flat('condo:' + i, x - hw, x + hw, GY - h, { soft: true }));
     for (const [i, [x, y, hw]] of WSHELF.entries()) S.push(flat('nShelf:' + i, x - hw, x + hw, y, { soft: true }));
     S.push(flat('nHammock', HAMMOCK.x0 + 14, HAMMOCK.x1 - 14, HAMMOCK.y + HAMMOCK.sag - 4, { soft: true }));
@@ -875,19 +1074,55 @@ export const NURSE_SURFACES = (() => {
 
 // ── ชิ้นในห้องแมว ──
 /** กล่องกระดาษ (กล่องต้อนรับ — มุดได้) · front = ผนังหน้ากล่อง (วาดทับน้องที่มุดอยู่) */
+/**
+ * กล่องมุดเล่น (วาดใหม่ 15 พ.ย. 2026): กล่องกระดาษสีคราฟต์ทรงป้อม ฝาพับตั้งเป็นหูแมวสองข้าง (ในหูชมพู)
+ *   หน้ากล่อง: ช่องหน้าต่างรูปหัวแมว (มองเห็นเบาะชมพูข้างใน) · หนวดวาดปากกา · เทปกาวลายหัวใจ · สติกเกอร์อุ้งเท้า · ขอบรอยพับ
+ *   front = วาดเฉพาะผนังหน้า (ทับตัวที่มุดอยู่ข้างใน) · ไม่ใส่ front = ผนังหลัง + ฝาหูแมว + ข้างในกล่อง
+ */
 function boxArt(c, x, w = 60, h = 40, front = false) {
-  const x0 = x - w / 2, top = GY - h;
+  const x0 = x - w / 2, top = GY - h, K = w / 60;
   if (!front) {
-    floorShadow(c, x, w + 10);
-    c.fillStyle = '#C79A64'; c.beginPath(); c.moveTo(x0 + 3, top); c.lineTo(x0 + w - 3, top); c.lineTo(x0 + w - 8, top - 10); c.lineTo(x0 + 8, top - 10); c.closePath(); c.fill();
-    for (const d of [-1, 1]) { c.fillStyle = '#E2B87E'; c.beginPath(); c.moveTo(x + d * (w / 2), top); c.lineTo(x + d * (w / 2 + 14), top - 16); c.lineTo(x + d * (w / 2 - 4), top - 12); c.closePath(); c.fill(); }
+    floorShadow(c, x, w + 14);
+    // ผนังหลัง + ข้างในมืด
+    c.fillStyle = '#B98A55'; c.beginPath(); c.moveTo(x0 + 2, top + 2); c.lineTo(x0 + w - 2, top + 2); c.lineTo(x0 + w - 7 * K, top - 9 * K); c.lineTo(x0 + 7 * K, top - 9 * K); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(80,45,30,.35)'; c.beginPath(); c.ellipse(x, top + 1, w / 2 - 6, 4 * K, 0, 0, TAU); c.fill();
+    // ฝาพับหูแมว (ซ้าย/ขวา) + ในหูชมพู
+    for (const d of [-1, 1]) {
+      const bx = x + d * (w / 2 - 2);
+      c.fillStyle = lg(c, 0, top - 22 * K, 0, top, [[0, '#F2CB93'], [1, '#D9A86A']]);
+      c.beginPath(); c.moveTo(bx, top + 1); c.lineTo(bx + d * 8 * K, top - 22 * K); c.quadraticCurveTo(bx - d * 6 * K, top - 18 * K, bx - d * 16 * K, top - 6 * K); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,180,205,.85)';
+      c.beginPath(); c.moveTo(bx - d * 2 * K, top - 2 * K); c.lineTo(bx + d * 5 * K, top - 17 * K); c.quadraticCurveTo(bx - d * 4 * K, top - 14 * K, bx - d * 11 * K, top - 6 * K); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(150,100,55,.35)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(bx, top + 1); c.lineTo(bx - d * 16 * K, top - 6 * K); c.stroke();
+    }
     return;
   }
-  c.fillStyle = lg(c, 0, top, 0, GY, [[0, '#EBC48C'], [1, '#D5A56C']]); c.beginPath(); c.roundRect(x0, top, w, h, 3); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x0 + 3, top + 2, w - 6, 1.6);
-  c.fillStyle = 'rgba(150,100,55,.25)'; c.fillRect(x - 6, top, 12, 12);
-  pawIcon(c, x, top + h * 0.6, 1.3, 'rgba(160,105,60,.45)');
-  c.fillStyle = 'rgba(120,80,40,.2)'; c.fillRect(x0, GY - 4, w, 4);
+  // ผนังหน้า (ไล่สีคราฟต์ + เงาข้างขวา)
+  const face = new Path2D(); face.roundRect(x0, top, w, h, [3, 3, 5, 5]);
+  c.fillStyle = lg(c, x0, 0, x0 + w, 0, [[0, '#F3CD94'], [0.6, '#E9BC80'], [1, '#D3A066']]); c.fill(face);
+  c.save(); c.clip(face);
+  c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect(x0 + 2, top + 2, w - 4, 1.6);
+  c.fillStyle = 'rgba(120,80,40,.18)'; c.fillRect(x0, GY - 4 * K, w, 4 * K);
+  // เทปกาวลายหัวใจพาดกลางบน
+  c.fillStyle = 'rgba(255,215,232,.85)'; c.fillRect(x - 7 * K, top, 14 * K, 10 * K);
+  c.fillStyle = 'rgba(240,140,180,.8)'; heart(c, x, top + 5 * K, 2.6 * K); c.fill();
+  c.restore();
+  // ช่องหน้าต่างหัวแมว: เห็นเบาะชมพูข้างใน
+  const hx = x - 9 * K, hy = top + h * 0.6, hr = 7.5 * K;
+  const hole = new Path2D();
+  hole.moveTo(hx - hr, hy + 1); hole.lineTo(hx - hr - 1, hy - hr - 3 * K); hole.lineTo(hx - hr * 0.35, hy - hr + 1);
+  hole.quadraticCurveTo(hx, hy - hr - 1, hx + hr * 0.35, hy - hr + 1); hole.lineTo(hx + hr + 1, hy - hr - 3 * K); hole.lineTo(hx + hr, hy + 1);
+  hole.quadraticCurveTo(hx + hr, hy + hr, hx, hy + hr); hole.quadraticCurveTo(hx - hr, hy + hr, hx - hr, hy + 1); hole.closePath();
+  c.fillStyle = '#7A5238'; c.fill(hole);
+  c.save(); c.clip(hole); c.fillStyle = PK[2]; c.beginPath(); c.ellipse(hx, hy + hr, hr * 1.2, hr * 0.55, 0, 0, TAU); c.fill(); c.restore();
+  c.strokeStyle = 'rgba(255,240,215,.9)'; c.lineWidth = 1.2; c.stroke(hole);
+  // หนวดปากกาข้างช่อง
+  c.strokeStyle = 'rgba(110,70,40,.55)'; c.lineWidth = 0.9; c.lineCap = 'round';
+  for (const d of [-1, 1]) for (const o of [-1.6, 1.6]) { c.beginPath(); c.moveTo(hx + d * (hr + 1.5), hy + 1 + o); c.lineTo(hx + d * (hr + 7 * K), hy + o * 1.8); c.stroke(); }
+  // สติกเกอร์อุ้งเท้า (ขวา) + ลูกศรวาดมือ
+  c.fillStyle = '#FFF4E6'; c.beginPath(); c.arc(x + 15 * K, top + h * 0.58, 6.5 * K, 0, TAU); c.fill();
+  pawIcon(c, x + 15 * K, top + h * 0.6, 0.55 * K, PK[3]);
+  c.strokeStyle = 'rgba(150,100,55,.35)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0 + 1.5, top + 1); c.lineTo(x0 + 1.5, GY - 1); c.moveTo(x0 + w - 1.5, top + 1); c.lineTo(x0 + w - 1.5, GY - 1); c.stroke();
 }
 /** ป้ายห้องว่าง (ไม้ตั้งพื้น ลายอุ้งเท้า — ตัวหนังสือวาดสด) */
 function signArt(c) {
@@ -914,13 +1149,24 @@ function cabinetArt(c) {
   plank(c, cx - w / 2 - 4, top, w + 8, 9, 3, 1);
   c.fillStyle = lg(c, 0, top + 9, 0, GY - 6, [[0, CR[0]], [1, CR[2]]]); c.beginPath(); c.roundRect(cx - w / 2, top + 9, w, GY - top - 15, 3); c.fill();
   for (const d of [-1, 1]) {
-    c.fillStyle = lg(c, 0, top + 16, 0, GY - 12, [[0, LV[1]], [1, LV[2]]]); c.beginPath(); c.roundRect(cx + (d < 0 ? -w / 2 + 7 : 3), top + 16, w / 2 - 10, GY - top - 30, 5); c.fill();
-    pawIcon(c, cx + d * (w / 4), top + 44, 1.1, 'rgba(255,255,255,.75)');
-    c.fillStyle = GOLD; c.beginPath(); c.arc(cx + d * 7, top + 54, 2.2, 0, TAU); c.fill();
+    // บานประตูกรอบนูน (อัปเกรด 15 พ.ย.): กรอบนอกลาเวนเดอร์เข้ม → แผงในไล่สี · ลายอุ้งเท้า · มือจับทองรูปปลา
+    const bx = cx + (d < 0 ? -w / 2 + 7 : 3), bw = w / 2 - 10, bh = GY - top - 30;
+    c.fillStyle = lg(c, 0, top + 16, 0, GY - 12, [[0, LV[2]], [1, LV[3]]]); c.beginPath(); c.roundRect(bx, top + 16, bw, bh, 6); c.fill();
+    c.fillStyle = lg(c, 0, top + 20, 0, GY - 16, [[0, LV[0]], [1, LV[1]]]); c.beginPath(); c.roundRect(bx + 4, top + 20, bw - 8, bh - 8, 4); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.roundRect(bx + 6, top + 22, bw - 12, 2, 1); c.fill();
+    pawIcon(c, cx + d * (w / 4), top + 42, 1.05, 'rgba(165,135,216,.55)');
+    c.fillStyle = goldV(c, top + 50, top + 58);
+    c.beginPath(); c.ellipse(cx + d * 8, top + 54, 3.4, 2, 0, 0, TAU); c.fill();
+    c.beginPath(); c.moveTo(cx + d * 11, top + 54); c.lineTo(cx + d * 14, top + 51.5); c.lineTo(cx + d * 14, top + 56.5); c.closePath(); c.fill();
   }
   for (const d of [-1, 1]) { c.fillStyle = WO[2]; c.beginPath(); c.roundRect(cx + d * (w / 2 - 10) - 4, GY - 8, 8, 8, [0, 0, 3, 3]); c.fill(); }
-  // โหลบนตู้
+  // โหลบนตู้ + ที่ตักอาหารทอง
   jar(c, cx - 36, top, 5, 0.9); jar(c, cx + 34, top, 1, 0.9);
+  c.save(); c.translate(cx + 2, top - 3); c.rotate(-0.12);
+  c.fillStyle = goldV(c, -8, 2); c.beginPath(); c.roundRect(-14, -2, 14, 3, 1.5); c.fill();
+  c.beginPath(); c.moveTo(0, -5); c.lineTo(12, -5); c.quadraticCurveTo(13, 2, 6, 2); c.quadraticCurveTo(-1, 2, 0, -5); c.fill();
+  c.fillStyle = '#D99A5B'; c.beginPath(); c.ellipse(6, -5, 5.5, 1.6, 0, 0, TAU); c.fill();
+  c.restore();
 }
 /** โหลอาหารแมวแก้ว (ฝาสี · เม็ดอาหารข้างใน) */
 function jar(c, x, y, k, s = 1) {
@@ -935,46 +1181,268 @@ function jar(c, x, y, k, s = 1) {
   c.fillStyle = lid; c.beginPath(); c.ellipse(-1, -8, 4, 2, 0, 0, TAU); c.fill(); c.beginPath(); c.moveTo(3, -8); c.lineTo(6, -10.5); c.lineTo(6, -5.5); c.closePath(); c.fill();
   c.restore();
 }
+/** สีชามทั้ง 5 ใบ [บน, ล่าง] — หน้าเทอาหาร (town/feed.js) ใช้สีเดียวกัน ผู้เล่นจำได้ว่าชามไหนของใคร */
+export const BOWL_COLS = [[PK[1], PK[3]], [LV[1], LV[3]], ['#CDE6F6', '#8FBBDC'], ['#FFE2C2', '#E9AE77'], ['#CFF0DD', '#82C79E']];
+/** อาหารในชาม (เทจากหน้าเทอาหาร) วาดสดทับชามว่าง — home-cats.js drawBowlFood */
+export const BOWL_TOP = 13;   // ปากชามสูงจากพื้น
+/** ชามใบที่ i วาดซ้ำทับหน้าน้องที่ก้มกินอยู่ (home-cats.js) — ภาพแคชเดียวกับในฉาก */
+export function drawNurseBowl(c, i) {
+  const x = NURSE_SPOTS.bowls[i]?.x;
+  if (x != null) shaded(c, 'nurse:bowl2:' + i, x - 24, GY - 24, 48, 30, (g) => bowlArt(g, x, i));
+}
+/**
+ * ชามข้าวเซรามิกหูแมว (ผู้ใช้ 15 พ.ย. 2026 อัปเกรดห้อง): หูแมวสองข้างโผล่หลังขอบชาม · ขอบชามม้วนขาวเงา · ตัวชามไล่สีของชามใบนั้น
+ *   แถบแก้มชมพู + อุ้งเท้าขาวหน้าชาม + แสงวาว · ปากชามสูง BOWL_TOP เท่าเดิม (อาหาร/หน้าน้องกินพอดีขอบ)
+ */
 function bowlArt(c, x, k) {
-  const col = [[PK[1], PK[3]], [LV[1], LV[3]], ['#CDE6F6', '#8FBBDC'], ['#FFE2C2', '#E9AE77'], ['#CFF0DD', '#82C79E']][k % 5];
-  c.fillStyle = 'rgba(120,70,80,.16)'; c.beginPath(); c.ellipse(x, GY + 2, 20, 4.5, 0, 0, TAU); c.fill();
-  c.fillStyle = '#C98E55'; c.beginPath(); c.ellipse(x, GY - 13, 13, 4.2, 0, 0, TAU); c.fill();
-  for (let i = 0; i < 7; i++) { c.fillStyle = i % 2 ? '#E2A86C' : '#B97C45'; c.beginPath(); c.arc(x - 9 + i * 3, GY - 14 - Math.sin(i * 0.9) * 2.5, 2, 0, TAU); c.fill(); }
-  c.fillStyle = lg(c, 0, GY - 14, 0, GY, [[0, col[0]], [1, col[1]]]);
-  c.beginPath(); c.moveTo(x - 17, GY - 13); c.lineTo(x + 17, GY - 13); c.quadraticCurveTo(x + 15, GY, x + 9, GY); c.lineTo(x - 9, GY); c.quadraticCurveTo(x - 15, GY, x - 17, GY - 13); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(x - 8, GY - 8, 3, 2, -0.4, 0, TAU); c.fill();
-  pawIcon(c, x + 3, GY - 7, 0.5, 'rgba(255,255,255,.75)');
+  const [c0, c1] = BOWL_COLS[k % 5], top = GY - BOWL_TOP;
+  c.fillStyle = 'rgba(110,60,90,.18)'; c.beginPath(); c.ellipse(x, GY + 2, 19, 3.6, 0, 0, TAU); c.fill();
+  // หูแมว (หลังขอบชาม)
+  for (const d of [-1, 1]) {
+    c.fillStyle = lg(c, 0, top - 8, 0, top, [[0, c0], [1, c1]]);
+    c.beginPath(); c.moveTo(x + d * 6, top - 1); c.quadraticCurveTo(x + d * 10, top - 9.5, x + d * 13.5, top - 8.5); c.quadraticCurveTo(x + d * 15.5, top - 4, x + d * 15, top); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,190,215,.85)';
+    c.beginPath(); c.moveTo(x + d * 8.5, top - 1.5); c.quadraticCurveTo(x + d * 11, top - 6.5, x + d * 12.8, top - 6); c.quadraticCurveTo(x + d * 13.6, top - 3, x + d * 13.2, top - 0.5); c.closePath(); c.fill();
+  }
+  // ตัวชาม (ทรงถ้วยป้อม)
+  c.fillStyle = lg(c, x - 18, 0, x + 18, 0, [[0, c0], [0.55, c0], [1, c1]]);
+  c.beginPath(); c.moveTo(x - 18, top); c.lineTo(x + 18, top);
+  c.bezierCurveTo(x + 17.5, GY - 5, x + 14, GY, x + 9, GY); c.lineTo(x - 9, GY); c.bezierCurveTo(x - 14, GY, x - 17.5, GY - 5, x - 18, top); c.fill();
+  // เงาใต้ท้องชาม
+  c.fillStyle = lg(c, 0, GY - 7, 0, GY, [[0, 'rgba(90,40,90,0)'], [1, 'rgba(90,40,90,.16)']]);
+  c.beginPath(); c.moveTo(x - 16, GY - 6); c.lineTo(x + 16, GY - 6); c.bezierCurveTo(x + 14, GY - 1, x + 12, GY, x + 9, GY); c.lineTo(x - 9, GY); c.bezierCurveTo(x - 12, GY, x - 14, GY - 1, x - 16, GY - 6); c.fill();
+  // ปากชามด้านใน (ว่าง — อาหารวาดสดทับ) + ขอบม้วนขาว
+  c.fillStyle = lg(c, 0, top - 4, 0, top + 4, [[0, 'rgba(80,50,100,.35)'], [1, c1]]);
+  c.beginPath(); c.ellipse(x, top, 16, 4.2, 0, 0, TAU); c.fill();
+  c.strokeStyle = '#FFFDFB'; c.lineWidth = 2.6; c.beginPath(); c.ellipse(x, top, 17, 4.6, 0, 0, TAU); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, top - 0.6, 15.5, 3.8, 0, Math.PI * 1.1, Math.PI * 1.75); c.stroke();
+  // แก้มชมพู + อุ้งเท้าหน้าชาม + แสงวาว
+  c.fillStyle = 'rgba(255,170,205,.55)';
+  for (const d of [-1, 1]) { c.beginPath(); c.ellipse(x + d * 11, GY - 7, 2.6, 1.6, 0, 0, TAU); c.fill(); }
+  pawIcon(c, x, GY - 6.5, 0.55, 'rgba(255,255,255,.9)');
+  c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(x - 12, GY - 9.5, 1.6, 3, 0.35, 0, TAU); c.fill();
 }
+/** ชามใบที่ i วาดตรงไหนก็ได้ (หน้าเทอาหาร feed.js ใช้รูปเดียวกับในห้อง) · (x, gy) = กลางก้นชามบนพื้น */
+export function bowlArtAt(c, x, gy, i) {
+  c.save(); c.translate(0, gy - GY); bowlArt(c, x, i); c.restore();
+}
+/** แผ่นรองชามข้าว (ผ้าลายหยัก สีลาเวนเดอร์ ขอบครีม อุ้งเท้าระหว่างชาม) ใต้ชามทุกใบ */
+function feedMatArt(c, xs) {
+  const x0 = xs[0] - 26, x1 = xs[xs.length - 1] + 26, y = GY + 1, h = 9;
+  c.fillStyle = 'rgba(110,60,90,.12)'; c.beginPath(); c.roundRect(x0 - 2, y - h / 2 + 2, x1 - x0 + 4, h + 2, 5); c.fill();
+  // ขอบหยักครีม
+  c.fillStyle = CR[1];
+  c.beginPath();
+  for (let x = x0; x <= x1 + 0.1; x += 8) c.arc(x, y - h / 2, 3.2, 0, TAU);
+  for (let x = x0; x <= x1 + 0.1; x += 8) { c.moveTo(x + 3.2, y + h / 2); c.arc(x, y + h / 2, 3.2, 0, TAU); }
+  c.fill();
+  c.fillStyle = CR[1]; c.beginPath(); c.roundRect(x0 - 3, y - h / 2, x1 - x0 + 6, h, 4); c.fill();
+  c.fillStyle = lg(c, 0, y - h / 2, 0, y + h / 2, [[0, LV[1]], [1, LV[2]]]);
+  c.beginPath(); c.roundRect(x0 + 1, y - h / 2 + 1.6, x1 - x0 - 2, h - 3.2, 3); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 0.8; c.setLineDash([2.2, 2]);
+  c.beginPath(); c.roundRect(x0 + 3, y - h / 2 + 3, x1 - x0 - 6, h - 6, 2); c.stroke(); c.setLineDash([]);
+  for (let i = 0; i < xs.length - 1; i++) pawIcon(c, (xs[i] + xs[i + 1]) / 2, y + 0.5, 0.42, 'rgba(255,255,255,.75)');
+}
+
+/**
+ * เครื่องให้น้ำอัตโนมัติ (น้ำพุแมว — ผู้ใช้ 15 พ.ย. 2026): ฐานเซรามิกทรงหัวแมว (หูสองข้าง) สีฟ้ามิ้นต์ · อ่างน้ำบนหัว
+ *   จานดอกไม้กลางอ่าง น้ำผุดจากกลางดอกไหลลงกลีบ (วาดสด drawWaterLive) · หน้าต่างดูระดับน้ำ + ไฟสถานะ · หน้าแมวยิ้มหลับตา
+ */
+const WF = { w: 27, top: GY - 30 };   // ครึ่งกว้างฐาน · ระดับผิวน้ำในอ่าง
 function waterArt(c) {
-  const x = N.water;
-  floorShadow(c, x, 50);
-  c.fillStyle = lg(c, 0, GY - 22, 0, GY, [[0, CR[0]], [1, CR[2]]]); c.beginPath(); c.roundRect(x - 20, GY - 20, 40, 20, [10, 10, 4, 4]); c.fill();
-  c.fillStyle = '#9FD3F0'; c.beginPath(); c.ellipse(x, GY - 19, 16, 4, 0, 0, TAU); c.fill();
-  c.fillStyle = 'rgba(180,225,250,.75)'; c.beginPath(); c.roundRect(x - 14, GY - 70, 28, 50, [12, 12, 4, 4]); c.fill();
-  c.fillStyle = 'rgba(120,190,235,.45)'; c.beginPath(); c.roundRect(x - 12, GY - 50, 24, 28, [4, 4, 3, 3]); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(x - 9, GY - 64, 3, 38);
-  c.fillStyle = LV[2]; c.beginPath(); c.roundRect(x - 8, GY - 76, 16, 8, 3); c.fill();
+  const x = N.water, { w, top } = WF;
+  floorShadow(c, x, 66, 0.18);
+  // หูแมว
+  for (const d of [-1, 1]) {
+    c.fillStyle = lg(c, 0, top - 14, 0, top, [[0, '#D9F4F2'], [1, '#9FDAD8']]);
+    c.beginPath(); c.moveTo(x + d * 9, top - 2); c.quadraticCurveTo(x + d * 16, top - 15, x + d * 22, top - 14); c.quadraticCurveTo(x + d * 26, top - 7, x + d * 25, top + 1); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,190,215,.85)';
+    c.beginPath(); c.moveTo(x + d * 13, top - 2.5); c.quadraticCurveTo(x + d * 17, top - 10.5, x + d * 20.5, top - 10); c.quadraticCurveTo(x + d * 22.5, top - 5, x + d * 22, top - 1); c.closePath(); c.fill();
+  }
+  // ตัวฐาน (หัวแมวป้อม)
+  c.fillStyle = lg(c, x - w, 0, x + w, 0, [[0, '#E6FAF8'], [0.45, '#C6EEEB'], [1, '#8FCFCC']]);
+  c.beginPath(); c.moveTo(x - w, top + 2); c.bezierCurveTo(x - w, top - 3, x + w, top - 3, x + w, top + 2);
+  c.bezierCurveTo(x + w + 2, GY - 6, x + w - 6, GY, x + w - 12, GY); c.lineTo(x - w + 12, GY); c.bezierCurveTo(x - w + 6, GY, x - w - 2, GY - 6, x - w, top + 2); c.fill();
+  c.fillStyle = lg(c, 0, GY - 9, 0, GY, [[0, 'rgba(40,110,120,0)'], [1, 'rgba(40,110,120,.18)']]);
+  c.beginPath(); c.rect(x - w - 2, GY - 9, w * 2 + 4, 9); c.fill();
+  // อ่างน้ำบนหัว (ขอบขาว + ผิวน้ำ)
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 2.6; c.beginPath(); c.ellipse(x, top, w - 3, 5.2, 0, 0, TAU); c.stroke();
+  c.fillStyle = lg(c, 0, top - 5, 0, top + 5, [[0, '#BDE8FB'], [1, '#6FC0E8']]); c.beginPath(); c.ellipse(x, top, w - 4.5, 4.2, 0, 0, TAU); c.fill();
+  // จานดอกไม้ 5 กลีบ (ยกบนก้าน)
+  c.fillStyle = '#EAF8FF'; c.beginPath(); c.roundRect(x - 2, top - 9, 4, 8, 2); c.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * TAU - Math.PI / 2;
+    c.fillStyle = i % 2 ? '#FFF4FA' : '#FFFFFF';
+    c.beginPath(); c.ellipse(x + Math.cos(a) * 6, top - 9 + Math.sin(a) * 2, 4.4, 2.2, a * 0.15, 0, TAU); c.fill();
+  }
+  c.fillStyle = '#FFD7E8'; c.beginPath(); c.ellipse(x, top - 9.2, 3.2, 1.5, 0, 0, TAU); c.fill();
+  // หน้าแมวยิ้มหลับตา + แก้ม
+  c.strokeStyle = '#3F8E92'; c.lineWidth = 1.2; c.lineCap = 'round';
+  for (const d of [-1, 1]) { c.beginPath(); c.arc(x + d * 8, top + 9, 2.4, Math.PI * 0.15, Math.PI * 0.85); c.stroke(); }
+  c.beginPath(); c.moveTo(x - 2, top + 12.5); c.quadraticCurveTo(x - 1, top + 14, x, top + 12.8); c.quadraticCurveTo(x + 1, top + 14, x + 2, top + 12.5); c.stroke();
+  c.fillStyle = 'rgba(255,160,195,.55)'; for (const d of [-1, 1]) { c.beginPath(); c.ellipse(x + d * 14, top + 12, 3, 1.8, 0, 0, TAU); c.fill(); }
+  // หน้าต่างดูระดับน้ำ (ขวา) + ไฟสถานะ
+  c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.roundRect(x + 15, top + 16, 6, 11, 3); c.fill();
+  c.fillStyle = '#7CCBEF'; c.beginPath(); c.roundRect(x + 16, top + 20.5, 4, 5.5, 2); c.fill();
+  // แสงวาวซ้าย
+  c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(x - w + 6, top + 12, 2, 6, 0.15, 0, TAU); c.fill();
 }
+/** เครื่องให้น้ำวาดซ้ำทับหน้าน้องที่ดื่มอยู่ข้างหลัง (home-cats.js) — ภาพแคชเดียวกับในฉาก */
+export function drawNurseWater(c, t) {
+  shaded(c, 'nurse:water2', N.water - 36, GY - 50, 72, 58, waterArt);
+  drawWaterLive(c, t);
+}
+/** น้ำผุดจากกลางดอก ไหลลงกลีบสู่อ่าง + วงคลื่น + ประกาย + ไฟสถานะกะพริบ (วาดสดทุกเฟรม) */
+function drawWaterLive(c, t) {
+  const x = N.water, { w, top } = WF;
+  c.save();
+  // โดมน้ำผุด
+  const pulse = 0.6 + 0.4 * Math.sin(t * 0.18);
+  c.fillStyle = 'rgba(190,232,255,.85)'; c.beginPath(); c.ellipse(x, top - 10.5, 2.4, 1.6 + pulse, 0, Math.PI, TAU); c.fill();
+  // สายน้ำไหลลงกลีบ 4 ทาง
+  c.strokeStyle = 'rgba(170,222,250,.75)'; c.lineWidth = 1.1; c.lineCap = 'round';
+  for (const d of [-1, -0.4, 0.4, 1]) {
+    c.beginPath(); c.moveTo(x + d * 3, top - 10); c.quadraticCurveTo(x + d * 10, top - 9, x + d * 11, top - 1); c.stroke();
+  }
+  // หยดวิ่งตามสาย
+  for (let i = 0; i < 6; i++) {
+    const u = (t * 0.03 + i / 6) % 1, d = [-1, -0.4, 0.4, 1, -0.7, 0.7][i];
+    const px = x + d * (3 + 8 * u), py = top - 10 + u * u * 9;
+    c.globalAlpha = Math.sin(u * Math.PI); c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(px, py, 0.8, 0, TAU); c.fill();
+  }
+  // วงคลื่นในอ่าง
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 0.9;
+  for (let i = 0; i < 2; i++) {
+    const u = (t * 0.012 + i * 0.5) % 1;
+    c.globalAlpha = 1 - u; c.beginPath(); c.ellipse(x, top + 0.5, 6 + u * (w - 12), 1.3 + u * 2.4, 0, 0, TAU); c.stroke();
+  }
+  // ไฟสถานะ (ฟ้ากะพริบช้า ๆ)
+  c.globalAlpha = 0.55 + 0.45 * Math.sin(t * 0.06);
+  c.fillStyle = '#7FE0FF'; c.beginPath(); c.arc(x + 18, top + 31, 1.4, 0, TAU); c.fill();
+  c.globalAlpha = 0.25 * (0.55 + 0.45 * Math.sin(t * 0.06)); c.beginPath(); c.arc(x + 18, top + 31, 3.5, 0, TAU); c.fill();
+  c.restore();
+}
+
+/**
+ * อ่างอาบน้ำขาสิงห์ (อัปเกรด 15 พ.ย. 2026): เซรามิกขาวมุก ขอบม้วนหนา ขลิบทอง · ขาอุ้งเท้าแมวทอง · พรมเช็ดเท้าหยัก
+ *   ฝักบัวทองมีวาล์วกากบาท หัวฝักบัวกลม (ขอบล่างหัว = จุดน้ำไหล GY − 124 กลาง x อ่าง − 32 — drawShower ใน home-cats.js)
+ *   ผ้าเช็ดตัวลายทางพาดขอบซ้าย · เป็ดยางบนขอบขวา · ฟองใสล้นขอบ
+ */
 function tubArt(c) {
   const cx = N.tub, w = 142, top = GY - 74;
-  floorShadow(c, cx, w + 20);
-  // ฝักบัวทองโค้ง
-  c.strokeStyle = goldV(c, top - 60, top); c.lineWidth = 4; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(cx - w / 2 + 16, top + 6); c.lineTo(cx - w / 2 + 16, top - 44); c.quadraticCurveTo(cx - w / 2 + 16, top - 62, cx - w / 2 + 36, top - 60); c.stroke();
-  c.fillStyle = goldV(c, top - 64, top - 50); c.beginPath(); c.moveTo(cx - w / 2 + 30, top - 58); c.lineTo(cx - w / 2 + 48, top - 58); c.lineTo(cx - w / 2 + 44, top - 50); c.lineTo(cx - w / 2 + 34, top - 50); c.closePath(); c.fill();
-  // ขาสิงห์ทอง
-  for (const d of [-1, 1]) { c.fillStyle = goldV(c, GY - 14, GY); c.beginPath(); c.moveTo(cx + d * (w / 2 - 22), GY - 16); c.quadraticCurveTo(cx + d * (w / 2 - 12), GY - 6, cx + d * (w / 2 - 6), GY); c.lineTo(cx + d * (w / 2 - 20), GY); c.closePath(); c.fill(); }
-  // ตัวอ่างขาว ขอบม้วน
-  c.fillStyle = lg(c, 0, top, 0, GY - 10, [[0, '#FFFFFF'], [1, '#E6E0F0']]);
-  c.beginPath(); c.moveTo(cx - w / 2, top + 6); c.lineTo(cx + w / 2, top + 6); c.quadraticCurveTo(cx + w / 2 - 6, GY - 14, cx + w / 2 - 30, GY - 12); c.lineTo(cx - w / 2 + 30, GY - 12); c.quadraticCurveTo(cx - w / 2 + 6, GY - 14, cx - w / 2, top + 6); c.fill();
-  c.fillStyle = LV[0]; c.beginPath(); c.roundRect(cx - w / 2 - 4, top, w + 8, 10, 5); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.roundRect(cx - w / 2 + 4, top + 1.5, w - 8, 2.4, 1.2); c.fill();
-  // ฟองล้นขอบ
-  for (let i = 0; i < 9; i++) { const bx = cx - w / 2 + 14 + i * ((w - 28) / 8), r = 7 + hash(i * 3.1) * 6; c.fillStyle = i % 2 ? '#FFFFFF' : '#F3EEFB'; c.beginPath(); c.arc(bx, top - 2 - hash(i * 1.7) * 6, r, 0, TAU); c.fill(); }
-  c.fillStyle = 'rgba(220,200,240,.6)'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(cx - 30 + i * 22, top - 6, 2, 0, TAU); c.fill(); }
-  // ตราอุ้งเท้าหน้าอ่าง
-  c.fillStyle = PK[0]; c.beginPath(); c.arc(cx, top + 34, 13, 0, TAU); c.fill();
-  pawIcon(c, cx, top + 35, 1.1, PK[2]);
+  // พรมเช็ดเท้าหยัก (ชมพู)
+  c.fillStyle = 'rgba(120,70,90,.14)'; c.beginPath(); c.ellipse(cx, GY + 3, w / 2 + 20, 7, 0, 0, TAU); c.fill();
+  c.fillStyle = PK[1]; c.beginPath();
+  for (let i = 0; i < 26; i++) { const a = (i / 26) * TAU; c.moveTo(cx + Math.cos(a) * (w / 2 + 16) + 3, GY + 2 + Math.sin(a) * 6); c.arc(cx + Math.cos(a) * (w / 2 + 16), GY + 2 + Math.sin(a) * 6, 3, 0, TAU); }
+  c.fill();
+  c.fillStyle = PK[1]; c.beginPath(); c.ellipse(cx, GY + 2, w / 2 + 16, 6, 0, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 0.8; c.setLineDash([2.4, 2]); c.beginPath(); c.ellipse(cx, GY + 2, w / 2 + 11, 4, 0, 0, TAU); c.stroke(); c.setLineDash([]);
+  // ฝักบัว: ท่อทองจากขอบซ้ายขึ้นแล้วโค้งมาทางขวา · วาล์วกากบาท · หัวฝักบัวกลม
+  const px = cx - w / 2 + 16, hx = cx - 32, hy = top - 52;
+  c.strokeStyle = goldV(c, top - 64, top); c.lineWidth = 3.6; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(px, top + 6); c.lineTo(px, top - 46); c.quadraticCurveTo(px, top - 64, px + 16, top - 64); c.lineTo(hx - 4, top - 64); c.quadraticCurveTo(hx, top - 64, hx, top - 58); c.stroke();
+  for (const [vx, vy] of [[px, top - 22]]) {
+    c.fillStyle = goldV(c, vy - 6, vy + 6); c.beginPath(); c.arc(vx, vy, 3.4, 0, TAU); c.fill();
+    c.strokeStyle = goldV(c, vy - 8, vy + 8); c.lineWidth = 2.2;
+    c.beginPath(); c.moveTo(vx - 6, vy); c.lineTo(vx + 6, vy); c.moveTo(vx, vy - 6); c.lineTo(vx, vy + 6); c.stroke();
+    c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(vx, vy, 1.2, 0, TAU); c.fill();
+  }
+  c.fillStyle = goldV(c, hy - 7, hy + 3);
+  c.beginPath(); c.moveTo(hx - 3, hy - 6); c.lineTo(hx + 3, hy - 6); c.lineTo(hx + 10, hy); c.lineTo(hx - 10, hy); c.closePath(); c.fill();
+  c.fillStyle = '#F7E3A6'; c.beginPath(); c.ellipse(hx, hy + 0.5, 10, 2.4, 0, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(160,110,40,.55)'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.arc(hx + i * 3.6, hy + 0.6, 0.6, 0, TAU); c.fill(); }
+  // ขาอุ้งเท้าแมวทอง
+  for (const d of [-1, 1]) {
+    const fx = cx + d * (w / 2 - 24);
+    c.fillStyle = goldV(c, GY - 18, GY);
+    c.beginPath(); c.moveTo(fx - d * 6, GY - 16); c.quadraticCurveTo(fx + d * 6, GY - 10, fx + d * 6, GY - 3); c.lineTo(fx - d * 4, GY - 3); c.closePath(); c.fill();
+    c.beginPath(); c.ellipse(fx + d * 1, GY - 2.5, 7, 3.6, 0, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,240,190,.9)'; for (const o of [-4, 0, 4]) { c.beginPath(); c.arc(fx + d * 1 + o, GY - 4.4, 1.1, 0, TAU); c.fill(); }
+  }
+  // ตัวอ่าง: เซรามิกขาวมุก ไล่เงาขวาล่าง
+  const body = new Path2D();
+  body.moveTo(cx - w / 2, top + 6); body.lineTo(cx + w / 2, top + 6);
+  body.bezierCurveTo(cx + w / 2 - 2, GY - 22, cx + w / 2 - 16, GY - 11, cx + w / 2 - 34, GY - 11);
+  body.lineTo(cx - w / 2 + 34, GY - 11);
+  body.bezierCurveTo(cx - w / 2 + 16, GY - 11, cx - w / 2 + 2, GY - 22, cx - w / 2, top + 6); body.closePath();
+  c.fillStyle = lg(c, cx - w / 2, 0, cx + w / 2, 0, [[0, '#FFFFFF'], [0.55, '#F7F2FC'], [1, '#DCD2EE']]); c.fill(body);
+  c.save(); c.clip(body);
+  c.fillStyle = lg(c, 0, GY - 30, 0, GY - 10, [[0, 'rgba(120,90,170,0)'], [1, 'rgba(120,90,170,.2)']]); c.fillRect(cx - w / 2, GY - 30, w, 20);
+  c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.ellipse(cx - w / 2 + 16, top + 24, 4, 13, -0.12, 0, TAU); c.fill();
+  c.restore();
+  // ขลิบทองใต้ขอบ
+  c.strokeStyle = goldV(c, top + 9, top + 13); c.lineWidth = 1.6;
+  c.beginPath(); c.moveTo(cx - w / 2 + 3, top + 11); c.quadraticCurveTo(cx, top + 15, cx + w / 2 - 3, top + 11); c.stroke();
+  // ขอบม้วนหนา
+  c.fillStyle = lg(c, 0, top - 1, 0, top + 10, [[0, '#FFFFFF'], [1, LV[1]]]); c.beginPath(); c.roundRect(cx - w / 2 - 5, top - 1, w + 10, 11, 5.5); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.roundRect(cx - w / 2 + 2, top + 0.8, w - 4, 2.4, 1.2); c.fill();
+  // ตราหัวใจทองหน้าอ่าง + อุ้งเท้า
+  c.fillStyle = goldV(c, top + 20, top + 50); heart(c, cx, top + 36, 15); c.fill();
+  c.fillStyle = PK[0]; heart(c, cx, top + 36, 12.5); c.fill();
+  pawIcon(c, cx, top + 37, 0.95, PK[2]);
+  // ผ้าเช็ดตัวลายทาง พาดขอบซ้าย ห้อยลงหน้าอ่าง
+  const tx = cx - w / 2 + 6;
+  c.fillStyle = lg(c, tx - 9, 0, tx + 13, 0, [[0, '#FFE1EE'], [1, '#F6B8D4']]);
+  c.beginPath(); c.moveTo(tx - 9, top + 2); c.lineTo(tx + 13, top + 2); c.lineTo(tx + 12, top + 34); c.quadraticCurveTo(tx + 2, top + 38, tx - 8, top + 33); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.85)'; for (const yy of [top + 24, top + 28]) { c.beginPath(); c.moveTo(tx - 8.5, yy); c.lineTo(tx + 12.4, yy); c.lineTo(tx + 12.4, yy + 1.6); c.lineTo(tx - 8.5, yy + 1.6); c.fill(); }
+  c.fillStyle = 'rgba(210,120,160,.25)'; c.beginPath(); c.moveTo(tx + 5, top + 3); c.lineTo(tx + 13, top + 3); c.lineTo(tx + 12, top + 34); c.quadraticCurveTo(tx + 8, top + 36, tx + 5, top + 36); c.fill();
+  // ฟองใสล้นขอบ
+  const fl = [];
+  for (let i = 0; i < 10; i++) fl.push([cx - w / 2 + 14 + i * ((w - 28) / 9), top - 1 - hash(i * 1.7) * 6, 7 + hash(i * 3.1) * 5]);
+  for (let i = 0; i < 4; i++) fl.push([cx - 40 + i * 26, top - 9 - hash(i * 5.3) * 3, 5 + hash(i * 2.2) * 2]);
+  foam(c, fl);
+  // เป็ดยางบนขอบขวา
+  const dx = cx + w / 2 - 6, dy = top - 4;
+  c.fillStyle = '#FFD84D'; c.beginPath(); c.ellipse(dx, dy, 8, 5, 0, 0, TAU); c.fill(); c.beginPath(); c.arc(dx - 4, dy - 6, 4.6, 0, TAU); c.fill();
+  c.fillStyle = '#FF9F45'; c.beginPath(); c.ellipse(dx - 9, dy - 5.4, 3, 1.6, 0.2, 0, TAU); c.fill();
+  c.fillStyle = '#5A3420'; c.beginPath(); c.arc(dx - 5.4, dy - 7, 0.9, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(dx - 2, dy - 2, 3, 1.4, -0.3, 0, TAU); c.fill();
+}
+/**
+ * ห้องน้ำแมว (กระบะทรายมีหลังคา — ผู้ใช้ 15 พ.ย. 2026 "อื่น ๆ ที่สมควร"): ถาดล่างครีม · หลังคาโดมลาเวนเดอร์หูแมว
+ *   ประตูโค้งเห็นทรายข้างใน · บานพับใสหน้าประตู · ช่องระบายอากาศอุ้งเท้า · ที่ตักทรายพิงข้าง · พรมดักทรายหน้าประตู
+ */
+function litterArt(c) {
+  const x = N.litter, w = 34, top = GY - 52;
+  floorShadow(c, x, 86, 0.16);
+  // พรมดักทราย (ยางลายอุ้งเท้า)
+  c.fillStyle = PK[1]; c.beginPath(); c.roundRect(x - 30, GY - 1, 60, 6, 3); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.7)'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.arc(x + i * 10, GY + 2, 1.2, 0, TAU); c.fill(); }
+  // ถาดล่าง
+  c.fillStyle = lg(c, 0, GY - 18, 0, GY, [[0, CR[1]], [1, CR[3]]]); c.beginPath(); c.roundRect(x - w - 3, GY - 18, w * 2 + 6, 17, [4, 4, 7, 7]); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.roundRect(x - w, GY - 16.5, w * 2, 2, 1); c.fill();
+  // หลังคาโดม + หูแมว
+  for (const d of [-1, 1]) {
+    c.fillStyle = lg(c, 0, top - 12, 0, top + 6, [[0, LV[1]], [1, LV[3]]]);
+    c.beginPath(); c.moveTo(x + d * 9, top + 2); c.quadraticCurveTo(x + d * 15, top - 12, x + d * 23, top - 11); c.quadraticCurveTo(x + d * 27, top - 2, x + d * 25, top + 6); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,190,215,.85)';
+    c.beginPath(); c.moveTo(x + d * 13, top + 1); c.quadraticCurveTo(x + d * 17, top - 7.5, x + d * 21.5, top - 7); c.quadraticCurveTo(x + d * 23.5, top - 1, x + d * 22.5, top + 4); c.closePath(); c.fill();
+  }
+  const hood = new Path2D();
+  hood.moveTo(x - w, GY - 16); hood.lineTo(x - w, top + 18); hood.bezierCurveTo(x - w, top - 4, x + w, top - 4, x + w, top + 18); hood.lineTo(x + w, GY - 16); hood.closePath();
+  c.fillStyle = lg(c, x - w, 0, x + w, 0, [[0, LV[0]], [0.5, LV[1]], [1, LV[3]]]); c.fill(hood);
+  c.save(); c.clip(hood);
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(x - w + 9, top + 14, 3, 11, 0.2, 0, TAU); c.fill();
+  c.restore();
+  // ประตูโค้ง: ทรายข้างใน + บานพับใส
+  const door = new Path2D();
+  door.moveTo(x - 15, GY - 16); door.lineTo(x - 15, top + 26); door.arc(x, top + 26, 15, Math.PI, 0); door.lineTo(x + 15, GY - 16); door.closePath();
+  c.fillStyle = '#6E5A8C'; c.fill(door);
+  c.save(); c.clip(door);
+  c.fillStyle = lg(c, 0, GY - 26, 0, GY - 16, [[0, '#F3E3C6'], [1, '#E0C9A2']]); c.beginPath(); c.ellipse(x, GY - 17, 18, 8, 0, Math.PI, TAU); c.fill();
+  c.fillStyle = 'rgba(200,170,120,.6)'; for (let i = 0; i < 7; i++) { c.beginPath(); c.arc(x - 10 + i * 3.4, GY - 19.5 - hash(i * 4.1) * 3, 0.7, 0, TAU); c.fill(); }
+  c.fillStyle = 'rgba(230,240,255,.35)'; c.fill(door);
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x - 9, top + 18); c.lineTo(x - 4, top + 14); c.stroke();
+  c.restore();
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 2; c.stroke(door);
+  // ช่องระบายอากาศอุ้งเท้า (บนหลังคา)
+  pawIcon(c, x + 19, top + 12, 0.55, 'rgba(255,255,255,.85)');
+  // ที่ตักทรายพิงข้างขวา
+  c.save(); c.translate(x + w + 7, GY - 2); c.rotate(-0.22);
+  c.fillStyle = PK[2]; c.beginPath(); c.roundRect(-1.6, -30, 3.2, 20, 1.6); c.fill();
+  c.fillStyle = PK[1]; c.beginPath(); c.roundRect(-5, -11, 10, 11, [2, 2, 4, 4]); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 0.7; for (const o of [-2.5, 0, 2.5]) { c.beginPath(); c.moveTo(o, -9); c.lineTo(o, -2); c.stroke(); }
+  c.restore();
 }
 function drawTubLive(c, t) {
   const cx = N.tub, top = GY - 74;
@@ -985,33 +1453,81 @@ function drawTubLive(c, t) {
   }
   c.globalAlpha = 1;
 }
+
+// ── ตัวช่วยวาดของนุ่ม ๆ ในห้องเลี้ยง (อัปเกรดห้อง ผู้ใช้ 15 พ.ย. 2026) ──
+/** เสาเชือกป่าน: ทรงกระบอกไล่แสง + เชือกพันเกลียว + ปลอกหัว-ท้าย */
+function sisalPost(c, x, top, bot, r = 8) {
+  c.fillStyle = lg(c, x - r, 0, x + r, 0, [[0, '#CDAE80'], [0.35, '#F4E4C4'], [0.6, '#E6CDA0'], [1, '#B8955F']]);
+  c.fillRect(x - r, top, r * 2, bot - top);
+  c.save(); c.beginPath(); c.rect(x - r, top, r * 2, bot - top); c.clip();
+  c.strokeStyle = 'rgba(140,100,50,.38)'; c.lineWidth = 1.1;
+  for (let y = top - 4; y < bot + 4; y += 3.4) { c.beginPath(); c.moveTo(x - r, y); c.quadraticCurveTo(x, y + 3.2, x + r, y + 1.4); c.stroke(); }
+  c.strokeStyle = 'rgba(255,250,235,.45)'; c.lineWidth = 0.7;
+  for (let y = top - 3; y < bot + 4; y += 3.4) { c.beginPath(); c.moveTo(x - r * 0.6, y + 0.4); c.quadraticCurveTo(x - r * 0.1, y + 1.6, x + r * 0.2, y + 1.4); c.stroke(); }
+  c.restore();
+  for (const y of [top, bot - 4]) { c.fillStyle = lg(c, 0, y, 0, y + 4, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.roundRect(x - r - 1.5, y, r * 2 + 3, 4, 2); c.fill(); }
+}
+/** เบาะนุ่มกลม (ชั้นคอนโด/เบาะนอน): ตัวเบาะหนา ไล่สี · ผิวบนสว่าง · ขอบฟูหยัก · กระดุมกลาง · y = ผิวบน */
+function plushPad(c, x, y, hw, col, colD, th = 12) {
+  c.fillStyle = 'rgba(90,50,90,.14)'; c.beginPath(); c.ellipse(x, y + th + 2, hw * 0.9, 3, 0, 0, TAU); c.fill();
+  c.fillStyle = lg(c, 0, y, 0, y + th, [[0, col], [1, colD]]); c.beginPath(); c.roundRect(x - hw, y, hw * 2, th, th / 2); c.fill();
+  // ขอบฟูหยักด้านหน้า
+  c.fillStyle = colD; c.beginPath();
+  for (let xx = x - hw + 4; xx <= x + hw - 4; xx += 6) { c.moveTo(xx + 3, y + th - 1); c.arc(xx, y + th - 1, 3, 0, TAU); }
+  c.fill();
+  c.fillStyle = lg(c, 0, y - 1, 0, y + 6, [[0, '#FFFFFF'], [1, col]]); c.beginPath(); c.ellipse(x, y + 3, hw - 3, 4, 0, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 0.7; c.setLineDash([2, 2]);
+  c.beginPath(); c.roundRect(x - hw + 3, y + th * 0.45, hw * 2 - 6, th * 0.3, 2); c.stroke(); c.setLineDash([]);
+  c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(x, y + 3, 1.3, 0, TAU); c.fill();
+}
+/**
+ * คอนโดแมว (อัปเกรด 15 พ.ย. 2026): ฐานพรมนุ่มลายอุ้งเท้า · เสาเชือกป่านพันเกลียว · บ้านกล่องผ้ากำมะหยี่ประตูหูแมว (เห็นเบาะข้างใน)
+ *   เบาะนุ่ม 4 ชั้น (ตำแหน่ง/ความสูงเดิม CPERCH — น้องปีนตามจุดเดิม) · ชั้นบนสุดเป็นเปลถ้วยมีมงกุฎ · บันไดไม้ราวมน
+ */
 function condoArt(c) {
   const cx = N.condo, w = CONDO.w;
-  floorShadow(c, cx, w + 20, 0.18);
-  // ฐาน
-  c.fillStyle = lg(c, 0, GY - 16, 0, GY, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.roundRect(cx - w / 2, GY - 16, w, 16, 6); c.fill();
-  // เสาเชือกป่าน
-  const post = (x, top, bot) => {
-    c.fillStyle = lg(c, x - 8, 0, x + 8, 0, [[0, '#D8BE95'], [0.5, '#F2E2C2'], [1, '#C9AC80']]); c.fillRect(x - 8, top, 16, bot - top);
-    c.strokeStyle = 'rgba(150,110,60,.35)'; c.lineWidth = 1; for (let y = top + 3; y < bot; y += 4) { c.beginPath(); c.moveTo(x - 8, y); c.lineTo(x + 8, y + 2); c.stroke(); }
-  };
-  post(cx - 50, GY - 186, GY - 16); post(cx + 30, GY - 246, GY - 16); post(cx + 44, GY - 132, GY - 16);
-  // บ้านแมวกล่องหน้าแมว (ชั้นล่างขวา)
-  const hx = cx + 30, hy = GY - 132;
-  c.fillStyle = lg(c, 0, hy, 0, GY - 16, [[0, '#FBEBD3'], [1, '#EBCFA9']]); c.beginPath(); c.roundRect(hx - 44, hy + 8, 88, GY - 16 - hy - 8, 6); c.fill();
-  c.fillStyle = '#8B6A9C'; c.beginPath(); c.arc(hx, hy + 60, 20, Math.PI, 0); c.lineTo(hx + 20, GY - 22); c.lineTo(hx - 20, GY - 22); c.closePath(); c.fill();
-  for (const d of [-1, 1]) { c.fillStyle = '#8B6A9C'; c.beginPath(); c.moveTo(hx + d * 18, hy + 48); c.lineTo(hx + d * 22, hy + 32); c.lineTo(hx + d * 8, hy + 41); c.closePath(); c.fill(); }
-  // ชั้นนุ่ม (เบาะ) ทั้งหมด
-  const CC = [[LV[1], LV[3]], [PK[1], PK[3]], [LV[1], LV[3]], ['#FFE6C8', '#E8B484']];
-  for (const [i, [x, h, hw]] of CPERCH.entries()) {
-    c.fillStyle = lg(c, 0, GY - h - 4, 0, GY - h + 10, CC[i].map((col, j) => [j, col])); c.beginPath(); c.roundRect(x - hw, GY - h - 3, hw * 2, 13, 6); c.fill();
-    c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.roundRect(x - hw + 6, GY - h - 1.5, hw * 2 - 12, 2.2, 1.1); c.fill();
-  }
-  // บันไดเล็กขึ้นชั้นแรก
-  c.strokeStyle = WO[2]; c.lineWidth = 3;
-  c.beginPath(); c.moveTo(cx - 84, GY - 16); c.lineTo(cx - 70, GY - 74); c.moveTo(cx - 70, GY - 16); c.lineTo(cx - 58, GY - 74); c.stroke();
-  for (let i = 1; i < 5; i++) { const u = i / 5; c.beginPath(); c.moveTo(cx - 84 + 14 * u, GY - 16 - 58 * u); c.lineTo(cx - 70 + 12 * u, GY - 16 - 58 * u); c.stroke(); }
-  crownIcon(c, CPERCH[3][0], GY - CPERCH[3][1] - 6, 0.6);
+  floorShadow(c, cx, w + 24, 0.2);
+  // ฐานพรม
+  c.fillStyle = lg(c, 0, GY - 18, 0, GY, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.roundRect(cx - w / 2, GY - 18, w, 18, 8); c.fill();
+  c.fillStyle = lg(c, 0, GY - 18, 0, GY - 10, [[0, '#FFFFFF'], [1, LV[1]]]); c.beginPath(); c.roundRect(cx - w / 2 + 3, GY - 17, w - 6, 6, 3); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 0.8; c.setLineDash([2.4, 2]); c.beginPath(); c.roundRect(cx - w / 2 + 5, GY - 9, w - 10, 5, 2); c.stroke(); c.setLineDash([]);
+  for (const o of [-62, -24, 70]) pawIcon(c, cx + o, GY - 6.5, 0.5, 'rgba(255,255,255,.7)');
+  // เสา
+  sisalPost(c, cx - 50, GY - 186, GY - 17); sisalPost(c, cx + 30, GY - 246, GY - 17); sisalPost(c, cx + 44, GY - 132, GY - 17);
+  // บ้านกล่องผ้ากำมะหยี่ (ชั้นล่างขวา)
+  const hx = cx + 30, hy = GY - 124, hw = 44, hb = GY - 17;
+  c.fillStyle = lg(c, hx - hw, 0, hx + hw, 0, [[0, '#FFF2DF'], [0.55, '#F8E2C4'], [1, '#E3C49A']]); c.beginPath(); c.roundRect(hx - hw, hy, hw * 2, hb - hy, 9); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.roundRect(hx - hw + 4, hy + 3, hw * 2 - 8, 3, 1.5); c.fill();
+  c.strokeStyle = 'rgba(200,160,110,.45)'; c.lineWidth = 0.8; c.setLineDash([2.4, 2]); c.beginPath(); c.roundRect(hx - hw + 4, hy + 6, hw * 2 - 8, hb - hy - 10, 6); c.stroke(); c.setLineDash([]);
+  // ประตูหูแมว: ในประตูไล่มืด + เบาะชมพูข้างใน + ขอบขาว
+  const door = new Path2D(), dy0 = hy + 54;
+  door.moveTo(hx - 21, hb - 3); door.lineTo(hx - 21, dy0); door.lineTo(hx - 23, dy0 - 22); door.lineTo(hx - 11, dy0 - 15);
+  door.quadraticCurveTo(hx, dy0 - 19, hx + 11, dy0 - 15); door.lineTo(hx + 23, dy0 - 22); door.lineTo(hx + 21, dy0); door.lineTo(hx + 21, hb - 3); door.closePath();
+  c.fillStyle = lg(c, 0, dy0 - 22, 0, hb, [[0, '#5E4580'], [1, '#8B6AA8']]); c.fill(door);
+  c.save(); c.clip(door);
+  c.fillStyle = PK[2]; c.beginPath(); c.ellipse(hx, hb - 4, 20, 7, 0, 0, TAU); c.fill();
+  c.fillStyle = PK[1]; c.beginPath(); c.ellipse(hx, hb - 6, 16, 4, 0, 0, TAU); c.fill();
+  c.restore();
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 2.2; c.lineJoin = 'round'; c.stroke(door);
+  // หน้าแมวเหนือประตู: หนวด + จมูก
+  c.strokeStyle = 'rgba(160,110,70,.55)'; c.lineWidth = 1; c.lineCap = 'round';
+  for (const d of [-1, 1]) for (const o of [-2, 2]) { c.beginPath(); c.moveTo(hx + d * 26, dy0 - 4 + o); c.lineTo(hx + d * 36, dy0 - 6 + o * 1.6); c.stroke(); }
+  c.fillStyle = PK[3]; c.beginPath(); c.moveTo(hx - 3, dy0 - 32); c.lineTo(hx + 3, dy0 - 32); c.lineTo(hx, dy0 - 29); c.closePath(); c.fill();
+  // ป้ายหัวใจข้างบ้าน
+  c.fillStyle = PK[2]; heart(c, hx - 32, hy + 18, 5); c.fill();
+  // บันไดไม้ราวมน (ขึ้นชั้นแรก)
+  c.strokeStyle = WO[3]; c.lineWidth = 3.2; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(cx - 86, GY - 17); c.lineTo(cx - 72, GY - 74); c.moveTo(cx - 72, GY - 17); c.lineTo(cx - 60, GY - 74); c.stroke();
+  c.strokeStyle = WO[1]; c.lineWidth = 2.6;
+  for (let i = 1; i < 5; i++) { const u = i / 5; c.beginPath(); c.moveTo(cx - 86 + 14 * u + 1, GY - 17 - 57 * u); c.lineTo(cx - 72 + 12 * u - 1, GY - 17 - 57 * u); c.stroke(); }
+  // เบาะ 4 ชั้น (ตำแหน่งเดิม) · ชั้นบนสุด = เปลถ้วย + มงกุฎ
+  const CC = [[LV[1], LV[3]], [PK[1], PK[3]], ['#D6ECFB', '#8FBBDC'], ['#FFE6C8', '#E8B484']];
+  for (const [i, [x, h, hw2]] of CPERCH.entries()) plushPad(c, x, GY - h - 3, hw2, CC[i][0], CC[i][1], 12);
+  const [tx, th, thw] = CPERCH[3];
+  c.fillStyle = lg(c, 0, GY - th - 12, 0, GY - th + 2, [[0, '#FFF1DD'], [1, '#F2C690']]);
+  c.beginPath(); c.moveTo(tx - thw, GY - th - 3); c.quadraticCurveTo(tx - thw - 2, GY - th - 16, tx - thw + 8, GY - th - 15); c.lineTo(tx - thw + 10, GY - th - 3); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(tx + thw, GY - th - 3); c.quadraticCurveTo(tx + thw + 2, GY - th - 16, tx + thw - 8, GY - th - 15); c.lineTo(tx + thw - 10, GY - th - 3); c.closePath(); c.fill();
+  crownIcon(c, tx, GY - th - 8, 0.62);
 }
 function drawCondoToy(c, t) {
   const x = N.condo + 64, y0 = GY - 246 + 4, a = Math.sin(t * 0.04) * 0.25;
@@ -1021,110 +1537,307 @@ function drawCondoToy(c, t) {
   c.fillStyle = PK[2]; c.beginPath(); c.arc(ex, ey + 5, 6, 0, TAU); c.fill();
   c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(ex - 2, ey + 3, 1.8, 0, TAU); c.fill();
 }
+/**
+ * ชั้นติดผนังเบาะนุ่ม + เปลญวน กลางห้อง (อัปเกรด 15 พ.ย. 2026 — ตำแหน่ง/ระดับผิวเหยียบเดิม WSHELF / HAMMOCK)
+ *   ชั้น: แผ่นไม้ขอบมนลายไม้ · ขายึดทองม้วนก้นหอย · เบาะฟูขอบหยักกระดุมกลาง (ม่วง/ชมพูสลับ) · พู่ปอมปอมห้อยปลายชั้น
+ *   เปลญวน: ห่วงทองยึดผนัง · เชือกบิดเกลียว · ผ้าลาเวนเดอร์ลายหัวใจ ขอบลูกไม้ · หมอนหัวใจ · พู่ห้อยใต้เปล
+ */
 function wallShelvesArt(c) {
-  for (const [x, y, hw] of WSHELF) {
-    plank(c, x - hw, y, hw * 2, 8, 3, 1);
-    c.fillStyle = LV[1]; c.beginPath(); c.roundRect(x - hw + 4, y - 5, hw * 2 - 8, 7, 3.5); c.fill();
-    for (const d of [-1, 1]) { c.fillStyle = WO[2]; c.beginPath(); c.moveTo(x + d * (hw - 10), y + 8); c.lineTo(x + d * (hw - 10), y + 22); c.lineTo(x + d * (hw - 22), y + 8); c.closePath(); c.fill(); }
+  const CC = [[LV[1], LV[3]], [PK[1], PK[3]], ['#E4DAFA', '#A587D8'], [PK[1], PK[3]], [LV[1], LV[3]]];
+  for (const [i, [x, y, hw]] of WSHELF.entries()) {
+    // ขายึดทองม้วน
+    for (const d of [-1, 1]) {
+      const bx = x + d * (hw - 10);
+      c.strokeStyle = goldV(c, y + 6, y + 26); c.lineWidth = 2.4; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(bx, y + 7); c.lineTo(bx, y + 14); c.quadraticCurveTo(bx, y + 24, bx - d * 7, y + 22); c.quadraticCurveTo(bx - d * 11, y + 19, bx - d * 8, y + 16); c.stroke();
+      c.beginPath(); c.moveTo(bx, y + 9); c.quadraticCurveTo(bx - d * 9, y + 9, bx - d * 12, y + 8); c.stroke();
+      c.fillStyle = goldV(c, y + 14, y + 18); c.beginPath(); c.arc(bx - d * 8, y + 16, 1.6, 0, TAU); c.fill();
+    }
+    // แผ่นไม้ขอบมน + ลายไม้
+    c.fillStyle = lg(c, 0, y, 0, y + 9, [[0, WO[0]], [0.5, WO[1]], [1, WO[3]]]); c.beginPath(); c.roundRect(x - hw, y, hw * 2, 9, 4.5); c.fill();
+    c.strokeStyle = 'rgba(160,110,60,.25)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x - hw + 6, y + 5); c.quadraticCurveTo(x, y + 6.5, x + hw - 6, y + 4.5); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.roundRect(x - hw + 4, y + 1.2, hw * 2 - 8, 1.5, 0.75); c.fill();
+    // เบาะฟู
+    plushPad(c, x, y - 7, hw - 3, CC[i % 5][0], CC[i % 5][1], 9);
+    // พู่ปอมปอมห้อยปลายชั้น (สลับซ้าย/ขวา)
+    const tx = x + (i % 2 ? 1 : -1) * (hw - 4);
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(tx, y + 4); c.lineTo(tx, y + 15); c.stroke();
+    c.fillStyle = CC[i % 5][0]; c.beginPath(); c.arc(tx, y + 17, 3.4, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.arc(tx - 1, y + 16, 1.1, 0, TAU); c.fill();
   }
-  // เปลญวนผ้าครีม แขวนห่วงทอง
-  const { x0, x1, y, sag } = HAMMOCK;
-  for (const x of [x0, x1]) { c.fillStyle = goldV(c, y - 30, y); c.beginPath(); c.roundRect(x - 4, y - 30, 8, 30, 3); c.fill(); }
-  c.strokeStyle = WO[3]; c.lineWidth = 1.2;
-  for (const d of [0, 1]) { const x = d ? x1 : x0; for (const k of [-6, 0, 6]) { c.beginPath(); c.moveTo(x, y - 2); c.lineTo(x + (d ? -14 : 14) + k * 0.5, y + 6); c.stroke(); } }
-  // ผ้าเปล: ผ้าลาเวนเดอร์หย่อนเป็นแอ่ง ขอบบนครีมพับ (ด้านในมืดกว่า เห็นเป็นแอ่งให้น้องนอน)
-  const mx = (x0 + x1) / 2;
-  c.fillStyle = lg(c, 0, y, 0, y + sag * 2 + 8, [[0, LV[1]], [1, LV[3]]]);
-  c.beginPath(); c.moveTo(x0 + 10, y + 4); c.quadraticCurveTo(mx, y + sag * 2 + 12, x1 - 10, y + 4); c.quadraticCurveTo(mx, y + sag * 2 - 26, x0 + 10, y + 4); c.fill();
-  c.fillStyle = 'rgba(110,80,170,.22)'; c.beginPath(); c.moveTo(x0 + 16, y + 6); c.quadraticCurveTo(mx, y + sag * 2 - 20, x1 - 16, y + 6); c.quadraticCurveTo(mx, y + sag * 2 - 30, x0 + 16, y + 6); c.fill();
+  // ── เปลญวน ──
+  const { x0, x1, y, sag } = HAMMOCK, mx = (x0 + x1) / 2;
+  for (const x of [x0, x1]) {
+    c.fillStyle = goldV(c, y - 34, y - 24); c.beginPath(); c.roundRect(x - 5, y - 34, 10, 6, 3); c.fill();   // ฐานยึดผนัง
+    c.strokeStyle = goldV(c, y - 30, y); c.lineWidth = 2.4; c.beginPath(); c.arc(x, y - 22, 5, 0, TAU); c.stroke();   // ห่วงทอง
+  }
+  // เชือกบิดเกลียว (สองสีสลับ)
+  for (const d of [0, 1]) {
+    const x = d ? x1 : x0, dir = d ? -1 : 1;
+    for (const k of [-5, 0, 5]) {
+      c.strokeStyle = WO[2]; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y - 17); c.lineTo(x + dir * (14 + k * 0.6), y + 6); c.stroke();
+      c.strokeStyle = 'rgba(255,240,220,.85)'; c.lineWidth = 0.8; c.setLineDash([1.5, 2]); c.beginPath(); c.moveTo(x, y - 17); c.lineTo(x + dir * (14 + k * 0.6), y + 6); c.stroke(); c.setLineDash([]);
+    }
+  }
+  // ผ้าเปล
+  const cloth = new Path2D();
+  cloth.moveTo(x0 + 10, y + 4); cloth.quadraticCurveTo(mx, y + sag * 2 + 14, x1 - 10, y + 4); cloth.quadraticCurveTo(mx, y + sag * 2 - 26, x0 + 10, y + 4);
+  c.fillStyle = lg(c, 0, y, 0, y + sag * 2 + 10, [[0, LV[1]], [1, LV[3]]]); c.fill(cloth);
+  c.save(); c.clip(cloth);
+  c.fillStyle = 'rgba(255,255,255,.55)';
+  for (let i = 0; i < 9; i++) { const u = (i + 0.5) / 9, hx = x0 + 14 + u * (x1 - x0 - 28), hy = y + 10 + Math.sin(u * Math.PI) * (sag + 6) + (i % 2) * 4; heart(c, hx, hy, 2.2); c.fill(); }
+  c.fillStyle = 'rgba(110,80,170,.2)'; c.beginPath(); c.moveTo(x0 + 16, y + 6); c.quadraticCurveTo(mx, y + sag * 2 - 20, x1 - 16, y + 6); c.quadraticCurveTo(mx, y + sag * 2 - 30, x0 + 16, y + 6); c.fill();
+  c.restore();
+  // ขอบลูกไม้ (ขอบล่างของผ้า)
+  c.fillStyle = '#FFFFFF';
+  for (let i = 0; i <= 12; i++) {
+    const u = i / 12, bx = (1 - u) * (1 - u) * (x0 + 10) + 2 * (1 - u) * u * mx + u * u * (x1 - 10), by = (1 - u) * (1 - u) * (y + 4) + 2 * (1 - u) * u * (y + sag * 2 + 14) + u * u * (y + 4);
+    c.beginPath(); c.arc(bx, by, 2.4, 0, TAU); c.fill();
+  }
   c.strokeStyle = CR[0]; c.lineWidth = 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(x0 + 10, y + 4); c.quadraticCurveTo(mx, y + sag * 2 - 26, x1 - 10, y + 4); c.stroke();
-  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.2; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(x0 + 18, y + 12); c.quadraticCurveTo(mx, y + sag * 2 + 4, x1 - 18, y + 12); c.stroke(); c.setLineDash([]);
-  pawIcon(c, mx, y + sag + 8, 0.9, 'rgba(255,255,255,.7)');
+  // หมอนหัวใจที่ปลายขวา + พู่ห้อยใต้เปล
+  c.fillStyle = PK[1]; heart(c, x1 - 26, y + 10, 6); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.ellipse(x1 - 28, y + 7.5, 2, 1, -0.4, 0, TAU); c.fill();
+  c.strokeStyle = PK[2]; c.lineWidth = 1; for (const o of [-3, 0, 3]) { c.beginPath(); c.moveTo(mx + o, y + sag * 2 + 12); c.lineTo(mx + o * 1.4, y + sag * 2 + 20); c.stroke(); }
+  c.fillStyle = PK[2]; c.beginPath(); c.arc(mx, y + sag * 2 + 12, 2.4, 0, TAU); c.fill();
 }
+/**
+ * ช่องประตูของที่นอนแบบมีหลังคา (ผู้ใช้ 15 พ.ย. 2026: "เข้าไปนอนข้างในจริง ๆ ไม่นั่งทับ") — null = ที่นอนแบบเปิด
+ *   home-cats.js วาดน้องที่หลับในที่นอนนี้ตัดตามช่องประตู (โผล่หน้าออกมานิด ๆ ในเงามืดของบ้าน)
+ */
+export function bedCave(b) {
+  const P = new Path2D();
+  if (b.x === N.dome) {
+    const x = N.dome;
+    P.moveTo(x - 19, GY - 6); P.bezierCurveTo(x - 21, GY - 32, x - 10, GY - 42, x, GY - 42); P.bezierCurveTo(x + 10, GY - 42, x + 21, GY - 32, x + 19, GY - 6); P.closePath();
+    return { path: P, top: GY - 42, y: GY - 6 };
+  }
+  if (b.x === N.house) {
+    const x = N.house, dy0 = GY - 30;
+    P.moveTo(x - 18, GY - 3); P.lineTo(x - 18, dy0); P.lineTo(x - 20, dy0 - 19); P.lineTo(x - 9, dy0 - 13); P.quadraticCurveTo(x, dy0 - 16, x + 9, dy0 - 13);
+    P.lineTo(x + 20, dy0 - 19); P.lineTo(x + 18, dy0); P.lineTo(x + 18, GY - 3); P.closePath();
+    return { path: P, top: dy0 - 19, y: GY - 4 };
+  }
+  return null;
+}
+/** ช่องประตูห้องน้ำแมว (พิกัดโลก — รูปเดียวกับใน litterArt) · น้องกระโดดหดตัวเข้า/เด้งออก (home-cats.js) */
+export function litterDoor() {
+  const x = N.litter, top = GY - 52, P = new Path2D();
+  P.moveTo(x - 15, GY - 16); P.lineTo(x - 15, top + 26); P.arc(x, top + 26, 15, Math.PI, 0); P.lineTo(x + 15, GY - 16); P.closePath();
+  return { path: P, top: top + 11, y: GY - 17 };
+}
+/** ที่นอนโดม (อิกลูไหมพรม): ลายถักแนวตั้ง · หูแมวบนหลังคา · ปอมปอม · ประตูโค้งเห็นเบาะครีม · ขอบฐานนุ่ม · โบว์ */
 function domeBedArt(c) {
   const x = N.dome;
-  floorShadow(c, x, 86);
-  c.fillStyle = lg(c, 0, GY - 64, 0, GY, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.moveTo(x - 38, GY - 4); c.quadraticCurveTo(x - 40, GY - 66, x, GY - 66); c.quadraticCurveTo(x + 40, GY - 66, x + 38, GY - 4); c.closePath(); c.fill();
-  c.fillStyle = '#7E64A8'; c.beginPath(); c.moveTo(x - 18, GY - 6); c.quadraticCurveTo(x - 20, GY - 40, x, GY - 40); c.quadraticCurveTo(x + 20, GY - 40, x + 18, GY - 6); c.closePath(); c.fill();
-  c.fillStyle = CR[1]; c.beginPath(); c.ellipse(x, GY - 6, 18, 5, 0, 0, TAU); c.fill();
-  c.fillStyle = lg(c, 0, GY - 10, 0, GY, [[0, LV[0]], [1, LV[2]]]); c.beginPath(); c.roundRect(x - 42, GY - 10, 84, 10, 5); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(x - 16, GY - 50, 10, 5, -0.6, 0, TAU); c.fill();
-  bow(c, x + 22, GY - 58, 0.8, PK[1], PK[3]);
+  floorShadow(c, x, 90);
+  for (const d of [-1, 1]) {
+    c.fillStyle = LV[2]; c.beginPath(); c.moveTo(x + d * 10, GY - 62); c.quadraticCurveTo(x + d * 18, GY - 78, x + d * 28, GY - 74); c.quadraticCurveTo(x + d * 32, GY - 62, x + d * 30, GY - 52); c.closePath(); c.fill();
+    c.fillStyle = PK[1]; c.beginPath(); c.moveTo(x + d * 15, GY - 61); c.quadraticCurveTo(x + d * 20, GY - 72, x + d * 26, GY - 70); c.quadraticCurveTo(x + d * 28, GY - 62, x + d * 27, GY - 56); c.closePath(); c.fill();
+  }
+  const dome = new Path2D();
+  dome.moveTo(x - 40, GY - 6); dome.bezierCurveTo(x - 44, GY - 50, x - 22, GY - 68, x, GY - 68); dome.bezierCurveTo(x + 22, GY - 68, x + 44, GY - 50, x + 40, GY - 6); dome.closePath();
+  c.fillStyle = lg(c, x - 40, 0, x + 40, 0, [[0, LV[0]], [0.5, LV[1]], [1, LV[3]]]); c.fill(dome);
+  c.save(); c.clip(dome);
+  c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 1.1;
+  for (let i = -4; i <= 4; i++) { c.beginPath(); c.moveTo(x + i * 9, GY - 6); c.quadraticCurveTo(x + i * 10.5, GY - 40, x + i * 3, GY - 68); c.stroke(); }
+  c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(x - 18, GY - 48, 7, 11, -0.5, 0, TAU); c.fill();
+  c.restore();
+  // ประตูโค้ง + เบาะครีมข้างใน
+  const door = new Path2D(); door.moveTo(x - 19, GY - 6); door.bezierCurveTo(x - 21, GY - 32, x - 10, GY - 42, x, GY - 42); door.bezierCurveTo(x + 10, GY - 42, x + 21, GY - 32, x + 19, GY - 6); door.closePath();
+  c.fillStyle = lg(c, 0, GY - 42, 0, GY - 6, [[0, '#5E4580'], [1, '#8A6BB0']]); c.fill(door);
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 2; c.stroke(door);
+  c.fillStyle = CR[1]; c.beginPath(); c.ellipse(x, GY - 7, 18, 5, 0, 0, TAU); c.fill();
+  // ฐานนุ่ม + ปอมปอม + โบว์
+  plushPad(c, x, GY - 11, 43, LV[0], LV[2], 11);
+  c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, GY - 70, 4.5, 0, TAU); c.fill(); c.fillStyle = PK[1]; c.beginPath(); c.arc(x + 1, GY - 69, 2.4, 0, TAU); c.fill();
+  bow(c, x + 24, GY - 56, 0.75, PK[1], PK[3]);
 }
+/** ที่นอนโดนัทขนฟู: ขอบฟูหยักไล่สีพีช · เบาะกลางลายอุ้งเท้า · หมอนหัวใจเล็ก */
 function roundBedArt(c) {
   const x = N.round;
-  floorShadow(c, x, 84);
-  c.fillStyle = lg(c, 0, GY - 30, 0, GY, [[0, '#FFE6C8'], [1, '#E8B484']]); c.beginPath(); c.ellipse(x, GY - 13, 40, 15, 0, 0, TAU); c.fill();
-  c.fillStyle = '#FFF6EA'; c.beginPath(); c.ellipse(x, GY - 19, 28, 8, 0, 0, TAU); c.fill();
-  c.fillStyle = lg(c, 0, GY - 30, 0, GY - 16, [[0, '#FFF1DD'], [1, '#F6D2A6']]); c.beginPath(); c.ellipse(x, GY - 22, 40, 8, 0, Math.PI, 0); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(x - 14, GY - 26, 10, 2.4, 0, 0, TAU); c.fill();
-  pawIcon(c, x + 20, GY - 8, 0.7, 'rgba(255,255,255,.7)');
+  floorShadow(c, x, 90);
+  c.fillStyle = lg(c, 0, GY - 30, 0, GY, [[0, '#FFE9CF'], [1, '#E5AE78']]); c.beginPath(); c.ellipse(x, GY - 12, 42, 14, 0, 0, TAU); c.fill();
+  // ขนฟูรอบขอบหน้า
+  c.fillStyle = '#E5AE78'; c.beginPath();
+  for (let i = 0; i <= 14; i++) { const a = Math.PI * (i / 14); const px = x - Math.cos(a) * 41, py = GY - 12 + Math.sin(a) * 13; c.moveTo(px + 3.4, py); c.arc(px, py, 3.4, 0, TAU); }
+  c.fill();
+  c.fillStyle = lg(c, 0, GY - 26, 0, GY - 12, [[0, '#FFF6EA'], [1, '#F6D8B4']]); c.beginPath(); c.ellipse(x, GY - 17, 29, 8, 0, 0, TAU); c.fill();
+  for (const o of [-14, 0, 14]) pawIcon(c, x + o, GY - 16.5, 0.38, 'rgba(230,170,120,.45)');
+  // ขอบหลังฟู (สูงกว่า)
+  c.fillStyle = lg(c, 0, GY - 32, 0, GY - 18, [[0, '#FFF3E2'], [1, '#F4CF9F']]); c.beginPath(); c.ellipse(x, GY - 21, 42, 9, 0, Math.PI, 0); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.ellipse(x - 16, GY - 26, 11, 2.4, 0, 0, TAU); c.fill();
+  c.fillStyle = PK[2]; heart(c, x + 24, GY - 24, 5); c.fill();
 }
+/** เตียงมีมุ้ง: เสาทอง · หลังคาโดมระบายขลิบทอง · ม่านโปร่งรวบโบว์ · เบาะบุนวมกระดุม · หมอน + หัวใจ */
 function canopyBedArt(c) {
   const x = N.canopy, top = GY - 112;
-  floorShadow(c, x, 110);
-  // ผ้าม่านโปร่งด้านหลัง + หลังคาโดมลาเวนเดอร์ + โบว์
-  c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.moveTo(x - 40, top + 20); c.quadraticCurveTo(x - 50, GY - 30, x - 46, GY - 10); c.lineTo(x + 46, GY - 10); c.quadraticCurveTo(x + 50, GY - 30, x + 40, top + 20); c.closePath(); c.fill();
+  floorShadow(c, x, 114);
+  // เสาทองสองข้าง
+  for (const d of [-1, 1]) { c.fillStyle = goldV(c, top + 20, GY); c.beginPath(); c.roundRect(x + d * 44 - 1.8, top + 20, 3.6, GY - top - 26, 1.8); c.fill(); }
+  // ม่านโปร่งด้านหลัง
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.moveTo(x - 40, top + 20); c.quadraticCurveTo(x - 50, GY - 30, x - 46, GY - 10); c.lineTo(x + 46, GY - 10); c.quadraticCurveTo(x + 50, GY - 30, x + 40, top + 20); c.closePath(); c.fill();
   for (const d of [-1, 1]) {
     c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.moveTo(x + d * 40, top + 22); c.quadraticCurveTo(x + d * 54, top + 60, x + d * 48, GY - 12); c.lineTo(x + d * 36, GY - 12); c.quadraticCurveTo(x + d * 42, top + 60, x + d * 28, top + 22); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(200,180,240,.5)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x + d * 36, top + 30); c.quadraticCurveTo(x + d * 46, top + 60, x + d * 42, GY - 14); c.stroke();
     bow(c, x + d * 44, top + 58, 0.6, LV[2], LV[3]);
   }
-  c.fillStyle = lg(c, 0, top, 0, top + 30, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.moveTo(x - 46, top + 24); c.quadraticCurveTo(x, top - 24, x + 46, top + 24);
-  for (let i = 0; i < 4; i++) { const xa = x + 46 - i * 23, xb = xa - 23; c.quadraticCurveTo((xa + xb) / 2, top + 34, xb, top + 24); }
+  // หลังคาโดมระบาย + ขลิบทอง
+  c.fillStyle = lg(c, 0, top - 4, 0, top + 32, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.moveTo(x - 48, top + 24); c.quadraticCurveTo(x, top - 26, x + 48, top + 24);
+  for (let i = 0; i < 4; i++) { const xa = x + 48 - i * 24, xb = xa - 24; c.quadraticCurveTo((xa + xb) / 2, top + 35, xb, top + 24); }
   c.closePath(); c.fill();
-  c.fillStyle = goldV(c, top - 12, top); c.beginPath(); c.arc(x, top - 2, 4, 0, TAU); c.fill();
-  // เบาะเตียง
-  c.fillStyle = lg(c, 0, GY - 30, 0, GY, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.roundRect(x - 44, GY - 26, 88, 26, 10); c.fill();
-  c.fillStyle = '#FFFFFF'; c.beginPath(); c.ellipse(x, GY - 24, 34, 6, 0, 0, TAU); c.fill();
-  pillow(c, x - 18, GY - 32, 26, 16, '#FFFFFF', CR[2]); c.fillStyle = PK[1]; heart(c, x + 18, GY - 32, 7); c.fill();
+  c.strokeStyle = goldV(c, top + 20, top + 34); c.lineWidth = 1.6; c.beginPath(); c.moveTo(x + 48, top + 24);
+  for (let i = 0; i < 4; i++) { const xa = x + 48 - i * 24, xb = xa - 24; c.quadraticCurveTo((xa + xb) / 2, top + 35, xb, top + 24); }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(x - 16, top + 4, 12, 4, -0.35, 0, TAU); c.fill();
+  c.fillStyle = goldV(c, top - 14, top); c.beginPath(); c.arc(x, top - 3, 4.5, 0, TAU); c.fill();
+  // เบาะบุนวมกระดุม (ผิวบน GY − 18 = ระดับที่น้องนอน)
+  c.fillStyle = lg(c, 0, GY - 26, 0, GY, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.roundRect(x - 46, GY - 26, 92, 26, 11); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.75)'; for (const o of [-30, -10, 10, 30]) { c.beginPath(); c.arc(x + o, GY - 12, 1.4, 0, TAU); c.fill(); }
+  c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.8; for (const o of [-20, 0, 20]) { c.beginPath(); c.moveTo(x + o, GY - 22); c.lineTo(x + o, GY - 4); c.stroke(); }
+  c.fillStyle = '#FFFFFF'; c.beginPath(); c.ellipse(x, GY - 23, 36, 6, 0, 0, TAU); c.fill();
+  pillow(c, x - 20, GY - 30, 26, 15, '#FFFFFF', CR[2]); c.fillStyle = PK[1]; heart(c, x + 20, GY - 31, 7); c.fill();
 }
+/** บ้านไม้หัวแมว: ลายไม้ · หูแมวชมพู · หน้าต่างกลมรูปหัวใจ · ประตูหูแมวมีเบาะ · ป้ายชื่อ */
 function houseBedArt(c) {
   const x = N.house, top = GY - 66;
-  floorShadow(c, x, 96);
-  c.fillStyle = lg(c, 0, top, 0, GY, [[0, '#FFF0C6'], [1, '#F2CD86']]); c.beginPath(); c.roundRect(x - 40, top, 80, 66, 6); c.fill();
-  for (const d of [-1, 1]) { c.fillStyle = '#F2CD86'; c.beginPath(); c.moveTo(x + d * 40, top + 4); c.lineTo(x + d * 34, top - 16); c.lineTo(x + d * 20, top + 2); c.closePath(); c.fill(); c.fillStyle = PK[1]; c.beginPath(); c.moveTo(x + d * 35, top + 2); c.lineTo(x + d * 33, top - 9); c.lineTo(x + d * 25, top + 2); c.closePath(); c.fill(); }
-  c.fillStyle = '#9C7BB0'; c.beginPath(); c.arc(x, top + 34, 18, Math.PI, 0); c.lineTo(x + 18, GY - 4); c.lineTo(x - 18, GY - 4); c.closePath(); c.fill();
-  for (const d of [-1, 1]) { c.fillStyle = '#9C7BB0'; c.beginPath(); c.moveTo(x + d * 16, top + 24); c.lineTo(x + d * 20, top + 8); c.lineTo(x + d * 6, top + 17); c.closePath(); c.fill(); }
-  c.fillStyle = 'rgba(255,255,255,.45)'; c.fillRect(x - 36, top + 3, 72, 2);
-  for (const d of [-1, 1]) pawIcon(c, x + d * 30, GY - 16, 0.6, 'rgba(200,150,80,.4)');
+  floorShadow(c, x, 100);
+  for (const d of [-1, 1]) {
+    c.fillStyle = '#EFC883'; c.beginPath(); c.moveTo(x + d * 40, top + 6); c.quadraticCurveTo(x + d * 40, top - 14, x + d * 33, top - 18); c.quadraticCurveTo(x + d * 24, top - 8, x + d * 18, top + 2); c.closePath(); c.fill();
+    c.fillStyle = PK[1]; c.beginPath(); c.moveTo(x + d * 35, top + 3); c.quadraticCurveTo(x + d * 35, top - 9, x + d * 32, top - 11); c.quadraticCurveTo(x + d * 26, top - 4, x + d * 23, top + 2); c.closePath(); c.fill();
+  }
+  c.fillStyle = lg(c, x - 40, 0, x + 40, 0, [[0, '#FFF3D2'], [0.55, '#F8DFA6'], [1, '#E8C17A']]); c.beginPath(); c.roundRect(x - 40, top, 80, 66, 9); c.fill();
+  c.save(); c.beginPath(); c.roundRect(x - 40, top, 80, 66, 9); c.clip();
+  c.strokeStyle = 'rgba(190,140,70,.22)'; c.lineWidth = 1; for (let i = 1; i < 5; i++) { c.beginPath(); c.moveTo(x - 40, top + i * 13); c.quadraticCurveTo(x, top + i * 13 + 2, x + 40, top + i * 13); c.stroke(); }
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.roundRect(x - 36, top + 3, 72, 2.2, 1.1); c.fill();
+  // หน้าต่างหัวใจ
+  c.fillStyle = '#FFFFFF'; heart(c, x + 26, top + 15, 6.5); c.fill(); c.fillStyle = '#B9D9F2'; heart(c, x + 26, top + 15, 4.8); c.fill();
+  // ประตูหูแมว + เบาะ
+  const door = new Path2D(), dy0 = top + 36;
+  door.moveTo(x - 18, GY - 3); door.lineTo(x - 18, dy0); door.lineTo(x - 20, dy0 - 19); door.lineTo(x - 9, dy0 - 13); door.quadraticCurveTo(x, dy0 - 16, x + 9, dy0 - 13); door.lineTo(x + 20, dy0 - 19); door.lineTo(x + 18, dy0); door.lineTo(x + 18, GY - 3); door.closePath();
+  c.fillStyle = lg(c, 0, dy0 - 19, 0, GY, [[0, '#6A4F8E'], [1, '#9A7BB8']]); c.fill(door);
+  c.save(); c.clip(door); c.fillStyle = PK[1]; c.beginPath(); c.ellipse(x, GY - 4, 17, 6, 0, 0, TAU); c.fill(); c.restore();
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 2; c.lineJoin = 'round'; c.stroke(door);
+  // ป้ายชื่อเหนือประตู
+  c.fillStyle = PK[0]; c.beginPath(); c.roundRect(x - 13, top + 6, 26, 8, 4); c.fill();
+  pawIcon(c, x, top + 10.5, 0.45, PK[3]);
+  for (const d of [-1, 1]) pawIcon(c, x + d * 30, GY - 14, 0.55, 'rgba(200,150,80,.38)');
 }
+/** ตะกร้าหวาย: ลายสาน · หูหิ้วพันริบบิ้น + โบว์ · ผ้าห่มชมพูพาดขอบ (ผิวผ้าห่ม = ระดับที่น้องนอน) */
 function basketArt(c) {
   const x = N.basket;
-  floorShadow(c, x, 80);
-  c.strokeStyle = '#D9A86A'; c.lineWidth = 3; c.beginPath(); c.arc(x, GY - 32, 28, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
-  c.fillStyle = lg(c, 0, GY - 34, 0, GY, [[0, '#F0C98F'], [1, '#C9955A']]);
-  c.beginPath(); c.moveTo(x - 36, GY - 30); c.lineTo(x + 36, GY - 30); c.lineTo(x + 30, GY - 2); c.lineTo(x - 30, GY - 2); c.closePath(); c.fill();
-  c.strokeStyle = 'rgba(150,100,50,.3)'; c.lineWidth = 1;
-  for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(x - 34 + i, GY - 24 + i * 6); c.lineTo(x + 34 - i, GY - 24 + i * 6); c.stroke(); }
-  for (let i = -5; i <= 5; i++) { c.beginPath(); c.moveTo(x + i * 6, GY - 30); c.lineTo(x + i * 5.2, GY - 2); c.stroke(); }
-  c.fillStyle = PK[1]; c.beginPath(); c.ellipse(x, GY - 31, 32, 6, 0, 0, TAU); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(x - 10, GY - 33, 9, 2, 0, 0, TAU); c.fill();
-}
-function chestArt(c) {
-  const x = N.chest, top = GY - 52;
-  floorShadow(c, x, 86);
-  // ฝาเปิดพิงด้านหลัง
-  c.fillStyle = lg(c, 0, top - 30, 0, top, [[0, WO[1]], [1, WO[3]]]); c.beginPath(); c.moveTo(x - 34, top); c.lineTo(x - 30, top - 26); c.quadraticCurveTo(x, top - 36, x + 30, top - 26); c.lineTo(x + 34, top); c.closePath(); c.fill();
-  // ลูกไหมพรมล้น
-  for (const [dx, dy, col] of [[-16, -6, PK[2]], [4, -10, LV[2]], [20, -4, '#A9D3E8'], [-4, -2, '#FFE2A8']]) {
-    c.fillStyle = col; c.beginPath(); c.arc(x + dx, top + dy, 9, 0, TAU); c.fill();
-    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1; for (const a of [0.3, 1.1, 1.9]) { c.beginPath(); c.arc(x + dx, top + dy, 6, a, a + 1.6); c.stroke(); }
+  floorShadow(c, x, 84);
+  c.strokeStyle = '#D9A86A'; c.lineWidth = 3.4; c.beginPath(); c.arc(x, GY - 32, 28, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+  c.strokeStyle = PK[2]; c.lineWidth = 1.4; c.setLineDash([3, 3]); c.beginPath(); c.arc(x, GY - 32, 28, Math.PI * 1.08, Math.PI * 1.92); c.stroke(); c.setLineDash([]);
+  bow(c, x - 20, GY - 52, 0.5, PK[1], PK[3]);
+  const body = new Path2D(); body.moveTo(x - 37, GY - 30); body.lineTo(x + 37, GY - 30); body.quadraticCurveTo(x + 34, GY - 4, x + 28, GY - 2); body.lineTo(x - 28, GY - 2); body.quadraticCurveTo(x - 34, GY - 4, x - 37, GY - 30); body.closePath();
+  c.fillStyle = lg(c, 0, GY - 34, 0, GY, [[0, '#F2CF98'], [1, '#C9955A']]); c.fill(body);
+  c.save(); c.clip(body);
+  // ลายสานขัด
+  for (let row = 0; row < 5; row++) for (let i = -7; i <= 7; i++) {
+    const y = GY - 27 + row * 5.6, xx = x + i * 5.4 + (row % 2) * 2.7;
+    c.fillStyle = (i + row) % 2 ? 'rgba(255,240,210,.45)' : 'rgba(150,100,50,.22)';
+    c.beginPath(); c.ellipse(xx, y, 2.6, 2, 0, 0, TAU); c.fill();
   }
-  c.fillStyle = lg(c, 0, top, 0, GY, [[0, WO[1]], [1, WO[3]]]); c.beginPath(); c.roundRect(x - 34, top, 68, 52, 5); c.fill();
-  for (const y of [top + 12, GY - 12]) { c.fillStyle = goldV(c, y - 3, y + 3); c.fillRect(x - 34, y - 2.5, 68, 5); }
-  c.fillStyle = goldV(c, top + 20, top + 34); c.beginPath(); c.roundRect(x - 7, top + 20, 14, 14, 3); c.fill();
-  c.fillStyle = '#9C6A3C'; c.beginPath(); c.arc(x, top + 26, 2, 0, TAU); c.fill();
-  // เชือกไหมพรมห้อย
-  c.strokeStyle = PK[2]; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x - 16, top - 2); c.bezierCurveTo(x - 40, top + 10, x - 30, GY - 12, x - 44, GY - 2); c.stroke();
+  c.restore();
+  c.fillStyle = lg(c, 0, GY - 33, 0, GY - 27, [[0, '#F7DCAE'], [1, '#D9A86A']]); c.beginPath(); c.roundRect(x - 38, GY - 33, 76, 6, 3); c.fill();
+  // ผ้าห่มชมพูพาดขอบ
+  c.fillStyle = lg(c, 0, GY - 34, 0, GY - 26, [[0, PK[0]], [1, PK[1]]]); c.beginPath(); c.ellipse(x, GY - 30, 33, 6.5, 0, 0, TAU); c.fill();
+  c.fillStyle = PK[1]; c.beginPath(); c.moveTo(x + 12, GY - 29); c.quadraticCurveTo(x + 22, GY - 22, x + 18, GY - 12); c.lineTo(x + 28, GY - 14); c.quadraticCurveTo(x + 32, GY - 24, x + 30, GY - 30); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.75)'; for (const [hx, hy] of [[x - 14, GY - 31], [x + 4, GY - 29], [x + 23, GY - 20]]) { heart(c, hx, hy, 2.4); c.fill(); }
 }
+/**
+ * หีบของเล่น (อัปเกรด 15 พ.ย. 2026): หีบไม้ทรงโค้งขอบทอง มุมเหล็กทองรูปหัวใจ · ฝาเปิดพิงหลัง (ในฝาบุผ้าชมพู)
+ *   ของล้นหีบ: ไหมพรม 3 สี (เส้นไหมพรมพัน) · ไม้ตกแมวขนนก · บอลกระดิ่ง · หนูของเล่น · กุญแจหัวใจ · ป้ายชื่อ "TOYS" ไม่มีตัวหนังสือ (อุ้งเท้า)
+ *   ผิวบนที่เหยียบได้เดิม (GY − 52)
+ */
+function chestArt(c) {
+  const x = N.chest, top = GY - 52, w = 70;
+  floorShadow(c, x, 92);
+  // ฝาเปิดพิงหลัง: ไม้โค้ง + ด้านในบุผ้าชมพูลายจุด
+  c.fillStyle = lg(c, 0, top - 34, 0, top, [[0, WO[1]], [1, WO[3]]]);
+  c.beginPath(); c.moveTo(x - w / 2, top); c.lineTo(x - w / 2 + 3, top - 28); c.quadraticCurveTo(x, top - 42, x + w / 2 - 3, top - 28); c.lineTo(x + w / 2, top); c.closePath(); c.fill();
+  c.fillStyle = PK[1]; c.beginPath(); c.moveTo(x - w / 2 + 6, top); c.lineTo(x - w / 2 + 8, top - 24); c.quadraticCurveTo(x, top - 36, x + w / 2 - 8, top - 24); c.lineTo(x + w / 2 - 6, top); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(x - 24 + (i % 5) * 12 + (i > 4 ? 6 : 0), top - 22 + (i > 4 ? 10 : 0) - Math.abs(i % 5 - 2) * 2, 1.3, 0, TAU); c.fill(); }
+  c.strokeStyle = goldV(c, top - 42, top - 26); c.lineWidth = 2; c.beginPath(); c.moveTo(x - w / 2 + 3, top - 28); c.quadraticCurveTo(x, top - 42, x + w / 2 - 3, top - 28); c.stroke();
+  // ไม้ตกแมวขนนก (พิงซ้าย)
+  c.strokeStyle = WO[3]; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(x - 18, top + 2); c.lineTo(x - 30, top - 44); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x - 30, top - 44); c.quadraticCurveTo(x - 38, top - 40, x - 36, top - 30); c.stroke();
+  for (const [ang, col] of [[-0.5, PK[2]], [0, LV[2]], [0.5, '#A9D3E8']]) {
+    c.save(); c.translate(x - 36, top - 30); c.rotate(ang);
+    c.fillStyle = col; c.beginPath(); c.ellipse(0, 7, 2.6, 7, 0, 0, TAU); c.fill(); c.restore();
+  }
+  // ไหมพรม 3 สี + เส้นพัน
+  for (const [dx, dy, col] of [[-10, -6, PK[2]], [8, -9, LV[2]], [22, -3, '#A9D3E8']]) {
+    c.fillStyle = col; c.beginPath(); c.arc(x + dx, top + dy, 9, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1; for (const a2 of [0.3, 1.1, 1.9, 3.2]) { c.beginPath(); c.arc(x + dx, top + dy, 6.2, a2, a2 + 1.4); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(x + dx - 3, top + dy - 4, 1.6, 0, TAU); c.fill();
+  }
+  // บอลกระดิ่งทอง (หน้าซ้าย)
+  c.fillStyle = goldV(c, top - 8, top + 4); c.beginPath(); c.arc(x - 24, top - 1, 5.5, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(150,100,30,.6)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x - 29, top - 1); c.lineTo(x - 19, top - 1); c.stroke();
+  c.fillStyle = '#7A5420'; c.beginPath(); c.arc(x - 24, top + 1.5, 1, 0, TAU); c.fill();
+  // ตัวหีบทรงป้อม ไล่แสง + ลายไม้
+  const body = new Path2D(); body.roundRect(x - w / 2, top, w, GY - top - 1, [4, 4, 8, 8]);
+  c.fillStyle = lg(c, x - w / 2, 0, x + w / 2, 0, [[0, WO[0]], [0.5, WO[1]], [1, WO[3]]]); c.fill(body);
+  c.save(); c.clip(body);
+  c.strokeStyle = 'rgba(150,100,50,.22)'; c.lineWidth = 0.8; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x - w / 2, top + i * 13); c.quadraticCurveTo(x, top + i * 13 + 2, x + w / 2, top + i * 13); c.stroke(); }
+  c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect(x - w / 2 + 4, top + 3, 3, GY - top - 10);
+  c.restore();
+  // แถบทอง บน/ล่าง + มุมหัวใจ
+  for (const y of [top + 4, GY - 10]) { c.fillStyle = goldV(c, y - 3, y + 3); c.beginPath(); c.roundRect(x - w / 2, y - 2.5, w, 5, 2); c.fill(); }
+  for (const d of [-1, 1]) { c.fillStyle = goldV(c, top + 18, top + 30); heart(c, x + d * (w / 2 - 7), top + 24, 3.6); c.fill(); }
+  // กุญแจหัวใจกลาง + ป้ายอุ้งเท้า
+  c.fillStyle = goldV(c, top + 14, top + 32); heart(c, x, top + 23, 8); c.fill();
+  c.fillStyle = '#9C6A3C'; c.beginPath(); c.arc(x, top + 21.5, 1.6, 0, TAU); c.fill(); c.fillRect(x - 0.8, top + 22, 1.6, 4);
+  c.fillStyle = CR[0]; c.beginPath(); c.roundRect(x - 13, GY - 22, 26, 8, 3); c.fill();
+  pawIcon(c, x, GY - 17.8, 0.4, PK[3]);
+  // หนูของเล่นหน้าหีบ (ขวา) + หางเชือก
+  const mx = x + 30, my = GY - 3;
+  c.fillStyle = '#C9C3D8'; c.beginPath(); c.ellipse(mx, my - 4, 8, 5, 0, Math.PI, TAU); c.lineTo(mx + 8, my); c.lineTo(mx - 8, my); c.fill();
+  c.fillStyle = PK[1]; c.beginPath(); c.arc(mx + 4, my - 8, 2.6, 0, TAU); c.fill();
+  c.fillStyle = '#5A3420'; c.beginPath(); c.arc(mx + 6.5, my - 4.5, 0.8, 0, TAU); c.fill();
+  c.strokeStyle = PK[2]; c.lineWidth = 1; c.beginPath(); c.moveTo(mx - 8, my - 2); c.quadraticCurveTo(mx - 16, my - 10, mx - 20, my - 2); c.stroke();
+  // เส้นไหมพรมห้อยลงพื้น
+  c.strokeStyle = PK[2]; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x - 10, top + 2); c.bezierCurveTo(x - 46, top + 10, x - 30, GY - 12, x - 48, GY - 2); c.stroke();
+}
+/**
+ * ม้านั่งริมหน้าต่าง (อัปเกรด 15 พ.ย. 2026): ตู้ไม้ครีม ลิ้นชักกรอบนูน มือจับทองรูปปลา · เบาะยาวลาเวนเดอร์ขอบหยักติดกระดุม
+ *   หมอนอิง 3 ใบ (หน้าแมว ครีมอุ้งเท้า ชมพูหัวใจ) · ผ้าห่มถักพาดปลาย · ผิวนั่งเดิม (GY − 46 — จุดนั่งดูวิวของน้อง)
+ */
 function winSeatArt(c) {
   const cx = N.win2, w = 184, top = GY - 46;
-  floorShadow(c, cx, w + 10);
-  c.fillStyle = lg(c, 0, top, 0, GY, [[0, WO[1]], [1, WO[3]]]); c.beginPath(); c.roundRect(cx - w / 2, top + 6, w, 40, 4); c.fill();
-  for (let i = 0; i < 2; i++) { const dx = cx - w / 2 + 10 + i * (w / 2 - 6); c.fillStyle = lg(c, 0, top + 14, 0, GY - 6, [[0, WO[0]], [1, WO[1]]]); c.beginPath(); c.roundRect(dx, top + 14, w / 2 - 16, 26, 4); c.fill(); c.fillStyle = GOLD; c.beginPath(); c.arc(dx + w / 4 - 8, top + 27, 2, 0, TAU); c.fill(); }
-  c.fillStyle = lg(c, 0, top - 6, 0, top + 8, [[0, LV[1]], [1, LV[3]]]); c.beginPath(); c.roundRect(cx - w / 2 - 4, top - 4, w + 8, 14, 7); c.fill();
-  pillow(c, cx - 62, top - 18, 36, 28, '#FFF1D6', '#F2D3A0'); pawIcon(c, cx - 62, top - 17, 1, PK[2]);
-  pillow(c, cx + 66, top - 18, 34, 28, PK[1], PK[2]); c.fillStyle = 'rgba(255,255,255,.7)'; heart(c, cx + 66, top - 17, 5); c.fill();
+  floorShadow(c, cx, w + 14);
+  // ม้านั่ง (ผู้ใช้ 15 พ.ย.: เป็นที่นั่ง ไม่ใช่ตู้เก็บของ): โครงไม้ครีมบาง + ขาโค้ง 4 ขา ใต้ที่นั่งโล่ง · คานขวางมีลายอุ้งเท้าฉลุ
+  for (const [lx, back] of [[cx - w / 2 + 14, true], [cx + w / 2 - 14, true], [cx - w / 2 + 8, false], [cx + w / 2 - 8, false]]) {
+    const d = lx < cx ? -1 : 1;
+    c.fillStyle = back ? CR[3] : lg(c, 0, top + 8, 0, GY, [[0, CR[1]], [1, CR[3]]]);
+    c.beginPath(); c.moveTo(lx - 3, top + 8); c.lineTo(lx + 3, top + 8); c.quadraticCurveTo(lx + 2, GY - 12, lx + d * 4 + 2, GY); c.lineTo(lx + d * 4 - 3, GY); c.quadraticCurveTo(lx - 3, GY - 12, lx - 3, top + 8); c.fill();
+    if (!back) { c.fillStyle = goldV(c, GY - 4, GY); c.beginPath(); c.ellipse(lx + d * 4, GY - 1, 3.6, 1.8, 0, 0, TAU); c.fill(); }
+  }
+  c.fillStyle = lg(c, 0, top + 6, 0, top + 16, [[0, CR[0]], [1, CR[2]]]); c.beginPath(); c.roundRect(cx - w / 2 + 2, top + 6, w - 4, 10, 4); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.roundRect(cx - w / 2 + 6, top + 7.5, w - 12, 1.6, 0.8); c.fill();
+  c.strokeStyle = 'rgba(200,170,140,.6)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx - w / 2 + 12, GY - 14); c.quadraticCurveTo(cx, GY - 10, cx + w / 2 - 12, GY - 14); c.stroke();
+  for (const o of [-50, 0, 50]) pawIcon(c, cx + o, top + 11.5, 0.42, 'rgba(200,160,130,.6)');
+  // เบาะยาวขอบหยัก + กระดุม
+  plushPad(c, cx, top - 6, w / 2 + 4, LV[1], LV[3], 14);
+  c.fillStyle = 'rgba(255,255,255,.8)'; for (const o of [-60, -20, 20, 60]) { c.beginPath(); c.arc(cx + o, top + 1, 1.4, 0, TAU); c.fill(); }
+  // หมอนอิง: หน้าแมว (ซ้าย) · ครีมอุ้งเท้า · ชมพูหัวใจ (ขวา)
+  const px = cx - 66, py = top - 20;
+  for (const d of [-1, 1]) { c.fillStyle = '#FFF1D6'; c.beginPath(); c.moveTo(px + d * 6, py - 11); c.lineTo(px + d * 13, py - 19); c.lineTo(px + d * 15, py - 8); c.closePath(); c.fill(); c.fillStyle = PK[1]; c.beginPath(); c.moveTo(px + d * 8, py - 11); c.lineTo(px + d * 12.5, py - 16); c.lineTo(px + d * 13.5, py - 10); c.closePath(); c.fill(); }
+  pillow(c, px, py, 34, 26, '#FFF1D6', '#F2D3A0');
+  c.strokeStyle = '#9C6A3C'; c.lineWidth = 1.1; c.lineCap = 'round';
+  for (const d of [-1, 1]) { c.beginPath(); c.arc(px + d * 7, py - 1, 2.6, Math.PI * 0.15, Math.PI * 0.85); c.stroke(); }
+  c.fillStyle = PK[2]; c.beginPath(); c.moveTo(px - 1.6, py + 3); c.lineTo(px + 1.6, py + 3); c.lineTo(px, py + 4.6); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,150,190,.5)'; for (const d of [-1, 1]) { c.beginPath(); c.ellipse(px + d * 11, py + 4, 3, 1.8, 0, 0, TAU); c.fill(); }
+  pillow(c, cx - 22, top - 17, 28, 22, CR[0], CR[2]); pawIcon(c, cx - 22, top - 16, 0.7, PK[2]);
+  pillow(c, cx + 64, top - 18, 34, 27, PK[1], PK[2]); c.fillStyle = 'rgba(255,255,255,.75)'; heart(c, cx + 64, top - 17, 5.5); c.fill();
+  // ผ้าห่มถักพาดปลายขวา ห้อยลงข้างม้านั่ง
+  const bx = cx + w / 2 - 22;
+  c.fillStyle = lg(c, 0, top - 6, 0, GY - 8, [[0, '#D6ECFB'], [1, '#9FC8E8']]);
+  c.beginPath(); c.moveTo(bx - 12, top - 6); c.lineTo(bx + 18, top - 6); c.lineTo(bx + 16, top + 30); c.quadraticCurveTo(bx + 2, top + 34, bx - 10, top + 28); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 0.8; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(bx - 10 + i * 7, top - 4); c.lineTo(bx - 9 + i * 7, top + 28); c.stroke(); }
+  c.fillStyle = '#FFFFFF'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(bx - 8 + i * 6, top + 30 + (i % 2), 1.6, 0, TAU); c.fill(); }
 }
 function vanityArt(c) {
   const cx = N.vanity, w = 164, top = GY - 92;
@@ -1182,31 +1895,33 @@ export function drawNurseWorld(c, camX, vw, t) {
     twinkle(c, x, W.w, W.top, W.bot, seed, t);
     sunShaft(c, x, W, t);
   }
-  if (has(1) && vis(N.cab - 90, N.cab + 90)) shaded(c, 'nurse:cab', N.cab - 76, GY - 268, 152, 276, cabinetArt);
-  if (vis(N.box - 50, N.box + 50)) shaded(c, 'nurse:box', N.box - 50, GY - 60, 100, 68, (g) => { boxArt(g, N.box); boxArt(g, N.box, 60, 40, true); });
+  if (has(1) && vis(N.cab - 90, N.cab + 90)) shaded(c, 'nurse:cab2', N.cab - 76, GY - 268, 152, 276, cabinetArt);
+  if (vis(N.box - 50, N.box + 50)) shaded(c, 'nurse:box3', N.box - 52, GY - 66, 104, 74, (g) => { boxArt(g, N.box); boxArt(g, N.box, 60, 40, true); });
   if (NURSE_STAGE === 0 && vis(N.sign - 60, N.sign + 60)) {
     shaded(c, 'nurse:sign', N.sign - 70, GY - 130, 140, 138, signArt);
     label(c, N.sign, GY - 93, 'ยังไม่มีน้อง', 'rgba(255,255,255,0)', LV[4], 11);
     label(c, N.sign, GY - 74, 'มาอยู่เลยน้า', 'rgba(255,255,255,0)', PK[3], 10);
   }
   const bowls = has(2) ? N.bowls : has(1) ? [N.bowls[0]] : [];
-  for (const [i, x] of bowls.entries()) if (vis(x - 24, x + 24)) shaded(c, 'nurse:bowl:' + i, x - 24, GY - 22, 48, 28, (g) => bowlArt(g, x, i));
-  if (has(1) && vis(N.water - 30, N.water + 30)) shaded(c, 'nurse:water', N.water - 26, GY - 82, 52, 88, waterArt);
-  if (has(1) && vis(N.round - 50, N.round + 50)) shaded(c, 'nurse:round', N.round - 48, GY - 36, 96, 44, roundBedArt);
+  if (bowls.length && vis(bowls[0] - 30, bowls[bowls.length - 1] + 30)) shaded(c, 'nurse:mat:' + bowls.length, bowls[0] - 34, GY - 6, bowls[bowls.length - 1] - bowls[0] + 68, 14, (g) => feedMatArt(g, bowls));   // แผ่นรองชาม
+  for (const [i, x] of bowls.entries()) if (vis(x - 24, x + 24)) shaded(c, 'nurse:bowl2:' + i, x - 24, GY - 24, 48, 30, (g) => bowlArt(g, x, i));
+  if (has(1) && vis(N.water - 36, N.water + 36)) { shaded(c, 'nurse:water2', N.water - 36, GY - 50, 72, 58, waterArt); drawWaterLive(c, t); }   // เครื่องให้น้ำอัตโนมัติ (น้ำพุแมว)
+  if (has(1) && vis(N.round - 50, N.round + 50)) shaded(c, 'nurse:round2', N.round - 50, GY - 38, 100, 46, roundBedArt);
   if (has(2)) {
-    if (vis(N.tub - 90, N.tub + 90)) { shaded(c, 'nurse:tub', N.tub - 86, GY - 146, 172, 154, tubArt); drawTubLive(c, t); }
-    if (vis(N.condo - 110, N.condo + 110)) { shaded(c, 'nurse:condo', N.condo - CONDO.w / 2 - 14, GY - CONDO.h - 14, CONDO.w + 28, CONDO.h + 22, condoArt); drawCondoToy(c, t); }
-    if (vis(1000, 1430)) shaded(c, 'nurse:shelves', 990, 76, 440, 164, wallShelvesArt);
-    if (vis(N.dome - 50, N.dome + 50)) shaded(c, 'nurse:dome', N.dome - 48, GY - 74, 96, 82, domeBedArt);
-    if (vis(N.canopy - 60, N.canopy + 60)) shaded(c, 'nurse:canopy', N.canopy - 60, GY - 140, 120, 148, canopyBedArt);
-    if (vis(N.house - 50, N.house + 50)) shaded(c, 'nurse:house', N.house - 50, GY - 86, 100, 94, houseBedArt);
-    if (vis(N.basket - 46, N.basket + 46)) shaded(c, 'nurse:basket', N.basket - 44, GY - 66, 88, 74, basketArt);
-    if (vis(N.chest - 50, N.chest + 50)) shaded(c, 'nurse:chest', N.chest - 50, GY - 96, 100, 104, chestArt);
-    if (vis(N.win2 - 100, N.win2 + 100)) shaded(c, 'nurse:seat', N.win2 - 104, GY - 90, 208, 98, winSeatArt);
+    if (vis(N.tub - 100, N.tub + 100)) { shaded(c, 'nurse:tub2', N.tub - 100, GY - 146, 200, 160, tubArt); drawTubLive(c, t); }
+    if (vis(N.condo - 110, N.condo + 110)) { shaded(c, 'nurse:condo2', N.condo - CONDO.w / 2 - 14, GY - CONDO.h - 14, CONDO.w + 28, CONDO.h + 22, condoArt); drawCondoToy(c, t); }
+    if (vis(980, 1440)) shaded(c, 'nurse:shelves2', 980, 70, 460, 180, wallShelvesArt);
+    if (vis(N.dome - 50, N.dome + 50)) shaded(c, 'nurse:dome2', N.dome - 50, GY - 82, 100, 90, domeBedArt);
+    if (vis(N.canopy - 60, N.canopy + 60)) shaded(c, 'nurse:canopy2', N.canopy - 62, GY - 142, 124, 150, canopyBedArt);
+    if (vis(N.house - 50, N.house + 50)) shaded(c, 'nurse:house2', N.house - 52, GY - 88, 104, 96, houseBedArt);
+    if (vis(N.basket - 46, N.basket + 46)) shaded(c, 'nurse:basket2', N.basket - 46, GY - 68, 92, 76, basketArt);
+    if (vis(N.chest - 50, N.chest + 50)) shaded(c, 'nurse:chest2', N.chest - 54, GY - 100, 108, 108, chestArt);
+    if (vis(N.win2 - 100, N.win2 + 100)) shaded(c, 'nurse:seat3', N.win2 - 108, GY - 96, 216, 104, winSeatArt);
     if (vis(N.vanity - 90, N.vanity + 90)) shaded(c, 'nurse:vanity', N.vanity - 90, GY - 196, 180, 204, vanityArt);
     if (vis(N.gallery - 80, N.gallery + 80)) shaded(c, 'nurse:gallery', N.gallery - 80, 98, 140, 150, galleryArt);
     if (vis(N.tower - 56, N.tower + 56)) shaded(c, 'nurse:tower', N.tower - 54, GY - TOWER.h - 10, 108, TOWER.h + 18, towerArt);
-    if (vis(N.box2 - 40, N.box2 + 40)) shaded(c, 'nurse:box2', N.box2 - 40, GY - 50, 80, 58, (g) => { boxArt(g, N.box2, 48, 32); boxArt(g, N.box2, 48, 32, true); });
+    if (vis(N.litter - 60, N.litter + 60)) shaded(c, 'nurse:litter', N.litter - 60, GY - 70, 120, 80, litterArt);   // ห้องน้ำแมว
+    if (vis(N.box2 - 40, N.box2 + 40)) shaded(c, 'nurse:box2b', N.box2 - 42, GY - 56, 84, 64, (g) => { boxArt(g, N.box2, 48, 32); boxArt(g, N.box2, 48, 32, true); });
   }
   for (const [x, k] of [[N.plant1, 0], [N.plant2, 1]]) if ((has(2) || k === 0) && vis(x - 40, x + 40)) { c.save(); c.translate(x, GY); shaded(c, 'hall:plant3:' + k, -40, -130, 80, 132, (g) => drawPlantArt(g, k)); c.restore(); }
   if (vis(N.scon - 40, N.scon + 40)) glow(c, N.scon + 12, 156, 38, 0.4, t, 3);
@@ -1214,5 +1929,5 @@ export function drawNurseWorld(c, camX, vw, t) {
 }
 /** ผนังหน้ากล่องทับน้องที่มุดกล่องต้อนรับอยู่ */
 export function drawNurseFront(c, camX, vw, t, inBox) {
-  if (inBox) shaded(c, 'nurse:boxfront', N.box - 34, GY - 44, 68, 48, (g) => boxArt(g, N.box, 60, 40, true));
+  if (inBox) shaded(c, 'nurse:boxfront3', N.box - 34, GY - 44, 68, 48, (g) => boxArt(g, N.box, 60, 40, true));
 }

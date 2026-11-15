@@ -115,6 +115,34 @@ export async function buy(id) {
   return { ok: true };
 }
 
+/**
+ * ใช้ของในกระเป๋าหนึ่งชิ้น (เทอาหารให้น้องในห้องเลี้ยง — town/feed.js) → { ok, msg }
+ * server = ให้ฐานข้อมูลหัก (town_use_item ใน supabase/town.sql) · demo = หักในเครื่อง
+ */
+export async function useItem(id) {
+  if ((W.bag[id] || 0) <= 0) return { ok: false, msg: 'ของหมดแล้ว' };
+  if (W.mode === 'server') {
+    const { data, error } = await callRpc('town_use_item', { p_item: id });
+    if (error) {
+      if (error.code === 'PGRST202' || /town_use_item/.test(error.message || '')) return { ok: false, msg: 'ยังไม่ได้รัน supabase/town.sql รอบใหม่' };
+      return { ok: false, msg: /ของหมดแล้ว/.test(error.message || '') ? 'ของหมดแล้ว' : errText(error) };
+    }
+    applyServer(data);
+    return { ok: true };
+  }
+  W.bag[id] -= 1;
+  saveDemo();
+  return { ok: true };
+}
+
+/** ทดสอบ (แผงทดสอบห้องเลี้ยง): เติมของในกระเป๋า — เฉพาะโหมดทดลอง (โหมดเซิร์ฟเวอร์ = ของจริง ไม่ให้เสก) · คืน false = ทำไม่ได้ */
+export function debugBag(id, n) {
+  if (W.mode === 'server') return false;
+  W.bag[id] = (W.bag[id] || 0) + n;
+  saveDemo();
+  return true;
+}
+
 /** แลกค่าขนมเป็นทอง → { ok, gold, msg } */
 export async function exchange(treats) {
   if (W.mode === 'server') {

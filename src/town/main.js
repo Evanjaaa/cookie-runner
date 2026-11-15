@@ -46,16 +46,19 @@ import { HW, H_PLACES, H_SURFACES, H_SPAWN, H_STAIRS_X, H_FOUNT_X, setStairsCat,
 import { LW, L_PLACES, L_SURFACES, L_SPAWN, L_STAIRS_X, SNACK_POP, lampOn, toggleLamp, setLamp, setLoungeCat, condoBounce, drawLoungeBack, drawLoungeWorld, drawLoungeFront } from './castle-lounge.js';
 import { SNACKS, startAct, stepAct, actPose, randomSnack, drawSnackFlight, burst, stepActFx, drawActFx } from './castle-acts.js';
 import { openScope, scopeStep, scopeDrag, scopeZoom, drawScope, lensOf } from './castle-scope.js';
-import { RW, R_PLACES, R_SURFACES, R_SPAWN, STAR_LINES, roofWish, roofWishSend, drawRoofBack, drawRoofWorld } from './castle-roof.js';
+import { RW, R_PLACES, R_SURFACES, R_SPAWN, STAR_LINES, roofWish, roofWishSend, drawRoofBack, drawRoofWorld, roofLights } from './castle-roof.js';
+import { drawLightFx, toggleLightFx, lightFxOn } from './light-fx.js';
 import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx, emoteAge, emoteShapeAt } from './emotes.js';
 import { online, onlineRoom, onlineMember, onlineMe, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook, sendSay, sendLamp } from './online.js';
 import { initChat, chatReceive, chatSayNo, chatReset, bubbleOf, drawBubble, toggleChat, closeChat, chatOpen, paintChat, focusChat } from './chat.js';
 import { sendReport } from '../net/cloud.js';
 import {
   HOME_W, HOME_PLACES, HOME_SURFACES, HOME_SPAWN, HOME_BACK_X, NURSE_W, NURSE_PLACES, NURSE_SURFACES, NURSE_SPAWN,
-  drawHomeBack, drawHomeWorld, drawNurseBack, drawNurseWorld, drawNurseFront, recordOn, toggleRecord, homeRug,
+  drawHomeBack, drawHomeWorld, drawNurseBack, drawNurseWorld, drawNurseFront, recordOn, toggleRecord, homeRug, NURSE_SPOTS,
 } from './home.js';
-import { createKittens, stepKittens, drawKittens, drawKittenNames } from './home-cats.js';
+import { createKittens, stepKittens, drawKittens, drawKittenNames, drawBowlFood, callToBowl, callToTub, setKitSound, foamBurst, drawFoamBursts, drawShower, showerLevel, kitAt, grabKit, moveGrab, dropGrab, grabbing, petKit, drawGrab } from './home-cats.js';
+import { openFeed, closeFeed } from './feed.js';
+import { openBath, closeBath } from './bath.js';
 import { initHudIcons } from './hud-icons.js';
 import { getGems } from '../vault.js';
 
@@ -99,6 +102,7 @@ let wantDrop = false;        // สั่งลงจากที่สูง (�
 let ride = null;             // กำลังล่องเรือ { from, to, dir, ph: board|sail|land, u, bx, dur }
 let k = 1, vw = 960, camX = 0, camY = 0, tick = 0, last = performance.now();
 let paused = false;   // มีหน้าต่างเปิดอยู่ = ไม่รับปุ่มเดิน
+let kd = null;   // ยกน้องในห้องเลี้ยง { kit, x0, y0, sx, sy, moved, id } — sx, sy = นิ้วบนจอ (หน่วยฉาก) · ดูหัวข้อ "ยก/ลาก/ลูบน้อง"
 let scene = 'town';   // 'town' | 'shop' (ในร้าน — ดูหัวข้อร้านข้างล่าง) · ประกาศก่อน resize() ที่รันตอนโหลด
 // โลกที่เดินอยู่ (ผู้ใช้ 31 ต.ค. — สวนดอกไม้ในฝัน garden.js): ผัง · ผิวที่ยืนได้ · พื้น · ความกว้าง — เดิน/กระโดด/นั่งใช้โค้ดชุดเดียวกัน
 const TOWN = { id: 'town', w: WORLD_W, places: PLACES, surfaces: SURFACES, ground: groundY };
@@ -129,12 +133,14 @@ const NURSERY = { id: 'nursery', w: NURSE_W, places: NURSE_PLACES, surfaces: NUR
 // น้องแมวเด็กในห้อง (home-cats.js): เดินเล่นเอง · ตัวที่อยู่หลังแนวเท้าผู้เล่นวาดก่อนตัวผู้เล่น ตัวที่อยู่หน้าวาดทีหลัง
 let kits = null;
 const kitsNow = () => (kits ??= createKittens(SC));
-NURSERY.step = (dt) => stepKittens(kitsNow(), dt, cat.x, cat.y, tick);
-NURSERY.under = (c, cx, w) => drawKittens(c, kitsNow(), tick, (q) => q.y <= cat.y, cat.x, cx, w);
+NURSERY.step = (dt) => { if (kd?.moved) moveGrab(kd.sx + camX, kd.sy - camY); stepKittens(kitsNow(), dt, cat.x, cat.y, tick); };
+NURSERY.under = (c, cx, w) => { drawBowlFood(c, kitsNow(), tick); drawShower(c, tick); drawKittens(c, kitsNow(), tick, (q) => q.y <= cat.y, cat.x, cx, w); };   // อาหารในชาม (หน้าเทอาหาร feed.js) ก่อนตัวน้อง
 NURSERY.front = (c, cx, w, t) => {
   drawKittens(c, kitsNow(), tick, (q) => q.y > cat.y, cat.x, cx, w);
   drawNurseFront(c, cx, w, t, cat.sit?.id === 'nBox');   // มุดกล่องต้อนรับ = ผนังหน้ากล่องทับตัว
+  drawFoamBursts(c, tick);   // ฟองกระเด็นตอนเหยียบอ่างอาบน้ำ (ทับตัวผู้เล่น)
   drawKittenNames(c, kitsNow(), cat.x);
+  drawGrab(c, kitsNow(), tick);   // น้องที่กำลังยก + จุดวาง (บนสุด)
 };
 const IN_HOME = () => WD === HOME || WD === NURSERY;
 /**
@@ -191,6 +197,19 @@ function syncMusic() {
   if (want && cur) cur.start();
 }
 const sfx = (name, ...args) => { if (sfxKit) sfxKit.play(name, ...args); };
+// เสียงกิจกรรมลูกแมวในห้องเลี้ยง (กระโดด กินข้าว อาบน้ำ) — เฉพาะตัวที่อยู่ในจอ
+setKitSound((name, x, ...args) => { if (WD === NURSERY && x > camX - 40 && x < camX + vw + 40) sfx(name, ...args); });
+// แผงปุ่มทดสอบ 🐞 ของบ้านของฉัน — เฉพาะ dev server (เว็บจริงตัดทิ้งตอน build) · ลบได้ทั้งบล็อก + ไฟล์ home-debug.js
+if (import.meta.env.DEV) {
+  import('./home-debug.js').then((m) => m.mountHomeDebug({
+    visible: () => WD === HOME || WD === NURSERY,
+    nursery: () => WD === NURSERY,
+    kits: () => (WD === NURSERY ? kitsNow() : []),
+    toast: (msg) => toast(msg),
+    refreshHud: () => paintHud(),
+  }));
+  window.__nurse = { kits: () => kitsNow(), cam: () => camX, camY: () => camY, k: () => k };   // สคริปต์ทดสอบ (dev เท่านั้น)
+}
 window.addEventListener('pointerdown', wakeAudio, { capture: true });
 window.addEventListener('keydown', wakeAudio, { capture: true });
 document.addEventListener('visibilitychange', syncMusic);
@@ -289,6 +308,9 @@ function use(p) {
     else {
       const sx = seatX(p, cat.x, seatsTaken(p));
       if (sx == null) { toast('ที่นั่งตรงนี้มีเพื่อนนั่งเต็มแล้ว ไว้มาใหม่นะเหมียว'); return; }
+      if (!cat.P.onGround) { cat.pending = p; return; }   // ลอยอยู่ = นั่งตอนลงถึงพื้น
+      // นั่ง = เท้าอยู่ระดับพื้นของที่นั่งเสมอ (เดิมยืนบนเบาะ/เพิ่งลงจอดบนเบาะแล้วนั่ง = ลอยเหนือโซฟา)
+      cat.y = cat.P.y = p.gy ?? GY; cat.on = null; cat.drop = null; cat.P.vy = 0; cat.P.jumps = 0;
       cat.sit = p; cat.x = sx; cat.target = null; stopEmote(true);
       if (softSeat(p)) softKick(9);   // นั่งลงบนเบาะนุ่มในปราสาท = ยุบลงแล้วเด้งดึ๋ง
       if (p.kind === 'box') { sfx('box'); setTimeout(() => sfx('purr'), 380); }
@@ -333,6 +355,14 @@ function use(p) {
   else if (p.kind === 'ward') $('btnWard').click();   // ตู้เสื้อผ้า = ห้องแต่งตัวตัวเดียวกับปุ่มไม้แขวน
   else if (p.kind === 'record') { const on = toggleRecord(tick); sfx(on ? 'lampOn' : 'lampOff'); syncMusic(); }
   else if (p.kind === 'soon') toast(p.msg);
+  else if (p.kind === 'feed') {   // มุมให้อาหาร ห้องเลี้ยงน้อง → หน้าเทอาหาร (ชาม 5 ใบ ใบละตัว · feed.js)
+    paused = true;
+    openFeed({ kits: kitsNow(), bowlCount: NURSE_SPOTS.bowls.length, toast, sfx, onPour: (id, food) => callToBowl(kitsNow(), id, food), onClose: () => { paused = false; } });
+  }
+  else if (p.kind === 'bath') {   // อ่างอาบน้ำ ห้องเลี้ยงน้อง → เลือกน้องที่จะพาไปอาบ (bath.js)
+    paused = true;
+    openBath({ kits: kitsNow(), toast, sfx, onBathe: (id) => callToTub(kitsNow(), id), onClose: () => { paused = false; } });
+  }
   else if (p.kind === 'pick') pickFlower(p);
 }
 
@@ -670,6 +700,9 @@ function fountainSound() {
   const d = WD === TOWN && scene === 'town' ? Math.abs((ride ? ride.bx : cat.x) - FOUNTAIN_X)
     : WD === HALL && !scope ? Math.abs(cat.x - H_FOUNT_X) : 1e9;   // น้ำพุโถงปราสาทชั้น 1 (ผู้ใช้ 8 พ.ย.)
   sfxKit.play('fountain', Math.max(0, 1 - d / 560) ** 1.6);
+  // ฝักบัวห้องเลี้ยง: ดังตามที่เปิดอยู่ × ระยะจากอ่าง (ไกลสุดยังได้ยินเบา ๆ)
+  const T = NURSE_SPOTS.tub;
+  sfxKit.play('shower', WD === NURSERY && T ? showerLevel() * (0.25 + 0.75 * Math.max(0, 1 - Math.abs(cat.x - T.x) / 700)) : 0);
 }
 
 // ── ยืนบนของ ──────────────────────────────────────────────────
@@ -820,6 +853,13 @@ function realmEnter() {
   toast('ยินดีต้อนรับสู่ดินแดนปราสาทแมวเหมียว');
   sfx('bell');
 }
+/** อ่างอาบน้ำห้องเลี้ยง (ผิว foam): ฟองใสกระเด็น + เสียงฟองแตกเบา ๆ คู่กับน้ำกระเซ็น */
+function tubFoam(s, x, y, power) {
+  if (!s?.foam) return;
+  foamBurst(x, y, power, tick);
+  setTimeout(() => sfx('bubblePop'), 70);
+  if (power > 4) setTimeout(() => sfx('bubblePop'), 160);
+}
 function land(f) {
   const P = cat.P;
   cat.y = f.y;
@@ -845,7 +885,7 @@ function land(f) {
   // เสียงลงจอด: เห็ด "บุ๋ง" · ทิวลิป "ปุ๊ง" · น้ำในน้ำพุ "จ๋อม" + น้ำกระเด็น · ที่อื่น "ตุ้บ"
   if (f.s?.soft) { condoBounce(f.s.id, fall); softKick(fall); sfx('mushroom', Math.max(3, fall * 0.7)); }   // คอนโด/เบาะ/โซฟานุ่ม: ยุบแล้วเด้ง "บุ๋ง"
   else if (f.s?.squish) sfx(f.s.id.startsWith('tulip') ? 'tulip' : 'mushroom', fall);
-  else if (f.s?.water) { splashAt(cat.x, f.y, fall, tick); sfx('waterSplash', fall); }
+  else if (f.s?.water) { splashAt(cat.x, f.y, fall, tick); sfx('waterSplash', fall); tubFoam(f.s, cat.x, f.y, fall); }
   else sfx('land');
   if (f.s && !climbHint) {
     climbHint = true;
@@ -1168,7 +1208,7 @@ function jump() {
   P.onGround = false;
   if (cat.on?.squish) squish(cat.on.id, 4);   // ดีดตัวจากของนุ่ม = ยุบนิดแล้วเด้งกลับ
   if (cat.on?.soft) { condoBounce(cat.on.id, 4); softKick(3); }
-  if (cat.on?.water) { splashAt(cat.x, cat.y, 3, tick); sfx('waterStep'); }   // ถีบตัวขึ้นจากน้ำ = กระเซ็นเบา ๆ
+  if (cat.on?.water) { splashAt(cat.x, cat.y, 3, tick); sfx('waterStep'); tubFoam(cat.on, cat.x, cat.y, 3); }   // ถีบตัวขึ้นจากน้ำ = กระเซ็นเบา ๆ
   cat.on = null;
   cat.drop = null;
   cat.sit = null;
@@ -1213,9 +1253,10 @@ function update(dt) {
       cat.x = cat.target;
       cat.target = null;
       mark = null;
-      if (cat.pending) { const p = cat.pending; cat.pending = null; use(p); }
     } else dir = Math.sign(d);
   }
+  // ถึงที่หมายแล้วค่อยใช้งาน — ยังลอยอยู่ (แตะที่นั่งระหว่างกระโดด) = รอจนเท้าแตะพื้นก่อน ไม่นั่งกลางอากาศ (ผู้ใช้ 15 พ.ย. 2026)
+  if (!dir && cat.target == null && cat.pending && cat.P.onGround) { const p = cat.pending; cat.pending = null; use(p); }
   if (dir) {
     cat.sit = null;
     stopEmote(true);   // เดิน = เลิกทำท่า
@@ -1282,7 +1323,7 @@ function update(dt) {
   }
   // เดินลุยน้ำในอ่างน้ำพุ: กระเซ็นเบา ๆ ตามจังหวะก้าว
   if (cat.moving && P.onGround && cat.on?.water) {
-    if ((wadeT += dt) >= 16) { wadeT = 0; splashAt(cat.x + cat.dir * 6, cat.y, 1.5, tick); sfx('waterStep'); }
+    if ((wadeT += dt) >= 16) { wadeT = 0; splashAt(cat.x + cat.dir * 6, cat.y, 1.5, tick); sfx('waterStep'); tubFoam(cat.on, cat.x + cat.dir * 6, cat.y, 1.5); }
   } else wadeT = 12;   // เริ่มเดินในน้ำ = กระเซ็นก้าวแรกเร็ว
   // เสียงก้าวเท้าบนพื้น: ทุกครึ่งรอบก้าว (วิ่งถี่กว่าเดิน) สลับซ้ายขวา · ในน้ำใช้เสียงลุยน้ำข้างบนแทน
   if (cat.moving && P.onGround && !cat.on?.water && !ride && !paused) {
@@ -1305,6 +1346,12 @@ function update(dt) {
 
 /** กล้องตามตัว (น้องอยู่ราว 40% ของจอ · ตอนล่องเรือตามเรือ) เลื่อนนุ่ม · น้องขึ้นที่สูง = กล้องยกตามให้หัวยังอยู่ในจอ · ปุ่มใช้งาน */
 function follow(dt) {
+  // ยกน้องลากไปชิดขอบจอ = เลื่อนห้องตาม (ห้องเลี้ยงกว้างหลายจอ) · ระหว่างยก กล้องไม่ดึงกลับหาตัวเรา
+  if (kd?.moved && WD === NURSERY) {
+    const edge = 70, push = kd.sx < edge ? -(edge - kd.sx) : kd.sx > vw - edge ? kd.sx - (vw - edge) : 0;
+    if (push) camX = Math.max(0, Math.min(WD.w - vw, camX + push * 0.15 * dt));
+    return;
+  }
   const fx = ride?.ph === 'sail' || ride?.ph === 'dock' ? ride.bx : cat.x;
   // ถ่ายรูป = จัดน้องกลางจอ (กลางซุ้มหัวใจ)
   const want = Math.max(0, Math.min(WD.w - vw, photo ? cat.x - vw / 2 : fx - vw * 0.4));
@@ -1407,9 +1454,18 @@ function newPeer(id) {
   return {
     id, name: 'เหมียว', skin: 'orange', outfit: 'none', skinObj: null, skinKey: '',
     w: 'hall', x: 0, y: GY, ox: 0, oy: 0, dir: 1, mv: 0, run: 0, air: false, vy: 0, on: null, sit: null,
-    emId: null, emT0: 0, still: 0, face: 1, ac: '', act: null, aura: 0,
+    emId: null, emT0: 0, still: 0, face: 1, ac: '', act: null, aura: 0, tOff: peerTimeOffset(id),
     A: createRunAnim(), P: { onGround: true, jumps: 0, vy: 0, runPhase: 0, squash: 0, sliding: false, y: GY, fainting: false },
   };
+}
+/**
+ * จังหวะท่าทางของแต่ละตัว (ผู้ใช้ 15 พ.ย. 2026: "ไม่ต้องขยับพร้อมกันทุกตัวในห้อง") — กะพริบตา อ้าปาก หูกระดิก หางแกว่ง
+ * วาดด้วยนาฬิกา tick + ค่าเลื่อนของตัวนั้น (คิดจากรหัสผู้เล่น — ตัวเดิมได้ค่าเดิมเสมอ) · ตัวเราเลื่อน 0
+ */
+function peerTimeOffset(id) {
+  let h = 2166136261;
+  for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return 97 + ((h >>> 0) % 5000);
 }
 function setLook(q, l) { q.name = l.name || 'เหมียว'; q.skin = l.skin || 'orange'; q.outfit = l.outfit || 'none'; q.m = l.m ? 1 : 0; q.u = l.u || ''; }
 function peerSkin(q) {
@@ -1431,6 +1487,8 @@ function applyPeer(q, s, first = false) {
   q.P.jumps = q.air ? Math.max(1, s.j || 1) : 0;   // 2 = กระโดดสองชั้น → ท่าวิ่งเล่นม้วนตัว/หมุนเองเหมือนเครื่องเขา
   q.on = s.on ? W.surfaces.find((o) => o.id === s.on) || null : null;
   q.sit = s.sit ? W.places.find((o) => o.id === s.sit) || null : null;
+  // นั่งอยู่ = เท้าอยู่ระดับพื้นของที่นั่งเสมอ (ผู้ใช้ 15 พ.ย. 2026: เห็นเพื่อนนั่งลอยเหนือโซฟา — เครื่องเขาส่งความสูงตอนยังลอยอยู่)
+  if (q.sit) { q.y = q.sit.gy ?? GY; q.oy = 0; q.air = false; q.vy = 0; q.on = null; }
   if (s.em) { if (q.emId !== s.em) { q.emId = s.em; q.emT0 = tick - (s.ea || 0); } } else q.emId = null;
   // กิจกรรม: จิบชา/กินขนม = เล่นท่าเดียวกันต่อจากจังหวะที่เขาอยู่ (aa เฟรม) · ขนมชิ้นเดียวกับของเขา
   const ac = s.ac || '';
@@ -1531,10 +1589,23 @@ function stepPeers(dt) {
     else { q.still += dt; q.face += ((q.act ? 0 : 1) - q.face) * Math.min(1, 0.05 * dt); }
   }
 }
-/** แมวตัวอื่นที่อยู่ชั้นนี้ในจอ — วาดก่อนตัวเรา (ตัวเราอยู่หน้าสุดเสมอ) */
-function drawPeers(c) {
-  for (const q of peers.values()) {
-    if (q.w !== WD.id) continue;
+/**
+ * แมวตัวอื่นที่อยู่ชั้นนี้ในจอ — ลำดับบังกันเหมือนกันทุกจอ (ผู้ใช้ 15 พ.ย. 2026: จอเราเห็นเราบังเพื่อน จอเพื่อนต้องเห็นแบบเดียวกัน)
+ *   กติกาเดียวทุกเครื่อง: เท้าอยู่ลึกกว่า (y น้อย) อยู่หลัง · ระดับเดียวกัน = รหัสผู้เล่นน้อยกว่าอยู่หลัง
+ *   front = false → ตัวที่อยู่หลังตัวเรา (วาดก่อนตัวเรา) · true → ตัวที่อยู่หน้าตัวเรา (วาดหลังตัวเรา) · ยังไม่ต่อห้อง = อยู่หลังทั้งหมดแบบเดิม
+ */
+function peerInFront(q) {
+  const me = onlineMe()?.id;
+  if (!me) return false;
+  const qy = q.y + q.oy;
+  if (Math.abs(qy - cat.y) > 2) return qy > cat.y;
+  return q.id > me;
+}
+function drawPeers(c, front = false) {
+  const list = [];
+  for (const q of peers.values()) if (q.w === WD.id && peerInFront(q) === front) list.push(q);
+  list.sort((a, b) => (a.y + a.oy) - (b.y + b.oy) || (a.id < b.id ? -1 : 1));
+  for (const q of list) {
     const x = q.x + q.ox;
     if (x < camX - 90 || x > camX + vw + 90) continue;
     drawPeer(c, q);
@@ -1563,13 +1634,15 @@ function drawPeer(c, q) {
     c.clip(p);
   }
   let head = y - 122;
+  P.y = y;   // stepRunAnim ปล่อยเม็ดที่ P.y + ระยะจากตัว — ไม่ตั้ง = เม็ด/เส้นหางคทาของเพื่อนเกิดที่ระดับพื้นตอนเขากระโดด (ผู้ใช้ 15 พ.ย. 2026)
+  const T = tick + q.tOff;   // จังหวะท่าของตัวนี้เอง
   // ประกาย/ของโปรยชุดระดับ S (TRAIL) แบบเดียวกับตัวเรา — ค้างในฉากตามจุดที่เขาเดินผ่าน
   if (q.mv || q.air || P.squash > 0.05) {
     trailMark(q.A);
     const r = stepRunAnim(q.A, P, { catId: skin.id, dt: 1, outfit: skin.outfit?.id, speed: 0, scale: SC, stand: !q.mv });
     trailWorld(q.A, r, D, x);
     if (D < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }
-    drawCat2Run(c, x, y, SC, skin, tick, r, null);
+    drawCat2Run(c, x, y, SC, skin, T, r, null);
   } else {
     let trail = null;
     if (q.A.parts?.length || q.A.ribbon?.length) {
@@ -1579,19 +1652,19 @@ function drawPeer(c, q) {
     } else q.A = createRunAnim();
     if (D < 0) { c.translate(2 * x, 0); c.scale(-1, 1); }
     if (trail && (trail.parts || trail.ribbon)) drawTrail(c, trail.parts, x, SC, trail.ribbon);
-    const pose = q.emId && !q.sit && !q.act ? emoteShapeAt(q.emId, skin.outfit, tick - q.emT0, tick) : null;
+    const pose = q.emId && !q.sit && !q.act ? emoteShapeAt(q.emId, skin.outfit, tick - q.emT0, T) : null;
     if (q.sit) {
       const sy = y - (q.sit.sitDy ?? 22);
       head = sy - 104;
-      drawCat2(c, x, sy, SC, skin, tick, { k: 1, shape: q.sit.kind === 'tent' ? { loaf: 1, shut: 1, noHang: 1 } : { sit: 1, turn: 0, noHang: 1 } });
+      drawCat2(c, x, sy, SC, skin, T, { k: 1, shape: q.sit.kind === 'tent' ? { loaf: 1, shut: 1, noHang: 1 } : { sit: 1, turn: 0, noHang: 1 } });
     } else if (q.act) {
       const ap = actPose(q.act, tick);   // จิบชา/กินขนม ท่าเดียวกับเครื่องเขา
-      drawCat2(c, x, y, SC, skin, tick, { k: ap.k, shape: ap.shape, holdDraw: ap.holdDraw, holdBehind: ap.holdBehind });
+      drawCat2(c, x, y, SC, skin, T, { k: ap.k, shape: ap.shape, holdDraw: ap.holdDraw, holdBehind: ap.holdBehind });
     } else if (pose) {
       const ly = emoteLift(pose) * SC;
       head -= ly;
-      drawCat2(c, x, y - ly, SC, skin, tick, { k: pose.k, shape: { ...pose.shape, noHang: 9 } });
-    } else drawCat2(c, x, y, SC, skin, tick, { k: 1, shape: { turn: RUN_TURN * 0.6 * q.face, noHang: 1, armFar: 1 } });
+      drawCat2(c, x, y - ly, SC, skin, T, { k: pose.k, shape: { ...pose.shape, noHang: 9 } });
+    } else drawCat2(c, x, y, SC, skin, T, { k: 1, shape: { turn: RUN_TURN * 0.6 * q.face, noHang: 1, armFar: 1 } });
   }
   c.restore();
   if (q.aura) drawAura(c, x, y, q.aura, true);   // ออร่าชั้นหน้า: วงแสง + ดาวลอยรอบตัว
@@ -2007,6 +2080,7 @@ function draw() {
 }
 
 /** ปราสาทชั้น 1 — โถง พื้น ของ วิวนอกหน้าต่าง (castle-hall.js) · ตัวน้อง/ป้าย/ท่าทางชุดเดียวกับเมือง */
+const ROOF_LIGHTS = roofLights();
 function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช้ทุกชั้นของปราสาท
   // ส่องกล้องดูดาว: ม่านปิดจอเต็มแล้ว = ไม่ต้องวาดฉากปราสาท (เบา)
   if (scope && scope.k >= 0.36) { ctx.setTransform(k, 0, 0, k, 0, 0); drawScope(ctx, vw, H, tick, scope); drawFade(); return; }
@@ -2015,13 +2089,14 @@ function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช
   back(ctx, camX, vw, tick);
   world(ctx, camX, vw, tick);
   drawMark(ctx);
-  drawPeers(ctx);   // แมวผู้เล่นคนอื่น (ออนไลน์) — หลังของในฉาก หน้าป้าย/ตัวเรา
+  drawPeers(ctx, false);   // แมวผู้เล่นคนอื่น (ออนไลน์) ที่อยู่หลังตัวเรา — หลังของในฉาก
   const p = nearPlace();
   if (bubbleFor(p) && !act) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick, promptView());
   WD.under?.(ctx, camX, vw);   // ห้องแมว: น้องที่อยู่หลังตัวผู้เล่น
   if (myAura && !drawAura(ctx, cat.x, cat.y, myAura)) myAura = 0;   // ออร่าตอนเพิ่งเข้าปราสาท/ขึ้นลงชั้น (ข้างหลังตัว)
   drawCat(ctx);
   if (myAura) drawAura(ctx, cat.x, cat.y, myAura, true);
+  drawPeers(ctx, true);   // แมวผู้เล่นคนอื่นที่อยู่หน้าตัวเรา (peerInFront — ลำดับเดียวกับจอของเขา)
   drawMyBubble(ctx);   // ฟองแชตของเรา (ออนไลน์)
   WD.front?.(ctx, camX, vw, tick);   // ชั้น 2: ผ้าหน้าเต็นท์ทับน้องที่นอนอยู่ข้างใน (ไม่บังใครที่อยู่ข้างนอก)
   drawSplashes(ctx, tick);   // น้ำกระเซ็นในน้ำพุโถงชั้น 1
@@ -2031,6 +2106,8 @@ function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช
   drawFlowerMotes(ctx, tick);
   drawEmoteFx(ctx);
   ctx.setTransform(k, 0, 0, k, 0, 0);   // ไม่มีของหน้าสุด — ห้ามบังตัวละคร (สเปกปราสาท)
+  // ชั้นแสงต้นแบบ (light-fx.js · ผู้ใช้ 15 พ.ย. 2026) — ลองที่ดาดฟ้าชั้น 3 ก่อน · ปุ่ม L เปิด/ปิด
+  if (WD === ROOF) drawLightFx(ctx, { camX, camY, vw, H, t: tick, lights: ROOF_LIGHTS });
   drawPhoto();
   if (scope) drawScope(ctx, vw, H, tick, scope);
   drawFade();
@@ -2646,6 +2723,44 @@ cv.addEventListener('pointerdown', (e) => {
   }
 });
 
+// ── ยก/ลาก/ลูบน้องในห้องเลี้ยง (ผู้ใช้ 15 พ.ย. 2026 — home-cats.js grabKit/dropGrab/petKit) ──
+// นิ้วลงบนตัวน้อง = จับไว้ก่อน (ไม่สั่งตัวเราเดิน) · ลากเกิน 8 จุด = ยกขึ้น · ไม่ขยับแล้วปล่อย = ลูบ
+function nurseXY(e) {
+  const r = cv.getBoundingClientRect();
+  const sx = ((e.clientX - r.left) / r.width) * cv.width / k, sy = ((e.clientY - r.top) / r.height) * cv.height / k;
+  return { sx, sy, wx: sx + camX, wy: sy - camY };
+}
+cv.addEventListener('pointerdown', (e) => {
+  if (WD !== NURSERY || paused || scope || photo || kd) return;
+  const p = nurseXY(e), kit = kitAt(kitsNow(), p.wx, p.wy);
+  if (!kit) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  kd = { kit, x0: p.sx, y0: p.sy, sx: p.sx, sy: p.sy, moved: false, id: e.pointerId };
+  try { cv.setPointerCapture(e.pointerId); } catch { /* บางเครื่องไม่รองรับ — ยังลากได้ผ่าน window */ }
+}, { capture: true });
+window.addEventListener('pointermove', (e) => {
+  if (!kd || e.pointerId !== kd.id) return;
+  const p = nurseXY(e);
+  kd.sx = p.sx; kd.sy = p.sy;
+  if (!kd.moved && Math.hypot(p.sx - kd.x0, p.sy - kd.y0) > 8) { kd.moved = true; grabKit(kitsNow(), kd.kit, p.wx, p.wy); }
+});
+function kitRelease(e) {
+  if (!kd || e.pointerId !== kd.id) return;
+  if (kd.moved) { const what = dropGrab(kitsNow()); if (what) toast(`${kd.kit.name} · ${what}`); }
+  else if (e.type === 'pointerup') petKit(kitsNow(), kd.kit);
+  kd = null;
+}
+window.addEventListener('pointerup', kitRelease);
+window.addEventListener('pointercancel', kitRelease);
+
+// ปุ่ม L = เปิด/ปิดชั้นแสงต้นแบบ (ดาดฟ้าชั้น 3) — e.code (แป้นไทยกด L ได้ "ส")
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'KeyL' || e.repeat || e.target?.matches?.('textarea, input')) return;
+  if (WD !== ROOF) return;
+  toast(toggleLightFx() ? '✨ เอฟเฟกต์แสง: เปิด' : 'เอฟเฟกต์แสง: ปิด');
+});
+if (import.meta.env.DEV) window.__lightfx = { on: lightFxOn, toggle: toggleLightFx };
+
 // ── HUD ทอง + โหมด ─────────────────────────────────────────────
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 function paintHud() {
@@ -2819,6 +2934,7 @@ function stepFade(dt) {
 }
 function closeAll() {
   if (emoteOpen()) { toggleEmotes(false); return; }
+  if (closeFeed() || closeBath()) return;
   if (!$('wardOv').classList.contains('hidden')) { $('wardOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('setOv').classList.contains('hidden')) { $('setOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('bagOv').classList.contains('hidden')) { $('bagOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }

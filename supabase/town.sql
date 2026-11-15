@@ -219,6 +219,25 @@ begin
 end;
 $fn$;
 
+-- ── ใช้ของในกระเป๋าหนึ่งชิ้น (เทอาหารให้น้องในห้องเลี้ยง — src/town/feed.js · ผู้ใช้ 15 พ.ย. 2026) ──
+-- หักในคำสั่งเดียว (update ... where qty >= 1) ของหมด = ไม่มีแถวถูกแก้ → แจ้ง "ของหมดแล้ว"
+create or replace function public.town_use_item(p_item text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'ต้องเข้าสู่ระบบก่อน'; end if;
+  update public.inventory i set qty = i.qty - 1, updated_at = now()
+  where i.player_id = v_uid and i.item_id = p_item and i.qty >= 1;
+  if not found then raise exception 'ของหมดแล้ว'; end if;
+  return public.town_state();
+end;
+$fn$;
+
 revoke all on function public.town_today() from public;
 revoke all on function public.town_state() from public;
 revoke all on function public.town_report_treats(bigint) from public;
@@ -229,6 +248,8 @@ grant execute on function public.town_state() to authenticated;
 grant execute on function public.town_report_treats(bigint) to authenticated;
 grant execute on function public.town_buy(text) to authenticated;
 grant execute on function public.town_exchange(bigint) to authenticated;
+revoke all on function public.town_use_item(text) from public;
+grant execute on function public.town_use_item(text) to authenticated;
 
 -- ── เช็คผล (ควรเห็นสินค้า 14 แถว) ──
 select tab, count(*) as items from public.shop_catalog group by tab order by tab;

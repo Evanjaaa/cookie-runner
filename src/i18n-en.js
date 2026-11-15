@@ -1143,6 +1143,7 @@ export const EN = {
   // ── บ้านน้องแมว (catroom-ui.js / tips.js) ──
   'บ้านน้อง': 'Cat House',
   'บ้านลูกเหมียว': 'Kitten House',
+  'ห้องเลี้ยงน้อง': 'Kitten Room',
   'บ้านน้องแมว': 'Cat House',
   '🎮 มินิเกม': '🎮 Mini games',
   'มินิเกม': 'Mini games',

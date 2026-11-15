@@ -587,7 +587,8 @@
           </button>
           <!-- พรสวรรค์ — ที่เดิมของปุ่ม "แมวน้อย" ซึ่งย้ายไปเป็นหมวดแรกในคลังน้องแล้ว
                เปิดหน้าพรสวรรค์ (#talentPanel) เลือกใบที่เปลี่ยนวิธีเคลื่อนที่ของน้อง -->
-          <button class="lobby-btn jelly" id="btnTalent">
+          <!-- ซ่อนไว้ก่อน (ผู้ใช้ 15 พ.ย. 2026 — แถวซ้ายแน่น ให้เหลือ 3 ปุ่ม ยังไม่รู้จะวางการ์ดพลังไว้ไหน) ระบบยังอยู่ครบ เอา style ออกก็กลับมา -->
+          <button class="lobby-btn jelly" id="btnTalent" style="display:none">
             <canvas id="talentIcon" width="76" height="76"></canvas>
             <b>การ์ดพลัง</b>
             <i class="dot hidden" id="cardDot" aria-hidden="true"></i>
@@ -628,11 +629,11 @@
             <canvas id="mapIcon" width="76" height="76"></canvas>
             <b>แผนที่</b>
           </button>
-          <!-- บ้านลูกเหมียว (ผู้ใช้ 14 พ.ย. 2026): เดิมเป็นกล่องแมววางบนพื้นหน้าแรก → ย้ายมาเป็นปุ่มข้างปุ่มแผนที่
+          <!-- ห้องเลี้ยงน้อง (เดิมชื่อ "บ้านลูกเหมียว" — ผู้ใช้ 15 พ.ย. 2026 เปลี่ยนชื่อ ไม่ให้ซ้ำกับ "บ้านของฉัน") (ผู้ใช้ 14 พ.ย. 2026): เดิมเป็นกล่องแมววางบนพื้นหน้าแรก → ย้ายมาเป็นปุ่มข้างปุ่มแผนที่
                ไอคอน = กล่องแมวตัวเดิม (drawHomeBox) · กดแล้วเข้าห้องแมวเหมือนเดิม (catroom-ui.js) · จุดแดง = มีน้องที่ดูแลแล้วได้ EXP -->
-          <button class="lobby-btn jelly" id="btnHomeBox" aria-label="บ้านลูกเหมียว">
+          <button class="lobby-btn jelly" id="btnHomeBox" aria-label="ห้องเลี้ยงน้อง">
             <canvas id="homeBoxIcon" width="76" height="76"></canvas>
-            <b>บ้านลูกเหมียว</b>
+            <b>ห้องเลี้ยงน้อง</b>
             <i class="dot hidden" id="catRoomDot" aria-hidden="true"></i>
           </button>
         </div>

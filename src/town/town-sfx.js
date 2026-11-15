@@ -324,4 +324,115 @@ export class TownSfx extends GameSfx {
     src.start(t); src.stop(t + 0.5);
     [91, 95, 98, 103].forEach((m, i) => this._bell(this._midi(m), t + 0.3 + i * 0.08, 0.5, 0.09));
   }
+
+  // ── ลูกแมวในห้องเลี้ยง (ผู้ใช้ 15 พ.ย. 2026 — home-cats.js kitSound) · เบากว่าเสียงตัวผู้เล่น เพราะดังได้หลายตัวพร้อมกัน ──
+  /** กระโดด "ปุ๋ง~" นุ่มไต่ขึ้น · hi = ตัวเล็กเสียงสูงกว่า */
+  kitHop(hi = 1) {
+    const t = this._now(), f = this._vary(420 * hi, 0.08);
+    this._tone(f, t, 0.13, 'sine', 0.16, f * 1.9);
+    this._tone(f * 2, t + 0.02, 0.08, 'triangle', 0.04, f * 3.2);
+  }
+  /** ลงพื้น "ตุ๊บ" เบา ๆ */
+  kitLand() {
+    const t = this._now();
+    this._tone(this._vary(170, 0.1), t, 0.07, 'sine', 0.16, 110);
+    this._noiseHit(t, 0.04, 'lowpass', 600, 0.1);
+  }
+  /** งับข้าว "หงับ" กรอบเบา ๆ (ถี่ ๆ ระหว่างกิน) */
+  kitNom() {
+    const t = this._now();
+    this._noiseHit(t, 0.035, 'bandpass', this._vary(2800, 0.25), 0.14);
+    this._tone(this._vary(330, 0.15), t, 0.04, 'sine', 0.07, 240);
+  }
+  /** ลงอ่าง "จ๋อม" นุ่ม + หยดน้ำ */
+  kitSplash() {
+    const t = this._now();
+    this._noiseHit(t, 0.22, 'lowpass', 1400, 0.22);
+    this._tone(this._vary(300), t, 0.16, 'sine', 0.14, 760);
+    [0.12, 0.2].forEach((d) => this._tone(this._vary(1200, 0.2), t + d, 0.05, 'sine', 0.06, 1800));
+  }
+  /** ฟองสบู่แตก "ปุ๊" ใส ๆ */
+  bubblePop() {
+    const t = this._now(), f = this._vary(900, 0.4);
+    this._tone(f, t, 0.05, 'sine', 0.07, f * 1.8);
+  }
+  /** สะบัดตัวไล่น้ำ "พรืด ๆ" */
+  kitShake() {
+    const t = this._now();
+    for (let i = 0; i < 4; i++) this._noiseHit(t + i * 0.07, 0.06, 'bandpass', this._vary(1800, 0.3), 0.1);
+  }
+  /** ลูกแมวร้อง "เมี้ยว~" เสียงเล็กแหลมนุ่ม (สั้นกว่า เบากว่า meow ของตัวโต) · hi = ตัวเล็กเสียงสูงกว่า */
+  kitMeow(hi = 1) {
+    const t = this._now(), k = this._vary(hi, 0.14), dur = 0.24 + Math.random() * 0.08;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(900 * k, t);
+    o.frequency.exponentialRampToValueAtTime(1500 * k, t + 0.07);
+    o.frequency.exponentialRampToValueAtTime(1050 * k, t + dur);
+    const vowel = this.ctx.createBiquadFilter();   // "มี-เอี้ยว" สระกวาดขึ้นแล้วลง
+    vowel.type = 'bandpass';
+    vowel.Q.value = 4;
+    vowel.frequency.setValueAtTime(1000, t);
+    vowel.frequency.exponentialRampToValueAtTime(3000, t + 0.08);
+    vowel.frequency.exponentialRampToValueAtTime(1400, t + dur);
+    o.connect(vowel).connect(this._env(t, 0.025, dur, 0.32));
+    o.start(t);
+    o.stop(t + dur + 0.03);
+  }
+  /** ฝักบัวในห้องเลี้ยง: น้ำไหลซ่า ต่อเนื่อง (เรียกทุกเฟรมด้วยความดัง 0..1 แบบ fountain) — ซ่าใสกว่าน้ำพุ + หยดติ๋งเบา ๆ */
+  shower(level = 0) {
+    const ctx = this.ctx, now = ctx.currentTime;
+    if (!this._shw) {
+      if (level < 0.01) return;
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
+      const wob = ctx.createGain(); wob.gain.value = 0.85;
+      const l1 = ctx.createOscillator(), l1g = ctx.createGain(); l1.frequency.value = 0.5; l1g.gain.value = 0.1;
+      l1.connect(l1g).connect(wob.gain);
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(hp).connect(lp).connect(wob).connect(g).connect(this.out);
+      [src, l1].forEach((n) => n.start());
+      this._shw = { g, next: 0 };
+    }
+    const f = this._shw;
+    f.g.gain.setTargetAtTime(level * 0.16, now, 0.3);
+    if (level > 0.1 && now >= f.next) {
+      f.next = now + 0.1 + Math.random() * 0.35;
+      const fr = 1600 + Math.random() * 2400;
+      this._tone(fr, now + 0.01, 0.05, 'sine', 0.035 * level, fr * 1.4);
+    }
+  }
+  /** เลียน้ำ "แจ๊บ" เบา ๆ (ลูกแมวดื่มน้ำที่น้ำพุ) */
+  kitLap() {
+    const t = this._now();
+    this._noiseHit(t, 0.03, 'bandpass', this._vary(1900, 0.25), 0.09);
+    this._tone(this._vary(620, 0.2), t, 0.035, 'sine', 0.05, 900);
+  }
+  /** ขุดทราย "ซวบ ๆ" (ห้องน้ำแมว) */
+  kitScratch() {
+    const t = this._now();
+    for (let i = 0; i < 3; i++) this._noiseHit(t + i * 0.08, 0.05, 'highpass', this._vary(3200, 0.3), 0.07);
+  }
+  /** มึนหัว "หวิ๊ว~ ว~ ว" เสียงส่ายลงช้า ๆ (ยกน้องแกว่งรัว ๆ จนเวียนหัว) */
+  kitDizzy() {
+    const t = this._now(), o = this.ctx.createOscillator(), lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(900, t);
+    o.frequency.exponentialRampToValueAtTime(380, t + 0.9);
+    lfo.frequency.setValueAtTime(9, t);
+    lfo.frequency.linearRampToValueAtTime(4, t + 0.9);
+    lg.gain.value = 60;
+    lfo.connect(lg).connect(o.frequency);
+    o.connect(this._env(t, 0.03, 0.95, 0.12));
+    [o, lfo].forEach((n) => { n.start(t); n.stop(t + 1); });
+    [91, 94, 98].forEach((m, i) => this._bell(this._midi(m), t + 0.15 + i * 0.12, 0.25, 0.05));
+  }
+  /** อาบเสร็จ / กินอิ่ม: ระฆังแก้วเล็ก ๆ "ติ๊ง~" */
+  kitHappy() {
+    const t = this._now();
+    [88, 92, 95].forEach((m, i) => this._bell(this._midi(m), t + i * 0.06, 0.32, 0.07));
+  }
 }

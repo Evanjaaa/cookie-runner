@@ -416,6 +416,7 @@
 
   <script type="module">
     import { drawChibi, CHIBI_VIEWS, chibiLookFor, CHIBI_WALK_SPEED, CHIBI_WALK4_SPEED, chibiWalk4At } from './src/render/chibi.js';
+    import { drawChibiAct, CHIBI_ACTS } from './src/render/chibi-acts.js';
     import { drawCat2, cat2Outfits, cat2Intro, cat2Act, CAT2_BREEDS, CAT2_KEEPERS, cat2Backdrop, drawCat2Backdrop } from './src/render/cat2.js';
     import { ALL_OUTFITS as OUTFITS, RARITY } from './src/outfits.js';
     // หน้าทดสอบเห็นทุกชุด รวมชุดที่ยังซ่อนในเกม (HIDDEN_OUTFITS)
@@ -723,7 +724,9 @@
     seg('cbLook', 'cbLook', [['sketch', 'ขาวตามแบบ'], ['soft', 'ใส่สีอ่อน'], ['orange', '🧡 ส้ม'], ['pearl', '🤍 ไข่มุก'], ['calico', 'ขนมชั้น'], ['siamese', 'วิเชียรมาศ'], ['konja', 'โกนจา'], ['wilat', 'วิลาศ'], ['supha', 'ศุภลักษณ์'], ['korat', 'โคราช'], ['salid', 'ลายสลิด'], ['tortie', 'สีเปรอะ'], ['cow', 'ลายวัว'], ['manee', 'ขาวมณี'], ['somsa', 'ส้มซ่า'], ['suea', 'เสือน้อย']]);
     seg('cbRef', 'cbRef', [[false, 'ซ่อน'], [true, 'ซ้อน']]);
     // ท่าทางของลูกแมว (น้องจิบิ) — นั่ง = มุมท่านั่ง · ที่เหลือ = ท่าทางใบหน้า (act ของ drawChibi)
-    seg('kPose', 'kPose', [['auto', '🎬 รวมท่า'], ['idle', '🧍 ยืนนิ่ง'], ['walk', '🚶 เดิน'], ['sit', '🐈 นั่ง'], ['sleep', '😴 หลับตา'], ['meow', '😺 ร้องเหมียว'], ['yawn', '🥱 หาว']]);
+    // ท่าใหม่ (ผู้ใช้ 15 พ.ย. 2026 — src/render/chibi-acts.js): วิ่ง · กระโดด · กินข้าว · อาบน้ำ (มีของประกอบ ชาม/อ่าง)
+    seg('kPose', 'kPose', [['auto', '🎬 รวมท่า'], ['idle', '🧍 ยืนนิ่ง'], ['walk', '🚶 เดิน'], ['sit', '🐈 นั่ง'], ['sleep', '😴 หลับตา'], ['meow', '😺 ร้องเหมียว'], ['yawn', '🥱 หาว'],
+      ...Object.entries(CHIBI_ACTS).map(([id, a]) => [id, a.icon + ' ' + a.name])]);
     // เลือกวัยที่โชว์ (ผู้ใช้ 14 พ.ย.): กดเปิด/ปิดทีละวัย — เปิดหลายวัย = ยืนเทียบกันกลางจอ · ต้องเหลืออย่างน้อยหนึ่งวัย
     const K_AGES = [['baby', 'ลูกแมว', 'Lv1–2'], ['young', 'วัยรุ่น', 'Lv3–4'], ['adult', 'โตเต็มวัย', 'Lv5']];
     if (!Array.isArray(st.kAges) || !st.kAges.length) st.kAges = st.kAge === 'all' ? ['baby', 'young', 'adult'] : [st.kAge || 'baby'];
@@ -1222,7 +1225,7 @@
         const x = (i - (ages.length - 1) / 2) * gap;   // วางกลางจอตามจำนวนวัยที่เปิด
         const k = K_SIZE[age] || 1;
         const lift = (shape?.lift || 0) * SCALE * k;
-        ctx.globalAlpha = 0.28 * (1 - Math.min(0.42, lift / 40));
+        ctx.globalAlpha = age === 'baby' && CHIBI_ACTS[st.kPose] ? 0 : 0.28 * (1 - Math.min(0.42, lift / 40));   // ท่าใหม่ของลูกแมววาดเงาเอง (ลอยตามกระโดด)
         ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.ellipse(x, 5, 44 * k, 8.5 * k, 0, 0, Math.PI * 2);
@@ -1237,6 +1240,17 @@
           // ลูกแมว Lv1–2 = น้องจิบิ (ผู้ใช้ 13 พ.ย.: แทนลูกแมวตัวเก่า) — เริ่มที่ยืนนิ่ง (รวมท่า: กะพริบ หูกระดิก หางแกว่ง ร้องเหมียว/หาวเป็นพัก ๆ)
           // มุมจากปุ่มมุมมอง: หน้า / เฉียงซ้าย / เฉียงขวา (กลับด้าน) / หลัง · ท่าจากแท็บ 🐱 ยังไม่ใช้กับน้องจิบิ · สีขนยังเป็นขาวตามแบบ
           // เดิน = ท่าเดิน 4 จังหวะมุมเฉียง (ผู้ใช้วาดขาให้ 14 พ.ย.) ใช้ได้ทุกสี · ตัวขึ้นลงตามจังหวะ
+          if (CHIBI_ACTS[st.kPose]) {
+            // ท่าใหม่ (chibi-acts.js) — หันตามปุ่มมุมมอง (เฉียงขวา = หันขวา) · วิ่ง = พื้นเลื่อนตามความเร็วก้าว
+            const A = CHIBI_ACTS[st.kPose], dir = st.view === 'qright' ? 1 : -1;
+            if (A.scroll) {
+              const run = Math.max(0, st.f - A.intro);   // ระยะที่วิ่งไปแล้ว (ช่วงพุ่งออกเร่งจาก 0)
+              const dist = run * A.scroll + Math.max(0, Math.min(st.f, A.intro) - (A.intro - 16)) * A.scroll * 0.5;
+              walkGround(x, KIT_CHIBI_S, dist / A.scroll, dir, A.scroll);
+            }
+            drawChibiAct(ctx, x, 0, KIT_CHIBI_S, { act: st.kPose, t: st.f, look: chibiLookFor(base.id), faceRight: dir > 0 });
+            return;
+          }
           const walk = st.kPose === 'walk';
           const v = walk ? 'q' : st.kPose === 'sit' ? 'sit' : st.view === 'back' ? 'back' : st.view === 'front' ? 'front' : 'q';
           const act = st.kPose === 'sit' || walk ? 'auto' : st.kPose || 'auto';

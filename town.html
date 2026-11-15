@@ -297,6 +297,41 @@
     </div>
   </div>
 
+  <!-- เทอาหาร ห้องเลี้ยงน้อง (ผู้ใช้ 15 พ.ย. 2026) — ชาม 5 ใบ ใบละตัว + เมนูจากกระเป๋า · src/town/feed.js -->
+  <div class="ov hidden" id="feedOv">
+    <div class="sheet feedsheet" role="dialog" aria-labelledby="feedTitle">
+      <button type="button" class="xbtn" id="feedX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2 id="feedTitle">เวลาอาหารของน้อง ๆ</h2><small id="feedSub"></small></div></div>
+      <div class="fd-bowls" id="feedBowls" role="group" aria-label="ชามอาหาร 5 ใบ"></div>
+      <div class="fd-menu">
+        <h3 class="fd-h">เมนูวันนี้</h3>
+        <div class="fd-foods" id="feedFoods" role="group" aria-label="เมนูอาหาร"></div>
+        <p class="fd-none hidden" id="feedNoFood">ของกินในกระเป๋าหมดแล้ว แวะซื้อที่ร้านแลกของกินในเมืองนะ</p>
+      </div>
+      <div class="fd-row">
+        <small id="feedHint"></small>
+        <button type="button" class="fd-pour" id="feedPour" disabled>เทอาหาร</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- พาน้องไปอาบน้ำ ห้องเลี้ยงน้อง (ผู้ใช้ 15 พ.ย. 2026) — การ์ดน้อง + หลอดความสะอาด · src/town/bath.js (คลาส fd-* ชุดเดียวกับหน้าเทอาหาร) -->
+  <div class="ov hidden" id="bathOv">
+    <div class="sheet feedsheet bathsheet" role="dialog" aria-labelledby="bathTitle">
+      <button type="button" class="xbtn" id="bathX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2 id="bathTitle">เวลาอาบน้ำ</h2><small id="bathSub"></small></div></div>
+      <div class="fd-bowls" id="bathCats" role="group" aria-label="น้องในห้อง"></div>
+      <div class="fd-row">
+        <small id="bathHint"></small>
+        <button type="button" class="fd-pour" id="bathGo" disabled>พาไปอาบน้ำ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- รายชื่อสมาชิกในปราสาท (ไอคอนหัวแมว · ผู้ใช้ 15 พ.ย. 2026 ให้ลองออกแบบก่อน) — เรา + แมวทุกตัวในห้องนี้ · อยู่ชั้นไหน -->
   <div class="ov hidden" id="memOv">
     <div class="sheet mem">
