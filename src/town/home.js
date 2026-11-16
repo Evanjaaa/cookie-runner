@@ -1030,7 +1030,7 @@ export const NURSE_SPOTS = {
   bowls: (has(2) ? N.bowls : has(1) ? [N.bowls[0]] : []).map((x, i) => ({ x, y: GY, side: i % 2 ? 1 : -1 })),
   seat: has(2) ? { spots: [{ x: N.win2 - 50, y: GY - 46 }, { x: N.win2 + 50, y: GY - 46 }] } : null,
   // เครื่องให้น้ำ (ดื่มน้ำ — ยืนข้างขวา หันซ้ายเข้าหาอ่างน้ำ) · ห้องน้ำแมว (ประตูหน้ากระบะ) — ผู้ใช้ 15 พ.ย. 2026
-  water: has(1) ? { x: N.water, stand: N.water + 5, sy: GY - 17, rim: GY - 30 } : null,   // ดื่มน้ำ: นั่งหลังน้ำพุ (sy) ก้มหน้าลงอ่างแบบกินข้าว
+  water: has(1) ? { x: N.water, stand: N.water, sy: GY - 17, rim: GY - 30 } : null,   // ดื่มน้ำ: นั่งหลังน้ำพุ (sy) ก้มหน้าลงอ่างแบบกินข้าว · stand = กลางน้ำพุพอดี (เดิม +5 หัวเยื้อง — ผู้ใช้ 16 พ.ย.)
   litter: has(2) ? { x: N.litter, door: GY - 18 } : null,
   // ไต่ชั้นผนัง: พื้น → ชั้น 0 → ชั้น 1 → เปลญวน (นอนพัก) → ชั้น 2 → ชั้น 3 → พื้น (ระดับผิวเบาะ)
   shelves: has(2) ? { start: WSHELF[0][0] - 46, path: [[0, 0], [1, 0], ['h', 150], [2, 0], [3, 0]].map(([i, rest]) => (i === 'h' ? { x: (HAMMOCK.x0 + HAMMOCK.x1) / 2, y: HAMMOCK.y + HAMMOCK.sag - 4, rest, sit: true } : { x: WSHELF[i][0], y: WSHELF[i][1] - 6 })), end: WSHELF[3][0] + 48 } : null,

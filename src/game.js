@@ -44,7 +44,11 @@ import { GateRun } from './gate-run.js';
 import { gateFor, GATE_LIST } from './gates.js';
 import { drawGateBack, drawGateFront, warmGateArt } from './render/gates/index.js';
 import { drawKingdom, lanternLightMask } from './render/kingdom/index.js';
-import { drawRiverside, riversideLightMask } from './render/riverside.js';
+import { drawRiverside, riversideLightMask, riversideLights, riversideSunPoint } from './render/riverside.js';
+// แสงและเงาแบบเมือง (ผู้ใช้ 16 พ.ย. 2026: ใส่หน้าแรกด้วย) — ระดับ/สวิตช์ชุดเดียวกับเมือง (จำในเครื่อง) · เวลาหน้าแรกเลือกเองได้ (home-time.js)
+import { drawLightFx, lightFxOn } from './town/light-fx.js';
+import { drawWithRim, castOn } from './town/rim-light.js';
+import { homeSky } from './home-time.js';
 /**
  * ฉากหลังหน้าแรก — 'riverside' = ริมแม่น้ำหน้าสะพานหลวง มองข้ามน้ำไปปราสาท+เมือง (ผู้ใช้ 1 พ.ย. 2026 · render/riverside.js)
  * 'kingdom' = อาณาจักรแมวขนมหวานแบบเดิม (render/kingdom/) — ยังใช้ในคลิปเปิดเกม · สลับกลับได้ที่บรรทัดนี้บรรทัดเดียว
@@ -3731,7 +3735,9 @@ export class Game {
     // เงาหดลงตอนตัวลอย = สัญญาณเดียวที่บอกความสูงได้ในมุมมองหน้าตรง
     // ถ้าเงาคงเดิม การกระโดดจะอ่านเป็น "ตัวยืดขึ้น" แทนที่จะเป็น "ตัวลอยขึ้น"
     const hopK = 1 - Math.min(0.42, hop / 40);
-    ctx.globalAlpha = 0.3 * hopK;
+    // ชั้นแสงเปิด + เงาทอดแบบใหม่เปิด = ไม่วาดวงรีเดิม (ห้ามมีสองเงาซ้อน — เหมือนในเมือง)
+    const homeLit = HOME_SCENE === 'riverside' && lightFxOn();
+    ctx.globalAlpha = homeLit && castOn() ? 0 : 0.3 * hopK;
     ctx.fillStyle = '#000';
     ctx.beginPath();
     ctx.ellipse(x, GROUND_Y + 5, (44 - Math.sin(t * 0.045) * 2.5) * shadowK * hopK,
@@ -3744,10 +3750,21 @@ export class Game {
     // แสงฟุ้ง (bloom) ลงก่อนวาดน้อง — bloom บวกสีฉากหลังที่เบลอแล้ว (ชมพู/เหลือง) ทับทั้งจอ
     // ถ้าลงหลังน้อง ตัวน้องจะติดโทนเหลืองซีดทั้งตัว ไม่ใช่สีจริงของแบบ (ผู้ใช้เห็นบนหน้าแรก)
     postProcess(ctx, { edges: false });
-    const lit = gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
+    // ชั้นแสงใหม่เปิด = แสงขอบ/เงาจากโคม-แดด-จันทร์ทำหน้าที่แทนแสงตะเกียงเดิม (ไม่ซ้อนสองระบบ)
+    const lit = !homeLit && gfxLevel() === 'high' ? this.homeLitLayer(ctx, x) : null;
     // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
-    if (CAT2.home) this.drawHomeCat(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
-    else drawCatPose(lit || ctx, x, GROUND_Y - hop, catScale, getSkin(), t, this.idlePose);
+    const feet = GROUND_Y - hop;
+    const body = (g) => {
+      if (CAT2.home) this.drawHomeCat(g, x, feet, catScale, getSkin(), t, this.idlePose);
+      else drawCatPose(g, x, feet, catScale, getSkin(), t, this.idlePose);
+    };
+    if (homeLit) {
+      // ตัวน้องหน้าแรกโตกว่าในเมือง (SC ≈ 1.41) ราว catScale/1.41 เท่า — เส้นแสง/ความเบลอโตตาม (unit)
+      const u = catScale / 1.41;
+      const box = { x0: x - 95 * catScale, x1: x + 95 * catScale, y0: feet - 140 * catScale, y1: GROUND_Y + 16 * catScale };
+      drawWithRim(ctx, box, body, { x, y: feet - 30 * catScale, neck: feet - 25 * catScale, floor: GROUND_Y, feet, unit: u },
+        { camX: 0, camY: 0, vw: VIEW.W, H: VIEW.H, lights: riversideLights(), env: { S: homeSky(), pt: riversideSunPoint() } });
+    } else body(lit || ctx);
     if (lit) blitLayer(ctx, lit.canvas, 'source-over', this.homeLitRect);
     this.drawHomeFx(ctx);
     this.drawLove(ctx);
@@ -3775,6 +3792,14 @@ export class Game {
       else lanternLightMask(lit, 0, t);
       lit.restore();
       blitLayer(ctx, lit.canvas, 'lighter', this.homeLitRect);
+    }
+    // ชั้นแสงทับทั้งจอ (โทนเวลา แดด/จันทร์ ลำแสง โคม วงแสงลอย ขอบจอ) — ระดับตามตั้งค่า "แสงและเงา"
+    if (homeLit) {
+      drawLightFx(ctx, {
+        camX: 0, camY: 0, vw: VIEW.W, H: VIEW.H, t, lights: riversideLights(),
+        env: { S: homeSky(), pt: riversideSunPoint() },
+        extTop: ctx.canvas.homeExtTop || 0, extBottom: ctx.canvas.homeExtBottom || 0,
+      });
     }
   }
 

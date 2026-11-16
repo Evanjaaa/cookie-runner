@@ -45,6 +45,8 @@ export function drawWithRim(c, box, draw, at, scene) {
   // กรอบกลับซ้าย-ขวาได้ (เรือหันซ้าย = scale −1) — ใช้ขนาดสเกลแบบไม่ติดลบ · พิกัดใน box/at.neck/at.cx = พิกัดของกรอบที่ส่งมา
   // at.x/at.y = พิกัดฉาก (หาทิศแสง) · at.lx/at.ly = จุดกลางตัวในพิกัดกรอบ (ไม่ส่ง = ใช้ at.x/at.y)
   const SX = Math.abs(m.a);
+  // at.unit = ขนาดตัวเทียบน้องในเมือง (SC ≈ 1.41) — ความหนาเส้นแสง/ความเบลอ/ความเบลอเงาโตตามตัว (หน้าแรกตัวใหญ่กว่า ~2 เท่า)
+  const SXU = SX * (at.unit ?? 1);
   const xa = m.a * box.x0 + m.e, xb = m.a * box.x1 + m.e;
   const dx0 = Math.floor(Math.min(xa, xb)), dy0 = Math.floor(m.d * box.y0 + m.f);
   const W = Math.ceil(Math.abs(xb - xa)) + 2, Hh = Math.ceil(m.d * (box.y1 - box.y0)) + 2;
@@ -63,13 +65,13 @@ export function drawWithRim(c, box, draw, at, scene) {
   const Mk = buf('m', w2, h2), mg = Mk.getContext('2d');
   mg.clearRect(0, 0, w2, h2); mg.drawImage(O, 0, 0, w2, h2);
   const R = buf('r', w2, h2), rg = R.getContext('2d');
-  const px = SX / 2;   // หน่วยโลก 1 = กี่พิกเซลบนผืนครึ่ง
+  const px = SXU / 2;   // หน่วยโลก 1 = กี่พิกเซลบนผืนครึ่ง
   // แถบขอบ: จุดที่ยังอยู่ในตัวเมื่อขยับไปทางแสง ol หน่วย แต่หลุดออกนอกตัวเมื่อขยับ ol+thick
   // = แถบที่เริ่มถัดจากเส้นขอบเข้ามา (เส้นขอบน้ำตาลไม่โดนแสงทับจนซีด · หนวดเส้นบาง ๆ ไม่ติดแสง)
   // full = ทำที่ความละเอียดเต็ม (แถบบางคม ไม่ฟุ้งไปทับเส้นขอบ) · ไม่ full = ครึ่งความละเอียด (แถบกว้างนุ่ม)
   const OL = 2.2;
   const band = (thick, ux, uy, col, a, full) => {
-    const src = full ? O : Mk, D = full ? buf('rf', W, Hh) : R, dg = D.getContext('2d'), q = full ? SX : px;
+    const src = full ? O : Mk, D = full ? buf('rf', W, Hh) : R, dg = D.getContext('2d'), q = full ? SXU : px;
     dg.globalCompositeOperation = 'source-over'; dg.globalAlpha = 1;
     dg.clearRect(0, 0, D.width, D.height);
     dg.drawImage(src, -ux * OL * q, -uy * OL * q);
@@ -94,6 +96,20 @@ export function drawWithRim(c, box, draw, at, scene) {
     const Fy = m.d * at.floor + m.f, fx = m.a * at.x + m.e;
     const Fd = m.d * (at.feet ?? at.floor) + m.f;   // เท้าตอนนี้ (กระโดด = สูงกว่าพื้น)
     const up = Math.max(0, Math.min(1, (at.floor - (at.feet ?? at.floor)) / 160));   // อัตราเดียวกับเงาวงรีเดิม (main.js)
+    // ยืนบนของ (เห็ด โซฟา ชั้น บันได): เงา/แสงตกอยู่แค่บนผิวของชิ้นนั้น ไม่ลอยเลยขอบออกไปกลางอากาศ (ผู้ใช้ 16 พ.ย.)
+    // at.surf = { x0, x1, y0, y1 } พิกัดฉาก — y1 = ขอบล่างหน้าของชิ้น (เงาเลื่อนลงหน้าชิ้นได้นิดเดียว) · ไม่ส่ง = พื้นห้อง/ถนน ไม่ตัด
+    // at.surf = { pts: [[x, y], ...] เส้นผิวบนพิกัดฉาก, depth } → แถบตามรูปผิว (หมวกเห็ดโค้ง/บันไดลาด) หนาลงมา depth
+    const clipSurf = (g) => {
+      const S = at.surf;
+      if (!S?.pts?.length) return;
+      const P = S.pts, X = (x) => m.a * x + m.e, Y = (y) => m.d * y + m.f;
+      g.setTransform(1, 0, 0, 1, 0, 0);   // พิกัดจอจริง (ข้างล่างตั้งกรอบใหม่เองทุกครั้ง)
+      g.beginPath();
+      g.moveTo(X(P[0][0]), Y(P[0][1]) - 3 * m.d);
+      for (const [x, y] of P) g.lineTo(X(x), Y(y) - 3 * m.d);
+      for (let i = P.length - 1; i >= 0; i--) g.lineTo(X(P[i][0]), Y(P[i][1] + S.depth));
+      g.closePath(); g.clip();
+    };
     if (RM & 4) {
       const Sh = buf('sh', W, Hh), sg = Sh.getContext('2d');
       sg.globalCompositeOperation = 'source-over'; sg.globalAlpha = 1;
@@ -105,6 +121,7 @@ export function drawWithRim(c, box, draw, at, scene) {
       }
       sg.fillStyle = gr; sg.fillRect(0, 0, W, Hh);
       c.save();
+      clipSurf(c);
       for (const L of src) {
         // ความยาวเงา ∝ มุมแสง (แนวนอน / แนวตั้ง) · แสงอยู่ต่ำกว่าตัว = ถือว่าเอียงสุดเท่านั้น
         // พับลงพื้นด้านหน้า (เข้าหาคนดู) — พื้นดาดฟ้าเป็นแถบหน้าราวกันตก เงาทอดไปด้านหลังจะไปทับโซฟา/ราว
@@ -117,7 +134,7 @@ export function drawWithRim(c, box, draw, at, scene) {
         c.setTransform(1, 0, -kx, -q, kx * Fd, Fd * (1 + q) + (Fy - Fd));
         c.globalCompositeOperation = 'multiply';
         // เบลอ: แปะซ้ำ 9 จุดรอบวง (แนวตั้งกว้างกว่า เพราะโดนพับแบนลง) — ขอบเงานุ่ม ไม่เป็นเส้นซ้อน
-        const bl = 1.8 * SX;
+        const bl = 1.8 * SXU;
         for (let i = 0; i < 9; i++) {
           const an = i * Math.PI / 4, rr = i === 8 ? 0 : (i % 2 ? 1 : 0.6);
           c.globalAlpha = a * (i === 8 ? 0.3 : 0.14);
@@ -131,6 +148,7 @@ export function drawWithRim(c, box, draw, at, scene) {
       const L = src[0], rx = W * 0.42, ry = rx * 0.16;
       const cx = fx + Math.sign(L.ux || 1) * rx * 0.45 * Math.min(1, Math.abs(L.ux) * 1.6 + 0.2);
       c.save();
+      clipSurf(c);
       c.setTransform(1, 0, 0, ry / rx, 0, Fy + 2 * m.d - (Fy + 2 * m.d) * ry / rx);
       c.globalCompositeOperation = 'overlay';   // พื้นสีอ่อน: screen แทบไม่เห็น → overlay ย้อมอุ่นให้เห็น
       c.globalAlpha = Math.min(0.7, 0.45 * L.a * K) * (1 - up * 0.6);
@@ -174,7 +192,7 @@ export function drawWithRim(c, box, draw, at, scene) {
     for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4, rr = i % 2 ? 1 : 0.55; TAPS.push([Math.cos(an) * rr, Math.sin(an) * rr, 0.1]); }
     const soft = (D, rad) => {
       if (rad <= 0) { lg.drawImage(D, 0, 0); return; }
-      const q = rad * SX;
+      const q = rad * SXU;
       for (const [ox, oy, w] of TAPS) { lg.globalAlpha = w; lg.drawImage(D, ox * q, oy * q); }
       lg.globalAlpha = 1;
     };

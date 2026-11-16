@@ -52,7 +52,15 @@ const DEMO = [['pearl', 1, 'ไข่มุก'], ['calico', 2, 'ขนมชั
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pickW = (list) => { const s = list.reduce((a, [, w]) => a + w, 0); let r = Math.random() * s; for (const [v, w] of list) if ((r -= w) <= 0) return v; return list[0][0]; };
-const laneY = (k) => GY + k.lane;
+/**
+ * เลนเดิน (ระยะจากผนังหลัง) — ผ่านหน้าน้ำพุแมว = หลบลงมาเลนหน้า (ผู้ใช้ 16 พ.ย.: "อย่าให้เดินเหยียบที่กินน้ำ")
+ * น้ำพุชิดผนัง ขอบล่างแค่ GY+8 — เลนหลัง (12–24) เท้าทับฐานน้ำพุพอดี ดูเหมือนยืนบนน้ำพุ
+ */
+const FOUNT_CLEAR = 40, FOUNT_HALF = 62;
+const laneY = (k) => {
+  const W = NURSE_SPOTS.water, y = GY + k.lane;
+  return W && Math.abs(k.x - W.x) < FOUNT_HALF && y < GY + FOUNT_CLEAR ? GY + FOUNT_CLEAR : y;
+};
 const clampX = (x) => Math.max(NURSE_SPOTS.roam[0], Math.min(NURSE_SPOTS.roam[1], x));
 /** หน้าตาน้องจิบิตามสายพันธุ์ (หน้าเทอาหารใช้วาดรูปน้องบนชาม) */
 export const kitLook = (c) => chibiLookFor(BREED_LOOK[c.breed] || c.breed);
@@ -120,6 +128,9 @@ function need(k, key) { try { return k.cat.demoLv ? 70 : needNow(k.cat, key); } 
 /** เดินไป x (ตามเลน) · ny = ระดับเท้าปลายทาง (ก้าวเฉียงเข้าไปช่วงท้าย) · then = ทำอะไรต่อเมื่อถึง */
 function goTo(k, x, then, ny = null, mul = 1, run = false) {
   k.st = 'walk'; k.tx = clampX(x); k.ty = ny; k.then = then; k.t = 0; k.mul = mul; k.run = run;
+  // ไปกินข้าว/ดื่มน้ำ (ที่นั่งอยู่หลังชาม/หลังน้ำพุ): เดินตามเลนไปถึงหน้าที่ก่อน แล้วกระโดดเข้าไป — ไม่เดินทะลุชาม/น้ำพุ (ผู้ใช้ 16 พ.ย.)
+  k.hopY = null;
+  if ((then === 'eat' || then === 'drink') && ny != null) { k.hopY = ny; k.ty = null; }
   if (Math.abs(k.tx - k.x) > 1) k.dir = k.tx > k.x ? 1 : -1;
 }
 function rest(k, st, dur) { k.st = st; k.t = 0; k.dur = dur; k.mul = 1; k.run = false; }
@@ -167,6 +178,14 @@ function pick(k, kits, P) {
     const side = b.x + BED_EDGE > S.roam[1] ? -1 : b.x - BED_EDGE < S.roam[0] ? 1 : Math.random() < 0.5 ? -1 : 1;
     face(k, b.x + side * BED_EDGE);
     hopTo(k, b.x + side * BED_EDGE, laneY(k), 16, 22, 'pick');
+    return;
+  }
+  // นั่งอยู่หลังชาม/หลังน้ำพุ (กินข้าว ดมชาม ดื่มน้ำเสร็จ) → กระโดดออกมาที่เลน ไม่เดินทะลุของ (ผู้ใช้ 16 พ.ย.)
+  if (k.y < laneY(k) - 6) {
+    k.spot = null;
+    const x1 = clampX(k.x + rnd(-10, 10));
+    face(k, x1 + (Math.random() < 0.5 ? -1 : 1));
+    hopTo(k, x1, laneY(k), k.y < GY - 10 ? 18 : 14, 20, 'outpick');   // ลงแล้ว (ไม่มีชื่อในตาราง) = เลือกกิจกรรมต่อ
     return;
   }
   if (Math.abs(k.y - laneY(k)) > 1) { k.spot = null; goTo(k, k.x + rnd(-24, 24), kitDish(k) || k.wantBath ? 'hurry' : 'idle', laneY(k)); return; }   // มีอาหาร/ถูกเรียกอาบน้ำ = ก้าวออกมาแล้วไปต่อทันที
@@ -328,6 +347,7 @@ export function stepKittens(kits, dt, px, py, tick) {
         else if (H.next === 'route') { if (k.route?.length) { rest(k, 'step', k.lastPt?.rest || 14 + Math.random() * 16); if (!k.lastPt?.sit) face(k, k.route[0].x); } else routeNext(k, kits, P); }
         else if (H.next === 'bath') { rest(k, 'bath', BATH_T); k.dir = -1; }
         else if (H.next === 'dry') dryOff(k);
+        else if (H.next === 'eatland' || H.next === 'drinkland') { k.then = H.next === 'eatland' ? 'eat' : 'drink'; arrive(k, px); }   // ลงหลังชาม/น้ำพุแล้ว = เริ่มกิน/ดื่ม
         else { k.spot = null; pick(k, kits, P); }
       }
       continue;
@@ -405,6 +425,12 @@ export function stepKittens(kits, dt, px, py, tick) {
 function arrive(k, px) {
   const th = k.then;
   k.ty = null; k.mul = 1;
+  if (k.hopY != null && (th === 'eat' || th === 'drink')) {   // ถึงหน้าชาม/น้ำพุแล้ว → ย่อตัวกระโดดเข้าไปนั่งข้างหลัง
+    const y1 = k.hopY;
+    k.hopY = null; k.run = false;
+    hopTo(k, k.x, y1, th === 'drink' ? 20 : 14, th === 'drink' ? 22 : 18, th === 'drink' ? 'drinkland' : 'eatland');
+    return;
+  }
   if (!k.spot && (th === 'hopup' || th === 'bedhop' || th === 'eat')) { rest(k, 'idle', 60); return; }   // ที่จองถูกยกเลิกระหว่างทาง
   if (th === 'sleep') rest(k, 'sleep', rnd(600, 1500));
   else if (th === 'bedhop') { face(k, k.spot.x); hopTo(k, k.spot.x, k.spot.y, 22 + Math.max(0, GY - k.spot.y) * 0.4, 24, 'bed'); }
@@ -516,7 +542,8 @@ function pose(k, tick) {
       return { view: 'q', t, act: mouth || 'auto', faceRight };
     case 'drink': {   // ดื่มน้ำ (แบบท่ากินข้าว): นั่งหลังน้ำพุ ก้มหน้าลงอ่าง เลียแจ๊บ ๆ ตาหลับพริ้ม — น้ำพุวาดทับหน้าตัว
       const down = Math.min(1, k.t / 20) * Math.max(0, Math.min(1, (k.dur - k.t) / 16)), lap = Math.abs(Math.sin((k.t / 7) * Math.PI));
-      return { view: 'sit', t, act: 'idle', faceRight, fx: { open: down > 0.4 ? 0 : 1, mouth: (0.15 + 0.3 * lap) * down, sy: 1 - 0.06 * down, sx: 1 + 0.03 * down, ear: 0.04 * lap - 0.04 * down, head: { dy: (10 + 4 * lap) * down } } };   // ปากแตะผิวน้ำในอ่าง หน้ายังโผล่พ้นขอบน้ำพุ
+      // หัวตั้งตรงกลางอ่าง — หักการโยกตัวตอนนิ่ง (life() ใน chibi.js) ออก ไม่ให้หัวเอียงข้างน้ำพุ (ผู้ใช้ 16 พ.ย.)
+      return { view: 'sit', t, act: 'idle', faceRight, fx: { tilt: -Math.sin((t / 330) * Math.PI * 2) * 0.02, open: down > 0.4 ? 0 : 1, mouth: (0.15 + 0.3 * lap) * down, sy: 1 - 0.06 * down, sx: 1 + 0.03 * down, ear: 0.04 * lap - 0.04 * down, head: { dy: (10 + 4 * lap) * down } } };   // ปากแตะผิวน้ำในอ่าง หน้ายังโผล่พ้นขอบน้ำพุ
     }
     case 'litter': return { view: 'q', t, act: 'idle', faceRight: k.t < LITTER_T / 2 };   // เดินเข้า (หันขวา) · หันกลับออกมา
     case 'bath': {
@@ -681,6 +708,14 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw, lit = null) {
       c.restore();
       c.save();
       c.restore();
+    }
+    // เดินอ้อมไปนั่งหลังน้ำพุ (ก่อนดื่ม/หลังดื่มเดินออก): ตัวอยู่หลังแนวน้ำพุ = น้ำพุบังตัว ไม่ดูเหมือนเดินทับน้ำพุ (ผู้ใช้ 16 พ.ย.)
+    if (k.st !== 'drink' && NURSE_SPOTS.water && k.y < GY + 6 && Math.abs(k.x - NURSE_SPOTS.water.x) < 50) drawNurseWater(c, tick);
+    // กระโดดลงหลังชามตัวเอง: ชาม (+ อาหาร) บังขาตอนลง ไม่ดูเหมือนกระโดดทะลุชาม
+    if (k.st === 'hop' && (k.hop?.next === 'eatland' || k.hop?.next === 'outpick') && k.bowl != null && k.y < GY + 4 && Math.abs(k.x - (bowlSpot(k)?.x ?? -1e9)) < 30) {   // กระโดดเข้า/ออกจากหลังชามตัวเอง
+      drawNurseBowl(c, k.bowl);
+      const d = kitDish(k), b = bowlSpot(k);
+      if (d && b) drawFoodMound(c, b.x, GY - BOWL_TOP, d.food, 1, tick + k.tOff);
     }
     if (k.st === 'drink') {
       // น้ำพุอยู่หน้าตัว (หน้าน้องจุ่มลงอ่างจริง) + หยดน้ำกระเด็นตอนเลีย
@@ -1054,7 +1089,8 @@ function dizzyStars(c, kit, tick, a = 1, top = null) {
 }
 
 /** วาดตอนยก: จุดวางใกล้ ๆ (เส้นประจาง) + จุดที่ตรงอยู่ (เรือง) + ตัวน้องห้อยแกว่ง + ดาวมึน + ป้ายกิจกรรม — บนสุด */
-export function drawGrab(c, kits, tick) {
+/** lit = แสงขอบ/เงาทอดแบบ drawKittens (ผู้ใช้ 16 พ.ย.: "ยกน้องลากไปมาแล้วแสงเงาหาย") */
+export function drawGrab(c, kits, tick, lit = null) {
   const G = GRAB;
   if (!G) return;
   const k = G.k, pulse = 0.5 + 0.5 * Math.sin(tick * 0.15);
@@ -1072,13 +1108,18 @@ export function drawGrab(c, kits, tick) {
   }
   // เงาบนพื้นใต้ตัว (เล็กลงตามความสูง)
   const lift = Math.max(0, laneY(k) - k.y), sh = 1 - Math.min(0.6, lift / 120);
-  c.save(); c.globalAlpha = 0.18 * sh; c.fillStyle = '#4A2A5A';
-  c.beginPath(); c.ellipse(k.x, laneY(k) + 2, 110 * k.k * sh, 4 * sh, 0, 0, TAU); c.fill(); c.restore();
-  // ตัวห้อยจากหนังคอ (หมุนรอบจุดเหนือหัว)
+  if (!lit?.cast) {   // เงาทอดแบบใหม่เปิด = ไม่วาดวงรี (ห้ามซ้อน)
+    c.save(); c.globalAlpha = 0.18 * sh; c.fillStyle = '#4A2A5A';
+    c.beginPath(); c.ellipse(k.x, laneY(k) + 2, 110 * k.k * sh, 4 * sh, 0, 0, TAU); c.fill(); c.restore();
+  }
+  // ตัวห้อยจากหนังคอ (หมุนรอบจุดเหนือหัว) · มีชั้นแสง = แสงขอบ + เงาทอดลงพื้นใต้ตัว (จางลงตามความสูงที่ยก)
   const P = pose(k, tick), pvx = k.x, pvy = k.y - 330 * k.k;
-  c.save(); c.translate(pvx, pvy); c.rotate(Math.max(-0.7, Math.min(0.7, k.swing || 0))); c.translate(-pvx, -pvy);
-  drawChibi(c, k.x, k.y, k.k, { ...P, look: k.look });
-  c.restore();
+  const body = (g) => {
+    g.save(); g.translate(pvx, pvy); g.rotate(Math.max(-0.7, Math.min(0.7, k.swing || 0))); g.translate(-pvx, -pvy);
+    drawChibi(g, k.x, k.y, k.k, { ...P, look: k.look });
+    g.restore();
+  };
+  if (lit) lit.draw(c, k, laneY(k), body); else body(c);
   if (k.woozy) dizzyStars(c, k, tick, 1, pvy - 20 * k.k);
   for (const h of k.hearts) {
     const u = h.t / 70;

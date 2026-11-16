@@ -20,8 +20,10 @@
 import { VIEW } from '../config.js';
 import { GY } from '../town/layout.js';
 import { cached, lg, star, heart, ears, catFace, bush, flowers, drawClouds, drawHills, drawBackRow, drawMidTrees } from '../town/world.js';
-import { drawCastleAt, drawRoyalLampAt, drawGuardAt, drawFenceAt, lampGlow } from '../town/castle.js';
+import { drawCastleAt, drawCastleWindowsAt, drawRoyalLampAt, drawGuardAt, drawFenceAt, lampGlow } from '../town/castle.js';
 import { drawBoat, BOAT_Y } from '../town/play.js';
+import { mix3, drawMoonPhase } from '../town/castle-sky.js';
+import { homeSky } from '../home-time.js';
 
 const { W, H } = VIEW;
 const TAU = Math.PI * 2;
@@ -56,20 +58,77 @@ const LAMPS = [{ xw: -206, z: 0.98, i: 1 }, { xw: 206, z: 0.98, i: 0 }];
 const GUARDS = [{ xw: -322, z: 0.96, d: -1 }, { xw: 322, z: 0.96, d: 1 }];
 const LAMP_S = 1;
 
-// ── ชั้นไกล ───────────────────────────────────────────────────
-function sky(c, extTop, t) {
-  c.fillStyle = lg(c, 0, 0, 0, H, [[0, '#BCD8FF'], [0.45, '#E2D8FF'], [1, '#FFE9F3']]);
-  c.fillRect(0, -extTop, W, H + extTop);
-  const sx = W * 0.8, sy = 64;
-  const sg = c.createRadialGradient(sx, sy, 8, sx, sy, 90);
-  sg.addColorStop(0, 'rgba(255,250,220,.95)');
-  sg.addColorStop(0.35, 'rgba(255,236,190,.45)');
-  sg.addColorStop(1, 'rgba(255,236,190,0)');
-  c.fillStyle = sg;
-  c.beginPath(); c.arc(sx, sy, 90, 0, TAU); c.fill();
-  // รุ้งโค้งหลังปราสาท
+// ── เวลาของฉาก (ผู้ใช้ 16 พ.ย. 2026: ผู้เล่นเลือกกลางวัน/แดดเย็น/กลางคืนเองได้เฉพาะหน้าแรก — home-time.js) ──
+/** จุดดวงอาทิตย์/ดวงจันทร์บนจอ (พิกัดฉาก) — ชั้นแสง/แสงขอบบนน้องใช้จุดเดียวกัน (game.drawHome) */
+export function riversideSunPoint(S = homeSky()) {
+  if (S.night > 0.5) return [W * 0.8, 62];
+  return [W * (0.8 + 0.07 * S.dusk), 64 + 78 * S.dusk];   // แดดเย็น = ต่ำลงใกล้ขอบฟ้า
+}
+/** สีย้อมของที่ไม่ใช่ฟ้าตามเวลา (วาดทับแบบ source-atop เฉพาะบนของ) — กลางวันไม่ย้อม */
+function tintOf(S) {
+  const a = 0.2 * S.dusk + 0.5 * S.night;
+  if (a < 0.01) return null;
+  return { col: mix3(S, '#FFFFFF', '#FF9A6A', '#2C2470'), a };
+}
+/** ทาสีย้อมทับเฉพาะพิกเซลที่วาดแล้วในกรอบ (ไม่ลงที่ว่าง) */
+function tintOver(c, S, x, y, w, h) {
+  const T = tintOf(S);
+  if (!T) return;
   c.save();
-  c.globalAlpha = 0.3;
+  c.globalCompositeOperation = 'source-atop';
+  c.globalAlpha = T.a;
+  c.fillStyle = T.col;
+  c.fillRect(x, y, w, h);
+  c.restore();
+}
+
+// ── ชั้นไกล ───────────────────────────────────────────────────
+function sky(c, extTop, t, S) {
+  // ฟ้าไล่สีตามเวลา: กลางวันฟ้าชมพูเดิม · เย็นม่วงชมพูส้ม · กลางคืนน้ำเงินม่วงเข้ม
+  c.fillStyle = lg(c, 0, 0, 0, H, [
+    [0, mix3(S, '#BCD8FF', '#9C8AD8', '#1E1B4E')],
+    [0.45, mix3(S, '#E2D8FF', '#FFAFC4', '#3B2F78')],
+    [1, mix3(S, '#FFE9F3', '#FFC79A', '#6B4E9E')],
+  ]);
+  c.fillRect(0, -extTop, W, H + extTop);
+  // ดาว (กลางคืน · เย็นจัดเริ่มเห็นจาง ๆ)
+  const sa = S.night + S.dusk * 0.15;
+  if (sa > 0.02) {
+    c.fillStyle = '#FFFFFF';
+    for (let i = 0; i < 46; i++) {
+      const x = (((i * 211 + 37) % 997) / 997) * W, y = -extTop * 0.5 + (((i * 89 + 11) % 173) / 173) * 170;
+      const tw = 0.55 + 0.45 * Math.sin(t * 0.04 + i * 1.9);
+      c.globalAlpha = sa * tw * (i % 5 ? 0.6 : 1);
+      if (i % 7 === 0) { star(c, x, y, 2.6); c.fill(); }
+      else { c.beginPath(); c.arc(x, y, i % 3 ? 0.9 : 1.3, 0, TAU); c.fill(); }
+    }
+    c.globalAlpha = 1;
+  }
+  const [sx, sy] = riversideSunPoint(S);
+  // ดวงอาทิตย์ (กลางวัน/เย็น)
+  const sunA = S.day + S.dusk;
+  if (sunA > 0.02) {
+    const R = 90 + 40 * S.dusk, warm = S.dusk > S.day;
+    const sg = c.createRadialGradient(sx, sy, 8, sx, sy, R);
+    sg.addColorStop(0, warm ? `rgba(255,236,190,${0.95 * sunA})` : `rgba(255,250,220,${0.95 * sunA})`);
+    sg.addColorStop(0.35, warm ? `rgba(255,170,110,${0.5 * sunA})` : `rgba(255,236,190,${0.45 * sunA})`);
+    sg.addColorStop(1, 'rgba(255,200,160,0)');
+    c.fillStyle = sg;
+    c.beginPath(); c.arc(sx, sy, R, 0, TAU); c.fill();
+  }
+  // ดวงจันทร์ตามข้างขึ้นข้างแรมจริง + แสงนวลรอบดวง
+  if (S.night > 0.05) {
+    c.save();
+    c.globalAlpha = S.night;
+    const mg = c.createRadialGradient(sx, sy, 10, sx, sy, 70);
+    mg.addColorStop(0, 'rgba(220,226,255,.45)'); mg.addColorStop(1, 'rgba(200,210,255,0)');
+    c.fillStyle = mg; c.beginPath(); c.arc(sx, sy, 70, 0, TAU); c.fill();
+    drawMoonPhase(c, sx, sy, 15, S.moon ?? 0.5);
+    c.restore();
+  }
+  // รุ้งโค้งหลังปราสาท (กลางวันเท่านั้น)
+  c.save();
+  c.globalAlpha = 0.3 * S.day;
   c.lineWidth = 7;
   ['#FF9CC0', '#FFD45A', '#9FE0A8', '#9FD3FF', '#C8A8F5'].forEach((col, i) => {
     c.strokeStyle = col;
@@ -90,6 +149,17 @@ function sky(c, extTop, t) {
   c.beginPath(); c.moveTo(-14, 24); c.lineTo(-10, 36); c.moveTo(14, 24); c.lineTo(10, 36); c.stroke();
   c.fillStyle = '#C9A0E6';
   c.beginPath(); c.roundRect(-16, 34, 32, 10, 4); c.fill();
+  const T = tintOf(S);
+  if (T) {   // ย้อมเรือเหาะตามเวลา (ฟ้าวาดหลังสุดแบบ destination-over — เรือเหาะอยู่ในฟังก์ชันฟ้า จึงย้อมเองตรงนี้)
+    c.globalAlpha = T.a; c.fillStyle = T.col;
+    c.beginPath(); c.ellipse(0, 0, 44, 26, 0, 0, TAU); c.fill();
+    c.beginPath(); c.roundRect(-16, 34, 32, 10, 4); c.fill();
+    c.globalAlpha = 1;
+  }
+  if (S.night > 0.3) {   // ไฟหน้าต่างกระเช้าเรือเหาะตอนกลางคืน
+    c.fillStyle = `rgba(255,224,150,${0.9 * S.night})`;
+    for (const dx of [-8, 0, 8]) { c.beginPath(); c.arc(dx, 39, 1.8, 0, TAU); c.fill(); }
+  }
   c.restore();
 }
 
@@ -167,7 +237,7 @@ function farBank(c, t) {
 }
 
 // ── น้ำ ────────────────────────────────────────────────────────
-function water(c, t) {
+function water(c, t, S) {
   const y0 = WATER_TOP, y1 = NEAR + 2;
   c.save();
   c.beginPath(); c.rect(0, y0, W, y1 - y0); c.clip();
@@ -185,9 +255,14 @@ function water(c, t) {
   // ใกล้ตาน้ำทึบขึ้น เงาสะท้อนจางหาย
   c.fillStyle = lg(c, 0, y0, 0, y1, [[0, 'rgba(134,199,240,0)'], [0.75, 'rgba(118,190,238,.55)'], [1, 'rgba(106,180,234,.8)']]);
   c.fillRect(0, y0, W, y1 - y0);
-  // แสงแดดสะท้อนเป็นทางใต้ดวงอาทิตย์
-  c.fillStyle = lg(c, W * 0.8 - 60, 0, W * 0.8 + 60, 0, [[0, 'rgba(255,250,225,0)'], [0.5, 'rgba(255,250,225,.28)'], [1, 'rgba(255,250,225,0)']]);
-  c.fillRect(W * 0.8 - 60, y0, 120, y1 - y0);
+  // ย้อมน้ำตามเวลา (ก่อนวาดแสงสะท้อน/คลื่น — ของพวกนั้นต้องสว่างเด่นบนน้ำมืด)
+  tintOver(c, S, 0, y0, W, y1 - y0);
+  // แสงแดด/แสงจันทร์สะท้อนเป็นทางใต้ดวง (เย็น = ส้มทอง · กลางคืน = ฟ้าเงิน)
+  const [sx] = riversideSunPoint(S);
+  const rc = S.night > 0.5 ? '210,222,255' : S.dusk > S.day ? '255,190,120' : '255,250,225';
+  const ra = 0.28 + 0.14 * S.dusk;
+  c.fillStyle = lg(c, sx - 60, 0, sx + 60, 0, [[0, `rgba(${rc},0)`], [0.5, `rgba(${rc},${ra})`], [1, `rgba(${rc},0)`]]);
+  c.fillRect(sx - 60, y0, 120, y1 - y0);
   // คลื่นไหลไปทางขวา — แถวไกลสั้น/ช้า แถวใกล้ยาว/เร็ว
   c.strokeStyle = 'rgba(255,255,255,.6)';
   c.lineCap = 'round';
@@ -445,6 +520,24 @@ function nearStatic(c, extBottom) {
   gardens(c, bottom);
 }
 
+/** ผืนแยกขนาดเท่าจอ (ล้างแล้ว · transform เดียวกับจอ) สำหรับย้อมชั้นลานตามเวลา */
+let nearCv = null;
+function nearLayer(ctx) {
+  nearCv ||= document.createElement('canvas').getContext('2d');
+  const cv = nearCv.canvas;
+  if (cv.width !== ctx.canvas.width || cv.height !== ctx.canvas.height) { cv.width = ctx.canvas.width; cv.height = ctx.canvas.height; }
+  nearCv.setTransform(1, 0, 0, 1, 0, 0);
+  nearCv.clearRect(0, 0, cv.width, cv.height);
+  nearCv.setTransform(ctx.getTransform());
+  return nearCv;
+}
+/** ไฟในฉากหน้าแรก (พิกัดฉาก) สำหรับชั้นแสง/แสงขอบบนน้อง (light-fx.js · rim-light.js) */
+export function riversideLights() {
+  return [
+    ...lampHeads().map((h) => ({ x: h.x, y: h.y, r: 170 * h.s, w: 1 })),
+    ...FAR_LAMPS.map((l) => ({ x: l.x, y: FAR_Y + 1 - 142 * FS, r: 60, w: 0.6 })),
+  ];
+}
 /** หัวโคมหลวง (จุดกลางเปลวแสง) — ใช้ทั้งแสงเรืองบนฉากและแสงตกบนตัวน้อง */
 function lampHeads() {
   return LAMPS.map((l) => { const p = P(l.xw, l.z), s = LAMP_S / l.z; return { x: p.x, y: p.y - 142 * s, s }; });
@@ -459,22 +552,37 @@ function lampHeads() {
 export function drawRiverside(ctx, t, opts = {}) {
   const part = opts.part || 'all';
   const extTop = opts.extTop || 0, extBottom = opts.extBottom || 0;
+  const S = homeSky();
+  const night = S.night + 0.4 * S.dusk;   // ไฟโคมเด่นขึ้นตอนค่ำ
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, -extTop, W, H + extTop + extBottom);
   ctx.clip();
   if (part !== 'near') {
-    sky(ctx, extTop, t);
+    // ของไกลวาดก่อนบนผืนว่าง → ย้อมสีตามเวลาเฉพาะบนของ (source-atop) → แล้วค่อยลงฟ้าข้างหลัง (destination-over) — ฟ้าไม่โดนย้อมซ้ำ
+    ctx.clearRect(0, -extTop, W, H + extTop + extBottom);
     drawClouds(ctx, 0, W, t * 0.5);
     farBank(ctx, t);
+    tintOver(ctx, S, 0, -extTop, W, H + extTop);
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    sky(ctx, extTop, t, S);
+    ctx.restore();
   }
   if (part !== 'far') {
     drawCastleAt(ctx, CX, FAR_Y, FS, t, 'live');
-    FAR_LAMPS.forEach((l, i) => lampGlow(ctx, l.x, FAR_Y + 1 - 142 * FS, 30 * FS, 0.42 + 0.12 * Math.sin(t * 0.13 + i * 3)));
-    water(ctx, t);
-    // ของฝั่งนี้ทั้งชั้นนิ่งสนิท — วาดครั้งเดียวต่อขนาดจอ (แคชตามสเกล) แล้วแปะ
-    cached(ctx, 'riverside:near:' + extBottom, 0, 100, W, H + extBottom - 100, (c) => nearStatic(c, extBottom));
-    lampHeads().forEach((h, i) => lampGlow(ctx, h.x, h.y, 34 * h.s, 0.42 + 0.12 * Math.sin(t * 0.13 + i * 2)));
+    // ไฟหน้าต่างปราสาทตอนค่ำ (ผู้ใช้ 16 พ.ย.: "เปิดไฟหน้าต่างตอนค่ำ จะได้ดูสว่างขึ้น") — วาดทับหลังย้อมมืด กระจกจึงสว่างจริง
+    drawCastleWindowsAt(ctx, CX, FAR_Y, FS, t, S.night + 0.55 * S.dusk);
+    FAR_LAMPS.forEach((l, i) => lampGlow(ctx, l.x, FAR_Y + 1 - 142 * FS, 30 * FS, (0.42 + 0.12 * Math.sin(t * 0.13 + i * 3)) * (1 + 1.1 * night)));
+    water(ctx, t, S);
+    // ของฝั่งนี้ทั้งชั้นนิ่งสนิท — วาดครั้งเดียวต่อขนาดจอ (แคชตามสเกล) แล้วแปะ · ย้อมตามเวลาบนผืนแยก (แคชไม่ต้องสร้างใหม่ตอนเปลี่ยนเวลา)
+    if (tintOf(S)) {
+      const L = nearLayer(ctx);
+      cached(L, 'riverside:near:' + extBottom, 0, 100, W, H + extBottom - 100, (c) => nearStatic(c, extBottom));
+      tintOver(L, S, 0, 100, W, H + extBottom - 100);
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(L.canvas, 0, 0); ctx.restore();
+    } else cached(ctx, 'riverside:near:' + extBottom, 0, 100, W, H + extBottom - 100, (c) => nearStatic(c, extBottom));
+    lampHeads().forEach((h, i) => lampGlow(ctx, h.x, h.y, 34 * h.s * (1 + 0.5 * night), (0.42 + 0.12 * Math.sin(t * 0.13 + i * 2)) * (1 + 1.1 * night)));
   }
   ctx.restore();
 }

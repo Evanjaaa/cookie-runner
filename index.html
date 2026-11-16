@@ -2135,6 +2135,35 @@
                 </div>
               </div>
               <small class="setnote gfx-note" id="gfxNote">เครื่องร้อนหรือเฟรมตก ลองลดเฟรมหรือความสวยลงได้</small>
+              <!-- แสงและเงา (ผู้ใช้ 16 พ.ย. 2026) — ค่าชุดเดียวกับในเมือง (src/town/light-fx.js · rim-light.js) · เวลาหน้าแรก src/home-time.js -->
+              <div class="setrow gfx-row">
+                <span class="setlabel">เวลาหน้าแรก</span>
+                <div class="langpick gfxpick" id="homeTimePick" role="group" aria-label="เลือกเวลาของหน้าแรก">
+                  <button type="button" class="langbtn" data-ht="auto">ตามจริง</button>
+                  <button type="button" class="langbtn" data-ht="day">กลางวัน</button>
+                  <button type="button" class="langbtn" data-ht="dusk">แดดเย็น</button>
+                  <button type="button" class="langbtn" data-ht="night">กลางคืน</button>
+                </div>
+              </div>
+              <small class="setnote">เปลี่ยนได้เฉพาะหน้าแรก · เมือง ปราสาท และที่อื่นยังเป็นเวลาตามจริงเสมอ</small>
+              <div class="setrow gfx-row">
+                <span class="setlabel">แสงและเงา</span>
+                <div class="langpick gfxpick" id="lightLvPick" role="group" aria-label="เลือกระดับแสงและเงา">
+                  <button type="button" class="langbtn" data-lv="0">ปิดแสง</button>
+                  <button type="button" class="langbtn" data-lv="1">อ่อน</button>
+                  <button type="button" class="langbtn" data-lv="2">กลาง</button>
+                  <button type="button" class="langbtn" data-lv="3">เข้ม</button>
+                </div>
+              </div>
+              <div class="setrow gfx-row gfx-split-row">
+                <span class="setlabel">เส้นแสงรอบตัว</span>
+                <button type="button" class="gfx-switch" id="rimSwHome" role="switch" aria-checked="true" aria-label="เส้นแสงรอบตัว"><i></i></button>
+              </div>
+              <div class="setrow gfx-row gfx-split-row">
+                <span class="setlabel">เงาตัวบนพื้น</span>
+                <button type="button" class="gfx-switch" id="castSwHome" role="switch" aria-checked="true" aria-label="เงาตัวบนพื้น"><i></i></button>
+              </div>
+              <small class="setnote">ใช้ร่วมกับเมืองและปราสาท · ยิ่งเข้มยิ่งสวย แต่เครื่องทำงานหนักขึ้นนิดหน่อย</small>
               <div class="setrow">
                 <button class="stepbtn mutebtn" id="introMute" aria-label="ปิดเสียงคลิปเปิดเกม">
                 <svg viewBox="0 0 24 24" aria-hidden="true">

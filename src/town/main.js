@@ -142,7 +142,7 @@ NURSERY.front = (c, cx, w, t) => {
   drawNurseFront(c, cx, w, t, cat.sit?.id === 'nBox');   // มุดกล่องต้อนรับ = ผนังหน้ากล่องทับตัว
   drawFoamBursts(c, tick);   // ฟองกระเด็นตอนเหยียบอ่างอาบน้ำ (ทับตัวผู้เล่น)
   drawKittenNames(c, kitsNow(), cat.x);
-  drawGrab(c, kitsNow(), tick);   // น้องที่กำลังยก + จุดวาง (บนสุด)
+  drawGrab(c, kitsNow(), tick, kitLit());   // น้องที่กำลังยก + จุดวาง (บนสุด) · แสงขอบ/เงาทอดแบบตัวอื่น
 };
 const IN_HOME = () => WD === HOME || WD === NURSERY;
 /**
@@ -169,6 +169,7 @@ let WD = TOWN;
   else if (spot === 'roof') { WD = ROOF; cat.x = R_SPAWN; }
   else if (spot === 'home') { WD = HOME; cat.x = HOME_SPAWN; }
   else if (spot === 'nursery') { WD = NURSERY; cat.x = NURSE_SPAWN; }
+  else if (spot === 'garden') { WD = GARDEN; cat.x = G_SPAWN; }   // สวนดอกไม้ในฝัน (ทดสอบ — เดิมต้องเดินเข้าซุ้มสวน)
 }
 let photo = null;     // จุดถ่ายรูปในสวน { p, phase: pose|count|shoot|shot, t, pose, wait } — ดูหัวข้อจุดถ่ายรูป
 
@@ -210,7 +211,7 @@ if (import.meta.env.DEV) {
     toast: (msg) => toast(msg),
     refreshHud: () => paintHud(),
   }));
-  window.__nurse = { kits: () => kitsNow(), cam: () => camX, camY: () => camY, k: () => k };   // สคริปต์ทดสอบ (dev เท่านั้น)
+  window.__nurse = { kits: () => kitsNow(), cam: () => camX, camY: () => camY, k: () => k, spots: NURSE_SPOTS };   // สคริปต์ทดสอบ (dev เท่านั้น)
 }
 window.addEventListener('pointerdown', wakeAudio, { capture: true });
 window.addEventListener('keydown', wakeAudio, { capture: true });
@@ -1687,7 +1688,7 @@ function drawPeer(c, q) {
   let head;
   if (lit) {
     const box = { x0: x - 95 * SC, x1: x + 95 * SC, y0: y - 140 * SC, y1: y + 16 * SC };
-    drawWithRim(c, box, (g) => { head = peerBody(g, q, skin, P, x, y, D); }, { x, y: y - 30 * SC, neck: y - 25 * SC, floor, feet: y }, { camX, camY, vw, H, ...lit });
+    drawWithRim(c, box, (g) => { head = peerBody(g, q, skin, P, x, y, D); }, { x, y: y - 30 * SC, neck: y - 25 * SC, floor, feet: y, surf: surfClip(q.air ? floorIn(W, x, y, 0.5).s : q.on, floor, W.ground(x)) }, { camX, camY, vw, H, ...lit });
   } else head = peerBody(c, q, skin, P, x, y, D);
   if (q.aura) drawAura(c, x, y, q.aura, true);   // ออร่าชั้นหน้า: วงแสง + ดาวลอยรอบตัว
   if (q.act?.kind === 'snack' && q.w === 'lounge') drawSnackFlight(c, q.act, SNACK_POP, { x, y: y - 236 * U }, U * 1.3, tick);
@@ -1896,7 +1897,8 @@ function drawCat(c) {
   const st = cat.P.onGround && cat.on && /stairs/.test(cat.on.id) ? cat.on : null;
   stance = st && !cat.moving && !cat.sit && !act ? stairsStance(st) : null;
   const d = soft.dy;
-  if (!st && d) dentSeat(c, cat.sit ? cat.y - (cat.sit.sitDy ?? 22) : cat.y, d);
+  // รอยยุบเบาะ: ก๊อปพิกเซลฉากจากผืนที่วาดอยู่ — วาดผ่านแสงขอบ (ผืนแยกว่าง) ทำไม่ได้ → drawCatRim ทำบนฉากจริงก่อนแล้ว (noFloorShadow)
+  if (!st && d && !noFloorShadow) dentSeat(c, cat.sit ? cat.y - (cat.sit.sitDy ?? 22) : cat.y, d);
   if (!st && !d) { drawCatBody(c); return; }
   c.save();
   if (st) {
@@ -2004,7 +2006,12 @@ function kitLit() {
     cast: castOn(),
     draw(c, k, ground, fn) {
       const s = k.k, box = { x0: k.x - 240 * s, x1: k.x + 240 * s, y0: k.y - 460 * s, y1: k.y + 40 * s };
-      drawWithRim(c, box, fn, { x: k.x, y: k.y - 120 * s, neck: k.y - 116 * s, floor: ground, feet: k.y, gain: 1.6, tint: 0.55 }, { camX, camY, vw, H, ...E });   // ตัวเล็ก ขนอ่อน = แรงขึ้น + ย้อมสีแสง (ผู้ใช้ 16 พ.ย.)
+      // เงาต้องตกบนของจริง (ผู้ใช้ 16 พ.ย.): นั่งบนที่นอน/คอนโด/ชั้น/ม้านั่ง = เงาอยู่แค่บนเบาะใต้ตัว (กว้างราวเบาะ 28 หน่วยต่อข้าง)
+      //   กระโดดข้ามระหว่างที่สูง = ใต้ตัวไม่มีพื้น → ไม่มีเงาทอด · บนพื้นห้อง = ทอดยาวตามปกติ
+      const high = ground < GY - 6;
+      const floor = high && k.st === 'hop' ? null : ground;
+      const surf = high && floor != null ? { pts: [[k.x - 28, ground], [k.x + 28, ground]], depth: 10 } : null;
+      drawWithRim(c, box, fn, { x: k.x, y: k.y - 120 * s, neck: k.y - 116 * s, floor, feet: k.y, surf, gain: 1.6, tint: 0.55 }, { camX, camY, vw, H, ...E });   // ตัวเล็ก ขนอ่อน = แรงขึ้น + ย้อมสีแสง (ผู้ใช้ 16 พ.ย.)
     },
   };
 }
@@ -2014,9 +2021,19 @@ function drawMe(c) {
   else drawCat(c);
 }
 /** น้องตัวหลัก + แสงขอบ (rim-light.js): เงาพื้นวาดบนฉากก่อน แล้วตัววาดลงผืนแยก ใส่ขอบสว่างฝั่งที่หันหาแสง */
+/**
+ * ผิวที่ยืนอยู่ → กรอบตัดเงาทอด (rim-light.js at.surf) — ยืนบนของ = เงาอยู่แค่บนชิ้นนั้น ไม่ลอยเลยขอบ (ผู้ใช้ 16 พ.ย.)
+ * null = พื้นห้อง/ถนน (ไม่ตัด) · y1 = เงาเลื่อนลงหน้าชิ้นได้ไม่เกิน 14 หน่วย
+ */
+// ตัดตามเส้นผิวจริง (s.pts — หมวกเห็ดโค้ง บันไดลาด) ลงมาหนา 14 หน่วย · ผิวระดับพื้น (พรม) = ไม่ตัด
+const surfClip = (s, floor, gy) => (s && s.pts && floor < gy - 4 ? { pts: s.pts.map(([x, y]) => [x, y + (s.dy || 0)]), depth: 14 } : null);
 function drawCatRim(c) {
   const floor = cat.P.onGround ? cat.y : floorAt(cat.x, cat.y, 0.5).y;
+  const surf = surfClip(cat.P.onGround ? cat.on : floorAt(cat.x, cat.y, 0.5).s, floor, WD.ground(cat.x));
   const up = Math.min(1, (floor - cat.y) / 160), sw = 1 - up * 0.45;
+  // เบาะ/โซฟายุบตามตัว (ผู้ใช้ 16 พ.ย.: "โซฟากับเบาะไม่ยุบตาม") — ดัดพิกเซลฉากจริงก่อน (ลำดับเดิม: รอยยุบ → เงา → ตัว) แล้วค่อยวาดตัวลงผืนแยก
+  const onStairs = cat.P.onGround && cat.on && /stairs/.test(cat.on.id);
+  if (!onStairs && soft.dy) dentSeat(c, cat.sit ? cat.y - (cat.sit.sitDy ?? 22) : cat.y, soft.dy);
   if (!castOn()) {   // เงาแบบใหม่ปิดอยู่ = ใช้เงาวงรีเดิม · เปิด = เงาทอดจากรูปตัวแทน (ห้ามมีสองอันซ้อนกัน)
     c.save();
     c.globalAlpha = 0.22 * (1 - up * 0.6); c.fillStyle = '#4A2A5A';
@@ -2026,7 +2043,7 @@ function drawCatRim(c) {
   // ตัวน้องสูงราว 60·SC (เท้า → ปลายหู) · กรอบเผื่อท่าลอย/ของบนหัว · คอ ≈ 25·SC เหนือเท้า (หัว = แถบแสงบางกว่า)
   const box = { x0: cat.x - 95 * SC, x1: cat.x + 95 * SC, y0: cat.y - 140 * SC, y1: cat.y + 16 * SC };
   noFloorShadow = true;
-  try { drawWithRim(c, box, drawCat, { x: cat.x, y: cat.y - 30 * SC, neck: cat.y - 25 * SC, floor, feet: cat.y }, { camX, camY, vw, H, ...sceneEnv() }); }
+  try { drawWithRim(c, box, drawCat, { x: cat.x, y: cat.y - 30 * SC, neck: cat.y - 25 * SC, floor, feet: cat.y, surf }, { camX, camY, vw, H, ...sceneEnv() }); }
   finally { noFloorShadow = false; }
 }
 
@@ -2866,7 +2883,7 @@ if (import.meta.env.DEV) window.__lightfx = { on: lightFxOn, toggle: toggleLight
 if (import.meta.env.DEV) window.__addPeer = (dx = 120, look = {}) => { const q = newPeer('t' + Math.random().toString(36).slice(2, 6)); Object.assign(q, { w: WD.id, x: cat.x + dx, y: WD.ground(cat.x + dx), name: 'เพื่อนทดสอบ' }, look); q.P.y = q.y; peers.set(q.id, q); return q.id; };   // ทดสอบแสง/เงากับแมวตัวอื่น (dev)
 if (import.meta.env.DEV) window.__ride = () => { const from = PIERS.find((p) => p.id === boat.at) || PIERS[0]; startRide(from, [PIERS.find((p) => p !== from)]); return from.id; };   // ทดสอบ: ล่องเรือทันที (dev)
 if (import.meta.env.DEV) window.__lamp = () => toggleLamp(tick);   // ทดสอบ: เปิด/ปิดโคมชั้น 2 (dev)
-if (import.meta.env.DEV) window.__tp = (x) => { cat.x = x; cat.y = WD.ground(x); cat.target = null; return x; };   // ทดสอบ: วาร์ปไปจุด x (dev)
+if (import.meta.env.DEV) window.__tp = (x, y = null) => { cat.x = x; cat.y = y ?? WD.ground(x); cat.target = null; if (y != null) { cat.P.onGround = false; cat.P.vy = 0; cat.on = null; } return x; };   // ทดสอบ: วาร์ปไปจุด x (y = ปล่อยตกจากความสูงนั้น) (dev)
 if (import.meta.env.DEV) window.__catScr = () => { const r = cv.getBoundingClientRect(); return { x: r.left + (cat.x - camX) * k * r.width / cv.width, y: r.top + (cat.y + camY) * k * r.height / cv.height }; };   // ทดสอบแสงขอบ: จุดเท้าน้องบนจอ
 // แผงทดลองแสง (ความแรง + เวลา) บนดาดฟ้า — dev server หรือ ?fxpanel
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('fxpanel')) import('./light-fx-panel.js').then((m) => m.mountLightPanel({ visible: () => scene !== 'shop' && WD !== TOWN && WD !== GARDEN && !!sceneEnv() }));   // เมือง/สวน: ฟ้าคงที่ ปุ่มเวลาไม่มีผล

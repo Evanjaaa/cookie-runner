@@ -99,6 +99,9 @@ import {
   startPresence, publishProfile, onlineInfo, normalizeCode, reasonText, FRIEND_CODE_LEN,
 } from './friends.js';
 import { lobbyReady, lobbyCount, roomInfo, newRoomCode } from './castle-lobby.js';
+import { lightFxLevel, setLightFxLevel } from './town/light-fx.js';
+import { rimOn, setRimOn, castOn, setCastOn } from './town/rim-light.js';
+import { homeTimeMode, setHomeTimeMode } from './home-time.js';
 import { QUEST_EVENTS, applyEventPages, questList, questState, claimQuest, claimableCount, seasonText, daysLeft, msLeft, bonusState, claimBonus } from './quests.js';
 import { canPet, markPetted, rollPetGift, petLeftMs, petLeftText } from './pet.js';
 import { setupTalentUI, RANKS as T_RANKS } from './talent-ui.js';
@@ -10508,6 +10511,28 @@ document.getElementById('gfxSame').addEventListener('click', () => {
   paintGfxPick();
 });
 onDisplayHz(paintGfxPick);
+
+// ── แสงและเงา + เวลาหน้าแรก (ผู้ใช้ 16 พ.ย. 2026) — ตั้งค่า → การแสดงผล ──
+// ระดับแสง/เส้นแสงรอบตัว/เงาตัวบนพื้น = ค่าชุดเดียวกับในเมือง (จำในเครื่อง) · เวลาหน้าแรกเปลี่ยนได้เฉพาะฉากหน้าแรก
+function paintLightPick() {
+  for (const b of document.querySelectorAll('#homeTimePick .langbtn')) b.classList.toggle('on', b.dataset.ht === homeTimeMode());
+  for (const b of document.querySelectorAll('#lightLvPick .langbtn')) b.classList.toggle('on', Number(b.dataset.lv) === lightFxLevel());
+  for (const [id, on] of [['rimSwHome', rimOn()], ['castSwHome', castOn()]]) {
+    const sw = document.getElementById(id);
+    sw.classList.toggle('on', on);
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    sw.closest('.setrow').classList.toggle('off', !lightFxLevel());
+  }
+}
+for (const b of document.querySelectorAll('#homeTimePick .langbtn')) {
+  b.addEventListener('click', () => { unlockAudio(); sfx.fish(); setHomeTimeMode(b.dataset.ht); paintLightPick(); });
+}
+for (const b of document.querySelectorAll('#lightLvPick .langbtn')) {
+  b.addEventListener('click', () => { unlockAudio(); sfx.fish(); setLightFxLevel(Number(b.dataset.lv)); paintLightPick(); });
+}
+document.getElementById('rimSwHome').addEventListener('click', () => { unlockAudio(); sfx.fish(); setRimOn(!rimOn()); paintLightPick(); });
+document.getElementById('castSwHome').addEventListener('click', () => { unlockAudio(); sfx.fish(); setCastOn(!castOn()); paintLightPick(); });
+paintLightPick();
 
 // ── แผ่นเสียง (ตั้งค่า → เสียง) — หน้าแรก / บ้านลูกเหมียว เลือกแยกกัน แผ่นใครแผ่นมัน ──
 // ลูกศรเปลี่ยนเพลงวนไปเรื่อย ๆ · กำลังอยู่หน้านั้น (เพลงของหน้านั้นเล่นอยู่) = ได้ยินเพลงใหม่ทันที

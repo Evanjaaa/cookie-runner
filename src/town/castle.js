@@ -688,6 +688,30 @@ export function drawCastleAt(c, cx, baseY, s, t, part) {
   }
   c.restore();
 }
+/**
+ * ไฟหน้าต่างปราสาทตอนค่ำ (หน้าแรก — ผู้ใช้ 16 พ.ย. 2026): วาดกระจกสว่างทับหลังฉากโดนย้อมมืด + แสงเรืองรอบบาน
+ * a = ความแรง 0..1 (กลางคืนเต็ม · แดดเย็นครึ่งหนึ่ง) · ตำแหน่ง/ขนาดชุดเดียวกับ drawCastleAt (cx, baseY, s)
+ */
+export function drawCastleWindowsAt(c, cx, baseY, s, t, a) {
+  if (a < 0.02) return;
+  const { x, w } = CASTLE;
+  c.save();
+  c.translate(cx, baseY);
+  c.scale(s, s);
+  c.translate(-(x + w / 2), -GY);
+  castleWindows().forEach((o, i) => {
+    const fl = 0.85 + 0.15 * Math.sin(t * 0.05 + i * 1.7);   // ไฟในห้องไหววูบเบา ๆ คนละจังหวะ
+    c.globalAlpha = a * fl;
+    c.fillStyle = lg(c, 0, o.y, 0, o.y + o.h, [[0, '#FFF3C4'], [1, '#FFC27A']]);
+    c.beginPath(); c.roundRect(o.x - o.w / 2, o.y, o.w, o.h, [o.w / 2, o.w / 2, 1, 1]); c.fill();
+    c.strokeStyle = 'rgba(176,110,60,.5)'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(o.x, o.y + 3); c.lineTo(o.x, o.y + o.h); c.moveTo(o.x - o.w / 2, o.y + o.h * 0.55); c.lineTo(o.x + o.w / 2, o.y + o.h * 0.55); c.stroke();
+    c.globalAlpha = 1;
+    glow(c, o.x, o.y + o.h * 0.5, o.w * 2.4, 0.55 * a * fl);
+  });
+  glow(c, CASTLE.x + CASTLE.w / 2, GY - 112, 80, 0.3 * a);   // ประตูใหญ่เรืองอุ่น
+  c.restore();
+}
 /** โคมหลวง (ภาพเดียวกับหน้ารั้วปราสาท): ฐาน (x, baseY) · สเกล s · i = สลับสีธง · คืนจุดกลางหัวโคม (ไว้วาดแสง) */
 export function drawRoyalLampAt(c, x, baseY, s, i) {
   c.save();

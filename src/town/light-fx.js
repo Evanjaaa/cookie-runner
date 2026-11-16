@@ -113,8 +113,10 @@ export function lightSources(x, y, { camX, camY = 0, vw, lights = [], env = null
  * วาดชั้นแสง (พิกัดจอ หน่วยฉาก — ctx ตั้ง setTransform(k,0,0,k,0,0) มาแล้ว)
  * o: { camX, camY, vw, H, t, lights: [{x, y, r, w}] (พิกัดโลก), sun: true = มีดวงอาทิตย์/จันทร์ในฉากนี้ }
  */
-export function drawLightFx(c, { camX, camY = 0, vw, H, t, lights = [], sun = true, env = null }) {
+export function drawLightFx(c, { camX, camY = 0, vw, H, t, lights = [], sun = true, env = null, extTop = 0, extBottom = 0 }) {
   if (!LV) return;
+  // extTop/extBottom = จอที่ต่อเกินกรอบฉากบน/ล่าง (หน้าแรกบน iPad) — ทาชั้นแสงให้คลุมถึงขอบจอจริง
+  const Y0 = -extTop, YH = H + extTop + extBottom;
   const S = skyOf(env), n = S.night, d = S.dusk, day = S.day;
   const indoor = !!env?.wins;
   if (indoor) sun = false;
@@ -129,22 +131,22 @@ export function drawLightFx(c, { camX, camY = 0, vw, H, t, lights = [], sun = tr
     // ── ในร่ม: ไม่มีทิศแดดบนจอ — ทั้งห้องย้อมตามเวลา (กลางวันแทบไม่เปลี่ยน · เย็นอุ่นขึ้น · กลางคืนมืดลงอมม่วง โคมเด่นขึ้น) ──
     c.globalCompositeOperation = 'multiply';
     const tone = mix(S, [253, 250, 255], [248, 232, 234], [228, 220, 248]).map((v) => Math.round(255 - (255 - v) * Math.min(1.6, K)));   // ห้องยังต้องมองเห็นชัด — มืดลงแค่นิดเดียว
-    c.fillStyle = `rgb(${tone})`; c.fillRect(0, 0, vw, H);
+    c.fillStyle = `rgb(${tone})`; c.fillRect(0, Y0, vw, YH);
     // ปิดโคมยามค่ำ (ชั้น 2) = ห้องมืดลงอีก · ไฟโคมระย้ายังเรืองอยู่ (ชั้น 2 ด้านล่าง)
-    if (env.dark > 0.01) { c.fillStyle = `rgba(150,140,210,${Math.min(0.55, env.dark * 0.5 * (0.7 + 0.3 * K)).toFixed(3)})`; c.fillRect(0, 0, vw, H); }
+    if (env.dark > 0.01) { c.fillStyle = `rgba(150,140,210,${Math.min(0.55, env.dark * 0.5 * (0.7 + 0.3 * K)).toFixed(3)})`; c.fillRect(0, Y0, vw, YH); }
   } else if (M & 1) {
   // ── 1 แสงทิศทางเดียว: ฝั่งแหล่งแสงสว่างเท่าเดิม → อีกฝั่งค่อย ๆ มืดและอมสี (multiply) = ภาพมีมิติ ไม่แบน ──
   c.globalCompositeOperation = 'multiply';
   const far = mix(S, [236, 228, 246], [214, 176, 206], [168, 156, 220]).map((v) => Math.round(255 - (255 - v) * Math.min(2.2, K)));
   const gx = c.createRadialGradient(lx, ly, 40, lx, ly, Math.hypot(vw, H) * 0.95);
   gx.addColorStop(0, 'rgb(255,255,255)'); gx.addColorStop(0.45 - 0.08 * (K - 1), 'rgb(255,255,255)'); gx.addColorStop(1, `rgb(${far})`);
-  c.fillStyle = gx; c.fillRect(0, 0, vw, H);
+  c.fillStyle = gx; c.fillRect(0, Y0, vw, YH);
   // ── แสงอุ่นรอบแหล่งแสง (soft-light — เพิ่มสีอิ่มฝั่งสว่าง: เย็นส้มทอง กลางคืนอมฟ้าม่วง) ──
   c.globalCompositeOperation = 'soft-light';
   const wc = mix(S, [255, 196, 110], [255, 120, 40], [140, 120, 255]);
   const gw = c.createRadialGradient(lx, ly, 20, lx, ly, Math.max(vw, H) * 0.7);
   gw.addColorStop(0, `rgba(${wc},${Math.min(0.9, (0.18 + 0.3 * d + 0.1 * n) * K)})`); gw.addColorStop(1, `rgba(${wc},0)`);   // ห้ามเข้มเกิน — soft-light สีอ่อนทาทั้งจอ = ภาพซีดเป็นหมอก
-  c.fillStyle = gw; c.fillRect(0, 0, vw, H);
+  c.fillStyle = gw; c.fillRect(0, Y0, vw, YH);
   }
 
   // ── 3 ดวงอาทิตย์/จันทร์: แสงฟุ้งใหญ่ + ลำแสงเฉียง ──
@@ -200,6 +202,6 @@ export function drawLightFx(c, { camX, camY = 0, vw, H, t, lights = [], sun = tr
   const vg = c.createRadialGradient(vw / 2, H * 0.55, Math.min(vw, H) * 0.5, vw / 2, H * 0.55, Math.max(vw, H) * 0.75);
   const vc = mix(S, [90, 50, 70], [90, 40, 70], [20, 15, 50]);
   vg.addColorStop(0, `rgba(${vc},0)`); vg.addColorStop(1, `rgba(${vc},${Math.min(0.85, (0.5 + 0.15 * n) * (0.75 + 0.25 * K))})`);
-  c.fillStyle = vg; c.fillRect(0, 0, vw, H);
+  c.fillStyle = vg; c.fillRect(0, Y0, vw, YH);
   c.restore();
 }
