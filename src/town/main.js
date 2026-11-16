@@ -22,7 +22,7 @@ import { H, GY, WORLD_W, START_X, PLACES, star, splashAt, drawSplashes, dustAt, 
 import { SURFACES, surfY, groundY, placeById, JUMP, BOAT_STOPS, REALM, BRIDGE, WORLD_W as TOWN_W } from './layout.js';
 import { drawRealmGround, drawRealm } from './castle.js';
 import { riverGap, RIVER_SRC_P, drawRiverSource, drawRiverFar, drawBridgeWater, drawBridge, drawBridgeArch, drawBridgeFront } from './bridge.js';
-import { stepPlay, swingFrame, bump, drawWater, drawPlay, drawPlayFront, drawBoat, drawBoatFront, boatSeat, mooredX, pierDir, ferryHead } from './play.js';
+import { stepPlay, swingFrame, bump, drawWater, drawPlay, drawPlayFront, drawBoat, drawBoatFront, boatSeat, mooredX, pierDir, ferryHead, setBoatLit, BOAT_Y as RIVER_BOAT_Y } from './play.js';
 import { GW, G_PLACES, G_SURFACES, G_SPAWN, stepGarden, squish, drawGardenSky, drawGardenFar, drawGardenHillsFar, drawGardenHillsNear, drawGardenTrees, drawGardenWorld, drawGardenAirWorld, drawGardenFront, drawGardenOverlay, drawWarp, drawPhotoFrameOverlay, pickBurst } from './garden.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K, RUN_TURN } from '../render/cat2-run.js';
 import { drawCat2, drawTrail, CAT2_UNIT } from '../render/cat2.js';
@@ -42,12 +42,13 @@ import { randomFlower, drawHeldFlower, spawnMote, drawFlowerMotes } from './flow
 import { MAP_H, mapW, mapX, drawMapArt, drawMapLive, STOP_INFO } from './route-map.js';
 import { TownSfx } from './town-sfx.js';
 import { audioCtx, musicOut, sfxOut, unlockAudio, setTownAudio, getTownMix, setTownMix, } from '../audio.js';
-import { HW, H_PLACES, H_SURFACES, H_SPAWN, H_STAIRS_X, H_FOUNT_X, setStairsCat, drawStairsFront, stairsTread, stairsProfilePath, drawHallBack, drawHallWorld } from './castle-hall.js';
-import { LW, L_PLACES, L_SURFACES, L_SPAWN, L_STAIRS_X, SNACK_POP, lampOn, toggleLamp, setLamp, setLoungeCat, condoBounce, drawLoungeBack, drawLoungeWorld, drawLoungeFront } from './castle-lounge.js';
+import { HW, H_PLACES, H_SURFACES, H_SPAWN, H_STAIRS_X, H_FOUNT_X, setStairsCat, drawStairsFront, stairsTread, stairsProfilePath, drawHallBack, drawHallWorld, hallLightMap } from './castle-hall.js';
+import { LW, L_PLACES, L_SURFACES, L_SPAWN, L_STAIRS_X, SNACK_POP, lampOn, toggleLamp, setLamp, setLoungeCat, condoBounce, drawLoungeBack, drawLoungeWorld, drawLoungeFront, loungeLightMap } from './castle-lounge.js';
 import { SNACKS, startAct, stepAct, actPose, randomSnack, drawSnackFlight, burst, stepActFx, drawActFx } from './castle-acts.js';
 import { openScope, scopeStep, scopeDrag, scopeZoom, drawScope, lensOf } from './castle-scope.js';
 import { RW, R_PLACES, R_SURFACES, R_SPAWN, STAR_LINES, roofWish, roofWishSend, drawRoofBack, drawRoofWorld, roofLights } from './castle-roof.js';
-import { drawLightFx, toggleLightFx, lightFxOn } from './light-fx.js';
+import { drawLightFx, toggleLightFx, lightFxOn, lightFxLevel, setLightFxLevel } from './light-fx.js';
+import { drawWithRim, rimOn, setRimOn, castOn, setCastOn } from './rim-light.js';
 import { emoteList, emoteId, emotePeak, emoteHolds, startEmote, stopEmote, stepEmote, emotePose, emoteLift, emoteAnchors, drawEmoteFx, emoteAge, emoteShapeAt } from './emotes.js';
 import { online, onlineRoom, onlineMember, onlineMe, onlineHandlers, joinCastle, leaveCastle, sendState, sendLook, sendSay, sendLamp } from './online.js';
 import { initChat, chatReceive, chatSayNo, chatReset, bubbleOf, drawBubble, toggleChat, closeChat, chatOpen, paintChat, focusChat } from './chat.js';
@@ -55,6 +56,7 @@ import { sendReport } from '../net/cloud.js';
 import {
   HOME_W, HOME_PLACES, HOME_SURFACES, HOME_SPAWN, HOME_BACK_X, NURSE_W, NURSE_PLACES, NURSE_SURFACES, NURSE_SPAWN,
   drawHomeBack, drawHomeWorld, drawNurseBack, drawNurseWorld, drawNurseFront, recordOn, toggleRecord, homeRug, NURSE_SPOTS,
+  homeLightMap, nurseLightMap,
 } from './home.js';
 import { createKittens, stepKittens, drawKittens, drawKittenNames, drawBowlFood, callToBowl, callToTub, setKitSound, foamBurst, drawFoamBursts, drawShower, showerLevel, kitAt, grabKit, moveGrab, dropGrab, grabbing, petKit, drawGrab } from './home-cats.js';
 import { openFeed, closeFeed } from './feed.js';
@@ -134,9 +136,9 @@ const NURSERY = { id: 'nursery', w: NURSE_W, places: NURSE_PLACES, surfaces: NUR
 let kits = null;
 const kitsNow = () => (kits ??= createKittens(SC));
 NURSERY.step = (dt) => { if (kd?.moved) moveGrab(kd.sx + camX, kd.sy - camY); stepKittens(kitsNow(), dt, cat.x, cat.y, tick); };
-NURSERY.under = (c, cx, w) => { drawBowlFood(c, kitsNow(), tick); drawShower(c, tick); drawKittens(c, kitsNow(), tick, (q) => q.y <= cat.y, cat.x, cx, w); };   // อาหารในชาม (หน้าเทอาหาร feed.js) ก่อนตัวน้อง
+NURSERY.under = (c, cx, w) => { drawBowlFood(c, kitsNow(), tick); drawShower(c, tick); drawKittens(c, kitsNow(), tick, (q) => q.y <= cat.y, cat.x, cx, w, kitLit()); };   // อาหารในชาม (หน้าเทอาหาร feed.js) ก่อนตัวน้อง
 NURSERY.front = (c, cx, w, t) => {
-  drawKittens(c, kitsNow(), tick, (q) => q.y > cat.y, cat.x, cx, w);
+  drawKittens(c, kitsNow(), tick, (q) => q.y > cat.y, cat.x, cx, w, kitLit());
   drawNurseFront(c, cx, w, t, cat.sit?.id === 'nBox');   // มุดกล่องต้อนรับ = ผนังหน้ากล่องทับตัว
   drawFoamBursts(c, tick);   // ฟองกระเด็นตอนเหยียบอ่างอาบน้ำ (ทับตัวผู้เล่น)
   drawKittenNames(c, kitsNow(), cat.x);
@@ -1192,9 +1194,18 @@ function stepRide(dt) {
 function drawPassenger(c) {
   c.save();
   if (ride.dir < 0) c.scale(-1, 1);
-  drawCat2(c, 14, -8, SC * 0.88, townSkin(), tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 }, ...heldOpt() });
+  const body = (g) => drawCat2(g, 14, -8, SC * 0.88, townSkin(), tick, { k: 1, shape: { sit: 1, turn: 0, noHang: 1 }, ...heldOpt() });
+  // นั่งเรือ: แสงขอบ + เงาในตัว (ไม่มีเงาทอด — อยู่บนน้ำ) · ผู้ใช้ 16 พ.ย. "นั่งเรือแล้วแสงเงาหาย"
+  const E = lightFxOn() ? sceneEnv() : null;
+  if (E) drawWithRim(c, { x0: -90, x1: 120, y0: -130, y1: 8 }, body, { x: ride.bx + ride.dir * 14, y: RIVER_BOAT_Y - 40, lx: 14, ly: -40, neck: -42 }, { camX, camY, vw, H, ...E });
+  else body(c);
   c.restore();
 }
+// คนพายเรือ (play.js): แสงขอบแบบเดียวกัน — ทั้งเรือที่จอดรอและเรือที่เรานั่ง
+setBoatLit((c, fn, box, at) => {
+  const E = lightFxOn() ? sceneEnv() : null;
+  if (E) drawWithRim(c, box, fn, at, { camX, camY, vw, H, ...E }); else fn(c);
+});
 
 /** กระโดด — แรงของเมืองเอง (JUMP ใน layout.js) · ท่าตัวแบนจาก CAT_ANIM.squash · กดกลางอากาศได้อีกครั้ง = ชั้นสอง (ท่าตีลังกาของแต่ละน้องมาจากท่าวิ่ง) */
 function jump() {
@@ -1611,19 +1622,8 @@ function drawPeers(c, front = false) {
     drawPeer(c, q);
   }
 }
-function drawPeer(c, q) {
-  const skin = peerSkin(q), P = q.P, W = WORLD_OF[q.w], x = q.x + q.ox, y = q.y + q.oy, D = q.dir < 0 ? -1 : 1;
-  if (q.aura && !drawAura(c, x, y, q.aura)) q.aura = 0;   // เพิ่งเข้าปราสาท/ขึ้นลงชั้น (ชั้นหลัง)
-  const floor = q.air ? floorIn(W, x, y, 0.5).y : y;
-  const up = Math.min(1, Math.max(0, floor - y) / 160);
-  if (q.sit?.kind !== 'tent') {
-    c.save();
-    c.globalAlpha = 0.22 * (1 - up * 0.6);
-    c.fillStyle = '#4A2A5A';
-    const sw = 1 - up * 0.45;
-    c.beginPath(); c.ellipse(x, floor + 3, 26 * SC / 1.4 * sw, 5.5 * sw, 0, 0, Math.PI * 2); c.fill();
-    c.restore();
-  }
+/** ตัวแมวผู้เล่นอื่น (ไม่รวมเงาพื้น/ป้าย) — คืนตำแหน่งหัวสำหรับป้ายชื่อ */
+function peerBody(c, q, skin, P, x, y, D) {
   c.save();
   // บนบันได: ตัดตามโครงขั้นแบบตัวเรา (ขาไม่ทะลุขั้น)
   if (!q.air && q.on && /stairs/.test(q.on.id)) {
@@ -1667,6 +1667,28 @@ function drawPeer(c, q) {
     } else drawCat2(c, x, y, SC, skin, T, { k: 1, shape: { turn: RUN_TURN * 0.6 * q.face, noHang: 1, armFar: 1 } });
   }
   c.restore();
+  return head;
+}
+function drawPeer(c, q) {
+  const skin = peerSkin(q), P = q.P, W = WORLD_OF[q.w], x = q.x + q.ox, y = q.y + q.oy, D = q.dir < 0 ? -1 : 1;
+  if (q.aura && !drawAura(c, x, y, q.aura)) q.aura = 0;   // เพิ่งเข้าปราสาท/ขึ้นลงชั้น (ชั้นหลัง)
+  const floor = q.air ? floorIn(W, x, y, 0.5).y : y;
+  const up = Math.min(1, Math.max(0, floor - y) / 160);
+  // แสง/เงาของฉาก (rim-light.js): เงาทอดแบบใหม่เปิดอยู่ = ไม่วาดวงรีเดิม (ไม่ซ้อนกัน)
+  const lit = lightFxOn() && q.sit?.kind !== 'tent' ? sceneEnv() : null;
+  if (q.sit?.kind !== 'tent' && !(lit && castOn())) {
+    c.save();
+    c.globalAlpha = 0.22 * (1 - up * 0.6);
+    c.fillStyle = '#4A2A5A';
+    const sw = 1 - up * 0.45;
+    c.beginPath(); c.ellipse(x, floor + 3, 26 * SC / 1.4 * sw, 5.5 * sw, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+  let head;
+  if (lit) {
+    const box = { x0: x - 95 * SC, x1: x + 95 * SC, y0: y - 140 * SC, y1: y + 16 * SC };
+    drawWithRim(c, box, (g) => { head = peerBody(g, q, skin, P, x, y, D); }, { x, y: y - 30 * SC, neck: y - 25 * SC, floor, feet: y }, { camX, camY, vw, H, ...lit });
+  } else head = peerBody(c, q, skin, P, x, y, D);
   if (q.aura) drawAura(c, x, y, q.aura, true);   // ออร่าชั้นหน้า: วงแสง + ดาวลอยรอบตัว
   if (q.act?.kind === 'snack' && q.w === 'lounge') drawSnackFlight(c, q.act, SNACK_POP, { x, y: y - 236 * U }, U * 1.3, tick);
   nameTag(c, x, head, q.name, q.m);
@@ -1893,6 +1915,7 @@ function drawCat(c) {
   trailM = null;
   c.restore();
 }
+let noFloorShadow = false;   // วาดตัวลงผืนแยกเพื่อทำแสงขอบ (rim-light.js) = เงาพื้นวาดแยกบนฉากแล้ว ไม่ให้โดนแสงขอบ
 function drawCatBody(c) {
   const skin = townSkin();
   const x = cat.x;
@@ -1900,7 +1923,7 @@ function drawCatBody(c) {
   // เงาตกบนผิวใต้ตัว (ถนน หลังคา ชั้นคอนโด ...) — ยิ่งลอยสูงยิ่งเล็กและจาง (กระโดด หรือท่าที่ลอยตัว)
   const floor = P.onGround ? cat.y : floorAt(x, cat.y, 0.5).y;
   const up = Math.min(1, (floor - cat.y + (cat.moving || cat.sit ? 0 : emoteLift(emotePose(tick)) * SC)) / 160);
-  if (cat.sit?.kind !== 'swing') {
+  if (cat.sit?.kind !== 'swing' && !noFloorShadow) {
     c.save();
     c.globalAlpha = 0.22 * (1 - up * 0.6);
     c.fillStyle = '#4A2A5A';
@@ -1970,6 +1993,41 @@ function drawCatBody(c) {
     }
     c.restore();
   }
+}
+
+/** ลูกแมวในห้องเลี้ยงน้อง (home-cats.js): แสงขอบ + เงาทอดแบบเดียวกับตัวเรา — ตัวน้องสูงราว 330·k (หน่วยชีบิ) คางที่ −116·k */
+function kitLit() {
+  if (!lightFxOn()) return null;
+  const E = sceneEnv();
+  if (!E) return null;
+  return {
+    cast: castOn(),
+    draw(c, k, ground, fn) {
+      const s = k.k, box = { x0: k.x - 240 * s, x1: k.x + 240 * s, y0: k.y - 460 * s, y1: k.y + 40 * s };
+      drawWithRim(c, box, fn, { x: k.x, y: k.y - 120 * s, neck: k.y - 116 * s, floor: ground, feet: k.y, gain: 1.6, tint: 0.55 }, { camX, camY, vw, H, ...E });   // ตัวเล็ก ขนอ่อน = แรงขึ้น + ย้อมสีแสง (ผู้ใช้ 16 พ.ย.)
+    },
+  };
+}
+/** น้องตัวหลัก: ฉากมีชั้นแสง + แสงไม่ปิด = แสงขอบ/เงาทอด (ชิงช้า = วาดปกติ) */
+function drawMe(c) {
+  if (lightFxOn() && sceneEnv() && cat.sit?.kind !== 'swing') drawCatRim(c);
+  else drawCat(c);
+}
+/** น้องตัวหลัก + แสงขอบ (rim-light.js): เงาพื้นวาดบนฉากก่อน แล้วตัววาดลงผืนแยก ใส่ขอบสว่างฝั่งที่หันหาแสง */
+function drawCatRim(c) {
+  const floor = cat.P.onGround ? cat.y : floorAt(cat.x, cat.y, 0.5).y;
+  const up = Math.min(1, (floor - cat.y) / 160), sw = 1 - up * 0.45;
+  if (!castOn()) {   // เงาแบบใหม่ปิดอยู่ = ใช้เงาวงรีเดิม · เปิด = เงาทอดจากรูปตัวแทน (ห้ามมีสองอันซ้อนกัน)
+    c.save();
+    c.globalAlpha = 0.22 * (1 - up * 0.6); c.fillStyle = '#4A2A5A';
+    c.beginPath(); c.ellipse(cat.x, floor + 3, 26 * SC / 1.4 * sw, 5.5 * sw, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+  // ตัวน้องสูงราว 60·SC (เท้า → ปลายหู) · กรอบเผื่อท่าลอย/ของบนหัว · คอ ≈ 25·SC เหนือเท้า (หัว = แถบแสงบางกว่า)
+  const box = { x0: cat.x - 95 * SC, x1: cat.x + 95 * SC, y0: cat.y - 140 * SC, y1: cat.y + 16 * SC };
+  noFloorShadow = true;
+  try { drawWithRim(c, box, drawCat, { x: cat.x, y: cat.y - 30 * SC, neck: cat.y - 25 * SC, floor, feet: cat.y }, { camX, camY, vw, H, ...sceneEnv() }); }
+  finally { noFloorShadow = false; }
 }
 
 /** รอยอุ้งเท้าชมพูตรงจุดที่แตะ — เด้งเข้า โยกเบา ๆ วงคลื่นกระจายเป็นจังหวะ หัวใจดวงเล็กลอยขึ้น */
@@ -2063,7 +2121,7 @@ function draw() {
   drawMark(ctx);
   const p = nearPlace();
   if (bubbleFor(p)) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick, promptView());
-  if (!ride) drawCat(ctx);
+  if (!ride) drawMe(ctx);
   drawSplashes(ctx, tick);   // น้ำกระเด็นในน้ำพุ (ทับตัวน้อง)
   drawDust(ctx, tick);        // ฝุ่นฟุ้งตอนลงจากกระโดดสองชั้น
   drawFlowerMotes(ctx, tick); // กลีบ/ประกายร่วงจากดอกไม้ที่ถือ
@@ -2075,12 +2133,35 @@ function draw() {
   ctx.setTransform(k, 0, 0, k, 0, camY * 1.3 * k);
   drawFront(ctx, camX, vw, tick);
   if (ride) drawRide();
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  sceneLightFx();
   drawFerryTalk();
   drawFade();
 }
 
 /** ปราสาทชั้น 1 — โถง พื้น ของ วิวนอกหน้าต่าง (castle-hall.js) · ตัวน้อง/ป้าย/ท่าทางชุดเดียวกับเมือง */
 const ROOF_LIGHTS = roofLights();
+/**
+ * แสงของฉากนี้สำหรับชั้นแสง/แสงขอบ/เงาทอด (light-fx.js · rim-light.js) — ผู้ใช้ 16 พ.ย. 2026 "ใส่แสงทุกฉาก"
+ * { lights: ไฟ/โคม (พิกัดโลก), env } · env ดูคำอธิบายใน light-fx.js · null = ฉากนี้ไม่มีชั้นแสง
+ *   เมือง/สวน: ฟ้าในฉากไม่เปลี่ยนตามเวลา → ใช้ฟ้าคงที่ + จุดดวงอาทิตย์ตรงที่วาดไว้ (world.js drawSky · garden.js drawGardenSky)
+ *   ปราสาทชั้น 1–2 / ห้องนอน / ห้องเลี้ยงน้อง: ในร่ม แสงจากหน้าต่าง + โคม ตามเวลาจริง · ดาดฟ้า: ฟ้าจริง
+ */
+const TOWN_SKY = { day: 1, dusk: 0, night: 0, sunU: 0.8 }, GARDEN_SKY = { day: 0.55, dusk: 0.45, night: 0, sunU: 0.72 };
+const LIGHT_MAPS = { hall: hallLightMap(), home: homeLightMap(), nursery: nurseLightMap() };
+function sceneEnv() {
+  if (WD === ROOF) return { lights: ROOF_LIGHTS };
+  if (WD === TOWN) return { lights: [], env: { S: TOWN_SKY, pt: [vw * 0.8, 64] } };
+  if (WD === GARDEN) return { lights: [], env: { S: GARDEN_SKY, pt: [vw * 0.72, 92] } };
+  const m = WD === LOUNGE ? loungeLightMap(tick) : LIGHT_MAPS[WD.id];   // ชั้น 2: โคมตั้งพื้นเปิด/ปิดได้ — ถามใหม่ทุกครั้ง
+  return m ? { lights: m.lights, env: { wins: m.wins, dark: m.dark || 0 } } : null;
+}
+/** ชั้นแสงทับทั้งจอ (เรียกตอนกรอบจอ ctx.setTransform(k,0,0,k,0,0)) */
+function sceneLightFx() {
+  const E = sceneEnv();
+  if (E) drawLightFx(ctx, { camX, camY, vw, H, t: tick, ...E });
+}
+const sceneLights = () => sceneEnv();
 function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช้ทุกชั้นของปราสาท
   // ส่องกล้องดูดาว: ม่านปิดจอเต็มแล้ว = ไม่ต้องวาดฉากปราสาท (เบา)
   if (scope && scope.k >= 0.36) { ctx.setTransform(k, 0, 0, k, 0, 0); drawScope(ctx, vw, H, tick, scope); drawFade(); return; }
@@ -2094,7 +2175,7 @@ function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช
   if (bubbleFor(p) && !act) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick, promptView());
   WD.under?.(ctx, camX, vw);   // ห้องแมว: น้องที่อยู่หลังตัวผู้เล่น
   if (myAura && !drawAura(ctx, cat.x, cat.y, myAura)) myAura = 0;   // ออร่าตอนเพิ่งเข้าปราสาท/ขึ้นลงชั้น (ข้างหลังตัว)
-  drawCat(ctx);
+  drawMe(ctx);
   if (myAura) drawAura(ctx, cat.x, cat.y, myAura, true);
   drawPeers(ctx, true);   // แมวผู้เล่นคนอื่นที่อยู่หน้าตัวเรา (peerInFront — ลำดับเดียวกับจอของเขา)
   drawMyBubble(ctx);   // ฟองแชตของเรา (ออนไลน์)
@@ -2106,8 +2187,8 @@ function drawHall(lay, back = drawHallBack, world = drawHallWorld) {   // ใช
   drawFlowerMotes(ctx, tick);
   drawEmoteFx(ctx);
   ctx.setTransform(k, 0, 0, k, 0, 0);   // ไม่มีของหน้าสุด — ห้ามบังตัวละคร (สเปกปราสาท)
-  // ชั้นแสงต้นแบบ (light-fx.js · ผู้ใช้ 15 พ.ย. 2026) — ลองที่ดาดฟ้าชั้น 3 ก่อน · ปุ่ม L เปิด/ปิด
-  if (WD === ROOF) drawLightFx(ctx, { camX, camY, vw, H, t: tick, lights: ROOF_LIGHTS });
+  // ชั้นแสง (light-fx.js · ผู้ใช้ 15–16 พ.ย. 2026) — ทุกชั้นของปราสาท + ห้องนอน/ห้องเลี้ยงน้อง · ระดับตามตั้งค่า "ภาพ"
+  sceneLightFx();
   drawPhoto();
   if (scope) drawScope(ctx, vw, H, tick, scope);
   drawFade();
@@ -2129,7 +2210,7 @@ function drawGarden(lay) {
   drawMark(ctx);
   const p = nearPlace();
   if (bubbleFor(p)) drawPrompt(ctx, p, actionLabel(p) + (desk ? ' · กด E' : ''), tick, promptView());
-  drawCat(ctx);
+  drawMe(ctx);
   drawDust(ctx, tick);
   drawFlowerMotes(ctx, tick);
   drawGardenAirWorld(ctx, camX, vw, tick);
@@ -2137,6 +2218,7 @@ function drawGarden(lay) {
   ctx.setTransform(k, 0, 0, k, 0, camY * 1.3 * k);
   drawGardenFront(ctx, camX, vw, tick);
   ctx.setTransform(k, 0, 0, k, 0, 0);
+  sceneLightFx();
   drawGardenOverlay(ctx, vw, tick);
   drawPhoto();
   drawFade();
@@ -2523,6 +2605,7 @@ function openSettings() {
   paintVol('volSfx', 'sfx');
   paintMute('volMusic', 'music', 'เสียงเพลง');
   paintMute('volSfx', 'sfx', 'เสียงเอฟเฟกต์');
+  paintLightSeg();
   $('setOv').classList.remove('hidden');
 }
 $('btnSet').addEventListener('click', openSettings);
@@ -2572,6 +2655,26 @@ $('tapMove').addEventListener('click', () => {
   paintTapMove();
 });
 paintTapMove();
+
+// แสงและเงา: ผู้เล่นเลือกเอง ปิด/อ่อน/กลาง/เข้ม (ผู้ใช้ 16 พ.ย. 2026) · จำไว้ในเครื่องนี้ (light-fx.js) · ค่าเริ่มต้น = กลาง
+function paintLightSeg() {
+  for (const b of $('lightSeg').querySelectorAll('button')) b.setAttribute('aria-checked', String(Number(b.dataset.lv) === lightFxLevel()));
+  $('rimSw').setAttribute('aria-checked', String(rimOn()));
+  $('rimSw').closest('.setrow').classList.toggle('dim', !lightFxLevel());
+  $('castSw').setAttribute('aria-checked', String(castOn()));
+  $('castSw').closest('.setrow').classList.toggle('dim', !lightFxLevel());   // แสงปิดอยู่ = สวิตช์นี้ไม่มีผล (จางลง)
+}
+// เส้นแสงรอบตัว (rim-light.js · ผู้ใช้ 16 พ.ย.) — เปิด/ปิดแยกจากระดับแสง · จำในเครื่อง
+$('rimSw').addEventListener('click', () => { setRimOn(!rimOn()); paintLightSeg(); sfx('click'); });
+$('castSw').addEventListener('click', () => { setCastOn(!castOn()); paintLightSeg(); sfx('click'); });
+$('lightSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  setLightFxLevel(Number(b.dataset.lv));
+  paintLightSeg();
+  sfx('click');
+});
+paintLightSeg();
 
 // คำพูดลูกแมวพายเรือ: เปิด/ปิดในตั้งค่า (ผู้ใช้ 1 พ.ย.) · จำไว้ในเครื่องนี้ (ค่าเริ่มต้น = เปิด)
 const FERRY_TALK_KEY = 'cookie-runner:town:ferryTalk';
@@ -2753,13 +2856,20 @@ function kitRelease(e) {
 window.addEventListener('pointerup', kitRelease);
 window.addEventListener('pointercancel', kitRelease);
 
-// ปุ่ม L = เปิด/ปิดชั้นแสงต้นแบบ (ดาดฟ้าชั้น 3) — e.code (แป้นไทยกด L ได้ "ส")
+// ปุ่ม L = เปิด/ปิดชั้นแสง (ทุกฉากที่มีแสง) — e.code (แป้นไทยกด L ได้ "ส")
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'KeyL' || e.repeat || e.target?.matches?.('textarea, input')) return;
-  if (WD !== ROOF) return;
+  if (scene === 'shop' || !sceneEnv()) return;
   toast(toggleLightFx() ? '✨ เอฟเฟกต์แสง: เปิด' : 'เอฟเฟกต์แสง: ปิด');
 });
 if (import.meta.env.DEV) window.__lightfx = { on: lightFxOn, toggle: toggleLightFx };
+if (import.meta.env.DEV) window.__addPeer = (dx = 120, look = {}) => { const q = newPeer('t' + Math.random().toString(36).slice(2, 6)); Object.assign(q, { w: WD.id, x: cat.x + dx, y: WD.ground(cat.x + dx), name: 'เพื่อนทดสอบ' }, look); q.P.y = q.y; peers.set(q.id, q); return q.id; };   // ทดสอบแสง/เงากับแมวตัวอื่น (dev)
+if (import.meta.env.DEV) window.__ride = () => { const from = PIERS.find((p) => p.id === boat.at) || PIERS[0]; startRide(from, [PIERS.find((p) => p !== from)]); return from.id; };   // ทดสอบ: ล่องเรือทันที (dev)
+if (import.meta.env.DEV) window.__lamp = () => toggleLamp(tick);   // ทดสอบ: เปิด/ปิดโคมชั้น 2 (dev)
+if (import.meta.env.DEV) window.__tp = (x) => { cat.x = x; cat.y = WD.ground(x); cat.target = null; return x; };   // ทดสอบ: วาร์ปไปจุด x (dev)
+if (import.meta.env.DEV) window.__catScr = () => { const r = cv.getBoundingClientRect(); return { x: r.left + (cat.x - camX) * k * r.width / cv.width, y: r.top + (cat.y + camY) * k * r.height / cv.height }; };   // ทดสอบแสงขอบ: จุดเท้าน้องบนจอ
+// แผงทดลองแสง (ความแรง + เวลา) บนดาดฟ้า — dev server หรือ ?fxpanel
+if (import.meta.env.DEV || new URLSearchParams(location.search).has('fxpanel')) import('./light-fx-panel.js').then((m) => m.mountLightPanel({ visible: () => scene !== 'shop' && WD !== TOWN && WD !== GARDEN && !!sceneEnv() }));   // เมือง/สวน: ฟ้าคงที่ ปุ่มเวลาไม่มีผล
 
 // ── HUD ทอง + โหมด ─────────────────────────────────────────────
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');

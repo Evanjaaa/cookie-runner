@@ -12,7 +12,7 @@
 import { H, GY, flat } from './layout.js';
 import { cached, lg, heart, star } from './world.js';
 import {
-  TAU, hash, LAV, SPUR, PINK, LPINK, CREAM, GOLD, SGOLD, GOLD_D, BAY, CEIL, WALL_B, GRAND,
+  TAU, hash, LAV, SPUR, PINK, LPINK, CREAM, GOLD, SGOLD, GOLD_D, BAY, CEIL, WALL_B, GRAND, WIN,
   rr, archPath, goldV, crownIcon, pawIcon, catFace, label, drawBay, drawPillar, drawPlantArt, drawStairs, drawStairsFront, shaded, drawFloorSegs,
   chandelier, bayKey, drawWindowTwinkles, shaftColors, sparkleHint, stairsSurface, stairsDoor,
 } from './castle-hall.js';
@@ -996,6 +996,22 @@ export function drawLoungeBack(c, camX, vw, t) {
   }
   const glow = 1 + 0.5 * sky().night + 0.25 * sky().dusk;
   for (const [i, x] of CHANDELIERS.entries()) if (x > camX - 120 && x < camX + vw + 120) chandelier(c, x, t, i, 1, glow);
+}
+/**
+ * จุดแสงของชั้น 2 (พิกัดโลก) สำหรับชั้นแสง/แสงขอบ — โคมระย้า + โคมตั้งพื้น · wins = หน้าต่าง
+ * โคมตั้งพื้นตามระดับไฟจริง (lampLevel — กะพริบติดตอนเปิด ค่อย ๆ ดับตอนปิด) = แสงขอบ/เงาทอดบนตัวน้องติด-ดับตามโคม (ผู้ใช้ 16 พ.ย.)
+ * dark = ห้องมืดลงเพิ่มตอนปิดโคมยามค่ำ
+ */
+export function loungeLightMap(t = 0) {
+  const wins = [];
+  for (const [i, kind] of BAYS.entries()) {
+    if (kind === 'win') wins.push({ x: bayC(i), y: (WIN.top + WIN.bot) / 2, w: 1 });
+    if (kind === 'grand') wins.push({ x: bayC(i), y: (GRAND.top + GRAND.bot) / 2, w: 1.4 });
+  }
+  const lights = CHANDELIERS.map((x) => ({ x, y: CEIL - 6 + 66, r: 180, w: 1 }));
+  const L = lampLevel(t), S = sky();
+  if (L > 0.01) lights.push({ x: X.lamp, y: GY - 136, r: 190, w: 1.3 * L });
+  return { lights, wins, dark: (1 - L) * (0.6 * S.night + 0.25 * S.dusk) };
 }
 /** ของในชั้น (ชิดผนัง หลังตัวน้องทั้งหมด) */
 export function drawLoungeWorld(c, camX, vw, t) {

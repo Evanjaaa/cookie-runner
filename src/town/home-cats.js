@@ -571,7 +571,12 @@ function pose(k, tick) {
 /**
  * วาดน้อง (เฉพาะตัวที่ pass(k) — ใช้แยกชั้นหลัง/หน้าตัวผู้เล่น) · px = ผู้เล่น (ป้ายชื่อขึ้นเมื่อเดินมาใกล้)
  */
-export function drawKittens(c, kits, tick, pass, px, camX, vw) {
+/**
+ * lit (ไม่บังคับ — main.js ส่งมาเมื่อฉากมีชั้นแสง · ผู้ใช้ 16 พ.ย. 2026): { cast: เงาทอดแบบใหม่เปิดไหม, draw(c, k, ground, fn) }
+ *   ใช้กับน้องที่ยืน/เดิน/นั่ง/นอนธรรมดาเท่านั้น — อาบน้ำ/ในกระบะทราย/นอนในบ้าน/กระโดดเล่น วาดแบบเดิม
+ *   เงาทอดเปิด = ไม่วาดเงาวงรีใต้ตัว (ห้ามซ้อนกัน)
+ */
+export function drawKittens(c, kits, tick, pass, px, camX, vw, lit = null) {
   const list = kits.filter((k) => k.st !== 'held' && pass(k) && k.x > camX - 80 && k.x < camX + vw + 80).sort((a, b) => a.y - b.y);
   for (const k of list) {
     const P = pose(k, tick);
@@ -587,7 +592,8 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw) {
       const q = jumpSquash(26 - k.land + 100, 100) * 0.22;
       P.fx = { ...(P.fx || {}), sy: (P.fx?.sy || 1) * (1 - q), sx: (P.fx?.sx || 1) * (1 + q * 0.7) };
     }
-    if (!inTub && k.st !== 'litter' && !(k.st === 'sleep' && k.inBed && bedCave(k.inBed))) {
+    const plainLit = lit && !inTub && k.st !== 'litter' && !(k.st === 'sleep' && k.inBed && bedCave(k.inBed));
+    if (!inTub && k.st !== 'litter' && !(k.st === 'sleep' && k.inBed && bedCave(k.inBed)) && !(plainLit && lit.cast)) {
       c.save();
       c.globalAlpha = 0.2 * sh; c.fillStyle = '#4A2A5A';
       c.beginPath(); c.ellipse(k.x, ground + 2, 120 * k.k * sh, 4.5 * sh, 0, 0, TAU); c.fill();
@@ -651,11 +657,16 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw) {
       g.addColorStop(0, 'rgba(60,35,95,.45)'); g.addColorStop(0.55, 'rgba(60,35,95,.12)'); g.addColorStop(1, 'rgba(60,35,95,0)');
       c.fillStyle = g; c.fill(cave.path);
       c.restore();
-    } else if (P.rot || P.lift) {
-      c.save(); c.translate(k.x, k.y - (P.lift || 0) * k.k); c.rotate((P.rot || 0) * (P.faceRight ? -1 : 1));
-      drawChibi(c, 0, 0, k.k, { ...P, look: k.look });
-      c.restore();
-    } else drawChibi(c, k.x, k.y, k.k, { ...P, look: k.look });
+    } else {
+      const body = (g) => {
+        if (P.rot || P.lift) {
+          g.save(); g.translate(k.x, k.y - (P.lift || 0) * k.k); g.rotate((P.rot || 0) * (P.faceRight ? -1 : 1));
+          drawChibi(g, 0, 0, k.k, { ...P, look: k.look });
+          g.restore();
+        } else drawChibi(g, k.x, k.y, k.k, { ...P, look: k.look });
+      };
+      if (plainLit) lit.draw(c, k, ground, body); else body(c);
+    }
     if (inTub) {
       c.restore();
       // ฟองฟูรอบตัวที่ปากอ่าง (ข้างตัว + หน้าอก ต่ำกว่าปาก — ไม่บังหน้า) ขยับนุ่ม ๆ

@@ -1459,6 +1459,18 @@ export function drawHallBack(c, camX, vw, t) {
   const glow = 1 + 0.5 * sky().night + 0.25 * sky().dusk;   // กลางคืนโคมสว่างขึ้น
   for (const [i, x] of CHANDELIERS.entries()) if (x > camX - 120 && x < camX + vw + 120) chandelier(c, x, t, i, 0.82, glow);
 }
+/**
+ * จุดแสงของโถง (พิกัดโลก) สำหรับชั้นแสง/แสงขอบ (light-fx.js · rim-light.js · ผู้ใช้ 16 พ.ย. 2026)
+ * lights = โคมระย้า (กลางคืนเด่น) · wins = หน้าต่าง (แสงกลางวัน/แดดเย็นส่องเข้ามา)
+ */
+export function hallLightMap() {
+  const wins = [];
+  for (const [i, kind] of BAYS.entries()) {
+    if (kind === 'win') wins.push({ x: bayC(i), y: (WIN.top + WIN.bot) / 2, w: 1 });
+    if (kind === 'grand') wins.push({ x: bayC(i), y: (GRAND.top + GRAND.bot) / 2, w: 1.4 });
+  }
+  return { lights: CHANDELIERS.map((x) => ({ x, y: CEIL - 6 + 66 * 0.82, r: 170, w: 1 })), wins };
+}
 /** ของในโถง (ชิดผนัง หลังตัวน้องทั้งหมด) */
 export function drawHallWorld(c, camX, vw, t) {
   const vis = (x0, x1) => x1 > camX - 40 && x0 < camX + vw + 40;

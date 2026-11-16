@@ -1879,6 +1879,30 @@ function towerArt(c) {
 }
 
 /** เพดาน ผนัง พื้น (ห้องแมว) */
+/**
+ * จุดแสงของห้องนอน / ห้องเลี้ยงน้อง (พิกัดโลก) สำหรับชั้นแสง/แสงขอบ (light-fx.js · rim-light.js · ผู้ใช้ 16 พ.ย. 2026)
+ * lights = โคมแขวน โคมผนัง โคมหัวเตียง โคมโต๊ะ (ตำแหน่งเดียวกับ glow() ในฉาก) · wins = หน้าต่าง
+ */
+export function homeLightMap() {
+  return {
+    lights: [
+      { x: X.lantA, y: BEAM_B + 100, r: 130, w: 1 }, { x: X.lantB, y: BEAM_B + 100, r: 130, w: 1 },
+      { x: X.sconL + 12, y: 156, r: 110, w: 0.9 }, { x: X.sconR - 12, y: 156, r: 110, w: 0.9 },
+      { x: X.nsL, y: GY - 96, r: 95, w: 0.8 }, { x: X.nsR, y: GY - 96, r: 95, w: 0.8 },
+      { x: X.desk - DESK.w / 2 + 82, y: GY - DESK.h - 34, r: 95, w: 0.8 },
+    ],
+    wins: [{ x: X.win, y: (WINB.top + WINB.bot) / 2, w: 1.5 }],
+  };
+}
+export function nurseLightMap() {
+  return {
+    lights: [
+      { x: N.scon + 12, y: 156, r: 110, w: 0.9 },
+      { x: 400, y: BEAM_B + 100, r: 130, w: 1 }, { x: 1780, y: BEAM_B + 100, r: 130, w: 1 },
+    ],
+    wins: [{ x: N.win1, y: (NWIN.top + NWIN.bot) / 2, w: 1.2 }, { x: N.win2, y: (NWIN.top + NWIN.bot) / 2, w: 1.2 }],
+  };
+}
 export function drawNurseBack(c, camX, vw, t) {
   c.fillStyle = '#B57F52'; c.fillRect(camX - 10, -400, vw + 20, 400);
   drawFloorSegs(c, camX, vw, 'nurse:floor:' + NURSE_STAGE, NURSE_W, (g, x0, x1) => floorRange(g, x0, x1, has(2) ? N_RUGS : []));

@@ -554,6 +554,9 @@ export function ferryHead(x, dir, t) {
  * dir = ทางที่หัวเรือชี้ · passenger(c, seat) = วาดผู้โดยสาร (ระหว่างลำเรือกับขอบเรือหน้า)
  * moving = เรือกำลังแล่น → ฟองคลื่นท้ายเรือ + ละอองหัวเรือ · พายจ้วงน้ำทุกจังหวะ = ละอองน้ำกระเซ็น + วงคลื่น (จอดอยู่ก็พายเบา ๆ)
  */
+/** ตัววาดแสงขอบของคนพาย (main.js → rim-light.js) · fn(c, draw, box, at) · null = วาดธรรมดา */
+let boatLit = null;
+export function setBoatLit(fn) { boatLit = fn; }
 export function drawBoat(c, x, dir, t, passenger, moving = false) {
   const y = BOAT_Y + Math.sin(t * 0.05 + x * 0.01) * 1.2;
   c.save();
@@ -569,7 +572,12 @@ export function drawBoat(c, x, dir, t, passenger, moving = false) {
   c.beginPath(); c.moveTo(-42 + row * 0.4, -30); c.lineTo(-62 - row, 8); c.stroke();
   c.fillStyle = '#C98A55';
   c.beginPath(); c.ellipse(-63 - row, 9, 4, 8, 0.3, 0, TAU); c.fill();
-  if (FERRY) drawCat2(c, -46, -10, 0.86, FERRY, t, { k: 1, shape: { sit: 1, turn: -0.2, noHang: 1 } });   // ก้นจมในลำเรือ (ไม่ลอย) · อกกับปกกะลาสีพ้นขอบเรือ
+  // ก้นจมในลำเรือ (ไม่ลอย) · อกกับปกกะลาสีพ้นขอบเรือ · ฉากมีชั้นแสง = วาดผ่านแสงขอบ (main.js ตั้ง setBoatLit — ผู้ใช้ 16 พ.ย.)
+  const capt = (g) => drawCat2(g, -46, -10, 0.86, FERRY, t, { k: 1, shape: { sit: 1, turn: -0.2, noHang: 1 } });
+  if (FERRY) {
+    if (boatLit) boatLit(c, capt, { x0: -120, x1: 30, y0: -125, y1: 4 }, { x: x - dir * 46, y: y - 40, lx: -46, ly: -40, neck: -36, gain: 1.5, tint: 0.5 });
+    else capt(c);
+  }
   // ด้านในลำเรือ (ขอบหลัง)
   c.fillStyle = '#6E3A2A';
   c.beginPath(); c.moveTo(-64, -16); c.quadraticCurveTo(0, -10, 62, -18); c.lineTo(62, -12); c.quadraticCurveTo(0, -4, -64, -10); c.closePath(); c.fill();

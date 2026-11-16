@@ -1205,6 +1205,22 @@ body.in-shop .wardbtn { display: none; }
 .tswitch[aria-checked="true"] i { transform: translateX(22px); }
 .tswitch:focus-visible { outline: 3px solid rgba(255,143,179,.5); outline-offset: 2px; }
 body:not(.tapmove) .kh-tap { display: none; }
+/* ระดับแสงและเงา (ผู้ใช้ 16 พ.ย. 2026): ปุ่มเลือก 4 ระดับ เต็มแถวใต้ชื่อ · ที่เลือก = ชมพู */
+.setrow.seg { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.segbtns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 4px; border-radius: 999px; background: #EFE6F8; }
+.segbtns button {
+  padding: 7px 4px; border: 0; border-radius: 999px; cursor: pointer;
+  background: transparent; color: #7A5A9E; font: inherit; font-weight: 700; font-size: clamp(12.5px, 2.6dvh, 14px);
+  touch-action: manipulation;
+}
+.segbtns button[aria-checked="true"] {
+  background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.5), #FF9FC0 45%, #F27AAB);
+  color: #FFFFFF; text-shadow: 0 1px 2px rgba(160,40,100,.4);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.7), 0 3px 8px -4px rgba(200,60,120,.55);
+}
+.segbtns button:active { filter: brightness(.93); }
+.segbtns button:focus-visible { outline: 3px solid rgba(255,143,179,.5); outline-offset: 1px; }
+.setrow.dim { opacity: .5; }
 
 /* ══ ปุ่มเมืองแบบใหม่ — วุ้นใสนุ่มชุดเดียวกับหน้าแรก (ผู้ใช้ 4 พ.ย. 2026) ══════════════════════
    ปุ่มกลับ / ปุ่มปิด / ปุ่มลำโพง = วุ้นม่วงพลัมโปร่ง จุดแสงลูกอม (ตัวแปร --rb-* ค่าเดียวกับ src/style.css)

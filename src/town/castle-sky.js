@@ -14,9 +14,12 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const smooth = (a, b, x) => { const u = clamp01((x - a) / (b - a)); return u * u * (3 - 2 * u); };
 const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
-const FORCE = (() => {
+let FORCE = (() => {
   try { const v = new URLSearchParams(location.search).get('hour'); return v == null || v === '' ? null : Number(v); } catch { return null; }
 })();
+/** บังคับเวลา (แผงทดลองแสงบนดาดฟ้า — light-fx-panel.js) · null = ตามเวลาจริง */
+export function setForcedHour(h) { FORCE = h; at = 0; }
+export const forcedHour = () => FORCE;
 /** ชั่วโมงตามเวลาไทย (ทศนิยม 0..24) */
 export function thaiHour(d = new Date()) {
   if (FORCE != null && !Number.isNaN(FORCE)) return ((FORCE % 24) + 24) % 24;
