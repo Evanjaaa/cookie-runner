@@ -58,9 +58,10 @@ import {
   drawHomeBack, drawHomeWorld, drawNurseBack, drawNurseWorld, drawNurseFront, recordOn, toggleRecord, homeRug, NURSE_SPOTS,
   homeLightMap, nurseLightMap,
 } from './home.js';
-import { createKittens, stepKittens, drawKittens, drawKittenNames, drawBowlFood, callToBowl, callToTub, setKitSound, foamBurst, drawFoamBursts, drawShower, showerLevel, kitAt, grabKit, moveGrab, dropGrab, grabbing, petKit, drawGrab } from './home-cats.js';
+import { createKittens, stepKittens, drawKittens, drawKittenNames, drawBowlFood, callToBowl, callToTub, setKitSound, foamBurst, drawFoamBursts, drawShower, showerLevel, kitAt, grabKit, moveGrab, dropGrab, grabbing, petKit, drawGrab, startToy, stopToy, drawToy, drawToyWand } from './home-cats.js';
 import { openFeed, closeFeed } from './feed.js';
 import { openBath, closeBath } from './bath.js';
+import { openToys, closeToys } from './toys.js';
 import { initHudIcons } from './hud-icons.js';
 import { getGems } from '../vault.js';
 
@@ -136,9 +137,10 @@ const NURSERY = { id: 'nursery', w: NURSE_W, places: NURSE_PLACES, surfaces: NUR
 let kits = null;
 const kitsNow = () => (kits ??= createKittens(SC));
 NURSERY.step = (dt) => { if (kd?.moved) moveGrab(kd.sx + camX, kd.sy - camY); stepKittens(kitsNow(), dt, cat.x, cat.y, tick); };
-NURSERY.under = (c, cx, w) => { drawBowlFood(c, kitsNow(), tick); drawShower(c, tick); drawKittens(c, kitsNow(), tick, (q) => q.y <= cat.y, cat.x, cx, w, kitLit()); };   // อาหารในชาม (หน้าเทอาหาร feed.js) ก่อนตัวน้อง
+NURSERY.under = (c, cx, w) => { drawBowlFood(c, kitsNow(), tick); drawShower(c, tick); drawKittens(c, kitsNow(), tick, (q) => q.y <= cat.y, cat.x, cx, w, kitLit()); drawToy(c, tick); };   // บอล/หนูของเล่นบนพื้น (หีบของเล่น toys.js)   // อาหารในชาม (หน้าเทอาหาร feed.js) ก่อนตัวน้อง
 NURSERY.front = (c, cx, w, t) => {
   drawKittens(c, kitsNow(), tick, (q) => q.y > cat.y, cat.x, cx, w, kitLit());
+  drawToyWand(c, { x: cat.x + (cat.dir < 0 ? -1 : 1) * 10 * SC, y: cat.y - 26 * SC }, tick);   // ไม้ตกแมวในมือน้องตัวหลัก
   drawNurseFront(c, cx, w, t, cat.sit?.id === 'nBox');   // มุดกล่องต้อนรับ = ผนังหน้ากล่องทับตัว
   drawFoamBursts(c, tick);   // ฟองกระเด็นตอนเหยียบอ่างอาบน้ำ (ทับตัวผู้เล่น)
   drawKittenNames(c, kitsNow(), cat.x);
@@ -364,7 +366,14 @@ function use(p) {
   }
   else if (p.kind === 'bath') {   // อ่างอาบน้ำ ห้องเลี้ยงน้อง → เลือกน้องที่จะพาไปอาบ (bath.js)
     paused = true;
-    openBath({ kits: kitsNow(), toast, sfx, onBathe: (id) => callToTub(kitsNow(), id), onClose: () => { paused = false; } });
+    openBath({ kits: kitsNow(), toast, sfx, onBathe: (id, opt) => callToTub(kitsNow(), id, opt), onClose: () => { paused = false; } });
+  }
+  else if (p.kind === 'toys') {   // หีบของเล่น ห้องเลี้ยงน้อง → เลือกของเล่น (toys.js) · เล่นจบ = น้องที่เล่นได้หัวใจ + ดูแลแบบเล่น
+    paused = true;
+    openToys({
+      kits: kitsNow(), toast, sfx, onClose: () => { paused = false; },
+      onPlay: (id) => startToy(kitsNow(), id, cat.x, (n) => toast(n > 0 ? `เล่นสนุกมาก! น้อง ${n} ตัวหายเหงาแล้ว ♥` : 'เก็บของเล่นเข้าหีบแล้ว')),
+    });
   }
   else if (p.kind === 'pick') pickFlower(p);
 }
@@ -507,6 +516,7 @@ function warp(to, x = null, msg = null) {
   sfx('warp');
   fadeDir = 1;
   fadeThen = () => {
+    if (WD === NURSERY && to !== NURSERY && kits) stopToy(kits);   // ออกจากห้องเลี้ยง = เก็บของเล่นเข้าหีบ (น้องที่เล่นแล้วได้นับ)
     WD = to;
     document.body.dataset.w = to.id;
     if (to === HALL || to === LOUNGE || to === ROOF) myAura = performance.now();   // เข้าปราสาท/ขึ้นลงชั้น = ออร่า (คนอื่นเห็นจากเหตุการณ์ของห้อง)
@@ -3061,7 +3071,7 @@ function stepFade(dt) {
 }
 function closeAll() {
   if (emoteOpen()) { toggleEmotes(false); return; }
-  if (closeFeed() || closeBath()) return;
+  if (closeFeed() || closeBath() || closeToys()) return;
   if (!$('wardOv').classList.contains('hidden')) { $('wardOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('setOv').classList.contains('hidden')) { $('setOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }
   if (!$('bagOv').classList.contains('hidden')) { $('bagOv').classList.add('hidden'); if (scene !== 'shop') paused = false; return; }

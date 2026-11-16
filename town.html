@@ -317,6 +317,22 @@
     </div>
   </div>
 
+  <!-- หีบของเล่น ห้องเลี้ยงน้อง (ผู้ใช้ 16 พ.ย. 2026) — ไม้ตกแมว · บอลกระดิ่ง · หนูของเล่น · src/town/toys.js (คลาส fd-*) -->
+  <div class="ov hidden" id="toyOv">
+    <div class="sheet feedsheet" role="dialog" aria-labelledby="toyTitle">
+      <button type="button" class="xbtn" id="toyX" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sh-head"><div><h2 id="toyTitle">หีบของเล่น</h2><small>หยิบของเล่นออกมาเล่นกับน้อง ๆ · ซื้อครั้งเดียวเล่นได้ตลอด</small></div></div>
+      <div class="toy-grid" id="toyList" role="group" aria-label="ของเล่น"></div>
+      <p class="fd-none hidden" id="toyNone">ยังไม่มีของเล่นเลย · ซื้อได้ที่ร้านของเล่นในเมือง</p>
+      <div class="fd-row">
+        <small id="toyHint"></small>
+        <button type="button" class="fd-pour" id="toyGo" disabled>เล่นเลย</button>
+      </div>
+    </div>
+  </div>
+
   <!-- พาน้องไปอาบน้ำ ห้องเลี้ยงน้อง (ผู้ใช้ 15 พ.ย. 2026) — การ์ดน้อง + หลอดความสะอาด · src/town/bath.js (คลาส fd-* ชุดเดียวกับหน้าเทอาหาร) -->
   <div class="ov hidden" id="bathOv">
     <div class="sheet feedsheet bathsheet" role="dialog" aria-labelledby="bathTitle">
@@ -325,6 +341,13 @@
       </button>
       <div class="sh-head"><div><h2 id="bathTitle">เวลาอาบน้ำ</h2><small id="bathSub"></small></div></div>
       <div class="fd-bowls" id="bathCats" role="group" aria-label="น้องในห้อง"></div>
+      <!-- แชมพูหอมจากร้าน (ผู้ใช้ 16 พ.ย. 2026) — กดเลือก/ไม่เลือก · ใช้ 1 ขวดต่อการอาบ 1 ครั้ง -->
+      <button type="button" class="fd-food bath-soap" id="bathSoap" aria-pressed="false">
+        <canvas class="fd-ico" id="bathSoapIco"></canvas>
+        <b>ใช้แชมพูหอม</b>
+        <small class="fd-aff">ฟองหอม ♥♥♥ ผูกพัน · สะอาดนานขึ้น</small>
+        <span class="fd-qty" id="bathSoapN">×0</span>
+      </button>
       <div class="fd-row">
         <small id="bathHint"></small>
         <button type="button" class="fd-pour" id="bathGo" disabled>พาไปอาบน้ำ</button>

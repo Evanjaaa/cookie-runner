@@ -262,11 +262,13 @@ export function stepKittens(kits, dt, px, py, tick) {
   // ฝักบัวเปิดตอนมีน้องกำลังลงอ่าง/แช่น้ำ (ค่อย ๆ เปิด-ปิด)
   const wantShower = kits.some((q) => q.st === 'bath' || (q.st === 'hop' && q.hop?.next === 'bath')) ? 1 : 0;
   SHOWER += (wantShower - SHOWER) * Math.min(1, 0.05 * dt);
+  if (TOY) stepToy(kits, dt, P);
 
   for (const k of kits) {
     k.t += dt;
     if (k.cool > 0) k.cool -= dt;
     if (k.land > 0) k.land = Math.max(0, k.land - dt);
+    if (k.wetT > 0) k.wetT -= dt;
     if (k.dizzyLeft > 0) k.dizzyLeft -= dt;
     // ฝุ่นตอนวิ่ง: ก้อนฝุ่นนุ่ม ๆ หลุดจากเท้าทุกจังหวะ ค้างกับพื้น พองแล้วจางลอยขึ้น
     if (k.dust) { for (const d of k.dust) { d.t += dt; d.y -= 0.12 * dt; d.x += d.vx * dt; } k.dust = k.dust.filter((d) => d.t < 34); }
@@ -286,6 +288,7 @@ export function stepKittens(kits, dt, px, py, tick) {
     for (const h of k.hearts) h.t += dt;
     k.hearts = k.hearts.filter((h) => h.t < 70);
     if (k.st === 'held') { stepHeld(k, kits, dt); continue; }   // ถูกยกอยู่ = ตามนิ้ว
+    if (k.st === 'toy') { stepToyKit(k, dt, P); continue; }   // เล่นของเล่นจากหีบ (ดูหัวข้อ "เล่นของเล่น")
     const dP = Math.abs(px - k.x);
 
     // ผู้เล่นกระโดดใกล้ ๆ → สะดุ้งเด้งตัว แล้วหันมามอง (เฉพาะตอนอยู่บนเลน ไม่ได้ทำอะไรสำคัญ)
@@ -347,6 +350,7 @@ export function stepKittens(kits, dt, px, py, tick) {
         else if (H.next === 'route') { if (k.route?.length) { rest(k, 'step', k.lastPt?.rest || 14 + Math.random() * 16); if (!k.lastPt?.sit) face(k, k.route[0].x); } else routeNext(k, kits, P); }
         else if (H.next === 'bath') { rest(k, 'bath', BATH_T); k.dir = -1; }
         else if (H.next === 'dry') dryOff(k);
+        else if (H.next === 'toyland') toyLand(k);   // กระโจน/ตะครุบลงพื้น = เล่นต่อ
         else if (H.next === 'eatland' || H.next === 'drinkland') { k.then = H.next === 'eatland' ? 'eat' : 'drink'; arrive(k, px); }   // ลงหลังชาม/น้ำพุแล้ว = เริ่มกิน/ดื่ม
         else { k.spot = null; pick(k, kits, P); }
       }
@@ -414,7 +418,7 @@ export function stepKittens(kits, dt, px, py, tick) {
       if (!k.cat.demoLv) { try { care(k.cat.id, 'drink'); } catch { /* ไม่บันทึก */ } }
     }
     if (k.st === 'litter') { k.useLitter = false; k.y = GY + 3; addHeart(k); snd('kitHappy', k, 20); }
-    if (k.st === 'bath') { hopTo(k, S.tub.out, laneY(k), 34, 28, 'dry'); continue; }
+    if (k.st === 'bath') { k.wetT = 420; hopTo(k, S.tub.out, laneY(k), 34, 28, 'dry'); continue; }   // ออกจากอ่าง = ตัวเปียก ~7 วิ (drawWet)
     if (k.st === 'dry') { k.bathing = false; addHeart(k); k.meowT = 0; }
     if (k.st === 'bath') { /* จบแช่ → กระโดดออก (ข้างล่าง) */ }
     pick(k, kits, P);
@@ -502,21 +506,252 @@ const BATH_T = 560;   // แช่ในอ่าง ~9 วิ (ฟองฟู 
 function dryOff(k) {
   rest(k, 'dry', 80);
   // อาบเสร็จ = นับเป็นการดูแล (สะอาดเต็มหลอด · EXP ตามระบบเดิม) — น้องตัวอย่างไม่บันทึก
-  if (!k.cat.demoLv) { try { care(k.cat.id, 'bathe'); } catch { /* ข้อมูลน้องหาย = แค่ไม่บันทึก */ } }
+  if (!k.cat.demoLv) { try { care(k.cat.id, 'bathe', k.shampoo ? { shampoo: true, aff: 3 } : {}); } catch { /* ข้อมูลน้องหาย = แค่ไม่บันทึก */ } }
+  if (k.shampoo) { addHeart(k); addHeart(k); }
+  k.shampoo = false;
 }
 /**
  * ส่งน้องไปอาบน้ำ (หน้าเลือกน้อง town/bath.js) · คืน false = อ่างไม่ว่าง / ห้องยังไม่มีอ่าง
  * น้องหลับ/อยู่บนคอนโด = ตื่น/ลงมาก่อน · กลางอากาศ/เล่นกับเพื่อน/กำลังกิน = ทำให้จบก่อนแล้วค่อยมา
  */
-export function callToTub(kits, catId) {
+export function callToTub(kits, catId, opt = {}) {
   const k = kits.find((q) => q.cat.id === catId);
   if (!k || !NURSE_SPOTS.tub || tubBusy(kits)) return false;
   k.wantBath = true;
+  k.shampoo = !!opt.shampoo;   // แชมพูหอม (bath.js): ฟองชมพูหอม หัวใจลอย · อาบเสร็จสะอาดนานขึ้น (cats.js cleanSlow)
   k.meowT = 0;
   if (k.st === 'perch' || k.st === 'window') { k.t = k.dur; return true; }
   if (k.st === 'hop' || k.other || k.st === 'eat' || k.route || k.st === 'litter') return true;   // กำลังไต่/กระโดด = จบก่อนแล้วค่อยมา
   pick(k, kits, { x: -1e6, y: GY, moving: false });
   return true;
+}
+
+// ── เล่นของเล่นจากหีบ (ผู้ใช้ 16 พ.ย. 2026 — หน้าเลือก town/toys.js) ──
+// ball    บอลกระดิ่ง: กลิ้ง/เด้ง กระดิ่งดังทุกครั้งที่กระทบพื้น · น้องวิ่งไล่แล้วเขี่ยให้กลิ้งต่อ
+// mouse   หนูของเล่น: วิ่งวุ่นเป็นพัก ๆ · น้องหมอบย่องก้นส่ายแล้วกระโจนตะครุบ (โดน = หนูร้องจี๊ดแล้ววิ่งหนี)
+// feather ไม้ตกแมว: ขนนกห้อยปลายไม้ในมือผู้เล่น (ตามผู้เล่นไปทุกที่) · น้องตามมาแล้วกระโดดตะปบ
+// เล่นจบ (~15 วิ) = น้องที่ได้เล่นนับเป็นการดูแลแบบเล่น (cats.js care 'play' — ความผูกพัน +2) · ซื้อครั้งเดียวเล่นได้ตลอด (ไม่หักของ)
+const TOY_T = 900;
+let TOY = null;
+export const toyNow = () => TOY;
+/** เริ่มเล่น → จำนวนน้องที่มาเล่น (น้องที่ทำธุระอยู่ — อาบน้ำ กิน ห้องน้ำ อยู่ที่สูง — ไม่มา) · onEnd(n) = เล่นจบ */
+export function startToy(kits, kind, px, onEnd = null) {
+  if (TOY) return -1;
+  TOY = { kind, t: 0, x: clampX(px + 70), vx: 0, z: 0, vz: 0, rot: 0, wait: 30, tx: null, face: 1, fx: px, fy: GY - 60, onEnd };
+  if (kind === 'ball') { TOY.vx = 4.2; TOY.vz = 3.2; }
+  let n = 0;
+  for (const k of kits) {
+    // เล่นกันเอง (ทัก/ไล่จับ/รอเพื่อน) = มาเล่นของเล่นได้ (เลิกคู่) · ทำธุระ/อยู่ที่สูง = ไม่มา
+    const busy = k.bathing || k.wantBath || k.inBed || k.route || k.parkour
+      || ['held', 'hop', 'bath', 'dry', 'eat', 'drink', 'litter', 'perch', 'shelfsit', 'window', 'jumpplay'].includes(k.st)
+      || Math.abs(k.y - laneY(k)) > 3;
+    if (busy) continue;
+    unpair(k); k.spot = null; k.useWater = false;
+    k.st = 'toy'; k.t = 0; k.tp = 'idle'; k.toyCd = rnd(10, 50); k.played = 0; k.crT = 0;
+    if (n % 2 === 0) k.meowT = 0;
+    n++;
+  }
+  return n;
+}
+/** เลิกเล่นทันที (ออกจากห้อง) */
+export function stopToy(kits) { if (TOY) endToy(kits); }
+function endToy(kits) {
+  const T = TOY;
+  TOY = null;
+  let n = 0;
+  for (const k of kits) {
+    if (k.played > 0) {
+      n++; addHeart(k); addHeart(k); k.meowT = 0;
+      if (!k.cat.demoLv) { try { care(k.cat.id, 'play', { aff: 2 }); } catch { /* ไม่บันทึก */ } }
+    }
+    k.played = 0;
+    if (k.st === 'toy') rest(k, 'sit', rnd(90, 200));
+  }
+  T?.onEnd?.(n);
+}
+function stepToy(kits, dt, P) {
+  const T = TOY, R = NURSE_SPOTS.roam;
+  T.t += dt;
+  if (P.dir) T.face = P.dir;
+  if (T.t > TOY_T) { endToy(kits); return; }
+  if (T.kind === 'ball') {
+    T.x += T.vx * dt; T.vx *= Math.pow(0.986, dt); T.rot += (T.vx * dt) / 7;
+    if (T.x < R[0] + 20) { T.x = R[0] + 20; T.vx = Math.abs(T.vx) * 0.8; }
+    if (T.x > R[1] - 20) { T.x = R[1] - 20; T.vx = -Math.abs(T.vx) * 0.8; }
+    T.vz -= 0.32 * dt; T.z += T.vz * dt;
+    if (T.z < 0) {
+      T.z = 0;
+      if (T.vz < -1.2) { if (SOUND) SOUND('bell', T.x); T.vz = -T.vz * 0.45; } else T.vz = 0;
+    }
+  } else if (T.kind === 'mouse') {
+    if (T.wait > 0) T.wait -= dt;
+    else {
+      if (T.tx == null) { T.tx = clampX(T.x + (Math.random() < 0.5 ? -1 : 1) * rnd(120, 280)); if (SOUND) SOUND('squeak', T.x, 0.4); }
+      const d = T.tx - T.x, st = Math.min(Math.abs(d), 3.6 * dt);
+      T.x += Math.sign(d) * st; T.face = Math.sign(d) || T.face;
+      if (Math.abs(d) < 1) { T.tx = null; T.wait = rnd(40, 95); }
+    }
+  } else {   // ไม้ตกแมว: ปลายขนนกส่ายหน้าน้องตัวหลัก ตามผู้เล่น
+    T.fx = P.x + T.face * 62 + Math.sin(T.t * 0.07) * 16;
+    T.fy = P.y - 58 + Math.sin(T.t * 0.11) * 12;
+  }
+}
+/** เดินไล่ไปที่ x (คืน true = ถึงระยะ near แล้ว) — ไกล = วิ่งจู๊ด */
+function toyChase(k, x, near, dt) {
+  const d = x - k.x, a = Math.abs(d);
+  if (a <= near) return true;
+  k.run = a > 110;
+  k.tp = k.run ? 'run' : 'walk';
+  const sp = ((STRIDE * k.k) / BEAT) * (k.run ? DASH : 1.5), st = Math.min(a - near * 0.5, sp * dt);
+  k.x = clampX(k.x + Math.sign(d) * st); k.dir = Math.sign(d) || k.dir;
+  const dy = laneY(k) - k.y; k.y += Math.sign(dy) * Math.min(Math.abs(dy), sp * 0.6 * dt);
+  k.ph += st / (STRIDE * k.k * (k.run ? DASH_STRIDE : 1));
+  return false;
+}
+function stepToyKit(k, dt, P) {
+  const T = TOY;
+  if (!T) { rest(k, 'sit', 120); return; }
+  if (k.toyCd > 0) k.toyCd -= dt;
+  k.run = false;
+  if (T.kind === 'ball') {
+    if (!toyChase(k, T.x, 24, dt)) return;
+    k.tp = 'bat'; face(k, T.x);
+    if (k.toyCd <= 0 && T.z < 6) {   // เขี่ยบอลให้กลิ้งไปอีกทาง
+      const dir = T.x >= k.x ? 1 : -1;
+      T.vx = dir * rnd(3.2, 6.4); T.vz = rnd(2.2, 4.2);
+      k.toyCd = rnd(45, 100); k.played++;
+      if (Math.random() < 0.3) addHeart(k);
+    }
+  } else if (T.kind === 'mouse') {
+    const d = Math.abs(T.x - k.x);
+    if (k.tp === 'crouch') {   // หมอบย่อง ก้นส่าย แล้วกระโจน
+      face(k, T.x);
+      k.crT -= dt;
+      if (k.crT <= 0) {
+        k.played++; k.toyCd = rnd(70, 140);
+        hopTo(k, clampX(T.x + (T.wait > 0 ? 0 : T.face * 20)), laneY(k), 22, 22, 'toyland');
+      }
+      return;
+    }
+    if (d > 150 || T.wait <= 0) { if (toyChase(k, T.x - Math.sign(T.x - k.x) * 60, 30, dt)) k.tp = 'look'; return; }
+    if (k.toyCd <= 0 && d > 26) { k.tp = 'crouch'; k.crT = rnd(22, 40); return; }
+    k.tp = 'look'; face(k, T.x);
+  } else {
+    if (!toyChase(k, T.fx, 34, dt)) return;
+    face(k, T.fx);
+    k.tp = 'look';
+    if (k.toyCd <= 0) {   // กระโดดตะปบขนนก (สูงตามความสูงของขนนก)
+      k.played++; k.toyCd = rnd(55, 110);
+      hopTo(k, clampX(T.fx + rnd(-10, 10)), laneY(k), Math.min(48, Math.max(24, (k.y - T.fy) * 0.55)), 26, 'toyland');
+    }
+  }
+}
+/** ลงพื้นหลังกระโจน: ตะครุบหนูโดน = หนูร้องจี๊ดแล้ววิ่งหนี + หัวใจ */
+function toyLand(k) {
+  k.st = 'toy'; k.t = 0; k.tp = 'idle';
+  const T = TOY;
+  if (!T) { rest(k, 'sit', 120); return; }
+  if (T.kind === 'mouse' && Math.abs(k.x - T.x) < 22) {
+    addHeart(k); k.meowT = 0;
+    if (SOUND) SOUND('squeak', T.x, 0.9);
+    T.wait = 0; T.tx = clampX(T.x + (k.dir || 1) * rnd(160, 260));
+  }
+}
+/** วาดของเล่นบนพื้น (บอล/หนู) — หลังน้องที่อยู่ด้านหน้า · ไม้ตกแมววาดแยก (drawToyWand) ทับตัวผู้เล่น */
+export function drawToy(c, tick) {
+  const T = TOY;
+  if (!T || T.kind === 'feather') return;
+  const y = GY + 30;
+  c.save();
+  c.fillStyle = 'rgba(74,42,90,.22)';
+  c.beginPath(); c.ellipse(T.x, y + 1, (T.kind === 'ball' ? 11 : 16) * (1 - Math.min(0.5, T.z / 40)), 3, 0, 0, TAU); c.fill();
+  if (T.kind === 'ball') {   // ใหญ่ขึ้น 1.4 เท่า (รอบแรกเล็กไปเห็นไม่ชัดข้างน้อง)
+    const by = y - 10 - T.z;
+    c.translate(T.x, by); c.scale(1.4, 1.4); c.rotate(T.rot);
+    const g = c.createRadialGradient(-2.5, -3, 1, 0, 0, 8);
+    g.addColorStop(0, '#FFE1EE'); g.addColorStop(0.55, '#FF8FB8'); g.addColorStop(1, '#E2578F');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, 7, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1.2;
+    c.beginPath(); c.arc(0, 0, 7, -0.6, 0.9); c.stroke();
+    c.beginPath(); c.moveTo(-6, 2); c.quadraticCurveTo(0, 6, 6, 2); c.stroke();
+    c.rotate(-T.rot);
+    c.fillStyle = '#FFD45A'; c.beginPath(); c.arc(0, -7.5, 2.3, 0, TAU); c.fill();
+    c.fillStyle = '#B8862E'; c.beginPath(); c.arc(0, -6.8, 0.8, 0, TAU); c.fill();
+  } else {
+    const f = T.face || 1, run = T.wait <= 0 ? Math.sin(tick * 0.9) : 0;
+    c.translate(T.x, y - 6); c.scale(f * 1.5, 1.5);   // ใหญ่ขึ้น 1.5 เท่า
+    c.strokeStyle = '#E79AB5'; c.lineWidth = 1.3; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-9, 1); c.bezierCurveTo(-16, -1 + run * 2, -19, 5, -24, 2 - run * 2); c.stroke();   // หาง
+    const g = c.createLinearGradient(0, -6, 0, 4);
+    g.addColorStop(0, '#9E92B4'); g.addColorStop(1, '#6E6188');   // เทาเข้ม — ตัดกับพื้นลาเวนเดอร์ (เดิมสีจางกลืนพื้น)
+    c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, 10, 5.4, 0, 0, TAU); c.fill();
+    c.beginPath(); c.ellipse(9, 0.8, 4.5, 3.6, 0, 0, TAU); c.fill();
+    c.fillStyle = '#FFB7CF'; c.beginPath(); c.arc(6.5, -4, 2.6, 0, TAU); c.fill();   // หู
+    c.fillStyle = '#4A2A5A'; c.beginPath(); c.arc(10.6, -0.4, 0.9, 0, TAU); c.fill();   // ตา
+    c.fillStyle = '#FF8FB3'; c.beginPath(); c.arc(13.4, 1.2, 1.1, 0, TAU); c.fill();   // จมูก
+  }
+  c.restore();
+}
+/** ไม้ตกแมวในมือผู้เล่น: ด้ามจากอุ้งมือ → เชือก → ขนนกชมพูม่วง (วาดทับตัวผู้เล่น) · hand = จุดมือผู้เล่น (พิกัดโลก) */
+export function drawToyWand(c, hand, tick) {
+  const T = TOY;
+  if (!T || T.kind !== 'feather') return;
+  const tipX = hand.x + T.face * 34, tipY = hand.y - 26;
+  c.save();
+  c.lineCap = 'round';
+  c.strokeStyle = '#C08A5A'; c.lineWidth = 2.4;
+  c.beginPath(); c.moveTo(hand.x, hand.y); c.lineTo(tipX, tipY); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 0.9;
+  c.beginPath(); c.moveTo(tipX, tipY); c.quadraticCurveTo((tipX + T.fx) / 2, Math.max(tipY, T.fy) + 6, T.fx, T.fy); c.stroke();
+  c.translate(T.fx, T.fy); c.scale(1.5, 1.5); c.rotate(Math.sin(tick * 0.13) * 0.4);
+  for (const [col, a, l] of [['#FF8FB8', -0.5, 15], ['#C8A8F5', 0, 17], ['#FFD45A', 0.5, 13]]) {
+    c.save(); c.rotate(a);
+    c.fillStyle = col; c.beginPath(); c.ellipse(0, l / 2, 3.2, l / 2, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(0, 1); c.lineTo(0, l - 1); c.stroke();
+    c.restore();
+  }
+  c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(0, 0, 1.8, 0, TAU); c.fill();
+  c.restore();
+}
+
+/** วาดหัวน้องซ้ำ (ตัดเหนือคาง) ทับของที่อยู่หน้าตัว — ชาม/น้ำพุ · มีชั้นแสง = แสงขอบเหมือนตัว (ไม่วาดเงาทอดซ้ำ) */
+function headOver(c, k, P, chin, lit) {
+  c.save(); c.beginPath(); c.rect(k.x - 200 * k.k, k.y - 420 * k.k, 400 * k.k, chin - (k.y - 420 * k.k)); c.clip();
+  const fn = (g) => drawChibi(g, k.x, k.y, k.k, { ...P, look: k.look });
+  if (lit) lit.draw(c, k, null, fn); else fn(c);
+  c.restore();
+}
+/** น้ำกระเด็นตอนสะบัดตัว + ตัวเปียกหยดน้ำหลังอาบ (ผู้ใช้ 16 พ.ย.) */
+function drawWet(c, k, tick) {
+  const shake = k.st === 'dry' && k.t < 45;
+  if (!shake && !(k.wetT > 0)) return;
+  c.save(); c.translate(k.x, k.y); c.scale(k.k, k.k);
+  c.strokeStyle = 'rgba(70,140,200,.75)'; c.lineWidth = 2.5;
+  if (shake) {   // สะบัดตัว: หยดน้ำพุ่งออกรอบตัวเป็นวง
+    for (let i = 0; i < 14; i++) {
+      const a = ((k.t * 1.6 + i * 9) % 30) / 30, ang = -Math.PI * (0.05 + 0.9 * ((i * 0.37) % 1)) + (i % 2 ? 0.2 : -0.2);
+      const r = 120 + 190 * a, px = Math.cos(ang) * r, py = -190 + Math.sin(ang) * r * 0.75 + 140 * a * a;
+      c.globalAlpha = Math.sin(a * Math.PI);
+      c.fillStyle = '#A8DBF6';
+      c.beginPath(); c.ellipse(px, py, 9, 13, ang + Math.PI / 2, 0, TAU); c.fill(); c.stroke();
+    }
+  }
+  if (k.wetT > 0) {   // ตัวเปียก: เม็ดน้ำวาวบนขน + หยดน้ำไหลหยดลงพื้นทีละเม็ด ค่อย ๆ แห้ง
+    const f = Math.min(1, k.wetT / 120);
+    for (const [x, y, r] of [[-70, -250, 9], [62, -270, 8], [-30, -120, 8], [55, -95, 7], [-85, -60, 7], [10, -310, 7]]) {
+      c.globalAlpha = 0.85 * f;
+      c.fillStyle = 'rgba(200,236,255,.9)';
+      c.beginPath(); c.ellipse(x, y, r * 0.75, r, 0, 0, TAU); c.fill();
+      c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x - r * 0.25, y - r * 0.35, r * 0.28, 0, TAU); c.fill();
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (((tick + k.tOff) * 0.9 + i * 23) % 70) / 70, x = [-80, -20, 45, 85][i];
+      c.globalAlpha = f * (1 - a);
+      c.fillStyle = '#A8DBF6';
+      c.beginPath(); c.ellipse(x, -40 + a * 60, 6, 9, 0, 0, TAU); c.fill(); c.stroke();
+    }
+  }
+  c.restore();
 }
 
 /** ท่าวาดของน้องตามสถานะ */
@@ -562,6 +797,23 @@ function pose(k, tick) {
         ? { view: 'q', t, act: 'idle', walk4: Math.floor(k.ph) % 4, walkPhase: k.ph, faceRight }
         : { view: 'q', t, act: mouth || 'idle', faceRight };
     case 'sit': case 'wait': case 'sniff': return { view: 'sit', t, act: mouth || 'auto', faceRight };
+    case 'toy': {   // เล่นของเล่น: วิ่ง/เดินไล่ · หมอบย่อง (ก้นส่าย) · เขี่ยบอล · เงยมองขนนก
+      if (k.tp === 'run' || k.tp === 'walk') {
+        if (k.run) { const R = chibiRunPose(k.ph % 4); return { ...R.opt, t, faceRight, rot: R.rot, lift: R.lift }; }
+        return { view: 'q', t, act: mouth || 'idle', walk4: Math.floor(k.ph) % 4, walkPhase: k.ph, faceRight };
+      }
+      if (k.tp === 'crouch') return { view: 'q', t, act: 'idle', faceRight, fx: { sy: 0.84, sx: 1.1, ear: -0.25, tailRot: 0.35 * Math.sin(t * 0.45), head: { dy: 6 } } };
+      if (k.tp === 'bat') { const w = Math.max(0, Math.sin(k.t * 0.5)); return { view: 'q', t, act: 'idle', faceRight, fx: { ear: 0.12, mouth: 0.25 * w, head: { dy: 4 * w } } }; }
+      if (k.tp === 'look') {
+        // นั่งมองของเล่น: ลูกตาข้างในกรอกตามของ (ไม้ตกแมว = มองขึ้นหาขนนก · บอล/หนู = มองต่ำ) ตาแป๊ว หัวเอียงไปทางของ (ผู้ใช้ 16 พ.ย.)
+        const T = TOY, tx = T ? (T.kind === 'feather' ? T.fx : T.x) : k.x, ty = T ? (T.kind === 'feather' ? T.fy : GY + 24) : k.y - 300 * k.k;
+        const hx = k.x, hy = k.y - 200 * k.k, gl = Math.hypot(tx - hx, ty - hy) || 1;
+        const gaze = { x: Math.max(-1, Math.min(1, ((tx - hx) / gl) * 1.6)), y: Math.max(-1, Math.min(1, ((ty - hy) / gl) * 1.3)) };
+        const side = Math.max(-1, Math.min(1, (tx - hx) / 60));
+        return { view: 'sit', t, act: 'idle', faceRight, fx: { ear: 0.18, mouth: 0.12, gaze, puppy: T?.kind === 'feather' ? 1 : 0.6, head: { dy: T?.kind === 'feather' ? -4 : 2, rot: -0.14 * side * (faceRight ? -1 : 1) + 0.04 * Math.sin(t * 0.04) } } };
+      }
+      return { view: 'q', t, act: mouth || 'idle', faceRight };
+    }
     case 'eat': {
       // ท่ากินข้าว (cat-lab): ก้มหน้าจุ่มชาม ผงกหัวงับ ๆ → ช่วงท้ายเงยหน้าเคี้ยวตาหลับพริ้ม
       const end = k.dur - 70, down = Math.min(1, k.t / 22) * (k.t > end ? Math.max(0, 1 - (k.t - end) / 16) : 1);
@@ -638,6 +890,12 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw, lit = null) {
       c.save(); c.translate(T.x, T.rim); c.scale(k.k, k.k);
       // ฟองลอยขึ้นส่ายไปมา (มากขึ้น ลอยช้า ๆ บางลูกลอยออกนอกอ่าง)
       for (let i = 0; i < 20; i++) { const a = (((tick + k.tOff) * (0.45 + 0.25 * ((i * 0.61) % 1)) + i * 23) % 190) / 190; bubble(c, -230 + 460 * ((i * 0.37) % 1) + Math.sin(a * 7 + i) * 22 + (i % 3 - 1) * a * 60, -30 - a * 420, 7 + 6 * ((i * 0.53) % 1), Math.sin(a * Math.PI) * 0.95); }
+      // แชมพูหอม (bath.js): หัวใจชมพูลอยหอมฟุ้งขึ้นจากอ่าง
+      if (k.shampoo) for (let i = 0; i < 6; i++) {
+        const a = (((tick + k.tOff) * 0.5 + i * 37) % 160) / 160;
+        c.save(); c.globalAlpha = Math.sin(a * Math.PI) * 0.9; c.fillStyle = i % 2 ? '#FF8FB8' : '#FFB7D2';
+        heart(c, -160 + 64 * i + Math.sin(a * 6 + i) * 18, -60 - a * 380, 20 + 8 * (i % 3)); c.fill(); c.restore();
+      }
       c.restore();
       c.save(); c.beginPath(); c.rect(k.x - 200, k.y - 400, 400, 400 - (k.y - T.rim) + 1); c.clip();   // ใต้ปากอ่าง = จมน้ำ
     }
@@ -692,7 +950,9 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw, lit = null) {
           g.restore();
         } else drawChibi(g, k.x, k.y, k.k, { ...P, look: k.look });
       };
-      if (plainLit) lit.draw(c, k, ground, body); else body(c);
+      if (plainLit) lit.draw(c, k, ground, body);
+      else if (inTub && lit) lit.draw(c, k, null, body);   // แช่ในอ่าง: แสงขอบ/เงาในตัว (ไม่มีเงาทอด — ตัวจมน้ำ) · ผู้ใช้ 16 พ.ย.
+      else body(c);
     }
     if (inTub) {
       c.restore();
@@ -722,9 +982,7 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw, lit = null) {
       drawNurseWater(c, tick);
       // หัวที่ก้มลงอ่างอยู่หน้าน้ำ (ผู้ใช้ 15 พ.ย.: บังน้ำเฉพาะหัว) — วาดน้องซ้ำ ตัดเฉพาะเหนือคาง
       const hdy = P.fx?.head?.dy || 0, chin = k.y + (-116 + hdy) * k.k;
-      c.save(); c.beginPath(); c.rect(k.x - 200 * k.k, k.y - 420 * k.k, 400 * k.k, chin - (k.y - 420 * k.k)); c.clip();
-      drawChibi(c, k.x, k.y, k.k, { ...P, look: k.look });
-      c.restore();
+      headOver(c, k, P, chin, lit);
       const W = NURSE_SPOTS.water;
       for (let i = 0; i < 4; i++) {
         const a = ((k.t + i * 7) % 26) / 26;
@@ -737,7 +995,11 @@ export function drawKittens(c, kits, tick, pass, px, camX, vw, lit = null) {
       drawNurseBowl(c, k.bowl);
       const d = kitDish(k), b = bowlSpot(k);
       if (d && b) drawFoodMound(c, b.x, GY - BOWL_TOP, d.food, 1 - (k.st === 'eat' ? k.eatK : 0), tick + k.tOff);
+      // หน้าน้องอยู่หน้าขอบชาม (ผู้ใช้ 16 พ.ย.: "เลเยอร์หน้าน้องบังหน้าจานข้าว ปากอยู่พอดีกับข้าวเหมือนเดิม") — วาดหัวซ้ำเหนือคาง
+      const hdy = P.fx?.head?.dy || 0;
+      headOver(c, k, P, k.y + (-116 + hdy) * k.k, lit);
     }
+    drawWet(c, k, tick);
     if (k.st === 'dry' && k.t > 40) {
       // อาบเสร็จ: ประกายวิ้งรอบตัว
       c.save(); c.translate(k.x, k.y); c.scale(k.k, k.k);

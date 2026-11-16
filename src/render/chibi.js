@@ -94,7 +94,8 @@ export const CHIBI_LOOKS = {
     faceBlaze: false, plainTail: true, earTint: '#7A5440', tailTint: '#7A5440',
     patches: {
       head: [[0, -158, 66, 46, '#A58468', 0.15, true]],   // แต้มหน้าฟุ้งนุ่มรอบจมูก-ปาก (เด็ก = อ่อนกว่าตัวโต)
-      body: [[-86, -62, 15, 14, '#7A5440', 0.55], [86, -62, 15, 14, '#7A5440', 0.55], [-33, -3, 23, 12, '#7A5440', 0.55], [33, -3, 23, 12, '#7A5440', 0.55]],
+      // เท้าแต้มน้ำตาล (เดิมมีแต้มมือที่ ±86 ด้วย — ท่านั่งไปตกข้างสะโพกเป็นปื้นน้ำตาล ผู้ใช้ 16 พ.ย. ให้เอาออก · มือแต้มสีด้วย paw อยู่แล้ว)
+      body: [[-33, -3, 23, 12, '#7A5440', 0.55], [33, -3, 23, 12, '#7A5440', 0.55]],
     },
     iris: { all: { top: '#DDF0FF', bot: '#4E9BE6', ring: '#2E6FB8', coreIn: '#1B2638', coreOut: '#070B12' } }, eyeStyle: 'almond', grumpy: true,   // หน้ากวนแบบตัวโต (เด็ก = ปรือน้อยกว่า)
     belly: 'none', paw: '#7A5038', eyeStyle: 'grumpy', grumpy: false, nose: '#5A3628',   // ตาหน้ากวนแบบตัวโต (ตาเหยี่ยวสีฟ้าที่เคยใช้ เก็บไว้ใน EYE_PRESETS.hawkBlue)   // ตาใหม่: อัลมอนด์ฟ้า เปลือกตาแบน (หน้ากวนนิด ๆ) ตาดำโต · อุ้งเท้าแต้มน้ำตาลเข้ม
@@ -616,17 +617,29 @@ function eye(ctx, x, y, rx, ry, k, out, look, mx = out, my = 1) {
   const h = ry * k;
   ctx.save();
   ctx.translate(x, y + ry * (1 - k) * 0.6);
-  if (look.eyeStyle === 'supha') { suphaEye(ctx, rx, h, out, look); ctx.restore(); return; }
-  if (look.eyeStyle === 'wilat' || look.eyeStyle === 'siamese') { almondEye(ctx, rx, h, out, look); ctx.restore(); return; }
-  if (look.eyeStyle === 'doll') { dollEye(ctx, rx, h, out, look); ctx.restore(); return; }
-  if (look.eyeStyle === 'grumpy') { grumpyEye(ctx, rx, h, out); ctx.restore(); return; }
-  if (look.disc) { discEye(ctx, rx, h, out, look.disc); ctx.restore(); return; }
+  const EF = EYE_FX;
+  if (EF?.p) ctx.scale(1 + 0.04 * EF.p, 1 + 0.05 * EF.p);   // ตาแป๊ว = ตาโตขึ้นนิด (กลาง ๆ — ผู้ใช้ 16 พ.ย.)
+  // ตาแบบพิเศษ (ศุภลักษณ์ อัลมอนด์ ตุ๊กตา หน้ากวน แผ่นกลม): วาดตามแบบเดิม แล้วแต้มประกายแป๊วทับในขอบตา
+  const special = look.eyeStyle === 'supha' ? () => suphaEye(ctx, rx, h, out, look)
+    : look.eyeStyle === 'wilat' || look.eyeStyle === 'siamese' ? () => almondEye(ctx, rx, h, out, look)
+      : look.eyeStyle === 'doll' ? () => dollEye(ctx, rx, h, out, look)
+        : look.eyeStyle === 'grumpy' ? () => grumpyEye(ctx, rx, h, out)
+          : look.disc ? () => discEye(ctx, rx, h, out, look.disc) : null;
+  if (special) {
+    special();
+    if (EF?.p) { ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, rx * 0.92, h * 0.88, 0, 0, Math.PI * 2); ctx.clip(); puppyShine(ctx, rx, h, EF.p); ctx.restore(); }
+    ctx.restore();
+    return;
+  }
   const E = new Path2D();
   E.ellipse(0, 0, rx, h, 0, 0, Math.PI * 2);
   ctx.fillStyle = '#FFFFFF';
   ctx.fill(E);
   ctx.save();
   ctx.clip(E);
+  // ลูกตาข้างในเลื่อนไปทางที่มอง (ตัดในขอบตา — เห็นตาขาวเสี้ยวฝั่งตรงข้าม)
+  // เลื่อนพอเห็นว่ามอง ไม่มากจนเห็นตาขาวเยอะ (ผู้ใช้ 16 พ.ย.: ลายสลิดตาขาวเยอะไป)
+  if (EF && (EF.gx || EF.gy)) ctx.translate(EF.gx * rx * 0.15, EF.gy * h * 0.12);
   const IR = look.iris?.[String(out)] || look.iris?.all;
   if (IR) {
     ROUND_HL_GRUMPY = !!look.grumpy;
@@ -674,6 +687,7 @@ function eye(ctx, x, y, rx, ry, k, out, look, mx = out, my = 1) {
     ctx.ellipse(-mx * rx * 0.08, -my * h * 0.08, rx * 0.97, h * 0.97, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+  if (EF?.p) puppyShine(ctx, rx, h, EF.p);   // เลื่อนตามลูกตา (อยู่ในกรอบที่เลื่อนแล้ว)
   ctx.restore();
   ctx.strokeStyle = look.gold || look.iris ? INK : look.eye;
   ctx.lineWidth = LW * 0.6;   // ขอบตาบางกว่าเส้นตัว (ผู้ใช้ 14 พ.ย.) — แถบขนตาด้านนอกคงเดิม
@@ -978,6 +992,26 @@ function whiskers(ctx, ex, ey, side, t, look, k = 1) {
  *   doll   ลายวัว      ตาดำโตมาก · ประกายวงกลมใหญ่ + วงกลางล่าง + แถบแสงล่าง (ตาตุ๊กตา)
  */
 let ROUND_HL_GRUMPY = false;   // วิเชียรมาศหน้ากวน: ประกายอยู่ใต้เปลือกตา (ตั้งใน eye())
+/**
+ * ตาตามของ + ตาแป๊ว (ผู้ใช้ 16 พ.ย. 2026: ไม้ตกแมว — "ลูกตาข้างในมองไม้ที่ขยับไปมา · วาดตาแป๊ว ๆ")
+ * ตั้งทุกครั้งที่ drawChibi เรียก (opt.fx.gaze = { x, y } −1..1 ทิศมองบนจอ · opt.fx.puppy 0..1) · ใช้กับตาแบบหลัก (อัญมณี/ทอง/สีเดียว)
+ */
+let EYE_FX = null;
+/**
+ * ประกายตาแป๊ว (กลาง ๆ — ผู้ใช้ 16 พ.ย.: "ไม่ต้องแบ๊วเยอะขนาดนั้น · ลายสลิดตาขาวเยอะไป")
+ * ประกายรองเล็ก ๆ หนึ่งดวง + จุดจิ๋ว + ขอบล่างฉ่ำจาง ๆ — ไม่ทับประกายเดิมของตาแต่ละแบบ
+ */
+function puppyShine(ctx, rx, h, p) {
+  ctx.save();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 0.7 * p;
+  ctx.beginPath(); ctx.arc(rx * 0.3, h * 0.22, rx * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.6 * p;
+  ctx.beginPath(); ctx.arc(-rx * 0.06, h * 0.4, rx * 0.05, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.18 * p;
+  ctx.beginPath(); ctx.ellipse(0, h * 0.9, rx * 0.8, h * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
 function irisEye(ctx, rx, h, IR, style) {
   const E = new Path2D();
   E.ellipse(0, 0, rx, h, 0, 0, Math.PI * 2);
@@ -1783,6 +1817,8 @@ export function drawChibi(ctx, x, y, s, opt = {}) {
   L.tilt += FX.tilt || 0;
   if (FX.open != null) L.open = FX.open;
   if (FX.mouth != null) L.mouth = FX.mouth;
+  // ทิศมองบนจอ → ทิศในตัว (หันขวา = ทั้งตัวกลับด้าน)
+  EYE_FX = FX.gaze || FX.puppy ? { gx: (FX.gaze?.x || 0) * (opt.faceRight ? -1 : 1), gy: FX.gaze?.y || 0, p: FX.puppy || 0 } : null;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
@@ -1988,7 +2024,17 @@ function drawHead(ctx, view, look, L) {
     if (look.deco) {
       earTint(ctx, hp, shape(E1(Q_EAR_L)), look.earTintL || look.earTint);
       const tR = look.earTintR || look.earTint;
-      if (tR) { ctx.save(); ctx.clip(hp); softBlob(ctx, 66, -322, 34, 26, tR, 0.55); ctx.restore(); }
+      if (tR) {
+        // หูขวา (หูไกล) เป็นส่วนหนึ่งของเส้นหัว — ย้อมทั้งใบเหนือแนวโดมหัว (qTopY) ให้เข้มเท่าหูซ้าย
+        // (เดิมแต้มวงจาง ๆ ที่โคนหู = หูไกลขาวกว่าหูใกล้ — ผู้ใช้ 16 พ.ย.: "เพิ่มสีน้ำตาลตรงหูให้เท่ากันกับอีกฝั่ง")
+        ctx.save(); ctx.clip(hp);
+        ctx.beginPath(); ctx.moveTo(14, -470);
+        for (let x = 14; x <= 150; x += 4) ctx.lineTo(x, qTopY(x) - 1);
+        ctx.lineTo(150, -470); ctx.closePath();
+        ctx.fillStyle = tR; ctx.fill();
+        softBlob(ctx, 60, -318, 30, 20, tR, 0.5);   // ไล่สีลงโคนหูนุ่ม ๆ ไม่ตัดเป็นเส้น
+        ctx.restore();
+      }
       earRim(ctx, look, hp, shape(E1(Q_EAR_L)));
       const qa = Array.from({ length: 8 }, (_, i) => { const x = -58 - (46 * i) / 7; return [x, qTopY(x)]; });
       earFill(ctx, look, E1(Q_EAR_L_IN), qa);

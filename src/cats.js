@@ -217,7 +217,9 @@ export function homeFull() {
 export function needNow(cat, key, t = now()) {
   const [v, at] = cat.need[key];
   const hours = Math.max(0, t - at) / 3600000;
-  return Math.max(0, Math.min(100, v - hours * NEEDS[key].perHour));
+  // อาบด้วยแชมพูหอม (ห้องเลี้ยงน้องในเมือง town/bath.js) = สะอาดนานขึ้นเท่าตัวจนกว่าจะอาบครั้งถัดไป
+  const rate = NEEDS[key].perHour * (key === 'clean' && cat.cleanSlow ? 0.5 : 1);
+  return Math.max(0, Math.min(100, v - hours * rate));
 }
 
 /** อารมณ์รวม = ค่าเฉลี่ยของสี่อย่าง — ต่ำกว่า 30 = เศร้า ได้ EXP ครึ่งเดียว */
@@ -317,6 +319,7 @@ export function care(id, act, extra = {}) {
     cat.exp += exp;
   }
   cat.need[a.need] = [100, t];
+  if (act === 'bathe') cat.cleanSlow = !!extra.shampoo;   // แชมพูหอม = ความสะอาดลดช้าลงครึ่งหนึ่ง (needNow) · อาบธรรมดา = กลับเป็นปกติ
   cat.caredAt = t;   // หายเศร้าทันที (ดู isSad)
 
   const aff = Math.min(AFF_MAX - cat.aff, (extra.aff || 1));

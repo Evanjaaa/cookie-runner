@@ -10,6 +10,21 @@
 import { needNow, careInfo, catById } from '../cats.js';
 import { drawChibi } from '../render/chibi.js';
 import { kitLook, tubBusy } from './home-cats.js';
+import { wallet, useItem } from './wallet.js';
+import { drawItemIcon } from '../render/items.js';
+
+// แชมพูหอมจากร้าน (ผู้ใช้ 16 พ.ย. 2026): เลือกไว้ = ใช้ 1 ขวดตอนกดพาไปอาบ · ฟองหอมหัวใจลอย · ผูกพัน +3 · สะอาดนานขึ้นเท่าตัว (cats.js cleanSlow)
+let soap = false;
+const soapN = () => wallet().bag.shampoo || 0;
+function paintSoap() {
+  const n = soapN(), b = $('bathSoap');
+  if (n <= 0) soap = false;
+  b.disabled = n <= 0;
+  b.classList.toggle('on', soap);
+  b.setAttribute('aria-pressed', String(soap));
+  $('bathSoapN').textContent = n > 0 ? '×' + n : 'หมด';
+  b.title = n > 0 ? '' : 'ซื้อแชมพูหอมได้ที่ร้านในเมือง หมวดยา & ดูแล';
+}
 
 const $ = (id) => document.getElementById(id);
 // สีการ์ด (ฟ้า-ลาเวนเดอร์ โทนน้ำ) — ตัวแปรเดียวกับการ์ดชามในหน้าเทอาหาร
@@ -65,20 +80,29 @@ function paint() {
   else {
     ok = true;
     const s = slot(k);
-    msg = `พา${k.name}ไปแช่น้ำอุ่น ฟองแชมพูฟู ๆ`;
+    msg = soap ? `พา${k.name}ไปอาบด้วยแชมพูหอม (ใช้ 1 ขวด)` : `พา${k.name}ไปแช่น้ำอุ่น ฟองแชมพูฟู ๆ`;
     if (s.real && !s.wants) msg += ' · ยังสะอาดอยู่ ไม่ได้ EXP';
   }
   hint.textContent = msg;
   go.disabled = !ok;
+  paintSoap();
 }
 
-function doBathe() {
+let going = false;
+async function doBathe() {
   const k = O.kits[sel];
-  if (!k || tubBusy(O.kits)) return;
-  if (!O.onBathe(k.cat.id)) { O.toast('อ่างไม่ว่าง ลองใหม่อีกทีนะ'); paint(); return; }
+  if (!k || tubBusy(O.kits) || going) return;
+  const withSoap = soap && soapN() > 0;
+  if (withSoap) {   // หักแชมพูก่อน (เซิร์ฟเวอร์ตัดสิน) — หักไม่ได้ = ไม่พาไปอาบ ผู้เล่นเลือกใหม่ได้
+    going = true;
+    const r = await useItem('shampoo');
+    going = false;
+    if (!r.ok) { O.toast(r.msg || 'ใช้แชมพูไม่ได้'); paint(); return; }
+  }
+  if (!O.onBathe(k.cat.id, { shampoo: withSoap })) { O.toast('อ่างไม่ว่าง ลองใหม่อีกทีนะ'); paint(); return; }
   O.sfx?.('pop');
   closeBath();
-  O.toast(`${k.name}วิ่งไปอาบน้ำแล้ว ไปดูที่อ่างได้เลย`);
+  O.toast(withSoap ? `${k.name}ได้อาบแชมพูหอม ไปดูที่อ่างได้เลย` : `${k.name}วิ่งไปอาบน้ำแล้ว ไปดูที่อ่างได้เลย`);
 }
 
 /** เปิดหน้าพาไปอาบน้ำ · opts: { kits, toast, sfx, onBathe(catId) → true/false, onClose } */
@@ -101,5 +125,11 @@ export function closeBath() {
 }
 
 $('bathGo').addEventListener('click', doBathe);
+$('bathSoap').addEventListener('click', () => { if (soapN() <= 0) return; soap = !soap; O?.sfx?.('pop'); paint(); });
+{
+  const cv = $('bathSoapIco'), dpr = Math.min(3, window.devicePixelRatio || 1);
+  cv.width = 40 * dpr; cv.height = 40 * dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); drawItemIcon(g, 'shampoo');
+}
 $('bathX').addEventListener('click', closeBath);
 $('bathOv').addEventListener('click', (e) => { if (e.target === $('bathOv')) closeBath(); });

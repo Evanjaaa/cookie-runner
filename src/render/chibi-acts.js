@@ -42,6 +42,10 @@ export const CHIBI_ACTS = {
   jump: { name: 'กระโดด', icon: '🦘', intro: 0, loop: 130 },
   eat: { name: 'กินข้าว', icon: '🍚', intro: 0, loop: 220 },
   bath: { name: 'อาบน้ำ', icon: '🛁', intro: 74, loop: 320 },
+  // เล่นของเล่น (ผู้ใช้ 16 พ.ย. 2026: "เพิ่มท่าน้องเล่นของเล่นในหน้า cat-lab — ปรับทีละช็อต") — ของชุดเดียวกับหีบของเล่นในห้องเลี้ยง
+  ball: { name: 'เล่นบอลกระดิ่ง', icon: '🎾', intro: 0, loop: 210 },
+  mouse: { name: 'ตะครุบหนูของเล่น', icon: '🐭', intro: 0, loop: 230 },
+  feather: { name: 'ตะปบไม้ตกแมว', icon: '🪶', intro: 0, loop: 360 },
 };
 /** t ทั้งหมด → เวลาในท่า: ช่วงเข้า = t เดิม · หลังจากนั้นวน loop */
 const phase = (A, t) => (t < A.intro ? { intro: true, u: t } : { intro: false, u: (t - A.intro) % A.loop });
@@ -269,6 +273,60 @@ function tubFront(ctx, t) {
   ctx.restore();
 }
 /** เป็ดยางลอยน้ำ (ข้างน้อง) */
+// ── ของเล่น (หน่วยชีท · เส้นหมึกเดียวกับตัวน้อง) ──
+/** บอลกระดิ่งชมพู (กลาง x,y รัศมี r) หมุน rot */
+function toyBall(ctx, x, y, r, rot) {
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(rot);
+  const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
+  g.addColorStop(0, '#FFE6F0'); g.addColorStop(0.55, '#FF98BE'); g.addColorStop(1, '#E85E95');
+  ctx.fillStyle = g; ctx.strokeStyle = CHIBI_INK; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-r * 0.85, r * 0.2); ctx.quadraticCurveTo(0, r * 0.75, r * 0.85, r * 0.2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.62, -2.4, -1.2); ctx.stroke();
+  ctx.rotate(-rot);
+  ctx.fillStyle = '#FFD45A'; ctx.strokeStyle = CHIBI_INK; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(0, -r - 6, 9, 0, TAU); ctx.fill(); ctx.stroke();   // กระดิ่งทอง
+  ctx.fillStyle = CHIBI_INK; ctx.beginPath(); ctx.arc(0, -r - 3, 2.4, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+/** หนูของเล่นสีเทาหูชมพู (กลางลำตัว x · พื้น 0) หันซ้าย (−x) · run = ขาหางสะบัดตอนวิ่ง · squish = โดนตะครุบแบน */
+function toyMouse(ctx, x, run, squish = 0) {
+  ctx.save();
+  ctx.translate(x, 0); ctx.scale(1 + 0.25 * squish, 1 - 0.35 * squish);
+  ctx.strokeStyle = '#E79AB5'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(30, -12); ctx.bezierCurveTo(56, -16 + run * 8, 64, 6, 84, -4 - run * 8); ctx.stroke();   // หาง
+  const g = ctx.createLinearGradient(0, -40, 0, 0);
+  g.addColorStop(0, '#B8ADCB'); g.addColorStop(1, '#8C7FA6');
+  ctx.fillStyle = g; ctx.strokeStyle = CHIBI_INK; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(0, -18, 38, 19, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(-34, -16, 15, 12, -0.2, 0, TAU); ctx.fill(); ctx.stroke();   // หัว
+  ctx.fillStyle = '#FFB7CF';
+  ctx.beginPath(); ctx.arc(-26, -32, 10, 0, TAU); ctx.fill(); ctx.stroke();   // หู
+  ctx.fillStyle = CHIBI_INK; ctx.beginPath(); ctx.arc(-40, -19, 2.8, 0, TAU); ctx.fill();   // ตา
+  ctx.fillStyle = '#FF8FB3'; ctx.beginPath(); ctx.arc(-50, -14, 3.6, 0, TAU); ctx.fill();   // จมูก
+  ctx.restore();
+}
+/** ไม้ตกแมว: เชือกห้อยจากบนจอลงมาถึงขนนก (x, y) แกว่ง rot */
+function toyFeather(ctx, x, y, rot) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(160,120,90,.85)'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x + 40, -760); ctx.quadraticCurveTo(x + 30, (y - 760) / 2, x, y); ctx.stroke();
+  ctx.translate(x, y); ctx.rotate(rot);
+  for (const [col, a, l] of [['#FF8FB8', -0.45, 70], ['#C8A8F5', 0, 82], ['#FFD45A', 0.45, 62]]) {
+    ctx.save(); ctx.rotate(a);
+    ctx.fillStyle = col; ctx.strokeStyle = CHIBI_INK; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(0, l / 2, 13, l / 2, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, l - 6); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = CHIBI_INK; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(0, 0, 7, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
 function duck(ctx, x, y, a) {
   if (a <= 0.01) return;
   ctx.save();
@@ -489,6 +547,109 @@ const ACT_DRAW = {
     }
     if (relax) for (let i = 0; i < 2; i++) { const a = clamp01((loopU - 230 - i * 25) / 60); heart(ctx, -60 + i * 120, -300 - a * 60, 12, Math.sin(a * Math.PI)); }
     void L;
+    return {};
+  },
+
+  // ── เล่นบอลกระดิ่ง: บอลกลิ้งเข้ามาเด้งดึ๋ง → น้องหมอบมองตาม (หางส่าย หูตั้ง) → พุ่งตัวเขี่ย → บอลกลิ้งหนีไป กระดิ่งดังวิ้ง → มองตามดีใจ ──
+  ball(ctx, P, t, look) {
+    const u = P.u;
+    // บอล: 0–60 กลิ้งเข้ามาจากหน้า (−x) · 60–84 นิ่งตรงหน้า · 84 โดนเขี่ย → กลิ้งออกไปทางหน้า
+    let bx, bz = 0, rot;
+    if (u < 60) { const a = easeOut(u / 60); bx = -420 + 300 * a; bz = 40 * Math.abs(Math.sin(a * Math.PI * 2)) * (1 - a); rot = -a * 6; }
+    else if (u < 84) { bx = -120; rot = -6; }
+    else { const a = (u - 84) / 120; bx = -120 - 460 * easeOut(a); bz = 60 * Math.abs(Math.sin(a * Math.PI * 3)) * (1 - a); rot = -6 - a * 9; }
+    const crouch = u < 84 ? ease(u / 30) : 1 - ease((u - 92) / 20);
+    const swat = u >= 74 && u < 96 ? Math.sin(((u - 74) / 22) * Math.PI) : 0;   // พุ่งเขี่ย
+    const watch = u >= 96 ? ease((u - 96) / 20) : 0;
+    shadow(ctx, -10 * swat, 52 + 6 * crouch);
+    ctx.save(); ctx.globalAlpha = 0.22 * (1 - Math.min(0.6, bz / 80)); ctx.fillStyle = '#4A2A5A';
+    ctx.beginPath(); ctx.ellipse(bx, 4, 30, 5, 0, 0, TAU); ctx.fill(); ctx.restore();
+    toyBall(ctx, bx, -34 - bz, 34, rot);
+    // กระดิ่งดัง: ประกายรอบบอลตอนโดนเขี่ย
+    if (u >= 84 && u < 130) for (let i = 0; i < 3; i++) { const a = clamp01((u - 84 - i * 6) / 30); sparkle(ctx, bx + (i - 1) * 34, -100 - bz - a * 40, 10, Math.sin(a * Math.PI)); }
+    kit(ctx, look, {
+      view: 'q', act: 'idle', t, ...(swat > 0.3 ? chibiWalk4At(0) : {}),
+      fx: {
+        sy: 1 - 0.16 * crouch + 0.06 * swat, sx: 1 + 0.1 * crouch,
+        ear: 0.12 * (1 - crouch) - 0.18 * crouch * (1 - swat), open: 1, mouth: swat > 0 ? 0.4 : watch * 0.35,
+        tailRot: 0.25 * Math.sin(u * 0.35) * crouch + 0.3 * swat,
+        head: { dy: 12 * crouch - 2 * swat, rot: watch * -0.08 },   // พุ่งเขี่ย: หัวไม่ยกแยกจากตัว (คอไม่ขาด)
+      },
+    }, { rot: -0.18 * swat + 0.06 * crouch * (1 - swat), dx: -30 * swat, lift: 18 * swat });
+    if (u >= 110) for (let i = 0; i < 2; i++) { const a = clamp01((u - 110 - i * 20) / 60); heart(ctx, -150 + i * 300, -260 - a * 60, 12, Math.sin(a * Math.PI) * 0.9); }
+    return {};
+  },
+
+  // ── ตะครุบหนูของเล่น: หนูวิ่งเข้ามาหยุด → น้องหมอบต่ำ ก้นส่ายเตรียมกระโจน → กระโจนโค้งลงทับหนู (หนูแบน ร้องจี๊ด) → หนูวิ่งหนี น้องดีใจ ──
+  mouse(ctx, P, t, look) {
+    const u = P.u;
+    // หนู: 0–40 วิ่งเข้ามาหยุดที่ −230 · 118 โดนทับ · 140 วิ่งหนีไปทางหน้า
+    let mx, run = 0, squish = 0;
+    if (u < 40) { mx = -520 + 290 * easeOut(u / 40); run = Math.sin(u * 0.9); }
+    else if (u < 140) { mx = -230; squish = u >= 112 ? Math.max(0, 1 - (u - 112) / 28) : 0; }
+    else { const a = (u - 140) / 70; mx = -230 - 420 * ease(a); run = Math.sin(u * 0.9); }
+    const crouch = u < 40 ? 0 : u < 84 ? ease((u - 40) / 18) : 0;
+    const wiggle = u >= 58 && u < 84 ? Math.sin((u - 58) * 0.9) : 0;   // ก้นส่ายก่อนกระโจน
+    const air = u >= 84 && u < 112 ? (u - 84) / 28 : -1;
+    const land = u >= 112 ? (u - 112) / 40 : -1;
+    const x = air >= 0 ? -200 * easeOut(air) : u >= 112 ? -200 : 0;
+    const h = air >= 0 ? 90 * Math.sin(Math.PI * air) : 0;
+    const sq = land >= 0 && land < 1 ? Math.exp(-3 * land) * Math.cos(land * Math.PI * 2.4) : 0;
+    shadow(ctx, x, 54 * (1 - 0.35 * Math.min(1, h / 90)));
+    toyMouse(ctx, mx, run, squish);
+    if (u >= 112 && u < 150) { const a = (u - 112) / 38; ctx.save(); ctx.globalAlpha = 1 - a; ctx.fillStyle = '#FF8FB3'; ctx.font = '700 34px Mali, sans-serif'; ctx.fillText('จี๊ด!', mx - 40, -90 - a * 40); ctx.restore(); }
+    kit(ctx, look, {
+      view: 'q', act: 'idle', t, ...(air >= 0 ? chibiWalk4At(air < 0.5 ? 0 : 15) : {}),
+      fx: {
+        sy: 1 - 0.2 * crouch - 0.2 * Math.max(0, sq) + (air >= 0 ? 0.12 : 0), sx: 1 + 0.14 * crouch + 0.14 * Math.max(0, sq),
+        ear: -0.28 * crouch + (air >= 0 ? 0.15 : 0), open: 1, mouth: air >= 0 ? 0.5 : land >= 0 && land < 1.5 ? 0.35 : 0,
+        tailRot: 0.45 * wiggle + 0.2 * crouch + (air >= 0 ? 0.3 - 0.5 * air : 0),
+        head: { dy: 18 * crouch + 20 * Math.max(0, sq) },
+      },
+    }, { dx: x + 8 * wiggle, lift: h, rot: (air >= 0 ? -0.2 + 0.3 * air : 0) + 0.05 * wiggle * crouch });
+    if (land >= 0.4) for (let i = 0; i < 3; i++) { const a = clamp01((land - 0.4 - i * 0.12) / 0.9); heart(ctx, x - 140 + i * 140, -270 - a * 70, 12, Math.sin(a * Math.PI) * 0.9); }
+    return {};
+  },
+
+  // ── ตะปบไม้ตกแมว (ผู้ใช้ 16 พ.ย. 2026 รอบ 2) ──
+  //   0–150   ไม้นิ่ง ขนนกแกว่งเบา ๆ: นั่งมอง ตาแป๊ว ลูกตาข้างในกรอกตามขนนก หัวเอียงไปมาน่ารัก
+  //   150–250 ไม้ขยับไปมา (เหมือนผู้เล่นเดินถือ): ลุกยืนเอียงตัวตามขนนก ก้าวตามนิด ๆ ตาตาม
+  //   250–330 ย่อตัว → กระโดดตะปบ (ขนนกสะบัดหนี) → ลงยุบเด้ง ประกาย → 330–360 กลับนั่งมอง
+  feather(ctx, P, t, look) {
+    const u = P.u;
+    const walkK = u >= 150 && u < 250 ? Math.sin(((u - 150) / 100) * Math.PI) : 0;   // ช่วงไม้ขยับ (เข้า-ออกนุ่ม ๆ)
+    const crouch = u >= 250 && u < 272 ? ease((u - 250) / 18) : 0;
+    const air = u >= 270 && u < 310 ? (u - 270) / 40 : -1;
+    const land = u >= 310 ? (u - 310) / 40 : -1;
+    const sq = land >= 0 && land < 1 ? Math.exp(-3 * land) * Math.cos(land * Math.PI * 2.4) : 0;
+    const h = air >= 0 ? 150 * Math.sin(Math.PI * air) : 0;
+    const flick = air >= 0 ? Math.sin(Math.PI * Math.min(1, air * 1.4)) : 0;
+    // ขนนก: นิ่ง = แกว่งเล็ก ๆ ตรงหน้า · ช่วงเดินถือ = ส่ายกว้างซ้ายขวา · ตอนน้องกระโดด = ถูกกระตุกขึ้น
+    const fx = -40 + 26 * Math.sin(u * 0.045) + 190 * walkK * Math.sin((u - 150) * 0.06);
+    const fy = -470 - 120 * flick + 12 * Math.sin(u * 0.09) + 40 * walkK;
+    toyFeather(ctx, fx, fy, 0.3 * Math.sin(u * 0.13) + 0.6 * flick + 0.25 * walkK * Math.sin(u * 0.2));
+    // ตัวน้องตามขนนก (ช่วงเดิน = ก้าวตามไปทางขนนก)
+    const bodyX = walkK * Math.max(-70, Math.min(70, fx * 0.35));
+    const stand = Math.max(walkK > 0.15 ? 1 : 0, air >= 0 ? 1 : 0);
+    // ลูกตา: ทิศจากหัว (≈ −200 เหนือเท้า) ไปหาขนนก
+    const hx = bodyX, hy = -200 - h;
+    const gl = Math.hypot(fx - hx, fy - hy) || 1;
+    const gaze = { x: Math.max(-1, Math.min(1, ((fx - hx) / gl) * 1.6)), y: Math.max(-1, Math.min(1, ((fy - hy) / gl) * 1.3)) };
+    const tiltHead = stand ? 0 : -0.16 * Math.max(-1, Math.min(1, (fx - hx) / 90)) + 0.05 * Math.sin(u * 0.04);   // นั่ง = เอียงหน้าไปทางขนนก
+    shadow(ctx, bodyX, 52 * (1 - 0.4 * Math.min(1, h / 150)) + 6 * crouch);
+    const step = walkK > 0.15 ? chibiWalk4At(Math.floor(u / 10) % 4 === 1 ? 15 : 0) : {};
+    kit(ctx, look, {
+      view: stand ? 'q' : 'sit', act: 'idle', t, ...(air >= 0 ? chibiWalk4At(air < 0.5 ? 0 : 15) : step),
+      fx: {
+        sy: 1 - 0.15 * crouch - 0.2 * Math.max(0, sq) + (air >= 0 ? 0.1 : 0), sx: 1 + 0.1 * crouch + 0.14 * Math.max(0, sq),
+        ear: 0.2 - 0.25 * crouch, open: 1, mouth: air >= 0 ? 0.55 : 0.12,
+        tailRot: 0.22 * Math.sin(u * 0.3) + (air >= 0 ? 0.35 : 0) + 0.2 * walkK,
+        // หัวติดตัวเสมอ (ผู้ใช้ 16 พ.ย.: "อย่าให้คอน้องเหมือนจะขาด") — ยืน/กระโดด/เดินตาม = ไม่ยกหัวแยกจากตัว · นั่ง = เงยได้นิดเดียว
+        head: { dy: (stand ? 3 : -4) + 14 * crouch, rot: tiltHead },
+        gaze, puppy: air >= 0 ? 0.4 : 1,
+      },
+    }, { lift: h, dx: bodyX, rot: air >= 0 ? 0.15 - 0.3 * air : -0.14 * walkK * Math.sign(fx - bodyX || 1) });   // เดินตาม = เอนตัวไปทางขนนก
+    if (land >= 0.3) for (let i = 0; i < 3; i++) { const a = clamp01((land - 0.3 - i * 0.1) / 0.8); sparkle(ctx, (i - 1) * 110, -300 - a * 50, 12, Math.sin(a * Math.PI)); }
     return {};
   },
 };

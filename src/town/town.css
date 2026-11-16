@@ -2102,6 +2102,12 @@ body.chat-open .chatfeed, body.chat-open .cf-row { opacity: 0; pointer-events: n
 .fd-aff { grid-column: 2; color: #E0559F; font-size: clamp(9.5px, 1.8dvh, 11px); }
 .fd-qty { grid-row: 1 / 3; grid-column: 3; padding: 2px 8px; border-radius: 999px; background: #F1E8FF; color: var(--sub); font-weight: 800; font-size: clamp(11px, 2.2dvh, 13px); }
 .fd-none { margin: 0; color: rgba(255,243,226,.9); font-size: clamp(11px, 2dvh, 13px); text-align: center; }
+/* แชมพูหอม (หน้าอาบน้ำ) — การ์ดเมนูแบบเดียวกับของกิน กดสลับเลือก · กว้างพอดีเนื้อหา */
+.bath-soap { justify-self: start; align-self: flex-start; min-width: min(320px, 100%); }
+/* หีบของเล่น (toys.js) — การ์ดของเล่นสามชิ้น */
+.toy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(6px, 1.2vw, 10px); }
+.toy-grid .fd-food { grid-template-columns: auto 1fr; }
+.toy-grid .fd-aff { grid-column: 2; }
 .fd-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .fd-row small { color: rgba(255,243,226,.92); font-size: clamp(11px, 2.1dvh, 13.5px); font-weight: 600; }
 .fd-pour {

@@ -5,7 +5,7 @@
 // โผล่เฉพาะตอนอยู่ห้องนอน/ห้องเลี้ยง (hooks.visible) · ลบทิ้งได้: ลบไฟล์นี้ + บรรทัด import ใน town/main.js
 // ─────────────────────────────────────────────────────────────
 import { debugAdopt, debugNeeds, debugClearDishes, roomCats, ROOM_SLOTS } from '../cats.js';
-import { debugBag } from './wallet.js';
+import { debugBag, wallet } from './wallet.js';
 import { debugKits, callToBowl, callToTub } from './home-cats.js';
 import { pourBowl } from '../cats.js';
 
@@ -83,6 +83,11 @@ export function mountHomeDebug(hooks) {
   add('🍚 เติมของกินในกระเป๋า (+5 ทุกเมนู)', () => {
     if (!['kibble', 'fish', 'salmon'].every((id) => debugBag(id, 5))) { hooks.toast('โหมดเซิร์ฟเวอร์ใช้ของจริง เสกไม่ได้ — เปิดด้วย ?demo'); return false; }
     hooks.refreshHud?.(); hooks.toast('🍚 ข้าวเม็ด ปลาทู แซลมอน +5'); return true;
+  });
+  add('🧸 ของเล่นครบ 3 ชิ้น + แชมพู 3 ขวด', () => {
+    const ok = ['feather', 'ball', 'mouse'].every((id) => (wallet().bag[id] || 0) > 0 || debugBag(id, 1)) && debugBag('shampoo', 3);
+    if (!ok) { hooks.toast('โหมดเซิร์ฟเวอร์ใช้ของจริง เสกไม่ได้ — เปิดด้วย ?demo'); return false; }
+    hooks.refreshHud?.(); hooks.toast('🧸 ไม้ตกแมว บอลกระดิ่ง หนูของเล่น + แชมพูหอม 3 ขวด'); return true;
   });
   add('😿 ทุกตัวหิว + มอม + ง่วง', () => { debugNeeds(15); hooks.toast('😿 ทุกตัวหิว มอม ง่วงแล้ว (น้องตัวอย่างไม่มีค่าจริง)'); return true; });
   add('😺 ทุกตัวอิ่ม สะอาด สดชื่น', () => { debugNeeds(100); hooks.toast('😺 ทุกตัวเต็มหลอดแล้ว'); return true; });
