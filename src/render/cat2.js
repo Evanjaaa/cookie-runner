@@ -22,9 +22,17 @@ import { getFace } from '../face.js';
 import { drawChibi, chibiLookFor } from './chibi.js';
 import { gfxLevel } from '../graphics.js';
 import { track as ktrack, env as kenv, E as KE, mixShape as kmix } from '../home-moves.js';
+import { mojiModel, mojiPart, toCat2Ops, findOp as mojiFind } from './moji-svg.js';
 
 /** หน้าที่ใช้น้องแบบใหม่ — ปิด (false) = กลับไปใช้แมวเดิมทันที · run = ตอนวิ่งในด่าน (ท่าวิ่ง cat2-run.js · ผู้ใช้สั่งลองในเกมจริง 18 ต.ค.) */
 export const CAT2 = { home: true, stash: true, ui: true, run: true };
+/**
+ * สไตล์โมจิ (ลายเส้นใหม่จากนักวาด 21 พ.ย. — src/render/cat2/cat-orange-front.svg) เฉพาะน้องส้มตัวหลัก
+ * ตัววาดนี้ยังเป็นตัวเดิมทั้งหมด (โครง เส้นขอบ การดัดท่า ตาปิด ปาก ชุด) แค่ยืม "ชั้นรายละเอียด" จากไฟล์ใหม่:
+ * ลายก้อนไล่สี · หูในชมพู+ปอยขน · แก้มฟุ้ง · พุงฟุ้ง · อุ้งเท้าครีมไล่ขาว · ตาดำโตวงทอง · จมูกชมพู · เงาขนอก (ดู mojiFront)
+ * game = เปิดในเกม (ยังปิด — ทดลองใน cat-lab ก่อน ด้วย skin.moji = true) · skin.moji = false บังคับปิดรายตัว
+ */
+export const MOJI_STYLE = { game: false };
 /**
  * ใช้น้องแบบใหม่กับสกินนี้ได้ไหม — ตอนนี้เฉพาะแมวส้มตัวหลักที่โตแล้ว ไม่ใส่ชุด
  * (สีอื่น ลูกแมว ชุดแต่งตัว แมวระบายสีเอง รอออกแบบใหม่ — ใช้ตัววาดเดิม)
@@ -2996,7 +3004,9 @@ const DENIM_P = {
 function earHoops(c, k) {
   const pal = k.pal;
   // ต่างหูเม็ดกลมเหล็กสามเม็ด แปะเรียงตามขอบนอกหูซ้าย เว้นระยะห่างกัน
-  for (const [x, y, r] of [[186, 104, 6.5], [177, 142, 7], [172, 180, 7.5]]   /* เรียงแนวเดียวกับเม็ดล่าง (บนเส้นในหู) */) {
+  // สไตล์โมจิ (k.moji): หูทรงใหม่เส้นในหูอยู่นอกกว่าเดิม 10–14 หน่วย — วางบนเส้นในหูของไฟล์ใหม่ (inner-ear-outline_6)
+  const studs = k.moji ? [[172, 104, 6.5], [166, 142, 7], [162, 180, 7.5]] : [[186, 104, 6.5], [177, 142, 7], [172, 180, 7.5]];
+  for (const [x, y, r] of studs   /* เรียงแนวเดียวกับเม็ดล่าง (บนเส้นในหู) */) {
     const b = new Path2D();
     b.arc(x, y, r, 0, TAU);
     const g = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
@@ -20331,6 +20341,21 @@ const DESIGN = {
   cat: '#F8C08A', stripe: '#E68A45', shade: '#F0A462', cream: '#F8F1E6',
   line: '#5A3420', ear: '#E79AA8', cheek: '#F3A08A', nose: '#E07A3A', mouth: '#C2455A',
 };
+/** จานสีสไตล์โมจิ — สีชุดเดียวกับ DESIGN (นักวาดใช้ชีทเดียวกัน) ต่างแค่จมูกชมพูตามไฟล์ใหม่ */
+const MOJI_PAL = { ...DESIGN, nose: '#FF8C8C' };
+/** สไตล์โมจิ: เงาพ่นขอบตัวจางลงเหลือเท่านี้ (ไฟล์นักวาดตัวสว่างพีช ขอบไล่ส้มเข้มแค่บาง ๆ) */
+const MOJI_RIM = 0.2;
+/**
+ * สไตล์โมจิ: ตาดำ = วงกลมรัศมี r · กลางเยื้องจากกลางวงตา dx เข้าหาจมูก, dy ขึ้น (ลบ) — หน่วยไฟล์
+ * วงตาในไฟล์ใหม่รัศมี 48.5 · ตาเดิมใช้ตาดำ 44 ในวงตา 49 เยื้อง (3, −11) = ล้นขอบบน เห็นเสี้ยวทองแค่ขอบล่างด้านนอก
+ */
+const MOJI_PUPIL = { r: 45, dx: 4, dy: -9 };
+/**
+ * สไตล์โมจิ · หูตอนหันเฉียง (ผู้ใช้ 21 พ.ย.: "หูซ้ายลงไปข้างล่างเยอะเกิน ขวาขึ้นสูงเกิน ให้สมส่วนต่อกัน")
+ *   follow = ช่วงบนของหูเลื่อนตามมุมหันกี่ส่วน (หูเดิม 1) · drop = หูข้างที่หันไปหากดต่ำลงกี่หน่วย (หูเดิม 24)
+ */
+let MOJI_EAR = { follow: 0.45, drop: 14 };   // เลือกจากตาราง 4 แบบ (1·8 / .6·16 / .45·14 / .3·12) — .45·14 หูในสองข้างระดับใกล้กันที่สุด
+export const __mojiEar = (o) => Object.assign(MOJI_EAR, o);   // หน้าทดลอง: จูนสด
 
 // ══ แมวสามสี (calico) — ลายปื้นส้ม/เทาบนพื้นขาว (ผู้ใช้ส่งแบบ 15 ต.ค.: "สามสี ตัวเมีย น่ารักขี้อ้อน · วาดตาใหม่ ลงสีใหม่ ตัวเหมือนเดิม") ══
 // ปื้นสีเป็น "ลวดลายของชิ้น" (det) แทรกหน้าสุดของแต่ละชิ้น — ถูกดัดไปพร้อมชิ้นทุกท่า (ยกแขน เตะขา หันหัว) และถูกตัดในเนื้อชิ้นเอง
@@ -23350,6 +23375,13 @@ function buildPath(cmds, f, into = new Path2D()) {
   }
   return into;
 }
+/** ตัวแปลงเฉพาะที่ของตัวดัดจุด f ณ (x, y) — สีไล่ของชิ้นที่ถูกดัดจะเลื่อน/หมุน/ยืดตามนี้ */
+function localAffineAt(f, x, y) {
+  const h = 4;
+  const [px, py] = f(x, y), [ax, ay] = f(x + h, y), [bx, by] = f(x, y + h);
+  const a = (ax - px) / h, b = (ay - py) / h, c = (bx - px) / h, d = (by - py) / h;
+  return new DOMMatrix([a, b, c, d, px - (a * x + c * y), py - (b * x + d * y)]);
+}
 function deformOps(ops, f) {
   return ops.map((op) => {
     if (op.kind === 'group') return { ...op, ops: deformOps(op.ops, f) };
@@ -23367,7 +23399,10 @@ function deformOps(ops, f) {
       return o;
     });
     // ปื้นไล่สี: จุดกลางย้ายตามการดัด (แขนยก หัวหัน) รัศมีคงเดิม
-    const grad = op.grad?.c ? (() => { const [x, y] = f(op.grad.c[0], op.grad.c[1]); return { ...op.grad, m: { a: op.grad.r[0], b: 0, c: 0, d: op.grad.r[1], e: x, f: y } }; })() : op.grad;
+    // สีไล่จากไฟล์โมจิ (grad.at = จุดกลาง): เลื่อน/หมุน/ยืดตามการดัดเฉพาะที่ตรงจุดนั้น — ลายบนแขนที่ยกหมุนไปกับแขน
+    const grad = op.grad?.c ? (() => { const [x, y] = f(op.grad.c[0], op.grad.c[1]); return { ...op.grad, m: { a: op.grad.r[0], b: 0, c: 0, d: op.grad.r[1], e: x, f: y } }; })()
+      : op.grad?.at ? { ...op.grad, m: localAffineAt(f, op.grad.at[0], op.grad.at[1]).multiply(op.grad.m) }
+        : op.grad;
     return { ...op, path: buildPath(op.cmds, f), cmds, grad };
   });
 }
@@ -23415,7 +23450,10 @@ function deformPart(part, f) {
   for (const p of sil) all.addPath(p);
   const uni = new Path2D();
   for (const c of part.silCmds) buildPath(cmdsWinding(c) < 0 ? reverseCmds(c) : c, f, uni);
-  return { sil, all, uni, det: deformOps(part.det, f), patch: part.patch ? deformOps(part.patch, f) : null, sheet: !!part.sheet };
+  return {
+    sil, all, uni, det: deformOps(part.det, f), patch: part.patch ? deformOps(part.patch, f) : null, sheet: !!part.sheet,
+    fill: part.fill ? deformOps([part.fill], f)[0] : null,   // สไตล์โมจิ: สีไล่ของชิ้น (ดู drawLayer ขั้น 2) — จุดสว่างเลื่อนตามชิ้นที่ถูกดัด
+  };
 }
 const rotPt = (c, a, x, y) => {
   const cs = Math.cos(a), sn = Math.sin(a), dx = x - c.x, dy = y - c.y;
@@ -23427,6 +23465,8 @@ const MODELS = {};
 /** 'front' = ด้านหน้า (cat-front.svg) · 'back' = ด้านหลัง (cat-back.svg) — ชื่อชิ้นและจุดหมุนชุดเดียวกัน */
 function model(which = 'front') {
   if (MODELS[which]) return MODELS[which];
+  if (which === 'front-moji') return (MODELS[which] = mojiFront());
+  if (which === 'back-moji') return (MODELS[which] = mojiBack());
   const doc = new DOMParser().parseFromString(which === 'back' ? BACK_SVG : FRONT_SVG, 'image/svg+xml');
   const grads = {};
   for (const g of doc.querySelectorAll('radialGradient')) {
@@ -23520,6 +23560,157 @@ function model(which = 'front') {
   return MODELS[which];
 }
 
+// ══ สไตล์โมจิ · ด้านหลัง (ไฟล์ cat-orange-back 21 พ.ย.) ══
+// แบบเดียวกับด้านหน้า: เส้นรอบ/จุดหมุนของไฟล์เดิม · รายละเอียด (ลาย เงาขน อุ้งเท้า) + สีไล่รายชิ้นจากไฟล์ใหม่
+// หูทรงใหม่ (สูงกว่าเดิมแบบด้านหน้า) · หนวด = กลุ่ม face ในไฟล์ใหม่ · หางในไฟล์ใช้เป็นแบบลงสีหางที่โค้ดวาด (tailDetails · opt.mojiTail)
+function mojiBack() {
+  const base = model('back');
+  const conv = (ops) => toCat2Ops(ops, LINE_K);
+  const part = (id) => mojiPart(id, 'back');
+  const silOf = (ops) => {
+    const sil = ops.map((o) => o.path), all = new Path2D();
+    for (const p of sil) all.addPath(p);
+    return { sil, all, silCmds: ops.map((o) => o.cmds) };
+  };
+  const parts = { ...base.parts };
+  // รายละเอียด = ทุกชิ้นในกลุ่ม ยกเว้นเนื้อ (fill*) และเส้นขอบ (line* — ตัววาดลงเส้นรอบนอกจากทรงเนื้อเอง)
+  const detOf = (id) => conv(part(id).filter((o) => !/^(fill|line|out-ear-line)/.test(o.id || '')));
+  for (const id of ['leg-left', 'leg-right', 'torso', 'arm-left', 'arm-right', 'head']) {
+    parts[id] = { ...base.parts[id], det: detOf(id) };
+    const f0 = conv(part(id).filter((o) => /^fill/.test(o.id || '')))[0];
+    if (f0?.grad) parts[id].fill = f0;
+  }
+  // หัว: ทรงจากไฟล์ใหม่ (ทรงเดียวกับด้านหน้า)
+  const hf = conv(part('head').filter((o) => /^fill_8/.test(o.id || '')));
+  if (hf.length) Object.assign(parts.head, silOf(hf));
+  // หู: ทรง = ชิ้นฐานหู (inner-ear_6/7) · ด้านหลังไม่มีหูใน — ทั้งใบเป็นขนส้มไล่สี
+  for (const side of ['left', 'right']) {
+    const ep = part(`ear-${side}`), b0 = conv(ep.filter((o) => /^inner-ear_?\d/.test(o.id || '')));
+    parts[`ear-${side}`] = { ...base.parts[`ear-${side}`], det: conv(ep.filter((o) => !/^out-ear-line/.test(o.id || ''))) };
+    if (b0.length) Object.assign(parts[`ear-${side}`], silOf(b0));
+  }
+  // หนวด (โผล่ข้างหัว)
+  const face = part('face');
+  if (face.length && base.parts.whiskers) parts.whiskers = { ...base.parts.whiskers, det: conv(face) };
+  // แขนขวาจอ: สีไล่ในไฟล์สว่างที่ไหล่ (ปัญหาเดียวกับด้านหน้า — ผู้ใช้ 21 พ.ย.) → ใช้สีไล่แขนซ้ายจอกลับด้าน
+  const aL = parts['arm-left'].fill, aR = parts['arm-right'].fill;
+  if (aL?.grad && aR) {
+    const mirror = new DOMMatrix().translate(600, 0).scale(-1, 1);
+    parts['arm-right'].fill = { ...aR, grad: { ...aL.grad, m: mirror.multiply(aL.grad.m), at: [600 - aL.grad.at[0], aL.grad.at[1]] } };
+  }
+  return { ...base, parts, moji: true };
+}
+
+// ══ สไตล์โมจิ: แบบด้านหน้าเดิม + ชั้นรายละเอียดจากไฟล์ใหม่ของนักวาด ══
+// โครงทุกชิ้น (เส้นรอบ sil · จุดหมุน · ครีมหน้า · หนวด · ปาก) ยังเป็นของไฟล์เดิม — ตัววาดเดิมดัดท่า/หัน/ลงเส้นขอบเหมือนเดิมทุกอย่าง
+// สลับเฉพาะกลุ่มรายละเอียดที่ไฟล์ใหม่วาดต่างไป (ชื่อกลุ่มเดิมคงไว้ hook เดิมของกลุ่มนั้นจึงยังทำงาน เช่นลายหน้าผากเลื่อนตามหน้า)
+// ไฟล์ใหม่วาดทับไฟล์เดิม (พิกัดตรงกันหลังเลื่อน −88, −40.449) รูปทรงจึงลงในชิ้นเดิมพอดี
+function mojiFront() {
+  const base = model('front');
+  const conv = (ops) => toCat2Ops(ops, LINE_K);
+  const grp = (part, id) => conv(mojiFind(mojiPart(part), id)?.ops || []);
+  const one = (part, id) => { const o = mojiFind(mojiPart(part), id); return o ? conv([o]) : []; };
+  // ชิ้นที่มี id นี้ในชั้นรายละเอียด → แทนลูกของกลุ่ม (คงชื่อกลุ่มเดิม) หรือแทนทั้งชิ้น (whole)
+  const swap = (det, id, ops, whole = false) => det.map((o) => (o.id !== id ? o : whole ? ops : { ...o, ops })).flat();
+  const parts = { ...base.parts };
+  const put = (id, det) => { parts[id] = { ...base.parts[id], det }; };
+  // ขา: ลายก้อนไล่สี + อุ้งเท้าครีมไล่ขาว (หน้ากากตัดในขาแบบเดิม)
+  put('leg-left', swap(swap(base.parts['leg-left'].det, 'stripes', grp('leg-left', 'stripes')), 'cream-paw', grp('leg-left', 'cream-paw')));
+  put('leg-right', swap(swap(base.parts['leg-right'].det, 'stripes_2', grp('leg-right', 'stripes_2-2')), 'cream-paw_2', grp('leg-right', 'cream-paw_2')));
+  // ลำตัว: เงาขนกลางอก (fur-shading) + ลายข้างตัวสองฝั่ง
+  put('torso', [...one('torso', 'fur-shading'), ...swap(base.parts.torso.det, 'stripes_3', [...grp('torso', 'stripes_3-2'), ...grp('torso', 'stripes_4')])]);
+  // แขน: ลาย + อุ้งเท้า (ไฟล์ใหม่ตั้งชื่อกลุ่มลายเลื่อนไปหนึ่งเลข: แขนซ้าย stripes_5 · แขนขวา stripes_6)
+  put('arm-left', swap(swap(base.parts['arm-left'].det, 'stripes_4', grp('arm-left', 'stripes_5')), 'cream-paw_3', grp('arm-left', 'cream-paw_3')));
+  put('arm-right', swap(swap(base.parts['arm-right'].det, 'stripes_5', grp('arm-right', 'stripes_6')), 'cream-paw_4', grp('arm-right', 'cream-paw_4')));
+  // พุงครีมฟุ้ง (ไม่มีขอบ)
+  put('belly', conv(mojiPart('belly')));
+  // รูปทรงเนื้อ (sil) จากไฟล์ใหม่ — ตัววาดลงเส้นรอบนอก/สีผิวจากรูปนี้
+  const silOf = (ops) => {
+    const sil = ops.map((o) => o.path), all = new Path2D();
+    for (const p of sil) all.addPath(p);
+    return { sil, all, silCmds: ops.map((o) => o.cmds) };
+  };
+  // หู (21 พ.ย. รอบ 2 — ผู้ใช้ขอหูใหม่): ทรงหูจากไฟล์ใหม่ (สูงกว่า ปลายกางออกนอกกว่าหูเดิม) + ทั้งชั้นใน
+  //   (ขนส้มไล่สี · หูในชมพู · เส้นหูในบาง · ปอยขนครีม) · ทรง = ชิ้นฐานหู (inner-ear — ครีม เต็มใบ ขอบตรงเส้นหูนอก)
+  //   ใช้ชิ้นเดียว: รวมหลายชิ้นที่วนเส้นสวนทางกัน ตรงที่ซ้อนจะกลายเป็นรู → ชั้นในถูกตัดหาย (หูในชมพูหายไปทั้งแผ่น)
+  //   เส้นรอบนอกหูยังเป็นของตัววาด (หูกับหัวเป็นก้อนเดียว ไม่มีเส้นตัดโคนหู) · earPt ไม่ซุก/ย่อ/กางหูแบบเดิม
+  for (const side of ['left', 'right']) {
+    const ep = mojiPart(`ear-${side}`);
+    put(`ear-${side}`, conv(ep.filter((o) => !/^out-ear-outline/.test(o.id))));
+    const base0 = conv(ep.filter((o) => /^inner-ear_?\d/.test(o.id)));   // ชื่อชั้น: inner-ear6 (ฉบับแรก) · inner-ear_6 (ฉบับแก้แก้ม)
+    if (base0.length) Object.assign(parts[`ear-${side}`], silOf(base0));
+  }
+  // หัว: โครงหน้าจากไฟล์ใหม่ (คางเรียวกว่านิด) + ลายหน้าผากสามก้อนไล่สี (คงกลุ่ม stripes_6 — hook เลื่อนลายตามหน้ายังทำงาน)
+  // ขนขาวกลางหน้า (ผู้ใช้ 21 พ.ย. รอบ 4 — "โมจิตั้งใจออกแบบให้เข้ากับโครงหน้า"): ทรงจากไฟล์ใหม่ — แถบหน้าผากกว้างปลายมน
+  //   บานเป็นแนวนอนออกข้างแก้ม · คงกลุ่ม 'cream' เดิม: hook ครีมหน้ายังดัดตามมุมหัน (ขอบหัวอยู่กับที่) · ขอบนุ่มจากสีไล่ในไฟล์ (ไม่ feather ซ้ำ)
+  put('head', swap(swap(base.parts.head.det, 'stripes_6', grp('head', 'stripes_6-2')), 'cream', one('head', 'cream-head')));
+  const headFill = one('head', 'fill_8');
+  if (headFill.length) Object.assign(parts.head, silOf(headFill));
+  // หน้า: ตา · แก้มฟุ้ง · จมูกชมพู · หนวดก้อน · ปาก ω (บางกว่า กว้างกว่า สูงกว่าเดิมนิด)
+  const face = mojiPart('face');
+  let fd = base.parts.face.det;
+  for (const id of ['eye-left', 'eye-right', 'cheek-left', 'cheek-right', 'nose', 'whiskers-left', 'whiskers-right', 'mouth']) {
+    const o = mojiFind(face, id);
+    if (o) fd = swap(fd, id, conv([o]), true);
+  }
+  // ── ตาหลับไม่แหว่ง ──
+  // แก้ม: ไฟล์ฉบับแก้แก้ม (21 พ.ย.) โมจิวาดแก้มเป็นวงรีเต็มวงใต้ตาแล้ว — ใช้ของไฟล์ตรง ๆ (เลิกแก้มวงเต็มชั่วคราวของเรา)
+  // ขอบขนครีมใต้ตายังเว้าตามรูปตา (ฉบับนี้แก้แค่แก้ม) → ยังเติมครีมเฉพาะในรอยตา (วงตา + ขนตาเสี้ยว) ใต้ระดับขอบครีมข้างแก้ม
+  //   — ตอนลืมตา ตาบังมิด หน้าตาเหมือนไฟล์ · พอโมจิลงครีม/สีโทนใต้ตาเต็มแล้ว ลบส่วนนี้ (fills) ทิ้งได้เลย
+  const creamOp = one('head', 'cream-head')[0];
+  const fills = [];
+  if (creamOp?.grad) {
+    const probe = (typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(4, 4) : document.createElement('canvas')).getContext('2d');
+    for (const side of ['left', 'right']) {
+      const g = mojiFind(face, `eye-${side}-open`);
+      const iris = g && mojiFind(g.ops, side === 'left' ? 'iris' : 'iris_2');
+      const lash = g && mojiFind(g.ops, side === 'left' ? 'eyelash' : 'eyelash_2');
+      if (!iris || !lash) continue;
+      const [irisC, lashC] = conv([iris, lash]);
+      // ขอบนอกสุดของรอยตา (ขนตาเสี้ยวยื่นออกนอกวงตา) → ระดับขอบครีมตรงนั้น = เส้นที่ครีมจะเติมขึ้นมาถึง
+      const xs = lashC.cmds.filter((q) => q[0] !== 'Z').map((q) => q[q.length - 2]);
+      const ox = side === 'left' ? Math.min(...xs) - 3 : Math.max(...xs) + 3;
+      let y0 = null;
+      for (let y = 220; y < 360; y += 0.5) if (probe.isPointInPath(creamOp.path, ox, y)) { y0 = y; break; }
+      if (y0 == null) continue;
+      // แผ่นครีมกึ่งกลางตรงกลางตา (ตอนหันหน้า ชิ้นหน้าเลื่อนตามจุดกลาง — จะได้เลื่อนเท่ากับตา)
+      const ex = mojiModel().eye[side]?.x ?? ox;
+      const cmds = [['M', ex - 120, y0], ['L', ex + 120, y0], ['L', ex + 120, y0 + 160], ['L', ex - 120, y0 + 160], ['Z']];
+      const patch = { kind: 'shape', id: `eye-fill-${side}`, cmds, path: buildPath(cmds, (x, y) => [x, y]), fill: null, grad: creamOp.grad, fillAlpha: 1, stroke: null };
+      // วาดสองรอบ (ตัดในวงตา · ตัดในขนตาเสี้ยว) — รวมสองรูปเป็นเส้นตัดเดียว ตรงที่ซ้อนอาจวนสวนกันเป็นรู
+      for (const sh of [irisC, lashC]) fills.push({ kind: 'clip', id: `eye-fill-${side}`, clip: sh.path, clipCmds: [sh.cmds], ops: [patch] });
+    }
+  }
+  // ลำดับชั้นหน้า: หนวด → ครีมในรอยตา → แก้ม → ตา → จมูก → ปาก
+  //   ครีมเติมเป็นส่วนของขนครีม (ชั้นหัว) จึงอยู่ใต้แก้ม — ถ้าทับแก้ม จะเห็นแก้มแหว่งเป็นรอยเว้าตามรูปตา (ผู้ใช้ทัก 21 พ.ย.)
+  const rank = (o) => { const i = ['whiskers', 'eye-fill', 'cheek', 'eye-', 'nose', 'mouth'].findIndex((p) => (o.id || '').startsWith(p)); return i < 0 ? 9 : i; };
+  fd = [...fd, ...fills].map((o, i) => [o, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([o]) => o);
+  put('face', fd);
+  // ตา: กลุ่มตาเปิดของไฟล์ใหม่ + กลางตา = วงตาดำ (ตาปิด/เปลือกตาของตัววาดวางตรงตาใหม่)
+  const mm = mojiModel();
+  const groups = { ...base.groups };
+  for (const side of ['left', 'right']) {
+    const g = mojiFind(face, `eye-${side}-open`);
+    if (g) groups[`eye-${side}-open`] = conv(g.ops);
+  }
+  const eye = { left: mm.eye.left || base.eye.left, right: mm.eye.right || base.eye.right };
+  // สีผิวรายชิ้นจากไฟล์ใหม่ (ผู้ใช้ 21 พ.ย. รอบ 4 — "สีเงาส้มเข้มของโมจิ"): พีชสว่างกลางชิ้น → ส้มเข้ม #F0A462 ที่ขอบ
+  //   จุดสว่างของแต่ละชิ้นวางไว้ตามที่นักวาดตั้ง (แขนซ้ายสว่างที่อุ้งเท้า แขนขวาสว่างที่ไหล่ ฯลฯ) — ดู drawLayer ขั้น 2'
+  //   ชิ้นที่วาดด้วยโค้ด (หาง ตัวนั่ง ก้อนหมอบ ตัววิ่ง แขนท่อ) ยังใช้สนามสีพ่นเดิม
+  for (const [id, fid] of [['leg-left', 'fill'], ['leg-right', 'fill_2'], ['torso', 'fill_3'], ['arm-left', 'fill_4'], ['arm-right', 'fill_5'], ['head', 'fill_8']]) {
+    const f0 = one(id, fid)[0];
+    if (f0?.grad) parts[id].fill = f0;
+  }
+  // แขนขวาจอ (ผู้ใช้ 21 พ.ย. รอบ 5): ในไฟล์ใหม่จุดสว่างของสีไล่อยู่ที่ไหล่ (radial-gradient-17 โฟกัสเยื้อง) — ไหล่สว่างตัดกับลำตัวส้มเข้ม สีดูขาด
+  //   → ใช้สีไล่ของแขนซ้ายจอกลับด้านซ้าย-ขวา (สว่างที่อุ้งเท้า เข้มที่โคนแขน ต่อกับลำตัวเนียน) · รูปทรงแขนยังเป็นของแขนขวาเอง
+  const armL = parts['arm-left'].fill, armR = parts['arm-right'].fill;
+  if (armL?.grad && armR) {
+    const mirror = new DOMMatrix().translate(600, 0).scale(-1, 1);   // กลับด้านรอบเส้นกลางตัว x = 300
+    parts['arm-right'].fill = { ...armR, grad: { ...armL.grad, m: mirror.multiply(armL.grad.m), at: [600 - armL.grad.at[0], armL.grad.at[1]] } };
+  }
+  return { parts, groups, piv: base.piv, eye, moji: true };
+}
+
 // ══ วาดชุดคำสั่ง ══
 function color(c, pal) {
   if (!c) return null;
@@ -23569,6 +23760,19 @@ function lightPatchesOf(ops) {
   return r;
 }
 function drawOps(ctx, ops, pal, hooks, opt) {
+  // ส่งออก SVG (ผ้าใบอัดคำสั่งวาด — เครื่องมือส่งไฟล์ให้นักวาด): ห่อแต่ละชิ้นเป็นกลุ่มชื่อเดียวกับชั้นในไฟล์ออกแบบ
+  // ผ้าใบจริงไม่มี __svgTag → ไม่ผ่านทางนี้ (ไม่มีผลกับเกม)
+  if (ctx.__svgTag) {
+    for (const op of ops) {
+      ctx.__svgTag(op.id || op.kind, true);
+      drawOps0(ctx, [op], pal, hooks, opt);
+      ctx.__svgTag(null, false);
+    }
+    return;
+  }
+  drawOps0(ctx, ops, pal, hooks, opt);
+}
+function drawOps0(ctx, ops, pal, hooks, opt) {
   for (const op of ops) {
     if (op.kind === 'group') {
       if (opt.noStripes && /^stripes/.test(op.id)) continue;
@@ -23589,10 +23793,16 @@ function drawOps(ctx, ops, pal, hooks, opt) {
         ctx.clip(op.path);
         const { m, stops } = op.grad;
         ctx.transform(m.a, m.b, m.c, m.d, m.e, m.f);
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        // f = จุดโฟกัส (สีไล่จากไฟล์โมจิ — Illustrator ใช้จุดสว่างเยื้องกลาง) · fillAlpha = ความโปร่งของชิ้น (เงาสะท้อนในตา)
+        const fo = op.grad.f || [0, 0];
+        const g = ctx.createRadialGradient(fo[0], fo[1], 0, 0, 0, 1);
         for (const [o, c] of stops) g.addColorStop(o, c);
         ctx.fillStyle = g;
-        ctx.fillRect(-1.5, -1.5, 3, 3);
+        if (op.fillAlpha != null && op.fillAlpha !== 1) ctx.globalAlpha *= op.fillAlpha;
+        // สีไล่จากไฟล์โมจิ (grad.at): ทากว้างกว่ารัศมีมาก — จุดกลางสีไล่ลำตัวอยู่ต่ำที่สะโพก ไหล่ห่างเกิน 1.5 เท่ารัศมี
+        //   ถ้าทาแค่ ±1.5 ไหล่จะไม่ได้สี เห็นเป็นแถบขอบตรง (สีหลังรัศมีคือสีสุดท้ายของสีไล่ — ส้มเข้มขอบชิ้น)
+        const ext = op.grad.at ? 8 : 1.5;
+        ctx.fillRect(-ext, -ext, ext * 2, ext * 2);
         ctx.restore();
       } else if (op.fill) {
         // คูณกับความโปร่งที่ hook ตั้งไว้ (เช่น ครีมหน้าจาง) — ไม่ทับค่าเดิม
@@ -23870,7 +24080,7 @@ function drawLayer(ctx, items, pal, hooks, opt) {
   const sg = softGrad(ctx, soft, pal);
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
-    if (!it.sil.length) continue;
+    if (!it.sil.length || it.fill?.grad) continue;   // สไตล์โมจิ: ทาสีไล่ของชิ้นเองแล้ว (2')
     ctx.save();
     // ตัดตามรูปชิ้นนี้ก่อน (กรอบตัดเล็ก) แล้วค่อยเจาะรูชิ้นก่อนหน้า — ผลเท่ากันทุกพิกเซล แต่การตัดชั้นถัด ๆ ไปถูกลงมาก
     ctx.setTransform(m00);
@@ -23895,6 +24105,32 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     }
     ctx.restore();
   }
+  // 2') สไตล์โมจิ: ชิ้นที่มีสีไล่ของตัวเอง (it.fill — จากไฟล์นักวาด: พีชสว่างกลางชิ้น → ส้มเข้มที่ขอบ) ทาตามลำดับชั้น
+  //     ทาหลังสนามสีพ่น (2b): ชิ้นหลังที่ใช้สนามสี (หู) ล้นเข้าไปใต้หัว — หัวต้องทาทับส่วนนั้น ไม่งั้นเห็นรูปหูเป็นรอยเหลี่ยมบนหัว
+  //     เว้นชิ้นที่อยู่หน้ากว่าแต่ใช้สนามสี (ชิ้นนั้นต้องอยู่บนสุด) · ชิ้นหน้าที่มีสีไล่ของตัวเองทาทับเอง (แขนทับตัว) แบบในไฟล์
+  const m2 = ctx.getTransform();
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (!it.fill?.grad || !it.sil.length) continue;
+    ctx.save();
+    for (let j = i + 1; j < items.length; j++) {
+      const o = items[j];
+      if (!o.sil.length || o.fill?.grad) continue;
+      ctx.setTransform(m2);
+      o.xf?.(ctx);
+      const hole = new Path2D();
+      hole.rect(...HOLE_BOX);
+      hole.addPath(o.all);
+      ctx.clip(hole, 'evenodd');
+    }
+    ctx.setTransform(m2);
+    it.xf?.(ctx);
+    // ทาในรูปทรงของไฟล์ใหม่ (it.fill.path ดัดตามท่าแล้ว) ∩ ชิ้นจริง — รูปทรงชิ้นของไฟล์เดิมมี "โคนฝังในตัว" (แขนยื่นลึกเข้าไปในลำตัวเป็นสี่เหลี่ยม)
+    // ถ้าทาเต็มชิ้น สีไล่ของแขนจะทับลำตัวเป็นแถบขอบตรงที่ไหล่ · ส่วนโคนจึงเห็นสีไล่ของลำตัวแทน (แบบในไฟล์ใหม่)
+    ctx.clip(it.all);
+    drawOps(ctx, [{ ...it.fill, fill: null, stroke: null }], pal, {}, {});
+    ctx.restore();
+  }
   if (pal.patchOver === 'rim') paintPatches();
   // 2c) เงาขอบด้านในแบบพ่นสี — ขอบก้อนไล่เข้มเข้าไปด้านในตามรูปทรง (ทั้งชั้นเป็นก้อนเดียว ไม่มีรอยต่อ)
   if (airbrushOn() && !opt?.noAirbrush) {
@@ -23902,7 +24138,9 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     const ab = items.filter((it) => it.sil.length);
     // ชิ้นเล็ก (ขาหน้า แขนที่วางทับตัว) ฟุ้งแคบลง — ไม่งั้นเงากินทั้งชิ้นจนเป็นแท่งเข้ม
     const small = ab.length && ab.every((it) => it.small);
-    rimShade(ctx, ab, shadeRgba(pal, 1), small ? [[16, 0.55], [7, 0.4]] : [[42, 0.85], [14, 0.6]]);
+    // opt.rimK = ความเข้มเงาขอบ (สไตล์โมจิ: ตัวสว่างกว่า ขอบไล่เข้มแค่นิด ๆ แบบในไฟล์นักวาด)
+    const rk = opt?.rimK ?? 1;
+    rimShade(ctx, ab, shadeRgba(pal, 1), small ? [[16, 0.55 * rk], [7, 0.4 * rk]] : [[42, 0.85 * rk], [14, 0.6 * rk]]);
   }
   if (pal.patchOver === 'top') paintPatches();
   // 3) รายละเอียดของแต่ละชิ้น ตัดให้อยู่ในเนื้อของชิ้นตัวเอง (ลายไม่ล้นออกนอกเส้น)
@@ -24041,6 +24279,66 @@ function tailGeom(T, wag, base, wagOff = 0, short = 0) {
   path.closePath();
   return { path, pts, half, N };
 }
+/**
+ * หางสไตล์โมจิ (ตามหางในไฟล์ cat-orange-back 21 พ.ย.) — หางวาดด้วยโค้ด (ขยับได้) แต่ลงสีแบบในไฟล์:
+ *   เนื้อพีชสว่างช่วงโคน → ส้มกลางหาง · กลางหางสว่างกว่าขอบ (กลม) · ลายเป็นก้อนส้มไล่สีขวางหาง · ปลายครีมไล่จางเข้ามา (ไม่มีขอบตัด)
+ */
+const MOJI_TAIL = { light: '#FCE6D0', mid: '#F8C08A', edge: '#F0A462', stripe: [230, 138, 69], cream: [248, 241, 230] };
+function mojiTailDetails(ctx, G) {
+  const { pts, half, N } = G;
+  const a = pts[0], b = pts[N];
+  // 1) เนื้อไล่ตามความยาว: โคนพีชสว่าง → ส้ม
+  const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+  // โคนหางสว่างกว่าแบบนุ่ม ๆ ตามไฟล์ (ผู้ใช้ 21 พ.ย.: "ไล่สีเหมือนในแบบ แต่ไม่ต้องต่างกันชัดขนาดนั้น")
+  //   โคน = กึ่งกลางพีชสว่างกับสีกลาง → ค่อย ๆ ไล่เป็นสีกลาง → ส้ม ยาวราวครึ่งหาง (ไม่มีจุดตัดสีชัด)
+  g.addColorStop(0, mix(MOJI_TAIL.light, MOJI_TAIL.mid, 0.45));
+  g.addColorStop(0.25, MOJI_TAIL.mid);
+  g.addColorStop(0.55, mix(MOJI_TAIL.mid, MOJI_TAIL.edge, 0.7));
+  g.addColorStop(0.8, MOJI_TAIL.edge);
+  g.addColorStop(1, MOJI_TAIL.edge);
+  ctx.fillStyle = g;
+  ctx.fillRect(-2000, -2000, 5000, 5000);
+  // 2) กลางหางสว่าง ขอบเข้ม (ทรงกระบอก) — ไล่ด้วยเส้นกลางหลายชั้น แคบลงสว่างขึ้น
+  const spine = new Path2D();
+  spine.moveTo(a.x, a.y);
+  for (let i = 1; i <= N; i++) spine.lineTo(pts[i].x, pts[i].y);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const hw = half(Math.floor(N / 2));
+  for (const [w, al] of [[1.4, 0.1], [0.9, 0.12], [0.45, 0.14]]) {
+    ctx.strokeStyle = `rgba(252,230,208,${al})`;
+    ctx.lineWidth = hw * w;
+    ctx.stroke(spine);
+  }
+  // 3) ลายก้อนส้มขวางหาง (สีไล่วงรี เข้มกลาง จางขอบ — แบบ radial-gradient-3 ในไฟล์)
+  const [sr, sg, sb] = MOJI_TAIL.stripe;
+  // ก้อนลายในไฟล์กว้างเกือบเต็มหาง ยาวตามหางราวครึ่งความกว้าง เรียงถี่ช่วงกลาง-ปลาย (8 ก้อนในหางยาว → 6 ก้อนในหางโค้ด)
+  for (const [u, k] of [[0.3, 0.8], [0.4, 0.9], [0.5, 1], [0.6, 1], [0.69, 1], [0.77, 0.95]]) {
+    const i = Math.round(u * N), p = pts[i], h = half(i);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.a);
+    ctx.scale(h * 0.6, h * 1.2 * k);   // ยาวขวางหาง แคบตามแนวหาง
+    const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    rg.addColorStop(0, `rgba(${sr},${sg},${sb},.95)`);
+    rg.addColorStop(0.56, `rgba(${sr},${sg},${sb},.6)`);
+    rg.addColorStop(1, `rgba(${sr},${sg},${sb},0)`);
+    ctx.fillStyle = rg;
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
+  }
+  // 4) ปลายครีม: ไล่จากโปร่งใส (ราว 82% ของหาง) → ครีมทึบที่ปลาย
+  const s0 = pts[Math.round(N * 0.8)], [cr, cg, cb] = MOJI_TAIL.cream;
+  const tipX = b.x + Math.cos(b.a) * half(N), tipY = b.y + Math.sin(b.a) * half(N);
+  // วงไล่สีรอบปลายหาง (ไม่ใช่ไล่ตามแนวเส้นตรง — หางโค้งย้อนกลับแล้ว ส่วนโคนหางเลยแนวปลายไปได้ครีมด้วย เห็นเป็นแถบขาวขยับที่โคน · ผู้ใช้ทัก 21 พ.ย.)
+  const tr = Math.hypot(tipX - s0.x, tipY - s0.y);
+  const tg = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, tr);
+  tg.addColorStop(0, `rgb(${cr},${cg},${cb})`);
+  tg.addColorStop(0.55, `rgba(${cr},${cg},${cb},.85)`);
+  tg.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+  ctx.fillStyle = tg;
+  ctx.fillRect(-2000, -2000, 5000, 5000);
+}
 function tailDetails(ctx, G, pal, opt = {}) {
   const plain = !!opt.plainTail;   // หางขาวล้วนตามแบบ (แมวขาว): ไม่มีปล้อง ไม่มีปลายครีม
   const { pts, half, N } = G;
@@ -24074,6 +24372,7 @@ function tailDetails(ctx, G, pal, opt = {}) {
     };
     softMark(ctx, strip(0.92), opt.tailStripe);
   }
+  if (opt.mojiTail && !plain) return mojiTailDetails(ctx, G);
   // เงาด้านใต้หาง ให้ดูกลมเหมือนแขนขา
   ctx.strokeStyle = flatShade(pal);
   ctx.lineWidth = 5;
@@ -25514,12 +25813,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const kitTailK = 1 - 0.32 * kit;
   const kitBand = (ctrl, N, half) => spineBand(kit ? ctrl.map(([px, py]) => [ctrl[0][0] + (px - ctrl[0][0]) * kitTailK, ctrl[0][1] + (py - ctrl[0][1]) * kitTailK]) : ctrl, N, half);
   const m0 = ctx.getTransform();   // ตัวแปลงของผู้เรียก — เอฟเฟกต์ท่าเปิดตัววาดในพิกัดพื้น ไม่ยืด/เอียง/เด้งตามตัว
-  const pal = paletteOf(s);
+  // สไตล์โมจิ: น้องส้มตัวหลักเท่านั้น (แมวในกล่องมีจานสีของตัวเอง s.pal) — ดู MOJI_STYLE
+  const moji = (!s || s.id === 'orange') && !s?.pal && (s?.moji ?? MOJI_STYLE.game);
+  const pal = moji ? MOJI_PAL : paletteOf(s);
   // art = ลายเฉพาะตัวของแมวแบบใหม่ (CAT2_BREEDS) · stripeK/stripeA = ความหนา/ความเข้มของลาย
   const art = s?.art || {};
   // หางพวงฟู (art.fluffy) ทุกท่า — ท่านั่ง/หมอบ/มองหลังใช้แถบหางของตัวเอง ฟูด้วยสูตรเดียวกับท่ายืน
   const tailSilOf = (B) => { const q = art.fluffTail ? fluffTailPaths(B)[0] : B.path; return { sil: [q], all: q }; };
-  const opt = { tailStripe: art.tailStripe ? pal.cream : null, noStripes: s && s.id !== 'orange' && s.stripes === false, plainTail: !!art.plainTail, stripeK: art.stripeK ?? 1, stripeA: art.stripeA ?? 1, calico: art.calico || art.points || art.tabby || art.marks || null };
+  const opt = { tailStripe: art.tailStripe ? pal.cream : null, noStripes: s && s.id !== 'orange' && s.stripes === false, plainTail: !!art.plainTail, stripeK: art.stripeK ?? 1, stripeA: art.stripeA ?? 1, calico: art.calico || art.points || art.tabby || art.marks || null, rimK: moji ? MOJI_RIM : 1, mojiTail: moji };
   // ลายสามสี / แต้มวิเชียรมาศ / ลายสลิด / ปื้นทั่วไป (art.marks: สีเปรอะ ลายวัว — ใช้ทางเดียวกับลายสลิด) — ระบบ patch เดียวกัน
   const marks = art.calico || art.points || art.tabby || art.marks || null;
   // แมวสามสี: ลายของชิ้นที่ไม่ได้มาจากไฟล์ออกแบบ (หาง แขนท่อ ตัวนั่ง ก้อนหมอบ) — ทาเป็นสีขนตอนลงสีพื้น (drawLayer 2a) ไม่มีเส้นรอยต่อ
@@ -25681,7 +25982,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     c.translate(-fx, 0);
     return Math.cos(th + yF);
   };
-  const M = model(back ? 'back' : 'front');
+  const M = model(back ? (moji ? 'back-moji' : 'back') : moji ? 'front-moji' : 'front');
   // แมวสามสี: ชิ้นส่วนที่แทรกปื้นส้ม/เทาไว้หน้าสุดของลวดลาย (ดัดไปกับชิ้นทุกท่า)
   const P = marks ? calicoParts(M, marks, back) : M.parts;
 
@@ -25846,19 +26147,22 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // ขอบนอกช่วงล่างของหูดึงเข้าหาหัว — ขอบหูไหลต่อเป็นข้างหัวเส้นเดียวแบบในแบบ (ไม่ยื่นเป็นบ่า)
       const outer = side === 'left' ? piv.x - x0 : x0 - piv.x;
       // มุมล่างด้านนอกของหูซุกเข้าหัวนิด — ไม่เป็นรอยบากตรงที่ขอบหูชนข้างหัว
-      if (outer > 0) x += d * outer * 0.22 * ease(clamp01((y0 - 150) / 60));
+      // สไตล์โมจิ: หูใช้ทรงจากไฟล์ใหม่ตรง ๆ (นักวาดวาดทรงหู ตำแหน่ง ความสูงมาแล้ว) — ไม่ซุกมุม/ไม่ย่อ/ไม่กางปลายแบบหูเดิม
+      if (outer > 0 && !M.moji) x += d * outer * 0.22 * ease(clamp01((y0 - 150) / 60));
 
-      const up = ease(clamp01((piv.y + 10 - y0) / 60));
+      const up = M.moji ? 0 : ease(clamp01((piv.y + 10 - y0) / 60));
       y += (piv.y - y0) * 0.08 * up;
       x -= d * (piv.y - y0) * 0.12 * up;   // ปลายหูกางออกนิด (ปลายหูอยู่ราว 30%/70% ของความกว้างหัวตามแบบ)
       // ตอนหัน: โคนหูติดหัวอยู่กับที่ ช่วงบนของหูค่อย ๆ เลื่อนตามมุมหัน (โคนไม่ล้นออกนอกหัว)
-      x += (yawX(x, 300, 172, yE) - x) * ease(clamp01((piv.y + 30 - y0) / 90));
+      // สไตล์โมจิ: หูสูงและกางกว่าหูเดิม — ตามมุมหันเต็มที่แล้วช่วงบนเฉือนเอียงมาก หูในดูห้อยต่ำ → ตามแค่ MOJI_EAR.follow
+      x += (yawX(x, 300, 172, yE) - x) * ease(clamp01((piv.y + 30 - y0) / 90)) * (M.moji ? MOJI_EAR.follow : 1);
       // หูฝั่งที่หน้าหันไปหา (ตามแบบผู้ใช้): ทั้งใบเลื่อนลงต่ำ + เข้าหากลางหัวนิด — โคนหูจมหลังกระหม่อม หัวบังหู
       // (หูกับหัวอยู่ชั้นเดียวกัน ส่วนที่จมจึงกลืนหายใต้หัว เหลือเส้นรอบนอกเส้นเดียว)
       const toward = (side === 'left' && yaw < 0) || (side === 'right' && yaw > 0);
       if (toward) {
         const f = ease(clamp01(Math.abs(yaw) / 0.75));
-        y += 24 * f * ease(clamp01((205 - y0) / 115));   // ต่ำลงนิด (36 ต่ำไป · 4/16 สูงไป) — ลดแค่ช่วงบน โคนหูยังบังมุมกระหม่อม เส้นหัวไม่หัก
+        // สไตล์โมจิ: หูสูงกว่าหูเดิม — กดต่ำ 24 แล้วโคนหู (หูในชมพู + ปอยขน) จมหลังหัวเหมือนขนหูตกหาย (ผู้ใช้ทัก 21 พ.ย.) → กดแค่ 8
+        y += (M.moji ? MOJI_EAR.drop : 24) * f * ease(clamp01((205 - y0) / 115));   // ต่ำลงนิด (36 ต่ำไป · 4/16 สูงไป) — ลดแค่ช่วงบน โคนหูยังบังมุมกระหม่อม เส้นหัวไม่หัก
         // เลื่อน/บีบ/เอียงเฉพาะช่วงบนของหู — โคนหูที่ต่อกับกระหม่อมอยู่ที่เดิม เส้นหัวระหว่างหูจึงโค้งเรียบ ไม่งอเป็นปุ่ม
         const top = f * ease(clamp01((185 - y0) / 95));
         x += d * 10 * top;
@@ -25879,7 +26183,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const headPatch = art.points && yaw && P.head.patch
     ? (c) => { c.save(); yawFeature(c, 300); drawOps(c, P.head.patch, pal, {}, {}); c.restore(); }
     : P.head.patch;
-  const headPart = () => ({ ...M.headShaped, det: P.head.det, patch: headPatch, soft: P.head.soft, xf: head });   // patch: ปื้นสีขนบนหัว (แมวสามสี)
+  const headPart = () => ({ ...M.headShaped, det: P.head.det, patch: headPatch, soft: P.head.soft, fill: P.head.fill || null, xf: head });   // patch: ปื้นสีขนบนหัว (แมวสามสี)
   // หูชั้นหนึ่ง (ข้างหลัง) → หัวอีกชั้น (ข้างหน้า มีเส้นขอบเต็ม) = เห็นเส้นหัวตัดโคนหูแบบในแบบ
   const OUT = s?.outfit ? outfitDef(s.outfit.id) : null;
   // ท่าเปิดตัวของชุด (OUT.intro): idle.intro = เฟรมในท่า · idle.skip 0..1 = กำลังข้ามไปท่าแอ็ค (เอฟเฟกต์จางออก)
@@ -25891,6 +26195,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // pal.outfitCream = สายพันธุ์ที่ครีมของตัวโปร่งใส (แมวดำ) — ชุดยังได้ครีมทึบไว้ทำผ้า
     pal: pal.outfitCream ? outfitPal(pal) : pal, t, back: false, intro: introOn ? (OUT.intro.warp ? OUT.intro.warp(idle.intro) : idle.intro) : null, introSkip: introOn ? idle.skip || 0 : 0,
     sv: v,   // ค่าช่องของท่าตอนนี้ (คูณ k แล้ว) — ชุดใช้ช่องของตัวเองได้ เช่น orb
+    moji: !!M.moji,   // สไตล์โมจิ: หูทรงใหม่ (สูงกว่า ขอบกางออกนอกกว่า) — ของที่แปะตามขอบหูเลือกตำแหน่งตามนี้ (earHoops)
     runner: !!idle?.runner,
     runBody: idle?.runner ? shape?.runBody || '' : '',   // จังหวะของตัววิ่ง ('up' · 'down' · 'up2' · 'down2') — ชุดจัดของตามจังหวะได้   // วิ่งในเกม (cat2-run / run-lab) — ชุดที่วางของ/เอฟเฟกต์ต่างจากหน้าคลัง (สไบไทย: ชายสไบปลิวหลัง ไม่มีพวงมาลัย)
     // ชุดบอกจุดปล่อยประกาย (id, จุดพิกเซลบนผ้าใบ) — ตอนวิ่ง: ผู้เรียก (cat2-run) · ท่าเปิดตัว: จำตำแหน่งหัวคทาไว้ทำทางประกาย (introTrail)
@@ -26252,6 +26557,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     c.globalAlpha = a0;
   };
   const whiskerDraw = (c, draw, op) => (art.whisker && op?.ops ? drawOps(c, op.ops, { ...pal, line: art.whisker }, {}, opt) : draw());
+  // เส้นปาก (ปากอ้า หาว ปากบึ้ง ปากหลับ) — สไตล์โมจิใช้ความหนาเท่าปาก ω ในไฟล์ใหม่ (บางกว่า) ปากหุบ/อ้าจึงเส้นเท่ากัน
+  const mouthLW = M.moji ? 2.835 : 4.2 * LINE_K;
   const hooks = {
     'ear-dark_6': earSwap(earDark, '_6', false), 'ear-dark_7': earSwap(earDark, '_7', false),
     'ear-pale_6': earSwap(earPale, '_6', false), 'ear-pale_7': earSwap(earPale, '_7', false),
@@ -26310,7 +26617,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         // พุงขอบฟุ้ง (แมวขาว · ศุภลักษณ์): ไล่จางจากกลางพุงออกขอบ — ไม่เห็นขอบวง (เดิมซ้อนสี่ชั้นแล้วเห็นเป็นวงซ้อนบนขนน้ำตาล)
         const b = earBox(op);
         bellyBlob(c, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.x1 - b.x0) * 0.56, (b.y1 - b.y0) * 0.6, pal.cream, true);
-      } else c.fill(op.path);
+      } else if (op.grad) drawOps(c, [op], pal, {}, opt);   // สไตล์โมจิ: พุงครีมฟุ้งตามสีไล่ในไฟล์ใหม่
+      else c.fill(op.path);
       c.restore();
     },
     // ลวดลายบนหัวเลื่อนตามหน้า (ใกล้หน้ามากเลื่อนมาก) · เงาข้างหัวเลื่อนสวน
@@ -26361,6 +26669,25 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         return;
       }
       if (!op) return draw();
+      // สไตล์โมจิ (ผู้ใช้ 21 พ.ย.): หันเฉียงแล้วขนครีมต้องยาวถึงเส้นขอบหน้าแบบตัวเดิม และไม่เป็นแอ่ง
+      //   ขนครีมของโมจิขอบโปร่งด้วยสีไล่ — ดัดทีละจุดแบบตัวเดิม รูปยืดแต่สีไล่ไม่ยืดตาม ฝั่งที่ยืดโปร่งเป็นแอ่งสีส้ม
+      //   → แบ่งสองซีกที่เส้นกลางหน้า: ซีกหนึ่งยืด อีกซีกหด แบบเส้นตรง (ขอบหน้า x 128 / 472 อยู่ที่เดิม · กลางหน้าเลื่อนตามจมูก)
+      //     ทั้งรูปและสีไล่ยืดด้วยกันทั้งซีก จึงเหมือนแบบทุกจุด · รอยต่อกลางหน้าอยู่ในช่วงครีมทึบ (ซ้อนกันนิดกันเส้นบาง ๆ)
+      if (M.moji) {
+        if (!yaw) return drawOps(c, op.ops, pal, hooks, opt);
+        const R = 172, cx = 300, mid = yawX(cx), lap = 1.5;
+        for (const [lo, hi, edge] of [[-1e4, mid + lap, cx - R], [mid - lap, 1e4, cx + R]]) {
+          const a = (mid - edge) / (cx - edge);   // ขอบอยู่ที่เดิม · กลางหน้า cx → mid
+          c.save();
+          c.beginPath();
+          c.rect(lo, -1e4, hi - lo, 2e4);
+          c.clip();
+          c.transform(a, 0, 0, 1, edge - a * edge, 0);
+          drawOps(c, op.ops, pal, hooks, opt);
+          c.restore();
+        }
+        return;
+      }
       // ดัดเฉพาะรูปขนขาว — กรอบตัด (หน้ากากรูปหัว) คงที่เดิม ไม่งั้นขอบหัวฝั่งไกลหดเข้ามาเป็นเส้นคมกลางแก้ม
       const keepClip = (list, f) => list.map((q) => (q.kind === 'clip' ? { ...q, ops: deformOps(q.ops, f) }
         : q.kind === 'group' ? { ...q, ops: keepClip(q.ops, f) } : deformOps([q], f)[0]));
@@ -26368,6 +26695,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       const edgeKeep = (x) => { const r = Math.abs(x - 300) / 172; return 1 - ease(clamp01((r - 0.62) / 0.3)); };
       const ops = yaw ? keepClip(op.ops, (x, y) => [x + (yawX(x) - x) * edgeKeep(x), y]) : op.ops;
       drawOps(c, ops, pal, hooks, opt);
+      if (M.moji) return;   // สไตล์โมจิ: ขอบขนขาวนุ่มอยู่ในสีไล่ของไฟล์แล้ว (ขอบจาง 80–60%) — ไม่เบลอซ้ำ
       // เบลอเฉพาะขอบช่วงแก้ม (ใต้ระดับตา) — แถบขาวกลางหน้าระหว่างตาคงขอบคมตามแบบ (ผู้ใช้สั่ง)
       // ขอบเริ่มเบลอไล่ค่อย ๆ เข้ม (y 282 → 336) ไม่ตัดเป็นเส้นตรง — ตัดแข็งแล้วเห็นรอยขีดแนวนอนตอนหลับตา
       const m = c.getTransform();
@@ -26396,7 +26724,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.translate(300, 351);
         c.scale(1 + Math.sin(T * 1.4) * 0.05, 1);
         c.strokeStyle = pal.line;
-        c.lineWidth = 4.2 * LINE_K;
+        c.lineWidth = mouthLW;
         c.lineCap = 'round';
         c.lineJoin = 'round';
         c.beginPath();
@@ -26420,7 +26748,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.fillStyle = '#FF8FA6';
         c.fill(tg);
         c.strokeStyle = pal.line;
-        c.lineWidth = 3.4 * LINE_K;
+        c.lineWidth = M.moji ? mouthLW * 0.81 : 3.4 * LINE_K;
         c.lineJoin = 'round';
         c.stroke(tg);
         c.strokeStyle = 'rgba(200,60,100,.55)';
@@ -26434,7 +26762,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         draw();
         c.fillStyle = '#FF8FA6';
         c.strokeStyle = pal.line;
-        c.lineWidth = 3.4 * LINE_K;
+        c.lineWidth = M.moji ? mouthLW * 0.81 : 3.4 * LINE_K;
         c.beginPath();
         c.ellipse(300, 358 + lick * 3, 8, 4 + lick * 6, 0, 0, TAU);
         c.fill();
@@ -26445,7 +26773,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         // หน้ากวน: ปากบึ้ง ︿ เล็ก ๆ ใต้จมูก (แทนปาก ω) · ตาง่วงแรงใกล้หมด: ปากคว่ำแบบเดียวกัน ดูเศร้า ๆ (ผู้ใช้ 18 ต.ค.)
         c.save();
         c.strokeStyle = pal.line;
-        c.lineWidth = 4.2 * LINE_K;
+        c.lineWidth = mouthLW;
         c.lineCap = 'round';
         c.lineJoin = 'round';
         c.beginPath();
@@ -26484,7 +26812,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.fill();
         c.restore();
         c.strokeStyle = pal.line;   // ขอบปากสีเส้นเดิมของแบบ — เปลี่ยนแค่สีในปาก
-        c.lineWidth = 4.2 * LINE_K;
+        c.lineWidth = mouthLW;
         c.stroke(mp);
         return;
       }
@@ -26507,7 +26835,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.fill();
       c.restore();
       c.strokeStyle = pal.line;
-      c.lineWidth = 4.2 * LINE_K;
+      c.lineWidth = mouthLW;
       c.lineJoin = 'round';
       c.lineCap = 'round';
       c.stroke(mp);
@@ -26558,6 +26886,15 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const op = findOp(P.face?.det || [], id);
     // แก้มเป็นวงสีเรียบตามรูปในแบบ (ผู้ใช้ไม่เอาแบบฟุ้ง) ไม่มีเส้นขอบ
     if (op) hooks[id] = (c) => {
+      // สไตล์โมจิ: แก้มสีฟุ้ง (สีไล่ในไฟล์ใหม่ — กลางชมพูส้ม จางหายที่ขอบ) · แก้มวงเต็ม (mojiFront) ตัดในหัว
+      //   ไม่งั้นตอนหันเฉียง แก้มฝั่งไกลล้นออกนอกขอบหัว
+      if (op.grad) {
+        c.save();
+        if (faceHeadM) { const m = c.getTransform(); c.setTransform(faceHeadM); c.clip(M.headShaped.all); c.setTransform(m); }
+        drawOps(c, [op], pal, {}, opt);
+        c.restore();
+        return;
+      }
       c.fillStyle = pal.cheek; c.fill(op.path);
     };
   }
@@ -26608,6 +26945,39 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   };
   // จานสีของรอบวาดซ้ำบนปื้น: เส้น/ขนตาเป็นสีขาว · ขนบนเปลือกตา (ตาปรือ ตาเศร้า) เป็นสีปื้น
   const inkPal = (fur) => ({ ...pal, cat: fur, line: LASH_LIGHT, closedInk: LASH_LIGHT, inkCover: true });
+  // สไตล์โมจิ: ตาเปิดตามไฟล์ใหม่ — วงตาดำสีทองอยู่กับที่ · รูม่านตา ประกาย เงาสะท้อน กลอกตามสายตา (ตัดในวงตา)
+  //   ขนตาเสี้ยวเข้ม + ขอบตาบางมาจากไฟล์ (ไม่ใช้ขนตา/ขอบตาของตัววาด) · ตาปิด/ตาปรือ/เปลือกตายังเป็นของตัววาด
+  //   ตาดำ (ผู้ใช้ 21 พ.ย. รอบ 3 — "ให้เต็มดวงเหมือนตาเดิมตอนกรอกตา"): ตาดำในไฟล์แบน (กว้าง 43 สูง 41) ไม่ล้นขอบ
+  //   → ขยายเป็นวงกลมรัศมี MOJI_PUPIL.r ตั้งเยื้องขึ้น/เข้าหาจมูกแบบตาเดิม (ล้นขอบบนนิด ตัดในวงตา) — สี ประกาย เงาสะท้อน ตามไฟล์ ขยายไปด้วยกัน
+  const mojiEye = (c, ops, lx, ly, side) => {
+    const iris = ops.find((o) => /^iris/.test(o.id || ''));
+    const pupil = ops.find((o) => /^pupil/.test(o.id || ''));
+    // กรอบจากจุดปลายเส้นเท่านั้น (จุดควบคุมโค้งยื่นเลยรูปจริง — กรอบจะโตเกิน ตาดำออกมาเล็ก)
+    const endBox = (o) => {
+      const b = { x0: 1e9, y0: 1e9, x1: -1e9, y1: -1e9 };
+      for (const q of o.cmds || []) {
+        if (q[0] === 'Z') continue;
+        const x = q[q.length - 2], y = q[q.length - 1];
+        b.x0 = Math.min(b.x0, x); b.x1 = Math.max(b.x1, x); b.y0 = Math.min(b.y0, y); b.y1 = Math.max(b.y1, y);
+      }
+      return b;
+    };
+    const ib = iris ? endBox(iris) : null, pb = pupil ? endBox(pupil) : null;
+    const fit = ib && pb ? (() => {
+      const icx = (ib.x0 + ib.x1) / 2, icy = (ib.y0 + ib.y1) / 2, pcx = (pb.x0 + pb.x1) / 2, pcy = (pb.y0 + pb.y1) / 2;
+      const d = side === 'left' ? 1 : -1;   // เข้าหาจมูก
+      return { x: icx + d * MOJI_PUPIL.dx, y: icy + MOJI_PUPIL.dy, pcx, pcy, sx: MOJI_PUPIL.r / ((pb.x1 - pb.x0) / 2), sy: MOJI_PUPIL.r / ((pb.y1 - pb.y0) / 2) };
+    })() : null;
+    for (const o of ops) {
+      if (!/^(pupil|shine|reflection)/.test(o.id || '')) { drawOps(c, [o], pal, {}, opt); continue; }
+      c.save();
+      if (iris?.path) c.clip(iris.path);
+      c.translate(lx, ly);
+      if (fit) { c.translate(fit.x, fit.y); c.scale(fit.sx, fit.sy); c.translate(-fit.pcx, -fit.pcy); }
+      drawOps(c, [o], pal, {}, opt);
+      c.restore();
+    }
+  };
   for (const side of ['left', 'right']) {
     const e = M.eye[side];
     const ops = M.groups[`eye-${side}-open`];
@@ -26663,7 +27033,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // หน้ากวน (วิเชียรมาศ): ตาครึ่งดวงวาดใหม่ทั้งดวง ใช้ทุกท่า — ไม่มีตากลมแบบเดิมโผล่เลย (ผู้ใช้สั่ง 15 ต.ค. รวมท่าเปิดตัว)
       // ตาประกาย/ดีใจ: ยังเป็นตาทรงเดิมของน้อง แค่มีดาววิ้งเพิ่ม · ตาปิด (กะพริบ ยิ้ม ∩ ขยิบ) ใช้ตาปิดตามปกติ
       const grumpyNow = !!art.grumpy;
-      (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : s?.eyeStyle === 'manee' ? drawManeeEye : s?.eyeStyle === 'somsa' ? drawSomsaEye : s?.eyeStyle === 'suea' ? drawSueaEye :s?.eyeStyle === 'hazel' ? drawHazelEye : s?.eyeStyle === 'doll' ? drawDollEye : s?.eyeStyle === 'baker' ? drawBakerEye : s?.eyeStyle === 'xchg' ? drawXchgEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
+      if (M.moji) mojiEye(c, ops, gx * 7 - hx * 2 + v('pupilX') * 20, gy * 5 + (sleepy ? 7 : 0) + v('pupilY') * 17, side);
+      else (grumpyNow ? drawGrumpyEye : s?.eyeStyle === 'round' ? drawRoundEye : s?.eyeStyle === 'wilat' ? drawWilatEye : s?.eyeStyle === 'supha' ? drawSuphaEye : s?.eyeStyle === 'korat' ? drawKoratEye : s?.eyeStyle === 'manee' ? drawManeeEye : s?.eyeStyle === 'somsa' ? drawSomsaEye : s?.eyeStyle === 'suea' ? drawSueaEye :s?.eyeStyle === 'hazel' ? drawHazelEye : s?.eyeStyle === 'doll' ? drawDollEye : s?.eyeStyle === 'baker' ? drawBakerEye : s?.eyeStyle === 'xchg' ? drawXchgEye : drawBabyEye)(c, white.path, side, {   // แมวสามสี: ตากลมเขียวแบบใหม่
         lx: gx * 7 - hx * 2 + v('pupilX') * 20, ly: gy * 5 + (sleepy ? 7 : 0) + v('pupilY') * 17,   // pupilX/Y = กรอกตาดำชัด ๆ (ท่าเปิดตัว)
         sparkle: (starry || eyesOpenHappy || cute ? 1 : 0) * (OUT?.eyeSparkle ?? 1),   // OUT.eyeSparkle = ชุดที่อยากให้ตาวิ้งน้อยลง (0..1)
         t,
@@ -26679,7 +27050,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // ตาหัวใจ (mood 'love' · หนุ่มไทยแอบมองหญิง — ผู้ใช้ 24 ต.ค.): หัวใจชมพูในตาดำ เต้นตุบ ๆ + ประกายขาว
       if (mood === 'love') loveHeartEye(c, white.path, side, gx * 7 - hx * 2 + v('pupilX') * 20, gy * 5 + v('pupilY') * 17, t);
       // ขอบตานอกเส้นบาง ๆ (บางกว่าเส้นตัวมาก) ให้ตาแยกจากขนส้มชัดขึ้น
-      if (!grumpyNow && !lidEye) {   // ตาหน้ากวน/วิลาศ/ศุภลักษณ์วาดขอบของตัวเองแล้ว (รูปตาไม่ใช่วงกลม)
+      if (!grumpyNow && !lidEye && !M.moji) {   // ตาหน้ากวน/วิลาศ/ศุภลักษณ์วาดขอบของตัวเองแล้ว (รูปตาไม่ใช่วงกลม) · สไตล์โมจิมีขอบตาในไฟล์
         c.strokeStyle = pal.line;
         c.lineWidth = EYE_RIM_W;
         c.stroke(white.path);
@@ -26705,7 +27076,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         else if (s?.eyeStyle === 'round') drawRoundLashes(q, side, 1 - shut * 0.9, e.y);   // แมวสามสี: ขนตาแบบใหม่
         else drawLashes(q, side, female, 1 - shut * 0.9, e.y);
       };
-      if ((lidEye || (!cool && !sleepy)) && !grumpyNow) {
+      if ((lidEye || (!cool && !sleepy)) && !grumpyNow && !M.moji) {   // สไตล์โมจิ: ขนตาเสี้ยวมากับตาในไฟล์แล้ว
         lashSet(c);
         // บนปื้นดำ: ส่วนที่ทับปื้นเป็นสีขาว · เว้นช่องตา (บีบตามตาหรี่) — ขอบในของไลเนอร์ยังเข้มเป็นขอบตา
         const eyeHole = s?.eyeStyle === 'wilat' ? wilatEyeGeo(side, wLid).path : s?.eyeStyle === 'supha' ? suphaEyeGeo(side, wLid).path : s?.eyeStyle === 'doll' ? dollEyeGeo(side, wLid).path : s?.eyeStyle === 'baker' ? bakerEyeGeo(side, wLid).path : s?.eyeStyle === 'xchg' ? xchgEyeGeo(side, wLid).path : white.path;
@@ -27724,7 +28095,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     RB.anklesAt = RB.ankles ? { left: seg(RB.ankles.left), right: seg(RB.ankles.right) } : null;
     // เครื่องมือวาด (หน้าทดสอบวิ่ง): ส่งตัวแปลงพิกัดไฟล์ → ผ้าใบ ของตัววิ่ง ไว้แปลงจุดจากภาพแบบกลับเป็นพิกัดไฟล์ตรง ๆ
     if (idle?.onRunBody) { const [ax, ay] = rp([300, 600]); idle.onRunBody(ctx.getTransform(), ax - 300, ay - 600); }
-    torso = { ...torso, sil: [body], all: body, uni: body, det, det0 };
+    torso = { ...torso, sil: [body], all: body, uni: body, det, det0, fill: null };   // ตัววิ่ง = ทรงใหม่ทั้งก้อน: ไม่ใช้สีไล่ลำตัวยืนของสไตล์โมจิ (ใช้สนามสีเดิม)
     const none = { sil: [], all: new Path2D(), uni: new Path2D(), det: () => {} };
     legL = none;
     legR = none;
@@ -28092,3 +28463,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   drawFront();
   ctx.restore();
 }
+
+// ══ จังหวะชีวิตชุดเดียวกัน ให้ตัววาดลายเส้นใหม่ของนักวาด (cat-moji.js · หน้า cat-lab) ══
+// หายใจ กะพริบ กลอกตา ท่าแขน ใช้สูตรนี้ทั้งคู่ — ยืนเทียบกันแล้วขยับพร้อมกันเป๊ะ
+export const CAT2_RIG = { FEET_Y, UNIT, ARM_REST, SIT_HEAD, KIT, gazeAt, blinkAt, hash, ease, clamp01, solveArm, armTarget, rotPt };
