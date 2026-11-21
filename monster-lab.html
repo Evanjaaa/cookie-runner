@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Monster Lab — ห้องทดสอบบอส</title>
+  <!-- หน้าหลังบ้านตอนพัฒนาเท่านั้น (แบบเดียวกับ cat-lab.html): ไม่อยู่ใน rollupOptions.input ของ vite.config.js
+       จึงไม่ถูก build และไม่ขึ้นเว็บจริง · เปิดตอนรัน npm run dev → /monster-lab.html
+       ใช้ตรวจหน้าตา/ท่าของบอสก่อนเอาลงด่านจริง · ตัววาดอยู่ที่ src/render/bosses/ (เกมจะใช้ไฟล์เดียวกัน) -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #150B21; --panel: rgba(40,24,60,.88); --panel2: #2F1C46; --line: rgba(255,244,220,.12);
+      --ink: #FFF4DC; --dim: rgba(255,244,220,.58); --accent: #FF9FC4; --accent2: #7FE3D0; --warn: #FFC36B;
+      --glass: rgba(21,11,33,.66); --r: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; color: var(--ink); }
+    body {
+      font: 400 14px Mitr, sans-serif; text-wrap: balance;   /* ห้ามคำตกบรรทัดเดี่ยว (CLAUDE.md) */
+      background:
+        radial-gradient(60vw 50vh at 8% -10%, rgba(255,159,196,.16), transparent 70%),
+        radial-gradient(50vw 50vh at 100% 110%, rgba(127,227,208,.10), transparent 70%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    input, textarea { text-wrap: wrap; }
+    button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+    .wrap {
+      display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px;
+      padding: 14px max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left));
+      max-width: 1600px; margin: 0 auto;
+    }
+    body.wide .wrap { grid-template-columns: minmax(0, 1fr); }
+    body.wide .side { display: none; }
+
+    .stage {
+      position: sticky; top: 14px; align-self: start; z-index: 5;
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
+      display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
+    .view { position: relative; width: 100%; height: calc(100dvh - 150px); min-height: 320px; }
+    .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+    .ov { position: absolute; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; pointer-events: none; }
+    .ov > * { pointer-events: auto; }
+    .ov.tl { left: 10px; top: 10px; right: 110px; }
+    .ov.tr { right: 10px; top: 10px; }
+    .ov.br { right: 10px; bottom: 10px; }
+    .pill {
+      padding: 5px 11px; border-radius: 999px; background: var(--glass); backdrop-filter: blur(8px);
+      font-size: 12.5px; pointer-events: none; border: 1px solid rgba(255,244,220,.1); max-width: 100%;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pill.state::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); margin-right: 6px; vertical-align: 1px; animation: pulse 1.2s infinite; }
+    .pill.state.paused { background: rgba(255,159,196,.9); color: #2A0F22; }
+    .pill.state.paused::before { background: #2A0F22; animation: none; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    .icon {
+      width: 36px; height: 36px; border-radius: 12px; border: 1px solid rgba(255,244,220,.12);
+      background: var(--glass); backdrop-filter: blur(8px); cursor: pointer; display: grid; place-items: center; font-size: 16px;
+    }
+    .icon:hover { background: rgba(21,11,33,.85); }
+    .ov .seg { background: var(--glass); backdrop-filter: blur(8px); border-color: rgba(255,244,220,.12); flex: none; }
+    .ov .seg button { padding: 7px 11px; font-size: 12.5px; }
+
+    .transport { padding: 8px 14px 10px; border-top: 1px solid var(--line); background: var(--panel2); display: flex; flex-direction: column; gap: 6px; }
+    .scrub { width: 100%; accent-color: var(--accent); }
+    .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .grp { display: flex; gap: 4px; }
+    .ib {
+      min-width: 38px; height: 36px; padding: 0 11px; border-radius: 11px; border: 1px solid var(--line);
+      background: rgba(255,244,220,.06); cursor: pointer; font-weight: 500; white-space: nowrap;
+    }
+    .ib:hover { background: rgba(255,244,220,.12); }
+    .ib:active { filter: brightness(.93); }
+    .ib.play { min-width: 96px; background: linear-gradient(180deg, #FFB4D2, #FF8DBA); color: #2A0F22; border-color: transparent; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px rgba(255,141,186,.25); }
+    .ib.gold { background: linear-gradient(180deg, #FFE08A, #FFC36B); color: #3A2208; border-color: transparent; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px rgba(255,195,107,.22); }
+    .time { font-variant-numeric: tabular-nums; color: var(--dim); font-size: 13px; margin-left: auto; white-space: nowrap; }
+    .time b { color: var(--ink); font-weight: 600; }
+
+    .side {
+      position: sticky; top: 14px; align-self: start; max-height: calc(100dvh - 28px);
+      display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--r); overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
+    .brand { padding: 12px 14px 8px; }
+    .brand h1 { margin: 0; font-size: 17px; font-weight: 600; }
+    .brand h1 span { background: linear-gradient(90deg, var(--accent), var(--warn)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .brand p { margin: 2px 0 0; color: var(--dim); font-size: 12px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px 10px 10px; border-bottom: 1px solid var(--line); }
+    .tab {
+      border: 0; border-radius: 12px; background: transparent; cursor: pointer; padding: 6px 2px 5px;
+      display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 12px; color: var(--dim);
+    }
+    .tab i { font-style: normal; font-size: 18px; line-height: 1.2; }
+    .tab:hover { background: rgba(255,244,220,.06); color: var(--ink); }
+    .tab.on { background: rgba(255,159,196,.18); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(255,159,196,.5); }
+    .panes { overflow: auto; padding: 12px 14px 16px; overscroll-behavior: contain; }
+    .pane { display: none; }
+    .pane.on { display: block; animation: fade .18s; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } }
+    .sec { margin: 4px 0 8px; font-size: 12.5px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+    .sec:not(:first-child) { margin-top: 14px; }
+    .sec .line { flex: 1; height: 1px; background: var(--line); }
+
+    .bosses { display: flex; flex-direction: column; gap: 6px; }
+    .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .chip {
+      padding: 8px 10px; border-radius: 13px; border: 1px solid var(--line); background: rgba(255,244,220,.045);
+      cursor: pointer; text-align: left; line-height: 1.25; display: flex; align-items: center; gap: 8px; min-width: 0;
+    }
+    .chip .em { font-size: 19px; flex: none; width: 24px; text-align: center; }
+    .chip .tx { min-width: 0; flex: 1; }
+    .chip small { display: block; color: var(--dim); font-size: 11.5px; }
+    .chip:hover { background: rgba(255,244,220,.1); }
+    .chip.on { background: rgba(255,159,196,.2); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,159,196,.12); }
+    .chip.wait { opacity: .5; cursor: default; }
+
+    .opts { display: flex; flex-direction: column; gap: 9px; }
+    .opt { display: flex; align-items: center; gap: 8px; }
+    .opt > span { flex: 0 0 6.2em; color: var(--dim); }
+    .opt input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+    .opt output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+    .seg { display: flex; flex: 1; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+    .seg button { flex: 1; padding: 7px 4px; border: 0; background: transparent; cursor: pointer; font-size: 13px; white-space: nowrap; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button:hover { background: rgba(255,244,220,.07); }
+    .seg button.on { background: rgba(127,227,208,.24); color: var(--accent2); font-weight: 500; }
+    select {
+      flex: 1; padding: 8px 10px; border-radius: 11px; border: 1px solid var(--line);
+      background: var(--panel2); color: var(--ink); font: inherit; min-width: 0;
+    }
+    .vals { font: 12px ui-monospace, Consolas, monospace; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; }
+    .vals .k { color: var(--dim); }
+    .note { color: var(--dim); font-size: 12px; margin: 10px 0 0; line-height: 1.55; }
+    .note b { color: var(--warn); font-weight: 500; }
+    .refs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .refs a { display: block; border-radius: 11px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+    .refs img { display: block; width: 100%; height: 86px; object-fit: contain; }
+    .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 12.5px; color: var(--dim); align-items: center; }
+    kbd { font: 11px ui-monospace, Consolas, monospace; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--ink); white-space: nowrap; }
+    .toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; transition: .2s;
+      padding: 8px 16px; border-radius: 999px; background: #0E0816; border: 1px solid var(--line); z-index: 50; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 860px) {
+      .wrap { grid-template-columns: 1fr; padding: 0 0 14px; gap: 10px; }
+      .stage { top: 0; border-radius: 0 0 var(--r) var(--r); border-top: 0; }
+      .view { height: 42svh; min-height: 240px; }
+      .brand { display: none; }
+      .side { position: static; max-height: none; margin: 0 10px; }
+      .panes { overflow: visible; }
+      #wide { display: none; }
+      .ib { height: 34px; min-width: 34px; padding: 0 9px; }
+      .ib.play { min-width: 82px; }
+      .time { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="stage">
+      <div class="view">
+        <canvas id="cv" aria-label="บอส (แตะเพื่อหยุด/เล่น)"></canvas>
+        <div class="ov tl">
+          <div class="pill state" id="badge">กำลังเล่น</div>
+          <div class="pill" id="now"></div>
+        </div>
+        <div class="ov tr">
+          <button type="button" class="icon" id="shot" title="บันทึกภาพเฟรมนี้ (P)" aria-label="บันทึกภาพ">📷</button>
+          <button type="button" class="icon" id="wide" title="ขยายจอภาพ ซ่อนแผงข้าง (F)" aria-label="ขยายจอภาพ">⛶</button>
+        </div>
+        <div class="ov br"><div class="seg" id="zoom" aria-label="ซูม"></div></div>
+      </div>
+      <div class="transport">
+        <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="ตำแหน่งในท่า">
+        <div class="row">
+          <button type="button" class="ib play" id="play">⏸ พัก</button>
+          <div class="grp">
+            <button type="button" class="ib" id="back" title="ถอยหนึ่งเฟรม (←)">⏮︎</button>
+            <button type="button" class="ib" id="fwd" title="เดินหน้าหนึ่งเฟรม (→)">⏭︎</button>
+            <button type="button" class="ib" id="restart" title="เล่นท่านี้ใหม่ (Home)">↺</button>
+          </div>
+          <div class="seg" id="speed" title="ความเร็ว" style="flex:none"></div>
+          <span class="time" id="time"><b>0.00</b> / 0.00 วิ</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="brand">
+        <h1>👾 <span>Monster Lab</span></h1>
+        <p>ตรวจหน้าตาและท่าของบอสก่อนลงด่านจริง</p>
+      </div>
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab" data-tab="moves" role="tab"><i>🎬</i>ท่า</button>
+        <button type="button" class="tab" data-tab="look" role="tab"><i>🔎</i>มุมมอง</button>
+        <button type="button" class="tab" data-tab="ref" role="tab"><i>🖼️</i>ภาพแบบ</button>
+        <button type="button" class="tab" data-tab="vals" role="tab"><i>📊</i>ค่า</button>
+      </nav>
+      <div class="panes">
+        <section class="pane" data-pane="moves">
+          <div class="sec">บอส <span class="line"></span></div>
+          <div class="bosses" id="bosses"></div>
+          <div class="sec">ท่าทาง <span class="line"></span></div>
+          <div class="moves" id="states"></div>
+          <div class="sec">ลองสู้ <span class="line"></span></div>
+          <div class="row">
+            <button type="button" class="ib gold" id="hit" style="flex:1">⭐ ตีจุดอ่อน (H)</button>
+            <button type="button" class="ib" id="heal" title="ล้างรอยร้าว">ล้างรอยร้าว</button>
+          </div>
+          <div class="opts" style="margin-top:9px">
+            <div class="opt"><span>รอยร้าว</span><div class="seg" id="crack"></div></div>
+          </div>
+          <p class="note">ตีครบ 3 ครั้ง = ผลึกแตก เข้าท่า <b>แพ้</b> อัตโนมัติ · ในเกมจริงจะตีได้เฉพาะช่วง <b>เหนื่อย</b> (เลือกท่าเหนื่อยก่อนแล้วกดตี จะเห็นภาพใกล้เคียงที่สุด)</p>
+          <div class="sec">การเคลื่อนที่ <span class="line"></span></div>
+          <div class="opts">
+            <div class="opt"><span>ลอยขึ้นลง</span><div class="seg" id="bob"></div></div>
+            <div class="opt"><span>เลื่อนซ้ายขวา</span><div class="seg" id="drift"></div></div>
+            <div class="opt"><span>สายตา</span><div class="seg" id="gaze"></div></div>
+            <div class="opt"><span>มุมหัน</span><div class="seg" id="turn"></div></div>
+          </div>
+          <div class="sec">น้องในผลึก <span class="line"></span></div>
+          <div class="opts">
+            <div class="opt"><span>สีน้อง</span><select id="kitten"></select></div>
+          </div>
+          <p class="note">ใช้ตัววาดน้องจิบิของเกม (ท่านั่งหลับ) — ในเกมจริงจะเป็นน้องตัวที่ผู้เล่นจะได้ สีสุ่มตามตัวนั้น</p>
+        </section>
+
+        <section class="pane" data-pane="look">
+          <div class="sec">ฉากหลัง <span class="line"></span></div>
+          <div class="opts"><div class="opt"><span>ฉาก</span><div class="seg" id="bg"></div></div></div>
+          <div class="sec">เทียบขนาดกับน้องแมว <span class="line"></span></div>
+          <div class="opts">
+            <div class="opt"><span>โชว์น้อง</span><div class="seg" id="cmp"></div></div>
+            <div class="opt"><span>สูงกี่เท่า</span><input type="range" id="ratio" min="1" max="3.5" step="0.1"><output id="ratioOut"></output></div>
+          </div>
+          <p class="note">ตกลงไว้ <b>2.5 เท่า</b> ของน้องตัวโต (วัดจากชายล่างถึงขอบตอไม้ ไม่รวมเปลวบนหัว) · ตอนเหนื่อยบอสลอยต่ำลง จุดอ่อนจะลงมาอยู่ในระยะกระโดด</p>
+          <div class="sec">แยกชิ้นส่วน <span class="line"></span></div>
+          <div class="opts"><div class="opt"><span>แยกออก</span><input type="range" id="explode" min="0" max="1" step="0.01"><output id="explodeOut"></output></div></div>
+          <p class="note">ดูว่าแต่ละชิ้นขยับแยกกันได้ครบไหม: ตัว+ใบไม้ · หน้า (ตา คิ้ว ปาก) · จุดอ่อนบนหัว · แขนซ้าย · แขนขวา · ผลึก+น้อง</p>
+        </section>
+
+        <section class="pane" data-pane="ref">
+          <div class="sec">ภาพแบบจากทีม (docs/boss-stump) <span class="line"></span></div>
+          <div class="refs">
+            <a href="./docs/boss-stump/1-main.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/1-main.jpg" alt="ท่าหลัก"></a>
+            <a href="./docs/boss-stump/2-expressions.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/2-expressions.jpg" alt="สีหน้า 4 แบบ"></a>
+            <a href="./docs/boss-stump/3-parts.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/3-parts.jpg" alt="แยกชิ้น"></a>
+            <a href="./docs/boss-stump/4-sheet.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/4-sheet.jpg" alt="ชีตท่าโจมตี"></a>
+          </div>
+          <p class="note">แตะภาพเพื่อเปิดเต็มจอ · <b>ท่าโจมตี 5 ท่า</b> (พุ่งชน · เศษคริสตัล · ระเบิดพลัง · เกราะ · หมอก) ยังไม่ได้ทำในรอบนี้ ทำหลังหน้าตาผ่านแล้ว</p>
+          <div class="sec">ปุ่มลัด <span class="line"></span></div>
+          <div class="keys">
+            <kbd>Space</kbd><span>เล่น / พัก</span>
+            <kbd>← →</kbd><span>ทีละเฟรม</span>
+            <kbd>1–4</kbd><span>เปลี่ยนท่า</span>
+            <kbd>H</kbd><span>ตีจุดอ่อน</span>
+            <kbd>P</kbd><span>บันทึกภาพ</span>
+            <kbd>F</kbd><span>ขยายจอภาพ</span>
+          </div>
+        </section>
+
+        <section class="pane" data-pane="vals">
+          <div class="sec">ค่าของเฟรมนี้ <span class="line"></span></div>
+          <div class="vals" id="vals"></div>
+        </section>
+      </div>
+    </aside>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { drawStumpBoss, STUMP, STUMP_STATES } from './src/render/bosses/stump.js';
+    import { drawCat2 } from './src/render/cat2.js';
+    import { CHIBI_LOOKS } from './src/render/chibi.js';
+    import { SKINS } from './src/skins.js';
+
+    const $ = (id) => document.getElementById(id);
+    const cv = $('cv'), ctx = cv.getContext('2d');
+
+    // บอสทั้งหมด (เพิ่มตัวใหม่ที่นี่ · ตัวที่ยังไม่ได้วาด = รอแบบ)
+    const BOSSES = [
+      { id: 'stump', name: `${STUMP.name}`, note: `${STUMP.title} · บอสเกมสอน`, em: '🌳', draw: drawStumpBoss, def: STUMP, states: STUMP_STATES },
+      { id: 'next', name: 'บอสตัวต่อไป', note: 'รอแบบจากทีม', em: '❔', wait: true },
+    ];
+    const KITTEN_NAMES = { orange: 'ส้ม', pearl: 'ไข่มุก', calico: 'สามสี', siamese: 'วิเชียรมาศ', konja: 'ขาวมณี/คอนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'สลิด', tortie: 'กระดองเต่า', cow: 'วัว', manee: 'ขาวมณี', somsa: 'ส้มสา', suea: 'เสือ', soft: 'ขาวนวล', hawkBlue: 'ตาเหยี่ยวฟ้า' };
+
+    const st = {
+      boss: BOSSES[0], state: 'idle', demo: false, playing: true, speed: 1,
+      t: 0, st: 0, crack: 0, hitAt: null,
+      bob: true, drift: false, gaze: -1, look: 'orange',
+      bg: 'sheet', cmp: true, ratio: STUMP.ratio, explode: 0, zoom: 1, turn: null,
+    };
+    const DEMO = [['idle', 3], ['warn', 2], ['idle', 1.5], ['warn', 2], ['tired', 3.2], ['defeat', 4.4]];
+    const DEMO_LEN = DEMO.reduce((a, [, d]) => a + d, 0);
+
+    // ── ขนาดน้องแมวตัวโต (วัดจากพิกเซลจริงครั้งเดียว) ──
+    const CAT = SKINS[0];
+    const CAT_S = 1;
+    let CAT_H = 0;
+    function catHeight() {
+      if (CAT_H) return CAT_H;
+      const c = document.createElement('canvas'); c.width = 600; c.height = 600;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      drawCat2(x, 300, 520, CAT_S, CAT, 600);
+      const d = x.getImageData(0, 0, 600, 600).data;
+      let top = 600;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 20) { top = Math.floor(i / 4 / 600); break; }
+      CAT_H = Math.max(10, 520 - top);
+      return CAT_H;
+    }
+
+    // ── UI ──
+    function seg(el, items, get, set) {
+      el.innerHTML = '';
+      for (const [v, label] of items) {
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+        b.onclick = () => { set(v); paint(); };
+        el.appendChild(b);
+      }
+      const paint = () => [...el.children].forEach((b, i) => b.classList.toggle('on', items[i][0] === get()));
+      paint(); el._paint = paint;
+    }
+    function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1600); }
+
+    function renderBosses() {
+      const el = $('bosses'); el.innerHTML = '';
+      for (const b of BOSSES) {
+        const c = document.createElement('button'); c.type = 'button';
+        c.className = 'chip' + (b === st.boss ? ' on' : '') + (b.wait ? ' wait' : '');
+        c.innerHTML = `<span class="em">${b.em}</span><span class="tx">${b.name}<small>${b.note}</small></span>`;
+        if (!b.wait) c.onclick = () => { st.boss = b; renderBosses(); };
+        el.appendChild(c);
+      }
+    }
+    function renderStates() {
+      const el = $('states'); el.innerHTML = '';
+      const list = [...Object.entries(st.boss.states).map(([id, s]) => [id, s]), ['demo', { name: 'วนทุกท่า', em: '🔁', note: 'ลอย → เตือน → เหนื่อย → แพ้' }]];
+      list.forEach(([id, s], i) => {
+        const c = document.createElement('button'); c.type = 'button';
+        const on = id === 'demo' ? st.demo : (!st.demo && st.state === id);
+        c.className = 'chip' + (on ? ' on' : '');
+        c.title = `${s.note}${i < 4 ? ` (ปุ่ม ${i + 1})` : ''}`;
+        c.innerHTML = `<span class="em">${s.em}</span><span class="tx">${s.name}<small>${s.note}</small></span>`;
+        c.onclick = () => setState(id);
+        el.appendChild(c);
+      });
+    }
+    function setState(id) {
+      if (id === 'demo') { st.demo = true; st.st = 0; st.crack = 0; }
+      else { st.demo = false; st.state = id; st.st = 0; if (id !== 'defeat') st.hitAt = null; }
+      renderStates(); $('crack')._paint();
+    }
+    function hit() {
+      if (st.demo) setState('tired');
+      if (st.state === 'defeat') return;
+      st.crack = Math.min(3, st.crack + 1); st.hitAt = st.t;
+      $('crack')._paint();
+      if (st.crack >= 3) setTimeout(() => { setState('defeat'); }, 380);
+      toast(st.crack >= 3 ? '💥 ผลึกแตก!' : `⭐ โดนจุดอ่อน ${st.crack}/3`);
+    }
+
+    seg($('crack'), [[0, '0'], [1, '1'], [2, '2'], [3, '3']], () => st.crack, (v) => { st.crack = v; });
+    seg($('bob'), [[true, 'เปิด'], [false, 'ปิด']], () => st.bob, (v) => { st.bob = v; });
+    seg($('drift'), [[false, 'ปิด'], [true, 'เปิด']], () => st.drift, (v) => { st.drift = v; });
+    seg($('gaze'), [[-1, 'มองน้อง (ซ้าย)'], [0, 'มองตรง']], () => st.gaze, (v) => { st.gaze = v; });
+    seg($('turn'), [[null, 'ตามท่า'], [1, 'เฉียง'], [0, 'หน้าตรง']], () => st.turn, (v) => { st.turn = v; });
+    seg($('bg'), [['sheet', 'ขาว (แบบ)'], ['garden', 'สวน'], ['night', 'มืด']], () => st.bg, (v) => { st.bg = v; });
+    seg($('cmp'), [[true, 'โชว์'], [false, 'ซ่อน']], () => st.cmp, (v) => { st.cmp = v; });
+    seg($('zoom'), [[1, 'พอดี'], [1.6, '×1.6'], [2.4, '×2.4']], () => st.zoom, (v) => { st.zoom = v; });
+    seg($('speed'), [[0.25, '¼'], [0.5, '½'], [1, '1×'], [2, '2×']], () => st.speed, (v) => { st.speed = v; });
+    $('ratio').value = st.ratio; $('ratioOut').textContent = `×${st.ratio}`;
+    $('ratio').oninput = (e) => { st.ratio = +e.target.value; $('ratioOut').textContent = `×${st.ratio.toFixed(1)}`; };
+    $('explode').value = 0; $('explodeOut').textContent = '0%';
+    $('explode').oninput = (e) => { st.explode = +e.target.value; $('explodeOut').textContent = `${Math.round(st.explode * 100)}%`; };
+    const looks = Object.keys(CHIBI_LOOKS).filter((k) => CHIBI_LOOKS[k].deco || k === 'soft');
+    $('kitten').innerHTML = looks.map((k) => `<option value="${k}">${KITTEN_NAMES[k] || k}</option>`).join('');
+    $('kitten').value = looks.includes('orange') ? 'orange' : looks[0]; st.look = $('kitten').value;
+    $('kitten').onchange = (e) => { st.look = e.target.value; };
+
+    $('hit').onclick = hit;
+    $('heal').onclick = () => { st.crack = 0; if (st.state === 'defeat') setState('idle'); $('crack')._paint(); };
+    const togglePlay = () => { st.playing = !st.playing; $('play').textContent = st.playing ? '⏸ พัก' : '▶ เล่น'; $('badge').textContent = st.playing ? 'กำลังเล่น' : 'หยุดอยู่'; $('badge').classList.toggle('paused', !st.playing); };
+    $('play').onclick = togglePlay;
+    cv.onclick = togglePlay;
+    const step = (dir) => { if (st.playing) togglePlay(); st.t += dir / 60; st.st = Math.max(0, st.st + dir / 60); };
+    $('back').onclick = () => step(-1);
+    $('fwd').onclick = () => step(1);
+    $('restart').onclick = () => { st.st = 0; };
+    $('wide').onclick = () => document.body.classList.toggle('wide');
+    $('shot').onclick = () => { const a = document.createElement('a'); a.download = `boss-${st.boss.id}-${st.demo ? 'demo' : st.state}.png`; a.href = cv.toDataURL('image/png'); a.click(); toast('📷 บันทึกภาพแล้ว'); };
+    $('scrub').oninput = (e) => {
+      if (st.playing) togglePlay();
+      const len = curLen(); st.st = (e.target.value / 1000) * len;
+    };
+
+    document.querySelectorAll('.refs a').forEach((a) => { a.href = a.querySelector('img').src; });   // <a href> ไม่ถูก vite แปลงตอน build — ใช้ที่อยู่ของรูปแทน
+    document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
+      document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === b));
+      document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+    });
+    document.querySelector('.tab').click();
+
+    addEventListener('keydown', (e) => {
+      if (e.target.closest('input, select, textarea')) return;
+      const k = e.code;
+      if (k === 'Space') { e.preventDefault(); togglePlay(); }
+      else if (k === 'ArrowLeft') step(-1);
+      else if (k === 'ArrowRight') step(1);
+      else if (k === 'Home') st.st = 0;
+      else if (k === 'KeyH') hit();
+      else if (k === 'KeyP') $('shot').click();
+      else if (k === 'KeyF') $('wide').click();
+      else if (/^Digit[1-4]$/.test(k)) setState(Object.keys(st.boss.states)[+k.slice(5) - 1]);
+    });
+
+    // ── เวลา ──
+    function curLen() {
+      if (st.demo) return DEMO_LEN;
+      const s = st.boss.states[st.state];
+      return s.loop || s.dur + 1.2;
+    }
+    function demoAt(time) {
+      let a = time % DEMO_LEN;
+      for (const [id, d] of DEMO) { if (a < d) return [id, a]; a -= d; }
+      return ['idle', 0];
+    }
+
+    // ── วาดฉาก ──
+    function fit() {
+      const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+      const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      return [w, h, dpr];
+    }
+    function drawBg(w, h, gy) {
+      if (st.bg === 'sheet') {
+        ctx.fillStyle = '#FFFCFD'; ctx.fillRect(0, 0, w, h);
+      } else if (st.bg === 'garden') {
+        let g = ctx.createLinearGradient(0, 0, 0, gy);
+        g.addColorStop(0, '#BFE6FF'); g.addColorStop(1, '#FFE9F2');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+        g = ctx.createLinearGradient(0, gy, 0, h);
+        g.addColorStop(0, '#A9D98E'); g.addColorStop(1, '#7FBE73');
+        ctx.fillStyle = g; ctx.fillRect(0, gy, w, h - gy);
+      } else {
+        const g = ctx.createRadialGradient(w / 2, gy, 10, w / 2, gy, Math.max(w, h));
+        g.addColorStop(0, '#3A2456'); g.addColorStop(1, '#120A1D');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      }
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (st.playing) { st.t += dt * st.speed; st.st += dt * st.speed; }
+      let state = st.state, sst = st.st;
+      if (st.demo) {
+        [state, sst] = demoAt(st.st);
+        if (state !== 'defeat' && sst < 0.05 && st.st > 1) st.crack = 0;
+      } else {
+        const s = st.boss.states[state];
+        if (s.loop) sst = st.st % s.loop;
+        else sst = st.st % (s.dur + 1.2);
+      }
+
+      const [w, h] = fit();
+      const gy = h * 0.8;
+      drawBg(w, h, gy);
+      // ขนาด: สูงบอส = สูงน้อง × ratio · ซูม "พอดี" = ทั้งบอสและน้องอยู่ในจอ
+      const catH = catHeight();
+      const bossUnitsTall = STUMP.H + STUMP.hover + 40;   // ตัว + ลอย + เปลวบนหัว/ประกาย
+      const fitPx = Math.min(gy * 0.92, h * 0.78);
+      const s = (fitPx / bossUnitsTall) * st.zoom * (1 / (1 + st.explode * 0.3));
+      const bossPx = STUMP.H * s;
+      const catScale = (bossPx / st.ratio) / catH * CAT_S;
+      const bx = w * (st.cmp ? 0.6 : 0.5) - (st.explode * 52 * s);
+      // พื้น
+      if (st.bg !== 'garden') {
+        ctx.fillStyle = st.bg === 'sheet' ? 'rgba(160,130,200,.18)' : 'rgba(255,244,220,.10)';
+        ctx.fillRect(0, gy, w, Math.max(1, s * 0.6));
+      }
+      // น้องแมวเทียบขนาด + เส้นวัด
+      if (st.cmp) {
+        const cx = bx - 66 * s - (catH * catScale) * 0.55;
+        drawCat2(ctx, cx, gy, catScale, CAT, 600 + st.t * 60);
+        const catTop = gy - catH * catScale;
+        ctx.save();
+        ctx.strokeStyle = st.bg === 'night' ? 'rgba(255,244,220,.35)' : 'rgba(120,80,160,.35)';
+        ctx.setLineDash([6, 6]); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(cx - 60, catTop); ctx.lineTo(cx + 60, catTop); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = st.bg === 'night' ? 'rgba(255,244,220,.75)' : 'rgba(90,50,130,.75)';
+        ctx.font = `500 ${Math.max(12, s * 4)}px Mitr, sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText(`บอสสูง ×${st.ratio.toFixed(1)} ของน้อง`, cx, catTop - 10);
+        ctx.restore();
+      }
+      const hitT = st.hitAt != null ? st.t - st.hitAt : null;
+      const P = st.boss.draw(ctx, bx, gy, s, {
+        state, st: sst, t: st.t, crack: st.crack, hitT, gaze: st.gaze, drift: st.drift, bob: st.bob,
+        look: st.look, explode: st.explode, turn: st.turn,
+      });
+
+      // ป้าย + เวลา
+      const S = st.boss.states[state];
+      $('now').innerHTML = `${S.em} <b>${S.name}</b>${st.demo ? ' · วนทุกท่า' : ''}`;
+      const len = curLen(), pos = st.demo ? st.st % DEMO_LEN : sst;
+      $('time').innerHTML = `<b>${pos.toFixed(2)}</b> / ${len.toFixed(2)} วิ`;
+      if (document.activeElement !== $('scrub')) $('scrub').value = Math.round((pos / len) * 1000);
+      if (frame.n++ % 6 === 0) {
+        const r = (v) => (typeof v === 'number' ? v.toFixed(2) : v);
+        $('vals').innerHTML = [
+          ['ท่า', state], ['เวลาในท่า', r(sst)], ['ลอยสูง', r(P.y)], ['ยืด (x, y)', `${r(P.sx)}, ${r(P.sy)}`],
+          ['เอียง', r(P.rot)], ['สั่น', r(P.shake)], ['ตา', P.eyes], ['จุดอ่อนสว่าง', r(P.flame)],
+          ['รอยร้าว', Math.max(st.crack, P.crackMin)], ['ความทึบตัว', r(P.fade)], ['ลำแสง', r(P.rays)],
+          ['ขนาด (px/หน่วย)', r(s)], ['สูงบอส (px)', Math.round(bossPx)], ['สูงน้อง (px)', Math.round(catH * catScale)],
+        ].map(([k, v]) => `<span class="k">${k}</span><span>${v}</span>`).join('');
+      }
+      requestAnimationFrame(frame);
+    }
+    frame.n = 0;
+    renderBosses(); renderStates();
+    requestAnimationFrame(frame);
+    window.__lab = st;
+  </script>
+</body>
+</html>

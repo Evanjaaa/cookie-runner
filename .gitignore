@@ -26,3 +26,6 @@ undefined-*.png
 .wrangler/
 # ค่า Supabase ของห้องตอนลองในเครื่อง (realtime/README.md)
 .dev.vars
+
+# เว็บห้องทดสอบแยก (npm run deploy:lab) — สร้างใหม่ทุกครั้ง
+.lab-build/

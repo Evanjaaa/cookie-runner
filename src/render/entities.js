@@ -4,6 +4,7 @@ import {
   faceNose, faceMouth, faceWhiskers,
 } from './faces.js';
 import { PROP_ART } from './props/index.js';
+import { groveBar, groveCrate, groveSpike } from './grove.js';
 import { VIEW, GROUND_Y, BODY, WORD, SKILL, POTION, LETTER_COLORS, TREATS, COLORS as C, foodLook } from '../config.js';
 import { getFace } from '../face.js';
 import { LAYER } from '../paint.js';
@@ -31,6 +32,7 @@ const THEME_ART = {
   beach: { bar: drawAwning, crate: drawSandCastle, spike: drawCoral },
   space: { bar: drawSolarPanel, crate: drawCargoPod, spike: drawAsteroid },
   snow: { bar: drawSnowBranch, crate: drawIceBlockStack, spike: drawIcicle },
+  grove: { bar: groveBar, crate: groveCrate, spike: groveSpike },   // ป่าผลึก (render/grove.js)
 };
 
 function drawOneObstacle(ctx, o, x, y, theme) {
@@ -64,9 +66,10 @@ function drawOneObstacle(ctx, o, x, y, theme) {
     }
   }
   const art = THEME_ART[theme] || THEME_ART.bakery;
-  if (o.kind === 'bar') art.bar(ctx, x, y, o.w, o.h);
-  else if (o.kind === 'crate') art.crate(ctx, x, y, o.w, o.h, o.rows);
-  else art.spike(ctx, x, y, o.w, o.h);
+  // ท้ายสุด = o.x (ตำแหน่งในด่าน) ให้ตัววาดสุ่มลายแบบคงที่ — สุ่มจากพิกัดจอแล้วของประกอบกะพริบ (เปลี่ยนทุกเฟรม)
+  if (o.kind === 'bar') art.bar(ctx, x, y, o.w, o.h, o.x);
+  else if (o.kind === 'crate') art.crate(ctx, x, y, o.w, o.h, o.rows, o.x);
+  else art.spike(ctx, x, y, o.w, o.h, o.x);
 }
 
 /**

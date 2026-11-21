@@ -18,6 +18,16 @@
   โต๊ะออกแบบด่าน          https://meowzing.vercel.app/editor.html
 
   * ทั้งสามหน้าเช็กแล้วเปิดได้จริง (ตอบ 200) — 17 ต.ค. 2026
+
+  ── เว็บห้องทดสอบให้นักออกแบบดู (เว็บแยก ไม่ใช่เกมจริง · เพิ่ม 20 พ.ย. 2026) ──
+  หน้ารวมลิงก์            https://meowzing-lab.vercel.app/
+  ห้องทดสอบท่าน้อง        https://meowzing-lab.vercel.app/cat-lab.html
+  ห้องทดสอบท่าวิ่ง         https://meowzing-lab.vercel.app/run-lab.html
+  ห้องทดสอบบอส           https://meowzing-lab.vercel.app/monster-lab.html
+  ต้นแบบเกมเพลย์ (เล่นได้)  https://meowzing-lab.vercel.app/gameplay-lab.html
+  * ขึ้นด้วย npm run deploy:lab (โปรเจกต์ Vercel แยก "meowzing-lab" · ไม่แตะเกมจริง)
+  * มีแค่ 3 หน้านี้ ไม่มีตัวเกม/แอดมิน ไม่ต่อฐานข้อมูล · noindex · เปิดได้ไม่ต้องล็อกอิน
+  * ถ้า Vercel ตั้งชื่ออื่นเพราะชื่อซ้ำ ดูลิงก์จริงท้ายผลลัพธ์ตอน deploy แล้วแก้ตรงนี้
   * cookie-runner.vercel.app ไม่ใช่ของเรา เป็นเว็บคนอื่นที่ชื่อชนกัน อย่าสับสน
 
   ── ลิงก์ทดสอบ (เวอร์ชันใหม่ล่าสุดที่สั่ง npm run deploy:test — ผู้เล่นไม่เห็น) ──
@@ -110,6 +120,15 @@
                          (ตัวฉากใช้ไฟล์เดียวกับตู้กาช่าในเกมจริง)
                          http://localhost:5173/gacha-lab.html
                          http://192.168.1.34:5173/gacha-lab.html
+  /monster-lab.html      ห้องทดสอบบอส — ท่าลอย / เตรียมโจมตี / เหนื่อย / แพ้
+                         ลองตีจุดอ่อน (ผลึกร้าว) เทียบขนาดกับน้อง แยกชิ้นส่วน
+                         เปลี่ยนสีน้องในผลึก ดูภาพแบบจากทีม (บอสตัวแรก: ภูตตอไม้)
+                         http://localhost:5173/monster-lab.html
+                         http://192.168.1.34:5173/monster-lab.html
+  /gameplay-lab.html     ต้นแบบเกมเพลย์ใหม่ (เล่นได้จริง) — ด่านวิ่งมีเส้นชัย ลูกน้องบอส
+                         ดาวแห่งความหวัง ผลึกตก → สู้ภูตตอไม้ → ช่วยน้อง · ปรับความยากได้
+                         http://localhost:5173/gameplay-lab.html
+                         http://192.168.1.34:5173/gameplay-lab.html
   /intro-preview.html    พรีวิวคลิปเปิดเกม (คลิปที่วาดด้วยโค้ด)
                          http://localhost:5173/intro-preview.html
   /mv.html               หน้าทำงานของ MV เพลงน้องแมว

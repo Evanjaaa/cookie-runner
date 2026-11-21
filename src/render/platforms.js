@@ -26,7 +26,7 @@ const { ledgeThick: T } = LEVEL;
 const TAU = Math.PI * 2;
 
 /** ธีมที่มีหน้าตาของตัวเอง — หน้าออกแบบใช้สร้างชิปแยกตามด่าน */
-export const PLAT_THEMES = ['bakery', 'garden', 'cavern', 'beach', 'space', 'snow'];
+export const PLAT_THEMES = ['bakery', 'garden', 'cavern', 'beach', 'space', 'snow', 'grove'];
 
 /** ความกว้างฝาหัว-ท้ายของพื้นลอย — คงที่ทุกความยาว */
 const CAP = 16;
@@ -704,6 +704,92 @@ function snowLedge(ctx, x, y, w, wx) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 🌳 ป่าผลึก (grove) — เนินมอสดินม่วง / ขอนไม้มีมอส (แบบจากผู้ใช้ 21 พ.ย. · docs/stage-grove/3-obstacles.webp)
+// ─────────────────────────────────────────────────────────────
+const groveHill = {
+  bodyTop: '#B88AB4',
+  body(ctx, p, pts, cam) {
+    // ก้อนหินมนในดินม่วง — ผูกพิกัดโลก
+    for (let wx = Math.ceil(p.x / 34) * 34; wx < p.x + p.w; wx += 34) {
+      const top = platTop(p, wx);
+      const r = hash(wx + 5);
+      const yy = top === null ? null : top + 24 + r * 34;
+      if (yy === null || yy > GROUND_Y + 4) continue;
+      ctx.fillStyle = 'rgba(214,170,210,.5)';
+      ctx.beginPath(); ctx.ellipse(wx - cam, yy, 11 + r * 8, 7 + r * 4, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(110,60,110,.2)';
+      ctx.beginPath(); ctx.ellipse(wx - cam + 2, yy + 3, 10 + r * 7, 4, 0, 0, Math.PI); ctx.fill();
+    }
+    // มอสหนาตามผิว (แถบเดินได้) + ขอบล่างหยัก
+    traceAlong(ctx, pts, cam, 7);
+    ctx.lineWidth = 16; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = '#C9CE70'; ctx.stroke();
+    traceAlong(ctx, pts, cam, 2);
+    ctx.lineWidth = 5; ctx.strokeStyle = '#E4E89A'; ctx.stroke();
+    ctx.fillStyle = '#C9CE70';
+    for (let wx = Math.ceil(p.x / 15) * 15; wx < p.x + p.w; wx += 15) {
+      const top = platTop(p, wx);
+      if (top === null) continue;
+      ctx.beginPath(); ctx.ellipse(wx - cam, top + 15, 8, 5 + hash(wx) * 2, 0, 0, TAU); ctx.fill();
+    }
+  },
+  top(ctx, p, pts, cam) {
+    // ดอกครีม / ผลึกเล็ก / เห็ดจิ๋ว เป็นจังหวะบนผิว (เตี้ย ไม่บังการกระโดด)
+    alongTop(p, 46, 14, (x, y, r) => {
+      const sx = x - cam;
+      if (r > 0.72) {
+        for (const [dx, h, a] of [[-4, 10, -0.3], [2, 15, 0.05], [7, 9, 0.35]]) {
+          ctx.save(); ctx.translate(sx + dx, y + 1); ctx.rotate(a);
+          const g = ctx.createLinearGradient(-3, 0, 3, 0); g.addColorStop(0, '#F4EEFF'); g.addColorStop(1, '#C9B2FB');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(-3, -h * 0.7); ctx.lineTo(0, -h); ctx.lineTo(3, -h * 0.7); ctx.lineTo(3, 0); ctx.fill();
+          ctx.restore();
+        }
+      } else if (r > 0.4) {
+        ctx.fillStyle = r > 0.56 ? '#FFF2D8' : '#FFC8DA';
+        for (let i = 0; i < 5; i++) { const a = (i / 5) * TAU; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * 2.6, y - 1 + Math.sin(a) * 2.6, 2, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#F2B98F'; ctx.beginPath(); ctx.arc(sx, y - 1, 1.4, 0, TAU); ctx.fill();
+      }
+    });
+  },
+};
+
+function groveLedge(ctx, x, y, w, wx) {
+  // ลำขอน (สีเดียวกับสิ่งกีดขวางป่าผลึก — เด่นกว่าฉาก) + เงาตกพื้นนุ่ม
+  ctx.save();
+  slab(ctx, x, y + 1, w, T - 1, 12);
+  const g = ctx.createLinearGradient(0, y, 0, y + T);
+  g.addColorStop(0, '#E28F74'); g.addColorStop(0.55, '#A9566A'); g.addColorStop(1, '#6A3266');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
+  ctx.save(); slab(ctx, x, y + 1, w, T - 1, 12); ctx.clip();
+  // ลายเปลือกแนวนอน (ผูกพิกัดโลก)
+  ctx.fillStyle = 'rgba(70,22,62,.2)';
+  repeatMid(x, w, wx, 22, (sx, i, r) => {
+    ctx.beginPath(); ctx.roundRect(sx, y + 12 + r * 3, 12 + r * 8, 2.4, 1.2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(sx + 8, y + 19 + r * 2, 10 + r * 6, 2.2, 1.1); ctx.fill();
+  }, 14, 14);
+  ctx.fillStyle = 'rgba(255,220,196,.3)'; ctx.fillRect(x, y + 8, w, 2.5);
+  const sg = ctx.createLinearGradient(0, y + T * 0.6, 0, y + T);
+  sg.addColorStop(0, 'rgba(50,10,50,0)'); sg.addColorStop(1, 'rgba(50,10,50,.3)');
+  ctx.fillStyle = sg; ctx.fillRect(x, y, w, T);
+  ctx.restore();
+  // มอสคลุมผิวบน (แถบเดินได้) + ย้อย — ลายซ้ำ ไม่มีของเด่นกลางชิ้น
+  ctx.fillStyle = '#6E9A2C';
+  repeatMid(x, w, wx, 11, (sx, i, r) => { ctx.beginPath(); ctx.ellipse(sx + 5, y + 4 + r * 2, 7, 4 + r * 5, 0, 0, TAU); ctx.fill(); }, 8, 8);
+  slab(ctx, x + 3, y - 1, w - 6, 7, 5);
+  ctx.fillStyle = '#8CC03C'; ctx.fill();
+  ctx.fillStyle = '#C9EA7A';
+  repeatMid(x, w, wx, 16, (sx) => { ctx.beginPath(); ctx.ellipse(sx + 4, y + 1, 4, 1.5, -0.2, 0, TAU); ctx.fill(); }, 8, 8);
+  // ฝาหัว-ท้าย = หน้าตัดขอนเห็นวงปี (ขนาดคงที่)
+  for (const ex of [x + 6, x + w - 6]) {
+    ctx.fillStyle = '#7C3F62'; ctx.beginPath(); ctx.ellipse(ex, y + T / 2 + 1, 6.5, T / 2 - 0.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#FFDDB0'; ctx.beginPath(); ctx.ellipse(ex, y + T / 2 + 1, 5.2, T / 2 - 2, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(196,112,84,.7)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(ex, y + T / 2 + 1, 3, 7, 0, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(ex, y + T / 2 + 1, 1.4, 3.4, 0, 0, TAU); ctx.stroke();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // ตารางตามด่าน (คีย์ = stage.theme)
 // ─────────────────────────────────────────────────────────────
 const THEMES = {
@@ -713,4 +799,5 @@ const THEMES = {
   beach: { hill: beachHill, ledge: beachLedge },
   space: { hill: spaceHill, ledge: spaceLedge },
   snow: { hill: snowHill, ledge: snowLedge },
+  grove: { hill: groveHill, ledge: groveLedge },
 };

@@ -8,6 +8,7 @@ import { drawSnowBackdrop, drawSnowDeck } from './snow.js';
 import { drawCaveBackdrop } from './cave.js';
 import { drawMeadowBackdrop } from './meadow.js';
 import { drawBakeryBackdrop } from './bakery.js';
+import { drawGroveBackdrop, drawGroveGround } from './grove.js';
 
 const { W, H } = VIEW;
 
@@ -73,6 +74,7 @@ export const BACKDROPS = {
   cave: (ctx, camera, tick) => drawCaveBackdrop(ctx, camera, tick, { deep: 1 }),
   meadow: (ctx, camera, tick) => drawMeadowBackdrop(ctx, camera, tick, { open: 1 }),
   bakery: (ctx, camera, tick) => drawBakeryBackdrop(ctx, camera, tick, { lit: 1 }),
+  grove: (ctx, camera, tick) => drawGroveBackdrop(ctx, camera, tick),   // ป่าผลึก (ถิ่นภูตตอไม้ · 21 พ.ย.)
 };
 
 /**
@@ -549,6 +551,7 @@ export function drawProps(ctx, camera, layers, band, pal, tick) {
  */
 export const GROUND_ART = {
   snow: drawSnowDeck,
+  grove: drawGroveGround,
 };
 
 export function drawGround(ctx, pits, camera, pal, detail) {

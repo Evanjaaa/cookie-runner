@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Gameplay Lab — ทดลองเกมเพลย์</title>
+  <!-- หน้าหลังบ้านตอนพัฒนาเท่านั้น (แบบเดียวกับ cat-lab / monster-lab): ไม่อยู่ใน vite.config.js → ไม่ขึ้นเว็บจริง
+       ต้นแบบเกมเพลย์โหมดภารกิจช่วยน้อง (GAME_PLAN.md ข้อ 12 · ผู้ใช้สั่ง 21 พ.ย. 2026):
+       ด่านวิ่งที่มีเส้นชัย + ลูกน้องบอส (เหยียบหัว) + ดาวแห่งความหวัง (สะสมไปใช้กับบอส) + บอสโผล่ให้เห็นก่อน
+       แล้วต่อด้วยด่านสู้ภูตตอไม้ (หลบท่า → เก็บดาวเต็มแถบ → บอสเหนื่อย → กระโดดใส่จุดอ่อน ×3 → ผลึกแตก ได้น้อง)
+       ใช้ของจริงของเกม: Player (ฟิสิกส์) · ฉาก/พื้น · ขนมปลา · สิ่งกีดขวาง · ตัวน้องวิ่ง cat2 · บอส src/render/bosses/stump.js
+       ลูกน้องเป็นภาพชั่วคราว (ผู้ใช้จะออกแบบใหม่) · ยังไม่ต่อเข้า game.js — ลองความสนุกที่นี่ก่อน -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #150B21; --panel: rgba(40,24,60,.88); --panel2: #2F1C46; --line: rgba(255,244,220,.12);
+      --ink: #FFF4DC; --dim: rgba(255,244,220,.58); --accent: #FF9FC4; --accent2: #7FE3D0; --warn: #FFC36B;
+      --glass: rgba(21,11,33,.7); --r: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; color: var(--ink); }
+    body {
+      font: 400 14px Mitr, sans-serif; text-wrap: balance;   /* ห้ามคำตกบรรทัดเดี่ยว (CLAUDE.md) */
+      background: radial-gradient(60vw 50vh at 8% -10%, rgba(255,159,196,.16), transparent 70%), var(--bg);
+      background-attachment: fixed;
+    }
+    input, textarea { text-wrap: wrap; }
+    button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+    .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; padding: 14px; max-width: 1600px; margin: 0 auto; }
+    .stage { position: sticky; top: 14px; align-self: start; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+    .view { position: relative; width: 100%; aspect-ratio: 960 / 420; max-height: calc(100dvh - 120px); background: #0C0614; }
+    .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+    .card {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, 86%);
+      padding: 18px 20px; border-radius: 20px; text-align: center; background: rgba(28,14,44,.92);
+      border: 1px solid rgba(255,244,220,.16); box-shadow: 0 20px 50px rgba(0,0,0,.45); backdrop-filter: blur(6px);
+    }
+    .card[hidden] { display: none; }
+    .card h2 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+    .card p { margin: 0 0 12px; color: var(--dim); line-height: 1.5; }
+    .card .stats { display: flex; justify-content: center; gap: 14px; margin: 0 0 14px; font-size: 15px; }
+    .card .stats b { color: var(--warn); font-weight: 600; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .ib {
+      min-width: 38px; height: 38px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(255,244,220,.07); cursor: pointer; font-weight: 500;
+    }
+    .ib:hover { background: rgba(255,244,220,.13); }
+    .ib:active { filter: brightness(.93); }
+    .ib.main { background: linear-gradient(180deg, #9FF0DF, #6FD8C3); color: #0F2A25; border-color: transparent; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px rgba(111,216,195,.22); }
+    .ib.pink { background: linear-gradient(180deg, #FFB4D2, #FF8DBA); color: #2A0F22; border-color: transparent; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px rgba(255,141,186,.22); }
+    .bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--panel2); flex-wrap: wrap; }
+    .bar .hint { color: var(--dim); font-size: 12.5px; margin-left: auto; }
+    .side { position: sticky; top: 14px; align-self: start; max-height: calc(100dvh - 28px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 16px; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+    .side h1 { margin: 0; font-size: 17px; font-weight: 600; }
+    .side h1 span { background: linear-gradient(90deg, var(--accent), var(--warn)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .side > p { margin: 2px 0 10px; color: var(--dim); font-size: 12px; }
+    .sec { margin: 14px 0 8px; font-size: 12.5px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+    .sec .line { flex: 1; height: 1px; background: var(--line); }
+    .modes { display: flex; flex-direction: column; gap: 6px; }
+    .chip { padding: 9px 11px; border-radius: 13px; border: 1px solid var(--line); background: rgba(255,244,220,.045); cursor: pointer; text-align: left; line-height: 1.3; }
+    .chip small { display: block; color: var(--dim); font-size: 11.5px; }
+    .chip:hover { background: rgba(255,244,220,.1); }
+    .chip.on { background: rgba(255,159,196,.2); border-color: var(--accent); }
+    .opt { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .opt > span { flex: 0 0 7.4em; color: var(--dim); font-size: 13px; }
+    .opt input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+    .opt output { min-width: 3em; text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .seg { display: flex; flex: 1; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+    .seg button { flex: 1; padding: 6px 4px; border: 0; background: transparent; cursor: pointer; font-size: 12.5px; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button.on { background: rgba(127,227,208,.24); color: var(--accent2); font-weight: 500; }
+    .note { color: var(--dim); font-size: 12px; line-height: 1.6; margin: 8px 0 0; }
+    .note b { color: var(--warn); font-weight: 500; }
+    .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 12.5px; color: var(--dim); align-items: center; }
+    kbd { font: 11px ui-monospace, Consolas, monospace; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--ink); white-space: nowrap; }
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: 1fr; padding: 0 0 14px; gap: 10px; }
+      .stage { top: 0; border-radius: 0 0 var(--r) var(--r); }
+      .view { max-height: none; }
+      .side { position: static; max-height: none; margin: 0 10px; }
+      .bar .hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="stage">
+      <div class="view">
+        <canvas id="cv" aria-label="จอเกม (แตะเพื่อกระโดด)"></canvas>
+        <div class="card" id="card" hidden></div>
+      </div>
+      <div class="bar">
+        <button type="button" class="ib" id="pause">⏸ พัก</button>
+        <button type="button" class="ib" id="restart">↺ เริ่มใหม่</button>
+        <span class="hint">กระโดด: Space / ↑ / แตะจอฝั่งขวา · หมอบ: ↓ / กดค้างจอฝั่งซ้าย</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h1>🎮 <span>Gameplay Lab</span></h1>
+      <p>ต้นแบบเกมเพลย์: วิ่ง → เจอลูกน้อง → เก็บดาว → สู้บอส</p>
+
+      <div class="sec">เล่นแบบไหน <span class="line"></span></div>
+      <div class="modes" id="modes"></div>
+
+      <div class="sec">ปรับความยาก <span class="line"></span></div>
+      <div class="opt"><span>บอสสูง (เท่าน้อง)</span><input type="range" id="ratio" min="1.6" max="2.6" step="0.1"><output id="ratioOut"></output></div>
+      <div class="opt"><span>ดาวเต็มแถบ</span><input type="range" id="need" min="3" max="10" step="1"><output id="needOut"></output></div>
+      <div class="opt"><span>เวลาเตือน (วิ)</span><input type="range" id="warnT" min="0.6" max="1.6" step="0.1"><output id="warnOut"></output></div>
+      <div class="opt"><span>บอสโจมตีเร็ว</span><input type="range" id="atkK" min="0.6" max="1.6" step="0.1"><output id="atkOut"></output></div>
+      <div class="opt"><span>ความเร็วเกม</span><div class="seg" id="spd"></div></div>
+      <div class="opt"><span>ไม่เสียหัวใจ</span><div class="seg" id="god"></div></div>
+      <div class="opt"><span>โชว์กล่องชน</span><div class="seg" id="hit"></div></div>
+
+      <div class="sec">กติกาที่ลองอยู่ <span class="line"></span></div>
+      <p class="note">
+        <b>ลูกน้อง (เมล็ดเดินได้)</b> กระโดดเหยียบหัว = ชนะ เด้งขึ้น ได้ดาว · ชนข้าง = เสียหัวใจ<br>
+        <b>ดาวแห่งความหวัง</b> ทุก 3 ดวงจากด่านวิ่ง = แถบความหวังตอนเริ่มสู้บอส +1<br>
+        <b>บอสโผล่ก่อน</b> กลางด่านเห็นบอสลอยผ่านฉากหลัง · ท้ายด่านบอสขว้างผลึกลงมา (ดูวงเตือนบนพื้น)<br>
+        <b>สู้บอส</b> หลบท่า (ผลึกลอยต่ำ = กระโดด · ลอยสูง = อยู่เฉย ๆ · คลื่นพื้น = กระโดด) → เก็บดาวจนแถบเต็ม → บอสเหนื่อยลอยต่ำผ่านหัว → <b>กระโดดสองชั้น</b>ใส่เปลวบนหัว · ครบ 3 ครั้ง ผลึกแตก ได้น้อง<br>
+        <b>หัวใจ</b> 9 ดวง ยกจากด่านวิ่งไปด่านบอส (ตามแผน)
+      </p>
+      <p class="note"><b>ฉาก: ป่าผลึก</b> (ถิ่นภูตตอไม้ · แบบจากทีม) — ผลึกหนาม = กระโดด · ตอไม้ซ้อน = กระโดด (3 ชั้น = สองชั้น) · ขอนพาดตอ = หมอบลอด · เนินมอส/ขอนลอย = ขึ้นไปยืนได้</p>
+      <p class="note">ยังไม่มีในหน้านี้: เกจพุงอิ่ม/สกิล · ภาพลูกน้องจริง · เสียง</p>
+
+      <div class="sec">ปุ่มลัด <span class="line"></span></div>
+      <div class="keys">
+        <kbd>Space ↑ W</kbd><span>กระโดด</span>
+        <kbd>↓ S</kbd><span>หมอบ (กดค้าง) · ลอดขอนไม้</span>
+        <kbd>P</kbd><span>พัก / เล่นต่อ</span>
+        <kbd>R</kbd><span>เริ่มใหม่</span>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { VIEW, GROUND_Y, PLAYER_X, SPEED, BODY, CAT_LOOK, LEVEL } from './src/config.js';
+    import { Player } from './src/player.js';
+    import { drawGround } from './src/render/background.js';
+    import { drawGroveBackdrop, drawGroveGround, drawGroveFront, GROVE_PAL } from './src/render/grove.js';
+    import { drawPlats } from './src/render/platforms.js';
+    import { footing } from './src/level.js';
+    import { drawObstacles, drawFish, drawHeart, setCatEdgeScale } from './src/render/entities.js';
+    import { drawCat2 } from './src/render/cat2.js';
+    import { createRunAnim, stepRunAnim, drawCat2Run, RUN_K } from './src/render/cat2-run.js';
+    import { CHIBI_LOOKS } from './src/render/chibi.js';
+    import { SKINS } from './src/skins.js';
+    import { drawStumpBoss, STUMP } from './src/render/bosses/stump.js';
+
+    const $ = (id) => document.getElementById(id);
+    const cv = $('cv'), ctx = cv.getContext('2d');
+    const TAU = Math.PI * 2;
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const W = VIEW.W, H = VIEW.H, G = GROUND_Y;
+    const SKIN = { sex: 'm', ...SKINS[0] };
+    const CAT_S = CAT_LOOK * RUN_K;           // ขนาดตัวน้องตอนวิ่ง (เท่าในเกม)
+    const PX = PLAYER_X + BODY.standW / 2;     // กลางตัวน้องบนจอ
+    const KITTENS = Object.keys(CHIBI_LOOKS).filter((k) => CHIBI_LOOKS[k].deco);
+    const KITTEN_NAME = { orange: 'ส้ม', pearl: 'ไข่มุก', calico: 'สามสี', siamese: 'วิเชียรมาศ', konja: 'โกนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'ลายสลิด', tortie: 'สีเปรอะ', cow: 'ลายวัว', manee: 'ขาวมณี', somsa: 'ส้มซ่า', suea: 'เสือน้อย', hawkBlue: 'ตาเหยี่ยวฟ้า' };
+
+    // ── ค่าปรับได้ ──
+    const cfg = { need: 5, warnT: 1.0, atkK: 1, speed: 1, god: false, hit: false, mode: 'full', ratio: 2.0 };
+    try { Object.assign(cfg, JSON.parse(localStorage.getItem('gplab.v1') || '{}')); } catch {}
+    const saveCfg = () => { try { localStorage.setItem('gplab.v1', JSON.stringify(cfg)); } catch {} };
+
+    // ── ความสูงน้องบนจอ (วัดพิกเซลจริงครั้งเดียว) → บอสสูง 2.5 เท่า ──
+    let CAT_H = 60;
+    {
+      const c = document.createElement('canvas'); c.width = c.height = 300;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      drawCat2(x, 150, 260, CAT_S, SKIN, 600);
+      const d = x.getImageData(0, 0, 300, 300).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 20) { CAT_H = 260 - Math.floor(i / 4 / 300); break; }
+    }
+    // พิกเซลต่อหน่วยบอส · ตกลงไว้ 2.5 เท่า แต่วัดแล้วเปลวบนหัวสูงเกินกระโดดสองชั้น (ถึงได้ไม่เกิน ~2.1) → ค่าเริ่ม 2.0 ปรับได้ในแผง
+    let BOSS_S = 1;
+    const setBossS = () => { BOSS_S = (CAT_H * cfg.ratio) / STUMP.H; };
+
+    // ══════════════════ ด่านวิ่ง ══════════════════
+    const { spike, crate, fishR } = LEVEL;
+    function buildRun() {
+      const obs = [], fish = [], stars = [], mobs = [], shards = [], plats = [];
+      let x = 700;
+      const fishRow = (x0, n, y = G - 26, gap = 34) => { for (let i = 0; i < n; i++) fish.push({ x: x0 + i * gap, y, got: false }); };
+      const fishArc = (x0, n = 7, top = 92) => { for (let i = 0; i < n; i++) { const u = i / (n - 1); fish.push({ x: x0 + i * 30, y: G - 26 - Math.sin(u * Math.PI) * top, got: false }); } };
+      const star = (sx, sy) => stars.push({ x: sx, y: sy, got: false });
+      const spk = (sx) => obs.push({ x: sx, y: G - spike.h, w: spike.w, h: spike.h, kind: 'spike' });
+      const box = (sx, rows = 1) => obs.push({ x: sx, y: G - crate.h * rows, w: crate.w, h: crate.h * rows, rows, kind: 'crate' });
+      const mob = (sx) => mobs.push({ x: sx, vx: -1.1, dead: 0, ph: sx * 0.01 });
+      const shard = (sx) => shards.push({ x: sx, fallAt: null, y: -40, landed: false, gone: false });
+      const bar = (sx) => obs.push({ x: sx, y: LEVEL.bar.top, w: LEVEL.bar.w, h: LEVEL.bar.h, kind: 'bar' });
+      const hill = (sx, w, h) => plats.push({ kind: 'hill', x: sx, w, h });
+      const ledge = (sx, w, lift) => plats.push({ kind: 'ledge', x: sx, w, lift });
+      // ช่วง 1: อุ่นเครื่อง
+      fishRow(x, 10); x += 520; spk(x); fishArc(x - 100); x += 420;
+      fishRow(x, 6); star(x + 260, G - 70); x += 520;
+      // ช่วง 2: ลูกน้องตัวแรก (ของกินนำทางให้เหยียบ)
+      mob(x + 160); fishArc(x + 20, 7, 80); x += 560;
+      box(x); fishArc(x - 90); x += 460; mob(x); x += 360; mob(x); star(x + 40, G - 120); x += 520;
+      // ช่วง 3: ผสม
+      spk(x); spk(x + 34); fishArc(x - 80, 8, 110); x += 520;
+      fishRow(x, 8); mob(x + 300); x += 560; box(x, 2); star(x + 6, G - 150); x += 520;
+      mob(x); mob(x + 70); x += 520;
+      // ช่วงพื้นเหยียบได้: เนินมอส + ขอนลอย (ดาวบนขอน) + ขอนล้มให้หมอบลอด
+      hill(x, 320, 70); fishArc(x + 40, 8, 96); x += 440;
+      ledge(x, 230, 96); star(x + 115, G - 96 - 30); fishRow(x + 20, 6, G - 96 - 22); x += 420;
+      bar(x); fishRow(x + 10, 5, G - 18); x += 420;
+      // ช่วง 4: บอสลอยผ่านฉากหลัง (ดู preview) — ของเบาลงให้ดูบอส
+      const previewAt = x; fishRow(x, 16); x += 900;
+      star(x, G - 70); star(x + 60, G - 110); star(x + 120, G - 70); x += 480;
+      spk(x); mob(x + 220); fishArc(x - 90); x += 560; box(x); box(x + 220, 2); x += 560;
+      mob(x); star(x + 30, G - 120); x += 400; spk(x); spk(x + 34); x += 520;
+      // ช่วง 5: บอสขว้างผลึกลงมา (วงเตือนบนพื้นก่อนตก)
+      const shardAt = x;
+      for (let i = 0; i < 5; i++) { shard(x); fishRow(x + 120, 3, G - 26); x += 330; }
+      x += 300; fishRow(x, 10); star(x + 380, G - 70); x += 700;
+      const finish = x;
+      bar(x - 220);   // ขอนหมอบลอดก่อนเส้นชัยอีกอัน
+      return { obs, fish, stars, mobs, shards, plats, previewAt, shardAt, finish };
+    }
+
+    // ══════════════════ สถานะเกม ══════════════════
+    let S;
+    function newRun(mode = cfg.mode) {
+      const P = new Player();
+      S = {
+        mode, phase: mode === 'boss' ? 'boss' : 'run',
+        P, anim: createRunAnim(), cam: 0, f: 0, hearts: 9, inv: 0, hurt: 0, starsRun: 0, starsTotal: 0, treats: 0, combo: 0,
+        run: buildRun(), boss: null, done: false, fx: [], kitten: KITTENS[Math.floor(Math.random() * KITTENS.length)] || 'orange',
+      };
+      if (S.phase === 'boss') startBoss(0);
+      hideCard();
+    }
+    // ผิวที่เท้าเหยียบ = สูตรเดียวกับเกม (level.js footing) · ด่านบอสไม่มีเนิน/ขอน
+    const game = () => ({ speed: SPEED.run, camera: S.cam, pitsSolid: true, level: { surfaceAt: (cx, px, py, y, onG, ps) => footing([], S.phase === 'run' ? S.run.plats : [], cx, px, py, y, onG, ps) } });
+    const box = () => { const sl = S.P.sliding, h = sl ? BODY.slideH : BODY.standH; return { x: PLAYER_X + 4 + (sl ? BODY.slideOffsetX : 0), y: S.P.y - h + 4, w: (sl ? BODY.slideW : BODY.standW) - 8, h: h - 6 }; };
+    const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    const circHit = (b, cx, cy, r) => { const nx = clamp(cx, b.x, b.x + b.w), ny = clamp(cy, b.y, b.y + b.h); return (cx - nx) ** 2 + (cy - ny) ** 2 < r * r; };
+
+    function hurt() {
+      if (S.inv > 0 || S.phase === 'over' || S.phase === 'win') return;
+      S.hurt = 1; S.inv = 70; S.combo = 0;
+      if (!cfg.god) S.hearts -= 1;
+      fx('hurt', PX, S.P.y - 30);
+      if (S.hearts <= 0) { S.hearts = 0; S.phase = 'over'; setTimeout(() => showCard('over'), 700); }
+    }
+    function fx(kind, x, y, txt = '') { S.fx.push({ kind, x, y, t: 0, txt }); }
+    function bounce() { S.P.vy = -11.5; S.P.onGround = false; S.P.jumps = 1; S.P.squash = -0.2; }
+
+    // ── จังหวะด่านวิ่ง ──
+    function stepRun() {
+      const R = S.run, P = S.P;
+      const prevFeet = P.y;
+      P.update(1, game());
+      if (P.pendingJump) { P.pendingJump = false; P.jump(); }
+      S.cam += SPEED.run;
+      const b = box(), wx = S.cam;   // กล่องชนบนจอ · โลก x = จอ x + cam
+      // ขนม
+      for (const o of R.fish) if (!o.got && Math.abs(o.x - wx - PX) < 26 && Math.abs(o.y - (P.y - 24)) < 34) { o.got = true; S.treats += 10 * (1 + Math.floor(S.combo / 10)); S.combo++; }
+      // ดาว
+      for (const o of R.stars) if (!o.got && circHit(b, o.x - wx, o.y, 16)) { o.got = true; S.starsRun++; S.starsTotal++; fx('star', o.x - wx, o.y); }
+      // สิ่งกีดขวาง
+      for (const o of R.obs) if (!o.hitDone && overlap(b, { x: o.x - wx + 3, y: o.y + 4, w: o.w - 6, h: o.h - 4 })) { o.hitDone = true; hurt(); }
+      // ลูกน้อง: เดินซ้าย · เหยียบหัว (กำลังตก + เท้าเฟรมก่อนอยู่เหนือหัว) = ชนะ
+      for (const m of R.mobs) {
+        if (m.dead) { m.dead++; continue; }
+        if (m.x - wx < W + 60) m.x += m.vx;
+        const mb = { x: m.x - wx - 16, y: G - 30, w: 32, h: 30 };
+        if (!overlap(b, mb)) continue;
+        if (P.vy > 0 && prevFeet <= mb.y + 10) { m.dead = 1; bounce(); S.starsRun++; S.starsTotal++; fx('stomp', mb.x + 16, mb.y); fx('star', mb.x + 16, mb.y - 20); }
+        else hurt();
+      }
+      // ผลึกตกจากฟ้า: โผล่วงเตือนเมื่อเหลือ ~เวลาเตือน ก่อนถึงตัว แล้วตก
+      for (const s of R.shards) {
+        if (s.gone) continue;
+        const sx = s.x - wx, lead = cfg.warnT * 60 * SPEED.run + 140;
+        if (s.fallAt == null && sx < PX + lead) s.fallAt = S.f;
+        if (s.fallAt != null && !s.landed) {
+          const k = (S.f - s.fallAt) / (cfg.warnT * 60);
+          s.y = -40 + (G - 22 + 40) * clamp(k, 0, 1) ** 2;
+          if (k >= 1) { s.landed = true; s.landF = S.f; fx('dust', sx, G); }
+        }
+        if (s.landed && S.f - s.landF > 110) s.gone = true;
+        if (s.y > G - 80 && !s.hitDone && circHit(b, sx, s.y, 14)) { s.hitDone = true; hurt(); }
+      }
+      if (wx + PX > R.finish && S.phase === 'run') {
+        S.phase = 'clear';
+        setTimeout(() => showCard('clear'), 500);
+      }
+    }
+
+    // ══════════════════ ด่านบอส ══════════════════
+    const BOSS_X = 760;
+    function startBoss(fromStars) {
+      const pre = Math.min(cfg.need - 1, Math.floor(fromStars / 3));
+      S.phase = 'boss';
+      S.boss = { x: BOSS_X, state: 'idle', st: 0, crack: 0, hope: pre, cycle: 0, plan: null, shots: [], waves: [], stars: [], hitT: null, tired: 0, P: null, defeatAt: null, pre };
+      S.P.reset(); S.inv = 30;
+    }
+    function bossStep() {
+      const B = S.boss, P = S.P;
+      const prevFeet = P.y;
+      P.update(1, game());
+      if (P.pendingJump) { P.pendingJump = false; P.jump(); }
+      S.cam += SPEED.run;
+      B.st += 1 / 60;
+      if (B.hitT != null) B.hitT += 1 / 60;
+      const b = box();
+      const k = cfg.atkK;
+      if (B.state === 'defeat') {
+        if (B.st > 3.8 && S.phase === 'boss') { S.phase = 'win'; showCard('win'); }
+      } else if (B.state === 'tired') {
+        // ลอยต่ำ เคลื่อนจากขวาผ่านหัวน้องไปซ้าย แล้วกลับ — ผู้เล่นจับจังหวะกระโดดสองชั้นใส่เปลว
+        const T = 4.6, u = clamp(B.st / T, 0, 1);
+        B.x = u < 0.75 ? BOSS_X + (90 - BOSS_X) * (u / 0.75) : 90 + (BOSS_X - 90) * ((u - 0.75) / 0.25);
+        if (B.st >= T) { B.state = 'idle'; B.st = 0; B.hope = Math.ceil(cfg.need / 2); B.x = BOSS_X; }
+      } else {
+        B.x += (BOSS_X - B.x) * 0.08;
+        if (B.state === 'idle' && B.st > 1.3 / k) { B.state = 'warn'; B.st = 0; B.plan = ['throw', 'wave', 'throw2'][B.cycle++ % 3]; }
+        if (B.state === 'warn' && B.st >= cfg.warnT) { B.state = 'attack'; B.st = 0; launch(B); }
+        if (B.state === 'attack' && B.st > 1.6 / k) { B.state = 'idle'; B.st = 0; dropStars(B); }
+      }
+      // ผลึกที่ขว้าง (พิกัดจอ)
+      for (const s of B.shots) {
+        if (s.delay > 0) { s.delay--; continue; }
+        s.x += s.vx * k; s.rot += 0.2;
+        if (!s.hitDone && circHit(b, s.x, s.y, 11)) { s.hitDone = true; hurt(); }
+      }
+      B.shots = B.shots.filter((s) => s.x > -40);
+      for (const w of B.waves) {
+        if (w.delay > 0) { w.delay--; continue; }
+        w.x += w.vx * k; w.t++;
+        if (!w.hitDone && overlap(b, { x: w.x - 14, y: G - 24, w: 28, h: 24 })) { w.hitDone = true; hurt(); }
+      }
+      B.waves = B.waves.filter((w) => w.x > -60);
+      for (const s of B.stars) {
+        s.x -= SPEED.run * 0.85;
+        if (!s.got && circHit(b, s.x, s.y, 16)) { s.got = true; B.hope++; S.starsTotal++; fx('star', s.x, s.y); }
+      }
+      B.stars = B.stars.filter((s) => s.x > -30 && !s.got);
+      if (B.state !== 'tired' && B.state !== 'defeat' && B.hope >= cfg.need) { B.state = 'tired'; B.st = 0; B.shots = []; B.waves = []; B.stars = []; fx('text', W / 2, 90, 'บอสเหนื่อยแล้ว! กระโดดใส่เปลวบนหัว'); }
+      // จุดอ่อน (เปลวบนหัว) — คิดจากท่าที่วาดเฟรมก่อน
+      if (B.state === 'tired' && B.P && (B.hitT == null || B.hitT > 0.6)) {
+        const fxw = B.x + B.P.x * BOSS_S, fyw = G - B.P.y * BOSS_S - STUMP.flameY * BOSS_S * B.P.sy;
+        if (circHit(b, fxw, fyw, 15 * BOSS_S)) {
+          B.crack++; B.hitT = 0; bounce(); fx('hit', fxw, fyw);
+          if (B.crack >= 3) { B.state = 'defeat'; B.st = 0; }
+          else { B.state = 'idle'; B.st = 0; B.hope = 0; fx('text', W / 2, 90, `ผลึกร้าว ${B.crack}/3`); }
+        }
+      }
+    }
+    function launch(B) {
+      const ax = B.x - 40 * BOSS_S;
+      if (B.plan === 'wave') {
+        B.waves.push({ x: ax, vx: -6.2, delay: 0, t: 0 });
+        B.waves.push({ x: ax, vx: -6.2, delay: 50, t: 0 });
+      } else {
+        // ผลึกลอยต่ำ (ต้องกระโดด) สลับลอยสูง (อยู่เฉย ๆ บนพื้น)
+        const lanes = B.plan === 'throw' ? ['low', 'high', 'low'] : ['high', 'low', 'low', 'high'];
+        lanes.forEach((ln, i) => B.shots.push({ x: ax, y: ln === 'low' ? G - 16 : G - 72, vx: -7, delay: i * 26, rot: 0, ln }));
+      }
+    }
+    function dropStars(B) {
+      const ys = [G - 62, G - 112];
+      for (let i = 0; i < 2; i++) B.stars.push({ x: W + 20 + i * 90, y: ys[(i + B.cycle) % 2], got: false });
+    }
+
+    // ══════════════════ วาด ══════════════════
+    function drawMob(m, x) {
+      // ลูกน้องชั่วคราว: เมล็ดไม้เดินได้ (ผู้ใช้จะออกแบบใหม่)
+      const sq = m.dead ? Math.min(1, m.dead / 8) : 0;
+      if (m.dead > 30) return;
+      const hop = m.dead ? 0 : Math.abs(Math.sin(S.f * 0.18 + m.ph)) * 3;
+      ctx.save(); ctx.translate(x, G - hop);
+      ctx.globalAlpha = m.dead ? 1 - m.dead / 30 : 1;
+      ctx.fillStyle = 'rgba(80,50,90,.18)'; ctx.beginPath(); ctx.ellipse(0, hop, 15, 3.5, 0, 0, TAU); ctx.fill();
+      ctx.scale(1 + sq * 0.5, 1 - sq * 0.6);
+      let g = ctx.createLinearGradient(-14, -28, 14, 0);
+      g.addColorStop(0, '#D99A7A'); g.addColorStop(1, '#9A6295');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -13, 15, 14, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#F2C49E'; ctx.beginPath(); ctx.ellipse(0, -24, 13, 6, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#A9B072'; ctx.beginPath(); ctx.ellipse(4, -33, 6, 3, -0.6, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#8E9A62'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(0, -28); ctx.lineTo(2, -34); ctx.stroke();
+      ctx.fillStyle = '#4A2848';
+      if (m.dead) { ctx.font = '700 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('× ×', 0, -11); }
+      else { ctx.beginPath(); ctx.arc(-5, -13, 2.2, 0, TAU); ctx.arc(4, -13, 2.2, 0, TAU); ctx.fill(); ctx.fillRect(-9, -18, 6, 1.6); ctx.fillRect(2, -18, 6, 1.6); }
+      ctx.restore();
+    }
+    function drawStar(x, y, r, t = 0, a = 1) {
+      ctx.save(); ctx.translate(x, y + Math.sin(t * 0.08 + x * 0.05) * 3); ctx.globalAlpha = a;
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.2);
+      g.addColorStop(0, 'rgba(255,230,140,.6)'); g.addColorStop(1, 'rgba(255,230,140,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill();
+      ctx.rotate(Math.sin(t * 0.05) * 0.2);
+      ctx.fillStyle = '#FFD25E'; ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const a2 = (i / 10) * TAU - Math.PI / 2, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(Math.cos(a2) * rr, Math.sin(a2) * rr); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.25, r * 0.22, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    function drawShard(x, y, rot, glow = 1) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+      ctx.fillStyle = `rgba(214,188,255,${0.35 * glow})`; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
+      const g = ctx.createLinearGradient(-8, -10, 8, 10);
+      g.addColorStop(0, '#C9F2FF'); g.addColorStop(0.5, '#D9C6FF'); g.addColorStop(1, '#F8C4EE');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(8, -2); ctx.lineTo(4, 11); ctx.lineTo(-5, 10); ctx.lineTo(-8, -3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(-3, -1); ctx.lineTo(-8, -3); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    function drawCat() {
+      const P = S.P;
+      const r = stepRunAnim(S.anim, P, { catId: 'orange', mood: S.phase === 'win' ? 'happy' : '', hurt: S.hurt, dead: S.phase === 'over', speed: S.phase === 'over' ? 0 : SPEED.run, scale: CAT_S, keep: true });
+      const airH = Math.max(0, G - P.y);
+      ctx.save(); ctx.globalAlpha = Math.max(0, 0.32 - airH / 500); ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(PX, G + 4, Math.max(0, 22 - airH * 0.02) * CAT_S, 5 * CAT_S, 0, 0, TAU); ctx.fill(); ctx.restore();
+      ctx.save();
+      if (S.inv > 0 && Math.floor(S.inv / 5) % 2) ctx.globalAlpha = 0.45;
+      if (S.hurt > 0) ctx.translate(-S.hurt * 5, 0);
+      drawCat2Run(ctx, PX, P.y, CAT_S, SKIN, S.f, r);
+      ctx.restore();
+    }
+    function drawHUD() {
+      // หัวใจ 9 ดวง
+      for (let i = 0; i < 9; i++) drawHeart(ctx, 22 + i * 21, 24, 8, i < S.hearts ? '#FF6E9C' : 'rgba(255,255,255,.35)', i < S.hearts ? '#8E2B57' : 'rgba(120,90,130,.5)');
+      ctx.font = '600 15px Mitr, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      drawStar(22, 52, 8, 0); ctx.fillStyle = '#4A2848'; ctx.fillText(`× ${S.starsTotal}`, 36, 53);
+      ctx.fillText(`🐟 ${S.treats}`, 96, 53);
+      if (S.combo >= 5) { ctx.fillStyle = '#C2455A'; ctx.fillText(`คอมโบ ${S.combo}`, 186, 53); }
+      if (S.phase === 'run' || S.phase === 'clear') {
+        // แถบความคืบหน้า + ธงบอสที่ปลาย
+        const R = S.run, u = clamp((S.cam + PX) / R.finish, 0, 1), bx = 360, bw = 300;
+        ctx.fillStyle = 'rgba(60,30,70,.25)'; ctx.beginPath(); ctx.roundRect(bx, 18, bw, 10, 5); ctx.fill();
+        ctx.fillStyle = '#FF9FC4'; ctx.beginPath(); ctx.roundRect(bx, 18, bw * u, 10, 5); ctx.fill();
+        ctx.font = '13px Mitr, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#4A2848'; ctx.fillText('ด่าน 1 · ตามรอยผลึก', bx + bw / 2, 42);
+        ctx.font = '16px sans-serif'; ctx.fillText('🌳', bx + bw + 14, 23);
+      } else if (S.boss) {
+        const B = S.boss, bx = W - 300, by = 16;
+        ctx.textAlign = 'left'; ctx.font = '600 14px Mitr, sans-serif'; ctx.fillStyle = '#4A2848';
+        ctx.fillText(`ภูตตอไม้`, bx, by + 6);
+        for (let i = 0; i < 3; i++) { ctx.fillStyle = i < B.crack ? '#FF7FB0' : 'rgba(120,90,160,.3)'; ctx.beginPath(); ctx.roundRect(bx + 70 + i * 30, by, 24, 12, 6); ctx.fill(); }
+        ctx.font = '12px Mitr, sans-serif'; ctx.fillStyle = '#4A2848'; ctx.fillText('ผลึกร้าว', bx + 166, by + 6);
+        // แถบความหวัง
+        const hw = 240, hy = by + 22;
+        ctx.fillStyle = 'rgba(60,30,70,.25)'; ctx.beginPath(); ctx.roundRect(bx, hy, hw, 12, 6); ctx.fill();
+        const hg = ctx.createLinearGradient(bx, 0, bx + hw, 0); hg.addColorStop(0, '#FFE08A'); hg.addColorStop(1, '#FFB347');
+        ctx.fillStyle = hg; ctx.beginPath(); ctx.roundRect(bx, hy, hw * clamp(B.hope / cfg.need, 0, 1), 12, 6); ctx.fill();
+        for (let i = 1; i < cfg.need; i++) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(bx + (hw * i) / cfg.need - 0.5, hy + 2, 1, 8); }
+        ctx.fillStyle = '#4A2848'; ctx.fillText(`ความหวัง ${Math.min(B.hope, cfg.need)}/${cfg.need}`, bx, hy + 26);
+      }
+    }
+    function drawFx() {
+      for (const e of S.fx) {
+        e.t++;
+        const a = 1 - e.t / 40;
+        if (e.kind === 'star') drawStar(e.x, e.y - e.t * 1.2, 9 * (1 + e.t / 60), 0, a);
+        else if (e.kind === 'stomp' || e.kind === 'dust') { ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = '#FFF6E0'; for (let i = 0; i < 5; i++) { const ang = Math.PI + (i / 4) * Math.PI; ctx.beginPath(); ctx.arc(e.x + Math.cos(ang) * e.t * 0.9, e.y + Math.sin(ang) * e.t * 0.5, 4 * a + 1, 0, TAU); ctx.fill(); } ctx.restore(); }
+        else if (e.kind === 'hit') { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = '#FFE08A'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y, 10 + e.t * 1.6, 0, TAU); ctx.stroke(); ctx.restore(); }
+        else if (e.kind === 'hurt') { ctx.save(); ctx.globalAlpha = a; ctx.font = '700 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#FF6E9C'; ctx.fillText('💔', e.x, e.y - e.t * 0.8); ctx.restore(); }
+        else if (e.kind === 'text') {
+          const aa = e.t < 100 ? 1 : 1 - (e.t - 100) / 30;
+          ctx.save(); ctx.globalAlpha = Math.max(0, aa); ctx.font = '600 18px Mitr, sans-serif'; ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(40,20,55,.75)'; const w = ctx.measureText(e.txt).width + 30; ctx.beginPath(); ctx.roundRect(e.x - w / 2, e.y - 18, w, 34, 17); ctx.fill();
+          ctx.fillStyle = '#FFF4DC'; ctx.fillText(e.txt, e.x, e.y); ctx.restore();
+        }
+      }
+      S.fx = S.fx.filter((e) => (e.kind === 'text' ? e.t < 130 : e.t < 40));
+    }
+    function hitbox(r, c = 'rgba(255,0,80,.8)') { if (!cfg.hit) return; ctx.save(); ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.strokeRect(r.x, r.y, r.w, r.h); ctx.restore(); }
+
+    function render() {
+      const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+      const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      const sc = Math.min(w / W, h / H);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0C0614'; ctx.fillRect(0, 0, w, h);
+      ctx.setTransform(sc, 0, 0, sc, (w - W * sc) / 2, (h - H * sc) / 2);
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+      drawGroveBackdrop(ctx, S.cam, S.f);
+      const R = S.run, wx = S.cam;
+      // บอสลอยผ่านฉากหลัง (กลางด่านวิ่ง) — เล็ก จาง อยู่หลังพื้น
+      if (S.phase === 'run' || S.phase === 'clear') {
+        const d = wx + PX - R.previewAt;
+        if (d > 0 && d < 2200) {
+          const u = d / 2200;
+          ctx.save(); ctx.globalAlpha = 0.55 * Math.sin(u * Math.PI);
+          drawStumpBoss(ctx, W + 80 - u * (W + 260), 150 + Math.sin(u * 9) * 8, BOSS_S * 0.45, { state: 'idle', t: S.f / 60, gaze: -1, look: S.kitten });
+          ctx.restore();
+        }
+      }
+      drawGround(ctx, [], S.cam, GROVE_PAL, drawGroveGround);
+      if (S.phase === 'run' || S.phase === 'clear') {
+        // เส้นชัย
+        const fxp = R.finish - wx;
+        if (fxp < W + 40) {
+          ctx.fillStyle = '#7A5A8E'; ctx.fillRect(fxp - 3, G - 120, 6, 120);
+          for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) { ctx.fillStyle = (i + j) % 2 ? '#FFF4DC' : '#FF7FB0'; ctx.fillRect(fxp + 3 + i * 9, G - 120 + j * 9, 9, 9); }
+        }
+        drawPlats(ctx, R.plats, wx, GROVE_PAL, 'grove');
+        drawObstacles(ctx, R.obs, wx, 'grove');
+        for (const o of R.obs) hitbox({ x: o.x - wx + 3, y: o.y + 4, w: o.w - 6, h: o.h - 4 });
+        for (const o of R.fish) if (!o.got) { const x = o.x - wx; if (x > -30 && x < W + 30) drawFish(ctx, x, o.y, fishR, S.f, o.x); }
+        for (const o of R.stars) if (!o.got) { const x = o.x - wx; if (x > -30 && x < W + 30) drawStar(x, o.y, 11, S.f); }
+        for (const m of R.mobs) { const x = m.x - wx; if (x > -40 && x < W + 40) { drawMob(m, x); hitbox({ x: x - 16, y: G - 30, w: 32, h: 30 }); } }
+        for (const s of R.shards) {
+          if (s.gone) continue;
+          const x = s.x - wx;
+          if (x < -40 || x > W + 40) continue;
+          if (s.fallAt != null && !s.landed) {   // วงเตือนบนพื้น โตขึ้นตามเวลาที่เหลือ
+            const k = clamp((S.f - s.fallAt) / (cfg.warnT * 60), 0, 1);
+            ctx.save(); ctx.globalAlpha = 0.35 + 0.45 * Math.abs(Math.sin(S.f * 0.3));
+            ctx.strokeStyle = '#FF6E9C'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, G - 2, 10 + 14 * k, 4 + 3 * k, 0, 0, TAU); ctx.stroke(); ctx.restore();
+          }
+          if (s.fallAt != null) drawShard(x, s.y, s.landed ? 0.4 : S.f * 0.2, s.landed ? Math.max(0, 1 - (S.f - s.landF) / 110) : 1);
+        }
+      }
+      if (S.boss) {
+        const B = S.boss;
+        for (const w2 of B.waves) if (w2.delay <= 0) {
+          ctx.save(); const g = ctx.createRadialGradient(w2.x, G, 2, w2.x, G, 30);
+          g.addColorStop(0, 'rgba(255,240,255,.95)'); g.addColorStop(0.5, 'rgba(214,170,255,.7)'); g.addColorStop(1, 'rgba(214,170,255,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(w2.x, G - 10, 22, 16 + Math.sin(w2.t * 0.5) * 3, 0, 0, TAU); ctx.fill(); ctx.restore();
+          hitbox({ x: w2.x - 14, y: G - 24, w: 28, h: 24 });
+        }
+        const bstate = B.state === 'attack' ? 'idle' : B.state;
+        B.P = drawStumpBoss(ctx, B.x, G, BOSS_S, { state: bstate, st: B.st, t: S.f / 60, crack: B.crack, hitT: B.hitT, gaze: -1, look: S.kitten });
+        for (const s of B.shots) if (s.delay <= 0) { drawShard(s.x, s.y, s.rot); if (cfg.hit) { ctx.strokeStyle = 'red'; ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, TAU); ctx.stroke(); } }
+        for (const s of B.stars) drawStar(s.x, s.y, 11, S.f);
+        if (cfg.hit && B.P) { const fxw = B.x + B.P.x * BOSS_S, fyw = G - B.P.y * BOSS_S - STUMP.flameY * BOSS_S * B.P.sy; ctx.strokeStyle = 'yellow'; ctx.beginPath(); ctx.arc(fxw, fyw, 15 * BOSS_S, 0, TAU); ctx.stroke(); }
+      }
+      drawCat();
+      drawGroveFront(ctx, S.cam);   // ใบไม้เข้มชั้นหน้าสุด (ในเนื้อดิน ไม่บังทางวิ่ง)
+      hitbox(box(), 'rgba(0,200,255,.9)');
+      drawFx();
+      drawHUD();
+      ctx.restore();
+    }
+
+    // ══════════════════ การ์ดสรุป ══════════════════
+    const card = $('card');
+    function hideCard() { card.hidden = true; }
+    function showCard(kind) {
+      paused = kind !== 'clear' ? true : paused;
+      const hearts = `<span>❤️ <b>${S.hearts}</b>/9</span>`;
+      if (kind === 'clear') {
+        const pre = Math.min(cfg.need - 1, Math.floor(S.starsRun / 3));
+        card.innerHTML = `<h2>ผ่านด่าน 1 🎉</h2><p>เก็บดาวแห่งความหวังได้ ${S.starsRun} ดวง<br>เริ่มสู้บอสด้วยแถบความหวัง <b>${pre}/${cfg.need}</b></p>
+          <div class="stats">${hearts}<span>⭐ <b>${S.starsRun}</b></span><span>🐟 <b>${S.treats}</b></span></div>
+          <div class="row">${S.mode === 'full' ? '<button type="button" class="ib main" id="goBoss">สู้ภูตตอไม้ →</button>' : ''}<button type="button" class="ib" id="again">เล่นด่านนี้ใหม่</button></div>`;
+        paused = true;
+      } else if (kind === 'win') {
+        const nm = KITTEN_NAME[S.kitten] || S.kitten;
+        card.innerHTML = `<h2>ช่วยน้องสำเร็จ! 🐾</h2><p>ผลึกแตกแล้ว ได้น้อง <b>${nm}</b> กลับบ้าน${S.hearts === 9 ? '<br>✨ หัวใจเต็ม 9 ดวง ได้รางวัลพิเศษ' : ''}</p>
+          <div class="stats">${hearts}<span>⭐ <b>${S.starsTotal}</b></span><span>🐟 <b>${S.treats}</b></span></div>
+          <div class="row"><button type="button" class="ib pink" id="again">เล่นอีกรอบ</button></div>`;
+      } else {
+        card.innerHTML = `<h2>หัวใจหมดแล้ว 💔</h2><p>ตามแผน: กลับไปเริ่มด่าน 1 ใหม่ด้วยหัวใจเต็ม 9 ดวง</p>
+          <div class="row"><button type="button" class="ib main" id="again">ลุยใหม่</button></div>`;
+      }
+      card.hidden = false;
+      $('again').onclick = () => { newRun(); paused = false; setPauseBtn(); };
+      const gb = $('goBoss');
+      if (gb) gb.onclick = () => { hideCard(); startBoss(S.starsRun); paused = false; setPauseBtn(); };
+      setPauseBtn();
+    }
+
+    // ══════════════════ ปุ่ม / แผง ══════════════════
+    let paused = false;
+    const setPauseBtn = () => { $('pause').textContent = paused ? '▶ เล่นต่อ' : '⏸ พัก'; };
+    $('pause').onclick = () => { if (!card.hidden && S.phase !== 'run' && S.phase !== 'boss') return; paused = !paused; setPauseBtn(); };
+    $('restart').onclick = () => { newRun(); paused = false; setPauseBtn(); };
+    const doJump = () => {
+      if (paused || !card.hidden) return;
+      if (S.phase !== 'run' && S.phase !== 'boss') return;
+      if (!S.P.jump()) S.P.queueJump();
+    };
+    // แตะจอฝั่งซ้าย (1/3) = กดค้างหมอบ · ที่เหลือ = กระโดด
+    const slide = (on) => { if (S && S.P) S.P.setSlide(on && (S.phase === 'run' || S.phase === 'boss') && !paused); };
+    let slidePtr = null;
+    cv.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const r = cv.getBoundingClientRect();
+      if (e.clientX - r.left < r.width / 3) { slidePtr = e.pointerId; slide(true); } else doJump();
+    });
+    const endSlide = (e) => { if (e.pointerId === slidePtr) { slidePtr = null; slide(false); } };
+    cv.addEventListener('pointerup', endSlide); cv.addEventListener('pointercancel', endSlide); cv.addEventListener('pointerleave', endSlide);
+    addEventListener('keydown', (e) => {
+      if (e.target.closest('input')) return;
+      if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); if (!e.repeat) doJump(); }
+      else if (['ArrowDown', 'KeyS'].includes(e.code)) { e.preventDefault(); slide(true); }
+      else if (e.code === 'KeyP') $('pause').click();
+      else if (e.code === 'KeyR') $('restart').click();
+    });
+    addEventListener('keyup', (e) => { if (['ArrowDown', 'KeyS'].includes(e.code)) slide(false); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && !paused) { paused = true; setPauseBtn(); } });
+
+    const MODES = [
+      ['full', 'ด่าน 1 → สู้บอส', 'วิ่งจนถึงเส้นชัย แล้วต่อด่านบอส หัวใจ/ดาวยกไปด้วย'],
+      ['run', 'ด่านวิ่งอย่างเดียว', 'ลองลูกน้อง ดาว บอสลอยผ่าน ผลึกตก'],
+      ['boss', 'ด่านบอสอย่างเดียว', 'เริ่มสู้ภูตตอไม้เลย (แถบความหวังเริ่ม 0)'],
+    ];
+    function renderModes() {
+      $('modes').innerHTML = '';
+      for (const [id, name, note] of MODES) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (cfg.mode === id ? ' on' : '');
+        b.innerHTML = `${name}<small>${note}</small>`;
+        b.onclick = () => { cfg.mode = id; saveCfg(); renderModes(); newRun(id); paused = false; setPauseBtn(); };
+        $('modes').appendChild(b);
+      }
+    }
+    function seg(el, items, key) {
+      el.innerHTML = '';
+      for (const [v, label] of items) {
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+        b.onclick = () => { cfg[key] = v; saveCfg(); paint(); };
+        el.appendChild(b);
+      }
+      const paint = () => [...el.children].forEach((b, i) => b.classList.toggle('on', items[i][0] === cfg[key]));
+      paint();
+    }
+    function slider(id, out, key, fmt) {
+      const el = $(id); el.value = cfg[key]; $(out).textContent = fmt(cfg[key]);
+      el.oninput = () => { cfg[key] = +el.value; $(out).textContent = fmt(cfg[key]); saveCfg(); };
+    }
+    slider('ratio', 'ratioOut', 'ratio', (v) => `×${(+v).toFixed(1)}`);
+    $('ratio').addEventListener('input', setBossS);
+    slider('need', 'needOut', 'need', (v) => `${v} ดวง`);
+    slider('warnT', 'warnOut', 'warnT', (v) => `${(+v).toFixed(1)}`);
+    slider('atkK', 'atkOut', 'atkK', (v) => `×${(+v).toFixed(1)}`);
+    seg($('spd'), [[0.5, '½'], [0.75, '¾'], [1, 'ปกติ']], 'speed');
+    seg($('god'), [[false, 'ปิด'], [true, 'เปิด']], 'god');
+    seg($('hit'), [[false, 'ปิด'], [true, 'เปิด']], 'hit');
+    renderModes();
+
+    // ══════════════════ ลูป (60 ขั้นต่อวินาทีคงที่) ══════════════════
+    setBossS();
+    newRun();
+    let acc = 0, last = performance.now();
+    function loop(now) {
+      acc += Math.min(0.1, (now - last) / 1000) * 60 * cfg.speed; last = now;
+      while (acc >= 1) {
+        acc -= 1;
+        if (paused) continue;
+        S.f++;
+        if (S.inv > 0) S.inv--;
+        S.hurt = Math.max(0, S.hurt - 0.06);
+        if (S.phase === 'run') stepRun();
+        else if (S.phase === 'boss' || S.phase === 'win') bossStep();
+        else if (S.phase === 'over') { S.P.updateDead(1); }
+      }
+      render();
+      requestAnimationFrame(loop);
+    }
+    setCatEdgeScale(1);
+    requestAnimationFrame(loop);
+    window.__gp = () => S;
+    window.__cfg = cfg;
+    window.__geo = () => ({ BOSS_S, CAT_H });
+  </script>
+</body>
+</html>

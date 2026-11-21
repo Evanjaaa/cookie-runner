@@ -520,7 +520,7 @@
     // ภาพแบบสี่จังหวะ (พิกัดในไฟล์ภาพ 1536×1086): hx/gy = จุดยึดให้ตาตรงกับตัวที่วาด
     const REF4 = [{ hx: 275, gy: 644 }, { hx: 621, gy: 644 }, { hx: 955, gy: 644 }, { hx: 1277, gy: 644 }];   // จุดยึด = ตำแหน่งตาเทียบกับจังหวะ 1 (หัวทุกภาพสูงเท่ากันในแบบ) — วัดจากตาดำ
     const refImg = new Image();
-    refImg.src = './ref/run-4beat.jpg';
+    refImg.src = new URL('./ref/run-4beat.jpg', import.meta.url).href;
     let cells4 = [];
     let rbXf = null;   // ตัวแปลงของตัววิ่ง (เครื่องมือวาด)   // กรอบภาพสี่จังหวะ (พิกเซลผ้าใบ) — ไว้แตะเลือกจังหวะ
     /** น้องหนึ่งตัวท่าจังหวะ b · cx = กลางตัว gy = พื้น (พิกเซล) · px = ความสูงตัวโดยประมาณ (พิกเซล) */
@@ -614,7 +614,7 @@
     const KREF = [0, 1, 2, 3].map((i) => ({ hx: i * 450 + 188.75, wy: 180 }));
     const KREF_K = 256 / 287.5;   // หน่วยชีทต่อพิกเซลภาพแบบ (หัวจิบิกว้าง 256 · หัวในแบบ 287.5)
     const kidImg = new Image();
-    kidImg.src = './ref/chibi-walk-4beat-v2.jpg';
+    kidImg.src = new URL('./ref/chibi-walk-4beat-v2.jpg', import.meta.url).href;
     // เวลาของน้อง (กะพริบตา/หายใจ/หางไหว) เดินต่อเฉพาะตอนเล่น · ph = จังหวะต่อเนื่อง (ตัวขึ้นลง/เอียง/หู/หาง)
     let kidT = 2070;
     function drawKid(c, cx, gy, px, b, ph) {

@@ -1295,7 +1295,7 @@
     // ── แท็บจิบิ: แมวจิบิวัยเด็กตามชีทของผู้ใช้ (src/render/chibi.js) ──
     const CB_NAME = { sit: 'sit down', front: 'Front', q: 'Perspective', side: 'Side', back: 'Back' };
     const cbImg = new Image();
-    cbImg.src = './ref/chibi-sheet-v3.jpg';
+    cbImg.src = new URL('./ref/chibi-sheet-v3.jpg', import.meta.url).href;   // new URL = vite รวมรูปเข้า build (หน้านี้ขึ้นเว็บแล้ว)
     function renderChibi(w, u) {
       const walk = st.cbMove === 'walk', walk4 = st.cbMove === 'walk4';
       const views = walk ? ['side'] : walk4 ? ['q'] : st.cbView === 'all' ? CHIBI_VIEWS : [st.cbView];   // เดินมุมข้าง = มุมข้าง · เดิน 4 จังหวะ = มุมเฉียง
