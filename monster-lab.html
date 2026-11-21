@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Monster Lab — ห้องทดสอบบอส</title>
+  <title>Monster Lab — ห้องทดสอบบอสและลูกน้อง</title>
   <!-- หน้าหลังบ้านตอนพัฒนาเท่านั้น (แบบเดียวกับ cat-lab.html): ไม่อยู่ใน rollupOptions.input ของ vite.config.js
        จึงไม่ถูก build และไม่ขึ้นเว็บจริง · เปิดตอนรัน npm run dev → /monster-lab.html
-       ใช้ตรวจหน้าตา/ท่าของบอสก่อนเอาลงด่านจริง · ตัววาดอยู่ที่ src/render/bosses/ (เกมจะใช้ไฟล์เดียวกัน) -->
+       ใช้ตรวจหน้าตา/ท่าของบอสและลูกน้องก่อนเอาลงด่านจริง · ตัววาดอยู่ที่ src/render/bosses/ และ src/render/minions/ (เกมจะใช้ไฟล์เดียวกัน) -->
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +28,7 @@
       background-attachment: fixed;
     }
     input, textarea { text-wrap: wrap; }
+    [hidden] { display: none !important; }
     button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
     button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
 
@@ -197,7 +198,7 @@
     <aside class="side">
       <div class="brand">
         <h1>👾 <span>Monster Lab</span></h1>
-        <p>ตรวจหน้าตาและท่าของบอสก่อนลงด่านจริง</p>
+        <p>ตรวจหน้าตาและท่าของบอสกับลูกน้องก่อนลงด่านจริง</p>
       </div>
       <nav class="tabs" role="tablist">
         <button type="button" class="tab" data-tab="moves" role="tab"><i>🎬</i>ท่า</button>
@@ -209,29 +210,35 @@
         <section class="pane" data-pane="moves">
           <div class="sec">บอส <span class="line"></span></div>
           <div class="bosses" id="bosses"></div>
+          <div class="sec">ลูกน้อง <span class="line"></span></div>
+          <div class="bosses" id="minions"></div>
           <div class="sec">ท่าทาง <span class="line"></span></div>
           <div class="moves" id="states"></div>
-          <div class="sec">ลองสู้ <span class="line"></span></div>
-          <div class="row">
+          <div class="sec" data-only="boss">ลองสู้ <span class="line"></span></div>
+          <div class="row" data-only="boss">
             <button type="button" class="ib gold" id="hit" style="flex:1">⭐ ตีจุดอ่อน (H)</button>
             <button type="button" class="ib" id="heal" title="ล้างรอยร้าว">ล้างรอยร้าว</button>
           </div>
-          <div class="opts" style="margin-top:9px">
+          <div class="opts" style="margin-top:9px" data-only="boss">
             <div class="opt"><span>รอยร้าว</span><div class="seg" id="crack"></div></div>
           </div>
-          <p class="note">ตีครบ 3 ครั้ง = ผลึกแตก เข้าท่า <b>แพ้</b> อัตโนมัติ · ในเกมจริงจะตีได้เฉพาะช่วง <b>เหนื่อย</b> (เลือกท่าเหนื่อยก่อนแล้วกดตี จะเห็นภาพใกล้เคียงที่สุด)</p>
+          <p class="note" data-only="boss">ตีครบ 3 ครั้ง = ผลึกแตก เข้าท่า <b>แพ้</b> อัตโนมัติ · ในเกมจริงจะตีได้เฉพาะช่วง <b>เหนื่อย</b> (เลือกท่าเหนื่อยก่อนแล้วกดตี จะเห็นภาพใกล้เคียงที่สุด)</p>
           <div class="sec">การเคลื่อนที่ <span class="line"></span></div>
           <div class="opts">
             <div class="opt"><span>ลอยขึ้นลง</span><div class="seg" id="bob"></div></div>
             <div class="opt"><span>เลื่อนซ้ายขวา</span><div class="seg" id="drift"></div></div>
             <div class="opt"><span>สายตา</span><div class="seg" id="gaze"></div></div>
             <div class="opt"><span>มุมหัน</span><div class="seg" id="turn"></div></div>
+            <div class="opt" data-only="boss"><span>เฟสโกรธ</span><div class="seg" id="rage"></div></div>
+            <div class="opt" data-only="minion"><span>จำนวน</span><div class="seg" id="count"></div></div>
+            <div class="opt" data-only="minion"><span>สีหน้า</span><div class="seg" id="face"></div></div>
           </div>
-          <div class="sec">น้องในผลึก <span class="line"></span></div>
-          <div class="opts">
+          <p class="note" data-only="minion"><b>ฝูง 3 ตัว</b> = ท่า "พุ่งชนเป็นกลุ่ม" ในชีตแบบ (เลือกท่าพุ่งชน) · <b>สีหน้า</b> บังคับหน้าตาไว้เทียบกับ Expression Sheet · กด <b>H</b> = ลองโดนเหยียบ</p>
+          <div class="sec" data-only="boss">น้องในผลึก <span class="line"></span></div>
+          <div class="opts" data-only="boss">
             <div class="opt"><span>สีน้อง</span><select id="kitten"></select></div>
           </div>
-          <p class="note">ใช้ตัววาดน้องจิบิของเกม (ท่านั่งหลับ) — ในเกมจริงจะเป็นน้องตัวที่ผู้เล่นจะได้ สีสุ่มตามตัวนั้น</p>
+          <p class="note" data-only="boss">ในผลึกเห็นน้องเป็น<b>เงาจาง ๆ</b> (ไม่บอกสีขน มีไฟหัวใจเต้นตุบ ๆ) — สีที่เลือกตรงนี้โผล่ตอนผลึกแตกในท่าแพ้ · ในเกมจริงเป็นน้องตัวที่ผู้เล่นจะได้</p>
         </section>
 
         <section class="pane" data-pane="look">
@@ -240,29 +247,25 @@
           <div class="sec">เทียบขนาดกับน้องแมว <span class="line"></span></div>
           <div class="opts">
             <div class="opt"><span>โชว์น้อง</span><div class="seg" id="cmp"></div></div>
-            <div class="opt"><span>สูงกี่เท่า</span><input type="range" id="ratio" min="1" max="3.5" step="0.1"><output id="ratioOut"></output></div>
+            <div class="opt"><span>สูงกี่เท่า</span><input type="range" id="ratio" min="1" max="3.5" step="0.05"><output id="ratioOut"></output></div>
           </div>
-          <p class="note">ตกลงไว้ <b>2.5 เท่า</b> ของน้องตัวโต (วัดจากชายล่างถึงขอบตอไม้ ไม่รวมเปลวบนหัว) · ตอนเหนื่อยบอสลอยต่ำลง จุดอ่อนจะลงมาอยู่ในระยะกระโดด</p>
+          <p class="note" data-only="minion">ลูกน้องตัวเล็กกว่าน้อง (<b>×0.75</b> วัดจากก้นหมอกถึงขอบตอ ไม่รวมคริสตัล) — ต้องกระโดดเหยียบหัวได้</p>
+          <p class="note" data-only="boss">ตกลงไว้ <b>2.5 เท่า</b> ของน้องตัวโต (วัดจากชายล่างถึงขอบตอไม้ ไม่รวมเปลวบนหัว) · ตอนเหนื่อยบอสลอยต่ำลง จุดอ่อนจะลงมาอยู่ในระยะกระโดด</p>
           <div class="sec">แยกชิ้นส่วน <span class="line"></span></div>
           <div class="opts"><div class="opt"><span>แยกออก</span><input type="range" id="explode" min="0" max="1" step="0.01"><output id="explodeOut"></output></div></div>
-          <p class="note">ดูว่าแต่ละชิ้นขยับแยกกันได้ครบไหม: ตัว+ใบไม้ · หน้า (ตา คิ้ว ปาก) · จุดอ่อนบนหัว · แขนซ้าย · แขนขวา · ผลึก+น้อง</p>
+          <p class="note" id="explodeNote"></p>
         </section>
 
         <section class="pane" data-pane="ref">
-          <div class="sec">ภาพแบบจากทีม (docs/boss-stump) <span class="line"></span></div>
-          <div class="refs">
-            <a href="./docs/boss-stump/1-main.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/1-main.jpg" alt="ท่าหลัก"></a>
-            <a href="./docs/boss-stump/2-expressions.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/2-expressions.jpg" alt="สีหน้า 4 แบบ"></a>
-            <a href="./docs/boss-stump/3-parts.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/3-parts.jpg" alt="แยกชิ้น"></a>
-            <a href="./docs/boss-stump/4-sheet.jpg" target="_blank" rel="noopener"><img src="./docs/boss-stump/4-sheet.jpg" alt="ชีตท่าโจมตี"></a>
-          </div>
-          <p class="note">แตะภาพเพื่อเปิดเต็มจอ · <b>ท่าโจมตี 5 ท่า</b> (พุ่งชน · เศษคริสตัล · ระเบิดพลัง · เกราะ · หมอก) ยังไม่ได้ทำในรอบนี้ ทำหลังหน้าตาผ่านแล้ว</p>
+          <div class="sec">ภาพแบบจากทีม <span class="line"></span></div>
+          <div class="refs" id="refs"></div>
+          <p class="note">แตะภาพเพื่อเปิดเต็มจอ</p>
           <div class="sec">ปุ่มลัด <span class="line"></span></div>
           <div class="keys">
             <kbd>Space</kbd><span>เล่น / พัก</span>
             <kbd>← →</kbd><span>ทีละเฟรม</span>
             <kbd>1–4</kbd><span>เปลี่ยนท่า</span>
-            <kbd>H</kbd><span>ตีจุดอ่อน</span>
+            <kbd>H</kbd><span>ตีจุดอ่อน (บอส) · โดนเหยียบ (ลูกน้อง)</span>
             <kbd>P</kbd><span>บันทึกภาพ</span>
             <kbd>F</kbd><span>ขยายจอภาพ</span>
           </div>
@@ -279,6 +282,7 @@
 
   <script type="module">
     import { drawStumpBoss, STUMP, STUMP_STATES } from './src/render/bosses/stump.js';
+    import { drawLogSpirit, LOG_SPIRIT, LOG_SPIRIT_STATES } from './src/render/minions/log-spirit.js';
     import { drawCat2 } from './src/render/cat2.js';
     import { CHIBI_LOOKS } from './src/render/chibi.js';
     import { SKINS } from './src/skins.js';
@@ -286,21 +290,29 @@
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
 
-    // บอสทั้งหมด (เพิ่มตัวใหม่ที่นี่ · ตัวที่ยังไม่ได้วาด = รอแบบ)
-    const BOSSES = [
-      { id: 'stump', name: `${STUMP.name}`, note: `${STUMP.title} · บอสเกมสอน`, em: '🌳', draw: drawStumpBoss, def: STUMP, states: STUMP_STATES },
-      { id: 'next', name: 'บอสตัวต่อไป', note: 'รอแบบจากทีม', em: '❔', wait: true },
+    // วนทุกท่า (ต่อตัว)
+    const DEMO_STUMP = [['enter', 2.6], ['idle', 1.4], ['cast', 3.4], ['idle', 0.8], ['burst', 2.8], ['idle', 0.8], ['charge', 3.2], ['shield', 3.8], ['fog', 3.2], ['idle', 0.8], ['tired', 3.2], ['defeat', STUMP_STATES.defeat.dur + 0.8]];
+    const DEMO_LOG = [['idle', 1.6], ['dash', 1.7], ['idle', 0.6], ['spin', 1.5], ['hop', 1.3], ['shoot', 2.0], ['idle', 0.6], ['dizzy', 1.6], ['sleep', 3.2], ['stomp', 1.7]];
+    // บอส + ลูกน้องทั้งหมด (เพิ่มตัวใหม่ที่นี่ · ตัวที่ยังไม่ได้วาด = รอแบบ)
+    // def: H สูงตัว · hover ลอย · top เผื่อเหนือหัว · halfW ครึ่งกว้าง (หน่วยของตัวนั้น) · ratio สูงกี่เท่าของน้อง
+    const BOSS_REFS = [['1-main.jpg', 'ท่าหลัก'], ['2-expressions.jpg', 'สีหน้า 4 แบบ'], ['3-parts.jpg', 'แยกชิ้น'], ['4-sheet.jpg', 'ชีตท่าโจมตี']].map(([f, a]) => [new URL(`./docs/boss-stump/${f}`, location.href).href, a]);
+    const CHARS = [
+      { id: 'stump', kind: 'boss', name: `${STUMP.name}`, note: `${STUMP.title} · บอสเกมสอน`, em: '🌳', draw: drawStumpBoss, def: { ...STUMP, top: 40, halfW: 66 }, states: STUMP_STATES, demo: DEMO_STUMP, refs: BOSS_REFS,
+        demoNote: 'เปิดตัว → ท่าโจมตี 5 ท่า → เหนื่อย → แพ้', explodeNote: 'ดูว่าแต่ละชิ้นขยับแยกกันได้ครบไหม: ตัว+ใบไม้ · หน้า (ตา คิ้ว ปาก) · จุดอ่อนบนหัว · แขนซ้าย · แขนขวา · ผลึก+น้อง' },
+      { id: 'next', kind: 'boss', name: 'บอสตัวต่อไป', note: 'รอแบบจากทีม', em: '❔', wait: true },
+      { id: 'log', kind: 'minion', name: LOG_SPIRIT.name, note: `${LOG_SPIRIT.title} · ลูกน้องภูตตอไม้`, em: '🪵', draw: drawLogSpirit, def: LOG_SPIRIT, states: LOG_SPIRIT_STATES, demo: DEMO_LOG, refs: [[new URL('./docs/minion-log/1-sheet.png', location.href).href, 'ชีตแบบลูกน้อง']],
+        demoNote: 'ลอย → พุ่งชน → หมุนตัว → กระโดด → ยิงคริสตัล → มึน → หลับ → โดนเหยียบ', explodeNote: 'ดูว่าแต่ละชิ้นแยกกันครบไหม (ตามหน้า "แยกชิ้นส่วน" ในชีต): ตอไม้ · หมอกสองชั้น · หน้า (ตา คิ้ว ปาก) · คริสตัล · ใบไม้' },
     ];
     const KITTEN_NAMES = { orange: 'ส้ม', pearl: 'ไข่มุก', calico: 'สามสี', siamese: 'วิเชียรมาศ', konja: 'ขาวมณี/คอนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'สลิด', tortie: 'กระดองเต่า', cow: 'วัว', manee: 'ขาวมณี', somsa: 'ส้มสา', suea: 'เสือ', soft: 'ขาวนวล', hawkBlue: 'ตาเหยี่ยวฟ้า' };
 
     const st = {
-      boss: BOSSES[0], state: 'idle', demo: false, playing: true, speed: 1,
+      boss: CHARS[0], state: 'idle', demo: false, playing: true, speed: 1,
       t: 0, st: 0, crack: 0, hitAt: null,
       bob: true, drift: false, gaze: -1, look: 'orange',
-      bg: 'sheet', cmp: true, ratio: STUMP.ratio, explode: 0, zoom: 1, turn: null,
+      bg: 'sheet', cmp: true, ratio: STUMP.ratio, explode: 0, zoom: 1, turn: null, rage: false,
+      count: 1, face: 'auto', ratios: {},
     };
-    const DEMO = [['idle', 3], ['warn', 2], ['idle', 1.5], ['warn', 2], ['tired', 3.2], ['defeat', 4.4]];
-    const DEMO_LEN = DEMO.reduce((a, [, d]) => a + d, 0);
+    const demoLen = () => st.boss.demo.reduce((a, [, d]) => a + d, 0);
 
     // ── ขนาดน้องแมวตัวโต (วัดจากพิกเซลจริงครั้งเดียว) ──
     const CAT = SKINS[0];
@@ -332,18 +344,33 @@
     function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1600); }
 
     function renderBosses() {
-      const el = $('bosses'); el.innerHTML = '';
-      for (const b of BOSSES) {
-        const c = document.createElement('button'); c.type = 'button';
-        c.className = 'chip' + (b === st.boss ? ' on' : '') + (b.wait ? ' wait' : '');
-        c.innerHTML = `<span class="em">${b.em}</span><span class="tx">${b.name}<small>${b.note}</small></span>`;
-        if (!b.wait) c.onclick = () => { st.boss = b; renderBosses(); };
-        el.appendChild(c);
+      for (const [id, kind] of [['bosses', 'boss'], ['minions', 'minion']]) {
+        const el = $(id); el.innerHTML = '';
+        for (const b of CHARS.filter((c) => c.kind === kind)) {
+          const c = document.createElement('button'); c.type = 'button';
+          c.className = 'chip' + (b === st.boss ? ' on' : '') + (b.wait ? ' wait' : '');
+          c.innerHTML = `<span class="em">${b.em}</span><span class="tx">${b.name}<small>${b.note}</small></span>`;
+          if (!b.wait) c.onclick = () => pickChar(b);
+          el.appendChild(c);
+        }
       }
+    }
+    /** สลับตัว: แสดงเฉพาะแผงที่ใช้กับตัวนั้น · ภาพแบบ · สัดส่วนกับน้อง (จำแยกต่อตัว) */
+    function pickChar(b) {
+      st.ratios[st.boss.id] = st.ratio;
+      st.boss = b; st.ratio = st.ratios[b.id] ?? b.def.ratio;
+      document.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== b.kind; });
+      const r = $('ratio');
+      if (b.kind === 'minion') { r.min = 0.4; r.max = 1.4; } else { r.min = 1; r.max = 3.5; }
+      r.value = st.ratio; $('ratioOut').textContent = `×${st.ratio.toFixed(2)}`;
+      $('refs').innerHTML = b.refs.map(([src, alt]) => `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${alt}"></a>`).join('');
+      $('explodeNote').textContent = b.explodeNote;
+      st.crack = 0; st.hitAt = null;
+      renderBosses(); setState('idle');
     }
     function renderStates() {
       const el = $('states'); el.innerHTML = '';
-      const list = [...Object.entries(st.boss.states).map(([id, s]) => [id, s]), ['demo', { name: 'วนทุกท่า', em: '🔁', note: 'ลอย → เตือน → เหนื่อย → แพ้' }]];
+      const list = [...Object.entries(st.boss.states).map(([id, s]) => [id, s]), ['demo', { name: 'วนทุกท่า', em: '🔁', note: st.boss.demoNote }]];
       list.forEach(([id, s], i) => {
         const c = document.createElement('button'); c.type = 'button';
         const on = id === 'demo' ? st.demo : (!st.demo && st.state === id);
@@ -360,6 +387,7 @@
       renderStates(); $('crack')._paint();
     }
     function hit() {
+      if (st.boss.kind === 'minion') { setState('stomp'); toast('💫 โดนเหยียบ!'); return; }
       if (st.demo) setState('tired');
       if (st.state === 'defeat') return;
       st.crack = Math.min(3, st.crack + 1); st.hitAt = st.t;
@@ -371,14 +399,16 @@
     seg($('crack'), [[0, '0'], [1, '1'], [2, '2'], [3, '3']], () => st.crack, (v) => { st.crack = v; });
     seg($('bob'), [[true, 'เปิด'], [false, 'ปิด']], () => st.bob, (v) => { st.bob = v; });
     seg($('drift'), [[false, 'ปิด'], [true, 'เปิด']], () => st.drift, (v) => { st.drift = v; });
+    seg($('rage'), [[false, 'ปกติ'], [true, 'โกรธ (ร้าว 2)']], () => st.rage, (v) => { st.rage = v; });
+    seg($('count'), [[1, 'ตัวเดียว'], [3, 'ฝูง 3 ตัว']], () => st.count, (v) => { st.count = v; });
+    seg($('face'), [['auto', 'ตามท่า'], ['angry', 'โกรธ'], ['squeeze', '><'], ['swirl', '@@'], ['sleep', 'หลับ']], () => st.face, (v) => { st.face = v; });
     seg($('gaze'), [[-1, 'มองน้อง (ซ้าย)'], [0, 'มองตรง']], () => st.gaze, (v) => { st.gaze = v; });
     seg($('turn'), [[null, 'ตามท่า'], [1, 'เฉียง'], [0, 'หน้าตรง']], () => st.turn, (v) => { st.turn = v; });
     seg($('bg'), [['sheet', 'ขาว (แบบ)'], ['garden', 'สวน'], ['night', 'มืด']], () => st.bg, (v) => { st.bg = v; });
     seg($('cmp'), [[true, 'โชว์'], [false, 'ซ่อน']], () => st.cmp, (v) => { st.cmp = v; });
     seg($('zoom'), [[1, 'พอดี'], [1.6, '×1.6'], [2.4, '×2.4']], () => st.zoom, (v) => { st.zoom = v; });
     seg($('speed'), [[0.25, '¼'], [0.5, '½'], [1, '1×'], [2, '2×']], () => st.speed, (v) => { st.speed = v; });
-    $('ratio').value = st.ratio; $('ratioOut').textContent = `×${st.ratio}`;
-    $('ratio').oninput = (e) => { st.ratio = +e.target.value; $('ratioOut').textContent = `×${st.ratio.toFixed(1)}`; };
+    $('ratio').oninput = (e) => { st.ratio = +e.target.value; $('ratioOut').textContent = `×${st.ratio.toFixed(2)}`; };
     $('explode').value = 0; $('explodeOut').textContent = '0%';
     $('explode').oninput = (e) => { st.explode = +e.target.value; $('explodeOut').textContent = `${Math.round(st.explode * 100)}%`; };
     const looks = Object.keys(CHIBI_LOOKS).filter((k) => CHIBI_LOOKS[k].deco || k === 'soft');
@@ -396,13 +426,12 @@
     $('fwd').onclick = () => step(1);
     $('restart').onclick = () => { st.st = 0; };
     $('wide').onclick = () => document.body.classList.toggle('wide');
-    $('shot').onclick = () => { const a = document.createElement('a'); a.download = `boss-${st.boss.id}-${st.demo ? 'demo' : st.state}.png`; a.href = cv.toDataURL('image/png'); a.click(); toast('📷 บันทึกภาพแล้ว'); };
+    $('shot').onclick = () => { const a = document.createElement('a'); a.download = `${st.boss.kind}-${st.boss.id}-${st.demo ? 'demo' : st.state}.png`; a.href = cv.toDataURL('image/png'); a.click(); toast('📷 บันทึกภาพแล้ว'); };
     $('scrub').oninput = (e) => {
       if (st.playing) togglePlay();
       const len = curLen(); st.st = (e.target.value / 1000) * len;
     };
 
-    document.querySelectorAll('.refs a').forEach((a) => { a.href = a.querySelector('img').src; });   // <a href> ไม่ถูก vite แปลงตอน build — ใช้ที่อยู่ของรูปแทน
     document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
       document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === b));
       document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
@@ -424,13 +453,13 @@
 
     // ── เวลา ──
     function curLen() {
-      if (st.demo) return DEMO_LEN;
+      if (st.demo) return demoLen();
       const s = st.boss.states[st.state];
       return s.loop || s.dur + 1.2;
     }
     function demoAt(time) {
-      let a = time % DEMO_LEN;
-      for (const [id, d] of DEMO) { if (a < d) return [id, a]; a -= d; }
+      let a = time % demoLen();
+      for (const [id, d] of st.boss.demo) { if (a < d) return [id, a]; a -= d; }
       return ['idle', 0];
     }
 
@@ -475,14 +504,16 @@
       const [w, h] = fit();
       const gy = h * 0.8;
       drawBg(w, h, gy);
-      // ขนาด: สูงบอส = สูงน้อง × ratio · ซูม "พอดี" = ทั้งบอสและน้องอยู่ในจอ
+      // ขนาด: สูงตัว = สูงน้อง × ratio · ซูม "พอดี" = ทั้งตัวและน้องอยู่ในจอ
+      const D = st.boss.def, mini = st.boss.kind === 'minion', swarm = mini && st.count > 1;
       const catH = catHeight();
-      const bossUnitsTall = STUMP.H + STUMP.hover + 40;   // ตัว + ลอย + เปลวบนหัว/ประกาย
+      const unitsTall = Math.max(D.H + D.hover + D.top, st.cmp ? D.H / st.ratio + 16 : 0) + (swarm ? 34 : 0);   // ตัว + ลอย + ของเหนือหัว (หรือน้องที่สูงกว่า)
       const fitPx = Math.min(gy * 0.92, h * 0.78);
-      const s = (fitPx / bossUnitsTall) * st.zoom * (1 / (1 + st.explode * 0.3));
-      const bossPx = STUMP.H * s;
+      const fitW = (w * 0.86) / ((swarm ? D.halfW * 2 + 150 : D.halfW * 2) + (st.cmp ? D.H / st.ratio * 0.9 + 30 : 0));
+      const s = Math.min(fitPx / unitsTall, fitW) * st.zoom * (1 / (1 + st.explode * 0.3));
+      const bossPx = D.H * s;
       const catScale = (bossPx / st.ratio) / catH * CAT_S;
-      const bx = w * (st.cmp ? 0.6 : 0.5) - (st.explode * 52 * s);
+      const bx = w * (st.cmp ? 0.6 : 0.5) - (st.explode * 52 * s) - (swarm ? 60 * s : 0);
       // พื้น
       if (st.bg !== 'garden') {
         ctx.fillStyle = st.bg === 'sheet' ? 'rgba(160,130,200,.18)' : 'rgba(255,244,220,.10)';
@@ -490,7 +521,7 @@
       }
       // น้องแมวเทียบขนาด + เส้นวัด
       if (st.cmp) {
-        const cx = bx - 66 * s - (catH * catScale) * 0.55;
+        const cx = bx - D.halfW * s - (catH * catScale) * 0.55;
         drawCat2(ctx, cx, gy, catScale, CAT, 600 + st.t * 60);
         const catTop = gy - catH * catScale;
         ctx.save();
@@ -500,34 +531,42 @@
         ctx.setLineDash([]);
         ctx.fillStyle = st.bg === 'night' ? 'rgba(255,244,220,.75)' : 'rgba(90,50,130,.75)';
         ctx.font = `500 ${Math.max(12, s * 4)}px Mitr, sans-serif`; ctx.textAlign = 'center';
-        ctx.fillText(`บอสสูง ×${st.ratio.toFixed(1)} ของน้อง`, cx, catTop - 10);
+        ctx.fillText(`${mini ? 'ลูกน้อง' : 'บอส'}สูง ×${st.ratio.toFixed(mini ? 2 : 1)} ของน้อง`, cx, catTop - 10);
         ctx.restore();
       }
       const hitT = st.hitAt != null ? st.t - st.hitAt : null;
-      const P = st.boss.draw(ctx, bx, gy, s, {
+      const o = {
         state, st: sst, t: st.t, crack: st.crack, hitT, gaze: st.gaze, drift: st.drift, bob: st.bob,
-        look: st.look, explode: st.explode, turn: st.turn,
-      });
+        look: st.look, explode: st.explode, turn: st.turn, rage: st.rage, face: st.face,
+      };
+      if (swarm) {   // ฝูงพุ่งชน: ตัวหลังสองตัว (ลอยสูง/ต่ำต่างกัน · ช้ากว่าตัวหน้านิด) วาดก่อนตัวหน้า
+        for (const [dx, alt, lag, sd] of [[118, 8, 0.2, 2.1], [62, 36, 0.1, 1.3]]) {
+          st.boss.draw(ctx, bx + dx * s, gy, s, { ...o, st: Math.max(0, sst - lag), t: st.t + sd, alt, explode: 0 });
+        }
+      }
+      const P = st.boss.draw(ctx, bx, gy, s, o);
 
       // ป้าย + เวลา
       const S = st.boss.states[state];
       $('now').innerHTML = `${S.em} <b>${S.name}</b>${st.demo ? ' · วนทุกท่า' : ''}`;
-      const len = curLen(), pos = st.demo ? st.st % DEMO_LEN : sst;
+      const len = curLen(), pos = st.demo ? st.st % demoLen() : sst;
       $('time').innerHTML = `<b>${pos.toFixed(2)}</b> / ${len.toFixed(2)} วิ`;
       if (document.activeElement !== $('scrub')) $('scrub').value = Math.round((pos / len) * 1000);
       if (frame.n++ % 6 === 0) {
         const r = (v) => (typeof v === 'number' ? v.toFixed(2) : v);
-        $('vals').innerHTML = [
+        const rows = [
           ['ท่า', state], ['เวลาในท่า', r(sst)], ['ลอยสูง', r(P.y)], ['ยืด (x, y)', `${r(P.sx)}, ${r(P.sy)}`],
-          ['เอียง', r(P.rot)], ['สั่น', r(P.shake)], ['ตา', P.eyes], ['จุดอ่อนสว่าง', r(P.flame)],
-          ['รอยร้าว', Math.max(st.crack, P.crackMin)], ['ความทึบตัว', r(P.fade)], ['ลำแสง', r(P.rays)],
-          ['ขนาด (px/หน่วย)', r(s)], ['สูงบอส (px)', Math.round(bossPx)], ['สูงน้อง (px)', Math.round(catH * catScale)],
-        ].map(([k, v]) => `<span class="k">${k}</span><span>${v}</span>`).join('');
+          ['เอียง', r(P.rot)], ['สั่น', r(P.shake)], ['ตา', P.eyes],
+          ...(mini ? [['ปาก', P.mouth], ['มุมหมุน', r(P.phi)], ['คริสตัลเรือง', r(P.cryGlow)], ['หมอกลาก', r(P.trail)], ['สลาย', r(P.poof)]]
+            : [['จุดอ่อนสว่าง', r(P.flame)], ['รอยร้าว', Math.max(st.crack, P.crackMin)], ['ความทึบตัว', r(P.fade)], ['ลำแสง', r(P.rays)]]),
+          ['ขนาด (px/หน่วย)', r(s)], [mini ? 'สูงลูกน้อง (px)' : 'สูงบอส (px)', Math.round(bossPx)], ['สูงน้อง (px)', Math.round(catH * catScale)],
+        ];
+        $('vals').innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><span>${v}</span>`).join('');
       }
       requestAnimationFrame(frame);
     }
     frame.n = 0;
-    renderBosses(); renderStates();
+    pickChar(CHARS.find((c) => c.id === new URLSearchParams(location.search).get('char')) || CHARS[0]);
     requestAnimationFrame(frame);
     window.__lab = st;
   </script>
