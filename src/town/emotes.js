@@ -37,7 +37,7 @@ const LIST = [
   { id: 'yawn', kind: 'hold', name: 'หาว', icon: '🥱' },
   { id: 'wave', kind: 'move', name: 'โบกมือ', icon: '👋' },
   { id: 'heart', kind: 'move', name: 'ส่งหัวใจ', icon: '💝' },
-  { id: 'scratch', kind: 'move', name: 'เกาท้อง', icon: '🐾' },
+  { id: 'scratch', kind: 'move', name: 'โยกเยก', icon: '🐾' },
   { id: 'curl', kind: 'move', name: 'ขดตัวเขิน', icon: '☺️' },
   { id: 'float', kind: 'move', name: 'ลอยเฟี้ยว', icon: '😎' },
   { id: 'tail', kind: 'move', name: 'เล่นหาง', icon: '🌀' },
