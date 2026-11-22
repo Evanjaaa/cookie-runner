@@ -62,13 +62,14 @@ import { OC_W, OC_H, drawOutfitArt } from './render/outfit-art.js';
 import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
-import { CAT2, CAT2_BREEDS, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act, cat2Backdrop } from './render/cat2.js';
+import { CAT2, CAT2_BREEDS, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act, cat2Backdrop, MOJI_STYLE, mojiSkin } from './render/cat2.js';
 /** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
 function drawStashCat(c, x, feetY, scale, s, t, opts = {}) {
   // เงาน้องที่ยังไม่เคยพบ — วาดทรงจริงแล้วระบายเป็นเงา
   if (s.shade) return drawShaded(c, (g) => drawStashCat(g, x, feetY, scale, { ...s, id: 'orange', shade: false }, t, opts));
   const { head = false, logical = 190 } = opts;
   if (CAT2.stash && useCat2(s)) {
+    if (MOJI_STYLE.ui) s = mojiSkin(s);   // น้องส้มสไตล์โมจิ (การ์ด/คลัง)
     // การ์ดเล็ก: โชว์แค่หัวน้องเต็มกรอบ (หู-หนวดพอดีกรอบ) ตัวล้นลงไปใต้กรอบ
     if (head) return drawCat2(c, logical / 2, logical * 1.42, logical / 50, s, t, s.chibi ? { headOnly: true } : null);   // จิบิ: ตัวเล็ก — การ์ดใช้ขนาดหัวเต็มกรอบ
     // กรอบใหญ่: แบบใหม่หัวโต-หูสูงกว่าตัวเดิม ย่อลงให้หูไม่ชนขอบบน

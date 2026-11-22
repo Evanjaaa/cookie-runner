@@ -214,6 +214,16 @@
           <div class="bosses" id="minions"></div>
           <div class="sec">ท่าทาง <span class="line"></span></div>
           <div class="moves" id="states"></div>
+          <div class="opts" style="margin-top:9px" data-only="boss">
+            <div class="opt"><span>ของที่ท่าปล่อย</span><div class="seg" id="fxSeg"></div></div>
+          </div>
+          <p class="note" data-only="boss">ลูกแสง (เส้นเตือนเลน) · วงคลื่นพื้น · ฝนผลึก (วงเตือน → ร่วง → ปัก) · หมอกหลับใหล · แถบเตือนพุ่งชน — ตัววาดและจังหวะชุดเดียวกับเกม (<b>STUMP_ACT</b>) ขนาด/ความสูงเลนเทียบน้องแมวในจอ</p>
+          <div class="sec">เสียง <span class="line"></span></div>
+          <div class="opts">
+            <div class="opt"><span>เสียงประกอบ</span><div class="seg" id="sndSeg"></div></div>
+            <div class="opt"><span>เพลง</span><div class="seg" id="musSeg"></div></div>
+          </div>
+          <p class="note">เสียงดังตามจังหวะท่าเหมือนในเกม (ตอนเล่นอยู่เท่านั้น · ลากแถบ/ทีละเฟรมไม่ดัง) · แตะหน้าจอครั้งแรกเพื่อเปิดเสียง</p>
           <div class="sec" data-only="boss">ลองสู้ <span class="line"></span></div>
           <div class="row" data-only="boss">
             <button type="button" class="ib gold" id="hit" style="flex:1">⭐ ตีจุดอ่อน (H)</button>
@@ -250,7 +260,7 @@
             <div class="opt"><span>สูงกี่เท่า</span><input type="range" id="ratio" min="1" max="3.5" step="0.05"><output id="ratioOut"></output></div>
           </div>
           <p class="note" data-only="minion">ลูกน้องตัวเล็กกว่าน้อง (<b>×0.75</b> วัดจากก้นหมอกถึงขอบตอ ไม่รวมคริสตัล) — ต้องกระโดดเหยียบหัวได้</p>
-          <p class="note" data-only="boss">ตกลงไว้ <b>2.5 เท่า</b> ของน้องตัวโต (วัดจากชายล่างถึงขอบตอไม้ ไม่รวมเปลวบนหัว) · ตอนเหนื่อยบอสลอยต่ำลง จุดอ่อนจะลงมาอยู่ในระยะกระโดด</p>
+          <p class="note" data-only="boss">ในเกมใช้ <b>2.0 เท่า</b> ของน้อง (วัดจากชายล่างถึงขอบตอไม้ ไม่รวมเปลวบนหัว · ตกลงไว้ 2.5 แต่เปลวสูงเกินกระโดดสองชั้น) · gameplay-lab จำกัดไม่เกิน <b>×2.1</b> = ขนาดใหญ่สุดที่ยังตีเปลวถึง · ตอนเหนื่อยบอสลอยต่ำลง จุดอ่อนลงมาอยู่ในระยะกระโดด</p>
           <div class="sec">แยกชิ้นส่วน <span class="line"></span></div>
           <div class="opts"><div class="opt"><span>แยกออก</span><input type="range" id="explode" min="0" max="1" step="0.01"><output id="explodeOut"></output></div></div>
           <p class="note" id="explodeNote"></p>
@@ -281,8 +291,10 @@
   <div class="toast" id="toast"></div>
 
   <script type="module">
-    import { drawStumpBoss, STUMP, STUMP_STATES } from './src/render/bosses/stump.js';
-    import { drawLogSpirit, LOG_SPIRIT, LOG_SPIRIT_STATES } from './src/render/minions/log-spirit.js';
+    import { drawStumpBoss, STUMP, STUMP_STATES, STUMP_ACT, STUMP_DEFEAT, STUMP_RAIN, WARN_TIME, drawStumpBolt, drawStumpRing, drawStumpFog, drawStumpShard, drawStumpSpike, drawStumpMarker, drawStumpLane, drawStumpDashWarn } from './src/render/bosses/stump.js';
+    import { drawLogSpirit, LOG_SPIRIT, LOG_SPIRIT_STATES, LOG_SPIRIT_ACT } from './src/render/minions/log-spirit.js';
+    import { sfx as SFX, unlockAudio } from './src/audio.js';
+    import { setMusicTrack, startMusic, SILENT } from './src/music.js';
     import { drawCat2 } from './src/render/cat2.js';
     import { CHIBI_LOOKS } from './src/render/chibi.js';
     import { SKINS } from './src/skins.js';
@@ -310,7 +322,7 @@
       t: 0, st: 0, crack: 0, hitAt: null,
       bob: true, drift: false, gaze: -1, look: 'orange',
       bg: 'sheet', cmp: true, ratio: STUMP.ratio, explode: 0, zoom: 1, turn: null, rage: false,
-      count: 1, face: 'auto', ratios: {},
+      count: 1, face: 'auto', ratios: {}, fx: true, snd: true, music: SILENT,
     };
     const demoLen = () => st.boss.demo.reduce((a, [, d]) => a + d, 0);
 
@@ -328,6 +340,113 @@
       for (let i = 3; i < d.length; i += 4) if (d[i] > 20) { top = Math.floor(i / 4 / 600); break; }
       CAT_H = Math.max(10, 520 - top);
       return CAT_H;
+    }
+
+    // ══════════════════ ของที่ท่าโจมตีปล่อยออกมา (ตัววาดชุดเดียวกับเกม) ══════════════════
+    // คิดในพื้นที่ "ขนาดเกม": น้อง 88px · พื้น y = 0 (ขึ้นฟ้าติดลบ) · x = 0 ขอบซ้ายจอ — แล้วย่อขยายทั้งก้อนตามน้องในจอนี้ (K)
+    // ตัวเลขทั้งหมดเท่ากับ gameplay-lab.html (ความเร็ว/เลน/จังหวะ) → เห็นภาพเดียวกับในด่าน แค่ไม่เลื่อนฉาก
+    const GAME_CAT = 88;
+    const LANE = { low: -16, mid: -36, high: -74 }, FOG_LANE = { low: -24, high: -96 };
+    const CAST_LANES = ['low', 'mid', 'high'], FOG_LANES = ['low', 'high'];
+    const RAIN_FALL = 50 / 60, RAIN_GAP = 38 / 60;
+    const easeK = (k) => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+    /** ชั้นหลัง (วาดก่อนตัวบอส): เส้นเตือนเลน · แถบเตือนพุ่งชน · วงคลื่นพื้น · ฝนผลึก */
+    function fxBack(state, sst, t, P, g) {
+      const W = WARN_TIME, A = STUMP_ACT, BS = g.BS;
+      if (state === 'cast' && P) {
+        const [hx, hy] = handAt(P, g);
+        CAST_LANES.forEach((ln, i) => { const left = W + i * A.cast.gap - sst; if (left > 0 && left < 0.5) drawStumpLane(ctx, hx, -20, LANE[ln], 1 - left / 0.5, t, ln); });
+      } else if (state === 'charge' && sst < W) {
+        const bot = -(STUMP.hover + 4) * BS + 2;
+        drawStumpDashWarn(ctx, g.bx - 40 * BS, bot - 92 * BS, bot, easeK(sst / W), t);
+      } else if (state === 'burst') {
+        const n = st.rage ? 2 : 1;
+        for (let i = 0; i < n; i++) {
+          const rel = sst - (W + i * A.burst.gap + 0.04);
+          if (rel >= 0) drawStumpRing(ctx, g.bx, 0, 44 * BS + 6.4 * rel * 60, i ? 36 : 26, t);
+        }
+      } else if (state === 'shield') {
+        const brk = W + A.shield.form + A.shield.hold, n = st.rage ? 4 : 3, top = -g.gy / g.K - 40;
+        for (let i = 0; i < n; i++) {
+          const x0 = g.bx - 70 * BS - 30, x1 = Math.max(40, g.cx - 140), x = x0 + (x1 - x0) * (i / Math.max(1, n - 1)), rel = sst - brk - i * RAIN_GAP;   // ตกเรียงจากหน้าบอสไปทางน้อง (ในเกมเลื่อนตามฉากเข้าหาน้อง)
+          if (rel < 0) continue;
+          if (rel < RAIN_FALL) {
+            const k = rel / RAIN_FALL;
+            drawStumpMarker(ctx, x, 0, k, t);
+            drawStumpShard(ctx, x, top + (-STUMP_RAIN.fallTip - top) * k * k, t * 12);
+          } else {
+            const age = rel - RAIN_FALL;
+            if (age > 1.8) continue;
+            ctx.save(); ctx.globalAlpha *= Math.min(1, (1.8 - age) / 0.4);
+            drawStumpSpike(ctx, x, 0, Math.min(1, age * 6), t);
+            ctx.restore();
+          }
+        }
+      }
+    }
+    /** ชั้นหน้า (วาดทับตัวบอส): ลูกแสง · หมอก */
+    function fxFront(state, sst, t, P, g) {
+      const W = WARN_TIME, A = STUMP_ACT, BS = g.BS;
+      if (state === 'cast' && P) {
+        const [hx, hy] = handAt(P, g);
+        CAST_LANES.forEach((ln, i) => {
+          const f = (sst - (W + i * A.cast.gap)) * 60;
+          if (f < 0) return;
+          const x = hx - 7.4 * f, y = hy + (LANE[ln] - hy) * Math.min(1, (f / 16) ** 0.7);
+          if (x > -60) drawStumpBolt(ctx, x, y, t, ln);
+        });
+      } else if (state === 'fog' && P) {
+        const mx = g.bx + P.x * BS - 30 * BS, my = -(P.y + 66) * BS;
+        FOG_LANES.forEach((ln, i) => {
+          const f = (sst - (W + i * A.fog.gap + 0.1)) * 60;
+          if (f < 0) return;
+          const x = mx - 4.8 * f, y = my + (FOG_LANE[ln] - my) * Math.min(1, (f / 24) ** 0.8);
+          if (x > -80) drawStumpFog(ctx, x, y, 26, t, 1);
+        });
+      }
+    }
+    /** ฝ่ามือที่ปล่อยลูกแสง (สูตรเดียวกับ handAt ใน gameplay-lab) */
+    function handAt(P, g) {
+      const m = P.magicAt || [-76, -46];
+      return [g.bx + (P.x + m[0] * P.sx) * g.BS, -P.y * g.BS + m[1] * P.sy * g.BS];
+    }
+
+    // ══════════════════ เสียงตามจังหวะท่า (เสียงชุดเดียวกับเกม · audio.js) ══════════════════
+    // [วินาทีในท่า, ชื่อเสียง, ...ค่า] · ท่าวน (loop) ดังเฉพาะรอบแรกที่เข้าท่า ไม่ให้รัวซ้ำ
+    const W0 = WARN_TIME, AC = STUMP_ACT, DF = STUMP_DEFEAT;
+    const SHIELD_BRK = W0 + AC.shield.form + AC.shield.hold;
+    const SOUND_AT = {
+      stump: {
+        enter: [[0, 'stumpDrop'], [0.55, 'stumpLand'], [1.25, 'stumpRoar']],
+        idle: [[2.2, 'stumpCreak']],
+        cast: [[0, 'stumpWarn'], [0, 'stumpCastCharge'], ...CAST_LANES.map((ln, i) => [W0 + i * AC.cast.gap, 'stumpCast', ln])],
+        burst: [[0, 'stumpBurstCharge'], [W0 + 0.04, 'stumpBurst']],
+        charge: [[0, 'stumpChargeUp'], [W0, 'stumpDash'], [W0 + 0.45, 'stumpPass'], [W0 + AC.charge.dash, 'stumpReturn']],
+        shield: [[0, 'stumpWarn'], [W0, 'stumpShield'], [SHIELD_BRK, 'stumpShieldBreak'], ...[0, 1, 2].flatMap((i) => [[SHIELD_BRK + i * RAIN_GAP, 'stumpRainFall'], [SHIELD_BRK + i * RAIN_GAP + RAIN_FALL, 'stumpRainLand']])],
+        fog: [[0, 'stumpWarn'], ...FOG_LANES.map((ln, i) => [W0 + i * AC.fog.gap + 0.1, 'stumpFog'])],
+        tired: [[0.05, 'hopeFull'], [0.05, 'stumpTired']],
+        defeat: [[0, 'stumpQuake'], [DF.shatter, 'stumpShatter'], [DF.melt, 'stumpMelt'], [DF.free, 'bubblePop'], [DF.wake, 'mew'], [DF.done, 'bossWin']],
+      },
+      log: {
+        shoot: [[0, 'mobCharge'], ...LOG_SPIRIT_ACT.shoot.map((ts) => [ts, 'mobShoot'])],
+        dash: [[0, 'mobAlert'], [0.5, 'mobDash']],
+        stomp: [[0, 'mobStomp']],
+      },
+    };
+    let audioOn = false;
+    const wakeAudio = () => { if (audioOn) return; audioOn = true; unlockAudio(); startMusic(); setMusicTrack(st.music); };
+    addEventListener('pointerdown', wakeAudio, true); addEventListener('keydown', wakeAudio, true);
+    const play = (k, ...a) => { if (!st.snd || !audioOn || !SFX[k]) return; try { SFX[k](...a); } catch {} };
+    /** ยิงเสียงที่เวลาในท่าผ่านไปตั้งแต่เฟรมก่อน (ตัวเดียวกับที่เห็น — เล่นช้า/เร็วเสียงก็ตามจังหวะ) */
+    let sndPrev = null;
+    function stepSound(state, sst, looped) {
+      const key = st.boss.id + ':' + state + ':' + (st.demo ? 'd' : '');
+      const list = (SOUND_AT[st.boss.id] || {})[state];
+      if (!st.playing || !list || looped) { sndPrev = { key, sst }; return; }   // ท่าวน: ดังเฉพาะรอบแรก
+      let from = sndPrev && sndPrev.key === key ? sndPrev.sst : -1;
+      if (from > sst) from = -1;   // ท่าครั้งเดียวเล่นวนซ้ำ = เริ่มรอบใหม่ ดังใหม่
+      for (const [at, k, ...a] of list) if (at > from && at <= sst) play(k, ...a);
+      sndPrev = { key, sst };
     }
 
     // ── UI ──
@@ -392,11 +511,15 @@
       if (st.state === 'defeat') return;
       st.crack = Math.min(3, st.crack + 1); st.hitAt = st.t;
       $('crack')._paint();
+      play('stumpHit'); if (st.crack === 2) setTimeout(() => play('stumpRage'), 350);
       if (st.crack >= 3) setTimeout(() => { setState('defeat'); }, 380);
       toast(st.crack >= 3 ? '💥 ผลึกแตก!' : `⭐ โดนจุดอ่อน ${st.crack}/3`);
     }
 
     seg($('crack'), [[0, '0'], [1, '1'], [2, '2'], [3, '3']], () => st.crack, (v) => { st.crack = v; });
+    seg($('fxSeg'), [[true, 'โชว์'], [false, 'ซ่อน']], () => st.fx, (v) => { st.fx = v; });
+    seg($('sndSeg'), [[true, 'เปิด'], [false, 'ปิด']], () => st.snd, (v) => { st.snd = v; });
+    seg($('musSeg'), [[SILENT, 'ปิด'], ['grove', 'ด่านวิ่ง'], ['stump', 'สู้บอส'], ['stumpRage', 'บอสโกรธ']], () => st.music, (v) => { st.music = v; wakeAudio(); setMusicTrack(v); });
     seg($('bob'), [[true, 'เปิด'], [false, 'ปิด']], () => st.bob, (v) => { st.bob = v; });
     seg($('drift'), [[false, 'ปิด'], [true, 'เปิด']], () => st.drift, (v) => { st.drift = v; });
     seg($('rage'), [[false, 'ปกติ'], [true, 'โกรธ (ร้าว 2)']], () => st.rage, (v) => { st.rage = v; });
@@ -544,7 +667,16 @@
           st.boss.draw(ctx, bx + dx * s, gy, s, { ...o, st: Math.max(0, sst - lag), t: st.t + sd, alt, explode: 0 });
         }
       }
+      // ของที่ท่าปล่อย: พื้นที่ขนาดเกม (ดูหัวข้อด้านบน) · ชั้นหลังใช้ท่าของเฟรมก่อน (มือ/ปาก) แบบเดียวกับในเกม
+      const showFx = st.fx && !mini && !st.explode;
+      const K = (catH * catScale) / GAME_CAT;
+      const g = { K, gy, BS: s / K, bx: bx / K, cx: (bx - D.halfW * s - (catH * catScale) * 0.55) / K };
+      const fxLayer = (fn) => { ctx.save(); ctx.translate(0, gy); ctx.scale(K, K); fn(state, sst, st.t, st.lastP, g); ctx.restore(); };
+      if (showFx) fxLayer(fxBack);
       const P = st.boss.draw(ctx, bx, gy, s, o);
+      st.lastP = P;
+      if (showFx) fxLayer(fxFront);
+      stepSound(state, sst, !!st.boss.states[state]?.loop && !st.demo && st.st >= st.boss.states[state].loop);
 
       // ป้าย + เวลา
       const S = st.boss.states[state];

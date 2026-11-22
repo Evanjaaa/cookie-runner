@@ -994,6 +994,126 @@ function pairPhrase(i) {
   }
 }
 
+// ── ตัวช่วยของชุดบอสภูตตอไม้ (ดูหัวข้อ 🪵 ท้ายตาราง sfx) ──
+// ผลึกในคีย์เดียวกับเพลง grove/stump: ลาไมเนอร์เพนทาโทนิก A C D E G จาก A5 ถึง A7
+const CRY = [880, 1046.5, 1174.66, 1318.51, 1567.98, 1760, 2093, 2349.32, 2637.02, 3135.96, 3520];
+const pickCry = (lo, hi) => CRY[lo + Math.floor(Math.random() * (hi - lo + 1))];
+/** ไม้เคาะ "ป๊อก" — sine ไถลงเร็ว (เนื้อไม้) + ซ่าแคบสั้น ๆ (ผิวไม้กระทบ) */
+function woodKnock(f = 440, vol = 0.12) {
+  tone(f, f * 0.5, 0.1, 'sine', vol);
+  noise({ dur: 0.04, vol: vol * 0.45, freq: f * 3.2, q: 4 });
+}
+/** ตุ้บหนัก ๆ ของตอไม้ทั้งต้น — ทุ้มต่ำไถลง + ฝุ่นอู้ */
+function woodThud(vol = 0.2) {
+  tone(130, 46, 0.38, 'sine', vol);
+  tone(260, 90, 0.12, 'triangle', vol * 0.3);
+  noise({ dur: 0.3, vol: vol * 0.4, type: 'lowpass', freq: 700, freqTo: 140 });
+}
+/** เสียงพูดของภูตตอไม้ — เมี้ยวต่ำ ๆ ฟอร์แมนต์กว้าง (q ต่ำ) สั่นช้า = "ฮึ่ม / ฮะ" แบบตัวโตใจดี ไม่ใช่สัตว์ร้าย */
+function stumpVoice(start, peak, end, dur, vol = 0.12) {
+  meow({ start, peak, end, dur, vol, q: 2.4, wobble: 7 });
+}
+
+// ── เสียงดุ (ผู้ใช้ 22 พ.ย.: "อยากให้ดุดันมากกว่านี้") ──
+const DRIVE = new Map();
+/** เส้นโค้งทำเสียงแตกพร่า (tanh) — k มาก = แตกมาก */
+function driveCurve(k) {
+  if (!DRIVE.has(k)) {
+    const n = 1024, c = new Float32Array(n), d = Math.tanh(k);
+    for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(k * x) / d; }
+    DRIVE.set(k, c);
+  }
+  return DRIVE.get(k);
+}
+/**
+ * คำรามสัตว์ใหญ่ — ฟันเลื่อยสามตัวเพี้ยนกัน (เสียงหนาเหมือนหลายลำคอ) → แตกพร่า (WaveShaper)
+ * → ฟอร์แมนต์สระกวาดจาก vowel ไป vowelTo ("อา→โอ") → กระพือรัว (flutter = ลำคอสั่น) + เสียงต่ำใต้ (sub) + ลมหายใจซ่า
+ * ระดับเสียง f0 → f1 (ขึ้นช่วงแรก) → f2 (ลากลงตอนท้าย)
+ */
+function beast({ dur = 1, f0 = 90, f1 = 130, f2 = 70, vol = 0.2, flutter = 28, drive = 3, vowel = [650, 1000], vowelTo = [450, 760], breath = 0.5, sub = 0.5 } = {}) {
+  if (routeLevel() <= 0) return;
+  const a = liveCtx();
+  if (!a) return;
+  if (a.state !== 'running') unlockAudio();
+  const t = a.currentTime, end = t + dur;
+  const out = a.createGain();
+  out.gain.setValueAtTime(0.0001, t);
+  out.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.07, dur * 0.2));
+  out.gain.setValueAtTime(vol, t + dur * 0.55);
+  out.gain.exponentialRampToValueAtTime(0.0001, end);
+  const trem = a.createGain(); trem.gain.value = 0.62;
+  const lfo = a.createOscillator(), dep = a.createGain();
+  lfo.frequency.setValueAtTime(flutter, t); lfo.frequency.linearRampToValueAtTime(flutter * 0.6, end);
+  dep.gain.value = 0.38; lfo.connect(dep); dep.connect(trem.gain);
+  const pre = a.createGain(); pre.gain.value = 0.7;
+  const sh = a.createWaveShaper(); sh.curve = driveCurve(drive); sh.oversample = '2x';
+  const glide = (o, k = 1) => { o.frequency.setValueAtTime(f0 * k, t); o.frequency.exponentialRampToValueAtTime(f1 * k, t + dur * 0.25); o.frequency.exponentialRampToValueAtTime(f2 * k, end); };
+  const srcs = [-14, 0, 13].map((c) => { const o = a.createOscillator(); o.type = 'sawtooth'; o.detune.value = c; glide(o); o.connect(pre); return o; });
+  pre.connect(sh);
+  vowel.forEach((fv, i) => {
+    const bp = a.createBiquadFilter(), g = a.createGain();
+    bp.type = 'bandpass'; bp.Q.value = 3.5;
+    bp.frequency.setValueAtTime(fv, t); bp.frequency.linearRampToValueAtTime(vowelTo[i], end);
+    g.gain.value = i ? 0.55 : 1;
+    sh.connect(bp); bp.connect(g); g.connect(trem);
+  });
+  trem.connect(out);
+  if (sub) {   // ทุ้มใต้คำราม = ตัวใหญ่ หนัก
+    const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; glide(o, 0.5); g.gain.value = sub; o.connect(g); g.connect(out); srcs.push(o);
+  }
+  out.connect(routeOut());
+  for (const o of [...srcs, lfo]) { o.start(t); o.stop(end + 0.05); }
+  trackSfx(out, end + 0.05);
+  if (breath) noise({ dur, vol: vol * breath * 0.45, freq: 900, freqTo: 420, q: 0.8, attack: 0.05 });
+}
+/** กระแทกหนัก "ตูม" — ทุ้มลึกไถลง + ซ่ากรองกลาง (เนื้อกระแทก) + แตกสั้นด้านบน (ผิวกระทบ) */
+function impact(vol = 0.25, deep = 1) {
+  vol *= 0.5;   // วัดแล้ว: ทุ้มลึกกินพลังงานมาก ที่ 1 เท่าดังกว่าเสียงโดนชน 5 เท่า (ลำโพงมือถือแตก)
+  tone(120 * deep, 34 * deep, 0.6, 'sine', vol);
+  tone(240 * deep, 70 * deep, 0.16, 'triangle', vol * 0.35);
+  noise({ dur: 0.28, vol: vol * 0.55, freq: 380, freqTo: 120, q: 0.7, attack: 0.002 });
+  noise({ dur: 0.06, vol: vol * 0.4, type: 'highpass', freq: 3000, attack: 0.001 });
+}
+/** พื้นสะเทือนอู้ยาว ๆ */
+function rumble(dur = 1, vol = 0.1) {
+  vol *= 0.5;
+  noise({ dur, vol, type: 'lowpass', freq: 160, freqTo: 55, q: 0.9, attack: Math.min(0.15, dur * 0.2) });
+  tone(48, 38, dur, 'sine', vol * 0.6);
+}
+/**
+ * เวทแตกพร่า "ซิ้ววว!" — ฟันเลื่อยสองตัวเพี้ยนกัน ไถระดับเสียง → แตกพร่า → ฟิลเตอร์แคบกวาดตาม
+ * (ผู้ใช้ 22 พ.ย.: เสียงปล่อยท่าบอส "นุ่มนวลน่ารักไป" → ใช้ตัวนี้แทนกระดิ่งแก้ว ได้เสียงพลังที่คมและอันตราย)
+ */
+function zap({ from = 1800, to = 300, dur = 0.25, vol = 0.1, drive = 4, q = 3 } = {}) {
+  if (routeLevel() <= 0) return;
+  const a = liveCtx();
+  if (!a) return;
+  if (a.state !== 'running') unlockAudio();
+  const t = a.currentTime, end = t + dur;
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, end);
+  const sh = a.createWaveShaper(); sh.curve = driveCurve(drive); sh.oversample = '2x';
+  const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q;
+  bp.frequency.setValueAtTime(from * 1.5, t); bp.frequency.exponentialRampToValueAtTime(Math.max(80, to * 1.5), end);
+  const oscs = [-22, 22].map((d) => {
+    const o = a.createOscillator(); o.type = 'sawtooth'; o.detune.value = d;
+    o.frequency.setValueAtTime(from, t); o.frequency.exponentialRampToValueAtTime(to, end);
+    o.connect(sh); return o;
+  });
+  sh.connect(bp); bp.connect(g); g.connect(routeOut());
+  for (const o of oscs) { o.start(t); o.stop(end + 0.03); }
+  trackSfx(g, end + 0.03);
+}
+/** ไม้ลั่นเอี๊ยด — ฟันเลื่อยต่ำผ่านฟิลเตอร์แคบ ระดับเสียงกระตุกเป็นช่วง ๆ (เส้นใยไม้บิด) */
+function creak(dur = 0.6, vol = 0.06, f = 140) {
+  const n = Math.max(3, Math.round(dur / 0.07));
+  for (let i = 0; i < n; i++) later(() => {
+    const ff = f * rnd(0.85, 1.25);
+    tone(ff, ff * rnd(0.9, 1.1), 0.08, 'sawtooth', vol * rnd(0.5, 1));
+    noise({ dur: 0.05, vol: vol * 0.5, freq: ff * 6, q: 6 });
+  }, (i / n) * dur * 1000);
+}
+
 export const sfx = {
   // กระโดด — เมี้ยวสั้นสดใส เสียงสูง
   jump: () => meow({ start: 620, peak: 990, end: 700, dur: 0.2, vol: 0.3, q: 4 }),
@@ -2081,6 +2201,299 @@ export const sfx = {
   // แสงขาวเต็มจอ — ประกายใสยาว ๆ
   cineFlash: () => {
     [2093, 2637, 3136, 4186].forEach((f, i) => later(() => tone(f, null, 0.5, 'sine', 0.035), i * 55));
+  },
+
+  // ═════════ 🪵 บอสภูตตอไม้ + ลูกน้องวิญญาณท่อนซุงน้อย (ด่านสอนป่าผลึก · ผู้ใช้ 22 พ.ย. 2026) ═════════
+  // ชุดเดียวกับเพลง grove / stump / stumpRage (music.js) — ประกอบจากสามเนื้อเสียงเท่านั้น:
+  //   ไม้ (woodKnock / woodThud) · คริสตัล (glassBell โน้ตจาก CRY) · เวท (ซ่ากวาดความถี่)
+  // โน้ตทุกตัวอยู่ในลาไมเนอร์เพนทาโทนิก = คีย์เดียวกับเพลง ดังทับเพลงตอนไหนก็กลมกลืน
+  // เสียงบอสต่ำ/หนา (stumpVoice) · ลูกน้องสูง/สั้น/เบากว่า (ตัวเล็ก) — หูแยกออกว่าใครทำอะไรโดยไม่ต้องมอง
+
+  // ── บอส: เปิดตัว ──
+  // ร่วงจากฟ้า: ลมหวีดลงหนัก ๆ + คำรามต่ำไล่มาจากไกล
+  stumpDrop: () => {
+    noise({ dur: 0.55, vol: 0.1, freq: 3200, freqTo: 380, q: 1.1, attack: 0.4 });
+    tone(1318.51, 330, 0.5, 'sine', 0.025);
+    later(() => beast({ dur: 0.45, f0: 70, f1: 95, f2: 80, vol: 0.08, flutter: 20, drive: 2, breath: 0.3 }), 120);
+  },
+  // ลงพื้น: กระแทก "ตูม" + ตอไม้ทั้งต้น + พื้นสะเทือนยาว + เศษผลึกกระเด็น
+  stumpLand: () => {
+    impact(0.26, 0.9);
+    woodThud(0.1);
+    woodKnock(200, 0.1);
+    rumble(1.1, 0.12);
+    [1760, 2637.02, 2093, 3135.96].forEach((f, i) => later(() => glassBell(f, 0.45, 0.022), 70 + i * 60));
+  },
+  // คำราม: "ร้าาา~" สัตว์ใหญ่แตกพร่า + ก้องสะท้อน (คำรามซ้อนต่ำกว่า ช้ากว่า) + พื้นสะเทือน + ใบไม้สั่น + ไม้ลั่น
+  stumpRoar: () => {
+    beast({ dur: 1.35, f0: 85, f1: 150, f2: 60, vol: 0.2, flutter: 32, drive: 4.5, vowel: [720, 1120], vowelTo: [430, 720] });
+    later(() => beast({ dur: 1.1, f0: 70, f1: 120, f2: 52, vol: 0.08, flutter: 26, drive: 3, breath: 0, sub: 0 }), 170);
+    rumble(1.3, 0.12);
+    creak(0.8, 0.05, 120);
+    later(() => noise({ dur: 0.9, vol: 0.045, freq: 5200, q: 0.8, attack: 0.15 }), 120);
+  },
+
+  // ── บอส: ท่าโจมตี ──
+  // เตือนก่อนทุกท่า (ตาแดง ย่อตัว): "ฮึ่ย!" ขู่สั้นแตกพร่า + ผลึกกริ๊ง = สัญญาณให้เตรียมหลบ
+  stumpWarn: () => {
+    beast({ dur: 0.36, f0: 120, f1: 175, f2: 105, vol: 0.15, flutter: 24, drive: 3.5, vowel: [800, 1200], vowelTo: [600, 950], breath: 0.4 });
+    later(() => glassBell(1318.51, 0.35, 0.025), 90);
+  },
+  // ปาเวท — ชาร์จพลังในฝ่ามือ (ช่วงเตือน): วนเวทไต่ขึ้น + ฮัมต่ำ + ประกายแตกเปรี๊ยะ
+  stumpCastCharge: () => {
+    zap({ from: 70, to: 280, dur: 0.85, vol: 0.06, drive: 6, q: 4 });     // ฮัมพลังมืดไต่ขึ้นในฝ่ามือ
+    tone(55, 110, 0.85, 'sawtooth', 0.03);
+    noise({ dur: 0.85, vol: 0.04, freq: 1500, freqTo: 6000, q: 3, attack: 0.6 });
+    for (let i = 0; i < 8; i++) later(() => noise({ dur: 0.025, vol: 0.05 + i * 0.005, freq: rnd(2500, 6500), q: 6 }), 120 + i * 80 + rnd(-20, 20));   // ประกายไฟฟ้าแตกถี่ขึ้น
+  },
+  // ปาเวท (ทีละลูก): "ซิ้ว!" แหลมคม ฟันเลื่อยไถลง + แก้วกริ๊ง · ระดับเสียงตามเลน ต่ำ/กลาง/สูง = มี/ซอล/ลา
+  stumpCast: (lane = 'low') => {
+    const k = { low: 1, mid: 1.26, high: 1.5 }[lane] || 1;                 // ระดับเสียงตามเลน (ต่ำ/กลาง/สูง ฟังออก)
+    zap({ from: 1500 * k, to: 200 * k, dur: 0.3, vol: 0.12, drive: 5, q: 2.4 });   // "ซิ้ววว!" แตกพร่า
+    noise({ dur: 0.07, vol: 0.12, type: 'highpass', freq: 2600, attack: 0.001 });   // หัวเสียงแตก "เปรี๊ยะ"
+    impact(0.1, 1.7);                                                      // ถีบออกจากฝ่ามือ
+    later(() => glassBell(880 * k, 0.22, 0.016), 25);                      // เหลือเสียงผลึกนิดเดียว ไม่หวาน
+  },
+  // ระเบิดพลัง — ตาหยีรวมพลัง (ช่วงเตือน): ฮัมต่ำแตกพร่าไต่ขึ้น + ประกายไฟแตกถี่ขึ้น + คำรามในลำคอ
+  stumpBurstCharge: () => {
+    beast({ dur: 0.95, f0: 60, f1: 75, f2: 110, vol: 0.1, flutter: 36, drive: 5, vowel: [500, 900], vowelTo: [800, 1300], breath: 0.2 });
+    tone(55, 220, 0.95, 'sawtooth', 0.03);
+    for (let i = 0; i < 9; i++) later(() => noise({ dur: 0.03, vol: 0.03 + i * 0.004, freq: rnd(2500, 6000), q: 5 }), 120 + i * 85);
+  },
+  // ระเบิดพลัง (วงคลื่นพื้น): ตูม + คลื่นอู้กวาดขึ้น + แตกพร่าหยาบ + พื้นสะเทือน + ผลึกก้อง
+  stumpBurst: () => {
+    impact(0.3, 0.85);
+    zap({ from: 420, to: 55, dur: 0.6, vol: 0.09, drive: 8, q: 1.4 });   // คลื่นพลังแตกพร่าทุ้มลง
+    noise({ dur: 0.2, vol: 0.12, freq: 900, q: 0.6, attack: 0.002 });       // กรอบ "ครืน" ตอนระเบิด
+    later(() => noise({ dur: 0.75, vol: 0.08, type: 'lowpass', freq: 220, freqTo: 3200, attack: 0.06 }), 30);
+    beast({ dur: 0.5, f0: 90, f1: 60, f2: 45, vol: 0.09, flutter: 40, drive: 6, breath: 0, sub: 0.3 });
+    rumble(1.0, 0.12);
+    later(() => glassBell(440, 0.6, 0.02), 140);
+  },
+  // พุ่งชน — ถอยตั้งหลัก (ช่วงเตือน): คำรามต่ำในคอ "กรรรร" ยาว + ไม้ลั่นเอี๊ยด + พื้นครูด + อู้ไต่ขึ้น
+  stumpChargeUp: () => {
+    beast({ dur: 1.05, f0: 62, f1: 70, f2: 95, vol: 0.13, flutter: 44, drive: 5, vowel: [520, 820], vowelTo: [700, 1100], breath: 0.6 });
+    creak(0.9, 0.055, 110);
+    noise({ dur: 1.0, vol: 0.05, freq: 400, freqTo: 900, q: 1.2, attack: 0.3 });
+    rumble(1.0, 0.07);
+  },
+  // พุ่งชน (ออกตัว): ตูมถีบตัว + "อ้ากกก!" + ลมวืดหนัก + ไม้กระทบกึกกัก + พื้นสะเทือน
+  stumpDash: () => {
+    impact(0.24, 0.8);
+    beast({ dur: 0.75, f0: 110, f1: 170, f2: 90, vol: 0.18, flutter: 30, drive: 5, vowel: [760, 1180], vowelTo: [520, 820] });
+    noise({ dur: 0.9, vol: 0.15, freq: 300, freqTo: 2600, q: 1, attack: 0.15 });
+    rumble(0.9, 0.09);
+    [0, 60, 120, 180, 240].forEach((ms, i) => later(() => woodKnock(330 - i * 30, 0.06), ms));
+  },
+  // พุ่งผ่านตัวน้อง: วู้บผ่านหู (ดอปเปลอร์ — สูงแล้วตกลง) + ลมกระแทก
+  stumpPass: () => {
+    noise({ dur: 0.4, vol: 0.13, freq: 2600, freqTo: 500, q: 1.3, attack: 0.04 });
+    tone(260, 120, 0.4, 'sawtooth', 0.035);
+    noise({ dur: 0.25, vol: 0.06, type: 'lowpass', freq: 300, freqTo: 90, attack: 0.01 });
+  },
+  // กลับเข้าฉากจากขวา: อู้ไต่ขึ้น + ตุ้บลงที่
+  stumpReturn: () => {
+    noise({ dur: 0.8, vol: 0.07, freq: 300, freqTo: 1400, q: 1.1, attack: 0.5 });
+    later(() => { woodThud(0.14); rumble(0.5, 0.06); }, 700);
+  },
+  // เกราะผลึกก่อตัว: คอร์ดผลึกไล่ขึ้นแล้วค้าง + ฮัมพลังต่ำสั่น + ระยิบ
+  stumpShield: () => {
+    [440, 523.25, 659.25].forEach((f, i) => later(() => glassBell(f, 1.0, 0.03), i * 70));   // คอร์ดผลึกต่ำ (ลาไมเนอร์) หม่น ๆ
+    zap({ from: 110, to: 440, dur: 1.2, vol: 0.045, drive: 5, q: 5 });     // พลังเกราะก่อตัวไต่ขึ้น
+    tone(55, 55, 1.3, 'sine', 0.07);
+    rumble(1.2, 0.08);
+    later(() => { for (let i = 0; i < 6; i++) later(() => noise({ dur: 0.03, vol: 0.035 + i * 0.009, freq: 3200 + i * 400, q: 5 }), i * 70); }, 750);
+  },
+  // เกราะแตกเป็นฝน: ตูม + แก้วแตก + กริ๊งพรั่งพรู
+  stumpShieldBreak: () => {
+    impact(0.22, 1.05);
+    zap({ from: 2400, to: 300, dur: 0.35, vol: 0.08, drive: 6, q: 2 });
+    noise({ dur: 0.14, vol: 0.18, freq: 3800, q: 0.8 });
+    for (let i = 0; i < 9; i++) later(() => glassBell(pickCry(2, 8), 0.3, 0.018), 20 + i * 32 + rnd(-8, 8));
+  },
+  // ผลึกร่วง (ฝนผลึก / ผลึกตกท้ายด่านวิ่ง): หวีดลงแหลม
+  stumpRainFall: () => {
+    zap({ from: 2800, to: 700, dur: 0.45, vol: 0.09, drive: 2.5, q: 5 });  // หวีดดิ่งลงแหลมคม
+    noise({ dur: 0.4, vol: 0.035, freq: 6000, freqTo: 1500, q: 2, attack: 0.3 });
+  },
+  // ผลึกปักพื้น: กระแทกสั้นหนัก + ดินแตก + กริ๊ง (สุ่มโน้ตในคีย์ ปักหลายอันติดกันเป็นทำนองสั้น ๆ)
+  stumpRainLand: () => {
+    impact(0.16, 1.35);
+    noise({ dur: 0.12, vol: 0.09, freq: 1300, q: 0.8, attack: 0.001 });    // ดินแตกกรอบ
+    zap({ from: 900, to: 160, dur: 0.16, vol: 0.05, drive: 6, q: 2 });
+    glassBell(pickCry(1, 5), 0.35, 0.025);
+  },
+  // หมอกหลับใหล (ทีละก้อน): ลมฟู่ + เสียงต่ำสองตัวตีกัน (หลอน) + กล่องดนตรีกล่อมเพี้ยนลง
+  stumpFog: () => {
+    noise({ dur: 0.9, vol: 0.065, type: 'lowpass', freq: 1100, freqTo: 280, attack: 0.25 });   // ลมฟู่
+    tone(55, 50, 1.0, 'sine', 0.035);                                      // เสียงต่ำสองตัวตีกัน (หลอน)
+    tone(58.3, 52, 1.0, 'sine', 0.03);
+    tone(659.25, 440, 0.9, 'sine', 0.025);                                 // เสียงวังเวงไถลง
+    tone(664, 443, 0.9, 'sine', 0.022);
+    zap({ from: 300, to: 120, dur: 0.8, vol: 0.025, drive: 3, q: 6 });
+  },
+  // ไม้ลั่น + ถอนหายใจขู่เบา ๆ ระหว่างลอยรอท่าถัดไป (ให้รู้ว่าตัวมันยังมีชีวิต ไม่ใช่ภาพนิ่ง)
+  stumpCreak: () => {
+    creak(0.5, 0.035, 130);
+    later(() => beast({ dur: 0.6, f0: 65, f1: 72, f2: 60, vol: 0.05, flutter: 18, drive: 2, breath: 0.8, sub: 0.2 }), 200);
+  },
+
+  // ── บอส: โดนตี / อารมณ์ ──
+  // กระโดดใส่เปลวจุดอ่อน: ตูม + ไม้ป๊อก + ผลึกร้าวแกร๊ก + กริ๊ง + บอสร้อง "อ๊ากก!" (เจ็บ + โกรธ)
+  stumpHit: () => {
+    impact(0.2, 1.2);
+    woodKnock(300, 0.14);
+    [0, 40, 75, 105].forEach((ms, i) => later(() => noise({ dur: 0.04, vol: 0.07 + i * 0.01, freq: 3000 + i * 600, q: 4 }), ms));
+    later(() => glassBell(1760, 0.5, 0.04), 30);
+    later(() => beast({ dur: 0.5, f0: 190, f1: 320, f2: 140, vol: 0.17, flutter: 26, drive: 4, vowel: [850, 1250], vowelTo: [600, 900] }), 80);
+  },
+  // บอสเหนื่อย (แถบความหวังเต็ม): ถอนหายใจ "เฮ้อ~" + มึน กล่องดนตรีไล่ลง (ช่วงให้ผู้เล่นได้โจมตี จึงไม่ดุ)
+  stumpTired: () => {
+    stumpVoice(260, 280, 150, 0.8, 0.09);
+    noise({ dur: 0.9, vol: 0.04, type: 'lowpass', freq: 1400, freqTo: 300, attack: 0.3 });
+    [1318.51, 1174.66, 1046.5, 880].forEach((f, i) => later(() => musicBox(f, 0.4, 0.022), 300 + i * 140));
+  },
+  // บอสโกรธ (ผลึกร้าว 2/3): คำรามยาวแตกพร่าที่สุดในชุด + ก้อง + ตูม + พื้นสะเทือน + ผลึกสั่นก้อง
+  stumpRage: () => {
+    beast({ dur: 1.5, f0: 95, f1: 170, f2: 70, vol: 0.21, flutter: 36, drive: 6, vowel: [760, 1180], vowelTo: [420, 700] });
+    later(() => beast({ dur: 1.2, f0: 76, f1: 135, f2: 56, vol: 0.09, flutter: 30, drive: 4, breath: 0, sub: 0 }), 190);
+    impact(0.22, 0.8);
+    rumble(1.5, 0.13);
+    later(() => [880, 1318.51, 1760].forEach((f) => glassBell(f, 1.2, 0.02)), 300);
+  },
+  // หัวเราะเยาะ (ฉากแพ้): "ฮะ ฮะ ฮ่าาา!" เสียงใหญ่แหบ ตัวสุดท้ายยาวและสูง
+  stumpLaugh: () => {
+    [[0, 0.17], [210, 0.17], [420, 0.17], [640, 0.6]].forEach(([ms, d], i) => later(() => beast({
+      dur: d, f0: 150 + i * 10, f1: 200 + i * 25, f2: i === 3 ? 120 : 150, vol: 0.13, flutter: 16, drive: 3, vowel: [800, 1200], vowelTo: [700, 1100], breath: 0.5, sub: 0.3,
+    }), ms));
+  },
+
+  // ── บอส: ท่าแพ้ (จังหวะตาม STUMP_DEFEAT ใน stump.js) ──
+  // 0 → 1.9 วิ: ตกใจ + พลังทะลักไต่ขึ้น + ผลึกหวีดสูงขึ้น + รอยร้าวแกร๊กถี่ขึ้นเรื่อย ๆ จนแตก
+  stumpQuake: () => {
+    later(() => beast({ dur: 0.7, f0: 220, f1: 380, f2: 260, vol: 0.15, flutter: 22, drive: 3.5, vowel: [900, 1300], vowelTo: [800, 1200] }), 40);
+    rumble(1.9, 0.07);
+    tone(70, 140, 1.85, 'sine', 0.07);
+    later(() => tone(880, 1760, 1.3, 'sine', 0.018), 500);
+    [0, 260, 480, 660, 810, 940, 1050, 1150, 1240, 1320, 1390, 1450, 1510, 1560, 1610, 1650, 1690, 1730, 1770].forEach((ms, i) => later(() => {
+      noise({ dur: 0.04, vol: 0.04 + i * 0.003, freq: 2400 + i * 150, q: 4 });
+      if (i % 3 === 0) tone(rnd(2600, 4200), null, 0.05, 'triangle', 0.01);
+    }, ms));
+  },
+  // 1.9 วิ: ผลึกระเบิด — แก้วแตกใหญ่ + ตุ้บ + กริ๊งพรั่งพรู + คอร์ดผลึกค้างยาว (ปลดปล่อย)
+  stumpShatter: () => {
+    impact(0.24, 0.9);
+    noise({ dur: 0.12, vol: 0.15, freq: 3600, q: 0.8 });
+    later(() => noise({ dur: 1.1, vol: 0.07, freq: 6500, freqTo: 2200, q: 1.1, attack: 0.02 }), 20);
+    for (let i = 0; i < 18; i++) later(() => glassBell(pickCry(5, 10), 0.5, 0.02), 30 + i * 34 + rnd(-8, 8));
+    later(() => [880, 1318.51, 1760, 2093].forEach((f) => glassBell(f, 1.6, 0.03)), 160);
+  },
+  // 2.5 วิ: ตัวสลายเป็นละอองแสง — ผลึกไล่ขึ้นทีละขั้นทั้งสเกล + ลมใสลอยขึ้น
+  stumpMelt: () => {
+    noise({ dur: 2.0, vol: 0.03, freq: 2000, freqTo: 9000, q: 1.2, attack: 0.8 });
+    CRY.forEach((f, i) => later(() => glassBell(f, 0.55, 0.026), i * 170));
+    later(() => tone(440, 880, 1.6, 'sine', 0.02), 200);
+  },
+
+  // ── ✨ พลังแห่งความหวัง (ท่าพิเศษตอนบอสเวียนหัว · ผู้ใช้ 22 พ.ย.) — คีย์เดียวกับเพลงบอส ──
+  // พุ่งเข้าหาบอส: ลมวืดไต่ขึ้นแรง + ประกายผลึกไล่ขึ้นตามความเร็ว
+  hopeRush: () => {
+    noise({ dur: 0.55, vol: 0.12, freq: 400, freqTo: 5200, q: 1.1, attack: 0.35 });
+    tone(220, 880, 0.5, 'triangle', 0.05);
+    [1046.5, 1318.51, 1760, 2093, 2637.02].forEach((f, i) => later(() => glassBell(f, 0.3, 0.025), 80 + i * 70));
+  },
+  // คัตซีนรวมพลัง: ใจเต้นตุบ ๆ + ระยิบไต่ขึ้น + คอร์ดลอยค้าง (ลา-โด-มี)
+  hopeCharge: () => {
+    [0, 210, 820, 1030].forEach((ms) => later(() => tone(95, 60, 0.14, 'sine', 0.16), ms));
+    noise({ dur: 1.3, vol: 0.03, freq: 2500, freqTo: 9000, q: 1.5, attack: 1.0 });
+    [880, 1046.5, 1318.51].forEach((f, i) => later(() => tone(f, null, 1.1, 'sine', 0.025), 150 + i * 120));
+    for (let i = 0; i < 6; i++) later(() => glassBell(CRY[3 + i], 0.4, 0.02), 300 + i * 140);
+  },
+  // กดตรงจังหวะ: เป๊ะ = คอร์ดใสเต็ม + ระฆัง · ดี = เบากว่า
+  hopeTap: (perfect = true) => {
+    tone(1318.51, 1760, 0.08, 'triangle', 0.1);
+    [1760, 2093, 2637.02].forEach((f, i) => later(() => glassBell(f, perfect ? 0.7 : 0.45, perfect ? 0.045 : 0.03), 30 + i * 45));
+    if (perfect) later(() => [3135.96, 3520].forEach((f) => glassBell(f, 0.6, 0.025)), 170);
+  },
+  // ปล่อยพลัง: แสงพุ่ง "ฟิ้ววว" + คอร์ดโดเมเจอร์ (สว่าง = ความหวัง) + ระฆังพรั่งพรู
+  hopeBeam: () => {
+    noise({ dur: 0.7, vol: 0.12, freq: 900, freqTo: 7000, q: 1, attack: 0.05 });
+    tone(440, 1760, 0.35, 'sawtooth', 0.03);
+    later(() => { [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, null, 1.1, 'triangle', 0.05)); }, 120);
+    for (let i = 0; i < 10; i++) later(() => glassBell(pickCry(5, 10), 0.45, 0.022), 140 + i * 45);
+  },
+  // พลาด/ไม่ทัน: เสียงพลังฟุบ ไถลงทุ้ม + ซ่าดับ
+  hopeMiss: () => {
+    tone(660, 165, 0.5, 'triangle', 0.08);
+    noise({ dur: 0.45, vol: 0.05, type: 'lowpass', freq: 2500, freqTo: 200, attack: 0.02 });
+    later(() => tone(196, 98, 0.35, 'sine', 0.1), 180);
+  },
+
+  // ── ดาวแห่งความหวัง ──
+  // บอสทำดาวหล่น: กริ๊งเบา ๆ สองตัว
+  hopeStarDrop: () => {
+    glassBell(2637.02, 0.3, 0.018);
+    later(() => glassBell(2093, 0.3, 0.015), 70);
+  },
+  // เก็บดาว: ไต่ขึ้นทีละขั้นของสเกลตามดวงที่ n (เหมือนตัวอักษรเดิม แต่เป็นเสียงผลึก) — ใกล้เต็มแถบ = เสียงสูงขึ้นเอง
+  hopeStar: (n = 1) => {
+    const f = CRY[2 + Math.max(0, Math.min(CRY.length - 3, n - 1))];
+    tone(f, f * 1.5, 0.08, 'triangle', 0.08);
+    later(() => glassBell(f * 2, 0.55, 0.05), 50);
+    later(() => glassBell(f * 4, 0.3, 0.015), 110);
+  },
+  // แถบความหวังเต็ม: ผลึกไล่ขึ้นเป็นคอร์ด + ระยิบ
+  hopeFull: () => {
+    [880, 1046.5, 1318.51, 1760, 2093, 2637.02].forEach((f, i) => later(() => glassBell(f, i === 5 ? 1.0 : 0.45, 0.032), i * 55));
+    noise({ dur: 0.7, vol: 0.03, freq: 5000, freqTo: 9000, q: 1.4, attack: 0.3 });
+  },
+
+  // ── จบด่าน ──
+  // ชนะบอส: แตรสั้นโมทีฟผลึก ลา-โด-มี → ซอล → คอร์ดโดเมเจอร์ค้าง (มืด → สว่าง = น้องเป็นอิสระ)
+  bossWin: () => {
+    [880, 1046.5, 1318.51].forEach((f, i) => later(() => tone(f, null, 0.14, 'triangle', 0.11), i * 110));
+    later(() => tone(1567.98, null, 0.32, 'triangle', 0.12), 330);
+    later(() => {
+      [1046.5, 1318.51, 1567.98, 2093].forEach((f) => tone(f, null, 1.2, 'triangle', 0.055));
+      tone(523.25, null, 1.2, 'sine', 0.08);
+    }, 640);
+    [2637.02, 3135.96, 3520, 4186].forEach((f, i) => later(() => glassBell(f, 0.6, 0.025), 700 + i * 90));
+  },
+  // แพ้ (กลับบ้านไปพัก): กล่องดนตรีไล่ลงช้า ๆ แล้วค้างที่ลา — เศร้านิด ๆ แต่อบอุ่น ไม่ลงโทษ
+  bossLose: () => {
+    [[1318.51, 0], [1174.66, 280], [1046.5, 560], [880, 840], [783.99, 1220], [880, 1500]]
+      .forEach(([f, ms], i) => later(() => musicBox(f, i === 5 ? 1.4 : 0.6, 0.045), ms));
+    later(() => tone(220, null, 1.6, 'sine', 0.04), 1500);
+  },
+
+  // ── ลูกน้อง: วิญญาณท่อนซุงน้อย (ตัวเล็ก = เสียงสูงกว่า สั้นกว่า เบากว่าบอส) ──
+  // ชาร์จคริสตัลบนหัว (~0.6 วิ): หวีดใสไต่ขึ้น + ระยิบ แล้วกริ๊งตอนพร้อมยิง
+  mobCharge: () => {
+    tone(660, 1760, 0.55, 'sine', 0.03);
+    noise({ dur: 0.55, vol: 0.022, freq: 3000, freqTo: 8000, q: 2, attack: 0.45 });
+    later(() => glassBell(1760, 0.3, 0.025), 420);
+  },
+  // ยิงเศษคริสตัล (ทีละลูก): "ปิ๊ว" เล็ก ๆ
+  mobShoot: () => {
+    tone(2093, 1046.5, 0.09, 'triangle', 0.05);
+    later(() => glassBell(1567.98, 0.22, 0.022), 15);
+  },
+  // ฝูงตั้งหลัก "!": ป๊อกไม้ + ปิ๊ก
+  mobAlert: () => {
+    woodKnock(760, 0.08);
+    later(() => tone(1318.51, 1760, 0.07, 'square', 0.025), 40);
+  },
+  // พุ่ง (ทีละตัว): วืดสั้น + ไม้กึก
+  mobDash: () => {
+    noise({ dur: 0.26, vol: 0.06, freq: 900, freqTo: 2800, q: 1.3, attack: 0.05 });
+    woodKnock(480, 0.05);
+  },
+  // โดนเหยียบ: "ปุ๊" นุ่ม + ไม้ป๊อก + คริสตัลบนหัวแตกกริ๊ง + สลายเป็นหมอกฟู่
+  mobStomp: () => {
+    tone(320, 140, 0.12, 'sine', 0.13);
+    woodKnock(560, 0.08);
+    later(() => { noise({ dur: 0.05, vol: 0.06, freq: 4200, q: 2 }); glassBell(2637.02, 0.3, 0.03); glassBell(3520, 0.25, 0.018); }, 60);
+    later(() => noise({ dur: 0.35, vol: 0.035, type: 'lowpass', freq: 1500, freqTo: 400, attack: 0.05 }), 160);
   },
 };
 

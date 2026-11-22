@@ -30,9 +30,20 @@ export const CAT2 = { home: true, stash: true, ui: true, run: true };
  * สไตล์โมจิ (ลายเส้นใหม่จากนักวาด 21 พ.ย. — src/render/cat2/cat-orange-front.svg) เฉพาะน้องส้มตัวหลัก
  * ตัววาดนี้ยังเป็นตัวเดิมทั้งหมด (โครง เส้นขอบ การดัดท่า ตาปิด ปาก ชุด) แค่ยืม "ชั้นรายละเอียด" จากไฟล์ใหม่:
  * ลายก้อนไล่สี · หูในชมพู+ปอยขน · แก้มฟุ้ง · พุงฟุ้ง · อุ้งเท้าครีมไล่ขาว · ตาดำโตวงทอง · จมูกชมพู · เงาขนอก (ดู mojiFront)
- * game = เปิดในเกม (ยังปิด — ทดลองใน cat-lab ก่อน ด้วย skin.moji = true) · skin.moji = false บังคับปิดรายตัว
+ * game = เปิดในเกมทุกที่ (ยังปิด — ทดลองใน cat-lab ก่อน ด้วย skin.moji = true) · skin.moji = false บังคับปิดรายตัว
+ * home = น้องส้มบนหน้าแรก (ผู้ใช้สั่งลองในเกมจริง 22 พ.ย.: "เริ่มใช้น้องส้ม เดิม+สไตล์โมจิ" ที่หน้าแรกก่อน) — ปิด (false) = หน้าแรกกลับเป็นแบบเดิม
+ * ui = การ์ด/ป้าย/รูปหน้า/คลังน้อง/หน้ารายละเอียดน้อง (ผู้ใช้สั่ง 22 พ.ย. "เริ่มเปลี่ยนหน้าพวกป้าย และในคลัง") — ผ่าน drawCatAuto · drawCatFaceAuto · คลัง (main.js drawStashCat) · od-stage
+ *   ยังไม่เปิด: ตอนวิ่งในด่าน (cat2-run) · เมือง · บ้านของฉัน
  */
-export const MOJI_STYLE = { game: false };
+export const MOJI_STYLE = { game: false, home: true, ui: true };
+const MOJI_SKINS = new WeakMap();
+/** สกินเดิมที่เปิดสไตล์โมจิ (ตัวเดิมทุกเฟรม → แคชของผู้เรียกที่เทียบสกินด้วย === ยังใช้ได้) · ตัวไม่ใช่น้องส้ม drawCat2 ไม่เปิดให้เอง */
+export function mojiSkin(s) {
+  if (!s || typeof s !== 'object' || s.moji != null) return s;
+  let m = MOJI_SKINS.get(s);
+  if (!m) { m = { ...s, moji: true }; MOJI_SKINS.set(s, m); }
+  return m;
+}
 /**
  * ใช้น้องแบบใหม่กับสกินนี้ได้ไหม — ตอนนี้เฉพาะแมวส้มตัวหลักที่โตแล้ว ไม่ใส่ชุด
  * (สีอื่น ลูกแมว ชุดแต่งตัว แมวระบายสีเอง รอออกแบบใหม่ — ใช้ตัววาดเดิม)
@@ -23379,6 +23390,7 @@ function toIdle(idle) {
  * fit = ย่อแบบใหม่ในกรอบเล็ก (หัวโต หูสูงกว่าตัวเดิม ไม่ย่อหูจะชนขอบบน)
  */
 export function drawCatAuto(ctx, x, feetY, scale, s, t = 0, idle = null, { fit = 0.86 } = {}) {
+  if (MOJI_STYLE.ui) s = mojiSkin(s);
   if (CAT2.ui && useCat2(s)) return drawCat2(ctx, x, feetY, scale * fit, s, t, toIdle(idle));
   return drawCatPose(ctx, x, feetY, scale, s, t, idle);
 }
@@ -23401,6 +23413,7 @@ function drawChibiAs2(ctx, x, feetY, scale, s, t, idle) {
 
 /** วาดเฉพาะหน้า (รูปโปรไฟล์ อันดับ เพื่อน) — ตำแหน่ง/ขนาดเท่าของ drawCatFace เดิม */
 export function drawCatFaceAuto(ctx, cx, cy, scale, s, opts = {}) {
+  if (MOJI_STYLE.ui) s = mojiSkin(s);
   if (!(CAT2.ui && useCat2({ ...s, noPhoto: s.noPhoto || opts.noPhoto }))) return drawCatFace(ctx, cx, cy, scale, s, opts);
   // หัวแบบใหม่ (หู-หนวด กว้างราว 420 หน่วยไฟล์) ขนาดเท่าหน้าเดิม · กึ่งกลางหัวอยู่ที่ (cx, cy - เล็กน้อย)
   const s2 = scale * 0.86;

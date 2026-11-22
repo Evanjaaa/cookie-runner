@@ -134,11 +134,13 @@ const SKY_NIGHT_BASS = [[C3, 8], [A2, 8], [F2, 8], [G2, 8]];
 /** แปลง [ความถี่, ความยาว] เป็นรายการโน้ตที่รู้ว่าเริ่มบีตที่เท่าไหร่ */
 function schedule(seq) {
   let at = 0;
-  return seq.map(([freq, beats]) => {
-    const note = { at, beats, freq };
+  const out = seq.map(([freq, beats, vel = 1]) => {
+    const note = { at, beats, freq, vel };   // freq เป็นอาร์เรย์ได้ = คอร์ด · vel = น้ำหนักโน้ต (เน้น/เบา)
     at += beats;
     return note;
   }).filter((n) => n.freq);   // [null, n] = ตัวหยุด ใช้เว้นจังหวะ
+  out.beats = at;   // ความยาวรวมรวมตัวหยุด — ตรวจกับ LOOP_BEATS ตอน dev (ท้ายไฟล์)
+  return out;
 }
 
 
@@ -409,7 +411,359 @@ const SNOWBALL_BELLS = Array.from({ length: 32 }, () => [[E6, .25], [G6, .25], [
 const SNOWBALL_BASS = [[C3, G3], [A2, E3], [F2, C3], [G2, D3], [C3, G3], [A2, E3], [F2, C3], [G2, D3]]
   .flatMap(([r, f]) => [[r, 1], [f, 1], [r, 1], [f, 1]]);
 
+// ─────────────────────────────────────────────────────────────
+// 🌳 ด่านสอน "ป่าผลึก" + บอสภูตตอไม้ (ผู้ใช้ 22 พ.ย. 2026 · ต้นแบบใน gameplay-lab.html)
+// รอบสอง (ผู้ใช้: "เพิ่มชนิดดนตรีอื่น ๆ ให้เป็นเพลงมากกว่านี้"): เล่นด้วยเครื่องดนตรีสังเคราะห์ (INST ท้ายหัวข้อ)
+// แทนคลื่นเปล่า · ยาว 64 บีต (ท่อน A + ท่อน B) · จังหวะของตัวเอง (grove 116 · stump 140 · stumpRage 152 BPM)
+//
+// สามเพลงเป็นครอบครัวเดียวกัน:
+//   โมทีฟผลึก "ลา-โด-มี-เร" (A C E D) ขึ้นต้นท่อน A ทุกเพลง · เสียงไม้ (ไม้เคาะ / กลองไทโกะ) · กระดิ่งคริสตัล
+//   ทำนองอยู่ในเพนทาโทนิก C ตามกฎหัวไฟล์ ศูนย์กลางที่ "ลา" · คอร์ด Am F C G (F อยู่ในแพด/เบส/พิณได้แบบเพลงอื่น)
+//
+//   🌳 grove      ขลุ่ยนำ · คาลิมบาดีดวน (ท่อน A) → พิณกวาด (ท่อน B) · เครื่องสายแพดนุ่ม · เบสกลม
+//                กระเดื่องนุ่ม ไม้เคาะ เชคเกอร์ · กล็อกเคนสปีลระยิบ
+//   🪵 stump      แตรทองเหลืองนำ · เครื่องสายรัวเขบ็ต · เบสดีด · คณะประสานเสียง "อา~"
+//                ชุดกลอง (กระเดื่อง สแนร์ ไฮแฮต ฉาบ) + กลองไทโกะ (ไม้) · ระฆังผลึก
+//   🔥 stumpRage  วัตถุดิบเดียวกันแต่เร็วขึ้น · เครื่องสาย/ไฮแฮตเขบ็ตสองชั้น · ไทโกะทุกห้อง · ประสานเสียงทั้งเพลง
+//                + ระฆังผลึกสะท้อนทำนองแตรอ็อกเทฟบนไล่หลังครึ่งบีต
+// ─────────────────────────────────────────────────────────────
+const E2 = 82.41, E7 = 2637.02, X = 1;   // X = กลองที่ไม่มีระดับเสียง (ค่าอะไรก็ได้ที่ไม่ใช่ null)
+
+// คอร์ดที่ใช้ในสามเพลง — แต่ละเครื่องหยิบรูปที่ตัวเองเล่น (ไม่มี B · F อยู่แค่ในแพด/เบส/พิณต่ำ)
+const CH = {
+  Am: { pad: [A3, C4, E4], arp: [A4, E5, C5, E5, A5, E5, C5, E5], harp: [A3, E4, A4, C5, E5, C5, A4, E4], bass: [A2, E3, A3], hi: [A4, A4, E5, A4, A5, E5, A4, E5], choir: [A4, E5] },
+  F: { pad: [F3, A3, C4], arp: [A4, C5, G5, C5, A5, C5, G5, C5], harp: [F3, C4, A4, C5, A5, C5, A4, C4], bass: [F2, C3, F3], hi: [A4, A4, C5, A4, A5, C5, A4, C5], choir: [A4, C5] },
+  C: { pad: [G3, C4, E4], arp: [G4, C5, E5, C5, G5, E5, C5, E5], harp: [C4, G4, C5, E5, G5, E5, C5, G4], bass: [C3, G3, C4], hi: [C5, C5, G5, C5, E5, G5, C5, G5], choir: [G4, E5] },
+  G: { pad: [G3, D4, A4], arp: [G4, D5, G5, D5, A5, D5, G5, D5], harp: [G3, D4, A4, D5, G5, D5, A4, D4], bass: [G2, D3, G3], hi: [G4, G4, D5, G4, G5, D5, G4, D5], choir: [G4, D5] },
+};
+/** ทุกห้อง 4 บีต: fn(คอร์ด, ห้องที่) → [[ความถี่, บีต, น้ำหนัก], ...] */
+const perBar = (chords, fn) => chords.flatMap((c, i) => fn(CH[c], i));
+const eighths = (fs, vel = [1, .7, .85, .7]) => fs.map((f, i) => [f, .5, vel[i % vel.length]]);
+const rest = (b) => [[null, b]];
+
+// ── 🌳 grove (116 BPM) ──
+const GROVE_A = ['Am', 'F', 'C', 'G', 'Am', 'F', 'G', 'G'];
+const GROVE_B = ['F', 'G', 'Am', 'C', 'F', 'G', 'Am', 'G'];
+const GROVE_CH = [...GROVE_A, ...GROVE_B];
+// ขลุ่ย · ท่อน A: โมทีฟผลึก เดินจังหวะกระโดด (จุด-เขบ็ต) · ท่อน B: ขึ้นสูง ลากยาว ร้องเป็นเพลง
+const GROVE_FLUTE = [
+  [A5, .75], [C6, .25], [E6, 1], [D6, .5], [C6, .5], [A5, 1],
+  [C6, .75], [D6, .25], [C6, .5], [A5, .5], [G5, 2],
+  [E5, .75], [G5, .25], [C6, 1], [D6, .5], [E6, .5], [G6, 1],
+  [E6, .75], [D6, .25], [D6, 2], [null, 1],
+  [A5, .75], [C6, .25], [E6, 1], [G6, .5], [E6, .5], [D6, 1],
+  [C6, .75], [A5, .25], [C6, .5], [D6, .5], [E6, 2],
+  [D6, .75], [E6, .25], [D6, .5], [C6, .5], [A5, .5], [G5, .5], [A5, 1],
+  [null, 1], [E5, .5], [G5, .5], [A5, 2],
+
+  [C6, 1.5], [A5, .5], [C6, 1], [D6, 1],
+  [E6, 1.5], [D6, .5], [D6, 2],
+  [C6, 1], [E6, 1], [A6, 1.5], [G6, .5],
+  [E6, 3], [null, 1],
+  [C6, 1.5], [D6, .5], [E6, 1], [G6, 1],
+  [A6, 1.5], [G6, .5], [E6, 1], [D6, 1],
+  [E6, 1], [C6, 1], [A5, 1], [C6, .5], [D6, .5],
+  [D6, 2], [null, 1], [E5, .5], [G5, .5],
+];
+// คาลิมบาดีดวนเขบ็ต (ท่อน A) → พิณกวาดส่ง แล้วพิณเล่นคอร์ดแตก (ท่อน B) — สองท่อนเนื้อเสียงต่างกันชัด
+const GROVE_KALIMBA = [...perBar(GROVE_A, (c) => eighths(c.arp)), ...rest(32)];
+const GROVE_HARP = [
+  ...rest(28), ...[A4, C5, D5, E5, G5, A5, C6, D6].map((f) => [f, .25, .8]), [E6, 2],
+  ...perBar(GROVE_B, (c) => eighths(c.harp, [1, .6, .75, .6, .9, .6, .75, .6])),
+];
+const GROVE_PAD = GROVE_CH.map((c, i) => [CH[c].pad, 4, i < 8 ? .7 : 1]);
+const GROVE_BASS = perBar(GROVE_CH, (c, i) => (i < 8
+  ? [[c.bass[0], 2], [c.bass[1], 1], [c.bass[0], 1]]
+  : [[c.bass[0], 1.5], [c.bass[0], .5, .7], [c.bass[1], 1.5], [c.bass[2], .5, .7]]));
+const GROVE_KICK = perBar(GROVE_CH, (c, i) => (i < 8 ? [[X, 2], [X, 2, .8]] : [[X, 1.5], [X, .5, .6], [X, 2, .85]]));
+const GROVE_WOOD = perBar(GROVE_CH, (c, i) => (i % 4 === 3
+  ? [[null, 1], [G5, 1], [null, 1], [G5, .5], [E5, .5, .8]]
+  : [[null, 1], [G5, 1], [null, 1], [E5, 1]]));
+const GROVE_SHAKER = perBar(GROVE_CH, (c, i) => eighths(Array(8).fill(X), i < 8 ? [.35, .7] : [.55, 1]));
+const GROVE_GLOCK = [
+  [null, 3.5], [A6, .5], [null, 3.5], [E6, .5], [null, 3.5], [G6, .5], [null, 1.5], [A6, .5], [C7, .5], [null, 1.5],
+  [null, 3.5], [C7, .5], [null, 3.5], [A6, .5], [null, 3.5], [G6, .5], [null, 2], [E6, .5], [G6, .5], [A6, 1],
+  [null, 2], [E6, .5], [G6, .5], [A6, 1], [null, 3.5], [C7, .5], [null, 2], [A6, .5], [C7, .5], [E7, 1], [null, 4],
+  [null, 2], [G6, .5], [A6, .5], [C7, 1], [null, 3.5], [A6, .5], [null, 2], [E6, .5], [G6, .5], [A6, 1], [null, 4],
+];
+
+// ── 🪵 stump (140 BPM) ──
+const STUMP_A = ['Am', 'Am', 'F', 'G', 'Am', 'C', 'G', 'G'];
+const STUMP_B = ['F', 'G', 'Am', 'Am', 'F', 'G', 'C', 'G'];
+const STUMP_CH = [...STUMP_A, ...STUMP_B];
+// แตรนำ · ท่อน A: โมทีฟผลึกแบบเร่ง (ลา ลา โด มี — เร โด) ถาม-ตอบ · ท่อน B: โน้ตยาวฮึกเหิม ไต่ขึ้นถึงลาสูง
+const STUMP_BRASS = [
+  [A5, .5], [A5, .5], [C6, .5], [E6, 1], [D6, .5], [C6, 1],
+  [A5, .5], [G5, .5], [A5, 1], [null, 2],
+  [C6, .5], [C6, .5], [D6, .5], [E6, 1], [G6, .5], [E6, 1],
+  [D6, 1.5], [C6, .5], [D6, 2],
+  [A5, .5], [A5, .5], [C6, .5], [E6, 1], [G6, .5], [A6, 1],
+  [G6, .5], [E6, .5], [C6, 1], [E6, .5], [D6, .5], [C6, 1],
+  [D6, .5], [E6, .5], [G6, 1], [E6, .5], [D6, .5], [C6, .5], [D6, .5],
+  [A5, 2], [null, 2],
+
+  [C6, 2], [A5, 1], [C6, 1],
+  [D6, 3], [E6, .5], [D6, .5],
+  [E6, 2], [A5, 2],
+  [A5, .5], [C6, .5], [E6, .5], [G6, .5], [A6, 2],
+  [A6, 1.5], [G6, .5], [E6, 1], [C6, 1],
+  [D6, 1.5], [E6, .5], [G6, 2],
+  [E6, 1], [G6, 1], [E6, 1], [C6, 1],
+  [D6, 2], [null, 2],
+];
+// ประสานเสียง "อา~": ครึ่งหลังท่อน A เข้ามาต่ำ ๆ → ท่อน B เต็มเสียงทุกห้อง
+const STUMP_CHOIR = [[null, 16], [[A3, E4], 4, .75], [[G3, E4], 4, .75], [[G3, D4], 8, .75], ...STUMP_B.map((c) => [CH[c].choir, 4])];
+const STUMP_STR = perBar(STUMP_CH, (c) => eighths(c.hi, [1, .55, .8, .55]));
+const STUMP_BASS = perBar(STUMP_CH, (c) => { const [r, f, o] = c.bass; return [r, r, o, r, f, r, o, f].map((x, i) => [x, .5, i % 2 ? .75 : 1]); });
+const STUMP_KICK = perBar(STUMP_CH, (c, i) => (i % 8 === 7 ? [[X, 1], [X, 1], [X, .5], [X, .5], [X, 1]] : [[X, 1], [null, .5], [X, .5, .8], [X, 1], [null, 1]]));
+const SNARE_FILL = [[null, 1], [X, 1], [X, .5, .8], [X, .5, .9], [X, .25, .6], [X, .25, .7], [X, .25, .85], [X, .25, 1]];
+const STUMP_SNARE = perBar(STUMP_CH, (c, i) => (i % 8 === 7 ? SNARE_FILL : [[null, 1], [X, 1], [null, 1], [X, 1]]));
+const STUMP_HAT = perBar(STUMP_CH, (c, i) => eighths(Array(8).fill(X), i < 8 ? [.9, .45, .7, .45] : [1, .5, .75, .5]));
+const STUMP_OHAT = [...rest(32), ...perBar(STUMP_B, () => [[null, 3.5], [X, .5]])];
+const TAIKO_FILL = [[null, 1], [A2, .25, .6], [A2, .25, .7], [A2, .25, .8], [A2, .25, .9], [E2, .5], [E2, .5], [E2, 1]];
+const STUMP_TAIKO = perBar(STUMP_CH, (c, i) => (i % 4 === 3 ? TAIKO_FILL
+  : i < 8 ? (i % 2 ? rest(4) : [[E2, 1], [null, 3]])
+  : [[E2, 1], [null, 1], [E2, 1], [A2, .5, .7], [A2, .5, .8]]));
+const STUMP_CRASH = [[X, .5], [null, 31.5], [X, .5], [null, 31.5]];
+const STUMP_BELL = [[A6, .5], [null, 7.5], [G6, .5], [null, 7.5], [A6, .5], [null, 7.5], [E6, .5], [null, 3.5], [A6, .5], [null, 3.5]];
+const STUMP_BELLS = [...STUMP_BELL, ...STUMP_BELL];
+
+// ── 🔥 stumpRage (152 BPM) ──
+const RAGE_ECHO = [[null, .5], ...STUMP_BRASS.slice(0, -1).map(([f, b]) => [f && f * 2, b, .8]), [null, 1.5]];
+const RAGE_CHOIR = STUMP_CH.map((c, i) => [CH[c].choir, 4, i < 8 ? .8 : 1]);
+const RAGE_STR = perBar(STUMP_CH, (c) => c.hi.flatMap((f) => [[f, .25, 1], [f, .25, .55]]));
+const RAGE_KICK = perBar(STUMP_CH, (c, i) => (i % 8 === 7 ? [[X, 1], [X, 1], [X, .5], [X, .5], [X, 1]] : [[X, 1], [X, 1, .8], [X, .5], [X, .5, .8], [X, 1, .85]]));
+const RAGE_SNARE = perBar(STUMP_CH, (c, i) => (i % 4 === 3 ? SNARE_FILL : [[null, 1], [X, 1], [null, 1], [X, 1]]));
+const RAGE_HAT = perBar(STUMP_CH, () => Array(16).fill(X).map((x, j) => [x, .25, [1, .4, .7, .4][j % 4]]));
+const RAGE_TAIKO = perBar(STUMP_CH, (c, i) => (i % 4 === 3 ? TAIKO_FILL : [[E2, 1], [A2, .5, .7], [A2, .5, .8], [E2, 1], [A2, 1, .8]]));
+const RAGE_CRASH = [0, 1, 2, 3].flatMap(() => [[X, .5], [null, 15.5]]);
+
 const soft = (type, vol, attack, release) => ({ type, vol, attack, release });
+/** เสียงตี (กลอง/ไม้เคาะ): ระดับเสียงไถลงเหลือ drop เท่าใน dropT วิ · ตัดยาวไม่เกิน len วิ (โน้ตยาวก็ยังสั้น) */
+const hit = (type, vol, len, drop, dropT = 0.08) => ({ type, vol, attack: 0.003, release: 0.08, len, drop, dropT });
+/** เครื่องดนตรีจาก INST (ข้างล่าง) */
+const inst = (name, vol) => ({ inst: name, vol });
+/** เพลงที่มีจังหวะ/ความดังรวมของตัวเอง (ไม่ใส่ = BPM กลาง และเท่าเดิม) */
+const tr = (bpm, gain, layers) => Object.assign(layers, { bpm, gain });
+
+// ─────────────────────────────────────────────────────────────
+// 🎻 เครื่องดนตรีสังเคราะห์ — ทุกตัวรับ (ac, ความถี่, เวลาเริ่ม, ยาวกี่วินาที, ความดัง, ปลายทาง)
+// แล้วคืนตัวต้นเสียงทั้งหมด (ไว้ยกเลิกตอนสลับเพลง) · ประกอบหลายคลื่น + ฟิลเตอร์ + ซ่า ให้ได้เนื้อเสียงเครื่องจริง
+// ─────────────────────────────────────────────────────────────
+let noiseBuf = null;
+function noiseSrc(ac, at, end) {
+  if (!noiseBuf) {
+    const n = ac.sampleRate;
+    noiseBuf = ac.createBuffer(1, n, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = ac.createBufferSource();
+  src.buffer = noiseBuf;
+  src.loop = true;
+  src.start(at, Math.random() * 0.9);
+  src.stop(end + 0.02);
+  return src;
+}
+function mkOsc(ac, type, f, at, end, det = 0) {
+  const o = ac.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(f, at);
+  if (det) o.detune.setValueAtTime(det, at);
+  o.start(at);
+  o.stop(end + 0.02);
+  return o;
+}
+function mkFilter(ac, type, f, q = 1) {
+  const b = ac.createBiquadFilter();
+  b.type = type;
+  b.frequency.value = f;
+  b.Q.value = q;
+  return b;
+}
+function mkGain(ac, v = 1) { const g = ac.createGain(); g.gain.value = v; return g; }
+/** ตีแล้วจาง (กลอง ดีด เคาะ) */
+function perc(g, at, peak, decay, attack = 0.003) {
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), at + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + decay);
+}
+/** เข้า a วิ ค้างจนจบโน้ต แล้วจางใน rel วิ · คืนเวลาที่เงียบสนิท */
+function swell(g, at, dur, peak, a, rel) {
+  const top = at + Math.min(a, dur * 0.9), off = Math.max(top + 0.005, at + dur);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), top);
+  g.gain.setValueAtTime(Math.max(0.0002, peak), off);
+  g.gain.exponentialRampToValueAtTime(0.0001, off + rel);
+  return off + rel;
+}
+/** สั่นเสียง (เซนต์) เริ่มหลังเป่า/สีไปครู่หนึ่ง เหมือนนักดนตรีจริง */
+function vibrato(ac, oscs, at, end, rate, depth, delay) {
+  const l = mkOsc(ac, 'sine', rate, at, end);
+  const d = mkGain(ac, 0);
+  d.gain.setValueAtTime(0, at + delay);
+  d.gain.linearRampToValueAtTime(depth, at + delay + 0.3);
+  l.connect(d);
+  for (const o of oscs) d.connect(o.detune);
+  return l;
+}
+const INST = {
+  // ขลุ่ย: sine + คู่แปดบาง ๆ + ลมหายใจ (ซ่ากรองแคบรอบโน้ต ดังตอนเป่าแล้วเหลือนิดเดียว) + สั่นเสียงตอนลากยาว
+  flute(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, dur * 0.92, vol, 0.045, 0.12);
+    const o1 = mkOsc(ac, 'sine', f, at, end), o2 = mkOsc(ac, 'triangle', f * 2, at, end);
+    o1.connect(g); const g2 = mkGain(ac, 0.1); o2.connect(g2); g2.connect(g);
+    const n = noiseSrc(ac, at, end), bp = mkFilter(ac, 'bandpass', f * 1.5, 6), ng = mkGain(ac, 0);
+    ng.gain.setValueAtTime(0.0001, at); ng.gain.exponentialRampToValueAtTime(0.5, at + 0.03); ng.gain.exponentialRampToValueAtTime(0.12, at + 0.16);
+    n.connect(bp); bp.connect(ng); ng.connect(g);
+    return [o1, o2, n, ...(dur > 0.4 ? [vibrato(ac, [o1, o2], at, end, 5.4, 10, 0.2)] : [])];
+  },
+  // คาลิมบา: sine หางยาว + เหล็กดีด "ติ๊ง" (โอเวอร์โทน ×5.95) หายเร็ว
+  kalimba(ac, f, at, dur, vol, out) {
+    const dec = Math.min(1.5, 0.45 + 280 / f);
+    const g = mkGain(ac, 0); g.connect(out); perc(g, at, vol, dec);
+    const o1 = mkOsc(ac, 'sine', f, at, at + dec), o2 = mkOsc(ac, 'sine', f * 5.95, at, at + 0.12);
+    const g2 = mkGain(ac, 0); perc(g2, at, 0.4, 0.1);
+    o1.connect(g); o2.connect(g2); g2.connect(g);
+    return [o1, o2];
+  },
+  // พิณ: ดีดสายฟันเลื่อย ฟิลเตอร์ปิดจากใสลงทุ้มเร็ว ๆ (เสียงสายที่เพิ่งถูกดีด) หางยาว
+  harp(ac, f, at, dur, vol, out) {
+    const dec = Math.min(2.2, 0.8 + 250 / f);
+    const g = mkGain(ac, 0); g.connect(out); perc(g, at, vol, dec, 0.002);
+    const lp = mkFilter(ac, 'lowpass', 1000, 1.2);
+    lp.frequency.setValueAtTime(Math.min(12000, f * 9), at); lp.frequency.exponentialRampToValueAtTime(f * 1.6, at + 0.35);
+    const o1 = mkOsc(ac, 'sawtooth', f, at, at + dec), o2 = mkOsc(ac, 'triangle', f, at, at + dec, 4);
+    const g1 = mkGain(ac, 0.35); o1.connect(g1); g1.connect(lp); o2.connect(lp); lp.connect(g);
+    return [o1, o2];
+  },
+  // เครื่องสายแพด: ฟันเลื่อยสามตัวเพี้ยนกันนิด ๆ (= หลายคันชักพร้อมกัน) + ฟิลเตอร์นุ่ม + สีเข้าช้า + สั่นเสียง
+  strings(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, dur, vol, Math.min(0.35, dur * 0.4), 0.35);
+    const lp = mkFilter(ac, 'lowpass', Math.min(5000, f * 3.2), 0.7); lp.connect(g);
+    const os = [-9, 0, 9].map((c) => { const o = mkOsc(ac, 'sawtooth', f, at, end, c); o.connect(lp); return o; });
+    return [...os, vibrato(ac, os, at, end, 5, 6, 0.3)];
+  },
+  // เครื่องสายสีสั้น (สตักกาโต) — ท่อนรัวของเพลงบอส
+  stac(ac, f, at, dur, vol, out) {
+    const d = Math.min(dur * 0.8, 0.16);
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, d, vol, 0.008, 0.07);
+    const lp = mkFilter(ac, 'lowpass', 1000, 1.4);
+    lp.frequency.setValueAtTime(Math.min(9000, f * 6), at); lp.frequency.exponentialRampToValueAtTime(Math.min(6000, f * 3), at + 0.1);
+    lp.connect(g);
+    return [-7, 7].map((c) => { const o = mkOsc(ac, 'sawtooth', f, at, end, c); o.connect(lp); return o; });
+  },
+  // แตรทองเหลือง: ฟันเลื่อยคู่ ฟิลเตอร์เปิดพรวดตอนเป่า (เสียง "แป๊น" ของแตร) แล้วลดลงมาค้าง
+  brass(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, dur * 0.95, vol, 0.03, 0.09);
+    const lp = mkFilter(ac, 'lowpass', 1000, 2);
+    lp.frequency.setValueAtTime(f * 1.2, at);
+    lp.frequency.exponentialRampToValueAtTime(Math.min(9000, f * 7), at + 0.06);
+    lp.frequency.exponentialRampToValueAtTime(Math.min(6000, f * 3.5), at + 0.3);
+    lp.connect(g);
+    const os = [-6, 6].map((c) => { const o = mkOsc(ac, 'sawtooth', f, at, end, c); o.connect(lp); return o; });
+    return [...os, ...(dur > 0.5 ? [vibrato(ac, os, at, end, 5.5, 8, 0.35)] : [])];
+  },
+  // คณะประสานเสียง "อา~": ฟันเลื่อยสามตัวผ่านฟอร์แมนต์สระ "อา" (730 / 1090 / 2440 Hz) + สั่นเสียงกว้าง
+  choir(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, dur, vol, Math.min(0.4, dur * 0.4), 0.45);
+    const mix = mkGain(ac, 1);
+    for (const [ff, q, k] of [[730, 6, 1], [1090, 7, 0.6], [2440, 9, 0.25]]) {
+      const bp = mkFilter(ac, 'bandpass', ff, q), kg = mkGain(ac, k);
+      mix.connect(bp); bp.connect(kg); kg.connect(g);
+    }
+    const os = [-11, 0, 10].map((c) => { const o = mkOsc(ac, 'sawtooth', f, at, end, c); o.connect(mix); return o; });
+    return [...os, vibrato(ac, os, at, end, 4.6, 12, 0.3)];
+  },
+  // กล็อกเคนสปีล / ระฆังผลึก: sine + โอเวอร์โทนแบบระฆัง (×2.76 ×5.4) จางเร็วกว่าตัวหลัก
+  bell(ac, f, at, dur, vol, out) {
+    const dec = 1.3;
+    const g = mkGain(ac, 0); g.connect(out); perc(g, at, vol, dec, 0.002);
+    const o1 = mkOsc(ac, 'sine', f, at, at + dec), o2 = mkOsc(ac, 'sine', f * 2.76, at, at + 0.5), o3 = mkOsc(ac, 'sine', f * 5.4, at, at + 0.2);
+    const g2 = mkGain(ac, 0); perc(g2, at, 0.3, 0.45); const g3 = mkGain(ac, 0); perc(g3, at, 0.12, 0.18);
+    o1.connect(g); o2.connect(g2); g2.connect(g); o3.connect(g3); g3.connect(g);
+    return [o1, o2, o3];
+  },
+  // เบสกลม: sine + triangle คู่แปดบาง ๆ (มีหัวเสียงพอให้ได้ยินบนลำโพงมือถือ)
+  bass(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, dur * 0.9, vol, 0.01, 0.08);
+    const o1 = mkOsc(ac, 'sine', f, at, end), o2 = mkOsc(ac, 'triangle', f * 2, at, end);
+    o1.connect(g); const g2 = mkGain(ac, 0.3); o2.connect(g2); g2.connect(g);
+    return [o1, o2];
+  },
+  // เบสดีด (เพลงบอส): ฟันเลื่อย + ฟิลเตอร์ดีดเปิดแล้วปิด + sine ใต้ให้หนัก
+  pbass(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out);
+    const end = swell(g, at, dur * 0.85, vol, 0.005, 0.05);
+    const lp = mkFilter(ac, 'lowpass', 1000, 3);
+    lp.frequency.setValueAtTime(f * 7, at); lp.frequency.exponentialRampToValueAtTime(f * 2, at + 0.15);
+    const o1 = mkOsc(ac, 'sawtooth', f, at, end), o2 = mkOsc(ac, 'sine', f, at, end);
+    const g1 = mkGain(ac, 0.5); o1.connect(lp); lp.connect(g1); g1.connect(g); o2.connect(g);
+    return [o1, o2];
+  },
+  // ── กลอง (ความถี่ของโน้ตใช้เป็นระดับเสียงเฉพาะไทโกะ/ไม้เคาะ) ──
+  kick(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out); perc(g, at, vol, 0.42);
+    const o = mkOsc(ac, 'sine', 160, at, at + 0.42);
+    o.frequency.exponentialRampToValueAtTime(45, at + 0.13);
+    o.connect(g);
+    const n = noiseSrc(ac, at, at + 0.02), hp = mkFilter(ac, 'highpass', 3000), ng = mkGain(ac, 0);
+    perc(ng, at, vol * 0.25, 0.015, 0.001); n.connect(hp); hp.connect(ng); ng.connect(out);
+    return [o, n];
+  },
+  snare(ac, f, at, dur, vol, out) {
+    const n = noiseSrc(ac, at, at + 0.22);
+    const bp = mkFilter(ac, 'bandpass', 1900, 0.8), g = mkGain(ac, 0); perc(g, at, vol, 0.2, 0.001);
+    const hp = mkFilter(ac, 'highpass', 6000), g2 = mkGain(ac, 0); perc(g2, at, vol * 0.5, 0.13, 0.001);
+    n.connect(bp); bp.connect(g); g.connect(out); n.connect(hp); hp.connect(g2); g2.connect(out);
+    const o = mkOsc(ac, 'triangle', 220, at, at + 0.12); o.frequency.exponentialRampToValueAtTime(165, at + 0.08);
+    const g3 = mkGain(ac, 0); perc(g3, at, vol * 0.7, 0.1); o.connect(g3); g3.connect(out);
+    return [n, o];
+  },
+  hat(ac, f, at, dur, vol, out) {
+    const n = noiseSrc(ac, at, at + 0.06), hp = mkFilter(ac, 'highpass', 7500), g = mkGain(ac, 0);
+    perc(g, at, vol, 0.045, 0.001); n.connect(hp); hp.connect(g); g.connect(out);
+    return [n];
+  },
+  ohat(ac, f, at, dur, vol, out) {
+    const n = noiseSrc(ac, at, at + 0.32), hp = mkFilter(ac, 'highpass', 6500), g = mkGain(ac, 0);
+    perc(g, at, vol, 0.3, 0.002); n.connect(hp); hp.connect(g); g.connect(out);
+    return [n];
+  },
+  shaker(ac, f, at, dur, vol, out) {
+    const n = noiseSrc(ac, at, at + 0.1), bp = mkFilter(ac, 'bandpass', 6200, 1.5), g = mkGain(ac, 0);
+    perc(g, at, vol, 0.09, 0.018); n.connect(bp); bp.connect(g); g.connect(out);
+    return [n];
+  },
+  crash(ac, f, at, dur, vol, out) {
+    const n = noiseSrc(ac, at, at + 1.8), hp = mkFilter(ac, 'highpass', 4500), g = mkGain(ac, 0);
+    perc(g, at, vol, 1.7, 0.002); n.connect(hp); hp.connect(g); g.connect(out);
+    return [n];
+  },
+  // กลองไทโกะ: หนังใหญ่ระดับเสียงไถลง + เสียงไม้ตีหนัง (ซ่ากรองต่ำ) — เสียง "ไม้" ของภูตตอไม้ในเพลงบอส
+  taiko(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out); perc(g, at, vol, 0.55, 0.002);
+    const o = mkOsc(ac, 'sine', f, at, at + 0.55); o.frequency.exponentialRampToValueAtTime(f * 0.62, at + 0.3); o.connect(g);
+    const o2 = mkOsc(ac, 'triangle', f * 1.6, at, at + 0.15); const g2 = mkGain(ac, 0); perc(g2, at, 0.35, 0.12); o2.connect(g2); g2.connect(g);
+    const n = noiseSrc(ac, at, at + 0.14), lp = mkFilter(ac, 'lowpass', 700), ng = mkGain(ac, 0);
+    perc(ng, at, vol * 0.6, 0.12, 0.001); n.connect(lp); lp.connect(ng); ng.connect(out);
+    return [o, o2, n];
+  },
+  // ไม้เคาะ: เนื้อไม้ไถลงสั้น + ผิวกระทบ
+  wood(ac, f, at, dur, vol, out) {
+    const g = mkGain(ac, 0); g.connect(out); perc(g, at, vol, 0.08, 0.001);
+    const o = mkOsc(ac, 'sine', f, at, at + 0.08); o.frequency.exponentialRampToValueAtTime(f * 0.72, at + 0.05); o.connect(g);
+    const n = noiseSrc(ac, at, at + 0.03), bp = mkFilter(ac, 'bandpass', f * 2.6, 5), ng = mkGain(ac, 0);
+    perc(ng, at, vol * 0.6, 0.025, 0.001); n.connect(bp); bp.connect(ng); ng.connect(out);
+    return [o, n];
+  },
+};
 
 const TRACKS = {
   main: [
@@ -512,6 +866,45 @@ const TRACKS = {
     { notes: schedule(SNOWBALL_BELLS), voice: soft('sine', 0.022, 0.002, 0.3) },
     { notes: schedule(SNOWBALL_BASS), voice: soft('triangle', 0.075, 0.01, 0.3) },
   ],
+
+  // ── ด่านสอนป่าผลึก + บอสภูตตอไม้ (ดูหัวข้อ 🌳 / 🎻 ข้างบน) · gain ปรับจากการวัดให้ดังใกล้เพลงแมพอื่น ──
+  grove: tr(116, 0.72, [
+    { notes: schedule(GROVE_FLUTE), voice: inst('flute', 0.1) },
+    { notes: schedule(GROVE_KALIMBA), voice: inst('kalimba', 0.055) },
+    { notes: schedule(GROVE_HARP), voice: inst('harp', 0.07) },
+    { notes: schedule(GROVE_PAD), voice: inst('strings', 0.011) },
+    { notes: schedule(GROVE_BASS), voice: inst('bass', 0.085) },
+    { notes: schedule(GROVE_KICK), voice: inst('kick', 0.11) },
+    { notes: schedule(GROVE_WOOD), voice: inst('wood', 0.05) },
+    { notes: schedule(GROVE_SHAKER), voice: inst('shaker', 0.05) },
+    { notes: schedule(GROVE_GLOCK), voice: inst('bell', 0.03) },
+  ]),
+  stump: tr(140, 0.88, [
+    { notes: schedule(STUMP_BRASS), voice: inst('brass', 0.05) },
+    { notes: schedule(STUMP_CHOIR), voice: inst('choir', 0.12) },
+    { notes: schedule(STUMP_STR), voice: inst('stac', 0.02) },
+    { notes: schedule(STUMP_BASS), voice: inst('pbass', 0.07) },
+    { notes: schedule(STUMP_KICK), voice: inst('kick', 0.18) },
+    { notes: schedule(STUMP_SNARE), voice: inst('snare', 0.09) },
+    { notes: schedule(STUMP_HAT), voice: inst('hat', 0.045) },
+    { notes: schedule(STUMP_OHAT), voice: inst('ohat', 0.035) },
+    { notes: schedule(STUMP_TAIKO), voice: inst('taiko', 0.2) },
+    { notes: schedule(STUMP_CRASH), voice: inst('crash', 0.05) },
+    { notes: schedule(STUMP_BELLS), voice: inst('bell', 0.035) },
+  ]),
+  stumpRage: tr(152, 0.76, [
+    { notes: schedule(STUMP_BRASS), voice: inst('brass', 0.052) },
+    { notes: schedule(RAGE_ECHO), voice: inst('bell', 0.022) },
+    { notes: schedule(RAGE_CHOIR), voice: inst('choir', 0.12) },
+    { notes: schedule(RAGE_STR), voice: inst('stac', 0.017) },
+    { notes: schedule(STUMP_BASS), voice: inst('pbass', 0.072) },
+    { notes: schedule(RAGE_KICK), voice: inst('kick', 0.18) },
+    { notes: schedule(RAGE_SNARE), voice: inst('snare', 0.09) },
+    { notes: schedule(RAGE_HAT), voice: inst('hat', 0.04) },
+    { notes: schedule(RAGE_TAIKO), voice: inst('taiko', 0.2) },
+    { notes: schedule(RAGE_CRASH), voice: inst('crash', 0.05) },
+    { notes: schedule(STUMP_BELLS), voice: inst('bell', 0.04) },
+  ]),
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -632,7 +1025,7 @@ function ensureFileEl() {
     // ไฟล์หาย/เน็ตพัง — อย่าปล่อยให้หน้าแรกเงียบสนิท ถอยไปใช้เพลงสังเคราะห์
     console.warn('[music] โหลดเพลงหน้าแรกไม่ได้ ใช้เพลงสังเคราะห์แทน');
     fileFailed = true;
-    if (FILE_TRACKS[track]) { loopStart = ac.currentTime + 0.05; pump(); }
+    if (FILE_TRACKS[track]) { restartLoop(ac.currentTime + 0.05); pump(); }
   });
 
   fileGain = ac.createGain();
@@ -890,17 +1283,34 @@ const STOP_FADE = 0.06;
 let master = null;
 let timer = null;
 let loopStart = 0;      // เวลาของ AudioContext ที่ลูปรอบปัจจุบันเริ่ม
+let bookedTo = 0;       // จองโน้ตไว้ถึงเวลานี้แล้ว (pump จองต่อจากตรงนี้)
+const AHEAD = 6;        // จองล่วงหน้ากี่วินาที — pump ทุก 2 วิ จึงมีโน้ตรอไว้อย่างน้อย 4 วิเสมอ
+/** เริ่มลูปใหม่ที่เวลา t (เปลี่ยนเพลง / เริ่มเพลง) */
+function restartLoop(t) { loopStart = bookedTo = t; }
+/** ความยาวลูปของเพลง (บีต) = ชั้นที่ยาวที่สุด — เพลงเดิมทุกเพลง 32 บีต (LOOP_BEATS) */
+function loopBeats(L) { return L.beats || (L.beats = Math.max(...L.map((l) => l.notes.beats || LOOP_BEATS))); }
 let track = 'main';
 let booked = [];        // โน้ตที่จองไว้แล้ว เก็บไว้เพื่อยกเลิกตอนสลับเพลง
 
-function voice(freq, at, beats, { type, vol, attack, release }) {
+/** เล่นโน้ตหนึ่งตัว (sec = ความยาวเป็นวินาที · vel = น้ำหนักโน้ต × ความดังรวมของเพลง) */
+function voice(freq, at, sec, v, vel = 1) {
   const ac = audioCtx();
+  if (Array.isArray(freq)) { for (const f of freq) voice(f, at, sec, v, vel); return; }   // คอร์ด
+  if (v.inst) {
+    for (const node of INST[v.inst](ac, freq, at, sec, v.vol * vel, master)) booked.push({ osc: node, at });
+    return;
+  }
+  const { type, attack, release, len = 0, drop = 0, dropT = 0.08 } = v;
+  const vol = v.vol * vel;
   const osc = ac.createOscillator();
   const gain = ac.createGain();
-  const dur = beats * BEAT;
+  // len = เสียงตี (กลอง/ไม้เคาะ) ดังสั้นเท่านี้ ไม่ว่าโน้ตจะยาวกี่บีต
+  const dur = len ? Math.min(len, sec) : sec;
 
   osc.type = type;
   osc.frequency.setValueAtTime(freq, at);
+  // drop = ระดับเสียงไถลงเร็ว ๆ หลังตี → หนังกลอง/เนื้อไม้ "ตุ้ม" "ป๊อก" แทนที่จะเป็นโน้ตนิ่ง
+  if (drop) osc.frequency.exponentialRampToValueAtTime(freq * drop, at + Math.min(dropT, dur));
 
   // ขึ้นนุ่ม ลงนุ่ม — ตัดเสียง "ป๊อก" ตอนโน้ตเริ่มและจบ
   gain.gain.setValueAtTime(0.0001, at);
@@ -922,27 +1332,36 @@ function voice(freq, at, beats, { type, vol, attack, release }) {
  */
 function pump() {
   const ac = audioCtx();
-  const loopDur = LOOP_BEATS * BEAT;
 
   // เพลงที่เล่นจากไฟล์ กับช่วงที่ตั้งใจให้เงียบ ไม่ต้องจองโน้ตอะไรเลย
   // ต้องดัน loopStart ตามเวลาปัจจุบันไว้ด้วย ไม่งั้นพอสลับกลับไปเพลงสังเคราะห์
   // มันจะเห็นว่า loopStart ค้างอยู่ในอดีตแล้วจองโน้ตย้อนหลังรัวเป็นพันตัว
   if (track === SILENT || fileFor(track)) {
-    loopStart = ac.currentTime;
+    restartLoop(ac.currentTime);
     return;
   }
 
-  while (loopStart < ac.currentTime + loopDur) {
-    for (const layer of TRACKS[track]) {
+  // ── จองทีละช่วง (AHEAD วิข้างหน้า) ไม่ใช่ทั้งลูปทีเดียว ──
+  // เพลงที่ใช้เครื่องดนตรี (INST) สร้างหลายปมต่อโน้ต ลูปละหลายพันปม ถ้าจองรวดเดียวจะกระตุกบนมือถือ
+  // จองทีละไม่กี่วินาทีงานกระจายเท่า ๆ กันทุกรอบ pump · จังหวะยังตรงเพราะยึดนาฬิกา AudioContext เหมือนเดิม
+  const L = TRACKS[track];
+  const beat = 60 / (L.bpm || BPM), loopDur = loopBeats(L) * beat, k = L.gain || 1;
+  const now = ac.currentTime, horizon = now + AHEAD;
+  while (loopStart + loopDur < now) loopStart += loopDur;   // แท็บหลับนาน ๆ — ข้ามลูปที่ผ่านไปแล้ว ไม่จองย้อนหลัง
+  if (bookedTo < loopStart) bookedTo = loopStart;
+  while (bookedTo < horizon) {
+    const loopEnd = loopStart + loopDur, end = Math.min(horizon, loopEnd);
+    for (const layer of L) {
       for (const n of layer.notes) {
-        voice(n.freq, loopStart + n.at * BEAT, n.beats, layer.voice);
+        const t = loopStart + n.at * beat;
+        if (t >= bookedTo && t < end && t > now - 0.02) voice(n.freq, t, n.beats * beat, layer.voice, n.vel * k);
       }
     }
-    loopStart += loopDur;
+    bookedTo = end;
+    if (end >= loopEnd) loopStart = loopEnd;
   }
 
   // ทิ้งอ้างอิงของโน้ตที่เล่นจบไปแล้ว ไม่งั้น array โตไม่หยุด
-  const now = ac.currentTime;
   booked = booked.filter((b) => b.at > now - 8);
 }
 
@@ -998,7 +1417,7 @@ export function startMusic() {
   master.gain.value = MUSIC_VOL;
   master.connect(musicOut());
 
-  loopStart = ac.currentTime + 0.15;
+  restartLoop(ac.currentTime + 0.15);
   // เพลงตอนเปิดหน้าแรกเป็นไฟล์ ต้องสั่งเล่นตรงนี้ด้วย — setMusicTrack() ที่ถูกเรียก
   // ไปก่อนหน้านี้ตอน reset() ยังทำอะไรไม่ได้ เพราะ master ยังไม่มี
   const f = fileFor(track);
@@ -1087,7 +1506,7 @@ export function setMusicTrack(name) {
   if (f) playFile(f, slow ? ROOM_FADE_IN : FADE_IN);
   else stopFile();
 
-  loopStart = now + 0.05;
+  restartLoop(now + 0.05);
   pump();
 }
 
@@ -1107,6 +1526,11 @@ export function setMusicTrack(name) {
 // Vite ตัดทิ้งทั้งก้อนตอน build จริง ไม่หลุดไปอยู่ใน bundle
 // ─────────────────────────────────────────────────────────────
 if (import.meta.env.DEV) {
+  // ทุกชั้นต้องจบที่ 32 บีตพอดี (LOOP_BEATS) — ชั้นที่สั้น/ยาวกว่าจะเพี้ยนสะสมทุกลูป
+  for (const [name, layers] of Object.entries(TRACKS)) layers.forEach((l, i) => {
+    const want = loopBeats(layers);
+    if (Math.abs(l.notes.beats - want) > 1e-6) console.warn(`[music] ${name} ชั้น ${i} ยาว ${l.notes.beats} บีต (ต้อง ${want})`);
+  });
   window.__tracks = TRACKS;
   window.__music = {
     get el() { return fileEl; },

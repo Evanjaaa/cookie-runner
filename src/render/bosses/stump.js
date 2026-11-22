@@ -32,7 +32,7 @@ export const STUMP_STATES = {
   idle:   { name: 'ลอยปกติ',       em: '😤', note: 'ลอยขึ้นลงนุ่ม ๆ · กะพริบตา · ใบไม้ไหว · หันเฉียงหาน้อง', loop: 4.8 },
   warn:   { name: 'เตรียมโจมตี',    em: '❗', note: 'ย่อตัว ตาเรืองแสง ง้างแขน · เตือน 1.0 วิ แล้วพุ่ง',     loop: 2.0 },
   tired:  { name: 'เหนื่อย',        em: '😵', note: 'ลอยต่ำ แขนตก ตาหมุน จุดอ่อนสว่าง · หอบ',              loop: 1.6 },
-  defeat: { name: 'แพ้',            em: '💥', note: 'สะท้าน → รอยแสงแตกทั่วตัว → ผลึกระเบิด ปล่อยน้องในฟองแสง → ตัวสลายเป็นละอองแสง → น้องลงพื้น ตื่นร้องเหมียว', dur: 6.4 },
+  defeat: { name: 'แพ้',            em: '💥', note: 'จ้องแค้น รอยแสงแตก → ผลึกระเบิด ปล่อยน้อง → ตัวกลายเป็นแสงสลาย → น้องตื่นร้องเหมียว', dur: 6.4 },
   // ── ท่าโจมตีตามชีตแบบ docs/boss-stump/4-sheet.jpg (ผู้ใช้ 22 พ.ย.: "อัปเกรดทุกอย่างของมอนสเตอร์") ──
   // ทุกท่า = ช่วงเตือน (o.warnT วิ ตาแดง/ย่อร่าง ให้รู้ล่วงหน้า) → ปล่อยของ → คืนท่า · หน้าเกมใช้เวลาชุดเดียวกัน (STUMP_ACT)
   enter:  { name: 'เปิดตัว',          em: '🎬', note: 'ตกลงจากฟ้า กระแทกพื้นฝุ่นฟุ้ง เด้งขึ้นลอย แล้วคำรามขู่', dur: 2.4 },
@@ -44,7 +44,8 @@ export const STUMP_STATES = {
 };
 export const WARN_TIME = 1.0;
 /** ท่าแพ้ (วินาทีในท่า): ผลึกแตก · เริ่มสลาย · สลายหมด + น้องลงพื้น · น้องตื่น · จบ — หน้าเกมใช้จังหวะเดียวกัน (สั่นจอ / โชว์การ์ดชนะ) */
-export const STUMP_DEFEAT = { shatter: 1.9, melt: 2.5, free: 4.7, wake: 4.95, done: 6.2 };
+// melt 2.05 (เดิม 2.5): ผู้ใช้ 22 พ.ย. "แสงไหลผ่านจบแล้วมอนส์ถึงหายวาป" → เริ่มสลายทันทีที่ผลึกระเบิด ตัวกลายเป็นแสงไปพร้อมแสงระเบิด
+export const STUMP_DEFEAT = { shatter: 1.9, melt: 2.05, free: 4.7, wake: 4.95, done: 6.2 };
 /** จังหวะของแต่ละท่า (วินาทีหลังช่วงเตือน) — หน้าเกมปล่อยของตามนี้ ท่าทางบอสจะตรงกับของที่ออกมา */
 export const STUMP_ACT = {
   cast: { gap: 0.5, tail: 0.8 },             // ลูกแสงทุก gap วิ (0.5 = กระโดดลูกต่ำแล้วลงพื้นทันลูกสูงถัดไป) · จำนวน = o.n
@@ -76,12 +77,14 @@ const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return 
 
 // ── ท่าแพ้: เส้นสลาย (ขอบล่างของส่วนที่ยังเหลือ) ไต่จากใต้ชายผ้าขึ้นไปเหนือเปลว ──
 const MELT_FROM = 8, MELT_TO = -134;
-const meltEdge = (d) => lerp(MELT_FROM, MELT_TO, ease(d));
-/** วินาทีในท่าแพ้ที่เส้นสลายขึ้นถึงความสูง y (หาย้อนจาก ease) */
+// ความเร็วเส้นสลายเกือบคงที่ (เดิม ease เต็ม = ช่วงกลางพุ่งเร็ว กวาดทั้งตัวใน ~0.4 วิ ดูเหมือนหายวาป)
+const meltK = (d) => 0.8 * clamp(d) + 0.2 * ease(d);
+const meltEdge = (d) => lerp(MELT_FROM, MELT_TO, meltK(d));
+/** วินาทีในท่าแพ้ที่เส้นสลายขึ้นถึงความสูง y (หาย้อนจาก meltK) */
 function meltTimeAt(y) {
   const want = (MELT_FROM - y) / (MELT_FROM - MELT_TO);
   let a = 0, b = 1;
-  for (let i = 0; i < 30; i++) { const m = (a + b) / 2; if (ease(m) < want) a = m; else b = m; }
+  for (let i = 0; i < 30; i++) { const m = (a + b) / 2; if (meltK(m) < want) a = m; else b = m; }
   return STUMP_DEFEAT.melt + a * (STUMP_DEFEAT.free - STUMP_DEFEAT.melt);
 }
 const FLAME_POP_AT = meltTimeAt(-STUMP.flameY + 6);
@@ -177,12 +180,21 @@ export function stumpPose(state, st, t, o = {}) {
     P.flow = 0.75; P.hemLift = 1.6 + pant * 0.6;              // ชายผ้าห้อยหมดแรง
   } else if (state === 'defeat') {
     // ท่าแพ้ (ผู้ใช้ 22 พ.ย.: "อัปเกรดให้อลังเลิศเลอ"):
-    // สะท้าน ตาโตตกใจ → หันหน้าตรง ลอยขึ้น รอยแสงแตกทั่วตัว ผลึกหลุดมือ สั่นเรืองจนขาว →
-    // ผลึกระเบิดเป็นเศษคริสตัล ปล่อยน้องในฟองแสง → ตัวสลายเป็นละอองแสงจากชายผ้าขึ้นไปถึงเปลว (ใบไม้ร่วง เปลวแตกเป็นดาว) →
+    // สะท้านเจ็บ → หันหน้าตรง ลอยขึ้น รอยแสงแตกทั่วตัว ผลึกหลุดมือ สั่นเรืองจนขาว →
+    // ผลึกระเบิดเป็นเศษคริสตัล ปล่อยน้องในฟองแสง → ตัวค่อย ๆ กลายเป็นแสงและสลายจากชายผ้าขึ้นไปถึงเปลวทันที (ใบไม้ร่วง เปลวแตกเป็นดาว) →
     // น้องค่อย ๆ ลอยลงพื้น ฟองแตก ตื่นขึ้นมาร้องเหมียว
+    // สีหน้า (ผู้ใช้ 22 พ.ย.: ไม่เอาหน้าตกใจ — "โกรธอยู่แต่เครียดแค้นว่าแพ้แล้ว"):
+    //   เจ็บหยีตา อ้าปาก → จ้องเขม็งแค้น ตาดำเล็กสั่น เส้นเลือดปูด เหงื่อ หน้ามืดครึ้ม →
+    //   ผลึกแตก: หยีตาน้ำตาเล็ดด้วยความแค้น → จ้องแค้นทั้งน้ำตาจนตัวสลายหายไป
     const s = st, D = STUMP_DEFEAT;
     P.crackMin = 3; P.turn = 1 - ease((s - 0.45) / 0.65);
-    P.eyes = s < D.shatter ? 'shock' : 'x'; P.mouth = 'open'; P.mouthOpen = 1;
+    // ปาก: อ้านิด ๆ แบบตอนโกรธตาแดง (ผู้ใช้ 22 พ.ย.: ปากกัดฟันคว่ำดูแปลก) · เจ็บ/น้ำตาเล็ด = อ้ากว้างขึ้น · สั่นระริกตลอด
+    P.mouth = 'open'; P.vein = 1; P.angryBrow = 1;
+    P.mouthOpen = (s < 0.45 || (s >= D.shatter && s < D.shatter + 0.55) ? 0.55 : 0.3) + 0.08 * Math.sin(t * 31);
+    P.eyes = s < 0.45 || (s >= D.shatter && s < D.shatter + 0.55) ? 'squeeze' : 'grudge';
+    P.gloom = s < 0.45 ? 0 : clamp((s - 0.45) / 0.5);
+    P.sweat = s >= 0.6 && s < D.shatter ? s - 0.6 : -1;
+    P.tear = s >= D.shatter ? s - D.shatter : -1;
     if (s < 0.45) {                        // สะท้านจากโดนตีครั้งสุดท้าย
       const k = s / 0.45, j = Math.sin(k * Math.PI);
       P.shake = 3.4 * (1 - k) + 0.5; P.x = 9 * Math.sin((Math.min(1, k * 2.5) * Math.PI) / 2) * (1 - ease(k));
@@ -195,7 +207,7 @@ export function stumpPose(state, st, t, o = {}) {
       P.shake = 0.5 + 2.4 * u * u; P.bodyCrack = ease(u / 0.85); P.rays = 0.85 * e;
       P.cryY = 5 * e; P.cryScale = 1 + 0.14 * e; P.cryJit = 0.8 + 1.6 * u; P.cryWhite = clamp((u - 0.68) / 0.32);
       P.armL = { dx: -4 * e2, dy: 4 * e2, r: 0.3 * e2 }; P.armR = { dx: 5 * e2, dy: 4 * e2, r: 0.3 * e2 };
-      P.flow = 1.6; P.hemLift = -2.5 * e; P.mouthOpen = 0.7 + 0.3 * Math.sin(s * 14); P.glowRing = e; P.flame = 0.9;
+      P.flow = 1.6; P.hemLift = -2.5 * e; P.glowRing = e; P.flame = 0.9;
     } else {                               // ผลึกแตก → เซ → สลายจากล่างขึ้นบน
       const v = s - D.shatter, q = Math.sin(clamp(v / 0.3) * Math.PI) * Math.max(0, 1 - v / 0.7), fl = clamp(v / 0.4);
       const d = clamp((s - D.melt) / (D.free - D.melt));
@@ -203,12 +215,13 @@ export function stumpPose(state, st, t, o = {}) {
       if (d > 0) P.dEdge = meltEdge(d);
       P.y = STUMP.hover + 8 - 4 * clamp(v / 0.7) + 6 * d;
       P.sy = 1.05 - 0.18 * q - 0.03 * d; P.sx = 0.96 + 0.16 * q + 0.02 * d;
-      P.shake = Math.max(0.25, 3 * (1 - v / 0.7)) * (1 - d);
+      P.shake = Math.max(0.7, 3 * (1 - v / 0.7)) * (1 - 0.7 * d);   // สั่นเกร็งด้วยความแค้นจนหายไป
       P.rot = -0.06 * Math.sin(v * TAU) * Math.max(0, 1 - v);
-      P.bodyCrack = 1 + 0.6 * Math.max(0, 1 - v / 0.6) - 0.3 * d;
+      P.bodyCrack = 1 + 0.6 * Math.max(0, 1 - v / 0.6) + 0.5 * d;    // แสงทะลักจากรอยแตกมากขึ้นเรื่อย ๆ ระหว่างสลาย
+      // ตัวที่ยังเหลือค่อย ๆ สว่างขึ้นเป็นแสงและจางลง → ไม่มีจังหวะ "ตัวทึบอยู่ดี ๆ แล้วหายวับ"
+      P.lightUp = 0.12 * clamp(v / 0.15) + 0.55 * ease(d); P.fade = 1 - 0.35 * ease(d);
       P.armL = { dx: -4 - 2 * q, dy: lerp(4, 9, fl) - 6 * q, r: lerp(0.3, -0.3, fl) + 0.5 * q };
       P.armR = { dx: 5 + 2 * q, dy: lerp(4, 9, fl) - 6 * q, r: lerp(0.3, -0.3, fl) + 0.5 * q };
-      P.mouth = v < 0.8 ? 'open' : 'wavy'; P.mouthOpen = 0.8;
       P.flow = 1.4; P.hemLift = lerp(-2.5, 1, fl); P.glowRing = 1 - 0.6 * d; P.flame = 0.8 + 0.4 * q;
       if (s >= FLAME_POP_AT) P.flamePop = s - FLAME_POP_AT;
       if (s >= D.free) P.fade = 0;
@@ -590,6 +603,9 @@ function eye(c, side, P, gaze, t, g) {
   if (P.eyes === 'squeeze') {              // ตาหยี >< (ซ้าย > · ขวา <) ปลายชี้เข้าหาจมูก
     c.strokeStyle = COL.ink; c.lineWidth = 3.6; c.lineCap = 'round'; c.lineJoin = 'round';
     c.beginPath(); c.moveTo(-5.5 * innS, -5); c.lineTo(4.5 * innS, 0.5); c.lineTo(-5.5 * innS, 5.5); c.stroke();
+    if (P.angryBrow) {                     // คิ้วขมวดกดหัวคิ้ว (เจ็บแต่ยังโกรธ ไม่ใช่ร้องไห้อ่อนแอ)
+      c.lineWidth = 4.6; c.beginPath(); c.moveTo(7.5 * innS, -8); c.lineTo(-9 * innS, -14.5); c.stroke();
+    }
     c.restore(); return;
   }
   if (P.eyes === 'focus') {                // หลับตาปี๋ เกร็งรวมพลัง (ผู้ใช้ 22 พ.ย.: หลับตาแบบเดิมดูสงบไป)
@@ -622,12 +638,13 @@ function eye(c, side, P, gaze, t, g) {
     c.restore(); return;
   }
   const rage = P.eyes === 'rage', glow = P.eyes === 'glow' || rage;
+  const grudge = P.eyes === 'grudge';   // จ้องแค้น (ท่าแพ้): คิ้วกดชันกว่า ตาหรี่ลง ตาดำหดเล็กสั่นระริก ขอบตาแดงเรื่อ
   // ตาตามแบบ (ผู้ใช้ 22 พ.ย.: "ยังเหล่ วาดใหม่"): ตาขาวรีตั้ง ถูกคิ้วตัดเฉียง (หัวตาต่ำ หางตาสูง)
   // ตาดำโตห้อยจากคิ้ว (ขอบบนจมใต้คิ้ว ไม่ลอยกลางตา) อยู่ค่อนหัวตาทั้งสองข้างแบบสมมาตร → ดูขึงขัง ไม่เหล่
   const inn = side < 0 ? 1 : -1;   // ทิศหัวตา (เข้าหาจมูก)
   const RX = 7.6, RY = 9, CY = 0.5;
-  const drop = (glow ? 2 : 0) + P.lid * 16;
-  const A = [8 * inn, -2.2 + drop], B = [-8 * inn, -8.2 + drop];   // เส้นคิ้วตัดตา: A = หัวตา · B = หางตา
+  const drop = (glow ? 2 : 0) + (grudge ? 2.4 : 0) + P.lid * 16;
+  const A = [8 * inn, (grudge ? -0.4 : -2.2) + drop], B = [-8 * inn, (grudge ? -10.6 : -8.2) + drop];   // เส้นคิ้วตัดตา: A = หัวตา · B = หางตา
   const cutY = (x) => A[1] + ((B[1] - A[1]) * (x - A[0])) / (B[0] - A[0]);
   c.save();
   c.beginPath();
@@ -636,14 +653,18 @@ function eye(c, side, P, gaze, t, g) {
   const white = new Path2D(); white.ellipse(0, CY, RX, RY, 0, 0, TAU);
   if (glow) { c.shadowColor = rage ? 'rgba(255,70,120,.95)' : 'rgba(255,170,205,.9)'; c.shadowBlur = rage ? 12 : 10; }
   let gr = c.createLinearGradient(0, -8, 0, CY + RY);
-  gr.addColorStop(0, rage ? '#FFF2F5' : glow ? '#FFFFFF' : '#FFF4E4'); gr.addColorStop(1, rage ? '#FF9DBA' : glow ? '#FFE3EE' : '#FBE2C4');
+  gr.addColorStop(0, rage ? '#FFF2F5' : glow ? '#FFFFFF' : grudge ? '#FFF3EF' : '#FFF4E4'); gr.addColorStop(1, rage ? '#FF9DBA' : glow ? '#FFE3EE' : grudge ? '#F6BFC6' : '#FBE2C4');
   c.fillStyle = gr; c.fill(white);
   c.shadowBlur = 0;
   c.clip(white);
   // แก้มชมพูใต้คิ้ว
   c.strokeStyle = rage ? 'rgba(255,90,140,.55)' : glow ? 'rgba(255,190,214,.5)' : 'rgba(246,180,174,.62)'; c.lineWidth = 4.6;
   c.beginPath(); c.moveTo(14 * inn, cutY(14 * inn) + 2.6); c.lineTo(-14 * inn, cutY(-14 * inn) + 2.6); c.stroke();
-  if (!glow) {
+  if (grudge) {                            // ตาดำหดเล็ก สั่นระริกด้วยความแค้น จ้องตรงมาที่น้อง
+    const px = 1.2 * inn + gaze * 0.5 + Math.sin(t * 47 + side) * 0.45, py = 1.2 + Math.cos(t * 41) * 0.35;
+    c.fillStyle = '#5E3266'; c.beginPath(); c.ellipse(px, py, 3.3, 3.9, 0, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(px - inn * 1.6, py - 1.4, 0.9, 0, TAU); c.fill();
+  } else if (!glow) {
     const px = 1.6 * inn + gaze * 0.7, py = -1.2;
     gr = c.createLinearGradient(0, py - 3, 0, py + 6.4);
     gr.addColorStop(0, '#6C3F72'); gr.addColorStop(1, '#8A5A8F');
@@ -652,7 +673,7 @@ function eye(c, side, P, gaze, t, g) {
   }
   c.restore();
   // คิ้วหนาปลายมน วางบนเส้นตัด เลยหางตาออกไปนิด หัวคิ้วจบที่หัวตา
-  c.strokeStyle = COL.ink; c.lineWidth = rage ? 5 : glow ? 4.6 : 4.2; c.lineCap = 'round';
+  c.strokeStyle = COL.ink; c.lineWidth = rage ? 5 : glow ? 4.6 : grudge ? 5.2 : 4.2; c.lineCap = 'round';
   const tail = -10.6 + (1 - k) * 36;   // k = ความกว้างตา (ข้างไกลตอนเฉียง 0.9 → หางคิ้ว -7 · หน้าตรง 1 → -10.6 เท่ากันสองข้าง)
   c.beginPath(); c.moveTo(7 * inn, cutY(7 * inn) - 0.2); c.lineTo(tail * inn, cutY(tail * inn) - 0.5); c.stroke();
   c.restore();
@@ -669,9 +690,53 @@ function drawVein(c, P, g, t) {
   }
   c.restore();
 }
+/** หน้าตอนแพ้: เส้นเครียดบนหน้าผาก · เหงื่อ · น้ำตาแค้นเล็ดไหลอาบแก้ม (ไม่มีเส้นขอบ) */
+function drawGrudgeMarks(c, P, g, t) {
+  if (P.gloom > 0) {                       // หน้ามืดครึ้ม (เงาม่วงนุ่มคลุมหน้าผาก — "เครียดจัด" แบบมังงะ ไม่มีขอบแข็ง)
+    const cx = (g.eyeL[0] + g.eyeR[0]) / 2, cy = g.eyeL[1] - 16, pulse = 0.85 + 0.15 * Math.sin(t * 5);
+    c.save(); c.translate(cx, cy); c.scale(1, 0.5);
+    const gr = c.createRadialGradient(0, 0, 2, 0, 0, 38);
+    gr.addColorStop(0, `rgba(84,38,118,${0.3 * P.gloom * pulse})`); gr.addColorStop(1, 'rgba(84,38,118,0)');
+    c.fillStyle = gr; c.beginPath(); c.arc(0, 0, 38, 0, TAU); c.fill();
+    c.restore();
+  }
+  if (P.sweat >= 0) {                      // เหงื่อหยดใหญ่ไหลลงข้างขมับ
+    const k = (P.sweat % 1.1) / 1.1, x = g.eyeR[0] + 14, y = g.eyeR[1] - 12 + k * 10;
+    c.save(); c.globalAlpha *= Math.sin(k * Math.PI) * 0.95;
+    const gr = c.createLinearGradient(x - 3, y - 6, x + 3, y + 5);
+    gr.addColorStop(0, '#EAF8FF'); gr.addColorStop(1, '#9ED2F2');
+    c.fillStyle = gr; c.beginPath(); c.moveTo(x, y - 6.5); c.quadraticCurveTo(x + 4, y + 1, x, y + 3.6); c.quadraticCurveTo(x - 4, y + 1, x, y - 6.5); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.ellipse(x - 1.1, y - 0.6, 0.8, 1.6, 0.2, 0, TAU); c.fill();
+    c.restore();
+  }
+  if (P.tear >= 0) {                       // น้ำตาแค้นเล็ดจากหางตา: คลอ → หยดไหลอาบแก้มเป็นทาง (วนเป็นจังหวะ)
+    const pool = clamp(P.tear / 0.25);
+    for (const side of [-1, 1]) {
+      const [ex, ey] = side < 0 ? g.eyeL : g.eyeR, ox = ex + side * 6.5, oy = ey + 4.5;
+      c.save();
+      c.fillStyle = `rgba(190,232,255,${0.75 * pool})`; c.beginPath(); c.ellipse(ox - side * 2, oy, 3.6 * pool, 1.7 * pool, 0, 0, TAU); c.fill();
+      const streak = clamp((P.tear - 0.15) / 0.5) * 13;
+      if (streak > 0) {
+        const gr = c.createLinearGradient(0, oy, 0, oy + streak);
+        gr.addColorStop(0, 'rgba(190,232,255,.7)'); gr.addColorStop(1, 'rgba(190,232,255,.15)');
+        c.strokeStyle = gr; c.lineWidth = 2.6; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(ox, oy); c.quadraticCurveTo(ox + side * 1.5, oy + streak * 0.5, ox + side * 0.5, oy + streak); c.stroke();
+      }
+      const k = ((P.tear + (side > 0 ? 0.35 : 0)) % 0.9) / 0.9;
+      if (P.tear > 0.2) {
+        const y = oy + 2 + k * 15, x = ox + side * (0.6 + k * 1.2);
+        c.globalAlpha *= Math.sin(k * Math.PI);
+        c.fillStyle = '#CDEEFF'; c.beginPath(); c.moveTo(x, y - 4); c.quadraticCurveTo(x + 2.8, y + 1, x, y + 2.6); c.quadraticCurveTo(x - 2.8, y + 1, x, y - 4); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(x - 0.8, y, 0.7, 0, TAU); c.fill();
+      }
+      c.restore();
+    }
+  }
+}
 function drawFace(c, P, gaze, t, g) {
   eye(c, -1, P, gaze, t, g); eye(c, 1, P, gaze, t, g);
   drawVein(c, P, g, t);
+  drawGrudgeMarks(c, P, g, t);
   const [mx, my] = g.mouth;
   c.strokeStyle = COL.ink; c.lineWidth = 2.4; c.lineCap = 'round'; c.lineJoin = 'round';
   if (P.mouth === 'open') {
@@ -1102,7 +1167,9 @@ const meltY = (P, x, t) => P.dEdge + 3.2 * Math.sin(x * 0.19 + t * 2.6) + 2 * Ma
 function meltMask(c, P, t) {
   if (P.dEdge == null) return;
   const line = (dy) => { for (let x = -150; x <= 150; x += 4) (x === -150 ? c.moveTo : c.lineTo).call(c, x, meltY(P, x, t) + dy); };
-  c.globalCompositeOperation = 'destination-out';
+  // ต้องตั้งสีทึบเองทุกครั้ง: destination-out ลบตามความทึบของสีที่ใช้ทา — สีค้างจากรอบก่อน (วาบขาวโปร่งตอนโดนตี) เคยทำให้ลบได้แค่ครึ่ง
+  // ตัวเลยค้างเป็นเงาจาง ๆ ทั้งตัวแล้วหายวับตอนจบ (ผู้ใช้ 22 พ.ย.: "แสงไหลผ่านจบแล้วมอนส์ถึงหายวาป")
+  c.globalCompositeOperation = 'destination-out'; c.fillStyle = '#000';
   c.beginPath(); line(0); c.lineTo(150, 140); c.lineTo(-150, 140); c.closePath(); c.fill();
   c.globalCompositeOperation = 'source-atop';
   c.lineJoin = 'round';
@@ -1465,10 +1532,10 @@ function withLayer(ctx, n, alpha, flash, fn, post) {
   c.setTransform(ctx.getTransform());
   fn(c);
   if (post) { c.save(); post(c); c.restore(); }
-  if (flash > 0) {
-    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop';
+  if (flash > 0) {                         // วาบขาว (โดนตี / กำลังกลายเป็นแสง) — save/restore ไม่ให้สีโปร่งค้างไปรอบถัดไป
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop';
     c.fillStyle = `rgba(255,250,255,${flash})`; c.fillRect(0, 0, L.width, L.height);
-    c.globalCompositeOperation = 'source-over';
+    c.restore();
   }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha *= alpha; ctx.drawImage(L, 0, 0); ctx.restore();
 }
@@ -1506,14 +1573,15 @@ export function drawStumpBoss(ctx, x, groundY, s, o = {}) {
   const H = hemGeo(g, t, P), body = bodyPath(g, H);
   const melt = P.dEdge != null ? (c) => meltMask(c, P, t) : null;
   if (!e) drawBehind(ctx, P, g, t);
-  withLayer(ctx, 0, P.fade, flash, (c) => {
+  const glowUp = Math.max(flash, P.lightUp || 0);   // โดนตี (วาบ) หรือกำลังสลายเป็นแสง
+  withLayer(ctx, 0, P.fade, glowUp, (c) => {
     part(c, 'body', (c) => { drawBranch(c); drawUnder(c, H); drawBody(c, g, H, body, P.turn); drawBodyCracks(c, P, body); });
     part(c, 'leaves', (c) => drawLeaves(c, t, P));
     part(c, 'face', (c) => drawFace(c, P, gaze, t, g));
     part(c, 'flame', (c) => drawFlame(c, P, t));
   }, melt);
   part(ctx, 'crystal', (c) => drawCrystal(c, P, o, t, g));
-  withLayer(ctx, 1, P.fade, flash, (c) => {
+  withLayer(ctx, 1, P.fade, glowUp, (c) => {
     part(c, 'armL', (c) => hand(c, g.handL, P.armL, -1, e ? null : body));
     part(c, 'armR', (c) => hand(c, g.handR, P.armR, 1, e ? null : body));
   }, melt);
@@ -1551,23 +1619,93 @@ export function drawStumpBolt(ctx, x, y, t, lane = 'low') {
   ctx.restore();
 }
 /** วงคลื่นพลังบนพื้น (ระเบิดพลัง): วงรีรอบบอส + สันคลื่นด้านหน้าสูง h (ส่วนที่ชน) */
+// ผู้ใช้ 22 พ.ย.: "วงคลื่นที่ออกมายังไม่สวย อัปเกรด" — เดิมเป็นเส้นวงรีบางเส้นเดียว + ก้อนคลื่นชมพู
+// ใหม่: วงพลังบนพื้นเป็นแถบเรืองสามชั้น (ครึ่งหลังจาง ครึ่งหน้าชัด = มีมิติ) + ประกายไฟวิ่งรอบวง + ละอองลอยขึ้นจากวง
+//       ด้านหน้า (ส่วนที่ชน) = กำแพงคลื่นผลึกม้วนหน้า: ไล่ขาว → ชมพู → ม่วง มีแถบแสงขอบหน้า ผลึกแหลมโผล่จากยอด
+//       ฝอยประกายพ่นจากยอด · ฝุ่นดินฟุ้งหน้าคลื่น · เส้นความเร็วลากหลัง — ความสูงที่ชน (h) ตรงกับยอดคลื่นเหมือนเดิม
 export function drawStumpRing(ctx, cx, gy, r, h, t) {
-  const fx = cx - r, a = clamp(1 - (r - 600) / 500);
-  ctx.save(); ctx.globalAlpha *= a;
-  ctx.strokeStyle = 'rgba(255,110,180,.7)'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.ellipse(cx, gy - 2, r, Math.min(26, r * 0.09), 0, 0, TAU); ctx.stroke();
-  let gr = ctx.createRadialGradient(fx + 6, gy - h * 0.5, 2, fx + 6, gy - h * 0.5, h + 14);
-  gr.addColorStop(0, 'rgba(255,120,200,.45)'); gr.addColorStop(1, 'rgba(255,120,200,0)');
-  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(fx + 6, gy - h * 0.5, h + 14, 0, TAU); ctx.fill();
-  gr = ctx.createLinearGradient(0, gy - h, 0, gy);
-  gr.addColorStop(0, '#FFFFFF'); gr.addColorStop(0.35, '#FF8FD0'); gr.addColorStop(1, 'rgba(160,90,255,.85)');
-  ctx.fillStyle = gr;
-  ctx.beginPath(); ctx.moveTo(fx - 16, gy);
-  ctx.bezierCurveTo(fx - 11, gy - h * 0.7, fx - 4, gy - h, fx + 4, gy - h);
-  ctx.bezierCurveTo(fx + 16, gy - h, fx + 22, gy - h * 0.4, fx + 40, gy);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#FFFFFF';
-  for (let i = 0; i < 4; i++) star4(ctx, fx + 2 + i * 7, gy - h - 4 - ((t * 60 + i * 9) % 14), 2.2, 0.8 - i * 0.15);
+  const fx = cx - r, a = clamp(1 - (r - 600) / 500), ry = Math.min(30, r * 0.1), y0 = gy - 2;
+  if (a <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= a; ctx.lineCap = 'round';
+  // ── วงพลังบนพื้น ──
+  const fill = ctx.createRadialGradient(cx, y0, Math.max(1, r * 0.7), cx, y0, r);
+  fill.addColorStop(0, 'rgba(255,190,230,0)'); fill.addColorStop(1, 'rgba(255,190,230,.16)');
+  ctx.save(); ctx.translate(cx, y0); ctx.scale(1, ry / r); ctx.translate(-cx, -y0);
+  ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(cx, y0, r, 0, TAU); ctx.fill();
+  ctx.restore();
+  for (const [s0, s1, k] of [[Math.PI, TAU, 0.45], [0, Math.PI, 1]]) {   // ครึ่งหลัง (บน) จาง · ครึ่งหน้า (ล่าง) ชัด
+    for (const [w, col, al] of [[18, '255,120,196', 0.22], [9, '255,182,226', 0.55], [3.2, '255,252,250', 0.95]]) {
+      ctx.strokeStyle = `rgba(${col},${al * k})`; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.ellipse(cx, y0, r, ry, 0, s0, s1); ctx.stroke();
+    }
+  }
+  // ประกายไฟวิ่งรอบวง (เส้นสั้นสว่าง) + ละอองลอยขึ้นจากวงฝั่งหน้า
+  for (let i = 0; i < 10; i++) {
+    const an = (i / 10) * TAU + t * 2.2 + r * 0.004, front = Math.sin(an) > 0;
+    ctx.strokeStyle = `rgba(255,248,220,${front ? 0.95 : 0.4})`; ctx.lineWidth = front ? 3 : 2;
+    ctx.beginPath(); ctx.ellipse(cx, y0, r, ry, 0, an, an + 0.08); ctx.stroke();
+  }
+  ctx.fillStyle = '#FFF4FB';
+  for (let i = 0; i < 14; i++) {
+    const an = (i / 14) * Math.PI + 0.1, u = (r * 0.01 + i * 0.37 + t * 1.3) % 1;
+    star4(ctx, cx + Math.cos(an) * r, y0 + Math.sin(an) * ry - u * 26, 2 + (i % 3), Math.sin(u * Math.PI) * 0.85);
+  }
+  // ── กำแพงคลื่นด้านหน้า (ส่วนที่ชน) ──
+  const top = gy - h - 3, lip = fx - 4;
+  let gr = ctx.createRadialGradient(fx + 8, gy - h * 0.55, 2, fx + 8, gy - h * 0.55, h + 34);
+  gr.addColorStop(0, 'rgba(255,150,214,.55)'); gr.addColorStop(1, 'rgba(255,150,214,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(fx + 8, gy - h * 0.55, h + 34, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,236,.45)'; ctx.lineWidth = 2;    // เส้นความเร็วลากหลังคลื่น
+  for (let i = 0; i < 4; i++) { const y = gy - 6 - i * (h / 4); ctx.beginPath(); ctx.moveTo(fx + 40 + i * 6, y); ctx.lineTo(fx + 76 + i * 16 + (i % 2) * 20, y); ctx.stroke(); }
+  /** ลูกคลื่นพลังหนึ่งลูก: หน้าชันโค้งเว้า → ยอดมน → หลังลาด · ไล่ขาว-ชมพู-ม่วง · ฟองแสงเป็นลอนบนยอด · เส้นพลังในเนื้อคลื่น */
+  const crest = (bx, hh, al) => {
+    const tp = gy - hh - 3;
+    const p = new Path2D();
+    p.moveTo(bx - 20, gy);
+    p.bezierCurveTo(bx - 21, gy - hh * 0.5, bx - 15, tp + 3, bx - 3, tp);
+    p.bezierCurveTo(bx + 9, tp - 3, bx + 22, tp + 3, bx + 30, gy - hh * 0.55);
+    p.bezierCurveTo(bx + 37, gy - hh * 0.28, bx + 45, gy - 3, bx + 58, gy);
+    p.closePath();
+    ctx.save(); ctx.globalAlpha *= al;
+    let g = ctx.createLinearGradient(0, tp - 4, 0, gy);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.28, '#FFC6E8'); g.addColorStop(0.62, '#EB8ED8'); g.addColorStop(1, 'rgba(146,96,236,.92)');
+    ctx.fillStyle = g; ctx.fill(p);
+    ctx.save(); ctx.clip(p);
+    g = ctx.createLinearGradient(bx - 22, 0, bx + 58, 0);                 // ขอบหน้าสว่าง · หลังคลื่นมีเงาม่วงลึก
+    g.addColorStop(0, 'rgba(255,255,255,.8)'); g.addColorStop(0.3, 'rgba(255,255,255,0)'); g.addColorStop(0.72, 'rgba(110,60,190,0)'); g.addColorStop(1, 'rgba(110,60,190,.4)');
+    ctx.fillStyle = g; ctx.fillRect(bx - 26, tp - 8, 90, hh + 14);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.6;        // เส้นพลังวิ่งขึ้นในเนื้อคลื่น
+    for (let i = 0; i < 3; i++) {
+      const x = bx - 8 + i * 12, ph = (t * 3 + i * 0.4) % 1;
+      ctx.globalAlpha = al * Math.sin(ph * Math.PI);
+      ctx.beginPath(); ctx.moveTo(x, gy - 2); ctx.quadraticCurveTo(x - 6, gy - hh * 0.5, x - 2, gy - hh * (0.4 + 0.5 * ph)); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,.92)';                              // ฟองแสงเป็นลอนตามยอด
+    for (let i = 0; i < 6; i++) { const x = bx - 13 + i * 6.5, y = tp + 1.5 + i * i * 0.55, rr = (4.6 - i * 0.45) * (0.9 + 0.1 * Math.sin(t * 9 + i)); ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill(); }
+    ctx.restore();
+    return tp;
+  };
+  crest(fx + 30, h * 0.62, 0.7);                                         // ลูกเล็กตามหลัง (ไม่ชน แค่ภาพ)
+  crest(fx, h, 1);                                                       // ลูกหน้า = ส่วนที่ชน (สูง h)
+  // ผลึกแหลมโผล่จากยอดคลื่น (เหลี่ยมสว่าง/มืด)
+  for (const [dx, hh, ww, lean] of [[-2, 15, 4.5, -0.4], [7, 11, 3.6, 0.1], [-9, 9, 3.2, -0.8]]) {
+    ctx.save(); ctx.translate(fx + dx, top + 2); ctx.rotate(lean);
+    ctx.fillStyle = '#F6EFFF'; ctx.beginPath(); ctx.moveTo(-ww, 0); ctx.lineTo(0, -hh); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#B394F0'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -hh); ctx.lineTo(ww, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // ฝอยประกายพ่นจากยอด (ลอยไปหลัง) + ฝุ่นดินฟุ้งหน้าคลื่น
+  for (let i = 0; i < 7; i++) {
+    const u = (t * 2.4 + i / 7) % 1, x = lip + u * (24 + i * 4), y = top - 4 - Math.sin(u * Math.PI) * (12 + (i % 3) * 6);
+    ctx.fillStyle = i % 2 ? '#FFFFFF' : '#FFE3F4'; star4(ctx, x, y, 2.6 - u * 1.4, 1 - u);
+  }
+  for (let i = 0; i < 4; i++) {
+    const u = (t * 1.8 + i * 0.27) % 1, x = fx - 22 - u * 26 - i * 4, y = gy - 4 - u * 10;
+    const g2 = ctx.createRadialGradient(x, y, 0.5, x, y, 6 + u * 8);
+    g2.addColorStop(0, `rgba(236,214,246,${0.6 * (1 - u)})`); g2.addColorStop(1, 'rgba(236,214,246,0)');
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(x, y, 6 + u * 8, 0, TAU); ctx.fill();
+  }
   ctx.restore();
 }
 /** ก้อนหมอกหลับใหล (มี zZ ลอย) */
@@ -1583,38 +1721,104 @@ export function drawStumpFog(ctx, x, y, r, t, a = 1) {
   for (let i = 0; i < 2; i++) { const u = (t * 0.7 + i * 0.5) % 1; ctx.globalAlpha = a * Math.sin(u * Math.PI); ctx.fillText(i ? 'z' : 'Z', r * 0.3 + u * 10 + i * 6, -r * 0.7 - u * 16); }
   ctx.restore();
 }
-/** ผลึกที่ตกลงมา (ฝนผลึก) */
+// ── ฝนผลึก: เม็ดผลึกเจียระไน (ไม่มีเส้นขอบ · นูนด้วยหน้าเหลี่ยมสว่าง/มืด + เหลือบรุ้งตามเวลา) ──
+/** ขนาดผลึกปักพื้น (หน้าเกมใช้ทำกล่องชน: แคบกว่าภาพนิดหน่อย ให้เฉียดแล้วรอด) */
+export const STUMP_RAIN = { spikeH: 46, hitW: 24, hitH: 36, fallR: 15, fallTip: 28 };
+const RAIN_LIT = [244, 251, 255], RAIN_MID = [206, 190, 255], RAIN_DEEP = [150, 116, 232], RAIN_PINK = [255, 140, 206];
+const rgbS = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+/** แท่งผลึกหกเหลี่ยมยืนบนจุด (0,0) ยอดชี้ขึ้น สูง h กว้างครึ่งหนึ่ง w · hue = เหลือบรุ้ง */
+function rainPrism(c, w, h, hue, a = 1) {
+  const sh = -h * 0.7, irid = pastelHue(hue, 0.7, 0.86);
+  const face = (pts, top, bot) => {
+    const gr = c.createLinearGradient(0, -h, 0, 0);
+    gr.addColorStop(0, top); gr.addColorStop(1, bot);
+    c.fillStyle = gr; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+    c.closePath(); c.fill();
+  };
+  c.save(); c.globalAlpha *= a;
+  const L = -w, R = w, mL = -w * 0.22, mR = w * 0.34;
+  // หน้าซ้าย (รับแสง) · หน้ากลาง (เหลือบ) · หน้าขวา (เงา ไล่ชมพูที่โคน)
+  face([[L, 0], [L * 0.9, sh], [0, -h], [mL, sh + h * 0.04], [mL * 1.1, 0]], rgbS(RAIN_LIT), rgbS(mixRGB(RAIN_MID, irid, 0.35)));
+  face([[mL * 1.1, 0], [mL, sh + h * 0.04], [0, -h], [mR, sh + h * 0.02], [mR * 0.95, 0]], rgbS(mixRGB(RAIN_MID, irid, 0.5)), rgbS(mixRGB(RAIN_DEEP, RAIN_PINK, 0.25)));
+  face([[mR * 0.95, 0], [mR, sh + h * 0.02], [0, -h], [R * 0.9, sh], [R, 0]], rgbS(mixRGB(RAIN_DEEP, irid, 0.2)), rgbS(mixRGB(RAIN_DEEP, RAIN_PINK, 0.6)));
+  // ยอด: เหลี่ยมหัวสว่างกว่า (แสงมาจากซ้ายบน)
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.moveTo(L * 0.9, sh); c.lineTo(0, -h); c.lineTo(mL, sh + h * 0.04); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.moveTo(mL, sh + h * 0.04); c.lineTo(0, -h); c.lineTo(mR, sh + h * 0.02); c.closePath(); c.fill();
+  // แกนเรืองชมพูข้างใน (ลึกจากโคน)
+  let gr = c.createRadialGradient(w * 0.1, -h * 0.22, 1, w * 0.1, -h * 0.22, h * 0.42);
+  gr.addColorStop(0, rgbS(RAIN_PINK, 0.42)); gr.addColorStop(1, rgbS(RAIN_PINK, 0));
+  c.fillStyle = gr; c.beginPath(); c.moveTo(L, 0); c.lineTo(L * 0.9, sh); c.lineTo(0, -h); c.lineTo(R * 0.9, sh); c.lineTo(R, 0); c.closePath(); c.fill();
+  // เส้นแสงสะท้อนบนสันซ้าย + จุดวาวโคน
+  c.fillStyle = 'rgba(255,255,255,.75)';
+  c.beginPath(); c.moveTo(L * 0.78, -h * 0.08); c.lineTo(L * 0.7, sh * 0.96); c.lineTo(-w * 0.12, -h * 0.9); c.lineTo(L * 0.52, sh * 0.9); c.lineTo(L * 0.6, -h * 0.1); c.closePath(); c.fill();
+  c.restore();
+}
+/** ผลึกที่ตกลงมา (ฝนผลึก): ผลึกยาวปลายแหลมชี้ลง + หางแสงด้านบน + ประกายร่วงตาม · rot = เวลาเดิน (ส่าย/เหลือบ) */
 export function drawStumpShard(ctx, x, y, rot) {
+  const t = rot / 12, L = 46, w = 12.5, tip = STUMP_RAIN.fallTip;
   ctx.save(); ctx.translate(x, y);
-  const gr = ctx.createRadialGradient(0, 0, 1, 0, 0, 18);
-  gr.addColorStop(0, 'rgba(240,220,255,.6)'); gr.addColorStop(1, 'rgba(214,188,255,0)');
-  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, 18, 0, TAU); ctx.fill();
-  drawGemBit(ctx, 0, 0, 11, rot, 1);
-  ctx.restore();
-}
-/** ผลึกปักพื้น (ต้องกระโดดข้าม) · k = เด้งตอนปัก 0..1 */
-export function drawStumpSpike(ctx, x, gy, k, t) {
-  const sc = pop(k) * ease(Math.min(1, k * 2)) * 1.15;
-  ctx.save(); ctx.translate(x, gy); ctx.scale(sc, sc);
-  const gr0 = ctx.createRadialGradient(0, -4, 1, 0, -4, 26);
-  gr0.addColorStop(0, `rgba(255,110,180,${0.4 + 0.15 * Math.sin(t * 4)})`); gr0.addColorStop(1, 'rgba(255,110,180,0)');
-  ctx.fillStyle = gr0; ctx.beginPath(); ctx.ellipse(0, -6, 26, 18, 0, 0, TAU); ctx.fill();
-  for (const [dx, h, w, lean] of [[-7, 17, 6, -0.3], [7, 14, 5.5, 0.35], [0, 28, 8, 0]]) {
-    ctx.save(); ctx.translate(dx, 0); ctx.rotate(lean);
-    const gr = ctx.createLinearGradient(-w, -h, w, 0);
-    gr.addColorStop(0, '#E6FAFF'); gr.addColorStop(0.45, '#B28AFF'); gr.addColorStop(1, '#FF6FBF');
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(-w, 0); ctx.lineTo(-w * 0.8, -h * 0.72); ctx.lineTo(0, -h); ctx.lineTo(w * 0.8, -h * 0.72); ctx.lineTo(w, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.moveTo(-w * 0.8, -h * 0.72); ctx.lineTo(0, -h); ctx.lineTo(-w * 0.15, -h * 0.2); ctx.lineTo(-w * 0.6, -h * 0.1); ctx.closePath(); ctx.fill();
-    ctx.restore();
+  // หางแสง (ยาวขึ้นด้านบน) + ออร่า
+  let gr = ctx.createLinearGradient(0, -tip - 84, 0, 0);
+  gr.addColorStop(0, 'rgba(206,180,255,0)'); gr.addColorStop(0.7, 'rgba(226,206,255,.5)'); gr.addColorStop(1, 'rgba(255,236,252,.78)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(-w * 1.05, -6); ctx.quadraticCurveTo(-w * 0.4, -tip - 40, 0, -tip - 84); ctx.quadraticCurveTo(w * 0.4, -tip - 40, w * 1.05, -6); ctx.closePath(); ctx.fill();
+  gr = ctx.createRadialGradient(0, 2, 2, 0, 2, 34);
+  gr.addColorStop(0, 'rgba(255,240,252,.78)'); gr.addColorStop(0.5, 'rgba(236,206,255,.38)'); gr.addColorStop(1, 'rgba(214,188,255,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 2, 34, 0, TAU); ctx.fill();
+  // ประกายร่วงตามหาง
+  ctx.fillStyle = '#FFFFFF';
+  for (let i = 0; i < 4; i++) {
+    const u = (t * 2.4 + i * 0.25) % 1;
+    star4(ctx, Math.sin(i * 2.7 + t * 3) * w * 0.9, -tip - 6 - u * 70, 3 - i * 0.45, (1 - u) * 0.95);
   }
+  // ตัวผลึก: ส่ายนิด ๆ · หน้าบนสั้น (ยอดหลัง) หน้าล่างยาว (ปลายแหลมชี้พื้น)
+  ctx.rotate(Math.sin(t * 5) * 0.09);
+  ctx.save(); ctx.scale(1, -1); rainPrism(ctx, w, tip, t * 40 + x * 0.3); ctx.restore();   // ครึ่งล่าง ชี้ลง
+  ctx.save(); ctx.translate(0, 0.5); rainPrism(ctx, w, L - tip, t * 40 + x * 0.3 + 60); ctx.restore();   // ครึ่งบน
+  // ประกายที่ปลาย
+  ctx.fillStyle = '#FFFFFF'; star4(ctx, 0, tip + 2, 4 + Math.sin(t * 14) * 1.2, 0.9);
   ctx.restore();
 }
-/** วงเตือนบนพื้น ก่อนผลึกตก · k = 0..1 ใกล้ตก */
+/** ผลึกปักพื้น (ต้องกระโดดข้าม): กอผลึก 5 แท่ง แท่งกลางสูงสุด + ไฟเรืองที่โคน + เศษผลึกบนพื้น · k = เด้งตอนปัก 0..1 */
+export function drawStumpSpike(ctx, x, gy, k, t) {
+  const sc = pop(k) * ease(Math.min(1, k * 2)), H = STUMP_RAIN.spikeH, hue = t * 30 + x * 0.25;
+  ctx.save(); ctx.translate(x, gy);
+  // แสงตกพื้น (ไม่ยืดตามเด้ง ให้พื้นนิ่ง)
+  const ga = (0.45 + 0.15 * Math.sin(t * 4)) * ease(k * 1.5);
+  let gr = ctx.createRadialGradient(0, -2, 2, 0, -2, 40);
+  gr.addColorStop(0, `rgba(255,150,210,${ga})`); gr.addColorStop(0.6, `rgba(196,160,255,${ga * 0.45})`); gr.addColorStop(1, 'rgba(196,160,255,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(0, -2, 40, 11, 0, 0, TAU); ctx.fill();
+  // เศษผลึกบนพื้น
+  for (const [dx, r, ro] of [[-24, 3.4, 0.6], [21, 3, -0.5], [-15, 2.2, 1.1], [28, 2, 0.2]]) drawGemBit(ctx, dx, -r * 0.6, r, ro, ease(k * 1.4));
+  ctx.beginPath(); ctx.rect(-60, -H * 1.6, 120, H * 1.6 + 3); ctx.clip();   // โคนแท่งเอียงไม่จมทะลุพื้น
+  ctx.scale(sc, sc);
+  // กอผลึก (หลัง → หน้า): [dx, สูง, กว้างครึ่ง, เอียง]
+  const C = [[-11, H * 0.6, 7.5, -0.34], [12, H * 0.52, 7, 0.4], [0, H, 10.5, 0.02], [-19, H * 0.3, 5, -0.7], [19, H * 0.26, 4.5, 0.75]];
+  C.forEach(([dx, h, w, lean], i) => { ctx.save(); ctx.translate(dx, 1); ctx.rotate(lean); rainPrism(ctx, w, h, hue + i * 47); ctx.restore(); });
+  // ประกายวิบวับที่ยอดแท่งกลาง + ข้าง
+  ctx.fillStyle = '#FFFFFF';
+  const tw = 0.5 + 0.5 * Math.sin(t * 5.5);
+  star4(ctx, -1.5, -H + 2, 3 + tw * 3.2, 0.4 + tw * 0.55);
+  star4(ctx, -14 - H * 0.12, -H * 0.55, 1.6 + (1 - tw) * 1.8, 0.3 + (1 - tw) * 0.5);
+  ctx.restore();
+}
+/** วงเตือนบนพื้น ก่อนผลึกตก · k = 0..1 ใกล้ตก (วงหดเข้า + เงาผลึกเข้มขึ้น) */
 export function drawStumpMarker(ctx, x, gy, k, t) {
   ctx.save();
-  ctx.globalAlpha = 0.4 + 0.45 * Math.abs(Math.sin(t * 18));
-  ctx.fillStyle = `rgba(255,110,156,${0.12 + 0.18 * k})`; ctx.beginPath(); ctx.ellipse(x, gy - 2, 10 + 14 * k, 4 + 3 * k, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#FF6E9C'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, gy - 2, 10 + 14 * k, 4 + 3 * k, 0, 0, TAU); ctx.stroke();
+  const rx = 34 - 10 * k, ry = 8 - 1.5 * k;
+  // เงาผลึกที่กำลังตก (โตขึ้นเรื่อย ๆ)
+  let gr = ctx.createRadialGradient(x, gy - 2, 1, x, gy - 2, 10 + 16 * k);
+  gr.addColorStop(0, `rgba(150,90,200,${0.12 + 0.3 * k})`); gr.addColorStop(1, 'rgba(150,90,200,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, gy - 2, 10 + 16 * k, 3 + 4 * k, 0, 0, TAU); ctx.fill();
+  // วงชมพูกะพริบ
+  ctx.globalAlpha = 0.45 + 0.45 * Math.abs(Math.sin(t * 16));
+  ctx.fillStyle = `rgba(255,110,170,${0.1 + 0.16 * k})`; ctx.beginPath(); ctx.ellipse(x, gy - 2, rx, ry, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#FF78B0'; ctx.lineWidth = 3; ctx.setLineDash([7, 6]); ctx.lineDashOffset = -t * 40;
+  ctx.beginPath(); ctx.ellipse(x, gy - 2, rx, ry, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  // ลูกศรเล็กชี้ลง (ตกตรงนี้)
+  ctx.fillStyle = '#FFE6F3';
+  const ay = gy - 22 - 6 * Math.abs(Math.sin(t * 8));
+  ctx.beginPath(); ctx.moveTo(x - 6, ay); ctx.lineTo(x + 6, ay); ctx.lineTo(x, ay + 7); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 /** เส้นเตือนแนวลูกแสง (ก่อนยิง) · a = 0..1 ใกล้ยิง */

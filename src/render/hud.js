@@ -183,7 +183,8 @@ export function drawHUD(ctx, game) {
   drawCombo(ctx, game);
   drawHearts(ctx, game);
   drawMission(ctx, game);
-  drawRunBar(ctx, game);
+  // หน้าทดลอง (gameplay-lab) ใช้ช่องนี้วางแถบความหวังตอนสู้บอส → ส่ง runBar: false · เกมไม่ได้ส่ง = วาดตามเดิม
+  if (game.runBar !== false) drawRunBar(ctx, game);
   drawHeartFx(ctx, game, ext.top);
 
   if (game.notice > 0) drawNotice(ctx, game);
@@ -402,7 +403,8 @@ function drawNotice(ctx, game) {
   const label = game.noticeText || 'ขวดพลังมาแล้ว! กระโดดเก็บให้ทัน';
   const theme = label.startsWith('ผ่านด่าน') ? 'clear' : 'info';
   // เด้งเข้าช่วง 16 เฟรมแรกของข้อความ (notice นับถอยหลังจากค่าตั้งต้น)
-  const start = theme === 'clear' ? SCENE.noticeFrames : Math.max(game.notice, 90);
+  // noticeFrom = ค่าตั้งต้นของตัวนับ (หน้าทดลองตั้งป้ายนานกว่า 90 เฟรม — ไม่งั้นป้ายค้างขนาด 0 จนนับลงถึง 90) · เกมไม่ได้ส่ง = เหมือนเดิม
+  const start = game.noticeFrom || (theme === 'clear' ? SCENE.noticeFrames : Math.max(game.notice, 90));
   drawCandyPill(ctx, t(label), BANNER_CLEAR + 8, 32, theme, game.tick, { pop: Math.min(1, (start - game.notice) / 16) });
 
   ctx.restore();

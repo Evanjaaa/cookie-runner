@@ -56,7 +56,7 @@ import { homeSky } from './home-time.js';
 const HOME_SCENE = 'riverside';
 const drawHomeScene = HOME_SCENE === 'riverside' ? drawRiverside : drawKingdom;
 import { setCatEdgeScale } from './render/entities.js';
-import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2, useCat2Run } from './render/cat2.js';
+import { CAT2, drawCat2, drawCatAuto, cat2Act, useCat2, useCat2Run, MOJI_STYLE, mojiSkin } from './render/cat2.js';
 import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K, RUN_SIZE } from './render/cat2-run.js';
 import { drawTrail } from './render/cat2.js';
 import { LIGHTS } from './render/props/kit.js';
@@ -3755,7 +3755,7 @@ export class Game {
     // น้องแบบใหม่ (ทดลอง เฉพาะหน้าแรก) — ปิดได้ที่ CAT2.home ใน render/cat2.js
     const feet = GROUND_Y - hop;
     const body = (g) => {
-      if (CAT2.home) this.drawHomeCat(g, x, feet, catScale, getSkin(), t, this.idlePose);
+      if (CAT2.home) this.drawHomeCat(g, x, feet, catScale, MOJI_STYLE.home ? mojiSkin(getSkin()) : getSkin(), t, this.idlePose);   // หน้าแรก: น้องส้มสไตล์โมจิ (ลองในเกม)
       else drawCatPose(g, x, feet, catScale, getSkin(), t, this.idlePose);
     };
     if (homeLit) {

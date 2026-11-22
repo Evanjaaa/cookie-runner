@@ -8,7 +8,7 @@
 // สูตรกล้อง/ขนาด/ฉาก/เงา ยกมาจาก cat-lab.html (render / camMatrix) ให้ตรงกับที่ผู้ใช้ตรวจในหน้าทดสอบ
 
 import { drawShaded } from './render/shade.js';
-import { drawCat2, drawCatAuto, cat2Backdrop, drawCat2Backdrop, cat2Intro, cat2Act } from './render/cat2.js';
+import { drawCat2, drawCatAuto, cat2Backdrop, drawCat2Backdrop, cat2Intro, cat2Act, MOJI_STYLE, mojiSkin } from './render/cat2.js';
 import { E, mixShape } from './home-moves.js';
 
 export const OD_SCALE = 2.6;   // ขนาดน้องเดียวกับหน้าทดสอบ (SCALE ใน cat-lab.html)
@@ -145,7 +145,7 @@ export function drawOdScene(ctx, W, H, st, geo = odGeo(W, H)) {
   ctx.globalAlpha = 1;
   if (st.mode === 'idle' && skin.shade) drawShaded(ctx, (g) => drawCatAuto(g, 0, 0, OD_SCALE * sk, { ...skin, id: 'orange', shade: false }, t, null, { fit: 1 }));   // น้อง ??? = เงาม่วงนุ่ม
   else if (st.mode === 'idle') drawCatAuto(ctx, 0, 0, OD_SCALE * sk, skin, t, null, { fit: 1 });
-  else drawCat2(ctx, 0, -lift, OD_SCALE, skin, t, idleArg);
+  else drawCat2(ctx, 0, -lift, OD_SCALE, MOJI_STYLE.ui ? mojiSkin(skin) : skin, t, idleArg);   // ท่าเปิดตัว/ท่าแอ็ค: น้องส้มสไตล์โมจิ
   ctx.setTransform(base);
 }
 
