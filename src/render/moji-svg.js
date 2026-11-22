@@ -13,11 +13,14 @@
 // ─────────────────────────────────────────────────────────────
 import MOJI_SVG from './cat2/cat-orange-front.svg?raw';
 import MOJI_BACK_SVG from './cat2/cat-orange-back.svg?raw';
+import MOJI_Q3_SVG from './cat2/cat-orange-perspective.svg?raw';
 
 /** ไฟล์ใหม่ → พิกัดไฟล์เดิม (วัดจากจุดหมุนหู/ไหล่ซ้ายที่ตรงกันพอดี) */
 export const MOJI_OX = 88, MOJI_OY = 40.449;
 /** ไฟล์ด้านหลัง (cat-orange-back 460.986 × 621.551) เลื่อนจากไฟล์เดิม (−51.014, −40.449) — วัดจากจุดหมุนหู/ไหล่ */
-const FILES = { front: { text: MOJI_SVG, ox: MOJI_OX, oy: MOJI_OY, root: 'cat-front' }, back: { text: MOJI_BACK_SVG, ox: 51.014, oy: 40.449, root: 'cat-back' } };
+const FILES = { front: { text: MOJI_SVG, ox: MOJI_OX, oy: MOJI_OY, root: 'cat-front' }, back: { text: MOJI_BACK_SVG, ox: 51.014, oy: 40.449, root: 'cat-back' },
+  // มุมเฉียงขวา (cat-orange-perspective 22 พ.ย. — ไฟล์ส่งออกที่โมจิแก้ · น้องหัน yaw 0.75) — ไฟล์ใหญ่ วางห่างจากมุม (−445.44, −413.351)
+  q3: { text: MOJI_Q3_SVG, ox: -445.44, oy: -413.351, root: 'cat-orange-perspective' } };
 // ระยะเลื่อนของไฟล์ที่กำลังอ่าน (buildModel ตั้งค่าก่อนอ่าน — อ่านทีละไฟล์ ไม่ซ้อนกัน)
 let OX = MOJI_OX, OY = MOJI_OY;
 
@@ -150,7 +153,7 @@ function buildModel(text, rootId = 'cat-front') {
   const own = (el) => {
     const cls = new Set((el.getAttribute('class') || '').split(/\s+/).filter(Boolean));
     const p = {};
-    for (const a of [...INHERIT, 'opacity', 'mask']) if (el.hasAttribute(a)) p[a] = el.getAttribute(a);
+    for (const a of [...INHERIT, 'opacity', 'mask', 'clip-path']) if (el.hasAttribute(a)) p[a] = el.getAttribute(a);
     for (const r of css) if (r.classes.some((c) => cls.has(c))) Object.assign(p, r.props);
     return p;
   };
@@ -188,12 +191,36 @@ function buildModel(text, rootId = 'cat-front') {
     const m = /^url\(#([^)]+)\)$/.exec(v);
     return m ? grad(m[1]) || null : v;
   };
-  const shapeCmds = (el) => {
-    if (el.tagName === 'path') return shiftCmds(parseD(el.getAttribute('d') || ''));
-    if (el.tagName === 'circle') return shiftCmds(circleCmds(+el.getAttribute('cx'), +el.getAttribute('cy'), +el.getAttribute('r')));
+  // transform บนชิ้น (วงรีหมุนในไฟล์มุมเฉียง) — ใช้ก่อนเลื่อนพิกัด
+  const withXf = (el, cmds) => {
+    const tr = el.getAttribute('transform');
+    if (!tr || !cmds) return cmds;
+    const m = parseTransform(tr);
+    return cmds.map((q) => { if (q[0] === 'Z') return q; const o = [q[0]]; for (let j = 1; j < q.length; j += 2) { const p = m.transformPoint(new DOMPoint(q[j], q[j + 1])); o.push(p.x, p.y); } return o; });
+  };
+  const shapeCmds = (el) => shiftCmds0(withXf(el, rawCmds(el)));
+  const shiftCmds0 = (c) => (c ? shiftCmds(c) : null);
+  const rawCmds = (el) => {
+    if (el.tagName === 'path') return parseD(el.getAttribute('d') || '');
+    if (el.tagName === 'rect') {
+      const x = +el.getAttribute('x') || 0, y = +el.getAttribute('y') || 0, w = +el.getAttribute('width'), h = +el.getAttribute('height');
+      return [['M', x, y], ['L', x + w, y], ['L', x + w, y + h], ['L', x, y + h], ['Z']];
+    }
+    if (el.tagName === 'polygon' || el.tagName === 'polyline') {
+      const n = (el.getAttribute('points') || '').trim().split(/[\s,]+/).map(Number);
+      const o = [];
+      for (let j = 0; j + 1 < n.length; j += 2) o.push([j ? 'L' : 'M', n[j], n[j + 1]]);
+      if (el.tagName === 'polygon') o.push(['Z']);
+      return o;
+    }
+    return rawCmds0(el);
+  };
+  const rawCmds0 = (el) => {
+    if (el.tagName === 'path') return parseD(el.getAttribute('d') || '');
+    if (el.tagName === 'circle') return circleCmds(+el.getAttribute('cx'), +el.getAttribute('cy'), +el.getAttribute('r'));
     if (el.tagName === 'ellipse') {
       const rx = +el.getAttribute('rx'), ry = +el.getAttribute('ry'), ex = +el.getAttribute('cx'), ey = +el.getAttribute('cy');
-      return shiftCmds(circleCmds(0, 0, 1).map((q) => (q[0] === 'Z' ? q : q.map((v, j) => (j === 0 ? v : j % 2 ? ex + v * rx : ey + v * ry)))));
+      return circleCmds(0, 0, 1).map((q) => (q[0] === 'Z' ? q : q.map((v, j) => (j === 0 ? v : j % 2 ? ex + v * rx : ey + v * ry))));
     }
     return null;
   };
@@ -201,7 +228,7 @@ function buildModel(text, rootId = 'cat-front') {
     const ops = [];
     for (const c of el.children) {
       const tag = c.tagName;
-      if (tag === 'defs' || tag === 'mask' || tag === 'style' || tag === 'title') continue;
+      if (tag === 'defs' || tag === 'mask' || tag === 'style' || tag === 'title' || tag === 'clipPath') continue;
       const p = own(c);
       const sty = { ...inh };
       for (const a of INHERIT) if (p[a] != null) sty[a] = p[a];
@@ -223,10 +250,11 @@ function buildModel(text, rootId = 'cat-front') {
         };
       }
       // หน้ากาก (mask) ของแบบ = รูปทรงที่ตัดอุ้งเท้าครีมให้อยู่ในขา/แขน — ใช้เป็นเส้นตัด (clip)
-      const mk = /^url\(#([^)]+)\)$/.exec(p.mask || '');
+      // clip-path (ไฟล์มุมเฉียง — ส่งออกจาก Figma ซ้อนเส้นตัดหลายชั้น) ใช้แบบเดียวกับหน้ากาก
+      const mk = /^url\(#([^)]+)\)$/.exec(p.mask || p['clip-path'] || '');
       const mEl = mk && doc.getElementById(mk[1]);
       if (mEl) {
-        const clipCmds = [...mEl.querySelectorAll('path, circle, ellipse')].map(shapeCmds).filter(Boolean);
+        const clipCmds = [...mEl.querySelectorAll('path, circle, ellipse, rect, polygon')].map(shapeCmds).filter(Boolean);
         ops.push({ kind: 'clip', clipCmds, clip: clipCmds.reduce((pp, q) => buildPath(q, null, pp), new Path2D()), ops: [op] });
       } else ops.push(op);
     }
@@ -264,7 +292,7 @@ function buildModel(text, rootId = 'cat-front') {
   // ปาก (เส้น ω) — จุดกลาง/ขอบบน-ล่าง ไว้วางปากอ้า
   const mouthOp = findOp(parts.face || [], 'mouth');
   let mouth = null;
-  if (mouthOp) {
+  if (mouthOp?.cmds) {   // ไฟล์มุมเฉียง: 'mouth' เป็นกลุ่ม (ไม่ใช่เส้นเดี่ยว) — ไม่ต้องใช้จุดปาก
     const pts = mouthOp.cmds.filter((q) => q[0] !== 'Z').flatMap((q) => { const o = []; for (let j = 1; j < q.length; j += 2) o.push([q[j], q[j + 1]]); return o; });
     const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
     mouth = { x: (Math.min(...xs) + Math.max(...xs)) / 2, top: Math.min(...ys), bottom: Math.max(...ys), w: Math.max(...xs) - Math.min(...xs) };
