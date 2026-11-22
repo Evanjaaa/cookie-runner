@@ -144,6 +144,8 @@
             <button data-draw="new" title="ตัวที่เกมใช้ตอนนี้ (น้องแบบใหม่)">ตัวใหม่</button>
             <button data-draw="old" title="ตัววาดเดิม (ลูกแมว/แมวระบายสีในเกมยังใช้ตัวนี้)">ตัวเดิม</button>
             <button data-draw="both">เทียบคู่</button>
+            <button data-draw="moji" title="ตัวใหม่ + สไตล์โมจิ (ลายเส้น/สีใหม่จากนักวาด — ยังไม่เข้าเกม)">✨ เดิม+โมจิ</button>
+            <button data-draw="mojipair" title="เทียบ ตัวใหม่ (ในเกม) กับ เดิม+โมจิ">ใหม่ ↔ โมจิ</button>
           </div>
           <button class="pill" id="trailBtn" title="ภาพซ้อนเห็นเส้นทางกระโดด (ปุ่ม T)">👻 ภาพซ้อน</button>
         </div>
@@ -429,6 +431,10 @@
      * ไว้ดูขนาด/ตำแหน่งเท้า/ความสูงเทียบกับตัวเดิม ก่อนออกแบบท่าวิ่งจริง
      */
     const NEW_K = RUN_K;   // ขนาดเดียวกับในเกม (cat2-run.js: สูงเท่าตัวเดิม × 1.2 — ผู้ใช้ขอขยาย 18 ต.ค.)
+    // สไตล์โมจิ (22 พ.ย.): ตัวใหม่เดิมทุกอย่าง แค่เปิด skin.moji — ยังไม่เข้าเกม
+    let mojiOn = false;
+    const runSkin = () => (mojiOn ? { ...newSkin(), moji: true } : newSkin());
+    function drawMoji(c, fr, tick, dx = 0) { mojiOn = true; try { drawNew(c, fr, tick, dx); } finally { mojiOn = false; } }
     function drawNew(c, fr, tick, dx = 0) {
       const { p, S, r } = fr;
       const sc = catScaleOf(p, S) * NEW_K;
@@ -449,7 +455,7 @@
       c.save();
       if (S.dead && !sitFaint) { c.translate(x, feet); c.rotate(p.tilt); c.translate(-x, -feet); }
       if (S.hurt > 0) c.translate(-S.hurt * 5, 0);
-      drawCat2Run(c, x, feet, sc, newSkin(), tick, r);
+      drawCat2Run(c, x, feet, sc, runSkin(), tick, r);
       c.restore();
     }
 
@@ -459,7 +465,7 @@
       if (st.view === 'full') return { s: fit, ox: (w - VIEW.W * fit) / 2, oy: (h - VIEW.H * fit) / 2 };
       // ซูม 1 = สูงเท่าฉากเต็ม (420 หน่วย) · ค่าเริ่มต้น 1.5 ≈ เห็นวงกระโดดสองชั้นทั้งวงพร้อมตัว
       const s = (h / VIEW.H) * st.zoom;
-      const px = PLAYER_X + BODY.standW / 2 + (st.draw === 'both' ? 55 : 0);
+      const px = PLAYER_X + BODY.standW / 2 + (st.draw === 'both' || st.draw === 'mojipair' ? 55 : 0);
       // ใกล้ตัว: กล้องนิ่ง พื้นค่อนล่างจอ เห็นทั้งวงกระโดด · ตามตัว: เท้าอยู่ราว 70% ของจอ (พื้นไม่ขึ้นเกิน 86%)
       const oy = st.view === 'follow' ? Math.max(h * 0.86 - GROUND_Y * s, h * 0.7 - fr.p.y * s) : h * 0.86 - GROUND_Y * s;
       return { s, ox: w * 0.5 - px * s, oy };
@@ -488,7 +494,7 @@
       ctx.restore();
       setCatEdgeScale(1);   // เส้นขอบตัวน้องตอนวิ่ง (เหมือนเกม)
       // ภาพซ้อน: ตำแหน่งย้อนหลังทุก 5 เฟรม เลื่อนตามโลก (เห็นเส้นทางกระโดดจริงบนฉาก)
-      const drawers = st.draw === 'both' ? [[drawOld, 0], [drawNew, 110]] : [[st.draw === 'new' ? drawNew : drawOld, 0]];
+      const drawers = st.draw === 'both' ? [[drawOld, 0], [drawNew, 110]] : st.draw === 'mojipair' ? [[drawNew, 0], [drawMoji, 110]] : [[st.draw === 'new' ? drawNew : st.draw === 'moji' ? drawMoji : drawOld, 0]];
       if (st.trail) {
         // วาดเงาแต่ละภาพลงแผ่นแยกแล้วค่อยแปะแบบจาง — ตัววาดใหม่ตั้งความโปร่งเองข้างใน ตั้งจากข้างนอกไม่ได้
         if (ghost.width !== w || ghost.height !== h) { ghost.width = w; ghost.height = h; }
@@ -513,6 +519,13 @@
         ctx.fillText('ตัวในเกม', PLAYER_X + 20, GROUND_Y + 20);
         ctx.fillText('ตัวใหม่ (ร่าง)', PLAYER_X + 130, GROUND_Y + 20);
       }
+      if (st.draw === 'mojipair') {
+        ctx.font = '600 7px Mitr, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.fillText('ตัวในเกม', PLAYER_X + 20, GROUND_Y + 20);
+        ctx.fillText('เดิม+โมจิ', PLAYER_X + 130, GROUND_Y + 20);
+      }
       showVals(fr);
     }
 
@@ -531,7 +544,7 @@
       c.fillStyle = 'rgba(60,30,10,.18)';
       c.beginPath(); c.ellipse(cx, gy + 2, px * 0.3 * (R.bob > 2 ? 0.88 : 1), px * 0.05, 0, 0, Math.PI * 2); c.fill();
       c.restore();
-      drawCat2(c, cx, gy - R.bob * sc, sc, newSkin(), t, { k: 1, shape: R.shape, noBlink: true, onRunBody, runner: true });
+      drawCat2(c, cx, gy - R.bob * sc, sc, st.draw === 'moji' || st.draw === 'mojipair' ? { ...newSkin(), moji: true } : newSkin(), t, { k: 1, shape: R.shape, noBlink: true, onRunBody, runner: true });
     }
     function render4() {
       const dpr = Math.min(2, window.devicePixelRatio || 1);

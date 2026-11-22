@@ -20376,9 +20376,9 @@ function mojiBelly(c, x, y, rx, ry) {
   c.translate(x, y);
   c.scale(rx, ry);
   const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
-  g.addColorStop(0, '#F8F1E6');
-  g.addColorStop(0.65, '#F8F1E6');
-  g.addColorStop(1, 'rgba(248,241,230,0)');
+  g.addColorStop(0, '#F8F1E6');   // จุดสีเดียวกับพุงตอนยืนในไฟล์โมจิ (radial-gradient-20): ทึบถึง .649 จางหมดที่ .819
+  g.addColorStop(0.649, '#F8F1E6');
+  g.addColorStop(0.819, 'rgba(248,241,230,0)');
   c.fillStyle = g;
   c.fillRect(-1, -1, 2, 2);
   c.restore();
@@ -23771,6 +23771,10 @@ function mojiFront() {
   for (const [id, fid] of [['leg-left', 'fill'], ['leg-right', 'fill_2'], ['torso', 'fill_3'], ['arm-left', 'fill_4'], ['arm-right', 'fill_5'], ['head', 'fill_8']]) {
     const f0 = one(id, fid)[0];
     if (f0?.grad) parts[id].fill = f0;
+    if (f0?.grad && /^leg-/.test(id)) {
+      const b = opsBox([f0]);
+      parts[id].fill = { ...f0, grad: { ...f0.grad, at: [(b.x0 + b.x1) / 2, b.y0 + (b.y1 - b.y0) * 0.6] } };   // ท่าลอยฟ้า: ไม่เห็นวงสว่างค้างที่โคนขา
+    }
   }
   // แขนขวาจอ (ผู้ใช้ 21 พ.ย. รอบ 5): ในไฟล์ใหม่จุดสว่างของสีไล่อยู่ที่ไหล่ (radial-gradient-17 โฟกัสเยื้อง) — ไหล่สว่างตัดกับลำตัวส้มเข้ม สีดูขาด
   //   → ใช้สีไล่ของแขนซ้ายจอกลับด้านซ้าย-ขวา (สว่างที่อุ้งเท้า เข้มที่โคนแขน ต่อกับลำตัวเนียน) · รูปทรงแขนยังเป็นของแขนขวาเอง
@@ -24243,7 +24247,7 @@ function drawLayer(ctx, items, pal, hooks, opt) {
     if (it.q3?.w > 0.001) {
       const a0 = ctx.globalAlpha;
       ctx.globalAlpha = a0 * it.q3.w;
-      if (it.q3.fill?.grad) drawOps(ctx, [{ ...it.q3.fill, path: it.all, fill: null, stroke: null }], pal, {}, {});
+      if (it.q3.fill?.grad) drawOps(ctx, [{ ...it.q3.fill, path: it.q3.fill.path || it.all, fill: null, stroke: null }], pal, {}, {});   // รูปทรงจากไฟล์มุมเฉียง (ไม่ใช่รูปชิ้นเต็มที่มีโคนแขนฝังในตัว — ไม่งั้นเป็นแผ่นเหลี่ยมที่ไหล่)
       drawOps(ctx, it.q3.det, pal, {}, {});
       ctx.globalAlpha = a0;
     }
@@ -25358,8 +25362,21 @@ function pawOf(band, pal, rx, ry) {
     c.save();
     c.clip(all);
     c.fillStyle = pal.paw || pal.cream;   // อุ้งเท้า (วิเชียรมาศ: น้ำตาลเข้ม)
-    if (pal.mojiPaw && !pal.paw) mojiCream(c, cream, cx + ca * rx * 0.4, cy + sa * rx * 0.4, rx * 1.1, ry * 1.2);
-    else c.fill(cream);
+    if (pal.mojiPaw && !pal.paw) {
+      // อุ้งเท้าแบบตอนยืน (Swatch 8): ขาวทึบกลาง → จางหายที่ขอบ กลืนเข้าแขน ไม่มีขอบตัดสี
+      c.save();
+      c.translate(cx + ca * rx * 0.45, cy + sa * rx * 0.45);
+      c.rotate(tip.a);
+      c.scale(rx * 1.05, ry * 1.15);
+      const pg = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+      pg.addColorStop(0, '#FFFFFF');
+      pg.addColorStop(0.62, '#FFFFFF');
+      pg.addColorStop(0.82, 'rgba(248,241,230,.55)');
+      pg.addColorStop(1, 'rgba(248,241,230,0)');
+      c.fillStyle = pg;
+      c.fillRect(-1, -1, 2, 2);
+      c.restore();
+    } else c.fill(cream);
     // ร่องนิ้วสองร่องที่ปลาย (สั้น ๆ อยู่ในเนื้อ ไม่ทะลุเส้นรอบนอก)
     c.strokeStyle = pal.line;
     c.lineWidth = LW * 0.8;
@@ -27344,9 +27361,12 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const TL = loafTail(T, flick, kitTailK);
     // ฐานตัว → หาง → หัว → อกครีม + เส้นขาหน้า → หน้า
     drawBehind(null, [LOAF.base]);
-    drawLayer(ctx, [{ small: true, sil: [LOAF.base], all: LOAF.base, xf: grow, det: (c) => loafBaseDetails(c, pal, opt.noStripes), patch: calPatch.area('loaf') }], pal, hooks, opt);
+    drawLayer(ctx, [{ small: true, sil: [LOAF.base], all: LOAF.base, xf: grow, patch: calPatch.area('loaf'),
+      fill: M.moji ? mojiGrad(300, 600, 190, 110) : null,   // สไตล์โมจิ: ก้อนตัวสว่างกลาง ส้มขอบ
+      det: (c) => (M.moji ? (!opt.noStripes && mojiStripes(c, [[394, 590, 374, 597], [410, 608, 388, 615], [424, 628, 402, 633],
+        [458, 556, 442, 563], [463, 582, 447, 589], [234, 598, 250, 594], [222, 620, 240, 616]], opt.stripeA, 6.5)) : loafBaseDetails(c, pal, opt.noStripes)) }], pal, hooks, opt);
     if (OUT?.shirt) { ctx.save(); grow(ctx); OUT.shirt(ctx, { ...outK, mode: 'loaf', body: LOAF.base, arms: [] }); outline(ctx, LOAF.base, pal); ctx.restore(); }
-    drawLayer(ctx, [{ small: true, ...tailSilOf(TL), xf: grow, det: (c) => (opt.calico?.tailAll || opt.tailStripe ? tailDetails(c, TL, pal, opt) : loafTailDetails(c, TL, pal, opt.noStripes)), patch: calPatch.tail(TL) }], pal, hooks, opt);
+    drawLayer(ctx, [{ small: true, ...tailSilOf(TL), xf: grow, det: (c) => (opt.calico?.tailAll || opt.tailStripe || opt.mojiTail ? tailDetails(c, TL, pal, opt) : loafTailDetails(c, TL, pal, opt.noStripes)), patch: calPatch.tail(TL) }], pal, hooks, opt);   // โมจิ: หางหมอบลงสีแบบหางใหม่
     drawTailBow(TL, 9, grow);
     drawProp();   // ของถือลอยอยู่หน้าหาง (หางอยู่หลังของถือเสมอ)
     drawHeld();
@@ -27498,7 +27518,33 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const tw = TLf.lag * 5 + TLf.flick * 7 + TLf.swishLag * 10 + flick * 10;
     // สไตล์โมจิ: แขนท่อ = สีไล่สว่างที่อุ้งเท้า เข้มขึ้นที่ไหล่ (แบบแขนในไฟล์โมจิ) · หางลงสีเองแล้ว (mojiTail) ไม่ต้องมีสีพื้น
     const limbFill = (b) => { const p = b.pts[b.N], q = b.pts[0]; return mojiGrad(p.x, p.y, Math.hypot(p.x - q.x, p.y - q.y) * 0.95 + 20, Math.hypot(p.x - q.x, p.y - q.y) * 0.95 + 20, MOJI_LIMB); };
-    const bandItem = (b, det) => ({ sil: [b.path], all: b.path, xf: grow, det, fill: M.moji && b !== TS ? limbFill(b) : null });
+    // แขนท่านั่งแนบตัว: ใช้สีไล่ชุดเดียวกับลำตัว (sitField) — สีแขนกับข้างตัวต่อกันเนียน ไม่เป็นแถบสีแยก (ผู้ใช้ 22 พ.ย.)
+    const sitField = () => mojiGrad(300, 590, 112, 124);
+    const armGlow = (c, b) => {
+      const i = Math.round(b.N * 0.72), p = b.pts[i];
+      c.save();
+      c.translate(p.x, p.y);
+      c.scale(58, 58);
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+      g.addColorStop(0, 'rgba(252,230,208,.95)');
+      g.addColorStop(0.44, 'rgba(248,192,138,.55)');
+      g.addColorStop(1, 'rgba(240,164,98,0)');
+      c.fillStyle = g;
+      c.fillRect(-1, -1, 2, 2);
+      c.restore();
+    };
+    // ขีดลายส้มเข้มขวางแขนใกล้อุ้งเท้า (แบบแขนตอนยืน: stripes_5/6 สองขีด ยาวเกือบเต็มความกว้างแขน)
+    const armTicks = (c, b) => {
+      if (opt.noStripes) return;
+      const list = [];
+      for (const [u, k] of [[0.5, 0.72], [0.63, 0.66]]) {
+        const i = Math.round(b.N * u), p = b.pts[i], h = b.half(i) * k, nx = -Math.sin(p.a), ny = Math.cos(p.a);
+        list.push([p.x + nx * h, p.y + ny * h, p.x - nx * h, p.y - ny * h]);
+      }
+      mojiStripes(c, list, opt.stripeA, 7);
+    };
+    const bandItem = (b, det) => ({ sil: [b.path], all: b.path, xf: grow, fill: M.moji && b !== TS ? sitField() : null,
+      det: M.moji && b !== TS && typeof det === 'function' ? (c) => { armGlow(c, b); armTicks(c, b); det(c); } : det });
     // shape.tailSwing / tailSwing2 (−1..1 · ท่านั่งโยกเยก ผู้ใช้ 22 พ.ย. "อยากให้มีอนิเมชั่นหาง"): หางแกว่งซ้าย-ขวาแบบแส้
     //   ช่วงกลางตาม tailSwing · ปลายตาม tailSwing2 (ช้ากว่าอีกจังหวะ) — โคนติดสะโพกนิ่ง ปลายหางสะบัดกว้างสุด
     // แกว่งเข้าหาตัว (บวก) ระยะสั้นกว่าแกว่งออก — ไม่งั้นปลายหางมุดหายหลังตัว
@@ -27554,7 +27600,21 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       // วิลาศ: แถบขาวอกวาดครั้งเดียวหลังชั้นขาหน้า (ทับเส้นขอบขา) — เส้นขอบขาอยู่นอกตัวขา ลายในชั้นขาจึงทาไม่ถึง
       // เส้นน้ำตาลเลยพาดทับขาว · ผู้ใช้ 21 ต.ค. "ให้ขนสีขาวทับสีน้ำตาลแทน" (ใส่เสื้อ/กระโปรง: แบบเดิม ไม่ทับชุด)
       const stripeOver = art.chestStripe && !(OUT?.skirt && !OUT.pants) && !OUT?.shirt;
+      const sit2Field = () => mojiGrad(300, 600, 128, 132);   // สีไล่ตัวนั่ง: สว่างที่สะโพกแบบตัวยืน · ขาหน้าใช้ชุดเดียวกัน (สีต่อกัน)
+      const sit2Belly = (c) => {   // แสงครีมฟุ้งเหนืออก + พุงครีมขอบฟุ้ง (สัดส่วนตามตัวยืนของโมจิ)
+        c.save(); c.translate(300, 486); c.scale(64, 50);
+        const fg = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+        fg.addColorStop(0.023, '#F8F1E6'); fg.addColorStop(1, 'rgba(248,241,230,0)');
+        c.fillStyle = fg; c.fillRect(-1, -1, 2, 2); c.restore();
+        mojiBelly(c, 300, 516, 66, 80);
+      };
       const bodyDet = (c) => {
+        if (M.moji && !art.chestStripe && !art.bib) {
+          sit2Belly(c);
+          if (!opt.noStripes) mojiStripes(c, [[160, 600, 184, 594], [158, 624, 184, 619], [440, 600, 416, 594], [442, 624, 416, 619],
+            [206, 504, 224, 510], [394, 504, 376, 510]], opt.stripeA, 6.5);
+          return;
+        }
         // เงาข้างตัว · อกครีมใต้คาง · ลายบนสะโพก
         c.fillStyle = flatShade(pal);
         c.beginPath();
@@ -27572,7 +27632,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       drawBehind(null, [SIT2.body]);
       drawLayer(ctx, [
         { ...bandItem(TS2, (c) => tailDetails(c, TS2, pal, opt)), ...tailSilOf(TS2), patch: calPatch.tail(TS2) },
-        { sil: [SIT2.body], all: SIT2.body, xf: grow, det: bodyDet, patch: calPatch.area('sit') },
+        { sil: [SIT2.body], all: SIT2.body, xf: grow, det: bodyDet, patch: calPatch.area('sit'), fill: M.moji ? sit2Field() : null },
       ], pal, hooks, opt);
       drawTailBow(TS2, 11, grow);
       drawProp();   // ของถือลอยอยู่หน้าหาง
@@ -27612,7 +27672,20 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
           c.fillRect(cx - 46, 594, 92, 92);
         }
       } : marks?.sitLegs ? calPatch.area('sitLegs') : null;   // ลายสลิด: ปล้องขวางขาหน้า
-      drawLayer(lc, [{ small: true, sil: legSil, all: legAll, xf: grow, patch: legPatch, det: (c) => {
+      drawLayer(lc, [{ small: true, sil: legSil, all: legAll, xf: grow, patch: legPatch, fill: M.moji ? sit2Field() : null, det: (c) => {
+        if (M.moji && !skirtLegs && !art.chestStripe && !art.bib) {
+          sit2Belly(c);   // อกครีมไหลต่อลงโคนขา (ชุดเดียวกับตัว)
+          // อุ้งเท้าหน้า: ขาวกลาง ขอบฟุ้งกลืนเข้าขา (แบบอุ้งเท้าตอนยืน) + ร่องนิ้ว
+          for (const cx of pawXs) {
+            c.save(); c.translate(cx, 640); c.scale(34, 19);
+            const pg = c.createRadialGradient(0, 0.15, 0, 0, 0, 1);
+            pg.addColorStop(0, '#FFFFFF'); pg.addColorStop(0.6, '#FFFFFF'); pg.addColorStop(0.82, 'rgba(248,241,230,.55)'); pg.addColorStop(1, 'rgba(248,241,230,0)');
+            c.fillStyle = pg; c.fillRect(-1, -1, 2, 2); c.restore();
+          }
+          c.strokeStyle = pal.line; c.lineWidth = LW * 0.8; c.lineCap = 'round';
+          for (const cx of pawXs) for (const dx of [-8, 8]) { c.beginPath(); c.moveTo(cx + dx, 642); c.lineTo(cx + dx, 651); c.stroke(); }
+          return;
+        }
         if (!skirtLegs) {
           if (art.chestStripe) { if (!stripeOver) softMark(c, wilatChestPath(300, 440, 600, 0.9), pal.cream); }
           else if (art.bib) { /* ส้มซ่า: ขาหน้าตอนนั่งเป็นสีส้มทั้งขา (ผู้ใช้ 13 พ.ย. 2026 — อกขาวไหลทับขาเหลือส้มเป็นเศษ ๆ ไม่สม่ำเสมอ) */ }
@@ -27678,7 +27751,16 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         all.addPath(pw.blob);
         all.addPath(cap);
         // เนื้อแขนสีขนเรียบ ๆ ไม่ใส่เงา/ลายส้มเข้ม (บนแขนที่พับเป็นรูป S มันอ่านเป็นขีดแปลก ๆ) — เหลือแค่อุ้งเท้าครีม
-        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow, det: (c) => { if (art.tabby) tabbyBandStripes(band, pal)(c); pw.det(c, all); }, patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง · สีเปรอะ: ปื้นนุ่ม (ไม่มีขอบคมตรงรอยพับ) (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
+        drawLayer(ctx, [{ small: true, sil: [band.path, pw.blob, cap], all, xf: grow,
+          fill: M.moji ? (() => { const p = band.pts[Math.round(band.N * 0.8)]; return mojiGrad(p.x, p.y, 80, 80, MOJI_LIMB); })() : null,
+          det: (c) => {
+            if (M.moji && !art.tabby && !opt.noStripes) {   // ขีดลายก้อนขวางแขนเหนืออุ้งเท้า (แบบแขนตอนยืน)
+              const st = [];
+              for (const [u, kk] of [[0.55, 0.72], [0.68, 0.66]]) { const i = Math.round(band.N * u), q = band.pts[i], h = band.half(i) * kk, nx = -Math.sin(q.a), ny = Math.cos(q.a); st.push([q.x + nx * h, q.y + ny * h, q.x - nx * h, q.y - ny * h]); }
+              mojiStripes(c, st, opt.stripeA, 7);
+            }
+            if (art.tabby) tabbyBandStripes(band, pal)(c); pw.det(c, all);
+          }, patch: art.tabby ? null : calPatch.arm(band) }], pal, hooks, opt);   // ลายสลิด: แขนพับรูป S ไม่ใส่ปล้อง · สีเปรอะ: ปื้นนุ่ม (ไม่มีขอบคมตรงรอยพับ) (ปล้องตรงรอยพับเป็นก้อนแปลก ๆ)
         // ชุดที่ตั้ง groomSleeve: แขนเสื้อบนแขนที่ยกมาเลีย (ผู้ใช้ 21 ต.ค. ชุดลูกคุณหนู) — ลูกพองถึงข้อศอก (จุด 4) ท่อนล่างต่อไปใกล้อุ้งเท้า
         //   ค่อย ๆ ขึ้นตามแขนที่ยก (ต้นท่าแขนยังวางพื้น ขาเปล่าไม่มีแขนเสื้อ) · ชุดอื่นคงแบบเดิมที่ผู้ใช้ตรวจแล้ว
         //   groomSleeve = ฟังก์ชัน (c, band, pal) วาดเอง · true = ใช้ sitSleeve แบบท่อ (ลูกพองถึงจุด 4)
@@ -27704,7 +27786,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       if (art.noBelly) return;   // แมวพื้นขาว (สามสี): ไม่มีวงพุงครีม
       if (art.chestStripe) { softMark(c, wilatChestPath(298, 446, 618, 0.95), pal.cream); return; }   // วิลาศ: ผ้ากันเปื้อน → เส้นบาง
       if (art.bib) { softMark(c, bibPath(298, 440, 640, 0.95), pal.cream); return; }   // ส้มซ่า: อกขาวกว้าง
-      if (M.moji) return mojiBelly(c, 298, 548, 84, 92);   // โมจิ: พุงครีมขอบฟุ้ง
+      if (M.moji) {
+        // แสงครีมฟุ้งเหนือพุง = ชั้น fur-shading ของตัวยืน (radial-gradient-10: กลางเหนือพุง 28 หน่วย รัศมี 70×57 ทึบกลางจางถึงขอบ)
+        c.save(); c.translate(300, 512); c.scale(70, 57);
+        const fg = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+        fg.addColorStop(0.023, '#F8F1E6'); fg.addColorStop(1, 'rgba(248,241,230,0)');
+        c.fillStyle = fg; c.fillRect(-1, -1, 2, 2); c.restore();
+        return mojiBelly(c, 300, 540, 76, 91);
+      }   // โมจิ: พุงครีมขอบฟุ้ง ขนาดเท่าตอนยืน (รัศมีสีไล่ของไฟล์ 70 × 1.086 / 1.306)
       bellyBlob(c, 298, 544, 72, 80, pal.cream, art.bellySoft);
     };
     const haunchDet = (c) => {
@@ -27724,7 +27813,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // ── เงาก้อนเดียว: หาง ตัว แขนท่อนบนซ้าย แขนขวา ต้นขา ──
     drawLayer(ctx, [
       { ...bandItem(TS, (c) => tailDetails(c, TS, pal, opt)), ...tailSilOf(TS), patch: calPatch.tail(TS) },
-      { sil: [SIT.torso], all: SIT.torso, xf: grow, det: torsoDet, patch: calPatch.area('sitOld'), fill: M.moji ? mojiGrad(300, 530, 112, 124) : null },
+      { sil: [SIT.torso], all: SIT.torso, xf: grow, det: torsoDet, patch: calPatch.area('sitOld'), fill: M.moji ? sitField() : null },
       { ...bandItem(bandUpL, armDet), patch: calPatch.upArm(bandUpL) },
       { ...bandItem(bandR, armDet), patch: calPatch.upArm(bandR) },
       { sil: [SIT.haunchL], all: SIT.haunchL, xf: grow, det: haunchDet, patch: calPatch.area('haunch'), fill: M.moji ? mojiGrad(226, 582, 58, 56) : null },
@@ -27884,7 +27973,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       grow(ctx);
       ctx.fillStyle = pal.cat;
       ctx.fill(pr.blob);
-      if (M.moji) drawOps(ctx, [{ ...limbFill(bandA), path: pr.blob }], pal, {}, {});
+      if (M.moji) { drawOps(ctx, [{ ...sitField(), path: pr.blob }], pal, {}, {}); ctx.save(); ctx.clip(pr.blob); armGlow(ctx, bandA); ctx.restore(); }   // ก้อนอุ้งเท้าได้แสงเดียวกับแขน (ไม่เห็นรอยต่อ)
       // ขนสีเดียวเข้ม (art.solid): ไล่เงาสนามเดียวกับตัวทับ — สีเรียบเปล่า ๆ เป็นวงทึบกลางขนที่ไล่เงา
       if (art.solid) for (const g of softGrad(ctx, SOFT_BODY, pal)) { ctx.fillStyle = g; ctx.fill(pr.blob); }
       pr.det(ctx, allR);
@@ -28168,6 +28257,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const chinK = back || useHold ? 0 : v('chinR');
   const useChin = chinK > 0.4;
   let chin = null;
+  // สไตล์โมจิ · แขนท่อ (กอดหัวใจ / เท้าคาง): สีไล่แบบแขนตอนยืน — จุดสว่างใกล้อุ้งเท้า → ส้มขอบ #F0A462 ที่ศอก (ต่อกับสีขอบลำตัว)
+  const holdFill = (b) => { const p = b.pts[Math.round(b.N * 0.78)]; return mojiGrad(p.x, p.y, 78, 78, MOJI_LIMB); };
   if (useChin) {
     const u = ease(clamp01((chinK - 0.4) / 0.6));
     const lo = mixPts(CHIN_ARM.rest, [[CHIN_ARM.chin, u]]).map(([x, y]) => upperPt(x, y));
@@ -28294,7 +28385,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     RB.anklesAt = RB.ankles ? { left: seg(RB.ankles.left), right: seg(RB.ankles.right) } : null;
     // เครื่องมือวาด (หน้าทดสอบวิ่ง): ส่งตัวแปลงพิกัดไฟล์ → ผ้าใบ ของตัววิ่ง ไว้แปลงจุดจากภาพแบบกลับเป็นพิกัดไฟล์ตรง ๆ
     if (idle?.onRunBody) { const [ax, ay] = rp([300, 600]); idle.onRunBody(ctx.getTransform(), ax - 300, ay - 600); }
-    torso = { ...torso, sil: [body], all: body, uni: body, det, det0, fill: null, q3: null };   // ตัววิ่ง = ทรงใหม่ทั้งก้อน: ไม่ใช้สีไล่ลำตัวยืนของสไตล์โมจิ (ใช้สนามสีเดิม)
+    // สไตล์โมจิ: ตัววิ่งทั้งก้อนใช้สีไล่แบบตัวยืน — สว่างกลางพุง → ส้มขอบ (ส่วนขา รอโมจิลงสีแบบใหม่ให้)
+    const rbFill = M.moji ? (() => { const [bx, by] = rp([RB.belly[0], RB.belly[1] + 30]); return mojiGrad(bx, by, 150, 160); })() : null;
+    torso = { ...torso, sil: [body], all: body, uni: body, det, det0, fill: rbFill, q3: null };
+    // แขนบนตัววิ่ง: ใช้สีไล่ชุดเดียวกับตัววิ่ง (โคนแขนฝังในตัว — สีไล่แขนเองเป็นแผ่นเข้มที่ไหล่) + แสงสว่างใกล้อุ้งเท้าแบบแขนตอนยืน
+    if (rbFill) for (const a of [armL, armR]) {
+      a.fill = rbFill;
+      if (a.q3) a.q3 = { ...a.q3, fill: null };
+    }   // ตัววิ่ง = ทรงใหม่ทั้งก้อน: ไม่ใช้สีไล่ลำตัวยืนของสไตล์โมจิ (ใช้สนามสีเดิม)
     const none = { sil: [], all: new Path2D(), uni: new Path2D(), det: () => {} };
     legL = none;
     legR = none;
@@ -28313,7 +28411,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     crotchFil = fil;
     const [fx, fy] = upperPt(300, 577);
     fil.ellipse(fx, fy, 28 * clamp01(kickAny * 3), 12 * clamp01(kickAny * 3), 0.38, 0, TAU);
-    limbs.push({ sil: [fil], all: fil, det: () => {} });
+    // สไตล์โมจิ: ก้อนเป้าใช้สีไล่ของลำตัว (ไม่งั้นได้สีพ่นแบบเก่า สว่างกว่ารอบข้าง เห็นเป็นวงรีหว่างขา)
+    limbs.push({ sil: [fil], all: fil, det: () => {}, fill: torso.fill ? { ...torso.fill, path: null } : null });
   }
 
   // ของถือ (OUT.prop): อุ้งเท้าที่ถือ + มุมที่แขนหมุนไปจากท่าปกติ (ด้ามหมุนตามแขนครึ่งหนึ่ง ยังตั้งเกือบตรง)
@@ -28488,6 +28587,15 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       ctx.clip(torso.all);
       if (art.chestStripe || art.bib) softMark(ctx, RB.bellyPath, pal.cream);
       else if (art.bellySoft) bellyBlob(ctx, ...RB.bellyAt, RB.belly[2], RB.belly[3], pal.cream, true, RB.belly[4] || 0);   // พุงฟุ้ง (ศุภลักษณ์)
+      else if (M.moji) {
+        // โมจิ: แสงครีมฟุ้งเหนืออก + พุงครีมขอบฟุ้ง (ขนาดตามพุงตอนยืน เอียงตามแบบตัววิ่ง)
+        const [bx, by] = RB.bellyAt, rot = RB.belly[4] || 0;
+        ctx.save(); ctx.translate(bx - 4, by - 30); ctx.rotate(rot); ctx.scale(64, 48);
+        const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        fg.addColorStop(0.023, '#F8F1E6'); fg.addColorStop(1, 'rgba(248,241,230,0)');
+        ctx.fillStyle = fg; ctx.fillRect(-1, -1, 2, 2); ctx.restore();
+        ctx.save(); ctx.translate(bx, by); ctx.rotate(rot); mojiBelly(ctx, 0, 0, RB.belly[2] * 1.08, RB.belly[3] * 1.35); ctx.restore();
+      }
       else { ctx.fillStyle = pal.cream; ctx.fill(RB.bellyPath); }
       ctx.restore();
     }
@@ -28586,7 +28694,18 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   if (useChin) {
     // แขนเท้าคางวาดหลังหัว อุ้งเท้าจึงแตะคางอยู่หน้าหน้า — ท่อเดียวมีเส้นรอบครบ หนาเท่ากันตลอด
     const H = chin;
-    drawLayer(ctx, [{ small: true, sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, patch: calPatch.arm(H.bLo), det: (c) => {
+    drawLayer(ctx, [{ small: true, sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, patch: calPatch.arm(H.bLo), fill: M.moji ? holdFill(H.bLo) : null, det: (c) => {
+      if (M.moji) {
+        // สไตล์โมจิ: ไม่มีเงาเส้นทึบ (สีไล่ของแขนให้ความกลมแล้ว) · ขีดลายก้อนขวางแขนสองขีดเหนืออุ้งเท้า (แบบแขนตอนยืน)
+        if (!opt.noStripes) {
+          const st = [];
+          for (const [i, kk] of [[5, 0.72], [7, 0.66]]) {
+            const q = H.bLo.pts[i], h = H.bLo.half(i) * kk, nx = -Math.sin(q.a), ny = Math.cos(q.a);
+            st.push([q.x + nx * h, q.y + ny * h, q.x - nx * h, q.y - ny * h]);
+          }
+          mojiStripes(c, st, opt.stripeA, 7);
+        }
+      } else {
       c.strokeStyle = flatShade(pal);
       c.lineWidth = 12;
       c.lineCap = 'round';
@@ -28598,6 +28717,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
           st.push([q.x + nx * 19, q.y + ny * 19, q.x + nx * 6, q.y + ny * 6]);
         }
         sitStripes(c, pal, st, opt.stripeA);
+      }
       }
       H.pw.det(c, H.all);
     } }], pal, hooks, opt);
@@ -28615,8 +28735,19 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     if (behind) { ctx.save(); idle.holdDraw(ctx, hx0, hy0, t, clasp); ctx.restore(); }
     // แขนสองข้างเป็นท่อเดียวต่อเส้น มีเส้นรอบครบ หนาเท่ากันตลอด · อุ้งเท้าครีมแตะใต้คาง
     for (const H of [hold.L, hold.R]) {
-      drawLayer(ctx, [{ small: true, sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, patch: calPatch.arm(H.bLo), det: (c) => {
+      drawLayer(ctx, [{ small: true, sil: [H.bLo.path, H.pw.blob, H.cap], all: H.all, patch: calPatch.arm(H.bLo), fill: M.moji ? holdFill(H.bLo) : null, det: (c) => {
         // เงา cel ใต้แขน (ด้านนอก) ให้แขนดูกลม — ระดับเดียว ไม่ไล่สี
+        if (M.moji) {
+          // สไตล์โมจิ: ไม่มีเงาเส้นทึบ (สีไล่ของแขนให้ความกลมแล้ว) · ขีดลายก้อนขวางแขนสองขีดเหนืออุ้งเท้า (แบบแขนตอนยืน)
+          if (!opt.noStripes) {
+            const st = [];
+            for (const [i, kk] of [[5, 0.72], [7, 0.66]]) {
+              const q = H.bLo.pts[i], h = H.bLo.half(i) * kk, nx = -Math.sin(q.a), ny = Math.cos(q.a);
+              st.push([q.x + nx * h, q.y + ny * h, q.x - nx * h, q.y - ny * h]);
+            }
+            mojiStripes(c, st, opt.stripeA, 7);
+          }
+        } else {
         c.strokeStyle = flatShade(pal);
         c.lineWidth = 12;
         c.lineCap = 'round';
@@ -28628,6 +28759,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
             st.push([q.x + nx * 19, q.y + ny * 19, q.x + nx * 6, q.y + ny * 6]);
           }
           sitStripes(c, pal, st, opt.stripeA);
+        }
         }
         H.pw.det(c, H.all);
       } }], pal, hooks, opt);
