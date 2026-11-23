@@ -15,21 +15,32 @@
 
 const BLUR_W = 40;      // ความละเอียดแนวนอนของสีที่ต่อ (ยิ่งน้อยยิ่งเบลอ)
 const SEAM = 46;        // ความสูง (หน่วยฉาก) ช่วงที่แถวขอบจริงค่อย ๆ จางเข้าสีเบลอ
-let tiny = null, seam = null;
+let tiny = null;
 /** ผ้าใบย่อทีละครึ่ง (ดู shrinkRows) — คีย์ = ขนาด "กว้างxสูง" */
 const halves = new Map();
 
-function ensure(w, h) {
+function ensureTiny() {
   if (!tiny) {
     tiny = document.createElement('canvas').getContext('2d');
     tiny.canvas.width = BLUR_W;
     tiny.canvas.height = 1;
-    seam = document.createElement('canvas').getContext('2d');
   }
-  if (seam.canvas.width !== w || seam.canvas.height !== h) {
-    seam.canvas.width = w;
-    seam.canvas.height = h;
+}
+
+// ── ผ้าใบแถบรอยต่อ แยกทิศละผืน (บน −1 / ล่าง +1) ──
+// เดิมใช้ผืนเดียวร่วมกัน: เฟรมหนึ่งถูกตั้งขนาดเป็น W×1 (ตอนเตรียม) แล้ว W×แถบบน แล้ว W×แถบล่าง
+// การตั้งขนาดผ้าใบใหม่ = จองหน่วยความจำใหม่ทั้งผืนทุกครั้ง (วัดบน iPad ตอนวิ่ง: ~2 ครั้งต่อเฟรม)
+// แยกผืนแล้วขนาดของแต่ละทิศคงที่ตลอด ไม่ต้องจองใหม่ · ขนาดตอนใช้เท่าเดิมทุกครั้ง + ค่าที่มีผลกับภาพตั้งใหม่ทุกรอบ
+// (source-over → ล้าง → แปะ → destination-in → ทาไล่สี) ภาพจึงเหมือนเดิมทุกพิกเซล (tools/perf/parity.mjs)
+const seams = new Map();
+function seamFor(dir, w, h) {
+  let s = seams.get(dir);
+  if (!s) { s = document.createElement('canvas').getContext('2d'); seams.set(dir, s); }
+  if (s.canvas.width !== w || s.canvas.height !== h) {
+    s.canvas.width = w;
+    s.canvas.height = h;
   }
+  return s;
 }
 
 function halfCanvas(w, h) {
@@ -102,7 +113,7 @@ function extendBand(ctx, cv, rowY, dir, len, dim, seamPx) {
   // 2) แถวขอบจริงยืดออก แล้วจางลงตามระยะ (ไล่ความทึบด้วย destination-in)
   const sh = Math.min(len, seamPx);
   if (sh > 1) {
-    ensure(W, Math.ceil(sh));
+    const seam = seamFor(dir, W, Math.ceil(sh));
     seam.globalCompositeOperation = 'source-over';
     seam.clearRect(0, 0, W, seam.canvas.height);
     seam.drawImage(cv, 0, rowY, W, 1, 0, 0, W, sh);
@@ -137,7 +148,7 @@ export function fillCoverExt(ctx, { dimTop = 0.12, dimBottom = 0.22 } = {}) {
   const k = Math.hypot(m.a, m.b) || 1;
   const top = Math.round(m.f);                      // แถวพิกเซลของขอบบนฉาก (y = 0)
   const bot = Math.round(m.f + m.d * 420) - 1;      // แถวพิกเซลของขอบล่างฉาก (y = 420)
-  ensure(cv.width, 1);
+  ensureTiny();
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
