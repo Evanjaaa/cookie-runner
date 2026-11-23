@@ -1,0 +1,20 @@
+// tools/perf/shot.mjs — ถ่ายภาพหน้าแรก/ฉากที่สนใจ (ตรวจว่าวัดของที่ถูกต้อง) · node tools/perf/shot.mjs <out.png> [--gpu] [--device phone] [--q "?..."] [--eval "js"] [--wait ms]
+import { writeFileSync } from 'node:fs';
+import { launch, prepare, emulate, sleep } from './lib/cdp.mjs';
+import { startServer } from './lib/server.mjs';
+import { boot, goHome } from './scenarios.mjs';
+const argv = process.argv.slice(2);
+const opt = (k, d) => { const i = argv.indexOf('--' + k); return i < 0 ? d : argv[i + 1]; };
+const out = argv[0];
+const srv = await startServer({ mode: 'dev', port: 5199 });
+const B = await launch({ port: 9333, gpu: argv.includes('--gpu'), tmp: process.env.PERF_TMP });
+const { cdp } = B;
+await prepare(cdp); await emulate(cdp, opt('device', 'phone'));
+const ctx = { cdp, srv, O: { mode: 'dev' } };
+await boot(ctx, opt('q', '')); if (!argv.includes('--title')) await goHome(ctx);
+if (opt('eval')) await cdp.evaluate(opt('eval'), { gesture: true });
+await sleep(Number(opt('wait', 3000)));
+const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+writeFileSync(out, Buffer.from(data, 'base64'));
+console.log('saved', out);
+await B.close(); await srv.close(); process.exit(0);

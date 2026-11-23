@@ -29,3 +29,6 @@ undefined-*.png
 
 # เว็บห้องทดสอบแยก (npm run deploy:lab) — สร้างใหม่ทุกครั้ง
 .lab-build/
+
+# ผลดิบของชุดวัดประสิทธิภาพ (tools/perf/ — ภาพ/trace/JSON) สร้างใหม่ทุกครั้งที่วัด
+tools/perf/out/
