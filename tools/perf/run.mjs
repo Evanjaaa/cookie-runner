@@ -22,7 +22,7 @@ const O = {
   level: opt('level', 'high'), reps: Number(opt('reps', 1)), gpu: !!opt('gpu', false), trace: !!opt('trace', false),
   tag: opt('tag', 'base'), port: Number(opt('port', 5199)), cport: Number(opt('cport', 9333)), seed: Number(opt('seed', 12345)),
   spot: opt('spot', ''), hour: opt('hour', ''), outfit: opt('outfit', ''), skin: opt('skin', ''), stage: opt('stage', ''),
-  keep: !!opt('keep', false), url: opt('url', ''), census: !!opt('census', false), swap: opt('swap', ''), base: opt('base', 'HEAD'),
+  keep: !!opt('keep', false), url: opt('url', ''), census: !!opt('census', false), swap: opt('swap', ''), base: opt('base', 'HEAD'), net: opt('net', ''),
 };
 if (!SCENARIOS[name]) { console.error('ไม่รู้จักสถานการณ์', name, Object.keys(SCENARIOS)); process.exit(1); }
 
@@ -74,6 +74,12 @@ async function one(rep, srv) {
   try {
     const { net, logs } = await prepare(cdp);
     const dev = await emulate(cdp, O.device, { cpu: 1 });
+    // --net 4g|3g = เน็ตมือถือจำลอง + ปิดแคช (เปิดเกมครั้งแรก S6)
+    const NET = { '4g': { latency: 60, downloadThroughput: 9e6 / 8, uploadThroughput: 3e6 / 8 }, '3g': { latency: 150, downloadThroughput: 1.6e6 / 8, uploadThroughput: 0.75e6 / 8 } };
+    if (NET[O.net]) {
+      await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+      await cdp.send('Network.emulateNetworkConditions', { offline: false, ...NET[O.net] });
+    }
     if (OLD.size) {
       await cdp.send('Fetch.enable', { patterns: [...OLD.keys()].map((p) => ({ urlPattern: '*' + p + '*' })) });
       cdp.on('Fetch.requestPaused', async (p) => {
@@ -142,9 +148,10 @@ try {
   for (let i = 0; i < O.reps; i++) {
     const r = await one(i, srv);
     all.push(r);
-    if (r.res.bootMs) console.log('boot (ถึงม่านหาย) ms:', r.res.bootMs);
+    if (r.res.bootMs) console.log('boot (ถึงม่านหาย) ms:', r.res.bootMs, r.res.timing ? JSON.stringify(r.res.timing) : '', '· net', JSON.stringify({ req: r.net.requests, kb: r.net.kb, dup: r.net.dup.length, bad: r.net.bad.length }));
     for (const m of r.res.windows || []) printWindow(m);
     if (r.res.points) for (const pt of r.res.points) console.log('  รอบ', pt.round, JSON.stringify(pt));
+    if (r.res.sites1) { console.log('  ผ้าใบตามจุดสร้าง ก่อนเปิดหน้าต่าง:'); for (const x of r.res.sites0) console.log('    ', x); console.log('  หลังเปิดครบ:'); for (const x of r.res.sites1) console.log('    ', x); }
     if (r.res.before) console.log('  เสียงก่อนซ่อน', JSON.stringify(r.res.before), '→ หลังซ่อน', JSON.stringify(r.res.after));
   }
 } finally {

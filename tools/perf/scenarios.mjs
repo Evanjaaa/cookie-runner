@@ -143,6 +143,7 @@ Object.assign(SCENARIOS, {
     await boot(ctx); await goHome(ctx); await sleep(2000);
     const rounds = Math.max(1, Math.round(O.secs));
     const pts = [];
+    const sites0 = await cdp.evaluate(`__perf.canvasMB().bySite`);
     const take = async (i) => { const h = await ctx.heap(); const m = await cdp.send('Performance.getMetrics'); const g = Object.fromEntries(m.metrics.map((x) => [x.name, x.value])); pts.push({ round: i, heapMB: Math.round(h.usedMB * 10) / 10, listeners: g.JSEventListeners, docs: g.Documents, ...(await snapState(cdp)) }); };
     await take(0);
     for (let i = 1; i <= rounds; i++) {
@@ -154,7 +155,8 @@ Object.assign(SCENARIOS, {
       }
       if (i === 1 || i % 5 === 0 || i === rounds) await take(i);
     }
-    return { windows: [], points: pts };
+    const sites1 = await cdp.evaluate(`__perf.canvasMB().bySite`);
+    return { windows: [], points: pts, sites0, sites1 };
   },
   /** S7 แท็บซ่อน — จำลอง visibilitychange แล้วดูว่าอะไรยังทำงาน (เสียง timer เน็ต) */
   async hidden(ctx) {
@@ -168,5 +170,15 @@ Object.assign(SCENARIOS, {
     const w = await ctx.measure('hidden(จำลอง)', ctx.O.secs);
     const after = await cdp.evaluate(`({ audio: __perf.audioCtx.map((c) => c.state) })`);
     return { windows: [w], before, after };
+  },
+});
+
+Object.assign(SCENARIOS, {
+  /** S6 เปิดเกมครั้งแรก — เวลาถึงม่านหาย (main.js รันจบ) · คำขอ/ไบต์ · long tasks ช่วงเปิด */
+  async load(ctx) {
+    const { cdp } = ctx;
+    await boot(ctx);
+    const t = await cdp.evaluate(`(() => { const n = performance.getEntriesByType('navigation')[0] || {}; const fcp = performance.getEntriesByName('first-contentful-paint')[0]; return { dcl: Math.round(n.domContentLoadedEventEnd || 0), load: Math.round(n.loadEventEnd || 0), fcp: fcp ? Math.round(fcp.startTime) : 0, res: performance.getEntriesByType('resource').length }; })()`);
+    return { windows: [], bootMs: ctx.bootMs, timing: t };
   },
 });

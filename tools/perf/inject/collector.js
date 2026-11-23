@@ -15,7 +15,7 @@
     intervals: new Map(),// id → { ms, name, alive }
     loaf: [],
     canvases: [],        // WeakRef
-    canvasMade: 0, canvasSites: new Map(), canvasResizes: 0,
+    canvasMade: 0, canvasSites: new Map(), canvasResizes: 0, resizeSites: new Map(),
     audioCtx: [], media: new Set(),
     mut: 0,
   };
@@ -107,7 +107,17 @@
     for (const k of ['width', 'height']) {
       const d = Object.getOwnPropertyDescriptor(proto, k);
       if (!d || !d.set) continue;
-      Object.defineProperty(proto, k, { ...d, set(v) { if (P.on) P.canvasResizes += 1; d.set.call(this, v); } });
+      // จดเฉพาะครั้งที่ค่าเปลี่ยนจริง (ตั้งค่าเท่าเดิมก็ล้างผ้าใบ แต่ไม่จองหน่วยความจำใหม่) + จุดที่สั่ง
+      Object.defineProperty(proto, k, { ...d, set(v) {
+        if (P.on) {
+          P.canvasResizes += 1;
+          if (d.get && d.get.call(this) !== v) {
+            const s = (new Error().stack || '').split('\n').slice(2).filter((x) => !x.includes('<anonymous>')).slice(0, 2).map((x) => x.trim().replace(/\?[^:)]*/g, '').replace(/https?:\/\/[^/]+\//, '').replace(/^at /, '')).join(' < ');
+            P.resizeSites.set(s, (P.resizeSites.get(s) || 0) + 1);
+          }
+        }
+        d.set.call(this, v);
+      } });
     }
   }
 
@@ -144,7 +154,7 @@
     flushFrame();
     P.frames = []; P.loops = new Map(); P.loaf = [];
     P.timers = { set: 0, fired: 0, ms: 0, byName: new Map() };
-    P.canvasMade = 0; P.canvasResizes = 0; P.mut = 0; P.drawOutside = 0;
+    P.canvasMade = 0; P.canvasResizes = 0; P.resizeSites = new Map(); P.mut = 0; P.drawOutside = 0;
   };
   P.start = () => { P.reset(); P.on = true; P.t0 = now(); };
   P.canvasMB = () => {
@@ -196,7 +206,7 @@
       drawGap: { p50: r2(pct(sdg, 0.5)), p95: r2(pct(sdg, 0.95)), p99: r2(pct(sdg, 0.99)), max: r2(sdg[sdg.length - 1] || 0) },
       loops, timers, timerFiredPerSec: r2(P.timers.fired / secs), timerMsPerSec: r2(P.timers.ms / secs), intervalsAlive: iv,
       loaf: { n: loafs.length, perMin: r2(loafs.length / secs * 60), top: loafs.slice(0, 6).map((l) => ({ dur: Math.round(l.dur), block: Math.round(l.block), render: Math.round(l.render), s: l.scripts })) },
-      canvas: { ...P.canvasMB(), madePerSec: r2(P.canvasMade / secs), resizesPerSec: r2(P.canvasResizes / secs), sites: [...P.canvasSites].sort((a, b) => b[1] - a[1]).slice(0, 10) },
+      canvas: { ...P.canvasMB(), madePerSec: r2(P.canvasMade / secs), resizesPerSec: r2(P.canvasResizes / secs), sites: [...P.canvasSites].sort((a, b) => b[1] - a[1]).slice(0, 10), resizeSites: [...P.resizeSites].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${r2(v / secs)}/s ${k}`) },
       audio, media, mutPerSec: r2(P.mut / secs),
     };
   };

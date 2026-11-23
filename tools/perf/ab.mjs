@@ -10,7 +10,12 @@ import { boot, goHome, startRun } from './scenarios.mjs';
 
 const RESET = `window.__rimOff = false; if (window.__game && window.__game.__origDrawHomeCat) window.__game.drawHomeCat = window.__game.__origDrawHomeCat;`;
 const NOCAT = `(() => { const g = window.__game; if (!g.__origDrawHomeCat) g.__origDrawHomeCat = g.drawHomeCat; g.drawHomeCat = function () {}; })()`;
+// ตั้งค่าผ่านโมดูลตัวเดียวกับที่เกมใช้ (dev: import URL เดิม = อินสแตนซ์เดิม) — เหมือนผู้เล่นกดในหน้าตั้งค่า
+const RES = (r) => `import('/src/graphics.js').then((g) => { g.setSceneCfg('home', { res: '${r}' }); return true; })`;
+const LFX = (v) => `import('/src/town/light-fx.js').then((m) => { m.setLightFxLevel(${v}); return true; })`;
 const SETS = {
+  res: [['ความละเอียดสูง 2.0', RES('high')], ['ความละเอียดกลาง 1.4', RES('mid')]],
+  light: [['แสง 2 (ค่าเริ่มต้น)', LFX(2)], ['แสง 1', LFX(1)], ['แสง 0 (ปิด)', LFX(0)]],
   home: [
     ['ปกติ', RESET],
     ['ปิดแสงขอบ', RESET + 'window.__rimOff = true;'],
@@ -36,7 +41,7 @@ await sleep(3000);
 const res = set.map(() => []);
 for (let r = 0; r < rounds; r++) {
   for (let i = 0; i < set.length; i++) {
-    await cdp.evaluate(set[i][1] + ';true');
+    await cdp.evaluate(set[i][1]);
     await sleep(600);   // ให้ภาพเฟรมแรกหลังสลับผ่านไปก่อน
     await cdp.evaluate('__perf.start()');
     await sleep(secs * 1000);

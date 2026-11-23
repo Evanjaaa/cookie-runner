@@ -66,8 +66,10 @@ await sleep(3000);
 // (เวลาของ game.draw ไม่รวมงานของ GPU และงานของเฟรม A/B จะปนกันถ้าสลับทุกเฟรม)
 if (argv.includes('--block')) {
   const out = { A: [], B: [] };
+  // วอร์มเครื่องก่อน (คอมไพล์ shader / แคชของทั้งสองฝั่ง) แล้วทิ้งผล · สลับลำดับ AB/BA ทุกรอบ ตัดผลของ "ฝั่งที่มาทีหลังได้เปรียบ"
+  for (const s of ['A', 'B']) { await cdp.evaluate(`window.__abSide = '${s}'`); await sleep(6000); }
   for (let r = 0; r < rounds; r++) {
-    for (const s of ['A', 'B']) {
+    for (const s of (r % 2 ? ['B', 'A'] : ['A', 'B'])) {
       await cdp.evaluate(`window.__abSide = '${s}'`);
       await sleep(1500);
       await cdp.evaluate('__perf.start()');
