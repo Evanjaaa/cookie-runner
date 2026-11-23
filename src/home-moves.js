@@ -358,7 +358,11 @@ const HEART = {
   },
 };
 
-export const HOME_MOVES = [WAVE, SCRATCH, CURL, FLOAT, TAIL, HEART];
+// ท่าไล่หาง (TAIL) เอาออกจากเกมแล้ว (ผู้ใช้ 24 พ.ย. — "เอาออกทุกที่ แต่เก็บไว้ในโปรเจกต์ เผื่อเอาท่ามาประยุกต์ใช้")
+//   ไม่อยู่ในกองสุ่มหน้าแรก / แผงเลือกท่าในเมือง / หน้ารายละเอียดน้อง — ดูได้ใน cat-lab (ARCHIVED_MOVES) · ใส่คืนได้ที่นี่
+export const HOME_MOVES = [WAVE, SCRATCH, CURL, FLOAT, HEART];
+/** ท่าที่เก็บไว้ ไม่ใช้ในเกม (ดู/ลองได้ใน cat-lab) */
+export const ARCHIVED_MOVES = [TAIL];
 
 /**
  * ท่ารับหัวใจ (ผู้เล่นกดปุ่มหัวใจ) — ไม่อยู่ในกองสุ่ม เล่นได้ทางปุ่มเดียว

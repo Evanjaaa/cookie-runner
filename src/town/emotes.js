@@ -11,7 +11,7 @@
 // เดิน / กระโดด / นั่งม้านั่ง = ตัดท่าทันที (main.js เรียก stopEmote(true))
 // เลือกท่าใหม่ระหว่างท่าเดิมยังไม่จบ = ผสมจากรูปร่างที่ค้างอยู่ช่วงสั้น ๆ ไม่วาร์ป
 // ─────────────────────────────────────────────────────────────
-import { HOME_MOVES, LOVE_MOVE, mixShape, scaleShape, E } from '../home-moves.js';
+import { HOME_MOVES, LOVE_MOVE, ARCHIVED_MOVES, mixShape, scaleShape, E } from '../home-moves.js';
 import { poseShape, drawHeart, star4 } from '../render/entities.js';
 import { cat2Act } from '../render/cat2.js';
 import { BODY } from '../config.js';
@@ -27,7 +27,8 @@ const HOLD = {
   groom: { ease: 26, voice: 'purr' },
   yawn: { ease: 26, voice: 'yawn', hold: 180 },
 };
-const MOVES = Object.fromEntries([...HOME_MOVES, LOVE_MOVE].map((m) => [m.id, m]));
+// ท่าที่เก็บไว้ (ไล่หาง) ยังเล่นได้ถ้ามีคนในห้องที่ใช้เกมเวอร์ชันเก่าส่งมา — แค่ไม่อยู่ในแผงเลือกท่าแล้ว
+const MOVES = Object.fromEntries([...HOME_MOVES, LOVE_MOVE, ...ARCHIVED_MOVES].map((m) => [m.id, m]));
 
 // แผงเลือกท่า: ชื่อ + ไอคอน (emoji เหมือนปุ่มกระเป๋า)
 const LIST = [
@@ -40,7 +41,7 @@ const LIST = [
   { id: 'scratch', kind: 'move', name: 'โยกเยก', icon: '🐾' },
   { id: 'curl', kind: 'move', name: 'ขดตัวเขิน', icon: '☺️' },
   { id: 'float', kind: 'move', name: 'ลอยเฟี้ยว', icon: '😎' },
-  { id: 'tail', kind: 'move', name: 'เล่นหาง', icon: '🌀' },
+  // { id: 'tail', kind: 'move', name: 'เล่นหาง', icon: '🌀' },   // เอาออกแล้ว (ผู้ใช้ 24 พ.ย.) — ตัวท่าเก็บไว้ใน home-moves.js (ARCHIVED_MOVES)
 ];
 
 /** รายการท่าที่เลือกได้ตอนนี้ — ท่าแอ็คขึ้นเฉพาะตอนใส่ชุดระดับ S ที่มีท่าแอ็ค */
