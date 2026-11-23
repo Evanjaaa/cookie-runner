@@ -34,8 +34,10 @@ export const CAT2 = { home: true, stash: true, ui: true, run: true };
  * home = น้องส้มบนหน้าแรก (ผู้ใช้สั่งลองในเกมจริง 22 พ.ย.: "เริ่มใช้น้องส้ม เดิม+สไตล์โมจิ" ที่หน้าแรกก่อน) — ปิด (false) = หน้าแรกกลับเป็นแบบเดิม
  * ui = การ์ด/ป้าย/รูปหน้า/คลังน้อง/หน้ารายละเอียดน้อง (ผู้ใช้สั่ง 22 พ.ย. "เริ่มเปลี่ยนหน้าพวกป้าย และในคลัง") — ผ่าน drawCatAuto · drawCatFaceAuto · คลัง (main.js drawStashCat) · od-stage
  *   ยังไม่เปิด: ตอนวิ่งในด่าน (cat2-run) · เมือง · บ้านของฉัน
+ * face = ชุดหน้าตามอารมณ์จากไฟล์ cat-orange-emotion (ผู้ใช้ 24 พ.ย. — ตา 7 แบบ ปาก 6 แบบ ของโมจิ) ทุกที่ที่เปิดสไตล์โมจิ
+ *   ยังปิด — ลองใน cat-lab ก่อน ด้วย skin.mojiFace = true · ดู mojiEmo / emoEyeKind / hooks.mouth
  */
-export const MOJI_STYLE = { game: false, home: true, ui: true };
+export const MOJI_STYLE = { game: false, home: true, ui: true, face: false };
 const MOJI_SKINS = new WeakMap();
 /** สกินเดิมที่เปิดสไตล์โมจิ (ตัวเดิมทุกเฟรม → แคชของผู้เรียกที่เทียบสกินด้วย === ยังใช้ได้) · ตัวไม่ใช่น้องส้ม drawCat2 ไม่เปิดให้เอง */
 export function mojiSkin(s) {
@@ -20309,6 +20311,26 @@ const RUN_BODY = {
     stripes: [],
   },
 };
+// ท่าพุ่งรวมพลัง (คัตซีนพลังแห่งความหวัง · ผู้ใช้ 24 พ.ย. ภาพแบบ): ต่อจากจังหวะ Up — ขาหลังยกงอขึ้นไปข้างหลัง ฝ่าเท้าใหญ่หันออกหาคนดู (ใช้คู่ shape.soles)
+//   หมุนช่วงขาหลังรอบสะโพก (ใกล้สะโพกหมุนน้อย ปลายเท้าหมุนเต็ม) + ขยายก้อนเท้าออกจากกลางเท้า
+RUN_BODY.lunge = (() => {
+  const U = RUN_BODY.up, P = [206, 566], A = 0.62, FOOT = [96, 572];
+  const rot = ([x, y], w) => { const a = A * w, c = Math.cos(a), s = Math.sin(a), dx = x - P[0], dy = y - P[1]; return [P[0] + dx * c - dy * s, P[1] + dx * s + dy * c]; };
+  const wOf = ([x, y]) => Math.max(0, Math.min(1, (Math.hypot(x - P[0], y - P[1]) - 30) / 55));
+  const grow = ([x, y], k) => [FOOT[0] + (x - FOOT[0]) * k, FOOT[1] + (y - FOOT[1]) * k];
+  const leg = (p, i) => rot(i >= 6 && i <= 9 ? grow(p, 1.95) : p, wOf(p));
+  const out = U.out.map((p, i) => (i >= 5 && i <= 10 ? leg(p, i) : p));
+  const [fx, fy] = rot(FOOT, 1);
+  const al = U.ankles.left;
+  const [a0, a1] = rot([al[0], al[1]], wOf([al[0], al[1]])), [b0, b1] = rot([al[2], al[3]], wOf([al[2], al[3]]));
+  return {
+    ...U, out,
+    paws: [[fx + 3, fy, 18, 25, 0.25 + A], U.paws[1]],
+    toes: [],
+    cuffs: [U.cuffs[0].map((v, j, arr) => (j % 2 ? v : v)), U.cuffs[1]],
+    ankles: { left: [a0, a1, b0, b1, fx, fy], right: U.ankles.right },
+  };
+})();
 /** ขอบซ้าย/ขวาของตัววิ่ง ณ ระดับ y (เส้นรอบนอกของแบบ · ช่วงลำตัวกลาง x 150–450) — กระโปรงวัดเอวจากตรงนี้ */
 function runBodySpan(out, y) {
   let l = Infinity, r = -Infinity;
@@ -23796,7 +23818,216 @@ function mojiFront() {
     const mirror = new DOMMatrix().translate(600, 0).scale(-1, 1);   // กลับด้านรอบเส้นกลางตัว x = 300
     parts['arm-right'].fill = { ...armR, grad: { ...armL.grad, m: mirror.multiply(armL.grad.m), at: [600 - armL.grad.at[0], armL.grad.at[1]] } };
   }
-  return { parts, groups, piv: base.piv, eye, moji: true };
+  return { parts, groups, piv: base.piv, eye, moji: true, emo: emoLib() };
+}
+// ══ ชุดหน้าตามอารมณ์ของโมจิ (src/render/cat2/cat-orange-emotion.svg · ผู้ใช้ 24 พ.ย.) ══
+// ไฟล์ = หัวอย่างเดียว · ตาแต่ละแบบ/ปากแต่ละแบบเป็นกลุ่มซ้อนกันตรงตำแหน่งจริงในกลุ่ม eyes / mouth
+// ตา: แยกซ้าย/ขวาจอจากตำแหน่ง (เส้นกลางหน้า x 300) — ชื่อกลุ่มย่อยในไฟล์ซ้ำกันหลายชุด (eye-left-2, eye-right-3 …) จึงไม่ใช้ชื่อ
+// คืน { eyes: { ชื่อแบบ: { left, right } }, mouths: { ชื่อแบบ: ops } } — ชื่อแบบตัดคำนำหน้าออก (eye-crying → crying · eyelid-half-closed → half)
+/** คลังชุดหน้าโมจิ (อ่านครั้งเดียว) — น้องส้มสไตล์โมจิใช้เสมอ · แมวสีอื่นใช้ได้เมื่อผู้เรียกสั่ง skin.mojiFace (แท็บแต่งหน้าใน cat-lab) */
+let EMO_LIB;
+function emoLib() {
+  if (EMO_LIB === undefined) EMO_LIB = mojiEmo((ops) => toCat2Ops(ops, LINE_K));
+  return EMO_LIB;
+}
+function mojiEmo(conv) {
+  let eyes0, mouths0;
+  try { eyes0 = mojiPart('eyes', 'emo'); mouths0 = mojiPart('mouth', 'emo'); } catch (e) { return null; }
+  // ชุดเพิ่ม V.3 (cat-orange-emotion-2.svg · 24 พ.ย.): ตา มึน/หัวใจ/เจ็บ/เจ้าเล่ห์ · ปาก งอน/แลบลิ้นซน/เจ็บ/เจ้าเล่ห์/ตกใจ — ไม่มีไฟล์ = ใช้ชุดหลักอย่างเดียว
+  try { eyes0 = [...eyes0, ...mojiPart('eyes', 'emo2')]; mouths0 = [...mouths0, ...mojiPart('mouth', 'emo2')]; } catch (e) { /* ไม่มีชุดเพิ่ม */ }
+  const split = (ops, L = [], R = []) => {
+    for (const o of ops) {
+      const b = opsBox([o]);
+      if (b.x1 < 300) L.push(o);
+      else if (b.x0 > 300) R.push(o);
+      else if (o.ops) split(o.ops, L, R);
+    }
+    return { left: L, right: R };
+  };
+  const eyes = {}, mouths = {};
+  for (const g of eyes0) {
+    if (g.kind !== 'group' || !g.id) continue;
+    const id = g.id === 'eyelid-half-closed' ? 'half' : g.id.replace(/^eye-/, '');
+    eyes[id] = split(conv(g.ops));
+  }
+  const MOUTH_NAME = { 'tongue-out-playful': 'playful' };
+  for (const g of mouths0) {
+    if (!g.id || !/^mouth-/.test(g.id)) continue;
+    const ops = g.kind === 'group' ? conv(g.ops) : conv([g]);   // ปากเจ้าเล่ห์ในไฟล์เป็นเส้นเดี่ยว (ไม่ได้ห่อกลุ่ม)
+    const id = g.id.replace(/^mouth-/, '');
+    mouths[MOUTH_NAME[id] || id] = ops;
+    if (g.id === 'mouth-hungry') mouths.bleh = ops.filter((o) => o.id !== 'drool');   // แลบลิ้นซน = ปากหิวไม่มีน้ำลาย
+  }
+  // จุดยึด = กลางขอบบนของปากแต่ละแบบ · ทุกแบบเลื่อนให้ขอบบนอยู่ระดับเดียวกับปากปกติ (ผู้ใช้ 24 พ.ย.: "ยึดตำแหน่งตอนปากปกติ")
+  //   ในไฟล์ปากหาววาดสูงกว่าปากปกติ 18.6 หน่วย (ขอบบนชนจมูก) · ปากยิ้ม/หิวสูงกว่า 2.5 — อ้าปากแล้วปากต้องไม่ขยับขึ้น ขยายลงล่างอย่างเดียว
+  const anchor = {};
+  const top0 = mouths.closed ? opsBox(mouths.closed).y0 : null;
+  //   ปากเส้น (งอน เจ็บ เจ้าเล่ห์ — ชุด V.3) ไม่อ้า ไม่ขยาย → วางตามตำแหน่งที่โมจิวาด
+  const AS_DRAWN = new Set(['sulky', 'pain', 'mischievous']);
+  for (const [id, ops] of Object.entries(mouths)) { const b = opsBox(ops); anchor[id] = [(b.x0 + b.x1) / 2, b.y0, AS_DRAWN.has(id) ? b.y0 : top0 ?? b.y0, b.y1]; }
+  return { eyes, mouths, anchor };
+}
+// ── แอนิเมชันชุดหน้าโมจิ (ผู้ใช้ 24 พ.ย.): ดาวในตาวิ้ง · น้ำลายไหลเยิ้ม · ตาน้ำตาคลอสั่นหยึบหยับ + น้ำตาไหล ──
+// draw(o) = วาดชิ้นจริง (drawOps ของตัววาด) · T = วินาที · ph = เหลื่อมจังหวะซ้าย/ขวา ไม่ให้สองตาขยับพร้อมกันเป๊ะ
+const EMO_BOX = new WeakMap();
+function emoBox(o) {
+  let b = EMO_BOX.get(o);
+  if (!b) { b = opsBox([o]); b.cx = (b.x0 + b.x1) / 2; b.cy = (b.y0 + b.y1) / 2; EMO_BOX.set(o, b); }
+  return b;
+}
+/** วาดชิ้น o หลังย่อ/ขยาย/หมุนรอบจุด (px, py) — ไม่ระบุ = กลางชิ้น */
+function emoXf(c, o, draw, sx, sy, rot = 0, alpha = 1, px, py) {
+  if (alpha <= 0.001) return;
+  const b = emoBox(o);
+  px ??= b.cx; py ??= b.cy;
+  c.save();
+  c.translate(px, py);
+  if (rot) c.rotate(rot);
+  c.scale(sx, sy);
+  c.translate(-px, -py);
+  if (alpha < 1) c.globalAlpha *= alpha;
+  draw(o);
+  c.restore();
+}
+/** ดาวในตาประกาย: ดาวใหญ่พองยุบ + เอียงไปมาเบา ๆ · ประกายเล็กวิ้ง (ใหญ่-เล็ก-จาง) คนละจังหวะ */
+function emoStars(c, g, draw, T, ph) {
+  const [big, small, ...rest] = g.ops;
+  if (big) { const s = 1 + 0.07 * Math.sin(T * 3.1 + ph); emoXf(c, big, draw, s, s, 0.06 * Math.sin(T * 1.6 + ph)); }
+  if (small) { const w = 0.5 + 0.5 * Math.sin(T * 4.6 + ph + 1.9), s = 0.55 + 0.55 * w; emoXf(c, small, draw, s, s, (w - 0.5) * 0.6, 0.5 + 0.5 * w); }
+  for (const o of rest) draw(o);
+}
+/** น้ำตา: แอ่งน้ำตาใต้ตาเอ่อขึ้นลง · หยดน้ำตาผุดจากปลายแอ่ง ไหลลงตามแนวหยดในไฟล์ เล็กลงแล้วจางหาย (สองหยดสลับกัน) */
+function emoTears(c, g, draw, T, ph) {
+  const ops = [...g.ops].sort((a, b) => { const A = emoBox(a), B = emoBox(b); return (B.x1 - B.x0) * (B.y1 - B.y0) - (A.x1 - A.x0) * (A.y1 - A.y0); });
+  const [pool, ...drops] = ops;
+  const bp = emoBox(pool);
+  const swell = 0.5 + 0.5 * Math.sin(T * 2.4 + ph);
+  emoXf(c, pool, draw, 1 + 0.025 * swell, 1 + 0.08 * swell, 0, 1, bp.cx, bp.y0);   // เอ่อลงล่าง ขอบบน (ติดตา) อยู่กับที่
+  if (!drops.length) return;
+  drops.sort((a, b) => emoBox(a).cy - emoBox(b).cy);
+  const d0 = drops[0], A = emoBox(d0), B = emoBox(drops[drops.length - 1]);
+  const P = 1.45;   // วินาทีต่อหนึ่งหยด
+  for (let i = 0; i < 2; i++) {
+    const u = (((T + ph * 0.4) / P + i * 0.5) % 1 + 1) % 1;
+    const f = Math.pow(u, 1.35) * 1.8;   // ไหลเร็วขึ้นเรื่อย ๆ (มีน้ำหนัก)
+    const x = A.cx + (B.cx - A.cx) * f, y = A.cy + (B.cy - A.cy) * f;
+    const k = Math.min(1, u * 6) * (1 - 0.4 * u);   // ผุดโตเร็ว แล้วเล็กลงตอนไหลไกล
+    const al = 1 - clamp01((u - 0.68) / 0.32);
+    c.save();
+    c.translate(x - A.cx, y - A.cy);
+    emoXf(c, d0, draw, k, k * (1 + 0.15 * u), 0, al);   // ยืดยาวลงนิดตอนไหลเร็ว
+    c.restore();
+  }
+}
+/** ขอบบนของหัว (y น้อยสุดที่อยู่ในรูปหัว) ที่ตำแหน่ง x — ใช้กับหูสไตล์โมจิ (รอยต่อหูกับกระหม่อมไม่หักตอนหูกระดิก)
+ *  ทำตารางครั้งเดียวต่อโมเดล (สแกน isPointInPath ทุก 2 หน่วย) · นอกหัว (ซ้าย/ขวาสุด) = 1e3 (ไม่จำกัด) */
+const HEAD_TOP = new WeakMap();
+function headTopAt(M, x) {
+  const head = M.parts?.head;
+  if (!head?.all) return 1e3;
+  let tb = HEAD_TOP.get(head);
+  if (!tb) {
+    const probe = (typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(4, 4) : document.createElement('canvas')).getContext('2d');
+    tb = [];
+    for (let xi = 0; xi <= 600; xi += 2) {
+      let y = 1e3;
+      for (let yy = 20; yy < 420; yy += 2) if (probe.isPointInPath(head.all, xi, yy)) { y = yy; break; }
+      if (y < 1e3) for (let yy = y - 2; yy < y; yy += 0.25) if (probe.isPointInPath(head.all, xi, yy)) { y = yy; break; }
+      tb.push(y);
+    }
+    HEAD_TOP.set(head, tb);
+  }
+  const f = Math.max(0, Math.min(300, x / 2)), i = Math.floor(f), u = f - i;
+  const a = tb[i], b = tb[Math.min(300, i + 1)];
+  return a >= 1e3 || b >= 1e3 ? Math.min(a, b) : a + (b - a) * u;
+}
+// ── ขนในหูแบบเส้นผม (ผู้ใช้ 24 พ.ย. "ขยับตามฟิสิกส์ของหูและตัว ตามทีหลังแบบพริ้วไหว") ──
+// แต่ละปอยเป็นสปริงหน่วง (มุมเบี่ยงจากท่าที่วาด) ขับด้วย:
+//   • หูหมุนในโลก (หัวเอียง หูกระดิก ตัวหมุน) → ขนหมุนสวนตามแรงเร่งเชิงมุม = ตามช้ากว่าหู แล้วแกว่งกลับ
+//   • โคนหูเคลื่อนที่ (เด้ง กระโดด เดิน วิ่ง) → แรงเฉื่อยดันปลายปอยไปทางตรงข้ามกับแรงเร่ง (คานหมุนรอบโคน)
+// ต้องจำสถานะข้ามเฟรม → ช่องเก็บต่อผ้าใบ ตามลำดับน้องที่วาดในเฟรม (นับเฟรมด้วย requestAnimationFrame ของเราเอง)
+//   วาดครั้งเดียว/ภาพนิ่ง/ลากหลอดเวลา (เวลาไม่ต่อเนื่อง) → ขนนิ่งตามแบบ · หยุดเล่น (เวลาเท่าเดิม) → ค้างท่าเดิม
+// รอบ 2 (ผู้ใช้: "ดูเด้ง ๆ ไป อยากให้พริ้ว"): สปริงอ่อนลง หน่วงมากขึ้น (ไม่ดีดหลายรอบ) + ปอยงอได้สองท่อน
+//   ท่อนโคน (r) ตามแรงหู/ตัว · ท่อนปลาย (r2) ตามท่อนโคนอีกทีช้ากว่า → ปลายปอยสะบัดตามหลังเป็นคลื่นแบบปลายผม
+// รอบ 3 (ผู้ใช้: "ช้าลงตามการเคลื่อนไหว เบาลง ให้สมจริง"): สปริงอ่อนลงอีก (รอบละ ~1.3–1.6 วิ) + ลดแรงขับ (สปริงอ่อน = งอมากขึ้นเท่าตัว จึงลดแรงลงมากกว่า) · งอได้น้อยลง
+const FUR_K = { zeta: 0.45, zeta2: 0.38, rot: 0.32, lin: 0.28, tip: 0.6, max: 0.18 };
+let FUR_FRAME = 0;
+if (typeof requestAnimationFrame === 'function') { const tick = () => { FUR_FRAME++; requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
+const FUR_SLOTS = new WeakMap();
+/** ช่องสถานะของน้องตัวที่ n ที่วาดบนผ้าใบนี้ในเฟรมนี้ (ลำดับการวาดต่อเฟรมคงที่ → ตัวเดิมได้ช่องเดิม) */
+function furSlot(ctx) {
+  const cv = ctx?.canvas;
+  if (!cv || typeof cv !== 'object' || ctx.__svgTag) return null;
+  let s = FUR_SLOTS.get(cv);
+  if (!s) FUR_SLOTS.set(cv, (s = { frame: -1, idx: 0, list: [] }));
+  if (s.frame !== FUR_FRAME) { s.frame = FUR_FRAME; s.idx = 0; }
+  const i = s.idx++;
+  return i < 16 ? (s.list[i] ||= {}) : null;
+}
+/** ก้าวสปริงของปอยขนหูข้างหนึ่ง → มุมเบี่ยงต่อปอย (เรเดียน ทิศเดียวกับ ctx.rotate ในพิกัดจอ)
+ *  m = เมทริกซ์ตอนวาดหู · aEar = มุมหูที่ตัววาดหมุนเอง (กระดิก/เอียงตาม) · piv = โคนหู (พิกัดแบบ)
+ *  tufts = [{ ux, uy (ทิศโคน→ปลายบนจอ), L (ยาว หน่วยแบบ), om (ความแข็ง rad/s) }] */
+function furStep(st, t, m, aEar, piv, tufts) {
+  const n = tufts.length;
+  if (!st.r || st.r.length !== n) { st.r = new Array(n).fill(0); st.rv = new Array(n).fill(0); st.r2 = new Array(n).fill(0); st.rv2 = new Array(n).fill(0); st.t = null; }
+  if (st.t === t) return st;   // วาดซ้ำในเฟรมเดียวกัน (ชั้นมุมเฉียง) — ไม่ก้าวซ้ำ
+  const s = Math.hypot(m.a, m.b) || 1, det = Math.sign(m.a * m.d - m.b * m.c) || 1;
+  const p = m.transformPoint(new DOMPoint(piv.x, piv.y));
+  const px = p.x / s, py = p.y / s, A = Math.atan2(m.b, m.a) + aEar * det;
+  const dt = st.t == null ? -1 : (t - st.t) / 60;
+  if (!(dt > 0 && dt < 0.1) || Math.abs(s / st.s - 1) > 0.03) {   // เริ่มใหม่ / ข้ามเวลา / ซูม → นิ่ง
+    st.r.fill(0); st.rv.fill(0); st.r2.fill(0); st.rv2.fill(0);
+    Object.assign(st, { t, s, px, py, vx: 0, vy: 0, A, w: 0, warm: 2 });
+    return st;
+  }
+  const vx = (px - st.px) / dt, vy = (py - st.py) / dt;
+  let ax = (vx - st.vx) / dt, ay = (vy - st.vy) / dt;
+  let dA = A - st.A; dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+  const w = dA / dt;
+  let al = (w - st.w) / dt;
+  if (st.warm > 0) { st.warm--; ax = ay = al = 0; }   // สองเฟรมแรกยังไม่รู้ความเร็วเดิม — ไม่ให้กระตุก
+  const am = Math.hypot(ax, ay), AM = 5000;
+  if (am > AM) { ax *= AM / am; ay *= AM / am; }
+  al = Math.max(-400, Math.min(400, al));
+  const N = Math.max(1, Math.ceil(dt * 120)), h = dt / N, z = FUR_K.zeta, z2 = FUR_K.zeta2, M = FUR_K.max;
+  tufts.forEach((tf, i) => {
+    const om = tf.om, om2 = tf.om2;
+    const drive = -al * FUR_K.rot + (1.5 / tf.L) * (tf.uy * ax - tf.ux * ay) * FUR_K.lin;
+    let r = st.r[i], rv = st.rv[i], r2 = st.r2[i], rv2 = st.rv2[i];
+    for (let k = 0; k < N; k++) {
+      const acc1 = drive - om * om * r - 2 * z * om * rv;
+      rv += acc1 * h; r += rv * h;
+      rv2 += (-acc1 * FUR_K.tip - om2 * om2 * r2 - 2 * z2 * om2 * rv2) * h; r2 += rv2 * h;   // ท่อนปลาย: ถูกท่อนโคนกระชากแล้วตามไปเองช้ากว่า
+    }
+    if (Math.abs(r) > M) { r = Math.sign(r) * M; rv *= 0.4; }
+    if (Math.abs(r2) > M) { r2 = Math.sign(r2) * M; rv2 *= 0.4; }
+    st.r[i] = r; st.rv[i] = rv; st.r2[i] = r2; st.rv2[i] = rv2;
+  });
+  Object.assign(st, { t, s, px, py, vx, vy, A, w });
+  return st;
+}
+/** น้ำลายไหลเยิ้ม: สายน้ำลายยืดยาวลงช้า ๆ (เม็ดใต้สายค่อย ๆ โต) → ขาด สายดีดกลับ เม็ดหล่นแล้วจาง · สายแกว่งเบา ๆ */
+function emoDrool(c, g, draw, T) {
+  const ops = [...g.ops].sort((a, b) => emoBox(a).cy - emoBox(b).cy);
+  const [main, bead, ...rest] = ops;
+  const bm = emoBox(main), top = [bm.cx, bm.y0], len = bm.y1 - bm.y0;
+  const P = 2.6, u = ((T / P) % 1 + 1) % 1, CUT = 0.72;
+  let sy;
+  if (u < CUT) sy = 1 + 0.55 * ease(u / CUT);
+  else { const w = (u - CUT) / (1 - CUT); sy = 1 + 0.55 * Math.exp(-w * 6) * Math.cos(w * 10); }   // ดีดกลับแบบสปริง
+  const rot = 0.05 * Math.sin(T * 1.9);
+  emoXf(c, main, draw, 1 - (sy - 1) * 0.18, sy, rot, 1, top[0], top[1]);   // ยืดแล้วผอมลงนิด
+  if (bead) {
+    const bb = emoBox(bead), dx = bb.cx - bm.cx;
+    let by, k, al = 1;
+    if (u < CUT) { k = 0.35 + 0.65 * (u / CUT); by = top[1] + len * sy + 1.5; }   // เม็ดห้อยใต้สาย ค่อย ๆ โต
+    else { const w = (u - CUT) / (1 - CUT); k = 1; by = top[1] + len * 1.55 + 1.5 + 42 * w * w; al = 1 - clamp01((w - 0.45) / 0.55); }   // ขาด → หล่น จาง
+    c.save();
+    c.translate(top[0] + dx + Math.sin(rot) * -len * sy - bb.cx, by - bb.y0);
+    emoXf(c, bead, draw, k, k, 0, al, bb.cx, bb.y0);
+    c.restore();
+  }
+  for (const o of rest) draw(o);
 }
 
 // ══ วาดชุดคำสั่ง ══
@@ -23921,6 +24152,23 @@ function drawOps0(ctx, ops, pal, hooks, opt) {
         } else {
           ctx.stroke(op.path);
         }
+      } else if (op.sgrad) {
+        // เส้นลงสีไล่ (ไฟล์โมจิ): วาดในพิกัดวงกลมหน่วยของสีไล่ — เส้นแปลงกลับด้วยเมทริกซ์ผกผัน ความหนาหารด้วยสเกลสีไล่
+        const { m, stops } = op.sgrad;
+        const Mg = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]);
+        const p = new Path2D();
+        p.addPath(op.path, Mg.inverse());
+        ctx.save();
+        ctx.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+        const fo = op.sgrad.f || [0, 0];
+        const g = ctx.createRadialGradient(fo[0], fo[1], 0, 0, 0, 1);
+        for (const [o, c] of stops) g.addColorStop(o, c);
+        ctx.strokeStyle = g;
+        ctx.lineWidth = (op.width * LINE_K) / (Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) || 1);
+        ctx.lineCap = op.cap;
+        ctx.lineJoin = op.join;
+        ctx.stroke(p);
+        ctx.restore();
       }
     }
   }
@@ -24261,7 +24509,7 @@ function drawLayer(ctx, items, pal, hooks, opt) {
       const a0 = ctx.globalAlpha;
       ctx.globalAlpha = a0 * it.q3.w;
       if (it.q3.fill?.grad) drawOps(ctx, [{ ...it.q3.fill, path: it.q3.fill.path || it.all, fill: null, stroke: null }], pal, {}, {});   // รูปทรงจากไฟล์มุมเฉียง (ไม่ใช่รูปชิ้นเต็มที่มีโคนแขนฝังในตัว — ไม่งั้นเป็นแผ่นเหลี่ยมที่ไหล่)
-      drawOps(ctx, it.q3.det, pal, {}, {});
+      drawOps(ctx, it.q3.det, pal, hooks?.__q3 || {}, {});   // ขนในหูพริ้ว (hooks.__q3) — hook อื่นไม่ใช้กับชั้นนี้
       ctx.globalAlpha = a0;
     }
     ctx.restore();
@@ -26094,6 +26342,13 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     return Math.cos(th + yF);
   };
   const M = model(back ? (moji ? 'back-moji' : 'back') : moji ? 'front-moji' : 'front');
+  // ชุดหน้าตามอารมณ์ของโมจิ (ด้านหน้า/มุมเฉียง — ด้านหลังไม่มีหน้า)
+  // แมวสีอื่น (ไม่ใช่โมเดลโมจิ): เปิดได้ด้วย skin.mojiFace = true เท่านั้น (แท็บแต่งหน้า) — ตาเปิดก็ใช้ตาเปิดของไฟล์ชุดหน้า
+  // shape.faceEye / shape.faceMouth = บังคับแบบตา/ปาก (ชื่อในคลัง เช่น 'sparkling' 'yawn') ทับอารมณ์ของท่า
+  const emoOn = !back && !!(M.moji ? M.emo && (s?.mojiFace ?? MOJI_STYLE.face) : s?.mojiFace && emoLib());
+  const EMO = emoOn ? M.emo || emoLib() : null;
+  const faceEye = emoOn && shape?.faceEye && EMO.eyes[shape.faceEye] ? shape.faceEye : null;
+  const faceMouth = emoOn && shape?.faceMouth && EMO.mouths[shape.faceMouth] ? shape.faceMouth : null;
   // แมวสามสี: ชิ้นส่วนที่แทรกปื้นส้ม/เทาไว้หน้าสุดของลวดลาย (ดัดไปกับชิ้นทุกท่า)
   const P = marks ? calicoParts(M, marks, back) : M.parts;
 
@@ -26288,7 +26543,10 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         x += sg * E3.dx * f3;
         y += E3.dy * f3;
       }
-      const w = ease(clamp01((212 - y0) / 75));
+      // สไตล์โมจิ (ผู้ใช้ 24 พ.ย. — "หูกระดิกแล้วเห็นช่องตรงรอยต่อหูกับหัว"): น้ำหนักหมุนเดิมดูแค่ความสูง (y)
+      //   ขอบในของหูช่วงที่ชนกระหม่อมสูงกว่า 212 มาก จึงหมุนเกือบเต็ม ขณะที่เส้นหัวอยู่กับที่ → รอยต่อหักเป็นหยัก/ช่อง
+      //   → จุดที่อยู่ชิดเส้นหัว (ระยะเหนือขอบบนของหัวที่ x เดียวกัน) แทบไม่หมุน แล้วค่อย ๆ หมุนเต็มเมื่อสูงพ้นหัวขึ้นไป
+      const w = M.moji ? Math.min(ease(clamp01((212 - y0) / 75)), ease(clamp01((headTopAt(M, x0) - y0) / 42))) : ease(clamp01((212 - y0) / 75));
       if (w <= 0 || still) return [x, y];
       const [X, Y] = rotPt(piv, a * w, x, y);
       return [X - hx * 2.5 * w, Y - hy * 1.5 * w];
@@ -26897,6 +27155,58 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     'whiskers-left': (c, draw, op) => { c.save(); rotAt(c, { x: 150, y: 265 }, Math.sin(T * 3.1) * 0.03); whiskerDraw(c, draw, op); c.restore(); },
     'whiskers-right': (c, draw, op) => { c.save(); rotAt(c, { x: 450, y: 265 }, -Math.sin(T * 3.1 + 1) * 0.03); whiskerDraw(c, draw, op); c.restore(); },
     mouth: (c, draw) => {
+      // ปากชุดอารมณ์ของโมจิ — ลิ้นเลีย (lick) ยังเป็นของตัววาดเดิม
+      const EM = emoOn ? EMO.mouths : {};
+      const mk = !emoOn ? null : faceMouth || (loafMode ? 'closed'
+        : bleh > 0.12 ? (EM.playful ? 'playful' : 'bleh')
+        : lick > 0.12 ? (EM.playful ? 'playful' : null)   // เลียอุ้งเท้า: ลิ้นของโมจิ (V.3) — ไม่มีไฟล์ = ลิ้นของตัววาดเดิม
+        : yawn > 0.3 ? 'yawn'
+        : mood === 'hungry' ? 'hungry'
+        : mood === 'mischievous' && EM.mischievous ? 'mischievous'
+        : mood === 'sulky' && EM.sulky ? 'sulky'
+        : mood === 'shocked' && chirp < 0.6 && EM.shocked ? 'shocked'
+        : mood === 'dizzy' && chirp < 0.6 && EM.shocked ? 'shocked'   // มึน = ปากตกใจ (ผู้ใช้ 24 พ.ย.)
+        : mood === 'hurt' && chirp < 0.6 && EM.pain ? 'pain'
+        : chirp < 0.15 && !happy && !starry ? (mood === 'sad' || mood === 'sleepy' ? 'sad' : 'closed')
+        : happy || starry ? 'happy' : chirp < 0.6 ? 'open' : 'yawn');
+      const mo = mk && EMO.mouths[mk];
+      if (mo) {
+        const [ax, ay, top0, bot] = EMO.anchor[mk];
+        // ปากอ้ากว้าง (หาว ตะโกน ทุกท่า · ผู้ใช้ 24 พ.ย. ภาพแบบ): ยกขึ้นจากระดับปากปกติ 12 หน่วยตามแรงอ้า — ปากแบบอื่นตรึงที่ระดับปากปกติ
+        const wide = mk === 'yawn' ? (faceMouth ? 1 : yawn > 0.3 ? clamp01((yawn - 0.3) / 0.7) : clamp01((chirp - 0.6) / 0.4)) : 0;   // อ้าเต็ม (mouth 1) = ยกเต็มเท่าหาว
+        const top = top0 - 12 * wide;
+        // ขนาดตามแรงอ้า: หาว/ตะโกนค่อย ๆ อ้ากว้าง · ปากอ้าเล็กพูด/ร้องเหมียว · ปากปิดหายใจกว้าง-แคบเบา ๆ
+        let sx = 1, sy = 1;
+        if (mk === 'yawn') {
+          const o = faceMouth ? 1 : yawn > 0.3 ? clamp01((yawn - 0.3) / 0.7) : clamp01((chirp - 0.6) / 0.5);
+          const fit = Math.min(1, (384 - top) / (bot - ay));   // เลื่อนลงมาแล้วต้องไม่ล้นคาง (ขอบหัวล่าง ~y 392)
+          sx = (0.7 + 0.3 * o) * (0.94 + 0.06 * fit); sy = (0.6 + 0.4 * o) * fit;
+        }
+        else if (mk === 'open' && !faceMouth) { sy = 0.6 + 0.4 * clamp01((chirp - 0.15) / 0.45); }
+        else if (mk === 'closed') sx = 1 + Math.sin(T * 1.4) * 0.06;
+        c.save();
+        c.translate(ax, top); c.scale(sx, sy); c.translate(-ax, -ay);   // ขอบบนตรึงที่ระดับปากปกติ
+        // เลียอุ้งเท้า (ไม่ใช่แลบลิ้นซน): ลิ้นแลบของโมจิอยู่มุมปากซ้าย → เลื่อนมากลางปาก ดูกำลังเลียน่ารัก ๆ (ผู้ใช้ 24 พ.ย.)
+        const lickMid = mk === 'playful' && !faceMouth && !(bleh > 0.12);
+        for (const o of mo) {
+          if (o.id === 'drool' && o.ops) emoDrool(c, o, (q) => drawOps(c, [q], pal, {}, opt), T);   // น้ำลายไหลเยิ้ม
+          else if (lickMid && o.id === 'tongue') {
+            // ผู้ใช้ 24 พ.ย.: ลิ้นที่เลื่อนมากลางโผล่เหนือเส้นปาก (ใต้โหนก ω) → ตัดลิ้นใต้ระดับก้นเส้นปาก (ลิ้นมุดใต้เส้น)
+            //   + ยืดลิ้นลงจากโคน ให้ปลายลิ้นแตะอุ้งเท้าที่ยกมาเลีย
+            const tb = emoBox(o), line = mo.find((q) => /^mouth-closed-line/.test(q.id || ''));
+            const cut = line ? emoBox(line).y1 - 0.4 : tb.y0;
+            c.save();
+            c.beginPath(); c.rect(tb.x0 - 80, cut, tb.x1 - tb.x0 + 160, 120); c.clip();
+            c.translate((line ? emoBox(line).cx : ax) - tb.cx, 0);   // กลางเส้นปาก (กรอบปากทั้งชุดรวมลิ้นที่มุมซ้าย — กลางกรอบจึงเยื้องซ้าย)
+            c.translate(tb.cx, cut); c.scale(1.08, 1.55); c.translate(-tb.cx, -cut);
+            drawOps(c, [o], pal, {}, opt);
+            c.restore();
+          }
+          else drawOps(c, [o], pal, {}, opt);
+        }
+        c.restore();
+        return;
+      }
       if (loafMode) {
         // หมอบหลับ: ปากแมว ω ปิดสนิท (ตามแบบ) ไม่อ้าปาก — ขยับกว้าง-แคบเบา ๆ ตามลมหายใจ
         c.save();
@@ -27021,8 +27331,47 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     },
   };
   // หาว: จมูกเลื่อนขึ้นตามแรงอ้าปาก (หน้ายืดขึ้น) เว้นที่ให้ปากอ้ากว้าง
+  // ── ขนในหูพริ้วแบบเส้นผม (สไตล์โมจิ · ผู้ใช้ 24 พ.ย.) ──
+  // ปอยขนสามปอยต่อหู (กลุ่ม ear-detail ของไฟล์โมจิ · ไฟล์มุมเฉียงใช้ ear-detail_1/_2) หมุนรอบโคนปอย (มุมล่างฝั่งหัว)
+  //   มุม = ไหวเองเบา ๆ (คนละจังหวะต่อปอย) + สปริงตามแรงหู/แรงตัว (furStep — ตามหลังแล้วแกว่งกลับแบบเส้นผม)
+  //   ตัดอยู่ในหูในเสมอ (drawLayer ตัดรายละเอียดในรูปหูใน) — ปลายปอยไม่ทะลุขอบหู · ด้านหลังไม่มีกลุ่มนี้
+  if (M.moji) {
+    const furSt = furSlot(ctx);
+    const furHook = (c, draw, op) => {
+      if (!op?.ops?.length) return draw();
+      const b0 = opsBox(op.ops);
+      const side = (b0.x0 + b0.x1) / 2 < 300 ? 'left' : 'right', d = side === 'left' ? 1 : -1;
+      const m = c.getTransform(), det = Math.sign(m.a * m.d - m.b * m.c) || 1;
+      const tufts = op.ops.map((o, i) => {
+        const b = opsBox([o]), w = b.x1 - b.x0, h = b.y1 - b.y0;
+        const px = side === 'left' ? b.x1 - w * 0.2 : b.x0 + w * 0.2, py = b.y1 - h * 0.1;   // โคนปอย
+        const dx = (side === 'left' ? b.x0 : b.x1) - px, dy = b.y0 - py;                      // → ปลายปอย (มุมบนฝั่งนอก)
+        const ux = m.a * dx + m.c * dy, uy = m.b * dx + m.d * dy, l = Math.hypot(ux, uy) || 1;
+        const L = Math.max(20, Math.hypot(dx, dy));
+        // ปอยหลัง ๆ (เล็ก) แข็งกว่านิด แกว่งเร็วกว่านิด — ทั้งหมดช้านุ่ม (รอบละ ~0.8–1 วินาที)
+        return { o, px, py, ex: dx / L, ey: dy / L, ux: ux / l, uy: uy / l, L, om: 4.2 + 0.8 * i, om2: 6 + 1 * i };
+      });
+      const aEar = earLag + d * v('ear') * 0.3 + (twitchSide === side || twitchSide === 'both' ? -d * twitch : 0);
+      const r = furSt ? furStep((furSt[side] ||= {}), t, m, aEar, M.piv[`ear-${side}`], tufts) : null;
+      // ดัดปอยเป็นโค้ง: จุดบนปอยหมุนรอบโคนตามระยะจากโคน (s 0 = โคน → 1 = ปลาย) — โคนนิ่ง ปลายไปไกลสุด
+      //   มุมที่ s = ท่อนโคน·s + ท่อนปลาย·s² + คลื่นไหวเอง (วิ่งจากโคนไปปลาย ช้า ๆ)
+      tufts.forEach((tf, i) => {
+        const ph = i * 1.7 + (side === 'right' ? 0.9 : 0);
+        const r1 = r ? r.r[i] * det : 0, r2 = r ? r.r2[i] * det : 0;
+        const angAt = (u) => Math.max(-0.28, Math.min(0.28, r1 * Math.pow(u, 0.9) + r2 * u * u))   // งอรวมไม่เกิน ~16° (ปอยไม่พับ)
+          + d * u * (Math.sin(T * 1.1 + ph - u * 2.2) * 0.022 + Math.sin(T * 1.8 + ph * 1.4 - u * 3) * 0.008);
+        const bend = (x, y) => {
+          const u = Math.max(0, Math.min(1.3, ((x - tf.px) * tf.ex + (y - tf.py) * tf.ey) / tf.L));
+          return rotPt({ x: tf.px, y: tf.py }, angAt(u), x, y);
+        };
+        drawOps(c, deformOps([tf.o], bend), pal, {}, opt);
+      });
+    };
+    hooks['ear-detail_6'] = hooks['ear-detail_7'] = furHook;
+    hooks.__q3 = { 'ear-detail_1': furHook, 'ear-detail_2': furHook };   // ชั้นมุมเฉียง (drawLayer วาดด้วยชุด hook นี้)
+  }
   hooks.nose = (c, draw, op) => {
-    const up = yawn > 0.3 ? -17 * clamp01((yawn - 0.3) / 0.7) : 0;
+    const up = yawn > 0.3 && !emoOn ? -17 * clamp01((yawn - 0.3) / 0.7) : 0;
     c.save();
     if (up) c.translate(0, up);
     // art.nose = [กว้าง, สูง] จมูกโตกว่าแบบกลาง (ขาวมณี ตามแบบ: สามเหลี่ยมมนกว้างกว่าสูง) — ขยายรอบขอบบนจมูก ไม่ล้นลงปาก
@@ -27157,6 +27506,69 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.restore();
     }
   };
+  // ตาชุดอารมณ์ของโมจิ: วาดตามไฟล์ · รูม่านตา ประกาย เงาสะท้อน ดาว กลอกตามสายตา (ตัดในวงตา) — ขนตา เปลือกตา น้ำตา อยู่กับที่
+  //   ตาตกใจข้างขวาในไฟล์ตั้งชื่อรูม่านตาเป็น iris ซ้ำ → วงที่สองนับเป็นรูม่านตา
+  //   แอนิเมชัน (ผู้ใช้ 24 พ.ย.): ตาประกาย = ดาววิ้งเบา ๆ · ตาน้ำตาคลอ = ข้างในตาสั่นหยึบหยับแบบการ์ตูนก่อนร้องไห้ (รูม่านตาเด้งดึ๋ง ประกายสั่นวาว) + น้ำตาไหล
+  const emoDraw = (c) => (o) => drawOps(c, [o], pal, {}, opt);
+  const emoEye = (c, ops, lx, ly, kind, side) => {
+    const flat = [];
+    const walk = (list) => { for (const o of list) (o.kind === 'group' && /^eye-(left|right)/.test(o.id || '') ? walk(o.ops) : flat.push(o)); };
+    walk(ops);
+    const iris = flat.find((o) => /^iris/.test(o.id || ''));
+    // ตาเจ้าเล่ห์: ตาขาวแบน (pupil-fill) เป็นกรอบ — วงตาดำ + จุดตาดำกลอกอยู่ข้างใน
+    const frame = flat.find((o) => /^pupil-fill/.test(o.id || '')) || iris;
+    const draw = emoDraw(c);
+    // ตามึน: ก้นหอยหมุนติ้วรอบกลางของตัวเอง (สองข้างหมุนสวนกัน)
+    if (kind === 'dizzy') {
+      // หมุนรอบกลางก้นหอยจริง (= จุดกลางสีไล่ของเส้น) — กลางกรอบเส้นเยื้องไปทางหางก้นหอย หมุนแล้วจะส่ายออกนอกที่
+      for (const o of flat) { const g = o.sgrad?.m; emoXf(c, o, draw, 1, 1, T * 2.6 * (side === 'right' ? -1 : 1), 1, g ? g.e : undefined, g ? g.f : undefined); }
+      return;
+    }
+    // ตาหัวใจ: หัวใจในตาเต้นตุบ ๆ (ตุบ-ตุบ แล้วพัก)
+    const beat = kind === 'heart' ? (() => { const u = (T * 1.3) % 1; return Math.pow(Math.max(0, Math.sin(u * Math.PI * 2 * 2)), 6) * (u < 0.5 ? 1 : 0); })() : 0;
+    const ph = side === 'right' ? 0.8 : 0;
+    const cry = kind === 'crying', spark = kind === 'sparkling';
+    // สั่นหยึบหยับ: สองความถี่ซ้อนกัน (ไม่เป็นจังหวะซ้ำ ๆ ทื่อ ๆ) · ขยับแค่ข้างในตา ขอบตา/ขนตาอยู่กับที่
+    const qx = cry ? Math.sin(T * 9.3 + ph) * 1.1 + Math.sin(T * 14.7 + ph * 2) * 0.5 : 0;
+    const qy = cry ? Math.cos(T * 8.1 + ph) * 0.8 + Math.sin(T * 12.9 + ph) * 0.35 : 0;
+    for (const o of flat) {
+      const id = o.id || '';
+      if (cry && /^tears/.test(id)) { emoTears(c, o, draw, T, ph); continue; }
+      const mover = /^(pupil(?!-fill)|shine|reflection|star|heart|eye-sparkle|eye-highlight)/.test(id) || (o !== frame && /^iris/.test(id));
+      if (!mover || !frame?.path) { draw(o); continue; }
+      c.save();
+      c.clip(frame.path);
+      c.translate(lx + qx, ly + qy);
+      if (beat) { const fb = emoBox(frame), k = 1 + 0.09 * beat; c.translate(fb.cx, fb.cy); c.scale(k, k); c.translate(-fb.cx, -fb.cy); }
+      if (spark && /^star/.test(id) && o.ops) emoStars(c, o, draw, T, ph);
+      else if (spark && /^shine/.test(id)) { const s = 1 + 0.06 * Math.sin(T * 3.1 + ph + 0.6); emoXf(c, o, draw, s, s); }
+      else if (cry && /^pupil/.test(id)) { const w = Math.sin(T * 11 + ph) * 0.03; emoXf(c, o, draw, 1 + w, 1 - w); }   // รูม่านตาเด้งดึ๋ง
+      else if (cry && /^shine/.test(id)) { const s = 1 + 0.12 * Math.sin(T * 12.5 + ph); emoXf(c, o, draw, s, s); }   // ประกายสั่นวาว
+      else if (cry && /^reflection/.test(id)) emoXf(c, o, draw, 1, 1, 0, 0.72 + 0.28 * Math.sin(T * 7 + ph));   // เงาน้ำในตาวูบวาบ
+      else draw(o);
+      c.restore();
+    }
+  };
+  // อารมณ์ → แบบตาในไฟล์ (null = ใช้ตาของตัววาดเดิม: เจ็บ >< · มึน @@ · ตาหัวใจ ซึ่งไฟล์ยังไม่มี) · 'open' = ตาเปิดเดิม (ตาดำโต กะพริบบีบตา)
+  const emoEyeKind = (side) => {
+    if (faceEye) return faceEye;   // แท็บแต่งหน้า: ตาที่เลือก (ทั้งสองข้าง — ขยิบตาในไฟล์แยกซ้าย/ขวาเอง)
+    const openHappy = happy && clasp > 0.3;
+    if (loafMode || yawn > 0.3 || (sit > 0.5 && v('paw') > 0.6)) return 'closed';
+    if (happy && (!openHappy || v('shut') > 0.5)) return 'closed';
+    // ชุด V.3: เจ็บ >< · มึน ก้นหอย · ตาหัวใจ · เจ้าเล่ห์ (ไม่มีในไฟล์ → emoEye ไม่ได้ชิ้น ตัววาดเดิมวาดแทน)
+    if (mood === 'hurt') return 'pain';
+    if (mood === 'dizzy') return 'dizzy';
+    if (mood === 'love') return 'heart';
+    if (mood === 'mischievous') return 'mischievous';
+    if (side === 'right' && (v('wink') > 0.5 || v('winkCute') > 0.5 || mood === 'smug')) return 'closed';   // ขยิบตาขวา
+    if (bleh > 0.12) return side === 'right' ? 'closed' : 'open';   // แลบลิ้นซน: ขยิบตาขวา ตาซ้ายลืม (ผู้ใช้ 24 พ.ย.)
+    if (Math.max(blink, v('shut')) > 0.75) return 'closed';
+    if (mood === 'sleepy' || mood === 'tired' || mood === 'sulky' || v('wink') > 0.5) return 'half';   // ง่วง เหนื่อย งอน ตาปรือท่าเฟี้ยว
+    if (mood === 'sad') return 'crying';
+    if (mood === 'shocked') return 'shocked';
+    if (starry || openHappy || mood === 'hungry' || v('winkCute') > 0.5) return 'sparkling';
+    return 'open';
+  };
   for (const side of ['left', 'right']) {
     const e = M.eye[side];
     const ops = M.groups[`eye-${side}-open`];
@@ -27174,6 +27586,18 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         one(cc, pp);
         inkOver(cc, ee, (q, fur) => one(q, inkPal(fur), fur));
       };
+      const ek = emoOn ? emoEyeKind(side) : null;
+      // ตาเปิด: โมเดลโมจิใช้ตาเปิดของไฟล์ตัวเต็ม (ตาดำโต กลอกตา) · แมวสีอื่นใช้ตาเปิดของไฟล์ชุดหน้า
+      const eops = ek && (ek !== 'open' || !M.moji) ? EMO.eyes[ek]?.[side] : null;
+      if (eops?.length) {
+        // กะพริบระหว่างตาแบบอื่น (ตาดาว ตาตกใจ ตาน้ำตา ตาปรือ): บีบตาลงแบบตาเปิด แล้วสลับเป็นตาปิดของไฟล์เมื่อเกินครึ่ง
+        const sq = ek === 'closed' || ek === 'pain' || ek === 'dizzy' ? 0 : Math.max(blink, v('shut'));
+        c.save();
+        c.translate(e.x, e.y); c.scale(1, 1 - sq * 0.9); c.translate(-e.x, -e.y);
+        emoEye(c, eops, gx * 7 - hx * 2 + v('pupilX') * 20, gy * 5 + v('pupilY') * 17, ek, side);
+        c.restore();
+        return;
+      }
       if (loafMode) return closedEye(c, e, pal, 'blink');   // ลงมาหมอบแล้ว = หลับตาตลอด
       if (yawn > 0.3) return closedEye(c, e, pal, 'yawn');   // หาว: ตาตกเป็นตัว U
       if (sit > 0.5 && v('paw') > 0.6) return closedEye(c, e, pal, 'blink');   // นั่งเลียอุ้งเท้า: หลับตาพริ้ม
@@ -28286,7 +28710,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     // ไหล่มน (ก้อนกลมกลืนกับตัว) — แขนจากไฟล์ถูกถอดออกแล้ว ไหล่จึงไม่เหลี่ยม
     const sh = new Path2D();
     const [scx, scy] = upperPt(362, 432);
-    sh.ellipse(scx, scy, 38, 36, 0, 0, TAU);
+    // ผู้ใช้ 24 พ.ย. (ท่าลอยฟ้า จังหวะลดแขนลงจากคาง): ก้อน 38×36 เดิมไม่คลุมมุมไหล่ของลำตัว (มุมบนขวาที่เคยต่อแขนจากไฟล์)
+    //   พอแขนเลื่อนลงพ้นไหล่ มุมนั้นโผล่เป็นจุดแหลม → ขยายก้อนนิด + เลื่อนขึ้นไปทางนอกไหล่ ให้คลุมมุมเป็นไหล่โค้งมน
+    sh.ellipse(scx + 6, scy - 4, 42, 40, 0, 0, TAU);
     chin = { bLo, pw, cap, all, sh };
   }
   const armItems = useHold
@@ -28365,7 +28791,19 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.save();
       c.clip(body);
       c.fillStyle = pal.paw || pal.cream;
-      for (const pw of RB.paws) c.fill(ell(pw));
+      // shape.soles (คัตซีนพลังแห่งความหวัง · ผู้ใช้ 24 พ.ย.): ขาหลังยกโชว์ฝ่าเท้า — อุ้งเท้าหลังใหญ่ขึ้น + ถั่วชมพู (ภาพแบบ)
+      const soles = raw('soles') > 0.5;
+      for (const [i, pw] of RB.paws.entries()) c.fill(ell(soles && i === 0 ? [pw[0] - 2, pw[1], pw[2] * 1.45, pw[3] * 1.2, pw[4]] : pw));
+      if (soles) {
+        const [px, py, prx, pry, pa] = RB.paws[0], [X, Y] = rp([px - 2, py]), rx = prx * 1.45, ry = pry * 1.2;
+        c.save(); c.translate(X, Y); c.rotate(pa);
+        c.fillStyle = '#FF9FB8';
+        c.beginPath(); c.ellipse(rx * 0.22, ry * 0.05, rx * 0.42, ry * 0.4, 0, 0, TAU); c.fill();   // ถั่วใหญ่กลางฝ่าเท้า
+        for (const [bx, by, br] of [[-0.55, -0.55, 0.2], [-0.72, 0, 0.21], [-0.55, 0.55, 0.2]]) { c.beginPath(); c.ellipse(rx * bx, ry * by, rx * br, ry * br * 0.78, 0, 0, TAU); c.fill(); }   // ถั่วนิ้วสามเม็ดที่ปลายเท้า
+        c.fillStyle = 'rgba(255,255,255,.55)';
+        c.beginPath(); c.ellipse(rx * 0.12, -ry * 0.12, rx * 0.14, ry * 0.1, 0, 0, TAU); c.fill();   // ไฮไลต์วาว
+        c.restore();
+      }
       // เส้นในแบ่งขา (สีเดียวกับเส้นขอบ บางกว่า) · ร่องนิ้ว
       c.strokeStyle = pal.line;
       c.lineCap = 'round';
@@ -28375,7 +28813,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         c.beginPath(); c.moveTo(a, b); c.quadraticCurveTo(m, n2, d, e); c.stroke();
       }
       c.lineWidth = LW * 0.6;
-      for (const [x, y, a] of RB.toes) {
+      for (const [x, y, a] of soles ? [] : RB.toes) {   // ฝ่าเท้าโชว์ถั่ว = ไม่มีร่องนิ้วด้านหลังเท้า
         const [X, Y] = rp([x, y]);
         c.beginPath(); c.moveTo(X, Y); c.lineTo(X + Math.cos(a) * 9, Y + Math.sin(a) * 9); c.stroke();
       }

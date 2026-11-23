@@ -33,13 +33,24 @@
     button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
     button:focus-visible, select:focus-visible, .track:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
 
+    /* โครง: จอภาพ | ขอบลากปรับ | แผงข้าง (กว้างตาม --sideW · ย่อเหลือแถบไอคอนได้) */
     .wrap {
-      display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px;
+      display: grid; grid-template-columns: minmax(0, 1fr) 12px var(--sideW, 390px); gap: 2px;
       padding: 14px max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left));
-      max-width: 1600px; margin: 0 auto;
+      margin: 0 auto;
     }
+    body.side-mini .wrap { grid-template-columns: minmax(0, 1fr) 12px 68px; }
     body.wide .wrap { grid-template-columns: minmax(0, 1fr); }
-    body.wide .side { display: none; }
+    body.wide .side, body.wide .resizer { display: none; }
+    .resizer {
+      position: sticky; top: 14px; align-self: start; height: calc(100dvh - 28px);
+      cursor: col-resize; display: grid; place-items: center; touch-action: none; user-select: none;
+    }
+    .resizer::before { content: ''; width: 4px; height: 46px; border-radius: 4px; background: rgba(255,244,220,.18); transition: height .15s, background .15s; }
+    .resizer:hover::before, .resizer.drag::before { height: 96px; background: var(--accent); }
+    body.side-mini .resizer { cursor: default; }
+    body.side-mini .resizer::before { opacity: 0; }
+    body.resizing, body.resizing * { cursor: col-resize !important; user-select: none; }
 
     /* ── เวที (ติดจอ เลื่อนแผงข้างแล้วยังเห็นน้องเสมอ) ── */
     .stage {
@@ -124,25 +135,40 @@
     .time b { color: var(--ink); font-weight: 600; }
 
     /* ── แผงข้าง: แท็บ ── */
+    /* แผงข้าง: แถบแท็บแนวตั้งด้านซ้าย + เนื้อหา */
     .side {
-      position: sticky; top: 14px; align-self: start; max-height: calc(100dvh - 28px);
-      display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
+      position: sticky; top: 14px; align-self: start; height: calc(100dvh - 28px);
+      display: grid; grid-template-columns: 68px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+      background: var(--panel); border: 1px solid var(--line);
       border-radius: var(--r); overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.35);
     }
-    .brand { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+    body.side-mini .side { grid-template-columns: 68px; }
+    body.side-mini .brand, body.side-mini .panes { display: none; }
+    .brand { grid-column: 2; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+    .brand a { color: var(--accent2); font-size: 12px; text-decoration: none; }
+    .brand a:hover { text-decoration: underline; }
     .brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .2px; }
     .brand h1 span { background: linear-gradient(90deg, var(--accent), var(--warn)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .brand p { margin: 0; color: var(--dim); font-size: 12px; }
-    .tabs { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 4px 10px 10px; border-bottom: 1px solid var(--line); }
-    .tab {
-      border: 0; border-radius: 12px; background: transparent; cursor: pointer; padding: 6px 2px 5px;
-      display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 12px; color: var(--dim);
+    .tabs {
+      grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 3px; padding: 8px 6px;
+      border-right: 1px solid var(--line); overflow-y: auto; background: rgba(14,8,22,.35);
     }
+    .tab {
+      border: 0; border-radius: 12px; background: transparent; cursor: pointer; padding: 7px 2px 6px; flex: none;
+      display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 11px; line-height: 1.2; color: var(--dim); text-align: center;
+    }
+    .tab.mini { margin-bottom: 4px; border: 1px dashed var(--line); }
+    .tab.mini i { font-size: 15px; }
     .tab i { font-style: normal; font-size: 18px; line-height: 1.2; }
     .tab:hover { background: rgba(255,244,220,.06); color: var(--ink); }
     .tab.on { background: rgba(255,159,196,.18); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(255,159,196,.5); }
     .tab.star.on { background: rgba(255,195,107,.18); box-shadow: inset 0 0 0 1px rgba(255,195,107,.55); }
-    .panes { overflow: auto; padding: 12px 14px 16px; overscroll-behavior: contain; }
+    .panes { grid-column: 2; overflow: auto; padding: 12px 14px 16px; overscroll-behavior: contain; }
+    details.help { margin-top: 10px; border: 1px solid var(--line); border-radius: 11px; padding: 6px 10px; }
+    details.help summary { cursor: pointer; color: var(--dim); font-size: 12.5px; }
+    details.help[open] summary { margin-bottom: 2px; }
+    details.help .note { margin-top: 6px; }
     /* ── พ่อค้าแม่ค้า (แมวประจำร้านในเมือง · ไม่วิ่งในเกม) — แท็บรอออกแบบ ── */
     .kp-card { margin-top: 10px; padding: 10px 12px; border-radius: 13px; border: 1px solid var(--line); background: rgba(255,244,220,.045); }
     .kp-card h4 { margin: 0 0 6px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
@@ -201,11 +227,39 @@
     .seg button + button { border-left: 1px solid var(--line); }
     .seg button:hover { background: rgba(255,244,220,.07); }
     .seg button.on { background: rgba(127,227,208,.24); color: var(--accent2); font-weight: 500; }
+    /* ชุดหน้าโมจิ: ปุ่มอารมณ์ (หลายปุ่ม — เรียงเป็นตาราง) */
+    .emo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 7px; }
+    .emo-grid button { padding: 6px 3px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+    .emo-grid button:hover { background: rgba(255,244,220,.07); }
+    .emo-grid button.on { background: rgba(127,227,208,.24); color: var(--accent2); font-weight: 500; }
+    /* แท็บแต่งหน้า */
+    .face-now { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; display: grid; gap: 5px; font-size: 13px; background: rgba(255,244,220,.04); }
+    .face-now .fr { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 0 8px; align-items: start; }
+    .face-now .sub { display: block; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .face-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+    .face-cats button { display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 6px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+    .face-cats button i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #5A3420; flex: none; }
+    .face-cats button:hover { background: rgba(255,244,220,.07); }
+    .face-cats button.on { background: rgba(255,159,196,.2); border-color: var(--accent); }
+    .face-now .k { color: var(--dim); flex: none; width: 34px; }
+    .face-now code, .face-grid code { color: var(--accent2); font-size: 11.5px; }
+    .face-now .file { color: var(--dim); font-size: 11.5px; }
+    .face-copy { margin-top: 7px; width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+    .face-copy:hover { background: rgba(255,244,220,.07); }
+    /* ปุ่มตา/ปาก: แผงแคบ = คอลัมน์เดียว · ลากแผงกว้าง = สองคอลัมน์ (ชื่อชั้น/ไฟล์ไม่ตัดกลางคำ) */
+    .moves.face-grid { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
+    .face-grid .chip { padding: 7px 10px; }
+    .face-grid .chip small { line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* ปุ่มท่าทางลูกแมว: 6 ปุ่ม แถวเดียวล้นแผง → ตาราง 3 คอลัมน์ ปุ่มใหญ่กดง่าย (ผู้ใช้ 14 พ.ย.) */
     .seg.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; border: 0; overflow: visible; }
     .seg.grid3 button { border: 1px solid var(--line); border-radius: 10px; padding: 9px 2px; min-height: 40px; font-size: 12.5px; }
     .seg.grid3 button + button { border-left: 1px solid var(--line); }
     .opt.wrap { align-items: flex-start; }
+    /* ตัวเลือกหลายปุ่ม (ลายเส้น 5 แบบ) — ป้ายอยู่บน ปุ่มเต็มความกว้าง ไม่ล้นแผงตอนแผงแคบ */
+    .opt.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+    .opt.stack > span { flex: none; }
+    .opt.stack .seg { flex-wrap: wrap; }
+    .opt.stack .seg button { flex: 1 0 auto; padding: 7px 8px; }
     .opt.wrap > span { padding-top: 10px; }
     select {
       flex: 1; padding: 8px 10px; border-radius: 11px; border: 1px solid var(--line);
@@ -226,7 +280,13 @@
 
     /* ── มือถือ/จอแคบ: จอภาพติดบนสุด แผงแท็บอยู่ใต้ ── */
     @media (max-width: 860px) {
-      .wrap { grid-template-columns: 1fr; padding: 0 0 14px; gap: 10px; }
+      .wrap, body.side-mini .wrap { grid-template-columns: 1fr; padding: 0 0 14px; gap: 10px; }
+      .resizer, .tab.mini { display: none; }
+      .side, body.side-mini .side { display: block; height: auto; }
+      body.side-mini .panes { display: block; }
+      .tabs { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab { min-width: 60px; }
       .stage { top: 0; border-radius: 0 0 var(--r) var(--r); border-top: 0; }
       .view { height: 36svh; min-height: 220px; }
       .brand { display: none; }
@@ -282,14 +342,17 @@
       </div>
     </section>
 
+    <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="ลากปรับความกว้างแผงข้าง" title="ลากปรับความกว้างแผงข้าง · ดับเบิลคลิก = ขนาดเดิม"></div>
+
     <aside class="side">
-      <div class="brand">
+      <div class="brand" title="ตรวจน้องแบบใหม่ทีละท่าก่อนลงหน้าจริง">
         <h1>🐾 <span>Cat Lab</span></h1>
-        <p>ตรวจน้องแบบใหม่ทีละท่าก่อนลงหน้าจริง</p>
-        <p><a href="./run-lab.html" style="color:var(--accent2)">🏃 Run Lab — ท่าวิ่ง/กระโดดบนฉากด่าน →</a></p>
+        <a href="./run-lab.html">🏃 Run Lab →</a>
       </div>
       <nav class="tabs" role="tablist">
+        <button type="button" class="tab mini" id="sideMini" title="ย่อ/ขยายแผงข้าง (B)" aria-label="ย่อแผงข้าง"><i>⇥</i>ย่อ</button>
         <button type="button" class="tab" data-tab="moves" role="tab"><i>🐱</i>ท่า</button>
+        <button type="button" class="tab" data-tab="face" role="tab"><i>🎭</i>แต่งหน้า</button>
         <button type="button" class="tab" data-tab="outfits" role="tab"><i>👗</i>ชุด</button>
         <button type="button" class="tab" data-tab="kitten" role="tab"><i>🐣</i>ลูกแมว</button>
         <button type="button" class="tab" data-tab="chibi" role="tab"><i>🍼</i>จิบิ</button>
@@ -302,15 +365,37 @@
         <section class="pane" data-pane="moves">
           <div class="sec">ลายเส้น <span class="line"></span></div>
           <div class="opts">
-            <div class="opt"><span>แสดง</span><div class="seg" id="art" title="ลายเส้นใหม่จากนักวาด (โมจิ) — public/cat-orange-front.svg"></div></div>
+            <div class="opt stack"><span>แสดง</span><div class="seg" id="art" title="ลายเส้นใหม่จากนักวาด (โมจิ) — public/cat-orange-front.svg"></div></div>
+            <div class="opt"><span>หน้า</span><div class="seg" id="mface" title="ชุดหน้าตามอารมณ์ของโมจิ — src/render/cat2/cat-orange-emotion.svg (ตา 7 แบบ ปาก 6 แบบ)"></div></div>
           </div>
+          <div class="emo-grid" id="emo" aria-label="บังคับอารมณ์"></div>
+          <details class="help"><summary>ℹ️ อธิบายลายเส้น / ชุดหน้า</summary>
+          <p class="note">😺 <b>ชุดหน้าโมจิ</b> (ไฟล์ <code>cat-orange-emotion</code>) ใช้กับตัว <b>เดิม+โมจิ</b> (ไฟล์ <code>cat-orange-emotion-2</code> = ชุดเพิ่ม V.3) · ปุ่มอารมณ์บังคับหน้าทับท่าที่เล่นอยู่ — <b>ตามท่า</b> = หน้าที่ท่านั้นตั้งไว้ · ยังไม่เปิดในเกม/หน้าแรก</p>
           <p class="note" id="artNote">✨ <b>เดิม+โมจิ</b> = ตัววาดเดิม (ท่า มุม ชุด หางครบ) ยืมรายละเอียดจากไฟล์นักวาด: ลาย หูใน แก้ม พุง ตา อุ้งเท้า จมูก — ยังไม่เปิดในเกม · ✏️ <b>ไฟล์โมจิ</b> = วาดตามไฟล์ตรง ๆ ไว้เป็นเป้าหมาย (มีแค่ด้านหน้ายืน ไม่มีหาง) · สไตล์โมจิมีแค่น้องส้มตัวหลัก</p>
+          </details>
           <div class="sec">แมว (ทรงเดียวกัน ใส่ชุดได้ทุกตัว) <span class="line"></span></div>
           <div class="moves" id="cats"></div>
           <div class="sec">ท่าหน้าแรก (แตะน้อง) <span class="line"></span></div>
           <div class="moves" id="moves"></div>
           <div class="sec">ท่าว่าง (ไม่มีใครแตะ) <span class="line"></span></div>
           <div class="moves" id="movesRest"></div>
+        </section>
+
+        <section class="pane" data-pane="face">
+          <div class="sec">หน้าที่เลือก <span class="line"></span></div>
+          <div class="face-now" id="faceNow"></div>
+          <button type="button" class="face-copy" id="faceCopy" title="คัดลอกชื่อชั้น SVG + ชื่อไฟล์ ไว้ส่งให้นักวาด">📋 คัดลอกชื่อชั้นและไฟล์</button>
+          <div class="sec">👀 ตา <span class="line"></span></div>
+          <div class="moves face-grid" id="faceEyes"></div>
+          <div class="sec">👄 ปาก <span class="line"></span></div>
+          <div class="moves face-grid" id="faceMouths"></div>
+          <div class="sec">🎨 สีน้องแมว <span class="line"></span></div>
+          <div class="face-cats" id="faceCats"></div>
+          <div class="sec">ท่าทาง <span class="line"></span></div>
+          <div class="moves" id="faceMoves"></div>
+          <details class="help"><summary>ℹ️ วิธีใช้แท็บนี้</summary>
+          <p class="note">🎭 เลือกตา + ปากได้อิสระ ทับหน้าของท่าที่เล่นอยู่ · <b>ตามท่า</b> = ใช้หน้าที่ท่านั้นตั้งไว้ · ชื่อใต้ปุ่ม = ชื่อชั้นใน SVG ของโมจิ + ไฟล์ (<code>src/render/cat2/</code>) · น้องส้มใช้ลายเส้นโมจิ สีอื่นเป็นตัวเดิมที่ใส่หน้าโมจิ (สีตาเป็นสีจากไฟล์ของโมจิ) · หน้านี้ใช้ทดลองเท่านั้น ไม่มีผลในเกม</p>
+          </details>
         </section>
 
         <section class="pane" data-pane="outfits">
@@ -405,6 +490,7 @@
             <kbd>, .</kbd><span>ชุดก่อน / ชุดถัดไป</span>
             <kbd>1–4</kbd><span>มุม หน้า · เฉียงซ้าย · เฉียงขวา · หลัง</span>
             <kbd>F</kbd><span>ขยายจอภาพ</span>
+            <kbd>B</kbd><span>ย่อ/ขยายแผงข้าง (ลากขอบแผงปรับความกว้าง · ดับเบิลคลิกขอบ = ขนาดเดิม)</span>
             <kbd>P</kbd><span>บันทึกภาพเฟรมนี้</span>
           </div>
           <p class="note">หน้านี้จำท่า ชุด เฟรม และการตั้งค่าไว้ — แก้โค้ดแล้วหน้ารีโหลด จะกลับมาที่เดิม</p>
@@ -427,7 +513,7 @@
     import { ALL_OUTFITS as OUTFITS, RARITY } from './src/outfits.js';
     // หน้าทดสอบเห็นทุกชุด รวมชุดที่ยังซ่อนในเกม (HIDDEN_OUTFITS)
     const outfitById = (id) => OUTFITS.find((o) => o.id === id) || OUTFITS[0];
-    import { HOME_MOVES, LOVE_MOVE, E, mixShape } from './src/home-moves.js';
+    import { HOME_MOVES, LOVE_MOVE, ARCHIVED_MOVES, E, mixShape } from './src/home-moves.js';
     import { IDLE_SHAPE, drawCatPose } from './src/render/entities.js';
     import { SKINS } from './src/skins.js';
     // แมวแบบใหม่: น้องส้มตัวหลัก (ตัวผู้) + ตัวที่ออกแบบใหม่ใน CAT2_BREEDS (ทรงเดียวกัน ต่างสี/ตา/ขนตา) · ตามด้วยสีเดิมที่ยังไม่ออกแบบ
@@ -441,7 +527,7 @@
       idle: ['ยืนเฉย ๆ', 'หายใจ มองรอบ ๆ', '🐱'],
       wave: ['โบกมือ', 'ทักคนแตะ', '👋'], scratch: ['โยกเยก', 'นั่งโยกตัวน่ารัก', '😽'],
       curl: ['นอนขด', 'ขดตัวหลับ', '💤'], float: ['ลอยฟ้า', 'ลอยแล้วแอบมอง', '🎈'],
-      tail: ['ไล่หาง', 'หันไปมองหาง', '🌀'], heart: ['ส่งหัวใจ', 'ประกบมือเป็นหัวใจ', '💗'],
+      tail: ['ไล่หาง', 'เก็บไว้ · ไม่อยู่ในเกมแล้ว', '🗄️'], heart: ['ส่งหัวใจ', 'ประกบมือเป็นหัวใจ', '💗'],
       love: ['รับหัวใจ', 'ได้หัวใจจากเพื่อน', '💝'],
       'rest-yawn': ['หาว', 'ท่าว่าง', '🥱'], 'rest-sit': ['นั่ง', 'ท่าว่าง', '🐈'],
       'rest-groom': ['เลียอุ้งเท้า', 'ท่าว่าง', '🐾'], 'rest-loaf': ['หมอบ', 'ก้อนขนมปัง', '🍞'],
@@ -459,14 +545,15 @@
         return o;
       },
     });
-    const MAIN = [IDLE, ...HOME_MOVES, LOVE_MOVE];
+    // ท่าที่เก็บไว้ (ARCHIVED_MOVES — เช่นไล่หาง) ต่อท้าย: ไม่อยู่ในเกมแล้ว ดู/ลองท่าได้ที่นี่
+    const MAIN = [IDLE, ...HOME_MOVES, LOVE_MOVE, ...ARCHIVED_MOVES];
     const RESTS = [rest('yawn', 180), rest('sit', 360, 48), rest('groom', 300), rest('loaf', 240)];
     const MOVES = [...MAIN, ...RESTS];
     // ช่องที่น้องแบบใหม่ยังไม่ได้วาด — โชว์สีเหลืองให้รู้ว่ายังขาด
     const MISSING = new Set(['earLay', 'sway']);
     const SCALE = 2.6;   // ขนาดเดียวกับหน้าแรกบนคอม
 
-    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all', kAge: 'baby', kAges: ['baby'], kCat: 'orange', keeper: 'food', kPose: 'auto', cbView: 'all', cbLook: 'sketch', cbRef: false, cbPose: 'idle', cbAct: 'idle', cbMove: 'stand', art: 'three' };
+    const st = { move: IDLE, f: 0, playing: true, speed: 1, zoom: 1, bg: 'skin', loop: true, sound: false, skin: NEW_CATS[0], view: 'front', outfit: 'none', compare: true, tab: 'moves', ofFilter: 'all', kAge: 'baby', kAges: ['baby'], kCat: 'orange', keeper: 'food', kPose: 'auto', cbView: 'all', cbLook: 'sketch', cbRef: false, cbPose: 'idle', cbAct: 'idle', cbMove: 'stand', art: 'three', mface: true, emo: 'auto', faceEye: 'auto', faceMouth: 'auto' };
     window.__lab = st;   // เปิดให้สคริปต์ทดสอบปรับมุมกล้องได้
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -479,7 +566,7 @@
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { saved = null; }
     if (saved) {
-      for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter', 'kAge', 'kAges', 'kCat', 'keeper', 'kPose', 'cbView', 'cbLook', 'cbRef', 'cbPose', 'cbAct', 'cbMove', 'art']) if (saved[k] !== undefined) st[k] = saved[k];
+      for (const k of ['speed', 'zoom', 'bg', 'loop', 'view', 'compare', 'tab', 'ofFilter', 'kAge', 'kAges', 'kCat', 'keeper', 'kPose', 'cbView', 'cbLook', 'cbRef', 'cbPose', 'cbAct', 'cbMove', 'art', 'mface', 'emo', 'faceEye', 'faceMouth']) if (saved[k] !== undefined) st[k] = saved[k];
       if (!saved.bgSkin) st.bg = 'skin';   // ฉากหลังประจำสกินมาใหม่ (14 ต.ค.) — เปิดให้เห็นครั้งแรก แล้วจำตามที่เลือกต่อ
       if (saved.outfit && outfitById(saved.outfit)) st.outfit = saved.outfit;
       st.skin = catById(saved.skin);
@@ -493,7 +580,7 @@
           move: plain ? st.move.id : 'idle', f: plain ? st.f : 0, playing: st.playing,
           outfit: st.outfit, skin: st.skin.id, wide: document.body.classList.contains('wide'), clean: isClean(), bgSkin: true,
           speed: st.speed, zoom: st.zoom, bg: st.bg, loop: st.loop, view: st.view, compare: st.compare, tab: st.tab, ofFilter: st.ofFilter,
-          kAge: st.kAge, kAges: st.kAges, kCat: st.kCat, keeper: st.keeper, kPose: st.kPose, cbView: st.cbView, cbLook: st.cbLook, cbRef: st.cbRef, cbPose: st.cbPose, cbAct: st.cbAct, cbMove: st.cbMove, art: st.art,
+          kAge: st.kAge, kAges: st.kAges, kCat: st.kCat, keeper: st.keeper, kPose: st.kPose, cbView: st.cbView, cbLook: st.cbLook, cbRef: st.cbRef, cbPose: st.cbPose, cbAct: st.cbAct, cbMove: st.cbMove, art: st.art, mface: st.mface, emo: st.emo, faceEye: st.faceEye, faceMouth: st.faceMouth,
         }));
       } catch { /* ไม่มีที่เก็บก็ไม่เป็นไร */ }
     }
@@ -510,11 +597,57 @@
 
     // ── แท็บแผงข้าง ──
     function setTab(id) {
+      if (document.body.classList.contains('side-mini')) setSideMini(false);   // กดแท็บตอนย่อ = ขยายแผงกลับ
+      if (id === 'face' && st.tab !== 'face' && st.zoom < 1.2) setTimeout(() => setSeg('zoom', 2.6));   // แต่งหน้า: เปิดมาซูมที่หน้า
       st.tab = id;
       for (const t of document.querySelectorAll('.tab')) t.classList.toggle('on', t.dataset.tab === id);
       for (const p of document.querySelectorAll('.pane')) p.classList.toggle('on', p.dataset.pane === id);
     }
-    for (const t of document.querySelectorAll('.tab')) t.onclick = () => setTab(t.dataset.tab);
+    for (const t of document.querySelectorAll('.tab[data-tab]')) t.onclick = () => setTab(t.dataset.tab);
+    // ── แผงข้าง: ลากขอบปรับความกว้าง · ย่อเหลือแถบไอคอน (จำค่าไว้ในเครื่อง) ──
+    const SIDE_KEY = 'catlab.side', SIDE_W = 390;
+    let sideCfg = {};
+    try { sideCfg = JSON.parse(localStorage.getItem(SIDE_KEY) || '{}') || {}; } catch { sideCfg = {}; }
+    const saveSide = () => { try { localStorage.setItem(SIDE_KEY, JSON.stringify(sideCfg)); } catch { /* ไม่มีที่เก็บก็ไม่เป็นไร */ } };
+    function applySide() {
+      document.documentElement.style.setProperty('--sideW', `${Math.round(sideCfg.w || SIDE_W)}px`);
+      const mini = !!sideCfg.mini;
+      document.body.classList.toggle('side-mini', mini);
+      $('sideMini').innerHTML = mini ? '<i>⇤</i>ขยาย' : '<i>⇥</i>ย่อ';
+      $('sideMini').setAttribute('aria-label', mini ? 'ขยายแผงข้าง' : 'ย่อแผงข้าง');
+    }
+    function setSideMini(on) { sideCfg.mini = on; applySide(); saveSide(); }
+    $('sideMini').onclick = () => setSideMini(!sideCfg.mini);
+    {
+      const rz = $('resizer');
+      let drag = false;
+      const widthAt = (x) => {
+        const r = document.querySelector('.side').getBoundingClientRect();
+        return Math.max(300, Math.min(Math.min(820, innerWidth - 440), r.right - x - 7));
+      };
+      rz.addEventListener('pointerdown', (e) => {
+        if (sideCfg.mini) return;
+        drag = true; rz.setPointerCapture(e.pointerId); rz.classList.add('drag'); document.body.classList.add('resizing');
+      });
+      rz.addEventListener('pointermove', (e) => { if (drag) { sideCfg.w = widthAt(e.clientX); applySide(); } });
+      const end = () => { if (!drag) return; drag = false; rz.classList.remove('drag'); document.body.classList.remove('resizing'); saveSide(); };
+      rz.addEventListener('pointerup', end);
+      rz.addEventListener('pointercancel', end);
+      rz.addEventListener('dblclick', () => { sideCfg.w = SIDE_W; applySide(); saveSide(); });
+      // แป้นลูกศรตอนโฟกัสขอบ: ปรับทีละ 20px
+      rz.tabIndex = 0;
+      rz.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault(); e.stopPropagation();
+        sideCfg.w = Math.max(300, Math.min(820, (sideCfg.w || SIDE_W) + (e.key === 'ArrowLeft' ? 20 : -20)));
+        applySide(); saveSide();
+      });
+    }
+    addEventListener('keydown', (e) => {
+      // B = ย่อ/ขยายแผงข้าง ( [ ] ใช้เปลี่ยนท่าอยู่แล้ว)
+      if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.closest?.('input, textarea, select')) { e.preventDefault(); setSideMini(!sideCfg.mini); }
+    });
+    applySide();
 
     // ── พ่อค้าแม่ค้าประจำร้าน (ผู้ใช้ 1 พ.ย.) — 5 ร้าน 5 ตัว · ช่องรอออกแบบ (ไม่วิ่งในเกม) ──
     // now = แมวที่ยืนแทนในร้าน ถ้ายังไม่มีแม่ค้าออกแบบ (src/town/interior.js keeper) · ออกแบบแล้ว = แม่ค้าตัวจริงอยู่ในร้าน
@@ -585,7 +718,7 @@
     }
 
     // ── ปุ่มเลือกท่า ──
-    for (const [box, list] of [['moves', MAIN], ['movesRest', RESTS]]) {
+    for (const [box, list] of [['moves', MAIN], ['movesRest', RESTS], ['faceMoves', [...MAIN, ...RESTS]]]) {
       for (const m of list) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -601,7 +734,7 @@
       st.move = m;
       st.f = 0;
       st.playing = true;
-      for (const b of document.querySelectorAll('#moves .chip, #movesRest .chip')) b.classList.toggle('on', b.dataset.id === m.id);
+      for (const b of document.querySelectorAll('#moves .chip, #movesRest .chip, #faceMoves .chip')) b.classList.toggle('on', b.dataset.id === m.id);
       $('introSkip').disabled = !m.intro;
       drawMarks();
       sync();
@@ -724,6 +857,39 @@
     if (!['old', 'styled', 'moji', 'pair', 'three'].includes(st.art)) st.art = 'three';   // ค่าเก่า 'both' (รอบแรก) → เทียบ 3 ตัว
     seg('art', 'art', [['old', 'เดิม', 'ตัววาดเดิมตามที่อยู่ในเกมตอนนี้'], ['styled', '✨ เดิม+โมจิ', 'ตัววาดเดิม + สไตล์โมจิ (ตัวที่กำลังปรับ)'], ['moji', '✏️ ไฟล์โมจิ', 'วาดตามไฟล์นักวาดตรง ๆ (เป้าหมาย)'], ['pair', 'ปรับ ↔ เป้า', 'เทียบ เดิม+โมจิ กับ ไฟล์โมจิ'], ['three', 'เทียบ 3 ตัว']]);
     loadCatMoji().catch((e) => toast('อ่านไฟล์ลายเส้นโมจิไม่ได้: ' + e.message));
+    // ชุดหน้าตามอารมณ์ของโมจิ (ผู้ใช้ 24 พ.ย.): เปิดที่ตัว "เดิม+โมจิ" · ปุ่มอารมณ์ = บังคับหน้าทับท่าที่เล่นอยู่ (ตามท่า = หน้าที่ท่านั้นตั้งไว้)
+    seg('mface', 'mface', [[true, '😺 ชุดหน้าโมจิ', 'ตา/ปากตามอารมณ์จากไฟล์ cat-orange-emotion'], [false, 'หน้าเดิม', 'ตา/ปากที่ตัววาดวาดเอง (แบบที่หน้าแรกใช้ตอนนี้)']]);
+    const EMO_RESET = { mood: '', mouth: 0, shut: 0, bleh: 0, wink: 0, winkCute: 0, chirp: 0, lick: 0 };
+    const EMO = [
+      ['auto', 'ตามท่า', null],
+      ['normal', 'ปกติ', {}],
+      ['blink', 'หลับตา', { shut: 1 }],
+      ['happy', 'ยิ้ม', { mood: 'happy' }],
+      ['starry', 'ตาดาว', { mood: 'starry' }],
+      ['wink', 'ขยิบตา', { mood: 'smug' }],
+      ['sleepy', 'ง่วง', { mood: 'sleepy' }],
+      ['sad', 'ร้องไห้', { mood: 'sad' }],
+      ['shocked', 'ตกใจ', { mood: 'shocked', mouth: 0.45 }],
+      ['hungry', 'หิว', { mood: 'hungry' }],
+      ['talk', 'พูด', { mouth: 0.45 }],
+      ['shout', 'อ้ากว้าง', { mouth: 1 }],
+      ['yawn', 'หาว', { mouth: 1, shut: 1 }],
+      ['bleh', 'แลบลิ้น', { bleh: 1 }],
+      ['hurt', 'เจ็บ ><', { mood: 'hurt' }],
+      ['dizzy', 'มึน @@', { mood: 'dizzy' }],
+      ['love', 'ตาหัวใจ', { mood: 'love' }],
+      ['mischievous', 'เจ้าเล่ห์', { mood: 'mischievous' }],
+      ['sulky', 'งอน', { mood: 'sulky' }],
+      ['lick', 'เลียอุ้งเท้า', { sit: 1, paw: 1, tilt: 0.16, lick: 1 }],
+    ];
+    const EMO_SHAPE = Object.fromEntries(EMO.map(([id, , sh]) => [id, sh && { ...EMO_RESET, ...sh }]));
+    for (const [id, label] of EMO) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label; b.dataset.val = id;
+      b.classList.toggle('on', st.emo === id);
+      b.onclick = () => { st.emo = id; for (const x of $('emo').children) x.classList.toggle('on', x === b); };
+      $('emo').append(b);
+    }
     seg('loop', 'loop', [[true, '🔁', 'เล่นวน'], [false, '1×▸', 'เล่นครั้งเดียว']]);
     seg('bg', 'bg', [['skin', 'ฉากสกิน', 'ฉากหลังประจำสกิน (ชุดระดับ S ที่มีฉาก) · ชุดอื่นใช้ม่วงอ่อน'], ['home', 'ม่วงอ่อน'], ['dark', 'มืด'], ['grid', 'ตาราง']]);
     seg('sound', 'sound', [[false, '🔇 ปิด'], [true, '🔊 เปิด']]);
@@ -846,6 +1012,8 @@
       st.skin = catById(id);
       $('skin').value = st.skin.id;
       for (const b of $('cats').children) b.classList.toggle('on', b.dataset.cat === st.skin.id);
+      for (const b of $('faceCats').children) b.classList.toggle('on', b.dataset.cat === st.skin.id);
+      paintFace?.();
     }
     for (const c of NEW_CATS) {
       const b = document.createElement('button');
@@ -856,7 +1024,76 @@
       b.innerHTML = `<span class="em" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${dot};border:2px solid #5A3420"></span><span class="tx">${c.name} ${sexMark(c)}<small>${c.note || ''}</small></span>`;
       b.onclick = () => setCat(c.id);
       $('cats').append(b);
+      const b2 = document.createElement('button');   // แท็บแต่งหน้า: ปุ่มเม็ดสีกะทัดรัด
+      b2.type = 'button';
+      b2.dataset.cat = c.id;
+      b2.title = c.note || '';
+      b2.innerHTML = `<i style="background:${dot}"></i>${c.name}`;
+      b2.onclick = () => setCat(c.id);
+      $('faceCats').append(b2);
     }
+    // ── แท็บแต่งหน้า (ผู้ใช้ 24 พ.ย.): ตา × ปาก จากชุดหน้าของโมจิ เลือกอิสระ + ชื่อชั้น SVG + ไฟล์ ──
+    // [ชื่อในตัววาด (shape.faceEye/faceMouth), ชื่อไทย, ชื่อชั้นใน SVG, ไฟล์ (2 = V.2 · 3 = V.3), ไอคอน]
+    const FACE_FILE = { 2: 'cat-orange-emotion.svg', 3: 'cat-orange-emotion-2.svg' };
+    const FACE_EYES = [
+      ['auto', 'ตามท่า', '', 0, '🎬'],
+      ['open', 'ตาเปิด (ปกติ)', 'eye-open', 2, '👁️'],
+      ['closed', 'หลับตา', 'eye-closed', 2, '😌'],
+      ['wink', 'ขยิบตา', 'eye-wink', 2, '😉'],
+      ['half', 'ตาครึ่งดวง (ง่วง)', 'eyelid-half-closed', 2, '😪'],
+      ['crying', 'ตาน้ำตาคลอ', 'eye-crying', 2, '🥲'],
+      ['shocked', 'ตาตกใจ', 'eye-shocked', 2, '😳'],
+      ['sparkling', 'ตาดาวประกาย', 'eye-sparkling', 2, '🤩'],
+      ['dizzy', 'ตามึน (ก้นหอย)', 'eye-dizzy', 3, '😵'],
+      ['heart', 'ตาหัวใจ', 'eye-heart', 3, '😍'],
+      ['pain', 'ตาเจ็บ ><', 'eye-pain', 3, '😣'],
+      ['mischievous', 'ตาเจ้าเล่ห์', 'eye-mischievous', 3, '😏'],
+    ];
+    const FACE_MOUTHS = [
+      ['auto', 'ตามท่า', '', 0, '🎬'],
+      ['closed', 'ปากปิด ω', 'mouth-closed', 2, '🙂'],
+      ['open', 'อ้าเล็ก', 'mouth-open', 2, '😮'],
+      ['happy', 'ยิ้มอ้าปาก', 'mouth-happy', 2, '😄'],
+      ['sad', 'ปากเบ้ (เศร้า)', 'mouth-sad', 2, '🥺'],
+      ['yawn', 'อ้ากว้าง (หาว)', 'mouth-yawn', 2, '🥱'],
+      ['hungry', 'หิว น้ำลายไหล', 'mouth-hungry', 2, '🤤'],
+      ['shocked', 'ปากตกใจ', 'mouth-shocked', 3, '😲'],
+      ['playful', 'แลบลิ้นซน', 'mouth-tongue-out-playful', 3, '😛'],
+      ['sulky', 'งอน', 'mouth-sulky', 3, '😤'],
+      ['pain', 'ปากเจ็บ', 'mouth-pain', 3, '😖'],
+      ['mischievous', 'ยิ้มเจ้าเล่ห์', 'mouth-mischievous', 3, '😼'],
+    ];
+    const faceOf = (list, id) => list.find((x) => x[0] === id) || list[0];
+    function faceChips(box, list, key) {
+      for (const [id, th, layer, file, em] of list) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip';
+        b.dataset.id = id;
+        b.title = layer ? `${layer} · ${FACE_FILE[file]}` : 'ใช้หน้าที่ท่านั้นตั้งไว้';
+        b.innerHTML = `<span class="em">${em}</span><span class="tx">${th}<small>${layer ? `<code>${layer}</code><br>${FACE_FILE[file]}` : 'หน้าตามท่าที่เล่น'}</small></span>`;
+        b.onclick = () => { st[key] = id; paintFace(); };
+        $(box).append(b);
+      }
+    }
+    faceChips('faceEyes', FACE_EYES, 'faceEye');
+    faceChips('faceMouths', FACE_MOUTHS, 'faceMouth');
+    function faceText() {
+      const e = faceOf(FACE_EYES, st.faceEye), m = faceOf(FACE_MOUTHS, st.faceMouth);
+      const line = (k, x) => (x[2] ? `${k}: ${x[1]} — ${x[2]} (${FACE_FILE[x[3]]})` : `${k}: ตามท่า`);
+      return [line('ตา', e), line('ปาก', m), `แมว: ${st.skin.name || st.skin.id}`].join('\n');
+    }
+    function paintFace() {
+      for (const b of $('faceEyes').children) b.classList.toggle('on', b.dataset.id === st.faceEye);
+      for (const b of $('faceMouths').children) b.classList.toggle('on', b.dataset.id === st.faceMouth);
+      const row = (k, x) => `<div class="fr"><span class="k">${k}</span><span>${x[4]} <b>${x[1]}</b>${x[2] ? `<span class="sub"><code>${x[2]}</code></span><span class="sub file">${FACE_FILE[x[3]]}</span>` : ''}</span></div>`;
+      $('faceNow').innerHTML = row('ตา', faceOf(FACE_EYES, st.faceEye)) + row('ปาก', faceOf(FACE_MOUTHS, st.faceMouth))
+        + `<div class="fr"><span class="k">แมว</span><span>${st.skin.name || st.skin.id}</span></div>`;
+    }
+    $('faceCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(faceText()); toast('คัดลอกแล้ว'); } catch { toast('คัดลอกไม่ได้ — เลือกข้อความในกล่องแทน'); }
+    };
+    paintFace();
     $('skin').onchange = (e) => setCat(e.target.value);
     setCat(st.skin.id);
 
@@ -1186,7 +1423,7 @@
       // ลายเส้น (ผู้ใช้ 21 พ.ย.): ตัวที่โชว์ตามโหมด — เดิม · เดิม+สไตล์โมจิ (ตัววาดเดิมยืมรายละเอียดจากไฟล์ใหม่) · ไฟล์โมจิ (วาดตามไฟล์ตรง ๆ = เป้าหมาย)
       // เทียบ 3 ตัว = ยืนเรียงซ้าย→ขวา ท่า/เวลาเดียวกัน · ระยะห่างคิดจากจอไม่ซูม (ซูมเข้าแล้วไม่ซ้อนกัน ลากจอเลื่อนดูตัวอื่น)
       const ART_MODES = { old: ['old'], styled: ['styled'], moji: ['moji'], pair: ['styled', 'moji'], three: ['old', 'styled', 'moji'] };
-      const cats = ART_MODES[st.art] || ART_MODES.three;
+      const cats = st.tab === 'face' ? ['styled'] : ART_MODES[st.art] || ART_MODES.three;   // แต่งหน้า: ตัวเดียว
       const halfW = (w / 2) / (u / st.zoom);
       const gap = cats.length > 1 ? Math.min(cats.length > 2 ? 118 : 140, (halfW * 2 * 0.86) / cats.length) : 0;
       const xs = cats.map((_, i) => (i - (cats.length - 1) / 2) * gap);
@@ -1204,7 +1441,12 @@
       const of = outfitById(st.outfit);
       const isNew = isNewOf(st.outfit);
       // ท่าเปิดตัว: ส่งเฟรมในท่าไปด้วย (ตัววาดเล่นเอฟเฟกต์ตามจังหวะ) · ช่วงกดข้าม: เฟรมเดินต่อ + skip ไล่ 0→1 ให้เอฟเฟกต์จางออก
-      let idleArg = sh ? { k: 1, shape: sh, pose: st.move.id } : null;
+      const faceTab = st.tab === 'face';
+      const emoSh = faceTab ? null : EMO_SHAPE[st.emo];
+      // แท็บแต่งหน้า: ตา/ปากที่เลือก (ตามท่า = ไม่บังคับ)
+      const faceSh = faceTab ? { ...(st.faceEye !== 'auto' ? { faceEye: st.faceEye } : {}), ...(st.faceMouth !== 'auto' ? { faceMouth: st.faceMouth } : {}) } : null;
+      const sh2 = emoSh ? { ...(sh || {}), ...emoSh } : faceSh ? { ...(sh || {}), ...faceSh } : sh;
+      let idleArg = sh2 ? { k: 1, shape: sh2, pose: st.move.id } : null;
       const edgeL = -(w / 2) / u + (st.focusX || 0);   // ขอบซ้ายของจอ (พิกัดเกม) — น้องแอบมองจากขอบนี้
       if (st.move.intro) idleArg = { ...idleArg, intro: st.f, edgeL };
       else if (st.move.from && st.f < SKIP_F) idleArg = { ...idleArg, intro: st.move.from.f + st.f, skip: E.io(st.f / SKIP_F), edgeL };
@@ -1217,7 +1459,7 @@
         ctx.translate(xs[i], 0);
         // สไตล์โมจิมีแค่น้องส้มตัวหลัก — สีอื่นตัววาดไม่สลับให้ (ออกมาเหมือนแบบเดิม)
         if (kind === 'old') drawCat2(ctx, 0, -lift, SCALE, { ...skinNow, moji: false }, tNow, idleArg);
-        else if (kind === 'styled') drawCat2(ctx, 0, -lift, SCALE, { ...skinNow, moji: true }, tNow, idleArg);
+        else if (kind === 'styled') drawCat2(ctx, 0, -lift, SCALE, { ...skinNow, moji: true, mojiFace: faceTab || st.mface }, tNow, idleArg);
         else if (!drawCatMoji(ctx, 0, -lift, SCALE, tNow, idleArg)) {
           // ไฟล์โมจิ: น้องส้มตัวหลักเท่านั้น · ไม่ใส่ชุด · ท่า/เวลาเดียวกับตัวอื่น
           ctx.fillStyle = 'rgba(42,15,34,.55)';

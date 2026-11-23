@@ -14,13 +14,20 @@
 import MOJI_SVG from './cat2/cat-orange-front.svg?raw';
 import MOJI_BACK_SVG from './cat2/cat-orange-back.svg?raw';
 import MOJI_Q3_SVG from './cat2/cat-orange-perspective.svg?raw';
+import MOJI_EMO_SVG from './cat2/cat-orange-emotion.svg?raw';
+import MOJI_EMO2_SVG from './cat2/cat-orange-emotion-2.svg?raw';
 
 /** ไฟล์ใหม่ → พิกัดไฟล์เดิม (วัดจากจุดหมุนหู/ไหล่ซ้ายที่ตรงกันพอดี) */
 export const MOJI_OX = 88, MOJI_OY = 40.449;
 /** ไฟล์ด้านหลัง (cat-orange-back 460.986 × 621.551) เลื่อนจากไฟล์เดิม (−51.014, −40.449) — วัดจากจุดหมุนหู/ไหล่ */
 const FILES = { front: { text: MOJI_SVG, ox: MOJI_OX, oy: MOJI_OY, root: 'cat-front' }, back: { text: MOJI_BACK_SVG, ox: 51.014, oy: 40.449, root: 'cat-back' },
   // มุมเฉียงขวา (cat-orange-perspective 22 พ.ย. — ไฟล์ส่งออกที่โมจิแก้ · น้องหัน yaw 0.75) — ไฟล์ใหญ่ วางห่างจากมุม (−445.44, −413.351)
-  q3: { text: MOJI_Q3_SVG, ox: -445.44, oy: -413.351, root: 'cat-orange-perspective' } };
+  q3: { text: MOJI_Q3_SVG, ox: -445.44, oy: -413.351, root: 'cat-orange-perspective' },
+  // ชุดหน้า (cat-orange-emotion V.2 · 24 พ.ย.): หัวอย่างเดียว ตา 7 แบบ × ปาก 6 แบบ วางซ้อนกันในกลุ่ม eyes / mouth
+  //   หัวตรงกับไฟล์ด้านหน้าหลังเลื่อนเพิ่ม 14.685 (วัดจากจุดแรกของหัว fill_8 และจมูก — ตรงกันทั้งสองจุด)
+  emo: { text: MOJI_EMO_SVG, ox: MOJI_OX + 14.685, oy: MOJI_OY, root: 'cat-front' },
+  // ชุดหน้าเพิ่ม (cat-orange-emotion V.3 · 24 พ.ย.): หัวเดียวกัน ตา มึน/หัวใจ/เจ็บ/เจ้าเล่ห์ · ปาก งอน/แลบลิ้นซน/เจ็บ/เจ้าเล่ห์/ตกใจ
+  emo2: { text: MOJI_EMO2_SVG, ox: MOJI_OX + 14.685, oy: MOJI_OY, root: 'cat-front' } };
 // ระยะเลื่อนของไฟล์ที่กำลังอ่าน (buildModel ตั้งค่าก่อนอ่าน — อ่านทีละไฟล์ ไม่ซ้อนกัน)
 let OX = MOJI_OX, OY = MOJI_OY;
 
@@ -342,6 +349,12 @@ export function toCat2Ops(ops, lineK = 1) {
       } : null,
       fillAlpha: o.alpha ?? 1,
       stroke: typeof o.stroke === 'string' ? o.stroke.toUpperCase() : null,
+      // เส้นลงสีไล่วงกลม (ชุดหน้า V.3: ตามึนก้นหอย / ตาเจ็บ >< — กลางส้ม ขอบน้ำตาลเข้ม) · รูปแบบเดียวกับ grad
+      sgrad: o.stroke && typeof o.stroke === 'object' && !o.stroke.linear ? {
+        m: o.stroke.m.translate(o.stroke.cx, o.stroke.cy).scale(o.stroke.r),
+        f: [(o.stroke.fx - o.stroke.cx) / (o.stroke.r || 1), (o.stroke.fy - o.stroke.cy) / (o.stroke.r || 1)],
+        stops: o.stroke.stops,
+      } : null,
       width: (o.width || 1) / lineK,
       cap: o.cap, join: o.join,
     };

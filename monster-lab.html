@@ -205,6 +205,7 @@
         <button type="button" class="tab" data-tab="look" role="tab"><i>🔎</i>มุมมอง</button>
         <button type="button" class="tab" data-tab="ref" role="tab"><i>🖼️</i>ภาพแบบ</button>
         <button type="button" class="tab" data-tab="vals" role="tab"><i>📊</i>ค่า</button>
+        <button type="button" class="tab" data-tab="cut" role="tab"><i>✨</i>คัตซีน</button>
       </nav>
       <div class="panes">
         <section class="pane" data-pane="moves">
@@ -281,6 +282,19 @@
           </div>
         </section>
 
+        <section class="pane" data-pane="cut">
+          <div class="sec">คัตซีนพลังแห่งความหวัง <span class="line"></span></div>
+          <p class="note" style="margin-top:0">ตอนน้องพุ่งเข้าหาบอส → แผงคัตซีนเด้งขึ้น ให้แตะตอนวงแหวนทับวงพอดี · <b>แบบใหม่</b> = ร่างตามภาพแบบของผู้ใช้ (<code>src/render/hope-cut2.js</code>) · <b>แบบเดิม</b> = ที่เกมใช้ตอนนี้ (<code>hope-power.js</code>) · จังหวะ/การตัดสินชุดเดียวกับเกม (HOPE)</p>
+          <div class="sec">ฉาก <span class="line"></span></div>
+          <div class="moves" id="cutScenes"></div>
+          <div class="opts" style="margin-top:9px">
+            <div class="opt"><span>แบบ</span><div class="seg" id="cutVer"></div></div>
+            <div class="opt"><span>ฉากหลัง</span><div class="seg" id="cutBg"></div></div>
+          </div>
+          <div class="vals" id="cutVals" style="margin-top:9px"></div>
+          <p class="note">น้อง<b>แบบใหม่</b> = ท่าพุ่งกอดดาว ร่างแรกจากตัววาดน้อง สไตล์โมจิ (ขาหลังยกโชว์ฝ่าเท้า ตา &gt;&lt; ปากอ้า) — โมจิจะปรับแก้ภายหลัง · ตอนพลาดยังเป็นท่ามึนชั่วคราว</p>
+        </section>
+
         <section class="pane" data-pane="vals">
           <div class="sec">ค่าของเฟรมนี้ <span class="line"></span></div>
           <div class="vals" id="vals"></div>
@@ -298,6 +312,9 @@
     import { drawCat2 } from './src/render/cat2.js';
     import { CHIBI_LOOKS } from './src/render/chibi.js';
     import { SKINS } from './src/skins.js';
+    import { HOPE, hopeJudge, drawHopeCut } from './src/render/hope-power.js';
+    import { drawHopeCut2, CUT2_SCENES, cut2Len, cut2At } from './src/render/hope-cut2.js';
+    import { run4At } from './src/render/cat2-run.js';
 
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -323,6 +340,7 @@
       bob: true, drift: false, gaze: -1, look: 'orange',
       bg: 'sheet', cmp: true, ratio: STUMP.ratio, explode: 0, zoom: 1, turn: null, rage: false,
       count: 1, face: 'auto', ratios: {}, fx: true, snd: true, music: SILENT,
+      tab: 'moves', cut: 'perfect', cutVer: 'new', cutBg: 'field',
     };
     const demoLen = () => st.boss.demo.reduce((a, [, d]) => a + d, 0);
 
@@ -558,7 +576,21 @@
     document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
       document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === b));
       document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+      const was = st.tab; st.tab = b.dataset.tab;
+      if (st.tab === 'cut' && was !== 'cut') st.st = 0;
     });
+    // ── แท็บคัตซีน ──
+    const cutEl = $('cutScenes');
+    const paintCut = () => [...cutEl.children].forEach((b) => b.classList.toggle('on', b.dataset.id === st.cut));
+    for (const [id, S] of Object.entries(CUT2_SCENES)) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.id = id;
+      b.innerHTML = `<span class="em">${S.em}</span><span class="tx">${S.name}<small>${(cut2Len(id) / 60).toFixed(1)} วิ</small></span>`;
+      b.onclick = () => { st.cut = id; st.st = 0; if (!st.playing) togglePlay(); paintCut(); };
+      cutEl.appendChild(b);
+    }
+    paintCut();
+    seg($('cutVer'), [['new', '✨ แบบใหม่'], ['old', 'แบบเดิม'], ['both', 'เทียบบน-ล่าง']], () => st.cutVer, (v) => { st.cutVer = v; });
+    seg($('cutBg'), [['field', 'สนามบอส'], ['plain', 'พื้นเรียบ']], () => st.cutBg, (v) => { st.cutBg = v; });
     document.querySelector('.tab').click();
 
     addEventListener('keydown', (e) => {
@@ -576,6 +608,7 @@
 
     // ── เวลา ──
     function curLen() {
+      if (st.tab === 'cut') return cut2Len(st.cut) / 60;
       if (st.demo) return demoLen();
       const s = st.boss.states[st.state];
       return s.loop || s.dur + 1.2;
@@ -625,6 +658,7 @@
       }
 
       const [w, h] = fit();
+      if (st.tab === 'cut') { renderCut(w, h); requestAnimationFrame(frame); return; }
       const gy = h * 0.8;
       drawBg(w, h, gy);
       // ขนาด: สูงตัว = สูงน้อง × ratio · ซูม "พอดี" = ทั้งตัวและน้องอยู่ในจอ
@@ -696,6 +730,65 @@
         $('vals').innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><span>${v}</span>`).join('');
       }
       requestAnimationFrame(frame);
+    }
+    // ══ คัตซีนพลังแห่งความหวัง (แท็บคัตซีน) ══
+    // น้องในคัตซีน: ท่าประกอบชั่วคราวจากตัววาดน้อง (สไตล์โมจิ) — ท่าเดียวกับ gameplay-lab (HOPE_POSE)
+    const CUT_POSE = {
+      charge: { clasp: 1, crouch: 0.35, mood: 'hurt', mouth: 0.55 },
+      blast: { wave: 1, mood: 'hurt', mouth: 1 },
+      miss: { mood: 'dizzy', mouth: 0.25, tilt: -0.12 },
+    };
+    const CUT_SKIN = { ...SKINS[0], sex: 'm', moji: true };
+    const cutCat = (c, x, feet, k, pose, t) => drawCat2(c, x, feet, 0.86 * 1.2 * k, CUT_SKIN, t, { k: 1, shape: CUT_POSE[pose] });
+    // แบบใหม่ (ภาพแบบผู้ใช้ 24 พ.ย.): ท่าพุ่งรวมพลัง — ตัววิ่งเฉียงขวา (runBody 'lunge' ขาหลังยกโชว์ฝ่าเท้า) เอียงพุ่งไปหน้า กอดดาวที่อก ตา >< ปากอ้า
+    // คืนจุดที่อุ้งเท้ากำ (พิกัดผู้เรียก) ให้ตัววาดคัตซีนวาดดาวทับหน้าอุ้งเท้า · ร่างแรก — โมจิปรับทีหลัง
+    const LUNGE = { ...run4At(0).shape, runBody: 'lunge', mood: 'hurt', mouth: 1, knead: 1, kneadT: 0, clasp: 1, soles: 1, ear: -0.25, tilt: 0.08, tailBase: { x: 205, y: 520, a: Math.PI * 0.82, curl: 0.75 }, tailShort: 0.45 };
+    const CUT2_POSE = { charge: LUNGE, blast: { ...LUNGE, mouth: 1.2, ear: -0.4 }, miss: { ...CUT_POSE.miss } };
+    const cutCat2 = (c, x, feet, k, pose, t) => {
+      const sc = 0.86 * 1.2 * k, lean = pose === 'miss' ? 0 : 0.3 + (pose === 'blast' ? 0.08 : 0);
+      let at = null;
+      c.save();
+      const py = feet - 32 * sc; c.translate(x, py); c.rotate(lean); c.translate(-x, -py);
+      drawCat2(c, x, feet, sc, CUT_SKIN, t, { k: 1, shape: CUT2_POSE[pose], runner: pose !== 'miss', noBlink: true, holdDraw: (cc, hx, hy) => { at = cc.getTransform().transformPoint(new DOMPoint(hx, hy)); } });
+      c.restore();
+      return at ? c.getTransform().inverse().transformPoint(at) : null;
+    };
+    function cutField(c, W, H) {
+      if (st.cutBg === 'plain') { c.fillStyle = '#2A1840'; c.fillRect(0, 0, W, H); return; }
+      // สนามบอสแบบย่อ (ฟ้าม่วง พื้นหญ้า บอสด้านขวา) — ให้เห็นแผงทับฉากแบบในเกม
+      let g = c.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#6A4C9C'); g.addColorStop(0.7, '#C9A3D9'); g.addColorStop(0.7, '#7FB36A'); g.addColorStop(1, '#5E8F4E');
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
+      drawStumpBoss(c, 760, H * 0.7 + 8, 1.25, { state: 'tired', st: 1, t: st.t, crack: 1, gaze: -1, bob: true, look: 'orange' });
+      drawCat2(c, 170, H * 0.7 + 8, 0.86 * 1.2, CUT_SKIN, st.t * 60, { k: 1, shape: { turn: -0.75 }, runner: true });
+    }
+    function renderCut(w, h) {
+      const W = 960, H = 420, both = st.cutVer === 'both';
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0C0614'; ctx.fillRect(0, 0, w, h);
+      const F = Math.min(st.st * 60, cut2Len(st.cut) - 0.001);
+      if (!st.playing && st.st * 60 > cut2Len(st.cut)) st.st = cut2Len(st.cut) / 60;
+      if (st.playing && st.st * 60 >= cut2Len(st.cut)) st.st = 0;   // วน
+      const sp = cut2At(st.cut, F, hopeJudge);
+      const vers = both ? ['new', 'old'] : [st.cutVer];
+      vers.forEach((ver, i) => {
+        const rows = vers.length, sc = Math.min(w / W, (h / rows) / H), ox = (w - W * sc) / 2, oy = (h / rows) * i + ((h / rows) - H * sc) / 2;
+        ctx.save(); ctx.setTransform(sc, 0, 0, sc, ox, oy);
+        ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+        cutField(ctx, W, H);
+        const o = { W, H, t: F / 60, frame: F, drawCat: ver === 'new' ? cutCat2 : cutCat };
+        if (ver === 'new') drawHopeCut2(ctx, sp, o); else drawHopeCut(ctx, sp, o);
+        if (both) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = '700 16px Mitr, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(ver === 'new' ? '✨ แบบใหม่' : 'แบบเดิม', 12, H - 12); }
+        ctx.restore();
+      });
+      const S = CUT2_SCENES[st.cut], len = cut2Len(st.cut) / 60;
+      $('now').innerHTML = `${S.em} <b>คัตซีน · ${S.name}</b>`;
+      $('time').innerHTML = `<b>${(F / 60).toFixed(2)}</b> / ${len.toFixed(2)} วิ`;
+      if (document.activeElement !== $('scrub')) $('scrub').value = Math.round((F / 60 / len) * 1000);
+      if (frame.n++ % 6 === 0) {
+        const PH = { cut: 'แผงเข้า + รวมพลัง', aim: 'มินิเกม (แตะ)', blast: 'ปล่อยพลัง (สำเร็จ)', miss: 'พลาด' };
+        const rows = [['เฟส', PH[sp.ph]], ['เฟรมในเฟส', Math.floor(sp.f)], ['กดที่เฟรม', sp.tap ?? '—'], ['ผลกด', sp.res || '—'], ['วงทับพอดี', `เฟรม ${HOPE.hit} ของมินิเกม`], ['ช่วงเป๊ะ / ดี', `±${HOPE.perfect} / ±${HOPE.good} เฟรม`]];
+        $('cutVals').innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><span>${v}</span>`).join('');
+      }
     }
     frame.n = 0;
     pickChar(CHARS.find((c) => c.id === new URLSearchParams(location.search).get('char')) || CHARS[0]);
