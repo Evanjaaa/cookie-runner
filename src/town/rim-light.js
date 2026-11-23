@@ -70,8 +70,16 @@ export function drawWithRim(c, box, draw, at, scene) {
   // = แถบที่เริ่มถัดจากเส้นขอบเข้ามา (เส้นขอบน้ำตาลไม่โดนแสงทับจนซีด · หนวดเส้นบาง ๆ ไม่ติดแสง)
   // full = ทำที่ความละเอียดเต็ม (แถบบางคม ไม่ฟุ้งไปทับเส้นขอบ) · ไม่ full = ครึ่งความละเอียด (แถบกว้างนุ่ม)
   const OL = 2.2;
-  const band = (thick, ux, uy, col, a, full) => {
+  // ── คิดแถบเฉพาะกรอบที่ถูกใช้จริง (ภาพเหมือนเดิมทุกพิกเซล · เทียบแล้ว tools/perf/parity.mjs) ──
+  // แถบหัวกับแถบตัวคิดแยกกันคนละรอบ แต่รอบหัวใช้แค่แถวของหัว รอบตัวใช้แค่แถวของตัว และส่วนที่เลยขอบผ้าใบไม่มีใครเห็น
+  // เดิมคิดเต็มผืนทุกรอบ (หน้าแรกมือถือ ผืนสูงเกินจอ ~20%) — ตอนนี้ตัด (clip) ให้เหลือกรอบที่ต้องใช้ + เผื่อระยะเยื้อง/เบลอ
+  // พิกเซลในกรอบคิดด้วยคำสั่งเดิมทุกอย่าง จึงได้ค่าเดิม · นอกกรอบค้างของเก่าไว้แต่ไม่มีขั้นไหนอ่าน
+  // (ตัวน้อง O กับรูปเงาครึ่ง Mk ยังวาดเต็มผืน — เงาทอดบนพื้นพับทั้งตัวลงมา ส่วนที่เลยขอบบนจึงยังโผล่เป็นปลายเงา)
+  const band = (thick, ux, uy, col, a, full, rx0, ry0, rx1, ry1) => {
     const src = full ? O : Mk, D = full ? buf('rf', W, Hh) : R, dg = D.getContext('2d'), q = full ? SXU : px;
+    const x0 = Math.max(0, rx0), y0 = Math.max(0, ry0), x1 = Math.min(D.width, rx1), y1 = Math.min(D.height, ry1);
+    dg.save();
+    dg.beginPath(); dg.rect(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0)); dg.clip();
     dg.globalCompositeOperation = 'source-over'; dg.globalAlpha = 1;
     dg.clearRect(0, 0, D.width, D.height);
     dg.drawImage(src, -ux * OL * q, -uy * OL * q);
@@ -79,8 +87,12 @@ export function drawWithRim(c, box, draw, at, scene) {
     dg.drawImage(src, -ux * (OL + thick) * q, -uy * (OL + thick) * q);
     dg.globalCompositeOperation = 'source-in';
     dg.fillStyle = `rgba(${col},${Math.min(1, a)})`; dg.fillRect(0, 0, D.width, D.height);
+    dg.restore();
     return D;
   };
+  // ส่วนของผืนที่ตกบนผ้าใบปลายทาง (ผืนแปะที่ dx0, dy0 แบบไม่มี transform)
+  const cw = c.canvas.width, chh = c.canvas.height;
+  const vx0 = Math.max(0, -dx0), vx1 = Math.min(W, cw - dx0), vy0 = Math.max(0, -dy0), vy1 = Math.min(Hh, chh - dy0);
 
   const src = lightSources(at.x, at.y, scene);
   // ทดสอบทีละชั้น (dev): 1 เงาในตัว · 2 ขอบสว่าง · 4 เงาทอดบนพื้น · 8 แสงตกบนพื้น
@@ -198,9 +210,17 @@ export function drawWithRim(c, box, draw, at, scene) {
     };
     const part = (y0, y1, t1, t2, s) => {
       if (y1 <= y0) return;
-      lg.save(); lg.beginPath(); lg.rect(0, y0, W, y1 - y0); lg.clip();
-      soft(band(t1, s.ux, s.uy, s.col, 1.0 * s.a * K, true), BLUR * (t1 < 2 ? 0.75 : 1));
-      lg.drawImage(band(t2, s.ux, s.uy, s.col, 0.26 * s.a * K, false), 0, 0, W, Hh);
+      // แถวที่เลยขอบผ้าใบ = ไม่ต้องคิดแสงเลย (ไม่ถูกแปะลงจอ) · ไม่เหลือแถวไหนบนจอ = ข้ามทั้งส่วน
+      const a0 = Math.max(y0, vy0), a1 = Math.min(y1, vy1);
+      if (a1 <= a0 || vx1 <= vx0) return;
+      lg.save(); lg.beginPath(); lg.rect(vx0, a0, vx1 - vx0, a1 - a0); lg.clip();
+      const rad = BLUR * (t1 < 2 ? 0.75 : 1);
+      // เบลอแปะเยื้องได้ไกลสุด 0.71·rad·SXU พิกเซล + อ่านเพื่อนบ้านอีก 1 (เกลี่ยสี) → เผื่อ ceil(rad·SXU) + 2
+      const mf = Math.ceil(Math.max(0, rad) * SXU) + 2;
+      soft(band(t1, s.ux, s.uy, s.col, 1.0 * s.a * K, true, vx0 - mf, a0 - mf, vx1 + mf, a1 + mf), rad);
+      // แถบครึ่งความละเอียดถูกขยาย 2 เท่า: แถว y ของผืนเต็มอ่านแถวราว y·h2/Hh ของผืนครึ่ง → เผื่อ 2 แถวรอบด้าน
+      lg.drawImage(band(t2, s.ux, s.uy, s.col, 0.26 * s.a * K, false,
+        Math.floor(vx0 * w2 / W) - 2, Math.floor(a0 * h2 / Hh) - 2, Math.ceil(vx1 * w2 / W) + 2, Math.ceil(a1 * h2 / Hh) + 2), 0, 0, W, Hh);
       lg.restore();
     };
     for (const s of src) {
