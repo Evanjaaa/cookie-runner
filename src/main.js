@@ -4,8 +4,8 @@ import './event-banner.css';
 import { VIEW, SCORING, BODY } from './config.js';
 import { Game, STATE, LOVE_BTN, CAT_TAP, HOME_BOX, HOME_BOX_SPOTS } from './game.js';
 import { setupInput } from './input.js';
-import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx, fadeSfx, setSfxBoost } from './audio.js';
-import { startMusic, stopMusic, primeMusicFile, SONG_LISTS, songIndex, setSong } from './music.js';
+import { unlockAudio, getMix, setMix, gameMuted, sfx, killSfx, fadeSfx, setSfxBoost, audioLive, audioCtx } from './audio.js';
+import { startMusic, stopMusic, primeMusicFile, SONG_LISTS, songIndex, setSong, musicIsWanted } from './music.js';
 import { SKINS, getSkin, setSkin, skinById, catSkin, catSkinId, recheckSkin } from './skins.js';
 import {
   allCats, breedOf, BREEDS, levelOf, nameOf, sizeOf,
@@ -10189,9 +10189,18 @@ document.getElementById('resumeBtn').addEventListener('click', () => setPaused(f
 document.getElementById('restartBtn').addEventListener('click', () => { sfx.restart(); showIntro(); });
 
 // สลับแท็บหรือสลับแอปแล้วหยุดให้เอง จะได้ไม่กลับมาเจอว่าตายไปแล้ว
+// ── สลับแอป/ล็อกจอ ตอนไม่ได้วิ่ง (หน้าแรก หน้าผล หน้าต่างต่าง ๆ) ก็ต้องเงียบ ──
+// เดิมเงียบเฉพาะตอนวิ่ง (setPaused) — หน้าอื่นเพลงเล่นต่อเบื้องหลัง (Android/TWA ได้ยินเพลงค้าง)
+// และระบบเสียงไม่ได้พักเลยทั้งที่ไม่มีใครฟัง (วัดแล้ว: AudioContext ยัง running หลังซ่อนแท็บ · PERF_REPORT.md F5)
+// ตอนนี้ทำแบบเดียวกับหน้าเมือง (town/main.js syncMusic): หยุดเพลง/เอฟเฟกต์ + พักระบบเสียง → กลับมาปลุกแล้วเล่นต่อ
+// พักเฉพาะตอนระบบเสียงตื่นอยู่แล้ว (audioLive) — ห้ามเรียก audioCtx() ก่อนมีคนแตะจอ (iOS ไม่ยอม · ดู liveCtx ใน audio.js)
+let musicBeforeHide = false;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    musicBeforeHide = musicIsWanted();   // จำก่อน setPaused (ตอนวิ่ง setPaused หยุดเพลงเอง)
     setPaused(true);
+    if (musicBeforeHide) { killSfx(); stopMusic(); }
+    if (audioLive()) audioCtx().suspend().catch(() => {});
     return;
   }
   // ── กลับเข้ามาแล้วต้องปลุกเสียงใหม่ ──
@@ -10199,6 +10208,10 @@ document.addEventListener('visibilitychange', () => {
   // แล้วไม่ตื่นเองเมื่อกลับมา ถ้าไม่ปลุกตรงนี้ เกมจะเงียบไปทั้งรอบโดยไม่มีอะไรบอก
   unlockAudio();
   paintMuteBadge();
+  // เพลงเล่นอยู่ก่อนซ่อน = เล่นต่อ · ยกเว้นหน้าหยุดเกม (ปุ่มเล่นต่อเปิดเพลงคืนเองเหมือนเดิม)
+  // ระบบเสียงยังไม่ตื่น startMusic ฝากคิวรอไว้เอง (whenAudioAwake)
+  if (musicBeforeHide && game.state !== STATE.PAUSE) startMusic();
+  musicBeforeHide = false;
 });
 
 // ── ปลุกเสียงจากการแตะครั้งแรก ไม่ว่าจะแตะตรงไหน ──

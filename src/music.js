@@ -1380,6 +1380,8 @@ function pump() {
 let wanted = false;
 let queued = false;
 let retry = 0;
+/** ตอนนี้ตั้งใจให้เพลงเล่นอยู่ไหม (startMusic แล้วยังไม่ stopMusic) — main.js ใช้จำสถานะก่อนสลับแอป */
+export const musicIsWanted = () => wanted;
 
 /** เรียกซ้ำได้ ครั้งที่สองเป็นต้นไปไม่ทำอะไร */
 export function startMusic() {

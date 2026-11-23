@@ -152,7 +152,7 @@ try {
     for (const m of r.res.windows || []) printWindow(m);
     if (r.res.points) for (const pt of r.res.points) console.log('  รอบ', pt.round, JSON.stringify(pt));
     if (r.res.sites1) { console.log('  ผ้าใบตามจุดสร้าง ก่อนเปิดหน้าต่าง:'); for (const x of r.res.sites0) console.log('    ', x); console.log('  หลังเปิดครบ:'); for (const x of r.res.sites1) console.log('    ', x); }
-    if (r.res.before) console.log('  เสียงก่อนซ่อน', JSON.stringify(r.res.before), '→ หลังซ่อน', JSON.stringify(r.res.after));
+    if (r.res.before) console.log('  เสียงก่อนซ่อน', JSON.stringify(r.res.before), '→ หลังซ่อน', JSON.stringify(r.res.after), '→ กลับมา', JSON.stringify(r.res.back));
   }
 } finally {
   await srv.close();

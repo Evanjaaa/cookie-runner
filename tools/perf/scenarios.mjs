@@ -164,12 +164,18 @@ Object.assign(SCENARIOS, {
     await boot(ctx); await goHome(ctx);
     await key(cdp, 'ShiftLeft', 40);
     await sleep(3000);
-    const before = await cdp.evaluate(`({ audio: __perf.audioCtx.map((c) => c.state) })`);
+    const music0 = `import('/src/music.js').then((m) => m.musicIsWanted ? m.musicIsWanted() : 'n/a')`;
+    const before = await cdp.evaluate(`(async () => ({ audio: __perf.audioCtx.map((c) => c.state), music: await ${music0} }))()`);
     await cdp.evaluate(`(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); return true; })()`);
     await sleep(2000);
     const w = await ctx.measure('hidden(จำลอง)', ctx.O.secs);
-    const after = await cdp.evaluate(`({ audio: __perf.audioCtx.map((c) => c.state) })`);
-    return { windows: [w], before, after };
+    const music = `import('/src/music.js').then((m) => m.musicIsWanted ? m.musicIsWanted() : 'n/a')`;
+    const after = await cdp.evaluate(`(async () => ({ audio: __perf.audioCtx.map((c) => c.state), music: await ${music} }))()`);
+    // กลับมาเห็นหน้า (dev: อ่านสถานะเพลงจากโมดูลเดียวกับเกม)
+    await cdp.evaluate(`(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); document.dispatchEvent(new Event('visibilitychange')); return true; })()`);
+    await sleep(2500);
+    const back = await cdp.evaluate(`(async () => ({ audio: __perf.audioCtx.map((c) => c.state), music: await ${music} }))()`);
+    return { windows: [w], before, after, back };
   },
 });
 
