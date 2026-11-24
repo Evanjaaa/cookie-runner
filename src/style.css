@@ -18241,3 +18241,191 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #startPanel .dock2 .dk-sp { opacity: .8; transform: none; }
   #startPanel .dock2 .dock-art { transition: none; }
 }
+
+/* ══ แต่งหน้าน้อง (src/cat-face.js · ผู้ใช้ 24 พ.ย. 2026) ══
+   ลิ้นชักขวาในการ์ดหน้ารายละเอียดน้อง — น้องยืนกลางเวทีด้านซ้ายให้เห็นหน้าที่เปลี่ยนทันที
+   แท็บ ตา / ปาก / สี · ช่องตา-ปากมีรูปหน้าย่อ (วาดจากตัวน้องจริง) · สี = เม็ดสีสำเร็จ + วงล้อสีเลือกเอง */
+#odPanel .btn.od-face[hidden] { display: none; }
+#odPanel .btn.od-face {
+  margin: 0;
+  min-width: clamp(104px, 14vw, 170px);
+  padding: clamp(8px, 1.8dvh, 14px) clamp(14px, 2.4vw, 26px);
+  border-radius: 999px;
+  font-family: "Mali", sans-serif;
+  font-weight: 800;
+  font-size: clamp(14px, 2.8dvh, 22px);
+}
+@media (max-height: 500px) {
+  #odPanel .btn.od-face { min-width: 92px; font-size: 14px; padding: 7px 14px; }
+}
+/* เปิดลิ้นชัก: ซ่อนกล่องข้อมูล/ปุ่ม/ลูกศร ให้เวทีโล่ง */
+#odPanel.cf-open :is(.od-info, .od-act, .od-nav, .od-max, .od-title, .backbtn) { display: none; }   /* ชื่อแมว + ปุ่มกลับก็ซ่อน (ผู้ใช้ 24 พ.ย.) — ออกจากหน้าแต่งหน้าด้วย ✕ / ตกลง */
+
+.cf-drawer {
+  position: absolute;
+  z-index: 4;
+  top: clamp(8px, 2dvh, 20px);
+  right: clamp(8px, 1.6vw, 20px);
+  bottom: clamp(8px, 2dvh, 20px);
+  width: min(46%, 470px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.4dvh, 12px);
+  padding: clamp(10px, 2dvh, 18px) clamp(10px, 1.6vw, 18px);
+  border-radius: clamp(16px, 3dvh, 28px);
+  background: rgba(253,240,255,.93);
+  border: 1.5px solid rgba(255,255,255,.85);
+  box-shadow: 0 14px 34px rgba(110,40,150,.26), inset 0 1px 0 rgba(255,255,255,.9);
+  color: #4A2066;
+  font-family: "Mali", sans-serif;
+  transform: translateX(14px);
+  opacity: 0;
+  transition: transform .22s cubic-bezier(.2,.9,.3,1.2), opacity .18s ease;
+}
+.cf-drawer.on { transform: none; opacity: 1; }
+.cf-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px; }
+.cf-head h3 { margin: 0; font-size: clamp(16px, 3.2dvh, 24px); font-weight: 800; color: #8A3BB8; }
+.cf-drawer .xbtn.cf-x { position: static; flex: none; }
+
+/* แท็บ ตา / ปาก / สี — เม็ดแคปซูลสามช่อง */
+.cf-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 999px; background: rgba(160,100,210,.14); }
+.cf-tabs button {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: clamp(5px, 1.2dvh, 9px) 4px; border: 0; border-radius: 999px; background: transparent;
+  color: #6A3A8C; font: inherit; font-weight: 700; font-size: clamp(13px, 2.4dvh, 17px); cursor: pointer;
+}
+.cf-tabs button b { font-weight: 400; }
+.cf-tabs button.on { background: #fff; color: #8A3BB8; box-shadow: 0 2px 8px rgba(130,60,180,.2); }
+.cf-tabs button:active { filter: brightness(.93); }
+
+.cf-body { text-align: left; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding: 2px; }
+.cf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(74px, 12dvh, 104px), 1fr)); gap: clamp(6px, 1.2dvh, 10px); }
+.cf-tile {
+  display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 4px 4px 6px;
+  border: 2px solid rgba(255,255,255,.9); border-radius: 16px; cursor: pointer;
+  background: linear-gradient(180deg, #FFF8FD, #F3E3FB);
+  box-shadow: 0 3px 10px rgba(130,60,180,.13);
+  color: #5A2A7C; font: inherit; font-size: clamp(11px, 2dvh, 14px); font-weight: 700; line-height: 1.2;
+}
+.cf-tile canvas { width: 100%; aspect-ratio: 1 / .7; border-radius: 12px; background: radial-gradient(ellipse at 50% 50%, #FFF8F0 30%, #FBE6D4); display: block; }
+.cf-tile.on { border-color: #B25AE0; box-shadow: 0 0 0 3px rgba(178,90,224,.28), 0 3px 10px rgba(130,60,180,.18); color: #8A3BB8; }
+.cf-tile:active { filter: brightness(.93); }
+
+/* สี: หัวข้อ + เม็ดสี */
+/* โซนสี: เส้นคั่นบางม่วงอ่อน ระยะห่างโปร่ง (ผู้ใช้ 24 พ.ย.) */
+.cf-colrow { padding: clamp(13px, 2.8dvh, 22px) 2px; }
+.cf-colrow:first-child { padding-top: 2px; }
+.cf-colrow + .cf-colrow { border-top: 2px solid rgba(178,120,224,.45); }
+.cf-colrow h4 { text-align: left; margin: 0 0 clamp(6px, 1.3dvh, 10px); font-size: clamp(13px, 2.4dvh, 16px); font-weight: 800; color: #6A3A8C; }
+.cf-swatches { display: flex; flex-wrap: wrap; gap: clamp(6px, 1.2dvh, 9px); }
+.cf-sw {
+  position: relative; width: clamp(30px, 6dvh, 40px); aspect-ratio: 1; padding: 0; border-radius: 50%; cursor: pointer;
+  background: var(--c, #fff); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(110,40,150,.25); overflow: hidden;
+}
+.cf-sw.def { background: conic-gradient(#FFC95A 0 25%, #F3A08A 0 50%, #FF8C8C 0 75%, #FFE9A0 0); }
+.cf-sw.def::after { content: 'เดิม'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 10px; font-weight: 800; color: #6A3A8C; text-shadow: 0 0 3px #fff; }
+.cf-sw.wheel { background: var(--c, conic-gradient(#ff5a5a, #ffd36b, #6be07a, #5bb8ff, #b07cff, #ff7fb8, #ff5a5a)); border-style: dashed; border-color: #C99BE6; }
+.cf-sw.wheel::after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; font-weight: 800; color: #fff; text-shadow: 0 0 3px rgba(80,20,110,.6); pointer-events: none; }
+.cf-sw.wheel.on::after { content: none; }
+.cf-sw.wheel input { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.cf-sw.on { border-style: solid; border-color: #fff; box-shadow: 0 0 0 3px #B25AE0, 0 2px 8px rgba(110,40,150,.3); }
+.cf-sw:active { filter: brightness(.93); }
+
+.cf-foot { display: flex; gap: 8px; }
+.cf-foot .btn { flex: 1; margin: 0; padding: clamp(7px, 1.6dvh, 12px) 10px; border-radius: 999px; font-family: "Mali", sans-serif; font-weight: 800; font-size: clamp(13px, 2.6dvh, 18px); }
+
+/* จอเตี้ย (มือถือแนวนอน): ลิ้นชักกว้างขึ้นนิด ช่องเล็กลง */
+@media (max-height: 500px) {
+  .cf-drawer { width: min(52%, 430px); gap: 5px; padding: 8px 10px; }
+  .cf-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 5px; }
+  .cf-tile { border-radius: 12px; padding: 3px 3px 4px; }
+}
+/* จอสูง (ไอแพด · จอคอม): ลิ้นชักกว้างขึ้น ช่องตา/ปาก เม็ดสี ปุ่มแท็บ ใหญ่ขึ้นให้เต็มที่ว่าง กดง่าย (ผู้ใช้ 24 พ.ย. ตรวจมือถือ/ไอแพด) */
+@media (min-height: 640px) {
+  .cf-drawer { width: min(48%, 540px); gap: 14px; padding: 20px 20px; }
+  .cf-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+  .cf-tile { border-radius: 18px; padding: 6px 6px 8px; gap: 5px; font-size: 15px; }
+  .cf-tile canvas { aspect-ratio: 1 / .78; border-radius: 14px; }
+  .cf-tabs button { padding: 10px 4px; font-size: 18px; }
+  .cf-sw { width: 40px; }   /* 8 เม็ดต่อแถวพอดี (เดิม + 6 สี + วงล้อ ของแก้ม/จมูกอยู่แถวเดียว) */
+  .cf-swatches { gap: 9px; }
+  .cf-colrow h4 { font-size: 17px; }
+}
+
+/* ══ หน้ารายละเอียดน้องแมว (คลังน้อง → แตะตัวละคร) เต็มจอ (ผู้ใช้ 24 พ.ย. — "ไม่ต้องแสดงแบบป๊อปอัปใหญ่แล้ว") ══
+   ฉากปูเต็มเวที ไม่มีขอบการ์ด/มุมมน · หน้ารายละเอียดชุด (สกิน) ก็เต็มจอเหมือนกัน (ผู้ใช้ 24 พ.ย. รอบ 2) */
+#odPanel .od-pop {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+#odPanel .od-stage, #odPanel .od-video { border-radius: 0; }
+/* หน้าสกินชุด (ไม่ใช่ cat-mode): ไม่มีปุ่มแต่งหน้า — แต่งหน้าได้เฉพาะหน้าเลือกแมว (ผู้ใช้ 24 พ.ย.) */
+#odPanel:not(.cat-mode) .btn.od-face { display: none; }
+
+/* ปุ่มมุมกล้องตอนแต่งหน้า (เต็มตัว / ซูมหน้า) — เม็ดวุ้นใสมุมซ้ายล่างของเวที · กดแล้วแค่สว่างลด ไม่ยุบ */
+.cf-zoom {
+  position: absolute;
+  z-index: 3;
+  left: clamp(12px, 2.4vw, 32px);
+  bottom: clamp(12px, 3dvh, 30px);
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(253,240,255,.82);
+  border: 1.5px solid rgba(255,255,255,.9);
+  box-shadow: 0 8px 20px rgba(110,40,150,.2), inset 0 1px 0 rgba(255,255,255,.9);
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.cf-zoom.on { opacity: 1; }
+.cf-zoom button {
+  width: clamp(40px, 8dvh, 52px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #8A3BB8;
+  cursor: pointer;
+}
+.cf-zoom button svg { width: 66%; height: 66%; display: block; }
+.cf-zoom button.on {
+  background: linear-gradient(180deg, #C98BF0, #9D56D8);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 6px rgba(90,20,140,.25), 0 3px 8px rgba(130,50,190,.3);
+}
+.cf-zoom button:active { filter: brightness(.93); }
+
+/* กลุ่มสีในแท็บสี — การ์ดพื้นขาวนวลขอบม่วงอ่อน (ดวงตา · แก้มและจมูก) */
+.cf-colgroup {
+  padding: clamp(8px, 1.6dvh, 14px) clamp(10px, 1.4vw, 14px) clamp(4px, 0.8dvh, 8px);
+  border-radius: clamp(14px, 2.4dvh, 20px);
+  background: rgba(255,255,255,.62);
+  border: 1.5px solid rgba(190,140,230,.38);
+  box-shadow: 0 3px 10px rgba(130,60,180,.08), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.cf-colgroup + .cf-colgroup { margin-top: clamp(10px, 2dvh, 16px); }
+.cf-colgroup > h3 {
+  margin: 0 0 clamp(8px, 1.6dvh, 12px);
+  padding-bottom: clamp(6px, 1.2dvh, 9px);
+  border-bottom: 1px dashed rgba(190,140,230,.4);
+  text-align: left;
+  font-size: clamp(14px, 2.6dvh, 18px);
+  font-weight: 800;
+  color: #8A3BB8;
+}
+.cf-colgroup .cf-colrow:first-of-type { padding-top: clamp(6px, 1.2dvh, 10px); }
+.cf-colgroup .cf-colrow:last-child { padding-bottom: clamp(8px, 1.6dvh, 12px); }
+.cf-colgroup .cf-colrow h4 { font-size: clamp(12px, 2.2dvh, 15px); color: #7A4A9C; }
+/* มือถือ (จอเตี้ย): เส้นคั่นหมวดสีบางลง (ผู้ใช้ 24 พ.ย.) */
+@media (max-height: 500px) {
+  .cf-colrow + .cf-colrow { border-top-width: 1px; }
+}

@@ -63,6 +63,8 @@ import { syncNews, newsUnread, markNewsSeen, renderNews } from './news.js';
 import { setupReport } from './report.js';
 import { drawCatPose, drawCatFace, drawObstacles } from './render/entities.js';
 import { CAT2, CAT2_BREEDS, drawCat2, useCat2, drawCatAuto, drawCatFaceAuto, cat2Intro, cat2Act, cat2Backdrop, MOJI_STYLE, mojiSkin } from './render/cat2.js';
+// หน้าประจำตัวน้อง (ผู้ใช้ 24 พ.ย. — ฝั่งน้องแมว): โหลดหน้าที่ผู้เล่นแต่งไว้ตั้งแต่เปิดเกม + ตัวแต่งหน้าในหน้ารายละเอียดน้อง
+import { canEditFace, openFaceEditor, closeFaceEditor, faceEditorOpen, faceZoom as cfZoom } from './cat-face.js';
 /** คลังน้องแมว: แมวส้มตัวหลักใช้แบบใหม่ (cat2) ตัวอื่นใช้ตัววาดเดิม */
 function drawStashCat(c, x, feetY, scale, s, t, opts = {}) {
   // เงาน้องที่ยังไม่เคยพบ — วาดทรงจริงแล้วระบายเป็นเงา
@@ -6590,7 +6592,19 @@ function odDraw() {
     id: odCurrent, skin: { ...(od.skin || getSkin()), outfit: o }, high: o.rarity === 'high',
     mode: od.mode, f: od.f, tBase: od.tBase, from: od.from, k: od.k,
     bd: odCat ? 'room:cats' : undefined,   // หน้าน้องแมว = ห้องนั่งเล่นแมวน้อย (cat2.js CAT_ROOM_BACKDROP)
-  }, od.vid ? odGeoCover(W, H, od.vid) : odGeo(W, H));
+  }, odFaceGeo(W, H, od.vid ? odGeoCover(W, H, od.vid) : odGeo(W, H)));
+}
+// เปิดตัวแต่งหน้า (ลิ้นชักขวา ~46% ของการ์ด): น้องเลื่อนไปกลางที่ว่างด้านซ้ายแบบนุ่ม ๆ — เห็นหน้าเต็มตอนกดเลือก
+//   ปุ่มมุมกล้อง (cat-face.js faceZoom → cfZoom): เต็มตัว / ซูมหน้า — ซูมนุ่ม ๆ ให้หัวน้องอยู่กลางที่ว่าง
+function odFaceGeo(W, H, g) {
+  const ease = (key, want) => { od[key] = (od[key] || 0) + (want - (od[key] || 0)) * 0.2; if (Math.abs(od[key] - want) < 0.002) od[key] = want; return od[key]; };
+  const k = ease('cfK', faceEditorOpen() ? 1 : 0);
+  const z = ease('cfZ', faceEditorOpen() && cfZoom() === 'face' ? 1 : 0);
+  if (!k && !z) return g;
+  const u = g.u * (1 + 0.75 * z);   // ซูมหน้า 1.75 เท่า — หัวทั้งหัว (หู-คาง) อยู่ในจอ
+  const HEAD = 104;   // หน่วยเกมเหนือเท้า = กลางหัว
+  const gy = g.gy + (H * 0.52 + HEAD * u - g.gy) * z;
+  return { ...g, u, gy, cx: g.cx + (W * 0.27 - g.cx) * k };
 }
 
 /** เสียงของท่าเปิดตัว — ยิงตอนเวลาข้ามเฟรมในตาราง voices (ไม่ยิงซ้ำแม้เฟรมตก) */
@@ -6638,6 +6652,7 @@ function odFrame(now) {
 
 // ออกจากหน้า = หยุดลูป วิดีโอ และเสียงท่าเปิดตัวที่อาจยังค้าง
 function stopOdCat() {
+  closeFaceEditor(true);
   cancelAnimationFrame(odRAF);
   odRAF = 0;
   odVideoOff();
@@ -6898,8 +6913,21 @@ function paintCatDetail() {
     wear.classList.toggle('ghost', on);
   }
   document.getElementById('odMore').hidden = !x.cat;
+  // แต่งหน้า: เฉพาะแมวที่มีชุดหน้าของนักวาดแล้ว (ตอนนี้น้องส้มตัวหลัก) และเป็นของเราแล้ว
+  document.getElementById('odFace').hidden = locked || x.kind === 'raising' || !canEditFace(x.id);
   setMsg(document.getElementById('odMsg'), '');
 }
+
+document.getElementById('odFace').addEventListener('click', () => {
+  const x = odCat ? catEntryById(odCat) : null;
+  if (!x || !canEditFace(x.id)) return;
+  unlockAudio();
+  sfx.fish();
+  openFaceEditor(document.querySelector('#odPanel .od-pop'), x.id, x.skin, {
+    sfx: () => sfx.fish(),
+    onChange: () => { odDraw(); refreshHome(); },   // ตัวบนเวที + น้องหน้าแรกได้หน้าใหม่ทันที
+  });
+});
 
 /** ปุ่มหลักของหน้าน้องแมว: เลือกลงวิ่ง / ลูกแมวที่ยังเลี้ยงอยู่ = ทางลัดไปหาน้องที่บ้าน */
 function catDetailAct() {
@@ -6947,6 +6975,7 @@ function odNav(dir) {
   sfx.fish();
   fadeSfx(0.25);   // เสียงท่าเปิดตัวของตัวก่อนหน้าที่ยังค้าง
   if (odCat) {
+    closeFaceEditor(true);   // เลื่อนไปตัวอื่น: ปิดตัวแต่งหน้าของตัวเดิม
     odCat = id;
     stashSel.skin = id;
     markSeen('skin', id);
