@@ -1202,10 +1202,14 @@
           <!-- วิดีโอท่าเปิดตัวที่อัดไว้ (public/video/) — เล่นทับผ้าใบระหว่างท่าเปิดตัว แล้วผ้าใบวาดท่าแอ็คต่อ (main.js odStart) -->
           <video class="od-video" id="odVideo" muted playsinline preload="none" aria-hidden="true"></video>
           <h2 class="skin-title od-title" id="odName">ชุด</h2>
-          <button type="button" class="od-max" id="odMax" aria-label="ขยายเต็มจอ" title="ขยายเต็มจอ">
+          <!-- ซ่อนปุ่มทั้งหมด (ผู้ใช้ 24 พ.ย.: ไอคอนตาขีดฆ่า แทนลูกศรขยาย — ทั้งหน้าเต็มจออยู่แล้ว ปุ่มนี้ซ่อนข้อมูล/ปุ่ม เหลือแต่น้อง) -->
+          <button type="button" class="od-max" id="odMax" aria-label="ซ่อนปุ่มทั้งหมด" title="ซ่อนปุ่มทั้งหมด">
             <svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true">
-              <path d="M4 9V4h5M4 4l5.5 5.5M20 9V4h-5M20 4l-5.5 5.5M4 15v5h5M4 20l5.5-5.5M20 15v5h-5M20 20l-5.5-5.5"
-                    fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2.6 12s3.4-6.4 9.4-6.4 9.4 6.4 9.4 6.4-3.4 6.4-9.4 6.4S2.6 12 2.6 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M4 20 20 4"/>
+              </g>
             </svg>
           </button>
           <!-- ลูกศรเลื่อนดูตัวก่อน/ถัดไปในรายการที่เปิดมา (คลังชุด / คลังน้องแมว / สกินในตู้นี้) — main.js odNav · ผู้ใช้ 7 พ.ย. 2026 -->
@@ -1231,6 +1235,8 @@
             <!-- หน้ารายละเอียดน้องแมว (เปิดจากคลังน้องแมว — main.js openCatDetail) ใช้หน้านี้ร่วมกัน:
                  ปุ่มหลัก = เลือกลงวิ่ง / ไปบ้านน้อง · ปุ่มรอง "เรื่องราว" มีเฉพาะน้องจากกล่อง -->
             <div class="od-btns">
+              <!-- แต่งหน้า: ตัวแต่งหน้าน้อง (src/cat-face.js) เปิดเป็นลิ้นชักขวาในการ์ดนี้ — เฉพาะน้องที่มีชุดหน้าแล้ว -->
+              <button type="button" class="btn ghost od-face" id="odFace" hidden>แต่งหน้า</button>
               <button class="btn ghost od-more" id="odMore" hidden>เรื่องราว</button>
               <button class="btn od-wear" id="odWear">ใส่ชุดนี้</button>
             </div>

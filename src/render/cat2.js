@@ -37,13 +37,48 @@ export const CAT2 = { home: true, stash: true, ui: true, run: true };
  * face = ชุดหน้าตามอารมณ์จากไฟล์ cat-orange-emotion (ผู้ใช้ 24 พ.ย. — ตา 7 แบบ ปาก 6 แบบ ของโมจิ) ทุกที่ที่เปิดสไตล์โมจิ
  *   ยังปิด — ลองใน cat-lab ก่อน ด้วย skin.mojiFace = true · ดู mojiEmo / emoEyeKind / hooks.mouth
  */
-export const MOJI_STYLE = { game: false, home: true, ui: true, face: false };
+// face เปิดแล้ว (ผู้ใช้ 24 พ.ย.: "ปากดั้งเดิมแบบเก่าไม่เอาแล้ว ต้องเป็นลายเส้นคุณโมจิ") — น้องส้มสไตล์โมจิ (หน้าแรก การ์ด คลัง) ใช้ชุดหน้าโมจิเสมอ
+export const MOJI_STYLE = { game: false, home: true, ui: true, face: true };
 const MOJI_SKINS = new WeakMap();
+// ── หน้าประจำตัวที่ผู้เล่นแต่งเอง (ผู้ใช้ 24 พ.ย. · หน้าคลังน้อง → แต่งหน้า · src/cat-face.js เก็บ/ตั้งค่า) ──
+// { [id แมว]: { eye, mouth, eyeColor, cheekColor, noseColor } } — ติดไปกับสกินผ่าน mojiSkin ทุกที่ที่เปิดสไตล์โมจิ
+//   (หน้าแรก การ์ด คลัง หน้ารายละเอียดน้อง) · ตอนนี้มีแค่น้องส้มตัวหลัก (ชุดหน้าของตัวอื่นรอโมจิวาด)
+let PLAYER_FACES = {}, FACE_REV = 0;
+export function setPlayerFaces(map) { PLAYER_FACES = map || {}; FACE_REV++; }
+/**
+ * วาดเฉพาะชิ้นหน้า (ตาคู่ หรือ ปาก) ลงกรอบ W×H — ไอคอนตัวเลือกในตัวแต่งหน้า (ผู้ใช้ 24 พ.ย. "โชว์แค่ดวงตา / แค่ปาก")
+ * kind 'eye' | 'mouth' · id = ชื่อในคลังชุดหน้า · eyeColor = สีตาประจำตัว · ขนาดคงที่ต่อประเภท (ตาทุกแบบขนาดเท่ากัน ปากเท่ากัน)
+ * คืน false = ไม่มีชิ้นนั้น
+ */
+export function drawFacePart(c, W, H, kind, id, face = {}) {
+  const E = emoLib();
+  const src = kind === 'eye' ? (E?.eyes[id] ? [...E.eyes[id].left, ...E.eyes[id].right] : []) : E?.mouths[id] || [];
+  if (!src.length) return false;
+  const ops = kind === 'eye' ? src.map((o) => eyeColorOp(o, face)) : face.mouthColor ? src.map((o) => mouthLineOp(o, face.mouthColor)) : src;
+  const b = opsBox(ops);
+  // ตาคู่กว้าง ~255 หน่วย · ปากกว้างสุด ~62 — ย่อด้วยค่าคงที่ ไม่ใช่ตามกรอบของแต่ละแบบ (แบบเล็กไม่ถูกขยายจนเพี้ยน)
+  const k0 = kind === 'eye' ? Math.min((W * 0.9) / 262, (H * 0.86) / 112) : Math.min((W * 0.86) / 68, (H * 0.8) / 50);
+  const k = Math.min(k0, (W * 0.9) / (b.x1 - b.x0 || 1), (H * 0.86) / (b.y1 - b.y0 || 1));   // แบบที่ใหญ่เกินกรอบ (ยิ้มเจ้าเล่ห์) ย่อลงพอดี
+  c.save();
+  c.translate(W / 2, H / 2);
+  c.scale(k, k);
+  c.translate(-(b.x0 + b.x1) / 2, -(b.y0 + b.y1) / 2);
+  drawOps(c, ops, MOJI_PAL, {}, {});
+  c.restore();
+  return true;
+}
 /** สกินเดิมที่เปิดสไตล์โมจิ (ตัวเดิมทุกเฟรม → แคชของผู้เรียกที่เทียบสกินด้วย === ยังใช้ได้) · ตัวไม่ใช่น้องส้ม drawCat2 ไม่เปิดให้เอง */
 export function mojiSkin(s) {
   if (!s || typeof s !== 'object' || s.moji != null) return s;
   let m = MOJI_SKINS.get(s);
-  if (!m) { m = { ...s, moji: true }; MOJI_SKINS.set(s, m); }
+  if (!m || m.__rev !== FACE_REV) {
+    const face = PLAYER_FACES[s.id];
+    const has = face && Object.values(face).some(Boolean);
+    m = { ...s, moji: true, __rev: FACE_REV };
+    // ล็อกตา/ปาก = ใช้ชุดหน้าของโมจิ (แม้ MOJI_STYLE.face ยังปิด) · เปลี่ยนแค่สี = หน้าเดิม + สีใหม่
+    if (has) { m.face = face; if (face.eye || face.mouth) m.mojiFace = true; }
+    MOJI_SKINS.set(s, m);
+  }
   return m;
 }
 /**
@@ -23824,6 +23859,108 @@ function mojiFront() {
 // ไฟล์ = หัวอย่างเดียว · ตาแต่ละแบบ/ปากแต่ละแบบเป็นกลุ่มซ้อนกันตรงตำแหน่งจริงในกลุ่ม eyes / mouth
 // ตา: แยกซ้าย/ขวาจอจากตำแหน่ง (เส้นกลางหน้า x 300) — ชื่อกลุ่มย่อยในไฟล์ซ้ำกันหลายชุด (eye-left-2, eye-right-3 …) จึงไม่ใช้ชื่อ
 // คืน { eyes: { ชื่อแบบ: { left, right } }, mouths: { ชื่อแบบ: ops } } — ชื่อแบบตัดคำนำหน้าออก (eye-crying → crying · eyelid-half-closed → half)
+// ── เปลี่ยนสีตา/แก้ม/จมูก (ผู้ใช้ 24 พ.ย. — หน้าประจำตัวของผู้เล่น) ──
+// ไม่ทาสีทับ: ทุกจุดสีของชิ้น (สีไล่/สีพื้น/เส้น) เปลี่ยน "โทน + ความสด" เป็นของสีที่เลือก แต่คงความสว่างเดิม
+//   → ส่วนสว่าง/ประกาย/ขาวยังอยู่ ส่วนเข้มยังเข้ม · ความสว่างของสีที่เลือกเลื่อนช่วงกลางได้นิด (เลือกสีเข้ม = ตาเข้มขึ้น)
+const hexRgb = (h) => { const m = /^#?([0-9a-f]{6})$/i.exec((h || '').trim()); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+function rgbHsl([r, g, b]) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+function hslCss(h, s, l, a = 1) { return `hsla(${h.toFixed(1)},${(Math.max(0, Math.min(1, s)) * 100).toFixed(1)}%,${(Math.max(0, Math.min(1, l)) * 100).toFixed(1)}%,${a})`; }
+/** สีหนึ่งจุด (#hex หรือ rgba()) → สีใหม่ตามสีเป้า t = [h, s, l] */
+function tintColor(c, t, follow = false) {
+  if (typeof c !== 'string') return c;
+  let rgb = hexRgb(c), a = 1;
+  if (!rgb) { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return c; const v = m[1].split(',').map(Number); rgb = v.slice(0, 3); a = v[3] ?? 1; }
+  const [, s0, l0] = rgbHsl(rgb);
+  if (s0 < 0.06 && (l0 > 0.92 || l0 < 0.06)) return c;   // ขาว/ดำแท้ (ประกาย) คงเดิม
+  const mid = 1 - Math.abs(2 * l0 - 1);
+  // follow (ตาดำ): ความสว่างตามสีที่เลือก (ไล่เข้ม-สว่างเดิมรอบ ๆ) — ตาดำเดิมเข้มมาก เลือกชมพูแล้วจะได้ชมพูจริง ไม่ใช่แดงไวน์
+  if (follow) return hslCss(t[0], Math.min(1, s0 * 0.25 + t[1] * 0.85), t[2] + (l0 - 0.2) * 0.8, a);
+  return hslCss(t[0], Math.min(1, s0 * 0.35 + t[1] * 0.75), l0 + (t[2] - 0.5) * 0.55 * mid, a);
+}
+const TINT_CACHE = new Map();
+/** ชิ้น (และลูก) ที่เปลี่ยนสีแล้ว — แคชตามชิ้น+สี (ไม่สร้างใหม่ทุกเฟรม) */
+function tintOp(op, hex, follow = false) {
+  const rgb = hexRgb(hex);
+  if (!rgb || !op) return op;
+  const ck = follow ? hex + '|f' : hex;
+  let m = TINT_CACHE.get(ck);
+  if (!m) { m = new WeakMap(); TINT_CACHE.set(ck, m); }
+  if (m.has(op)) return m.get(op);
+  const t = rgbHsl(rgb);
+  const tg = (g) => (g ? { ...g, stops: g.stops.map(([o, c]) => [o, tintColor(c, t, follow)]) } : g);
+  const out = op.ops ? { ...op, ops: op.ops.map((q) => tintOp(q, hex, follow)) }
+    : { ...op, fill: op.fill ? tintColor(op.fill, t, follow) : op.fill, grad: tg(op.grad), sgrad: tg(op.sgrad) };
+  m.set(op, out);
+  return out;
+}
+// ── สีตาแยกสามส่วน (ผู้ใช้ 24 พ.ย.): ขนตา · พื้นข้างในตา (วงตา iris) · ตาดำ (pupil + เงาสะท้อน) ──
+// face.eyeColor (ของเดิม) = ใช้กับพื้นในตา + ตาดำ เมื่อไม่ได้ตั้งแยก
+// ขนตา/เส้นตาเกือบดำ — ใช้วิธีเปลี่ยนโทนแต่คงความสว่างแล้วสีแทบไม่ขึ้น → ลงสีที่เลือกตรง ๆ (ส่วนสว่าง/มืดของสีไล่เดิมเลื่อนตามนิดหน่อย)
+//   เส้นขอบวงตา (upper-eye-line) และเส้นตาหลับ (eyelid-line) เปลี่ยนตามสีขนตาด้วย
+function lashColor(c, t) {
+  if (typeof c !== 'string') return c;
+  let rgb = hexRgb(c), a = 1;
+  if (!rgb) { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return c; const v = m[1].split(',').map(Number); rgb = v.slice(0, 3); a = v[3] ?? 1; }
+  const [, , l0] = rgbHsl(rgb);
+  return hslCss(t[0], t[1], t[2] + (l0 - 0.15) * 0.45, a);
+}
+const LASH_CACHE = new Map();
+function lashOp(op, hex) {
+  const rgb = hexRgb(hex);
+  if (!rgb || !op) return op;
+  let m = LASH_CACHE.get(hex);
+  if (!m) { m = new WeakMap(); LASH_CACHE.set(hex, m); }
+  if (m.has(op)) return m.get(op);
+  const t = rgbHsl(rgb);
+  const tg = (g) => (g ? { ...g, stops: g.stops.map(([o, c]) => [o, lashColor(c, t)]) } : g);
+  const out = op.ops ? { ...op, ops: op.ops.map((q) => lashOp(q, hex)) }
+    : { ...op, fill: op.fill ? lashColor(op.fill, t) : op.fill, stroke: op.stroke ? hex : op.stroke, grad: tg(op.grad), sgrad: tg(op.sgrad) };
+  m.set(op, out);
+  return out;
+}
+// สีเส้นปาก (ผู้ใช้ 24 พ.ย.): เปลี่ยนเฉพาะเส้น (stroke) ของปากทุกแบบ รวมขอบเขี้ยว — สีในปาก/ลิ้น/น้ำลายคงเดิม
+const MOUTH_COL_CACHE = new Map();
+function mouthLineOp(o, hex) {
+  if (!o || !hexRgb(hex)) return o;
+  let m = MOUTH_COL_CACHE.get(hex);
+  if (!m) { m = new WeakMap(); MOUTH_COL_CACHE.set(hex, m); }
+  if (m.has(o)) return m.get(o);
+  // น้ำลาย (drool) คงสีเดิม (ผู้ใช้ 24 พ.ย.) · เส้นลงสีไล่ (ปากเจ็บ — กลางส้มขอบน้ำตาล) ไล่ตามสีที่เลือกแบบขนตา
+  const out = o.id === 'drool' ? o
+    : o.ops ? { ...o, ops: o.ops.map((q) => mouthLineOp(q, hex)) }
+      : o.sgrad ? lashOp(o, hex)
+        : o.stroke ? { ...o, stroke: hex } : o;
+  m.set(o, out);
+  return out;
+}
+const EYE_COL_CACHE = new Map();
+/** ชิ้นในตา (รวมกลุ่มลูก) ที่ลงสีตาประจำตัวแล้ว — face = { lashColor, irisColor, pupilColor, eyeColor } */
+function eyeColorOp(o, face) {
+  const iris = face?.irisColor || face?.eyeColor, pupil = face?.pupilColor || face?.eyeColor, lash = face?.lashColor;
+  if (!o || (!iris && !pupil && !lash)) return o;
+  const sig = `${iris}|${pupil}|${lash}`;
+  let m = EYE_COL_CACHE.get(sig);
+  if (!m) { m = new WeakMap(); EYE_COL_CACHE.set(sig, m); }
+  if (m.has(o)) return m.get(o);
+  const id = o.id || '';
+  const out = o.ops && !/^(eyelash|eyelid-line)/.test(id) ? { ...o, ops: o.ops.map((q) => eyeColorOp(q, face)) }
+    // เส้นตาที่ไม่มีตาดำ (ผู้ใช้ 24 พ.ย.): ก้นหอยตามึน (left/right) · ตาเจ็บ >< (left-2/right-2) · ขอบตาเจ้าเล่ห์ (eye-outline + วงตาที่เป็นเส้น) → สีขนตา
+    : lash && (/^(eyelash|eyelid-line|upper-eye-line|eye-outline)/.test(id) || /^(left|right)(-\d+)?$/.test(id)) ? lashOp(o, lash)
+      : lash && /^iris/.test(id) && !o.fill && !o.grad && o.stroke ? lashOp(o, lash)
+      : iris && /^iris/.test(id) ? tintOp(o, iris)
+        : pupil && /^pupil/.test(id) && !/^pupil-fill/.test(id) ? tintOp(o, pupil, true)
+          : pupil && /^reflection/.test(id) ? tintOp(o, pupil)
+          : o;
+  m.set(o, out);
+  return out;
+}
 /** คลังชุดหน้าโมจิ (อ่านครั้งเดียว) — น้องส้มสไตล์โมจิใช้เสมอ · แมวสีอื่นใช้ได้เมื่อผู้เรียกสั่ง skin.mojiFace (แท็บแต่งหน้าใน cat-lab) */
 let EMO_LIB;
 function emoLib() {
@@ -23848,7 +23985,8 @@ function mojiEmo(conv) {
   for (const g of eyes0) {
     if (g.kind !== 'group' || !g.id) continue;
     const id = g.id === 'eyelid-half-closed' ? 'half' : g.id.replace(/^eye-/, '');
-    eyes[id] = split(conv(g.ops));
+    const fixIris = (ops) => { let n = 0; return ops.map((o) => (o.ops ? { ...o, ops: fixIris(o.ops) } : /^iris/.test(o.id || '') && n++ ? { ...o, id: 'pupil-' + o.id } : o)); };
+    eyes[id] = split(fixIris(conv(g.ops)));   // วงที่สองชื่อ iris ในกลุ่มเดียวกัน = ตาดำ (ตาตกใจข้างขวา) — สีตาดำ/กลอกตาถูกข้าง
   }
   const MOUTH_NAME = { 'tongue-out-playful': 'playful' };
   for (const g of mouths0) {
@@ -26349,6 +26487,22 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const EMO = emoOn ? M.emo || emoLib() : null;
   const faceEye = emoOn && shape?.faceEye && EMO.eyes[shape.faceEye] ? shape.faceEye : null;
   const faceMouth = emoOn && shape?.faceMouth && EMO.mouths[shape.faceMouth] ? shape.faceMouth : null;
+  // หน้าประจำตัวของผู้เล่น (ผู้ใช้ 24 พ.ย. แบบ ข.): skin.face = { eye, mouth, eyeColor, cheekColor, noseColor }
+  //   ตา/ปากที่เลือกเป็นหน้าหลักทุกท่า (ตัว แขน ขา หาง ยังเล่นแอนิเมชันเดิม) — ยกเว้นจังหวะสั้น ๆ ที่ต้องแสดงอารมณ์:
+  //   กะพริบตา · หาว · หลับ/หมอบ/เลียอุ้งเท้า · โดนชน (เจ็บ/มึน) — จบแล้วกลับมาเป็นหน้าที่เลือก
+  //   shape.faceEye/faceMouth (แท็บแต่งหน้าโหมดบังคับ) ชนะเสมอ · สีใช้ได้แม้ไม่ได้ล็อกตา/ปาก
+  const FACE = s?.face || null;
+  // ผู้ใช้ 24 พ.ย. รอบ 2: "ยืนนิ่งใช้หน้าที่เลือก ตอนขยับใช้หน้าตามแอนิเมชันของท่า จะได้ไม่แข็ง"
+  //   ระหว่างเล่นท่า (น้ำหนักท่า k > 0.35 — จุดเดียวกับที่อารมณ์ของท่าเริ่มใช้) → ไม่ล็อก หน้าเป็นของท่านั้น · สีตา/แก้ม/จมูกยังใช้ตลอด
+  //   หมุนมุมมองอย่างเดียว (shape = { turn } — ปุ่มมุมมองของหน้าทดสอบ / ยืนหันเฉียง) ไม่นับว่าเล่นท่า หน้าที่เลือกยังล็อกอยู่
+  const posing = k > 0.35 && !!shape && Object.keys(shape).some((key) => key !== 'turn' && shape[key] != null);
+  const lockEye = emoOn && !faceEye && !posing && FACE?.eye && EMO.eyes[FACE.eye] ? FACE.eye : null;
+  const lockMouth = emoOn && !faceMouth && !posing && FACE?.mouth && EMO.mouths[FACE.mouth] ? FACE.mouth : null;
+  // ผู้ใช้ 24 พ.ย. รอบ 3: ระหว่างเล่นท่า จังหวะที่ท่าใช้ "ตากลมปกติ" → ใส่ตาที่ผู้เล่นเลือกแทน (หน้าพิเศษของท่า เช่น หลับยิ้ม ตาดาว ขยิบ คงเดิม)
+  const poseEye = emoOn && !faceEye && posing && FACE?.eye && EMO.eyes[FACE.eye] ? FACE.eye : null;
+  const eyeTint = FACE && (FACE.eyeColor || FACE.irisColor || FACE.pupilColor || FACE.lashColor) ? FACE : null, cheekTint = FACE?.cheekColor || null, noseTint = FACE?.noseColor || null;
+  /** ชิ้นในตาที่รับสีตา: วงตา · ตาดำ · เงาสะท้อน (ไม่รวมตาขาวแบนของตาเจ้าเล่ห์ ประกาย ดาว หัวใจ ขนตา) */
+  const eyeOp = (o) => (eyeTint ? eyeColorOp(o, eyeTint) : o);
   // แมวสามสี: ชิ้นส่วนที่แทรกปื้นส้ม/เทาไว้หน้าสุดของลวดลาย (ดัดไปกับชิ้นทุกท่า)
   const P = marks ? calicoParts(M, marks, back) : M.parts;
 
@@ -27157,7 +27311,10 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     mouth: (c, draw) => {
       // ปากชุดอารมณ์ของโมจิ — ลิ้นเลีย (lick) ยังเป็นของตัววาดเดิม
       const EM = emoOn ? EMO.mouths : {};
-      const mk = !emoOn ? null : faceMouth || (loafMode ? 'closed'
+      const lockMk = !lockMouth ? null
+        : loafMode ? 'closed' : lick > 0.12 ? (EM.playful ? 'playful' : null) : yawn > 0.3 ? 'yawn'
+          : mood === 'hurt' && EM.pain ? 'pain' : mood === 'dizzy' && EM.shocked ? 'shocked' : lockMouth;
+      const mk = !emoOn ? null : faceMouth || lockMk || (loafMode ? 'closed'
         : bleh > 0.12 ? (EM.playful ? 'playful' : 'bleh')
         : lick > 0.12 ? (EM.playful ? 'playful' : null)   // เลียอุ้งเท้า: ลิ้นของโมจิ (V.3) — ไม่มีไฟล์ = ลิ้นของตัววาดเดิม
         : yawn > 0.3 ? 'yawn'
@@ -27173,22 +27330,31 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       if (mo) {
         const [ax, ay, top0, bot] = EMO.anchor[mk];
         // ปากอ้ากว้าง (หาว ตะโกน ทุกท่า · ผู้ใช้ 24 พ.ย. ภาพแบบ): ยกขึ้นจากระดับปากปกติ 12 หน่วยตามแรงอ้า — ปากแบบอื่นตรึงที่ระดับปากปกติ
-        const wide = mk === 'yawn' ? (faceMouth ? 1 : yawn > 0.3 ? clamp01((yawn - 0.3) / 0.7) : clamp01((chirp - 0.6) / 0.4)) : 0;   // อ้าเต็ม (mouth 1) = ยกเต็มเท่าหาว
+        const fullMouth = !!(faceMouth || (lockMouth && mk === lockMouth));   // ปากที่ผู้เล่นเลือก (ล็อก) = ขนาดเต็มตามไฟล์
+        const wide = mk === 'yawn' ? (fullMouth ? 1 : yawn > 0.3 ? clamp01((yawn - 0.3) / 0.7) : clamp01((chirp - 0.6) / 0.4)) : 0;   // อ้าเต็ม (mouth 1) = ยกเต็มเท่าหาว
         const top = top0 - 12 * wide;
         // ขนาดตามแรงอ้า: หาว/ตะโกนค่อย ๆ อ้ากว้าง · ปากอ้าเล็กพูด/ร้องเหมียว · ปากปิดหายใจกว้าง-แคบเบา ๆ
         let sx = 1, sy = 1;
+        // มุมเฉียง (ผู้ใช้ 24 พ.ย.): ปากหน้าตรงบีบแคบตามมุมหัน — ปากกว้าง (ยิ้มเจ้าเล่ห์ ยิ้มกว้าง) ไม่ล้นแก้มฝั่งไกล
+        //   ปากกว้างเกินแก้ม (ยิ้มเจ้าเล่ห์ — กว้างกว่าปากปกติ ~3 เท่า) บีบแรงกว่า และตัดในหัว ไม่ให้ปลายปากขึ้นไปทับตาฝั่งไกล
+        const mb = opsBox(mo), wideMouth = mb.x1 - mb.x0 > 90;
+        const yk3 = Math.min(1, Math.abs(yaw) / 0.75), yawK = yaw ? 1 - (wideMouth ? 0.5 : 0.3) * yk3 : 1;
+        const wideDrop = yaw && wideMouth ? 9 * yk3 : 0;   // ปลายปากกว้างโค้งขึ้นถึงใต้ตา — ลดลงนิดตอนเฉียง ไม่ทับตา
+        const headClip = !!(yaw && faceHeadM && M.headShaped?.all);
+        if (headClip) { const m = c.getTransform(); c.save(); c.setTransform(faceHeadM); c.clip(M.headShaped.all); c.setTransform(m); }
         if (mk === 'yawn') {
-          const o = faceMouth ? 1 : yawn > 0.3 ? clamp01((yawn - 0.3) / 0.7) : clamp01((chirp - 0.6) / 0.5);
+          const o = fullMouth ? 1 : yawn > 0.3 ? clamp01((yawn - 0.3) / 0.7) : clamp01((chirp - 0.6) / 0.5);
           const fit = Math.min(1, (384 - top) / (bot - ay));   // เลื่อนลงมาแล้วต้องไม่ล้นคาง (ขอบหัวล่าง ~y 392)
           sx = (0.7 + 0.3 * o) * (0.94 + 0.06 * fit); sy = (0.6 + 0.4 * o) * fit;
         }
-        else if (mk === 'open' && !faceMouth) { sy = 0.6 + 0.4 * clamp01((chirp - 0.15) / 0.45); }
+        else if (mk === 'open' && !fullMouth) { sy = 0.6 + 0.4 * clamp01((chirp - 0.15) / 0.45); }
         else if (mk === 'closed') sx = 1 + Math.sin(T * 1.4) * 0.06;
         c.save();
-        c.translate(ax, top); c.scale(sx, sy); c.translate(-ax, -ay);   // ขอบบนตรึงที่ระดับปากปกติ
+        c.translate(ax, top + wideDrop); c.scale(sx * yawK, sy); c.translate(-ax, -ay);   // ขอบบนตรึงที่ระดับปากปกติ
         // เลียอุ้งเท้า (ไม่ใช่แลบลิ้นซน): ลิ้นแลบของโมจิอยู่มุมปากซ้าย → เลื่อนมากลางปาก ดูกำลังเลียน่ารัก ๆ (ผู้ใช้ 24 พ.ย.)
-        const lickMid = mk === 'playful' && !faceMouth && !(bleh > 0.12);
-        for (const o of mo) {
+        const lickMid = mk === 'playful' && !faceMouth && lick > 0.12 && !(bleh > 0.12);
+        for (const o0 of mo) {
+          const o = FACE?.mouthColor ? mouthLineOp(o0, FACE.mouthColor) : o0;   // สีเส้นปากประจำตัว
           if (o.id === 'drool' && o.ops) emoDrool(c, o, (q) => drawOps(c, [q], pal, {}, opt), T);   // น้ำลายไหลเยิ้ม
           else if (lickMid && o.id === 'tongue') {
             // ผู้ใช้ 24 พ.ย.: ลิ้นที่เลื่อนมากลางโผล่เหนือเส้นปาก (ใต้โหนก ω) → ตัดลิ้นใต้ระดับก้นเส้นปาก (ลิ้นมุดใต้เส้น)
@@ -27205,6 +27371,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
           else drawOps(c, [o], pal, {}, opt);
         }
         c.restore();
+        if (headClip) c.restore();
         return;
       }
       if (loafMode) {
@@ -27337,15 +27504,27 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   //   ตัดอยู่ในหูในเสมอ (drawLayer ตัดรายละเอียดในรูปหูใน) — ปลายปอยไม่ทะลุขอบหู · ด้านหลังไม่มีกลุ่มนี้
   if (M.moji) {
     const furSt = furSlot(ctx);
-    const furHook = (c, draw, op) => {
+    // q3 = ชั้นมุมเฉียง (ปอยขนจากไฟล์ perspective — ทิศปอยไม่เหมือนหน้าตรง): หาโคนปอยจากจุดที่ใกล้ฐานหูที่สุด แกว่งเบากว่า
+    //   ผู้ใช้ 24 พ.ย.: "ขนหูลอยเห็นช่องโหว่ ให้เชื่อมกับหู" — เดิมเดาโคนเป็นมุมล่างฝั่งหัวแบบหน้าตรง หมุนผิดจุด ปอยหลุดจากผนังหู
+    const furHook = (c, draw, op, q3 = false) => {
       if (!op?.ops?.length) return draw();
       const b0 = opsBox(op.ops);
       const side = (b0.x0 + b0.x1) / 2 < 300 ? 'left' : 'right', d = side === 'left' ? 1 : -1;
       const m = c.getTransform(), det = Math.sign(m.a * m.d - m.b * m.c) || 1;
       const tufts = op.ops.map((o, i) => {
         const b = opsBox([o]), w = b.x1 - b.x0, h = b.y1 - b.y0;
-        const px = side === 'left' ? b.x1 - w * 0.2 : b.x0 + w * 0.2, py = b.y1 - h * 0.1;   // โคนปอย
-        const dx = (side === 'left' ? b.x0 : b.x1) - px, dy = b.y0 - py;                      // → ปลายปอย (มุมบนฝั่งนอก)
+        // โคนปอย = จุดบนเส้นปอยที่ใกล้ฐานหู (จุดหมุนหู) ที่สุด · ปลายปอย = จุดที่ไกลจากโคนที่สุด — ใช้ได้ทุกไฟล์ทุกทิศปอย
+        const piv = M.piv[`ear-${side}`];
+        let px = side === 'left' ? b.x1 - w * 0.2 : b.x0 + w * 0.2, py = b.y1 - h * 0.1, tx = side === 'left' ? b.x0 : b.x1, ty = b.y0;
+        if (piv && o.cmds) {
+          const pts = o.cmds.filter((q) => q[0] !== 'Z').map((q) => [q[q.length - 2], q[q.length - 1]]);
+          if (pts.length > 2) {
+            let best = 1e9, far = -1;
+            for (const [x, y] of pts) { const dd = (x - piv.x) ** 2 + (y - piv.y) ** 2; if (dd < best) { best = dd; px = x; py = y; } }
+            for (const [x, y] of pts) { const dd = (x - px) ** 2 + (y - py) ** 2; if (dd > far) { far = dd; tx = x; ty = y; } }
+          }
+        }
+        const dx = tx - px, dy = ty - py;                                                    // → ปลายปอย
         const ux = m.a * dx + m.c * dy, uy = m.b * dx + m.d * dy, l = Math.hypot(ux, uy) || 1;
         const L = Math.max(20, Math.hypot(dx, dy));
         // ปอยหลัง ๆ (เล็ก) แข็งกว่านิด แกว่งเร็วกว่านิด — ทั้งหมดช้านุ่ม (รอบละ ~0.8–1 วินาที)
@@ -27358,8 +27537,10 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       tufts.forEach((tf, i) => {
         const ph = i * 1.7 + (side === 'right' ? 0.9 : 0);
         const r1 = r ? r.r[i] * det : 0, r2 = r ? r.r2[i] * det : 0;
-        const angAt = (u) => Math.max(-0.28, Math.min(0.28, r1 * Math.pow(u, 0.9) + r2 * u * u))   // งอรวมไม่เกิน ~16° (ปอยไม่พับ)
-          + d * u * (Math.sin(T * 1.1 + ph - u * 2.2) * 0.022 + Math.sin(T * 1.8 + ph * 1.4 - u * 3) * 0.008);
+        const lim = q3 ? 0.14 : 0.28;   // มุมเฉียง: ปอยสั้นในมุมมอง แกว่งครึ่งเดียว
+        const amp = q3 ? 0.5 : 1;
+        const angAt = (u) => Math.max(-lim, Math.min(lim, amp * (r1 * Math.pow(u, 0.9) + r2 * u * u)))   // งอรวมไม่เกิน ~16° (มุมเฉียง ~8°)
+          + amp * d * u * (Math.sin(T * 1.1 + ph - u * 2.2) * 0.022 + Math.sin(T * 1.8 + ph * 1.4 - u * 3) * 0.008);
         const bend = (x, y) => {
           const u = Math.max(0, Math.min(1.3, ((x - tf.px) * tf.ex + (y - tf.py) * tf.ey) / tf.L));
           return rotPt({ x: tf.px, y: tf.py }, angAt(u), x, y);
@@ -27368,7 +27549,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       });
     };
     hooks['ear-detail_6'] = hooks['ear-detail_7'] = furHook;
-    hooks.__q3 = { 'ear-detail_1': furHook, 'ear-detail_2': furHook };   // ชั้นมุมเฉียง (drawLayer วาดด้วยชุด hook นี้)
+    const furQ3 = (c, draw, op) => furHook(c, draw, op, true);
+    hooks.__q3 = { 'ear-detail_1': furQ3, 'ear-detail_2': furQ3 };   // ชั้นมุมเฉียง (drawLayer วาดด้วยชุด hook นี้)
   }
   hooks.nose = (c, draw, op) => {
     const up = yawn > 0.3 && !emoOn ? -17 * clamp01((yawn - 0.3) / 0.7) : 0;
@@ -27376,7 +27558,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     if (up) c.translate(0, up);
     // art.nose = [กว้าง, สูง] จมูกโตกว่าแบบกลาง (ขาวมณี ตามแบบ: สามเหลี่ยมมนกว้างกว่าสูง) — ขยายรอบขอบบนจมูก ไม่ล้นลงปาก
     if (art.nose) { c.translate(299, 317); c.scale(...art.nose); c.translate(-299, -317); }
-    draw();
+    // สีจมูกประจำตัว: จมูกเป็นสีเรียบสีเดียว → ใช้สีที่เลือกตรง ๆ (ไม่คงความสว่างเดิมแบบตา/แก้ม — ไม่งั้นจมูกน้ำตาล/ดำออกมาเป็นชมพูอ่อน)
+    if (noseTint && op && !op.ops) drawOps(c, [{ ...op, fill: noseTint, grad: null }], pal, {}, { ...opt, inHook: true });
+    else draw();
     if (art.nose && op?.path) {
       // แสงนุ่มครึ่งบนของจมูก (ไม่ใช่ประกายวาวแบบจมูกดำ)
       c.save();
@@ -27419,11 +27603,11 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       if (op.grad) {
         c.save();
         if (faceHeadM) { const m = c.getTransform(); c.setTransform(faceHeadM); c.clip(M.headShaped.all); c.setTransform(m); }
-        drawOps(c, [op], pal, {}, opt);
+        drawOps(c, [cheekTint ? tintOp(op, cheekTint) : op], pal, {}, opt);   // สีแก้มประจำตัว
         c.restore();
         return;
       }
-      c.fillStyle = pal.cheek; c.fill(op.path);
+      c.fillStyle = cheekTint || pal.cheek; c.fill(op.path);
     };
   }
   // ปื้นดำบนหัวของแมวพื้นขนสีอ่อน (ลาย marks.lashOnBlack — ลายวัว): ขนตา/เส้นตาส่วนที่ทับปื้นวาดซ้ำเป็นสีขาว (ผู้ใช้ 22 ต.ค.)
@@ -27496,7 +27680,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       const d = side === 'left' ? 1 : -1;   // เข้าหาจมูก
       return { x: icx + d * MOJI_PUPIL.dx, y: icy + MOJI_PUPIL.dy, pcx, pcy, sx: MOJI_PUPIL.r / ((pb.x1 - pb.x0) / 2), sy: MOJI_PUPIL.r / ((pb.y1 - pb.y0) / 2) };
     })() : null;
-    for (const o of ops) {
+    for (const o0 of ops) {
+      const o = eyeOp(o0);   // สีตาประจำตัว
       if (!/^(pupil|shine|reflection)/.test(o.id || '')) { drawOps(c, [o], pal, {}, opt); continue; }
       c.save();
       if (iris?.path) c.clip(iris.path);
@@ -27514,6 +27699,7 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const flat = [];
     const walk = (list) => { for (const o of list) (o.kind === 'group' && /^eye-(left|right)/.test(o.id || '') ? walk(o.ops) : flat.push(o)); };
     walk(ops);
+    if (eyeTint) for (let i = 0; i < flat.length; i++) flat[i] = eyeOp(flat[i]);   // สีตาประจำตัว
     const iris = flat.find((o) => /^iris/.test(o.id || ''));
     // ตาเจ้าเล่ห์: ตาขาวแบน (pupil-fill) เป็นกรอบ — วงตาดำ + จุดตาดำกลอกอยู่ข้างใน
     const frame = flat.find((o) => /^pupil-fill/.test(o.id || '')) || iris;
@@ -27533,7 +27719,14 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
     const qy = cry ? Math.cos(T * 8.1 + ph) * 0.8 + Math.sin(T * 12.9 + ph) * 0.35 : 0;
     for (const o of flat) {
       const id = o.id || '';
-      if (cry && /^tears/.test(id)) { emoTears(c, o, draw, T, ph); continue; }
+      if (cry && /^tears/.test(id)) {
+        // หันเฉียง: หยดน้ำตาฝั่งไกลหลุดนอกขอบหน้า → ตัดในหัวแบบเดียวกับแก้ม
+        c.save();
+        if (yaw && faceHeadM && M.headShaped?.all) { const m = c.getTransform(); c.setTransform(faceHeadM); c.clip(M.headShaped.all); c.setTransform(m); }
+        emoTears(c, o, draw, T, ph);
+        c.restore();
+        continue;
+      }
       const mover = /^(pupil(?!-fill)|shine|reflection|star|heart|eye-sparkle|eye-highlight)/.test(id) || (o !== frame && /^iris/.test(id));
       if (!mover || !frame?.path) { draw(o); continue; }
       c.save();
@@ -27552,6 +27745,13 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   // อารมณ์ → แบบตาในไฟล์ (null = ใช้ตาของตัววาดเดิม: เจ็บ >< · มึน @@ · ตาหัวใจ ซึ่งไฟล์ยังไม่มี) · 'open' = ตาเปิดเดิม (ตาดำโต กะพริบบีบตา)
   const emoEyeKind = (side) => {
     if (faceEye) return faceEye;   // แท็บแต่งหน้า: ตาที่เลือก (ทั้งสองข้าง — ขยิบตาในไฟล์แยกซ้าย/ขวาเอง)
+    if (lockEye) {
+      // ข้อยกเว้นของหน้าประจำตัว: หลับ/หมอบ/หาว/เลีย/กะพริบ → หลับตา · โดนชน → ตาเจ็บ/มึน · นอกนั้นหน้าที่เลือก
+      if (loafMode || yawn > 0.3 || (sit > 0.5 && v('paw') > 0.6) || Math.max(blink, v('shut')) > 0.75) return 'closed';
+      if (mood === 'hurt') return 'pain';
+      if (mood === 'dizzy') return 'dizzy';
+      return lockEye;
+    }
     const openHappy = happy && clasp > 0.3;
     if (loafMode || yawn > 0.3 || (sit > 0.5 && v('paw') > 0.6)) return 'closed';
     if (happy && (!openHappy || v('shut') > 0.5)) return 'closed';
@@ -27586,7 +27786,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
         one(cc, pp);
         inkOver(cc, ee, (q, fur) => one(q, inkPal(fur), fur));
       };
-      const ek = emoOn ? emoEyeKind(side) : null;
+      const ek0 = emoOn ? emoEyeKind(side) : null;
+      const ek = ek0 === 'open' && poseEye && Math.max(blink, v('shut')) <= 0.75 ? poseEye : ek0;
       // ตาเปิด: โมเดลโมจิใช้ตาเปิดของไฟล์ตัวเต็ม (ตาดำโต กลอกตา) · แมวสีอื่นใช้ตาเปิดของไฟล์ชุดหน้า
       const eops = ek && (ek !== 'open' || !M.moji) ? EMO.eyes[ek]?.[side] : null;
       if (eops?.length) {
@@ -27735,6 +27936,9 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const drawFace0 = () => {
     if (!yaw) return drawOps(ctx, P.face.det, pal, hooks, opt);
     for (const op of P.face.det) {
+      // ครีมเติมรอยตา (eye-fill · ของชั่วคราวของหน้าตรง): หันเฉียงแล้วแผ่นครีมขอบตรงโผล่ข้างตาฝั่งไกลเป็นกรอบ (ผู้ใช้ 24 พ.ย.)
+      //   มุมเฉียงมีขนครีมจากไฟล์มุมเฉียงแล้ว → ไม่วาด
+      if (M.moji && /^eye-fill/.test(op.id || '') && Math.abs(yaw) > 0.2) continue;
       ctx.save();
       if (/^whiskers/.test(op.id || '')) {
         // หนวดฝั่งที่หน้าหันไปเลื่อนตามขอบหน้า · ฝั่งท้ายทอยแทบอยู่ที่เดิม
