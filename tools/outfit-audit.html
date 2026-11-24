@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตรวจชุดทุกท่า</title>
+<!--
+  หน้าตรวจชุด (ผู้ใช้ 24 พ.ย. 2026: "อัปเกรดชุดระดับ A ทั้งหมด · ตรวจอย่าให้มีเส้นเสื้อขาด ให้สมส่วน")
+  ชุดเดียว ทุกท่าในแผ่นเดียว: ยืน 4 มุม · โบกมือ · ลอยฟ้า · หัวใจ · โยกเยก · ไล่หาง · นอนขด · นั่ง · เลียอุ้งเท้า · หมอบ · หาว · วิ่ง · กระโดด
+  เปิด /tools/outfit-audit.html?of=bow (ชุด) &cat=orange (แมว) &z=1.6 (ซูม) · ?of=bow,ninja = หลายชุดซ้อนแถว
+-->
+<style>
+  body { margin: 0; background: #F4EEF8; font-family: Mitr, sans-serif; text-wrap: balance; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script type="module">
+  import { drawCat2, CAT2_BREEDS } from '../src/render/cat2.js';
+  import { createRunAnim, stepRunAnim, drawCat2Run } from '../src/render/cat2-run.js';
+  import { ALL_OUTFITS } from '../src/outfits.js';
+  import { HOME_MOVES } from '../src/home-moves.js';
+  import { IDLE_SHAPE } from '../src/render/entities.js';
+  import { SKINS } from '../src/skins.js';
+
+  const q = new URLSearchParams(location.search);
+  const ofs = (q.get('of') || 'bow').split(',');
+  const catId = q.get('cat') || 'orange';
+  const Z = +(q.get('z') || 1.4);
+  const base = catId === 'orange' ? { ...SKINS[0], sex: 'm' } : (CAT2_BREEDS.find((b) => b.id === catId) || SKINS[0]);
+  const mv = (id, u = 0.45) => { const m = HOME_MOVES.find((x) => x.id === id); return m ? m.shape(Math.round(m.dur * u)) : null; };
+  const rest = (p) => ({ ...IDLE_SHAPE[p] });
+  const POSES = [
+    ['ยืนหน้า', null],
+    ['เฉียงซ้าย', { turn: 0.75 }],
+    ['เฉียงขวา', { turn: -0.75 }],
+    ['หันหลัง', { turn: Math.PI }],
+    ['โบกมือ', () => mv('wave', 0.3), 'wave'],
+    ['ลอยฟ้า', () => mv('float', 0.5), 'float'],
+    ['หัวใจ', () => mv('heart', 0.5), 'heart'],
+    ['โยกเยก', () => mv('scratch', 0.4), 'scratch'],
+    ['ไล่หาง', () => mv('tail', 0.45), 'tail'],
+    ['นอนขด', () => mv('curl', 0.5), 'curl'],
+    ['นั่ง', () => rest('sit'), 'rest-sit'],
+    ['เลียอุ้งเท้า', () => rest('groom'), 'rest-groom'],
+    ['หมอบ', () => rest('loaf'), 'rest-loaf'],
+    ['หาว', () => rest('yawn'), 'rest-yawn'],
+    ['วิ่ง', 'run'],
+    ['กระโดด', 'jump'],
+  ];
+  // ?p=7,12 = เฉพาะท่าลำดับนี้ (เทียบท่าเดียวข้ามหลายชุด)
+  if (q.get('p')) { const keep = q.get('p').split(',').map(Number); for (let i = POSES.length - 1; i >= 0; i--) if (!keep.includes(i)) POSES.splice(i, 1); }
+  const COLS = Math.min(8, POSES.length), CW = Math.round(230 * Z), CH = Math.round(300 * Z), U = CH / 250;
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  // หลายชุด + ท่าเดียว = เรียงชุดเป็นแถวเดียวยาว ๆ
+  const across = ofs.length > 1 && POSES.length === 1;
+  const rows = across ? Math.ceil(ofs.length / 5) : Math.ceil(POSES.length / COLS) * ofs.length;
+  cv.width = across ? CW * Math.min(5, ofs.length) : CW * COLS; cv.height = CH * rows + 4;
+  ctx.fillStyle = '#F4EEF8'; ctx.fillRect(0, 0, cv.width, cv.height);
+
+  /** ท่าวิ่ง/กระโดด: เดินตัวคุมท่าไปหลายเฟรมตามลำดับ (มีสถานะในตัว) */
+  function runFrame(of, jump) {
+    const A = createRunAnim();
+    const P = { onGround: true, jumps: 0, vy: 0, runPhase: 0, squash: 0, sliding: false, y: 0, fainting: false };
+    let r = null;
+    for (let f = 0; f < 40; f++) {
+      if (jump && f === 26) { P.onGround = false; P.jumps = 1; P.vy = -9; }
+      if (!P.onGround) { P.vy += 0.6; P.y = Math.min(0, P.y + P.vy); }
+      P.runPhase += 0.42;
+      r = stepRunAnim(A, P, { catId: base.id, dt: 1, outfit: of.id, speed: 0, scale: 2.6 * 0.86, stand: false });
+    }
+    return { r, y: P.y };
+  }
+
+  let row = 0;
+  for (const [oi, id] of ofs.entries()) {
+    const of = ALL_OUTFITS.find((o) => o.id === id);
+    const skin = { ...base, outfit: of };
+    POSES.forEach(([name, sh, pose], i) => {
+      let cx = (i % COLS) * CW, cy = (row + Math.floor(i / COLS)) * CH;
+      if (across) { cx = (oi % 5) * CW; cy = Math.floor(oi / 5) * CH; }
+      ctx.save();
+      ctx.beginPath(); ctx.rect(cx, cy, CW, CH); ctx.clip();
+      ctx.fillStyle = (i + Math.floor(i / COLS)) % 2 ? '#FBF7FD' : '#F1E9F7'; ctx.fillRect(cx, cy, CW, CH);
+      ctx.fillStyle = '#6A4A86'; ctx.font = `600 ${Math.round(13 * Z)}px Mitr, sans-serif`;
+      ctx.fillText(`${of?.name || id} · ${name}`, cx + 8, cy + 18 * Z);
+      ctx.translate(cx + CW / 2, cy + CH * 0.86);
+      ctx.scale(U, U);
+      ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.beginPath(); ctx.ellipse(0, 4, 44, 8, 0, 0, Math.PI * 2); ctx.fill();
+      try {
+        if (sh === 'run' || sh === 'jump') {
+          const { r, y } = runFrame(of, sh === 'jump');
+          drawCat2Run(ctx, 0, y, 2.6 * 0.86, skin, 600, r);
+        } else {
+          const shape = typeof sh === 'function' ? sh() : sh;
+          const lift = (shape?.lift || 0) * 2.6;
+          drawCat2(ctx, 0, -lift, 2.6, skin, 600, shape ? { k: 1, shape, pose: pose || 'idle' } : null);
+        }
+      } catch (e) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'red'; ctx.fillText('ERR ' + e.message, cx + 8, cy + 40); console.error(e); }
+      ctx.restore();
+    });
+    row += Math.ceil(POSES.length / COLS);
+  }
+  window.__done = true;
+</script>
+</body>
+</html>
