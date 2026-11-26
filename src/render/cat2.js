@@ -25905,6 +25905,20 @@ function blinkAt(T, g) {
 // หัวโตวางพักบนตัวที่แผ่เป็นก้อนกว้าง · อุ้งเท้าหน้าสองก้อนโผล่ใต้คาง · อกสีครีมไหลต่อจากหน้า
 // หางวนอ้อมข้างซ้ายมาไว้ข้างหน้า ปลายหางสีครีม (ตามภาพที่ออกแบบไว้)
 const LOAF_HEAD = 182;   // หัวลดลงเท่านี้ (หน่วยในไฟล์) ตอนหมอบเต็มที่ — คางแตะอุ้งเท้า
+// ── ท่าหมอบใหม่ของโมจิ (ผู้ใช้ 27 พ.ย. · src/render/cat2/cat-orange-loaf.svg) ──
+// หัวพักบนก้อนตัว (ไม่จมถึงอุ้งเท้า) · ก้อนตัว + พุงครีม + อุ้งเท้าหน้าสองก้อน + หางวนซ้ายจากไฟล์ตรง ๆ · หัว/หน้ายังเป็นของตัววาด (ขยับ/อารมณ์/แต่งหน้าได้)
+// ใช้กับน้องส้มสไตล์โมจิที่ไม่ได้ใส่ชุด — ในเกมจริงด้วย (หน้าแรก/หน้ารายละเอียด/คลัง = MOJI_STYLE.home/ui) · ใส่ชุดอะไรก็ตาม = ท่าหมอบเดิม (ชุดวาดตามก้อนตัวเดิม LOAF.base · ผู้ใช้ 27 พ.ย.)
+const LOAF_HEAD_MOJI = 111;   // หัวลดลงตอนหมอบ (จูนซ้อนกับไฟล์โมจิ: ตา/จมูก/ปาก/หนวดตรงไฟล์) · ตัว/หางวางตาม FILES.loaf ใน moji-svg.js (ก้นแตะพื้นพอดี)
+const MOJI_LOAF_TAIL = [170, 612];   // โคนหาง (พิกัดตัว · ไฟล์ 1085,1455) — หางสะบัดเบา ๆ รอบจุดนี้
+let mojiLoafCache = null;
+function mojiLoafOps() {
+  if (mojiLoafCache) return mojiLoafCache;
+  const part = (id) => toCat2Ops(mojiPart(id, 'loaf'), LINE_K);
+  const body = part('body'), tail = part('tail');
+  // เงาตัว (ไว้ให้ชุดคลุมหลัง/ของที่วาดหลังตัว): ชิ้นสีพื้นก้อนตัว
+  const fill = mojiFind(mojiPart('body', 'loaf'), 'fill');
+  return (mojiLoafCache = { body, tail, sil: fill?.path || new Path2D() });
+}
 const LOAF = (() => {
   // ฐานตัวใต้หัว: ส่วนใหญ่ซ่อนใต้หัว เห็นแค่ข้างขวาที่ป่องออกกับขอบล่างที่แตะพื้น (ซ้ายมีหางบัง)
   const base = new Path2D();
@@ -27056,7 +27070,8 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
   const headStand = drop + loaf * 166 + crouch * 6;
   const sitMode = !loafMode && sit >= 0.5;   // รวมนั่งหันหลัง (backSit ในกิ่ง sitMode)
   const sitU = sitMode ? ease(clamp01((Math.min(sit, 1) - 0.5) / 0.5)) : 0;
-  const headDrop = loafMode ? 120 + (LOAF_HEAD - 120) * loafU
+  const mojiLoaf = moji && !OUT0;   // ท่าหมอบใหม่ของโมจิ (ดู LOAF_HEAD_MOJI) · ใส่ชุด/สกินใดก็ตาม = ท่าหมอบเดิมไปก่อน (ผู้ใช้ 27 พ.ย.)
+  const headDrop = loafMode ? 120 + ((mojiLoaf ? LOAF_HEAD_MOJI : LOAF_HEAD) - 120) * loafU
     : sitMode ? 29 + (SIT_HEAD - 29) * sitU + crouch * 6
     : headStand;
   const headK = 1 + (KIT.head - 1) * kit;   // ลูกแมว: หัวโตขึ้นรอบจุดคอ (คางอยู่ที่เดิมบนตัว)
@@ -28419,6 +28434,40 @@ export function drawCat2(ctx, x, feetY, scale, s, t = 0, idle = null) {
       c.translate(-300, -FEET_Y);
     };
     const flick = shape?.wag != null ? Math.sin(shape.wag * 1.5) * k : 0;
+    if (mojiLoaf) {
+      // ท่าหมอบใหม่ของโมจิ: ก้อนตัว (พุงครีม · ลาย · อุ้งเท้าหน้า) → หาง (สะบัดเบา ๆ ที่โคน) → หัว
+      const ML = mojiLoafOps();
+      drawBehind(null, [ML.sil]);
+      ctx.save(); grow(ctx); drawOps(ctx, ML.body, pal, {}, opt); ctx.restore();
+      ctx.save(); grow(ctx);
+      const tw = flick * 0.1 + Math.sin(T * 1.3) * 0.025;
+      rotAt(ctx, { x: MOJI_LOAF_TAIL[0], y: MOJI_LOAF_TAIL[1] }, tw);
+      drawOps(ctx, ML.tail, pal, {}, opt);
+      ctx.restore();
+      drawProp();
+      drawHeld();
+      drawHeadLayers();
+      if (OUT?.neck) {
+        const m2 = ctx.getTransform();
+        ctx.save();
+        head(ctx);
+        const outH = new Path2D();
+        outH.rect(-1000, -1000, 3000, 3000);
+        outH.addPath(M.headShaped.all);
+        ctx.clip(outH, 'evenodd');
+        OUT.neck(ctx, { ...outK, back: false, faceShift: hx * 6, loaf: true });
+        ctx.setTransform(m2);
+        ctx.restore();
+      }
+      ctx.save();
+      face(ctx);
+      drawFace();
+      drawEyewear();
+      ctx.restore();
+      drawFront();
+      ctx.restore();
+      return;
+    }
     const TL = loafTail(T, flick, kitTailK);
     // ฐานตัว → หาง → หัว → อกครีม + เส้นขาหน้า → หน้า
     drawBehind(null, [LOAF.base]);
