@@ -16,6 +16,7 @@ import MOJI_BACK_SVG from './cat2/cat-orange-back.svg?raw';
 import MOJI_Q3_SVG from './cat2/cat-orange-perspective.svg?raw';
 import MOJI_EMO_SVG from './cat2/cat-orange-emotion.svg?raw';
 import MOJI_EMO2_SVG from './cat2/cat-orange-emotion-2.svg?raw';
+import MOJI_LOAF_SVG from './cat2/cat-orange-loaf.svg?raw';
 
 /** ไฟล์ใหม่ → พิกัดไฟล์เดิม (วัดจากจุดหมุนหู/ไหล่ซ้ายที่ตรงกันพอดี) */
 export const MOJI_OX = 88, MOJI_OY = 40.449;
@@ -27,7 +28,10 @@ const FILES = { front: { text: MOJI_SVG, ox: MOJI_OX, oy: MOJI_OY, root: 'cat-fr
   //   หัวตรงกับไฟล์ด้านหน้าหลังเลื่อนเพิ่ม 14.685 (วัดจากจุดแรกของหัว fill_8 และจมูก — ตรงกันทั้งสองจุด)
   emo: { text: MOJI_EMO_SVG, ox: MOJI_OX + 14.685, oy: MOJI_OY, root: 'cat-front' },
   // ชุดหน้าเพิ่ม (cat-orange-emotion V.3 · 24 พ.ย.): หัวเดียวกัน ตา มึน/หัวใจ/เจ็บ/เจ้าเล่ห์ · ปาก งอน/แลบลิ้นซน/เจ็บ/เจ้าเล่ห์/ตกใจ
-  emo2: { text: MOJI_EMO2_SVG, ox: MOJI_OX + 14.685, oy: MOJI_OY, root: 'cat-front' } };
+  emo2: { text: MOJI_EMO2_SVG, ox: MOJI_OX + 14.685, oy: MOJI_OY, root: 'cat-front' },
+  // ท่าหมอบใหม่ของโมจิ (cat-orange-loaf · 27 พ.ย.): ขนาดเดียวกับไฟล์ด้านหน้า หัวอยู่ตำแหน่งท่ายืนพอดี (จมูก/หูในตรงกัน)
+  //   ไฟล์เลื่อนจากด้านหน้า (+1002.7, +997.9) · ตัว/หางวางลงอีก LOAF_HEAD_MOJI (114.5) ให้ก้นแตะพื้น (เท้า y 648) ตามหัวที่ลดลงตอนหมอบ
+  loaf: { text: MOJI_LOAF_SVG, ox: MOJI_OX - 1002.7, oy: MOJI_OY - 997.9 + 114.5, root: 'cat-orange-loaf' } };
 // ระยะเลื่อนของไฟล์ที่กำลังอ่าน (buildModel ตั้งค่าก่อนอ่าน — อ่านทีละไฟล์ ไม่ซ้อนกัน)
 let OX = MOJI_OX, OY = MOJI_OY;
 

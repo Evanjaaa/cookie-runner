@@ -18429,3 +18429,878 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-height: 500px) {
   .cf-colrow + .cf-colrow { border-top-width: 1px; }
 }
+
+/* ══ หน้าเลือกโหมดใหม่ (ผู้ใช้ 26 พ.ย. 2026 · ภาพแบบ public/หน้าเลือกด่านใหม่.png) ══════════════
+   เต็มจอ พื้นลาเวนเดอร์ · หัว: ปุ่มกลับ / "เลือกโหมด" / ถ้วยอันดับ · การ์ด Weekly Boss ใหญ่ (กรอบพาสเทลไล่สี)
+   ลูกศรทองชี้ลง → โหมดอื่น (วิ่งไม่รู้จบ) · แตะการ์ดบอส = หน้ารายละเอียด (ป๊อปอัปในหน้านี้) */
+#stage #modePanel.panel { padding: 0; }
+#stage #modePanel.panel > .pop {
+  width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+  border-radius: 0; border: 0; box-shadow: none;
+  padding: 0; gap: 0;
+  background: #8556C7;   /* ฉากหลังเดิม (ประตูสู่การผจญภัย · softbg) วาดทับใน #modeBg — ผู้ใช้ 26 พ.ย. ขอลายเดิมคืน */
+  justify-content: flex-start;
+}
+#modePanel #modeBg { z-index: 0; }
+#modePanel > .pop > .md-head {
+  position: relative; z-index: 2;
+  flex: none; width: 100%;
+  height: clamp(54px, 13dvh, 96px);
+  display: flex; align-items: center; justify-content: center;
+}
+#stage #modePanel .md-title {
+  margin: 0;
+  font-family: "Mali", sans-serif; font-weight: 800;
+  font-size: clamp(22px, 5.6dvh, 44px);
+  color: #FFE9A8;
+  -webkit-text-stroke: clamp(4px, 1dvh, 7px) #6E2C78;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 rgba(110,44,120,.35);
+  letter-spacing: .5px;
+}
+/* ถ้วยอันดับมุมขวาบน — ไอคอนลอย + ป้ายชื่อ (ไม่มีกล่อง ตามแบบ) */
+.md-rank {
+  position: absolute;
+  right: clamp(12px, 2.6vw, 34px);
+  top: 50%; transform: translateY(-46%);
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  padding: 2px 4px; border: 0; background: none; cursor: pointer;
+  font-family: "Mali", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.md-rank canvas { width: clamp(38px, 9dvh, 64px); height: clamp(38px, 9dvh, 64px); filter: drop-shadow(0 3px 3px rgba(110,44,120,.3)); }
+.md-rank b {
+  margin-top: 2px;
+  font-size: clamp(13px, 2.9dvh, 20px); font-weight: 800; color: #FFF4F8;
+  -webkit-text-stroke: 4px #6E2C78; paint-order: stroke fill; line-height: 1.1;
+}
+.md-rank:active { filter: brightness(.93); }
+#modePanel > .pop > .backbtn { z-index: 3; }
+
+/* พื้นที่เลื่อน (การ์ดบอส → ลูกศร → โหมดอื่น) */
+.md-scroll {
+  position: relative; z-index: 1;
+  flex: 1; min-height: 0; width: 100%;
+  overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 clamp(10px, 2.2vw, 32px) clamp(20px, 5dvh, 44px);
+  scroll-behavior: smooth;
+}
+.md-scroll::-webkit-scrollbar { display: none; }
+
+/* ── การ์ด Weekly Boss ── */
+.wb-card {
+  flex: none;
+  width: min(100%, calc((100dvh - clamp(54px, 13dvh, 96px) - clamp(24px, 5dvh, 40px)) * 2.12));   /* กว้างขึ้น (ผู้ใช้ 26 พ.ย.) */
+  padding: clamp(7px, 1.6dvh, 14px);
+  border: 0; border-radius: clamp(22px, 4.4dvh, 40px);
+  background: linear-gradient(100deg, #FFF3B8 0%, #FFD7D9 45%, #F9BDF2 100%);
+  box-shadow: 0 10px 26px -8px rgba(110,44,120,.45), inset 0 2px 0 rgba(255,255,255,.75);
+  cursor: pointer; font-family: "Mali", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.wb-card:active { filter: brightness(.95); }
+.wb-frame {
+  position: relative; display: block;
+  aspect-ratio: 2.05;
+  border-radius: clamp(16px, 3.2dvh, 30px);
+  border: clamp(2px, .45dvh, 4px) solid #2A1530;
+  overflow: hidden;
+  background: #9AD7FF;
+  container-type: inline-size;
+}
+.wb-art, .wb-chars { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wb-chars { z-index: 1; pointer-events: none; }   /* ตัวละครอยู่หน้าแผงคอมิก/แผงแดง · ข้อความอยู่หน้าสุด */
+.wb-title, .wb-lead, .wb-week, .wb-vs, .wb-name { z-index: 2; }
+/* แผงคอมิกส้มซ้ายบน: ลายรัศมี + จุดฮาล์ฟโทน · ขอบเฉียงสีขาวแบบการ์ตูน */
+.wb-burst {
+  position: absolute; left: 0; top: 0; width: 36%; height: 66%;
+  clip-path: polygon(0 0, 100% 0, 30% 12%, 20% 100%, 0 100%);
+  background:
+    radial-gradient(circle, rgba(255,140,40,.65) 1.4px, transparent 1.8px) 0 0 / 9px 9px,
+    repeating-conic-gradient(from 0deg at 0% 0%, #FF8A1F 0deg 4deg, #FFB347 4deg 8deg),
+    #FF9A2E;
+}
+.wb-burst::after {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(100% 0, 97% 0, 28.5% 11.6%, 18.6% 100%, 20% 100%, 30% 12%);
+  background: #fff;
+}
+/* แผงแดงขวาล่าง: เส้นความเร็วสีขาว */
+.wb-red {
+  position: absolute; right: 0; bottom: 0; width: 44%; height: 58%;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  background:
+    repeating-linear-gradient(-58deg, rgba(255,255,255,0) 0 22px, rgba(255,255,255,.55) 22px 25px),
+    radial-gradient(circle, rgba(150,0,0,.35) 1.4px, transparent 1.8px) 0 0 / 8px 8px,
+    #E81F2C;
+}
+.wb-red::before {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(100% 0, 100% 3%, 2.5% 100%, 0 100%);
+  background: #fff;
+}
+/* ข้อความบนการ์ด — ขนาดตามความกว้างการ์ด (cqw) */
+.wb-title {
+  position: absolute; left: 3%; top: 50%;
+  transform: translateY(-100%) rotate(-15deg); transform-origin: 0 100%;
+  font-family: "Mali", sans-serif; font-weight: 800; font-style: italic;
+  font-size: 7.4cqw; line-height: 1;
+  color: #FFC81E;
+  -webkit-text-stroke: .9cqw #6B3F10;
+  paint-order: stroke fill;
+  text-shadow: 0 .4cqw 0 #6B3F10;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.wb-lead {
+  position: absolute; left: 19%; top: 61%;
+  transform: translateY(-100%) rotate(-15deg); transform-origin: 0 100%;
+  font-weight: 800; font-size: 2.7cqw;
+  color: #FFF6FB; -webkit-text-stroke: .6cqw #8A2C8E; paint-order: stroke fill;
+  white-space: nowrap; pointer-events: none;
+}
+.wb-week {
+  position: absolute; right: 2.4%; top: 3.6%;
+  display: flex; flex-direction: column; align-items: center;
+}
+.wb-week b {
+  padding: .05em .55em .12em;
+  border-radius: 999px 999px 18px 18px;
+  background: #F8D6FF;
+  font-size: 4.6cqw; font-weight: 800; line-height: 1.15;
+  color: #6E2C78; -webkit-text-stroke: .35cqw #FFF; paint-order: stroke fill;
+}
+.wb-week small {
+  margin-top: -2px;
+  display: flex; align-items: center; gap: .35em;
+  padding: .25em .9em; border-radius: 999px;
+  background: #F8D6FF;
+  font-size: 1.75cqw; font-weight: 800; color: #6E2C78;
+  white-space: nowrap;
+}
+.wb-week small i { font-style: normal; filter: grayscale(1) brightness(.6); }
+.wb-vs { position: absolute; left: 33%; top: 56%; width: 15%; pointer-events: none; }
+.wb-vs svg { display: block; width: 100%; height: auto; font-family: "Mali", sans-serif; font-style: italic; }
+.wb-name {
+  position: absolute; right: 2.6%; bottom: 3%;
+  font-weight: 800; font-size: 5.2cqw; line-height: 1.1;
+  color: #FFE7F2; -webkit-text-stroke: .8cqw #7A1F6E; paint-order: stroke fill;
+  white-space: nowrap; pointer-events: none;
+}
+
+/* ลูกศรทองชี้ลง (เด้งเบา ๆ ชวนเลื่อน) */
+.md-more {
+  flex: none; margin: clamp(4px, 1dvh, 10px) 0 clamp(6px, 2dvh, 16px);
+  width: clamp(38px, 8dvh, 60px); padding: 0; border: 0; background: none; cursor: pointer;
+  animation: mdBob 1.4s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+.md-more svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 2px 2px rgba(150,80,10,.3)); }
+@keyframes mdBob { 50% { transform: translateY(5px); } }
+@media (prefers-reduced-motion: reduce) { .md-more { animation: none; } }
+.md-sec {
+  margin: 0 0 clamp(8px, 2dvh, 16px); scroll-margin-top: 10px;
+  font-family: "Mali", sans-serif; font-weight: 800;
+  font-size: clamp(18px, 4.6dvh, 32px);
+  color: #FFF4F8; -webkit-text-stroke: clamp(3px, .8dvh, 6px) #6E2C78; paint-order: stroke fill;
+}
+/* การ์ดโหมดอื่น: กรอบพาสเทลชุดเดียวกับการ์ดบอส */
+.md-list { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(12px, 3vw, 28px); width: 100%; }
+.md-card {
+  width: clamp(260px, 46vw, 520px);
+  display: flex; flex-direction: column; align-items: stretch; gap: clamp(6px, 1.4dvh, 10px);
+  padding: clamp(7px, 1.4dvh, 12px);
+  border: 0; border-radius: clamp(20px, 4dvh, 34px);
+  background: linear-gradient(100deg, #FFF3B8 0%, #FFD7D9 45%, #F9BDF2 100%);
+  box-shadow: 0 10px 22px -8px rgba(110,44,120,.4), inset 0 2px 0 rgba(255,255,255,.75);
+  cursor: pointer; font-family: "Mali", sans-serif; color: #5A2268;
+  -webkit-tap-highlight-color: transparent;
+}
+.md-card:active { filter: brightness(.95); }
+.md-art { display: block; border-radius: clamp(14px, 3dvh, 26px); overflow: hidden; border: clamp(2px, .4dvh, 3px) solid #2A1530; }
+.md-art canvas { display: block; width: 100%; height: auto; aspect-ratio: 960 / 420; }
+.md-txt { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-bottom: 4px; text-align: center; }
+.md-name { font-size: clamp(20px, 4.6dvh, 32px); font-weight: 800; color: #FFF6FB; -webkit-text-stroke: 5px #6E2C78; paint-order: stroke fill; line-height: 1.25; }
+.md-desc { font-size: clamp(11px, 2.3dvh, 15px); font-weight: 700; color: #7A3A8A; }
+.md-stage { margin-top: 3px; padding: 2px 12px; border-radius: 999px; background: rgba(255,255,255,.7); font-size: clamp(11px, 2.1dvh, 14px); font-weight: 700; color: #6E2C78; }
+.md-stage b { color: #C2457A; }
+
+/* กฎเก่าของหน้าเลือกโหมด (#modePanel > .pop > :not(...) = relative) ทับตำแหน่ง — ระบุตรง ๆ */
+#modePanel > .pop > .md-head { z-index: 2; }
+
+/* ── การ์ด Weekly Boss ปรับตามแบบ (ผู้ใช้ 26 พ.ย. รอบ 2): หัวข้อยกขึ้น · ป้ายสัปดาห์ · สีตัวอักษรตามแบบ ── */
+.wb-title { top: 41%; left: 2.5%; font-size: 8.2cqw; font-style: normal; transform: translateY(-100%) rotate(-15deg); }
+.wb-lead {
+  top: 50%; left: 17%; font-size: 2.6cqw;
+  color: #8E2A92; -webkit-text-stroke: .55cqw #FFFFFF;   /* ม่วงขอบขาว ตามแบบ */
+}
+.wb-week { right: 2.2%; top: 2.6%; gap: 0; }
+.wb-week b {
+  position: relative; z-index: 1;
+  padding: .02em .7em .08em;
+  border-radius: 999px;
+  background: #F4D2FB;
+  font-size: 4.4cqw; line-height: 1.2;
+  color: #6A2475; -webkit-text-stroke: .45cqw #FFFFFF;
+  text-shadow: 0 .25cqw 0 rgba(106,36,117,.25);
+}
+.wb-week small {
+  margin-top: -.55cqw;
+  padding: .3em 1.1em;
+  background: #F4D2FB;
+  box-shadow: inset 0 .15cqw 0 rgba(255,255,255,.7);
+  font-size: 1.6cqw; color: #6A2475;
+}
+.wb-week small i { filter: none; font-size: 1.05em; }
+.wb-name {
+  color: #8E2390; -webkit-text-stroke: .75cqw #FFF1F7;   /* ม่วงบานเย็นขอบครีม ตามแบบ */
+  text-shadow: 0 .35cqw 0 rgba(90,10,60,.35);
+}
+/* รอบ 3 (ผู้ใช้ 26 พ.ย.): Weekly Boss เล็กลง · คำโปรยชิดใต้ "Weekly" · สีตามแบบ = ตัวอักษรสีอ่อน ขอบม่วงเข้มหนา */
+.wb-title { top: 39%; font-size: 6.9cqw; }
+.wb-lead { top: 44%; left: 14.5%; font-size: 2.4cqw; color: #FFFFFF; -webkit-text-stroke: .55cqw #8A2C8E; }
+.wb-week b { color: #F6DDFB; -webkit-text-stroke: .7cqw #5E1F68; text-shadow: none; }
+.wb-week small { color: #5E1F68; }
+.wb-name { color: #FFE6EF; -webkit-text-stroke: .85cqw #5E1A5C; text-shadow: .25cqw .4cqw 0 #8E2A7E; }
+/* รอบ 4 (ผู้ใช้ 26 พ.ย.): ตัวอักษรเล็กลง — ชื่อบอส · สัปดาห์ที่ · คำโปรย (เส้นขอบบางลงตามขนาด) */
+.wb-name { font-size: 4.2cqw; -webkit-text-stroke-width: .7cqw; }
+.wb-week b { font-size: 3.5cqw; -webkit-text-stroke-width: .55cqw; }
+.wb-week small { font-size: 1.45cqw; margin-top: -.45cqw; }
+.wb-lead { font-size: 2cqw; -webkit-text-stroke-width: .45cqw; top: 43.5%; }
+/* รอบ 5 (ผู้ใช้ 26 พ.ย.): สัปดาห์ที่/วันที่ = ตัวขาวขอบม่วง · ชื่อบอส = ไล่สีในตัวอักษร (ชมพูอ่อน → ม่วงชมพู) ขอบม่วงเข้ม + เงา ตามแบบ */
+.wb-week b { color: #FFFFFF; -webkit-text-stroke-color: #5E1F68; }
+.wb-week small { color: #FFFFFF; -webkit-text-stroke: .3cqw #5E1F68; paint-order: stroke fill; }
+.wb-name {
+  color: transparent;
+  background: linear-gradient(180deg, #FFF4FA 0%, #FFD6EC 45%, #E9A6E0 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-stroke: 0; text-shadow: none;
+  filter:
+    drop-shadow(.18cqw 0 0 #5E1A5C) drop-shadow(-.18cqw 0 0 #5E1A5C)
+    drop-shadow(0 .18cqw 0 #5E1A5C) drop-shadow(0 -.18cqw 0 #5E1A5C)
+    drop-shadow(.22cqw .3cqw 0 #8E2A7E);
+}
+/* ชื่อบอส: ขอบหนาขึ้น (8 ทิศ) + เผื่อที่สระบนไม่โดนตัด */
+.wb-name {
+  padding: .25em .1em 0;
+  filter:
+    drop-shadow(.3cqw 0 0 #5E1A5C) drop-shadow(-.3cqw 0 0 #5E1A5C)
+    drop-shadow(0 .3cqw 0 #5E1A5C) drop-shadow(0 -.3cqw 0 #5E1A5C)
+    drop-shadow(.3cqw .4cqw 0 #8E2A7E);
+}
+
+/* ══ หน้า Weekly Boss (ผู้ใช้ 26 พ.ย. 2026 · ภาพแบบ public/หน้าก่อนเตรียมพร้อม.png) ══════════════
+   เต็มจอ · ตำแหน่งเป็น % ของจอ · ขนาดตัวอักษร/ของในแผ่นเป็น cqh (ตามความสูงจอ — มือถือแนวนอนกับไอแพดได้สัดส่วนเดียวกัน)
+   ไม่ใช้ backdrop-filter: ฉากบอสขยับทุกเฟรม เบลอซ้ำทุกเฟรมเปลืองเครื่อง (แบบเดียวกับกล่องข้อมูลหน้ารายละเอียดชุด) */
+#stage #weeklyPanel.panel { padding: 0; }
+#stage #weeklyPanel.panel > .pop {
+  width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+  border-radius: 0; border: 0; box-shadow: none; padding: 0; gap: 0;
+  display: block;
+  background: #A9DDF5;
+  container-type: size;
+  font-family: "Mali", sans-serif;
+  color: #5B1F66;
+}
+#weeklyPanel .wk-bg, #weeklyPanel .wk-boss { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+#weeklyPanel .wk-bg { z-index: 0; filter: saturate(.92) blur(1.5px); transform: scale(1.02); }
+/* หมอกขาวนวลทับฉาก — ฉากหลังถอยไปข้างหลัง ตัวหนังสือ/บอสเด่น */
+#weeklyPanel > .pop::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255,250,253,.38) 0%, rgba(255,250,253,.1) 55%, rgba(255,250,253,0) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0) 60%, rgba(255,214,226,.45) 100%);
+}
+#weeklyPanel .wk-boss { z-index: 1; }
+#weeklyPanel > .pop > :not(.wk-bg):not(.wk-boss):not(.xbtn) { position: absolute; z-index: 2; }
+#weeklyPanel .wk-x { z-index: 6; }
+
+/* ตัวหนังสือขอบหนาชุดเดียวกับการ์ด Weekly Boss */
+#weeklyPanel :is(.wk-week, .wk-range, .wk-name, .wk-story, .wk-mname, .wk-mdesc, .wk-rw-head b, .wk-route-h, .wk-go span) {
+  paint-order: stroke fill; margin: 0;
+}
+
+/* ── ซ้ายบน: สัปดาห์ + วันที่ ── */
+#weeklyPanel .wk-head { left: 4.4%; top: 3.6%; display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+#stage #weeklyPanel .wk-week {
+  font-size: 7.4cqh; font-weight: 800; line-height: 1.25; color: #5B1F66;
+  -webkit-text-stroke: 1.1cqh #FFFFFF; text-shadow: 0 .6cqh .8cqh rgba(91,31,102,.25);
+  overflow: visible;
+}
+#weeklyPanel .wk-range { font-size: 3.5cqh; font-weight: 800; color: #5B1F66; -webkit-text-stroke: .7cqh #FFFFFF; margin-top: -.6cqh; }
+
+/* ── ซ้าย: แผ่นกระจกข้อมูล ── */
+#weeklyPanel .wk-info {
+  left: 4%; top: 16.5%;
+  width: min(44.5%, 70cqh); height: 56cqh;
+  box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 1cqh;
+  padding: 3.2cqh 3.4cqh 2.6cqh;
+  border-radius: 5cqh;
+  background: linear-gradient(180deg, rgba(232,255,242,.78) 0%, rgba(206,240,224,.72) 100%);
+  border: .35cqh solid rgba(255,255,255,.85);
+  box-shadow: 0 1.6cqh 3cqh -1cqh rgba(40,80,60,.3), inset 0 -1.2cqh 2cqh -1cqh rgba(40,100,70,.22), inset 0 .5cqh 0 rgba(255,255,255,.7);
+  text-align: left;
+}
+#weeklyPanel .wk-name, #weeklyPanel .wk-mname {
+  font-size: 5.6cqh; font-weight: 800; line-height: 1.3; color: #FFEFA6;
+  -webkit-text-stroke: .9cqh #6A2475;
+}
+#weeklyPanel .wk-story, #weeklyPanel .wk-mdesc {
+  font-size: 3.1cqh; font-weight: 700; line-height: 1.4; color: #FFFFFF;
+  -webkit-text-stroke: .55cqh #8A2C8E;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#weeklyPanel .wk-minion { display: flex; align-items: center; gap: 1cqh; margin-top: .4cqh; }
+#weeklyPanel .wk-mtext { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#weeklyPanel .wk-mname { font-size: 4.8cqh; }
+#weeklyPanel .wk-mart { flex: none; width: 15cqh; height: 15cqh; margin: -2cqh 0 -1cqh; }
+/* ริบบิ้นหัวข้อรางวัล */
+#weeklyPanel .wk-rw-head {
+  position: relative; align-self: center; margin-top: auto;
+  display: flex; align-items: center;
+  padding: .6cqh 2.6cqh .6cqh 6.6cqh;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #D79BF6 0%, #E8BEFA 60%, #F6E2FF 100%);
+  box-shadow: inset 0 .4cqh 0 rgba(255,255,255,.55), 0 .6cqh 1.2cqh rgba(130,60,170,.25);
+}
+#weeklyPanel .wk-rw-head b { font-size: 3.4cqh; font-weight: 800; color: #FFFFFF; -webkit-text-stroke: .55cqh #8A2C8E; white-space: nowrap; }
+#weeklyPanel .wk-gift { position: absolute; left: -.6cqh; top: 50%; transform: translateY(-56%) rotate(-10deg); font-size: 6.4cqh; line-height: 1; filter: drop-shadow(0 .4cqh .4cqh rgba(110,40,140,.3)); }
+/* การ์ดรางวัล: พาสเทลไล่สี ขอบชมพูหนา + วงขาวใน (ไอคอนเหรียญ/อัญมณีชุดเดียวกับกล่องรับของในเกม) */
+#weeklyPanel .wk-rewards { list-style: none; margin: .6cqh 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.2cqh; }
+#weeklyPanel .wk-rw {
+  position: relative;
+  aspect-ratio: 1 / .96;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  padding: 0 .6cqh 1.4cqh;
+  border-radius: 3cqh;
+  border: .55cqh solid #FF8DC2;
+  box-shadow: inset 0 0 0 .45cqh rgba(255,255,255,.8), 0 .8cqh 1.4cqh -.4cqh rgba(170,60,120,.3);
+}
+#weeklyPanel .wk-rw.gold { background: linear-gradient(160deg, #FFE9A8 0%, #FFC9DE 100%); }
+#weeklyPanel .wk-rw.gems { background: linear-gradient(160deg, #B7F1EC 0%, #FFF3BA 100%); }
+#weeklyPanel .wk-rw.chest { background: linear-gradient(160deg, #D8C4FF 0%, #FFC4DF 100%); }
+#weeklyPanel .wk-rw-art { flex: 1; width: 100%; display: grid; place-items: center; min-height: 0; }
+#weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 46%; height: auto; aspect-ratio: 1; }
+#weeklyPanel .wk-rw .wk-chest { width: 70%; height: auto; aspect-ratio: 200 / 184; }
+#weeklyPanel .wk-rw small { font-size: 2.5cqh; font-weight: 800; color: #5B1F66; line-height: 1.25; white-space: nowrap; }
+#weeklyPanel .wk-rw-n {
+  position: absolute; top: -1.4cqh; right: -1cqh;
+  padding: .1cqh 1.2cqh; border-radius: 999px;
+  background: #FFFFFF; box-shadow: 0 .4cqh .8cqh rgba(170,60,120,.25);
+  font-size: 2.3cqh; font-weight: 800; color: #C2457A;
+}
+
+/* ── ขวา: ป้ายชื่อบอส (แถบเงาวาวทับขาบอส) ── */
+#weeklyPanel .wk-plate {
+  right: 0; top: 62.5%; width: 44%; height: 11%;
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 4%;
+  background: linear-gradient(90deg, rgba(255,240,250,0) 0%, rgba(255,240,250,.82) 22%, rgba(255,226,242,.9) 100%);
+  border-top: .3cqh solid rgba(255,255,255,.9); border-bottom: .3cqh solid rgba(255,255,255,.9);
+  pointer-events: none;
+}
+#weeklyPanel .wk-plate b {
+  padding: .3em .1em 0;
+  font-size: 7.4cqh; font-weight: 800; line-height: 1.15; white-space: nowrap;
+  color: transparent;
+  background: linear-gradient(180deg, #FFF8D6 0%, #FFE2A0 45%, #F4B6E6 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter:
+    drop-shadow(.55cqh 0 0 #6A2475) drop-shadow(-.55cqh 0 0 #6A2475)
+    drop-shadow(0 .55cqh 0 #6A2475) drop-shadow(0 -.55cqh 0 #6A2475)
+    drop-shadow(.5cqh .7cqh 0 #B0429A);
+}
+
+/* ── ล่างซ้าย: เส้นทางปราบบอส ── */
+#weeklyPanel .wk-route {
+  left: 3%; bottom: 3.5%;
+  width: min(55.5%, 88cqh); height: 17.5cqh;
+  box-sizing: border-box;
+  padding: 2.4cqh 3cqh 1cqh;
+  border-radius: 4cqh;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFF0F5 100%);
+  border: .55cqh solid #FF9DCB;
+  box-shadow: 0 1.2cqh 2.4cqh -1cqh rgba(170,60,120,.3), inset 0 -1cqh 1.6cqh -1cqh rgba(255,140,190,.35);
+}
+#weeklyPanel .wk-route-h {
+  position: absolute; left: 3%; top: 0; transform: translateY(-62%);
+  padding: .5cqh 5cqh .6cqh 3.2cqh;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #FFB7D9 0%, #FFD6E9 70%, rgba(255,226,240,0) 100%);
+  font-size: 3.7cqh; font-weight: 800; color: #FFFFFF; -webkit-text-stroke: .6cqh #8A2C8E; white-space: nowrap;
+}
+#weeklyPanel .wk-route-h i {
+  position: absolute; right: -.4cqh; top: -1.2cqh;
+  font-style: italic; font-size: 5.2cqh; font-weight: 900; color: #FF5FA2; -webkit-text-stroke: .5cqh #FFFFFF; paint-order: stroke fill;
+  transform: rotate(14deg);
+}
+#weeklyPanel .wk-steps { list-style: none; margin: 0; padding: 0; height: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#weeklyPanel .wk-step { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2cqh; }
+#weeklyPanel .wk-node { position: relative; z-index: 1; width: 10cqh; height: 10cqh; display: grid; place-items: center; }
+#weeklyPanel .wk-flower { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 .5cqh .6cqh rgba(150,70,170,.35)); }
+#weeklyPanel .wk-flower .fl { fill: #D9A6F2; stroke: #FFFFFF; stroke-width: 4; stroke-linejoin: round; }
+#weeklyPanel .wk-step.now .fl { fill: #F470AE; }
+#weeklyPanel .wk-step.done .fl { fill: #E2559A; }
+#weeklyPanel .wk-step.boss .fl { fill: #FFD43B; }
+#weeklyPanel .wk-node::after {   /* แสงวาวมุมบนซ้าย (วุ้น) */
+  content: ""; position: absolute; left: 22%; top: 16%; width: 34%; height: 22%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255,255,255,.75), rgba(255,255,255,0));
+  transform: rotate(-25deg); pointer-events: none;
+}
+#weeklyPanel .wk-node b { position: relative; font-size: 5.2cqh; font-weight: 800; color: #FFFFFF; -webkit-text-stroke: .6cqh #7A2E86; paint-order: stroke fill; line-height: 1; }
+#weeklyPanel .wk-step.boss .wk-node b { -webkit-text-stroke-color: #9A5A10; }
+#weeklyPanel .wk-step.now .wk-node { animation: wkPulse 1.6s ease-in-out infinite; }
+@keyframes wkPulse { 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { #weeklyPanel .wk-step.now .wk-node { animation: none; } }
+#weeklyPanel .wk-crown { position: absolute; left: 50%; top: -3.2cqh; transform: translateX(-50%) rotate(8deg); font-style: normal; font-size: 4.6cqh; line-height: 1; filter: drop-shadow(0 .3cqh .3cqh rgba(150,90,10,.35)); }
+#weeklyPanel .wk-step small { font-size: 2.5cqh; font-weight: 800; color: #5B1F66; line-height: 1.2; }
+#weeklyPanel .wk-step.boss small { color: #E8283F; font-size: 2.8cqh; letter-spacing: .04em; }
+/* เส้นประเชื่อมด่าน: ผ่านแล้ว = ชมพู · ยังไม่ถึง = ม่วง */
+#weeklyPanel .wk-link {
+  position: absolute; z-index: 0;
+  left: calc(50% + 5.4cqh); right: calc(-50% + 5.4cqh); top: calc(50% - 1.6cqh);
+  height: .7cqh; border-radius: 999px;
+  background: repeating-linear-gradient(90deg, #A970D8 0 2.2cqh, transparent 2.2cqh 3.6cqh);
+}
+#weeklyPanel .wk-link.on { background: repeating-linear-gradient(90deg, #F0508F 0 2.2cqh, transparent 2.2cqh 3.6cqh); }
+
+/* ── ล่างขวา: ปุ่มเตรียมพร้อม (วุ้นม่วงใหญ่ ตามแบบ · ไม่มีฐานเข้มใต้ปุ่ม · กดแล้วแค่สว่างลด) ── */
+#weeklyPanel .wk-go-wrap {
+  right: 3%; bottom: 3.5%;
+  left: calc(3% + min(55.5%, 88cqh) + 3%);
+  height: 17.5cqh;
+  display: flex; flex-direction: column; align-items: stretch;
+}
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) {
+  position: relative; flex: 1; margin: 0; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 12cqh 0 3cqh;
+  border-radius: 3.6cqh;
+  border: .5cqh solid rgba(255,255,255,.7);
+  background:
+    radial-gradient(70% 55% at 30% 12%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, #ECC2FF 0%, #D28CF4 55%, #B86BE6 100%);
+  box-shadow:
+    0 1.4cqh 2.6cqh -1cqh rgba(110,30,150,.5),
+    inset 0 -1.6cqh 2cqh -1cqh rgba(100,30,150,.45),
+    inset 0 1cqh 1.4cqh -.8cqh rgba(255,255,255,.75);
+  color: #FFFFFF;
+  font-family: "Mali", sans-serif;
+  transform: none;
+}
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull)::before,
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull)::after { content: none; }
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull):active { filter: brightness(.93); transform: none; }
+#weeklyPanel .wk-go span { font-size: 7cqh; font-weight: 800; line-height: 1.2; -webkit-text-stroke: 1cqh #6A2475; white-space: nowrap; }
+#weeklyPanel .wk-go i {
+  position: absolute; right: 3.2cqh; top: 50%; transform: translateY(-50%);
+  width: 7cqh; height: 10cqh;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  background: linear-gradient(120deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.55) 100%);
+}
+#weeklyPanel .wk-msg { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 1cqh; text-align: center; min-height: 0; font-size: 2.6cqh; font-weight: 800; color: #8A2C8E; }
+#weeklyPanel .wk-msg:empty { display: none; }
+/* ── ปรับรอบ 2 (จัดให้พอดี 1.41 – 2.2 สัดส่วนจอ) ── */
+#stage #weeklyPanel .wk-week { -webkit-text-fill-color: #5B1F66; background: none; padding: 0; line-height: 1.12; font-size: 6.8cqh; }
+#weeklyPanel .wk-range { margin-top: 0; font-size: 3.2cqh; }
+#weeklyPanel .wk-info { top: 17.5%; height: 54.5cqh; gap: .7cqh; padding: 2.6cqh 3cqh 2.4cqh; }
+#weeklyPanel .wk-name { font-size: 5cqh; -webkit-text-stroke-width: .8cqh; }
+#weeklyPanel .wk-mname { font-size: 4.2cqh; -webkit-text-stroke-width: .75cqh; }
+#weeklyPanel .wk-story, #weeklyPanel .wk-mdesc {
+  font-size: 2.65cqh; line-height: 1.5; -webkit-text-stroke-width: .5cqh;
+  display: block; overflow: visible; -webkit-line-clamp: unset;
+}
+#weeklyPanel .wk-minion { margin-top: 0; }
+#weeklyPanel .wk-mart { width: 12.5cqh; height: 12.5cqh; margin: -1.4cqh 1cqh -1cqh 0; }
+#weeklyPanel .wk-rw-head { padding: .4cqh 2.4cqh .4cqh 6cqh; }
+#weeklyPanel .wk-rw-head b { font-size: 3cqh; -webkit-text-stroke-width: .5cqh; }
+#weeklyPanel .wk-gift { font-size: 5.6cqh; }
+#weeklyPanel .wk-rewards { margin-top: .4cqh; gap: 1.8cqh; }
+#weeklyPanel .wk-rw { aspect-ratio: 1 / .84; padding-bottom: 1cqh; }
+#weeklyPanel .wk-rw small { font-size: 2.2cqh; }
+#weeklyPanel .wk-plate { top: 63%; height: 10%; width: 40%; }
+#weeklyPanel .wk-plate b { font-size: 6.2cqh; }
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) { padding: 0 9cqh 0 2cqh; }
+#weeklyPanel .wk-go span { font-size: 5.8cqh; -webkit-text-stroke-width: .85cqh; }
+#weeklyPanel .wk-go i { right: 2.6cqh; width: 5.4cqh; height: 8cqh; }
+#weeklyPanel .wk-node { width: 8.6cqh; height: 8.6cqh; }
+#weeklyPanel .wk-node b { font-size: 4.4cqh; }
+#weeklyPanel .wk-link {
+  left: calc(50% + 4.8cqh); right: calc(-50% + 4.8cqh); top: calc(50% - 1.4cqh); height: .6cqh;
+  background: repeating-linear-gradient(90deg, #A970D8 0 1.3cqh, transparent 1.3cqh 2.2cqh);
+}
+#weeklyPanel .wk-link.on { background: repeating-linear-gradient(90deg, #F0508F 0 1.3cqh, transparent 1.3cqh 2.2cqh); }
+/* ข้อความใต้ปุ่ม: เม็ดขาวอ่านง่าย (ทับแถบชื่อบอสได้) */
+#weeklyPanel .wk-msg { left: auto; right: 0; padding: .6cqh 2cqh; border-radius: 999px; background: rgba(255,255,255,.94); box-shadow: 0 .6cqh 1.4cqh rgba(110,30,150,.25); white-space: nowrap; }
+/* มือถือแนวนอน (จอเตี้ย กว้างมาก): ตัวอักษร/การ์ดใหญ่ขึ้น แผ่นข้อมูลกว้างขึ้น (ใช้ที่ว่างแนวนอน) */
+@media (max-height: 500px) {
+  #weeklyPanel .wk-head { top: 2.4%; }
+  #weeklyPanel .wk-info { top: 15.5%; width: min(46%, 92cqh); height: 58cqh; padding: 2.4cqh 3.2cqh 2.2cqh; }
+  #weeklyPanel .wk-name { font-size: 5.8cqh; }
+  #weeklyPanel .wk-mname { font-size: 5cqh; }
+  #weeklyPanel .wk-story, #weeklyPanel .wk-mdesc { font-size: 3.3cqh; line-height: 1.4; }
+  #weeklyPanel .wk-rw-head b { font-size: 3.5cqh; }
+  #weeklyPanel .wk-rw { aspect-ratio: 1 / .7; }
+  #weeklyPanel .wk-rw small { font-size: 2.8cqh; }
+  #weeklyPanel .wk-rw-n { font-size: 2.8cqh; }
+  #weeklyPanel .wk-route { width: min(46%, 92cqh); height: 19cqh; }
+  #weeklyPanel .wk-go-wrap { left: calc(3% + min(46%, 92cqh) + 3%); height: 19cqh; }
+  #weeklyPanel .wk-route-h { font-size: 4.2cqh; }
+  #weeklyPanel .wk-node { width: 10cqh; height: 10cqh; }
+  #weeklyPanel .wk-node b { font-size: 5cqh; }
+  #weeklyPanel .wk-step small { font-size: 3cqh; }
+  #weeklyPanel .wk-link { left: calc(50% + 5.4cqh); right: calc(-50% + 5.4cqh); }
+  #weeklyPanel .wk-go span { font-size: 7cqh; }
+  #weeklyPanel .wk-plate b { font-size: 7.2cqh; }
+}
+/* ── ปรับรอบ 3 (ผู้ใช้ 26 พ.ย.: บอสใหญ่ขึ้น · ป้ายชื่อบอสเป็นเม็ดมน เด่นขึ้น · แผ่นข้อมูลกว้างขึ้น ข้อความที่อยู่บรรทัดเดียวกันได้ให้อยู่ด้วยกัน
+   · เส้นทางปราบบอสกว้างขึ้น · ปุ่มเตรียมพร้อมแคบลง) ── */
+#stage #weeklyPanel.panel > .pop { --wk-go-w: max(25cqw, 50cqh); --wk-gap: 2.4cqw; }
+
+#weeklyPanel .wk-info { left: 3cqw; top: 17cqh; width: min(45cqw, 96cqh); height: auto; max-height: 57cqh; gap: .9cqh; padding: 2.4cqh 3.4cqh 2.6cqh; }
+#weeklyPanel .wk-name { font-size: 5.8cqh; line-height: 1.2; }
+#weeklyPanel .wk-story { font-size: 2.9cqh; line-height: 1.45; margin-top: -.4cqh; }
+#weeklyPanel :is(.wk-story, .wk-mdesc) { max-width: none; }
+/* ลูกสมุน: ชื่อ + คำอธิบายอยู่บรรทัดเดียวกัน (จอแคบค่อยลงบรรทัดใหม่) · รูปลูกสมุนชิดขวา */
+#weeklyPanel .wk-minion { gap: 2cqh; margin-top: .4cqh; padding: .6cqh 2cqh .6cqh 2.4cqh; border-radius: 999px; background: rgba(255,255,255,.42); box-shadow: inset 0 .3cqh 0 rgba(255,255,255,.7); }
+#weeklyPanel .wk-mtext { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 2cqh; row-gap: 0; }
+#weeklyPanel .wk-mname { font-size: 4.4cqh; line-height: 1.25; white-space: nowrap; }
+#weeklyPanel .wk-mdesc { font-size: 2.9cqh; white-space: nowrap; }
+#weeklyPanel .wk-mart { width: 10cqh; height: 10cqh; margin: -2.4cqh 0 -1.2cqh; }
+#weeklyPanel .wk-rw-head { margin-top: 1.2cqh; }
+#weeklyPanel .wk-rewards { gap: 2.4cqh; margin-top: .6cqh; }
+#weeklyPanel .wk-rw { aspect-ratio: 1 / .72; }
+#weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 40%; }
+#weeklyPanel .wk-rw .wk-chest { width: 58%; }
+#weeklyPanel .wk-rw small { font-size: 2.5cqh; }
+
+/* ป้ายชื่อบอส: เม็ดวุ้นมนลอยใต้ตัวบอส (ไม่ชนขอบจอ) · ตัวอักษรไล่ทอง-ชมพู ขอบม่วงหนา + ประกาย */
+#weeklyPanel .wk-plate {
+  left: 75cqw; right: auto; top: 63.5cqh; width: auto; height: auto;
+  transform: translateX(-50%);
+  padding: .4cqh 6cqh .2cqh;
+  border-radius: 999px;
+  background:
+    radial-gradient(60% 70% at 50% 0%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(255,246,252,.95) 0%, rgba(255,214,236,.92) 100%);
+  border: .45cqh solid #FFFFFF;
+  box-shadow: 0 1.4cqh 2.8cqh -1cqh rgba(120,30,110,.45), inset 0 -1cqh 1.6cqh -1cqh rgba(220,90,160,.4);
+}
+#weeklyPanel .wk-plate b {
+  font-size: min(8.2cqh, 4.6cqw); line-height: 1.1; padding: .2em .08em 0; letter-spacing: .01em;
+  background: linear-gradient(180deg, #FFFBE0 0%, #FFE27A 48%, #FFB2D8 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter:
+    drop-shadow(.6cqh 0 0 #5E1A5C) drop-shadow(-.6cqh 0 0 #5E1A5C)
+    drop-shadow(0 .6cqh 0 #5E1A5C) drop-shadow(0 -.6cqh 0 #5E1A5C)
+    drop-shadow(.3cqh .8cqh 0 #B0429A);
+}
+#weeklyPanel .wk-plate::before, #weeklyPanel .wk-plate::after {   /* ประกายสองข้าง */
+  content: ""; position: absolute; top: 50%; width: 3.4cqh; height: 3.4cqh;
+  background: #FFD43B;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 .6cqh rgba(255,255,255,.9));
+}
+#weeklyPanel .wk-plate::before { left: 1.6cqh; transform: translateY(-70%) rotate(-12deg); }
+#weeklyPanel .wk-plate::after { right: 1.6cqh; transform: translateY(-20%) rotate(12deg) scale(.75); background: #FF8DC2; }
+
+/* ล่าง: เส้นทางกว้างขึ้น · ปุ่มเตรียมพร้อมแคบลง (กว้าง = --wk-go-w) */
+#weeklyPanel .wk-route { left: 3cqw; width: calc(100cqw - 6cqw - var(--wk-gap) - var(--wk-go-w)); padding-left: 4cqh; padding-right: 4cqh; }
+#weeklyPanel .wk-go-wrap { left: auto; right: 3cqw; width: var(--wk-go-w); }
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) { padding: 0 8cqh 0 2cqh; }
+#weeklyPanel .wk-go span { font-size: 5.6cqh; }
+#weeklyPanel .wk-go i { right: 2.4cqh; width: 4.6cqh; height: 6.8cqh; }
+@media (max-height: 500px) {
+  #weeklyPanel .wk-info { top: 15cqh; width: min(47cqw, 100cqh); max-height: 61cqh; }
+  #weeklyPanel .wk-name { font-size: 6.2cqh; }
+  #weeklyPanel .wk-story, #weeklyPanel .wk-mdesc { font-size: 3.4cqh; }
+  #weeklyPanel .wk-mname { font-size: 5cqh; }
+  #weeklyPanel .wk-rw { aspect-ratio: 1 / .62; }
+  #weeklyPanel .wk-route, #weeklyPanel .wk-go-wrap { height: 19cqh; }
+  #weeklyPanel .wk-go span { font-size: 6.4cqh; }
+  #weeklyPanel .wk-plate { top: 62cqh; }
+  #weeklyPanel .wk-plate b { font-size: min(9cqh, 4.6cqw); }
+  #weeklyPanel .wk-info { width: min(50cqw, 112cqh); gap: .6cqh; padding: 2cqh 3cqh 2.2cqh; }
+  #weeklyPanel .wk-rw-head { margin-top: .6cqh; }
+  #weeklyPanel .wk-rewards { gap: 2cqh; }
+  #weeklyPanel .wk-rw { aspect-ratio: 1 / .54; padding-bottom: .6cqh; }
+  #weeklyPanel .wk-mart { width: 9cqh; height: 9cqh; margin: -1.6cqh 0 -1cqh; }
+  #weeklyPanel .wk-rw .wk-chest { width: 44%; }
+  #weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 32%; }
+}
+
+/* ── ปรับรอบ 4 (ผู้ใช้ 26 พ.ย. ส่งแบบตัวอักษรมาให้): ตัวอักษรในแผ่นเขียวเล็กลง สีตามแบบ · ป้ายชื่อบอสเป็นแถบโปร่งปลายจางตามแบบ ── */
+/* หัวข้อ = เหลืองทอง ขอบน้ำตาลทอง · เนื้อความ = ม่วงเข้ม ไม่มีขอบ (สีดูดจากภาพแบบ) */
+#weeklyPanel .wk-name, #weeklyPanel .wk-mname { color: #FFC700; -webkit-text-stroke: .5cqh #806400; text-shadow: 0 .3cqh .5cqh rgba(128,100,0,.25); }
+#weeklyPanel .wk-name { font-size: 4.4cqh; }
+#weeklyPanel .wk-mname { font-size: 3.9cqh; }
+#weeklyPanel .wk-story, #weeklyPanel .wk-mdesc { font-size: 2.55cqh; font-weight: 700; color: #431F5A; -webkit-text-stroke: 0; text-shadow: none; }
+#weeklyPanel .wk-story { margin-top: 0; }
+#weeklyPanel .wk-rw-head b { font-size: 2.7cqh; color: #FFFFFF; -webkit-text-stroke: .5cqh #6F1D5B; }
+#weeklyPanel .wk-gift { font-size: 5cqh; }
+#weeklyPanel .wk-rw small { font-size: 2.15cqh; color: #431F5A; }
+#weeklyPanel .wk-rw { border-color: #FF66C4; }
+#weeklyPanel .wk-mart { width: 9cqh; height: 9cqh; margin: -1.8cqh 0 -1cqh; }
+
+/* ป้ายชื่อบอส: แถบขาวชมพูโปร่ง เส้นขาววาวบน-ล่าง ปลายสองข้างจางหาย · ตัวอักษรไล่ครีม-ชมพู ขอบม่วงเข้มหนา มุมมน
+   (ขอบทำจากเงาวงกลม 16 ทิศ = ขอบมนรอบตัวอักษร ไม่เป็นเหลี่ยมแบบ drop-shadow 4 ทิศ · ชั้นสีไล่อยู่ใน ::after จาก data-t) */
+#weeklyPanel .wk-plate {
+  top: 64cqh; padding: .9cqh 11cqh .5cqh;
+  border: 0; border-radius: 0; box-shadow: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.95) 0, rgba(255,255,255,.95) .4cqh, rgba(255,255,255,0) .4cqh),
+    linear-gradient(0deg, rgba(255,255,255,.9) 0, rgba(255,255,255,.9) .35cqh, rgba(255,255,255,0) .35cqh),
+    linear-gradient(180deg, rgba(255,226,240,.5) 0%, rgba(255,196,226,.5) 62%, rgba(255,236,248,.85) 90%, rgba(255,255,255,.9) 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+}
+#weeklyPanel .wk-plate::before, #weeklyPanel .wk-plate::after { content: none; }
+#weeklyPanel .wk-plate b {
+  --wk-ink: #6F1D5B; --wk-r: .6cqh;
+  position: relative; display: block;
+  font-size: min(7.6cqh, 4.4cqw); line-height: 1.15; padding: .18em .06em 0; letter-spacing: .01em;
+  color: var(--wk-ink); background: none; -webkit-background-clip: border-box; background-clip: border-box; filter: none;
+  text-shadow:
+    calc(var(--wk-r) * 1) calc(var(--wk-r) * 0) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0.924) calc(var(--wk-r) * 0.383) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0.707) calc(var(--wk-r) * 0.707) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0.383) calc(var(--wk-r) * 0.924) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0) calc(var(--wk-r) * 1) 0 var(--wk-ink),
+    calc(var(--wk-r) * -0.383) calc(var(--wk-r) * 0.924) 0 var(--wk-ink),
+    calc(var(--wk-r) * -0.707) calc(var(--wk-r) * 0.707) 0 var(--wk-ink),
+    calc(var(--wk-r) * -0.924) calc(var(--wk-r) * 0.383) 0 var(--wk-ink),
+    calc(var(--wk-r) * -1) calc(var(--wk-r) * 0) 0 var(--wk-ink),
+    calc(var(--wk-r) * -0.924) calc(var(--wk-r) * -0.383) 0 var(--wk-ink),
+    calc(var(--wk-r) * -0.707) calc(var(--wk-r) * -0.707) 0 var(--wk-ink),
+    calc(var(--wk-r) * -0.383) calc(var(--wk-r) * -0.924) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0) calc(var(--wk-r) * -1) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0.383) calc(var(--wk-r) * -0.924) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0.707) calc(var(--wk-r) * -0.707) 0 var(--wk-ink),
+    calc(var(--wk-r) * 0.924) calc(var(--wk-r) * -0.383) 0 var(--wk-ink),
+    0 calc(var(--wk-r) * 1.7) calc(var(--wk-r) * 1.2) rgba(111,29,91,.45);
+}
+#weeklyPanel .wk-plate b::after {
+  content: attr(data-t); position: absolute; inset: 0; padding: inherit;
+  color: transparent; text-shadow: none;
+  background: linear-gradient(180deg, #FFF4B0 0%, #FFE6D2 42%, #FFDEF5 70%, #FFC2EC 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+@media (max-height: 500px) {
+  #weeklyPanel .wk-name { font-size: 5cqh; }
+  #weeklyPanel .wk-mname { font-size: 4.4cqh; }
+  #weeklyPanel .wk-story, #weeklyPanel .wk-mdesc { font-size: 3cqh; }
+  #weeklyPanel .wk-rw-head b { font-size: 3.1cqh; }
+  #weeklyPanel .wk-rw small { font-size: 2.6cqh; }
+  #weeklyPanel .wk-plate { top: 62cqh; }
+  #weeklyPanel .wk-plate b { font-size: min(8.4cqh, 4.4cqw); --wk-r: .65cqh; }
+}
+
+/* ── ปรับรอบ 5 (ผู้ใช้ 26 พ.ย.): เอาแถบขาวหลังลูกสมุนออก · การ์ดรางวัลเตี้ยลง · แผ่นเขียวสูงขึ้น เนื้อหาห่างขึ้น
+   · แถบชื่อบอสชิดขวาจอแบบภาพแบบ (จางเฉพาะปลายซ้าย) ── */
+#weeklyPanel .wk-info { height: 55cqh; max-height: none; gap: 1.6cqh; padding: 3cqh 3.6cqh 3.2cqh; justify-content: space-between; }
+#weeklyPanel .wk-story { margin-top: -3.4cqh; }   /* เรื่องราวติดชื่อบอส (กลุ่มเดียวกัน) · ช่องว่างที่เหลือแบ่งเท่า ๆ กัน */
+#weeklyPanel .wk-minion { padding: 0; border-radius: 0; background: none; box-shadow: none; margin-top: .6cqh; }
+#weeklyPanel .wk-rw-head { margin-top: 0; }
+#weeklyPanel .wk-rewards { margin-top: .4cqh; }
+#weeklyPanel .wk-rw { aspect-ratio: 1 / .6; padding-bottom: 1cqh; }
+#weeklyPanel .wk-rw-art { padding-top: 1.4cqh; }
+#weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 34%; }
+#weeklyPanel .wk-rw .wk-chest { width: 48%; }
+#weeklyPanel .wk-plate {
+  left: auto; right: 0; transform: none;
+  padding: .9cqh 4cqw .5cqh 14cqh;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 22%, #000 100%);
+}
+@media (max-height: 500px) {
+  #weeklyPanel .wk-info { height: 56cqh; gap: 1.2cqh; padding: 2.4cqh 3.2cqh 2.4cqh; }
+  #weeklyPanel .wk-rw { aspect-ratio: 1 / .46; }
+  #weeklyPanel .wk-rw-art { padding-top: .6cqh; }
+  #weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 26%; }
+  #weeklyPanel .wk-rw .wk-chest { width: 36%; }
+}
+
+/* ── ปรับรอบ 6 (ผู้ใช้ 26 พ.ย.): คำอธิบายลูกสมุนลงบรรทัดใหม่ · รูปลูกสมุนใหญ่ขึ้น · การ์ดรางวัลแคบลง (ทรงเกือบจัตุรัส จัดกลาง)
+   · ตัวอักษรปุ่มเตรียมพร้อมเล็กลง ── */
+#weeklyPanel .wk-mtext { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; }
+#weeklyPanel .wk-mdesc { margin-top: 1cqh; }
+#weeklyPanel .wk-mart { width: 15cqh; height: 15cqh; margin: -3.4cqh 1cqh -3cqh 0; }
+#weeklyPanel .wk-rewards { grid-template-columns: repeat(3, minmax(0, 23cqh)); justify-content: center; gap: 3.4cqh; }
+#weeklyPanel .wk-rw { aspect-ratio: 1 / .76; }
+#weeklyPanel .wk-rw { aspect-ratio: 1 / .8; }
+#weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 42%; }
+#weeklyPanel .wk-rw .wk-chest { width: 58%; }
+#weeklyPanel .wk-go span { font-size: 4.6cqh; -webkit-text-stroke-width: .75cqh; }
+@media (max-height: 500px) {
+  #weeklyPanel .wk-mart { width: 14cqh; height: 14cqh; margin: -3cqh 1cqh -2.6cqh 0; }
+  #weeklyPanel .wk-rewards { grid-template-columns: repeat(3, minmax(0, 25cqh)); gap: 3cqh; }
+  #weeklyPanel .wk-rw { aspect-ratio: 1 / .62; }
+  #weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: 32%; }
+  #weeklyPanel .wk-rw .wk-chest { width: 44%; }
+  #weeklyPanel .wk-go span { font-size: 5.4cqh; }
+}
+
+/* ── ปรับรอบ 7 (ผู้ใช้ 27 พ.ย.): ระยะในแผ่นเขียวเท่ากันทุกกลุ่ม (ชื่อ→คำอธิบาย เท่ากันทั้งบอสและลูกสมุน)
+   · การ์ดรางวัลย่อ/ขยายเองตามที่ว่างที่เหลือในแผ่น (จอเตี้ย/แคบ = การ์ดเล็กลงเอง ไอคอนย่อตาม)
+   · แสงฟุ้งชมพูจากขอบล่างจอ (ตามตัวอย่าง public/ตัวอย่างเบลอฟุ้งชมพู.svg สี #FFB3B3) ── */
+#weeklyPanel .wk-info { height: 55cqh; gap: 0; justify-content: center; }
+#weeklyPanel .wk-name, #weeklyPanel .wk-mname { line-height: 1.2; margin: 0; }
+#weeklyPanel .wk-info .wk-story, #weeklyPanel .wk-info .wk-mdesc { margin-top: 1.4cqh; }   /* ชื่อ→คำอธิบาย ห้ามชิดเกิน (ผู้ใช้ 27 พ.ย.) · .wk-info ช่วยชนะกฎ :is(... .wk-rw-head b) ที่ตั้ง margin 0 */
+#weeklyPanel .wk-minion { margin-top: 2.8cqh; flex: none; }
+#weeklyPanel .wk-rw-head { margin-top: 2.6cqh; flex: none; }
+#weeklyPanel .wk-rewards {
+  flex: 1 1 0; min-height: 0; max-height: 21cqh; margin-top: 1.4cqh;
+  width: 100%; max-width: 76cqh; align-self: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr);
+  justify-content: stretch; gap: 3cqh;
+}
+#weeklyPanel .wk-rw { height: 100%; aspect-ratio: 1 / .8; width: auto; max-width: 100%; justify-self: center; box-sizing: border-box; padding-bottom: .9cqh; }
+#weeklyPanel .wk-rw-art { flex: 1 1 0; min-height: 0; padding-top: 0; container-type: size; }
+#weeklyPanel .wk-rw .coin.big, #weeklyPanel .wk-rw .gem.big { width: auto; height: 76cqh; max-height: 76cqh; aspect-ratio: 1; }
+#weeklyPanel .wk-rw .wk-chest { width: auto; height: 74cqh; aspect-ratio: 200 / 184; max-width: 100cqw; }
+#weeklyPanel .wk-rw small { flex: none; }
+/* แสงฟุ้งชมพูจากล่าง: ทับฉาก อยู่ใต้บอส + แผ่นข้อมูล/ปุ่ม */
+#weeklyPanel > .pop::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 72%; z-index: 0; pointer-events: none;   /* z 0 = ทับฉาก แต่อยู่ใต้บอส (ผู้ใช้: บอสอยู่บนเลเยอร์ชมพู) */
+  background: linear-gradient(0deg, rgba(255,179,179,.75) 0%, rgba(255,179,179,.5) 22%, rgba(255,179,179,.24) 50%, rgba(255,179,179,0) 100%);
+}
+@media (max-height: 500px) {
+  #weeklyPanel .wk-info { height: 57cqh; }
+  #weeklyPanel .wk-minion, #weeklyPanel .wk-rw-head { margin-top: 2cqh; }
+  #weeklyPanel .wk-rewards { max-height: 22cqh; margin-top: 1.2cqh; }
+}
+
+/* ── ปรับรอบ 8 (ผู้ใช้ 27 พ.ย.): ปุ่มเตรียมพร้อม = วุ้นม่วงใสนุ่มแบบปุ่มเล่นหน้าแรก (ชุดเดียวกับ .okbtn แต่สีม่วง)
+   ตัวอักษรขาว ขอบม่วงเดิม (ขอบมนจากเงาวงกลม) · หัวข้อ "รางวัลเมื่อพิชิตบอส" / "เส้นทางปราบบอส" เป็นวุ้นใสชุดเดียวกัน
+   กฎโปรเจกต์: หน้าย่อยกดแล้วแค่สว่างลด ไม่ยุบ/ไม่เด้ง (.jelly ใช้ได้เฉพาะหน้าแรก) ── */
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) {
+  border-radius: 999px;
+  border: .4cqh solid rgba(255,255,255,.66);
+  padding: 0 9cqh 0 4cqh;
+  background:
+    radial-gradient(70% 40% at 50% 112%, rgba(250,228,255,.6) 0%, rgba(250,228,255,0) 70%),
+    radial-gradient(50% 50% at 26% 10%, rgba(255,255,255,.34) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, rgba(226,170,252,.93) 0%, rgba(196,120,240,.9) 50%, rgba(160,84,214,.94) 100%);
+  -webkit-backdrop-filter: blur(4px) saturate(1.3);
+  backdrop-filter: blur(4px) saturate(1.3);
+  box-shadow:
+    0 1.6cqh 2.6cqh -.9cqh rgba(120,40,170,.55),
+    0 .4cqh .9cqh rgba(90,20,120,.18),
+    inset 0 -1.6cqh 2cqh -.8cqh rgba(110,40,160,.5),
+    inset 0 1.2cqh 1.6cqh -.9cqh rgba(255,255,255,.72),
+    inset 0 -.3cqh .3cqh rgba(250,228,255,.6),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+  transition: filter .12s ease;
+}
+/* เงาวาวแคปซูล + จุดแสงสองเม็ด (แบบปุ่มเล่น) */
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull)::before {
+  content: ""; position: absolute; pointer-events: none;
+  inset: 9% 7% auto 7%; height: 40%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 5% 55%, rgba(255,255,255,.95) 0 1.1cqh, rgba(255,255,255,0) 1.5cqh),
+    radial-gradient(circle at 9.5% 26%, rgba(255,255,255,.85) 0 .55cqh, rgba(255,255,255,0) .85cqh),
+    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.12) 75%, rgba(255,255,255,0) 100%);
+}
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull):hover { filter: brightness(1.05); }
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull):active { filter: brightness(.93); transform: none; }
+#weeklyPanel .wk-go span {
+  position: relative; color: #FFFFFF; -webkit-text-stroke: 0; letter-spacing: .02em;
+  text-shadow: calc(.55cqh * 1) calc(.55cqh * 0) 0 #6A2475, calc(.55cqh * 0.866) calc(.55cqh * 0.5) 0 #6A2475, calc(.55cqh * 0.5) calc(.55cqh * 0.866) 0 #6A2475, calc(.55cqh * 0) calc(.55cqh * 1) 0 #6A2475, calc(.55cqh * -0.5) calc(.55cqh * 0.866) 0 #6A2475, calc(.55cqh * -0.866) calc(.55cqh * 0.5) 0 #6A2475, calc(.55cqh * -1) calc(.55cqh * 0) 0 #6A2475, calc(.55cqh * -0.866) calc(.55cqh * -0.5) 0 #6A2475, calc(.55cqh * -0.5) calc(.55cqh * -0.866) 0 #6A2475, calc(.55cqh * 0) calc(.55cqh * -1) 0 #6A2475, calc(.55cqh * 0.5) calc(.55cqh * -0.866) 0 #6A2475, calc(.55cqh * 0.866) calc(.55cqh * -0.5) 0 #6A2475, 0 .6cqh 0 #6A2475, 0 1cqh 1.4cqh rgba(90,20,120,.3);
+}
+#weeklyPanel .wk-go i { right: 3.6cqh; filter: drop-shadow(0 .3cqh .4cqh rgba(110,40,160,.35)); }
+
+/* หัวข้อริบบิ้นสองอัน: วุ้นใส เงาวาวด้านบน ขอบขาวบาง · ตัวขาวขอบม่วงเดิม (มน) */
+#weeklyPanel .wk-rw-head, #weeklyPanel .wk-route-h { border: .3cqh solid rgba(255,255,255,.7); overflow: visible; }
+#weeklyPanel .wk-rw-head {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 48%),
+    linear-gradient(90deg, rgba(206,140,246,.92) 0%, rgba(226,180,250,.9) 60%, rgba(244,220,255,.88) 100%);
+  box-shadow: 0 .8cqh 1.4cqh -.4cqh rgba(130,60,170,.35), inset 0 -.6cqh .9cqh -.3cqh rgba(130,60,180,.35), inset 0 .5cqh .6cqh -.3cqh rgba(255,255,255,.8);
+}
+#weeklyPanel .wk-route-h {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 48%),
+    linear-gradient(90deg, rgba(255,160,208,.94) 0%, rgba(255,200,228,.92) 70%, rgba(255,226,240,.6) 100%);
+  box-shadow: 0 .8cqh 1.4cqh -.4cqh rgba(200,70,140,.3), inset 0 -.6cqh .9cqh -.3cqh rgba(220,80,150,.3), inset 0 .5cqh .6cqh -.3cqh rgba(255,255,255,.8);
+}
+#weeklyPanel .wk-rw-head b { color: #FFFFFF; -webkit-text-stroke: 0; text-shadow: calc(.42cqh * 1) calc(.42cqh * 0) 0 #6F1D5B, calc(.42cqh * 0.866) calc(.42cqh * 0.5) 0 #6F1D5B, calc(.42cqh * 0.5) calc(.42cqh * 0.866) 0 #6F1D5B, calc(.42cqh * 0) calc(.42cqh * 1) 0 #6F1D5B, calc(.42cqh * -0.5) calc(.42cqh * 0.866) 0 #6F1D5B, calc(.42cqh * -0.866) calc(.42cqh * 0.5) 0 #6F1D5B, calc(.42cqh * -1) calc(.42cqh * 0) 0 #6F1D5B, calc(.42cqh * -0.866) calc(.42cqh * -0.5) 0 #6F1D5B, calc(.42cqh * -0.5) calc(.42cqh * -0.866) 0 #6F1D5B, calc(.42cqh * 0) calc(.42cqh * -1) 0 #6F1D5B, calc(.42cqh * 0.5) calc(.42cqh * -0.866) 0 #6F1D5B, calc(.42cqh * 0.866) calc(.42cqh * -0.5) 0 #6F1D5B, 0 .5cqh .8cqh rgba(90,20,110,.25); }
+#weeklyPanel .wk-route-h { color: #FFFFFF; -webkit-text-stroke: 0; text-shadow: calc(.48cqh * 1) calc(.48cqh * 0) 0 #8A2C8E, calc(.48cqh * 0.866) calc(.48cqh * 0.5) 0 #8A2C8E, calc(.48cqh * 0.5) calc(.48cqh * 0.866) 0 #8A2C8E, calc(.48cqh * 0) calc(.48cqh * 1) 0 #8A2C8E, calc(.48cqh * -0.5) calc(.48cqh * 0.866) 0 #8A2C8E, calc(.48cqh * -0.866) calc(.48cqh * 0.5) 0 #8A2C8E, calc(.48cqh * -1) calc(.48cqh * 0) 0 #8A2C8E, calc(.48cqh * -0.866) calc(.48cqh * -0.5) 0 #8A2C8E, calc(.48cqh * -0.5) calc(.48cqh * -0.866) 0 #8A2C8E, calc(.48cqh * 0) calc(.48cqh * -1) 0 #8A2C8E, calc(.48cqh * 0.5) calc(.48cqh * -0.866) 0 #8A2C8E, calc(.48cqh * 0.866) calc(.48cqh * -0.5) 0 #8A2C8E, 0 .5cqh .8cqh rgba(120,30,110,.25); }
+#weeklyPanel .wk-route-h i { text-shadow: none; }
+@media (max-height: 500px) {
+  #stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) { padding: 0 8cqh 0 3cqh; }
+}
+
+/* ── ปรับรอบ 9 (ผู้ใช้ 27 พ.ย. แจ้งว่าเจ้าของอนุญาต): ปุ่มเตรียมพร้อมเด้งดึ๋งแบบปุ่มลุยหน้าแรก (.jelly + src/jelly-btn.js ท่าชุดนุ่มของ #startBtn)
+   · มุมมนน้อยลง (ไม่เป็นแคปซูลเต็ม) ── */
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) { border-radius: 4.6cqh; }
+#stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull)::before { border-radius: 3.4cqh; }
+#stage #weeklyPanel .btn.wk-go.jelly:not(.play):not(.big):not(.pull):is(.jelly-press, :active) {
+  transform: scale(1.05, .9) translateY(.4cqh);
+  filter: brightness(.97);
+  box-shadow:
+    0 .6cqh 1.2cqh -.6cqh rgba(120,40,170,.5),
+    0 .2cqh .4cqh rgba(90,20,120,.18),
+    inset 0 -1cqh 1.4cqh -.7cqh rgba(110,40,160,.45),
+    inset 0 .9cqh 1.2cqh -.9cqh rgba(255,255,255,.62),
+    inset 0 -.3cqh .3cqh rgba(250,228,255,.6),
+    inset 0 0 0 1px rgba(255,255,255,.14);
+}
+#stage #weeklyPanel .btn.wk-go.jelly:not(.play):not(.big):not(.pull).jelly-boing { animation: jellyBoingSoft .62s linear both; }
+#stage #weeklyPanel .btn.wk-go.jelly:not(.play):not(.big):not(.pull).jelly-wiggle { animation: jellyWiggleSoft .55s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  #stage #weeklyPanel .btn.wk-go.jelly:is(.jelly-boing, .jelly-wiggle) { animation: none; }
+}
+@media (max-height: 500px) {
+  #stage #weeklyPanel .btn.wk-go:not(.play):not(.big):not(.pull) { border-radius: 5cqh; }
+}
+
+/* ── การ์ด Weekly Boss: ขอบคอมิกจากไฟล์นักออกแบบ (ผู้ใช้ 27 พ.ย. · public/ขอบเหลือง.svg + public/ขอบเเดง.svg)
+   ตัดเฉพาะชิ้นมุมแล้วแปลงเป็น webp ไว้ที่ public/ui/wb-corner-*.webp (ไฟล์ SVG แดงหนัก 1.8MB — ภาพตัดเบากว่ามาก)
+   สัดส่วนภาพคงตามไฟล์ต้นฉบับ (ไม่ยืด) · มุมขวาล่างของแผงแดงมนตามไฟล์ + กรอบการ์ดตัดมุมซ้ำ ── */
+.wb-burst {
+  width: auto; height: 74%; aspect-ratio: 1061 / 1186;
+  clip-path: none;
+  background: url("/ui/wb-corner-yellow.webp") 0 0 / 100% 100% no-repeat;
+}
+.wb-burst::after { content: none; }
+.wb-red {
+  width: auto; height: 62%; aspect-ratio: 1116 / 881;
+  clip-path: none;
+  background: url("/ui/wb-corner-red.webp") 100% 100% / 100% 100% no-repeat;
+}
+.wb-red::before { content: none; }
+/* รอบ 6 (ผู้ใช้ 27 พ.ย.): เส้นขอบแผงแดงต้องวิ่งชนขอบการ์ด ไม่ขาดกลางทาง — ดันภาพเลยขอบขวา/ล่างนิดหนึ่ง (ปลายเส้น + มุมมนของไฟล์ไปซ่อนนอกกรอบ)
+   · "Weekly Boss" + คำโปรยเป็นแนวตรง ชิดซ้ายบน · ป้ายสัปดาห์เล็กลง พื้นหลังคลุมวรรณยุกต์/สระบนครบ */
+.wb-red { transform: translate(6%, 7.5%); }
+.wb-title { left: 4%; top: 7%; transform: none; font-size: 6.6cqw; line-height: 1.25; padding-top: .1em; }
+.wb-lead { left: 4.6%; top: 26.5%; transform: none; font-size: 2.1cqw; line-height: 1.4; }
+.wb-week { right: 2.2%; top: 3%; }
+.wb-week b { font-size: 2.8cqw; line-height: 1.3; padding: .5em .8em .14em; -webkit-text-stroke-width: .48cqw; }
+.wb-week small { font-size: max(1.3cqw, 10px); margin-top: -.3cqw; padding: .35em 1.1em .3em; -webkit-text-stroke-width: .26cqw; }
+/* รอบ 7 (ผู้ใช้ 27 พ.ย.): หัวข้อ + คำโปรยยกขึ้น เว้นระยะห่างกันขึ้น · ป้ายสัปดาห์/วันที่เล็กลงทั้งตัวอักษรและพื้นหลัง (ระยะในป้ายเป็น em จึงย่อตาม) */
+.wb-title { top: 2.5%; }
+.wb-lead { top: 24%; }
+.wb-week { right: 2%; top: 2.6%; }
+.wb-week b { font-size: 2.25cqw; -webkit-text-stroke-width: .4cqw; }
+.wb-week small { font-size: max(1.1cqw, 9px); margin-top: -.25cqw; -webkit-text-stroke-width: .22cqw; }
+/* ป้าย VS = ภาพจากไฟล์นักออกแบบ (ผู้ใช้ 27 พ.ย. · public/VS_color_ref_soft.svg → ตัดขอบว่าง + ลบพื้นดาวระเบิดชมพูออก (ผู้ใช้ขอ) เป็น public/ui/wb-vs.webp) */
+.wb-vs { left: 32%; top: 49%; width: 17%; }
+.wb-vs img { display: block; width: 100%; height: auto; filter: drop-shadow(0 .4cqw .6cqw rgba(120,30,80,.25)); }
+/* รอบ 8 (ผู้ใช้ 27 พ.ย.): "สัปดาห์ที่ 1" + วันที่ = ม่วงเข้ม บนพื้นม่วงอ่อน (ไม่มีขอบขาว) */
+.wb-week b { color: #4E1758; -webkit-text-stroke: 0; text-shadow: 0 .15cqw 0 rgba(255,255,255,.7); }
+.wb-week small { color: #4E1758; -webkit-text-stroke: 0; }
+/* รอบ 9 (ผู้ใช้ 27 พ.ย.): ฉากสวนหลังการ์ดเบลอนิด ๆ ให้ตัวละคร/ตัวอักษรเด่น · ขยายนิดกันขอบเบลอจางเป็นขอบขาว (กรอบตัดล้นอยู่แล้ว) */
+.wb-art { filter: blur(.22cqw); transform: scale(1.03); }
+/* ป้าย VS ขยับนิด ๆ (ผู้ใช้ 27 พ.ย.): เต้นตุบ + เอียงซ้ายขวาเบา ๆ วนรอบละ 1.8 วิ · ลดการเคลื่อนไหว = นิ่ง */
+.wb-vs img { animation: wbVs 1.8s ease-in-out infinite; transform-origin: 50% 55%; }
+@keyframes wbVs {
+  0%, 100% { transform: scale(1) rotate(-3deg); }
+  12%      { transform: scale(1.09) rotate(1deg); }
+  24%      { transform: scale(.98) rotate(2deg); }
+  36%      { transform: scale(1.03) rotate(0deg); }
+  60%      { transform: scale(1) rotate(3deg); }
+}
+@media (prefers-reduced-motion: reduce) { .wb-vs img { animation: none; } }

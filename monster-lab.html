@@ -71,6 +71,10 @@
 
     .transport { padding: 8px 14px 10px; border-top: 1px solid var(--line); background: var(--panel2); display: flex; flex-direction: column; gap: 6px; }
     .scrub { width: 100%; accent-color: var(--accent); }
+    .ov.br { display: flex; gap: 6px; }
+    .zoomstep button { font-size: 16px; font-weight: 700; min-width: 38px; }
+    .view.zoomed #cv { cursor: grab; touch-action: none; }
+    .view.zoomed.drag #cv { cursor: grabbing; }
     .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .grp { display: flex; gap: 4px; }
     .ib {
@@ -178,7 +182,10 @@
           <button type="button" class="icon" id="shot" title="บันทึกภาพเฟรมนี้ (P)" aria-label="บันทึกภาพ">📷</button>
           <button type="button" class="icon" id="wide" title="ขยายจอภาพ ซ่อนแผงข้าง (F)" aria-label="ขยายจอภาพ">⛶</button>
         </div>
-        <div class="ov br"><div class="seg" id="zoom" aria-label="ซูม"></div></div>
+        <div class="ov br">
+          <div class="seg zoomstep"><button type="button" id="zoomOut" title="ซูมออก (−)" aria-label="ซูมออก">－</button><button type="button" id="zoomIn" title="ซูมเข้า (+)" aria-label="ซูมเข้า">＋</button></div>
+          <div class="seg" id="zoom" aria-label="ซูม"></div>
+        </div>
       </div>
       <div class="transport">
         <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="ตำแหน่งในท่า">
@@ -213,6 +220,8 @@
           <div class="bosses" id="bosses"></div>
           <div class="sec">ลูกน้อง <span class="line"></span></div>
           <div class="bosses" id="minions"></div>
+          <div class="sec">ท่าแมวเตรียมสู้ <span class="line"></span></div>
+          <div class="bosses" id="cats"></div>
           <div class="sec">ท่าทาง <span class="line"></span></div>
           <div class="moves" id="states"></div>
           <div class="opts" style="margin-top:9px" data-only="boss">
@@ -307,6 +316,9 @@
   <script type="module">
     import { drawStumpBoss, STUMP, STUMP_STATES, STUMP_ACT, STUMP_DEFEAT, STUMP_RAIN, WARN_TIME, drawStumpBolt, drawStumpRing, drawStumpFog, drawStumpShard, drawStumpSpike, drawStumpMarker, drawStumpLane, drawStumpDashWarn } from './src/render/bosses/stump.js';
     import { drawLogSpirit, LOG_SPIRIT, LOG_SPIRIT_STATES, LOG_SPIRIT_ACT } from './src/render/minions/log-spirit.js';
+    import { drawBanana, loadBanana, BANANA, BANANA_STATES } from './src/render/minions/banana.js';
+    import { drawBananaBoss, loadBananaBoss, BANANA_BOSS, BANANA_BOSS_STATES, BANANA_BOSS_ACT } from './src/render/bosses/banana.js';
+    import { drawCatMagic, loadCatMagic, CAT_MAGIC, CAT_MAGIC_STATES } from './src/render/cat-magic.js';
     import { sfx as SFX, unlockAudio } from './src/audio.js';
     import { setMusicTrack, startMusic, SILENT } from './src/music.js';
     import { drawCat2 } from './src/render/cat2.js';
@@ -321,6 +333,11 @@
 
     // วนทุกท่า (ต่อตัว)
     const DEMO_STUMP = [['enter', 2.6], ['idle', 1.4], ['cast', 3.4], ['idle', 0.8], ['burst', 2.8], ['idle', 0.8], ['charge', 3.2], ['shield', 3.8], ['fog', 3.2], ['idle', 0.8], ['tired', 3.2], ['defeat', STUMP_STATES.defeat.dur + 0.8]];
+    const DEMO_BANANA = [['idle', 5.2], ['walk', 2.0], ['taunt', 1.6], ['hop', 1.2], ['idle', 0.8], ['dash', 1.5], ['dizzy', 1.6], ['stomp', 1.6]];
+    loadBanana();
+    loadBananaBoss();
+    loadCatMagic();
+    const DEMO_BANANA_BOSS = [['enter', 2.6], ['idle', 1.6], ['throw', 2.6], ['idle', 0.8], ['slam', 2.4], ['idle', 0.8], ['throw', 2.6], ['tired', 2.4], ['defeat', 4.8]];
     const DEMO_LOG = [['idle', 1.6], ['dash', 1.7], ['idle', 0.6], ['spin', 1.5], ['hop', 1.3], ['shoot', 2.0], ['idle', 0.6], ['dizzy', 1.6], ['sleep', 3.2], ['stomp', 1.7]];
     // บอส + ลูกน้องทั้งหมด (เพิ่มตัวใหม่ที่นี่ · ตัวที่ยังไม่ได้วาด = รอแบบ)
     // def: H สูงตัว · hover ลอย · top เผื่อเหนือหัว · halfW ครึ่งกว้าง (หน่วยของตัวนั้น) · ratio สูงกี่เท่าของน้อง
@@ -328,9 +345,19 @@
     const CHARS = [
       { id: 'stump', kind: 'boss', name: `${STUMP.name}`, note: `${STUMP.title} · บอสเกมสอน`, em: '🌳', draw: drawStumpBoss, def: { ...STUMP, top: 40, halfW: 66 }, states: STUMP_STATES, demo: DEMO_STUMP, refs: BOSS_REFS,
         demoNote: 'เปิดตัว → ท่าโจมตี 5 ท่า → เหนื่อย → แพ้', explodeNote: 'ดูว่าแต่ละชิ้นขยับแยกกันได้ครบไหม: ตัว+ใบไม้ · หน้า (ตา คิ้ว ปาก) · จุดอ่อนบนหัว · แขนซ้าย · แขนขวา · ผลึก+น้อง' },
-      { id: 'next', kind: 'boss', name: 'บอสตัวต่อไป', note: 'รอแบบจากทีม', em: '❔', wait: true },
+      // บอสกล้วยราคี (ผู้ใช้ 26 พ.ย.): บอสตัวแรกของเกม — ภาพจากไฟล์แบบ 3 ท่า (ท่าหลัก · เอื้อมจับกล้วย · ปากล้วย) ขยับทีละชิ้น
+      { id: 'bananaBoss', kind: 'boss', name: BANANA_BOSS.name, note: `${BANANA_BOSS.title} · บอสตัวแรก`, em: '🍌', draw: drawBananaBoss, def: BANANA_BOSS, states: BANANA_BOSS_STATES, demo: DEMO_BANANA_BOSS,
+        refs: ['banana-boss-final', 'banana-boss-grab-final', 'banana-boss-throw-final'].map((f, i) => [new URL(`./src/render/bosses/banana/${f}.svg`, location.href).href, ['ท่าหลัก', 'ท่าจับกล้วย', 'ท่าปากล้วย'][i]]),
+        demoNote: 'เปิดตัว → ยืนขู่ → ปากล้วย → กระแทกพื้น → ปากล้วย → เหนื่อย → แพ้', explodeNote: 'ชิ้นจากไฟล์แบบ: ใบกล้วย · เครือกล้วย · ตัว+แขนขวา · แขนซ้าย · ขา 2 · รากเอว · หน้า · ปลีเขา · กำปั้น 2 (+ แขน/มือของท่าจับ-ท่าปา)' },
+      // ลูกสมุนกล้วย (ผู้ใช้ 25 พ.ย.): ลูกสมุนของบอสตัวแรก ธีมต้นกล้วย — ภาพจากไฟล์ banana-minion-phase3-4.svg (11 ชิ้น) ขยับทีละชิ้น
+      { id: 'banana', kind: 'minion', name: BANANA.name, note: `${BANANA.title} · ลูกสมุนบอสต้นกล้วย`, em: '🍌', draw: drawBanana, def: BANANA, states: BANANA_STATES, demo: DEMO_BANANA, refs: [[new URL('./src/render/minions/banana-minion.svg', location.href).href, 'ไฟล์แบบ Phase 3.4']],
+        demoNote: 'ยืนกวน → เดิน → แลบลิ้นยั่ว → กระโดด → พุ่งชน → มึน → โดนเหยียบ', explodeNote: 'ชิ้นจากไฟล์แบบ 11 กลุ่ม: ขั้ว · ขาเปลือก 3 ชิ้น · ตัว · เปลือกหน้า · ร่องผิว · ตา 2 ข้าง · ลิ้น · ปาก' },
       { id: 'log', kind: 'minion', name: LOG_SPIRIT.name, note: `${LOG_SPIRIT.title} · ลูกน้องภูตตอไม้`, em: '🪵', draw: drawLogSpirit, def: LOG_SPIRIT, states: LOG_SPIRIT_STATES, demo: DEMO_LOG, refs: [[new URL('./docs/minion-log/1-sheet.png', location.href).href, 'ชีตแบบลูกน้อง']],
         demoNote: 'ลอย → พุ่งชน → หมุนตัว → กระโดด → ยิงคริสตัล → มึน → หลับ → โดนเหยียบ', explodeNote: 'ดูว่าแต่ละชิ้นแยกกันครบไหม (ตามหน้า "แยกชิ้นส่วน" ในชีต): ตอไม้ · หมอกสองชั้น · หน้า (ตา คิ้ว ปาก) · คริสตัล · ใบไม้' },
+      // ท่าแมวเตรียมสู้ (ผู้ใช้ 27 พ.ย.): น้องส้มปล่อยพลังเวท — ภาพจากไฟล์ orange-cat-magic-final.svg (14 ชิ้น) ขยับทีละชิ้น · ratio = สูงกี่เท่าของน้องในเกม
+      { id: 'catMagic', kind: 'cat', name: CAT_MAGIC.name, note: `${CAT_MAGIC.title} · ท่าแมวเตรียมสู้`, em: '🐱', draw: drawCatMagic, def: CAT_MAGIC, states: CAT_MAGIC_STATES, demo: [['cast', CAT_MAGIC_STATES.cast.dur + 1.2]],
+        refs: [[new URL('./src/render/cat-magic/orange-cat-magic-final-New.svg', location.href).href, 'ไฟล์แบบ ปล่อยพลังเวท (โมจิ)']],
+        demoNote: 'ปล่อยพลังเวท', explodeNote: 'ชิ้นจากไฟล์แบบ 14 กลุ่ม: ริบบิ้นเวทหลัง/หน้า · หาง · ตัว+เท้าหลัง · ขาหลังยก · แขนร่ายเวท · หัว+หู · ตา 2 · จมูก+ปาก · อุ้งเท้าพับ · ขีดแก้ม · ดาวเวท · ประกาย' },
     ];
     const KITTEN_NAMES = { orange: 'ส้ม', pearl: 'ไข่มุก', calico: 'สามสี', siamese: 'วิเชียรมาศ', konja: 'ขาวมณี/คอนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'สลิด', tortie: 'กระดองเต่า', cow: 'วัว', manee: 'ขาวมณี', somsa: 'ส้มสา', suea: 'เสือ', soft: 'ขาวนวล', hawkBlue: 'ตาเหยี่ยวฟ้า' };
 
@@ -339,7 +366,7 @@
       t: 0, st: 0, crack: 0, hitAt: null,
       bob: true, drift: false, gaze: -1, look: 'orange',
       bg: 'sheet', cmp: true, ratio: STUMP.ratio, explode: 0, zoom: 1, turn: null, rage: false,
-      count: 1, face: 'auto', ratios: {}, fx: true, snd: true, music: SILENT,
+      count: 1, face: 'auto', ratios: {}, fx: true, snd: true, music: SILENT, panX: 0, panY: 0,
       tab: 'moves', cut: 'perfect', cutVer: 'new', cutBg: 'field',
     };
     const demoLen = () => st.boss.demo.reduce((a, [, d]) => a + d, 0);
@@ -445,6 +472,15 @@
         tired: [[0.05, 'hopeFull'], [0.05, 'stumpTired']],
         defeat: [[0, 'stumpQuake'], [DF.shatter, 'stumpShatter'], [DF.melt, 'stumpMelt'], [DF.free, 'bubblePop'], [DF.wake, 'mew'], [DF.done, 'bossWin']],
       },
+      // บอสกล้วยราคี (ผู้ใช้ 26 พ.ย. "ทำเสียงเอฟเฟกต์ให้บอสกล้วย") — จังหวะตรงกับท่าใน banana.js
+      bananaBoss: {
+        enter: [[0, 'bananaDrop'], [0.55, 'bananaLand'], [1.15, 'bananaRoar']],
+        idle: [[1.6, 'bananaChuckle']],
+        throw: [[0.05, 'bananaReach'], [0.36, 'bananaPluck'], [0.55, 'bananaWindup'], [BANANA_BOSS_ACT.throw.release - 0.05, 'bananaThrow']],
+        slam: [[0, 'bananaSlamCharge'], [0.45, 'bananaJump'], [BANANA_BOSS_ACT.slam.land, 'bananaSlam']],
+        tired: [[0.05, 'hopeFull'], [0.05, 'bananaTired']],
+        defeat: [[0, 'bananaQuake'], [1.1, 'bananaCrownPop'], [1.6, 'bananaFall'], [2.8, 'bananaSparkle'], [3.6, 'bossWin']],
+      },
       log: {
         shoot: [[0, 'mobCharge'], ...LOG_SPIRIT_ACT.shoot.map((ts) => [ts, 'mobShoot'])],
         dash: [[0, 'mobAlert'], [0.5, 'mobDash']],
@@ -481,7 +517,7 @@
     function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1600); }
 
     function renderBosses() {
-      for (const [id, kind] of [['bosses', 'boss'], ['minions', 'minion']]) {
+      for (const [id, kind] of [['bosses', 'boss'], ['minions', 'minion'], ['cats', 'cat']]) {
         const el = $(id); el.innerHTML = '';
         for (const b of CHARS.filter((c) => c.kind === kind)) {
           const c = document.createElement('button'); c.type = 'button';
@@ -498,16 +534,16 @@
       st.boss = b; st.ratio = st.ratios[b.id] ?? b.def.ratio;
       document.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== b.kind; });
       const r = $('ratio');
-      if (b.kind === 'minion') { r.min = 0.4; r.max = 1.4; } else { r.min = 1; r.max = 3.5; }
+      if (b.kind === 'minion') { r.min = 0.4; r.max = 1.4; } else if (b.kind === 'cat') { r.min = 0.6; r.max = 1.6; } else { r.min = 1; r.max = 3.5; }
       r.value = st.ratio; $('ratioOut').textContent = `×${st.ratio.toFixed(2)}`;
       $('refs').innerHTML = b.refs.map(([src, alt]) => `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${alt}"></a>`).join('');
       $('explodeNote').textContent = b.explodeNote;
       st.crack = 0; st.hitAt = null;
-      renderBosses(); setState('idle');
+      renderBosses(); setState(b.states.idle ? 'idle' : Object.keys(b.states)[0]);
     }
     function renderStates() {
       const el = $('states'); el.innerHTML = '';
-      const list = [...Object.entries(st.boss.states).map(([id, s]) => [id, s]), ['demo', { name: 'วนทุกท่า', em: '🔁', note: st.boss.demoNote }]];
+      const list = [...Object.entries(st.boss.states).map(([id, s]) => [id, s]), ...(Object.keys(st.boss.states).length > 1 ? [['demo', { name: 'วนทุกท่า', em: '🔁', note: st.boss.demoNote }]] : [])];
       list.forEach(([id, s], i) => {
         const c = document.createElement('button'); c.type = 'button';
         const on = id === 'demo' ? st.demo : (!st.demo && st.state === id);
@@ -525,11 +561,12 @@
     }
     function hit() {
       if (st.boss.kind === 'minion') { setState('stomp'); toast('💫 โดนเหยียบ!'); return; }
+      if (st.boss.kind === 'cat') { setState(Object.keys(st.boss.states)[0]); return; }   // ท่าแมว: เล่นท่าใหม่ตั้งแต่ต้น
       if (st.demo) setState('tired');
       if (st.state === 'defeat') return;
       st.crack = Math.min(3, st.crack + 1); st.hitAt = st.t;
       $('crack')._paint();
-      play('stumpHit'); if (st.crack === 2) setTimeout(() => play('stumpRage'), 350);
+      play(st.boss.id === 'bananaBoss' ? 'bananaHit' : 'stumpHit'); if (st.crack === 2) setTimeout(() => play(st.boss.id === 'bananaBoss' ? 'bananaRoar' : 'stumpRage'), 350);
       if (st.crack >= 3) setTimeout(() => { setState('defeat'); }, 380);
       toast(st.crack >= 3 ? '💥 ผลึกแตก!' : `⭐ โดนจุดอ่อน ${st.crack}/3`);
     }
@@ -547,7 +584,38 @@
     seg($('turn'), [[null, 'ตามท่า'], [1, 'เฉียง'], [0, 'หน้าตรง']], () => st.turn, (v) => { st.turn = v; });
     seg($('bg'), [['sheet', 'ขาว (แบบ)'], ['garden', 'สวน'], ['night', 'มืด']], () => st.bg, (v) => { st.bg = v; });
     seg($('cmp'), [[true, 'โชว์'], [false, 'ซ่อน']], () => st.cmp, (v) => { st.cmp = v; });
-    seg($('zoom'), [[1, 'พอดี'], [1.6, '×1.6'], [2.4, '×2.4']], () => st.zoom, (v) => { st.zoom = v; });
+    // ซูม (ผู้ใช้ 25 พ.ย. "เพิ่มซูมเข้าแบบ cat-lab"): ปุ่มตั้งค่า · ＋/－ · ล้อเมาส์ (ซูมรอบจุดที่ชี้) · ลากเลื่อนจอเมื่อซูม · ดับเบิลคลิก = พอดี
+    const ZMIN = 0.6, ZMAX = 8;
+    function setZoom(z, cx, cy) {
+      z = Math.max(ZMIN, Math.min(ZMAX, z));
+      const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+      // จุดที่ชี้ (ไม่ระบุ = กลางจอ) อยู่ที่เดิมหลังซูม
+      const px = ((cx ?? r.left + r.width / 2) - r.left) * dpr, py = ((cy ?? r.top + r.height / 2) - r.top) * dpr;
+      const k = z / st.zoom;
+      st.panX = px - (px - st.panX) * k; st.panY = py - (py - st.panY) * k;
+      st.zoom = z;
+      if (z <= 1.001) { st.panX = 0; st.panY = 0; }
+      document.querySelector('.view').classList.toggle('zoomed', z > 1.001);
+      $('zoom')._paint?.();
+    }
+    seg($('zoom'), [[1, 'พอดี'], [1.6, '×1.6'], [2.4, '×2.4'], [4, '×4']], () => st.zoom, (v) => { st.panX = 0; st.panY = 0; st.zoom = 1; setZoom(v); });
+    $('zoomIn').onclick = () => setZoom(st.zoom * 1.25);
+    $('zoomOut').onclick = () => setZoom(st.zoom / 1.25);
+    cv.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(st.zoom * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+    cv.addEventListener('dblclick', () => { st.panX = 0; st.panY = 0; st.zoom = 1; setZoom(1); });
+    {
+      let drag = null;
+      cv.addEventListener('pointerdown', (e) => { if (st.zoom <= 1.001) return; drag = { x: e.clientX, y: e.clientY, px: st.panX, py: st.panY, moved: false }; cv.setPointerCapture(e.pointerId); });
+      cv.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const dpr = Math.min(2, devicePixelRatio || 1), dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (Math.abs(dx) + Math.abs(dy) > 4) { drag.moved = true; document.querySelector('.view').classList.add('drag'); }
+        st.panX = drag.px + dx * dpr; st.panY = drag.py + dy * dpr;
+      });
+      const end = () => { if (!drag) return; cv._dragged = drag.moved; drag = null; document.querySelector('.view').classList.remove('drag'); };
+      cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    }
+    addEventListener('keydown', (e) => { if (e.target.closest?.('input, select, textarea')) return; if (e.key === '+' || e.key === '=') setZoom(st.zoom * 1.25); else if (e.key === '-' || e.key === '_') setZoom(st.zoom / 1.25); });
     seg($('speed'), [[0.25, '¼'], [0.5, '½'], [1, '1×'], [2, '2×']], () => st.speed, (v) => { st.speed = v; });
     $('ratio').oninput = (e) => { st.ratio = +e.target.value; $('ratioOut').textContent = `×${st.ratio.toFixed(2)}`; };
     $('explode').value = 0; $('explodeOut').textContent = '0%';
@@ -561,16 +629,19 @@
     $('heal').onclick = () => { st.crack = 0; if (st.state === 'defeat') setState('idle'); $('crack')._paint(); };
     const togglePlay = () => { st.playing = !st.playing; $('play').textContent = st.playing ? '⏸ พัก' : '▶ เล่น'; $('badge').textContent = st.playing ? 'กำลังเล่น' : 'หยุดอยู่'; $('badge').classList.toggle('paused', !st.playing); };
     $('play').onclick = togglePlay;
-    cv.onclick = togglePlay;
+    cv.onclick = () => { if (cv._dragged) { cv._dragged = false; return; } togglePlay(); };   // ลากเลื่อนจอแล้วไม่นับเป็นแตะ
     const step = (dir) => { if (st.playing) togglePlay(); st.t += dir / 60; st.st = Math.max(0, st.st + dir / 60); };
     $('back').onclick = () => step(-1);
     $('fwd').onclick = () => step(1);
-    $('restart').onclick = () => { st.st = 0; };
+    $('restart').onclick = () => { st.t -= st.st; st.st = 0; };
     $('wide').onclick = () => document.body.classList.toggle('wide');
     $('shot').onclick = () => { const a = document.createElement('a'); a.download = `${st.boss.kind}-${st.boss.id}-${st.demo ? 'demo' : st.state}.png`; a.href = cv.toDataURL('image/png'); a.click(); toast('📷 บันทึกภาพแล้ว'); };
     $('scrub').oninput = (e) => {
       if (st.playing) togglePlay();
-      const len = curLen(); st.st = (e.target.value / 1000) * len;
+      // เวลารวม (st.t) เลื่อนตามด้วย — ของที่คิดจากเวลารวม (ลิ้น กะพริบ หายใจ ดาวหมุน) ย้อนดูได้ตรงเฟรม (ผู้ใช้ 25 พ.ย.)
+      const len = curLen(), ns = (e.target.value / 1000) * len;
+      const cur = st.demo ? st.st % demoLen() : st.st % len;
+      st.t += ns - cur; st.st = ns;
     };
 
     document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
@@ -667,10 +738,11 @@
       const unitsTall = Math.max(D.H + D.hover + D.top, st.cmp ? D.H / st.ratio + 16 : 0) + (swarm ? 34 : 0);   // ตัว + ลอย + ของเหนือหัว (หรือน้องที่สูงกว่า)
       const fitPx = Math.min(gy * 0.92, h * 0.78);
       const fitW = (w * 0.86) / ((swarm ? D.halfW * 2 + 150 : D.halfW * 2) + (st.cmp ? D.H / st.ratio * 0.9 + 30 : 0));
-      const s = Math.min(fitPx / unitsTall, fitW) * st.zoom * (1 / (1 + st.explode * 0.3));
+      const s = Math.min(fitPx / unitsTall, fitW) * (1 / (1 + st.explode * 0.3));   // ซูม = ขยายทั้งฉากรอบจุดที่ชี้ (ctx.scale ข้างล่าง)
       const bossPx = D.H * s;
       const catScale = (bossPx / st.ratio) / catH * CAT_S;
       const bx = w * (st.cmp ? 0.6 : 0.5) - (st.explode * 52 * s) - (swarm ? 60 * s : 0);
+      ctx.save(); ctx.translate(st.panX, st.panY); ctx.scale(st.zoom, st.zoom);   // ซูม + เลื่อนจอ (ฉากหลังอยู่กับที่)
       // พื้น
       if (st.bg !== 'garden') {
         ctx.fillStyle = st.bg === 'sheet' ? 'rgba(160,130,200,.18)' : 'rgba(255,244,220,.10)';
@@ -688,7 +760,7 @@
         ctx.setLineDash([]);
         ctx.fillStyle = st.bg === 'night' ? 'rgba(255,244,220,.75)' : 'rgba(90,50,130,.75)';
         ctx.font = `500 ${Math.max(12, s * 4)}px Mitr, sans-serif`; ctx.textAlign = 'center';
-        ctx.fillText(`${mini ? 'ลูกน้อง' : 'บอส'}สูง ×${st.ratio.toFixed(mini ? 2 : 1)} ของน้อง`, cx, catTop - 10);
+        ctx.fillText(`${st.boss.kind === 'cat' ? 'ท่านี้' : mini ? 'ลูกน้อง' : 'บอส'}สูง ×${st.ratio.toFixed(mini || st.boss.kind === 'cat' ? 2 : 1)} ของน้อง`, cx, catTop - 10);
         ctx.restore();
       }
       const hitT = st.hitAt != null ? st.t - st.hitAt : null;
@@ -702,7 +774,7 @@
         }
       }
       // ของที่ท่าปล่อย: พื้นที่ขนาดเกม (ดูหัวข้อด้านบน) · ชั้นหลังใช้ท่าของเฟรมก่อน (มือ/ปาก) แบบเดียวกับในเกม
-      const showFx = st.fx && !mini && !st.explode;
+      const showFx = st.fx && !mini && !st.explode && st.boss.id === 'stump';   // เอฟเฟกต์ท่าโจมตีชุดนี้เป็นของภูตตอไม้
       const K = (catH * catScale) / GAME_CAT;
       const g = { K, gy, BS: s / K, bx: bx / K, cx: (bx - D.halfW * s - (catH * catScale) * 0.55) / K };
       const fxLayer = (fn) => { ctx.save(); ctx.translate(0, gy); ctx.scale(K, K); fn(state, sst, st.t, st.lastP, g); ctx.restore(); };
@@ -710,6 +782,7 @@
       const P = st.boss.draw(ctx, bx, gy, s, o);
       st.lastP = P;
       if (showFx) fxLayer(fxFront);
+      ctx.restore();
       stepSound(state, sst, !!st.boss.states[state]?.loop && !st.demo && st.st >= st.boss.states[state].loop);
 
       // ป้าย + เวลา

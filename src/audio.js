@@ -2488,6 +2488,120 @@ export const sfx = {
     noise({ dur: 0.26, vol: 0.06, freq: 900, freqTo: 2800, q: 1.3, attack: 0.05 });
     woodKnock(480, 0.05);
   },
+  // ══ บอสกล้วยราคี (ผู้ใช้ 26 พ.ย. — src/render/bosses/banana.js) ══
+  // ตัวตนเสียง: ต้นกล้วยยักษ์ = ใบกล้วยกว้างเสียดสี "ซ่าาา" · เนื้อกล้วยหนึบ "ปุ๊/หนึบ" · หัวเราะกวน ๆ "เฮะ ๆ" แตกพร่า · กล้วยหมุน "วื้บ ๆ"
+  // ใบกล้วยเสียดสี: ซ่ากว้างกรองสูง ไถขึ้นแล้วลง
+  bananaRustle: (vol = 0.05) => {
+    noise({ dur: 0.5, vol, type: 'bandpass', freq: 2600, freqTo: 4800, q: 0.6, attack: 0.12 });
+    later(() => noise({ dur: 0.35, vol: vol * 0.7, type: 'bandpass', freq: 4200, freqTo: 2200, q: 0.7, attack: 0.05 }), 220);
+  },
+  // ตกจากฟ้า: ลมหวีดไถลง + ใบกล้วยพัดพึ่บพั่บ
+  bananaDrop: () => {
+    noise({ dur: 0.55, vol: 0.11, freq: 3400, freqTo: 420, q: 1.1, attack: 0.38 });
+    tone(1600, 300, 0.52, 'sine', 0.028);
+    [80, 200, 320, 420].forEach((ms) => later(() => noise({ dur: 0.08, vol: 0.05, freq: 1800, q: 1.2 }), ms));
+  },
+  // ลงพื้น: ตูมหนัก + เนื้อกล้วยหนึบ "ปึ้บ" + พื้นสะเทือน + ใบกล้วยสั่นซ่า
+  bananaLand: () => {
+    impact(0.28, 0.85);
+    tone(180, 60, 0.22, 'triangle', 0.08);
+    noise({ dur: 0.14, vol: 0.08, type: 'lowpass', freq: 900, freqTo: 200 });
+    rumble(1.1, 0.13);
+    later(() => sfx.bananaRustle(0.06), 60);
+  },
+  // คำรามหัวเราะเยาะ: คำรามแตกพร่า แล้ว "เฮะ เฮะ เฮะ" ทุ้ม ๆ สามที + ใบกล้วยสั่น
+  bananaRoar: () => {
+    beast({ dur: 0.9, f0: 95, f1: 170, f2: 110, vol: 0.19, flutter: 30, drive: 4.5, vowel: [760, 1180], vowelTo: [560, 900] });
+    [950, 1170, 1380].forEach((ms, i) => later(() => beast({ dur: 0.17, f0: 150 - i * 8, f1: 190 - i * 10, f2: 130, vol: 0.12, flutter: 18, drive: 3.5, vowel: [820, 1300], vowelTo: [700, 1100], breath: 0.6, sub: 0.3 }), ms));
+    rumble(1.2, 0.1);
+    later(() => sfx.bananaRustle(0.07), 100);
+  },
+  // ยืนเฉย: หัวเราะในคอเบา ๆ "หึ ๆ"
+  bananaChuckle: () => {
+    [0, 190].forEach((ms) => later(() => beast({ dur: 0.15, f0: 120, f1: 150, f2: 110, vol: 0.07, flutter: 16, drive: 2.5, vowel: [700, 1150], vowelTo: [600, 1000], breath: 0.5, sub: 0.2 }), ms));
+    later(() => sfx.bananaRustle(0.03), 120);
+  },
+  // เอื้อมไปหลัง: วื้บแขนสั้น ๆ
+  bananaReach: () => {
+    noise({ dur: 0.28, vol: 0.07, freq: 600, freqTo: 1800, q: 1.2, attack: 0.08 });
+    sfx.bananaRustle(0.035);
+  },
+  // จับกล้วย: "ป๊อก" เด็ดกล้วยจากเครือ (ก้านหัก) + หนึบ
+  bananaPluck: () => {
+    woodKnock(520, 0.1);
+    tone(700, 260, 0.09, 'triangle', 0.06);
+    later(() => tone(320, 520, 0.08, 'sine', 0.05), 50);
+  },
+  // ง้าง: แค่นหัวเราะ "หึ!" + ลมดูดเข้า
+  bananaWindup: () => {
+    beast({ dur: 0.32, f0: 110, f1: 160, f2: 140, vol: 0.12, flutter: 22, drive: 4, vowel: [700, 1100], vowelTo: [800, 1250], breath: 0.7 });
+    noise({ dur: 0.35, vol: 0.06, freq: 2400, freqTo: 700, q: 1, attack: 0.25 });
+  },
+  // ปา: เหวี่ยงแขนวู้บแรง + ฮึบ + กล้วยหมุนติ้ว "วื้บ วื้บ วื้บ" เบาลงเรื่อย ๆ (ลอยไกลออกไป)
+  bananaThrow: () => {
+    noise({ dur: 0.3, vol: 0.15, freq: 400, freqTo: 3400, q: 1.1, attack: 0.03 });
+    beast({ dur: 0.28, f0: 140, f1: 120, f2: 90, vol: 0.14, flutter: 26, drive: 5, vowel: [900, 1300], vowelTo: [650, 950], breath: 0.4 });
+    [120, 230, 340, 450, 560, 670, 780].forEach((ms, i) => later(() => {
+      noise({ dur: 0.09, vol: 0.075 * (1 - i * 0.11), freq: 900 + i * 60, freqTo: 1800, q: 2 });
+      tone(320 - i * 10, 260 - i * 10, 0.08, 'sine', 0.02 * (1 - i * 0.11));
+    }, ms));
+  },
+  // ย่อตัวกระแทกพื้น: ครางต่ำสะสมแรง + ระดับเสียงไถขึ้น
+  bananaSlamCharge: () => {
+    beast({ dur: 0.5, f0: 80, f1: 110, f2: 130, vol: 0.12, flutter: 24, drive: 3, vowel: [600, 950], vowelTo: [750, 1150] });
+    tone(90, 200, 0.45, 'sawtooth', 0.025);
+  },
+  // กระโดด: สปริงเด้ง "ด๊อยง" ทุ้ม ๆ + ลมขึ้น
+  bananaJump: () => {
+    tone(140, 520, 0.22, 'sine', 0.09);
+    tone(70, 260, 0.22, 'triangle', 0.04);
+    noise({ dur: 0.3, vol: 0.08, freq: 500, freqTo: 2600, q: 1, attack: 0.05 });
+  },
+  // ทิ้งตัวกระแทก: ตูมหนักสุด + หนึบ + พื้นสะเทือนยาว + คลื่นวิ่งซ่า + ใบกล้วยสะบัด
+  bananaSlam: () => {
+    impact(0.34, 0.75);
+    later(() => impact(0.14, 0.6), 90);
+    tone(160, 48, 0.3, 'triangle', 0.09);
+    rumble(1.6, 0.16);
+    noise({ dur: 0.9, vol: 0.07, freq: 1400, freqTo: 300, q: 0.7, attack: 0.04 });
+    later(() => sfx.bananaRustle(0.08), 80);
+  },
+  // โดนตี: "ปั้ก" เนื้อกล้วยหนึบ + ร้องโอ๊ยแหบ ๆ
+  bananaHit: () => {
+    impact(0.18, 1.3);
+    tone(420, 140, 0.16, 'triangle', 0.09);
+    noise({ dur: 0.06, vol: 0.08, freq: 2200, q: 3 });
+    later(() => beast({ dur: 0.42, f0: 210, f1: 330, f2: 160, vol: 0.15, flutter: 26, drive: 4, vowel: [880, 1300], vowelTo: [620, 950] }), 70);
+  },
+  // เหนื่อย: ถอนหายใจยาว "ฟู่วว" + นกหวีดสไลด์ลง (แฟบ) + กล่องดนตรีไล่ลง
+  bananaTired: () => {
+    noise({ dur: 1.0, vol: 0.06, type: 'lowpass', freq: 1500, freqTo: 260, attack: 0.25 });
+    tone(620, 180, 0.9, 'sine', 0.045);
+    [1046.5, 880, 783.99, 659.25].forEach((f, i) => later(() => musicBox(f, 0.4, 0.022), 450 + i * 140));
+  },
+  // แพ้ 0 วิ: ตัวสั่นคราง ดังขึ้นเรื่อย ๆ + พื้นสะเทือน
+  bananaQuake: () => {
+    beast({ dur: 1.2, f0: 120, f1: 200, f2: 240, vol: 0.15, flutter: 34, drive: 4, vowel: [820, 1250], vowelTo: [950, 1400] });
+    rumble(1.4, 0.1);
+    [0, 160, 300, 430, 550, 660, 760, 850, 930, 1000].forEach((ms) => later(() => noise({ dur: 0.05, vol: 0.05, freq: 3000, q: 1 }), ms));
+  },
+  // แพ้ 1.1 วิ: เครือกล้วยหลุดกระเด็น "ป๊อง!" + กระดิ่งเด้ง
+  bananaCrownPop: () => {
+    tone(260, 900, 0.18, 'sine', 0.1);
+    woodKnock(640, 0.09);
+    [1318.51, 1567.98, 2093].forEach((f, i) => later(() => glassBell(f, 0.35, 0.025), 60 + i * 70));
+  },
+  // แพ้ 1.6 วิ: ล้มหงาย "ตุ้บ" + นกหวีดไถลงยาว
+  bananaFall: () => {
+    tone(700, 150, 0.7, 'sine', 0.05);
+    later(() => { impact(0.24, 0.8); rumble(0.9, 0.1); sfx.bananaRustle(0.06); }, 650);
+  },
+  // แพ้ 2.8 วิ: สลายเป็นประกาย — กริ๊งไล่ขึ้น
+  bananaSparkle: () => {
+    [1046.5, 1318.51, 1567.98, 2093, 2637.02, 3135.96].forEach((f, i) => later(() => glassBell(f, 0.6, 0.028), i * 90));
+    noise({ dur: 1.0, vol: 0.03, type: 'highpass', freq: 6000, attack: 0.2 });
+  },
+
   // โดนเหยียบ: "ปุ๊" นุ่ม + ไม้ป๊อก + คริสตัลบนหัวแตกกริ๊ง + สลายเป็นหมอกฟู่
   mobStomp: () => {
     tone(320, 140, 0.12, 'sine', 0.13);

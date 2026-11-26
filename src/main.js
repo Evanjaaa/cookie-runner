@@ -18,6 +18,12 @@ import {
   snapshotLayers, restoreLayers, LAYER,
 } from './paint.js';
 import { STAGES, getStage, setStage, journeyOf } from './stages.js';
+import { currentWeek, WEEKLY, weeklyProgress } from './weekly-boss.js';
+// บอส/ลูกสมุนตัวจริงจากไฟล์นักออกแบบ (หน้าเลือกโหมด + หน้า Weekly Boss · ผู้ใช้ 26 พ.ย.)
+import { drawBananaBoss, loadBananaBoss } from './render/bosses/banana.js';
+import { drawBanana, loadBanana } from './render/minions/banana.js';
+// น้องส้มท่าปล่อยพลังเวท (ผู้ใช้ 27 พ.ย. · ไฟล์ orange-cat-magic-final.svg) — การ์ด Weekly Boss ในหน้าเลือกโหมด
+import { drawCatMagic, loadCatMagic, CAT_MAGIC_STATES } from './render/cat-magic.js';
 import {
   RARITY, OUTFITS, outfitById, setOutfit, pullPool, ownedCount, isOwned, OUTFIT_COST,
   ownedOrder as outfitOrder,
@@ -7884,10 +7890,147 @@ function paintModeCard() {
   paintStageScene(document.getElementById('modeArt'), st, 420);
 }
 function showModes(on) {
-  if (on) paintModeCard();
+  if (on) { paintModeCard(); paintBossCard(); document.getElementById('modeScroll').scrollTop = 0; }
   modePanel.classList.toggle('hidden', !on);
   startPanel.classList.toggle('hidden', on);
+  if (on) { requestAnimationFrame(paintBossCard); Promise.all([loadBananaBoss(), loadCatMagic()]).then(() => requestAnimationFrame(paintBossCard)); }   // วัดขนาดการ์ดหลังแผงโชว์แล้ว · ภาพตัวละครโหลดเสร็จแล้ววาดซ้ำ
 }
+// ── Weekly Boss (ผู้ใช้ 26 พ.ย. 2026 · ภาพแบบ public/หน้าเลือกด่านใหม่.png) ──
+// ฉากหลังการ์ด = ฉากด่านสวนจริง · น้องแมวท่ายืนเฉย + บอสเป็นภาพแทนชั่วคราว (รอภาพจริง) · ข้อความ/ป้ายเป็น HTML (คมทุกจอ)
+function paintBossCard() {
+  const W = currentWeek();
+  document.getElementById('bossWeek').textContent = `สัปดาห์ที่ ${W.week}`;
+  document.getElementById('bossRange').textContent = W.range;
+  document.getElementById('bossName').textContent = W.boss;
+  document.getElementById('bossLead').textContent = W.lead;
+  const cv = document.getElementById('bossArt');
+  const r = cv.getBoundingClientRect();
+  if (!r.width) return;
+  const garden = STAGES.find((x) => x.id === 'garden') || getStage();
+  paintBox(cv, r.width, r.height, (c) => {
+    // ฉากสวน 960×420 ปูเต็มการ์ดแบบ cover
+    const k = Math.max(r.width / 960, r.height / 420);
+    const scene = document.createElement('canvas');
+    paintStageScene(scene, garden, 960);
+    c.drawImage(scene, (r.width - 960 * k) / 2, (r.height - 420 * k) / 2, 960 * k, 420 * k);
+  });
+  paintBossChars(md.t0 ? (performance.now() - md.t0) / 1000 : 0);
+  if (!md.raf) { md.t0 = performance.now(); md.raf = requestAnimationFrame(mdFrame); }
+}
+// ตัวละครบนการ์ด (ผ้าใบแยกชั้นบน หน้าแผงคอมิกส้ม/แผงแดง ตามแบบ) — ขยับตลอดที่หน้าเลือกโหมดเปิด (ผู้ใช้ 27 พ.ย.)
+//   ซ้าย: น้องส้มท่าปล่อยพลังเวทวนรอบ (หันขวาหาบอส) · ขวา: บอสกล้วยราคีท่ายืนขู่ (หันซ้ายหาน้อง) · 30 ภาพ/วิ
+//   ตั้งค่าเครื่อง "ลดการเคลื่อนไหว" = ค้างท่าเดียว ไม่วนภาพ
+const md = { raf: 0, t0: 0, last: 0 };
+const mdStill = matchMedia('(prefers-reduced-motion: reduce)');
+const CAST_LOOP = CAT_MAGIC_STATES.cast.dur + 1.2;
+function paintBossChars(t) {
+  const cv = document.getElementById('bossChars'), r = cv.getBoundingClientRect();
+  if (!r.width) return;
+  if (mdStill.matches) t = 2.2;
+  paintBox(cv, r.width, r.height, (c) => {
+    const feet = r.height * 0.97, u = r.height / 100;
+    drawCatMagic(c, r.width * 0.155, feet - u * 2, u * 0.45, { state: 'cast', st: t % CAST_LOOP, t });
+    drawBananaBoss(c, r.width * 0.72, feet + u * 1.5, u * 0.84, { state: 'idle', st: t % 3.2, t });   // บอสตัวจริง (หันซ้ายหาน้อง)
+  });
+}
+function mdFrame(now) {
+  if (modePanel.classList.contains('hidden') || mdStill.matches) { md.raf = 0; return; }
+  md.raf = requestAnimationFrame(mdFrame);
+  if (now - md.last < 1000 / 30 - 2) return;
+  md.last = now;
+  paintBossChars((now - md.t0) / 1000);
+}
+// ── หน้า Weekly Boss (ผู้ใช้ 26 พ.ย. · ภาพแบบ public/หน้าก่อนเตรียมพร้อม.png) ──
+// ฉากหลัง = ฉากสวนจริง (นุ่ม ๆ) · บอส + ลูกสมุนตัวจริงขยับท่ายืนเฉย (30 ภาพ/วิ เฉพาะตอนหน้าเปิด)
+// รางวัล: ไอคอนเหรียญ/อัญมณีชุดเดียวกับกล่องรับของ (.coin / .gem) · กล่องสุ่ม = หีบสมบัติ (render/chest.js)
+const weeklyPanel = document.getElementById('weeklyPanel');
+const wk = { raf: 0, t0: 0, last: 0 };
+function openWeekly() {
+  const W = currentWeek();
+  document.getElementById('wkWeek').textContent = `สัปดาห์ที่ ${W.week}`;
+  document.getElementById('wkRange').textContent = W.range;
+  document.getElementById('wkName').textContent = W.boss;
+  { const pl = document.getElementById('wkPlate'); pl.textContent = W.boss; pl.dataset.t = W.boss; }   // data-t = ชั้นสีไล่ของป้ายชื่อ (CSS ::after)
+  document.getElementById('wkStory').textContent = W.story;
+  document.getElementById('wkMinionName').textContent = W.minion?.name || 'ลูกสมุน';
+  document.getElementById('wkMinionDesc').textContent = W.minion?.desc || '';
+  // รางวัล
+  const rw = document.getElementById('wkRewards');
+  rw.innerHTML = '';
+  for (const r of W.rewards) {
+    const li = document.createElement('li');
+    li.className = 'wk-rw ' + r.kind;
+    const art = r.kind === 'chest' ? '<canvas class="wk-chest" width="200" height="184"></canvas>'
+      : `<span class="${r.kind === 'gold' ? 'coin' : 'gem'} big" aria-hidden="true"></span>`;
+    li.innerHTML = `<span class="wk-rw-art">${art}</span><b class="wk-rw-n">×${r.n.toLocaleString('en-US')}</b><small>${r.name}</small>`;
+    rw.appendChild(li);
+  }
+  // เส้นทาง: ด่านที่ผ่านแล้ว = ชมพูเข้ม · ด่านปัจจุบัน = ชมพูเด้ง · ยังไม่ถึง = ม่วง · บอส = ทอง + มงกุฎ
+  const done = weeklyProgress(), steps = document.getElementById('wkSteps'), fl = document.getElementById('wkFlower').innerHTML;
+  steps.innerHTML = '';
+  W.route.forEach((r, i) => {
+    const li = document.createElement('li');
+    li.className = 'wk-step' + (r.boss ? ' boss' : '') + (i < done ? ' done' : i === done ? ' now' : '');
+    li.innerHTML = `<span class="wk-node">${fl}<b>${i + 1}</b>${r.boss ? '<i class="wk-crown" aria-hidden="true">👑</i>' : ''}</span><small>${r.name}</small>`;
+    if (i < W.route.length - 1) li.insertAdjacentHTML('beforeend', `<span class="wk-link${i < done ? ' on' : ''}" aria-hidden="true"></span>`);
+    steps.appendChild(li);
+  });
+  setMsg(document.getElementById('wkMsg'), '');
+  swapPanel(modePanel, weeklyPanel);
+  wk.t0 = performance.now();
+  Promise.all([loadBananaBoss(), loadBanana()]).then(() => { paintWeeklyStatic(); if (!wk.raf) wk.raf = requestAnimationFrame(wkFrame); });
+  requestAnimationFrame(paintWeeklyStatic);
+}
+/** ฉากหลัง + หีบรางวัล (วาดครั้งเดียวต่อการเปิด/ขนาดจอ) */
+function paintWeeklyStatic() {
+  if (weeklyPanel.classList.contains('hidden')) return;
+  const bg = document.getElementById('wkBg'), r = bg.getBoundingClientRect();
+  if (r.width) {
+    const garden = STAGES.find((x) => x.id === 'garden') || getStage();
+    const scene = document.createElement('canvas');
+    paintStageScene(scene, garden, 960);
+    paintBox(bg, r.width, r.height, (c) => {
+      const k = Math.max(r.width / 960, r.height / 420);
+      c.drawImage(scene, (r.width - 960 * k) / 2 - r.width * 0.05, (r.height - 420 * k) / 2, 960 * k, 420 * k);
+    });
+  }
+  for (const cv of weeklyPanel.querySelectorAll('.wk-chest')) {
+    const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 200, 184); drawChest(c, 0, 0);
+  }
+}
+/** บอส + ลูกสมุนท่ายืนเฉย (ขยับตลอดที่หน้าเปิดอยู่) */
+function wkFrame(now) {
+  if (weeklyPanel.classList.contains('hidden')) { wk.raf = 0; return; }
+  wk.raf = requestAnimationFrame(wkFrame);
+  if (now - wk.last < 1000 / 30 - 2) return;
+  wk.last = now;
+  const t = (now - wk.t0) / 1000;
+  const cv = document.getElementById('wkBoss'), r = cv.getBoundingClientRect();
+  if (r.width) paintBox(cv, r.width, r.height, (c) => {
+    // บอสยืนครึ่งขวาของจอ ตัวใหญ่ (ผู้ใช้ 26 พ.ย. รอบ 3: ใหญ่ขึ้น — เท้าจมหลังปุ่มเตรียมพร้อม) — หันซ้ายหาแผ่นข้อมูล
+    const u = Math.min(r.height * 0.0074, r.width * 0.0045);
+    drawBananaBoss(c, r.width * 0.75, r.height * 0.86, u, { state: 'idle', st: t % 3.2, t });
+  });
+  const mv = document.getElementById('wkMinion'), m = mv.getBoundingClientRect();
+  if (m.width) paintBox(mv, m.width, m.height, (c) => drawBanana(c, m.width * 0.5, m.height * 0.97, m.height / 112, { state: 'idle', st: t % 5.2, t }));
+}
+function closeWeekly() {
+  swapPanel(weeklyPanel, modePanel);
+  requestAnimationFrame(paintBossCard);
+}
+document.getElementById('modeBoss').addEventListener('click', () => { unlockAudio(); sfx.fish(); openWeekly(); });
+document.getElementById('wkClose').addEventListener('click', () => { unlockAudio(); sfx.fish(); closeWeekly(); });
+document.getElementById('wkGo').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  // หน้าเตรียมพร้อม (เลือก/แต่งน้องก่อนวิ่ง) ยังไม่ได้ออกแบบ + ยังไม่มีโหมดบอสในเกม
+  if (!WEEKLY.ready) { setMsg(document.getElementById('wkMsg'), 'หน้าเตรียมพร้อมกำลังจะมา — เร็ว ๆ นี้!'); return; }
+});
+addEventListener('resize', () => { if (!weeklyPanel.classList.contains('hidden')) paintWeeklyStatic(); });
+document.getElementById('modeMore').addEventListener('click', () => {
+  unlockAudio(); sfx.fish();
+  document.querySelector('#modePanel .md-sec').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+addEventListener('resize', () => { if (!modePanel.classList.contains('hidden')) paintBossCard(); });
 document.getElementById('startBtn').addEventListener('click', () => {
   unlockAudio(); startMusic(); sfx.fish();
   showModes(true);
