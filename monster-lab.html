@@ -480,6 +480,16 @@
         slam: [[0, 'bananaSlamCharge'], [0.45, 'bananaJump'], [BANANA_BOSS_ACT.slam.land, 'bananaSlam']],
         tired: [[0.05, 'hopeFull'], [0.05, 'bananaTired']],
         defeat: [[0, 'bananaQuake'], [1.1, 'bananaCrownPop'], [1.6, 'bananaFall'], [2.8, 'bananaSparkle'], [3.6, 'bossWin']],
+        // ท่าคว้า B1–B9 (ผู้ใช้ 27 พ.ย.) — ท่าเดียวกับด่านบอสใน gameplay-lab
+        grabWind: [[0, 'bananaGrabWarn']],
+        grabLow: [[0, 'bananaGrabReach'], [0.75, 'bananaGrabMiss']],
+        grabHigh: [[0, 'bananaGrabReach'], [0.75, 'bananaGrabMiss']],
+        grabAbove: [[0, 'bananaGrabReach'], [0.58, 'bananaGrabSlam']],
+        hold: [[0, 'bananaGrabCatch']],
+        pull: [[0, 'bananaGrabCatch'], [1.45, 'bananaChomp']],
+        stun: [[0, 'bananaEscape'], [0.1, 'bananaStun']],
+        shakeHold: [[0, 'bananaShake']],
+        toss: [[0, 'bananaToss']],
       },
       log: {
         shoot: [[0, 'mobCharge'], ...LOG_SPIRIT_ACT.shoot.map((ts) => [ts, 'mobShoot'])],

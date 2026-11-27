@@ -9,7 +9,9 @@
        ด่านวิ่งที่มีเส้นชัย + ลูกน้องบอส (เหยียบหัว) + ดาวแห่งความหวัง (สะสมไปใช้กับบอส)
        แล้วต่อด้วยด่านสู้ภูตตอไม้ (หลบท่า → เก็บดาวเต็มแถบ → บอสเหนื่อย → กระโดดใส่จุดอ่อน ×3 → ผลึกแตก ได้น้อง)
        ใช้ของจริงของเกม: Player (ฟิสิกส์) · ฉาก/พื้น · ขนมปลา · สิ่งกีดขวาง · ตัวน้องวิ่ง cat2 · บอส src/render/bosses/stump.js
-       ลูกน้อง = วิญญาณท่อนซุงน้อย src/render/minions/log-spirit.js (แบบจากผู้ใช้ 22 พ.ย.) · ยังไม่ต่อเข้า game.js — ลองความสนุกที่นี่ก่อน -->
+       ลูกน้อง = วิญญาณท่อนซุงน้อย src/render/minions/log-spirit.js (แบบจากผู้ใช้ 22 พ.ย.) · ยังไม่ต่อเข้า game.js — ลองความสนุกที่นี่ก่อน
+       โหมด "🍌 บอสกล้วย" (ผู้ใช้ 27 พ.ย.): ด่านสุดท้าย สู้บอสกล้วยราคี ฉากสีพื้นไปก่อน · ท่าคว้า + มินิเกมดิ้นหลุด + ทางเลือกทั้ง 3
+       ท่าทุกท่าเป็นช่องรอไฟล์ SVG จากนักวาด (src/render/bosses/banana/slots/README.md) -->
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -207,6 +209,7 @@
       <div class="opt"><span>ดาวเต็มแถบ</span><input type="range" id="need" min="3" max="10" step="1"><output id="needOut"></output></div>
       <div class="opt"><span>เวลาเตือน (วิ)</span><input type="range" id="warnT" min="0.6" max="1.6" step="0.1"><output id="warnOut"></output></div>
       <div class="opt"><span>บอสโจมตีเร็ว</span><input type="range" id="atkK" min="0.6" max="1.6" step="0.1"><output id="atkOut"></output></div>
+      <div class="opt"><span>กดรัวให้หลุด</span><input type="range" id="mash" min="4" max="14" step="1"><output id="mashOut"></output></div>
       <div class="opt"><span>ความเร็วเกม</span><div class="seg" id="spd"></div></div>
       <div class="opt"><span>ไม่เสียหัวใจ</span><div class="seg" id="god"></div></div>
       <div class="opt"><span>โชว์กล่องชน</span><div class="seg" id="hit"></div></div>
@@ -224,6 +227,20 @@
       <p class="note" style="margin-top:0">ชุดใหม่ของด่านสอนป่าผลึก (music.js · audio.js) — ทุกเสียงอยู่คีย์เดียวกับเพลง · ในเกมดังเองตามจังหวะท่า</p>
       <div class="skips" id="music"></div>
       <div class="skips" id="sfxList" style="margin-top:6px"></div>
+
+      <div class="sec">🍌 ด่านบอสกล้วย (ด่านสุดท้าย) <span class="line"></span></div>
+      <p class="note" style="margin-top:0">
+        เลือกโหมด <b>🍌 บอสกล้วย</b> ด้านบน · ฉากสีพื้นไปก่อน · ใช้ภาพบอสที่มี ประกอบท่าใหม่จากชิ้นเดิม<br>
+        🍌 <b>ปากล้วย</b> เส้นฟ้า = กระโดด · เส้นชมพู = หมอบ (โกรธ = ปา 2 ลูก)<br>
+        💥 <b>กระแทกพื้น</b> คลื่นดินวิ่งมา = กระโดดข้าม (โกรธ = 2 ระลอก)<br>
+        ✋ <b>ท่าคว้า</b> ง้างแขน + เงามือเหลืองใต้น้อง แล้วแขนยืดพุ่งมา · <b>คว้าพื้น</b> = กระโดดข้าม · <b>คว้าระดับหัว</b> = หมอบลอด · <b>ตะครุบจากบน</b> = เงาโตขึ้น กระโดดให้ลอยอยู่ตอนมือฟาด · หลบได้ = ความหวัง +1<br>
+        ✊ <b>โดนจับ</b> บอสยกน้องค้าง → <b>กดรัวปุ่มไหนก็ได้</b> 1.5 วิ (แตะจอ/กระโดด/หมอบ) · หลุด = ดีดตัวกลับ บอสมึน เปลือกกล้วยหล่น เดินชนเก็บแล้วปาใส่บอสเอง (+1 ต่ออย่าง) · ไม่หลุด = เขย่า โยน เสียหัวใจ 1<br>
+        😋 <b>ทางเลือก ลากเข้าปาก</b> ยิ่งกดช้ายิ่งเข้าใกล้ปาก กดรัวดันกลับ · ถึงปาก = "งั่ม!"<br>
+        🍌 <b>ทางเลือก ลูกสมุนช่วยคว้า</b> "!" ขอบจอซ้าย แล้วลูกสมุนวิ่งตามมากระโจน · ลอยอยู่ = หลบได้ · โดนเกาะ = วิ่งช้าลง (ถอยหลังบนจอ) กระโดดเตี้ยลง กระโดด 2 ทีสะบัดหลุด · 3 วิ = โดนกัด<br>
+        😡 <b>ทางเลือก คว้าตอนโกรธ</b> (ร้าว 2/3) เตือนสั้นลง 30% · ต้องกดรัวมากขึ้น 40% · หน้าแดง 💢<br>
+        แถบเต็ม → บอสเวียนหัว → ✨ พลังแห่งความหวัง (เล็งหน้าบอส) · 3 ครั้ง = ชนะ
+      </p>
+      <p class="note"><b>ช่องรอภาพจากนักวาด</b> (ตามรายการ 34 ภาพ): วางไฟล์ SVG ใน <b>src/render/bosses/banana/slots/</b> ตั้งชื่อขึ้นต้นด้วยรหัส เช่น <b>B2-grab-low.svg</b> · <b>C2-struggle-1.svg</b> → ใช้แทนท่าชั่วคราวเอง (กติกาใน README.md ในโฟลเดอร์นั้น) · ตอนนี้: บอส B1–B9 ประกอบจากชิ้นเดิม (แขนยืดวาดด้วยโค้ด) · B10 หน้าแดง+💢 · น้อง C1–C8 = ท่า drawCat2 · ลูกสมุน M1–M7 = ท่าที่มี · E1–E3 วาดด้วยโค้ด · เพลงใช้ชุดภูตตอไม้ไปก่อน</p>
 
       <div class="sec">กติกาที่ลองอยู่ <span class="line"></span></div>
       <p class="note">
@@ -279,6 +296,9 @@
     import { drawHopeStar, drawHopeStarBurst } from './src/render/hope-star.js';
     import { HOPE, HOPE_CUT, hopeJudge, hopeOk, drawHopeRush, drawHopeStrike, drawHopeCounter, drawHopeLetterbox, drawHopeFlash, drawHopeCut } from './src/render/hope-power.js';
     import { drawStumpBoss, stumpPose, STUMP, STUMP_ACT, STUMP_DEFEAT, drawStumpBolt, drawStumpRing, drawStumpFog, drawStumpShard, drawStumpSpike, drawStumpMarker, STUMP_RAIN, drawStumpLane, drawStumpDashWarn } from './src/render/bosses/stump.js';
+    import { drawBananaBoss, loadBananaBoss, BANANA_BOSS, BANANA_BOSS_ACT, BANANA_BOSS_PT, drawBananaThrown } from './src/render/bosses/banana.js';
+    import { drawBanana, loadBanana, BANANA } from './src/render/minions/banana.js';
+    import { GRAB_CAT_POSE, MINION_POSE, drawSlot, drawHandShadow, drawPeel, drawMashMeter, drawBananaQuake, drawBehindWarn } from './src/render/bosses/banana-grab.js';
 
     const $ = (id) => document.getElementById(id);
     const cv = $('cv'), ctx = cv.getContext('2d');
@@ -299,7 +319,7 @@
     const KITTEN_NAME = { orange: 'ส้ม', pearl: 'ไข่มุก', calico: 'สามสี', siamese: 'วิเชียรมาศ', konja: 'โกนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'ลายสลิด', tortie: 'สีเปรอะ', cow: 'ลายวัว', manee: 'ขาวมณี', somsa: 'ส้มซ่า', suea: 'เสือน้อย', hawkBlue: 'ตาเหยี่ยวฟ้า' };
 
     // ── ค่าปรับได้ ──
-    const cfg = { need: 5, warnT: 1.0, atkK: 1, speed: 1, god: false, hit: false, mode: 'full', ratio: 2.0, sound: true, pad: 'auto', strike: 'hope', cat: 'moji' };
+    const cfg = { need: 5, warnT: 1.0, atkK: 1, speed: 1, god: false, hit: false, mode: 'full', ratio: 2.0, sound: true, pad: 'auto', strike: 'hope', cat: 'moji', mash: 7 };
     const CFG_DEF = { ...cfg };   // ค่าปกติ (ปุ่ม ↺ กลับมาค่านี้)
     try { Object.assign(cfg, JSON.parse(localStorage.getItem('gplab.v1') || '{}')); } catch {}
     const saveCfg = () => { try { localStorage.setItem('gplab.v1', JSON.stringify(cfg)); } catch {} };
@@ -346,7 +366,10 @@
     const BOSS_S_MAX = (JUMP_REACH_EASY - 2) / (TIRED_FLAME - FLAME_HIT_R);
     // พิกเซลต่อหน่วยบอส · ตกลงไว้ 2.5 เท่า แต่เปลวสูงเกินกระโดดสองชั้น → ค่าเริ่ม 2.0 ปรับได้ในแผง แต่ไม่เกินขนาดที่ตีถึง
     let BOSS_S = 1;
+    // บอสกล้วย: สูงเท่าค่าในแผง (ไม่มีเพดาน — ตีด้วยพลังแห่งความหวังเสมอ ไม่ต้องกระโดดถึงหัว)
+    let BAN_S = 1;
     const setBossS = () => {
+      BAN_S = (CAT_H * cfg.ratio) / BANANA_BOSS.H;
       const want = (CAT_H * cfg.ratio) / STUMP.H;
       BOSS_S = Math.min(want, BOSS_S_MAX);
       const o = $('ratioOut');
@@ -354,6 +377,7 @@
     };
     // ลูกน้องตัวเล็กกว่าน้อง (LOG_SPIRIT.ratio เท่า) · กล่องชน = ตัวตอ + หมอก (ไม่รวมคริสตัลบนหัว)
     const MOB_S = (CAT_H * LOG_SPIRIT.ratio) / LOG_SPIRIT.H;
+    const MIN_S = (CAT_H * BANANA.ratio) / BANANA.H;   // ลูกสมุนกล้วย
     const mobBox = (sx) => { const top = (LOG_SPIRIT.hover + 96) * MOB_S, hw = 40 * MOB_S; return { x: sx - hw, y: G - top, w: hw * 2, h: top - 3 }; };
 
     // ══════════════════ ด่านวิ่ง ══════════════════
@@ -438,6 +462,7 @@
       else if (a === 'slide1' || a === 'slide0') S.P.setSlide(a === 'slide1');
       else if (a === 'boss') { hideCard(); startBoss(S.starsRun); }
       else if (a === 'hope') hopeTap();
+      else if (a === 'mash') mashTap();
       else if (a.startsWith('skip:')) skipTo(a.slice(5));
     }
     /** เล่นต่อ/กดปุ่มตอนย้อนดูอยู่ = ทิ้งช่วงหลังจากนี้ แล้วบันทึกต่อจากตรงนี้ */
@@ -453,12 +478,13 @@
       PT.clear();
       const P = new Player();
       S = {
-        mode, phase: mode === 'boss' ? 'boss' : 'run',
+        mode, phase: mode === 'boss' || mode === 'banana' ? 'boss' : 'run',
         P, anim: createRunAnim(), cam: 0, f: 0, hearts: 9, inv: 0, hurt: 0, starsRun: 0, starsTotal: 0, treats: 0, combo: 0,
         run: buildRun(), boss: null, done: false, fx: [], kitten: KITTENS[Math.floor(Math.random() * KITTENS.length)] || 'orange',
         baseMods: P.mods, sleepy: 0, shake: 0,
         // ตัวนับของแถบบนเกมจริง (hud.js): คอมโบเด้ง/หลุด · หัวใจเพิ่งแตก · ป้ายแจ้ง
         comboPop: 0, comboBreak: 0, comboMiss: 0, lifeLost: 0, notice: 0, noticeText: '',
+        grab: null, cling: null, gx: 0, peelFly: null,   // บอสกล้วย: โดนจับ · ลูกสมุนเกาะ · น้องถอยหลังบนจอ · เปลือกที่ปา
       };
       if (S.phase === 'boss') startBoss(0);
       hideCard();
@@ -466,7 +492,7 @@
     }
     // ผิวที่เท้าเหยียบ = สูตรเดียวกับเกม (level.js footing) · ด่านบอสไม่มีเนิน/ขอน
     const game = () => ({ speed: SPEED.run, camera: S.cam, pitsSolid: true, level: { surfaceAt: (cx, px, py, y, onG, ps) => footing([], S.phase === 'run' ? S.run.plats : [], cx, px, py, y, onG, ps) } });
-    const box = () => { const sl = S.P.sliding, h = sl ? BODY.slideH : BODY.standH; return { x: PLAYER_X + 4 + (sl ? BODY.slideOffsetX : 0), y: S.P.y - h + 4, w: (sl ? BODY.slideW : BODY.standW) - 8, h: h - 6 }; };
+    const box = () => { const sl = S.P.sliding, h = sl ? BODY.slideH : BODY.standH; return { x: PLAYER_X + 4 + (S.gx || 0) + (sl ? BODY.slideOffsetX : 0), y: S.P.y - h + 4, w: (sl ? BODY.slideW : BODY.standW) - 8, h: h - 6 }; };
     const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     const circHit = (b, cx, cy, r) => { const nx = clamp(cx, b.x, b.x + b.w), ny = clamp(cy, b.y, b.y + b.h); return (cx - nx) ** 2 + (cy - ny) ** 2 < r * r; };
 
@@ -481,6 +507,7 @@
     function jumpFx(kind) {
       if (kind === 'single') { dust(PLAYER_X + 12 + S.cam, G, 6); play('jump'); }
       else if (kind === 'double') { burst(PLAYER_X + 20 + S.cam, S.P.y - 10, 8, 'mint', 3); play('double'); }
+      if (kind && S.cling) clingShake();
     }
     /** ผลของก้าวฟิสิกส์ (ลงพื้น / เริ่มหมอบ) แบบเกม */
     function stepFx(r) {
@@ -508,7 +535,8 @@
       shake(7);
       fx('heartBreak', HEART0[0], HEART0[1]);   // ดวงซ้ายสุดบนแถวหัวใจของเกม
       play('die');
-      if (S.boss) { const B = S.boss; B.state = 'idle'; B.st = 0; B.bolts = []; B.rings = []; B.rain = []; B.fogs = []; B.stars = []; B.gloat = 0; }
+      if (S.boss) { const B = S.boss; B.state = 'idle'; B.st = 0; B.bolts = []; B.rings = []; B.rain = []; B.fogs = []; B.stars = []; B.gloat = 0; B.nanas = []; B.waves = []; B.peels = []; B.mobs = []; B.grab = null; B.hand = null; }
+      S.grab = null; S.cling = null; S.gx = 0; S.peelFly = null;
       if (S.run) S.run.shots = [];
       S.sp = null;   // แพ้กลางท่าพิเศษ (โดนสวนจนหัวใจหมด) = จบท่าทันที
     }
@@ -518,11 +546,11 @@
       const B = S.boss;
       if (B) { B.st += 1 / 60; B.gloat = (B.gloat || 0) + 1 / 60; B.x += (BOSS_X + 20 + (B.gloat > 0.4 ? Math.sin(B.gloat * 22) * 3 : 0) - B.x) * 0.2; }   // ลอยกลับที่ แล้วตัวสั่นหัวเราะ
       if (S.overF === 70) play('bossLose');   // พร้อมข้อความ "กลับบ้านไปพักก่อนนะ"
-      if (B && B.gloat >= 0.4 && !B.laughS) { B.laughS = true; play('stumpLaugh'); }
+      if (B && B.gloat >= 0.4 && !B.laughS) { B.laughS = true; play(B.kind === 'banana' ? 'bananaRoar' : 'stumpLaugh'); }
       if (S.overF === LOSE.card) showCard('over');
     }
-    function fx(kind, x, y, txt = '') {
-      const e = { kind, x, y, t: 0, txt };
+    function fx(kind, x, y, txt = '', sub = '') {
+      const e = { kind, x, y, t: 0, txt, sub };
       if (kind === 'star') { [e.tx, e.ty] = starTarget(); mark('star'); play('hopeStar', S.boss && S.phase !== 'run' ? S.boss.hope : 1 + ((S.starsRun - 1) % 6)); }   // ดาวบินเข้าตัวนับ (ด่านบอส = ปลายแถบความหวัง)
       S.fx.push(e);
     }
@@ -660,18 +688,21 @@
     const RAIN_FALL = 50, RAIN_GAP = 38;
     const rainBox = (sx) => ({ x: sx - STUMP_RAIN.hitW / 2, y: G - STUMP_RAIN.hitH, w: STUMP_RAIN.hitW, h: STUMP_RAIN.hitH });
 
-    function startBoss(fromStars) {
+    function startBoss(fromStars, kind = S.mode === 'banana' ? 'banana' : 'stump') {
       const pre = Math.min(cfg.need - 1, Math.floor(fromStars / 3));
       S.phase = 'boss';
       S.boss = {
+        kind, nanas: [], waves: [], peels: [], mobs: [], grab: null, hand: null, force: null,
         x: BOSS_X, state: 'enter', st: 0, crack: 0, hope: pre, cycle: 0, fired: 0, n: 0, W: cfg.warnT, rage: false, lanes: null,
         bolts: [], rings: [], rain: [], fogs: [], stars: [], hitT: null, P: null, pre, seen: {}, landed: false, vx: 0,
       };
       S.P.reset(); S.inv = 30; S.sleepy = 0; S.P.mods = S.baseMods;
-      fx('title', W / 2, 190, STUMP.name); mark('boss');
+      S.grab = null; S.cling = null; S.gx = 0; S.peelFly = null;
+      const D = kind === 'banana' ? BANANA_BOSS : STUMP;
+      fx('title', W / 2, 190, D.name, D.title); mark('boss');
     }
     const shake = (v) => { S.shake = Math.max(S.shake || 0, v); };
-    function toIdle(B, stars = true) { B.state = 'idle'; B.st = 0; B.fired = 0; B.creakS = false; if (stars) dropStars(B); }
+    function toIdle(B, stars = true) { B.state = 'idle'; B.st = 0; B.fired = 0; B.creakS = false; B.chuckS = false; B.grab = null; B.hand = null; if (stars) dropStars(B); }
     function nextAttack(B) {
       const list = ATK_PLAN[Math.min(2, B.crack)];
       const id = list[B.cycle % list.length];
@@ -702,6 +733,7 @@
     }
 
     function bossStep() {
+      if (S.boss.kind === 'banana') return bananaStep();
       const B = S.boss, P = S.P;
       stepFx(P.update(1, game()));
       if (P.pendingJump) { P.pendingJump = false; jumpFx(P.jump()); }
@@ -854,7 +886,7 @@
           if (B.crack >= 3) { B.state = 'defeat'; B.st = 0; }
           else {
             B.state = 'idle'; B.st = 0; B.hope = 0; B.cycle = 0;
-            note(B.crack === 2 ? 'ผลึกร้าว 2/3 · ภูตตอไม้โกรธแล้ว! เร็วขึ้น' : `ผลึกร้าว ${B.crack}/3 · ท่าใหม่มาแล้ว`, 170);
+            note(crackNote(B), 170);
           }
         }
       }
@@ -870,7 +902,17 @@
       ['last', '💥 ตีครั้งสุดท้าย', 'ร้าว 2/3 + บอสเหนื่อย'],
       ['defeat', '🏆 ฉากชนะ', 'บอสแพ้ ผลึกแตก ได้น้อง'],
       ['over', '💔 ฉากแพ้', 'หัวใจหมด', 'wide'],
+      // บอสกล้วย (โชว์เฉพาะโหมด 🍌) — สั่งท่าถัดไปทันที
+      ['ban:grabLow', '✋ คว้าพื้น', 'กระโดดข้ามมือ', '', 'b'],
+      ['ban:grabHigh', '✋ คว้าระดับหัว', 'หมอบลอด', '', 'b'],
+      ['ban:grabAbove', '🫳 ตะครุบจากบน', 'ดูเงามือ ลอยให้พ้น', '', 'b'],
+      ['ban:caught', '✊ โดนจับทันที', 'ลองมินิเกมดิ้นหลุด', '', 'b'],
+      ['ban:grabLow:pull', '😋 ลากเข้าปาก', 'ทางเลือก: กดรัวดันกลับ', '', 'b'],
+      ['ban:cling', '🍌 ลูกสมุนเกาะขา', 'ทางเลือก: กระโดดหลบ/สะบัด', '', 'b'],
+      ['ban:throw', '🍌 ปากล้วย', 'ฟ้า = กระโดด · ชมพู = หมอบ', '', 'b'],
+      ['ban:slam', '💥 กระแทกพื้น', 'กระโดดข้ามคลื่นดิน', '', 'b'],
     ];
+    const SKIP_ONLY = { mobs: 's', finish: 's' };   // ปุ่มของด่านวิ่ง (ซ่อนในโหมดบอสกล้วย)
     function bossNow() {
       if (!S.boss || S.phase === 'run' || S.phase === 'clear') startBoss(S.starsRun);
       if (S.phase !== 'boss') { S.phase = 'boss'; S.P.reset(); S.P.mods = S.baseMods; }
@@ -880,6 +922,7 @@
       S.fx = S.fx.filter((e) => e.kind === 'star');
       S.sp = null;
       S.inv = 30; S.sleepy = 0; S.P.mods = S.baseMods;
+      if (B.kind === 'banana') clearBanana(B);
       return B;
     }
     function skipTo(id) {
@@ -896,10 +939,19 @@
         return;
       }
       if (id === 'enter') { S.boss = null; bossNow(); return; }
+      if (id.startsWith('ban:')) {
+        const B = bossNow();
+        if (B.kind !== 'banana') return;
+        B.x = BOSS_X; B.state = 'idle'; B.st = 99; B.hope = Math.min(B.hope, cfg.need - 1);
+        if (id === 'ban:caught') { B.state = 'grabLow'; B.st = 0; B.hand = [PX + 6, G - 26]; catchCat(B, 'lift'); }
+        else B.force = id.slice(4);
+        mark('boss');
+        return;
+      }
       const B = bossNow();
       B.x = BOSS_X; B.st = 0; B.cycle = 0; B.state = 'idle'; B.hope = 0;
       if (id === 'tired') { B.crack = Math.min(B.crack, 2); B.hope = cfg.need; }
-      else if (id === 'rage') { B.crack = 2; note('ผลึกร้าว 2/3 · ภูตตอไม้โกรธแล้ว! เร็วขึ้น', 170); }
+      else if (id === 'rage') { B.crack = 2; note(crackNote(B), 170); }
       else if (id === 'last') { B.crack = 2; B.hope = cfg.need; }
       else if (id === 'defeat') { B.crack = 3; B.state = 'defeat'; B.x = 640; }
       mark('boss');
@@ -925,7 +977,8 @@
     function hopeStart(B) {
       const P = S.P;
       P.setSlide(false);
-      S.sp = { ph: 'rush', f: 0, tap: null, res: null, dx: 0, y0: P.y, tx: B.x - 92 * BOSS_S - PX };
+      S.gx = 0;
+      S.sp = { ph: 'rush', f: 0, tap: null, res: null, dx: 0, y0: P.y, tx: B.x - frontGap(B) - PX };
       B.bolts = []; B.rings = []; B.rain = []; B.fogs = []; B.stars = [];
       note('บอสเวียนหัว! พุ่งเข้าไปเลย', 90);
       play('hopeRush');
@@ -939,7 +992,7 @@
       switch (sp.ph) {
         case 'rush': {                       // เร่งขึ้นเรื่อย ๆ (ease-in) จนถึงหน้าบอส · ตัวที่ลอยอยู่ค่อย ๆ ลงพื้น
           const k = Math.min(1, sp.f / HOPE.rush);
-          B.x += (BOSS_X - B.x) * 0.25; sp.tx = B.x - 92 * BOSS_S - PX;
+          B.x += (BOSS_X - B.x) * 0.25; sp.tx = B.x - frontGap(B) - PX;
           sp.dx = sp.tx * k * k;
           P.y = sp.y0 + (G - sp.y0) * ease01(k); P.vy = 0;
           if (sp.f % 4 === 1) dust(PLAYER_X + sp.dx + S.cam, G, 3);
@@ -957,16 +1010,16 @@
         case 'blast': if (sp.f === 6) play('hopeBeam'); if (sp.f >= HOPE.blast) hopeGo('strike'); break;
         case 'strike':                      // ดาวแห่งความหวังพุ่งจากหัวน้องเข้าผลึก → ร้าว 1 รอย บอสสะดุ้ง
           if (sp.f === HOPE.impact) {
-            B.crack++; B.hitT = 0; shake(12); play('stumpHit');
+            B.crack++; B.hitT = 0; shake(12); play(B.kind === 'banana' ? 'bananaHit' : 'stumpHit');
             const [cx, cy] = crystalAt(B);
             fx('hit', cx, cy); burst(cx + S.cam, cy, 26, 'crystal', 8); burst(cx + S.cam, cy, 14, 'letter', 6);
           }
           if (sp.f >= HOPE.strike) { sp.from = sp.dx; hopeGo('back'); }
           break;
-        case 'miss': if (sp.f >= HOPE.miss) { B.state = 'warn'; B.st = 0; hopeGo('counter'); play('stumpWarn'); } break;
+        case 'miss': if (sp.f >= HOPE.miss) { B.state = B.kind === 'banana' ? 'grabWind' : 'warn'; B.st = 0; hopeGo('counter'); play(B.kind === 'banana' ? 'bananaRoar' : 'stumpWarn'); } break;
         case 'counter':                     // บอสตื่นโกรธ ปล่อยคลื่นสวน → เสียหัวใจ กระเด็นถอยนิด
           B.st += 1 / 60;
-          if (sp.f === HOPE.bonk) { S.inv = 0; hurt(); play('stumpBurst'); shake(10); }
+          if (sp.f === HOPE.bonk) { S.inv = 0; hurt(); play(B.kind === 'banana' ? 'bananaSlam' : 'stumpBurst'); shake(10); }
           if (!S.sp) return;                 // หัวใจหมด → ฉากแพ้ (lose ล้าง S.sp แล้ว)
           if (sp.f > HOPE.bonk) sp.dx -= Math.max(0, 9 - (sp.f - HOPE.bonk) * 0.5);
           if (sp.f >= HOPE.counter) { sp.from = sp.dx; hopeGo('back'); }
@@ -994,16 +1047,497 @@
       B.bolts = []; B.rings = []; B.rain = []; B.fogs = []; B.stars = [];
       if (ok && B.crack >= 3) { B.state = 'defeat'; B.st = 0; return; }
       B.state = 'idle'; B.st = 0; B.cycle = 0; B.x = BOSS_X;
-      if (ok) { B.hope = 0; note(B.crack === 2 ? 'ผลึกร้าว 2/3 · ภูตตอไม้โกรธแล้ว! เร็วขึ้น' : `ผลึกร้าว ${B.crack}/3 · ท่าใหม่มาแล้ว`, 170); }
+      if (ok) { B.hope = 0; note(crackNote(B), 170); }
       else { B.hope = Math.ceil(cfg.need / 2); note('พลาด! เก็บดาวอีกนิดแล้วลองใหม่', 150); }
     }
-    /** กลางผลึกบนตัวบอส (พิกัดจอ) — จากท่าที่วาดเฟรมก่อน */
+    /** ข้อความตอนตีโดน (ผลึกร้าว / บอสกล้วยโดน) */
+    const crackNote = (B) => B.kind === 'banana'
+      ? (B.crack >= 2 ? 'บอสโดน 2/3 · บอสกล้วยโกรธแล้ว! คว้าไวขึ้น' : `บอสโดน ${B.crack}/3 · ท่าใหม่มาแล้ว`)
+      : (B.crack >= 2 ? 'ผลึกร้าว 2/3 · ภูตตอไม้โกรธแล้ว! เร็วขึ้น' : `ผลึกร้าว ${B.crack}/3 · ท่าใหม่มาแล้ว`);
+    /** ระยะที่น้องพุ่งไปหยุดหน้าบอส */
+    const frontGap = (B) => (B.kind === 'banana' ? 84 * BAN_S : 92 * BOSS_S);
+    /** จุดตีบนตัวบอส (พิกัดจอ) — ภูตตอไม้ = กลางผลึก (จากท่าที่วาดเฟรมก่อน) · บอสกล้วย = หน้า */
     function crystalAt(B) {
+      if (B.kind === 'banana') return [B.x + BANANA_BOSS_PT.face[0] * BAN_S, G - BANANA_BOSS_PT.face[1] * BAN_S];
       const Pp = B.P;
       return [B.x + ((Pp ? Pp.x : 0) - 8) * BOSS_S, G - ((Pp ? Pp.y : STUMP.hover) + 46) * BOSS_S];
     }
 
+    // ══════════════════ 🍌 ด่านบอสกล้วยราคี (ด่านสุดท้าย · ผู้ใช้ 27 พ.ย.) ══════════════════
+    // ฉากสีพื้นไปก่อน · ท่าโจมตี: ปากล้วย (เลน) · กระแทกพื้น (คลื่นดิน) · ท่าคว้า 3 แบบ + มินิเกมดิ้นหลุด
+    // ทางเลือกทั้ง 3 จากแผน: ลากเข้าหาปาก (grabLow:pull) · ลูกสมุนช่วยคว้า (cling) · คว้าตอนโกรธ (เตือนสั้นลง กดมากขึ้น)
+    // ท่าบอสเป็นช่อง B1–B10 (banana.js) · น้อง C1–C8 · ลูกสมุน M1–M7 · ของประกอบ E1–E3 (banana-grab.js) — วางไฟล์ SVG แทนได้เอง
+    // ทุกจังหวะอยู่ใน S (เฟรมเกม) → พัก/ย้อนดูได้ · กดรัวบันทึกเป็น input('mash') · กระโดดสะบัดลูกสมุนนับใน jumpFx
+    const BG = {
+      reach: 0.42, linger: 0.12, back: 0.4,     // มือพุ่ง → ค้างที่ปลาย → ดึงกลับ (วิ)
+      rise: 0.34, slam: 0.14, press: 0.15,      // ตะครุบ: ยกสูงเหนือน้อง → ฟาดลง → กดค้าง (สั้น: กระโดดชั้นเดียวยังมีช่อง ~0.28 วิ · สองชั้นง่ายกว่า)
+      lift: 0.25, mash: 1.5, pull: 1.6,         // โดนจับ: ยกขึ้น → กดรัว 1.5 วิ (แบบลาก 1.6 วิ) — รวมที่โดนจับไม่เกิน 2 วิ
+      shake: 0.45, toss: 0.32, roll: 0.5,       // ไม่หลุด: เขย่า → โยน → กลิ้งกลับที่
+      escape: 0.5, stun: 1.7,                   // หลุด: ดีดตัวกลับที่ · บอสมึน
+      rageNeed: 1.4, rageWarn: 0.7,             // บอสโกรธ: ต้องกดมากขึ้น 40% · เตือนสั้นลง 30%
+      cling: 3.0,                               // ลูกสมุนเกาะนานสุดก่อนกัด (วิ)
+    };
+    // ลำดับท่าตามเฟส · ท่าคว้าไม่ติดกัน (ผู้เล่นไม่รู้สึกโดนขังนาน) · ขึ้นเฟสใหม่เริ่มนับใหม่
+    const BAN_PLAN = [
+      ['throw', 'grabLow', 'slam', 'grabHigh'],
+      ['grabAbove', 'throw', 'cling', 'slam', 'grabLow:pull', 'throw', 'grabHigh', 'slam'],
+      ['grabHigh', 'throw', 'cling', 'slam', 'grabAbove', 'throw', 'grabLow:pull', 'slam'],
+    ];
+    const BAN_HINT = {
+      throw: 'ปากล้วย: เส้นฟ้า = กระโดด · เส้นชมพู = หมอบ',
+      slam: 'กระแทกพื้น: กระโดดข้ามคลื่นดิน!',
+      grabLow: 'คว้าเรียดพื้น: กระโดดข้ามมือ!',
+      grabHigh: 'คว้าระดับหัว: หมอบลอด!',
+      grabAbove: 'ตะครุบจากบน: ดูเงามือ แล้วกระโดดให้ลอยอยู่ตอนมือฟาดลง',
+      cling: 'ลูกสมุนวิ่งตามมา! กระโดดหลบตอนมันกระโจน',
+    };
+    // เสียงตามเวลาในท่า (ชุดเดียวกับ monster-lab) — ยิงตอนเวลาในท่าข้ามจุดนั้น
+    const BAN_CUE = {
+      enter: [[0, 'bananaDrop'], [0.55, 'bananaLand'], [1.15, 'bananaRoar']],
+      throw: [[0.05, 'bananaReach'], [0.36, 'bananaPluck'], [0.55, 'bananaWindup'], [BANANA_BOSS_ACT.throw.release - 0.05, 'bananaThrow']],
+      slam: [[0, 'bananaSlamCharge'], [0.45, 'bananaJump'], [BANANA_BOSS_ACT.slam.land, 'bananaSlam']],
+      defeat: [[0, 'bananaQuake'], [1.1, 'bananaCrownPop'], [1.6, 'bananaFall'], [2.8, 'bananaSparkle']],
+      stun: [[0, 'bananaStun']], shakeHold: [[0, 'bananaShake']], toss: [[0, 'bananaToss']],
+    };
+    const MASH_PH = ['lift', 'mash', 'pull'];              // ช่วงที่กดรัวนับ
+    const HOLD_PH = ['lift', 'mash', 'pull', 'shake'];     // น้องอยู่ในมือบอส (ตัววาดบอสวาดน้องให้ผ่าน o.held)
+    const lerp2 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+    const banPt = (B, [ux, uy]) => [B.x + ux * BAN_S, G - uy * BAN_S];       // จุดบนตัวบอส (หน่วยบอส) → จอ
+    const holdPt = (B) => [B.x - 118 * BAN_S, G - 86 * BAN_S];              // กำมือชูระดับหัวบอส ยื่นออกหน้าตัว (B5) — น้องไม่ถูกตัวบอสบัง
+    const mouthPt = (B) => banPt(B, BANANA_BOSS_PT.face);
+    const nanaFrom = (B) => banPt(B, BANANA_BOSS_PT.banana);                 // จุดเริ่มกล้วยที่ปา (ตรงกับท่าปาในไฟล์)
+    const mashNeed = (B) => Math.round(cfg.mash * (B.rage ? BG.rageNeed : 1));
+    function clearBanana(B) {
+      B.nanas = []; B.waves = []; B.peels = []; B.mobs = []; B.grab = null; B.hand = null; B.force = null;
+      S.grab = null; S.cling = null; S.gx = 0; S.peelFly = null; S.P.mods = S.baseMods;
+    }
+    function bananaNext(B) {
+      const list = BAN_PLAN[Math.min(2, B.crack)];
+      const raw = B.force || list[B.cycle % list.length];
+      if (!B.force) B.cycle++;
+      B.force = null;
+      const [id, style] = raw.split(':');
+      B.st = 0; B.fired = 0; B.hand = null;
+      if (id.startsWith('grab')) {
+        B.state = 'grabWind';
+        B.grab = { kind: id, style: style || 'lift', ph: 'warn', f: 0, age: 0, tx: PX + (S.gx || 0) };
+        play('bananaGrabWarn');
+      } else if (id === 'cling') { B.state = 'summon'; play('bananaCall'); }
+      else B.state = id;
+      if (id === 'throw') { B.throwN = (B.throwN || 0) + 1; const a = B.throwN % 2 ? 'low' : 'mid'; B.lanes = B.rage ? [a, a === 'low' ? 'mid' : 'low'] : [a]; }
+      if (!B.seen[id]) { B.seen[id] = 1; note(BAN_HINT[id], 170); }
+    }
+    function bananaStep() {
+      const B = S.boss, P = S.P, caught = !!S.grab;
+      if (!caught) {                                   // โดนจับ = น้องไม่วิ่ง ฉากหยุด
+        stepFx(P.update(1, game()));
+        if (P.pendingJump) { P.pendingJump = false; jumpFx(P.jump()); }
+        S.cam += SPEED.run;
+      }
+      B.st += 1 / 60;
+      if (B.hitT != null) B.hitT += 1 / 60;
+      const st = B.st, prev = st - 1 / 60;
+      for (const [ts, k] of BAN_CUE[B.state] || []) if (st >= ts && prev < ts + 1e-9) play(k);
+      B.rage = B.crack >= 2;
+      if (B.rage && !B.rageS && B.state === 'idle') { B.rageS = true; play('bananaRoar'); }
+      const k = cfg.atkK * (B.rage ? 1.15 : 1);
+      const Wt = B.W = cfg.warnT * (B.rage ? BG.rageWarn : 1);
+      const b = box();
+      if (S.grab) stepGrab(B);
+      if (!S.cling && S.gx < 0) S.gx = Math.min(0, S.gx + 1.2);   // หลุดจากลูกสมุนแล้ววิ่งกลับที่
+      switch (B.state) {
+        case 'defeat':
+          if (st < 1.2) B.x += (620 - B.x) * 0.05;
+          if (st > 0.3 && st < 1.6) shake(1.5 + 2 * (st / 1.6));
+          if (!B.fallS && st >= 2.15) { B.fallS = true; shake(10); }
+          if (st > 4.6 && S.phase === 'boss') { S.phase = 'win'; play('bossWin'); showCard('win'); }
+          break;
+        case 'enter':
+          B.x = BOSS_X;
+          if (!B.landed && st >= 0.55) { B.landed = true; shake(12); dust(B.x - 60 + S.cam, G, 12); dust(B.x + 60 + S.cam, G, 12); }
+          if (st > 1.2 && st < 2.2) shake(3);
+          if (st > 2.6) toIdle(B, false);
+          break;
+        case 'idle':
+          B.x += (BOSS_X + Math.sin((S.f / 60) * 0.9) * 22 - B.x) * 0.05;
+          if (!B.chuckS && st > 0.5 && B.cycle % 2) { B.chuckS = true; play('bananaChuckle'); }
+          if (st > (B.rage ? 0.8 : 1.2) / k) bananaNext(B);
+          break;
+        case 'throw': {
+          B.x += (BOSS_X - B.x) * 0.08;
+          const R = BANANA_BOSS_ACT.throw.release;
+          while (B.fired < B.lanes.length && st >= R + B.fired * 0.3) {
+            const ln = B.lanes[B.fired++], [hx, hy] = nanaFrom(B);
+            B.nanas.push({ x: hx, y: hy, y0: hy, ty: LANE_Y[ln], vx: -7.2 * k, t: 0, ln, rot: 0 });
+            if (B.fired > 1) play('bananaThrow');
+          }
+          if (st > 2.4) toIdle(B);
+          break;
+        }
+        case 'slam': {
+          B.x += (BOSS_X - B.x) * 0.08;
+          const L = BANANA_BOSS_ACT.slam.land, n = B.rage ? 2 : 1;
+          while (B.fired < n && st >= L + B.fired * 0.38) {
+            B.waves.push({ cx: B.x, r: 60 * BAN_S, v: 6.6 * k, h: B.fired ? 34 : 28 }); B.fired++; shake(9);
+            dust(B.x - 50 + S.cam, G, 10); dust(B.x + 50 + S.cam, G, 10);
+            if (B.fired > 1) play('bananaSlam');
+          }
+          if (st > 2.4) toIdle(B);
+          break;
+        }
+        case 'grabWind': stepGrabWarn(B, Wt); break;
+        case 'grabLow': case 'grabHigh': case 'grabAbove': stepReach(B, b, k); break;
+        case 'summon': stepSummon(B); break;
+        case 'stun': if (st > BG.stun) toIdle(B); break;
+        // hold / pull / shakeHold / toss = stepGrab คุมเอง
+      }
+      // ── ของที่บอสปล่อย (หยุดตอนโดนจับ) ──
+      if (!caught) {
+        for (const s of B.nanas) {                       // กล้วยหมุน: ออกจากมือแล้วลงเลนใน 18 เฟรม
+          s.t++; s.x += s.vx; s.rot -= 0.32; s.y = s.y0 + (s.ty - s.y0) * Math.min(1, (s.t / 18) ** 0.7);
+          if (!s.hit && circHit(b, s.x, s.y, s.ln === 'low' ? 11 : 10)) { s.hit = true; hurt(); fx('hit', s.x, s.y); burst(s.x + S.cam, s.y, 10, 'crumb', 5); }
+        }
+        B.nanas = B.nanas.filter((s) => s.x > -60 && !s.hit);
+        for (const r of B.waves) {                       // คลื่นดิน: สันหน้าชนตอนเท้าต่ำกว่าความสูงสัน
+          r.r += r.v;
+          const fx2 = r.cx - r.r;
+          if (!r.hitDone && fx2 < b.x + b.w + 4 && fx2 + 24 > b.x && b.y + b.h > G - r.h + 4) { r.hitDone = true; hurt(); }
+        }
+        B.waves = B.waves.filter((r) => r.cx - r.r > -150);
+        for (const s of B.stars) {
+          s.x -= SPEED.run * 0.85;
+          if (!s.got && circHit(b, s.x, s.y, 16)) { s.got = true; B.hope++; S.starsTotal++; fx('star', s.x, s.y); burst(s.x + S.cam, s.y, 12, 'letter', 5); }
+        }
+        B.stars = B.stars.filter((s) => s.x > -30 && !s.got);
+        stepPeels(B, b);
+        stepMinions(B);
+      }
+      // แถบความหวังเต็ม → บอสเวียนหัว → พลังแห่งความหวัง (บอสกล้วยใช้ท่าพิเศษเสมอ — เล็งหน้าบอส)
+      const busy = ['tired', 'defeat', 'enter', 'grabLow', 'grabHigh', 'grabAbove', 'hold', 'pull', 'shakeHold', 'toss'].includes(B.state) || S.grab || S.cling || B.mobs.length;
+      if (!busy && B.hope >= cfg.need) {
+        B.state = 'tired'; B.st = 0; B.nanas = []; B.waves = []; B.stars = []; B.grab = null; B.hand = null;
+        play('hopeFull'); play('bananaTired');
+        hopeStart(B);
+      }
+    }
+    // ── ท่าคว้า: เตือน → พุ่ง ──
+    function stepGrabWarn(B, Wt) {
+      const g = B.grab;
+      g.age++;
+      B.x += (BOSS_X - B.x) * 0.08;
+      if (B.st < Wt) return;
+      B.state = g.kind; B.st = 0; g.ph = 'out'; g.f = 0;
+      g.from = banPt(B, BANANA_BOSS_PT.shoulder);
+      g.to = g.kind === 'grabLow' ? [PX - 70, G - 14] : [PX - 70, G - 38];   // เลยตัวน้องไปนิด แล้วดึงกลับ
+      B.hand = g.from.slice();
+      play('bananaGrabReach');
+    }
+    function stepReach(B, b, k) {
+      const g = B.grab, rest = banPt(B, BANANA_BOSS_PT.fist);
+      g.age++; const f = ++g.f / 60;
+      let hit = false;
+      const back = () => { const u = Math.min(1, f / BG.back); B.hand = lerp2(g.end, rest, ease01(u)); return u >= 1; };
+      if (g.kind !== 'grabAbove') {
+        // คว้าพื้น/ระดับหัว: มือพุ่งเป็นเส้นตรงในเลน (พื้น = กระโดด · ระดับหัว = หมอบ) · ชนเฉพาะมือ
+        const T = BG.reach / Math.min(1.3, k);
+        if (g.ph === 'out') { const u = Math.min(1, f / T); B.hand = lerp2(g.from, g.to, 1 - (1 - u) ** 2); if (u >= 1) { g.ph = 'linger'; g.f = 0; } }
+        else if (g.ph === 'linger') { if (f >= BG.linger) { g.ph = 'back'; g.f = 0; g.end = B.hand.slice(); } }
+        else if (back()) return grabDone(B, true);
+        if (g.ph !== 'back' && circHit(b, B.hand[0], B.hand[1], 14)) hit = true;
+      } else {
+        // ตะครุบ: ยกสูงเหนือเงา → ฟาดลงตรงเงา (ตำแหน่งน้องตอนเริ่มเตือน) → กดค้าง → ดึงกลับ · ลอยอยู่ตอนกดค้าง = รอด
+        const top = [g.tx + 24, G - 200], bot = [g.tx, G - 20];
+        if (g.ph === 'out') { const u = Math.min(1, f / BG.rise); B.hand = lerp2(g.from, top, ease01(u)); if (u >= 1) { g.ph = 'slam'; g.f = 0; } }
+        else if (g.ph === 'slam') { const u = Math.min(1, f / BG.slam); B.hand = lerp2(top, bot, u * u); if (u >= 1) { g.ph = 'press'; g.f = 0; shake(7); dust(bot[0] + S.cam, G, 10); play('bananaGrabSlam'); } }
+        else if (g.ph === 'press') { if (f >= BG.press) { g.ph = 'back'; g.f = 0; g.end = B.hand.slice(); } }
+        else if (back()) return grabDone(B, true);
+        if (g.ph === 'press' && overlap(b, { x: g.tx - 23, y: G - 40, w: 46, h: 40 })) hit = true;
+      }
+      if (hit && S.inv <= 0) catchCat(B, g.style);
+    }
+    /** มือว่างกลับมา = หลบได้ → รางวัลคนหลบเก่ง: ความหวัง +1 ทันที */
+    function grabDone(B, dodged) {
+      if (dodged) { play('bananaGrabMiss'); B.hope++; S.starsTotal++; fx('star', PX + 10, S.P.y - 50); note('หลบได้! ความหวัง +1', 90); }
+      toIdle(B);
+    }
+    // ── โดนจับ → มินิเกมดิ้นหลุด ──
+    function catchCat(B, style) {
+      const P = S.P;
+      P.setSlide(false); P.y = G; P.vy = 0; P.onGround = true; P.jumps = 0;
+      B.nanas = []; B.waves = [];
+      if (S.cling) dropCling('fall');
+      S.grab = { ph: style === 'pull' ? 'pull' : 'lift', f: 0, taps: 0, need: mashNeed(B), style, from: (B.hand || holdPt(B)).slice(), kick: 0, cx: PX + (S.gx || 0), cat: null };
+      B.grab = null;
+      B.state = style === 'pull' ? 'pull' : 'hold'; B.st = 0;
+      shake(5); play('bananaGrabCatch'); breakCombo(); mark('hurt');   // บอกวิธีด้วยแถบดิ้นหลุดเอง (ไม่ขึ้นป้ายซ้ำ)
+      S.notice = 0;
+    }
+    function mashTap() {
+      const g = S.grab;
+      if (!g || !MASH_PH.includes(g.ph)) return;
+      g.taps++; g.kick = 8;
+      play('bananaMash', g.taps, g.need);
+      burst(PX + S.cam + (g.ph === 'pull' ? (g.catX || PX) - PX : 0), G - 40, 3, 'mint', 3);
+      if (g.taps >= g.need) grabEscape(S.boss);
+    }
+    function stepGrab(B) {
+      const g = S.grab;
+      g.f++;
+      if (g.kick > 0) g.kick--;
+      const T = g.f / 60;
+      switch (g.ph) {
+        case 'lift': { const u = Math.min(1, T / BG.lift); B.hand = lerp2(g.from, holdPt(B), ease01(u)); if (u >= 1) { g.ph = 'mash'; g.f = 0; } break; }
+        case 'mash': {
+          const [hx, hy] = holdPt(B);
+          B.hand = [hx + (g.kick ? Math.sin(g.kick * 2.4) * 4 : 0), hy - (g.kick ? g.kick * 0.4 : 0)];   // ดิ้นแรง มือบอสสะเทือน
+          if (T >= BG.mash) grabFail(B);
+          break;
+        }
+        case 'pull': {
+          // ลากเข้าหาปาก (ทางเลือก): ยิ่งกดช้ายิ่งใกล้ · กดรัวดันกลับ (ครบ = หลุด) · ถึงปาก = งั่ม!
+          const u = T / BG.pull, pos = clamp(u * 1.3 - (g.taps / g.need) * 0.9, 0, 1), m = mouthPt(B);
+          g.pos = pos;
+          g.catX = g.cx + (m[0] - 30 - g.cx) * ease01(pos);
+          B.hand = [g.catX + 6, G - 30 - pos * 8];
+          if (pos >= 1 || u >= 1.6) { play('bananaChomp'); shake(6); grabFail(B); }
+          break;
+        }
+        case 'shake': {
+          const sh = Math.sin(g.f * 0.9), base = lerp2(g.shakeFrom, holdPt(B), Math.min(1, g.f / 8));
+          B.hand = [base[0] + sh * 14, base[1] + Math.cos(g.f * 1.8) * 6];
+          if (T >= BG.shake) {
+            g.ph = 'toss'; g.f = 0; g.from = B.hand.slice(); B.state = 'toss'; B.st = 0; B.hand = null;
+            S.inv = 0; hurt();
+            if (!S.grab) return;                         // หัวใจหมด → ฉากแพ้ (lose ล้าง S.grab แล้ว)
+          }
+          break;
+        }
+        case 'toss': {                                  // ลอยโค้งไปทางซ้าย ตีลังกา แล้วตกพื้น
+          const u = Math.min(1, T / BG.toss), x1 = PX - 70;
+          g.cat = { x: g.from[0] + (x1 - g.from[0]) * u, feet: g.from[1] + CAT_H * 0.6 + (G - g.from[1] - CAT_H * 0.6) * u - Math.sin(u * Math.PI) * 60, rot: -u * TAU * 1.2, pose: 'roll', k: 0 };
+          if (u >= 1) { g.ph = 'roll'; g.f = 0; dust(x1 + S.cam, G, 8); play('land'); shake(4); }
+          break;
+        }
+        case 'roll': {                                  // กลิ้งกลับที่เดิม (C7 สองเฟรม: ม้วน → กางขาจะลุก)
+          const u = Math.min(1, T / BG.roll), x1 = PX - 70;
+          g.cat = { x: x1 + (PX - x1) * ease01(u), feet: G, rot: ease01(u) * TAU, pose: 'roll', k: u };
+          if (u >= 1) grabEnd(B, false);
+          break;
+        }
+        case 'escape': {                                // ดีดตัวหลุด ตีลังกากลับที่ (C4)
+          const u = Math.min(1, T / BG.escape);
+          g.cat = { x: g.from[0] + (PX - g.from[0]) * u, feet: g.from[1] + CAT_H * 0.6 + (G - g.from[1] - CAT_H * 0.6) * u - Math.sin(u * Math.PI) * 70, rot: -u * TAU, pose: 'flip', k: u };
+          if (u >= 1) { dust(PX + S.cam, G, 6); play('land'); grabEnd(B, true); }
+          break;
+        }
+      }
+    }
+    function grabFail(B) {
+      const g = S.grab;
+      g.ph = 'shake'; g.f = 0; g.shakeFrom = (B.hand || holdPt(B)).slice();
+      B.state = 'shakeHold'; B.st = 0;
+      note('ดิ้นไม่หลุด!', 80);
+    }
+    function grabEscape(B) {
+      const g = S.grab;
+      g.ph = 'escape'; g.f = 0; g.from = (B.hand || holdPt(B)).slice(); B.hand = null;
+      B.state = 'stun'; B.st = 0; B.hitT = 0;
+      shake(6); play('bananaEscape'); burst(g.from[0] + S.cam, g.from[1], 14, 'mint', 6);
+      B.hope++; S.starsTotal++; fx('star', g.from[0], g.from[1] - 20);
+      note('ดิ้นหลุด! เก็บเปลือกกล้วยไปปาใส่บอส', 150);
+      // เปลือกกล้วยหลุดจากเครือบนหัว ร่วงลงพื้นข้างหน้าน้อง (ฉากหยุดระหว่างดีดตัว → ลงห่างน้อง 260px แล้วเลื่อนเข้าหาตามฉาก)
+      const [cx, cy] = banPt(B, BANANA_BOSS_PT.crown);
+      B.peels.push({ x0: cx, y0: cy, wx: S.cam + PX + 260, f: 0, landed: false, got: false, x: cx, y: cy, rot: 0 });
+    }
+    function grabEnd(B, escaped) {
+      S.grab = null; B.hand = null;
+      const P = S.P; P.y = G; P.vy = 0; P.onGround = true; P.jumps = 0;
+      S.inv = Math.max(S.inv, 40);
+      if (!escaped) toIdle(B);   // หลุด: บอสมึนต่อจนครบเวลา (stun) แล้วค่อยกลับท่ายืน
+    }
+    // ── เปลือกกล้วย: ร่วง → นอนบนพื้น (เลื่อนตามฉาก) → น้องวิ่งชน = เก็บ → ปาโค้งเข้าหน้าบอสเอง ──
+    function stepPeels(B, b) {
+      for (const p of B.peels) {
+        p.f++;
+        const u = Math.min(1, p.f / 30), sx = p.wx - S.cam;
+        if (!p.landed) { p.x = p.x0 + (sx - p.x0) * u; p.y = p.y0 + (G - 4 - p.y0) * u - Math.sin(u * Math.PI) * 90; p.rot = u * 5; if (u >= 1) { p.landed = true; play('bananaPeelDrop'); } }
+        else {
+          p.x = sx; p.y = G - 4; p.rot = 0;
+          if (!p.got && overlap(b, { x: sx - 16, y: G - 26, w: 32, h: 26 })) { p.got = true; play('bananaPeelPick'); S.peelFly = { f: 0, from: [PX + 14 + (S.gx || 0), S.P.y - 34] }; }
+        }
+      }
+      B.peels = B.peels.filter((p) => !p.got && (!p.landed || p.x > -40));
+      const pf = S.peelFly;
+      if (!pf) return;
+      pf.f++;
+      if (pf.f === 6) play('bananaGrabMiss');
+      if (pf.f === 32) {                                // โดนหน้าบอส "แปะ!"
+        B.hitT = 0; play('bananaPeelHit'); shake(6);
+        const [mx, my] = mouthPt(B);
+        fx('hit', mx, my); burst(mx + S.cam, my, 14, 'crumb', 6);
+        B.hope++; S.starsTotal++; fx('star', mx, my - 20);
+        note('ปาเปลือกโดน! ความหวัง +1', 110);
+      }
+      if (pf.f >= 40) S.peelFly = null;
+    }
+    // ── ลูกสมุนช่วยคว้า (ทางเลือก): "!" ขอบซ้าย → วิ่งตาม → กระโจน → เกาะขา / พลาด → สะบัดหลุด / กัด ──
+    function stepSummon(B) {
+      B.x += (BOSS_X - B.x) * 0.06;
+      if (!B.fired && B.st >= 0.35) { B.fired = 1; B.mobs.push({ ph: 'warn', f: 0, x: -60, y: G, alt: 0, rot: 0 }); note(BAN_HINT.cling, 140); }
+      if ((B.fired && !B.mobs.length && !S.cling) || B.st > 8) toIdle(B);
+    }
+    function stepMinions(B) {
+      const P = S.P, catX = PX + (S.gx || 0);
+      for (const m of B.mobs) {
+        m.f++;
+        const T = m.f / 60;
+        if (m.ph === 'warn') { if (T >= 0.75) { m.ph = 'run'; m.f = 0; play('mobScurry'); } }
+        else if (m.ph === 'run') { m.x += 4.4; if (m.x >= catX - 96) { m.ph = 'leap'; m.f = 0; m.x0 = m.x; play('mobDash'); } }
+        else if (m.ph === 'leap') {
+          const u = Math.min(1, m.f / 22);
+          m.x = m.x0 + (catX - 18 - m.x0) * u; m.alt = Math.sin(u * Math.PI) * 34;
+          if (u >= 1) {
+            m.alt = 0;
+            if (P.y > G - 30 && S.inv <= 0 && !S.grab) {   // น้องอยู่ติดพื้น = โดนเกาะ
+              m.ph = 'cling'; m.f = 0; m.shakes = 0; m.jolt = 0; S.cling = m;
+              P.mods = { ...S.baseMods, jump: 0.85 };
+              play('mobCling'); note('ลูกสมุนเกาะขา! กระโดด 2 ทีสะบัดหลุด', 130);
+            } else {                                       // ลอยอยู่ = หลบได้ (รางวัลคนหลบ)
+              m.ph = 'miss'; m.f = 0; play('mobStomp');
+              B.hope++; S.starsTotal++; fx('star', catX, G - 70); note('หลบลูกสมุนได้! ความหวัง +1', 90);
+            }
+          }
+        }
+        else if (m.ph === 'cling') {
+          S.gx = Math.max(-110, S.gx - 0.7);             // วิ่งช้าลง = ถอยหลังบนจอ
+          m.x = catX - 16; m.y = P.y;
+          if (m.jolt > 0) m.jolt--;
+          if (T >= BG.cling) { S.inv = 0; hurt(); play('mobBite'); dropCling('bite'); }
+        }
+        else if (m.ph === 'flung') { m.x += m.vx; m.fy += m.vy; m.vy += 0.55; m.rot += 0.35; }
+        else if (m.ph === 'miss') m.x -= SPEED.run;
+      }
+      B.mobs = B.mobs.filter((m) => !(m.ph === 'flung' && m.f > 60) && !(m.ph === 'miss' && m.f > 84));
+    }
+    function clingShake() {
+      const m = S.cling;
+      if (!m) return;
+      m.shakes++; m.jolt = 10; play('mobShakeOff');
+      if (m.shakes >= 2) dropCling('flung');
+    }
+    function dropCling(how) {
+      const m = S.cling;
+      if (!m) return;
+      S.cling = null; S.P.mods = S.baseMods;
+      m.ph = 'flung'; m.f = 0; m.fy = m.y - 16; m.vx = -4.2; m.vy = how === 'flung' ? -9 : -4; m.rot = 0;
+      if (how === 'flung') { play('mobFling'); const B = S.boss; B.hope++; S.starsTotal++; fx('star', m.x, m.fy - 20); note('สะบัดหลุด! ความหวัง +1', 90); }
+    }
+
     // ══════════════════ วาด ══════════════════
+    /** ฉากสีพื้น (ด่านบอสกล้วย · ยังไม่วาดฉากจริง) — ฟ้าครีม พื้นหญ้า + ขีดพื้นเลื่อนตามฉากให้เห็นว่าวิ่งอยู่ */
+    function drawPlainBg() {
+      ctx.fillStyle = '#FCEBC4'; ctx.fillRect(-20, -20, W + 40, G + 20);
+      ctx.fillStyle = '#A9C96B'; ctx.fillRect(-20, G, W + 40, H - G + 20);
+      ctx.fillStyle = '#97BC5C'; ctx.fillRect(-20, G, W + 40, 6);
+      ctx.fillStyle = 'rgba(120,160,70,.5)';
+      for (let x = -(S.cam % 90); x < W + 90; x += 90) ctx.fillRect(x, G + 24, 34, 4);
+    }
+    /** น้องระหว่างโดนคว้า — ช่อง C1–C8: มีไฟล์นักวาด = วาดไฟล์ · ยังไม่มี = drawCat2 + ค่าท่าชั่วคราว (หมุนรอบกลางตัว) */
+    function drawGrabCat(x, feet, pose, rot = 0, o = {}) {
+      const D = GRAB_CAT_POSE[pose], cy = feet - CAT_H * 0.5;
+      ctx.save();
+      if (S.inv > 0 && Math.floor(S.inv / 5) % 2) ctx.globalAlpha = 0.45;
+      if (rot) { ctx.translate(x, cy); ctx.rotate(rot); ctx.translate(-x, -cy); }
+      if (!drawSlot(ctx, D.slot, x, feet, CAT_H * 1.3, { t: S.f / 60 })) drawCat2(ctx, x, feet, CAT_S, SKIN, S.f, { k: 1, shape: D.shape(S.f, o) });
+      ctx.restore();
+    }
+    /** น้องในกำมือ (เรียกจากตัววาดบอสระหว่างวาดแขน → มือวาดทับกลางตัว) · ถูกลาก = ยืนบนพื้น มือจับหลัง */
+    function drawHeldCat(hx, hy) {
+      const g = S.grab;
+      if (!g) return;
+      if (g.ph === 'pull') { drawGrabCat(g.catX ?? PX, G, 'dragged', -0.12 * (g.pos || 0), {}); return; }
+      const pose = g.ph === 'lift' ? 'shock' : g.ph === 'shake' ? 'shaken' : 'struggle';
+      const jx = g.kick ? Math.sin(g.kick * 2.1) * 3 : 0;
+      drawGrabCat(hx + jx, hy + CAT_H * 0.34, pose, 0, { kick: g.kick / 8 });   // กำรอบตัว หัวโผล่พ้นกำมือ (อ่านสีหน้าออก) ขาห้อยดิ้นใต้มือ
+    }
+    const BAN_POSE = { summon: 'idle' };   // สถานะเกมที่ใช้ท่าวาดชื่ออื่น
+    function drawBananaFight(B) {
+      const tt = S.f / 60, g = B.grab;
+      // เตือนท่าคว้า: เงามือเหลืองใต้น้อง (E1) + เส้นเลน (ฟ้า = กระโดด · ชมพู = หมอบ) · ตะครุบ = เงาโตขึ้นจนถึงจังหวะฟาด
+      if (g) {
+        const total = B.W + (g.kind === 'grabAbove' ? BG.rise + BG.slam : BG.reach * 0.75);
+        const kk = clamp(g.age / 60 / total, 0, 1);
+        if (g.kind !== 'grabAbove' && g.ph === 'warn') drawStumpLane(ctx, B.x - 50 * BAN_S, -20, g.kind === 'grabLow' ? G - 14 : G - 38, kk, tt, g.kind === 'grabLow' ? 'low' : 'mid');
+        if (g.ph === 'warn' || g.ph === 'out' || g.ph === 'slam') drawHandShadow(ctx, g.kind === 'grabAbove' ? g.tx : PX + (S.gx || 0), G + 2, kk, tt, g.kind === 'grabAbove' ? 52 : 46);
+      }
+      if (B.state === 'throw' && B.lanes) for (let i = B.fired; i < B.lanes.length; i++) {
+        const left = BANANA_BOSS_ACT.throw.release + i * 0.3 - B.st;
+        if (left > 0 && left < 0.6) drawStumpLane(ctx, nanaFrom(B)[0], -20, LANE_Y[B.lanes[i]], 1 - left / 0.6, tt, B.lanes[i]);
+      }
+      for (const r of B.waves) drawBananaQuake(ctx, r.cx - r.r, G, r.h, tt);
+      for (const p of B.peels) drawPeel(ctx, p.x, p.y, 1.5, p.rot, tt, p.landed ? 1 : 0.4);
+      const held = S.grab && HOLD_PH.includes(S.grab.ph);
+      B.P = drawBananaBoss(ctx, B.x, G, BAN_S, {
+        state: BAN_POSE[B.state] || B.state, st: B.st, t: tt, gaze: -1, hitT: B.hitT, rage: B.rage && B.state !== 'defeat', noThrown: true,
+        reachTo: B.hand ? [(B.hand[0] - B.x) / BAN_S, (G - B.hand[1]) / BAN_S] : null,
+        held: held ? drawHeldCat : null,
+      });
+      for (const s of B.nanas) { drawBananaThrown(ctx, s.x, s.y, BAN_S * 0.62, s.rot); if (cfg.hit) { ctx.strokeStyle = 'red'; ctx.beginPath(); ctx.arc(s.x, s.y, s.ln === 'low' ? 11 : 10, 0, TAU); ctx.stroke(); } }
+      for (const s of B.stars) drawStar(s.x, s.y, s.y * 0.1);
+      if (cfg.hit && B.hand && B.grab) {
+        ctx.strokeStyle = 'yellow';
+        if (B.grab.kind === 'grabAbove') hitbox({ x: B.grab.tx - 23, y: G - 40, w: 46, h: 40 }, 'rgba(255,220,0,.9)');
+        else { ctx.beginPath(); ctx.arc(B.hand[0], B.hand[1], 14, 0, TAU); ctx.stroke(); }
+      }
+    }
+    /** ชั้นหน้าน้อง: ลูกสมุน (เกาะขา = ทับขาน้อง) · เปลือกที่ปา · แถบดิ้นหลุด */
+    function drawBananaFront(B) {
+      const tt = S.f / 60;
+      for (const m of B.mobs) {
+        const T = m.f / 60;
+        if (m.ph === 'warn') { drawBehindWarn(ctx, 28, G - 46, T / 0.75, tt); continue; }
+        ctx.save();
+        if (m.ph === 'run') { if (!drawSlot(ctx, MINION_POSE.run.slot, m.x, G, CAT_H * 0.95, { t: tt, fps: 10 })) drawBanana(ctx, m.x, G, MIN_S, { state: 'walk', st: T * 1.6, t: tt }); }
+        else if (m.ph === 'leap') { if (!drawSlot(ctx, MINION_POSE.leap.slot, m.x, G - m.alt, CAT_H * 0.95)) drawBanana(ctx, m.x, G, MIN_S, { state: 'hop', st: 0.33 + Math.min(1, m.f / 22) * 0.6, t: tt, alt: m.alt / MIN_S }); }
+        else if (m.ph === 'cling') {                   // เกาะขาหลังน้อง ตัวเอียงห้อย · โดนกระโดดสะบัด = กระตุก
+          const wob = m.jolt ? Math.sin(m.jolt * 1.7) * 0.3 : Math.sin(tt * 9) * 0.06;
+          ctx.translate(m.x, m.y + 2); ctx.rotate(-0.45 + wob);
+          if (!drawSlot(ctx, MINION_POSE.cling.slot, 0, 0, CAT_H * 0.6)) drawBanana(ctx, 0, 0, MIN_S * 0.62, { state: 'taunt', st: T, t: tt });
+        }
+        else if (m.ph === 'flung') {
+          ctx.globalAlpha = clamp(1 - (m.f - 36) / 24, 0, 1);
+          ctx.translate(m.x, m.fy); ctx.rotate(m.rot);
+          if (!drawSlot(ctx, MINION_POSE.flung.slot, 0, CAT_H * 0.3, CAT_H * 0.8)) drawBanana(ctx, 0, CAT_H * 0.3, MIN_S * 0.8, { state: 'dizzy', st: T, t: tt });
+        }
+        else if (m.ph === 'miss') drawBanana(ctx, m.x, G, MIN_S, { state: 'stomp', st: Math.min(1.4, T), t: tt });
+        ctx.restore();
+      }
+      // ป้ายนับสะบัด (ตอนโดนเกาะ)
+      if (S.cling) {
+        const m = S.cling, left = BG.cling - m.f / 60;
+        ctx.save(); ctx.font = '700 15px Mali, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const pop = 1 + (m.jolt ? m.jolt * 0.02 : 0);
+        ctx.translate(PX + (S.gx || 0), S.P.y - CAT_H - 22); ctx.scale(pop, pop);
+        ink(`กระโดดสะบัด! ${m.shakes}/2`, 0, 0, left < 1 ? '#8A1F3D' : '#4A2366', 4.4, left < 1 ? '#FFD0DE' : '#FFF4DC');
+        ctx.restore();
+      }
+      // เปลือกที่ปา: โค้งจากน้องเข้าหน้าบอส หมุนติ้ว (C5 = ท่าปา — มีไฟล์แล้วค่อยวาดท่าน้องแยก)
+      const pf = S.peelFly;
+      if (pf && pf.f >= 6 && pf.f < 32) {
+        const u = (pf.f - 6) / 26, [mx, my] = mouthPt(B), [x0, y0] = pf.from;
+        drawPeel(ctx, x0 + (mx - x0) * u, y0 + (my - y0) * u - Math.sin(u * Math.PI) * 70, 1.3, u * 12, tt, 0);
+      }
+      // แถบดิ้นหลุด (E3) เหนือกำมือ / เหนือน้องที่ถูกลาก
+      const g = S.grab;
+      if (g && MASH_PH.includes(g.ph)) {
+        const pull = g.ph === 'pull';
+        const time = pull ? 1 - clamp(g.pos || 0, 0, 1) : g.ph === 'lift' ? 1 : 1 - g.f / (BG.mash * 60);
+        // ใต้น้องที่ห้อยอยู่ (ไม่ชนแถบบน/ป้ายแจ้ง) · ถูกลาก = เหนือหัวน้อง
+        const ax = pull ? (g.catX ?? PX) : (B.hand ? B.hand[0] : holdPt(B)[0]);
+        const ay = pull ? G - CAT_H - 40 : (B.hand ? B.hand[1] : holdPt(B)[1]) + CAT_H * 0.34 + 34;
+        drawMashMeter(ctx, clamp(ax - 12, 90, W - 120), ay, { fill: g.taps / g.need, time, pulse: g.kick / 8, t: tt, label: pull ? 'ดันกลับ! กดรัว' : 'ดิ้นหลุด! กดรัว', hot: S.boss.rage });
+      }
+    }
     function drawMob(m, x) {
       // ลูกน้อง: วิญญาณท่อนซุงน้อย (ลอยเข้าหา) · โดนเหยียบ = ท่า stomp (แบน → คริสตัลกระเด็นแตก → สลายเป็นหมอก)
       if (m.dead > 92) return;
@@ -1045,6 +1579,11 @@
     }
     function drawCat() {
       const P = S.P;
+      if (S.grab) {   // บอสกล้วยจับอยู่: ในกำมือ = ตัววาดบอสวาดให้ (drawHeldCat) · ดีดหลุด/โดนโยน/กลิ้ง = วาดที่นี่
+        const c = S.grab.cat;
+        if (c && !HOLD_PH.includes(S.grab.ph)) drawGrabCat(c.x, c.feet, c.pose, c.rot, { k: c.k });
+        return;
+      }
       // ตัวคุมท่าชุดเดียวกับเกม (Game.drawRunCat): สกินที่ใส่ · เหนื่อยตอนหัวใจเหลือ ≤ LIVES.lowAt · ประกายจากชุด
       const lowK = S.hearts > 0 && S.hearts <= LIVES.lowAt ? ((LIVES.lowAt + 1 - S.hearts) / LIVES.lowAt) * 0.8 : 0;
       const dead = S.phase === 'over';
@@ -1052,7 +1591,7 @@
       const sp = S.sp, still = sp && sp.ph !== 'rush' && sp.ph !== 'back';
       const runSpeed = dead || still ? 0 : sp && sp.ph === 'rush' ? SPEED.run * 2.6 : SPEED.run;
       const r = stepRunAnim(S.anim, P, { catId: SKIN.id, mood: S.phase === 'win' ? 'happy' : sp && sp.ph === 'counter' ? 'hurt' : '', hurt: S.hurt, dead, tired: lowK, gait: 1, outfit: SKIN.outfit?.id, speed: runSpeed, stand: !!still, scale: CAT_S, keep: true });
-      const cx = PX + (sp ? sp.dx : 0);
+      const cx = PX + (sp ? sp.dx : 0) + (S.gx || 0);
       drawRunShadow(ctx, cx, P.y, CAT_LOOK);
       if (sp && sp.ph === 'rush') {           // ภาพติดตาไล่หลัง (จางลงทีละชั้น)
         const k = Math.min(1, sp.f / HOPE.rush);
@@ -1177,7 +1716,7 @@
           ctx.save(); ctx.globalAlpha = Math.max(0, aa); ctx.translate(e.x, e.y); ctx.scale(sc, sc); ctx.textAlign = 'center';
           ctx.fillStyle = 'rgba(40,20,55,.78)'; ctx.beginPath(); ctx.roundRect(-150, -34, 300, 62, 22); ctx.fill();
           ctx.font = '600 26px Mitr, sans-serif'; ctx.fillStyle = '#FFE08A'; ctx.fillText(e.txt, 0, -2);
-          ctx.font = '13px Mitr, sans-serif'; ctx.fillStyle = '#FFF4DC'; ctx.fillText(STUMP.title, 0, 18);
+          ctx.font = '13px Mitr, sans-serif'; ctx.fillStyle = '#FFF4DC'; ctx.fillText(e.sub || STUMP.title, 0, 18);
           ctx.restore();
         }
         else if (e.kind === 'text') {
@@ -1241,14 +1780,14 @@
     /** บอสหัวเราะเยาะ: ตัวเด้งขึ้นลงถี่ ๆ + "ฮะ ฮะ ฮ่า!" ลอยขึ้นข้างหัว */
     function drawGloat(B) {
       const g = B.gloat || 0; if (g < 0.4) return;
-      const tops = G - 92 * BOSS_S;   // ข้างหน้าบอส ระดับตา
+      const bs = B.kind === 'banana' ? BAN_S : BOSS_S, tops = G - (B.kind === 'banana' ? 80 : 92) * bs;   // ข้างหน้าบอส ระดับตา
       for (let i = 0; i < 3; i++) {
         const u = ((g - 0.4) * 0.8 - i * 0.33);
         if (u < 0 || u > 1.6) continue;
         const uu = u % 1;
         ctx.save(); ctx.globalAlpha = Math.sin(uu * Math.PI) * 0.95; ctx.textAlign = 'center';
         ctx.font = `700 ${19 + i * 4}px Mitr, sans-serif`; ctx.fillStyle = '#FFD3EA'; ctx.shadowColor = 'rgba(214,80,160,.9)'; ctx.shadowBlur = 10;
-        ctx.fillText(['ฮะ', 'ฮะ', 'ฮ่า!'][i], B.x - 62 * BOSS_S - i * 16 + Math.sin(uu * 6) * 3, tops - uu * 34 + i * 10);
+        ctx.fillText(['ฮะ', 'ฮะ', 'ฮ่า!'][i], B.x - 62 * bs - i * 16 + Math.sin(uu * 6) * 3, tops - uu * 34 + i * 10);
         ctx.restore();
       }
     }
@@ -1266,7 +1805,10 @@
       if (sp.ph === 'rush') drawHopeRush(ctx, sp, { startX: PX, catX, feetY: S.P.y, W, H, t: tt });
       else if (sp.ph === 'strike') drawHopeStrike(ctx, sp, { from: [catX, S.P.y - 86], to: crystalAt(B), t: tt });
       else if (sp.ph === 'counter') {
-        if (sp.f >= HOPE.bonk - 6) drawStumpRing(ctx, B.x, G, 44 * BOSS_S + (sp.f - HOPE.bonk + 6) * 26, 34, tt);   // คลื่นสวน
+        if (sp.f >= HOPE.bonk - 6) {   // คลื่นสวน
+          if (B.kind === 'banana') drawBananaQuake(ctx, B.x - 60 * BAN_S - (sp.f - HOPE.bonk + 6) * 26, G, 34, tt);
+          else drawStumpRing(ctx, B.x, G, 44 * BOSS_S + (sp.f - HOPE.bonk + 6) * 26, 34, tt);
+        }
         drawHopeCounter(ctx, sp, { catX, headY: S.P.y - 78, W, H, t: tt });
       }
     }
@@ -1281,9 +1823,9 @@
       ctx.setTransform(sc, 0, 0, sc, (w - W * sc) / 2, (h - H * sc) / 2);
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
       if (S.shake > 0.2) ctx.translate(Math.sin(S.f * 2.1) * S.shake, Math.cos(S.f * 1.7) * S.shake * 0.6);
-      drawGroveBackdrop(ctx, S.cam, S.f);
       const R = S.run, wx = S.cam;
-      drawGround(ctx, [], S.cam, GROVE_PAL, drawGroveGround);
+      if (S.mode === 'banana') drawPlainBg();   // ด่านบอสกล้วย: ฉากสีพื้นไปก่อน (ผู้ใช้ 27 พ.ย.)
+      else { drawGroveBackdrop(ctx, S.cam, S.f); drawGround(ctx, [], S.cam, GROVE_PAL, drawGroveGround); }
       if (S.phase === 'run' || S.phase === 'clear' || (S.phase === 'over' && !S.boss)) {
         // เส้นชัย
         const fxp = R.finish - wx;
@@ -1319,7 +1861,8 @@
           if (s.fallAt != null) drawShard(x, s.y, s.landed ? 0.4 : S.f * 0.2, s.landed ? Math.max(0, 1 - (S.f - s.landF) / 110) : 1);
         }
       }
-      if (S.boss) {
+      if (S.boss && S.boss.kind === 'banana') drawBananaFight(S.boss);
+      else if (S.boss) {
         const B = S.boss, tt = S.f / 60;
         // สัญญาณเตือนล่วงหน้า (อ่านออกว่าต้องหลบแบบไหน)
         if (B.state === 'cast' && B.lanes) for (let i = B.fired; i < B.n; i++) {
@@ -1350,8 +1893,9 @@
       PT.draw(ctx, S.cam);   // ฝุ่น/ประกายของเกม (พิกัดโลก)
       if (S.phase === 'over') drawLoseLight();
       drawCat();
+      if (S.boss && S.boss.kind === 'banana') drawBananaFront(S.boss);   // ลูกสมุนเกาะขา · เปลือกที่ปา · แถบดิ้นหลุด (หน้าน้อง)
       if (S.phase === 'over') { drawLoseFx(); if (S.boss) drawGloat(S.boss); }   // เสียงหัวเราะอยู่นอกความมืด (อ่านออก)
-      drawGroveFront(ctx, S.cam);   // ใบไม้เข้มชั้นหน้าสุด (ในเนื้อดิน ไม่บังทางวิ่ง)
+      if (S.mode !== 'banana') drawGroveFront(ctx, S.cam);   // ใบไม้เข้มชั้นหน้าสุด (ในเนื้อดิน ไม่บังทางวิ่ง)
       hitbox(box(), 'rgba(0,200,255,.9)');
       if (S.sp) drawHopeField(S.sp);
       drawFx();
@@ -1378,13 +1922,17 @@
           <div class="stats">${hearts}<span>⭐ <b>${S.starsRun}</b></span><span>🐟 <b>${S.treats.toLocaleString('en-US')}</b></span></div>
           <div class="row">${S.mode === 'full' ? '<button type="button" class="ib main" id="goBoss">สู้ภูตตอไม้ →</button>' : ''}<button type="button" class="ib" id="again">เล่นด่านนี้ใหม่</button></div>`;
         paused = true;
+      } else if (kind === 'win' && S.boss && S.boss.kind === 'banana') {
+        card.innerHTML = `<h2>ชนะบอสกล้วยราคีแล้ว! 🍌</h2><p>ผ่านด่านสุดท้าย${S.hearts === 9 ? '<br>✨ หัวใจเต็ม 9 ดวง ได้รางวัลพิเศษ' : ''}</p>
+          <div class="stats">${hearts}<span>⭐ <b>${S.starsTotal}</b></span><span>🐟 <b>${S.treats.toLocaleString('en-US')}</b></span></div>
+          <div class="row"><button type="button" class="ib pink" id="again">เล่นอีกรอบ</button></div>`;
       } else if (kind === 'win') {
         const nm = KITTEN_NAME[S.kitten] || S.kitten;
         card.innerHTML = `<h2>ช่วยน้องสำเร็จ! 🐾</h2><p>ผลึกแตกแล้ว ได้น้อง <b>${nm}</b> กลับบ้าน${S.hearts === 9 ? '<br>✨ หัวใจเต็ม 9 ดวง ได้รางวัลพิเศษ' : ''}</p>
           <div class="stats">${hearts}<span>⭐ <b>${S.starsTotal}</b></span><span>🐟 <b>${S.treats.toLocaleString('en-US')}</b></span></div>
           <div class="row"><button type="button" class="ib pink" id="again">เล่นอีกรอบ</button></div>`;
       } else {
-        card.innerHTML = `<h2>หัวใจหมดแล้ว 💔</h2><p>ตามแผน: กลับไปเริ่มด่าน 1 ใหม่ด้วยหัวใจเต็ม 9 ดวง</p>
+        card.innerHTML = `<h2>หัวใจหมดแล้ว 💔</h2><p>${S.mode === 'banana' ? 'กลับไปพักแล้วลองสู้บอสกล้วยใหม่ด้วยหัวใจเต็ม 9 ดวง' : 'ตามแผน: กลับไปเริ่มด่าน 1 ใหม่ด้วยหัวใจเต็ม 9 ดวง'}</p>
           <div class="row"><button type="button" class="ib main" id="again">ลุยใหม่</button></div>`;
       }
       card.hidden = false;
@@ -1407,11 +1955,13 @@
       if (paused || !card.hidden) return;
       if (S.phase !== 'run' && S.phase !== 'boss') return;
       if (S.sp) { if (S.sp.ph === 'aim' && S.sp.tap == null) input('hope'); return; }   // ท่าพิเศษ: ปุ่มกระโดด = กดจังหวะ
+      if (S.grab) { if (MASH_PH.includes(S.grab.ph)) input('mash'); return; }           // โดนจับ: ปุ่มไหนก็ได้ = ดิ้น
       input('jump');
     };
     // แตะจอฝั่งซ้าย (1/3) = กดค้างหมอบ · ที่เหลือ = กระโดด
     const slide = (on) => {
       if (!S || !S.P) return;
+      if (S.grab) { if (on && !paused && card.hidden && MASH_PH.includes(S.grab.ph)) input('mash'); return; }   // โดนจับ: ปุ่มหมอบก็ดิ้นได้
       const v = on && (S.phase === 'run' || S.phase === 'boss') && !paused && !S.sp;
       if (v !== S.P.slideHeld) input(v ? 'slide1' : 'slide0');
     };
@@ -1462,6 +2012,17 @@
       ['ดาวหล่น + เก็บ 1–5', () => seq([[0, 'hopeStarDrop'], [400, 'hopeStar', 1], [700, 'hopeStar', 2], [1000, 'hopeStar', 3], [1300, 'hopeStar', 4], [1600, 'hopeStar', 5]])],
       ['ชนะ (แตร)', () => SFX.bossWin()],
       ['แพ้ (กล่องดนตรี)', () => SFX.bossLose()],
+      ['🍌 บอสกล้วยลงมา', () => seq([[0, 'bananaDrop'], [550, 'bananaLand'], [1150, 'bananaRoar']])],
+      ['🍌 ปากล้วย', () => seq([[50, 'bananaReach'], [360, 'bananaPluck'], [550, 'bananaWindup'], [1000, 'bananaThrow']])],
+      ['🍌 กระแทกพื้น', () => seq([[0, 'bananaSlamCharge'], [450, 'bananaJump'], [1250, 'bananaSlam']])],
+      ['🍌 ง้างคว้า → คว้าวืด', () => seq([[0, 'bananaGrabWarn'], [1000, 'bananaGrabReach'], [1550, 'bananaGrabMiss']])],
+      ['🍌 ตะครุบลงพื้น', () => seq([[0, 'bananaGrabReach'], [480, 'bananaGrabSlam']])],
+      ['🍌 โดนจับ → กดรัว → หลุด', () => seq([[0, 'bananaGrabCatch'], ...[1, 2, 3, 4, 5, 6, 7].map((i) => [300 + i * 160, 'bananaMash', i, 7]), [1520, 'bananaEscape'], [1620, 'bananaStun']])],
+      ['🍌 ไม่หลุด: เขย่า → โยน', () => seq([[0, 'bananaShake'], [450, 'bananaToss'], [560, 'hurt']])],
+      ['🍌 ลากถึงปาก งั่ม!', () => SFX.bananaChomp()],
+      ['🍌 เปลือก: หล่น · เก็บ · ปาโดน', () => seq([[0, 'bananaPeelDrop'], [500, 'bananaPeelPick'], [1000, 'bananaPeelHit']])],
+      ['🍌 ลูกสมุน: เรียก · วิ่ง · เกาะ · สะบัด', () => seq([[0, 'bananaCall'], [600, 'mobScurry'], [1300, 'mobCling'], [1900, 'mobShakeOff'], [2300, 'mobFling']])],
+      ['🍌 บอสเหนื่อย · โดนตี', () => seq([[0, 'bananaTired'], [1300, 'bananaHit']])],
     ];
     for (const [name, fn] of SFX_LIST) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = '▶ ' + name;
@@ -1485,6 +2046,7 @@
     cv.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       if (S.sp) { if (S.sp.ph === 'aim') doJump(); return; }   // มินิเกม: แตะตรงไหนก็ได้ (รวมปุ่มอุ้งเท้ากลางจอ)
+      if (S.grab) { doJump(); return; }                        // ดิ้นหลุด: แตะตรงไหนก็ได้
       if (padOn()) return;   // มีปุ่มบนจอแล้ว แตะพื้นจอไม่สั่งอะไร (กันนิ้วที่วางพักไว้กลายเป็นกระโดด — เหมือนเกม)
       const r = cv.getBoundingClientRect();
       if (e.clientX - r.left < r.width / 3) { slidePtr = e.pointerId; slide(true); } else doJump();
@@ -1494,7 +2056,7 @@
     addEventListener('keydown', (e) => {
       if (e.target.closest('input')) return;
       if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); if (!e.repeat) doJump(); }
-      else if (['ArrowDown', 'KeyS'].includes(e.code)) { e.preventDefault(); slide(true); }
+      else if (['ArrowDown', 'KeyS'].includes(e.code)) { e.preventDefault(); if (!(e.repeat && S.grab)) slide(true); }
       else if (e.code === 'KeyP') $('pause').click();
       else if (e.code === 'KeyR') $('restart').click();
       else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); nudge((e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 60 : 1)); }
@@ -1506,13 +2068,14 @@
       ['full', 'ด่าน 1 → สู้บอส', 'วิ่งจนถึงเส้นชัย แล้วต่อด่านบอส หัวใจ/ดาวยกไปด้วย'],
       ['run', 'ด่านวิ่งอย่างเดียว', 'ลองลูกน้อง ดาว ผลึกตก'],
       ['boss', 'ด่านบอสอย่างเดียว', 'เริ่มสู้ภูตตอไม้เลย (แถบความหวังเริ่ม 0)'],
+      ['banana', '🍌 บอสกล้วย (ด่านสุดท้าย)', 'ฉากสีพื้น · ท่าคว้า + ดิ้นหลุด · ปากล้วย · กระแทกพื้น · ลูกสมุนเกาะขา'],
     ];
     function renderModes() {
       $('modes').innerHTML = '';
       for (const [id, name, note] of MODES) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (cfg.mode === id ? ' on' : '');
         b.innerHTML = `${name}<small>${note}</small>`;
-        b.onclick = () => { preview = null; paintPreview(); cfg.mode = id; saveCfg(); renderModes(); newRun(id); paused = false; setPauseBtn(); };
+        b.onclick = () => { preview = null; paintPreview(); cfg.mode = id; saveCfg(); renderModes(); syncSkipVis(); newRun(id); paused = false; setPauseBtn(); };
         $('modes').appendChild(b);
       }
     }
@@ -1544,6 +2107,7 @@
     slider('need', 'needOut', 'need', (v) => `${v} ดวง`);
     slider('warnT', 'warnOut', 'warnT', (v) => `${(+v).toFixed(1)}`);
     slider('atkK', 'atkOut', 'atkK', (v) => `×${(+v).toFixed(1)}`);
+    slider('mash', 'mashOut', 'mash', (v) => `${v} ครั้ง`);
     seg($('spd'), [[0.5, '½'], [0.75, '¾'], [1, 'ปกติ']], 'speed');
     seg($('god'), [[false, 'ปิด'], [true, 'เปิด']], 'god');
     seg($('hit'), [[false, 'ปิด'], [true, 'เปิด']], 'hit');
@@ -1555,15 +2119,23 @@
     $('rstAll').onclick = () => { for (const r of resets) if (!r.isDef()) r.reset(); saveCfg(); syncResets(); };
     syncResets();
     renderModes();
-    for (const [id, name, note, cls] of SKIPS) {
+    for (const [id, name, note, cls, only] of SKIPS) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (cls ? ' ' + cls : ''); b.dataset.skip = id;
+      b.dataset.only = only || SKIP_ONLY[id] || '';
       b.innerHTML = `${name}<small>${note}</small>`;
       b.onclick = () => { input('skip:' + id); paused = false; setPauseBtn(); };
       $('skips').appendChild(b);
     }
 
+    /** ปุ่มข้ามฉาก: ของด่านวิ่ง (s) ซ่อนในโหมดบอสกล้วย · ของบอสกล้วย (b) โชว์เฉพาะโหมดนั้น */
+    function syncSkipVis() {
+      for (const b of document.querySelectorAll('#skips .chip')) b.hidden = (b.dataset.only === 'b' && cfg.mode !== 'banana') || (b.dataset.only === 's' && cfg.mode === 'banana');
+    }
+    syncSkipVis();
+
     // ══════════════════ ลูป (60 ขั้นต่อวินาทีคงที่) ══════════════════
     setBossS();
+    loadBananaBoss(); loadBanana();
     newRun();
     /** เดินเกมหนึ่งขั้น (1/60 วิ) */
     function stepOnce() {
@@ -1670,7 +2242,10 @@
     window.__gp = () => S;
     window.__input = (a) => input(a);   // ทดสอบอัตโนมัติ (กดจังหวะตรงเฟรม)
     window.__cfg = cfg;
-    window.__geo = () => ({ BOSS_S, BOSS_S_MAX, CAT_H, CAT_H_SKIN: measureCatH(SKIN), JUMP_APEX, JUMP_REACH, JUMP_REACH_EASY, TIRED_FLAME, hitBottom: (TIRED_FLAME - FLAME_HIT_R) * BOSS_S });
+    window.__pause = (v = true) => { paused = v; setPauseBtn(); };   // ทดสอบ: พัก แล้วเดินทีละเฟรมตรงเป๊ะ
+    window.__step = (n = 1) => { for (let i = 0; i < n; i++) liveStep(); };
+    window.__seek = (f) => seek(f);
+    window.__geo = () => ({ BAN_S, MIN_S, BOSS_S, BOSS_S_MAX, CAT_H, CAT_H_SKIN: measureCatH(SKIN), JUMP_APEX, JUMP_REACH, JUMP_REACH_EASY, TIRED_FLAME, hitBottom: (TIRED_FLAME - FLAME_HIT_R) * BOSS_S });
   </script>
 </body>
 </html>

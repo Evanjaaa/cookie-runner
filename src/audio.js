@@ -2601,6 +2601,100 @@ export const sfx = {
     [1046.5, 1318.51, 1567.98, 2093, 2637.02, 3135.96].forEach((f, i) => later(() => glassBell(f, 0.6, 0.028), i * 90));
     noise({ dur: 1.0, vol: 0.03, type: 'highpass', freq: 6000, attack: 0.2 });
   },
+  // ── ท่าคว้า (ผู้ใช้ 27 พ.ย. — ด่านบอสกล้วยใน gameplay-lab) ── ตัวตนเดียวกับชุดบน: ใบกล้วยซ่า · เนื้อหนึบ · หัวเราะกวน ๆ
+  // ง้างคว้า (เตือน): "ฮึ่บ!" ในคอ + ลมดูดเข้าไต่ขึ้น + ใบกล้วยสั่น — ฟังอย่างเดียวก็รู้ว่า "จะคว้าแล้ว" (ต่างจากเสียงง้างปา)
+  bananaGrabWarn: () => {
+    beast({ dur: 0.36, f0: 120, f1: 175, f2: 150, vol: 0.13, flutter: 24, drive: 4.5, vowel: [640, 1050], vowelTo: [820, 1300], breath: 0.6 });
+    noise({ dur: 0.7, vol: 0.05, freq: 700, freqTo: 2600, q: 1.4, attack: 0.5 });
+    tone(220, 440, 0.6, 'triangle', 0.025);
+    later(() => sfx.bananaRustle(0.045), 80);
+  },
+  // แขนยืดพุ่ง: ยางยืด "วื้ดดด" ไถขึ้น + ลมแหวก
+  bananaGrabReach: () => {
+    tone(160, 620, 0.28, 'sawtooth', 0.035);
+    tone(320, 1240, 0.28, 'sine', 0.03);
+    noise({ dur: 0.3, vol: 0.1, freq: 500, freqTo: 3200, q: 1.1, attack: 0.03 });
+  },
+  // ตะครุบลงพื้น: ฟาด "ปั้ก!" หนึบ ๆ + พื้นสะเทือนเบา
+  bananaGrabSlam: () => {
+    impact(0.2, 1.05);
+    tone(300, 90, 0.16, 'triangle', 0.08);
+    noise({ dur: 0.12, vol: 0.09, type: 'lowpass', freq: 1400, freqTo: 300 });
+    rumble(0.5, 0.06);
+  },
+  // มือว่างดึงกลับ (หลบได้): ยางหดสั้น ๆ "ฟึ่บ"
+  bananaGrabMiss: () => {
+    tone(700, 180, 0.2, 'sine', 0.04);
+    noise({ dur: 0.18, vol: 0.05, freq: 2400, freqTo: 600, q: 1.2 });
+  },
+  // จับได้: "หนึบ!" + หัวเราะสะใจสั้น ๆ "เฮะ!"
+  bananaGrabCatch: () => {
+    tone(260, 120, 0.12, 'triangle', 0.1);
+    later(() => tone(180, 360, 0.1, 'sine', 0.06), 40);
+    noise({ dur: 0.06, vol: 0.07, freq: 1800, q: 2 });
+    later(() => beast({ dur: 0.22, f0: 150, f1: 195, f2: 140, vol: 0.12, flutter: 20, drive: 3.5, vowel: [820, 1300], vowelTo: [700, 1100], breath: 0.6, sub: 0.3 }), 120);
+  },
+  // กดรัวดิ้น: ดีดขาเบา ๆ สูงขึ้นตามจำนวนครั้ง (ใกล้หลุด = เสียงไต่สูง) · n = ครั้งที่ / need = ที่ต้องได้
+  bananaMash: (n = 1, need = 7) => {
+    const k = Math.min(1, n / need);
+    tone(420 + k * 520, 300 + k * 420, 0.06, 'triangle', 0.06);
+    noise({ dur: 0.04, vol: 0.04, freq: 2600 + k * 1800, q: 3 });
+  },
+  // ดิ้นหลุด: "ป๊อป!" + สปริงเด้งขึ้น + ประกายเล็ก
+  bananaEscape: () => {
+    tone(300, 1200, 0.18, 'sine', 0.1);
+    woodKnock(700, 0.07);
+    noise({ dur: 0.1, vol: 0.06, freq: 3200, q: 1.5 });
+    [1318.51, 1567.98].forEach((f, i) => later(() => glassBell(f, 0.3, 0.022), 90 + i * 70));
+  },
+  // บอสเสียหลักมึน: นกหวีดวน "หวิ๊ว ๆ" + ครางงง
+  bananaStun: () => {
+    [0, 160, 320].forEach((ms, i) => later(() => tone(900 - i * 60, 600 - i * 60, 0.14, 'sine', 0.04), ms));
+    later(() => beast({ dur: 0.5, f0: 140, f1: 120, f2: 95, vol: 0.09, flutter: 34, drive: 2.5, vowel: [700, 1050], vowelTo: [560, 860], breath: 0.6, sub: 0.2 }), 120);
+  },
+  // เขย่า: กุกกักถี่ ๆ + หัวเราะ "ฮ่า ๆ"
+  bananaShake: () => {
+    for (let i = 0; i < 6; i++) later(() => { noise({ dur: 0.05, vol: 0.06, freq: 900 + (i % 2) * 500, q: 1.4 }); tone(220 + (i % 2) * 60, 180, 0.05, 'triangle', 0.035); }, i * 65);
+    [0, 170].forEach((ms) => later(() => beast({ dur: 0.16, f0: 165, f1: 200, f2: 150, vol: 0.1, flutter: 18, drive: 3, vowel: [860, 1320], vowelTo: [720, 1120], breath: 0.6, sub: 0.2 }), ms));
+  },
+  // โยนทิ้ง: วู้บเหวี่ยง + "ฮึบ!"
+  bananaToss: () => {
+    noise({ dur: 0.32, vol: 0.13, freq: 450, freqTo: 3000, q: 1.1, attack: 0.04 });
+    beast({ dur: 0.24, f0: 140, f1: 120, f2: 95, vol: 0.12, flutter: 24, drive: 4.5, vowel: [880, 1280], vowelTo: [640, 940], breath: 0.4 });
+  },
+  // ลากถึงปาก (ทางเลือก): "งั่ม!" ทุ้ม ๆ ตลก ๆ
+  bananaChomp: () => {
+    tone(240, 110, 0.14, 'square', 0.05);
+    woodKnock(300, 0.1);
+    later(() => woodKnock(260, 0.08), 90);
+    later(() => beast({ dur: 0.3, f0: 130, f1: 150, f2: 110, vol: 0.1, flutter: 16, drive: 3, vowel: [600, 950], vowelTo: [520, 820], breath: 0.4, sub: 0.3 }), 140);
+  },
+  // เปลือกกล้วยหล่นลงพื้น / น้องเก็บ / ปาโดนบอส "แปะ!"
+  bananaPeelDrop: () => { tone(500, 240, 0.14, 'triangle', 0.05); noise({ dur: 0.08, vol: 0.05, type: 'lowpass', freq: 1200 }); },
+  bananaPeelPick: () => { tone(660, 990, 0.08, 'sine', 0.07); later(() => tone(990, 1320, 0.08, 'sine', 0.05), 60); },
+  bananaPeelHit: () => {
+    noise({ dur: 0.07, vol: 0.14, freq: 1600, q: 0.8, attack: 0.001 });   // "แปะ!"
+    tone(380, 160, 0.12, 'triangle', 0.08);
+    later(() => beast({ dur: 0.3, f0: 230, f1: 320, f2: 180, vol: 0.12, flutter: 26, drive: 4, vowel: [900, 1320], vowelTo: [640, 980] }), 60);
+  },
+  // ลูกสมุนช่วยคว้า: ตะโกนเรียกลูกสมุน · วิ่งต้อย ๆ · กระโจนเกาะ "ฮึบ!" · โดนสะบัดหลุด "ด๊อยง" · กัดขา "งั่บ"
+  bananaCall: () => {
+    beast({ dur: 0.5, f0: 140, f1: 210, f2: 170, vol: 0.12, flutter: 26, drive: 4, vowel: [760, 1200], vowelTo: [880, 1350], breath: 0.5 });
+    later(() => sfx.bananaRustle(0.05), 150);
+  },
+  mobScurry: () => { for (let i = 0; i < 5; i++) later(() => woodKnock(820 + (i % 2) * 140, 0.035), i * 95); },
+  mobCling: () => {
+    tone(520, 880, 0.1, 'triangle', 0.08);
+    later(() => tone(300, 200, 0.1, 'triangle', 0.06), 70);
+    noise({ dur: 0.05, vol: 0.05, freq: 2400, q: 2 });
+  },
+  mobShakeOff: () => { tone(600, 300, 0.08, 'sine', 0.05); noise({ dur: 0.06, vol: 0.05, freq: 1600, q: 1.5 }); },
+  mobFling: () => {
+    tone(180, 760, 0.3, 'sine', 0.09);
+    noise({ dur: 0.3, vol: 0.07, freq: 800, freqTo: 3000, q: 1, attack: 0.03 });
+    later(() => [1567.98, 2093].forEach((f, i) => later(() => glassBell(f, 0.25, 0.02), i * 60)), 120);
+  },
+  mobBite: () => { woodKnock(360, 0.1); tone(300, 140, 0.12, 'square', 0.05); },
 
   // โดนเหยียบ: "ปุ๊" นุ่ม + ไม้ป๊อก + คริสตัลบนหัวแตกกริ๊ง + สลายเป็นหมอกฟู่
   mobStomp: () => {
