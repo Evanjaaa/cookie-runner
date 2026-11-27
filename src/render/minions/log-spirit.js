@@ -1,6 +1,8 @@
 /**
  * ลูกน้องของบอสภูตตอไม้: วิญญาณท่อนซุงน้อย "ผู้พิทักษ์คริสตัลตัวจิ๋วแห่งป่า"
- * (แบบจากผู้ใช้ 22 พ.ย. 2026 · ภาพใน docs/minion-log/1-sheet.png) — วาดสดด้วยโค้ด ไม่มีเส้นขอบ (กฎ no-outline)
+ * (แบบจากผู้ใช้ 22 พ.ย. 2026 · ภาพใน docs/minion-log/1-sheet.png) — วาดสดด้วยโค้ด
+ * เส้นขอบตัดสีหมึกรอบตัว + คริสตัล (ผู้ใช้ขอ 27 พ.ย. ให้เข้ากับน้องแมว · ink-outline.js · ปิดได้ด้วย o.ink = false)
+ *   ออร่าคริสตัลกับประกายไม่มีเส้น (วาดนอกชั้นเส้น)
  *
  * เชื่อมกับบอส: วงปีไม้บนหัว · คริสตัลม่วงบนหัว (แหล่งพลัง + อาวุธยิง) · ใบไม้เล็กงอกตามตัว · โทนม่วง ชมพู พีช
  * ต่างจากบอส: ไม่มีแขน · ไม่มีน้องในคริสตัล · ตัวเล็กกลม คล่อง · ตอไม้ลอยบนหมอกม่วง (ไม่ใช่ผ้าคลุม)
@@ -14,6 +16,7 @@
  *   o.shots false = ไม่วาดเศษคริสตัลที่ยิงออกไป (หน้าเกมวาดเองด้วย drawLogSpiritShard)
  * ทุกอย่างคิดจากเวลาอย่างเดียว → ลากเวลาย้อนได้ภาพเดิมเป๊ะ
  */
+import { INK, inkFilter, inkPx, screenBox, blitInk } from '../ink-outline.js';
 
 export const LOG_SPIRIT = {
   name: 'วิญญาณท่อนซุงน้อย',
@@ -376,17 +379,23 @@ function cryRGB(l, pink = 0) {
 }
 const rgb = (a, al = 1) => `rgba(${a[0]},${a[1]},${a[2]},${al})`;
 /** (cx, cy) = กลางฐานคริสตัล · rot = มุมหมุนรอบแกน · glow 0..2 · flash 0..1 */
-function drawCrystalAt(c, cx, cy, rot, glow, flash, t) {
+/** only: 'aura' | 'core' | 'stars' = วาดเฉพาะส่วนนั้น (ตอนมีเส้นขอบ เนื้อคริสตัลอยู่ในชั้นเส้น ออร่า/ประกายอยู่นอก) · ไม่ใส่ = ครบ */
+function drawCrystalAt(c, cx, cy, rot, glow, flash, t, only) {
   c.save(); c.translate(cx, cy); c.rotate(CRY.lean); c.translate(-cx, -cy);   // เอียงขวานิดตามแบบ
-  drawCrystalBody(c, cx, cy, rot, glow, flash, t);
+  drawCrystalBody(c, cx, cy, rot, glow, flash, t, only);
   c.restore();
 }
-function drawCrystalBody(c, cx, cy, rot, glow, flash, t) {
+function drawCrystalBody(c, cx, cy, rot, glow, flash, t, only) {
   const { r0, r1, hs, ht } = CRY;
   // ออร่า
-  let gr = c.createRadialGradient(cx, cy - ht * 0.5, 2, cx, cy - ht * 0.5, 22 + glow * 10);
-  gr.addColorStop(0, `rgba(226,196,255,${0.32 * glow})`); gr.addColorStop(1, 'rgba(214,180,255,0)');
-  c.fillStyle = gr; c.beginPath(); c.arc(cx, cy - ht * 0.5, 22 + glow * 10, 0, TAU); c.fill();
+  let gr;
+  if (!only || only === 'aura') {
+    gr = c.createRadialGradient(cx, cy - ht * 0.5, 2, cx, cy - ht * 0.5, 22 + glow * 10);
+    gr.addColorStop(0, `rgba(226,196,255,${0.32 * glow})`); gr.addColorStop(1, 'rgba(214,180,255,0)');
+    c.fillStyle = gr; c.beginPath(); c.arc(cx, cy - ht * 0.5, 22 + glow * 10, 0, TAU); c.fill();
+    if (only) return;
+  }
+  if (only === 'stars') { cryStars(c, cx, cy, t); return; }
   const B = [], S = [], T = [cx + 1.2 + Math.sin(rot) * 0.8, cy - ht];
   for (let j = 0; j < 6; j++) {
     const a = rot + (j * Math.PI) / 3;
@@ -400,6 +409,11 @@ function drawCrystalBody(c, cx, cy, rot, glow, flash, t) {
     if (d > -0.16) faces.push({ d, z: 1, pts: [S[j], S[(j + 1) % 6], T], lit: lit + 0.18 });
   }
   faces.sort((a, b) => a.z - b.z || a.d - b.d);
+  if (only === 'core') {                   // เส้นขอบคริสตัล (อยู่ในชั้นเส้นของตัว): ลากก่อนเนื้อ → เหลือครึ่งนอก แยกคริสตัลออกจากหน้าตอ
+    const all = new Path2D();
+    for (const f of faces) { f.pts.forEach(([x, y], i) => (i ? all.lineTo(x, y) : all.moveTo(x, y))); all.closePath(); }
+    c.save(); c.strokeStyle = INK_COL; c.lineWidth = INK_W * 2; c.lineJoin = 'round'; c.stroke(all); c.restore();
+  }
   const body = new Path2D();
   for (const f of faces) {
     const p = new Path2D();
@@ -425,9 +439,12 @@ function drawCrystalBody(c, cx, cy, rot, glow, flash, t) {
   }
   c.stroke();
   c.restore();
-  // ประกายกะพริบ
+  if (!only) cryStars(c, cx, cy, t);
+}
+/** ประกายกะพริบบนคริสตัล */
+function cryStars(c, cx, cy, t) {
   c.fillStyle = '#FFFFFF';
-  star4(c, cx - 4.5, cy - hs - 3, 2.6, 0.4 + 0.6 * Math.max(0, Math.sin(t * 2.6)));
+  star4(c, cx - 4.5, cy - CRY.hs - 3, 2.6, 0.4 + 0.6 * Math.max(0, Math.sin(t * 2.6)));
   star4(c, cx + 4, cy - 7, 1.6, 0.3 + 0.7 * Math.max(0, Math.sin(t * 2.6 + 2.1)));
 }
 const cryBase = (P) => [CRY.off * Math.sin(CRY.az + P.phi), TOP_Y + 0.6 + CRY.off * Math.cos(CRY.az + P.phi) * TILT];
@@ -697,7 +714,7 @@ function drawSplash(c, P) {
 
 // ───────────────────────── ซ้อนชั้น (จางทั้งตัวตอนสลาย) ─────────────────────────
 let LAYER = null;
-function withLayer(ctx, alpha, fn) {
+function withLayer(ctx, alpha, fn, ink) {
   if (alpha <= 0.001) return;
   if (!LAYER) LAYER = document.createElement('canvas');
   const L = LAYER;
@@ -706,8 +723,10 @@ function withLayer(ctx, alpha, fn) {
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, L.width, L.height);
   c.setTransform(ctx.getTransform());
   c.save(); fn(c); c.restore();
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha *= alpha; ctx.drawImage(L, 0, 0); ctx.restore();
+  blitInk(ctx, L, alpha, ink && ink.filter, ink && ink.box);
 }
+/** ความหนาเส้นขอบ (หน่วยลูกน้อง) + สี — ตัวเล็กกว่าบอส หน่วยเล็กกว่า → หน่วยมากกว่าให้ออกมาหนาพอ ๆ กันบนจอ */
+const INK_W = 0.8, INK_COL = '#4A2645';
 
 const EXPLODE = { skirt: [0, 30], wood: [0, 0], face: [-58, 4], crystal: [10, -52], leaves: [52, -16] };
 
@@ -731,10 +750,15 @@ export function drawLogSpirit(ctx, x, groundY, s, o = {}) {
   const sh = P.shake ? [Math.sin(t * 61) * P.shake, Math.cos(t * 53) * P.shake * 0.6] : [0, 0];
   ctx.translate(P.x + sh[0], -hgt + sh[1]);
   if (!e) drawBehindFx(ctx, P, t);
-  const body = (c) => {
+  const ink = (o.ink ?? INK.on) ? { filter: inkFilter(inkPx(ctx, INK_W), INK_COL), box: screenBox(ctx, -110 - e * 70, -200 - e * 60, 110 + e * 70, 50 + e * 40, 12) } : null;
+  const place = (c) => {
     c.translate(0, -50); c.rotate(P.rot * (1 - e)); c.translate(0, 50);
     c.scale(P.sx, P.sy);
     if (P.poof >= 0) { const k = ease(P.poof); c.translate(0, -45); c.scale(1 - 0.45 * k, 1 - 0.55 * k); c.translate(0, 45); }
+  };
+  const cry = (c, only) => { if (P.cryShow) part(c, 'crystal', (c) => { const [bx, by] = cryBase(P); drawCrystalAt(c, bx, by - P.cryUp, P.cryRot + P.phi, P.cryGlow, P.cryFlash, t, only); }); };
+  const body = (c) => {
+    place(c);
     const H = hemGeo(t, P), path = bodyPath(H);
     part(c, 'leaves', (c) => drawLeaves(c, P, t, false));
     if (!e) { drawUnder(c, H); drawBody(c, P, t, H, path); }
@@ -744,10 +768,15 @@ export function drawLogSpirit(ctx, x, groundY, s, o = {}) {
     }
     part(c, 'wood', (c) => drawTop(c, P, t));
     part(c, 'face', (c) => drawFace(c, P, gaze, t));
-    if (P.cryShow) part(c, 'crystal', (c) => { const [bx, by] = cryBase(P); drawCrystalAt(c, bx, by - P.cryUp, P.cryRot + P.phi, P.cryGlow, P.cryFlash, t); });
+    cry(c, ink ? 'core' : undefined);
     part(c, 'leaves', (c) => drawLeaves(c, P, t, true));
   };
-  if (P.poof >= 0) withLayer(ctx, gone, body);
+  if (ink) {                               // ออร่า (หลังตัว) → ตัว+คริสตัลในชั้นเส้น → ประกาย
+    const extra = (only) => { if (!P.cryShow) return; const fn = (c) => { place(c); cry(c, only); }; if (gone < 0.999) withLayer(ctx, gone, fn); else { ctx.save(); fn(ctx); ctx.restore(); } };
+    extra('aura');
+    withLayer(ctx, gone, body, ink);
+    extra('stars');
+  } else if (P.poof >= 0) withLayer(ctx, gone, body);
   else { ctx.save(); body(ctx); ctx.restore(); }
   if (!e) drawFrontFx(ctx, P, t);
   ctx.restore();

@@ -1,5 +1,5 @@
 // src/player.js
-import { GROUND_Y, PLAYER_X, PHYSICS, BODY, VIEW, CAT_ANIM } from './config.js';
+import { GROUND_Y, PLAYER_X, PHYSICS, BODY, VIEW, CAT_ANIM, gravityAt } from './config.js';
 import { NEUTRAL_MODS } from './talent-run.js';
 
 /** เอียงเกือบ 90° = นอนตะแคง ไม่เอาให้ถึง 90 เป๊ะเพราะดูแข็งเกินไป */
@@ -14,11 +14,16 @@ const FAINT_DROP = 9;
 // บนพื้นปกติไม่เคยเจอเพราะไม่มีขอบให้หลุด — มาเจอตอนมีพื้นลอยที่ผู้เล่นกดตรงขอบพอดี
 //
 // COYOTE  เท้าพ้นขอบไปแล้วไม่เกินเท่านี้ ยังกระโดดแรกเต็มแรงได้ (7 เฟรม ≈ 0.12 วิ)
-// BUFFER  กดก่อนเท้าแตะผิวไม่เกินเท่านี้ (ตอนหมดสิทธิ์กระโดดกลางอากาศแล้ว) = จำไว้
-//         แล้วกระโดดให้ทันทีที่แตะผิว — เดิมการกดนั้นหายไปเฉย ๆ
-// สั้นพอที่ตาไม่เห็นว่าตัวกระโดดจากอากาศ แต่ยาวพอกลบความคลาดของนิ้วบนจอสัมผัส
+// (เคยมี BUFFER = กดตอนหมดสิทธิ์ก่อนแตะผิว แล้วเด้งให้เองตอนแตะ — เอาออก 27 พ.ย. ตามผู้ใช้:
+//  กดกลางอากาศหลังใช้ชั้นสุดท้ายแล้ว ไม่นับ ต้องแตะพื้นก่อนแล้วกดใหม่)
 const COYOTE = 7;
-const BUFFER = 7;
+
+// ── กดรัว = ล็อกจังหวะ (ผู้ใช้ 27 พ.ย. 2026) ─────────────────
+// เดิมกดชั้นสองตอนยังพุ่งขึ้นแรงอยู่ → vy ถูกตั้งใหม่เป็นแรงชั้นสองที่น้อยกว่า = กดรัวยิ่งกระโดดต่ำ
+// ตอนนี้: กดชั้นถัดไปเร็วเกิน (ยังพุ่งแรงกว่า PHYSICS.airHoldV / แรงของชั้นนั้น) = จำไว้ แล้วปล่อยเองทันทีที่แรงพุ่งลดลงถึง
+//   → ชั้นถัดไปไม่เคยลดความสูง กดรัวได้ความสูงเท่ากันทุกครั้ง · ระหว่างรอ กดเพิ่มไม่นับ
+// ใช้ชั้นสุดท้ายแล้ว (2 ชั้น หรือมากกว่าถ้ามีพรสวรรค์) = กดเท่าไหร่ก็ไม่นับ จนกว่าจะแตะพื้นแล้วกดใหม่
+// ขาลงหลังชั้นสองตกช้ากว่ากระโดดเดี่ยวนิด (gravityAt / PHYSICS.doubleFallK ใน config.js)
 
 // ─────────────────────────────────────────────────────────────
 // สำคัญ: this.y คือ "ตำแหน่งเท้า" ไม่ใช่ขอบบนของตัว
@@ -42,8 +47,8 @@ export class Player {
     this.onGround = true;
     this.jumps = 0;
     this.coyote = COYOTE;     // เฟรมที่ยังกระโดดแรกได้หลังเท้าพ้นผิว (ดู COYOTE)
-    this.buffer = 0;          // เฟรมที่ยังจำปุ่มกระโดดที่กดก่อนแตะผิว (ดู BUFFER)
-    this.pendingJump = false; // แตะผิวแล้วมีปุ่มค้างอยู่ — เกมเป็นคนสั่งกระโดดให้ (เสียง/ฝุ่นครบ)
+    this.pendingJump = false; // ชั้นที่กดรอไว้ถึงจังหวะแล้ว — เกมเป็นคนสั่งกระโดดให้ (เสียง/ฝุ่นครบ)
+    this.heldAir = false;     // กดชั้นถัดไปเร็วเกิน รอแรงพุ่งลดก่อนค่อยปล่อย (ดู "กดรัว = ล็อกจังหวะ")
     this.sliding = false;
     this.slideHeld = false;
     this.runPhase = 0;
@@ -93,16 +98,34 @@ export class Player {
     };
   }
 
-  /** คืน 'single' | 'double' | null เพื่อให้ผู้เรียกไปเล่นเสียง/เอฟเฟกต์ต่อ */
+  /** แรงของชั้นกลางอากาศถัดไป (null = หมดสิทธิ์) */
+  nextAirV() {
+    const m = this.mods;
+    if (this.jumps === 1) return PHYSICS.doubleJumpV * m.jump;
+    if (this.jumps >= 2 && this.jumps < 2 + m.airJumps) return m.extraV * m.jump;
+    return null;
+  }
+
+  /** กดชั้นถัดไปตอนยังพุ่งแรงกว่านี้ = รอ (ไม่ต่ำกว่าแรงของชั้นนั้นเอง ไม่งั้นชั้นใหม่จะลดความสูง) */
+  holdUntil(v) {
+    return Math.max(v, PHYSICS.airHoldV * this.mods.jump);
+  }
+
+  /** คืน 'single' | 'double' | 'extra' | 'held' (จำไว้ ปล่อยเองทีหลังผ่าน pendingJump) | null เพื่อให้ผู้เรียกไปเล่นเสียง/เอฟเฟกต์ต่อ */
   jump() {
     const m = this.mods;
     // โหมดลอย: ปุ่มกระโดดถูกยืมไปเปลี่ยนระดับ (ตัวรันพรสวรรค์จัดการเอง) ไม่มีการกระโดดจริง
     if (m.laneY !== null) return null;
+    // กดรัว: ชั้นถัดไปยังแรงน้อยกว่าที่พุ่งอยู่ → รอ (กดซ้ำระหว่างรอก็ยังรอแบบเดิม ไม่นับเพิ่ม)
+    if (this.heldAir) return 'held';
+    if (this.jumps >= 1) {
+      const v = this.nextAirV();
+      if (v !== null && this.vy < this.holdUntil(v)) { this.heldAir = true; return 'held'; }
+    }
     if (this.jumps === 0) {
       this.vy = PHYSICS.jumpV * m.jump;
       this.jumps = 1;
       this.coyote = 0;
-      this.buffer = 0;
       this.onGround = false;
       this.sliding = false;
       // ยืดตัวตอนถีบขึ้น — ไม่มีท่าย่อก่อนกระโดด (anticipation) โดยตั้งใจ
@@ -127,11 +150,6 @@ export class Player {
     return null;
   }
 
-  /** หมดสิทธิ์กระโดดกลางอากาศแล้วแต่ยังกด = จำไว้ แตะผิวเมื่อไหร่กระโดดให้ (ดู BUFFER) */
-  queueJump() {
-    if (!this.onGround) this.buffer = BUFFER;
-  }
-
   setSlide(on) {
     this.slideHeld = on;
     if (this.mods.noFastFall) return;
@@ -144,15 +162,22 @@ export class Player {
     const impactV = this.vy;
     const m = this.mods;
 
-    if (m.laneY !== null) return this.updateFloat(dt, game);
+    if (m.laneY !== null) { this.heldAir = false; return this.updateFloat(dt, game); }
 
     // ค้างความสูง (พุ่งกลางอากาศ) = ไม่มีแรงโน้มถ่วงชั่วคราว
     if (m.hover) this.vy = 0;
-    else this.vy += PHYSICS.gravity * m.gravity * dt;
+    else this.vy += gravityAt(this.vy, this.jumps, this.slideHeld) * m.gravity * dt;
     // เพดานความเร็วตก (ร่อน) — กันเฉพาะขาลง ขาขึ้นไม่แตะ
     if (this.vy > m.maxFall) this.vy = m.maxFall;
     this.y += this.vy * dt;
     this.runPhase += game.speed * dt * CAT_ANIM.phaseK;
+
+    // ชั้นที่กดรอไว้: แรงพุ่งลดลงถึงแรงของชั้นนั้นแล้ว → ปล่อย (ผ่าน pendingJump ให้เกมเล่นเสียง/เอฟเฟกต์ครบ)
+    if (this.heldAir) {
+      const v = this.nextAirV();
+      if (v === null) this.heldAir = false;
+      else if (this.vy >= this.holdUntil(v)) { this.heldAir = false; this.pendingJump = true; }
+    }
 
     // สปริงคลายกลับหาศูนย์ทุกเฟรม ตัวดันให้ยืด/แบนคือ jump() กับจังหวะลงพื้น
     this.squash += (0 - this.squash) * CAT_ANIM.squash.decay * dt;
@@ -184,9 +209,8 @@ export class Player {
       this.vy = 0;
       this.onGround = true;
       this.jumps = 0;
+      this.heldAir = false;
       this.coyote = COYOTE;
-      if (justLanded && this.buffer > 0) this.pendingJump = true;
-      this.buffer = 0;
     } else {
       this.onGround = false;
       // เดินตกขอบ = เสียสิทธิ์กระโดดแรก — แต่ไม่ทันที ผ่อนให้ COYOTE เฟรมก่อน
@@ -194,7 +218,6 @@ export class Player {
         this.coyote -= dt;
         if (this.coyote <= 0) this.jumps = 1;
       }
-      if (this.buffer > 0) this.buffer -= dt;
     }
 
     // หมอบได้เฉพาะตอนแตะพื้น แต่กดค้างรอไว้ตั้งแต่กลางอากาศได้

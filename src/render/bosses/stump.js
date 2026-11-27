@@ -1,6 +1,7 @@
 /**
  * บอสตัวแรก: ภูตตอไม้ "ผู้เฝ้าคริสตัลแห่งป่าแมว" (แบบจากผู้ใช้ 17 พ.ย. 2026 · ภาพใน docs/boss-stump/1-main.jpg)
- * วาดสดด้วยโค้ดทั้งตัว ไม่มีเส้นขอบ (กฎ no-outline) — นูนด้วยไล่สี/แสงเงาในเนื้อ
+ * วาดสดด้วยโค้ดทั้งตัว นูนด้วยไล่สี/แสงเงาในเนื้อ
+ * เส้นขอบตัดสีหมึกรอบแต่ละชิ้น (ตัว · ขอบนอกผลึก · แขน · ไม่มีเส้น: เปลวบนหัว น้องในผลึก ประกาย) — ผู้ใช้ขอ 27 พ.ย. ให้เข้ากับน้องแมว (ink-outline.js · ปิดได้ด้วย o.ink = false)
  *
  * ── มุมเฉียงตามภาพแบบ (ผู้ใช้ 22 พ.ย.) ──
  * ภาพแบบหันเฉียงไปทางซ้าย (หาน้องแมว): หน้าเยื้องซ้าย ตาข้างไกลเล็กกว่า ลำตัวขวาบานกว้างอยู่ในเงา
@@ -16,6 +17,7 @@
  * ทุกอย่างคิดจากเวลาอย่างเดียว → ลากเวลาย้อนกลับได้ภาพเดิมเป๊ะ
  */
 import { drawChibi } from '../chibi.js';
+import { INK, inkFilter, inkPx, screenBox, blitInk } from '../ink-outline.js';
 
 export const STUMP = {
   name: 'ภูตตอไม้',
@@ -808,7 +810,8 @@ function smoothInto(p, pts, ox = 0, oy = 0) {
 }
 const smooth = (pts, ox, oy) => smoothInto(new Path2D(), pts, ox, oy);
 
-function hand(c, h, a, side, body) {
+/** only: 'glow' = วาดแค่แสงเรืองรอบอุ้งมือ · 'solid' = วาดมือไม่มีแสง (ตอนมีเส้นขอบ แสงต้องอยู่นอกชั้นเส้น ไม่งั้นกลายเป็นควันดำ) */
+function hand(c, h, a, side, body, only) {
   // a.r = ง้างออกด้านนอก/ขึ้น · a.dx a.dy = เลื่อนอุ้งมือ (โคนแขนอยู่กับที่ → มือยืดเป็นถั่วตอนง้าง/ตก)
   let P = [h.P[0] + a.dx * 0.7 + side * a.r * 6, h.P[1] + a.dy * 0.7 - a.r * 5], S = h.S;
   if (a.reach > 0) {
@@ -817,11 +820,12 @@ function hand(c, h, a, side, body) {
     S = [lerp(S[0], a.sh[0], k), lerp(S[1], a.sh[1], k)];
     h = { ...h, r0: lerp(h.r0, 8.2, k), r1: lerp(h.r1, 10.8, k), bul: lerp(h.bul, 1.2, k), dent: lerp(h.dent, 0.8, k), wrist: 0.25 * k };
   }
-  if (a.glow > 0) {                        // อุ้งมือเรืองพลัง (ปล่อยพลังจากมือนี้)
+  if (a.glow > 0 && only !== 'solid') {   // อุ้งมือเรืองพลัง (ปล่อยพลังจากมือนี้)
     const R = h.r1 * 2.4, gr = c.createRadialGradient(P[0], P[1], 1, P[0], P[1], R);
     gr.addColorStop(0, `rgba(255,214,246,${0.7 * a.glow})`); gr.addColorStop(1, 'rgba(230,180,255,0)');
     c.fillStyle = gr; c.beginPath(); c.arc(P[0], P[1], R, 0, TAU); c.fill();
   }
+  if (only === 'glow') return;
   const pts = handPts(S, P, h, side), col = side < 0 ? HAND_COL.L : HAND_COL.R;
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
@@ -954,7 +958,7 @@ function drawKittenShadow(c, P, o, t, W, H) {
   c.fillStyle = hg; c.beginPath(); c.arc(hx, hy, hr, 0, TAU); c.fill();
 }
 
-function drawCrystal(c, P, o, t, g) {
+function drawCrystal(c, P, o, t, g, ink = 0) {
   if (P.shatter >= 0) return;              // แตกแล้ว (เศษผลึกวาดใน drawShatter)
   const crack = Math.max(o.crack || 0, P.crackMin);
   const jx = P.cryJit ? Math.sin(t * 57) * P.cryJit : 0, jy = P.cryJit ? Math.cos(t * 49) * P.cryJit * 0.7 : 0;
@@ -978,6 +982,9 @@ function drawCrystal(c, P, o, t, g) {
   }
   const gem = gemPath(), table = polyPath(GEM_IN), n = GEM.length;
   const C0 = [GEM_C[0] * W, GEM_C[1] * H];
+  if (ink) {                               // เส้นขอบรอบเม็ด: ลากก่อนเนื้อ → ครึ่งในโดนเนื้อทับ เหลือครึ่งนอกเท่าเส้นตัวบอส
+    c.save(); c.strokeStyle = INK_COL; c.globalAlpha *= ink; c.lineJoin = 'round'; c.lineWidth = (INK_W * 2) / P.cryScale; c.stroke(gem); c.restore();
+  }
   // ── ฐานเนื้อแก้วทั้งเม็ด (กันรอยต่อเหลี่ยมเห็นพื้นหลัง) ──
   c.fillStyle = '#D7CCF6'; c.fill(gem);
   // ── วงนอกเจียระไน 48 เหลี่ยม: ขอบบนบาง · เหลี่ยมข้างซ้าย/ขวา · ดาว · แต่ละชิ้นไล่สีในตัว + เหลือบรุ้งเลื่อนช้า ──
@@ -1358,6 +1365,15 @@ function drawFreedKitten(c, P, o, t) {
 }
 
 // ───────────────────────── เอฟเฟกต์ท่าโจมตี (พิกัดบอส · นุ่ม ๆ สีผลึก ไม่มีเส้นขอบเข้ม) ─────────────────────────
+/** ย้อมแสงผลึกลงบนชั้นมือ (ทาเฉพาะเนื้อที่มีอยู่แล้ว · ใกล้ผลึกสว่างกว่า) */
+function armGlow(c, P, g, k) {
+  const [cx, cy] = cryAt(P, g), R = 62 + 34 * P.rays;
+  c.save(); c.globalCompositeOperation = 'source-atop';
+  const gr = c.createRadialGradient(cx, cy, 6, cx, cy, R);
+  gr.addColorStop(0, `rgba(255,250,255,${0.9 * k})`); gr.addColorStop(0.55, `rgba(246,230,255,${0.62 * k})`); gr.addColorStop(1, `rgba(236,214,255,${0.18 * k})`);
+  c.fillStyle = gr; c.fillRect(cx - R * 1.6, cy - R * 1.6, R * 3.2, R * 3.2);
+  c.restore();
+}
 const cryAt = (P, g) => [g.cry[0] - P.crystalPush * 0.8 + P.cryX, g.cry[1] - P.crystalUp - P.crystalPush * 0.35 + P.cryY];
 /** ฝุ่นตอนกระแทกพื้น (พิกัดพื้น) */
 function drawLand(c, P) {
@@ -1524,8 +1540,8 @@ function layer(n, cv) {
   if (L.width !== cv.width || L.height !== cv.height) { L.width = cv.width; L.height = cv.height; }
   return L;
 }
-function withLayer(ctx, n, alpha, flash, fn, post) {
-  if (alpha >= 0.999 && flash <= 0.001 && !post) { fn(ctx); return; }
+function withLayer(ctx, n, alpha, flash, fn, post, ink) {
+  if (alpha >= 0.999 && flash <= 0.001 && !post && !ink) { fn(ctx); return; }
   if (alpha <= 0.001) return;
   const L = layer(n, ctx.canvas), c = L.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, L.width, L.height);
@@ -1537,8 +1553,10 @@ function withLayer(ctx, n, alpha, flash, fn, post) {
     c.fillStyle = `rgba(255,250,255,${flash})`; c.fillRect(0, 0, L.width, L.height);
     c.restore();
   }
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha *= alpha; ctx.drawImage(L, 0, 0); ctx.restore();
+  blitInk(ctx, L, alpha, ink && ink.filter, ink && ink.box);
 }
+/** ความหนาเส้นขอบ (หน่วยบอส) + สี — ใกล้เส้นน้องแมวเมื่อยืนข้างกัน */
+const INK_W = 0.9, INK_COL = '#4A2645';
 
 const EXPLODE = {
   body: [-10, 0], leaves: [-10, 0], face: [96, -36], flame: [96, -58],
@@ -1572,19 +1590,35 @@ export function drawStumpBoss(ctx, x, groundY, s, o = {}) {
 
   const H = hemGeo(g, t, P), body = bodyPath(g, H);
   const melt = P.dEdge != null ? (c) => meltMask(c, P, t) : null;
+  // เส้นขอบ: ทำงานเฉพาะกรอบรอบตัวบอส (เผื่อแขนยื่น/ผลึกลอย) ไม่ใช่ทั้งจอ
+  // ตอนแพ้: เส้นจางหายเร็ว ๆ ตอนเริ่มสลายเป็นแสง (ไม่ให้ขอบเส้นสลายมีเส้นดำ)
+  const inkOp = P.dissolve > 0 ? 1 - clamp(P.dissolve * 5) : 1;
+  const ink = (o.ink ?? INK.on) && inkOp > 0.05
+    ? { filter: inkFilter(inkPx(ctx, INK_W), INK_COL, inkOp), box: screenBox(ctx, -150 - e * 140, -240, 150 + e * 140, 30, 12) } : null;
   if (!e) drawBehind(ctx, P, g, t);
   const glowUp = Math.max(flash, P.lightUp || 0);   // โดนตี (วาบ) หรือกำลังสลายเป็นแสง
   withLayer(ctx, 0, P.fade, glowUp, (c) => {
     part(c, 'body', (c) => { drawBranch(c); drawUnder(c, H); drawBody(c, g, H, body, P.turn); drawBodyCracks(c, P, body); });
     part(c, 'leaves', (c) => drawLeaves(c, t, P));
     part(c, 'face', (c) => drawFace(c, P, gaze, t, g));
-    part(c, 'flame', (c) => drawFlame(c, P, t));
+    if (!ink) part(c, 'flame', (c) => drawFlame(c, P, t));
+  }, melt, ink);
+  // เปลวบนหัว: ไม่มีเส้นขอบ (ผู้ใช้ 27 พ.ย.) → ชั้นของตัวเอง ยังจาง/วาบ/สลายพร้อมตัว
+  if (ink) withLayer(ctx, 2, P.fade, glowUp, (c) => part(c, 'flame', (c) => drawFlame(c, P, t)), melt);
+  part(ctx, 'crystal', (c) => drawCrystal(c, P, o, t, g, ink ? inkOp : 0));
+  if (ink && (P.armL.glow > 0 || P.armR.glow > 0)) withLayer(ctx, 3, P.fade, 0, (c) => {   // แสงมือ: นอกชั้นเส้น
+    part(c, 'armL', (c) => hand(c, g.handL, P.armL, -1, null, 'glow'));
+    part(c, 'armR', (c) => hand(c, g.handR, P.armR, 1, null, 'glow'));
   }, melt);
-  part(ctx, 'crystal', (c) => drawCrystal(c, P, o, t, g));
+  // แสงจากผลึกตกบนมือ: ผลึกวาดทับตัว (ออร่า + ลำแสง + เรืองขาวก่อนแตก) แต่มือวาดทีหลังผลึก → ต้องย้อมแสงให้มือเอง
+  // ไม่งั้นตอนแพ้ตัวสว่างจ้าแต่มือทึบอยู่คู่เดียว (ผู้ใช้ 28 พ.ย.)
+  const armLight = e ? 0 : clamp(0.5 * P.rays + 0.9 * P.cryWhite);
+  const armPost = armLight > 0.01 || melt ? (c) => { if (armLight > 0.01) armGlow(c, P, g, armLight); if (melt) melt(c); } : null;
   withLayer(ctx, 1, P.fade, glowUp, (c) => {
-    part(c, 'armL', (c) => hand(c, g.handL, P.armL, -1, e ? null : body));
-    part(c, 'armR', (c) => hand(c, g.handR, P.armR, 1, e ? null : body));
-  }, melt);
+    const only = ink ? 'solid' : undefined;
+    part(c, 'armL', (c) => hand(c, g.handL, P.armL, -1, e ? null : body, only));
+    part(c, 'armR', (c) => hand(c, g.handR, P.armR, 1, e ? null : body, only));
+  }, armPost, ink);
   if (!e) drawFront(ctx, P, g, t);
   drawBang(ctx, P, g);
   drawPuff(ctx, P, g);

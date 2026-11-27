@@ -107,3 +107,84 @@ export function drawHopeStarBurst(ctx, x, y, k, r = 14) {
   }
   ctx.restore();
 }
+
+// ═════════════ ดาวร่วงจากฟ้า (ผู้ใช้ 28 พ.ย.) ═════════════
+// "ดาวแห่งความหวังของเพื่อนแมว ต้องต่างจากของกิน: ร่วงลงมาจากฟ้าสวย ๆ วิ้ง แล้วเรียงเป็นแถวให้เก็บ"
+// ดาวพุ่งลงจากขวาบนเป็นดาวตก (หางแสงทอง→ชมพู + ผงประกาย หมุนตัว) ชะลอเข้าที่ → เด้งนิด วงแสงวิ้ง → ออร่าเรืองขึ้น ลอยรอเก็บ
+// ดาวในแถวเดียวกันเริ่มร่วงห่างกันไม่กี่เฟรม (ตามระยะห่างในแถว) จึงตกลงมาเรียงทีละดวงเป็นจังหวะ
+// หน้าเกมนับ ft (เฟรมตั้งแต่เริ่มร่วง) เอง → ย้อนเวลา/เล่นซ้ำได้ภาพเดิม
+export const HOPE_FALL = {
+  T: 50,          // เฟรมที่ใช้ร่วงจนเข้าที่
+  ready: 0.78,    // เก็บได้ตั้งแต่ร่วงไปแล้วเท่านี้ (เกือบถึงที่ — กันเก็บกลางฟ้าตอนกระโดดสูงพอดี)
+  from: 180,      // เริ่มจากขวาของจุดลงกี่ px
+  top: -60,       // เริ่มที่ความสูงนี้ (เหนือขอบจอ)
+  settle: 26,     // เฟรมหลังลงจอด: เด้ง + วงแสง + ออร่าค่อยเรืองขึ้น
+};
+const fr = (v) => v - Math.floor(v);
+
+/** ตำแหน่งดาวตอนร่วง · (tx, ty) = จุดลง (พิกัดจอตอนนี้) · ft = เฟรมตั้งแต่เริ่มร่วง → { x, y, rot, sc, k, land } */
+export function hopeFallAt(tx, ty, ft, seed = 0) {
+  const { T, from, top, settle } = HOPE_FALL;
+  const k = Math.max(0, Math.min(1, ft / T)), u = 1 - k;
+  const dx = from + 50 * fr(seed * 3.7);
+  const x = tx + dx * u * u;                       // แนวนอนชะลอเร็ว → ทางโค้งลงเหมือนดาวตก
+  let y = top + (ty - top) * (1 - u * u * u);
+  const land = ft - T;
+  if (land >= 0 && land < settle) { const q = land / settle; y -= Math.sin(q * Math.PI) * 6 * (1 - q); }   // เด้งนิดตอนลง
+  const spin = (fr(seed * 1.3) > 0.5 ? 1 : -1) * 2.4;
+  return { x, y, rot: spin * u * u, sc: 0.92 + 0.08 * k + (land >= 0 && land < 12 ? 0.22 * (1 - land / 12) : 0), k, land };
+}
+
+/** วาดดาวที่กำลังร่วง/เพิ่งลง/ลอยรอ · r = รัศมีดาว · t = วินาที (ประกาย) · คืนตำแหน่งจริง {x, y} ไว้เช็คชน */
+export function drawHopeStarFall(ctx, tx, ty, ft, t, seed = 0, r = 13) {
+  if (ft < 0) return null;
+  const P = hopeFallAt(tx, ty, ft, seed), { settle } = HOPE_FALL;
+  if (P.k < 1) {
+    // หางดาวตก: เส้นแสงเรียวตามทางที่เพิ่งผ่าน — ฟุ้งชมพูด้านนอก + แกนทองขาวด้านใน (หัวกว้าง ปลายเรียว)
+    const n = 16, pts = [];
+    for (let j = 0; j <= n; j++) { const f = ft - j * 1.5; if (f < 0) break; const q = hopeFallAt(tx, ty, f, seed); pts.push([q.x, q.y]); }
+    const fade = Math.min(1, ft / 5) * (1 - Math.max(0, (P.k - 0.86) / 0.14));   // ใกล้ถึงที่ หางหดหาย
+    ctx.save(); ctx.lineCap = 'round';
+    for (const [wk, col, al] of [[2.3, '255,168,214', 0.32], [1.25, '255,226,140', 0.75], [0.5, '255,255,240', 0.95]]) {
+      for (let j = 0; j < pts.length - 1; j++) {
+        const u = j / n;
+        ctx.strokeStyle = `rgba(${col},${al * (1 - u) * fade})`; ctx.lineWidth = Math.max(0.5, r * wk * (1 - u) * 0.62);
+        ctx.beginPath(); ctx.moveTo(pts[j][0], pts[j][1]); ctx.lineTo(pts[j + 1][0], pts[j + 1][1]); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // ผงประกายหลุดจากหาง ค้างกลางฟ้าแล้วจางร่วง
+    for (let i = 0; i < 12; i++) {
+      const born = i * 3.4 + fr(seed + i * 0.37) * 3, age = ft - born;
+      if (age < 0 || age > 22) continue;
+      const q = hopeFallAt(tx, ty, born, seed), a = 1 - age / 22;
+      const ox = (fr(seed * 7 + i * 1.7) - 0.5) * 18, oy = (fr(seed * 5 + i * 2.3) - 0.5) * 14 + age * 0.5;
+      ctx.fillStyle = i % 3 === 0 ? '#FFC6E4' : i % 3 === 1 ? '#FFFFFF' : '#FFE48A';
+      star4(ctx, q.x + ox, q.y + oy, (3.2 + 1.8 * fr(i * 3.1)) * a + 0.6, a);
+    }
+    // แสงนำหน้าตัวดาว
+    const g = ctx.createRadialGradient(P.x, P.y, 1, P.x, P.y, r * 2.2);
+    g.addColorStop(0, 'rgba(255,250,220,.75)'); g.addColorStop(1, 'rgba(255,214,140,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(P.x, P.y, r * 2.2, 0, TAU); ctx.fill();
+  }
+  // ตัวดาว: ออร่าเรืองขึ้นหลังลง (ระหว่างร่วงมีแค่แสงนำ) · ลอยขึ้นลงค่อย ๆ เริ่ม ไม่กระตุก
+  const settled = P.land >= 0 ? Math.min(1, P.land / settle) : 0;
+  const bob = Math.sin(t * 2.2 + seed * 0.7) * r * 0.22 * settled;
+  ctx.save(); ctx.translate(P.x, P.y + bob); ctx.rotate(P.rot); ctx.scale(P.sc, P.sc);
+  if (settled > 0 && settled < 1) { ctx.save(); ctx.globalAlpha *= settled; drawHopeStar(ctx, 0, 0, r, t, { seed, bob: false }); ctx.restore(); drawHopeStar(ctx, 0, 0, r, t, { seed, bob: false, fx: false }); }
+  else drawHopeStar(ctx, 0, 0, r, t, { seed, bob: false, fx: settled >= 1 });
+  ctx.restore();
+  // ลงจอด: วงแสงขยาย + ประกายวิ้งสี่ทิศ
+  if (P.land >= 0 && P.land < 22) {
+    const q = P.land / 22, a = 1 - q, R = r * (1 + q * 2.4);
+    ctx.save(); ctx.strokeStyle = `rgba(255,236,170,${0.85 * a})`; ctx.lineWidth = 2.4 * a + 0.5;
+    ctx.beginPath(); ctx.ellipse(P.x, P.y, R, R * 0.8, 0, 0, TAU); ctx.stroke(); ctx.restore();
+    for (let i = 0; i < 4; i++) {
+      const an = (i / 4) * TAU + 0.4, d = r * (1.1 + q * 1.6);
+      ctx.fillStyle = i % 2 ? '#FFFFFF' : '#FFE48A';
+      star4(ctx, P.x + Math.cos(an) * d, P.y + Math.sin(an) * d * 0.8, r * 0.45 * a + 1, a);
+    }
+    ctx.fillStyle = '#FFFFFF'; star4(ctx, P.x + r * 0.9, P.y - r * 1.1, r * 0.7 * Math.sin(q * Math.PI), Math.sin(q * Math.PI));
+  }
+  return { x: P.x, y: P.y + bob, ready: P.k >= HOPE_FALL.ready };
+}

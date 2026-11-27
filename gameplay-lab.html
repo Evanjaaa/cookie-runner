@@ -248,7 +248,7 @@
         🔮 <b>ลูกน้องยิงคริสตัล</b> ลอยค้างกลางจอ คริสตัลเรือง + เส้นเล็ง แล้วยิง 3 ลูก · เส้นฟ้า (ต่ำ) = กระโดด · เส้นชมพู (กลาง) = หมอบ · ยิงจบแล้วลอยเข้าหา เหยียบได้<br>
         💨 <b>ฝูงพุ่งชน 3 ตัว</b> ตั้งหลักพร้อมกัน ("!" เอนหลัง) แล้วพุ่งทีละตัว = กระโดดข้าม หรือเหยียบหัวเด้งต่อกันเป็นทอด<br>
         💔 <b>หัวใจหมด</b> ทุกอย่างหยุด หัวใจดวงสุดท้ายแตก น้องทรุดนั่งตาหมุน จอมืดเป็นม่วงค่ำ ดาวร่วง (ด่านบอส: บอสหัวเราะ) → "กลับบ้านไปพักก่อนนะ"<br>
-        <b>ดาวแห่งความหวัง</b> ดาวทองมีออร่า ลำแสง ประกายร่วง · เก็บแล้ววาบ บินเข้าตัวนับ (ด่านบอส = บินเข้าแถบความหวัง) · ทุก 3 ดวงจากด่านวิ่ง = แถบความหวังตอนเริ่มสู้บอส +1<br>
+        <b>ดาวแห่งความหวัง</b> ดาวทองมีออร่า ลำแสง ประกายร่วง · เก็บแล้ววาบ บินเข้าตัวนับ (ด่านบอส = บินเข้าแถบความหวัง) · ร่วงจากฟ้าเป็นดาวตกแล้วเรียงเป็นแถว · ทุก 5 ดวงจากด่านวิ่ง = แถบความหวังตอนเริ่มสู้บอส +1<br>
         <b>ท้ายด่าน</b> บอสขว้างผลึกลงมา (ดูวงเตือนบนพื้น)<br>
         <b>สู้บอส</b> เปิดตัว (ตกลงจากฟ้า คำราม) → หลบท่า → เก็บดาวจนแถบเต็ม → บอส<b>เวียนหัว</b> → ✨ <b>พลังแห่งความหวัง</b> (พุ่งเข้าหา · คัตซีน · แตะตามจังหวะ) หรือแบบเดิม กระโดดสองชั้นใส่เปลว · ครบ 3 ครั้ง = ท่าแพ้ (ผลึกระเบิด ปล่อยน้องในฟองแสง ตัวสลายเป็นละอองแสง น้องลงพื้นตื่นร้องเหมียว) ได้น้อง<br>
         <b>ท่าโจมตี 5 ท่า</b> (ชีตแบบจากทีม) ทุกท่ามีช่วงเตือน ตาแดง/ย่อร่าง:<br>
@@ -293,7 +293,7 @@
     import { createRunAnim, stepRunAnim, drawCat2Run, drawRunShadow, RUN_K } from './src/render/cat2-run.js';
     import { CHIBI_LOOKS } from './src/render/chibi.js';
         import { drawLogSpirit, LOG_SPIRIT, LOG_SPIRIT_ACT, drawLogSpiritShard } from './src/render/minions/log-spirit.js';
-    import { drawHopeStar, drawHopeStarBurst } from './src/render/hope-star.js';
+    import { drawHopeStar, drawHopeStarBurst, HOPE_FALL, hopeFallAt, drawHopeStarFall } from './src/render/hope-star.js';
     import { HOPE, HOPE_CUT, hopeJudge, hopeOk, drawHopeRush, drawHopeStrike, drawHopeCounter, drawHopeLetterbox, drawHopeFlash, drawHopeCut } from './src/render/hope-power.js';
     import { drawStumpBoss, stumpPose, STUMP, STUMP_ACT, STUMP_DEFEAT, drawStumpBolt, drawStumpRing, drawStumpFog, drawStumpShard, drawStumpSpike, drawStumpMarker, STUMP_RAIN, drawStumpLane, drawStumpDashWarn } from './src/render/bosses/stump.js';
     import { drawBananaBoss, loadBananaBoss, BANANA_BOSS, BANANA_BOSS_ACT, BANANA_BOSS_PT, drawBananaThrown } from './src/render/bosses/banana.js';
@@ -314,6 +314,7 @@
     };
     let SKIN = CAT_PICK.moji();
     const CAT_S = CAT_LOOK * RUN_K;           // ขนาดตัวน้องตอนวิ่ง (เท่าในเกม)
+    const STARS_PER_HOPE = 5;   // ด่านวิ่งมีดาว 15 ดวง (5 แถว × 3) · เก็บครบ = แถบเริ่มบอส 3 ช่อง
     const PX = PLAYER_X + BODY.standW / 2;     // กลางตัวน้องบนจอ
     const KITTENS = Object.keys(CHIBI_LOOKS).filter((k) => CHIBI_LOOKS[k].deco);
     const KITTEN_NAME = { orange: 'ส้ม', pearl: 'ไข่มุก', calico: 'สามสี', siamese: 'วิเชียรมาศ', konja: 'โกนจา', wilat: 'วิลาศ', supha: 'ศุภลักษณ์', korat: 'โคราช', salid: 'ลายสลิด', tortie: 'สีเปรอะ', cow: 'ลายวัว', manee: 'ขาวมณี', somsa: 'ส้มซ่า', suea: 'เสือน้อย', hawkBlue: 'ตาเหยี่ยวฟ้า' };
@@ -391,7 +392,9 @@
       const jellyRow = (x0, n, y = G - 24) => fishRow(x0, n, y, 34, 'jelly');
       const fishArc = (x0, n = 7, top = 92, kind = 'kibble') => { for (let i = 0; i < n; i++) { const u = i / (n - 1); food(x0 + i * 30, G - 26 - Math.sin(u * Math.PI) * top, kind); } };
       const rare = (sx, sy, kind) => food(sx, sy, kind);   // กุ้งทอง / คริสตัลดาว (ชิ้นเดี่ยว)
-      const star = (sx, sy) => stars.push({ x: sx, y: sy, got: false });
+      // ดาวแห่งความหวัง: ร่วงจากฟ้าตอนจุดลงโผล่ขอบจอขวา (ft = เฟรมตั้งแต่เริ่มร่วง · -1 = ยังไม่ร่วง) · มาเป็นแถว (ผู้ใช้ 28 พ.ย.)
+      const star = (sx, sy) => stars.push({ x: sx, y: sy, got: false, ft: -1 });
+      const starRow = (x0, n, y, gap = 54, arc = 0) => { for (let i = 0; i < n; i++) star(x0 + i * gap, y - Math.sin((n > 1 ? i / (n - 1) : 0.5) * Math.PI) * arc); };
       const spk = (sx) => obs.push({ x: sx, y: G - spike.h, w: spike.w, h: spike.h, kind: 'spike' });
       const box = (sx, rows = 1) => obs.push({ x: sx, y: G - crate.h * rows, w: crate.w, h: crate.h * rows, rows, kind: 'crate' });
       const mob = (sx) => mobs.push({ x: sx, vx: -1.1, dead: 0, ph: sx * 0.01, kind: 'walk' });
@@ -405,13 +408,13 @@
       const ledge = (sx, w, lift) => plats.push({ kind: 'ledge', x: sx, w, lift });
       // ช่วง 1: อุ่นเครื่อง
       fishRow(x, 10); x += 520; spk(x); fishArc(x - 100); x += 420;
-      jellyRow(x, 8); star(x + 320, G - 70); x += 520;
+      jellyRow(x, 8); starRow(x + 300, 3, G - 72); x += 520;
       // ช่วง 2: ลูกน้องตัวแรก (ของกินนำทางให้เหยียบ)
       mob(x + 160); fishArc(x + 20, 7, 80); x += 560;
-      box(x); fishArc(x - 90); x += 460; mob(x); x += 360; mob(x); star(x + 40, G - 120); x += 520;
+      box(x); fishArc(x - 90); x += 460; mob(x); x += 360; mob(x); starRow(x - 14, 3, G - 104, 54, 18); x += 520;
       // ช่วง 3: ผสม
       spk(x); spk(x + 34); fishArc(x - 80, 8, 110); rare(x + 17, G - 150, 'shrimp'); x += 520;
-      fishRow(x, 8); mob(x + 300); x += 560; box(x, 2); star(x + 6, G - 150); x += 520;
+      fishRow(x, 8); mob(x + 300); x += 560; box(x, 2); x += 520;
       mob(x); mob(x + 70); x += 520;
       // ช่วง 3.5: ลูกน้องโจมตี — ยิงคริสตัลต่ำ (กระโดด) → ยิงกลาง (หมอบ) → ฝูงพุ่งชน
       const mobAt = x;
@@ -420,18 +423,18 @@
       fishArc(x, 7, 70); x += 420; swarm(x + 300); x += 900;
       // ช่วงพื้นเหยียบได้: เนินมอส + ขอนลอย (ดาวบนขอน) + ขอนล้มให้หมอบลอด
       hill(x, 320, 70); fishArc(x + 40, 8, 96); x += 440;
-      ledge(x, 230, 96); star(x + 115, G - 96 - 30); fishRow(x + 20, 6, G - 96 - 22); x += 420;
+      ledge(x, 230, 96); starRow(x + 61, 3, G - 96 - 62, 54, 14); fishRow(x + 20, 6, G - 96 - 22); x += 420;
       bar(x); fishRow(x + 10, 5, G - 18); x += 420;
       // ช่วง 4: ทางโล่ง ขนมยาว แล้วดาวเรียงสามดวง
       fishRow(x, 7); jellyRow(x + 300, 8); fishRow(x + 580, 6, G - 26, 42, 'kibble'); x += 900;
-      star(x, G - 70); star(x + 60, G - 110); star(x + 120, G - 70); x += 480;
+      starRow(x, 3, G - 70, 60, 40); x += 480;
       spk(x); mob(x + 220); fishArc(x - 90); x += 560; box(x); box(x + 220, 2); x += 560;
-      mob(x); star(x + 30, G - 120); x += 400; spk(x); spk(x + 34); x += 520;
+      mob(x); x += 400; spk(x); spk(x + 34); x += 520;
       shooter(x + 200, 'mid'); x += 700; swarm(x + 240, 26); x += 860;
       // ช่วง 5: บอสขว้างผลึกลงมา (วงเตือนบนพื้นก่อนตก)
       const shardAt = x;
       for (let i = 0; i < 5; i++) { shard(x); fishRow(x + 120, 3, G - 26); x += 330; }
-      x += 300; fishRow(x, 6); rare(x + 300, G - 90, 'crystal'); jellyRow(x + 400, 6); star(x + 640, G - 70); x += 860;
+      x += 300; fishRow(x, 6); rare(x + 300, G - 90, 'crystal'); jellyRow(x + 400, 6); starRow(x + 590, 3, G - 72); x += 860;
       const finish = x;
       bar(x - 220);   // ขอนหมอบลอดก่อนเส้นชัยอีกอัน
       return { obs, fish, stars, mobs, shards, plats, shardAt, mobAt, finish, shots: [] };
@@ -458,7 +461,7 @@
     /** ปุ่มที่ผู้เล่นกด → ทำทันที + จดไว้ที่เฟรมนี้ (เล่นซ้ำตอนย้อนดู) */
     function input(a) {
       if (!replaying) { cutFuture(); const l = HIST.inputs.get(S.f) || []; l.push(a); HIST.inputs.set(S.f, l); }
-      if (a === 'jump') { const k = S.P.jump(); if (k) jumpFx(k); else S.P.queueJump(); }
+      if (a === 'jump') { const k = S.P.jump(); if (k) jumpFx(k); }
       else if (a === 'slide1' || a === 'slide0') S.P.setSlide(a === 'slide1');
       else if (a === 'boss') { hideCard(); startBoss(S.starsRun); }
       else if (a === 'hope') hopeTap();
@@ -507,7 +510,7 @@
     function jumpFx(kind) {
       if (kind === 'single') { dust(PLAYER_X + 12 + S.cam, G, 6); play('jump'); }
       else if (kind === 'double') { burst(PLAYER_X + 20 + S.cam, S.P.y - 10, 8, 'mint', 3); play('double'); }
-      if (kind && S.cling) clingShake();
+      if (kind && kind !== 'held' && S.cling) clingShake();
     }
     /** ผลของก้าวฟิสิกส์ (ลงพื้น / เริ่มหมอบ) แบบเกม */
     function stepFx(r) {
@@ -627,7 +630,16 @@
       const b = box(), wx = S.cam;   // กล่องชนบนจอ · โลก x = จอ x + cam
       pickTreats(R, b, wx);
       // ดาว
-      for (const o of R.stars) if (!o.got && circHit(b, o.x - wx, o.y, 16)) { o.got = true; S.starsRun++; S.starsTotal++; fx('star', o.x - wx, o.y); }
+      for (const o of R.stars) {
+        if (o.got) continue;
+        if (o.ft < 0) {                      // จุดลงโผล่ขอบจอขวา → เริ่มร่วง (เสียงวิ้งครั้งเดียวต่อแถว)
+          if (o.x - wx < W - 24) { o.ft = 0; if (S.f - (R.starSnd ?? -99) > 24) { R.starSnd = S.f; play('hopeStarDrop'); } }
+          continue;
+        }
+        o.ft++;
+        const q = hopeFallAt(o.x - wx, o.y, o.ft, o.x * 0.01);
+        if (q.k >= HOPE_FALL.ready && circHit(b, q.x, q.y, 16)) { o.got = true; S.starsRun++; S.starsTotal++; fx('star', q.x, q.y); }
+      }
       // สิ่งกีดขวาง
       for (const o of R.obs) if (!o.hitDone && overlap(b, { x: o.x - wx + 3, y: o.y + 4, w: o.w - 6, h: o.h - 4 })) { o.hitDone = true; hurt(); }
       // ลูกน้อง: เดินซ้าย · เหยียบหัว (กำลังตก + เท้าเฟรมก่อนอยู่เหนือหัว) = ชนะ
@@ -689,7 +701,7 @@
     const rainBox = (sx) => ({ x: sx - STUMP_RAIN.hitW / 2, y: G - STUMP_RAIN.hitH, w: STUMP_RAIN.hitW, h: STUMP_RAIN.hitH });
 
     function startBoss(fromStars, kind = S.mode === 'banana' ? 'banana' : 'stump') {
-      const pre = Math.min(cfg.need - 1, Math.floor(fromStars / 3));
+      const pre = Math.min(cfg.need - 1, Math.floor(fromStars / STARS_PER_HOPE));
       S.phase = 'boss';
       S.boss = {
         kind, nanas: [], waves: [], peels: [], mobs: [], grab: null, hand: null, force: null,
@@ -865,11 +877,7 @@
         else if (circHit(b, f.x, f.y, f.r * 0.8)) { f.hit = 1; sleepy(true); }
       }
       B.fogs = B.fogs.filter((f) => f.x > -80 && f.hit < 24);
-      for (const s of B.stars) {
-        s.x -= SPEED.run * 0.85;
-        if (!s.got && circHit(b, s.x, s.y, 16)) { s.got = true; B.hope++; S.starsTotal++; fx('star', s.x, s.y); burst(s.x + S.cam, s.y, 12, 'letter', 5); }
-      }
-      B.stars = B.stars.filter((s) => s.x > -30 && !s.got);
+      stepBossStars(B, b);
       const busy = B.state === 'tired' || B.state === 'defeat' || B.state === 'enter' || (B.state === 'charge' && B.st >= Wt);
       if (!busy && B.hope >= cfg.need) {
         B.state = 'tired'; B.st = 0; B.bolts = []; B.rings = []; B.rain = []; B.fogs = []; B.stars = [];
@@ -956,10 +964,21 @@
       else if (id === 'defeat') { B.crack = 3; B.state = 'defeat'; B.x = 640; }
       mark('boss');
     }
+    /** หลังจบท่า: ดาว 2 ดวงร่วงจากฟ้าเรียงเป็นแถว (ต่ำ/สูงสลับกันตามรอบ) — ร่วงห่างกัน 8 เฟรม */
     function dropStars(B) {
       play('hopeStarDrop');
       const ys = [G - 62, G - 112];
-      for (let i = 0; i < 2; i++) B.stars.push({ x: W + 20 + i * 90, y: ys[(i + B.cycle) % 2], got: false });
+      for (let i = 0; i < 2; i++) B.stars.push({ x: W - 130 + i * 70, y: ys[(i + B.cycle) % 2], got: false, ft: -8 * i, seed: B.cycle * 0.7 + i });
+    }
+    /** ดาวในด่านบอส: เลื่อนตามฉาก + ร่วง + เก็บ (ใช้ทั้งภูตตอไม้และบอสกล้วย) */
+    function stepBossStars(B, b) {
+      for (const s of B.stars) {
+        s.x -= SPEED.run * 0.85; s.ft = (s.ft ?? HOPE_FALL.T) + 1;
+        if (s.got || s.ft < 0) continue;
+        const q = hopeFallAt(s.x, s.y, s.ft, s.seed || 0);
+        if (q.k >= HOPE_FALL.ready && circHit(b, q.x, q.y, 16)) { s.got = true; B.hope++; S.starsTotal++; fx('star', q.x, q.y); burst(q.x + S.cam, q.y, 12, 'letter', 5); }
+      }
+      B.stars = B.stars.filter((s) => s.x > -30 && !s.got);
     }
 
     // ══════════════════ ✨ พลังแห่งความหวัง (Hope Power) — ท่าพิเศษตอนบอสเวียนหัว ══════════════════
@@ -1204,11 +1223,7 @@
           if (!r.hitDone && fx2 < b.x + b.w + 4 && fx2 + 24 > b.x && b.y + b.h > G - r.h + 4) { r.hitDone = true; hurt(); }
         }
         B.waves = B.waves.filter((r) => r.cx - r.r > -150);
-        for (const s of B.stars) {
-          s.x -= SPEED.run * 0.85;
-          if (!s.got && circHit(b, s.x, s.y, 16)) { s.got = true; B.hope++; S.starsTotal++; fx('star', s.x, s.y); burst(s.x + S.cam, s.y, 12, 'letter', 5); }
-        }
-        B.stars = B.stars.filter((s) => s.x > -30 && !s.got);
+        stepBossStars(B, b);
         stepPeels(B, b);
         stepMinions(B);
       }
@@ -1483,7 +1498,7 @@
         held: held ? drawHeldCat : null,
       });
       for (const s of B.nanas) { drawBananaThrown(ctx, s.x, s.y, BAN_S * 0.62, s.rot); if (cfg.hit) { ctx.strokeStyle = 'red'; ctx.beginPath(); ctx.arc(s.x, s.y, s.ln === 'low' ? 11 : 10, 0, TAU); ctx.stroke(); } }
-      for (const s of B.stars) drawStar(s.x, s.y, s.y * 0.1);
+      for (const s of B.stars) drawHopeStarFall(ctx, s.x, s.y, s.ft ?? HOPE_FALL.T, S.f / 60, s.seed || 0, STAR_R);
       if (cfg.hit && B.hand && B.grab) {
         ctx.strokeStyle = 'yellow';
         if (B.grab.kind === 'grabAbove') hitbox({ x: B.grab.tx - 23, y: G - 40, w: 46, h: 40 }, 'rgba(255,220,0,.9)');
@@ -1567,7 +1582,6 @@
     }
     // ดาวแห่งความหวังในฉาก (src/render/hope-star.js) — ใหญ่ขึ้น มีออร่า ลำแสง ประกาย
     const STAR_R = 13;
-    const drawStar = (x, y, seed = 0) => drawHopeStar(ctx, x, y, STAR_R, S.f / 60, { seed });
     function drawShard(x, y, rot, glow = 1) {
       ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
       ctx.fillStyle = `rgba(214,188,255,${0.35 * glow})`; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
@@ -1640,45 +1654,143 @@
       ctx.save(); ctx.translate(sx + 20, sy + 1); ctx.scale(1 + pop * 0.22, 1 + pop * 0.22); ctx.font = '800 18px Mali, sans-serif';
       ink(`${S.starsTotal - S.fx.filter((e) => e.kind === 'star' && e.t < 33).length}`, 0, 0, '#7A3A00', 4.6, pop > 0.05 ? '#FFF3A0' : '#FFFFFF'); ctx.restore();
       if (S.sleepy > 0) { ctx.font = '700 14px Mali, sans-serif'; ink(`💤 ง่วง ${Math.ceil(S.sleepy / 60)} วิ`, sx - 14, sy + 30, '#3A1F66', 4); }
-      if (S.boss && S.phase !== 'run' && S.phase !== 'clear') drawBossBar();
+      if (S.boss && S.phase !== 'run' && S.phase !== 'clear') { drawBossBar(); drawBossPhase(); }
       ctx.restore();
     }
-    /** แถบความหวัง (ช่องเดียวกับหลอดระยะของเกม · ภาษาเดียวกัน: ขอบครีม รางเทาเข้ม ไส้ทองลายทาง) + ผลึกร้าวบอส */
+    /**
+     * แถบความหวัง + เฟสบอส (อัปเกรด 28 พ.ย. ผู้ใช้: "ให้เห็นชัดว่าความหวังใกล้เต็ม และถึงเฟสไหน เฟสสุดท้ายเมื่อไหร่")
+     * หลอดแบ่งช่องตามจำนวนดาว (cfg.need) · เหลือ 1 ดวง = ช่องสุดท้ายกะพริบทอง "อีก 1 ดวง!" · เต็ม = ทั้งหลอดเรือง แสงวิ่ง ดาวปลายเต้น
+     * เฟสบอสย้ายไปเป็นป้ายใต้ตัวบอส (drawBossPhase)
+     * ภาษาภาพเดิมของเกม: ขอบครีม รางเทาเข้ม ไส้ทองลายทาง
+     */
     function drawBossBar() {
-      const B = S.boss, { x, y, w, h } = HOPE_BAR, fill = clamp(B.hope / cfg.need, 0, 1), fw = w * fill, tk = S.f;
-      ctx.fillStyle = 'rgba(30,8,40,.32)'; ctx.beginPath(); ctx.roundRect(x - 1.6, y + 0.5, w + 3.2, h + 3.2, (h + 3.2) / 2); ctx.fill();
-      ctx.fillStyle = '#FFF6E6'; ctx.beginPath(); ctx.roundRect(x - 1.6, y - 1.6, w + 3.2, h + 3.2, (h + 3.2) / 2); ctx.fill();
-      let g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#4B4552'); g.addColorStop(1, '#615A6B');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill();
-      for (let i = 1; i < cfg.need; i++) { ctx.fillStyle = i / cfg.need <= fill ? '#FFF6B0' : 'rgba(255,246,230,.35)'; ctx.beginPath(); ctx.arc(x + (w * i) / cfg.need, y + h / 2, 1.6, 0, TAU); ctx.fill(); }
-      if (fw > 0.5) {
-        ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, fw, h, Math.min(h / 2, fw / 2)); ctx.clip();
-        g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#FFF2A8'); g.addColorStop(0.6, '#FFC94A'); g.addColorStop(1, '#FF9A2A');
-        ctx.fillStyle = g; ctx.fillRect(x, y, fw, h);
-        ctx.fillStyle = 'rgba(255,255,255,.22)';
-        for (let sx = x - 14 + ((tk * 0.6) % 14); sx < x + fw + 14; sx += 14) { ctx.beginPath(); ctx.moveTo(sx, y + h); ctx.lineTo(sx + 6, y); ctx.lineTo(sx + 12, y); ctx.lineTo(sx + 6, y + h); ctx.fill(); }
-        ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(x, y + 1, fw, 2.4);
-        ctx.restore();
+      const B = S.boss, { x, w } = HOPE_BAR, h = 12, y = HOPE_BAR.y - 1.5, tk = S.f, t = tk / 60;
+      const need = cfg.need, have = Math.min(B.hope, need), fill = clamp(B.hope / need, 0, 1);
+      const full = have >= need, almost = have === need - 1, final = B.crack >= 2;
+      const beat = 0.5 + 0.5 * Math.sin(t * 7);              // จังหวะกะพริบ
+      const gap = 3, cw = (w - gap * (need - 1)) / need;      // ความกว้างต่อช่อง
+      const cellX = (i) => x + i * (cw + gap);
+      // ไฟฟุ้งหลังหลอดตอนเต็ม
+      if (full) {
+        const gg = ctx.createRadialGradient(x + w / 2, y + h / 2, 10, x + w / 2, y + h / 2, w * 0.62);
+        gg.addColorStop(0, final ? `rgba(255,150,200,${0.34 + 0.16 * beat})` : `rgba(255,214,110,${0.34 + 0.16 * beat})`); gg.addColorStop(1, 'rgba(255,214,110,0)');
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w * 0.62, 26, 0, 0, TAU); ctx.fill();
       }
-      if (S.hudPop > 0 && fill > 0) {   // เพิ่งได้ดาว: ปลายแถบวาบ
-        const gg = ctx.createRadialGradient(x + fw, y + h / 2, 1, x + fw, y + h / 2, 22);
-        gg.addColorStop(0, `rgba(255,248,210,${0.9 * S.hudPop})`); gg.addColorStop(1, 'rgba(255,220,140,0)');
-        ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x + fw, y + h / 2, 22, 0, TAU); ctx.fill();
+      // กรอบครีม + เงา
+      ctx.fillStyle = 'rgba(30,8,40,.32)'; ctx.beginPath(); ctx.roundRect(x - 2.4, y + 0.8, w + 4.8, h + 4.8, (h + 4.8) / 2); ctx.fill();
+      ctx.fillStyle = full ? (final ? '#FFE4F0' : '#FFF3C8') : '#FFF6E6'; ctx.beginPath(); ctx.roundRect(x - 2.4, y - 2.4, w + 4.8, h + 4.8, (h + 4.8) / 2); ctx.fill();
+      // ช่องทีละดวง
+      for (let i = 0; i < need; i++) {
+        const cx = cellX(i), r = [i === 0 ? h / 2 : 2.5, i === need - 1 ? h / 2 : 2.5, i === need - 1 ? h / 2 : 2.5, i === 0 ? h / 2 : 2.5];
+        const cell = new Path2D(); cell.roundRect(cx, y, cw, h, r);
+        let g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#4B4552'); g.addColorStop(1, '#615A6B');
+        ctx.fillStyle = g; ctx.fill(cell);
+        if (i < have) {
+          ctx.save(); ctx.clip(cell);
+          g = ctx.createLinearGradient(x, 0, x + w, 0);
+          if (full && final) { g.addColorStop(0, '#FFD98A'); g.addColorStop(0.5, '#FF8CBC'); g.addColorStop(1, '#FF3D8E'); }
+          else { g.addColorStop(0, '#FFF2A8'); g.addColorStop(0.6, '#FFC94A'); g.addColorStop(1, '#FF9A2A'); }
+          ctx.fillStyle = g; ctx.fillRect(cx, y, cw, h);
+          ctx.fillStyle = 'rgba(255,255,255,.22)';
+          for (let sx = x - 14 + ((tk * 0.6) % 14); sx < cx + cw + 14; sx += 14) { if (sx + 12 < cx) continue; ctx.beginPath(); ctx.moveTo(sx, y + h); ctx.lineTo(sx + 6, y); ctx.lineTo(sx + 12, y); ctx.lineTo(sx + 6, y + h); ctx.fill(); }
+          ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(cx, y + 1.2, cw, 3);
+          if (full) {                                          // แสงวิ่งผ่านทั้งหลอด
+            const sw = ((t * 0.9) % 1.4) / 1.2, px = x - 30 + sw * (w + 60);
+            const sg = ctx.createLinearGradient(px - 18, 0, px + 18, 0);
+            sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,.75)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = sg; ctx.fillRect(px - 18, y, 36, h);
+          }
+          ctx.restore();
+        } else if (i === have && almost) {                     // ช่องสุดท้ายที่ขาด: กะพริบทอง
+          ctx.save(); ctx.clip(cell);
+          ctx.fillStyle = `rgba(255,201,74,${0.25 + 0.4 * beat})`; ctx.fillRect(cx, y, cw, h);
+          ctx.restore();
+          ctx.save(); ctx.strokeStyle = `rgba(255,170,40,${0.55 + 0.45 * beat})`; ctx.lineWidth = 2; ctx.stroke(cell); ctx.restore();
+        }
+        // ดาวจิ๋วกลางช่องว่าง (บอกว่า 1 ช่อง = ดาว 1 ดวง)
+        if (i >= have && !(i === have && almost)) { ctx.fillStyle = 'rgba(255,246,230,.38)'; hudStar(cx + cw / 2, y + h / 2, 3.4); }
       }
-      drawHopeStar(ctx, x + w + 14, y + h / 2, 10, S.f / 60, { bob: false, fx: fill >= 1 });   // ดาวปลายแถบ (เต็มแล้วเปล่งแสง)
-      // ซ้าย: ความหวัง n/need · ขวา: ผลึกร้าว ◆◆◇ (+ โกรธ)
-      ctx.font = '700 13px Mali, sans-serif'; ctx.textAlign = 'right';
-      ink(`ความหวัง ${Math.min(B.hope, cfg.need)}/${cfg.need}`, x - 10, y + h / 2 + 1, 'rgba(40,10,50,.85)', 3.6, '#FFF6E6');
-      ctx.textAlign = 'left';
-      const gx = x + w + 34;
+      if (S.hudPop > 0 && fill > 0) {   // เพิ่งได้ดาว: ช่องล่าสุดวาบ
+        const ex = cellX(have - 1) + cw / 2;
+        const gg = ctx.createRadialGradient(ex, y + h / 2, 1, ex, y + h / 2, 26);
+        gg.addColorStop(0, `rgba(255,248,210,${0.95 * S.hudPop})`); gg.addColorStop(1, 'rgba(255,220,140,0)');
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(ex, y + h / 2, 26, 0, TAU); ctx.fill();
+      }
+      // ดาวปลายหลอด: เต็ม = ใหญ่ เต้น เปล่งแสง
+      const sr = full ? 13 + 2 * beat : almost ? 11 + 1.2 * beat : 10.5;
+      drawHopeStar(ctx, x + w + 15, y + h / 2, sr, t, { bob: false, fx: full || almost });
+      // ซ้าย: ป้ายสถานะ
+      ctx.font = '800 14px Mali, sans-serif'; ctx.textAlign = 'right';
+      if (full) {
+        ctx.save(); const k = 1 + 0.06 * beat; ctx.translate(x - 12, y + h / 2 + 1); ctx.scale(k, k);
+        ink(final ? 'ตีให้แพ้เลย!' : 'เต็มแล้ว!', 0, 0, final ? '#8A1F3D' : '#7A3A00', 4.2, final ? '#FFD6E8' : '#FFF3A0'); ctx.restore();
+      } else if (almost) {
+        ctx.save(); const k = 1 + 0.05 * beat; ctx.translate(x - 12, y + h / 2 + 1); ctx.scale(k, k);
+        ink('อีก 1 ดวง!', 0, 0, '#7A3A00', 4.2, '#FFE07A'); ctx.restore();
+      } else {
+        ink(`ความหวัง ${have}/${need}`, x - 12, y + h / 2 + 1, 'rgba(40,10,50,.85)', 3.8, '#FFF6E6');
+      }
+    }
+    /**
+     * ป้ายเฟสบอส — ติดตัวบอส (ผู้ใช้ 28 พ.ย.: "เอาเฟสไปไว้ตรงบอส") วางบนพื้นใต้เท้าบอส วิ่งตามตัว
+     * พื้นตรงนั้นว่างเสมอ ไม่ทับหัวใจ/หลอด/ป้ายแจ้งเตือนด้านบน · ท่าพุ่งออกนอกจอ = ป้ายค้างขอบจอ
+     * เพชร 3 เม็ด: ร้าวแล้ว = ชมพูมีรอยร้าว · เม็ดที่จะตีต่อไป = วงกะพริบ · เฟสสุดท้าย = เม็ดสุดท้ายใหญ่ เรืองชมพู + ป้าย "ครั้งสุดท้าย!"
+     */
+    function drawBossPhase() {
+      const B = S.boss;
+      if (!B || B.state === 'defeat' || B.state === 'enter') return;
+      const t = S.f / 60, beat = 0.5 + 0.5 * Math.sin(t * 7), final = B.crack >= 2;
+      const label = final ? 'ครั้งสุดท้าย!' : `เฟส ${B.crack + 1}/3`;
+      ctx.save();
+      ctx.font = '800 14px Mali, sans-serif';
+      const tw = ctx.measureText(label).width, gw = 3 * 19 + (final ? 6 : 0), pw = gw + tw + 34, ph = 30;
+      const cx = clamp(B.x, pw / 2 + 12, W - pw / 2 - 12), cy = G + 38, x0 = cx - pw / 2;
+      // แผ่นป้าย: ม่วงเข้มโปร่ง ขอบครีม (เฟสสุดท้าย = ขอบชมพูเรือง)
+      if (final) {
+        const gg = ctx.createRadialGradient(cx, cy, 8, cx, cy, pw * 0.7);
+        gg.addColorStop(0, `rgba(255,110,170,${0.35 + 0.2 * beat})`); gg.addColorStop(1, 'rgba(255,110,170,0)');
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(cx, cy, pw * 0.7, 30, 0, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(30,8,40,.28)'; ctx.beginPath(); ctx.roundRect(x0, cy - ph / 2 + 2.5, pw, ph, ph / 2); ctx.fill();
+      ctx.fillStyle = final ? '#FFD6E8' : '#FFF6E6'; ctx.beginPath(); ctx.roundRect(x0 - 2, cy - ph / 2 - 2, pw + 4, ph + 4, ph / 2 + 2); ctx.fill();
+      const pg = ctx.createLinearGradient(0, cy - ph / 2, 0, cy + ph / 2);
+      pg.addColorStop(0, final ? '#7A2C5C' : '#4E3A66'); pg.addColorStop(1, final ? '#5A1E46' : '#3A2A50');
+      ctx.fillStyle = pg; ctx.beginPath(); ctx.roundRect(x0, cy - ph / 2, pw, ph, ph / 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.roundRect(x0 + 6, cy - ph / 2 + 2, pw - 12, ph * 0.38, ph * 0.2); ctx.fill();
+      // ลูกศรเล็กชี้ขึ้นหาบอส
+      ctx.fillStyle = final ? '#FFD6E8' : '#FFF6E6';
+      ctx.beginPath(); ctx.moveTo(clamp(B.x, x0 + 18, x0 + pw - 18) - 6, cy - ph / 2 - 1); ctx.lineTo(clamp(B.x, x0 + 18, x0 + pw - 18), cy - ph / 2 - 8); ctx.lineTo(clamp(B.x, x0 + 18, x0 + pw - 18) + 6, cy - ph / 2 - 1); ctx.closePath(); ctx.fill();
+      // เพชรเฟส
+      const gx = x0 + 18;
       for (let i = 0; i < 3; i++) {
-        const cx = gx + i * 16, cy = y + h / 2, on = i < B.crack;
-        ctx.fillStyle = '#FFF6E6'; ctx.beginPath(); ctx.moveTo(cx, cy - 8.4); ctx.lineTo(cx + 6.4, cy); ctx.lineTo(cx, cy + 8.4); ctx.lineTo(cx - 6.4, cy); ctx.closePath(); ctx.fill();
-        const gg = ctx.createLinearGradient(cx - 5, cy - 7, cx + 5, cy + 7);
-        gg.addColorStop(0, on ? '#FFD6F0' : '#8D84A0'); gg.addColorStop(1, on ? '#FF5E9C' : '#5E566E');
-        ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(cx, cy - 6.6); ctx.lineTo(cx + 5, cy); ctx.lineTo(cx, cy + 6.6); ctx.lineTo(cx - 5, cy); ctx.closePath(); ctx.fill();
+        const last = i === 2, next = i === B.crack, on = i < B.crack;
+        const big = last && final ? 1.3 + 0.08 * beat : 1;
+        const gxi = gx + i * 19 + (last && final ? 3 : 0), sx = 6.4 * big, sy = 8.6 * big;
+        if (next) {
+          ctx.save(); ctx.strokeStyle = final ? `rgba(255,120,170,${0.55 + 0.45 * beat})` : `rgba(255,214,110,${0.5 + 0.45 * beat})`;
+          ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gxi, cy, sy + 2.5 + beat * 1.2, 0, TAU); ctx.stroke(); ctx.restore();
+        }
+        ctx.fillStyle = '#FFF6E6'; ctx.beginPath(); ctx.moveTo(gxi, cy - sy - 1.5); ctx.lineTo(gxi + sx + 1.5, cy); ctx.lineTo(gxi, cy + sy + 1.5); ctx.lineTo(gxi - sx - 1.5, cy); ctx.closePath(); ctx.fill();
+        const gg = ctx.createLinearGradient(gxi - sx, cy - sy, gxi + sx, cy + sy);
+        gg.addColorStop(0, on ? '#FFD6F0' : next ? '#B9AFCB' : '#8D84A0'); gg.addColorStop(1, on ? '#FF5E9C' : next ? '#7A7090' : '#5E566E');
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(gxi, cy - sy); ctx.lineTo(gxi + sx, cy); ctx.lineTo(gxi, cy + sy); ctx.lineTo(gxi - sx, cy); ctx.closePath(); ctx.fill();
+        if (on) {
+          ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(gxi - 1, cy - sy * 0.6); ctx.lineTo(gxi + 1.5, cy - 1); ctx.lineTo(gxi - 1.5, cy + 2); ctx.lineTo(gxi + 1, cy + sy * 0.55); ctx.stroke();
+        }
       }
-      if (B.rage) { ctx.font = '700 13px Mali, sans-serif'; ink('โกรธแล้ว!', gx + 52, y + h / 2 + 1, '#8A1F3D', 3.6, '#FFD0DE'); }
+      // ป้ายเฟส
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const lx = gx + gw + 4;
+      if (final) { ctx.save(); const k = 1 + 0.04 * beat; ctx.translate(lx, cy + 1); ctx.scale(k, k); ctx.fillStyle = '#FFE0EE'; ctx.fillText(label, 0, 0); ctx.restore(); }
+      else { ctx.fillStyle = '#FFF6E6'; ctx.fillText(label, lx, cy + 1); }
+      ctx.restore();
+    }
+    /** ดาว 5 แฉกเล็ก (ใช้ fillStyle ปัจจุบัน) */
+    function hudStar(cx, cy, r) {
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill();
     }
     function drawFx() {
       for (const e of S.fx) {
@@ -1841,7 +1953,7 @@
         drawOutlined(ctx, (c) => drawTreats(c, rareT, wx, S.f), outlineSpans([rareT], wx, W));
         for (const o of R.obs) hitbox({ x: o.x - wx + 3, y: o.y + 4, w: o.w - 6, h: o.h - 4 });
         drawTreats(ctx, plainT, wx, S.f);
-        for (const o of R.stars) if (!o.got) { const x = o.x - wx; if (x > -40 && x < W + 40) drawStar(x, o.y, o.x * 0.01); }
+        for (const o of R.stars) if (!o.got && o.ft >= 0) { const x = o.x - wx; if (x > -60) drawHopeStarFall(ctx, x, o.y, o.ft, S.f / 60, o.x * 0.01, STAR_R); }
         for (const m of R.mobs) { const x = m.x - wx; if (x > -60 && x < W + 60) { drawMob(m, x); if (!m.dead) hitbox(mobBox(x)); } }
         for (const sh of R.shots) {
           const x = sh.x - wx;
@@ -1887,7 +1999,7 @@
         if (B.state === 'charge') hitbox(bossBox(B), 'rgba(255,0,200,.8)');
         for (const f of B.fogs) drawStumpFog(ctx, f.x, f.y, f.r * (1 + f.hit * 0.03), tt, f.hit ? 1 - f.hit / 24 : 1);
         for (const s of B.bolts) { drawStumpBolt(ctx, s.x, s.y, tt, s.ln); if (cfg.hit) { ctx.strokeStyle = 'red'; ctx.beginPath(); ctx.arc(s.x, s.y, 10, 0, TAU); ctx.stroke(); } }
-        for (const s of B.stars) drawStar(s.x, s.y, s.y * 0.1);
+        for (const s of B.stars) drawHopeStarFall(ctx, s.x, s.y, s.ft ?? HOPE_FALL.T, S.f / 60, s.seed || 0, STAR_R);
         if (cfg.hit && B.P) { const fxw = B.x + B.P.x * BOSS_S, fyw = G - B.P.y * BOSS_S - STUMP.flameY * BOSS_S * B.P.sy; ctx.strokeStyle = 'yellow'; ctx.beginPath(); ctx.arc(fxw, fyw, FLAME_HIT_R * BOSS_S, 0, TAU); ctx.stroke(); }
       }
       PT.draw(ctx, S.cam);   // ฝุ่น/ประกายของเกม (พิกัดโลก)
@@ -1917,7 +2029,7 @@
       paused = kind !== 'clear' ? true : paused;
       const hearts = `<span>❤️ <b>${S.hearts}</b>/9</span>`;
       if (kind === 'clear') {
-        const pre = Math.min(cfg.need - 1, Math.floor(S.starsRun / 3));
+        const pre = Math.min(cfg.need - 1, Math.floor(S.starsRun / STARS_PER_HOPE));
         card.innerHTML = `<h2>ผ่านด่าน 1 🎉</h2><p>เก็บดาวแห่งความหวังได้ ${S.starsRun} ดวง<br>เริ่มสู้บอสด้วยแถบความหวัง <b>${pre}/${cfg.need}</b></p>
           <div class="stats">${hearts}<span>⭐ <b>${S.starsRun}</b></span><span>🐟 <b>${S.treats.toLocaleString('en-US')}</b></span></div>
           <div class="row">${S.mode === 'full' ? '<button type="button" class="ib main" id="goBoss">สู้ภูตตอไม้ →</button>' : ''}<button type="button" class="ib" id="again">เล่นด่านนี้ใหม่</button></div>`;

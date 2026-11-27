@@ -2,7 +2,7 @@
 import {
   GROUND_Y, LEVEL, VIEW, SHIELD, POTION, PHYSICS, BODY, SPEED, KIBBLE, SHRIMP, MAGNET, LETTER,
   SPEEDUP, BIGCAN, FALLER, HAZARD, PLAYER_X, CRYSTAL,
-  FOOD_SPACING, MAP_SPREAD,
+  FOOD_SPACING, MAP_SPREAD, gravityAt,
 } from './config.js';
 import { PROP_OBSTACLES, isLowObstacle } from './obstacles.js';
 
@@ -22,16 +22,16 @@ const { spike, bar, crate, fishR, chunkW, ledgeThick } = LEVEL;
 function jumpPath(doubleAt = null) {
   const pts = [];
   let y = GROUND_Y;
-  let vy = PHYSICS.jumpV;
+  let vy = PHYSICS.jumpV, jumps = 1;
 
   for (let f = 1; f < 300; f++) {
-    vy += PHYSICS.gravity;
+    vy += gravityAt(vy, jumps);
     y += vy;
     if (y >= GROUND_Y) break;              // แตะพื้นแล้ว จบส่วนโค้ง
     // y ของแมวคือ "ตำแหน่งเท้า" ส่วนการเก็บของวัดจากกลางกล่องชน
     pts.push({ dx: f * SPEED.run, y: y - BODY.standH / 2 });
     // ตั้ง vy หลัง push แล้ว เพราะในเกมจริงการกดจะมีผลตั้งแต่เฟรมถัดไป
-    if (f === doubleAt) vy = PHYSICS.doubleJumpV;
+    if (f === doubleAt) { vy = PHYSICS.doubleJumpV; jumps = 2; }
   }
   return pts;
 }

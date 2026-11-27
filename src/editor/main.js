@@ -19,6 +19,7 @@ import './editor.css';
 import {
   GROUND_Y, VIEW, LEVEL, BODY, SPEED, PLAYER_X, PHYSICS, FALLER, HAZARD,
   SPEEDUP, BIGCAN, MAGNET, SHIELD, POTION, LETTER, WORD, TREATS, treatOf, BONUS, CAT_LOOK, CAT_ANIM,
+  gravityAt,
 } from '../config.js';
 import { BONUS_LAYOUTS, bonusGeometry, buildBonusMagnets } from '../bonus-layouts.js';
 import {
@@ -2285,6 +2286,7 @@ function simulate(d, scIn) {
   let vy = 0;
   let onGround = true;
   let jumpsUsed = 0;
+  let heldAir = false;          // กดชั้นสองเร็วเกิน = รอแรงพุ่งลดก่อนปล่อย (กติกาเดียวกับ Player.jump)
   let slideHeld = false;
   let sliding = false;
   let pi = 0;
@@ -2322,8 +2324,12 @@ function simulate(d, scIn) {
     const camera = cx - BODY.standW / 2 - PLAYER_X;
 
     // 1) รับอินพุตตามเฉลย
+    const holdV = Math.max(PHYSICS.doubleJumpV, PHYSICS.airHoldV);   // กติกาเดียวกับ Player.holdUntil
+    if (heldAir && vy >= holdV) { heldAir = false; vy = PHYSICS.doubleJumpV; jumpsUsed = 2; squash = SQ.double; }
     while (pi < press.length && cx + SPEED.run / 2 >= press[pi]) {
       if (jumpsUsed === 0) { vy = PHYSICS.jumpV; jumpsUsed = 1; onGround = false; sliding = false; slideHeld = false; squash = SQ.jump; }
+      else if (heldAir) { /* กดซ้ำระหว่างรอ = ไม่นับ */ }
+      else if (jumpsUsed === 1 && vy < holdV) heldAir = true;
       else if (jumpsUsed === 1) { vy = PHYSICS.doubleJumpV; jumpsUsed = 2; squash = SQ.double; }
       else missedPress.push(Math.round(press[pi]));
       pi++;
@@ -2419,14 +2425,14 @@ function simulate(d, scIn) {
     // 7) เดินหน้าหนึ่งเฟรม
     const impactV = vy;   // ความเร็วตกก่อนเฟรมนี้ — ตกแรงแค่ไหนตัวแบนแค่นั้น (ลำดับเดียวกับ Player.update)
     cx += SPEED.run;
-    vy += PHYSICS.gravity;
+    vy += gravityAt(vy, jumpsUsed, slideHeld);
     y += vy;
     squash += (0 - squash) * SQ.decay;
 
     const stand = footingOf(sc, cx, y - vy, y, onGround, fx.boost > 0 || fx.big > 0);
     if (stand !== null) {
       if (!onGround) squash = SQ.land(impactV);
-      y = stand; vy = 0; onGround = true; jumpsUsed = 0;
+      y = stand; vy = 0; onGround = true; jumpsUsed = 0; heldAir = false;
     } else {
       onGround = false;
       if (jumpsUsed === 0) jumpsUsed = 1;   // เดินตกหลุม = เสียสิทธิ์กระโดดแรก

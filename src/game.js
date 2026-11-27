@@ -869,7 +869,9 @@ export class Game {
     if (this.talents.onJumpPress(this)) return;
 
     const kind = this.player.jump();
-    if (kind === 'extra') {
+    if (kind === 'held') {
+      // กดรัว: ชั้นถัดไปรอแรงพุ่งลดก่อน แล้วปล่อยเองผ่าน pendingJump (ดู "กดรัว = ล็อกจังหวะ" ใน player.js)
+    } else if (kind === 'extra') {
       // จังหวะที่เพิ่มมาจากพรสวรรค์ — ประกายสีทองคนละสีกับชั้นสอง ให้รู้ว่าเป็นของพิเศษ
       const b = this.player.box;
       this.particles.burst(b.x + this.camera + b.w / 2, this.player.y - 10, 12, 'letter', 4.5);
@@ -886,10 +888,8 @@ export class Game {
       this.player.vy = PHYSICS.doubleJumpV;
       this.particles.burst(PLAYER_X + 20 + this.camera, this.player.y - 10, 10, 'letter', 4);
       sfx.double();
-    } else {
-      // หมดทุกสิทธิ์แล้ว แต่กดก่อนแตะผิวนิดเดียว — จำไว้กระโดดให้ตอนแตะ (ดู BUFFER ใน player.js)
-      this.player.queueJump();
     }
+    // หมดทุกสิทธิ์แล้ว = ไม่นับ ต้องแตะพื้นแล้วกดใหม่ (ผู้ใช้ 27 พ.ย. · ดู player.js)
   }
 
   setSlide(on) {
