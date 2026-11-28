@@ -2502,6 +2502,13 @@ export const sfx = {
     [80, 200, 320, 420].forEach((ms) => later(() => noise({ dur: 0.08, vol: 0.05, freq: 1800, q: 1.2 }), ms));
   },
   // ลงพื้น: ตูมหนัก + เนื้อกล้วยหนึบ "ปึ้บ" + พื้นสะเทือน + ใบกล้วยสั่นซ่า
+  // ก้าวเดิน: ตึ้บหนักแต่สั้น + ใบกล้วยไหวเบา ๆ (ท่าเดิน · ผู้ใช้ 28 พ.ย.)
+  bananaStep: () => {
+    impact(0.12, 0.9);
+    tone(130, 55, 0.13, 'triangle', 0.05);
+    noise({ dur: 0.08, vol: 0.04, type: 'lowpass', freq: 700, freqTo: 180 });
+    later(() => sfx.bananaRustle(0.02), 40);
+  },
   bananaLand: () => {
     impact(0.28, 0.85);
     tone(180, 60, 0.22, 'triangle', 0.08);
@@ -2565,6 +2572,19 @@ export const sfx = {
     rumble(1.6, 0.16);
     noise({ dur: 0.9, vol: 0.07, freq: 1400, freqTo: 300, q: 0.7, attack: 0.04 });
     later(() => sfx.bananaRustle(0.08), 80);
+  },
+  // ท่าปลูกกล้วยตอ (ผู้ใช้ 28 พ.ย.): พื้นนูนเตือน = ดินครืดต่ำ ๆ สั้น ๆ
+  bananaStumpRumble: () => {
+    noise({ dur: 0.28, vol: 0.06, type: 'lowpass', freq: 420, freqTo: 900, attack: 0.18 });
+    tone(55, 75, 0.26, 'triangle', 0.035);
+  },
+  // ตอผุด: "ปึ้ก" ทุ้มหนึบ (ต้นใหญ่ทุ้มกว่า) + ดินแตกซ่า + ใบกล้วยไหว
+  bananaStumpPop: (h = 20, i = 0) => {
+    const big = Math.min(1, Math.max(0, (h - 12) / 16)), up = 1 + (i % 3) * 0.06;
+    impact(0.14 + 0.08 * big, 1.05 - 0.25 * big);
+    tone((260 - 90 * big) * up, (110 - 30 * big) * up, 0.16, 'triangle', 0.08);
+    noise({ dur: 0.16, vol: 0.06, type: 'bandpass', freq: 1300, freqTo: 500, q: 0.9 });
+    later(() => sfx.bananaRustle(0.025), 50);
   },
   // โดนตี: "ปั้ก" เนื้อกล้วยหนึบ + ร้องโอ๊ยแหบ ๆ
   bananaHit: () => {
