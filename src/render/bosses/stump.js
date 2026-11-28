@@ -470,11 +470,15 @@ function bodyPath(g, H) {
 const along = (c, pts, off) => { c.beginPath(); pts.forEach(([x, y, th, nx, ny, e], i) => { const d = (typeof off === 'function' ? off(th, x) : off) * e; (i ? c.lineTo : c.moveTo).call(c, x + nx * d, y + ny * d); }); };
 
 /** ผ้าซับชั้นใน (วาดก่อนตัว — ส่วนบนซ่อนอยู่หลังตัว เห็นแค่ลอนที่ห้อยต่ำกว่าชั้นหน้า) */
-function drawUnder(c, H) {
+function underPath(H) {
   const U = H.U, p = new Path2D();
   p.moveTo(U[0][0], -34); p.lineTo(...U[0]);
   for (const q of H.under) p.bezierCurveTo(...q[1], ...q[2], ...q[3]);
   p.lineTo(U[U.length - 1][0], -34); p.closePath();
+  return p;
+}
+function drawUnder(c, H) {
+  const p = underPath(H);
   let gr = c.createLinearGradient(-45, 0, 42, 0);
   gr.addColorStop(0, '#B27F9F'); gr.addColorStop(0.5, '#A478AE'); gr.addColorStop(1, '#9470B2');
   c.fillStyle = gr; c.fill(p);
@@ -551,19 +555,43 @@ function drawBody(c, g, H, body, k) {
   c.beginPath(); c.moveTo(-24, TOP_Y + 4.5); c.lineTo(-7, TOP_Y - 2.5); c.lineTo(5, TOP_Y + 5.8); c.lineTo(-15, TOP_Y + 7); c.closePath(); c.fill();
 }
 
-function drawBranch(c) {
+/** เส้นขอบตัดด้านใน (ผู้ใช้ 28 พ.ย. "เพิ่มเส้นขอบตัดด้านในบอส ยกเว้นในคริสตัล"):
+ *  ขอบปากหน้าตัดบนหัว · ชายผ้าชั้นหน้าที่ทับผ้าซับ · ขอบตัวที่บังกิ่ง · กิ่ง + หน้าตัดปลายกิ่ง — สีเดียวกับเส้นรอบนอก (ใบไม้วาดเส้นใน leaf()) */
+const INK_IN = 0.9;   // = INK_W (หนาเท่าเส้นรอบนอก)
+// เส้นในวาดเฉพาะช่วงที่อยู่ "ในตัว" — ตัดด้วยรูปชิ้นที่อยู่ข้างใต้ ช่วงที่เป็นขอบนอกมีเส้นรอบนอกอยู่แล้ว ไม่วาดซ้ำ (ผู้ใช้ 28 พ.ย.: ห้ามซ้อน ให้เส้นเท่ากัน)
+function drawInnerInk(c, H, body, op) {
+  c.save(); c.globalAlpha *= op; c.strokeStyle = INK_COL; c.lineWidth = INK_IN; c.lineJoin = 'round'; c.lineCap = 'butt';
+  c.save(); c.clip(body); c.beginPath(); c.ellipse(0, TOP_Y + 0.6, TOP_RX, TOP_RY + 0.8, 0, 0.04, Math.PI - 0.04); c.stroke(); c.restore();   // ปากหน้าตัด: ครึ่งหน้า (ครึ่งหลังคือขอบนอก)
+  c.save(); c.clip(underPath(H)); along(c, H.pts, 0); c.stroke(); c.restore();     // ชายผ้าชั้นหน้า: เฉพาะช่วงที่ทับผ้าซับ
+  c.save(); c.clip(BRANCH); c.stroke(body); c.restore();                           // ขอบตัว: เฉพาะช่วงที่บังกิ่ง
+  c.restore();
+}
+const BRANCH = (() => {
   const p = new Path2D();
   p.moveTo(30, -84); p.quadraticCurveTo(42, -88, 54, -96); p.lineTo(58, -88); p.quadraticCurveTo(47, -80, 36, -71); p.closePath();
   p.moveTo(43, -84); p.quadraticCurveTo(46, -92, 47, -99); p.lineTo(51, -98); p.quadraticCurveTo(50, -90, 47, -83); p.closePath();
+  return p;
+})();
+function drawBranch(c, ink = 0) {
+  const p = BRANCH;
   const g = c.createLinearGradient(32, -76, 54, -94);
   g.addColorStop(0, COL.bodyM); g.addColorStop(1, '#CC8C8E');
   c.fillStyle = g; c.fill(p);
   for (const [x, y, rx, ry, a] of [[56.4, -92, 3.2, 4.4, -0.5], [49, -98.6, 2.2, 1.4, -0.1]]) {
     c.save(); c.translate(x, y); c.rotate(a);
     c.fillStyle = COL.top1; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.fill();
+    if (ink) {   // หน้าตัดปลายกิ่ง: เส้นเฉพาะช่วงที่อยู่บนเปลือกกิ่ง (ส่วนที่ยื่นพ้นกิ่ง = ขอบนอก)
+      c.save(); c.rotate(-a); c.translate(-x, -y); c.clip(p); c.translate(x, y); c.rotate(a);
+      c.globalAlpha *= ink; c.strokeStyle = INK_COL; c.lineWidth = INK_IN; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.stroke(); c.restore();
+    }
     c.strokeStyle = COL.ring; c.lineWidth = 0.7; c.beginPath(); c.ellipse(0, 0, rx * 0.5, ry * 0.5, 0, 0, TAU); c.stroke();
     c.restore();
   }
+}
+function leafEdge(c, x, y, ang, len, w) {
+  c.save(); c.translate(x, y); c.rotate(ang);
+  c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(len * 0.45, -w, len, 0); c.quadraticCurveTo(len * 0.45, w, 0, 0); c.stroke();
+  c.restore();
 }
 function leaf(c, x, y, ang, len = 12, w = 6) {
   c.save(); c.translate(x, y); c.rotate(ang);
@@ -577,11 +605,14 @@ function leaf(c, x, y, ang, len = 12, w = 6) {
 }
 const LEAVES = [[-24, -103, -2.55, 16, 8], [27, -103, -0.5, 16, 8], [29, -84, 0.2, 12, 6], [54, -80, 0.6, 13, 6.5], [49, -102, -1.2, 9, 4.5]];
 const LEAF_DROP = LEAVES.map(([, y]) => meltTimeAt(y + 5));   // วินาทีในท่าแพ้ที่ใบนี้หลุด
-function drawLeaves(c, t, P) {
-  LEAVES.forEach(([x, y, a, len, w], i) => {
-    if (P.dEdge != null && P.dEdge < y + 5) return;   // หลุดแล้ว (วาดเป็นใบร่วงใน drawDefeatFx)
-    leaf(c, x, y, a + Math.sin(t * 2.2 + i * 1.9) * 0.09, len, w);
-  });
+function drawLeaves(c, t, P, ink = 0, body = null) {
+  const live = LEAVES.map(([x, y, a, len, w], i) => [x, y, a + Math.sin(t * 2.2 + i * 1.9) * 0.09, len, w]).filter(([, y]) => !(P.dEdge != null && P.dEdge < y + 5));   // หลุดแล้ว = วาดเป็นใบร่วงใน drawDefeatFx
+  for (const q of live) leaf(c, ...q);
+  if (!ink || !body) return;
+  // เส้นใบ: เฉพาะช่วงที่ทับตัวหรือกิ่ง (ช่วงที่ยื่นออกนอกตัวมีเส้นรอบนอกแล้ว)
+  c.save(); c.globalAlpha *= ink; c.strokeStyle = INK_COL; c.lineWidth = INK_IN; c.lineJoin = 'round';
+  for (const m of [body, BRANCH]) { c.save(); c.clip(m); for (const q of live) leafEdge(c, ...q); c.restore(); }
+  c.restore();
 }
 
 // ── หน้า ──
@@ -1556,7 +1587,7 @@ function withLayer(ctx, n, alpha, flash, fn, post, ink) {
   blitInk(ctx, L, alpha, ink && ink.filter, ink && ink.box);
 }
 /** ความหนาเส้นขอบ (หน่วยบอส) + สี — ใกล้เส้นน้องแมวเมื่อยืนข้างกัน */
-const INK_W = 0.9, INK_COL = '#4A2645';
+const INK_W = 0.9, INK_COL = '#583720';   // น้ำตาลเข้มเดียวกับขอบบอสกล้วย (banana.js INK · ผู้ใช้ 28 พ.ย.)
 
 const EXPLODE = {
   body: [-10, 0], leaves: [-10, 0], face: [96, -36], flame: [96, -58],
@@ -1598,8 +1629,9 @@ export function drawStumpBoss(ctx, x, groundY, s, o = {}) {
   if (!e) drawBehind(ctx, P, g, t);
   const glowUp = Math.max(flash, P.lightUp || 0);   // โดนตี (วาบ) หรือกำลังสลายเป็นแสง
   withLayer(ctx, 0, P.fade, glowUp, (c) => {
-    part(c, 'body', (c) => { drawBranch(c); drawUnder(c, H); drawBody(c, g, H, body, P.turn); drawBodyCracks(c, P, body); });
-    part(c, 'leaves', (c) => drawLeaves(c, t, P));
+    const inIn = ink ? inkOp : 0;
+    part(c, 'body', (c) => { drawBranch(c, inIn); drawUnder(c, H); drawBody(c, g, H, body, P.turn); if (inIn) drawInnerInk(c, H, body, inIn); drawBodyCracks(c, P, body); });
+    part(c, 'leaves', (c) => drawLeaves(c, t, P, inIn, body));
     part(c, 'face', (c) => drawFace(c, P, gaze, t, g));
     if (!ink) part(c, 'flame', (c) => drawFlame(c, P, t));
   }, melt, ink);
@@ -1614,11 +1646,13 @@ export function drawStumpBoss(ctx, x, groundY, s, o = {}) {
   // ไม่งั้นตอนแพ้ตัวสว่างจ้าแต่มือทึบอยู่คู่เดียว (ผู้ใช้ 28 พ.ย.)
   const armLight = e ? 0 : clamp(0.5 * P.rays + 0.9 * P.cryWhite);
   const armPost = armLight > 0.01 || melt ? (c) => { if (armLight > 0.01) armGlow(c, P, g, armLight); if (melt) melt(c); } : null;
+  // เส้นขอบแขนจางตามแสงออร่าที่ตกบนมือ — แสงต้องกลบเส้นด้วย ไม่ใช่มือสว่างแต่เส้นเข้มคม (ผู้ใช้ 28 พ.ย.)
+  const armInk = ink && armLight > 0.01 ? { ...ink, filter: inkFilter(inkPx(ctx, INK_W), INK_COL, inkOp * (1 - armLight)) } : ink;
   withLayer(ctx, 1, P.fade, glowUp, (c) => {
     const only = ink ? 'solid' : undefined;
     part(c, 'armL', (c) => hand(c, g.handL, P.armL, -1, e ? null : body, only));
     part(c, 'armR', (c) => hand(c, g.handR, P.armR, 1, e ? null : body, only));
-  }, armPost, ink);
+  }, armPost, armInk);
   if (!e) drawFront(ctx, P, g, t);
   drawBang(ctx, P, g);
   drawPuff(ctx, P, g);

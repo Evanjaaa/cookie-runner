@@ -25908,6 +25908,74 @@ const LOAF_HEAD = 182;   // หัวลดลงเท่านี้ (หน�
 // ── ท่าหมอบใหม่ของโมจิ (ผู้ใช้ 27 พ.ย. · src/render/cat2/cat-orange-loaf.svg) ──
 // หัวพักบนก้อนตัว (ไม่จมถึงอุ้งเท้า) · ก้อนตัว + พุงครีม + อุ้งเท้าหน้าสองก้อน + หางวนซ้ายจากไฟล์ตรง ๆ · หัว/หน้ายังเป็นของตัววาด (ขยับ/อารมณ์/แต่งหน้าได้)
 // ใช้กับน้องส้มสไตล์โมจิที่ไม่ได้ใส่ชุด — ในเกมจริงด้วย (หน้าแรก/หน้ารายละเอียด/คลัง = MOJI_STYLE.home/ui) · ใส่ชุดอะไรก็ตาม = ท่าหมอบเดิม (ชุดวาดตามก้อนตัวเดิม LOAF.base · ผู้ใช้ 27 พ.ย.)
+// ══ ท่าวิ่ง 4 จังหวะของโมจิ (ผู้ใช้ 28 พ.ย. · cat2/cat-orange-run-1-4.svg) ══
+// ทั้งจังหวะเป็นภาพจากไฟล์ (ตัว ขา แขน หาง หัว หน้า) แทนตัววาดท่าวิ่งเดิม — น้องส้มที่ไม่ใส่ชุดเท่านั้น (ใส่ชุด/แมวสีอื่น = ท่าวิ่งเดิมไปก่อน)
+// จังหวะของ cat2-run (shape.runBody): up → 1 · down → 2 · up2 → 3 · down2 → 4 · ขนาด MOJI_RUN_K ให้สูงพอ ๆ ท่าวิ่งเดิม · กลางหัววางที่ x MOJI_RUN_AT ของตัว
+const MOJI_RUN_K = 1.18, MOJI_RUN_AT = 318;
+const MOJI_RUN_FRAME = { up: 1, down: 2, up2: 3, down2: 4 };
+// ชิ้นของแต่ละจังหวะ (ชื่อกลุ่มในไฟล์ตัดเลขท้าย: head-3 → head) + จุดหมุน (พิกัดจังหวะ: x จากกลางหัว · y จากพื้น · วัดจากภาพ)
+//   neck = ใต้คาง · tail = โคนหาง · armF = ไหล่แขนหน้า (arm-right) · armB = ไหล่แขนหลัง (arm-left)
+const MOJI_RUN_PIV = {
+  1: { neck: [-10, -225], tail: [-191, -160], armF: [-5, -202], armB: [-87, -227] },
+  2: { neck: [-10, -188], tail: [-199, -129], armF: [-22, -168], armB: [-102, -199] },
+  3: { neck: [-10, -225], tail: [-191, -160], armF: [-5, -202], armB: [-87, -227] },
+  4: { neck: [-10, -188], tail: [-199, -129], armF: [-23, -167], armB: [-103, -198] },
+};
+const mojiRunParts = {};
+// จังหวะ 2/4 ในไฟล์หลับตายิ้ม → ใช้หัวลืมตาของจังหวะ 1/3 แทน (ผู้ใช้ 28 พ.ย. "เอาหน้าตอนน้องหลับตาออก") — หัวรูปทรงเท่ากัน แค่ต่ำลง MOJI_RUN_HEAD_DY
+const MOJI_RUN_OPEN_HEAD = { 2: 1, 4: 3 }, MOJI_RUN_HEAD_DY = 36.5;
+function mojiRunPartsOf(frame) {
+  if (mojiRunParts[frame]) return mojiRunParts[frame];
+  const own = (n) => Object.entries(mojiModel('run' + n).parts).map(([id, ops]) => ({ role: id.replace(/-\d+$/, ''), ops }));
+  const src = MOJI_RUN_OPEN_HEAD[frame], openHead = src && own(src).find((p) => p.role === 'head');
+  return (mojiRunParts[frame] = own(frame).map((p) => (p.role === 'head' && openHead ? { role: 'head', ops: toCat2Ops(openHead.ops, LINE_K), dy: MOJI_RUN_HEAD_DY } : { ...p, ops: toCat2Ops(p.ops, LINE_K) })));
+}
+/** จังหวะภาพวิ่งของโมจิที่จะใช้ (1–4) · 0 = ใช้ตัววาดเดิม */
+export function mojiRunFrame(s, runBody) {
+  const f = MOJI_RUN_FRAME[runBody];
+  if (!f || s?.outfit || s?.pal || (s && s.id !== 'orange') || s?.moji === false || s?.age === 'baby' || s?.age === 'young') return 0;
+  return f;
+}
+/**
+ * วาดภาพวิ่งจังหวะ frame — x, feetY, scale แบบเดียวกับ drawCat2
+ * a (ให้มีชีวิต · ผู้ใช้ 28 พ.ย. "ไม่แข็งเกินไป"): t วินาที · k = ความคืบหน้าในจังหวะนี้ 0..1 · air 0..1 ลอยอยู่ · land 0..1 เพิ่งลงพื้น
+ *   ตัวยุบรับน้ำหนักตอนเท้าลง (จังหวะ 2/4) ยืดตอนก้าวยาว (1/3) · หัวโยกตามช้ากว่าตัว เอียงนิด ๆ · หางสะบัดเป็นคลื่นตลอด · แขนแกว่งสวนกัน
+ */
+export function drawMojiRun(ctx, x, feetY, scale, frame, a = {}) {
+  const parts = mojiRunPartsOf(frame), PV = MOJI_RUN_PIV[frame];
+  const t = a.t || 0, kb = a.k ?? ((t * 8) % 1), down = frame % 2 === 0;
+  const cyc = ((frame - 1) + kb) / 4, step = TAU * cyc * 2;      // หนึ่งรอบ 4 จังหวะ = 2 ก้าว
+  const air = a.air || 0, ground = 1 - air;
+  // ทั้งตัว: ยุบตอนเท้าลง แล้วคืนตัว · ก้าวยาว = ยืดขึ้นนิด
+  const sq = ground * (down ? 0.05 * Math.exp(-kb * 6) : -0.022 * Math.sin(Math.PI * kb)) + 0.06 * (a.land || 0);
+  ctx.save();
+  ctx.translate(x, feetY);
+  const k = scale * UNIT * MOJI_RUN_K;
+  ctx.scale(k, k);
+  ctx.translate((MOJI_RUN_AT - 300) / MOJI_RUN_K, 0);
+  ctx.scale(1 + sq * 0.6, 1 - sq);
+  const opt = { stripeK: 1, stripeA: 1, rimK: MOJI_RIM, mojiTail: true };
+  const at = (c, [px, py], ang, dx = 0, dy = 0) => { c.translate(px + dx, py + dy); if (ang) c.rotate(ang); c.translate(-px, -py); };
+  for (const { role, ops, dy } of parts) {
+    ctx.save();
+    if (dy) ctx.translate(0, dy);
+    if (role === 'head') {
+      // หัวตามตัวช้ากว่า: ยังลงต่อนิดหลังเท้าแตะ แล้วเด้งกลับ · เอียงหน้าเงยสลับก้มตามก้าว · ลอย = เงยนิด
+      const lag = Math.sin(step - 1.1);
+      at(ctx, dy ? [PV.neck[0], PV.neck[1] - dy] : PV.neck, 0.035 * lag * ground - 0.05 * air + 0.012 * Math.sin(t * 1.7), 0, 4.5 * lag * ground + 3 * sq * 60);
+    } else if (role === 'tail') {
+      // หางสะบัด: ตามก้าว + คลื่นช้า ๆ ของตัวเอง · ลอย = หางชี้ขึ้นช่วยทรงตัว
+      at(ctx, PV.tail, 0.13 * Math.sin(step + 1.3) * ground + 0.06 * Math.sin(t * 4.1) - 0.18 * air);
+    } else if (role === 'arm-right') {
+      at(ctx, PV.armF, 0.1 * Math.sin(step) * ground - 0.12 * air);
+    } else if (role === 'arm-left') {
+      at(ctx, PV.armB, -0.1 * Math.sin(step) * ground + 0.1 * air);
+    }
+    drawOps(ctx, ops, MOJI_PAL, {}, opt);
+    ctx.restore();
+  }
+  ctx.restore();
+}
 const LOAF_HEAD_MOJI = 111;   // หัวลดลงตอนหมอบ (จูนซ้อนกับไฟล์โมจิ: ตา/จมูก/ปาก/หนวดตรงไฟล์) · ตัว/หางวางตาม FILES.loaf ใน moji-svg.js (ก้นแตะพื้นพอดี)
 const MOJI_LOAF_TAIL = [170, 612];   // โคนหาง (พิกัดตัว · ไฟล์ 1085,1455) — หางสะบัดเบา ๆ รอบจุดนี้
 let mojiLoafCache = null;

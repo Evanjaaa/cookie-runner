@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1522" height="1076" viewBox="0 0 1522 1076">
+  <title>บอสกล้วย ท่าโจมตีปลูกกล้วยตอผุด 01 — Cleanup v01</title>
+  <defs>
+    <path id="rear-arm-shape" d="M818 315 C806 329 791 336 770 344 C744 357 715 375 699 395 C687 411 681 434 684 449 C687 473 702 494 721 515 L779 492 C772 479 769 468 768 457 C763 452 763 442 767 435 C774 423 782 414 793 407 L819 402 L845 357 Z"/>
+    <clipPath id="rear-arm-bounds"><use href="#rear-arm-shape"/></clipPath>
+    <path id="rear-banana-tip-shape" d="M829 312 C816 308 804 303 796 294 C787 284 784 271 790 261 C796 251 808 246 818 244 C832 243 849 252 857 264 C864 274 855 289 848 298 Q840 309 829 312 Z"/>
+    <clipPath id="rear-banana-tip-bounds"><use href="#rear-banana-tip-shape"/></clipPath>
+    <path id="upper-back-leaf-shape" d="M1049 398 C1075 396 1098 406 1114 419 C1121 425 1123 435 1117 442 C1111 451 1098 460 1084 464 L1015 473 L1018 425 Z"/>
+    <clipPath id="upper-back-leaf-bounds"><use href="#upper-back-leaf-shape"/></clipPath>
+    <path id="back-banana-peels-1-shape" d="M924 510 C956 501 998 484 1023 465 C1038 451 1065 449 1090 451 C1111 452 1125 453 1141 464 C1127 479 1106 494 1079 505 C1039 523 988 534 948 525 C932 522 924 519 924 510 Z"/>
+    <clipPath id="back-banana-peels-1-bounds"><use href="#back-banana-peels-1-shape"/></clipPath>
+    <path id="back-banana-peels-2-shape" d="M1022 580 C1049 574 1091 561 1107 552 C1129 550 1151 557 1159 569 C1163 577 1157 586 1146 592 C1124 605 1097 609 1066 613 L1021 602 Z"/>
+    <clipPath id="back-banana-peels-2-bounds"><use href="#back-banana-peels-2-shape"/></clipPath>
+    <path id="wide-side-leaf-shape" d="M890 637 C884 624 891 608 907 594 C931 574 963 565 995 568 C1039 573 1083 590 1118 606 C1154 626 1180 650 1192 677 C1201 693 1207 705 1200 717 C1195 729 1171 731 1150 726 C1105 718 1048 701 998 686 C958 671 925 656 902 649 Q893 646 890 637 Z"/>
+    <clipPath id="wide-side-leaf-bounds"><use href="#wide-side-leaf-shape"/></clipPath>
+    <path id="lower-back-leaf-shape" d="M945 730 C949 701 960 682 976 681 C999 678 1025 692 1048 712 C1070 730 1089 747 1093 771 C1098 795 1090 818 1074 831 Q1054 844 1028 841 C1002 823 973 793 956 768 C946 752 943 740 945 730 Z"/>
+    <clipPath id="lower-back-leaf-bounds"><use href="#lower-back-leaf-shape"/></clipPath>
+    <path id="extended-left-leg-shape" d="M710 624 C686 613 660 600 641 595 C615 587 584 586 561 594 C528 604 502 628 483 661 C462 646 434 638 409 641 C382 642 362 661 352 684 C346 698 345 713 349 726 C364 750 388 774 411 792 C430 808 452 817 466 821 C482 824 492 812 503 798 C524 770 542 744 564 726 C583 709 598 706 623 706 C661 699 690 692 719 680 L744 656 Z"/>
+    <clipPath id="extended-left-leg-bounds"><use href="#extended-left-leg-shape"/></clipPath>
+    <path id="tilted-torso-shape" d="M725 511 C738 487 769 462 791 460 C816 455 841 467 870 478 C897 489 928 503 962 503 C1007 502 1055 476 1081 461 L1130 464 C1112 486 1068 508 1027 519 C984 533 940 560 922 585 C912 599 895 615 892 631 C894 651 919 695 944 733 C954 747 956 772 948 793 C922 829 878 832 849 809 C821 790 785 752 761 710 C737 692 721 673 713 646 C704 623 700 593 702 570 C704 544 715 525 725 511 Z"/>
+    <clipPath id="tilted-torso-bounds"><use href="#tilted-torso-shape"/></clipPath>
+    <path id="lowered-right-leg-shape" d="M893 637 C903 645 912 669 924 692 C932 712 940 730 953 747 C974 777 995 804 1018 825 C1039 848 1048 870 1051 892 C1056 917 1041 943 1023 955 C1004 964 978 964 958 958 C939 953 918 937 892 920 C863 895 857 855 844 820 C833 788 820 759 800 727 C794 703 807 664 834 644 C850 632 869 625 889 637 Z"/>
+    <clipPath id="lowered-right-leg-bounds"><use href="#lowered-right-leg-shape"/></clipPath>
+    <path id="waist-leaves-1-shape" d="M709 639 C677 644 649 660 625 683 C606 703 593 730 588 759 C586 775 586 794 589 802 Q591 810 600 804 C618 784 638 773 658 763 C694 750 727 740 756 722 C773 710 781 689 772 670 C758 649 733 637 709 639 Z"/>
+    <clipPath id="waist-leaves-1-bounds"><use href="#waist-leaves-1-shape"/></clipPath>
+    <path id="waist-leaves-3-shape" d="M821 743 C834 732 851 725 865 727 C887 727 906 748 918 774 C931 801 933 827 924 858 C916 888 897 911 873 927 C864 933 850 940 845 930 C841 922 838 908 835 894 C826 854 814 828 804 804 C795 780 803 758 821 743 Z"/>
+    <clipPath id="waist-leaves-3-bounds"><use href="#waist-leaves-3-shape"/></clipPath>
+    <path id="waist-leaves-2-shape" d="M744 684 C769 678 798 688 815 705 C833 725 836 751 825 775 C812 801 786 822 766 840 C738 865 714 886 705 912 C701 924 695 924 690 913 C681 895 675 867 674 841 C673 809 681 779 693 752 C705 724 722 699 744 684 Z"/>
+    <clipPath id="waist-leaves-2-bounds"><use href="#waist-leaves-2-shape"/></clipPath>
+    <path id="purple-horn-shape" d="M855 272 C870 241 889 206 917 174 C939 148 963 134 988 130 Q992 129 989 133 C981 148 977 164 978 179 C978 197 989 215 997 234 C1003 247 1006 259 1002 274 L969 295 L896 294 Z"/>
+    <clipPath id="purple-horn-bounds"><use href="#purple-horn-shape"/></clipPath>
+    <path id="raised-head-shape" d="M809 312 C827 284 855 261 890 250 C920 242 955 239 982 245 C1016 253 1044 274 1056 306 C1069 336 1070 367 1062 395 C1056 423 1040 454 1019 478 C998 498 968 510 929 515 C887 514 851 492 829 470 C811 453 799 435 794 413 C789 382 793 340 809 312 Z"/>
+    <clipPath id="raised-head-bounds"><use href="#raised-head-shape"/></clipPath>
+    <path id="mouth-and-teeth-shape" d="M798 389 C826 354 865 342 904 335 C945 328 988 327 1027 354 C1015 392 990 428 957 454 C926 475 892 485 870 485 C844 477 823 458 813 441 C804 426 799 408 798 389 Z"/>
+    <clipPath id="mouth-and-teeth-bounds"><use href="#mouth-and-teeth-shape"/></clipPath>
+    <path id="raised-arm-shape" d="M894 530 C908 515 937 511 955 513 C1002 520 1036 517 1072 504 C1105 492 1130 476 1146 457 C1169 439 1201 446 1214 467 C1231 487 1210 510 1187 528 C1165 546 1138 560 1106 573 C1068 587 1027 594 985 589 C954 587 925 582 910 581 C899 582 898 574 899 564 L872 551 Z"/>
+    <clipPath id="raised-arm-bounds"><use href="#raised-arm-shape"/></clipPath>
+    <path id="raised-banana-hand-1-shape" d="M1071 225 C1070 210 1068 196 1074 190 C1080 187 1093 192 1101 199 L1114 222 L1089 250 Z"/>
+    <clipPath id="raised-banana-hand-1-bounds"><use href="#raised-banana-hand-1-shape"/></clipPath>
+    <path id="raised-banana-hand-2-shape" d="M1169 185 C1175 175 1182 165 1188 164 C1196 164 1204 183 1208 194 Q1213 206 1205 214 L1183 215 Z"/>
+    <clipPath id="raised-banana-hand-2-bounds"><use href="#raised-banana-hand-2-shape"/></clipPath>
+    <path id="raised-banana-hand-3-shape" d="M1251 258 C1263 249 1273 241 1282 241 Q1289 241 1288 251 C1286 264 1283 276 1277 282 L1261 289 Z"/>
+    <clipPath id="raised-banana-hand-3-bounds"><use href="#raised-banana-hand-3-shape"/></clipPath>
+    <path id="hand-lower-finger-shape" d="M1199 354 C1215 321 1249 297 1271 297 C1286 300 1299 323 1295 346 C1292 369 1283 392 1267 410 C1253 426 1237 430 1224 417 C1209 406 1199 403 1183 399 C1176 385 1183 363 1199 354 Z"/>
+    <clipPath id="hand-lower-finger-bounds"><use href="#hand-lower-finger-shape"/></clipPath>
+    <path id="hand-middle-finger-shape" d="M1186 219 C1199 205 1216 205 1231 213 C1246 222 1255 238 1257 254 C1260 273 1251 287 1234 294 C1215 304 1192 312 1173 310 C1158 308 1152 299 1153 284 C1152 261 1170 233 1186 219 Z"/>
+    <clipPath id="hand-middle-finger-bounds"><use href="#hand-middle-finger-shape"/></clipPath>
+    <path id="hand-front-finger-shape" d="M1236 281 C1249 274 1259 279 1269 290 C1281 304 1277 326 1266 343 C1255 361 1235 376 1213 376 C1195 374 1187 364 1189 351 C1191 329 1211 298 1236 281 Z"/>
+    <clipPath id="hand-front-finger-bounds"><use href="#hand-front-finger-shape"/></clipPath>
+    <path id="raised-banana-hand-4-shape" d="M1069 226 C1084 201 1097 185 1117 176 C1133 171 1148 171 1160 176 C1177 182 1187 194 1193 205 C1208 199 1229 203 1242 216 C1253 225 1259 241 1259 259 C1261 270 1265 279 1274 288 C1286 302 1294 324 1295 347 C1294 371 1288 394 1282 412 C1272 446 1253 480 1233 496 C1223 505 1211 508 1200 505 C1177 500 1156 486 1142 471 C1127 456 1114 444 1122 428 C1130 413 1141 395 1150 379 Q1144 374 1141 366 C1120 373 1097 375 1083 366 C1072 359 1068 349 1072 335 C1076 321 1090 305 1106 297 Q1113 294 1119 292 L1113 286 C1103 294 1089 304 1074 305 C1058 305 1052 291 1051 277 C1051 257 1058 241 1069 226 Z"/>
+    <clipPath id="raised-banana-hand-4-bounds"><use href="#raised-banana-hand-4-shape"/></clipPath>
+  </defs>
+  <g id="rear-arm">
+    <g clip-path="url(#rear-arm-bounds)">
+      <rect width="1522" height="1076" fill="#80c045"/>
+      <path fill="#629c2e" d="M808 341 C776 360 740 393 726 427 C715 452 715 475 710 492 L733 523 L782 500 L773 452 L807 412 L831 346Z"/>
+      <use href="#rear-arm-shape" fill="none" stroke="#663b19" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="rear-banana-tip">
+    <g clip-path="url(#rear-banana-tip-bounds)">
+      <rect width="1522" height="1076" fill="#b59100"/>
+      <use href="#rear-banana-tip-shape" fill="none" stroke="#663b19" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="upper-back-leaf">
+    <g clip-path="url(#upper-back-leaf-bounds)">
+      <rect width="1522" height="1076" fill="#629c2e"/>
+      <use href="#upper-back-leaf-shape" fill="none" stroke="#663b19" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="back-banana-peels">
+    <g clip-path="url(#back-banana-peels-1-bounds)">
+      <rect width="1522" height="1076" fill="#b59100"/>
+      <use href="#back-banana-peels-1-shape" fill="none" stroke="#663b19" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g clip-path="url(#back-banana-peels-2-bounds)">
+      <rect width="1522" height="1076" fill="#b59100"/>
+      <use href="#back-banana-peels-2-shape" fill="none" stroke="#663b19" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="wide-side-leaf">
+    <g clip-path="url(#wide-side-leaf-bounds)">
+      <rect width="1522" height="1076" fill="#629c2e"/>
+      <path id="side-leaf-light" fill="#80c045" d="M909 586 C962 590 1016 608 1070 629 C1118 647 1165 667 1195 692 L1217 657 L1131 582 L959 555 Z"/>
+      <clipPath id="side-leaf-rim-clearance"><path clip-rule="evenodd" d="M0 0 H1522 V1076 H0 Z M878 568 H950 V600 H930 V656 H878 Z"/></clipPath>
+      <g clip-path="url(#side-leaf-rim-clearance)">
+        <use href="#wide-side-leaf-shape" fill="none" stroke="#663b19" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </g>
+  </g>
+  <g id="lower-back-leaf">
+    <g clip-path="url(#lower-back-leaf-bounds)">
+      <rect width="1522" height="1076" fill="#629c2e"/>
+      <path fill="none" stroke="#663b19" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" d="M1011 798 C1020 812 1025 825 1029 838"/>
+      <use href="#lower-back-leaf-shape" fill="none" stroke="#663b19" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="extended-left-leg">
+    <g clip-path="url(#extended-left-leg-bounds)">
+      <rect width="1522" height="1076" fill="#629c2e"/>
+      <path id="left-leg-light" fill="#80c045" d="M378 638 C390 674 408 692 432 702 C470 717 510 715 546 710 C587 702 615 678 640 657 C663 637 682 627 703 624 L675 585 L387 576 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round" d="M534 610 C549 634 546 671 522 715 M540 672 C563 672 585 676 605 685 M648 606 C645 631 635 648 620 663 M640 640 Q656 643 670 650"/>
+      <use href="#extended-left-leg-shape" fill="none" stroke="#663b19" stroke-width="16.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="tilted-torso">
+    <g clip-path="url(#tilted-torso-bounds)">
+      <path id="torso-base-around-banana-peel" fill="#80c045" fill-rule="evenodd" d="M0 0 H1522 V1076 H0 Z M924 510 C956 501 998 484 1023 465 C1038 451 1065 449 1090 451 C1111 452 1125 453 1141 464 C1127 479 1106 494 1079 505 C1039 523 988 534 948 525 C932 522 924 519 924 510 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" d="M725 511 C710 533 702 562 703 591"/>
+      <path fill="none" stroke="#663b19" stroke-width="11.4" stroke-linecap="round" stroke-linejoin="round" d="M703 591 C702 612 706 632 711 641 C717 659 735 678 756 685"/>
+      <path fill="none" stroke="#663b19" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round" d="M781 493 C802 512 822 544 830 567 M826 533 C848 515 865 510 882 509"/>
+      <path fill="none" stroke="#663b19" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" d="M739 549 C768 575 798 623 805 687 M796 641 C825 629 861 619 896 613.5"/>
+    </g>
+    <clipPath id="torso-side-leaf-outline-bounds"><use href="#tilted-torso-shape"/><use href="#wide-side-leaf-shape"/><use href="#raised-arm-shape"/><use href="#lowered-right-leg-shape"/></clipPath>
+    <path id="torso-side-leaf-join" clip-path="url(#torso-side-leaf-outline-bounds)" fill="none" stroke="#663b19" stroke-width="8.6" stroke-linecap="round" stroke-linejoin="round" d="M923 579 C916 595 904 604 896 615 C889 625 889 637 895 642 C905 648 918 652 930 656"/>
+    <clipPath id="shoulder-edge-bounds"><use href="#rear-arm-shape"/><use href="#tilted-torso-shape"/></clipPath>
+    <path id="shoulder-cut-edge" clip-path="url(#shoulder-edge-bounds)" fill="none" stroke="#663b19" stroke-width="8.4" stroke-linecap="round" stroke-linejoin="round" d="M725 511 C743 488 764 469 786 463 C800 459.8 813 462 825 469"/>
+  </g>
+  <g id="lowered-right-leg">
+    <g clip-path="url(#lowered-right-leg-bounds)">
+      <rect width="1522" height="1076" fill="#80c045"/>
+      <path id="right-leg-shadow" fill="#629c2e" d="M889 634 C896 676 912 727 946 780 C971 820 1009 868 1052 903 L1083 897 L1059 817 L948 676 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" d="M968 883 C978 894 981 923 974 953"/>
+      <path fill="none" stroke="#663b19" stroke-width="15.4" stroke-linecap="round" stroke-linejoin="round" d="M894 639 C904 650 913 670 924 692 C932 712 940 730 953 747 C974 777 995 804 1018 825 C1039 848 1048 870 1051 892 C1056 917 1041 943 1023 955 C1004 964 978 964 958 958 C939 953 918 937 892 920"/>
+    </g>
+  </g>
+  <g id="waist-leaves">
+    <g clip-path="url(#waist-leaves-1-bounds)">
+      <rect width="1522" height="1076" fill="#865e3a"/>
+      <path fill="#80c045" d="M708 637 C719 658 738 679 760 686 C776 687 793 690 810 708 L809 623 L719 621 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" d="M709 639 C677 644 649 660 625 683 C606 703 593 730 588 759 C586 775 586 794 589 802 Q591 810 600 804 C618 784 638 773 658 763 C694 750 727 740 756 722 C774 710 781 700 778 690"/>
+      <path fill="none" stroke="#663b19" stroke-width="7.6" stroke-linecap="round" stroke-linejoin="round" d="M708 638 C719 659 738 679 760 686"/>
+    </g>
+    <g clip-path="url(#waist-leaves-3-bounds)">
+      <rect width="1522" height="1076" fill="#865e3a"/>
+      <use href="#waist-leaves-3-shape" fill="none" stroke="#663b19" stroke-width="13.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g clip-path="url(#waist-leaves-2-bounds)">
+      <rect width="1522" height="1076" fill="#865e3a"/>
+      <use href="#waist-leaves-2-shape" fill="none" stroke="#663b19" stroke-width="13.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="purple-horn">
+    <g clip-path="url(#purple-horn-bounds)">
+      <rect width="1522" height="1076" fill="#763477"/>
+      <path fill="#9b5bb9" d="M854 273 C868 247 889 217 908 197 Q916 221 940 234 C925 242 913 247 893 251 L866 267 Z"/>
+      <path fill="#9b5bb9" d="M952 149 C962 141 974 136 985 133 C978 149 973 168 977 187 Q956 171 952 149 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M908 198 Q915 220 939 235 C954 229 969 221 982 211 M922 199 Q950 198 977 187 M952 150 C951 166 961 179 976 187 M957 161 Q967 158 975 159"/>
+      <use href="#purple-horn-shape" fill="none" stroke="#663b19" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="raised-head">
+    <g clip-path="url(#raised-head-bounds)">
+      <rect width="1522" height="1076" fill="#80c045"/>
+      <path id="head-lower-shadow" fill="#629c2e" d="M835 464 C858 474 885 477 904 472 C924 467 947 454 969 436 C990 416 1006 396 1021 368 C1016 402 994 434 976 450 C953 472 926 490 900 493 C882 494 858 487 844 479 L835 464 Z"/>
+      <path id="upper-eye" fill="#663b19" d="M854 329 C875 312 904 293 928 278 C949 264 967 252 987 248 C986 272 979 291 968 305 C949 331 928 336 905 338 C881 337 866 331 856 334 Z"/>
+      <path id="far-eye" fill="#663b19" d="M802 333 C811 320 820 309 831 301 L837 325 Q826 333 802 333 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="4.7" stroke-linecap="round" stroke-linejoin="round" d="M852 298 C847 309 843 323 837 336 M861 305 Q858 318 855 332"/>
+      <use href="#raised-head-shape" fill="none" stroke="#663b19" stroke-width="16.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="mouth-and-teeth">
+    <g clip-path="url(#mouth-and-teeth-bounds)">
+      <rect width="1522" height="1076" fill="#ffffff"/>
+      <path id="tooth-separators" fill="none" stroke="#663b19" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M801 389 C811 420 826 449 840 470 M836 366 C832 401 835 442 840 470 M836 366 C852 403 873 444 896 479 M907 335 C902 379 903 435 896 479 M907 335 C923 371 939 416 952 457 M979 334 C975 378 967 422 952 457 M979 334 Q992 366 1005 394"/>
+      <use href="#mouth-and-teeth-shape" fill="none" stroke="#663b19" stroke-width="11.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <g id="raised-arm">
+    <g clip-path="url(#raised-arm-bounds)">
+      <rect width="1522" height="1076" fill="#80c045"/>
+      <path id="raised-arm-shadow" fill="#629c2e" d="M912 577 C915 560 935 555 966 550 C1022 541 1083 509 1130 500 C1158 492 1179 490 1211 492 L1227 535 L1107 595 L940 606 Z"/>
+      <path id="arm-upper-edge" fill="none" stroke="#663b19" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="M897 529 C913 512 939 511 958 513 C1001 519 1036 516 1069 505 C1098 495 1125 479 1144 463"/>
+      <path id="arm-lower-edge" fill="none" stroke="#663b19" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="M911 576 C954 584 1009 591 1052 584 C1101 573 1158 545 1186 522 C1198 513 1206 502 1212 492"/>
+    </g>
+  </g>
+  <g id="raised-banana-hand">
+    <g clip-path="url(#raised-banana-hand-1-bounds)">
+      <rect width="1522" height="1076" fill="#ffe400"/>
+      <use href="#raised-banana-hand-1-shape" fill="none" stroke="#663b19" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g clip-path="url(#raised-banana-hand-2-bounds)">
+      <rect width="1522" height="1076" fill="#ffe400"/>
+      <use href="#raised-banana-hand-2-shape" fill="none" stroke="#663b19" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g clip-path="url(#raised-banana-hand-3-bounds)">
+      <rect width="1522" height="1076" fill="#ffe400"/>
+      <use href="#raised-banana-hand-3-shape" fill="none" stroke="#663b19" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g clip-path="url(#raised-banana-hand-4-bounds)">
+      <rect width="1522" height="1076" fill="#b59100"/>
+      <path id="palm-light" fill="#ffe400" d="M1187 353 C1202 366 1225 376 1242 371 C1262 368 1280 353 1295 334 L1301 421 C1277 466 1250 500 1224 514 C1185 515 1149 487 1122 444 C1139 441 1155 460 1169 455 C1181 451 1183 437 1182 420 C1182 397 1189 377 1187 353 Z"/>
+      <path fill="none" stroke="#663b19" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" d="M1110 281 Q1121 283 1126 292 C1115 296 1101 304 1090 316 M1142 365 C1151 380 1162 387 1176 392"/>
+      <clipPath id="top-finger-overlap-bounds"><path d="M1093 205 C1095 192 1107 180 1125 175 C1149 168 1175 178 1194 212 C1184 228 1177 236 1161 244 C1142 249 1121 250 1108 241 C1097 233 1093 222 1093 205 Z"/></clipPath>
+      <g clip-path="url(#top-finger-overlap-bounds)">
+        <path fill="#ffe400" d="M1093 205 C1095 192 1107 180 1125 175 C1149 168 1175 178 1194 212 C1184 228 1177 236 1161 244 C1142 249 1121 250 1108 241 C1097 233 1093 222 1093 205 Z"/>
+        <path fill="#b59100" d="M1123 173 C1120 184 1116 198 1118 211 C1120 221 1127 229 1138 234 C1147 238 1155 236 1165 243 L1183 259 L1095 267 L1078 191 Z"/>
+      </g>
+      <path id="top-finger-crease" fill="none" stroke="#663b19" stroke-width="5.1" stroke-linecap="round" stroke-linejoin="round" d="M1099 195 C1096 202 1094 210 1096 218 C1098 231 1105 241 1116 245 C1130 251 1150 248 1164 244"/>
+      <g clip-path="url(#hand-lower-finger-bounds)">
+        <rect width="1522" height="1076" fill="#ffe400"/>
+        <path fill="#b59100" d="M1184 367 C1208 352 1241 334 1267 325 C1272 350 1254 379 1237 390 C1222 402 1198 407 1180 396 Z"/>
+        <use href="#hand-lower-finger-shape" fill="none" stroke="#663b19" stroke-width="7.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g clip-path="url(#hand-middle-finger-bounds)">
+        <rect width="1522" height="1076" fill="#ffe400"/>
+        <path fill="#b59100" d="M1177 229 C1167 245 1169 274 1176 285 C1184 297 1197 294 1213 287 C1231 280 1248 275 1258 279 L1255 304 L1175 322 L1144 295 L1147 251 Z"/>
+        <use href="#hand-middle-finger-shape" fill="none" stroke="#663b19" stroke-width="7.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g clip-path="url(#hand-front-finger-bounds)">
+        <rect width="1522" height="1076" fill="#ffe400"/>
+        <path fill="#b59100" d="M1229 283 C1220 299 1218 321 1216 340 C1214 354 1219 366 1228 371 C1215 381 1193 378 1187 363 C1184 345 1199 312 1220 293 Z"/>
+        <use href="#hand-front-finger-shape" fill="none" stroke="#663b19" stroke-width="8.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <use href="#raised-banana-hand-4-shape" fill="none" stroke="#663b19" stroke-width="16.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

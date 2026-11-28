@@ -337,7 +337,7 @@
     loadBanana();
     loadBananaBoss();
     loadCatMagic();
-    const DEMO_BANANA_BOSS = [['enter', 2.6], ['idle', 1.6], ['throw', 2.6], ['idle', 0.8], ['slam', 2.4], ['idle', 0.8], ['throw', 2.6], ['tired', 2.4], ['defeat', 4.8]];
+    const DEMO_BANANA_BOSS = [['enter', 2.6], ['idle', 1.6], ['walk', 2.4], ['throw', 2.6], ['idle', 0.8], ['slam', 2.4], ['idle', 0.8], ['laser', 3.6], ['idle', 0.8], ['plant', 3.5], ['idle', 0.8], ['throw', 2.6], ['tired', 1.2], ['hit', 0.9], ['tired', 1.0], ['defeat', 4.8]];
     const DEMO_LOG = [['idle', 1.6], ['dash', 1.7], ['idle', 0.6], ['spin', 1.5], ['hop', 1.3], ['shoot', 2.0], ['idle', 0.6], ['dizzy', 1.6], ['sleep', 3.2], ['stomp', 1.7]];
     // บอส + ลูกน้องทั้งหมด (เพิ่มตัวใหม่ที่นี่ · ตัวที่ยังไม่ได้วาด = รอแบบ)
     // def: H สูงตัว · hover ลอย · top เผื่อเหนือหัว · halfW ครึ่งกว้าง (หน่วยของตัวนั้น) · ratio สูงกี่เท่าของน้อง
@@ -347,8 +347,8 @@
         demoNote: 'เปิดตัว → ท่าโจมตี 5 ท่า → เหนื่อย → แพ้', explodeNote: 'ดูว่าแต่ละชิ้นขยับแยกกันได้ครบไหม: ตัว+ใบไม้ · หน้า (ตา คิ้ว ปาก) · จุดอ่อนบนหัว · แขนซ้าย · แขนขวา · ผลึก+น้อง' },
       // บอสกล้วยราคี (ผู้ใช้ 26 พ.ย.): บอสตัวแรกของเกม — ภาพจากไฟล์แบบ 3 ท่า (ท่าหลัก · เอื้อมจับกล้วย · ปากล้วย) ขยับทีละชิ้น
       { id: 'bananaBoss', kind: 'boss', name: BANANA_BOSS.name, note: `${BANANA_BOSS.title} · บอสตัวแรก`, em: '🍌', draw: drawBananaBoss, def: BANANA_BOSS, states: BANANA_BOSS_STATES, demo: DEMO_BANANA_BOSS,
-        refs: ['banana-boss-final', 'banana-boss-grab-final', 'banana-boss-throw-final'].map((f, i) => [new URL(`./src/render/bosses/banana/${f}.svg`, location.href).href, ['ท่าหลัก', 'ท่าจับกล้วย', 'ท่าปากล้วย'][i]]),
-        demoNote: 'เปิดตัว → ยืนขู่ → ปากล้วย → กระแทกพื้น → ปากล้วย → เหนื่อย → แพ้', explodeNote: 'ชิ้นจากไฟล์แบบ: ใบกล้วย · เครือกล้วย · ตัว+แขนขวา · แขนซ้าย · ขา 2 · รากเอว · หน้า · ปลีเขา · กำปั้น 2 (+ แขน/มือของท่าจับ-ท่าปา)' },
+        refs: ['banana-boss-final', 'banana-boss-grab-final', 'banana-boss-throw-final', 'banana-boss-hit-final', 'banana-boss-laser-01-final', 'banana-boss-laser-02-final', 'banana-boss-laser-03-final', 'banana-boss-plant-stump-01-final', 'banana-boss-plant-stump-02-final'].map((f, i) => [new URL(`./src/render/bosses/banana/${f}.svg`, location.href).href, ['ท่าหลัก', 'ท่าจับกล้วย', 'ท่าปากล้วย', 'ท่าโดนตี', 'ท่าชาร์จเลเซอร์', 'ท่ายิงเลเซอร์', 'ลำแสงเลเซอร์', 'ท่าเงื้อปลูกกล้วยตอ', 'ท่าทุบพื้นปลูกกล้วยตอ'][i]]),
+        demoNote: 'เปิดตัว → ยืนขู่ → เดิน → ปากล้วย → กระแทกพื้น → เลเซอร์หัวปลี → ปากล้วย → เหนื่อย → โดนตี → แพ้', explodeNote: 'ชิ้นจากไฟล์แบบ: ใบกล้วย · เครือกล้วย · ตัว+แขนขวา · แขนซ้าย · ขา 2 · รากเอว · หน้า · ปลีเขา · กำปั้น 2 (+ แขน/มือของท่าจับ-ท่าปา)' },
       // ลูกสมุนกล้วย (ผู้ใช้ 25 พ.ย.): ลูกสมุนของบอสตัวแรก ธีมต้นกล้วย — ภาพจากไฟล์ banana-minion-phase3-4.svg (11 ชิ้น) ขยับทีละชิ้น
       { id: 'banana', kind: 'minion', name: BANANA.name, note: `${BANANA.title} · ลูกสมุนบอสต้นกล้วย`, em: '🍌', draw: drawBanana, def: BANANA, states: BANANA_STATES, demo: DEMO_BANANA, refs: [[new URL('./src/render/minions/banana-minion.svg', location.href).href, 'ไฟล์แบบ Phase 3.4']],
         demoNote: 'ยืนกวน → เดิน → แลบลิ้นยั่ว → กระโดด → พุ่งชน → มึน → โดนเหยียบ', explodeNote: 'ชิ้นจากไฟล์แบบ 11 กลุ่ม: ขั้ว · ขาเปลือก 3 ชิ้น · ตัว · เปลือกหน้า · ร่องผิว · ตา 2 ข้าง · ลิ้น · ปาก' },
@@ -479,6 +479,12 @@
         throw: [[0.05, 'bananaReach'], [0.36, 'bananaPluck'], [0.55, 'bananaWindup'], [BANANA_BOSS_ACT.throw.release - 0.05, 'bananaThrow']],
         slam: [[0, 'bananaSlamCharge'], [0.45, 'bananaJump'], [BANANA_BOSS_ACT.slam.land, 'bananaSlam']],
         tired: [[0.05, 'hopeFull'], [0.05, 'bananaTired']],
+        hit: [[0, 'bananaHit']],
+        walk: [[0.3, 'bananaStep'], [0.9, 'bananaStep']],   // เท้าซ้าย/ขวาลงพื้น (ท่าเดิน)
+        laser: [[0, 'bananaSlamCharge'], [0.3, 'stumpBurstCharge'], [BANANA_BOSS_ACT.laser.fire, 'stumpBurst'], [BANANA_BOSS_ACT.laser.fire + 0.05, 'bananaRoar']],   // ชาร์จ (ไฟล์ 01) → ยิง (ไฟล์ 02)
+        // ปลูกกล้วยตอผุด: เงื้อ (ครางเก็บแรง) → ทุบพื้น → พื้นนูนครืดก่อนตอผุดทีละต้น
+        plant: [[0, 'bananaSlamCharge'], [BANANA_BOSS_ACT.plant.slam, 'bananaSlam'], [BANANA_BOSS_ACT.plant.slam + 0.1, 'bananaChuckle'],
+          ...BANANA_BOSS_ACT.plant.stumps.flatMap((q, i) => [[q.at - BANANA_BOSS_ACT.plant.warn, 'bananaStumpRumble'], [q.at, 'bananaStumpPop', q.h, i]])],
         defeat: [[0, 'bananaQuake'], [1.1, 'bananaCrownPop'], [1.6, 'bananaFall'], [2.8, 'bananaSparkle'], [3.6, 'bossWin']],
         // ท่าคว้า B1–B9 (ผู้ใช้ 27 พ.ย.) — ท่าเดียวกับด่านบอสใน gameplay-lab
         grabWind: [[0, 'bananaGrabWarn']],
@@ -793,7 +799,7 @@
       st.lastP = P;
       if (showFx) fxLayer(fxFront);
       ctx.restore();
-      stepSound(state, sst, !!st.boss.states[state]?.loop && !st.demo && st.st >= st.boss.states[state].loop);
+      stepSound(state, sst, !!st.boss.states[state]?.loop && state !== 'walk' && !st.demo && st.st >= st.boss.states[state].loop);   // ท่าเดิน: เสียงก้าวดังทุกรอบ
 
       // ป้าย + เวลา
       const S = st.boss.states[state];

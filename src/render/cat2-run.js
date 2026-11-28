@@ -11,7 +11,7 @@
 //
 // ใช้: const A = createRunAnim();  ทุกเฟรม: const r = stepRunAnim(A, player, info)  แล้ว drawCat2Run(ctx, x, feetY, scale, skin, t, r)
 
-import { drawCat2, cat2Faint, cat2Trail, drawTrail } from './cat2.js';
+import { drawCat2, cat2Faint, cat2Trail, drawTrail, mojiRunFrame, drawMojiRun } from './cat2.js';
 import { gfxLevel } from '../graphics.js';
 import { GROUND_Y } from '../config.js';
 
@@ -282,7 +282,7 @@ export function stepRunAnim(A, P, info = {}) {
   // ── ตัว+ขาวิ่งสี่จังหวะตามแบบผู้ใช้ (RUN4 · เปลี่ยนท่าทีละจังหวะแบบสไปรต์คุกกี้รัน) ──
   //   บนพื้น: Up · Down · Up · Down ตามระยะวิ่ง (RUN4_STEP) · กลางอากาศ: ขาขึ้น = Up (ก้าวยาว) / ขาลง = Down (เท้าลงรอแตะพื้น)
   //   ลงพื้น = Down · ตีลังกา = Down (ตัวกลมเท้าใต้ตัว) · หมอบ/หมุนตัว (twirl) = ขาเดิมจากแบบ
-  let bob4 = 0, beat = -1;
+  let bob4 = 0, beat = -1, beatK = 0;
   if (slide < 0.5 && A.j2 !== 'twirl') {
     let body;
     if (A.j2 === 'flip') body = RUN4[1];
@@ -294,7 +294,8 @@ export function stepRunAnim(A, P, info = {}) {
     }
     else if (info.stand) body = RUN4[1];   // ยืนรอ (โบนัส: ปลามารับ / ร่อนลง / วางลงพื้น) — เท้าใต้ตัว ไม่ก้าวค้างกลางท่า
     else {
-      beat = Math.floor((P.runPhase * (info.gait ?? 1)) / RUN4_STEP) % 4;
+      const bp = (P.runPhase * (info.gait ?? 1)) / RUN4_STEP;
+      beat = Math.floor(bp) % 4; beatK = bp - Math.floor(bp);   // beatK = ความคืบหน้าในจังหวะ (ภาพวิ่งโมจิใช้ทำตัวยุบ/หัวโยก)
       body = RUN4[beat];
       bob4 = body.bob;
     }
@@ -309,7 +310,7 @@ export function stepRunAnim(A, P, info = {}) {
   shape.capeWind = (0.85 + 0.15 * Math.sin(A.t * 0.11)) * (1 - 0.45 * slide) * (1 - 0.35 * tired) + 0.25 * j2k;
   shape.capeLift = air * (fall * 2 - 1) - 0.8 * landK;
   // ตกหลุม: หางคทาตามลงหลุมไปด้วย (ผู้ใช้ 18 ต.ค.) — หยุดเมื่อเกมนับว่าตายแล้ว (พ้นจอ) · ชุบชีวิต = เกมเริ่มตัวคุมท่าใหม่ (ล้างหางเก่า)
-  return { shape, spin, twirl, j2: A.j2, j2k, air, land: landK, bob: bob4, beat, ...trailOut(A, P, info, !info.dead, bob4, spin) };
+  return { shape, spin, twirl, j2: A.j2, j2k, air, land: landK, bob: bob4, beat, beatK, ...trailOut(A, P, info, !info.dead, bob4, spin) };
 }
 
 /** จุดหมุนตอนตีลังกา: กลางตัว (หน่วยเกมเหนือเท้า ต่อสเกล 1) — สูงจากเท้า ~228 หน่วยไฟล์ × 0.104 */
@@ -421,7 +422,9 @@ export function drawCat2Run(ctx, x, feetY, scale, s, t, r, more = null) {
   ctx.save();
   const fxM = r.spin ? ctx.getTransform() : null;   // เอฟเฟกต์ชุดไม่หมุนตามตอนตีลังกา (idle.fxM ใน drawCat2)
   if (r.spin) { ctx.translate(x, py); ctx.rotate(r.spin); ctx.translate(-x, -py); }
-  drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit, runner: true, ...more });   // bob = ตัวลอยตอนจังหวะ Up · runner = วิ่งในเกม (ชุดที่วางของต่างจากหน้าคลัง)
+  const mf = mojiRunFrame(s, r.shape?.runBody);   // น้องส้มไม่ใส่ชุด: ท่าวิ่งของโมจิ (ภาพจากไฟล์ 4 จังหวะ · ผู้ใช้ 28 พ.ย.)
+  if (mf) drawMojiRun(ctx, x, feetY - (r.bob || 0) * scale, scale, mf, { t: t / 60, k: r.beat >= 0 ? r.beatK : undefined, air: r.air || 0, land: r.land || 0 });
+  else drawCat2(ctx, x, feetY - (r.bob || 0) * scale, scale, s, t, { k: 1, shape: r.shape, fxM, onEmit, runner: true, ...more });   // bob = ตัวลอยตอนจังหวะ Up · runner = วิ่งในเกม (ชุดที่วางของต่างจากหน้าคลัง)
   ctx.restore();
 }
 
